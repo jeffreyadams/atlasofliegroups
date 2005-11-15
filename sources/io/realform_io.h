@@ -1,0 +1,89 @@
+/*
+  This is realform_io.h
+  
+  Copyright (C) 2004,2005 Fokko du Cloux
+  part of the Atlas of Reductive Lie Groups version 0.2.3 
+
+  See file main.cpp for full copyright notice
+*/
+
+#ifndef REALFORM_IO_H  /* guard against multiple inclusions */
+#define REALFORM_IO_H
+
+#include <iosfwd>
+
+#include "complexredgp_fwd.h"
+
+#include "layout.h"
+#include "realform.h"
+#include "tags.h"
+
+namespace atlas {
+
+/******** type declarations *************************************************/
+
+namespace realform_io {
+
+  class Interface;
+
+}
+
+/******** functions declarations *********************************************/
+
+namespace realform_io {
+
+  std::ostream& printRealForms(std::ostream&, const Interface&);
+
+}
+
+/******** type definitions ***************************************************/
+
+namespace realform_io {
+
+class Interface {
+
+ private:
+
+  realform::RealFormList d_in;
+  realform::RealFormList d_out;
+
+  std::vector<std::string> d_name;
+
+ public:
+
+// constructors and destructors
+  Interface() {};
+
+  Interface(const complexredgp::ComplexReductiveGroup&, const layout::Layout&);
+
+  Interface(const complexredgp::ComplexReductiveGroup&, const layout::Layout&,
+	    tags::DualTag);
+
+  ~Interface() {};
+
+// copy, assignment and swap
+  void swap(Interface&);
+
+// accessors
+  realform::RealForm in(realform::RealForm rf) const {
+    return d_in[rf];
+  }
+
+  size_t numRealForms() const {
+    return d_in.size();
+  }
+
+  realform::RealForm out(realform::RealForm rf) const {
+    return d_out[rf];
+  }
+
+  const char* typeName(realform::RealForm) const;
+
+// manipulators
+};
+
+}
+
+}
+
+#endif

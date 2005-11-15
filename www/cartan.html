@@ -1,0 +1,100 @@
+<html>
+<head>
+<title>Atlas software user guide -- Cartan subgroups</title>
+</head>
+
+<body>
+
+<center>
+<h2>Cartan subgroups</h2>
+</center>
+
+<p>
+<i>Last updated: October 15, 2005</i>
+</p>
+
+<p>
+Let G be a connected complex reductive algebraic group, with a fixed 
+<a href="innerclass.html">inner class</a> of real forms, and fix a real form 
+in the class, 
+<a href="realforms.html">represented</a> by an involution &theta;. Let K be the
+fixed-point group for &theta; in G. The &#8220;cartan&#8221; command will 
+output representatives of the various K-conjugacy classes of &theta;-stable
+Cartan subgroups in G. (These are in natural bijection with the 
+G(<b>R</b>)-conjugacy classes of Cartan subgroups of G(<b>R</b>)).
+</p>
+
+<p>
+It turns out that there is a rather nice connection between the classifications
+of Cartan subgroups of the various real forms of G belonging to the fixed
+inner class. For the quasisplit form, the Cartans are in (1,1) correspondence
+with (twisted) W-conjugacy classes of twisted involutions in W (a twisted 
+involution is an element w in W satisfying w.&delta;(w)=1, where &delta; is 
+deduced from the involution of the Dynkin diagram defined by the inner class.) 
+This set TwConj(W,&delta;) carries a natural poset structure, with a minimal 
+element c<sub>min</sub> which is the fundamental Cartan. For any other real 
+form &theta;, the Cartans of (G,&theta;) may be identified with the interval 
+[c<sub>min</sub>,c<sub>max</sub>] in TwConj(W,&delta;), where c<sub>max</sub> 
+corresponds to the most split Cartan in (G,&theta;).
+</p>
+
+<p>
+For each conjugacy class, the program will output the 
+<a href="tori.html">type</a> of
+the Cartan subgroup as a real algebraic torus; note that this is relatively
+subtle, as it depends not only on the Lie type of G but also on the actual
+covering group chosen: a complex torus factor might become a compact times
+split one, or conversely (try for instance G = <b>SL</b>(2).<b>SL</b>(2),
+and G<sub>1</sub> = G/D, where D is the diagonal subgroup in the center of G, 
+both for the complex real form (which is an inner class all by itself.) For 
+G(<b>R</b>), you get a complex torus, which makes sense because the group is 
+just <b>SL</b>(2,<b>C</b>); whereas for G<sub>1</sub>(<b>R</b>), which is 
+<b>SO</b>(3,1), you get a compact times split torus. For 
+G<sub>2</sub> = G/Z(G), which has 
+G<sub>2</sub>(<b>R</b>)=<b>PSL</b>(2,<b>C</b>), you again get a complex torus.)
+</p>
+
+<p>
+Then the program will output data that depend only on the restriction of 
+&theta; to the Cartan (and therefore are the same for all the real forms 
+sharing this Cartan): the real and imaginary root systems, and what I call, for
+lack of a better name, the "complex factor", which is the complex root system
+defined in [1], orthogonal to both the half-sums of positive real and of 
+positive imaginary roots. From these data, as explained in [1], one can easily
+deduce the group W(&theta;) of &theta;-fixed elements in W.
+</p>
+
+<p>
+Finally, the program will output the classification of the weak real forms of
+G for which this Cartan is defined. This amounts to the classification of the
+orbits of the Weyl group of the imaginary root system, in a set that carries
+a simply transitive action of the component group of the torus <it>dual</it>
+to the corresponding Cartan in the adjoint group of G (notice that the Cartan
+classifications for G and its adjoint group are the same, even when G is 
+reductive.) To obtain the classification of strong real forms for this Cartan,
+(or more precisely, the various combinatorial types of packets of strong real
+forms, as explained <a href="strongreal.html">here</a>), use the 
+&#8220;strongreal&#8221; command.
+</p>
+
+<table>
+<tr valign="top">
+<td>[1]</td>
+<td>
+David A. Vogan, Jr., Irreducible characters of semisimple Lie groups IV. 
+Character-multiplicity duality, <i>Duke Math. J.</i> <b>49</b> (1982), no. 4, 
+pp. 943--1073.
+</td>
+</tr>
+</table>
+
+<hr>
+
+<p>
+<a href="userintro.html">Back</a> to the introduction.<br>
+<a href="http://atlas.math.umd.edu">Back</a> to the Atlas homepage.
+</p>
+
+</body>
+</html>
+

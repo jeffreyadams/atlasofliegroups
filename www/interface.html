@@ -1,0 +1,75 @@
+<html>
+<head>
+<title>Atlas software user guide -- Interface</title>
+</head>
+
+<body>
+
+<center>
+<h2>Interface</h2>
+</center>
+
+<p>
+<i>Last updated: April 10, 2005</i>&nbsp;
+</p>
+
+<p>
+For the time being, the program is distributed with the command line interface
+that is used during its development. Currently, this does not include any
+programming language; commands are in the form "command [args]" where command
+is the name of the command, and [args] are optional arguments. When
+convenient, the arguments for a given command are fetched through an 
+appropriate user interaction instead of being given on the command line.
+</p>
+
+<p>
+Anytime you have the prompt, you can say "help", and will then enter the
+program's interactive help facility, that you exit with "q". This is currently
+rather incomplete (if only because there has at this point been no serious
+thought about which commands ought to be part of the standard interface for
+the program, and many aspects of the program organization are still
+undecided), but at least it will give you a full list of the currently
+defined commands, and whatever help is available for them.
+</p>
+
+<p>
+By default, the command line interaction is managed through the GNU
+<a href="http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html">readline</a>
+library; this provides functionality analogous to the one in the linux shell
+(which usually also uses that same library.) In particular, up and down arrows
+move through the command history, right and left arrows move the cursor on
+the command line, which is fully editable, and tabbed command completion is
+available. The behavior can be parametrized on a user-by-user basis (see 
+<a href="http://cnswww.cns.cwru.edu/php/chet/readline/readline.html#SEC9">
+here</a> for more details) using the application name "Atlas" that is set
+by the program on startup. For instance, to change the bell-behavior from
+the predefined "audible" to "none", you would include the following three
+lines in the .inputrc file in your home directory:
+</p>
+
+<pre>
+$if Atlas
+set bell-style none
+$endif
+</pre>
+
+<p>
+If for some reason readline is not available on your system, it is 
+<a href="download.html#readline">easy</a> to compile the program to do without.
+You will then no longer have command history, left and right arrows will not 
+work, and neither will tabbed command completion. However, it is still possible
+to enter incomplete command names, as long as they are unambiguous (say "ca" 
+for "cartan" for instance.) If there is an ambiguity, the program will present
+you with the various choices.
+</p>
+
+<hr>
+
+<p>
+<a href="userintro.html">Back</a> to the introduction.<br>
+<a href="http://atlas.math.umd.edu">Back</a> to the Atlas homepage.
+</p>
+
+</body>
+</html>
+

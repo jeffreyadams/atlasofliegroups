@@ -1,0 +1,32 @@
+
+The "cartan" command outputs information about the various conjugacy classes
+of Cartan subgroups for the current real form.
+
+First it prints the type of the Cartan subgroup as a real torus. The group
+of real points of a torus defined over R is a product of factors of the
+form R^x (split factors), U(1) (compact factors) and C^x (complex factors),
+and this decomposition characterizes the torus as an algebraic group over R.
+
+Second, it outputs the root system data corresponding to the "root datum with
+involution" defined by this Cartan (see [IC4]): the types of the real and
+imaginary root systems, and that of the complex root system orthogonal to
+the halfsums of real and imaginary positive roots. These data determine the
+theta-fixed subgroup of W as W^theta = W^C.(W_i x W_r), where W_i and W_r
+are the Weyl groups of the real and imaginary root systems, and W^C is the
+diagonal subgroup of the Weyl group of the complex root system (not a 
+reflection subgroup of W). Here "x" denotes direct product, and "." a
+semidirect product.
+
+The last part outputs the orbit partition that leads to the classification
+of real forms. This computation really takes place in the adjoint group:
+it computes the orbits of W_i acting on the component group of the torus
+dual to the fundamental torus in the adjoint group (see for instance the
+"Combinatorics for the representation theory of real reductive Lie groups"
+notes on the Atlas website, or the forthcoming paper by Jeff Adams and
+Fokko du Cloux.) The numbering of real forms is consistent through the
+various Cartan's, so that one can see which real form involves which Cartan, 
+and is also the numbering used by the "showrealforms" command, and everywhere
+else in the program where real forms occur.
+
+[IC4] David A. Vogan, Jr, Irreducible characters of semisimple Lie groups IV:
+Character-multiplicity duality. Duke Math. J. 49 (1982), no. 4, pp. 943--1073.

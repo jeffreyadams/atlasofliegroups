@@ -1,0 +1,118 @@
+<html>
+<head>
+<title>Atlas software user guide -- K\G/B</title>
+</head>
+
+<body>
+
+<center>
+<h2>K-orbits in G&#8260;B</h2>
+</center>
+
+<p>
+<i>Last updated: October 15, 2005</i>
+</p>
+
+<p>
+The classification of K-orbits in G&#8260;B is the basis of the geometric
+picture of representation theory, where representations correspond to
+K-equivariant local systems on such orbits. Also, the corresponding orbits
+on the dual side provide the partition of representations into 
+&#8220;L-packets&#8221; in Langlands' classification of representations.
+</p>
+
+<p>
+It turns out that the main combinatorial structure that the program uses
+internally for the parametrization of <a href="blocks.html">blocks</a> of 
+representations is in natural (1,1) correspondence with the set of K-orbits,
+and moreover we can compute the conjugation action of W (a.k.a. the 
+cross-action), and the Cayley transforms in this description. It would be 
+possible to output actual orbit representatives as products of certain 
+canonically defined elements of finite order in the group (or even as matrices,
+for classical groups), but this is not currently implemented.
+</p>
+
+<p>
+In our language, K-orbits are in (1,1)-correspondence with
+<a href="strongreal.html">strong involutions</a> normalizing T, in the 
+G-conjugacy class corresponding to a strong real form lying over the chosen 
+real form of G, modulo T-conjugacy. It is easy to see that this is equivalent 
+to the description in [1].
+The enumeration of K-orbits and the various actions are output by the
+&#8220;kgb&#8221; command. For example, here is the output of &#8220;kgb&#8221;
+for Sp(4,<b>R</b>) (the split form of simply connected C2):
+</p>
+
+<pre>
+ 0:     1   2     6   4    0
+ 1:     0   3     6   5    0
+ 2:     2   0     *   4    0
+ 3:     3   1     *   5    0
+ 4:     8   4     *   *    1  2
+ 5:     9   5     *   *    1  2
+ 6:     6   7     *   *    1  1
+ 7:     7   6    10   *    2  212
+ 8:     4   9     *  10    2  121
+ 9:     5   8     *  10    2  121
+10:    10  10     *   *    3  1212
+</pre>
+
+<p>
+The first column is just the number of the orbit in the enumeration we are
+using. The next two are the cross-actions for the two simple reflections in
+the complex Weyl group; they are always defined. Then come two columns
+describing the Cayley transforms for the simple reflections: they are defined
+only if the simple root is imaginary noncompact for the corresponding
+involution. The next-to-last column is the value of the length function;
+in terms of orbits this is the difference in dimension between the current
+orbit and the closed orbits; combinatorially, it is the smallest number of
+operations (cross-actions or Cayley transforms) that will get you from
+a closed orbit to the current one. Finally, the last column lists the
+Weyl group element defining the root datum involution associated to the
+orbit; in our language, this is just the restriction of the involution to
+the torus. The Weyl group element is written as a product of simple 
+reflections: for instance &#8220;121&#8221; means 
+s<sub>1</sub>s<sub>2</sub>s<sub>1</sub>. The output is sorted by length, and
+then by Weyl group element; the orbits associated to the identity element
+in the Weyl group are the closed orbits&#8212;they are all isomorphic to
+the flag variety of K.
+</p>
+
+<p>
+In the example, we are in the equal rank case, so root datum involutions are
+just involutions in the Weyl group. There are four W-conjugacy classes of 
+those, <i>viz.</i> {e}, {1,212}, {2,121}, {1212}, corresponding to the four 
+<a href="cartan.html">conjugacy classes</a> of Cartan subgroups in 
+Sp(4,<b>R</b>). They correspond to the four W-orbits for the cross-action: 
+{0,1,2,3}, {4,5,8,9}, {6,7}, {10}. In this case, there is only one split strong
+real form, and it is a <a href="strongreal.html">&#8220;packet&#8221;</a> all 
+by itself. Hence the number of orbits lying over any given root datum 
+involution is the cardinality of the component group of the torus dual to the 
+corresponding Cartan subgroup. So there are four for the fundamental Cartan
+(the dual torus is split), two for the intermediate Cartan that is 
+<b>U</b>(1).<b>R</b><sup>&#215;</sup> (corresponding to reflections through
+long roots), one for the intermediate Cartan that is <b>C</b><sup>&#215;</sup>
+(corresponding to reflections through short roots), and one for the split
+Cartan (the dual torus is compact.)
+</p>
+
+<table>
+<tr valign="top">
+<td>[1]</td>
+<td>
+R.W Richardson and T.A. Springer, The Bruhat Order on Symmetric Varieties,
+Geom. Dedicata 35(1990), pp. 389-436.
+</td>
+</tr>
+</table>
+
+<hr>
+
+<p>
+<a href="userintro.html">Back</a> to the introduction.<br>
+<a href="http://atlas.math.umd.edu">Back</a> to the Atlas homepage.
+</p>
+
+</body>
+</html>
+

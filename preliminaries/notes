@@ -1,0 +1,545 @@
+
+	Preliminary notes for the implementation of Kazhdan-Lusztig
+	computations for real reductive groups.
+
+
+This work will be part of the Atlas of Real Reductive Lie Groups project,
+whose ultimate goal is to determine by computer the unitary dual of any given
+real reductive Lie group.
+
+--- much of this is outdated now; see 2nd approach below ---
+
+At this stage, we are still into the phase of feasibility assessment. We
+will restrict to the following setting : G is the set of real points of
+a complex connected reductive algebraic group, defined over R, and we
+compute k-l polynomials for representations which have trivial infinitesimal
+character. At a later stage, we will certainly want to allow open subgroups
+of such G, and even more or less arbitrary finite covers of such (i.e., we
+will be in the class of semialgebraic reductive Lie groups), and of course
+arbitrary infinitesimal character. This last point will be a nuisance from
+the programmer's point of view, but should lead to rather smaller computations
+than the trivial case.
+
+The first stage of the project should be the implementation of the 
+combinatorial environment of the computation. Kazhdan-Lusztig polynomials
+P_{x,y} will be defined for all x <= y in a certain poset Par, which is
+also the basis of a Z[q^{1/2},q^{-1/2}]-module carrying an action of the
+Hecke algebra of the complex Weyl group of G.
+
+The set Par splits up as a disjoint union of subsets Par_i, where i ranges
+over the conjugacy classes of Cartan subgroups of G. For each i, denote by
+H_i a choice of theta-stable Cartan subgroup in G, and Lambda_i the
+W(g,h_i)-orbit in the dual of the Lie algebra h_i of H_i, corresponding
+to the trivial infinitesimal character. Then Par_i fibers over 
+Lambda_i/W(G,H_i), and each fiber carries a simply transitive action of the
+group (H_i/H_i^o)^ (the character group of the component group of H_i).
+In particular, the cardinality of Par is given by the formula :
+
+	|Par| = Sum_i (|W(g,h_i)|/|W(G,H_i)|)|H_i/H_i^o|
+
+(notice that |H_i/H_i^o| is always a power of two.)
+
+The main computational difficulties here are (a) get a parametrization of
+the classes of Cartan subgroups (b) determine the corresponding Weyl groups
+(c) determine the component groups H_i/H_i^o. We will explain briefly how
+to go about each of these.
+
+
+			Input data
+			----------
+
+First of all, of course, we need to know what we are given. A complex connected
+reductive group is described by a root datum (X,Delta,X^,Delta^) where X and 
+X^ are dual lattices (one should think of them as the character and 
+co-character lattices of a complex Cartan subgroup of G), and Delta, Delta^ 
+are the sets of roots and coroots respectively. This should also be the basic 
+data the program works with, only that X and X^ are implicit, and implicitly 
+set equal to Z^n.
+
+The nice point is that in the course of inductive arguments, even starting
+from a (quasi)simple complex group, highly reductive subgroups will occur,
+but it may be arranged that all these groups share a common Cartan subgroup.
+So the lattice X will really be a very stable constant in the whole setup.
+The root system Delta will vary.
+
+If our group is defined over R, with Cartan involution theta, we may choose
+H to be theta-stable and fundamental, and we may choose a theta-stable Borel
+subgroup B (hence a basis Pi of Delta). Then theta will define an involution
+of the lattice, stabilizing R, and we have a classification of the roots
+into real, imaginary and complex. The further choice that needs to be made
+in order to determine the real form, is which imaginary roots are compact
+and which are non-compact (corresponding to +1 and -1 eigenvalues of theta
+on the corresponding root space.) So all this will be part of our given data.
+
+Although we certainly want to allow the able and willing user to provide
+input data as above, in practice it is expected that the group a user is
+interested in will be a real form of a simple complex group. Then it should
+suffice for him to enter something like the Satake diagram (or better, just
+enter the type of the complex group, and be presented with the possible
+choices), together with, say, whatever data is required to determine the
+covering index by the simply connected complex group (usually, a number
+will suffice, since the center will be cyclic.) These things are essentially
+trivial but time-consuming.
+
+
+			Cartan subgroups
+			----------------
+
+It is known that G-conjugacy classes of Cartan subgroups = K-conjugacy classes
+of theta-stable Cartan subgroups are in 1-1 correspondence with 
+W(K,T)-conjugacy classes of sets of strongly orthogonal imaginary non-compact
+roots.
+
+Note that the determination of the Lie algebra k is easy : the maximal torus
+t of k is the +1-eigenspace of theta on h (recall that we took h to be 
+fundamental), and the roots of t in k correspond to the compact imaginary 
+roots, and theta-orbits in the set of complex roots. The choice of our
+Borel B will also determine a positive root system for t in k. From this,
+the Weyl group W(k,t) can be determined; in principle, also as a subgroup
+of W(g,h) (because it is enough to see what an element of W(k,t) does to
+a g-regular element in t).
+
+The determination of W(K,T) is more delicate because of possible 
+non-connectedness of K (note that the non-connectedness of K is the same as 
+that of G, and can be determined; we'll say something about that later; in any
+case, in our context, K/K^o is a commutative 2-group.)
+
+The following algorithm was explained to me by David Vogan : look at 
+non-compact imaginary roots orthogonal to rho(Delta^+(k,t)) (note that this
+rho should be set to zero if k is commutative.) These roots form a strongly
+orthogonal system {+- gamma_1, ... , +- gamma_s}. Look at subsets 
+{gamma_{i_1}, ... gamma_{i_h}} such that gamma_{i_1}+ ... +gamma_{i_h} is 
+divisible by 2 in the coroot lattice; then W(K,T) is generated by W(k,t)
+and the s_{i_1}...s_{i_l} corresponding to such subsets.
+
+This now provides us with all the data that we need to classify Cartan
+subalgebras; finding orbits of W(K,T) in the sets of strongly orthogonal
+noncompact imaginary roots requires computation proportional to size of
+the orbit times number of generators of the group (which is certainly at
+most equal to rank(k)+rank(g)); so provided these orbits are not too big,
+we should be ok.
+
+
+			Weyl groups
+			-----------
+
+In fact, what we want to do is pull back the real structure on each of these
+Cartans to our fundamental one, by complex conjugation. In other terms, to
+each h_i there will correspond an involution theta_i of our given h
+(if h_i is defined by {beta_1,...,beta_r}, then theta_i will just be
+theta.s_{beta_1}...s_{beta_r}); the imaginary roots for h_i will just
+be those imaginay roots for h that are orthogonal to b_1^,...,b_r^; the
+distinction between compact and non-compact is the same as for h.
+
+Here is a determination of W(G,H_i), again as explained to me by Vogan.
+Choose positive systems Delta+_{im}, Delta^+_{re}, and let rho_im, rho_re
+be the corresponding half-sums of positive roots. Let Delta_0 be the
+set of roots in h that are orthogonal to both rho_im and rho_re. Then
+this is a root system without real or imaginary roots (in other words, the
+root system of a complex group.) Then W^{theta_i} = (W_{im}xW_{re})X|W_0
+where W_0 is the diagonal subgroup of W(Delta_0). The group W(G,H_i), seen
+as a subgroup of W^{theta_i}, is then (W(L_i,H_i)xW_{re})X|W_0, where L_i
+is the centralizer in G of the split part A_i of H_i, in which H_i is a
+fundamental Cartan. And the determination of W(L_i,H_i) is again an instance
+of the determination of W(K,T) that we have considered in the previous section.
+
+This looks fairly complicated to program; however if all we require is
+the cardinality, then things should be much easier; it becomes a matter
+of recognizing the various root systems involved, and being able to do
+the fundamental case. What's not entirely clear to me right now is how
+the semidirect product acts.
+
+
+		Components of tori and groups
+		-----------------------------
+
+Let H be a complex torus defined over R, with Cartan involution theta. We
+wish to determine the component group of H(R). Here is one way to go about
+it. Let X be the character lattice of H, and write X_+, X_- the subgroups
+of X with eigenvalues +1, -1 respectively. If V is the Q-vector space
+obtained from X by extending scalars, then V is a direct sum V_+ + V_-, and
+X_+ and X_- are obtained by intersection. This shows that rk(X_+)+rk(X_-)=
+rk(X), and that X/X_+ and X/X_- are torsion-free. The surjections X -> X/X_+
+and X -> X/X_- are dual to the injections of the split and compact parts of
+H in H respectively. At the level of real points, this gives a covering of
+H(R) by T^p x (R^x)^q, where p and q are the ranks of X_+ and X_- respectively.
+Let 2^m be the index of X in X/X_+ + X/X_-; then the number of components
+of H(R) is 2^(q-m).
+
+(surely something very elementary should be possible here ?)
+
+Let here G denote the complex group.
+To determine the component group of G(R), say for G semisimple, one uses the 
+following facts : (a) when the complex group is simply connected, G(R) is 
+connected (b) a split torus in G(R) meets all components. Then look at
+a split torus H~ in G~(R); its component group is determined as above. Let
+H be the corresponding split torus in G(R); then since H~ contains the center
+of G~(R) we have that the intersection of H with the image of G~(R), which
+is also the intersection of H with the identity component of G(R), is the
+image of H~ in H. It should be easy enough to determine the component group
+of this image; we just need to look at how many components of H~ meet the
+kernel of the map H~->H; in other words, we need to look at the image of
+the kernel in the component group of H~. Then if this image has cardinality
+2^r, the component group of G(R) has cardinality 2^r (in particular, it is
+always a power of two.)
+
+This stuff should make it fairly easy to take disconnectedness into account,
+and also to compute the connectivity of the various groups involved. In
+particular it would appear that disconnected groups which arise in this
+fashion are of a very special nature.
+
+
+		Further combinatorial data
+		--------------------------
+
+What is further required for the determination of the Hecke algebra action
+(from which everything follows) are the cross action and the Cayley transforms.
+
+For the cross action, the first main ingredient is the action of W on
+Lambda_i/W(G,H_i); in fact, after the identifications above, this will
+amount to the right action of W on the left cosets of W(G,H_i) in W. Since
+W(G,H_i) is not necessarily a Coxeter group, and even when it is, not
+necessarily a reflection subgroup of W, purely Coxeter-theoretic arguments
+probably will not work. But it should be possible to set up an appropriate
+version of Todd-Coxeter coset enumeration to get by (more about this below.)
+
+The explicit description of the parameter set lying over a given Cartan
+requires some rather precise rho-shifting. For each lambda in Lambda_i, its
+restriction to t_i is regular for the imaginary roots of h_i in g. So it
+defines a positive chamber for the imaginary roots. We can form rho_I(lambda)
+(the half-sum of lambda-positive imaginary roots, also the roots of t_i in m_i)
+and rho_{I,c}(lambda) (the same for the compact imaginary roots, also the
+roots of t_i in m_i intersection k). Then the set of characters of T associated
+to lambda is the set of Phi whose derative is lambda + rho_I - 2 rho_{I,c}.
+(in particular this explains how the discrete series representations, when
+they exist, are parametrized.) The cross-action on the level of Phi will
+be defined as follows : denote by wxlambda the element lambda.w^{-1} in
+Lambda_i. Then it is easy to see that
+
+	(wxlambda + rho_I(wxlambda) - 2 rho_{I,c}(wxlambda)) -
+	(lambda + rho_i(lambda) - 2 rho_{I,c}(lambda))
+
+is an integral combination of roots. Taking the same integral combination of
+root characters for wxPhi - Phi defines wxPhi.
+
+To go further ahead, we need the following definition. For each lambda in
+Lambda (which has now become independent of i), there is a unique element
+i_lambda in W which takes our chosen positive chamber to the chamber defined
+by lambda. In particular, for each simple root alpha in Pi, we define the
+corresponding lambda-simple root alpha_lambda = i_lambda(alpha). Then we
+say that alpha is real (resp. complex, imaginary compact, imaginary 
+non-compact) w.r.t. lambda, if alpha_lambda is (this of course depends
+also on i). It is easy to see that this is unchanged if we modify lambda
+by an element w of W(G,H_i), since i_{w(lambda)} will then simply be w
+composed with i_lambda.
+
+Cayley transforms go from one Par_i to another, more split, one. It seems
+to me that this can be formulated like this. Fix a parameter gamma =
+(lambda,Phi) for the Cartan H_i, and consider a simple root alpha which is 
+noncompact imaginary w.r.t. lambda. We denote H_j the Cartan corresponding 
+to the strongly orthogonal system obtained by adding alpha_lambda to the
+beta_1,...,beta_r already chosen. This is always orthogonal; if not strongly,
+there is a unique l s.t. beta_l +- alpha_lambda is a root; replace 
+(beta_l,alpha_lambda) by (beta_l+alpha_lambda,beta_l-alpha_lambda). Of course 
+we might have to conjugate this set to get our chosen model for H_j, but do 
+not do this just now. The torus part t_j of h_j is contained in t_i; in fact
+it is the kernel of alpha_lambda in t_i. At the group level, T_i intersect
+T_j is of index one or two in T_j; it could probably be determined easily
+enough which is the case from lattice reasonings, but it turns out that
+this is not necessary.
+
+Then there are two cases :
+
+(a) wxlambda != lambda; we say that alpha is type I w.r.t. lambda. The
+Cayley transform c^alpha(gamma) is then simply (lambda,Phi|_{t_j}) (making
+this explicit requires writing explicitly the character groups of the
+various T_i, perhaps as quotient groups of X(T_0), where T_0 corresponds
+to our fundamental Cartan). This is the case where T_j is contained in T_i
+
+(b) wxlambda = lambda; we say that alpha is type II w.r.t. lambda. Then
+the Cayley transform is a two-element set {(lambda,Phi'),(lambda,Phi'')},
+where Phi' and Phi'' are the two extensions to T_j of Phi|_{T_i intersect T_j}.
+This is the case where T_i intersect T_j is of index two in T_j.
+
+To really get to our original parameter set, we then still have to conjugate
+back to our chosen representative of H_j, via an element of W(K,T)=W(G,H_0).
+(this will probably be rather a pain; it forces us either to keep in memory
+the full set of strongly orthogonal sets, or devise a "normal form procedure"
+that would take any such set to a standard representative. One of the things
+to look at carefully!)
+
+In fact, it is possible that the abstract combinatorial structure of the
+parameter set can to a large extend be bootstrapped by elementary procedures.
+However, this is not enough : we really want to set up the correspondance
+with specific Langlands parameters, so probably we cannot get out from under
+the above considerations.
+
+
+		Todd--Coxeter
+		-------------
+
+NB : perhaps talk to Meinolf about this. There may be alternatives, like
+looking at the action of the subgroup on parabolic cosets. If we can find
+one such transitive action, then the problem becomes one of determining the
+intersection with the subgroup, and we have a reduction in rank.
+
+Consider the following problem. Let W be a finite Coxeter group, and let
+H be a subgroup of W, given in terms of a set of generators g_1,...,g_m
+where the g_j are given, say, as ShortLex normal forms for some ordering
+of the generators. The problem is to determine the right action of W on the
+quotient set H\W.
+
+We proceed as follows. Define one master-table, which will eventually have
+one row exactly for each element in the coset space. Number these rows by
+integers starting from zero; also number the generators by integers 1,...,n.
+For each generator g_j, define a one-row auxiliary table containing that
+relation.
+
+For each row x in the master table, we strive to find the ShortLex-minimal
+representative of x in W.
+
+Start with just the empty row #0 in the master table, representing H; of
+course its ShortLex representative is the empty word (). While there are empty
+entries in the master table, do :
+
+	(a) pick the first empty entry, say corresponding to (x,s);
+	(b) see if this completes one of the generator tables; if yes, the
+	    answer is 0;
+	(c) let w = NF(x); if ws is not a normal form, we can rewrite xs as
+	    yt for y < x, and we are done;
+	(d) otherwise, add a new row z, for which ws will be the 
+	    representative; set xs = z, zs = x;
+
+There is _coset collapse_, if for one of the generators s, we have two
+distinct numbers x and y such that xs = ys; this can happen either in (b) or
+(c) above. This means that in fact x and y represent the same element in
+the quotient; so we replace the bigger everywhere with the smaller, and repeat
+if necessary until there are no further collapses.
+
+The algorithm terminates when the master table is complete. At that point,
+the number of rows in the master table is exactly equal to the cardinality
+of the quotient set.
+
+Example : W = A_3, H = <123>
+
+Start out with : 
+
+        1    2    3                           1  |  2  |  3 
+
+  0 :   1    2    3     ()                  0    1     3     0
+  1 :   0    *    *     (1)
+  2 :   *    0    *     (2)
+  3 :   *    *    0     (3)
+
+We see that in fact we can fill the generator-table form both sides :
+3.3 = 0 means that the 0 on the right of the relation comes from a 3
+before, and hence we have the bonus : 1.2 = 3. After this, the only
+collapses can come from relations in the group, i.e. from (c) above.
+
+        1    2    3                           1  |  2  |  3 
+
+  0 :   1    2    3     ()                  0    1     3     0
+  1 :   0    3    4     (1)
+  2 :   5    0    6     (2)
+  3 :   *    1    0     (3)
+  4 :   *    *    1     (13)
+  5 :   2    *    *     (21)
+  6 :   *    *    2     (23)
+
+The first non-normal form would be 3.1, corresponding to 31 = 13. So,
+3.1 = 1.3 = 4, and 4.1 = 3. No coset collapse. The next entry is 4.2 = 132
+
+        1    2    3                           1  |  2  |  3 
+
+  0 :   1    2    3     ()                  0    1     3     0
+  1 :   0    3    4     (1)
+  2 :   5    0    6     (2)
+  3 :   4    1    0     (3)
+  4 :   3    7    1     (13)
+  5 :   2    *    *     (21)
+  6 :   *    *    2     (23)
+  7 :   *    4    *     (132)
+
+For 5.2 = 212 we have the relation 212 = 121, hence 5.2 = 3.1 = 4, and
+4.2 = 5. But we already had 4.2 = 7; so we have 5 = 7, i.e. 21 = 132 mod H,
+which is true since 123.132 = 1212 = 21. So we remove row 7 and get :
+
+        1    2    3                           1  |  2  |  3 
+
+  0 :   1    2    3     ()                  0    1     3     0
+  1 :   0    3    4     (1)
+  2 :   5    0    6     (2)
+  3 :   4    1    0     (3)
+  4 :   3    5    1     (13)
+  5 :   2    4    *     (21)
+  6 :   *    *    2     (23)
+
+The next entry, which we number again 7, is 5.3 :        
+
+        1    2    3                           1  |  2  |  3 
+
+  0 :   1    2    3     ()                  0    1     3     0
+  1 :   0    3    4     (1)
+  2 :   5    0    6     (2)
+  3 :   4    1    0     (3)
+  4 :   3    5    1     (13)
+  5 :   2    4    7     (21)
+  6 :   *    *    2     (23)
+  7 :   *    *    5     (213)
+
+For 6.1 = 231 we have 231 = 213 = 7. No coset collapse. We continue :
+
+        1    2    3                           1  |  2  |  3 
+
+  0 :   1    2    3     ()                  0    1     3     0
+  1 :   0    3    4     (1)
+  2 :   5    0    6     (2)
+  3 :   4    1    0     (3)
+  4 :   3    5    1     (13)
+  5 :   2    4    7     (21)
+  6 :   7    8    2     (23)
+  7 :   6    9    5     (213)
+  8 :  10    6    *     (232)
+  9 :   *    7    *     (2132)
+ 10 :   8    *    *     (2321)
+
+Now for 8.3 we have the relation 232.3 = 32 = 1. This will cause a coset
+collapse, as 4.3 = 1 as well, so we deduce that 232 = 4 = 13. We may replace
+8 by 4 everywhere, and suppress 8 :
+
+        1    2    3                           1  |  2  |  3 
+
+  0 :   1    2    3     ()                  0    1     3     0
+  1 :   0    3    4     (1)
+  2 :   5    0    6     (2)
+  3 :   4    1    0     (3)
+  4 :   3    5    1     (13)
+  5 :   2    4    7     (21)
+  6 :   7    4    2     (23)
+  7 :   6    9    5     (213)
+  9 :   *    7    *     (2132)
+ 10 :   4    *    *     (2321)
+
+Now there is another collapse 3.1 = 10.1, so 10 = 3, and 5.2 = 6.2, so 5 = 6 :
+
+        1    2    3                           1  |  2  |  3 
+
+  0 :   1    2    3     ()                  0    1     3     0
+  1 :   0    3    4     (1)
+  2 :   5    0    5     (2)
+  3 :   4    1    0     (3)
+  4 :   3    5    1     (13)
+  5 :   2    4    7     (21)
+  7 :   5    9    5     (213)
+  9 :   *    7    *     (2132)
+
+Still more collapses : 2.1 = 7.1 = 5, so 7 = 2 :
+
+        1    2    3                           1  |  2  |  3 
+
+  0 :   1    2    3     ()                  0    1     3     0
+  1 :   0    3    4     (1)
+  2 :   5    0    5     (2)
+  3 :   4    1    0     (3)
+  4 :   3    5    1     (13)
+  5 :   2    4    2     (21)
+  9 :   *    2    *     (2132)
+
+And finally 9.2 = 0.2 = 2, so 9 = 0. The result is a complete table with
+six rows, which is ok since 123 is of order four in W = S_4 :
+
+        1    2    3                           1  |  2  |  3 
+
+  0 :   1    2    3     ()                  0    1     3     0
+  1 :   0    3    4     (1)
+  2 :   5    0    5     (2)
+  3 :   4    1    0     (3)
+  4 :   3    5    1     (13)
+  5 :   2    4    2     (21)
+
+Probably the strategy could be optimized, but already this seems worth
+a try as is. (To optimize, one could have considered 1 = 32 and 12 = 3,
+and look if the word w contains 12 or 32 as a prefix; this would have caught
+a rewrite of 232 much earlier, and we would have remained within seven rows)
+
+--- year 2 : 2nd approach ----------------------------------------------------
+
+In the second workshop, held in July 2004, a new picture was put forward by
+Jeff Adams for the description of representations. This is much more in line
+with the deep ideas surrounding Vogan duality, where one has to consider
+several real forms of the complex group at one time.
+
+More precisely, we let G be a complex connected reductive group, and we
+consider the direct sequence :
+
+	1 -> Int(G) -> Aut(G) -> Out(G) -> 1
+
+Note that after the choice of a _pinning_ of G (choose a maximal torus T, a
+Borel B containing T, and a basis vector X_alpha for the root space g_alpha,
+for each simple root alpha w.r.t. B), the group Out(G) is isomorphic to the
+automorphism group of the based root datum defined by G, T and B. Fix an
+element gamma of order two in Out(G), and let theta be a representative of
+gamma (say chosen with the help of a pinning, as above.) Then the elements
+of Aut(G) lying over theta are those of the form int(x).theta, for x in G.
+Such an element is of order two if and only if int(x.theta(x)) = Id, or
+equivalently, iff x.theta(x) belongs to the center Z(G) of G.
+
+Now a _representation_ will be a pair (x,X) where x is in G s.t. x.theta(x)
+is in Z(G), and X is a (g,K_x)-module, with K_x the fixed points of theta_x
+in G, where we view theta_x = int(x).theta as a Cartan involution (note that
+there is a bijection between real forms of G and involutions of G, after the
+choice of a compact real form.) We consider representations up to conjugacy
+and equivalence, i.e., (x,X) is equivalent to (x',X') if after conjugation of
+(x',X') by G we can assume x = x', and X equivalent to X' as (g,K_x)-modules.
+
+The it turns out that equivalence classes of representations with integral
+infinitesimal character are in (1,1) correspondence with G x G^\vee-conjugacy 
+classes of septuples 
+
+	(x,T,B,y,T^d,B^d,lambda)
+
+where :
+
+	- x is in G s.t. x.theta(x) lies in Z(G);
+	- T is a theta_x-stable torus in G;
+	- B is a Borel containing T;
+	- y, T^d, B^d, are corresponding data in the dual group G^\vee;
+	- the unique conjugation in G^\vee taking T^\vee to T^d and B^\vee to 
+	  B^d takes theta_x^\vee to theta_y;
+	- lambda is a linear form on t, such that e^{2i.pi.lambda} = 
+	  y.theta(y).
+
+(note that we have an identification of t^* with the dual Lie algebra t^\vee.)
+
+NOTE : think more about this zeta(B,B^d). That's the subtle part in the
+definition.
+
+--- Conjugacy classes of Cartan subalgebras ----------------------------------
+
+Here is an approach suggested to me by David Vogan. Assume first for simplicity
+that the root system is simply laced. Then all roots are conjugate under the
+Weyl group to the longest root. The stabilizer of the longest root can be
+deduced from the extended Dynkin diagram : it is the parabolic subgroup
+generated by the roots orthogonal to the additional generator in the extended
+diagram. Since the group is simply laced, all sets of orthogonal roots are
+strongly orthogonal. Then it is enough to classify orthogonal subsets in
+the smaller group, which proceeds recursively. Note that the smaller group
+is not necessarily irreducible --- one needs to consider the various
+components.
+
+The problem with this is that it classifies _ordered_ sets of orthogonal roots.
+To pass to unordered sets, we need to keep track of which ordered sets go
+to the same orbit as unordered sets. More precisely, over each unordered orbit
+lie a number of ordered orbits; the thing then, is to start with an unordered
+orbit representative, consider all its permutations, and see how many different
+orbits one gets.
+
+From the programmer's point of view, the problem with such an approach would
+be that it seems to require a lot of type-recognition and stuff. So perhaps
+I'll start with something a little more brute-force-ish (when in doubt, use
+brute force! thank you Ken), which also has the advantage of working directly
+within unordered sets of roots. Represent subsets of roots as bitmaps inside
+the set of roots. Represent Weyl group elements as permutations of roots.
+Then it is easy to find the orbit of any given subset, and hence to classes
+of strongly orthogonal roots.
+

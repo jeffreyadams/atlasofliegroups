@@ -1,0 +1,106 @@
+<html>
+<head>
+<title>Atlas software user guide -- Strong real forms</title>
+</head>
+
+<body>
+
+<center>
+<h2>Strong real forms</h2>
+</center>
+
+<p>
+<i>Last updated: October 15, 2005</i>
+</p>
+
+<p>
+Let G be a connected reductive complex algebraic group. A <i>pinning</i> of
+G is a triple (T,B,{X<sub>&alpha;</sub>}<sub>&alpha;&#8712;&Pi;</sub>), where
+T is a maximal torus in G, B is a Borel containing T, &Pi; is the set of
+simple roots of (G,T) with respect to B, and for each &alpha;&#8712;&Pi;,
+X<sub>&alpha;</sub> is a root vector for &alpha; in the Lie algebra of G; we
+fix such a pinning &#8472; (containing our already chosen T and B) in all that 
+follows. It is well-known that the adjoint group Int(G)=G/Z acts simply 
+transitively on the set of pinnings. It follows that the exact sequence
+</p>
+
+<center>
+1 &#8594; Int(G) &#8594; Aut(G) &#8594; Out(G) &#8594; 1
+</center>
+
+<p>
+splits by identifying Out(G) with the stabilizer of &#8472; in Aut(G). In
+particular, each <a href="innerclass.html">inner class</a> of real forms of G
+has a canonical representative &theta;<sub>f</sub> fixing &#8472;; we will
+say that &theta;<sub>f</sub> is the fundamental involution in the inner class.
+</p>
+
+<p>
+Let &Gamma;=<b>Z</b>/2, and write &Gamma;={1,&delta;}. Then we may form the
+semidirect product
+</p>
+
+<center>
+G<sup>&Gamma;</sup> = G&#215;&#124;{1,&delta;}
+</center>
+
+<p>
+where the conjugation action of &delta; on G is through &theta;<sub>f</sub>.
+This is an analogue in our situation of the Langlands group, together with
+a specific choice of splitting; we will be mostly concerned with the
+non-identity component G.&delta; in G<sup>&Gamma;</sup>.
+</p>
+
+<p>
+A <i>strong involution</i> in G<sup>&Gamma;</sup> is an element x in G.&delta;
+such that x<sup>2</sup>&#8712;Z(G); a <i>strong real form</i> of G is a
+G-conjugacy class of strong involutions. Each strong involution x defines an
+ordinary involution &theta;<sub>x</sub> of G by setting 
+&theta;<sub>x</sub> = int(x); it is clear that in this way we obtain exactly
+all involutions in the inner class defined by &theta;<sub>f</sub>. By passing
+to conjugacy classes, to each strong real form corresponds a real form as
+defined <a href="realforms.html">here</a>. When G is adjoint, the notions of
+real form (in the chosen inner class) and strong real form coincide.
+</p>
+
+<p>
+Let W<sub>im</sub> be the Weyl group of the imaginary root system for the
+fundamental involution &theta;<sub>f</sub>. As mentioned 
+<a href="realforms.html">here</a>, the classification of strong
+real forms reduces essentially to an orbit computation for an action of
+W<sub>im</sub>. Precisely, the strong involutions of G may be partitioned
+according to the values of x<sup>2</sup>=z &#8712; Z(G); for a fixed value
+of z, there is a simply transitive action of the 
+<a href="tori.html">component group</a> of the torus dual to the fundamental
+torus of G, on the set of strong involutions with square z that induce on
+T the same involution as &theta;<sub>f</sub>. Then the orbits of W<sub>im</sub>
+on that set of involutions classify the strong real forms of G with square z.
+Moreover, multiplication by elements of Z will obviously induce isomorphisms
+among &#8220;packets&#8221; of strong real forms; so packets
+that have the same image in the adjoint group give rise to the same orbit
+problem, and it is really enough to solve it once for each of the &#8220;packet
+images&#8221; in the adjoint group. This is what the &#8220;strongreal&#8221;
+command does; the classes of real forms mentioned in its output are the packet
+images. Then all that remains to be done to complete the classification is
+to count the number of packets, which may be in  fact be infinite for some
+reductive groups (precisely, it is infinite if and only if the radical of
+G contains a compact factor.)
+</p>
+
+<p>
+By a similar procedure, one may also classify the strong real forms for which
+any given conjugacy class of <a href="cartan.html">Cartan subgroups</a> is 
+defined. The argument to the &#8220;strongreal&#8221; command specifies the
+Cartan class.
+</p>
+
+<hr>
+
+<p>
+<a href="userintro.html">Back</a> to the introduction.<br>
+<a href="http://atlas.math.umd.edu">Back</a> to the Atlas homepage.
+</p>
+
+</body>
+</html>
+

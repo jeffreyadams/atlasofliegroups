@@ -1,0 +1,100 @@
+<html>
+<head>
+<title>Atlas software user guide -- Inner classes</title>
+</head>
+
+<body>
+
+<center>
+<h2>Inner classes</h2>
+</center>
+
+<p>
+<i>Last updated: October 8, 2005</i>
+</p>
+
+<p>
+Let G be a connected reductive complex algebraic group. The <i>inner class</i> 
+of a <a href="realforms.html">real form</a> of G is its image in the outer 
+automorphism group of G. We look at inner classes up to conjugacy in Out(G); 
+it may be shown that there are always finitely many possiblities.
+</p>
+
+<p>
+Let Rad(G) be the identity component of the center of G. Then an inner class
+is entirely determined by the involutions it induces on the Dynkin diagram of
+G, and on Rad(G). If G is the direct product of Rad(G) and the derived group
+Der(G), and if Der(G) is simply connected, or adjoint, all pairs of involutions
+are allowed; this is no longer true in general (the simplest case is when
+G is PSL(2).SL(2); then the complex inner form (see below) is <i>not</i> 
+allowed.)
+</p>
+
+<p>
+The involution induced on the Dynkin diagram of G either fixes a component, or
+interchanges it with an isomorphic one. We require that the pairs of 
+interchanged components correspond to consecutive entries in the Lie type
+(for instance, it is allowed to interchange the two A1's in B3.A1.A1, but
+not in A1.B3.A1.) Of course, it is always possible to lay out the group G in
+such a way that this condition is fulfilled. We now have a number of 
+possibilities:
+</p>
+
+<ul>
+<li>
+A pair of interchanged components gives rise to a <i>complex</i> factor (i.e.,
+a complex reductive algebraic group viewed as real);
+</li>
+<li>
+A fixed component on which the involution induces the identity will be labelled
+&#8220;c&#8221; (for compact), or also &#8220;e&#8221; (for equal rank). This 
+corresponds to the fact that the inner class induced on that factor will be the
+one containing the compact real form, also called the <i>equal rank</i> inner 
+class;
+</li>
+<li>
+For a fixed component of one of the types A_n, n >= 2, D_n, n odd, and E6, the 
+non-identity involution of the Dynkin diagram is denoted &#8220;s&#8221;, 
+because the inner class induced on that factor will be the one containing the 
+split real form; this may also be denoted &#8220;u&#8221; (for unequal rank.) 
+For the types A1, B_n, C_n, E7, E8, F4, G2, there is a unique 
+inner class, which may be denoted either &#8220;c&#8221; or &#8220;s&#8221;;
+
+</li>
+<li>
+For a fixed component of <a href="Deven.html">type D_2m</a>, the non-identity
+involution of the Dynkin diagram is denoted &#8220;u&#8221;;
+</li>
+</ul>
+
+<p>
+As recalled <a href="tori.html">here</a>, any torus with involution can be 
+split up into a direct product of factors on which the involution is either 
+the identity (labelled &#8220;c&#8221;as above), inversion (labelled 
+&#8220;s&#8221;), or the exchange of two isomorphic torus factors (labelled 
+&#8220;C&#8221; for complex). By choosing the way we write Rad(G) 
+appropriately, we may therefore assume that the involution is either the 
+identity, the inversion, or the exchange of two consecutive isomorphic torus 
+factors on the various factors of Rad(G).
+</p>
+
+<p>
+The upshot is that without loss of generality we may represent our inner class
+by a sequence of symbols from the set {c,s,C,u}, one for each factor in the
+Lie type, except that a &#8220;C&#8221; symbol uses up two consecutive 
+isomorphic factors, and with the restriction that "u" is allowed only when 
+there is more than one inner class. If it turns out that a given sequence is 
+not allowed for the specific covering group G that we are considering, the 
+program will notice, and complain accordingly.
+</p>
+
+<hr>
+
+<p>
+<a href="userintro.html">Back</a> to the introduction.<br>
+<a href="http://atlas.math.umd.edu">Back</a> to the Atlas homepage.
+</p>
+
+</body>
+</html>
+

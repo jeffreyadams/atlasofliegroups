@@ -1,0 +1,335 @@
+\documentclass[11pt,draft]{article}
+
+\makeatletter
+\renewcommand{\subsection}[1]{\@startsection{subsection}{2}{0pt}%
+{\medskipamount}{-4.5 pt}{\textbf}{#1}\hskip-\parindent\textbf{. }}
+\makeatother
+
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\newcommand{\ra}{\rightarrow}
+
+\newcommand{\A}{{\bf A}}
+\renewcommand{\a}{\alpha}
+\newcommand{\C}{{\bf C}}
+\newcommand{\D}{\Delta}
+\newcommand{\F}{{\bf F}}
+\newcommand{\f}{{\varphi}}
+\newcommand{\G}{{\bf G}}
+\newcommand{\GL}{{\bf GL}}
+\newcommand{\g}{{\mathfrak g}}
+\renewcommand{\H}{{\bf H}}
+\newcommand{\h}{{\mathfrak h}}
+\renewcommand{\Im}{{\rm Im}}
+\newcommand{\K}{{\bf K}}
+\newcommand{\Ker}{{\rm Ker}}
+\renewcommand{\k}{{\mathfrak k}}
+\renewcommand{\l}{\lambda}
+\newcommand{\p}{{\mathfrak p}}
+\newcommand{\Q}{{\bf Q}}
+\newcommand{\R}{{\bf R}}
+\renewcommand{\S}{{\bf S}}
+\newcommand{\SL}{{\bf SL}}
+\newcommand{\T}{{\bf T}}
+\newcommand{\U}{{\bf U}}
+\newcommand{\Z}{{\bf Z}}
+
+\begin{document}
+
+\title{Algorithms for structure theory}
+\author{Fokko du Cloux}
+ 
+\maketitle
+
+These are draft notes for the first part of the Atlas of reductive Lie groups
+project, dealing with the structure theory part of the program. Computationaly,
+most of this should be very light, and certainly much or all of it could be
+implemented in a high-level environment such as {\tt Maple} or {\tt GAP}.
+However, since the structure theory things lie at the very heart of the
+program, it is neceesary to have them available at the C++ level as well.
+
+\section{Defining the group}\label{section:group}
+
+\subsection{}Let $\G$ be a connected complex reductive Lie group, defined
+over $\R$; let $\G(\R)$ be the full group of real points, $\G(\R)^\circ$ its
+identity component. We will be interested in Lie groups $G$ such that
+$\G(\R)^\circ\subset G\subset\G(\R)$; such groups we call {\em real reductive
+Lie groups} in these notes. Note that later on one might wish to consider
+finite (or even infinite ?) covers of such groups $G$, but for now we refrain
+from that. Denote $\g$ the Lie algebra of $\G$, also the complexified Lie
+algebra of $G$.
+
+\subsection{}The datum of $\G$ is equivalent to that of a {\em root datum}~:
+this is a quadruple $(X,R,X^\vee,R^\vee)$ where $X$ and $X^\vee$ are two
+lattices in duality, and $R\subset X$ and $R^\vee\subset X^\vee$ are two
+finite subsets, for which we are given a bijection denoted $\a\ra\a^\vee$ such
+that {\em (a)} $\langle\a,\a^\vee\rangle=2$ for all $\a\in\R$, and {\em (b)}
+for each $\a\in R$ the reflection $s_\a:\l\ra\l-\langle\l,\a^\vee\rangle\,\a$
+takes $R$ into $R$, and similarly $s_{\a^\vee}$ takes $R^\vee$ into $R^\vee$.
+In particular, this means that $R$ is a root system within the real vector
+space it spans in $X\otimes_\Z\R$.
+
+To set up the root datum, choose a maximal torus $\T$ in $\G$, and let
+$X$ be the character group of $T$, $X^\vee$ the cocharacter group ({\em i.e.},
+the group of homomorphisms from $\C^\times$ to $T$), let $R$ be the set of 
+roots of $\T$ in $\g$, $R^\vee$ the set of coroots. We will also say that
+$X$ is the {\em weight lattice} of $\G$.
+
+\subsection{}\label{subsection:lie type}{\em Entering a group into the 
+system~: Lie type.} Entering a group into the system requires quite a 
+bit of user interaction. The group $\G$ always
+has a finite cover $\tilde\G$ which is the direct product of a simply
+connected complex semisimple group $\tilde\G'$ and a torus $R(\tilde\G)$.
+Taking into account the
+real structure, we may split up $\tilde\G'$ into a product of groups of the
+following forms (where ``simple'' really means ``quasi-simple'')~: 
+{\em (a)} simply connected simple groups defined
+over $\R$ {\em (b)} simply connected simple complex groups, viewed as real
+groups (such a group $G_1$ is a real form of $G_1\times G_1$). Similarly,
+the radical $R(\tilde\G)$ is a product of tori defined over $\R$ which are
+either anisotropic (or, as we prefer to say, compact, {\em i.e.}, such that 
+$\T(\R)\simeq\U(1)^n$ is compact), split ($T(\R)\simeq\R^\times{}^n$), or 
+complex ($T(\R)\simeq\C^\times{}^n$.)
+
+The user enters a sequence of symbols specifying the factors of $\tilde\G$,
+and for each factor specifies a real form (complex factors actually use up
+two consecutive isomorphic factors of $\tilde\G$.) From this, the program
+knows enough to construct the root datum for $\tilde\G$, and its corresponding
+involution. For the description of real forms, we use for now the tables
+from Helgason \cite{helgason:2001} Table VI in Chapter X.
+
+\subsection{}\label{subsection:weight lattice}{\em Entering a group into the
+system~: character lattice.} The practical description of the
+lattice $X$ may be done as follows. For each simple factor of $\tilde G$, we
+carry out a Smith normal form process to find a basis of the weight lattice
+such that suitable multiples of the basis vectors generate the root lattice.
+This yields an explicit description of the quotient as a product of
+finite groups (in fact it is always cyclic, except for type D in even rank,
+where it is a group $\Z_2\times\Z_2$.) Adding the torus factor, we now have
+an explicit description of the quotient $X(\tilde G)/Q$. Then $X/Q$ may be any
+finite index subgroup of $\tilde X/Q$, stable under involution; one convenient 
+way to describe it is
+in terms of a set of generators. This is how we do it in the program.
+
+It should be remarked that in this situation, $X$ is a sublattice of 
+$X(\tilde G)$ which contains the roots, and $X^\vee$ is a superlattice of
+$X^\vee(\tilde G)$, so it obviously contains the coroots. In this setup,
+the images of the roots in $X$ and the coroots in $X^\vee$ automatically
+constitute a root datum. So it is not hard to get the full root datum of
+our real reductive group once we have its weight lattice as a sublattice
+of $X(\tilde G)$.
+
+\subsection{}The real form may be described using either the Galois or the
+Cartan involution; we will use the Cartan involution $\theta$. As usual, we
+denote $\k$ (resp.\ $K$, $\K$) the set of fixed points of $\theta$ in $\g$ 
+(resp. $G$, $\G$), and $\p$ the $-1$-eigenspace of $\theta$ in $\g$. Of
+course, $K$ is a maximal compact subgroup in $G$. The real
+torus we used in our root datum is assumed to be a maximally split
+$\theta$-stable torus in $G$; any two such are conjugate under $K$.
+
+The involution induced by $\theta$ on the character lattice of $G$ is just
+the negative of the Galois involution. It is entirely described by the
+so-called Satake diagram. To get the involution from the Satake diagram,
+assume for simplicity that the Lie algebra is absolutely simple (the complex
+and torus factors are easy.) Then form a basis of the vector space
+$X\otimes_\Z\Q$ as follows~: take a root vector for each black node, and
+a weight vector for each white node. Interchange and change signs for
+linked white nodes; change sign for unlinked white nodes; do nothing for
+black nodes. Then come back to the original basis of the lattice. Actually
+this happens already in stage \ref{subsection:lie type}; restricting the
+involution to a sublattice is linear algebra.
+
+\subsection{}\label{subsection:torus components}{\em Component groups~: torus
+case.} Now we come to what is conceptually the most delicate part, {\em viz.}
+the determination of component groups. We start with the torus case.
+
+Let $\T$ be a torus defined over $\R$, $T=\T(\R)$, $\pi_0(T)$ the
+component group of $T$. We will see that $T$ decomposes as a direct product
+of factors $\U(1)$, $\R^\times$ and $\C^\times$; it follows that $\pi_0$ is
+an elementary $2$-group of the form $\Z_2^r$, where $r$ is the number of
+factors $\R^\times$. We wish to address the following two problems~: {\em (a)} 
+describe $\pi_0(T)$ in terms of the data defining $\T$ (the character lattice 
+and the involution) {\em (b)} describe the effect of any homomorphism 
+$\f:\T\ra\T'$ on $\pi_0$. 
+
+Let $X=X(\T)$, $X_\Q=X\otimes_\Z\Q$ and let $X_+$ and $X_-$ be the 
+intersections of $X$ with the $\pm1$-eigenspaces of $\theta$ in $X_\Q$. Since 
+any $\l\in X$ may be written in $X_\Q$ as 
+$\frac{1}{2}(\l+\theta(\l))+\frac{1}{2}(\l-\theta(\l))$, it is clear that
+we have the inclusions~:
+$$
+2X\subset X_+\oplus X_-\subset X
+$$
+Both $X_+$ and $X_-$ have complements in $X$; hence $X_s:=X/X_+$ and 
+$X_c:=X/X_-$ are again lattices. They correspond to subtori $\T_s$ and $\T_c$
+of $\T$, which we shall call the {\em split part} and the {\em compact part}
+of $\T$ (because they correspond respectively to split and compact real forms.)
+The natural map $\T_c\times\T_s\ra\T$ is dual to the injection 
+$X\ra X_c\oplus X_s$; therefore its kernel (which is the antidiagonal injection
+of $\T_c\cap\T_s$ into $\T_c\times\T_s$) is dual to the
+elementary $2$-group $(X_c\oplus X_s)/X$.
+
+From this it follows easily that each real torus is isomorphic to a product
+of split, compact or complex factors. Indeed, denote $\T(2)$ the subgroup of 
+elements of order two in $\T$, and use similar notation for other tori, and for
+their groups of real points. Then by a suitable integral base change one
+may write $\T_s=\T'_s\times\T''_s$, $\T_c=\T'_c\times\T''_c$, in such a way
+that $\T_s\cap\T_c$ is $\T''_s(2)=\T''_c(2)$. Then $\T'_s$ is a split direct
+factor in $\T$, $\T'_c$ a compact one, and 
+$\T''_s.\T''_c=\T''_s\times\T''_c/(\T''_s\cap\T''_c)$ a complex one.
+
+Using this decomposition, it also follows that the canonical surjection
+$\T_s\times\T_c\ra\T$ induces a surjection on the groups of real points;
+perhaps there is a more direct argument but I don't see it right now.
+Since compact and complex tori have connected groups of real points, the
+rank of the component group of $T$ is equal to the rank of the torus $\T'_s$
+above; also the rank of the lattice $X_-$ minus the number of complex factors.
+
+It is convenient to consider $\pi_0(T)$ as the quotient group of $T(2)$ by
+$T_c(2)$. Notice that when there are complex factors, we have $T(2)\neq\T(2)$,
+{\em i.e.,} not all points of order two in $\T$ are real. To study this a
+little bit more precisely, denote $V=X/2X$, considered as an $\F_2$-vector
+space. The map induced by $\theta$ on $V$ is unipotent; since $T(2)$ is the
+kernel of $\theta-1$ on $\T(2)$, its orthogonal is the image of $\theta-1$
+in $V$. Denote $V_+$, $V_-$ the images of $X_+$, $X_-$ in $V$. Then it is
+not hard to show that $\Im(\theta-1)=V_++V_-$, 
+$\Ker(\theta-1)=V_{+-}:=V_+\cap V_-$. So the dual group $T(2)^\vee$ identifies
+naturally with $V/V_{+-}$. Since the character lattice of $\T_c$ is by
+definition $X/X_-$, it follows that the orthogonal of $\T_c(2)=T_c(2)$ in
+$V$ is $V_-$; and its orthogonal in $T(2)^\vee$ is the canonical image
+of $V_-$ in $V/V_{+-}$. This is our realization of the dual of the component
+group of $T$.
+
+It is now an easy matter (at least in principle---it still requires some
+programming) to deduce the map induced at the level of dual component groups
+by any homomorphism $\T\ra\T'$.
+
+\subsection{}\label{subsection:components}{\em Component groups~: general case}
+Now we explain how to compute the component group of $G=\G(\R)$.  We use the 
+following two facts~: {\em (a)} when $\G$ is semisimple and simply connected, 
+$G$ is connected; {\em (b)} for any maximally split $\R$-torus $\T$ in $\G$, 
+the group $T$ meets all the connected components of $G$ (references ??). 
+
+Already this shows that the map from $\pi_0(T)$ to $\pi_0(G)$ is surjective, 
+and hence that $\pi_0(G)$ is an elementary $2$-group. We will take advantage
+from this fact to identify the dual group $\pi_0(G)^\vee$ with a subgroup
+of our group $\pi_0(YT)^\vee$ determined in \ref{subsection:torus components}.
+
+Now consider a finite covering $\f:\tilde\G\ra\G$. It is clear that this 
+induces a surjection $\tilde G^\circ\ra G^\circ$, and since the kernel of $\f$
+is necessarily contained in $\tilde T$, we have also a surjection from
+$\pi_0(\tilde T\cap\tilde G^\circ)$ to $\pi_0(T\cap G^\circ)$. Passing to
+the orthogonals, which are precisely the component groups of $\tilde G$ and
+$\G$, we see that $\pi_0^\vee(G)$ is the inverse image in $\pi_0(T)^\vee$
+of $\pi_0(\tilde T)^\vee$ by the map $\pi_0(T)^\vee\ra\pi_0(\tilde T)^\vee$
+induced by $\f$.
+
+In the case where $\G$ is semisimple, it follows from this and {\em (a)}
+above that $\pi_0(G)^\vee$ may be computed by taking $\tilde G$ to be the 
+simply connected cover; $\pi_0(G)^\vee$ is then simply the kernel of the
+map from $\pi_0(T)^\vee$ to $\pi_0(\tilde T)^\vee$. In the general case,
+one may always find a finite cover of the form $\tilde G=\H\times\S$, where
+$\H$ is semisimple simply connected, and $\S$ is a torus. The component and
+dual component groups of $\tilde G$ are then those of $\S$, and the component
+group of $\G$ is computed by the inverse image construction above.
+
+\subsection{}\label{SL(2)}{\em Example~: $\GL(2,\R)$.} Let $\G$ be the split 
+$\GL(2)$,
+$G=\GL(2,\R)$. Consider the diagonal torus, with its obvious identification
+to $(\C^\times)^2$, yielding an identification of $X$ with $\Z^2$. The
+involution $\theta$ is identically $-1$, so that of course $\pi_0(T)$ is
+$\F_2^2$. We may take $\tilde G=\SL(2)\times\C^\times$. If we identify the
+torus of $\SL(2)$ with $\C^\times$ using the first coordinate, the inclusion
+map $X\subset\tilde X$ becomes $(x_1,x_2)\ra(x_1-x_2,x_1+x_2)$. Clearly this
+is a sublattice of index $2$. The group $\pi_0(\tilde T)$ is also $\F_2^2$,
+and if we look at the induced map $\F_2^2\ra\F_2^2$, we see that the first
+coordinate of the image of $(a_1,a_2)$ is zero if and only if $a_1=a_2$.
+So we find that $G$ has two connected components, as expected, and that
+the components of $T$ which lie in the identity component of $G$ are those
+with equal signs in both coordinates, also as expected.
+
+\section{The complex Weyl group}\label{section:cweyl}
+
+{\em In this section we will explain our approach to the implementation of the
+complex Weyl group. Here the main issue is to choose the representation of
+the group elements. Right now my guess is it might be best to come back to
+a representation in terms of ``arrays''; of course going from there to a
+matrix representation should be available.}
+
+\section{Maximal compact subgroup}\label{section:maxcpct}
+
+{\em Determination of the maximal compact subgroup. The determination of the
+topology ($\pi_0$ and $\pi_1$) may be somewhat delicate; also, the lifting
+of the component group as a subgroup, which I believe is always true.}
+
+\section{Cartan subgroups}\label{section:cartan}
+
+{\em Determination of the conjugacy classes of Cartan subgroups. This will
+probably be done in terms of strongly orthogonal sets of roots. A large
+amount of data should be attached to each Cartan~: the involution it defines
+on the root datum, the classification of roots, the corresponding Levi
+subgroup as a real reductive group, complete with the topological data, ...}
+
+\section{Weyl groups}\label{section:rweyl}
+
+{\em Determination of the real Weyl group attached to a given Cartan subgroup.
+I'm not sure I understand all the details here yet.}
+
+\bibliographystyle{plain}
+\bibliography{structure}
+
+\end{document}
+
+\section{The complex Weyl group}\label{section:cweyl}
+
+{\em In this section we will explain our approach to the implementation of the
+complex Weyl group. Here the main issue is to choose the representation of
+the group elements. Right now my guess is it might be best to come back to
+a representation in terms of ``arrays''; of course going from there to a
+matrix representation should be available.}
+
+\section{Maximal compact subgroup}\label{section:maxcpct}
+
+{\em Determination of the maximal compact subgroup. The determination of the
+topology ($\pi_0$ and $\pi_1$) may be somewhat delicate; also, the lifting
+of the component group as a subgroup, which I believe is always true.}
+
+\section{Cartan subgroups}\label{section:cartan}
+
+{\em Determination of the conjugacy classes of Cartan subgroups. This will
+probably be done in terms of strongly orthogonal sets of roots. A large
+amount of data should be attached to each Cartan~: the involution it defines
+on the root datum, the classification of roots, the corresponding Levi
+subgroup as a real reductive group, complete with the topological data, ...}
+
+\section{Weyl groups}\label{section:rweyl}
+
+{\em Determination of the real Weyl group attached to a given Cartan subgroup.
+I'm not sure I understand all the details here yet.}
+
+Denote $V=X/2X$, considered as a vector
+space over the two-element field $\F_2$; then $V$ is also the dual group of 
+$\T(2)$. The map induced by $\theta$ on $V$ is unipotent, with 
+$(\theta-1)^2=0$. Denote $V_+$, $V_-$ the images of $X_+$, $X_-$ in $V$, 
+and $V_0=V_+\cap V_-$. Then it is not hard to see that we have 
+$\Im(\theta-1)=V_0$, $\Ker(\theta-1)=V_+\cap V_-$. Let $r$ be the dimension
+of $V_0$, and $p+r$, $q+r$, the dimensions of $V_+$ and $V_-$. Then we may
+choose bases $v'_1,\ldots,v'_{p+r}$ of $X_+$, $v''_1,\ldots,v''_{q+r}$ of
+$X_-$, such that $v'_{p+j}=v''_{q+j}\mod2$ for all $1\leq j\leq r$. Then the
+claim is that $v'_1,\ldots,v'_p$, $v''_1,\ldots,v''_q$, and the 
+$\frac{1}{2}(v'_{p+j}\pm v''_{q+j})$ form a basis of the lattice $X$. It is
+enough to show that these elements generate $X$; and since they clearly
+generate all elements in $X_+\oplus X_-$, it suffices to prove that their
+images in $V$ generate $V$. But from the uniqueness of the expression of
+an element of $X_\Q$ in the basis of the $v'_i$ and $v''_j$, it follows
+that no $\Z$-linear combination of the $\frac{1}{2}v'_{p+j}+v''_{q+j}$ with 
+coefficients not all even can lie in $X_+\oplus X_-$. Hence the images of
+these vectors in $V$ are independent modulo $V_++V_-$, and therefore they,
+together with $V_+$ and $V_-$, generate $V$. Now $X$ is the direct sum
+of the lattices $\Z v'_j$, $1\leq j\leq p$, $\Z v''_j$, $1\leq j\leq q$,
+and $\frac{1}{2}\Z(v'_{p+j}+v''_{q+j})\oplus\frac{1}{2}\Z(v'_{p+j}-v''_{q+j})$,
+which correspond respectively to compact, split and complex factors of our
+torus (notice that the involution exchanges the two vectors 
+$\frac{1}{2}(v'_{p+j}\pm v''_{q+j})$.)
+

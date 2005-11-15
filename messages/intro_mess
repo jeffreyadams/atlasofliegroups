@@ -1,0 +1,26 @@
+
+The goal of the Atlas of Reductive Lie Groups is to provide access to the
+representation theory of real reductive Lie groups. For the moment, these
+are defined to be the groups of real points of connected complex reductive 
+groups defined over R.
+
+As a preliminary, the classification and structure theory of these groups
+is made accessible.
+
+The program works with a command interface. Input is done through the GNU
+readline library, so that the usual facilities of line-editing, arrow-history 
+and tabbed command completion are available.
+
+Some commands put the program in a special "mode"; this is usually apparent
+from the fact that the prompt changes. The idea is to avoid polluting the
+global command space with rarely used names (or worse, with names that create
+annoyance when typed by accident), and/or to allow some command names to
+behave differently under certain circumstances. The typical example of this
+is help mode. The modes function as a pushdown stack : on exiting a mode we 
+are put back in the mode where we came from. Type "q" to exit a special
+mode; in particular, type "q" to exit help mode and return to the program.
+
+You can always type "help" whenever you have the prompt. This puts you
+in help mode, where typing a command results in a brief description of its
+workings.
+

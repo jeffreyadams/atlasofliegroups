@@ -1,0 +1,4 @@
+
+Typing "qq" exits the program without further ado (except in help mode).
+Typing "q" exits the current mode (in special modes such as help mode).
+

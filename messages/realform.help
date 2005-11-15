@@ -1,0 +1,57 @@
+
+The "realform" command sets or resets the current real form. This interaction
+is also automatically initiated when you enter a command that requires a
+normal form, but no real form is currently set. The only real forms that are
+allowed are those from the current inner class, that was chosen when the
+complex group was set (see the help for "type".)
+
+Let G be the current complex group. This program deals with two types of real 
+forms of G: strong and weak ones. A weak real form is just a G-conjugacy class
+of involutions of G; this is stronger than the natural concept of isomorphism
+for real reductive groups, which would amount to taking Aut(G)-conjugacy
+classes of involutions. Actually, the only (quasi)-simple groups for which
+there is a difference is type D_n with n even: then there are two weak real
+forms whose Lie algebra is so*(n) (for n = 4, there are even three; and for
+n = 4 there is also a non-trivial action of Out(G) on inner classes, which we
+may harmlessly ignore, as explained in the help for "type".) For general
+semisimple groups, on the other hand, there are _lots_ of isomorphic weak
+real forms: think of (A_1)^n, which has 2^n weak real forms, but only n+1
+non-isomorphic ones. Strong real forms are certain liftings of weak real
+forms that need not concern us here.
+
+For fixed G, a real form is entirely described by the corresponding real
+form of the Lie algebra of G. It turns out that the classification of real 
+forms can be nicely computed from the root datum and the inner class. So
+this is what the program does: it computes the possibilities, and lists
+them in an order of decreasing compactness, letting the user choose.
+
+The real forms are output in a form consistent with the way the Lie type
+was input, with the usual symbols for the classical groups. For example,
+if your Lie type was A2.B3.C4, with inner class ccc, you get 32 possible
+real forms, one of which might be su(2,1).so(5,2).sp(3,1); the first one
+in the list is the fundamental form, in this case the compact form
+su(3).so(7).sp(4); the last one is the quasi-split form, in this case
+su(2,1).so(4,3).sp(8,R).
+
+For the simple exceptional Lie algebras, intermediate real forms are described 
+in terms of their maximal compact subalgebra. For instance, the three real 
+forms of the Lie algebra of type E8 are e8 (our notation for the compact form),
+e8(e7.su(2)), and e8(R) (our notation for the split form.)
+
+NOTE ON TYPE D: as noted above, the Lie algebra of type D_n, n even > 2,
+has two weak real forms isomorphic to so*(2n), which it is important to
+distinguish. This can be done as follows. Let [1,0] be one of the off-diagonal
+central elements in Spin(2n), and D = {e,[1,0]} the two-element subgroup it
+generates; let G = Spin(2n)/D. Then the group of real points of G for one
+of the two so*(2n)'s is connected, and not for the other. And of course
+when we use the element [0,1] instead the situation is reversed. We denote
+so*(2n)[1,0] the real form for which the real points of G are _not_ connected,
+and so*(2n)[0,1] the other one.
+
+In type D4, there are actually three isomorphic real forms, which, bowing to
+tradition, we denote unsymetrically as so*(8)[1,0], so*(8)[0,1] and so(6,2).
+To be consistent with the above convention, so(6,2) should have been denoted
+so*(8)[1,1]. Then it is still true that the real form of G = Spin(8)/{e,z}
+corresponding to so*(8)[z] is disconnected (and isomorphic to SO(6,2)), the
+two other ones connected (and isomorphic to SO*(8).)
+

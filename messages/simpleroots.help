@@ -1,0 +1,6 @@
+
+The "simpleroots" command prints out the list of all the simple roots for 
+the group, in the current lattice basis. They are often going to be ugly, but 
+it is sometimes useful to be able to look at the real objects, particularly
+when one wants to define an operation on roots in terms of matrices.
+

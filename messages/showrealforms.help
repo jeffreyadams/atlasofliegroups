@@ -1,0 +1,8 @@
+
+The "showrealforms" command prints out the list of all the weak real forms
+for the current complex group. Real forms are labelled by their corresponding
+Lie algebras, since for a fixed complex group the real form of the Lie algebra
+determines the real form of the group. The real forms are ordered (roughly)
+by "increasing splitness". The numbering is used consistently in all i/o 
+operations.
+

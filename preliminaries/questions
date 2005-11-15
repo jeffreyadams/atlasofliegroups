@@ -1,0 +1,8 @@
+
+	Atlas questions --- msicellaneous notes.
+
+09-20-03 : the goal should be to develop a C++-library for real reductive
+	Lie groups, together with a number of interfaces : text, web, maple/
+	mathematica/magma, ... One central question is how to design the
+	communication protocols. Ascii-file based seems the safest; even
+	better would be to have stream channels between two programs.

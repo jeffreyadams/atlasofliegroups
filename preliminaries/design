@@ -1,0 +1,65 @@
+#!/usr/bin/less
+
+        Atlas of reductive Lie groups --- design notes
+
+October 2004 -- MIT
+
+I am now at the point where the computation of conjugacy classes of Cartan
+subgroups is working. I killed a few serious bugs : one in smithNormal, one
+which was a flawed interpretation of the Cartan matrix (see the bugfile.)
+
+I want to stop for a while and take some time to reflect further on design
+issues. A major overhaul is in order to accomodate the fact that in the new
+L-group vision of representation theory, the central role is to be played
+by the _complex_ group, together with a given inner class of real forms.
+Such inner classes correspond bijectively to involutions in the outer 
+automorphism group; in the semisimple case, this is also the automorphism 
+group of the graph.
+
+Let's leave aside for awhile the issue of inputting such a thing --- perhaps
+in practice it would rarely be input directly, but rather through the given
+of one partidular real form; the issue would then be to determine the inner
+class of that form. Also, mostly we want to start out from simple groups, where
+inputting the class would be much easier (Out(G) is small for simple groups.)
+
+So far, the order of inputting tha data has been (1) the Lie type (i.e. the
+complex Lie algebra) (2) the real form (3) the lattice; and we needed to
+check that the given lattice was compatible with the real form. Here now
+it should be (1) the Lie type (2) the lattice --- then already much can be
+done --- and (3) the real form; now we need to check that the real form is
+compatible with the chosen lattice.
+
+So the basic datum would be a complex connected reductive group, with a
+chosen torus. Most choices are made up to conjugation by the group; the
+fact that we have chosen a torus means that choices will be up to the
+action of the normalizer N(T). This datum is equivalent to the given of
+a root datum, without the choice of any involution or basis. This should
+be our central datum.
+
+So : the root datum class should be relieved of the involution, and of all
+the topology stuff. That should be a separate module. Another thing is that
+a root datum should not have an interactive constructor. It should be
+constructed from the data of two sets of vectors, the initial simple roots
+and the initial simple coroots, expressed in two dual lattices. It is these
+that should be gotten interactively.
+
+Inside the root datum, the root and coroot lists are very stable objects,
+that should be determined during the construction. The lists should always
+be kept compatible in the sense that the coroot of root #j is coroot #j.
+The choice of basis is much more likely to vary; this amounts to the given
+of a subset of the roots, the simple roots. This is accessed through a pair
+of iterators, and through a bitmap to implement isSimpleRoot(). The same holds
+for the corresponding set of positive roots, again given internally as a list
+of indices, and possessing a function isPosRoot(). This stuff could lie in
+an additional class RootBasis, but probably one wants in fact to deal
+with BasedRootData all along.
+
+The real form stuff, i.e. basically the involution, should lie in another
+class RealForm. In particular, the RealForm carries a RealTorus (the most
+split one in the group), and it is able to classify conjugacy classes of
+Cartan subgroups (even if the basic combinatorics for this takes place in
+the complex Weyl group.) Also, the RealForm should carry the topology 
+information. Each Cartan subgroup gives rise again to a RealTorus (but should
+also carry more information, such as how it was obtained by a sequence of
+Cayley transforms; also we want to know how Cayley transforms act on Cartan
+subgroups.)

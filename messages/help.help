@@ -1,0 +1,6 @@
+
+The "help" command puts the program in help mode. It prints a message
+describing the mode it is currently in, and allows the user to type
+any legal command name, printing a help message for that command.
+To quit help mode, simply type "q".
+
