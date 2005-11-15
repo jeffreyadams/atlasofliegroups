@@ -36,7 +36,7 @@ typename Allocator<T,P>::pointer
   T* ptr = static_cast<T*> (d_pool->allocate(n));
 
   if (ptr == 0)  { // allocation failed
-    throw Overflow();
+    throw MemoryOverflow();
   }
 
   return ptr;
