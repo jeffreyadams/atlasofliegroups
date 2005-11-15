@@ -12,6 +12,7 @@
 #include <cassert>
 #include <map>
 #include <memory>
+#include <set>
 
 #include "bruhat.h"
 #include "cartanclass.h"

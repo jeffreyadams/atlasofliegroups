@@ -5,12 +5,10 @@ sources/gkmod/blocks.o: sources/gkmod/blocks.cpp sources/gkmod/blocks.h \
   sources/gkmod/descents_fwd.h sources/utilities/constants.h \
   sources/gkmod/kgb_fwd.h sources/utilities/bitset_fwd.h \
   sources/structure/complexredgp_fwd.h sources/structure/weyl_fwd.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/error/error.h sources/memory/pool.h sources/utilities/bitset.h \
-  sources/utilities/bits.h sources/utilities/setutils.h \
-  sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
-  sources/structure/realform.h sources/structure/weyl.h \
+  sources/utilities/bitset.h sources/utilities/bits.h \
+  sources/utilities/setutils.h sources/utilities/setutils_def.h \
+  sources/utilities/bitset_def.h sources/structure/realform.h \
+  sources/structure/weyl.h sources/error/error.h \
   sources/structure/latticetypes.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
   sources/structure/subquotient_fwd.h sources/structure/bitvector.h \
@@ -39,10 +37,7 @@ sources/gkmod/kgb.o: sources/gkmod/kgb.cpp sources/gkmod/kgb.h \
   sources/gkmod/kgb_fwd.h sources/utilities/bitset_fwd.h \
   sources/utilities/constants.h sources/gkmod/bruhat_fwd.h \
   sources/utilities/bitmap_fwd.h sources/structure/realredgp_fwd.h \
-  sources/structure/weyl_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/gradings.h \
+  sources/structure/weyl_fwd.h sources/structure/gradings.h \
   sources/structure/gradings_fwd.h sources/structure/rootdata_fwd.h \
   sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
   sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
@@ -60,16 +55,17 @@ sources/gkmod/kgb.o: sources/gkmod/kgb.cpp sources/gkmod/kgb.h \
   sources/utilities/intutils.h sources/utilities/intutils_def.h \
   sources/utilities/partition.h sources/utilities/partition_def.h \
   sources/structure/realform.h sources/utilities/size.h \
-  sources/utilities/size_def.h sources/structure/subquotient.h \
-  sources/structure/subquotient_def.h sources/structure/complexredgp.h \
-  sources/structure/complexredgp_fwd.h sources/structure/cartan_fwd.h \
-  sources/structure/tits_fwd.h sources/structure/lietype.h \
-  sources/structure/lietype_fwd.h sources/utilities/ctr_iterator.h \
-  sources/structure/realredgp.h sources/structure/topology.h \
-  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
-  sources/structure/rootdata_def.h sources/structure/lattice.h \
-  sources/structure/lattice_def.h sources/structure/tits.h \
-  sources/structure/weyl.h sources/structure/tori.h
+  sources/utilities/size_def.h sources/error/error.h \
+  sources/structure/subquotient.h sources/structure/subquotient_def.h \
+  sources/structure/complexredgp.h sources/structure/complexredgp_fwd.h \
+  sources/structure/cartan_fwd.h sources/structure/tits_fwd.h \
+  sources/structure/lietype.h sources/structure/lietype_fwd.h \
+  sources/utilities/ctr_iterator.h sources/structure/realredgp.h \
+  sources/structure/topology.h sources/structure/rootdata.h \
+  sources/structure/prerootdata_fwd.h sources/structure/rootdata_def.h \
+  sources/structure/lattice.h sources/structure/lattice_def.h \
+  sources/structure/tits.h sources/structure/weyl.h \
+  sources/structure/tori.h
 sources/gkmod/kl.o: sources/gkmod/kl.cpp sources/gkmod/kl.h \
   sources/gkmod/kl_fwd.h sources/utilities/polynomials_fwd.h \
   sources/gkmod/blocks_fwd.h sources/utilities/bitset.h \
@@ -83,18 +79,15 @@ sources/gkmod/kl.o: sources/gkmod/kl.cpp sources/gkmod/kl.h \
   sources/utilities/polynomials_def.h sources/error/error.h \
   sources/gkmod/blocks.h sources/gkmod/bruhat_fwd.h \
   sources/gkmod/kgb_fwd.h sources/structure/complexredgp_fwd.h \
-  sources/structure/weyl_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/memory/pool.h \
-  sources/structure/realform.h sources/structure/weyl.h \
-  sources/structure/latticetypes.h sources/structure/latticetypes_fwd.h \
-  sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
-  sources/structure/subquotient_fwd.h sources/structure/bitvector.h \
-  sources/structure/bitvector_def.h sources/utilities/comparison.h \
-  sources/utilities/matrix.h sources/utilities/tags.h \
-  sources/utilities/matrix_def.h sources/utilities/intutils.h \
-  sources/utilities/intutils_def.h sources/utilities/size.h \
-  sources/utilities/size_def.h
+  sources/structure/weyl_fwd.h sources/structure/realform.h \
+  sources/structure/weyl.h sources/structure/latticetypes.h \
+  sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
+  sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
+  sources/structure/bitvector.h sources/structure/bitvector_def.h \
+  sources/utilities/comparison.h sources/utilities/matrix.h \
+  sources/utilities/tags.h sources/utilities/matrix_def.h \
+  sources/utilities/intutils.h sources/utilities/intutils_def.h \
+  sources/utilities/size.h sources/utilities/size_def.h
 sources/gkmod/klsupport.o: sources/gkmod/klsupport.cpp \
   sources/gkmod/klsupport.h sources/gkmod/klsupport_fwd.h \
   sources/utilities/polynomials_fwd.h sources/gkmod/blocks_fwd.h \
@@ -106,18 +99,16 @@ sources/gkmod/klsupport.o: sources/gkmod/klsupport.cpp \
   sources/gkmod/descents.h sources/gkmod/descents_fwd.h \
   sources/gkmod/blocks.h sources/gkmod/bruhat_fwd.h \
   sources/gkmod/kgb_fwd.h sources/structure/complexredgp_fwd.h \
-  sources/structure/weyl_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/realform.h \
-  sources/structure/weyl.h sources/structure/latticetypes.h \
-  sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
-  sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
-  sources/structure/bitvector.h sources/structure/bitvector_def.h \
-  sources/utilities/comparison.h sources/utilities/matrix.h \
-  sources/utilities/tags.h sources/utilities/matrix_def.h \
-  sources/utilities/intutils.h sources/utilities/intutils_def.h \
-  sources/utilities/size.h sources/utilities/size_def.h
+  sources/structure/weyl_fwd.h sources/structure/realform.h \
+  sources/structure/weyl.h sources/error/error.h \
+  sources/structure/latticetypes.h sources/structure/latticetypes_fwd.h \
+  sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
+  sources/structure/subquotient_fwd.h sources/structure/bitvector.h \
+  sources/structure/bitvector_def.h sources/utilities/comparison.h \
+  sources/utilities/matrix.h sources/utilities/tags.h \
+  sources/utilities/matrix_def.h sources/utilities/intutils.h \
+  sources/utilities/intutils_def.h sources/utilities/size.h \
+  sources/utilities/size_def.h
 sources/interface/commands.o: sources/interface/commands.cpp \
   sources/interface/commands.h sources/interface/commands_fwd.h \
   sources/interface/input.h
@@ -151,8 +142,7 @@ sources/interface/io.o: sources/interface/io.cpp sources/interface/io.h
 sources/interface/main.o: sources/interface/main.cpp \
   sources/interface/commands.h sources/interface/commands_fwd.h \
   sources/interface/input.h sources/utilities/constants.h \
-  sources/interface/emptymode.h sources/error/error.h \
-  sources/memory/pool.h
+  sources/interface/emptymode.h sources/error/error.h
 sources/interface/mainhelp.o: sources/interface/mainhelp.cpp \
   sources/interface/mainhelp.h sources/interface/commands_fwd.h \
   sources/interface/io.h sources/interface/mainmode.h \
@@ -169,9 +159,6 @@ sources/interface/mainmode.o: sources/interface/mainmode.cpp \
   sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
   sources/utilities/constants.h sources/utilities/bitset_fwd.h \
   sources/structure/rootdata_fwd.h sources/utilities/bitmap_fwd.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/error/error.h sources/memory/pool.h \
   sources/structure/weyl_fwd.h sources/structure/lietype.h \
   sources/structure/lietype_fwd.h sources/io/basic_io_def.h \
   sources/structure/complexredgp.h sources/structure/cartan_fwd.h \
@@ -180,22 +167,23 @@ sources/interface/mainmode.o: sources/interface/mainmode.cpp \
   sources/structure/realform.h sources/utilities/tags.h \
   sources/io/complexredgp_io.h sources/io/layout.h \
   sources/io/realform_io.h sources/interface/emptymode.h \
-  sources/interface/helpmode.h sources/io/interactive.h \
-  sources/io/interactive_fwd.h sources/structure/prerootdata_fwd.h \
-  sources/structure/realredgp_fwd.h sources/interface/input.h \
-  sources/structure/latticetypes.h sources/structure/bitvector.h \
-  sources/utilities/bitset.h sources/utilities/bits.h \
-  sources/utilities/setutils.h sources/utilities/setutils_def.h \
-  sources/utilities/bitset_def.h sources/structure/bitvector_def.h \
-  sources/utilities/comparison.h sources/utilities/matrix.h \
-  sources/utilities/matrix_def.h sources/utilities/intutils.h \
-  sources/utilities/intutils_def.h sources/interface/io.h \
-  sources/io/ioutils.h sources/interface/realmode.h \
-  sources/io/realredgp_io_fwd.h sources/structure/rootdata.h \
-  sources/utilities/bitmap.h sources/utilities/bitmap_def.h \
-  sources/structure/rootdata_def.h sources/structure/lattice.h \
-  sources/structure/lattice_def.h sources/interface/special.h \
-  sources/interface/commands.h sources/test/test.h
+  sources/error/error.h sources/interface/helpmode.h \
+  sources/io/interactive.h sources/io/interactive_fwd.h \
+  sources/structure/prerootdata_fwd.h sources/structure/realredgp_fwd.h \
+  sources/interface/input.h sources/structure/latticetypes.h \
+  sources/structure/bitvector.h sources/utilities/bitset.h \
+  sources/utilities/bits.h sources/utilities/setutils.h \
+  sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
+  sources/structure/bitvector_def.h sources/utilities/comparison.h \
+  sources/utilities/matrix.h sources/utilities/matrix_def.h \
+  sources/utilities/intutils.h sources/utilities/intutils_def.h \
+  sources/interface/io.h sources/io/ioutils.h \
+  sources/interface/realmode.h sources/io/realredgp_io_fwd.h \
+  sources/structure/rootdata.h sources/utilities/bitmap.h \
+  sources/utilities/bitmap_def.h sources/structure/rootdata_def.h \
+  sources/structure/lattice.h sources/structure/lattice_def.h \
+  sources/interface/special.h sources/interface/commands.h \
+  sources/test/test.h
 sources/interface/realhelp.o: sources/interface/realhelp.cpp \
   sources/interface/realhelp.h sources/interface/commands_fwd.h \
   sources/interface/io.h sources/interface/realmode.h \
@@ -211,17 +199,14 @@ sources/interface/realmode.o: sources/interface/realmode.cpp \
   sources/structure/rootdata_fwd.h sources/utilities/bitmap_fwd.h \
   sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
   sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
-  sources/utilities/constants.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/realform.h \
+  sources/utilities/constants.h sources/structure/realform.h \
   sources/structure/complexredgp.h sources/structure/complexredgp_fwd.h \
   sources/structure/cartan_fwd.h sources/utilities/poset_fwd.h \
   sources/utilities/set.h sources/structure/tits_fwd.h \
   sources/structure/weyl_fwd.h sources/structure/lietype.h \
   sources/structure/lietype_fwd.h sources/utilities/tags.h \
   sources/io/complexredgp_io.h sources/io/complexredgp_io_fwd.h \
-  sources/io/layout.h sources/io/realform_io.h \
+  sources/io/layout.h sources/io/realform_io.h sources/error/error.h \
   sources/interface/helpmode.h sources/io/interactive.h \
   sources/io/interactive_fwd.h sources/structure/prerootdata_fwd.h \
   sources/interface/input.h sources/structure/latticetypes.h \
@@ -249,10 +234,7 @@ sources/io/basic_io.o: sources/io/basic_io.cpp sources/io/basic_io.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
   sources/structure/subquotient_fwd.h sources/utilities/constants.h \
   sources/utilities/bitset_fwd.h sources/structure/rootdata_fwd.h \
-  sources/utilities/bitmap_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/weyl_fwd.h \
+  sources/utilities/bitmap_fwd.h sources/structure/weyl_fwd.h \
   sources/structure/lietype.h sources/structure/lietype_fwd.h \
   sources/io/basic_io_def.h sources/structure/lattice.h \
   sources/structure/lattice_def.h sources/utilities/matrix.h \
@@ -265,38 +247,33 @@ sources/io/block_io.o: sources/io/block_io.cpp sources/io/block_io.h \
   sources/utilities/bitmap_fwd.h sources/gkmod/descents.h \
   sources/utilities/constants.h sources/gkmod/kgb_fwd.h \
   sources/utilities/bitset_fwd.h sources/structure/complexredgp_fwd.h \
-  sources/structure/weyl_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/utilities/bitset.h \
+  sources/structure/weyl_fwd.h sources/utilities/bitset.h \
   sources/utilities/bits.h sources/utilities/setutils.h \
   sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
   sources/structure/realform.h sources/structure/weyl.h \
-  sources/structure/latticetypes.h sources/structure/latticetypes_fwd.h \
-  sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
-  sources/structure/subquotient_fwd.h sources/structure/bitvector.h \
-  sources/structure/bitvector_def.h sources/utilities/comparison.h \
-  sources/utilities/matrix.h sources/utilities/tags.h \
-  sources/utilities/matrix_def.h sources/utilities/intutils.h \
-  sources/utilities/intutils_def.h sources/utilities/size.h \
-  sources/utilities/size_def.h sources/io/prettyprint.h \
-  sources/utilities/abelian_fwd.h sources/structure/gradings_fwd.h \
-  sources/utilities/polynomials_fwd.h sources/structure/rootdata_fwd.h \
-  sources/structure/tits_fwd.h sources/structure/tori_fwd.h \
-  sources/structure/lietype.h sources/structure/lietype_fwd.h \
-  sources/io/prettyprint_def.h sources/io/basic_io.h \
-  sources/io/basic_io_def.h sources/structure/lattice.h \
-  sources/structure/lattice_def.h sources/structure/rootdata.h \
-  sources/structure/prerootdata_fwd.h sources/utilities/bitmap.h \
-  sources/utilities/bitmap_def.h sources/structure/rootdata_def.h
+  sources/error/error.h sources/structure/latticetypes.h \
+  sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
+  sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
+  sources/structure/bitvector.h sources/structure/bitvector_def.h \
+  sources/utilities/comparison.h sources/utilities/matrix.h \
+  sources/utilities/tags.h sources/utilities/matrix_def.h \
+  sources/utilities/intutils.h sources/utilities/intutils_def.h \
+  sources/utilities/size.h sources/utilities/size_def.h \
+  sources/io/prettyprint.h sources/utilities/abelian_fwd.h \
+  sources/structure/gradings_fwd.h sources/utilities/polynomials_fwd.h \
+  sources/structure/rootdata_fwd.h sources/structure/tits_fwd.h \
+  sources/structure/tori_fwd.h sources/structure/lietype.h \
+  sources/structure/lietype_fwd.h sources/io/prettyprint_def.h \
+  sources/io/basic_io.h sources/io/basic_io_def.h \
+  sources/structure/lattice.h sources/structure/lattice_def.h \
+  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
+  sources/utilities/bitmap.h sources/utilities/bitmap_def.h \
+  sources/structure/rootdata_def.h
 sources/io/cartan_io.o: sources/io/cartan_io.cpp sources/io/cartan_io.h \
   sources/structure/cartanclass_fwd.h sources/structure/rootdata_fwd.h \
   sources/utilities/bitmap_fwd.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
   sources/structure/subquotient_fwd.h sources/utilities/constants.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/error/error.h sources/memory/pool.h \
   sources/structure/realform.h sources/io/basic_io.h \
   sources/utilities/abelian_fwd.h sources/utilities/bitset_fwd.h \
   sources/structure/weyl_fwd.h sources/structure/lietype.h \
@@ -313,12 +290,13 @@ sources/io/cartan_io.o: sources/io/cartan_io.cpp sources/io/cartan_io.h \
   sources/utilities/intutils.h sources/utilities/intutils_def.h \
   sources/utilities/partition.h sources/utilities/partition_def.h \
   sources/utilities/size.h sources/utilities/size_def.h \
-  sources/structure/subquotient.h sources/structure/subquotient_def.h \
-  sources/structure/complexredgp.h sources/structure/complexredgp_fwd.h \
-  sources/structure/cartan_fwd.h sources/utilities/poset_fwd.h \
-  sources/utilities/set.h sources/structure/tits_fwd.h \
-  sources/io/complexredgp_io.h sources/io/complexredgp_io_fwd.h \
-  sources/io/layout.h sources/io/realform_io.h sources/structure/dynkin.h \
+  sources/error/error.h sources/structure/subquotient.h \
+  sources/structure/subquotient_def.h sources/structure/complexredgp.h \
+  sources/structure/complexredgp_fwd.h sources/structure/cartan_fwd.h \
+  sources/utilities/poset_fwd.h sources/utilities/set.h \
+  sources/structure/tits_fwd.h sources/io/complexredgp_io.h \
+  sources/io/complexredgp_io_fwd.h sources/io/layout.h \
+  sources/io/realform_io.h sources/structure/dynkin.h \
   sources/io/ioutils.h sources/io/prettyprint.h \
   sources/utilities/polynomials_fwd.h sources/io/prettyprint_def.h \
   sources/structure/lattice.h sources/structure/lattice_def.h \
@@ -334,10 +312,7 @@ sources/io/complexredgp_io.o: sources/io/complexredgp_io.cpp \
   sources/structure/realform.h sources/utilities/tags.h \
   sources/io/basic_io.h sources/utilities/abelian_fwd.h \
   sources/utilities/bitset_fwd.h sources/structure/rootdata_fwd.h \
-  sources/utilities/bitmap_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/weyl_fwd.h \
+  sources/utilities/bitmap_fwd.h sources/structure/weyl_fwd.h \
   sources/structure/lietype.h sources/io/basic_io_def.h \
   sources/structure/cartan.h sources/structure/cartan_fwd.h \
   sources/utilities/bitmap.h sources/utilities/bitmap_def.h \
@@ -352,16 +327,16 @@ sources/io/complexredgp_io.o: sources/io/complexredgp_io.cpp \
   sources/utilities/intutils.h sources/utilities/intutils_def.h \
   sources/utilities/partition.h sources/utilities/partition_def.h \
   sources/utilities/size.h sources/utilities/size_def.h \
-  sources/structure/subquotient.h sources/structure/subquotient_def.h \
-  sources/utilities/poset.h sources/utilities/poset_fwd.h \
-  sources/utilities/set.h sources/utilities/graph.h \
-  sources/structure/weyl.h sources/io/cartan_io.h \
-  sources/structure/complexredgp.h sources/structure/tits_fwd.h \
-  sources/io/ioutils.h sources/io/prettyprint.h \
-  sources/utilities/polynomials_fwd.h sources/io/prettyprint_def.h \
-  sources/structure/lattice.h sources/structure/lattice_def.h \
-  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
-  sources/structure/rootdata_def.h
+  sources/error/error.h sources/structure/subquotient.h \
+  sources/structure/subquotient_def.h sources/utilities/poset.h \
+  sources/utilities/poset_fwd.h sources/utilities/set.h \
+  sources/utilities/graph.h sources/structure/weyl.h \
+  sources/io/cartan_io.h sources/structure/complexredgp.h \
+  sources/structure/tits_fwd.h sources/io/ioutils.h \
+  sources/io/prettyprint.h sources/utilities/polynomials_fwd.h \
+  sources/io/prettyprint_def.h sources/structure/lattice.h \
+  sources/structure/lattice_def.h sources/structure/rootdata.h \
+  sources/structure/prerootdata_fwd.h sources/structure/rootdata_def.h
 sources/io/interactive.o: sources/io/interactive.cpp \
   sources/io/interactive.h sources/io/interactive_fwd.h \
   sources/utilities/bitmap_fwd.h sources/io/complexredgp_io_fwd.h \
@@ -369,9 +344,7 @@ sources/io/interactive.o: sources/io/interactive.cpp \
   sources/structure/rootdata_fwd.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
   sources/structure/subquotient_fwd.h sources/utilities/constants.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/error/error.h sources/memory/pool.h sources/interface/input.h \
+  sources/error/error.h sources/interface/input.h \
   sources/structure/latticetypes.h sources/structure/bitvector.h \
   sources/utilities/bitset.h sources/utilities/bitset_fwd.h \
   sources/utilities/bits.h sources/utilities/setutils.h \
@@ -405,24 +378,22 @@ sources/io/interactive_lattice.o: sources/io/interactive_lattice.cpp \
   sources/utilities/arithmetic_def.h sources/io/basic_io.h \
   sources/utilities/abelian_fwd.h sources/utilities/bitset_fwd.h \
   sources/structure/rootdata_fwd.h sources/utilities/bitmap_fwd.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/memory/pool.h sources/structure/weyl_fwd.h \
-  sources/io/basic_io_def.h sources/interface/input.h \
-  sources/io/interactive.h sources/io/interactive_fwd.h \
-  sources/io/complexredgp_io_fwd.h sources/structure/prerootdata_fwd.h \
-  sources/structure/realredgp_fwd.h sources/structure/latticetypes.h \
-  sources/structure/bitvector.h sources/utilities/bitset.h \
-  sources/utilities/bits.h sources/utilities/setutils.h \
-  sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
-  sources/structure/bitvector_def.h sources/utilities/comparison.h \
-  sources/utilities/matrix.h sources/utilities/tags.h \
-  sources/utilities/matrix_def.h sources/utilities/intutils.h \
-  sources/utilities/intutils_def.h sources/io/layout.h \
-  sources/structure/realform.h sources/structure/lattice.h \
-  sources/structure/lattice_def.h sources/io/ioutils.h \
-  sources/structure/prerootdata.h sources/utilities/smithnormal.h \
-  sources/structure/topology.h sources/structure/tori_fwd.h
+  sources/structure/weyl_fwd.h sources/io/basic_io_def.h \
+  sources/interface/input.h sources/io/interactive.h \
+  sources/io/interactive_fwd.h sources/io/complexredgp_io_fwd.h \
+  sources/structure/prerootdata_fwd.h sources/structure/realredgp_fwd.h \
+  sources/structure/latticetypes.h sources/structure/bitvector.h \
+  sources/utilities/bitset.h sources/utilities/bits.h \
+  sources/utilities/setutils.h sources/utilities/setutils_def.h \
+  sources/utilities/bitset_def.h sources/structure/bitvector_def.h \
+  sources/utilities/comparison.h sources/utilities/matrix.h \
+  sources/utilities/tags.h sources/utilities/matrix_def.h \
+  sources/utilities/intutils.h sources/utilities/intutils_def.h \
+  sources/io/layout.h sources/structure/realform.h \
+  sources/structure/lattice.h sources/structure/lattice_def.h \
+  sources/io/ioutils.h sources/structure/prerootdata.h \
+  sources/utilities/smithnormal.h sources/structure/topology.h \
+  sources/structure/tori_fwd.h
 sources/io/interactive_lietype.o: sources/io/interactive_lietype.cpp \
   sources/io/interactive_lietype.h sources/interface/input.h \
   sources/structure/lietype.h sources/structure/lietype_fwd.h \
@@ -436,9 +407,6 @@ sources/io/kgb_io.o: sources/io/kgb_io.cpp sources/io/kgb_io.h \
   sources/utilities/constants.h sources/io/ioutils.h sources/gkmod/kgb.h \
   sources/gkmod/bruhat_fwd.h sources/utilities/bitmap_fwd.h \
   sources/structure/realredgp_fwd.h sources/structure/weyl_fwd.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/error/error.h sources/memory/pool.h \
   sources/structure/gradings.h sources/structure/gradings_fwd.h \
   sources/structure/rootdata_fwd.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
@@ -473,20 +441,18 @@ sources/io/kl_io.o: sources/io/kl_io.cpp sources/io/kl_io.h \
   sources/utilities/abelian_fwd.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
   sources/structure/subquotient_fwd.h sources/structure/gradings_fwd.h \
-  sources/structure/rootdata_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/memory/pool.h \
-  sources/structure/weyl_fwd.h sources/structure/tits_fwd.h \
-  sources/structure/tori_fwd.h sources/structure/lietype.h \
-  sources/structure/lietype_fwd.h sources/io/prettyprint_def.h \
-  sources/io/basic_io.h sources/io/basic_io_def.h \
-  sources/structure/lattice.h sources/structure/lattice_def.h \
-  sources/utilities/matrix.h sources/utilities/tags.h \
-  sources/utilities/matrix_def.h sources/utilities/intutils.h \
-  sources/utilities/intutils_def.h sources/structure/rootdata.h \
-  sources/structure/prerootdata_fwd.h sources/structure/latticetypes.h \
-  sources/structure/bitvector.h sources/structure/bitvector_def.h \
-  sources/utilities/comparison.h sources/structure/rootdata_def.h
+  sources/structure/rootdata_fwd.h sources/structure/weyl_fwd.h \
+  sources/structure/tits_fwd.h sources/structure/tori_fwd.h \
+  sources/structure/lietype.h sources/structure/lietype_fwd.h \
+  sources/io/prettyprint_def.h sources/io/basic_io.h \
+  sources/io/basic_io_def.h sources/structure/lattice.h \
+  sources/structure/lattice_def.h sources/utilities/matrix.h \
+  sources/utilities/tags.h sources/utilities/matrix_def.h \
+  sources/utilities/intutils.h sources/utilities/intutils_def.h \
+  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
+  sources/structure/latticetypes.h sources/structure/bitvector.h \
+  sources/structure/bitvector_def.h sources/utilities/comparison.h \
+  sources/structure/rootdata_def.h
 sources/io/poset_io.o: sources/io/poset_io.cpp sources/io/poset_io.h \
   sources/utilities/poset_fwd.h sources/utilities/set.h \
   sources/utilities/bitmap.h sources/utilities/bitmap_fwd.h \
@@ -499,9 +465,6 @@ sources/io/prettyprint.o: sources/io/prettyprint.cpp \
   sources/utilities/constants.h sources/utilities/bitmap_fwd.h \
   sources/utilities/bitset_fwd.h sources/structure/gradings_fwd.h \
   sources/utilities/polynomials_fwd.h sources/structure/rootdata_fwd.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/error/error.h sources/memory/pool.h \
   sources/structure/weyl_fwd.h sources/structure/tits_fwd.h \
   sources/structure/tori_fwd.h sources/structure/lietype.h \
   sources/structure/lietype_fwd.h sources/io/prettyprint_def.h \
@@ -518,7 +481,7 @@ sources/io/prettyprint.o: sources/io/prettyprint.cpp \
   sources/structure/bitvector_def.h sources/utilities/comparison.h \
   sources/structure/rootdata_def.h sources/utilities/abelian.h \
   sources/structure/gradings.h sources/structure/tits.h \
-  sources/structure/weyl.h sources/utilities/size.h \
+  sources/structure/weyl.h sources/error/error.h sources/utilities/size.h \
   sources/utilities/size_def.h sources/structure/tori.h \
   sources/structure/subquotient.h sources/structure/subquotient_def.h
 sources/io/realform_io.o: sources/io/realform_io.cpp \
@@ -529,10 +492,7 @@ sources/io/realform_io.o: sources/io/realform_io.cpp \
   sources/structure/lietype_fwd.h sources/structure/realform.h \
   sources/utilities/tags.h sources/structure/cartanclass.h \
   sources/structure/cartanclass_fwd.h sources/structure/rootdata_fwd.h \
-  sources/utilities/bitmap_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/tori_fwd.h \
+  sources/utilities/bitmap_fwd.h sources/structure/tori_fwd.h \
   sources/utilities/bitmap.h sources/utilities/bitmap_def.h \
   sources/structure/gradings.h sources/structure/gradings_fwd.h \
   sources/utilities/bitset_fwd.h sources/utilities/bitset.h \
@@ -544,15 +504,15 @@ sources/io/realform_io.o: sources/io/realform_io.cpp \
   sources/utilities/intutils.h sources/utilities/intutils_def.h \
   sources/utilities/partition.h sources/utilities/partition_def.h \
   sources/utilities/size.h sources/utilities/size_def.h \
-  sources/structure/subquotient.h sources/structure/subquotient_def.h \
-  sources/structure/complexredgp.h sources/structure/cartan_fwd.h \
-  sources/utilities/poset_fwd.h sources/utilities/set.h \
-  sources/structure/tits_fwd.h sources/structure/weyl_fwd.h \
-  sources/structure/lietype.h sources/io/complexredgp_io.h \
-  sources/io/complexredgp_io_fwd.h sources/structure/rootdata.h \
-  sources/structure/prerootdata_fwd.h sources/structure/rootdata_def.h \
-  sources/structure/lattice.h sources/structure/lattice_def.h \
-  sources/structure/tori.h
+  sources/error/error.h sources/structure/subquotient.h \
+  sources/structure/subquotient_def.h sources/structure/complexredgp.h \
+  sources/structure/cartan_fwd.h sources/utilities/poset_fwd.h \
+  sources/utilities/set.h sources/structure/tits_fwd.h \
+  sources/structure/weyl_fwd.h sources/structure/lietype.h \
+  sources/io/complexredgp_io.h sources/io/complexredgp_io_fwd.h \
+  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
+  sources/structure/rootdata_def.h sources/structure/lattice.h \
+  sources/structure/lattice_def.h sources/structure/tori.h
 sources/io/realredgp_io.o: sources/io/realredgp_io.cpp \
   sources/io/realredgp_io.h sources/io/realredgp_io_fwd.h \
   sources/io/complexredgp_io_fwd.h sources/io/realform_io.h \
@@ -564,9 +524,6 @@ sources/io/realredgp_io.o: sources/io/realredgp_io.cpp \
   sources/structure/realredgp_fwd.h sources/io/basic_io.h \
   sources/utilities/abelian_fwd.h sources/utilities/bitset_fwd.h \
   sources/structure/rootdata_fwd.h sources/utilities/bitmap_fwd.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/error/error.h sources/memory/pool.h \
   sources/structure/weyl_fwd.h sources/structure/lietype.h \
   sources/io/basic_io_def.h sources/utilities/bitmap.h \
   sources/utilities/bitmap_def.h sources/io/cartan_io.h \
@@ -581,54 +538,49 @@ sources/io/realredgp_io.o: sources/io/realredgp_io.cpp \
   sources/utilities/intutils.h sources/utilities/intutils_def.h \
   sources/utilities/partition.h sources/utilities/partition_def.h \
   sources/utilities/size.h sources/utilities/size_def.h \
-  sources/structure/subquotient.h sources/structure/subquotient_def.h \
-  sources/structure/complexredgp.h sources/structure/cartan_fwd.h \
-  sources/utilities/poset_fwd.h sources/utilities/set.h \
-  sources/structure/tits_fwd.h sources/io/complexredgp_io.h \
-  sources/io/ioutils.h sources/utilities/poset.h \
-  sources/utilities/graph.h sources/structure/realredgp.h \
-  sources/structure/topology.h sources/io/realweyl.h \
-  sources/io/realweyl_fwd.h sources/structure/weyl.h \
-  sources/io/realweyl_io.h sources/structure/rootdata.h \
-  sources/structure/prerootdata_fwd.h sources/structure/rootdata_def.h \
-  sources/structure/lattice.h sources/structure/lattice_def.h
+  sources/error/error.h sources/structure/subquotient.h \
+  sources/structure/subquotient_def.h sources/structure/complexredgp.h \
+  sources/structure/cartan_fwd.h sources/utilities/poset_fwd.h \
+  sources/utilities/set.h sources/structure/tits_fwd.h \
+  sources/io/complexredgp_io.h sources/io/ioutils.h \
+  sources/utilities/poset.h sources/utilities/graph.h \
+  sources/structure/realredgp.h sources/structure/topology.h \
+  sources/io/realweyl.h sources/io/realweyl_fwd.h \
+  sources/structure/weyl.h sources/io/realweyl_io.h \
+  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
+  sources/structure/rootdata_def.h sources/structure/lattice.h \
+  sources/structure/lattice_def.h
 sources/io/realweyl.o: sources/io/realweyl.cpp sources/io/realweyl.h \
   sources/io/realweyl_fwd.h sources/structure/cartanclass_fwd.h \
   sources/structure/rootdata_fwd.h sources/utilities/bitmap_fwd.h \
   sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
   sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
-  sources/utilities/constants.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/bitvector.h \
+  sources/utilities/constants.h sources/structure/bitvector.h \
   sources/utilities/bitset.h sources/utilities/bitset_fwd.h \
   sources/utilities/bits.h sources/utilities/setutils.h \
   sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
   sources/structure/bitvector_def.h sources/utilities/comparison.h \
   sources/structure/lietype.h sources/structure/lietype_fwd.h \
   sources/utilities/size.h sources/utilities/size_def.h \
-  sources/structure/weyl.h sources/structure/weyl_fwd.h \
-  sources/structure/latticetypes.h sources/utilities/matrix.h \
-  sources/utilities/tags.h sources/utilities/matrix_def.h \
-  sources/utilities/intutils.h sources/utilities/intutils_def.h \
-  sources/structure/cartanclass.h sources/structure/tori_fwd.h \
-  sources/utilities/bitmap.h sources/utilities/bitmap_def.h \
-  sources/structure/gradings.h sources/structure/gradings_fwd.h \
-  sources/utilities/partition.h sources/utilities/partition_def.h \
-  sources/structure/realform.h sources/structure/subquotient.h \
-  sources/structure/subquotient_def.h sources/structure/rootdata.h \
-  sources/structure/prerootdata_fwd.h sources/structure/rootdata_def.h \
-  sources/structure/lattice.h sources/structure/lattice_def.h \
-  sources/structure/weylsize.h
+  sources/error/error.h sources/structure/weyl.h \
+  sources/structure/weyl_fwd.h sources/structure/latticetypes.h \
+  sources/utilities/matrix.h sources/utilities/tags.h \
+  sources/utilities/matrix_def.h sources/utilities/intutils.h \
+  sources/utilities/intutils_def.h sources/structure/cartanclass.h \
+  sources/structure/tori_fwd.h sources/utilities/bitmap.h \
+  sources/utilities/bitmap_def.h sources/structure/gradings.h \
+  sources/structure/gradings_fwd.h sources/utilities/partition.h \
+  sources/utilities/partition_def.h sources/structure/realform.h \
+  sources/structure/subquotient.h sources/structure/subquotient_def.h \
+  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
+  sources/structure/rootdata_def.h sources/structure/lattice.h \
+  sources/structure/lattice_def.h sources/structure/weylsize.h
 sources/io/realweyl_io.o: sources/io/realweyl_io.cpp \
   sources/io/realweyl_io.h sources/io/realweyl_fwd.h \
   sources/structure/rootdata_fwd.h sources/utilities/bitmap_fwd.h \
   sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
   sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
-  sources/utilities/constants.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/weyl_fwd.h \
+  sources/utilities/constants.h sources/structure/weyl_fwd.h \
   sources/io/basic_io.h sources/utilities/abelian_fwd.h \
   sources/utilities/bitset_fwd.h sources/structure/lietype.h \
   sources/structure/lietype_fwd.h sources/io/basic_io_def.h \
@@ -647,27 +599,14 @@ sources/io/realweyl_io.o: sources/io/realweyl_io.cpp \
   sources/structure/bitvector_def.h sources/utilities/comparison.h \
   sources/structure/rootdata_def.h sources/io/realweyl.h \
   sources/structure/cartanclass_fwd.h sources/utilities/size.h \
-  sources/utilities/size_def.h sources/structure/weyl.h
-sources/memory/allocator.o: sources/memory/allocator.cpp \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/utilities/constants.h \
-  sources/memory/typestring.h
-sources/memory/pool.o: sources/memory/pool.cpp sources/memory/pool.h \
-  sources/utilities/constants.h
-sources/memory/typenumber.o: sources/memory/typenumber.cpp \
-  sources/memory/typestring.h
-sources/memory/typestring.o: sources/memory/typestring.cpp \
-  sources/memory/typestring.h sources/memory/typenumber.h
+  sources/utilities/size_def.h sources/error/error.h \
+  sources/structure/weyl.h
 sources/structure/cartanclass.o: sources/structure/cartanclass.cpp \
   sources/structure/cartanclass.h sources/structure/cartanclass_fwd.h \
   sources/structure/rootdata_fwd.h sources/utilities/bitmap_fwd.h \
   sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
   sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
-  sources/utilities/constants.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/tori_fwd.h \
+  sources/utilities/constants.h sources/structure/tori_fwd.h \
   sources/utilities/bitmap.h sources/utilities/bitmap_def.h \
   sources/structure/gradings.h sources/structure/gradings_fwd.h \
   sources/utilities/bitset_fwd.h sources/utilities/bitset.h \
@@ -680,23 +619,20 @@ sources/structure/cartanclass.o: sources/structure/cartanclass.cpp \
   sources/utilities/intutils_def.h sources/utilities/partition.h \
   sources/utilities/partition_def.h sources/structure/realform.h \
   sources/utilities/size.h sources/utilities/size_def.h \
-  sources/structure/subquotient.h sources/structure/subquotient_def.h \
-  sources/structure/dynkin.h sources/structure/lietype.h \
-  sources/structure/lietype_fwd.h sources/structure/rootdata.h \
-  sources/structure/prerootdata_fwd.h sources/structure/weyl_fwd.h \
-  sources/structure/rootdata_def.h sources/structure/lattice.h \
-  sources/structure/lattice_def.h sources/utilities/smithnormal.h \
-  sources/structure/tori.h sources/structure/weyl.h \
-  sources/structure/weylsize.h
+  sources/error/error.h sources/structure/subquotient.h \
+  sources/structure/subquotient_def.h sources/structure/dynkin.h \
+  sources/structure/lietype.h sources/structure/lietype_fwd.h \
+  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
+  sources/structure/weyl_fwd.h sources/structure/rootdata_def.h \
+  sources/structure/lattice.h sources/structure/lattice_def.h \
+  sources/utilities/smithnormal.h sources/structure/tori.h \
+  sources/structure/weyl.h sources/structure/weylsize.h
 sources/structure/cartan.o: sources/structure/cartan.cpp \
   sources/structure/cartan.h sources/structure/cartan_fwd.h \
   sources/structure/rootdata_fwd.h sources/utilities/bitmap_fwd.h \
   sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
   sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
-  sources/utilities/constants.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/utilities/bitmap.h \
+  sources/utilities/constants.h sources/utilities/bitmap.h \
   sources/utilities/bitmap_def.h sources/structure/cartanclass.h \
   sources/structure/cartanclass_fwd.h sources/structure/tori_fwd.h \
   sources/structure/gradings.h sources/structure/gradings_fwd.h \
@@ -710,14 +646,14 @@ sources/structure/cartan.o: sources/structure/cartan.cpp \
   sources/utilities/intutils_def.h sources/utilities/partition.h \
   sources/utilities/partition_def.h sources/structure/realform.h \
   sources/utilities/size.h sources/utilities/size_def.h \
-  sources/structure/subquotient.h sources/structure/subquotient_def.h \
-  sources/utilities/poset.h sources/utilities/poset_fwd.h \
-  sources/utilities/set.h sources/utilities/graph.h \
-  sources/structure/weyl.h sources/structure/weyl_fwd.h \
-  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
-  sources/structure/lietype.h sources/structure/lietype_fwd.h \
-  sources/structure/rootdata_def.h sources/structure/lattice.h \
-  sources/structure/lattice_def.h
+  sources/error/error.h sources/structure/subquotient.h \
+  sources/structure/subquotient_def.h sources/utilities/poset.h \
+  sources/utilities/poset_fwd.h sources/utilities/set.h \
+  sources/utilities/graph.h sources/structure/weyl.h \
+  sources/structure/weyl_fwd.h sources/structure/rootdata.h \
+  sources/structure/prerootdata_fwd.h sources/structure/lietype.h \
+  sources/structure/lietype_fwd.h sources/structure/rootdata_def.h \
+  sources/structure/lattice.h sources/structure/lattice_def.h
 sources/structure/complexredgp.o: sources/structure/complexredgp.cpp \
   sources/structure/complexredgp.h sources/structure/complexredgp_fwd.h \
   sources/structure/cartan_fwd.h sources/structure/cartanclass_fwd.h \
@@ -725,10 +661,7 @@ sources/structure/complexredgp.o: sources/structure/complexredgp.cpp \
   sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
   sources/utilities/constants.h sources/utilities/poset_fwd.h \
   sources/utilities/set.h sources/structure/rootdata_fwd.h \
-  sources/utilities/bitmap_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/tits_fwd.h \
+  sources/utilities/bitmap_fwd.h sources/structure/tits_fwd.h \
   sources/structure/weyl_fwd.h sources/structure/lietype.h \
   sources/structure/lietype_fwd.h sources/structure/realform.h \
   sources/utilities/tags.h sources/structure/cartan.h \
@@ -744,12 +677,13 @@ sources/structure/complexredgp.o: sources/structure/complexredgp.cpp \
   sources/utilities/intutils.h sources/utilities/intutils_def.h \
   sources/utilities/partition.h sources/utilities/partition_def.h \
   sources/utilities/size.h sources/utilities/size_def.h \
-  sources/structure/subquotient.h sources/structure/subquotient_def.h \
-  sources/utilities/poset.h sources/utilities/graph.h \
-  sources/structure/weyl.h sources/structure/dynkin.h \
-  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
-  sources/structure/rootdata_def.h sources/structure/lattice.h \
-  sources/structure/lattice_def.h sources/structure/tits.h
+  sources/error/error.h sources/structure/subquotient.h \
+  sources/structure/subquotient_def.h sources/utilities/poset.h \
+  sources/utilities/graph.h sources/structure/weyl.h \
+  sources/structure/dynkin.h sources/structure/rootdata.h \
+  sources/structure/prerootdata_fwd.h sources/structure/rootdata_def.h \
+  sources/structure/lattice.h sources/structure/lattice_def.h \
+  sources/structure/tits.h
 sources/structure/dynkin.o: sources/structure/dynkin.cpp \
   sources/structure/dynkin.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
@@ -769,22 +703,19 @@ sources/structure/gradings.o: sources/structure/gradings.cpp \
   sources/structure/rootdata_fwd.h sources/utilities/bitmap_fwd.h \
   sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
   sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/error/error.h sources/memory/pool.h sources/utilities/bitmap.h \
-  sources/utilities/bitmap_def.h sources/utilities/bitset.h \
-  sources/utilities/bits.h sources/utilities/setutils.h \
-  sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
-  sources/utilities/comparison.h sources/structure/latticetypes.h \
-  sources/structure/bitvector.h sources/structure/bitvector_def.h \
-  sources/utilities/matrix.h sources/utilities/tags.h \
-  sources/utilities/matrix_def.h sources/utilities/intutils.h \
-  sources/utilities/intutils_def.h sources/structure/lattice.h \
-  sources/structure/lattice_def.h sources/utilities/partition.h \
-  sources/utilities/partition_def.h sources/structure/rootdata.h \
-  sources/structure/prerootdata_fwd.h sources/structure/weyl_fwd.h \
-  sources/structure/lietype.h sources/structure/lietype_fwd.h \
-  sources/structure/rootdata_def.h
+  sources/utilities/bitmap.h sources/utilities/bitmap_def.h \
+  sources/utilities/bitset.h sources/utilities/bits.h \
+  sources/utilities/setutils.h sources/utilities/setutils_def.h \
+  sources/utilities/bitset_def.h sources/utilities/comparison.h \
+  sources/structure/latticetypes.h sources/structure/bitvector.h \
+  sources/structure/bitvector_def.h sources/utilities/matrix.h \
+  sources/utilities/tags.h sources/utilities/matrix_def.h \
+  sources/utilities/intutils.h sources/utilities/intutils_def.h \
+  sources/structure/lattice.h sources/structure/lattice_def.h \
+  sources/utilities/partition.h sources/utilities/partition_def.h \
+  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
+  sources/structure/weyl_fwd.h sources/structure/lietype.h \
+  sources/structure/lietype_fwd.h sources/structure/rootdata_def.h
 sources/structure/lattice.o: sources/structure/lattice.cpp \
   sources/structure/latticetypes.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
@@ -842,9 +773,6 @@ sources/structure/realredgp.o: sources/structure/realredgp.cpp \
   sources/structure/rootdata_fwd.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
   sources/structure/subquotient_fwd.h sources/utilities/constants.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/error/error.h sources/memory/pool.h \
   sources/structure/weyl_fwd.h sources/structure/tits_fwd.h \
   sources/structure/realform.h sources/structure/topology.h \
   sources/structure/tori_fwd.h sources/structure/latticetypes.h \
@@ -859,21 +787,19 @@ sources/structure/realredgp.o: sources/structure/realredgp.cpp \
   sources/utilities/bitmap_def.h sources/structure/gradings.h \
   sources/structure/gradings_fwd.h sources/utilities/partition.h \
   sources/utilities/partition_def.h sources/utilities/size.h \
-  sources/utilities/size_def.h sources/structure/subquotient.h \
-  sources/structure/subquotient_def.h sources/structure/complexredgp.h \
-  sources/structure/cartan_fwd.h sources/structure/lietype.h \
-  sources/structure/lietype_fwd.h sources/structure/prerootdata.h \
-  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
-  sources/structure/rootdata_def.h sources/structure/lattice.h \
-  sources/structure/lattice_def.h sources/structure/tori.h
+  sources/utilities/size_def.h sources/error/error.h \
+  sources/structure/subquotient.h sources/structure/subquotient_def.h \
+  sources/structure/complexredgp.h sources/structure/cartan_fwd.h \
+  sources/structure/lietype.h sources/structure/lietype_fwd.h \
+  sources/structure/prerootdata.h sources/structure/rootdata.h \
+  sources/structure/prerootdata_fwd.h sources/structure/rootdata_def.h \
+  sources/structure/lattice.h sources/structure/lattice_def.h \
+  sources/structure/tori.h
 sources/structure/rootdata.o: sources/structure/rootdata.cpp \
   sources/structure/rootdata.h sources/structure/rootdata_fwd.h \
   sources/utilities/bitmap_fwd.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
   sources/structure/subquotient_fwd.h sources/utilities/constants.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/error/error.h sources/memory/pool.h \
   sources/structure/prerootdata_fwd.h sources/structure/weyl_fwd.h \
   sources/utilities/bitmap.h sources/utilities/bitmap_def.h \
   sources/structure/latticetypes.h sources/structure/bitvector.h \
@@ -894,10 +820,7 @@ sources/structure/tits.o: sources/structure/tits.cpp \
   sources/utilities/constants.h sources/structure/rootdata_fwd.h \
   sources/utilities/bitmap_fwd.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
-  sources/structure/subquotient_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/bitvector.h \
+  sources/structure/subquotient_fwd.h sources/structure/bitvector.h \
   sources/utilities/bitset.h sources/utilities/bitset_fwd.h \
   sources/utilities/bits.h sources/utilities/setutils.h \
   sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
@@ -906,20 +829,17 @@ sources/structure/tits.o: sources/structure/tits.cpp \
   sources/utilities/tags.h sources/utilities/matrix_def.h \
   sources/utilities/intutils.h sources/utilities/intutils_def.h \
   sources/structure/weyl.h sources/structure/weyl_fwd.h \
-  sources/utilities/size.h sources/utilities/size_def.h \
-  sources/structure/lattice.h sources/structure/lattice_def.h \
-  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
-  sources/utilities/bitmap.h sources/utilities/bitmap_def.h \
-  sources/structure/lietype.h sources/structure/lietype_fwd.h \
-  sources/structure/rootdata_def.h
+  sources/error/error.h sources/utilities/size.h \
+  sources/utilities/size_def.h sources/structure/lattice.h \
+  sources/structure/lattice_def.h sources/structure/rootdata.h \
+  sources/structure/prerootdata_fwd.h sources/utilities/bitmap.h \
+  sources/utilities/bitmap_def.h sources/structure/lietype.h \
+  sources/structure/lietype_fwd.h sources/structure/rootdata_def.h
 sources/structure/topology.o: sources/structure/topology.cpp \
   sources/structure/topology.h sources/structure/rootdata_fwd.h \
   sources/utilities/bitmap_fwd.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
   sources/structure/subquotient_fwd.h sources/utilities/constants.h \
-  sources/memory/stlvector.h sources/memory/allocator.h \
-  sources/memory/typenumber.h sources/memory/allocator_def.h \
-  sources/error/error.h sources/memory/pool.h \
   sources/structure/tori_fwd.h sources/structure/latticetypes.h \
   sources/structure/bitvector.h sources/utilities/bitset.h \
   sources/utilities/bitset_fwd.h sources/utilities/bits.h \
@@ -952,36 +872,30 @@ sources/structure/tori.o: sources/structure/tori.cpp \
   sources/utilities/smithnormal.h
 sources/structure/weyl.o: sources/structure/weyl.cpp \
   sources/structure/weyl.h sources/structure/weyl_fwd.h \
-  sources/utilities/constants.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/latticetypes.h \
-  sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
-  sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
-  sources/structure/bitvector.h sources/utilities/bitset.h \
-  sources/utilities/bitset_fwd.h sources/utilities/bits.h \
-  sources/utilities/setutils.h sources/utilities/setutils_def.h \
-  sources/utilities/bitset_def.h sources/structure/bitvector_def.h \
-  sources/utilities/comparison.h sources/utilities/matrix.h \
-  sources/utilities/tags.h sources/utilities/matrix_def.h \
-  sources/utilities/intutils.h sources/utilities/intutils_def.h \
-  sources/utilities/size.h sources/utilities/size_def.h \
-  sources/structure/dynkin.h sources/structure/lietype.h \
-  sources/structure/lietype_fwd.h sources/memory/stlset.h
+  sources/utilities/constants.h sources/error/error.h \
+  sources/structure/latticetypes.h sources/structure/latticetypes_fwd.h \
+  sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
+  sources/structure/subquotient_fwd.h sources/structure/bitvector.h \
+  sources/utilities/bitset.h sources/utilities/bitset_fwd.h \
+  sources/utilities/bits.h sources/utilities/setutils.h \
+  sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
+  sources/structure/bitvector_def.h sources/utilities/comparison.h \
+  sources/utilities/matrix.h sources/utilities/tags.h \
+  sources/utilities/matrix_def.h sources/utilities/intutils.h \
+  sources/utilities/intutils_def.h sources/utilities/size.h \
+  sources/utilities/size_def.h sources/structure/dynkin.h \
+  sources/structure/lietype.h sources/structure/lietype_fwd.h
 sources/structure/weylsize.o: sources/structure/weylsize.cpp \
   sources/structure/weylsize.h sources/structure/weyl_fwd.h \
-  sources/utilities/constants.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/lietype.h \
+  sources/utilities/constants.h sources/structure/lietype.h \
   sources/structure/lietype_fwd.h sources/structure/latticetypes_fwd.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
   sources/structure/subquotient_fwd.h sources/utilities/size.h \
   sources/utilities/size_def.h sources/utilities/bitset.h \
   sources/utilities/bitset_fwd.h sources/utilities/bits.h \
   sources/utilities/setutils.h sources/utilities/setutils_def.h \
-  sources/utilities/bitset_def.h sources/utilities/intutils.h \
-  sources/utilities/intutils_def.h
+  sources/utilities/bitset_def.h sources/error/error.h \
+  sources/utilities/intutils.h sources/utilities/intutils_def.h
 sources/test/test.o: sources/test/test.cpp sources/test/test.h \
   sources/interface/commands.h sources/interface/commands_fwd.h \
   sources/interface/input.h sources/io/basic_io.h \
@@ -989,10 +903,7 @@ sources/test/test.o: sources/test/test.cpp sources/test/test.h \
   sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
   sources/structure/subquotient_fwd.h sources/utilities/constants.h \
   sources/utilities/bitset_fwd.h sources/structure/rootdata_fwd.h \
-  sources/utilities/bitmap_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/weyl_fwd.h \
+  sources/utilities/bitmap_fwd.h sources/structure/weyl_fwd.h \
   sources/structure/lietype.h sources/structure/lietype_fwd.h \
   sources/io/basic_io_def.h sources/utilities/bitmap.h \
   sources/utilities/bitmap_def.h sources/io/block_io.h \
@@ -1003,19 +914,19 @@ sources/test/test.o: sources/test/test.cpp sources/test/test.h \
   sources/utilities/bits.h sources/utilities/setutils.h \
   sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
   sources/structure/realform.h sources/structure/weyl.h \
-  sources/structure/latticetypes.h sources/structure/bitvector.h \
-  sources/structure/bitvector_def.h sources/utilities/comparison.h \
-  sources/utilities/matrix.h sources/utilities/tags.h \
-  sources/utilities/matrix_def.h sources/utilities/intutils.h \
-  sources/utilities/intutils_def.h sources/utilities/size.h \
-  sources/utilities/size_def.h sources/gkmod/bruhat.h \
-  sources/utilities/poset.h sources/utilities/poset_fwd.h \
-  sources/utilities/set.h sources/utilities/graph.h \
-  sources/io/cartan_io.h sources/structure/cartanclass_fwd.h \
-  sources/structure/complexredgp.h sources/structure/cartan_fwd.h \
-  sources/structure/tits_fwd.h sources/io/complexredgp_io.h \
-  sources/io/complexredgp_io_fwd.h sources/io/layout.h \
-  sources/io/realform_io.h sources/structure/dynkin.h \
+  sources/error/error.h sources/structure/latticetypes.h \
+  sources/structure/bitvector.h sources/structure/bitvector_def.h \
+  sources/utilities/comparison.h sources/utilities/matrix.h \
+  sources/utilities/tags.h sources/utilities/matrix_def.h \
+  sources/utilities/intutils.h sources/utilities/intutils_def.h \
+  sources/utilities/size.h sources/utilities/size_def.h \
+  sources/gkmod/bruhat.h sources/utilities/poset.h \
+  sources/utilities/poset_fwd.h sources/utilities/set.h \
+  sources/utilities/graph.h sources/io/cartan_io.h \
+  sources/structure/cartanclass_fwd.h sources/structure/complexredgp.h \
+  sources/structure/cartan_fwd.h sources/structure/tits_fwd.h \
+  sources/io/complexredgp_io.h sources/io/complexredgp_io_fwd.h \
+  sources/io/layout.h sources/io/realform_io.h sources/structure/dynkin.h \
   sources/interface/emptymode.h sources/structure/gradings.h \
   sources/structure/gradings_fwd.h sources/interface/helpmode.h \
   sources/io/interactive.h sources/io/interactive_fwd.h \
@@ -1045,10 +956,7 @@ sources/test/testprint.o: sources/test/testprint.cpp \
   sources/structure/rootdata_fwd.h sources/utilities/bitmap_fwd.h \
   sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
   sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
-  sources/utilities/constants.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/gradings.h \
+  sources/utilities/constants.h sources/structure/gradings.h \
   sources/structure/gradings_fwd.h sources/utilities/bitset_fwd.h \
   sources/utilities/bitmap.h sources/utilities/bitmap_def.h \
   sources/utilities/bitset.h sources/utilities/bits.h \
@@ -1065,12 +973,12 @@ sources/test/testprint.o: sources/test/testprint.cpp \
   sources/structure/bitvector.h sources/structure/bitvector_def.h \
   sources/utilities/comparison.h sources/utilities/partition.h \
   sources/utilities/partition_def.h sources/utilities/size.h \
-  sources/utilities/size_def.h sources/structure/subquotient.h \
-  sources/structure/subquotient_def.h sources/structure/complexredgp.h \
-  sources/structure/cartan_fwd.h sources/utilities/poset_fwd.h \
-  sources/utilities/set.h sources/structure/tits_fwd.h \
-  sources/io/complexredgp_io.h sources/io/layout.h \
-  sources/io/realform_io.h sources/structure/dynkin.h \
+  sources/utilities/size_def.h sources/error/error.h \
+  sources/structure/subquotient.h sources/structure/subquotient_def.h \
+  sources/structure/complexredgp.h sources/structure/cartan_fwd.h \
+  sources/utilities/poset_fwd.h sources/utilities/set.h \
+  sources/structure/tits_fwd.h sources/io/complexredgp_io.h \
+  sources/io/layout.h sources/io/realform_io.h sources/structure/dynkin.h \
   sources/io/ioutils.h sources/structure/lattice.h \
   sources/structure/lattice_def.h sources/io/prettyprint.h \
   sources/utilities/polynomials_fwd.h sources/io/prettyprint_def.h \
@@ -1095,10 +1003,7 @@ sources/test/testrun.o: sources/test/testrun.cpp sources/test/testrun.h \
   sources/structure/realredgp.h sources/structure/cartanclass_fwd.h \
   sources/structure/complexredgp_fwd.h sources/utilities/poset_fwd.h \
   sources/utilities/set.h sources/structure/realredgp_fwd.h \
-  sources/structure/rootdata_fwd.h sources/memory/stlvector.h \
-  sources/memory/allocator.h sources/memory/typenumber.h \
-  sources/memory/allocator_def.h sources/error/error.h \
-  sources/memory/pool.h sources/structure/weyl_fwd.h \
+  sources/structure/rootdata_fwd.h sources/structure/weyl_fwd.h \
   sources/structure/tits_fwd.h sources/structure/realform.h \
   sources/structure/topology.h sources/structure/tori_fwd.h \
   sources/utilities/arithmetic.h sources/utilities/arithmetic_def.h \

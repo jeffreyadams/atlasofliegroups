@@ -162,7 +162,6 @@
 #include "emptymode.h"
 #include "error.h"
 #include "input.h"
-#include "pool.h"
 
 int main(int argc, char* argv[])
 
@@ -175,13 +174,10 @@ try
 
 {
   using namespace atlas;
-  using namespace pool;
 
   constants::initConstants();
   input::initReadLine();
   commands::run(emptymode::emptyMode());
-
-  pool::memoryReport();
 
   return 0;
 }

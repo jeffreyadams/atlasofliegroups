@@ -9,6 +9,8 @@
 
 #include "cartan.h"
 
+#include <set>
+
 #include "rootdata.h"
 #include "tags.h"
 

@@ -9,6 +9,7 @@
 
 #include "blocks.h"
 
+#include <cassert>
 #include <memory>
 #include <set>
 

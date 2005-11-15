@@ -13,8 +13,6 @@
 #include <vector>
 
 #include "constants.h"
-#include "stlvector.h"
-#include "typenumber.h"
 
 /******** forward type declarations ******************************************/
 
@@ -25,9 +23,6 @@ namespace weyl {
   class WeylElt;
   class WeylGroup;
 
-#if 0
-  typedef stlvector::Vector<WeylElt>::type WeylEltList;
-#endif
   typedef std::vector<WeylElt> WeylEltList;
 
   typedef unsigned char Generator;
@@ -35,16 +30,6 @@ namespace weyl {
 
   typedef std::vector<Generator> WeylWord;
   typedef Generator Twist[constants::RANK_MAX];
-
-}
-
-namespace typenumber {
-
-  template<> struct TypeNumber<weyl::WeylElt> {
-    static size_t number() {
-      return WeylElt;
-    }
-  };
 
 }
 

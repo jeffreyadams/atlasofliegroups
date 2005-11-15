@@ -13,8 +13,6 @@
 #include "bitmap_fwd.h"
 #include "latticetypes_fwd.h"
 
-#include "stlvector.h"
-
 /******** forward type declarations ******************************************/
 
 namespace atlas {
@@ -27,9 +25,6 @@ namespace rootdata {
   class RootDatum;
 
   typedef latticetypes::LatticeElt Root;
-#if 0
-  typedef stlvector::Vector<RootNbr>::type RootList;
-#endif
   typedef std::vector<RootNbr> RootList;
 
   typedef bitmap::BitMap RootSet;

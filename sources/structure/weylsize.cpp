@@ -9,6 +9,8 @@
 
 #include "weylsize.h"
 
+#include <cassert>
+
 #include "intutils.h"
 #include "lietype.h"
 
