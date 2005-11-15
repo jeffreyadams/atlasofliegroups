@@ -77,7 +77,7 @@ std::ostream& printKL(std::ostream& strm, const kl::KLContext& klc)
 	strm << std::setw(width) << e[j] << ": ";
 	first = false;
       } else {
-	strm << std::setw(width+2)<< ""
+	strm << std::setw(width+tab)<< ""
 	     << std::setw(width) << e[j] << ": ";
       }
       printPol(strm,*klr[j],KLIndeterminate);

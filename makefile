@@ -11,7 +11,7 @@ pflags = -c $(includedirs) -pg -O -DNREADLINE
 oflags = -c $(includedirs) -O -Wall -DNDEBUG
 gflags = -c $(includedirs) -g
 
-cflags := $(gflags) # the default setting
+cflags := $(oflags) # the default setting
 
 ifeq ($(debug),true)
 	cflags := $(gflags)
