@@ -262,7 +262,11 @@ KLContext::KLContext(klsupport::KLSupport& kls)
   :d_support(&kls)
 
 {
+  d_store.insert(Zero);
   d_store.insert(One);
+
+  d_zero = d_store.find(Zero);
+  d_one = d_store.find(One);
 }
 
 /******** copy, assignment and swap ******************************************/
@@ -718,7 +722,7 @@ void Helper::completePacket(size_t y)
 	std::vector<KLPol> klr;
 	recursionRow(klr,y2,s);
 	const ExtremalRow& e = d_support->extremalRow(y2);
-	d_kl[y2].resize(e.size(),d_store.end());
+	d_kl[y2].resize(e.size(),d_zero);
 	// klr[j] is P_{x,y2}+P_{x,y1}, for x = e[j]
 	for (size_t j = 0; j < klr.size(); ++j) {
 	  size_t x = e[j];
@@ -1047,7 +1051,7 @@ void Helper::recursionRow(std::vector<KLPol>& klr, size_t y, size_t s)
   }
 
   const ExtremalRow& e = d_support->extremalRow(y);
-  d_kl[y].resize(e.size(),d_store.end());
+  d_kl[y].resize(e.size(),d_zero);
 
   klr.resize(e.size());
 

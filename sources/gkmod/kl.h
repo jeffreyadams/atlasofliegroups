@@ -55,6 +55,8 @@ class KLContext {
   std::vector<MuRow> d_mu;           // list of mu-coefficients
 
   std::set<KLPol> d_store;           // the actual polynomials
+  KLPtr d_zero;
+  KLPtr d_one;
 
  public:
 
@@ -78,8 +80,10 @@ class KLContext {
   }
 
   bool isZero(const KLPtr p) const {
-    return p == d_store.end();
+    return p == d_zero;
   }
+
+  const KLPol& klPol(size_t, size_t) const; // to be defined!
 
   const KLRow& klRow(size_t y) const {
     return d_kl[y];

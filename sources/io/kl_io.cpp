@@ -44,7 +44,59 @@ const char* KLIndeterminate = "q";
 
 namespace kl_io {
 
-std::ostream& printKL(std::ostream& strm, const kl::KLContext& klc)
+std::ostream& printAllKL(std::ostream& strm, kl::KLContext& klc)
+
+/*
+  Synopsis: outputs the non-zero kl polynomials from klc to strm.
+
+*/
+
+{
+  using namespace ioutils;
+  using namespace kl;
+  using namespace klsupport;
+  using namespace prettyprint;
+
+  size_t count = 0;
+  size_t zeroCount = 0;
+
+  int width = digits(klc.size()-1,10ul);
+  int tab = 2;
+
+  for (size_t y = 0; y < klc.size(); ++y) {
+
+    strm << std::setw(width) << y << ": ";
+    bool first = true;
+
+    for (size_t x = 0; x <= y; ++x) {
+      const KLPol& pol = klc.klPol(x,y);
+      if (pol.isZero()) {
+	++zeroCount;
+	continue;
+      }
+      if (first) {
+	strm << std::setw(width) << x << ": ";
+	first = false;
+      } else {
+	strm << std::setw(width+tab)<< ""
+	     << std::setw(width) << x << ": ";
+      }
+      printPol(strm,pol,KLIndeterminate);
+      strm << std::endl;
+      ++count;
+    }
+
+    strm << std::endl;
+  }
+
+  strm << count + zeroCount << " pairs" << std::endl;
+  strm << zeroCount << " zero polynomials; "
+       << count << " nonzero polynomials" << std::endl;
+
+  return strm;
+}
+
+std::ostream& printExtremalKL(std::ostream& strm, const kl::KLContext& klc)
 
 /*
   Synopsis: outputs the non-zero extremal kl polynomials from klc to strm.

@@ -264,3 +264,7 @@
 11-06-05: removed file sources/io/io_error.h
 
 11-07-05: have to stop for a while. recursiveMu() in kl.cpp is unfinished!
+
+11-15-05: when the k-l setup has been modified, klPol can become an accessor.
+	Functions like printAllKL in kl_io.h can take a const KLContext& as
+	argument.

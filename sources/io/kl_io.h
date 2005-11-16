@@ -20,7 +20,9 @@ namespace atlas {
 
 namespace kl_io {
 
-  std::ostream& printKL(std::ostream&, const kl::KLContext&);
+  std::ostream& printExtremalKL(std::ostream&, const kl::KLContext&);
+
+  std::ostream& printAllKL(std::ostream&, kl::KLContext&);
 
   std::ostream& printMu(std::ostream&, const kl::KLContext&);
 

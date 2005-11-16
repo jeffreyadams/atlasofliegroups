@@ -720,7 +720,7 @@ void test_f()
   OutputFile file;
   printMu(file,klc);
   file << "\n";
-  printKL(file,klc);
+  printAllKL(file,klc);
 
 #if 0
   for (size_t z = 0; z < kls.size(); ++z) {
