@@ -261,9 +261,11 @@ void fillLengthLess(std::vector<size_t>& ll, const blocks::Block& b)
 
 {
   ll.clear();
-  ll.push_back(0);
 
-  size_t l = 0;
+  size_t l = b.length(0);
+
+  for (size_t j = 0; j <= l; ++j)
+    ll.push_back(0);
 
   for (size_t z = 0; z < b.size(); ++z)
     if (b.length(z) > l) { // new length

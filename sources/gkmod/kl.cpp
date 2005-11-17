@@ -15,6 +15,8 @@
 
 #include "bitmap.h"
 #include "blocks.h"
+#include "error.h"
+#include "kl_error.h"
 
 /*
   This module contains code for the computation of the Kazhdan-Lusztig
@@ -727,7 +729,13 @@ void Helper::completePacket(size_t y)
 	for (size_t j = 0; j < klr.size(); ++j) {
 	  size_t x = e[j];
 	  KLPol pol = klr[j];
-	  pol.safeSubtract(klPol(x,y1));
+	  try {
+	    pol.safeSubtract(klPol(x,y1));
+	  }
+	  catch (error::NumericUnderflow& e){
+	    throw kl_error::KLError(x,y1,__LINE__,
+				    static_cast<const KLContext&>(*this));
+	  }
 	  if (not pol.isZero()) {
 	    d_store.insert(pol);
 	    d_kl[y2][j] = d_store.find(pol);
@@ -790,9 +798,10 @@ void Helper::fill()
 
   // fill the lists
   size_t y = 0;
+  size_t minLength = length(0);
 
-  // do the length zero cases; they come first in the enumeration
-  for (; length(y) == 0; ++y) {
+  // do the minimal length cases; they come first in the enumeration
+  for (; length(y) == minLength; ++y) {
     // the k-l polynomial is 1
     KLPtr klp = d_store.find(One);
     d_kl[y].push_back(klp);
@@ -801,7 +810,11 @@ void Helper::fill()
 
   // do the other cases
   for (; y < d_kl.size(); ++y) {
-    fillKLRow(y);
+    try {
+      fillKLRow(y);
+    } catch (kl_error::KLError& e) {
+      e("error: negative coefficient in k-l construction");
+    }
     fillMuRow(y);
   }
 
@@ -1009,7 +1022,13 @@ void Helper::muCorrection(std::vector<KLPol>& klp, size_t y, size_t s)
       // subtract x^d.mu.P_{x,z} from klp[j], where d = 1/2(l(y)-l(z))
       const KLPol& pol = klPol(x,z);
       Degree d = (l_y-l_z)/2;
-      klp[j].safeSubtract(pol,d,mu);
+      try {
+	klp[j].safeSubtract(pol,d,mu);
+      }
+      catch (error::NumericUnderflow& e){
+	throw kl_error::KLError(x,y,__LINE__,
+				static_cast<const KLContext&>(*this));
+      }
     }
 
   }
@@ -1077,7 +1096,13 @@ void Helper::recursionRow(std::vector<KLPol>& klr, size_t y, size_t s)
       klr[j] = klPol(x1.first,y1);
       klr[j].safeAdd(klPol(x1.second,y1));
       klr[j].safeAdd(klPol(x,y1),1);
-      klr[j].safeSubtract(klPol(x,y1));
+      try {
+	klr[j].safeSubtract(klPol(x,y1));
+      }
+      catch (error::NumericUnderflow& e){
+	throw kl_error::KLError(x,y,__LINE__,
+				static_cast<const KLContext&>(*this));
+      }
     }
       break;
     case DescentStatus::RealTypeII: {
@@ -1085,7 +1110,13 @@ void Helper::recursionRow(std::vector<KLPol>& klr, size_t y, size_t s)
       // P_{x_1,y_1}+qP_{x,y1}-P_{s.x,y1}
       klr[j] = klPol(x1,y1);
       klr[j].safeAdd(klPol(x,y1),1);
-      klr[j].safeSubtract(klPol(cross(s,x),y1));
+      try {
+	klr[j].safeSubtract(klPol(cross(s,x),y1));
+      }
+      catch (error::NumericUnderflow& e){
+	throw kl_error::KLError(x,y,__LINE__,
+				static_cast<const KLContext&>(*this));
+      }
     }
       break;
     default: // this cannot happen
@@ -1238,8 +1269,14 @@ void Thicket::fill()
       const Edge& e = i.edge();
       KLPol pol = e.recursion[xpos];
       size_t sy = cross(e.s,y);
-      pol.safeSubtract(d_helper->klPol(x,sy));
-      if (not pol.isZero()) {
+      try {
+	pol.safeSubtract(d_helper->klPol(x,sy));
+      }
+      catch (error::NumericUnderflow& e){
+	throw kl_error::KLError(x,y,__LINE__,
+				static_cast<const KLContext&>(*d_helper));
+      }
+     if (not pol.isZero()) {
 	store().insert(pol);
 	klRow(y)[xpos] = store().find(pol);
       }

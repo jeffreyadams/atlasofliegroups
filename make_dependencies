@@ -87,7 +87,8 @@ sources/gkmod/kl.o: sources/gkmod/kl.cpp sources/gkmod/kl.h \
   sources/utilities/comparison.h sources/utilities/matrix.h \
   sources/utilities/tags.h sources/utilities/matrix_def.h \
   sources/utilities/intutils.h sources/utilities/intutils_def.h \
-  sources/utilities/size.h sources/utilities/size_def.h
+  sources/utilities/size.h sources/utilities/size_def.h \
+  sources/error/kl_error.h
 sources/gkmod/klsupport.o: sources/gkmod/klsupport.cpp \
   sources/gkmod/klsupport.h sources/gkmod/klsupport_fwd.h \
   sources/utilities/polynomials_fwd.h sources/gkmod/blocks_fwd.h \
@@ -601,6 +602,17 @@ sources/io/realweyl_io.o: sources/io/realweyl_io.cpp \
   sources/structure/cartanclass_fwd.h sources/utilities/size.h \
   sources/utilities/size_def.h sources/error/error.h \
   sources/structure/weyl.h
+sources/memory/allocator.o: sources/memory/allocator.cpp \
+  sources/memory/allocator.h sources/memory/typenumber.h \
+  sources/memory/allocator_def.h sources/error/error.h \
+  sources/memory/pool.h sources/utilities/constants.h \
+  sources/memory/typestring.h
+sources/memory/pool.o: sources/memory/pool.cpp sources/memory/pool.h \
+  sources/utilities/constants.h
+sources/memory/typenumber.o: sources/memory/typenumber.cpp \
+  sources/memory/typestring.h
+sources/memory/typestring.o: sources/memory/typestring.cpp \
+  sources/memory/typestring.h sources/memory/typenumber.h
 sources/structure/cartanclass.o: sources/structure/cartanclass.cpp \
   sources/structure/cartanclass.h sources/structure/cartanclass_fwd.h \
   sources/structure/rootdata_fwd.h sources/utilities/bitmap_fwd.h \

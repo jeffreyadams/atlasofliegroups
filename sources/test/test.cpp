@@ -77,9 +77,12 @@ namespace {
   void corder_f();
   void components_f();
   void coroots_rootbasis_f();
+  void extrkl_f();
   void kgb_f();
+  void klbasis_f();
   void poscoroots_rootbasis_f();
   void posroots_rootbasis_f();
+  void wgraph_f();
   void roots_rootbasis_f();
   void rootdatum_f();
   void test_f();
