@@ -80,12 +80,20 @@ namespace {
   void extrkl_f();
   void kgb_f();
   void klbasis_f();
+  void kllist_f();
   void poscoroots_rootbasis_f();
   void posroots_rootbasis_f();
   void wgraph_f();
   void roots_rootbasis_f();
   void rootdatum_f();
   void test_f();
+
+  // help functions
+
+  void extrkl_h();
+  void klbasis_h();
+  void kllist_h();
+  void wgraph_h();
 
   // tags
 
@@ -189,7 +197,11 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("blockstabilizer",blockstabilizer_f);
   mode.add("components",components_f);
   mode.add("corder",corder_f);
+  mode.add("extrkl",extrkl_f);
   mode.add("kgb",kgb_f);
+  mode.add("klbasis",klbasis_f);
+  mode.add("kllist",kllist_f);
+  mode.add("wgraph",wgraph_f);
 
   return;
 }
@@ -261,7 +273,6 @@ template<> void addTestHelp<mainmode::MainmodeTag>
   mode.add("cmatrix",nohelp_h);
   mode.add("coroots_rootbasis",nohelp_h);
   mode.add("gradings",nohelp_h);
-  mode.add("kgb",nohelp_h);
   mode.add("poscoroots_rootbasis",nohelp_h);
   mode.add("posroots_rootbasis",nohelp_h);
   mode.add("roots_rootbasis",nohelp_h);
@@ -271,7 +282,6 @@ template<> void addTestHelp<mainmode::MainmodeTag>
 
   t.insert(std::make_pair("cmatrix",test_tag));
   t.insert(std::make_pair("gradings",test_tag));
-  t.insert(std::make_pair("kgb",test_tag));
   t.insert(std::make_pair("coroots_rootbasis",test_tag));
   t.insert(std::make_pair("poscoroots_rootbasis",test_tag));
   t.insert(std::make_pair("posroots_rootbasis",test_tag));
@@ -312,7 +322,12 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("blockstabilizer",nohelp_h);
   mode.add("components",nohelp_h);
   mode.add("corder",nohelp_h);
+  mode.add("extrkl",extrkl_h);
   mode.add("involution",nohelp_h);
+  mode.add("kgb",nohelp_h);
+  mode.add("klbasis",klbasis_h);
+  mode.add("kllist",kllist_h);
+  mode.add("wgraph",wgraph_h);
 
   /******** tags ************************************************************/
 
@@ -321,8 +336,45 @@ template<> void addTestHelp<realmode::RealmodeTag>
   t.insert(std::make_pair("blockstabilizer",test_tag));
   t.insert(std::make_pair("components",test_tag));
   t.insert(std::make_pair("corder",test_tag));
+  t.insert(std::make_pair("extrkl",test_tag));
   t.insert(std::make_pair("involution",test_tag));
+  t.insert(std::make_pair("kgb",test_tag));
+  t.insert(std::make_pair("klbasis",test_tag));
+  t.insert(std::make_pair("kllist",test_tag));
+  t.insert(std::make_pair("wgraph",test_tag));
 
+  return;
+}
+
+}
+
+namespace {
+
+void extrkl_h()
+
+{
+  io::printFile(std::cerr,"extrkl.help",io::MESSAGE_DIR);
+  return;
+}
+
+void klbasis_h()
+
+{
+  io::printFile(std::cerr,"klbasis.help",io::MESSAGE_DIR);
+  return;
+}
+
+void kllist_h()
+
+{
+  io::printFile(std::cerr,"kllist.help",io::MESSAGE_DIR);
+  return;
+}
+
+void wgraph_h()
+
+{
+  io::printFile(std::cerr,"wgraph.help",io::MESSAGE_DIR);
   return;
 }
 
@@ -557,6 +609,72 @@ void coroots_rootbasis_f()
   return;
 }
 
+void extrkl_f()
+
+/*
+  Synopsis: prints out the list of all non-zero k-l polynomials for extremal 
+  pairs.
+
+  Explanation: x is extremal w.r.t. y, if any descent for y is also a descent
+  for x. Ths means that none of the easy recursion formulas applies to P_{x,y}.
+*/
+
+{
+  using namespace basic_io;
+  using namespace blocks;
+  using namespace commands;
+  using namespace error;
+  using namespace interactive;
+  using namespace ioutils;
+  using namespace kl;
+  using namespace kl_io;
+  using namespace klsupport;
+  using namespace realform;
+  using namespace realmode;
+  using namespace realredgp;
+  using namespace tags;
+
+  RealReductiveGroup& G_R = currentRealGroup();
+
+  try {
+    G_R.fillCartan();
+  }
+  catch (MemoryOverflow& e) {
+    e("error: memory overflow");
+    return;
+  }
+
+  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  const realredgp_io::Interface& G_RI = currentRealInterface();
+  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+  // get dual real form
+  RealForm drf;
+
+  try {
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+  }
+  catch (InputError& e) {
+    e("aborted");
+    return;
+  }
+
+  Block block(G_C,G_R.realForm(),drf);
+
+  KLSupport kls(block);
+  kls.fill();
+
+  KLContext klc(kls);
+  klc.fill();
+
+  OutputFile file;
+  file << "Non-zero Kazhdan-Lusztig-Vogan polynomials for extremal pairs:"
+       << std::endl << std::endl;
+  printExtremalKL(file,klc);
+
+  return;
+}
+
 void kgb_f()
 
 /*
@@ -579,6 +697,131 @@ void kgb_f()
 
   KGB kgb(G);
   printKGB(file,kgb);
+
+  return;
+}
+
+void klbasis_f()
+
+/*
+  Synopsis: for each element y in the block, outputs the list of non-zero
+  k-l polynomials P_{x,y}.
+
+  This is what is required to write down the k-l basis element c_y.
+*/
+
+{
+  using namespace basic_io;
+  using namespace blocks;
+  using namespace commands;
+  using namespace error;
+  using namespace interactive;
+  using namespace ioutils;
+  using namespace kl;
+  using namespace kl_io;
+  using namespace klsupport;
+  using namespace realform;
+  using namespace realmode;
+  using namespace realredgp;
+  using namespace tags;
+
+  RealReductiveGroup& G_R = currentRealGroup();
+
+  try {
+    G_R.fillCartan();
+  }
+  catch (MemoryOverflow& e) {
+    e("error: memory overflow");
+    return;
+  }
+
+  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  const realredgp_io::Interface& G_RI = currentRealInterface();
+  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+  // get dual real form
+  RealForm drf;
+
+  try {
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+  }
+  catch (InputError& e) {
+    e("aborted");
+    return;
+  }
+
+  Block block(G_C,G_R.realForm(),drf);
+
+  KLSupport kls(block);
+  kls.fill();
+
+  KLContext klc(kls);
+  klc.fill();
+
+  OutputFile file;
+  file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
+       << std::endl << std::endl;
+  printAllKL(file,klc);
+
+  return;
+}
+
+void kllist_f()
+
+/*
+  Synopsis: outputs the list of all distinct Kazhdan-Lusztig-Vogan polynomials
+*/
+
+{
+  using namespace basic_io;
+  using namespace blocks;
+  using namespace commands;
+  using namespace error;
+  using namespace interactive;
+  using namespace ioutils;
+  using namespace kl;
+  using namespace kl_io;
+  using namespace klsupport;
+  using namespace realform;
+  using namespace realmode;
+  using namespace realredgp;
+  using namespace tags;
+
+  RealReductiveGroup& G_R = currentRealGroup();
+
+  try {
+    G_R.fillCartan();
+  }
+  catch (MemoryOverflow& e) {
+    e("error: memory overflow");
+    return;
+  }
+
+  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  const realredgp_io::Interface& G_RI = currentRealInterface();
+  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+  // get dual real form
+  RealForm drf;
+
+  try {
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+  }
+  catch (InputError& e) {
+    e("aborted");
+    return;
+  }
+
+  Block block(G_C,G_R.realForm(),drf);
+
+  KLSupport kls(block);
+  kls.fill();
+
+  KLContext klc(kls);
+  klc.fill();
+
+  OutputFile file;
+  printKLList(file,klc);
 
   return;
 }
@@ -664,6 +907,71 @@ void rootdatum_f()
   return;
 }
 
+void wgraph_f()
+
+/*
+  Synopsis: outputs the W-graph corresponding to a block.
+
+  NOTE: unfinished.
+*/
+
+{
+  using namespace basic_io;
+  using namespace blocks;
+  using namespace commands;
+  using namespace error;
+  using namespace interactive;
+  using namespace ioutils;
+  using namespace kl;
+  using namespace kl_io;
+  using namespace klsupport;
+  using namespace realform;
+  using namespace realmode;
+  using namespace realredgp;
+  using namespace tags;
+
+  RealReductiveGroup& G_R = currentRealGroup();
+
+  try {
+    G_R.fillCartan();
+  }
+  catch (MemoryOverflow& e) {
+    e("error: memory overflow");
+    return;
+  }
+
+  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  const realredgp_io::Interface& G_RI = currentRealInterface();
+  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+  // get dual real form
+  RealForm drf;
+
+  try {
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+  }
+  catch (InputError& e) {
+    e("aborted");
+    return;
+  }
+
+  Block block(G_C,G_R.realForm(),drf);
+
+  KLSupport kls(block);
+  kls.fill();
+
+  KLContext klc(kls);
+  klc.fill();
+
+  OutputFile file;
+  file << "For now, we just list the non-zero mu-coefficients" 
+       << std::endl << std::endl;
+
+  printMu(file,klc);
+
+  return;
+}
+
 void test_f()
 
 /*
@@ -721,9 +1029,7 @@ void test_f()
   klc.fill();
 
   OutputFile file;
-  printMu(file,klc);
-  file << "\n";
-  printAllKL(file,klc);
+  printKLList(file,klc);
 
 #if 0
   for (size_t z = 0; z < kls.size(); ++z) {

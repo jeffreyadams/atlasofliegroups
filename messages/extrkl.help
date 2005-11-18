@@ -1,0 +1,16 @@
+
+******** temporary **********************************************************
+
+The "extrkl" command prints out the list of all the non-zero P_{\gamma,\nu}
+for all pairs (\gamma,\nu) in the block, where \gamma is "extremal" w.r.t.
+\nu. This means that no descent for \nu is an ascent for \gamma. This is
+a much shorter list than the one output by the "kllist" command. This list
+is going to be replaced by the list of "primitive" pairs, not to be defined
+here, that will be guaranteed to contain all the distinct k-l-v polynomials
+which occur (this is not the case for the current list.)
+
+For now, we use the numbering of the elements in the block to represent \gamma
+and \nu. To give more meaning to these numbers, use the "block" command, that
+will relate the various \nu to fundamental representations, say, in terms of
+Cayley transforms and cross-actions.
+

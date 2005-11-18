@@ -211,13 +211,15 @@ std::ostream& printPol(std::ostream& strm, const polynomials::Polynomial<C>& p,
 
   bool firstterm = true;
 
-  for (size_t j = 0; j <= p.degree(); ++j)
+  for (size_t j = p.degree()+1; j;) {
+    --j;
     if (p[j]) {
       if (firstterm)
 	firstterm = false;
       else
 	strm << "+";
       printMonomial(strm,p[j],j,x);
+    }
   }
 
   return strm;

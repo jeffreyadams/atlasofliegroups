@@ -9,6 +9,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <set>
 
 #include "kl_io.h"
 
@@ -142,6 +143,35 @@ std::ostream& printExtremalKL(std::ostream& strm, const kl::KLContext& klc)
   strm << count + zeroCount << " extremal pairs" << std::endl;
   strm << zeroCount << " zero polynomials; "
        << count << " nonzero polynomials" << std::endl;
+
+  return strm;
+}
+
+std::ostream& printKLList(std::ostream& strm, kl::KLContext& klc)
+
+/*
+  Synopsis: outputs the list of all distinct Kazhdan-Lusztig-Vogan
+  polynomials for the block.
+*/
+
+{
+  using namespace kl;
+  using namespace prettyprint;
+
+  for (size_t y = 0; y < klc.size(); ++y)
+    for (size_t x = 0; x <= y; ++x) {
+      // this will ensure that the polynomial is put on the store
+      klc.klPol(x,y);
+    }
+
+  const std::set<KLPol>& store = klc.polStore();
+
+  for (std::set<KLPol>::iterator i = store.begin(); i != store.end(); ++i) {
+    if (i->isZero())
+      continue;
+    printPol(strm,*i,KLIndeterminate);
+    strm << std::endl;
+  }
 
   return strm;
 }

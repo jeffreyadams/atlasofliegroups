@@ -1,4 +1,16 @@
 sources/error/error.o: sources/error/error.cpp sources/error/error.h
+sources/error/kl_error.o: sources/error/kl_error.cpp \
+  sources/error/kl_error.h sources/gkmod/kl_fwd.h \
+  sources/utilities/polynomials_fwd.h sources/gkmod/kl.h \
+  sources/gkmod/blocks_fwd.h sources/utilities/bitset.h \
+  sources/utilities/bitset_fwd.h sources/utilities/constants.h \
+  sources/utilities/bits.h sources/utilities/setutils.h \
+  sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
+  sources/gkmod/klsupport.h sources/gkmod/klsupport_fwd.h \
+  sources/utilities/bitmap.h sources/utilities/bitmap_fwd.h \
+  sources/utilities/bitmap_def.h sources/gkmod/descents.h \
+  sources/gkmod/descents_fwd.h sources/utilities/polynomials.h \
+  sources/utilities/polynomials_def.h sources/error/error.h
 sources/gkmod/blocks.o: sources/gkmod/blocks.cpp sources/gkmod/blocks.h \
   sources/gkmod/blocks_fwd.h sources/gkmod/bruhat_fwd.h \
   sources/utilities/bitmap_fwd.h sources/gkmod/descents.h \
@@ -908,6 +920,18 @@ sources/structure/weylsize.o: sources/structure/weylsize.cpp \
   sources/utilities/setutils.h sources/utilities/setutils_def.h \
   sources/utilities/bitset_def.h sources/error/error.h \
   sources/utilities/intutils.h sources/utilities/intutils_def.h
+sources/test/kltest.o: sources/test/kltest.cpp sources/test/kltest.h \
+  sources/gkmod/kl_fwd.h sources/utilities/polynomials_fwd.h \
+  sources/gkmod/kl.h sources/gkmod/blocks_fwd.h \
+  sources/utilities/bitset.h sources/utilities/bitset_fwd.h \
+  sources/utilities/constants.h sources/utilities/bits.h \
+  sources/utilities/setutils.h sources/utilities/setutils_def.h \
+  sources/utilities/bitset_def.h sources/gkmod/klsupport.h \
+  sources/gkmod/klsupport_fwd.h sources/utilities/bitmap.h \
+  sources/utilities/bitmap_fwd.h sources/utilities/bitmap_def.h \
+  sources/gkmod/descents.h sources/gkmod/descents_fwd.h \
+  sources/utilities/polynomials.h sources/utilities/polynomials_def.h \
+  sources/error/error.h
 sources/test/test.o: sources/test/test.cpp sources/test/test.h \
   sources/interface/commands.h sources/interface/commands_fwd.h \
   sources/interface/input.h sources/io/basic_io.h \

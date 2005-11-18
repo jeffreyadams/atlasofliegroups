@@ -99,6 +99,10 @@ class KLContext {
     return d_mu[y];
   }
 
+  const std::set<KLPol>& polStore() const {
+    return d_store;
+  }
+
   const size_t rank() const {
     return d_support->rank();
   }
