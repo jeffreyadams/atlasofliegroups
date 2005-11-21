@@ -2,7 +2,7 @@
   This is prettyprint.cpp
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
@@ -101,6 +101,37 @@ std::ostream& printCorootList(std::ostream& strm, const rootdata::RootList& r,
     if (j+1 < r.size())
       strm << sep;
   }
+
+  return strm;
+}
+
+std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d, 
+			      size_t rank, const char* sep, const char* pre,
+			      const char* post)
+
+/*
+  Synopsis: prints the descent set d to strm.
+
+  Here rank is the number of significant bits in d; the output format is
+  pre * sep * ... * post, where the * are the bits in d, output as their
+  bitposition starting from 1.
+*/
+
+{
+  strm << pre;
+
+  bool first = true;
+
+  for (size_t s = 0; s < rank; ++s) 
+    if (d.test(s)) {
+      if (first)
+	first = false;
+      else
+	strm << sep;
+      strm << s+1;
+    }
+
+  strm << post;
 
   return strm;
 }

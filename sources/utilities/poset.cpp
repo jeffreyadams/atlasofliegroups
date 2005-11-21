@@ -2,7 +2,7 @@
   This is poset.cpp
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
@@ -87,7 +87,7 @@ void Poset::hasseDiagram(graph::OrientedGraph& h) const
   for (SetElt x = 0; x < size(); ++x) {
     BitMap b = d_closure[x];
     b.remove(x);
-    findMaximals(h.edges(x),b);
+    findMaximals(h.edgeList(x),b);
   }
 }
 
@@ -111,7 +111,7 @@ void Poset::hasseDiagram(graph::OrientedGraph& h, set::SetElt max) const
   for (BitMap::iterator i = cl.begin(); i != cl.end(); ++i) {
     BitMap b = d_closure[*i];
     b.remove(*i);
-    findMaximals(h.edges(*i),b);
+    findMaximals(h.edgeList(*i),b);
   }
   
   return;

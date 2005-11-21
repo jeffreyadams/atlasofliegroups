@@ -2,7 +2,7 @@
   This is realredgp_io.cpp
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
@@ -181,7 +181,7 @@ std::ostream& printCartanOrder(std::ostream& strm,
   strm << "0:" << std::endl;
 
   for (size_t j = 1; j < g.size(); ++j) {
-    const VertexList& e = g.edges(j);
+    const VertexList& e = g.edgeList(j);
     if (e.empty())
       continue;
     strm << j << ": ";

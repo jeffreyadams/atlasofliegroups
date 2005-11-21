@@ -252,9 +252,9 @@
 		       sources/io/kl_io.cpp
 
 11-02-05: some more interesting numbers: 21,904,637 extremal pairs for the big
-	block in type E7, of size 24678 (3.6% of all possible pairs, about
+	block in type E7, of size 24,678 (3.6% of all possible pairs, about
 	8% of all comparable pairs in the lazy ordering.) 175,756,777 extremal
-	pairs for the next-to-biggest block in type E8, of size 73410 (3.2%
+	pairs for the next-to-biggest block in type E8, of size 73,410 (3.2%
 	of all possible pairs), and 5,437,760,002 for the big block in type
 	E8 (2.6% of all possible pairs, about 6% of all comparable pairs.)
 	Actually the result of the last computation was 1,142,792,706, but I 
@@ -268,3 +268,17 @@
 11-15-05: when the k-l setup has been modified, klPol can become an accessor.
 	Functions like printAllKL in kl_io.h can take a const KLContext& as
 	argument.
+
+11-19-05: now that we have k-l, I'm a bit overwhelmed by the multiple things
+	to do! (a) profile and speed up k-l and buffer construction (b) think
+	through the klsupport stuff, and the tables that will be required;
+	think about the corresponding i/o (c) set up ownership of k-l 
+	computations, probably in mainmode? (d) write testing code; code to
+	count primitive pairs; code to check the basepoint thing; dual block
+	construction; duality check (e) write W-graph stuff.
+
+11-19-05: files added: sources/gkmod/wgraph.h
+		       sources/gkmod/wgraph.cpp
+		       sources/io/wgraph_io.cpp
+		       sources/io/wgraph_io.h
+		       sources/utilities/graph.cpp

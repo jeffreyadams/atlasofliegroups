@@ -2,12 +2,16 @@
   This is kl.cpp
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
 
 #include "kl.h"
+
+#ifdef VERBOSE
+#include <iostream>
+#endif
 
 #include <cassert>
 #include <map>
@@ -300,6 +304,10 @@ void KLContext::fill()
 */
 
 {
+#ifdef VERBOSE
+  std::cerr << "computing kazhdan-lusztig polynomials ..." << std::endl;
+#endif
+
   if (d_state.test(KLFilled))
     return;
 
@@ -309,6 +317,10 @@ void KLContext::fill()
   swap(help);
 
   d_state.set(KLFilled);
+
+#ifdef VERBOSE
+  std::cerr << "done" << std::endl;
+#endif
 
   return;
 }
@@ -810,6 +822,9 @@ void Helper::fill()
 
   // do the other cases
   for (; y < d_kl.size(); ++y) {
+#ifdef VERBOSE
+    std::cerr << y << "\r";
+#endif
     try {
       fillKLRow(y);
     } catch (kl_error::KLError& e) {
@@ -817,6 +832,10 @@ void Helper::fill()
     }
     fillMuRow(y);
   }
+
+#ifdef VERBOSE
+  std::cerr << std::endl;
+#endif
 
   return;
 }
@@ -1383,7 +1402,86 @@ ThicketIterator& ThicketIterator::operator++ ()
 
 /*****************************************************************************
 
-        Chapter V -- Functions local to this module
+        Chapter V -- Functions declared in kl.h
+
+  ... explain here when it is stable ...
+
+ *****************************************************************************/
+
+namespace kl {
+
+void wGraph(wgraph::WGraph& wg, const KLContext& klc)
+
+/*
+  Synopsis: puts in wg the W-graph for this block.
+
+  Explanation: the W-graph is a graph with one vertex for each element of the
+  block; the corresponding descent set is the tau-invariant, i.e. the set of
+  generators s that are either complex descents, real type I or II, or
+  imaginary compact. Let x < y in the block such that mu(x,y) != 0, and
+  descent(x) != descent(y). Then there is an edge from x to y unless descent(x)
+  is contained in descent(y), and an edge from y to x unless descent(y) is
+  contained in descent(x). Note that the latter always happens when the length
+  difference is > 1, so that in that case there will only be an edge from
+  x to y (the edge must be there because we already assumed that the descent
+  sets were not equal.) In both cases, the coefficient corresponding to the
+  edge is mu(x,y).
+
+  NOTE: if I'm not mistaken, the edgelists come already out sorted.
+*/
+
+{
+  using namespace bitset;
+  using namespace graph;
+  using namespace kl;
+  using namespace wgraph;
+
+  wg.reset();
+  wg.resize(klc.size());
+
+  // fill in descent sets
+  for (size_t y = 0; y < klc.size(); ++y)
+    wg.descent(y) = klc.descentSet(y);
+
+  // fill in edges and coefficients
+  for (size_t y = 0; y < klc.size(); ++y) {
+    const RankFlags& d_y = wg.descent(y);
+    const MuRow& mrow = klc.muRow(y);
+    for (size_t j = 0; j < mrow.size(); ++j) {
+      size_t x = mrow[j].first;
+      const RankFlags& d_x = wg.descent(x);
+      if (d_x == d_y)
+	continue;
+      MuCoeff mu = mrow[j].second;
+      if (klc.length(y) - klc.length(x) > 1) { // add edge from x to y
+	wg.edgeList(x).push_back(y);
+	wg.coeffList(x).push_back(mu);
+	continue;
+      }
+      // if we get here, the length difference is 1
+      RankFlags d = d_y;
+      d &= d_x;
+      if (d != d_y) { // d_y is not contained in d_x
+	              // add edge from y to x
+	wg.edgeList(y).push_back(x);
+	wg.coeffList(y).push_back(mu);
+      }
+      if (d != d_x) { // d_x is not contained in d_y
+	              // add edge from x to y
+	wg.edgeList(x).push_back(y);
+	wg.coeffList(x).push_back(mu);
+      }
+    }
+  }
+
+  return;
+}
+
+}
+
+/*****************************************************************************
+
+        Chapter VI -- Functions local to this module
 
   ... explain here when it is stable ...
 

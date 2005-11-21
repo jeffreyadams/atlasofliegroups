@@ -2,7 +2,7 @@
   This is kl.h
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
@@ -20,6 +20,7 @@
 #include "bitset.h"
 #include "klsupport.h"
 #include "polynomials.h"
+#include "wgraph.h"
 
 namespace atlas {
 
@@ -36,6 +37,12 @@ namespace kl {
 }
 
 /******** function declarations *********************************************/
+
+namespace kl {
+
+  void wGraph(wgraph::WGraph&, const KLContext&);
+
+}
 
 /******** type definitions **************************************************/
 
@@ -77,6 +84,10 @@ class KLContext {
 
   const klsupport::ExtremalRow& extremalRow(size_t y) const {
     return d_support->extremalRow(y);
+  }
+
+  const bitset::RankFlags& descentSet(size_t y) const {
+    return d_support->descentSet(y);
   }
 
   bool isZero(const KLPtr p) const {

@@ -2,7 +2,7 @@
   This is klsupport.cpp
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
@@ -60,6 +60,7 @@ void KLSupport::swap(KLSupport& other)
   std::swap(d_rank,other.d_rank);
 
   d_extrPairs.swap(other.d_extrPairs);
+  d_descent.swap(other.d_descent);
   d_downset.swap(other.d_downset);
   d_lengthLess.swap(other.d_lengthLess);
 
@@ -169,7 +170,7 @@ void KLSupport::fill()
 void KLSupport::fillDownsets()
 
 /*
-  Synopsis: fills in the downsets bitmaps.
+  Synopsis: fills in the downsets bitmaps, and the descent bitsets.
 
   Explanation: here descent is taken in the weak sense of s belonging to the
   "tau-invariant" of z in b. In other words, s is a complex descent, real
@@ -181,21 +182,29 @@ void KLSupport::fillDownsets()
 
 {  
   using namespace bitmap;
+  using namespace bitset;
   using namespace descents;
 
-  std::vector<BitMap> ds(d_rank);
+  if (d_state.test(DownsetsFilled))
+    return;
+
   size_t size = d_block->size();
+  std::vector<BitMap> ds(d_rank);
+  std::vector<RankFlags> descents(size);
 
   for (size_t s = 0; s < ds.size(); ++s) {
     BitMap& b = ds[s];
     b.resize(size);
     for (size_t z = 0; z < size; ++z)
-      if (DescentStatus::isDescent(descentValue(s,z)))
+      if (DescentStatus::isDescent(descentValue(s,z))) {
 	b.insert(z);
+	descents[z].set(s);
+      }
   }
 
   // commit
   d_downset.swap(ds);
+  d_descent.swap(descents);
   d_state.set(DownsetsFilled);
 
   return;

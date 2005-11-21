@@ -2,12 +2,16 @@
   This is blocks.cpp
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
 
 #include "blocks.h"
+
+#ifdef VERBOSE
+#include <iostream>
+#endif
 
 #include <cassert>
 #include <memory>
@@ -130,6 +134,10 @@ Block::Block(complexredgp::ComplexReductiveGroup& G,
   using namespace realredgp;
   using namespace tags;
 
+#ifdef VERBOSE
+  std::cerr << "entering block construction ..." << std::endl;
+#endif
+
   RealReductiveGroup G_R(G,rf);
   ComplexReductiveGroup dG(G,DualTag()); // the dual group
   RealReductiveGroup dG_R(dG,df);
@@ -137,6 +145,10 @@ Block::Block(complexredgp::ComplexReductiveGroup& G,
 
   Helper help(G_R,dG_R);
   swap(help);
+
+#ifdef VERBOSE
+  std::cerr << "done" << std::endl;
+#endif
 }
 
 Block::~Block()
@@ -609,6 +621,9 @@ void Helper::orbitPairs()
   BlockElt xOffset = 0;
 
   while (x < d_kgb.size()) {
+#ifdef VERBOSE
+    std::cerr << x << "\r";
+#endif
     const WeylElt& w = d_kgb.tau(x);
     WeylElt dw = dualInvolution(w);
     KGBEltPair yRange = d_dualkgb.tauPacket(dw);
@@ -623,6 +638,10 @@ void Helper::orbitPairs()
       }
     }
   }
+
+#ifdef VERBOSE
+  std::cerr << std::endl;
+#endif
 
   d_firstx[d_kgb.size()] = xOffset;
   // put guards at end of d_x and d_y

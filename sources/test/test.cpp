@@ -2,7 +2,7 @@
   This is test.cpp
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
@@ -54,6 +54,8 @@
 #include "tits.h"
 #include "tori.h"
 #include "weyl.h"
+#include "wgraph.h"
+#include "wgraph_io.h"
 
 #include "testprint.h"
 #include "testrun.h"
@@ -929,6 +931,8 @@ void wgraph_f()
   using namespace realmode;
   using namespace realredgp;
   using namespace tags;
+  using namespace wgraph;
+  using namespace wgraph_io;
 
   RealReductiveGroup& G_R = currentRealGroup();
 
@@ -963,11 +967,11 @@ void wgraph_f()
   KLContext klc(kls);
   klc.fill();
 
+  WGraph wg(klc.rank());
+  kl::wGraph(wg,klc);
+  
   OutputFile file;
-  file << "For now, we just list the non-zero mu-coefficients" 
-       << std::endl << std::endl;
-
-  printMu(file,klc);
+  printWGraph(file,wg);
 
   return;
 }
@@ -980,7 +984,6 @@ void test_f()
 
 {
   using namespace basic_io;
-  using namespace block_io;
   using namespace blocks;
   using namespace bruhat;
   using namespace commands;
@@ -988,12 +991,14 @@ void test_f()
   using namespace interactive;
   using namespace ioutils;
   using namespace kl;
-  using namespace kl_io;
   using namespace klsupport;
+  using namespace partition;
   using namespace realform;
   using namespace realmode;
   using namespace realredgp;
   using namespace tags;
+  using namespace wgraph;
+  using namespace wgraph_io;
 
   RealReductiveGroup& G_R = currentRealGroup();
 
@@ -1028,21 +1033,11 @@ void test_f()
   KLContext klc(kls);
   klc.fill();
 
+  WGraph wg(klc.rank());
+  kl::wGraph(wg,klc);
+  
   OutputFile file;
-  printKLList(file,klc);
-
-#if 0
-  for (size_t z = 0; z < kls.size(); ++z) {
-    std::cout << z << ": ";
-    const ExtremalRow& extr = kls.extremalRow(z);
-    for (size_t j = 0; j < extr.size(); ++j) {
-      if (j)
-	std::cout << ", ";
-      std::cout << extr[j];
-    }
-    std::cout << std::endl;
-  }
-#endif
+  printCells(file,wg);
 
   return;
 }

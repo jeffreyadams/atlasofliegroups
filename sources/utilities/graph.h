@@ -2,7 +2,7 @@
   This is graph.h
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
@@ -10,6 +10,7 @@
 #ifndef GRAPH_H  /* guard against multiple inclusions */
 #define GRAPH_H
 
+#include "partition.h"
 #include "set.h"
 
 /******** type definitions **************************************************/
@@ -20,6 +21,8 @@ namespace graph {
 
   typedef set::SetElt Vertex;
   typedef std::vector<Vertex> VertexList;
+  typedef Vertex Edge;
+  typedef std::vector<Edge> EdgeList;
 
   class OrientedGraph;
 
@@ -33,21 +36,30 @@ class OrientedGraph {
 
  private:
 
-  std::vector<VertexList> d_edges;
+  std::vector<EdgeList> d_edges;
 
  public:
 
-/* constructors and destructors */
+// constructors and destructors
+  OrientedGraph() {}
+
   explicit OrientedGraph(size_t n):d_edges(n) {}
 
   ~OrientedGraph() {}
 
-/* accessors */
+// copy, construction and swap
+  void swap(OrientedGraph& other) {
+    d_edges.swap(other.d_edges);
+  }
+
+// accessors
+  void cells(partition::Partition&, OrientedGraph* p = 0) const;
+
   Vertex edge(Vertex x, size_t j) const {
     return d_edges[x][j];
   }
 
-  const VertexList& edges(const Vertex& x) const {
+  const EdgeList& edgeList(const Vertex& x) const {
     return d_edges[x];
   }
 
@@ -55,13 +67,17 @@ class OrientedGraph {
     return d_edges.size();
   }
 
-/* manipulators */
+// manipulators
   Vertex& edge(Vertex x, size_t j) {
     return d_edges[x][j];
   }
 
-  VertexList& edges(const Vertex& x) {
+  EdgeList& edgeList(const Vertex& x) {
     return d_edges[x];
+  }
+
+  void reset() {
+    d_edges.assign(d_edges.size(),EdgeList());
   }
 
   void resize(size_t n) {

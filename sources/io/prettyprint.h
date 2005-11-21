@@ -2,7 +2,7 @@
   This is prettyprint.h
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
@@ -62,6 +62,10 @@ std::ostream& printCoroot(std::ostream&, const rootdata::RootNbr&,
 std::ostream& printCorootList(std::ostream&, const rootdata::RootList&, 
 			      const rootdata::RootDatum&, 
 			      const char* sep = "\n");
+
+std::ostream& printDescentSet(std::ostream&, const bitset::RankFlags&, size_t,
+			      const char* sep = ",", const char* pre = "{",
+			      const char* post = "}");
 
 std::ostream& printInRootBasis(std::ostream&, rootdata::RootNbr, 
 			       const rootdata::RootDatum&);

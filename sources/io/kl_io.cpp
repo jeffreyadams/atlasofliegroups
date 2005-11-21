@@ -2,7 +2,7 @@
   This is kl_io.cpp
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
@@ -158,11 +158,19 @@ std::ostream& printKLList(std::ostream& strm, kl::KLContext& klc)
   using namespace kl;
   using namespace prettyprint;
 
-  for (size_t y = 0; y < klc.size(); ++y)
+  for (size_t y = 0; y < klc.size(); ++y) {
+#ifdef VERBOSE
+    std::cerr << y << "\r";
+#endif
     for (size_t x = 0; x <= y; ++x) {
       // this will ensure that the polynomial is put on the store
       klc.klPol(x,y);
     }
+  }
+
+#ifdef VERBOSE
+    std::cerr << std::endl;
+#endif
 
   const std::set<KLPol>& store = klc.polStore();
 

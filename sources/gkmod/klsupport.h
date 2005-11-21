@@ -2,7 +2,7 @@
   This is klsupport.h
   
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.3 
+  part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
 */
@@ -38,6 +38,7 @@ class KLSupport {
   size_t d_rank;
 
   std::vector<ExtremalRow> d_extrPairs;
+  std::vector<bitset::RankFlags> d_descent;
   std::vector<bitmap::BitMap> d_downset;
   std::vector<size_t> d_lengthLess;
 
@@ -56,6 +57,10 @@ class KLSupport {
 // accessors
   const blocks::Block& block() const {
     return *d_block;
+  }
+
+  const bitset::RankFlags& descentSet(size_t z) const {
+    return d_descent[z];
   }
 
   descents::DescentStatus::Value descentValue(size_t, size_t) const;
