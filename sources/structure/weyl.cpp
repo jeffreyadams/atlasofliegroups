@@ -290,7 +290,7 @@ bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
   return length(sw) < length(w);
 }
 
-bool WeylGroup::hasTwistedCommutation(const WeylElt& w, Generator s) const
+bool WeylGroup::hasTwistedCommutation(Generator s, const WeylElt& w) const
 
 /*
   Synopsis: tells whether w twisted-commutes with s.
@@ -349,7 +349,7 @@ unsigned long WeylGroup::involutionLength(const weyl::WeylElt& d_w) const
 
   for (Generator s = leftDescent(w); s != UndefGenerator; s = leftDescent(w)) {
     ++length;
-    if (hasTwistedCommutation(w,s))
+    if (hasTwistedCommutation(s,w))
       leftProd(w,s);
     else
       twistedConjugate(w,s);
@@ -378,7 +378,7 @@ void WeylGroup::involutionOut(weyl::WeylWord& ww, const weyl::WeylElt& d_w)
 
   for (Generator s = leftDescent(w); s != UndefGenerator; s = leftDescent(w)) {
     ww.push_back(s);
-    if (hasTwistedCommutation(w,s))
+    if (hasTwistedCommutation(s,w))
       leftProd(w,s);
     else
       twistedConjugate(w,s);

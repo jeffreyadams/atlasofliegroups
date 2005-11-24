@@ -10,7 +10,10 @@
 #ifndef KLTEST_H  /* guard against multiple inclusions */
 #define KLTEST_H
 
+#include "kgb_fwd.h"
 #include "kl_fwd.h"
+
+#include "setutils.h"
 
 namespace atlas {
 
@@ -24,6 +27,9 @@ namespace kltest {
 
 namespace kltest {
 
+  bool basePointCheck(const kgb::KGB&);
+
+  void dualityPermutation(setutils::Permutation&, const kl::KLContext&);
 }
 
 /******** type definitions **************************************************/

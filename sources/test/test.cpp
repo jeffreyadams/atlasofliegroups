@@ -36,6 +36,7 @@
 #include "kl.h"
 #include "kl_io.h"
 #include "klsupport.h"
+#include "kltest.h"
 #include "kgb.h"
 #include "kgb_io.h"
 #include "lattice.h"
@@ -85,6 +86,7 @@ namespace {
   void kllist_f();
   void poscoroots_rootbasis_f();
   void posroots_rootbasis_f();
+  void wcells_f();
   void wgraph_f();
   void roots_rootbasis_f();
   void rootdatum_f();
@@ -95,6 +97,7 @@ namespace {
   void extrkl_h();
   void klbasis_h();
   void kllist_h();
+  void wcells_h();
   void wgraph_h();
 
   // tags
@@ -203,6 +206,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("kgb",kgb_f);
   mode.add("klbasis",klbasis_f);
   mode.add("kllist",kllist_f);
+  mode.add("wcells",wcells_f);
   mode.add("wgraph",wgraph_f);
 
   return;
@@ -329,6 +333,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("kgb",nohelp_h);
   mode.add("klbasis",klbasis_h);
   mode.add("kllist",kllist_h);
+  mode.add("wcells",wcells_h);
   mode.add("wgraph",wgraph_h);
 
   /******** tags ************************************************************/
@@ -343,6 +348,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   t.insert(std::make_pair("kgb",test_tag));
   t.insert(std::make_pair("klbasis",test_tag));
   t.insert(std::make_pair("kllist",test_tag));
+  t.insert(std::make_pair("wcells",test_tag));
   t.insert(std::make_pair("wgraph",test_tag));
 
   return;
@@ -370,6 +376,13 @@ void kllist_h()
 
 {
   io::printFile(std::cerr,"kllist.help",io::MESSAGE_DIR);
+  return;
+}
+
+void wcells_h()
+
+{
+  io::printFile(std::cerr,"wcells.help",io::MESSAGE_DIR);
   return;
 }
 
@@ -689,7 +702,6 @@ void kgb_f()
   using namespace kgb_io;
   using namespace realmode;
   using namespace realredgp;
-  using namespace realredgp;
 
   RealReductiveGroup& G = currentRealGroup();
   G.fillCartan();
@@ -909,12 +921,76 @@ void rootdatum_f()
   return;
 }
 
+void wcells_f()
+
+/*
+  Synopsis: outputs the cells of the W-graph of the block.
+*/
+
+{
+  using namespace basic_io;
+  using namespace blocks;
+  using namespace bruhat;
+  using namespace commands;
+  using namespace error;
+  using namespace interactive;
+  using namespace ioutils;
+  using namespace kl;
+  using namespace klsupport;
+  using namespace partition;
+  using namespace realform;
+  using namespace realmode;
+  using namespace realredgp;
+  using namespace tags;
+  using namespace wgraph;
+  using namespace wgraph_io;
+
+  RealReductiveGroup& G_R = currentRealGroup();
+
+  try {
+    G_R.fillCartan();
+  }
+  catch (MemoryOverflow& e) {
+    e("error: memory overflow");
+    return;
+  }
+
+  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  const realredgp_io::Interface& G_RI = currentRealInterface();
+  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+  // get dual real form
+  RealForm drf;
+
+  try {
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+  }
+  catch (InputError& e) {
+    e("aborted");
+    return;
+  }
+
+  Block block(G_C,G_R.realForm(),drf);
+
+  KLSupport kls(block);
+  kls.fill();
+
+  KLContext klc(kls);
+  klc.fill();
+
+  WGraph wg(klc.rank());
+  kl::wGraph(wg,klc);
+  
+  OutputFile file;
+  printCells(file,wg);
+
+  return;
+}
+
 void wgraph_f()
 
 /*
   Synopsis: outputs the W-graph corresponding to a block.
-
-  NOTE: unfinished.
 */
 
 {
@@ -983,61 +1059,19 @@ void test_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace blocks;
-  using namespace bruhat;
-  using namespace commands;
-  using namespace error;
-  using namespace interactive;
-  using namespace ioutils;
-  using namespace kl;
-  using namespace klsupport;
-  using namespace partition;
-  using namespace realform;
+  using namespace kgb;
+  using namespace kltest;
   using namespace realmode;
   using namespace realredgp;
-  using namespace tags;
-  using namespace wgraph;
-  using namespace wgraph_io;
 
-  RealReductiveGroup& G_R = currentRealGroup();
+  RealReductiveGroup& G = currentRealGroup();
+  G.fillCartan();
 
-  try {
-    G_R.fillCartan();
-  }
-  catch (MemoryOverflow& e) {
-    e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
-  }
-  catch (InputError& e) {
-    e("aborted");
-    return;
-  }
-
-  Block block(G_C,G_R.realForm(),drf);
-
-  KLSupport kls(block);
-  kls.fill();
-
-  KLContext klc(kls);
-  klc.fill();
-
-  WGraph wg(klc.rank());
-  kl::wGraph(wg,klc);
-  
-  OutputFile file;
-  printCells(file,wg);
+  KGB kgb(G);
+  if (basePointCheck(kgb))
+    std::cerr << "true" << std::endl;
+  else
+    std::cerr << "false" << std::endl;
 
   return;
 }

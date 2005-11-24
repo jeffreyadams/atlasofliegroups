@@ -251,7 +251,7 @@ class WeylGroup {
 
   bool hasDescent(Generator, const WeylElt&) const;
 
-  bool hasTwistedCommutation(const WeylElt&, Generator) const;
+  bool hasTwistedCommutation(Generator, const WeylElt&) const;
 
   void invert(WeylElt&) const;
 

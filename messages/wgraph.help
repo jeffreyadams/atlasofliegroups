@@ -1,13 +1,13 @@
 
 ******** temporary **********************************************************
 
-For now, the "wgraph" command prints out the list of all non-zero 
-mu-coefficients for all pairs (\gamma,\nu) with \gamma < \nu. This is the
-main ingredient requiired to construct the W-graph of the block. Soon this
-will output the data for the actual W-graph.
+The "wgraph" command prints out the W-graph of the block. This corresponds
+to the Hecke algebra action that has allowed us to define Kazhdan-Lusztig
+polynomials; essentially it describes the action of the Hecke generators in
+the Kazhdan-Lusztig basis.
 
-For now, we use the numbering of the elements in the block to represent \gamma
-and \nu. To give more meaning to these numbers, use the "block" command, that
-will relate the various \nu to fundamental representations, say, in terms of
-Cayley transforms and cross-actions.
+For now, we use the numbering of the elements in the block to parametrize
+representations. To give more meaning to these numbers, use the "block" 
+command, that will relate the various \nu to fundamental representations, 
+say, in terms of Cayley transforms and cross-actions.
 

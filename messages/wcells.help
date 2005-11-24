@@ -1,0 +1,10 @@
+
+******** temporary **********************************************************
+
+The "wcells" command prints out the normalized cells of the W-graph of the
+block. This means that the cells are output abstractly, renumbered from zero.
+This is usually what one wants, for legibility and comparison purposes;
+however, the partition of the elements of the block into cells is lost in
+this way.
+
+

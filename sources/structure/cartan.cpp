@@ -511,7 +511,7 @@ void Helper::cayleyPart(rootdata::RootList& so,
 
   for (size_t j = 0; j < wi.size(); ++j) {
     Generator s = wi[j];
-    if (W.hasTwistedCommutation(w,s)) { // add new root to so
+    if (W.hasTwistedCommutation(s,w)) { // add new root to so
       so.push_back(rd.simpleRootNbr(s));
       W.leftProd(w,s);
     }
@@ -547,7 +547,7 @@ void Helper::crossPart(weyl::WeylWord& ww, const weyl::WeylWord& wi,
 
   for (size_t j = 0; j < wi.size(); ++j) {
     Generator s = wi[j];
-    if (W.hasTwistedCommutation(w,s)) { // cayley transform
+    if (W.hasTwistedCommutation(s,w)) { // cayley transform
       W.leftProd(w,s);
     } else { // cross action
       ww.push_back(s);
