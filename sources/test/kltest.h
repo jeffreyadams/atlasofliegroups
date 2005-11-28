@@ -27,7 +27,7 @@ namespace kltest {
 
 namespace kltest {
 
-  bool basePointCheck(const kgb::KGB&);
+  bool checkBasePoint(const kgb::KGB&);
 
   void dualityPermutation(setutils::Permutation&, const kl::KLContext&);
 }

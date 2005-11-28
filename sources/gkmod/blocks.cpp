@@ -658,7 +658,7 @@ void Helper::orbitPairs()
 
 /*****************************************************************************
 
-        Chapter III -- Functions local to kgb.cpp
+        Chapter III -- Functions local to blocks.cpp
 
   ... explain here when it is stable ...
 

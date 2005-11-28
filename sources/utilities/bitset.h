@@ -129,6 +129,10 @@ template<> class BitSetBase<1> {
     return d_bits; // automatic conversion to bool
   }
 
+  bool any(const BitSetBase<1>& b) const {
+    return d_bits & b.d_bits; // automatic conversion to bool
+  }
+
   iterator begin() const;
 
   bool contains (const BitSetBase<1>& b) const {
@@ -708,6 +712,10 @@ template<size_t n> class BitSet
 
   bool any() const {
     return Base::any();
+  }
+
+  bool any(const BitSet& b) const {
+    return Base::any(b);
   }
 
   iterator begin() const {

@@ -21,6 +21,7 @@ namespace atlas {
 namespace klsupport {
 
 class KLSupport;
+class KLSupport_new;
 
 typedef std::vector<size_t> ExtremalRow;
 

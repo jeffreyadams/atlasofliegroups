@@ -158,26 +158,14 @@ std::ostream& printKLList(std::ostream& strm, kl::KLContext& klc)
   using namespace kl;
   using namespace prettyprint;
 
-  for (size_t y = 0; y < klc.size(); ++y) {
-#ifdef VERBOSE
-    std::cerr << y << "\r";
-#endif
-    for (size_t x = 0; x <= y; ++x) {
-      // this will ensure that the polynomial is put on the store
-      klc.klPol(x,y);
-    }
-  }
-
-#ifdef VERBOSE
-    std::cerr << std::endl;
-#endif
-
   const std::set<KLPol>& store = klc.polStore();
+  std::vector<KLPol> polList;
 
-  for (std::set<KLPol>::iterator i = store.begin(); i != store.end(); ++i) {
-    if (i->isZero())
-      continue;
-    printPol(strm,*i,KLIndeterminate);
+  std::copy(store.begin(),store.end(),back_inserter(polList));
+  std::sort(polList.begin(),polList.end(),polynomials::compare<KLCoeff>);
+
+  for (size_t j = 1; j < polList.size(); ++j) {
+    printPol(strm,polList[j],KLIndeterminate);
     strm << std::endl;
   }
 

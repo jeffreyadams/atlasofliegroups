@@ -276,9 +276,34 @@
 	computations, probably in mainmode? (d) write testing code; code to
 	count primitive pairs; code to check the basepoint thing; dual block
 	construction; duality check (e) write W-graph stuff.
+11-24-05: (e) is done
 
 11-19-05: files added: sources/gkmod/wgraph.h
 		       sources/gkmod/wgraph.cpp
 		       sources/io/wgraph_io.cpp
 		       sources/io/wgraph_io.h
 		       sources/utilities/graph.cpp
+
+11-24-05: very interesting results from profiling the block construction for
+	E7: allmost all the time goes to orbitPairs(), which I already knew,
+	and within orbitPairs, almost all the time goes to tauPacket(), which
+	came as a surprise. It should be possibl to speed up by a factor of
+	five, I believe.
+
+11-25-05: started work on reorganizing the k-l computation. Took d_extrPairs
+	out of KLSupport, and replaced it by d_extr in KLContext. Although
+	this is a little bit less pleasant, this setup allows us to keep only
+	those entries that yield a non-zero polynomial. The thicket-fill now
+	becomes even a little bit worse. The d_extr field in Thicket can be
+	taken out, I believe, although it is probably cleaner this way;
+	actually Thicket should perhaps have its own klPol function, so
+	that the general one can be rewritten. The next step now is to go
+	from extremal pairs to primitive pairs.
+
+11-26-05: continuing from yesterday. Cleaned up yesterday's stuff a little bit
+	more, and introduced primitive pairs. The write-out function was
+	a little bit hairy to get right, but should be ok now. It is already
+	used for the direct recursion cases; it should now also be introduced
+	for the thicket and completePacket stuff. The cost of remembering
+	all the primitive pairs appears to be around 20%, but it is certainly
+	worth it speedwise.

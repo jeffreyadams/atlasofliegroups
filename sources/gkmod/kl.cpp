@@ -42,6 +42,8 @@ namespace atlas {
 
 namespace {
 
+  void pause() {;}
+
   using namespace kl;
 
   size_t firstAscent(const descents::DescentStatus&,
@@ -106,7 +108,17 @@ namespace {
       return d_support->block().inverseCayley(s,y);
     }
 
+    using KLContext::klPol;
+
+    const KLPol& klPol(size_t, size_t, KLRow::const_iterator,
+		       klsupport::ExtremalRow::const_iterator,
+		       klsupport::ExtremalRow::const_iterator) const;
+
     MuCoeff lengthOneMu(size_t, size_t) const;
+
+    void makeExtremalRow(klsupport::ExtremalRow&, size_t) const;
+
+    void makePrimitiveRow(klsupport::ExtremalRow&, size_t) const;
 
     size_t orbit(size_t y) const {
       return d_support->block().x(y);
@@ -129,9 +141,14 @@ namespace {
 
     void fillThickets(size_t);
 
-    void muCorrection(std::vector<KLPol>&, size_t, size_t);
+    void muCorrection(std::vector<KLPol>&, const klsupport::ExtremalRow&,
+		      size_t, size_t);
 
-    void recursionRow(std::vector<KLPol>&, size_t, size_t);
+    void recursionRow(std::vector<KLPol>&, const klsupport::ExtremalRow&,
+		      size_t, size_t);
+
+    void writeRow(const std::vector<KLPol>&, const klsupport::ExtremalRow&,
+		  size_t);
   };
 
   class Thicket {
@@ -143,9 +160,17 @@ namespace {
 
   private:
 
+    typedef klsupport::ExtremalRow::iterator PI;
+    typedef KLRow::iterator KLI;
+
     std::vector<size_t> d_vertices;
     std::vector<EdgeList> d_edges;
     std::vector<size_t> d_xlist;
+    std::vector<klsupport::ExtremalRow> d_extr;
+    std::vector<klsupport::ExtremalRow> d_prim;
+    std::vector<KLRow> d_klr;
+    std::vector<PI> d_firstPrim;
+    std::vector<KLI> d_firstKL;
     Helper* d_helper;
      
   public:
@@ -174,11 +199,20 @@ namespace {
       return d_edges[j];
     }
 
-    const klsupport::ExtremalRow& extremalRow(size_t j) const {
-      return d_helper->extremalRow(d_vertices[j]);
+    const KLPol& klPol(size_t x, size_t pos) const {
+      return d_helper->klPol(x,d_vertices[pos],d_firstKL[pos],d_firstPrim[pos],
+			     d_prim[pos].end());
+    }
+
+    const klsupport::ExtremalRow& primitiveRow(size_t j) const {
+      return d_prim[j];
     }
 
     size_t nonExtremal(size_t) const;
+
+    KLPtr one() const {
+      return d_helper->d_one;
+    }
 
     size_t rank() const {
       return d_helper->rank();
@@ -192,7 +226,15 @@ namespace {
       return d_vertices;
     }
 
+    KLPtr zero() const {
+      return d_helper->d_zero;
+    }
+
     // manipulators
+    bool ascentCompute(size_t, size_t);
+
+    void edgeCompute(size_t, size_t, const Edge&);
+
     void fill();
 
     void fillXList();
@@ -208,13 +250,14 @@ namespace {
   };
 
   struct Thicket::Edge {
+    size_t source;
     size_t y;
     size_t s;
     std::vector<KLPol> recursion;
     // constructors and destructors
     Edge() {}
-    Edge(size_t y, size_t s, const std::vector<KLPol>& r)
-      :y(y), s(s), recursion(r) {}
+    Edge(size_t x, size_t y, size_t s, const std::vector<KLPol>& r)
+      :source(x), y(y), s(s), recursion(r) {}
   };
 
   class ThicketIterator {
@@ -276,6 +319,53 @@ KLContext::KLContext(klsupport::KLSupport& kls)
 }
 
 /******** copy, assignment and swap ******************************************/
+KLContext::KLContext(const KLContext& other)
+  :d_state(other.d_state),
+   d_support(other.d_support),
+   d_extr(other.d_extr),
+   d_mu(other.d_mu),
+   d_store(other.d_store)
+
+/*
+  Synopsis: copy constructor.
+
+  The difficulty here is that copying the store invalidates all iterators
+  into it! So they must all be reset. This will be improved in the future.
+*/
+
+{
+  // reset iterators
+  d_zero = d_store.find(Zero);
+  d_one = d_store.find(One);
+
+  d_kl.resize(other.d_kl.size());
+
+  for (size_t y = 0; y < d_kl.size(); ++y) {
+    d_kl[y].resize(other.d_kl[y].size());
+    for (size_t j = 0; j < d_kl[y].size(); ++j)
+      d_kl[y][j] = d_store.find(*other.d_kl[y][j]);
+  }
+}
+
+KLContext& KLContext::operator= (const KLContext& other)
+
+/*
+  Synopsis: assignment operator.
+
+  Use copy constructor. This requires a check for self-assignment, or the
+  source would be destroyed!
+*/
+
+{
+  // handle self-assignment
+  if (&other != this) {
+    this->~KLContext();
+    new(this) KLContext(other);
+  }
+
+  return *this;
+}
+
 void KLContext::swap(KLContext& other)
 
 {
@@ -283,10 +373,14 @@ void KLContext::swap(KLContext& other)
 
   std::swap(d_support,other.d_support);
 
+  d_extr.swap(other.d_extr);
+
   d_kl.swap(other.d_kl);
   d_mu.swap(other.d_mu);
 
   d_store.swap(other.d_store);
+  std::swap(d_zero,other.d_zero);
+  std::swap(d_one,other.d_one);
 
   return;
 }
@@ -348,63 +442,25 @@ const KLPol& KLContext::klPol(size_t x, size_t y)
 */
 
 {
-  using namespace blocks;
-  using namespace descents;
   using namespace klsupport;
 
-  if (length(x) >= length(y))
-    return x == y ? One : Zero;
+  typedef ExtremalRow::const_iterator EI;
 
-  const Block& block = d_support->block();
+  const ExtremalRow& pr = d_extr[y];
+  const KLRow& klr = d_kl[y];
 
-  const DescentStatus& d_y = block.descent(y);
-  const DescentStatus& d_x = block.descent(x);
-
-  size_t s = goodAscent(d_x,d_y,rank());
-
-  if (s != rank()) // found a good ascent
-    switch (block.descentValue(s,x)) {
-    case DescentStatus::ComplexAscent: {
-      size_t x1 = block.cross(s,x);
-      return klPol(x1,y);
-    }
-      break;
-    case DescentStatus::RealNonparity: {
+  if (d_support->primitivize(x,descentSet(y))) {
+    EI xptr = std::lower_bound(pr.begin(),pr.end(),x);
+    if (xptr != pr.end() and *xptr == x) { // result is nonzero
+      size_t xpos = xptr - pr.begin();
+      return *klr[xpos];
+    } else {
       return Zero;
     }
-      break;
-    case DescentStatus::ImaginaryTypeI: {
-      size_t x1 = block.cayley(s,x).first;
-      return klPol(x1,y);
-    }
-      break;
-    default: // this cannot happen
-      assert(false);
-      break;
-    }
-
-  s = firstAscent(d_x,d_y,rank());
-
-  if (s != rank()) { // have type II reduction
-    BlockEltPair x1 = block.cayley(s,x);
-    KLPol p = klPol(x1.first,y);
-    p.safeAdd(klPol(x1.second,y));
-    d_store.insert(p);
-    return *d_store.find(p);
   }
-
-  // if we reach this point, x is extremal w.r.t. y
-
-  const ExtremalRow& e = extremalRow(y);
-  if (not binary_search(e.begin(),e.end(),x)) // x is not found
-    return Zero;
-  // get position of x in e
-  size_t j = lower_bound(e.begin(),e.end(),x) - e.begin();
-  KLPtr p = d_kl[y][j];
-  if (isZero(p))
-    return Zero;
-  else
-    return *p;
+  
+  // if we get here, the primitivization hit a real compact ascent
+  return Zero;
 }
 
 MuCoeff KLContext::mu(size_t x, size_t y) const
@@ -565,6 +621,39 @@ MuCoeff Helper::goodDescentMu(size_t x, size_t y, size_t s) const
   return UndefMuCoeff;
 }
 
+const KLPol& Helper::klPol(size_t x, size_t y, 
+			   KLRow::const_iterator klv,
+			   klsupport::ExtremalRow::const_iterator p_begin,
+			   klsupport::ExtremalRow::const_iterator p_end) const
+
+/*
+  Synopsis: returns the Kazhdan-Lusztig polynomial for x corresponding to
+  the given row.
+
+  Precondition: klv holds the tail of the set of primitive Kazhdan-Lusztig
+  polynomials for y, enough to find the required one by elementary lookup;
+  [p_begin,p_end[ is the corresponding range of primitve elements.
+
+  Algorithm: primitivize x w.r.t. the descents in y; if a real compact
+  situation is encountered, return zero; otherwise look up the primitve
+  x in the extremal range.
+*/
+
+{
+  size_t xp = x;
+
+  if (d_support->primitivize(xp,descentSet(y))) {
+    if (std::binary_search(p_begin,p_end,xp)) { // result is nonzero
+      size_t xpos = std::lower_bound(p_begin,p_end,xp) - p_begin;
+      return *klv[xpos];
+    } else {
+      return Zero;
+    }
+  } else {
+    return Zero;
+  }
+}
+
 MuCoeff Helper::lengthOneMu(size_t x, size_t y) const
 
 /*
@@ -587,6 +676,59 @@ MuCoeff Helper::lengthOneMu(size_t x, size_t y) const
 
   // if we get here, x is extremal w.r.t. y
   return recursiveMu(x,y);
+}
+
+void Helper::makeExtremalRow(klsupport::ExtremalRow& e, size_t y) const
+
+/*
+  Synopsis: puts in e the list of all x primitve w.r.t. y.
+
+  Explanation: this means that either x = y, or length(x) < length(y),
+  and every descent for y is a descent for x.
+*/
+
+{    
+  using namespace bitmap;
+
+  BitMap b(size());
+  size_t c = d_support->lengthLess(length(y));
+
+  b.fill(c);
+  b.insert(y);
+
+  // extremalize
+  d_support->extremalize(b,descentSet(y));
+  // copy to list
+  std::copy(b.begin(),b.end(),back_inserter(e));
+
+  return;
+}
+
+void Helper::makePrimitiveRow(klsupport::ExtremalRow& e, size_t y) const
+
+/*
+  Synopsis: puts in e the list of all x extremal w.r.t. y.
+
+  Explanation: this means that either x = y, or length(x) < length(y),
+  and every descent for y is either a descent, or an imaginary type II
+  ascent for x.
+*/
+
+{    
+  using namespace bitmap;
+
+  BitMap b(size());
+  size_t c = d_support->lengthLess(length(y));
+
+  b.fill(c);
+  b.insert(y);
+
+  // extremalize
+  d_support->primitivize(b,descentSet(y));
+  // copy to list
+  std::copy(b.begin(),b.end(),back_inserter(e));
+
+  return;
 }
 
 MuCoeff Helper::recursiveMu(size_t x, size_t y) const
@@ -727,32 +869,29 @@ void Helper::completePacket(size_t y)
     filled.pop();
 
     for (size_t s = 0; s < rank(); ++s) {
-      if (descentValue(s,y1) != DescentStatus::RealTypeII)
+     if (descentValue(s,y1) != DescentStatus::RealTypeII)
 	continue;
       size_t y2 = cross(s,y1);
       std::set<size_t>::iterator i = empty.find(y2);
       if (i != empty.end()) { // found a new row
-	// fill row y2
-	std::vector<KLPol> klr;
-	recursionRow(klr,y2,s);
-	const ExtremalRow& e = d_support->extremalRow(y2);
-	d_kl[y2].resize(e.size(),d_zero);
-	// klr[j] is P_{x,y2}+P_{x,y1}, for x = e[j]
-	for (size_t j = 0; j < klr.size(); ++j) {
+ 	// fill row y2
+	std::vector<KLPol> klv;
+	ExtremalRow e;
+	makeExtremalRow(e,y2);
+	recursionRow(klv,e,y2,s);
+	// klv[j] is P_{x,y2}+P_{x,y1}, for x = e[j]
+	for (size_t j = 0; j < klv.size(); ++j) {
 	  size_t x = e[j];
-	  KLPol pol = klr[j];
 	  try {
-	    pol.safeSubtract(klPol(x,y1));
+	    klv[j].safeSubtract(klPol(x,y1));
 	  }
 	  catch (error::NumericUnderflow& e){
 	    throw kl_error::KLError(x,y1,__LINE__,
 				    static_cast<const KLContext&>(*this));
 	  }
-	  if (not pol.isZero()) {
-	    d_store.insert(pol);
-	    d_kl[y2][j] = d_store.find(pol);
-	  }
 	}
+	// write out row
+	writeRow(klv,e,y2);
 	// update empty and filled
 	empty.erase(i);
 	filled.push(y2);
@@ -779,17 +918,17 @@ void Helper::directRecursion(size_t y, size_t s)
 */
 
 {  
-  std::vector<KLPol> klr;
+  using namespace klsupport;
 
-  // put result of recursion formula in klr
-  recursionRow(klr,y,s);
+  std::vector<KLPol> klv;
+  ExtremalRow e;
+
+  // put result of recursion formula in klv
+  makeExtremalRow(e,y);
+  recursionRow(klv,e,y,s);
 
   // write result
-  for (size_t j = 0; j < klr.size(); ++j)
-    if (not klr[j].isZero()) {
-      d_store.insert(klr[j]);
-      d_kl[y][j] = d_store.find(klr[j]);
-    }
+  writeRow(klv,e,y);
 
   return;
 }
@@ -805,6 +944,7 @@ void Helper::fill()
   d_support->fill();
 
   // resize the lists
+  d_extr.resize(d_support->size());
   d_kl.resize(d_support->size());
   d_mu.resize(d_support->size());
 
@@ -814,9 +954,9 @@ void Helper::fill()
 
   // do the minimal length cases; they come first in the enumeration
   for (; length(y) == minLength; ++y) {
+    d_extr[y].push_back(y);
     // the k-l polynomial is 1
-    KLPtr klp = d_store.find(One);
-    d_kl[y].push_back(klp);
+    d_kl[y].push_back(d_one);
     // there are no mu-coefficients
   }
 
@@ -834,7 +974,7 @@ void Helper::fill()
   }
 
 #ifdef VERBOSE
-  std::cerr << std::endl;
+  std::cerr << y << std::endl;
 #endif
 
   return;
@@ -988,10 +1128,11 @@ void Helper::fillThickets(size_t y)
   return;
 }
 
-void Helper::muCorrection(std::vector<KLPol>& klp, size_t y, size_t s)
+void Helper::muCorrection(std::vector<KLPol>& klv, 
+			  const klsupport::ExtremalRow& e, size_t y, size_t s)
 
 /*
-  Synopsis: subtracts from klp the correcting terms in the k-l recursion.
+  Synopsis: subtracts from klv the correcting terms in the k-l recursion.
 
   Precondtion: klp contains the terms corresponding to c_s.c_y, for the x that
   are extremal w.r.t. y; the mu-table and kl-table has been filled in for 
@@ -1020,7 +1161,6 @@ void Helper::muCorrection(std::vector<KLPol>& klp, size_t y, size_t s)
   }
 
   const MuRow& mrow = d_mu[y1];
-  const ExtremalRow& e = extremalRow(y);
   size_t l_y = length(y);
 
   for (size_t i = 0; i < mrow.size(); ++i) {
@@ -1038,11 +1178,11 @@ void Helper::muCorrection(std::vector<KLPol>& klp, size_t y, size_t s)
       size_t x = e[j];
       if (length(x) > l_z)
 	break;
-      // subtract x^d.mu.P_{x,z} from klp[j], where d = 1/2(l(y)-l(z))
+      // subtract x^d.mu.P_{x,z} from klv[j], where d = 1/2(l(y)-l(z))
       const KLPol& pol = klPol(x,z);
       Degree d = (l_y-l_z)/2;
       try {
-	klp[j].safeSubtract(pol,d,mu);
+	klv[j].safeSubtract(pol,d,mu);
       }
       catch (error::NumericUnderflow& e){
 	throw kl_error::KLError(x,y,__LINE__,
@@ -1055,10 +1195,11 @@ void Helper::muCorrection(std::vector<KLPol>& klp, size_t y, size_t s)
   return;
 }
 
-void Helper::recursionRow(std::vector<KLPol>& klr, size_t y, size_t s)
+void Helper::recursionRow(std::vector<KLPol>& klv, 
+			  const klsupport::ExtremalRow& e,size_t y, size_t s)
 
 /*
-  Synopsis: puts in klr the right-hand side of the recursion formula for y
+  Synopsis: puts in klv the right-hand side of the recursion formula for y
   corresponding to the descent s.
 
   Precondition: s is either a complex, or a real type I or type II descent 
@@ -1088,35 +1229,32 @@ void Helper::recursionRow(std::vector<KLPol>& klr, size_t y, size_t s)
     y1 = inverseCayley(s,y).first;
   }
 
-  const ExtremalRow& e = d_support->extremalRow(y);
-  d_kl[y].resize(e.size(),d_zero);
+  klv.resize(e.size());
 
-  klr.resize(e.size());
-
-  for (size_t j = 0; j < klr.size()-1; ++j) {
+  for (size_t j = 0; j < klv.size()-1; ++j) {
     size_t x = e[j];
     switch (descentValue(s,x)) {
     case DescentStatus::ImaginaryCompact: {
       // (q+1)P_{x,y1}
-      klr[j] = klPol(x,y1);
-      klr[j].safeAdd(klr[j],1);
+      klv[j] = klPol(x,y1);
+      klv[j].safeAdd(klv[j],1);
     }
       break;
     case DescentStatus::ComplexDescent: {
       size_t x1 = cross(s,x);
       // P_{x1,y1}+q.P_{x,y1}
-      klr[j] = klPol(x1,y1);
-      klr[j].safeAdd(klPol(x,y1),1);
+      klv[j] = klPol(x1,y1);
+      klv[j].safeAdd(klPol(x,y1),1);
     }
       break;
     case DescentStatus::RealTypeI: {
       BlockEltPair x1 = inverseCayley(s,x);
       // P_{x1.first,y1}+P_{x1.second,y1}+(q-1)P_{x,y1}
-      klr[j] = klPol(x1.first,y1);
-      klr[j].safeAdd(klPol(x1.second,y1));
-      klr[j].safeAdd(klPol(x,y1),1);
+      klv[j] = klPol(x1.first,y1);
+      klv[j].safeAdd(klPol(x1.second,y1));
+      klv[j].safeAdd(klPol(x,y1),1);
       try {
-	klr[j].safeSubtract(klPol(x,y1));
+	klv[j].safeSubtract(klPol(x,y1));
       }
       catch (error::NumericUnderflow& e){
 	throw kl_error::KLError(x,y,__LINE__,
@@ -1127,10 +1265,10 @@ void Helper::recursionRow(std::vector<KLPol>& klr, size_t y, size_t s)
     case DescentStatus::RealTypeII: {
       size_t x1 = inverseCayley(s,x).first;
       // P_{x_1,y_1}+qP_{x,y1}-P_{s.x,y1}
-      klr[j] = klPol(x1,y1);
-      klr[j].safeAdd(klPol(x,y1),1);
+      klv[j] = klPol(x1,y1);
+      klv[j].safeAdd(klPol(x,y1),1);
       try {
-	klr[j].safeSubtract(klPol(cross(s,x),y1));
+	klv[j].safeSubtract(klPol(cross(s,x),y1));
       }
       catch (error::NumericUnderflow& e){
 	throw kl_error::KLError(x,y,__LINE__,
@@ -1145,10 +1283,86 @@ void Helper::recursionRow(std::vector<KLPol>& klr, size_t y, size_t s)
   }
 
   // last k-l polynomial is 1
-  klr.back() = One;
+  klv.back() = One;
 
   // do mu-correction
-  muCorrection(klr,y,s);
+  muCorrection(klv,e,y,s);
+
+  return;
+}
+
+void Helper::writeRow(const std::vector<KLPol>& klv, 
+		      const klsupport::ExtremalRow& er, size_t y)
+
+/*
+  Synopsis: writes down row y in d_kl and d_extr.
+
+  Precondition: klv contains the polynomials corresponding to the extremal
+  values in the row; e contains the corresponding block elements.
+
+  Explanation: the difficulty is that we want to write down the _primitive_
+  elements, i.e., those x for which all descents for y are either descents
+  or imaginary type II ascents; and moreover, we write down only those values
+  for which the polynomial is nonzero. The values for which there is an
+  imaginary type II ascent are computed "on the fly", from higher up
+  values in the row.
+*/
+
+{
+  using namespace blocks;
+  using namespace klsupport;
+
+  ExtremalRow pr;
+  makePrimitiveRow(pr,y);
+  
+  KLRow klr(pr.size());
+  ExtremalRow nzpr(pr.size());
+  KLRow::iterator new_pol = klr.end();
+  ExtremalRow::iterator new_extr = nzpr.end();
+  ExtremalRow::iterator nzpr_end = nzpr.end();
+
+  // set stops in pr at extremal elements
+  std::vector<size_t> stop(er.size()+1);
+  stop[0] = 0;
+
+  for (size_t j = 0; j < er.size(); ++j) {
+    size_t epos = std::lower_bound(pr.begin(),pr.end(),er[j]) - pr.begin() + 1;
+    stop[j+1] = epos;
+  }
+
+  // write polynomials
+  for (size_t j = er.size(); j;) {
+    --j;
+    // insert extremal polynomial
+    if (not klv[j].isZero()) {
+      --new_pol;
+      *new_pol = d_store.find(klv[j]);
+      if (*new_pol == d_store.end())
+	*new_pol = d_store.insert(klv[j]).first;
+      --new_extr;
+      *new_extr = er[j];
+    }
+    // do the others
+    for (size_t i = stop[j+1]-1; i > stop[j];) {
+      --i;
+      size_t s = firstAscent(descent(pr[i]),descent(y),rank());
+      BlockEltPair x1 = cayley(s,pr[i]);
+      KLPol pol = klPol(x1.first,y,new_pol,new_extr,nzpr_end);
+      pol.safeAdd(klPol(x1.second,y,new_pol,new_extr,nzpr_end));
+      if (not pol.isZero()) {
+	--new_pol;
+	*new_pol = d_store.find(pol);
+	if (*new_pol == d_store.end())
+	  *new_pol = d_store.insert(pol).first;
+	--new_extr;
+	*new_extr = pr[i];
+      }
+    }
+  }
+
+  // commit
+  copy(new_pol,klr.end(),back_inserter(d_kl[y]));
+  copy(new_extr,nzpr.end(),back_inserter(d_extr[y]));
 
   return;
 }
@@ -1173,7 +1387,14 @@ Thicket::Thicket(Helper& h, size_t y)
 
   Explanation: the thicket of y is the connected component of y in the graph
   whose edges are the real type II cross-actions. It is therefore contained
-  in the R-packet of y.
+  in the R-packet of y. The edges of the thicket are a spanning tree; each
+  edge goes from y1 to y2, where y2 is obtained from y1 through real cross
+  action by s (the position of y2 in the vertex list, and s, are recorded
+  in the edge). The reursion recorded is the recursion for s as a descent of
+  y2. In this way, we can move along a path of edges and have the required
+  recursion formulas available for computing the polynomial for y2 from
+  that of y1 (all edges are two-sided, i.e., we also make the corresponding
+  edge from y2 to y1.)
 */
 
 {
@@ -1199,10 +1420,8 @@ Thicket::Thicket(Helper& h, size_t y)
       std::pair<MI,bool> ins = thicket.insert(std::make_pair(y2,EdgeList()));
       if (ins.second) { // y2 was new
 	EdgeList& e2 = ins.first->second;
-	e1.push_back(Edge(y2,s,std::vector<KLPol>()));
-	e2.push_back(Edge(y1,s,std::vector<KLPol>()));
-	d_helper->recursionRow(e1.back().recursion,y2,s);
-	d_helper->recursionRow(e2.back().recursion,y1,s);
+	e1.push_back(Edge(y1,y2,s,std::vector<KLPol>()));
+	e2.push_back(Edge(y2,y1,s,std::vector<KLPol>()));
 	toDo.push(y2);
       }
     }
@@ -1222,11 +1441,40 @@ Thicket::Thicket(Helper& h, size_t y)
   // revert to relative addresses in EdgeLists
   for (size_t j = 0; j < d_edges.size(); ++j) {
     EdgeList& el = d_edges[j];
-    for (size_t i = 0; i < el.size(); ++i)
-      // replace el[i].y by its position in d_vertices
+    for (size_t i = 0; i < el.size(); ++i) {
+      // replace el[i].y and el[i].source by its position in d_vertices
+      el[i].source = std::lower_bound(d_vertices.begin(),d_vertices.end(),
+				      el[i].source) - d_vertices.begin();
       el[i].y = std::lower_bound(d_vertices.begin(),d_vertices.end(),el[i].y)
 	- d_vertices.begin();
+    }
   }
+
+  // make extremal lists
+  d_extr.resize(thicket.size());
+
+  for (size_t j = 0; j < d_extr.size(); ++j)
+    d_helper->makeExtremalRow(d_extr[j],d_vertices[j]);
+
+  // make primitive lists
+  d_prim.resize(thicket.size());
+
+  for (size_t j = 0; j < d_prim.size(); ++j)
+    d_helper->makePrimitiveRow(d_prim[j],d_vertices[j]);
+
+  // fill in recursions
+  for (size_t j = 0; j < size(); ++j) {
+    EdgeList& el = d_edges[j];
+    for (size_t i = 0; i < el.size(); ++i) {
+      size_t y2 = d_vertices[el[i].y];
+      d_helper->recursionRow(el[i].recursion,d_extr[el[i].y],y2,el[i].s);
+    }
+  }
+
+  // resize kl lists
+  d_klr.resize(size());
+  d_firstKL.resize(size());
+  d_firstPrim.resize(size());
 }
 
 /******** accessors **********************************************************/
@@ -1250,10 +1498,108 @@ size_t Thicket::nonExtremal(size_t x) const
 
 /******** manipulators *******************************************************/
 
+bool Thicket::ascentCompute(size_t x, size_t pos)
+
+/*
+  Synopsis: checks if x has an ascent in row pos, and computes the K-L pol in
+  that case.
+
+  Precondition: x is primitive in the row;
+
+  Explanation: If the ascent exists, it will be imaginary type II. if 
+  x1 = (x1.first,x1.second) is the corresponding Cayley transform, the
+  formula is P_x = P_x1.first + P_x1.second, both of which can be read off
+  from the known part of the row.
+*/
+
+{
+  using namespace blocks;
+
+  size_t y = d_vertices[pos];
+  size_t s = firstAscent(descent(x),descent(y),rank());
+
+  if (s == rank()) // no ascent
+    return false;
+
+  BlockEltPair x1 = d_helper->cayley(s,x);
+  KLPol pol = klPol(x1.first,pos);
+  pol.safeAdd(klPol(x1.second,pos));
+
+  if (not pol.isZero()) { // write pol
+    d_helper->d_store.insert(pol);
+    --d_firstKL[pos];
+    *d_firstKL[pos] = d_helper->d_store.find(pol);
+    --d_firstPrim[pos];
+    *d_firstPrim[pos] = x;
+  }
+  
+  return true;
+}
+
+void Thicket::edgeCompute(size_t x, size_t pos, const Edge& e)
+
+/*
+  Synopsis: computes the k-l polynomial for x in row pos, using the recurrence
+  relation from e.
+
+  Precondition: x is extremal in the row; e points towards pos; the polynomial
+  for x for the source of e is known.
+
+  Explanation: P_{x,pos} + P_{x,source} will be given by the recurrence 
+  relation corresponding to x.
+*/
+
+{
+  using namespace klsupport;
+
+  const ExtremalRow& er = d_extr[pos];
+  size_t xpos = std::lower_bound(er.begin(),er.end(),x) - er.begin();
+
+  KLPol pol = e.recursion[xpos];
+
+  try {
+    pol.safeSubtract(klPol(x,e.source));
+  }
+  catch (error::NumericUnderflow& err){
+    throw kl_error::KLError(x,d_vertices[pos],__LINE__,
+			    static_cast<const KLContext&>(*d_helper));
+  }
+
+  if (not pol.isZero()) { // write pol
+    d_helper->d_store.insert(pol);
+    --d_firstKL[pos];
+    *d_firstKL[pos] = d_helper->d_store.find(pol);
+    --d_firstPrim[pos];
+    *d_firstPrim[pos] = x;
+  }
+  
+  return;
+}
+
 void Thicket::fill()
 
 /*
   Synopsis: fills in the k-l polynomials for the elements of the thicket.
+
+  Algorithm: for each element of the thicket, we have the list of primitive
+  elements pr[j], and a list of k-l polynomials klv[j]. We are going to fill 
+  in the polynomials downwards from the top (the top elements being all ones); 
+  at the end of the process, we will have iterators pointing into each pr[j]
+  and each klv[j], where the extremal list from that iterator on will contain
+  all x'es for which the klpol is non zero (in other words, the other ones
+  have been "weeded out" from pr[j]), and klv[j] from the iterator on contains
+  the corresponding polynomials. Then all what remains to do is copy these
+  onto the corresponding lists of the context.
+      In order to achieve this, we put in d_xlist an ordered list of all 
+  elements that are primitive for _some_ y_j, not equal to y_j, and we move
+  downwards in that list. It is guaranteed by Lemma 6.2 in David's notes,
+  that for each x in d_xlist there is an y_j for which there is an easy 
+  reduction (i.e., x might be primitve for y_j, but not extremal.) So we
+  can deduce P_{x,y_j} from the already known part of klv[j], and then 
+  traversing the tree structure of edge relations imposed on the thicket,
+  we can compute all the other P_{x,y_i} that need to be (i.e., those for
+  which x is in pr[j].) We record the result only if the corresponding
+  polynomial is non-zero.
 */
 
 {
@@ -1261,12 +1607,13 @@ void Thicket::fill()
 
   fillXList();
 
-  // initialize rows, fill in last element
+  // initialize rows, fill in last element, initialize iterators
   for (size_t j = 0; j < size(); ++j) {
-    size_t y = d_vertices[j];
-    const ExtremalRow& er = extremalRow(j);
-    klRow(y).resize(er.size(),store().end());
-    klRow(y).back() = store().find(One);
+    const ExtremalRow& pr = primitiveRow(j);
+    d_klr[j].resize(pr.size());
+    d_klr[j].back() = d_helper->d_one;
+    d_firstPrim[j] = d_prim[j].end()-1;
+    d_firstKL[j] = d_klr[j].end()-1;
   }
 
   // fill in rows
@@ -1275,31 +1622,27 @@ void Thicket::fill()
     size_t x = d_xlist[j];
     // find a vertex s.t. x is not extremal
     size_t iy = nonExtremal(x);
-    if (iy == size()) // do nothing; polynomials are already zero
+    if (iy == size()) // do nothing; zero polynomials are ignored
       continue;
     for (ThicketIterator i(*this,iy); i(); ++i) {
       size_t pos = *i;
-      size_t y = d_vertices[pos];
-      const ExtremalRow& er = extremalRow(pos);
-      if (not std::binary_search(er.begin(),er.end(),x))
+      const ExtremalRow& pr = primitiveRow(pos);
+      if (not std::binary_search(pr.begin(),pr.end(),x)) 
+	// x is not primitive
 	continue;
-      // if we get here, we need to compute the polynomial
-      size_t xpos = std::lower_bound(er.begin(),er.end(),x) - er.begin();
-      const Edge& e = i.edge();
-      KLPol pol = e.recursion[xpos];
-      size_t sy = cross(e.s,y);
-      try {
-	pol.safeSubtract(d_helper->klPol(x,sy));
-      }
-      catch (error::NumericUnderflow& e){
-	throw kl_error::KLError(x,y,__LINE__,
-				static_cast<const KLContext&>(*d_helper));
-      }
-     if (not pol.isZero()) {
-	store().insert(pol);
-	klRow(y)[xpos] = store().find(pol);
-      }
+      if (ascentCompute(x,pos)) // x is not extremal
+	continue;
+      // if we get here, x is extremal
+      edgeCompute(x,pos,i.edge());
     }
+  }
+
+  // write result
+
+  for (size_t j = 0; j < size(); ++j) {
+    size_t y = d_vertices[j];
+    copy(d_firstPrim[j],d_prim[j].end(),back_inserter(d_helper->d_extr[y]));
+    copy(d_firstKL[j],d_klr[j].end(),back_inserter(d_helper->d_kl[y]));
   }
 
   return;
@@ -1318,9 +1661,9 @@ void Thicket::fillXList()
   std::set<size_t> xs;
 
   for (size_t j = 0; j < size(); ++j) {
-    const ExtremalRow& e = extremalRow(j);
-    for (size_t i = 0; i < e.size()-1; ++i)
-      xs.insert(e[i]);
+    const ExtremalRow& p = primitiveRow(j);
+    for (size_t i = 0; i < p.size()-1; ++i)
+      xs.insert(p[i]);
   }
 
   d_xlist.reserve(xs.size());
@@ -1387,6 +1730,7 @@ ThicketIterator& ThicketIterator::operator++ ()
       if (not d_done.isMember(i)) { // i is new
 	d_pos = i;
 	d_stack.push(i);
+	d_done.insert(i);
 	return *this;
       }
     }

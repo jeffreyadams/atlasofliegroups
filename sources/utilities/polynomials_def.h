@@ -161,7 +161,7 @@ Polynomial<C>& Polynomial<C>::safeSubtract(const Polynomial& q, Degree d, C c)
 namespace polynomials {
 
 template<typename C>
-bool operator< (const Polynomial<C>& p, const Polynomial<C>& q)
+bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
 
 /*
   Synopsis: polynomial comparison.
@@ -195,30 +195,6 @@ bool operator< (const Polynomial<C>& p, const Polynomial<C>& q)
 
   // now p and q are equal
   return false;
-}
-
-template<typename C>
-bool operator== (const Polynomial<C>& p, const Polynomial<C>& q)
-
-/*
-  Synopsis: equality test.
-
-  Explanation: p and q are equal if they are both zero, or they have same
-  degree, and their corresponding coefficients are equal.
-*/
-
-{
-  if (p.isZero())
-    return q.isZero();
-
-  if (p.degree() != q.degree())
-    return false;
-
-  for (size_t j = 0; j <= p.degree(); ++j)
-    if (p[j] != q[j])
-      return false;
-
-  return true;
 }
 
 template<typename C> void safeAdd(C& a, C b)

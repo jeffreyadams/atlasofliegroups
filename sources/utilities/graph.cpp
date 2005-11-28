@@ -51,10 +51,10 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* p) const
   The vertices for which the partition function is already defined will
   be said to be dealt with. These are marked off in an auxiliary bitmap.
   The algorithm goes as follows. Start with the first vertex that has not
-  been dealt with, say x0. We will have to deal (potentially) with the set
-  of all vertices visible from x0 (i.e >= x0). There will be a stack of
+  been dealt with, say x0. Starting from x0, we are going to examine all
+  vertices y thaat are visible from x0 (i.e., >= x0). There will be a stack of
   vertices, corresponding to a path originating from x0, such that at each
-  point in time, each vertex y >= x0 which is not dealt with will be
+  point in time, each vertex y >= x0 which has been examined will be
   equivalent to an element of the stack; the least such (in the stack
   ordering) will be called y_min, so that for instance x0_min = 0. We
   record these values in an additional table, initialized to some inaccessible
@@ -76,6 +76,14 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* p) const
   is minimal in its class, and we get a new class by taking all the successors
   of x not already dealt with. We then move to the parent of x and continue
   the process there.
+
+  NOTE: I believe that in this process it is not guaranteed that x_min is
+  the actual minimal element of the stack equivalent to x (this is also why
+  we cannot take off a class simply by looking at x_min). The real 
+  interpretation of x_min is: the smallest element of the stack that is visible
+  from y using edges already processed. The important issue here is whether
+  x_min < x or not, and for this we only need to examine whether there is
+  a strict succesor y of x with y_min < x.
 */
 
 {
@@ -86,54 +94,48 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* p) const
 
   pi.resize(size());
 
-  std::vector<Vertex> v(1);
-  std::vector<const EdgeList*> elist(1);
-  std::vector<size_t> ecount(1);
+  std::stack<Vertex> v;
+  std::stack<size_t> ecount;
 
-  for (Vertex x = 0; x < size(); ++x) {
+  for (Vertex x0 = 0; x0 < size(); ++x0) {
 
-    if (b.isMember(x)) /* x is dealt with */
+    if (b.isMember(x0)) /* x0 is dealt with */
       continue;
 
-    v[0] = x;
-    elist[0] = &edgeList(x);
-    ecount[0] = 0;
-    min[x] = 0;
+    v.push(x0);
+    ecount.push(0);
+    min[x0] = 0;
     size_t t = 1; // stack position
 
-    while(t) {
+    while(not v.empty()) {
 
-      Vertex y = v[t-1];
-      Vertex z;
-      const EdgeList& e = *elist[t-1];
+      Vertex x = v.top();
+      Vertex y;
+      const EdgeList& e = edgeList(x);
 
-      for (; ecount[t-1] < e.size(); ++ecount[t-1]) {
-	z = e[ecount[t-1]];
-	if (b.isMember(z))
+      for (; ecount.top() < e.size(); ++ecount.top()) {
+	y = e[ecount.top()];
+	if (b.isMember(y))
 	  continue;
-	if (min[z] == size()) // z is new
-	  goto add_path;
-	if (min[y] > min[z])
-	  min[y] = min[z];
+	if (min[y] == size()) // y is new
+	  goto add_to_stack;
+	if (min[x] > min[y])
+	  min[x] = min[y];
       }
 
-      // at this point we have exhausted the edges of y
-      if (min[y] == t-1) { // take off class
-	getClass(*this,y,b,pi,p);
+      // at this point we have exhausted the edges of x
+      v.pop();
+      ecount.pop();
+      if (min[x] == t-1) { // take off class
+	getClass(*this,x,b,pi,p);
       }
-      else if (min[y] < min[v[t-2]]) // if t=1, previous case holds
-	min[v[t-2]] = min[y];
       --t;
       continue;
 
-    add_path:
-      v.resize(t+1);
-      elist.resize(t+1);
-      ecount.resize(t+1);
-      v[t] = z;
-      elist[t] = &edgeList(z);
-      ecount[t] = 0;
-      min[z] = t;
+    add_to_stack:
+      v.push(y);
+      ecount.push(0);
+      min[y] = t;
       ++t;
     }
   }

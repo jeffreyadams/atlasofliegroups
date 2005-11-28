@@ -1068,7 +1068,7 @@ void test_f()
   G.fillCartan();
 
   KGB kgb(G);
-  if (basePointCheck(kgb))
+  if (checkBasePoint(kgb))
     std::cerr << "true" << std::endl;
   else
     std::cerr << "false" << std::endl;

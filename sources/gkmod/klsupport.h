@@ -12,10 +12,9 @@
 
 #include "klsupport_fwd.h"
 
-#include "blocks_fwd.h"
-
 #include "bitmap.h"
 #include "bitset.h"
+#include "blocks.h"
 #include "descents.h"
 
 namespace atlas {
@@ -25,6 +24,9 @@ namespace atlas {
 /******** type definitions **************************************************/
 
 namespace klsupport {
+
+class KLSupport_new {
+};
 
 class KLSupport {
 
@@ -36,10 +38,12 @@ class KLSupport {
 
   blocks::Block* d_block;  // non-owned pointer
   size_t d_rank;
+  size_t d_size;
 
-  std::vector<ExtremalRow> d_extrPairs;
   std::vector<bitset::RankFlags> d_descent;
+  std::vector<bitset::RankFlags> d_goodAscent;
   std::vector<bitmap::BitMap> d_downset;
+  std::vector<bitmap::BitMap> d_primset;
   std::vector<size_t> d_lengthLess;
 
  public:
@@ -65,28 +69,30 @@ class KLSupport {
 
   descents::DescentStatus::Value descentValue(size_t, size_t) const;
 
-  void extremalize(bitmap::BitMap&, const descents::DescentStatus&) const;
+  void extremalize(bitmap::BitMap&, const bitset::RankFlags&) const;
 
-  const ExtremalRow& extremalRow(size_t z) const {
-    return d_extrPairs[z];
+  const bitset::RankFlags& goodAscentSet(size_t z) const {
+    return d_goodAscent[z];
   }
 
-  size_t length(size_t) const;
+  size_t length(size_t z) const {
+    return d_block->length(z);
+  }
 
   size_t lengthLess(size_t l) const {
     return d_lengthLess[l];
   }
 
-  size_t numExtremals(size_t z) const {
-    return d_extrPairs[z].size();
-  }
+  void primitivize(bitmap::BitMap&, const bitset::RankFlags&) const;
+
+  bool primitivize(size_t&, const bitset::RankFlags&) const;
 
   size_t rank() const {
     return d_rank;
   }
 
   size_t size() const {
-    return d_extrPairs.size();
+    return d_size;
   }
 
 // manipulators

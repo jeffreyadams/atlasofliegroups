@@ -58,6 +58,8 @@ class KLContext {
 
   klsupport::KLSupport* d_support;   // non-owned pointer
 
+  std::vector<klsupport::ExtremalRow> d_extr;
+
   std::vector<KLRow> d_kl;           // list of polynomial pointers
   std::vector<MuRow> d_mu;           // list of mu-coefficients
 
@@ -75,6 +77,10 @@ class KLContext {
   virtual ~KLContext() {}
 
 // copy, assignment and swap
+  KLContext(const KLContext&);
+
+  KLContext& operator= (const KLContext&);
+
   void swap(KLContext&);
 
 // accessors
@@ -83,7 +89,7 @@ class KLContext {
   }
 
   const klsupport::ExtremalRow& extremalRow(size_t y) const {
-    return d_support->extremalRow(y);
+    return d_extr[y];
   }
 
   const bitset::RankFlags& descentSet(size_t y) const {

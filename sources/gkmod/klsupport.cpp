@@ -46,7 +46,8 @@ namespace klsupport {
 
 KLSupport::KLSupport(blocks::Block& b)
   :d_block(&b),
-   d_rank(b.rank())
+   d_rank(b.rank()),
+   d_size(b.size())
 
 {}
 
@@ -58,10 +59,11 @@ void KLSupport::swap(KLSupport& other)
 
   std::swap(d_block,other.d_block);
   std::swap(d_rank,other.d_rank);
+  std::swap(d_size,other.d_size);
 
-  d_extrPairs.swap(other.d_extrPairs);
   d_descent.swap(other.d_descent);
   d_downset.swap(other.d_downset);
+  d_primset.swap(other.d_primset);
   d_lengthLess.swap(other.d_lengthLess);
 
   return;
@@ -82,8 +84,7 @@ descents::DescentStatus::Value KLSupport::descentValue(size_t s, size_t z)
   return d_block->descentValue(s,z);
 }
 
-void KLSupport::extremalize(bitmap::BitMap& b, 
-			    const descents::DescentStatus& d) 
+void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d) 
   const
 
 /*
@@ -99,26 +100,73 @@ void KLSupport::extremalize(bitmap::BitMap& b,
 */
 
 {
-  using namespace descents;
-
   for (size_t s = 0; s < d_rank; ++s)
-    if (DescentStatus::isDescent(d[s]))
+    if (d.test(s))
       b &= d_downset[s];
 
   return;
 }
 
-size_t KLSupport::length(size_t z) const
+void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d) 
+  const
 
 /*
-  Synopsis: returns the length of z.
+  Synopsis: primitivizes b w.r.t. the values in d.
 
-  NOTE: this is not inlined in order to avoid a compilation dependency on
-  blocks.h
+  Preconditions: the capacity of b is the size(); d contains d_rank valid
+  flags;
+
+  Explanation: an element z in the block is primitve w.r.t. d, if all the
+  descents in d are either descents, or imaginary type II ascents for z. Since 
+  d_primset[s] flags the elements for which s is a descent or imaginary type 
+  II, this amounts to requesting that z belong to the intersection of the 
+  primsets for the various descents in d.
 */
 
 {
-  return d_block->length(z);
+  for (size_t s = 0; s < d_rank; ++s)
+    if (d.test(s))
+      b &= d_primset[s];
+
+  return;
+}
+
+bool KLSupport::primitivize(size_t& x, const bitset::RankFlags& d) const
+
+/*
+  Synopsis: replaces x with a primitive element above it, and returns true,
+  or returns false, and x iz not changed.
+
+  Explanation: a primitive element for d is one for which all elements in
+  d are descents or type II imaginary. So if x is not primitive, it has
+  an ascent that is either complex, imaginary type I or real compact. In
+  the first two cases we replace x by the ascended element and continue;
+  in the last case, we return false (for k-l computations, this will indicate
+  a zero k-l polynomial.)
+*/
+
+{
+  using namespace bitset;
+  using namespace descents;
+
+  size_t xp = x;
+
+  for (RankFlags a = goodAscentSet(xp); a.any(d); a = goodAscentSet(xp)) {
+    a &= d;
+    size_t s = a.firstBit();
+    DescentStatus::Value v = descentValue(s,xp);
+    if (v == DescentStatus::RealNonparity)
+      return false;
+    // this should be replaced by the ascend table!
+    if (v == DescentStatus::ComplexAscent)
+      xp = d_block->cross(s,xp);
+    else
+      xp = d_block->cayley(s,xp).first;
+  }
+
+  // commit
+  x = xp;
+  return true;
 }
 
 /******** manipulators *******************************************************/
@@ -148,6 +196,7 @@ void KLSupport::fill()
   // make the downsets
   fillDownsets();
 
+#if 0
   // fill in extrPairs
   d_extrPairs.resize(block().size());
 
@@ -161,6 +210,7 @@ void KLSupport::fill()
     // copy to list
     std::copy(b.begin(),b.end(),back_inserter(d_extrPairs[z]));
   }
+#endif
 
   d_state.set(Filled);
 
@@ -170,11 +220,15 @@ void KLSupport::fill()
 void KLSupport::fillDownsets()
 
 /*
-  Synopsis: fills in the downsets bitmaps, and the descent bitsets.
+  Synopsis: fills in the downsets bitmaps, the primset bitmaps, the descent 
+  bitsets and the goodAscent bitsets.
 
   Explanation: here descent is taken in the weak sense of s belonging to the
   "tau-invariant" of z in b. In other words, s is a complex descent, real
-  noncompact (type I or type II), or imaginary compact.
+  noncompact (type I or type II), or imaginary compact. The primset bitset
+  records the x'es for which s is either a descent, or an imaginary type II
+  ascent. The goodAscent bitsets hold the ascents tha are not imaginary type 
+  II.
 
   Sets the DownsetsFilled bit in d_state if successful. Commit-or-rollback
   is guaranteed.
@@ -190,62 +244,36 @@ void KLSupport::fillDownsets()
 
   size_t size = d_block->size();
   std::vector<BitMap> ds(d_rank);
+  std::vector<BitMap> ps(d_rank);
   std::vector<RankFlags> descents(size);
+  std::vector<RankFlags> ga(size);
 
   for (size_t s = 0; s < ds.size(); ++s) {
-    BitMap& b = ds[s];
-    b.resize(size);
-    for (size_t z = 0; z < size; ++z)
-      if (DescentStatus::isDescent(descentValue(s,z))) {
-	b.insert(z);
+    ds[s].resize(size);
+    ps[s].resize(size);
+    for (size_t z = 0; z < size; ++z) {
+      DescentStatus::Value v = descentValue(s,z);
+      if (DescentStatus::isDescent(v)) {
+	ds[s].insert(z);
+	ps[s].insert(z);
 	descents[z].set(s);
+      } else {
+	if (v == DescentStatus::ImaginaryTypeII)
+	  ps[s].insert(z);
+	else
+	  ga[z].set(s);
       }
+    }
   }
 
   // commit
   d_downset.swap(ds);
+  d_primset.swap(ps);
   d_descent.swap(descents);
+  d_goodAscent.swap(ga);
   d_state.set(DownsetsFilled);
 
   return;
-}
-
-size_t KLSupport::numExtremals()
-
-/*
-  Synopsis: returns the total number of extremal pairs.
-
-  The important thing here is that we do it without constructing the extremal
-  list. So this function is relatively slow, but does not require memory to
-  speak off.
-*/
-
-{
-  using namespace bitmap;
-
-  if (d_state.test(DownsetsFilled) == false)
-    fillDownsets();
-
-  // fill lengthLess if necessary
-  if (d_state.test(LengthLessFilled) == false) {
-    fillLengthLess(d_lengthLess,block());
-    d_state.set(LengthLessFilled);
-  }
-
-  size_t size = d_block->size();
-  size_t count = 0;
-
-  for (size_t z = 0; z < size; ++z) {
-    BitMap b(size);
-    b.fill(d_lengthLess[length(z)]);
-    b.insert(z);
-    // extremalize
-    extremalize(b,block().descent(z));
-    // copy to list
-    count += b.size();
-  }
-
-  return count;
 }
 
 }

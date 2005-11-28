@@ -9,6 +9,10 @@
 
 #include "kltest.h"
 
+#ifdef VERBOSE
+#include <iostream>
+#endif
+
 #include "kgb.h"
 #include "kl.h"
 #include "setutils.h"
@@ -55,7 +59,7 @@ public:
 
 namespace kltest {
 
-bool basePointCheck(const kgb::KGB& kgb)
+bool checkBasePoint(const kgb::KGB& kgb)
 
 /*
   Synopsis: checks whether the conjectural basepoint in each R-packet is
@@ -78,6 +82,10 @@ bool basePointCheck(const kgb::KGB& kgb)
   using namespace kgb;
   using namespace weyl;
 
+#ifdef VERBOSE
+  std::cerr << "entering checkBasePoint ..." << std::endl;
+#endif
+
   const WeylGroup& W = kgb.weylGroup();
   InvolutionCompare comp(W);
   WeylEltList wl;
@@ -97,6 +105,9 @@ bool basePointCheck(const kgb::KGB& kgb)
     basepts.assign(wl.size(),UndefKGB);
     basepts[0] = x0;
     for (size_t w_pos = 1; w_pos < wl.size(); ++w_pos) {
+#ifdef VERBOSE
+    std::cerr << w_pos << "\r";
+#endif
       const WeylElt& w = wl[w_pos];
       WeylWord w_red;
       W.involutionOut(w_red,w);
@@ -109,6 +120,8 @@ bool basePointCheck(const kgb::KGB& kgb)
 	    size_t sw_pos = std::lower_bound(wl.begin(),wl.end(),sw,comp) -
 	      wl.begin();
 	    sx_w = kgb.cayley(s,basepts[sw_pos]);
+	    if (sx_w == UndefKGB)
+	      return false;
 	  } else {
 	    W.twistedConjugate(sw,s);
 	    size_t sw_pos = std::lower_bound(wl.begin(),wl.end(),sw,comp) -
@@ -123,9 +136,16 @@ bool basePointCheck(const kgb::KGB& kgb)
 	  }
 	}
     }
-  nextx0:
+#ifdef VERBOSE
+    std::cerr << std::endl;
+#endif
+ nextx0:
     continue;
   }
+
+#ifdef VERBOSE
+  std::cerr << "done" << std::endl;
+#endif
 
   return true;
 }
