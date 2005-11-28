@@ -207,6 +207,7 @@ std::ostream& printInvolution(std::ostream& strm, const weyl::WeylElt& w,
 
   WeylWord ww;
   W.involutionOut(ww,w);
+  std::reverse(ww.begin(),ww.end());
   strm << ww;
 
   return strm;
