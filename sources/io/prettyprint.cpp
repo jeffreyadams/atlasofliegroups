@@ -192,6 +192,26 @@ std::ostream& printInRootBasis(std::ostream& strm,
   return strm;
 }
 
+std::ostream& printInvolution(std::ostream& strm, const weyl::WeylElt& w, 
+			      const weyl::WeylGroup& W)
+
+/*
+  Synopsis: outputs w as an involution-reduced expression.
+
+  Precondition: w is a (twisted) involution.
+*/
+
+{
+  using namespace basic_io;
+  using namespace weyl;
+
+  WeylWord ww;
+  W.involutionOut(ww,w);
+  strm << ww;
+
+  return strm;
+}
+
 std::ostream& printRoot(std::ostream& strm, const rootdata::RootNbr& j, 
 			const rootdata::RootDatum& rd)
 

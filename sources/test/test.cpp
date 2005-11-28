@@ -75,6 +75,7 @@ namespace {
   // functions for the test commands
 
   void block_f();
+  void blockd_f();
   void blockstabilizer_f();
   void cmatrix_f();
   void corder_f();
@@ -199,6 +200,7 @@ void addTestCommands<realmode::RealmodeTag>
     mode.add("test",test_f);
 
   mode.add("block",block_f);
+  mode.add("blockd",blockd_f);
   mode.add("blockstabilizer",blockstabilizer_f);
   mode.add("components",components_f);
   mode.add("corder",corder_f);
@@ -325,6 +327,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   // add additional help commands here:
 
   mode.add("block",nohelp_h);
+  mode.add("blockd",nohelp_h);
   mode.add("blockstabilizer",nohelp_h);
   mode.add("components",nohelp_h);
   mode.add("corder",nohelp_h);
@@ -340,6 +343,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
 
   // add additional command tags here:
   t.insert(std::make_pair("block",test_tag));
+  t.insert(std::make_pair("blockd",test_tag));
   t.insert(std::make_pair("blockstabilizer",test_tag));
   t.insert(std::make_pair("components",test_tag));
   t.insert(std::make_pair("corder",test_tag));
@@ -467,6 +471,61 @@ void block_f()
 
   OutputFile file;
   printBlock(file,block);
+
+  return;
+}
+
+void blockd_f()
+
+/*
+  Synopsis: constructs the block of the category of Harish-Chandra modules
+  corresponding to a given real form and dual real form.
+
+  NOTE: the difference with the ordinary blocks is that it outputs involutions
+  in reduced-involution form.
+*/
+
+{
+  using namespace block_io;
+  using namespace blocks;
+  using namespace commands;
+  using namespace error;
+  using namespace interactive;
+  using namespace ioutils;
+  using namespace realform;
+  using namespace realmode;
+  using namespace realredgp;
+  using namespace tags;
+
+  RealReductiveGroup& G_R = currentRealGroup();
+
+  try {
+    G_R.fillCartan();
+  }
+  catch (MemoryOverflow& e) {
+    e("error: memory overflow");
+    return;
+  }
+
+  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  const realredgp_io::Interface& G_RI = currentRealInterface();
+  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+  // get dual real form
+  RealForm drf;
+
+  try {
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+  }
+  catch (InputError& e) {
+    e("aborted");
+    return;
+  }
+
+  Block block(G_C,G_R.realForm(),drf);
+
+  OutputFile file;
+  printBlockD(file,block);
 
   return;
 }

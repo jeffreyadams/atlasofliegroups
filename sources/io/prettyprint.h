@@ -85,6 +85,9 @@ std::ostream& printInRootBasis(std::ostream&,
 			       const char* pre = "", 
 			       const char* post = "");
 
+std::ostream& printInvolution(std::ostream&, const weyl::WeylElt&, 
+			      const weyl::WeylGroup&);
+
 template<typename C>
 std::ostream& printMatrix(std::ostream&, const matrix::Matrix<C>&,
 			  unsigned long width = 4);

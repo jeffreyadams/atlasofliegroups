@@ -23,6 +23,8 @@ namespace block_io {
 
   std::ostream& printBlock(std::ostream&, const blocks::Block&);
 
+  std::ostream& printBlockD(std::ostream&, const blocks::Block&);
+
   std::ostream& printDescent(std::ostream&, const descents::DescentStatus&,
 			     size_t);
 
