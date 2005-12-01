@@ -399,7 +399,7 @@ KGBEltPair KGB::tauPacket(const weyl::WeylElt& w) const
 
   InvolutionCompare comp(weylGroup());
 
-  IP range = equal_range(d_involution.begin(),d_involution.end(),w,comp);
+  IP range = std::equal_range(d_involution.begin(),d_involution.end(),w,comp);
 
   KGBElt first = range.first - d_involution.begin();
   KGBElt last = range.second - d_involution.begin();
@@ -515,7 +515,7 @@ Helper::Helper(realredgp::RealReductiveGroup& G)
 
   // the map d_titsMap allows us to search for a Tits element to see if it is 
   // new the associated integer is the index of the Tits element in d_tits
-  d_titsMap.insert(std::make_pair(d_tits[0],0));
+  d_titsMap.insert(std::make_pair(d_tits[0],static_cast<size_t>(0)));
 
   // the map d_fiberData associates to each root datum involution the 
   // corresponding representatives and projection we need this to properly 

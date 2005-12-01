@@ -35,7 +35,7 @@ ifeq ($(verbose),true)
 	cflags := $(cflags) -DVERBOSE
 endif
 
-cc = g++ # the default compiler
+cc = CC # the default compiler
 
 # give compiler=icc argument to make to use the intel compiler
 ifdef compiler

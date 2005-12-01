@@ -452,7 +452,7 @@ void Helper::fillCayleyActions()
       KGBEltPair sy = d_dualkgb.inverseCayley(s,y(z));
       assert(sy.first != UndefKGB);
       KGBEltList::iterator i = 
-	find(d_y.begin()+d_firstx[sx],d_y.end(),sy.first);
+	std::find(d_y.begin()+d_firstx[sx],d_y.end(),sy.first);
       assert(i - d_y.begin() < d_firstx[sx+1]);
       d_cayley[s][z].first = i - d_y.begin();
       {
@@ -468,7 +468,7 @@ void Helper::fillCayleyActions()
       if (sy.second == UndefKGB) // cayley transform is type I
 	continue;
       // if we get here the Cayley transform is two-valued
-      i = find(d_y.begin()+d_firstx[sx],d_y.end(),sy.second);
+      i = std::find(d_y.begin()+d_firstx[sx],d_y.end(),sy.second);
       assert(i - d_y.begin() < d_firstx[sx+1]);
       d_cayley[s][z].second = i - d_y.begin();
       {
@@ -502,7 +502,7 @@ void Helper::fillCrossActions()
     for (BlockElt z = 0; z < size(); ++z) {
       KGBElt sx = d_kgb.cross(s,x(z));
       KGBElt sy = d_dualkgb.cross(s,y(z));
-      KGBEltList::iterator i = find(d_y.begin()+d_firstx[sx],d_y.end(),sy);
+      KGBEltList::iterator i = std::find(d_y.begin()+d_firstx[sx],d_y.end(),sy);
       assert(i - d_y.begin() < d_firstx[sx+1]);
       d_cross[s][z] = i - d_y.begin();
     }

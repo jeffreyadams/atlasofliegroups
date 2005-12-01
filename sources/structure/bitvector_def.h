@@ -775,7 +775,7 @@ template<size_t dim>
   typename std::vector<BitVector<dim> >::iterator first = a.begin();
   typename std::vector<BitVector<dim> >::iterator last = a.end();
 
-  sort(first,last,compare(FirstBit<dim>()));
+  std::sort(first,last,compare(FirstBit<dim>()));
 
   // commit
   b.swap(a);
