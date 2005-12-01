@@ -87,7 +87,7 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
     strm << std::setw(pad) << "";
 
     // print root datum involution
-    printWeylElt(strm,kgb.tau(j),kgb.weylGroup());
+    printWeylElt(strm,kgb.involution(j),kgb.weylGroup());
 
     strm << std::endl;
   }

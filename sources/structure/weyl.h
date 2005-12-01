@@ -303,6 +303,10 @@ class WeylGroup {
 
   void twist(WeylElt&) const;
 
+  Generator twistGenerator(Generator s) const {
+    return d_twist[s];
+  }
+
   void twistedConjugate(WeylElt& w, Generator s) const {
     leftProd(w,s);
     prodIn(w,d_twist[d_in[s]]);

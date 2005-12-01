@@ -47,7 +47,7 @@ class KGB {
   std::vector<KGBEltPairList> d_inverseCayley;
   DescentList d_descent;
   std::vector<size_t> d_length;
-  weyl::WeylEltList d_tau;
+  weyl::WeylEltList d_involution;
   gradings::StatusList d_status;
 
   bitset::BitSet<NumStates> d_state;
@@ -115,7 +115,7 @@ class KGB {
     return d_status[x][s];
   }
 
-  const weyl::WeylElt& tau(KGBElt) const;
+  const weyl::WeylElt& involution(KGBElt) const;
 
   KGBEltPair tauPacket(const weyl::WeylElt&) const;
 

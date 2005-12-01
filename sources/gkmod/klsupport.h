@@ -32,7 +32,7 @@ class KLSupport {
 
  private:
 
-  enum State { DownsetsFilled, LengthLessFilled, Filled, NumStates };
+  enum State { DownsetsFilled, LengthLessFilled, Filled, NumStates};
 
   bitset::BitSet<NumStates> d_state;
 
@@ -63,11 +63,21 @@ class KLSupport {
     return *d_block;
   }
 
+  size_t cross(size_t s, size_t z) const {
+    return d_block->cross(s,z);
+  }
+
+  blocks::BlockEltPair cayley(size_t s, size_t z) const {
+    return d_block->cayley(s,z);
+  }
+
   const bitset::RankFlags& descentSet(size_t z) const {
     return d_descent[z];
   }
 
-  descents::DescentStatus::Value descentValue(size_t, size_t) const;
+  descents::DescentStatus::Value descentValue(size_t s, size_t z) const {
+    return d_block->descentValue(s,z);
+  }
 
   void extremalize(bitmap::BitMap&, const bitset::RankFlags&) const;
 

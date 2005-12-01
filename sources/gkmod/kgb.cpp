@@ -177,7 +177,7 @@ private:
 public:
   explicit Compare(const KGB& kgb):d_kgb(&kgb) {}
   // one should have i < j iff (a) d_length[i] < d_length[j] or
-  // (b) lengths are equal and d_tau[i] < d_tau[j]
+  // (b) lengths are equal and d_involution[i] < d_involution[j]
   bool operator() (unsigned long i, unsigned long j) const {
     if (d_kgb->length(i) < d_kgb->length(j))
       return true;
@@ -188,7 +188,7 @@ public:
     else if (d_kgb->weylLength(j) < d_kgb->weylLength(i))
       return false;
     else
-      return d_kgb->tau(i) < d_kgb->tau(j);
+      return d_kgb->involution(i) < d_kgb->involution(j);
   }
 };
 
@@ -295,7 +295,7 @@ void KGB::swap(KGB& other)
   d_inverseCayley.swap(other.d_inverseCayley);
   d_descent.swap(other.d_descent);
   d_length.swap(other.d_length);
-  d_tau.swap(other.d_tau);
+  d_involution.swap(other.d_involution);
   d_status.swap(other.d_status);
 
   d_state.swap(other.d_state);
@@ -312,7 +312,7 @@ void KGB::swap(KGB& other)
 bool KGB::compare (KGBElt x, KGBElt y) const
 
 /*
-  Synopsis: returns whether tau(x) < tau(y); in 
+  Synopsis: returns whether involution(x) < involution(y); in 
 
   Explanation: the ordering is involution-length first, then weyl-length, 
   then order of Weyl group elements in whatever way that comes out of their 
@@ -329,7 +329,7 @@ bool KGB::compare (KGBElt x, KGBElt y) const
   else if (weylLength(y) < weylLength(x))
     return false;
   else
-    return tau(x) < tau(y);
+    return involution(x) < involution(y);
 }
 
 bool KGB::isAscent(size_t s, KGBElt x) const
@@ -369,7 +369,7 @@ bool KGB::isDescent(size_t s, KGBElt z) const
   return d_descent[z].test(s);
 }
 
-const weyl::WeylElt& KGB::tau(KGBElt z) const
+const weyl::WeylElt& KGB::involution(KGBElt z) const
 
 /*
   Synopsis: returns the root datum involution corresponding to z.
@@ -380,13 +380,13 @@ const weyl::WeylElt& KGB::tau(KGBElt z) const
 */
 
 {
-  return d_tau[z];
+  return d_involution[z];
 }
 
 KGBEltPair KGB::tauPacket(const weyl::WeylElt& w) const
 
 /*
-  Synopsis: returns the range in which tau(z) = w.
+  Synopsis: returns the range in which involution(z) = w.
 
   Precondition: the enumeration has been sorted by values of tau.
 */
@@ -399,10 +399,10 @@ KGBEltPair KGB::tauPacket(const weyl::WeylElt& w) const
 
   InvolutionCompare comp(weylGroup());
 
-  IP range = equal_range(d_tau.begin(),d_tau.end(),w,comp);
+  IP range = equal_range(d_involution.begin(),d_involution.end(),w,comp);
 
-  KGBElt first = range.first - d_tau.begin();
-  KGBElt last = range.second - d_tau.begin();
+  KGBElt first = range.first - d_involution.begin();
+  KGBElt last = range.second - d_involution.begin();
 
   return std::make_pair(first,last);
 }
@@ -410,13 +410,13 @@ KGBEltPair KGB::tauPacket(const weyl::WeylElt& w) const
 size_t KGB::weylLength(KGBElt z) const
 
 /*
-  Synopsis: returns the length of tau(z) as a Wel group element.
+  Synopsis: returns the length of involution(z) as a Wel group element.
 
   NOTE: this is not inlined to avoid a dependency on weyl.h
 */
 
 {
-  return d_weylGroup->length(d_tau[z]);
+  return d_weylGroup->length(d_involution[z]);
 }
 
 /******** manipulators *******************************************************/
@@ -533,7 +533,7 @@ Helper::Helper(realredgp::RealReductiveGroup& G)
   // initialize descent, length and tau
   d_length.push_back(0);
   d_descent.push_back(Descent());
-  d_tau.push_back(WeylElt());
+  d_involution.push_back(WeylElt());
 
   // initialize cross and cayley tables
   // the undefined value for Cayley is 0 (nothing Cayley-tranforms to 0)
@@ -627,7 +627,7 @@ Helper::TI Helper::cayleyAdd(size_t from, size_t s)
   // increment the lists
   d_descent.push_back(Descent());
   d_length.push_back(d_length[from]+1); // lengt goes always up
-  d_tau.push_back(a.w());
+  d_involution.push_back(a.w());
   d_status.push_back(Status());
   for (size_t j = 0; j < d_rank; ++j) {
     d_cross[j].push_back(UndefKGB);
@@ -686,7 +686,7 @@ Helper::TI Helper::crossAdd(size_t from, size_t s)
   // increment the lists
   d_descent.push_back(Descent());
   d_length.push_back(d_length[from]);
-  d_tau.push_back(a.w());
+  d_involution.push_back(a.w());
   d_status.push_back(Status());
   for (size_t j = 0; j < d_rank; ++j) {
     d_cross[j].push_back(UndefKGB);
@@ -695,7 +695,7 @@ Helper::TI Helper::crossAdd(size_t from, size_t s)
   }
 
   // adjust length
-  if (a.w() != d_tau[from]) // length goes up
+  if (a.w() != d_involution[from]) // length goes up
     ++d_length[to];
 
   return d_titsMap.insert(std::make_pair(a,to)).first;
@@ -905,7 +905,7 @@ void Helper::setStatus(size_t from, size_t to, size_t s)
   if (d_status[from][s] == Status::Real)
     return;
 
-  if (d_tau[from] != d_tau[to]) {
+  if (d_involution[from] != d_involution[to]) {
     d_status[from].set(s,Status::Complex);
     d_status[to].set(s,Status::Complex);
     return;
@@ -964,7 +964,7 @@ void Helper::sort()
   // permute the other lists
   permute(ai,d_descent);
   permute(ai,d_length);
-  permute(ai,d_tau);
+  permute(ai,d_involution);
   permute(ai,d_status);
 
   return;

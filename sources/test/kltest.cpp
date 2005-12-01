@@ -9,12 +9,12 @@
 
 #include "kltest.h"
 
-#ifdef VERBOSE
 #include <iostream>
-#endif
 
+#include "ioutils.h"
 #include "kgb.h"
 #include "kl.h"
+#include "prettyprint.h"
 #include "setutils.h"
 #include "weyl.h"
 
@@ -22,7 +22,10 @@ namespace atlas {
 
 namespace {
 
-  void tauList(weyl::WeylEltList&, const kgb::KGB&);
+  void involutionList(weyl::WeylEltList&, const kgb::KGB&);
+
+  std::ostream& printBasePts(std::ostream&, const weyl::WeylEltList&,
+			     const kgb::KGBEltList&, const kgb::KGB&);
 
 class InvolutionCompare {
 private:
@@ -79,6 +82,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
 
 {
   using namespace gradings;
+  using namespace ioutils;
   using namespace kgb;
   using namespace weyl;
 
@@ -89,7 +93,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
   const WeylGroup& W = kgb.weylGroup();
   InvolutionCompare comp(W);
   WeylEltList wl;
-  tauList(wl,kgb);
+  involutionList(wl,kgb);
 
   KGBEltList basepts;
 
@@ -147,6 +151,9 @@ bool checkBasePoint(const kgb::KGB& kgb)
   std::cerr << "done" << std::endl;
 #endif
 
+  OutputFile file;
+  printBasePts(file,wl,basepts,kgb);
+
   return true;
 }
 
@@ -166,7 +173,30 @@ void dualityPermutation(setutils::Permutation& a, const kl::KLContext& klc)
 
 namespace {
 
-void tauList(weyl::WeylEltList& wl, const kgb::KGB& kgb)
+std::ostream& printBasePts(std::ostream& strm, const weyl::WeylEltList& wl,
+			   const kgb::KGBEltList& bp, const kgb::KGB& kgb)
+
+/*
+  Synopsis: outputs the list of basepoints to strm.
+
+  Precondition: wl contains the list of twisted involutions, bp the list of
+  basepoints (in the same order.)
+*/
+
+{
+  using namespace prettyprint;
+
+  for (size_t j = 0; j < wl.size(); ++j) {
+    strm << "(";
+    printWeylElt(strm,wl[j],kgb.weylGroup());
+    strm << "," << bp[j] << ")";
+    strm << std::endl;
+  }
+
+  return strm;
+}
+
+void involutionList(weyl::WeylEltList& wl, const kgb::KGB& kgb)
 
 /*
   Synopsis: put in wl the list of twisted involutions that appear in kgb.
@@ -177,11 +207,11 @@ void tauList(weyl::WeylEltList& wl, const kgb::KGB& kgb)
 {
   using namespace weyl;
 
-  wl.push_back(kgb.tau(0));
+  wl.push_back(kgb.involution(0));
 
   for (size_t x = 0; x < kgb.size(); ++x)
-    if (kgb.tau(x) != wl.back())
-      wl.push_back(kgb.tau(x));
+    if (kgb.involution(x) != wl.back())
+      wl.push_back(kgb.involution(x));
 
   return;
 }

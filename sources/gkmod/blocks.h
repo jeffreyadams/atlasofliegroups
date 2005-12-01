@@ -57,7 +57,8 @@ class Block {
   std::vector<BlockEltPairList> d_inverseCayley;
   descents::DescentStatusList d_descent;
   std::vector<size_t> d_length;
-  weyl::WeylEltList d_tau;
+  weyl::WeylEltList d_involution;
+  std::vector<bitset::RankFlags> d_involutionSupport;
 
   realform::RealForm d_realForm;
   realform::RealForm d_dualForm;
@@ -106,8 +107,14 @@ class Block {
     return d_dualForm;
   }
 
+  size_t firstStrictDescent(size_t) const;
+
   BlockEltPair inverseCayley(size_t s, BlockElt z) const {
     return d_inverseCayley[s][z];
+  }
+
+  const bitset::RankFlags& involutionSupport(size_t z) const {
+    return d_involutionSupport[z];
   }
 
   bool isStrictAscent(size_t, BlockElt) const;
@@ -127,10 +134,10 @@ class Block {
   }
 
   size_t size() const {
-    return d_tau.size();
+    return d_involution.size();
   }
 
-  const weyl::WeylElt& tau(BlockElt z) const;
+  const weyl::WeylElt& involution(BlockElt z) const;
 
   const weyl::WeylGroup& weylGroup() const {
     return *d_weylGroup;
@@ -154,7 +161,6 @@ class Block {
 
   // manipulators
   void fillBruhat();
-
 };
 
 }

@@ -953,7 +953,7 @@ void Helper::fill()
   size_t minLength = length(0);
 
   // do the minimal length cases; they come first in the enumeration
-  for (; length(y) == minLength; ++y) {
+  for (; y < d_kl.size() and length(y) == minLength; ++y) {
     d_extr[y].push_back(y);
     // the k-l polynomial is 1
     d_kl[y].push_back(d_one);

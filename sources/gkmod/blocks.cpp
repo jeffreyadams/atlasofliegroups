@@ -89,6 +89,8 @@ public:
 
   void fillInvolutions();
 
+  void fillInvolutionSupports();
+
   void fillLengths();
 
   void makeWeylCorrelation();
@@ -172,7 +174,8 @@ void Block::swap(Block& other)
   d_inverseCayley.swap(other.d_inverseCayley);
   d_descent.swap(other.d_descent);
   d_length.swap(other.d_length);
-  d_tau.swap(other.d_tau);
+  d_involution.swap(other.d_involution);
+  d_involutionSupport.swap(other.d_involutionSupport);
 
   std::swap(d_realForm,other.d_realForm);
   std::swap(d_dualForm,other.d_dualForm);
@@ -186,6 +189,26 @@ void Block::swap(Block& other)
 }
 
 /******** accessors **********************************************************/
+size_t Block::firstStrictDescent(size_t z) const
+
+/*
+  Synopsis: returns the first descent of z that is not imaginary compact,
+  rank() if there is no such.
+*/
+
+{
+  using namespace descents;
+
+  for (size_t s = 0; s < rank(); ++s) {
+    DescentStatus::Value v = descentValue(s,z);
+    if (DescentStatus::isDescent(v) and v != DescentStatus::ImaginaryCompact) {
+      return s;
+    }
+  }
+
+  return rank();
+}
+
 bool Block::isStrictAscent(size_t s, BlockElt z) const
 
 /*
@@ -220,7 +243,7 @@ bool Block::isStrictDescent(size_t s, BlockElt z) const
     (d_descent[z][s] == DescentStatus::RealTypeII);
 }
 
-const weyl::WeylElt& Block::tau(BlockElt z) const
+const weyl::WeylElt& Block::involution(BlockElt z) const
 
 /*
   Synopsis: returns the root datum involution corresponding to z.
@@ -231,7 +254,7 @@ const weyl::WeylElt& Block::tau(BlockElt z) const
 */
 
 {
-  return d_tau[z];
+  return d_involution[z];
 }
 
 
@@ -334,7 +357,7 @@ Helper::Helper(realredgp::RealReductiveGroup& G,
 
   d_descent.resize(d_size);
   d_length.assign(d_size,0);
-  d_tau.assign(d_size,WeylElt());
+  d_involution.assign(d_size,WeylElt());
 
   d_x.reserve(d_size+1);
   d_y.reserve(d_size+1);
@@ -357,6 +380,9 @@ Helper::Helper(realredgp::RealReductiveGroup& G,
 
   // fill in descents
   fillDescents();
+
+  // fill in involution supports
+  fillInvolutionSupports();
 }
 
 /******** accessors **********************************************************/
@@ -550,7 +576,59 @@ void Helper::fillInvolutions()
 
 {
   for (BlockElt z = 0; z < d_size; ++z)
-    d_tau[z] = d_kgb.tau(d_x[z]);
+    d_involution[z] = d_kgb.involution(d_x[z]);
+
+  return;
+}
+
+void Helper::fillInvolutionSupports()
+
+/*
+  Synopsis: fills in d_involutionSupport.
+
+  Explanation: d_involutionSupport[z] coontains the support of the
+  underlying involution, i.e. the generators s that occur either as
+  s or as twist(s) in a reduced expression for w as an involution.
+
+  Algorithm: for the minimal length elements, write down the support
+  directly from a reduced expression. For the general case, find a
+  strict descent s; then if s.z is the descended z, we have supp(z)
+  = supp(sz) \cup {s} if the descent is a cayley, supp(s.z) \cup {s}
+  \cup{twist(s)} if the descent is a cross.
+*/
+
+{
+  using namespace descents;
+  using namespace weyl;
+
+  const WeylGroup& W = weylGroup();
+  d_involutionSupport.resize(size());
+
+  size_t minLength = length(0);
+  size_t z = 0;
+
+  for (; z < size() and length(z) == minLength; ++z) {
+    WeylWord ww;
+    W.out(ww,involution(z));
+    for (size_t j = 0; j < ww.size(); ++j) {
+      d_involutionSupport[z].set(ww[j]);
+    }
+  }
+
+  for (; z < size(); ++z) {
+    size_t s = firstStrictDescent(z);
+    DescentStatus::Value v = descentValue(s,z);
+    if (v == DescentStatus::ComplexDescent) { // do cross action
+      size_t sz = cross(s,z);
+      d_involutionSupport[z] = d_involutionSupport[sz];
+      d_involutionSupport[z].set(s);
+      d_involutionSupport[z].set(W.twistGenerator(s));
+    } else { // do inverse cayley transform
+      size_t sz = inverseCayley(s,z).first;
+      d_involutionSupport[z] = d_involutionSupport[sz];
+      d_involutionSupport[z].set(s);
+    }
+  }
 
   return;
 }
@@ -624,10 +702,10 @@ void Helper::orbitPairs()
 #ifdef VERBOSE
     std::cerr << x << "\r";
 #endif
-    const WeylElt& w = d_kgb.tau(x);
+    const WeylElt& w = d_kgb.involution(x);
     WeylElt dw = dualInvolution(w);
     KGBEltPair yRange = d_dualkgb.tauPacket(dw);
-    for (; d_kgb.tau(x) == w; ++x) {
+    for (; d_kgb.involution(x) == w; ++x) {
       for (size_t y = yRange.first; y < yRange.second; ++y) {
 	d_x.push_back(x);
 	d_y.push_back(y);

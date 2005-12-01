@@ -62,6 +62,7 @@ void KLSupport::swap(KLSupport& other)
   std::swap(d_size,other.d_size);
 
   d_descent.swap(other.d_descent);
+  d_goodAscent.swap(other.d_goodAscent);
   d_downset.swap(other.d_downset);
   d_primset.swap(other.d_primset);
   d_lengthLess.swap(other.d_lengthLess);
@@ -70,20 +71,6 @@ void KLSupport::swap(KLSupport& other)
 }
 
 /******** accessors **********************************************************/
-descents::DescentStatus::Value KLSupport::descentValue(size_t s, size_t z) 
-  const
-
-/*
-  Synopsis: returns the descent status of z w.r.t. s.
-
-  NOTE: this is not inlined in order to avoid a compilation dependency on
-  blocks.h
-*/
-
-{
-  return d_block->descentValue(s,z);
-}
-
 void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d) 
   const
 
@@ -195,22 +182,6 @@ void KLSupport::fill()
 
   // make the downsets
   fillDownsets();
-
-#if 0
-  // fill in extrPairs
-  d_extrPairs.resize(block().size());
-
-  for (size_t z = 0; z < d_extrPairs.size(); ++z) {
-    BitMap b(block().size());
-    size_t c = d_lengthLess[length(z)];
-    b.fill(c);
-    b.insert(z);
-    // extremalize
-    extremalize(b,block().descent(z));
-    // copy to list
-    std::copy(b.begin(),b.end(),back_inserter(d_extrPairs[z]));
-  }
-#endif
 
   d_state.set(Filled);
 

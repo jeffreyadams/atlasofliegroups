@@ -108,7 +108,7 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
     strm << "  ";
 
     // print root datum involution
-    printWeylElt(strm,block.tau(j),block.weylGroup());
+    printWeylElt(strm,block.involution(j),block.weylGroup());
 
     strm << std::endl;
   }
@@ -188,7 +188,7 @@ std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
     strm << "  ";
 
     // print root datum involution
-    printInvolution(strm,block.tau(j),block.weylGroup());
+    printInvolution(strm,block.involution(j),block.weylGroup());
 
     strm << std::endl;
   }
@@ -196,8 +196,103 @@ std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
   return strm;
 }
 
+std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
+
+/*
+  Synopsis: outputs the unitary elements in the block in the usual format.
+
+  Explanation: as David explained to me, the unitary representations are
+  exactly those for which the support of the involution consists entirely
+  of descents.
+
+  NOTE: checking that condtion is awkward here, because currently blocks
+  do not have direct access to the descent set!
+*/
+
+{
+  using namespace blocks;
+  using namespace descents;
+  using namespace kgb;
+  using namespace prettyprint;
+
+  // compute maximal width of entry
+  int width = ioutils::digits(block.size()-1,10ul);
+  int xwidth = ioutils::digits(block.xsize()-1,10ul);
+  int ywidth = ioutils::digits(block.ysize()-1,10ul);
+  int lwidth = ioutils::digits(block.length(block.size()-1),10ul);
+  const int pad = 2;
+
+  for (size_t j = 0; j < block.size(); ++j) {
+    for (size_t s = 0; s < block.rank(); ++s) {
+      if (not block.involutionSupport(j).test(s)) // s is not in the support
+	continue;
+      DescentStatus::Value v = block.descentValue(s,j);
+      if (not DescentStatus::isDescent(v)) // representation is not unitary
+	goto nextj;
+    }
+    // print entry number and corresponding orbit pair
+    strm << std::setw(width) << j;
+    strm << "(" << std::setw(xwidth) << block.x(j);
+    strm << ",";
+    strm << std::setw(ywidth) << block.y(j) << ")";
+    strm << ":";
+
+#if 0
+    // print cross actions
+    for (size_t s = 0; s < block.rank(); ++s) {
+      BlockElt z = block.cross(s,j);
+      if (z == UndefBlock)
+	strm << std::setw(width+pad) << '*';
+      else
+	strm << std::setw(width+pad) << z;
+    }
+    strm << std::setw(2*pad) << "";
+
+    // print cayley transforms
+    for (size_t s = 0; s < block.rank(); ++s) {
+      BlockEltPair z = block.cayley(s,j);
+      strm << "(";
+      if (z.first == UndefBlock)
+	strm << std::setw(width) << '*';
+      else
+	strm << std::setw(width) << z.first;
+      strm << ",";
+      if (z.second == UndefBlock)
+	strm << std::setw(width) << '*';
+      else
+	strm << std::setw(width) << z.second;
+      strm << ")" << std::setw(pad) << "";
+    }
+#endif
+    strm << std::setw(pad) << "";
+
+    // print descents
+    printDescent(strm,block.descent(j),block.rank());
+    strm << std::setw(pad) << "";
+
+    // print descents
+    printDescent(strm,block.descent(j),block.rank(),
+		 block.involutionSupport(j));
+
+    // print length
+    strm << std::setw(lwidth+pad) << block.length(j);
+    strm << "  ";
+
+    // print root datum involution
+    printInvolution(strm,block.involution(j),block.weylGroup());
+
+    strm << std::endl;
+
+  nextj:
+    continue;
+  }
+
+  return strm;
+}
+
 std::ostream& printDescent(std::ostream& strm, 
-			   const descents::DescentStatus& ds, size_t rank)
+			   const descents::DescentStatus& ds, 
+			   size_t rank, bitset::RankFlags supp)
 
 /*
   Synopsis: outputs the descent status for the various generators
@@ -211,6 +306,10 @@ std::ostream& printDescent(std::ostream& strm,
   for (size_t s = 0; s < rank; ++s) {
     if (s)
       strm << ",";
+    if (not supp.test(s)) {
+      strm << "* ";
+      continue;
+    }
     switch (ds[s]) {
     case DescentStatus::ComplexDescent:
       strm << "C-";
