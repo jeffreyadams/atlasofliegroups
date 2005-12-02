@@ -502,7 +502,8 @@ void Helper::fillCrossActions()
     for (BlockElt z = 0; z < size(); ++z) {
       KGBElt sx = d_kgb.cross(s,x(z));
       KGBElt sy = d_dualkgb.cross(s,y(z));
-      KGBEltList::iterator i = std::find(d_y.begin()+d_firstx[sx],d_y.end(),sy);
+      KGBEltList::iterator i = std::find(d_y.begin()+d_firstx[sx],d_y.end(),
+					 sy);
       assert(i - d_y.begin() < d_firstx[sx+1]);
       d_cross[s][z] = i - d_y.begin();
     }

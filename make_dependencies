@@ -283,32 +283,32 @@ sources/io/basic_io.o: sources/io/basic_io.cpp sources/io/basic_io.h \
   sources/utilities/intutils.h sources/utilities/intutils_def.h
 sources/io/block_io.o: sources/io/block_io.cpp sources/io/block_io.h \
   sources/gkmod/blocks_fwd.h sources/gkmod/descents_fwd.h \
-  sources/io/ioutils.h sources/gkmod/blocks.h sources/gkmod/bruhat_fwd.h \
+  sources/utilities/bitset.h sources/utilities/bitset_fwd.h \
+  sources/utilities/constants.h sources/utilities/bits.h \
+  sources/utilities/setutils.h sources/utilities/setutils_def.h \
+  sources/utilities/bitset_def.h sources/io/ioutils.h \
+  sources/gkmod/blocks.h sources/gkmod/bruhat_fwd.h \
   sources/utilities/bitmap_fwd.h sources/gkmod/descents.h \
-  sources/utilities/constants.h sources/gkmod/kgb_fwd.h \
-  sources/utilities/bitset_fwd.h sources/structure/complexredgp_fwd.h \
-  sources/structure/weyl_fwd.h sources/utilities/bitset.h \
-  sources/utilities/bits.h sources/utilities/setutils.h \
-  sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
-  sources/structure/realform.h sources/structure/weyl.h \
-  sources/error/error.h sources/structure/latticetypes.h \
-  sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
-  sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
-  sources/structure/bitvector.h sources/structure/bitvector_def.h \
-  sources/utilities/comparison.h sources/utilities/matrix.h \
-  sources/utilities/tags.h sources/utilities/matrix_def.h \
-  sources/utilities/intutils.h sources/utilities/intutils_def.h \
-  sources/utilities/size.h sources/utilities/size_def.h \
-  sources/io/prettyprint.h sources/utilities/abelian_fwd.h \
-  sources/structure/gradings_fwd.h sources/utilities/polynomials_fwd.h \
-  sources/structure/rootdata_fwd.h sources/structure/tits_fwd.h \
-  sources/structure/tori_fwd.h sources/structure/lietype.h \
-  sources/structure/lietype_fwd.h sources/io/prettyprint_def.h \
-  sources/io/basic_io.h sources/io/basic_io_def.h \
-  sources/structure/lattice.h sources/structure/lattice_def.h \
-  sources/structure/rootdata.h sources/structure/prerootdata_fwd.h \
-  sources/utilities/bitmap.h sources/utilities/bitmap_def.h \
-  sources/structure/rootdata_def.h
+  sources/gkmod/kgb_fwd.h sources/structure/complexredgp_fwd.h \
+  sources/structure/weyl_fwd.h sources/structure/realform.h \
+  sources/structure/weyl.h sources/error/error.h \
+  sources/structure/latticetypes.h sources/structure/latticetypes_fwd.h \
+  sources/structure/bitvector_fwd.h sources/utilities/matrix_fwd.h \
+  sources/structure/subquotient_fwd.h sources/structure/bitvector.h \
+  sources/structure/bitvector_def.h sources/utilities/comparison.h \
+  sources/utilities/matrix.h sources/utilities/tags.h \
+  sources/utilities/matrix_def.h sources/utilities/intutils.h \
+  sources/utilities/intutils_def.h sources/utilities/size.h \
+  sources/utilities/size_def.h sources/io/prettyprint.h \
+  sources/utilities/abelian_fwd.h sources/structure/gradings_fwd.h \
+  sources/utilities/polynomials_fwd.h sources/structure/rootdata_fwd.h \
+  sources/structure/tits_fwd.h sources/structure/tori_fwd.h \
+  sources/structure/lietype.h sources/structure/lietype_fwd.h \
+  sources/io/prettyprint_def.h sources/io/basic_io.h \
+  sources/io/basic_io_def.h sources/structure/lattice.h \
+  sources/structure/lattice_def.h sources/structure/rootdata.h \
+  sources/structure/prerootdata_fwd.h sources/utilities/bitmap.h \
+  sources/utilities/bitmap_def.h sources/structure/rootdata_def.h
 sources/io/cartan_io.o: sources/io/cartan_io.cpp sources/io/cartan_io.h \
   sources/structure/cartanclass_fwd.h sources/structure/rootdata_fwd.h \
   sources/utilities/bitmap_fwd.h sources/structure/latticetypes_fwd.h \
@@ -1026,11 +1026,11 @@ sources/test/test.o: sources/test/test.cpp sources/test/test.h \
   sources/io/basic_io_def.h sources/utilities/bitmap.h \
   sources/utilities/bitmap_def.h sources/io/block_io.h \
   sources/gkmod/blocks_fwd.h sources/gkmod/descents_fwd.h \
-  sources/gkmod/blocks.h sources/gkmod/bruhat_fwd.h \
-  sources/gkmod/descents.h sources/gkmod/kgb_fwd.h \
-  sources/structure/complexredgp_fwd.h sources/utilities/bitset.h \
-  sources/utilities/bits.h sources/utilities/setutils.h \
-  sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
+  sources/utilities/bitset.h sources/utilities/bits.h \
+  sources/utilities/setutils.h sources/utilities/setutils_def.h \
+  sources/utilities/bitset_def.h sources/gkmod/blocks.h \
+  sources/gkmod/bruhat_fwd.h sources/gkmod/descents.h \
+  sources/gkmod/kgb_fwd.h sources/structure/complexredgp_fwd.h \
   sources/structure/realform.h sources/structure/weyl.h \
   sources/error/error.h sources/structure/latticetypes.h \
   sources/structure/bitvector.h sources/structure/bitvector_def.h \

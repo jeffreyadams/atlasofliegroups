@@ -249,7 +249,7 @@ void makeTwist(weyl::Twist& twist, const latticetypes::LatticeMatrix& d,
   for (size_t j = 0; j < n; ++j) {
     Weight v(rd.rank());
     d.apply(v,rd.simpleRoot(j));
-    twist[j] = find(sr.begin(),sr.end(),v) - sr.begin();
+    twist[j] = std::find(sr.begin(),sr.end(),v) - sr.begin();
   }
 
   return;

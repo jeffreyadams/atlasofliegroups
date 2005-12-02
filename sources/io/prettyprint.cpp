@@ -15,6 +15,7 @@
 
 #include "abelian.h"
 #include "basic_io.h"
+#include "bitmap.h"
 #include "gradings.h"
 #include "lattice.h"
 #include "lietype.h"
@@ -147,7 +148,9 @@ std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
 {
   using namespace rootdata;
 
-  return printInRootBasis(strm,r.begin(),r.end(),rd);
+  RootList rl(r.begin(),r.end());
+
+  return printInRootBasis(strm,rl.begin(),rl.end(),rd);
 }
 
 std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n, 
