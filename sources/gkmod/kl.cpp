@@ -477,12 +477,12 @@ MuCoeff KLContext::mu(size_t x, size_t y) const
   const MuRow& mr = d_mu[y];
 
   if (not std::binary_search(mr.begin(),mr.end(),
-	std::make_pair(x,static_cast<size_t>(0)),
+	std::make_pair(x,static_cast<size_t>(0ul)),
 			     MuCompare()))
     return 0;
 
   return std::lower_bound(mr.begin(),mr.end(),
-	std::make_pair(x,static_cast<size_t>(0)), 
+	std::make_pair(x,static_cast<size_t>(0ul)), 
 			  MuCompare())->second;
 }
 

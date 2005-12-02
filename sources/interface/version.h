@@ -14,8 +14,8 @@ namespace atlas {
 
 namespace version {
 
-  char* const NAME = "the Atlas of Reductive Lie Groups Software Package";
-  char* const VERSION = "0.2.4";
+  const char* const NAME = "the Atlas of Reductive Lie Groups Software Package";
+  const char* const VERSION = "0.2.4";
 
 }
 

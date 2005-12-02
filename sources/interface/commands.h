@@ -40,6 +40,7 @@ namespace commands {
   void defaultError(const char*);
   void exitInteractive();
   void exitMode();
+  void insertTag(TagDict&, const char*, const char*);
   void printTags(std::ostream&, const TagDict&);
   void pushCommand(const char*);
   void relax_f();
@@ -151,11 +152,11 @@ class CommandMode {
   }
 
 // manipulators
-  void add(const char* name, void (*action)()) {
+  void add(const char* const name, void (*action)()) {
     add(name,Command(action));
   }
 
-  void add(const char*, const Command&);
+  void add(const char* const, const Command&);
 
   iterator find(const char* name) {
     return d_map.find(name);

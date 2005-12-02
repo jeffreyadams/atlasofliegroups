@@ -1100,7 +1100,8 @@ typename Matrix<C>::index_pair findBlockReduction(const Matrix<C>& m,
     }
   }
 
-  return std::make_pair(0,0); // this should never be reached
+  // this should never be reached
+  return std::make_pair(static_cast<size_t>(0ul),static_cast<size_t>(0ul));
 }
 
 template<typename C>
@@ -1125,7 +1126,8 @@ typename Matrix<C>::index_pair findReduction(const Matrix<C>& m,
       return std::make_pair(i,r);
   }
 
-  return std::make_pair(0,0); // this should never be reached
+  // this should never be reached
+  return std::make_pair(static_cast<size_t>(0ul),static_cast<size_t>(0ul));
 }
 
 template<typename C>

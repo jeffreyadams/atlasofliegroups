@@ -227,6 +227,7 @@ template<> void addTestHelp<emptymode::EmptymodeTag>
   NOTE: the mode still needs to be passed as an argument, because this is
   called during the construction of the mode!
 
+
   NOTE: for convenience, the "test" command is added to the mode that is
   flagged by the testMode constant; this is EmptyMode by default, but should
   be redefined to the correct value.
@@ -238,7 +239,7 @@ template<> void addTestHelp<emptymode::EmptymodeTag>
 
   if (testMode == EmptyMode) {
     mode.add("test",nohelp_h);
-    t.insert(std::make_pair("test",test_tag));
+    insertTag(t,"test",test_tag);
   }
 
   // add additional help commands here:
@@ -271,7 +272,7 @@ template<> void addTestHelp<mainmode::MainmodeTag>
 
   if (testMode == MainMode) {
     mode.add("test",nohelp_h);
-    t.insert(std::make_pair("test",test_tag));
+    insertTag(t,"test",test_tag);
   }
 
   // add additional help commands here:
@@ -290,14 +291,14 @@ template<> void addTestHelp<mainmode::MainmodeTag>
 
   // add additional command tags here :
 
-  t.insert(std::make_pair("cmatrix",test_tag));
-  t.insert(std::make_pair("gradings",test_tag));
-  t.insert(std::make_pair("coroots_rootbasis",test_tag));
-  t.insert(std::make_pair("poscoroots_rootbasis",test_tag));
-  t.insert(std::make_pair("posroots_rootbasis",test_tag));
-  t.insert(std::make_pair("roots_rootbasis",test_tag));
-  t.insert(std::make_pair("rootdatum",test_tag));
-
+  insertTag(t,"cmatrix",test_tag);
+  insertTag(t,"coroots_rootbasis",test_tag);
+  insertTag(t,"gradings",test_tag);
+  insertTag(t,"poscoroots_rootbasis",test_tag);
+  insertTag(t,"posroots_rootbasis",test_tag);
+  insertTag(t,"roots_rootbasis",test_tag);
+  insertTag(t,"rootdatum",test_tag);
+ 
   return;
 }
 
@@ -322,8 +323,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   using namespace helpmode;
 
   if (testMode == RealMode) {
-    mode.add("test",nohelp_h);
-    t.insert(std::make_pair("test",test_tag));
+    insertTag(t,"test",test_tag);
   }
 
   // add additional help commands here:
@@ -345,19 +345,19 @@ template<> void addTestHelp<realmode::RealmodeTag>
   /******** tags ************************************************************/
 
   // add additional command tags here:
-  t.insert(std::make_pair("block",test_tag));
-  t.insert(std::make_pair("blockd",test_tag));
-  t.insert(std::make_pair("blocku",test_tag));
-  t.insert(std::make_pair("blockstabilizer",test_tag));
-  t.insert(std::make_pair("components",test_tag));
-  t.insert(std::make_pair("corder",test_tag));
-  t.insert(std::make_pair("extrkl",test_tag));
-  t.insert(std::make_pair("involution",test_tag));
-  t.insert(std::make_pair("kgb",test_tag));
-  t.insert(std::make_pair("klbasis",test_tag));
-  t.insert(std::make_pair("kllist",test_tag));
-  t.insert(std::make_pair("wcells",test_tag));
-  t.insert(std::make_pair("wgraph",test_tag));
+  insertTag(t,"block",test_tag);
+  insertTag(t,"blockd",test_tag);
+  insertTag(t,"blocku",test_tag);
+  insertTag(t,"blockstabilizer",test_tag);
+  insertTag(t,"components",test_tag);
+  insertTag(t,"corder",test_tag);
+  insertTag(t,"extrkl",test_tag);
+  insertTag(t,"involution",test_tag);
+  insertTag(t,"kgb",test_tag);
+  insertTag(t,"klbasis",test_tag);
+  insertTag(t,"kllist",test_tag);
+  insertTag(t,"wcells",test_tag);
+  insertTag(t,"wgraph",test_tag);
 
   return;
 }

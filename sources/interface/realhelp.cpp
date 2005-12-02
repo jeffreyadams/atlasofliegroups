@@ -55,14 +55,10 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("realform",realform_h);
   mode.add("realweyl",realweyl_h);
 
-  TagDict::value_type cartan_entry = std::make_pair("cartan",cartan_tag);
-  tagDict.insert(cartan_entry);
+  insertTag(tagDict,"cartan",cartan_tag);
+  insertTag(tagDict,"realform",realform_tag);
+  insertTag(tagDict,"realweyl",realweyl_tag);
 
-  TagDict::value_type realform_entry = std::make_pair("realform",realform_tag);
-  tagDict.insert(realform_entry);
-
-  TagDict::value_type realweyl_entry = std::make_pair("realweyl",realweyl_tag);
-  tagDict.insert(realweyl_entry);
   return;
 }
 

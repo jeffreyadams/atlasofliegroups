@@ -171,11 +171,11 @@ void CommandMode::extensions(std::vector<const char*>& e,
   std::set<const char*,StrCmp> es;
 
   extensions(es,name);
+  e.clear();
 
-  std::set<const char*,StrCmp>::iterator es_begin = es.begin();
-  std::set<const char*,StrCmp>::iterator es_end = es.end();
-
-  e.assign(es_begin,es_end);
+  for (std::set<const char*,StrCmp>::const_iterator i = es.begin(); 
+       i != es.end(); ++i)
+    e.push_back(*i);
 
   return;
 }
@@ -204,7 +204,7 @@ CommandMode::const_iterator CommandMode::findName(const char* name) const
 
 /******** manipulators ******************************************************/
 
-void CommandMode::add(const char* name, const Command& command)
+void CommandMode::add(const char* const name, const Command& command)
 
 /*
   Synopsis: adds a new command to the mode.
@@ -217,7 +217,7 @@ void CommandMode::add(const char* name, const Command& command)
 */
 
 {
-  CommandMode::CommandDict::value_type v = std::make_pair(name,command);
+  std::pair<const char* const, Command> v(name,command);
 
   std::pair<CommandDict::iterator,bool> p
     = d_map.insert(v);
@@ -406,6 +406,21 @@ void exitMode()
   mode->exit();
 
   modeStack.pop();
+
+  return;
+}
+
+void insertTag(TagDict& t, const char* name, const char* tag)
+
+/*
+  Synopsis: associates tag with name in t.
+
+  NOTE: this is the only way the sun CC compiler will accept it!
+*/
+
+{  
+  TagDict::value_type v(name,tag);
+  t.insert(v);
 
   return;
 }

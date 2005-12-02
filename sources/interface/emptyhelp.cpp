@@ -78,10 +78,10 @@ void addEmptyHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("help",help_h);
   mode.add("qq",qq_h);
 
-  TagDict::value_type help_entry = std::make_pair("help",help_tag);
+  TagDict::value_type help_entry("help",help_tag);
   tagDict.insert(help_entry);
 
-  TagDict::value_type qq_entry = std::make_pair("qq",qq_tag);
+  TagDict::value_type qq_entry("qq",qq_tag);
   tagDict.insert(qq_entry);
 
   return;

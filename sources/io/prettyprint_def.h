@@ -8,6 +8,7 @@
 */
 
 #include <iomanip>
+#include <iterator>
 
 #include "basic_io.h"
 #include "lattice.h"
@@ -155,7 +156,11 @@ std::ostream& printInRootBasis(std::ostream& strm,
 */
 
 {
+#if 0
+  // the sun CC compiler does not like this
   typedef typename std::iterator_traits<I>::value_type VT;
+#endif
+  typedef typename I::value_type VT;
 
   VT dummy;
   return printInRootBasis(strm,first,last,rd,dummy,sep,pre,post);

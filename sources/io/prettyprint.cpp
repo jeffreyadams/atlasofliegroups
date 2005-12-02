@@ -147,13 +147,7 @@ std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
 {
   using namespace rootdata;
 
-  RootSet::iterator r_end = r.end();
-  RootList rl(r.begin(),r_end);
-
-  RootList::const_iterator first = rl.begin();
-  RootList::const_iterator last = rl.end();
-
-  return printInRootBasis(strm,first,last,rd);
+  return printInRootBasis(strm,r.begin(),r.end(),rd);
 }
 
 std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n, 

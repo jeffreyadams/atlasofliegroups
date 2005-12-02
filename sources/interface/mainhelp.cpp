@@ -82,41 +82,16 @@ void addMainHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("simplecoroots",simplecoroots_h);
   mode.add("type",type_h);
 
-  TagDict::value_type blocksizes_entry = 
-    std::make_pair("blocksizes",blocksizes_tag);
-  tagDict.insert(blocksizes_entry);
-
-  TagDict::value_type coroots_entry = std::make_pair("coroots",coroots_tag);
-  tagDict.insert(coroots_entry);
-
-  TagDict::value_type poscoroots_entry = 
-    std::make_pair("poscoroots",poscoroots_tag);
-  tagDict.insert(poscoroots_entry);
-
-  TagDict::value_type posroots_entry = std::make_pair("posroots",posroots_tag);
-  tagDict.insert(posroots_entry);
-
-  TagDict::value_type roots_entry = std::make_pair("roots",roots_tag);
-  tagDict.insert(roots_entry);
-
-  TagDict::value_type showdualforms_entry 
-    = std::make_pair("showdualforms",showdualforms_tag);
-  tagDict.insert(showdualforms_entry);
-
-  TagDict::value_type showrealforms_entry 
-    = std::make_pair("showrealforms",showrealforms_tag);
-  tagDict.insert(showrealforms_entry);
-
-  TagDict::value_type simpleroots_entry 
-    = std::make_pair("simpleroots",simpleroots_tag);
-  tagDict.insert(simpleroots_entry);
-
-  TagDict::value_type simplecoroots_entry 
-    = std::make_pair("simplecoroots",simplecoroots_tag);
-  tagDict.insert(simplecoroots_entry);
-
-  TagDict::value_type type_entry = std::make_pair("type",type_tag);
-  tagDict.insert(type_entry);
+  insertTag(tagDict,"blocksizes",blocksizes_tag);
+  insertTag(tagDict,"coroots",coroots_tag);
+  insertTag(tagDict,"poscoroots",poscoroots_tag);
+  insertTag(tagDict,"posroots",posroots_tag);
+  insertTag(tagDict,"roots",roots_tag);
+  insertTag(tagDict,"showdualforms",showdualforms_tag);
+  insertTag(tagDict,"showrealforms",showrealforms_tag);
+  insertTag(tagDict,"simpleroots",simpleroots_tag);
+  insertTag(tagDict,"simplecoroots",simplecoroots_tag);
+  insertTag(tagDict,"type",type_tag);
 
   return;
 }

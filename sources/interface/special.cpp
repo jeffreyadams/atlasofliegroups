@@ -146,10 +146,7 @@ void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t,
 
   /******** tags **********************************************************/
 
-    // having a named object special_entry avoids a remark from the Intel
-    // compiler
-    TagDict::value_type special_entry = std::make_pair("special",special_tag);
-    t.insert(special_entry);
+    insertTag(t,"special",special_tag);
 
     // add additional tags here :
 
@@ -178,10 +175,7 @@ void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t,
 
   /******** tags **********************************************************/
 
-    // having a named object special_entry avoids a remark from the Intel
-    // compiler
-    TagDict::value_type special_entry = std::make_pair("special",special_tag);
-    t.insert(special_entry);
+    insertTag(t,"special",special_tag);
 
     // add additional tags here :
 
@@ -210,10 +204,7 @@ void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t,
 
   /******** tags **********************************************************/
 
-    // having a named object special_entry avoids a remark from the Intel
-    // compiler
-    TagDict::value_type special_entry = std::make_pair("special",special_tag);
-    t.insert(special_entry);
+    insertTag(t,"special",special_tag);
 
     // add additional tags here :
 

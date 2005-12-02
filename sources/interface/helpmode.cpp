@@ -84,17 +84,13 @@ ThisMode::ThisMode()
   using namespace realmode;
 
   add("q",commands::exitMode);
-  TagDict::value_type q_entry = std::make_pair("q",q_tag);
-  tagDict.insert(q_entry);
-
+  insertTag(tagDict,"q",q_tag);
+ 
   add("?",questionMark_h);
-  TagDict::value_type questionMark_entry 
-    = std::make_pair("?",questionMark_tag);
-  tagDict.insert(questionMark_entry);
+  insertTag(tagDict,"?",questionMark_tag);
 
   add("intro",intro_h);
-  TagDict::value_type intro_entry = std::make_pair("intro",intro_tag);
-  tagDict.insert(intro_entry);
+  insertTag(tagDict,"intro",intro_tag);
 
 // add help functions for the empty mode
   addEmptyHelp(*this,tagDict);
