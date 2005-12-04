@@ -307,8 +307,8 @@ void poscoroots_f()
 
   const RootDatum& rd = G_C.rootDatum();
 
-  RootIterator first = rd.beginPosCoroot();
-  RootIterator last = rd.endPosCoroot();
+  WRootIterator first = rd.beginPosCoroot();
+  WRootIterator last = rd.endPosCoroot();
   seqPrint(file,first,last,"\n") << std::endl;
 
   return;
@@ -329,8 +329,8 @@ void posroots_f()
 
   const RootDatum& rd = G_C.rootDatum();
 
-  RootIterator first = rd.beginPosRoot();
-  RootIterator last = rd.endPosRoot();
+  WRootIterator first = rd.beginPosRoot();
+  WRootIterator last = rd.endPosRoot();
   seqPrint(file,first,last,"\n") << std::endl;
 
   return;
@@ -424,8 +424,8 @@ void simplecoroots_f()
 
   const RootDatum& rd = G_C.rootDatum();
 
-  RootIterator first = rd.beginSimpleCoroot();
-  RootIterator last = rd.endSimpleCoroot();
+  WRootIterator first = rd.beginSimpleCoroot();
+  WRootIterator last = rd.endSimpleCoroot();
   seqPrint(std::cout,first,last,"\n") << std::endl;
 
   return;
@@ -444,8 +444,8 @@ void simpleroots_f()
 
   const RootDatum& rd = G_C.rootDatum();
 
-  RootIterator first = rd.beginSimpleRoot();
-  RootIterator last = rd.endSimpleRoot();
+  WRootIterator first = rd.beginSimpleRoot();
+  WRootIterator last = rd.endSimpleRoot();
   seqPrint(std::cout,first,last,"\n") << std::endl;
 
   return;

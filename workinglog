@@ -307,3 +307,9 @@
 	for the thicket and completePacket stuff. The cost of remembering
 	all the primitive pairs appears to be around 20%, but it is certainly
 	worth it speedwise.
+
+12-03-05: files added: sources/gkmod/klcomputations.h
+	    	       sources/gkmod/klcomputations.cpp
+	    	       sources/gkmod/klcomputations_fwd.h
+	    	       sources/gkmod/involutions.h
+	    	       sources/gkmod/involutions_fwd.h

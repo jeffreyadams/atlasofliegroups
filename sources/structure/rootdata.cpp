@@ -192,7 +192,7 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
 
   // fill in the sum of positive roots
 
-  for (RootIterator i = beginPosRoot(); i != endPosRoot(); ++i)
+  for (WRootIterator i = beginPosRoot(); i != endPosRoot(); ++i)
     d_twoRho += *i;
 
   // fill in the status
@@ -231,7 +231,7 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
 
   // fill in the sum of positive roots
 
-  for (RootIterator i = beginPosRoot(); i != endPosRoot(); ++i)
+  for (WRootIterator i = beginPosRoot(); i != endPosRoot(); ++i)
     d_twoRho += *i;
 
   // fill in the simple root permutations
@@ -255,48 +255,48 @@ RootDatum::~RootDatum()
 
 /******** accessors **********************************************************/
 
-RootIterator RootDatum::beginPosCoroot() const
+WRootIterator RootDatum::beginPosCoroot() const
 
 /*
-  Makes a RootIterator pointing to the beginning of the list of
+  Makes a WRootIterator pointing to the beginning of the list of
   positive coroots.
 */
 
 {
-  return RootIterator(d_coroots,d_posRoots.begin());
+  return WRootIterator(d_coroots,d_posRoots.begin());
 }
 
-RootIterator RootDatum::beginPosRoot() const
+WRootIterator RootDatum::beginPosRoot() const
 
 /*
-  Makes a RootIterator pointing to the beginning of the list of
+  Makes a WRootIterator pointing to the beginning of the list of
   positive roots.
 */
 
 {  
-  return RootIterator(d_roots,d_posRoots.begin());
+  return WRootIterator(d_roots,d_posRoots.begin());
 }
 
-RootIterator RootDatum::beginSimpleCoroot() const
+WRootIterator RootDatum::beginSimpleCoroot() const
 
 /*
-  Makes a RootIterator pointing to the beginning of the list of
+  Makes a WRootIterator pointing to the beginning of the list of
   simple coroots.
 */
 
 {
-  return RootIterator(d_coroots,d_simpleRoots.begin());
+  return WRootIterator(d_coroots,d_simpleRoots.begin());
 }
 
-RootIterator RootDatum::beginSimpleRoot() const
+WRootIterator RootDatum::beginSimpleRoot() const
 
 /*
-  Makes a RootIterator pointing to the beginning of the list of
+  Makes a WRootIterator pointing to the beginning of the list of
   simple roots.
 */
 
 {  
-  return RootIterator(d_roots,d_simpleRoots.begin());
+  return WRootIterator(d_roots,d_simpleRoots.begin());
 }
 
 void RootDatum::coreflection(Weight& v, RootNbr j) const
@@ -318,46 +318,46 @@ void RootDatum::coreflection(Weight& v, RootNbr j) const
 }
 
 
-RootIterator RootDatum::endPosCoroot() const
+WRootIterator RootDatum::endPosCoroot() const
 
 /*
-  Makes a RootIterator pointing to the end of the list of positive 
+  Makes a WRootIterator pointing to the end of the list of positive 
   coroots.
 */
 
 {
-  return RootIterator(d_coroots,d_posRoots.end());
+  return WRootIterator(d_coroots,d_posRoots.end());
 }
 
-RootIterator RootDatum::endPosRoot() const
+WRootIterator RootDatum::endPosRoot() const
 
 /*
-  Makes a RootIterator pointing to the end of the list of positive roots.
+  Makes a WRootIterator pointing to the end of the list of positive roots.
 */
 
 {
-  return RootIterator(d_roots,d_posRoots.end());
+  return WRootIterator(d_roots,d_posRoots.end());
 }
 
-RootIterator RootDatum::endSimpleCoroot() const
+WRootIterator RootDatum::endSimpleCoroot() const
 
 /*
-  Makes a RootIterator pointing to the end of the list of simple 
+  Makes a WRootIterator pointing to the end of the list of simple 
   coroots.
 */
 
 {
-  return RootIterator(d_coroots,d_simpleRoots.end());
+  return WRootIterator(d_coroots,d_simpleRoots.end());
 }
 
-RootIterator RootDatum::endSimpleRoot() const
+WRootIterator RootDatum::endSimpleRoot() const
 
 /*
-  Makes a RootIterator pointing to the end of the list of simple roots.
+  Makes a WRootIterator pointing to the end of the list of simple roots.
 */
 
 {
-  return RootIterator(d_roots,d_simpleRoots.end());
+  return WRootIterator(d_roots,d_simpleRoots.end());
 }
 
 bool RootDatum::isAdjoint() const
@@ -1070,7 +1070,7 @@ void fillRoots(WeightList& rl, WeightList& crl, RootList& srl,
 */
 
 {
-  typedef RootIterator I;
+  typedef WRootIterator I;
   typedef std::pair<Weight,Weight> RP;
 
   std::map<Weight,Weight> roots;

@@ -21,11 +21,12 @@ namespace rootdata {
 
   typedef unsigned long RootNbr;
 
-  class RootIterator;
+  template<typename I> class RootIterator;
   class RootDatum;
 
   typedef latticetypes::LatticeElt Root;
   typedef std::vector<RootNbr> RootList;
+  typedef RootIterator<RootList::const_iterator> WRootIterator;
 
   typedef bitmap::BitMap RootSet;
   typedef std::vector<RootSet> RootSetList;

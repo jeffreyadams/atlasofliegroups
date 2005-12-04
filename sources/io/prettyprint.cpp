@@ -146,11 +146,7 @@ std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
 */
 
 {
-  using namespace rootdata;
-
-  RootList rl(r.begin(),r.end());
-
-  return printInRootBasis(strm,rl.begin(),rl.end(),rd);
+  return printInRootBasis(strm,r.begin(),r.end(),rd);
 }
 
 std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n, 

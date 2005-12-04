@@ -183,21 +183,21 @@ class RootDatum {
     return d_coroots.end();
   }
 
-  RootIterator beginPosCoroot() const;
+  WRootIterator beginPosCoroot() const;
 
-  RootIterator endPosCoroot() const;
+  WRootIterator endPosCoroot() const;
 
-  RootIterator beginPosRoot() const;
+  WRootIterator beginPosRoot() const;
 
-  RootIterator endPosRoot() const;
+  WRootIterator endPosRoot() const;
 
-  RootIterator beginSimpleCoroot() const;
+  WRootIterator beginSimpleCoroot() const;
 
-  RootIterator endSimpleCoroot() const;
+  WRootIterator endSimpleCoroot() const;
 
-  RootIterator beginSimpleRoot() const;
+  WRootIterator beginSimpleRoot() const;
 
-  RootIterator endSimpleRoot() const;
+  WRootIterator endSimpleRoot() const;
 
   bool isPosRoot(RootNbr j) const {
     return d_isPositive.isMember(j);
@@ -356,12 +356,120 @@ class RootDatum {
 // with value_type RootNbr (so that in particular d_pos could be a pointer to
 // a RootNbr)
 
+template<typename I>
 class RootIterator { // constant Random Access Iterator
 
  private:
 
    LT::WeightList::const_iterator d_list;
-   RootList::const_iterator d_pos;
+   I d_pos;
+
+ public:
+
+// associated types
+   typedef LT::Weight value_type;
+   typedef ptrdiff_t difference_type;
+   typedef const LT::Weight& reference;
+   typedef const LT::Weight* pointer;
+   typedef std::random_access_iterator_tag iterator_category;
+
+// constructors and destructors
+   RootIterator() {}
+
+   RootIterator(const RootIterator& i)
+     :d_list(i.d_list),d_pos(i.d_pos) {}
+
+   RootIterator(const LT::WeightList& wl, I i) 
+     :d_list(wl.begin()), d_pos(i) {}
+
+   RootIterator(LT::WeightList::const_iterator wl, I i) 
+     :d_list(wl), d_pos(i) {}
+
+   RootIterator(const RootDatum& rd, I i) 
+     :d_list(rd.beginRoot()), d_pos(i) {}
+
+   ~RootIterator() {}
+
+// assignment
+   RootIterator& operator= (const RootIterator& i) {
+     d_list = i.d_list; 
+     d_pos = i.d_pos; 
+     return *this;
+   }
+
+// comparison
+   bool operator== (const RootIterator& i) const {
+     return d_pos == i.d_pos;
+   }
+
+   bool operator!= (const RootIterator& i) const {
+     return d_pos != i.d_pos;
+   }
+
+// iterator operations
+   const LT::Weight& operator* () {
+     return d_list[*d_pos];
+   }
+
+   RootIterator& operator++ () {
+     ++d_pos; 
+     return *this;
+   }
+
+   RootIterator operator++ (int) {
+     return RootIterator(d_list,d_pos++);
+   }
+
+   RootIterator& operator-- () {
+     --d_pos; 
+     return *this;
+   }
+
+   RootIterator operator-- (int) {
+     return RootIterator(d_list,d_pos--);
+   }
+
+   RootIterator& operator+= (difference_type n) {
+     d_pos += n; 
+     return *this;
+   }
+
+   RootIterator operator+ (difference_type n) {
+     return RootIterator(d_list,d_pos+n);
+   }
+
+   RootIterator& operator-= (difference_type n) {
+     d_pos -= n; 
+     return *this;
+   }
+
+   RootIterator operator- (difference_type n) {
+     return RootIterator(d_list,d_pos-n);
+   }
+
+   difference_type operator- (const RootIterator& j) const {
+     return d_pos-j.d_pos;
+   }
+
+   const LT::Weight& operator[] (difference_type n) {
+     return d_list[d_pos[n]];
+   }
+};
+
+template<typename I>
+inline RootIterator<I> operator+ (typename RootIterator<I>::difference_type n, 
+				  RootIterator<I> i)
+  {
+    return i+n;
+  }
+
+#if 0
+class RootIterator { // constant Random Access Iterator
+
+ private:
+
+   LT::WeightList::const_iterator d_list;
+   I d_pos;
 
  public:
 
@@ -459,6 +567,7 @@ inline RootIterator operator+ (RootIterator::difference_type n, RootIterator i)
   {
     return i+n;
   }
+#endif
 
 }
 

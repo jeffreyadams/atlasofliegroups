@@ -94,6 +94,30 @@ sources/gkmod/kgb.o: sources/gkmod/kgb.cpp sources/gkmod/kgb.h \
   sources/structure/lattice.h sources/structure/lattice_def.h \
   sources/structure/tits.h sources/structure/weyl.h \
   sources/structure/tori.h
+sources/gkmod/klcomputations.o: sources/gkmod/klcomputations.cpp \
+  sources/gkmod/klcomputations.h sources/gkmod/klcomputations_fwd.h \
+  sources/gkmod/blocks_fwd.h sources/structure/complexredgp_fwd.h \
+  sources/gkmod/kgb_fwd.h sources/utilities/bitset_fwd.h \
+  sources/utilities/constants.h sources/gkmod/involutions.h \
+  sources/gkmod/involutions_fwd.h sources/gkmod/blocks.h \
+  sources/gkmod/bruhat_fwd.h sources/utilities/bitmap_fwd.h \
+  sources/gkmod/descents.h sources/gkmod/descents_fwd.h \
+  sources/structure/weyl_fwd.h sources/utilities/bitset.h \
+  sources/utilities/bits.h sources/utilities/setutils.h \
+  sources/utilities/setutils_def.h sources/utilities/bitset_def.h \
+  sources/structure/realform.h sources/structure/weyl.h \
+  sources/error/error.h sources/structure/latticetypes.h \
+  sources/structure/latticetypes_fwd.h sources/structure/bitvector_fwd.h \
+  sources/utilities/matrix_fwd.h sources/structure/subquotient_fwd.h \
+  sources/structure/bitvector.h sources/structure/bitvector_def.h \
+  sources/utilities/comparison.h sources/utilities/matrix.h \
+  sources/utilities/tags.h sources/utilities/matrix_def.h \
+  sources/utilities/intutils.h sources/utilities/intutils_def.h \
+  sources/utilities/size.h sources/utilities/size_def.h \
+  sources/gkmod/kgb.h sources/structure/realredgp_fwd.h \
+  sources/structure/gradings.h sources/structure/gradings_fwd.h \
+  sources/structure/rootdata_fwd.h sources/utilities/bitmap.h \
+  sources/utilities/bitmap_def.h
 sources/gkmod/kl.o: sources/gkmod/kl.cpp sources/gkmod/kl.h \
   sources/gkmod/kl_fwd.h sources/utilities/polynomials_fwd.h \
   sources/gkmod/blocks_fwd.h sources/utilities/bitset.h \

@@ -8,6 +8,7 @@
 */
 
 #include <iomanip>
+#include <iterator>
 
 #include "basic_io.h"
 #include "lattice.h"
@@ -299,8 +300,8 @@ std::ostream& printInRootBasis(std::ostream& strm,
 
   WeightList rl;
   
-  rootdata::RootIterator firstR(rd.beginRoot(),first);
-  rootdata::RootIterator lastR(rd.beginRoot(),last);
+  rootdata::RootIterator<I> firstR(rd.beginRoot(),first);
+  rootdata::RootIterator<I> lastR(rd.beginRoot(),last);
 
   rd.toRootBasis(firstR,lastR,back_inserter(rl));
 
