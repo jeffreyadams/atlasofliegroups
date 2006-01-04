@@ -332,6 +332,20 @@ bool KGB::compare (KGBElt x, KGBElt y) const
     return involution(x) < involution(y);
 }
 
+const weyl::WeylElt& KGB::involution(KGBElt z) const
+
+/*
+  Synopsis: returns the root datum involution corresponding to z.
+
+  In fact, returns the corresponding Weyl group element, s.t. w.delta = tau.
+
+  NOTE: this is not inlined to avoid a dependency on weyl.h
+*/
+
+{
+  return d_involution[z];
+}
+
 bool KGB::isAscent(size_t s, KGBElt x) const
 
 /*
@@ -367,20 +381,6 @@ bool KGB::isDescent(size_t s, KGBElt z) const
 
 {
   return d_descent[z].test(s);
-}
-
-const weyl::WeylElt& KGB::involution(KGBElt z) const
-
-/*
-  Synopsis: returns the root datum involution corresponding to z.
-
-  In fact, returns the corresponding Weyl group element, s.t. w.delta = tau.
-
-  NOTE: this is not inlined to avoid a dependency on weyl.h
-*/
-
-{
-  return d_involution[z];
 }
 
 KGBEltPair KGB::tauPacket(const weyl::WeylElt& w) const

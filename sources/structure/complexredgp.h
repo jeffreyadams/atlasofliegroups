@@ -101,7 +101,11 @@ class ComplexReductiveGroup {
 
   size_t numDualRealForms() const;
 
+  size_t numInvolutions() const;
+
   size_t numRealForms() const;
+
+  realform::RealForm quasisplit() const;
 
   size_t rank() const;
 
@@ -120,6 +124,8 @@ class ComplexReductiveGroup {
   const tits::TitsGroup& titsGroup() const {
     return *d_titsGroup;
   }
+
+  const weyl::WeylElt& twistedInvolution(size_t) const;
 
 // manipulators
   void fillCartan(realform::RealForm rf = 0);

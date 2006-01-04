@@ -367,6 +367,19 @@ size_t ComplexReductiveGroup::numDualRealForms() const
   return d_cartan->numDualRealForms();
 }
 
+size_t ComplexReductiveGroup::numInvolutions() const
+
+/*
+  Synopsis: returns the number of involutions for the currently defined
+  cartans.
+
+  NOTE: this is not inlined to avoid a dependency on cartan.h.
+*/
+
+{
+  return d_cartan->numInvolutions();
+}
+
 size_t ComplexReductiveGroup::numRealForms() const
 
 /*
@@ -377,6 +390,18 @@ size_t ComplexReductiveGroup::numRealForms() const
 
 {
   return d_cartan->numRealForms();
+}
+
+realform::RealForm ComplexReductiveGroup::quasisplit() const
+
+/*
+  Synopsis: returns the quasisplit real form.
+
+  NOTE: this is not inlined to avoid a dependency on cartan.h.
+*/
+
+{
+  return d_cartan->quasisplit();
 }
 
 size_t ComplexReductiveGroup::rank() const
@@ -444,6 +469,18 @@ const weyl::WeylGroup& ComplexReductiveGroup::weylGroup() const
 
 {
   return d_titsGroup->weylGroup();
+}
+
+const weyl::WeylElt& ComplexReductiveGroup::twistedInvolution(size_t cn) const
+
+/*
+  Synopsis: returns the twisted involution representative for class #cn.
+
+  NOTE : this is not inlined to avoid a compiling dependency on cartan.h
+*/
+
+{
+  return d_cartan->twistedInvolution(cn);
 }
 
 /******** manipulators *******************************************************/

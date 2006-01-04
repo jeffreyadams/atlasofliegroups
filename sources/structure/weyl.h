@@ -283,6 +283,8 @@ class WeylGroup {
 
   void out(WeylWord&, const WeylElt&) const;
 
+  void outerTwist(Twist&) const;
+
   int prod(WeylElt& w, Generator s) const {
     return prodIn(w,d_in[s]);
   }

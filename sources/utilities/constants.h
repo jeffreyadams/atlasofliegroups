@@ -27,9 +27,9 @@ namespace constants {
   const unsigned long longBits = std::numeric_limits<unsigned long>::digits;
   const unsigned long sizeBits = std::numeric_limits<size_t>::digits;
 
-  const unsigned long hiBit = 1UL << longBits - 1UL;
+  const unsigned long hiBit = 1ul << longBits - 1ul;
 
-  const unsigned long firstChar = (1UL << charBits) - 1UL;
+  const unsigned long firstChar = (1ul << charBits) - 1ul;
 
   extern unsigned long bitMask[longBits];
   extern unsigned long twoBitMask[longBits >> 1];
@@ -39,7 +39,7 @@ namespace constants {
   extern unsigned long lMask[longBits];
 
   // check PRIMES_MAX in size.h if you change this!
-  const size_t RANK_MAX = 16UL; // should not exceed 128 or the data type for
+  const size_t RANK_MAX = 16ul; // should not exceed 128 or the data type for
                                 // the Weyl groups will overflow
                                 // should be a power of two
 
@@ -49,7 +49,7 @@ namespace constants {
   // It is assumed that the number of digits in an unsigned long 
   // is a power of two.
   
-  const unsigned long posBits = longBits - 1UL;
+  const unsigned long posBits = longBits - 1ul;
   const unsigned long baseBits = ~posBits;
 
   // this one tells by how much we have to shift to get the base
@@ -60,24 +60,24 @@ namespace constants {
 
   template<unsigned long n> class BaseShift {
   public:
-    static const unsigned long value = 1UL + BaseShift< n >> 1UL>::value;
+    static const unsigned long value = 1ul + BaseShift<n/2ul>::value;
   };
 
-  template<> class BaseShift<1UL> {
+  template<> class BaseShift<1ul> {
   public:
-    static const unsigned long value = 0UL;
+    static const unsigned long value = 0ul;
   };
 
   const unsigned long baseShift = BaseShift<longBits>::value;
 
   template<size_t n> class Bool {
   public:
-    static const size_t value = 1UL;
+    static const size_t value = 1ul;
   };
 
-  template<> class Bool<(size_t)0UL> {
+  template<> class Bool<(size_t)0ul> {
   public:
-    static const size_t value = 0UL;
+    static const size_t value = 0ul;
   };
 }
 

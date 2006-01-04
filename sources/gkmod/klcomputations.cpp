@@ -43,7 +43,13 @@ KLComputations::KLComputations()
 {}
 
 KLComputations::KLComputations(complexredgp::ComplexReductiveGroup& G)
-  :d_G(&G),d_involutionSet(G)
+  :d_involutionSet(G),d_G(&G)
+
+/*
+  Synopsis: ctor
+
+  The involutionSet part is filled right away to make things simpler.
+*/
 
 {}
 

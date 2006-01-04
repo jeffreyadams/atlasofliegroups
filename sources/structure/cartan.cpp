@@ -161,44 +161,7 @@ namespace {
 
         Chapter I --- The CartanClasses class
 
-  The CartanClasses structure holds the main structural data required for
-  the representation theory of our inner class of real forms. The meaning
-  of the various fields is as follows:
-
-    - d_fundamental: the fundamental fiber; is also d_cartan[0].fiber().
-      Real forms are classified from the weakReal orbit partition afforded
-      by this fiber.
-
-    - d_dualFundamental: same on the dual side. This is _not_ d_cartan[0].
-      dualFiber()! Rather, it is the dual fiber of the most split Cartan
-      of the quasisplit form.
-
-    - d_cartan: a list of pointers to CartanClass structures, one for each
-      Cartan currently constructed. Initially, we only construct the
-      fundamental one; the structure is grown as required.
-
-    - d_ordering: the order structure on conjugacy classes of Cartans. This
-      is a poset of size d_cartan.size(); it is grown as the structure is
-      expanded. It is a decreasing subset of the full ordering on root datum
-      involutions, which is reached for the quasisplit form.
-
-    - d_realFormLabels: a list of lists, one list for each Cartan class.
-      It contains an external labelling of real forms (the internal labelling
-      being in terms of the orbits in the adjoint fiber.) This is delicate
-      to construct, because it involves correlating the orbit pictures for
-      the various Cartans, which requires Cayley transforms.
-
-    - d_dualRealForms: the analogous thing for the dual group.
-
-    - d_support: for each real form, tells which of the currently constructed
-      Cartans are defined for that real form; in other words, it is the set
-      of Cartans for which that real form label occurs in the corresponding
-      realFormLabels list.
-
-    - d_dualSupport: same for the dual group.
-
-    - d_status: a bitmap of size numRealForms. Tells for which real forms
-      the Cartan subgroup structure has been fully constructed.
+  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -350,6 +313,22 @@ unsigned long CartanClasses::fiberSize(realform::RealForm rf, size_t cn) const
   size_t c = pi(srf.first);
 
   return pi.classSize(c);
+}
+
+size_t CartanClasses::numInvolutions() const
+
+/*
+  Synopsis: returns the total number of involutions corresponding to the
+  currently defined set of cartans.
+*/
+
+{
+  size_t count = 0;
+
+  for (size_t cn = 0; cn < d_cartan.size(); ++cn)
+    count += cartan(cn).orbitSize();
+
+  return count;
 }
 
 unsigned long CartanClasses::representative(realform::RealForm rf, size_t cn) 

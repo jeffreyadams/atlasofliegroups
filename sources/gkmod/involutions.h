@@ -13,10 +13,17 @@
 #include "involutions_fwd.h"
 
 #include "complexredgp_fwd.h"
+#include "weyl.h"
 
 namespace atlas {
 
-/******** type declarations *************************************************/
+/******** constant declarations *********************************************/
+
+namespace involutions {
+
+  const size_t UndefInvolution = ~0ul;
+
+}
 
 /******** function declarations *********************************************/
 
@@ -26,14 +33,50 @@ namespace involutions {
 
 class InvolutionSet {
 
- private:
+ protected:
+
+  size_t d_size;
+  size_t d_rank;
+  std::vector<std::vector<size_t> > d_action;
+  std::vector<size_t> d_cartan;
+  std::vector<weyl::WeylElt> d_involution;
+  std::vector<weyl::WeylElt> d_dualInvolution;
 
  public:
   // constructors and destructors
   InvolutionSet();
 
-  InvolutionSet(complexredgp::ComplexReductiveGroup&);
+  explicit InvolutionSet(complexredgp::ComplexReductiveGroup&);
 
+  virtual ~InvolutionSet() {}
+
+  // copy, assignment and swap
+  void swap(InvolutionSet&);
+
+  // accessors
+  size_t action(size_t s, size_t w) const {
+    return d_action[s][w];
+  }
+
+  const weyl::WeylElt& dualInvolution(size_t j) const {
+    return d_dualInvolution[j];
+  }
+
+  const weyl::WeylElt& involution(size_t j) const {
+    return d_involution[j];
+  }
+
+  size_t involutionNbr(const weyl::WeylElt&, const weyl::WeylGroup&) const;
+
+  const size_t rank() const {
+    return d_rank;
+  }
+
+  const size_t size() const {
+    return d_size;
+  }
+
+  // manipulators
 };
 
 }

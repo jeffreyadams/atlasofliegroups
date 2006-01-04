@@ -976,7 +976,7 @@ void Helper::fill()
   }
 
 #ifdef VERBOSE
-  std::cerr << y << std::endl;
+  std::cerr << std::endl;
 #endif
 
   return;

@@ -31,6 +31,7 @@
 #include "helpmode.h"
 #include "input.h"
 #include "interactive.h"
+#include "involutions.h"
 #include "io.h"
 #include "ioutils.h"
 #include "kl.h"
@@ -78,6 +79,7 @@ namespace {
   void blockd_f();
   void blocku_f();
   void blockstabilizer_f();
+  void checkbasept_f();
   void cmatrix_f();
   void corder_f();
   void components_f();
@@ -107,7 +109,7 @@ namespace {
   const char* test_tag = "(test command)";
 
   enum TestMode {EmptyMode, MainMode, RealMode, numTestMode};
-  const TestMode testMode = RealMode;
+  const TestMode testMode = MainMode;
 
   // utilities
   const rootdata::RootDatum& currentRootDatum();
@@ -204,6 +206,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("blockd",blockd_f);
   mode.add("blocku",blocku_f);
   mode.add("blockstabilizer",blockstabilizer_f);
+  mode.add("checkbasept",checkbasept_f);
   mode.add("components",components_f);
   mode.add("corder",corder_f);
   mode.add("extrkl",extrkl_f);
@@ -332,6 +335,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("blockd",nohelp_h);
   mode.add("blocku",nohelp_h);
   mode.add("blockstabilizer",nohelp_h);
+  mode.add("checkbasept",nohelp_h);
   mode.add("components",nohelp_h);
   mode.add("corder",nohelp_h);
   mode.add("extrkl",extrkl_h);
@@ -349,6 +353,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"blockd",test_tag);
   insertTag(t,"blocku",test_tag);
   insertTag(t,"blockstabilizer",test_tag);
+  insertTag(t,"checkbasept",test_tag);
   insertTag(t,"components",test_tag);
   insertTag(t,"corder",test_tag);
   insertTag(t,"extrkl",test_tag);
@@ -644,30 +649,26 @@ void blockstabilizer_f()
   return;
 }
 
-void corder_f()
+void checkbasept_f()
 
 /*
-  Synopsis: prints the Hasse diagram of the ordering of Cartan classes.
+  Synopsis: checks if the conjectural basepoint construction is ok.
 */
 
 {
+  using namespace kgb;
+  using namespace kltest;
   using namespace realmode;
   using namespace realredgp;
-  using namespace realredgp_io;
-  using namespace ioutils;
 
-  RealReductiveGroup& G_R = currentRealGroup();
+  RealReductiveGroup& G = currentRealGroup();
+  G.fillCartan();
 
-  try {
-    G_R.fillCartan();
-  }
-  catch (error::MemoryOverflow& e) {
-    e("error: memory overflow");
-    return;
-  }
-
-  std::cout << "hasse diagram of Cartan ordering:" << std::endl;
-  printCartanOrder(std::cout,G_R);
+  KGB kgb(G);
+  if (checkBasePoint(kgb))
+    std::cerr << "true" << std::endl;
+  else
+    std::cerr << "false" << std::endl;
 
   return;
 }
@@ -734,6 +735,34 @@ void coroots_rootbasis_f()
   baseChange(rd.beginCoroot(),rd.endCoroot(),back_inserter(v),
 	     rd.beginSimpleCoroot(),rd.endSimpleCoroot());
   seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+
+  return;
+}
+
+void corder_f()
+
+/*
+  Synopsis: prints the Hasse diagram of the ordering of Cartan classes.
+*/
+
+{
+  using namespace realmode;
+  using namespace realredgp;
+  using namespace realredgp_io;
+  using namespace ioutils;
+
+  RealReductiveGroup& G_R = currentRealGroup();
+
+  try {
+    G_R.fillCartan();
+  }
+  catch (error::MemoryOverflow& e) {
+    e("error: memory overflow");
+    return;
+  }
+
+  std::cout << "hasse diagram of Cartan ordering:" << std::endl;
+  printCartanOrder(std::cout,G_R);
 
   return;
 }
@@ -1173,19 +1202,13 @@ void test_f()
 */
 
 {
-  using namespace kgb;
-  using namespace kltest;
-  using namespace realmode;
-  using namespace realredgp;
+  using namespace involutions;
+  using namespace mainmode;
+  using namespace complexredgp;
 
-  RealReductiveGroup& G = currentRealGroup();
-  G.fillCartan();
+  ComplexReductiveGroup& G = currentComplexGroup();
 
-  KGB kgb(G);
-  if (checkBasePoint(kgb))
-    std::cerr << "true" << std::endl;
-  else
-    std::cerr << "false" << std::endl;
+  InvolutionSet inv(G);
 
   return;
 }

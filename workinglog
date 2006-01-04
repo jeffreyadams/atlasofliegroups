@@ -313,3 +313,11 @@
 	    	       sources/gkmod/klcomputations_fwd.h
 	    	       sources/gkmod/involutions.h
 	    	       sources/gkmod/involutions_fwd.h
+
+12-11-05: started the InvolutionSet stuff. It is going to be much nicer with
+	a helper class---need to introduce that.
+
+12-13-05: roughly speaking, InvlutionSet is finished. I still need to check
+	if involutionNbr needs a revert in the weylword, and fix the twist
+	in dualWeyl which I think is not right. Also check that toDualWeyl
+	does the right thing when it matters (G2,F4)

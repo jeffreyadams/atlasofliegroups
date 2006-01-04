@@ -481,6 +481,19 @@ void WeylGroup::out(WeylWord& ww, const WeylElt& w) const
   return;
 }
 
+void WeylGroup::outerTwist(Twist& t) const
+
+/*
+  Synopsis: puts the twist of the outer generators in t.
+*/
+
+{
+  for (size_t s = 0; s < d_rank; ++s)
+    t[s] = d_out[d_twist[d_in[s]]];
+
+  return;
+}
+
 void WeylGroup::prod(WeylElt& w, const WeylElt& v) const
 
 /*
@@ -619,7 +632,7 @@ WeylElt WeylGroup::toWeylElt(unsigned long u) const
 void WeylGroup::translate(WeylElt& w, const WeylInterface& I) const
 
 /*
-  Synopsis: applies to w the homomorphism defined by the generator peremutation
+  Synopsis: applies to w the homomorphism defined by the generator permutation
   in I.
 
   Algorithm: we used the standard reduced decomposition of w.

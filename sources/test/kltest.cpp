@@ -118,24 +118,27 @@ bool checkBasePoint(const kgb::KGB& kgb)
       for (size_t s = 0; s < kgb.rank(); ++s)
 	if (W.hasDescent(s,w)) {
 	  WeylElt sw = w;
-	  KGBElt sx_w;
+	  KGBElt sx_sw;
 	  if (W.hasTwistedCommutation(s,w)) {
 	    W.leftProd(sw,s);
 	    size_t sw_pos = std::lower_bound(wl.begin(),wl.end(),sw,comp) -
 	      wl.begin();
-	    sx_w = kgb.cayley(s,basepts[sw_pos]);
-	    if (sx_w == UndefKGB)
+	    sx_sw = kgb.cayley(s,basepts[sw_pos]);
+	    if (sx_sw == UndefKGB)
 	      return false;
 	  } else {
 	    W.twistedConjugate(sw,s);
 	    size_t sw_pos = std::lower_bound(wl.begin(),wl.end(),sw,comp) -
 	      wl.begin();
-	    sx_w = kgb.cross(s,basepts[sw_pos]);
+	    sx_sw = kgb.cross(s,basepts[sw_pos]);
 	  }
 	  if (basepts[w_pos] == UndefKGB) { // x_w is new
-	    basepts[w_pos] = sx_w;
+	    basepts[w_pos] = sx_sw;
+	    // check if basepoint is large
+	    // this is automatic according to David
+	    // ... not done yet, need to think a little ...
 	  } else {
-	    if (sx_w != basepts[w_pos])
+	    if (sx_sw != basepts[w_pos])
 	      return false;
 	  }
 	}

@@ -70,8 +70,8 @@ class CartanClasses {
   void swap(CartanClasses&);
 
 // accessors
-  const cartanclass::CartanClass& cartan(size_t j) const {
-    return *d_cartan[j];
+  const cartanclass::CartanClass& cartan(size_t cn) const {
+    return *d_cartan[cn];
   }
 
   const latticetypes::LatticeMatrix& distinguished() const {
@@ -88,8 +88,8 @@ class CartanClasses {
     return d_dualFundamental;
   }
 
-  const realform::RealFormList& dualRealFormLabels(size_t j) const {
-    return d_dualRealFormLabels[j];
+  const realform::RealFormList& dualRealFormLabels(size_t cn) const {
+    return d_dualRealFormLabels[cn];
   }
 
   unsigned long dualRepresentative(realform::RealForm, size_t) const;
@@ -104,8 +104,8 @@ class CartanClasses {
     return d_fundamental;
   }
 
-  bool isDefined(realform::RealForm rf, size_t j) const {
-    return d_support[rf].isMember(j);
+  bool isDefined(realform::RealForm rf, size_t cn) const {
+    return d_support[rf].isMember(cn);
   }
 
   size_t mostSplit(realform::RealForm rf) const {
@@ -124,30 +124,40 @@ class CartanClasses {
     return d_dualFundamental.numRealForms();
   }
 
-  size_t numDualRealForms(size_t j) const {
-    return d_cartan[j]->numDualRealForms();
+  size_t numDualRealForms(size_t cn) const {
+    return d_cartan[cn]->numDualRealForms();
   }
+
+  size_t numInvolutions() const;
 
   size_t numRealForms() const {
     return d_fundamental.numRealForms();
   }
 
-  size_t numRealForms(size_t j) const {
-    return d_cartan[j]->numRealForms();
+  size_t numRealForms(size_t cn) const {
+    return d_cartan[cn]->numRealForms();
   }
 
   const poset::Poset& ordering() const {
     return d_ordering;
   }
 
-  const realform::RealFormList& realFormLabels(size_t j) const {
-    return d_realFormLabels[j];
+  realform::RealForm quasisplit() const {
+    return 0ul;
+  }
+
+  const realform::RealFormList& realFormLabels(size_t cn) const {
+    return d_realFormLabels[cn];
   }
 
   unsigned long representative(realform::RealForm, size_t) const;
 
   const bitmap::BitMap& support(realform::RealForm rf) const {
     return d_support[rf];
+  }
+
+  const weyl::WeylElt& twistedInvolution(size_t cn) const {
+    return d_twistedInvolution[cn];
   }
 
 // manipulators
