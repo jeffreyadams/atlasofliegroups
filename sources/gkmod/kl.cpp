@@ -419,7 +419,7 @@ void KLContext::fill()
   return;
 }
 
-const KLPol& KLContext::klPol(size_t x, size_t y)
+const KLPol& KLContext::klPol(size_t x, size_t y) const
 
 /*
   Synopsis: returns the Kazhdan-Lusztig-Vogan polynomial P_{x,y}

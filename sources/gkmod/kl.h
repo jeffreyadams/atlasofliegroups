@@ -131,7 +131,7 @@ class KLContext {
 // manipulators
   virtual void fill();
 
-  const KLPol& klPol(size_t, size_t);
+  //  const KLPol& klPol(size_t, size_t);
 };
 
 }

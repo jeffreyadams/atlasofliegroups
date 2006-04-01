@@ -255,7 +255,7 @@ class WeylGroup {
 
   void invert(WeylElt&) const;
 
-  unsigned long involutionLength(const weyl::WeylElt&) const;
+  unsigned long involutionLength(const WeylElt&) const;
 
   void involutionOut(WeylWord&, const WeylElt&) const;
 
