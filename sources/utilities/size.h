@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is size.h
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -31,6 +33,15 @@ namespace size {
 namespace size {
 
   // useless value
+  /*!
+  \brief Ordinal (position on the list of primes) of the largest prime
+  factor of a Weyl group of rank at most n.
+
+  The ordinal is recorded in PrimesMax<n>::value, and used to make the
+  SizeType class for storing Weyl group orders.  This class should
+  be instantiated only for n=RANK_MAX, which for other reasons should
+  be a power of 2. 
+  */
   template<unsigned long n> class PrimesMax {
   public:
     static const unsigned long value = 0ul;
@@ -38,29 +49,58 @@ namespace size {
 
 
   // predefined values for likely instances of RANK_MAX
+  /*!
+  \brief Ordinal (position on the list of primes) of the
+  largest possible prime factor of a Weyl group of rank at most 8.
+  
+  This is the fourth prime 7.
+  */
   template<> class PrimesMax<8> {
   public:
     static const unsigned long value = 4ul;
   };
 
-
+  /*!
+  \brief Should be the ordinal (position on the list of primes) of the
+  largest possible prime factor of a Weyl group of rank at most 16.
+  
+  This is the sixth prime 13.
+  */
   template<> class PrimesMax<16> {
   public:
-    static const unsigned long value = 7ul;
+    static const unsigned long value = 6ul;
   };
 
+  /*!
+  \brief Ordinal (position on the list of primes) of the
+  largest possible prime factor of a Weyl group of rank at most 32.
+  
+  This is the eleventh prime 29.
+  */
 
   template<> class PrimesMax<32> {
   public:
     static const unsigned long value = 11ul;
   };
 
+  /*!
+  \brief Ordinal (position on the list of primes) of the
+  largest possible prime factor of a Weyl group of rank at most 64.
+  
+  This is the eighteenth prime 61.
+  */
 
   template<> class PrimesMax<64> {
   public:
     static const unsigned long value = 18ul;
   };
 
+  /*!
+  \brief Should be the ordinal (position on the list of primes) of the
+  largest possible prime factor of a Weyl group of rank at most RANK_MAX.
+
+  With RANK_MAX=16, this should be 6 (for the sixth prime 13).
+  */
 
   const size_t PRIMES_MAX = PrimesMax<constants::RANK_MAX>::value;
 }
@@ -77,7 +117,21 @@ namespace size {
 /******** type definitions ***************************************************/
 
 namespace size {
+  /*!
+  \brief Stores a positive integer as product of prime powers, using
+  the first PRIMES_MAX primes.  
 
+  The exponent of the jth prime is d_data[j].  The reason for using
+  this is that the software must occasionally deal with integers too
+  large to be unsigned long; mostly these appear as cardinalities of
+  Weyl groups.  The constant PRIMES_MAX is chosen so that the
+  cardinality of any Weyl group of rank at most RANK_MAX can be
+  represented as a SizeType.  (Note from DV: when RANK_MAX is 16, it
+  appears to me that the largest possible prime factor of a Weyl group
+  order is the sixth prime 13, so one should for elegance choose
+  PRIMES_MAX=6.  The constant used above in that case is PRIMES_MAX=7.
+  But taking PRIMES_MAX too large is harmless.)
+  */
 template<typename C> class SizeType {
 
  private:

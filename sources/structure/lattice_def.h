@@ -1,6 +1,11 @@
+/*!
+  \file
+  \brief This file contains the definitions of the templates declared
+  in lattice.h.
+*/
 /*
-  This is lattice_def.h
-  
+  This is lattice_def.h.
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -23,7 +28,7 @@ namespace lattice {
 template<size_t dim> void mod2(bitvector::BitVector<dim>& v2, 
 			       const latticetypes::LatticeElt& v)
 
-/*
+/*!
   Reduces v modulo 2. It is assumed that v.size() <= dim.
 */
 
@@ -41,7 +46,7 @@ template<size_t dim> void mod2(bitvector::BitVector<dim>& v2,
 template<size_t dim> void mod2(std::vector<bitvector::BitVector<dim> >& wl2, 
 			       const latticetypes::WeightList& wl)
 
-/*
+/*!
   Reduces all elements in the list modulo 2.
 */
 
@@ -57,7 +62,7 @@ template<size_t dim> void mod2(std::vector<bitvector::BitVector<dim> >& wl2,
 template<size_t dim> void mod2(bitvector::BitMatrix<dim>& m2, 
 			       const latticetypes::LatticeMatrix& m)
 
-/*
+/*!
   Reduces the matrix m modulo 2; it is assumed that the number of rows in
   m is at most dim.
 */
@@ -81,7 +86,7 @@ template<typename I, typename J, typename O>
   void baseChange(const I& first, const I& last, O out, const J& firstb, 
 		  const J& lastb)
 
-/*
+/*!
   In this template, we assume that I, J and O are respectively input and output
   iterators for type Weight, and that [firstb, lastb[ holds a new basis for
   the current lattice, expressed in terms of the current basis. As we range 
@@ -119,7 +124,7 @@ template<typename I, typename J, typename O>
   void inverseBaseChange(const I& first, const I& last, O out, const J& firstb,
 			 const J& lastb)
 
-/*
+/*!
   Like baseChange, but we go from a list expressed in terms of [firstb, lastb[
   to list expressed in terms of the original basis. This is actually easier, as
   we don't have to invert the base change matrix!

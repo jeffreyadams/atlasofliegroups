@@ -1,6 +1,21 @@
+/*!
+\file
+\brief Implementation for the class ComplexReductiveGroup.
+
+  The ComplexReductiveGroup class will play a central role in the
+  whole program; even though it is entirely defined by its based root
+  datum (and an involutive automorphism of that datum) it has seemed
+  more natural to use this class to collect the wealth of
+  combinatorial data that the root datum gives rise to, and that will
+  serve as the basis for our description of the representation theory
+  of G. Note that the current state of the theory, and most notably
+  Vogan duality, makes it natural and necessary to consider all the
+  real forms of our complex group (in a given inner class) at once; so
+  that is another reason to not choose a real form a priori.
+*/
 /*
-  This is complexredgp.cpp
-  
+  This is complexredgp.cpp.
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -56,7 +71,7 @@ ComplexReductiveGroup::ComplexReductiveGroup()
    d_titsGroup(0),
    d_cartan(0)
 
-/*
+/*!
   Synopsis: default constructor.
 
   This is of course unusable, but it might be created somewhere (for
@@ -73,7 +88,7 @@ ComplexReductiveGroup(const rootdata::RootDatum* rd,
    d_titsGroup(0),
    d_cartan(0)
 
-/*
+/*!
   Synopsis: constructs a ComplexReductiveGroup from its root datum and a
   distinguished involution.
 
@@ -100,7 +115,7 @@ ComplexReductiveGroup(const rootdata::RootDatum* rd,
 ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G, 
 					     tags::DualTag)
 
-/*
+/*!
   Synopsis: constructs the complex reductive group dual to G.
 */
 
@@ -132,7 +147,7 @@ ComplexReductiveGroup::~ComplexReductiveGroup()
 unsigned long ComplexReductiveGroup::blockSize(realform::RealForm rf, 
 					       realform::RealForm drf) const
 
-/*
+/*!
   Synopsis: returns the size of the block defined by the weak real form rf
   and the weak dual real form drf.
 
@@ -146,8 +161,8 @@ unsigned long ComplexReductiveGroup::blockSize(realform::RealForm rf,
 
 const cartanclass::CartanClass& ComplexReductiveGroup::cartan(size_t cn) const
 
-/*
-  Synopsis: returns cartan #cn in the group.
+/*!
+  Synopsis: returns cartan \#cn in the group.
 
   NOTE: this is not inlined to avoid a dependency on cartan.h
 */
@@ -158,7 +173,7 @@ const cartanclass::CartanClass& ComplexReductiveGroup::cartan(size_t cn) const
 
 const poset::Poset& ComplexReductiveGroup::cartanOrdering() const
 
-/*
+/*!
   Synopsis: returns the ordering of the Cartan subgroups
 
   NOTE: this is not inlined to avoid a dependency on cartan.h
@@ -171,7 +186,7 @@ const poset::Poset& ComplexReductiveGroup::cartanOrdering() const
 const bitmap::BitMap& ComplexReductiveGroup::cartanSet(realform::RealForm rf) 
   const
 
-/*
+/*!
   Synopsis: returns the support of the set of Cartan classes for rf
 
   NOTE : this is not inlined to avoid a compiling dependency on cartan.h
@@ -183,7 +198,7 @@ const bitmap::BitMap& ComplexReductiveGroup::cartanSet(realform::RealForm rf)
 
 const latticetypes::LatticeMatrix& ComplexReductiveGroup::distinguished() const
 
-/*
+/*!
   Synopsis: returns the matrix of the distinguished involution.
 
   Recall that we always implicitly fix an inner class for our complex reductive
@@ -200,9 +215,9 @@ unsigned long ComplexReductiveGroup::dualFiberSize(realform::RealForm drf,
 						   size_t cn) 
   const
 
-/*
+/*!
   Synopsis: returns the size of the fiber size corresponding to dual real
-  form #drf and cartan #cn.
+  form \#drf and cartan \#cn.
 
   Explanation: this is the size of the orbits, for the shifted action of
   the dual imaginary Weyl group (a.k.a. the real Weyl group), that correspond
@@ -220,7 +235,7 @@ unsigned long ComplexReductiveGroup::dualFiberSize(realform::RealForm drf,
 
 const cartanclass::Fiber& ComplexReductiveGroup::dualFundamental() const
 
-/*
+/*!
   Synopsis: returns the dual fundamental fiber.
 
   This is a technical data structure containing the data for the classification
@@ -236,8 +251,8 @@ const cartanclass::Fiber& ComplexReductiveGroup::dualFundamental() const
 const realform::RealFormList& 
 ComplexReductiveGroup::dualRealFormLabels(size_t cn) const
 
-/*
-  Synopsis: returns the dual real form labels for cartan #cn
+/*!
+  Synopsis: returns the dual real form labels for cartan \#cn
 
   NOTE: this is not inlined to avoid a dependency on cartan.h.
 */
@@ -250,11 +265,11 @@ unsigned long ComplexReductiveGroup::dualRepresentative(realform::RealForm drf,
 							size_t cn)
   const
 
-/*
+/*!
   Synopsis: returns an element of the orbit corresponding to drf in the
-  classification of weak real forms for cartan #cn.
+  classification of weak real forms for cartan \#cn.
 
-  Precondition: cartan #cn is defined for drf.
+  Precondition: cartan \#cn is defined for drf.
 
   NOTE: this is not inlined to avoid a dependency on cartan.h
 */
@@ -266,9 +281,9 @@ unsigned long ComplexReductiveGroup::dualRepresentative(realform::RealForm drf,
 unsigned long ComplexReductiveGroup::fiberSize(realform::RealForm rf, size_t cn) 
   const
 
-/*
+/*!
   Synopsis: returns the size of the fiber size corresponding to real
-  form #rf and cartan #cn.
+  form \#rf and cartan \#cn.
 
   Explanation: this is the size of the orbits, for the shifted action of
   the imaginary Weyl group, that correspond to rf in the classification of 
@@ -285,7 +300,7 @@ unsigned long ComplexReductiveGroup::fiberSize(realform::RealForm rf, size_t cn)
 
 const cartanclass::Fiber& ComplexReductiveGroup::fundamental() const
 
-/*
+/*!
   Synopsis: returns the fundamental fiber.
 
   This is a technical data structure containing the data for the classification
@@ -302,7 +317,7 @@ void ComplexReductiveGroup::grading(rootdata::RootSet& rs,
 				    realform::RealForm rf) 
   const
 
-/*
+/*!
   Synopsis: puts in rs the set of noncompact imaginary roots for the
   representative of rf
 */
@@ -315,8 +330,8 @@ void ComplexReductiveGroup::grading(rootdata::RootSet& rs,
 
 unsigned long ComplexReductiveGroup::kgbSize(realform::RealForm rf) const
 
-/*
-  Synopsis: returns the number of elements in K\G/B for real form #rf.
+/*!
+  Synopsis: returns the number of elements in K\\G/B for real form \#rf.
 
   Explanation: this is exactly the number of elements in the one-sided
   parameter set corresponding to any strong real form of G lying over rf.
@@ -330,7 +345,7 @@ unsigned long ComplexReductiveGroup::kgbSize(realform::RealForm rf) const
 
 size_t ComplexReductiveGroup::numCartanClasses() const
 
-/*
+/*!
   Synopsis: returns the number of conjugacy classes of Cartan subgroups
   currently constructed for G.
 
@@ -343,8 +358,8 @@ size_t ComplexReductiveGroup::numCartanClasses() const
 
 size_t ComplexReductiveGroup::mostSplit(realform::RealForm rf) const
 
-/*
-  Synopsis: returns the most split cartan subgroup for real form #rf.
+/*!
+  Synopsis: returns the most split cartan subgroup for real form \#rf.
 
   Precondition: fillCartan() has been called for rf.
 
@@ -357,7 +372,7 @@ size_t ComplexReductiveGroup::mostSplit(realform::RealForm rf) const
 
 size_t ComplexReductiveGroup::numDualRealForms() const
 
-/*
+/*!
   Synopsis: returns the number of weak dual real forms for this inner class.
 
   NOTE: this is not inlined to avoid a dependency on cartan.h
@@ -369,7 +384,7 @@ size_t ComplexReductiveGroup::numDualRealForms() const
 
 size_t ComplexReductiveGroup::numInvolutions() const
 
-/*
+/*!
   Synopsis: returns the number of involutions for the currently defined
   cartans.
 
@@ -382,7 +397,7 @@ size_t ComplexReductiveGroup::numInvolutions() const
 
 size_t ComplexReductiveGroup::numRealForms() const
 
-/*
+/*!
   Synopsis: returns the number of weak real forms for this inner class.
 
   NOTE: this is not inlined to avoid a dependency on cartan.h.
@@ -394,7 +409,7 @@ size_t ComplexReductiveGroup::numRealForms() const
 
 realform::RealForm ComplexReductiveGroup::quasisplit() const
 
-/*
+/*!
   Synopsis: returns the quasisplit real form.
 
   NOTE: this is not inlined to avoid a dependency on cartan.h.
@@ -406,7 +421,7 @@ realform::RealForm ComplexReductiveGroup::quasisplit() const
 
 size_t ComplexReductiveGroup::rank() const
 
-/*
+/*!
   Synopsis: returns the rank of the group.
 
   NOTE: this is not inlined to avoid a dependency on rootdata.h.
@@ -419,8 +434,8 @@ size_t ComplexReductiveGroup::rank() const
 const realform::RealFormList& ComplexReductiveGroup::realFormLabels(size_t cn) 
   const
 
-/*
-  Synopsis: returns the real form labels for cartan #cn
+/*!
+  Synopsis: returns the real form labels for cartan \#cn
 
   NOTE: this is not inlined to avoid a dependency on cartan.h.
 */
@@ -433,11 +448,11 @@ unsigned long ComplexReductiveGroup::representative(realform::RealForm rf,
 						    size_t cn)
   const
 
-/*
+/*!
   Synopsis: returns an element of the orbit corresponding to rf in the
-  classification of weak real forms for cartan #cn.
+  classification of weak real forms for cartan \#cn.
 
-  Precondition: cartan #cn is defined for rf.
+  Precondition: cartan \#cn is defined for rf.
 
   NOTE: this is not inlined to avoid a dependency on cartan.h.
 */
@@ -448,7 +463,7 @@ unsigned long ComplexReductiveGroup::representative(realform::RealForm rf,
 
 size_t ComplexReductiveGroup::semisimpleRank() const
 
-/*
+/*!
   Synopsis: returns the semisimple rank of the group.
 
   NOTE: this is not inlined to avoid a dependency on rootdata.h.
@@ -460,7 +475,7 @@ size_t ComplexReductiveGroup::semisimpleRank() const
 
 const weyl::WeylGroup& ComplexReductiveGroup::weylGroup() const
 
-/*
+/*!
   Synopsis: returns a reference to the Weyl group, which is now owned by the
   Tits group.
 
@@ -473,8 +488,8 @@ const weyl::WeylGroup& ComplexReductiveGroup::weylGroup() const
 
 const weyl::WeylElt& ComplexReductiveGroup::twistedInvolution(size_t cn) const
 
-/*
-  Synopsis: returns the twisted involution representative for class #cn.
+/*!
+  Synopsis: returns the twisted involution representative for class \#cn.
 
   NOTE : this is not inlined to avoid a compiling dependency on cartan.h
 */
@@ -487,7 +502,7 @@ const weyl::WeylElt& ComplexReductiveGroup::twistedInvolution(size_t cn) const
 
 void ComplexReductiveGroup::fillCartan(realform::RealForm rf)
 
-/*
+/*!
   Synopsis: fills in the Cartan classes that are defined for the real form x.
 
   NOTE: may forward an Overflow exception.
@@ -500,7 +515,7 @@ void ComplexReductiveGroup::fillCartan(realform::RealForm rf)
 
 void ComplexReductiveGroup::swap(ComplexReductiveGroup& other)
 
-/*
+/*!
   NOTE: the components being given as pointers, it is enough to swap these!
 */
 
@@ -526,7 +541,7 @@ namespace complexredgp {
 
 void lieType(lietype::LieType& lt, const ComplexReductiveGroup& G)
 
-/*
+/*!
   Synopsis: puts in lt the Lie type of G.
 */
 

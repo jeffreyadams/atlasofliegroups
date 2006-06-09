@@ -1,6 +1,10 @@
+/*!
+\file
+\brief Class definitions and function declarations for the RootDatum class.
+*/
 /*
   This is rootdata.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -103,30 +107,114 @@ void twoRho(LT::Weight&, const RootSet&, const RootDatum&);
 /******** type definitions **************************************************/
 
 namespace rootdata {
+  /*!
+  \brief Based root datum for a complex reductive group, with the
+  involution defining an inner class of real forms.
 
+  What we call a root datum in this program is what is usually called
+  a based root datum, and we also include the involution which defines
+  the inner class of real forms (written in Cartan form, i.e. the
+  negative of the Galois involution).
+
+  The root datum defines the complex reductive group entirely, and
+  (with the involution) specifies an inner class of real forms.
+
+  The lattices in which the roots and coroots live are both Z^d_rank;
+  lists of roots or coroots are lists of vectors of integers, of size
+  d_rank. RootDatum begins with the lists of simple roots and coroots,
+  then constructs the remaining roots.  Also constructed are various
+  useful auxiliary things, like d_twoRho (the sum of the positive
+  roots) and d_rootPermutation (a list of permutations of the roots,
+  with the jth permutation given by reflection in the jth simple
+  root).
+
+  The code is designed to make it preferable always to refer to a root
+  by its number (its location in the list d_root).  The type RootList
+  should in fact (per Fokko) have been called RootNbrList, since it is
+  a list of such numbers.
+  */
 class RootDatum {
 
  private:
 
+  /*!
+  BitSet recording in bit 0 whether the root datum is adjoint, and in
+  bit 1 whether the root datum is simply connected.  (The last enum
+  numFlags is there as a standard programming trick. Its value - in
+  this case 2 - is one-past-the-last meaningful bit, for use by
+  accessors.)
+
+  "Adjoint" here means that the center is connected.  "Simply
+  connected" means that the derived group is simply connected.  These
+  two properties are exchanged by passage to the Langlands dual group.
+  */
   enum StatusFlagNames { IsAdjoint, IsSimplyConnected, numFlags };
   typedef bitset::BitSet<numFlags> Status;
 
-  size_t d_rank;                    // rank of the group
-  size_t d_semisimpleRank;          // rank of the derived group   
-  LT::WeightList d_coradicalBasis;  // basis for orthogonal to derived group
-  LT::WeightList d_radicalBasis;    // same in the dual group
-  LT::WeightList d_roots;           // full list of roots
-  LT::WeightList d_coroots;         // full list of coroots
-  RootList d_minus;                 // lists the negative of each root
-  RootList d_posRoots;              // indices of positive roots
-  RootList d_simpleRoots;           // indices of simple roots
-  LT::RatWeightList d_weights;      // simple weights
-  LT::RatWeightList d_coweights;    // simple coweights
-  std::vector<setutils::Permutation> d_rootPermutation; 
-                                    // records simple root permutations
-  RootSet d_isPositive;             // for easy lookup of positivity
-  RootSet d_isSimple;               // for easy lookup of simplicity
-  LT::Weight d_twoRho;              // the sum of the positive roots
+/*!
+  rank of the group
+*/
+  size_t d_rank;
+
+/*!
+  rank of the derived group   
+*/
+  size_t d_semisimpleRank;   
+/*!
+  basis for orthogonal to derived group
+*/
+  LT::WeightList d_coradicalBasis;  
+/*!
+  basis for orthogonal to derived group in the dual group
+*/
+  LT::WeightList d_radicalBasis; 
+/*!
+  full list of roots
+*/
+  LT::WeightList d_roots;           
+/*!
+  full list of coroots
+*/
+  LT::WeightList d_coroots;         
+/*!
+  lists the negative of each root
+*/
+  RootList d_minus;               
+/*!
+  indices of positive roots
+*/
+  RootList d_posRoots;    
+/*!
+  indices of simple roots
+*/
+  RootList d_simpleRoots;       
+/*!
+  simple weights
+*/
+  LT::RatWeightList d_weights;   
+/*!
+  simple coweights
+*/
+  LT::RatWeightList d_coweights;   
+/*!
+  records simple root permutations
+*/
+  std::vector<setutils::Permutation> d_rootPermutation;                     
+/*!
+  for easy lookup of positivity
+*/
+  RootSet d_isPositive;       
+/*!
+  for easy lookup of simplicity
+*/
+  RootSet d_isSimple;         
+/*!
+  the sum of the positive roots
+*/
+  LT::Weight d_twoRho;              
+/*
+
+*/
   Status d_status;
 
   void fillStatus();
@@ -355,8 +443,17 @@ class RootDatum {
 // NOTE: this should really be a template, depending on a RandomAccessIterator
 // with value_type RootNbr (so that in particular d_pos could be a pointer to
 // a RootNbr)
-
+  
 template<typename I>
+   /*!
+   \brief Iterator for traversing a set of roots.
+
+   This template class is instantiated via WRootIterator, with I set to
+   std::vector<RootNbr>::const_iterator.  Such a class stores two
+   iterators: d_list, with value type LT::Weight, accessing a set of
+   roots, and d_pos, with value type RootNbr, indexing that set of
+   roots.  (Thanks to Marc van Leeuwen for clarifying this.)
+   */
 class RootIterator { // constant Random Access Iterator
 
  private:
@@ -464,6 +561,10 @@ inline RootIterator<I> operator+ (typename RootIterator<I>::difference_type n,
   }
 
 #if 0
+  /*!
+  Old non-template version of RootIterator, now excluded by the
+  preprocessor.  (Thanks to Marc for explaining this.)
+  */ 
 class RootIterator { // constant Random Access Iterator
 
  private:

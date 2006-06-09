@@ -1,6 +1,9 @@
+/*!
+\file
+  This is intutils_def.h. This file contains some very simple
+  templates for integer manipulations. 
+*/
 /*
-  This is intutils_def.h
-  
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -19,7 +22,7 @@ namespace intutils {
 
 template<typename I> I abs(I a)
 
-/*
+/*!
   Synopsis: returns the absolute value of a
 */
 
@@ -29,7 +32,7 @@ template<typename I> I abs(I a)
 
 template<typename I> I divide(I a, I b)
 
-/*
+/*!
   The result of divide(a,b) is the unique element q such that a = q.b + r,
   with 0 <= r < b. Here b is assumed to be > 0, the sign of a may be arbitrary.
   For instance, divide(-1,2) should be -1, so that -1 = -1.2 + 1. On my
@@ -42,7 +45,7 @@ template<typename I> I divide(I a, I b)
 
 template<typename I> I factorial(I a)
 
-/*
+/*!
   Synopsis: returns the factorial of a. It is assumed that a >= 0; we do
   not worry about overflow.
 */

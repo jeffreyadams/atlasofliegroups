@@ -1,7 +1,12 @@
+/*!
+\file
+\brief
+Implementation of the class RealTorus
+
+*/
 /*
   This is tori.cpp
-  
-  Copyright (C) 2004,2005 Fokko du Cloux
+
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
   See file main.cpp for full copyright notice
@@ -83,7 +88,7 @@ RealTorus::RealTorus(const LatticeMatrix& i)
    d_involution(i),
    d_topology(d_rank)
 
-/*
+/*!
   This function constructs the torus with involution i (the rank is recovered
   from the size of the matrix.)
 */
@@ -106,7 +111,7 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
   :d_rank(T.d_rank),
    d_involution(d_rank)
 
-/*
+/*!
   Synopsis: constructs the torus dual to T.
 
   This is the torus in the dual lattice (but the lattice and the dual lattice
@@ -138,7 +143,7 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
 void RealTorus::componentMap(ComponentMap& cm, const LatticeMatrix& m, 
 			     const RealTorus& T_dest) const
 
-/*
+/*!
   Constructs the map induced at the level of dual component groups by a
   map from X_source to X_dest, given by its matrix m. The idea is simple
   enough : look at the columns of m modulo 2 and project them onto dpi0,
@@ -173,13 +178,13 @@ namespace tori {
 
 void dualPi0(LT::ComponentSubquotient& dpi0, const LT::LatticeMatrix& q)
 
-/*
+/*!
   Synopsis: puts in dpi0 what would have been the topology field for the
   corresponding torus.
 
   Precondition: q is an involution matrix; its size doesn't exceed RankMax;
 
-  Explanation: this is canonically the dual of the fundamental group; see
+  Explanation: this is canonically the dual of the component group; see
   makeTopology.
 */
 
@@ -211,7 +216,7 @@ void dualPi0(LT::ComponentSubquotient& dpi0, const LT::LatticeMatrix& q)
 void minusBasis(latticetypes::WeightList& mb, 
 		const latticetypes::LatticeMatrix& i)
 
-/*
+/*!
   Synopsis: puts in mb a basis for the -1 eigenspace of the involution.
 
   Algorithm: the vectors e-i(e), when e runs through b, generate a lattice 
@@ -253,7 +258,7 @@ void minusBasis(latticetypes::WeightList& mb,
 void minusMatrix(latticetypes::LatticeMatrix& qm, 
 		 const latticetypes::LatticeMatrix& q, const RealTorus& t)
 
-/*
+/*!
   Synopsis: writes in qm the matrix of the restriction of q to X_-.
 
   Precondition: q commutes with the involution;
@@ -278,7 +283,7 @@ void minusMatrix(latticetypes::LatticeMatrix& qm,
 void plusBasis(latticetypes::WeightList& pb,
 	       const latticetypes::LatticeMatrix& i)
 
-/*
+/*!
   Synopsis: puts in mb a basis for the +1 eigenspace of the involution;
 
   Algorithm: the vectors e+i(e), when e runs through b, generate a lattice 
@@ -319,7 +324,7 @@ void plusBasis(latticetypes::WeightList& pb,
 void plusMatrix(latticetypes::LatticeMatrix& qp, 
 		const latticetypes::LatticeMatrix& q, const RealTorus& t)
 
-/*
+/*!
   Synopsis: writes in qp the matrix of the restriction of q to X_+.
 
   Precondition: q commutes with the involution;
@@ -355,13 +360,12 @@ namespace {
 
 void makeTopology(ComponentSubquotient& cs, const RealTorus& T)
 
-/*
-  Synopsis: puts the subquotient V^\tau/V_+ in cs.
+/*!
+  Synopsis: puts the subquotient V^tau/V_+ in cs.
 
   Explanation: V is X/2X; V_+ is the image of X_+ in V. So the subquotient
-  is the _dual_ of the fundamental group of the torus.
+  is the _dual_ of the component group of the torus.
 */
-
 {
   using namespace lattice;
 
@@ -388,7 +392,7 @@ void fullMinusBasis(latticetypes::WeightList& mb,
 		    latticetypes::LatticeMatrix& tm,
 		    const latticetypes::LatticeMatrix& i)
 
-/*
+/*!
   Synopsis: puts in mb a basis for the -1 eigenspace of the involution; puts
   in tm the matrix of a projection onto X_-.
 
@@ -450,7 +454,7 @@ void fullPlusBasis(latticetypes::WeightList& pb,
 		   latticetypes::LatticeMatrix& tp,
 		   const latticetypes::LatticeMatrix& i)
 
-/*
+/*!
   Synopsis: puts in mb a basis for the +1 eigenspace of the involution; puts
   in tm the matrix of a projection onto X_+.
 

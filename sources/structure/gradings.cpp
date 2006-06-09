@@ -1,6 +1,10 @@
+/*!
+\file
+\brief Implementation for the type Grading.
+*/
 /*
   This is gradings.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -80,7 +84,7 @@ namespace gradings {
 void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
 		 const RootDatum& rd)
 
-/*
+/*!
   Given a RootList rs, which is assumed to hold a root system, and an
   orthogonal subsystem o in rs, this function returns a grading of the
   root system rs (expressed in terms of its canonical basis) for which
@@ -150,7 +154,7 @@ void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
 void gradingType(rootdata::RootList& gt, const Grading& g, 
 		 const rootdata::RootDatum& rd)
 
-/*
+/*!
   Returns in gt a maximal set of strongly orthogonal noncompact roots for the
   grading.
 
@@ -237,7 +241,7 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
 void compactRoots(rootdata::RootList& cr, const Grading& g, 
 		  const rootdata::RootDatum& rd)
 
-/*
+/*!
   This function puts in cr the list of roots in rd that are compact for
   the grading g.
 */
@@ -262,7 +266,7 @@ void compactRoots(rootdata::RootList& cr, const Grading& g,
 
 bool isNonCompact(const rootdata::Root& v, const Grading& g)
 
-/*
+/*!
   Synopsis: tells whether v is noncompact w.r.t. the grading g.
 
   NOTE : it is essential that v is expressed in the root basis in which
@@ -281,7 +285,7 @@ bool isNonCompact(const rootdata::Root& v, const Grading& g)
 
 void makeGradings(GradingList& gl, const rootdata::RootDatum& rd)
 
-/*
+/*!
   This function puts in gl a set of representatives of W-conjugacy classes
   of Z_2-gradings on the root system of rd, which arise from a Z-grading.
   Such a grading is defined by the sign of each simple root; therefore
@@ -345,7 +349,7 @@ namespace {
 
 BitCount::result_type BitCount::operator() (argument_type g) const
 
-/*
+/*!
   Counts the number of set bits in g.
 */
 
@@ -357,7 +361,7 @@ BitCount::result_type BitCount::operator() (argument_type g) const
 GradingAction::GradingAction(const RootDatum& rd)
   :d_cartan(rd.semisimpleRank()),d_rank(rd.semisimpleRank())
 
-/*
+/*!
   The idea is that d_cartan holds the reduced Cartan matrix.
 */
 
@@ -371,7 +375,7 @@ GradingAction::GradingAction(const RootDatum& rd)
 unsigned long GradingAction::operator() (unsigned long s, unsigned long g)
   const
 
-/*
+/*!
   GradingAction is a function object, to be used for the determination of
   W-orbits on gradings. The result of opereator() on (s,g) is the action
   of the simple reflection #s on the grading j. This is obtained by letting
@@ -403,7 +407,7 @@ unsigned long GradingAction::operator() (unsigned long s, unsigned long g)
 
 void toGrading(Grading& g, const LongComponent&  gc)
 
-/*
+/*!
   This is just a little function which extracts the first RANK_MAX bits
   from gc.
 */
@@ -424,7 +428,7 @@ namespace gradings {
 
 bool GradingCompare::operator() (const Grading& lhs, const Grading& rhs)
 
-/*
+/*!
   Synopsis: compares lhs and rhs.
 
   We have lhs < rhs iff either lhs has fewer set members, or they have the
@@ -455,7 +459,7 @@ namespace {
 
 void noncompactEquations(LongComponentList& eqn, const WeightList& nc)
 
-/*
+/*!
   This function adds to eqn the equations saying that the grading should
   be noncompact for each element of nc.
 */
@@ -477,7 +481,7 @@ void noncompactEquations(LongComponentList& eqn, const WeightList& nc)
 void compactEquations(LongComponentList& eqn, const RootList& o, 
 		      const RootList& rs, const RootDatum& rd)
 
-/*
+/*!
   In this function we assume that o is an orthogonal set of roots in the
   root system rs. Let o_orth be its orthogonal. Then we add to eqn the 
   equations which express the fact that after descent through o, the roots in 

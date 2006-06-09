@@ -1,6 +1,19 @@
+/*!
+\file
+  \brief Template definitions for the class Partition.
+
+  This file contains the definitions of the
+  templates declared in partition.h: 
+    - makeOrbits(Partition&, F a, unsigned long, unsigned long) : constructs
+      the orbit partition defined by the "action function" a;
+
+The purpose of the class Partition is to compute the partition of a
+finite set given by a group action.  A typical example is a Weyl group
+acting on elements of order 2 in a torus.
+*/
 /*
-  This is partition_def.h
-  
+  This is partition_def.h. 
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -22,17 +35,26 @@
 
 namespace atlas {
 
+  /*! 
+  \brief Functions for working with a partition of a finite set into
+  classes.
+
+  Typically classes are orbits of a finite group (like a Weyl group)
+  on a vector space over Z/2Z (like elements of order 2 in a torus).
+  */
 namespace partition {
 
 template<typename F> 
   void makeOrbits(Partition& pi, F& a, unsigned long c, unsigned long n)
 
-/*
-  It is assumed that a is a function object which takes two unsigned long
-  arguments, one in the range [0,c[, one in the range [0,n[. This is
-  interpreted as an action of the set [0,c[ on [0,n[; moreover we assume
-  that these actions are given by permutations (so in effect we are giving
-  the generators of a permutation subgroup of Sym([0,n[).)
+/*!
+  Constructs the orbit partition defined by the "action function"
+  a. It is assumed that a is a function object which takes two
+  unsigned long arguments, one in the range [0,c[, one in the range
+  [0,n[. This is interpreted as an action of the set [0,c[ on [0,n[;
+  moreover we assume that these actions are given by permutations (so
+  in effect we are giving the generators of a permutation subgroup of
+  Sym([0,n[).)
 
   Then we write in pi the orbit partition for this action. The algorithm is
   like this. Maintain a stack S of elements-under-inspection, initially

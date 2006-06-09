@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is ctr_iterator.h
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -12,7 +14,7 @@
 
 namespace atlas {
 
-/*
+/*!
   The purpose of this type is to be able to apply stl algorithms like find,
   where the iterator is really an integer, ranging over a non-allocated range.
   In other words, the iterator itself holds its value. It is assumed that

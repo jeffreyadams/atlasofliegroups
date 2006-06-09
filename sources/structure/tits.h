@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is tits.h
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -54,7 +56,9 @@ class TitsElt {
 
 // constructors and destructors
 
-// constructs the identity element in the group
+/*! 
+  constructs the identity element in the group
+*/
   explicit TitsElt(size_t n):d_t(n) {} 
 
   TitsElt(const weyl::WeylElt& w, size_t n):d_w(w),d_t(n) {}
@@ -123,7 +127,9 @@ class TitsGroup {
 
 // accessors
   void conjugate(TitsElt& a, weyl::Generator s) const {
-    // note: in the Tits group s^{-1} is s.m_s!
+/*
+  note: in the Tits group s^{-1} is s.m_s!
+*/
     leftProd(a,s);
     prod(a,s);
     a += d_simpleCoroot[s];
@@ -146,7 +152,9 @@ class TitsGroup {
   }
 
   void reflection(TorusPart& x, weyl::Generator s) const {
-    // note: s must be an _outer_ generator
+/*
+  note: s must be an _outer_ generator
+*/
     if (bitvector::scalarProduct(x,d_simpleRoot[s]))
       x += d_simpleCoroot[s];
   }
@@ -164,7 +172,9 @@ class TitsGroup {
   }
 
   void twistedConjugate(TitsElt& a, weyl::Generator s) const {
-    // note: in the Tits group s^{-1} is s.m_s!
+/*
+  note: in the Tits group s^{-1} is s.m_s!
+*/
     leftProd(a,s);
     prod(a,d_twist[s]);
     a += d_simpleCoroot[d_twist[s]];

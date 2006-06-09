@@ -1,6 +1,10 @@
-/*
+/*!
+\file
+\brief Implementation of the BitSet class.
+*/
+/*  
   This is bitset.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -21,7 +25,7 @@ namespace bitset {
 
 BitSetBase<1>::iterator BitSetBase<1>::begin() const
 
-/*
+/*!
   Synopsis : returns an iterator pointing to the first set bit; this is
   essentially just d_bits itself.
 */
@@ -32,7 +36,7 @@ BitSetBase<1>::iterator BitSetBase<1>::begin() const
 
 bool BitSetBase<1>::scalarProduct(const BitSetBase<1>& b) const
 
-/*
+/*!
   Synopsis: returns the parity of *this & b.
 */
 

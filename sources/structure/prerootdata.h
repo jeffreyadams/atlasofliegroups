@@ -1,6 +1,18 @@
+/*!
+\file
+  \brief Constructs a root datum from user interaction: class
+  definitions and function declarations.
+
+  The idea is to construct an abstract root datum (a lattice and a
+  subset of "roots," together with the dual lattice and a subset of
+  "coroots") specified interactively as a product of simple Lie types,
+  then dividing by a specified subgroup of the center of a simply
+  connected form.
+*/
+
 /*
   This is prerootdata.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -20,7 +32,6 @@ namespace atlas {
 namespace prerootdata {
 
   class PreRootDatum;
-
 }
 
 /******** function declarations **********************************************/
@@ -37,13 +48,37 @@ namespace prerootdata {
 /******** type definitions **************************************************/
 
 namespace prerootdata {
+  /*!
+  \brief Root datum specified by user interaction.
 
+  The idea is to construct an abstract root datum (a lattice and a
+  subset of "roots," together with the dual lattice and a subset of
+  "coroots") specified interactively as a product of simple Lie types,
+  then dividing by a specified subgroup of the center of a simply
+  connected form.
+
+  The lattice and dual lattice in which the root datum lives are
+  always Z^d_rank.  The simple roots, expressed as a list of elements
+  of Z^d_rank, are in d_roots, and the simple coroots in d_coroots.
+
+  More serious calculations (like producing the complete list of
+  roots) are handled by the RootDatum class, to which PreRootDatum can
+  pass its contents.
+  */
 class PreRootDatum{
 
  private:
-
+  /*!
+  List of the simple roots as elements of Z^d_rank.
+  */
   latticetypes::WeightList d_roots;
+  /*!
+  List of the simple coroots as elements of Z^d_rank.
+  */
   latticetypes::WeightList d_coroots;
+  /*!
+  Rank of the root datum.
+   */
   size_t d_rank;
 
  public:
@@ -61,14 +96,23 @@ class PreRootDatum{
        (d_rank == prd.d_rank);
   }
 
+  /*!
+  Returns list of the simple coroots as elements of Z^d_rank.
+  */
   const latticetypes::WeightList& coroots() const {
     return d_coroots;
   }
 
+  /*!
+  Returns rank of the root datum.
+  */
   size_t rank() const {
     return d_rank;
   }
 
+  /*!
+  Returns list of the simple roots as elements of Z^d_rank.
+  */
   const latticetypes::WeightList& roots() const {
     return d_roots;
   }

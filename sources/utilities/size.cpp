@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is size.cpp
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -53,7 +55,7 @@ namespace size {
 
 unsigned long prime(size_t j)
 
-/*
+/*!
   Synopsis: returns the j-th prime number, counting from 0.
 
   Precondition: j < PRIMES_MAX;
@@ -77,7 +79,7 @@ namespace {
 
 PrimeHelper::PrimeHelper(unsigned long n)
 
-/*
+/*!
   Synopsis: constructs a PrimeHelper object containing the primes <= n.
 
   Also checks that PRIMES_MAX is large enough to contain the list; triggers

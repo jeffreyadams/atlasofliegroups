@@ -1,6 +1,10 @@
+/*!
+\file
+  This is arithmetic.cpp.
+  This module contains straightforward implementations of some elementary
+  arithmetic operations, used in dealing with small abelian groups.
+*/
 /*
-  This is arithmetic.cpp
-  
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -25,7 +29,7 @@ namespace arithmetic {
 
 unsigned long gcd(unsigned long a, unsigned long b)
 
-/*
+/*!
   Synopsis: the classic Euclidian algorithm. It is assumed that 
 
   Precondition: b > 0;
@@ -52,7 +56,7 @@ unsigned long gcd(unsigned long a, unsigned long b)
 
 unsigned long lcm(unsigned long a, unsigned long b)
 
-/*
+/*!
   Synopsis: returns the lowest common multiple of a and b. 
 
   Precondition: b > 0;
@@ -65,13 +69,13 @@ unsigned long lcm(unsigned long a, unsigned long b)
 
 unsigned long& modProd(unsigned long& a, unsigned long b, unsigned long n)
 
-/*
+/*!
   Synopsis: a *= b mod n.
 
   Precondition: a < n; b < n.
 
   NOTE: preliminary implementation. It assumes that n <= 2^^(longBits/2).
-  Will exit brutally if tis is not fulfilled.
+  Will exit brutally if this is not fulfilled.
 */
 
 {

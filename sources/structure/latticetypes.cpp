@@ -1,6 +1,9 @@
+/*!
+\file
+  This is latticetypes.cpp.  This module defines a few simple
+  operations on the types defined in latticetypes.h
+*/
 /*
-  This is latticetypes.cpp
-  
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 

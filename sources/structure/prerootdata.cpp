@@ -1,6 +1,16 @@
+/*!
+\file
+  \brief Constructs a root datum from user interaction: implementation.
+
+  The idea is to construct an abstract root datum (a lattice and a
+  subset of "roots," together with the dual lattice and a subset of
+  "coroots") specified interactively as a product of simple Lie types,
+  then dividing by a specified subgroup of the center of a simply
+  connected form.
+*/
 /*
-  This is prerootdata.cpp
-  
+  This is prerootdata.cpp.  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -55,7 +65,7 @@ PreRootDatum::PreRootDatum(const lietype::LieType& lt,
 			   const latticetypes::WeightList& b)
   :d_rank(lietype::rank(lt))
 
-/*
+/*!
   Constructs the PreRootDatum whose lattice has basis b, expressed in terms
   of the canonical weight lattice basis for lt (the simple weights for the
   semisimple part, the canonical basis for the torus part.)
@@ -106,7 +116,7 @@ namespace prerootdata {
 
 void cartanMatrix(latticetypes::LatticeMatrix& cm, const lietype::LieType& lt)
 
-/*
+/*!
   Synopsis: puts in cm the Cartan matrix corresponding to the Lie type lt.
 
   Algorithm: the matrix is constructed blockwise, one block for each simple Lie
@@ -135,7 +145,7 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm, const lietype::LieType& lt)
 void cartanMatrix(latticetypes::LatticeMatrix& cm, 
 		    const lietype::SimpleLieType& slt)
 
-/*
+/*!
   Synopsis: puts in cm the Cartan matrix corresponding to the simple Lie type 
   slt.
 
@@ -269,7 +279,7 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm,
 
         Chapter III -- Auxiliary functions
 
-  This sections contains the definitions of some ausiliary functions private
+  This sections contains the definitions of some auxiliary functions private
   to the present module :
 
     - void makeCorootBasis(WeightList&, const CartanMatrix&, 
@@ -285,8 +295,11 @@ namespace {
 void makeCorootBasis(WeightList& crb, const LatticeMatrix& c, 
 		     const WeightList& lb)
 
-/*
-  Given the lattice basis lb, expressed in tems of the simple weight basis,
+/*!
+  \brief Writes down the simple coroots in the dual lattice
+  basis.
+
+  Given the lattice basis lb, expressed in terms of the simple weight basis,
   and the transposed Cartan matrix c, this function writes in crb the
   simple coroots of the system. In fact, if q is the matrix of lb in the
   simple weight basis, its transpose is the matrix of the dual basis of
@@ -319,7 +332,9 @@ void makeCorootBasis(WeightList& crb, const LatticeMatrix& c,
 void makeRootBasis(WeightList& rb, const LatticeMatrix& c, 
 		   const WeightList& lb)
 
-/*
+/*!
+ \brief Writes down the simple roots in the lattice basis.
+
   Given the lattice basis lb, expressed in terms of the simple weight basis,
   and the transposed Cartan matrix c, which may be interpreted as giving the
   coordinates of the simple roots in the simple weight basis, this function

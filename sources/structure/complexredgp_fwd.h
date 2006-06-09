@@ -1,6 +1,10 @@
+/*!
+\file
+\brief Class declaration for ComplexReductiveGroup.
+*/
 /*
   This is complexredgp_fwd.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 

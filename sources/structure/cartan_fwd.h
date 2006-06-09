@@ -1,3 +1,7 @@
+/*!
+\file
+\brief Declaration for CartanClasses class.
+*/
 /*
   This is cartan_fwd.h
   

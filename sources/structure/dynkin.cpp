@@ -1,6 +1,9 @@
+/*!
+\file
+\brief Implementation of the class DynkinDiagram.
+*/
 /*
   This is dynkin.cpp
-  
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -56,7 +59,7 @@ namespace dynkin {
 DynkinDiagram::DynkinDiagram(const latticetypes::LatticeMatrix& c)
   :d_star(c.numColumns())
 
-/*
+/*!
   Constructs a Dynkin diagram from a Cartan matrix. The edge points from i to
   j when the Cartan matrix entry c(i,j) is < -1 (i.e. towards the shorter 
   root.)
@@ -81,7 +84,7 @@ DynkinDiagram::DynkinDiagram(const latticetypes::LatticeMatrix& c)
 DynkinDiagram::DynkinDiagram(const bitset::RankFlags& c, 
 			     const DynkinDiagram& d)
 
-/*
+/*!
   Constructs the restriction of d to the subset of the vertices flagged
   by c.
 */
@@ -118,8 +121,8 @@ DynkinDiagram::DynkinDiagram(const bitset::RankFlags& c,
 
 bitset::RankFlags DynkinDiagram::component(size_t j) const
 
-/*
-  Returns the component of vertex #j in the diagram.
+/*!
+  Returns the component of vertex \#j in the diagram.
 
   The algorithm is to start with j, and to construct "shells" from there,
   by taking each new shell to be the elements of the union of the stars of
@@ -143,7 +146,7 @@ bitset::RankFlags DynkinDiagram::component(size_t j) const
 
 bitset::RankFlags DynkinDiagram::extremities() const
 
-/*
+/*!
   Synopsis : returns the subset of the vertices which are extremities of the
   graph (i.e. whose star has zero or one element).
 */
@@ -162,7 +165,7 @@ bitset::RankFlags DynkinDiagram::extremities() const
 
 Edge DynkinDiagram::labelEdge() const
 
-/*
+/*!
   Synopsis : returns the multiple edge of d.
 
   Precondition : d is irreducible and not simply laced;
@@ -179,7 +182,7 @@ Edge DynkinDiagram::labelEdge() const
 
 Multiplicity DynkinDiagram::maxMultiplicity() const
 
-/*
+/*!
   Synopsis : returns the largest multiplicity in the graph.
 
   NOTE : we return 1 when there are no labelled edges, even when there are
@@ -204,7 +207,7 @@ Multiplicity DynkinDiagram::maxMultiplicity() const
 
 size_t DynkinDiagram::node() const
 
-/*
+/*!
   Synopsis : returns the node of the graph.
 
   Precondition : the graph is irreducible, of type D or E;
@@ -238,7 +241,7 @@ namespace dynkin {
 
 void bourbaki(setutils::Permutation& a, const DynkinDiagram& d)
 
-/*
+/*!
   Synopsis: writes in a a permutation that will take d to Bourbaki form
 
   This means that components of d are numbered consecutively, and that each 
@@ -281,7 +284,7 @@ void bourbaki(setutils::Permutation& a, const DynkinDiagram& d)
 
 void components(bitset::RankFlagsList& cl, const DynkinDiagram& d)
 
-/*
+/*!
   Writes in cl the list of the connected components of d.
 */
 
@@ -306,7 +309,7 @@ void components(bitset::RankFlagsList& cl, const DynkinDiagram& d)
 
 void lieType(lietype::LieType& lt, const latticetypes::LatticeMatrix& cm)
 
-/*
+/*!
   Synopsis: writes in lt the Lie type of the Cartan matrix cm.
 */
 
@@ -332,7 +335,7 @@ void lieType(lietype::LieType& lt, const latticetypes::LatticeMatrix& cm)
 
 void normalize(setutils::Permutation& a, const DynkinDiagram& d)
 
-/*
+/*!
   Synopsis: writes in a a permutation that will take d to normal form
 
   This means that components of d are numbered consecutively, and that each 
@@ -366,13 +369,13 @@ namespace {
 
 void componentOrder(setutils::Permutation& a, const bitset::RankFlagsList& cl)
 
-/*
+/*!
   Returns in a a permutation such that the various components, listed in cl,
   are numbered by successive indices.
 
   NOTE : it is always very confusing to choose between the permutation and
-  its inverse. Our convention is that the _new_ vertex #i is the _old_ vertex
-  # a[i].
+  its inverse. Our convention is that the _new_ vertex \#i is the _old_ vertex
+  \# a[i].
 */
 
 {
@@ -393,7 +396,7 @@ void componentNormalize(setutils::Permutation& a,
 			const bitset::RankFlagsList& cl,
 			const DynkinDiagram& d)
 
-/*
+/*!
   Precondition : a contains a component ordering of d; cl contains the
   component list.
 
@@ -429,7 +432,7 @@ void componentNormalize(setutils::Permutation& a,
 
 void irreducibleNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
-/*
+/*!
   Precondition : d is an _irreducible_ Dynkin diagram;
 
   Postcondition : a holds a permutation which enumerates the vertices of
@@ -478,7 +481,7 @@ void irreducibleNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 lietype::TypeLetter irreducibleType(const DynkinDiagram& d)
 
-/*
+/*!
   Synopsis : returns the type of the Dynkin diagram (one of the letters A-G).
 
   Precondition : d is irreducible;
@@ -539,7 +542,7 @@ lietype::TypeLetter irreducibleType(const DynkinDiagram& d)
 
 void typeANormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
-/*
+/*!
   Synopsis : puts in a a permutation that will enumerate d in Bourbaki order.
 
   Precondition : d is irreducible of type A, of rank >= 1;
@@ -576,7 +579,7 @@ void typeANormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 void typeBNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
-/*
+/*!
   Synopsis : puts in a a permutation that will enumerate d in opposite-to-
   Bourbaki order.
 
@@ -610,7 +613,7 @@ void typeBNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 void typeCNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
-/*
+/*!
   Synopsis : puts in a a permutation that will enumerate d in opposite-to-
   Bourbaki order.
 
@@ -644,7 +647,7 @@ void typeCNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 void typeDNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
-/*
+/*!
   Synopsis : puts in a a permutation that will enumerate d in opposite-to-
   Bourbaki order.
 
@@ -693,7 +696,7 @@ void typeDNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 void typeENormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
-/*
+/*!
   Synopsis : puts in a a permutation that will enumerate d in Bourbaki order.
 
   Precondition : d is irreducible of type E;
@@ -761,7 +764,7 @@ void typeENormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 void typeFNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
-/*
+/*!
   Synopsis : puts in a a permutation that will enumerate d in Bourbaki order.
 
   Precondition : d is irreducible of type F4;
@@ -795,7 +798,7 @@ void typeFNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 void typeGNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
-/*
+/*!
   Synopsis : puts in a a permutation that will enumerate d in Bourbaki order.
 
   Precondition : d is irreducible of type G2;

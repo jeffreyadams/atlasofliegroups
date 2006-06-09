@@ -1,5 +1,38 @@
+/*!
+\file
+  This is lietype.cpp. This file contains the definitions for the type
+  of a real or complex reductive Lie algebra.
+
+  A complex reductive Lie algebra is simply the product of a number of simple 
+  complex Lie algebras, and a torus; the simple factors can be of types A-G, 
+  with ranks >=1 in type A, >=2 in type B, >=3 in type C, >=4 in type D, 6,7 or
+  8 in type E, 4 in type F, and 2 in type G. A torus component will be
+  designated by the letter T. So we express the type as a vector, each 
+  component of which is a pair (letter,rank).
+
+  As is well-known, a real reductive Lie algebra is a product of factors which
+  are (a) real forms of simple complex Lie algebras (b) simple complex Lie
+  algebras where we forget the complex structure (these are real forms of the
+  product of two isomorphic complex simple Lie algebras) (c) real forms of
+  one-dimensional tori and (d) one-dimensional complex tori seen as 
+  two-dimensional real tori. In fact for the torus factors we will also allow
+  higher-dimensional factors; and of course at the Lie algebra level case
+  (d) above might be reduced to the sum of two instances of type (c), but
+  the distinction is necessary at the group level, so we keep it here as well.
+
+  The classification of real forms of simple complex Lie algebras is
+  well-known;  we will follow the notation from Helgason, Differential 
+  Geometry, Lie Groups, and Symmetric Spaces, Academic Press, New York, 1978, 
+  Table VI in Chapter X, page 532, where the Satake diagrams of all non-compact
+  and non-complex simple real reductive Lie algebras appear. Accordingly, we
+  represent a real form of our complex Lie algebra by a string of symbols
+  which may be of the form Split, Compact, Complex or I-IX, depending on the
+  type; a symbol of type Complex really consumes two consecutive isomorphic
+  complex factors. This representation is only for input/output purposes;
+  internally, we work only with the Cartan matrix and the Cartan involution.
+
+*/
 /*
-  This is lietype.cpp
   
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
@@ -75,7 +108,7 @@ namespace lietype {
 
 void dualLieType(LieType& dlt, const LieType& lt)
 
-/*
+/*!
   Synopsis: puts in dlt the dual Lie type of lt.
 */
 
@@ -110,7 +143,7 @@ void dualLieType(LieType& dlt, const LieType& lt)
 void dualInnerClassType(InnerClassType& dict, const InnerClassType& ict,
 			const LieType& lt)
 
-/*
+/*!
   Synopsis: puts in dict the dual inner class type of ict.
 */
 
@@ -159,7 +192,7 @@ void dualInnerClassType(InnerClassType& dict, const InnerClassType& ict,
 
 bool checkRank(const TypeLetter& x, size_t l)
 
-/*
+/*!
   Synopsis: checks if the rank l is in the valid range for x.
 */
 
@@ -212,7 +245,7 @@ bool checkRank(const TypeLetter& x, size_t l)
 void involution(latticetypes::LatticeMatrix& i, const lietype::LieType& lt, 
 		const lietype::InnerClassType& ic)
 
-/*
+/*!
   Synopsis: constructs the fundamental involution for the Lie type lt and the 
   inner class ic, in the weight basis for the simply connected group.
 
@@ -245,7 +278,7 @@ void involution(latticetypes::LatticeMatrix& i, const lietype::LieType& lt,
 
 size_t rank(const LieType& lt)
 
-/*
+/*!
   Synopsis: returns the rank of the group.
 */
 
@@ -260,7 +293,7 @@ size_t rank(const LieType& lt)
 
 size_t semisimpleRank(const LieType& lt)
 
-/*
+/*!
   Synopsis: returns the semisimple rank of the group.
 */
 
@@ -288,7 +321,7 @@ namespace lietype {
 void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r, 
 			  size_t rs)
 
-/*
+/*!
   Synopsis: sets the block of size (rs,rs) starting from (r,r) to the
   identity
 
@@ -304,7 +337,7 @@ void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
 
 void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
 
-/*
+/*!
   Synopsis: flips the last two vectors in the block of size rs starting
   from (r,r).
 
@@ -323,7 +356,7 @@ void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
 
 void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
 
-/*
+/*!
   Synopsis: sets the block of size (rs,rs) starting from (r,r) to minus the
   identity
 
@@ -340,7 +373,7 @@ void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
 void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r, 
 			 const SimpleLieType& slt, TypeLetter x)
 
-/*
+/*!
   Synopsis: appends to m, from position (r,r), the fundamental involution 
   corresponding to x in size rs.
 */

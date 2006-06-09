@@ -1,6 +1,9 @@
+/*!
+\file
+\brief Implementation of the class RealReductiveGroup.
+*/
 /*
   This is realredgp.cpp
-  
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -44,7 +47,7 @@ RealReductiveGroup::RealReductiveGroup(
 		  realform::RealForm rf)
   :d_complexGroup(&G_C),d_realForm(rf)
 
-/*
+/*!
   Synopsis : constructs a real reductive group from the datum of a complex
   reductive group and a real form.
 */
@@ -89,8 +92,8 @@ RealReductiveGroup::~RealReductiveGroup()
 
 const cartanclass::CartanClass& RealReductiveGroup::cartan(size_t cn) const
 
-/*
-  Synopsis: returns cartan #cn in the group.
+/*!
+  Synopsis: returns cartan \#cn in the group.
 
   Precondition: cn belongs to cartanSet().
 
@@ -103,7 +106,7 @@ const cartanclass::CartanClass& RealReductiveGroup::cartan(size_t cn) const
 
 const poset::Poset& RealReductiveGroup::cartanOrdering() const
 
-/*
+/*!
   Synopsis: returns the poset of Cartan classes.
 
   NOTE: the poset may be only partially constructed. The only guarantee is
@@ -119,7 +122,7 @@ const poset::Poset& RealReductiveGroup::cartanOrdering() const
 
 const bitmap::BitMap& RealReductiveGroup::cartanSet() const
 
-/*
+/*!
   Synopsis: returns the support of the set of Cartan classes for this
   real form.
 
@@ -132,7 +135,7 @@ const bitmap::BitMap& RealReductiveGroup::cartanSet() const
 
 const latticetypes::LatticeMatrix& RealReductiveGroup::distinguished() const
 
-/*
+/*!
   Synopsis: returns the distinguished involution of the underlying complex
   group.
 
@@ -145,7 +148,7 @@ const latticetypes::LatticeMatrix& RealReductiveGroup::distinguished() const
 
 void RealReductiveGroup::grading(rootdata::RootSet& rs) const
 
-/*
+/*!
   Synopsis: puts in rs the set of noncompact imaginary roots for the
   representative of the real form.
 
@@ -160,8 +163,8 @@ void RealReductiveGroup::grading(rootdata::RootSet& rs) const
 
 size_t RealReductiveGroup::kgbSize() const
 
-/*
-  Synopsis: returns the cardinality of K\G/B.
+/*!
+  Synopsis: returns the cardinality of K\\G/B.
 */
 
 {
@@ -170,7 +173,7 @@ size_t RealReductiveGroup::kgbSize() const
 
 size_t RealReductiveGroup::mostSplit() const
 
-/*
+/*!
   Synopsis: returns the most split cartan subgroup.
 
   Precondition: fillCartan() has been called.
@@ -184,7 +187,7 @@ size_t RealReductiveGroup::mostSplit() const
 
 size_t RealReductiveGroup::numCartan() const
 
-/*
+/*!
   Synopsis: returns the number of conjugacy classes of Cartan subgroups.
 
   NOTE: the value returned is correct only after fullCartan() has been 
@@ -199,7 +202,7 @@ size_t RealReductiveGroup::numCartan() const
 
 size_t RealReductiveGroup::rank() const
 
-/*
+/*!
   Synopsis: returns the rank of the group.
 
   NOTE: this is not inlined to avoid a compiler dependency on rootdata.h
@@ -211,7 +214,7 @@ size_t RealReductiveGroup::rank() const
 
 const rootdata::RootDatum& RealReductiveGroup::rootDatum() const
 
-/*
+/*!
   Synopsis: returns the root datum of the underlying complex group.
 
   NOTE: this is not inlined to avoid a compiler dependency on complexredgp.h
@@ -223,7 +226,7 @@ const rootdata::RootDatum& RealReductiveGroup::rootDatum() const
 
 size_t RealReductiveGroup::semisimpleRank() const 
 
-/*
+/*!
   Synopsis: returns the semisimple rank of the group.
 
   NOTE: this is not inlined to avoid a compiler dependency on rootdata.h
@@ -235,7 +238,7 @@ size_t RealReductiveGroup::semisimpleRank() const
 
 const tits::TitsGroup& RealReductiveGroup::titsGroup() const
 
-/*
+/*!
   Synopsis: returns a reference to the Tits group.
 
   NOTE: this is not inlined to avoid a compiler dependency on complexredgp.h
@@ -247,7 +250,7 @@ const tits::TitsGroup& RealReductiveGroup::titsGroup() const
 
 const weyl::WeylGroup& RealReductiveGroup::weylGroup() const
 
-/*
+/*!
   Synopsis: returns the rank of the group.
 
   NOTE: this is not inlined to avoid a compiler dependency on complexredgp.h
@@ -261,7 +264,7 @@ const weyl::WeylGroup& RealReductiveGroup::weylGroup() const
 
 void RealReductiveGroup::fillCartan()
 
-/*
+/*!
   Synopsis: makes representatives of conjugacy classes of Cartan subgroups
   for this group.
 

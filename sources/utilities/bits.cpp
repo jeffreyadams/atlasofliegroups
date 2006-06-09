@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is bits.cpp
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -31,7 +33,7 @@ namespace bits {
 
 unsigned bitCount(unsigned long f)
 
-/*
+/*!
   Synopsis: returns the number of set bits in f.
 */
 
@@ -46,7 +48,7 @@ unsigned bitCount(unsigned long f)
 
 size_t firstBit(unsigned long f)
 
-/*
+/*!
   Synopsis: returns the position of the first set bit in f.
 
   Returns longBits if there is no such bit.
@@ -68,10 +70,9 @@ size_t firstBit(unsigned long f)
 
 size_t lastBit(unsigned long f)
 
-/*
-  Synopsis: returns the position of the first set bit in f, plus one.
-
-  Returns 0 if there is no such bit.
+/*!
+  Synopsis: returns the position of the first [should be last - DV]
+  set bit in f, plus one.  Returns 0 if there is no such bit.
 */
 
 {
@@ -90,7 +91,7 @@ size_t lastBit(unsigned long f)
 
 void permute(unsigned long& f, const setutils::Permutation& a)
 
-/*
+/*!
   Synopsis: permutes the bits of f according to a.
 
   Precisely, we transform f = f_old into f_new, where f_new[i] = f_old[a[i]].

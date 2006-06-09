@@ -1,6 +1,9 @@
+/*!
+\file
+\brief Class definitions and function declarations for DynkinDiagram
+*/
 /*
   This is dynkin.h
-  
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -24,7 +27,16 @@ namespace atlas {
 
 namespace dynkin {
 
+  /*!
+  Since a Dynkin diagram will be a bitset (a subset of RANK_MAX
+  elements, the possible vertices 0, 1,...,RANK_MAX-1), an Edge is a
+  pair of numbers (between 0 and RANK_MAX-1).
+  */
 typedef std::pair<size_t, size_t> Edge;
+
+  /*!
+  The Multiplicity of an Edge should be 1, 2, or 3.
+  */
 typedef unsigned Multiplicity;
 
 class DynkinDiagram;
@@ -51,12 +63,28 @@ namespace dynkin {
 /******** type definitions **************************************************/
 
 namespace dynkin {
+  /*!
+  \brief A Dynkin diagram of at most RANK_MAX vertices.
 
+  The collection of vertices is represented as a BitSet d_star, regarded as a
+  subset of the integers 0,1,...,RANK_MAX-1.  These are the vertices.
+  An Edge is a pair of vertices.  The map d_label attaches to each of
+  certain Edges an unsigned integer Multiplicity.
+  */
 class DynkinDiagram {
 
  private:
 
+  /*!
+  Subset of the integers 0,1,...,RANK_MAX-1 corresponding to the
+  vertices of the Dynkin diagram.
+  */
   std::vector<bitset::RankFlags> d_star;
+
+  /*!
+  Map from certain pairs of vertices (the edges of the Dynkin diagram)
+  to unsigned integers (their multiplicities).
+  */
   std::map<Edge,Multiplicity> d_label;
 
  public:

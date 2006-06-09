@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is interactive_lietype.cpp
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -42,7 +44,7 @@ namespace interactive_lietype {
 bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
 		     bool output)
 
-/*
+/*!
   Synopsis: checks if a valid inner class for lt will be read from buf.
 */
 
@@ -110,7 +112,7 @@ bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
 
 bool checkLieType(input::InputBuffer& buf)
 
-/*
+/*!
   Synopsis: checks if buf starts with a valid Lie type. 
 
   A valid Lie type is a dot-separated non-empty string of entities of the form 
@@ -119,7 +121,7 @@ bool checkLieType(input::InputBuffer& buf)
   terminates when after a pair Xn the next read operation on a character does
   not produce '.' (i.e., when the next non-white character is not a dot.)
 
-  Return value is 0 for correct input, non-zero otherewise.
+  Return value is 0 for correct input, non-zero otherwise.
 */
 
 {
@@ -153,7 +155,7 @@ bool checkLieType(input::InputBuffer& buf)
 
 bool checkSimpleLieType(input::InputBuffer& buf)
 
-/*
+/*!
   Synopsis: checks if reading a SimpleLieType from buf will succeed.
 */
 
@@ -190,7 +192,7 @@ bool checkSimpleLieType(input::InputBuffer& buf)
 
 bool checkTotalRank(input::InputBuffer& buf)
 
-/*
+/*!
   Synopsis: checks that the total rank does not exceed RANK_MAX.
 
   Precondition: it has already been checked that successive read operations
@@ -228,7 +230,7 @@ bool checkTotalRank(input::InputBuffer& buf)
 
 std::ostream& printRankMessage(std::ostream& strm, lietype::TypeLetter x)
 
-/*
+/*!
   Prints the message appropriate for a bad choice of rank for type x.
 */
 
@@ -278,7 +280,7 @@ std::ostream& printRankMessage(std::ostream& strm, lietype::TypeLetter x)
 void readInnerClass(lietype::InnerClassType& ict, input::InputBuffer& buf,
 		    const lietype::LieType& lt)
 
-/*
+/*!
   Synopsis: reads an inner class type from buf.
 
   Precondition: checkInnerClass(ict,buf) returns true;
@@ -310,7 +312,7 @@ void readInnerClass(lietype::InnerClassType& ict, input::InputBuffer& buf,
 
 void readLieType(lietype::LieType& lt, input::InputBuffer& buf)
 
-/*
+/*!
   Synopsis: reads the Lie type from buf.
 
   Precondition: it has been checked that the read operation will succeed:
@@ -353,7 +355,7 @@ namespace {
 
 void ignoreSimpleLieType(input::InputBuffer& buf)
 
-/*
+/*!
   Synopsis: takes a SimpleLieType off the buffer.
 
   Precondition: a SimpleLieType will be successfully read; otherwise the

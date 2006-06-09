@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is realform.h
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -18,7 +20,11 @@
 namespace atlas {
 
 namespace realform {
-
+/*!
+  A variable of this type indicates the position (like 0, 1, 2,...) of a 
+  real form on a list of real forms (like the one maintained by
+  the class ComplexReductiveGroup in realFormLabels).
+*/
   typedef size_t RealForm;
   typedef std::vector<RealForm> RealFormList;
 }

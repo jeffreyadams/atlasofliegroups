@@ -1,6 +1,10 @@
+/*!
+\file
+  This is matrix_def.h. This module contains some simple utilities for
+  matrices. When we will need to do stuff for large matrices, we will
+  need to look elsewhere, or in any case think a lot more.
+*/
 /*
-  This is matrix_def.h
-  
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -56,7 +60,7 @@ namespace matrix {
 template<typename C>
 Matrix<C>::Matrix(const std::vector<std::vector<C> >& b)
 
-/*
+/*!
   This constructor constructs a matrix from a bunch of vectors, columnwise.
   It is assumed that all elements of b have the same size.
 */
@@ -82,7 +86,7 @@ template<typename C>
 Matrix<C>::Matrix(const Matrix<C>& m, const std::vector<std::vector<C> >& b)
   :d_data(m.d_data), d_rows(m.d_rows), d_columns(m.d_columns)
 
-/*
+/*!
   This constructor constructs a square matrix, which is the matrix
   representing the operator defined by m in the canonical basis, in
   the basis b.
@@ -100,7 +104,7 @@ Matrix<C>::Matrix(const Matrix<C>& source, size_t r_first, size_t c_first,
    d_rows(r_last-r_first),
    d_columns(c_last-c_first)
 
-/*
+/*!
   Synopsis: constructs the matrix corresponding to the block [r_first,r_last[
   x [c_first,c_last[ of source.
 */
@@ -115,7 +119,7 @@ template<typename C> template<typename I>
 Matrix<C>::Matrix(const Matrix<C>& m, const I& first, const I& last)
   :d_data(m.d_data), d_rows(m.d_rows), d_columns(m.d_columns)
 
-/*
+/*!
   Here I is an iterator whose value type is Weight.
 
   This constructor constructs a square matrix, which is the matrix
@@ -132,7 +136,7 @@ template<typename C>
 template<typename I> Matrix<C>::Matrix(const I& first, const I& last,
 				       tags::IteratorTag)
 
-/*
+/*!
   Here I is an iterator type whose value type should be vector<C>.
   The idea is that we read the columns of the matrix from the iterator.
   However, in order to be able to determine the allocation size,
@@ -177,7 +181,7 @@ template<typename C>
 typename Matrix<C>::index_pair Matrix<C>::absMinPos(size_t i_min, 
 						    size_t j_min) const
 
-/*
+/*!
   Returns the position of the smallest non-zero entry in absolute value, 
   in the region i >= i_min, j >= j_min
 */
@@ -207,7 +211,7 @@ typename Matrix<C>::index_pair Matrix<C>::absMinPos(size_t i_min,
 template<typename C>
 void Matrix<C>::apply(std::vector<C>& v, const std::vector<C>& w) const
 
-/*
+/*!
   Applies the matrix to the vector w, and puts the result in v. It is
   assumed that the size of w is the number of columns, and that the size
   of v is the number of rows.
@@ -231,8 +235,8 @@ void Matrix<C>::apply(std::vector<C>& v, const std::vector<C>& w) const
 template<typename C> template<typename I, typename O> 
 void Matrix<C>::apply(const I& first, const I& last, O out) const
 
-/*
-  A pipe-veresion of apply. We assume that I is an InputIterator with
+/*!
+  A pipe-version of apply. We assume that I is an InputIterator with
   value-type vector<C>, and O an OutputIterator with the same
   value-type. Then we apply our matrix to each vector in [first,last[
   and output it to out.
@@ -251,7 +255,7 @@ void Matrix<C>::apply(const I& first, const I& last, O out) const
 template<typename C>
 void Matrix<C>::column(std::vector<C>& v, size_t j) const
 
-/*
+/*!
   Puts the j-th column of the matrix in v.
 */
 
@@ -267,7 +271,7 @@ void Matrix<C>::column(std::vector<C>& v, size_t j) const
 template<typename C>
 bool Matrix<C>::divisible(C c) const
 
-/*
+/*!
   Tells if all coefficients of the matrix are divisible by c.
 */
 
@@ -282,7 +286,7 @@ bool Matrix<C>::divisible(C c) const
 template<typename C>
 void Matrix<C>::row(std::vector<C>& v, size_t i) const
 
-/*
+/*!
   Puts the i-th row of the matrix in v.
 */
 
@@ -300,7 +304,7 @@ void Matrix<C>::row(std::vector<C>& v, size_t i) const
 template<typename C>
 Matrix<C>& Matrix<C>::operator+= (const Matrix<C>&  m)
 
-/*
+/*!
   Incrementation by addition with m. It is assumed that m and *this
   have the same shape.
 */
@@ -314,7 +318,7 @@ Matrix<C>& Matrix<C>::operator+= (const Matrix<C>&  m)
 template<typename C>
 Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
 
-/*
+/*!
   Incrementation by subtraction of m. It is assumed that m and *this
   have the same shape.
 */
@@ -328,7 +332,7 @@ Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
 template<typename C>
 Matrix<C>& Matrix<C>::operator*= (const Matrix<C>&  m)
 
-/*
+/*!
   Incrementation by right multiplication with m. It is assumed that the
   number of rows of m is equal to the number of columns of *this.
 */
@@ -354,7 +358,7 @@ Matrix<C>& Matrix<C>::operator*= (const Matrix<C>&  m)
 template<typename C>
 Matrix<C>& Matrix<C>::operator/= (const C& c)
 
-/*
+/*!
   Divides all entries of the matrix by c.
 */
 
@@ -373,7 +377,7 @@ Matrix<C>& Matrix<C>::operator/= (const C& c)
 template<typename C>
 void Matrix<C>::changeColumnSign(size_t j)
 
-/*
+/*!
   Changes the sign of all the entries in column j.
 */
 
@@ -388,7 +392,7 @@ void Matrix<C>::changeColumnSign(size_t j)
 template<typename C>
 void Matrix<C>::changeRowSign(size_t i)
 
-/*
+/*!
   Changes the sign of all the entries in row i.
 */
 
@@ -403,7 +407,7 @@ void Matrix<C>::changeRowSign(size_t i)
 template<typename C>
 void Matrix<C>::columnOperation(size_t i, size_t j, const C& c)
 
-/*
+/*!
   Carries out the column operation consisting of adding c times column j
   to column i.
 */
@@ -418,7 +422,7 @@ void Matrix<C>::columnOperation(size_t i, size_t j, const C& c)
 template<typename C>
 void Matrix<C>::copy(const Matrix<C>& source, size_t r, size_t c)
 
-/*
+/*!
   Copies source to the rectangle of the current matrix with upper left corner
   at (r,c) and the appropriate size.
 */
@@ -434,7 +438,7 @@ void Matrix<C>::copy(const Matrix<C>& source, size_t r, size_t c)
 template<typename C>
 void Matrix<C>::copyColumn(const Matrix<C>& m, size_t c_d, size_t c_s)
 
-/*
+/*!
   Copies the column c_s of the matrix m to the column c_d of the current 
   matrix. It is assumed that the two columns have the same size.
 */
@@ -449,7 +453,7 @@ void Matrix<C>::copyColumn(const Matrix<C>& m, size_t c_d, size_t c_s)
 template<typename C>
 void Matrix<C>::copyRow(const Matrix<C>& m, size_t r_d, size_t r_s)
 
-/*
+/*!
   Copies the column r_s of the matrix m to the column r_d of the current 
   matrix. It is assumed that the two columns have the same size.
 */
@@ -464,7 +468,7 @@ void Matrix<C>::copyRow(const Matrix<C>& m, size_t r_d, size_t r_s)
 template<typename C>
 void Matrix<C>::eraseColumn(size_t j)
 
-/*
+/*!
   Erases column j from the matrix.
 */
 
@@ -481,7 +485,7 @@ void Matrix<C>::eraseColumn(size_t j)
 template<typename C>
 void Matrix<C>::eraseRow(size_t i)
 
-/*
+/*!
   Erases row i from the matrix.
 */
 
@@ -495,7 +499,7 @@ void Matrix<C>::eraseRow(size_t i)
 
 template<typename C> void Matrix<C>::invert()
 
-/*
+/*!
   Here we invert the matrix without catching the denominator. The intent
   is that it should be used for invertible matrices only.
 */
@@ -510,7 +514,7 @@ template<typename C> void Matrix<C>::invert()
 template<typename C>
 void Matrix<C>::invert(C& d)
 
-/*
+/*!
   This function inverts the matrix M. It is assumed that the coefficents
   are in an integral domain. At the conclusion of the process, d will contain
   the denominator for the inverted matrix (so that the true result is M/d).
@@ -613,7 +617,7 @@ void Matrix<C>::invert(C& d)
 template<typename C>
 bool Matrix<C>::isZero(size_t i_min, size_t j_min) const
 
-/*
+/*!
   Tells if all the coefficients are zero.
 */
 
@@ -632,7 +636,7 @@ bool Matrix<C>::isZero(size_t i_min, size_t j_min) const
 template<typename C>
 void Matrix<C>::negate()
 
-/*
+/*!
   Synopsis: change the sign of the matrix.
 */
 
@@ -647,7 +651,7 @@ void Matrix<C>::negate()
 template<typename C>
 void Matrix<C>::permute(const setutils::Permutation& a)
 
-/*
+/*!
   Synopsis : permutes the matrix according to the basis permutation a.
 
   Precondition : m is a square matrix of order n; a holds a permutation
@@ -677,7 +681,7 @@ void Matrix<C>::permute(const setutils::Permutation& a)
 template<typename C>
 void Matrix<C>::resize(size_t m, size_t n)
 
-/*
+/*!
   Synopsis: changes the size of the matrix to m x n.
 
   NOTE: this is a bad name, and a bit dangerous. One would expect the data
@@ -696,7 +700,7 @@ void Matrix<C>::resize(size_t m, size_t n)
 template<typename C>
 void Matrix<C>::resize(size_t m, size_t n, const C& c)
 
-/*
+/*!
   Synopsis: changes the size of the matrix to m x n, and resets _all_ elements
   to c.
 
@@ -714,7 +718,7 @@ void Matrix<C>::resize(size_t m, size_t n, const C& c)
 template<typename C>
 void Matrix<C>::rowOperation(size_t i, size_t j, const C& c)
 
-/*
+/*!
   Carries out the row operation consisting of adding c times row j
   to row i.
 */
@@ -729,7 +733,7 @@ void Matrix<C>::rowOperation(size_t i, size_t j, const C& c)
 template<typename C>
 void Matrix<C>::swap(Matrix<C>& m)
 
-/*
+/*!
   Swaps m with the current matrix.
 */
 
@@ -749,7 +753,7 @@ void Matrix<C>::swap(Matrix<C>& m)
 template<typename C>
 void Matrix<C>::swapColumns(size_t i, size_t j)
 
-/*
+/*!
   Interchanges columns i and j
 */
 
@@ -766,7 +770,7 @@ void Matrix<C>::swapColumns(size_t i, size_t j)
 template<typename C>
 void Matrix<C>::swapRows(size_t i, size_t j)
 
-/*
+/*!
   Interchanges rows i and j
 */
 
@@ -782,7 +786,7 @@ void Matrix<C>::swapRows(size_t i, size_t j)
 
 template<typename C> void Matrix<C>::transpose()
 
-/*
+/*!
   Transposes the matrix. We allow ourselves a temporary vector if the matrix
   is not square; it could likely be done in-place, but the permutation is
   rather complicated!
@@ -837,7 +841,7 @@ namespace matrix {
 template<typename C>
   void columnVectors(std::vector<std::vector<C> >& b, const Matrix<C>& m)
 
-/*
+/*!
   Synopsis: writes in b the list of column vectors of m.
 */
 
@@ -854,7 +858,7 @@ template<typename C>
 template<typename C>
 Matrix<C>& conjugate(Matrix<C>& m, const Matrix<C>& p)
 
-/*
+/*!
   Conjugates m by p, i.e. transforms m into pmp^{-1}. It is assumed that
   p is invertible (over the quotient field of the coefficients), and that
   denominators cancel out.
@@ -876,7 +880,7 @@ template<typename C>
 void extractBlock(Matrix<C>& dest, const Matrix<C>& source, size_t firstRow, 
 		  size_t lastRow, size_t firstColumn, size_t lastColumn)
 
-/*
+/*!
   Synopsis: sets dest equal to the block [firstRow,lastRow[ x [firstColumn,
   lastColumn[ in source.
 */
@@ -895,7 +899,7 @@ template<typename C>
 void extractMatrix(Matrix<C>& dest, const Matrix<C>& source, 
 		   const std::vector<size_t>& r, const std::vector<size_t>& c)
 
-/*
+/*!
   Synopsis: extracts the sub-matrix corresponding to the subsets r and c of the
   row and column indices respectively.
 */
@@ -912,7 +916,7 @@ void extractMatrix(Matrix<C>& dest, const Matrix<C>& source,
 
 template<typename C> void identityMatrix(Matrix<C>& m, size_t n)
 
-/*
+/*!
   Synopsis: puts in q the identity matrix of size n.
 */
 
@@ -928,7 +932,7 @@ template<typename C> void identityMatrix(Matrix<C>& m, size_t n)
 
 template<typename C> void initBasis(std::vector<std::vector<C> >& b, size_t r)
 
-/*
+/*!
   Synopsis: sets b to the canonical basis in dimension r.
 */
 
@@ -945,7 +949,7 @@ template<typename C> void initBasis(std::vector<std::vector<C> >& b, size_t r)
 
 template<typename C> Matrix<C>& invConjugate(Matrix<C>& m, const Matrix<C>& p)
 
-/*
+/*!
   Conjugates m by p^{-1}, i.e. transforms m into p^{-1}mp. It is assumed that
   p is invertible (over the quotient field of the coefficients), and that
   denominators cancel out.
@@ -965,7 +969,7 @@ template<typename C> Matrix<C>& invConjugate(Matrix<C>& m, const Matrix<C>& p)
 
 template<typename C> Matrix<C>& leftProd(Matrix<C>& m, const Matrix<C>& p)
 
-/*
+/*!
   Like operator *=, but for left multiplication of m by p.
 */
 
@@ -992,7 +996,7 @@ namespace {
 template<typename C>
 void blockReduce(Matrix<C>& m, size_t d, Matrix<C>& r, Matrix<C>& c)
 
-/*
+/*!
   Ensures that m(d,d) divides the block from (d+1,d+1) down.
 */
 
@@ -1029,7 +1033,7 @@ template<typename C>
 void blockShape(Matrix<C>& m, size_t d, Matrix<C>& r,
 		Matrix<C>& c)
 
-/*
+/*!
   Does the final reduction of m to block shape, recording row reductions in
   r and column reductions in c.
 */
@@ -1062,7 +1066,7 @@ template<typename C>
 void columnReduce(Matrix<C>& m, size_t j, 
 		  size_t d, Matrix<C>& c)
 
-/*
+/*!
   Does the column reduction for m at place j, and does the same operation
   on r. The reduction consists in subtracting from column j the multiple
   of column d which leaves at (d,j) the remainder of the Euclidian division
@@ -1085,7 +1089,7 @@ template<typename C>
 typename Matrix<C>::index_pair findBlockReduction(const Matrix<C>& m,
 					     size_t r)
 
-/*
+/*!
   Returns the reduction point of m. Assumes that hasBlockReduction(m,r) has
   returned true.
 */
@@ -1108,7 +1112,7 @@ template<typename C>
 typename Matrix<C>::index_pair findReduction(const Matrix<C>& m,
 					     size_t r)
 
-/*
+/*!
   Returns the reduction point of m. Assumes that hasReduction(m,r) has
   returned true.
 */
@@ -1133,7 +1137,7 @@ typename Matrix<C>::index_pair findReduction(const Matrix<C>& m,
 template<typename C>
 bool hasBlockReduction(const Matrix<C>& m, size_t r)
 
-/*
+/*!
   Tells if there is an element in the block under (r,r) which is not divisible
   bu m(r,r)
 */
@@ -1157,7 +1161,7 @@ bool hasBlockReduction(const Matrix<C>& m, size_t r)
 template<typename C>
 bool hasReduction(const Matrix<C>& m, size_t r)
 
-/*
+/*!
   Tells if there is an element in the first row or column not divisible by
   m(r,r).
 */
@@ -1184,7 +1188,7 @@ bool hasReduction(const Matrix<C>& m, size_t r)
 template<typename C>
 void rowReduce(Matrix<C>& m, size_t i, size_t d, Matrix<C>& r)
 
-/*
+/*!
   Does the row reduction for m at place j, and does the same operation
   on r. The reduction consists in subtracting from row i the multiple
   of row d which leaves at (i,d) the remainder of the Euclidian division

@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is matrix.h
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -57,7 +59,10 @@ Matrix<C>& leftProd(Matrix<C>&, const Matrix<C>&);
 namespace matrix {
 
 template<typename C> class Matrix {
-
+  /*!
+  We implement a matrix simply as a vector of elements, concatenating the
+  rows.
+  */
  public:
 
   typedef std::pair<size_t,size_t> index_pair;

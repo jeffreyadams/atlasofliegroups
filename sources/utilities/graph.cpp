@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is graph.cpp
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -38,7 +40,7 @@ namespace graph {
 /******** accessors **********************************************************/
 void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* p) const
 
-/*
+/*!
   Synopsis: puts in pi the partition of the vertex set into left cells, and,
   if p != 0, puts in p the graph of the order relation induced on the quotient.
 
@@ -158,7 +160,7 @@ namespace {
 void getClass(const OrientedGraph& g, Vertex y, bitmap::BitMap& b,
 	      partition::Partition& pi, OrientedGraph* p)
 
-/*
+/*!
   Synopsis: marks off the class of y in b, and, if p !=0, extends the poset
   p to accomodate the new vertex
 

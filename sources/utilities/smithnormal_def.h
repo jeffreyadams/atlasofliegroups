@@ -1,6 +1,16 @@
+/*!  
+\file 
+  This is smithnormal_def.h.  This file contains a straightforward
+  implementation of the smith normal form algorithm for integer-type
+  matrices. We have implemented it as a template to get a little bit
+  of flexibility in the choice of coefficients.
+
+  Currently the intention is to use it for Cartan matrices and matrices of
+  involutions, so the computational burden should be negligible. Of course
+  for more serious uses one should look at specialized libraries, or think
+  a lot more.
+*/
 /*
-  This is smithnormal_def.h
-  
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -16,7 +26,7 @@
   to get a little bit of flexibility in the choice of coefficients.
 
   Currently the intention is to use it for Cartan matrices and matrices of
-  involutions, so the computational burdern should be negligible. Of course
+  involutions, so the computational burden should be negligible. Of course
   for more serious uses one should look at specialized libraries, or think
   a lot more.
 
@@ -58,7 +68,7 @@ namespace smithnormal {
 template<typename C>
 void addMultiple(std::vector<C>& a, const std::vector<C>& b, const C& c)
 
-/*
+/*!
   Adds c times b to a. It is assumed that the size of a is at least the
   size of b.
 */
@@ -72,7 +82,7 @@ void addMultiple(std::vector<C>& a, const std::vector<C>& b, const C& c)
 
 template<typename C> void blockReduce(Matrix<C>& m)
 
-/*
+/*!
   Assuming that hasBlockReduction has returned true, this function adds to
   column zero the column of m containing an element not divisible by m(0,0).
 */
@@ -90,7 +100,7 @@ template<typename C>
   void blockShape(typename std::vector<std::vector<C> >::iterator b, 
 		  Matrix<C>& m)
 
-/*
+/*!
   Finishes off the off-diagonal zeroeing of the first line and the first
   column of m. It is assumed that hasReduction(m) returns false, so that
   m(0,0) divides all entries in the first row and column.
@@ -122,7 +132,7 @@ template<typename C>
 template<typename C>
   void columnReduce(Matrix<C>& m, size_t j)
 
-/*
+/*!
   Does the reduction in the case of a column operation. The reduction consists
   in subtracting from column j the multiple of row 0 which will leave in
   m(i,0) the remainder of the Euclidian division of m(0,j) by m(0,0), and
@@ -140,7 +150,7 @@ template<typename C>
 template <typename C>
   typename Matrix<C>::index_pair findBlockReduction(const Matrix<C>& m)
 
-/*
+/*!
   Assuming that hasReduction(m) has returned true, returns the coordinates
   of the actual reduction point.
 */
@@ -157,7 +167,7 @@ template <typename C>
 template <typename C>
   typename Matrix<C>::index_pair findReduction(const Matrix<C>& m)
 
-/*
+/*!
   Assuming that hasReduction(m) has returned true, returns the coordinates
   of the actual reduction point.
 */
@@ -177,7 +187,7 @@ template <typename C>
 template<typename C>
 bool hasBlockReduction(const Matrix<C>& m)
 
-/*
+/*!
   Tells if m(0,0) divides all m(i,j), i,j > 1.
 */
 
@@ -196,7 +206,7 @@ bool hasBlockReduction(const Matrix<C>& m)
 template<typename C>
 bool hasReduction(const Matrix<C>& m)
 
-/*
+/*!
   Tells if m(0,0) divides all m(0,j) and all m(i,0).
 */
 
@@ -218,7 +228,7 @@ bool hasReduction(const Matrix<C>& m)
 template<typename C>
   void reduce(typename std::vector<std::vector<C> >::iterator b, Matrix<C>& m)
 
-/*
+/*!
   Here we assume that hasReduction(m) has returned true. We have to do the
   actual reduction.
 */
@@ -242,7 +252,7 @@ template<typename C>
   void prepareMatrix(typename std::vector<std::vector<C> >::iterator b, 
 		     Matrix<C>& m)
 
-/*
+/*!
   Does the preliminary work for the smith-normal algorithm : permutes rows
   and columns to put an entry with smallest non-zero absolute value in the
   upper left corner, and changes signs if necessary to make that entrey > 0.
@@ -276,7 +286,7 @@ template<typename C>
   void rowReduce(typename std::vector<std::vector<C> >::iterator b, 
 		 Matrix<C>& m, size_t i)
 
-/*
+/*!
   Does the reduction in the case of a row operation. The reduction consists
   in subtracting from row i the multiple of row 0 which will leave in
   m(i,0) the remainder of the Euclidian division of m(i,0) by m(0,0), and
@@ -298,7 +308,7 @@ void smithNormal(std::vector<C>& invf,
 		 typename std::vector<std::vector<C> >::iterator b, 
 		 const Matrix<C>& m)
 
-/*
+/*!
   This is a simple implementation of the Smith normal form algorithm, intended
   for use on small matrices such as Cartan matrices.
 
@@ -342,7 +352,7 @@ void smithNormal(std::vector<C>& invf,
 		 typename std::vector<std::vector<C> >::iterator b, 
 		 const std::vector<std::vector<C> >& f)
 
-/*
+/*!
   Another interface to the smithNormal procedure, where we are given the
   sublattice through a generating family f, expressed by its coordinates
   in b.
@@ -358,7 +368,7 @@ void smithNormal(std::vector<C>& invf,
 template<typename C>
 void smithStep(typename std::vector<std::vector<C> >::iterator b, Matrix<C>& m)
 
-/*
+/*!
   This function carries out the main loop in the Smith normal form algorithm.
   Assuming m is non-zero, it finds one additional invariant factor, and a
   corresponding basis vector.

@@ -26,7 +26,7 @@ a semidirect product of the form A.W_ic, where W_ic is the Weyl group of the
 imaginary compact root system, and A is an elementary abelian 2-group, the
 "R-group" of the situation. The computation of A is the most delicate aspect,
 and is also the only one that depends on the actual choice of group; everything
-else depends only on the Lie algebra. The algortihm for the computation is
+else depends only on the Lie algebra. The algorithm for the computation is
 described in my "Combinatorics" notes on the Atlas web site, and will appear
 in a forthcoming paper with Jeff Adams.
 

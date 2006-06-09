@@ -1,6 +1,10 @@
-/*
-  This is poset.cpp
-  
+/*!  
+\file 
+This is poset.cpp.  This file contains a simple-minded
+implementation of a poset structure, where one explicitly keeps the
+bit-matrix of the order relation.
+*/
+/*  
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -32,7 +36,7 @@ namespace poset {
 
 Poset::Poset(size_t n):d_closure(n,bitmap::BitMap(n))
 
-/*
+/*!
   Synopsis: constructs the discrete poset of size n.
 */
 
@@ -45,7 +49,7 @@ Poset::Poset(size_t n):d_closure(n,bitmap::BitMap(n))
 
 void Poset::findMaximals(set::SetEltList& a, const bitmap::BitMap& b) const
 
-/*
+/*!
   Synopsis: writes in a the elements in b that are maximal for the induced
   order.
 
@@ -70,7 +74,7 @@ void Poset::findMaximals(set::SetEltList& a, const bitmap::BitMap& b) const
 
 void Poset::hasseDiagram(graph::OrientedGraph& h) const
 
-/*
+/*!
   Synopsis: puts in h the Hasse diagram of the poset
 
   Explanation: the Hasse diagram is the oriented graph whose vertices are
@@ -93,7 +97,7 @@ void Poset::hasseDiagram(graph::OrientedGraph& h) const
 
 void Poset::hasseDiagram(graph::OrientedGraph& h, set::SetElt max) const
 
-/*
+/*!
   Synopsis: puts in h the Hasse diagram of the closure of max.
 
   Explanation: the Hasse diagram is the oriented graph whose vertices are
@@ -120,7 +124,7 @@ void Poset::hasseDiagram(graph::OrientedGraph& h, set::SetElt max) const
 /******** manipulators *******************************************************/
 void Poset::resize(unsigned long n)
 
-/*
+/*!
   Synopsis: resizes the poset to size n, adding only the diagonal for the 
   new rows.
 */
@@ -140,7 +144,7 @@ void Poset::resize(unsigned long n)
 
 void Poset::extend(const std::vector<Link>& lk)
 
-/*
+/*!
   Synopsis: transforms the poset into the weakest ordering stronger than
   the previous one, and for which the relations first < second for the elements
   in lk hold.
@@ -170,7 +174,7 @@ namespace poset {
 /******** constructors and destructors ***************************************/
 SymmetricPoset::SymmetricPoset(size_t n):d_row(n,bitmap::BitMap(n))
 
-/*
+/*!
   Synopsis: constructs the discrete poset of size n.
 */
 
@@ -182,7 +186,7 @@ SymmetricPoset::SymmetricPoset(size_t n):d_row(n,bitmap::BitMap(n))
 SymmetricPoset::SymmetricPoset(const std::vector<set::SetEltList>& hasse)
   :d_row(hasse.size(),bitmap::BitMap(hasse.size()))
 
-/*
+/*!
   Synopsis: constructs a symmetric poset from its hasse diagram.
 
   Precondition: it is assumed that for each x, hasse(x) contains the list

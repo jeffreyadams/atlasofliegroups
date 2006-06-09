@@ -11,12 +11,14 @@
 
 #include "bits.h"
 
-/*****************************************************************************
+/*!****************************************************************************
+\file
+  \brief Contains the implementation of the BitMap class. 
 
-  This file contains the implementation of the BitMap class. This should be
-  seen as a container of _unsigned long_, not bits; the idea is that the
-  unsigned longs it contains are the bit-addresses of the set bits. It
-  obeys the semantics of a Forward Container.
+  A BitMap should be seen as a container of _unsigned long_, not bits; the
+  idea is that the unsigned longs it contains are the bit-addresses of
+  the set bits. It obeys the semantics of a Forward Container (notion
+  from the C++ standard library;
 
   The basic idea is that a bitmap is a vector of unsigned long, representing
   the "chunks" of the map. We wish to provide bit-address access to this
@@ -36,12 +38,27 @@ namespace bitmap {
   // the second one is its logical complement
   // It is assumed that the number of digits in an unsigned long 
   // is a power of two.
-  
+
+  /*!
+  Constant used to pick a bit-address apart: serves as flags for the
+  address within a word. It is assumed that the number of bits in an
+  unsigned long is a power of two.  
+  */  
   unsigned long BitMap::posBits = constants::posBits;
+  
+  /*!
+  Constant used to pick a bit-address apart: this is the logical
+  complement of posBits. It is assumed that the number of bits in
+  an unsigned long is a power of two.
+  */
   unsigned long BitMap::baseBits = constants::baseBits;
 
-  // this one tells by how much we have to shift to get the base
-
+  /*!
+  Constant saying how much we have to shift the BitMap capacity n
+  (that is, the power of two by which it much be divided) to get the
+  base (that is, the number of unsigned longs in the needed in the
+  BitMap).
+  */
   unsigned long BitMap::baseShift = constants::baseShift;
 
 }
@@ -59,10 +76,10 @@ namespace bitmap {
 BitMap::BitMap(unsigned long n)
   :d_map((n >> baseShift) +(bool)(n & posBits),0),d_capacity(n)
 
-/*
+/*!
   Constructs a zero-initialized bitmap with a capacity of n bits. Notice
-  that the size of d_map is n >> baseShift + 1, except when longBits exactly
-  divides n.
+  that the size of the vector d_map is n >> baseShift + 1, except when
+  longBits exactly divides n.
 */
 
 {}
@@ -78,11 +95,11 @@ BitMap& BitMap::operator= (const BitMap& a)
   return *this;
 }
 
-/******** range bounds *******************************************************/
+/*!******* range bounds *******************************************************/
 
 BitMap::iterator BitMap::begin() const
 
-/*
+/*!
   Returns an iterator pointing to the first set bit in the bitmap.
 */
 
@@ -95,7 +112,7 @@ BitMap::iterator BitMap::begin() const
 
 BitMap::iterator BitMap::end() const
 
-/*
+/*!
   Synopsis: returns the past-the-end iterator for the bitmap.
 */
 
@@ -105,7 +122,7 @@ BitMap::iterator BitMap::end() const
 
 BitMap::iterator BitMap::pos(unsigned long n) const
 
-/*
+/*!
   Synopsis: returns an iterator with bit-address n.
 */
 
@@ -118,7 +135,7 @@ BitMap::iterator BitMap::pos(unsigned long n) const
 
 unsigned long BitMap::back() const
 
-/*
+/*!
   Synopsis: returns the address of the last member of the bitmap plus one,
   0 if there is no such bit (consistent with first, as a reverse iterator.)
 */
@@ -146,7 +163,7 @@ unsigned long BitMap::back() const
 
 bool BitMap::contains(const BitMap& b) const
 
-/*
+/*!
   Tells whether the current bitmap contains b. It is assumed that both have
   the same capacity. It amounts to checking that b andnot this is empty.
 */
@@ -161,7 +178,7 @@ bool BitMap::contains(const BitMap& b) const
 
 bool BitMap::empty() const
 
-/*
+/*!
   Tells whether the bitmap is empty. Thanks to our convention of zeroing
   unused bits, it is enough to check whether all the components of d_map
   are zero.
@@ -177,9 +194,9 @@ bool BitMap::empty() const
 
 unsigned long BitMap::front() const
 
-/*
-  Synopsis: returns the address of the first member of the bitmap, 
-  past-the-end if there is no such.
+/*!  
+  Synopsis: returns the address of the first member (set bit) of
+  the bitmap, past-the-end if there is no such.
 */
 
 {
@@ -203,9 +220,9 @@ unsigned long BitMap::front() const
 
 bool BitMap::full() const
 
-/*
+/*!
   Tells whether the bitmap is full. This means that all blocks are full,
-  except maybe for the last one were we have to look only at the significant
+  except maybe for the last one where we have to look only at the significant
   part.
 */
 
@@ -226,7 +243,7 @@ bool BitMap::full() const
 
 unsigned long BitMap::n_th(unsigned long n) const
 
-/*
+/*!
   Synopsis: returns the position of the n-th set bit; returns d_capacity
   if there is no such.
 */
@@ -270,7 +287,7 @@ unsigned long BitMap::n_th(unsigned long n) const
 
 unsigned long BitMap::position(unsigned long n) const
 
-/*
+/*!
   Synopsis: returns the number of set bits in position < n; if n is set,
   this is also the position of j within the set of set bits.
 */
@@ -293,13 +310,13 @@ unsigned long BitMap::position(unsigned long n) const
 
 unsigned long BitMap::range(unsigned long n, unsigned long r) const
 
-/*
+/*!
   Synopsis: returns r bits from position n.
 
   Precondition: r divides longBits, and n is aligned (i.e., n is a multiple
   of r).
 
-  In this way, we are sure that things happen inside a single worid in d_map.
+  In this way, we are sure that things happen inside a single word in d_map.
 */
 
 {
@@ -313,7 +330,7 @@ unsigned long BitMap::range(unsigned long n, unsigned long r) const
 
 unsigned long BitMap::size() const
 
-/*
+/*!
   Returns the number of set bits in the bitmap (this is its size as a
   container of unsigned long.)
 */
@@ -334,7 +351,7 @@ unsigned long BitMap::size() const
 
 BitMap& BitMap::operator~ ()
 
-/*
+/*!
   Synopsis: transforms the complement into its bitwise complement.
 
   NOTE: one has to be careful about the last chunk, resetting the unused
@@ -352,7 +369,7 @@ BitMap& BitMap::operator~ ()
 
 BitMap& BitMap::operator&= (const BitMap& b)
 
-/*
+/*!
   Synopsis: intersects the current bitmap with b.
 */
 
@@ -365,7 +382,7 @@ BitMap& BitMap::operator&= (const BitMap& b)
 
 BitMap& BitMap::operator|= (const BitMap& b)
 
-/*
+/*!
   Synopsis: unites the current bitmap with b
 */
 
@@ -378,7 +395,7 @@ BitMap& BitMap::operator|= (const BitMap& b)
 
 BitMap& BitMap::operator^= (const BitMap& b)
 
-/*
+/*!
   Synopsis: xor's the current bitmap with b
 */
 
@@ -391,7 +408,7 @@ BitMap& BitMap::operator^= (const BitMap& b)
 
 BitMap& BitMap::andnot(const BitMap& b)
 
-/*
+/*!
   Synopsis: takes the current bitmap into its set-difference with b, i.e. we 
   remove from our bitmap its intersection with b.
 */
@@ -405,7 +422,7 @@ BitMap& BitMap::andnot(const BitMap& b)
 
 void BitMap::fill()
 
-/*
+/*!
   Synopsis: sets all the bits in the bitmap. 
 
   As usual we have to be careful to leave the unused bits at the end to zero.
@@ -423,7 +440,7 @@ void BitMap::fill()
 
 void BitMap::fill(unsigned long n)
 
-/*
+/*!
   Synopsis: sets all the bits in position < n.
 
   Equivalent to fill if n >= d_capacity.
@@ -451,7 +468,7 @@ BitMap::iterator BitMap::insert(iterator, unsigned long n)
 }
 void BitMap::resize(unsigned long n)
 
-/*
+/*!
   Synopsis: sets the capacity of the bitmap to n. 
 
   Does not modify the contents up to the previous size, at least if n is 
@@ -467,13 +484,13 @@ void BitMap::resize(unsigned long n)
 
 void BitMap::setRange(unsigned long n, unsigned long r, unsigned long a)
 
-/*
+/*!
   Synopsis: sets r bits from position n to the first r bits in a.
 
   Precondition: r divides longBits, and n is aligned (i.e., n is a multiple
   of r).
 
-  In this way, we are sure that things happen inside a single worid in d_map.
+  In this way, we are sure that things happen inside a single word in d_map.
 */
 
 {
@@ -525,7 +542,7 @@ BitMap::iterator& BitMap::iterator::operator= (const BitMap::iterator& i)
 
 BitMap::iterator& BitMap::iterator::operator++ ()
 
-/*
+/*!
   The incrementation operator; it has to move the bitAddress to the next
   non-set bit, and move the chunk if necessary.
 */
@@ -577,7 +594,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
 
 BitMap::iterator BitMap::iterator::operator++ (int)
 
-/*
+/*!
   Post-increment operator; it should return the value as it was _before_ the
   incrementation.
 */

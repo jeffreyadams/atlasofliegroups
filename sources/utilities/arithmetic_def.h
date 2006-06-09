@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is arithmetic_def.h
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -13,7 +15,7 @@ namespace arithmetic {
 
 template<typename C> unsigned long remainder(C a, unsigned long m)
 
-/*
+/*!
   Synopsis: returns the remainder of the division of c modulo m.
 
   The point is to always return the unique number r in [0,m[ such that

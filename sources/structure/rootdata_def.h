@@ -1,6 +1,10 @@
 /*
+\file
+\brief Template definitions for the class RootData.
+*/
+/*
   This is rootdata_def.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -9,7 +13,7 @@
 
 #include "lattice.h"
 
-/******** template definitions from rootdats.h *******************************/
+/******** template definitions from rootdata.h *******************************/
 
 namespace atlas {
 
@@ -18,7 +22,7 @@ namespace rootdata {
 template <typename I, typename O>
   void RootDatum::toRootBasis(const I& first, const I& last, O out) const
 
-/*
+/*!
   In this template we assume that I is an InputIterator with value_type
   Weight, and that O is an OutputIterator with the same value_type. We
   assume that the elements of [first,last[ are in the root lattice, and
@@ -45,7 +49,7 @@ template <typename I, typename O>
   void toRootBasis(const I& first, const I& last, O out, const RootList& rb, 
 		   const RootDatum& rd)
 
-/*
+/*!
   In this template we assume that I is an Input_iterator with value_type
   RootNbr, and O an OutputIterator with value_type Weight. We assume that
   rb contains a basis of some _sub_ rootsystem of rd, and that I outputs
@@ -77,7 +81,7 @@ template <typename I, typename O>
   void toSimpleWeights(const I& first, const I& last, O out, 
 		       const RootList& rb, const RootDatum& rd)
 
-/*
+/*!
   In this template we assume that I is an InputIterator with value type
   RootNbr, and that rb is a basis for some _sub_ rootsystem of rd; we
   assume that I outputs values corresponding to roots in the subsystem.

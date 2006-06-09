@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is size_def.h
-  
+*/
+/*  
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -28,7 +30,7 @@ namespace size {
 
 template<typename C> SizeType<C>::SizeType(unsigned long a)
 
-/*
+/*!
   Synopsis: constructs the SizeType object representing a.
 
   Triggers a fatal error if a is not representable as a SizeType
@@ -57,7 +59,7 @@ template<typename C> SizeType<C>::SizeType(unsigned long a)
 template<typename C>
   unsigned long SizeType<C>::piece(size_t j) const
 
-/*
+/*!
   Synopsis: return the unsigned long value of prime(j)^^d_data[j]
 
   The algorithm is the classical algorithm with squarings and multiplications,
@@ -88,7 +90,7 @@ template<typename C>
 template<typename C>
   unsigned long SizeType<C>::toUlong() const
 
-/*
+/*!
   Synopsis: returns the unsigned long value of *this.
 
   NOTE: in case of overflow, we simply return the value modulo 2^^longBits.
@@ -108,7 +110,7 @@ template<typename C>
 template<typename C>
   SizeType<C>& SizeType<C>::operator*= (const SizeType& a)
 
-/*
+/*!
   NOTE: multiplication becomes addition in our logarithmic representation.
 
   NOTE: we explicitly convert to long to avoid compiler warnings.
@@ -126,7 +128,7 @@ template<typename C>
 template<typename C>
   SizeType<C>& SizeType<C>::operator*= (unsigned long a)
 
-/*
+/*!
   Synopsis: current *= SizeType(a).
 
   Precondition: a is representable as a SizeType.
@@ -145,7 +147,7 @@ template<typename C>
 template<typename C>
   SizeType<C>& SizeType<C>::operator/= (const SizeType& a)
 
-/*
+/*!
   NOTE: division becomes subtraction in our logarithmic representation.
 */
 
@@ -168,7 +170,7 @@ namespace size {
 
 template<typename C> void factorial (SizeType<C>& a, unsigned long n)
 
-/*
+/*!
   Synopsis: puts in a the factorial of n.
 
   Precondition: n is not greater than the PRIMES_MAX-th prime number.

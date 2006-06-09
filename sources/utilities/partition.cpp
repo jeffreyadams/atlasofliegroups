@@ -1,6 +1,14 @@
+/*!
+\file
+\brief Implementation of Partition.
+
+The purpose of the class Partition is to compute the partition of a
+finite set given by a group action.  A typical example is a Weyl group
+acting on elements of order 2 in a torus.
+*/
 /*
   This is partition.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -16,7 +24,9 @@
 
 /*****************************************************************************
 
-   ... describe here when it is stable ....
+   ... describe here when it is stable ....  (Main application:
+computing the partition of a finite set under a group action. Typical
+example is a Weyl group acting on elements of order two in a torus.)
 
 ******************************************************************************/
 
@@ -35,12 +45,12 @@ namespace partition {
 Partition::Partition(std::vector<unsigned long>& f)
   :d_class(f.size())
 
-/*
-  Synopsis: constructs a partition from the class vector.
+/*!
+ \brief Constructs a partition from the class vector f.
 
-  Explanation: the partition is given by the values of f.
+ Integers i and j are defined to belong to the same class if and only
+ if f[i]=f[j].
 */
-
 {
   std::map<unsigned long,unsigned long> val;
 
@@ -58,12 +68,13 @@ Partition::Partition(std::vector<unsigned long>& f)
 Partition::Partition(std::vector<unsigned long>& f, tags::UnnormalizedTag)
   :d_class(f)
 
-/*
-  Synopsis: like the previous one, but uses the actual values of f to number
+/*!
+  \brief Like the previous one, but uses the actual values of f to number
   the classes.
 
-  NOTE: it is recommended that the range of f be of the form [0,a[; I'm not
-  sure what might break down if it isn't.
+  NOTE: it is recommended that the range of f be of the form [0,a[
+  (with all values achieved); I'm not sure what might break down if it
+  isn't.
 */
 
 {
@@ -97,8 +108,12 @@ void Partition::swap(Partition& other)
 
 void Partition::newClass(unsigned long j)
 
-/*
-  Synopsis: starts a new class at location j.
+/*!
+\brief Starts a new class at location j.
+
+Previous classes are labelled 0 through d_classRep.size()-1, so the
+new class is labelled d_classRep.size().  The location j is added to
+the end of d_classRep, as the representative of this new class.
 */
 
 {
@@ -110,8 +125,8 @@ void Partition::newClass(unsigned long j)
 
 unsigned long Partition::classSize(unsigned long c) const
 
-/*
-  Synopsis: counts the number of elements in class #c.
+/*!
+  \brief Counts the number of elements in class \#c.
 
   NOTE: Straightforward implementation.
 */
@@ -149,7 +164,7 @@ namespace partition {
 PartitionIterator::PartitionIterator(const Partition& pi)
   :d_data(pi.size())
 
-/*
+/*!
   Initializes a PartitionIterator ready to run through the classes of pi.
 */
 

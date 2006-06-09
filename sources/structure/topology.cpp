@@ -1,6 +1,35 @@
-/*
+/*!
+\file
   This is topology.cpp
-  
+
+  The calculation of the component group of G(R) is based on the following
+  two facts : (a) for G simply connected semisimple, G(R) is connected (b)
+  for G arbitrary, a maximally split torus meets all components of G(R).
+
+  From (b), we get that pi0(T) surjects onto pi0(G); dually we see dpi0(G)
+  as the subgroup of dpi0(T) orthogonal to the subgroup of pi0(T) cut out
+  by the identity component of G.
+
+  For any covering homomorphism G~ -> G, the identity component of G~ maps
+  onto the identity component of G. Dually, we see that dpi0(G) is the
+  inverse image of dpi0(G~) under the map dpi0(T) -> dpi0(T~) induced by the
+  covering.
+
+  Now let G~ be of the form HxT_1, with H semisimple simply connected, and
+  T_1 a central torus. Then H(R) is connected, from (a). Therefore pi0(HxT_1)
+  = pi0(T_1); and so dpi0(T~) identifies with dpi0(T_1), and the kernel we are
+  after is also the kernel of the map dpi0(T) -> dpi0(S), with S maximally
+  split in H. But we may take for H the simply connected cover of the
+  derived group of G; hence we may suppose that the weight lattice of H
+  is the weight lattice of the root system of G, and its co-weight lattice
+  is then the coroot lattice of G. From this it is easy to write down
+  the involution (this amounts to writing the involution on coroot basis),
+  and then to construct the torus of that group.
+
+  From this functorial description, it is easy to find out what happens to
+  the component group under homomorphisms.  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -67,7 +96,7 @@ namespace topology {
 Connectivity::Connectivity(const tori::RealTorus& t, 
 			   const rootdata::RootDatum& rd)
 
-/*
+/*!
   Builds the component group of our given group from the most split Cartan
   (see the introduction to this module.) Since pi_0(G) is canonically a
   quotient of pi_0(T), we can see the dual group dpi_0(G) as a subgroup
@@ -139,7 +168,7 @@ namespace topology {
 
 bool isTrivial(const latticetypes::CoeffList& invf)
 
-/*
+/*!
   Tells whether the fundamental group described by u is trivial. This simply
   means that all the entries in u are equal to one.
 */

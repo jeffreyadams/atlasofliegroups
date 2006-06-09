@@ -1,6 +1,10 @@
+/*!
+\file
+\brief Declarations of classes and types for namespace latticetypes. 
+*/
 /*
   This is latticetypes.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -42,11 +46,23 @@ namespace latticetypes {
 
 namespace latticetypes {
 
+  /*!
+  \brief Element of lattice tensored with rational numbers.
+
+  LatticeElt d_num divided by LatticeCoeff d_denom.
+  */
 class RatLatticeElt {
 
  private:
-
+  
+  /*!
+  Vector of integers, representing the numerators of the RatLatticeElt.
+  */
   LatticeElt d_num;
+
+  /*!
+  Integer, the common denominator of the RatLatticeElt.
+  */
   LatticeCoeff d_denom;
 
  public:
@@ -54,15 +70,24 @@ class RatLatticeElt {
 // constructors and destructors
   RatLatticeElt() 
     {}
-
+  
+  /*!
+  Builds the RatLatticeElt with numerator v and denominator d.
+  */
   RatLatticeElt(const LatticeElt& v, LatticeCoeff d)
     :d_num(v), d_denom(d) 
     {}
 
+  /*!
+  Builds a RatLatticeElt of in Z^n with denominator d and all entries zero.
+  */
   RatLatticeElt(size_t n, LatticeCoeff d)
     :d_num(n), d_denom(d) 
     {}
 
+  /*!
+  Copies the RatLatticeElt v into  a new RatLatticeElt.
+  */
   RatLatticeElt(const RatLatticeElt& v)
     :d_num(v.d_num), d_denom(v.d_denom) 
     {}

@@ -28,7 +28,7 @@ endif
 ifeq ($(readline),false)
 	cflags := $(cflags) -DNREADLINE
 else
-	rlincludes := -lreadline -lcurses
+	rlincludes := -lreadline.5.1 -lcurses
 endif
 
 ifeq ($(verbose),true)

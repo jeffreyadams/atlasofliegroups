@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is gradings.h
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -46,13 +48,16 @@ namespace gradings {
 
 namespace gradings {
 
-class Status {
+  /*!
+  \brief Describes a four-valued root attribute for each simple root: to be
+  real, complex, imaginary compact or imaginary noncompact. 
 
-// the purpose of this class is to describe a four-valued root attribute:
-// to be real, complex, imaginary compact or imaginary noncompact. This
-// information fits nicely in two bits, and these bits can then be packed
-// together in a TwoRankFlags bitset (which for the default bound on the
-// rank is 32 bits big.)
+  This information fits nicely in two bits, and these bits can then be
+  packed in a TwoRankFlags bitset (which for the default bound on the
+  rank is 32 bits big.)
+  */
+
+class Status {
 
  private:
 
@@ -101,6 +106,7 @@ class Status {
   }
 
 // manipulators
+
   void set(size_t j, Value v) {
     unsigned long a = v;
     bitset::TwoRankFlags b(a);
@@ -109,6 +115,9 @@ class Status {
   }
 };
 
+  /*!
+  \brief Early version of Status, no longer instantiated.
+  */
 class FullStatus {
 
  private:

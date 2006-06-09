@@ -1,6 +1,8 @@
-/*
+/*!
+\file
   This is abelian.h
-  
+*/
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -68,11 +70,33 @@ namespace abelian {
 namespace abelian {
 
 class FiniteAbelianGroup {
+  /*!  
+  A product of finite cyclic groups of orders d_type[0], d_type[1],
+  d_type[2]...  It is assumed that d_type[0] divides d_type[1], which
+  divides d_type[2], and so on; these orders are therefore an
+  invariant of the group. The vector d_cotype has in its jth
+  coordinate the quotient d_type[last]/d_type[j].  This means that the
+  jth factor of the group may be written as the quotient of the cyclic
+  group of order d_type[last] by the subgroup of order d_cotype[j].
+  The integer d_size is the order of the group.
+  */
 
  protected:
-
+  /*!
+Cardinality of the group.
+  */
   unsigned long d_size;
+  /*!
+  Sizes of the canonical cyclic factors, arranged so that each divides
+  the next.
+  */
   GroupType d_type;
+  /*!
+  If m is the largest order of an element (equal to d_type[last]), then
+  the group is a product of quotients of Z/mZ, by the subgroups of
+  order d_cotype[j]; each of these orders divides its predecessor, and
+  d_cotype[last] is equal to 1.
+  */  
   GroupType d_cotype;
 
  public:
@@ -160,6 +184,25 @@ class FiniteAbelianGroup {
     return d_type;
   }
 };
+
+/*!
+  A Homomorphism object represents a homomorphism from a group of type d_source
+  to a group of type d_dest, where the elements are represented as arrays.
+
+  As we know, for such a homomorphism to be well defined, the matrix entry
+  (i,j) should be a multiple of d_dest[i]/g, with g = 
+  gcd(d_dest[i],d_source[j]).
+
+  Here we take a different approach. We set M a common multiple of the
+  annihilators of d_source and d_dest. Then
+  we allow arbitrary coefficients in Z/M. The corresponding matrix is
+  interpreted as follows. It is defined only for those tuples (x_1,...,x_m)
+  s.t. for all i, sum_j a_ij q_j x_j is of index t_i in Z/M, where (q_j)
+  is the cotype of d_source w.r.t. M; and then the corresponding value y_i is
+  (sum_j a_ij q_j x_j)/(M/t_i). It is easy to see that this definition is
+  in fact independent of the choice of M (of course we will take the lcm
+  of the annihilators.)
+*/
 
 class Homomorphism {
 

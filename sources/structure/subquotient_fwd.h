@@ -1,3 +1,8 @@
+/*!
+\file
+\brief Forward declarations for the classes NormalSubspace and
+NormalSubquotient. 
+*/
 /*
   This is subquotient_fwd.h
   

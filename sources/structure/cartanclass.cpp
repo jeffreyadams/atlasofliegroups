@@ -1,6 +1,10 @@
+/*!
+\file
+  \brief Implementation for the CartanClass and Fiber classes.  
+*/
 /*
   This is cartanclass.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -42,12 +46,19 @@ namespace {
   void makeSimpleComplex(rootdata::RootList&, const rootdata::RootDatum&,
 			 const CartanClass&);
 
+  /*!
+  \brief derived class of Fiber, to carry out the construction of Fiber. 
+  */
 class Helper:public Fiber {
 
 private:
 
 // extra data
   const rootdata::RootDatum* d_rootDatum;
+
+  /*!
+  \brief Image of the map from the fiber group to the adjoint fiber group.
+  */
   latticetypes::ComponentSubquotient d_fiberImage;
   
 public:
@@ -100,7 +111,18 @@ public:
 
   void weakReal();
 };
-  
+
+  /*!
+  \brief Constructs a function object giving the action of simple
+  imaginary reflections on a Fiber group coset.
+
+  The function object takes two unsigned long arguments.  The first
+  argument s indexes a simple imaginary root.  The second argument x
+  indexes an element f_x of the Fiber group.  The returned value y
+  indicates that imaginary reflection \#s carries the coset f_x.b to
+  the coset f_y.b.  (Here b is the base point of the coset, inducing
+  the grading d_baseGrading on the imaginary roots.)
+  */  
   class FiberAction {
 
   private:
@@ -144,7 +166,7 @@ CartanClass::CartanClass(const rootdata::RootDatum& rd,
 
    
 
-/*
+/*!
   Synopsis: constructs the Cartan class with involution q.
 
   Precondition: ti is the corresponding twisted involution;
@@ -187,9 +209,9 @@ void CartanClass::swap(CartanClass& other)
 
 bool CartanClass::isMostSplit(unsigned long c) const
 
-/*
-  Synopsis: tells whether this cartan class is the most split one for orbit
-  number c.
+/*!
+  \brief Tells whether this cartan class is the most split one for
+  weak real form \#c.
 
   Algorithm: this is the case iff the grading corresponding to c is trivial.
 */
@@ -221,10 +243,10 @@ Fiber::Fiber(const rootdata::RootDatum& rd,
 	     const latticetypes::LatticeMatrix& q)
   :d_torus(0)
 
-/*
-  Synopsis: puts in f the fiber for this Cartan class.
+/*!
+  \brief Puts in f the fiber for this Cartan class.
 
-  Precondition: pi contains the root involution defined by T;
+  Precondition: q contains the root datum involution for this fiber.
 */
 
 {
@@ -271,7 +293,7 @@ Fiber::Fiber(const Fiber& other)
 
 Fiber& Fiber::operator= (const Fiber& other)
 
-/*
+/*!
   Synopsis: assignment operator.
 
   Use copy constructor. This requires a check for self-assignment, or the
@@ -319,8 +341,9 @@ void Fiber::swap(Fiber& other)
 
 void Fiber::compactRootSet(rootdata::RootSet& rs, unsigned long x) const
 
-/*
-  Synopsis: flags in rs the compact imaginary roots for elt #x in the fiber;
+/*!
+  \brief Flags in rs the compact imaginary roots for elt \#x in the
+  adjoint fiber.
 
   Precondition: x represents an element of the subquotient in 
   adjointFiberGroup.
@@ -336,9 +359,9 @@ void Fiber::compactRootSet(rootdata::RootSet& rs, unsigned long x) const
 
 void Fiber::grading(gradings::Grading& gr, unsigned long x) const
 
-/*
-  Synopsis: flags in gr the noncompact simple imaginary roots for elt #x in 
-  the adjoint fiber;
+/*!
+  \brief Flags in gr the noncompact simple imaginary roots for elt \#x in 
+  the adjoint fiber.
 
   Precondition: x represents an element of the subquotient in 
   adjointFiberGroup.
@@ -362,11 +385,12 @@ void Fiber::grading(gradings::Grading& gr, unsigned long x) const
 
 unsigned long Fiber::gradingRep(const gradings::Grading& gr) const
 
-/*
-  Synopsis: returns an element of the adjoint fiber group corresponding to gr.
+/*!
+  \brief Returns an element of the adjoint fiber group corresponding to gr.
 
   Algorithm: we know that the grading can be reached from the base grading
-  with all ones by adding a linear combination of grading shifts.
+  with all ones by adding a linear combination of grading shifts.  [Not
+  yet implemented.]
 */
 
 {
@@ -377,9 +401,9 @@ unsigned long Fiber::gradingRep(const gradings::Grading& gr) const
 
 const latticetypes::LatticeMatrix& Fiber::involution() const
 
-/*
-  Synopsis: returns the matrix of the involution induced on the Cartan
-  subgroup.
+/*!  
+  \brief Returns the matrix of the involution on the weight lattice
+  of the Cartan subgroup.
 
   NOTE: this is not inlined to avoid a dependency upon tori.h in the .h file.
 */
@@ -390,10 +414,10 @@ const latticetypes::LatticeMatrix& Fiber::involution() const
 
 void Fiber::mAlpha(latticetypes::Component& ma, const rootdata::Root& cr) const
 
-/*
-  Synopsis: puts in ma the m_alpha corresponding to cr.
+/*!
+  \brief Puts in ma the m_alpha corresponding to cr.
 
-  Precondition: cr is an imaginary coroot for this cartan;
+  Precondition: cr is an imaginary coroot for this Cartan.
 */
 
 {
@@ -413,8 +437,8 @@ void Fiber::mAlpha(latticetypes::Component& ma, const rootdata::Root& cr) const
 
 size_t Fiber::minusRank() const
 
-/*
-  Synopsis: returns the dimension of the -1 eigenspace of the involution.
+/*!
+  \brief Returns the dimension of the -1 eigenspace of the involution.
 
   NOTE: this is not inlined to avoid a dependency upon tori.h in the .h file.
 */
@@ -425,9 +449,9 @@ size_t Fiber::minusRank() const
 
 void Fiber::noncompactRootSet(rootdata::RootSet& rs, unsigned long x) const
 
-/*
-  Synopsis: flags in rs the noncompact imaginary roots for elt #x in the 
-  adjoint fiber;
+/*!
+  \brief Flags in rs the noncompact imaginary roots for elt \#x in the 
+  adjoint fiber.
 
   Precondition: x represents an element of the subquotient in 
   adjointFiberGroup.
@@ -451,8 +475,8 @@ void Fiber::noncompactRootSet(rootdata::RootSet& rs, unsigned long x) const
 
 size_t Fiber::plusRank() const
 
-/*
-  Synopsis: returns the dimension of the +1 eigenspace of the involution.
+/*!
+  \brief Returns the dimension of the +1 eigenspace of the involution.
 
   NOTE: this is not inlined to avoid a dependency upon tori.h in the .h file.
 */
@@ -463,8 +487,8 @@ size_t Fiber::plusRank() const
 
 unsigned long Fiber::toAdjoint(unsigned long x) const
 
-/*
-  Synopsis: returns the image of x in the adjoint fiber group.
+/*!
+  \brief Returns the image of x in the adjoint fiber group.
 
   Precondition: x is a valid element in the fiber group.
 */
@@ -484,9 +508,33 @@ unsigned long Fiber::toAdjoint(unsigned long x) const
 
 unsigned long Fiber::toWeakReal(unsigned long c, size_t rfc) const
 
-/*
-  Synopsis: returns the class number in the weak real form partition of the
-  strong real form #c in real form class rfc.
+/*!
+  \brief Returns the class number in the weak real form partition of the
+  strong real form \#c in real form class rfc.
+
+  The pair (c,rfc) is the software representation of an equivalence
+  class of strong real forms (always assumed to induce tau on H). The
+  integer rfc labels an element of Z^delta/[(1+delta)Z], thought of as
+  a possible square value for strong real forms.  The fiber group acts
+  simply transitively on strong real forms with square equal to rfc.
+  The integer c labels an orbit of W_i on this fiber group coset; this
+  orbit is the equivalence class of strong real forms.
+  
+  This function computes the weak real form (W_i orbit on the adjoint
+  fiber group) corresponding to (c,rfc).  
+
+  First, rfc also labels a coset of the fiber group image in the
+  adjoint fiber group. The coset rfc is a collection of weak real
+  forms (W_i orbits on the adjoint fiber group).  The integer brf
+  indexes the base W_i orbit on rfc, and "by" is the base adjoint
+  fiber group element in brf.
+
+  The fiber group coset corresponding to rfc is labelled by the fiber
+  group itself using a base point with image by.  The integer x is a
+  representative in the fiber group of the orbit rfc.  Its image in
+  the adjoint fiber group is y.  Translating y by the base point "by"
+  gives an adjoint fiber group element representing the weak real form
+  we want.
 */
 
 {
@@ -496,7 +544,7 @@ unsigned long Fiber::toWeakReal(unsigned long c, size_t rfc) const
   unsigned long brf = d_realFormPartition.classRep(rfc);
   unsigned long by = d_weakReal.classRep(brf);
 
-  // get representative of class #c
+  // get representative of class \#c
   unsigned long x = d_strongReal[rfc].classRep(c);
 
   // find its image in the adjoint fiber group, and translate
@@ -522,10 +570,10 @@ Helper::Helper(const rootdata::RootDatum& rd,
 	       const latticetypes::LatticeMatrix& q)
   :d_rootDatum(&rd)
 
-/*
-  Synopsis: does the actual fiber construction.
+/*!
+  \brief Does the actual fiber construction.
 
-  Precondition: q contains the root datum involution for this fiber;
+  Precondition: q contains the root datum involution for this fiber.
 */
 
 {
@@ -584,8 +632,8 @@ Helper::~Helper()
 
 void Helper::adjointInvolution(latticetypes::LatticeMatrix& q) const
 
-/*
-  Synopsis: puts in q the matrix of the negative involution in the simple 
+/*!
+  \brief Puts in q the matrix of the negative involution in the simple 
   coweight basis.
 */
 
@@ -617,8 +665,8 @@ void Helper::adjointInvolution(latticetypes::LatticeMatrix& q) const
 
 void Helper::adjointFiberGroup()
 
-/*
-  Synopsis: makes the group that acts 1-transitively on the adjoint fiber.
+/*!
+  \brief Makes the group that acts 1-transitively on the adjoint fiber.
 
   Algorithm: this is the topology subquotient for the negative transpose
   of the involution induced by tau on the root lattice. We express it in
@@ -642,8 +690,8 @@ void Helper::adjointFiberGroup()
 
 void Helper::adjointMAlpha()
 
-/*
-  Synopsis: constructs the m_alpha's for the adjoint group, and alpha
+/*!
+  \brief Constructs the m_alpha's for the adjoint group, and alpha
   simple imaginary.
 
   Algorithm: the cocharacter lattice for the adjoint group is the coweight
@@ -691,8 +739,8 @@ void Helper::adjointMAlpha()
 
 void Helper::baseGrading()
 
-/*
-  Synopsis: fills in d_baseGrading and d_baseNoncompact
+/*!
+  \brief Fills in d_baseGrading and d_baseNoncompact
 
   Explanation: the base grading is the one where all the simple imaginary
   roots are noncompact. The baseNoncompact RootSet flags the corresponding
@@ -733,8 +781,8 @@ void Helper::baseGrading()
 
 void Helper::complexRootSet()
 
-/*
-  Synopsis: flags in d_complex the set of complex roots.
+/*!
+  \brief Flags in d_complex the set of complex roots.
 */
 
 {
@@ -753,8 +801,8 @@ void Helper::complexRootSet()
 
 void Helper::gradingGroup()
 
-/*
-  Synopsis: makes the stabilizer of the grading in the adjoint fiber group.
+/*!
+  \brief Makes the stabilizer of the grading in the adjoint fiber group.
 
   Explanation: each real form defines a grading of the imaginary root system,
   obtained by pairing with the simple imaginary roots. It should be the case
@@ -807,8 +855,8 @@ void Helper::gradingGroup()
 
 void Helper::gradingShifts()
 
-/*
-  Synopsis: fills in d_gradingShifts and d_noncompactShifts.
+/*!
+  \brief Fills in d_gradingShifts and d_noncompactShifts.
 
   Explanation: d_gradingShift[j] contains the action of the j'th basis
   vector of the canonical basis of the adjoint fiber group, on the
@@ -869,8 +917,8 @@ void Helper::gradingShifts()
 
 void Helper::fiberGroup()
 
-/*
-  Synopsis: makes the group that acts 1-transitively on each subset of the
+/*!
+  \brief Makes the group that acts 1-transitively on each subset of the
   fiber with fixed central square.
 
   Explanation: this is the topology subquotient for the negative transpose
@@ -895,8 +943,8 @@ void Helper::fiberGroup()
 
 void Helper::imaginaryRootSet()
 
-/*
-  Synopsis: flags in d_imaginary the set of imaginary roots.
+/*!
+  \brief Flags in d_imaginary the set of imaginary roots.
 */
 
 {
@@ -911,8 +959,8 @@ void Helper::imaginaryRootSet()
 
 void Helper::mAlpha()
 
-/*
-  Synopsis: constructs the m_alpha's.
+/*!
+  \brief Constructs the m_alpha's.
 
   Explanation: in fact, we simply write down the expression of the coroots
   corresponding to the imaginary simple roots, and compute modulo 2X_*.
@@ -939,8 +987,8 @@ void Helper::mAlpha()
 
 void Helper::makeToAdjoint()
 
-/*
-  Synopsis: fills in the toAdjoint matrix.
+/*!
+  \brief Fills in the toAdjoint matrix.
 
   Explanation: this is the matrix of the projection from the fiber group
   to the adjoint fiber group.
@@ -986,13 +1034,33 @@ void Helper::makeToAdjoint()
 
 void Helper::realFormPartition()
 
-/*
-  Synopsis: makes the partition of the real forms according to central square
+/*!
+  \brief Makes the partition of the real forms according to central square
   classes.
 
-  Explanation: the classes are given by the image of the fiber group in the
-  adjoint fiber group. This also corresponds to the various possible images
-  of (1+delta)(x) modulo (1+delta)(Z).
+  Explanation: the classes are indexed by cosets of the image of the
+  fiber group in the adjoint fiber group. This also corresponds to the
+  various possible values of (1+delta)(x) modulo (1+delta)(Z).
+
+  Algorithm: cl is the partition of the weak real forms according to
+  the element of Z(G)^delta/[(1+delta)Z(G)] given by the square of the
+  preimage in G^Gamma.  The class of weak real form \#j is given by
+  cl[j], which is an integer less than the number of elements of order
+  2 in Z(G).
+
+  A weak real form is an orbit of W_im on the adjoint fiber group.
+  Because the W_im action lifts to the fiber group, an orbit is
+  contained in a single coset of im(Fiber).  Two weak real forms
+  define the same central square class if and only if they lie in the
+  same coset of im(Fiber).
+
+  For each j, y is the number of a representative in the adjoint fiber
+  group for W_im orbit \#j.  Component v is first defined as equal to
+  adjoint fiber group element \#y.  Then v is redefined to be the
+  canonical coset representative for v in adjointFiber/[image of
+  Fiber]. Then cl[j] is the number of element v.  The UnnormalizedTag
+  on the Partition constructor call refers to the fact that the
+  Partition d_fiberImage uses the values of cl to number the classes. 
 */
 
 {
@@ -1002,6 +1070,8 @@ void Helper::realFormPartition()
   using namespace tags;
 
   std::vector<unsigned long> cl;
+  /* 
+   */
   cl.resize(d_weakReal.classCount());
 
   for (size_t j = 0; j < cl.size(); ++j) {
@@ -1019,8 +1089,8 @@ void Helper::realFormPartition()
 
 void Helper::realRootSet()
 
-/*
-  Synopsis: flags in d_real the set of real roots.
+/*!
+  \brief Flags in d_real the set of real roots.
 */
 
 {
@@ -1035,8 +1105,8 @@ void Helper::realRootSet()
 
 void Helper::rootInvolution()
 
-/*
-  Synopsis: makes the permutation of the roots corresponding to the torus
+/*!
+  \brief Makes the permutation of the roots corresponding to the torus
   involution.
 */
 
@@ -1059,14 +1129,23 @@ void Helper::rootInvolution()
 
 void Helper::strongReal()
 
-/*
-  Synopsis: writes the strong real form partitions.
+/*!
+  \brief Writes the strong real form partitions.
 
-  Algorithm: there is one strong real form partition for each real form
-  class. What we do is walk through the real form partition; the first
-  time we encounter a new class, we make the corresponding partition,
-  taking a basepoint corresponding to the canonical grading representative
-  for our real form, and we make the map from strong real forms to weak ones.
+  Algorithm: there is one strong real form partition for each real
+  form class in d_weakReal. What we do is walk through the real form
+  partition; the first time we encounter a new class, we make the
+  corresponding partition, taking a basepoint corresponding to the
+  canonical grading representative for our real form, and we make the
+  map from strong real forms to weak ones.
+
+  The number of partitions in d_strongReal is
+  d_realFormPartition.classCount(), the number of possible values z of
+  the square of a strong real form in Z.  (We count z only modulo
+  (1+delta)Z.  Changing z by (1+delta)Z changes nothing we want to
+  compute.)  Each partition is of the Fiber group; the number n
+  computed before makeOrbits below is the cardinality of the Fiber
+  group.
 */
 
 {
@@ -1117,8 +1196,8 @@ void Helper::strongReal()
 
 void Helper::strongRepresentatives()
 
-/*
-  Synopsis: fills in the strong real form representatives.
+/*!
+  \brief Fills in the strong real form representatives.
 
   Algorithm: we run through the various strong real form partitions, and
   for each, we pick as representative the first element lying above a weak real
@@ -1165,12 +1244,14 @@ void Helper::strongRepresentatives()
 
 void Helper::weakReal()
 
-/*
-  Synopsis: writes in d_weakReal the partition of the adjoint fiber 
+/*!
+  \brief Writes in d_weakReal the partition of the adjoint fiber 
   corresponding to weak real forms.
 
   Algorithm: we construct the FiberAction object corresponding to the adjoint
-  fiber.
+  fiber.  The weak real forms correspond to the orbits of the
+  imaginary Weyl group on the adjoint Fiber group.  The group is
+  generated by the simple imaginary reflections
 */
 
 {
@@ -1216,8 +1297,9 @@ namespace {
 
 unsigned long FiberAction::operator() (unsigned long s, unsigned long x) const
 
-/*
-  Synopsis: the abstract action operator.
+/*!
+  \brief Abstract action operator for the imaginary Weyl group on
+  the fiber group.
 
   Algorithm: we interpret the bits of x as the coordinates of the element in
   the fiber group, in terms of the chosen basepoint. Then the action is
@@ -1252,8 +1334,8 @@ namespace cartanclass {
 void compactTwoRho(latticetypes::Weight& tr, unsigned long x,
 		   const Fiber& f, const rootdata::RootDatum& rd)
 
-/*
-  Synopsis: puts in tr the sum of positive compact imaginary roots for x in f.
+/*!
+  \brief Puts in tr the sum of positive compact imaginary roots for x in f.
 */
 
 {
@@ -1269,8 +1351,8 @@ void compactTwoRho(latticetypes::Weight& tr, unsigned long x,
 void restrictGrading(gradings::Grading& gr, const rootdata::RootSet& rs,
 		     const rootdata::RootList& rl)
 
-/*
-  Synopsis: flags in gr the restriction of the grading in rs to rl.
+/*!
+  \brief Flags in gr the restriction of the grading in rs to rl.
 */
 
 {
@@ -1285,8 +1367,8 @@ void restrictGrading(gradings::Grading& gr, const rootdata::RootSet& rs,
 void specialGrading(gradings::Grading& gr, const cartanclass::Fiber& f, 
 		    realform::RealForm rf, const rootdata::RootDatum& rd)
 
-/*
-  Synopsis: puts in gr a grading in the orbit corresponding to rf, with the
+/*!
+  \brief Puts in gr a grading in the orbit corresponding to rf, with the
   smallest possible number of noncompact roots.
 
   Precondition: f is the fundamental fiber;
@@ -1331,8 +1413,8 @@ void specialGrading(gradings::Grading& gr, const cartanclass::Fiber& f,
 void toMostSplit(rootdata::RootList& so, const cartanclass::Fiber& fundf, 
 		 realform::RealForm rf, const rootdata::RootDatum& rd)
 
-/*
-  Synopsis: puts in so a set of strongly orthogonal roots for ccl, leading from
+/*!
+  \brief Puts in so a set of strongly orthogonal roots for ccl, leading from
   the fundamental Cartan to the most split one for the strong real form rf
 
   Algorithm: it is very simple: as long as there are noncompact imaginary
@@ -1381,8 +1463,8 @@ namespace {
 void makeOrbitSize(size::Size& os, const rootdata::RootDatum& rd, 
 		   const CartanClass& cc)
 
-/*
-  Synopsis: puts in os the size of the twisted involution orbit for this class.
+/*!
+   \brief Puts in os the size of the twisted involution orbit for this class.
 */
 
 {
@@ -1426,8 +1508,8 @@ void makeOrbitSize(size::Size& os, const rootdata::RootDatum& rd,
 void makeSimpleComplex(rootdata::RootList& sc, const rootdata::RootDatum& rd,
 		       const CartanClass& cc)
 
-/*
-  Synopsis: puts in sc the list of the simple roots for a complex factor in
+/*!
+  \brief Puts in sc the list of the simple roots for a complex factor in
   W^tau.
 
   Explanation: W^tau is the semidirect product of W^R x W^{iR} (Weyl groups

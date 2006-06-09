@@ -1,6 +1,11 @@
+/*!
+\file
+\brief Class definitions and function declarations for the class
+ComplexReductiveGroup.
+*/
 /*
   This is complexredgp.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -37,7 +42,42 @@ namespace complexredgp {
 /******** type definitions ***************************************************/
 
 namespace complexredgp {
+  /*!
+  \brief Complex reductive group endowed with an inner class of real
+  forms.
 
+  This class computes those aspects of the structure theory of (an
+  inner class of) real reductive groups G(R) that will be needed to
+  describe the Langlands classification of irreducible representations
+  of G(R).  Since we look at an inner class of real forms, the first
+  problem is to enumerate the different real forms constituting this
+  inner class.  
+
+  Next we list in d_cartan the conjugacy classes of real Cartan
+  subgroups up to stable conjugacy; this classification does not refer
+  to a particular real form.  Each stable class corresponds to at most
+  one conjugacy class of real Cartan subgroups in each real form; so
+  for each stable class of Cartan subgroups, we enumerate the real
+  forms over which it is defined.
+
+  We compute the structure of the real Cartan subgroups (notably the
+  groups of connected components); this depends only on the stable
+  conjugacy class.  We determine the real Weyl groups of Cartan
+  subgroups (which are _almost_ constant across the stable class, but
+  not quite).
+
+  Everything is determined by (and computed from) the RootDatum class
+  d_rootDatum: recall that this is a based root datum endowed with an
+  involutive automorphism.  The computations take place mostly inside
+  the Tits group d_titsGroup, which is an extension of the (complex)
+  Weyl group by the elements of order 2 in the torus.  (More
+  precisely, this Tits group is extended by a Z/2Z corresponding to
+  the automorphism of the based root datum.)       
+  
+  Because this class is one of the outer interfaces for the structure
+  library, we use pointers for its data members, so that forward
+  declarations suffice.
+  */
 class ComplexReductiveGroup {
 
  private:
@@ -45,8 +85,31 @@ class ComplexReductiveGroup {
 // this class is one of the outer interfaces for the structure library
 // hence we use pointers for its data members so that forward declarations
 // suffice
+
+  /*!
+  The based root datum with involution from which everything else is
+  constructed. 
+  */
   const rootdata::RootDatum* d_rootDatum;
+  
+  /*!
+  The Tits group (extended by the involutive automorphism) of the
+  based root datum.
+  */  
   tits::TitsGroup* d_titsGroup;
+  
+  /*!
+  List of stable conjugacy classes of Cartan subgroups of the inner
+  class of real forms determined by the based root datum with
+  involution.  (In fact the present constructors provide only those
+  classes defined over the real forms that have already been
+  considered by the software: if the software has not yet been asked
+  to look at the quasisplit real form, then this list will be
+  incomplete.  This should probably be regarded as a defect in the
+  software, although it causes no mathematical problem.  A related
+  difficulty is that the ordering of the list can depend on the order in
+  which real forms have been considered.)  
+  */
   cartan::CartanClasses* d_cartan;
 
 // reserve and implement when necessary

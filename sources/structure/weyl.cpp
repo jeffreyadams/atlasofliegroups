@@ -1,6 +1,19 @@
-/*
+/*!
+\file
+\brief Implementation of WeylGroup. 
+
+  I have decided to represent elements as fixed-size arrays of
+  unsigned characters. This forces expressing things in the standard
+  ordering of the generators, and hence to have a small i/o interface
+  for resetting the numbering to and from the numbering used by the
+  outside world.
+
+  It has seemed to me that this is the best compromise between size of the
+  dataype, generality and efficiency.
+
+*/
+/*  
   This is weyl.cpp
-  
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -104,7 +117,7 @@ WeylGroup::WeylGroup(const latticetypes::LatticeMatrix& c, const Twist* twist)
    d_maxlength(0UL),
    d_transducer(d_rank)
 
-/*
+/*!
   Synopsis : constructs the Weyl group corresponding to the Cartan matrix c,
   and to the given twist.
 
@@ -175,7 +188,7 @@ WeylGroup::WeylGroup(const WeylGroup& W, tags::DualTag)
    d_coxeterMatrix(W.d_coxeterMatrix),
    d_transducer(W.d_transducer)
 
-/*
+/*!
   Synopsis: the only difference with W is that the twist is multiplied by
   conjugation with the longest element.
 */
@@ -233,7 +246,7 @@ void WeylGroup::swap(WeylGroup& other)
 void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w, bool twisted) 
   const
 
-/*
+/*!
   Synopsis: puts in c the conjugacy class of w.
 
   Algorithm: the orbit is enumerated in a time proportional to (orbit size)*
@@ -279,7 +292,7 @@ void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w, bool twisted)
 
 bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 
-/*
+/*!
   Synopsis: tells whether sw < w.
 */
 
@@ -292,7 +305,7 @@ bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 
 bool WeylGroup::hasTwistedCommutation(Generator s, const WeylElt& w) const
 
-/*
+/*!
   Synopsis: tells whether w twisted-commutes with s.
 */
 
@@ -308,7 +321,7 @@ bool WeylGroup::hasTwistedCommutation(Generator s, const WeylElt& w) const
 
 void WeylGroup::invert(WeylElt& w) const
 
-/*
+/*!
   Synopsis: Transforms w into its inverse.
 
   Algorithm: read backwards the reduced expression gotten from the
@@ -332,7 +345,7 @@ void WeylGroup::invert(WeylElt& w) const
 
 unsigned long WeylGroup::involutionLength(const weyl::WeylElt& d_w) const
 
-/*
+/*!
   Synopsis: returns the length of d_w as a twisted ivolution.
 
   Precondition: d_w is a twisted involution;
@@ -361,7 +374,7 @@ unsigned long WeylGroup::involutionLength(const weyl::WeylElt& d_w) const
 void WeylGroup::involutionOut(weyl::WeylWord& ww, const weyl::WeylElt& d_w) 
   const
 
-/*
+/*!
   Synopsis: puts in ww a reduced expression of d_w as a twisted involution.
 
   Precondition: d_w is a twisted involution;
@@ -392,7 +405,7 @@ void WeylGroup::involutionOut(weyl::WeylWord& ww, const weyl::WeylElt& d_w)
 
 Generator WeylGroup::leftDescent(const WeylElt& w) const
 
-/*
+/*!
   Synopsis: returns a left descent generator for w; UndefGenerator if there
   is no such (i.e., if w = e).
 */
@@ -412,7 +425,7 @@ Generator WeylGroup::leftDescent(const WeylElt& w) const
 
 void WeylGroup::leftProdIn(WeylElt& w, Generator s) const
 
-/*
+/*!
   Synopsis: transforms w into s*w.
 
   Algorithm: note that our transducers are geared towards _right_ 
@@ -446,7 +459,7 @@ void WeylGroup::leftProdIn(WeylElt& w, Generator s) const
 
 unsigned long WeylGroup::length(const WeylElt& w) const
 
-/*
+/*!
   Synopsis: returns the length of w.
 */
 
@@ -462,7 +475,7 @@ unsigned long WeylGroup::length(const WeylElt& w) const
 
 void WeylGroup::out(WeylWord& ww, const WeylElt& w) const
 
-/*
+/*!
   Synopsis: puts in ww an _external_ reduced expression for w.
 */
 
@@ -483,7 +496,7 @@ void WeylGroup::out(WeylWord& ww, const WeylElt& w) const
 
 void WeylGroup::outerTwist(Twist& t) const
 
-/*
+/*!
   Synopsis: puts the twist of the outer generators in t.
 */
 
@@ -496,7 +509,7 @@ void WeylGroup::outerTwist(Twist& t) const
 
 void WeylGroup::prod(WeylElt& w, const WeylElt& v) const
 
-/*
+/*!
   Synopsis: w*=v.
 
   Algorithm: increment w by the various pieces of v, whose reduced
@@ -512,7 +525,7 @@ void WeylGroup::prod(WeylElt& w, const WeylElt& v) const
 
 void WeylGroup::prod(WeylElt& w, const WeylWord& v) const
 
-/*
+/*!
   Synopsis: w *= v.
 
   Algorithm: do the elementary multiplication by the generators, running
@@ -528,7 +541,7 @@ void WeylGroup::prod(WeylElt& w, const WeylWord& v) const
 
 int WeylGroup::prodIn(WeylElt& w, Generator s) const
 
-/*
+/*!
   Synopsis: w *= s.
 
   Algorithm: the information for this is exactly contained in the transducer
@@ -565,7 +578,7 @@ int WeylGroup::prodIn(WeylElt& w, Generator s) const
 
 void WeylGroup::prodIn(WeylElt& w, const WeylWord& v) const
 
-/*
+/*!
   Synopsis: w *= v.
 
   Precondition: v is written in the _internal_ generators.
@@ -583,7 +596,7 @@ void WeylGroup::prodIn(WeylElt& w, const WeylWord& v) const
 
 unsigned long WeylGroup::toUlong(const WeylElt& w) const
 
-/*
+/*!
   Synopsis: return the packed form of w (see the explanation in toWeylElt).
 
   NOTE: will work only if the order of the group fits into an unsigned long,
@@ -604,7 +617,7 @@ unsigned long WeylGroup::toUlong(const WeylElt& w) const
 
 WeylElt WeylGroup::toWeylElt(unsigned long u) const
 
-/*
+/*!
   Synopsis: returns the WeylElt whose packed form is u
 
   Algorithm: the packed form of w is defined to be w_0.a_0 + ... + 
@@ -631,7 +644,7 @@ WeylElt WeylGroup::toWeylElt(unsigned long u) const
 
 void WeylGroup::translate(WeylElt& w, const WeylInterface& I) const
 
-/*
+/*!
   Synopsis: applies to w the homomorphism defined by the generator permutation
   in I.
 
@@ -652,7 +665,7 @@ void WeylGroup::translate(WeylElt& w, const WeylInterface& I) const
 
 void WeylGroup::twist(WeylElt& w) const
 
-/*
+/*!
   Synopsis: twists the element w.
 
   Algorithm: we used the standard reduced decomposition of w.
@@ -677,8 +690,8 @@ namespace weyl {
 
 Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
 
-/*
-  Synopsis : constructs subquotient #r for the Coxeter matrix c. This
+/*!
+  Synopsis : constructs subquotient \#r for the Coxeter matrix c. This
   uses the Coxeter matrix only up to index r.
 
   Precondition : c is a _normalized_ Coxeter matrix (see Transducer); r is
@@ -811,7 +824,7 @@ namespace weyl {
 
 void copy(Twist& dest, const Twist& source)
 
-/*
+/*!
   Synopsis: copies source onto dest.
 */
 
@@ -822,7 +835,7 @@ void copy(Twist& dest, const Twist& source)
   
 const Twist& identityTwist()
 
-/*
+/*!
   Synopsis: returns a constant reference to a non-twist.
 */
 
@@ -834,7 +847,7 @@ const Twist& identityTwist()
 
 void makeReflections(WeylEltList& refl, const WeylGroup& W)
 
-/*
+/*!
   Synopsis: puts in refl the list of all reflections in W.
 
   NOTE: the ordering of the reflections is the ordering induced by our
@@ -881,7 +894,7 @@ namespace {
 EltPiece dihedralMin(const Transducer& qa, EltPiece x, Generator s, 
 		       Generator t)
 
-/*
+/*!
   Synopsis : returns the minimal element in the orbit of x under s and t.
 
   Precondition : s is in the descent set of x;
@@ -906,7 +919,7 @@ EltPiece dihedralMin(const Transducer& qa, EltPiece x, Generator s,
 EltPiece dihedralShift(const Transducer& qa, EltPiece x, Generator s, 
 		       Generator t, unsigned long d)
 
-/*
+/*!
   Synopsis : returns the result of applying s and t alternately to x, for a 
   total of d times.
 */
@@ -928,7 +941,7 @@ EltPiece dihedralShift(const Transducer& qa, EltPiece x, Generator s,
 void fillCoxMatrix(LatticeMatrix& cox, const LatticeMatrix& cart, 
 		   const Permutation& a)
 
-/*
+/*!
   Synopsis : fills in the Coxeter matrix cox.
 
   Precondition: cart is a Cartan matrix; a holds a normalizing permutation

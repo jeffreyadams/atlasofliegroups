@@ -1,6 +1,10 @@
+/*!
+\file
+\brief Class definitions and function declarations for BitVector.
+*/
 /*
   This is bitvector.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -79,7 +83,34 @@ template<size_t dim>
 /******** type definitions **************************************************/
 
 namespace bitvector {
+  /*!  
+  \brief A vector d_data in (Z/2Z)^d_size, with d_size a non-negative
+  integer less than or equal to dim.
 
+  The class BitVector<dim> represents a vector in the first d_size
+  coordinates of the vector space (Z/2Z)^dim over the two-element
+  field.  The software envisions dim between 0 and four times the
+  machine word length (precisely, four times the constant longBits,
+  which is the number of bits in an unsigned long integer).  What is
+  now fully implemented allows dim to be one or two times the word
+  length (see the discussion in the description of the class
+  BitSet<n>).  What is now instantiated seems to be BitVectors of dim
+  equal to RANK_MAX or 2*RANK_MAX, (that is 16 or 32).  
+
+  Let m be the smallest integer so that dim is at most m*longBits.  The
+  vector is stored as the BitSet d_data, which is a (fixed size) array
+  of m words of memory.  (On a 32 bit machine with RANK_MAX=16, this
+  means that d_data is a single word of memory.)  We look only at the
+  first d_size bits of d_data; but d_size can be changed by
+  manipulators (like the member functions resize and pushBack).
+
+  A BitVector should be thought of as a column vector.  A Bitmatrix will
+  in general act on it on the left.  [I thought that Fokko always
+  prefers matrices acting on the right on row vectors; but if I am
+  reading this correctly, that preference didn't make it into this
+  software.] 
+  */
+   
 template<size_t dim> class BitVector{
 
   friend BitVector<dim>& BitMatrix<dim>::apply(BitVector<dim>&, 
@@ -244,12 +275,48 @@ template<size_t dim> class FirstBit {
 // note that the elements in d_data are the _column_ vectors of the
 // matrix
 
+/*!
+\brief A matrix of d_rows rows and d_columns columns, with entries in Z/2Z.
+
+The number of rows d_rows should be less than or equal to dim, which
+in turn is envisioned to be at most four times the machine word size.
+The present implementation allows dim at most twice the machine word
+size, and what is used is dim equal to RANK_MAX (now 16).  
+
+The at least when d_rows is less than or equal to dim, the matrix can
+act on the left on a BitVector of size d_column; in this setting each
+column of the matrix is the image of one of the standard basis vectors
+in the domain.
+
+What is stored in d_data, as BitSet's, are the d_column column vectors
+of the matrix.  Construction of a matrix is therefore most efficient
+when columns are added to it.
+
+Notice that the columns are BitSets and not BitVectors.  A BitVector
+is a larger data structure than a BitSet, including also an integer
+d_size saying how many of the available bits are significant.  In a
+BitMatrix this integer must be the same for all of the columns, so it
+is easier and safer to store it once for the whole BitMatrix, and also
+to modify it just once when the matrix is resized.
+*/
 template<size_t dim> class BitMatrix {
 
  private:
 
-  std::vector<bitset::BitSet<dim> > d_data;
+  /*!
+  A vector of d_rows BitSet's (each of size d_columns), the columns of
+  the BitMatrix.
+  */
+  std::vector<bitset::BitSet<dim> > d_data; 
+
+  /*!
+  Number of rows of the BitMatrix.
+  */
   size_t d_rows;
+
+  /*!
+  Number of columns of the BitMatrix.
+  */
   size_t d_columns;
 
  public:
@@ -297,6 +364,9 @@ template<size_t dim> class BitMatrix {
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 
+  /*!
+  Returns column j of the BitMatrix, as a BitSet. 
+  */
   const bitset::BitSet<dim>& column(size_t j) const {
     return d_data[j];
   }
@@ -305,22 +375,34 @@ template<size_t dim> class BitMatrix {
 
   void image(std::vector<BitVector<dim> >&) const;
 
+  /*!
+  Tests whether the BitMatrix is empty (has zero columns).
+  */
   bool isEmpty() const {
     return d_data.size() == 0;
   }
 
   void kernel(std::vector<BitVector<dim> >&) const;
 
+  /*!
+  Returns the number of columns of the BitMatrix.
+  */
   size_t numColumns() const {
     return d_columns;
   }
 
+  /*!
+  Returns the number of rows of the BitMatrix.
+  */
   size_t numRows() const {
     return d_rows;
   }
 
   void row(BitVector<dim>&, size_t) const;
 
+  /*!
+  Tests the (i,j) entry of the BitMatrix.
+  */
   bool test(size_t i, size_t j) const {
     return d_data[j].test(i);
   }
@@ -331,6 +413,10 @@ template<size_t dim> class BitMatrix {
 
   BitMatrix& operator*= (const BitMatrix&);
 
+  /*!
+ Adds the BitSet f as a new column (the first one, pushing the others
+ back) to the BitMatrix.
+  */
   void addColumn(const bitset::BitSet<dim>& f) {
     d_data.push_back(f); 
     d_columns++;
@@ -340,6 +426,9 @@ template<size_t dim> class BitMatrix {
     addColumn(c.data());
   }
 
+  /*!
+ Adds the BitVector v to column j of the BitMatrix.
+  */
   void addToColumn(size_t j, const BitVector<dim>& v) {
     d_data[j] ^= v.data();
   }
@@ -364,17 +453,29 @@ template<size_t dim> class BitMatrix {
     return *this;
   }
 
+  /*!
+  Resizes the BitMatrix to an n by n square.
+
+  NOTE: it is the caller's responsibility to check that n does not
+  exceed dim.
+  */
   void resize(size_t n) {
     resize(n,n);
   }
 
   void resize(size_t m, size_t n);
 
+  /*!
+  Puts a 1 in row i and column j of the BitMatrix.
+  */
   BitMatrix& set(size_t i, size_t j) {
     d_data[j].set(i); 
     return *this;
   }
 
+  /*!
+  Puts the BitSet data in column j of the BitMatrix.
+  */
   void setColumn(size_t j, const bitset::BitSet<dim>& data) {
     d_data[j] = data;
   }

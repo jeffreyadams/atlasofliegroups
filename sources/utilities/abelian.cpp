@@ -17,8 +17,8 @@
 #include "matrix.h"
 #include "smithnormal.h"
 
-/*****************************************************************************
-
+/*!****************************************************************************
+\file
   This is a partial and tentative implementation of the concept of a finite
   abelian group. Typically we have in mind the center of a reductive semisimple
   group.
@@ -41,7 +41,6 @@ namespace abelian {
 
 FiniteAbelianGroup::FiniteAbelianGroup(const std::vector<unsigned long>& t)
   :d_type(t),d_cotype(t.size())
-
 {
   d_size = 1;
 
@@ -57,7 +56,7 @@ FiniteAbelianGroup::FiniteAbelianGroup(const std::vector<unsigned long>& t)
 void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, const GrpArr& a) 
   const
 
-/*
+/*!
   Synopsis: put in v a representative of a.
 
   NOTE: sloppy implementation; we don't check for overflow, which may happen
@@ -72,7 +71,7 @@ void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, const GrpArr& a)
 
 void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, GrpNbr x) const
 
-/*
+/*!
   Synopsis: put in v a representative of a.
 
   NOTE: sloppy implementation; we don't check for overflow, which may happen
@@ -94,7 +93,7 @@ void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, GrpNbr x) const
 
 GrpArr& FiniteAbelianGroup::add(GrpArr& a, const GrpArr& b) const
 
-/*
+/*!
   Synopsis: a += b.
 
   Precondition: a and b hold valid arrays for the group;
@@ -115,7 +114,7 @@ GrpArr& FiniteAbelianGroup::add(GrpArr& a, const GrpArr& b) const
 
 GrpArr& FiniteAbelianGroup::add(GrpArr& a, GrpNbr x) const
 
-/*
+/*!
   Synopsis: a += x.
 */
 
@@ -128,7 +127,7 @@ GrpArr& FiniteAbelianGroup::add(GrpArr& a, GrpNbr x) const
 
 GrpNbr FiniteAbelianGroup::add(GrpNbr x, const GrpArr& b) const
 
-/*
+/*!
   Synopsis: x += b.
 
   The main problem is to deal with the modular addition, so that the overflow 
@@ -145,7 +144,7 @@ GrpNbr FiniteAbelianGroup::add(GrpNbr x, const GrpArr& b) const
 
 GrpNbr FiniteAbelianGroup::add(GrpNbr x, GrpNbr y) const
 
-/*
+/*!
   Synopsis: x += y.
 
   The main problem is to deal with the modular addition, so that the overflow 
@@ -170,7 +169,7 @@ GrpNbr FiniteAbelianGroup::add(GrpNbr x, GrpNbr y) const
 
 unsigned long FiniteAbelianGroup::annihilator() const
 
-/*
+/*!
   Synopsis: returns the s.c.m. of the orders of the elements of the group.
 */
 
@@ -183,7 +182,7 @@ unsigned long FiniteAbelianGroup::annihilator() const
 
 GrpNbr FiniteAbelianGroup::leftApply(GrpNbr x, const Endomorphism& q) const
 
-/*
+/*!
   Synopsis: applies the matrix q to the element x, on the left.
 
   The idea is that the matrix defines an endomorphism of the group in terms
@@ -200,7 +199,7 @@ GrpNbr FiniteAbelianGroup::leftApply(GrpNbr x, const Endomorphism& q) const
 
 GrpArr& FiniteAbelianGroup::leftApply(GrpArr& a, const Endomorphism& q) const
 
-/*
+/*!
   Synopsis: applies the matrix q to the array a, on the left.
 
   The idea is that the matrix defines an endomorphism of the group in terms
@@ -227,7 +226,7 @@ GrpArr& FiniteAbelianGroup::leftApply(GrpArr& a, const Endomorphism& q) const
 
 unsigned long FiniteAbelianGroup::order(GrpNbr x) const
 
-/*
+/*!
   Synopsis: computes the order of x in the group.
 */
 
@@ -249,7 +248,7 @@ unsigned long FiniteAbelianGroup::order(GrpNbr x) const
 unsigned long FiniteAbelianGroup::order(const bitmap::BitMap& B, 
 					GrpNbr x) const
 
-/*
+/*!
   Synopsis: computes the order of x modulo B.
 
   NOTE : we have not tried to be smart at all here. For large groups this
@@ -275,7 +274,7 @@ unsigned long FiniteAbelianGroup::order(const bitmap::BitMap& B,
 unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b) 
   const
 
-/*
+/*!
   Synopsis: computes the m in [0,n[ s.t. a(b) = e^{2i pi m/n}, where a is 
   interpreted as an element of the dual group, b as an element of the group, 
   and n is the annihilator of the group (the last entry in d_type).
@@ -299,7 +298,7 @@ unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b,
 					  unsigned long t) 
   const
 
-/*
+/*!
   Synopsis: computes the m in [0,t[ s.t. a(b) = e^{2i pi m/t}, where a is 
   interpreted as an element of the dual group, b as an element of the group.
 
@@ -325,7 +324,7 @@ unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b,
 
 GrpNbr FiniteAbelianGroup::prod(GrpNbr x, unsigned long n) const
 
-/*
+/*!
   Replaces x with n.x. We use the classic logarithmic algorithm, where the
   result is obtained through a sequence of additions and multiplications by
   two.
@@ -357,7 +356,7 @@ GrpNbr FiniteAbelianGroup::prod(GrpNbr x, unsigned long n) const
 
 GrpArr& FiniteAbelianGroup::subtract(GrpArr& a, const GrpArr& b) const
 
-/*
+/*!
   Synopsis: a -= b.
 
   Precondition: a and b hold valid arrays for the group;
@@ -382,7 +381,7 @@ GrpArr& FiniteAbelianGroup::subtract(GrpArr& a, const GrpArr& b) const
 
         Chapter II -- The Homomorphism class
 
-  A Homomorhism object represents a homomorphism from a group of type d_source
+  A Homomorphism object represents a homomorphism from a group of type d_source
   to a group of type d_dest, where the elements are represented as arrays.
 
   As we know, for such a homomorphism to be well defined, the matrix entry
@@ -413,7 +412,7 @@ Homomorphism::Homomorphism(const std::vector<GrpArr>& al,
    d_codest(dest.size()),
    d_matrix(dest.size(),source.size())
 
-/*
+/*!
   Synopsis: constructs the homomorphism with matrix al, from a group of
   type source to a group of type dest.
 
@@ -449,7 +448,7 @@ Homomorphism::Homomorphism(const std::vector<GrpArr>& al,
 
 void Homomorphism::apply(GrpArr& dest, const GrpArr& source) const
 
-/*
+/*!
   Synopsis: applies the homomorphism to source according to the rules explained
   in the introduction to this section, and puts the result in dest.
 
@@ -477,7 +476,7 @@ void Homomorphism::apply(GrpArr& dest, const GrpArr& source) const
 
 GrpNbr Homomorphism::apply(GrpNbr source) const
 
-/*
+/*!
   Synopsis: return h(source).
 
   Precondition: source is in the subgroup for which this makes sense;
@@ -496,7 +495,7 @@ GrpNbr Homomorphism::apply(GrpNbr source) const
 
 bool Homomorphism::defined(const GrpArr& a) const
 
-/*
+/*!
   Synopsis: tells whether a is in the domain.
 
   This means that a satisfies the congruences stated in the apply function.
@@ -517,7 +516,7 @@ bool Homomorphism::defined(const GrpArr& a) const
 
 bool Homomorphism::defined(GrpNbr x) const
 
-/*
+/*!
   Synopsis: tells whether x is in the domain.
 
   Forwarded to the array-version.
@@ -545,7 +544,7 @@ namespace abelian {
 void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
 	   const FiniteAbelianGroup& A) 
 
-/*
+/*!
   Synopsis: writes A/B in canonical form.
 
   Explanation: we see the current group A as a quotient of Z^d, where d is 
@@ -606,7 +605,7 @@ void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
 void coset(bitmap::BitMap& C, const bitmap::BitMap& B, GrpNbr x,
 	   const FiniteAbelianGroup& A)
 
-/*
+/*!
   Synopsis: puts in C the coset x+B in A.
 
   Precondition: C.size() == A.size();
@@ -631,7 +630,7 @@ void coset(bitmap::BitMap& C, const bitmap::BitMap& B, GrpNbr x,
 
 const bitmap::BitMap& cycGenerators(const FiniteAbelianGroup& A)
 
-/*
+/*!
   Synopsis: returns a reference to a bitmap containing exactly one generator
   for each cyclic subgroup of A.
 
@@ -673,7 +672,7 @@ const bitmap::BitMap& cycGenerators(const FiniteAbelianGroup& A)
 
 void generateSubgroup(bitmap::BitMap& B, GrpNbr x, const FiniteAbelianGroup& A)
 
-/*
+/*!
   Synopsis: transforms B into the subgroup generated by B and x in A.
 
   NOTE : this is a simple-minded implementation; we do not aim for speed.
@@ -700,7 +699,7 @@ void generateSubgroup(bitmap::BitMap& B, GrpNbr x, const FiniteAbelianGroup& A)
 void generators(GrpNbrList& gen, const bitmap::BitMap& B,
 		const FiniteAbelianGroup& A)
 
-/*
+/*!
   Synopsis: puts in gen a list of generators of the subgroup B.
 */
 
@@ -712,7 +711,7 @@ void generators(GrpNbrList& gen, const bitmap::BitMap& B,
 
 bool isElementaryAbelian(const std::vector<unsigned long>& c)
 
-/*
+/*!
   Tells if c is all twos.
 */
 
@@ -727,7 +726,7 @@ bool isElementaryAbelian(const std::vector<unsigned long>& c)
 void quotReps(bitmap::BitMap& qr, const bitmap::BitMap& B,
 	      const FiniteAbelianGroup& A) 
 
-/*
+/*!
   Synopsis: puts in qr a list of representatives of the cosets modulo B. 
 
   Precondition: qr.size() = A.size();
@@ -756,7 +755,7 @@ void quotReps(bitmap::BitMap& qr, const bitmap::BitMap& B,
 
 void toArray(GrpArr& a, GrpNbr x, const GroupType& t)
 
-/*
+/*!
   Synopsis: puts the array-form of x in a.
 
   Precondition: x is representable for t (x < prod t[j]); otherwise the
@@ -777,7 +776,7 @@ void toArray(GrpArr& a, GrpNbr x, const GroupType& t)
 
 void toArray(GrpArr& a, const latticetypes::Weight& v, const GroupType& t)
 
-/*
+/*!
   Synopsis: reduces v mod d_type.
 
   The only difficulty is to make sure that negative values are reduced in
@@ -798,7 +797,7 @@ void toArray(GrpArr& a, const latticetypes::Weight& v, const GroupType& t)
 void toEndomorphism(Endomorphism& e, const latticetypes::LatticeMatrix& q,
 		    const FiniteAbelianGroup& A)
 
-/*
+/*!
   Synopsis: transforms q into the corresponding Endomorphism.
 
   This just involves rewriting the coeficients as unsigned longs modulo
@@ -823,7 +822,7 @@ void toEndomorphism(Endomorphism& e, const latticetypes::LatticeMatrix& q,
 
 GrpNbr toGrpNbr(const GrpArr& a, const GroupType& t)
 
-/*
+/*!
   Synopsis: returns the number-form of a.
 
   Precondition: a is representable as a GrpNbr;
@@ -843,7 +842,7 @@ GrpNbr toGrpNbr(const GrpArr& a, const GroupType& t)
 
 void transpose(Endomorphism& e, const FiniteAbelianGroup& A)
 
-/*
+/*!
   Synopsis: transposes the endomorphism e.
 
   This is more subtle than one might think; the main point is that when
@@ -852,7 +851,7 @@ void transpose(Endomorphism& e, const FiniteAbelianGroup& A)
   factors thru Z/dZ, where d = gcd(m,n), so it is a multiple of the map
   defined by 1 -> m/d; the transpose is the same multiple of 1 -> n/d.
 
-  NOTE: this implementation works or homomorphisms between diferent groups
+  NOTE: this implementation works for homomorphisms between different groups
   just as well (except that one needs two grouptypes then.)
 */
 
