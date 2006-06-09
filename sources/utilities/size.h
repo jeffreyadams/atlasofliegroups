@@ -64,11 +64,12 @@ namespace size {
   \brief Should be the ordinal (position on the list of primes) of the
   largest possible prime factor of a Weyl group of rank at most 16.
   
-  This is the sixth prime 13.
+  This is the seventh prime 17 (appearing only in the Weyl group S_17
+  of type A16).
   */
   template<> class PrimesMax<16> {
   public:
-    static const unsigned long value = 6ul;
+    static const unsigned long value = 7ul;
   };
 
   /*!
