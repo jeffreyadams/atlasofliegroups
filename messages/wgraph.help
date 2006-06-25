@@ -6,8 +6,35 @@ to the Hecke algebra action that has allowed us to define Kazhdan-Lusztig
 polynomials; essentially it describes the action of the Hecke generators in
 the Kazhdan-Lusztig basis.
 
-For now, we use the numbering of the elements in the block to parametrize
-representations. To give more meaning to these numbers, use the "block" 
-command, that will relate the various \nu to fundamental representations, 
-say, in terms of Cayley transforms and cross-actions.
+For now, we use the numbering of the elements in the block to
+parametrize representations. To give more meaning to these numbers,
+use the "block" command: that will relate each representation in the
+block to fundamental series representations, say, in terms of Cayley
+transforms and cross-actions.
 
+There is one line for each element of the block, numbered 0 to
+n-1. After the number of a block element is its tau invariant,
+enclosed in braces, a subset of {1,...,r} (with r the number of simple
+roots).
+
+Following the tau invariant in row j is a collection of pairs (k,m).
+Such a pair means that there is an edge of the W-graph joining the
+present element #j of the cell to element #k, having multiplicity m.
+(The multiplicity is a coefficient of highest possible power of q in
+the Kazhdan-Lusztig polynomial indexed by j and k.)  The W-graph is
+symmetric: the pair (k,m) appears in row j if and only if (j,m)
+appears in row k.
+
+The Weyl group representation attached to the graph may be described
+as follows. (Almost the same description gives the Hecke algebra
+representation.) It has a Z basis {L_j} indexed by the block elements
+j. If root i is in the tau invariant for element j, then
+
+s_i(L_j) = -L_j.
+
+If i is not in the tau invariant, then
+
+s_i(L_j) = L_j + sum_{elements k, i in tau(k)} mL_k.
+
+That is, L_k appears in the sum here if i is in the tau-invariant of
+L_k, and the pair (k,m) appears in the list for row j.
