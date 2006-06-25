@@ -7,4 +7,49 @@ This is usually what one wants, for legibility and comparison purposes;
 however, the partition of the elements of the block into cells is lost in
 this way.
 
+Each cell is introduced with a line of the form "// cell #xx."  What
+follows is a list of elements in the cell, numbered 0 to n-1, one per
+line. After the number of a cell element is its tau invariant,
+enclosed in braces, a subset of {1,...,r} (with r the number of simple
+roots). 
 
+Following the tau invariant in row j is a collection of pairs (k,m).
+Such a pair means that there is an edge of the W-graph joining the
+present element #j of the cell to element #k, having multiplicity m.
+(The multiplicity is a coefficient of highest possible power of q in
+the Kazhdan-Lusztig polynomial indexed by j and k.)  The graph is
+symmetric: (k,m) appears in row j if and only if (j,m) appears in row
+k.
+
+The Weyl group representation attached to the cell may be described as
+follows. It has a Z basis {L_j} indexed by the cell elements j. If
+root i is in the tau invariant for element j, then
+
+s_i(L_j) = -L_j.
+
+If i is not in the tau invariant, then
+
+s_i(L_j) = L_j + sum_{elements k, i in tau(k)} mL_k.
+
+That is, L_k appears in the sum here if i is in the tau-invariant of
+L_k, and the pair (k,m) appears in the list for row j.
+
+For example, here is the output of wcells for the simply connected
+group SU(2,1) and the block of the trivial representation:
+
+// cell #0
+0:{}:{}
+// cell #1
+0:{2}:{(1,1)}
+1:{1}:{(0,1)}
+// cell #2
+0:{1}:{(1,1)}
+1:{2}:{(0,1)}
+// cell #3
+0:{1,2}:{}
+
+If we look at the Weyl group representation attached to cell #1, we
+find
+
+s_1(L_0) =  L_0 + L_1   s_2(L_0) = -L_0
+s_1(L_1) = -L_0         s_2(L_1) =  L_1 + L_0.
