@@ -177,7 +177,7 @@ void dualInnerClassType(InnerClassType& dict, const InnerClassType& ict,
     case 'D':
       if (slt.second & 1ul) {
 	// interchange split and compact inner classes
-	if (dict[j] == 's')
+	if (dict[j] == 's' or dict[j] == 'u')
 	  dict[j] = 'c';
 	else
 	  dict[j] = 's';
