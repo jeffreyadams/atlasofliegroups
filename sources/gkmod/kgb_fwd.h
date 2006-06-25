@@ -1,3 +1,7 @@
+/*!
+\file
+\brief Class declaration and type definitions for class KGB.
+*/
 /*
   This is kgb_fwd.h
   

@@ -1,3 +1,7 @@
+/*!
+\file
+\brief Class definition and function declarations for class Block.
+*/
 /*
   This is blocks.h
   
@@ -40,6 +44,20 @@ const BlockElt UndefBlock = ~0ul;
 
 namespace blocks {
 
+  /*!
+\brief Represents a block of representations of an inner form of G.
+
+For our fixed inner form, orbits of K on G/B are parametrized by
+certain elements x in N(H).  Each x therefore defines an involution
+theta_x of H.  Describing the set of x with a fixed involution is
+accomplished by the Fiber class.  
+
+A block is characterized by specifying also an inner form of the dual
+group G^vee.  For this inner form, K^vee orbits on G^vee/B^vee are
+parametrized by elements y.  The basic theorem is that the block of
+representations is parametrized by pairs (x,y) as above, subject to
+the requirement that theta_y is the negative transpose of theta_x. 
+  */
 class Block {
 
  protected:

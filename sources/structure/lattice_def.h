@@ -1,7 +1,6 @@
 /*!
   \file
-  \brief This file contains the definitions of the templates declared
-  in lattice.h.
+  \brief Definitions of the templates declared in lattice.h.
 */
 /*
   This is lattice_def.h.

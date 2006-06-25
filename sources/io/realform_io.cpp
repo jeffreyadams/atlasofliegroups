@@ -454,6 +454,14 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
 	  strm << 2*rank(slt)-2*fb-2 << "," << 2*fb+2 << ")";
 	}
 	break;
+      case 'u':
+        if (gr.count() == 0) { // distinguished form
+          strm << "so(";
+          strm << 2*rank(slt)-1<< "," << 1 << ")";
+        } else {
+          strm << "so(";
+          strm << 2*rank(slt)-2*fb-3 << "," << 2*fb+3 << ")";
+        }
       }
     else
       switch (ic) {

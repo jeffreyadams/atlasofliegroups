@@ -1,7 +1,6 @@
 /*!
 \file
-  This is lietype.cpp. This file contains the definitions for the type
-  of a real or complex reductive Lie algebra.
+\brief Definitions for the type of a real or complex reductive Lie algebra.
 
   A complex reductive Lie algebra is simply the product of a number of simple 
   complex Lie algebras, and a torus; the simple factors can be of types A-G, 
@@ -33,7 +32,8 @@
 
 */
 /*
-  
+  This is lietype.cpp. 
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 

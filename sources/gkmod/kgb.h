@@ -1,3 +1,8 @@
+/*!
+\file
+\brief Class definition and function declarations for the class KGB
+representing orbits of K on G/B. 
+*/
 /*
   This is kgb.h
   
@@ -34,6 +39,35 @@ const KGBElt UndefKGB = ~0ul;
 
 namespace kgb {
 
+  /*!
+\brief Represents the orbits of K on G/B for a particular real form.
+
+Each orbit x defines an involution theta_x of H, coming from the
+extended Weyl group.  The collection of orbits defining the same
+involution is parametrized using the Fiber class: in the end it is a
+particular orbit of the imaginary Weyl group on the fiber group.
+
+These orbits are needed first of all for the parametrization of
+irreducible representations of the real form (see the class Block).
+
+In the class, an orbit is represented by KGBElt, which is a number
+specifying the position of the orbit on a list.  For each number, the
+involution theta_x is retained (as d_involution[KGBElt]), but not the fiber information
+distinguishing different orbits with the same involution. Instead, the
+class retains the cross action of (each simple reflection in) W on
+orbits, and the Cayley transform.  Each of these is stored as a vector
+(indexed by orbit numbers) of lists of KGBElt's, one for each simple
+reflection (often the KGBElt UndefKGB ~0 in the case of the Cayley
+transform)
+
+The actual construction of the orbit is carried out by the derived
+class Helper (in the unnamed namespace of kgb, and therefore currently
+undocumented by doxygen).  It is the Helper class that works with
+actual elements of the Tits group (by means of fiber groups).  After
+the construction, the fiber information is discarded.  What is
+retained is only the Cayley transforms (always going from more compact
+to less compact involutions) and cross actions.
+  */
 class KGB {
 
  protected:

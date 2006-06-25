@@ -77,7 +77,7 @@ namespace tori {
   the rank n of T is r_u + r_s + 2 r_c. Then we have : rk(X_+) = r_u +
   r_c; rk(X_-) = r_s + r_c. Denote V = X/2X, a vector space over the
   two-element field F_2, and denote V_+,V_- the images of X_+, X_- in
-  V.  Then it is not hard to show that r_c = dim(V_+\cap V_-); one may
+  V.  Then it is not hard to show that r_c = dim(V_+ cap V_-); one may
   prove that this is also the image of tau - 1 in V.
 
   It is a little bit harder to describe dpi0(T) functorially as a

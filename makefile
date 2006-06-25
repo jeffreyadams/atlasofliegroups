@@ -8,7 +8,7 @@ dependencies := $(patsubst %.cpp,%.d,$(wildcard sources/*/*.cpp))
 includedirs := $(addprefix -I,$(wildcard sources/*))
 
 pflags = -c $(includedirs) -pg -O -DNREADLINE
-oflags = -c $(includedirs) -O -Wall -DNDEBUG
+oflags = -c $(includedirs) -O3 -Wall -DNDEBUG
 gflags = -c $(includedirs) -g
 
 cflags := $(oflags) # the default setting
@@ -28,9 +28,11 @@ endif
 ifeq ($(readline),false)
 	cflags := $(cflags) -DNREADLINE
 else
+
 	rlincludes := -lreadline -lcurses
 #use this for readline on the Mac. 
 #       rlincludes := -lreadline.5.1 -lcurses
+
 endif
 
 ifeq ($(verbose),true)

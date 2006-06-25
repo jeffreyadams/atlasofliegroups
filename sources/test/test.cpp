@@ -98,7 +98,10 @@ namespace {
 
   // help functions
 
+  void blocku_h();
+  void cmatrix_h();
   void extrkl_h();
+  void kgb_h();
   void klbasis_h();
   void kllist_h();
   void wcells_h();
@@ -107,7 +110,14 @@ namespace {
   // tags
 
   const char* test_tag = "(test command)";
-
+  const char* blocku_tag = "prints the unitary representations in the block at rho";
+  const char* cmatrix_tag = "prints the Cartan matrix";
+  const char* kgb_tag = "prints the orbits of K on G/B";
+  const char* klbasis_tag = "prints the KL basis for the Hecke module";
+  const char* kllist_tag = "prints the list of distinct KL polynomials";
+  const char* wcells_tag = "prints the Kazhdan-Lusztig cells for the block";
+  const char* wgraph_tag = "prints the W-graph for the block";
+  
   enum TestMode {EmptyMode, MainMode, RealMode, numTestMode};
   const TestMode testMode = MainMode;
 
@@ -284,7 +294,7 @@ template<> void addTestHelp<mainmode::MainmodeTag>
 
   // add additional command tags here:
 
-  mode.add("cmatrix",nohelp_h);
+  mode.add("cmatrix",cmatrix_h);
   mode.add("coroots_rootbasis",nohelp_h);
   mode.add("gradings",nohelp_h);
   mode.add("poscoroots_rootbasis",nohelp_h);
@@ -294,7 +304,7 @@ template<> void addTestHelp<mainmode::MainmodeTag>
 
   // add additional command tags here :
 
-  insertTag(t,"cmatrix",test_tag);
+  insertTag(t,"cmatrix",cmatrix_tag);
   insertTag(t,"coroots_rootbasis",test_tag);
   insertTag(t,"gradings",test_tag);
   insertTag(t,"poscoroots_rootbasis",test_tag);
@@ -333,14 +343,14 @@ template<> void addTestHelp<realmode::RealmodeTag>
 
   mode.add("block",nohelp_h);
   mode.add("blockd",nohelp_h);
-  mode.add("blocku",nohelp_h);
+  mode.add("blocku",blocku_h);
   mode.add("blockstabilizer",nohelp_h);
   mode.add("checkbasept",nohelp_h);
   mode.add("components",nohelp_h);
   mode.add("corder",nohelp_h);
   mode.add("extrkl",extrkl_h);
   mode.add("involution",nohelp_h);
-  mode.add("kgb",nohelp_h);
+  mode.add("kgb",kgb_h);
   mode.add("klbasis",klbasis_h);
   mode.add("kllist",kllist_h);
   mode.add("wcells",wcells_h);
@@ -351,18 +361,18 @@ template<> void addTestHelp<realmode::RealmodeTag>
   // add additional command tags here:
   insertTag(t,"block",test_tag);
   insertTag(t,"blockd",test_tag);
-  insertTag(t,"blocku",test_tag);
+  insertTag(t,"blocku",blocku_tag);
   insertTag(t,"blockstabilizer",test_tag);
   insertTag(t,"checkbasept",test_tag);
   insertTag(t,"components",test_tag);
   insertTag(t,"corder",test_tag);
   insertTag(t,"extrkl",test_tag);
   insertTag(t,"involution",test_tag);
-  insertTag(t,"kgb",test_tag);
-  insertTag(t,"klbasis",test_tag);
-  insertTag(t,"kllist",test_tag);
-  insertTag(t,"wcells",test_tag);
-  insertTag(t,"wgraph",test_tag);
+  insertTag(t,"kgb",kgb_tag);
+  insertTag(t,"klbasis",klbasis_tag);
+  insertTag(t,"kllist",kllist_tag);
+  insertTag(t,"wcells",wcells_tag);
+  insertTag(t,"wgraph",wgraph_tag);
 
   return;
 }
@@ -371,10 +381,31 @@ template<> void addTestHelp<realmode::RealmodeTag>
 
 namespace {
 
+void blocku_h()
+
+{
+  io::printFile(std::cerr,"blocku.help",io::MESSAGE_DIR);
+  return;
+}
+
+void cmatrix_h()
+
+{
+  io::printFile(std::cerr,"cmatrix.help",io::MESSAGE_DIR);
+  return;
+}
+
 void extrkl_h()
 
 {
   io::printFile(std::cerr,"extrkl.help",io::MESSAGE_DIR);
+  return;
+}
+
+void kgb_h()
+
+{
+  io::printFile(std::cerr,"kgb.help",io::MESSAGE_DIR);
   return;
 }
 

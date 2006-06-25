@@ -1,6 +1,6 @@
 /*!
 \file
-  Implementation for namespace lattice.
+\brief Implementation for namespace lattice.
 
   This module defines some more general lattice
   functions, less simple than what is defined in latticetypes.cpp. 

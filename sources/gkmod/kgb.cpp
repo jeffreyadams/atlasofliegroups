@@ -1,3 +1,13 @@
+/*!
+\file
+\brief Implementation of the class KGB representing orbits of K on G/B.
+
+  This module contains code for the construction of a block in the
+  one-sided parameter set (in other words, the subset of the one-sided
+  parameter set corresponding to a single real form.) As explained in
+  my Palo Alto III notes, this is equivalent to parametrizing the set
+  K\\G/B of (K,B)-orbits in G; hence the provocative title.
+*/
 /*
   This is kgb.cpp
   
@@ -27,12 +37,11 @@
 #include "weyl.h"
 
 /*
-
-  This module contains code for the construction of a block in the one-sided
-  parameter set (in other words, the subset of the one-sided parameter set 
-  corresponding to a single real form.) As explained in my Palo Alto III notes,
-  this is equivalent to parametrizing the set K\G/B of (K,B)-orbits in G; hence
-  the provocative title.
+  This module contains code for the construction of a block in the
+  one-sided parameter set (in other words, the subset of the one-sided
+  parameter set corresponding to a single real form.) As explained in
+  my Palo Alto III notes, this is equivalent to parametrizing the set
+  K\\G/B of (K,B)-orbits in G; hence the provocative title.
 
 */
 
@@ -241,8 +250,8 @@ KGB::KGB(size_t rank)
    d_inverseCayley(d_rank),
    d_bruhat(0)
 
-/*
-  Synopsis: does only a trivial initialization.
+/*!
+  \brief Does only a trivial initialization.
 
   Explanation: preliminary to the Helper constructor; rank is the semisimple 
   rank of the underlying group.
@@ -254,8 +263,8 @@ KGB::KGB(size_t rank)
 KGB::KGB(realredgp::RealReductiveGroup& G)
   : d_bruhat(0)
 
-/*
-  Synopsis: constructs the KGB data structure for the given real form.
+/*!
+  \brief Constructs the KGB data structure for the given real form.
 */
 
 {
@@ -311,8 +320,8 @@ void KGB::swap(KGB& other)
 
 bool KGB::compare (KGBElt x, KGBElt y) const
 
-/*
-  Synopsis: returns whether involution(x) < involution(y); in 
+/*!
+  \brief Returns whether involution(x) < involution(y); in 
 
   Explanation: the ordering is involution-length first, then weyl-length, 
   then order of Weyl group elements in whatever way that comes out of their 
@@ -334,8 +343,8 @@ bool KGB::compare (KGBElt x, KGBElt y) const
 
 const weyl::WeylElt& KGB::involution(KGBElt z) const
 
-/*
-  Synopsis: returns the root datum involution corresponding to z.
+/*!
+  \brief Returns the root datum involution corresponding to z.
 
   In fact, returns the corresponding Weyl group element, s.t. w.delta = tau.
 
@@ -348,8 +357,8 @@ const weyl::WeylElt& KGB::involution(KGBElt z) const
 
 bool KGB::isAscent(size_t s, KGBElt x) const
 
-/*
-  Synopsis: tells whether s is a ascent generator for z.
+/*!
+  \brief Tells whether s is a ascent generator for z.
 
   Explanation: ascent generators are the ones for which have either a complex
   ascent, or are imaginary noncompact.
@@ -367,8 +376,8 @@ bool KGB::isAscent(size_t s, KGBElt x) const
 
 bool KGB::isDescent(size_t s, KGBElt z) const
 
-/*
-  Synopsis: tells whether s is a descent generator for z.
+/*!
+  \brief Tells whether s is a descent generator for z.
 
   Explanation: descent generators are the ones for which the twisted involution
   tau descends; i.e. either s does not commute with tau and s.tau.s has shorter
@@ -385,8 +394,8 @@ bool KGB::isDescent(size_t s, KGBElt z) const
 
 KGBEltPair KGB::tauPacket(const weyl::WeylElt& w) const
 
-/*
-  Synopsis: returns the range in which involution(z) = w.
+/*!
+  \brief Returns the range in which involution(z) = w.
 
   Precondition: the enumeration has been sorted by values of tau.
 */
@@ -409,8 +418,8 @@ KGBEltPair KGB::tauPacket(const weyl::WeylElt& w) const
 
 size_t KGB::weylLength(KGBElt z) const
 
-/*
-  Synopsis: returns the length of involution(z) as a Wel group element.
+/*!
+  \brief Returns the length of involution(z) as a Wel group element.
 
   NOTE: this is not inlined to avoid a dependency on weyl.h
 */
@@ -422,8 +431,8 @@ size_t KGB::weylLength(KGBElt z) const
 /******** manipulators *******************************************************/
 void KGB::fillBruhat()
 
-/*
-  Synopsis: constructs the BruhatOrder.
+/*!
+  \brief Constructs the BruhatOrder.
 
   NOTE: may throw an Overflow error. Commit-or-rollback is guaranteed.
 
@@ -467,14 +476,17 @@ void KGB::fillBruhat()
 ******************************************************************************/
 
 namespace {
+  /*!
+\brief
 
+  */
 Helper::Helper(realredgp::RealReductiveGroup& G)
   :KGB(G.semisimpleRank()),
    d_reflectionMap(rank()),
    d_reflectionMatrix(rank())
 
-/*
-  Synopsis: the helper constructor just initializes the lists for the first
+/*!
+  \brief The helper constructor just initializes the lists for the first
   element. The filling process is handled by fill().
 
   Algorithm: from the datum of the real form (or more precisely, from the 
@@ -514,11 +526,11 @@ Helper::Helper(realredgp::RealReductiveGroup& G)
   d_tits.push_back(TitsElt(G.rank()));
 
   // the map d_titsMap allows us to search for a Tits element to see if it is 
-  // new the associated integer is the index of the Tits element in d_tits
+  // new. The associated integer is the index of the Tits element in d_tits
   d_titsMap.insert(std::make_pair(d_tits[0],static_cast<size_t>(0ul)));
 
   // the map d_fiberData associates to each root datum involution the 
-  // corresponding representatives and projection we need this to properly 
+  // corresponding representatives and projection. We need this to properly 
   // normalize the Tits elements
   const RealTorus& T = G.cartan(0).dualFiber().torus();
   const ComponentSubspace& sp = T.topology().subspace();
@@ -550,8 +562,8 @@ Helper::Helper(realredgp::RealReductiveGroup& G)
 
 Helper::WI Helper::cayleyAdd(weyl::WeylElt& w, size_t s)
 
-/*
-  Synopsis: adds a new root datum involution through Cayley transform.
+/*!
+  \brief Adds a new root datum involution through Cayley transform.
 
   Precondition: w corresponds to a known root datum involution, and s 
   twisted-commutes with w. 
@@ -607,8 +619,8 @@ Helper::WI Helper::cayleyAdd(weyl::WeylElt& w, size_t s)
 
 Helper::TI Helper::cayleyAdd(size_t from, size_t s)
 
-/*
-  Synopsis: adds a new parameter by Cayley transform from d_tits[from] through 
+/*!
+  \brief Adds a new parameter by Cayley transform from d_tits[from] through 
   s.
 */
 
@@ -626,7 +638,7 @@ Helper::TI Helper::cayleyAdd(size_t from, size_t s)
 
   // increment the lists
   d_descent.push_back(Descent());
-  d_length.push_back(d_length[from]+1); // lengt goes always up
+  d_length.push_back(d_length[from]+1); // length goes always up
   d_involution.push_back(a.w());
   d_status.push_back(Status());
   for (size_t j = 0; j < d_rank; ++j) {
@@ -640,8 +652,8 @@ Helper::TI Helper::cayleyAdd(size_t from, size_t s)
 
 Helper::WI Helper::crossAdd(weyl::WeylElt& w, size_t s)
 
-/*
-  Synopsis: adds a new root datum involution through cross action.
+/*!
+  \brief Adds a new root datum involution through cross action.
 
   Precondition: w is a weyl group element representing a known root datum
   involution; s is a generator such that s.w.s is a not in d_titsMap;
@@ -664,8 +676,8 @@ Helper::WI Helper::crossAdd(weyl::WeylElt& w, size_t s)
 
 Helper::TI Helper::crossAdd(size_t from, size_t s)
 
-/*
-  Synopsis: adds a new parameter.
+/*!
+  \brief Adds a new parameter.
 
   Precondition: from is the index of a known parameter; s is a generator
   such that s x from is new;
@@ -703,8 +715,8 @@ Helper::TI Helper::crossAdd(size_t from, size_t s)
 
 void Helper::cayleyExtend(size_t from)
 
-/*
-  Synopsis: tries to enlarge the parameter set by cayley transforms.
+/*!
+  \brief Tries to enlarge the parameter set by cayley transforms.
 
   Precondition: from is the index in d_tits of the parameter we are extending
   from.
@@ -769,8 +781,8 @@ void Helper::cayleyExtend(size_t from)
 
 void Helper::crossExtend(size_t from)
 
-/*
-  Synopsis: tries to enlarge the parameter set by cross-actions.
+/*!
+  \brief Tries to enlarge the parameter set by cross-actions.
 
   Precondition: from is the index in d_tits of the parameter we are extending
   from.
@@ -825,8 +837,8 @@ void Helper::crossExtend(size_t from)
 
 void Helper::fill()
 
-/*
-  Synopsis: constructs the full orbit set.
+/*!
+  \brief Constructs the full orbit set.
 
   Precondition: the object is in the initial state, the one it is put in by
   the call to its constructor;
@@ -848,8 +860,8 @@ void Helper::fill()
 
 void Helper::saturate(const weyl::WeylElt& w)
 
-/*
-  Synopsis: add all cross-transforms from from in the fiberDatum map.
+/*!
+  \brief Add all cross-transforms from from in the fiberDatum map.
 
   Explanation: the point is to avoid direct Cayley constructions, which are
   fairly expensive.
@@ -886,8 +898,8 @@ void Helper::saturate(const weyl::WeylElt& w)
 
 void Helper::setStatus(size_t from, size_t to, size_t s)
 
-/*
-  Synopsis: fills in status information.
+/*!
+  \brief Fills in status information.
 
   Precondition: cross[s][from] = to;
 
@@ -927,8 +939,8 @@ void Helper::setStatus(size_t from, size_t to, size_t s)
 
 void Helper::sort()
 
-/*
-  Synopsis: sorts the entries in order of increasing length, and for a given
+/*!
+  \brief Sorts the entries in order of increasing length, and for a given
   length, in order of increasing root datum involution.
 
   Algorithm: make the sorting permutation, then apply it to the various tables.
@@ -984,8 +996,8 @@ namespace {
 
 void initGrading(gradings::Grading& gr, const realredgp::RealReductiveGroup& G)
 
-/*
-  Synopsis: writes in gr the initial gradings of the simple roots.
+/*!
+  \brief Writes in gr the initial gradings of the simple roots.
 */
 
 {  
@@ -1007,8 +1019,8 @@ void initGrading(gradings::Grading& gr, const realredgp::RealReductiveGroup& G)
 
 void makeHasse(std::vector<set::SetEltList>& hd, const KGB& kgb)
 
-/*
-  Synopsis: puts in hd the hasse diagram data for the Bruhat ordering on kgb.
+/*!
+  \brief Puts in hd the hasse diagram data for the Bruhat ordering on kgb.
   
   Explanation: we use the algorithm from Richardson and Springer.
 */

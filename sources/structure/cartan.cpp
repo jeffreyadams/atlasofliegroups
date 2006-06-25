@@ -288,7 +288,8 @@ unsigned long CartanClasses::dualFiberSize(realform::RealForm rf, size_t cn)
   const
 /*!  
   \brief Returns the size of the dual fiber orbits corresponding to
-  the dual strong real forms lying over rf, in cartan \#cn.
+  the dual strong real forms lying over dual real form \#rf, in cartan
+  \#cn.
 
   Precondition: rf is defined for cartan \#cn.
 */
@@ -313,11 +314,11 @@ unsigned long CartanClasses::dualRepresentative(realform::RealForm rf,
 						size_t cn) const
 
 /*!
-  \brief Returns a representative for dual real form rf in Cartan \#cn.
+  \brief Returns a representative for dual real form \#rf in Cartan \#cn.
 
   Precondition: cartan \#cn occurs for that dual real form.
 
-  Explanation: this amounts to searching for rf in d_dualRealFormLabels[cn].
+  Explanation: this amounts to searching for \#rf in d_dualRealFormLabels[cn].
 */
 
 {
@@ -334,9 +335,9 @@ unsigned long CartanClasses::fiberSize(realform::RealForm rf, size_t cn) const
 
 /*!
   \brief Returns the size of the fiber orbits corresponding to the strong
-  real forms lying over rf, in cartan \#cn.
+  real forms lying over real form \#rf, in cartan \#cn.
 
-  Precondition: rf is defined for cartan \#cn.
+  Precondition: Real form \#rf is defined for cartan \#cn.
 */
 
 {
@@ -400,7 +401,7 @@ void CartanClasses::extend(const weyl::WeylGroup& W,
 
 /*!
   \brief Extends the cartanclasses structure so that it contains all Cartans
-  for rf.
+  for real form \#rf.
 
   Precondition: W is the Weyl group of the corresponding complex reductive 
   group; rd is the root datum;

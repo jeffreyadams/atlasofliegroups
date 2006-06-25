@@ -1,3 +1,20 @@
+/*!
+\file
+\brief Implementation of the class Block.
+
+  This module aims to construct the fundamental combinatorial structure
+  underlying k-l computations: a block of representations, together with
+  cross-actions, Cayley transforms, length function, and descent sets.
+
+  Basically, a block should be constructed from a pair of gradings: one
+  for the fundamental torus of G, and one for the fundamental torus of
+  G^vee. This suffices to determine the cocycles that allow us to describe
+  cosets for the corresponding Tits groups, and therefore the one-sided
+  parameter sets for which we then only have to take the restricted
+  product. Of course in practice one should be careful to first determine
+  the support of the block in the set of root datum involutions, and
+  do the construction only for that part, if possible.
+*/
 /*
   This is blocks.cpp
   
@@ -32,7 +49,7 @@
 
   Basically, a block should be constructed from a pair of gradings: one
   for the fundamental torus of G, and one for the fundamental torus of
-  G^\vee. This suffices to determine the cocycles that allow us to describe
+  G^vee. This suffices to determine the cocycles that allow us to describe
   cosets for the corresponding Tits groups, and therefore the one-sided
   parameter sets for which we then only have to take the restricted
   product. Of course in practice one should be careful to first determine
@@ -121,11 +138,11 @@ Block::Block(complexredgp::ComplexReductiveGroup& G,
 	     realform::RealForm rf, realform::RealForm df)
   :d_bruhat(0)
 
-/*
-  Synopsis: constructor for the block class.
+/*!
+  \brief Constructor for the block class.
 
   Constructs a block from the datum of a real form for G and a real form for
-  G^\vee (_not_ strong real forms: up to isomorphism, the result depends only
+  G^vee (_not_ strong real forms: up to isomorphism, the result depends only
   on the underlying real forms!).
 
   This is a big job; the work is deferred to the Helper constructor.
@@ -191,8 +208,8 @@ void Block::swap(Block& other)
 /******** accessors **********************************************************/
 size_t Block::firstStrictDescent(size_t z) const
 
-/*
-  Synopsis: returns the first descent of z that is not imaginary compact,
+/*!
+  \brief Returns the first descent of z that is not imaginary compact,
   rank() if there is no such.
 */
 
@@ -211,8 +228,8 @@ size_t Block::firstStrictDescent(size_t z) const
 
 bool Block::isStrictAscent(size_t s, BlockElt z) const
 
-/*
-  Synopsis: tells if s is a strict ascent generator for z.
+/*!
+  \brief Tells if s is a strict ascent generator for z.
 
   Explanation: this means that d_descent[z][s] is one of ComplexAscent,
   ImaginaryTypeI or ImaginaryTypeII.
@@ -228,8 +245,8 @@ bool Block::isStrictAscent(size_t s, BlockElt z) const
 
 bool Block::isStrictDescent(size_t s, BlockElt z) const
 
-/*
-  Synopsis: tells if s is a strict desscent generator for z.
+/*!
+  \brief Tells if s is a strict descent generator for z.
 
   Explanation: this means that d_descent[z][s] is one of ComplexDescent,
   RealTypeI or RealTypeII.
@@ -245,8 +262,8 @@ bool Block::isStrictDescent(size_t s, BlockElt z) const
 
 const weyl::WeylElt& Block::involution(BlockElt z) const
 
-/*
-  Synopsis: returns the root datum involution corresponding to z.
+/*!
+  \brief Returns the root datum involution corresponding to z.
 
   In fact, returns the corresponding Weyl group element, s.t. w.delta = tau.
 
@@ -261,8 +278,8 @@ const weyl::WeylElt& Block::involution(BlockElt z) const
 /******** manipulators *******************************************************/
 void Block::fillBruhat()
 
-/*
-  Synopsis: constructs the BruhatOrder.
+/*!
+  \brief Constructs the BruhatOrder.
 
   NOTE: may throw an Overflow error. Commit-or-rollback is guaranteed.
 
@@ -312,8 +329,8 @@ Helper::Helper(realredgp::RealReductiveGroup& G,
   :d_kgb(G),
    d_dualkgb(dG)
 
-/*
-  Synopsis: constructor for the helper class.
+/*!
+  \brief Constructor for the helper class.
 
   Facilitates the construction of a block through the use of some extra data
   (mostly the kgb orbit structure on both the group side and the dual side.)
@@ -388,23 +405,23 @@ Helper::Helper(realredgp::RealReductiveGroup& G,
 /******** accessors **********************************************************/
 weyl::WeylElt Helper::dualInvolution(const weyl::WeylElt& d_w) const
 
-/*
-  Synopsis: returns the twisted involution dual to d_w.
+/*!
+  \brief Returns the twisted involution dual to d_w.
 
-  Explanation: we have \tau = w.\tau_f, with w in the Weyl group, and \tau_f 
+  Explanation: we have tau = w.tau_f, with w in the Weyl group, and tau_f 
   the fundamental involution of the character lattice. We seek v s.t.
-  -{}^t\tau = v.\tau_f^{\vee}, where \tau_f^{\vee} = -w_0{}^t\tau_f. So we 
+  -{}^t tau = v.tau_f^{vee}, where tau_f^{\vee} = -w_0{}^t tau_f. So we 
   have:
     
-        (-{}^t\tau_f).{}^t w = v.w_0.(-{}^t\tau_f)
+        (-{}^t tau_f).{}^t w = v.w_0.(-{}^t tau_f)
 
-  which leads to v = ({}^t\theta_f(w)).w_0, where \theta_f comes from the
+  which leads to v = ({}^t theta_f(w)).w_0, where theta_f comes from the
   Dynkin diagram involution defining the inner class. The transposition
   takes a root reflection to the corresponding coroot reflection, and reverses
   the order (so in practice, it amounts to going over to the inverse of v)
   and so we get:
 
-        (\theta_f(w))^{-1}.w_0 = v.
+        (theta_f(w))^{-1}.w_0 = v.
 
   NOTE: one extra twist is that we need to move the representation of w from
   the Weyl group of d_kgb to that of d_dualkgb using the d_toDualWeyl table
@@ -430,8 +447,8 @@ weyl::WeylElt Helper::dualInvolution(const weyl::WeylElt& d_w) const
 /******** manipulators *******************************************************/
 void Helper::fillCayleyActions()
 
-/*
-  Synopsis: fills in the cayley actions.
+/*!
+  \brief Fills in the cayley actions.
 
   Explanation: as for cross actions, this is obtained from kgb and dualkgb.
   The cayley transform of (x,y) is obtained by applying the direct Cayley
@@ -485,8 +502,8 @@ void Helper::fillCayleyActions()
 
 void Helper::fillCrossActions()
 
-/*
-  Synopsis: fills in the cross actions.
+/*!
+  \brief Fills in the cross actions.
 
   Explanation: in principle this is simple: in terms of orbit pairs, it is
   just the corresponding action on each side. The main difficulty is in
@@ -514,8 +531,8 @@ void Helper::fillCrossActions()
 
 void Helper::fillDescents()
 
-/*
-  Synopsis: fills in the descent table.
+/*!
+  \brief Fills in the descent table.
 
   Explanation: a representation can have eight different descent stata:
   descents can be imaginary compact, complex, real type I and real type II;
@@ -569,8 +586,8 @@ void Helper::fillDescents()
 
 void Helper::fillInvolutions()
 
-/*
-  Synopsis: fills in the involution table. 
+/*!
+  \brief Fills in the involution table. 
 
   This is directly deduced from the x-part.
 */
@@ -584,8 +601,8 @@ void Helper::fillInvolutions()
 
 void Helper::fillInvolutionSupports()
 
-/*
-  Synopsis: fills in d_involutionSupport.
+/*!
+  \brief Fills in d_involutionSupport.
 
   Explanation: d_involutionSupport[z] coontains the support of the
   underlying involution, i.e. the generators s that occur either as
@@ -594,8 +611,8 @@ void Helper::fillInvolutionSupports()
   Algorithm: for the minimal length elements, write down the support
   directly from a reduced expression. For the general case, find a
   strict descent s; then if s.z is the descended z, we have supp(z)
-  = supp(sz) \cup {s} if the descent is a cayley, supp(s.z) \cup {s}
-  \cup{twist(s)} if the descent is a cross.
+  = supp(sz) cup {s} if the descent is a cayley, supp(s.z) cup {s}
+  cup{twist(s)} if the descent is a cross.
 */
 
 {
@@ -636,8 +653,8 @@ void Helper::fillInvolutionSupports()
 
 void Helper::fillLengths()
 
-/*
-  Synopsis: fills in the length table. 
+/*!
+  \brief Fills in the length table. 
 
   This is directly deduced from the x-part.
 */
@@ -651,8 +668,8 @@ void Helper::fillLengths()
 
 void Helper::makeWeylCorrelation()
 
-/*
-  Synopsis: fills d_toDualWeyl.
+/*!
+  \brief Fills d_toDualWeyl.
 
   Explanation: this is a fairly annoying twist. Because of the normalizations
   that we do for Weyl groups, that cannot distinguish between B2 and C2, F4
@@ -684,8 +701,8 @@ void Helper::makeWeylCorrelation()
 
 void Helper::orbitPairs()
 
-/*
-  Synopsis: puts in d_orbitPairs a list of all pairs of orbit parameters that
+/*!
+  \brief Puts in d_orbitPairs a list of all pairs of orbit parameters that
   belong to the restricted product.
 
   It also fills in the firstx array. For any given x in d_kgb, this gives
@@ -748,8 +765,8 @@ namespace {
 void insertAscents(std::set<BlockElt>& hs, const set::SetEltList& hr, size_t s,
 		   const Block& block)
 
-/*
-  Synopsis: inserts into hs the ascents from hr through s.
+/*!
+  \brief Inserts into hs the ascents from hr through s.
 
   Explanation: technical fuction for the hasse construction, that makes the
   part of the coatom list for a given element arising from a given descent.
@@ -783,9 +800,9 @@ void insertAscents(std::set<BlockElt>& hs, const set::SetEltList& hr, size_t s,
 
 void makeHasse(std::vector<set::SetEltList>& hd, const Block& block)
 
-/*
-  Synopsis: puts in hd the hasse diagram data for the Bruhat ordering on the 
-  block.
+/*!  
+  \brief Puts in hd the hasse diagram data for the Bruhat
+  ordering on the block.
   
   Explanation: we use the algorithm from Vogan's 1982 Park City notes.
 */

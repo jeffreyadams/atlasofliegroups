@@ -76,7 +76,7 @@ namespace size {
   \brief Ordinal (position on the list of primes) of the
   largest possible prime factor of a Weyl group of rank at most 32.
   
-  This is the eleventh prime 29.
+  This is the eleventh prime 31.
   */
 
   template<> class PrimesMax<32> {
@@ -100,7 +100,7 @@ namespace size {
   \brief Should be the ordinal (position on the list of primes) of the
   largest possible prime factor of a Weyl group of rank at most RANK_MAX.
 
-  With RANK_MAX=16, this should be 6 (for the sixth prime 13).
+  With RANK_MAX=16, this should be 7 (for the seventh prime 17).
   */
 
   const size_t PRIMES_MAX = PrimesMax<constants::RANK_MAX>::value;
