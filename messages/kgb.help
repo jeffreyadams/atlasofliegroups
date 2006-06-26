@@ -58,7 +58,7 @@ These are the 11 orbits of K on G/B for G=Sp(4,R). In this case the
 outer automorphism is trivial, twisted involutions correspond to
 elements of W of order 2, and tau=1. There are 5 involutions in W: the
 identity; 1; 2; 121; 212; and the long element 2121. There are 4
-minimal orbits, which are points in this case. The cross action
-permutes these 4 points among themselves, while Cayley transforms take
-them to points 4-6. There is a single orbit mapping to the long
-element of W.
+minimal orbits, which are projective lines CP^1 in this case. The
+cross action permutes these 4 lines among themselves, while Cayley
+transforms take them to orbits 4-6. There is a single orbit mapping to
+the long element of W.
