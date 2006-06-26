@@ -98,6 +98,7 @@ namespace {
 
   // help functions
 
+  void block_h();
   void blocku_h();
   void cmatrix_h();
   void extrkl_h();
@@ -110,6 +111,7 @@ namespace {
   // tags
 
   const char* test_tag = "(test command)";
+  const char* block_tag = "prints all the representations in a block";
   const char* blocku_tag = "prints the unitary representations in the block at rho";
   const char* cmatrix_tag = "prints the Cartan matrix";
   const char* kgb_tag = "prints the orbits of K on G/B";
@@ -341,7 +343,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
 
   // add additional help commands here:
 
-  mode.add("block",nohelp_h);
+  mode.add("block",block_h);
   mode.add("blockd",nohelp_h);
   mode.add("blocku",blocku_h);
   mode.add("blockstabilizer",nohelp_h);
@@ -359,7 +361,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   /******** tags ************************************************************/
 
   // add additional command tags here:
-  insertTag(t,"block",test_tag);
+  insertTag(t,"block",block_tag);
   insertTag(t,"blockd",test_tag);
   insertTag(t,"blocku",blocku_tag);
   insertTag(t,"blockstabilizer",test_tag);
@@ -380,6 +382,13 @@ template<> void addTestHelp<realmode::RealmodeTag>
 }
 
 namespace {
+
+void block_h()
+
+{
+  io::printFile(std::cerr,"block.help",io::MESSAGE_DIR);
+  return;
+}
 
 void blocku_h()
 
