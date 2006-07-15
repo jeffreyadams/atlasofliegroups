@@ -300,7 +300,7 @@ void readInnerClass(lietype::InnerClassType& ict, input::InputBuffer& buf,
     if (x == 'e')
       x = 'c';
     if (x == 'u')
-      if (type(lt[j]) != 'D' or rank(lt[j])%1ul)
+      if (type(lt[j]) != 'D' or rank(lt[j])%2 != 0)
 	x = 's';
     ict.push_back(x);
     if (x == 'C')
