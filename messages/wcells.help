@@ -14,12 +14,16 @@ enclosed in braces, a subset of {1,...,r} (with r the number of simple
 roots). 
 
 Following the tau invariant in row j is a collection of pairs (k,m).
-Such a pair means that there is an edge of the W-graph joining the
-present element #j of the cell to element #k, having multiplicity m.
-(The multiplicity is a coefficient of highest possible power of q in
-the Kazhdan-Lusztig polynomial indexed by j and k.)  The graph is
-symmetric: (k,m) appears in row j if and only if (j,m) appears in row
-k.
+The presence of a pair means that there is an oriented edge of the
+W-graph joining the present element #j of the cell to element #k,
+having multiplicity m.  (The multiplicity is a coefficient of highest
+possible power of q in the Kazhdan-Lusztig polynomial indexed by j and
+k.)
+
+The presence of the edge from j to k means that two conditions are
+satisfied: first, that tau(j) is not contained in tau(k); and second,
+that the Kazhdan-Lusztig polynomial indexed by j and k has highest
+possible degree.
 
 The Weyl group representation attached to the cell may be described as
 follows. It has a Z basis {L_j} indexed by the cell elements j. If
@@ -32,7 +36,7 @@ If i is not in the tau invariant, then
 s_i(L_j) = L_j + sum_{elements k, i in tau(k)} mL_k.
 
 That is, L_k appears in the sum here if i is in the tau-invariant of
-L_k, and the pair (k,m) appears in the list for row j.
+L_k, and the pair (j,m) appears in the list for row k.
 
 For example, here is the output of wcells for the simply connected
 group SU(2,1) and the block of the trivial representation:
