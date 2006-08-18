@@ -1,3 +1,11 @@
+/*!
+\file
+\brief Class declaration for the class KLComputations.
+
+  [This class has barely been started. It is part of Fokko's plan to
+  define an ownership structure for the Kazhdan-Lusztig
+  computations. DV 7/23/06.]
+*/
 /*
   This is klcomputations_fwd.h
   

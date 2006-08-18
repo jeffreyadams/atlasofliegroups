@@ -1,3 +1,8 @@
+/*!
+\file
+\brief
+Class definitions and function declarations for the class KLContext.
+*/
 /*
   This is kl.h
   
@@ -28,7 +33,17 @@ namespace atlas {
 
 namespace kl {
 
+  /*!
+\brief Polynomial 0, which is stored as a vector of size 0.
+  */
   const KLPol Zero;
+
+  /*!
+\brief Polynomial 1.q^0.
+
+The constructor Polynomial(d) gives 1.q^d.
+  */
+
   const KLPol One(0);
 
   const KLCoeff UndefKLCoeff = std::numeric_limits<KLCoeff>::max();
@@ -48,23 +63,51 @@ namespace kl {
 
 namespace kl {
 
+  /*!
+\brief Calculates and stores the Kazhdan-Lusztig polynomials for a
+block of representations of G.
+  */
 class KLContext {
 
  protected:
 
+  /*!
+\brief Records whether the KL polynomials for the block have all been computed.
+  */
   enum State { KLFilled, NumStates };
 
+  /*!
+\brief Bit 0 flags whether the KL polynomials have
+all been computed.
+  */
   bitset::BitSet<NumStates> d_state;
 
   klsupport::KLSupport* d_support;   // non-owned pointer
 
   std::vector<klsupport::ExtremalRow> d_extr;
 
+  /*!
+\brief Entry d_kl[y] is a list of pointers to the polynomials P_{y,x}.
+  */
   std::vector<KLRow> d_kl;           // list of polynomial pointers
+
+  /*!
+\brief Entry d_mu[y] is a list of MuData, which are pairs ([?], top
+degree coefficient of P_{y,x}) 
+  */
   std::vector<MuRow> d_mu;           // list of mu-coefficients
 
+  /*!
+\brief Set of KL polynomials.
+  */
   std::set<KLPol> d_store;           // the actual polynomials
+  /*!
+\brief Pointer to the polynomial 0.
+  */
   KLPtr d_zero;
+  /*!
+\brief Pointer to the polynomial 1.
+  */
   KLPtr d_one;
 
  public:
@@ -73,7 +116,6 @@ class KLContext {
   KLContext() {}
 
   KLContext(klsupport::KLSupport&);
-
   virtual ~KLContext() {}
 
 // copy, assignment and swap

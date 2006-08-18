@@ -1,8 +1,14 @@
 /*!
 \file
+\brief Implementation of  functions for namespace weylsize.
+
+Functions to compute the size of a Weyl group (stored as a prime
+factorization, to avoid overflow problems).
   This is weylsize.cpp
 */
 /*
+  This is weylsize.cpp
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 

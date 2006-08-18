@@ -32,7 +32,7 @@ r1: alpha is a type I real root (meaning that alpha does not take the
 
 The next r columns give the descent status of the simple roots in the
 Levi subalgebra l of q; roots not in l are indicated with an
-asterisk. Because this the representation is trivial on l, the only
+asterisk. Because the representation is trivial on l, the only
 possible entries in these columns are r1, r2, C-, and *.
 
 The next to last column gives the length of the representation (the

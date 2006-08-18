@@ -247,7 +247,7 @@ void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w, bool twisted)
   const
 
 /*!
-  Synopsis: puts in c the conjugacy class of w.
+  \brief Puts in c the conjugacy class of w.
 
   Algorithm: the orbit is enumerated in a time proportional to (orbit size)*
   rank. We maintain a stack of elements to be examined (initially w) and a
@@ -293,7 +293,7 @@ void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w, bool twisted)
 bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 
 /*!
-  Synopsis: tells whether sw < w.
+  \brief Tells whether sw < w.
 */
 
 {
@@ -306,7 +306,7 @@ bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 bool WeylGroup::hasTwistedCommutation(Generator s, const WeylElt& w) const
 
 /*!
-  Synopsis: tells whether w twisted-commutes with s.
+  \brief Tells whether w twisted-commutes with s.
 */
 
 {
@@ -322,7 +322,7 @@ bool WeylGroup::hasTwistedCommutation(Generator s, const WeylElt& w) const
 void WeylGroup::invert(WeylElt& w) const
 
 /*!
-  Synopsis: Transforms w into its inverse.
+  \brief Transforms w into its inverse.
 
   Algorithm: read backwards the reduced expression gotten from the
   pieces of w.
@@ -346,7 +346,7 @@ void WeylGroup::invert(WeylElt& w) const
 unsigned long WeylGroup::involutionLength(const weyl::WeylElt& d_w) const
 
 /*!
-  Synopsis: returns the length of d_w as a twisted ivolution.
+  \brief Returns the length of d_w as a twisted involution.
 
   Precondition: d_w is a twisted involution;
 
@@ -375,7 +375,7 @@ void WeylGroup::involutionOut(weyl::WeylWord& ww, const weyl::WeylElt& d_w)
   const
 
 /*!
-  Synopsis: puts in ww a reduced expression of d_w as a twisted involution.
+  \brief Puts in ww a reduced expression of d_w as a twisted involution.
 
   Precondition: d_w is a twisted involution;
 
@@ -406,7 +406,7 @@ void WeylGroup::involutionOut(weyl::WeylWord& ww, const weyl::WeylElt& d_w)
 Generator WeylGroup::leftDescent(const WeylElt& w) const
 
 /*!
-  Synopsis: returns a left descent generator for w; UndefGenerator if there
+  \brief Returns a left descent generator for w; UndefGenerator if there
   is no such (i.e., if w = e).
 */
 
@@ -426,7 +426,7 @@ Generator WeylGroup::leftDescent(const WeylElt& w) const
 void WeylGroup::leftProdIn(WeylElt& w, Generator s) const
 
 /*!
-  Synopsis: transforms w into s*w.
+  \brief Transforms w into s*w.
 
   Algorithm: note that our transducers are geared towards _right_ 
   multiplication by a generator. But we note that passing from w to sw
@@ -460,7 +460,7 @@ void WeylGroup::leftProdIn(WeylElt& w, Generator s) const
 unsigned long WeylGroup::length(const WeylElt& w) const
 
 /*!
-  Synopsis: returns the length of w.
+  \brief Returns the length of w.
 */
 
 {
@@ -476,7 +476,7 @@ unsigned long WeylGroup::length(const WeylElt& w) const
 void WeylGroup::out(WeylWord& ww, const WeylElt& w) const
 
 /*!
-  Synopsis: puts in ww an _external_ reduced expression for w.
+  \brief Puts in ww an _external_ reduced expression for w.
 */
 
 {
@@ -497,7 +497,7 @@ void WeylGroup::out(WeylWord& ww, const WeylElt& w) const
 void WeylGroup::outerTwist(Twist& t) const
 
 /*!
-  Synopsis: puts the twist of the outer generators in t.
+  \brief Puts the twist of the outer generators in t.
 */
 
 {
@@ -510,7 +510,7 @@ void WeylGroup::outerTwist(Twist& t) const
 void WeylGroup::prod(WeylElt& w, const WeylElt& v) const
 
 /*!
-  Synopsis: w*=v.
+  \brief Multiply w on the right by v, and put the product in w: w*=v.
 
   Algorithm: increment w by the various pieces of v, whose reduced
   expressions are available from the transducer.
@@ -526,7 +526,7 @@ void WeylGroup::prod(WeylElt& w, const WeylElt& v) const
 void WeylGroup::prod(WeylElt& w, const WeylWord& v) const
 
 /*!
-  Synopsis: w *= v.
+  \brief Multiply w on the right by v, and put the product in w: w*=v.
 
   Algorithm: do the elementary multiplication by the generators, running
   through v left-to-right.
@@ -541,13 +541,14 @@ void WeylGroup::prod(WeylElt& w, const WeylWord& v) const
 
 int WeylGroup::prodIn(WeylElt& w, Generator s) const
 
-/*!
-  Synopsis: w *= s.
+/*!  
+  \brief Multiply w on the right by the (internally labelled)
+  generator s: w *= s.
 
   Algorithm: the information for this is exactly contained in the transducer
   tables!
 
-  Returns +1 if the length moves up, -1 if the lenght goes down.
+  Returns +1 if the length moves up, -1 if the length goes down.
 
   NOTE: The only way I see this could be written as an operator is if w 
   remembered the group that it came from!
@@ -579,7 +580,7 @@ int WeylGroup::prodIn(WeylElt& w, Generator s) const
 void WeylGroup::prodIn(WeylElt& w, const WeylWord& v) const
 
 /*!
-  Synopsis: w *= v.
+  \brief Multiply w on the right by v (written in internal generators): w *= v.
 
   Precondition: v is written in the _internal_ generators.
 
@@ -597,7 +598,7 @@ void WeylGroup::prodIn(WeylElt& w, const WeylWord& v) const
 unsigned long WeylGroup::toUlong(const WeylElt& w) const
 
 /*!
-  Synopsis: return the packed form of w (see the explanation in toWeylElt).
+  \brief Return the packed form of w (see the explanation in toWeylElt).
 
   NOTE: will work only if the order of the group fits into an unsigned long,
   i.e., if d_order is not equal to UndefOrder = 0;
@@ -618,7 +619,7 @@ unsigned long WeylGroup::toUlong(const WeylElt& w) const
 WeylElt WeylGroup::toWeylElt(unsigned long u) const
 
 /*!
-  Synopsis: returns the WeylElt whose packed form is u
+  \brief Returns the WeylElt whose packed form is u.
 
   Algorithm: the packed form of w is defined to be w_0.a_0 + ... + 
   w_{n-1}.a_{n-1}, where w_0, ... , w_{n-1} are the pieces of w, and
@@ -645,7 +646,7 @@ WeylElt WeylGroup::toWeylElt(unsigned long u) const
 void WeylGroup::translate(WeylElt& w, const WeylInterface& I) const
 
 /*!
-  Synopsis: applies to w the homomorphism defined by the generator permutation
+\brief Applies to w the homomorphism defined by the generator permutation
   in I.
 
   Algorithm: we used the standard reduced decomposition of w.
@@ -666,7 +667,7 @@ void WeylGroup::translate(WeylElt& w, const WeylInterface& I) const
 void WeylGroup::twist(WeylElt& w) const
 
 /*!
-  Synopsis: twists the element w.
+  \brief Twists the element w by the outer involution.
 
   Algorithm: we used the standard reduced decomposition of w.
 */
@@ -691,11 +692,13 @@ namespace weyl {
 Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
 
 /*!
-  Synopsis : constructs subquotient \#r for the Coxeter matrix c. This
-  uses the Coxeter matrix only up to index r.
+\brief Constructs subquotient \#r for the Coxeter matrix c. 
 
-  Precondition : c is a _normalized_ Coxeter matrix (see Transducer); r is
-  < rank(c);
+  This uses the Coxeter matrix only up to index r.
+
+  Precondition : c is a _normalized_ Coxeter matrix (meaning that all
+  the parabolic subquotients W_{r-1}\\W_r are small enough to fit in
+  an unsigned char); and r is < rank(c);
 
   Algorithm : 
 
@@ -825,7 +828,7 @@ namespace weyl {
 void copy(Twist& dest, const Twist& source)
 
 /*!
-  Synopsis: copies source onto dest.
+  \brief Copies source onto dest.
 */
 
 {
@@ -836,7 +839,7 @@ void copy(Twist& dest, const Twist& source)
 const Twist& identityTwist()
 
 /*!
-  Synopsis: returns a constant reference to a non-twist.
+  \brief Returns a constant reference to a trivial twist.
 */
 
 {
@@ -848,7 +851,7 @@ const Twist& identityTwist()
 void makeReflections(WeylEltList& refl, const WeylGroup& W)
 
 /*!
-  Synopsis: puts in refl the list of all reflections in W.
+  \brief Puts in refl the list of all reflections in W.
 
   NOTE: the ordering of the reflections is the ordering induced by our
   operator<, which is not very significative mathematically, but has the
@@ -895,7 +898,7 @@ EltPiece dihedralMin(const Transducer& qa, EltPiece x, Generator s,
 		       Generator t)
 
 /*!
-  Synopsis : returns the minimal element in the orbit of x under s and t.
+  \brief Returns the minimal element in the orbit of x under s and t.
 
   Precondition : s is in the descent set of x;
 */
@@ -920,7 +923,7 @@ EltPiece dihedralShift(const Transducer& qa, EltPiece x, Generator s,
 		       Generator t, unsigned long d)
 
 /*!
-  Synopsis : returns the result of applying s and t alternately to x, for a 
+  \brief Returns the result of applying s and t alternately to x, for a 
   total of d times.
 */
 
@@ -942,7 +945,7 @@ void fillCoxMatrix(LatticeMatrix& cox, const LatticeMatrix& cart,
 		   const Permutation& a)
 
 /*!
-  Synopsis : fills in the Coxeter matrix cox.
+  \brief Fills in the Coxeter matrix cox.
 
   Precondition: cart is a Cartan matrix; a holds a normalizing permutation
   for cart, such as constructed by normalize(a,d) where d is the Dynkin diagram

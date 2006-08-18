@@ -156,6 +156,7 @@
 */
 
 #include <iostream>
+#include <stdexcept>
 
 #include "commands.h"
 #include "constants.h"
@@ -194,8 +195,16 @@ catch (atlas::error::NumericUnderflow& e) {
 
 }
 
+catch (std::exception& e) {
+
+  std::cerr << "error: uncaught standard exceptions on exit" 
+            << std::endl << e.what()
+            << std::endl;
+}
+
+
 catch (...) {
 
-  std::cerr << "error: uncaught exceptions on exit" << std::endl;
+  std::cerr << std::endl << "error: uncaught exceptions on exit" << std::endl;
 
 }

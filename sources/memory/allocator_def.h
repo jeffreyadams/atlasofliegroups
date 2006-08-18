@@ -39,6 +39,9 @@ typename Allocator<T,P>::pointer
     throw MemoryOverflow();
   }
 
+  // reports details of memory allocation for debugging purposes.
+  // reportAllocation(n,sizeof(value_type),d_pool->instance());
+
   return ptr;
 }
 
@@ -57,6 +60,11 @@ void Allocator<T,P>::deallocate(typename Allocator<T,P>::pointer ptr,
     return;
 
   d_pool->deallocate(ptr,n);
+
+  // reports details of memory deallocation for debugging purposes.
+  // reportDeallocation(n,sizeof(value_type),d_pool->instance());
+
+  return;
 }
 
 template<typename T, typename P>

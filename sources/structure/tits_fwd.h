@@ -1,8 +1,10 @@
 /*!
 \file
-  This is tits_fwd.h
+\brief Class declarations and type definitions for TitsGroup
 */
 /*
+  This is tits_fwd.h
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -24,7 +26,7 @@ namespace tits {
 
   class TitsElt;
   class TitsGroup;
-  class TwistedTitsGroup;
+  class TwistedTitsGroup; //not implemented
 
   typedef std::vector<TitsElt> TitsEltList;
 

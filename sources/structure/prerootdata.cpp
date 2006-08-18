@@ -66,9 +66,24 @@ PreRootDatum::PreRootDatum(const lietype::LieType& lt,
   :d_rank(lietype::rank(lt))
 
 /*!
-  Constructs the PreRootDatum whose lattice has basis b, expressed in terms
-  of the canonical weight lattice basis for lt (the simple weights for the
-  semisimple part, the canonical basis for the torus part.)
+\brief  Constructs the PreRootDatum whose lattice has basis b,
+expressed in terms of the simply connected weight lattice basis for
+lt. 
+
+More precisely, we begin with the direct product G^tilde of a simply
+ connected semisimple group G_scss and a torus (C^times)^m.  The
+ weight lattice X^*(H^tilde) for the torus H^tilde of this group has
+ basis the fundamental weights for G_scss and the standard basis for
+ Z^m.
+
+The group G will be specified as a quotient of G^tilde by a finite
+central subgroup F.  The set of characters of H^tilde trivial on F is
+a sublattice of finite index in X^*(H^tilde).  The WeightList b is
+required to be a basis for this sublattice.  
+
+The constructor puts d_roots the list of simple roots expressed in the
+basis b, and in d_coroots the list of simple coroots expressed in the
+dual basis.
 */
 
 {  
@@ -117,10 +132,19 @@ namespace prerootdata {
 void cartanMatrix(latticetypes::LatticeMatrix& cm, const lietype::LieType& lt)
 
 /*!
-  Synopsis: puts in cm the Cartan matrix corresponding to the Lie type lt.
+  \brief Puts in cm the Cartan matrix corresponding to the Lie type lt.
 
-  Algorithm: the matrix is constructed blockwise, one block for each simple Lie
-  type in lt.
+  Algorithm: the matrix is block diagonal, one block for each simple Lie
+  type in lt.  The matrix is square, of size equal to the rank. Torus
+  factors contribute blocks of zeros.  
+
+  The cartanMatrix function defined in the namespace rootdata, and
+  printed by the cmatrix command, is of size equal to the semisimple
+  rank.
+
+  The columns of cm^t express the simple roots in the basis of
+  fundamental weights.  The columns of cm express the simple coroots
+  in the basis of fundamental coweights.
 */
 
 {
@@ -146,10 +170,11 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm,
 		    const lietype::SimpleLieType& slt)
 
 /*!
-  Synopsis: puts in cm the Cartan matrix corresponding to the simple Lie type 
+  \brief Puts in cm the Cartan matrix corresponding to the simple Lie type 
   slt.
 
-  Algorithm: case by case.
+  Algorithm: case by case.  The matrix is initialized to zero (of the
+  correct size), then the non-zero entries are added.
 */
 
 {

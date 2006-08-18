@@ -1,3 +1,7 @@
+/*!
+\file
+\brief Class declaration and type definitions for class BruhatOrder.
+*/
 /*
   This is bruhat_fwd.h
   

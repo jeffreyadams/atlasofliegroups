@@ -25,11 +25,23 @@ namespace atlas {
 
 namespace poset {
 
+  /*!
+\brief Represents a poset by the matrix of order relations.
+
+DV: I do not know whether the poset order is assumed compatible with the
+integer order (as it is in SymmetricPoset).
+  */
 class Poset {
 
  private:
 
-  std::vector<bitmap::BitMap> d_closure;
+  /*!
+\brief Matrix of order relations.
+
+Bit i of d_closure[j] is set if and only if i is less than or equal to
+j in the poset.
+  */
+std::vector<bitmap::BitMap> d_closure;
 
  public:
 
@@ -50,6 +62,9 @@ class Poset {
 // accessors
   void findMaximals(set::SetEltList&, const bitmap::BitMap&) const;
 
+  /*!
+\brief Size of the poset.
+  */
   size_t size() const {
     return d_closure.size();
   }
@@ -64,11 +79,25 @@ class Poset {
   void extend(const std::vector<Link>&);
 };
 
+/*!
+\brief Represents a poset by the symmetrization of the order relation
+matrix.
+
+The poset is {0,1,...,n-1}, and it is assumed that i less than j in
+the poset implies i < j as integers.  Entry (j,i) is set if and only
+if one of i and j is less than or equal to the other in the poset.
+*/
 class SymmetricPoset {
 
  private:
 
-  std::vector<bitmap::BitMap> d_row;
+  /*!
+\brief Rows of the symmetric poset BitMap.  
+
+Row \#j is a BitMap of size n (the size of the poset); bit i is set if
+and only i and j are comparable in the poset.
+  */
+  std::vector<bitmap::BitMap> d_row; 
 
  public:
 
@@ -87,10 +116,21 @@ class SymmetricPoset {
   }
 
 // accessors
+
+  /*!
+\brief Row \#j of the symmetric poset matrix.
+
+For i<j, bit i is set if and only if i is less than j in the poset.
+Bit j is always set.  For i>j, bit j is set if and only if i is
+greater than j in the poset.
+  */
   const bitmap::BitMap& row(size_t j) const {
     return d_row[j];
   }
 
+  /*!
+\brief Size of the poset.
+  */
   size_t size() const {
     return d_row.size();
   }

@@ -1,3 +1,7 @@
+/*!
+\file
+\brief Forward class declaration and type definitions for KLSupport.
+*/
 /*
   This is klsupport_fwd.h
   

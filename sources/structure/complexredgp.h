@@ -66,13 +66,14 @@ namespace complexredgp {
   subgroups (which are _almost_ constant across the stable class, but
   not quite).
 
-  Everything is determined by (and computed from) the RootDatum class
-  d_rootDatum: recall that this is a based root datum endowed with an
+  Everything is determined by (and computed from) two things: the
+  based root datum recorded in the RootDatum class d_rootDatum, and
+  its involutive automorphism (which is stored inside d_cartan).
   involutive automorphism.  The computations take place mostly inside
   the Tits group d_titsGroup, which is an extension of the (complex)
   Weyl group by the elements of order 2 in the torus.  (More
   precisely, this Tits group is extended by a Z/2Z corresponding to
-  the automorphism of the based root datum.)       
+  the automorphism of the based root datum.)
   
   Because this class is one of the outer interfaces for the structure
   library, we use pointers for its data members, so that forward
@@ -87,28 +88,29 @@ class ComplexReductiveGroup {
 // suffice
 
   /*!
-  The based root datum with involution from which everything else is
-  constructed. 
+  \brief The based root datum.
   */
   const rootdata::RootDatum* d_rootDatum;
   
   /*!
-  The Tits group (extended by the involutive automorphism) of the
-  based root datum.
+  \brief The Tits group of the based root datum, extended by an
+  involutive automorphism.
   */  
   tits::TitsGroup* d_titsGroup;
   
   /*!
-  List of stable conjugacy classes of Cartan subgroups of the inner
+  \brief  List of stable conjugacy classes of Cartan subgroups of the inner
   class of real forms determined by the based root datum with
-  involution.  (In fact the present constructors provide only those
-  classes defined over the real forms that have already been
-  considered by the software: if the software has not yet been asked
-  to look at the quasisplit real form, then this list will be
-  incomplete.  This should probably be regarded as a defect in the
-  software, although it causes no mathematical problem.  A related
-  difficulty is that the ordering of the list can depend on the order in
-  which real forms have been considered.)  
+  involution.  
+
+  (In fact the present constructors provide only those classes defined
+  over the real forms that have already been considered by the
+  software: if the software has not yet been asked to look at the
+  quasisplit real form, then this list will be incomplete.  This
+  should probably be regarded as a defect in the software, although it
+  causes no mathematical problem.  A related difficulty is that the
+  ordering of the list can depend on the order in which real forms
+  have been considered.)
   */
   cartan::CartanClasses* d_cartan;
 

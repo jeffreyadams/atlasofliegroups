@@ -3,8 +3,8 @@
 \brief Implementation for the class ComplexReductiveGroup.
 
   The ComplexReductiveGroup class will play a central role in the
-  whole program; even though it is entirely defined by its based root
-  datum (and an involutive automorphism of that datum) it has seemed
+  whole program.  Even though it is entirely defined by its based root
+  datum and an involutive automorphism of that datum, it has seemed
   more natural to use this class to collect the wealth of
   combinatorial data that the root datum gives rise to, and that will
   serve as the basis for our description of the representation theory

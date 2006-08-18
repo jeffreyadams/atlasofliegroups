@@ -1,4 +1,4 @@
-/*
+/*!
 \file
 \brief Template definitions for the class RootData.
 */

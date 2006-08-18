@@ -1,11 +1,13 @@
 /*!
 \file
-  This is polynomials_def.h.  This module contains the implementation
-  of the few things we need about polynomials in this program. Apart
-  from some basic elementary operations, the most notable things are
-  the "safe" versions, that carefully check for overflow
-  conditions. It is assumed that the coefficient type is an _unsigned_
-  type.
+\brief
+  Template definitions for the class Polynomial.
+
+  This module contains the implementation of the few things we need
+  about polynomials in this program. Apart from some basic elementary
+  operations, the most notable things are the "safe" versions, that
+  carefully check for overflow conditions. It is assumed that the
+  coefficient type is an _unsigned_ type.
 
   Our philsophy is that the degree of the polynomial is always deduced from
   the size of the coefficient vector: it is d_data.size()-1. As a corollary,
@@ -16,6 +18,8 @@
   is that the degree operator, which is used a lot, is trivial.
 */
 /*
+  This is polynomials_def.h.  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -59,7 +63,7 @@ Polynomial<C>::Polynomial(Degree d)
   :d_data(d+1,0ul)
 
 /*!
-  Synopsis: constructs x^d.
+  \brief Constructs x^d.
 
   We construct x^d, and not the zero polynomial, so that our basic assumption
   about the degree is satisfied.
@@ -76,7 +80,12 @@ template<typename C>
 void Polynomial<C>::adjustSize()
 
 /*!
-  Synopsis: adjust the size of d_data so that it corresponds to the degree + 1.
+  \brief Adjusts the size of d_data so that it corresponds to the degree + 1.
+
+  Steps down through the coefficients of the polynomial, beginning
+  with the top coefficient, until it finds a non-zero coefficient (or
+  reaches zero).  Then resizes d_data so that this non-zero
+  coefficient is the top one (or to have size zero if the polynomial is zero).
 */
 
 {
@@ -99,7 +108,7 @@ template<typename C>
 Polynomial<C>& Polynomial<C>::safeAdd(const Polynomial& q, Degree d, C c)
 
 /*!
-  Synopsis: adds x^d.c.q, watching for overflow
+  \brief Adds x^d.c.q, to *this, watching for overflow.
 
   NOTE: may forward a NumericOverflow exception.
 
@@ -132,7 +141,7 @@ template<typename C>
 Polynomial<C>& Polynomial<C>::safeSubtract(const Polynomial& q, Degree d, C c)
 
 /*!
-  Synopsis: subtracts x^d.c.q, watching for underflow
+  \brief Subtracts x^d.c.q from *this, watching for underflow.
 
   NOTE: may forward a NumericUnderflow exception.
 
@@ -179,7 +188,7 @@ template<typename C>
 bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
 
 /*!
-  Synopsis: polynomial comparison.
+  \brief Polynomial comparison.
 
   Explanation: p < q if deg(p) < deg(q), or if degrees are equal, and the
   comparison holds for coefficients, in lex-order starting from the top.
@@ -215,7 +224,7 @@ bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
 template<typename C> void safeAdd(C& a, C b)
 
 /*!
-  Synopsis: a += b.
+  \brief a += b.
 
   Throws a NumericOverflow exception in case of overflow.
 */
@@ -234,7 +243,7 @@ template<typename C> void safeAdd(C& a, C b)
 template<typename C> void safeProd(C& a, C b)
 
 /*!
-  Synopsis: a *= b.
+  \brief a *= b.
 
   Throws a NumericOverflow exception in case of overflow.
 */
@@ -256,7 +265,7 @@ template<typename C> void safeProd(C& a, C b)
 template<typename C> void safeSubtract(C& a, C b)
 
 /*!
-  Synopsis: a -= b.
+  \brief a -= b.
 
   Throws a NumericUnderflow exception in case of underflow.
 */

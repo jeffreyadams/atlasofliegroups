@@ -44,10 +44,10 @@ namespace cartan {
 Mathematically this means the W-conjugacy classes of twisted
 involutions in the extended Weyl group (W semidirect Gamma).  In
 addition to providing access to each of these individual Cartans, the
-class provides access to the partial order on the Cartans: (H,theta_1)
-is "more compact" than (H,theta_2) (theta_i being twisted involutions)
-if the identity component of the fixed point set H^theta_2 is
-W-conjugate to a subtorus of H^theta_1.
+class provides access to the partial order on the Cartans: (H,tau_1)
+is "more compact" than (H,tau_2) (tau_i being twisted involutions)
+if the identity component of the fixed point set H^tau_2 is
+W-conjugate to a subtorus of H^tau_1.
 
 The problem for the dual group of G is identical, the bijection taking
 the negative transpose of a twisted involution.  This bijection

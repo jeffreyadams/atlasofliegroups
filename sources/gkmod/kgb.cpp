@@ -47,7 +47,9 @@
 
 namespace atlas {
 
-namespace {
+  // namespace {
+  namespace kgb {
+    namespace helper {
 
   void pause() {;}
 
@@ -55,12 +57,39 @@ using namespace kgb;
 
 void makeHasse(std::vector<set::SetEltList>&, const KGB&);
 
+  /*!
+\brief Used with an involution tau of H to store the subspace of
+elements of order 2 in H of the form h*tau(h)^{-1}.
+
+This is what one divides by to get the fiber group of the real Cartan.  A
+Tits element representing an H conjugacy classes of strong involutions
+is defined only as a coset of this subgroup.  We choose our Tits
+elements as distinguished representatives of these cosets.  The member
+function normalize gets these distinguished representatives, and the
+member function conjugate changes FiberData when tau is replaced by a
+conjugate.
+  */
 class FiberData {
 
+  /*!
+\brief Intended to allow modification of FiberData by an external
+function conjugate.
+
+[There seems to exist no such external function; presumably it was
+replaced by the member function conjugate.  DV 7/21/06]
+  */ 
   friend void conjugate(FiberData&, size_t, const tits::TitsGroup&);
 
  private:
 
+  /*!
+\brief Subspace of elements of order 2 in the Cartan of the form
+h*tau(h)^{-1}.
+
+This is stored as a subspace of the Z/2Z vector space of all elements
+of order 2 (which is naturally (Z/2Z)^n, since the coweight lattice is
+Z^n), endowed with the unique basis in row-reduced form.
+  */
   latticetypes::ComponentSubspace d_subspace;
 
  public:
@@ -69,35 +98,106 @@ class FiberData {
   FiberData(const latticetypes::ComponentList& b, size_t r):d_subspace(b,r) {}
   
 // accessors
+  /*!  
+\brief Replaces the Tits element by the normal representative in its H
+conjugacy class.
+  */
   void normalize(tits::TitsElt& a) const {
     d_subspace.representative(a.t(),a.t());
   }
 
 // manipulators
+  /*!
+\brief changes FiberData when the defining involution tau is replaced
+  by r tau r^{-1}.
+  */
   void conjugate(const latticetypes::ComponentMap& r) {
     d_subspace.apply(r);
   }
 };
 
+      /*! 
+\brief Derived class of KGB, to carry out the construction of KGB.
+      */
 class Helper:public KGB {
 
 private:
 
+  /*!
+\brief Constant iterator to the pair containing the WeylElt, or to the
+  end of the map if no such pair exists. 
+  */
   typedef std::map<weyl::WeylElt,FiberData>::const_iterator WI;
+
+  /*!
+\brief Constant iterator to the pair containing the TitsElt, or to the
+  end of the map if no such pair exists. 
+  */
   typedef std::map<tits::TitsElt,size_t>::const_iterator TI;
 
   // big auxiliary data
+
+  /*!
+\brief List of Tits elements parametrizing KGB orbits.
+
+More precisely, these are the distinguished representatives in the H
+conjugacy classes. This ensures that distinct elements correspond to
+distinct orbits.
+  */
   tits::TitsEltList d_tits;
+
+  /*!
+\brief Inverse function of d_tits.
+
+This map allows us to search for a Tits element to see if it
+is new. 
+  */
   std::map<tits::TitsElt,size_t> d_titsMap;
+
+  /*!
+\brief Associates to each root datum involution tau the subspace of
+elements of order 2 in the Cartan of the form h*tau(h)^{-1}.
+
+This is what one divides to get the fiber group of the real Cartan.  A
+Tits element representing an H conjugacy classes of strong involutions
+is defined only as a coset of this subgroup.  We choose our Tits
+elements as distinguished representatives of these cosets.  The
+function FiberData::normalize gets these distinguished
+representatives, and FiberData::conjugate changes FiberData when tau
+is replaced by a conjugate.
+  */
   std::map<weyl::WeylElt,FiberData> d_fiberData;
 
   // small auxiliary data
+
+  /*!
+\brief Pointer to the real group whose K orbits on G/B are being
+  computed.
+  */
   const realredgp::RealReductiveGroup* d_realGroup;
+
+  /*!
+\brief Flags the noncompact imaginary roots among the simple roots for
+G in the base theta-stable Borel.
+  */
   gradings::Grading d_baseGrading;
 
   // these lists have rank entries
+
+  /*!
+\brief Entry \#i is the mod 2 matrix of simple reflection \#i.
+  */
   std::vector<latticetypes::ComponentMap> d_reflectionMap;
+
+  /*!
+\brief Entry \#i is the matrix of simple reflection \#i.
+  */
   std::vector<latticetypes::LatticeMatrix> d_reflectionMatrix;
+
+  /*!
+\brief The mod 2 matrix of the distinguished involution for the inner
+  class (transposed).
+  */
   latticetypes::ComponentMap d_twistMatrix;
 
 public:
@@ -224,14 +324,17 @@ public:
   }
 };
   
-}
+    }
+  }
 
-namespace {
-
+  // namespace {
+  namespace kgb {
+    namespace helper {
   using namespace kgb;
 
   void initGrading(gradings::Grading&, const realredgp::RealReductiveGroup&);
-}
+    }
+  }
 
 /*****************************************************************************
 
@@ -242,6 +345,8 @@ namespace {
 ******************************************************************************/
 
 namespace kgb {
+
+  using namespace atlas::kgb::helper;
 
 KGB::KGB(size_t rank)   
   :d_rank(rank),
@@ -321,7 +426,7 @@ void KGB::swap(KGB& other)
 bool KGB::compare (KGBElt x, KGBElt y) const
 
 /*!
-  \brief Returns whether involution(x) < involution(y); in 
+  \brief Returns whether involution(x) < involution(y). 
 
   Explanation: the ordering is involution-length first, then weyl-length, 
   then order of Weyl group elements in whatever way that comes out of their 
@@ -358,9 +463,10 @@ const weyl::WeylElt& KGB::involution(KGBElt z) const
 bool KGB::isAscent(size_t s, KGBElt x) const
 
 /*!
-  \brief Tells whether s is a ascent generator for z.
+  \brief Tells whether simple root \#s is an ascent generator for KGB
+  element \#x.
 
-  Explanation: ascent generators are the ones for which have either a complex
+  Explanation: ascent generators are the ones for which are either a complex
   ascent, or are imaginary noncompact.
 
   The dual information is recorded in the d_descent list.
@@ -374,10 +480,11 @@ bool KGB::isAscent(size_t s, KGBElt x) const
   return not isDescent(s,x) and not (status(s,x) == Status::ImaginaryCompact);
 }
 
-bool KGB::isDescent(size_t s, KGBElt z) const
+bool KGB::isDescent(size_t s, KGBElt x) const
 
 /*!
-  \brief Tells whether s is a descent generator for z.
+  \brief Tells whether simple root \# s is a descent generator for KGB
+  element \#x.
 
   Explanation: descent generators are the ones for which the twisted involution
   tau descends; i.e. either s does not commute with tau and s.tau.s has shorter
@@ -389,7 +496,7 @@ bool KGB::isDescent(size_t s, KGBElt z) const
 */
 
 {
-  return d_descent[z].test(s);
+  return d_descent[x].test(s);
 }
 
 KGBEltPair KGB::tauPacket(const weyl::WeylElt& w) const
@@ -419,7 +526,7 @@ KGBEltPair KGB::tauPacket(const weyl::WeylElt& w) const
 size_t KGB::weylLength(KGBElt z) const
 
 /*!
-  \brief Returns the length of involution(z) as a Wel group element.
+  \brief Returns the length of involution(z) as a Weyl group element.
 
   NOTE: this is not inlined to avoid a dependency on weyl.h
 */
@@ -475,7 +582,9 @@ void KGB::fillBruhat()
 
 ******************************************************************************/
 
-namespace {
+// namespace {
+namespace kgb {
+  namespace helper {
   /*!
 \brief
 
@@ -563,13 +672,17 @@ Helper::Helper(realredgp::RealReductiveGroup& G)
 Helper::WI Helper::cayleyAdd(weyl::WeylElt& w, size_t s)
 
 /*!
-  \brief Adds a new root datum involution through Cayley transform.
+  \brief Adds a new root datum involution by Cayley transform
+  from the first argument, through simple root \#(second argument).
 
   Precondition: w corresponds to a known root datum involution, and s 
   twisted-commutes with w. 
 
-  Algorithm: the new reflection is s_alpha.tau; the new normalizing subspace
-  is obtained by simply adding m_alpha to the previous one.
+  Algorithm: the new reflection is s_alpha.tau; the new normalizing
+  subspace is computed from the definition. [DV 7/21/06: the old
+  comment said "computed by adding m_alpha to the previous one."  This
+  procedure would work for type I Cayley transforms but not for type
+  II, and in any case it is not what the code does.]
 
   NOTE: this is the most expensive function in the construction, so we
   would like to avoid using it as much as possible
@@ -598,7 +711,7 @@ Helper::WI Helper::cayleyAdd(weyl::WeylElt& w, size_t s)
 
   q *= realGroup().distinguished();
 
-  // go over to inverse transpose
+  // go over to [NEGATIVE, not inverse DV] inverse transpose
   q.transpose();
   q.negate();
 
@@ -620,8 +733,8 @@ Helper::WI Helper::cayleyAdd(weyl::WeylElt& w, size_t s)
 Helper::TI Helper::cayleyAdd(size_t from, size_t s)
 
 /*!
-  \brief Adds a new parameter by Cayley transform from d_tits[from] through 
-  s.
+  \brief Adds a new parameter by Cayley transform from d_tits[first
+  argument] through simple root \#(second argument).
 */
 
 {    
@@ -655,8 +768,9 @@ Helper::WI Helper::crossAdd(weyl::WeylElt& w, size_t s)
 /*!
   \brief Adds a new root datum involution through cross action.
 
-  Precondition: w is a weyl group element representing a known root datum
-  involution; s is a generator such that s.w.s is a not in d_titsMap;
+  Precondition: w is a Weyl group element representing a known root
+  datum involution; s is (the number of) a generator such that s.w.s
+  is not in d_titsMap;
 
   Algorithm: we add a new element to d_titsMap, by conjugating the necessary
   data from those for w.
@@ -721,7 +835,7 @@ void Helper::cayleyExtend(size_t from)
   Precondition: from is the index in d_tits of the parameter we are extending
   from.
 
-  It is assumed that the KLHelper structure is always kept in the state where
+  It is assumed that the Helper structure is always kept in the state where
   all downward links are already filled in.
 */
 
@@ -787,7 +901,7 @@ void Helper::crossExtend(size_t from)
   Precondition: from is the index in d_tits of the parameter we are extending
   from.
 
-  It is assumed that the KLHelper structure is always kept in the state where
+  It is assumed that the Helper structure is always kept in the state where
   all downward links are already filled in.
 */
 
@@ -983,6 +1097,7 @@ void Helper::sort()
 }
 
 }
+}
 
 /*****************************************************************************
 
@@ -992,12 +1107,21 @@ void Helper::sort()
 
 ******************************************************************************/
 
-namespace {
+// namespace {
+
+namespace kgb {
+  namespace helper {
 
 void initGrading(gradings::Grading& gr, const realredgp::RealReductiveGroup& G)
 
 /*!
-  \brief Writes in gr the initial gradings of the simple roots.
+  \brief Flags in gr the the simple roots which are noncompact
+  imaginary for the base grading of the fundamental Cartan in G..
+
+Algorithm: the variable rset is first made to flag the noncompact
+imaginary roots for the base grading of the fundamental Cartan in G.
+Each simple root for G is tested for membership in rset; if it passes,
+the corresponding bit of gr is set.
 */
 
 {  
@@ -1020,9 +1144,11 @@ void initGrading(gradings::Grading& gr, const realredgp::RealReductiveGroup& G)
 void makeHasse(std::vector<set::SetEltList>& hd, const KGB& kgb)
 
 /*!
-  \brief Puts in hd the hasse diagram data for the Bruhat ordering on kgb.
+  \brief Puts in hd the hasse diagram data for the Bruhat ordering
+  on kgb.
   
-  Explanation: we use the algorithm from Richardson and Springer.
+  Explanation: this is the closure ordering of orbits. We use the
+  algorithm from Richardson and Springer.
 */
 
 {
@@ -1069,6 +1195,7 @@ void makeHasse(std::vector<set::SetEltList>& hd, const KGB& kgb)
 
 }
 
+}
 }
 
 }

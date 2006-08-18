@@ -48,9 +48,16 @@ namespace blocks {
 \brief Represents a block of representations of an inner form of G.
 
 For our fixed inner form, orbits of K on G/B are parametrized by
-certain elements x in N(H).  Each x therefore defines an involution
-theta_x of H.  Describing the set of x with a fixed involution is
-accomplished by the Fiber class.  
+certain elements x in N(H) (the normalizer in the extended group
+G^Gamma), each defined up to conjugation by H. (Dangerous bend: the H
+conjugacy class of x is a subset, usually proper, of the coset xH. The
+collection of all x is therefore NOT a subset of the extended Weyl
+group N(H)/H, but something more subtle.) The requirement on x is that
+it belong to to the G-conjugacy class of strong involutions defining
+the inner form.
+
+Each x therefore defines an involution theta_x of H.  Describing the
+set of x with a fixed involution is accomplished by the Fiber class.
 
 A block is characterized by specifying also an inner form of the dual
 group G^vee.  For this inner form, K^vee orbits on G^vee/B^vee are

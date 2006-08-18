@@ -1,3 +1,21 @@
+/*!
+\file
+\brief Implementation of the class KLContext.
+
+  This module contains code for the computation of the Kazhdan-Lusztig
+  polynomials for a given block of representations. We have taken the radical
+  approach of not using the Bruhat ordering at all, just ordering by length
+  instead, and coping with the ensuing appearance of zero polynomials. It
+  is expected that the simplification thus achieved will more than outweigh
+  the additional polynomials computed.
+
+  The general scheme is fairly similar to the one in Coxeter: there is a
+  "KLSupport" structure, that holds the list of extremal pairs that makes it
+  possible to read the d_kl list, plus some additional lists that allow for
+  a fast extremalization algorithm, for instance; there are two main lists,
+  d_kl (filled in for all extremal pairs), and d_mu (filled in only for
+  non-zero mu coefficients.)
+*/
 /*
   This is kl.cpp
   
@@ -16,6 +34,7 @@
 #include <cassert>
 #include <map>
 #include <stack>
+#include <stdexcept>
 
 #include "bitmap.h"
 #include "blocks.h"
@@ -40,7 +59,8 @@
 
 namespace atlas {
 
-namespace {
+  namespace kl {
+  namespace helper {
 
   void pause() {;}
 
@@ -296,6 +316,7 @@ namespace {
   };
 
 }
+  }
 
 /*****************************************************************************
 
@@ -306,6 +327,7 @@ namespace {
  *****************************************************************************/
 
 namespace kl {
+  using namespace atlas::kl::helper;
 
 KLContext::KLContext(klsupport::KLSupport& kls)
   :d_support(&kls)
@@ -496,8 +518,8 @@ MuCoeff KLContext::mu(size_t x, size_t y) const
 
  *****************************************************************************/
 
-namespace {
-
+namespace kl {
+  namespace helper {
 Helper::Helper(const KLContext& kl)
   :KLContext(kl)
 
@@ -709,7 +731,7 @@ void Helper::makeExtremalRow(klsupport::ExtremalRow& e, size_t y) const
 void Helper::makePrimitiveRow(klsupport::ExtremalRow& e, size_t y) const
 
 /*
-  Synopsis: puts in e the list of all x extremal w.r.t. y.
+  Synopsis: puts in e the list of all x primitive w.r.t. y.
 
   Explanation: this means that either x = y, or length(x) < length(y),
   and every descent for y is either a descent, or an imaginary type II
@@ -1029,7 +1051,7 @@ void Helper::fillMuRow(size_t y)
 
   Precondition: the row for y in the kl-table has been filled; length(y) > 0;
 
-  Explanation: for the elements of length < lenght(y) - 1, mu(x,y) can
+  Explanation: for the elements of length < length(y) - 1, mu(x,y) can
   be non-zero only if x is extremal w.r.t. y; so we run through d_kl[y],
   and loook at the cases where the polynomial is of degree (1/2)(l(y)-l(x)-1)
   (the biggest possible). For the elements of colength 1, in the classical
@@ -1370,6 +1392,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
 }
 
 }
+}
 
 /*****************************************************************************
 
@@ -1379,7 +1402,8 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
 
  *****************************************************************************/
 
-namespace {
+namespace kl {
+  namespace helper {
 
 Thicket::Thicket(Helper& h, size_t y)
   :d_helper(&h)
@@ -1745,6 +1769,7 @@ ThicketIterator& ThicketIterator::operator++ ()
 }
 
 }
+}
 
 /*****************************************************************************
 
@@ -1833,7 +1858,8 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
 
  *****************************************************************************/
 
-namespace {
+namespace kl {
+  namespace helper {
 
 size_t firstAscent(const descents::DescentStatus& d1,
 		   const descents::DescentStatus& d2, size_t rank)
@@ -1883,5 +1909,5 @@ size_t goodAscent(const descents::DescentStatus& d1,
 }
 
 }
-
+}
 }

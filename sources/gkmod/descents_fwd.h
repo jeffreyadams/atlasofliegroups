@@ -1,3 +1,7 @@
+/*!
+\file
+\brief Class declaration and type definitions for class DescentStatus.
+*/
 /*
   This is descents_fwd.h
   

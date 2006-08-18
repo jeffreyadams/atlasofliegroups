@@ -51,9 +51,9 @@ namespace constants {
   twoBitMask[j] is 3*(4**j): a single word with a 1 in bits 2j
   and 2j+1, and 0's elsewhere.
   */
-  extern unsigned long twoBitMask[longBits >> 1];
-  extern size_t firstbit[1 << charBits];
-  extern size_t lastbit[1 << charBits];
+  extern unsigned long twoBitMask[longBits >> 1ul];
+  extern size_t firstbit[1ul << charBits];
+  extern size_t lastbit[1ul << charBits];
   extern unsigned long leqMask[longBits];
   extern unsigned long lMask[longBits];
 

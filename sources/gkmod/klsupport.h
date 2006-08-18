@@ -1,3 +1,7 @@
+/*!
+\file
+\brief Class definition and function declarations for KLSupport.
+*/
 /*
   This is klsupport.h
   

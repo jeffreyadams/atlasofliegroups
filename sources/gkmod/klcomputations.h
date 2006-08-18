@@ -1,3 +1,11 @@
+/*!
+\file 
+\brief Class definition and function declarations for the class KLComputations.
+
+  [This class has barely been started. It is part of Fokko's plan to
+  define an ownership structure for the Kazhdan-Lusztig
+  computations. DV 7/23/06.]
+*/
 /*
   This is klcomputations.h
   
@@ -28,6 +36,21 @@ namespace atlas {
 
 namespace klcomputations {
 
+  /*!
+\brief Holding class for computations related to a block of representations.
+
+  Most prominent among these is the computation of
+  Kazhdan-Lusztig-Vogan polynomials. The idea is to mostly apply a
+  principle of "lazy evaluation": things are computed when they are
+  requested, but always remembered once they are computed.
+
+  We make an exception to the laziness principle for the "involutions" part,
+  which is computed right away.
+
+  [This class has barely been started. It is part of Fokko's plan to
+  define an ownership structure for the Kazhdan-Lusztig
+  computations. DV 7/23/06.]
+  */
 class KLComputations {
 
  private:

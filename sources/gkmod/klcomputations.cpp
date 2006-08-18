@@ -1,3 +1,11 @@
+/*!
+\file
+\brief Implementation of the KLComputations class.
+
+  [This class has barely been started. It is part of Fokko's plan to
+  define an ownership structure for the Kazhdan-Lusztig
+  computations. DV 7/23/06.]
+*/
 /*
   This is klcomputations.cpp
   
@@ -45,8 +53,8 @@ KLComputations::KLComputations()
 KLComputations::KLComputations(complexredgp::ComplexReductiveGroup& G)
   :d_involutionSet(G),d_G(&G)
 
-/*
-  Synopsis: ctor
+/*!
+\brief Constructor.
 
   The involutionSet part is filled right away to make things simpler.
 */

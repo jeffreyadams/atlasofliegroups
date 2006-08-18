@@ -1,3 +1,10 @@
+/*!
+\file
+\brief Implementation of the functions in namespace kltest.
+
+These functions are designed to test a mathematical assertion used in
+the implementation of the KL algorithm.
+*/
 /*
   This is kltest.cpp
   
@@ -64,8 +71,8 @@ namespace kltest {
 
 bool checkBasePoint(const kgb::KGB& kgb)
 
-/*
-  Synopsis: checks whether the conjectural basepoint in each R-packet is
+/*!
+  \brief Checks whether the conjectural basepoint in each R-packet is
   independent of the choice of reduced expression.
 
   Explanation: let w be a twisted involution, written as an involution-reduced

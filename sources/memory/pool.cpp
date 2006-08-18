@@ -84,7 +84,7 @@ namespace pool {
 Pool::Pool(size_t a, size_t d)
   :d_atomSize(a), 
    d_defaultRequest(d),
-   d_maxAlloc((1 << constants::sizeBits - 1)/a),
+   d_maxAlloc((1ul << constants::sizeBits - 1ul)/a),
    d_alignSize(a > sizeof(MemBlock*) ? a : sizeof(MemBlock*)),
    d_instance(constructions++)
 
@@ -197,7 +197,7 @@ void Pool::memoryReport()
     log << std::endl;
     size_t a = pd.d_systemAllocs;
     log << "pool #" << pd.d_instance << ": "
-	     << a << " system allocation" << (a == 1 ? "" : "s") 
+	     << a << " system allocation" << (a == 1ul ? "" : "s") 
 	     << std::endl;
     log << "used: ";
     for (size_t i = 0; i < sizeBits; ++i) {
@@ -281,6 +281,8 @@ void* Pool::newBlock(size_t m)
   MemBlock* block = static_cast<MemBlock *> (d_free[m]);
   block->d_next = static_cast<MemBlock *> (vptr);
   ++d_allocated[m];
+
+  block->d_next->d_next = 0;
 
   return d_free[m];
 }
@@ -396,7 +398,7 @@ void SimplePool::memoryReport()
     log << std::endl;
     size_t a = spd.d_systemAllocs;
     log << "pool #" << spd.d_instance << ": "
-	<< a << " system allocation" << (a == 1 ? "" : "s") 
+	<< a << " system allocation" << (a == 1ul ? "" : "s") 
 	<< std::endl;
     log << "used: " << spd.d_allocated << std::endl;
   }
@@ -419,7 +421,7 @@ void* SimplePool::newBlock()
 
   d_free = static_cast<char*> (vptr);
   d_top = d_free + (d_atomSize << d_systemRequest);
-  d_allocated += (1UL << d_systemRequest);
+  d_allocated += (1ul << d_systemRequest);
 
   return vptr;
 }

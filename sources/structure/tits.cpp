@@ -1,6 +1,6 @@
 /*!
 \file
-  This is tits.cpp
+\brief Implementation of the classes TitsGroup and TitsElt.
 
   This module contains an implementation of a slight variant of the
   Tits group (also called extended Weyl group) as defined in J. Tits,
@@ -12,7 +12,7 @@
   defined by generators sigma_alpha, alpha simple, subject to the
   braid relations and sigma_alpha^2= m_alpha; to get our group we just
   add a basis of elements of T(2) as additional generators, and
-  express the m_alpha in this basis.
+  express the m_alpha in this basis.  
 
   On a practical level, because the sigma_alpha satisfy the braid
   relations, any element of the Weyl group has a canonical lifting in
@@ -23,9 +23,10 @@
 
   We have not tried to be optimally efficient here, as it is not
   expected that Tits computations will be significant computationally.
-
 */
 /*
+  This is tits.cpp
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -84,7 +85,7 @@ TitsGroup::TitsGroup(const rootdata::RootDatum& rd,
   :d_rank(rd.rank())
 
 /*!
-  Synopsis : constructs the Tits group corresponding to the root datum rd, and
+  \brief Constructs the Tits group corresponding to the root datum rd, and
   the fundamental involution d.
 */
 
@@ -121,7 +122,7 @@ TitsGroup::~TitsGroup()
 void TitsGroup::invConjugate(TorusPart& x, const weyl::WeylElt& w) const
 
 /*!
-  Synopsis: x -> w^{-1}.x.w in the Tits group.
+  \brief x -> w^{-1}.x.w in the T(2).
 
   Algorithm: take a reduced expression for w, and apply the chain of reflexions
   left-to-right.
@@ -146,7 +147,7 @@ void TitsGroup::invConjugate(TorusPart& x, const weyl::WeylElt& w) const
 void TitsGroup::leftProd(TitsElt& a, weyl::Generator s) const
 
 /*!
-  Synopsis: a -> s*a.
+  \brief Left multiplication of a by the canonical generator sigma_s.
 
   Algorithm: similar to prod, but using weyl::leftProd. The main difference
   is that now the m_s comes out on the _left_, so we must conjugate it through
@@ -170,14 +171,14 @@ void TitsGroup::leftProd(TitsElt& a, weyl::Generator s) const
 void TitsGroup::prod(TitsElt& a, weyl::Generator s) const
 
 /*!
-  Synopsis: a *= s.
+  \brief Right multiplication of a by the canonical generator sigma_s.
 
-  Algorithm: This is surprisingly simple: multiplying by s just amounts to 
-  reflecting a.t() through s, then doing w -> ws in the Weyl group. If the 
-  length goes down, we notice that the m_alpha that comes out on the right is 
-  necessarily m_s (just because we may write a.w() = v'.s (reduced), so 
-  v.s = v'.m_s in the Tits group.) So we just need to add m_s to a.t() in that 
-  case. Finally of course we need to add y to the resulting x.
+  Algorithm: This is surprisingly simple: multiplying by s just
+  amounts to reflecting a.t() through s, then doing w -> ws in the
+  Weyl group. If the length goes down, we get on the right a factor of
+  (sigma_s)^2=m_s.  (The reason is that we may write v=a.w() as v'.s
+  (reduced), so v.sigma_s = v'.m_s in the Tits group.) So we just need to
+  add m_s to a.t() in that case. 
 
   The upshot is a multiplication algorithm that is about as fast as in the
   Weyl group!
@@ -187,7 +188,8 @@ void TitsGroup::prod(TitsElt& a, weyl::Generator s) const
   using namespace weyl;
 
   reflection(a.t(),s);
-  if (d_weyl->prod(a.w(),s) == -1) // length reduction
+// prod performs mult of w by s, returns -1 in case of length reduction
+  if (d_weyl->prod(a.w(),s) == -1) 
     a += d_simpleCoroot[s];
 
   return;
@@ -196,10 +198,11 @@ void TitsGroup::prod(TitsElt& a, weyl::Generator s) const
 void TitsGroup::prod(TitsElt& a, const TitsElt& b) const
 
 /*!
-  Synopsis: a *= b.
+  \Multiplies first argument by second argument, and puts the result
+  in the first argument. 
 
-  Algorithm: The algorithm is to mutliply a successively by the various 
-  generators in a reduced expression for b.w(), and then adding b.t().
+  Algorithm: The algorithm is to multiply a successively by the various 
+  generators in a reduced expression for b.w(), and then add b.t().
 */
 
 {

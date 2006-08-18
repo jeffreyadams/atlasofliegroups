@@ -1,3 +1,7 @@
+/*!
+\file
+\brief Class definitions and function declarations for the class InvolutionSet.
+*/
 /*
   This is involutions.h
   

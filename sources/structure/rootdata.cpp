@@ -3,26 +3,33 @@
   \brief Implementation of the RootDatum class.
 
   What we call a root datum in this program is what is usually called
-  a based root datum, and we also include the involution which defines
-  the inner class of real forms (written in Cartan form, i.e. the
-  negative of the Galois involution).
+  a based root datum.
 
-  The root datum defines the complex reductive group entirely, and
-  (with the involution) specifies an inner class of real forms.
+  The root datum defines the complex reductive group entirely.
 
   Another non-trivial issue is how to get a group interactively from the
   user. Actually this is perhaps a bit overstated here; in fact, when the
   program functions as a library, the interaction with the user will be
   relegated to some higher-up interface; in practice it is likely that
   the data will usually be read from a file. The main issue is to define
-  the character lattice of the torus, and the component group of the group.
+  the character lattice of the torus.
 
-  In the interactive approach, we start from the abstract real lie type, and
-  (implicitly) associate to it the direct product of the simply connected
-  semisimple factor, and the torus as it is given. The user then has to
-  define a sublattice of finite index, containing the root lattice, and
-  stable under the involution. From this sublattice the actual root datum
-  is constructed.
+  In the interactive approach, we start from the abstract real lie
+  type, and (implicitly) associate to it the direct product of the
+  simply connected semisimple factor, and the torus as it is
+  given. The user is presented with the torsion subgroup Z_tor of the
+  center, written as a factor of Q/Z for each torus factor, and a
+  finite abelian group for each simple factor.  The user must then
+  choose generators of a finite subgroup of Z_tor; this subgroup
+  corresponds to a sublattice of finite index in the character
+  lattice, containing the root lattice. From this sublattice the
+  actual root datum is constructed.
+
+  [DV: An earlier version of this class included the inner class of
+  real groups, which is to say an involutive automorphism of the based
+  root datum.  As an artifact of that, the user interaction acquires
+  the involutive automorphism before the subgroup of Z_tor, and
+  insists that the subgroup of Z_tor be preserved by this involution.]
 */
 /*
   This is rootdata.cpp.
@@ -51,29 +58,33 @@
 
   This module contains the implementation of the RootDatum class. What we
   call a root datum in this program is what is usually called a based root
-  datum, and we also include the involution which defines the real form
-  (written in Cartan form, i.e. the negative of the Galois involution.)
+  datum.
 
-  The root datum defines the complex reductive group entirely. [The
-  rest of this paragraph may be outdated? DV] and, together
-  with the involution, the full group of real points. The most delicate issue
-  which we have to address is the determination of the component group of
-  G(R); actually we describe its dual, which we denote dpi0, as a subgroup
-  of the dpi0 of the torus. This is explained in detail in the notes.
+  The root datum defines the complex reductive group entirely.
 
   Another non-trivial issue is how to get a group interactively from the
   user. Actually this is perhaps a bit overstated here; in fact, when the
   program functions as a library, the interaction with the user will be
   relegated to some higher-up interface; in practice it is likely that
   the data will usually be read from a file. The main issue is to define
-  the character lattice of the torus, and the component group of the group.
+  the character lattice of the torus.
 
-  In the interactive approach, we start from the abstract real lie type, and
-  (implicitly) associate to it the direct product of the simply connected
-  semisimple factor, and the torus as it is given. The user then has to
-  define a sublattice of finite index, containing the root lattice, and
-  stable under the involution. From this sublattice the actual root datum
-  is constructed.
+  In the interactive approach, we start from the abstract real lie
+  type, and (implicitly) associate to it the direct product of the
+  simply connected semisimple factor, and the torus as it is
+  given. The user is presented with the torsion subgroup Z_tor of the
+  center, written as a factor of Q/Z for each torus factor, and a
+  finite abelian group for each simple factor.  The user must then
+  choose generators of a finite subgroup of Z_tor; this subgroup
+  corresponds to a sublattice of finite index in the character
+  lattice, containing the root lattice. From this sublattice the
+  actual root datum is constructed.
+
+  [DV: An earlier version of this class included the inner class of
+  real groups, which is to say an involutive automorphism of the based
+  root datum.  As an artifact of that, the user interaction acquires
+  the involutive automorphism before the subgroup of Z_tor, and
+  insists that the subgroup of Z_tor be preserved by this involution.]
 
 ******************************************************************************/
 
@@ -100,8 +111,6 @@ namespace {
         Chapter I -- The RootDatum class
 
   The root datum class will be one of the central classes in the program.
-  Except for the choice of connectivity, [?? DV] everything we plan to
-  do should be ultimately constructed from the root datum.
 
   A based root datum is a quadruple (X,X^,D,D^), where X and X^ are lattices
   dual to each other, and D is a basis for a root system in X, D^ the dual
@@ -110,18 +119,10 @@ namespace {
 
   The fundamental lattice X~ that we will work in is the character lattice of
   a group G~ x T, where G~ is a simply connected semisimple group, and T
-  a torus, both defined over R; our complex reductive group G will be a finite
+  a torus; our complex reductive group G will be a finite
   quotient of this. More precisely, let Q be the subgroup of our lattice
   generated by D; then the character lattice X of G may be any sublattice of
   full rank of our fundamental lattice containing Q.
-
-  Notice that Q itself is not necessarily of full rank; it will be if and only
-  if G is semisimple. We describe the quotient X~/Q as a product of cyclic
-  groups (there will be one finite factor for each simple factor, except
-  for type D in even rank, where there will be two factors Z/2, and one
-  infinite factor for each torus component.) The user is then allowed to
-  enter any cofinite subgroup of this quotient, in terms of generators, to
-  be X/Q.
 
 ******************************************************************************/
 
@@ -246,7 +247,7 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
 
 
 /*!
-  Synopsis: constructs the root system dual to the given one.
+\brief Constructs the root system dual to the given one.
 
   Recall that we are actually realizing both the rootdatum and its dual in
   the _same_ lattice; so it is essentially an issue of interchanging roots
@@ -272,6 +273,12 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
     }
   }
 
+  // fill in the status
+
+  fillStatus();
+
+  assert(d_status[IsAdjoint] == rd.d_status[IsSimplyConnected]);
+  assert(d_status[IsSimplyConnected] == rd.d_status[IsAdjoint]);
   for (size_t j = 0; j < d_semisimpleRank; ++j)
     assert(d_rootPermutation[j] == rd.d_rootPermutation[j]);
 }
@@ -285,7 +292,7 @@ RootDatum::~RootDatum()
 WRootIterator RootDatum::beginPosCoroot() const
 
 /*!
-  Makes a WRootIterator pointing to the beginning of the list of
+\brief Makes a WRootIterator pointing to the beginning of the list of
   positive coroots.
 */
 
@@ -296,7 +303,7 @@ WRootIterator RootDatum::beginPosCoroot() const
 WRootIterator RootDatum::beginPosRoot() const
 
 /*!
-  Makes a WRootIterator pointing to the beginning of the list of
+\brief Makes a WRootIterator pointing to the beginning of the list of
   positive roots.
 */
 
@@ -307,7 +314,7 @@ WRootIterator RootDatum::beginPosRoot() const
 WRootIterator RootDatum::beginSimpleCoroot() const
 
 /*!
-  Makes a WRootIterator pointing to the beginning of the list of
+\brief  Makes a WRootIterator pointing to the beginning of the list of
   simple coroots.
 */
 
@@ -318,7 +325,7 @@ WRootIterator RootDatum::beginSimpleCoroot() const
 WRootIterator RootDatum::beginSimpleRoot() const
 
 /*!
-  Makes a WRootIterator pointing to the beginning of the list of
+\brief Makes a WRootIterator pointing to the beginning of the list of
   simple roots.
 */
 
@@ -329,8 +336,9 @@ WRootIterator RootDatum::beginSimpleRoot() const
 void RootDatum::coreflection(Weight& v, RootNbr j) const
 
 /*!
-  Applies to v the reflection about coroot number j. In other words, cr
-  is transformed into v - <alpha_j,v>alpha_j^vee
+\brief  Applies to v the reflection about coroot number j. 
+
+In other words, v is transformed into v - <alpha_j,v>alpha_j^vee.
 */
 
 {
@@ -348,7 +356,7 @@ void RootDatum::coreflection(Weight& v, RootNbr j) const
 WRootIterator RootDatum::endPosCoroot() const
 
 /*!
-  Makes a WRootIterator pointing to the end of the list of positive 
+\brief  Makes a WRootIterator pointing to the end of the list of positive 
   coroots.
 */
 
@@ -359,7 +367,7 @@ WRootIterator RootDatum::endPosCoroot() const
 WRootIterator RootDatum::endPosRoot() const
 
 /*!
-  Makes a WRootIterator pointing to the end of the list of positive roots.
+\brief Makes a WRootIterator pointing to the end of the list of positive roots.
 */
 
 {
@@ -369,7 +377,7 @@ WRootIterator RootDatum::endPosRoot() const
 WRootIterator RootDatum::endSimpleCoroot() const
 
 /*!
-  Makes a WRootIterator pointing to the end of the list of simple 
+\brief Makes a WRootIterator pointing to the end of the list of simple 
   coroots.
 */
 
@@ -380,7 +388,8 @@ WRootIterator RootDatum::endSimpleCoroot() const
 WRootIterator RootDatum::endSimpleRoot() const
 
 /*!
-  Makes a WRootIterator pointing to the end of the list of simple roots.
+\brief
+ Makes a WRootIterator pointing to the end of the list of simple roots.
 */
 
 {
@@ -390,7 +399,7 @@ WRootIterator RootDatum::endSimpleRoot() const
 bool RootDatum::isAdjoint() const
 
 /*!
-  Synopsis: tells whether the rootdatum is the rootdatum of an adjoint group.
+\brief Tells whether the rootdatum is the rootdatum of an adjoint group.
 
   NOTE: we define a reductive group to be adjoint if its center is
   connected.  An equivalent condition is that the derived group
@@ -404,7 +413,7 @@ bool RootDatum::isAdjoint() const
 bool RootDatum::isSimplyConnected() const
 
 /*!
-  Synopsis: tells whether the rootdatum is the rootdatum of a simply connected
+\brief Tells whether the rootdatum is the rootdatum of a simply connected
   group.
 
   NOTE: this is the dual condition to being adjoint: it means
@@ -419,8 +428,9 @@ bool RootDatum::isSimplyConnected() const
 void RootDatum::reflection(Weight& v, RootNbr j) const
 
 /*!
-  Applies to v the reflection about root number j. In other words, r is 
-  transformed into v - <v,alpha_j^vee>alpha_j
+\brief  Applies to v the reflection about root number j. 
+
+In other words, v is transformed into v - <v,alpha_j^vee>alpha_j
 */
 
 {
@@ -435,7 +445,7 @@ void RootDatum::reflection(Weight& v, RootNbr j) const
 void RootDatum::rootReflection(LatticeMatrix& q, RootNbr j) const
 
 /*!
-  Synopsis : puts in q the reflection for root \#j.
+\brief Puts in q the reflection for root \#j.
 
   NOTE: this is not intended for heavy use. If that is envisioned, it would be
   better to construct the matrices once and for all and return const 
@@ -487,7 +497,7 @@ void RootDatum::swap(RootDatum& other)
 void RootDatum::fillStatus()
 
 /*!
-  Synopsis: fills in the status of the rootdatum.
+\brief Fills in the status of the rootdatum.
 */
 
 {
@@ -547,7 +557,7 @@ namespace rootdata {
 void cartanMatrix(latticetypes::LatticeMatrix& c, const RootDatum& rd)
 
 /*!
-  Synopsis: puts in c the Cartan matrix of the root datum
+\brief Puts in c the Cartan matrix of the root datum
 */
 
 {
@@ -566,7 +576,7 @@ void cartanMatrix(latticetypes::LatticeMatrix& c, const RootList& rb,
 		  const RootDatum& rd)
 
 /*!
-  Synopsis: puts in c the Cartan matrix of the root basis rb.
+\brief Puts in c the Cartan matrix of the root basis rb.
 
   Precondition: rb contains a basis of a sub-root system of the root system
   of rd.
@@ -588,7 +598,7 @@ void dualBasedInvolution(LT::LatticeMatrix& di, const LT::LatticeMatrix& i,
 			 const RootDatum& rd)
 
 /*!
-  Synopsis: puts i^vee in di.
+\brief Puts i^vee in di.
 
   Precondition: i is an involution of rd as a _based_ root datum;
 
@@ -597,6 +607,10 @@ void dualBasedInvolution(LT::LatticeMatrix& di, const LT::LatticeMatrix& i,
   Algorithm: di is (w_0^t)(-i^t).  (The first factor is the long
   element of the Weyl group, acting on the dual root datum, and the
   second factor is the negative transpose of i.)
+
+  [DV 13 July 2006: since RootDatum no longer contains the involution
+  defining the inner class, this function seems not to belong in the
+  rootdata namespace.  Not sure where would be a better home.]
 */
 
 {
@@ -616,7 +630,7 @@ void dualBasedInvolution(LT::LatticeMatrix& di, const LT::LatticeMatrix& i,
 void lieType(lietype::LieType& lt, const RootList& rb, const RootDatum& rd)
 
 /*!
-  Synopsis: puts in lt the Lie type of the root system spanned by rb.
+\brief puts in lt the Lie type of the root system spanned by rb.
 
   Precondition: rb contains a basis of a sub-rootsystem of the root system of 
   rd.
@@ -636,7 +650,7 @@ void lieType(lietype::LieType& lt, const RootList& rb, const RootDatum& rd)
 void longest(LT::LatticeMatrix& q, const RootDatum& rd)
 
 /*!
-  Synopsis: puts in q the matrix of the action of w_0;
+\brief Puts in q the matrix of the action of w_0;
 
   Algorithm: w_0 is the element making -twoRho positive.
 
@@ -669,7 +683,7 @@ void makeOrthogonal(RootList& orth, const RootList& rl, const RootList& rs,
 		    const RootDatum& rd)
 
 /*!
-  This function puts in orth the elements of rs which are orthogonal to all
+\brief Puts in orth the elements of rs which are orthogonal to all
   elements of rl.
 */
 
@@ -691,7 +705,7 @@ void makeOrthogonal(RootList& orth, const RootList& rl, const RootList& rs,
 void reflectionMatrix(LT::LatticeMatrix& qs, RootNbr n, const RootDatum& rd)
 
 /*!
-  Synopsis: writes in qs the matrix of the reflection thru root \#n.
+\brief Writes in qs the matrix of the reflection through root \#n.
 */
 
 {
@@ -713,7 +727,7 @@ void reflectionMatrix(LT::LatticeMatrix& qs, RootNbr n, const RootDatum& rd)
 void rootBasis(RootList& rb, const RootList& rl, const RootDatum& rd)
 
 /*!
-  Synopsis: puts in rb the canonical basis (set of simple roots) of rl.
+\brief Puts in rb the canonical basis (set of simple roots) of rl.
 
   Precondition: rl holds the roots in a sub-root system of rd;
 
@@ -733,7 +747,7 @@ void rootBasis(RootList& rb, const RootList& rl, const RootDatum& rd)
 void rootBasis(RootList& rb, const RootSet& rs, const RootDatum& rd)
 
 /*!
-  Synopsis: puts in rb the canonical basis (set of simple roots) of rs.
+\brief puts in rb the canonical basis (set of simple roots) of rs.
 
   Precondition: rs holds the roots in a sub-root system of rd;
 
@@ -768,7 +782,7 @@ void rootPermutation(RootList& rl, const LT::LatticeMatrix& p,
 		     const RootDatum& rd)
 
 /*!
-  Synopsis: puts in rl the permutation of the roots induced by p.
+\brief Puts in rl the permutation of the roots induced by p.
 
   Precondition: p permutes the roots;
 */
@@ -788,7 +802,7 @@ void rootPermutation(RootList& rl, const LT::LatticeMatrix& p,
 void strongOrthogonalize(RootList& rl, const RootDatum& rd)
 
 /*!
-  Synopsis: makes rl into a strongly orthogonal system.
+\brief Makes rl into a strongly orthogonal system.
 
   Precondition: rl is a set of pairwise orthogonal roots;
 
@@ -816,7 +830,7 @@ void strongOrthogonalize(RootList& rl, const RootDatum& rd)
 bool sumIsRoot(const Weight& a, const Weight& b, const RootDatum& rd)
 
 /*!
-  Synopsis: tells if a+b is a root.
+\brief Tells if a+b is a root.
 
   Precondition: a and b are roots;
 */
@@ -830,7 +844,7 @@ bool sumIsRoot(const Weight& a, const Weight& b, const RootDatum& rd)
 bool sumIsRoot(const RootNbr& a, const RootNbr& b, const RootDatum& rd)
 
 /*!
-  Synopsis: tells if (root number a)+(root number b) is a root.
+\brief Tells if (root number a)+(root number b) is a root.
 
   Precondition: a and b are root numbers;
 */
@@ -842,7 +856,7 @@ bool sumIsRoot(const RootNbr& a, const RootNbr& b, const RootDatum& rd)
 void toDistinguished(LatticeMatrix& q, const RootDatum& rd)
 
 /*!
-  Synopsis : transforms q into w.q, where w is the unique element such that
+\brief Transforms q into w.q, where w is the unique element such that
   w.q fixes the positive Weyl chamber.
 
   Note that wq is then automatically an involution; w_0.w.q permutes the simple
@@ -873,7 +887,7 @@ void toMatrix(LatticeMatrix& q, const weyl::WeylWord& ww,
 	      const RootDatum& rd)
 
 /*!
-  Synopsis : writes in q the matrix represented by ww.
+\brief Writes in q the matrix represented by ww.
 
   NOTE: not intended for heavy use. If that were the case, it would be better
   to use the decomposition of ww into pieces, and multiply those together.
@@ -897,7 +911,7 @@ void toMatrix(LatticeMatrix& q, const weyl::WeylWord& ww,
 void toMatrix(LatticeMatrix& q, const RootList& rl, const RootDatum& rd)
 
 /*!
-  Synopsis : writes in q the matrix represented by rl (the product of the
+\brief Writes in q the matrix represented by rl (the product of the
   root reflections for the various roots in rl.)
 
   NOTE: the products are written in the same order as the appearance of
@@ -920,7 +934,7 @@ void toMatrix(LatticeMatrix& q, const RootList& rl, const RootDatum& rd)
 void toPositive(weyl::WeylWord& ww, const Weight& d_v, const RootDatum& rd)
 
 /*!
-  Synopsis: puts in ww a list of simple reflections constituting a reduced
+\brief Puts in ww a list of simple reflections constituting a reduced
   expression of the unique shortest element w in the Weyl group such that
   w.v is in the positive chamber.
 
@@ -955,7 +969,7 @@ void toPositive(weyl::WeylWord& ww, const Weight& d_v, const RootDatum& rd)
 void toWeylWord(weyl::WeylWord& ww, RootNbr rn, const RootDatum& rd)
 
 /*!
-  Synopsis: writes in ww the expression of the reflection about root \#rn
+\brief Writes in ww the expression of the reflection about root \#rn
   as a product of simple reflections.
 */
 
@@ -971,7 +985,7 @@ void toWeylWord(weyl::WeylWord& ww, const latticetypes::LatticeMatrix& q,
 		const RootDatum& rd)
 
 /*!
-  Synopsis: writes in ww the expression of q as a product of simple 
+\brief Writes in ww the expression of q as a product of simple 
   reflections.
 
   Precondition: q is expressible as such a product.
@@ -991,7 +1005,7 @@ void toWeylWord(weyl::WeylWord& ww, const latticetypes::LatticeMatrix& q,
 void twoRho(Weight& tr, const RootList& rl, const RootDatum& rd)
 
 /*!
-  Synopsis: puts in tworho the sum of the positive roots in rl.
+\brief Puts in tworho the sum of the positive roots in rl.
 
   Precondition: rl holds the roots in a sub-rootsystem of the root system of 
   rd;
@@ -1010,7 +1024,7 @@ void twoRho(Weight& tr, const RootList& rl, const RootDatum& rd)
 void twoRho(Weight& tr, const RootSet& rs, const RootDatum& rd)
 
 /*!
-  Synopsis: puts in tworho the sum of the positive roots in rs.
+\brief Puts in tworho the sum of the positive roots in rs.
 
   Precondition: rs holds the roots in a sub-rootsystem of the root system of 
   rd;
@@ -1045,7 +1059,7 @@ namespace {
 void fillPositiveRoots(RootList& pr, const RootDatum& rd)
 
 /*!
-  Fills in the set of positive roots w.r.t. the basis in d_rootBasis.
+\brief  Fills in the set of positive roots w.r.t. the basis in d_rootBasis.
 */
 
 {
@@ -1097,8 +1111,10 @@ void fillRoots(WeightList& rl, WeightList& crl, RootList& srl,
 	       const RootDatum& rd)
 
 /*!
-  This function fills in the list rl of all the roots in the system, and the
-  list crl of all the co-roots, from the datum of the root-basis rb and the 
+\brief Fills in the list rl of all the roots in the system, and the
+  list crl of all the co-roots.
+
+ Begins with the data of the root-basis rb and the 
   co-root basis crb. The idea is to start out from rb, and then saturate 
   through successive applications of simple reflections.
 

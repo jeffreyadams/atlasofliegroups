@@ -59,8 +59,9 @@
 
 namespace atlas {
 
-namespace {
-
+  //namespace {
+  namespace blocks {
+    namespace helper {
   void pause() {;}
 
 using namespace blocks;
@@ -70,6 +71,9 @@ void makeHasse(std::vector<set::SetEltList>&, const Block&);
 void insertAscents(std::set<BlockElt>&, const set::SetEltList&, size_t,
 		   const Block&);
 
+      /*!
+\brief Derived class of Block, to carry out the construction of Block.
+      */
 class Helper:public Block {
 
 private:
@@ -118,7 +122,8 @@ public:
 
 };
 
-}
+    }
+  }
 
 /*****************************************************************************
 
@@ -129,6 +134,8 @@ public:
 ******************************************************************************/
 
 namespace blocks {
+
+  using namespace atlas::blocks::helper;
 
 Block::Block():d_bruhat(0)
 
@@ -322,8 +329,9 @@ void Block::fillBruhat()
 
 ******************************************************************************/
 
-namespace {
-
+// namespace {
+  namespace blocks {
+  namespace helper {
 Helper::Helper(realredgp::RealReductiveGroup& G, 
 	       realredgp::RealReductiveGroup& dG)
   :d_kgb(G),
@@ -410,7 +418,7 @@ weyl::WeylElt Helper::dualInvolution(const weyl::WeylElt& d_w) const
 
   Explanation: we have tau = w.tau_f, with w in the Weyl group, and tau_f 
   the fundamental involution of the character lattice. We seek v s.t.
-  -{}^t tau = v.tau_f^{vee}, where tau_f^{\vee} = -w_0{}^t tau_f. So we 
+  -{}^t tau = v.tau_f^{vee}, where tau_f^{vee} = -w_0{}^t tau_f. So we 
   have:
     
         (-{}^t tau_f).{}^t w = v.w_0.(-{}^t tau_f)
@@ -750,6 +758,7 @@ void Helper::orbitPairs()
 }
 
 }
+}
 
 
 /*****************************************************************************
@@ -760,7 +769,10 @@ void Helper::orbitPairs()
 
 ******************************************************************************/
 
-namespace {
+// namespace {
+
+  namespace blocks {
+  namespace helper {
 
 void insertAscents(std::set<BlockElt>& hs, const set::SetEltList& hr, size_t s,
 		   const Block& block)
@@ -768,7 +780,7 @@ void insertAscents(std::set<BlockElt>& hs, const set::SetEltList& hr, size_t s,
 /*!
   \brief Inserts into hs the ascents from hr through s.
 
-  Explanation: technical fuction for the hasse construction, that makes the
+  Explanation: technical function for the hasse construction, that makes the
   part of the coatom list for a given element arising from a given descent.
 */
 
@@ -855,6 +867,8 @@ void makeHasse(std::vector<set::SetEltList>& hd, const Block& block)
   }
 
   return;
+}
+
 }
 
 }

@@ -1,3 +1,7 @@
+/*!
+\file
+\brief Forward declaration of the class InvolutionSet.
+*/
 /*
   This is involutions_fwd.h
   

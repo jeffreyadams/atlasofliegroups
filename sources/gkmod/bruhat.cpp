@@ -1,3 +1,8 @@
+/*!
+\file
+\brief Implementation of the class BruhatOrder.
+*/
+
 /*
   This is bruhat.cpp
   
@@ -10,10 +15,6 @@
 #include "bruhat.h"
 
 #include <algorithm>
-
-/*
-
-*/
 
 namespace atlas {
 
@@ -33,8 +34,8 @@ namespace bruhat {
 BruhatOrder::BruhatOrder(const std::vector<set::SetEltList>& hd)
   :d_hasse(hd)
 
-/*
-  Synopsis: constructs the Bruhat ordering from the datum of the Hasse diagram.
+/*!
+  \brief Constructs the Bruhat ordering from the datum of the Hasse diagram.
 
   Algorithm: easy poset construction from the hasse list.
 

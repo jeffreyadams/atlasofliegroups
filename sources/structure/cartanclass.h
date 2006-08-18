@@ -81,7 +81,7 @@ class Fiber {
  protected:
 
   /*!
-  \brief Real torus defined over R.
+  \brief Pointer to a torus defined over R.
   
   Represented as the lattice Z^n endowed with an involutive
   automorphism (represented by its n x n integer matrix).
@@ -786,7 +786,7 @@ public:
   }
 
   /*!
-  /brief Partitions of Fiber group cosets corresponding to the
+  \brief Partitions of Fiber group cosets corresponding to the
   possible square classes in Z^delta/[(1+delta)Z].
 
   The Fiber group acts in a simply transitive way on strong real forms

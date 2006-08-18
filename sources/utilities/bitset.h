@@ -1,8 +1,10 @@
 /*!
 \file
-  This is bitset.h.  
+\brief Class definitions and function declarations for the BitSet class.
 */
 /*  
+  This is bitset.h.  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 
@@ -71,14 +73,16 @@ template<size_t n> class BitSetBase {
 };
 
   /*!
-  \brief  Intended as Base for empty BitSet's.  Fill in if necessary.
+  \brief  Intended as Base for an empty BitSet.  Fill in if necessary.
   */
 template<> class BitSetBase<0> {
 };
 
   /*!
-  \brief Base for non-empty BitSet's that fit in one word.  Should be the
-  only one instantiated on a 32-bit machine.
+  \brief Base for a non-empty BitSet that fits in one word.  
+
+  With RANK_MAX=16, this template should be the only one instantiated
+  on a 32-bit machine.
 
   The BitSet class BitSet<n>, for n between 1 and the machine word
   length (more precisely, the constant longBits), is a derived class
@@ -88,7 +92,7 @@ template<> class BitSetBase<1> {
 
  private:
   /*!
-  This is the word that holds the BitSet
+  \brief Word that holds the BitSet
   */
   unsigned long d_bits;
 
@@ -109,6 +113,9 @@ template<> class BitSetBase<1> {
 
   template<size_t m>
   /*!
+\brief Copies from another bitset size by truncating at the end of the
+  first word.
+
   For each BitSet size, to_ulong is the word holding the first
   longBits (machine word size) of the BitSet.  This copy constructor
   therefore truncates b at the end of its first word.
@@ -118,6 +125,9 @@ template<> class BitSetBase<1> {
 
 // assignment from other sizes
   /*!  
+\brief Assigns from another bitset size by truncating at the end of
+  the first word.
+
   For each BitSet size, to_ulong is the word holding the first
   longBits (machine word size) of the BitSet.  This assignment
   operator therefore truncates b at the end of its first word.
@@ -142,13 +152,13 @@ template<> class BitSetBase<1> {
     return d_bits < b.d_bits;
   }
   /*!
-  Returns the value of bit j in the BitSet.
+\brief Returns the value of bit j in the BitSet.
   */
   bool operator[] (size_t j) const {
     return d_bits & constants::bitMask[j];
   }
   /*!
-  Returns 1 if any bit of the BitSet is 1, and 0 otherwise.
+\brief  Returns 1 if any bit of the BitSet is 1, and 0 otherwise.
   */
   bool any() const {
     return d_bits; // automatic conversion to bool
@@ -159,15 +169,17 @@ template<> class BitSetBase<1> {
   }
 
   iterator begin() const;
+
   /*!
-  Returns 1 if the BitSet contains b (that is, if every set bit of b
-  is also set in BitSet), and 0 otherwise.
+\brief Tests whether this bitset contains b.
+
+  Returns 1 if every set bit of b is also set in BitSet), and 0 otherwise.
   */
   bool contains (const BitSetBase<1>& b) const {
     return not (b.d_bits & ~d_bits);
   }
   /*!
-  Returns the number of set bits in BitSet.
+\brief Number of set bits in BitSet.
   */
   size_t count() const {
     return bits::bitCount(d_bits);
@@ -187,8 +199,9 @@ template<> class BitSetBase<1> {
 
   size_t position(size_t j) const {
      /*!
-   Returns the number of set bits in position < j; if j is set, this
-   is the position of j in the set of set bits.
+\brief Number of set bits in position < j.
+
+If j is set, this is the position of j in the collection of set bits.
    */
     return bits::bitCount(d_bits & constants::lMask[j]);
   }
@@ -309,8 +322,9 @@ template<> class BitSetBase<1> {
 };
 
   /*!
-  This iterator runs through the _set_ bits in the container, i.e.,
-  same behaviour as BitMap::iterator.
+\brief Iterator through the _set_ bits in the container.
+
+This is the same behaviour as BitMap::iterator.
   */
 class BitSetBase<1>::iterator {
 
@@ -369,16 +383,16 @@ class BitSetBase<1>::iterator {
 };
 
   /*!
-  \brief Base for non-empty BitSet's that fit in two words but not one. 
+  \brief Base for a non-empty BitSet that fits in two words but not one. 
 
   The BitSet class BitSet<n>, for n between machine word length + 1
   and twice machine word length, is a derived class of BitSetBase<2>.
-  Should not be instantiated on a 32 bit machine (with RANK_MAX=16).
+  Should not be instantiated on a 32 bit machine with RANK_MAX=16.
   */
 template<> class BitSetBase<2> {
  private:
   /*!
-  This is the array of two words that holds the BitSet.
+\brief Array of two words that holds the BitSet.
   */
   unsigned long d_bits[2];
 
@@ -395,8 +409,10 @@ template<> class BitSetBase<2> {
 
 
   /*!
-  \brief Constructor added by DV to allow RANK_MAX equal to the
-  machine word size.
+  \brief Constructor initializing first word to b and second word to 0.
+
+  [added by DV to let the software compile with RANK_MAX equal to the
+  machine word size.]
  
   The class BitSet assumes that BitSetBase has a constructor with
   argument an unsigned long.  This is slightly sloppy coding, since
@@ -460,8 +476,9 @@ template<> class BitSetBase<2> {
   bool any() const {
     return d_bits[0] or d_bits[1]; // automatic conversion to bool
   }
+
   /*!
-  Code seems not to be written.
+  \brief Not yet implemented.
   */
   iterator begin() const;
 
@@ -491,11 +508,12 @@ template<> class BitSetBase<2> {
     return (!d_bits[0]) and (!d_bits[1]);
   }
 
-  size_t position(size_t j) const {
    /*!
-   Returns the number of set bits in position < j; if j is set, this
-   is the position of j in the set of set bits.
+\brief Number of set bits in position < j.
+
+If j is set, this is the position of j in the collection of set bits.
    */
+  size_t position(size_t j) const {
     if (j >> constants::baseShift) // two terms
       return bits::bitCount(d_bits[1] & 
 			    constants::lMask[j & constants::posBits])
@@ -660,8 +678,9 @@ template<> class BitSetBase<2> {
 };
 
   /*!
-  This iterator runs through the _set_ bits in the container, i.e.,
-  same behaviour as BitMap::iterator.
+\brief Iterator runs through the _set_ bits in the container.
+
+This is the same behaviour as BitMap::iterator.
   */
 class BitSetBase<2>::iterator {
  private:
@@ -744,9 +763,11 @@ template<size_t n> class BaseSize {
 
 // the actual BitSet class
 /*!
-  \brief Set of n bits.  Software envisions n between 0 and four times
+  \brief Set of n bits.  
+
+  The software formally allows for n between 0 and four times
   the machine word length; now up to two times the machine word length
-  is fully implemented.
+  is implemented.
   
   The BitSet class has essentially the functionality of the bitset class
   from the STL, but I have redone it because I needed some things that
@@ -763,7 +784,7 @@ template<size_t n> class BaseSize {
   BitSet<n> calls on BitSetBase<m>, where m is the smallest integer
   greater than or equal to n/longBits.  (The size m is computed from n
   by the function BaseSize::value.)  The class BitSetBase<m> is
-  actually implemented only for m=0, 1, 2.]
+  actually implemented only for m = 1, 2. DV]
 
   Just as for the implementation of bitset in the STL that I took as a model,
   the size is rounded of to multiples of the number of bits in an unsigned
@@ -815,7 +836,7 @@ template<size_t n> class BitSet
 
   ~BitSet() {}
   /*!
-  copy from other size BitSets is by truncation or extension by zero
+  Copy from other size BitSets is by truncation or extension by zero.
   */
   template<size_t m> 
     BitSet(const BitSet<m>& b)
@@ -823,7 +844,7 @@ template<size_t n> class BitSet
     truncate(n);
   }
   /*!
-  assignment from other size BitSets is by truncation or extension by zero
+  Assignment from other size BitSets is by truncation or extension by zero.
   */
   template<size_t m> 
     BitSet& operator= (const BitSet<m>& b) {
@@ -851,72 +872,79 @@ template<size_t n> class BitSet
   }
 
   /*!
-  Returns 1 if any bit of the BitSet is 1, and 0 otherwise.  (Tests
-    whether BitSet is empty.)
+\brief Tests whether BitSet is nonempty.
+
+Returns 1 if any bit of the BitSet is 1, and 0 otherwise.
   */ 
   bool any() const {
     return Base::any();
   }
 
   /*!
-  Returns 1 if any bit is 1 in both BitSet and b, and 0
-    otherwise. (Tests whether BitSet and b have non-empty
-    intersection.) 
+\brief Tests whether BitSet and b have non-empty intersection.
+
+Returns 1 if any bit is 1 in both BitSet and b, and 0 otherwise.
   */ 
   bool any(const BitSet& b) const {
     return Base::any(b);
   }
 
   /*!
-  Iterator pointing to the first set bit of BitSet.  (Seems not yet to
-  be implemented for BitSetBase<2>.)
+  Iterator pointing to the first set bit of BitSet.  
+
+Seems not yet to be implemented for BitSetBase<2>.
   */
   iterator begin() const {
     return Base::begin();
   }
 
   /*!
-  Tests whether BitSet contains b.
+\brief Tests whether BitSet contains b.
   */
   bool contains(const BitSet& b) const {
     return Base::contains(b);
   }
 
   /*!
-  Number of set bits in BitSet.  (Cardinality of the corresponding
-    set.)
+\brief Number of set bits in BitSet.  
+
+This is the cardinality of the corresponding set.
   */
   size_t count() const {
     return Base::count();
   }
 
   /*!
-  Returns the position of the first set bit in BitSet.  Returns the
-  capacity of the BitSet if there is no such bit.
+\brief Position of the first set bit in BitSet.  
+
+Returns the capacity of the BitSet if there is no such bit.
   */
   size_t firstBit() const {
     return Base::firstBit();
   }
 
   /*!  
-  Returns the position of the last set bit in BitSet.  Returns 0 if
-  there is no such bit.
+\brief position of the last set bit in BitSet.  
+
+Returns 0 if there is no such bit.
   */
   size_t lastBit() const {
     return Base::lastBit();
   }
 
   /*!
-  Returns 1 if no bit of BitSet is set, and 0 otherwise.  (Tests
-  whether the corresponding set is empty.)
+\brief Tests whether the corresponding set is empty.
+
+  Returns 1 if no bit of BitSet is set, and 0 otherwise.
   */
   bool none() const {
     return Base::none();
   }
 
    /*!
-   Returns the number of set bits in position < j; if j is set, this
-   is the position of j in the set of set bits.
+\brief Number of set bits in position < j.
+
+If j is set, this  is the position of j in the set of set bits.
    */
   size_t position(size_t j) const {
     return Base::position(j);
@@ -931,14 +959,14 @@ template<size_t n> class BitSet
   }
 
   /*!
-  Tests bit j of BitSet.
+\brief Tests bit j of BitSet.
   */
   bool test(size_t j) const {
     return Base::test(j);
   }
 
   /*!
-  The first wordlength bits of BitSet, interpreted as an unsigned
+\brief  The first wordlength bits of BitSet, interpreted as an unsigned
   long integer.
   */
   unsigned long to_ulong() const {
@@ -946,7 +974,7 @@ template<size_t n> class BitSet
   }
 
   /*!
-  The second wordlength bits of BitSet, interpreted as an unsigned
+\brief  The second wordlength bits of BitSet, interpreted as an unsigned
   long integer.
   */
   unsigned long to_ulong1() const {
@@ -1000,7 +1028,7 @@ template<size_t n> class BitSet
   }
 
   /*!
-  Applies the permutation a to the BitSet.
+\brief Applies the permutation a to the BitSet.
   */
   BitSet& permute(const setutils::Permutation& a) {
     Base::permute(a);
@@ -1008,7 +1036,7 @@ template<size_t n> class BitSet
   }
 
   /*!
-  Sets every bit of BitSet to zero.  (Empties the set.)
+\brief Sets every bit of BitSet to zero.  (Empties the set.)
   */
   BitSet& reset() {
     Base::reset(); 
@@ -1021,7 +1049,7 @@ template<size_t n> class BitSet
   }
 
   /*!
-  Sets the first n bits of BitSet to one.  (Fills the set.)
+\brief  Sets the first n bits of BitSet to one.  (Fills the set.)
   */
   BitSet& set() {
     Base::set();
@@ -1065,7 +1093,7 @@ template<size_t n> class BitSet
   }
 
   /*!
-  Sets all bits after m to zero.
+\brief Sets all bits after m to zero.
   */
   BitSet& truncate(size_t m) {
     Base::truncate(m);

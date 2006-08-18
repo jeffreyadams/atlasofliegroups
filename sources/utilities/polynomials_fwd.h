@@ -1,8 +1,10 @@
 /*!
 \file
-  This is polynomials_fwd.h
+\brief Forward class declarations for Polynomial and LaurentPolynomial.
 */
 /*
+  This is polynomials_fwd.h
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
 

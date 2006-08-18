@@ -108,16 +108,12 @@ void twoRho(LT::Weight&, const RootSet&, const RootDatum&);
 
 namespace rootdata {
   /*!
-  \brief Based root datum for a complex reductive group, with the
-  involution defining an inner class of real forms.
+  \brief Based root datum for a complex reductive group.
 
   What we call a root datum in this program is what is usually called
-  a based root datum, and we also include the involution which defines
-  the inner class of real forms (written in Cartan form, i.e. the
-  negative of the Galois involution).
+  a based root datum.
 
-  The root datum defines the complex reductive group entirely, and
-  (with the involution) specifies an inner class of real forms.
+  The root datum defines the complex reductive group entirely.
 
   The lattices in which the roots and coroots live are both Z^d_rank;
   lists of roots or coroots are lists of vectors of integers, of size
@@ -136,85 +132,88 @@ namespace rootdata {
 class RootDatum {
 
  private:
+ /*!
+\brief Names describing the  bits of the bitset d_status.  
 
-  /*!
-  BitSet recording in bit 0 whether the root datum is adjoint, and in
-  bit 1 whether the root datum is simply connected.  (The last enum
-  numFlags is there as a standard programming trick. Its value - in
-  this case 2 - is one-past-the-last meaningful bit, for use by
-  accessors.)
-
-  "Adjoint" here means that the center is connected.  "Simply
-  connected" means that the derived group is simply connected.  These
-  two properties are exchanged by passage to the Langlands dual group.
-  */
+The last enum numFlags is there as a standard programming trick. Its
+value - in this case 2 - is one-past-the-last meaningful bit, for
+use by accessors.
+*/
   enum StatusFlagNames { IsAdjoint, IsSimplyConnected, numFlags };
+
+
   typedef bitset::BitSet<numFlags> Status;
 
 /*!
-  rank of the group
+\brief  Rank of the root datum.
 */
   size_t d_rank;
 
 /*!
-  rank of the derived group   
+\brief Semisimple rank of the root datum.   
 */
   size_t d_semisimpleRank;   
 /*!
-  basis for orthogonal to derived group
+\brief  basis for orthogonal to roots.
 */
   LT::WeightList d_coradicalBasis;  
 /*!
-  basis for orthogonal to derived group in the dual group
+\brief Basis for orthogonal to coroots.
 */
   LT::WeightList d_radicalBasis; 
 /*!
-  full list of roots
+\brief Full list of roots.
 */
   LT::WeightList d_roots;           
 /*!
-  full list of coroots
+\brief Full list of coroots.
 */
   LT::WeightList d_coroots;         
 /*!
-  lists the negative of each root
+\brief Lists the negative of each root.
 */
   RootList d_minus;               
 /*!
-  indices of positive roots
+\brief Numbers of the positive roots.
 */
   RootList d_posRoots;    
 /*!
-  indices of simple roots
+\brief Numbers of the simple roots.
 */
   RootList d_simpleRoots;       
 /*!
-  simple weights
+\brief  Simple weights.
 */
   LT::RatWeightList d_weights;   
 /*!
-  simple coweights
+\brief Simple coweights.
 */
   LT::RatWeightList d_coweights;   
 /*!
-  records simple root permutations
+\brief Root permutations induced by simple reflections.
 */
   std::vector<setutils::Permutation> d_rootPermutation;                     
 /*!
-  for easy lookup of positivity
+\brief BitMap flagging positive roots.
 */
   RootSet d_isPositive;       
 /*!
-  for easy lookup of simplicity
+\brief BitMap flagging simple roots.
 */
   RootSet d_isSimple;         
 /*!
-  the sum of the positive roots
+\brief Sum of the positive roots.
 */
   LT::Weight d_twoRho;              
-/*
 
-*/
+  /*!
+\brief BitSet recording in bit 0 whether the root datum is adjoint, and in
+  bit 1 whether the root datum is simply connected.  
+
+  "Adjoint" here means that the center is connected.  "Simply
+  connected" means that the derived group is simply connected.  These
+  two properties are exchanged by passage to the dual root datum.
+  */
   Status d_status;
 
   void fillStatus();

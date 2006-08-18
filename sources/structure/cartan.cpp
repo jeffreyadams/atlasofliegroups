@@ -54,7 +54,6 @@
 
 #include "rootdata.h"
 #include "tags.h"
-
 /*****************************************************************************
 
   This module, together with the cartanclass one, contains code for dealing
@@ -96,7 +95,9 @@
 
 namespace atlas {
 
-namespace {
+  // changed from "unnamed" namespace 
+  namespace cartanclass{
+  namespace helper{
 
   using namespace cartan;
 
@@ -107,6 +108,11 @@ namespace {
   const size_t UndefMostSplit = ~0ul;
   const realform::RealForm UndefRealForm = ~0ul;
 
+      /*!  
+
+\brief Derived class of CartanClasses, to carry out the construction
+of CartanClasses.
+      */
   class Helper:public CartanClasses {
 
   private:
@@ -116,6 +122,21 @@ namespace {
     const weyl::WeylGroup* d_weylGroup;
     const weyl::WeylGroup d_dualWeylGroup;
 
+    /*!  
+    \brief List of twisted conjugacy classes of twisted
+    involutions, one for each non-fundamental Cartan.
+ 
+    The conjugacy classes can be very large, so this constructor can
+    be quite slow.  For a complex group, the twisted conjugacy class
+    of the identity has cardinality the order of the Weyl group; so
+    for complex An, this is n!.  But the twisted conjugacy class is
+    never computed for the fundamental Cartan, so this does not slow
+    the program for complex groups.  For the product of a complex
+    group and (say) SL(2,R), the full class is computed on the second
+    Cartan subgroup; so computing the Cartans for SL(2,R) x (complex
+    E7) takes several minutes (while the full Weyl group of E7,
+    consisting of 2903040 elements, is traversed).
+    */
     std::vector<weyl::WeylEltList> d_known;
 
   public:
@@ -196,7 +217,8 @@ namespace {
     void updateTwistedInvolutions(const weyl::WeylElt&);
 
   };
-}
+  }
+} 
 
 /*****************************************************************************
 
@@ -207,6 +229,8 @@ namespace {
 ******************************************************************************/
 
 namespace cartan {
+
+  using namespace atlas::cartanclass::helper;
 
 CartanClasses::CartanClasses(const rootdata::RootDatum& rd, 
 			     const latticetypes::LatticeMatrix& d,
@@ -440,7 +464,9 @@ void CartanClasses::extend(const weyl::WeylGroup& W,
 
 ******************************************************************************/
 
-namespace {
+// namespace {
+  namespace cartanclass {
+  namespace helper {
 
 Helper::Helper(const rootdata::RootDatum& rd, 
 	       const latticetypes::LatticeMatrix& d,
@@ -1086,6 +1112,8 @@ void Helper::updateTwistedInvolutions(const weyl::WeylElt& w)
 }
 
 }
+}
+
 
 /*****************************************************************************
 
@@ -1169,7 +1197,9 @@ unsigned long kgbSize(realform::RealForm rf, const CartanClasses& ccl)
 
 ******************************************************************************/
 
-namespace {
+// namespace {
+  namespace cartanclass {
+  namespace helper {
 
 bool checkDecomposition(const weyl::WeylWord& wi, 
 			const weyl::WeylWord& ww, 
@@ -1208,6 +1238,7 @@ bool checkDecomposition(const weyl::WeylWord& wi,
   return wtest == wi;
 }
 
-}
+  }
 
+  }
 }

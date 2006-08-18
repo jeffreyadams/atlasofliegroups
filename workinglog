@@ -317,7 +317,49 @@
 12-11-05: started the InvolutionSet stuff. It is going to be much nicer with
 	a helper class---need to introduce that.
 
-12-13-05: roughly speaking, InvlutionSet is finished. I still need to check
+12-13-05: roughly speaking, InvolutionSet is finished. I still need to check
 	if involutionNbr needs a revert in the weylword, and fix the twist
 	in dualWeyl which I think is not right. Also check that toDualWeyl
-	does the right thing when it matters (G2,F4)
+	does the right thing when it matters (G2,F4).
+
+8-18-06 [DV]: Worked with Fokko last five days on various memory
+	issues mostly appearing in very large jobs.  Tried to run
+	kllist for split C8 on a variety of machines; on all 32 bit
+	machines, got a variety of out-of-memory errors when top
+	reported that atlas had grown to....
+
+	 machine     largest y	   memory used
+	DV Mac	       253060		3.4G
+
+	hypatia		245000		2.9G          (MIT comp. server)
+
+	weierstrass	239495		2.55G	      (Lyon comp. server)     
+
+	Eventually concluded that the machines were running out of
+	32-bit pointer space (even if they had additional swap
+	available) and so this didn't count as a crash.
+
+	Finally ran C8 on (at least two) 64 bit machines: newton at
+	MIT and eole at Lyon.  The former ran out of memory at a size
+	of about 4G, near y=60K.  The latter grew to 8.3G at y=261525,
+	which is the end of the computation, and printed the answer,
+	then crashed while deallocating the memory from the
+	computation.
+	
+	Fokko fixed a few bugs related to 64 bit machines: mostly
+	use of undecorated 1 where an unsigned long was needed. On a
+	32 bit machine that works, but on a 64 bit machine undecorated
+	1 can be (must be?) a 32 bit integer.  In the end C8 runs fine
+	on eole (still growing to 8.3G: the size approximately doubles
+	because pointer sizes double).
+
+	Fokko has a memory allocation scheme in sources/memory, which
+	can replace std::set and std::vector and offers easier
+	debugging of memory allocation problems.  Those files are not
+	used in atlas 0.2.4.  When he put them into use (to build the
+	polynomials and sets of pointers used for KL computations) a
+	variety of obscure bugs appeared.  Most 32 bit Linux machines
+	crashed on kllist for split E7 after computing the block,
+	before computing any KL polynomials.  He finally found a
+	missing pointer initialization in pool.cpp. Now this seems to
+	work well/

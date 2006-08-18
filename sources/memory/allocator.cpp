@@ -30,7 +30,8 @@ namespace {
 
 namespace allocator {
 
-void reportAllocation(size_t n, size_t p, const typenumber::TypeData& td)
+  // void reportAllocation(size_t n, size_t p, const typenumber::TypeData& td)
+  void reportAllocation(size_t n, size_t a, size_t p)
 
 /*
   Synopsis: allocation report.
@@ -41,8 +42,10 @@ void reportAllocation(size_t n, size_t p, const typenumber::TypeData& td)
 {
   using namespace typestring;
 
-  memlog() << "allocating " << n*td.size() << " bytes from pool # " << p;
-  memlog() << " (" << n << " " << name(td.number()) << ")" << std::endl;
+  //  memlog() << "allocating " << n*td.size() << " bytes from pool # " << p;
+  memlog() << "allocating " << n << "*" << a << " = " << n*a
+           << " bytes from pool # " << p << std::endl;
+  //  memlog() << " (" << n << " " << name(td.number()) << ")" << std::endl;
 
   return;
 }
@@ -79,8 +82,8 @@ void reportCopyConstruction(size_t n, size_t i, const typenumber::TypeData& td)
   std::cerr << " (" << name(td.number()) << ")" << std::endl;
 }
 
-void reportDeallocation(size_t n, size_t p, const typenumber::TypeData& td)
-
+// void reportDeallocation(size_t n, size_t p, const typenumber::TypeData& td)
+void reportDeallocation(size_t n, size_t a, size_t p)
 /*
   Synopsis: deallocation report.
 
@@ -90,8 +93,12 @@ void reportDeallocation(size_t n, size_t p, const typenumber::TypeData& td)
 {
   using namespace typestring;
 
-  memlog() << "deallocating " << n*td.size() << " bytes from pool #" << p;
-  memlog() << " (" << n << " " << name(td.number()) << ")" << std::endl;
+  // memlog() << "deallocating " << n*td.size() << " bytes from pool #" << p;
+
+  memlog() << "deallocating " << n << "*" << a << " = " << n*a
+           << " bytes from pool #" << p <<  std::endl;
+
+  // memlog() << " (" << n << " " << name(td.number()) << ")" << std::endl;
 
   return;
 }

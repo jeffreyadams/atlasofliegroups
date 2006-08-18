@@ -69,15 +69,17 @@ class PreRootDatum{
 
  private:
   /*!
-  List of the simple roots as elements of Z^d_rank.
+  \brief List of the simple roots as elements of Z^d_rank, expressed in the
+  basis specified by the argument b of the constructor.
   */
   latticetypes::WeightList d_roots;
   /*!
-  List of the simple coroots as elements of Z^d_rank.
+  List of the simple coroots as elements of Z^d_rank, expressed in the
+  dual of the basis specified by the argument b of the constructor.
   */
   latticetypes::WeightList d_coroots;
   /*!
-  Rank of the root datum.
+  \brief  Rank of the root datum.
    */
   size_t d_rank;
 
@@ -97,21 +99,23 @@ class PreRootDatum{
   }
 
   /*!
-  Returns list of the simple coroots as elements of Z^d_rank.
+  \brief List of the simple coroots as elements of Z^d_rank, expressed
+  in the dual of the basis specified by argument b of the constructor.
   */
   const latticetypes::WeightList& coroots() const {
     return d_coroots;
   }
 
   /*!
-  Returns rank of the root datum.
+  \brief Rank of the root datum.
   */
   size_t rank() const {
     return d_rank;
   }
 
   /*!
-  Returns list of the simple roots as elements of Z^d_rank.
+\brief  List of the simple roots as elements of Z^d_rank,
+expressed in the basis specified by argument b of the constructor.
   */
   const latticetypes::WeightList& roots() const {
     return d_roots;

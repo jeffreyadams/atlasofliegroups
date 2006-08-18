@@ -1,3 +1,7 @@
+/*!
+\file
+\brief Implementation of the class InvolutionSet.
+*/
 /*
   This is involutions.cpp
   
@@ -19,14 +23,26 @@
 
 namespace atlas {
 
-namespace {
+  // namespace {
+  namespace involutions {
+  namespace helper {
 
   using namespace involutions;
 
+      /*!
+\brief Derived class of InvolutionSet, to carry out the construction
+of InvolutionSet.
+      */
   class Helper:public InvolutionSet {
 
   private:
 
+    /*!
+\brief Entry s is the inner representation in the dual
+  Weyl group of the generator with inner representation s.
+
+They both have the same outer representation.
+    */
     weyl::WeylInterface d_toDualWeyl;
 
   public:
@@ -46,7 +62,10 @@ namespace {
     void weylCorrelation(const complexredgp::ComplexReductiveGroup&);
  };
 
-}
+  }
+
+  }
+
 
 /*****************************************************************************
 
@@ -58,14 +77,16 @@ namespace {
 
 namespace involutions {
 
+  using namespace atlas::involutions::helper;
+
 InvolutionSet::InvolutionSet()
 
 {}
 
 InvolutionSet::InvolutionSet(complexredgp::ComplexReductiveGroup& G)
 
-/*
-  Synopsis: ctor.
+/*!
+\brief Constructor; computes the set of twisted involutions for G.
 
   NOTE: the set of involutions is actually constructed twice: once by
   fillCartan(), and then here. This is unfortunate, but negligible in the
@@ -97,8 +118,8 @@ void InvolutionSet::swap(InvolutionSet& other)
 size_t InvolutionSet::involutionNbr(const weyl::WeylElt& w, 
 				    const weyl::WeylGroup& W) const
 
-/*
-  Synopsis: returns the index of w in d_involution.
+/*!
+\brief Index of w in d_involution.
 
   Precondition: w is a twisted involution for W;
 
@@ -130,7 +151,9 @@ size_t InvolutionSet::involutionNbr(const weyl::WeylElt& w,
 
 ******************************************************************************/
 
-namespace {
+// namespace {
+  namespace involutions {
+  namespace helper {
 
 Helper::Helper(complexredgp::ComplexReductiveGroup& G)
 
@@ -151,8 +174,8 @@ Helper::Helper(complexredgp::ComplexReductiveGroup& G)
 
 void Helper::fill(const complexredgp::ComplexReductiveGroup& G)
 
-/*
-  Synopsis: fills the tables.
+/*!
+\brief Fills the tables.
 
   Precondition: size and rank have been set; W is the relevant Weyl group.
 
@@ -227,8 +250,8 @@ void Helper::fill(const complexredgp::ComplexReductiveGroup& G)
 
 void Helper::fillCartan(const complexredgp::ComplexReductiveGroup& G)
 
-/*
-  Synopsis: fills the cartan table.
+/*!
+\brief Fills the Cartan table.
 
   Precondition: the action and involution tables have been filled;
 
@@ -286,8 +309,8 @@ void Helper::fillCartan(const complexredgp::ComplexReductiveGroup& G)
 
 void Helper::fillDualInvolutions(const weyl::WeylGroup& W)
 
-/*
-  Synopsis: fills the dual involution table.
+/*!
+\brief Fills the dual involution table.
 
   Precondition: the action and involution tables have been filled; d_toDualWeyl
   is set;
@@ -313,8 +336,8 @@ void Helper::fillDualInvolutions(const weyl::WeylGroup& W)
 
 void Helper::weylCorrelation(const complexredgp::ComplexReductiveGroup& G)
 
-/*
-  Synopsis: fills in d_toDualWeyl.
+/*!
+\brief Fills in d_toDualWeyl.
 
   Explanation: d_toDualWeyl[s] is the inner representation in the dual
   Weyl group of the generator with inner representation s (they both
@@ -351,3 +374,8 @@ void Helper::weylCorrelation(const complexredgp::ComplexReductiveGroup& G)
 }
 
 }
+
+}
+
+
+

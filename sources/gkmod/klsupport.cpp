@@ -1,3 +1,17 @@
+/*!
+\file
+\brief Implementation for KLSupport.
+
+  This module provides support code for the Kazhdan-Lusztig computation,
+  mostly the management of the list of extremal pairs, and extremalization
+  of arbitrary subsets of the block.
+
+  After some hesitation, I think I _am_ going to assume that the block has
+  been sorted by length and root datum involution, and then by R-packet.
+  This does make the hard case in the recursion a lot simpler to handle:
+  "thickets" of representations are in fact R-packets, so they will be
+  consecutively numbered.
+*/
 /*
   This is klsupport.cpp
   
@@ -19,7 +33,7 @@
 
   After some hesitation, I think I _am_ going to assume that the block has
   been sorted by length and root datum involution, and then by R-packet.
-  This does make the hard case in the recurdion a lot simpler to handle:
+  This does make the hard case in the recursion a lot simpler to handle:
   "thickets" of representations are in fact R-packets, so they will be
   consecutively numbered.
 */
@@ -74,8 +88,20 @@ void KLSupport::swap(KLSupport& other)
 void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d) 
   const
 
+/*!
+  Brief: Flags in b those block elements which are extremal w.r.t. the
+  simple reflections flagged in d.  
+
+  Preconditions: the capacity of b is the size(); d contains d_rank valid
+  flags;
+
+  Explanation: an element z in the block is extremal w.r.t. d, if all the
+  descents in d are also descents for z. Since d_downset[s] flags the
+  elements for which s is a descent, this amounts to requesting that z
+  belong to the intersection of the downsets for the various descents in d.
+*/
 /*
-  Synopsis: extremalizes b w.r.t. the values in d.
+  Synopsis: extremalizes b w.r.t. the values in d.  
 
   Preconditions: the capacity of b is the size(); d contains d_rank valid
   flags;
@@ -96,6 +122,21 @@ void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
 
 void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d) 
   const
+
+
+/*!
+  \brief Flags in b those elements of the block which are primitive
+  w.r.t. the values in d.
+
+  Preconditions: the capacity of b is the size(); d contains d_rank valid
+  flags;
+
+  Explanation: an element z in the block is primitve w.r.t. d, if all the
+  descents in d are either descents, or imaginary type II ascents for z. Since 
+  d_primset[s] flags the elements for which s is a descent or imaginary type 
+  II, this amounts to requesting that z belong to the intersection of the 
+  primsets for the various descents in d.
+*/
 
 /*
   Synopsis: primitivizes b w.r.t. the values in d.
@@ -120,16 +161,17 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
 
 bool KLSupport::primitivize(size_t& x, const bitset::RankFlags& d) const
 
-/*
-  Synopsis: replaces x with a primitive element above it, and returns true,
-  or returns false, and x iz not changed.
+/*!
+  \brief Replaces x (the number of a block element) with a primitive
+  element above it, and returns true, or returns false, and x is not
+  changed.
 
-  Explanation: a primitive element for d is one for which all elements in
-  d are descents or type II imaginary. So if x is not primitive, it has
-  an ascent that is either complex, imaginary type I or real compact. In
-  the first two cases we replace x by the ascended element and continue;
-  in the last case, we return false (for k-l computations, this will indicate
-  a zero k-l polynomial.)
+  Explanation: a primitive element for d is one for which all elements
+  in d are descents or type II imaginary [?? DV 8/17/06]. So if x is
+  not primitive, it has an ascent that is either complex, imaginary
+  type I or real compact. In the first two cases we replace x by the
+  ascended element and continue; in the last case, we return false
+  (for k-l computations, this will indicate a zero k-l polynomial.)
 */
 
 {
@@ -198,7 +240,7 @@ void KLSupport::fillDownsets()
   "tau-invariant" of z in b. In other words, s is a complex descent, real
   noncompact (type I or type II), or imaginary compact. The primset bitset
   records the x'es for which s is either a descent, or an imaginary type II
-  ascent. The goodAscent bitsets hold the ascents tha are not imaginary type 
+  ascent. The goodAscent bitsets hold the ascents that are not imaginary type 
   II.
 
   Sets the DownsetsFilled bit in d_state if successful. Commit-or-rollback

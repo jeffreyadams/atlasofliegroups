@@ -50,7 +50,7 @@ namespace size {
 
   // predefined values for likely instances of RANK_MAX
   /*!
-  \brief Ordinal (position on the list of primes) of the
+  \brief Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 8.
   
   This is the fourth prime 7.
@@ -61,7 +61,7 @@ namespace size {
   };
 
   /*!
-  \brief Should be the ordinal (position on the list of primes) of the
+  \brief Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 16.
   
   This is the seventh prime 17 (appearing only in the Weyl group S_17
@@ -73,7 +73,7 @@ namespace size {
   };
 
   /*!
-  \brief Ordinal (position on the list of primes) of the
+  \brief Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 32.
   
   This is the eleventh prime 31.
@@ -85,7 +85,7 @@ namespace size {
   };
 
   /*!
-  \brief Ordinal (position on the list of primes) of the
+  \brief Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most 64.
   
   This is the eighteenth prime 61.
@@ -97,10 +97,10 @@ namespace size {
   };
 
   /*!
-  \brief Should be the ordinal (position on the list of primes) of the
+  \brief Position on the list of primes of the
   largest possible prime factor of a Weyl group of rank at most RANK_MAX.
 
-  With RANK_MAX=16, this should be 7 (for the seventh prime 17).
+  With RANK_MAX=16, this is 7 (for the seventh prime 17).
   */
 
   const size_t PRIMES_MAX = PrimesMax<constants::RANK_MAX>::value;

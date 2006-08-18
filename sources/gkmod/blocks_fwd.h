@@ -1,3 +1,8 @@
+/*!
+\file
+\brief Class declaration and type definitions for class Block.
+*/
+
 /*
   This is blocks_fwd.h
   

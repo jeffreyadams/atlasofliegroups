@@ -1,6 +1,7 @@
 /*!
 \file
   This is realform.h
+\brief Type definitions for the namespace realform.
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux

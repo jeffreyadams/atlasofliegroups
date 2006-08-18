@@ -1,6 +1,6 @@
 /*!
 \file
-  
+\brief Class declarations and type definitions for RootDatum.   
 */
 /*
   This is rootdata_fwd.h
@@ -23,10 +23,12 @@ namespace atlas {
 
 namespace rootdata {
 
-  /*!
+  /*!  
+\brief Integer representing the location of a root on the list
+maintained by a RootDatum.
+
   The roots in a root datum should almost always be referred to by
-  their numbers, which refer to their location on the RootDatum list
-  of roots.  This type represents such a number.
+  their numbers.
   */
   typedef unsigned long RootNbr;
 
@@ -34,18 +36,21 @@ namespace rootdata {
   class RootDatum;
 
   /*!
-  Type for a root: an element of the lattice Z^n.
+ \brief Type for a root, coroot, character, or cocharacter: an element
+ of the lattice Z^n. 
   */
   typedef latticetypes::LatticeElt Root;
 
   /*!
-  List of _numbers_ of roots, referring to the list of roots in
-  RootDatum.  This type should therefore have been called RootNbrList.
+\brief List of _numbers_ of roots, referring to the list of roots in
+  RootDatum.  
+
+According to Fokko, this type should therefore have been called RootNbrList.
   */
   typedef std::vector<RootNbr> RootList;
   typedef RootIterator<RootList::const_iterator> WRootIterator;
   /*!
-  Type for a bitmap representing a set of roots (such as the set of
+\brief BitMap representing a set of roots (such as the set of
   positive roots, or noncompact roots).
   */
   typedef bitmap::BitMap RootSet;

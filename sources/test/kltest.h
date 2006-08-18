@@ -1,3 +1,10 @@
+/*!
+\file
+\brief Declaration of the functions in namespace kltest.
+
+These functions are designed to test a mathematical assertion used in
+the implementation of the KL algorithm.
+*/
 /*
   This is kltest.h
   
