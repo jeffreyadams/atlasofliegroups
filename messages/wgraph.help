@@ -40,7 +40,8 @@ s_i(L_j) = -L_j.
 
 If i is not in the tau invariant, then
 
-s_i(L_j) = L_j + sum_{elements k, i in tau(k)} mL_k.
+s_i(L_j) = L_j + sum_{elements k, i in tau(k)} m_{kj} * L_k,
 
-That is, L_k appears in the sum here if i is in the tau-invariant of
+where m_{kj} denotes the multiplicity of the edge from k to j.
+That is, m*L_k appears in the sum here if i is in the tau-invariant of
 L_k, and the pair (j,m) appears in the list for row k.

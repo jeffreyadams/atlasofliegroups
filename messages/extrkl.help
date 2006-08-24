@@ -1,16 +1,33 @@
 
 ******** temporary **********************************************************
 
+[The name for this command arose from a notion of "extremal" which is
+no longer used in the software.  This command will be appropriately
+renamed in the future. DV 8/24/06]
+
 The "extrkl" command prints out the list of all the non-zero P_{\gamma,\nu}
-for all pairs (\gamma,\nu) in the block, where \gamma is "extremal" w.r.t.
-\nu. This means that no descent for \nu is an ascent for \gamma. This is
-a much shorter list than the one output by the "kllist" command. This list
-is going to be replaced by the list of "primitive" pairs, not to be defined
-here, that will be guaranteed to contain all the distinct k-l-v polynomials
-which occur (this is not the case for the current list.)
+for all pairs (\gamma,\nu) in the block, where \gamma is "primitive" w.r.t.
+\nu. This means that every descent for \nu is either a descent for
+\gamma or type II imaginary ascent for \gamma.  A consequence is that
+this list is guaranteed to contain all the distinct k-l-v polynomials
+which occur.
 
 For now, we use the numbering of the elements in the block to represent \gamma
 and \nu. To give more meaning to these numbers, use the "block" command, that
 will relate the various \nu to fundamental representations, say, in terms of
 Cayley transforms and cross-actions.
 
+The polynomials are listed by \gamma, and then for each \gamma by
+\nu.  The first line for \gamma = 246 (say) looks something like
+
+246:  28: q^2+1
+
+This means that P_{28,246} = q^2 + 1.  Each successive line for \gamma
+= 246 looks like
+
+      66: q^2+q+1
+
+This means that P_{66,246} = q^2 + q + 1.
+
+The last line of the file gives the total number of primitive pairs
+with non-zero polynomial.
