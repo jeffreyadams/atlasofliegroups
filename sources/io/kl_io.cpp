@@ -99,9 +99,8 @@ std::ostream& printAllKL(std::ostream& strm, kl::KLContext& klc)
 
 std::ostream& printExtremalKL(std::ostream& strm, const kl::KLContext& klc)
 
-/*
-  Synopsis: outputs the non-zero extremal kl polynomials from klc to strm.
-
+/*!
+  \brief Outputs the non-zero primitive kl polynomials from klc to strm.
 */
 
 {
@@ -111,21 +110,22 @@ std::ostream& printExtremalKL(std::ostream& strm, const kl::KLContext& klc)
   using namespace prettyprint;
 
   size_t count = 0;
-  size_t zeroCount = 0;
+  //  size_t zeroCount = 0;
 
   int width = digits(klc.size()-1,10ul);
   int tab = 2;
 
   for (size_t y = 0; y < klc.size(); ++y) {
+
     const ExtremalRow& e = klc.extremalRow(y);
     const KLRow& klr = klc.klRow(y);
     strm << std::setw(width) << y << ": ";
     bool first = true;
     for (size_t j  = 0; j < e.size(); ++j) {
-      if (klc.isZero(klr[j])) {
-	++zeroCount;
-	continue;
-      }
+    //  if (klc.isZero(klr[j])) {
+    //    ++zeroCount;
+    // 	continue;
+    //      }
       if (first) {
 	strm << std::setw(width) << e[j] << ": ";
 	first = false;
@@ -140,9 +140,9 @@ std::ostream& printExtremalKL(std::ostream& strm, const kl::KLContext& klc)
     strm << std::endl;
   }
 
-  strm << count + zeroCount << " extremal pairs" << std::endl;
-  strm << zeroCount << " zero polynomials; "
-       << count << " nonzero polynomials" << std::endl;
+  strm << count  << " primitive pairs with nonzero polynomial." << std::endl;
+   //  strm << zeroCount << " zero polynomials; "
+   //   << count << " nonzero polynomials" << std::endl;
 
   return strm;
 }

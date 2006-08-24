@@ -809,12 +809,13 @@ void corder_f()
 
 void extrkl_f()
 
-/*
-  Synopsis: prints out the list of all non-zero k-l polynomials for extremal 
+/*!
+  \brief Prints out the list of all non-zero k-l polynomials for primitive 
   pairs.
 
-  Explanation: x is extremal w.r.t. y, if any descent for y is also a descent
-  for x. Ths means that none of the easy recursion formulas applies to P_{x,y}.
+  Explanation: x is primitive w.r.t. y, if any descent for y is also a
+  descent for x, or a type II imaginary ascent. Ths means that none of
+  the easy recursion formulas applies to P_{x,y}.
 */
 
 {
@@ -866,7 +867,7 @@ void extrkl_f()
   klc.fill();
 
   OutputFile file;
-  file << "Non-zero Kazhdan-Lusztig-Vogan polynomials for extremal pairs:"
+  file << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
        << std::endl << std::endl;
   printExtremalKL(file,klc);
 
