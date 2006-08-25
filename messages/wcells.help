@@ -35,7 +35,8 @@ If i is not in the tau invariant, then
 
 s_i(L_j) = L_j + sum_{elements k, i in tau(k)} m_{kj} * L_k.
 
-That is, L_k appears in the sum here if i is in the tau-invariant of
+where m_{kj} denotes the multiplicity of the edge from k to j.
+That is, m*L_k appears in the sum here if i is in the tau-invariant of
 L_k, and the pair (j,m) appears in the list for row k.
 
 For example, here is the output of wcells for the simply connected
@@ -56,4 +57,4 @@ If we look at the Weyl group representation attached to cell #1, we
 find
 
 s_1(L_0) =  L_0 + L_1   s_2(L_0) = -L_0
-s_1(L_1) = -L_0         s_2(L_1) =  L_1 + L_0.
+s_1(L_1) = -L_1         s_2(L_1) =  L_1 + L_0.
