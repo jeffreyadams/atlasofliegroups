@@ -10,10 +10,10 @@
   the additional polynomials computed.
 
   The general scheme is fairly similar to the one in Coxeter: there is a
-  "KLSupport" structure, that holds the list of extremal pairs that makes it
+  "KLSupport" structure, that holds the list of primitive pairs that makes it
   possible to read the d_kl list, plus some additional lists that allow for
-  a fast extremalization algorithm, for instance; there are two main lists,
-  d_kl (filled in for all extremal pairs), and d_mu (filled in only for
+  a fast primitivization algorithm, for instance; there are two main lists,
+  d_kl (filled in for all primitive pairs), and d_mu (filled in only for
   non-zero mu coefficients.)
 */
 /*
@@ -42,6 +42,12 @@
 #include "kl_error.h"
 
 /*
+  [Fokko's original description, which referred to a slighly older
+  version of the computation. Fokko implemented the change from using
+  extremal pairs to the slightly large set of primitive pairs, but did
+  not change all of the code comments. I am trying to do that now. DV
+  8/26/06.]
+
   This module contains code for the computation of the Kazhdan-Lusztig
   polynomials for a given block of representations. We have taken the radical
   approach of not using the Bruhat ordering at all, just ordering by length
@@ -131,14 +137,14 @@ namespace atlas {
     using KLContext::klPol;
 
     const KLPol& klPol(size_t, size_t, KLRow::const_iterator,
-		       klsupport::ExtremalRow::const_iterator,
-		       klsupport::ExtremalRow::const_iterator) const;
+		       klsupport::PrimitiveRow::const_iterator,
+		       klsupport::PrimitiveRow::const_iterator) const;
 
     MuCoeff lengthOneMu(size_t, size_t) const;
 
-    void makeExtremalRow(klsupport::ExtremalRow&, size_t) const;
+    void makeExtremalRow(klsupport::PrimitiveRow&, size_t) const;
 
-    void makePrimitiveRow(klsupport::ExtremalRow&, size_t) const;
+    void makePrimitiveRow(klsupport::PrimitiveRow&, size_t) const;
 
     size_t orbit(size_t y) const {
       return d_support->block().x(y);
@@ -161,13 +167,13 @@ namespace atlas {
 
     void fillThickets(size_t);
 
-    void muCorrection(std::vector<KLPol>&, const klsupport::ExtremalRow&,
+    void muCorrection(std::vector<KLPol>&, const klsupport::PrimitiveRow&,
 		      size_t, size_t);
 
-    void recursionRow(std::vector<KLPol>&, const klsupport::ExtremalRow&,
+    void recursionRow(std::vector<KLPol>&, const klsupport::PrimitiveRow&,
 		      size_t, size_t);
 
-    void writeRow(const std::vector<KLPol>&, const klsupport::ExtremalRow&,
+    void writeRow(const std::vector<KLPol>&, const klsupport::PrimitiveRow&,
 		  size_t);
   };
 
@@ -180,14 +186,14 @@ namespace atlas {
 
   private:
 
-    typedef klsupport::ExtremalRow::iterator PI;
+    typedef klsupport::PrimitiveRow::iterator PI;
     typedef KLRow::iterator KLI;
 
     std::vector<size_t> d_vertices;
     std::vector<EdgeList> d_edges;
     std::vector<size_t> d_xlist;
-    std::vector<klsupport::ExtremalRow> d_extr;
-    std::vector<klsupport::ExtremalRow> d_prim;
+    std::vector<klsupport::PrimitiveRow> d_extr;
+    std::vector<klsupport::PrimitiveRow> d_prim;
     std::vector<KLRow> d_klr;
     std::vector<PI> d_firstPrim;
     std::vector<KLI> d_firstKL;
@@ -224,7 +230,7 @@ namespace atlas {
 			     d_prim[pos].end());
     }
 
-    const klsupport::ExtremalRow& primitiveRow(size_t j) const {
+    const klsupport::PrimitiveRow& primitiveRow(size_t j) const {
       return d_prim[j];
     }
 
@@ -344,12 +350,12 @@ KLContext::KLContext(klsupport::KLSupport& kls)
 KLContext::KLContext(const KLContext& other)
   :d_state(other.d_state),
    d_support(other.d_support),
-   d_extr(other.d_extr),
+   d_prim(other.d_prim),
    d_mu(other.d_mu),
    d_store(other.d_store)
 
-/*
-  Synopsis: copy constructor.
+/*!
+  \brief Copy constructor.
 
   The difficulty here is that copying the store invalidates all iterators
   into it! So they must all be reset. This will be improved in the future.
@@ -371,8 +377,8 @@ KLContext::KLContext(const KLContext& other)
 
 KLContext& KLContext::operator= (const KLContext& other)
 
-/*
-  Synopsis: assignment operator.
+/*!
+  \brief Assignment operator.
 
   Use copy constructor. This requires a check for self-assignment, or the
   source would be destroyed!
@@ -395,7 +401,7 @@ void KLContext::swap(KLContext& other)
 
   std::swap(d_support,other.d_support);
 
-  d_extr.swap(other.d_extr);
+  d_prim.swap(other.d_prim);
 
   d_kl.swap(other.d_kl);
   d_mu.swap(other.d_mu);
@@ -412,8 +418,8 @@ void KLContext::swap(KLContext& other)
 /******** manipulators *******************************************************/
 void KLContext::fill()
 
-/*
-  Synopsis: fills the kl- and mu-lists.
+/*!
+  \brief Fills the kl- and mu-lists.
 
   Explanation: this is the main function in this module; all the work is
   deferred to the Helper class.
@@ -443,32 +449,25 @@ void KLContext::fill()
 
 const KLPol& KLContext::klPol(size_t x, size_t y) const
 
-/*
-  Synopsis: returns the Kazhdan-Lusztig-Vogan polynomial P_{x,y}
+/*!
+  \brief Returns the Kazhdan-Lusztig-Vogan polynomial P_{x,y}
 
   Precondition: x and y are smaller than size();
 
-  Explanation: this is basically a lookup function, but it still has to
-  do some work. Basically, while x is not extremal w.r.t. y, it moves x up,
-  using the "easy" induction relations. At that point, we look x (or rather,
-  the finite set of extremal x'es that we have reduced to) up in the extremal 
-  list for y. Those that are not found have a zero polynomial. From the others,
-  we get the result.
-
-  NOTE: when the result is an actual sum, we add it to d_store, so that the
-  answer can still be given as a reference.
-
-  NOTE: this is a lazy recursive implementation. It could suffer from
-  efficiency problems, and has also the drawback of adding not only the
-  final result, but also a number of intermediate polynomials to the store.
+  Explanation: since d_store holds all polynomials for primitive
+  pairs (x,y), this is basically a lookup function. While x is not
+  primitive w.r.t. y, it moves x up, using the "easy" induction
+  relations. At that point, we look x up in the primitive list for
+  y. If it is found, we get a pointer to the result.  If it is not
+  found, the polynomial is zero. 
 */
 
 {
   using namespace klsupport;
 
-  typedef ExtremalRow::const_iterator EI;
+  typedef PrimitiveRow::const_iterator EI;
 
-  const ExtremalRow& pr = d_extr[y];
+  const PrimitiveRow& pr = d_prim[y];
   const KLRow& klr = d_kl[y];
 
   if (d_support->primitivize(x,descentSet(y))) {
@@ -487,8 +486,8 @@ const KLPol& KLContext::klPol(size_t x, size_t y) const
 
 MuCoeff KLContext::mu(size_t x, size_t y) const
 
-/*
-  Synopsis: returns mu(x,y).
+/*!
+  \brief Returns mu(x,y).
 
   Explanation: it is guaranteed that all the x'es such that mu(x,y) != 0
   occur in d_mu[y] (and in fact, that only those occur.) So it is a simple
@@ -528,8 +527,8 @@ Helper::Helper(const KLContext& kl)
 /******** accessors **********************************************************/
 MuCoeff Helper::ascentMu(size_t x, size_t y, size_t s) const
 
-/*
-  Synopsis: computes mu(x,y) in a good ascent situation.
+/*!
+  \brief Computes mu(x,y) in a good ascent situation.
 
   Preconditions: l(y) > 0; l(x) = l(y)-1; s is an ascent for x w.r.t. y;
 
@@ -573,8 +572,8 @@ MuCoeff Helper::ascentMu(size_t x, size_t y, size_t s) const
 
 size_t Helper::firstDirectRecursion(size_t y) const
 
-/*
-  Synopsis: returns the first descent generator that is not real type II
+/*!
+  \brief Returns the first descent generator that is not real type II
 
   Explanation: those are the ones that give a direct recursion formula for
   the k-l basis element.
@@ -596,8 +595,8 @@ size_t Helper::firstDirectRecursion(size_t y) const
 
 MuCoeff Helper::goodDescentMu(size_t x, size_t y, size_t s) const
 
-/*
-  Synopsis: gets mu(x,y) by a good descent recursion.
+/*!
+  \brief Gets mu(x,y) by a good descent recursion.
 
   Precondition: length(y) > 0; length(x) = length(y)-1; all previous
   mu-rows have been filled in; s is a good descent for y;
@@ -647,11 +646,11 @@ MuCoeff Helper::goodDescentMu(size_t x, size_t y, size_t s) const
 
 const KLPol& Helper::klPol(size_t x, size_t y, 
 			   KLRow::const_iterator klv,
-			   klsupport::ExtremalRow::const_iterator p_begin,
-			   klsupport::ExtremalRow::const_iterator p_end) const
+			   klsupport::PrimitiveRow::const_iterator p_begin,
+			   klsupport::PrimitiveRow::const_iterator p_end) const
 
-/*
-  Synopsis: returns the Kazhdan-Lusztig polynomial for x corresponding to
+/*!
+  \brief Returns the Kazhdan-Lusztig polynomial for x corresponding to
   the given row.
 
   Precondition: klv holds the tail of the set of primitive Kazhdan-Lusztig
@@ -680,8 +679,8 @@ const KLPol& Helper::klPol(size_t x, size_t y,
 
 MuCoeff Helper::lengthOneMu(size_t x, size_t y) const
 
-/*
-  Synopsis: computes mu(x,y) for l(y)-l(x) = 1.
+/*!
+  \brief Computes mu(x,y) for l(y)-l(x) = 1.
 
   Preconditions: l(y) > 0; l(x) = l(y)-1; the mu-rows for y of smaller
   lengths have already been filled in.
@@ -702,10 +701,10 @@ MuCoeff Helper::lengthOneMu(size_t x, size_t y) const
   return recursiveMu(x,y);
 }
 
-void Helper::makeExtremalRow(klsupport::ExtremalRow& e, size_t y) const
+void Helper::makeExtremalRow(klsupport::PrimitiveRow& e, size_t y) const
 
-/*
-  Synopsis: puts in e the list of all x primitve w.r.t. y.
+/*!
+  \brief Puts in e the list of all x extremal w.r.t. y.
 
   Explanation: this means that either x = y, or length(x) < length(y),
   and every descent for y is a descent for x.
@@ -728,10 +727,10 @@ void Helper::makeExtremalRow(klsupport::ExtremalRow& e, size_t y) const
   return;
 }
 
-void Helper::makePrimitiveRow(klsupport::ExtremalRow& e, size_t y) const
+void Helper::makePrimitiveRow(klsupport::PrimitiveRow& e, size_t y) const
 
-/*
-  Synopsis: puts in e the list of all x primitive w.r.t. y.
+/*!
+  \brief Puts in e the list of all x primitive w.r.t. y.
 
   Explanation: this means that either x = y, or length(x) < length(y),
   and every descent for y is either a descent, or an imaginary type II
@@ -757,8 +756,8 @@ void Helper::makePrimitiveRow(klsupport::ExtremalRow& e, size_t y) const
 
 MuCoeff Helper::recursiveMu(size_t x, size_t y) const
 
-/*
-  Synopsis: gets mu(x,y) by direct recursion.
+/*!
+  \brief Gets mu(x,y) by direct recursion.
 
   Precondition: length(y) > 0; length(x) = length(y)-1; all previous
   mu-rows have been filled in.
@@ -782,8 +781,8 @@ MuCoeff Helper::recursiveMu(size_t x, size_t y) const
 
 MuCoeff Helper::type2Mu(size_t x, size_t y) const
 
-/*
-  Synopsis: gets mu(x,y) by type II recursion.
+/*!
+  \brief Gets mu(x,y) by type II recursion.
 
   Precondition: length(y) > 0; length(x) = length(y)-1; all previous
   mu-rows have been filled in; x is extremal w.r.t. y, and all descents
@@ -858,8 +857,8 @@ MuCoeff Helper::type2Mu(size_t x, size_t y) const
 /******** manipulators *******************************************************/
 void Helper::completePacket(size_t y)
 
-/*
-  Synopsis: finishes the filling of the R-packet starting at y.
+/*!
+  \brief Finishes the filling of the R-packet starting at y.
 
   Precondition: all the rows in the packet capable of a direct recursion
   are filled; at least one row is of this form;
@@ -900,7 +899,7 @@ void Helper::completePacket(size_t y)
       if (i != empty.end()) { // found a new row
  	// fill row y2
 	std::vector<KLPol> klv;
-	ExtremalRow e;
+	PrimitiveRow e;
 	makeExtremalRow(e,y2);
 	recursionRow(klv,e,y2,s);
 	// klv[j] is P_{x,y2}+P_{x,y1}, for x = e[j]
@@ -931,8 +930,8 @@ void Helper::completePacket(size_t y)
 
 void Helper::directRecursion(size_t y, size_t s)
 
-/*
-  Synopsis: fills in the row for y using a direct recursion.
+/*!
+  \brief Fills in the row for y using a direct recursion.
 
   Precondition: s is either a complex, or a real type I descent generator for 
   y.
@@ -945,7 +944,7 @@ void Helper::directRecursion(size_t y, size_t s)
   using namespace klsupport;
 
   std::vector<KLPol> klv;
-  ExtremalRow e;
+  PrimitiveRow e;
 
   // put result of recursion formula in klv
   makeExtremalRow(e,y);
@@ -959,8 +958,8 @@ void Helper::directRecursion(size_t y, size_t s)
 
 void Helper::fill()
 
-/*
-  Synopsis: dispatches the work of filling the kl- and mu-lists.
+/*!
+  \brief Dispatches the work of filling the kl- and mu-lists.
 */
 
 {
@@ -968,7 +967,7 @@ void Helper::fill()
   d_support->fill();
 
   // resize the lists
-  d_extr.resize(d_support->size());
+  d_prim.resize(d_support->size());
   d_kl.resize(d_support->size());
   d_mu.resize(d_support->size());
 
@@ -978,7 +977,7 @@ void Helper::fill()
 
   // do the minimal length cases; they come first in the enumeration
   for (; y < d_kl.size() and length(y) == minLength; ++y) {
-    d_extr[y].push_back(y);
+    d_prim[y].push_back(y);
     // the k-l polynomial is 1
     d_kl[y].push_back(d_one);
     // there are no mu-coefficients
@@ -1006,8 +1005,8 @@ void Helper::fill()
 
 void Helper::fillKLRow(size_t y)
 
-/*
-  Synopsis: fills in the row for y in the kl-table.
+/*!
+  \brief Fills in the row for y in the kl-table.
 
   Precondition: all lower rows have been filled; y is of length > 0;
   R-packets are consecutively numbered;
@@ -1046,8 +1045,8 @@ void Helper::fillKLRow(size_t y)
 
 void Helper::fillMuRow(size_t y)
 
-/*
-  Synopsis: fills in the row for y in the mu-table.
+/*!
+  \brief Fills in the row for y in the mu-table.
 
   Precondition: the row for y in the kl-table has been filled; length(y) > 0;
 
@@ -1066,7 +1065,7 @@ void Helper::fillMuRow(size_t y)
 {
   using namespace klsupport;
 
-  const ExtremalRow& e = extremalRow(y);
+  const PrimitiveRow& e = primitiveRow(y);
 
   size_t ly = length(y);
 
@@ -1104,8 +1103,8 @@ void Helper::fillMuRow(size_t y)
 
 void Helper::fillThickets(size_t y)
 
-/*
-  Synopsis: finishes the filling of the R-packet starting at y.
+/*!
+  \brief Finishes the filling of the R-packet starting at y.
 
   Precondition: all the rows in the packet that are not part of a "thicket"
   have already been filled.
@@ -1153,10 +1152,10 @@ void Helper::fillThickets(size_t y)
 }
 
 void Helper::muCorrection(std::vector<KLPol>& klv, 
-			  const klsupport::ExtremalRow& e, size_t y, size_t s)
+			  const klsupport::PrimitiveRow& e, size_t y, size_t s)
 
-/*
-  Synopsis: subtracts from klv the correcting terms in the k-l recursion.
+/*!
+  \brief Subtracts from klv the correcting terms in the k-l recursion.
 
   Precondtion: klp contains the terms corresponding to c_s.c_y, for the x that
   are extremal w.r.t. y; the mu-table and kl-table has been filled in for 
@@ -1220,10 +1219,10 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 }
 
 void Helper::recursionRow(std::vector<KLPol>& klv, 
-			  const klsupport::ExtremalRow& e,size_t y, size_t s)
+			  const klsupport::PrimitiveRow& e,size_t y, size_t s)
 
-/*
-  Synopsis: puts in klv the right-hand side of the recursion formula for y
+/*!
+  \brief Puts in klv the right-hand side of the recursion formula for y
   corresponding to the descent s.
 
   Precondition: s is either a complex, or a real type I or type II descent 
@@ -1316,10 +1315,10 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
 }
 
 void Helper::writeRow(const std::vector<KLPol>& klv, 
-		      const klsupport::ExtremalRow& er, size_t y)
+		      const klsupport::PrimitiveRow& er, size_t y)
 
-/*
-  Synopsis: writes down row y in d_kl and d_extr.
+/*!
+  \brief Writes down row y in d_kl and d_prim.
 
   Precondition: klv contains the polynomials corresponding to the extremal
   values in the row; e contains the corresponding block elements.
@@ -1336,14 +1335,14 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
   using namespace blocks;
   using namespace klsupport;
 
-  ExtremalRow pr;
+  PrimitiveRow pr;
   makePrimitiveRow(pr,y);
   
   KLRow klr(pr.size());
-  ExtremalRow nzpr(pr.size());
+  PrimitiveRow nzpr(pr.size());
   KLRow::iterator new_pol = klr.end();
-  ExtremalRow::iterator new_extr = nzpr.end();
-  ExtremalRow::iterator nzpr_end = nzpr.end();
+  PrimitiveRow::iterator new_extr = nzpr.end();
+  PrimitiveRow::iterator nzpr_end = nzpr.end();
 
   // set stops in pr at extremal elements
   std::vector<size_t> stop(er.size()+1);
@@ -1386,7 +1385,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
 
   // commit
   copy(new_pol,klr.end(),back_inserter(d_kl[y]));
-  copy(new_extr,nzpr.end(),back_inserter(d_extr[y]));
+  copy(new_extr,nzpr.end(),back_inserter(d_prim[y]));
 
   return;
 }
@@ -1408,8 +1407,8 @@ namespace kl {
 Thicket::Thicket(Helper& h, size_t y)
   :d_helper(&h)
 
-/*
-  Synopsis: constructs a thicket from y.
+/*!
+  \brief Constructs a thicket from y.
 
   Explanation: the thicket of y is the connected component of y in the graph
   whose edges are the real type II cross-actions. It is therefore contained
@@ -1506,8 +1505,8 @@ Thicket::Thicket(Helper& h, size_t y)
 /******** accessors **********************************************************/
 size_t Thicket::nonExtremal(size_t x) const
 
-/*
-  Synopsis: returns the position in d_vertices of the first y that is not 
+/*!
+  \brief Returns the position in d_vertices of the first y that is not 
   extremal w.r.t. x, size() if there is no such y.
 */
 
@@ -1526,8 +1525,8 @@ size_t Thicket::nonExtremal(size_t x) const
 
 bool Thicket::ascentCompute(size_t x, size_t pos)
 
-/*
-  Synopsis: checks if x has an ascent in row pos, and computes the K-L pol in
+/*!
+  \brief Checks if x has an ascent in row pos, and computes the K-L pol in
   that case.
 
   Precondition: x is primitive in the row;
@@ -1564,8 +1563,8 @@ bool Thicket::ascentCompute(size_t x, size_t pos)
 
 void Thicket::edgeCompute(size_t x, size_t pos, const Edge& e)
 
-/*
-  Synopsis: computes the k-l polynomial for x in row pos, using the recurrence
+/*!
+  \brief Computes the k-l polynomial for x in row pos, using the recurrence
   relation from e.
 
   Precondition: x is extremal in the row; e points towards pos; the polynomial
@@ -1578,7 +1577,7 @@ void Thicket::edgeCompute(size_t x, size_t pos, const Edge& e)
 {
   using namespace klsupport;
 
-  const ExtremalRow& er = d_extr[pos];
+  const PrimitiveRow& er = d_extr[pos];
   size_t xpos = std::lower_bound(er.begin(),er.end(),x) - er.begin();
 
   KLPol pol = e.recursion[xpos];
@@ -1604,8 +1603,8 @@ void Thicket::edgeCompute(size_t x, size_t pos, const Edge& e)
 
 void Thicket::fill()
 
-/*
-  Synopsis: fills in the k-l polynomials for the elements of the thicket.
+/*!
+  \brief Fills in the k-l polynomials for the elements of the thicket.
 
   Algorithm: for each element of the thicket, we have the list of primitive
   elements pr[j], and a list of k-l polynomials klv[j]. We are going to fill 
@@ -1635,7 +1634,7 @@ void Thicket::fill()
 
   // initialize rows, fill in last element, initialize iterators
   for (size_t j = 0; j < size(); ++j) {
-    const ExtremalRow& pr = primitiveRow(j);
+    const PrimitiveRow& pr = primitiveRow(j);
     d_klr[j].resize(pr.size());
     d_klr[j].back() = d_helper->d_one;
     d_firstPrim[j] = d_prim[j].end()-1;
@@ -1652,7 +1651,7 @@ void Thicket::fill()
       continue;
     for (ThicketIterator i(*this,iy); i(); ++i) {
       size_t pos = *i;
-      const ExtremalRow& pr = primitiveRow(pos);
+      const PrimitiveRow& pr = primitiveRow(pos);
       if (not std::binary_search(pr.begin(),pr.end(),x)) 
 	// x is not primitive
 	continue;
@@ -1667,7 +1666,7 @@ void Thicket::fill()
 
   for (size_t j = 0; j < size(); ++j) {
     size_t y = d_vertices[j];
-    copy(d_firstPrim[j],d_prim[j].end(),back_inserter(d_helper->d_extr[y]));
+    copy(d_firstPrim[j],d_prim[j].end(),back_inserter(d_helper->d_prim[y]));
     copy(d_firstKL[j],d_klr[j].end(),back_inserter(d_helper->d_kl[y]));
   }
 
@@ -1676,8 +1675,8 @@ void Thicket::fill()
 
 void Thicket::fillXList()
 
-/*
-  Synopsis: puts in d_xlist the union of the extremal lists for the elements
+/*!
+  \brief Puts in d_xlist the union of the extremal lists for the elements
   of the thicket, top element excluded.
 */
 
@@ -1687,7 +1686,7 @@ void Thicket::fillXList()
   std::set<size_t> xs;
 
   for (size_t j = 0; j < size(); ++j) {
-    const ExtremalRow& p = primitiveRow(j);
+    const PrimitiveRow& p = primitiveRow(j);
     for (size_t i = 0; i < p.size()-1; ++i)
       xs.insert(p[i]);
   }
@@ -1725,8 +1724,8 @@ ThicketIterator::ThicketIterator(const Thicket& th, size_t j)
 /******** manipulators *******************************************************/
 ThicketIterator& ThicketIterator::operator++ ()
 
-/*
-  Synopsis: pre-increment operator.
+/*!
+  \brief Pre-increment operator.
 
   Incrementing the iterator means going to the next new element in the
   current edgelist; if there is no such, popping the stack and finding new
@@ -1783,8 +1782,8 @@ namespace kl {
 
 void wGraph(wgraph::WGraph& wg, const KLContext& klc)
 
-/*
-  Synopsis: puts in wg the W-graph for this block.
+/*!
+  \brief Puts in wg the W-graph for this block.
 
   Explanation: the W-graph is a graph with one vertex for each element of the
   block; the corresponding descent set is the tau-invariant, i.e. the set of
@@ -1864,8 +1863,8 @@ namespace kl {
 size_t firstAscent(const descents::DescentStatus& d1,
 		   const descents::DescentStatus& d2, size_t rank)
 
-/*
-  Synopsis: returns the first s that is an ascent for d1, and a descent for d2;
+/*!
+  \brief Returns the first s that is an ascent for d1, and a descent for d2;
   rank if there is none such.
 
   Precondition: rank is the number of valid fields in d1 and d2.
@@ -1887,8 +1886,8 @@ size_t firstAscent(const descents::DescentStatus& d1,
 size_t goodAscent(const descents::DescentStatus& d1,
 		  const descents::DescentStatus& d2, size_t rank)
 
-/*
-  Synopsis: returns the first s that is a non-ImaginaryTypeII ascent for
+/*!
+  \brief Returns the first s that is a non-ImaginaryTypeII ascent for
   d1, and a descent for d2; rank if there is none such.
 
   Precondition: rank is the number of valid fields in d1 and d2.

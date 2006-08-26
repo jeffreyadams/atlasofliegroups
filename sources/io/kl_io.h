@@ -22,7 +22,7 @@ namespace kl_io {
 
   std::ostream& printAllKL(std::ostream&, kl::KLContext&);
 
-  std::ostream& printExtremalKL(std::ostream&, const kl::KLContext&);
+  std::ostream& printPrimitiveKL(std::ostream&, const kl::KLContext&);
 
   std::ostream& printKLList(std::ostream&, kl::KLContext&);
 

@@ -1,3 +1,13 @@
+/*!
+\file
+\brief Implementation for the classes SimplePool and Pool, which
+manage memory allocation for the templates stlset::Set and
+stlvector::Vector.
+
+The idea is that these substitutes for the standard library templates
+std::set and std::vector offer easier access for debugging
+memory problems.
+*/
 /*
   This is pool.cpp
   
@@ -34,7 +44,9 @@ namespace pool {
 
 /******** local definitions *************************************************/
 
-namespace {
+namespace pool {
+
+  namespace helper {
 
   using namespace pool;
 
@@ -45,32 +57,62 @@ namespace {
     MemBlock* d_next;
   };
 
+  /*!
+    \brief Record of destruction of one Pool.
+    
+    Gives the instance number, the array d_allocated (whose mth entry
+    is the number of blocks of 2^m units allocated), and
+    d_systemAllocs (the size of the vector of pointers d_systemAllocs
+    in SimplePool).
+  */
   struct PoolDestruct {
     size_t d_instance;
     size_t d_allocated[constants::sizeBits];
     size_t d_systemAllocs;
   };
 
+  /*!
+    \brief Sorts PoolDestruct's by the instance number of the Pool.
+  */
   inline bool operator< (const PoolDestruct& lhs, const PoolDestruct& rhs) {
     return lhs.d_instance < rhs.d_instance;
   }
 
+    /*!
+      \brief Entry \#j is the record of destruction of the jth
+      instance of Pool.
+    */
   std::vector<PoolDestruct> poolDestructions;
 
+  /*!
+    \brief Record of destruction of one SimplePool.
+    
+    Gives the instance number, the number d_allocated (the number of
+    units allocated), and d_systemAllocs (the size of the vector of
+    pointers d_systemAllocs in SimplePool).
+  */ 
   struct SimplePoolDestruct {
     size_t d_instance;
     size_t d_allocated;
     size_t d_systemAllocs;
   };
 
+  /*!
+    \brief Sorts SimplePoolDestruct's by the instance number of the SimplePool.
+  */
   inline bool operator< (const SimplePoolDestruct& lhs, 
 			 const SimplePoolDestruct& rhs) {
     return lhs.d_instance < rhs.d_instance;
   }
 
+    /*!
+      \brief Entry \#j is the record of destruction of the jth
+      instance of SimplePool.
+    */
   std::vector<SimplePoolDestruct> simplePoolDestructions;
 }
 
+}
 /*****************************************************************************
 
         Chapter I -- the Pool class
@@ -81,6 +123,8 @@ namespace {
 
 namespace pool {
 
+  using namespace atlas::pool::helper;
+
 Pool::Pool(size_t a, size_t d)
   :d_atomSize(a), 
    d_defaultRequest(d),
@@ -88,8 +132,9 @@ Pool::Pool(size_t a, size_t d)
    d_alignSize(a > sizeof(MemBlock*) ? a : sizeof(MemBlock*)),
    d_instance(constructions++)
 
-/*
-  Synopsis : returns multiples of r bytes.
+/*!
+  \brief Creates a Pool for units of d_alignSize = max(a,
+  machine word size) bytes.
 */
 
 {
@@ -97,19 +142,23 @@ Pool::Pool(size_t a, size_t d)
 
   ++instances;
 
-  memset(d_free,0,sizeBits*sizeof(void*));
+  memset(d_free,0,sizeBits*sizeof(void*)); 
   memset(d_used,0,sizeBits*sizeof(size_t));
   memset(d_allocated,0,sizeBits*sizeof(size_t));
 }
 
 Pool::~Pool()
 
-/*
-  Synopsis: return the memory to the system.
+/*!
+  \brief Return the memory to the system.
 */
 
 {
-  reportDestruction();
+  // The call to reportDestruction causes a crash on exit from the
+  // program if stlvector is used.  Can't figure out why.  [DV
+  // 8/23/06]. 
+
+  // reportDestruction();
 
   for (size_t j = 0; j < d_systemAllocs.size(); ++j)
     free(d_systemAllocs[j]);
@@ -149,7 +198,7 @@ void* Pool::allocate(size_t n)
 void Pool::deallocate(void* ptr, size_t n)
 
 /*
-  Synopsis: frees the memory pointed by ptr.
+  \brief Frees the memory pointed by ptr.
 
   It is assumed that n is the number of atoms to which ptr is pointing.
 */
@@ -177,8 +226,8 @@ void Pool::deallocate(void* ptr, size_t n)
 
 void Pool::memoryReport()
 
-/*
-  Synopsis: writes a report on the various pool constructions and destructions
+/*!
+  \brief Writes a report on the various pool constructions and destructions
   in the memory log file.
 */
 
@@ -213,11 +262,10 @@ void Pool::memoryReport()
 
 void* Pool::newBlock(size_t m)
 
-/*
-  Synopsis: allocates a new block for a memory request of 2^m units of size
+/*!
+  \brief Allocates a new block for a memory request of 2^m units of size
   max(d_atomSize,sizeof(MemBlock*))
 */
-
 {
   for (size_t j = m+1; j <= d_defaultRequest; ++j) {
     if (d_free[j]) /* split this block up */
@@ -259,7 +307,8 @@ void* Pool::newBlock(size_t m)
     return d_free[m];
   }
 
-  /* if we get here, we allocate and split up a block of size 2^d */
+  /* if we get here, we allocate and split up a block of size
+     (2^d)(d_alignSize) bytes */
 
   void* vptr = malloc(d_alignSize << d_defaultRequest);
 
@@ -289,8 +338,8 @@ void* Pool::newBlock(size_t m)
 
 void Pool::reportDestruction()
 
-/*
-  Synopsis: writes down data about the memory usage of the pool.
+/*!
+  \brief Writes down data about the memory usage of the pool.
 */
 
 {
@@ -319,6 +368,8 @@ void Pool::reportDestruction()
 
 namespace pool {
 
+  using namespace atlas::pool::helper;
+
 SimplePool::SimplePool(size_t a, size_t d)
   :d_systemRequest(d),
    d_atomSize(a),
@@ -334,8 +385,8 @@ SimplePool::SimplePool(size_t a, size_t d)
 
 SimplePool::~SimplePool()
 
-/*
-  Synopsis: return the memory to the system.
+/*!
+  \brief Return the memory to the system.
 */
 
 {
@@ -367,8 +418,8 @@ void* SimplePool::allocate(size_t n)
 
 void SimplePool::deallocate(void* ptr, size_t n)
 
-/*
-  Synopsis: does nothing!
+/*!
+  \brief Does nothing!
 
   In a SimplePool, memory is never deallocated. It is returned to the system
   on destruction.
@@ -378,8 +429,8 @@ void SimplePool::deallocate(void* ptr, size_t n)
 
 void SimplePool::memoryReport()
 
-/*
-  Synopsis: writes a report on the various pool constructions and destructions
+/*!
+  \brief Writes a report on the various pool constructions and destructions
   in the memory log file.
 */
 
@@ -398,7 +449,9 @@ void SimplePool::memoryReport()
     log << std::endl;
     size_t a = spd.d_systemAllocs;
     log << "pool #" << spd.d_instance << ": "
-	<< a << " system allocation" << (a == 1ul ? "" : "s") 
+      	<< a << " system allocation" << (a == 1ul ? "" : "s") //add
+							      //"s" if
+							      //a=1 
 	<< std::endl;
     log << "used: " << spd.d_allocated << std::endl;
   }
@@ -409,11 +462,18 @@ void SimplePool::memoryReport()
 void* SimplePool::newBlock()
 
 /*
-  Synopsis: allocates a new block 
+  \brief Allocates a new block of size (d_atomSize)(2^d_systemRequest)
+  from the system. 
 */
-
 {
-  void* vptr = malloc(d_atomSize << d_systemRequest);
+  void* vptr = malloc(d_atomSize << d_systemRequest);  // requests
+						       // d_atomSize
+						       // times
+						       // 2^d_systemRequest
+						       // bytes of
+						       // memory from
+						       // the system
+
   d_systemAllocs.push_back(vptr);
 
   if (vptr == 0) // failure in memory allocation
@@ -428,8 +488,8 @@ void* SimplePool::newBlock()
 
 void SimplePool::reportDestruction()
 
-/*
-  Synopsis: writes down data about the memory usage of the pool.
+/*!
+  \brief Writes down data about the memory usage of the pool.
 */
 
 {
@@ -460,8 +520,8 @@ namespace pool {
 
 void memoryReport() 
 
-/*
-  Synopsis: prints out a report on the memory usage.
+  /*!
+  \brief Prints out a report on the memory usage.
 
   More precisely, it prints it out now if all pools have already been
   destroyed; it allows the printing after the destruction of the last
@@ -471,12 +531,12 @@ void memoryReport()
 */
 
 {
-  if (Pool::numInstances() == 0) // all pools hace been destroyed
+  if (Pool::numInstances() == 0) // all pools have been destroyed
     Pool::memoryReport();
   else // it will be written when the last instance goes away
     Pool::allowReport();
 
-  if (SimplePool::numInstances() == 0) // all pools hace been destroyed
+  if (SimplePool::numInstances() == 0) // all pools have been destroyed
     SimplePool::memoryReport();
   else // it will be written when the last instance goes away
     SimplePool::allowReport();
@@ -511,12 +571,14 @@ void reportDestruction(const char* adj, size_t n)
 
 ******************************************************************************/
 
-namespace {
+namespace pool {
+
+  namespace helper {
 
 size_t lastBit (size_t d_n)
 
-/*
-  Synopsis: straightforward implementation to get the last set bit in n.
+/*!
+  \brief Straightforward implementation to get the last set bit in d_n.
 */
 
 {
@@ -533,13 +595,15 @@ size_t lastBit (size_t d_n)
 
 size_t reducedSize(size_t n, size_t a)
 
-/*
-  Synopsis: given a < sizeof(MemBlock*), tells how many units of MemBlock*
+/*!
+  \brief Given a < sizeof(MemBlock*), tells how many units of MemBlock*
   have to be allocated to cover n units of a.
 */
 
 {
   return (n*a)/sizeof(MemBlock*) + ((n*a) % sizeof(MemBlock*) ? 1 : 0);
+}
+
 }
 
 }

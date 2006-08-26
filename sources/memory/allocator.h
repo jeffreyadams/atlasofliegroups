@@ -1,3 +1,9 @@
+/*!
+\file
+\brief Function declarations and type definition for Allocator<T,P>,
+which allocates memory for objects of type T in pools of type P.
+*/
+
 /*
   This is allocator.h
   

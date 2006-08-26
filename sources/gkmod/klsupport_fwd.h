@@ -27,7 +27,7 @@ namespace klsupport {
 class KLSupport;
 class KLSupport_new;
 
-typedef std::vector<size_t> ExtremalRow;
+typedef std::vector<size_t> PrimitiveRow;
 
 }
 

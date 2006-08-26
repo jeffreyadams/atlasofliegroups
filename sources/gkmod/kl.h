@@ -84,7 +84,7 @@ all been computed.
 
   klsupport::KLSupport* d_support;   // non-owned pointer
 
-  std::vector<klsupport::ExtremalRow> d_extr;
+  std::vector<klsupport::PrimitiveRow> d_prim;
 
   /*!
 \brief Entry d_kl[y] is a list of pointers to the polynomials P_{y,x}.
@@ -130,8 +130,8 @@ degree coefficient of P_{y,x})
     return d_support->block();
   }
 
-  const klsupport::ExtremalRow& extremalRow(size_t y) const {
-    return d_extr[y];
+  const klsupport::PrimitiveRow& primitiveRow(size_t y) const {
+    return d_prim[y];
   }
 
   const bitset::RankFlags& descentSet(size_t y) const {

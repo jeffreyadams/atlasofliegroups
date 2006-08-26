@@ -1,5 +1,10 @@
+/*!
+\file
+\brief Implementation for the template class Allocator<T,P>, which
+  allocates memory for objects of type T in pools of type P.
+*/
 /*
-  This is allocator_def.h
+  This is allocator.cpp
   
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups version 0.2.4 
@@ -33,10 +38,12 @@ namespace allocator {
   // void reportAllocation(size_t n, size_t p, const typenumber::TypeData& td)
   void reportAllocation(size_t n, size_t a, size_t p)
 
-/*
-  Synopsis: allocation report.
+/*!
+  \brief Allocation report.
 
-  Preconditions: n is the number of objects being allocated;
+  Preconditions: n is the number of objects being allocated; p is the
+  instance number of the pool for objects of this type; and a is the
+  size of each object.
 */
 
 {
@@ -52,8 +59,8 @@ namespace allocator {
 
 void reportConstruction(size_t n, size_t i, const typenumber::TypeData& td)
 
-/*
-  Synopsis: construction report.
+/*!
+  \brief Construction report.
 
   Also makes a convenient breakpoint for debugging.
 */
@@ -68,8 +75,8 @@ void reportConstruction(size_t n, size_t i, const typenumber::TypeData& td)
 
 void reportCopyConstruction(size_t n, size_t i, const typenumber::TypeData& td)
 
-/*
-  Synopsis: copy construction report.
+/*!
+  \brief Copy construction report.
 
   Also makes a convenient breakpoint for debugging.
 */
@@ -84,10 +91,12 @@ void reportCopyConstruction(size_t n, size_t i, const typenumber::TypeData& td)
 
 // void reportDeallocation(size_t n, size_t p, const typenumber::TypeData& td)
 void reportDeallocation(size_t n, size_t a, size_t p)
-/*
-  Synopsis: deallocation report.
+/*!
+  \brief Deallocation report.
 
-  Preconditions: n is the number of objects being deallocated;
+  Preconditions: n is the number of objects being deallocated; p is
+  the instance number of the pool for objects of this type; and a is
+  the size of each object.
 */
 
 {
@@ -124,8 +133,8 @@ void reportDestructionError(size_t n, size_t p)
 
 void reportHeterogeneousCopyConstruction(size_t n)
 
-/*
-  Synopsis: hetrogeneous copy construction report.
+/*!
+  \brief Heterogeneous copy construction report.
 
   Also makes a convenient breakpoint for debugging.
 */
@@ -147,8 +156,8 @@ namespace {
 
 std::ostream& memlog()
 
-/*
-  Synopsis: returns the stream on which to output memory management messages.
+/*!
+  \brief Returns the stream on which to output memory management messages.
 */
 
 {

@@ -3,7 +3,7 @@
 \brief Implementation for KLSupport.
 
   This module provides support code for the Kazhdan-Lusztig computation,
-  mostly the management of the list of extremal pairs, and extremalization
+  mostly the management of the list of primitive pairs, and primitivization
   of arbitrary subsets of the block.
 
   After some hesitation, I think I _am_ going to assume that the block has

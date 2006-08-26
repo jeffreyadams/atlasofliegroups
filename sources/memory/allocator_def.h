@@ -1,3 +1,8 @@
+/*!
+  \file
+  \brief Class definition for Allocator<T,P>, which allocates memory
+  for objects of type T in pools of type P.
+*/
 /*
   This is allocator_def.h
   
@@ -19,8 +24,8 @@ template<typename T, typename P>
 typename Allocator<T,P>::pointer 
   Allocator<T,P>::allocate(typename Allocator<T,P>::size_type n, const void*)
 
-/*
-  Synopsis: allocates raw memory for count instances of T.
+/*!
+  \brief Allocates raw memory for n instances of T.
 
   NOTE: very preliminary.
 */

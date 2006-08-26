@@ -97,7 +97,7 @@ std::ostream& printAllKL(std::ostream& strm, kl::KLContext& klc)
   return strm;
 }
 
-std::ostream& printExtremalKL(std::ostream& strm, const kl::KLContext& klc)
+std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
 
 /*!
   \brief Outputs the non-zero primitive kl polynomials from klc to strm.
@@ -117,7 +117,7 @@ std::ostream& printExtremalKL(std::ostream& strm, const kl::KLContext& klc)
 
   for (size_t y = 0; y < klc.size(); ++y) {
 
-    const ExtremalRow& e = klc.extremalRow(y);
+    const PrimitiveRow& e = klc.primitiveRow(y);
     const KLRow& klr = klc.klRow(y);
     strm << std::setw(width) << y << ": ";
     bool first = true;

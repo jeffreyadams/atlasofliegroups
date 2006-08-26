@@ -84,7 +84,7 @@ namespace {
   void corder_f();
   void components_f();
   void coroots_rootbasis_f();
-  void extrkl_f();
+  void primkl_f();
   void kgb_f();
   void klbasis_f();
   void kllist_f();
@@ -101,7 +101,7 @@ namespace {
   void block_h();
   void blocku_h();
   void cmatrix_h();
-  void extrkl_h();
+  void primkl_h();
   void kgb_h();
   void klbasis_h();
   void kllist_h();
@@ -221,7 +221,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("checkbasept",checkbasept_f);
   mode.add("components",components_f);
   mode.add("corder",corder_f);
-  mode.add("extrkl",extrkl_f);
+  mode.add("primkl",primkl_f);
   mode.add("kgb",kgb_f);
   mode.add("klbasis",klbasis_f);
   mode.add("kllist",kllist_f);
@@ -350,7 +350,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("checkbasept",nohelp_h);
   mode.add("components",nohelp_h);
   mode.add("corder",nohelp_h);
-  mode.add("extrkl",extrkl_h);
+  mode.add("primkl",primkl_h);
   mode.add("involution",nohelp_h);
   mode.add("kgb",kgb_h);
   mode.add("klbasis",klbasis_h);
@@ -368,7 +368,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"checkbasept",test_tag);
   insertTag(t,"components",test_tag);
   insertTag(t,"corder",test_tag);
-  insertTag(t,"extrkl",test_tag);
+  insertTag(t,"primkl",test_tag);
   insertTag(t,"involution",test_tag);
   insertTag(t,"kgb",kgb_tag);
   insertTag(t,"klbasis",klbasis_tag);
@@ -404,10 +404,10 @@ void cmatrix_h()
   return;
 }
 
-void extrkl_h()
+void primkl_h()
 
 {
-  io::printFile(std::cerr,"extrkl.help",io::MESSAGE_DIR);
+  io::printFile(std::cerr,"primkl.help",io::MESSAGE_DIR);
   return;
 }
 
@@ -807,7 +807,7 @@ void corder_f()
   return;
 }
 
-void extrkl_f()
+void primkl_f()
 
 /*!
   \brief Prints out the list of all non-zero k-l polynomials for primitive 
@@ -869,7 +869,7 @@ void extrkl_f()
   OutputFile file;
   file << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
        << std::endl << std::endl;
-  printExtremalKL(file,klc);
+  printPrimitiveKL(file,klc);
 
   return;
 }

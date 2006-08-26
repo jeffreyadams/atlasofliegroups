@@ -29,9 +29,9 @@ ifeq ($(readline),false)
 	cflags := $(cflags) -DNREADLINE
 else
 
-	rlincludes := -lreadline -lcurses
+#	rlincludes := -lreadline -lcurses
 #use this for readline on the Mac. 
-#       rlincludes := -lreadline.5.1 -lcurses
+        rlincludes := -lreadline.5.1 -lcurses
 
 endif
 
