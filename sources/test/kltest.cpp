@@ -199,7 +199,9 @@ std::ostream& printBasePts(std::ostream& strm, const weyl::WeylEltList& wl,
   for (size_t j = 0; j < wl.size(); ++j) {
     strm << "(";
     printWeylElt(strm,wl[j],kgb.weylGroup());
-    strm << "," << bp[j] << ")";
+    strm << ",";
+    printInvolution(strm,wl[j],kgb.weylGroup());  // added by jda: reduced form of the involution
+    strm << "," << bp[j] << ")";                
     strm << std::endl;
   }
 
@@ -225,6 +227,7 @@ void involutionList(weyl::WeylEltList& wl, const kgb::KGB& kgb)
 
   return;
 }
+
 
 }
 
