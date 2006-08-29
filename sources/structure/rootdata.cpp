@@ -24,12 +24,6 @@
   corresponds to a sublattice of finite index in the character
   lattice, containing the root lattice. From this sublattice the
   actual root datum is constructed.
-
-  [DV: An earlier version of this class included the inner class of
-  real groups, which is to say an involutive automorphism of the based
-  root datum.  As an artifact of that, the user interaction acquires
-  the involutive automorphism before the subgroup of Z_tor, and
-  insists that the subgroup of Z_tor be preserved by this involution.]
 */
 /*
   This is rootdata.cpp.
@@ -488,6 +482,7 @@ void RootDatum::swap(RootDatum& other)
   d_isPositive.swap(other.d_isPositive);
   d_isSimple.swap(other.d_isSimple);
   d_twoRho.swap(other.d_twoRho);
+  d_status.swap(other.d_status);
 
   return;
 }
