@@ -731,7 +731,7 @@ void Helper::orbitPairs()
     const WeylElt& w = d_kgb.involution(x);
     WeylElt dw = dualInvolution(w);
     KGBEltPair yRange = d_dualkgb.tauPacket(dw);
-    for (; d_kgb.involution(x) == w; ++x) {
+    for (; (x < d_kgb.size()) && (d_kgb.involution(x) == w); ++x) {
       for (size_t y = yRange.first; y < yRange.second; ++y) {
 	d_x.push_back(x);
 	d_y.push_back(y);
