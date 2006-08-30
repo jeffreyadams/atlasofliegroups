@@ -1,72 +1,112 @@
+# the following line avoids trouble on some systems (GNU make does this anyway)
+SHELL = /bin/sh
+
+# we use no suffix rules
+.SUFFIXES:
+
+
+
+# sourcedirs contains subdirectories of 'atlas/sources' that need compilation
+sourcedirs := utilities memory error structure gkmod io interface test
+
 # sources contains a list of the source files (i.e., the .cpp files)
-sources := $(patsubst %.cpp,%.cpp,$(wildcard sources/*/*.cpp))
-# there is one .o file for each .cpp file
-objects := $(patsubst %.cpp,%.o,$(wildcard sources/*/*.cpp))
-# this is used to automatically generate the dependencies
-dependencies := $(patsubst %.cpp,%.d,$(wildcard sources/*/*.cpp))
+sources := $(wildcard $(sourcedirs:%=sources/%/*.cpp))
 
-includedirs := $(addprefix -I,$(wildcard sources/*))
+# there is one .o file for each .cpp file, in the same directory
+objects := $(sources:%.cpp=%.o)
 
-pflags = -c $(includedirs) -pg -O -DNREADLINE
-oflags = -c $(includedirs) -O3 -Wall -DNDEBUG
-gflags = -c $(includedirs) -g
+# the variable 'dependencies' is used to automatically generate the
+# dependencies, but the files described by this variable will not be made
+dependencies := $(sources:%.cpp=%.d)
 
-cflags := $(oflags) # the default setting
+# headers are searched in the all directories containing source files
+includedirs := $(addprefix -Isources/,$(sourcedirs))
+
+# compiler flags
+# whenever changing the setting of these flags, do 'make clean' first
+
+# the following are predefined flavors for the compiler flags:
+# optimizing (oflags), development with debugging (gflags), profiling (pflags)
+
+oflags := -c $(includedirs) -Wall -O3 -DNDEBUG
+gflags := -c $(includedirs) -Wall -g
+pflags := -c $(includedirs) -Wall -pg -O -DNREADLINE
+
+# the default setting is optimizing
+cflags ?= $(oflags)
+
+# to select another flavor, set debug=true or profile=true when calling make
+# alternatively, you can set cflags="your personal flavor" to override default
 
 ifeq ($(debug),true)
-	cflags := $(gflags)
+      cflags := $(gflags)
+else
+  ifeq ($(profile),true)
+      cflags := $(pflags)
+  endif
 endif
 
-ifeq ($(optimize),true)
-	cflags := $(oflags)
-endif
-
-ifeq ($(profile),true)
-	cflags := $(pflags)
-endif
+# suppress readline by setting readline=false
+# and/or make more verbose by setting verbose=true
 
 ifeq ($(readline),false)
-	cflags := $(cflags) -DNREADLINE
+    cflags += -DNREADLINE
 else
-
-	rlincludes := -lreadline -lcurses
-#use this for readline on the Mac. 
-#       rlincludes := -lreadline.5.1 -lcurses
-
+    rlincludes ?= -lreadline -lcurses
+# to override this, either define and export a shell variable 'rlincludes'
+# or set it when calling make. For instance for readline on the Mac do:
+# $ make rlincludes="-lreadline.5.1 -lcurses"
 endif
 
 ifeq ($(verbose),true)
-	cflags := $(cflags) -DVERBOSE
+    cflags += -DVERBOSE
 endif
 
-cc = g++ # the default compiler
+CXX = g++ # the default compiler
 
 # give compiler=icc argument to make to use the intel compiler
 ifdef compiler
-	cc = $(compiler)
+    CXX = $(compiler)
 endif
 
+# RULES follow below
+
+# This target causes failed actions to clean up their (corrupted) target
+.DELETE_ON_ERROR:
+
+# The default target is 'all', which just builds the 'atlas' executable
+.PHONY: all
 all: atlas # clean
 
+# For profiling not only 'cflags' used in compiling is modified, but linking
+# also is different
 atlas: $(objects)
 ifeq ($(profile),true)
-	$(cc) -pg -o atlas $(objects)
+	$(CXX) -pg -o atlas $(objects)
 else
-	$(cc) -o atlas $(objects) $(rlincludes)
+	$(CXX) -o atlas $(objects) $(rlincludes)
 endif
 
+.PHONY: clean cleanall
 clean:
 	rm -f $(objects) *~ *.out junk
 
 cleanall: clean
 	rm -f atlas
 
+# The following two rules are static pattern rules: they are like implicit
+# rules, but only apply to the files listed in $(objects) and $(dependencies).
+# However the files named in $(dependencies) are not actually made, and the
+# call $(CXX) of g++ in its command only produces its dependency information
+# on stdout (whence the prefix '@', to avoid the command itself on stdout)
+
 $(objects) : %.o : %.cpp
-	$(cc) $(cflags) -o $*.o $*.cpp
+	$(CXX) $(cflags) -o $*.o $*.cpp
 
 $(dependencies) : %.d : %.cpp
-	@$(cc) $(includedirs) -MM -MT $*.o $*.cpp
+	@$(CXX) $(includedirs) -MM -MT $*.o $*.cpp
 
+.PHONY: depend
 depend: $(dependencies)
 
 # dependencies --- these were generated automatically by the command 
