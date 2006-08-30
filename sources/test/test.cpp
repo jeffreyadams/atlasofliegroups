@@ -99,7 +99,9 @@ namespace {
   // help functions
 
   void block_h();
+  void blockd_h();
   void blocku_h();
+  void checkbasept_h();
   void cmatrix_h();
   void primkl_h();
   void kgb_h();
@@ -344,10 +346,10 @@ template<> void addTestHelp<realmode::RealmodeTag>
   // add additional help commands here:
 
   mode.add("block",block_h);
-  mode.add("blockd",nohelp_h);
+  mode.add("blockd",blockd_h);
   mode.add("blocku",blocku_h);
   mode.add("blockstabilizer",nohelp_h);
-  mode.add("checkbasept",nohelp_h);
+  mode.add("checkbasept",checkbasept_h);
   mode.add("components",nohelp_h);
   mode.add("corder",nohelp_h);
   mode.add("primkl",primkl_h);
@@ -390,10 +392,24 @@ void block_h()
   return;
 }
 
+void blockd_h()
+
+{
+  io::printFile(std::cerr,"blockd.help",io::MESSAGE_DIR);
+  return;
+}
+
 void blocku_h()
 
 {
   io::printFile(std::cerr,"blocku.help",io::MESSAGE_DIR);
+  return;
+}
+
+void checkbasept_h()
+
+{
+  io::printFile(std::cerr,"checkbasept.help",io::MESSAGE_DIR);
   return;
 }
 
