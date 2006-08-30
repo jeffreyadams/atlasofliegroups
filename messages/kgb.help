@@ -20,15 +20,19 @@ imaginary), n (non-compact imaginary), C (complex) or r (real).
 The second to last column gives the length of this orbit O, which is
 dim(O)-dim(O_min) where O_min is a minimal orbit.
 
-An entry in the final column gives an element w of W, given as a
-product of simple reflection. Each orbit O corresponds to an element x
-of the space X. There is a map p:X->W^Gamma, the twisted Weyl group,
-and p(x) is an involution in this group. The last entry of a row gives
-p(x), expressed as a product of simple reflections (to be multiplied
-by the basic involution tau).  The absence of an entry in the last
-column corresponds to the empty product p(x)=1. The minimal orbits all
-correspond to the same element tau of W^Gamma; this corresponds to
-w=1. In general a row with w as its last has p(x)=w.tau.
+There is a map p:X->W^\Gamma, the twised Weyl group. We have fixed a
+"fundamental" element delta in W^\gamma-W, this acts on W. (If G
+contains a compact Cartan subgroup this action is trivial).  Then
+tau=p(x)=w*delta. We say tau or w is a "twisted involution":
+w*delta(w)=1. We may write w=s_1...s_p, where each term s_i means
+conjugation by a simple reflection, or multiplication on the left by a
+simple reflection which commutes with tau (i.e. a real or imaginary
+root). These correspond to cross actions and Cayley transforms,
+respectively.
+
+The last column gives the element w as a product (not necessarily of
+minimal length) w=s_1...s_p as above. The absence of an entry in the
+last column corresponds to the empty product p(x)=delta. 
 
 For example:
 empty: type
