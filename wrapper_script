@@ -1,0 +1,2 @@
+AD=actual directory gets substituted here
+exec $AD/atlas.exe

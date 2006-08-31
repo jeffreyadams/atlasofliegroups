@@ -1,0 +1,3 @@
+#!/bin/sh
+sed -e "s!AD=.*!AD=`/bin/pwd`!"  <wrapper_script >atlas
+chmod a+x atlas
