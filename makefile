@@ -1,10 +1,14 @@
 # the following line avoids trouble on some systems (GNU make does this anyway)
 SHELL = /bin/sh
+#where to put the wrapper script:
+BINDIR = /usr/local/bin
+#where the executable will be, change this line if this will be moved after compilation:
+INSTALLDIR := $(shell pwd)
+messagedir := $(INSTALLDIR)/messages/
+
 
 # we use no suffix rules
 .SUFFIXES:
-
-
 
 # sourcedirs contains subdirectories of 'atlas/sources' that need compilation
 sourcedirs := utilities memory error structure gkmod io interface test
@@ -74,18 +78,24 @@ endif
 # This target causes failed actions to clean up their (corrupted) target
 .DELETE_ON_ERROR:
 
-# The default target is 'all', which just builds the 'atlas' executable
+# The default target is 'all', which builds the executable and the wrapper
 .PHONY: all
-all: atlas # clean
+all: atlas
 
 # For profiling not only 'cflags' used in compiling is modified, but linking
 # also is different
+
+cflags += -DMESSAGE_DIR_MACRO=\"$(messagedir)\"
 atlas: $(objects)
 ifeq ($(profile),true)
-	$(CXX) -pg -o atlas $(objects)
+	$(CXX) -pg -o atlas.exe $(objects)
 else
-	$(CXX) -o atlas $(objects) $(rlincludes)
+	$(CXX) -o atlas.exe $(objects) $(rlincludes)
 endif
+	./make_wrapper
+
+install: 
+	cp atlas $(BINDIR)
 
 .PHONY: clean cleanall
 clean:
@@ -117,4 +127,6 @@ depend: $(dependencies)
 # make depend > make_dependencies.
 
 include make_dependencies
+
+
 
