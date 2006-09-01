@@ -10,6 +10,12 @@
 #ifndef IO_H  /* guard against multiple inclusions */
 #define IO_H
 
+/* the following macro should be set to an absolute path from the atlas
+   makefile, but if not we use a relative path from the atlas directory */
+#ifndef MESSAGE_DIR_MACRO
+#define MESSAGE_DIR_MACRO "messages/"
+#endif
+
 #include <iosfwd>
 
 /******** constants ********************************************************/
@@ -18,7 +24,7 @@ namespace atlas {
 
 namespace io {
 
-  const char* const MESSAGE_DIR = "messages/";
+  const char* const MESSAGE_DIR = MESSAGE_DIR_MACRO;
 
 }
 
