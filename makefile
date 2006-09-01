@@ -1,11 +1,15 @@
 # the following line avoids trouble on some systems (GNU make does this anyway)
 SHELL = /bin/sh
+INSTALL = /usr/bin/install
+
 #where to put the wrapper script:
 BINDIR = /usr/local/bin
-#where the executable will be, change this line if this will be moved after compilation:
-INSTALLDIR := $(shell pwd)
-messagedir := $(INSTALLDIR)/messages/
 
+#install executable, help files and html files in the current directory:
+INSTALLDIR := $(shell pwd)
+#instead you can put them somewhere else:
+INSTALLDIR := /home/jda/myatlas4
+MESSAGEDIR := $(INSTALLDIR)/messages/
 
 # we use no suffix rules
 .SUFFIXES:
@@ -85,17 +89,28 @@ all: atlas
 # For profiling not only 'cflags' used in compiling is modified, but linking
 # also is different
 
-cflags += -DMESSAGE_DIR_MACRO=\"$(messagedir)\"
+cflags += -DMESSAGE_DIR_MACRO=\"$(MESSAGEDIR)\"
 atlas: $(objects)
 ifeq ($(profile),true)
 	$(CXX) -pg -o atlas.exe $(objects)
 else
 	$(CXX) -o atlas.exe $(objects) $(rlincludes)
 endif
-	./make_wrapper
 
-install: 
-	cp atlas $(BINDIR)
+install:
+	@if test -h $(BINDIR)/atlas; then \
+	 rm -f $(BINDIR)/atlas; fi
+	@ln -s $(INSTALLDIR)/atlas.exe $(BINDIR)/atlas
+	@if test $(INSTALLDIR) != $(shell pwd); then\
+	echo "Installing directories and files in $(INSTALLDIR)";\
+	$(INSTALL) -d -m 755 $(INSTALLDIR)/www;\
+	$(INSTALL) -d -m 755 $(INSTALLDIR)/messages;\
+	$(INSTALL)  -m 644 README $(INSTALLDIR);\
+	$(INSTALL)  -m 755 atlas.exe $(INSTALLDIR);\
+	$(INSTALL) -m 644 www/*html $(INSTALLDIR)/www/;\
+	$(INSTALL) -m 644 messages/*help $(INSTALLDIR)/messages/;\
+	$(INSTALL) -m 644 messages/*intro_mess $(INSTALLDIR)/messages/;\
+	fi; 
 
 .PHONY: clean cleanall
 clean:
