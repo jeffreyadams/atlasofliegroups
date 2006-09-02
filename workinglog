@@ -362,4 +362,13 @@
 	crashed on kllist for split E7 after computing the block,
 	before computing any KL polynomials.  He finally found a
 	missing pointer initialization in pool.cpp. Now this seems to
-	work well/
+	work well.
+
+8/28/06	[DV] Found a tiny bug in blocks.cpp, that could appear
+	essentially only when the Weyl group is trivial (so for tori)
+	and then only sometimes.  In building the collection of pairs
+	(x,y) constituting the block, Fokko's original code incremented x
+	until the involution (as recorded in d_involution[x] in the
+	class d_kgb) changed. At the end of the list of x's, the code
+	could look at an undefined value of d_kgb.involution(x). This
+	seemed to have no serious consequences, but it's fixed now.
