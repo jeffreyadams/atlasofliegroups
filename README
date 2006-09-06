@@ -1,40 +1,57 @@
 Instruction on downloading and installation of the Atlas software.
+-------------------------------------------------------------------
 
 UNIX (including linux, solaris, and Mac OSX)
+
+SHORT VERSION (for experts):
+  Edit the makefile; make; make install
+
+LONGER VERSION:
 
 1) Download the source code, which is a tgz (tarred and gzipped) file.
 
 2) To unpack the archive give the command 
 
-tar xvfz atlas.tgz
+  tar xvfz atlas.tgz
 
 to unpack the archive. (On Solaris you might need gtar). 
 
 On some systems the file will automatically untar to give a file
 atlas.tar, in which case give the command 
 
-tar xvf atlas.tar
+  tar xvf atlas.tar
 
-3) Now cd to the directory that has been created and give the command
+3) Now cd to the 'atlas' directory that has been created.
+If you prefer to install the software in a place other than the
+current directory, edit the makefile and change the values of
+the variables INSTALLDIR and BINDIR near the top of that file.
 
-make
+4) Cross your fingers and run the command
 
-and cross your fingers.
+  make
 
-4) If all goes well the command atlas, or ./atlas, will run the
-program.
+If you get some errors about readline see below, or try:
 
-If you get some errors about readline see below, or io, try:
-
-make readline=false
+  make readline=false
 
 to compile without the readline. Some other options are:
 
-verbose=true 
-debug=true 
-optimize=true 
-profile=true 
+  verbose=true 
+  debug=true 
+  optimize=true 
+  profile=true 
+
+5) If all goes well, run the command
+
+  make install
+
+This may require root privileges, depending on the locations
+of INSTALLDIR and BINDIR.
+
+6) The command atlas, or ./atlas, will run the program.
+
 -------------------------------------------------------------------
+
 Compiling with readline on a Mac (contributed by David Vogan)
 
 readline allows you to recall the previous command with control-p, and
@@ -89,6 +106,7 @@ to read
 Now the atlas software should link; there will be some warnings that
 the symbols UP, PC, and BC were multiply defined, but as far as I can
 see they are harmless.
+
 -------------------------------------------------------------------
 
 WINDOWS
@@ -103,15 +121,7 @@ machine.
 When you extract the file you create a folder. This contains the
 executable atlas.exe. It also contains three necessary dll files. You
 must run the executable from a folder containing these files. 
--------------------------------------------------------------------
-Getting the help system to work
 
-The help files are located in the subdirectory /messages of the
-distribution. For help to work you need to run the program from the
-distribution directory. Alternatively you can run it from any
-directory, provided it has the messages subdirectory.
-
-To test if help is working, give the command help. You should get
-get about six paragraphs of explanation about the software.
 -------------------------------------------------------------------
+
 jda@math.umd.edu

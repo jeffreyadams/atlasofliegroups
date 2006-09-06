@@ -2,17 +2,32 @@
 SHELL = /bin/sh
 INSTALL = /usr/bin/install
 
-# where to put (a symbolic link to) the executable:
-BINDIR = /usr/local/bin
+# Run 'make' or 'make atlas' to build the atlas executable.
+#
+# If successful, run 'make install' to install the executable
+# and documentation into $INSTALLDIR, and create a symbolic link
+# to the executable in $BINDIR. This may require root permissions.
+#
+# You may wish to change the defaults to something else.
+# In a single-user situation, you might want this:
+#   INSTALLDIR := /home/fokko/myatlas
+#   BINDIR     := /home/fokko/bin
+# In a multi-user situation, you might want this (requires root):
+#   INSTALLDIR := /usr/local/atlas
+#   BINDIR     := /usr/local/bin
+# The default is to use the current directory for both:
 
-# install executable, help files and html files under this directory
-# default is current directory
 INSTALLDIR := $(shell pwd)
-# but instead you could put them somewhere else, say
-# INSTALLDIR := /home/jda/myatlas4
+BINDIR := $(INSTALLDIR)
 
-# messages will be sought under INSTALLDIR, regardless of working directory
+###############################
+# Don't edit below this line
+###############################
+
 MESSAGEDIR := $(INSTALLDIR)/messages/
+
+# we use no suffix rules
+.SUFFIXES:
 
 # sourcedirs contains subdirectories of 'atlas/sources' that need compilation
 sourcedirs := utilities memory error structure gkmod io interface test
@@ -70,9 +85,6 @@ ifeq ($(verbose),true)
     cflags += -DVERBOSE
 endif
 
-# add a macro giving an absolute path for message files
-cflags += -DMESSAGE_DIR_MACRO=\"$(MESSAGEDIR)\"
-
 CXX = g++ # the default compiler
 
 # give compiler=icc argument to make to use the intel compiler
@@ -85,37 +97,35 @@ endif
 # This target causes failed actions to clean up their (corrupted) target
 .DELETE_ON_ERROR:
 
-# we use no suffix rules
-.SUFFIXES:
-
 # The default target is 'all', which builds the executable and the wrapper
 .PHONY: all
-all: atlas.exe
+all: atlas
 
 # For profiling not only 'cflags' used in compiling is modified, but linking
 # also is different
-atlas.exe: $(objects)
+
+cflags += -DMESSAGE_DIR_MACRO=\"$(MESSAGEDIR)\"
+atlas: $(objects)
 ifeq ($(profile),true)
 	$(CXX) -pg -o atlas.exe $(objects)
 else
 	$(CXX) -o atlas.exe $(objects) $(rlincludes)
 endif
 
-install: atlas.exe
-ifneq ($(INSTALLDIR),$(shell pwd))
-	@echo "Installing directories and files in $(INSTALLDIR)"
-	$(INSTALL) -d -m 755 $(INSTALLDIR)/www
-	$(INSTALL) -d -m 755 $(INSTALLDIR)/messages
-	$(INSTALL) -m 644 README $(INSTALLDIR)
-	$(INSTALL) -m 755 atlas.exe $(INSTALLDIR)
-	$(INSTALL) -m 644 www/*html $(INSTALLDIR)/www/
-	$(INSTALL) -m 644 messages/*help $(INSTALLDIR)/messages/
-	$(INSTALL) -m 644 messages/*intro_mess $(INSTALLDIR)/messages/
-endif
-	@if test -h $(BINDIR)/atlas; then rm -f $(BINDIR)/atlas; fi
-	@if test -e $(BINDIR)/atlas ;\
-	 then echo will not overwrite $(BINDIR)/atlas ;\
-	 else ln -s $(INSTALLDIR)/atlas.exe $(BINDIR)/atlas ; fi
+install:
+	@if test -h $(BINDIR)/atlas; then \
+	 rm -f $(BINDIR)/atlas; fi
+	@ln -s $(INSTALLDIR)/atlas.exe $(BINDIR)/atlas
+	@if test $(INSTALLDIR) != $(shell pwd); then\
+	echo "Installing directories and files in $(INSTALLDIR)";\
+	$(INSTALL) -d -m 755 $(INSTALLDIR)/www;\
+	$(INSTALL) -d -m 755 $(INSTALLDIR)/messages;\
+	$(INSTALL)  -m 644 README $(INSTALLDIR);\
+	$(INSTALL)  -m 755 atlas.exe $(INSTALLDIR);\
+	$(INSTALL) -m 644 www/*html $(INSTALLDIR)/www/;\
+	$(INSTALL) -m 644 messages/*help $(INSTALLDIR)/messages/;\
+	$(INSTALL) -m 644 messages/*intro_mess $(INSTALLDIR)/messages/;\
+	fi; 
 
 .PHONY: clean cleanall
 clean:
@@ -147,6 +157,3 @@ depend: $(dependencies)
 # make depend > make_dependencies.
 
 include make_dependencies
-
-
-
