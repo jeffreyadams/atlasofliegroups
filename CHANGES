@@ -1,0 +1,20 @@
+Changes to the Atlas of Lie Groups Software
+
+A detailed history of the early development is found in the file
+workinglog. Newer changes are documented in the CVS repository. 
+This file contains a summary of major changes to the software.
+
+Version 0.2.5:
+* Modified makefile to produce an executable atlas.exe and make a
+symlink to it, so the help system will work when called from any
+directory
+* Added and updated online documentation, including block, kgb,
+checkbasept, blockd, blocku, wgraph, wcells
+* Changed extrkl to primkl
+* Modified output of kgb and primkl commands
+* Fixed bug in printing of real forms for inner class u
+* Corrected PRIMES_MAX for RANK_MAX=16 and enabled RANK_MAX=32 on a 32
+bit machine
+* Added doxygen comments
+* Fixed bug in (unused) sources/memory
+
