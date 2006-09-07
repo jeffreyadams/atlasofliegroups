@@ -1,5 +1,5 @@
 
-	Workinglog for the Atlas of Reductive Lie Groups project version 0.2.3
+	Workinglog for the Atlas of Reductive Lie Groups 
 
 10-03-04 : made a start yesterday on version 0.2.3. The idea is that in this
 	version, the central role will be played by the _complex_ group, aka
@@ -372,3 +372,7 @@
 	class d_kgb) changed. At the end of the list of x's, the code
 	could look at an undefined value of d_kgb.involution(x). This
 	seemed to have no serious consequences, but it's fixed now.
+
+-------------------------------------------------------------------
+From this point forward, the detailed working log will be found in the
+CVS repository. For a summary of changes see the file CHANGES.
