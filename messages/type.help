@@ -1,6 +1,6 @@
 
-The "type" command sets or resets the type of the current complex reductive 
-group, and the chosen inner class. The previous current group and inner class 
+The "type" command sets or resets the type of the current complex reductive
+group, and the chosen inner class. The previous current group and inner class
 are destroyed if the interaction is successful.
 
 The necessary information is gotten from the user in a number of stages.
@@ -31,13 +31,13 @@ containing the split form, c represents the inner class containing the
 compact form, C represents the complex inner class, and u (allowed only when
 there is more than one inner class) represents the unequal rank inner class;
 in particular, this is the only way to access that inner class in type D_2n.
-Actually, in type D4, there are three "u" inner classes, conjugate under the 
-outer automorphism group; because of that conjugacy we consider them as 
-equivalent and provide access to just one of them. Note that a "C" inner class 
+Actually, in type D4, there are three "u" inner classes, conjugate under the
+outer automorphism group; because of that conjugacy we consider them as
+equivalent and provide access to just one of them. Note that a "C" inner class
 actually involves _two_ (identical) simple factors.
 
-NOTE ON TYPE D: care is required in order to deal properly with simple factors 
-of the form D_2n. This is the only case where the center is not cyclic: 
+NOTE ON TYPE D: care is required in order to deal properly with simple factors
+of the form D_2n. This is the only case where the center is not cyclic:
 it is Z/2.Z/2, and it is important to fix "who is who" in this layout. For
 n > 2, the outer automorphism group is of order two, and fixes one of the three
 non-identity elements in the center. Our convention is that that one is
@@ -76,8 +76,8 @@ elements of finite order in the center of the simply connected group:
 Z/2.Z/2.Z/2.Z/2
 enter kernel generators, one per line
 (ad for adjoint, ? to abort):
-1,1,0,0
-0,0,1,1
+1/2,1/2,0/2,0/2
+0/2,0/2,1/2,1/2
 
 enter inner class(es): C
 
@@ -86,7 +86,7 @@ Example 3 : not quite PSO(8,C)
 This is another quotient of Spin(8).Spin(8), for which the "C" inner class
 is defined. However, this is not the real group underlying a complex connected
 reductive group! The "component" command will show that this group has four
-components; the identity component is isomorphic to PSO(8,C). Analogous 
+components; the identity component is isomorphic to PSO(8,C). Analogous
 examples can be constructed from every complex group with non-trivial center.
 
 atlas: type
@@ -95,8 +95,8 @@ elements of finite order in the center of the simply connected group:
 Z/2.Z/2.Z/2.Z/2
 enter kernel generators, one per line
 (ad for adjoint, ? to abort):
-1,0,1,0
-0,1,0,1
+1/2,0/2,1/2,0/2
+0/2,1/2,0/2,1/2
 
 enter inner class(es): C
 main: comp
