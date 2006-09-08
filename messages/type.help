@@ -100,9 +100,6 @@ enter kernel generators, one per line
 
 enter inner class(es): C
 main: comp
-(weak) real forms are:
-0: so(8,C)
-enter your choice: 0
-atlas: components
+there is a unique real form: so(8,C)
 component group is (Z/2)^2
 
