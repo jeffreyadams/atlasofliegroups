@@ -27,7 +27,7 @@ namespace klsupport {
 class KLSupport;
 class KLSupport_new;
 
-typedef std::vector<size_t> PrimitiveRow;
+typedef std::vector<unsigned int> PrimitiveRow;
 
 }
 
