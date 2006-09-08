@@ -1,18 +1,20 @@
-The final entry of the output of the block command is a twisted
-involution tau in the Weyl group. See the help file for the kgb
+'blockd' is a slight variation of the 'block' command
+
+The final entry of the output of the 'block' command is a twisted
+involution tau in the Weyl group. See the help file for the 'kgb'
 command.  Thus tau=w*delta, and w=s_1...s_p where each s_i is
-conugation by a simple reflection, or left multiplication by a simple
+conjugation by a simple reflection, or left multiplication by a simple
 reflection which commutes with tau. Such an expression is said to be
-involution-reduced is p is minimal. 
+involution-reduced if p is minimal.
 
 The length of a twisted involution is the length of the corresponding
 orbit in X. In practical terms, this means that the last column in the
-output of block could be replaced by a product with number of terms
-given by the length of this parameter, i.e. the send to last
-column. This is what blockd does: it replaces the last column of the
-output of block with an involution-reduced expression. 
+output of 'block' could be replaced by a product whose number of terms
+is given by the length of this parameter, i.e. the value in the
+before-last column. This is what 'blockd' does: it replaces the last
+column of the output of block with an involution-reduced expression.
 
-Example: 
+Example:
 
 
 Here is the output of block for the block of the trivial
