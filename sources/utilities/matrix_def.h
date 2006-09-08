@@ -6,7 +6,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -27,16 +27,16 @@ namespace matrix {
 
 namespace {
 
-template<typename C> void blockReduce(Matrix<C>&, size_t, Matrix<C>&, 
+template<typename C> void blockReduce(Matrix<C>&, size_t, Matrix<C>&,
 				      Matrix<C>&);
-template<typename C> void blockShape(Matrix<C>&, size_t, Matrix<C>&, 
+template<typename C> void blockShape(Matrix<C>&, size_t, Matrix<C>&,
 				     Matrix<C>&);
 template<typename C> void columnReduce(Matrix<C>&, size_t, size_t, Matrix<C>&);
 template<typename C> bool hasBlockReduction(const Matrix<C>&, size_t);
 template<typename C> bool hasReduction(const Matrix<C>&, size_t);
-template<typename C> typename Matrix<C>::index_pair 
+template<typename C> typename Matrix<C>::index_pair
   findBlockReduction(const Matrix<C>&, size_t);
-template<typename C> typename Matrix<C>::index_pair 
+template<typename C> typename Matrix<C>::index_pair
   findReduction(const Matrix<C>&, size_t);
 template<typename C> void rowReduce(Matrix<C>&, size_t, size_t, Matrix<C>&);
 
@@ -98,7 +98,7 @@ Matrix<C>::Matrix(const Matrix<C>& m, const std::vector<std::vector<C> >& b)
 }
 
 template<typename C>
-Matrix<C>::Matrix(const Matrix<C>& source, size_t r_first, size_t c_first, 
+Matrix<C>::Matrix(const Matrix<C>& source, size_t r_first, size_t c_first,
 		  size_t r_last, size_t c_last)
   :d_data((r_last-r_first)*(c_last-c_first)),
    d_rows(r_last-r_first),
@@ -115,7 +115,7 @@ Matrix<C>::Matrix(const Matrix<C>& source, size_t r_first, size_t c_first,
       (*this)(i,j) = source(r_first+i,c_first+j);
 }
 
-template<typename C> template<typename I> 
+template<typename C> template<typename I>
 Matrix<C>::Matrix(const Matrix<C>& m, const I& first, const I& last)
   :d_data(m.d_data), d_rows(m.d_rows), d_columns(m.d_columns)
 
@@ -178,15 +178,16 @@ bool Matrix<C>::operator== (const Matrix<C>& m) const
 }
 
 template<typename C>
-typename Matrix<C>::index_pair Matrix<C>::absMinPos(size_t i_min, 
+typename Matrix<C>::index_pair Matrix<C>::absMinPos(size_t i_min,
 						    size_t j_min) const
 
+
 /*!
-  Returns the position of the smallest non-zero entry in absolute value, 
+  Returns the position of the smallest non-zero entry in absolute value,
   in the region i >= i_min, j >= j_min
 */
 
-{  
+{
   C minCoeff = std::numeric_limits<C>::max();
   size_t i_m = d_rows;
   size_t j_m = d_columns;
@@ -232,7 +233,7 @@ void Matrix<C>::apply(std::vector<C>& v, const std::vector<C>& w) const
   return;
 }
 
-template<typename C> template<typename I, typename O> 
+template<typename C> template<typename I, typename O>
 void Matrix<C>::apply(const I& first, const I& last, O out) const
 
 /*!
@@ -248,7 +249,7 @@ void Matrix<C>::apply(const I& first, const I& last, O out) const
     apply(v,*i);
     *out++ = v;
   }
-   
+
   return;
 }
 
@@ -279,7 +280,7 @@ bool Matrix<C>::divisible(C c) const
   for (size_t j = 0; j < d_data.size(); ++j)
     if (d_data[j]%c)
       return false;
-  
+
   return true;
 }
 
@@ -439,7 +440,7 @@ template<typename C>
 void Matrix<C>::copyColumn(const Matrix<C>& m, size_t c_d, size_t c_s)
 
 /*!
-  Copies the column c_s of the matrix m to the column c_d of the current 
+  Copies the column c_s of the matrix m to the column c_d of the current
   matrix. It is assumed that the two columns have the same size.
 */
 
@@ -454,7 +455,7 @@ template<typename C>
 void Matrix<C>::copyRow(const Matrix<C>& m, size_t r_d, size_t r_s)
 
 /*!
-  Copies the column r_s of the matrix m to the column r_d of the current 
+  Copies the column r_s of the matrix m to the column r_d of the current
   matrix. It is assumed that the two columns have the same size.
 */
 
@@ -489,7 +490,7 @@ void Matrix<C>::eraseRow(size_t i)
   Erases row i from the matrix.
 */
 
-{  
+{
   iterator first = begin() + i*d_columns;
   d_data.erase(first,first+d_columns);
   --d_rows;
@@ -531,7 +532,7 @@ void Matrix<C>::invert(C& d)
   NOTE : probably the Smith normal stuff can be streamlined a bit so that
   functions from there can be called, instead of rewriting things slightly
   differently as we do here. In particular, the accounting of the row
-` operations seems a bit different here from there.
+  operations seems a bit different here from there.
 */
 
 {
@@ -552,11 +553,11 @@ void Matrix<C>::invert(C& d)
 
   for (size_t r = 0; r < d_rows; ++r) {
 
-    if (isZero(r,r)) { // matrix is not invertible
+    if (isZero(r,r)) { // null matrix left; matrix is not invertible
       d = 0;
       return;
     }
-	    
+
     index_pair k = absMinPos(r,r);
 
     if (k.first > r) {
@@ -591,17 +592,17 @@ void Matrix<C>::invert(C& d)
     blockShape(*this,r,row,col);
     blockReduce(*this,r,row,col);
 
-  }
+  } // next |r|
 
-  // multiply out diagonal
+  // now multiply out diagonal
 
   for (size_t j = 1; j < d_rows; ++j) {
     (*this)(j,j) *= (*this)(j-1,j-1);
   }
 
-  // write result
+  // and write result to |d| and to |*this|
 
-  d = (*this)(d_rows-1,d_rows-1);
+  d = (*this)(d_rows-1,d_rows-1); // minimal denominator
 
   for (size_t j = 0; j < d_rows; ++j) {
     (*this)(j,j) = d/(*this)(j,j);
@@ -618,7 +619,7 @@ template<typename C>
 bool Matrix<C>::isZero(size_t i_min, size_t j_min) const
 
 /*!
-  Tells if all the coefficients are zero.
+  Whether all the entries in rectangle starting at |(i_min,i_max)| are zero.
 */
 
 {
@@ -820,7 +821,7 @@ template<typename C> void Matrix<C>::transpose()
   // swap data and row- and column- size
 
   d_data.swap(v);
-  
+
   size_t t = d_rows;
   d_rows = d_columns;
   d_columns = t;
@@ -877,7 +878,7 @@ Matrix<C>& conjugate(Matrix<C>& m, const Matrix<C>& p)
 }
 
 template<typename C>
-void extractBlock(Matrix<C>& dest, const Matrix<C>& source, size_t firstRow, 
+void extractBlock(Matrix<C>& dest, const Matrix<C>& source, size_t firstRow,
 		  size_t lastRow, size_t firstColumn, size_t lastColumn)
 
 /*!
@@ -896,7 +897,7 @@ void extractBlock(Matrix<C>& dest, const Matrix<C>& source, size_t firstRow,
 }
 
 template<typename C>
-void extractMatrix(Matrix<C>& dest, const Matrix<C>& source, 
+void extractMatrix(Matrix<C>& dest, const Matrix<C>& source,
 		   const std::vector<size_t>& r, const std::vector<size_t>& c)
 
 /*!
@@ -989,7 +990,7 @@ template<typename C> Matrix<C>& leftProd(Matrix<C>& m, const Matrix<C>& p)
 
 ******************************************************************************/
 
-namespace matrix { 
+namespace matrix {
 
 namespace {
 
@@ -1063,7 +1064,7 @@ void blockShape(Matrix<C>& m, size_t d, Matrix<C>& r,
 }
 
 template<typename C>
-void columnReduce(Matrix<C>& m, size_t j, 
+void columnReduce(Matrix<C>& m, size_t j,
 		  size_t d, Matrix<C>& c)
 
 /*!
@@ -1094,7 +1095,7 @@ typename Matrix<C>::index_pair findBlockReduction(const Matrix<C>& m,
   returned true.
 */
 
-{  
+{
   C a = m(r,r);
 
   for (size_t j = r+1; j < m.rowSize(); ++j) {
@@ -1117,7 +1118,7 @@ typename Matrix<C>::index_pair findReduction(const Matrix<C>& m,
   returned true.
 */
 
-{  
+{
   C a = m(r,r);
 
   for (size_t j = r+1; j < m.rowSize(); ++j) {
