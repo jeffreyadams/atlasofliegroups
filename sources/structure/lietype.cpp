@@ -2,26 +2,26 @@
 \file
 \brief Definitions for the type of a real or complex reductive Lie algebra.
 
-  A complex reductive Lie algebra is simply the product of a number of simple 
-  complex Lie algebras, and a torus; the simple factors can be of types A-G, 
+  A complex reductive Lie algebra is simply the product of a number of simple
+  complex Lie algebras, and a torus; the simple factors can be of types A-G,
   with ranks >=1 in type A, >=2 in type B, >=3 in type C, >=4 in type D, 6,7 or
   8 in type E, 4 in type F, and 2 in type G. A torus component will be
-  designated by the letter T. So we express the type as a vector, each 
+  designated by the letter T. So we express the type as a vector, each
   component of which is a pair (letter,rank).
 
   As is well-known, a real reductive Lie algebra is a product of factors which
   are (a) real forms of simple complex Lie algebras (b) simple complex Lie
   algebras where we forget the complex structure (these are real forms of the
   product of two isomorphic complex simple Lie algebras) (c) real forms of
-  one-dimensional tori and (d) one-dimensional complex tori seen as 
+  one-dimensional tori and (d) one-dimensional complex tori seen as
   two-dimensional real tori. In fact for the torus factors we will also allow
   higher-dimensional factors; and of course at the Lie algebra level case
   (d) above might be reduced to the sum of two instances of type (c), but
   the distinction is necessary at the group level, so we keep it here as well.
 
   The classification of real forms of simple complex Lie algebras is
-  well-known;  we will follow the notation from Helgason, Differential 
-  Geometry, Lie Groups, and Symmetric Spaces, Academic Press, New York, 1978, 
+  well-known;  we will follow the notation from Helgason, Differential
+  Geometry, Lie Groups, and Symmetric Spaces, Academic Press, New York, 1978,
   Table VI in Chapter X, page 532, where the Satake diagrams of all non-compact
   and non-complex simple real reductive Lie algebras appear. Accordingly, we
   represent a real form of our complex Lie algebra by a string of symbols
@@ -32,10 +32,10 @@
 
 */
 /*
-  This is lietype.cpp. 
+  This is lietype.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -52,26 +52,26 @@
   This file contains the definitions for the type of a real or complex
   reductive Lie algebra.
 
-  A complex reductive Lie algebra is simply the product of a number of simple 
-  complex Lie algebras, and a torus; the simple factors can be of types A-G, 
+  A complex reductive Lie algebra is simply the product of a number of simple
+  complex Lie algebras, and a torus; the simple factors can be of types A-G,
   with ranks >=1 in type A, >=2 in type B, >=3 in type C, >=4 in type D, 6,7 or
   8 in type E, 4 in type F, and 2 in type G. A torus component will be
-  designated by the letter T. So we express the type as a vector, each 
+  designated by the letter T. So we express the type as a vector, each
   component of which is a pair (letter,rank).
 
   As is well-known, a real reductive Lie algebra is a product of factors which
   are (a) real forms of simple complex Lie algebras (b) simple complex Lie
   algebras where we forget the complex structure (these are real forms of the
   product of two isomorphic complex simple Lie algebras) (c) real forms of
-  one-dimensional tori and (d) one-dimensional complex tori seen as 
+  one-dimensional tori and (d) one-dimensional complex tori seen as
   two-dimensional real tori. In fact for the torus factors we will also allow
   higher-dimensional factors; and of course at the Lie algebra level case
   (d) above might be reduced to the sum of two instances of type (c), but
   the distinction is necessary at the group level, so we keep it here as well.
 
   The classification of real forms of simple complex Lie algebras is
-  well-known;  we will follow the notation from Helgason, Differential 
-  Geometry, Lie Groups, and Symmetric Spaces, Academic Press, New York, 1978, 
+  well-known;  we will follow the notation from Helgason, Differential
+  Geometry, Lie Groups, and Symmetric Spaces, Academic Press, New York, 1978,
   Table VI in Chapter X, page 532, where the Satake diagrams of all non-compact
   and non-complex simple real reductive Lie algebras appear. Accordingly, we
   represent a real form of our complex Lie algebra by a string of symbols
@@ -92,7 +92,7 @@ namespace lietype {
 
   void addMinusIdentity(latticetypes::LatticeMatrix&, size_t, size_t);
 
-  void addSimpleInvolution(latticetypes::LatticeMatrix&, size_t, 
+  void addSimpleInvolution(latticetypes::LatticeMatrix&, size_t,
 			   const SimpleLieType&, TypeLetter);
 }
 
@@ -167,11 +167,11 @@ void dualInnerClassType(InnerClassType& dict, const InnerClassType& ict,
     case 'g':
       break;
     case 'A':
-    case 'E': 
+    case 'E':
       // interchange split and compact inner classes
       if (dict[j] == 's')
 	dict[j] = 'c';
-      else      
+      else
 	dict[j] = 's';
       break;
     case 'D':
@@ -242,11 +242,11 @@ bool checkRank(const TypeLetter& x, size_t l)
   return true;
 }
 
-void involution(latticetypes::LatticeMatrix& i, const lietype::LieType& lt, 
+void involution(latticetypes::LatticeMatrix& i, const lietype::LieType& lt,
 		const lietype::InnerClassType& ic)
 
 /*!
-  Synopsis: constructs the fundamental involution for the Lie type lt and the 
+  Synopsis: constructs the fundamental involution for the Lie type lt and the
   inner class ic, in the weight basis for the simply connected group.
 
   Precondition: it has already been checked that ic holds a valid inner class
@@ -318,7 +318,7 @@ size_t semisimpleRank(const LieType& lt)
 
 namespace lietype {
 
-void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r, 
+void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
 			  size_t rs)
 
 /*!
@@ -328,7 +328,7 @@ void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
   Precondition: the block is set to zero.
 */
 
-{  
+{
   for (size_t j = 0; j < rs; ++j)
     m(r+j,r+j) = 1;
 
@@ -344,7 +344,7 @@ void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
   Precondition: the block is set to zero.
 */
 
-{  
+{
   for (size_t j = 0; j < rs-2; ++j)
     m(r+j,r+j) = 1;
 
@@ -363,18 +363,18 @@ void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
   Precondition: the block is set to zero.
 */
 
-{  
+{
   for (size_t j = 0; j < rs; ++j)
     m(r+j,r+j) = -1;
 
   return;
 }
 
-void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r, 
+void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
 			 const SimpleLieType& slt, TypeLetter x)
 
 /*!
-  Synopsis: appends to m, from position (r,r), the fundamental involution 
+  Synopsis: appends to m, from position (r,r), the fundamental involution
   corresponding to x in size rs.
 */
 
@@ -423,7 +423,7 @@ void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
       m(r+rs+j,r+j) = 1;
     }
     break;
-  case 'u': // flip the first two vectors
+  case 'u': // flip the last two vectors
     addDInvolution(m,r,rs);
     break;
   default: // this should not happen!
