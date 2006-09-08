@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -68,8 +68,8 @@ bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
     buf >> x;
     if (icl.find_first_of(x) == std::string::npos) { // bad type
       if (output)
-	std::cerr << "bad inner class symbol " << x 
-		  << " (should be one of " << innerClassLetters << ")" 
+	std::cerr << "bad inner class symbol " << x
+		  << " (should be one of " << innerClassLetters << ")"
 		  << std::endl;
       buf.reset(pos);
       return false;
@@ -97,7 +97,7 @@ bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
 	  (t == 'E' and l != 6)) { // bad type
 	if (output)
 	  std::cerr << "sorry, bad inner class symbol u" << std::endl
-		    << "(allowed only for types A_n, n > 1, D_n, and E6)" 
+		    << "(allowed only for types A_n, n > 1, D_n, and E6)"
 		    << std::endl;
 	buf.reset(pos);
 	return false;
@@ -113,11 +113,11 @@ bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
 bool checkLieType(input::InputBuffer& buf)
 
 /*!
-  Synopsis: checks if buf starts with a valid Lie type. 
+  Synopsis: checks if buf starts with a valid Lie type.
 
-  A valid Lie type is a dot-separated non-empty string of entities of the form 
+  A valid Lie type is a dot-separated non-empty string of entities of the form
   where X is a letter in the range [A-G] or T (for torus), and n is a number
-  in the appropriate range for X. White between entities is ignored; reading 
+  in the appropriate range for X. White between entities is ignored; reading
   terminates when after a pair Xn the next read operation on a character does
   not produce '.' (i.e., when the next non-white character is not a dot.)
 
@@ -171,12 +171,12 @@ bool checkSimpleLieType(input::InputBuffer& buf)
   std::string tl(typeLetters);
 
   if (tl.find_first_of(x) == std::string::npos) { // bad type
-    std::cerr << "sorry, bad type " << x 
+    std::cerr << "sorry, bad type " << x
 	      << " (should be one of " << typeLetters << ")" << std::endl;
     buf.reset(pos);
     return false;
   }
- 
+
   size_t l = 0;
   buf >> l;
 
@@ -319,6 +319,9 @@ void readLieType(lietype::LieType& lt, input::InputBuffer& buf)
   successive read operations will yield a valid simple Lie type, optionally
   followed by a dot and a valid Lie type. Reading ends on EOF or when a
   simple Lie type is not imediately followed by a dot.
+
+  To normalize the occurrence of torus factors, this function expands Tn with
+  n>1 to n copies of T1
 */
 
 {
@@ -332,7 +335,10 @@ void readLieType(lietype::LieType& lt, input::InputBuffer& buf)
     size_t l;
     buf >> x;
     buf >> l;
-    lt.push_back(SimpleLieType(x,l));
+    if (x=='T')
+      while (l-->0) lt.push_back(SimpleLieType('T',1));
+    else
+      lt.push_back(SimpleLieType(x,l));
     buf >> x;
     if (x != '.') {
       buf.unget(); // put character back
