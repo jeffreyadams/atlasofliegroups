@@ -37,7 +37,7 @@ generators of W).
 
   /*!
 \brief Represents a minimal length coset representative for one of the
-  parabolic subquotients W_{i-1}\W_i.
+  parabolic subquotients W_{i-1}\\W_i.
   */
   typedef unsigned char EltPiece;
 
