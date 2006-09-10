@@ -122,7 +122,7 @@ class Pool {
   size_t d_allocated[constants::sizeBits];
 
   /*!
-    \brief Entry #j is a pointer to the beginning of the jth block
+    \brief Entry \#j is a pointer to the beginning of the jth block
     (of size (d_Size)(2^d_defaultRequest)) assigned by the system
     to this Pool.
 
@@ -231,7 +231,7 @@ class SimplePool {
   size_t d_allocated;
 
   /*!
-    \brief Entry #j is a pointer to the beginning of the jth block
+    \brief Entry \#j is a pointer to the beginning of the jth block
     (of size (d_atomSize)(2^d_systemRequest)) assigned by the system
     to this SimplePool. 
   */
