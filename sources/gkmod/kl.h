@@ -82,18 +82,26 @@ all been computed.
   */
   bitset::BitSet<NumStates> d_state;
 
+  /*!
+\brief Pointer to the KLSupport class for this block.
+  */
   klsupport::KLSupport* d_support;   // non-owned pointer
 
+  /*!
+\brief Entry d_prim[y] is a list of the elements x_i that are primitive
+with respect to y and have P_{y,x_i} not zero.
+  */
   std::vector<klsupport::PrimitiveRow> d_prim;
 
   /*!
-\brief Entry d_kl[y] is a list of pointers to the polynomials P_{y,x}.
+\brief Entry d_kl[y] is a list of pointers to the polynomials
+P_{y,x_i}, numbered as in the list d_prim[y].
   */
   std::vector<KLRow> d_kl;           // list of polynomial pointers
 
   /*!
-\brief Entry d_mu[y] is a list of MuData, which are pairs ([?], top
-degree coefficient of P_{y,x}) 
+\brief Entry d_mu[y] is a list of MuData, which are pairs (x, top
+degree coefficient of P_{y,x}).
   */
   std::vector<MuRow> d_mu;           // list of mu-coefficients
 
@@ -130,6 +138,10 @@ degree coefficient of P_{y,x})
     return d_support->block();
   }
 
+  /*!
+\brief List of the elements x_i that are primitive
+with respect to y and have P_{y,x_i} not zero.
+  */
   const klsupport::PrimitiveRow& primitiveRow(size_t y) const {
     return d_prim[y];
   }
@@ -142,30 +154,50 @@ degree coefficient of P_{y,x})
     return p == d_zero;
   }
 
-  const KLPol& klPol(size_t, size_t) const; // to be defined!
+  const KLPol& klPol(size_t x, size_t y) const;
 
+  /*!
+\brief Returns the list of pointers to the non-zero KL polynomials
+P_{y,x_i} (with x_i primitive with respect to y).
+  */
   const KLRow& klRow(size_t y) const {
     return d_kl[y];
   }
 
+  /*!
+\brief Length of y as a block element.
+  */
   size_t length(size_t y) const {
     return d_support->length(y);
   }
 
-  MuCoeff mu(size_t, size_t) const;
+  MuCoeff mu(size_t x, size_t y) const;
 
+  /*!
+\brief List of MuData, which are pairs (x, top degree coefficient of
+P_{y,x}).
+  */
   const MuRow& muRow(size_t y) const {
     return d_mu[y];
   }
 
+  /*!
+\brief Returns the set of all non-zero KL polynomials for the block.
+  */
   const std::set<KLPol>& polStore() const {
     return d_store;
   }
 
+  /*!
+\brief Rank of the group.
+  */
   const size_t rank() const {
     return d_support->rank();
   }
 
+  /*!
+\brief Size of the block.
+  */
   const size_t size() const {
     return d_kl.size();
   }

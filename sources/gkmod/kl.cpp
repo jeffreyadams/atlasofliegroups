@@ -177,8 +177,43 @@ namespace atlas {
 		  size_t);
   };
 
-  class Thicket {
+    /*!
+\brief Collection of block elements y_j of the same length, differing
+by type II real cross actions, and having no other descents.
 
+A pair (y_j, s x y_j) (with s type II real) is an Edge of the
+thicket. Such an s is a descent for both y_j and s x y_j.  The pair is
+the image of the Cayley transform (type II imaginary) of a single
+element y_0, of length one less.  The first class of KL recursion
+relations used in a Thicket is this:
+
+P_{x,y_j} + P_{x,s x y_j} = [formula involving various P_{? ,
+y_0}].
+
+The right sides here are known by induction on y, and recorded in the
+recursion data member of the Edge.  We can therefore compute P_{x,y}
+as soon as we know P_{x,y'} for a single element y' in the
+thicket. For that (given x) we find essentially three possibilities:
+
+1) x is equal to y', so P_{x,y'} = 1.
+
+2) There is an s that is a good ascent for x (not in tau(x), and
+leading to an x' of length one more than the length of x), but is type
+II real for y'.  In this case there is a recursion formula something
+like
+
+P_{x,y'} = P_{x' , y'}.
+
+(If s is type II imaginary for x, then there are two terms on the
+right.)  In any case the right side is known by downward induction on
+x, so finally we know all P_{x,y_j} for y_j in the Thicket.
+
+3) P_{x,y'} = 0.
+
+This computation is carried out in the member function fill().
+    */
+  class Thicket {
+ 
   public:
 
     struct Edge;
@@ -189,13 +224,51 @@ namespace atlas {
     typedef klsupport::PrimitiveRow::iterator PI;
     typedef KLRow::iterator KLI;
 
+    /*!
+\brief List of elements y_j in Thicket.
+    */
     std::vector<size_t> d_vertices;
+
+    /*!
+\brief Entry j lists the edges ending at y_j.
+    */
     std::vector<EdgeList> d_edges;
+
+    /*!
+\brief List of all x that are extremal with respect to some y in Thicket.
+    */
     std::vector<size_t> d_xlist;
+
+    /*!
+\brief Entry j lists all x of length strictly less than l(y) that are
+extremal with respect to y_j.
+
+Extremal means that each descent for y_j is a descent for x.
+    */
     std::vector<klsupport::PrimitiveRow> d_extr;
+
+    /*!
+\brief Entry j lists all x of length strictly less than l(y) that are
+primitive with respect to y_j.
+
+Primitive means that each descent for y_j is either a descent for x or
+type II imaginary for x. 
+    */
     std::vector<klsupport::PrimitiveRow> d_prim;
+
+    /*!
+\brief 
+    */
     std::vector<KLRow> d_klr;
+
+    /*!
+\brief 
+    */
     std::vector<PI> d_firstPrim;
+
+    /*!
+\brief 
+    */
     std::vector<KLI> d_firstKL;
     Helper* d_helper;
      
@@ -209,57 +282,98 @@ namespace atlas {
     ~Thicket() {}
 
     // accessors
+
+    /*!
+\brief Cross action of simple reflection s on block element y.
+    */
     size_t cross(size_t s, size_t y) const {
       return d_helper->cross(s,y);
     }
 
+    /*!
+\brief List of RankMax unsigned chars; number s gives the descent
+status 0-7 of simple root s for y.
+    */
     const descents::DescentStatus& descent(size_t y) const {
       return d_helper->descent(y);
     }
 
+
+    /*!  
+\brief Unsigned char between 0 and 7; gives the descent of
+simple root s for y.
+    */
     descents::DescentStatus::Value descentValue(size_t s, size_t y) const {
       return d_helper->descentValue(s,y);
     }
 
+    /*!
+\brief List of Edge's ending at y_j.
+    */
     const EdgeList& edgeList(size_t j) const {
       return d_edges[j];
     }
 
+    /*!
+\brief KL polynomial P_{x,y_pos}, for any y_pos in Thicket.
+    */
     const KLPol& klPol(size_t x, size_t pos) const {
       return d_helper->klPol(x,d_vertices[pos],d_firstKL[pos],d_firstPrim[pos],
 			     d_prim[pos].end());
     }
 
+    /*!
+\brief List of all x of length strictly less than l(y) that are
+primitive with respect to y_j.
+
+Primitive means that each descent for y_j is either a descent for x or
+type II imaginary for x. 
+    */
     const klsupport::PrimitiveRow& primitiveRow(size_t j) const {
       return d_prim[j];
     }
 
-    size_t nonExtremal(size_t) const;
+    size_t nonExtremal(size_t x) const;
 
+    /*!
+\brief Pointer to the KL polynomial one.
+    */
     KLPtr one() const {
       return d_helper->d_one;
     }
 
+    /*!
+\brief Semisimple rank.
+    */
     size_t rank() const {
       return d_helper->rank();
     }
 
+    /*!
+\brief Number of vertices in Thicket.
+    */
     size_t size() const {
       return d_vertices.size();
     }
 
+    /*!
+\brief List of vertices in Thicket.
+    */
     const std::vector<size_t>& vertices() const {
       return d_vertices;
     }
 
+    /*!
+\brief Pointer to the KL polynomial zero.
+    */
     KLPtr zero() const {
       return d_helper->d_zero;
     }
 
     // manipulators
-    bool ascentCompute(size_t, size_t);
+    bool ascentCompute(size_t x, size_t pos);
 
-    void edgeCompute(size_t, size_t, const Edge&);
+    void edgeCompute(size_t x, size_t pos, const Edge& e);
 
     void fill();
 
@@ -275,10 +389,31 @@ namespace atlas {
 
   };
 
+    /*!
+\brief Pair (y , s x y) (with s type II real) in a Thicket.
+
+    */
   struct Thicket::Edge {
+
+    /*!
+\brief Number of the block element at which the edge begins.
+    */
     size_t source;
+
+    /*!
+\brief Number of the block element at which the edge ends.
+    */
     size_t y;
+
+    /*!
+\brief Number of a simple root s, assumed to be type II real for y.
+    */
     size_t s;
+
+    /*!
+\brief List of formulas for P_{x_i,y} + P_{x_i,source}, for i in a
+list of elements primitive with respect to some y' in the Thicket.
+    */
     std::vector<KLPol> recursion;
     // constructors and destructors
     Edge() {}
@@ -790,10 +925,10 @@ MuCoeff Helper::type2Mu(size_t x, size_t y) const
 
   Explanation: in this situation, we have recursion formulas that will
   yield mu(x,y)+mu(x,s.y). It is known that proceeding in this way we must
-  end up with an y' for which x is not extremal.
+  end up with a y' for which x is not extremal.
 
   Algorithm: we keep a stack of recursion formulas of the above kind, walking
-  through the orbit of y under the simple descents, until we reach an y
+  through the orbit of y under the simple descents, until we reach a y
   that (a) has a non-type-II descent, or (b) for which x is non-extremal.
 */
 
@@ -864,7 +999,7 @@ void Helper::completePacket(size_t y)
   are filled; at least one row is of this form;
 
   Explanation: what we do here, is completing the rows that can be completed
-  form the already filled ones, using real type II recursions. Whatever is left
+  from the already filled ones, using real type II recursions. Whatever is left
   will constitute "thickets", and will be dealt with by another function.
 
   Algorithm: we traverse the set of y1 in the packet that can be obtained from
@@ -1116,7 +1251,7 @@ void Helper::fillThickets(size_t y)
   series representations are a thicket.) Then we must use the "structural fact"
   in Lemma 6.2 of David's Park City notes: for each x lower than y, there is
   an element y' of the thicket for which x has an ascent (or if there is no 
-  such y', the k-ll polynomial is zero.)
+  such y', the k-l polynomial is zero.)
 
   Algorithm: (a) for each y' in the R-packet that has not already been filled,
   we determine the thicket of y' via a traversal algorithm, as usual (b) we
@@ -1163,7 +1298,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 
   Explanation: the recursion formula is of the form:
   
-    lhs = c_s.c_{y1} - \sum_{z} mu(z,y1)c_z
+    lhs = c_s.c_{y1} - sum_{z} mu(z,y1)c_z
 
   where z runs over the elements < y s.t. s is a descent for z, y1 is s.y,
   and lhs is c_y when s is a complex descent or real type I for y, and 
@@ -1235,7 +1370,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   where y1 = cross(s,y) when s is complex for y, one of the two elements in
   inverseCayley(s,y) when s is real. The (c_s.c_{y1})-part depends on the 
   status of x w.r.t. s (we look only at extremal x, so we know it is a 
-  descent); the correction term, coming from \sum_z \mu(z,y1)c_z, depends only 
+  descent); the correction term, coming from sum_z mu(z,y1)c_z, depends only 
   on y1.
 */
 
@@ -1415,13 +1550,12 @@ Thicket::Thicket(Helper& h, size_t y)
   in the R-packet of y. The edges of the thicket are a spanning tree; each
   edge goes from y1 to y2, where y2 is obtained from y1 through real cross
   action by s (the position of y2 in the vertex list, and s, are recorded
-  in the edge). The reursion recorded is the recursion for s as a descent of
+  in the edge). The recursion recorded is the recursion for s as a descent of
   y2. In this way, we can move along a path of edges and have the required
   recursion formulas available for computing the polynomial for y2 from
   that of y1 (all edges are two-sided, i.e., we also make the corresponding
   edge from y2 to y1.)
 */
-
 {
   using namespace descents;
 
@@ -1526,7 +1660,7 @@ size_t Thicket::nonExtremal(size_t x) const
 bool Thicket::ascentCompute(size_t x, size_t pos)
 
 /*!
-  \brief Checks if x has an ascent in row pos, and computes the K-L pol in
+  \brief Checks if x has an ascent in row y_pos, and computes the K-L pol in
   that case.
 
   Precondition: x is primitive in the row;
@@ -1606,25 +1740,26 @@ void Thicket::fill()
 /*!
   \brief Fills in the k-l polynomials for the elements of the thicket.
 
-  Algorithm: for each element of the thicket, we have the list of primitive
-  elements pr[j], and a list of k-l polynomials klv[j]. We are going to fill 
-  in the polynomials downwards from the top (the top elements being all ones); 
-  at the end of the process, we will have iterators pointing into each pr[j]
-  and each klv[j], where the extremal list from that iterator on will contain
-  all x'es for which the klpol is non zero (in other words, the other ones
-  have been "weeded out" from pr[j]), and klv[j] from the iterator on contains
-  the corresponding polynomials. Then all what remains to do is copy these
-  onto the corresponding lists of the context.
-      In order to achieve this, we put in d_xlist an ordered list of all 
-  elements that are primitive for _some_ y_j, not equal to y_j, and we move
-  downwards in that list. It is guaranteed by Lemma 6.2 in David's notes,
-  that for each x in d_xlist there is an y_j for which there is an easy 
-  reduction (i.e., x might be primitve for y_j, but not extremal.) So we
-  can deduce P_{x,y_j} from the already known part of klv[j], and then 
-  traversing the tree structure of edge relations imposed on the thicket,
-  we can compute all the other P_{x,y_i} that need to be (i.e., those for
-  which x is in pr[j].) We record the result only if the corresponding
-  polynomial is non-zero.
+  Algorithm: for each element y_j of the thicket, we have the list of
+  primitive elements pr[j], and a list of k-l polynomials klv[j]. We
+  are going to fill in the polynomials downwards from the top (the top
+  elements being all ones); at the end of the process, we will have
+  iterators pointing into each pr[j] and each klv[j], where the
+  extremal list from that iterator on will contain all x'es for which
+  the klpol is non zero (in other words, the other ones have been
+  "weeded out" from pr[j]), and klv[j] from the iterator on contains
+  the corresponding polynomials. Then all that remains to do is copy
+  these onto the corresponding lists of the context.  In order to
+  achieve this, we put in d_xlist an ordered list of all elements that
+  are primitive for _some_ y_j, not equal to y_j, and we move
+  downwards in that list. It is guaranteed by Lemma 6.2 in David's
+  notes, that for each x in d_xlist there is a y_j for which there is
+  an easy reduction (i.e., x might be primitive for y_j, but not
+  extremal.) So we can deduce P_{x,y_j} from the already known part of
+  klv[j], and then traversing the tree structure of edge relations
+  imposed on the thicket, we can compute all the other P_{x,y_i} that
+  need to be (i.e., those for which x is in pr[j].) We record the
+  result only if the corresponding polynomial is non-zero.
 */
 
 {
@@ -1634,8 +1769,8 @@ void Thicket::fill()
 
   // initialize rows, fill in last element, initialize iterators
   for (size_t j = 0; j < size(); ++j) {
-    const PrimitiveRow& pr = primitiveRow(j);
-    d_klr[j].resize(pr.size());
+    const PrimitiveRow& pr = primitiveRow(j); // last element is y_j
+    d_klr[j].resize(pr.size()); 
     d_klr[j].back() = d_helper->d_one;
     d_firstPrim[j] = d_prim[j].end()-1;
     d_firstKL[j] = d_klr[j].end()-1;
