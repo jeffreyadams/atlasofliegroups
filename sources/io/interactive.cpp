@@ -1,8 +1,8 @@
 /*
   This is interactive.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -37,7 +37,7 @@
 namespace atlas {
 
 namespace interactive {
-  
+
   using namespace interactive_lattice;
   using namespace interactive_lietype;
 
@@ -53,7 +53,7 @@ namespace {
   bool checkInvolution(latticetypes::LatticeMatrix&,
 		       const latticetypes::WeightList&);
 
-  bool checkInvolution(const latticetypes::LatticeMatrix&, 
+  bool checkInvolution(const latticetypes::LatticeMatrix&,
 		       const layout::Layout&);
 }
 
@@ -67,7 +67,7 @@ namespace {
 
 namespace interactive {
 
-void bitMapPrompt(std::string& prompt, const char* mess, 
+void bitMapPrompt(std::string& prompt, const char* mess,
 		  const bitmap::BitMap& vals)
 
 /*
@@ -91,7 +91,7 @@ void bitMapPrompt(std::string& prompt, const char* mess,
   return;
 }
 
-void getCartanClass(size_t& cn, const bitmap::BitMap& cs, 
+void getCartanClass(size_t& cn, const bitmap::BitMap& cs,
 		    input::InputBuffer& line)
   throw(error::InputError)
 
@@ -142,7 +142,7 @@ void getInnerClass(latticetypes::LatticeMatrix& d,
     - c : compact (d is the identity);
     - s : split (d is minus the identity);
     - C : complex (d flips two consecutive isomorphic factors in lt);
-    - I : II (the non-identity inner form in type D_{2n}); there are actually
+    - u : the non-identity inner form in type D_{2n}; there are actually
           three of these for D4 but they are conjugate in Out(G), so it is
 	  enough to consider one of them.
 
@@ -167,7 +167,7 @@ void getInnerClass(latticetypes::LatticeMatrix& d,
   involution(i,lt,ict);
 
   while (not checkInvolution(i,lo)) { // reget the inner class
-    std::cerr 
+    std::cerr
       << "sorry, that inner class is not compatible with the weight lattice"
       << std::endl;
     getInteractive(ict,lt);
@@ -194,7 +194,7 @@ void getInteractive(lietype::LieType& d_lt) throw(error::InputError)
   of lt. Does not touch lt unless the assignment succeeds.
 */
 
-{  
+{
   using namespace error;
   using namespace input;
   using namespace lietype;
@@ -258,18 +258,18 @@ void getInteractive(lietype::InnerClassType& ict, const lietype::LieType& lt)
   return;
 }
 
-void getInteractive(prerootdata::PreRootDatum& d_prd, 
-		    latticetypes::WeightList& d_b, 
-		    const lietype::LieType& lt) 
+void getInteractive(prerootdata::PreRootDatum& d_prd,
+		    latticetypes::WeightList& d_b,
+		    const lietype::LieType& lt)
   throw(error::InputError)
 
 /*
   Replaces prd with a new PreRootDatum gotten interactively from the user.
   The Lie type is given in lt.
 
-  The list b is used to make a note of the base change from the original 
+  The list b is used to make a note of the base change from the original
   simple weight basis associated to the standard "simply connected times torus"
-  form of lt to the actual lattice basis; this might be necessary for checking 
+  form of lt to the actual lattice basis; this might be necessary for checking
   if certain real forms are defined for this covering.
 
   Throws an InputError if the interaction with the user fails. In that case,
@@ -301,13 +301,13 @@ void getInteractive(prerootdata::PreRootDatum& d_prd,
   return;
 }
 
-void getInteractive(realform::RealForm& d_rf, 
+void getInteractive(realform::RealForm& d_rf,
 		    const complexredgp_io::Interface& I)
   throw(error::InputError)
 
 /*
-  Synposis: replaces rf with a new strong real form gotten interactively 
-  from the user. 
+  Synposis: replaces rf with a new strong real form gotten interactively
+  from the user.
 
   Throws an InputError if the interaction with the user fails; in that case,
   rf is not modified.
@@ -340,13 +340,13 @@ void getInteractive(realform::RealForm& d_rf,
   return;
 }
 
-void getInteractive(realform::RealForm& rf, 
+void getInteractive(realform::RealForm& rf,
 		    const complexredgp_io::Interface& I,
 		    tags::DualTag)
   throw(error::InputError)
 
 /*
-  Synposis: replaces rf with a new strong dual real form gotten interactively 
+  Synposis: replaces rf with a new strong dual real form gotten interactively
   from the user.
 
   Throws an InputError if the interaction with the user fails; in that case,
@@ -380,7 +380,7 @@ void getInteractive(realform::RealForm& rf,
   return;
 }
 
-void getInteractive(realform::RealForm& rf, 
+void getInteractive(realform::RealForm& rf,
 		    const complexredgp_io::Interface& I,
 		    const realform::RealFormList& drfl,
 		    tags::DualTag)
@@ -403,7 +403,7 @@ void getInteractive(realform::RealForm& rf,
   // if there is only one choice, make it
   if (drfl.size() == 1) {
     RealForm rfo = rfi.out(drfl[0]);
-    std::cout << "there is a unique dual real form choice: " 
+    std::cout << "there is a unique dual real form choice: "
 	      << rfi.typeName(rfo) << std::endl;
     rf = drfl[0];
     return;
@@ -433,9 +433,9 @@ void getInteractive(realredgp::RealReductiveGroup& d_G,
   throw(error::InputError)
 
 /*
-  Synopsis: replaces d_G by a new RealReductiveGroup gotten 
+  Synopsis: replaces d_G by a new RealReductiveGroup gotten
   interactively from the user. The complex group interface is not touched.
-  
+
   Throws an InputError if the interaction with the user is not successful;
   in that case, d_G is not touched.
 */
@@ -460,7 +460,7 @@ void getInteractive(complexredgp_io::Interface& d_I)
 /*
   Synopsis: Replaces d_I by a new Interface gotten interactively from the
   user.
-  
+
   Throws an InputError if the interaction with the user is not successful;
   in that case, d_I is not touched.
 
@@ -600,7 +600,7 @@ void getInteractive(unsigned long& d_c, const char* prompt,
   else
     c = vals.capacity();
 
-  while (not vals.isMember(c)) {   
+  while (not vals.isMember(c)) {
     std::cout << "sorry, value must be one of ";
     seqPrint(cout,vals.begin(),vals.end()) << std::endl;
     ib.getline(std::cin,"try again (? to abort): ",false);
@@ -644,46 +644,7 @@ input::InputBuffer& inputLine()
 
 namespace {
 
-/*****************************************************************************/
-
-bool checkInvolution(latticetypes::LatticeMatrix& i, 
-		     const latticetypes::WeightList& b)
-
-/*
-  This function checks if the weight lattice of rd is stable under the
-  involution i. Here i is expressed in terms of the fundamental weight
-  lattice of the lie type used to construct rf, and b holds the basis
-  of rd's lattice expressed in that fundamental weight lattice.
-
-  Also, if the involution stabilizes the lattice, i is reset to the
-  matrix of the involution in the lattice basis.
-*/
-
-{
-  using namespace latticetypes;
-
-  LatticeMatrix p(b);
-
-  // write d.p^{-1}.i.p
-
-  LatticeMatrix m(p);
-  leftProd(m,i);
-  LatticeCoeff(d);
-  p.invert(d);
-  leftProd(m,p);
-
-  // now i stabilizes the lattice iff d divides m
-
-  if (m.divisible(d)) {
-    m /= d;
-    i.swap(m);
-    return true;
-  }
-  else
-    return false;
-}
-
-bool checkInvolution(const latticetypes::LatticeMatrix& i, 
+bool checkInvolution(const latticetypes::LatticeMatrix& i,
 		     const layout::Layout& lo)
 
 /*
