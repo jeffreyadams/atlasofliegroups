@@ -456,7 +456,7 @@ list of elements primitive with respect to some y' in the Thicket.
     ThicketIterator& operator++();
   };
 
-}
+  }
   }
 
 /*****************************************************************************
@@ -1526,7 +1526,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
   return;
 }
 
-}
+  }
 }
 
 /*****************************************************************************
@@ -1833,6 +1833,7 @@ void Thicket::fillXList()
   return;
 }
 
+  }
 }
 
 /*****************************************************************************
@@ -1904,9 +1905,9 @@ ThicketIterator& ThicketIterator::operator++ ()
   return *this;
 }
 
+  }
 }
-}
-}
+
 
 /*****************************************************************************
 
@@ -2048,3 +2049,4 @@ size_t goodAscent(const descents::DescentStatus& d1,
 }
 }
 }
+
