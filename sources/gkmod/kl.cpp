@@ -793,7 +793,7 @@ const KLPol& Helper::klPol(size_t x, size_t y,
   [p_begin,p_end[ is the corresponding range of primitve elements.
 
   Algorithm: primitivize x w.r.t. the descents in y; if a real compact
-  situation is encountered, return zero; otherwise look up the primitve
+  situation is encountered, return zero; otherwise look up the primitive
   x in the extremal range.
 */
 
@@ -1455,8 +1455,9 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
 /*!
   \brief Writes down row y in d_kl and d_prim.
 
-  Precondition: klv contains the polynomials corresponding to the extremal
-  values in the row; e contains the corresponding block elements.
+  Precondition: klv contains the polynomials corresponding to the
+  extremal values in the row; er contains the corresponding (extremal
+  with respect to y) block elements.
 
   Explanation: the difficulty is that we want to write down the _primitive_
   elements, i.e., those x for which all descents for y are either descents
@@ -1488,7 +1489,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
     stop[j+1] = epos;
   }
 
-  // write polynomials
+  // write polynomials, beginning with largest x (which is y).
   for (size_t j = er.size(); j;) {
     --j;
     // insert extremal polynomial
@@ -1842,7 +1843,8 @@ void Thicket::fillXList()
 
  *****************************************************************************/
 
-namespace {
+namespace kl {
+  namespace helper {
 
 ThicketIterator::ThicketIterator(const Thicket& th, size_t j)
   : d_thicket(&th)
@@ -1902,6 +1904,7 @@ ThicketIterator& ThicketIterator::operator++ ()
   return *this;
 }
 
+}
 }
 }
 
