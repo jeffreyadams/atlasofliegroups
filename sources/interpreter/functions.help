@@ -1,0 +1,129 @@
+vec: (vec->vec): identity function on vectors
+mat: (mat->mat): identity function on matrices
+id_mat: (int->mat): identity matrix of given size
+transpose_mat: (mat->mat): matrix transposition
+diagonal_mat: (vec->mat): square diagonal matrix with given diagonal entries
+mv_prod: (mat,vec->vec): matrix-vector product
+mm_prod: (mat,mat->mat): matrix-matrix product
+
+inv_fact: (mat->vec): invariant factors in Smith normal form (no zeros)
+Smith_basis: (mat->mat): a basis on which the Smith normal form is assumed
+Smith: (mat->mat,vec): Smith(M)= ( Smith_basis(M), inv_fact(M) )
+  Smith(M) describes explicitly the sublattice spanned by the columns of M.
+  inv_fact(M) is the list of invariant factors, each one dividing the next,
+  and Smith_basis(M) a square matrix of height equal to that of M and
+  determinant 1, such that multiplying each column corresponding to an
+  invariant factor by that factor, and the remaining ones by 0, gives a matrix
+  whose columns span the same lattice as the columns of M.
+
+invert: (mat->mat,int): invert(M)=inv,d such that M*inv=d*Id, with d minimal
+  the inverse matrix, represented as an integral numerator matrix and a
+  minimal common denominator
+
+Lie_type: (string->LieType): interpret string as Lie type
+  factors are one of "ABCDEFGT" followed by a number; several factors can be
+  concatenated in a string with optional punctuation. Must have total rank<=16
+
+Cartan_matrix: (LieType->mat): Cartan matrix of Lie type (square of size rank)
+  a block form Cartan matrix, with zeros in rows and columns of torus factors
+
+type_of_Cartan_matrix: (mat->LieType): semisimple type given by Cartan matrix
+  the input should be a Cartan matrix without zero rows or columns, otherwise
+  this function gets confused
+
+Smith_Cartan: (LieType->mat,vec): compute generators of weights modulo roots
+  find a Smith basis for the weight lattice relative to the sublattice of
+  roots, with corresponding invariant factors; almost equivalent to
+  Smith(transpose_mat(Cartan_matrix(type))), except that (1) each simple of
+  torus factor is normalised separately, (2) for torus factors there is
+  a '1' is on the diagonal and a '0' appears as invariant factor, and (3) for
+  factors D_{2n} an equivalent basis is given, which has been tweaked so that
+  the final two vectors are standard basis vectors
+
+filter_units: (mat,vec->mat,vec): discard entries '1' and their columns
+  the input is presumably produced by 'Smith_Cartan'; all entries '1' in the
+  vector and the corresponding columns of the matrix are thrown away
+
+ann_mod: (mat,int->mat): find maximal matrix with product divisible by d
+  ann_mod(M,d) finds a square matrix A whose columns have the same height
+  as those of M and span a maximal sublattice subject to the condition that
+  the scalar product of every column of A with every column of M is divisible
+  by d (the matrix product transpose_mat(A)*M vanishes modulo d).
+
+replace_gen: ((mat,vec),mat->mat): replace generators of weight lattice
+  for every entry different from '1' in the vector argument, replace a column
+  from the first matrix by a column from the second matrix
+
+quotient_basis: (LieType,mat->mat): sublattice given by kernel generators
+  interpret the columns of the matrix as denominators of the kernel generators
+  as one would input in the Atlas software for the given type (the
+  denominators are imposed, except for torus factors, where the least common
+  multiple d of all imposed columns is taken), and return the corresponding
+  sublattice as a matrix whose column are its generators; if M' is the matrix
+  adjusted for bringing everything on a common denominator d, this amounts to
+  setting S=Smith_Cartan(type); C,v=filter_units(S) and then returning the
+  value replace_gen(S,mm_prod(C,ann_mod(M',d)))
+
+involution: (LieType,string->mat): diagram involution for given inner class
+  return a matrix giving the diagram involution described by the string
+  interpreted as the inner class string is in the Atlas; this is essentially a
+  permutation matrix, except that for the split type on torus factors there
+  is a diagonal entry -1
+
+inner: (LieType,mat,string->mat): involution for string expressed on basis
+  this is like involution for the same Lie type and inner class string, but
+  the matrix is expressed on the given basis (matrix columns), which must
+  be possible (the sublattice spanned is stable inder the involution)
+
+root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice
+type_of_root_datum: (RootDatum->LieType): Lie type of a root datum
+  this may differ from original type, by torus factors being moved to the end
+
+quotient_datum: (LieType,mat->RootDatum): root datum as entrered in Atlas
+  quotient_datum(type,gens)=root_datum(type,quotient_basis(type,gens))
+
+simply_connected_datum: (LieType->RootDatum): simply connected datum for type
+  simply_connected_datum(type) = root_datum(type,id_mat(rank))
+
+adjoint_datum: (LieType->RootDatum): adjoint root datum for type
+  adjoint_datum(type) = root_datum(type,transpose_mat(Cartan_matrix(type))),
+  except that diagonal entries '1' are inserted for torus factors
+
+SL: (int->RootDatum): SL(n) gives root datum for SL(n,C)
+  make this root datum using the most pleasant "epsilon" basis for sub-lattice
+GL: (int->RootDatum): GL(n) gives root datum for GL(n,C)
+  make this root datum using the most pleasant "epsilon" basis for sub-lattice
+
+simple_roots: (RootDatum->mat): matrix of simple roots in the root datum
+simple_coroots: (RootDatum->mat): matrix of simple coroots in the root datum
+Cartan: (RootDatum->mat): Cartan matrix of root datum (this is semisimple)
+roots: (RootDatum->mat): set of roots in the root datum (columns of result)
+coroots: (RootDatum->mat): set of coroots in the root datum (as columns)
+root_coradical: (RootDatum->mat): simple roots and coradical basis
+  with respect to simple_roots, add columns for coradical basis generators
+coroot_radical: (RootDatum->mat): simple coroots and radical basis
+  with respect to simple_coroots, add columns for radical basis generators
+dual_datum: (RootDatum->RootDatum): dual of given root datum
+
+fix_involution: (RootDatum,mat->ComplexGroup): define G by involution matrix
+  this is the basic function for building a complex reductive group equipped
+  with a distinguished involution from the root datum and that involution;
+  the involution must be on the (sub-)lattice basis of the root datum, and it
+  is checked for describing an involutive automorphism of the based root datum
+
+set_type: (string,mat,string->ComplexGroup): define G as in Atlas interface
+  set_type(type_string,gens,inner_class) is essentially computed by setting
+  t=Lie_type(type_string); basis=quotient_basis(t,gens), and then returning
+  fix_involution(root_datum(t,basis),inner(t,basis,inner_class))
+
+set_inner_class: (RootDatum,string->ComplexGroup): define G by inner class
+  building a complex reductive group directly from a root datum, but compute
+  the distinguished involution using an inner class string;
+  set_inner_class(rd,inner_class) is essentially computed by setting
+  t=type_of_root_datum(rd); basis=transpose_mat(coroot_radical(rd)), and then
+  returning fix_involution(rd,inner(t,basis,inner_class))
+
+distinguished_involution: (ComplexGroup->mat): involution of complex group
+  extract the distinguised involution stored in the complex reductive group
+root_datum_of_group: (ComplexGroup->RootDatum): root datum of complex group
+  extract the root datum stored in the complex reductive group

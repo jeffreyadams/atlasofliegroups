@@ -15,7 +15,7 @@
 %pure-parser
 %error-verbose
 
-%token QUIT TRUE FALSE QUIET VERBOSE
+%token QUIT TRUE FALSE QUIET VERBOSE WHATTYPE PRINTALL
 %token DIVMOD
 %token <val> INT
 %token <expression> STRING
@@ -42,6 +42,8 @@ input:  '\n'			{ YYABORT } /* return 1 to skip evaluator */
         | QUIT	'\n'		{ *running =-1; } /* causes immediate exit */
         | QUIET	'\n'		{ *running =0; YYABORT } /* quiet mode */
         | VERBOSE '\n'		{ *running =1; YYABORT } /* verbose mode */
+	| WHATTYPE exp '\n'     { type_of_expr($2); YYABORT } /* print type */
+        | PRINTALL '\n'         { show_ids(); YYABORT } /* print id table */
 ;
 
 exp     : INT { $$ = make_int_denotation($1); }

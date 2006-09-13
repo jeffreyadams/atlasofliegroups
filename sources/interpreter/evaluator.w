@@ -936,9 +936,12 @@ void weight_value::print(std::ostream& out) const
   { std::ostringstream s; s<<value[i]; tmp[i]=s.str();
     if (tmp[i].length()>w) w=tmp[i].length();
   }
-  w+=1; out << std::right << '[';
-  for (size_t i=0; i<l; ++i)
-    out << std::setw(w) << tmp[i] << (i<l-1 ? "," : " ]");
+  if (l==0) out << "[ ]";
+  else
+  { w+=1; out << std::right << '[';
+    for (size_t i=0; i<l; ++i)
+      out << std::setw(w) << tmp[i] << (i<l-1 ? "," : " ]");
+  }
 }
 
 @ For matrices we align columns, and print vertical bars along the sides.
@@ -1469,17 +1472,23 @@ Therefore we provide a function to clear the stack.
 @< Declarations of exported functions @>=
 void clear_execution_stack ();
 
-@~We monitor disappearing values when clearing the stack. Since
-currently the stack only holds values very briefly during entry and exit of
-function calls, it is virtually impossible to actually make this function
-produce output.
+@~We monitor disappearing values when clearing the stack. Since currently the
+stack only holds values very briefly during entry and exit of function calls,
+it is virtually impossible to actually make this function produce output from
+user expressions, but some wrapper functions simulate the evaluation of nested
+expressions, and in case of errors the values already computed but not
+involved in the error may show up.
 
 @< Function definitions @>=
 void clear_execution_stack ()
-{ while (!execution_stack.empty())
-  { value_ptr v=execution_stack.back();
-    std::cerr << "Discarding value " << *v << std::endl;
-    delete v; execution_stack.pop_back();
+{ if (!execution_stack.empty())
+  { std::cerr << "Discarding from execution stack:" << std::endl;
+    do
+    { value_ptr v=execution_stack.back();
+      std::cerr << *v << std::endl;
+      delete v; execution_stack.pop_back();
+    }
+    while (!execution_stack.empty());
   }
 }
 
@@ -1569,7 +1578,7 @@ template for them.
 int_value* get_int() throw(std::logic_error)
 { value_ptr p=pop_arg();
   int_value* result=dynamic_cast<int_value*>(p);
-  if (result==0)
+  if (result==NULL)
     {@; delete p; throw std::logic_error("Argument is not an integer"); }
   return result;
 }
@@ -1577,7 +1586,7 @@ int_value* get_int() throw(std::logic_error)
 string_value* get_string() throw(std::logic_error)
 { value_ptr p=pop_arg();
   string_value* result=dynamic_cast<string_value*>(p);
-  if (result==0)
+  if (result==NULL)
     {@; delete p; throw std::logic_error("Argument is not a string"); }
   return result;
 }
@@ -1585,7 +1594,7 @@ string_value* get_string() throw(std::logic_error)
 bool_value* get_bool() throw(std::logic_error)
 { value_ptr p=pop_arg();
   bool_value* result=dynamic_cast<bool_value*>(p);
-  if (result==0)
+  if (result==NULL)
     {@; delete p; throw std::logic_error("Argument is not a boolean"); }
   return result;
 }
@@ -1594,7 +1603,7 @@ bool_value* get_bool() throw(std::logic_error)
 weight_value* get_vec() throw(std::logic_error)
 { value_ptr p=pop_arg();
   weight_value* result=dynamic_cast<weight_value*>(p);
-  if (result==0)
+  if (result==NULL)
     {@; delete p; throw std::logic_error("Argument is not a vector"); }
   return result;
 }
@@ -1602,7 +1611,7 @@ weight_value* get_vec() throw(std::logic_error)
 latmat_value* get_mat() throw(std::logic_error)
 { value_ptr p=pop_arg();
   latmat_value* result=dynamic_cast<latmat_value*>(p);
-  if (result==0)
+  if (result==NULL)
     {@; delete p; throw std::logic_error("Argument is not a matrix"); }
   return result;
 }
@@ -1610,7 +1619,7 @@ latmat_value* get_mat() throw(std::logic_error)
 row_value* get_row() throw(std::logic_error)
 { value_ptr p=pop_arg();
   row_value* result=dynamic_cast<row_value*>(p);
-  if (result==0)
+  if (result==NULL)
     {@; delete p; throw std::logic_error("Argument is not a row"); }
   return result;
 }
@@ -1618,7 +1627,7 @@ row_value* get_row() throw(std::logic_error)
 tuple_value* get_tuple() throw(std::logic_error)
 { value_ptr p=pop_arg();
   tuple_value* result=dynamic_cast<tuple_value*>(p);
-  if (result==0)
+  if (result==NULL)
     {@; delete p; throw std::logic_error("Argument is not a tuple"); }
   return result;
 }
@@ -1814,17 +1823,17 @@ the identity matrix and matrix transposition.
 
 @< Declarations of exported functions @>=
 void id_mat_wrapper ();
-void transmat_wrapper ();
+void transpose_mat_wrapper ();
 
 @ Since in general built-in functions may throw exceptions (even |transpose|!)
 we hold the pointers to the values created to hold their results in
-auto-pointers. The reason that in |idmat_wrapper| we create a |latmat_value|
+auto-pointers. The reason that in |id_mat_wrapper| we create a |latmat_value|
 around an empty |LatticeMatrix| rather than build a filled matrix object
 first, is that the constructor for |latmat_value| would than have to copy that
-matrix object (which implies copying its contents). In |transmat_wrapper| we
-can in fact return the same |latmat_value| that held the argument, but this
+matrix object (which implies copying its contents). In |transpose_mat_wrapper|
+we can in fact return the same |latmat_value| that held the argument, but this
 does not absolve us from using an auto-pointer while |transpose| is active. We
-also define |diagonal_wrapper|, a slight generalisation of |idmat_wrapper|
+also define |diagonal_wrapper|, a slight generalisation of |id_mat_wrapper|
 that produces a diagonal matrix from a vector.
 
 @< Definition of other wrapper functions @>=
@@ -1835,7 +1844,7 @@ void id_mat_wrapper ()
   identityMatrix(m->value,std::abs(i->value)); push_value(m.release());
 }
 
-void transmat_wrapper ()
+void transpose_mat_wrapper ()
 {@; std::auto_ptr<latmat_value>m(get_mat());
   m->value.transpose(); push_value(m.release());
 }
@@ -1956,7 +1965,7 @@ void invert_wrapper ()
 @ We must not forget to install what we have defined
 @< Installation of other built-in functions @>=
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
-install_function(transmat_wrapper,"transpose_mat","(mat->mat)");
+install_function(transpose_mat_wrapper,"transpose_mat","(mat->mat)");
 install_function(diagonal_wrapper,"diagonal_mat","(vec->mat)");
 install_function(mv_prod_wrapper,"mv_prod","(mat,vec->vec)");
 install_function(mm_prod_wrapper,"mm_prod","(mat,mat->mat)");
@@ -2027,7 +2036,12 @@ case applied_identifier:
 }
 break;
 
-@* Making global definitions.
+@* Operations other than evaluation of expressions.
+This file also defines some operations that can be invoked by the parser that
+do not consist of evaluation an expression. The declarations of these
+functions are given in \.{parsetree.h} so that the parser can see them.
+
+@*1 Making global definitions.
 For the moment, applied identifiers can only get their value through the
 function |global_set_identifier| that was declared in \.{parsetree.h}. We
 define it here since it uses the services of the evaluator. It will be called
@@ -2109,6 +2123,29 @@ identifiers are distinct, we put them into a |set| and check membership.
         +main_hash_table->name_of(l->e.e.identifier_variant)
         +" in multiple assignment");
   }
+}
+
+@*1 Printing type information.
+It is useful to print type information, either for a single expression or for
+all identifiers in the table.
+
+@< Function definitions @>=
+extern "C"
+void type_of_expr(expr e)
+{ try { std::cout << "type: " << *analyse_types(e) << std::endl; }
+  catch (std::runtime_error& err) { std::cerr<<err.what()<<std::endl; }
+}
+
+@ The function |show_ids| prints a table of all known identifiers and their
+types. It does this by copying the identifiers from the global identifier
+table into a |map| object, and then traversing that object to print their
+types.
+
+@h <map>
+@< Function definitions @>=
+extern "C"
+void show_ids()
+{ std::cout << *global_id_table;
 }
 
 
@@ -2216,10 +2253,10 @@ using clever \&{\#include} directives, but that is not really worth the hassle
 much worse to actually extend the lines below as well).
 
 @< Other primitive types @>=
-complex_lie_type_type , root_datum_type, bitset_type, @[@]
+complex_lie_type_type , root_datum_type, complexgroup_type, @[@]
 
 @~@< Other primitive type names @>=
-"Ctype","RootDatum", "bitset", @[@]
+"LieType","RootDatum", "ComplexGroup", @[@]
 
 @* Index.
 

@@ -45,7 +45,8 @@ in the same order as in the \.{\%token} declaration in \.{parser.y}.
 
 @< Definition of keywords @>=
 
-const char* keywords[] = {"quit","true","false","quiet","verbose",NULL};
+const char* keywords[] =
+ {"quit","true","false","quiet","verbose","whattype","printall",NULL};
 
 @ Our lexical analyser is defined as a class, which we shall instantiate in
 the main program. In order for the lexical analyser wrapper function to access

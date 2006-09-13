@@ -430,17 +430,22 @@ short lookup_identifier(const char*);
 id_type lookup_identifier(const char* name)
 {@; return atlas::interpreter::main_hash_table->match_literal(name); }
 
-@ The next function will be called by the parser for global identifier
-definitions. It is a temporary feature to handle this while there is not yet a
-general structure for identifier definitions within expressions, so this
-cannot yet be handled as a part of evaluation expressions. The left hand side
-is a list of identifiers (this is guaranteed by the parser), which are only
-represented as an |expr_list| because this avoids defining a separate type.
-This function will be defined in the file \.{evaluator.w} to avoid having to
-make  the current compilation unit depend on \.{"evaluator.h}.
+@ The next functions are declared here, because the parser needs to see these
+declarations in \Cee-style, but they are defined in in the file
+\.{evaluator.w}, since that is where the functionality is available, and we do
+not want to make the current compilation unit depend on \.{evaluator.h}.
+
+The function |global_set_identifier| is a temporary feature to handle defining
+identifiers while there is not yet a general structure for identifier
+definitions within expressions (so that this cannot yet be handled as a part
+of evaluation expressions). The left hand side~|ids| refers to a list of
+identifiers (this is guaranteed by the parser), which are only represented as
+an |expr_list| because this avoids defining a separate type. 
 
 @< Declaration of functions in \Cee-style for the parser @>=
 void global_set_identifier(expr_list ids, expr e);
+void show_ids();
+void type_of_expr(expr e);
 
 
 @* Index.
