@@ -17,9 +17,9 @@
 */
 /*
   This is blocks.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -141,7 +141,7 @@ Block::Block():d_bruhat(0)
 
 {}
 
-Block::Block(complexredgp::ComplexReductiveGroup& G, 
+Block::Block(complexredgp::ComplexReductiveGroup& G,
 	     realform::RealForm rf, realform::RealForm df)
   :d_bruhat(0)
 
@@ -332,7 +332,7 @@ void Block::fillBruhat()
 // namespace {
   namespace blocks {
   namespace helper {
-Helper::Helper(realredgp::RealReductiveGroup& G, 
+Helper::Helper(realredgp::RealReductiveGroup& G,
 	       realredgp::RealReductiveGroup& dG)
   :d_kgb(G),
    d_dualkgb(dG)
@@ -416,11 +416,11 @@ weyl::WeylElt Helper::dualInvolution(const weyl::WeylElt& d_w) const
 /*!
   \brief Returns the twisted involution dual to d_w.
 
-  Explanation: we have tau = w.tau_f, with w in the Weyl group, and tau_f 
+  Explanation: we have tau = w.tau_f, with w in the Weyl group, and tau_f
   the fundamental involution of the character lattice. We seek v s.t.
-  -{}^t tau = v.tau_f^{vee}, where tau_f^{vee} = -w_0{}^t tau_f. So we 
+  -{}^t tau = v.tau_f^{vee}, where tau_f^{vee} = -w_0{}^t tau_f. So we
   have:
-    
+
         (-{}^t tau_f).{}^t w = v.w_0.(-{}^t tau_f)
 
   which leads to v = ({}^t theta_f(w)).w_0, where theta_f comes from the
@@ -476,9 +476,9 @@ void Helper::fillCayleyActions()
 	continue;
       KGBEltPair sy = d_dualkgb.inverseCayley(s,y(z));
       assert(sy.first != UndefKGB);
-      KGBEltList::iterator i = 
+      KGBEltList::iterator i =
 	std::find(d_y.begin()+d_firstx[sx],d_y.end(),sy.first);
-      assert(i - d_y.begin() < d_firstx[sx+1]);
+      assert(i  < d_y.begin()+d_firstx[sx+1]);
       d_cayley[s][z].first = i - d_y.begin();
       {
 	// fill in inverse Cayley entry
@@ -494,7 +494,7 @@ void Helper::fillCayleyActions()
 	continue;
       // if we get here the Cayley transform is two-valued
       i = std::find(d_y.begin()+d_firstx[sx],d_y.end(),sy.second);
-      assert(i - d_y.begin() < d_firstx[sx+1]);
+      assert(  i  < d_y.begin()+d_firstx[sx+1]);
       d_cayley[s][z].second = i - d_y.begin();
       {
 	// fill in inverse Cayley entry
@@ -516,7 +516,7 @@ void Helper::fillCrossActions()
   Explanation: in principle this is simple: in terms of orbit pairs, it is
   just the corresponding action on each side. The main difficulty is in
   locating  the result. We do this with the aid off the d_firstx table:
-  the result of cross(s,(x,y)) lies in the range beginning at 
+  the result of cross(s,(x,y)) lies in the range beginning at
   firstx(cross(s,x)).
 */
 
@@ -529,7 +529,7 @@ void Helper::fillCrossActions()
       KGBElt sy = d_dualkgb.cross(s,y(z));
       KGBEltList::iterator i = std::find(d_y.begin()+d_firstx[sx],d_y.end(),
 					 sy);
-      assert(i - d_y.begin() < d_firstx[sx+1]);
+      assert(i <  d_y.begin()+d_firstx[sx+1]);
       d_cross[s][z] = i - d_y.begin();
     }
   }
@@ -595,7 +595,7 @@ void Helper::fillDescents()
 void Helper::fillInvolutions()
 
 /*!
-  \brief Fills in the involution table. 
+  \brief Fills in the involution table.
 
   This is directly deduced from the x-part.
 */
@@ -662,7 +662,7 @@ void Helper::fillInvolutionSupports()
 void Helper::fillLengths()
 
 /*!
-  \brief Fills in the length table. 
+  \brief Fills in the length table.
 
   This is directly deduced from the x-part.
 */
@@ -807,15 +807,15 @@ void insertAscents(std::set<BlockElt>& hs, const set::SetEltList& hr, size_t s,
     }
   }
 
- return; 
+ return;
 }
 
 void makeHasse(std::vector<set::SetEltList>& hd, const Block& block)
 
-/*!  
+/*!
   \brief Puts in hd the hasse diagram data for the Bruhat
   ordering on the block.
-  
+
   Explanation: we use the algorithm from Vogan's 1982 Park City notes.
 */
 
