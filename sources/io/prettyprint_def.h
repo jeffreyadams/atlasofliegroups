@@ -93,7 +93,7 @@ std::ostream& prettyPrint(std::ostream& strm,
     else
       vi.push_back(0);
 
-  seqPrint(strm,vi.begin(),vi.end(),",","(",")");
+  basic_io::seqPrint(strm,vi.begin(),vi.end(),",","(",")");
 
   return strm;
 }
@@ -268,7 +268,7 @@ std::ostream& printInRootBasis(std::ostream& strm,
   WeightList rl;
 
   rd.toRootBasis(first,last,back_inserter(rl));
-  seqPrint(strm,rl.begin(),rl.end(),sep,pre,post);
+  basic_io::seqPrint(strm,rl.begin(),rl.end(),sep,pre,post);
 
   return strm;
 }
