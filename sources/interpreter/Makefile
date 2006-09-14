@@ -54,6 +54,7 @@ cwebx_sources := $(wildcard *.w)
 
 c++files      := $(cwebx_sources:%.w=%.cpp)
 c++objects    := $(cwebx_sources:%.w=%.o)
+webtexfiles   := $(cwebx_sources:%.w=%.tex)
 
 headers := $(filter-out main.h,$(cwebx_sources:%.w=%.h)) parser.tab.h
 
@@ -79,7 +80,7 @@ clean:  mostlyclean
 	rm -f realex
 
 mostlyclean:
-	rm -f *.o *.log *.toc *.tex *.dvi *~ *.cpp *.c *.h
+	rm -f *.o *.log *.toc $(webtexfiles) *.dvi *~ *.cpp *.c *.h
 
 # we use no implicit suffix rules in this Makefile
 .SUFFIXES:
