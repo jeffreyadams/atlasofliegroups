@@ -104,77 +104,100 @@ namespace atlas {
     virtual ~Helper() {}
 
     //accessors
-    MuCoeff ascentMu(size_t, size_t, size_t) const;
+    MuCoeff ascentMu(size_t x, size_t y, size_t s) const;
 
+    /*!
+ \brief Cayley transform of block element y through simple root s.
+    */
     blocks::BlockEltPair cayley(size_t s, size_t y) const {
       return d_support->block().cayley(s,y);
     }
 
+    /*!
+ \brief Cross action of simple root s on block element y.
+    */
     size_t cross(size_t s, size_t y) const {
       return d_support->block().cross(s,y);
     }
 
+    /*!
+ \brief Returns vector of RANK_MAX unsigned char; entry s gives
+ descent status of simple root s for block element y.
+    */
     const descents::DescentStatus& descent(size_t y) const {
       return d_support->block().descent(y);
     }
 
+    /*!  
+\brief Unsigned char whose value gives the descent status of
+simple root s for block element y.
+    */
     descents::DescentStatus::Value descentValue(size_t s, size_t y) const {
       return d_support->descentValue(s,y);
     }
 
+    /*!
+\brief Second coordinate (corresponding to K^vee orbit on G^vee/B^vee)
+of pair of integers specifying block element y.
+    */
     size_t dualOrbit(size_t y) const {
       return d_support->block().y(y);
     }
 
-    size_t firstDirectRecursion(size_t) const;
+    size_t firstDirectRecursion(size_t y) const;
 
-    MuCoeff goodDescentMu(size_t, size_t, size_t) const;
+    MuCoeff goodDescentMu(size_t x, size_t y, size_t s) const;
 
     blocks::BlockEltPair inverseCayley(size_t s, size_t y) const {
       return d_support->block().inverseCayley(s,y);
     }
-
+    // declares that klPol's from base class KLContext are also
+    // considered. Don't know why that isn't automatic. [DV 9/13/06].
     using KLContext::klPol;
 
-    const KLPol& klPol(size_t, size_t, KLRow::const_iterator,
-		       klsupport::PrimitiveRow::const_iterator,
-		       klsupport::PrimitiveRow::const_iterator) const;
+    const KLPol& klPol(size_t x, size_t y, KLRow::const_iterator klv,
+		       klsupport::PrimitiveRow::const_iterator p_begin,
+		       klsupport::PrimitiveRow::const_iterator p_end) const;
 
-    MuCoeff lengthOneMu(size_t, size_t) const;
+    MuCoeff lengthOneMu(size_t x, size_t y) const;
 
-    void makeExtremalRow(klsupport::PrimitiveRow&, size_t) const;
+    void makeExtremalRow(klsupport::PrimitiveRow& e, size_t y) const;
 
-    void makePrimitiveRow(klsupport::PrimitiveRow&, size_t) const;
+    void makePrimitiveRow(klsupport::PrimitiveRow& e, size_t y) const;
 
+    /*!
+\brief First coordinate (corresponding to K orbit on G/B) of pair of
+integers specifying block element y.
+    */
     size_t orbit(size_t y) const {
       return d_support->block().x(y);
     }
 
-    MuCoeff recursiveMu(size_t, size_t) const;
+    MuCoeff recursiveMu(size_t x, size_t y) const;
 
-    MuCoeff type2Mu(size_t, size_t) const;
+    MuCoeff type2Mu(size_t x, size_t y) const;
 
     // manipulators
-    void completePacket(size_t);
+    void completePacket(size_t y);
 
-    void directRecursion(size_t, size_t);
+    void directRecursion(size_t y, size_t s);
 
     virtual void fill();
 
-    void fillKLRow(size_t);
+    void fillKLRow(size_t y);
 
-    void fillMuRow(size_t);
+    void fillMuRow(size_t y);
 
-    void fillThickets(size_t);
+    void fillThickets(size_t y);
 
-    void muCorrection(std::vector<KLPol>&, const klsupport::PrimitiveRow&,
-		      size_t, size_t);
+    void muCorrection(std::vector<KLPol>& klv, const klsupport::PrimitiveRow& e,
+		      size_t y, size_t s);
 
-    void recursionRow(std::vector<KLPol>&, const klsupport::PrimitiveRow&,
-		      size_t, size_t);
+    void recursionRow(std::vector<KLPol> & klv, 
+		      const klsupport::PrimitiveRow& e, size_t y, size_t s);
 
-    void writeRow(const std::vector<KLPol>&, const klsupport::PrimitiveRow&,
-		  size_t);
+    void writeRow(const std::vector<KLPol>& klv, 
+		  const klsupport::PrimitiveRow& e, size_t s);
   };
 
     /*!
