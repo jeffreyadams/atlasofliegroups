@@ -106,7 +106,7 @@ latter on input.
 @h "lietype.h"
 @h "constants.h"
 
-@< Local function definitions @>=
+@< Function definitions @>=
 void Lie_type_value::add_simple_factor (char c,size_t rank)
    throw(std::bad_alloc,std::runtime_error)
 { using std::runtime_error;
