@@ -276,10 +276,11 @@ of factors, corresponding to each simple block.
 % \emph{two} factors $\Z/2\Z$. Torus blocks $T_n$ contribute $n$ factors $\Z$
 % (this will be reflected in the ``missing'' invariant factors.)
 
+@h "smithnormal.h"
 @h "smithnormal_def.h"
 
 @< Local function definitions @>=
-void smithBasis(latticetypes::CoeffList& invf, latticetypes::WeightList& b, 
+void smithBasis(latticetypes::CoeffList& invf, latticetypes::WeightList& b,
 		const lietype::LieType& lt)
 
 { matrix::initBasis(b,lietype::rank(lt));
@@ -398,7 +399,6 @@ $\lcm(d,\lambda_j)/\lambda_j=d/\gcd(d,\lambda_j)$.
 @h "lattice.h"
 @h "latticetypes.h"
 @h "matrix.h"
-@h "smithnormal.h"
 
 @< Local function definitions @>=
 latticetypes::LatticeMatrix @|
@@ -749,7 +749,7 @@ where $t$ is a Lie type, and $M$ is a matrix whose columns represent the
 denominators of the kernel generators as would be entered in the Atlas
 software (the numerators are determined by~$t$ for non-torus factors, and for
 the torus factor we take the least common multiple of those other
-denominators, which should be large enough for practical purposes). 
+denominators, which should be large enough for practical purposes).
 
 Let $S=Smith\_Cartan(t)$ and $(C,v)=filter\_units(S)$, then we find a
 basis for the sub-lattice needed to build the root datum as follows. The

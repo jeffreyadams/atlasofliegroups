@@ -1910,7 +1910,9 @@ invariant factors and the rewritten basis on which the normal for is assumed,
 as separate functions, and to illustrate the possibilities of tuples, the two
 combined into a single function.
 
+@h "smithnormal.h"
 @h "smithnormal_def.h"
+
 @< Definition of other wrapper functions @>=
 void invfact_wrapper ()
 { std::auto_ptr<latmat_value> m(get_mat());
