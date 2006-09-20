@@ -43,7 +43,7 @@
 /*
   This is cartan.cpp.
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -59,14 +59,14 @@
   This module, together with the cartanclass one, contains code for dealing
   with conjugacy classes of Cartan subgroups, and real forms. In this version,
   we have de-emphasized the classification of strong real forms, which is
-  perhaps better treated as an input-output issue (it can certainly be 
+  perhaps better treated as an input-output issue (it can certainly be
   recovered with a moderate effort from the data available here.) It appears
   that the data recorded here is what's most relevant to representation
   theory.
 
   The classification of real forms amounts to the classification of W^\delta-
   orbits in the fundamental fiber of the one-sided parameter space for the
-  adjoint group (see the "combinatorics" paper on the Atlas website, or the 
+  adjoint group (see the "combinatorics" paper on the Atlas website, or the
   forthcoming "algorithms" paper by Jeff Adams and me); this is a very small
   computation, depending only on the Lie algebra.
 
@@ -95,20 +95,20 @@
 
 namespace atlas {
 
-  // changed from "unnamed" namespace 
+  // changed from "unnamed" namespace
   namespace cartanclass{
   namespace helper{
 
   using namespace cartan;
 
-  bool checkDecomposition(const weyl::WeylWord&, const weyl::WeylWord&, 
-			  const rootdata::RootList&, const weyl::WeylGroup&, 
+  bool checkDecomposition(const weyl::WeylWord&, const weyl::WeylWord&,
+			  const rootdata::RootList&, const weyl::WeylGroup&,
 			  const rootdata::RootDatum&);
 
   const size_t UndefMostSplit = ~0ul;
   const realform::RealForm UndefRealForm = ~0ul;
 
-      /*!  
+      /*!
 
 \brief Derived class of CartanClasses, to carry out the construction
 of CartanClasses.
@@ -122,10 +122,10 @@ of CartanClasses.
     const weyl::WeylGroup* d_weylGroup;
     const weyl::WeylGroup d_dualWeylGroup;
 
-    /*!  
+    /*!
     \brief List of twisted conjugacy classes of twisted
     involutions, one for each non-fundamental Cartan.
- 
+
     The conjugacy classes can be very large, so this constructor can
     be quite slow.  For a complex group, the twisted conjugacy class
     of the identity has cardinality the order of the Weyl group; so
@@ -141,7 +141,7 @@ of CartanClasses.
 
   public:
 // constructors and destructors
-    Helper(const CartanClasses&, const rootdata::RootDatum&, 
+    Helper(const CartanClasses&, const rootdata::RootDatum&,
 	   const weyl::WeylGroup&);
 
     Helper(const rootdata::RootDatum&, const latticetypes::LatticeMatrix&,
@@ -176,23 +176,23 @@ of CartanClasses.
       return cartan(j).isMostSplit(c);
     }
 
-    unsigned long makeRepresentative(const gradings::Grading&, 
+    unsigned long makeRepresentative(const gradings::Grading&,
 				     const rootdata::RootList&,
 				     const cartanclass::Fiber&) const;
 
     void makeTwistedInvolution(weyl::WeylElt&, const weyl::WeylElt&,
 			       rootdata::RootNbr) const;
 
-    void noncompactPosRootSet(rootdata::RootSet&, realform::RealForm, size_t) 
+    void noncompactPosRootSet(rootdata::RootSet&, realform::RealForm, size_t)
       const;
 
     const rootdata::RootDatum& rootDatum() const {
       return *d_rootDatum;
     }
 
-    void transformGrading(gradings::Grading&, 
-			  const rootdata::RootList&, 
-			  const rootdata::RootList&, 
+    void transformGrading(gradings::Grading&,
+			  const rootdata::RootList&,
+			  const rootdata::RootList&,
 			  const rootdata::RootDatum&) const;
 
     const weyl::WeylGroup& weylGroup() const {
@@ -206,10 +206,10 @@ of CartanClasses.
 
     void correlateForms();
 
-    void expand();    
-    
+    void expand();
+
     void extend(realform::RealForm);
-    
+
     void updateStatus(size_t);
 
     void updateSupports();
@@ -218,7 +218,7 @@ of CartanClasses.
 
   };
   }
-} 
+}
 
 /*****************************************************************************
 
@@ -232,7 +232,7 @@ namespace cartan {
 
   using namespace atlas::cartanclass::helper;
 
-CartanClasses::CartanClasses(const rootdata::RootDatum& rd, 
+CartanClasses::CartanClasses(const rootdata::RootDatum& rd,
 			     const latticetypes::LatticeMatrix& d,
 			     const weyl::WeylGroup& W)
 
@@ -267,7 +267,7 @@ CartanClasses::CartanClasses(const CartanClasses& source)
    d_status(source.d_status),
    d_mostSplit(source.d_mostSplit)
 
-{  
+{
   using namespace cartanclass;
 
   // get own copy of cartan classes
@@ -290,7 +290,7 @@ CartanClasses& CartanClasses::operator= (const CartanClasses& source)
 
 void CartanClasses::swap (CartanClasses& other)
 
-{  
+{
   d_fundamental.swap(other.d_fundamental);
   d_dualFundamental.swap(other.d_dualFundamental);
   d_cartan.swap(other.d_cartan);
@@ -308,14 +308,14 @@ void CartanClasses::swap (CartanClasses& other)
 
 /******** accessors **********************************************************/
 
-unsigned long CartanClasses::dualFiberSize(realform::RealForm rf, size_t cn) 
+unsigned long CartanClasses::dualFiberSize(realform::RealForm rf, size_t cn)
   const
-/*!  
+/*!
   \brief Returns the size of the dual fiber orbits corresponding to
   the dual strong real forms lying over dual real form \#rf, in cartan
   \#cn.
 
-  Precondition: rf is defined for cartan \#cn.
+  Precondition: real form \#rf is defined for cartan \#cn.
 */
 
 {
@@ -334,7 +334,7 @@ unsigned long CartanClasses::dualFiberSize(realform::RealForm rf, size_t cn)
   return pi.classSize(c);
 }
 
-unsigned long CartanClasses::dualRepresentative(realform::RealForm rf, 
+unsigned long CartanClasses::dualRepresentative(realform::RealForm rf,
 						size_t cn) const
 
 /*!
@@ -396,7 +396,7 @@ size_t CartanClasses::numInvolutions() const
   return count;
 }
 
-unsigned long CartanClasses::representative(realform::RealForm rf, size_t cn) 
+unsigned long CartanClasses::representative(realform::RealForm rf, size_t cn)
   const
 
 /*!
@@ -419,7 +419,7 @@ unsigned long CartanClasses::representative(realform::RealForm rf, size_t cn)
 
 /******** manipulators *******************************************************/
 
-void CartanClasses::extend(const weyl::WeylGroup& W, 
+void CartanClasses::extend(const weyl::WeylGroup& W,
 			   const rootdata::RootDatum& rd,
 			   realform::RealForm rf)
 
@@ -427,7 +427,7 @@ void CartanClasses::extend(const weyl::WeylGroup& W,
   \brief Extends the cartanclasses structure so that it contains all Cartans
   for real form \#rf.
 
-  Precondition: W is the Weyl group of the corresponding complex reductive 
+  Precondition: W is the Weyl group of the corresponding complex reductive
   group; rd is the root datum;
 
   NOTE: may forward an Overflow exception from expand.
@@ -468,7 +468,7 @@ void CartanClasses::extend(const weyl::WeylGroup& W,
   namespace cartanclass {
   namespace helper {
 
-Helper::Helper(const rootdata::RootDatum& rd, 
+Helper::Helper(const rootdata::RootDatum& rd,
 	       const latticetypes::LatticeMatrix& d,
 	       const weyl::WeylGroup& W)
   :d_rootDatum(&rd),
@@ -476,7 +476,7 @@ Helper::Helper(const rootdata::RootDatum& rd,
    d_weylGroup(&W),
    d_dualWeylGroup(W,tags::DualTag())
 
-{  
+{
   using namespace bitset;
   using namespace cartanclass;
   using namespace latticetypes;
@@ -502,7 +502,7 @@ Helper::Helper(const rootdata::RootDatum& rd,
 
   // make the dual real form labels
   correlateDualForms();
-  
+
   // mark off the fundamental forms
   d_status.resize(numRealForms());
   d_mostSplit.assign(numRealForms(),UndefMostSplit);
@@ -524,16 +524,16 @@ Helper::Helper(const CartanClasses& source, const rootdata::RootDatum& rd,
 
 {}
 
-Helper::~Helper() 
+Helper::~Helper()
 
 {}
 
 /******** copy, assignment and swap ******************************************/
 
 /******** accessors **********************************************************/
-void Helper::cayleyPart(rootdata::RootList& so, 
+void Helper::cayleyPart(rootdata::RootList& so,
 			const weyl::WeylWord& wi,
-			const rootdata::RootDatum& rd, 
+			const rootdata::RootDatum& rd,
 			const weyl::WeylGroup& W) const
 
 /*!
@@ -567,7 +567,7 @@ void Helper::cayleyPart(rootdata::RootList& so,
       W.twistedConjugate(w,s);
     }
   }
-    
+
   strongOrthogonalize(so,rd);
 
   return;
@@ -577,7 +577,7 @@ void Helper::crossPart(weyl::WeylWord& ww, const weyl::WeylWord& wi,
 		       const weyl::WeylGroup& W) const
 
 /*!
-  \brief Puts in ww the cross action corresponding to ti.
+  \brief Puts in ww the cross action corresponding to wi.
 
   Explanation: to each root datum involution, we may associate a transformation
   from the fundamental cartan to the current cartan, that factors as the
@@ -604,7 +604,7 @@ void Helper::crossPart(weyl::WeylWord& ww, const weyl::WeylWord& wi,
   return;
 }
 
-void Helper::crossTransform(rootdata::RootList& rl, 
+void Helper::crossTransform(rootdata::RootList& rl,
 			    const weyl::WeylWord& ww,
 			    const rootdata::RootDatum& rd) const
 
@@ -635,9 +635,6 @@ void Helper::makeTwistedInvolution(weyl::WeylElt& ti, const weyl::WeylElt& w,
   \brief Puts in ti the product of the reflection s_rn corresponding to
   root \#rn, with w.
 
-  Precondition: ti is set to zero (otherwise, it is multiplied on the right
-  with the twisted involution constructed here);
-
   This is a twisted involution if w is, and rn is imaginary w.r.t. the
   involution corresponding to w and the current twist.
 */
@@ -654,11 +651,11 @@ void Helper::makeTwistedInvolution(weyl::WeylElt& ti, const weyl::WeylElt& w,
   toWeylWord(rw,rn,rootDatum());
   W.prod(ti,rw);
   W.prod(ti,w);
-      
+
   return;
 }
 
-unsigned long Helper::makeRepresentative(const gradings::Grading& gr, 
+unsigned long Helper::makeRepresentative(const gradings::Grading& gr,
 					 const rootdata::RootList& rl,
 					 const cartanclass::Fiber& fundf) const
 
@@ -710,7 +707,7 @@ void Helper::noncompactPosRootSet(rootdata::RootSet& rs, realform::RealForm rf,
   \brief Flags in rs the set of noncompact positive roots for Cartan \#j.
 */
 
-{    
+{
   using namespace cartanclass;
 
   const Fiber& f = cartan(j).fiber();
@@ -721,7 +718,7 @@ void Helper::noncompactPosRootSet(rootdata::RootSet& rs, realform::RealForm rf,
   return;
 }
 
-void Helper::transformGrading(gradings::Grading& gr, 
+void Helper::transformGrading(gradings::Grading& gr,
 			      const rootdata::RootList& rl,
 			      const rootdata::RootList& so,
 			      const rootdata::RootDatum& rd) const
@@ -737,7 +734,7 @@ void Helper::transformGrading(gradings::Grading& gr,
   iff alpha+beta is a root.
 */
 
-{  
+{
   using namespace rootdata;
 
   for (size_t i = 0; i < rl.size(); ++i)
@@ -753,10 +750,10 @@ void Helper::addCartan(rootdata::RootNbr rn, size_t j)
 
 /*!
   \brief Adds a new cartan, obtained from cartan \#j by Cayley transform
-  through root \#j.
+  through root \#rn.
 */
 
-{	
+{
   using namespace cartanclass;
   using namespace latticetypes;
   using namespace rootdata;
@@ -1001,7 +998,7 @@ assert(d_cartan.back()->orbitSize() == d_known.back().size());
 size_t Helper::isMember(const weyl::WeylElt& w, size_t first) const
 
 /*!
-  \brief Returns the index j s.t. w is a member of d_known[j] and j >= 
+  \brief Returns the index j s.t. w is a member of d_known[j] and j >=
   first; returns d_known.size() if there is no such j.
 */
 
@@ -1052,15 +1049,15 @@ void Helper::updateSupports()
 /*!
   \brief Updates d_support and d_dualSupport.
 
-  Explanation: for each real form rf, d_support[rf] contains the subset of the 
+  Explanation: for each real form rf, d_support[rf] contains the subset of the
   set of the currently defined cartans which are defined for rf; and
-  analogously for d_dualSupport[rf]. This information is in fact a 
-  "cross-section" of the realFormLabels lists, which for each Cartan list the 
+  analogously for d_dualSupport[rf]. This information is in fact a
+  "cross-section" of the realFormLabels lists, which for each Cartan list the
   set of real forms for which the Cartan is defined. This function is called
   each time a new Cartan is added, and updates these lists.
 */
 
-{  
+{
   using namespace bitmap;
 
   size_t m = d_cartan.size();
@@ -1125,7 +1122,7 @@ void Helper::updateTwistedInvolutions(const weyl::WeylElt& w)
 
 namespace cartan {
 
-unsigned long blockSize(realform::RealForm rf, realform::RealForm drf, 
+unsigned long blockSize(realform::RealForm rf, realform::RealForm drf,
 			const CartanClasses& ccl)
 
 /*!
@@ -1201,10 +1198,10 @@ unsigned long kgbSize(realform::RealForm rf, const CartanClasses& ccl)
   namespace cartanclass {
   namespace helper {
 
-bool checkDecomposition(const weyl::WeylWord& wi, 
-			const weyl::WeylWord& ww, 
+bool checkDecomposition(const weyl::WeylWord& wi,
+			const weyl::WeylWord& ww,
 			const rootdata::RootList& so,
-			const weyl::WeylGroup& W, 
+			const weyl::WeylGroup& W,
 			const rootdata::RootDatum& rd)
 
 /*!
@@ -1234,7 +1231,7 @@ bool checkDecomposition(const weyl::WeylWord& wi,
 
   WeylWord wtest;
   W.involutionOut(wtest,w);
-    
+
   return wtest == wi;
 }
 
