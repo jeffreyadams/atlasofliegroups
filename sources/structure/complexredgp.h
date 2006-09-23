@@ -193,7 +193,11 @@ class ComplexReductiveGroup {
   const weyl::WeylElt& twistedInvolution(size_t) const;
 
 // manipulators
+
   void fillCartan(realform::RealForm rf = 0);
+  // default value 0 is d_cartan->quasisplit() but we avoid that reference
+  // since it would require us to include cartan.h here
+  // the default value adds Cartan subgroups for all possible real forms
 
   void swap(ComplexReductiveGroup& G);
 };
