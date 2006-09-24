@@ -18,7 +18,6 @@
 
 #include "arithmetic.h"
 #include "smithnormal.h"
-#include "smithnormal_def.h"
 
 /*****************************************************************************
 
