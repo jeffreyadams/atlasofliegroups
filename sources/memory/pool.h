@@ -146,6 +146,10 @@ class Pool {
     return d_maxAlloc;
   }
 
+  size_t instance() const {
+    return d_instance;
+  }
+
 // modifiers
   void* allocate(size_t);
   void deallocate(void*, size_t);
@@ -252,6 +256,9 @@ class SimplePool {
     return 1ul;
   }
 
+  size_t instance() const {
+    return d_instance;
+  }
 // modifiers
 
    /*!

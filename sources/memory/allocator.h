@@ -42,10 +42,12 @@ template<typename T, typename P> class Allocator;
 
 namespace allocator {
 
-void reportAllocation(size_t, size_t, const typenumber::TypeData&);
+  // void reportAllocation(size_t, size_t, const typenumber::TypeData&);
+void reportAllocation(size_t, size_t, size_t);
 void reportConstruction(size_t, size_t, const typenumber::TypeData&);
 void reportCopyConstruction(size_t, size_t, const typenumber::TypeData&);
-void reportDeallocation(size_t, size_t, const typenumber::TypeData&);
+// void reportDeallocation(size_t, size_t, const typenumber::TypeData&);
+void reportDeallocation(size_t, size_t, size_t);
 void reportDestruction(size_t, size_t, const typenumber::TypeData&);
 void reportDestructionError(size_t, size_t);
 void reportHeterogeneousCopyConstruction(size_t);
