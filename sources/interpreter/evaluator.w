@@ -1036,10 +1036,11 @@ type_ptr make_tuple_type (type_list_ptr l)
   return type_ptr(p);
 }
 
-@ Here is a straightforward structural comparison of function types for
-inequality. It might seem that the increment operation of the |for| loop
-below lacks caution, as the termination condition requires both pointers to be
-null, but in fact the loop body quits if only one of the pointers is null.
+@ Here is a straightforward structural comparison of tuple types for
+inequality. It might seem that the increment operation of the |for|
+loop below lacks caution, as the termination condition requires both
+pointers to be null, but in fact the loop body quits if only one of
+the pointers is null.
 
 @<Other cases for |operator!=| for |type_declarator|... @>=
 case tuple_type:
@@ -1257,8 +1258,8 @@ null, but in fact the loop body quits if only one of the pointers is null.
 
 @<Other cases for |operator!=| for |type_declarator|... @>=
 case function_type:
-  return  *x.func->arg_type!=*x.func->arg_type
-     ||   *x.func->result_type!=*x.func->result_type;
+  return  *x.func->arg_type!=*y.func->arg_type
+     ||   *x.func->result_type!=*y.func->result_type;
 
 @ And finally the case for printing function types. Here we suppress
 additional parentheses in case the argument or result type is a tuple type.
