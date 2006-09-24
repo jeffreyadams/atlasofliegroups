@@ -78,4 +78,6 @@ template<typename C>
 
 }
 
+#include "smithnormal_def.h"
+
 #endif
