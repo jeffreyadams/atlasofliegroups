@@ -270,14 +270,7 @@ The purpose of doing this blockwise instead of globally is to permit a
 better reading of the quotient group: this will be presented as a sequence
 of factors, corresponding to each simple block.
 
-% Of course, it is still assumed that the caller is a ``savvy'' user, and
-% knows that some blocks will not contribute (because the adjoint group is
-% simply connected), and that blocks $D_n$ with $n$ even, contribute
-% \emph{two} factors $\Z/2\Z$. Torus blocks $T_n$ contribute $n$ factors $\Z$
-% (this will be reflected in the ``missing'' invariant factors.)
-
 @h "smithnormal.h"
-@h "smithnormal_def.h"
 
 @< Local function definitions @>=
 void smithBasis(latticetypes::CoeffList& invf, latticetypes::WeightList& b,

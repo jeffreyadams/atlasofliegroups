@@ -1912,7 +1912,6 @@ as separate functions, and to illustrate the possibilities of tuples, the two
 combined into a single function.
 
 @h "smithnormal.h"
-@h "smithnormal_def.h"
 
 @< Definition of other wrapper functions @>=
 void invfact_wrapper ()
