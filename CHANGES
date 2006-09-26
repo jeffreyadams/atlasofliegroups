@@ -4,6 +4,10 @@ A detailed history of the early development is found in the file
 workinglog. Newer changes are documented in the CVS repository. 
 This file contains a summary of major changes to the software.
 
+Version 0.2.5.1
+* New README and INSTALL files
+* fixed gcc 4.0.3 bug
+* includes realex command line interpreter
 Version 0.2.5:
 * Modified makefile to produce an executable atlas.exe and make a
 symlink to it, so the help system will work when called from any

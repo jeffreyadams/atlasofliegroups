@@ -1,27 +1,28 @@
+#See the file INSTALL for detailed instructions
 # the following line avoids trouble on some systems (GNU make does this anyway)
 SHELL = /bin/sh
 INSTALL = /usr/bin/install
 
-# Run 'make' or 'make atlas' to build the atlas executable.
-#
-# If successful, run 'make install' to install the executable
-# and documentation into $INSTALLDIR, and create a symbolic link
-# to the executable in $BINDIR. This may require root permissions.
-#
-# You may wish to change the defaults to something else.
-# In a single-user situation, you might want this:
+#You may edit the INSTALLDIR and BINDIR variables
+#to move the executable atlas.exe and the
+#messages directory edit INSTALLDIR
+#To move the symlink edit BINDIR
+#see INSTALL for more information
+
+# In a single-user situation, you might want something like this:
 #   INSTALLDIR := /home/fokko/myatlas
 #   BINDIR     := /home/fokko/bin
+
 # In a multi-user situation, you might want this (requires root):
 #   INSTALLDIR := /usr/local/atlas
 #   BINDIR     := /usr/local/bin
-# The default is to use the current directory for both:
 
+# The default is to use the current directory for both:
 INSTALLDIR := $(shell pwd)
 BINDIR := $(INSTALLDIR)
 
-###############################
-# Don't edit below this line
+#Don't edit below this line, with the possible exception 
+#of rlincludes 
 ###############################
 
 MESSAGEDIR := $(INSTALLDIR)/messages/
@@ -132,7 +133,10 @@ clean:
 	rm -f $(objects) *~ *.out junk
 
 cleanall: clean
-	rm -f atlas
+	rm -f atlas atlas.exe
+
+realex: 
+	cd sources/interpreter; make
 
 # The following two rules are static pattern rules: they are like implicit
 # rules, but only apply to the files listed in $(objects) and $(dependencies).
