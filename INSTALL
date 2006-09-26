@@ -1,0 +1,209 @@
+Instructions  installation of the Atlas software.
+For more information about the software see the README file. 
+
+UNIX (including linux, solaris, and Mac OSX)
+
+
+SHORT INSTRUCTION:
+
+On many systems simply do:
+
+make
+
+and optionally
+
+make install
+
+(for make install you probably need to be root).
+
+This will compile the software in place, leave the executable
+atlas.exe in place, and put a link to it in /usr/local/bin.
+
+LONGER VERSION:
+
+The executable file is called atlas.exe. This can be installed
+anywhere, for example suppose you put it in /usr/local/atlas. For the
+help system to work there must be subdirectory
+/usr/local/atlas/messages. Then atlas.exe can be run via a symlink,
+called atlas, which can be anywhere, typically in /usr/local/bin.
+
+Suppose you download the tgz file to the directory source_dir. When
+you gunzip and untar the file (with tar xvfz atlas_version.tgz) you
+will have a directory source_dir/atlas. cd to this directory. There is
+a makefile in this directory. You have two choices:
+
+1) have the executable stay where it is:
+
+source_dir/atlas/atlas.exe
+source_dir/atlas/messages
+source_dir/atlas/messages/blockd.help etc.
+
+You can create a symlink to atlas.exe, the default is 
+
+/usr/local/bin/atlas -> .../source_dir/atlas.exe
+
+You can change the location of this symlink by editing the BINDIR
+variable in the makefile. 
+
+2) put the executable somewhere else, for example:
+
+/usr/local/atlas/atlas.exe
+/usr/local/atlas/messages
+/usr/local/atlas/messages/blockd.help etc.
+
+Again you can create a symlink to atlas.exe, the default is
+/usr/local/bin, which in this case gives:
+
+/usr/local/bin/atlas -> /usr/local/atlas/atlas.exe
+
+You can change the location of the executable by editing the
+INSTALLDIR variable in the makefile. You can change the location of
+the symlink by editing the BINDIR variable in the makefile.
+
+See the instructions in the makefile.
+
+Typically:
+
+In a single-user situation, you might want something like this:
+INSTALLDIR := /home/fokko/myatlas
+BINDIR     := /home/fokko/bin
+
+In a multi-user situation, you might want this (requires root):
+INSTALLDIR := /usr/local/atlas
+BINDIR     := /usr/local/bin
+
+After optionally editing INSTALLDIR and BINDIR, give the command:
+
+make
+
+If you get some errors about readline see below, or try:
+
+  make readline=false
+
+to compile without readline.
+
+Some other options are:
+
+  verbose=true 
+  debug=true 
+  optimize=true 
+  profile=true 
+
+We recommend verbose=true, which prints out a very small amount of
+information about how far along the process is.
+
+If all goes well, run the command
+
+  make install
+
+This may require root privileges, depending on the locations
+of INSTALLDIR and BINDIR. The default is to leave the executable where
+it is, and install the symlink in /usr/local/bin.
+
+The command atlas, or ./atlas, will run the program.
+
+Do 
+
+make clean
+
+to start from scratch.
+-------------------------------------------------------------------
+Compiling with readline
+
+readline allows you to recall the previous command with control-p,
+does tab-completion of command names, and has other useful command
+line features. You should be able to compile with readline on most
+linux systems, although in some instance you need to help the compiler
+find the proper libraries. For Mac OSX see below.
+
+The variable rlincludes tells the compiler to include certain
+libraries needed for readline. The default is 
+
+rlincludes = -lreadline -lcurses
+
+Another possibility is to replace -lcurses with -lncurses.
+
+If you can't get it to compile with readline, use
+
+make readline=false
+
+to compile without this feature.
+-------------------------------------------------------------------
+Compiling with readline on a Mac (contributed by David Vogan)
+
+Get readline-5.1.tar.gz, for example from
+
+ftp://ftp.cwru.edu/pub/bash/readline-5.1.tar.gz
+
+Mac automatically unzips.  Put file readline-5.1.tar someplace
+convenient.  In a terminal window, go to the directory with this tar
+file, and type
+
+  tar -xvf readline-5.1.tar
+
+This will create a new subdirectory "readline-5.1."  Do a cd to that
+directory, and type
+
+  ./configure
+
+Type 
+  
+  make everything
+
+Type
+
+  sudo make install
+
+The Gnu readline library should now be installed on your Mac.
+
+There is a problem when the atlas software is linked: the linker
+will find most of the readline commands in someplace like
+
+/usr/lib/libreadline.dylib,
+
+instead of in the Gnu readline library that you just installed, which
+lives at
+
+/usr/local/lib/libreadline.5.1.dylib
+
+The difficulty is that the Mac library lacks two or three of the
+commands used in the atlas readline, so the linker will refuse to
+finish.  I don't know the best or most natural way to fix this.  One
+thing which works is to edit the atlas makefile, modifying the line
+
+        rlincludes := -lreadline -lcurses
+
+to read
+
+        rlincludes := -lreadline.5.1 -lcurses
+
+Now the atlas software should link; there will be some warnings that
+the symbols UP, PC, and BC were multiply defined, but as far as I can
+see they are harmless.
+-------------------------------------------------------------------
+Using the interpreter (unix only)
+
+There is a very early version of an improved command line interface,
+known as the interpreter. This is called realex. To compile it give
+the command
+
+make realex
+
+This requires that you have cwebx and ctanglex installed on your
+system. See sources/interpreter/Makefile for more information. The
+executable file is sources/interpreter/realex. 
+-------------------------------------------------------------------
+WINDOWS
+
+1) Download the distribution atlasWindows.zip to your windows
+machine. 
+
+2) Right click on the file to extract the archive.
+
+3) Double click on the atlas file to execute.
+
+When you extract the file you create a folder. This contains the
+executable atlas.exe. It also contains three necessary dll files. You
+must run the executable from a folder containing these files. 
+-------------------------------------------------------------------
+Please report any problems to jda@math.umd.edu
