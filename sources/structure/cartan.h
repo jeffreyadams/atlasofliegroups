@@ -5,7 +5,7 @@
 /*
   This is cartan.h
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -28,7 +28,7 @@ namespace atlas {
 
 namespace cartan {
 
-  unsigned long blockSize(realform::RealForm, realform::RealForm, 
+  unsigned long blockSize(realform::RealForm, realform::RealForm,
 			  const CartanClasses&);
 
   unsigned long kgbSize(realform::RealForm, const CartanClasses&);
@@ -54,7 +54,7 @@ the negative transpose of a twisted involution.  This bijection
 reverses the partial order on Cartans.  The class provides also access
 to Cartans in the dual group.
   */
- 
+
 class CartanClasses {
 
  protected:
@@ -63,7 +63,7 @@ class CartanClasses {
   \brief Fiber class for the fundamental Cartan subgroup.
 
   The involution is delta, which preserves the simple roots.
-  */ 
+  */
   cartanclass::Fiber d_fundamental;
 
   /*!
@@ -71,20 +71,20 @@ class CartanClasses {
 
   The fiber group here is the group of characters of the component
   group of the quasisplit Cartan.
-  */ 
+  */
   cartanclass::Fiber d_dualFundamental;
 
   /*!
   \brief List of stable conjugacy classes of Cartan subgroups.
 
-  The list includes only Cartans appearing in real forms considered so far. 
-  */ 
+  The list includes only Cartans appearing in real forms considered so far.
+  */
   std::vector<cartanclass::CartanClass*> d_cartan;
 
   /*!
   \brief (Representative) twisted involutions for each class of Cartan
   subgroup.
-  */ 
+  */
   weyl::WeylEltList d_twistedInvolution;
 
   /*!
@@ -93,28 +93,28 @@ class CartanClasses {
   This is the ordering by containment of H^theta up to conjugacy:
   (H,theta_1) precedes (H,theta_2) if (H^theta_2)_0 is W-conjugate to
   a subtorus of H^theta_1.
-  */ 
+  */
   poset::Poset d_ordering;
 
   /*!
   \brief Entry \#cn lists the real forms in which Cartan \#cn is defined.
-  */ 
+  */
   std::vector<realform::RealFormList> d_realFormLabels;
 
   /*!
   \brief Entry \#cn lists the dual real forms in which dual Cartan
   \#cn is defined.
-  */ 
+  */
   std::vector<realform::RealFormList> d_dualRealFormLabels;
 
   /*!
-  \brief Entry \#rf flags the Cartans defined in real form \#rf. 
-  */ 
+  \brief Entry \#rf flags the Cartans defined in real form \#rf.
+  */
   std::vector<bitmap::BitMap> d_support;
 
   /*!
   \brief Entry \#rf flags the dual Cartans defined in dual real form \#rf.
-  */ 
+  */
   std::vector<bitmap::BitMap> d_dualSupport;
 
   /*!
@@ -123,12 +123,12 @@ class CartanClasses {
 
   Because of the way the construction proceeds, these are exactly the
   real forms for which the most split Cartan has been reached.
-  */ 
+  */
   bitmap::BitMap d_status;
 
   /*!
   \brief Entry \#rf is the number of the most split Cartan for real form \#rf.
-  */ 
+  */
   std::vector<size_t> d_mostSplit;
 
  public:
@@ -136,7 +136,7 @@ class CartanClasses {
 // constructors and destructors
   CartanClasses() {};
 
-  CartanClasses(const rootdata::RootDatum&, 
+  CartanClasses(const rootdata::RootDatum&,
 		const latticetypes::LatticeMatrix&,
 		const weyl::WeylGroup&);
 
@@ -152,14 +152,14 @@ class CartanClasses {
 // accessors
 
   /*!
-  \brief 
+  \brief
   */
   const cartanclass::CartanClass& cartan(size_t cn) const {
     return *d_cartan[cn];
   }
 
   /*!
-  \brief Twisted involution for the fundamental Cartan.  
+  \brief Twisted involution for the fundamental Cartan.
 
   This is the one permuting the simple roots, which defines the inner
   class of G.
@@ -185,7 +185,7 @@ class CartanClasses {
 
   The fiber group here is the group of characters of the component
   group of the quasisplit Cartan.
-  */ 
+  */
   const cartanclass::Fiber& dualFundamental() const {
     return d_dualFundamental;
   }
@@ -193,7 +193,7 @@ class CartanClasses {
   /*!
   \brief Entry \#cn lists the dual real forms in which dual Cartan
   \#cn is defined.
-  */ 
+  */
   const realform::RealFormList& dualRealFormLabels(size_t cn) const {
     return d_dualRealFormLabels[cn];
   }
@@ -287,11 +287,10 @@ class CartanClasses {
   }
 
   /*!
-  \brief Intended to return the number of the quasisplit real form.
-  Not implemented or used.
+  \brief Retruns the (inner) number of the quasisplit real form.
   */
   realform::RealForm quasisplit() const {
-    return 0ul;
+    return realform::RealForm(0);
   }
 
   /*!
@@ -304,7 +303,7 @@ class CartanClasses {
   unsigned long representative(realform::RealForm, size_t) const;
 
   /*!
-  \brief Entry \#rf flags the Cartans defined in real form \#rf. 
+  \brief Entry \#rf flags the Cartans defined in real form \#rf.
   */
   const bitmap::BitMap& support(realform::RealForm rf) const {
     return d_support[rf];
@@ -319,7 +318,7 @@ class CartanClasses {
   }
 
 // manipulators
-  void extend(const weyl::WeylGroup&, const rootdata::RootDatum&, 
+  void extend(const weyl::WeylGroup&, const rootdata::RootDatum&,
 	      realform::RealForm);
 
 };
