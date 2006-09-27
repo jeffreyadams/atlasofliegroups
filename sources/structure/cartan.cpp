@@ -430,18 +430,10 @@ void CartanClasses::extend(const weyl::WeylGroup& W,
   Precondition: W is the Weyl group of the corresponding complex reductive
   group; rd is the root datum;
 
-  NOTE: may forward an Overflow exception from expand.
+  NOTE: may forward an Overflow exception from Helper::extend.
 */
 
 {
-  using namespace bitmap;
-  using namespace cartanclass;
-  using namespace latticetypes;
-  using namespace poset;
-  using namespace rootdata;
-  using namespace tags;
-  using namespace weyl;
-
   if (d_status.isMember(rf)) // nothing to be done
     return;
 
@@ -615,11 +607,9 @@ void Helper::crossTransform(rootdata::RootList& rl,
 */
 
 {
-  using namespace rootdata;
   using namespace setutils;
 
-  for (size_t j = ww.size(); j;) {
-    --j;
+  for (size_t j = ww.size(); j-->0;) {
     Permutation a = rd.rootPermutation(ww[j]);
     for (size_t i = 0; i < rl.size(); ++i)
       rl[i] = a[rl[i]];
