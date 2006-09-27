@@ -7,7 +7,7 @@ ComplexReductiveGroup.
   This is complexredgp.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -51,7 +51,7 @@ namespace complexredgp {
   describe the Langlands classification of irreducible representations
   of G(R).  Since we look at an inner class of real forms, the first
   problem is to enumerate the different real forms constituting this
-  inner class.  
+  inner class.
 
   Next we list in d_cartan the conjugacy classes of real Cartan
   subgroups up to stable conjugacy; this classification does not refer
@@ -74,7 +74,7 @@ namespace complexredgp {
   Weyl group by the elements of order 2 in the torus.  (More
   precisely, this Tits group is extended by a Z/2Z corresponding to
   the automorphism of the based root datum.)
-  
+
   Because this class is one of the outer interfaces for the structure
   library, we use pointers for its data members, so that forward
   declarations suffice.
@@ -91,17 +91,17 @@ class ComplexReductiveGroup {
   \brief The based root datum.
   */
   const rootdata::RootDatum* d_rootDatum;
-  
+
   /*!
   \brief The Tits group of the based root datum, extended by an
   involutive automorphism.
-  */  
+  */
   tits::TitsGroup* d_titsGroup;
-  
+
   /*!
   \brief  List of stable conjugacy classes of Cartan subgroups of the inner
   class of real forms determined by the based root datum with
-  involution.  
+  involution.
 
   (In fact the present constructors provide only those classes defined
   over the real forms that have already been considered by the
@@ -122,7 +122,7 @@ class ComplexReductiveGroup {
 // constructors and destructors
   ComplexReductiveGroup();
 
-  ComplexReductiveGroup(const rootdata::RootDatum*, 
+  ComplexReductiveGroup(const rootdata::RootDatum*,
 			const latticetypes::LatticeMatrix&);
 
   ComplexReductiveGroup(const ComplexReductiveGroup&, tags::DualTag);
@@ -193,11 +193,11 @@ class ComplexReductiveGroup {
   const weyl::WeylElt& twistedInvolution(size_t) const;
 
 // manipulators
+  void fillCartan(realform::RealForm rf);
 
-  void fillCartan(realform::RealForm rf = 0);
-  // default value 0 is d_cartan->quasisplit() but we avoid that reference
-  // since it would require us to include cartan.h here
-  // the default value adds Cartan subgroups for all possible real forms
+  /* the following is not done via a default argument to the previous method
+     since a default argument cannot refer to a class member (quasisplit) */
+  void fillCartan() { fillCartan(quasisplit()); }
 
   void swap(ComplexReductiveGroup& G);
 };
