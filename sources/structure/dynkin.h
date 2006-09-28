@@ -5,7 +5,7 @@
 /*
   This is dynkin.h
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -66,23 +66,23 @@ namespace dynkin {
   /*!
   \brief A Dynkin diagram of at most RANK_MAX vertices.
 
-  The collection of vertices is represented as a BitSet d_star, regarded as a
-  subset of the integers 0,1,...,RANK_MAX-1.  These are the vertices.
-  An Edge is a pair of vertices.  The map d_label attaches to each of
-  certain Edges an unsigned integer Multiplicity.
+  The collection of vertices is represented as vector, each of whose elements
+  is a BitSet d_star[i], which regarded as a subset of the integers
+  0,1,...,RANK_MAX-1 gives the neighbours of vertex i.
+  An Edge is a pair of indices designating vertices. The map d_label attaches
+  to certain Edges an unsigned integer Multiplicity.
   */
 class DynkinDiagram {
 
  private:
 
   /*!
-  Subset of the integers 0,1,...,RANK_MAX-1 corresponding to the
-  vertices of the Dynkin diagram.
+  Adjacency relations: d_star[i].test(j) tells whether i and j are neighbors
   */
   std::vector<bitset::RankFlags> d_star;
 
   /*!
-  Map from certain pairs of vertices (the edges of the Dynkin diagram)
+  Map from certain pairs of vertices (multiple edges of the Dynkin diagram)
   to unsigned integers (their multiplicities).
   */
   std::map<Edge,Multiplicity> d_label;
