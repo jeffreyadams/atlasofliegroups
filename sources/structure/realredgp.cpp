@@ -5,7 +5,7 @@
 /*
   This is realredgp.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -60,6 +60,8 @@ RealReductiveGroup::RealReductiveGroup(
 
   if (rootDatum().rank() == rootDatum().semisimpleRank())
     d_status.set(IsSemisimple);
+
+  if (rf == G_C.quasisplit()) d_status.set(IsQuasisplit);
 
   // construct the torus for the most split Cartan
 
@@ -190,7 +192,7 @@ size_t RealReductiveGroup::numCartan() const
 /*!
   Synopsis: returns the number of conjugacy classes of Cartan subgroups.
 
-  NOTE: the value returned is correct only after fullCartan() has been 
+  NOTE: the value returned is correct only after fullCartan() has been
   called.
 
   NOTE: this is not inlined in order to avoid a dependency on bitmap.h
@@ -224,7 +226,7 @@ const rootdata::RootDatum& RealReductiveGroup::rootDatum() const
   return d_complexGroup->rootDatum();
 }
 
-size_t RealReductiveGroup::semisimpleRank() const 
+size_t RealReductiveGroup::semisimpleRank() const
 
 /*!
   Synopsis: returns the semisimple rank of the group.
