@@ -1,8 +1,8 @@
 /*
   This is realmode.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -251,7 +251,7 @@ void q_h()
 void realform_f()
 
 /*
-  Synopsis: resets the type, effectively re-entering the real mode. If the 
+  Synopsis: resets the type, effectively re-entering the real mode. If the
   construction of the new type fails, the current type remains in force.
 */
 
@@ -325,7 +325,7 @@ void strongreal_f()
   Synopsis: outputs information about strong real forms.
 */
 
-{  
+{
 
   using namespace commands;
   using namespace input;
@@ -396,8 +396,8 @@ void type_f()
         Chapter III -- Functions declared in realmode.h
 
   The following functions are defined here :
-  
-    - currentGroup() : exports G_R to the special and test modules;
+
+    - currentRealGroup() : exports G_R to the special and test modules;
 
 ******************************************************************************/
 
@@ -418,7 +418,7 @@ realredgp_io::Interface& currentRealInterface()
 commands::CommandMode& realMode()
 
 /*
-  Synopsis: returns the ThisMode object. 
+  Synopsis: returns the ThisMode object.
 
   It is constructed on first call.
 */
