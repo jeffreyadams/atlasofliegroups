@@ -20,7 +20,7 @@ the prototype of the lexical analyser (wrapper) function |yylex| is the one
 below. Curiously, the program~\.{bison} does not write this prototype to
 \.{parser.tab.h}, but it does write the definitions of the types |YYSTYPE| and
 |YYLTYPE| there; these require that \.{parsetree.h} be included first. We also
-declare ``{\tt\%parse-param \char`\{} |int* running, expr* parsed_expr@;|
+declare ``{\tt\%parse-param \char`\{} |int* verbosity, expr* parsed_expr@;|
 {\tt\char`\}}'' in~\.{parser.y}, so that the parser itself, |yyparse|, takes
 an integer pointer as parameter, which it uses to signal requested
 termination, and a pointer to an expression, in which it writes the result of
@@ -34,7 +34,7 @@ in~\Cee, we must declare these definitions |extern "C"@;|.
 
 extern "C"
 { int yylex (YYSTYPE *, YYLTYPE *);
-@/int yyparse( expr* parsed_expr, int* running );
+@/int yyparse( expr* parsed_expr, int* verbosity );
 }
 
 @ Here is an array that declares the keywords that the lexical scanner is to
@@ -71,7 +71,7 @@ int yylex(YYSTYPE *valp, YYLTYPE *locp)
 @+{@; return lex->get_token(valp,locp); }
 @)
 extern "C"
-void yyerror (YYLTYPE* locp, expr* parsed_expr, int* running,char const *s)
+void yyerror (YYLTYPE* locp, expr* parsed_expr,int* verbosity,char const *s)
 { main_input_buffer->show_range(std::cerr,
    locp->first_line, locp->first_column,
    locp->last_line,  locp->last_column);
@@ -81,7 +81,7 @@ void yyerror (YYLTYPE* locp, expr* parsed_expr, int* running,char const *s)
 
 @ In our main program we first sign on to the history library, then allocate
 the necessary objects to install the lexical scanner, and then in a loop call
-the parser until it sets |running=0|, which is done upon seeing the \.{quit}
+the parser until it sets |verbosity<0|, which is done upon seeing the \.{quit}
 command. We call the |reset| method of the lexical scanner before calling the
 parser, which will discard any input that is left be a possible previous
 erroneous input (it also already fetches a new line of input, but that is not
@@ -101,20 +101,19 @@ int main()
 { using namespace std; using namespace atlas::interpreter;
   @< Initialise various parts of the program @>
   cout << "Enter expressions:\n";
-  int running=0; // $-1$: quit, $0$: quiet, $1$: verbose
   expr expression;
   while ( cin.good() )
   { ana.reset();
-    if (yyparse(&expression,&running))
+    if (yyparse(&expression,&verbosity))
       continue; // syntax error or non-expression
-    if (running<0) break; // \.{quit} command
-    if (running==1)
+    if (verbosity<0) break; // \.{quit} command
+    if (verbosity==1)
       cout << "Expression before type analysis: " << expression << endl;
     bool type_OK=false;
     try
     { type_ptr type=analyse_types(expression);
-      type_OK=true; 
-      if (running==1)
+      type_OK=true;
+      if (verbosity==1)
 	cout << "Type found: " << *type << endl
           << "Expression after type analysis: " << expression << endl;
       value_ptr v=evaluate(expression);

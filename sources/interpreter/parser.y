@@ -11,7 +11,7 @@
 
 %locations
 %parse-param { expr* parsed_expr}
-%parse-param { int* running }
+%parse-param { int* verbosity }
 %pure-parser
 %error-verbose
 
@@ -39,9 +39,9 @@ input:  '\n'			{ YYABORT } /* return 1 to skip evaluator */
         | exp    '\n'		{ *parsed_expr=$1; }
         | idlist '=' exp '\n'
 		{ global_set_identifier(reverse_expr_list($1),$3); YYABORT }
-        | QUIT	'\n'		{ *running =-1; } /* causes immediate exit */
-        | QUIET	'\n'		{ *running =0; YYABORT } /* quiet mode */
-        | VERBOSE '\n'		{ *running =1; YYABORT } /* verbose mode */
+        | QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
+        | QUIET	'\n'		{ *verbosity =0; YYABORT } /* quiet mode */
+        | VERBOSE '\n'		{ *verbosity =1; YYABORT } /* verbose mode */
 	| WHATTYPE exp '\n'     { type_of_expr($2); YYABORT } /* print type */
         | PRINTALL '\n'         { show_ids(); YYABORT } /* print id table */
 ;
@@ -132,4 +132,3 @@ idlist	: IDENT
 
 
 %%
-

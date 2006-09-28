@@ -2,7 +2,7 @@
 atlas_sources := ..
 
 # only the directories listed below of the atlas sources are actually used
-ATLAS_DIRS := structure utilities error
+ATLAS_DIRS := structure utilities error io
 
 # this variable is used both by g++, and by cweavex needing the trailing slash
 INCLUDE_FLAGS := $(ATLAS_DIRS:%=-I$(atlas_sources)/%/)
@@ -48,7 +48,10 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/utilities/size.o \
  $(atlas_sources)/structure/tori.o \
  $(atlas_sources)/structure/weylsize.o \
- $(atlas_sources)/structure/gradings.o
+ $(atlas_sources)/structure/gradings.o \
+ $(atlas_sources)/io/realform_io.o \
+ $(atlas_sources)/structure/realredgp.o \
+ $(atlas_sources)/structure/topology.o
 
 cwebx_sources := $(wildcard *.w)
 

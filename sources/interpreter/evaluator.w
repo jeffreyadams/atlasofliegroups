@@ -375,7 +375,7 @@ private:
 
 struct string_value : public value_base
 { std::string value;
-  explicit string_value(char* t) : value(t) @+ {}
+  explicit string_value(const char* t) : value(t) @+ {}
   ~string_value()@+ {}
   void print(std::ostream& out) const @+{@; out << '"' << value << '"'; }
   string_value* clone() const @+{@; return new string_value(*this); }
@@ -1731,10 +1731,10 @@ to do inside the recursive function |find_type|.
 @< Function definitions @>=
 type_ptr analyse_types(expr& e) throw(std::bad_alloc,std::runtime_error)
 { try {@; return find_type(e); }
-  catch (type_error& e)
-  { std::cerr << e.what() << std::endl <<
-    "Subexpression " << e.offender << @| " has wrong type: found "
-         << *e.actual << " while " << *e.required << " was needed.\n";
+  catch (type_error& err)
+  { std::cerr << err.what() << std::endl <<
+    "Subexpression " << err.offender << @| " has wrong type: found "
+         << *err.actual << " while " << *err.required << " was needed.\n";
 @.Subexpression has wrong type@>
   }
   catch (program_error& err)
@@ -2038,10 +2038,143 @@ case applied_identifier:
 }
 break;
 
+@* Specifying types by strings.
+The task of converting a properly formatted string into a type is one of
+parsing a simple kind of expressions. We are not going to write incorrect
+strings (we hope) so we don't care if the error handling is crude. The
+simplest way of parsing ``by hand'' is recursive descent, so that is what we
+shall use. By passing a character pointer by reference, we allow the recursive
+calls to advance the index within the string read.
+
+@< Function definitions @>=
+type_ptr scan_type(const char*& s);
+type_list_ptr scan_type_list(const char*& s);
+@)
+type_ptr make_type(const char* s)
+{ try {@; return scan_type(s); }   // provide an lvalue
+  catch (std::logic_error e)
+  { std::cerr << e.what() << "; text remaining: " << s << std::endl;;
+    return make_prim_type(string_type);
+  }
+}
+
+type_ptr scan_type(const char*& s)
+{ if (*s=='[')
+    @< Scan and |return| a row type, or |throw| a |logic_error| @>
+  if (*s=='(')
+    @< Scan and |return| a tuple or function type,
+       or |throw| a |logic_error| @>
+  @< Scan and |return| a primitive type, or |throw| a |logic_error| @>
+}
+
+
+@ Since we did not advance the pointer when testing for |'['|, we must start
+with that.
+
+@< Scan and |return| a row type, or |throw| a |logic_error| @>=
+{ type_ptr c=scan_type(++s);
+  if (*s++!=']') throw std::logic_error("Missing ']' in type");
+    return make_row_type(c);
+}
+
+@ Now we do tuple and function types. Here again we start by advancing the
+pointer. Otherwise the descent is still straightforward, thanks to
+|scan_type_list|. After scanning a first list we decide whether this will be a
+tuple type (if a right parenthesis follows) and record it in a boolean
+variable to be able to share the code for constructing the tuple type.
+
+The only complication is that single parenthesised types, and single argument
+or return types should not be converted into tuple types with one component,
+but just into the constituent type. This is done by assigning the extracted or
+constructed types to the |type_ptr| variables |a| and |r|, that were
+initialised to~|NULL|; in the case of single types that type is then unlinked
+to prevent being destroyed upon the destruction of the type node (the latter
+part would be hard to do if we wanted to initialise |a| and~|r| directly to
+the right value). Note that this is one of the few places where we really use
+the ownership-tracking semantics of auto-pointers, in the sense that their
+destruction behaviour at a certain point is variable: the node pointed to by
+|l0| and |l1| will only be deleted if the auto-pointer was not passed on in a
+call to |make_tuple_type|.
+
+@< Scan and |return| a tuple or function type, or |throw| a |logic_error| @>=
+{ type_list_ptr l0=scan_type_list(++s), l1(NULL);
+  bool is_tuple=*s==')';
+  if (*s=='-' && *++s=='>') l1=scan_type_list(++s);
+  if (*s++!=')') throw std::logic_error("Missing ')' in type");
+  type_ptr a(NULL);
+  if (l0.get()!=NULL && l0->next==NULL) {@; a=type_ptr(l0->t); l0->t=NULL; }
+  else a=make_tuple_type(l0);
+  if (is_tuple) return a;
+  type_ptr r(NULL);
+  if (l1.get()!=NULL && l1->next==NULL) {@; r=type_ptr(l1->t); l1->t=NULL; }
+  else r=make_tuple_type(l1);
+  return make_function_type(a,r);
+}
+
+@ A comma-separated list of types is handled by a straightforward recursion.
+@< Function definitions @>=
+@)
+type_list_ptr scan_type_list(const char*& s)
+{ type_ptr head=scan_type(s);
+  if (*s!=',') return make_type_singleton(head);
+  return make_type_list(head,scan_type_list(++s));
+}
+
+@ For primitive types we use the same strings as for printing them. We use the
+fact that no name is a prefix of another one, so the first match is decisive.
+
+@< Scan and |return| a primitive type, or |throw| a |logic_error| @>=
+{ for (size_t i=0; i<nr_of_primitive_types; ++i)
+  { std::string name=prim_names[i];
+    if (name.compare(0,name.length(),s,name.length())==0)
+    @/{@; s+=name.length();
+      return make_prim_type(static_cast<primitive>(i));
+    }
+  }
+  throw std::logic_error("Type unrecognised");
+}
+
 @* Operations other than evaluation of expressions.
-This file also defines some operations that can be invoked by the parser that
-do not consist of evaluation an expression. The declarations of these
-functions are given in \.{parsetree.h} so that the parser can see them.
+This section will be devoted to some other interactions between user and
+program that do not consist just of evaluating expressions. What will
+presented is not particularly related to the evaluator, and is present here
+for somewhat opportunistic purposes.
+
+Several kinds of things will be defined: there will be a tiny bit of global
+state that can be set from the main program and inspected by any module that
+cares to (and that reads \.{evaluator.h}); there are the declarations of
+built-in types that are not dealt with directly by the evaluator, but which
+the evaluator must know about if only to store the type names at the
+appropriate places, and finally there are several functions that can be called
+directly by the parser (those are not declared in out header file, but in
+\Cee-style in \.{parsetree.h}, which the parse does read).
+
+@< Declarations of global variables @>=
+extern int verbosity;
+
+@~By raising the value of |verbosity|, some trace of internal operations can
+be activated.
+
+@< Global variable definitions @>=
+int verbosity=0;
+
+@*1 Built-in types defined elsewhere.
+In order for this compilation unit to function properly, it must know of the
+existence and names for other built-in types. We could scoop up these names
+using clever \&{\#include} directives, but that is not really worth the hassle
+(when adding such types you have to recompile this unit anyway; it is not so
+much worse to actually extend the lines below as well).
+
+@< Other primitive type names @>=
+"LieType","RootDatum", "ComplexGroup", "RealForm", @[@]
+
+@~The enumeration values below are never directly used, but they must be
+present so that the evaluator be aware of the number of primitive types (via
+the final enumeration value |nr_of_primitive_types|).
+
+@< Other primitive types @>=
+complex_lie_type_type , root_datum_type, complexgroup_type, realform_type, @[@]
+
 
 @*1 Making global definitions.
 For the moment, applied identifiers can only get their value through the
@@ -2150,115 +2283,6 @@ void show_ids()
 { std::cout << *global_id_table;
 }
 
-
-@* Specifying types by strings.
-The task of converting a properly formatted string into a type is one of
-parsing a simple kind of expressions. We are not going to write incorrect
-strings (we hope) so we don't care if the error handling is crude. The
-simplest way of parsing ``by hand'' is recursive descent, so that is what we
-shall use. By passing a character pointer by reference, we allow the recursive
-calls to advance the index within the string read.
-
-@< Function definitions @>=
-type_ptr scan_type(const char*& s);
-type_list_ptr scan_type_list(const char*& s);
-@)
-type_ptr make_type(const char* s)
-{ try {@; return scan_type(s); }   // provide an lvalue
-  catch (std::logic_error e)
-  { std::cerr << e.what() << "; text remaining: " << s << std::endl;;
-    return make_prim_type(string_type);
-  }
-}
-
-type_ptr scan_type(const char*& s)
-{ if (*s=='[')
-    @< Scan and |return| a row type, or |throw| a |logic_error| @>
-  if (*s=='(')
-    @< Scan and |return| a tuple or function type,
-       or |throw| a |logic_error| @>
-  @< Scan and |return| a primitive type, or |throw| a |logic_error| @>
-}
-
-
-@ Since we did not advance the pointer when testing for |'['|, we must start
-with that.
-
-@< Scan and |return| a row type, or |throw| a |logic_error| @>=
-{ type_ptr c=scan_type(++s);
-  if (*s++!=']') throw std::logic_error("Missing ']' in type");
-    return make_row_type(c);
-}
-
-@ Now we do tuple and function types. Here again we start by advancing the
-pointer. Otherwise the descent is still straightforward, thanks to
-|scan_type_list|. After scanning a first list we decide whether this will be a
-tuple type (if a right parenthesis follows) and record it in a boolean
-variable to be able to share the code for constructing the tuple type.
-
-The only complication is that single parenthesised types, and single argument
-or return types should not be converted into tuple types with one component,
-but just into the constituent type. This is done by assigning the extracted or
-constructed types to the |type_ptr| variables |a| and |r|, that were
-initialised to~|NULL|; in the case of single types that type is then unlinked
-to prevent being destroyed upon the destruction of the type node (the latter
-part would be hard to do if we wanted to initialise |a| and~|r| directly to
-the right value). Note that this is one of the few places where we really use
-the ownership-tracking semantics of auto-pointers, in the sense that their
-destruction behaviour at a certain point is variable: the node pointed to by
-|l0| and |l1| will only be deleted if the auto-pointer was not passed on in a
-call to |make_tuple_type|.
-
-@< Scan and |return| a tuple or function type, or |throw| a |logic_error| @>=
-{ type_list_ptr l0=scan_type_list(++s), l1(NULL);
-  bool is_tuple=*s==')';
-  if (*s=='-' && *++s=='>') l1=scan_type_list(++s);
-  if (*s++!=')') throw std::logic_error("Missing ')' in type");
-  type_ptr a(NULL);
-  if (l0.get()!=NULL && l0->next==NULL) {@; a=type_ptr(l0->t); l0->t=NULL; }
-  else a=make_tuple_type(l0);
-  if (is_tuple) return a;
-  type_ptr r(NULL);
-  if (l1.get()!=NULL && l1->next==NULL) {@; r=type_ptr(l1->t); l1->t=NULL; }
-  else r=make_tuple_type(l1);
-  return make_function_type(a,r);
-}
-
-@ A comma-separated list of types is handled by a straightforward recursion.
-@< Function definitions @>=
-@)
-type_list_ptr scan_type_list(const char*& s)
-{ type_ptr head=scan_type(s);
-  if (*s!=',') return make_type_singleton(head);
-  return make_type_list(head,scan_type_list(++s));
-}
-
-@ For primitive types we use the same strings as for printing them. We use the
-fact that no name is a prefix of another one, so the first match is decisive.
-
-@< Scan and |return| a primitive type, or |throw| a |logic_error| @>=
-{ for (size_t i=0; i<nr_of_primitive_types; ++i)
-  { std::string name=prim_names[i];
-    if (name.compare(0,name.length(),s,name.length())==0)
-    @/{@; s+=name.length();
-      return make_prim_type(static_cast<primitive>(i));
-    }
-  }
-  throw std::logic_error("Type unrecognised");
-}
-
-@* Built-in types defined elsewhere.
-In order for this compilation unit to function properly, it must know of the
-existence and names for other built-in types. We could scoop up these names
-using clever \&{\#include} directives, but that is not really worth the hassle
-(when adding such types you have to recompile this unit anyway; it is not so
-much worse to actually extend the lines below as well).
-
-@< Other primitive types @>=
-complex_lie_type_type , root_datum_type, complexgroup_type, @[@]
-
-@~@< Other primitive type names @>=
-"LieType","RootDatum", "ComplexGroup", @[@]
 
 @* Index.
 

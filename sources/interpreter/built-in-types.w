@@ -1009,16 +1009,237 @@ install_function(root_coradical_wrapper,"root_coradical","(RootDatum->mat)");
 install_function(coroot_radical_wrapper,"coroot_radical","(RootDatum->mat)");
 install_function(dual_datum_wrapper,"dual_datum","(RootDatum->RootDatum)");
 
-@*1 A type for complex groups equipped with an involution.
+@*1 A type for complex reductive groups equipped with an involution.
 We shall now go ahead to define a primitive type holding a
 |complexredgp::ComplexReductiveGroup|, which represents a complex reductive
 group equipped with an involution, which defines an ``inner class'' of real
-forms for that group.
+forms for that group. We can construct such an object from a root datum and an
+involution. In the Atlas software such involutions are entered indirectly via
+a user interaction, and the way it was constructed is stored and used for
+certain purposes. For maximal flexibility, we want to be able to provide an
+involution produced in any way we like. This means there is some extra work to
+do.
 
 @< Includes... @>=
 #include "complexredgp.h"
 
-@ This is the first built-in type where we deviate from the previously used
+@*2 Analysing involutions.
+Our constructor for the current built-in type must do checking to
+see that a valid involution is entered, and an analysis of the involution to
+replace the values otherwise obtained from the user interaction, in other
+words we want to find which sequence of inner class letters could
+have been used to construct this involution. For simple factors this is
+relatively easy, since one just studies the permutation of the simple roots
+that the involution defines (if it does not, it is not an automorphism of the
+based root datum). For torus factors, this requires an analysis of the
+eigen-lattices of the involution that is performed in the class
+|tori::RealTorus|. In cases where the group is not a direct product of its
+derived group and its central torus, the problem of finding the inner class
+letters for the torus factors might be ill posed (it is not clear that each
+valid root datum and involution could arise from a unique collection of inner
+class letters), so the value we compute should be taken as an informed guess.
+
+Consider first the case of a pure torus. For any involution given by an
+integral matrix, the space can be decomposed into stable rank~$1$ subspaces
+where the involution acts as $+1$ or $-1$ (we call these compact and split
+factors, respectively) and stable rank~$2$ subspaces for which the involution
+exchanges a pair of basis vectors (we call these Complex factors). The number
+of each of these subspaces is uniquely determined by the involution, and
+determining them is a small part of what the constructor for a
+|tori::RealTorus| does. We shall use that class in the function
+|classify_involution|, which returns the number of compact and split factors
+(the number of Complex factors follows from there by subtraction from the
+rank).
+
+@h "tori.h"
+@< Local function def...@>=
+std::pair<size_t,size_t> classify_involution
+  (const latticetypes::LatticeMatrix& M, size_t r)
+throw (std::bad_alloc, std::runtime_error)
+{ @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
+  tori::RealTorus T(M);
+  return std::make_pair(T.compactRank(),T.splitRank());
+}
+
+@ The test for being an involution is stronger than checking that the
+permutation of the roots is an involution, in case there is a torus part.
+
+@< Check that |M| is an $r\times{r}$ matrix defining an involution @>=
+{ if (M.numRows()!=r or M.numColumns()!=r) throw std::runtime_error
+    ("involution should be a "+num(r)+"x"+num(r)+" matrix, got a "
+     +num(M.numRows())+"x"+num(M.numColumns())+" matrix");
+  latticetypes::LatticeMatrix I,Q(M);
+  identityMatrix(I,r); Q*=M; // $Q=M^2$
+  if (!(Q==I)) throw std::runtime_error
+      ("given transformation is not an involution");
+}
+
+@ That function might be of use to the user, so let us make a wrapper for it.
+@< Local function def...@>=
+void classify_wrapper()
+{ std::auto_ptr<latmat_value> M(get_mat());
+  size_t r=M->value.numRows();
+  std::pair<size_t,size_t> p=classify_involution(M->value,r);
+  push_value(new int_value(p.first)); // compact rank
+  push_value(new int_value((r-p.first-p.second)/2)); // Complex rank
+  push_value(new int_value(p.second)); // split rank
+  wrap_tuple(3);
+}
+
+@ We now come to the part of the analysis that involved the root datum. Since
+the matrix is already expressed on the basis of the weight lattice used by the
+root datum, the question of stabilising that lattice is settled, but we must
+check that the matrix is indeed an involution, and that it gives an
+automorphism of the based root datum. While we are doing that, we can also
+determine the Lie type of the root datum and the inner class letters
+corresponds to each of its factors. The Lie type will in general be identical
+to that of the root datum (and in particular any torus factors will come at
+the end), but in case of Complex inner classes we may be forced to permute the
+simple factors to make the identical factors associated to such classes
+adjacent.
+
+We do not apply the function |classify_involution| to the entire matrix,
+although we shall use it below for a matrix defined for the central torus
+part; we can however reuse the module that tests for being an involution here.
+
+@h "setutils.h"
+
+@< Local function def...@>=
+std::pair<lietype::LieType,lietype::InnerClassType> check_involution
+ (const latticetypes::LatticeMatrix& M, const rootdata::RootDatum& rd)
+ throw (std::bad_alloc, std::runtime_error)
+{ size_t r=rd.rank(),s=rd.semisimpleRank();
+  @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
+@/setutils::Permutation p(s);
+  @< Set |p| to the permutation of the simple roots induced by |M|, or throw
+     a |runtime_error| if |M| is not an automorphism of |rd| @>
+@/std::pair<lietype::LieType,lietype::InnerClassType> result;
+@/lietype::LieType& type=result.first;
+  lietype::InnerClassType& inner_class=result.second;
+  @< Compute the Lie type |type| and the inner class |inner_class| @>
+  return result;
+}
+
+@ That |M| is an automorphism means that the simple roots are permuted among
+each other, and that the Cartan matrix is invariant under that permutation of
+its rows and columns. We keep track of the number of fixed points of the
+permutation, which in the semisimple case each account for a compact factor of
+the real torus, at least in the simply connected or adjoint case.
+
+@< Set |p| to the permutation of the simple roots...@>=
+{ rootdata::WRootIterator first=rd.beginSimpleRoot(), last=rd.endSimpleRoot();
+  for (size_t i=0; i<s; ++i)
+  { rootdata::Root alpha(r); M.apply(alpha,rd.simpleRoot(i));
+    size_t pi=std::find(first,last,alpha)-first;
+    if (pi<s) p[i]=pi;
+    else throw std::runtime_error
+      ("given transformation does not permute simple roots");
+  }
+  for (size_t i=0; i<s; ++i)
+    for (size_t j=0; j<s; ++j)
+      if (rd.cartan(p[i],p[j])!=rd.cartan(i,j)) throw std::runtime_error@|
+      ("given transformation is not a root datum automorphism");
+}
+
+@ For each simple factor we look if there are any non-fixed points of the
+permutation (if not we have the compact inner class) and if so, whether the
+image of that point lies in the same component of the Dynkin diagram. If the
+latter is the case we have an unequal rank inner class, which is actually
+called split unless the simple factor is of type $D_{2n}$, and if the image
+lies in another component of the diagram we have a Complex inner class.
+
+@h "dynkin.h"
+
+@< Compute the Lie type |type| and the inner class |inner_class| @>=
+{ latticetypes::LatticeMatrix(C); rootdata::cartanMatrix(C,rd);
+@/dynkin::DynkinDiagram diagr(C);
+@/lietype::LieType type0; dynkin::lieType(type0,C); // type before rearranging
+@/bitset::RankFlagsList comps; dynkin::components(comps,diagr);
+  std::vector<char> letter(comps.size());
+  size_t nr_Complex_letters=0;
+  for (size_t i=0; i<comps.size(); ++i)
+  { bool equal_rank=true;
+    for (bitset::RankFlags::iterator j=comps[i].begin(); j(); ++j)
+      if (p[*j]!=*j) {@; equal_rank=false; break; }
+    if (equal_rank) letter[i]='c';
+      // identity on this component: compact
+    else if(!comps[i][p[comps[i].firstBit()]])
+      // exchange with other component: Complex
+      {@; ++nr_Complex_letters; letter[i]='C'; }
+    else letter[i]= type0[i].first=='D' and type0[i].second%2==0 ? 'u' : 's';
+    // unequal rank
+  }
+  @< Make adaptations for any Complex inner classes, and store the final value
+  in |type| and |inner_class| @>
+}
+
+@ The complex inner classes pose the additional problem of identifying the
+corresponding pairs. We build small tables holding for each Complex inner
+class symbol the index of its factor in the Lie type, and the index of the
+first root of the corresponding component in the Dynkin diagram, and the
+number of the matching factor in the Lie type.
+
+@< Make adaptations for any Complex inner classes... @>=
+{ std::vector<size_t> pos(nr_Complex_letters);
+  std::vector<size_t> first(nr_Complex_letters);
+  for (size_t l=0,i=0; l<comps.size(); ++l)
+    if (letter[l]=='C')
+    {@; pos[i]=l; first[i]=comps[l].firstBit(); ++i; }
+  std::vector<size_t> buddy(nr_Complex_letters,nr_Complex_letters);
+  for (size_t i=0; i<nr_Complex_letters; ++i)
+    if (buddy[i]==nr_Complex_letters) // value was not set by buddy
+    { size_t b=diagr.component(p[comps[pos[i]].firstBit()]).firstBit();
+      for (size_t j=i+1; j<nr_Complex_letters; ++j)
+        if (first[j]==b) {@; buddy[i]=j; buddy[j]=i; break; }
+    }
+  type.resize(comps.size()+(r-s));
+  for (size_t l=0,k=0,i=0; l<comps.size(); ++l)
+    if (letter[l]!='C')
+    {@; type[k++]=type0[l]; inner_class.push_back(letter[l]); }
+    else if (buddy[i]<i) ++i; // skip second member of Complex pair
+    else // first member of Complex pair
+    { type[k++]=type0[l]; type[k++]=type0[pos[buddy[i]]]; // should be equal
+      inner_class.push_back('C'); ++i;
+    }
+  if (r>s)
+  @< Add type letters and inner class symbols for the central torus @>
+}
+
+@ Finally we have to give inner class symbols for the central torus. While it
+is not entirely clear that forming some quotient could not transform an inner
+class specified as |"sc"| by the user into one that we will classify as |"C"|
+or vice versa, the symbols we generate have a well defined interpretation: the
+correspond to the real torus in the central torus defined by the involution.
+The weight lattice of the central torus is the quotient of the full weight
+lattice by the rational span of the root lattice, so we determine the action
+of the involution on this quotient, and classify it using
+|classify_involution|. To find the matrix of the action of the involution on
+the quotient lattice, we find a Smith basis for the root lattice (of which the
+first $r$ vectors span the lattice to be divided out), express the involution
+of that basis (which will have zeros in the bottom-left $(r-s)\times{s}$
+block), and extract the bottom-right $(r-s)\times(r-s)$ block.
+
+@< Add type letters and inner class symbols for the central torus @>=
+{ using latticetypes::WeightList; using latticetypes::LatticeMatrix;
+  for (size_t k=comps.size(); k<comps.size()+(r-s); ++k)
+    type[k]=lietype::SimpleLieType('T',1);
+  WeightList b; matrix::initBasis(b,r);
+  WeightList simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
+@/latticetypes::CoeffList ivf;
+  smithnormal::smithNormal(ivf,b.begin(),simple_roots);
+@/LatticeMatrix inv(LatticeMatrix(M,b),s,s,r,r);
+    // involution on quotient by root lattice
+  std::pair<size_t,size_t> cl=classify_involution(inv,r-s);
+@/size_t& compact_rank=cl.first;
+  size_t& split_rank=cl.second;
+  size_t Complex_rank=(r-s-compact_rank-split_rank)/2;
+@/while (compact_rank-->0) inner_class.push_back('c');
+  while (Complex_rank-->0) inner_class.push_back('C');
+  while (split_rank-->0) inner_class.push_back('s');
+}
+
+@*2 Storing the values.
+This is the first built-in type where we deviate from the previously used
 scheme of just having one data field |value| holding a value of a class
 defined in the Atlas. The reason is that the copy constructor for
 |complexredgp::ComplexReductiveGroup| is private (and nowhere defined), so
@@ -1030,102 +1251,88 @@ disappears. The reference count needs to be shared of course, and since the
 links between the built in value and both the Atlas value it represents and
 the reference count are indissoluble, we use references for the data fields.
 
-The reference to the Atlas value is constant since we have no intention to
-modify it directly, but this probably makes no difference (and in particular
-provides no protection) since that value itself only contains pointers to
-non-constant values. It is still possible that the Atlas value referred to
-changes in the course of the computation, presumably to store information
-about the group as it is computed, but apart from efficiency considerations
-the sharing should be transparent (not noticeable by the user).
+The reference to the Atlas value is not constant, since at some point we need
+to apply the method |fillCartan| to it; this is not defined as a |const|
+method (in other words it is considered a manipulator), even though it could
+have been, given the fact that it only modifies values at the other side of
+the |d_cartan| pointer. The Atlas value so referred to then may change in the
+course of the computation, to store information about the group as it is
+computed, but apart from efficiency considerations the sharing should be
+transparent (not noticeable by the user). Comments suggest however that the
+numbering of Cartan subgroups may be affected by the order of operations
+requested, so this transparency may not be complete.
 
-Our main constructor takes a pointer to a |ComplexReductiveGroup| as argument,
-which should come from a call to~|new|; this pointer will be owned by the
-|complexredgp_value| constructed and all values cloned from it, with the last
-one to be destroyed calling |delete| for the pointer.
+@< Includes... @>=
+#include "realform_io.h"
+
+@~The main constructor takes a pointer to a |ComplexReductiveGroup| as
+argument, which should come from a call to~|new|; this pointer will be owned
+by the |complexredgp_value| constructed and all values cloned from it, with
+the last one to be destroyed calling |delete| for the pointer. This argument
+is followed by the values that are computed by |check_involution| above.
+
+Contrary to what was the case for other value types, the copy constructor is
+public here, which will make it possible to store a |complexredgp_value|
+inside another class that depends on the object referenced by our |value|
+field staying alive; the reference counting mechanism will then ensure that
+this is the case as long as the object of that class exists.
 
 @< Type definitions @>=
 struct complexredgp_value : public value_base
-{ const complexredgp::ComplexReductiveGroup& value;
+{ complexredgp::ComplexReductiveGroup& value;
   size_t& ref_count;
+  const realform_io::Interface interface,dual_interface;
 @)
-  complexredgp_value(complexredgp::ComplexReductiveGroup*);
+  complexredgp_value(complexredgp::ComplexReductiveGroup*
+                    ,lietype::LieType, lietype::InnerClassType);
   ~complexredgp_value();
 @)
   virtual void print(std::ostream& out) const;
   complexredgp_value* clone() const @+
     {@; return new complexredgp_value(*this); }
-private:
   complexredgp_value(const complexredgp_value& v);
 };
 
 @ Here are the copy constructor and the destructor.
 @< Function def...@>=
 complexredgp_value::complexredgp_value(const complexredgp_value& v)
-: value(v.value), ref_count(v.ref_count) @+ {@; ++ref_count; }
+: value(v.value), ref_count(v.ref_count)
+, interface(v.interface), dual_interface(v.dual_interface)
+{@; ++ref_count; }
 
 complexredgp_value::~complexredgp_value()
 {@; if (--ref_count==0) {@; delete &value; delete &ref_count;} }
 
 @ The constructor installs the reference to the Atlas value, and allocates and
-initialises the reference count.
+initialises the reference count. To initialise the |interface| and
+|dual_interface| fields, we call the appropriate constructors with a
+|layout::Layout| structure provided by a constructor that we added to it
+specifically for the purpose. This constructor leaves the field holding a
+lattice basis empty, but this field is unused by the constructors for
+|realform_io::Interface|.
+
 @< Function def...@>=
 complexredgp_value::complexredgp_value
-  (complexredgp::ComplexReductiveGroup* g)
-: value(*g), ref_count(*new size_t(1)) @+ {}
+  (complexredgp::ComplexReductiveGroup* g
+  ,lietype::LieType lt, lietype::InnerClassType ict)
+@/: value(*g), ref_count(*new size_t(1))
+@/, interface(*g,layout::Layout(lt,ict))
+, dual_interface(*g,layout::Layout(lt,ict),tags::DualTag())
+ @+ {}
 
-@ For the moment printing a |complexredgp_value| reveals nothing of is actual
-value; apart from the Lie type it seems hard to extract useful and succinct
-information.
+@ One of the most practical informations about a |ComplexReductiveGroup|,
+which is available directly after its construction, is the number of real
+forms in the inner class defined by it; we print this information when a
+|complexredgp_value| is printed.
 
 @< Function def...@>=
 void complexredgp_value::print(std::ostream& out) const
-{@; out << "A complex reductive group equipped with an involution"; }
-
-
-@ We can build a |complexredgp_value| object from a root datum and an
-involution, using a constructor for |complexredgp::ComplexReductiveGroup|. But
-that constructor does no checking and since we want to provide any involution
-for maximal flexibility, we do additional tests here. Since the matrix is
-already expressed on the basis of the weight lattice used by the root datum,
-the question of stabilising that lattice is settled, but we must check that
-the matrix is indeed an involution, and that it gives an automorphism of the
-based root datum. The latter means that the simple roots are permuted among
-each other, and that the Cartan matrix is invariant
-under that permutation of its rows and columns.
-
-@h "setutils.h"
-@< Local function def...@>=
-void check_involution
- (const latticetypes::LatticeMatrix& M, const rootdata::RootDatum& rd)
- throw (std::bad_alloc, std::runtime_error)
-{ size_t r=rd.rank(),s=rd.semisimpleRank();
-  @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
-  setutils::Permutation p(s);
-@/rootdata::WRootIterator first=rd.beginSimpleRoot();
-  rootdata::WRootIterator last=rd.endSimpleRoot();
-  for (unsigned long i=0; i<s; ++i)
-  { rootdata::Root alpha(r); M.apply(alpha,rd.simpleRoot(i));
-    unsigned long pi=std::find(first,last,alpha)-first;
-    if (pi<s) p[i]=pi;
-    else throw std::runtime_error
-      ("given transformation does not permute simple roots");
-  }
-  for (unsigned long i=0; i<s; ++i)
-    for (unsigned long j=0; j<s; ++j)
-      if (rd.cartan(p[i],p[j])!=rd.cartan(i,j)) throw std::runtime_error@|
-      ("given transformation is not a root datum automorphism");
-}
-
-@ The test for being an involution is stronger than checking that the
-permutation of the roots is an involution, in case there is a torus part.
-
-@< Check that |M| is an $r\times{r}$ matrix defining an involution @>=
-{ if (M.numRows()!=r or M.numColumns()!=r) throw std::runtime_error
-    ("involution should be a "+num(r)+"x"+num(r)+" matrix");
-  latticetypes::LatticeMatrix I,Q(M);
-  matrix::identityMatrix(I,r); Q*=M; // $Q=M^2$
-  if (!(Q==I)) throw std::runtime_error
-      ("given transformation is not an involution");
+{ out << "Complex reductive group equipped with an involution,\n" @|
+         "defining an inner class of "
+      << value.numRealForms() @| << " real "
+      << (value.numRealForms()==1 ? "form" : "forms") @| << " and "
+      << value.numDualRealForms() @| << " dual real "
+      << (value.numDualRealForms()==1 ? "form" : "forms");
 }
 
 @ So here is our wrapper function for building a complex reductive group with
@@ -1141,12 +1348,27 @@ void fix_involution_wrapper()
 { push_tuple_components();
   std::auto_ptr<latmat_value> M(get_mat());
   std::auto_ptr<root_datum_value> rd(get_root_datum());
-  check_involution(M->value,rd->value);
+  std::pair<lietype::LieType,lietype::InnerClassType> cl
+    =check_involution(M->value,rd->value);
+  if (verbosity>0) @< Report the type and inner class found @>
   rootdata::RootDatum* rdp=new rootdata::RootDatum(rd->value);
   std::auto_ptr<complexredgp::ComplexReductiveGroup>@|
     G(new complexredgp::ComplexReductiveGroup(rdp,M->value));
-  complexredgp_value* result=new complexredgp_value(G.get());
+  complexredgp_value* result=new
+    complexredgp_value(G.get(),cl.first,cl.second);
   G.release(); push_value(result);
+}
+
+@ For understanding what is going on, the user may find it useful to look at
+the Lie type and inner class that were determined from the root datum and the
+involution given.
+
+@< Report the type and inner class found @>=
+{ Lie_type_value t(cl.first);
+  std::cout << "Found " << t << ", and inner class '";
+  for (size_t i=0; i<cl.second.size(); ++i)
+    std::cout << cl.second[i];
+  std::cout << "'.\n";
 }
 
 @ To simulate the functioning of the Atlas software, the function $set\_type$
@@ -1228,7 +1450,9 @@ complexredgp_value* get_complexredgp() throw(std::logic_error)
   return result;
 }
 
-@
+@ Here are our first functions that access a |complexredgp_value|; they
+recover the ingredients that were used in the construction.
+
 @< Local function def...@>=
 void distinguished_involution_wrapper()
 { std::auto_ptr<complexredgp_value> G(get_complexredgp());
@@ -1240,8 +1464,57 @@ void root_datum_of_group_wrapper()
   push_value(new root_datum_value(G->value.rootDatum()));
 }
 
+@ More interestingly, let us extract the list of names of the real forms.
+This uses the interface fields stored in the value. Since they exist for both
+the group itself and for the dual group, we define an auxiliary function that
+produces the list, and then use it twice.
+
+@< Local function def...@>=
+void push_name_list(const realform_io::Interface& interface)
+{ row_value* result=new row_value(std::vector<value_ptr>());
+  for (size_t i=0; i<interface.numRealForms(); ++i)
+    result->value.push_back(new string_value(interface.typeName(i)));
+  push_value(result);
+}
+
+void form_names_wrapper()
+{@; std::auto_ptr<complexredgp_value> G(get_complexredgp());
+  push_name_list(G->interface);
+}
+
+void dual_form_names_wrapper()
+{@; std::auto_ptr<complexredgp_value> G(get_complexredgp());
+  push_name_list(G->dual_interface);
+}
+
+@ And now, our first function that really simulates something that can be done
+using the atlas interface, and that uses more than a root datum. This is the
+\.{blocksizes} command from \.{mainmode.cpp}, which uses
+|complexredgp_io::printBlockSizes|, but we have to rewrite it to avoid calling
+an output routine. A subtle difference is that we use a matrix of integers
+rather than of unsigned long integers to collect the block sizes; this avoids
+having to define a new primitive type.
+
+@< Local function def...@>=
+void block_sizes_wrapper()
+{ std::auto_ptr<complexredgp_value> G(get_complexredgp());
+  G->value.fillCartan();
+  std::auto_ptr<latmat_value>
+  M(new latmat_value @|
+    (latticetypes::LatticeMatrix(G->value.numRealForms()
+                                ,G->value.numDualRealForms())
+    ));
+  for (size_t i = 0; i < M->value.numRows(); ++i)
+    for (size_t j = 0; j < M->value.numColumns(); ++j)
+      M->value(i,j) =
+      G->value.blockSize(G->interface.in(i),G->dual_interface.in(j));
+  push_value(M.release());
+}
+
 @ Finally we install everything.
 @< Install wrapper functions @>=
+install_function(classify_wrapper,"classify_involution"
+                ,"(mat->int,int,int)");
 install_function(fix_involution_wrapper,"fix_involution"
                 ,"(RootDatum,mat->ComplexGroup)");
 install_function(set_type_wrapper,"set_type"
@@ -1252,6 +1525,87 @@ install_function(distinguished_involution_wrapper,"distinguished_involution"
                 ,"(ComplexGroup->mat)");
 install_function(root_datum_of_group_wrapper,"root_datum_of_group"
                 ,"(ComplexGroup->RootDatum)");
+install_function(form_names_wrapper,"form_names"
+                ,"(ComplexGroup->[string])");
+install_function(dual_form_names_wrapper,"dual_form_names"
+                ,"(ComplexGroup->[string])");
+install_function(block_sizes_wrapper,"block_sizes"
+                ,"(ComplexGroup->mat)");
+
+@*1 A type for real reductive groups.
+A next step in specifying the computational context is choosing a real form in
+the inner class of them that was determined by a root datum and an involution.
+This determines a, not necessarily connected, real reductive group inside the
+connected complex reductive group; the corresponding Atlas class is called
+|realredgp::RealReductiveGroup|.
+
+@< Includes... @>=
+#include "realredgp.h"
+
+@ The layout of this type of value is different from what we have seen before.
+An Atlas object of class |realredgp::RealReductiveGroup| is dependent upon
+another Atlas object to which it stores a pointer, which is of type
+|complexredgp::ComplexReductiveGroup|, so we must make sure that the object
+pointed to cannot disappear before it does. The easiest way to do this is to
+place a |complexredgp_value| object |parent| inside the |realredgp_value|
+class that we shall now define; the reference-counting scheme introduced above
+then guarantees that the data we depend upon will remain in existence
+sufficiently long. Since that data can be accessed from inside the
+|realredgp::RealReductiveGroup|, we shall hardly ever mention the |parent|;
+it should stay in place however, which is why we declare it |const|, which
+does not hurt exactly because we don't use the field. The object referred to
+may in fact undergo internal change however, via manipulators of the |value|
+field.
+
+@< Type definitions @>=
+struct realredgp_value : public value_base
+{ const complexredgp_value parent;
+  realredgp::RealReductiveGroup value;
+@)
+  realredgp_value(complexredgp_value p,realform::RealForm f)
+  : parent(p), value(p.value,f) @+{}
+  ~realredgp_value() @+{} // everything is handled by destructor of |parent|
+@)
+  virtual void print(std::ostream& out) const;
+  realredgp_value* clone() const @+
+    {@; return new realredgp_value(*this); }
+private:
+  realredgp_value(const realredgp_value& v)
+  : parent(v.parent), value(v.value) @+{}
+};
+
+@ When printing a real form, we give the name by which it was chosen (where
+for once we do use the |parent| field), and provide some information about its
+connectedness.
+
+@< Function def...@>=
+void realredgp_value::print(std::ostream& out) const
+{ out << "Real form labelled '"
+  << parent.interface.typeName(value.realForm()) @| << "', defining a"
+  << (value.isConnected() ? " connected" : value.isSplit() ? " split"
+     : value.isQuasisplit() ? " quasisplit" : "") @|
+  << " real reductive group" ;
+}
+
+@ To make a real form is trivial, one provides a |complexredgp_value| and a
+valid index into its list of real forms.
+
+@< Local function def...@>=
+void real_form_wrapper()
+{ push_tuple_components();
+  std::auto_ptr<int_value> i(get_int());
+  std::auto_ptr<complexredgp_value> G(get_complexredgp());
+  if (i->value<0 || size_t(i->value)>=G->value.numRealForms())
+    throw std::runtime_error ("illegal real form number: "+num(i->value));
+  push_value(new realredgp_value(*G,i->value));
+}
+
+@ Finally we install everything (where did we hear that being said before?)
+
+@< Install wrapper functions @>=
+install_function(real_form_wrapper,"real_form"
+		,"(ComplexGroup,int->RealForm)");
+
 
 @* Epilogue.
 Here are some empty modules, which are place-holders for if anything in these
