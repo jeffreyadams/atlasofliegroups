@@ -1,8 +1,8 @@
 /*
   This is layout.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -36,9 +36,15 @@ struct Layout {
 // constructors and destructors
   Layout() {}
 
-  Layout(const lietype::LieType& lt, 
-		  const latticetypes::WeightList& b)
-    :d_type(lt),d_basis(b) {}
+  /* In the old atlas interface, the Lie type and lattice basis are first
+     provided, and the inner class type is later added via user interaction */
+  Layout(const lietype::LieType& lt, const latticetypes::WeightList& b)
+    :d_type(lt),d_inner(),d_basis(b) {}
+
+  /* In the new atlas interface, the Lie type and inner class type are
+     computes from the involution, and the lattice basis is unused */
+  Layout(const lietype::LieType& lt, const lietype::InnerClassType ict)
+    :d_type(lt),d_inner(ict), d_basis() {}
 
   ~Layout() {}
 
