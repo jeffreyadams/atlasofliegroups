@@ -306,8 +306,8 @@ void getInteractive(realform::RealForm& d_rf,
   throw(error::InputError)
 
 /*
-  Synposis: replaces rf with a new strong real form gotten interactively
-  from the user.
+  Synposis: replaces rf with a new real form gotten interactively from the
+  user.
 
   Throws an InputError if the interaction with the user fails; in that case,
   rf is not modified.
@@ -346,8 +346,8 @@ void getInteractive(realform::RealForm& rf,
   throw(error::InputError)
 
 /*
-  Synposis: replaces rf with a new strong dual real form gotten interactively
-  from the user.
+  Synposis: replaces rf with a new dual real form gotten interactively from
+  the user.
 
   Throws an InputError if the interaction with the user fails; in that case,
   rf is not modified.
@@ -387,7 +387,7 @@ void getInteractive(realform::RealForm& rf,
   throw(error::InputError)
 
 /*
-  Synposis: replaces rf with a new strong real form from the list drfl.
+  Synposis: replaces rf with a new real form from the list drfl.
 
   Throws an InputError if the interaction with the user fails; in that case,
   rf is not modified.
@@ -666,7 +666,7 @@ bool checkInvolution(const latticetypes::LatticeMatrix& i,
 
   LatticeMatrix m(p);
   leftProd(m,i);
-  LatticeCoeff(d);
+  LatticeCoeff d;
   p.invert(d);
   leftProd(m,p);
 
@@ -678,4 +678,3 @@ bool checkInvolution(const latticetypes::LatticeMatrix& i,
 }
 
 }
-
