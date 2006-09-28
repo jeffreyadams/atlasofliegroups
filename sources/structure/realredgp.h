@@ -6,7 +6,7 @@
   This is realredgp.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -32,26 +32,29 @@ namespace atlas {
 
 namespace realredgp {
 
-/*!
-\brief Represents the group of real points of a connected reductive
-algebraic group defined over R.
+/*! \brief Represents a real form on a connected reductive complex group,
+ determining a real reductive group
 
- We do not own the complex group; a RealReductiveGroup should be seen
- as a "pointer" to a complex group; when the complex group changes,
- the corresponding pointers are invalidated.
+ An object of this class is determined by a ComplexReductiveGroup and the
+ number of a real form; in addition it stores some data concerning the group
+ of real points of the real form
+
+ The complex group is referred to by a pointer that is not owned; we are
+ dependent on the owner of the complex group, and once it is destructed, the
+ RealReductiveGroup objects referring to it become invalid.
 */
 class RealReductiveGroup {
 
  private:
 
-  enum StatusFlagNames { FullCartan, IsConnected, IsQuasisplit, IsSemisimple, 
+  enum StatusFlagNames { FullCartan, IsConnected, IsQuasisplit, IsSemisimple,
 			 IsSplit, NumStatusFlags };
 
   typedef bitset::BitSet<NumStatusFlags> Status;
 
   // we do not own the complex group; a RealReductiveGroup should be seen
-  // as a "pointer" to a complex group; when the complex group changes,
-  // the corresponding pointers are invalidated
+  // as dependent on a complex group; when the complex group changes,
+  // the dependent RealReductiveGroup objects are invalidated
   complexredgp::ComplexReductiveGroup* d_complexGroup;
 
   realform::RealForm d_realForm;
