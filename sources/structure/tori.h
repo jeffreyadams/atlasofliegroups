@@ -5,7 +5,7 @@
 /*
   This is tori.h
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -36,12 +36,12 @@ namespace tori {
 
   void minusBasis(LT::WeightList&, const LT::LatticeMatrix&);
 
-  void minusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&, 
+  void minusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&,
 		   const RealTorus&);
 
   void plusBasis(LT::WeightList&, const LT::LatticeMatrix&);
 
-  void plusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&, 
+  void plusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&,
 		  const RealTorus&);
 }
 
@@ -50,7 +50,7 @@ namespace tori {
 namespace tori {
 
   /*!
-  \brief Represents a torus defined over R. 
+  \brief Represents a torus defined over R.
 
   This is equivalent to the datum of a lattice with an involution;
   to be consistent with the rest of the program, we use the Cartan
@@ -66,27 +66,23 @@ namespace tori {
   and d_minus is a basis of X_-.  Both X_+ and X_- are supplementable
   in X, but in general X is not equal to the direct sum X_+ + X_-.
 
-... the pi0 part is outdated ...
+  The most delicate invariant we shall have to deal with is the component
+  group of the group of real points of T. This is an elementary abelian
+  2-group; we shall rather consider its dual dpi0(T). To describe its rank is
+  fairly easy. Indeed, T may be decomposed as a product of compact, split and
+  complex factors; denote r_u, r_s and r_c the number of factors of each type,
+  so that the rank n of T is r_u + r_s + 2 r_c, then the rank of the component
+  group is r_s. We have moreover : rk(X_+) = r_u + r_c; rk(X_-) = r_s + r_c.
+  Denote V = X/2X, a vector space over the two-element field F_2, and denote
+  V_+,V_- the images of X_+, X_- in V. Then it is not hard to show that r_c =
+  dim(V_+ cap V_-), which allows computing r_s once rk(X_-) is known.
+  One may prove that V_+- := V_+ cap V_- is also the image of tau - 1 in V.
 
-  The most delicate invariant we shall have to deal with is the
-  component group of the group of real points of T. This is an
-  elementary abelian 2-group; we shall rather consider its dual
-  dpi0(T). To describe its rank is fairly easy : indeed, T may be
-  decomposed as a product of compact, split and complex factors;
-  denote r_u, r_s and r_c the number of factors of each type, so that
-  the rank n of T is r_u + r_s + 2 r_c. Then we have : rk(X_+) = r_u +
-  r_c; rk(X_-) = r_s + r_c. Denote V = X/2X, a vector space over the
-  two-element field F_2, and denote V_+,V_- the images of X_+, X_- in
-  V.  Then it is not hard to show that r_c = dim(V_+ cap V_-); one may
-  prove that this is also the image of tau - 1 in V.
-
-  It is a little bit harder to describe dpi0(T) functorially as a
-  vector space.  Denote V_+- the intersection V_+ cap V_-. Then one
-  may show that the group T(2)(R) of real points of the group of
-  elements of order 2 in T is in natural duality with V/V_+-. There is
-  a natural surjection from T(2)(R) to pi0(T), so dpi0(T) is a
-  sub-vector space of V/V_+-, which may in fact be described as the
-  image of V_-. This is how we will consider it.
+  It is a little bit harder to describe dpi0(T) functorially as a vector
+  space. The group T(2)(R) of real points of the group of elements of order 2
+  in T is in natural duality with V/V_+-. There is a natural surjection from
+  T(2)(R) to pi0(T), so dpi0(T) is a sub-vector space of V/V_+-, which may in
+  fact be described as the image of V_-. This is how we will consider it.
   */
   class RealTorus {
 
@@ -96,39 +92,39 @@ namespace tori {
   rank of torus
   */
   size_t d_rank;                             // rank of torus
-  
+
   /*!
   number of C^x-factors
   */
   size_t d_complexRank;                      // number of C^x-factors
-  
+
   /*!
-  matrix of the Cartan involution 
+  matrix of the Cartan involution
   */
   LT::LatticeMatrix d_involution;            // matrix of the involution
-  
+
   /*!
   basis for +1 eigenlattice of the Cartan involution
   */
   LT::WeightList d_plus;                     // basis for +1 eigenlattice
-  
+
   /*!
   basis for -1 eigenlattice of the Cartan involution
   */
   LT::WeightList d_minus;                    // basis for -1 eigenlattice
-  
+
   /*!
   (some) projection onto +1 eigenlattice X_+; kernel _need not be_ the
-  -1 eigenlattice 
+  -1 eigenlattice
   */
   LT::LatticeMatrix d_toPlus;                // projection onto X_+
-  
+
   /*!
   (some) projection onto -1 eigenlattice X_-; kernel _need not be_ the
   +1 eigenlattice
   */
   LT::LatticeMatrix d_toMinus;               // projection onto X_-
-  
+
   /*!
   group of connected components (a vector space over Z/2Z).
   */
@@ -137,14 +133,14 @@ namespace tori {
  public:
 
 // constructors and destructors
-  RealTorus() 
+  RealTorus()
     {}
 
   explicit RealTorus(const LT::LatticeMatrix&);
 
   RealTorus(const RealTorus&, tags::DualTag);
 
-  ~RealTorus() 
+  ~RealTorus()
     {}
 
 // accessors
@@ -156,7 +152,7 @@ namespace tori {
     return d_complexRank;
   }
 
-  void componentMap(LT::ComponentMap&, const LT::LatticeMatrix&, 
+  void componentMap(LT::ComponentMap&, const LT::LatticeMatrix&,
 		    const RealTorus&) const;
 
   const LT::LatticeMatrix& involution() const {
