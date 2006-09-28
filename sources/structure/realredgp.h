@@ -47,8 +47,8 @@ class RealReductiveGroup {
 
  private:
 
-  enum StatusFlagNames { FullCartan, IsConnected, IsQuasisplit, IsSemisimple,
-			 IsSplit, NumStatusFlags };
+  enum StatusFlagNames { IsConnected, IsQuasisplit, IsSemisimple, IsSplit,
+			 NumStatusFlags };
 
   typedef bitset::BitSet<NumStatusFlags> Status;
 
