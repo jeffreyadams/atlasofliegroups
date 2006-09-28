@@ -1,8 +1,8 @@
 /*
   This is mainmode.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -38,10 +38,10 @@ namespace mainmode {
   is the central mode for the program.
 
   Basically, entering the main mode means setting the group type. In an
-  interactive session, there is always a "current group"; this may be
-  exported through the function "currentGroup". The current group may be
-  changed with the "type" command, which amounts to exiting and re-entering
-  the main mode.
+  interactive session, there is always a "current group"; this may be exported
+  through the function "currentComplexGroup". The current group may be changed
+  with the "type" command, which amounts to exiting and re-entering the main
+  mode.
 
   NOTE : it could be useful to have several active groups simultaneously, say
   for comparison purposes. This should be easy to do (an easy scheme would
@@ -168,9 +168,9 @@ const std::vector<const commands::CommandMode*>& ThisMode::next() const
 void this_entry() throw(EntryError)
 
 /*
-  Synopsis: entry function to the main program mode. 
+  Synopsis: entry function to the main program mode.
 
-  It attempts to set the group type interactively. Throws an EntryError on 
+  It attempts to set the group type interactively. Throws an EntryError on
   failure.
 */
 
@@ -216,7 +216,7 @@ namespace mainmode {
 const CommandMode& mainMode()
 
 /*
-  Synopsis: returns the ThisMode object. 
+  Synopsis: returns the ThisMode object.
 
   It is constructed on first call.
 */
@@ -338,7 +338,7 @@ void posroots_f()
 
 void q_h()
 
-{  
+{
   io::printFile(std::cout,"q.help",io::MESSAGE_DIR);
   return;
 }
@@ -387,7 +387,7 @@ void roots_f()
 
 void showdualforms_f()
 
-{  
+{
   using namespace realform_io;
 
   const realform_io::Interface rfi = G_I.dualRealFormInterface();
@@ -400,7 +400,7 @@ void showdualforms_f()
 
 void showrealforms_f()
 
-{  
+{
   using namespace realform_io;
 
   const realform_io::Interface rfi = G_I.realFormInterface();
@@ -480,7 +480,7 @@ void type_f()
         Chapter III -- Functions declared in mainmode.h
 
   ... explain here when it is stable ...
-  
+
 ******************************************************************************/
 
 namespace mainmode {
