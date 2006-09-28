@@ -23,9 +23,6 @@ namespace atlas {
 
 namespace lattice {
 
-template<typename J>
-  void baseChange(latticetypes::LatticeMatrix&, const J&, const J&);
-
 template<typename I, typename J, typename O>
   void baseChange(const I&, const I&, O, const J&, const J&);
 
