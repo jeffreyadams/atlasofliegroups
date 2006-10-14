@@ -71,25 +71,96 @@ class Block {
 
   enum State { BruhatConstructed, NumStates };
 
+  /*!
+\brief Semisimple rank of G.
+  */
   size_t d_rank;
+
+  /*!
+\brief Number of K orbits on G/B.
+  */
   size_t d_xsize;
+
+  /*!
+\brief Number of K^vee orbits on G^vee/B^vee.
+  */
   size_t d_ysize;
 
+  /*!
+\brief Element d_x[z] indexes the K orbit x on G/B for z.
+  */
   kgb::KGBEltList d_x;
+
+  /*!
+\brief Element d_y[z] indexes the K^vee orbit y on G^vee/B^vee for z.
+  */
   kgb::KGBEltList d_y;
+
+  /*!  
+\brief Element d_cross[s] (for s a simple root) is the list whose zth
+entry is s x z.
+  */
   std::vector<BlockEltList> d_cross;
+
+  /*!  
+\brief Element d_cayley[s] (for s a simple root) has zth
+entry the Cayley transform c_s(z) (z noncompact imaginary) or
+undefined (otherwise).
+  */
   std::vector<BlockEltPairList> d_cayley;
+
+  /*!  
+\brief Element d_inverseCayley[s] (for s a simple root) has zth
+entry the inverse Cayley transform c^s(z) (z is real type 1 or
+2) or undefined (otherwise).
+  */
   std::vector<BlockEltPairList> d_inverseCayley;
+
+
+  /*!  
+\brief Entry z flags the descent status of the simple roots for block
+element z.
+  */
   descents::DescentStatusList d_descent;
+
+  /*!  
+\brief Entry z is the length of block element z.
+  */
   std::vector<size_t> d_length;
+
+
+  /*!  
+\brief Entry z (multiplied by the fixed outer automorphism delta) is
+the involution of theta_z of H attached to z.
+  */
   weyl::WeylEltList d_involution;
+
+  /*!  
+\brief Entry z flags the simple roots occurring in theta_z.
+  */
   std::vector<bitset::RankFlags> d_involutionSupport;
 
+  /*!  
+\brief Number (in the list maintained by the complex reductive group)
+of the real form of G where the block lives.
+  */
   realform::RealForm d_realForm;
+
+  /*!  
+\brief Number of the real form of G^vee defining the block.
+  */
   realform::RealForm d_dualForm;
 
+  /*!
+\brief Records whether the Bruhat order on the block has been computed.
+  */
   bitset::BitSet<NumStates> d_state;
 
+  /*!
+\brief Bruhat order on the block.
+
+Not used in the present code (DV 10/14/06).
+  */
   bruhat::BruhatOrder* d_bruhat;
 
   const weyl::WeylGroup* d_weylGroup;
@@ -99,8 +170,8 @@ class Block {
 // constructors and destructors
   Block();
 
-  Block(complexredgp::ComplexReductiveGroup&, realform::RealForm,
-	realform::RealForm);
+  Block(complexredgp::ComplexReductiveGroup&, realform::RealForm rf,
+	realform::RealForm df);
 
   virtual ~Block();
 
