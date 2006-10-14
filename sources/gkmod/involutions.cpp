@@ -257,7 +257,7 @@ void Helper::fillCartan(const complexredgp::ComplexReductiveGroup& G)
 
   Explanation: it is important that we use the same numbering of Cartan
   subgroups as in G. The algorithm is to use the representative of Cartan
-  #j returned by G.twistedInvolution(j), locate that in the involution set,
+  \#j returned by G.twistedInvolution(j), locate that in the involution set,
   and then number its cross-orbit with j's.
 */
 
