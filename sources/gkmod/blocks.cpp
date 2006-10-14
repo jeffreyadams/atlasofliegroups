@@ -148,9 +148,9 @@ Block::Block(complexredgp::ComplexReductiveGroup& G,
 /*!
   \brief Constructor for the block class.
 
-  Constructs a block from the datum of a real form for G and a real form for
-  G^vee (_not_ strong real forms: up to isomorphism, the result depends only
-  on the underlying real forms!).
+  Constructs a block from the datum of a real form rf for G and a real
+  form df for G^vee (_not_ strong real forms: up to isomorphism, the
+  result depends only on the underlying real forms!).
 
   This is a big job; the work is deferred to the Helper constructor.
 */
