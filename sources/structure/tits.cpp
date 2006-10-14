@@ -198,7 +198,7 @@ void TitsGroup::prod(TitsElt& a, weyl::Generator s) const
 void TitsGroup::prod(TitsElt& a, const TitsElt& b) const
 
 /*!
-  \Multiplies first argument by second argument, and puts the result
+  \brief Multiplies first argument by second argument, and puts the result
   in the first argument. 
 
   Algorithm: The algorithm is to multiply a successively by the various 
