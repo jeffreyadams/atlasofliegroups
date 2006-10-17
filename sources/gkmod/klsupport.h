@@ -48,6 +48,10 @@ class KLSupport {
   std::vector<bitset::RankFlags> d_goodAscent;
   std::vector<bitmap::BitMap> d_downset;
   std::vector<bitmap::BitMap> d_primset;
+
+  /*!
+\brief Entry l is the number of block elements of length strictly less than l.
+  */
   std::vector<size_t> d_lengthLess;
 
  public:
@@ -79,20 +83,33 @@ class KLSupport {
     return d_descent[z];
   }
 
+  /*!
+\brief Descent status of simple root s for block element z.
+  */
   descents::DescentStatus::Value descentValue(size_t s, size_t z) const {
     return d_block->descentValue(s,z);
   }
 
   void extremalize(bitmap::BitMap&, const bitset::RankFlags&) const;
 
+  /*!
+\brief Flags the simple roots which are good ascents (complex or
+noncompact imaginary) for block element z.
+  */
   const bitset::RankFlags& goodAscentSet(size_t z) const {
     return d_goodAscent[z];
   }
 
+  /*!
+\brief Length of block element z.
+  */
   size_t length(size_t z) const {
     return d_block->length(z);
   }
 
+  /*!
+\brief Number of block elements of length strictly less than l.
+  */
   size_t lengthLess(size_t l) const {
     return d_lengthLess[l];
   }
