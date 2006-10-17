@@ -89,7 +89,7 @@ void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
   const
 
 /*!
-  Brief: Flags in b those block elements which are extremal w.r.t. the
+  \brief: Flags in b those block elements which are extremal w.r.t. the
   simple reflections flagged in d.  
 
   Preconditions: the capacity of b is the size(); d contains d_rank valid
@@ -101,7 +101,7 @@ void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
   belong to the intersection of the downsets for the various descents in d.
 */
 /*
-  Synopsis: extremalizes b w.r.t. the values in d.  
+  \brief Extremalizes b w.r.t. the values in d.  
 
   Preconditions: the capacity of b is the size(); d contains d_rank valid
   flags;
@@ -139,7 +139,7 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
 */
 
 /*
-  Synopsis: primitivizes b w.r.t. the values in d.
+  \brief Primitivizes b w.r.t. the values in d.
 
   Preconditions: the capacity of b is the size(); d contains d_rank valid
   flags;
@@ -202,7 +202,7 @@ bool KLSupport::primitivize(size_t& x, const bitset::RankFlags& d) const
 void KLSupport::fill()
 
 /*
-  Synopsis: fills the extrPairs list, the downsets, and the lengthLess
+  \brief Fills the extrPairs list, the downsets, and the lengthLess
   table.
 
   Explanation: for real reductive Lie groups, we always compute the full
@@ -233,7 +233,7 @@ void KLSupport::fill()
 void KLSupport::fillDownsets()
 
 /*
-  Synopsis: fills in the downsets bitmaps, the primset bitmaps, the descent 
+  \brief Fills in the downsets bitmaps, the primset bitmaps, the descent 
   bitsets and the goodAscent bitsets.
 
   Explanation: here descent is taken in the weak sense of s belonging to the
@@ -304,7 +304,7 @@ namespace {
 void fillLengthLess(std::vector<size_t>& ll, const blocks::Block& b)
 
 /*
-  Synopsis: puts in ll[l] the number of elements in b of length < l.
+  \brief Puts in ll[l] the number of elements in b of length < l.
 
   Precondition: b is sorted by length;
 */
