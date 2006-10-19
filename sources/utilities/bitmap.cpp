@@ -1,8 +1,8 @@
 /*
   This is bitmap.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -13,7 +13,7 @@
 
 /*!****************************************************************************
 \file
-  \brief Contains the implementation of the BitMap class. 
+  \brief Contains the implementation of the BitMap class.
 
   A BitMap should be seen as a container of _unsigned long_, not bits; the
   idea is that the unsigned longs it contains are the bit-addresses of
@@ -36,16 +36,16 @@ namespace bitmap {
   // constants used to pick a bit-address apart
   // the first one serves as flags for the address within a word.
   // the second one is its logical complement
-  // It is assumed that the number of digits in an unsigned long 
+  // It is assumed that the number of digits in an unsigned long
   // is a power of two.
 
   /*!
   Constant used to pick a bit-address apart: serves as flags for the
   address within a word. It is assumed that the number of bits in an
-  unsigned long is a power of two.  
-  */  
+  unsigned long is a power of two.
+  */
   unsigned long BitMap::posBits = constants::posBits;
-  
+
   /*!
   Constant used to pick a bit-address apart: this is the logical
   complement of posBits. It is assumed that the number of bits in
@@ -126,7 +126,7 @@ BitMap::iterator BitMap::pos(unsigned long n) const
   Synopsis: returns an iterator with bit-address n.
 */
 
-{  
+{
   unsigned long base = n >> baseShift;
   return iterator(d_map.begin()+base,n,d_capacity);
 }
@@ -194,7 +194,7 @@ bool BitMap::empty() const
 
 unsigned long BitMap::front() const
 
-/*!  
+/*!
   Synopsis: returns the address of the first member (set bit) of
   the bitmap, past-the-end if there is no such.
 */
@@ -241,11 +241,15 @@ bool BitMap::full() const
   return true;
 }
 
-unsigned long BitMap::n_th(unsigned long n) const
+unsigned long BitMap::n_th(unsigned long i) const
 
 /*!
-  Synopsis: returns the position of the n-th set bit; returns d_capacity
-  if there is no such.
+  Synopsis: returns the index of set bit number i in the bitset; in other
+  words, viewing a bitset b as a container of unsigned long, b.n_th(i) is the
+  value of the element i of b, and the syntax b[i] would have been logical
+  (as usual, the first element is number 0). This returns d_capacity if there
+  is no such element, in other words if at most i bits are set in the bitmap.
+  Except for this exceptional case, b.position(b.n_th(i))==i always holds.
 */
 
 {
@@ -259,14 +263,14 @@ unsigned long BitMap::n_th(unsigned long n) const
 
   I map_end = d_map.end();
 
-  for (I i = d_map.begin(); i != map_end; ++i) {
-    unsigned long chunkSize = bits::bitCount(*i);
-    if (chunkSize > n) {
-      f = *i;
+  for (I iter = d_map.begin(); iter != map_end; ++iter) {
+    unsigned long chunkSize = bits::bitCount(*iter);
+    if (chunkSize > i) {
+      f = *iter;
       goto found;
     }
     else {
-      n -= chunkSize;
+      i -= chunkSize;
       pos += longBits;
     }
   }
@@ -277,7 +281,7 @@ unsigned long BitMap::n_th(unsigned long n) const
  found:
   // at this point the required bit is going to be in the current chunk
 
-  for (size_t j = 0; j < n; ++j)
+  for (size_t j = 0; j < i; ++j)
     f &= (f-1);
 
   pos += firstBit(f);
@@ -288,8 +292,9 @@ unsigned long BitMap::n_th(unsigned long n) const
 unsigned long BitMap::position(unsigned long n) const
 
 /*!
-  Synopsis: returns the number of set bits in position < n; if n is set,
-  this is also the position of j within the set of set bits.
+  Synopsis: returns the number of set bits in position < n; viewing a bitset
+  b as a container of unsigned long, this is the number of values < n that b
+  contains. If n itself is a member of b, then it is b.n_th(b.position(n)).
 */
 
 {
@@ -373,7 +378,7 @@ BitMap& BitMap::operator&= (const BitMap& b)
   Synopsis: intersects the current bitmap with b.
 */
 
-{  
+{
   for (unsigned long j = 0; j < d_map.size(); ++j)
     d_map[j] &= b.d_map[j];
 
@@ -386,7 +391,7 @@ BitMap& BitMap::operator|= (const BitMap& b)
   Synopsis: unites the current bitmap with b
 */
 
-{  
+{
   for (unsigned long j = 0; j < d_map.size(); ++j)
     d_map[j] |= b.d_map[j];
 
@@ -399,7 +404,7 @@ BitMap& BitMap::operator^= (const BitMap& b)
   Synopsis: xor's the current bitmap with b
 */
 
-{  
+{
   for (unsigned long j = 0; j < d_map.size(); ++j)
     d_map[j] ^= b.d_map[j];
 
@@ -409,11 +414,11 @@ BitMap& BitMap::operator^= (const BitMap& b)
 BitMap& BitMap::andnot(const BitMap& b)
 
 /*!
-  Synopsis: takes the current bitmap into its set-difference with b, i.e. we 
+  Synopsis: takes the current bitmap into its set-difference with b, i.e. we
   remove from our bitmap its intersection with b.
 */
 
-{  
+{
   for (unsigned long j = 0; j < d_map.size(); ++j)
     d_map[j] &= ~(b.d_map[j]);
 
@@ -423,7 +428,7 @@ BitMap& BitMap::andnot(const BitMap& b)
 void BitMap::fill()
 
 /*!
-  Synopsis: sets all the bits in the bitmap. 
+  Synopsis: sets all the bits in the bitmap.
 
   As usual we have to be careful to leave the unused bits at the end to zero.
 */
@@ -469,9 +474,9 @@ BitMap::iterator BitMap::insert(iterator, unsigned long n)
 void BitMap::resize(unsigned long n)
 
 /*!
-  Synopsis: sets the capacity of the bitmap to n. 
+  Synopsis: sets the capacity of the bitmap to n.
 
-  Does not modify the contents up to the previous size, at least if n is 
+  Does not modify the contents up to the previous size, at least if n is
   larger. The new elements are initialized to zero.
 */
 
@@ -536,7 +541,7 @@ BitMap::iterator& BitMap::iterator::operator= (const BitMap::iterator& i)
   d_chunk = i.d_chunk;
   d_bitAddress = i.d_bitAddress;
   d_capacity = i.d_capacity;
-  
+
   return *this;
 }
 
@@ -555,7 +560,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
 
   unsigned long f = *d_chunk >> (d_bitAddress & posBits);
   f >>= 1;
-  
+
   if (f) { // we stay in the same chunk
     d_bitAddress += firstBit(f)+1;
     return *this;
@@ -572,7 +577,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
 
   d_bitAddress += longBits;  // first bit in next chunk
   ++d_chunk;
-  
+
   for(; (d_capacity - d_bitAddress) > longBits; ++d_chunk) {
     if (*d_chunk) { // first bit is found
       d_bitAddress += firstBit(*d_chunk);
@@ -584,7 +589,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
 
   // when we reach this point, we have reached the last chunk
 
-  if (*d_chunk) 
+  if (*d_chunk)
     d_bitAddress += firstBit(*d_chunk);
   else // past-the-end
     d_bitAddress = d_capacity;
