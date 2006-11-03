@@ -1,8 +1,8 @@
 /*
   This is basic_io.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -43,13 +43,13 @@ std::ostream& operator<< (std::ostream& strm, const abelian::GrpArr& a)
 
 /******** from latticetypes **************************************************/
 
-std::ostream& operator<< (std::ostream& strm, 
+std::ostream& operator<< (std::ostream& strm,
 			  const latticetypes::LatticeElt& v)
 
 /*
   Synopsis: output of a lattice element.
 
-  Uses the template seqPrint. It is output as a bracket-enclosed, 
+  Uses the template seqPrint. It is output as a bracket-enclosed,
   comma-separated list.
 */
 
@@ -64,7 +64,7 @@ std::ostream& operator<< (std::ostream& strm,
 
 /******** from lietype *******************************************************/
 
-std::ostream& operator<< (std::ostream& strm, 
+std::ostream& operator<< (std::ostream& strm,
 			  const lietype::SimpleLieType& slt)
 
 /*
@@ -102,8 +102,13 @@ std::ostream& operator<< (std::ostream& strm, const weyl::WeylWord& w)
 /*
   Synopsis: outputs w as a string of digits
 
-  NOTE: this is satisfactory only if the length is < 10; otherwise, use
+  Originally this was without separators, with the following
+  NOTE: this is satisfactory only if the rank is < 10; otherwise, use
   prettyprint::printWeylWord, that will give dot-separated lists.
+
+  Unfortunately this operator is often called automatically, by template
+  functions, so there is no place to insert that distinction into the code.
+  Therefore we have inserted commas here. MvL
 */
 
 {
@@ -112,6 +117,7 @@ std::ostream& operator<< (std::ostream& strm, const weyl::WeylWord& w)
   for (size_t j = 0; j < w.size(); ++j) {
     unsigned a = w[j]+1;
     strm << a;
+    if (j+1<w.size()) strm << ',';
   }
 
   return strm;
