@@ -10,7 +10,7 @@ acting on elements of order 2 in a torus.
   This is partition.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -43,25 +43,31 @@ namespace partition {
 /******** constructors and destructors ***************************************/
 
 Partition::Partition(std::vector<unsigned long>& f)
-  :d_class(f.size())
+  :d_class(f.size()),d_classRep()
 
 /*!
  \brief Constructs a partition from the class vector f.
 
- Integers i and j are defined to belong to the same class if and only
- if f[i]=f[j].
+ The partition is defined by values i and j belonging to the same class if and
+ only if f[i]==f[j]. Note that f can have values in any range, but the
+ Partition must label its classes consecutively.
 */
-{
-  std::map<unsigned long,unsigned long> val;
+{ /* at this point our object is already in a valid state (although not one
+     describing the correct partition), so we feel free to call the methods
+     newClass and addToClass for the object under construction */
 
-  unsigned long c = 0;
+  unsigned long s = 0; // current number of classes
+
+  std::map<unsigned long,unsigned long> val; // bijective map im(f)->[0,s[
 
   for (size_t j = 0; j < f.size(); ++j)
-    if (val.insert(std::make_pair(f[j],c)).second) { // found a new value
-      newClass(j);
-      ++c;
-    } else {
-      d_class[j] = val.find(f[j])->second;
+    if (val.insert(std::make_pair(f[j],s)).second)
+      // tentatively map f[j] to a new class number and test if this succeeded
+    { // found a new value
+      newClass(j); // add a new class containing j to the partition
+      ++s;
+    } else { // f[j] had already been seen, find its class and record j in it
+      addToClass(val.find(f[j])->second, j);
     }
 }
 
@@ -88,7 +94,7 @@ Partition::Partition(std::vector<unsigned long>& f, tags::UnnormalizedTag)
 
   std::map<unsigned long,unsigned long>::iterator val_end = val.end();
 
-  for (std::map<unsigned long,unsigned long>::iterator i = val.begin(); 
+  for (std::map<unsigned long,unsigned long>::iterator i = val.begin();
        i != val_end; ++i)
     d_classRep[i->first] = i->second;
 }
@@ -154,8 +160,8 @@ unsigned long Partition::classSize(unsigned long c) const
   The vector d_data contains the integers [0,n[, where n is the size of the
   set being partitioned, sorted in the order of the partition values. The
   vector d_stop contains an iterator pointing to the beginning of each
-  class, and a final iterator pointing after the end of d_data. We only
-  need then to return two consecutive elements in d_stop to bound a class.
+  class, and a final iterator pointing after the end of d_data. We then
+  only need to return two consecutive elements in d_stop to bound a class.
 
 ******************************************************************************/
 
@@ -184,15 +190,15 @@ PartitionIterator::PartitionIterator(const Partition& pi)
   {
     std::vector<unsigned long>::const_iterator data_end = d_data.end();
     unsigned long thisClass = pi(d_data.front());
-    
-    for (std::vector<unsigned long>::const_iterator i = d_data.begin(); 
+
+    for (std::vector<unsigned long>::const_iterator i = d_data.begin();
 	 i != data_end; ++i)
       if (pi(*i) != thisClass) { // start a new class
 	d_stop.push_back(i);
 	thisClass = pi(*i);
       }
   }
-       
+
   d_stop.push_back(d_data.end());
 
  done:
