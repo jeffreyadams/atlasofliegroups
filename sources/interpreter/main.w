@@ -101,42 +101,53 @@ int main()
 { using namespace std; using namespace atlas::interpreter;
   @< Initialise various parts of the program @>
   cout << "Enter expressions:\n";
-  expr expression;
   while ( cin.good() )
-  { ana.reset();
+  { ana.reset(); // make sure lexical analyser gets a new line
+    expr expression;
     if (yyparse(&expression,&verbosity))
       continue; // syntax error or non-expression
     if (verbosity<0) break; // \.{quit} command
     if (verbosity==1)
       cout << "Expression before type analysis: " << expression << endl;
-    bool type_OK=false;
-    try
-    { type_ptr type=analyse_types(expression);
-      type_OK=true;
-      if (verbosity==1)
-	cout << "Type found: " << *type << endl
-          << "Expression after type analysis: " << expression << endl;
-      value_ptr v=evaluate(expression);
-      cout << "Value: " << *v << endl;
-      destroy_expr(expression); delete v;
-    }
-    catch (runtime_error& err)
-    { if (type_OK) cerr << "Runtime error: ";
-      cerr << err.what() << ", evaluation aborted.\n";
-      clear_execution_stack();
-    }
-    catch (logic_error& err)
-    { cerr << "Unexpected error: " << err.what() << ", evaluation aborted.\n";
-      clear_execution_stack();
-    }
-    catch (exception& err)
-    { cerr << err.what() << ", evaluation aborted.\n";
-      clear_execution_stack();
-    }
+    @< Analyse types and then evaluate and print, or catch runtime or other
+       errors @>
   }
   clear_history();
   // clean up (presumably disposes of the lines stored in history)
   cout << "Bye.\n";
+}
+
+@ If a type error is detected by |analyse_types|, then it will have signalled
+it and thrown a |runtime_error|; if that happens |type_OK| will remain |false|
+and the runtime error is silently caught. If the result is an empty tuple, we
+suppress printing if the uninteresting value.
+
+@< Analyse types and then evaluate and print... @>=
+{ bool type_OK=false;
+  try
+  { type_ptr type=analyse_types(expression);
+    type_OK=true;
+    if (verbosity==1)
+      cout << "Type found: " << *type << endl @|
+	<< "Expression after type analysis: " << expression << endl;
+    value_ptr v=evaluate(expression);
+    static type_declarator empty=*make_type("()").release();
+    if (*type!=empty) cout << "Value: " << *v << endl;
+    destroy_expr(expression); delete v;
+  }
+  catch (runtime_error& err)
+  { if (type_OK) cerr << "Runtime error: ";
+    cerr << err.what() << ", evaluation aborted.\n";
+    clear_execution_stack();
+  }
+  catch (logic_error& err)
+  { cerr << "Unexpected error: " << err.what() << ", evaluation aborted.\n";
+    clear_execution_stack();
+  }
+  catch (exception& err)
+  { cerr << err.what() << ", evaluation aborted.\n";
+    clear_execution_stack();
+  }
 }
 
 @

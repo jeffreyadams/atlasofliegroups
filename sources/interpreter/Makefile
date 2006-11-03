@@ -51,7 +51,9 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/structure/gradings.o \
  $(atlas_sources)/io/realform_io.o \
  $(atlas_sources)/structure/realredgp.o \
- $(atlas_sources)/structure/topology.o
+ $(atlas_sources)/structure/topology.o \
+ $(atlas_sources)/io/prettyprint.o \
+ $(atlas_sources)/io/basic_io.o
 
 cwebx_sources := $(wildcard *.w)
 
@@ -132,7 +134,7 @@ endif
 parser.tab.c parser.tab.h: parser.y
 	bison -d parser.y
 parser.tab.o: parser.tab.c parsetree.h
-	$(CC) -c $(CFLAGS) $(CPPFLAGS) $< -o $@
+	$(CC) -c -g -Wall $(CFLAGS) $(CPPFLAGS) $< -o $@
 
 # miscellaneous dependencies, produced by hand for now
 # in general a .tex file depends on the same files as the corresponding .o

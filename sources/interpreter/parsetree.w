@@ -232,11 +232,11 @@ subexpressions.
 @< Cases for printing... @>=
 case list_display:
   { expr_list l=e.e.sublist;
-    if (l==0) out << "[]";
+    if (l==NULL) out << "[]";
     else
     { out << '[';
-      do {@; out << l->e; l=l->next; out << (l==0 ? ']' : ',');}
-      while (l!=0);
+      do {@; out << l->e; l=l->next; out << (l==NULL ? ']' : ',');}
+      while (l!=NULL);
     }
   }
   break;
@@ -253,7 +253,7 @@ be the final statement in the loop body below.
 
 @< Definitions of functions in \Cee-style for the parser @>=
 void destroy_exprlist(expr_list l)
-{@; while (l!=0)
+{@; while (l!=NULL)
   {@; destroy_expr(l->e); expr_list this_node=l; l=l->next; delete this_node; }
 }
 
@@ -288,12 +288,12 @@ the two are usually combined, since whether or not the list should be reversed
 can only be understood when the grammar rules are given.
 
 @< Definitions of functions in \Cee... @>=
-const expr_list null_expr_list=0;
+const expr_list null_expr_list=NULL;
 expr_list make_exprlist_node(expr e, expr_list l)
 {@; expr_list n=new exprlist_node; n->e=e; n->next=l; return n; }
 expr_list reverse_expr_list(expr_list l)
-{ expr_list r=0;
-  while (l!=0) {@; expr_list t=l; l=t->next; t->next=r; r=t; }
+{ expr_list r=NULL;
+  while (l!=NULL) {@; expr_list t=l; l=t->next; t->next=r; r=t; }
   return r;
 }
 expr wrap_list_display(expr_list l)
@@ -314,11 +314,11 @@ parentheses instead of brackets.
 @< Cases for printing... @>=
 case tuple_display:
   { expr_list l=e.e.sublist;
-    if (l==0) out << "()";
+    if (l==NULL) out << "()";
     else
     { out << '(';
-      do {@; out << l->e; l=l->next; out << (l==0 ? ')' : ',');}
-      while (l!=0);
+      do {@; out << l->e; l=l->next; out << (l==NULL ? ')' : ',');}
+      while (l!=NULL);
     }
   }
   break;
@@ -440,7 +440,7 @@ identifiers while there is not yet a general structure for identifier
 definitions within expressions (so that this cannot yet be handled as a part
 of evaluation expressions). The left hand side~|ids| refers to a list of
 identifiers (this is guaranteed by the parser), which are only represented as
-an |expr_list| because this avoids defining a separate type. 
+an |expr_list| because this avoids defining a separate type.
 
 @< Declaration of functions in \Cee-style for the parser @>=
 void global_set_identifier(expr_list ids, expr e);

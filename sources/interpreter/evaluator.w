@@ -285,6 +285,16 @@ std::ostream& operator<<(std::ostream& out, const type_declarator& t)
 @ Finally we need a comparison for structural (in)equality of type
 declarators.
 
+@<  Declarations of exported functions @>=
+bool operator!= (const type_declarator& x,const type_declarator& y);
+inline bool operator== (const type_declarator& x,const type_declarator& y)
+{@; return !(x!=y); }
+
+@ We made inequality our main case since it seemed more often used, but it is
+somewhat questionable whether that really justifies the negative flavour this
+gives to the code for this function, which is distributed over different parts
+of this file.
+
 @< Function definitions @>=
 bool operator!= (const type_declarator& x,const type_declarator& y)
 { if (x.kind!=y.kind) return true;
@@ -292,15 +302,11 @@ bool operator!= (const type_declarator& x,const type_declarator& y)
   { case primitive_type: return x.prim!=y.prim;
     case row_type:
       return *x.comp_type!=*y.comp_type;
-    @\@<Other cases for |operator!=| for |type_declarator|,
-        all performing |return| @>
+    @\@<Other cases for |operator!=| for |type_declarator|
+      objects |x| and |y|, all performing |return| @>
   }
   return false; // to keep the compiler from complaining, never reached
 }
-
-inline bool operator== (const type_declarator& x,const type_declarator& y)
-{@; return !(x!=y); }
-
 
 @*1 Dynamically typed values.
 Now we shall consider the values. We could either use void pointers to
@@ -511,9 +517,10 @@ the results of previous evaluations will be destroyed.
 
 @< Evaluate a list display... @>=
 { size_t length=0;
+  static const value_ptr nil=NULL;
   for (expr_list l=e.e.sublist; l!=NULL; l=l->next) ++length;
   row_ptr v@|(new
-    row_value(std::vector<value_ptr>(length,static_cast<value_ptr>(NULL))));
+    row_value(std::vector<value_ptr>(length,nil)));
   expr_list l=e.e.sublist;
   for (size_t i=0; i<length; ++i,l=l->next)
     v->value[i]=evaluate(l->e);
@@ -1012,7 +1019,7 @@ via the copy constructor for |type_node|.
 
 @<Other cases in the copy constructor for |type_declarator| @>=
 case tuple_type:
-  tuple=new type_node(*t.tuple);
+  tuple= t.tuple==NULL ? NULL : new type_node(*t.tuple);
 break;
 
 @ The destructor destroys the entire list, again by implicit recursion.
@@ -1118,9 +1125,10 @@ void tuple_value::print(std::ostream& out) const
 @< Cases for evaluating other kinds of expressions @>=
 case tuple_display:
 { size_t length=0;
+  static const value_ptr nil=NULL;
   for (expr_list l=e.e.sublist; l!=NULL; l=l->next) ++length;
   row_ptr v@|(new
-    tuple_value(std::vector<value_ptr>(length,static_cast<value_ptr>(NULL))));
+    tuple_value(std::vector<value_ptr>(length,nil)));
   expr_list l=e.e.sublist;
   for (size_t i=0; i<length; ++i,l=l->next)
     v->value[i]=evaluate(l->e);
@@ -1268,17 +1276,19 @@ additional parentheses in case the argument or result type is a tuple type.
 case function_type:
   out << '(';
   if (t.func->arg_type->kind!=tuple_type)
-     out << *t.func->arg_type << "->";
+     out << *t.func->arg_type;
   else
     for (type_list l=t.func->arg_type->tuple;
          l!=NULL; l=l->next)
-    out << *l->t << ( l->next!=NULL ? "," : "->" );
+      out << *l->t << ( l->next!=NULL ? "," : "" );
+  out << "->";
   if (t.func->result_type->kind!=tuple_type)
-     out << *t.func->result_type << ")";
+     out << *t.func->result_type;
   else
     for (type_list l=t.func->result_type->tuple;
          l!=NULL; l=l->next)
-    out << *l->t << ( l->next!=NULL ? "," : ")" );
+      out << *l->t << ( l->next!=NULL ? "," : "" );
+  out << ")";
 break;
 
 @*1 Function calls.
@@ -2112,10 +2122,14 @@ call to |make_tuple_type|.
 }
 
 @ A comma-separated list of types is handled by a straightforward recursion.
+We must not forget that the list could be empty, which happens only of the
+very first character we see is |')'| or |'-'|.
+
 @< Function definitions @>=
 @)
 type_list_ptr scan_type_list(const char*& s)
-{ type_ptr head=scan_type(s);
+{ if (*s==')' or *s=='-') return type_list_ptr(NULL);
+  type_ptr head=scan_type(s);
   if (*s!=',') return make_type_singleton(head);
   return make_type_list(head,scan_type_list(++s));
 }
@@ -2166,14 +2180,16 @@ using clever \&{\#include} directives, but that is not really worth the hassle
 much worse to actually extend the lines below as well).
 
 @< Other primitive type names @>=
-"LieType","RootDatum", "ComplexGroup", "RealForm", @[@]
+"LieType","RootDatum", "InnerClass", "RealForm", "DualRealForm",
+"CartanClass", @[@]
 
 @~The enumeration values below are never directly used, but they must be
 present so that the evaluator be aware of the number of primitive types (via
 the final enumeration value |nr_of_primitive_types|).
 
 @< Other primitive types @>=
-complex_lie_type_type , root_datum_type, complexgroup_type, realform_type, @[@]
+complex_lie_type_type , root_datum_type, innerclass_type, realform_type,
+dualrealform_type, cartanclass_type, @[@]
 
 
 @*1 Making global definitions.
@@ -2185,12 +2201,19 @@ therefore it has \Cee-linkage.
 
 Recall that the parser guarantees that |ids| represents a list of identifiers.
 What has to be done here is straightforward. We type-check the expression~|e|,
-storing its result; then we test if, in case the left hand side has more than
-one identifier, it is an appropriate tuple type. If there is no error, then we
-evaluate the expression, and if everything has gone well we store the
-(type,value) pair(s) into the global identifier table. Note that although this
-function may itself throw a |runtime_error|, the catch clause is also there to
-catch errors produced during the call to |evaluate|.
+storing its result, then evaluate it, and store the (type,value) pair(s) into
+in |global_id_table|. To provide some feedback to the user we report the type
+assigned, but not the value since this might result in more output than is
+desirable in case of an assignment.
+
+ A |std::runtime_error| may be thrown either during the initial analysis of
+the assignment statement or during type check or evaluation, and we catch all
+those cases here. Note however that no exception can be thrown between the
+successful return from |evaluate| and a non-multiple assignment, so we can use
+an ordinary pointer to hold the pointer returned. Whether or not an error is
+caught, the identifier list |ids| and the expression |e| should not be
+destroyed here, since the parser which aborts after calling this function
+should do that while clearing its parsing stack.
 
 @< Function definitions @>=
 extern "C"
@@ -2203,30 +2226,17 @@ void global_set_identifier(expr_list ids, expr e)
          tuple type; if not, |throw| a |runtime_error| @>
     value_ptr v=evaluate(e);
     if (ids->next==NULL)
-    { std::cout << "Identifier " << ids->e << ": " << *t << std::endl;
+    { cout << "Identifier " << ids->e << ": " << *t << std::endl;
       global_id_table->add(ids->e.e.identifier_variant,v,t); // releases |t|
     }
-    else
-    { auto_ptr<tuple_value> tv(dynamic_cast<tuple_value*>(v));
-      if (tv.get()==NULL) throw logic_error("Non-tuple value assigned");
-@.Non-tuple value assigned@>
-      std::cout << "Identifiers ";
-      size_t i=0; type_list tl=t->tuple;
-      for (expr_list l=ids; l!=NULL; l=l->next,++i,tl=tl->next)
-      { std::cout << l->e << ": " << *tl->t << ( l->next!=NULL ? ", " : ".\n");
-        global_id_table->
-          add(l->e.e.identifier_variant,tv->value[i],copy(tl->t));
-        tv->value[i]=NULL; // ensure value in table is unshared
-      }
-    }
+    else @< Perform a multiple assignment @>
   }
   catch (runtime_error& err)
   { cerr << err.what() << ", identifier" << (ids->next!=NULL ? "s " :" ");
     for (expr_list l=ids; l!=NULL; l=l->next)
       cerr << main_hash_table->name_of(l->e.e.identifier_variant)
            << (l->next!=NULL?",":"");
-    cerr << " not defined.\n";
-    destroy_exprlist(ids); destroy_expr(e);
+    cerr << " not assigned to.\n";
     clear_execution_stack();
   }
 }
@@ -2260,6 +2270,29 @@ identifiers are distinct, we put them into a |set| and check membership.
   }
 }
 
+@ In the multiple assignment case, the type check above should guarantee that
+the result of evaluation is an appropriate tuple value. The multiple
+assignment is performed by simultaneously traversing the components of the
+identifier list, the tuple value and the tuple type; after each value is
+stored into |global_id_table| the pointer to it is removed from the tuple
+value immediately to ensure that it will not be deleted upon destruction of
+the tuple value. We report the type of each variable assigned separately.
+
+
+@< Perform a multiple assignment @>=
+{ auto_ptr<tuple_value> tv(dynamic_cast<tuple_value*>(v));
+  if (tv.get()==NULL) throw logic_error("Non-tuple value assigned");
+@.Non-tuple value assigned@>
+  cout << "Identifiers ";
+  size_t i=0; type_list tl=t->tuple;
+  for (expr_list l=ids; l!=NULL; l=l->next,++i,tl=tl->next)
+  { cout << l->e << ": " << *tl->t << ( l->next!=NULL ? ", " : ".\n");
+    global_id_table->
+      add(l->e.e.identifier_variant,tv->value[i],copy(tl->t));
+    tv->value[i]=NULL; // ensure value in table is unshared
+  }
+}
+
 @*1 Printing type information.
 It is useful to print type information, either for a single expression or for
 all identifiers in the table.
@@ -2286,4 +2319,4 @@ void show_ids()
 
 @* Index.
 
-% Local IspellDict: default
+% Local IspellDict: british
