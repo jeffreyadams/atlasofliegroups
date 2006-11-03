@@ -17,7 +17,7 @@
   This is complexredgp.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -72,11 +72,10 @@ ComplexReductiveGroup::ComplexReductiveGroup()
    d_cartan(0)
 
 /*!
-  Synopsis: default constructor.
-
-  This is of course unusable, but it might be created somewhere (for
-  instance before an interactive allocation that then fails), and would
-  bomb on destruction if the pointers were not set to zero.
+  The default constructor. It is called in order to obtain an object
+  whose fields will then by replaced by actual pointers to objects. But before
+  that is done, we must make sure that there are null pointers, so that if
+  the construction is abandoned, proper desctruction will occur.
 */
 
 {}
@@ -89,30 +88,28 @@ ComplexReductiveGroup(const rootdata::RootDatum* rd,
    d_cartan(0)
 
 /*!
-  Synopsis: constructs a ComplexReductiveGroup from its root datum and a
-  distinguished involution.
+  The main constructor constructs a ComplexReductiveGroup from its root datum
+  and a distinguished involution.
 
-  Precondition: d is an involution which fixes a pinning of the group; in
-  particular it fixes the Borel.
+  Precondition: d is an involution of the weight lattice of rd, which fixes rd
+  as a _based_ root datum (it permutes the simple roots). In the complex
+  group, this corresponds to a an involution fixing a chosen pinning, and in
+  particular the Borel subgroup.
 
   NOTE: the ComplexReductiveGroup assumes ownership of the RootDatum pointed
   to by rd. Perhaps this is not entirely safe.
 */
 
 {
-  using namespace cartan;
-  using namespace latticetypes;
-  using namespace rootdata;
-  using namespace tits;
-  using namespace weyl;
-
-  LatticeMatrix q;
-  cartanMatrix(q,rootDatum());
-  d_titsGroup = new TitsGroup(rootDatum(),d);
-  d_cartan = new CartanClasses(rootDatum(),d,weylGroup());
+  latticetypes::LatticeMatrix q;
+  rootdata::cartanMatrix(q,rootDatum());
+  d_titsGroup = new tits::TitsGroup(rootDatum(),d);
+  d_cartan = new cartan::CartanClasses(rootDatum(),d,weylGroup());
+  /* final call stores d in d_cartan->d_fundamental.d_torus->d_involution,
+     and constructs the fundamental fibers for the group and dual group */
 }
 
-ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G, 
+ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 					     tags::DualTag)
 
 /*!
@@ -144,7 +141,7 @@ ComplexReductiveGroup::~ComplexReductiveGroup()
 
 /******** accessors **********************************************************/
 
-unsigned long ComplexReductiveGroup::blockSize(realform::RealForm rf, 
+unsigned long ComplexReductiveGroup::blockSize(realform::RealForm rf,
 					       realform::RealForm drf) const
 
 /*!
@@ -183,7 +180,7 @@ const poset::Poset& ComplexReductiveGroup::cartanOrdering() const
   return d_cartan->ordering();
 }
 
-const bitmap::BitMap& ComplexReductiveGroup::cartanSet(realform::RealForm rf) 
+const bitmap::BitMap& ComplexReductiveGroup::cartanSet(realform::RealForm rf)
   const
 
 /*!
@@ -194,6 +191,19 @@ const bitmap::BitMap& ComplexReductiveGroup::cartanSet(realform::RealForm rf)
 
 {
   return d_cartan->support(rf);
+}
+
+const bitmap::BitMap& ComplexReductiveGroup::dualCartanSet
+  (realform::RealForm rf)
+  const
+
+/*!
+  Synopsis: returns the support of the set of Cartan classes for the dual real
+  form rf
+*/
+
+{
+  return d_cartan->dualSupport(rf);
 }
 
 const latticetypes::LatticeMatrix& ComplexReductiveGroup::distinguished() const
@@ -211,8 +221,8 @@ const latticetypes::LatticeMatrix& ComplexReductiveGroup::distinguished() const
   return d_cartan->distinguished();
 }
 
-unsigned long ComplexReductiveGroup::dualFiberSize(realform::RealForm drf, 
-						   size_t cn) 
+unsigned long ComplexReductiveGroup::dualFiberSize(realform::RealForm drf,
+						   size_t cn)
   const
 
 /*!
@@ -248,7 +258,7 @@ const cartanclass::Fiber& ComplexReductiveGroup::dualFundamental() const
   return d_cartan->dualFundamental();
 }
 
-const realform::RealFormList& 
+const realform::RealFormList&
 ComplexReductiveGroup::dualRealFormLabels(size_t cn) const
 
 /*!
@@ -261,7 +271,7 @@ ComplexReductiveGroup::dualRealFormLabels(size_t cn) const
   return d_cartan->dualRealFormLabels(cn);
 }
 
-unsigned long ComplexReductiveGroup::dualRepresentative(realform::RealForm drf, 
+unsigned long ComplexReductiveGroup::dualRepresentative(realform::RealForm drf,
 							size_t cn)
   const
 
@@ -278,7 +288,8 @@ unsigned long ComplexReductiveGroup::dualRepresentative(realform::RealForm drf,
   return d_cartan->dualRepresentative(drf,cn);
 }
 
-unsigned long ComplexReductiveGroup::fiberSize(realform::RealForm rf, size_t cn) 
+unsigned long ComplexReductiveGroup::fiberSize(realform::RealForm rf,
+					       size_t cn)
   const
 
 /*!
@@ -286,7 +297,7 @@ unsigned long ComplexReductiveGroup::fiberSize(realform::RealForm rf, size_t cn)
   form \#rf and cartan \#cn.
 
   Explanation: this is the size of the orbits, for the shifted action of
-  the imaginary Weyl group, that correspond to rf in the classification of 
+  the imaginary Weyl group, that correspond to rf in the classification of
   strong real forms (they all have the same size.)
 
   This is a technical function used for size computations.
@@ -313,8 +324,8 @@ const cartanclass::Fiber& ComplexReductiveGroup::fundamental() const
   return d_cartan->fundamental();
 }
 
-void ComplexReductiveGroup::grading(rootdata::RootSet& rs, 
-				    realform::RealForm rf) 
+void ComplexReductiveGroup::grading(rootdata::RootSet& rs,
+				    realform::RealForm rf)
   const
 
 /*!
@@ -347,7 +358,9 @@ size_t ComplexReductiveGroup::numCartanClasses() const
 
 /*!
   Synopsis: returns the number of conjugacy classes of Cartan subgroups
-  currently constructed for G.
+  currently constructed for G. Only after fillCartan() has been called is it
+  ensured that this gives the total number of Cartan subgroups for this inner
+  class.
 
   NOTE: this is not inlined to avoid a dependency on cartan.h.
 */
@@ -431,11 +444,14 @@ size_t ComplexReductiveGroup::rank() const
   return d_rootDatum->rank();
 }
 
-const realform::RealFormList& ComplexReductiveGroup::realFormLabels(size_t cn) 
+const realform::RealFormList& ComplexReductiveGroup::realFormLabels(size_t cn)
   const
 
 /*!
   Synopsis: returns the real form labels for cartan \#cn
+
+  More precisely, realFormLabels(cn)[i] is the (inner) number of the real form
+  that corresponds to part i of the partition cartan(n).fiber().weakReal()
 
   NOTE: this is not inlined to avoid a dependency on cartan.h.
 */
@@ -444,7 +460,7 @@ const realform::RealFormList& ComplexReductiveGroup::realFormLabels(size_t cn)
   return d_cartan->realFormLabels(cn);
 }
 
-unsigned long ComplexReductiveGroup::representative(realform::RealForm rf, 
+unsigned long ComplexReductiveGroup::representative(realform::RealForm rf,
 						    size_t cn)
   const
 
@@ -545,7 +561,7 @@ void lieType(lietype::LieType& lt, const ComplexReductiveGroup& G)
   Synopsis: puts in lt the Lie type of G.
 */
 
-{  
+{
   using namespace latticetypes;
   using namespace lietype;
   using namespace rootdata;

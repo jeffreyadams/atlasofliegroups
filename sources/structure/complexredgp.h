@@ -138,6 +138,8 @@ class ComplexReductiveGroup {
 
   const bitmap::BitMap& cartanSet(realform::RealForm) const;
 
+  const bitmap::BitMap& dualCartanSet(realform::RealForm) const;
+
   const latticetypes::LatticeMatrix& distinguished() const;
 
   unsigned long dualFiberSize(realform::RealForm, size_t) const;
@@ -193,6 +195,13 @@ class ComplexReductiveGroup {
   const weyl::WeylElt& twistedInvolution(size_t) const;
 
 // manipulators
+
+/* actually fillCartan could be declared const, since it only modifies the
+   value pointed to by d_cartan, not the pointer itself. However, morally it
+   is a manipulator method, not an accessor, whence there is no const. In the
+   future a level of indirection could be removed, and in that case quilfying
+   fillCartan as const would even become impossible */
+
   void fillCartan(realform::RealForm rf);
 
   /* the following is not done via a default argument to the previous method
