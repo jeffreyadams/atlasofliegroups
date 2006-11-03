@@ -1,8 +1,8 @@
 /*
   This is test.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -79,7 +79,6 @@ namespace {
   void blockd_f();
   void blocku_f();
   void blockstabilizer_f();
-  void checkbasept_f();
   void cmatrix_f();
   void corder_f();
   void components_f();
@@ -101,7 +100,6 @@ namespace {
   void block_h();
   void blockd_h();
   void blocku_h();
-  void checkbasept_h();
   void cmatrix_h();
   void primkl_h();
   void kgb_h();
@@ -121,7 +119,7 @@ namespace {
   const char* kllist_tag = "prints the list of distinct KL polynomials";
   const char* wcells_tag = "prints the Kazhdan-Lusztig cells for the block";
   const char* wgraph_tag = "prints the W-graph for the block";
-  
+
   enum TestMode {EmptyMode, MainMode, RealMode, numTestMode};
   const TestMode testMode = MainMode;
 
@@ -136,7 +134,7 @@ namespace {
 
   This section defines the functions declared in test.h :
 
-    - addTestCommands() : adds the test commands to the main command 
+    - addTestCommands() : adds the test commands to the main command
       tree;
     - addTestHelp() : adds help functionality;
 
@@ -145,7 +143,7 @@ namespace {
 namespace test {
 
 template<>
-void addTestCommands<emptymode::EmptymodeTag> 
+void addTestCommands<emptymode::EmptymodeTag>
   (commands::CommandMode& mode, emptymode::EmptymodeTag)
 
 /*
@@ -166,8 +164,8 @@ void addTestCommands<emptymode::EmptymodeTag>
   return;
 }
 
-template<> 
-void addTestCommands<mainmode::MainmodeTag> 
+template<>
+void addTestCommands<mainmode::MainmodeTag>
   (commands::CommandMode& mode, mainmode::MainmodeTag)
 
 /*
@@ -197,8 +195,8 @@ void addTestCommands<mainmode::MainmodeTag>
   return;
 }
 
-template<> 
-void addTestCommands<realmode::RealmodeTag> 
+template<>
+void addTestCommands<realmode::RealmodeTag>
   (commands::CommandMode& mode, realmode::RealmodeTag)
 
 /*
@@ -212,7 +210,7 @@ void addTestCommands<realmode::RealmodeTag>
   be redefined to the correct value.
 */
 
-{  
+{
   if (testMode == RealMode)
     mode.add("test",test_f);
 
@@ -220,7 +218,6 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("blockd",blockd_f);
   mode.add("blocku",blocku_f);
   mode.add("blockstabilizer",blockstabilizer_f);
-  mode.add("checkbasept",checkbasept_f);
   mode.add("components",components_f);
   mode.add("corder",corder_f);
   mode.add("primkl",primkl_f);
@@ -234,7 +231,7 @@ void addTestCommands<realmode::RealmodeTag>
 }
 
 template<> void addTestHelp<emptymode::EmptymodeTag>
-             (commands::CommandMode& mode, commands::TagDict& t, 
+             (commands::CommandMode& mode, commands::TagDict& t,
 	      emptymode::EmptymodeTag)
 
 /*
@@ -250,7 +247,7 @@ template<> void addTestHelp<emptymode::EmptymodeTag>
   be redefined to the correct value.
 */
 
-{  
+{
   using namespace commands;
   using namespace helpmode;
 
@@ -315,12 +312,12 @@ template<> void addTestHelp<mainmode::MainmodeTag>
   insertTag(t,"posroots_rootbasis",test_tag);
   insertTag(t,"roots_rootbasis",test_tag);
   insertTag(t,"rootdatum",test_tag);
- 
+
   return;
 }
 
 template<> void addTestHelp<realmode::RealmodeTag>
-             (commands::CommandMode& mode, commands::TagDict& t, 
+             (commands::CommandMode& mode, commands::TagDict& t,
 	      realmode::RealmodeTag)
 
 /*
@@ -349,7 +346,6 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("blockd",blockd_h);
   mode.add("blocku",blocku_h);
   mode.add("blockstabilizer",nohelp_h);
-  mode.add("checkbasept",checkbasept_h);
   mode.add("components",nohelp_h);
   mode.add("corder",nohelp_h);
   mode.add("primkl",primkl_h);
@@ -367,7 +363,6 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"blockd",test_tag);
   insertTag(t,"blocku",blocku_tag);
   insertTag(t,"blockstabilizer",test_tag);
-  insertTag(t,"checkbasept",test_tag);
   insertTag(t,"components",test_tag);
   insertTag(t,"corder",test_tag);
   insertTag(t,"primkl",test_tag);
@@ -403,13 +398,6 @@ void blocku_h()
 
 {
   io::printFile(std::cerr,"blocku.help",io::MESSAGE_DIR);
-  return;
-}
-
-void checkbasept_h()
-
-{
-  io::printFile(std::cerr,"checkbasept.help",io::MESSAGE_DIR);
   return;
 }
 
@@ -649,7 +637,7 @@ void blocku_f()
 void blockstabilizer_f()
 
 /*
-  Synopsis: prints out information about the stabilizer of a representation 
+  Synopsis: prints out information about the stabilizer of a representation
   under the cross action
 */
 
@@ -705,37 +693,13 @@ void blockstabilizer_f()
   return;
 }
 
-void checkbasept_f()
-
-/*
-  Synopsis: checks if the conjectural basepoint construction is ok.
-*/
-
-{
-  using namespace kgb;
-  using namespace kltest;
-  using namespace realmode;
-  using namespace realredgp;
-
-  RealReductiveGroup& G = currentRealGroup();
-  G.fillCartan();
-
-  KGB kgb(G);
-  if (checkBasePoint(kgb))
-    std::cerr << "true" << std::endl;
-  else
-    std::cerr << "false" << std::endl;
-
-  return;
-}
-
 void cmatrix_f()
 
 /*
   Prints the Cartan matrix on stdout.
 */
 
-{  
+{
   using namespace latticetypes;
   using namespace prettyprint;
   using namespace rootdata;
@@ -764,7 +728,7 @@ void components_f()
 
   const RealReductiveGroup& G = realmode::currentRealGroup();
   const ComponentList& c = G.componentReps();
-  
+
   if (c.size() > 0)
     std::cout << "component group is (Z/2)^" << c.size() << std::endl;
   else
@@ -826,7 +790,7 @@ void corder_f()
 void primkl_f()
 
 /*!
-  \brief Prints out the list of all non-zero k-l polynomials for primitive 
+  \brief Prints out the list of all non-zero k-l polynomials for primitive
   pairs.
 
   Explanation: x is primitive w.r.t. y, if any descent for y is also a
@@ -1039,7 +1003,7 @@ void kllist_f()
 
   return;
 }
-  
+
 void poscoroots_rootbasis_f()
 
 /*
@@ -1061,7 +1025,7 @@ void poscoroots_rootbasis_f()
 
   return;
 }
-  
+
 void posroots_rootbasis_f()
 
 /*
@@ -1083,7 +1047,7 @@ void posroots_rootbasis_f()
 
   return;
 }
-  
+
 void roots_rootbasis_f()
 
 /*
@@ -1180,7 +1144,7 @@ void wcells_f()
 
   WGraph wg(klc.rank());
   kl::wGraph(wg,klc);
-  
+
   OutputFile file;
   printCells(file,wg);
 
@@ -1245,7 +1209,7 @@ void wgraph_f()
 
   WGraph wg(klc.rank());
   kl::wGraph(wg,klc);
-  
+
   OutputFile file;
   printWGraph(file,wg);
 
