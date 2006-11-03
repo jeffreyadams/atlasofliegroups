@@ -5,7 +5,7 @@
 /*
   This is dynkin.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -61,7 +61,7 @@ DynkinDiagram::DynkinDiagram(const latticetypes::LatticeMatrix& c)
 
 /*!
   Constructs a Dynkin diagram from a Cartan matrix. The edge points from i to
-  j when the Cartan matrix entry c(i,j) is < -1 (i.e. towards the shorter 
+  j when the Cartan matrix entry c(i,j) is < -1 (i.e. towards the shorter
   root.)
 */
 
@@ -81,7 +81,7 @@ DynkinDiagram::DynkinDiagram(const latticetypes::LatticeMatrix& c)
   return;
 }
 
-DynkinDiagram::DynkinDiagram(const bitset::RankFlags& c, 
+DynkinDiagram::DynkinDiagram(const bitset::RankFlags& c,
 			     const DynkinDiagram& d)
 
 /*!
@@ -213,7 +213,7 @@ size_t DynkinDiagram::node() const
   Precondition : the graph is irreducible, of type D or E;
 
   NOTE : behaviour is undefined if the graph does not have a node (the
-  return value is -1 in this case). If the graph has more than one node, 
+  return value is -1 in this case). If the graph has more than one node,
   it will return the first of them.
 */
 
@@ -242,10 +242,11 @@ namespace dynkin {
 void bourbaki(setutils::Permutation& a, const DynkinDiagram& d)
 
 /*!
-  Synopsis: writes in a a permutation that will take d to Bourbaki form
+  Synopsis: writes in a some permutation that will take d to Bourbaki form
 
-  This means that components of d are numbered consecutively, and that each 
-  component is normalized according to the Bourbaki conventions.
+  This means that nodes of the diagram d taken in the order a[0],...,a[r-1]
+  traverse each of its connected components consecutively, and in the order
+  prescribed by the the Bourbaki conventions for the type of that component
 */
 
 {
@@ -254,7 +255,7 @@ void bourbaki(setutils::Permutation& a, const DynkinDiagram& d)
   a.resize(d.rank());
   bitset::RankFlagsList cl;
 
-  // do the normalization as in normalize  
+  // do the normalization as in normalize
   components(cl,d);
   componentOrder(a,cl);
   componentNormalize(a,cl,d);
@@ -338,9 +339,9 @@ void normalize(setutils::Permutation& a, const DynkinDiagram& d)
 /*!
   Synopsis: writes in a a permutation that will take d to normal form
 
-  This means that components of d are numbered consecutively, and that each 
-  component is normalized according to the Bourbaki conventions for the 
-  exceptional types, opposite-to-Bourbaki for the classical ones (this is the 
+  This means that components of d are numbered consecutively, and that each
+  component is normalized according to the Bourbaki conventions for the
+  exceptional types, opposite-to-Bourbaki for the classical ones (this is the
   right ordering for the convenient implementation of Weyl groups.)
 */
 
@@ -392,7 +393,7 @@ void componentOrder(setutils::Permutation& a, const bitset::RankFlagsList& cl)
   return;
 }
 
-void componentNormalize(setutils::Permutation& a, 
+void componentNormalize(setutils::Permutation& a,
 			const bitset::RankFlagsList& cl,
 			const DynkinDiagram& d)
 
