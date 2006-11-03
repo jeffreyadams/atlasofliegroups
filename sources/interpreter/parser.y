@@ -23,7 +23,7 @@
 %type  <expression> exp
 %destructor { destroy_expr ($$); } exp
 %type  <expression_list> commalist commabarlist idlist
-%destructor { destroy_exprlist($$); } commalist commabarlist
+%destructor { destroy_exprlist($$); } commalist commabarlist idlist
 %nonassoc DIVMOD
 %left '-' '+'
 %left '*' '/' '%'
