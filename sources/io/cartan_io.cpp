@@ -1,8 +1,8 @@
 /*
   This is cartan_io.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -57,7 +57,7 @@ std::ostream& printFiber(std::ostream& strm, const cartanclass::Fiber& f,
   Synopsis: prints out the fiber data.
 */
 
-{  
+{
   using namespace basic_io;
   using namespace ioutils;
   using namespace partition;
@@ -65,7 +65,7 @@ std::ostream& printFiber(std::ostream& strm, const cartanclass::Fiber& f,
   const Partition& pi = f.weakReal();
   unsigned long c = 0;
 
-  for (PartitionIterator i(pi); i(); ++i) {
+  for (PartitionIterator i(pi); i(); ++i,++c) {
     std::ostringstream os;
     os << "real form #";
     os << rfl[c] << ": ";
@@ -75,7 +75,6 @@ std::ostream& printFiber(std::ostream& strm, const cartanclass::Fiber& f,
     os << " (" << last - first << ")" << std::endl;
     std::string line = os.str();
     foldLine(strm,line,"",",");
-    ++c;
   }
 
   return strm;
@@ -95,7 +94,7 @@ std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
   real form is output in the "cartan" command.
 */
 
-{  
+{
   using namespace dynkin;
   using namespace gradings;
   using namespace ioutils;
