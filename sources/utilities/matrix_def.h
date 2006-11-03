@@ -653,15 +653,17 @@ template<typename C>
 void Matrix<C>::permute(const setutils::Permutation& a)
 
 /*!
-  Synopsis : permutes the matrix according to the basis permutation a.
+  Synopsis : permutes rows and columns of the matrix according to the
+  permutation a, resulting in the matrix of the same operator in the basis
+  e_{a[0]}, ... , e_{a[n-1]}. This amounts to conjugating by the permutation
+  matrix (delta_{i,a[i]})_{i,j} that transforms from coordinates on the
+  standard basis to those on the basis e_{a[0]}, ... , e_{a[n-1]}.
 
   Precondition : m is a square matrix of order n; a holds a permutation
   of the matrix n;
 
-  Postcondition : m holds the matrix of the same operator in the basis
-  e_{a[0]}, ... , e_{a[n-1]}.
-
-  NOTE : we do it the lazy way, using a copy.
+  Method: the new entry at (i,j) is set to the old entry at (a[i],a[j]), in a
+  separate copy (without trying to do the permutation of entries in place)
 */
 
 {

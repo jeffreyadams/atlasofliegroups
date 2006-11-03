@@ -5,7 +5,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -22,8 +22,12 @@ namespace setutils {
 template<typename T> void permute(const Permutation& a, std::vector<T>& v)
 
 /*!
-  Applies the permutation a to the vector v. In other words, we want that
-  new_v[x] = old_v[a^{-1}(x)], or equivalently that new_v[a(x)] = old_v[x].
+  Applies the permutation a to the vector v. In other words, we send each
+  entry v[i] to the new position v[a[i]]; this means that afterwards for all i
+  new_v[a[i]] = old_v[i], or equivalently new_v[i] = old_v[a^{-1}[i]].
+
+  Note that this is not the same notion of permutation of entries used in the
+  permute methods of matrices and bitsets, which use the inverse permutation
 
   We are able to perform this permutation essentially in-place, using an
   auxiliary vector<bool>.
