@@ -1,77 +1,19 @@
 /*
   This is ioutils.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
 
 #include "ioutils.h"
 
-#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 
-#include "input.h"
-
-/*****************************************************************************
-
-        Chapter I -- The OutputFile class
-
-  This is a well-known C++ trick : a file which is opened by its constructor,
-  and closed by its destructor.
-
-******************************************************************************/
-
 namespace atlas {
-
-namespace ioutils {
-
-OutputFile::OutputFile()
-
-{  
-  using namespace input;
-
-  std::string name;
-  InputBuffer buf;
-
-  buf.getline(std::cin,"Name an output file (hit return for stdout): ",
-	       false);
-  buf >> name;
-
-  if (name.empty()) {
-    d_foutput = false;
-    d_stream = &std::cout;
-  }
-  else {
-    d_foutput = true;
-    d_stream = new std::ofstream(name.c_str());
-  }
-}
-
-
-OutputFile::~OutputFile()
-
-/*
-  Closes *d_stream if it is not std::cout.
-*/
-
-{
-  if (d_foutput)
-    delete d_stream;
-}
-
-}
-
-/*****************************************************************************
-
-        Chapter II -- Functions declared in ioutils.h
-
-  ... fill in here when it is stable ...
-
-******************************************************************************/
 
 namespace ioutils {
 
@@ -94,7 +36,7 @@ unsigned long digits(unsigned long a, unsigned long b)
   return d;
 }
 
-std::ostream& foldLine(std::ostream& strm, const std::string& line, 
+std::ostream& foldLine(std::ostream& strm, const std::string& line,
 		       const char* preHyphens, const char* postHyphens,
 		       size_t h, size_t lineSize)
 
@@ -105,7 +47,7 @@ std::ostream& foldLine(std::ostream& strm, const std::string& line,
   print it over several lines, with well-chosen breakpoints. Here h is the
   indentation after the first line; preHyphens and postHyphens contain
   lists of acceptable breakpoints, either just before for pre, or just
-  after for post. If no acceptable breakpoint exists, it breaks off the line 
+  after for post. If no acceptable breakpoint exists, it breaks off the line
   brutally at lineSize.
 */
 

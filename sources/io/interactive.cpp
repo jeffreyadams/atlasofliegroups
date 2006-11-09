@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <fstream>
 
 #include <map>
 
@@ -28,9 +29,12 @@
 #include "interactive_lattice.h"
 #include "interactive_lietype.h"
 
+
+#include "input.h"
+
 /*****************************************************************************
 
-  ... explain here when it is stable ...
+Preliminaries
 
 ******************************************************************************/
 
@@ -59,9 +63,57 @@ namespace {
 
 /*****************************************************************************
 
-        Chapter I -- Functions declared in interactive.h
+        Chapter I -- The OutputFile class
 
-  ... explain here when it is stable ...
+  This was moved here from the ioutils module, for reasons explained in the
+  file ioutils.h
+
+  This class implements is a well-known C++ trick : a file which is opened by
+  its constructor, and closed by its destructor.
+
+******************************************************************************/
+
+namespace ioutils {
+
+OutputFile::OutputFile()
+
+{
+  using namespace input;
+
+  std::string name;
+  InputBuffer buf;
+
+  buf.getline(std::cin,"Name an output file (hit return for stdout): ",
+	       false);
+  buf >> name;
+
+  if (name.empty()) {
+    d_foutput = false;
+    d_stream = &std::cout;
+  }
+  else {
+    d_foutput = true;
+    d_stream = new std::ofstream(name.c_str());
+  }
+}
+
+
+OutputFile::~OutputFile()
+
+/*
+  Closes *d_stream if it is not std::cout.
+*/
+
+{
+  if (d_foutput)
+    delete d_stream;
+}
+
+}
+
+/*****************************************************************************
+
+        Chapter II -- Functions declared in interactive.h
 
 ******************************************************************************/
 
@@ -636,9 +688,7 @@ input::InputBuffer& inputLine()
 
 /*****************************************************************************
 
-        Chapter II -- Auxiliary functions
-
-  ... explain here when it is stable ...
+        Chapter III -- Auxiliary functions
 
 ******************************************************************************/
 

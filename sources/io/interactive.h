@@ -1,8 +1,8 @@
 /*
   This is interactive.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -28,13 +28,23 @@
 
 namespace atlas {
 
+/******** type declarations **************************************************/
+
+/* the strange namespace is an historic artifact; the class was moved */
+
+namespace ioutils {
+
+  class OutputFile;
+
+}
+
 /******** function declarations **********************************************/
 
 namespace interactive {
 
   void bitMapPrompt(std::string&, const char*, const bitmap::BitMap&);
 
-  void getCartanClass(size_t&, const bitmap::BitMap&, 
+  void getCartanClass(size_t&, const bitmap::BitMap&,
 		      input::InputBuffer&)
     throw(error::InputError);
 
@@ -43,10 +53,10 @@ namespace interactive {
 
   void getInteractive(lietype::LieType&) throw(error::InputError);
 
-  void getInteractive(lietype::InnerClassType&, const lietype::LieType&) 
+  void getInteractive(lietype::InnerClassType&, const lietype::LieType&)
     throw(error::InputError);
 
-  void getInteractive(prerootdata::PreRootDatum&, latticetypes::WeightList&, 
+  void getInteractive(prerootdata::PreRootDatum&, latticetypes::WeightList&,
 		      const lietype::LieType&) throw(error::InputError);
 
   void getInteractive(realform::RealForm&, const complexredgp_io::Interface&)
@@ -60,8 +70,8 @@ namespace interactive {
 		      const realform::RealFormList&, tags::DualTag)
     throw(error::InputError);
 
-  void getInteractive(realredgp::RealReductiveGroup&, 
-		      complexredgp_io::Interface&) 
+  void getInteractive(realredgp::RealReductiveGroup&,
+		      complexredgp_io::Interface&)
     throw(error::InputError);
 
   void getInteractive(complexredgp_io::Interface&)
@@ -75,6 +85,24 @@ namespace interactive {
     throw(error::InputError);
 
   input::InputBuffer& inputLine();
+}
+
+/******** type definitions ***************************************************/
+
+namespace ioutils {
+
+class OutputFile {
+ private:
+  std::ostream* d_stream;
+  bool d_foutput;
+ public:
+  OutputFile();
+  ~OutputFile();
+  template<typename T> std::ostream& operator<< (const T& arg)
+    {return *d_stream << arg;}
+  operator std::ostream& () {return *d_stream;}
+};
+
 }
 
 }
