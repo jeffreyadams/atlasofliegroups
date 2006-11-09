@@ -344,6 +344,8 @@ unsigned long ComplexReductiveGroup::kgbSize(realform::RealForm rf) const
 /*!
   Synopsis: returns the number of elements in K\\G/B for real form \#rf.
 
+  Precondition: the Cartan classes for this real form have been generated
+
   Explanation: this is exactly the number of elements in the one-sided
   parameter set corresponding to any strong real form of G lying over rf.
 
