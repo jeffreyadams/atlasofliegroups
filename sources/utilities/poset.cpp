@@ -1,12 +1,12 @@
-/*!  
-\file 
+/*!
+\file
 This is poset.cpp.  This file contains a simple-minded
 implementation of a poset structure, where one explicitly keeps the
 bit-matrix of the order relation.
 */
-/*  
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -102,14 +102,14 @@ void Poset::hasseDiagram(graph::OrientedGraph& h, set::SetElt max) const
 
   Explanation: the Hasse diagram is the oriented graph whose vertices are
   the elements of the poset, with an edge from each vertex to each vertex
-  immediately below it.  Closure means all elements less than or equal to max. 
+  immediately below it.  Closure means all elements less than or equal to max.
 */
 
 {
   using namespace bitmap;
 
   const BitMap& cl = d_closure[max];
-  
+
   h.resize(size());
 
   for (BitMap::iterator i = cl.begin(); i != cl.end(); ++i) {
@@ -117,7 +117,7 @@ void Poset::hasseDiagram(graph::OrientedGraph& h, set::SetElt max) const
     b.remove(*i);
     findMaximals(h.edgeList(*i),b);
   }
-  
+
   return;
 }
 
@@ -125,7 +125,7 @@ void Poset::hasseDiagram(graph::OrientedGraph& h, set::SetElt max) const
 void Poset::resize(unsigned long n)
 
 /*!
-\brief Rresizes the poset to size n, adding only the diagonal for the 
+\brief Resizes the poset to size n, adding only the diagonal for the
   new rows.
 */
 
@@ -145,11 +145,15 @@ void Poset::resize(unsigned long n)
 void Poset::extend(const std::vector<Link>& lk)
 
 /*!
-\brief Transforms the poset into the weakest ordering stronger than
-  the previous one, and for which the relations first < second for the elements
-  in lk hold.
+\brief Transforms the poset into the weakest ordering containing the relations
+  it previously contained, plus the relations first < second for all elements
+  listed in lk.
 
-  Precondition: lk is sorted in lexicographical order.
+  Precondition: lk is sorted in increasing lexicographical order, or more
+  precisely the weaker (given the compatibility of the order relation with
+  integral ordering) condition that any occurrence of a value i as first in a
+  Link cannot be followed by any occurrence of i as second in another Link
+
 */
 
 {

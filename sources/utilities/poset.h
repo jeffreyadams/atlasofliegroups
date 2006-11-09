@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -30,6 +30,11 @@ namespace poset {
 
 DV: I do not know whether the poset order is assumed compatible with the
 integer order (as it is in SymmetricPoset).
+
+MvL: Indeed, the simpleminded implementation of the basic method findMaximals
+shows that only posets compatible with the integer order (i<j in the poset
+implies i<j as integers) can be modelled by this class.
+
   */
 class Poset {
 
@@ -38,8 +43,9 @@ class Poset {
   /*!
 \brief Matrix of order relations.
 
-Bit i of d_closure[j] is set if and only if i is less than or equal to
-j in the poset.
+Bit i of d_closure[j] is set if and only if i is less than or equal to j in
+the poset. In other words, viewed as a set of integers, d_closure[j]
+represents the downwards closure in the poset of the singleton {j}.
   */
 std::vector<bitmap::BitMap> d_closure;
 
@@ -60,6 +66,15 @@ std::vector<bitmap::BitMap> d_closure;
   }
 
 // accessors
+
+  /*!
+\brief The order relation itself.
+  */
+
+  bool lesseq(set::SetElt i, set::SetElt j) const{
+    return d_closure[j].isMember(i);
+  }
+
   void findMaximals(set::SetEltList&, const bitmap::BitMap&) const;
 
   /*!
@@ -92,12 +107,12 @@ class SymmetricPoset {
  private:
 
   /*!
-\brief Rows of the symmetric poset BitMap.  
+\brief Rows of the symmetric poset BitMap.
 
 Row \#j is a BitMap of size n (the size of the poset); bit i is set if
 and only i and j are comparable in the poset.
   */
-  std::vector<bitmap::BitMap> d_row; 
+  std::vector<bitmap::BitMap> d_row;
 
  public:
 
