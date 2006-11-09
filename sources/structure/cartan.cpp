@@ -476,18 +476,29 @@ Helper::Helper(const rootdata::RootDatum& rd,
   using namespace rootdata;
   using namespace weyl;
 
-  d_fundamental = Fiber(rd,d);
-  d_ordering = Poset(1);
+  // construct fundamental Cartan, serving as seed for all other Cartans
 
-  LatticeMatrix dd;
-  dualBasedInvolution(dd,d,rd);
-  d_dualFundamental = Fiber(dualRootDatum(),dd);
-
-  // construct fundamental Cartan
   d_cartan.push_back(new CartanClass(rd,d));
+
+  // create a singleton poset representing the fundamental Cartan
+  d_ordering = Poset(1);
 
   // add corresponding twisted involution
   d_twistedInvolution.push_back(WeylElt());
+
+  // the fundamental fiber is the fiber of the fundamental Cartan
+  d_fundamental = d_cartan[0]->fiber();
+
+  /* but the dual fundamental fiber is NOT the dual fiber of the fundamental
+     Cartan; it is the dual fiber of the most split Cartan that will not be
+     constructed here (if constructed at all, it will be the very last Cartan
+     for this inner class). Therefore this fiber is constructed separately */
+
+  { // get distinguished involution for the dual group
+    LatticeMatrix dd; dualBasedInvolution(dd,d,rd);
+    // construct the dual fundamental fiber
+    d_dualFundamental = Fiber(dualRootDatum(),dd);
+  }
 
   // make the real form labels
   correlateForms();
@@ -921,7 +932,17 @@ void Helper::extend(realform::RealForm rf)
   \brief Extends the cartanclasses structure so that it contains all Cartans
   for rf.
 
-  NOTE: may forward an Overflow exception from expand.
+  This is done by traversing all the known Cartan classes j defined in the
+  real form rf (which includes at least the distinguished Cartan for the inner
+  class), and all non-compact positive roots alpha for (rf,j); the twisted
+  involution w for the Cartan class j is then left-multiplied by s_{alpha} to
+  obtain a new twisted involution ti, and if ti is not member of any of the
+  known classes of twisted involutions, it starts a new Cartan class defined
+  in rf, which will later itself be considered in the loop described here.
+
+  While generating the Cartan classes, the ordering is extended by a link from
+  the Cartan class j to the Cartan class of any twisted involution ti obtained
+  directly from it.
 */
 
 {
@@ -939,7 +960,7 @@ void Helper::extend(realform::RealForm rf)
 
   std::set<Link> lks;
 
-  // ccl.d_cartan.size() may grow in the course of the loop
+  // d_cartan.size() may grow in the course of the loop
   for (size_t j = 0; j < d_cartan.size(); ++j) {
 
     if (not isDefined(rf,j))
@@ -1151,8 +1172,10 @@ unsigned long kgbSize(realform::RealForm rf, const CartanClasses& ccl)
 /*!
   \brief Returns the cardinality of K\\G/B for this real form.
 
-  Explanation: this is the cardinality of the one-sided parameter corresponding
-  to any strong real form over rf.
+  Precondition: the Cartan classes for this real form have been generated
+
+  Explanation: this is the cardinality of the one-sided parameter set
+  corresponding to any strong real form over rf.
 */
 
 {
