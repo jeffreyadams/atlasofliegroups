@@ -98,12 +98,20 @@ class CartanClasses {
 
   /*!
   \brief Entry \#cn lists the real forms in which Cartan \#cn is defined.
+
+  More precisely, d_realFormLabels(cn)[i] is the inner number of the real form
+  that corresponds to part i of the partition cartan(n).fiber().weakReal()
+
   */
   std::vector<realform::RealFormList> d_realFormLabels;
 
   /*!
   \brief Entry \#cn lists the dual real forms in which dual Cartan
   \#cn is defined.
+
+  More precisely, d_dualRealFormLabels(cn)[i] is the inner number of the real
+  form that corresponds to part i of the partition
+  cartan(n).dualFiber().weakReal()
   */
   std::vector<realform::RealFormList> d_dualRealFormLabels;
 
