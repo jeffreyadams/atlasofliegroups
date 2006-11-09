@@ -1,5 +1,6 @@
 vec: (vec->vec): identity function on vectors.
 mat: (mat->mat): identity function on matrices.
+print: (string->): print string without quotes, followed by newline
 id_mat: (int->mat): identity matrix of given size.
 transpose_mat: (mat->mat): matrix transposition.
 diagonal_mat: (vec->mat): square diagonal matrix with given diagonal entries.
@@ -107,6 +108,16 @@ coroot_radical: (RootDatum->mat): simple coroots and radical basis.
   With respect to simple_coroots, add columns for radical basis generators
 dual_datum: (RootDatum->RootDatum): dual of given root datum.
 
+classify_involution: (mat->int,int,int): determine type of lattice involution
+  For any linear involution of Z^n, there is a basis consisting of certain
+  vectors that are eigenvectors with eigenvalues 1 or -1 for the involution,
+  and of pairs of vectors that are interchanged by the involution. The numbers
+  of such vectors for each eigenvalue and of interchanged pairs determine the
+  involution up to base change. This function, which requires its argument to
+  be the matrix of an involution, returns these three numbers in the following
+  order: eigenvectors for 1 (compact rank), pairs of interchanged vectors
+  (Complex rank), eigenvectors for -1 (split rank).
+
 fix_involution: (RootDatum,mat->InnerClass): define G by involution matrix.
   This is the basic function for building a complex reductive group equipped
   with a distinguished involution from the root datum and that involution;
@@ -132,7 +143,9 @@ root_datum_of_inner_class: (InnerClass->RootDatum): root datum of inner class.
 dual_inner_class; (InnerClass->InnerClass): dual inner class for dual group
 
 block_sizes: (InnerClass->mat): matrix giving the block sizes.
-  This is essentially the same as the output of 'blocksizes' in Atlas
+  This is essentially the same as the output of 'blocksizes' in Atlas; the
+  rows of the matrix correspond to real forms for the inner class, and the
+  columns correspond to dual real forms for the inner class
 
 form_names: (InnerClass->[string]): list of names of real forms.
   These are the same names used in atlas, describing real Lie algebras
@@ -141,9 +154,10 @@ dual_form_names: (InnerClass->[string]): ist of names of dual real forms.
 
 real_form: (InnerClass,int->RealForm): select a real form from inner class.
   The result of form_names describes the valid range and names of real forms;
-  this function actually constructs a real form from the list. The list is
-  always the same for a given inner class (independent of other computations),
-  unlike the list of Cartan classes for a real form as discussed below
+  this function actually constructs a real form from the list, selected by its
+  position (starting from 0). The list is always the same for a given inner
+  class (independent of other computations), unlike the list of Cartan classes
+  for a real form as discussed below
 quasisplit_form: (InnerClass->RealForm): quasisplit form for the inner class
   This is the last one in the list of real forms for the inner class
 
@@ -156,17 +170,19 @@ count_Cartans: (RealForm->int): number of Cartan classes for this real form
   The Cartan classes are actually constructed, and remembered, by this command
   whence its first execution for some real form may take some time
 
-dual_real_form: (InnerClass,int->DualRealForm): select a dual real form
-  This is like real_form, but selects a real form for the dual inner class,
-  which is given type DualRealForm. This is intended for functions that
-  require both a real form and a dual real form for a given inner class
+KGB_size: (RealForm->int): size of the set K\G/B for this real form
 
+dual_real_form: (InnerClass,int->DualRealForm): select a dual real form
+  This is like real_form, but selects a dual real form for the inner class
+  (whose names are given by dual_form_names) by index, which is given type
+  DualRealForm. This is intended for functions that require both a real form
+  and a dual real form for a given inner class
 dual_quasisplit_form: (InnerClass->DualRealForm): quasisplit dual real form
 
 real_form_from_dual: (DualRealForm->RealForm): convert dual real form
   This function allows a DualRealForm value to be interpreted as a real form
-  for the dual group (and dual inner class), so that functions like
-  components_rank can be applied to the result
+  for the dual group (and dual inner class), so that functions like KGB_size
+  can be applied to the result
 
 Cartan_class: (RealForm,int->CartanClass): Cartan class selected by number
   This constructs all Cartan classes for this real form, and then selects the
@@ -175,12 +191,20 @@ Cartan_class: (RealForm,int->CartanClass): Cartan class selected by number
   forms in the same inner class: those Cartan classes that have already been
   constructed for other real form come first in the sequence
 
+most_split_Cartan: (RealForm->CartanClass): most split Cartan class for form
+  The most split Cartan class of a given real form is the last one in the list
+  of its Cartan classes (so it is Cartan_class(rf,count_Cartans(rf)-1)
+
 occurrence_matrix: (InnerClass->mat): real form-Cartan class incidence matrix
   For the given inner class, construct a matrix whose rows are parametrized by
   the real forms, and whose columns are parametrized by the Cartan classes,
   showing whether (1) or not (0) the Cartan class occurs for the real form
 dual_occurrence_matrix: (InnerClass->mat): dual real form-Cartan class matrix
   This is like occurrence_matrix, but with rows representing dual real forms
+
+Cartan_order_matrix: (RealForm->mat): matrix for ordering of Cartan classes
+  The Cartan classes for a given real form form a partially ordered set; this
+  function returns this partial ordering in the form of a square 0-1 matrix
 
 print_Cartan_info: (CartanClass->): print information about the Cartan class
   This produces essentially the output of 'cartan' in the Atlas, except for
@@ -208,3 +232,19 @@ print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   the imaginary root system is given as a sequence of bits 0 (compact) or 1
   (non-compact), to be interpreted on the simple roots in the given order, and
   extended to the whose root subsystem as a Z/2Z grading.
+
+print_block: (RealForm,DualRealForm->):
+print_blocku: (RealForm,DualRealForm->):
+print_blockd: (RealForm,DualRealForm->):
+print_blockstabilizer: (RealForm,DualRealForm,CartanClass->):
+print_KGB: (RealForm->):
+print_KL_basis: (RealForm,DualRealForm->): :print_KL_basis:
+print_prim_KL: (RealForm,DualRealForm->): :print_prim_KL:
+print_KL_list: (RealForm,DualRealForm->): :print_KL_list:
+print_W_cells: (RealForm,DualRealForm->): :print_W_cells:
+print_W_graph: (RealForm,DualRealForm->):
+  These commands give the output of the corresponding commands of the Atlas
+  software. It is required that the real form and dual real form (and in case
+  of blockstabilizer the Cartan class) be associated to the same inner class,
+  and that they have at least one Cartan class (respectively the given Cartan
+  class) in common.

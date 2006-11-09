@@ -1816,8 +1816,18 @@ void divmod_wrapper ()
 @/push_value(i.release()); push_value(j.release()); wrap_tuple(2);
 }
 
-@ We install the arithmetic operators. Their names correspond to the ones used
-in the parser definition file \.{parser.y}.
+@ Here is a simple function that outputs a string without its quotes, but with
+a terminating newline.
+
+@< Definition of other wrapper functions @>=
+void print_wrapper ()
+{ std::auto_ptr<string_value> s(get_string());
+  *output_stream << s->value << std::endl;
+  wrap_tuple(0); // don't forget to return a value
+}
+
+@ We install the function above. The names of  the arithmetic operators
+correspond to the ones used in the parser definition file \.{parser.y}.
 
 @< Installation of other built-in functions @>=
 install_function(plus_wrapper,"+","(int,int->int)");
@@ -1827,6 +1837,7 @@ install_function(divide_wrapper,"/","(int,int->int)");
 install_function(modulo_wrapper,"%","(int,int->int)");
 install_function(unary_minus_wrapper,"-u","(int->int)");
 install_function(divmod_wrapper,"/%","(int,int->int,int)");
+install_function(print_wrapper,"print","(string->)");
 
 
 @ We now define a few functions, to really exercise something, first of all
@@ -1838,7 +1849,7 @@ void transpose_mat_wrapper ();
 
 @ Since in general built-in functions may throw exceptions (even |transpose|!)
 we hold the pointers to the values created to hold their results in
-auto-pointers. The reason that in |id_mat_wrapper| we create a |latmat_value|
+auto-pointers. The reason that in |i)d_mat_wrapper| we create a |latmat_value|
 around an empty |LatticeMatrix| rather than build a filled matrix object
 first, is that the constructor for |latmat_value| would than have to copy that
 matrix object (which implies copying its contents). In |transpose_mat_wrapper|
@@ -2294,13 +2305,30 @@ the tuple value. We report the type of each variable assigned separately.
 }
 
 @*1 Printing type information.
+%
 It is useful to print type information, either for a single expression or for
-all identifiers in the table.
+all identifiers in the table. This is the first place in this file where we
+produce output to a file. In general, rather than writing directly to
+|std::cout|, we shall pass via a pointer whose value is maintained in the main
+program, so that redirecting output to a different stream can be easily
+implemented.
+
+@< Declarations of global variables @>=
+extern std::ostream* output_stream;
+
+@ The |output_stream| will normally point to |std::cout|.
+
+@< Global variable definitions @>=
+std::ostream* output_stream= &std::cout;
+
+@ The function |type_of_expr| prints the type of a single expression, without
+evaluating it; since the expression is not limited to being a single
+identifier, we must cater for the possibility that the type analysis fails.
 
 @< Function definitions @>=
 extern "C"
 void type_of_expr(expr e)
-{ try { std::cout << "type: " << *analyse_types(e) << std::endl; }
+{ try { *output_stream << "type: " << *analyse_types(e) << std::endl; }
   catch (std::runtime_error& err) { std::cerr<<err.what()<<std::endl; }
 }
 
@@ -2313,7 +2341,7 @@ types.
 @< Function definitions @>=
 extern "C"
 void show_ids()
-{ std::cout << *global_id_table;
+{@; *output_stream << *global_id_table;
 }
 
 

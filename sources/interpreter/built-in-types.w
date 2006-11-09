@@ -1280,9 +1280,9 @@ have been, given the fact that it only modifies values at the other side of
 the |d_cartan| pointer. The Atlas value so referred to then may change in the
 course of the computation, to store information about the group as it is
 computed, but apart from efficiency considerations the sharing should be
-transparent (not noticeable by the user). Comments suggest however that the
-numbering of Cartan subgroups may be affected by the order of operations
-requested, so this transparency may not be complete.
+transparent (not noticeable by the user). However the numbering of Cartan
+subgroups may be affected by the order of operations requested, so this
+transparency is not complete.
 
 @< Includes... @>=
 #include "realform_io.h"
@@ -1414,10 +1414,10 @@ involution given.
 
 @< Report the type and inner class found @>=
 { Lie_type_value t(cl.first);
-  std::cout << "Found " << t << ", and inner class '";
+  *output_stream << "Found " << t << ", and inner class '";
   for (size_t i=0; i<cl.second.size(); ++i)
-    std::cout << cl.second[i];
-  std::cout << "'.\n";
+    *output_stream << cl.second[i];
+  *output_stream << "'.\n";
 }
 
 @ To simulate the functioning of the Atlas software, the function $set\_type$
@@ -1756,9 +1756,39 @@ are in fact generated.
 
 @< Local function def...@>=
 void count_Cartans_wrapper()
-{ std::auto_ptr<real_form_value> R(get_real_form());
-  R->value.fillCartan();
-  push_value(new int_value(R->value.numCartan()));
+{ std::auto_ptr<real_form_value> rf(get_real_form());
+  rf->value.fillCartan();
+  push_value(new int_value(rf->value.numCartan()));
+}
+
+@ The size of the finite set $K\backslash G/B$ can be determined from the real
+form, once the corresponding Cartan classes have been generated.
+
+@< Local function def...@>=
+void KGB_size_wrapper()
+{ std::auto_ptr<real_form_value> rf(get_real_form());
+  rf->value.fillCartan();
+  push_value(new int_value(rf->value.kgbSize()));
+}
+
+@ Once the Cartan classes for a real form are constructed, we have a partial
+ordering on them. The function |Cartan_order_matrix| displays a matrix for
+this partial ordering.
+
+@h "poset.h"
+@< Local function def...@>=
+void Cartan_order_matrix_wrapper()
+{ std::auto_ptr<real_form_value> rf(get_real_form());
+  rf->value.fillCartan();
+  size_t n=rf->value.numCartan();
+  latmat_value* M =
+     new latmat_value(latticetypes::LatticeMatrix(n,n,0));
+  const poset::Poset& p = rf->value.cartanOrdering();
+  for (size_t i=0; i<n; ++i)
+    for (size_t j=i; j<n; ++j)
+      if (p.lesseq(i,j)) M->value(i,j)=1;
+
+  push_value(M);
 }
 
 @*2 Dual real forms.
@@ -1871,9 +1901,10 @@ which will generate the full list of Cartan classes for this inner class.
 @< Includes... @>=
 #include "cartanclass.h"
 
-@ The Cartan class is identified by a number within the inner class. This
-number is actually its sequence number in the order in which Cartan classes
-are generated in this inner class, so it may vary from one run to another;
+@*2 Class definition.
+The Cartan class is identified by a number within the inner class. This number
+is actually its sequence number in the order in which Cartan classes are
+generated in this inner class, so it may vary from one run to another;
 nevertheless the number is important to record, since some information about
 the Cartan class is only stored at the level of the inner class, and the
 number is required to obtain this information.
@@ -1941,7 +1972,23 @@ void Cartan_class_wrapper()
   push_value(new Cartan_class_value(rf->parent,cs.n_th(i->value)));
 }
 
-@ We need yet another function for getting a value from the stack.
+@ Like the quasisplit real form for inner classes, there is a particular
+Cartan class for each real form, the ``most split Cartan''; it is of
+particular importance for knowing which dual real forms can be associated to
+this real form. It is (probably) the last Cartan class in the list for the
+real form, but we have a direct access to it via the |mostSplit| method for
+|realredgp::RealReductiveGroup|.
+
+@< Local function def...@>=
+void most_split_Cartan_wrapper()
+{ std::auto_ptr<real_form_value> rf(get_real_form());
+  rf->value.fillCartan();
+  push_value(new Cartan_class_value(rf->parent,rf->value.mostSplit()));
+}
+
+
+@*2 Functions operating on Cartan classes.
+We need yet another function for popping a value.
 
 @< Declarations of exported functions @>=
 Cartan_class_value* get_Cartan_class() throw(std::logic_error);
@@ -1980,10 +2027,10 @@ void print_Cartan_info_wrapper()
 
   const rootdata::RootDatum& rd=cc->parent.value.rootDatum();
 
-  prettyprint::printTorusType(std::cout,cc->value.fiber().torus())
+  prettyprint::printTorusType(*output_stream,cc->value.fiber().torus())
   << std::endl;
 
-  std::cout << "twisted involution orbit size: " << cc->value.orbitSize()
+  *output_stream << "twisted involution orbit size: " << cc->value.orbitSize()
    << std::endl;
 
 @)// print type of imaginary root system
@@ -1991,25 +2038,25 @@ void print_Cartan_info_wrapper()
   rootdata::lieType(ilt,cc->value.simpleImaginary(),rd);
 
   if (ilt.size() == 0)
-    std::cout << "imaginary root system is empty" << std::endl;
+    *output_stream << "imaginary root system is empty" << std::endl;
   else
-    std::cout << "imaginary root system: " << ilt << std::endl;
+    *output_stream << "imaginary root system: " << ilt << std::endl;
 
 @)// print type of real root system
   rootdata::lieType(rlt,cc->value.simpleReal(),rd);
 
   if (rlt.size() == 0)
-    std::cout << "real root system is empty" << std::endl;
+    *output_stream << "real root system is empty" << std::endl;
   else
-    std::cout << "real root system: " << rlt << std::endl;
+    *output_stream << "real root system: " << rlt << std::endl;
 
 @)// print type of complex root system
   rootdata::lieType(clt,cc->value.simpleComplex(),rd);
 
   if (clt.size() == 0)
-    std::cout << "complex factor is empty" << std::endl;
+    *output_stream << "complex factor is empty" << std::endl;
   else
-    std::cout << "complex factor: " << clt << std::endl;
+    *output_stream << "complex factor: " << clt << std::endl;
 @)
   wrap_tuple(0);
 }
@@ -2108,16 +2155,16 @@ functions from \.{dynkin.cpp}.
 for this case.
 
 @< Print information about the imaginary root system... @>=
-{ std::cout << "Imaginary root system is ";
-  if (si.size()==0) std::cout<<"empty.\n";
+{ *output_stream << "Imaginary root system is ";
+  if (si.size()==0) *output_stream<<"empty.\n";
   else
   { using basic_io::operator<<;
     lietype::LieType t; dynkin::lieType(t,cm);
 
-    std::cout << "of type " << t << ", with simple root"
+    *output_stream << "of type " << t << ", with simple root"
               << (si.size()==1 ? " " : "s ");
     for (size_t i=0; i<si.size(); ++i)
-      std::cout << si[sigma[i]] << (i<si.size()-1 ? "," : ".\n");
+      *output_stream << si[sigma[i]] << (i<si.size()-1 ? "," : ".\n");
   }
 }
 
@@ -2134,12 +2181,313 @@ does not exist for the given real form.
 { bool first=true;
   for (size_t i=0; i<pi.size(); ++i)
     if ( rf_nr[pi(i)] == rf->value.realForm())
-    { std::cout << ( first ? first=false,'[' : ',');
+    { *output_stream << ( first ? first=false,'[' : ',');
       gradings::Grading gr; cc->value.fiber().grading(gr,i);
       gr.permute(sigma);
-      prettyprint::prettyPrint(std::cout,gr,si.size());
+      prettyprint::prettyPrint(*output_stream,gr,si.size());
     }
-  std::cout << "]" << std::endl;
+  *output_stream << "]" << std::endl;
+}
+
+@* Test functions.
+Now as an experiment we shall try to make available some commands without
+actually creating new data types. This means the values created to perform the
+computation will be discarded after the output is produced; our functions will
+typically return a $0$-tuple. This is probably not a desirable state of
+affairs, but it seems that the current Atlas software is functioning like this
+(the corresponding commands are defined in \.{test.cpp} which hardly has any
+persistent data) so for the moment it should not be so bad.
+
+We shall first implement the \.{block} command.
+
+@h "blocks.h"
+@h "block_io.h"
+
+@< Local function def...@>=
+void print_block_wrapper()
+{ push_tuple_components();
+  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
+  std::auto_ptr<real_form_value> rf(get_real_form());
+@)
+  rf->value.fillCartan();
+  if (&rf->parent.value!=&drf->parent.value)
+    throw std::runtime_error @|
+    ("inner class mismatch between real form and dual real form");
+  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
+  if (!b.isMember(rf->value.mostSplit()))
+    throw std::runtime_error @|
+    ("print_block: real form and dual real form are incompatible");
+@)
+  blocks::Block block(rf->parent.value
+                     ,rf->value.realForm(),drf->value.realForm());
+  block_io::printBlock(*output_stream,block);
+@)
+  wrap_tuple(0);
+}
+
+@ We provide functions corresponding to the \.{blockd} and \.{blocku}
+variations of \.{block}.
+
+@< Local function def...@>=
+void print_blockd_wrapper()
+{ push_tuple_components();
+  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
+  std::auto_ptr<real_form_value> rf(get_real_form());
+@)
+  rf->value.fillCartan();
+  if (&rf->parent.value!=&drf->parent.value)
+    throw std::runtime_error @|
+    ("inner class mismatch between real form and dual real form");
+  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
+  if (!b.isMember(rf->value.mostSplit()))
+    throw std::runtime_error @|
+    ("print_blockd: real form and dual real form are incompatible");
+@)
+  blocks::Block block(rf->parent.value
+                     ,rf->value.realForm(),drf->value.realForm());
+  block_io::printBlockD(*output_stream,block);
+@)
+  wrap_tuple(0);
+}
+
+@)
+void print_blocku_wrapper()
+{ push_tuple_components();
+  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
+  std::auto_ptr<real_form_value> rf(get_real_form());
+@)
+  rf->value.fillCartan();
+  if (&rf->parent.value!=&drf->parent.value)
+    throw std::runtime_error @|
+    ("inner class mismatch between real form and dual real form");
+  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
+  if (!b.isMember(rf->value.mostSplit()))
+    throw std::runtime_error @|
+    ("print_blocku: real form and dual real form are incompatible");
+@)
+  blocks::Block block(rf->parent.value
+                     ,rf->value.realForm(),drf->value.realForm());
+  block_io::printBlockU(*output_stream,block);
+@)
+  wrap_tuple(0);
+}
+
+@ The \.{blockstabilizer} command has a slightly different calling scheme than
+\.{block} and its friends, in that it requires a real and a dual real form,
+and a Cartan class; on the other hand it is simpler in not requiring a block
+to be constructed. The signature of |realredgp_io::printBlockStabilizer| is a
+bit strange, as it requires a |realredgp::RealReductiveGroup| argument for the
+real form, but only numbers for the Cartan class and the dual real form (but
+this is understandable, as information about the inner class must be
+transmitted in some way). In fact it used to be even a bit stranger, in that
+the real form was passed in the form of a |realredgp_io::Interface| value, a
+class (not to be confused with |realform_io::Interface| that does not specify
+a particular real form) that we do not use in this program; since only the
+|realGroup| field of the |realredgp_io::Interface| was used in
+|realredgp_io::printBlockStabilizer|, we have changed its parameter
+specification to allow it to be called easily here.
+
+@h "realredgp_io.h"
+@< Local function def...@>=
+void print_blockstabilizer_wrapper()
+{ push_tuple_components();
+  std::auto_ptr<Cartan_class_value> cc(get_Cartan_class());
+  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
+  std::auto_ptr<real_form_value> rf(get_real_form());
+@)
+  if (&rf->parent.value!=&drf->parent.value or
+      &rf->parent.value!=&cc->parent.value)
+    throw std::runtime_error @|
+    ("blockstabilizer: inner class mismatch between arguments");
+  bitmap::BitMap b(rf->parent.value.cartanSet(rf->value.realForm()));
+  b &= bitmap::BitMap(rf->parent.value.dualCartanSet(drf->value.realForm()));
+  if (not b.isMember(cc->number))
+    throw std::runtime_error @|
+    ("blockstabilizer: Cartan class not defined for both real forms");
+@)
+
+  realredgp_io::printBlockStabilizer
+   (*output_stream,rf->value,cc->number,drf->value.realForm());
+@)
+  wrap_tuple(0);
+}
+
+@ The function |print_KGB| takes only a real form as argument.
+
+@h "kgb.h"
+@h "kgb_io.h"
+
+@< Local function def...@>=
+void print_KGB_wrapper()
+{ std::auto_ptr<real_form_value> rf(get_real_form());
+@)
+  rf->value.fillCartan();
+@)
+  *output_stream
+    << "kgbsize: " << rf->value.kgbSize() << std::endl;
+  kgb::KGB kgb(rf->value);
+  kgb_io::printKGB(*output_stream,kgb);
+@)
+  wrap_tuple(0);
+}
+
+@ The function |print_KL_basis| behaves much like |print_block| as far as
+parametrisation is concerned.
+
+@h "kl.h"
+@h "klsupport.h"
+@h "kl_io.h"
+@< Local function def...@>=
+void print_KL_basis_wrapper()
+{ push_tuple_components();
+  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
+  std::auto_ptr<real_form_value> rf(get_real_form());
+@)
+  rf->value.fillCartan();
+  if (&rf->parent.value!=&drf->parent.value)
+    throw std::runtime_error @|
+    ("inner class mismatch between real form and dual real form");
+  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
+  if (!b.isMember(rf->value.mostSplit()))
+    throw std::runtime_error @|
+    ("print_KL_basis: real form and dual real form are incompatible");
+@)
+  blocks::Block block(rf->parent.value
+                     ,rf->value.realForm(),drf->value.realForm());
+  klsupport::KLSupport kls(block); kls.fill();
+
+  kl::KLContext klc(kls); klc.fill();
+@)
+  *output_stream
+    << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:\n\n";
+  kl_io::printAllKL(*output_stream,klc);
+@)
+  wrap_tuple(0);
+}
+
+@ The function |print_prim_KL| is a variation of |print_KL_basis|.
+
+@< Local function def...@>=
+void print_prim_KL_wrapper()
+{ push_tuple_components();
+  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
+  std::auto_ptr<real_form_value> rf(get_real_form());
+@)
+  rf->value.fillCartan();
+  if (&rf->parent.value!=&drf->parent.value)
+    throw std::runtime_error @|
+    ("inner class mismatch between real form and dual real form");
+  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
+  if (!b.isMember(rf->value.mostSplit()))
+    throw std::runtime_error @|
+    ("print_prim_KL: real form and dual real form are incompatible");
+@)
+  blocks::Block block(rf->parent.value
+                     ,rf->value.realForm(),drf->value.realForm());
+  klsupport::KLSupport kls(block); kls.fill();
+
+  kl::KLContext klc(kls); klc.fill();
+@)
+  *output_stream
+    << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:\n\n";
+  kl_io::printPrimitiveKL(*output_stream,klc);
+@)
+  wrap_tuple(0);
+}
+
+@ The function |print_KL_list| is another variation of |print_KL_basis|, it
+outputs just a list of all distinct Kazhdan-Lusztig-Vogan polynomials.
+
+@< Local function def...@>=
+void print_KL_list_wrapper()
+{ push_tuple_components();
+  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
+  std::auto_ptr<real_form_value> rf(get_real_form());
+@)
+  rf->value.fillCartan();
+  if (&rf->parent.value!=&drf->parent.value)
+    throw std::runtime_error @|
+    ("inner class mismatch between real form and dual real form");
+  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
+  if (!b.isMember(rf->value.mostSplit()))
+    throw std::runtime_error @|
+    ("print_KL_list: real form and dual real form are incompatible");
+@)
+  blocks::Block block(rf->parent.value
+                     ,rf->value.realForm(),drf->value.realForm());
+  klsupport::KLSupport kls(block); kls.fill();
+
+  kl::KLContext klc(kls); klc.fill();
+@)
+  kl_io::printKLList(*output_stream,klc);
+@)
+  wrap_tuple(0);
+}
+
+@ We close with two functions for printing the $W$-graph determined by the
+polynomials computed. For |print_W_cells| we must construct one more object,
+after having built the |klc::KLContext|.
+
+@h "wgraph.h"
+@h "wgraph_io.h"
+
+@< Local function def...@>=
+void print_W_cells_wrapper()
+{ push_tuple_components();
+  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
+  std::auto_ptr<real_form_value> rf(get_real_form());
+@)
+  rf->value.fillCartan();
+  if (&rf->parent.value!=&drf->parent.value)
+    throw std::runtime_error @|
+    ("inner class mismatch between real form and dual real form");
+  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
+  if (!b.isMember(rf->value.mostSplit()))
+    throw std::runtime_error @|
+    ("print_W_cells: real form and dual real form are incompatible");
+@)
+  blocks::Block block(rf->parent.value
+                     ,rf->value.realForm(),drf->value.realForm());
+  klsupport::KLSupport kls(block); kls.fill();
+
+  kl::KLContext klc(kls); klc.fill();
+
+  wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
+@)
+  wgraph_io::printCells(*output_stream,wg);
+@)
+  wrap_tuple(0);
+}
+
+@ And as last function for the moment, |print_W_graph| just gives a variation
+of the output routine of |print_W_cells|.
+
+@< Local function def...@>=
+void print_W_graph_wrapper()
+{ push_tuple_components();
+  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
+  std::auto_ptr<real_form_value> rf(get_real_form());
+@)
+  rf->value.fillCartan();
+  if (&rf->parent.value!=&drf->parent.value)
+    throw std::runtime_error @|
+    ("inner class mismatch between real form and dual real form");
+  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
+  if (!b.isMember(rf->value.mostSplit()))
+    throw std::runtime_error @|
+    ("print_W_graph: real form and dual real form are incompatible");
+@)
+  blocks::Block block(rf->parent.value
+                     ,rf->value.realForm(),drf->value.realForm());
+  klsupport::KLSupport kls(block); kls.fill();
+
+  kl::KLContext klc(kls); klc.fill();
+
+  wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
+@)
+  wgraph_io::printWGraph(*output_stream,wg);
+@)
+  wrap_tuple(0);
 }
 
 @ Finally we install everything (where did we hear that being said before?)
@@ -2150,25 +2498,49 @@ install_function(quasisplit_form_wrapper,"quasisplit_form"
 		,"(InnerClass->RealForm)");
 install_function(components_rank_wrapper,"components_rank","(RealForm->int)");
 install_function(count_Cartans_wrapper,"count_Cartans","(RealForm->int)");
-install_function(dual_real_form_wrapper,"dual_real_form"
+install_function(KGB_size_wrapper,"KGB_size","(RealForm->int)");
+install_function(Cartan_order_matrix_wrapper,"Cartan_order_matrix"
+					    ,"(RealForm->mat)");
+install_function(dual_real_form_wrapper,@|"dual_real_form"
 				       ,"(InnerClass,int->DualRealForm)");
-install_function(dual_quasisplit_form_wrapper,"dual_quasisplit_form"
+install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 		,"(InnerClass->DualRealForm)");
-install_function(real_form_from_dual_wrapper,"real_form_from_dual"
+install_function(real_form_from_dual_wrapper,@|"real_form_from_dual"
 				  ,"(DualRealForm->RealForm)");
 install_function(Cartan_class_wrapper,"Cartan_class"
 		,"(RealForm,int->CartanClass)");
+install_function(most_split_Cartan_wrapper,"most_split_Cartan"
+		,"(RealForm->CartanClass)");
 install_function(print_Cartan_info_wrapper,"print_Cartan_info"
 		,"(CartanClass->)");
 install_function(fiber_part_wrapper,"fiber_part"
 		,"(CartanClass,RealForm->[int])");
 install_function(print_gradings_wrapper,"print_gradings"
 		,"(CartanClass,RealForm->)");
-
+install_function(print_block_wrapper,"print_block"
+		,"(RealForm,DualRealForm->)");
+install_function(print_blocku_wrapper,"print_blocku"
+		,"(RealForm,DualRealForm->)");
+install_function(print_blockd_wrapper,"print_blockd"
+		,"(RealForm,DualRealForm->)");
+install_function(print_blockstabilizer_wrapper,@|"print_blockstabilizer"
+		,"(RealForm,DualRealForm,CartanClass->)");
+install_function(print_KGB_wrapper,"print_KGB"
+		,"(RealForm->)");
+install_function(print_KL_basis_wrapper,"print_KL_basis"
+		,"(RealForm,DualRealForm->)");
+install_function(print_prim_KL_wrapper,"print_prim_KL"
+		,"(RealForm,DualRealForm->)");
+install_function(print_KL_list_wrapper,"print_KL_list"
+		,"(RealForm,DualRealForm->)");
+install_function(print_W_cells_wrapper,"print_W_cells"
+		,"(RealForm,DualRealForm->)");
+install_function(print_W_graph_wrapper,"print_W_graph"
+		,"(RealForm,DualRealForm->)");
 
 
 
 
 @* Index.
 
-% Local IspellDict: default
+% Local IspellDict: british

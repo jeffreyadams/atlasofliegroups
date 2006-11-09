@@ -152,7 +152,7 @@ public: // interface
     id_type match(const char* s, size_t l) @+{@; return do_match(s,l,true); }
     id_type match_literal(const char* s) /* literal null-terminated string */
       {@; return do_match(s,strlen(s),false); }
-    std::string name_of(id_type nr) const 
+    std::string name_of(id_type nr) const
        @+{@; return std::string(name_tab[nr]); }
     id_type nr_entries() const @+{@; return name_tab.size(); }
 private: // auxiliary functions
@@ -284,7 +284,7 @@ extern Hash_table* main_hash_table;
 it point to the main hash table once it is allocated.
 
 @< Definitions of static variables @>=
-Hash_table* main_hash_table=0;
+Hash_table* main_hash_table=NULL;
 
 @*1 Identifier completion.
 We define a completion function |id_completion_func| that will be used by the
@@ -339,39 +339,56 @@ char* id_completion_func(const char* text, int state)
       return res;
     }
   }
-  return NULL; /* if loop terminates, report failure */ 
+  return NULL; /* if loop terminates, report failure */
 }
 
 @* The lexical analyser class.
+%
 We now come to the lexical analyser proper. Although only one lexical analyser
 is envisaged, we shall define a class for it. The file \.{parser.tab.h}
 contains definitions of constants defined by the parser and used in the code
 below, but on its turn it uses types defined in \.{parsetree.h} which is
-therefore loaded before it (we would like to have put an include of the file
-\.{parsetree.h} into \.{parser.tab.h}, but do not know if or how this could be
-arranged).
+therefore loaded before it (we would like to have put an \&{\#include} of the
+file \.{parsetree.h} into \.{parser.tab.h}, but do not know if or how this
+could be arranged).
 
-@h"parsetree.h"
-@h"parser.tab.h"
+@h "parsetree.h"
+@h "parser.tab.h"
 
 @< Class declarations @>=
 class Lexical_analyser
-{ BufferedInput& input;
+{ enum states @+ { initial, normal, ended };
+@)BufferedInput& input;
   Hash_table& id_table;
   Hash_table::id_type keyword_limit; // first non-keyword identifier
   int nesting; // number of pending opening symbols
-  char prevent_termination; // either '\0' or character requiring more input
+  char prevent_termination; // either |'\0'| or character requiring more input
   int comment_start, comment_end; // characters that start/end a comment
-  bool ended; // to signal imminent end-of-input
+  states state; // to trigger special behaviour
+  std::string file_name; // stores a file name for I/O redirection
 public:
   Lexical_analyser(BufferedInput&, Hash_table&, const char**);
   int get_token(YYSTYPE *valp, YYLTYPE* locp);
-  void reset();
+  bool reset(); // get clean slate, return |false| if |getline()| fails
   void set_comment_delims (char c, char d) @+
           {@; comment_start=c; comment_end=d; }
+  const char* scanned_file_name() const {@; return file_name.c_str(); }
 private:
   void skip_space();
+  char* scan_quoted_string();
 };
+
+@ Since there is one lexical analyser object, and other parts of the program
+must have access to it, we define a static variable with a pointer to it.
+
+@< Declarations of static variables @>=
+extern Lexical_analyser* lex;
+
+@~We initialise this variable to the null pointer; the main program will make
+it point to the main hash table once it is allocated.
+
+@< Definitions of static variables @>=
+Lexical_analyser* lex=NULL;
 
 
 @ Here is the constructor for the lexical analyser, which assumes that a
@@ -394,7 +411,7 @@ unwieldy, we use another value.
 Lexical_analyser::Lexical_analyser
   (BufferedInput& source, Hash_table& hash, const char** keywords)
 : input(source),id_table(hash),nesting(0)
- ,prevent_termination('\0'),ended(false)
+ ,prevent_termination('\0'),state(initial)
 { @< Install |keywords| into |id_table| @>
   comment_start=comment_end=256; // a non-|char| value
 }
@@ -404,7 +421,7 @@ entered into |id_table|; therefore the order in the list |keyword| passed to
 the constructor should match the numeric \.{\%token} values define in
 \.{parser.y}. The actual code transmitted for keywords will be obtained by
 adding the constant |FIRST_KEYWORD_CODE| to the value returned from the hash
-table lookup.
+table look-up.
 
 @< Install |keywords| into |id_table| @>=
 { for (size_t i=0; keywords[i]!=0; ++i)
@@ -416,11 +433,12 @@ table lookup.
 discarding any remaining input on the current line and clearing the |nesting|
 level. It is safe to call |reset| after a successfully executed command, which
 will fetch a new line without getting any tokens, but |reset| should not be
-called twice in succession, as this will discard the newly fetched line.
+called twice in succession, as this will discard the newly fetched line. The
+result returned tells whether a fresh line was successfully obtained.
 
 @< Definitions of class members @>=
-void Lexical_analyser::reset()@+
-{@; nesting=0; input.reset(); input.getline(); ended=false; }
+bool Lexical_analyser::reset()
+{@; nesting=0; state=initial; input.reset(); return input.getline(); }
 
 @ Skipping spaces is a rather common activity during scanning; it is performed
 by |skip_space|. When it is called, the first potential space character has
@@ -433,6 +451,14 @@ possibility of ending input. In the former case we change the input prompt by
 pushing the comment character to warn the user that no action has been
 performed. In case |prevent_termination| is set, that character is also pushed
 input the prompt for the duration of skipping spaces.
+
+In case end of input occurs one obtains |shift()=='\0'|. If this happens in
+the main loop then we break from it like for any non-space character, and
+although the following |input.unshift()| does nothing, the value |'\0'| should
+reappear at the next call of |shift|. If end of input occurs during a comment,
+then the comment is terminated due to the explicit test, and again the
+persistence of |shift()=='\0'| will guarantee that the end of input eventually
+turns up in non-skipping context.
 
 @h<cctype>
 
@@ -450,7 +476,7 @@ void Lexical_analyser::skip_space(void)
     { input.push_prompt(comment_start);
       do c=input.shift(); while (c!=comment_end && c!='\0');
       input.pop_prompt();
-      if (c=='\n' || c=='\0') input.unshift(); // reconsider those characters
+      if (c=='\n') input.unshift(); // reconsider newline character
     }
     else break; // non-space and non-comment character
   } while(true);
@@ -458,38 +484,96 @@ void Lexical_analyser::skip_space(void)
   input.unshift(); // prepare to re-read character that ended space
 }
 
+@ Another auxiliary method is used for scanning a quoted string; it should be
+called when an initial double-quote character has been recognised, and after
+scanning the string returns a pointer to the designated string (with quotes
+and escapes removed), null terminated and allocated by |new|. We currently use
+a simple model for strings. They should be contained in a single line, and the
+only escapes used are the doubling of double-quote characters. We copy the
+string while reducing doubled double-quote characters to single ones.
+
+
+@< Definitions of class members @>=
+char* Lexical_analyser::scan_quoted_string()
+{ const char* start=input.point(),*end;
+  int nr_quotes=0; // number of escaped quotes
+  do
+  { char c;
+    do c=input.shift(); while (c!='"' && c!='\n' && c!='\0');
+    if (c!='"')
+    { input.unshift(); end=input.point();
+      int l0,c0,l1,c1;
+      input.locate(start,l0,c0); input.locate(end,l1,c1);
+      input.show_range(cerr,l0,c0,l1,c1);
+      cerr << "Closing string denotation.\n";
+      break;
+    }
+    else if ((c=input.shift())!='"')
+    {@; input.unshift(); end=input.point()-1; break; }
+    else ++nr_quotes; // for doubled quotes, continue
+  } while (true);
+  size_t len=end-start-nr_quotes;
+  char* s=new char[len+1];
+  while (start<end) // copy characters, undoubling doubled quotes
+    if ((*s++=*start++)=='"') ++start;
+  *s='\0'; return s-len;
+}
+
+
 @*1 The main scanning routine.
+%
 Now we come to the function |get_token| that will actually be called by the
 parser and return a token to it. The token is an integral value that is either
 a character code in the case of single character tokens, or a token value
-defined in \.{parser.tab.h}. The null character has the special meaning of
-signalling the end of the input, which the parser wants to see before
-returning successfully.
+defined in \.{parser.tab.h}. The null token value has the special meaning of
+signalling the end of the input to be recognised by the parser, which it wants
+to see before returning successfully. Since our parser is written to recognise
+individual commands rather than the full input source, we take measures to
+send a null token after each command, even though the input buffer does
+not signal end of input.
 
-The beginning of |get_token| is a work-around of a nasty property of the
-parsers generated by \.{bison}, namely that on one hand the end-if-input token
-is not representable in syntax rules (it should follow input matching the
-target symbol, but is not part of the production(s) for the target symbol),
-while on the other hand the parser will perform any unambiguous reduction of
-the input it has seen, even if the lookahead token is wrong for that reduction
-(so a syntax error will be reported \emph{after} the reduction is performed).
-This means that if we would define some command as production for the target
-symbol, and perform the action for that command in the reduction for that
-rule, then the action will be performed even if the command is only an initial
-part of the command and followed by a token that should not be there; a syntax
-error will be flagged but the command will already be executed. One would like
-to restrict performing the reduction to the situation where the command
-corresponds to the entire input, but this cannot be done because the
-end-if-input token cannot be explicitly matched. (One may imagine that
-premature reduction could cause problems in other positions as well, but this
-is by far the most irritating one where no grammar rewriting can help.) To
-circumvent this problem, we adapt our lexical analyser so that it will always
-emit an specific token just before the end-if-input null character; this token
-can than be matched in productions for the target symbol. We choose to
-transmit the end-of-line character |'\n'| for this purpose. But in order to
-guarantee that this token is always followed by a null character, we make it
-raise the flag |ended| that will force the function |get_token| to emit a null
-character on the next call.
+If it should happen that the input buffer does signal end of input by making
+|input.shift()=='\0'|, then this will be transmitted to the parser as the end
+of a command by the code below, by the general mechanism that characters that
+are not specifically recognised are transmitted with a token value equal to
+the character value. But this is really a marginal case, since the input
+buffer guarantees that end of input cannot occur in the middle of a line;
+normally the previous line will therefore be completely processed, and the
+end-of-input condition is signalled by a failure of the call of the |reset|
+method of the lexical analyser rather than by |input.shift()=='\0'| occurring
+in its |getline| method. The only way the latter can happen is if the
+preceding newline character was ignored by |skip_space|, due to
+|prevent_termination| or |nesting|.
+
+The way in which we arrange to signal the end of a command from |get_token| is
+by sending \emph{two} successive tokens, a |'\n'| followed by a null token.
+This strange setup is a work-around of a nasty property of the parsers
+generated by \.{bison}, namely that on one hand the required terminal null
+token is not representable in syntax rules (it should follow input matching
+the target symbol, but is not part of its production), while on the other hand
+the parser will perform any unambiguous reduction of the input it has seen,
+even if the lookahead token is wrong for that reduction (so a syntax error
+will be reported \emph{after} the reduction is performed). This means that if
+we would define the syntax of commands normally, and if such a command would
+occur correctly in the input but followed by extra tokens, then the reduction
+recognising and executing the command would be performed \emph{before}
+flagging a syntax error for the spurious tokens, which is undesirable.
+Therefore we include into the production for any command the |'\n'| token that
+is guaranteed by our lexical analyser to precede the terminating null token,
+thus ensuring that the command will only be executed if it constitutes the
+complete user input.
+
+(One may imagine that premature reduction could cause problems in other
+positions as well, but this is by far the most irritating one where no grammar
+rewriting can help.)
+
+The implementation of this two-token termination reporting is by setting
+|state=ended| when the token |'\n'| is returned, and testing this condition as
+the first action in |get_token|, sending the following null token if it holds.
+The |state| variable is also used to allow the scanner to behave differently
+while scanning the very first token of a command, when |state==initial| will
+hold; once a token is scanned, |state| is set to |normal| unless scanning had
+set it to |ended|.
 
 Besides returning a token code, each token defines a value for
 |prevent_termination|. Since the previous value is only used in |skip_space|,
@@ -497,9 +581,12 @@ we set this variable to its most common value |'\0'| after the call to that
 function, so that only for those tokens that cannot end a command we have to
 set that value explicitly.
 
+The code below also deals with setting the fields of the |locp| to delimit the
+token scanned.
+
 @< Definitions of class members @>=
 int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
-{ if (ended) {@; ended=false; return 0; } // send end of input
+{ if (state==ended) {@; state=initial; return 0; } // send end of input
   skip_space(); prevent_termination='\0';
   input.locate(input.point(),locp->first_line,locp->first_column);
   int code; char c=input.shift();
@@ -507,7 +594,7 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
   else if (isdigit(c)) @< Scan a number @>
   else @< Scan a token starting with a non alpha-numeric character @>
   input.locate(input.point(),locp->last_line,locp->last_column);
-  return code;
+@/if (state==initial) state=normal; return code;
 }
 
 @ Everything that looks like an identifier is either that or a keyword. In any
@@ -540,9 +627,12 @@ values.
   valp->val=val; code=INT;
 }
 
-@ After splitting off the alphanumeric characters, the scanner plunges into
-a large switch on the value of the look-ahead character~|c|. We increase and
-decrease nesting on obvious grouping characters.
+@ After splitting off the alphanumeric characters, the scanner plunges into a
+large switch on the value of the look-ahead character~|c|. We increase and
+decrease nesting on obvious grouping characters, and for certain characters we
+store them into |prevent_termination| to prevent a newline to be interpreted
+as command termination. If in the |initial| state we find a |'>'| character,
+then we prepare for output redirection.
 
 @< Scan a token... @>=
 { switch(c)
@@ -553,9 +643,16 @@ decrease nesting on obvious grouping characters.
   break; case ')':
          case '}':
          case ']': --nesting; input.pop_prompt(); code=c;
-  break; case '=':
-         case '<':
+  break; case '<':
          case '>':
+         if (state==initial)
+         { code= c=='<' ? FROMFILE :
+                 input.shift()=='>' ? ADDTOFILE :
+                 (input.unshift(),TOFILE) ;
+	   @< Read in |file_name| @> break;
+         }
+    @/// |else| {\bf fall through}
+         case '=':
          case '+':
          case '-':
          case '*':
@@ -564,44 +661,40 @@ decrease nesting on obvious grouping characters.
          case ':': prevent_termination=c; code=c;
   break; case '/': prevent_termination=c;
     code= input.shift()=='%' ? DIVMOD : (input.unshift(),'/');
-  break; case '\n': ended=true; // and FALL THROUGH.
+  break; case '\n': state=ended; // and {\bf fall through}.
          default: code=c;
   }
 }
 
-@ We currently use a simple model for strings. They should be contained in a
-single line, and can contain only an escape for a double quote character. We
-copy the string while reducing doubled double-quote characters to single ones.
-We hand a string denotation rather than a |(char *)| value to the parser,
-because this way if the parser should decide to drop the token after a syntax
-error, it will get clean up by |destroy_expr|.
+@ We hand to the parser a string denotation expression in |valp|, rather than
+the |(char *)| value returned by |scan_quoted_string()|, thus performing some
+work that is usually left to the parser. The reason for this is that it avoids
+having to extend union of possible token values with a variant for |(char *)|
+and to define a corresponding destructor for in case the parser should decide
+to drop the token after a following syntax error (for a token value that is a
+string denotation expression, this is already handled by |destroy_expr|).
 
 @h <cstring>
 @< Scan a string... @>=
-{ const char* start=input.point(),*end;
-  int nr_quotes=0; // number of escaped quotes
-  do
-  { do c=input.shift(); while (c!='"' && c!='\n' && c!='\0');
-    if (c!='"')
-    { input.unshift(); end=input.point();
-      int l0,c0,l1,c1;
-      input.locate(start,l0,c0); input.locate(end,l1,c1);
-      input.show_range(cerr,l0,c0,l1,c1);
-      cerr << "Closing string denotation.\n";
-      break;
-    }
-    else if ((c=input.shift())!='"')
-    {@; input.unshift(); end=input.point()-1; break; }
-    else ++nr_quotes; // for doubled quotes, continue
-  } while (true);
-  size_t len=end-start-nr_quotes;
-  char* s=new char[len+1];
-  while (start<end) // copy characters, undoubling doubled quotes
-    if ((*s++=*start++)=='"') ++start;
-  *s='\0'; valp->expression=make_string_denotation(s-len);
+{@; valp->expression=make_string_denotation(scan_quoted_string());
   code=STRING;
+}
+
+@ Since file names have a different lexical structure than identifiers, they
+are treated separately in the scanner; moreover since at most one file name
+can occur per command, we store in a field |file_name| of the lexical scanner
+reserved for that purpose. We allow a file name to be either a sequence of
+non-space characters not starting with a quote, or a quoted string.
+
+@< Read in |file_name| @>=
+if ((skip_space(),c=input.shift())=='"')
+@/{@; char* s=scan_quoted_string(); file_name=s; delete[] s; }
+else
+@/{@; file_name="";
+    while (!isspace(c)){@; file_name+=c; c=input.shift(); }
+    input.unshift();
 }
 
 @* Index.
 
-% Local IspellDict: default
+% Local IspellDict: british

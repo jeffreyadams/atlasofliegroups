@@ -2,7 +2,7 @@
 atlas_sources := ..
 
 # only the directories listed below of the atlas sources are actually used
-ATLAS_DIRS := structure utilities error io
+ATLAS_DIRS := utilities structure gkmod error io
 
 # this variable is used both by g++, and by cweavex needing the trailing slash
 INCLUDE_FLAGS := $(ATLAS_DIRS:%=-I$(atlas_sources)/%/)
@@ -53,7 +53,25 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/structure/realredgp.o \
  $(atlas_sources)/structure/topology.o \
  $(atlas_sources)/io/prettyprint.o \
- $(atlas_sources)/io/basic_io.o
+ $(atlas_sources)/io/basic_io.o \
+ $(atlas_sources)/gkmod/blocks.o \
+ $(atlas_sources)/gkmod/kgb.o \
+ $(atlas_sources)/gkmod/bruhat.o \
+ $(atlas_sources)/io/ioutils.o \
+ $(atlas_sources)/io/block_io.o \
+ $(atlas_sources)/io/realredgp_io.o \
+ $(atlas_sources)/io/complexredgp_io.o \
+ $(atlas_sources)/io/realweyl.o \
+ $(atlas_sources)/io/realweyl_io.o \
+ $(atlas_sources)/io/cartan_io.o \
+ $(atlas_sources)/gkmod/klsupport.o \
+ $(atlas_sources)/gkmod/kl.o \
+ $(atlas_sources)/gkmod/wgraph.o \
+ $(atlas_sources)/io/kl_io.o \
+ $(atlas_sources)/utilities/graph.o \
+ $(atlas_sources)/error/kl_error.o \
+ $(atlas_sources)/io/kgb_io.o \
+ $(atlas_sources)/io/wgraph_io.o
 
 cwebx_sources := $(wildcard *.w)
 
@@ -142,4 +160,5 @@ parser.tab.o: parser.tab.c parsetree.h
 
 lexer.o lexer.tex: parser.tab.h buffer.h
 evaluator.o evaluator.tex: lexer.h parsetree.h
+built-in-types.o built-in-types.tex: evaluator.h
 main.o main.tex: $(headers)

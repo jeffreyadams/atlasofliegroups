@@ -15,30 +15,30 @@ having to copy the characters to a separate string during the initial scan
 (but admittedly this will only be practical if the token characters can be used
 ``as is'', in other words there are no escaped or encoded characters). The
 buffer also contains a line counter, so that the lexical analyser need not
-worry about that (and indeed it could not, if newlines are transparently
+worry about that (and indeed it could not, since newlines are transparently
 escaped).
 
-Currently this is all the functionality implemented, but in the future one
-could easily add methods to recursively open a subsidiary input file upon an
+We have added the functionality to open a subsidiary input file upon an
 existing buffered input object, thus creating a stack of files from which
-input will be read, possibly with transparent popping of exhausted files; if
-one similarly enables temporarily redirecting input to a given string, one
-could even implement a simple macro mechanism this way. But none of that is
-done yet.
+input will be read; exhausted files will be transparently popped, returning
+control to the file active at the point they were opened.
 
 
 @( buffer.h @>=
 
 #ifndef BUFFER_H
 #define BUFFER_H
-#include<iostream>
-#include<string>
+
+@< Includes needed in the header file @>@;
+
+
 namespace atlas
 { namespace interpreter
-   {@;
+ {
 @< Class declaration @>@;
 @< Inline function definitions @>@;
-   }@;
+@< Declarations of static variables @>@;
+ }@;
 }@;
 #endif
 
@@ -46,25 +46,34 @@ namespace atlas
 @h<iostream>
 @h "buffer.h"
 @c
-using namespace std;
+
 namespace atlas
-{@; namespace interpreter
-   {@;
+{ namespace interpreter
+  {
 @< Definitions of class members @>@;
-   }@;
+@< Definitions of static variables @>@;
+  }@;
 }@;
 
 
-@ The class will be based on an |istream|, which seems the proper point in the
-I/O class hierarchy, since we want to hide the distinction between input from
-a file or from a terminal. However, we want to be able to build upon an
-existing |istream|, notably |cin|, and since their copy constructor is
-private, we must use a reference or pointer to the |istream|, which excludes
-using heritage. This is no problem, since we do not want to allow calling such
-|istream| member functions as |>>|, |getline|, |get| or |unget| directly
-anyway, since this would bypass the line buffer (these calls would apply to
-input beyond the current line, disregarding the unprocessed part of that
-line).
+@ The class will make use of one or more |std::istream| values, which could
+correspond to a file or to a terminal input stream. However, the  copy
+constructor for that class is private, so there is no question of actually
+containing data members of that type; they will be referred to by pointers.
+
+@< Includes needed in the header file @>=
+#include<iostream>
+
+@~Here is the main part of the class definition, giving the principal user
+interface. The methods |shift|, |unshift|, |eol| and |getline| give the basic
+functionality of a line-buffered input stream. The method |push_file| opens a
+new level of input, taking control immediately, and until it is exhausted
+(although it can itself be interrupted by further calls of |push_file|). Such
+input files should be opened after processing a complete line from the current
+file, since calling |push_file| causes the current line of input to be
+abandoned and forgotten. Another method |close_includes| is provided to allow
+aborting all includes in case of errors. The private method |pop_file| is
+called when an additional input stream is exhausted.
 
 @< Class declaration @>=
 class BufferedInput
@@ -77,20 +86,47 @@ class BufferedInput
     BufferedInput (std::istream& s);
         // associate line buffer to raw input stream
     BufferedInput (const char* prompt
-                  , rl_type rl=0, add_hist_type=0
+                  , rl_type rl=NULL, add_hist_type=NULL @|
 		  , const char* prompt2="> ");
         // use |stdin|, maybe with readline
+    ~BufferedInput();
 @)
     char shift (); // inspect a new character
     void unshift (); // back up so last character will be reconsidered
     bool eol () const; // end of line: |true| if |shift| would return a newline
     bool getline ();
          // fetch a new line to replace current one; |true| if successful
+    void push_file (const char* file_name);
+    void close_includes();
     @< Other methods of |BufferedInput| @>@;
+private:
+    void pop_file();
 };
 
+@ There will be one main input buffer, and other parts of the program must
+have access to it, for instance to call the |push_file| method; therefore we
+define a static variable with a pointer to this input buffer.
 
-@ Our object stores the last line read in its |line_buffer| field, and the
+@< Declarations of static variables @>=
+extern BufferedInput* main_input_buffer;
+
+@~We initialise this variable to the null pointer; the main program will make
+it point to the main hash table once it is allocated.
+
+@< Definitions of static variables @>=
+BufferedInput* main_input_buffer=NULL;
+
+@ In our implementation we use the class |std::string| and the template class
+|std::stack|.
+
+@< Includes needed in the header file @>=
+#include <string>
+#include <stack>
+#include <fstream>
+
+@~At construction an |InputBuffer| object will fix a reference |base_stream|
+to the input stream to be used when no additional input files are open.
+Furthermore it stores the last line read in its |line_buffer| field, and the
 pointer~|p| points to the next character to be produced by |shift()|. In case
 this buffer is used for terminal input, a prompt string is stored and will be
 printed every time the program requests more input; this is the |prompt|
@@ -100,23 +136,31 @@ that of the |BufferedInput| object created. We also store a secondary prompt
 to temporarily change the prompt to indicate that some input needs completion.
 In case of terminal input, the input may be pre-processed by the function
 |readline|, which is typically going to be the function of that name from the
-\.{readline} library; then one may also want to use another function stored in
-|add_hist| to store lines for interactive retrieval, typically the
+GNU~\.{readline} library; then one may also want to use another function
+stored in |add_hist| to store lines for interactive retrieval, typically the
 |add_history| function from the history library. The member |line_no| holds
 the number of the current line, or more precisely of the first of |cur_lines|
 lines that are currently read into |line_buffer| (if more than one, they were
 joined by escaped newlines). We record the length of the last prompt printed
-in |prompt_length| for the purpose of pointing to tokens.
+in |prompt_length| for the purpose of pointing to tokens. Finally there is a
+stack |input_stack| of active input files (which are accessed by pointers
+since |std::ifstream| objects cannot be put in a stack themselves) together
+with their file names, and a pointer |stream| that always points to the
+current input stream.
 
 @< Data members... @>=
-std::istream& stream;
-std::string line_buffer;
-const char* p, *prompt, *prompt2;
-std::string temp_prompt;
-rl_type readline;
-add_hist_type add_hist;
-unsigned long line_no;
-int cur_lines,prompt_length;
+std::istream& base_stream;
+std::string line_buffer; // current line
+const char* p; // buffer pointer
+const char *const prompt, *const prompt2; // primary and secondary prompt
+std::string temp_prompt; // varying addition to secondary prompt
+const rl_type readline; // readline function
+const add_hist_type add_hist; // history function
+unsigned long line_no; // current line number
+int cur_lines,prompt_length; // local variables
+std::stack<std::pair<std::ifstream*,std::string> > input_stack;
+  // active input streams
+std::istream* stream; // points to the current input stream
 
 @ There are two constructors, one for associating an input buffer to some
 (raw) |istream| object (which may represent a disk file or pipe), another for
@@ -125,25 +169,71 @@ function only apply to the second case (and |rl| may be a null pointer to
 request no input editing). Constructing the class does not yet fetch a line.
 
 @< Definitions of class members @>=
-BufferedInput::BufferedInput (istream& s)
+BufferedInput::BufferedInput (std::istream& s)
 @/:
-stream(s),line_buffer(),p(NULL),prompt(""),prompt2(""),temp_prompt(""),@|
-readline(NULL),add_hist(NULL),line_no(1),cur_lines(0)
-{}
+base_stream(s),line_buffer(),p(NULL),prompt(""),prompt2(""),temp_prompt(""),@|
+readline(NULL),add_hist(NULL),line_no(1),cur_lines(0),input_stack()
+{@; stream=&base_stream; }
 
 BufferedInput::BufferedInput
 (const char* pr, rl_type rl, add_hist_type ah,const char* pr2)
 @/:
-stream(cin),line_buffer(),p(NULL),prompt(pr),prompt2(pr2),temp_prompt(""),@|
-readline(rl),add_hist(ah),line_no(1),cur_lines(0)
-{}
+base_stream(std::cin),line_buffer(),p(NULL),
+prompt(pr),prompt2(pr2),temp_prompt(""),@|
+readline(rl),add_hist(ah),line_no(1),cur_lines(0),input_stack()
+{@; stream=&base_stream; }
+
+@ The destructor for a buffer must remove any |std::istream| objects currently
+pointed to by elements of the |input_stack|. As a consequence these input
+files will be closed. The |base_stream| however, which existed before the
+construction of the buffer, is not closed.
+
+@< Definitions of class members @>=
+BufferedInput::~BufferedInput()
+{ while (not input_stack.empty())
+  {@; delete input_stack.top().first; input_stack.pop(); }
+}
+
+@ When an input file is exhausted it is closed and popped from the stack, and
+|stream| is set to the previous input stream. When |close_includes| is called
+all auxiliary input files are closed. Although its the initial loop of that
+method coincides with the action of the destructor function, it would seem
+inappropriate to call that function explicitly, since the object continues to
+exist.
+
+@< Definitions of class members @>=
+void BufferedInput::pop_file()
+{ delete input_stack.top().first; input_stack.pop();
+  stream= input_stack.empty() ? &base_stream : input_stack.top().first;
+}
+@)
+void BufferedInput::close_includes()
+{ while (not input_stack.empty())
+  {@; delete input_stack.top().first; input_stack.pop(); }
+  stream= &base_stream;
+}
+
+
+@ Pushing a new input file requires constructing the new |std::istream| object
+in dynamic memory, opening it at the same time, and if successful pushing it
+on the input stack and pointing |stream| to it;
+
+@< Definitions of class members @>=
+void BufferedInput::push_file(const char* name)
+{ std::ifstream* new_file = new std::ifstream(name);
+  if (new_file->good())
+  @/{@; input_stack.push(std::make_pair(new_file,std::string(name)));
+    stream=new_file;
+  }
+  else std::cerr << "failed to open input file '" << name << "'.\n";
+}
 
 @ A line is ended if |p| is either null (indicating an absence of any line
 buffered, as is initially the case), or points to a null character (the one
 terminating the line buffer, which always follows a newline character).
 
 @< Inline fun... @>=
-inline bool BufferedInput::eol() const @+{@; return p==0 || *p=='\0'; }
+inline bool BufferedInput::eol() const @+{@; return p==0 or *p=='\0'; }
 
 
 @ The member function |getline| is usually called at times when |eol()| would
@@ -184,77 +274,107 @@ they should really never make a difference.
 
 @< Definitions of class members @>=
 bool BufferedInput::getline()
-{ string line; line_buffer="";
+{ std::string line; line_buffer="";
   line_no+=cur_lines; cur_lines=0;
   const char* pr=@< Prompt for the next line@>@;@;;
-  do
-  { @< Read a line into |line| omitting the final newline,
-       and increment |cur_lines|@>
-    string::size_type l=line.length();
-    while (l>0 && isspace(line[l-1])) --l;
+   while (stream->good())
+  { @< Get a line without newline, either from |stream| or if exhausted from a
+       previous input stream; if no line can be obtained at all, |break| @>
+    ++cur_lines;
+    std::string::size_type l=line.length();
+    while (l>0 and std::isspace(line[l-1])) --l;
     if (l<line.length()) line.erase(l); // remove trailing space
-    if (l==0 || line[l-1]!='\\') {@; line_buffer+=line; break; }
+    if (l==0 or line[l-1]!='\\') {@; line_buffer+=line; break; }
     line.erase(l-1); line_buffer+=line; pr= "\\ "; // continuation prompt
-  } while (true);
+  }
   line_buffer.push_back('\n'); // add newline that was suppressed on reading
   p=line_buffer.data();
-  return stream.good() || line_buffer.length()>1;
+@/return stream->good() or cur_lines>0 ;
+  // delay reporting end of input if anything was read
 }
 
-@ When a temporary prompt is set (it is a non-empty string) then the prompt
-for the next line will be that string followed by a space and the secondary
-prompt.
+@ When a temporary prompt is non-empty (the lexical analyser will typically
+set it to indicate that for some reason the previous line is incomplete) then
+the initial prompt (one not following an escaped newline) will be that
+temporary prompt followed by a space and the secondary prompt.
 
 @< Prompt for the next line@>=
 (temp_prompt.empty() ? prompt : (temp_prompt+" "+prompt2).c_str())
 
+@ Reading a line might fail, in which case an error condition will be set on
+the input stream |*stream|. If that happens for an additional input file, we
+call |pop_file()| to change back to the previous input stream and try again.
+
+@< Get a line without newline, either from |stream| or... @>=
+{ do @< Read a line into |line|, prompting with |pr| if appropriate @>
+  while(line.empty() and not stream->good() and not input_stack.empty()
+        and (pop_file(),true));
+  if (line.empty() and not stream->good()) break;
+  // no more input streams active, so give up
+}
+
 @ Actually getting a line is taken care of by the |readline| function if
-present, or by |std::getline|. Both chop the newline from the line, which is
-the reason our module is called the way it is. The GNU |readline| function is
-written in \Cee, so it cannot help returning its result in a |malloc|-ed
-\Cee-style string. We copy it to the |string| object |line| and then free the
-string returned by |readline|, unless |add_hist| is also set and the line is
-non-empty: then the string is presumable stored away without copying (the
-history library documentation suggests this without stating it clearly), so
-calling |free| would be an error.
+present, or by |std::getline|. Both chop the newline from the line. A
+particularity of the GNU |readline| function is that upon typing \.{\^D} at
+the start of a line it will signal a file-ended condition by returning a null
+pointer, but it will not actually set the end-of-file condition on the
+standard input stream; to obtain uniform behaviour between the various input
+streams we therefore manually set the end-of-file on |std::cin| when this
+happens; we also echo \.{\^D} to give the user feedback that the end-of-file
+signal was understood.
+
+The GNU |readline| function is written in \Cee, so it cannot help returning
+its result in a |malloc|-ed \Cee-style string. We copy it to the |string|
+object |line| and then free the string returned by |readline|, unless
+|add_hist| is also set and the line is non-empty: then the string is
+presumable stored away without copying (the history library documentation
+suggests this without stating it clearly), so calling |free| would be an
+error.
 
 @h <cstring>
+
 @< Read a line... @>=
-{ prompt_length= &stream==&cin ? strlen(pr) : 0;
-  if (readline!=0)
+if (stream==&std::cin) // which implies |input_stack.empty()|
+{ prompt_length= std::strlen(pr);
+  if (readline!=NULL)
   { char* l=readline(pr);
-    if (l==0) line="";
+    if (l==NULL) // then |readline| failed, flag end of file
+    {@; line=""; stream->setstate(std::ios_base::eofbit);
+      std::cout << "^D\n";
+    }
     else
-    { line=l;
-      if (add_hist!=0 && *l!='\0') add_hist(l);
+    @/{@; line=l;
+      if (add_hist!=NULL and *l!='\0') add_hist(l);
       else free(l);
     }
   }
-  else
-  {@; if (&stream==&cin) cout << pr;
-    std::getline(stream,line,'\n');
-  }
-  ++cur_lines;
+  else {@; std::cout << pr; std::getline(std::cin,line,'\n'); }
 }
+else std::getline(*stream,line,'\n');
 
 
 @ We have seen that |shift| should call |getline| when necessary. It does so
 at most once, since there is at least a newline character to return from the
 line fetched. If |getline| is called and returns failure, then we return a
-null character to signal end of input (this should probably not happen on
-|stdin|). Using a null character to signal file end makes this buffer unsuited
-for reading binary files, but that is not our purpose here, and it is more
-practical than returning a non-|char| value (which would require a different
-signature).
+null character to signal end of input, while setting |p| to a null pointer to
+ensure that the |eol()| condition holds, and that subsequent calls to |shift|
+will continue to fail. Using a null character to signal file end makes this
+buffer unsuited for reading binary files, but that is not our purpose here,
+and it is more practical than returning a non-|char| value (which would
+require a different signature). We want behaviour to be well defined when
+|unshift| is called after |shift| returned a null character or in other
+strange ways (before calling |shift| for instance), so we perform
+simple test before decrementing |p|.
 
 @< Inline fun... @>=
 inline char BufferedInput::shift()
 { if (eol())
-    if (!getline()) return '\0'; // signals file end
+    if (not getline()) {@; p=NULL; return '\0'; } // signals file end
   return *p++;
 }
-
-inline void BufferedInput::unshift() {@; --p; }
+@)
+inline void BufferedInput::unshift()
+{@; if (p!=NULL and p>line_buffer.data()) --p; }
 
 
 @* Secondary buffer methods.
@@ -277,8 +397,8 @@ void locate (const char* p, int& line, int& column) const;
 |line_buffer.data()|. This describes points that lie in lines continued by
 escaped newlines somewhat cryptically (the line number is that of the first of
 those lines, and the column number is the accumulated offset), but this could
-be improved later by maintaining a list of indices at which escaped newlines
-were removed.
+be improved in the future by maintaining a list of indices at which escaped
+newlines were removed.
 
 @< Definitions of class members @>=
 void BufferedInput::locate (const char* p, int& line, int& column) const
@@ -303,12 +423,16 @@ void BufferedInput::show_range
   const
 { if (l1==line_no)
   { int pl=prompt_length; // offset of last line on the screen
-    if (&stream!=&cin || cur_lines>1)
-      {@; out<<line_buffer; pl=0;} // echo line in these cases
+    if (stream!=&std::cin or cur_lines>1)
+    { if (not input_stack.empty())
+        out << "In input file '" << input_stack.top().second << "', ";
+      if (stream!=&std::cin) out << "line " << l0 << ":\n";
+      out<<line_buffer; pl=0; // echo line in these cases
+    }
     if (l0<l1) c0=0; // forget start column of multi-line range
     for (int i=pl+c0; i>0; --i) out<<' ';
     for (int i=c1; i>c0; --i) out<<'^';
-    out << endl;
+    out << std::endl;
     if (l0<l1)
       if (l1-l0==1) out << "Range started in previous line\n";
       else out << "Range started " << (l1-l0) << "lines above\n";

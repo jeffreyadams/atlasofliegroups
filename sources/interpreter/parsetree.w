@@ -417,11 +417,12 @@ expr make_application_node(id_type f, expr_list args)
 }
 
 @* Other functions callable from the parser.
-Here is one function that is not so much a parsing function but just a
-wrapper function enabling the parser to interrogate the identifier table.
+Here are some functions that are not so much a parsing functions as just
+wrapper functions enabling the parser to call \Cpp~functions.
 
 @< Declaration of functions in \Cee-style for the parser @>=
 short lookup_identifier(const char*);
+void include_file();
 
 @~The parser will only call this with string constants, so we can use the
 |match_literal| method.
@@ -429,6 +430,16 @@ short lookup_identifier(const char*);
 @< Definitions of functions in \Cee-style for the parser @>=
 id_type lookup_identifier(const char* name)
 {@; return atlas::interpreter::main_hash_table->match_literal(name); }
+
+@~To include a file, we call the |push_file| method from the input buffer,
+providing a file name that was remembered by the lexical analyser.
+
+@< Definitions of functions in \Cee-style for the parser @>=
+void include_file()
+{@;
+  atlas::interpreter::main_input_buffer->push_file
+ (atlas::interpreter::lex->scanned_file_name());
+ }
 
 @ The next functions are declared here, because the parser needs to see these
 declarations in \Cee-style, but they are defined in in the file

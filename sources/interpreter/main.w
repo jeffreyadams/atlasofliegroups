@@ -8,10 +8,7 @@ Any calls to \Cpp-code will use explicit namespace resolution.
 @c
 
 @< Declaration of interface to the parser @>@;
-namespace
-{ @< Definition of keywords @>@;
-  @< Static data @>@;
-}@;
+namespace { @< Local static data @>@; }@;
 @< Definition of wrapper functions @>@;
 @< Main program @>
 
@@ -22,10 +19,11 @@ below. Curiously, the program~\.{bison} does not write this prototype to
 |YYLTYPE| there; these require that \.{parsetree.h} be included first. We also
 declare ``{\tt\%parse-param \char`\{} |int* verbosity, expr* parsed_expr@;|
 {\tt\char`\}}'' in~\.{parser.y}, so that the parser itself, |yyparse|, takes
-an integer pointer as parameter, which it uses to signal requested
-termination, and a pointer to an expression, in which it writes the result of
-parsing. Since these functions form the interface to the parser written
-in~\Cee, we must declare these definitions |extern "C"@;|.
+an integer pointer as parameter, which it uses to signal special requests from
+the user (such as verbose output but also termination or output redirection),
+and a pointer to an expression, in which it writes the result of parsing.
+Since these functions form the interface to the parser written in~\Cee, we
+must declare these definitions |extern "C"@;|.
 
 @h "parsetree.h"
 @h "parser.tab.h"
@@ -43,84 +41,124 @@ the offset of the keyword in this list to |QUIT|, so the recognition depends
 on the fact that |"quit"| is the first keyword, and that they are listed below
 in the same order as in the \.{\%token} declaration in \.{parser.y}.
 
-@< Definition of keywords @>=
+@< Local static data @>=
 
 const char* keywords[] =
- {"quit","true","false","quiet","verbose","whattype","printall",NULL};
+ {"quit","true","false","quiet","verbose","whattype","showall",NULL};
 
 @ Our lexical analyser is defined as a class, which we shall instantiate in
 the main program. In order for the lexical analyser wrapper function to access
-it, we need to install static pointer to it.
+it, we need to install static pointer to it; the same is true for the input
+buffer object.
 
 @h "buffer.h"
 @h "lexer.h"
 
-@< Static data @>=
+@< Local static data @>=
 
-atlas::interpreter::Lexical_analyser* lex;
-atlas::interpreter::BufferedInput* main_input_buffer;
 
 @ Here are the wrapper function for the lexical analyser and the error
 reporting function, which are necessary because the parser cannot directly
-call a class method.
+call a class method. After reporting a syntax error we close any open include
+files, since it seems unlikely that continuing to execute the file would be
+useful.
 
 @< Definition of wrapper functions @>=
 
 extern "C"
 int yylex(YYSTYPE *valp, YYLTYPE *locp)
-@+{@; return lex->get_token(valp,locp); }
+@+{@; return atlas::interpreter::lex->get_token(valp,locp); }
 @)
 extern "C"
 void yyerror (YYLTYPE* locp, expr* parsed_expr,int* verbosity,char const *s)
-{ main_input_buffer->show_range(std::cerr,
+{ atlas::interpreter::main_input_buffer->show_range@|(std::cerr,
    locp->first_line, locp->first_column,
    locp->last_line,  locp->last_column);
   std::cerr << s << std::endl;
+  atlas::interpreter::main_input_buffer->close_includes();
 }
 
 
-@ In our main program we first sign on to the history library, then allocate
-the necessary objects to install the lexical scanner, and then in a loop call
-the parser until it sets |verbosity<0|, which is done upon seeing the \.{quit}
-command. We call the |reset| method of the lexical scanner before calling the
-parser, which will discard any input that is left be a possible previous
-erroneous input (it also already fetches a new line of input, but that is not
-the point here; this would happen anyway upon the first call of |yylex| by the
-parser).
+@ After a basic initialisation, our main program constructs unique instances
+for various classes of the interpreter, and sets pointers to them so that
+various compilation units can access them. Then in a loop it calls the parser
+until it sets |verbosity<0|, which is done upon seeing the \.{quit} command.
+We call the |reset| method of the lexical scanner before calling the parser,
+which will discard any input that is left be a possible previous erroneous
+input. This also already fetches a new line of input, or abandons the program
+in case none can be obtained.
 
 @h <iostream>
+@h <fstream>
 @h <readline/readline.h>
 @h <readline/history.h>
-@h <stdexcept>
-@h "evaluator.h"
-@h "built-in-types.h"
-@h "constants.h"
+
 @< Main program @>=
 
-int main()
+int main(int argc, char** argv)
 { using namespace std; using namespace atlas::interpreter;
+@)
+  @< Handle command line arguments @>
+
+@/BufferedInput input_buffer("expr> "
+                            ,use_readline ? readline : NULL
+			    ,use_readline ? add_history : NULL);
+  main_input_buffer= &input_buffer;
+@/Hash_table hash; main_hash_table= &hash;
+@/Lexical_analyser ana(input_buffer,hash,keywords); lex=&ana;
+@/Id_table main_table; @+ global_id_table=&main_table;
+@)
   @< Initialise various parts of the program @>
+@)
   cout << "Enter expressions:\n";
-  while ( cin.good() )
-  { ana.reset(); // make sure lexical analyser gets a new line
-    expr expression;
+  while (ana.reset()) // get a fresh line for lexical analyser, or quit
+  { expr expression;
+    int old_verbosity=verbosity;
+    ofstream redirect; // if opened, this will be closed at end of loop
     if (yyparse(&expression,&verbosity))
       continue; // syntax error or non-expression
-    if (verbosity<0) break; // \.{quit} command
-    if (verbosity==1)
-      cout << "Expression before type analysis: " << expression << endl;
+    if (verbosity!=0) // then some special action was requested
+    { if (verbosity<0) break; // \.{quit} command
+      if (verbosity==2 or verbosity==3)
+        // indicates output redirection was requested
+      { @< Open |redirect| to specified file, and if successful make
+        |output_stream| point to it; otherwise |continue| @>
+        verbosity=old_verbosity; // verbosity change was temporary
+      }
+      if (verbosity==1) //
+        cout << "Expression before type analysis: " << expression << endl;
+    }
     @< Analyse types and then evaluate and print, or catch runtime or other
        errors @>
+    output_stream= &cout; // reset output stream if it was changed
   }
   clear_history();
   // clean up (presumably disposes of the lines stored in history)
   cout << "Bye.\n";
 }
 
+@ Here are several calls necessary to get various parts of this program off to
+a good start, starting with the history and readline libraries.  Initialising
+the constants, although it sounds like a contradiction in terms, is vital for
+the Atlas library to function correctly.
+
+@h "built-in-types.h"
+@h "constants.h"
+@< Initialise various parts of the program @>=
+  using_history();
+  rl_completion_entry_function = id_completion_func; // set up input completion
+
+@)atlas::constants::initConstants();
+
+@)initialise_evaluator(); initialise_builtin_types();
+
 @ If a type error is detected by |analyse_types|, then it will have signalled
 it and thrown a |runtime_error|; if that happens |type_OK| will remain |false|
 and the runtime error is silently caught. If the result is an empty tuple, we
 suppress printing if the uninteresting value.
+
+@h <stdexcept>
+@h "evaluator.h"
 
 @< Analyse types and then evaluate and print... @>=
 { bool type_OK=false;
@@ -128,40 +166,51 @@ suppress printing if the uninteresting value.
   { type_ptr type=analyse_types(expression);
     type_OK=true;
     if (verbosity==1)
-      cout << "Type found: " << *type << endl @|
+      *output_stream << "Type found: " << *type << endl @|
 	<< "Expression after type analysis: " << expression << endl;
     value_ptr v=evaluate(expression);
     static type_declarator empty=*make_type("()").release();
-    if (*type!=empty) cout << "Value: " << *v << endl;
+    if (*type!=empty) *output_stream << "Value: " << *v << endl;
     destroy_expr(expression); delete v;
   }
   catch (runtime_error& err)
   { if (type_OK) cerr << "Runtime error: ";
     cerr << err.what() << ", evaluation aborted.\n";
-    clear_execution_stack();
+    clear_execution_stack(); main_input_buffer->close_includes();
   }
   catch (logic_error& err)
   { cerr << "Unexpected error: " << err.what() << ", evaluation aborted.\n";
-    clear_execution_stack();
+    clear_execution_stack(); main_input_buffer->close_includes();
   }
   catch (exception& err)
   { cerr << err.what() << ", evaluation aborted.\n";
-    clear_execution_stack();
+    clear_execution_stack(); main_input_buffer->close_includes();
   }
 }
 
-@
-@< Initialise various parts of the program @>=
-  using_history();
-  rl_completion_entry_function = id_completion_func; // set up input completion
+@ For the moment the only command line argument accepted is \.{-nr}, which
+indicates to not use the readline and history library in the input buffer.
 
-@)atlas::constants::initConstants();
-@/BufferedInput input_buffer("expr> ",readline,add_history);
-  main_input_buffer= &input_buffer;
-@/Hash_table hash; main_hash_table= &hash;
-@/Lexical_analyser ana(input_buffer,hash,keywords); lex=&ana;
-@/Id_table main_table; @+ global_id_table=&main_table;
+@h <cstring>
+@< Handle command line arguments @>=
+bool use_readline = argc<2 or std::strcmp(argv[1],"-nr")!=0;
 
-@)initialise_evaluator(); initialise_builtin_types();
+
+@ The |std::ofstream| object was already created earlier in the main loop,
+but it will only be opened if we come here. If this fails then we report it
+directly and |continue| to the next iteration of the main loop, which is more
+practical at this point than throwing and catching an error.
+
+@< Open |redirect| to specified file... @>=
+{ redirect.open(ana.scanned_file_name() ,ios_base::out |
+     (verbosity==2 ? ios_base::trunc : ios_base::@;app));
+  if (redirect.is_open()) output_stream = &redirect;
+  else
+  {@; cerr << "Failed to open " << ana.scanned_file_name() << endl;
+    continue;
+  }
+}
 
 @* Index.
+
+% Local IspellDict: british

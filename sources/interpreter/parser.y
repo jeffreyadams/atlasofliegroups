@@ -15,11 +15,12 @@
 %pure-parser
 %error-verbose
 
-%token QUIT TRUE FALSE QUIET VERBOSE WHATTYPE PRINTALL
+%token QUIT TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
 %token DIVMOD
 %token <val> INT
 %token <expression> STRING
 %token <id_code> IDENT
+%token TOFILE ADDTOFILE FROMFILE
 %type  <expression> exp
 %destructor { destroy_expr ($$); } exp
 %type  <expression_list> commalist commabarlist idlist
@@ -35,15 +36,18 @@
 %}
 %%
 
-input:  '\n'			{ YYABORT } /* return 1 to skip evaluator */
+input:  '\n'			{ YYABORT } /* null input, skip evaluator */
         | exp    '\n'		{ *parsed_expr=$1; }
         | idlist '=' exp '\n'
 		{ global_set_identifier(reverse_expr_list($1),$3); YYABORT }
         | QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
         | QUIET	'\n'		{ *verbosity =0; YYABORT } /* quiet mode */
         | VERBOSE '\n'		{ *verbosity =1; YYABORT } /* verbose mode */
+	| TOFILE exp '\n'	{ *parsed_expr=$2; *verbosity=2; }
+	| ADDTOFILE exp '\n'	{ *parsed_expr=$2; *verbosity=3; }
+        | FROMFILE '\n'		{ include_file(); YYABORT } /* include file */
 	| WHATTYPE exp '\n'     { type_of_expr($2); YYABORT } /* print type */
-        | PRINTALL '\n'         { show_ids(); YYABORT } /* print id table */
+        | SHOWALL '\n'          { show_ids(); YYABORT } /* print id table */
 ;
 
 exp     : INT { $$ = make_int_denotation($1); }

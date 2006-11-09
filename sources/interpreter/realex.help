@@ -1,0 +1,309 @@
+Brief introduction to 'realex', the new interface to the Atlas software
+
+
+1 Introduction
+
+The program 'realex', built from the files in this directory and from a large
+part of the source files of the 'atlas' program, provides access to its
+functions in an expression-oriented fashion. Whereas 'atlas' will enter a
+dialogue whenever it needs some parameter to be set (inner class, real form,
+Cartan class,...) these parameters can be defined by expressions in 'realex'
+
+To compile realex, you need the latest release of the 'cwebx' system. Get it
+by clicking on the indicated link at
+
+http://www-math.univ-poitiers.fr/~maavl/CWEBx/
+
+unpack in some directory, type make, then make sure that the resulting
+programs 'ctanglex' and 'cweavex' are in your $PATH (possibly by making
+symbolic links to them from you ~/bin directory, if you use one), and that the
+macro file cwebxmac.tex is in some place where TeX will find it (check your
+$TEXINPUTS environment variable; a quick solution is to copy the file to this
+atlas/sources/interpreter directory). Otherwise you need tools like (GNU)
+'make', 'g++' that you also need to compile the atlas. Once you are set, type
+'make' in this directory (or 'make realex' in the atlas directory) to build
+realex. Again you can install a symbolic link from somewhere in your $PATH to
+it to ensure that it will be executed by the command 'realex'. If the atlas is
+compiled before you build realex, the latter compilation will use the existing
+object files. If not it will do the necessary compilations itself (this
+involves nearly all atlas modules, but not all), and take quite a bit longer.
+
+
+2 Comparison with atlas
+
+Consider for instance the following session
+
+  $ atlas
+  This is the Atlas of Reductive Lie Groups Software Package version...
+  Enter "help" if you need assistance.
+
+  empty: blocksizes
+  Lie type: B5.A3.T1
+  elements of finite order in the center of the simply connected group:
+  Z/2.Z/4.Q/Z
+  enter kernel generators, one per line
+  (ad for adjoint, ? to abort):
+  1/2,0/4,0/4
+  0/2,2/4,2/4
+
+  enter inner class(es): scc
+	0      0      0      0      0      0      0      1
+	0      0      0      0      0      0      0     11
+	0      0      0      0      0      0      0     10
+	0      0      0      0      0      0      0     75
+	0      0      0      0      0      0      0    110
+	0      0      0      0      0      0      3     21
+	0      0      0      0      0      0      0    305
+	0      0      0      0      0      0      0    750
+	0      0      0      0      0      0     33    231
+	0      0      0      0      0      0      0    810
+	0      0      0      0      0      0      0   3050
+	0      0      0      0      0      0    225   1575
+	0      0      0      1     25    130      0   1342
+	0      0      0      0      0      0      0   8100
+	0      0      0      0      0      0    915   6405
+	0      0      0     10    250   1300      0  13420
+	0      0      0      0      0      0   2430  17010
+	3     75    390     21    525   2730   4026  28182
+  main: qq
+
+Using realex, the same result can be obtained as follows
+
+  $ realex
+  Enter expressions:
+  expr> ic = set_type("B5.A3.T1",[[1,0,0],[0,2,2]],"scc")
+  Identifier ic: InnerClass
+  expr> block_sizes(ic)
+  Value:
+  | 0,  0,   0,  0,   0,    0,    0,     1 |
+  | 0,  0,   0,  0,   0,    0,    0,    11 |
+  | 0,  0,   0,  0,   0,    0,    0,    10 |
+  | 0,  0,   0,  0,   0,    0,    0,    75 |
+  | 0,  0,   0,  0,   0,    0,    0,   110 |
+  | 0,  0,   0,  0,   0,    0,    3,    21 |
+  | 0,  0,   0,  0,   0,    0,    0,   305 |
+  | 0,  0,   0,  0,   0,    0,    0,   750 |
+  | 0,  0,   0,  0,   0,    0,   33,   231 |
+  | 0,  0,   0,  0,   0,    0,    0,   810 |
+  | 0,  0,   0,  0,   0,    0,    0,  3050 |
+  | 0,  0,   0,  0,   0,    0,  225,  1575 |
+  | 0,  0,   0,  1,  25,  130,    0,  1342 |
+  | 0,  0,   0,  0,   0,    0,    0,  8100 |
+  | 0,  0,   0,  0,   0,    0,  915,  6405 |
+  | 0,  0,   0, 10, 250, 1300,    0, 13420 |
+  | 0,  0,   0,  0,   0,    0, 2430, 17010 |
+  | 3, 75, 390, 21, 525, 2730, 4026, 28182 |
+
+  expr> quit
+  Bye.
+
+(The 'set_type' function does essentially the same as the dialogue from the
+line 'Lie type:' up to and including the one with 'enter inner class(es):' in
+the altas, but note that the specification [[1,0,0],[0,2,2]] of the kernel
+generators only mentions the numerators.)
+
+So one difference is that rather than being asked to specify a complex group
+and an in inner class after calling the blocksizes command, one needs to
+construct an inner class value first, and then invoke the block_sizes function
+with the inner class as argument. In the realex session above the inner class
+was assigned to the variable 'ic' (the reply confirms its type InnerClass) and
+that variable was used as argument to block_sizes, and it could subsequently
+be used in other function calls as well. Alternatively one could have called
+directly:
+
+block_sizes(set_type("B5.A3.T1",[[1,0,0],[0,2,2]],"scc"))
+
+but then of course the inner class would not have been available afterwards in
+the variable 'ic'. The matrix resulting from the call was printed, but it
+could instead have been assigned to a variable as well. One can define any
+number of variables, with values of any of the types available, and use them
+freely (or other nested function calls) in function calls. This provides more
+flexibilty of use than the atlas insterface, which can basically remember just
+one inner class and one real form between different commands.
+
+The set of functions provided is described in the file 'functions.help'
+The current file documents other aspects of the realex program.
+
+
+3 Current limitations
+
+Currently the new interface is quite limited: the data types available for
+values only concern those of the structure theory (root data, inner classes,
+real forms, Cartan classes) while many data types used internally (such as
+Weyl groups, polynomials) may appear in printed output but cannot be further
+manipulated; moreover the programming language is extremely rudimentary (only
+function applications and variable assignments at the outer command level).
+These points as subjects of future development.
+
+
+4 Types
+
+The basic types available are:
+
+type		represents
+-----------------------------------
+bool		truth values
+int		machine integers (32 or 64 bits depending on the machine)
+string		string of characters
+vec		vector of machine integers
+mat		matrix of machine integers
+LieType		Lie type (such as D4.A2.T1.E8)
+RootDatum	root datum, specifying a connected Complex reductive group
+InnerClass      inner class of real forms (based root datum with involution)
+RealForm	real form within an inner class
+DualRealForm    dual real form within an inner class
+CartanClass     class of Cartan subgroups within an inner class
+
+Constant values of type bool, int and string can be typed as usual (use 'true'
+or 'false' (without quotes) for truth values, and a string in double-quotes
+(with any contained double-quote characters doubled) for strings. Strings
+cannot contain newline characters. Values of other basic types can only be
+obtained by appropriate function calls. For function arguments that are
+required to be of type vec, a list of integers (of type [int]) may be
+supplied, and for function arguments that are required to be of type mat,
+value of type [vec] or [[int]] (see below) is accepted. When a list of vectors
+or lists is used for a matrix, these are interpreted as columns of the matrix
+(and extended if necessary with zeores for equal length), so for instance
+
+expr> mat([[1,2],[3,4,5]])
+Value:
+| 1, 3 |
+| 2, 4 |
+| 0, 5 |
+
+(the 'mat' function just converts to a matrix). If you prefer specifying a
+matrix by rows, a special syntax is provided:
+
+expr> [ 1,2 | 3,5,4 | 7 ]
+Value:
+| 1, 2, 0 |
+| 3, 5, 4 |
+| 7, 0, 0 |
+
+Note that 'mat' is not required here, the syntax itself forces a matrix result.
+
+For values of the types RootDatum, ..., CartanClass, it is not practical to
+print a complete description of the value stored, so upon returning such
+values, only a summary of their propoerties is printed (for instance:
+"simply connected adjoint root datum of Lie type 'A6.T1'"). In many cases
+functions exists that allow more detailed information to be extracted from
+these values.
+
+Furthermore if t0,t1,t2,t3 are types, then one can form composite types
+
+[t0]		list of elements all of which have type t0
+[[t0]]		list of elements all of which have type [t0] (a list of lists)
+...		etc
+(t0,t1)		2-tuple formed of components of types t0 and t1 respectively
+(t0,t1,t2)	3-tuple, with components of types t0,t1,t2 respectively
+(t0,t1,t2,t3)	4-tuple, with components of types t0,t1,t2,t3 respectively
+...		etc
+()		0-tuples (irrelevant value, returned by print... functions)
+(t0->t1)	function with argument of type t0 and result of type t1
+(t0,t1->t2)	function with argument of type (t0,t1) and result of type t2
+(t0->t1,t2)	function with argument of type (t0 and result of type (t1,t2)
+(t0,t1->t2,t3)	function with argument of type (t0,t1), result of type (t2,t3)
+(t0,t1->)	function with argument of type (t0,t1) and no useful result
+...		etc
+
+List values are obtained by enclosing a comma-separated lists of the
+components (all of the same type) in brackets, as in [ 1, -4, 3*6 ].
+
+Since an expression of the form (x,y) produces a 2-tuple, a function 'f'
+taking a 2-tuple as argument can be called as f(x,y). But the variable 'z'
+holds a 2-tuple, the function 'f' can also be called as f(z). To decompose a
+tuple, a mutliple assignment is possible: after
+
+expr> x,y = z
+
+the variable 'x' will be made to hold the first component of the pair 'z', and
+'y' will be made to hold its second component (and more usefully, 'z' may be
+replaced by a function call producing a pair). After an assignement, single or
+multiple, the type(s) of the variable(s) assigned will be reported.
+
+
+5 Splitting commands across lines
+
+Normally each line contains a command (an expression to evaluate, an
+assignment, or a miscellaneaous command) which is executed as soon as the line
+is scanned and found to be syntactically correct (and well typed). However
+various mechanisms are provided to allow commands to extend across multiple
+lines. First of all, a command is not considered complete if it contains
+unclosed parentheses or brackets, in which case it is automatically extended
+to the following line. The unclosed symbols are prefixed to the continuation
+prompt as an indication of what still needs to be closed (unclosed string
+quotes are also tested for, but since strings cannot contain newlines, they
+are simply closed by force at the end of the line). If there are no unclosed
+parenteses or brackets but the line ends in a binary operator or '=', then the
+line is also automatically continued. Finally the user can force continuation
+of the line by typing '\' as the last non-space character of the line (the
+backslash is removed, and actually joins the line with the following one
+before analysis, so you could do this even to break in the middle of an
+identifier or string or other token). Note that is the _only_ use of backslash
+as an escape character.
+
+
+6 Output and input redirection
+
+Some function calls return a value without prining anything, which value will
+be printed by the interpreter (preceded by "Value:") if it is not assigned to
+a variable or passed to another function. Other functions print output to the
+terminal but do not return a useful value (the names ot these functions start
+with "print"). In either case the user may decide to write the result to a
+file rather than to the terminal. To that end start the command line with ">"
+or with ">>" followed by a file name (taken to be delimited by white space;
+alternatively the file name may be enclosed in double quotes, in which case it
+can contain spaces) followed by the (complex) function call producing the
+desired output. In case of ">" a new file will be created, in case of ">>" the
+output is appended to an existing file. For instance
+
+expr> >output_file block_sizes(ic)
+expr> >>"output_file"print_KGB(real_form(ic,2))
+expr> >> output_file print_KL_list(real_form(ic,2),dual_quasisplit_form(ic))
+expr>
+
+will produce in the current directory the file 'output_file' with the results
+of the indicated calls to block_sizes', 'print_KGB', and 'print_KL_list'.
+
+One can also redirect command input from a file. Simply type
+
+expr> < filename
+
+on a line by itself to execute the contents of 'filename' as a series of
+commands. The output still goes to the terminal, unless the file contains
+lines that themselves start with '>'. Note that, in spite of similar syntax,
+output and input redirection have rather different characteristics. Output
+redirection only applies to a single command, which must be an expression
+evaluation (function call or variable, not an assignment or other statement).
+Input redirection should not be followed by anything on the same line, but it
+can invoke any number of commands from the given file. It can even be used
+recursively to include commands from other files that be initial include file.
+One cannot globally redirect the output produced from the commands of an
+included file. If a command from a file included at any level produces a
+syntax or runtime error, a message reporting the place of the eror is printed,
+all included files are abandoned, and control is given back to the terminal.
+
+
+7 Miscellaneous commands
+
+Some operations, including the type checker, can be made more verbose by
+giving the command
+
+verbose
+
+which remains in effect until a subsequent command
+
+quiet
+
+us given. One can ask the state of all known identifiers, which is case of
+funcions prints mainly their type specification, and in the case of variables
+also their values, by typing
+
+showall
+
+If one just needs to know the type of one expression (e.g., a function), type
+
+whattype expr
+
+This performs type analysis of the expression and prints the result, but does
+not evaluate anything.
