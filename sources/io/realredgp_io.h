@@ -1,8 +1,8 @@
 /*
   This is realredgp_io.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -26,13 +26,15 @@ namespace atlas {
 
 namespace realredgp_io {
 
-std::ostream& printBlockStabilizer(std::ostream&, const Interface&, size_t,
+std::ostream& printBlockStabilizer(std::ostream&,
+				   const realredgp::RealReductiveGroup&,
+				   size_t,
 				   realform::RealForm);
 
-std::ostream& printCartanClasses(std::ostream&, 
+std::ostream& printCartanClasses(std::ostream&,
 				 const realredgp_io::Interface&);
 
-std::ostream& printCartanOrder(std::ostream&, 
+std::ostream& printCartanOrder(std::ostream&,
 			       const realredgp::RealReductiveGroup&);
 
 std::ostream& printRealWeyl(std::ostream&, const Interface&, size_t);

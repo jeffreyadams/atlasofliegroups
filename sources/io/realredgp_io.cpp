@@ -1,8 +1,8 @@
 /*
   This is realredgp_io.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -88,7 +88,8 @@ const realform_io::Interface& Interface::realFormInterface() const
 
 namespace realredgp_io {
 
-std::ostream& printBlockStabilizer(std::ostream& strm, const Interface& RI, 
+std::ostream& printBlockStabilizer(std::ostream& strm,
+				   const realredgp::RealReductiveGroup& G_R,
 				   size_t cn, realform::RealForm drf)
 
 {
@@ -101,7 +102,6 @@ std::ostream& printBlockStabilizer(std::ostream& strm, const Interface& RI,
   using namespace size;
   using namespace weyl;
 
-  const RealReductiveGroup& G_R = RI.realGroup();
   const ComplexReductiveGroup& G_C = G_R.complexGroup();
   const RootDatum& rd = G_R.rootDatum();
   const WeylGroup& W = G_R.weylGroup();
@@ -128,7 +128,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm, const Interface& RI,
   return strm;
 }
 
-std::ostream& printCartanClasses(std::ostream& strm, 
+std::ostream& printCartanClasses(std::ostream& strm,
 				 const realredgp_io::Interface& G_RI)
 
 /*
@@ -152,7 +152,7 @@ std::ostream& printCartanClasses(std::ostream& strm,
     if (first)
       first = false;
     else
-      strm << std::endl << std::endl;      
+      strm << std::endl << std::endl;
     strm << "Cartan #" << *i << ":" << std::endl;
     printCartanClass(strm,*i,G_CI);
   }
@@ -160,7 +160,7 @@ std::ostream& printCartanClasses(std::ostream& strm,
   return strm;
 }
 
-std::ostream& printCartanOrder(std::ostream& strm, 
+std::ostream& printCartanOrder(std::ostream& strm,
 			       const realredgp::RealReductiveGroup& G_R)
 
 /*
@@ -236,7 +236,7 @@ std::ostream& printRealWeyl(std::ostream& strm, const Interface& RI, size_t cn)
   return strm;
 }
 
-std::ostream& printStrongReal(std::ostream& strm, const Interface& RI, 
+std::ostream& printStrongReal(std::ostream& strm, const Interface& RI,
 			      size_t cn)
 
 /*

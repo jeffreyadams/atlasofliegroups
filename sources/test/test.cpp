@@ -688,7 +688,7 @@ void blockstabilizer_f()
   }
 
   OutputFile file;
-  printBlockStabilizer(file,G_RI,cn,drf);
+  realredgp_io::printBlockStabilizer(file,G_RI.realGroup(),cn,drf);
 
   return;
 }
@@ -765,13 +765,7 @@ void corder_f()
   Synopsis: prints the Hasse diagram of the ordering of Cartan classes.
 */
 
-{
-  using namespace realmode;
-  using namespace realredgp;
-  using namespace realredgp_io;
-  using namespace ioutils;
-
-  RealReductiveGroup& G_R = currentRealGroup();
+{ realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
   try {
     G_R.fillCartan();
@@ -782,7 +776,7 @@ void corder_f()
   }
 
   std::cout << "hasse diagram of Cartan ordering:" << std::endl;
-  printCartanOrder(std::cout,G_R);
+  realredgp_io::printCartanOrder(std::cout,G_R);
 
   return;
 }
