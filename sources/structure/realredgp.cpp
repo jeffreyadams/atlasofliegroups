@@ -20,7 +20,7 @@
 
 /*****************************************************************************
 
-  ... explain here when it's stable ...
+  The function pause just serves as a convenient debugging break point
 
 ******************************************************************************/
 
@@ -28,7 +28,7 @@ namespace atlas {
 
 namespace {
 
-  void pause() {;}
+  void pause() {}
 
 }
 
@@ -167,6 +167,8 @@ size_t RealReductiveGroup::kgbSize() const
 
 /*!
   Synopsis: returns the cardinality of K\\G/B.
+
+  Precondition: fillCartan() has been called.
 */
 
 {
