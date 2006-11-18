@@ -7,9 +7,9 @@ the implementation of the KL algorithm.
 */
 /*
   This is kltest.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -18,6 +18,7 @@ the implementation of the KL algorithm.
 
 #include <iostream>
 
+#include "interactive.h"
 #include "ioutils.h"
 #include "kgb.h"
 #include "kl.h"
@@ -39,7 +40,7 @@ private:
   const weyl::WeylGroup* d_W;
 public:
   explicit InvolutionCompare(const weyl::WeylGroup& W):d_W(&W) {}
-  // one should have i < j iff 
+  // one should have i < j iff
   // (a) involutionLength(v) < involutinLength(w) or
   // (b) involutionLengths are equal and length(v) < length (w) or
   // (c) both lengths are equal and v < w
@@ -56,7 +57,7 @@ public:
       return v < w;
   }
 };
-  
+
 }
 
 /*****************************************************************************
@@ -201,7 +202,7 @@ std::ostream& printBasePts(std::ostream& strm, const weyl::WeylEltList& wl,
     printWeylElt(strm,wl[j],kgb.weylGroup());
     strm << ",";
     printInvolution(strm,wl[j],kgb.weylGroup());  // added by jda: reduced form of the involution
-    strm << "," << bp[j] << ")";                
+    strm << "," << bp[j] << ")";
     strm << std::endl;
   }
 
