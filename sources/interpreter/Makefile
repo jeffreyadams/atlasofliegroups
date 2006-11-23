@@ -86,11 +86,12 @@ dvifiles := $(cwebx_sources:%.w=%.dvi)
 objects := $(c++objects) parser.tab.o $(atlas_objects)
 
 # You may define an environment variable 'rlincludes' to override the
-# definition below
-# You might need to add -lcurses or -lncurses, if you get linker errors without
-# it, but I would like to understand where (what system) and why this is needed
+# definition below. For me (on Debian or Ubuntu Linux) just "-lreadline"
+# suffices, but on some systems adding "-lcurses" seems to be necessary.
+# The author (Marc van Leeuwen) offers EUR 40.96 to the first person who can
+# provide a decent reason why one should have to add "-lcurses" here
 
-rlincludes ?= -lreadline
+rlincludes ?= -lreadline -lcurses
 
 
 
