@@ -1,8 +1,8 @@
 /*
   This is emptymode.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -131,7 +131,7 @@ namespace emptymode {
 const commands::CommandMode& emptyMode()
 
 /*
-  Synopsis: returns the ThisMode object. 
+  Synopsis: returns the ThisMode object.
 
   It is constructed on first call.
 */
@@ -164,7 +164,7 @@ void help_f()
 
 void q_h()
 
-{  
+{
   io::printFile(std::cerr,"q.help",io::MESSAGE_DIR);
   return;
 }
@@ -204,11 +204,12 @@ void printVersion()
   Prints an opening message and the version number.
 */
 
-{      
-  std::cout << "This is " << version::NAME << " version " << version::VERSION 
+{
+  std::cout << "This is " << version::NAME << " version " << version::VERSION
 	    << "." << std::endl;
-  std::cout << 
-    "Enter \"help\" if you need assistance." 
+  std::cout << "Build date: " << version::COMPILEDATE << "." << std::endl;
+  std::cout <<
+    "Enter \"help\" if you need assistance."
 	    << std::endl << std::endl;
 
   return;

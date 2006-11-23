@@ -1,13 +1,15 @@
-#See the file INSTALL for detailed instructions
+# See the file INSTALL for detailed instructions
 # the following line avoids trouble on some systems (GNU make does this anyway)
 SHELL = /bin/sh
 INSTALL = /usr/bin/install
 
-#You may edit the INSTALLDIR and BINDIR variables
-#to move the executable atlas.exe and the
-#messages directory edit INSTALLDIR
-#To move the symlink edit BINDIR
-#see INSTALL for more information
+# You may edit the INSTALLDIR and BINDIR variables
+
+# INSTALLDIR is where the executable atlas.exe and the messages directory
+# will be moved after successfull compilation
+
+# BINDIR is where a symbolic link 'atlas' to the executable will be placed;
+# provided this is in your search path, you can then execute by typing: atlas
 
 # In a single-user situation, you might want something like this:
 #   INSTALLDIR := /home/fokko/myatlas
@@ -21,8 +23,8 @@ INSTALL = /usr/bin/install
 INSTALLDIR := $(shell pwd)
 BINDIR := $(INSTALLDIR)
 
-#Don't edit below this line, with the possible exception 
-#of rlincludes 
+#Don't edit below this line, with the possible exception
+#of rlincludes
 ###############################
 
 MESSAGEDIR := $(INSTALLDIR)/messages/
@@ -86,7 +88,11 @@ ifeq ($(verbose),true)
     cflags += -DVERBOSE
 endif
 
-CXX = g++ # the default compiler
+# ensure that the software can find the help messages
+cflags += -DMESSAGE_DIR_MACRO=\"$(MESSAGEDIR)\"
+
+# the default compiler
+CXX = g++
 
 # give compiler=icc argument to make to use the intel compiler
 ifdef compiler
@@ -98,35 +104,42 @@ endif
 # This target causes failed actions to clean up their (corrupted) target
 .DELETE_ON_ERROR:
 
-# The default target is 'all', which builds the executable and the wrapper
+# we use no suffix rules
+.SUFFIXES:
+
+# The default target is 'all', which builds the executable
 .PHONY: all
-all: atlas
+all: atlas.exe
+
+# the following dependency forces emptymode.cpp to be recompiled whenever any
+# of the object files changes; this guarantees that the date in the version
+# string it prints will be that of the last recompilation.
+sources/interface/emptymode.o: $(sources)
 
 # For profiling not only 'cflags' used in compiling is modified, but linking
 # also is different
-
-cflags += -DMESSAGE_DIR_MACRO=\"$(MESSAGEDIR)\"
-atlas: $(objects)
+atlas.exe: $(objects)
 ifeq ($(profile),true)
 	$(CXX) -pg -o atlas.exe $(objects)
 else
 	$(CXX) -o atlas.exe $(objects) $(rlincludes)
 endif
 
-install:
-	@if test -h $(BINDIR)/atlas; then \
-	 rm -f $(BINDIR)/atlas; fi
-	@ln -s $(INSTALLDIR)/atlas.exe $(BINDIR)/atlas
-	@if test $(INSTALLDIR) != $(shell pwd); then\
-	echo "Installing directories and files in $(INSTALLDIR)";\
-	$(INSTALL) -d -m 755 $(INSTALLDIR)/www;\
-	$(INSTALL) -d -m 755 $(INSTALLDIR)/messages;\
-	$(INSTALL)  -m 644 README $(INSTALLDIR);\
-	$(INSTALL)  -m 755 atlas.exe $(INSTALLDIR);\
-	$(INSTALL) -m 644 www/*html $(INSTALLDIR)/www/;\
-	$(INSTALL) -m 644 messages/*help $(INSTALLDIR)/messages/;\
-	$(INSTALL) -m 644 messages/*intro_mess $(INSTALLDIR)/messages/;\
-	fi; 
+install: atlas.exe
+ifneq ($(INSTALLDIR),$(shell pwd))
+	@echo "Installing directories and files in $(INSTALLDIR)"
+	$(INSTALL) -d -m 755 $(INSTALLDIR)/www
+	$(INSTALL) -d -m 755 $(INSTALLDIR)/messages
+	$(INSTALL) -m 644 README $(INSTALLDIR)
+	$(INSTALL) -m 755 atlas.exe $(INSTALLDIR)
+	$(INSTALL) -m 644 www/*html $(INSTALLDIR)/www/
+	$(INSTALL) -m 644 messages/*help $(INSTALLDIR)/messages/
+	$(INSTALL) -m 644 messages/*intro_mess $(INSTALLDIR)/messages/
+endif
+	@if test -h $(BINDIR)/atlas; then rm -f $(BINDIR)/atlas; fi
+	@if test -e $(BINDIR)/atlas ;\
+	 then echo Warning: $(BINDIR)/atlas is not a symlink, I will not overwrite it;\
+	 else ln -s $(INSTALLDIR)/atlas.exe $(BINDIR)/atlas ; fi
 
 .PHONY: clean cleanall
 clean:
@@ -135,8 +148,8 @@ clean:
 cleanall: clean
 	rm -f atlas atlas.exe
 
-realex: 
-	cd sources/interpreter; make
+realex:
+	cd sources/interpreter && $(MAKE)
 
 # The following two rules are static pattern rules: they are like implicit
 # rules, but only apply to the files listed in $(objects) and $(dependencies).
@@ -153,10 +166,10 @@ $(dependencies) : %.d : %.cpp
 .PHONY: depend
 depend: $(dependencies)
 
-# dependencies --- these were generated automatically by the command 
+# dependencies --- these were generated automatically by the command
 # make depend > make_dependencies on my system. Only local dependencies
 # are considered. If you add new #include directives you should add the
-# corresponding dependencies to the make_dependencies file; the best way if 
+# corresponding dependencies to the make_dependencies file; the best way if
 # your compiler supports the -MM option is probably to simply say again
 # make depend > make_dependencies.
 
