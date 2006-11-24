@@ -4,6 +4,9 @@ A detailed history of the early development is found in the file
 workinglog. Newer changes are documented in the CVS repository. 
 This file contains a summary of major changes to the software.
 
+Version 0.2.6
+* More complete realex command line interpreter
+* New method of tracking compile date
 Version 0.2.5.1
 * New README and INSTALL files
 * fixed gcc 4.0.3 bug
