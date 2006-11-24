@@ -3,8 +3,7 @@ For more information about the software see the README file.
 
 UNIX (including linux, solaris, and Mac OSX)
 
-
-SHORT INSTRUCTION:
+SHORT INSTRUCTIONS:
 
 On many systems simply do:
 
@@ -22,10 +21,10 @@ atlas.exe in place, and put a link to it in /usr/local/bin.
 LONGER VERSION:
 
 The executable file is called atlas.exe. This can be installed
-anywhere, for example suppose you put it in /usr/local/atlas. For the
-help system to work there must be subdirectory
-/usr/local/atlas/messages. Then atlas.exe can be run via a symlink,
-called atlas, which can be anywhere, typically in /usr/local/bin.
+anywhere, for example in /usr/local/atlas. For the help system to work
+there must be subdirectory /usr/local/atlas/messages. Then atlas.exe
+can be run via a symbolic link, called atlas, which can be anywhere,
+typically in /usr/local/bin.
 
 Suppose you download the tgz file to the directory source_dir. When
 you gunzip and untar the file (with tar xvfz atlas_version.tgz) you
@@ -40,7 +39,7 @@ source_dir/atlas/messages/blockd.help etc.
 
 You can create a symlink to atlas.exe, the default is 
 
-/usr/local/bin/atlas -> .../source_dir/atlas.exe
+/usr/local/bin/atlas -> source_dir/atlas.exe
 
 You can change the location of this symlink by editing the BINDIR
 variable in the makefile. 
@@ -107,6 +106,9 @@ Do
 make clean
 
 to start from scratch.
+
+For information using the enhanced command line interpreter realex,
+see below.
 -------------------------------------------------------------------
 Compiling with readline
 
@@ -183,15 +185,17 @@ see they are harmless.
 -------------------------------------------------------------------
 Using the interpreter (unix only)
 
-There is a very early version of an improved command line interface,
-known as the interpreter. This is called realex. To compile it give
-the command
+There is an early version of an improved command line interface,
+called realex. This is called realex, and is by Marc van Leeuwen,
+Marc.van-Leeuwen@math.univ-poitiers.fr. To compile it give the command
 
 make realex
 
-This requires that you have cwebx and ctanglex installed on your
-system. See sources/interpreter/Makefile for more information. The
-executable file is sources/interpreter/realex. 
+The executable file is sources/interpreter/realex, and there are a
+number of help files sources/interpreter/*dvi.
+
+If you have trouble at the linking step the problem is probably
+readline/curses/ncurses. See sources/interpreter/Makefile.
 -------------------------------------------------------------------
 WINDOWS
 
@@ -206,4 +210,6 @@ When you extract the file you create a folder. This contains the
 executable atlas.exe. It also contains three necessary dll files. You
 must run the executable from a folder containing these files. 
 -------------------------------------------------------------------
-Please report any problems to jda@math.umd.edu
+Please report any problems to Jeffrey Adams at jda@math.umd.edu
+For questions relating to realex contact Marc van Leeuwen at 
+Marc.van-Leeuwen@math.univ-poitiers.fr.

@@ -1,9 +1,9 @@
 This is the Atlas of Reductive Lie Groups Software Package
 Copyright (C) 2004-2006, Fokko du Cloux
 
-It computes structure representation of real reductive Lie groups. 
-For more information see www.liegroups.org/software, where this
-software is freely available.
+The software computes structure representation of real reductive Lie
+groups.  For more information see www.liegroups.org/software, where
+this software is freely available.
 
 For help installing the software see the INSTALL file included with
 this distribution.
