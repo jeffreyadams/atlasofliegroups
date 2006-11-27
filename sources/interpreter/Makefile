@@ -18,6 +18,8 @@ CWEAVE := cweavex ++ $(INCLUDE_FLAGS)
 CWEAVEFLAGS  := -p +mde
 CTANGLEFLAGS := -p
 
+CWEBXMACROS := $(shell kpsewhich cwebxmac.tex)
+
 # these are used for C++ compilation and linking
 CXXFLAGS = -Wall -g $(INCLUDE_FLAGS)
 
@@ -112,6 +114,9 @@ mostlyclean:
 # 'make compilable' prepares everything for compilation
 compilable: clean
 	$(MAKE) CTANGLEFLAGS=-pl parser.tab.c $(c++files) $(webtexfiles)
+ifneq ($(CWEBXMACROS),./cwebxmac.tex)
+	cp $(CWEBXMACROS) .
+endif
 
 # we use no implicit suffix rules in this Makefile
 .SUFFIXES:
