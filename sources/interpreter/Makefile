@@ -97,14 +97,21 @@ rlincludes ?= -lreadline -lcurses
 
 # RULES follow now
 
-.PHONY: all mostlyclean clean headers dvifiles
+.PHONY: all mostlyclean clean headers dvifiles compilable
 
 all:	headers dvifiles realex
+
+# 'make clean' removes all derived files
 clean:  mostlyclean
 	rm -f realex
 
+# 'make mostlyclean' removes all derived files except the executable program
 mostlyclean:
 	rm -f *.o *.log *.toc $(webtexfiles) *.dvi *~ *.cpp *.c *.h
+
+# 'make compilable' prepares everything for compilation
+compilable: clean
+	$(MAKE) CTANGLEFLAGS=-pl parser.tab.c $(c++files) $(webtexfiles)
 
 # we use no implicit suffix rules in this Makefile
 .SUFFIXES:
