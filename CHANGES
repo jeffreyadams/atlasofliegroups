@@ -4,6 +4,9 @@ A detailed history of the early development is found in the file
 workinglog. Newer changes are documented in the CVS repository. 
 This file contains a summary of major changes to the software.
 
+Version 0.2.6.1
+* Added make compilable to sources/interpreter
+* Fixed Makefile in sources/interpreter so cwebx really isn't needed
 Version 0.2.6
 * More complete realex command line interpreter
 * New method of tracking compile date
