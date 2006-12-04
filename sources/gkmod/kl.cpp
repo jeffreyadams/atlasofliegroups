@@ -1543,6 +1543,9 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
   }
 
   // commit
+  d_kl[y].reserve(klr.end() - new_pol);
+  d_prim[y].reserve(klr.end() - new_pol);
+
   copy(new_pol,klr.end(),back_inserter(d_kl[y]));
   copy(new_extr,nzpr.end(),back_inserter(d_prim[y]));
 
@@ -1825,6 +1828,10 @@ void Thicket::fill()
 
   for (size_t j = 0; j < size(); ++j) {
     size_t y = d_vertices[j];
+
+    d_helper->d_prim[y].reserve(d_prim[j].end() - d_firstPrim[j]);
+    d_helper->d_kl[y].reserve(d_prim[j].end() - d_firstPrim[j]);
+
     copy(d_firstPrim[j],d_prim[j].end(),back_inserter(d_helper->d_prim[y]));
     copy(d_firstKL[j],d_klr[j].end(),back_inserter(d_helper->d_kl[y]));
   }
