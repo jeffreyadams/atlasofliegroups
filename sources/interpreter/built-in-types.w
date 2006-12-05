@@ -1,12 +1,35 @@
+% Copyright (C) 2006 Marc van Leeuwen
+% This file is part of the Atlas of Reductive Lie Groups software (the Atlas)
+
+% This program is made available under the terms stated in the GNU
+% General Public License (GPL), see http://www.gnu.org/licences/licence.html
+
+% The Atlas is free software; you can redistribute it and/or modify
+% it under the terms of the GNU General Public License as published by
+% the Free Software Foundation; either version 2 of the License, or
+% (at your option) any later version.
+
+% The Atlas is distributed in the hope that it will be useful,
+% but WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+% GNU General Public License for more details.
+
+% You should have received a copy of the GNU General Public License
+% along with the Atlas; if not, write to the Free Software
+% Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
 \def\emph#1{{\it#1\/}}
 \def\Z{{\bf Z}}
 \def\lcm{\mathop{\rm lcm}}
 \let\eps=\varepsilon
 
 @* Built-in types.
+%
 This file describes several built-in types related to the Atlas software,
 which used by the interpreter as primitive types. It also defines built-in
-functions that relate to these types.
+functions that relate to these types. This part of the program is completely
+oriented towards the Atlas library, whereas the \.{evaluator} does things that
+are for the most part independent of that library.
 
 @h "built-in-types.h"
 
@@ -32,8 +55,7 @@ namespace atlas { namespace interpreter {
 #endif
 
 @ In execution, the main role of this compilation unit is to install the stuff
-its definitions into the tables. To that end we export its initialisation
-function.
+it defines into the tables. To that end we export its initialisation function.
 
 @< Declarations of exported functions @>=
 void initialise_builtin_types();
@@ -60,33 +82,38 @@ Our first chapter concerns Lie types, as indicated by strings like
 |"D4.A3.E8.T1"|.
 
 @*2 The primitive type.
+%
 A first new type corresponds to the type |lietype::LieType| in the Atlas
-software.
+software. We provide a constructor that incorporates a complete
+|lietype::LieType| value, but often one will use the default constructor and
+the |add| method. Otherwise most methods are obligatory, except the final two
+which are provided for convenience.
 
 @h <stdexcept>
 @< Type definitions @>=
 struct Lie_type_value : public value_base
-{ lietype::LieType value;
-  Lie_type_value() : value(0) @+ {}
+{ lietype::LieType val;
+@)
+  Lie_type_value() : val(0) @+ {}
     // default constructor, produces empty type
-  Lie_type_value(lietype::LieType t) : value(t) @+{}
+  Lie_type_value(lietype::LieType t) : val(t) @+{}
+    // constructor from already validated Lie type
+@)
   virtual void print(std::ostream& out) const;
   Lie_type_value* clone() const @+{@; return new Lie_type_value(*this); }
+  static const char* name() @+{@; return "Lie type"; }
+@)
   void add_simple_factor (char,size_t)
-    throw(std::bad_alloc,std::runtime_error);
+    throw(std::bad_alloc,std::runtime_error); // grow
 private:
-  Lie_type_value(const Lie_type_value& v) : value(v.value) @+{}
+  Lie_type_value(const Lie_type_value& v) : val(v.val) @+{}
+    // copy constructor, used by |clone|
 public:
   size_t rank() const;
   size_t semisimple_rank() const;
 };
-
-@ We first define a small function to help giving sensible error messages.
-
-@h <sstream>
-@< Local function definitions @>=
-std::string num(size_t n)
-@+{@; std::ostringstream s; s<<n; return s.str(); }
+@)
+typedef std::auto_ptr<Lie_type_value> Lie_type_ptr;
 
 @ The type |lietype::LieType| is defined as |std::vector<SimpleLieType>| where
 |SimpleLieType| stands for |std::pair<char,size_t>|. Therefore it
@@ -99,7 +126,7 @@ current interface for the Atlas software are clumsy to use, we perform
 our own tests here, emulating |interactive_lietype::checkSimpleLieType|.
 Torus factors of rank $r>1$ should be equivalent to $r$ torus factors of
 rank~$1$, and it simplifies the software if we rewrite the former form to the
-latter on input.
+latter on input, so we do that here.
 
 @h "lietype.h"
 @h "constants.h"
@@ -127,14 +154,17 @@ void Lie_type_value::add_simple_factor (char c,size_t rank)
       ("Rank "+num(rank)+" exceeds implementation limit "+num(r));
 @.Rank exceeds implementation limit@>
   if (c=='T')
-    while (rank-->0) value.push_back(lietype::SimpleLieType('T',1));
+    while (rank-->0) val.push_back(lietype::SimpleLieType('T',1));
   else
-    value.push_back(lietype::SimpleLieType(c,rank));
+    val.push_back(lietype::SimpleLieType(c,rank));
 }
 
-@ Now we define a wrapper function that really builds a |Lie_type_value|.
-We scan the string looking for sequences of a letter followed by a number.
-We allow and ignore sequences of punctuation characters between the two.
+@ Now we define a wrapper function that really builds a |Lie_type_value|. We
+scan the string looking for sequences of a letter followed by a number. We
+allow and ignore sequences of punctuation characters between the two. Since
+the correct structure of Lie type strings is so obvious to the human eye, our
+error message just cites the entire offending string, rather than trying to
+point out the error exactly.
 
 @h <cctype>
 @< Local function definitions @>=
@@ -142,10 +172,10 @@ inline void skip_punctuation(const char* &p)
 {@; while (std::ispunct(*p) || std::isspace(*p)) ++p;}
 @)
 void Lie_type_wrapper() throw(std::bad_alloc,std::runtime_error)
-{ string_value* s=get_string();
-  std::auto_ptr<Lie_type_value> result(new Lie_type_value);
+{ string_ptr s(get<string_value>());
+  Lie_type_ptr result(new Lie_type_value);
   size_t total_rank=0;
-@/const char* p=s->value.c_str(); skip_punctuation(p);
+@/const char* p=s->val.c_str(); skip_punctuation(p);
   while (std::isalpha(*p))
   { char c=*p++;
     if (!std::isdigit(*p)) {@; --p; break; } // and |throw| a |runtime_error|
@@ -161,8 +191,8 @@ void Lie_type_wrapper() throw(std::bad_alloc,std::runtime_error)
   }
   if (*p!='\0')
     throw std::runtime_error
-      ("Error in type string '"+s->value+"' for Lie type");
-  push_value(result.release());
+      ("Error in type string '"+s->val+"' for Lie type");
+  push_value(result);
 }
 
 @ We shall call this function \.{Lie\_type}.
@@ -178,10 +208,10 @@ ensure that we can print its values. We can use an operator defined in
 @h "basic_io.h"
 @< Function definitions @>=
 void Lie_type_value::print(std::ostream& out) const
-{ if (value.empty()) out << "empty Lie type";
+{ if (val.empty()) out << "empty Lie type";
   else
   {@; using basic_io::operator<<;
-    out << "Lie type '" << value << '\'';
+    out << "Lie type '" << val << '\'';
   }
 }
 
@@ -192,31 +222,15 @@ and the semisimple rank.
 @< Function definitions @>=
 size_t Lie_type_value::rank() const
 { size_t r=0;
-  for (size_t i=0; i<value.size(); ++i) r+=value[i].second;
+  for (size_t i=0; i<val.size(); ++i) r+=val[i].second;
   return r;
 }
 @)
 size_t Lie_type_value::semisimple_rank() const
 { size_t r=0;
-  for (size_t i=0; i<value.size(); ++i)
-    if (value[i].first!='T') r+=value[i].second;
+  for (size_t i=0; i<val.size(); ++i)
+    if (val[i].first!='T') r+=val[i].second;
   return r;
-}
-
-@ We shall need a new variation of |get_int| to unpack Lie types.
-
-@< Declarations of exported functions @>=
-Lie_type_value* get_Lie_type() throw(std::logic_error);
-
-@~There is nothing surprising here.
-@< Function definitions @>=
-Lie_type_value* get_Lie_type() throw(std::logic_error)
-{ value_ptr p=pop_arg();
-  Lie_type_value* result=dynamic_cast<Lie_type_value*>(p);
-  if (result==NULL)
-    {@; delete p; throw std::logic_error("Argument is not a Lie type"); }
-@.Argument is not a Lie type@>
-  return result;
 }
 
 @ Here is a function that computes the Cartan matrix for a given Lie type.
@@ -224,15 +238,15 @@ Lie_type_value* get_Lie_type() throw(std::logic_error)
 @h "prerootdata.h"
 @< Local function definitions @>=
 void Cartan_matrix_wrapper()
-{ std::auto_ptr<Lie_type_value> t(get_Lie_type());
-  std::auto_ptr<latmat_value>
-    result(new latmat_value(latticetypes::LatticeMatrix()));
-  prerootdata::cartanMatrix(result->value,t->value);
-  push_value(result.release());
+{ Lie_type_ptr t(get<Lie_type_value>());
+  matrix_ptr
+    result(new matrix_value(latticetypes::LatticeMatrix()));
+  prerootdata::cartanMatrix(result->val,t->val);
+  push_value(result);
 }
 
 
-@ And here is a function that tries to do the inverse. We do not tests, so one
+@ And here is a function that tries to do the inverse. We do no tests, so one
 can play around and see what |dynkin::lieType| does with fairly random
 matrices. For instance any null columns in the matrix will be mistaken for
 factors of type $A_1$.
@@ -240,25 +254,44 @@ factors of type $A_1$.
 @h "dynkin.h"
 @< Local function definitions @>=
 void type_of_Cartan_matrix_wrapper ()
-{ std::auto_ptr<latmat_value> m(get_mat());
+{ matrix_ptr m(get<matrix_value>());
   lietype::LieType t;
-  dynkin::lieType(t,m->value);
+  dynkin::lieType(t,m->val);
   push_value(new Lie_type_value(t));
 }
-@~
+@~Again we install our wrapper functions.
 @< Install wrapper functions @>=
 install_function(Cartan_matrix_wrapper,"Cartan_matrix","(LieType->mat)");
 install_function(type_of_Cartan_matrix_wrapper
 		,"type_of_Cartan_matrix","(mat->LieType)");
 
 @*2 Finding lattices for a given Lie type.
-The following function is copied from the Atlas software sources, from the file
-\.{io/interactive\_lattice.cpp}, since linking to the corresponding object
-file seemed to pull in a major part of the Atlas software, while the function
-we want to use requires nothing but access to the Smith normal form algorithm,
-which being a template can be done by looking at the header file. Might we
+%
+When a Lie type is fixed, there is still a nontrivial choice to determine the
+root datum for a connected Complex reductive group of that type: one has to
+choose a sublattice of the weight lattice of the ``simply connected'' group of
+that type to become the weight lattice of the chosen Complex reductive group
+(a finite quotient of the simply connected group); that sublattice should have
+full rank and contain the weight lattice. We shall start with considering some
+auxiliary functions to help facilitate this choice.
+
+The function |Smith_basis| below is copied from the Atlas software sources,
+where the function is originally defined in the file
+\.{io/interactive\_lattice.cpp}. We chose not to link to the corresponding
+object file, since that would require including as well a major part of the
+Atlas library, some of which we don't need at all, and other parts that at
+least are not needed at this point. In fact |Smith_basis| itself requires
+nothing but access to the Smith normal form algorithm, which being a template
+can be done without linking against any particular object file. Might we
 suggest that this function that performs no interaction would have been better
-placed elsewhere? We quote from its original documentation:
+placed elsewhere than in the \.{io} sub-directory?
+
+The purpose of |Smith_basis| is to prepare a basis of the weight lattice of
+the simply connected group in terms of which the choice for a sublattice can
+be clearly presented; the important property is that there is a subset of
+basis vectors (of size the semisimple rank) such that the root lattice is
+spanned by pure multiples of these vectors. We quote the remainder of this
+comment from its original documentation.
 
 The Lie type is defined as a sequence of simple and torus factors inside |lt|.
 This function constructs a ``blockwise Smith normal'' basis for the root
@@ -299,24 +332,22 @@ void smithBasis(latticetypes::CoeffList& invf, latticetypes::WeightList& b,
   }
 }
 
-@ And here is a function that applies the previous function, and returns a
-block-wise Smith basis for the transposed Cartan matrix for a given Lie
-type, and the corresponding invariant factors. In case of torus factors this
-description should be interpreted in the sense that the Smith basis for the
-corresponding block is the standard basis and the invariant factors are null.
+@ And here is a wrapper function that applies the previous function, and
+returns a block-wise Smith basis for the transposed Cartan matrix for a given
+Lie type, and the corresponding invariant factors. In case of torus factors
+this description should be interpreted in the sense that the Smith basis for
+the corresponding block is the standard basis and the invariant factors are
+null.
 
 @< Local function definitions @>=
 void Smith_Cartan_wrapper()
-{ std::auto_ptr<Lie_type_value> t(get_Lie_type());
-  std::auto_ptr<latmat_value>
-    m(new latmat_value(latticetypes::LatticeMatrix()));
-  std::auto_ptr<weight_value> inv_factors
-     @| (new weight_value(latticetypes::CoeffList(0)));
-  latticetypes::WeightList b;
-  smithBasis(inv_factors->value,b,t->value);
-  latticetypes::LatticeMatrix basis(b); // convert from list of vectors
-  m->value.swap(basis);
-  push_value(m.release()); push_value(inv_factors.release()); wrap_tuple(2);
+{ Lie_type_ptr t(get<Lie_type_value>());
+  vector_ptr inv_factors (new vector_value(latticetypes::CoeffList(0)));
+  latticetypes::WeightList b; @+
+  smithBasis(inv_factors->val,b,t->val);
+  matrix_ptr m @| (new matrix_value(latticetypes::LatticeMatrix(b)));
+    // convert from |WeightList|
+  push_value(m); push_value(inv_factors); wrap_tuple(2);
 }
 
 @ The result of |Smith_Cartan| can serve among other things to help specifying
@@ -329,35 +360,29 @@ result of the previous one, filters out the invariant factors~$1$ and the
 corresponding columns.
 
 This function is particular in that it returns exactly the kind of arguments
-that it requires. Therefore rather that calling |push_tuple_components| which
+that it requires. Therefore rather than calling |push_tuple_components| which
 would pop and destroy the tuple, we just extract its fields while leaving it
 on the stack; its fields are modified in place, so there is no |push_value| to
 return the value either. Therefore we do not own the arguments during the
 call, and auto-pointers should not be used; incidentally |erase| and
-|eraseColumn| should have no reason whatsoever to throw an exception. We do
-take care to check that the argument is a $2$-tuple, but to avoid even more
-|throw| expressions, we use |get_mat| and |get_vec| after temporarily pushing
-the components onto the stack.
+|eraseColumn| should have no reason whatsoever to throw an exception.
 
 @< Local function definitions @>=
 void filter_units_wrapper ()
-{ tuple_value* t=get_tuple(); push_value(t); // get a non-owned copy
-  if (t->value.size()!=2) throw std::logic_error("Argument is not a pair");
-  execution_stack.push_back(t->value[0]);@+
-  latmat_value* basis=get_mat();
-  execution_stack.push_back(t->value[1]);@+
-  weight_value* inv_f=get_vec();
-  if (inv_f->value.size()!=basis->value.numColumns())
+{ tuple_value* t=force<tuple_value>(execution_stack.back());
+  matrix_value* basis=force<matrix_value>(t->val[0]);
+  vector_value* inv_f=force<vector_value>(t->val[1]);
+  if (inv_f->val.size()!=basis->val.numColumns())
     throw std::runtime_error("Size mismatch "+
-      num(inv_f->value.size())+':'+num(basis->value.numColumns())+
+      num(inv_f->val.size())+':'+num(basis->val.numColumns())+
       " in filter_units");
 @)
   size_t i=0;
-  while (i<inv_f->value.size())
-    if (inv_f->value[i]!=1) ++i; // keep invariant factor and column
+  while (i<inv_f->val.size())
+    if (inv_f->val[i]!=1) ++i; // keep invariant factor and column
     else
-    {@; inv_f->value.erase(inv_f->value.begin()+i);
-        basis->value.eraseColumn(i);
+    {@; inv_f->val.erase(inv_f->val.begin()+i);
+        basis->val.eraseColumn(i);
     }
 }
 
@@ -426,54 +451,54 @@ modifiable reference.
 @< Local function definitions @>=
 void ann_mod_wrapper()
 { push_tuple_components();
-@/std::auto_ptr<int_value> d(get_int());
-@/std::auto_ptr<latmat_value> m(get_mat());
+  int_ptr d(get<int_value>());
+  matrix_ptr m(get<matrix_value>());
 @)
   latticetypes::LatticeMatrix A=
-    annihilator_modulo(m->value,d->value);
-  m->value.swap(A);
-  push_value(m.release());
+    annihilator_modulo(m->val,d->val);
+  m->val.swap(A);
+  push_value(m);
 }
 
 @ Next a simple administrative routine, needed here because we cannot handle
-matrices in our programming language yet. Once one has computed a new lattice,
-in the form of vectors to replace those selected by \.{filter\_units} from the
-result of \.{Smith\_Cartan}, possibly with the help of \.{ann\_mod}, one needs
-to make the replacement. The following function does this, taking its first
-two arguments as the result of \.{Smith\_Cartan}, and the third a matrix whose
+matrices in our programming language yet. Once one has computed a new lattice
+(possibly with the help of |ann_mod|), in the form of vectors to replace those
+selected by |filter_units| from the result of |Smith_Cartan|, one needs to
+make the replacement. The following function does this, taking its first two
+arguments as the result of |Smith_Cartan|, and the third a matrix whose
 columns are to be substituted. The second argument serves only to determine,
 by the place of its non-unit entries, where the insertion has to take place.
 In fact this is so simple that we define the wrapper function directly. And in
 fact it will be more practical to take as argument a pair of a pair as
-returned by \.{Smith\_Cartan} and a matrix.
+returned by |Smith_Cartan| and a matrix.
 
 @< Local function definitions @>=
 void replace_gen_wrapper ()
 { push_tuple_components(); // a pair
-  std::auto_ptr<latmat_value> new_generators(get_mat());
+  matrix_ptr new_generators(get<matrix_value>());
   push_tuple_components(); // a pair as returned by \.{Smith\_Cartan}
-  std::auto_ptr<weight_value> inv_f(get_vec());
-  std::auto_ptr<latmat_value> old_generators(get_mat());
+  vector_ptr inv_f(get<vector_value>());
+  matrix_ptr old_generators(get<matrix_value>());
 @)
-  if (new_generators->value.numRows()!=old_generators->value.numRows())
+  if (new_generators->val.numRows()!=old_generators->val.numRows())
     throw std::runtime_error("Column lengths do not match in replace_gen");
 @.Column lengths do not match@>
-  if (inv_f->value.size()!=old_generators->value.numColumns())
+  if (inv_f->val.size()!=old_generators->val.numColumns())
     throw std::runtime_error("Number of columns mismatch in replace_gen");
 @.Size mismatch in replace\_gen@>
 @)
-  for (size_t j=0,k=0; j<inv_f->value.size(); ++j)
-    if (inv_f->value[j]!=1)
+  for (size_t j=0,k=0; j<inv_f->val.size(); ++j)
+    if (inv_f->val[j]!=1)
        // replace column |j| by column |k| from |new_generators|
-    { if (k>=new_generators->value.numColumns())
+    { if (k>=new_generators->val.numColumns())
         throw std::runtime_error
           ("Not enough replacement columns in replace_gen");
 @.Not enough replacement columns@>
-      for (size_t i=0; i<old_generators->value.numRows(); ++i)
-        old_generators->value(i,j)=new_generators->value(i,k);
+      for (size_t i=0; i<old_generators->val.numRows(); ++i)
+        old_generators->val(i,j)=new_generators->val(i,k);
       ++k;
     }
-  push_value(old_generators.release());
+  push_value(old_generators);
 }
 
 @*2 Specifying inner classes. Now we move ahead a bit in the theory, from
@@ -536,10 +561,10 @@ conditions or treatment; the remaining case is relegated to the next section.
 }
 
 @ The type letter |'u'| meaning ``unequal rank'' is mathematically only
-meaningful for Lie types $A_n$ with $n\geq2$, any legal type $D_n$, or $E_n$
-with $n\neq6$. Moreover in all cases except $D_n$ with $n$ even, this
-designation is equivalent to |'s'|, and will be replaced by it. Therefore any
-surviving type letter |'u'| corresponds to a type of the form $D_{2n}$.
+meaningful for Lie types $A_n$ with $n\geq2$, any legal type $D_n$, or $E_6$.
+Moreover in all cases except $D_n$ with $n$ even, this designation is
+equivalent to |'s'|, and will be replaced by it. Hence any surviving type
+letter |'u'| corresponds to a type of the form~$D_{2n}$.
 
 @< Test and possibly transform... @>=
 { lietype::TypeLetter t = lietype::type(lt[i]); size_t r=lietype::rank(lt[i]);
@@ -559,13 +584,13 @@ group given by a root datum.
 @< Local function def... @>=
 void basic_involution_wrapper()
 { push_tuple_components();
-@/std::auto_ptr<string_value> str(get_string());
-@/std::auto_ptr<Lie_type_value> t(get_Lie_type());
-@)std::auto_ptr<latmat_value> m
-     (new latmat_value(latticetypes::LatticeMatrix()));
-@/lietype::involution(m->value,t->value
-                     ,transform_inner_class_type(str->value.c_str(),t->value));
-  push_value(m.release());
+@/string_ptr str(get<string_value>());
+@/Lie_type_ptr t(get<Lie_type_value>());
+@)matrix_ptr m
+     (new matrix_value(latticetypes::LatticeMatrix()));
+@/lietype::involution(m->val,t->val
+                     ,transform_inner_class_type(str->val.c_str(),t->val));
+  push_value(m);
 }
 
 @ The function just defined gives an involution on the basis of fundamental
@@ -589,25 +614,25 @@ defined here.
 @< Local function def... @>=
 void based_involution_wrapper()
 { push_tuple_components();
-@/std::auto_ptr<string_value> str(get_string());
-@/std::auto_ptr<latmat_value> basis(get_mat());
-@/std::auto_ptr<Lie_type_value> type(get_Lie_type());
+@/string_ptr str(get<string_value>());
+@/matrix_ptr basis(get<matrix_value>());
+@/Lie_type_ptr type(get<Lie_type_value>());
 @)
   size_t r=type->rank();
-  if (basis->value.numRows()!=r or basis->value.numRows()!=r)
+  if (basis->val.numRows()!=r or basis->val.numRows()!=r)
     throw std::runtime_error @|
     ("lattice matrix should be "+num(r)+'x'+num(r)+ " for this type");
-  std::auto_ptr<latmat_value> m
-     (new latmat_value(latticetypes::LatticeMatrix()));
+  matrix_ptr m
+     (new matrix_value(latticetypes::LatticeMatrix()));
 @/lietype::involution
-    (m->value,type->value
-    ,transform_inner_class_type(str->value.c_str(),type->value));
-@)m->value *= basis->value;
-  latticetypes::LatticeCoeff d; basis->value.invert(d);
-  matrix::leftProd(m->value,basis->value);
-  if (d==0 or !m->value.divisible(d)) throw std::runtime_error
+    (m->val,type->val
+    ,transform_inner_class_type(str->val.c_str(),type->val));
+@)m->val *= basis->val;
+  latticetypes::LatticeCoeff d; basis->val.invert(d);
+  matrix::leftProd(m->val,basis->val);
+  if (d==0 or !m->val.divisible(d)) throw std::runtime_error
     ("inner class is not compatible with given lattice");
-  m->value/=d; push_value(m.release());
+  m->val/=d; push_value(m);
 }
 
 
@@ -630,23 +655,26 @@ Now we are ready to introduce a new primitive type for root data.
 @< Includes needed in the header file @>=
 #include "rootdata.h"
 
-@ The root datum type is laid out just like other primitive types.
+@ The root datum type is laid out just like previous primitive types are.
 
 @< Type definitions @>=
 struct root_datum_value : public value_base
-{ rootdata::RootDatum value;
-  root_datum_value(const rootdata::RootDatum v) : value(v) @+ {}
+{ rootdata::RootDatum val;
+@)
+  root_datum_value(const rootdata::RootDatum v) : val(v) @+ {}
   virtual void print(std::ostream& out) const;
   root_datum_value* clone() const @+{@; return new root_datum_value(*this); }
+  static const char* name() @+{@; return "root datum"; }
 private:
-  root_datum_value(const root_datum_value& v) : value(v.value) @+{}
+  root_datum_value(const root_datum_value& v) : val(v.val) @+{}
 };
+@)
+typedef std::auto_ptr<root_datum_value> root_datum_ptr;
 
-@*2 Printing root data.
-We shall not print the complete information contained in the root datum.
-However we do exercise the routines in \.{dynkin.cpp} to determine the type of
-the root datum from its Cartan matrix, as is done in the function
-|type_of_Cartan_matrix_wrapper| above. Contrary to
+@*2 Printing root data. We shall not print the complete information contained
+in the root datum. However we do exercise the routines in \.{dynkin.cpp} to
+determine the type of the root datum from its Cartan matrix, as is done in the
+function |type_of_Cartan_matrix| above. Contrary to
 |prerootdata::cartanMatrix|, the function |rootdata::cartanMatrix| produces
 nothing for torus factors, so we add any necessary torus factors at the end.
 
@@ -666,33 +694,22 @@ present anyway.
 
 @< Function definitions @>=
 void root_datum_value::print(std::ostream& out) const
-{ Lie_type_value type(type_of_datum(value));
-  out << (value.isSimplyConnected() ? "simply connected " : "")
-   @| << (value.isAdjoint() ? "adjoint " : "")
+{ Lie_type_value type(type_of_datum(val));
+  out << (val.isSimplyConnected() ? "simply connected " : "")
+   @| << (val.isAdjoint() ? "adjoint " : "")
       << "root datum of " << type;
 }
 
 @ We also make the derivation of the type available by a wrapper function.
 @< Local fun...@>=
 void type_of_root_datum_wrapper()
-{ std::auto_ptr<root_datum_value> rd(get_root_datum());
-  push_value(new Lie_type_value(type_of_datum(rd->value)));
+{ root_datum_ptr rd(get<root_datum_value>());
+  push_value(new Lie_type_value(type_of_datum(rd->val)));
 }
 
 @*2 Building a root datum.
-Strangely, there is no function in the Atlas to convert a value of type
-|latticetypes::LatticeMatrix| into a |latticetypes::WeightList| value
-(the sequence of its columns). We provide a conversion function here.
-
-@< Local function definitions @>=
-latticetypes::WeightList columns (const latticetypes::LatticeMatrix M)
-{ latticetypes::WeightList result(M.numColumns());
-  for (size_t i=0; i<M.numColumns(); ++i)
-    M.column(result[i],i);
-  return result;
-}
-
-@ To create a root datum value, the user must specify a Lie type and a square
+%
+To create a root datum value, the user must specify a Lie type and a square
 matrix of the size of the rank of the root datum, which specifies generators
 of the desired weight lattice as a sub-lattice of the lattice of weights
 associated to the simply connected group of the type given. The given weights
@@ -702,21 +719,22 @@ type.
 @< Local function definitions @>=
 void root_datum_wrapper()
 { push_tuple_components();
-  std::auto_ptr<latmat_value> lattice(get_mat());
-  std::auto_ptr<Lie_type_value> type(get_Lie_type());
-  if (lattice->value.numRows()!=lattice->value.numColumns() or
-      lattice->value.numRows()!=type->rank())
+  matrix_ptr lattice(get<matrix_value>());
+  Lie_type_ptr type(get<Lie_type_value>());
+  if (lattice->val.numRows()!=lattice->val.numColumns() @| or
+      lattice->val.numRows()!=type->rank())
     throw std::runtime_error
-    ("lattice matrix should be "+num(type->rank())+'x'+num(type->rank())+
+    ("lattice matrix should be " @| +num(type->rank())+'x'+num(type->rank())+
      " for this type");
-  @< Test whether the columns of |lattice->value| span the root lattice; if
+  @< Test whether the columns of |lattice->val| span the root lattice; if
      not |throw| a |std::runtime_error| @>
-  prerootdata::PreRootDatum pre(type->value,columns(lattice->value));
-  push_value(new root_datum_value(rootdata::RootDatum(pre)));
+  latticetypes::WeightList columns; columnVectors(columns,lattice->val);
+  prerootdata::PreRootDatum pre_datum(type->val,columns);
+  push_value(new root_datum_value(rootdata::RootDatum(pre_datum)));
 }
 
 @ Since the construction of the (simple) roots in a |PreRootDatum| uses
-multiplication by an inverse matrix producing an integral matrix without
+multiplication by an inverse matrix producing an integral matrix, without
 testing whether the result was exact, we must laboriously do the same
 computation before constructing the |PreRootDatum|, just to assure that the
 construction will not fail. If the construction would succeed, even with an
@@ -726,22 +744,22 @@ equality with the transpose Cartan matrix. But this would crash on division be
 zero if the matrix were singular (this raises no exception, despite printing
 message mentioning a \.{floating point exception}, so it cannot be caught). So
 that approach would still require preliminary test for an invertible matrix,
-and would end up being as much work as the code below. We note that in that
-approach, which we had initially adopted, a subtle error is possible because
-of roots that after basis transformation are rounded to zero would be mistaken
-for columns coming from torus factors, and the |PreRootDatum| could therefore
-have fewer roots than the semisimple rank of the type specified. But in case
-the lattice matrix passes the test below, the |PreRootDatum| can safely be
-constructed and will be correct in all respects.
+and would end up being as much work as the code below. We note that moreover
+in that approach (which we had initially adopted) a subtle error is possible,
+because roots that after basis transformation are rounded to zero would be
+mistaken for columns coming from torus factors, and the |PreRootDatum| could
+therefore have fewer roots than the semisimple rank of the type specified. But
+in case our lattice matrix passes the test below, the |PreRootDatum| can
+safely be constructed and will be correct in all respects.
 
-@< Test whether the columns of |lattice->value| span the root lattice... @>=
-{ latticetypes::LatticeMatrix M(lattice->value);
+@< Test whether the columns of |lattice->val| span the root lattice... @>=
+{ latticetypes::LatticeMatrix M(lattice->val);
   latticetypes::LatticeCoeff d;
   M.invert(d);
   if (d==0) throw std::runtime_error
     ("Lattice matrix has dependent columns; in root_datum");
 @/latticetypes::LatticeMatrix tC;
-  prerootdata::cartanMatrix(tC,type->value); tC.transpose();
+  prerootdata::cartanMatrix(tC,type->val); tC.transpose();
   M *= tC;
   // now columns of |M| hold |d| times the simple roots, expressed on the given basis
   if (!M.divisible(d))
@@ -770,31 +788,28 @@ This wrapper function is particular in that it does most of its work by
 calling other wrapper functions; we essentially use the evaluator stack here
 many times. In one case we need to duplicate the top of the stack, holding the
 value~$S$ (this is somewhat of a coincidence, since the bottom copy happens to
-be in place for the call to~$replace\_gen$). We do this by popping
-the stack into a named pointer variable, pushing it straight back on and then
-pushing a cloned version; we could have avoided popping and naming by calling
-|push_value(execution_stack.back())| at the price of readability and some type
-safety in case we made some coding errors here (since we are bypassing the
-type checker).
+be in place for the call to~$replace\_gen$). We do this by pushing a cloned
+version of the stack top.
 
 @< Local function definitions @>=
 void quotient_basis_wrapper()
 { push_tuple_components();
-  std::auto_ptr<latmat_value> M(get_mat());
-   // leave Lie type one stack for $Smith\_Cartan$
+  matrix_ptr M(get<matrix_value>());
+  // leave Lie type on stack for $Smith\_Cartan$
   Smith_Cartan_wrapper(); // compute $S=Smith\_Cartan(t)$
-  tuple_value* S=get_tuple(); push_value(S); // for call of $replace\_gen$
-  push_value(S->clone()); // push a cloned copy for call of $filter\_units$
+  value S=execution_stack.back();
+    // leave |S| on stack for call of $replace\_gen$
+  push_value(S->clone()); // push a copy for call of $filter\_units$
   filter_units_wrapper(); // compute |(C,v)|
   push_tuple_components();
-  std::auto_ptr<weight_value> v(get_vec());
-  std::auto_ptr<latmat_value> C(get_mat());
-  size_t d=1;
-  for (size_t i=0; i<v->value.size(); ++i)
-    if (v->value[i]!=0) d=arithmetic::lcm(d,v->value[i]);
+  vector_ptr v(get<vector_value>());
+  matrix_ptr C(get<matrix_value>());
+@/size_t d=1;
+  for (size_t i=0; i<v->val.size(); ++i)
+    if (v->val[i]!=0) d=arithmetic::lcm(d,v->val[i]);
   @< Test |M| against |v| and adapt its rows to the common denominator |d| @>
-  push_value(C.release()); // for call of $mm\_prod$
-  push_value(M.release()); // for call of $ann\_mod$
+  push_value(C); // for call of $mm\_prod$
+  push_value(M); // for call of $ann\_mod$
   push_value(new int_value(d)); // for call of $ann\_mod$
 @/wrap_tuple(2); ann_mod_wrapper();
 @/wrap_tuple(2); mm_prod_wrapper();
@@ -806,15 +821,15 @@ service to the user we adapt its size to match that requirement if it has no
 entries (either no rows or no columns).
 
 @< Test |M| against |v| and adapt its rows to the common denominator |d| @>=
-{ if (M->value.isEmpty()) M->value.resize(v->value.size(),0);
-  if (M->value.numRows()!=v->value.size())
-    throw std::runtime_error @| ("Number "+num(M->value.numRows())+
-      " of rows does not match number "+num(v->value.size())+
+{ if (M->val.isEmpty()) M->val.resize(v->val.size(),0);
+  if (M->val.numRows()!=v->val.size())
+    throw std::runtime_error @| ("Number "+num(M->val.numRows())+
+      " of rows does not match number "+num(v->val.size())+
       " of kernel generators");
-  for (size_t i=0; i<v->value.size(); ++i)
-   if (v->value[i]!=0)
-     for (size_t j=0; j<M->value.numColumns(); ++j)
-       M->value(i,j)*=d/v->value[i];
+  for (size_t i=0; i<v->val.size(); ++i)
+   if (v->val[i]!=0)
+     for (size_t j=0; j<M->val.numColumns(); ++j)
+       M->val(i,j)*=d/v->val[i];
 }
 
 @ The function that integrates all is $quotient\_datum$; the call
@@ -822,33 +837,35 @@ $quotient\_datum(t,M)$ is equivalent to $root\_datum(t,quotient\_basis(t,M))$.
 
 @< Local function definitions @>=
 void quotient_datum_wrapper()
-{ std::auto_ptr<tuple_value> args(get_tuple());
-  push_value(args->value[0]->clone()); // the Lie type, for call of $root\_datum$
-  push_value(args.release()); quotient_basis_wrapper();
+{ tuple_ptr args(get<tuple_value>());
+  push_value(args->val[0]->clone()); // the Lie type, for call of $root\_datum$
+  push_value(args); quotient_basis_wrapper();
 @/wrap_tuple(2); root_datum_wrapper();
 }
 
 @ We define two more wrappers with only a Lie type as argument, for building
 the simply connected and the adjoint root data. They are similar to the
-previous one in that they mostly call other wrapper functions. Only to make
-the adjoint root datum we make sure to replace any null diagonal entries by
-ones.
+previous one in that they mostly call other wrapper functions: the matrices
+that specify the sub-lattices are produced by the wrapper functions for
+|id_mat| respectively for |Cartan_matrix| and |transpose_matrix|. The only
+thing we do ``by hand'' is to make sure, in the case of the adjoint datum,
+that all null diagonal entries are replaced by ones.
 
 @< Local function definitions @>=
 void simply_connected_datum_wrapper()
-{ Lie_type_value* type=get_Lie_type(); push_value(type);
+{ Lie_type_value* type=get<Lie_type_value>(); push_value(type);
   push_value(new int_value(type->rank()));
   id_mat_wrapper();
 @/wrap_tuple(2); root_datum_wrapper();
 }
 @)
 void adjoint_datum_wrapper()
-{ Lie_type_value* type=get_Lie_type(); push_value(type);
+{ Lie_type_value* type=get<Lie_type_value>(); push_value(type);
   push_value(type->clone());
   Cartan_matrix_wrapper(); transpose_mat_wrapper();
-  latmat_value* M=get_mat();
+  matrix_value* M=get<matrix_value>();
   for (size_t i=0; i<type->rank(); ++i)
-    if (M->value(i,i)==0) M->value(i,i)=1;
+    if (M->val(i,i)==0) M->val(i,i)=1;
   push_value(M);
 @/wrap_tuple(2); root_datum_wrapper();
 }
@@ -869,80 +886,62 @@ for ${\bf GL}_n$.
 
 @< Local function definitions @>=
 void SL_wrapper()
-{ std::auto_ptr<int_value> n(get_int());
-  if (n->value<1) throw std::runtime_error("Non positive argument for GL");
-  const size_t r=n->value-1;
-  std::auto_ptr<Lie_type_value>type(new Lie_type_value());
+{ int_ptr n(get<int_value>());
+  if (n->val<1) throw std::runtime_error("Non positive argument for SL");
+  const size_t r=n->val-1;
+  Lie_type_ptr type(new Lie_type_value());
   if (r>0) type->add_simple_factor('A',r);
-  push_value(type.release());
-  std::auto_ptr<latmat_value> lattice
-     (new latmat_value(latticetypes::LatticeMatrix()));
-  identityMatrix(lattice->value,r);
-  for (size_t i=0; i<r-1; ++i) lattice->value(i,i+1)=-1;
-  push_value(lattice.release());
+  push_value(type);
+  matrix_ptr lattice
+     (new matrix_value(latticetypes::LatticeMatrix()));
+  identityMatrix(lattice->val,r);
+  for (size_t i=0; i<r-1; ++i) lattice->val(i,i+1)=-1;
+  push_value(lattice);
 @/wrap_tuple(2); root_datum_wrapper();
 }
 @)
 void GL_wrapper()
-{ std::auto_ptr<int_value> n(get_int());
-  if (n->value<1) throw std::runtime_error("Non positive argument for GL");
-  const size_t r=n->value-1;
-  std::auto_ptr<Lie_type_value>type(new Lie_type_value());
+{ int_ptr n(get<int_value>());
+  if (n->val<1) throw std::runtime_error("Non positive argument for GL");
+  const size_t r=n->val-1;
+  Lie_type_ptr type(new Lie_type_value());
   if (r>0) type->add_simple_factor('A',r);
   type->add_simple_factor('T',1);
-  push_value(type.release());
-  std::auto_ptr<latmat_value> lattice
-     (new latmat_value(latticetypes::LatticeMatrix()));
-  identityMatrix(lattice->value,r+1);
+  push_value(type);
+  matrix_ptr lattice
+     (new matrix_value(latticetypes::LatticeMatrix()));
+  identityMatrix(lattice->val,r+1);
   for (size_t i=0; i<r; ++i)
-  @/{@; lattice->value(n->value-1,i)=1; lattice->value(i,i+1)=-1; }
-  push_value(lattice.release());
+  @/{@; lattice->val(n->val-1,i)=1; lattice->val(i,i+1)=-1; }
+  push_value(lattice);
 @/wrap_tuple(2); root_datum_wrapper();
 }
 
 @*2 Functions operating on root data.
-We shall need a another variation of |get_int| to unpack root datum values.
-
-@< Declarations of exported functions @>=
-root_datum_value* get_root_datum() throw(std::logic_error);
-
-@~Again, there are no surprises.
-@< Function definitions @>=
-root_datum_value* get_root_datum() throw(std::logic_error)
-{ value_ptr p=pop_arg();
-  root_datum_value* result=dynamic_cast<root_datum_value*>(p);
-  if (result==NULL)
-    {@; delete p; throw std::logic_error("Argument is not a root_datum"); }
-@.Argument is not a root datum@>
-  return result;
-}
-
-@ The following functions allow us to look at the roots and co-roots stored in
+%
+The following functions allow us to look at the roots and co-roots stored in
 a root datum value, and the associated Cartan matrix.
 
 @< Local function definitions @>=
 void simple_roots_wrapper()
-{ std::auto_ptr<root_datum_value> rd(get_root_datum());
+{ root_datum_ptr rd(get<root_datum_value>());
   latticetypes::WeightList l
-    (rd->value.beginSimpleRoot(),rd->value.endSimpleRoot());
-  latmat_value* result=new latmat_value(atlas::latticetypes::LatticeMatrix(l));
-  push_value(result);
+    (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
+  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(l)));
 }
 @)
 void simple_coroots_wrapper()
-{ std::auto_ptr<root_datum_value> rd(get_root_datum());
+{ root_datum_ptr rd(get<root_datum_value>());
   latticetypes::WeightList l
-    (rd->value.beginSimpleCoroot(),rd->value.endSimpleCoroot());
-  latmat_value* result=new latmat_value(atlas::latticetypes::LatticeMatrix(l));
-  push_value(result);
+    (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
+  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(l)));
 }
 @)
 void datum_Cartan_wrapper()
-{ std::auto_ptr<root_datum_value> rd(get_root_datum());
+{ root_datum_ptr rd(get<root_datum_value>());
   latticetypes::LatticeMatrix M;
-  rootdata::cartanMatrix(M,rd->value);
-  latmat_value* result=new latmat_value(M);
-  push_value(result);
+  rootdata::cartanMatrix(M,rd->val);
+  push_value(new matrix_value(M));
 }
 
 @ The following functions allow us to look at the roots and co-roots stored in
@@ -950,19 +949,17 @@ a root datum value.
 
 @< Local function definitions @>=
 void roots_wrapper()
-{ std::auto_ptr<root_datum_value> rd(get_root_datum());
+{ root_datum_ptr rd(get<root_datum_value>());
   latticetypes::WeightList l
-    (rd->value.beginRoot(),rd->value.endRoot());
-  latmat_value* result=new latmat_value(atlas::latticetypes::LatticeMatrix(l));
-  push_value(result);
+    (rd->val.beginRoot(),rd->val.endRoot());
+  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(l)));
 }
 @)
 void coroots_wrapper()
-{ std::auto_ptr<root_datum_value> rd(get_root_datum());
+{ root_datum_ptr rd(get<root_datum_value>());
   latticetypes::WeightList l
-    (rd->value.beginCoroot(),rd->value.endCoroot());
-  latmat_value* result=new latmat_value(atlas::latticetypes::LatticeMatrix(l));
-  push_value(result);
+    (rd->val.beginCoroot(),rd->val.endCoroot());
+  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(l)));
 }
 
 @ It is useful to have bases for the sum of the root lattice and the
@@ -970,21 +967,19 @@ coradical, and for the sum of the coroot lattice and the radical.
 
 @< Local function definitions @>=
 void root_coradical_wrapper()
-{ std::auto_ptr<root_datum_value> rd(get_root_datum());
+{ root_datum_ptr rd(get<root_datum_value>());
   latticetypes::WeightList l
-    (rd->value.beginSimpleRoot(),rd->value.endSimpleRoot());
-  l.insert(l.end(),rd->value.beginCoradical(),rd->value.endCoradical());
-  latmat_value* result=new latmat_value(atlas::latticetypes::LatticeMatrix(l));
-  push_value(result);
+    (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
+  l.insert(l.end(),rd->val.beginCoradical(),rd->val.endCoradical());
+  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(l)));
 }
 @)
 void coroot_radical_wrapper()
-{ std::auto_ptr<root_datum_value> rd(get_root_datum());
+{ root_datum_ptr rd(get<root_datum_value>());
   latticetypes::WeightList l
-    (rd->value.beginSimpleCoroot(),rd->value.endSimpleCoroot());
-  l.insert(l.end(),rd->value.beginRadical(),rd->value.endRadical());
-  latmat_value* result=new latmat_value(atlas::latticetypes::LatticeMatrix(l));
-  push_value(result);
+    (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
+  l.insert(l.end(),rd->val.beginRadical(),rd->val.endRadical());
+  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(l)));
 }
 
 @ And here is a simple function to dualise a root datum.
@@ -992,10 +987,10 @@ void coroot_radical_wrapper()
 @h "tags.h"
 @< Local function definitions @>=
 void dual_datum_wrapper()
-{ std::auto_ptr<root_datum_value> rd(get_root_datum());
-  rootdata::RootDatum dual(rd->value,tags::DualTag());
-  rd->value.swap(dual);
-  push_value(rd.release());
+{ root_datum_ptr rd(get<root_datum_value>());
+  rootdata::RootDatum dual(rd->val,tags::DualTag());
+  rd->val.swap(dual);
+  push_value(rd);
 }
 
 @ Let us install the above wrapper functions.
@@ -1048,9 +1043,9 @@ does not, it is not an automorphism of the based root datum). For torus
 factors, this requires an analysis of the eigen-lattices of the involution,
 which is performed in the class |tori::RealTorus|. The problem of finding the
 inner class letters for the torus factors might not have a unique solution:
-certainly involutions that correspond to a Complex inner class but on simple
-factors that are not adjacent cannot be specified by inner class letters, and
-on the other hand certain inner class letters are synonymous; even apart from
+certainly involutions that correspond to a Complex inner class, but on simple
+factors that are not adjacent, cannot be specified by inner class letters;
+on the other hand certain inner class letters are synonymous. Even apart from
 this there might, in cases where the group is not a direct product of its
 derived group and its central torus, be involutions that can arise in several
 different ways or not at all. Therefore the value we compute should be taken
@@ -1078,11 +1073,12 @@ throw (std::bad_alloc, std::runtime_error)
   return std::make_pair(T.compactRank(),T.splitRank());
 }
 
-@ The test that |M| is an involution ($M^2=I$) is certainly necessary when
-|classify_involution(M)| is called independently; if called in the context of
-checking the involution for an inner class it may seem redundant given the
-fact that we shall also check that |M| induces an involutive permutation of
-the roots, but it is not so in case there is a torus part.
+@ The test below that |M| is an involution ($M^2=I$) is certainly necessary
+when |classify_involution| is called independently. If the code below is
+executed in the context of checking the involution for an inner class, it may
+seem redundant given the fact that we shall also check that |M| induces an
+involutive permutation of the roots; however even there it is not redundant in
+the presence of a torus part.
 
 @< Check that |M| is an $r\times{r}$ matrix defining an involution @>=
 { if (M.numRows()!=r or M.numColumns()!=r) throw std::runtime_error
@@ -1094,14 +1090,15 @@ the roots, but it is not so in case there is a torus part.
       ("given transformation is not an involution");
 }
 
-@ That function might be of use to the user, so let us make a wrapper for it.
-In fact we shall return the compact, Complex, and split ranks, in that order.
+@ The function |classify_involution| might be of use to the user, so let us
+make a wrapper for it. In fact we shall return the compact, Complex, and split
+ranks, in that order.
 
 @< Local function def...@>=
 void classify_wrapper()
-{ std::auto_ptr<latmat_value> M(get_mat());
-  size_t r=M->value.numRows();
-  std::pair<size_t,size_t> p=classify_involution(M->value,r);
+{ matrix_ptr M(get<matrix_value>());
+  size_t r=M->val.numRows();
+  std::pair<size_t,size_t> p=classify_involution(M->val,r);
   push_value(new int_value(p.first)); // compact rank
   push_value(new int_value((r-p.first-p.second)/2)); // Complex rank
   push_value(new int_value(p.second)); // split rank
@@ -1120,9 +1117,10 @@ the end), but in case of Complex inner classes we may be forced to permute the
 simple factors to make the identical factors associated to such classes
 adjacent.
 
-We do not apply the function |classify_involution| to the entire matrix,
-although we shall use it below for a matrix defined for the central torus
-part; we can however reuse the module that tests for being an involution here.
+We do not apply the function |classify_involution| defined above to the entire
+matrix describing a (purported) involution of the weight lattice, although we
+shall use it below for a matrix defined for the central torus part; we can
+however reuse the module that tests for being an involution here.
 
 @h "setutils.h"
 
@@ -1144,9 +1142,7 @@ std::pair<lietype::LieType,lietype::InnerClassType> check_involution
 
 @ That |M| is an automorphism means that the simple roots are permuted among
 each other, and that the Cartan matrix is invariant under that permutation of
-its rows and columns. We keep track of the number of fixed points of the
-permutation, which in the semisimple case each account for a compact factor of
-the real torus, at least in the simply connected or adjoint case.
+its rows and columns.
 
 @< Set |p| to the permutation of the simple roots...@>=
 { rootdata::WRootIterator first=rd.beginSimpleRoot(), last=rd.endSimpleRoot();
@@ -1176,18 +1172,20 @@ lies in another component of the diagram we have a Complex inner class.
 { latticetypes::LatticeMatrix(C); rootdata::cartanMatrix(C,rd);
 @/dynkin::DynkinDiagram diagr(C);
 @/lietype::LieType type0; dynkin::lieType(type0,C); // type before rearranging
-@/bitset::RankFlagsList comps; dynkin::components(comps,diagr);
-  std::vector<char> letter(comps.size());
+@/bitset::RankFlagsList component; // list of connected components of diagram
+  dynkin::components(component,diagr);
+  std::vector<char> letter(component.size());
   size_t nr_Complex_letters=0;
-  for (size_t i=0; i<comps.size(); ++i)
+  for (size_t i=0; i<component.size(); ++i)
   { bool equal_rank=true;
-    for (bitset::RankFlags::iterator j=comps[i].begin(); j(); ++j)
+    for (bitset::RankFlags::iterator j=component[i].begin(); j(); ++j)
+     // traverse component
       if (p[*j]!=*j) {@; equal_rank=false; break; }
     if (equal_rank) letter[i]='c';
-      // identity on this component: compact
-    else if(!comps[i][p[comps[i].firstBit()]])
-      // exchange with other component: Complex
-      {@; ++nr_Complex_letters; letter[i]='C'; }
+      // identity on this component: compact component
+    else if(!component[i][p[component[i].firstBit()]])
+      // then component not globally fixed
+      {@; ++nr_Complex_letters; letter[i]='C'; } // record Complex component
     else letter[i]= type0[i].first=='D' and type0[i].second%2==0 ? 'u' : 's';
     // unequal rank
   }
@@ -1204,23 +1202,26 @@ number of the matching factor in the Lie type.
 @< Make adaptations for any Complex inner classes... @>=
 { std::vector<size_t> pos(nr_Complex_letters);
   std::vector<size_t> first(nr_Complex_letters);
-  for (size_t l=0,i=0; l<comps.size(); ++l)
+  for (size_t l=0,i=0; l<component.size(); ++l)
     if (letter[l]=='C')
-    {@; pos[i]=l; first[i]=comps[l].firstBit(); ++i; }
+    {@; pos[i]=l; first[i]=component[l].firstBit(); ++i; }
   std::vector<size_t> buddy(nr_Complex_letters,nr_Complex_letters);
+   // initialise with sentinels
   for (size_t i=0; i<nr_Complex_letters; ++i)
-    if (buddy[i]==nr_Complex_letters) // value was not set by buddy
-    { size_t b=diagr.component(p[comps[pos[i]].firstBit()]).firstBit();
+    if (buddy[i]==nr_Complex_letters) // then value was not yet set by a buddy
+    { size_t b=diagr.component(p[component[pos[i]].firstBit()]).firstBit();
+        // first bit of companion
       for (size_t j=i+1; j<nr_Complex_letters; ++j)
         if (first[j]==b) {@; buddy[i]=j; buddy[j]=i; break; }
     }
-  type.resize(comps.size()+(r-s));
-  for (size_t l=0,k=0,i=0; l<comps.size(); ++l)
+  type.resize(component.size()+(r-s)); // allocate size for type letters
+  for (size_t l=0,k=0,i=0; l<component.size(); ++l)
     if (letter[l]!='C')
     {@; type[k++]=type0[l]; inner_class.push_back(letter[l]); }
     else if (buddy[i]<i) ++i; // skip second member of Complex pair
     else // first member of Complex pair
-    { type[k++]=type0[l]; type[k++]=type0[pos[buddy[i]]]; // should be equal
+    { type[k++]=type0[l]; type[k++]=type0[pos[buddy[i]]];
+       // add equal types for Complex class
       inner_class.push_back('C'); ++i;
     }
   if (r>s)
@@ -1243,7 +1244,7 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
 @< Add type letters and inner class symbols for the central torus @>=
 { using latticetypes::WeightList; using latticetypes::LatticeMatrix;
-  for (size_t k=comps.size(); k<comps.size()+(r-s); ++k)
+  for (size_t k=component.size(); k<component.size()+(r-s); ++k)
     type[k]=lietype::SimpleLieType('T',1);
   WeightList b; matrix::initBasis(b,r);
   WeightList simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
@@ -1262,7 +1263,7 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
 @*2 Storing the inner class values.
 This is the first built-in type where we deviate from the previously used
-scheme of just having one data field |value| holding a value of a class
+scheme of just having one data field |val| holding a value of a class
 defined in the Atlas. The reason is that the copy constructor for
 |complexredgp::ComplexReductiveGroup| is private (and nowhere defined), so
 that the straightforward definition of a copy constructor for such a built-in
@@ -1287,11 +1288,14 @@ transparency is not complete.
 @< Includes... @>=
 #include "realform_io.h"
 
-@~The main constructor takes a pointer to a |ComplexReductiveGroup| as
-argument, which should come from a call to~|new|; this pointer will be owned
-by the |inner_class_value| constructed and all values cloned from it, with
-the last one to be destroyed calling |delete| for the pointer. This argument
-is followed by the values that are computed by |check_involution| above.
+@~The main constructor takes a auto-pointer to a |ComplexReductiveGroup| as
+argument, as a reminder that the called gives up ownership of this pointer
+that should come from a call to~|new|; this pointer will henceforth be owned
+by the |inner_class_value| constructed, in shared ownership with any values
+later cloned from it: the last one of them to be destroyed will call |delete|
+for the pointer. The remaining pair of arguments of the main constructor must
+have been computed by |check_involution| above, to ensure their validity (but
+we prefer not to call that function from inside the constructor).
 
 Occasionally we shall need to refer to the dual inner class (for the dual
 group); since the construction of an instance even without its complete set of
@@ -1302,56 +1306,69 @@ it will be available as needed.
 
 Contrary to what was the case for other value types, the copy constructor is
 public here, which will make it possible to store an |inner_class_value|
-inside another class that depends on the object referenced by our |value|
-field staying alive; the reference counting mechanism will then ensure that
-this is the case as long as the object of that class exists.
+inside another class that depends on the circumstance that the object
+referenced by our |val| is alive; the reference counting mechanism will then
+ensure that this is the case as long as the object of that class exists.
 
 @< Type definitions @>=
 struct inner_class_value : public value_base
-{ complexredgp::ComplexReductiveGroup& value;
+{ complexredgp::ComplexReductiveGroup& val;
   complexredgp::ComplexReductiveGroup& dual;
   size_t& ref_count;
   const realform_io::Interface interface,dual_interface;
 @)
-  inner_class_value(complexredgp::ComplexReductiveGroup*
-                    ,lietype::LieType, lietype::InnerClassType);
+  inner_class_value(std::auto_ptr<complexredgp::ComplexReductiveGroup>
+   ,@| lietype::LieType,lietype::InnerClassType); // main constructor
   ~inner_class_value();
 @)
   virtual void print(std::ostream& out) const;
   inner_class_value* clone() const @+
     {@; return new inner_class_value(*this); }
-  inner_class_value(const inner_class_value& v);
+  static const char* name() @+{@; return "inner class"; }
+@)
+  inner_class_value(const inner_class_value& v); // copy constructor
   inner_class_value(const inner_class_value& v,tags::DualTag);
+   // constructor of dual
 };
+@)
+typedef std::auto_ptr<inner_class_value> inner_class_ptr;
 
 @ Here are the copy constructor and the destructor.
 @< Function def...@>=
 inner_class_value::inner_class_value(const inner_class_value& v)
-: value(v.value), dual(v.dual), ref_count(v.ref_count)
+: val(v.val), dual(v.dual), ref_count(v.ref_count)
 , interface(v.interface), dual_interface(v.dual_interface)
 {@; ++ref_count; }
 
 inner_class_value::~inner_class_value()
-{@; if (--ref_count==0) {@; delete &value; delete &dual; delete &ref_count;} }
+{@; if (--ref_count==0) {@; delete &val; delete &dual; delete &ref_count;} }
 
-@ The constructor installs the reference to the Atlas value, creates its dual
-value to which a reference is stored, and allocates and initialises the
+@ The main constructor installs the reference to the Atlas value, creates its
+dual value to which a reference is stored, and allocates and initialises the
 reference count. To initialise the |interface| and |dual_interface| fields, we
 call the appropriate constructors with a |layout::Layout| structure provided
 by a constructor that we added to it specifically for the purpose. This
 constructor leaves the field holding a lattice basis empty, but this field is
 unused by the constructors for |realform_io::Interface|.
 
+This constructor has the defect that the reference to which the |dual| field
+is initialised will not be freed if an exception should be thrown during the
+subsequent initialisations (which is not likely, but not impossible either).
+However, we see no means to correct this defect with the given structure,
+since a member of reference type has to be initialised to its definitive
+value, and no local variables are available during initialisation whose
+destructor could take care of liberating the memory referred to by~|dual|.
+
 @< Function def...@>=
 inner_class_value::inner_class_value
-  (complexredgp::ComplexReductiveGroup* g
+  (std::auto_ptr<complexredgp::ComplexReductiveGroup> g
   ,lietype::LieType lt, lietype::InnerClassType ict)
-@/: value(*g)
+@/: val(*g)
 , dual(*new complexredgp::ComplexReductiveGroup(*g,tags::DualTag()))
 @/, ref_count(*new size_t(1))
 @/, interface(*g,layout::Layout(lt,ict))
 , dual_interface(*g,layout::Layout(lt,ict),tags::DualTag())
- @+ {}
+ {@; g.release(); } // now that we own |g|, release the auto-pointer
 
 @ We allow construction of a dual |inner_class_value|. Since it can share the
 two fields referring to objects of type |complexredgp::ComplexReductiveGroup|
@@ -1363,7 +1380,7 @@ value will behave exactly like a copy of the original inner class.
 
 @< Function def...@>=
 inner_class_value::inner_class_value(const inner_class_value& v,tags::DualTag)
-@/: value(v.dual), dual(v.value)
+@/: val(v.dual), dual(v.val)
 , ref_count(v.ref_count)
 @/, interface(v.dual_interface), dual_interface(v.interface)
 {@; ++ref_count; }
@@ -1378,10 +1395,10 @@ forms in the inner class defined by it; we print this information when a
 void inner_class_value::print(std::ostream& out) const
 { out << "Complex reductive group equipped with an involution,\n" @|
          "defining an inner class of "
-      << value.numRealForms() @| << " real "
-      << (value.numRealForms()==1 ? "form" : "forms") @| << " and "
-      << value.numDualRealForms() @| << " dual real "
-      << (value.numDualRealForms()==1 ? "form" : "forms");
+      << val.numRealForms() @| << " real "
+      << (val.numRealForms()==1 ? "form" : "forms") @| << " and "
+      << val.numDualRealForms() @| << " dual real "
+      << (val.numDualRealForms()==1 ? "form" : "forms");
 }
 
 @ So here is our wrapper function for building a complex reductive group with
@@ -1395,17 +1412,16 @@ datum.
 @< Local function def...@>=
 void fix_involution_wrapper()
 { push_tuple_components();
-  std::auto_ptr<latmat_value> M(get_mat());
-  std::auto_ptr<root_datum_value> rd(get_root_datum());
+  matrix_ptr M(get<matrix_value>());
+  root_datum_ptr rd(get<root_datum_value>());
   std::pair<lietype::LieType,lietype::InnerClassType> cl
-    =check_involution(M->value,rd->value);
+    =check_involution(M->val,rd->val);
   if (verbosity>0) @< Report the type and inner class found @>
-  rootdata::RootDatum* rdp=new rootdata::RootDatum(rd->value);
+  rootdata::RootDatum* rdp=new rootdata::RootDatum(rd->val);
+   // just a shorthand
   std::auto_ptr<complexredgp::ComplexReductiveGroup>@|
-    G(new complexredgp::ComplexReductiveGroup(rdp,M->value));
-  inner_class_value* result=new
-    inner_class_value(G.get(),cl.first,cl.second);
-  G.release(); push_value(result);
+    G(new complexredgp::ComplexReductiveGroup(rdp,M->val));
+  push_value(new inner_class_value(G,cl.first,cl.second));
 }
 
 @ For understanding what is going on, the user may find it useful to look at
@@ -1430,19 +1446,19 @@ ${\it fix\_involution (root\_datum (t,basis),based\_involution(t,basis,ic))}$.
 @< Local function def...@>=
 void set_type_wrapper()
 { push_tuple_components();
-  std::auto_ptr<string_value> ict(get_string());
-  std::auto_ptr<latmat_value> gen(get_mat());
+  string_ptr ict(get<string_value>());
+  matrix_ptr gen(get<matrix_value>());
   Lie_type_wrapper(); // convert string to Lie type
-  std::auto_ptr<Lie_type_value> t(get_Lie_type());
+  Lie_type_ptr t(get<Lie_type_value>());
 @)
-  push_value(t->clone()); push_value(gen.release());
+  push_value(t->clone()); push_value(gen);
   wrap_tuple(2); quotient_basis_wrapper();
-  std::auto_ptr<latmat_value> basis(get_mat());
+  matrix_ptr basis(get<matrix_value>());
 @)
   push_value(t->clone()); push_value(basis->clone());
   wrap_tuple(2); root_datum_wrapper();
-@/push_value(t.release()); push_value(basis.release());
-  push_value(ict.release());
+@/push_value(t); push_value(basis);
+  push_value(ict);
   wrap_tuple(3); based_involution_wrapper();
 @/wrap_tuple(2); fix_involution_wrapper();
 }
@@ -1465,57 +1481,42 @@ of the expression ${\it fix\_involution(rd,based\_involution(t,basis,ict))}$.
 @< Local function def...@>=
 void set_inner_class_wrapper()
 { push_tuple_components();
-  std::auto_ptr<string_value> ict(get_string());
-  std::auto_ptr<root_datum_value> rd(get_root_datum());
+  string_ptr ict(get<string_value>());
+  root_datum_ptr rd(get<root_datum_value>());
 @)
   push_value(rd->clone()); type_of_root_datum_wrapper();
-  std::auto_ptr<Lie_type_value> t(get_Lie_type());
+  Lie_type_ptr t(get<Lie_type_value>());
 @)
   push_value(rd->clone());
   coroot_radical_wrapper(); transpose_mat_wrapper();
-  std::auto_ptr<latmat_value> basis(get_mat());
+  matrix_ptr basis(get<matrix_value>());
 @)
-  push_value(rd.release());
-@/push_value(t.release()); push_value(basis.release());
-  push_value(ict.release());
+  push_value(rd);
+@/push_value(t); push_value(basis);
+  push_value(ict);
   wrap_tuple(3); based_involution_wrapper();
 @/wrap_tuple(2); fix_involution_wrapper();
 }
 
 @*2 Functions operating on complex reductive groups.
-We shall need a another variation of |get_int| to unpack our new values.
-
-@< Declarations of exported functions @>=
-inner_class_value* get_complexredgp() throw(std::logic_error);
-
-@~Again, there are no surprises.
-@< Function definitions @>=
-inner_class_value* get_complexredgp() throw(std::logic_error)
-{ value_ptr p=pop_arg();
-  inner_class_value* result=dynamic_cast<inner_class_value*>(p);
-  if (result==NULL)
-    {@; delete p; throw std::logic_error("Argument is not a complex group"); }
-@.Argument is not a complex group@>
-  return result;
-}
-
-@ Here are our first functions that access a |inner_class_value|; they
+%
+Here are our first functions that access a |inner_class_value|; they
 recover the ingredients that were used in the construction, and construct the
 dual inner class.
 
 @< Local function def...@>=
 void distinguished_involution_wrapper()
-{ std::auto_ptr<inner_class_value> G(get_complexredgp());
-  push_value(new latmat_value(G->value.distinguished()));
+{ inner_class_ptr G(get<inner_class_value>());
+  push_value(new matrix_value(G->val.distinguished()));
 }
 
 void root_datum_of_inner_class_wrapper()
-{ std::auto_ptr<inner_class_value> G(get_complexredgp());
-  push_value(new root_datum_value(G->value.rootDatum()));
+{ inner_class_ptr G(get<inner_class_value>());
+  push_value(new root_datum_value(G->val.rootDatum()));
 }
 
 void dual_inner_class_wrapper()
-{ std::auto_ptr<inner_class_value> G(get_complexredgp());
+{ inner_class_ptr G(get<inner_class_value>());
   push_value(new inner_class_value(*G,tags::DualTag()));
 }
 
@@ -1526,65 +1527,66 @@ produces the list, and then use it twice.
 
 @< Local function def...@>=
 void push_name_list(const realform_io::Interface& interface)
-{ std::auto_ptr<row_value> result
-    (new row_value(std::vector<value_ptr>()));
+{ row_ptr result
+    (new row_value(std::vector<value>()));
   for (size_t i=0; i<interface.numRealForms(); ++i)
-    result->value.push_back(new string_value(interface.typeName(i)));
-  push_value(result.release());
+    result->val.push_back(new string_value(interface.typeName(i)));
+  push_value(result);
 }
 
 void form_names_wrapper()
-{@; std::auto_ptr<inner_class_value> G(get_complexredgp());
+{@; inner_class_ptr G(get<inner_class_value>());
   push_name_list(G->interface);
 }
 
 void dual_form_names_wrapper()
-{@; std::auto_ptr<inner_class_value> G(get_complexredgp());
+{@; inner_class_ptr G(get<inner_class_value>());
   push_name_list(G->dual_interface);
 }
 
 @ And now, our first function that really simulates something that can be done
-using the atlas interface, and that uses more than a root datum. This is the
+using the Atlas interface, and that uses more than a root datum. This is the
 \.{blocksizes} command from \.{mainmode.cpp}, which uses
 |innerclass_io::printBlockSizes|, but we have to rewrite it to avoid calling
 an output routine. A subtle difference is that we use a matrix of integers
 rather than of unsigned long integers to collect the block sizes; this avoids
-having to define a new primitive type.
+having to define a new primitive type, and seems to suffice for the cases that
+are currently computationally feasible.
 
 @< Local function def...@>=
 void block_sizes_wrapper()
-{ std::auto_ptr<inner_class_value> G(get_complexredgp());
-  G->value.fillCartan();
-  std::auto_ptr<latmat_value>
-  M(new latmat_value @|
-    (latticetypes::LatticeMatrix(G->value.numRealForms()
-                                ,G->value.numDualRealForms())
+{ inner_class_ptr G(get<inner_class_value>());
+  G->val.fillCartan();
+  matrix_ptr
+  M(new matrix_value @|
+    (latticetypes::LatticeMatrix(G->val.numRealForms()
+                                ,G->val.numDualRealForms())
     ));
-  for (size_t i = 0; i < M->value.numRows(); ++i)
-    for (size_t j = 0; j < M->value.numColumns(); ++j)
-      M->value(i,j) =
-      G->value.blockSize(G->interface.in(i),G->dual_interface.in(j));
-  push_value(M.release());
+  for (size_t i = 0; i < M->val.numRows(); ++i)
+    for (size_t j = 0; j < M->val.numColumns(); ++j)
+      M->val(i,j) =
+      G->val.blockSize(G->interface.in(i),G->dual_interface.in(j));
+  push_value(M);
 }
 
 @ Next we shall provide a function that displays the occurrence of Cartan
-matrices for various real forms. The rows will be indexed by real forms, and
-the columns by Cartan matrices (note the alliteration).
+classes for various real forms. The rows will be indexed by real forms, and
+the columns by Cartan classes (note the alliteration).
 
 @< Local function def...@>=
 void occurrence_matrix_wrapper()
-{ std::auto_ptr<inner_class_value> G(get_complexredgp());
-  G->value.fillCartan();
-  size_t nr=G->value.numRealForms();
-  size_t nc=G->value.numCartanClasses();
-  std::auto_ptr<latmat_value>
-    M(new latmat_value(latticetypes::LatticeMatrix(nr,nc)));
+{ inner_class_ptr G(get<inner_class_value>());
+  G->val.fillCartan();
+  size_t nr=G->val.numRealForms();
+  size_t nc=G->val.numCartanClasses();
+  matrix_ptr
+    M(new matrix_value(latticetypes::LatticeMatrix(nr,nc)));
   for (size_t i=0; i<nr; ++i)
-  { bitmap::BitMap b=G->value.cartanSet(G->interface.in(i));
+  { bitmap::BitMap b=G->val.cartanSet(G->interface.in(i));
     for (size_t j=0; j<nc; ++j)
-      M->value(i,j)= b.isMember(j) ? 1 : 0;
+      M->val(i,j)= b.isMember(j) ? 1 : 0;
   }
-  push_value(M.release());
+  push_value(M);
 }
 
 @ We do the same for dual real forms. Note that we had to introduce the method
@@ -1593,18 +1595,18 @@ to write this function.
 
 @< Local function def...@>=
 void dual_occurrence_matrix_wrapper()
-{ std::auto_ptr<inner_class_value> G(get_complexredgp());
-  G->value.fillCartan();
-  size_t nr=G->value.numDualRealForms();
-  size_t nc=G->value.numCartanClasses();
-  std::auto_ptr<latmat_value>
-    M(new latmat_value(latticetypes::LatticeMatrix(nr,nc)));
+{ inner_class_ptr G(get<inner_class_value>());
+  G->val.fillCartan();
+  size_t nr=G->val.numDualRealForms();
+  size_t nc=G->val.numCartanClasses();
+  matrix_ptr
+    M(new matrix_value(latticetypes::LatticeMatrix(nr,nc)));
   for (size_t i=0; i<nr; ++i)
-  { bitmap::BitMap b=G->value.dualCartanSet(G->dual_interface.in(i));
+  { bitmap::BitMap b=G->val.dualCartanSet(G->dual_interface.in(i));
     for (size_t j=0; j<nc; ++j)
-      M->value(i,j)= b.isMember(j) ? 1 : 0;
+      M->val(i,j)= b.isMember(j) ? 1 : 0;
   }
-  push_value(M.release());
+  push_value(M);
 }
 
 @ Finally we install everything.
@@ -1658,11 +1660,11 @@ long. Since that data can be accessed from inside the
 access its |interface| and |dual_interface| fields. To remind us that the
 |parent| is not there to be changed by us, we declare it |const|. The object
 referred to may in fact undergo internal change however, via manipulators of
-the |value| field.
+the |val| field.
 
 We shall later derive from this structure, without adding data members, a
 structure to record dual real forms, which are constructed in the context of
-the same inner class, but where the |value| field is constructed for the dual
+the same inner class, but where the |val| field is constructed for the dual
 group (and its dual inner class). In order to accommodate for that we provide
 an additional protected constructor that will be defined later; this also
 explains why the copy constructor is protected rather than private.
@@ -1670,20 +1672,24 @@ explains why the copy constructor is protected rather than private.
 @< Type definitions @>=
 struct real_form_value : public value_base
 { const inner_class_value parent;
-  realredgp::RealReductiveGroup value;
+  realredgp::RealReductiveGroup val;
 @)
   real_form_value(inner_class_value p,realform::RealForm f)
-  : parent(p), value(p.value,f) @+{}
+  : parent(p), val(p.val,f) @+{}
   ~real_form_value() @+{} // everything is handled by destructor of |parent|
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
     {@; return new real_form_value(*this); }
+  static const char* name() @+{@; return "real form"; }
 protected:
   real_form_value(inner_class_value,realform::RealForm,tags::DualTag);
+     // for dual forms
   real_form_value(const real_form_value& v)
-  : parent(v.parent), value(v.value) @+{}
+  : parent(v.parent), val(v.val) @+{} // copy c'tor
 };
+@)
+typedef std::auto_ptr<real_form_value> real_form_ptr;
 
 @ When printing a real form, we give the name by which it was chosen (where
 for once we do use the |parent| field), and provide some information about its
@@ -1693,12 +1699,12 @@ laboriously make the conversion here.
 
 @< Function def...@>=
 void real_form_value::print(std::ostream& out) const
-{ out << (value.isQuasisplit() ? "quasisplit " : "")
+{ out << (val.isQuasisplit() ? "quasisplit " : "")
   << "real form '" @|
-  << parent.interface.typeName(parent.interface.out(value.realForm())) @|
+  << parent.interface.typeName(parent.interface.out(val.realForm())) @|
   << "', defining a"
-  << (value.isConnected() ? " connected" : "" ) @|
-  << (value.isSplit() ? " split" : "") @|
+  << (val.isConnected() ? " connected" : "" ) @|
+  << (val.isSplit() ? " split" : "") @|
   << " real group" ;
 }
 
@@ -1710,43 +1716,28 @@ at this point. As a special case we also provide the quasisplit form.
 @< Local function def...@>=
 void real_form_wrapper()
 { push_tuple_components();
-  std::auto_ptr<int_value> i(get_int());
-  std::auto_ptr<inner_class_value> G(get_complexredgp());
-  if (i->value<0 || size_t(i->value)>=G->value.numRealForms())
-    throw std::runtime_error ("illegal real form number: "+num(i->value));
-  push_value(new real_form_value(*G,G->interface.in(i->value)));
+  int_ptr i(get<int_value>());
+  inner_class_ptr G(get<inner_class_value>());
+  if (size_t(i->val)>=G->val.numRealForms())
+    throw std::runtime_error ("illegal real form number: "+num(i->val));
+  push_value(new real_form_value(*G,G->interface.in(i->val)));
 }
 @)
 void quasisplit_form_wrapper()
-{ std::auto_ptr<inner_class_value> G(get_complexredgp());
-  push_value(new real_form_value(*G,G->value.quasisplit()));
+{ inner_class_ptr G(get<inner_class_value>());
+  push_value(new real_form_value(*G,G->val.quasisplit()));
 }
 
 @*2 Functions operating on real reductive groups.
-We shall need a another variation of |get_int| to unpack our new values.
-
-@< Declarations of exported functions @>=
-real_form_value* get_real_form() throw(std::logic_error);
-
-@~Again, there are no surprises.
-@< Function definitions @>=
-real_form_value* get_real_form() throw(std::logic_error)
-{ value_ptr p=pop_arg();
-  real_form_value* result=dynamic_cast<real_form_value*>(p);
-  if (result==NULL)
-    {@; delete p; throw std::logic_error("Argument is not a real form"); }
-@.Argument is not a real form@>
-  return result;
-}
-
-@ Here is a function that gives full information about the component group of
+%
+Here is a function that gives full information about the component group of
 a reals reductive group: it returns the rank~$r$ such that the component group
 is isomorphic to $(\Z/2\Z)^r$.
 
 @< Local function def...@>=
 void components_rank_wrapper()
-{ std::auto_ptr<real_form_value> R(get_real_form());
-  const latticetypes::ComponentList c=R->value.componentReps();
+{ real_form_ptr R(get<real_form_value>());
+  const latticetypes::ComponentList c=R->val.componentReps();
   push_value(new int_value(c.size()));
 }
 
@@ -1756,9 +1747,9 @@ are in fact generated.
 
 @< Local function def...@>=
 void count_Cartans_wrapper()
-{ std::auto_ptr<real_form_value> rf(get_real_form());
-  rf->value.fillCartan();
-  push_value(new int_value(rf->value.numCartan()));
+{ real_form_ptr rf(get<real_form_value>());
+  rf->val.fillCartan();
+  push_value(new int_value(rf->val.numCartan()));
 }
 
 @ The size of the finite set $K\backslash G/B$ can be determined from the real
@@ -1766,9 +1757,9 @@ form, once the corresponding Cartan classes have been generated.
 
 @< Local function def...@>=
 void KGB_size_wrapper()
-{ std::auto_ptr<real_form_value> rf(get_real_form());
-  rf->value.fillCartan();
-  push_value(new int_value(rf->value.kgbSize()));
+{ real_form_ptr rf(get<real_form_value>());
+  rf->val.fillCartan();
+  push_value(new int_value(rf->val.kgbSize()));
 }
 
 @ Once the Cartan classes for a real form are constructed, we have a partial
@@ -1778,15 +1769,15 @@ this partial ordering.
 @h "poset.h"
 @< Local function def...@>=
 void Cartan_order_matrix_wrapper()
-{ std::auto_ptr<real_form_value> rf(get_real_form());
-  rf->value.fillCartan();
-  size_t n=rf->value.numCartan();
-  latmat_value* M =
-     new latmat_value(latticetypes::LatticeMatrix(n,n,0));
-  const poset::Poset& p = rf->value.cartanOrdering();
+{ real_form_ptr rf(get<real_form_value>());
+  rf->val.fillCartan();
+  size_t n=rf->val.numCartan();
+  matrix_value* M =
+     new matrix_value(latticetypes::LatticeMatrix(n,n,0));
+  const poset::Poset& p = rf->val.cartanOrdering();
   for (size_t i=0; i<n; ++i)
     for (size_t j=i; j<n; ++j)
-      if (p.lesseq(i,j)) M->value(i,j)=1;
+      if (p.lesseq(i,j)) M->val(i,j)=1;
 
   push_value(M);
 }
@@ -1798,7 +1789,7 @@ the context of the |inner_class_value| itself. The resulting objects will have
 a different type than ordinary real forms, but the will use the same structure
 layout. The interpretation of the fields is as follows for dual real forms:
 the |parent| field contains a copy of the original |inner_class_value|, but
-the |value| field contains a |realredgp::RealReductiveGroup| object
+the |val| field contains a |realredgp::RealReductiveGroup| object
 constructed for the dual inner class, so that its characteristics will be
 correct.
 
@@ -1806,7 +1797,7 @@ correct.
 
 real_form_value::real_form_value(inner_class_value p,realform::RealForm f
 				,tags::DualTag)
-: parent(p), value(p.dual,f)
+: parent(p), val(p.dual,f)
 {}
 
 @ In order to be able to use the same layout for dual real forms but to
@@ -1821,20 +1812,23 @@ struct dual_real_form_value : public real_form_value
   virtual void print(std::ostream& out) const;
   dual_real_form_value* clone() const @+
     {@; return new dual_real_form_value(*this); }
+  static const char* name() @+{@; return "dual real form"; }
 private:
   dual_real_form_value(const dual_real_form_value& v)
   : real_form_value(v) @+ {}
 };
+@)
+typedef std::auto_ptr<dual_real_form_value> dual_real_form_ptr;
 
 @ The only real difference with real forms is a slightly modified output
 routine.
 
 @< Function def...@>=
 void dual_real_form_value::print(std::ostream& out) const
-{ out << (value.isQuasisplit() ? "quasisplit " : "")
+{ out << (val.isQuasisplit() ? "quasisplit " : "")
   << "dual real form '" @|
   << parent.dual_interface.typeName
-    (parent.dual_interface.out(value.realForm())) @|
+    (parent.dual_interface.out(val.realForm())) @|
   << "'";
 }
 
@@ -1845,32 +1839,16 @@ index. We also provide the dual quasisplit form.
 @< Local function def...@>=
 void dual_real_form_wrapper()
 { push_tuple_components();
-  std::auto_ptr<int_value> i(get_int());
-  std::auto_ptr<inner_class_value> G(get_complexredgp());
-  if (i->value<0 || size_t(i->value)>=G->value.numDualRealForms())
-    throw std::runtime_error ("illegal dual real form number: "+num(i->value));
-  push_value(new dual_real_form_value(*G,G->dual_interface.in(i->value)));
+  int_ptr i(get<int_value>());
+  inner_class_ptr G(get<inner_class_value>());
+  if (size_t(i->val)>=G->val.numDualRealForms())
+    throw std::runtime_error ("illegal dual real form number: "+num(i->val));
+  push_value(new dual_real_form_value(*G,G->dual_interface.in(i->val)));
 }
 @)
 void dual_quasisplit_form_wrapper()
-{ std::auto_ptr<inner_class_value> G(get_complexredgp());
+{ inner_class_ptr G(get<inner_class_value>());
   push_value(new dual_real_form_value(*G,G->dual.quasisplit()));
-}
-
-@ And here is another obligatory part
-
-@< Declarations of exported functions @>=
-dual_real_form_value* get_dual_real_form() throw(std::logic_error);
-
-@~Again, there are no surprises.
-@< Function definitions @>=
-dual_real_form_value* get_dual_real_form() throw(std::logic_error)
-{ value_ptr p=pop_arg();
-  dual_real_form_value* result=dynamic_cast<dual_real_form_value*>(p);
-  if (result==NULL)
-    {@; delete p; throw std::logic_error("Argument is not a dual real form"); }
-@.Argument is not a dual real form@>
-  return result;
 }
 
 @ Rather than provide all functions for real forms for dual real forms, we
@@ -1879,10 +1857,10 @@ associated to the dual inner class.
 
 @< Local function def...@>=
 void real_form_from_dual_wrapper()
-{ std::auto_ptr<dual_real_form_value> d(get_dual_real_form());
+{ dual_real_form_ptr d(get<dual_real_form_value>());
   push_value(new real_form_value
                  (inner_class_value(d->parent,tags::DualTag())
-                 ,d->value.realForm()));
+                 ,d->val.realForm()));
 }
 
 @*1 A type for Cartan classes.
@@ -1913,7 +1891,7 @@ number is required to obtain this information.
 struct Cartan_class_value : public value_base
 { const inner_class_value parent;
   size_t number;
-  const cartanclass::CartanClass& value;
+  const cartanclass::CartanClass& val;
 @)
   Cartan_class_value(const inner_class_value& p,size_t cn);
   ~Cartan_class_value() @+{} // everything is handled by destructor of |parent|
@@ -1921,14 +1899,17 @@ struct Cartan_class_value : public value_base
   virtual void print(std::ostream& out) const;
   Cartan_class_value* clone() const @+
     {@; return new Cartan_class_value(*this); }
+  static const char* name() @+{@; return "Cartan class"; }
 private:
   Cartan_class_value(const Cartan_class_value& v)
-  : parent(v.parent), number(v.number), value(v.value) @+{}
+  : parent(v.parent), number(v.number), val(v.val) @+{}
 };
+@)
+typedef std::auto_ptr<Cartan_class_value> Cartan_class_ptr;
 
 @ In the constructor we check that the Cartan class with the given number
 currently exists. This check \emph{follows} the selection of the pointer to
-the |CartanClass| object that initialises the |value| field because we have no
+the |CartanClass| object that initialises the |val| field because we have no
 choice (a reference field cannot be set later); the danger is doing this is
 limited since the selection itself will probably not crash the program, and
 the nonsensical pointer so obtained will probably be stored away without
@@ -1938,21 +1919,21 @@ constructed, the Cartan class does actually exist.
 
 @< Function def...@>=
 Cartan_class_value::Cartan_class_value(const inner_class_value& p,size_t cn)
-: parent(p),number(cn),value(p.value.cartan(cn))
-{ if (cn>=p.value.numCartanClasses()) throw std::runtime_error
+: parent(p),number(cn),val(p.val.cartan(cn))
+{ if (cn>=p.val.numCartanClasses()) throw std::runtime_error
   (std::string("Cartan class number ")+num(cn)+" does not (currently) exist");
 }
 
-@ When printing a Cartan class, we show its number, whether it is the most
-split one, and for how many real forms and dual real forms it is valid.
+@ When printing a Cartan class, we show its number, and for how many real
+forms and dual real forms it is valid.
 
 @< Function def...@>=
 void Cartan_class_value::print(std::ostream& out) const
 { out << "Cartan class #" << number << ", occurring for " @|
-  << value.numRealForms() << " real "
-  << (value.numRealForms()==1 ? "form" : "forms") << " and for "@|
-  << value.numDualRealForms() << " dual real "
-  << (value.numDualRealForms()==1 ? "form" : "forms");
+  << val.numRealForms() << " real "
+  << (val.numRealForms()==1 ? "form" : "forms") << " and for "@|
+  << val.numDualRealForms() << " dual real "
+  << (val.numDualRealForms()==1 ? "form" : "forms");
 }
 
 @ To make a Cartan class, one must provide a |real_form_value| together with a
@@ -1961,15 +1942,15 @@ valid index into its list of Cartan classes.
 @< Local function def...@>=
 void Cartan_class_wrapper()
 { push_tuple_components();
-  std::auto_ptr<int_value> i(get_int());
-  std::auto_ptr<real_form_value> rf(get_real_form());
-  rf->value.fillCartan();
-  if (i->value<0 || size_t(i->value)>=rf->value.numCartan())
+  int_ptr i(get<int_value>());
+  real_form_ptr rf(get<real_form_value>());
+  rf->val.fillCartan();
+  if (size_t(i->val)>=rf->val.numCartan())
     throw std::runtime_error
-    ("illegal Cartan class number: "+num(i->value)
-    +", this real form only has "+num(rf->value.numCartan())+" of them");
-  bitmap::BitMap cs=rf->value.cartanSet();
-  push_value(new Cartan_class_value(rf->parent,cs.n_th(i->value)));
+    ("illegal Cartan class number: "+num(i->val)
+    +", this real form only has "+num(rf->val.numCartan())+" of them");
+  bitmap::BitMap cs=rf->val.cartanSet();
+  push_value(new Cartan_class_value(rf->parent,cs.n_th(i->val)));
 }
 
 @ Like the quasisplit real form for inner classes, there is a particular
@@ -1981,30 +1962,15 @@ real form, but we have a direct access to it via the |mostSplit| method for
 
 @< Local function def...@>=
 void most_split_Cartan_wrapper()
-{ std::auto_ptr<real_form_value> rf(get_real_form());
-  rf->value.fillCartan();
-  push_value(new Cartan_class_value(rf->parent,rf->value.mostSplit()));
+{ real_form_ptr rf(get<real_form_value>());
+  rf->val.fillCartan();
+  push_value(new Cartan_class_value(rf->parent,rf->val.mostSplit()));
 }
 
 
 @*2 Functions operating on Cartan classes.
-We need yet another function for popping a value.
-
-@< Declarations of exported functions @>=
-Cartan_class_value* get_Cartan_class() throw(std::logic_error);
-
-@~Again, there are no surprises.
-@< Function definitions @>=
-Cartan_class_value* get_Cartan_class() throw(std::logic_error)
-{ value_ptr p=pop_arg();
-  Cartan_class_value* result=dynamic_cast<Cartan_class_value*>(p);
-  if (result==NULL)
-    {@; delete p; throw std::logic_error("Argument is not a Cartan class"); }
-@.Argument is not a Cartan class@>
-  return result;
-}
-
-@ This function and the following provide the functionality of the Atlas
+%
+This function and the following provide the functionality of the Atlas
 command \.{cartan}. They are based on |complexredgp_io::printCartanClass|, but
 rewritten to take into account the fact that we have no |Interface| objects
 for complex groups. We omit in our first function {\it Cartan\_info} the final
@@ -2023,19 +1989,19 @@ compilation unit \.{cartan\_io} uses them.
 void print_Cartan_info_wrapper()
 { using basic_io::operator<<;
 
-@/std::auto_ptr<Cartan_class_value> cc(get_Cartan_class());
+@/Cartan_class_ptr cc(get<Cartan_class_value>());
 
-  const rootdata::RootDatum& rd=cc->parent.value.rootDatum();
+  const rootdata::RootDatum& rd=cc->parent.val.rootDatum();
 
-  prettyprint::printTorusType(*output_stream,cc->value.fiber().torus())
+  prettyprint::printTorusType(*output_stream,cc->val.fiber().torus())
   << std::endl;
 
-  *output_stream << "twisted involution orbit size: " << cc->value.orbitSize()
+  *output_stream << "twisted involution orbit size: " << cc->val.orbitSize()
    << std::endl;
 
 @)// print type of imaginary root system
   lietype::LieType ilt,rlt,clt;
-  rootdata::lieType(ilt,cc->value.simpleImaginary(),rd);
+  rootdata::lieType(ilt,cc->val.simpleImaginary(),rd);
 
   if (ilt.size() == 0)
     *output_stream << "imaginary root system is empty" << std::endl;
@@ -2043,7 +2009,7 @@ void print_Cartan_info_wrapper()
     *output_stream << "imaginary root system: " << ilt << std::endl;
 
 @)// print type of real root system
-  rootdata::lieType(rlt,cc->value.simpleReal(),rd);
+  rootdata::lieType(rlt,cc->val.simpleReal(),rd);
 
   if (rlt.size() == 0)
     *output_stream << "real root system is empty" << std::endl;
@@ -2051,7 +2017,7 @@ void print_Cartan_info_wrapper()
     *output_stream << "real root system: " << rlt << std::endl;
 
 @)// print type of complex root system
-  rootdata::lieType(clt,cc->value.simpleComplex(),rd);
+  rootdata::lieType(clt,cc->val.simpleComplex(),rd);
 
   if (clt.size() == 0)
     *output_stream << "complex factor is empty" << std::endl;
@@ -2061,46 +2027,82 @@ void print_Cartan_info_wrapper()
   wrap_tuple(0);
 }
 
-@ For the fiber group partition information that was not produced by the
-previous function, we use a Cartan class and a real form as parameters. This
+@ A functionality that is implicit in the Atlas command \.{cartan} is the
+enumeration of all real forms corresponding to a given Cartan class. While
+|cartan_io::printFiber| traverses the real forms in the order corresponding to
+the parts of the partition |f.weakReal()| for the fiber~|f| associated to the
+Cartan class, it is not necessary to use this order, and we can instead simply
+traverse all real forms and check whether the given Cartan class exists for
+them. Taking care to convert real form numbers to their inner representation
+here, we can in fact return a list of real forms; we also include a version
+for dual real forms.
+
+@< Local function def...@>=
+void real_forms_of_Cartan_wrapper()
+{ Cartan_class_ptr cc(get<Cartan_class_value>());
+  const inner_class_value& ic=cc->parent;
+@/row_ptr result @|
+    (new row_value(std::vector<value>(cc->val.numRealForms())));
+  for (size_t i=0,k=0; i<ic.val.numRealForms(); ++i)
+  { bitmap::BitMap b(ic.val.cartanSet(ic.interface.in(i)));
+    if (b.isMember(cc->number))
+      result->val[k++]=new real_form_value(ic,ic.interface.in(i));
+  }
+  push_value(result);
+}
+@)
+void dual_real_forms_of_Cartan_wrapper()
+{ Cartan_class_ptr cc(get<Cartan_class_value>());
+  const inner_class_value& ic=cc->parent;
+@/row_ptr result @|
+    (new row_value(std::vector<value>(cc->val.numDualRealForms())));
+  for (size_t i=0,k=0; i<ic.val.numDualRealForms(); ++i)
+  { bitmap::BitMap b(ic.val.dualCartanSet(ic.dual_interface.in(i)));
+    if (b.isMember(cc->number))
+      result->val[k++]=new dual_real_form_value(ic,ic.dual_interface.in(i));
+  }
+  push_value(result);
+}
+
+@ For the fiber group partition information that was not produced by
+|print_Cartan_info|, we use a Cartan class and a real form as parameters. This
 function returns the part of the |weakReal| partition stored in the fiber of
 the Cartan class that corresponds to the given (weak) real form. The numbering
 of the parts of that partition are not the numbering of the real forms
 themselves, so they must be translated through the |realFormLabels| list for
 the Cartan class, which must be obtained from its |parent| inner class. If the
 Cartan class does not exist for the given real form, then it will not occur in
-that |realFormLabels| list, and the part returned here will be empty.
-
-Currently the part of the partition is returned as a list of integral values.
+that |realFormLabels| list, and the part returned here will be empty. The part
+of the partition is returned as a list of integral values.
 
 @f pi NULL
 
 @< Local function def...@>=
 void fiber_part_wrapper()
 { push_tuple_components();
-  std::auto_ptr<real_form_value> rf(get_real_form());
-@/std::auto_ptr<Cartan_class_value> cc(get_Cartan_class());
-  if (&rf->parent.value!=&cc->parent.value)
+  real_form_ptr rf(get<real_form_value>());
+  Cartan_class_ptr cc(get<Cartan_class_value>());
+  if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error
     ("inner class mismatch between real form and Cartan class");
-  bitmap::BitMap b(cc->parent.value.cartanSet(rf->value.realForm()));
+  bitmap::BitMap b(cc->parent.val.cartanSet(rf->val.realForm()));
   if (!b.isMember(cc->number))
     throw std::runtime_error
     ("fiber_part: inner class not defined for this real form");
 @)
-  const partition::Partition& pi = cc->value.fiber().weakReal();
+  const partition::Partition& pi = cc->val.fiber().weakReal();
   const realform::RealFormList rf_nr=
-     cc->parent.value.realFormLabels(cc->number);
+     cc->parent.val.realFormLabels(cc->number);
      // translate part number of |pi| to real form
-  std::auto_ptr<row_value> result
-    (new row_value(std::vector<value_ptr>()));
+  row_ptr result
+    (new row_value(std::vector<value>()));
   for (size_t i=0; i<pi.size(); ++i)
-    if ( rf_nr[pi(i)] == rf->value.realForm())
-      result->value.push_back(new int_value(i));
-  push_value(result.release());
+    if ( rf_nr[pi(i)] == rf->val.realForm())
+      result->val.push_back(new int_value(i));
+  push_value(result);
 }
 
-@ The function |print_grading| gives on a per-real-form basis the
+@ The function |print_gradings| gives on a per-real-form basis the
 functionality of the Atlas command \.{gradings} that is implemented by
 |complexredgp_io::printGradings| and |cartan_io::printGradings|. It therefore
 takes, like |fiber_part|, a Cartan class and a real form as parameter. Its
@@ -2113,22 +2115,22 @@ sequence of bits corresponding to the simple imaginary roots.
 @< Local function def...@>=
 void print_gradings_wrapper()
 { push_tuple_components();
-  std::auto_ptr<real_form_value> rf(get_real_form());
-@/std::auto_ptr<Cartan_class_value> cc(get_Cartan_class());
-  if (&rf->parent.value!=&cc->parent.value)
+  real_form_ptr rf(get<real_form_value>());
+@/Cartan_class_ptr cc(get<Cartan_class_value>());
+  if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error
     ("inner class mismatch between real form and Cartan class");
-  bitmap::BitMap b(cc->parent.value.cartanSet(rf->value.realForm()));
+  bitmap::BitMap b(cc->parent.val.cartanSet(rf->val.realForm()));
   if (!b.isMember(cc->number))
     throw std::runtime_error
     ("fiber_part: inner class not defined for this real form");
 @)
-  const partition::Partition& pi = cc->value.fiber().weakReal();
+  const partition::Partition& pi = cc->val.fiber().weakReal();
   const realform::RealFormList rf_nr=
-     cc->parent.value.realFormLabels(cc->number);
+     cc->parent.val.realFormLabels(cc->number);
      // translate part number of |pi| to real form
 @)
-  const rootdata::RootList& si = cc->value.fiber().simpleImaginary();
+  const rootdata::RootList& si = cc->val.fiber().simpleImaginary();
   // simple imaginary roots
 
   latticetypes::LatticeMatrix cm;
@@ -2147,7 +2149,7 @@ void print_gradings_wrapper()
 functions from \.{dynkin.cpp}.
 
 @< Compute the Cartan matrix |cm|... @>=
-{ rootdata::cartanMatrix(cm,si,cc->parent.value.rootDatum());
+{ rootdata::cartanMatrix(cm,si,cc->parent.val.rootDatum());
   dynkin::DynkinDiagram d(cm); dynkin::bourbaki(sigma,d);
 }
 
@@ -2175,18 +2177,24 @@ class, and converted to a string of characters |'0'| and |'1'| by
 present these bits in an order adapted to the Dynkin diagram of the imaginary
 root system. If that system is empty, the strings giving the gradings are
 empty, but the part of the partition |pi| will not be, unless the Cartan class
-does not exist for the given real form.
+does not exist for the given real form. Rather than printing directly to
+|*output_stream|, we first collect the output in a string contained in a
+|std::ostringstream|, and then let |ioutils::foldLine| break the result across
+different lines after commas if necessary.
 
+@h <sstream>
+@h "ioutils.h"
 @< Print the gradings for the part of |pi|... @>=
-{ bool first=true;
+{ bool first=true; std::ostringstream os;
   for (size_t i=0; i<pi.size(); ++i)
-    if ( rf_nr[pi(i)] == rf->value.realForm())
-    { *output_stream << ( first ? first=false,'[' : ',');
-      gradings::Grading gr; cc->value.fiber().grading(gr,i);
+    if ( rf_nr[pi(i)] == rf->val.realForm())
+    { os << ( first ? first=false,'[' : ',');
+      gradings::Grading gr; cc->val.fiber().grading(gr,i);
       gr.permute(sigma);
-      prettyprint::prettyPrint(*output_stream,gr,si.size());
+      prettyprint::prettyPrint(os,gr,si.size());
     }
-  *output_stream << "]" << std::endl;
+  os << "]" << std::endl;
+  ioutils::foldLine(*output_stream,os.str(),"",",");
 }
 
 @* Test functions.
@@ -2206,20 +2214,20 @@ We shall first implement the \.{block} command.
 @< Local function def...@>=
 void print_block_wrapper()
 { push_tuple_components();
-  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
-  std::auto_ptr<real_form_value> rf(get_real_form());
+  dual_real_form_ptr drf(get<dual_real_form_value>());
+  real_form_ptr rf(get<real_form_value>());
 @)
-  rf->value.fillCartan();
-  if (&rf->parent.value!=&drf->parent.value)
+  rf->val.fillCartan();
+  if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
-  if (!b.isMember(rf->value.mostSplit()))
+  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_block: real form and dual real form are incompatible");
 @)
-  blocks::Block block(rf->parent.value
-                     ,rf->value.realForm(),drf->value.realForm());
+  blocks::Block block(rf->parent.val
+                     ,rf->val.realForm(),drf->val.realForm());
   block_io::printBlock(*output_stream,block);
 @)
   wrap_tuple(0);
@@ -2231,20 +2239,20 @@ variations of \.{block}.
 @< Local function def...@>=
 void print_blockd_wrapper()
 { push_tuple_components();
-  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
-  std::auto_ptr<real_form_value> rf(get_real_form());
+  dual_real_form_ptr drf(get<dual_real_form_value>());
+  real_form_ptr rf(get<real_form_value>());
 @)
-  rf->value.fillCartan();
-  if (&rf->parent.value!=&drf->parent.value)
+  rf->val.fillCartan();
+  if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
-  if (!b.isMember(rf->value.mostSplit()))
+  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_blockd: real form and dual real form are incompatible");
 @)
-  blocks::Block block(rf->parent.value
-                     ,rf->value.realForm(),drf->value.realForm());
+  blocks::Block block(rf->parent.val
+                     ,rf->val.realForm(),drf->val.realForm());
   block_io::printBlockD(*output_stream,block);
 @)
   wrap_tuple(0);
@@ -2253,20 +2261,20 @@ void print_blockd_wrapper()
 @)
 void print_blocku_wrapper()
 { push_tuple_components();
-  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
-  std::auto_ptr<real_form_value> rf(get_real_form());
+  dual_real_form_ptr drf(get<dual_real_form_value>());
+  real_form_ptr rf(get<real_form_value>());
 @)
-  rf->value.fillCartan();
-  if (&rf->parent.value!=&drf->parent.value)
+  rf->val.fillCartan();
+  if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
-  if (!b.isMember(rf->value.mostSplit()))
+  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_blocku: real form and dual real form are incompatible");
 @)
-  blocks::Block block(rf->parent.value
-                     ,rf->value.realForm(),drf->value.realForm());
+  blocks::Block block(rf->parent.val
+                     ,rf->val.realForm(),drf->val.realForm());
   block_io::printBlockU(*output_stream,block);
 @)
   wrap_tuple(0);
@@ -2281,9 +2289,9 @@ real form, but only numbers for the Cartan class and the dual real form (but
 this is understandable, as information about the inner class must be
 transmitted in some way). In fact it used to be even a bit stranger, in that
 the real form was passed in the form of a |realredgp_io::Interface| value, a
-class (not to be confused with |realform_io::Interface| that does not specify
-a particular real form) that we do not use in this program; since only the
-|realGroup| field of the |realredgp_io::Interface| was used in
+class (not to be confused with |realform_io::Interface|, which does not
+specify a particular real form) that we do not use in this program; since only
+the |realGroup| field of the |realredgp_io::Interface| was used in
 |realredgp_io::printBlockStabilizer|, we have changed its parameter
 specification to allow it to be called easily here.
 
@@ -2291,23 +2299,23 @@ specification to allow it to be called easily here.
 @< Local function def...@>=
 void print_blockstabilizer_wrapper()
 { push_tuple_components();
-  std::auto_ptr<Cartan_class_value> cc(get_Cartan_class());
-  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
-  std::auto_ptr<real_form_value> rf(get_real_form());
+  Cartan_class_ptr cc(get<Cartan_class_value>());
+  dual_real_form_ptr drf(get<dual_real_form_value>());
+  real_form_ptr rf(get<real_form_value>());
 @)
-  if (&rf->parent.value!=&drf->parent.value or
-      &rf->parent.value!=&cc->parent.value)
+  if (&rf->parent.val!=&drf->parent.val or
+      &rf->parent.val!=&cc->parent.val)
     throw std::runtime_error @|
     ("blockstabilizer: inner class mismatch between arguments");
-  bitmap::BitMap b(rf->parent.value.cartanSet(rf->value.realForm()));
-  b &= bitmap::BitMap(rf->parent.value.dualCartanSet(drf->value.realForm()));
+  bitmap::BitMap b(rf->parent.val.cartanSet(rf->val.realForm()));
+  b &= bitmap::BitMap(rf->parent.val.dualCartanSet(drf->val.realForm()));
   if (not b.isMember(cc->number))
     throw std::runtime_error @|
     ("blockstabilizer: Cartan class not defined for both real forms");
 @)
 
   realredgp_io::printBlockStabilizer
-   (*output_stream,rf->value,cc->number,drf->value.realForm());
+   (*output_stream,rf->val,cc->number,drf->val.realForm());
 @)
   wrap_tuple(0);
 }
@@ -2319,13 +2327,13 @@ void print_blockstabilizer_wrapper()
 
 @< Local function def...@>=
 void print_KGB_wrapper()
-{ std::auto_ptr<real_form_value> rf(get_real_form());
+{ real_form_ptr rf(get<real_form_value>());
 @)
-  rf->value.fillCartan();
+  rf->val.fillCartan();
 @)
   *output_stream
-    << "kgbsize: " << rf->value.kgbSize() << std::endl;
-  kgb::KGB kgb(rf->value);
+    << "kgbsize: " << rf->val.kgbSize() << std::endl;
+  kgb::KGB kgb(rf->val);
   kgb_io::printKGB(*output_stream,kgb);
 @)
   wrap_tuple(0);
@@ -2340,20 +2348,20 @@ parametrisation is concerned.
 @< Local function def...@>=
 void print_KL_basis_wrapper()
 { push_tuple_components();
-  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
-  std::auto_ptr<real_form_value> rf(get_real_form());
+  dual_real_form_ptr drf(get<dual_real_form_value>());
+  real_form_ptr rf(get<real_form_value>());
 @)
-  rf->value.fillCartan();
-  if (&rf->parent.value!=&drf->parent.value)
+  rf->val.fillCartan();
+  if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
-  if (!b.isMember(rf->value.mostSplit()))
+  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_KL_basis: real form and dual real form are incompatible");
 @)
-  blocks::Block block(rf->parent.value
-                     ,rf->value.realForm(),drf->value.realForm());
+  blocks::Block block(rf->parent.val
+                     ,rf->val.realForm(),drf->val.realForm());
   klsupport::KLSupport kls(block); kls.fill();
 
   kl::KLContext klc(kls); klc.fill();
@@ -2370,20 +2378,20 @@ void print_KL_basis_wrapper()
 @< Local function def...@>=
 void print_prim_KL_wrapper()
 { push_tuple_components();
-  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
-  std::auto_ptr<real_form_value> rf(get_real_form());
+  dual_real_form_ptr drf(get<dual_real_form_value>());
+  real_form_ptr rf(get<real_form_value>());
 @)
-  rf->value.fillCartan();
-  if (&rf->parent.value!=&drf->parent.value)
+  rf->val.fillCartan();
+  if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
-  if (!b.isMember(rf->value.mostSplit()))
+  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_prim_KL: real form and dual real form are incompatible");
 @)
-  blocks::Block block(rf->parent.value
-                     ,rf->value.realForm(),drf->value.realForm());
+  blocks::Block block(rf->parent.val
+                     ,rf->val.realForm(),drf->val.realForm());
   klsupport::KLSupport kls(block); kls.fill();
 
   kl::KLContext klc(kls); klc.fill();
@@ -2401,20 +2409,20 @@ outputs just a list of all distinct Kazhdan-Lusztig-Vogan polynomials.
 @< Local function def...@>=
 void print_KL_list_wrapper()
 { push_tuple_components();
-  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
-  std::auto_ptr<real_form_value> rf(get_real_form());
+  dual_real_form_ptr drf(get<dual_real_form_value>());
+  real_form_ptr rf(get<real_form_value>());
 @)
-  rf->value.fillCartan();
-  if (&rf->parent.value!=&drf->parent.value)
+  rf->val.fillCartan();
+  if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
-  if (!b.isMember(rf->value.mostSplit()))
+  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_KL_list: real form and dual real form are incompatible");
 @)
-  blocks::Block block(rf->parent.value
-                     ,rf->value.realForm(),drf->value.realForm());
+  blocks::Block block(rf->parent.val
+                     ,rf->val.realForm(),drf->val.realForm());
   klsupport::KLSupport kls(block); kls.fill();
 
   kl::KLContext klc(kls); klc.fill();
@@ -2434,20 +2442,20 @@ after having built the |klc::KLContext|.
 @< Local function def...@>=
 void print_W_cells_wrapper()
 { push_tuple_components();
-  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
-  std::auto_ptr<real_form_value> rf(get_real_form());
+  dual_real_form_ptr drf(get<dual_real_form_value>());
+  real_form_ptr rf(get<real_form_value>());
 @)
-  rf->value.fillCartan();
-  if (&rf->parent.value!=&drf->parent.value)
+  rf->val.fillCartan();
+  if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
-  if (!b.isMember(rf->value.mostSplit()))
+  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_W_cells: real form and dual real form are incompatible");
 @)
-  blocks::Block block(rf->parent.value
-                     ,rf->value.realForm(),drf->value.realForm());
+  blocks::Block block(rf->parent.val
+                     ,rf->val.realForm(),drf->val.realForm());
   klsupport::KLSupport kls(block); kls.fill();
 
   kl::KLContext klc(kls); klc.fill();
@@ -2465,20 +2473,20 @@ of the output routine of |print_W_cells|.
 @< Local function def...@>=
 void print_W_graph_wrapper()
 { push_tuple_components();
-  std::auto_ptr<dual_real_form_value> drf(get_dual_real_form());
-  std::auto_ptr<real_form_value> rf(get_real_form());
+  dual_real_form_ptr drf(get<dual_real_form_value>());
+  real_form_ptr rf(get<real_form_value>());
 @)
-  rf->value.fillCartan();
-  if (&rf->parent.value!=&drf->parent.value)
+  rf->val.fillCartan();
+  if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.value.dualCartanSet(drf->value.realForm()));
-  if (!b.isMember(rf->value.mostSplit()))
+  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_W_graph: real form and dual real form are incompatible");
 @)
-  blocks::Block block(rf->parent.value
-                     ,rf->value.realForm(),drf->value.realForm());
+  blocks::Block block(rf->parent.val
+                     ,rf->val.realForm(),drf->val.realForm());
   klsupport::KLSupport kls(block); kls.fill();
 
   kl::KLContext klc(kls); klc.fill();
@@ -2513,6 +2521,10 @@ install_function(most_split_Cartan_wrapper,"most_split_Cartan"
 		,"(RealForm->CartanClass)");
 install_function(print_Cartan_info_wrapper,"print_Cartan_info"
 		,"(CartanClass->)");
+install_function(real_forms_of_Cartan_wrapper,"real_forms_of_Cartan"
+		,"(CartanClass->[RealForm])");
+install_function(dual_real_forms_of_Cartan_wrapper,"dual_real_forms_of_Cartan"
+		,"(CartanClass->[DualRealForm])");
 install_function(fiber_part_wrapper,"fiber_part"
 		,"(CartanClass,RealForm->[int])");
 install_function(print_gradings_wrapper,"print_gradings"

@@ -21,7 +21,7 @@ extern "C" {
 namespace atlas
 {@; namespace interpreter
   {@;
-@< Declaration of \Cpp\ functions @>@;
+@< Declarations of \Cpp\ functions @>@;
   }@;
 }@;
 
@@ -64,7 +64,7 @@ a function to print the expressions once parsed; this provides a useful test
 to see if what we have read in corresponds to what was typed, and this
 functionality will also be used in producing error messages.
 
-@< Declaration of \Cpp\ functions @>=
+@< Declarations of \Cpp\ functions @>=
 std::ostream& operator<< (std::ostream& out, expr e);
 
 @~The definitions of this instance of the operator~`|<<|' are distributed
@@ -214,6 +214,21 @@ typedef struct exprlist_node* expr_list;
 @~The type is implemented as a simply linked list.
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct exprlist_node {@; expr e; expr_list next; };
+
+@ Before we go on to use this type, let us define a simple function for
+calculating the length of the list; it will actually be used by the evaluator
+rather than by the parser, so we declare it for \Cpp~use.
+
+@< Declarations of \Cpp\ functions @>=
+size_t length(expr_list l);
+
+@~The definition is no surprise.
+
+@< Definitions of \Cpp\ functions @>=
+size_t length(expr_list l) @+
+{@; size_t n=0; while(l!=NULL) {@; ++n; l=l->next;}
+  return n;
+}
 
 @ Any syntactic category whose parsing value is a list of expressions will use
 the variant |sublist|.
@@ -416,6 +431,81 @@ expr make_application_node(id_type f, expr_list args)
   return result;
 }
 
+@*1 Array subscriptions.
+%
+We want to be able to select components from array structures (lists, vectors,
+matrices), so we define a subscription expression. If there are multiple
+indices, these can be realised as a subscription by a tuple expression, so we
+define only one type so subscription expression.
+
+@< Typedefs... @>=
+typedef struct subscription_node* sub;
+
+@~In a subscription the array and the index(es) can syntactically be arbitrary
+expressions (although the latter should have as type integer, or a tuple of
+integers).
+
+@< Structure and typedef declarations for types built upon |expr| @>=
+struct subscription_node {@; expr array; expr index; };
+
+@ Here is the tag used for subscriptions.
+
+@< Enumeration tags for |expr_kind| @>= subscription, @[@]
+
+@~And here is the corresponding variant of the |union expru@;|.
+value is a function call.
+
+@< Variants... @>=
+sub subscription_variant;
+
+@ To print a subscription, we just print the expression of the array, followed
+by the expression for the index in brackets. As an exception, the case of a
+tuple display as index is handled separately, in order to avoid having
+parentheses directly inside the brackets.
+
+@h "lexer.h"
+@< Cases for printing... @>=
+case subscription:
+  { sub s=e.e.subscription_variant; out << s->array << '[';
+    expr i=s->index;
+    if (i.kind!=tuple_display) out << i;
+    else
+    { expr_list l=i.e.sublist;
+      if (l!=NULL)
+      {@; out << l->e;
+        while ((l=l->next)!=NULL) out << ',' << l->e;
+      }
+    }
+    out << ']';
+  }
+  break;
+
+@~Here we recursively destroy both subexpressions, and then the node for the
+subscription call itself.
+
+@< Cases for destroying... @>=
+case subscription:
+  destroy_expr(e.e.subscription_variant->array);
+  destroy_expr(e.e.subscription_variant->index);
+  delete e.e.subscription_variant;
+  break;
+
+
+@ To build an |subscription_node|, we simply combine the array and the index
+part.
+
+@< Declaration of functions in \Cee-style for the parser @>=
+expr make_subscription_node(expr a, expr i);
+
+@~This is straightforward, as usual.
+
+@< Definitions of functions in \Cee... @>=
+expr make_subscription_node(expr a, expr i)
+{ sub s=new subscription_node; s->array=a; s->index=i;
+  expr result; result.kind=subscription; result.e.subscription_variant=s;
+  return result;
+}
+
 @* Other functions callable from the parser.
 Here are some functions that are not so much a parsing functions as just
 wrapper functions enabling the parser to call \Cpp~functions.
@@ -461,4 +551,4 @@ void type_of_expr(expr e);
 
 @* Index.
 
-% Local IspellDict: default
+% Local IspellDict: british

@@ -289,21 +289,23 @@ all included files are abandoned, and control is given back to the terminal.
 Some operations, including the type checker, can be made more verbose by
 giving the command
 
-verbose
+expr> verbose
 
 which remains in effect until a subsequent command
 
-quiet
+expr> quiet
 
 us given. One can ask the state of all known identifiers, which is case of
 funcions prints mainly their type specification, and in the case of variables
 also their values, by typing
 
-showall
+expr> showall
 
 If one just needs to know the type of one expression (e.g., a function), type
 
-whattype expr
+expr> whattype expr
 
 This performs type analysis of the expression and prints the result, but does
-not evaluate anything.
+not evaluate anything. Finally when you get tired of using realex, type
+
+expr> quit
