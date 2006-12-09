@@ -1,8 +1,8 @@
 /*
   This is kl_io.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -20,7 +20,7 @@
 
 /*****************************************************************************
 
-  Input/output functions for the KLContext data structure, defined in 
+  Input/output functions for the KLContext data structure, defined in
   sources/kl/kl.h
 
 ******************************************************************************/
@@ -133,7 +133,7 @@ std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
 	strm << std::setw(width+tab)<< ""
 	     << std::setw(width) << e[j] << ": ";
       }
-      printPol(strm,*klr[j],KLIndeterminate);
+      printPol(strm,klc.polStore()[klr[j]],KLIndeterminate);
       strm << std::endl;
       ++count;
     }
@@ -158,10 +158,12 @@ std::ostream& printKLList(std::ostream& strm, kl::KLContext& klc)
   using namespace kl;
   using namespace prettyprint;
 
-  const std::set<KLPol>& store = klc.polStore();
+  const KLStore& store = klc.polStore();
   std::vector<KLPol> polList;
 
-  std::copy(store.begin(),store.end(),back_inserter(polList));
+  for (KLStore::iterator i=store.begin(); i!=store.end(); ++i)
+    polList.push_back(store[i]);
+
   std::sort(polList.begin(),polList.end(),polynomials::compare<KLCoeff>);
 
   for (size_t j = 1; j < polList.size(); ++j) {

@@ -5,9 +5,9 @@ Class definitions and function declarations for the class KLContext.
 */
 /*
   This is kl.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -24,7 +24,10 @@ Class definitions and function declarations for the class KLContext.
 
 #include "bitset.h"
 #include "klsupport.h"
+
+#include "hashtable.h"
 #include "polynomials.h"
+#include "prettyprint.h"
 #include "wgraph.h"
 
 namespace atlas {
@@ -32,6 +35,63 @@ namespace atlas {
 /******** constant declarations *********************************************/
 
 namespace kl {
+
+
+std::ostream& operator<<
+  (std::ostream& out,  const KLPol p);
+
+ typedef unsigned int KLIndex;
+
+// wrap KLPol into a class that can be used in a HashTable
+class KLPolEntry : public KLPol
+  {
+  public:
+    KLPolEntry() : KLPol() {} // default constructor builds zero polynomial
+    KLPolEntry(const KLPol& p) : KLPol(p) {} // lift polynomial to this class
+    explicit KLPolEntry(polynomials::Degree d) : KLPol(d) {} // represents X^d
+
+    typedef std::vector<KLPolEntry> Pooltype; // associated storage type
+    size_t hashCode(KLIndex modulus) const;   // hash function
+
+    // equality is handled by the base type
+    bool operator!=(const KLPolEntry& e) const
+      { return not (static_cast<const KLPol&>(*this)==
+		    static_cast<const KLPol&>(e));
+      }
+  };
+
+ class HashStore : public hashtable::HashTable<KLPolEntry,KLIndex>
+  {
+    typedef hashtable::HashTable<KLPolEntry,KLIndex> TableType;
+
+  public:
+    HashStore() : TableType() {}
+
+  private:
+    KLIndex find(const KLPol& p) const
+      {
+	KLIndex i=find(p); return i==empty ? end() : i;
+      }
+    std::pair<KLIndex,bool> insert(const KLPol& p)
+      {
+	KLIndex s=size(); // will be code of KLIndex if p is new
+	KLIndex i=match(p);
+	return std::pair<KLIndex,bool>(i,i==s);
+      }
+  public:
+
+    const KLPol& operator[] (KLIndex i) const // interpret i on our hashTable
+      { return pool()[i]; }
+
+  };
+
+
+typedef HashStore KLStore;
+
+typedef KLIndex KLPtr;
+
+typedef std::vector<KLPtr> KLRow;
+
 
   /*!
 \brief Polynomial 0, which is stored as a vector of size 0.
@@ -45,9 +105,6 @@ The constructor Polynomial(d) gives 1.q^d.
   */
 
   const KLPol One(0);
-
-  const KLCoeff UndefKLCoeff = std::numeric_limits<KLCoeff>::max();
-  const KLCoeff UndefMuCoeff = std::numeric_limits<MuCoeff>::max();
 
 }
 
@@ -108,7 +165,7 @@ degree coefficient of P_{y,x}).
   /*!
 \brief Set of KL polynomials.
   */
-  std::set<KLPol> d_store;           // the actual polynomials
+  KLStore d_store;           // the distinct actual polynomials
   /*!
 \brief Pointer to the polynomial 0.
   */
@@ -118,7 +175,7 @@ degree coefficient of P_{y,x}).
   */
   KLPtr d_one;
 
- public:
+public:
 
 // constructors and destructors
   KLContext() {}
@@ -154,6 +211,13 @@ with respect to y and have P_{y,x_i} not zero.
     return p == d_zero;
   }
 
+  /*!
+\brief The Kazhdan-Lusztig-Vogan polynomial P_{x,y}
+
+Note that it is returned by value, since we want to allow for the possibility
+of compressed storage, in chich case we cannot return an uncompressed
+polynomial by reference, but we can return it by value
+  */
   const KLPol& klPol(size_t x, size_t y) const;
 
   /*!
@@ -184,7 +248,7 @@ P_{y,x}).
   /*!
 \brief Returns the set of all non-zero KL polynomials for the block.
   */
-  const std::set<KLPol>& polStore() const {
+  const KLStore& polStore() const {
     return d_store;
   }
 
@@ -205,7 +269,7 @@ P_{y,x}).
 // manipulators
   virtual void fill();
 
-  //  const KLPol& klPol(size_t, size_t);
+
 };
 
 }
