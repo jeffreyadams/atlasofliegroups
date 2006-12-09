@@ -29,9 +29,6 @@ BINDIR := $(INSTALLDIR)
 
 MESSAGEDIR := $(INSTALLDIR)/messages/
 
-# we use no suffix rules
-.SUFFIXES:
-
 # sourcedirs contains subdirectories of 'atlas/sources' that need compilation
 sourcedirs := utilities memory error structure gkmod io interface test
 
@@ -141,36 +138,31 @@ endif
 	 then echo Warning: $(BINDIR)/atlas is not a symlink, I will not overwrite it;\
 	 else ln -s $(INSTALLDIR)/atlas.exe $(BINDIR)/atlas ; fi
 
-.PHONY: clean cleanall
-clean:
+.PHONY: mostlyclean clean cleanall
+mostlyclean:
 	rm -f $(objects) *~ *.out junk
 
+clean: mostlyclean
+	rm -f atlas.exe
+
 cleanall: clean
-	rm -f atlas atlas.exe
+	rm -f $(dependencies)
 
 realex:
 	cd sources/interpreter && $(MAKE)
 
 # The following two rules are static pattern rules: they are like implicit
 # rules, but only apply to the files listed in $(objects) and $(dependencies).
-# However the files named in $(dependencies) are not actually made, and the
-# call $(CXX) of g++ in its command only produces its dependency information
-# on stdout (whence the prefix '@', to avoid the command itself on stdout)
 
 $(objects) : %.o : %.cpp
 	$(CXX) $(cflags) -o $*.o $*.cpp
 
 $(dependencies) : %.d : %.cpp
-	@$(CXX) $(includedirs) -MM -MT $*.o $*.cpp
+	$(CXX) $(includedirs) -MM -MF $@ -MT "$*.o $*.d" $*.cpp
 
-.PHONY: depend
-depend: $(dependencies)
+# now include all the files constructed by the previous rule
+# this defines the dependencies, found by the preprocessor scanning #include
+# directives, for all object files of the atlas
+# make will automatically remake any of $(dependencies) if necessary
 
-# dependencies --- these were generated automatically by the command
-# make depend > make_dependencies on my system. Only local dependencies
-# are considered. If you add new #include directives you should add the
-# corresponding dependencies to the make_dependencies file; the best way if
-# your compiler supports the -MM option is probably to simply say again
-# make depend > make_dependencies.
-
-include make_dependencies
+include $(dependencies)
