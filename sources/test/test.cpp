@@ -922,6 +922,18 @@ void klbasis_f()
     return;
   }
 
+
+  try {
+    unsigned long modulus;
+    getInteractive(modulus,"Modulus for computation: ",257);
+    if (modulus==0) throw InputError();
+    arithmetic::modular_int::set_modulus(modulus);
+  }
+  catch (InputError& e) {
+    e("aborted");
+    return;
+  }
+
   Block block(G_C,G_R.realForm(),drf);
 
   KLSupport kls(block);
@@ -978,6 +990,17 @@ void kllist_f()
 
   try {
     getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+  }
+  catch (InputError& e) {
+    e("aborted");
+    return;
+  }
+
+  try {
+    unsigned long modulus;
+    getInteractive(modulus,"Modulus for computation: ",257);
+    if (modulus==0) throw InputError();
+    arithmetic::modular_int::set_modulus(modulus);
   }
   catch (InputError& e) {
     e("aborted");
@@ -1128,6 +1151,17 @@ void wcells_f()
     return;
   }
 
+  try {
+    unsigned long modulus;
+    getInteractive(modulus,"Modulus for computation: ",257);
+    if (modulus==0) throw InputError();
+    arithmetic::modular_int::set_modulus(modulus);
+  }
+  catch (InputError& e) {
+    e("aborted");
+    return;
+  }
+
   Block block(G_C,G_R.realForm(),drf);
 
   KLSupport kls(block);
@@ -1187,6 +1221,17 @@ void wgraph_f()
 
   try {
     getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+  }
+  catch (InputError& e) {
+    e("aborted");
+    return;
+  }
+
+  try {
+    unsigned long modulus;
+    getInteractive(modulus,"Modulus for computation: ",257);
+    if (modulus==0) throw InputError();
+    arithmetic::modular_int::set_modulus(modulus);
   }
   catch (InputError& e) {
     e("aborted");
