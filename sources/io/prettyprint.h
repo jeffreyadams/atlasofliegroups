@@ -1,8 +1,8 @@
 /*
   This is prettyprint.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -32,60 +32,60 @@ namespace atlas {
 
 namespace prettyprint {
 
-std::ostream& prettyPrint(std::ostream&, const bitmap::BitMap&, 
+std::ostream& prettyPrint(std::ostream&, const bitmap::BitMap&,
 			  size_t n = 0);
 
 std::ostream& prettyPrint(std::ostream&, const abelian::GroupType&);
 
-template<size_t d> 
+template<size_t d>
 std::ostream& prettyPrint(std::ostream&, const bitset::BitSet<d>&, size_t);
 
-template<size_t dim> 
-std::ostream& prettyPrint(std::ostream&, 
+template<size_t dim>
+std::ostream& prettyPrint(std::ostream&,
 			  const bitvector::BitVector<dim>&, size_t);
 
-template<size_t dim> 
-std::ostream& prettyPrint(std::ostream&, 
-			  const std::vector<bitvector::BitVector<dim> >&, 
+template<size_t dim>
+std::ostream& prettyPrint(std::ostream&,
+			  const std::vector<bitvector::BitVector<dim> >&,
 			  size_t);
 
-template<size_t dim> 
-std::ostream& prettyPrint(std::ostream&, 
+template<size_t dim>
+std::ostream& prettyPrint(std::ostream&,
 			  const bitvector::BitVector<dim>&, size_t);
 
 template<typename V>
 std::ostream& printBasis(std::ostream&, const std::vector<V>&);
 
-std::ostream& printCoroot(std::ostream&, const rootdata::RootNbr&, 
+std::ostream& printCoroot(std::ostream&, const rootdata::RootNbr&,
 			  const rootdata::RootDatum&);
 
-std::ostream& printCorootList(std::ostream&, const rootdata::RootList&, 
-			      const rootdata::RootDatum&, 
+std::ostream& printCorootList(std::ostream&, const rootdata::RootList&,
+			      const rootdata::RootDatum&,
 			      const char* sep = "\n");
 
 std::ostream& printDescentSet(std::ostream&, const bitset::RankFlags&, size_t,
 			      const char* sep = ",", const char* pre = "{",
 			      const char* post = "}");
 
-std::ostream& printInRootBasis(std::ostream&, rootdata::RootNbr, 
+std::ostream& printInRootBasis(std::ostream&, rootdata::RootNbr,
 			       const rootdata::RootDatum&);
 
-std::ostream& printInRootBasis(std::ostream&, const latticetypes::Weight&, 
+std::ostream& printInRootBasis(std::ostream&, const latticetypes::Weight&,
 			       const rootdata::RootDatum&);
 
-std::ostream& printInRootBasis(std::ostream&, const rootdata::RootSet&, 
+std::ostream& printInRootBasis(std::ostream&, const rootdata::RootSet&,
 			       const rootdata::RootDatum&);
 
 template<typename I>
-std::ostream& printInRootBasis(std::ostream&, 
-			       const I&, 
-			       const I&, 
+std::ostream& printInRootBasis(std::ostream&,
+			       const I&,
+			       const I&,
 			       const rootdata::RootDatum&,
-			       const char* sep = ",", 
-			       const char* pre = "", 
+			       const char* sep = ",",
+			       const char* pre = "",
 			       const char* post = "");
 
-std::ostream& printInvolution(std::ostream&, const weyl::WeylElt&, 
+std::ostream& printInvolution(std::ostream&, const weyl::WeylElt&,
 			      const weyl::WeylGroup&);
 
 template<typename C>
@@ -93,32 +93,32 @@ std::ostream& printMatrix(std::ostream&, const matrix::Matrix<C>&,
 			  unsigned long width = 4);
 
 template<typename C>
-std::ostream& printMonomial(std::ostream&, C, polynomials::Degree, 
+std::ostream& printMonomial(std::ostream&, C, polynomials::Degree,
 			    const char*);
 
 template<typename C>
 std::ostream& printPol(std::ostream&, const polynomials::Polynomial<C>&,
 		       const char*);
 
-std::ostream& printRoot(std::ostream&, const rootdata::RootNbr&, 
+std::ostream& printRoot(std::ostream&, const rootdata::RootNbr&,
 			const rootdata::RootDatum&);
 
-std::ostream& printRootList(std::ostream&, const rootdata::RootList&, 
+std::ostream& printRootList(std::ostream&, const rootdata::RootList&,
 			    const rootdata::RootDatum&,
 			    const char* sep = "\n");
 
 std::ostream& printStatus(std::ostream&, const gradings::Status&, size_t);
 
-std::ostream& printTitsElt(std::ostream&, const tits::TitsElt&, 
+std::ostream& printTitsElt(std::ostream&, const tits::TitsElt&,
 			   const tits::TitsGroup&);
 
 std::ostream& printTorusType(std::ostream&, const tori::RealTorus&);
 
-std::ostream& printWeylElt(std::ostream&, const weyl::WeylElt&, 
+std::ostream& printWeylElt(std::ostream&, const weyl::WeylElt&,
 			   const weyl::WeylGroup&);
 
 std::ostream& printWeylList(std::ostream&, const weyl::WeylEltList&,
-			    const weyl::WeylGroup&, const char* sep = ",", 
+			    const weyl::WeylGroup&, const char* sep = ",",
 			    const char* pre = "", const char* post = "");
 }
 

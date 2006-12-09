@@ -1,8 +1,8 @@
 /*
   This is prettyprint_def.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -23,24 +23,24 @@ namespace {
 // private declarations
 
 template<typename I>
-std::ostream& printInRootBasis(std::ostream&, 
-			       const I&, 
-			       const I&, 
+std::ostream& printInRootBasis(std::ostream&,
+			       const I&,
+			       const I&,
 			       const rootdata::RootDatum&,
-			       const rootdata::RootNbr&, 
-			       const char* sep = ",", 
-			       const char* pre = "", 
+			       const rootdata::RootNbr&,
+			       const char* sep = ",",
+			       const char* pre = "",
 			       const char* post = "");
 
 
 template<typename I>
-std::ostream& printInRootBasis(std::ostream&, 
-			       const I&, 
-			       const I&, 
+std::ostream& printInRootBasis(std::ostream&,
+			       const I&,
+			       const I&,
 			       const rootdata::RootDatum&,
-			       const latticetypes::Weight&, 
-			       const char* sep = ",", 
-			       const char* pre = "", 
+			       const latticetypes::Weight&,
+			       const char* sep = ",",
+			       const char* pre = "",
 			       const char* post = "");
 
 }
@@ -58,8 +58,8 @@ std::ostream& printInRootBasis(std::ostream&,
 
 namespace prettyprint {
 
-template<size_t d> 
-std::ostream& prettyPrint(std::ostream& strm, const bitset::BitSet<d>& b,  
+template<size_t d>
+std::ostream& prettyPrint(std::ostream& strm, const bitset::BitSet<d>& b,
 			  size_t n)
 
 /*
@@ -76,8 +76,8 @@ std::ostream& prettyPrint(std::ostream& strm, const bitset::BitSet<d>& b,
   return strm;
 }
 
-template<size_t dim> 
-std::ostream& prettyPrint(std::ostream& strm, 
+template<size_t dim>
+std::ostream& prettyPrint(std::ostream& strm,
 			  const bitvector::BitVector<dim>& v,  size_t n)
 
 /*
@@ -98,9 +98,9 @@ std::ostream& prettyPrint(std::ostream& strm,
   return strm;
 }
 
-template<size_t dim> 
-std::ostream& prettyPrint(std::ostream& strm, 
-			  const std::vector<bitvector::BitVector<dim> >& a, 
+template<size_t dim>
+std::ostream& prettyPrint(std::ostream& strm,
+			  const std::vector<bitvector::BitVector<dim> >& a,
 			  size_t n)
 
 /*
@@ -140,12 +140,12 @@ std::ostream& printBasis(std::ostream& strm, const std::vector<V>& b)
 }
 
 template<typename I>
-std::ostream& printInRootBasis(std::ostream& strm, 
-			       const I& first, 
-			       const I& last, 
+std::ostream& printInRootBasis(std::ostream& strm,
+			       const I& first,
+			       const I& last,
 			       const rootdata::RootDatum& rd,
-			       const char* sep, 
-			       const char* pre, 
+			       const char* sep,
+			       const char* pre,
 			       const char* post)
 
 /*
@@ -180,7 +180,7 @@ std::ostream& printMonomial(std::ostream& strm, C c, polynomials::Degree d,
   if (d == 0) // output c
     strm << c;
   else {
-    if (c != 1ul)
+    if (c != C(1))
       strm << c;
     strm << x;
     if (d > 1)
@@ -201,7 +201,7 @@ std::ostream& printPol(std::ostream& strm, const polynomials::Polynomial<C>& p,
   x is the name of the indeterminate. It is assumed that C is an unsigned
   type, so that no minus signs are required.
 
-  The output format is tex-like. Terms are printed only if non-zero, 
+  The output format is tex-like. Terms are printed only if non-zero,
   coefficients and exponents are printed only if non-one.
 */
 
@@ -227,6 +227,7 @@ std::ostream& printPol(std::ostream& strm, const polynomials::Polynomial<C>& p,
   return strm;
 }
 
+
 /*****************************************************************************
 
         Chapter II -- Local functions
@@ -241,13 +242,13 @@ std::ostream& printPol(std::ostream& strm, const polynomials::Polynomial<C>& p,
 namespace {
 
 template<typename I>
-std::ostream& printInRootBasis(std::ostream& strm, 
-			       const I& first, 
-			       const I& last, 
+std::ostream& printInRootBasis(std::ostream& strm,
+			       const I& first,
+			       const I& last,
 			       const rootdata::RootDatum& rd,
-			       const latticetypes::Weight&, 
-			       const char* sep, 
-			       const char* pre, 
+			       const latticetypes::Weight&,
+			       const char* sep,
+			       const char* pre,
 			       const char* post)
 
 /*
@@ -274,23 +275,23 @@ std::ostream& printInRootBasis(std::ostream& strm,
 }
 
 template<typename I>
-std::ostream& printInRootBasis(std::ostream& strm, 
-			       const I& first, 
-			       const I& last, 
+std::ostream& printInRootBasis(std::ostream& strm,
+			       const I& first,
+			       const I& last,
 			       const rootdata::RootDatum& rd,
-			       const rootdata::RootNbr&, 
-			       const char* sep, 
-			       const char* pre, 
+			       const rootdata::RootNbr&,
+			       const char* sep,
+			       const char* pre,
 			       const char* post)
 
 /*
   In this function we assume that I is an iterator type whose value_type is
-  RootNbr; it is assumed that these numbers refer to the list rd.d_roots. 
-  This function then outputs the corresponding sequence of roots written in 
-  the simple root basis, outputting through seqPrint with the corresponding 
+  RootNbr; it is assumed that these numbers refer to the list rd.d_roots.
+  This function then outputs the corresponding sequence of roots written in
+  the simple root basis, outputting through seqPrint with the corresponding
   separator, prefix and postfix.
 
-  NOTE: the RootNbr& argument is just a placeholder to make the signature 
+  NOTE: the RootNbr& argument is just a placeholder to make the signature
   unique.
 */
 
@@ -299,7 +300,7 @@ std::ostream& printInRootBasis(std::ostream& strm,
   using namespace latticetypes;
 
   WeightList rl;
-  
+
   rootdata::RootIterator<I> firstR(rd.beginRoot(),first);
   rootdata::RootIterator<I> lastR(rd.beginRoot(),last);
 
