@@ -6,7 +6,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -27,10 +27,12 @@ namespace atlas {
 
 namespace arithmetic {
 
+unsigned int modular_int::modulus=16; // default modulus
+
 unsigned long gcd(unsigned long a, unsigned long b)
 
 /*!
-  Synopsis: the classic Euclidian algorithm. It is assumed that 
+  Synopsis: the classic Euclidian algorithm. It is assumed that
 
   Precondition: b > 0;
 */
@@ -57,7 +59,7 @@ unsigned long gcd(unsigned long a, unsigned long b)
 unsigned long lcm(unsigned long a, unsigned long b)
 
 /*!
-  Synopsis: returns the lowest common multiple of a and b. 
+  Synopsis: returns the lowest common multiple of a and b.
 
   Precondition: b > 0;
 */
@@ -84,7 +86,7 @@ unsigned long& modProd(unsigned long& a, unsigned long b, unsigned long n)
 
   if (n > (1UL << (longBits >> 1)))
     FatalError() ("error: overflow in modProd");
-    
+
   a *= b;
   a %= n;
 
