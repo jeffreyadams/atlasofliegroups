@@ -1391,7 +1391,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
       if (length(x) > l_z)
 	break;
       // subtract x^d.mu.P_{x,z} from klv[j], where d = 1/2(l(y)-l(z))
-      const KLPol pol = klPol(x,z);
+      const KLPol& pol = klPol(x,z);
       Degree d = (l_y-l_z)/2;
       try {
 	klv[j].safeSubtract(pol,d,mu);
