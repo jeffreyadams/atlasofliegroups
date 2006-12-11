@@ -26,21 +26,28 @@ namespace hashtable {
      The class Entry should have members
 
      size_t hashCode(Number modulus) const;
-     bool operator==(const Entry& another) const;
+     bool operator!=(Entry' another) const;
      typename Pooltype;
 
      Here:
        hashCode computes a hash code for the Entry in the range [0,modulus[,
          where modulus is a power of 2, or 0 which should be interpreted as
          2^nr_of_bits(Number)
-       operator== tests equality,
+
+       Entry' is a type related to Entry that maybe returned from a Pooltype
+         object (see below) and tested against an Entry; in might be Entry or
+         const Entry&, or something more fancy in the case of compacted
+         storage (as will be used for KL polynomials)
+
+       operator!= tests inequality,
+
        Pooltype is a container class (for instance std::vector<Entry>),
          such that
 
          Pooltype();                              // creates an empty store
 	 void Pooltype::push_back(const Entry&);  // adds entry to store
          size_t size() const;                     // returns nr of entries
-         Entry operator[] (Number i) const;       // recalls entry i
+         Entry' operator[] (Number i) const;      // recalls entry i
 	 void swap(Pooltype& other);              // usual swap method
   */
 
@@ -58,7 +65,7 @@ class HashTable
   // static constants
   static const Number empty; // code for empty slot in d_hash
   static const float fill_fraction; // (probably ought to be variable)
-  HashTable() : d_mod(256),d_hash(d_mod,~Number(0)), d_pool()
+  HashTable() : d_mod(256),d_hash(d_mod,empty), d_pool()
     { }            // default and only constructor
 
   Number match(const Entry&);   // lookup entry and return its sequence number

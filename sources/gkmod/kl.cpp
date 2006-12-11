@@ -66,11 +66,11 @@
 
 namespace atlas {
 
-  namespace kl {
+  std::ostream& operator<<
+    (std::ostream& out,  const kl::KLPol& p)
+  { return prettyprint::printPol(out,p,"X"); }
 
-std::ostream& operator<<
-    (std::ostream& out,  const KLPol p)
-{ return prettyprint::printPol(out,p,"X"); }
+  namespace kl {
 
     void alert(KLIndex i) // illegal index into hash table
     {
@@ -80,17 +80,22 @@ std::ostream& operator<<
       assert(false); // bomb out here
     }
 
-/*!
- \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
+    /* methods of KLPolEntry */
 
-The function is in fact evaluation of the polynomial (with coefficients
-interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
-calculated quickly (without multiplications) and which gives a good spread
-(which is not the case if 8481 is replaced by a small number, because the
-evaluation values will not groz fast enough for low degree polynomials!).
+KLPolEntry::KLPolEntry(KLPolRef p) // extract polynomial from PolRef
+      : KLPol(p.freeze()) {}
 
-*/
-  size_t KLPolEntry::hashCode(KLIndex modulus) const
+  /*!
+    \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
+
+    The function is in fact evaluation of the polynomial (with coefficients
+    interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
+    calculated quickly (without multiplications) and which gives a good spread
+    (which is not the case if 8481 is replaced by a small number, because the
+    evaluation values will not groz fast enough for low degree polynomials!).
+
+  */
+size_t KLPolEntry::hashCode(KLIndex modulus) const
   { const polynomials::Polynomial<KLCoeff>& P=*this;
     if (P.isZero()) return 0;
     size_t i=P.degree();
@@ -98,6 +103,36 @@ evaluation values will not groz fast enough for low degree polynomials!).
     while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
     return h;
   }
+
+bool KLPolEntry::operator!=(KLPolRef e) const
+ {
+   if (degree()!=e.degree()) return true;
+   if (isZero()) return false; // since degrees match
+   for (polynomials::Degree i=0; i<=degree(); ++i)
+     if ((*this)[i]!=e[i]) return true;
+   return false; // no difference found
+ }
+
+    /* methods of KLPool */
+
+void KLPool::push_back(const KLPol& p)
+  {
+    index.push_back(pool.size());
+    pool.push_back(KLCoeff::raw_val(p.degree()+1));
+    if (not p.isZero()) // allows writing i<=p.degree() below
+      for (size_t i=0; i<=p.degree(); ++i) pool.push_back(p[i]);
+  }
+
+KLPolRef KLPool::operator[] (KLIndex i) const // get polynomial reference
+  {
+    size_t ii=index[i]; // index into pool
+    size_t l=static_cast<unsigned char>(pool[ii++]);
+
+    return KLPolRef(&pool[ii],0,l);
+  }
+
+
+
 
   namespace helper {
 
@@ -115,7 +150,7 @@ evaluation values will not groz fast enough for low degree polynomials!).
     bool operator() (const MuData& lhs, const MuData& rhs) const {
       return lhs.first < rhs.first;
     }
-  };
+  }; // struct MuCompare
 
   class Thicket;
 
@@ -190,9 +225,9 @@ of pair of integers specifying block element y.
     */
     using KLContext::klPol;
 
-    const KLPol& klPol(size_t x, size_t y, KLRow::const_iterator klv,
-		       klsupport::PrimitiveRow::const_iterator p_begin,
-		       klsupport::PrimitiveRow::const_iterator p_end) const;
+    KLPolRef klPol(size_t x, size_t y, KLRow::const_iterator klv,
+		   klsupport::PrimitiveRow::const_iterator p_begin,
+		   klsupport::PrimitiveRow::const_iterator p_end) const;
 
     MuCoeff lengthOneMu(size_t x, size_t y) const;
 
@@ -234,7 +269,7 @@ integers specifying block element y.
 
     void writeRow(const std::vector<KLPol>& klv,
 		  const klsupport::PrimitiveRow& e, size_t s);
-  };
+  }; // class Helper
 
     /*!
 \brief Collection of block elements y_j of the same length, differing
@@ -376,7 +411,7 @@ simple root s for y.
     /*!
 \brief KL polynomial P_{x,y_pos}, for any y_pos in Thicket.
     */
-    const KLPol& klPol(size_t x, size_t pos) const {
+    KLPolRef klPol(size_t x, size_t pos) const {
       return d_helper->klPol(x,d_vertices[pos],d_firstKL[pos],d_firstPrim[pos],
 			     d_prim[pos].end());
     }
@@ -446,7 +481,7 @@ type II imaginary for x.
       return d_helper->d_store;
     }
 
-  };
+    }; // class Thicket
 
     /*!
 \brief Pair (y , s x y) (with s type II real) in a Thicket.
@@ -513,7 +548,8 @@ list of elements primitive with respect to some y' in the Thicket.
 
     // manipulators
     ThicketIterator& operator++();
-  };
+
+  }; // class ThicketIterator
 
   }
   }
@@ -545,32 +581,18 @@ KLContext::KLContext(klsupport::KLSupport& kls)
 /*!
   \brief Copy constructor.
 
+  Since we use indices instead of iterators, noting gets invalidated any more
 */
 KLContext::KLContext(const KLContext& other)
   :d_state(other.d_state),
    d_support(other.d_support),
    d_prim(other.d_prim),
+   d_kl(other.d_kl),
    d_mu(other.d_mu),
-   d_store(other.d_store)
-
-/*!
-  The difficulty here is that copying the store invalidates all iterators
-  into it! So they must all be reset. This will be improved in the future.
-*/
-
-{
-  // reset iterators
-  d_zero = d_store.match(Zero);
-  d_one  = d_store.match(One);
-
-  d_kl.resize(other.d_kl.size());
-
-  for (size_t y = 0; y < d_kl.size(); ++y) {
-    d_kl[y].resize(other.d_kl[y].size());
-    for (size_t j = 0; j < d_kl[y].size(); ++j)
-      d_kl[y][j] = d_store.match(other.d_store[other.d_kl[y][j]]);
-  }
-}
+   d_store(other.d_store),
+   d_zero(other.d_zero),
+   d_one(other.d_one)
+{}
 
 KLContext& KLContext::operator= (const KLContext& other)
 
@@ -644,7 +666,7 @@ void KLContext::fill()
   return;
 }
 
-const KLPol& KLContext::klPol(size_t x, size_t y) const
+KLPolRef KLContext::klPol(size_t x, size_t y) const
 
 /*!
   \brief Returns the Kazhdan-Lusztig-Vogan polynomial P_{x,y}
@@ -673,12 +695,12 @@ const KLPol& KLContext::klPol(size_t x, size_t y) const
       size_t xpos = xptr - pr.begin();
       return d_store[klr[xpos]];
     } else {
-      return Zero;
+      return d_store[d_zero];
     }
   }
 
   // if we get here, the primitivization hit a real compact ascent
-  return Zero;
+  return d_store[d_zero];
 }
 
 MuCoeff KLContext::mu(size_t x, size_t y) const
@@ -831,7 +853,7 @@ MuCoeff Helper::goodDescentMu(size_t x, size_t y, size_t s) const
   }
 }
 
-const KLPol& Helper::klPol(size_t x, size_t y,
+KLPolRef Helper::klPol(size_t x, size_t y,
 			   KLRow::const_iterator klv,
 			   klsupport::PrimitiveRow::const_iterator p_begin,
 			   klsupport::PrimitiveRow::const_iterator p_end) const
@@ -857,10 +879,10 @@ const KLPol& Helper::klPol(size_t x, size_t y,
       size_t xpos = std::lower_bound(p_begin,p_end,xp) - p_begin;
       return d_store[klv[xpos]];
     } else {
-      return Zero;
+      return d_store[d_zero];
     }
   } else {
-    return Zero;
+    return d_store[d_zero];
   }
 }
 
@@ -1274,7 +1296,7 @@ void Helper::fillMuRow(size_t y)
     if (d_store[klp].degree() < d)
       continue;
     // if we get here, we found a mu-coefficient for x
-    d_mu[y].push_back(std::make_pair(x,(d_store[klp])[d]));
+    d_mu[y].push_back(std::make_pair( x , d_store[klp][d] ));
   }
 
   // do cases of length ly-1
@@ -1391,7 +1413,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
       if (length(x) > l_z)
 	break;
       // subtract x^d.mu.P_{x,z} from klv[j], where d = 1/2(l(y)-l(z))
-      const KLPol& pol = klPol(x,z);
+      KLPolRef pol = klPol(x,z);
       Degree d = (l_y-l_z)/2;
       try {
 	klv[j].safeSubtract(pol,d,mu);
@@ -1448,21 +1470,21 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     switch (descentValue(s,x)) {
     case DescentStatus::ImaginaryCompact: {
       // (q+1)P_{x,y1}
-      klv[j] = klPol(x,y1);
+      klv[j] = klPol(x,y1).freeze();
       klv[j].safeAdd(klv[j],1);
     }
       break;
     case DescentStatus::ComplexDescent: {
       size_t x1 = cross(s,x);
       // P_{x1,y1}+q.P_{x,y1}
-      klv[j] = klPol(x1,y1);
+      klv[j] = klPol(x1,y1).freeze();
       klv[j].safeAdd(klPol(x,y1),1);
     }
       break;
     case DescentStatus::RealTypeI: {
       BlockEltPair x1 = inverseCayley(s,x);
       // P_{x1.first,y1}+P_{x1.second,y1}+(q-1)P_{x,y1}
-      klv[j] = klPol(x1.first,y1);
+      klv[j] = klPol(x1.first,y1).freeze();
       klv[j].safeAdd(klPol(x1.second,y1));
       klv[j].safeAdd(klPol(x,y1),1);
       try {
@@ -1477,7 +1499,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     case DescentStatus::RealTypeII: {
       size_t x1 = inverseCayley(s,x).first;
       // P_{x_1,y_1}+qP_{x,y1}-P_{s.x,y1}
-      klv[j] = klPol(x1,y1);
+      klv[j] = klPol(x1,y1).freeze();
       klv[j].safeAdd(klPol(x,y1),1);
       try {
 	klv[j].safeSubtract(klPol(cross(s,x),y1));
@@ -1556,7 +1578,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
       --i;
       size_t s = firstAscent(descent(pr[i]),descent(y),rank());
       BlockEltPair x1 = cayley(s,pr[i]);
-      KLPol pol = klPol(x1.first,y,new_pol,new_extr,nzpr_end);
+      KLPol pol = klPol(x1.first,y,new_pol,new_extr,nzpr_end).freeze();
       pol.safeAdd(klPol(x1.second,y,new_pol,new_extr,nzpr_end));
       if (not pol.isZero()) {
 	*--new_extr = pr[i];
@@ -1731,7 +1753,8 @@ bool Thicket::ascentCompute(size_t x, size_t pos)
     return false;
 
   BlockEltPair x1 = d_helper->cayley(s,x);
-  KLPol pol = klPol(x1.first,pos);
+  KLPolRef t=klPol(x1.first,pos);
+  KLPol pol = t.freeze();
   pol.safeAdd(klPol(x1.second,pos));
 
   if (not pol.isZero()) { // write pol
@@ -1956,8 +1979,8 @@ ThicketIterator& ThicketIterator::operator++ ()
   return *this;
 }
 
-  }
-}
+} //namespace helper
+} //namespace kl
 
 
 /*****************************************************************************

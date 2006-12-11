@@ -4,7 +4,7 @@
   Template definitions for the class Polynomial.
 
   This module is intended for computations modulo some (small) integer. We
-  have unmantled the "safe" constructions from Fokk's original implementation.
+  have disabled the "safe" constructions from Fokko's original implementation.
 
   Contrary to the original design, one should think of C as a class (of size
   smaller than that of long or even int), which provides for the arithmetic
@@ -14,10 +14,12 @@
 
   Our philsophy is that the degree of the polynomial is always deduced from
   the size of the coefficient vector: it is d_data.size()-1. As a corollary,
-  the degree of the zero polynomial is -1 (for the unsigned Degree type);
-  this is designated as UndefDegree. A consequence of this is that the
-  addition and subtraction operations have to watch out for drop in degree.
-  The main advantage of this is that the degree operator, which is used a lot, is trivial.
+  the degree of the zero polynomial is -1 (for the unsigned Degree type); this
+  is designated as UndefDegree. A consequence of this is that the addition and
+  subtraction operations have to watch out for drop in degree. The main
+  advantage of this is that the degree operator, which is used a lot, is
+  trivial.
+
 */
 /*
   This is polynomials_def.h.
@@ -43,10 +45,6 @@ namespace atlas {
 
 namespace polynomials {
 
-template<typename C>
-Polynomial<C>::Polynomial(Degree d)
-  :d_data(d+1,C(0)) // all coefficients are C(0) for now
-
 /*!
   \brief Constructs x^d.
 
@@ -54,15 +52,17 @@ Polynomial<C>::Polynomial(Degree d)
   about the degree is satisfied.
 */
 
+template<typename C>
+Polynomial<C>::Polynomial(Degree d)
+  :d_data(d+1,C(0)) // all coefficients are C(0) for now
 {
-  d_data[d] = C(1);
+  if(d+1!=0) // allow using this constructor with d == -1 to build Zero
+    d_data[d] = C(1); // now we really have degree d
 }
 
 /******** accessors **********************************************************/
 
 /******** manipulators *******************************************************/
-template<typename C>
-void Polynomial<C>::adjustSize()
 
 /*!
   \brief Adjusts the size of d_data so that it corresponds to the degree + 1.
@@ -73,6 +73,8 @@ void Polynomial<C>::adjustSize()
   coefficient is the top one (or to have size zero if the polynomial is zero).
 */
 
+template<typename C>
+void Polynomial<C>::adjustSize()
 {
   size_t j = d_data.size();
 
@@ -83,8 +85,6 @@ void Polynomial<C>::adjustSize()
   return;
 }
 
-template<typename C>
-Polynomial<C>& Polynomial<C>::safeAdd(const Polynomial& q, Degree d, C c)
 
 /*!
   \brief Adds x^d.c.q, to *this
@@ -93,18 +93,16 @@ Polynomial<C>& Polynomial<C>::safeAdd(const Polynomial& q, Degree d, C c)
   avoid making a copy, by doing the addition top-to-bottom.
 */
 
+template<typename C>
+void Polynomial<C>::safeAdd(const Polynomial& q, Degree d, C c)
 {
-  if (q.isZero()) // do nothing
-    return *this;
+  if (q.isZero()) return; // do nothing
 
-  // save the degree of q
-  Degree dq = q.degree();
-
-  // find maximal possible degree
+  // make sure d_data has all the coefficients to be modified
   if (q.d_data.size()+d > d_data.size())
     d_data.resize(q.d_data.size()+d,C(0));
 
-  for (size_t j = dq+1; j-->0;) {
+  for (size_t j = q.degree()+1; j-->0;) {
     C a = q[j];
     a*=c;
     d_data[j+d]+=a;
@@ -112,23 +110,24 @@ Polynomial<C>& Polynomial<C>::safeAdd(const Polynomial& q, Degree d, C c)
 
   // set degree
   adjustSize();
-
-  return *this;
 }
 
 template<typename C>
-Polynomial<C>& Polynomial<C>::safeSubtract(const Polynomial& q, Degree d, C c)
+void Polynomial<C>::safeAdd(PolRef<C> q, Degree d, C c)
+{
+  if (q.isZero()) return; // do nothing
 
-/*!
-  \brief Subtracts x^d.c.q from *this.
+  // make sure d_data has all the coefficients to be modified
+  if (q.end()+d > d_data.size()) d_data.resize(q.end()+d, C(0) );
 
-  This is now trivially delegated to safeAdd
-*/
+  for (size_t j = q.end(); j-->0;) d_data[j+d] += q[j]*c;
 
-{ return safeAdd(q,d,-c);
+  // set degree
+  adjustSize();
 }
 
-}
+
+} // namespace polynomials
 
 /*****************************************************************************
 
@@ -174,36 +173,11 @@ bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
   return false;
 }
 
-template<typename C> void safeAdd(C& a, C b)
+template<typename C>
+inline void safeAdd(C& a, C b) { a *= b; }
 
-/*!
-  \brief a += b.
-
-*/
-
-{ a += b;
-}
-
-template<typename C> void safeProd(C& a, C b)
-
-/*!
-  \brief a *= b.
-
-*/
-
-{
-    a *= b;
-}
-
-template<typename C> void safeSubtract(C& a, C b)
-
-/*!
-  \brief a -= b.
-*/
-
-{
-    a -= b;
-}
+template<typename C>
+inline void safeSubtract(C& a, C b) { a -= b; }
 
 }
 

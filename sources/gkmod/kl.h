@@ -32,35 +32,63 @@ Class definitions and function declarations for the class KLContext.
 
 namespace atlas {
 
-/******** constant declarations *********************************************/
+
+std::ostream& operator<<  (std::ostream& out, const kl::KLPol& p);
+
 
 namespace kl {
 
 
-std::ostream& operator<<
-  (std::ostream& out,  const KLPol p);
+class KLPool;
 
- typedef unsigned int KLIndex;
 
 // wrap KLPol into a class that can be used in a HashTable
+
 class KLPolEntry : public KLPol
   {
   public:
+    // constructors
     KLPolEntry() : KLPol() {} // default constructor builds zero polynomial
     KLPolEntry(const KLPol& p) : KLPol(p) {} // lift polynomial to this class
+
+    // the following constructor is needed during rehashing
+    explicit KLPolEntry(KLPolRef p); // extract polynomial from PolRef
+
     explicit KLPolEntry(polynomials::Degree d) : KLPol(d) {} // represents X^d
 
-    typedef std::vector<KLPolEntry> Pooltype; // associated storage type
+    // members required for Entry in HashTable
+    typedef KLPool Pooltype; // associated storage type
     size_t hashCode(KLIndex modulus) const;   // hash function
 
-    // equality is handled by the base type
-    bool operator!=(const KLPolEntry& e) const
-      { return not (static_cast<const KLPol&>(*this)==
-		    static_cast<const KLPol&>(e));
-      }
+    bool operator!=(KLPolRef e) const;
+
   };
 
- class HashStore : public hashtable::HashTable<KLPolEntry,KLIndex>
+
+class KLPool // storage for KL polynomials
+  {
+    std::vector<KLCoeff> pool;
+    std::vector<size_t> index;
+
+  public:
+    // constructor
+    KLPool() : pool(),index() {}
+
+    // accessors
+    KLPolRef operator[] (KLIndex i) const; // select reference to polynomial
+
+    size_t size() const { return index.size(); }  // number of entries
+    size_t mem_size() const                       // memory footprint
+      { return size()+index.size()*sizeof(size_t)+sizeof(KLPool); }
+
+    // manipulators
+    void push_back(const KLPol&);
+
+    void swap(KLPool& other)
+      { pool.swap(other.pool); index.swap(other.index); }
+  }; // class KLPool
+
+class HashStore : public hashtable::HashTable<KLPolEntry,KLIndex>
   {
     typedef hashtable::HashTable<KLPolEntry,KLIndex> TableType;
 
@@ -80,7 +108,7 @@ class KLPolEntry : public KLPol
       }
   public:
 
-    const KLPol& operator[] (KLIndex i) const // interpret i on our hashTable
+    KLPolRef operator[] (KLIndex i) const // interpret i on our hashTable
       { return pool()[i]; }
 
   };
@@ -218,7 +246,7 @@ Note that it is returned by value, since we want to allow for the possibility
 of compressed storage, in chich case we cannot return an uncompressed
 polynomial by reference, but we can return it by value
   */
-  const KLPol& klPol(size_t x, size_t y) const;
+  KLPolRef klPol(size_t x, size_t y) const;
 
   /*!
 \brief Returns the list of pointers to the non-zero KL polynomials

@@ -27,7 +27,11 @@ namespace atlas {
 
 namespace arithmetic {
 
-unsigned int modular_int::modulus=16; // default modulus
+  /* The following default value is only used during initialisation of
+     constant, like the polynomials Zero and One. Therefore its vlue is mostly
+     irrelevant, but it should not be 0 or 1! */
+
+unsigned int modular_int::modulus=16;
 
 unsigned long gcd(unsigned long a, unsigned long b)
 

@@ -49,7 +49,7 @@ template <class Entry, typename Number>
       // now rehash all old entries
       for (size_t i=0; i<d_pool.size(); ++i)
       {
-	size_t h=d_pool[i].hashCode(d_mod);
+	size_t h=Entry(d_pool[i]).hashCode(d_mod);
 
 	while (d_hash[h]!=empty)
 	  if (Number(++h)==d_mod) h=0; // find empty slot
