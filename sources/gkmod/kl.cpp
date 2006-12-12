@@ -91,20 +91,21 @@ KLPolEntry::KLPolEntry(KLPolRef p) // extract polynomial from PolRef
     The function is in fact evaluation of the polynomial (with coefficients
     interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
     calculated quickly (without multiplications) and which gives a good spread
-    (which is not the case if 8481 is replaced by a small number, because the
-    evaluation values will not groz fast enough for low degree polynomials!).
+    (which is not the case if 2105633 is replaced by a small number, because
+    the evaluation values will not grow fast enough for low degree
+    polynomials!).
 
   */
-size_t KLPolEntry::hashCode(KLIndex modulus) const
+inline size_t KLPolEntry::hashCode(size_t modulus) const
   { const polynomials::Polynomial<KLCoeff>& P=*this;
     if (P.isZero()) return 0;
-    size_t i=P.degree();
-    KLIndex h=P[i];
+    polynomials::Degree i=P.degree();
+    size_t h=P[i]; // start with leading coefficient
     while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
     return h;
   }
 
-bool KLPolEntry::operator!=(KLPolRef e) const
+bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
  {
    if (degree()!=e.degree()) return true;
    if (isZero()) return false; // since degrees match
@@ -117,18 +118,17 @@ bool KLPolEntry::operator!=(KLPolRef e) const
 
 void KLPool::push_back(const KLPol& p)
   {
-    index.push_back(pool.size());
-    pool.push_back(KLCoeff::raw_val(p.degree()+1));
-    if (not p.isZero()) // allows writing i<=p.degree() below
+    if (not p.isZero()) // this allows writing i<=p.degree() in line below
       for (size_t i=0; i<=p.degree(); ++i) pool.push_back(p[i]);
+    index.push_back(IndexType(pool.size())); // mark end of coefficients
   }
 
-KLPolRef KLPool::operator[] (KLIndex i) const // get polynomial reference
+KLPool::const_reference KLPool::operator[] (KLIndex i) const
   {
-    size_t ii=index[i]; // index into pool
-    size_t l=static_cast<unsigned char>(pool[ii++]);
+    size_t pi=index[i].pool_index;     // index into pool
+    size_t l=index[i+1].pool_index-pi; // degree+1 of polynomial
 
-    return KLPolRef(&pool[ii],0,l);
+    return KLPolRef(&pool[pi],0,l); // the |const_reference| is |KLPolRef|
   }
 
 

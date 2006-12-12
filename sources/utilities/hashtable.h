@@ -23,39 +23,48 @@ namespace hashtable {
      integral type Number used for sequence numbers (whose size will give a
      limit to the number of different Entry values that can be stored).
 
-     The class Entry should have members
+     The class Entry should at least have the following members
 
-     size_t hashCode(Number modulus) const;
-     bool operator!=(Entry' another) const;
-     typename Pooltype;
+     typename Pooltype;   //  given by a typedef inside the class definition
+
+     explicit Entry(Pooltype::const_reference); // |explicit| may be absent
+     size_t hashCode(size_t modulus) const;
+     bool operator!=(Pooltype::const_reference another) const;
 
      Here:
+
+       Pooltype::const_reference is a type related to Entry that is returned
+         by Pooltype::operator[] (see below) and can be tested against an
+         Entry; it might be const Entry& (as it will be if Pooltype is
+         std::vector<Entry>) in which case the constructor
+         Entry(Pooltype::const_reference) will be the ordinary copy
+         constructor, or it might something more fancy in the case of
+         compacted storage (as will be used for KL polynomials) in which case
+         the mentioned constructor will need an explicit definition
+
        hashCode computes a hash code for the Entry in the range [0,modulus[,
          where modulus is a power of 2, or 0 which should be interpreted as
          2^nr_of_bits(Number)
-
-       Entry' is a type related to Entry that maybe returned from a Pooltype
-         object (see below) and tested against an Entry; in might be Entry or
-         const Entry&, or something more fancy in the case of compacted
-         storage (as will be used for KL polynomials)
 
        operator!= tests inequality,
 
        Pooltype is a container class (for instance std::vector<Entry>),
          such that
 
-         Pooltype();                              // creates an empty store
-	 void Pooltype::push_back(const Entry&);  // adds entry to store
-         size_t size() const;                     // returns nr of entries
-         Entry' operator[] (Number i) const;      // recalls entry i
-	 void swap(Pooltype& other);              // usual swap method
+	 typename const_reference;                    // is some typedef
+
+         Pooltype();                                  // creates an empty store
+	 void Pooltype::push_back(const Entry&);      // adds entry to store
+         size_t size() const;                         // returns nr of entries
+         const_reference operator[] (Number i) const; // recalls entry i
+	 void swap(Pooltype& other);                  // usual swap method
   */
 
 template <class Entry, typename Number>
 class HashTable
 {
   // data members
-  Number d_mod;  // hash modulus, the number of slots present
+  size_t d_mod;  // hash modulus, the number of slots present
   std::vector<Number> d_hash;
   typename Entry::Pooltype d_pool;
 
@@ -68,9 +77,12 @@ class HashTable
   HashTable() : d_mod(256),d_hash(d_mod,empty), d_pool()
     { }            // default and only constructor
 
+  // manipulator
   Number match(const Entry&);   // lookup entry and return its sequence number
-  Number find(const Entry&) const; // const variant; may return empty
-  Entry operator[] (Number i) const
+
+  // accessors
+  Number find(const Entry&) const; // const variant of match; may return empty
+  typename Entry::Pooltype::const_reference operator[] (Number i) const
     {
       if (i>=d_pool.size()) atlas::kl::alert(i);
       return d_pool[i];
@@ -84,10 +96,11 @@ class HashTable
 
  public: // methods to make HashTable behave like a container, in some cases
 
-  typedef Number iterator; // type returned by begin() and end()
+  typedef Number const_iterator;   // type returned by begin() and end()
+  typedef const_iterator iterator; // iterators are not mutable
 
-  iterator begin() const  { return iterator(0); }
-  iterator end() const    { return size(); }
+  const_iterator begin() const  { return Number(0); }
+  const_iterator end() const    { return size(); }
 
   void swap(HashTable& other)
     {

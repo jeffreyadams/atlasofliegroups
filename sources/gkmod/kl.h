@@ -25,7 +25,7 @@ Class definitions and function declarations for the class KLContext.
 #include "bitset.h"
 #include "klsupport.h"
 
-#include "hashtable.h"
+#include "hashtable-stats.h"
 #include "polynomials.h"
 #include "prettyprint.h"
 #include "wgraph.h"
@@ -39,10 +39,15 @@ std::ostream& operator<<  (std::ostream& out, const kl::KLPol& p);
 namespace kl {
 
 
-class KLPool;
+class KLPool; // predeclare the storage class to be used via the hash table
 
 
-// wrap KLPol into a class that can be used in a HashTable
+// wrap |KLPol| into a class that can be used in a HashTable
+
+/* This associates the type |KLPool| as underlying storage type to |KLPol|,
+   and adds the methods |hashCode| (hash function) and |!=| (unequality), for
+   use by the |HashTable| template.
+ */
 
 class KLPolEntry : public KLPol
   {
@@ -51,35 +56,64 @@ class KLPolEntry : public KLPol
     KLPolEntry() : KLPol() {} // default constructor builds zero polynomial
     KLPolEntry(const KLPol& p) : KLPol(p) {} // lift polynomial to this class
 
-    // the following constructor is needed during rehashing
-    explicit KLPolEntry(KLPolRef p); // extract polynomial from PolRef
+    // the following constructor is (only) needed during rehashing
+    // since the hash function is only defined for KLPolEntry objects
+    explicit KLPolEntry(KLPolRef p); // extract polynomial from a PolRef
 
-    explicit KLPolEntry(polynomials::Degree d) : KLPol(d) {} // represents X^d
+    // members required for an Entry parameter to the HashTable template
+    typedef KLPool Pooltype;		    // associated storage type
+    size_t hashCode(KLIndex modulus) const; // hash function
 
-    // members required for Entry in HashTable
-    typedef KLPool Pooltype; // associated storage type
-    size_t hashCode(KLIndex modulus) const;   // hash function
-
-    bool operator!=(KLPolRef e) const;
+    bool operator!=(KLPolRef e) const;  // compare pol with one from storage
 
   };
 
 
-class KLPool // storage for KL polynomials
+// storage for KL polynomials
+
+/*
+   The idea is to store only sequences of coefficients in a huge vector
+   |pool|, and to provide minimal overhead (the |index| vector) to be able to
+   access individual polynomials. Polynomials are extracted in the form of a
+   |KLPolRef| object, which class replaces the type |const KLPol&| that is
+   impossible to produce without having an actual |KLPol| value in memory.
+   This is why we typedef |const_reference| to be equal to |KLPolRef|.
+   Insertion is done by the method |push_back|, and extraction by
+   |operator[]|, mimicking the behaviour of |std::vector<KLPol>| except for
+   the return type from |operator[]|. Other methods are |size|, needed by the
+   hash table code to know the sequence number to assign to a new polynomial
+   sent to the storage, and |swap| for the |swap| method of hash tables. The
+   method |mem_size| gives the number of bytes used in storage, for
+   statistical convenience.
+
+*/
+
+class KLPool
   {
+    struct IndexType
+    {
+      size_t pool_index;
+      IndexType(size_t i) : pool_index(i) {}
+    };
+
     std::vector<KLCoeff> pool;
-    std::vector<size_t> index;
+    std::vector<IndexType> index;
 
   public:
-    // constructor
-    KLPool() : pool(),index() {}
+    typedef KLPolRef const_reference; // used by HashTable
+
+    // constructor;
+    KLPool() : pool(),index(1,IndexType(0)) { } // index is always 1 ahead
 
     // accessors
-    KLPolRef operator[] (KLIndex i) const; // select reference to polynomial
+    const_reference operator[] (KLIndex i) const; // select polynomial by nr
 
-    size_t size() const { return index.size(); }  // number of entries
-    size_t mem_size() const                       // memory footprint
-      { return size()+index.size()*sizeof(size_t)+sizeof(KLPool); }
+    size_t size() const { return index.size()-1; } // number of entries
+    size_t mem_size() const                        // memory footprint
+      { return sizeof(KLPool)
+	  +pool.size()*sizeof(KLCoeff)
+	  +index.size()*sizeof(IndexType);
+      }
 
     // manipulators
     void push_back(const KLPol&);
@@ -88,33 +122,9 @@ class KLPool // storage for KL polynomials
       { pool.swap(other.pool); index.swap(other.index); }
   }; // class KLPool
 
-class HashStore : public hashtable::HashTable<KLPolEntry,KLIndex>
-  {
-    typedef hashtable::HashTable<KLPolEntry,KLIndex> TableType;
-
-  public:
-    HashStore() : TableType() {}
-
-  private:
-    KLIndex find(const KLPol& p) const
-      {
-	KLIndex i=find(p); return i==empty ? end() : i;
-      }
-    std::pair<KLIndex,bool> insert(const KLPol& p)
-      {
-	KLIndex s=size(); // will be code of KLIndex if p is new
-	KLIndex i=match(p);
-	return std::pair<KLIndex,bool>(i,i==s);
-      }
-  public:
-
-    KLPolRef operator[] (KLIndex i) const // interpret i on our hashTable
-      { return pool()[i]; }
-
-  };
 
 
-typedef HashStore KLStore;
+typedef hashtable::HashTable<KLPolEntry,KLIndex> KLStore;
 
 typedef KLIndex KLPtr;
 
