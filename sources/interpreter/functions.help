@@ -233,6 +233,8 @@ print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   (non-compact), to be interpreted on the simple roots in the given order, and
   extended to the whose root subsystem as a Z/2Z grading.
 
+set_modulus: (int->): set modulus for coefficients in KL computations
+
 print_block: (RealForm,DualRealForm->):
 print_blocku: (RealForm,DualRealForm->):
 print_blockd: (RealForm,DualRealForm->):

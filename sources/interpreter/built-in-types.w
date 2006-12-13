@@ -77,6 +77,26 @@ in~\.{lietype\_fwd.h}, are known in our header file.
 #include "evaluator.h"
 #include "lietype_fwd.h"
 
+@ Here is a wrapper function specifically for the modular Kazhdan-Lusztig
+version of the atlas. If you forget to call this function, you will get the
+default modulus (which I believe is~$16$).
+
+@h "arithmetic.h"
+@< Local function definitions @>=
+
+void set_modulus_wrapper()
+{ int_ptr n(get<int_value>());
+  if (n->val==0) throw std::runtime_error("illegal modulus 0");
+  if (unsigned(n->val)>256) throw std::runtime_error("modulus too large");
+  arithmetic::modular_int::set_modulus(n->val);
+  wrap_tuple(0);
+}
+
+@ Here is how we install a function.
+@< Install wrapper functions @>=
+install_function(set_modulus_wrapper,"set_modulus","(int->)");
+
+
 @*1 Lie types.
 Our first chapter concerns Lie types, as indicated by strings like
 |"D4.A3.E8.T1"|.
