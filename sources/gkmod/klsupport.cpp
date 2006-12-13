@@ -3,7 +3,7 @@
 \brief Implementation for KLSupport.
 
   This module provides support code for the Kazhdan-Lusztig computation,
-  mostly the management of the list of primitive pairs, and primitivization
+  mostly the management of the list of extremal pairs, and extremalization
   of arbitrary subsets of the block.
 
   After some hesitation, I think I _am_ going to assume that the block has
@@ -14,9 +14,9 @@
 */
 /*
   This is klsupport.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups version 0.2.4
 
   See file main.cpp for full copyright notice
 */
@@ -25,18 +25,6 @@
 
 #include "blocks.h"
 #include "descents.h"
-
-/*
-  This module provides support code for the Kazhdan-Lusztig computation,
-  mostly the management of the list of extremal pairs, and extremalization
-  of arbitrary subsets of the block.
-
-  After some hesitation, I think I _am_ going to assume that the block has
-  been sorted by length and root datum involution, and then by R-packet.
-  This does make the hard case in the recursion a lot simpler to handle:
-  "thickets" of representations are in fact R-packets, so they will be
-  consecutively numbered.
-*/
 
 namespace atlas {
 
@@ -75,6 +63,7 @@ void KLSupport::swap(KLSupport& other)
   std::swap(d_rank,other.d_rank);
   std::swap(d_size,other.d_size);
 
+  d_primitivize.swap(other.d_primitivize);
   d_descent.swap(other.d_descent);
   d_goodAscent.swap(other.d_goodAscent);
   d_downset.swap(other.d_downset);
@@ -85,23 +74,11 @@ void KLSupport::swap(KLSupport& other)
 }
 
 /******** accessors **********************************************************/
-void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d) 
+void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
   const
 
-/*!
-  \brief: Flags in b those block elements which are extremal w.r.t. the
-  simple reflections flagged in d.  
-
-  Preconditions: the capacity of b is the size(); d contains d_rank valid
-  flags;
-
-  Explanation: an element z in the block is extremal w.r.t. d, if all the
-  descents in d are also descents for z. Since d_downset[s] flags the
-  elements for which s is a descent, this amounts to requesting that z
-  belong to the intersection of the downsets for the various descents in d.
-*/
 /*
-  \brief Extremalizes b w.r.t. the values in d.  
+  Synopsis: extremalizes b w.r.t. the values in d.
 
   Preconditions: the capacity of b is the size(); d contains d_rank valid
   flags;
@@ -120,34 +97,19 @@ void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
   return;
 }
 
-void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d) 
+void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
   const
 
-
-/*!
-  \brief Flags in b those elements of the block which are primitive
-  w.r.t. the values in d.
-
-  Preconditions: the capacity of b is the size(); d contains d_rank valid
-  flags;
-
-  Explanation: an element z in the block is primitve w.r.t. d, if all the
-  descents in d are either descents, or imaginary type II ascents for z. Since 
-  d_primset[s] flags the elements for which s is a descent or imaginary type 
-  II, this amounts to requesting that z belong to the intersection of the 
-  primsets for the various descents in d.
-*/
-
 /*
-  \brief Primitivizes b w.r.t. the values in d.
+  Synopsis: primitivizes b w.r.t. the values in d.
 
   Preconditions: the capacity of b is the size(); d contains d_rank valid
   flags;
 
-  Explanation: an element z in the block is primitve w.r.t. d, if all the
-  descents in d are either descents, or imaginary type II ascents for z. Since 
-  d_primset[s] flags the elements for which s is a descent or imaginary type 
-  II, this amounts to requesting that z belong to the intersection of the 
+  Explanation: an element z in the block is primitive w.r.t. d, if all the
+  descents in d are either descents, or imaginary type II ascents for z. Since
+  d_primset[s] flags the elements for which s is a descent or imaginary type
+  II, this amounts to requesting that z belong to the intersection of the
   primsets for the various descents in d.
 */
 
@@ -159,50 +121,11 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
   return;
 }
 
-bool KLSupport::primitivize(size_t& x, const bitset::RankFlags& d) const
-
-/*!
-  \brief Replaces x (the number of a block element) with a primitive
-  element above it, and returns true, or returns false, and x is not
-  changed.
-
-  Explanation: a primitive element for d is one for which all elements
-  in d are descents or type II imaginary [?? DV 8/17/06]. So if x is
-  not primitive, it has an ascent that is either complex, imaginary
-  type I or real compact. In the first two cases we replace x by the
-  ascended element and continue; in the last case, we return false
-  (for k-l computations, this will indicate a zero k-l polynomial.)
-*/
-
-{
-  using namespace bitset;
-  using namespace descents;
-
-  size_t xp = x;
-
-  for (RankFlags a = goodAscentSet(xp); a.any(d); a = goodAscentSet(xp)) {
-    a &= d;
-    size_t s = a.firstBit();
-    DescentStatus::Value v = descentValue(s,xp);
-    if (v == DescentStatus::RealNonparity)
-      return false;
-    // this should be replaced by the ascend table!
-    if (v == DescentStatus::ComplexAscent)
-      xp = d_block->cross(s,xp);
-    else
-      xp = d_block->cayley(s,xp).first;
-  }
-
-  // commit
-  x = xp;
-  return true;
-}
-
 /******** manipulators *******************************************************/
 void KLSupport::fill()
 
 /*
-  \brief Fills the extrPairs list, the downsets, and the lengthLess
+  Synopsis: fills the extrPairs list, the downsets, and the lengthLess
   table.
 
   Explanation: for real reductive Lie groups, we always compute the full
@@ -225,6 +148,8 @@ void KLSupport::fill()
   // make the downsets
   fillDownsets();
 
+  //fill the primitivize table
+  fillPrimitivize();
   d_state.set(Filled);
 
   return;
@@ -233,21 +158,21 @@ void KLSupport::fill()
 void KLSupport::fillDownsets()
 
 /*
-  \brief Fills in the downsets bitmaps, the primset bitmaps, the descent 
+  Synopsis: fills in the downsets bitmaps, the primset bitmaps, the descent
   bitsets and the goodAscent bitsets.
 
   Explanation: here descent is taken in the weak sense of s belonging to the
   "tau-invariant" of z in b. In other words, s is a complex descent, real
   noncompact (type I or type II), or imaginary compact. The primset bitset
   records the x'es for which s is either a descent, or an imaginary type II
-  ascent. The goodAscent bitsets hold the ascents that are not imaginary type 
+  ascent. The goodAscent bitsets hold the ascents that are not imaginary type
   II.
 
   Sets the DownsetsFilled bit in d_state if successful. Commit-or-rollback
   is guaranteed.
 */
 
-{  
+{
   using namespace bitmap;
   using namespace bitset;
   using namespace descents;
@@ -289,6 +214,64 @@ void KLSupport::fillDownsets()
   return;
 }
 
+void KLSupport::fillPrimitivize()
+
+/*
+  Synopsis: fills in the table d_primitivize.
+
+  Explanation: for each z in the block, and each set A of simple
+  roots, d_primitivize[A][z] comes by proper ascents of z through s
+  in A (either cross actions increasing length, or Cayley transforms)
+  or 0 (if we come to a real non-parity case).
+
+  Sets the PrimitivizeFilled bit in d_state if successful.
+*/
+
+{
+  using namespace bitset;
+  using namespace descents;
+  using namespace blocks;
+
+  if (d_state.test(PrimitivizeFilled))
+    return;
+  d_primitivize.reserve(1ul << rank());
+  d_primitivize.resize(1ul << rank());
+  size_t blocksize = d_block->size();
+
+for (unsigned long j = 0 ; j >> rank() == 0 ; ++j) {
+  BlockEltList prim;
+  prim.reserve(blocksize);
+  prim.resize(blocksize);
+   const bitset::RankFlags A(j);
+   for (BlockElt z = blocksize; z != 0;) {
+     --z;
+  // primitivize
+     RankFlags a = goodAscentSet(z);
+     a &= A;
+     if (a.none()) {
+       prim[z] = z;
+       continue;
+     }
+    size_t s = a.firstBit();
+    DescentStatus::Value v = descentValue(s,z);
+    if (v == DescentStatus::RealNonparity) {
+      prim[z] = UndefBlock;
+      continue;
+    }
+    if (v == DescentStatus::ComplexAscent)
+      prim[z] = prim[d_block->cross(s,z)];
+    else
+      prim[z] = prim[d_block->cayley(s,z).first];
+  }
+   // insert
+   d_primitivize[j] = prim;
+ }
+
+ d_state.set(PrimitivizeFilled);
+
+ return;
+}
+
 }
 
 /*****************************************************************************
@@ -304,7 +287,7 @@ namespace {
 void fillLengthLess(std::vector<size_t>& ll, const blocks::Block& b)
 
 /*
-  \brief Puts in ll[l] the number of elements in b of length < l.
+  Synopsis: puts in ll[l] the number of elements in b of length < l.
 
   Precondition: b is sorted by length;
 */
