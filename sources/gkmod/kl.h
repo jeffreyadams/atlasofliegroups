@@ -61,7 +61,7 @@ class KLPolEntry : public KLPol
 
     // members required for an Entry parameter to the HashTable template
     typedef KLPool Pooltype;		    // associated storage type
-    size_t hashCode(KLIndex modulus) const; // hash function
+    size_t hashCode(size_t modulus) const; // hash function
 
     bool operator!=(KLPolRef e) const;  // compare pol with one from storage
 
@@ -116,15 +116,10 @@ class KLPool
    interpreted modulo the integer width rather than setting the result to 0
 */
 
-#if ~0ul == ~0u
-    static inline unsigned int high_order_int(size_t)   { return 0; }
-    static inline size_t set_high_order(unsigned int)   { return 0; }
-#else
     static inline unsigned int high_order_int(size_t x)
-      { return x>>int_bits; }
+      { return sizeof(x)>sizeof(unsigned int) ? x>>int_bits : 0; }
     static inline size_t set_high_order(unsigned int x)
-      { return size_t(x)<<int_bits; }
-#endif
+      { return sizeof(x)>sizeof(unsigned int) ? size_t(x)<<int_bits : 0; }
 
 
 /* The following structure collects information about a group of |group_size|
