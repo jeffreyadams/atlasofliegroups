@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -26,38 +26,50 @@ namespace constants {
   2**32 - 1 on Mac.
    */
   const unsigned long ulongMax = std::numeric_limits<unsigned long>::max();
+
+
+  // Fokko: I was surprised by the fact that the digits for char returns 7
   /*!
-  8 on Mac.  Fokko says 7 on Debian Linux.
+    8 everywhere. (Fokko says 7 for <char>, which is apparently signed
    */
-  // I was surprised by the fact that the digits for char returns 7
   const unsigned long charBits = std::numeric_limits<unsigned char>::digits;
+
   /*!
-  32 on Mac.
+    32 or 64, depending on the architecture
    */
   const unsigned long longBits = std::numeric_limits<unsigned long>::digits;
+
   /*!
-  32 on Mac.
+    equal to longBits virtually everywhere
   */
   const unsigned long sizeBits = std::numeric_limits<size_t>::digits;
 
-  const unsigned long hiBit = 1ul << longBits - 1ul;
+  const unsigned long hiBit = 1ul << (longBits - 1);
 
-  const unsigned long firstChar = (1ul << charBits) - 1ul;
   /*!
-  bitMask[j] is 2**j: a single word with a 1 in bit j and 0's elsewhere.
+    bit mask for lower order char of an unsigned long
+   */
+  const unsigned long firstChar = (1ul << charBits) - 1ul;
+
+  /*!
+  bitMask[j] == 2^j == 1ul<<j: value with exactly one bit 1, at position j
   */
   extern unsigned long bitMask[longBits];
-  /*!  
-  twoBitMask[j] is 3*(4**j): a single word with a 1 in bits 2j
-  and 2j+1, and 0's elsewhere.
+
+  /*!
+  twoBitMask[j] == 3*(4^j) == 3ul << 2*j:
+  an unsigned long value with exactly two bits 1, at positions 2j and 2j+1
   */
-  extern unsigned long twoBitMask[longBits >> 1ul];
+  extern unsigned long twoBitMask[longBits/2];
+
+  // quick data about one-byte values, given by 256-element arrays
   extern size_t firstbit[1ul << charBits];
   extern size_t lastbit[1ul << charBits];
+
   extern unsigned long leqMask[longBits];
   extern unsigned long lMask[longBits];
 
-  
+
   // check PRIMES_MAX in size.h if you change this!
   /*!
   RANK_MAX is the largest allowed rank for a reductive group.  It
@@ -74,7 +86,7 @@ namespace constants {
   // constants used to pick a bit-address apart
   // the first one serves as flags for the address within a word.
   // the second one is its logical complement
-  // It is assumed that the number of digits in an unsigned long 
+  // It is assumed that the number of digits in an unsigned long
   // is a power of two.
   /*!
   Constant used to pick a bit-address apart: serves as flags for the
@@ -88,11 +100,11 @@ namespace constants {
   unsigned long is a power of two.
   */
   const unsigned long baseBits = ~posBits;
-  
+
   /*!
   \brief Computes (in the constant BaseShift<n>::value)
-  the base two logarithm of n.  
-  
+  the base two logarithm of n.
+
   This is used to to compute the base 2 logarithm of longBits at
   compile time.
   */
@@ -108,7 +120,7 @@ namespace constants {
 
   /*!
   \brief  This one tells by how much we have to shift a binary number N to get
-  the base (number of machine words needed for a bitmap of size N).  
+  the base (number of machine words needed for a bitmap of size N).
 
   It is the base 2 logarithm of longBits. The difficulty is to compute
   this at compile time! We use a neat (and well-known) template trick
@@ -118,7 +130,7 @@ namespace constants {
   const unsigned long baseShift = BaseShift<longBits>::value;
 
   /*!
-  \brief Tests whether n is non-zero.  
+  \brief Tests whether n is non-zero.
 
   The constant Bool<n>::value is 0 if n is zero and 1 if n is not
   zero.

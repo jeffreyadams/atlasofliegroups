@@ -162,16 +162,20 @@ std::ostream& printKLList(std::ostream& strm, kl::KLContext& klc)
   const KLStore& store = klc.polStore();
   std::vector<KLPol> polList;
 
+  // get polynomials, omitting Zero
   for (KLStore::iterator i=store.begin(); i!=store.end(); ++i)
     {
       KLPolRef r=store[i];    // retrieve,
-      KLPol val=r.freeze();   // convert to KLPol
-      polList.push_back(val); // push
+      if (not r.isZero())
+	{
+	  KLPol val=r.freeze();   // convert to KLPol
+	  polList.push_back(val); // push
+	}
     }
 
   std::sort(polList.begin(),polList.end(),polynomials::compare<KLCoeff>);
 
-  for (size_t j = 1; j < polList.size(); ++j) {
+  for (size_t j = 0; j < polList.size(); ++j) {
     printPol(strm,polList[j],KLIndeterminate);
     strm << std::endl;
   }

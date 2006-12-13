@@ -35,7 +35,6 @@ namespace atlas {
 
 std::ostream& operator<<  (std::ostream& out, const kl::KLPol& p);
 
-
 namespace kl {
 
 
@@ -90,26 +89,92 @@ class KLPolEntry : public KLPol
 
 class KLPool
   {
+    // a packed structure of size 1
+    struct packed_byte
+    {
+      unsigned char b;
+
+      unsigned int degree() const    { return b&0x1F; } // lower 5 bits
+      unsigned int valuation() const { return b>>5; }   // upper 3 bits
+
+      packed_byte(unsigned int d, unsigned int v) : b(d+ (v<<5)) {}
+      packed_byte() : b(0) {} // to initialise array members
+    };
+
+    // some parameters for storage layout
+    static const int int_bits  =std::numeric_limits<unsigned int>::digits;
+    static const size_t low_mask; // bit mask for lower order unsigned int
+
+    static const unsigned int deg_limit=32; // (hard) degree limit
+    static const unsigned int val_limit=8;  // (soft) valuation limit
+    static const int group_size=16; // number of indices packed in a group
+
+
+/* The following kludge is necessary to repair the broken operation of bit
+   shift operations with shift amount exceeding the integer's width.
+   Apparently only the final bits of the shift amount are used, so that it is
+   interpreted modulo the integer width rather than setting the result to 0
+*/
+
+#if ~0ul == ~0u
+    static inline unsigned int high_order_int(size_t)   { return 0; }
+    static inline size_t set_high_order(unsigned int)   { return 0; }
+#else
+    static inline unsigned int high_order_int(size_t x)
+      { return x>>int_bits; }
+    static inline size_t set_high_order(unsigned int x)
+      { return size_t(x)<<int_bits; }
+#endif
+
+
+/* The following structure collects information about a group of |group_size|
+   consecutive polynomials. The address of the very first coefficient is
+   recorded in 32+5=37 bits, and for all but the last polynomial the degree
+   |deg<32| and a valuation |val<8| are stored in a |packed_byte|, which
+   together detemine the number |1+deg-val| of stored coefficients. The
+   valuation of the last polynomial of the group will be stored in the
+   |pool_index_high| field of the next |IndexType| structure, and its number
+   of coefficients is implicitly determined by the number of coefficients
+   remaining between the first coefficient of the current group and that of
+   the next one.
+*/
+
     struct IndexType
     {
-      size_t pool_index;
-      IndexType(size_t i) : pool_index(i) {}
+      // non-data members
+
+      // data members
+      unsigned int pool_index_low; // lower order 32 bits of index into pool
+      packed_byte pool_index_high; // high order 5 bits of above, +3 bits val
+      packed_byte deg_val[group_size-1]; // degree/valuation of polynomials
+
+      IndexType(size_t i, unsigned int v)
+	: pool_index_low(i&low_mask)
+        , pool_index_high(high_order_int(i),v) {}
     };
 
     std::vector<KLCoeff> pool;
     std::vector<IndexType> index;
+    unsigned int last_index_size; // nr of bytes of last index structe in use
+
+    size_t savings; // gather statistics about savings by using valuations
 
   public:
     typedef KLPolRef const_reference; // used by HashTable
 
     // constructor;
-    KLPool() : pool(),index(1,IndexType(0)) { } // index is always 1 ahead
+    KLPool() : pool(),index(1,IndexType(0,0)), // index is always 1 ahead
+      last_index_size(0),
+      savings(0) {}
+
+    ~KLPool(); // may print statictics
 
     // accessors
     const_reference operator[] (KLIndex i) const; // select polynomial by nr
 
-    size_t size() const { return index.size()-1; } // number of entries
-    size_t mem_size() const                        // memory footprint
+    size_t size() const       // number of entries
+      { return group_size*(index.size()-1)+last_index_size; }
+    size_t mem_size() const   // memory footprint
       { return sizeof(KLPool)
 	  +pool.size()*sizeof(KLCoeff)
 	  +index.size()*sizeof(IndexType);
@@ -119,7 +184,12 @@ class KLPool
     void push_back(const KLPol&);
 
     void swap(KLPool& other)
-      { pool.swap(other.pool); index.swap(other.index); }
+      {
+	pool.swap(other.pool);
+	index.swap(other.index);
+	std::swap(last_index_size,other.last_index_size);
+	std::swap(savings, other.savings);
+      }
   }; // class KLPool
 
 
@@ -131,18 +201,6 @@ typedef KLIndex KLPtr;
 typedef std::vector<KLPtr> KLRow;
 
 
-  /*!
-\brief Polynomial 0, which is stored as a vector of size 0.
-  */
-  const KLPol Zero;
-
-  /*!
-\brief Polynomial 1.q^0.
-
-The constructor Polynomial(d) gives 1.q^d.
-  */
-
-  const KLPol One(0);
 
 }
 

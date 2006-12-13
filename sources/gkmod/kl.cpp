@@ -116,23 +116,110 @@ bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
 
     /* methods of KLPool */
 
-void KLPool::push_back(const KLPol& p)
-  {
-    if (not p.isZero()) // this allows writing i<=p.degree() in line below
-      for (size_t i=0; i<=p.degree(); ++i) pool.push_back(p[i]);
-    index.push_back(IndexType(pool.size())); // mark end of coefficients
-  }
+// this definition seems safer than (1ul<<int_bits)-1
+const size_t KLPool::low_mask
+        =std::numeric_limits<unsigned int>::max();
 
 KLPool::const_reference KLPool::operator[] (KLIndex i) const
   {
-    size_t pi=index[i].pool_index;     // index into pool
-    size_t l=index[i+1].pool_index-pi; // degree+1 of polynomial
+    unsigned int q=i/group_size, r=i%group_size;
+    const IndexType& iq=index[q]; // index structure selected
 
-    return KLPolRef(&pool[pi],0,l); // the |const_reference| is |KLPolRef|
+
+    size_t pi=  // get base for index into pool
+      size_t(iq.pool_index_low)+set_high_order(iq.pool_index_high.degree());
+
+    // adjust pool index for sizes of preceeding polynomials in group
+    for (unsigned int j=0; j<r; ++j)
+      pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
+
+    if (r!=group_size-1) // easy case
+      {
+	// get our own degree and valuation
+ 	unsigned int deg=iq.deg_val[r].degree();
+	unsigned int val=iq.deg_val[r].valuation();
+
+	// and build the right KLPolRef
+	return KLPolRef(&pool[pi-val],val,1+deg);
+      }
+    else // this is a bit harder, the degree is implicit, but not needed!
+      {
+	// in this case get base for next index into pool
+	size_t next_pi=
+	  size_t(index[q+1].pool_index_low) +
+	  set_high_order(index[q+1].pool_index_high.degree());
+
+	// get our own valuation
+	unsigned int val=index[q+1].pool_index_high.valuation();
+ 	// unused: unsigned int deg=(next_pi-pi)+val-1;
+
+	// and build the right KLPolRef
+	return KLPolRef(&pool[pi-val],val,val+next_pi-pi);
+      }
   }
 
+/* Now that we know how the polynomials are read back, it is not so hard to
+   see how they should be stored. After finding degree and effective valuation
+   (we skip at most |val_limit-1| low degree null coefficients), we first
+   store the necessary coefficients, and then either record degree and
+   valuation together in one element of |deg_val|, or we forget about the
+   degree and store the valuation together with a new 37 bit index pointing at
+   the current end of the coefficient |pool|. The zero polynomial is special,
+   inthat we cannot record |degree==-1|; we therefore set |degree=0|, but
+   artificially set |valuation=1| so that no bytes are stored anyway. The
+   effective pointer into |pool| that will go into the |KLPolRef| for the Zero
+   polynomial will illegally point to |pool[-1]| if this is the very first
+   polynomial stored (as in fact it will), but no harm is done since a
+   |KLPolRef| for which |isZero()| holds will never use that pointer.
+ */
+void KLPool::push_back(const KLPol& p)
+  {
+    unsigned int degree=p.degree(),valuation=0;
+
+    if (p.isZero()) // handle Zero specially
+      {
+	degree=0; valuation=1; // thus 0 bytes will be written
+      }
+    else
+      {
+	if (degree>=deg_limit)
+	  {
+	    std::cerr << p << std::endl;
+	    throw std::runtime_error("Polynomial degree overflow");
+	  }
+	// no need to test valuation<=degree: the leading coeff is sentinel
+	while (valuation<val_limit-1 and p[valuation]==KLCoeff(0))
+	  ++valuation;
+
+	savings+=valuation;// keep track of number of null coefficients saved
 
 
+	// now X^valuation divides p, write |1+degree-valuation| coefficients
+	for (size_t i=valuation; i<=p.degree(); ++i) pool.push_back(p[i]);
+      }
+
+    // now mark end of coefficients, and record valuation
+    if (last_index_size!=group_size -1)
+      index.back().deg_val[last_index_size++]=packed_byte(degree,valuation);
+    else
+      {
+	last_index_size=0; // don't forget to start next block at beginning
+	index.push_back(IndexType(pool.size(),valuation));
+      }
+  }
+
+    KLPool::~KLPool()
+    {
+      std::cerr << "Destructing table of " << size() << " polynomials.\n";
+      std::cerr << "Stored " << pool.size() << " coefficient bytes,"
+	" vector capacity " << pool.capacity() << ".\n";
+      std::cerr << "Trailing coefficient savings: " << savings << ".\n";
+      std::cerr << "Index of " << index.size() << " groups has size "
+		<< index.size()*sizeof(IndexType) << " (net), "
+		<< index.capacity()*sizeof(IndexType) << " (gross).\n";
+      std::cerr << "Total memory footprint (net): " << mem_size()
+		<< " bytes.\n";
+ }
 
   namespace helper {
 
@@ -569,6 +656,9 @@ KLContext::KLContext(klsupport::KLSupport& kls)
   :d_support(&kls)
 
 {
+  const KLPol Zero;   // default constructed polynomial has degree -1
+  const KLPol One(0); // X^0 = 1, degree==0
+
   d_zero = d_store.match(Zero);
   d_one = d_store.match(One);
 
@@ -1517,7 +1607,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   }
 
   // last k-l polynomial is 1
-  klv.back() = One;
+  klv.back() = d_store[d_one].freeze();
 
   // do mu-correction
   muCorrection(klv,e,y,s);
