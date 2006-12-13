@@ -58,6 +58,7 @@ Polynomial<C>::Polynomial(Degree d)
 {
   if(d+1!=0) // allow using this constructor with d == -1 to build Zero
     d_data[d] = C(1); // now we really have degree d
+  adjustSize();       // small prostration to characteristic 1
 }
 
 /******** accessors **********************************************************/

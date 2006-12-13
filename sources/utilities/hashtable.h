@@ -43,8 +43,7 @@ namespace hashtable {
          the mentioned constructor will need an explicit definition
 
        hashCode computes a hash code for the Entry in the range [0,modulus[,
-         where modulus is a power of 2, or 0 which should be interpreted as
-         2^nr_of_bits(Number)
+         where modulus is a power of 2
 
        operator!= tests inequality,
 
