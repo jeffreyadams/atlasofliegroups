@@ -57,7 +57,8 @@ namespace hashtable {
          size_t size() const;                         // returns nr of entries
          const_reference operator[] (Number i) const; // recalls entry i
 	 void swap(Pooltype& other);                  // usual swap method
-	 size_t mem_size() const;                     // memory footprint
+	 size_t mem_size() const;                     // net memory footprint
+	 size_t mem_capacity() const;                 // gross memory footprint
   */
 
 template <class Entry, typename Number>

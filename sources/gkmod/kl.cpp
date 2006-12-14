@@ -82,9 +82,6 @@ namespace atlas {
 
     /* methods of KLPolEntry */
 
-KLPolEntry::KLPolEntry(KLPolRef p) // extract polynomial from PolRef
-      : KLPol(p.freeze()) {}
-
   /*!
     \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
 
@@ -120,6 +117,13 @@ bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
 const size_t KLPool::low_mask
         =std::numeric_limits<unsigned int>::max();
 
+/* Note: in the code below, the return type KLPool::const_reference is in fact
+   KLPolRef, but it is written like this to allow compilation after changing
+   definitions (back) to
+
+   typedef const KLPol& KLPolRef;
+   typedef std::vector<KLPol> KLPolEntry::Pooltype
+*/
 KLPool::const_reference KLPool::operator[] (KLIndex i) const
   {
     unsigned int q=i/group_size, r=i%group_size;
@@ -139,8 +143,8 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
  	unsigned int deg=iq.deg_val[r].degree();
 	unsigned int val=iq.deg_val[r].valuation();
 
-	// and build the right KLPolRef
-	return KLPolRef(&pool[pi-val],val,1+deg);
+	// and build the right KLPolRef=polynomials::PolRef<KLCoeff> value
+	return const_reference(&pool[pi-val],val,1+deg);
       }
     else // this is a bit harder, the degree is implicit, but not needed!
       {
@@ -153,8 +157,8 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
 	unsigned int val=index[q+1].pool_index_high.valuation();
  	// unused: unsigned int deg=(next_pi-pi)+val-1;
 
-	// and build the right KLPolRef
-	return KLPolRef(&pool[pi-val],val,val+next_pi-pi);
+	// and build the right KLPolRef=polynomials::PolRef<KLCoeff> value
+	return const_reference(&pool[pi-val],val,val+next_pi-pi);
       }
   }
 
@@ -210,15 +214,16 @@ void KLPool::push_back(const KLPol& p)
 
     KLPool::~KLPool()
     {
-      std::cerr << "Destructing table of " << size() << " polynomials.\n";
+      std::cerr << "Destructing storage of " << size() << " polynomials.\n";
       std::cerr << "Stored " << pool.size() << " coefficient bytes,"
 	" vector capacity " << pool.capacity() << ".\n";
       std::cerr << "Trailing coefficient savings: " << savings << ".\n";
       std::cerr << "Index of " << index.size() << " groups has size "
 		<< index.size()*sizeof(IndexType) << " (net), "
 		<< index.capacity()*sizeof(IndexType) << " (gross).\n";
-      std::cerr << "Total memory footprint (net): " << mem_size()
-		<< " bytes.\n";
+      std::cerr << "Total memory use in bytes for polynomial storage: "
+		<< mem_size() << " (net), "
+		<< mem_capacity() << " (gross).\n";
  }
 
   namespace helper {
@@ -1560,21 +1565,21 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     switch (descentValue(s,x)) {
     case DescentStatus::ImaginaryCompact: {
       // (q+1)P_{x,y1}
-      klv[j] = klPol(x,y1).freeze();
+      klv[j] = klPol(x,y1);
       klv[j].safeAdd(klv[j],1);
     }
       break;
     case DescentStatus::ComplexDescent: {
       size_t x1 = cross(s,x);
       // P_{x1,y1}+q.P_{x,y1}
-      klv[j] = klPol(x1,y1).freeze();
+      klv[j] = klPol(x1,y1);
       klv[j].safeAdd(klPol(x,y1),1);
     }
       break;
     case DescentStatus::RealTypeI: {
       BlockEltPair x1 = inverseCayley(s,x);
       // P_{x1.first,y1}+P_{x1.second,y1}+(q-1)P_{x,y1}
-      klv[j] = klPol(x1.first,y1).freeze();
+      klv[j] = klPol(x1.first,y1);
       klv[j].safeAdd(klPol(x1.second,y1));
       klv[j].safeAdd(klPol(x,y1),1);
       try {
@@ -1589,7 +1594,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     case DescentStatus::RealTypeII: {
       size_t x1 = inverseCayley(s,x).first;
       // P_{x_1,y_1}+qP_{x,y1}-P_{s.x,y1}
-      klv[j] = klPol(x1,y1).freeze();
+      klv[j] = klPol(x1,y1);
       klv[j].safeAdd(klPol(x,y1),1);
       try {
 	klv[j].safeSubtract(klPol(cross(s,x),y1));
@@ -1607,7 +1612,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   }
 
   // last k-l polynomial is 1
-  klv.back() = d_store[d_one].freeze();
+  klv.back() = d_store[d_one];
 
   // do mu-correction
   muCorrection(klv,e,y,s);
@@ -1668,7 +1673,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
       --i;
       size_t s = firstAscent(descent(pr[i]),descent(y),rank());
       BlockEltPair x1 = cayley(s,pr[i]);
-      KLPol pol = klPol(x1.first,y,new_pol,new_extr,nzpr_end).freeze();
+      KLPol pol = klPol(x1.first,y,new_pol,new_extr,nzpr_end);
       pol.safeAdd(klPol(x1.second,y,new_pol,new_extr,nzpr_end));
       if (not pol.isZero()) {
 	*--new_extr = pr[i];
@@ -1844,7 +1849,7 @@ bool Thicket::ascentCompute(size_t x, size_t pos)
 
   BlockEltPair x1 = d_helper->cayley(s,x);
   KLPolRef t=klPol(x1.first,pos);
-  KLPol pol = t.freeze();
+  KLPol pol = t;
   pol.safeAdd(klPol(x1.second,pos));
 
   if (not pol.isZero()) { // write pol

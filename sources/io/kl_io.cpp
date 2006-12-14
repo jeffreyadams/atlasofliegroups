@@ -70,7 +70,7 @@ std::ostream& printAllKL(std::ostream& strm, kl::KLContext& klc)
     bool first = true;
 
     for (size_t x = 0; x <= y; ++x) {
-      const KLPol pol = klc.klPol(x,y).freeze();
+      const KLPol pol = klc.klPol(x,y);
       if (pol.isZero()) {
 	++zeroCount;
 	continue;
@@ -133,7 +133,7 @@ std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
 	strm << std::setw(width+tab)<< ""
 	     << std::setw(width) << e[j] << ": ";
       }
-      KLPol p=klc.polStore()[klr[j]].freeze(); // retrieve and convert to KLPol
+      KLPol p=klc.polStore()[klr[j]]; // retrieve and convert to KLPol
       printPol(strm,p,KLIndeterminate);
       strm << std::endl;
       ++count;
@@ -168,7 +168,7 @@ std::ostream& printKLList(std::ostream& strm, kl::KLContext& klc)
       KLPolRef r=store[i];    // retrieve,
       if (not r.isZero())
 	{
-	  KLPol val=r.freeze();   // convert to KLPol
+	  KLPol val=r;            // convert to KLPol
 	  polList.push_back(val); // push
 	}
     }

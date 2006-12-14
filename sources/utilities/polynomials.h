@@ -133,6 +133,12 @@ class PolRef
     unsigned short int d_begin; // offset of first stored coefficient
     unsigned short int d_end; // degree+1, offset beyond last coefficient
 
+    /* In spite of the 'explicit', the following constructor is dangerous:
+       should you accidentally provide a temporary Polynomial value rather
+       than a reference to a permanent one, the const reference taken of it
+       will become a dangling one. This is a very hard type of error to find,
+       as we experienced. For this reason we made this constructor private.
+     */
     explicit PolRef(const Polynomial<C>& q) // easy: a polynomial is present
       : p(&q[0]), d_begin(0), d_end(q.degree()+1) {}
   public:
@@ -151,10 +157,8 @@ class PolRef
     C operator[] (size_t i) const { return i<d_begin ? C(0) : p[i]; }
 
 
-    // when we really need a real Polynomial<C>, we shall construct one
-
-    //    operator Polynomial<C> () const ; temporarily removed
-    Polynomial<C> freeze ()const
+    // when we really need an actual Polynomial<C>, we shall construct one
+    operator Polynomial<C> ()const
       {
 	// for efficiency reasons we wish to always 'return result'
 	// when degree()==MinusOne, we shall have result=Zero

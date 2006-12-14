@@ -55,10 +55,6 @@ class KLPolEntry : public KLPol
     KLPolEntry() : KLPol() {} // default constructor builds zero polynomial
     KLPolEntry(const KLPol& p) : KLPol(p) {} // lift polynomial to this class
 
-    // the following constructor is (only) needed during rehashing
-    // since the hash function is only defined for KLPolEntry objects
-    explicit KLPolEntry(KLPolRef p); // extract polynomial from a PolRef
-
     // members required for an Entry parameter to the HashTable template
     typedef KLPool Pooltype;		    // associated storage type
     size_t hashCode(size_t modulus) const; // hash function
@@ -155,7 +151,7 @@ class KLPool
     size_t savings; // gather statistics about savings by using valuations
 
   public:
-    typedef KLPolRef const_reference; // used by HashTable
+    typedef polynomials::PolRef<KLCoeff> const_reference; // used by HashTable
 
     // constructor;
     KLPool() : pool(),index(1,IndexType(0,0)), // index is always 1 ahead
@@ -169,10 +165,15 @@ class KLPool
 
     size_t size() const       // number of entries
       { return group_size*(index.size()-1)+last_index_size; }
-    size_t mem_size() const   // memory footprint
+    size_t mem_size() const   // net memory footprint
       { return sizeof(KLPool)
 	  +pool.size()*sizeof(KLCoeff)
 	  +index.size()*sizeof(IndexType);
+      }
+    size_t mem_capacity() const   // gross memory footprint
+      { return sizeof(KLPool)
+	  +pool.capacity()*sizeof(KLCoeff)
+	  +index.capacity()*sizeof(IndexType);
       }
 
     // manipulators
