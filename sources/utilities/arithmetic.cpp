@@ -28,9 +28,10 @@ namespace atlas {
 namespace arithmetic {
 
   /* The following default value is only used during initialisation of
-     constant, like the polynomials Zero and One. Therefore its vlue is mostly
-     irrelevant, but it should not be 0 or 1! */
-
+     constants. Since there are no longer global constants Zero and One, the
+     value should be irrelevant for the atlas program. For realex however, it
+     determines the modulus used when you never call set_modulus.
+  */
 unsigned int modular_int::modulus=16;
 
 unsigned long gcd(unsigned long a, unsigned long b)
