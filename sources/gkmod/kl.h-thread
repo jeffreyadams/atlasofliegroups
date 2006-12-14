@@ -126,7 +126,7 @@ class KLPool
     static inline unsigned int high_order_int(size_t x)
       { return sizeof(x)>sizeof(unsigned int) ? x>>int_bits : 0; }
     static inline size_t set_high_order(unsigned int x)
-      { return sizeof(x)>sizeof(unsigned int) ? size_t(x)<<int_bits : 0; }
+      { return sizeof(size_t)>sizeof(unsigned int) ? size_t(x)<<int_bits : 0; }
 
 
 /* The following structure collects information about a group of |group_size|
