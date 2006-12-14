@@ -77,6 +77,7 @@ namespace atlas {
   namespace kl {
 
     size_t quitLength(10000);
+    size_t NThreads(0);
 
     void alert(KLIndex i) // illegal index into hash table
     {
@@ -135,7 +136,7 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
     size_t pi=  // get base for index into pool
       size_t(iq.pool_index_low)+set_high_order(iq.pool_index_high.degree());
 
-    // adjust pool index for sizes of preceeding polynomials in group
+    // adjust pool index for sizes of preceding polynomials in group
     for (unsigned int j=0; j<r; ++j)
       pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
 
@@ -201,21 +202,25 @@ void KLPool::push_back(const KLPol& p)
 
 
 	// now X^valuation divides p, write |1+degree-valuation| coefficients
+	pthread_mutex_lock(&mutex);
 	for (size_t i=valuation; i<=p.degree(); ++i) pool.push_back(p[i]);
+	pthread_mutex_unlock(&mutex);
       }
 
     // now mark end of coefficients, and record valuation
+    pthread_mutex_lock(&mutex);
     if (last_index_size!=group_size -1)
       index.back().deg_val[last_index_size++]=packed_byte(degree,valuation);
     else
       {
 	last_index_size=0; // don't forget to start next block at beginning
 	index.push_back(IndexType(pool.size(),valuation));
-      }
+   }
+    pthread_mutex_unlock(&mutex);
   }
 
     KLPool::~KLPool()
-    {
+    { pthread_mutex_destroy(&mutex);
       std::cerr << "Destructing table of " << size() << " polynomials.\n";
       std::cerr << "Stored " << pool.size() << " coefficient bytes,"
 	" vector capacity " << pool.capacity() << ".\n";
@@ -1323,12 +1328,23 @@ void Helper::fill()
 
 #endif
 
+  pthread_t thread[NThreads];
   void* argptr = this;
   for (size_t l = 1; l <= maxLength; ++l) {
     YThread.Y = d_support->lengthLess(l);
     YEnd = d_support->lengthLess(l+1);
+
+    for(size_t k = 0; k < NThreads; ++k) {
+      //     std::cerr << "starting thread[" << k << std::endl;
+      pthread_create( &thread[k], NULL, ThreadStartup, argptr);
+    }
  
     ThreadStartup(argptr);
+
+    for (size_t k = 0; k < NThreads; ++k) {
+      //  std::cerr << "joining thread " << k << std::endl;
+      pthread_join(thread[k], NULL);
+    }
 
     for (size_t yprime = d_support->lengthLess(l);
          yprime < d_support->lengthLess(l+1); ++yprime) {
@@ -1371,6 +1387,8 @@ void Helper::fill()
 
   std::cerr << std::endl;
 #endif
+
+  pthread_mutex_destroy(&YThread.mutex);
 
   return;
 }
