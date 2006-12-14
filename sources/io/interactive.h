@@ -96,7 +96,7 @@ class OutputFile {
   std::ostream* d_stream;
   bool d_foutput;
  public:
-  OutputFile();
+  OutputFile() throw(error::InputError);
   ~OutputFile();
   template<typename T> std::ostream& operator<< (const T& arg)
     {return *d_stream << arg;}

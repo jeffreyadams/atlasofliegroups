@@ -499,32 +499,29 @@ void block_f()
 
   try {
     G_R.fillCartan();
+
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    OutputFile file;
+    printBlock(file,block);
+
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
-
-  Block block(G_C,G_R.realForm(),drf);
-
-  OutputFile file;
-  printBlock(file,block);
-
   return;
 }
 
@@ -554,31 +551,28 @@ void blockd_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    OutputFile file;
+    printBlockD(file,block);
+
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
-
-  Block block(G_C,G_R.realForm(),drf);
-
-  OutputFile file;
-  printBlockD(file,block);
 
   return;
 }
@@ -605,31 +599,27 @@ void blocku_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    OutputFile file;
+    printBlockU(file,block);
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
-
-  Block block(G_C,G_R.realForm(),drf);
-
-  OutputFile file;
-  printBlockU(file,block);
 
   return;
 }
@@ -655,40 +645,30 @@ void blockstabilizer_f()
 
   try {
     G_R.fillCartan();
+    size_t cn;
+
+    // get Cartan class; abort if unvalid
+    getCartanClass(cn,G_R.cartanSet(),currentLine());
+
+    const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(cn),DualTag());
+
+    OutputFile file;
+    realredgp_io::printBlockStabilizer(file,G_RI.realGroup(),cn,drf);
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  size_t cn;
-
-  // get Cartan class; abort if unvalid
-  try {
-    getCartanClass(cn,G_R.cartanSet(),currentLine());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
 
-  const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(cn),DualTag());
-  }
-  catch (InputError& e) {
-    e("aborted");
-    return;
-  }
-
-  OutputFile file;
-  realredgp_io::printBlockStabilizer(file,G_RI.realGroup(),cn,drf);
 
   return;
 }
@@ -769,14 +749,13 @@ void corder_f()
 
   try {
     G_R.fillCartan();
+
+    std::cout << "hasse diagram of Cartan ordering:" << std::endl;
+    realredgp_io::printCartanOrder(std::cout,G_R);
   }
   catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
   }
-
-  std::cout << "hasse diagram of Cartan ordering:" << std::endl;
-  realredgp_io::printCartanOrder(std::cout,G_R);
 
   return;
 }
@@ -811,39 +790,42 @@ void primkl_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    {
+      unsigned long modulus;
+      getInteractive(modulus,"Modulus for computation: ",257);
+      if (modulus==0) throw InputError();
+      arithmetic::modular_int::set_modulus(modulus);
+    }
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    OutputFile file;
+    file << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
+	 << std::endl << std::endl;
+    printPrimitiveKL(file,klc);
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
-
-  Block block(G_C,G_R.realForm(),drf);
-
-  KLSupport kls(block);
-  kls.fill();
-
-  KLContext klc(kls);
-  klc.fill();
-
-  OutputFile file;
-  file << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
-       << std::endl << std::endl;
-  printPrimitiveKL(file,klc);
 
   return;
 }
@@ -901,51 +883,42 @@ void klbasis_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    {
+      unsigned long modulus;
+      getInteractive(modulus,"Modulus for computation: ",257);
+      if (modulus==0) throw InputError();
+      arithmetic::modular_int::set_modulus(modulus);
+    }
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    OutputFile file;
+    file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
+	 << std::endl << std::endl;
+    printAllKL(file,klc);
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
-
-
-  try {
-    unsigned long modulus;
-    getInteractive(modulus,"Modulus for computation: ",257);
-    if (modulus==0) throw InputError();
-    arithmetic::modular_int::set_modulus(modulus);
-  }
-  catch (InputError& e) {
-    e("aborted");
-    return;
-  }
-
-  Block block(G_C,G_R.realForm(),drf);
-
-  KLSupport kls(block);
-  kls.fill();
-
-  KLContext klc(kls);
-  klc.fill();
-
-  OutputFile file;
-  file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
-       << std::endl << std::endl;
-  printAllKL(file,klc);
 
   return;
 }
@@ -975,48 +948,40 @@ void kllist_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    {
+      unsigned long modulus;
+      getInteractive(modulus,"Modulus for computation: ",257);
+      if (modulus==0) throw InputError();
+      arithmetic::modular_int::set_modulus(modulus);
+    }
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    OutputFile file;
+    printKLList(file,klc);
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
-
-  try {
-    unsigned long modulus;
-    getInteractive(modulus,"Modulus for computation: ",257);
-    if (modulus==0) throw InputError();
-    arithmetic::modular_int::set_modulus(modulus);
-  }
-  catch (InputError& e) {
-    e("aborted");
-    return;
-  }
-
-  Block block(G_C,G_R.realForm(),drf);
-
-  KLSupport kls(block);
-  kls.fill();
-
-  KLContext klc(kls);
-  klc.fill();
-
-  OutputFile file;
-  printKLList(file,klc);
 
   return;
 }
@@ -1130,51 +1095,45 @@ void wcells_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    {
+      unsigned long modulus;
+      getInteractive(modulus,"Modulus for computation: ",257);
+      if (modulus==0) throw InputError();
+      arithmetic::modular_int::set_modulus(modulus);
+    }
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    WGraph wg(klc.rank());
+    kl::wGraph(wg,klc);
+
+    OutputFile file;
+    printCells(file,wg);
+
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
-
-  try {
-    unsigned long modulus;
-    getInteractive(modulus,"Modulus for computation: ",257);
-    if (modulus==0) throw InputError();
-    arithmetic::modular_int::set_modulus(modulus);
-  }
-  catch (InputError& e) {
-    e("aborted");
-    return;
-  }
-
-  Block block(G_C,G_R.realForm(),drf);
-
-  KLSupport kls(block);
-  kls.fill();
-
-  KLContext klc(kls);
-  klc.fill();
-
-  WGraph wg(klc.rank());
-  kl::wGraph(wg,klc);
-
-  OutputFile file;
-  printCells(file,wg);
 
   return;
 }
@@ -1206,51 +1165,44 @@ void wgraph_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    {
+      unsigned long modulus;
+      getInteractive(modulus,"Modulus for computation: ",257);
+      if (modulus==0) throw InputError();
+      arithmetic::modular_int::set_modulus(modulus);
+    }
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    WGraph wg(klc.rank());
+    kl::wGraph(wg,klc);
+
+    OutputFile file;
+    printWGraph(file,wg);
+
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
-
-  try {
-    unsigned long modulus;
-    getInteractive(modulus,"Modulus for computation: ",257);
-    if (modulus==0) throw InputError();
-    arithmetic::modular_int::set_modulus(modulus);
-  }
-  catch (InputError& e) {
-    e("aborted");
-    return;
-  }
-
-  Block block(G_C,G_R.realForm(),drf);
-
-  KLSupport kls(block);
-  kls.fill();
-
-  KLContext klc(kls);
-  klc.fill();
-
-  WGraph wg(klc.rank());
-  kl::wGraph(wg,klc);
-
-  OutputFile file;
-  printWGraph(file,wg);
 
   return;
 }

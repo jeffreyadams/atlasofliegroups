@@ -75,7 +75,7 @@ namespace {
 
 namespace ioutils {
 
-OutputFile::OutputFile()
+  OutputFile::OutputFile() throw(error::InputError)
 
 {
   using namespace input;
@@ -83,8 +83,12 @@ OutputFile::OutputFile()
   std::string name;
   InputBuffer buf;
 
-  buf.getline(std::cin,"Name an output file (hit return for stdout): ",
+  buf.getline(std::cin,
+	      "Name an output file (return for stdout, ? to abandon): ",
 	       false);
+  if (hasQuestionMark(buf))
+    throw error::InputError();
+
   buf >> name;
 
   if (name.empty()) {
