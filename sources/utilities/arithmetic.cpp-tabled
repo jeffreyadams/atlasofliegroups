@@ -28,12 +28,16 @@ namespace atlas {
 namespace arithmetic {
 
   /* The following default value is only used during initialisation of
-     constant, like the polynomials Zero and One. Therefore its vlue is mostly
-     irrelevant, but it should not be 0 or 1! */
-
+     constants. Since there are no longer global constants Zero and One, the
+     value should be irrelevant for the atlas program. For realex however, it
+     determines the modulus used when you never call set_modulus. Since we
+     do not install a corresponding multiplication table at initialisation
+     time, this wil not work however, so you should not do that!
+  */
 unsigned int modular_int::modulus=16;
 
-std::vector<std::vector<modular_int> > modular_int::mult_table; // empty
+// On Mac you seem to need the size indication (0) below. It beats me why.
+std::vector<std::vector<modular_int> > modular_int::mult_table(0); // empty
 
 unsigned long gcd(unsigned long a, unsigned long b)
 
