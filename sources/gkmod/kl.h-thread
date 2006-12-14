@@ -44,8 +44,9 @@ namespace kl {
   extern "C" void *ThreadStartup(void *);
 
   extern size_t quitLength;
+  extern size_t NThreads;
 
-class KLPool; // predeclare the storage class to be used via the hash table
+  class KLPool; // predeclare the storage class to be used via the hash table
 
 
 // wrap |KLPol| into a class that can be used in a HashTable
@@ -158,8 +159,8 @@ class KLPool
     std::vector<KLCoeff> pool;
     std::vector<IndexType> index;
     unsigned int last_index_size; // nr of bytes of last index structe in use
-
     size_t savings; // gather statistics about savings by using valuations
+    pthread_mutex_t mutex;
 
   public:
     typedef KLPolRef const_reference; // used by HashTable
@@ -167,9 +168,10 @@ class KLPool
     // constructor;
     KLPool() : pool(),index(1,IndexType(0,0)), // index is always 1 ahead
       last_index_size(0),
-      savings(0) {}
+      savings(0), mutex()    
+      {pthread_mutex_init(&mutex,NULL); }  
 
-    ~KLPool(); // may print statictics
+    ~KLPool(); // may print statistics
 
     // accessors
     const_reference operator[] (KLIndex i) const; // select polynomial by nr
