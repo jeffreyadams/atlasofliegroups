@@ -38,32 +38,6 @@ std::ostream& operator<<  (std::ostream& out, const kl::KLPol& p);
 namespace kl {
 
 
-class KLPool; // predeclare the storage class to be used via the hash table
-
-
-// wrap |KLPol| into a class that can be used in a HashTable
-
-/* This associates the type |KLPool| as underlying storage type to |KLPol|,
-   and adds the methods |hashCode| (hash function) and |!=| (unequality), for
-   use by the |HashTable| template.
- */
-
-class KLPolEntry : public KLPol
-  {
-  public:
-    // constructors
-    KLPolEntry() : KLPol() {} // default constructor builds zero polynomial
-    KLPolEntry(const KLPol& p) : KLPol(p) {} // lift polynomial to this class
-
-    // members required for an Entry parameter to the HashTable template
-    typedef KLPool Pooltype;		    // associated storage type
-    size_t hashCode(size_t modulus) const; // hash function
-
-    bool operator!=(KLPolRef e) const;  // compare pol with one from storage
-
-  };
-
-
 // storage for KL polynomials
 
 /*
@@ -93,7 +67,7 @@ class KLPool
       unsigned int degree() const    { return b&0x1F; } // lower 5 bits
       unsigned int valuation() const { return b>>5; }   // upper 3 bits
 
-      packed_byte(unsigned int d, unsigned int v) : b(d+ (v<<5)) {}
+      packed_byte(unsigned int d, unsigned int v) : b((d&0x1F) | (v<<5)) {}
       packed_byte() : b(0) {} // to initialise array members
     };
 
@@ -132,8 +106,6 @@ class KLPool
 
     struct IndexType
     {
-      // non-data members
-
       // data members
       unsigned int pool_index_low; // lower order 32 bits of index into pool
       packed_byte pool_index_high; // high order 5 bits of above, +3 bits val
@@ -146,7 +118,7 @@ class KLPool
 
     std::vector<KLCoeff> pool;
     std::vector<IndexType> index;
-    unsigned int last_index_size; // nr of bytes of last index structe in use
+    unsigned int last_index_size; // nr of bytes of last index struct in use
 
     size_t savings; // gather statistics about savings by using valuations
 
@@ -190,7 +162,7 @@ class KLPool
 
 
 
-typedef hashtable::HashTable<KLPolEntry,KLIndex> KLStore;
+typedef KLPool KLStore;
 
 typedef KLIndex KLPtr;
 
@@ -198,7 +170,7 @@ typedef std::vector<KLPtr> KLRow;
 
 
 
-}
+} // namespace kl
 
 /******** function declarations *********************************************/
 
@@ -211,6 +183,8 @@ namespace kl {
 /******** type definitions **************************************************/
 
 namespace kl {
+
+ using blocks::BlockElt;
 
   /*!
 \brief Calculates and stores the Kazhdan-Lusztig polynomials for a
@@ -273,7 +247,9 @@ public:
   KLContext() {}
 
   KLContext(klsupport::KLSupport&);
-  virtual ~KLContext() {}
+
+  // there is no point in making the destructor virtual
+  ~KLContext() {}
 
 // copy, assignment and swap
   KLContext(const KLContext&);
@@ -291,11 +267,11 @@ public:
 \brief List of the elements x_i that are primitive
 with respect to y and have P_{y,x_i} not zero.
   */
-  const klsupport::PrimitiveRow& primitiveRow(size_t y) const {
+  const klsupport::PrimitiveRow& primitiveRow(BlockElt y) const {
     return d_prim[y];
   }
 
-  const bitset::RankFlags& descentSet(size_t y) const {
+  const bitset::RankFlags& descentSet(BlockElt y) const {
     return d_support->descentSet(y);
   }
 
@@ -310,30 +286,30 @@ Note that it is returned by value, since we want to allow for the possibility
 of compressed storage, in chich case we cannot return an uncompressed
 polynomial by reference, but we can return it by value
   */
-  KLPolRef klPol(size_t x, size_t y) const;
+  KLPolRef klPol(BlockElt x, BlockElt y) const;
 
   /*!
 \brief Returns the list of pointers to the non-zero KL polynomials
 P_{y,x_i} (with x_i primitive with respect to y).
   */
-  const KLRow& klRow(size_t y) const {
+  const KLRow& klRow(BlockElt y) const {
     return d_kl[y];
   }
 
   /*!
 \brief Length of y as a block element.
   */
-  size_t length(size_t y) const {
+  size_t length(BlockElt y) const {
     return d_support->length(y);
   }
 
-  MuCoeff mu(size_t x, size_t y) const;
+  MuCoeff mu(BlockElt x, BlockElt y) const;
 
   /*!
 \brief List of MuData, which are pairs (x, top degree coefficient of
 P_{y,x}).
   */
-  const MuRow& muRow(size_t y) const {
+  const MuRow& muRow(BlockElt y) const {
     return d_mu[y];
   }
 
@@ -359,7 +335,9 @@ P_{y,x}).
   }
 
 // manipulators
-  virtual void fill();
+
+  // this method used to be virtual, but that seems completely silly. MvL
+  void fill();
 
 
 };

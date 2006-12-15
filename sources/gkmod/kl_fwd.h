@@ -19,6 +19,7 @@
 
 #include "polynomials_fwd.h"
 #include "arithmetic.h"
+#include "blocks_fwd.h"
 
 namespace atlas {
 
@@ -47,7 +48,7 @@ typedef unsigned int KLIndex; // less than 2^32 distinct polynomials for E8 !
 
 
 typedef KLCoeff MuCoeff;
-typedef std::pair<size_t,MuCoeff> MuData;
+typedef std::pair<blocks::BlockElt,MuCoeff> MuData;
 typedef std::vector<MuData> MuRow;
 
 }

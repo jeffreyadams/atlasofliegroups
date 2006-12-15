@@ -4,9 +4,9 @@
 */
 /*
   This is blocks.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -34,7 +34,7 @@ namespace atlas {
 
 namespace blocks {
 
-const BlockElt UndefBlock = ~0ul;
+const BlockElt UndefBlock = BlockElt(~0);
 
 }
 
@@ -63,7 +63,7 @@ A block is characterized by specifying also an inner form of the dual
 group G^vee.  For this inner form, K^vee orbits on G^vee/B^vee are
 parametrized by elements y.  The basic theorem is that the block of
 representations is parametrized by pairs (x,y) as above, subject to
-the requirement that theta_y is the negative transpose of theta_x. 
+the requirement that theta_y is the negative transpose of theta_x.
   */
 class Block {
 
@@ -96,20 +96,20 @@ class Block {
   */
   kgb::KGBEltList d_y;
 
-  /*!  
+  /*!
 \brief Element d_cross[s] (for s a simple root) is the list whose zth
 entry is s x z.
   */
   std::vector<BlockEltList> d_cross;
 
-  /*!  
+  /*!
 \brief Element d_cayley[s] (for s a simple root) has zth
 entry the Cayley transform c_s(z) (z noncompact imaginary) or
 undefined (otherwise).
   */
   std::vector<BlockEltPairList> d_cayley;
 
-  /*!  
+  /*!
 \brief Element d_inverseCayley[s] (for s a simple root) has zth
 entry the inverse Cayley transform c^s(z) (z is real type 1 or
 2) or undefined (otherwise).
@@ -117,36 +117,36 @@ entry the inverse Cayley transform c^s(z) (z is real type 1 or
   std::vector<BlockEltPairList> d_inverseCayley;
 
 
-  /*!  
+  /*!
 \brief Entry z flags the descent status of the simple roots for block
 element z.
   */
   descents::DescentStatusList d_descent;
 
-  /*!  
+  /*!
 \brief Entry z is the length of block element z.
   */
   std::vector<size_t> d_length;
 
 
-  /*!  
+  /*!
 \brief Entry z (multiplied by the fixed outer automorphism delta) is
 the involution of theta_z of H attached to z.
   */
   weyl::WeylEltList d_involution;
 
-  /*!  
+  /*!
 \brief Entry z flags the simple roots occurring in theta_z.
   */
   std::vector<bitset::RankFlags> d_involutionSupport;
 
-  /*!  
+  /*!
 \brief Number (in the list maintained by the complex reductive group)
 of the real form of G where the block lives.
   */
   realform::RealForm d_realForm;
 
-  /*!  
+  /*!
 \brief Number of the real form of G^vee defining the block.
   */
   realform::RealForm d_dualForm;

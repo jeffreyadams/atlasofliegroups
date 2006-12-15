@@ -29,12 +29,13 @@
 namespace atlas {
 
 namespace {
+  using blocks::BlockElt;
 
   void pause() {;}
 
-  void fillLengthLess(std::vector<size_t>&, const blocks::Block&);
+  void fillLengthLess(std::vector<BlockElt>&, const blocks::Block&);
 
-}
+} // namespace
 
 /*****************************************************************************
 
@@ -78,10 +79,11 @@ void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
   const
 
 /*
-  Synopsis: extremalizes b w.r.t. the values in d.
+  Synopsis: extremalizes b w.r.t. the values in d, i.e., throws out the
+  non-extremal elements
 
-  Preconditions: the capacity of b is the size(); d contains d_rank valid
-  flags;
+  Preconditions: the capacity of b is the size() of the block; d contains
+  d_rank valid flags;
 
   Explanation: an element z in the block is extremal w.r.t. d, if all the
   descents in d are also descents for z. Since d_downset[s] flags the
@@ -101,7 +103,8 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
   const
 
 /*
-  Synopsis: primitivizes b w.r.t. the values in d.
+  Synopsis: primitivizes b w.r.t. the values in d, i.e., throws out the
+  non-primitive elements.
 
   Preconditions: the capacity of b is the size(); d contains d_rank valid
   flags;
@@ -189,7 +192,7 @@ void KLSupport::fillDownsets()
   for (size_t s = 0; s < ds.size(); ++s) {
     ds[s].resize(size);
     ps[s].resize(size);
-    for (size_t z = 0; z < size; ++z) {
+    for (BlockElt z = 0; z < size; ++z) {
       DescentStatus::Value v = descentValue(s,z);
       if (DescentStatus::isDescent(v)) {
 	ds[s].insert(z);
@@ -272,44 +275,44 @@ for (unsigned long j = 0 ; j >> rank() == 0 ; ++j) {
  return;
 }
 
-}
+} // namespace klsupport
 
 /*****************************************************************************
 
         Chapter II -- Functions local to this module
 
-  ... explain here when it is stable ...
-
  *****************************************************************************/
 
 namespace {
 
-void fillLengthLess(std::vector<size_t>& ll, const blocks::Block& b)
+void fillLengthLess(std::vector<BlockElt>& ll, const blocks::Block& b)
 
 /*
-  Synopsis: puts in ll[l] the number of elements in b of length < l.
+  Synopsis: makes ll into a vector of size max(lengths(b))+2 such that for
+  0<=l<=max(lengths(b))+1, the element ll[l] is the first BlockElt of length
+  at least l in b (or b.size() if there are none, as for l=max(lengths(b))+1)
+  In other words, as a number ll[l] counts the elements in b of length < l.
 
   Precondition: b is sorted by length;
 */
 
 {
-  ll.clear();
+  ll.clear(); ll.reserve(b.length(b.size()-1)+2);
 
-  size_t l = b.length(0);
+  size_t l = b.length(0); // length of first block element
 
+  // insert the first block element l+1 times
   for (size_t j = 0; j <= l; ++j)
     ll.push_back(0);
 
-  for (size_t z = 0; z < b.size(); ++z)
-    if (b.length(z) > l) { // new length
-      ll.push_back(z);
-      l = b.length(z);
+  for (BlockElt z = 0; z < b.size(); ++z)
+    while (b.length(z) > l) {
+      ll.push_back(z); // ll[l+1]=z;
+      ++l;
     }
 
   // do not forget the last length!
-  ll.push_back(b.size());
-
-  return;
+  ll.push_back(b.size()); // ll[l+1]=b.size() where l=max(lengths(b))
 }
 
 }

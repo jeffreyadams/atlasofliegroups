@@ -67,7 +67,7 @@ class HashTable
   // data members
   size_t d_mod;  // hash modulus, the number of slots present
   std::vector<Number> d_hash;
-  typename Entry::Pooltype d_pool;
+  typename Entry::Pooltype& d_pool;
 
   // interface
  public:
@@ -75,8 +75,11 @@ class HashTable
   // static constants
   static const Number empty; // code for empty slot in d_hash
   static const float fill_fraction; // (probably ought to be variable)
-  HashTable() : d_mod(256),d_hash(d_mod,empty), d_pool()
-    { }            // default and only constructor
+
+  // constructor
+  HashTable(typename Entry::Pooltype& pool) // caller supplies ref to pool
+    : d_mod(256),d_hash(d_mod,empty), d_pool(pool)
+    { }
 
   // manipulator
   Number match(const Entry&);   // lookup entry and return its sequence number
@@ -89,13 +92,16 @@ class HashTable
       return d_pool[i];
     }
   Number size() const { return Number(d_pool.size()); }
-  size_t mem_size() const		// memory footprint
+  size_t mem_size() const		// net memory footprint
     { return sizeof(HashTable)		// structure itself
 	+d_hash.size()*sizeof(Number)   // hash space
 	+d_pool.mem_size();             // pool size
     }
-
-  const typename Entry::Pooltype& pool() const { return d_pool; }
+  size_t mem_capacity() const		  // gross memory footprint
+    { return sizeof(HashTable)		  // structure itself
+	+d_hash.capacity()*sizeof(Number) // hash space
+	+d_pool.mem_capacity();           // pool size
+    }
 
  private: // auxiliary functions
   size_t max_fill() const // maximum number of stored entries before rehashing

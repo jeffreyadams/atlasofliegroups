@@ -213,7 +213,7 @@ void Block::swap(Block& other)
 }
 
 /******** accessors **********************************************************/
-size_t Block::firstStrictDescent(size_t z) const
+size_t Block::firstStrictDescent(BlockElt z) const
 
 /*!
   \brief Returns the first descent of z that is not imaginary compact,
@@ -631,7 +631,7 @@ void Helper::fillInvolutionSupports()
   d_involutionSupport.resize(size());
 
   size_t minLength = length(0);
-  size_t z = 0;
+  BlockElt z = 0;
 
   for (; z < size() and length(z) == minLength; ++z) {
     WeylWord ww;
@@ -825,7 +825,7 @@ void makeHasse(std::vector<set::SetEltList>& hd, const Block& block)
 
   hd.resize(block.size());
 
-  for (size_t z = 0; z < block.size(); ++z) {
+  for (BlockElt z = 0; z < block.size(); ++z) {
 
     std::set<BlockElt> h_z;
 

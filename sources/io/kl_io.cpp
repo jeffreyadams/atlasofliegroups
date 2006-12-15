@@ -163,7 +163,7 @@ std::ostream& printKLList(std::ostream& strm, kl::KLContext& klc)
   std::vector<KLPol> polList;
 
   // get polynomials, omitting Zero
-  for (KLStore::iterator i=store.begin(); i!=store.end(); ++i)
+  for (KLIndex i=0; i<store.size(); ++i)
     {
       KLPolRef r=store[i];    // retrieve,
       if (not r.isZero())

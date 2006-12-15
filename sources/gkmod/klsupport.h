@@ -4,9 +4,9 @@
 */
 /*
   This is klsupport.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.4 
+  part of the Atlas of Reductive Lie Groups version 0.2.4
 
   See file main.cpp for full copyright notice
 */
@@ -31,6 +31,8 @@ namespace atlas {
 
 namespace klsupport {
 
+  using blocks::BlockElt;
+
 class KLSupport_new {
 };
 
@@ -38,21 +40,21 @@ class KLSupport {
 
  private:
 
-  enum State {PrimitivizeFilled, DownsetsFilled, LengthLessFilled, 
+  enum State {PrimitivizeFilled, DownsetsFilled, LengthLessFilled,
 	      Filled, NumStates};
 
   bitset::BitSet<NumStates> d_state;
 
   blocks::Block* d_block;  // non-owned pointer
   size_t d_rank;
-  size_t d_size;
+  BlockElt d_size;
 
   std::vector<blocks::BlockEltList> d_primitivize;
   std::vector<bitset::RankFlags> d_descent;
   std::vector<bitset::RankFlags> d_goodAscent;
   std::vector<bitmap::BitMap> d_downset;
   std::vector<bitmap::BitMap> d_primset;
-  std::vector<size_t> d_lengthLess;
+  std::vector<BlockElt> d_lengthLess;
 
  public:
 
@@ -72,41 +74,41 @@ class KLSupport {
     return *d_block;
   }
 
-  size_t cross(size_t s, size_t z) const {
+  BlockElt cross(size_t s, BlockElt z) const {
     return d_block->cross(s,z);
   }
 
-  blocks::BlockEltPair cayley(size_t s, size_t z) const {
+  blocks::BlockEltPair cayley(size_t s, BlockElt z) const {
     return d_block->cayley(s,z);
   }
 
-  const bitset::RankFlags& descentSet(size_t z) const {
+  const bitset::RankFlags& descentSet(BlockElt z) const {
     return d_descent[z];
   }
 
-  descents::DescentStatus::Value descentValue(size_t s, size_t z) const {
+  descents::DescentStatus::Value descentValue(size_t s, BlockElt z) const {
     return d_block->descentValue(s,z);
   }
 
   void extremalize(bitmap::BitMap&, const bitset::RankFlags&) const;
 
-  const bitset::RankFlags& goodAscentSet(size_t z) const {
+  const bitset::RankFlags& goodAscentSet(BlockElt z) const {
     return d_goodAscent[z];
   }
 
-  size_t length(size_t z) const {
+  size_t length(BlockElt z) const {
     return d_block->length(z);
   }
 
-  size_t lengthLess(size_t l) const {
+  BlockElt lengthLess(size_t l) const {
     return d_lengthLess[l];
   }
 
   void primitivize(bitmap::BitMap&, const bitset::RankFlags&) const;
 
-  bool primitivize(size_t& x, const bitset::RankFlags& A) const {
-    if (d_primitivize[A.to_ulong()][x] == blocks::UndefBlock) return false; 
-    x = d_primitivize[A.to_ulong()][x]; 
+  bool primitivize(BlockElt& x, const bitset::RankFlags& A) const {
+    if (d_primitivize[A.to_ulong()][x] == blocks::UndefBlock) return false;
+    x = d_primitivize[A.to_ulong()][x];
     return true;
 }
 
