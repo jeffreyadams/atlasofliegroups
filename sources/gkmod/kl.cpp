@@ -95,10 +95,11 @@ class KLPolEntry : public KLPol
     KLPolEntry(const KLPol& p) : KLPol(p) {} // lift polynomial to this class
 
     // members required for an Entry parameter to the HashTable template
-    typedef KLPool Pooltype;		    // associated storage type
+    typedef KLStore Pooltype;		   // associated storage type
     size_t hashCode(size_t modulus) const; // hash function
 
-    bool operator!=(KLPolRef e) const;  // compare pol with one from storage
+    // compare polynomial with one from storage
+    bool operator!=(Pooltype::const_reference e) const;
 
   };
 
@@ -142,10 +143,13 @@ const size_t KLPool::low_mask
 
 /* Note: in the code below, the return type KLPool::const_reference is in fact
    KLPolRef, but it is written like this to allow compilation after changing
-   definitions (back) to
+   definition of KLStore from KLPool (back) to
 
-   typedef const KLPol& KLPolRef;
-   typedef std::vector<KLPol> KLPolEntry::Pooltype
+   typedef std::vector<KLPol> KLStore
+
+   while keeping
+
+   typedef KLStore::const_reference KLPolRef;
 */
 KLPool::const_reference KLPool::operator[] (KLIndex i) const
   {
@@ -166,7 +170,7 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
  	unsigned int deg=iq.deg_val[r].degree();
 	unsigned int val=iq.deg_val[r].valuation();
 
-	// and build the right KLPolRef=polynomials::PolRef<KLCoeff> value
+	// and build the right polynomials::PolRef<KLCoeff> value
 	return const_reference(&pool[pi-val],val,1+deg);
       }
     else // this is a bit harder, the degree is implicit, but not needed!
@@ -180,7 +184,7 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
 	unsigned int val=index[q+1].pool_index_high.valuation();
  	// unused: unsigned int deg=(next_pi-pi)+val-1;
 
-	// and build the right KLPolRef=polynomials::PolRef<KLCoeff> value
+	// and build the right polynomials::PolRef<KLCoeff> value
 	return const_reference(&pool[pi-val],val,val+next_pi-pi);
       }
   }

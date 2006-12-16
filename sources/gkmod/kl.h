@@ -44,9 +44,9 @@ namespace kl {
    The idea is to store only sequences of coefficients in a huge vector
    |pool|, and to provide minimal overhead (the |index| vector) to be able to
    access individual polynomials. Polynomials are extracted in the form of a
-   |KLPolRef| object, which class replaces the type |const KLPol&| that is
-   impossible to produce without having an actual |KLPol| value in memory.
-   This is why we typedef |const_reference| to be equal to |KLPolRef|.
+   |polynomials::PolRef<KLCoeff>| object, which class replaces the type
+   |const KLPol&| that is impossible to produce without having an actual
+   |KLPol| value in memory. This explains our typedef of |const_reference|.
    Insertion is done by the method |push_back|, and extraction by
    |operator[]|, mimicking the behaviour of |std::vector<KLPol>| except for
    the return type from |operator[]|. Other methods are |size|, needed by the
@@ -163,6 +163,8 @@ class KLPool
 
 
 typedef KLPool KLStore;
+
+typedef KLStore::const_reference KLPolRef;
 
 typedef KLIndex KLPtr;
 

@@ -42,8 +42,6 @@ typedef arithmetic::modular_int KLCoeff;
 */
 typedef polynomials::Polynomial<KLCoeff> KLPol;
 
-typedef polynomials::PolRef<KLCoeff> KLPolRef;
-
 typedef unsigned int KLIndex; // less than 2^32 distinct polynomials for E8 !
 
 
