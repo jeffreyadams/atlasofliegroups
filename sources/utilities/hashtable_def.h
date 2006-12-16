@@ -11,6 +11,32 @@ template <class Entry, typename Number>
 template <class Entry, typename Number>
   const float HashTable<Entry,Number>::fill_fraction=0.8;
 
+/* the constructor builds |d_hash| to match the contents of |d_pool| */
+template <class Entry, typename Number>
+  HashTable<Entry,Number>::HashTable(typename Entry::Pooltype& pool)
+    : d_mod(256),d_hash(), d_pool(pool) // caller supplies pool reference
+    {
+      while (d_pool.size()>max_fill()) d_mod=d_mod<<1; // keep it a power of 2
+      rehash();
+    }
+
+template <class Entry, typename Number>
+  void HashTable<Entry,Number>::rehash()
+    {
+      // the old value of d_hash is thrown away
+      d_hash=std::vector<Number>(d_mod,empty); // get a fresh hash table
+
+      // now rehash all old entries
+      for (size_t i=0; i<d_pool.size(); ++i)
+	{
+	  size_t h=Entry(d_pool[i]).hashCode(d_mod);
+
+	  while (d_hash[h]!=empty)
+	    if (++h==d_mod) h=0; // find empty slot
+	  d_hash[h]=Number(i); // fill it
+
+	}
+    }
 
 /* the accessor |find| is fairly easy; it need not (and cannot) rehash */
 
@@ -58,23 +84,12 @@ template <class Entry, typename Number>
     {
       d_mod=d_mod<<1;  // keep it a power of 2
 
-      // the old value of d_hash will now be thrown away
-      d_hash=std::vector<Number>(d_mod,empty); // get a fresh hash table
+      rehash();
 
-      // now rehash all old entries
-      for (size_t i=0; i<d_pool.size(); ++i)
-      {
-	size_t h=Entry(d_pool[i]).hashCode(d_mod);
-
-	while (d_hash[h]!=empty)
-	  if (++h==d_mod) h=0; // find empty slot
-	d_hash[h]=Number(i); // fill it
-
-      }
-
-      // finally rehash the new entry x; we know it is not present in the table
+      // finally recompute hash code of x
       h=x.hashCode(d_mod);
 
+      // and locate its slot, knowing that x is absent from d_pool
       while (d_hash[h]!=empty)
 	if (++h==d_mod) h=0; /* find free slot */
 

@@ -77,9 +77,7 @@ class HashTable
   static const float fill_fraction; // (probably ought to be variable)
 
   // constructor
-  HashTable(typename Entry::Pooltype& pool) // caller supplies ref to pool
-    : d_mod(256),d_hash(d_mod,empty), d_pool(pool)
-    { }
+  HashTable(typename Entry::Pooltype& pool); // caller supplies ref to pool
 
   // manipulator
   Number match(const Entry&);   // lookup entry and return its sequence number
@@ -104,6 +102,7 @@ class HashTable
     }
 
  private: // auxiliary functions
+  void rehash();  // ensure d_hash is coherent with d_pool and d_mod
   size_t max_fill() const // maximum number of stored entries before rehashing
     { return static_cast<size_t>(fill_fraction*d_mod); }
 
