@@ -34,30 +34,33 @@ namespace atlas {
 namespace bitmap {
 
   // constants used to pick a bit-address apart
-  // the first one serves as flags for the address within a word.
-  // the second one is its logical complement
+  // the first one serves as mask for the bit-address within a word.
+  // the second one is its logical complement; mask for the word address
   // It is assumed that the number of digits in an unsigned long
   // is a power of two.
 
-  /*!
-  Constant used to pick a bit-address apart: serves as flags for the
-  address within a word. It is assumed that the number of bits in an
-  unsigned long is a power of two.
+  /*
+  Constant used to pick a bit-address apart: serves as a bitmask for
+  obtaining the bit-address within a word fom a BitMap index. It is assumed
+  that the number of bits in an unsigned long is a power of two.
   */
   unsigned long BitMap::posBits = constants::posBits;
 
   /*!
   Constant used to pick a bit-address apart: this is the logical
-  complement of posBits. It is assumed that the number of bits in
-  an unsigned long is a power of two.
+  complement of posBits, and masks the word-address within a BitMap index
+  (which still must be shifted right by baseShift to be interpreted correctly,
+  whence this constant is actually little used).
+
+  It is assumed that the number of bits in an unsigned long is a power of two.
   */
   unsigned long BitMap::baseBits = constants::baseBits;
 
   /*!
-  Constant saying how much we have to shift the BitMap capacity n
-  (that is, the power of two by which it much be divided) to get the
-  base (that is, the number of unsigned longs in the needed in the
-  BitMap).
+  Constant saying how much we have to shift the BitMap index n of a bit (that
+  is, the power of two by which it much be divided) to get the index of the
+  d_map element that contains this bit (it is the number of set bits in
+  posBits, typically 5 or 6).
   */
   unsigned long BitMap::baseShift = constants::baseShift;
 
@@ -73,15 +76,17 @@ namespace bitmap {
 
 /******** constructors and destructors ***************************************/
 
-BitMap::BitMap(unsigned long n)
-  :d_map((n >> baseShift) +(bool)(n & posBits),0),d_capacity(n)
+
 
 /*!
   Constructs a zero-initialized bitmap with a capacity of n bits. Notice
   that the size of the vector d_map is n >> baseShift + 1, except when
-  longBits exactly divides n.
+  longBits exactly divides n. This number could have been written
+  (n-1>>baseShift)+1, if it weren't for the possibility of n==0; it could be
+  written somewhat more mysteriously as n+posBits>>baseShift in all cases.
 */
-
+BitMap::BitMap(unsigned long n)
+  :d_map((n >> baseShift) +((n&posBits)!=0 ? 1 : 0),0),d_capacity(n)
 {}
 
 /******** assignment *********************************************************/
@@ -209,8 +214,7 @@ unsigned long BitMap::front() const
   size_t b = 0;
 
   for (; b < d_map.size(); ++b)
-    if (d_map[b])
-      break;
+    if (d_map[b]!=0) break;
 
   unsigned long n = b*longBits;
   n += firstBit(d_map[b]);
@@ -230,6 +234,11 @@ bool BitMap::full() const
   if (d_capacity == 0)
     return true;
 
+  /* If nonempty, test final block. There should be excatly n bits set (in
+     other words the value should be lMask[n]), where n is congruent to
+     d_capacity modulo longBits and 1<=n<=longBits; this can be written
+     n=(d_capacity-1)%longBits+1. Fokko uses equivalently: leqMask[n-1]
+   */
   if (d_map[d_map.size()-1] != constants::leqMask[(d_capacity-1)&posBits])
     return false;
 
@@ -249,7 +258,7 @@ unsigned long BitMap::n_th(unsigned long i) const
   value of the element i of b, and the syntax b[i] would have been logical
   (as usual, the first element is number 0). This returns d_capacity if there
   is no such element, in other words if at most i bits are set in the bitmap.
-  Except for this exceptional case, b.position(b.n_th(i))==i always holds.
+  The condition b.position(b.n_th(i))==i holds whenever 0<=i<=size().
 */
 
 {
@@ -292,9 +301,9 @@ unsigned long BitMap::n_th(unsigned long i) const
 unsigned long BitMap::position(unsigned long n) const
 
 /*!
-  Synopsis: returns the number of set bits in position < n; viewing a bitset
+  Synopsis: returns the number of set bits in positions < n; viewing a bitset
   b as a container of unsigned long, this is the number of values < n that b
-  contains. If n itself is a member of b, then it is b.n_th(b.position(n)).
+  contains. If n itself is a member of b, then n==b.n_th(b.position(n)).
 */
 
 {
@@ -318,10 +327,13 @@ unsigned long BitMap::range(unsigned long n, unsigned long r) const
 /*!
   Synopsis: returns r bits from position n.
 
-  Precondition: r divides longBits, and n is aligned (i.e., n is a multiple
-  of r).
+  Precondition: r divides longBits, and n is a multiple of r.
 
-  In this way, we are sure that things happen inside a single word in d_map.
+  Thus the bits extracted our found in single element of d_map, and such
+  elements define an integral number of disjoint ranges
+
+  It is required that n<size(), but not that n+r<=size(); the last range is
+  padded out with zero bits.
 */
 
 {

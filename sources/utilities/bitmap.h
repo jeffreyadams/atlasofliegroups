@@ -1,9 +1,9 @@
 /*!\file
   \brief Definitions and declarations for the BitMap class.
 */
-/* 
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -22,10 +22,10 @@
 namespace atlas {
 
 namespace bitmap {
-  /*! 
+  /*!
   \brief Container of a large (more than twice the machine word size)
-  set of bits.  
-  
+  set of bits.
+
   From the point of view of a user of the class, a BitMap should be
   seen as a container of _unsigned long_, not bits: these unsigned
   longs are the addresses of the set bits.  When the class is used for
@@ -106,9 +106,9 @@ namespace bitmap {
 
     unsigned long back() const;
     /*!
-    Number of components of the data vector d_map.  (NOT the capacity
-    of the BitMap as a standard library container, which is this times
-    longBits.)
+    Number of bits in use in the bitmap. This is the capacity
+    of the BitMap as a standard library container, not d_map.size(), which is
+    approximately longBits times smaller.
     */
     unsigned long capacity() const {
       return d_capacity;
@@ -136,9 +136,10 @@ namespace bitmap {
 
     unsigned long position(unsigned long) const;
 
-    unsigned long range(unsigned long, unsigned long) const;
+    // get a range of bits as unsigned long value; see bitmap.ccp for details
+    unsigned long range(unsigned long first, unsigned long number) const;
 
-    size_type size() const;
+    size_type size() const; // the number of bits that are set in the bitmap
 
 // manipulators
     BitMap& operator~ ();
@@ -207,7 +208,7 @@ class BitMap::iterator { // is really a const_iterator
 
   std::vector<unsigned long>::const_iterator d_chunk;
   unsigned long d_bitAddress;
-  unsigned long d_capacity; 
+  unsigned long d_capacity;
 
  public:
 

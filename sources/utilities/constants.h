@@ -30,7 +30,8 @@ namespace constants {
 
   // Fokko: I was surprised by the fact that the digits for char returns 7
   /*!
-    8 everywhere. (Fokko says 7 for <char>, which is apparently signed
+    Explanation: the constant charBits is in fact 8 everywhere.
+    Fokko's surprise is about getting 7 for <char>, which is apparently signed
    */
   const unsigned long charBits = std::numeric_limits<unsigned char>::digits;
 
@@ -49,7 +50,7 @@ namespace constants {
   /*!
     bit mask for lower order char of an unsigned long
    */
-  const unsigned long firstChar = (1ul << charBits) - 1ul;
+  const unsigned long firstCharMask = (1ul << charBits) - 1ul;
 
   /*!
   bitMask[j] == 2^j == 1ul<<j: value with exactly one bit 1, at position j
@@ -63,11 +64,13 @@ namespace constants {
   extern unsigned long twoBitMask[longBits/2];
 
   // quick data about one-byte values, given by 256-element arrays
-  extern size_t firstbit[1ul << charBits];
-  extern size_t lastbit[1ul << charBits];
+  // NOTE: in spite of its name, lastbit gives position PLUS ONE of the bit
+  extern unsigned char firstbit[1ul << charBits];
+  extern unsigned char lastbit[1ul << charBits];
 
+  // these are masks for bits at positions <=j (leqMask[j]) or <j (lMask[j])
   extern unsigned long leqMask[longBits];
-  extern unsigned long lMask[longBits];
+  extern unsigned long lMask[longBits+1];
 
 
   // check PRIMES_MAX in size.h if you change this!
