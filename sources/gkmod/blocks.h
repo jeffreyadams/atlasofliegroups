@@ -203,7 +203,7 @@ Not used in the present code (DV 10/14/06).
     return d_dualForm;
   }
 
-  size_t firstStrictDescent(size_t) const;
+  size_t firstStrictDescent(BlockElt z) const;
 
   BlockEltPair inverseCayley(size_t s, BlockElt z) const {
     return d_inverseCayley[s][z];
