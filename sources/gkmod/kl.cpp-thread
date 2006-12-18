@@ -247,6 +247,7 @@ void KLPool::push_back(const KLPol& p)
 
     KLPool::~KLPool()
     {
+      pthread_mutex_destroy(&d_mutex);
       if (size()>0) // don't mention destructing empty pool
 	{
 	  std::cerr << "Destructing storage of " << size()

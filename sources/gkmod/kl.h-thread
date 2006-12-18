@@ -126,8 +126,8 @@ class KLPool
     std::vector<KLCoeff> pool;
     std::vector<IndexType> index;
     unsigned int last_index_size; // nr of bytes of last index struct in use
-
     size_t savings; // gather statistics about savings by using valuations
+    pthread_mutex_t d_mutex;
 
   public:
     typedef polynomials::PolRef<KLCoeff> const_reference; // used by HashTable
@@ -135,9 +135,10 @@ class KLPool
     // constructor;
     KLPool() : pool(),index(1,IndexType(0,0)), // index is always 1 ahead
       last_index_size(0),
-      savings(0) {}
+      savings(0), d_mutex()
+      {pthread_mutex_init(&d_mutex,NULL);}
 
-    ~KLPool(); // may print statictics
+    ~KLPool(); // may print statistics
 
     // accessors
     const_reference operator[] (KLIndex i) const; // select polynomial by nr
@@ -157,13 +158,17 @@ class KLPool
 
     // manipulators
     void push_back(const KLPol&);
-
+    void lock() { pthread_mutex_lock(&d_mutex); }
+    void unlock() { pthread_mutex_unlock(&d_mutex); }  
     void swap(KLPool& other)
       {
 	pool.swap(other.pool);
 	index.swap(other.index);
 	std::swap(last_index_size,other.last_index_size);
 	std::swap(savings, other.savings);
+	pthread_mutex_t temp = d_mutex;
+	d_mutex = other.d_mutex;
+	other.d_mutex = temp;
       }
   }; // class KLPool
 
