@@ -1,6 +1,6 @@
 /*
   This is error.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups
 
@@ -44,6 +44,10 @@ struct FatalError {
 };
 
 struct InputError {
+  void operator() (const char*);
+};
+
+struct OutputError {
   void operator() (const char*);
 };
 

@@ -1,6 +1,6 @@
 /*
   This is error.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups
 
@@ -40,6 +40,19 @@ void InputError::operator() (const char* mess)
 
 /*
   Synopsis: executes the InputError.
+
+  This prints a short message and returns.
+*/
+
+{
+  std::cerr << mess << std::endl;
+  return;
+}
+
+void OutputError::operator() (const char* mess)
+
+/*
+  Synopsis: executes the OutputError.
 
   This prints a short message and returns.
 */
