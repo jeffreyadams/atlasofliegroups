@@ -1,0 +1,41 @@
+
+The "klwrite" command computes all the KL polynomials, and writes them to a
+pair of files: one stores the entire matrix of essential KL polynomials (i.e.,
+only values at primitive pairs are recorded) but using short identification
+numbers instead of the polynomials themselves; the other stores a large table
+containing all polynomial coefficients and an index array, which allows
+reconstructing the KL polynomial given by any identification number.
+
+The program prompts for file names for both output files before starting the
+omputation. It will automatically append '-modN' to the file names entered,
+where N is the chosen modulus for coefficient arithmetic; however if an empty
+file name is given, the output to that file will be skipped.
+
+
+The layout of the binary output files is as follows. All numbers are written
+in little-endian (least significant byte first) format.
+
+
+The matrix file consists of a sequence of parts for the rows, each as follows:
+
+field	nr of bytes	   description
+-----------------------------------------------------------------------------
+y	    4		   row number, for alignment check
+nprims	    4		   number of primitive elements for this row
+nz_map	((nprims+31)/32)*4 bitmap locating non-zero polynomials in row
+indices	nz_map.size()*4	   indices of nonzero polynomials at primitive pairs
+
+Here nz_map.size() indicates the number of set bits in the bitmap nz_map
+
+
+The coefficient file consists of a polynomial count, indices, and coefficients
+
+field	nr of bytes	   description
+-----------------------------------------------------------------------------
+count	4		   number of distinct KL polynomials (including 0)
+index	(count+1)*5	   start location of each polynomial, and end index
+coefs	index[count]	   coefficients of polynomials
+
+Here index can be interpreted as an array of 5-byte numbers and coefs as an
+array of bytes; then the coefficients of polynomial i are located in the bytes
+coefs[index[i]],...,coefs[index[i+1]]-1
