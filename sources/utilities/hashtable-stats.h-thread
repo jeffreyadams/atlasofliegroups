@@ -13,7 +13,7 @@
 #ifndef HASHTABLE_H
 #define HASHTABLE_H
 
-#include<pthread.h>
+#include <pthread.h>
 
 namespace atlas{ namespace kl { void alert(unsigned int i); }}
 
@@ -59,9 +59,9 @@ namespace hashtable {
          size_t size() const;                         // returns nr of entries
          const_reference operator[] (Number i) const; // recalls entry i
 	 void swap(Pooltype& other);                  // usual swap method
-	 size_t mem_size() const;                     // memory footprint
-	 void Pooltype::lock();                       // locks for writing ? 
-
+	 size_t mem_size() const;                     // net memory footprint
+	 size_t mem_capacity() const;                 // gross memory footprint
+	 void Pooltype::lock();                       // locks for writing 
   */
 
 template <class Entry, typename Number>
@@ -70,10 +70,10 @@ class HashTable
   // data members
   size_t d_mod;  // hash modulus, the number of slots present
   std::vector<Number> d_hash;
-  typename Entry::Pooltype d_pool;
+  typename Entry::Pooltype& d_pool;
 
   // mutex for locking during insertion operations
-  pthread_mutex_t d_mutex; 
+  pthread_mutex_t d_mutex;
 
   // interface
  public:
@@ -81,11 +81,17 @@ class HashTable
   // static constants
   static const Number empty; // code for empty slot in d_hash
   static const float fill_fraction; // (probably ought to be variable)
-  HashTable() : d_mod(256),d_hash(d_mod,empty), d_pool(), d_mutex()
-    {pthread_mutex_init(&d_mutex,NULL); }   // default and only constructor
-    ~HashTable() {pthread_mutex_destroy(&d_mutex);}
-  // manipulator
+
+  // constructor
+  HashTable(typename Entry::Pooltype& pool); // caller supplies ref to pool
+
+  // destructor
+  ~HashTable() {pthread_mutex_destroy(&d_mutex);}
+
+  // manipulators
   Number match(const Entry&);   // lookup entry and return its sequence number
+  void lock() { pthread_mutex_lock(&d_mutex); } 
+  void unlock() { pthread_mutex_unlock(&d_mutex); }
 
   // accessors
   Number find(const Entry&) const; // const variant of match; may return empty
@@ -95,15 +101,19 @@ class HashTable
       return d_pool[i];
     }
   Number size() const { return Number(d_pool.size()); }
-  size_t mem_size() const		// memory footprint
+  size_t mem_size() const		// net memory footprint
     { return sizeof(HashTable)		// structure itself
 	+d_hash.size()*sizeof(Number)   // hash space
 	+d_pool.mem_size();             // pool size
     }
-
-  const typename Entry::Pooltype& pool() const { return d_pool; }
+  size_t mem_capacity() const		  // gross memory footprint
+    { return sizeof(HashTable)		  // structure itself
+	+d_hash.capacity()*sizeof(Number) // hash space
+	+d_pool.mem_capacity();           // pool size
+    }
 
  private: // auxiliary functions
+  void rehash();  // ensure d_hash is coherent with d_pool and d_mod
   size_t max_fill() const // maximum number of stored entries before rehashing
     { return static_cast<size_t>(fill_fraction*d_mod); }
 
