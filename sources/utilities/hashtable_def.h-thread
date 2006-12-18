@@ -62,7 +62,7 @@ template <class Entry, typename Number>
   Number HashTable<Entry,Number>::match (const Entry& x)
   { 
     lock();
-    d_pool.lock();
+    //    d_pool.lock();
     Number i;
     size_t h=x.hashCode(d_mod);
 
@@ -71,7 +71,7 @@ template <class Entry, typename Number>
       if (++h==d_mod) h=0; // move past used slot, wrap around
 
     if (i!=empty) {
-      d_pool.unlock();
+      //      d_pool.unlock();
       unlock();
       return i; // return sequence number if found
     }
@@ -106,7 +106,7 @@ template <class Entry, typename Number>
 
     d_hash[h]= Number(d_pool.size()); // this is the sequence number of x
     d_pool.push_back(x); // store x at that position in d_pool
-    d_pool.unlock();
+    //    d_pool.unlock();
     unlock();
     return d_hash[h];
   }
