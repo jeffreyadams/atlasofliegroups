@@ -100,7 +100,7 @@ std::ostream& printAllKL(std::ostream& strm, kl::KLContext& klc)
 std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
 
 /*!
-  \brief Outputs the non-zero primitive kl polynomials from klc to strm.
+  \brief Outputs the primitive kl polynomials from klc to strm.
 */
 
 {
@@ -117,15 +117,11 @@ std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
 
   for (size_t y = 0; y < klc.size(); ++y) {
 
-    const PrimitiveRow& e = klc.primitiveRow(y);
-    const KLRow& klr = klc.klRow(y);
+    PrimitiveRow e; klc.makePrimitiveRow(e,y); // list of ALL primitive x's
+
     strm << std::setw(width) << y << ": ";
     bool first = true;
-    for (size_t j  = 0; j < e.size(); ++j) {
-    //  if (klc.isZero(klr[j])) {
-    //    ++zeroCount;
-    // 	continue;
-    //      }
+    for (size_t j  = 0; j < e.size(); ++j) { // now x=e[j] is primitive for y
       if (first) {
 	strm << std::setw(width) << e[j] << ": ";
 	first = false;
@@ -133,7 +129,8 @@ std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
 	strm << std::setw(width+tab)<< ""
 	     << std::setw(width) << e[j] << ": ";
       }
-      KLPol p=klc.polStore()[klr[j]]; // retrieve and convert to KLPol
+
+      KLPol p=klc.klPol(e[j],y); // retrieve and convert to KLPol
       printPol(strm,p,KLIndeterminate);
       strm << std::endl;
       ++count;
