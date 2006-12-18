@@ -188,6 +188,7 @@ class KLPool
     void push_back(const KLPol&);
     void lock() { pthread_mutex_lock(&d_mutex); }
     void unlock() { pthread_mutex_unlock(&d_mutex); }
+    void reserve(size_t);
     void swap(KLPool& other)
       {
 	pool.swap(other.pool);

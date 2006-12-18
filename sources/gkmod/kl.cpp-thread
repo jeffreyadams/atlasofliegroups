@@ -948,6 +948,7 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
  */
 void KLPool::push_back(const KLPol& p)
   {
+    lock();
     unsigned int degree=p.degree(),valuation=0;
 
     if (p.isZero()) // handle Zero specially
@@ -980,7 +981,14 @@ void KLPool::push_back(const KLPol& p)
 	last_index_size=0; // don't forget to start next block at beginning
 	index.push_back(IndexType(pool.size(),valuation));
       }
+    unlock();
   }
+
+void KLPool::reserve(size_t N)
+{ 
+  pool.reserve(20*N);
+  index.reserve(N/16);
+}
 
     KLPool::~KLPool()
     {
@@ -1468,6 +1476,9 @@ void Helper::fill()
   d_prim.resize(d_support->size());
   d_kl.resize(d_support->size());
   d_mu.resize(d_support->size());
+
+  d_store.reserve(1000000);
+
 
   // fill the lists
   BlockElt y = 0;
