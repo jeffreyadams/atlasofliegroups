@@ -42,6 +42,9 @@ namespace ioutils {
 
 namespace interactive {
 
+  std::string getFileName(std::string prompt)
+    throw(error::InputError);
+
   void bitMapPrompt(std::string&, const char*, const bitmap::BitMap&);
 
   void getCartanClass(size_t&, const bitmap::BitMap&,

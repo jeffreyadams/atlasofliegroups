@@ -78,18 +78,8 @@ namespace ioutils {
   OutputFile::OutputFile() throw(error::InputError)
 
 {
-  using namespace input;
-
-  std::string name;
-  InputBuffer buf;
-
-  buf.getline(std::cin,
-	      "Name an output file (return for stdout, ? to abandon): ",
-	       false);
-  if (hasQuestionMark(buf))
-    throw error::InputError();
-
-  buf >> name;
+  std::string name=interactive::getFileName
+    ("Name an output file (return for stdout, ? to abandon): ");
 
   if (name.empty()) {
     d_foutput = false;
@@ -122,6 +112,24 @@ OutputFile::~OutputFile()
 ******************************************************************************/
 
 namespace interactive {
+
+/*
+  Synopsis: get a file name from terminal, abandon with InputError on '?'
+*/
+
+std::string getFileName(std::string prompt)
+  throw(error::InputError)
+{
+  input::InputBuffer buf;
+
+  buf.getline(std::cin, prompt.c_str(), false); // get line, no history
+
+  if (hasQuestionMark(buf))
+    throw error::InputError();
+
+  std::string name; buf >> name; return name;
+}
+
 
 void bitMapPrompt(std::string& prompt, const char* mess,
 		  const bitmap::BitMap& vals)
