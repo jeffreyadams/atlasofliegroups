@@ -11,6 +11,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <fstream>
 #include <iterator>
 #include <set>
 #include <sstream>
@@ -87,6 +88,7 @@ namespace {
   void kgb_f();
   void klbasis_f();
   void kllist_f();
+  void klwrite_f();
   void poscoroots_rootbasis_f();
   void posroots_rootbasis_f();
   void wcells_f();
@@ -105,6 +107,7 @@ namespace {
   void kgb_h();
   void klbasis_h();
   void kllist_h();
+  void klwrite_h();
   void wcells_h();
   void wgraph_h();
 
@@ -117,6 +120,7 @@ namespace {
   const char* kgb_tag = "prints the orbits of K on G/B";
   const char* klbasis_tag = "prints the KL basis for the Hecke module";
   const char* kllist_tag = "prints the list of distinct KL polynomials";
+  const char* klwrite_tag = "writes the KL polynomials to disk";
   const char* wcells_tag = "prints the Kazhdan-Lusztig cells for the block";
   const char* wgraph_tag = "prints the W-graph for the block";
 
@@ -224,6 +228,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("kgb",kgb_f);
   mode.add("klbasis",klbasis_f);
   mode.add("kllist",kllist_f);
+  mode.add("klwrite",klwrite_f);
   mode.add("wcells",wcells_f);
   mode.add("wgraph",wgraph_f);
 
@@ -353,6 +358,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("kgb",kgb_h);
   mode.add("klbasis",klbasis_h);
   mode.add("kllist",kllist_h);
+  mode.add("klwrite",klwrite_h);
   mode.add("wcells",wcells_h);
   mode.add("wgraph",wgraph_h);
 
@@ -370,6 +376,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"kgb",kgb_tag);
   insertTag(t,"klbasis",klbasis_tag);
   insertTag(t,"kllist",kllist_tag);
+  insertTag(t,"klwrite",klwrite_tag);
   insertTag(t,"wcells",wcells_tag);
   insertTag(t,"wgraph",wgraph_tag);
 
@@ -433,6 +440,13 @@ void kllist_h()
 
 {
   io::printFile(std::cerr,"kllist.help",io::MESSAGE_DIR);
+  return;
+}
+
+void klwrite_h()
+
+{
+  io::printFile(std::cerr,"klwrite.help",io::MESSAGE_DIR);
   return;
 }
 
@@ -975,6 +989,110 @@ void kllist_f()
 
     OutputFile file;
     printKLList(file,klc);
+  }
+  catch (MemoryOverflow& e) {
+    e("error: memory overflow");
+  }
+  catch (InputError& e) {
+    e("aborted");
+  }
+
+  return;
+}
+
+void klwrite_f()
+
+/*
+  Synopsis: computes the KL polynomials, and writes the results to a pair of
+  binary files
+*/
+
+{
+  using namespace basic_io;
+  using namespace blocks;
+  using namespace commands;
+  using namespace error;
+  using namespace interactive;
+  using namespace ioutils;
+  using namespace kl;
+  using namespace kl_io;
+  using namespace klsupport;
+  using namespace realform;
+  using namespace realmode;
+  using namespace realredgp;
+  using namespace tags;
+
+  RealReductiveGroup& G_R = currentRealGroup();
+
+  try {
+    G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    std::ofstream matrix_out, coefficient_out; // binary output files
+    {
+      unsigned long modulus;
+      getInteractive(modulus,"Modulus for computation: ",257);
+      if (modulus==0) throw InputError();
+      arithmetic::modular_int::set_modulus(modulus);
+
+      std::ostringstream modpart;
+      modpart << "-mod" << modulus;
+
+      while (true)
+	{
+	  std::string file_name= interactive::getFileName
+	    ("File name for matrix output (excluding '"+ modpart.str()+"'): ");
+	  if (file_name=="") break; // if no name given, don't open a file
+	  matrix_out.open((file_name+ modpart.str()).c_str(),
+			    std::ios_base::out
+			  | std::ios_base::trunc
+			  | std::ios_base::binary);
+	  if (matrix_out.is_open()) break;
+	  std::cerr << "Failed to open file for writing, try again.\n";
+	}
+
+      while (true)
+	{
+	  std::string file_name= interactive::getFileName
+	    ("File name for coefficient output (excluding '"+ modpart.str()
+	     +"'): ");
+	  if (file_name=="") break; // if no name given, don't open a file
+	  coefficient_out.open((file_name+ modpart.str()).c_str(),
+			         std::ios_base::out
+			       | std::ios_base::trunc
+			       | std::ios_base::binary);
+	  if (coefficient_out.is_open()) break;
+	  std::cerr << "Failed to open file for writing, try again.\n";
+	}
+    }
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    std::cerr << "Writing matrix rows:\n";
+    for (blocks::BlockElt y=0; y<klc.size(); ++y)
+      {
+#if VERBOSE
+	std::cerr << y << '\r';
+#endif
+      klc.writeKLRow(y,matrix_out);
+      }
+    std::cerr << "\nWriting all polynomial coefficients:\n";
+    klc.writeKLStore(coefficient_out);
+    std::cerr<< "Done.\n";
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");

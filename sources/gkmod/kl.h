@@ -16,7 +16,7 @@ Class definitions and function declarations for the class KLContext.
 #define KL_H
 
 #include <limits>
-#include <set>
+#include <iostream>
 
 #include "kl_fwd.h"
 
@@ -32,7 +32,11 @@ Class definitions and function declarations for the class KLContext.
 
 namespace atlas {
 
+  /* Chapter 0
+     Preliminary definitions, needed before KLContext can be defined
+  */
 
+// this one is really only to facilitate tracing, using "hashtable-loud.h"
 std::ostream& operator<<  (std::ostream& out, const kl::KLPol& p);
 
 namespace kl {
@@ -81,9 +85,31 @@ class KLPool
 
 
 /* The following kludge is necessary to repair the broken operation of bit
-   shift operations with shift amount exceeding the integer's width.
-   Apparently only the final bits of the shift amount are used, so that it is
-   interpreted modulo the integer width rather than setting the result to 0
+   shift operations with shift amount equal to the integer's width. Apparently
+   only the final bits of the shift amount are used, so that x>>int_bits gives
+   back x if it has exactly int_bits bits rather than setting the result to 0.
+   With these definitions the right thing is done one 64-bit machines, while
+   on 32-bit machines, although the high order byte we want to store is not
+   present, at least it is set to 0 so that it does not perturb the (low
+   order) value either, and the code can be tested as long as we do not run
+   out of memory for coefficient storage (on a 32-bit machine, this will
+   certainly happen before we have accumulated 2^32 coefficents).
+
+   Unfortunately g++ warns about "shift amount >= word size" when compiling
+   for 32 bits machines, even though the instructions doing that are never
+   reached there (and hopefully optimised away). We have some advice for g++
+   implementers here: if the compiler detects this too large shift amount,
+   necessarily constant, why still produce the bitwise shift instruction,
+   whose effect (returning x for x>>32 or x<<32) is very unlikely to be what
+   the programmer intended, instead of generating a constant 0 which is much
+   more logical. Yes, this would means that the effect of shifting over the
+   same large amount would depend on whether that amount is a compile-time
+   constant (and triggers a warning) or not, but the fact that the behaviour
+   is officially undefined anyway gives implementers the licence to do this.
+
+   On a 32-bit machine, set_high_order will only be called with x==0, so one
+   could just write size_t(x)<<int_bits in that function to avoid the test,
+   after verifying that 0<<32 == 0
 */
 
     static inline unsigned int high_order_int(size_t x)
@@ -130,7 +156,7 @@ class KLPool
       last_index_size(0),
       savings(0) {}
 
-    ~KLPool(); // may print statictics
+    ~KLPool(); // may print statistics
 
     // accessors
     const_reference operator[] (KLIndex i) const; // select polynomial by nr
@@ -184,6 +210,9 @@ namespace kl {
 
 /******** type definitions **************************************************/
 
+/* Namely: the definition of KLContext itself */
+
+
 namespace kl {
 
  using blocks::BlockElt;
@@ -194,7 +223,7 @@ block of representations of G.
   */
 class KLContext {
 
- protected:
+ protected:  // permit access of our Helper class to the data members
 
   /*!
 \brief Records whether the KL polynomials for the block have all been computed.
@@ -265,9 +294,14 @@ public:
     return d_support->block();
   }
 
+  // the following two were moved here from the Helper class
+  void makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const;
+
+  void makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const;
+
   /*!
-\brief List of the elements x_i that are primitive
-with respect to y and have P_{y,x_i} not zero.
+\brief List of the elements x_i that are primitive with respect to y and have
+ P_{y,x_i} NOT ZERO. This method is somewhat of a misnomer
   */
   const klsupport::PrimitiveRow& primitiveRow(BlockElt y) const {
     return d_prim[y];
@@ -335,6 +369,15 @@ P_{y,x}).
   const size_t size() const {
     return d_kl.size();
   }
+
+// accessors for perfoming output
+
+  // get map of primitive elements for row y with nonzero KL polynomial
+  bitmap::BitMap primMap (BlockElt y) const;
+
+  void writeKLRow (BlockElt y, std::ostream& out) const; // write out d_kl[y]
+
+  void writeKLStore (std::ostream& out) const;   // write out d_store
 
 // manipulators
 

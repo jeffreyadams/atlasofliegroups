@@ -61,7 +61,7 @@ namespace hashtable {
 	 void swap(Pooltype& other);                  // usual swap method
 	 size_t mem_size() const;                     // net memory footprint
 	 size_t mem_capacity() const;                 // gross memory footprint
-	 void Pooltype::lock();                       // locks for writing 
+	 void lock();				      // locks for writing
   */
 
 template <class Entry, typename Number>
@@ -90,7 +90,7 @@ class HashTable
 
   // manipulators
   Number match(const Entry&);   // lookup entry and return its sequence number
-  void lock() { pthread_mutex_lock(&d_mutex); } 
+  void lock() { pthread_mutex_lock(&d_mutex); }
   void unlock() { pthread_mutex_unlock(&d_mutex); }
 
   // accessors

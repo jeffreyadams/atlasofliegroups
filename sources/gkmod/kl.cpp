@@ -72,6 +72,7 @@ namespace atlas {
 
   namespace kl {
 
+    // this serves debugging of hash tables; no longer actually called
     void alert(KLIndex i) // illegal index into hash table
     {
 #ifdef VERBOSE
@@ -80,9 +81,9 @@ namespace atlas {
       assert(false); // bomb out here
     }
 
-// wrap |KLPol| into a class that can be used in a HashTable
+// we wrap |KLPol| into a class |KLPolEntry| that can be used in a |HashTable|
 
-/* This associates the type |KLPool| as underlying storage type to |KLPol|,
+/* This associates the type |KLStore| as underlying storage type to |KLPol|,
    and adds the methods |hashCode| (hash function) and |!=| (unequality), for
    use by the |HashTable| template.
  */
@@ -103,159 +104,6 @@ class KLPolEntry : public KLPol
 
   };
 
-
-    /* methods of KLPolEntry */
-
-  /*!
-    \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
-
-    The function is in fact evaluation of the polynomial (with coefficients
-    interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
-    calculated quickly (without multiplications) and which gives a good spread
-    (which is not the case if 2105633 is replaced by a small number, because
-    the evaluation values will not grow fast enough for low degree
-    polynomials!).
-
-  */
-inline size_t KLPolEntry::hashCode(size_t modulus) const
-  { const polynomials::Polynomial<KLCoeff>& P=*this;
-    if (P.isZero()) return 0;
-    polynomials::Degree i=P.degree();
-    size_t h=P[i]; // start with leading coefficient
-    while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
-    return h;
-  }
-
-bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
- {
-   if (degree()!=e.degree()) return true;
-   if (isZero()) return false; // since degrees match
-   for (polynomials::Degree i=0; i<=degree(); ++i)
-     if ((*this)[i]!=e[i]) return true;
-   return false; // no difference found
- }
-
-    /* methods of KLPool */
-
-// this definition seems safer than (1ul<<int_bits)-1
-const size_t KLPool::low_mask
-        =std::numeric_limits<unsigned int>::max();
-
-/* Note: in the code below, the return type KLPool::const_reference is in fact
-   KLPolRef, but it is written like this to allow compilation after changing
-   definition of KLStore from KLPool (back) to
-
-   typedef std::vector<KLPol> KLStore
-
-   while keeping
-
-   typedef KLStore::const_reference KLPolRef;
-*/
-KLPool::const_reference KLPool::operator[] (KLIndex i) const
-  {
-    unsigned int q=i/group_size, r=i%group_size;
-    const IndexType& iq=index[q]; // index structure selected
-
-
-    size_t pi=  // get base for index into pool
-      size_t(iq.pool_index_low)+set_high_order(iq.pool_index_high.degree());
-
-    // adjust pool index for sizes of preceeding polynomials in group
-    for (unsigned int j=0; j<r; ++j)
-      pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
-
-    if (r!=group_size-1) // easy case
-      {
-	// get our own degree and valuation
- 	unsigned int deg=iq.deg_val[r].degree();
-	unsigned int val=iq.deg_val[r].valuation();
-
-	// and build the right polynomials::PolRef<KLCoeff> value
-	return const_reference(&pool[pi-val],val,1+deg);
-      }
-    else // this is a bit harder, the degree is implicit, but not needed!
-      {
-	// in this case get base for next index into pool
-	size_t next_pi=
-	  size_t(index[q+1].pool_index_low) +
-	  set_high_order(index[q+1].pool_index_high.degree());
-
-	// get our own valuation
-	unsigned int val=index[q+1].pool_index_high.valuation();
- 	// unused: unsigned int deg=(next_pi-pi)+val-1;
-
-	// and build the right polynomials::PolRef<KLCoeff> value
-	return const_reference(&pool[pi-val],val,val+next_pi-pi);
-      }
-  }
-
-/* Now that we know how the polynomials are read back, it is not so hard to
-   see how they should be stored. After finding degree and effective valuation
-   (we skip at most |val_limit-1| low degree null coefficients), we first
-   store the necessary coefficients, and then either record degree and
-   valuation together in one element of |deg_val|, or we forget about the
-   degree and store the valuation together with a new 37 bit index pointing at
-   the current end of the coefficient |pool|. The zero polynomial is special,
-   inthat we cannot record |degree==-1|; we therefore set |degree=0|, but
-   artificially set |valuation=1| so that no bytes are stored anyway. The
-   effective pointer into |pool| that will go into the |KLPolRef| for the Zero
-   polynomial will illegally point to |pool[-1]| if this is the very first
-   polynomial stored (as in fact it will), but no harm is done since a
-   |KLPolRef| for which |isZero()| holds will never use that pointer.
- */
-void KLPool::push_back(const KLPol& p)
-  {
-    unsigned int degree=p.degree(),valuation=0;
-
-    if (p.isZero()) // handle Zero specially
-      {
-	degree=0; valuation=1; // thus 0 bytes will be written
-      }
-    else
-      {
-	if (degree>=deg_limit)
-	  {
-	    std::cerr << p << std::endl;
-	    throw std::runtime_error("Polynomial degree overflow");
-	  }
-	// no need to test valuation<=degree: the leading coeff is sentinel
-	while (valuation<val_limit-1 and p[valuation]==KLCoeff(0))
-	  ++valuation;
-
-	savings+=valuation;// keep track of number of null coefficients saved
-
-
-	// now X^valuation divides p, write |1+degree-valuation| coefficients
-	for (size_t i=valuation; i<=p.degree(); ++i) pool.push_back(p[i]);
-      }
-
-    // now mark end of coefficients, and record valuation
-    if (last_index_size!=group_size -1)
-      index.back().deg_val[last_index_size++]=packed_byte(degree,valuation);
-    else
-      {
-	last_index_size=0; // don't forget to start next block at beginning
-	index.push_back(IndexType(pool.size(),valuation));
-      }
-  }
-
-    KLPool::~KLPool()
-    {
-      if (size()>0) // don't mention destructing empty pool
-	{
-	  std::cerr << "Destructing storage of " << size()
-		    << " polynomials.\n";
-	  std::cerr << "Stored " << pool.size() << " coefficient bytes,"
-	    " vector capacity " << pool.capacity() << ".\n";
-	  std::cerr << "Trailing coefficient savings: " << savings << ".\n";
-	  std::cerr << "Index of " << index.size() << " groups has size "
-		    << index.size()*sizeof(IndexType) << " (net), "
-		    << index.capacity()*sizeof(IndexType) << " (gross).\n";
-	  std::cerr << "Total of bytes used for polynomial storage: "
-		    << mem_size() << " (net), "
-		    << mem_capacity() << " (gross).\n";
-	}
-    }
 
   namespace helper {
 
@@ -368,10 +216,6 @@ of pair of integers specifying block element y.
 
     MuCoeff lengthOneMu(BlockElt x, BlockElt y) const;
 
-    void makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const;
-
-    void makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const;
-
     /*!
 \brief First coordinate (corresponding to K orbit on G/B) of pair of
 integers specifying block element y.
@@ -409,6 +253,9 @@ integers specifying block element y.
   }; // class Helper
 
 
+
+
+    // class Thicket
 
     /*!
 \brief Collection of block elements y_j of the same length, differing
@@ -695,9 +542,12 @@ list of elements primitive with respect to some y' in the Thicket.
 
 /*****************************************************************************
 
-        Chapter I -- The KLContext class.
+        Chapter I -- Mehtods of the KLContext, KLPolEntry and KLPool classes.
 
  *****************************************************************************/
+
+/* methods of KLContext */
+
 
 namespace kl {
   using namespace atlas::kl::helper;
@@ -771,38 +621,6 @@ void KLContext::swap(KLContext& other)
 
 /******** accessors **********************************************************/
 
-/******** manipulators *******************************************************/
-void KLContext::fill()
-
-/*!
-  \brief Fills the kl- and mu-lists.
-
-  Explanation: this is the main function in this module; all the work is
-  deferred to the Helper class.
-*/
-
-{
-#ifdef VERBOSE
-  std::cerr << "computing kazhdan-lusztig polynomials ..." << std::endl;
-#endif
-
-  if (d_state.test(KLFilled))
-    return;
-
-  Helper help(*this);
-
-  help.fill();
-  swap(help); // swaps the base object, including the d_store
-
-  d_state.set(KLFilled);
-
-#ifdef VERBOSE
-  std::cerr << "done" << std::endl;
-#endif
-
-  return;
-}
-
 KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 
 /*!
@@ -861,16 +679,324 @@ MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
   return std::lower_bound(mr.begin(),mr.end(),xx,MuCompare())->second;
 }
 
+
+/******** manipulators *******************************************************/
+void KLContext::fill()
+
+/*!
+  \brief Fills the kl- and mu-lists.
+
+  Explanation: this is the main function in this module; all the work is
+  deferred to the Helper class.
+*/
+
+{
+#ifdef VERBOSE
+  std::cerr << "computing kazhdan-lusztig polynomials ..." << std::endl;
+#endif
+
+  if (d_state.test(KLFilled))
+    return;
+
+  Helper help(*this);
+
+  help.fill();
+  swap(help); // swaps the base object, including the d_store
+
+  d_state.set(KLFilled);
+
+#ifdef VERBOSE
+  std::cerr << "done" << std::endl;
+#endif
+
+  return;
 }
+
+/* accessors of KLContext used for output */
+
+bitmap::BitMap KLContext::primMap (BlockElt y) const
+{
+  bitmap::BitMap b(size()); // block-size bitmap
+
+  // start with all elements < y in length
+  b.fill(d_support->lengthLess(length(y)));
+  b.insert(y);   // and y itself
+
+  // primitivize (filter out those that are not primitive)
+  d_support->primitivize(b,descentSet(y));
+
+  // now b holds a bitmap indicating primitive elements for y
+
+  // our result will be a bitmap of that size
+  bitmap::BitMap result (b.size()); // initiallly all bits are cleared
+
+ // the list of primitive elements with nonzero polynomials at y
+  const klsupport::PrimitiveRow& row=d_prim[y];
+
+  // now traverse d_prim, and set bits for its elements
+  for (size_t i=0; i<row.size(); ++i)
+    {
+      assert(b.isMember(row[i])); // all x's in row should be primitive
+      result.insert(b.position(row[i]));
+    }
+
+  return result;
+}
+
+// this is a small auxiliary function, writing a 32-bit value as 4 bytes
+
+/* this assumes sizeof(unsigned int)>=4 (if the inequality is strict, not the
+   whole value is written, but we do not call this function wilth values
+   exceeding 2^32.)
+   If you are using a 16 bits machine, this program is not for you, sorry.
+*/
+inline void put_int(unsigned int n, std::ostream& out)
+{
+  out.put(char(n&0xFF)); n>>=8;
+  out.put(char(n&0xFF)); n>>=8;
+  out.put(char(n&0xFF)); n>>=8;
+  out.put(char(n));
+}
+
+void KLContext::writeKLRow (BlockElt y, std::ostream& out) const
+{
+  bitmap::BitMap prims=primMap(y);
+  assert(d_kl[y].size()==prims.size()); // check the number of KL polynomials
+
+  put_int(y,out);        // write row number for consistency check on reading
+
+  // write number of primitive elements (indep. of modulus) for convenience
+  put_int(prims.capacity(),out);
+
+  // now write the bitmap as a sequence of unsigned int values
+  for (size_t i=0; i<prims.size(); i+=32)
+    put_int(prims.range(i,32),out);
+
+ // the list of indices of nonzero KL polynomials in row y
+  const KLRow& row=d_kl[y];
+
+  // finally, write the indices of the KL polynomials themselves
+  for (size_t i=0; i<row.size(); ++i)
+    put_int(row[i],out);
+
+  // and signal if there was unsufficient space to write the row
+  if (out.bad()) throw error::OutputError();
+}
+
+
+/* This routine prefers a simple format over an extremely space-optimised
+   representation on disk. After writing the number |N| of polynomials in 4
+   bytes, we write a sequence of |N+1| indices of 5 bytes each, giving for
+   each polynomial |i| the position of its first (degree 0) coefficient in the
+   global list and as final 5-byte value (number N) the total number of
+   coefficients. After that, starting from position 9+5*N, the list of all
+   coefficients, starting for each polynomial with the constant coefficient
+   and up to the leading coefficient. The degree of polynomial i is implicit
+   in the value of indices i and i+1: their difference is the number of
+   coefficients, the degree is one less.
+*/
+
+void KLContext::writeKLStore (std::ostream& out) const
+{
+  put_int(d_store.size(),out); // write number of KL poynomials
+
+  // write sequence of 5-byte indices, computed on the fly
+  size_t offset=0; // poition of first coefficient written
+  for (size_t i=0; i<d_store.size(); ++i)
+    {
+      KLPolRef p=d_store[i]; // get reference to polynomial
+
+      // output 5-byte value of offset
+      put_int(offset&0xFFFFFFFF,out);
+      out.put(char(offset>>16>>16)); // >>32 would fail on 32 bits machines
+
+      if (not p.isZero()) // superfluous since polynomials::MinusOne+1==0
+	offset += p.degree()+1; // add number of coefficients to be written
+    }
+  // write final 5-byte value (total size of coefficiant list)
+  put_int(offset&0xFFFFFFFF,out); out.put(char(offset>>16>>16));
+
+  // now write out coefficients
+  for (size_t i=0; i<d_store.size(); ++i)
+    {
+      KLPolRef p=d_store[i]; // get reference to polynomial
+      if (not p.isZero())
+	for (size_t j=0; j<=p.degree(); ++j)
+	  out.put(char(p[j]));
+    }
+}
+
+/* methods of KLPolEntry */
+
+
+  /*!
+    \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
+
+    The function is in fact evaluation of the polynomial (with coefficients
+    interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
+    calculated quickly (without multiplications) and which gives a good spread
+    (which is not the case if 2105633 is replaced by a small number, because
+    the evaluation values will not grow fast enough for low degree
+    polynomials!).
+
+  */
+inline size_t KLPolEntry::hashCode(size_t modulus) const
+  { const polynomials::Polynomial<KLCoeff>& P=*this;
+    if (P.isZero()) return 0;
+    polynomials::Degree i=P.degree();
+    size_t h=P[i]; // start with leading coefficient
+    while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
+    return h;
+  }
+
+bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
+ {
+   if (degree()!=e.degree()) return true;
+   if (isZero()) return false; // since degrees match
+   for (polynomials::Degree i=0; i<=degree(); ++i)
+     if ((*this)[i]!=e[i]) return true;
+   return false; // no difference found
+ }
+
+
+
+/* methods of KLPool */
+
+
+// this definition seems safer than (1ul<<int_bits)-1
+const size_t KLPool::low_mask
+        =std::numeric_limits<unsigned int>::max();
+
+/* Note: in the code below, the return type KLPool::const_reference is in fact
+   KLPolRef, but it is written like this to allow compilation after changing
+   definition of KLStore from KLPool (back) to
+
+   typedef std::vector<KLPol> KLStore
+
+   while keeping
+
+   typedef KLStore::const_reference KLPolRef;
+*/
+KLPool::const_reference KLPool::operator[] (KLIndex i) const
+  {
+    unsigned int q=i/group_size, r=i%group_size;
+    const IndexType& iq=index[q]; // index structure selected
+
+
+    size_t pi=  // get base for index into pool
+      size_t(iq.pool_index_low)+set_high_order(iq.pool_index_high.degree());
+
+    // adjust pool index for sizes of preceeding polynomials in group
+    for (unsigned int j=0; j<r; ++j)
+      pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
+
+    if (r!=group_size-1) // easy case
+      {
+	// get our own degree and valuation
+ 	unsigned int deg=iq.deg_val[r].degree();
+	unsigned int val=iq.deg_val[r].valuation();
+
+	// and build the right polynomials::PolRef<KLCoeff> value
+	return const_reference(&pool[pi-val],val,1+deg);
+      }
+    else // this is a bit harder, the degree is implicit, but not needed!
+      {
+	// in this case get base for next index into pool
+	size_t next_pi=
+	  size_t(index[q+1].pool_index_low) +
+	  set_high_order(index[q+1].pool_index_high.degree());
+
+	// get our own valuation
+	unsigned int val=index[q+1].pool_index_high.valuation();
+ 	// unused: unsigned int deg=(next_pi-pi)+val-1;
+
+	// and build the right polynomials::PolRef<KLCoeff> value
+	return const_reference(&pool[pi-val],val,val+next_pi-pi);
+      }
+  }
+
+/* Now that we know how the polynomials are read back, it is not so hard to
+   see how they should be stored. After finding degree and effective valuation
+   (we skip at most |val_limit-1| low degree null coefficients), we first
+   store the necessary coefficients, and then either record degree and
+   valuation together in one element of |deg_val|, or we forget about the
+   degree and store the valuation together with a new 37 bit index pointing at
+   the current end of the coefficient |pool|. The zero polynomial is special,
+   in that we cannot record |degree==-1|; we therefore set |degree=0|, but
+   artificially set |valuation=1| so that no bytes are stored anyway. The
+   effective pointer into |pool| that will go into the |PolRef<KLCoeff>| value
+   for the Zero polynomial will illegally point to |pool[-1]| if this is the
+   very first polynomial stored (as in fact it will), but no harm is done
+   since a |PolRef<C>| for which |isZero()| holds will never use that pointer.
+ */
+void KLPool::push_back(const KLPol& p)
+  {
+    unsigned int degree=p.degree(),valuation=0;
+
+    if (p.isZero()) // handle Zero specially
+      {
+	degree=0; valuation=1; // thus 0 bytes will be written
+      }
+    else
+      {
+	if (degree>=deg_limit)
+	  {
+	    std::cerr << p << std::endl;
+	    throw std::runtime_error("Polynomial degree overflow");
+	  }
+	// no need to test valuation<=degree: the leading coeff is sentinel
+	while (valuation<val_limit-1 and p[valuation]==KLCoeff(0))
+	  ++valuation;
+
+	savings+=valuation;// keep track of number of null coefficients saved
+
+
+	// now X^valuation divides p, write |1+degree-valuation| coefficients
+	for (size_t i=valuation; i<=p.degree(); ++i) pool.push_back(p[i]);
+      }
+
+    // now mark end of coefficients, and record valuation
+    if (last_index_size!=group_size -1)
+      index.back().deg_val[last_index_size++]=packed_byte(degree,valuation);
+    else
+      {
+	last_index_size=0; // don't forget to start next block at beginning
+	index.push_back(IndexType(pool.size(),valuation));
+      }
+  }
+
+    KLPool::~KLPool()
+    {
+      if (size()>0) // don't mention destructing empty pool
+	{
+	  std::cerr << "Destructing storage of " << size()
+		    << " polynomials.\n";
+	  std::cerr << "Stored " << pool.size() << " coefficient bytes,"
+	    " vector capacity " << pool.capacity() << ".\n";
+	  std::cerr << "Trailing coefficient savings: " << savings << ".\n";
+	  std::cerr << "Index of " << index.size() << " groups has size "
+		    << index.size()*sizeof(IndexType) << " (net), "
+		    << index.capacity()*sizeof(IndexType) << " (gross).\n";
+	  std::cerr << "Total of bytes used for polynomial storage: "
+		    << mem_size() << " (net), "
+		    << mem_capacity() << " (gross).\n";
+	}
+    }
+
+} // namespace kl
+
 
 /*****************************************************************************
 
-        Chapter II -- The Helper class.
+        Chapter II -- Methods of the Helper class.
 
  *****************************************************************************/
 
 namespace kl {
   namespace helper {
+
+    /* main constructor */
+
 Helper::Helper(const KLContext& kl)
   : KLContext(kl)
     , d_hashtable(d_store) // hash table refers to our own d_store
@@ -1052,7 +1178,7 @@ MuCoeff Helper::lengthOneMu(BlockElt x, BlockElt y) const
   return recursiveMu(x,y);
 }
 
-void Helper::makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const
+void KLContext::makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const
 
 /*!
   \brief Puts in e the list of all x extremal w.r.t. y.
@@ -1080,7 +1206,7 @@ void Helper::makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const
   return;
 }
 
-void Helper::makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const
+void KLContext::makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const
 
 /*!
   \brief Puts in e the list of all x primitive w.r.t. y.
@@ -1407,7 +1533,7 @@ void Helper::fillMuRow(BlockElt y)
 
   Explanation: for the elements of length < length(y) - 1, mu(x,y) can
   be non-zero only if x is extremal w.r.t. y; so we run through d_kl[y],
-  and loook at the cases where the polynomial is of degree (1/2)(l(y)-l(x)-1)
+  and look at the cases where the polynomial is of degree (1/2)(l(y)-l(x)-1)
   (the biggest possible). For the elements of colength 1, in the classical
   case we always had mu(x,y)=1. Here that's not true anymore, zero might
   be a possibility, and also larger values I believe; but at any rate the
@@ -1420,7 +1546,7 @@ void Helper::fillMuRow(BlockElt y)
 {
   using namespace klsupport;
 
-  const PrimitiveRow& e = primitiveRow(y);
+  const PrimitiveRow& e = d_prim[y]; // list of nonzero polynomials
 
   size_t ly = length(y);
 
