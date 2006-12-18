@@ -101,7 +101,7 @@ rlincludes ?= -lreadline -lcurses
 
 .PHONY: all mostlyclean clean headers dvifiles compilable
 
-all:	headers dvifiles realex
+all:	headers dvifiles realex KLread
 
 # 'make clean' removes all derived files
 clean:  mostlyclean
@@ -175,3 +175,6 @@ lexer.o lexer.tex: parser.tab.h buffer.h
 evaluator.o evaluator.tex: lexer.h parsetree.h
 built-in-types.o built-in-types.tex: evaluator.h
 main.o main.tex: $(headers)
+
+KLread: KLread.cpp
+	$(CXX) $(CXXFLAGS) -o KLread KLread.cpp
