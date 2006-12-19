@@ -77,6 +77,7 @@ namespace atlas {
   namespace kl {
 
     size_t NThreads(0);
+    size_t pool_reserve(0);
 
     // this serves debugging of hash tables; no longer actually called
     void alert(KLIndex i) // illegal index into hash table
@@ -948,8 +949,7 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
  */
 void KLPool::push_back(const KLPol& p)
   {
-    lock();
-    unsigned int degree=p.degree(),valuation=0;
+     unsigned int degree=p.degree(),valuation=0;
 
     if (p.isZero()) // handle Zero specially
       {
@@ -981,8 +981,7 @@ void KLPool::push_back(const KLPol& p)
 	last_index_size=0; // don't forget to start next block at beginning
 	index.push_back(IndexType(pool.size(),valuation));
       }
-    unlock();
-  }
+   }
 
 void KLPool::reserve(size_t N)
 { 
@@ -1477,23 +1476,21 @@ void Helper::fill()
   d_kl.resize(d_support->size());
   d_mu.resize(d_support->size());
 
-  d_store.reserve(1000000);
+  d_store.reserve(pool_reserve);
 
 
   // fill the lists
   BlockElt y = 0;
   size_t minLength = length(0);
   size_t maxLength = length(d_kl.size() - 1);
-  size_t strPrim = 0;
-
+ 
   // do the minimal length cases; they come first in the enumeration
   for (; y < d_kl.size() and length(y) == minLength; ++y) {
     d_prim[y].push_back(y); // singleton list for this row
     ++prim_size;
     // the K-L polynomial is 1
     d_kl[y].push_back(d_one);
-    ++strPrim;
-    // there are no mu-coefficients
+     // there are no mu-coefficients
   }
 
   // do the other cases
@@ -1536,7 +1533,7 @@ void Helper::fill()
     for (size_t yprime = d_support->lengthLess(l);
          yprime < d_support->lengthLess(l+1); ++yprime) {
       fillMuRow(yprime);
-      strPrim += d_kl[yprime].size();
+      //     strPrim += d_kl[yprime].size();
       //  muSize += d_mu[yprime].size();
     }
 
@@ -1548,7 +1545,7 @@ void Helper::fill()
                 << l << ", at y = " << d_support->lengthLess(l+1) - 1
                 << std::endl;
       std::cerr << "d_store.size() = " << d_store.size()
-                << ", strPrim = " << strPrim  << std::endl;
+                << ", prim_size = " << prim_size  << std::endl;
 
       //      system(command.str().c_str());
       // this is 'grep VmData /proc/<process id>/status'
@@ -1566,7 +1563,7 @@ void Helper::fill()
             << "s.  Finished at l = " << maxLength
             << ", y = " << d_kl.size() << std::endl;
   std::cerr << "d_store.size() = " << d_store.size()
-            << ", strPrim = " << strPrim  << std::endl;
+            << ", prim_size = " << prim_size  << std::endl;
 
   //  system(command.str().c_str());
   // this is 'grep VmData /proc/<process id>/status'
@@ -1956,11 +1953,12 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
   d_prim[y].reserve(d_prim[y].size()+(nzpr.end()-new_extr));
   d_kl[y].reserve(d_kl[y].size()+(klr.end()-new_pol)); // ensure tight fit
 
+  prim_size        += nzpr.end()-new_extr;
+  nr_of_prim_nulls += new_extr  -nzpr.begin(); // measure unused space
+
   copy(new_extr,nzpr.end(),back_inserter(d_prim[y]));
   copy(new_pol,klr.end(),back_inserter(d_kl[y]));
 
-  prim_size        += nzpr.end()-new_extr;
-  nr_of_prim_nulls += new_extr  -nzpr.begin(); // measure unused space
 }
 
   }
@@ -2245,11 +2243,11 @@ void Thicket::fill()
     d_helper->d_kl[y].reserve(d_helper->d_kl[y].size()+    // ensure tight fit
 			      (d_klr[j].end()-d_firstKL[j]));
 
-    copy(d_firstPrim[j],d_prim[j].end(),back_inserter(d_helper->d_prim[y]));
-    copy(d_firstKL[j],d_klr[j].end(),back_inserter(d_helper->d_kl[y]));
-
     d_helper->prim_size        += d_prim[j].end()-d_firstPrim[j];
     d_helper->nr_of_prim_nulls += d_firstPrim[j]-d_prim[j].begin();
+
+    copy(d_firstPrim[j],d_prim[j].end(),back_inserter(d_helper->d_prim[y]));
+    copy(d_firstKL[j],d_klr[j].end(),back_inserter(d_helper->d_kl[y]));
   }
 
   return;

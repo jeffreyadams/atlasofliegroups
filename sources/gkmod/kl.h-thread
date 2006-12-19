@@ -48,6 +48,7 @@ namespace kl {
   extern "C" void *ThreadStartup(void *);
 
   extern size_t NThreads;
+  extern size_t pool_reserve;
 
 // storage for KL polynomials
 
