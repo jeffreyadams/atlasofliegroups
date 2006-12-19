@@ -1500,11 +1500,11 @@ void Helper::fill()
   //set timers for KL computation
 
 #ifdef VERBOSE
-  //  const int pid = getpid();
-  //  std::stringstream command;
-  //  command << "grep VmData /proc/" << pid << "/status";
-  //  system(command.str().c_str());
-  //  std::cerr << std::endl;
+  const int pid = getpid();
+  std::stringstream command;
+  command << "grep VmData /proc/" << pid << "/status";
+  system(command.str().c_str());
+  std::cerr << std::endl;
 
   std::time_t time0;
   std::time(&time0);
@@ -1547,7 +1547,7 @@ void Helper::fill()
       std::cerr << "d_store.size() = " << d_store.size()
                 << ", prim_size = " << prim_size  << std::endl;
 
-      //      system(command.str().c_str());
+      system(command.str().c_str());
       // this is 'grep VmData /proc/<process id>/status'
 
 #endif
@@ -1561,11 +1561,11 @@ void Helper::fill()
   std::cerr << std::endl;
   std::cerr << "Total elapsed time = " << deltaTime
             << "s.  Finished at l = " << maxLength
-            << ", y = " << d_kl.size() << std::endl;
+            << ", y = " << d_kl.size() - 1 << std::endl;
   std::cerr << "d_store.size() = " << d_store.size()
             << ", prim_size = " << prim_size  << std::endl;
 
-  //  system(command.str().c_str());
+  system(command.str().c_str());
   // this is 'grep VmData /proc/<process id>/status'
 
   std::cerr << std::endl;
