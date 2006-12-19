@@ -156,7 +156,7 @@ class KLPool
 
     size_t savings; // gather statistics about savings by using valuations
 
-    pthread_mutex_t d_mutex;
+    mutable pthread_mutex_t d_mutex;
 
   public:
     typedef polynomials::PolRef<KLCoeff> const_reference; // used by HashTable
@@ -187,8 +187,8 @@ class KLPool
 
     // manipulators
     void push_back(const KLPol&);
-    void lock() { pthread_mutex_lock(&d_mutex); }
-    void unlock() { pthread_mutex_unlock(&d_mutex); }
+    void lock() const   { pthread_mutex_lock(&d_mutex); }
+    void unlock() const { pthread_mutex_unlock(&d_mutex); }
     void reserve(size_t);
     void swap(KLPool& other)
       {
