@@ -75,12 +75,12 @@ template <class Entry, typename Number>
       if (d_pool.unlock(),++h==d_mod) h=0; // move past used slot, wrap around
 
     if (i!=empty) {
-      //  in this case we should not do d_pool.unlock();
+      d_pool.unlock(); // since we exited the loop above with x==d_pool[i]
       unlock();
       return i; // return sequence number if found
     }
 
-    d_pool.unlock(); // since we exited the loop above with x==d_pool[i]
+    // in this case we should not do d_pool.unlock(): i==empty terminated loop
 
     // now we know x is absent from the table, and h is an empty slot
 
@@ -112,7 +112,7 @@ template <class Entry, typename Number>
 
     // relock the pool, it is OK if it was consulted or even extended since!
     d_pool.lock();
-    Number result=d_pool.size() // this is the sequence number of x
+    Number result=d_pool.size(); // this is the sequence number of x
     d_pool.push_back(x); // store x at that position in d_pool
     d_pool.unlock();
     d_hash[h]= result;

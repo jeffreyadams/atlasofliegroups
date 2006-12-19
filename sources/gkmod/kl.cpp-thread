@@ -415,6 +415,8 @@ simple root s for y.
     /*!
 \brief KL polynomial P_{x,y_pos}, for any y_pos in Thicket.
     */
+
+    // Since this klPol calls another, it too calls d_store.lock
     KLPolRef klPol(BlockElt x, size_t pos) const {
       return d_helper->klPol(x,d_vertices[pos],d_firstKL[pos],d_firstPrim[pos],
 			     d_prim[pos].end());
@@ -652,6 +654,9 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
   relations. At that point, we look x up in the primitive list for
   y. If it is found, we get a pointer to the result.  If it is not
   found, the polynomial is zero.
+
+  NOTE: since we return a reference to an element stored in d_store, this
+  calls d_store.lock() in all cases; the caller must unlock soon after!
 */
 
 {
@@ -666,13 +671,16 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
     EI xptr = std::lower_bound(pr.begin(),pr.end(),x);
     if (xptr != pr.end() and *xptr == x) { // result is nonzero
       size_t xpos = xptr - pr.begin();
+      d_store.lock();
       return d_store[klr[xpos]];
     } else {
+      d_store.lock();
       return d_store[d_zero];
     }
   }
 
   // if we get here, the primitivization hit a real compact ascent
+  d_store.lock();
   return d_store[d_zero];
 }
 
@@ -691,10 +699,13 @@ MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
 
   MuData xx(x,0); // second component is irrelevant (ignored by MuCompare)
 
-  if (not std::binary_search(mr.begin(),mr.end(),xx,MuCompare()))
-    return 0;
+  MuRow::const_iterator xloc=
+    std::lower_bound(mr.begin(),mr.end(),xx,MuCompare());
 
-  return std::lower_bound(mr.begin(),mr.end(),xx,MuCompare())->second;
+  if (xloc==mr.end() or xloc->first!=x)
+    return 0; // x not found in mr
+
+  return xloc->second;
 }
 
 
@@ -822,6 +833,7 @@ void KLContext::writeKLStore (std::ostream& out) const
   size_t offset=0; // poition of first coefficient written
   for (size_t i=0; i<d_store.size(); ++i)
     {
+      // no need for locking here, since we are called single-threadedly
       KLPolRef p=d_store[i]; // get reference to polynomial
 
       // output 5-byte value of offset
@@ -981,7 +993,7 @@ void KLPool::push_back(const KLPol& p)
 	last_index_size=0; // don't forget to start next block at beginning
 	index.push_back(IndexType(pool.size(),valuation));
       }
-   }
+  }
 
 void KLPool::reserve(size_t N)
 {
@@ -1147,9 +1159,9 @@ MuCoeff Helper::goodDescentMu(BlockElt x, BlockElt y, size_t s) const
 }
 
 KLPolRef Helper::klPol(BlockElt x, BlockElt y,
-			   KLRow::const_iterator klv,
-			   klsupport::PrimitiveRow::const_iterator p_begin,
-			   klsupport::PrimitiveRow::const_iterator p_end) const
+		       KLRow::const_iterator klv,
+		       klsupport::PrimitiveRow::const_iterator p_begin,
+		       klsupport::PrimitiveRow::const_iterator p_end) const
 
 /*!
   \brief Returns the Kazhdan-Lusztig polynomial for x corresponding to
@@ -1162,6 +1174,9 @@ KLPolRef Helper::klPol(BlockElt x, BlockElt y,
   Algorithm: primitivize x w.r.t. the descents in y; if a real compact
   situation is encountered, return zero; otherwise look up the primitive
   x in the extremal range.
+
+  NOTE: since we return a reference to an element stored in d_store, this
+  calls d_store.lock() in all cases; the caller must unlock soon after!
 */
 
 {
@@ -1170,11 +1185,14 @@ KLPolRef Helper::klPol(BlockElt x, BlockElt y,
   if (d_support->primitivize(xp,descentSet(y))) {
     if (std::binary_search(p_begin,p_end,xp)) { // result is nonzero
       size_t xpos = std::lower_bound(p_begin,p_end,xp) - p_begin;
+      d_store.lock();
       return d_store[klv[xpos]];
     } else {
+      d_store.lock();
       return d_store[d_zero];
     }
   } else {
+    d_store.lock();
     return d_store[d_zero];
   }
 }
@@ -1411,9 +1429,11 @@ void Helper::completePacket(BlockElt y)
 	for (size_t j = 0; j < klv.size(); ++j) {
 	  BlockElt x = e[j];
 	  try {
-	    klv[j].safeSubtract(klPol(x,y1));
+	    klv[j].safeSubtract(klPol(x,y1)); // klPol calls d_store.lock();
+	    d_store.unlock();
 	  }
 	  catch (error::NumericUnderflow& e){
+	    d_store.unlock();
 	    throw kl_error::KLError(x,y1,__LINE__,
 				    static_cast<const KLContext&>(*this));
 	  }
@@ -1661,10 +1681,14 @@ void Helper::fillMuRow(BlockElt y)
     KLPtr klp = d_kl[y][j];
     if (isZero(klp))
       continue;
-    if (d_store[klp].degree() < d)
+
+    // no lock is needed here, because fillMuRow is handled single-treaded
+    KLPolRef p=d_store[klp];
+    if (p.degree() < d) {
       continue;
+    }
     // if we get here, we found a mu-coefficient for x
-    d_mu[y].push_back(std::make_pair( x , d_store[klp][d] ));
+    d_mu[y].push_back(std::make_pair( x , p[d] ));
   }
 
   // do cases of length ly-1
@@ -1731,7 +1755,8 @@ void Helper::fillThickets(BlockElt y)
 }
 
 void Helper::muCorrection(std::vector<KLPol>& klv,
-			  const klsupport::PrimitiveRow& e, BlockElt y, size_t s)
+			  const klsupport::PrimitiveRow& e,
+			  BlockElt y, size_t s)
 
 /*!
   \brief Subtracts from klv the correcting terms in the k-l recursion.
@@ -1781,12 +1806,14 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
       if (length(x) > l_z)
 	break;
       // subtract x^d.mu.P_{x,z} from klv[j], where d = 1/2(l(y)-l(z))
-      KLPolRef pol = klPol(x,z);
       Degree d = (l_y-l_z)/2;
+      KLPolRef pol = klPol(x,z); // calls d_store.lock();
       try {
 	klv[j].safeSubtract(pol,d,mu);
+	d_store.unlock();
       }
       catch (error::NumericUnderflow& e){
+	d_store.unlock();
 	throw kl_error::KLError(x,y,__LINE__,
 				static_cast<const KLContext&>(*this));
       }
@@ -1838,27 +1865,35 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     switch (descentValue(s,x)) {
     case DescentStatus::ImaginaryCompact: {
       // (q+1)P_{x,y1}
-      klv[j] = klPol(x,y1);
+      klv[j] = klPol(x,y1); // calls d_store.lock();
+      d_store.unlock();     // since result was converted to KLPol
       klv[j].safeAdd(klv[j],1);
     }
       break;
     case DescentStatus::ComplexDescent: {
       BlockElt x1 = cross(s,x);
       // P_{x1,y1}+q.P_{x,y1}
-      klv[j] = klPol(x1,y1);
-      klv[j].safeAdd(klPol(x,y1),1);
+      klv[j] = klPol(x1,y1); // calls d_store.lock();
+      d_store.unlock();     // since result was converted to KLPol
+      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.lock();
+      d_store.unlock();
     }
       break;
     case DescentStatus::RealTypeI: {
       BlockEltPair x1 = inverseCayley(s,x);
       // P_{x1.first,y1}+P_{x1.second,y1}+(q-1)P_{x,y1}
-      klv[j] = klPol(x1.first,y1);
-      klv[j].safeAdd(klPol(x1.second,y1));
-      klv[j].safeAdd(klPol(x,y1),1);
+      klv[j] = klPol(x1.first,y1);  // calls d_store.lock();
+      d_store.unlock();     // since result was converted to KLPol
+      klv[j].safeAdd(klPol(x1.second,y1));  // klPol calls d_store.lock();
+      d_store.unlock();
+      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.lock();
+      d_store.unlock();
       try {
-	klv[j].safeSubtract(klPol(x,y1));
+	klv[j].safeSubtract(klPol(x,y1));  // klPol calls d_store.lock();
+	d_store.unlock();
       }
       catch (error::NumericUnderflow& e){
+	d_store.unlock();
 	throw kl_error::KLError(x,y,__LINE__,
 				static_cast<const KLContext&>(*this));
       }
@@ -1867,12 +1902,16 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     case DescentStatus::RealTypeII: {
       BlockElt x1 = inverseCayley(s,x).first;
       // P_{x_1,y_1}+qP_{x,y1}-P_{s.x,y1}
-      klv[j] = klPol(x1,y1);
-      klv[j].safeAdd(klPol(x,y1),1);
+      klv[j] = klPol(x1,y1);  // calls d_store.lock();
+      d_store.unlock();       // since result was converted to KLPol
+      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.lock();
+      d_store.unlock();
       try {
-	klv[j].safeSubtract(klPol(cross(s,x),y1));
+	klv[j].safeSubtract(klPol(cross(s,x),y1)); // klPol calls...
+	d_store.unlock();
       }
       catch (error::NumericUnderflow& e){
+	d_store.unlock();
 	throw kl_error::KLError(x,y,__LINE__,
 				static_cast<const KLContext&>(*this));
       }
@@ -1885,7 +1924,9 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   }
 
   // last k-l polynomial is 1
+  d_store.lock();
   klv.back() = d_store[d_one];
+  d_store.unlock();
 
   // do mu-correction
   muCorrection(klv,e,y,s);
@@ -1947,7 +1988,10 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
       size_t s = firstAscent(descent(pr[i]),descent(y),rank());
       BlockEltPair x1 = cayley(s,pr[i]);
       KLPol pol = klPol(x1.first,y,new_pol,new_extr,nzpr_end);
+      d_store.unlock(); // since klPol called d_store.lock();
       pol.safeAdd(klPol(x1.second,y,new_pol,new_extr,nzpr_end));
+      d_store.unlock(); // since klPol called d_store.lock();
+
       if (not pol.isZero()) {
 	*--new_extr = pr[i];
 	*--new_pol  = d_hashtable.match(pol);
@@ -2126,9 +2170,11 @@ bool Thicket::ascentCompute(BlockElt x, size_t pos)
     return false;
 
   BlockEltPair x1 = d_helper->cayley(s,x);
-  KLPolRef t=klPol(x1.first,pos);
-  KLPol pol = t;
-  pol.safeAdd(klPol(x1.second,pos));
+  KLPol pol = klPol(x1.first,pos); // calls d_store.lock();
+  d_helper->d_store.unlock();     // since result was converted to KLPol
+
+  pol.safeAdd(klPol(x1.second,pos)); //klPol calls d_store.lock();
+  d_helper->d_store.unlock();
 
   if (not pol.isZero()) { // write pol
     --d_firstKL[pos];
@@ -2162,7 +2208,8 @@ void Thicket::edgeCompute(BlockElt x, size_t pos, const Edge& e)
   KLPol pol = e.recursion[xpos];
 
   try {
-    pol.safeSubtract(klPol(x,e.source));
+    pol.safeSubtract(klPol(x,e.source)); // klPol calls d_store.lock();
+    d_helper->d_store.unlock();
   }
   catch (error::NumericUnderflow& err){
     throw kl_error::KLError(x,d_vertices[pos],__LINE__,
