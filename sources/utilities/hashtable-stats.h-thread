@@ -95,12 +95,17 @@ class HashTable
 
   // accessors
   Number find(const Entry&) const; // const variant of match; may return empty
+
+  // no locking here, since caller should have locked pool already
   typename Entry::Pooltype::const_reference operator[] (Number i) const
     {
       if (i>=d_pool.size()) atlas::kl::alert(i);
       return d_pool[i];
     }
+
+  // no locking here, since caller should have locked pool already
   Number size() const { return Number(d_pool.size()); }
+
   size_t mem_size() const		// net memory footprint
     { return sizeof(HashTable)		// structure itself
 	+d_hash.size()*sizeof(Number)   // hash space
@@ -119,6 +124,7 @@ class HashTable
 
  public: // methods to make HashTable behave like a container, in some cases
 
+  // if using iterators during multi-threading, lock hash table throughout
   typedef Number const_iterator;   // type returned by begin() and end()
   typedef const_iterator iterator; // iterators are not mutable
 
