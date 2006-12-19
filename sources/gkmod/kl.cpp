@@ -570,7 +570,7 @@ KLContext::KLContext(klsupport::KLSupport& kls)
 /*!
   \brief Copy constructor.
 
-  Since we use indices instead of iterators, noting gets invalidated any more
+  Since we use indices instead of iterators, nothing gets invalidated any more
 */
 KLContext::KLContext(const KLContext& other)
   :d_state(other.d_state),
@@ -673,10 +673,13 @@ MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
 
   MuData xx(x,0); // second component is irrelevant (ignored by MuCompare)
 
-  if (not std::binary_search(mr.begin(),mr.end(),xx,MuCompare()))
-    return 0;
+  MuRow::const_iterator xloc=
+    std::lower_bound(mr.begin(),mr.end(),xx,MuCompare());
 
-  return std::lower_bound(mr.begin(),mr.end(),xx,MuCompare())->second;
+  if (xloc==mr.end() or xloc->first!=x)
+    return 0; // x not found in mr
+
+  return xloc->second;
 }
 
 
@@ -1122,9 +1125,9 @@ MuCoeff Helper::goodDescentMu(BlockElt x, BlockElt y, size_t s) const
 }
 
 KLPolRef Helper::klPol(BlockElt x, BlockElt y,
-			   KLRow::const_iterator klv,
-			   klsupport::PrimitiveRow::const_iterator p_begin,
-			   klsupport::PrimitiveRow::const_iterator p_end) const
+		       KLRow::const_iterator klv,
+		       klsupport::PrimitiveRow::const_iterator p_begin,
+		       klsupport::PrimitiveRow::const_iterator p_end) const
 
 /*!
   \brief Returns the Kazhdan-Lusztig polynomial for x corresponding to
@@ -1633,7 +1636,8 @@ void Helper::fillThickets(BlockElt y)
 }
 
 void Helper::muCorrection(std::vector<KLPol>& klv,
-			  const klsupport::PrimitiveRow& e, BlockElt y, size_t s)
+			  const klsupport::PrimitiveRow& e,
+			  BlockElt y, size_t s)
 
 /*!
   \brief Subtracts from klv the correcting terms in the k-l recursion.
@@ -2027,8 +2031,7 @@ bool Thicket::ascentCompute(BlockElt x, size_t pos)
     return false;
 
   BlockEltPair x1 = d_helper->cayley(s,x);
-  KLPolRef t=klPol(x1.first,pos);
-  KLPol pol = t;
+  KLPol pol =klPol(x1.first,pos);
   pol.safeAdd(klPol(x1.second,pos));
 
   if (not pol.isZero()) { // write pol
