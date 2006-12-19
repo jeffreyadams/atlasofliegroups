@@ -92,7 +92,6 @@ template <class Entry, typename Number>
       d_mod=d_mod<<1;  // keep it a power of 2
 
       rehash();
-
       // finally recompute hash code of x
       h=x.hashCode(d_mod);
 
@@ -103,10 +102,10 @@ template <class Entry, typename Number>
     } // endif (rehashing necessary)
 
     // at this point x is a new entry that will be stored at d_hash[h]
-
+    d_pool.lock();
     d_hash[h]= Number(d_pool.size()); // this is the sequence number of x
     d_pool.push_back(x); // store x at that position in d_pool
-    //    d_pool.unlock();
+    d_pool.unlock();
     unlock();
     return d_hash[h];
   }
