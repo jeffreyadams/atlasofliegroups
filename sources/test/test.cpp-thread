@@ -1098,6 +1098,14 @@ void klwrite_f()
 	}
     }
 
+    unsigned long threads;
+    getInteractive(threads,"Number of extra threads: ",1023);
+    kl::NThreads = threads;
+
+    size_t reserve;
+    getInteractive(reserve,"Slots to reserve in d_store: ",10000000000);
+    kl::pool_reserve = reserve;
+
     Block block(G_C,G_R.realForm(),drf);
 
     KLSupport kls(block);
