@@ -140,6 +140,6 @@ class HashTable
 } // namespace hashtable
 } // namespace atlas
 
-#include "hashtable_def.h"
+#include "hashtable_def.h-thread"
 
 #endif

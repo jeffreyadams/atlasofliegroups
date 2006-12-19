@@ -588,7 +588,7 @@ KLContext::KLContext(klsupport::KLSupport& kls)
 /*!
   \brief Copy constructor.
 
-  Since we use indices instead of iterators, noting gets invalidated any more
+  Since we use indices instead of iterators, nothing gets invalidated any more
 */
 KLContext::KLContext(const KLContext& other)
   :d_state(other.d_state),
@@ -984,7 +984,7 @@ void KLPool::push_back(const KLPol& p)
    }
 
 void KLPool::reserve(size_t N)
-{ 
+{
   pool.reserve(20*N);
   index.reserve(N/16);
 }
@@ -1483,7 +1483,7 @@ void Helper::fill()
   BlockElt y = 0;
   size_t minLength = length(0);
   size_t maxLength = length(d_kl.size() - 1);
- 
+
   // do the minimal length cases; they come first in the enumeration
   for (; y < d_kl.size() and length(y) == minLength; ++y) {
     d_prim[y].push_back(y); // singleton list for this row
@@ -1514,22 +1514,28 @@ void Helper::fill()
 
   pthread_t thread[NThreads];
   void* argptr = this;
-  for (size_t l = 1; l <= maxLength; ++l) {
+  for (size_t l = minLength+1; l <= maxLength; ++l) {
     YThread.Y = d_support->lengthLess(l);
     YEnd = d_support->lengthLess(l+1);
 
+    // start up NThreads new threads, all working on y's of length l
     for(size_t k = 0; k < NThreads; ++k) {
       //     std::cerr << "starting thread[" << k << std::endl;
       pthread_create( &thread[k], NULL, ThreadStartup, argptr);
     }
 
-    ThreadStartup(argptr);
+    // we are not going to sit idle while the other threads work
+    ThreadStartup(argptr); // join the workforce for length l
 
+    // now wait for the other threads to complete
     for (size_t k = 0; k < NThreads; ++k) {
       //  std::cerr << "joining thread " << k << std::endl;
       pthread_join(thread[k], NULL);
     }
 
+    // now we are once again the only existing thread
+
+    // filling the mu-rows is done single-threadedly
     for (size_t yprime = d_support->lengthLess(l);
          yprime < d_support->lengthLess(l+1); ++yprime) {
       fillMuRow(yprime);
@@ -1552,7 +1558,7 @@ void Helper::fill()
 
 #endif
 
-  }
+  } // for (size_t l = minLength+1; l <= maxLength; ++l)
 
 
 #ifdef VERBOSE
@@ -2453,25 +2459,27 @@ namespace kl {
 
   void *ThreadStartup(void *argptr) {
     kl::helper::Helper *target = (kl::helper::Helper *)argptr;
-    while ( 1 ) {
-      if ( YThread.Y == 0 ) return NULL;
-      //  std::cerr << "ready to lock with YThread = "
+    while ( true ) {
+      pthread_mutex_lock( &YThread.mutex ); // take lock to pick and advance y
+      //  std::cerr << "obtained lock with YThread = "
       //       << YThread.Y << std::endl;
-      pthread_mutex_lock( &YThread.mutex );
+      if ( YThread.Y >= YEnd ) break; // stop when current length exhausted
       size_t y = YThread.Y;
 #ifdef VERBOSE
       std::cerr << y << "\r";
 #endif
       size_t o = target->orbit(YThread.Y);
-      while ((target->orbit(YThread.Y) == o) and
-             (YThread.Y < target->size())) ++YThread.Y;
+      do ++YThread.Y;
+      while (YThread.Y < target->size() and target->orbit(YThread.Y) == o);
       //      std::cerr << "next possible YThread = "
       //       << YThread.Y << std::endl;
-      if ( YThread.Y >= YEnd ) YThread.Y = 0;
       pthread_mutex_unlock( &YThread.mutex );
       //      std::cerr << "filling row " << y << std::endl;
-      target->fillKLRow(y);
-    }
+      target->fillKLRow(y); // now fill row y, and others in the same orbit
+    } // while (true)
+
+    pthread_mutex_unlock( &YThread.mutex );
+    return NULL;
   }
 
   namespace helper {

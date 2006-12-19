@@ -26,7 +26,7 @@ Class definitions and function declarations for the class KLContext.
 #include "bitset.h"
 #include "klsupport.h"
 
-#include "hashtable-stats.h"
+#include "hashtable-stats.h-thread"
 #include "polynomials.h"
 #include "prettyprint.h"
 #include "wgraph.h"

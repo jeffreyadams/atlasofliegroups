@@ -825,8 +825,8 @@ void primkl_f()
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
 
-    size_t reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",10000000000);
+    unsigned long reserve;
+    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
     kl::pool_reserve = reserve;
 
     Block block(G_C,G_R.realForm(),drf);
@@ -926,8 +926,8 @@ void klbasis_f()
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
 
-    size_t reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",10000000000);
+    unsigned long reserve;
+    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
     kl::pool_reserve = reserve;
 
     Block block(G_C,G_R.realForm(),drf);
@@ -999,8 +999,8 @@ void kllist_f()
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
 
-    size_t reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",10000000000);
+    unsigned long reserve;
+    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
     kl::pool_reserve = reserve;
 
     Block block(G_C,G_R.realForm(),drf);
@@ -1102,8 +1102,8 @@ void klwrite_f()
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
 
-    size_t reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",10000000000);
+    unsigned long reserve;
+    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
     kl::pool_reserve = reserve;
 
     Block block(G_C,G_R.realForm(),drf);
@@ -1267,8 +1267,8 @@ void wcells_f()
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
 
-    size_t reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",10000000000);
+    unsigned long reserve;
+    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
     kl::pool_reserve = reserve;
 
     Block block(G_C,G_R.realForm(),drf);
@@ -1344,8 +1344,8 @@ void wgraph_f()
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
 
-    size_t reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",10000000000);
+    unsigned long reserve;
+    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
     kl::pool_reserve = reserve;
 
     Block block(G_C,G_R.realForm(),drf);
