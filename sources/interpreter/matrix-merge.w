@@ -93,9 +93,54 @@ template<unsigned int n>
     return h;
   }
 
-@* Program outline.
-%
+@
+@c
+template<unsigned int n>
+  typedef HashTable<tuple_entry<n>,unsigned int> hash_table;
 
+@* Principal routines.
+%
+Our main task will be to read a matrix row from |n| different files, merge the
+information about the location of nonzero polynomials among the primitive
+pairs, and then enter tuples for all nonzero polynomials into the hash table;
+the sequence numbers returned from the hash table can then be written out to
+the file for the combined modulus.
+
+@<iostream>
+@<stdexcept>
+
+@c
+@< Auxiliary functions @>
+template<unsigned int n>
+  void combine_rows
+    (unsigned int y, hash_table& hash,
+     std::vector<std::istream* const>in, const std::istream& out)
+  { for (unsigned int i=0; i<n; ++i)
+      if (read_int(in[i])!=y) @< Report alignment problem and abort @>
+    unsigned int nr_prim=read_int(in[0]);
+    for (unsigned int i=1; i<n; ++i)
+      if (read_int(in[i])!=nr_prim)
+        @< Report primitive count problem and abort @>
+    write_int(y,out); write_int(nr_prim,out); // reproduce info in output
+
+    @< Read and merge bitmaps from the input file @>
+@)
+    for (j=0; j<nr_prim; ++j)
+      @<
+  }
+
+
+@
+@< Report alignment problem and abort @>=
+{ std::cerr << "y=" << y << ", i=" << i << ":\n";
+  throw std::runtime_error("Wrong alignment in source file");
+}
+
+@
+@< Report primitive count problem and abort @>=
+{ std::cerr << "y=" << y << ", i=" << i << ":\n";
+  throw std::runtime_error("Primitive count mismatch in source files");
+}
 
 @* Index.
 
