@@ -43,10 +43,12 @@ struct FatalError {
   void operator() (const char*);
 };
 
+// user abandoning input
 struct InputError {
   void operator() (const char*);
 };
 
+// failure opening or writing output
 struct OutputError {
   void operator() (const char*);
 };
