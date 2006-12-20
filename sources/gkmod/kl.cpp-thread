@@ -416,7 +416,7 @@ simple root s for y.
 \brief KL polynomial P_{x,y_pos}, for any y_pos in Thicket.
     */
 
-    // Since this klPol calls another, it too calls d_store.lock
+    // Since this klPol calls another, it too calls d_store.rlock
     KLPolRef klPol(BlockElt x, size_t pos) const {
       return d_helper->klPol(x,d_vertices[pos],d_firstKL[pos],d_firstPrim[pos],
 			     d_prim[pos].end());
@@ -656,7 +656,7 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
   found, the polynomial is zero.
 
   NOTE: since we return a reference to an element stored in d_store, this
-  calls d_store.lock() in all cases; the caller must unlock soon after!
+  calls d_store.rlock() in all cases; the caller must unlock soon after!
 */
 
 {
@@ -671,16 +671,16 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
     EI xptr = std::lower_bound(pr.begin(),pr.end(),x);
     if (xptr != pr.end() and *xptr == x) { // result is nonzero
       size_t xpos = xptr - pr.begin();
-      d_store.lock();
+      d_store.rlock();
       return d_store[klr[xpos]];
     } else {
-      d_store.lock();
+      d_store.rlock();
       return d_store[d_zero];
     }
   }
 
   // if we get here, the primitivization hit a real compact ascent
-  d_store.lock();
+  d_store.rlock();
   return d_store[d_zero];
 }
 
@@ -1003,7 +1003,7 @@ void KLPool::reserve(size_t N)
 
     KLPool::~KLPool()
     {
-      pthread_mutex_destroy(&d_mutex);
+      pthread_rwlock_destroy(&d_mutex);
       if (size()>0) // don't mention destructing empty pool
 	{
 	  std::cerr << "Destructing storage of " << size()
@@ -1176,7 +1176,7 @@ KLPolRef Helper::klPol(BlockElt x, BlockElt y,
   x in the extremal range.
 
   NOTE: since we return a reference to an element stored in d_store, this
-  calls d_store.lock() in all cases; the caller must unlock soon after!
+  calls d_store.rlock() in all cases; the caller must unlock soon after!
 */
 
 {
@@ -1185,14 +1185,14 @@ KLPolRef Helper::klPol(BlockElt x, BlockElt y,
   if (d_support->primitivize(xp,descentSet(y))) {
     if (std::binary_search(p_begin,p_end,xp)) { // result is nonzero
       size_t xpos = std::lower_bound(p_begin,p_end,xp) - p_begin;
-      d_store.lock();
+      d_store.rlock();
       return d_store[klv[xpos]];
     } else {
-      d_store.lock();
+      d_store.rlock();
       return d_store[d_zero];
     }
   } else {
-    d_store.lock();
+    d_store.rlock();
     return d_store[d_zero];
   }
 }
@@ -1429,7 +1429,7 @@ void Helper::completePacket(BlockElt y)
 	for (size_t j = 0; j < klv.size(); ++j) {
 	  BlockElt x = e[j];
 	  try {
-	    klv[j].safeSubtract(klPol(x,y1)); // klPol calls d_store.lock();
+	    klv[j].safeSubtract(klPol(x,y1)); // klPol calls d_store.rlock();
 	    d_store.unlock();
 	  }
 	  catch (error::NumericUnderflow& e){
@@ -1523,8 +1523,8 @@ void Helper::fill()
   const int pid = getpid();
   std::stringstream command;
   command << "grep VmData /proc/" << pid << "/status";
-  system(command.str().c_str());
-  std::cerr << std::endl;
+  // system(command.str().c_str());
+  // std::cout << std::endl;
 
   std::time_t time0;
   std::time(&time0);
@@ -1566,15 +1566,15 @@ void Helper::fill()
 #ifdef VERBOSE
       std::time(&time);
       double deltaTime = difftime(time, time0);
-      std::cerr << std::endl;
-      std::cerr << "Elapsed time = " << deltaTime << "s.  Completed l = "
-                << l << ", at y = " << d_support->lengthLess(l+1) - 1
-                << std::endl;
-      std::cerr << "d_store.size() = " << d_store.size()
-                << ", prim_size = " << prim_size  << std::endl;
+      std::cerr << "t="    << std::setw(6) << deltaTime
+		<< "s. l=" << std::setw(3) << l
+		<< ", y="  << std::setw(6) << d_support->lengthLess(l+1) - 1
+                << ", coefs: " << std::setw(11) << d_store.size()
+		<< ", hash:" << std::setw(11)<< d_hashtable.mem_capacity()
+                << ", mat: "   << std::setw(11) << prim_size <<  std::endl;
 
-      system(command.str().c_str());
-      // this is 'grep VmData /proc/<process id>/status'
+      // system(command.str().c_str());
+      // this was 'grep VmData /proc/<process id>/status'
 
 #endif
 
@@ -1807,7 +1807,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 	break;
       // subtract x^d.mu.P_{x,z} from klv[j], where d = 1/2(l(y)-l(z))
       Degree d = (l_y-l_z)/2;
-      KLPolRef pol = klPol(x,z); // calls d_store.lock();
+      KLPolRef pol = klPol(x,z); // calls d_store.rlock();
       try {
 	klv[j].safeSubtract(pol,d,mu);
 	d_store.unlock();
@@ -1865,7 +1865,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     switch (descentValue(s,x)) {
     case DescentStatus::ImaginaryCompact: {
       // (q+1)P_{x,y1}
-      klv[j] = klPol(x,y1); // calls d_store.lock();
+      klv[j] = klPol(x,y1); // calls d_store.rlock();
       d_store.unlock();     // since result was converted to KLPol
       klv[j].safeAdd(klv[j],1);
     }
@@ -1873,23 +1873,23 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     case DescentStatus::ComplexDescent: {
       BlockElt x1 = cross(s,x);
       // P_{x1,y1}+q.P_{x,y1}
-      klv[j] = klPol(x1,y1); // calls d_store.lock();
+      klv[j] = klPol(x1,y1); // calls d_store.rlock();
       d_store.unlock();     // since result was converted to KLPol
-      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.lock();
+      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.rlock();
       d_store.unlock();
     }
       break;
     case DescentStatus::RealTypeI: {
       BlockEltPair x1 = inverseCayley(s,x);
       // P_{x1.first,y1}+P_{x1.second,y1}+(q-1)P_{x,y1}
-      klv[j] = klPol(x1.first,y1);  // calls d_store.lock();
+      klv[j] = klPol(x1.first,y1);  // calls d_store.rlock();
       d_store.unlock();     // since result was converted to KLPol
-      klv[j].safeAdd(klPol(x1.second,y1));  // klPol calls d_store.lock();
+      klv[j].safeAdd(klPol(x1.second,y1));  // klPol calls d_store.rlock();
       d_store.unlock();
-      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.lock();
+      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.rlock();
       d_store.unlock();
       try {
-	klv[j].safeSubtract(klPol(x,y1));  // klPol calls d_store.lock();
+	klv[j].safeSubtract(klPol(x,y1));  // klPol calls d_store.rlock();
 	d_store.unlock();
       }
       catch (error::NumericUnderflow& e){
@@ -1902,9 +1902,9 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     case DescentStatus::RealTypeII: {
       BlockElt x1 = inverseCayley(s,x).first;
       // P_{x_1,y_1}+qP_{x,y1}-P_{s.x,y1}
-      klv[j] = klPol(x1,y1);  // calls d_store.lock();
+      klv[j] = klPol(x1,y1);  // calls d_store.rlock();
       d_store.unlock();       // since result was converted to KLPol
-      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.lock();
+      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.rlock();
       d_store.unlock();
       try {
 	klv[j].safeSubtract(klPol(cross(s,x),y1)); // klPol calls...
@@ -1924,7 +1924,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   }
 
   // last k-l polynomial is 1
-  d_store.lock();
+  d_store.rlock();
   klv.back() = d_store[d_one];
   d_store.unlock();
 
@@ -1988,9 +1988,9 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
       size_t s = firstAscent(descent(pr[i]),descent(y),rank());
       BlockEltPair x1 = cayley(s,pr[i]);
       KLPol pol = klPol(x1.first,y,new_pol,new_extr,nzpr_end);
-      d_store.unlock(); // since klPol called d_store.lock();
+      d_store.unlock(); // since klPol called d_store.rlock();
       pol.safeAdd(klPol(x1.second,y,new_pol,new_extr,nzpr_end));
-      d_store.unlock(); // since klPol called d_store.lock();
+      d_store.unlock(); // since klPol called d_store.rlock();
 
       if (not pol.isZero()) {
 	*--new_extr = pr[i];
@@ -2170,10 +2170,10 @@ bool Thicket::ascentCompute(BlockElt x, size_t pos)
     return false;
 
   BlockEltPair x1 = d_helper->cayley(s,x);
-  KLPol pol = klPol(x1.first,pos); // calls d_store.lock();
+  KLPol pol = klPol(x1.first,pos); // calls d_store.rlock();
   d_helper->d_store.unlock();     // since result was converted to KLPol
 
-  pol.safeAdd(klPol(x1.second,pos)); //klPol calls d_store.lock();
+  pol.safeAdd(klPol(x1.second,pos)); //klPol calls d_store.rlock();
   d_helper->d_store.unlock();
 
   if (not pol.isZero()) { // write pol
@@ -2208,7 +2208,7 @@ void Thicket::edgeCompute(BlockElt x, size_t pos, const Edge& e)
   KLPol pol = e.recursion[xpos];
 
   try {
-    pol.safeSubtract(klPol(x,e.source)); // klPol calls d_store.lock();
+    pol.safeSubtract(klPol(x,e.source)); // klPol calls d_store.rlock();
     d_helper->d_store.unlock();
   }
   catch (error::NumericUnderflow& err){

@@ -72,7 +72,7 @@ class HashTable
   std::vector<Number> d_hash;
   typename Entry::Pooltype& d_pool;
 
-  // mutex for locking during insertion operations
+  // simple mutex for locking during insertion operations; no rwlock!
   pthread_mutex_t d_mutex;
 
   // interface
@@ -86,11 +86,11 @@ class HashTable
   HashTable(typename Entry::Pooltype& pool); // caller supplies ref to pool
 
   // destructor
-  ~HashTable() {pthread_mutex_destroy(&d_mutex);}
+  ~HashTable() { pthread_mutex_destroy(&d_mutex); }
 
   // manipulators
   Number match(const Entry&);   // lookup entry and return its sequence number
-  void lock() { pthread_mutex_lock(&d_mutex); }
+  void lock()   { pthread_mutex_lock(&d_mutex); }
   void unlock() { pthread_mutex_unlock(&d_mutex); }
 
   // accessors
@@ -136,9 +136,7 @@ class HashTable
       std::swap(d_mod,other.d_mod);
       d_hash.swap(other.d_hash);
       d_pool.swap(other.d_pool);
-      pthread_mutex_t temp = d_mutex;
-      d_mutex = other.d_mutex;
-      other.d_mutex = temp;
+      std::swap(d_mutex,other.d_mutex);
     }
 
 }; // class HashTable

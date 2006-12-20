@@ -156,7 +156,7 @@ class KLPool
 
     size_t savings; // gather statistics about savings by using valuations
 
-    mutable pthread_mutex_t d_mutex;
+    mutable pthread_rwlock_t d_mutex;
 
   public:
     typedef polynomials::PolRef<KLCoeff> const_reference; // used by HashTable
@@ -165,7 +165,7 @@ class KLPool
     KLPool() : pool(),index(1,IndexType(0,0)), // index is always 1 ahead
       last_index_size(0),
       savings(0), d_mutex()
-      {pthread_mutex_init(&d_mutex,NULL);}
+      { pthread_rwlock_init(&d_mutex,NULL); }
 
     ~KLPool(); // may print statistics
 
@@ -187,8 +187,9 @@ class KLPool
 
     // manipulators
     void push_back(const KLPol&);
-    void lock() const   { pthread_mutex_lock(&d_mutex); }
-    void unlock() const { pthread_mutex_unlock(&d_mutex); }
+    void rlock() const   { pthread_rwlock_rdlock(&d_mutex); }
+    void wlock() const   { pthread_rwlock_wrlock(&d_mutex); }
+    void unlock() const  { pthread_rwlock_unlock(&d_mutex); }
     void reserve(size_t);
     void swap(KLPool& other)
       {
@@ -196,9 +197,7 @@ class KLPool
 	index.swap(other.index);
 	std::swap(last_index_size,other.last_index_size);
 	std::swap(savings, other.savings);
-	pthread_mutex_t temp = d_mutex;
-	d_mutex = other.d_mutex;
-	other.d_mutex = temp;
+	std::swap(d_mutex,other.d_mutex);
       }
   }; // class KLPool
 

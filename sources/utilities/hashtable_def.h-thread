@@ -44,14 +44,14 @@ template <class Entry, typename Number>
 template <class Entry, typename Number>
   Number HashTable<Entry,Number>::find (const Entry& x) const
   { Number i;
-    lock();  // lock hash table (but not yet the pool)
+    lock();  // readlock hash table (but not yet the pool)
     size_t h=x.hashCode(d_mod);
 
     // the following loop terminates because empty slots are always present
-    while ((i=d_hash[h])!=empty and (d_pool.lock(),x!=d_pool[i]))
+    while ((i=d_hash[h])!=empty and (d_pool.rlock(),x!=d_pool[i]))
       if (d_pool.unlock(),++h==d_mod) h=0; // move past used slot, wrap around
 
-    if (i==empty)
+    if (i!=empty)
       d_pool.unlock();  // since we exited the loop above with x==d_pool[i]
 
     unlock();
@@ -71,7 +71,7 @@ template <class Entry, typename Number>
     size_t h=x.hashCode(d_mod);
 
     // the following loop terminates because empty slots are always present
-    while ((i=d_hash[h])!=empty and (d_pool.lock(),x!=d_pool[i]))
+    while ((i=d_hash[h])!=empty and (d_pool.rlock(),x!=d_pool[i]))
       if (d_pool.unlock(),++h==d_mod) h=0; // move past used slot, wrap around
 
     if (i!=empty) {
@@ -90,12 +90,16 @@ template <class Entry, typename Number>
        test whether casting to Number and back to size_t changes its value.
     */
 
-    if (size_t(Number(d_pool.size()))!=d_pool.size())
+    d_pool.wlock(); // since we are going to inspect the pool size
+    if (size_t(Number(d_pool.size()))!=d_pool.size()) {
+      d_pool.unlock();
       throw std::runtime_error("Hash table overflow");
+    }
 
     // now test if rehash is necessary
     if (d_pool.size()>=max_fill()) // then we expand d_hash, and rehash
     {
+
       d_mod=d_mod<<1;  // keep it a power of 2
 
       rehash();
@@ -110,13 +114,13 @@ template <class Entry, typename Number>
 
     // at this point x is a new entry that will be stored at d_hash[h]
 
-    // relock the pool, it is OK if it was consulted or even extended since!
-    d_pool.lock();
     Number result=d_pool.size(); // this is the sequence number of x
+
     d_pool.push_back(x); // store x at that position in d_pool
-    d_pool.unlock();
+    d_pool.unlock(); // release write lock on pool
+
     d_hash[h]= result;
-    unlock();
+    unlock(); // release lock on hash table
     return result;
   }
 
