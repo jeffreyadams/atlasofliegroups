@@ -75,7 +75,8 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/io/kgb_io.o \
  $(atlas_sources)/io/wgraph_io.o
 
-cwebx_sources := $(wildcard *.w)
+cwebx_sources := buffer.w lexer.w parsetree.w \
+                 evaluator.w built-in-types.w main.w
 
 c++files      := $(cwebx_sources:%.w=%.cpp)
 c++objects    := $(cwebx_sources:%.w=%.o)
@@ -101,7 +102,11 @@ rlincludes ?= -lreadline -lcurses
 
 .PHONY: all mostlyclean clean headers dvifiles compilable
 
-all:	headers dvifiles realex KLread
+all:	headers dvifiles realex
+all:	KLread matrix-merge matrix-merge.dvi
+
+mm-objects := ../utilities/bitmap.o ../utilities/constants.o \
+              ../utilities/bits.o ../utilities/arithmetic.o ../error/error.o
 
 # 'make clean' removes all derived files
 clean:  mostlyclean
@@ -177,4 +182,7 @@ built-in-types.o built-in-types.tex: evaluator.h
 main.o main.tex: $(headers)
 
 KLread: KLread.cpp
-	$(CXX) $(CXXFLAGS) -o KLread KLread.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $<
+
+matrix-merge: matrix-merge.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $< $(mm-objects)
