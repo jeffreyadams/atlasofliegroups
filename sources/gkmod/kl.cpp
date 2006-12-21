@@ -772,7 +772,7 @@ void KLContext::writeKLRow (BlockElt y, std::ostream& out) const
   put_int(prims.capacity(),out);
 
   // now write the bitmap as a sequence of unsigned int values
-  for (size_t i=0; i<prims.size(); i+=32)
+  for (size_t i=0; i<prims.capacity(); i+=32)
     put_int(prims.range(i,32),out);
 
  // the list of indices of nonzero KL polynomials in row y
@@ -783,7 +783,7 @@ void KLContext::writeKLRow (BlockElt y, std::ostream& out) const
     put_int(row[i],out);
 
   // and signal if there was unsufficient space to write the row
-  if (out.bad()) throw error::OutputError();
+  if (not out.good()) throw error::OutputError();
 }
 
 

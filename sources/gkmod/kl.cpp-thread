@@ -798,7 +798,7 @@ void KLContext::writeKLRow (BlockElt y, std::ostream& out) const
   put_int(prims.capacity(),out);
 
   // now write the bitmap as a sequence of unsigned int values
-  for (size_t i=0; i<prims.size(); i+=32)
+  for (size_t i=0; i<prims.capacity(); i+=32)
     put_int(prims.range(i,32),out);
 
  // the list of indices of nonzero KL polynomials in row y
@@ -809,7 +809,7 @@ void KLContext::writeKLRow (BlockElt y, std::ostream& out) const
     put_int(row[i],out);
 
   // and signal if there was unsufficient space to write the row
-  if (out.bad()) throw error::OutputError();
+  if (not out.good()) throw error::OutputError();
 }
 
 
@@ -961,7 +961,7 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
  */
 void KLPool::push_back(const KLPol& p)
   {
-     unsigned int degree=p.degree(),valuation=0;
+    unsigned int degree=p.degree(),valuation=0;
 
     if (p.isZero()) // handle Zero specially
       {
@@ -2003,12 +2003,11 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
   d_prim[y].reserve(d_prim[y].size()+(nzpr.end()-new_extr));
   d_kl[y].reserve(d_kl[y].size()+(klr.end()-new_pol)); // ensure tight fit
 
-  prim_size        += nzpr.end()-new_extr;
-  nr_of_prim_nulls += new_extr  -nzpr.begin(); // measure unused space
-
   copy(new_extr,nzpr.end(),back_inserter(d_prim[y]));
   copy(new_pol,klr.end(),back_inserter(d_kl[y]));
 
+  prim_size        += nzpr.end()-new_extr;
+  nr_of_prim_nulls += new_extr  -nzpr.begin(); // measure unused space
 }
 
   }
@@ -2296,11 +2295,11 @@ void Thicket::fill()
     d_helper->d_kl[y].reserve(d_helper->d_kl[y].size()+    // ensure tight fit
 			      (d_klr[j].end()-d_firstKL[j]));
 
-    d_helper->prim_size        += d_prim[j].end()-d_firstPrim[j];
-    d_helper->nr_of_prim_nulls += d_firstPrim[j]-d_prim[j].begin();
-
     copy(d_firstPrim[j],d_prim[j].end(),back_inserter(d_helper->d_prim[y]));
     copy(d_firstKL[j],d_klr[j].end(),back_inserter(d_helper->d_kl[y]));
+
+    d_helper->prim_size        += d_prim[j].end()-d_firstPrim[j];
+    d_helper->nr_of_prim_nulls += d_firstPrim[j]-d_prim[j].begin();
   }
 
   return;
