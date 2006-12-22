@@ -103,7 +103,7 @@ rlincludes ?= -lreadline -lcurses
 .PHONY: all mostlyclean clean headers dvifiles compilable
 
 all:	headers dvifiles realex
-all:	KLread matrix-merge matrix-merge.dvi
+all:	KLread matrix-merge matrix-merge.dvi coef-merge coef-merge.dvi
 
 mm-objects := ../utilities/bitmap.o ../utilities/constants.o \
               ../utilities/bits.o ../utilities/arithmetic.o ../error/error.o
@@ -186,3 +186,6 @@ KLread: KLread.cpp
 
 matrix-merge: matrix-merge.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $< $(mm-objects)
+
+coef-merge: coef-merge.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $<

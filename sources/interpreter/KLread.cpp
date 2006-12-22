@@ -2,6 +2,15 @@
 #include <fstream>
 #include <iostream>
 
+const std::ios_base::openmode binary_out=
+			    std::ios_base::out
+			  | std::ios_base::trunc
+			  | std::ios_base::binary;
+
+const std::ios_base::openmode binary_in=
+			    std::ios_base::in
+			  | std::ios_base::binary;
+
 size_t read_bytes(unsigned int n, std::istream& in)
 {
   if (n==0) return 0;
@@ -15,13 +24,13 @@ size_t read_bytes(unsigned int n, std::istream& in)
 int main(int argc,char** argv)
 {
   std::ifstream in_file;
-  if (argc==2) in_file.open(argv[1]);
+  if (argc==2) in_file.open(argv[1],binary_in);
   else
     {
       std::string file_name;
       std::cout << "File name: " ;
       std::cin >> file_name;
-      in_file.open(file_name.c_str());
+      in_file.open(file_name.c_str(),binary_in);
     }
   if (not in_file.is_open())
     { std::cerr << "Open failed"; exit(1); }
@@ -29,13 +38,17 @@ int main(int argc,char** argv)
   size_t n_polynomials=read_bytes(4,in_file);
 
   std::streamoff index_begin=in_file.tellg();
-  in_file.seekg(5*n_polynomials,std::ios_base::cur);
+  read_bytes(10,in_file); // skip initial 2 indices
+  unsigned int coefficient_size=read_bytes(5,in_file); // size of One
+  std::cout << "Coefficient size " << coefficient_size << ".\n";
 
-  size_t n_coefficients =read_bytes(5,in_file);
+  in_file.seekg(index_begin+5*n_polynomials,std::ios_base::beg);
+  size_t n_coefficients =read_bytes(5,in_file)/coefficient_size;
   std::streamoff coefficients_begin=in_file.tellg();
 
   std::cout << n_polynomials << " polynomials, "
 	    << n_coefficients << " coefficients.\n";
+
 
   while (true)
     {
@@ -57,17 +70,19 @@ int main(int argc,char** argv)
 		    << ".\n";
 	  continue;
 	}
-      char* coefficients = new char[next_index-index];
+      unsigned long* coefficients = new unsigned long[next_index-index];
 
       in_file.seekg(coefficients_begin+index,std::ios_base::beg);
-      in_file.read(coefficients, next_index-index);
+      for (unsigned int i=0; i<next_index-index; ++i)
+	coefficients[i]=read_bytes(coefficient_size,in_file);
+
       if (not in_file.good())
 	{
 	  std::cout << "Input error reading coefficients.\n";
 	  continue;
 	}
       for (size_t i=0; i<next_index-index; ++i)
-	std::cout << (int)coefficients[i] << "X^" << i
+	std::cout << coefficients[i] << "X^" << i
 		  << (i+1<next_index-index ? " + " : ".\n");
 
       delete[] coefficients;

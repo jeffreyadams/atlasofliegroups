@@ -9,6 +9,7 @@
 #include  "../utilities/arithmetic.h"
 #include  <iomanip>
 
+
 template<unsigned int n>
   class tuple_entry
   { unsigned int comp[n];
@@ -30,6 +31,15 @@ template<unsigned int n>
   
     unsigned int operator[] (unsigned int i) const { return comp[i]; }
   };
+
+const std::ios_base::openmode binary_out=
+			    std::ios_base::out
+			  | std::ios_base::trunc
+			  | std::ios_base::binary;
+
+const std::ios_base::openmode binary_in=
+			    std::ios_base::in
+			  | std::ios_base::binary;
 
 template<unsigned int n>
   size_t tuple_entry<n>::hashCode(size_t modulus) const
@@ -111,7 +121,7 @@ void do_work(std::string name_base, std::vector<unsigned int>& modulus)
     for (unsigned int i=0; i<n; ++i)
     { std::ostringstream name;
       name << name_base << "-mod" << modulus[i];
-      in_file[i]=new std::ifstream(name.str().c_str());
+      in_file[i]=new std::ifstream(name.str().c_str(),binary_in);
       if (in_file[i]->is_open())
         in_stream[i]=in_file[i]; // get stream underlying file stream
       else
@@ -127,7 +137,7 @@ void do_work(std::string name_base, std::vector<unsigned int>& modulus)
   
     std::ostringstream name;
     name << name_base << "-mod" << out_modulus;
-    std::ofstream out_file(name.str().c_str());
+    std::ofstream out_file(name.str().c_str(),binary_out);
     if (out_file.is_open())
       std::cout << "Output to file: " << name.str() << '\n';
     else
@@ -160,7 +170,7 @@ void do_work(std::string name_base, std::vector<unsigned int>& modulus)
   for (unsigned int i=0; i<n; ++i)
   { std::ostringstream name;
     name << name_base << "-renumbering-mod" << modulus[i];
-    std::ofstream out_file(name.str().c_str());
+    std::ofstream out_file(name.str().c_str(),binary_out);
     if (out_file.is_open())
       std::cout << "Renumbering output to file: " << name.str() << '\n';
     else
@@ -219,4 +229,5 @@ int main(int argc,char** argv)
 		       << " moduli, sorry.\n";
   }
 }
+
 

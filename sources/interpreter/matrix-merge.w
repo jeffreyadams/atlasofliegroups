@@ -45,6 +45,12 @@ matrix files in the canonical order, and for each tuple of polynomial numbers
 determine if it has occurred before, if so attribute to it the sequence number
 previously associated to that tuple, or else attribute a new sequence number.
 
+@c
+@< Type definitions @>
+@< Constant definitions @>
+@< Function definitions @>
+@< Main function @>
+
 @* A simple template class for tuple entries.
 %
 We shall need to store tuples of polynomial numbers for different moduli in a
@@ -57,7 +63,7 @@ hash table, we just define the members necessary for that.
 @h <vector>
 @h "../utilities/hashtable.h"
 
-@c
+@< Type definitions @>=
 template<unsigned int n>
   class tuple_entry
   { unsigned int comp[n];
@@ -89,7 +95,7 @@ multiplicative factors to the components. We shall add up shifted instances of
 the components, the last one being unshifted and each previous component being
 shifted to bits more than the previous one.
 
-@c
+@< Function definitions @>=
 template<unsigned int n>
   size_t tuple_entry<n>::hashCode(size_t modulus) const
   { size_t h=0;
@@ -108,7 +114,7 @@ the file for the combined modulus.
 @h <iostream>
 @h <stdexcept>
 
-@c
+@< Function definitions @>=
 @< Auxiliary functions @>
 template<unsigned int n>
   void combine_rows
@@ -214,7 +220,7 @@ on~|n|.
 @h <string>
 @h <fstream>
 @h <sstream>
-@c
+@< Function definitions @>=
 template<unsigned int n>
 void do_work(std::string name_base, std::vector<unsigned int>& modulus)
 { @< Open input and output files @>
@@ -236,6 +242,18 @@ void do_work(std::string name_base, std::vector<unsigned int>& modulus)
   @< Write files recording the renumbering done @>
 }
 
+@ For opening files in binary modes the following constants are useful.
+@s openmode int
+@< Constant definitions @>=
+const std::ios_base::openmode binary_out=
+			    std::ios_base::out
+			  | std::ios_base::trunc
+			  | std::ios_base::binary;
+
+const std::ios_base::openmode binary_in=
+			    std::ios_base::in
+			  | std::ios_base::binary;
+
 @ Opening files is easy and a bit repetitive. For input files we need pointers
 in order to store them in a vector.
 
@@ -245,7 +263,7 @@ std::vector<std::ifstream*>in_file(n,NULL);
   for (unsigned int i=0; i<n; ++i)
   { std::ostringstream name;
     name << name_base << "-mod" << modulus[i];
-    in_file[i]=new std::ifstream(name.str().c_str());
+    in_file[i]=new std::ifstream(name.str().c_str(),binary_in);
     if (in_file[i]->is_open())
       in_stream[i]=in_file[i]; // get stream underlying file stream
     else
@@ -260,7 +278,7 @@ std::vector<std::ifstream*>in_file(n,NULL);
 @)
   std::ostringstream name;
   name << name_base << "-mod" << out_modulus;
-  std::ofstream out_file(name.str().c_str());
+  std::ofstream out_file(name.str().c_str(),binary_out);
   if (out_file.is_open())
     std::cout << "Output to file: " << name.str() << '\n';
   else
@@ -291,7 +309,7 @@ out_modulus= atlas::arithmetic::lcm(out_modulus, modulus[i]);
 for (unsigned int i=0; i<n; ++i)
 { std::ostringstream name;
   name << name_base << "-renumbering-mod" << modulus[i];
-  std::ofstream out_file(name.str().c_str());
+  std::ofstream out_file(name.str().c_str(),binary_out);
   if (out_file.is_open())
     std::cout << "Renumbering output to file: " << name.str() << '\n';
   else
@@ -304,7 +322,7 @@ for (unsigned int i=0; i<n; ++i)
 }
 
 @ Here is the main routine.
-@c
+@< Main function @>=
 int main(int argc,char** argv)
 { atlas::constants::initConstants(); // don't forget!
 
