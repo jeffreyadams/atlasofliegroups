@@ -236,11 +236,11 @@ class BitMap::iterator { // is really a const_iterator
 
 // accessors
   bool operator== (const iterator& i) const {
-    return d_bitAddress == i.d_bitAddress;
+    return d_bitAddress == i.d_bitAddress; // note that d_chunk is ignored!
   }
 
   bool operator!= (const iterator& i) const {
-    return d_bitAddress != i.d_bitAddress;
+    return d_bitAddress != i.d_bitAddress; // note that d_chunk is ignored!
   }
 
   bool operator() () const {

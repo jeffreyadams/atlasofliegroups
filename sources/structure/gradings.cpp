@@ -6,7 +6,7 @@
   This is gradings.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -39,13 +39,13 @@ namespace {
   // local function declarations
 
   void noncompactEquations(LongComponentList&, const WeightList&);
-  void compactEquations(LongComponentList&, const RootList&, const RootList&, 
+  void compactEquations(LongComponentList&, const RootList&, const RootList&,
 			const RootDatum&);
   void toGrading(Grading&, const LongComponent&);
 
   // local class declarations
 
-  class BitCount 
+  class BitCount
     :public std::unary_function<unsigned long, unsigned long> {
 
   public:
@@ -151,7 +151,7 @@ void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
 
 }
 
-void gradingType(rootdata::RootList& gt, const Grading& g, 
+void gradingType(rootdata::RootList& gt, const Grading& g,
 		 const rootdata::RootDatum& rd)
 
 /*!
@@ -166,8 +166,6 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
 {
   using namespace lattice;
   using namespace bitmap;
-
-  typedef BitMap::iterator BI;
 
   // need to have roots in root basis
 
@@ -222,7 +220,7 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
   // correct gt to be made of strongly orthogonal roots
 
   for (unsigned long i = 1; i < gt.size(); ++i)
-    for (unsigned long j = 0; j < i; ++j) 
+    for (unsigned long j = 0; j < i; ++j)
       if (sumIsRoot(rd.root(gt[i]),rd.root(gt[j]),rd)) {
 	// replace gt[i] and gt[j] by their sum and difference
 	// note that they generate a little B2 system
@@ -238,7 +236,7 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
   return;
 }
 
-void compactRoots(rootdata::RootList& cr, const Grading& g, 
+void compactRoots(rootdata::RootList& cr, const Grading& g,
 		  const rootdata::RootDatum& rd)
 
 /*!
@@ -246,7 +244,7 @@ void compactRoots(rootdata::RootList& cr, const Grading& g,
   the grading g.
 */
 
-{  
+{
   using namespace lattice;
 
   // need to have roots in root basis
@@ -314,10 +312,10 @@ void makeGradings(GradingList& gl, const rootdata::RootDatum& rd)
   return;
 }
 
-void noncompactRoots(rootdata::RootList& ncr, const Grading& g, 
+void noncompactRoots(rootdata::RootList& ncr, const Grading& g,
 		     const rootdata::RootDatum& rd)
 
-{  
+{
   using namespace lattice;
 
   // need to have roots in root basis
@@ -478,14 +476,14 @@ void noncompactEquations(LongComponentList& eqn, const WeightList& nc)
   return;
 }
 
-void compactEquations(LongComponentList& eqn, const RootList& o, 
+void compactEquations(LongComponentList& eqn, const RootList& o,
 		      const RootList& rs, const RootDatum& rd)
 
 /*!
   In this function we assume that o is an orthogonal set of roots in the
-  root system rs. Let o_orth be its orthogonal. Then we add to eqn the 
-  equations which express the fact that after descent through o, the roots in 
-  o_orth have to be all compact (i.e., the grading on rs becomes the trivial 
+  root system rs. Let o_orth be its orthogonal. Then we add to eqn the
+  equations which express the fact that after descent through o, the roots in
+  o_orth have to be all compact (i.e., the grading on rs becomes the trivial
   grading on o_orth.)
 
   Recall that when we descend through a short noncompact root a, and if

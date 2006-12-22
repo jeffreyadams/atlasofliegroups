@@ -119,6 +119,9 @@ BitMap::iterator BitMap::end() const
 
 /*!
   Synopsis: returns the past-the-end iterator for the bitmap.
+  Note that only the middle argument (d_capacity) is of importance, since the
+  only thing one can meaningfully do with end() is test for (in)equality.
+  The operator ++ below does not in fact advance to d_chunk==d_map.end() !
 */
 
 {
@@ -200,8 +203,8 @@ bool BitMap::empty() const
 unsigned long BitMap::front() const
 
 /*!
-  Synopsis: returns the address of the first member (set bit) of
-  the bitmap, past-the-end if there is no such.
+  Synopsis: returns the address of the first member (set bit) of the bitmap,
+  or past-the-end indicator d_capacity if there is no such.
 */
 
 {
@@ -561,7 +564,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
 
 /*!
   The incrementation operator; it has to move the bitAddress to the next
-  non-set bit, and move the chunk if necessary.
+  set bit, and move the chunk if necessary.
 */
 
 {
@@ -571,17 +574,20 @@ BitMap::iterator& BitMap::iterator::operator++ ()
   // put in f the remaining part of the chunk, shifted to the right edge;
 
   unsigned long f = *d_chunk >> (d_bitAddress & posBits);
+
+  // doing this separately avoids (undefined) shift over longBits=posBits+1:
   f >>= 1;
 
-  if (f) { // we stay in the same chunk
-    d_bitAddress += firstBit(f)+1;
+  if (f!=0) { // we stay in the same chunk
+    d_bitAddress += firstBit(f)+1; // +1 to account for the f>>=1
     return *this;
   }
 
-  d_bitAddress &= baseBits;  // remove bit-position part
+  // now we must advance d_chunk
+  d_bitAddress &= baseBits;  // remove bit-position within d_chunk
 
-  if ((d_capacity - d_bitAddress) <= longBits) { // we have reached the end
-    d_bitAddress = d_capacity;
+  if ((d_capacity - d_bitAddress) <= longBits) { // we were in the last chunk
+    d_bitAddress = d_capacity; // so now we we are out-of-bounds
     return *this;
   }
 
@@ -591,7 +597,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
   ++d_chunk;
 
   for(; (d_capacity - d_bitAddress) > longBits; ++d_chunk) {
-    if (*d_chunk) { // first bit is found
+    if (*d_chunk!=0) { // first bit is found
       d_bitAddress += firstBit(*d_chunk);
       return *this;
     }
@@ -601,7 +607,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
 
   // when we reach this point, we have reached the last chunk
 
-  if (*d_chunk)
+  if (*d_chunk!=0)
     d_bitAddress += firstBit(*d_chunk);
   else // past-the-end
     d_bitAddress = d_capacity;

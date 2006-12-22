@@ -18,7 +18,7 @@
 
 #include <iostream>
 
-/******** function declarations **********************************************/
+/******** class definition  **********************************************/
 
 namespace atlas {
 
@@ -27,9 +27,6 @@ namespace arithmetic {
   class modular_int
     { static unsigned int modulus;
       unsigned char d_val; // value, a remainder mod modulus
-
-      struct raw_tag {};
-      modular_int(unsigned char c,raw_tag) : d_val(c) {} // bypass reduction
 
     public:
       static void set_modulus(unsigned int n) { modulus=n; }
@@ -55,8 +52,6 @@ namespace arithmetic {
       bool operator==(modular_int b) const { return d_val==b.d_val; }
       bool operator!=(modular_int b) const { return d_val!=b.d_val; }
 
-      static modular_int raw_val (unsigned char c)
-	{ return modular_int(c,raw_tag()); }
       operator unsigned char () const { return d_val; }
       unsigned int unsigned_value() const { return d_val; }
     };
