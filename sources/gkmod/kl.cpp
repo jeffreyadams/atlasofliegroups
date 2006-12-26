@@ -736,12 +736,16 @@ bitmap::BitMap KLContext::primMap (BlockElt y) const
  // the list of primitive elements with nonzero polynomials at y
   const klsupport::PrimitiveRow& row=d_prim[y];
 
-  // now traverse d_prim, and set bits for its elements
-  for (size_t i=0; i<row.size(); ++i)
-    {
-      assert(b.isMember(row[i])); // all x's in row should be primitive
-      result.insert(b.position(row[i]));
-    }
+  // traverse b, and for its elements that occur in row[i], set bits in result
+
+  size_t position=0; // position among set bits in b (avoids using b.position)
+  size_t j=0; // index into row;
+  for (bitmap::BitMap::iterator i=b.begin(); i(); ++position,++i)
+    if (*i==row[j]) // look if i points to current element of row
+      {
+	result.insert(position); ++j; // record position and advance in row
+	if (j==row.size()) break; // stop when row is exhausted
+      }
 
   return result;
 }
