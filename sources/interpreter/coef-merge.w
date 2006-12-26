@@ -194,7 +194,7 @@ class modulus_info
   ulong nr_coefficients;
   ulong coefficient_size; // 1 for original files, but may be more
   std::vector<unsigned int> renumber;
-  std::ifstream* coefficient_file; // owned file pointer
+  std::ifstream& coefficient_file; // owned file reference
 @)
 public:
   modulus_info(ulong mod, std::ifstream* ren_file, std::ifstream* coef_file);
@@ -216,45 +216,50 @@ remainders for |modulus|.
 @< Function definitions @>=
 modulus_info::modulus_info
   (ulong mod, std::ifstream* ren_file, std::ifstream* coef_file)
-  : modulus(mod), coefficient_size(1), coefficient_file(coef_file)
-{ coefficient_file->seekg(0,std::ios_base::beg); // begin at the beginning
-  nr_polynomials=read_bytes(4,*coefficient_file);
-  index_begin=coefficient_file->tellg();
-  coefficient_file->seekg(5*nr_polynomials,std::ios_base::cur);
-  nr_coefficients =read_bytes(5,*coefficient_file);
-  coefficients_begin=coefficient_file->tellg();
+  : modulus(mod), coefficient_size(1), coefficient_file(*coef_file)
+{ coefficient_file.seekg(0,std::ios_base::beg); // begin at the beginning
+  nr_polynomials=read_bytes(4,coefficient_file);
+  index_begin=coefficient_file.tellg();
+  coefficient_file.seekg(5*nr_polynomials,std::ios_base::cur);
+  nr_coefficients =read_bytes(5,coefficient_file);
+  coefficients_begin=coefficient_file.tellg();
 
   --mod; // make largest remainder
-  while ((mod>>=8) != 0) ++coefficient_size;
+  while ((mod>>=8) != 0)
+    ++coefficient_size; // compute number of bytes required
   read_renumbering_table(*ren_file,renumber);
   delete ren_file; // close file when table is read in
 }
 
 @ The destructor for |modulus_info| should morally do |delete
-coefficient_file;|, since nobody else is holding a pointer to that
-|std::ifstream| object. However, doing so would crash the program: the
-|modulus_info| objects are held in a vector, and they cannot be constructed
-directly into their final destination; depending on the implementation of
-|std::vector| they are either copy-constructed or assigned into that vector,
-so the destructor of the temporary original value would already destroy the
-pointer. Therefore our destructor is a no-op. Now the file objects never get
-destructed, and this could be remedied by having them owned by some global
-vector of pointers instead, but since the program will terminate immediately
-after our |modulus_info| objects disappear, and this closes the open output
-files, we think it is not worth the hassle to do so.
+&coefficient_file;|, since nobody else is holding a pointer to that
+|std::ifstream| object. This causes a problem when we want to make the type
+|std::vector<modulus_info>|, since in that case the |modulus_info| objects,
+even if written as the argument to |push_back|, are not constructed directly
+into their final destination, but rather copy-constructed or assigned there
+(we did not investigate exactly how |push_back| is implemented). The
+consequence is that the the destructor of the temporary original value is
+called, and would already destroy the pointer (and close the associated file)
+before the copy even gets to use it, and the destructor of the copy would
+cause the program to crash. We originally solved the problem by not deleting
+the pointer at all, but there is a better solution, namely to not form
+|std::vector<modulus_info>| but rather |std::vector<modulus_info*>|, and pack
+it into an object whose destructor called delete for the contained pointers;
+then the pointed to |modulus_info| objects are never copied or assigned, and
+their destructor can safely call |delete|, as we wanted to do initially.
 
 @< Function definitions @>=
-modulus_info::~modulus_info() @+{}
+modulus_info::~modulus_info() @+{ delete &coefficient_file;}
 
 @ To get the length of a polynomial, we look up its renumbering to get the
 proper index, then compare the index found with the next one.
 
 @< Function definitions @>=
 ulong modulus_info::length (ulong i) const
-{ coefficient_file->seekg(index_begin+5*renumber[i],std::ios_base::beg);
+{ coefficient_file.seekg(index_begin+5*renumber[i],std::ios_base::beg);
     // locate index in file
-  ulong index=read_bytes(5,*coefficient_file);
-  ulong next_index=read_bytes(5,*coefficient_file);
+  ulong index=read_bytes(5,coefficient_file);
+  ulong next_index=read_bytes(5,coefficient_file);
   return (next_index-index)/coefficient_size;
 }
 
@@ -264,14 +269,14 @@ blocks of |coefficient_size| bytes.
 
 @< Function definitions @>=
 std::vector<ulong> modulus_info::coefficients (ulong i) const
-{ coefficient_file->seekg(index_begin+5*renumber[i],std::ios_base::beg);
-  ulong index=read_bytes(5,*coefficient_file);
-  ulong next_index=read_bytes(5,*coefficient_file);
+{ coefficient_file.seekg(index_begin+5*renumber[i],std::ios_base::beg);
+  ulong index=read_bytes(5,coefficient_file);
+  ulong next_index=read_bytes(5,coefficient_file);
 @)
-  coefficient_file->seekg(coefficients_begin+index,std::ios_base::beg);
+  coefficient_file.seekg(coefficients_begin+index,std::ios_base::beg);
   std::vector<ulong> result ((next_index-index)/coefficient_size);
   for (ulong i=0; i<result.size(); ++i)
-    result[i]=read_bytes(coefficient_size,*coefficient_file);
+    result[i]=read_bytes(coefficient_size,coefficient_file);
   return result;
 }
 
@@ -288,16 +293,16 @@ those degrees.
 @< Function definitions @>=
 ulong write_indices
  (ulong coefficient_size,
-  const std::vector<modulus_info>& mod_info,
+  const std::vector<modulus_info*>& mod_info,
   std::ostream& out)
 @/// return value is size of (yet unwritten) coefficient part of output file
-{ ulong nr_pol=mod_info[0].renumber_vector().size();
+{ ulong nr_pol=mod_info[0]->renumber_vector().size();
    // number of new polynomials
   write_bytes(nr_pol,4,out);
   for (ulong j=1; j<mod_info.size(); ++j)
-    if (mod_info[j].renumber_vector().size()!=nr_pol)
+    if (mod_info[j]->renumber_vector().size()!=nr_pol)
     { std::cerr << "Conflicting numbers of polynomials in renumbering files: "
-	@|      << nr_pol << "!=" << mod_info[j].renumber_vector().size()
+	@|      << nr_pol << "!=" << mod_info[j]->renumber_vector().size()
 	@|	<< " (modulus nrs O, " << j << ").\n";
       exit(1);
     }
@@ -306,7 +311,7 @@ ulong write_indices
   for (ulong i=0; i<nr_pol; ++i)
   { ulong len=0; // maximum of degree+1 of polynomials selected
     for (ulong j=0; j<mod_info.size(); ++j)
-    { ulong new_len = mod_info[j].length(i);
+    { ulong new_len = mod_info[j]->length(i);
       if (new_len>len) len=new_len;
     }
     write_bytes(index,5,out); // write index for polynomial
@@ -323,17 +328,17 @@ is where the application of modular lifting procedure actually takes place.
 @< Function definitions @>=
 ulong write_coefficients
  (ulong coefficient_size,
-  const std::vector<modulus_info>& mod_info,
+  const std::vector<modulus_info*>& mod_info,
   const std::vector<ChineseBox>& box,
   std::ostream& out)
 @/// return value is maximum of lifted coefficients
-{ ulong nr_pol=mod_info[0].renumber_vector().size();
+{ ulong nr_pol=mod_info[0]->renumber_vector().size();
   ulong max=0;
   for (ulong i=0; i<nr_pol; ++i)
   { ulong len=0; // maximum of degree+1 of polynomials selected
     std::vector<std::vector<ulong> > modular_pol;
     for (ulong j=0; j<mod_info.size(); ++j)
-    { std::vector<ulong> p=mod_info[j].coefficients(i);
+    { std::vector<ulong> p=mod_info[j]->coefficients(i);
       modular_pol.push_back(p);
       if (modular_pol.back().size()>len) len=modular_pol.back().size();
     }
@@ -341,7 +346,8 @@ ulong write_coefficients
     // the polynomial modulo the lcm of the moduli
 @)
     for (ulong d=0; d<len; ++d)
-    { ulong c=modular_pol[0][d]; // coefficient for initial modulus
+    { ulong c=d>=modular_pol[0].size() ? 0 : modular_pol[0][d];
+       // coefficient for initial modulus
        try
        { for (ulong j=1; j<mod_info.size(); ++j)
          { ulong new_c= d>=modular_pol[j].size() ? 0 : modular_pol[j][d];
@@ -391,19 +397,24 @@ int main(int argc, char** argv)
   ulong coefficient_size=1, rem=lcm-1; // maximal remainder
   while ((rem>>=8)!=0) ++coefficient_size;
 @)
-  std::vector<modulus_info> mod_info;
+  std::vector<modulus_info*> mod_info;
    // among other things this will hold the input files
   std::ofstream coefficient_file;
-@/@< Open input and output files @>
-
 @)
-  ulong nr_c=write_indices(coefficient_size,mod_info,coefficient_file);
-  std::cout << "Done writing indices, will now write "
-            << nr_c << " coefficient bytes.\n";
-  ulong max_coef=
-     write_coefficients(coefficient_size,mod_info,box,coefficient_file);
-  std::cout << "Done!\nMaximal coefficient found: "
-            << max_coef << ".\n";
+  try
+  { @< Open input and output files @>
+
+    ulong nr_c=write_indices(coefficient_size,mod_info,coefficient_file);
+    std::cout << "Done writing indices, will now write "
+              << nr_c << " coefficient bytes.\n";
+    ulong max_coef=
+       write_coefficients(coefficient_size,mod_info,box,coefficient_file);
+    std::cout << "Done!\nMaximal coefficient found: "
+              << max_coef << ".\n";
+  }
+  catch (...)
+  { for (size_t i=0; i<mod_info.size(); ++i) delete mod_info[i];
+  }
 }
 
 @ When getting moduli, we check that they are indeed numeric and nonzero
@@ -451,7 +462,7 @@ const std::ios_base::openmode binary_in=
     @/{@; std::cerr << "Could not open file '" << name1.str() << "'.\n";
       exit(1);
     }
-    mod_info.push_back(modulus_info(moduli[i],renumber_file,coef_file));
+    mod_info.push_back(new modulus_info(moduli[i],renumber_file,coef_file));
   }
 @)
   std::ostringstream name;
@@ -467,7 +478,7 @@ const std::ios_base::openmode binary_in=
 }
 
 @ It might happen that the output modulus coincides with one of the input
-moduli, for instance if one takes twice the same input modulus. In Such cases
+moduli, for instance if one takes twice the same input modulus. In such cases
 we add a |'+'| to the file name to avoid that opening it will destroy the
 input file.
 
