@@ -576,7 +576,7 @@ KLContext::KLContext(klsupport::KLSupport& kls)
     , d_prim()
     , d_kl()
     , d_mu()
-    , d_store(1,256,2,256) // set dummy store here
+    , d_store(1,256,1,256) // set dummy store here
     , d_zero()
     , d_one()
 { // until fill is called, d_zero and d_one remain undefined
@@ -918,7 +918,7 @@ KLPool::KLPool(size_t nr_pool_blocks, size_t p_block_size,
   index[0].reserve(index_block_size);
   index[0].push_back(IndexType(0,0)); // index is always 1 ahead
   std::cerr << "Pool: "<< nr_pool_blocks << " blocks of " << pool_block_size
-	    << "bytes, index " << nr_index_blocks << " blocks of "
+	    << " bytes, index " << nr_index_blocks << " blocks of "
 	    << index_block_size << " groups.\n";
 }
 
@@ -948,11 +948,9 @@ size_t KLPool::pool_size() const     // number of coefficient bytes;
 size_t KLPool::mem_size() const   // net memory footprint
 { return sizeof(KLPool)
   +pool.capacity()*sizeof(std::vector<KLCoeff>)
-  +(pool.size()-1)*pool_block_size*sizeof(KLCoeff)
-  +pool.back().size()*sizeof(KLCoeff)
+  +pool_size()*sizeof(KLCoeff)
   +index.capacity()*sizeof(std::vector<IndexType>)
-  +(index.size()-1)*index_block_size*sizeof(IndexType)
-  +index.back().size()*sizeof(IndexType);
+  +((index.size()-1)*index_block_size+index.back().size())*sizeof(IndexType);
 }
 size_t KLPool::mem_capacity() const   // gross memory footprint
 { return sizeof(KLPool)
