@@ -64,16 +64,17 @@ int main(int argc,char** argv)
       in_file.seekg(index_begin+5*i,std::ios_base::beg);
       size_t index=read_bytes(5,in_file);
       size_t next_index=read_bytes(5,in_file);
-      if (next_index-index>=33)
+      size_t length=(next_index-index)/coefficient_size;
+      if (length>=33)
 	{
-	  std::cout << "Degree found too large: " << next_index-index-1
+	  std::cout << "Degree found too large: " << length-1
 		    << ".\n";
 	  continue;
 	}
-      unsigned long* coefficients = new unsigned long[next_index-index];
+      unsigned long* coefficients = new unsigned long[length];
 
       in_file.seekg(coefficients_begin+index,std::ios_base::beg);
-      for (unsigned int i=0; i<next_index-index; ++i)
+      for (unsigned int i=0; i<length; ++i)
 	coefficients[i]=read_bytes(coefficient_size,in_file);
 
       if (not in_file.good())
@@ -81,9 +82,9 @@ int main(int argc,char** argv)
 	  std::cout << "Input error reading coefficients.\n";
 	  continue;
 	}
-      for (size_t i=0; i<next_index-index; ++i)
+      for (size_t i=0; i<length; ++i)
 	std::cout << coefficients[i] << "X^" << i
-		  << (i+1<next_index-index ? " + " : ".\n");
+		  << (i+1<length ? " + " : ".\n");
 
       delete[] coefficients;
     }
