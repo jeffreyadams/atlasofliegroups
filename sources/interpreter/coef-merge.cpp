@@ -264,7 +264,7 @@ int main(int argc, char** argv)
   else test();
   // if two names are not given, go into interactive mode
 
-  if (argc<2) { std::cerr<< "Too few moduli"; exit(1); }
+  if (argc<2) { std::cerr<< "Too few moduli.\n"; exit(1); }
   std::vector<ulong> moduli;
   
   while (argc-->0)

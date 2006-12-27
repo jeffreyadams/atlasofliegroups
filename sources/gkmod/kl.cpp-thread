@@ -929,7 +929,7 @@ KLPool::~KLPool()
       std::cerr << "Destructing storage of " << size()
 		<< " polynomials.\n";
       std::cerr << "Stored " << pool_size() << " coefficient bytes,"
-	        " vector capacity " << pool_block_size*pool_size()
+	        " vector capacity " << pool.size()*pool_block_size
 		<< ".\n";
       std::cerr << "Trailing coefficient savings: " << savings << ".\n";
       std::cerr << "Total of bytes used for polynomial storage: "
@@ -1108,6 +1108,8 @@ void KLPool::push_back(const KLPol& p)
 	// first check space
 	if (pool.back().size()+1+degree-valuation>pool.back().capacity())
 	  {
+	    if (pool.size()==pool.capacity())
+	      throw std::runtime_error("pool overflow");
 	    pool.push_back(std::vector<KLCoeff>());
 	    pool.back().reserve(pool_block_size);
 	  }
@@ -1126,6 +1128,8 @@ void KLPool::push_back(const KLPol& p)
 	// check space in block
 	if (index.back().size()==index.back().capacity())
 	  {
+	    if (index.size()==index.capacity())
+	      throw std::runtime_error("pool index overflow");
 	    index.push_back(std::vector<IndexType>());
 	    index.back().reserve(index_block_size);
 	  }
