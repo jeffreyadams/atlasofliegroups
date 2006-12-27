@@ -137,6 +137,12 @@ void do_work(std::string name_base, std::vector<unsigned int>& modulus)
   
     std::ostringstream name;
     name << name_base << "-mod" << out_modulus;
+    
+    { bool write_protect=false;
+      for (ulong i=0; i<n ; ++i)
+        if (out_modulus==modulus[i]) write_protect=true;
+      if (write_protect) name << '+'; // avoid overwriting file for one modulus
+    }
     std::ofstream out_file(name.str().c_str(),binary_out);
     if (out_file.is_open())
       std::cout << "Output to file: " << name.str() << '\n';
@@ -217,9 +223,8 @@ int main(int argc,char** argv)
     }
 
 
-  std::cout << "File name base: " << base << std::endl;
   switch (moduli.size())
-  { case 1: std::cout << "Using just one modulus is silly, sorry.\n"; break;
+  { case 1: do_work<1>(base,moduli); break;
     case 2: do_work<2>(base,moduli); break;
     case 3: do_work<3>(base,moduli); break;
     case 4: do_work<4>(base,moduli); break;

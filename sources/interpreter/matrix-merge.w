@@ -93,7 +93,7 @@ the tuple is first inserted will therefore usually not be many times larger
 than the values of the components, we do not attempt to apply great
 multiplicative factors to the components. We shall add up shifted instances of
 the components, the last one being unshifted and each previous component being
-shifted to bits more than the previous one.
+shifted two bits more than the previous one.
 
 @< Function definitions @>=
 template<unsigned int n>
@@ -239,7 +239,7 @@ void do_work(std::string name_base, std::vector<unsigned int>& modulus)
   for (unsigned int i=0; i<n; ++i) delete in_file[i]; // close files
 @)
   @< Report limits of modular numbers and of generated numbers @>
-  @< Write files recording the renumbering done @>
+  @< Write files recording the renumbering performed @>
 }
 
 @ For opening files in binary modes the following constants are useful.
@@ -278,6 +278,8 @@ std::vector<std::ifstream*>in_file(n,NULL);
 @)
   std::ostringstream name;
   name << name_base << "-mod" << out_modulus;
+  @< Modify |name| if it coincides with that of one of the input files @>
+
   std::ofstream out_file(name.str().c_str(),binary_out);
   if (out_file.is_open())
     std::cout << "Output to file: " << name.str() << '\n';
@@ -292,6 +294,18 @@ std::vector<std::ifstream*>in_file(n,NULL);
 @< Replace |out_modulus| by its least common multiple with |modulus[i]| @>=
 out_modulus= atlas::arithmetic::lcm(out_modulus, modulus[i]);
 
+@ It might happen that the output modulus coincides with one of the input
+moduli, for instance if one takes twice the same input modulus. In such cases
+we add a |'+'| to the file name to avoid that opening it will destroy the
+input file.
+
+@< Modify |name| if it coincides with that of one of the input files @>=
+{ bool write_protect=false;
+  for (ulong i=0; i<n ; ++i)
+    if (out_modulus==modulus[i]) write_protect=true;
+  if (write_protect) name << '+'; // avoid overwriting file for one modulus
+}
+
 @
 @h <iomanip>
 
@@ -305,7 +319,7 @@ out_modulus= atlas::arithmetic::lcm(out_modulus, modulus[i]);
 }
 
 @
-@< Write files recording the renumbering done @>=
+@< Write files recording the renumbering performed @>=
 for (unsigned int i=0; i<n; ++i)
 { std::ostringstream name;
   name << name_base << "-renumbering-mod" << modulus[i];
@@ -357,9 +371,8 @@ int main(int argc,char** argv)
     }
 
 
-  std::cout << "File name base: " << base << std::endl;
   switch (moduli.size())
-  { case 1: std::cout << "Using just one modulus is silly, sorry.\n"; break;
+  { case 1: do_work<1>(base,moduli); break;
     case 2: do_work<2>(base,moduli); break;
     case 3: do_work<3>(base,moduli); break;
     case 4: do_work<4>(base,moduli); break;
