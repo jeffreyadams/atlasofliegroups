@@ -614,7 +614,7 @@ void KLContext::swap(KLContext& other)
   d_kl.swap(other.d_kl);
   d_mu.swap(other.d_mu);
 
-  d_store.swap(other.d_store);
+  d_store.swap(other.d_store);  // this puts the Helper store into base object
   std::swap(d_zero,other.d_zero);
   std::swap(d_one,other.d_one);
 }
@@ -963,11 +963,11 @@ void KLPool::push_back(const KLPol& p)
       }
 
     // now mark end of coefficients, and record valuation
-    if (last_index_size!=group_size -1)
+    if (last_index_size != group_size-1)
       index.back().deg_val[last_index_size++]=packed_byte(degree,valuation);
     else
       {
-	last_index_size=0; // don't forget to start next block at beginning
+	last_index_size=0; // don't forget to start next group at beginning
 	index.push_back(IndexType(pool.size(),valuation));
       }
   }
@@ -1570,10 +1570,12 @@ void Helper::fillMuRow(BlockElt y)
     KLPtr klp = d_kl[y][j];
     if (isZero(klp))
       continue;
-    if (d_store[klp].degree() < d)
+
+    KLPolRef p=d_store[klp];
+    if (p.degree() < d)
       continue;
     // if we get here, we found a mu-coefficient for x
-    d_mu[y].push_back(std::make_pair( x , d_store[klp][d] ));
+    d_mu[y].push_back(std::make_pair( x , p[d] ));
   }
 
   // do cases of length ly-1
@@ -1858,6 +1860,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
       BlockEltPair x1 = cayley(s,pr[i]);
       KLPol pol = klPol(x1.first,y,new_pol,new_extr,nzpr_end);
       pol.safeAdd(klPol(x1.second,y,new_pol,new_extr,nzpr_end));
+
       if (not pol.isZero()) {
 	*--new_extr = pr[i];
 	*--new_pol  = d_hashtable.match(pol);
