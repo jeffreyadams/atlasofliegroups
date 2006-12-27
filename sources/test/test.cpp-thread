@@ -825,10 +825,6 @@ void primkl_f()
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
 
-    unsigned long reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
-    kl::pool_reserve = reserve;
-
     Block block(G_C,G_R.realForm(),drf);
 
     KLSupport kls(block);
@@ -926,10 +922,6 @@ void klbasis_f()
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
 
-    unsigned long reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
-    kl::pool_reserve = reserve;
-
     Block block(G_C,G_R.realForm(),drf);
 
     KLSupport kls(block);
@@ -998,10 +990,6 @@ void kllist_f()
     unsigned long threads;
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
-
-    unsigned long reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
-    kl::pool_reserve = reserve;
 
     Block block(G_C,G_R.realForm(),drf);
 
@@ -1101,10 +1089,6 @@ void klwrite_f()
     unsigned long threads;
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
-
-    unsigned long reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
-    kl::pool_reserve = reserve;
 
     Block block(G_C,G_R.realForm(),drf);
 
@@ -1267,10 +1251,6 @@ void wcells_f()
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
 
-    unsigned long reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
-    kl::pool_reserve = reserve;
-
     Block block(G_C,G_R.realForm(),drf);
 
     KLSupport kls(block);
@@ -1343,10 +1323,6 @@ void wgraph_f()
     unsigned long threads;
     getInteractive(threads,"Number of extra threads: ",1023);
     kl::NThreads = threads;
-
-    unsigned long reserve;
-    getInteractive(reserve,"Slots to reserve in d_store: ",constants::ulongMax);
-    kl::pool_reserve = reserve;
 
     Block block(G_C,G_R.realForm(),drf);
 

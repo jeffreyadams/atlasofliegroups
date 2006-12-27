@@ -415,8 +415,6 @@ simple root s for y.
     /*!
 \brief KL polynomial P_{x,y_pos}, for any y_pos in Thicket.
     */
-
-    // Since this klPol calls another, it too calls d_store.rlock
     KLPolRef klPol(BlockElt x, size_t pos) const {
       return d_helper->klPol(x,d_vertices[pos],d_firstKL[pos],d_firstPrim[pos],
 			     d_prim[pos].end());
@@ -578,7 +576,7 @@ KLContext::KLContext(klsupport::KLSupport& kls)
     , d_prim()
     , d_kl()
     , d_mu()
-    , d_store()
+    , d_store(1,256,2,256) // set dummy store here
     , d_zero()
     , d_one()
 { // until fill is called, d_zero and d_one remain undefined
@@ -602,6 +600,19 @@ KLContext::KLContext(const KLContext& other)
    d_zero(other.d_zero),
    d_one(other.d_one)
 {}
+
+// augmented copy constructor, will be called when constructing Helper
+KLContext::KLContext
+  (const KLContext& other,size_t npb, size_t pbs,size_t nib, size_t ibs)
+  :d_state(other.d_state),
+   d_support(other.d_support),
+   d_prim(other.d_prim),
+   d_kl(other.d_kl),
+   d_mu(other.d_mu),
+   d_store(npb,pbs,nib,ibs), // ignore dummy store, build the real one
+   d_zero(), d_one()         // don't even pretend to use dummy values
+{ // d_zero and d_one will be set soon, once Helper creates the hash table
+}
 
 KLContext& KLContext::operator= (const KLContext& other)
 
@@ -634,7 +645,7 @@ void KLContext::swap(KLContext& other)
   d_kl.swap(other.d_kl);
   d_mu.swap(other.d_mu);
 
-  d_store.swap(other.d_store);
+  d_store.swap(other.d_store);  // this puts the Helper store into base object
   std::swap(d_zero,other.d_zero);
   std::swap(d_one,other.d_one);
 }
@@ -654,9 +665,6 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
   relations. At that point, we look x up in the primitive list for
   y. If it is found, we get a pointer to the result.  If it is not
   found, the polynomial is zero.
-
-  NOTE: since we return a reference to an element stored in d_store, this
-  calls d_store.rlock() in all cases; the caller must unlock soon after!
 */
 
 {
@@ -671,16 +679,13 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
     EI xptr = std::lower_bound(pr.begin(),pr.end(),x);
     if (xptr != pr.end() and *xptr == x) { // result is nonzero
       size_t xpos = xptr - pr.begin();
-      d_store.rlock();
       return d_store[klr[xpos]];
     } else {
-      d_store.rlock();
       return d_store[d_zero];
     }
   }
 
   // if we get here, the primitivization hit a real compact ascent
-  d_store.rlock();
   return d_store[d_zero];
 }
 
@@ -762,12 +767,16 @@ bitmap::BitMap KLContext::primMap (BlockElt y) const
  // the list of primitive elements with nonzero polynomials at y
   const klsupport::PrimitiveRow& row=d_prim[y];
 
-  // now traverse d_prim, and set bits for its elements
-  for (size_t i=0; i<row.size(); ++i)
-    {
-      assert(b.isMember(row[i])); // all x's in row should be primitive
-      result.insert(b.position(row[i]));
-    }
+  // traverse b, and for its elements that occur in row[i], set bits in result
+
+  size_t position=0; // position among set bits in b (avoids using b.position)
+  size_t j=0; // index into row;
+  for (bitmap::BitMap::iterator i=b.begin(); i(); ++position,++i)
+    if (*i==row[j]) // look if i points to current element of row
+      {
+	result.insert(position); ++j; // record position and advance in row
+	if (j==row.size()) break; // stop when row is exhausted
+      }
 
   return result;
 }
@@ -833,7 +842,6 @@ void KLContext::writeKLStore (std::ostream& out) const
   size_t offset=0; // poition of first coefficient written
   for (size_t i=0; i<d_store.size(); ++i)
     {
-      // no need for locking here, since we are called single-threadedly
       KLPolRef p=d_store[i]; // get reference to polynomial
 
       // output 5-byte value of offset
@@ -892,10 +900,68 @@ bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
 
 /* methods of KLPool */
 
-
 // this definition seems safer than (1ul<<int_bits)-1
 const size_t KLPool::low_mask
         =std::numeric_limits<unsigned int>::max();
+
+KLPool::KLPool(size_t nr_pool_blocks, size_t p_block_size,
+	       size_t nr_index_blocks, size_t i_block_size)
+  : pool(), index()
+  , pool_block_size(p_block_size), index_block_size(i_block_size)
+  , last_index_size(0)
+  , savings(0)
+{ pool.reserve(nr_pool_blocks);
+  pool.push_back(std::vector<KLCoeff>());
+  pool[0].reserve(pool_block_size);
+  index.reserve(nr_index_blocks);
+  index.push_back(std::vector<IndexType>());
+  index[0].reserve(index_block_size);
+  index[0].push_back(IndexType(0,0)); // index is always 1 ahead
+  std::cerr << "Pool: "<< nr_pool_blocks << " blocks of " << pool_block_size
+	    << "bytes, index " << nr_index_blocks << " blocks of "
+	    << index_block_size << " groups.\n";
+}
+
+KLPool::~KLPool()
+{
+  if (size()>0) // don't mention destructing empty pool
+    {
+      std::cerr << "Destructing storage of " << size()
+		<< " polynomials.\n";
+      std::cerr << "Stored " << pool_size() << " coefficient bytes,"
+	        " vector capacity " << pool_block_size*pool_size()
+		<< ".\n";
+      std::cerr << "Trailing coefficient savings: " << savings << ".\n";
+      std::cerr << "Total of bytes used for polynomial storage: "
+		<< mem_size() << " (net), "
+		<< mem_capacity() << " (gross).\n";
+    }
+}
+
+
+size_t KLPool::pool_size() const     // number of coefficient bytes;
+{ size_t size=0;
+  for (size_t i=0; i<pool.size(); ++i) size+=pool[i].size();
+  return size;
+}
+
+size_t KLPool::mem_size() const   // net memory footprint
+{ return sizeof(KLPool)
+  +pool.capacity()*sizeof(std::vector<KLCoeff>)
+  +(pool.size()-1)*pool_block_size*sizeof(KLCoeff)
+  +pool.back().size()*sizeof(KLCoeff)
+  +index.capacity()*sizeof(std::vector<IndexType>)
+  +(index.size()-1)*index_block_size*sizeof(IndexType)
+  +index.back().size()*sizeof(IndexType);
+}
+size_t KLPool::mem_capacity() const   // gross memory footprint
+{ return sizeof(KLPool)
+  +pool.capacity()*sizeof(std::vector<KLCoeff>)
+  +pool.size()*pool_block_size*sizeof(KLCoeff)
+  +index.capacity()*sizeof(std::vector<IndexType>)
+  +index.size()*index_block_size*sizeof(IndexType);
+}
+
 
 /* Note: in the code below, the return type KLPool::const_reference is in fact
    KLPolRef, but it is written like this to allow compilation after changing
@@ -907,14 +973,28 @@ const size_t KLPool::low_mask
 
    typedef KLStore::const_reference KLPolRef;
 */
+
+/* A complication caused by the threaded setup is that sometimes a polynomial
+   would be split across different blocks of |pool| without specific action,
+   and this would make the polynomials::PolRef<KLCoeff> value for it invalid.
+   whenever this would happen we shall silently move the first coefficient of
+   the polynomial to the start of the next block. For the operator[] this
+   means that we must take care that while incrementing the base index of the
+   group by the length of preceding polynomials of of the polynomial
+   considered itself, we could step over a block boundary and have to adjust.
+   Since this is a very rare event, we perform one test to see if this
+   correction is necessary at all, and only if this is the case we back up to
+   look more precisely where the adjustment has to be made.
+*/
 KLPool::const_reference KLPool::operator[] (KLIndex i) const
   {
     unsigned int q=i/group_size, r=i%group_size;
-    const IndexType& iq=index[q]; // index structure selected
-
+    const IndexType& iq= index [q/index_block_size] [q%index_block_size];
+     // index structure selected
 
     size_t pi=  // get base for index into pool
       size_t(iq.pool_index_low)+set_high_order(iq.pool_index_high.degree());
+    size_t pi_block=pi/pool_block_size; // block into which pi points
 
     // adjust pool index for sizes of preceeding polynomials in group
     for (unsigned int j=0; j<r; ++j)
@@ -926,22 +1006,68 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
  	unsigned int deg=iq.deg_val[r].degree();
 	unsigned int val=iq.deg_val[r].valuation();
 
+        // now see if we overstepped or will overstep a pool block boundary
+	if (pi+1+deg-val > (pi_block+1)*pool_block_size)
+	  {
+	    /* N.B. if a polynomial happens to fit exactly at end of a block
+	       then the _next_ one is considered split (but advances by 0).
+	       This explains the conditions > instead of >= above and below */
+	    pi= size_t(iq.pool_index_low) // reset to base index
+	       +set_high_order(iq.pool_index_high.degree());
+	    for (unsigned int j=0; j<r; ++j) // redo index adjustment
+	      {
+	        pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
+	        if (pi > (pi_block+1)*pool_block_size) // split was here
+		  pi=++pi_block*pool_block_size    // advance to next block
+		     // but don't forget the length of the "split" polynomial
+		     +(1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
+	      }
+	    if (pi+1+deg-val > (pi_block+1)*pool_block_size) // this one split
+	      pi= ++pi_block*pool_block_size;      // advance to next block
+
+	  }
+
 	// and build the right polynomials::PolRef<KLCoeff> value
-	return const_reference(&pool[pi-val],val,1+deg);
+	return const_reference
+          (&pool[pi_block][pi%pool_block_size-val], val, 1+deg);
       }
     else // this is a bit harder, the degree is implicit, but not needed!
       {
 	// in this case get base for next index into pool
-	size_t next_pi=
-	  size_t(index[q+1].pool_index_low) +
-	  set_high_order(index[q+1].pool_index_high.degree());
+	const IndexType* nip; // next index pointer
+        if ((q+1)%index_block_size!=0)
+          nip= & index[q/index_block_size][(q+1)%index_block_size];
+	else
+          nip= &index[(q+1)/index_block_size][0];
+
+	size_t next_pi=size_t(nip->pool_index_low) +
+	  set_high_order(nip->pool_index_high.degree());
 
 	// get our own valuation
-	unsigned int val=index[q+1].pool_index_high.valuation();
+	unsigned int val=nip->pool_index_high.valuation();
  	// unused: unsigned int deg=(next_pi-pi)+val-1;
 
+        // now see if we overstepped or will overstep a pool block boundary
+	if (next_pi > (pi_block+1)*pool_block_size)
+	  {
+	    pi= size_t(iq.pool_index_low) // reset to base index
+	       +set_high_order(iq.pool_index_high.degree());
+	    for (unsigned int j=0; j<r; ++j) // redo index adjustment
+	      {
+	        pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
+	        if (pi > (pi_block+1)*pool_block_size) // split was here
+		  pi=++pi_block*pool_block_size    // advance to next block
+		     // but don't forget the length of the "split" polynomial
+		     +(1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
+	      }
+	    if (next_pi > (pi_block+1)*pool_block_size) // this one split
+	      pi= ++pi_block*pool_block_size;      // advance to next block
+
+	  }
+
 	// and build the right polynomials::PolRef<KLCoeff> value
-	return const_reference(&pool[pi-val],val,val+next_pi-pi);
+	return const_reference
+          (&pool[pi_block][pi%pool_block_size-val], val, val+next_pi-pi);
       }
   }
 
@@ -980,45 +1106,37 @@ void KLPool::push_back(const KLPol& p)
 
 	savings+=valuation;// keep track of number of null coefficients saved
 
-
 	// now X^valuation divides p, write |1+degree-valuation| coefficients
-	for (size_t i=valuation; i<=p.degree(); ++i) pool.push_back(p[i]);
+	// first check space
+	if (pool.back().size()+1+degree-valuation>pool.back().capacity())
+	  {
+	    pool.push_back(std::vector<KLCoeff>());
+	    pool.back().reserve(pool_block_size);
+	  }
+
+	for (size_t i=valuation; i<=p.degree(); ++i)
+	  pool.back().push_back(p[i]);
       }
 
     // now mark end of coefficients, and record valuation
-    if (last_index_size!=group_size -1)
-      index.back().deg_val[last_index_size++]=packed_byte(degree,valuation);
+    if (last_index_size != group_size-1)
+      index.back().back().deg_val[last_index_size++]
+        =packed_byte(degree,valuation);
     else
       {
-	last_index_size=0; // don't forget to start next block at beginning
-	index.push_back(IndexType(pool.size(),valuation));
+	last_index_size=0; // don't forget to start next group at beginning
+	// check space in block
+	if (index.back().size()==index.back().capacity())
+	  {
+	    index.push_back(std::vector<IndexType>());
+	    index.back().reserve(index_block_size);
+	  }
+
+	// compute end-index of polynomial; not pool_size() which is too small
+	size_t pool_index=(pool.size()-1)*pool_block_size+pool.back().size();
+	index.back().push_back(IndexType(pool_index,valuation));
       }
   }
-
-void KLPool::reserve(size_t N)
-{
-  pool.reserve(20*N);
-  index.reserve(N/16);
-}
-
-    KLPool::~KLPool()
-    {
-      pthread_rwlock_destroy(&d_mutex);
-      if (size()>0) // don't mention destructing empty pool
-	{
-	  std::cerr << "Destructing storage of " << size()
-		    << " polynomials.\n";
-	  std::cerr << "Stored " << pool.size() << " coefficient bytes,"
-	    " vector capacity " << pool.capacity() << ".\n";
-	  std::cerr << "Trailing coefficient savings: " << savings << ".\n";
-	  std::cerr << "Index of " << index.size() << " groups has size "
-		    << index.size()*sizeof(IndexType) << " (net), "
-		    << index.capacity()*sizeof(IndexType) << " (gross).\n";
-	  std::cerr << "Total of bytes used for polynomial storage: "
-		    << mem_size() << " (net), "
-		    << mem_capacity() << " (gross).\n";
-	}
-    }
 
 } // namespace kl
 
@@ -1035,7 +1153,9 @@ namespace kl {
     /* main constructor */
 
 Helper::Helper(const KLContext& kl)
-  : KLContext(kl)
+  : KLContext(kl
+	      ,0x8000ul,0x400000ul // 2^15 blocks of 2^22 coefficients
+	      ,0x8000ul,0x4000ul)  // 2^15 blocks of 2^14 index goups
     , d_hashtable(d_store) // hash table refers to our own d_store
     , prim_size(0), nr_of_prim_nulls(0)
 {
@@ -1174,9 +1294,6 @@ KLPolRef Helper::klPol(BlockElt x, BlockElt y,
   Algorithm: primitivize x w.r.t. the descents in y; if a real compact
   situation is encountered, return zero; otherwise look up the primitive
   x in the extremal range.
-
-  NOTE: since we return a reference to an element stored in d_store, this
-  calls d_store.rlock() in all cases; the caller must unlock soon after!
 */
 
 {
@@ -1185,14 +1302,11 @@ KLPolRef Helper::klPol(BlockElt x, BlockElt y,
   if (d_support->primitivize(xp,descentSet(y))) {
     if (std::binary_search(p_begin,p_end,xp)) { // result is nonzero
       size_t xpos = std::lower_bound(p_begin,p_end,xp) - p_begin;
-      d_store.rlock();
       return d_store[klv[xpos]];
     } else {
-      d_store.rlock();
       return d_store[d_zero];
     }
   } else {
-    d_store.rlock();
     return d_store[d_zero];
   }
 }
@@ -1429,11 +1543,9 @@ void Helper::completePacket(BlockElt y)
 	for (size_t j = 0; j < klv.size(); ++j) {
 	  BlockElt x = e[j];
 	  try {
-	    klv[j].safeSubtract(klPol(x,y1)); // klPol calls d_store.rlock();
-	    d_store.unlock();
+	    klv[j].safeSubtract(klPol(x,y1));
 	  }
 	  catch (error::NumericUnderflow& e){
-	    d_store.unlock();
 	    throw kl_error::KLError(x,y1,__LINE__,
 				    static_cast<const KLContext&>(*this));
 	  }
@@ -1496,9 +1608,6 @@ void Helper::fill()
   d_kl.resize(d_support->size());
   d_mu.resize(d_support->size());
 
-  d_store.reserve(pool_reserve);
-
-
   // fill the lists
   BlockElt y = 0;
   size_t minLength = length(0);
@@ -1510,7 +1619,7 @@ void Helper::fill()
     ++prim_size;
     // the K-L polynomial is 1
     d_kl[y].push_back(d_one);
-     // there are no mu-coefficients
+    // there are no mu-coefficients
   }
 
   // do the other cases
@@ -1682,11 +1791,9 @@ void Helper::fillMuRow(BlockElt y)
     if (isZero(klp))
       continue;
 
-    // no lock is needed here, because fillMuRow is handled single-treaded
     KLPolRef p=d_store[klp];
-    if (p.degree() < d) {
+    if (p.degree() < d)
       continue;
-    }
     // if we get here, we found a mu-coefficient for x
     d_mu[y].push_back(std::make_pair( x , p[d] ));
   }
@@ -1806,14 +1913,12 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
       if (length(x) > l_z)
 	break;
       // subtract x^d.mu.P_{x,z} from klv[j], where d = 1/2(l(y)-l(z))
+      KLPolRef pol = klPol(x,z);
       Degree d = (l_y-l_z)/2;
-      KLPolRef pol = klPol(x,z); // calls d_store.rlock();
       try {
 	klv[j].safeSubtract(pol,d,mu);
-	d_store.unlock();
       }
       catch (error::NumericUnderflow& e){
-	d_store.unlock();
 	throw kl_error::KLError(x,y,__LINE__,
 				static_cast<const KLContext&>(*this));
       }
@@ -1865,35 +1970,27 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     switch (descentValue(s,x)) {
     case DescentStatus::ImaginaryCompact: {
       // (q+1)P_{x,y1}
-      klv[j] = klPol(x,y1); // calls d_store.rlock();
-      d_store.unlock();     // since result was converted to KLPol
+      klv[j] = klPol(x,y1);
       klv[j].safeAdd(klv[j],1);
     }
       break;
     case DescentStatus::ComplexDescent: {
       BlockElt x1 = cross(s,x);
       // P_{x1,y1}+q.P_{x,y1}
-      klv[j] = klPol(x1,y1); // calls d_store.rlock();
-      d_store.unlock();     // since result was converted to KLPol
-      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.rlock();
-      d_store.unlock();
+      klv[j] = klPol(x1,y1);
+      klv[j].safeAdd(klPol(x,y1),1);
     }
       break;
     case DescentStatus::RealTypeI: {
       BlockEltPair x1 = inverseCayley(s,x);
       // P_{x1.first,y1}+P_{x1.second,y1}+(q-1)P_{x,y1}
-      klv[j] = klPol(x1.first,y1);  // calls d_store.rlock();
-      d_store.unlock();     // since result was converted to KLPol
-      klv[j].safeAdd(klPol(x1.second,y1));  // klPol calls d_store.rlock();
-      d_store.unlock();
-      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.rlock();
-      d_store.unlock();
+      klv[j] = klPol(x1.first,y1);
+      klv[j].safeAdd(klPol(x1.second,y1));
+      klv[j].safeAdd(klPol(x,y1),1);
       try {
-	klv[j].safeSubtract(klPol(x,y1));  // klPol calls d_store.rlock();
-	d_store.unlock();
+	klv[j].safeSubtract(klPol(x,y1));
       }
       catch (error::NumericUnderflow& e){
-	d_store.unlock();
 	throw kl_error::KLError(x,y,__LINE__,
 				static_cast<const KLContext&>(*this));
       }
@@ -1902,16 +1999,12 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     case DescentStatus::RealTypeII: {
       BlockElt x1 = inverseCayley(s,x).first;
       // P_{x_1,y_1}+qP_{x,y1}-P_{s.x,y1}
-      klv[j] = klPol(x1,y1);  // calls d_store.rlock();
-      d_store.unlock();       // since result was converted to KLPol
-      klv[j].safeAdd(klPol(x,y1),1);  // klPol calls d_store.rlock();
-      d_store.unlock();
+      klv[j] = klPol(x1,y1);
+      klv[j].safeAdd(klPol(x,y1),1);
       try {
-	klv[j].safeSubtract(klPol(cross(s,x),y1)); // klPol calls...
-	d_store.unlock();
+	klv[j].safeSubtract(klPol(cross(s,x),y1));
       }
       catch (error::NumericUnderflow& e){
-	d_store.unlock();
 	throw kl_error::KLError(x,y,__LINE__,
 				static_cast<const KLContext&>(*this));
       }
@@ -1924,9 +2017,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   }
 
   // last k-l polynomial is 1
-  d_store.rlock();
   klv.back() = d_store[d_one];
-  d_store.unlock();
 
   // do mu-correction
   muCorrection(klv,e,y,s);
@@ -1988,9 +2079,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
       size_t s = firstAscent(descent(pr[i]),descent(y),rank());
       BlockEltPair x1 = cayley(s,pr[i]);
       KLPol pol = klPol(x1.first,y,new_pol,new_extr,nzpr_end);
-      d_store.unlock(); // since klPol called d_store.rlock();
       pol.safeAdd(klPol(x1.second,y,new_pol,new_extr,nzpr_end));
-      d_store.unlock(); // since klPol called d_store.rlock();
 
       if (not pol.isZero()) {
 	*--new_extr = pr[i];
@@ -2169,11 +2258,8 @@ bool Thicket::ascentCompute(BlockElt x, size_t pos)
     return false;
 
   BlockEltPair x1 = d_helper->cayley(s,x);
-  KLPol pol = klPol(x1.first,pos); // calls d_store.rlock();
-  d_helper->d_store.unlock();     // since result was converted to KLPol
-
-  pol.safeAdd(klPol(x1.second,pos)); //klPol calls d_store.rlock();
-  d_helper->d_store.unlock();
+  KLPol pol =klPol(x1.first,pos);
+  pol.safeAdd(klPol(x1.second,pos));
 
   if (not pol.isZero()) { // write pol
     --d_firstKL[pos];
@@ -2207,8 +2293,7 @@ void Thicket::edgeCompute(BlockElt x, size_t pos, const Edge& e)
   KLPol pol = e.recursion[xpos];
 
   try {
-    pol.safeSubtract(klPol(x,e.source)); // klPol calls d_store.rlock();
-    d_helper->d_store.unlock();
+    pol.safeSubtract(klPol(x,e.source));
   }
   catch (error::NumericUnderflow& err){
     throw kl_error::KLError(x,d_vertices[pos],__LINE__,

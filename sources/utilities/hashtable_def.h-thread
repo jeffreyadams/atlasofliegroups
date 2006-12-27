@@ -71,11 +71,10 @@ template <class Entry, typename Number>
     size_t h=x.hashCode(d_mod);
 
     // the following loop terminates because empty slots are always present
-    while ((i=d_hash[h])!=empty and (d_pool.rlock(),x!=d_pool[i]))
-      if (d_pool.unlock(),++h==d_mod) h=0; // move past used slot, wrap around
+    while ((i=d_hash[h])!=empty and x!=d_pool[i])
+      if (++h==d_mod) h=0; // move past used slot, wrap around
 
     if (i!=empty) {
-      d_pool.unlock(); // since we exited the loop above with x==d_pool[i]
       unlock();
       return i; // return sequence number if found
     }
@@ -90,9 +89,7 @@ template <class Entry, typename Number>
        test whether casting to Number and back to size_t changes its value.
     */
 
-    d_pool.wlock(); // since we are going to inspect the pool size
     if (size_t(Number(d_pool.size()))!=d_pool.size()) {
-      d_pool.unlock();
       throw std::runtime_error("Hash table overflow");
     }
 
@@ -117,8 +114,6 @@ template <class Entry, typename Number>
     Number result=d_pool.size(); // this is the sequence number of x
 
     d_pool.push_back(x); // store x at that position in d_pool
-    d_pool.unlock(); // release write lock on pool
-
     d_hash[h]= result;
     unlock(); // release lock on hash table
     return result;
