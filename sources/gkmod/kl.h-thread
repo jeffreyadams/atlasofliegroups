@@ -88,8 +88,9 @@ class KLPool
 
     static const unsigned int deg_limit=32; // (hard) degree limit
     static const unsigned int val_limit=8;  // (soft) valuation limit
-    static const int group_size=16; // number of indices packed in a group
-
+    static const int group_bits=4; // log_2 of indices packed in a group
+    static const int group_size=1 << group_bits; //indices in a group
+    static const int group_mask=group_size - 1; //bit mask for group size
 
 /* The following kludge is necessary to repair the broken operation of bit
    shift operations with shift amount equal to the integer's width. Apparently
@@ -162,7 +163,11 @@ class KLPool
     std::vector<std::vector<KLCoeff> > pool;
     std::vector<std::vector<IndexType> > index;
     size_t pool_block_size;
+    unsigned int pool_block_bits;
+    size_t pool_block_mask;
     size_t index_block_size;
+    unsigned int index_block_bits;
+    size_t index_block_mask;
     unsigned int last_index_size; // nr of bytes of last index struct in use
 
     size_t savings; // gather statistics about savings by using valuations
@@ -171,16 +176,16 @@ class KLPool
     typedef polynomials::PolRef<KLCoeff> const_reference; // used by HashTable
 
     // constructor (defaults give dummy default constructor), and destructor
-    KLPool(size_t nr_pool_blocks, size_t p_block_size,
-	   size_t nr_index_blocks, size_t i_block_size);
+    KLPool(size_t nr_pool_blocks, unsigned p_block_bits,
+	   size_t nr_index_blocks, unsigned i_block_bits);
     ~KLPool(); // deletes pointers in pool and index, may print statistics
 
     // accessors
     const_reference operator[] (KLIndex i) const; // select polynomial by nr
 
     size_t size() const       // number of entries
-      { return group_size*index_block_size*(index.size()-1) // full blocks
-        + group_size*(index.back().size()-1) // full index groups last block
+      { return ((index.size()-1) << (group_bits + index_block_bits)) // full blocks
+        + ((index.back().size()-1) << group_bits) // full index groups last block
         + last_index_size; // part of last index group used
       }
 
@@ -196,7 +201,11 @@ class KLPool
 	pool.swap(other.pool);
 	index.swap(other.index);
 	std::swap(pool_block_size,other.pool_block_size);
+	std::swap(pool_block_bits,other.pool_block_bits);
+	std::swap(pool_block_mask,other.pool_block_mask);
 	std::swap(index_block_size,other.index_block_size);
+	std::swap(index_block_bits,other.index_block_bits);
+	std::swap(index_block_mask,other.index_block_mask);
 	std::swap(last_index_size,other.last_index_size);
 	std::swap(savings, other.savings);
       }
