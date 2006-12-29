@@ -904,10 +904,15 @@ bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
 const size_t KLPool::low_mask
         =std::numeric_limits<unsigned int>::max();
 
-KLPool::KLPool(size_t nr_pool_blocks, size_t p_block_size,
-	       size_t nr_index_blocks, size_t i_block_size)
+KLPool::KLPool(size_t nr_pool_blocks, unsigned p_block_bits,
+	       size_t nr_index_blocks, unsigned i_block_bits)
   : pool(), index()
-  , pool_block_size(p_block_size), index_block_size(i_block_size)
+  , pool_block_size(1 << p_block_bits)
+  , pool_block_bits(p_block_bits)
+  , pool_block_mask(pool_block_size - 1)
+  , index_block_size(1 << i_block_bits)
+  , index_block_bits(i_block_bits)
+  , index_block_mask(index_block_size - 1)
   , last_index_size(0)
   , savings(0)
 { pool.reserve(nr_pool_blocks);
@@ -929,7 +934,7 @@ KLPool::~KLPool()
       std::cerr << "Destructing storage of " << size()
 		<< " polynomials.\n";
       std::cerr << "Stored " << pool_size() << " coefficient bytes,"
-	        " vector capacity " << pool.size()*pool_block_size
+	        " vector capacity " << pool_block_size*pool.size()
 		<< ".\n";
       std::cerr << "Trailing coefficient savings: " << savings << ".\n";
       std::cerr << "Total of bytes used for polynomial storage: "
@@ -986,13 +991,13 @@ size_t KLPool::mem_capacity() const   // gross memory footprint
 */
 KLPool::const_reference KLPool::operator[] (KLIndex i) const
   {
-    unsigned int q=i/group_size, r=i%group_size;
-    const IndexType& iq= index [q/index_block_size] [q%index_block_size];
+    unsigned int q=i >> group_bits, r=i & group_mask;
+    const IndexType& iq= index [q>>index_block_bits] [q&index_block_mask];
      // index structure selected
 
     size_t pi=  // get base for index into pool
       size_t(iq.pool_index_low)+set_high_order(iq.pool_index_high.degree());
-    size_t pi_block=pi/pool_block_size; // block into which pi points
+    size_t pi_block=(pi>>pool_block_bits); // block into which pi points
 
     // adjust pool index for sizes of preceeding polynomials in group
     for (unsigned int j=0; j<r; ++j)
@@ -1005,7 +1010,7 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
 	unsigned int val=iq.deg_val[r].valuation();
 
         // now see if we overstepped or will overstep a pool block boundary
-	if (pi+1+deg-val > (pi_block+1)*pool_block_size)
+	if (pi+1+deg-val > ((pi_block+1)<<pool_block_bits))
 	  {
 	    /* N.B. if a polynomial happens to fit exactly at end of a block
 	       then the _next_ one is considered split (but advances by 0).
@@ -1015,28 +1020,29 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
 	    for (unsigned int j=0; j<r; ++j) // redo index adjustment
 	      {
 	        pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
-	        if (pi > (pi_block+1)*pool_block_size) // split was here
-		  pi=++pi_block*pool_block_size    // advance to next block
+	        if (pi > ((pi_block+1)<<pool_block_bits)) // split was here
+		  pi=((++pi_block)<<pool_block_bits)   // advance to next block
 		     // but don't forget the length of the "split" polynomial
 		     +(1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
 	      }
-	    if (pi+1+deg-val > (pi_block+1)*pool_block_size) // this one split
-	      pi= ++pi_block*pool_block_size;      // advance to next block
+	    if (pi+1+deg-val>((pi_block+1)<<pool_block_bits)) // this one split
+		  //NEED OUTER PARENS in next line
+	      pi= ((++pi_block)<<pool_block_bits);    // advance to next block
 
 	  }
 
 	// and build the right polynomials::PolRef<KLCoeff> value
 	return const_reference
-          (&pool[pi_block][pi%pool_block_size-val], val, 1+deg);
+          (&pool[pi_block][(pi&pool_block_mask)-val], val, 1+deg);
       }
     else // this is a bit harder, the degree is implicit, but not needed!
       {
 	// in this case get base for next index into pool
 	const IndexType* nip; // next index pointer
-        if ((q+1)%index_block_size!=0)
-          nip= & index[q/index_block_size][(q+1)%index_block_size];
+        if (((q+1)&index_block_mask)!=0)
+          nip= & index[q>>index_block_bits][(q+1)&index_block_mask];
 	else
-          nip= &index[(q+1)/index_block_size][0];
+          nip= &index[(q+1)>>index_block_bits][0];
 
 	size_t next_pi=size_t(nip->pool_index_low) +
 	  set_high_order(nip->pool_index_high.degree());
@@ -1046,26 +1052,26 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
  	// unused: unsigned int deg=(next_pi-pi)+val-1;
 
         // now see if we overstepped or will overstep a pool block boundary
-	if (next_pi > (pi_block+1)*pool_block_size)
+	if (next_pi > ((pi_block+1) << pool_block_bits))
 	  {
 	    pi= size_t(iq.pool_index_low) // reset to base index
 	       +set_high_order(iq.pool_index_high.degree());
 	    for (unsigned int j=0; j<r; ++j) // redo index adjustment
 	      {
 	        pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
-	        if (pi > (pi_block+1)*pool_block_size) // split was here
-		  pi=++pi_block*pool_block_size    // advance to next block
+	        if (pi > (pi_block+1)<<pool_block_bits) // split was here
+		  pi=((++pi_block)<<pool_block_bits)  // advance to next block
 		     // but don't forget the length of the "split" polynomial
 		     +(1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
 	      }
-	    if (next_pi > (pi_block+1)*pool_block_size) // this one split
-	      pi= ++pi_block*pool_block_size;      // advance to next block
+	    if (next_pi > (pi_block+1)<<pool_block_bits) // this one split
+	      pi= ((++pi_block)<<pool_block_bits);  // advance to next block
 
 	  }
 
 	// and build the right polynomials::PolRef<KLCoeff> value
 	return const_reference
-          (&pool[pi_block][pi%pool_block_size-val], val, val+next_pi-pi);
+          (&pool[pi_block][(pi&pool_block_mask)-val], val, val+next_pi-pi);
       }
   }
 
@@ -1108,8 +1114,6 @@ void KLPool::push_back(const KLPol& p)
 	// first check space
 	if (pool.back().size()+1+degree-valuation>pool.back().capacity())
 	  {
-	    if (pool.size()==pool.capacity())
-	      throw std::runtime_error("pool overflow");
 	    pool.push_back(std::vector<KLCoeff>());
 	    pool.back().reserve(pool_block_size);
 	  }
@@ -1128,8 +1132,6 @@ void KLPool::push_back(const KLPol& p)
 	// check space in block
 	if (index.back().size()==index.back().capacity())
 	  {
-	    if (index.size()==index.capacity())
-	      throw std::runtime_error("pool index overflow");
 	    index.push_back(std::vector<IndexType>());
 	    index.back().reserve(index_block_size);
 	  }
@@ -1156,8 +1158,8 @@ namespace kl {
 
 Helper::Helper(const KLContext& kl)
   : KLContext(kl
-	      ,0x8000ul,0x400000ul // 2^15 blocks of 2^22 coefficients
-	      ,0x8000ul,0x4000ul)  // 2^15 blocks of 2^14 index goups
+	      ,0x8000ul,22u // 2^15 blocks of 2^22 coefficients
+	      ,0x8000ul,14u)  // 2^15 blocks of 2^14 index groups
     , d_hashtable(d_store) // hash table refers to our own d_store
     , prim_size(0), nr_of_prim_nulls(0)
 {
