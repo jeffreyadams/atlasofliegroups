@@ -48,11 +48,8 @@ template <class Entry, typename Number>
     size_t h=x.hashCode(d_mod);
 
     // the following loop terminates because empty slots are always present
-    while ((i=d_hash[h])!=empty and (d_pool.rlock(),x!=d_pool[i]))
-      if (d_pool.unlock(),++h==d_mod) h=0; // move past used slot, wrap around
-
-    if (i!=empty)
-      d_pool.unlock();  // since we exited the loop above with x==d_pool[i]
+    while ((i=d_hash[h])!=empty and x!=d_pool[i])
+      if (++h==d_mod) h=0; // move past used slot, wrap around
 
     unlock();
     return i; // return either sequence number found, or else empty
@@ -66,7 +63,7 @@ template <class Entry, typename Number>
 template <class Entry, typename Number>
   Number HashTable<Entry,Number>::match (const Entry& x)
   {
-    lock();  // lock hash table (but not yet the pool)
+    lock();  // lock hash table before even using |d_mod| in hash function
     Number i;
     size_t h=x.hashCode(d_mod);
 
