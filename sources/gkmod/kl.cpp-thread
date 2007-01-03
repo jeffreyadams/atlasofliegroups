@@ -1022,7 +1022,8 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
 	    for (unsigned int j=0; j<r; ++j) // redo index adjustment
 	      {
 	        pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
-	        if (pi > (pi_block+1<<pool_block_bits)) // split was here
+	        if (pi > pi_block+1<<pool_block_bits) // split was here
+		  // NEED PARENTHESES IN NEXT LINE!
 		  pi=(++pi_block<<pool_block_bits)    // advance to next block
 		     // but don't forget the length of the "split" polynomial
 		     +(1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
