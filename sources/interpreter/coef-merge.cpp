@@ -1,24 +1,70 @@
 #include  <iostream>
 #include  <vector>
 #include  <fstream>
+#include  <iomanip>
 #include  <sstream>
 
 
 typedef unsigned long int ulong;
 
 class ChineseBox
-{ ulong a,b; // the base moduli
+{ protected:
+  ulong a,b; // the base moduli
   ulong gcd, lcm; // greatest common divisor and least common multiple
   ulong m, mm;
-   // multiples of a the are congruent to |gcd| and |-gcd|, respectively
+   // multiples of |b| congruent to |gcd| and |-gcd|, respectively, modulo~|a|
 
   public:
   ChineseBox(ulong a, ulong b);
+  virtual ~ChineseBox()  {}
 
   // accessors
   ulong get_gcd() const { return gcd; }
   ulong get_lcm() const { return lcm; }
-  ulong lift_remainders(ulong s, ulong t) const;
+  virtual ulong lift_remainders(ulong s, ulong t) const;
+};
+
+class PrimeChineseBox : public ChineseBox
+{ // no additional data
+public: // constructor from basic |ChineseBox|
+  PrimeChineseBox(const ChineseBox& cb) : ChineseBox(cb)
+  { if (gcd!=1)
+    { std::cerr << "Non relatively prime numbers, gcd=" << gcd << ".\n";
+      exit(1); // we should never get here
+    }
+  }
+  virtual ~PrimeChineseBox()  {}
+
+  // redefined accessor
+  virtual ulong lift_remainders(ulong s, ulong t) const;
+};
+
+class TabledChineseBox : public ChineseBox
+{
+protected:
+  std::vector<ulong> m_table;
+  std::vector<ulong>::const_reverse_iterator mm_table;
+public: // constructor from basic |ChineseBox|
+  TabledChineseBox(const ChineseBox& cb);
+  virtual ~TabledChineseBox()  {}  // destroys table
+
+  // redefined accessor
+  virtual ulong lift_remainders(ulong s, ulong t) const;
+};
+
+class PrimeTabledChineseBox : public TabledChineseBox
+{ // no additional data
+public: // constructor from basic |ChineseBox|
+  PrimeTabledChineseBox(const ChineseBox& cb) : TabledChineseBox(cb)
+  { if (gcd!=1)
+    { std::cerr << "Non relatively prime numbers, gcd=" << gcd << ".\n";
+      exit(1); // we should never get here
+    }
+  }
+  virtual ~PrimeTabledChineseBox()  {}
+
+  // redefined accessor
+  virtual ulong lift_remainders(ulong s, ulong t) const;
 };
 
 class modulus_info
@@ -52,31 +98,56 @@ const std::ios_base::openmode binary_in=
 			  | std::ios_base::binary;
 
 ulong extended_gcd(ulong a,ulong b, ulong&lcm, ulong& m)
-{ ulong d0=a, m0=a, d1=b,m1=0;
+{ ulong d0=a, m0=0, d1=b,m1=b;
   while(d0!=0)
-  // invariant $d_0\cong+m_0\pmod{b}$, \ and $d_1\cong-m_1\pmod{b}$
+  // invariant: $d_0\cong-m_0\pmod{a}$, \ and $d_1\cong+m_1\pmod{a}$
   { m1+=(d1/d0)*m0; d1%=d0; // i.e., |d1-=(d1/d0)*d0|
     if (d1==0) break;
     // invariant holds, and |d0>d1>0|
     m0+=(d0/d1)*m1; d0%=d1; // i.e., |d0-=(d0/d1)*d1|
   } // invariant holds, and |0<d0<d1|
 
-  if (d1==0) { m=m0; lcm=m1; return d0; }
-  else { m=m0-m1; lcm=m0; return d1; } // |d0==0|
+  if (d1==0) { lcm=m1; m=m1-m0; return d0; }
+  else { lcm=m0; m=m1; return d1; } // |d0==0|
 }
 
 ChineseBox::ChineseBox(ulong aa, ulong bb) : a(aa),b(bb)
 { gcd=extended_gcd(a,b,lcm,m); mm=lcm-m; }
 
 ulong ChineseBox::lift_remainders(ulong s, ulong t) const
-{ if (gcd==1)
-    return (s+ (s<=t ? (t-s)*m : (s-t)*mm))%lcm;
-  if ((s<=t ? t-s : s-t)%gcd==0)
-     return (s+ (s<=t ? (t-s)/gcd*m : (s-t)/gcd*mm))%lcm;
+{ if ((s<=t ? t-s : s-t)%gcd==0)
+     return (t+ (s>=t ? (s-t)/gcd*m : (t-s)/gcd*mm))%lcm;
   std::cerr << "Incompatible remainders " 
               << s << " (mod " << a << ") and "
 	      << t << " (mod " << b << ").\n";
   throw false;
+}
+
+ulong PrimeChineseBox::lift_remainders(ulong s, ulong t) const
+{ return (t+ (s>=t ? (s-t)*m : (t-s)*mm))%lcm; }
+
+TabledChineseBox::TabledChineseBox(const ChineseBox& cb)
+: ChineseBox(cb), m_table(a/gcd+1), mm_table(m_table.rbegin())
+{ ulong last = m_table[0]=0;
+  for (ulong i=1; i<m_table.size(); ++i)
+    m_table[i]= last<mm ? last+=m : last-=mm;
+  assert(last==0);
+}
+
+ulong TabledChineseBox::lift_remainders(ulong s, ulong t) const
+{ if ((s>=t ? s-t : t-s)%gcd==0)
+  { ulong d=s>=t ? m_table[(s-t)/gcd] : mm_table[(t-s)%a/gcd];
+    return t<lcm-d ? t+d : t-(lcm-d);
+  }
+  std::cerr << "Incompatible remainders " 
+              << s << " (mod " << a << ") and "
+	      << t << " (mod " << b << ").\n";
+  throw false;
+}
+
+ulong PrimeTabledChineseBox::lift_remainders(ulong s, ulong t) const
+{ ulong d=s>=t ? m_table[s-t] : mm_table[(t-s)%a];
+return t<lcm-d ? t+d : t-(lcm-d);
 }
 
 ulong read_bytes(ulong n, std::istream& in)
@@ -143,7 +214,8 @@ std::vector<ulong> modulus_info::coefficients (ulong i) const
 ulong write_indices
  (ulong coefficient_size,
   const std::vector<modulus_info*>& mod_info,
-  std::ostream& out)
+  std::ostream& out,
+  bool verbose)
 // return value is size of (yet unwritten) coefficient part of output file
 { ulong nr_pol=mod_info[0]->renumber_vector().size();
    // number of new polynomials
@@ -158,7 +230,8 @@ ulong write_indices
 
   ulong index=0; // index of current polynomial to be written
   for (ulong i=0; i<nr_pol; ++i)
-  { ulong len=0; // maximum of degree+1 of polynomials selected
+  { if (verbose) std::cerr << "Polynomial: " << std::setw(10) << i << '\r';
+    ulong len=0; // maximum of degree+1 of polynomials selected
     for (ulong j=0; j<mod_info.size(); ++j)
     { ulong new_len = mod_info[j]->length(i);
       if (new_len>len) len=new_len;
@@ -174,14 +247,22 @@ ulong write_indices
 ulong write_coefficients
  (ulong coefficient_size,
   const std::vector<modulus_info*>& mod_info,
-  const std::vector<ChineseBox>& box,
-  std::ostream& out)
+  const std::vector<ChineseBox*>& box,
+  std::ostream& out,
+  bool verbose)
 // return value is maximum of lifted coefficients
 { ulong nr_pol=mod_info[0]->renumber_vector().size();
+  ulong n=mod_info.size(); // number of moduli
   ulong max=0;
+  std::vector<ulong> rem(2*n-1);
+      // remainders for |n| original and |n-1| derived moduli
+
   for (ulong i=0; i<nr_pol; ++i)
-  { ulong len=0; // maximum of degree+1 of polynomials selected
+  { if (verbose) std::cerr << "Polynomial: " << std::setw(10) << i << '\r';
+    ulong len=0; // maximum of degree+1 of polynomials selected
     std::vector<std::vector<ulong> > modular_pol;
+
+    
     for (ulong j=0; j<mod_info.size(); ++j)
     { std::vector<ulong> p=mod_info[j]->coefficients(i);
       modular_pol.push_back(p);
@@ -191,14 +272,20 @@ ulong write_coefficients
     // the polynomial modulo the lcm of the moduli
 
     for (ulong d=0; d<len; ++d)
-    { ulong c=d>=modular_pol[0].size() ? 0 : modular_pol[0][d];
-       // coefficient for initial modulus
+    { for (ulong j=0; j<n; ++j) // install original remainders
+        rem[j]= d>=modular_pol[j].size() ? 0 : modular_pol[j][d];
        try
-       { for (ulong j=1; j<mod_info.size(); ++j)
-         { ulong new_c= d>=modular_pol[j].size() ? 0 : modular_pol[j][d];
-           c=box[j-1].lift_remainders(c,new_c); // it happens here!
+       { for (ulong j=0; j<n-1; ++j)
+           rem[n+j]=box[j]->lift_remainders(rem[2*j],rem[2*j+1]);
+           // it happens here!
+         ulong c=rem.back();
+	 
+	 if (c>max)
+	 { max=c;
+	   if (verbose)
+	     std::cerr << "\t\t\tmaximal coefficient: " << max
+	 	      << " in polynomial " << i << '\r';
 	 }
-	 if (c>max) max=c;
          write_bytes(c, coefficient_size, out);
        }
        catch (bool)
@@ -212,62 +299,68 @@ ulong write_coefficients
   return max;
 }
 
-void test()
-{ std::vector<unsigned int> moduli;
-  std::cout << "Give moduli used, or 0 to terminate.\n";
-  while(true)
-  { std::cout << "Modulus: ";
-    ulong m=0; std::cin >> m;
-    if (m==0) break;
-    moduli.push_back(m);
-  }
+void test(std::vector<ulong>& moduli,std::vector<ChineseBox*>& box)
+{ ulong n=moduli.size();
+  ulong lcm=box.back()->get_lcm();
 
-  if (moduli.size()<2)
-  { std::cerr << "Too few moduli.\n"; exit(1);
-  }
-  std::vector<ChineseBox> box(1,ChineseBox(moduli[0],moduli[1]));
-  for (ulong i=2; i<moduli.size(); ++i)
-    box.push_back(ChineseBox(box[i-2].get_lcm(),moduli[i]));
-    // defines |box[i-1]|
-  ulong lcm=box.back().get_lcm();
+  std::vector<ulong> remainder(2*n-1);
+  // remainders for |n| original and |n-1| derived moduli
 
-
-  
-  std::vector<ulong> remainder(moduli.size());
   while(true)
   { std::cout << "Give remainders mod " << moduli[0];
-    for (ulong i=1; i<moduli.size(); ++i) std::cout << ", " << moduli[i];
+    for (ulong i=1; i<n; ++i) std::cout << ", " << moduli[i];
     std::cout << ": ";
-    for (ulong i=0; i<moduli.size(); ++i)
+    for (ulong i=0; i<n; ++i)
     { remainder[i]=~0ul; std::cin >> remainder[i];
       if (remainder[i]==~0ul)
       { std::cout << "Bye.\n"; exit(0); }
+      remainder[i]%=moduli[i];
     }
-  
-    ulong rem=remainder[0];
+
     try
-    { for (ulong i=1; i<moduli.size(); ++i)
-        rem=box[i-1].lift_remainders(rem,remainder[i]);
-       std::cout << "Solution: " << rem << " (mod " << lcm << ").\n";
+    { for (ulong i=0; i<n-1; ++i)
+      { remainder[n+i]=
+          box[i]->lift_remainders(remainder[2*i],remainder[2*i+1]);
+        std::cout << "Lifted to " << remainder[n+i]
+		  << " (mod " << box[i]->get_lcm() << ").\n";
+      }
+      std::cout << "Solution found: " << remainder.back()
+		<< " (mod " << lcm << ").\n";
+      for (ulong i=0; i<n; ++i)
+        if (remainder.back()%moduli[i]!=remainder[i])
+	{ std::cout << "Solution does not pass test.\n"; throw true; }
+      std::cout << "Solution checks correctly.\n";
     }
-    catch (bool)
-    { std::cout << "No solution.\n"; }
+    catch (bool b)
+    { if (not b) std::cout << "No solution.\n"; }
   }
+
 }
 
 int main(int argc, char** argv)
 { --argc; ++argv; // skip program name
+  bool verbose=true;
+  if (argc>0 and std::string(*argv)=="-q") { verbose=false; --argc; ++argv;}
+
   std::string mat_base,coef_base;
   // base names for renumbering and coefficient files
-
-  if (argc>=2) { mat_base=*argv++; --argc; coef_base=*argv++; --argc; }
-  else test();
-  // if two names are not given, go into interactive mode
-
-  if (argc<2) { std::cerr<< "Too few moduli.\n"; exit(1); }
   std::vector<ulong> moduli;
+  bool interactive= argc<1;
+
   
-  while (argc-->0)
+  if (interactive) argc=0; // ignore
+  else  { mat_base=*argv++; --argc; coef_base=*argv++; --argc; }
+  
+  if (argc==0) 
+             { std::cout << "Give moduli used, or 0 to terminate.\n";
+               while(true)
+               { std::cout << "Modulus: ";
+                 ulong m=0; std::cin >> m;
+                 if (m==0) break;
+                 moduli.push_back(m);
+               }
+             }
+  else while (argc-->0)
   { std::istringstream in(*argv++);
     unsigned int m=0; in >> m;
     if (m!=0) moduli.push_back(m);
@@ -276,12 +369,21 @@ int main(int argc, char** argv)
        exit(1);
     }
   }
+  if (moduli.size()<1) { std::cerr << "Too few moduli.\n"; exit(1); }
 
-  std::vector<ChineseBox> box(1,ChineseBox(moduli[0],moduli[1]));
-  for (ulong i=2; i<moduli.size(); ++i)
-    box.push_back(ChineseBox(box[i-2].get_lcm(),moduli[i]));
-    // defines |box[i-1]|
-  ulong lcm=box.back().get_lcm();
+  ulong n=moduli.size();
+  std::vector<ChineseBox*> box(n-1,NULL);
+  ulong lcm;
+  
+  { std::vector<ulong> mod(moduli);
+    for (ulong i=0; i<n-1; ++i)
+    { ChineseBox b(mod[2*i],mod[2*i+1]);
+      mod.push_back(b.get_lcm()); // defines |mod[n+i]|
+      box[i]= b.get_gcd()!=1 ? new TabledChineseBox(b)
+  			   : new PrimeTabledChineseBox(b);
+    }
+    lcm=mod.back();
+  }
 
   ulong coefficient_size=1, rem=lcm-1; // maximal remainder
   while ((rem>>=8)!=0) ++coefficient_size;
@@ -291,7 +393,9 @@ int main(int argc, char** argv)
   std::ofstream coefficient_file;
 
   try
-  { 
+  { if (interactive) test(moduli,box); // does not return
+
+    
     { for (ulong i=0; i<moduli.size(); ++i)
       { std::ostringstream name0,name1;
         name0 << mat_base << "-renumbering-mod" << moduli[i];
@@ -327,16 +431,20 @@ int main(int argc, char** argv)
           exit(1);
         }
     }
-    ulong nr_c=write_indices(coefficient_size,mod_info,coefficient_file);
-    std::cout << "Done writing indices, will now write "
+    ulong nr_c=
+      write_indices(coefficient_size,mod_info,coefficient_file,verbose);
+    std::cout << "\nDone writing indices, will now write "
               << nr_c << " coefficient bytes.\n";
     ulong max_coef=
-       write_coefficients(coefficient_size,mod_info,box,coefficient_file);
-    std::cout << "Done!\nMaximal coefficient found: "
+       write_coefficients
+         (coefficient_size,mod_info,box,coefficient_file,verbose);
+    std::cout << "\nMaximal coefficient found: "
               << max_coef << ".\n";
   }
   catch (...)
-  { for (size_t i=0; i<mod_info.size(); ++i) delete mod_info[i];
+  { for (ulong i=0; i<mod_info.size(); ++i) delete mod_info[i];
+    for (ulong i=0; i<box.size(); ++i) delete box[i];
+    throw;
   }
 }
 
