@@ -77,7 +77,6 @@ namespace atlas {
   namespace kl {
 
     size_t NThreads(0);
-    size_t pool_reserve(0);
 
     // this serves debugging of hash tables; no longer actually called
     void alert(KLIndex i) // illegal index into hash table
@@ -166,10 +165,12 @@ class KLPolEntry : public KLPol
 
     ~Helper()
     {
-      std::cout << "Number of primitive pairs stored:     "
+#ifdef VERBOSE
+      std::cerr << "Number of primitive pairs stored:     "
 		<< prim_size << ".\n";
-      std::cout << "Number of unrecorded primitive pairs: "
+      std::cerr << "Number of unrecorded primitive pairs: "
 	    << nr_of_prim_nulls << ".\n";
+#endif
     }
 
     //accessors
@@ -576,7 +577,7 @@ KLContext::KLContext(klsupport::KLSupport& kls)
     , d_prim()
     , d_kl()
     , d_mu()
-    , d_store(1,256,1,256) // set dummy store here
+    , d_store(1,8,1,8) // set dummy store here
     , d_zero()
     , d_one()
 { // until fill is called, d_zero and d_one remain undefined
@@ -904,43 +905,43 @@ bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
 const size_t KLPool::low_mask
         =std::numeric_limits<unsigned int>::max();
 
-KLPool::KLPool(size_t nr_pool_blocks, unsigned p_block_bits,
-	       size_t nr_index_blocks, unsigned i_block_bits)
+KLPool::KLPool(size_t nr_pool_blocks, unsigned int p_block_bits,
+	       size_t nr_index_blocks, unsigned int i_block_bits)
   : pool(), index()
-  , pool_block_size(1 << p_block_bits)
-  , pool_block_bits(p_block_bits)
-  , pool_block_mask(pool_block_size - 1)
-  , index_block_size(1 << i_block_bits)
-  , index_block_bits(i_block_bits)
-  , index_block_mask(index_block_size - 1)
-  , last_index_size(0)
+  , pool_block_bits(p_block_bits), index_block_bits(i_block_bits)
+  , pool_block_mask(constants::lMask[p_block_bits])
+  , index_block_mask(constants::lMask[i_block_bits])
+  , last_group_size(0)
   , savings(0)
 { pool.reserve(nr_pool_blocks);
   pool.push_back(std::vector<KLCoeff>());
-  pool[0].reserve(pool_block_size);
+  pool[0].reserve(1ul<<pool_block_bits);
   index.reserve(nr_index_blocks);
   index.push_back(std::vector<IndexType>());
-  index[0].reserve(index_block_size);
+  index[0].reserve(1ul<<index_block_bits);
   index[0].push_back(IndexType(0,0)); // index is always 1 ahead
-  std::cerr << "Pool: "<< nr_pool_blocks << " blocks of " << pool_block_size
-	    << " bytes, index " << nr_index_blocks << " blocks of "
-	    << index_block_size << " groups.\n";
+#ifdef VERBOSE
+  std::cerr << "Pool: "<< nr_pool_blocks << " blocks of 2^" << pool_block_bits
+	    << " bytes, index " << nr_index_blocks << " blocks of 2^"
+	    << index_block_bits << " groups.\n";
+#endif
 }
 
 KLPool::~KLPool()
 {
+#ifdef VERBOSE
   if (size()>0) // don't mention destructing empty pool
     {
-      std::cerr << "Destructing storage of " << size()
+      std::cerr << "Destructing pool of " << size()
 		<< " polynomials.\n";
       std::cerr << "Stored " << pool_size() << " coefficient bytes,"
-	        " vector capacity " << pool_block_size*pool.size()
-		<< ".\n";
+	" current capacity " << (pool.size()<<pool_block_bits) << ".\n";
       std::cerr << "Trailing coefficient savings: " << savings << ".\n";
-      std::cerr << "Total of bytes used for polynomial storage: "
+      std::cerr << "Total of bytes used for polynomial pool: "
 		<< mem_size() << " (net), "
 		<< mem_capacity() << " (gross).\n";
     }
+#endif
 }
 
 
@@ -953,16 +954,17 @@ size_t KLPool::pool_size() const     // number of coefficient bytes;
 size_t KLPool::mem_size() const   // net memory footprint
 { return sizeof(KLPool)
   +pool.capacity()*sizeof(std::vector<KLCoeff>)
-  +pool_size()*sizeof(KLCoeff)
-  +index.capacity()*sizeof(std::vector<IndexType>)
-  +((index.size()-1)*index_block_size+index.back().size())*sizeof(IndexType);
+    +pool_size()*sizeof(KLCoeff)
+  +index.size()*sizeof(std::vector<IndexType>)
+    +((index.size()-1<<index_block_bits)+index.back().size())
+     *sizeof(IndexType);
 }
 size_t KLPool::mem_capacity() const   // gross memory footprint
 { return sizeof(KLPool)
   +pool.capacity()*sizeof(std::vector<KLCoeff>)
-  +pool.size()*pool_block_size*sizeof(KLCoeff)
+    +(pool.size()<<pool_block_bits)*sizeof(KLCoeff)
   +index.capacity()*sizeof(std::vector<IndexType>)
-  +index.size()*index_block_size*sizeof(IndexType);
+    +(index.size()<<index_block_bits)*sizeof(IndexType);
 }
 
 
@@ -991,13 +993,13 @@ size_t KLPool::mem_capacity() const   // gross memory footprint
 */
 KLPool::const_reference KLPool::operator[] (KLIndex i) const
   {
-    unsigned int q=i >> group_bits, r=i & group_mask;
+    unsigned int q=i>>group_bits, r=i&group_mask; // quot/rem by group_size
     const IndexType& iq= index [q>>index_block_bits] [q&index_block_mask];
      // index structure selected
 
     size_t pi=  // get base for index into pool
       size_t(iq.pool_index_low)+set_high_order(iq.pool_index_high.degree());
-    size_t pi_block=(pi>>pool_block_bits); // block into which pi points
+    size_t pi_block=pi>>pool_block_bits; // block into which pi points
 
     // adjust pool index for sizes of preceeding polynomials in group
     for (unsigned int j=0; j<r; ++j)
@@ -1010,7 +1012,7 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
 	unsigned int val=iq.deg_val[r].valuation();
 
         // now see if we overstepped or will overstep a pool block boundary
-	if (pi+1+deg-val > ((pi_block+1)<<pool_block_bits))
+	if (pi+1+deg-val > (pi_block+1<<pool_block_bits))
 	  {
 	    /* N.B. if a polynomial happens to fit exactly at end of a block
 	       then the _next_ one is considered split (but advances by 0).
@@ -1020,14 +1022,13 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
 	    for (unsigned int j=0; j<r; ++j) // redo index adjustment
 	      {
 	        pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
-	        if (pi > ((pi_block+1)<<pool_block_bits)) // split was here
-		  pi=((++pi_block)<<pool_block_bits)   // advance to next block
+	        if (pi > (pi_block+1<<pool_block_bits)) // split was here
+		  pi=(++pi_block<<pool_block_bits)    // advance to next block
 		     // but don't forget the length of the "split" polynomial
 		     +(1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
 	      }
-	    if (pi+1+deg-val>((pi_block+1)<<pool_block_bits)) // this one split
-		  //NEED OUTER PARENS in next line
-	      pi= ((++pi_block)<<pool_block_bits);    // advance to next block
+	    if (pi+1+deg-val>(pi_block+1<<pool_block_bits)) // this one split
+	      pi= ++pi_block<<pool_block_bits;      // advance to next block
 
 	  }
 
@@ -1039,10 +1040,10 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
       {
 	// in this case get base for next index into pool
 	const IndexType* nip; // next index pointer
-        if (((q+1)&index_block_mask)!=0)
-          nip= & index[q>>index_block_bits][(q+1)&index_block_mask];
+        if ((q+1&index_block_mask)!=0)
+          nip= &index[q>>index_block_bits][q+1&index_block_mask];
 	else
-          nip= &index[(q+1)>>index_block_bits][0];
+          nip= &index[q+1>>index_block_bits][0];
 
 	size_t next_pi=size_t(nip->pool_index_low) +
 	  set_high_order(nip->pool_index_high.degree());
@@ -1052,22 +1053,24 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
  	// unused: unsigned int deg=(next_pi-pi)+val-1;
 
         // now see if we overstepped or will overstep a pool block boundary
-	if (next_pi > ((pi_block+1) << pool_block_bits))
+	if (next_pi > (pi_block+1<<pool_block_bits))
 	  {
 	    pi= size_t(iq.pool_index_low) // reset to base index
 	       +set_high_order(iq.pool_index_high.degree());
 	    for (unsigned int j=0; j<r; ++j) // redo index adjustment
 	      {
 	        pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
-	        if (pi > (pi_block+1)<<pool_block_bits) // split was here
-		  pi=((++pi_block)<<pool_block_bits)  // advance to next block
+	        if (pi > pi_block+1<<pool_block_bits) // split was here
+		  // NEED PARENTHESES IN NEXT LINE!
+		  pi=(++pi_block<<pool_block_bits)    // advance to next block
 		     // but don't forget the length of the "split" polynomial
 		     +(1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
 	      }
-	    if (next_pi > (pi_block+1)<<pool_block_bits) // this one split
-	      pi= ((++pi_block)<<pool_block_bits);  // advance to next block
+	    if (next_pi > pi_block+1<<pool_block_bits) // this one split
+	      pi= ++pi_block<<pool_block_bits;      // advance to next block
 
 	  }
+        assert(val+next_pi-pi<=32);
 
 	// and build the right polynomials::PolRef<KLCoeff> value
 	return const_reference
@@ -1115,7 +1118,7 @@ void KLPool::push_back(const KLPol& p)
 	if (pool.back().size()+1+degree-valuation>pool.back().capacity())
 	  {
 	    pool.push_back(std::vector<KLCoeff>());
-	    pool.back().reserve(pool_block_size);
+	    pool.back().reserve(1ul<<pool_block_bits);
 	  }
 
 	for (size_t i=valuation; i<=p.degree(); ++i)
@@ -1123,21 +1126,22 @@ void KLPool::push_back(const KLPol& p)
       }
 
     // now mark end of coefficients, and record valuation
-    if (last_index_size != group_size-1)
-      index.back().back().deg_val[last_index_size++]
+    if (last_group_size != group_size-1)
+      index.back().back().deg_val[last_group_size++]
         =packed_byte(degree,valuation);
     else
       {
-	last_index_size=0; // don't forget to start next group at beginning
+	last_group_size=0; // don't forget to start next group at beginning
 	// check space in block
 	if (index.back().size()==index.back().capacity())
 	  {
 	    index.push_back(std::vector<IndexType>());
-	    index.back().reserve(index_block_size);
+	    index.back().reserve(1ul<<index_block_bits);
 	  }
 
 	// compute end-index of polynomial; not pool_size() which is too small
-	size_t pool_index=(pool.size()-1)*pool_block_size+pool.back().size();
+	size_t pool_index=
+	  (pool.size()-1<<pool_block_bits)+pool.back().size();
 	index.back().push_back(IndexType(pool_index,valuation));
       }
   }
@@ -1158,8 +1162,8 @@ namespace kl {
 
 Helper::Helper(const KLContext& kl)
   : KLContext(kl
-	      ,0x8000ul,22u // 2^15 blocks of 2^22 coefficients
-	      ,0x8000ul,14u)  // 2^15 blocks of 2^14 index groups
+	      ,0x8000ul,22u   // 2^15 blocks of 2^22 coefficients
+	      ,0x4000ul,14u)  // 2^14 blocks of 2^14 index groups (of 2^4 each)
     , d_hashtable(d_store) // hash table refers to our own d_store
     , prim_size(0), nr_of_prim_nulls(0)
 {
@@ -1169,7 +1173,9 @@ Helper::Helper(const KLContext& kl)
   d_zero = d_hashtable.match(Zero);
   d_one = d_hashtable.match(One);
 
-  if (d_zero==d_one) std::cout << "Warning, One=Zero !\n";
+#ifdef VERBOSE
+  if (d_zero==d_one) std::cerr << "Warning, One=Zero !\n";
+#endif
 }
 
 /******** accessors **********************************************************/
@@ -1682,9 +1688,10 @@ void Helper::fill()
       std::cerr << "t="    << std::setw(6) << deltaTime
 		<< "s. l=" << std::setw(3) << l
 		<< ", y="  << std::setw(6) << d_support->lengthLess(l+1) - 1
-                << ", coefs: " << std::setw(11) << d_store.size()
-		<< ", hash:" << std::setw(11)<< d_hashtable.mem_capacity()
-                << ", mat: "   << std::setw(11) << prim_size <<  std::endl;
+                << ", coef:"  << std::setw(11) << d_store.size()
+		<< ", store:" << std::setw(11) << d_hashtable.mem_capacity()
+                << ", mat:"  << std::setw(11) << prim_size
+		<<  std::endl;
 
       // system(command.str().c_str());
       // this was 'grep VmData /proc/<process id>/status'

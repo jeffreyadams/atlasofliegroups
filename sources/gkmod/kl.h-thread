@@ -48,7 +48,6 @@ namespace kl {
   extern "C" void *ThreadStartup(void *);
 
   extern size_t NThreads;
-  extern size_t pool_reserve;
 
 // storage for KL polynomials
 
@@ -162,31 +161,33 @@ class KLPool
 
     std::vector<std::vector<KLCoeff> > pool;
     std::vector<std::vector<IndexType> > index;
-    size_t pool_block_size;
-    unsigned int pool_block_bits;
-    size_t pool_block_mask;
-    size_t index_block_size;
-    unsigned int index_block_bits;
-    size_t index_block_mask;
-    unsigned int last_index_size; // nr of bytes of last index struct in use
+    unsigned int pool_block_bits;  // number of bits for index within block
+    unsigned int index_block_bits; // number of bits for index within block
+    size_t pool_block_mask;  // mask with final pool_block_bits bits set
+    size_t index_block_mask; // mask with final index_block_bits bits set
+
+    unsigned int last_group_size; // nr of bytes of last index struct in use
 
     size_t savings; // gather statistics about savings by using valuations
 
   public:
     typedef polynomials::PolRef<KLCoeff> const_reference; // used by HashTable
 
-    // constructor (defaults give dummy default constructor), and destructor
-    KLPool(size_t nr_pool_blocks, unsigned p_block_bits,
-	   size_t nr_index_blocks, unsigned i_block_bits);
+    // constructor and destructor
+    KLPool(size_t nr_pool_blocks, unsigned int p_block_bits,
+	   size_t nr_index_blocks, unsigned int i_block_bits);
     ~KLPool(); // deletes pointers in pool and index, may print statistics
 
     // accessors
     const_reference operator[] (KLIndex i) const; // select polynomial by nr
 
     size_t size() const       // number of entries
-      { return ((index.size()-1) << (group_bits + index_block_bits)) // full blocks
-        + ((index.back().size()-1) << group_bits) // full index groups last block
-        + last_index_size; // part of last index group used
+      { return
+	  ((index.size()-1<<index_block_bits) // for full blocks
+	   +index.back().size()-1   // for full index groups in last block
+	   <<group_bits             // multiply both these by group size
+          )
+	  + last_group_size; // add part of last index group used
       }
 
     // accessors for statistics
@@ -200,13 +201,11 @@ class KLPool
       {
 	pool.swap(other.pool);
 	index.swap(other.index);
-	std::swap(pool_block_size,other.pool_block_size);
 	std::swap(pool_block_bits,other.pool_block_bits);
 	std::swap(pool_block_mask,other.pool_block_mask);
-	std::swap(index_block_size,other.index_block_size);
 	std::swap(index_block_bits,other.index_block_bits);
 	std::swap(index_block_mask,other.index_block_mask);
-	std::swap(last_index_size,other.last_index_size);
+	std::swap(last_group_size,other.last_group_size);
 	std::swap(savings, other.savings);
       }
   }; // class KLPool
@@ -309,8 +308,8 @@ public:
 // copy, assignment and swap
   KLContext(const KLContext&);  // ordinary copy constructor, not really used
   KLContext(const KLContext&    // augmented copy constructor, called by Helper
-	    ,size_t nr_pool_blocks, size_t p_block_size
-	    ,size_t nr_index_blocks, size_t i_block_size); // specify pool size
+	    ,size_t nr_pool_blocks, size_t p_block_bits
+	    ,size_t nr_index_blocks, size_t i_block_bits); // specify pool size
 
   KLContext& operator= (const KLContext&);
 
