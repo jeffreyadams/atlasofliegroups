@@ -105,7 +105,9 @@ ulong extended_gcd(ulong a,ulong b, ulong&lcm, ulong& m)
 }
 
 
-@ The formula given above requires computing $q=(s-t)/d$ where $d=\gcd(a,b)$,
+@* Chinese boxes.
+%
+The formula given above requires computing $q=(s-t)/d$ where $d=\gcd(a,b)$,
 but we wish to avoid negative numbers in case $s<t$ (certainly just computing
 $(s-t)/d$ with variables of an unsigned type would give incorrect answers).
 Therefore we shall use in that case instead as example solution $x=t+q'm'$
@@ -187,7 +189,9 @@ incompatible remainders.
 ulong PrimeChineseBox::lift_remainders(ulong s, ulong t) const
 @/{@; return (t+ (s>=t ? (s-t)*m : (t-s)*mm))%lcm; }
 
-@ The |lift_remainder| classes of the previous classes depend on computing the
+@*1 Tabled Chinese boxes.
+%
+The |lift_remainder| classes of the previous classes depend on computing the
 product |(s-t)/gcd*m| or |(t-s)/gcd*mm| as an unsigned long integer, before
 reduction modulo the~|lcm|; this will have a serious risk over integral
 overflow if |a| and~|b| are even moderately large with respect to the capacity
@@ -272,7 +276,7 @@ ulong TabledChineseBox::lift_remainders(ulong s, ulong t) const
 }
 
 @ The case $\gcd(a,b)=1$ can be optimised for |TabledChineseBox| as it could
-for |ChineseBox|. The table is constructed by the base class, so our
+for |ChineseBox|. The table is constructed by the parent class, so our
 constructor only has to add the |gcd| test.
 
 @< Type definitions @>=
@@ -296,6 +300,89 @@ public: // constructor from basic |ChineseBox|
 @< Function definitions @>=
 ulong PrimeTabledChineseBox::lift_remainders(ulong s, ulong t) const
 { ulong d=s>=t ? m_table[s-t] : mm_table[(t-s)%a];
+@/return t<lcm-d ? t+d : t-(lcm-d);
+}
+
+@*1 Double tabled boxes.
+%
+As an option of maximal speed at the price of more memory, we define a class
+with separate tables for multiplication by |m| and by~|mm|. This avoids all
+divisions other than by the |gcd|, essentially by repeating entries in the
+larger of the two tables until the largest possible index can be accommodated
+without wrapping around. This option is very expensive when the two moduli
+have vastly different sizes.
+
+@< Type definitions @>=
+class DoubleTabledChineseBox : public ChineseBox
+{
+protected:
+  std::vector<ulong> m_table,mm_table;
+public: // constructor from basic |ChineseBox|
+  DoubleTabledChineseBox(const ChineseBox& cb);
+  virtual ~DoubleTabledChineseBox() @+ {}  // destroys tables
+@)
+  // redefined accessor
+  virtual ulong lift_remainders(ulong s, ulong t) const;
+};
+
+@ The multiplication tables are installed at construction. The two cases are
+now quite similar, and no extra entry is needed at the far end of either
+table, so the sizes are determined by the maximal possible values of
+|(s-t)/gcd| and |(t-s)/gcd|, respectively. In the code below we use the fact
+that |m+mm=lcm|, and arrange to avoid even negative intermediate results.
+
+@< Function definitions @>=
+DoubleTabledChineseBox::DoubleTabledChineseBox(const ChineseBox& cb)
+: ChineseBox(cb), m_table(a/gcd), mm_table(b/gcd)
+{ ulong last = m_table[0]=0;
+  for (ulong i=1; i<m_table.size(); ++i)
+    m_table[i]= last<mm ? last+=m : last-=mm;
+  assert(last==mm);
+  last = mm_table[0]=0;
+  for (ulong i=1; i<mm_table.size(); ++i)
+    mm_table[i]= last<m ? last+=mm : last-=m;
+}
+
+@ The lifting routine is now as simple as it gets for general~$a,b$, without
+any modular reductions.
+
+@< Function definitions @>=
+ulong DoubleTabledChineseBox::lift_remainders(ulong s, ulong t) const
+{ if ((s>=t ? s-t : t-s)%gcd==0)
+  { ulong d=s>=t ? m_table[(s-t)/gcd] : mm_table[(t-s)/gcd];
+    return t<lcm-d ? t+d : t-(lcm-d);
+  }
+  std::cerr << "Incompatible remainders " @|
+              << s << " (mod " << a << ") and "
+	      << t << " (mod " << b << ").\n";
+  throw false;
+}
+
+@ The case $\gcd(a,b)=1$ can be optimised as before. The table is constructed
+by the parent class, so our constructor only has to add the |gcd| test.
+
+@< Type definitions @>=
+class PrimeDoubleTabledChineseBox : public DoubleTabledChineseBox
+{ // no additional data
+public: // constructor from basic |ChineseBox|
+  PrimeDoubleTabledChineseBox(const ChineseBox& cb)
+  : DoubleTabledChineseBox(cb)
+  { if (gcd!=1)
+    { std::cerr << "Non relatively prime numbers, gcd=" << gcd << ".\n";
+      exit(1); // we should never get here
+    }
+  }
+  virtual ~PrimeDoubleTabledChineseBox() @+ {}
+@)
+  // redefined accessor
+  virtual ulong lift_remainders(ulong s, ulong t) const;
+};
+
+@ Again the lifting method is a simplification of the basic case.
+
+@< Function definitions @>=
+ulong PrimeDoubleTabledChineseBox::lift_remainders(ulong s, ulong t) const
+{ ulong d=s>=t ? m_table[s-t] : mm_table[t-s];
 @/return t<lcm-d ? t+d : t-(lcm-d);
 }
 
@@ -358,6 +445,7 @@ class modulus_info
   ulong nr_coefficients;
   ulong coefficient_size; // 1 for original files, but may be more
   std::vector<unsigned int> renumber;
+  bool using_renumber;
   std::ifstream& coefficient_file; // owned file reference
 @)
 public:
@@ -367,8 +455,7 @@ public:
   ulong length(ulong i) const; // length (degree+1) of polynomial |i|
   std::vector<ulong> coefficients(ulong i) const;
     // coefficients of polynomial |i|
-  const std::vector<unsigned int>& renumber_vector() const
-    @+{@; return renumber; }
+  ulong nr_pol() const @+{@; return nr_polynomials; }
 };
 
 @ Constructing a |modulus_info| object requires both pertinent files to be
@@ -380,7 +467,9 @@ remainders for |modulus|.
 @< Function definitions @>=
 modulus_info::modulus_info
   (ulong mod, std::ifstream* ren_file, std::ifstream* coef_file)
-  : modulus(mod), coefficient_size(1), coefficient_file(*coef_file)
+  : modulus(mod), nr_polynomials(), index_begin(), coefficients_begin()
+  , coefficient_size(1), renumber(), using_renumber(false)
+  , coefficient_file(*coef_file)
 { coefficient_file.seekg(0,std::ios_base::beg); // begin at the beginning
   nr_polynomials=read_bytes(4,coefficient_file);
   index_begin=coefficient_file.tellg();
@@ -391,7 +480,8 @@ modulus_info::modulus_info
   --mod; // make largest remainder
   while ((mod>>=8) != 0)
     ++coefficient_size; // compute number of bytes required
-  read_renumbering_table(*ren_file,renumber);
+  if (ren_file!=NULL)
+  {@; using_renumber=true; read_renumbering_table(*ren_file,renumber); }
   delete ren_file; // close file when table is read in
 }
 
@@ -415,12 +505,13 @@ safely call |delete|, as we wanted to do initially.
 @< Function definitions @>=
 modulus_info::~modulus_info() @+{@; delete &coefficient_file;}
 
-@ To get the length of a polynomial, we look up its renumbering to get the
-proper index, then compare the index found with the next one.
+@ To get the length of a polynomial, we look up its renumbering if appropriate
+to get the proper index, then compare the index found with the next one.
 
 @< Function definitions @>=
 ulong modulus_info::length (ulong i) const
-{ coefficient_file.seekg(index_begin+5*renumber[i],std::ios_base::beg);
+{ if (using_renumber) i=renumber[i];
+  coefficient_file.seekg(index_begin+5*i,std::ios_base::beg);
     // locate index in file
   ulong index=read_bytes(5,coefficient_file);
   ulong next_index=read_bytes(5,coefficient_file);
@@ -433,7 +524,8 @@ blocks of |coefficient_size| bytes.
 
 @< Function definitions @>=
 std::vector<ulong> modulus_info::coefficients (ulong i) const
-{ coefficient_file.seekg(index_begin+5*renumber[i],std::ios_base::beg);
+{ if (using_renumber) i=renumber[i];
+  coefficient_file.seekg(index_begin+5*i,std::ios_base::beg);
   ulong index=read_bytes(5,coefficient_file);
   ulong next_index=read_bytes(5,coefficient_file);
 @)
@@ -461,19 +553,18 @@ ulong write_indices
   std::ostream& out,
   bool verbose)
 @/// return value is size of (yet unwritten) coefficient part of output file
-{ ulong nr_pol=mod_info[0]->renumber_vector().size();
-   // number of new polynomials
-  write_bytes(nr_pol,4,out);
+{ ulong nr_pols=mod_info[0]->nr_pol(); // number of new polynomials
+  write_bytes(nr_pols,4,out);
   for (ulong j=1; j<mod_info.size(); ++j)
-    if (mod_info[j]->renumber_vector().size()!=nr_pol)
+    if (mod_info[j]->nr_pol()!=nr_pols)
     { std::cerr << "Conflicting numbers of polynomials in renumbering files: "
-	@|      << nr_pol << "!=" << mod_info[j]->renumber_vector().size()
+	@|      << nr_pols << "!=" << mod_info[j]->nr_pol()
 	@|	<< " (modulus nrs O, " << j << ").\n";
       exit(1);
     }
 @)
   ulong index=0; // index of current polynomial to be written
-  for (ulong i=0; i<nr_pol; ++i)
+  for (ulong i=0; i<nr_pols; ++i)
   { if (verbose and (i&0xFFF)==0)
       std::cerr << "Polynomial: " << std::setw(10) << i << '\r';
     ulong len=0; // maximum of degree+1 of polynomials selected
@@ -506,13 +597,13 @@ ulong write_coefficients
   std::ostream& out,
   bool verbose)
 @/// return value is maximum of lifted coefficients
-{ ulong nr_pol=mod_info[0]->renumber_vector().size();
+{ ulong nr_pols=mod_info[0]->nr_pol();
   ulong n=mod_info.size(); // number of moduli
   ulong max=0;
   std::vector<ulong> rem(2*n-1);
       // remainders for |n| original and |n-1| derived moduli
 @)
-  for (ulong i=0; i<nr_pol; ++i)
+  for (ulong i=0; i<nr_pols; ++i)
   { if (verbose and (i&0xFFF)==0)
       std::cerr << "Polynomial: " << std::setw(10) << i << '\r';
     ulong len=0; // maximum of degree+1 of polynomials selected
@@ -558,13 +649,14 @@ for (ulong j=0; j<mod_info.size(); ++j)
 }
 
 @ Keeping track of the maximal coefficient is trivial; each time it increases
-we update the current display line, starting with tabulations to skip over the
-display of the current polynomial number.
+we update the current display line. In verbose mode we start with tabulations
+to skip over the display of the current polynomial number. This line itself is
+rarely printed and rather informative, so we print it even in quiet mode.
 
 @< Track maximal coefficient and show progress @>=
 if (c>max)
 { max=c;
-  std::cerr << (verbose ? "\t\t\tm" : "M") << "aximal coefficient so far: "
+  std::cerr << (verbose ? "\t\t\tm" : "M") << "aximal coefficient so far: " @|
             << max << ", in polynomial " << i << '\r';
 }
 
@@ -580,8 +672,10 @@ they are allocated via |new| to make a vector of pointers.
 @< Main function @>=
 int main(int argc, char** argv)
 { --argc; ++argv; // skip program name
-  bool verbose=true;
+  bool verbose=true, double_tables=false;
   if (argc>0 and std::string(*argv)=="-q") {@; verbose=false; --argc; ++argv;}
+  if (argc>0 and std::string(*argv)=="-d")
+    {@; double_tables=true; --argc; ++argv;}
 @)
   std::string mat_base,coef_base;
   // base names for renumbering and coefficient files
@@ -654,8 +748,12 @@ one used in the loop of |write_coefficients|.
   for (ulong i=0; i<n-1; ++i)
   { ChineseBox b(mod[2*i],mod[2*i+1]);
     mod.push_back(b.get_lcm()); // defines |mod[n+i]|
-    box[i]= b.get_gcd()!=1 ? new TabledChineseBox(b)
-			   : new PrimeTabledChineseBox(b);
+    if (double_tables)
+      box[i]= b.get_gcd()!=1 ? new DoubleTabledChineseBox(b)
+			     : new PrimeDoubleTabledChineseBox(b);
+    else
+      box[i]= b.get_gcd()!=1 ? new TabledChineseBox(b)
+			     : new PrimeTabledChineseBox(b);
   }
   lcm=mod.back();
 }
@@ -681,8 +779,9 @@ const std::ios_base::openmode binary_in=
     std::ifstream* renumber_file=
       new std::ifstream(name0.str().c_str(),binary_in);
     if (not renumber_file->is_open())
-    @/{@; std::cerr << "Could not open file '" << name0.str() << "'.\n";
-      exit(1);
+    { std::cout << "Assuming canonical order for modulus " << moduli[i]
+                << ".\n";
+      renumber_file=NULL; // signal absence of renumbering file
     }
 @)
     name1 << coef_base << "-mod" << moduli[i];
