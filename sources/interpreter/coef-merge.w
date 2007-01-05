@@ -474,7 +474,8 @@ ulong write_indices
 @)
   ulong index=0; // index of current polynomial to be written
   for (ulong i=0; i<nr_pol; ++i)
-  { if (verbose) std::cerr << "Polynomial: " << std::setw(10) << i << '\r';
+  { if (verbose and (i&0xFFF)==0)
+      std::cerr << "Polynomial: " << std::setw(10) << i << '\r';
     ulong len=0; // maximum of degree+1 of polynomials selected
     for (ulong j=0; j<mod_info.size(); ++j)
     { ulong new_len = mod_info[j]->length(i);
@@ -512,7 +513,8 @@ ulong write_coefficients
       // remainders for |n| original and |n-1| derived moduli
 @)
   for (ulong i=0; i<nr_pol; ++i)
-  { if (verbose) std::cerr << "Polynomial: " << std::setw(10) << i << '\r';
+  { if (verbose and (i&0xFFF)==0)
+      std::cerr << "Polynomial: " << std::setw(10) << i << '\r';
     ulong len=0; // maximum of degree+1 of polynomials selected
     std::vector<std::vector<ulong> > modular_pol;
 @)
@@ -562,9 +564,8 @@ display of the current polynomial number.
 @< Track maximal coefficient and show progress @>=
 if (c>max)
 { max=c;
-  if (verbose)
-    std::cerr << "\t\t\tmaximal coefficient: " << max
-	      << " in polynomial " << i << '\r';
+  std::cerr << (verbose ? "\t\t\tm" : "M") << "aximal coefficient so far: "
+            << max << ", in polynomial " << i << '\r';
 }
 
 
