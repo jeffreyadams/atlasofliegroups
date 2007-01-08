@@ -275,13 +275,13 @@ ulong write_indices
  (ulong coefficient_size,
   const std::vector<modulus_info*>& mod_info,
   std::ostream& out,
-  bool verbose)
+  bool verbose, bool output)
 // return value is size of (yet unwritten) coefficient part of output file
 { ulong nr_pols=mod_info[0]->nr_pol(); // number of new polynomials
   write_bytes(nr_pols,4,out);
   for (ulong j=1; j<mod_info.size(); ++j)
     if (mod_info[j]->nr_pol()!=nr_pols)
-    { std::cerr << "Conflicting numbers of polynomials in renumbering files: "
+    { std::cout << "Conflicting numbers of polynomials in renumbering files: "
 	      << nr_pols << "!=" << mod_info[j]->nr_pol()
 		<< " (modulus nrs O, " << j << ").\n";
       exit(1);
@@ -294,13 +294,18 @@ ulong write_indices
     ulong len=0; // maximum of degree+1 of polynomials selected
     for (ulong j=0; j<mod_info.size(); ++j)
     { ulong new_len = mod_info[j]->length(i);
+      if (new_len>32)
+      { std::cout << "Too large length " << new_len << " in polynomial " 
+                  << i << " for modulus nr " << j << ".\n";
+	exit(1);
+      }
       if (new_len>len) len=new_len;
     }
-    write_bytes(index,5,out); // write index for polynomial
+    if (output) write_bytes(index,5,out); // write index for polynomial
     index+=len*coefficient_size;
     // and advance by its number of coefficient bytes
   }
-  write_bytes(index,5,out); // write final index
+  if (output) write_bytes(index,5,out); // write final index
   return index;
 }
 
@@ -309,7 +314,7 @@ ulong write_coefficients
   const std::vector<modulus_info*>& mod_info,
   const std::vector<ChineseBox*>& box,
   std::ostream& out,
-  bool verbose)
+  bool verbose, bool output)
 // return value is maximum of lifted coefficients
 { ulong nr_pols=mod_info[0]->nr_pol();
   ulong n=mod_info.size(); // number of moduli
@@ -343,10 +348,10 @@ ulong write_coefficients
 	 
 	 if (c>max)
 	 { max=c;
-	   std::cerr << (verbose ? "\t\t\tm" : "M") << "aximal coefficient so far: " 
-	             << max << ", in polynomial " << i << '\r';
+	   std::cout << (verbose ? "\t\t\tm" : "M") << "aximal coefficient so far: " 
+	             << max << ", in polynomial " << i << std::endl;
 	 }
-         write_bytes(c, coefficient_size, out);
+         if (output) write_bytes(c, coefficient_size, out);
        }
        catch (bool)
        // incompatibility found during lift; details are already printed
@@ -399,10 +404,12 @@ void test(std::vector<ulong>& moduli,std::vector<ChineseBox*>& box)
 
 int main(int argc, char** argv)
 { --argc; ++argv; // skip program name
-  bool verbose=true, double_tables=false;
+  bool verbose=true, double_tables=false, output=true;
   if (argc>0 and std::string(*argv)=="-q") { verbose=false; --argc; ++argv;}
   if (argc>0 and std::string(*argv)=="-d")
     { double_tables=true; --argc; ++argv;}
+  if (argc>0 and std::string(*argv)=="-nowrite")
+    { output=false; --argc; ++argv;}
 
   std::string mat_base,coef_base;
   // base names for renumbering and coefficient files
@@ -482,29 +489,32 @@ int main(int argc, char** argv)
         mod_info.push_back(new modulus_info(moduli[i],renumber_file,coef_file));
       }
     
-      std::ostringstream name;
-      name << coef_base << "-mod" << lcm;
-      
-      { bool write_protect=false;
-        for (ulong i=0; i<moduli.size() ; ++i)
-          if (lcm==moduli[i]) write_protect=true;
-        if (write_protect) name << '+'; // avoid overwriting file for one modulus
-      }
-      coefficient_file.open(name.str().c_str(),binary_out);
-      if (coefficient_file.is_open())
-        std::cout << "Output to file: " << name.str() << '\n';
-      else
-      { std::cerr << "Could not open output file '" << name.str() << "'.\n";
-          exit(1);
+      if (output)
+      { std::ostringstream name;
+        name << coef_base << "-mod" << lcm;
+        
+        { bool write_protect=false;
+          for (ulong i=0; i<moduli.size() ; ++i)
+            if (lcm==moduli[i]) write_protect=true;
+          if (write_protect) name << '+'; // avoid overwriting file for one modulus
         }
+        coefficient_file.open(name.str().c_str(),binary_out);
+        if (coefficient_file.is_open())
+          std::cout << "Output to file: " << name.str() << '\n';
+        else
+        { std::cerr << "Could not open output file '" << name.str() << "'.\n";
+           exit(1);
+        }
+      }
+      else std::cout << "Not writing output files" << std::endl;
     }
     ulong nr_c=
-      write_indices(coefficient_size,mod_info,coefficient_file,verbose);
+      write_indices(coefficient_size,mod_info,coefficient_file,verbose,output);
     std::cout << "\nDone writing indices, will now write "
               << nr_c << " coefficient bytes.\n";
     ulong max_coef=
        write_coefficients
-         (coefficient_size,mod_info,box,coefficient_file,verbose);
+         (coefficient_size,mod_info,box,coefficient_file,verbose,output);
     std::cout << "\nMaximal coefficient found: "
               << max_coef << ".\n";
   }
