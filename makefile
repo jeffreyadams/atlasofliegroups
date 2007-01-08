@@ -96,6 +96,8 @@ ifdef compiler
     CXX = $(compiler)
 endif
 
+LDFLAGS := -lpthread
+
 # RULES follow below
 
 # This target causes failed actions to clean up their (corrupted) target
@@ -117,9 +119,9 @@ sources/interface/emptymode.o: $(sources)
 # also is different
 atlas.exe: $(objects)
 ifeq ($(profile),true)
-	$(CXX) -pg -o atlas.exe $(objects)
+	$(CXX) -pg -o atlas.exe $(objects) $(LDFLAGS)
 else
-	$(CXX) -o atlas.exe $(objects) $(rlincludes)
+	$(CXX) -o atlas.exe $(objects) $(rlincludes) $(LDFLAGS)
 endif
 
 install: atlas.exe
