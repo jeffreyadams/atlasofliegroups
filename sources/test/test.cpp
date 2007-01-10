@@ -821,6 +821,10 @@ void primkl_f()
       arithmetic::modular_int::set_modulus(modulus);
     }
 
+    unsigned long threads;
+    getInteractive(threads,"Number of extra threads: ",1023);
+    kl::NThreads = threads;
+
     Block block(G_C,G_R.realForm(),drf);
 
     KLSupport kls(block);
@@ -914,6 +918,10 @@ void klbasis_f()
       arithmetic::modular_int::set_modulus(modulus);
     }
 
+    unsigned long threads;
+    getInteractive(threads,"Number of extra threads: ",1023);
+    kl::NThreads = threads;
+
     Block block(G_C,G_R.realForm(),drf);
 
     KLSupport kls(block);
@@ -978,6 +986,10 @@ void kllist_f()
       if (modulus==0) throw InputError();
       arithmetic::modular_int::set_modulus(modulus);
     }
+
+    unsigned long threads;
+    getInteractive(threads,"Number of extra threads: ",1023);
+    kl::NThreads = threads;
 
     Block block(G_C,G_R.realForm(),drf);
 
@@ -1073,6 +1085,10 @@ void klwrite_f()
 	  std::cerr << "Failed to open file for writing, try again.\n";
 	}
     }
+
+    unsigned long threads;
+    getInteractive(threads,"Number of extra threads: ",1023);
+    kl::NThreads = threads;
 
     Block block(G_C,G_R.realForm(),drf);
 
@@ -1231,6 +1247,10 @@ void wcells_f()
       arithmetic::modular_int::set_modulus(modulus);
     }
 
+    unsigned long threads;
+    getInteractive(threads,"Number of extra threads: ",1023);
+    kl::NThreads = threads;
+
     Block block(G_C,G_R.realForm(),drf);
 
     KLSupport kls(block);
@@ -1299,6 +1319,10 @@ void wgraph_f()
       if (modulus==0) throw InputError();
       arithmetic::modular_int::set_modulus(modulus);
     }
+
+    unsigned long threads;
+    getInteractive(threads,"Number of extra threads: ",1023);
+    kl::NThreads = threads;
 
     Block block(G_C,G_R.realForm(),drf);
 
