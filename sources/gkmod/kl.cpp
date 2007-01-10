@@ -30,10 +30,14 @@
 #ifdef VERBOSE
 #include <iostream>
 #include <ctime>
+#include <sstream>
+#include <string>
+#include <unistd.h>
 #endif
 
 #include <cassert>
 #include <map>
+#include <pthread.h>
 #include <stack>
 #include <stdexcept>
 
@@ -72,6 +76,8 @@ namespace atlas {
 
   namespace kl {
 
+    size_t NThreads(0);
+
     // this serves debugging of hash tables; no longer actually called
     void alert(KLIndex i) // illegal index into hash table
     {
@@ -109,6 +115,17 @@ class KLPolEntry : public KLPol
 
   void pause() {} // possible breakpoint for debugger
 
+    struct ProtectedY {
+      unsigned Y;
+      pthread_mutex_t mutex;
+      // constructors and destructors
+      ProtectedY(unsigned y)
+        : Y(y) {}
+    };
+
+    ProtectedY YThread(0);
+    unsigned YEnd = 0;
+
   using namespace kl;
 
   size_t firstAscent(const descents::DescentStatus&,
@@ -138,8 +155,9 @@ class KLPolEntry : public KLPol
 
   // Members serving for statistics
 
-  size_t prim_size;            // number of pairs stored in d_prim
-  size_t nr_of_prim_nulls;     // number of zeroes suppressed from d_prim
+    size_t prim_size;            // number of pairs stored in d_prim
+    size_t nr_of_prim_nulls;     // number of zeroes suppressed from d_prim
+    pthread_mutex_t stat_guard;  // protects modifications to these variables
 
   public:
 
@@ -148,10 +166,13 @@ class KLPolEntry : public KLPol
 
     ~Helper()
     {
+#ifdef VERBOSE
       std::cout << "Number of primitive pairs stored:     "
 		<< prim_size << ".\n";
       std::cout << "Number of unrecorded primitive pairs: "
 	    << nr_of_prim_nulls << ".\n";
+#endif
+      pthread_mutex_destroy(&stat_guard);
     }
 
     //accessors
@@ -558,7 +579,7 @@ KLContext::KLContext(klsupport::KLSupport& kls)
     , d_prim()
     , d_kl()
     , d_mu()
-    , d_store()
+    , d_store(1,8,1,8) // set dummy store here
     , d_zero()
     , d_one()
 { // until fill is called, d_zero and d_one remain undefined
@@ -582,6 +603,19 @@ KLContext::KLContext(const KLContext& other)
    d_zero(other.d_zero),
    d_one(other.d_one)
 {}
+
+// augmented copy constructor, will be called when constructing Helper
+KLContext::KLContext
+  (const KLContext& other,size_t npb, size_t pbs,size_t nib, size_t ibs)
+  :d_state(other.d_state),
+   d_support(other.d_support),
+   d_prim(other.d_prim),
+   d_kl(other.d_kl),
+   d_mu(other.d_mu),
+   d_store(npb,pbs,nib,ibs), // ignore dummy store, build the real one
+   d_zero(), d_one()         // don't even pretend to use dummy values
+{ // d_zero and d_one will be set soon, once Helper creates the hash table
+}
 
 KLContext& KLContext::operator= (const KLContext& other)
 
@@ -869,10 +903,72 @@ bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
 
 /* methods of KLPool */
 
-
 // this definition seems safer than (1ul<<int_bits)-1
 const size_t KLPool::low_mask
         =std::numeric_limits<unsigned int>::max();
+
+KLPool::KLPool(size_t nr_pool_blocks, unsigned int p_block_bits,
+	       size_t nr_index_blocks, unsigned int i_block_bits)
+  : pool(), index()
+  , pool_block_bits(p_block_bits), index_block_bits(i_block_bits)
+  , pool_block_mask(constants::lMask[p_block_bits])
+  , index_block_mask(constants::lMask[i_block_bits])
+  , last_group_size(0)
+  , savings(0)
+{ pool.reserve(nr_pool_blocks);
+  pool.push_back(std::vector<KLCoeff>());
+  pool[0].reserve(1ul<<pool_block_bits);
+  index.reserve(nr_index_blocks);
+  index.push_back(std::vector<IndexType>());
+  index[0].reserve(1ul<<index_block_bits);
+  index[0].push_back(IndexType(0,0)); // index is always 1 ahead
+#ifdef VERBOSE
+  std::cerr << "Pool: "<< nr_pool_blocks << " blocks of 2^" << pool_block_bits
+	    << " bytes, index " << nr_index_blocks << " blocks of 2^"
+	    << index_block_bits << " groups.\n";
+#endif
+}
+
+KLPool::~KLPool()
+{
+#ifdef VERBOSE
+  if (size()>0) // don't mention destructing empty pool
+    {
+      std::cout << "Destructing pool of " << size()
+		<< " polynomials.\n";
+      std::cout << "Stored " << pool_size() << " coefficient bytes,"
+	" current capacity " << (pool.size()<<pool_block_bits) << ".\n";
+      std::cout << "Trailing coefficient savings: " << savings << ".\n";
+      std::cout << "Total of bytes used for polynomial pool: "
+		<< mem_size() << " (net), "
+		<< mem_capacity() << " (gross).\n";
+    }
+#endif
+}
+
+
+size_t KLPool::pool_size() const     // number of coefficient bytes;
+{ size_t size=0;
+  for (size_t i=0; i<pool.size(); ++i) size+=pool[i].size();
+  return size;
+}
+
+size_t KLPool::mem_size() const   // net memory footprint
+{ return sizeof(KLPool)
+  +pool.size()*sizeof(std::vector<KLCoeff>)
+    +pool_size()*sizeof(KLCoeff)
+  +index.size()*sizeof(std::vector<IndexType>)
+    +((index.size()-1<<index_block_bits)+index.back().size())
+     *sizeof(IndexType);
+}
+size_t KLPool::mem_capacity() const   // gross memory footprint
+{ return sizeof(KLPool)
+  +pool.capacity()*sizeof(std::vector<KLCoeff>)
+    +(pool.size()<<pool_block_bits)*sizeof(KLCoeff)
+  +index.capacity()*sizeof(std::vector<IndexType>)
+    +(index.size()<<index_block_bits)*sizeof(IndexType);
+}
+
 
 /* Note: in the code below, the return type KLPool::const_reference is in fact
    KLPolRef, but it is written like this to allow compilation after changing
@@ -884,14 +980,28 @@ const size_t KLPool::low_mask
 
    typedef KLStore::const_reference KLPolRef;
 */
+
+/* A complication caused by the threaded setup is that sometimes a polynomial
+   would be split across different blocks of |pool| without specific action,
+   and this would make the polynomials::PolRef<KLCoeff> value for it invalid.
+   whenever this would happen we shall silently move the first coefficient of
+   the polynomial to the start of the next block. For the operator[] this
+   means that we must take care that while incrementing the base index of the
+   group by the length of polynomials preceding the polynomial considered in
+   its group, we could step over a block boundary and have to adjust.
+   Since this is a very rare event, we perform one test to see if this
+   correction is necessary at all, and only if this is the case we back up to
+   look more precisely where the adjustment has to be made.
+*/
 KLPool::const_reference KLPool::operator[] (KLIndex i) const
   {
-    unsigned int q=i/group_size, r=i%group_size;
-    const IndexType& iq=index[q]; // index structure selected
-
+    unsigned int q=i>>group_bits, r=i&group_mask; // quot/rem by group_size
+    const IndexType& iq= index [q>>index_block_bits] [q&index_block_mask];
+     // index structure selected
 
     size_t pi=  // get base for index into pool
       size_t(iq.pool_index_low)+set_high_order(iq.pool_index_high.degree());
+    size_t pi_block=pi>>pool_block_bits; // block into which pi points
 
     // adjust pool index for sizes of preceeding polynomials in group
     for (unsigned int j=0; j<r; ++j)
@@ -903,22 +1013,71 @@ KLPool::const_reference KLPool::operator[] (KLIndex i) const
  	unsigned int deg=iq.deg_val[r].degree();
 	unsigned int val=iq.deg_val[r].valuation();
 
+        // now see if we overstepped or will overstep a pool block boundary
+	if (pi+1+deg-val > (pi_block+1<<pool_block_bits))
+	  {
+	    /* N.B. if a polynomial happens to fit exactly at end of a block
+	       then the _next_ one is considered split (but advances by 0).
+	       This explains the conditions > instead of >= above and below */
+	    pi= size_t(iq.pool_index_low) // reset to base index
+	       +set_high_order(iq.pool_index_high.degree());
+	    for (unsigned int j=0; j<r; ++j) // redo index adjustment
+	      {
+	        pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
+	        if (pi > pi_block+1<<pool_block_bits) // split was here
+		  // NEED PARENTHESES IN NEXT LINE!
+		  pi=(++pi_block<<pool_block_bits)    // advance to next block
+		     // but don't forget the length of the "split" polynomial
+		     +(1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
+	      }
+	    if (pi+1+deg-val>(pi_block+1<<pool_block_bits)) // this one split
+	      pi= ++pi_block<<pool_block_bits;      // advance to next block
+
+	  }
+
 	// and build the right polynomials::PolRef<KLCoeff> value
-	return const_reference(&pool[pi-val],val,1+deg);
+	return const_reference
+          (&pool[pi_block][(pi&pool_block_mask)-val], val, 1+deg);
       }
     else // this is a bit harder, the degree is implicit, but not needed!
       {
 	// in this case get base for next index into pool
-	size_t next_pi=
-	  size_t(index[q+1].pool_index_low) +
-	  set_high_order(index[q+1].pool_index_high.degree());
+	const IndexType* nip; // next index pointer
+        if ((q+1&index_block_mask)!=0)
+          nip= &index[q>>index_block_bits][q+1&index_block_mask];
+	else
+          nip= &index[q+1>>index_block_bits][0];
+
+	size_t next_pi=size_t(nip->pool_index_low) +
+	  set_high_order(nip->pool_index_high.degree());
 
 	// get our own valuation
-	unsigned int val=index[q+1].pool_index_high.valuation();
+	unsigned int val=nip->pool_index_high.valuation();
  	// unused: unsigned int deg=(next_pi-pi)+val-1;
 
+        // now see if we overstepped or will overstep a pool block boundary
+	if (next_pi > (pi_block+1<<pool_block_bits))
+	  {
+	    pi= size_t(iq.pool_index_low) // reset to base index
+	       +set_high_order(iq.pool_index_high.degree());
+	    for (unsigned int j=0; j<r; ++j) // redo index adjustment
+	      {
+	        pi+= (1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
+	        if (pi > pi_block+1<<pool_block_bits) // split was here
+		  // NEED PARENTHESES IN NEXT LINE!
+		  pi=(++pi_block<<pool_block_bits)    // advance to next block
+		     // but don't forget the length of the "split" polynomial
+		     +(1+iq.deg_val[j].degree()-iq.deg_val[j].valuation());
+	      }
+	    if (next_pi > pi_block+1<<pool_block_bits) // this one split
+	      pi= ++pi_block<<pool_block_bits;      // advance to next block
+
+	  }
+        assert(val+next_pi-pi<=32);
+
 	// and build the right polynomials::PolRef<KLCoeff> value
-	return const_reference(&pool[pi-val],val,val+next_pi-pi);
+	return const_reference
+          (&pool[pi_block][(pi&pool_block_mask)-val], val, val+next_pi-pi);
       }
   }
 
@@ -957,38 +1116,38 @@ void KLPool::push_back(const KLPol& p)
 
 	savings+=valuation;// keep track of number of null coefficients saved
 
-
 	// now X^valuation divides p, write |1+degree-valuation| coefficients
-	for (size_t i=valuation; i<=p.degree(); ++i) pool.push_back(p[i]);
+	// first check space
+	if (pool.back().size()+1+degree-valuation>pool.back().capacity())
+	  {
+	    pool.push_back(std::vector<KLCoeff>());
+	    pool.back().reserve(1ul<<pool_block_bits);
+	  }
+
+	for (size_t i=valuation; i<=p.degree(); ++i)
+	  pool.back().push_back(p[i]);
       }
 
     // now mark end of coefficients, and record valuation
-    if (last_index_size != group_size-1)
-      index.back().deg_val[last_index_size++]=packed_byte(degree,valuation);
+    if (last_group_size != group_size-1)
+      index.back().back().deg_val[last_group_size++]
+        =packed_byte(degree,valuation);
     else
       {
-	last_index_size=0; // don't forget to start next group at beginning
-	index.push_back(IndexType(pool.size(),valuation));
+	last_group_size=0; // don't forget to start next group at beginning
+	// check space in block
+	if (index.back().size()==index.back().capacity())
+	  {
+	    index.push_back(std::vector<IndexType>());
+	    index.back().reserve(1ul<<index_block_bits);
+	  }
+
+	// compute end-index of polynomial; not pool_size() which is too small
+	size_t pool_index=
+	  (pool.size()-1<<pool_block_bits)+pool.back().size();
+	index.back().push_back(IndexType(pool_index,valuation));
       }
   }
-
-    KLPool::~KLPool()
-    {
-      if (size()>0) // don't mention destructing empty pool
-	{
-	  std::cerr << "Destructing storage of " << size()
-		    << " polynomials.\n";
-	  std::cerr << "Stored " << pool.size() << " coefficient bytes,"
-	    " vector capacity " << pool.capacity() << ".\n";
-	  std::cerr << "Trailing coefficient savings: " << savings << ".\n";
-	  std::cerr << "Index of " << index.size() << " groups has size "
-		    << index.size()*sizeof(IndexType) << " (net), "
-		    << index.capacity()*sizeof(IndexType) << " (gross).\n";
-	  std::cerr << "Total of bytes used for polynomial storage: "
-		    << mem_size() << " (net), "
-		    << mem_capacity() << " (gross).\n";
-	}
-    }
 
 } // namespace kl
 
@@ -1005,9 +1164,11 @@ namespace kl {
     /* main constructor */
 
 Helper::Helper(const KLContext& kl)
-  : KLContext(kl)
+  : KLContext(kl
+	      ,0x8000ul,22u   // 2^15 blocks of 2^22 coefficients
+	      ,0x4000ul,14u)  // 2^14 blocks of 2^14 index groups (of 2^4 each)
     , d_hashtable(d_store) // hash table refers to our own d_store
-    , prim_size(0), nr_of_prim_nulls(0)
+    , prim_size(0), nr_of_prim_nulls(0), stat_guard()
 {
   const KLPol Zero;   // default constructed polynomial has degree -1
   const KLPol One(0); // X^0 = 1, degree==0
@@ -1015,7 +1176,10 @@ Helper::Helper(const KLContext& kl)
   d_zero = d_hashtable.match(Zero);
   d_one = d_hashtable.match(One);
 
+#ifdef VERBOSE
   if (d_zero==d_one) std::cout << "Warning, One=Zero !\n";
+#endif
+  pthread_mutex_init(&stat_guard,NULL);
 }
 
 /******** accessors **********************************************************/
@@ -1392,13 +1556,7 @@ void Helper::completePacket(BlockElt y)
 	// klv[j] is P_{x,y2}+P_{x,y1}, for x = e[j]
 	for (size_t j = 0; j < klv.size(); ++j) {
 	  BlockElt x = e[j];
-	  try {
-	    klv[j].safeSubtract(klPol(x,y1));
-	  }
-	  catch (error::NumericUnderflow& e){
-	    throw kl_error::KLError(x,y1,__LINE__,
-				    static_cast<const KLContext&>(*this));
-	  }
+	  klv[j].safeSubtract(klPol(x,y1));
 	}
 	// write out row
 	writeRow(klv,e,y2);
@@ -1461,6 +1619,7 @@ void Helper::fill()
   // fill the lists
   BlockElt y = 0;
   size_t minLength = length(0);
+  size_t maxLength = length(d_kl.size() - 1);
 
   // do the minimal length cases; they come first in the enumeration
   for (; y < d_kl.size() and length(y) == minLength; ++y) {
@@ -1471,22 +1630,90 @@ void Helper::fill()
     // there are no mu-coefficients
   }
 
-  // do the other cases
-  for (; y < d_kl.size(); ++y) {
-#ifdef VERBOSE
-    std::cerr << y << "\r";
-#endif
-    try {
-      fillKLRow(y);
-    } catch (kl_error::KLError& e) {
-      e("error: negative coefficient in k-l construction");
-    }
-    fillMuRow(y);
-  }
+  pthread_mutex_init(&YThread.mutex, NULL);
+
+  //set timers for KL computation
 
 #ifdef VERBOSE
+  const int pid = getpid();
+  std::stringstream command;
+  command << "grep VmData /proc/" << pid << "/status";
+  // system(command.str().c_str());
+  // std::cout << std::endl;
+
+  std::time_t time0;
+  std::time(&time0);
+  std::time_t time;
+#endif
+
+  // do the other cases
+
+
+  pthread_t thread[NThreads];
+  void* argptr = this;
+  for (size_t l = minLength+1; l <= maxLength; ++l) {
+    YThread.Y = d_support->lengthLess(l);
+    YEnd = d_support->lengthLess(l+1);
+
+    // start up NThreads new threads, all working on y's of length l
+    for(size_t k = 0; k < NThreads; ++k) {
+      pthread_create( &thread[k], NULL, ThreadStartup, argptr);
+    }
+
+    // we are not going to sit idle while the other threads work
+    ThreadStartup(argptr); // join the workforce for length l
+
+    // now wait for the other threads to complete
+    for (size_t k = 0; k < NThreads; ++k) {
+      pthread_join(thread[k], NULL);
+    }
+
+    // now we are once again the only existing thread
+
+    // filling the mu-rows is done single-threadedly
+    for (size_t yprime = d_support->lengthLess(l);
+         yprime < d_support->lengthLess(l+1); ++yprime) {
+      fillMuRow(yprime);
+      // done elsewhere: prim_size += d_kl[yprime].size();
+      // no longer used: muSize += d_mu[yprime].size();
+    }
+
+#ifdef VERBOSE
+      std::time(&time);
+      double deltaTime = difftime(time, time0);
+      std::cerr << "t="    << std::setw(6) << deltaTime
+		<< "s. l=" << std::setw(3) << l
+		<< ", y="  << std::setw(6) << d_support->lengthLess(l+1) - 1
+                << ", coef:"  << std::setw(11) << d_store.size()
+		<< ", store:" << std::setw(11) << d_hashtable.mem_capacity()
+                << ", mat:"  << std::setw(11) << prim_size
+		<<  std::endl;
+
+      // system(command.str().c_str());
+      // this was 'grep VmData /proc/<process id>/status'
+
+#endif
+
+  } // for (size_t l = minLength+1; l <= maxLength; ++l)
+
+
+#ifdef VERBOSE
+  std::time(&time);
+  double deltaTime = difftime(time, time0);
+  std::cerr << std::endl;
+  std::cerr << "Total elapsed time = " << deltaTime
+            << "s.  Finished at l = " << maxLength
+            << ", y = " << d_kl.size() - 1 << std::endl;
+  std::cerr << "d_store.size() = " << d_store.size()
+            << ", prim_size = " << prim_size  << std::endl;
+
+  system(command.str().c_str());
+  // this is 'grep VmData /proc/<process id>/status'
+
   std::cerr << std::endl;
 #endif
+
+  pthread_mutex_destroy(&YThread.mutex);
 
   return;
 }
@@ -1695,13 +1922,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
       // subtract x^d.mu.P_{x,z} from klv[j], where d = 1/2(l(y)-l(z))
       KLPolRef pol = klPol(x,z);
       Degree d = (l_y-l_z)/2;
-      try {
-	klv[j].safeSubtract(pol,d,mu);
-      }
-      catch (error::NumericUnderflow& e){
-	throw kl_error::KLError(x,y,__LINE__,
-				static_cast<const KLContext&>(*this));
-      }
+      klv[j].safeSubtract(pol,d,mu);
     }
 
   }
@@ -1767,13 +1988,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
       klv[j] = klPol(x1.first,y1);
       klv[j].safeAdd(klPol(x1.second,y1));
       klv[j].safeAdd(klPol(x,y1),1);
-      try {
-	klv[j].safeSubtract(klPol(x,y1));
-      }
-      catch (error::NumericUnderflow& e){
-	throw kl_error::KLError(x,y,__LINE__,
-				static_cast<const KLContext&>(*this));
-      }
+      klv[j].safeSubtract(klPol(x,y1));
     }
       break;
     case DescentStatus::RealTypeII: {
@@ -1781,13 +1996,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
       // P_{x_1,y_1}+qP_{x,y1}-P_{s.x,y1}
       klv[j] = klPol(x1,y1);
       klv[j].safeAdd(klPol(x,y1),1);
-      try {
-	klv[j].safeSubtract(klPol(cross(s,x),y1));
-      }
-      catch (error::NumericUnderflow& e){
-	throw kl_error::KLError(x,y,__LINE__,
-				static_cast<const KLContext&>(*this));
-      }
+      klv[j].safeSubtract(klPol(cross(s,x),y1));
     }
       break;
     default: // this cannot happen
@@ -1875,8 +2084,10 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
   copy(new_extr,nzpr.end(),back_inserter(d_prim[y]));
   copy(new_pol,klr.end(),back_inserter(d_kl[y]));
 
+  pthread_mutex_lock(&stat_guard);
   prim_size        += nzpr.end()-new_extr;
   nr_of_prim_nulls += new_extr  -nzpr.begin(); // measure unused space
+  pthread_mutex_unlock(&stat_guard);
 }
 
   }
@@ -2042,10 +2253,8 @@ bool Thicket::ascentCompute(BlockElt x, size_t pos)
   pol.safeAdd(klPol(x1.second,pos));
 
   if (not pol.isZero()) { // write pol
-    --d_firstKL[pos];
-    *d_firstKL[pos] = d_helper->d_hashtable.match(pol);
-    --d_firstPrim[pos];
-    *d_firstPrim[pos] = x;
+    *--d_firstKL[pos] = d_helper->d_hashtable.match(pol);
+    *--d_firstPrim[pos] = x;
   }
 
   return true;
@@ -2072,13 +2281,7 @@ void Thicket::edgeCompute(BlockElt x, size_t pos, const Edge& e)
 
   KLPol pol = e.recursion[xpos];
 
-  try {
-    pol.safeSubtract(klPol(x,e.source));
-  }
-  catch (error::NumericUnderflow& err){
-    throw kl_error::KLError(x,d_vertices[pos],__LINE__,
-			    static_cast<const KLContext&>(*d_helper));
-  }
+  pol.safeSubtract(klPol(x,e.source));
 
   if (not pol.isZero()) { // write pol
     *--d_firstKL[pos]   = d_helper->d_hashtable.match(pol);
@@ -2163,8 +2366,10 @@ void Thicket::fill()
     copy(d_firstPrim[j],d_prim[j].end(),back_inserter(d_helper->d_prim[y]));
     copy(d_firstKL[j],d_klr[j].end(),back_inserter(d_helper->d_kl[y]));
 
+    pthread_mutex_lock(&d_helper->stat_guard);
     d_helper->prim_size        += d_prim[j].end()-d_firstPrim[j];
     d_helper->nr_of_prim_nulls += d_firstPrim[j]-d_prim[j].begin();
+    pthread_mutex_unlock(&d_helper->stat_guard);
   }
 
   return;
@@ -2366,6 +2571,32 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
  *****************************************************************************/
 
 namespace kl {
+
+
+  void *ThreadStartup(void *argptr) {
+    kl::helper::Helper *target = (kl::helper::Helper *)argptr;
+    while ( true ) {
+
+      pthread_mutex_lock( &YThread.mutex ); // take lock to pick and advance y
+      if ( YThread.Y >= YEnd ) break; // stop when current length exhausted
+      size_t y = YThread.Y;
+      size_t o = target->orbit(YThread.Y);
+      do ++YThread.Y;
+      while (YThread.Y < target->size() and target->orbit(YThread.Y) == o);
+
+// leaving the next line in the critical zone keeps the display more proper
+#ifdef VERBOSE
+      std::cerr << y << "\r";
+#endif
+      pthread_mutex_unlock( &YThread.mutex );
+
+      target->fillKLRow(y); // now fill row y, and others in the same orbit
+    } // while (true)
+
+    pthread_mutex_unlock( &YThread.mutex ); // we had locked before the break
+    return NULL;
+  }
+
   namespace helper {
 
 size_t firstAscent(const descents::DescentStatus& d1,

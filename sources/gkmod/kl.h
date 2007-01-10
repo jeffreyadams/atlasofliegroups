@@ -16,6 +16,7 @@ Class definitions and function declarations for the class KLContext.
 #define KL_H
 
 #include <limits>
+#include <pthread.h>
 #include <iostream>
 
 #include "kl_fwd.h"
@@ -25,7 +26,7 @@ Class definitions and function declarations for the class KLContext.
 #include "bitset.h"
 #include "klsupport.h"
 
-#include "hashtable-stats.h"
+#include "hashtable-stats.h-thread"
 #include "polynomials.h"
 #include "prettyprint.h"
 #include "wgraph.h"
@@ -41,23 +42,28 @@ std::ostream& operator<<  (std::ostream& out, const kl::KLPol& p);
 
 namespace kl {
 
+  /*!
+\brief Wrapper for passing member function fillKLRow to pthread_create.
+  */
+  extern "C" void *ThreadStartup(void *);
+
+  extern size_t NThreads;
 
 // storage for KL polynomials
 
-/*
-   The idea is to store only sequences of coefficients in a huge vector
+/* The idea is to store only sequences of coefficients in a huge vector
    |pool|, and to provide minimal overhead (the |index| vector) to be able to
    access individual polynomials. Polynomials are extracted in the form of a
-   |polynomials::PolRef<KLCoeff>| object, which class replaces the type
-   |const KLPol&| that is impossible to produce without having an actual
-   |KLPol| value in memory. This explains our typedef of |const_reference|.
-   Insertion is done by the method |push_back|, and extraction by
-   |operator[]|, mimicking the behaviour of |std::vector<KLPol>| except for
-   the return type from |operator[]|. Other methods are |size|, needed by the
-   hash table code to know the sequence number to assign to a new polynomial
-   sent to the storage, and |swap| for the |swap| method of hash tables. The
-   method |mem_size| gives the number of bytes used in storage, for
-   statistical convenience.
+   |polynomials::PolRef<KLCoeff>| object, which class replaces the type |const
+   KLPol&| that is impossible to produce without having an actual |KLPol|
+   value in memory. This explains our typedef of |const_reference|. Insertion
+   is done by the method |push_back|, and extraction by |operator[]|,
+   mimicking the behaviour of |std::vector<KLPol>| except for the return type
+   from |operator[]|. Other methods are |size|, needed by the hash table code
+   to know the sequence number to assign to a new polynomial sent to the
+   storage, and |swap| for the |swap| method of hash tables. The methods
+   |mem_size| and |mem_capacity| give the numbers of bytes used respectively
+   reserved in storage, for statistical convenience.
 
 */
 
@@ -81,8 +87,9 @@ class KLPool
 
     static const unsigned int deg_limit=32; // (hard) degree limit
     static const unsigned int val_limit=8;  // (soft) valuation limit
-    static const int group_size=16; // number of indices packed in a group
-
+    static const int group_bits=4; // log_2 of nr of indices packed in a group
+    static const int group_size= 1<<group_bits; // nr of indices in a group
+    static const unsigned int group_mask=group_size-1; // matching bit mask
 
 /* The following kludge is necessary to repair the broken operation of bit
    shift operations with shift amount equal to the integer's width. Apparently
@@ -142,37 +149,51 @@ class KLPool
         , pool_index_high(high_order_int(i),v) {}
     };
 
-    std::vector<KLCoeff> pool;
-    std::vector<IndexType> index;
-    unsigned int last_index_size; // nr of bytes of last index struct in use
+/* In a departure from the non-threaded model, we shall not directly store
+   vectors of coefficients and |IndexType| blocks, but rather vectors of such
+   vectors. The point is that we wish to avoid automatic reallocation at any
+   time, so instead we allocate in fixed-capacity blocks, and access them via
+   a fixed-capacity vector of such blocks; the only allocation done is by
+   calling the reserve method for block before the first use is made of it. As
+   a consequence a maximal amout of available storage is fixed a priori, but
+   we shall choose a generous (but hard) limit.
+*/
+
+    std::vector<std::vector<KLCoeff> > pool;
+    std::vector<std::vector<IndexType> > index;
+    unsigned int pool_block_bits;  // number of bits for index within block
+    unsigned int index_block_bits; // number of bits for index within block
+    size_t pool_block_mask;  // mask with final pool_block_bits bits set
+    size_t index_block_mask; // mask with final index_block_bits bits set
+
+    unsigned int last_group_size; // nr of bytes of last index struct in use
 
     size_t savings; // gather statistics about savings by using valuations
 
   public:
     typedef polynomials::PolRef<KLCoeff> const_reference; // used by HashTable
 
-    // constructor;
-    KLPool() : pool(),index(1,IndexType(0,0)), // index is always 1 ahead
-      last_index_size(0),
-      savings(0) {}
-
-    ~KLPool(); // may print statistics
+    // constructor and destructor
+    KLPool(size_t nr_pool_blocks, unsigned int p_block_bits,
+	   size_t nr_index_blocks, unsigned int i_block_bits);
+    ~KLPool(); // deletes pointers in pool and index, may print statistics
 
     // accessors
     const_reference operator[] (KLIndex i) const; // select polynomial by nr
 
     size_t size() const       // number of entries
-      { return group_size*(index.size()-1)+last_index_size; }
-    size_t mem_size() const   // net memory footprint
-      { return sizeof(KLPool)
-	  +pool.size()*sizeof(KLCoeff)
-	  +index.size()*sizeof(IndexType);
+      { return
+	  ((index.size()-1<<index_block_bits) // for full blocks
+	   +index.back().size()-1   // for full index groups in last block
+	   <<group_bits             // multiply both these by group size
+          )
+	  + last_group_size; // add part of last index group used
       }
-    size_t mem_capacity() const   // gross memory footprint
-      { return sizeof(KLPool)
-	  +pool.capacity()*sizeof(KLCoeff)
-	  +index.capacity()*sizeof(IndexType);
-      }
+
+    // accessors for statistics
+    size_t pool_size() const;     // number of coefficient bytes;
+    size_t mem_size() const;      // net memory footprint
+    size_t mem_capacity() const;  // gross memory footprint
 
     // manipulators
     void push_back(const KLPol&);
@@ -181,7 +202,11 @@ class KLPool
       {
 	pool.swap(other.pool);
 	index.swap(other.index);
-	std::swap(last_index_size,other.last_index_size);
+	std::swap(pool_block_bits,other.pool_block_bits);
+	std::swap(pool_block_mask,other.pool_block_mask);
+	std::swap(index_block_bits,other.index_block_bits);
+	std::swap(index_block_mask,other.index_block_mask);
+	std::swap(last_group_size,other.last_group_size);
 	std::swap(savings, other.savings);
       }
   }; // class KLPool
@@ -275,15 +300,16 @@ degree coefficient of P_{y,x}).
 public:
 
 // constructors and destructors
-  KLContext() {}
-
-  KLContext(klsupport::KLSupport&);
+  KLContext(klsupport::KLSupport&); // initial base object with dummy pool
 
   // there is no point in making the destructor virtual
   ~KLContext() {}
 
 // copy, assignment and swap
-  KLContext(const KLContext&);
+  KLContext(const KLContext&);  // ordinary copy constructor, not really used
+  KLContext(const KLContext&    // augmented copy constructor, called by Helper
+	    ,size_t nr_pool_blocks, size_t p_block_bits
+	    ,size_t nr_index_blocks, size_t i_block_bits); // specify pool size
 
   KLContext& operator= (const KLContext&);
 
