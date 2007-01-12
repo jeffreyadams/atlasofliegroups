@@ -1500,7 +1500,7 @@ void Helper::fill()
 	double deltaTime = difftime(time, time0);
 	std::cerr << "t="    << std::setw(6) << deltaTime
 		  << "s. l=" << std::setw(3) << l // completed length
-		  << ", y="  << std::setw(6) << d_support->lengthLess(l+1) - 1
+		  << ", y="  << std::setw(6) << y - 1 // last y value done
 		  << ", coef:"  << std::setw(11) << d_store.size()
 		  << ", store:" << std::setw(11) << d_hashtable.mem_capacity()
 		  << ", mat:"  << std::setw(11) << prim_size
