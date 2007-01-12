@@ -164,7 +164,7 @@ dvifiles: $(dvifiles)
 # Our executable program is now called 'realex'. As we recently found out,
 # this stands for REwritten Atlas of Lie groups EXecutable
 realex: $(objects)
-	$(CXX) $(rlincludes) -o realex $^
+	$(CXX) $(rlincludes) -lpthread -o realex $^
 ifeq (,$(findstring t,$(MAKEFLAGS))) # unless a flag -t was given
 	$(MAKE) -t $@ # now that build succeeds mark everything as up-to-date
 endif
@@ -187,7 +187,7 @@ main.o main.tex: $(headers)
 KLread: KLread.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
-matrix-merge: matrix-merge.cpp
+matrix-merge: matrix-merge.cpp $(mm-objects)
 	$(CXX) $(CXXFLAGS) -o $@ $< $(mm-objects)
 
 coef-merge: coef-merge.cpp
