@@ -716,6 +716,65 @@ MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
   return xloc->second;
 }
 
+/* The following two methods were moved here form the Helper class, since
+   they turn out to be useful even when no longer constructing the KLContext
+*/
+void KLContext::makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const
+
+/*!
+  \brief Puts in e the list of all x extremal w.r.t. y.
+
+  Explanation: this means that either x = y, or length(x) < length(y),
+  and every descent for y is a descent for x.
+*/
+
+{
+  using namespace bitmap;
+
+  BitMap b(size());
+  size_t c = d_support->lengthLess(length(y));
+
+  b.fill(c);     // start with all elements < y in length
+  b.insert(y);   // and y itself
+
+  // extremalize (filter out those that are not extremal)
+  d_support->extremalize(b,descentSet(y));
+
+  // copy from bitset b to list e
+  e.reserve(e.size()+b.size()); // ensure tight fit after copy
+  std::copy(b.begin(),b.end(),back_inserter(e));
+
+  return;
+}
+
+void KLContext::makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const
+
+/*!
+  \brief Puts in e the list of all x primitive w.r.t. y.
+
+  Explanation: this means that either x = y, or length(x) < length(y),
+  and every descent for y is either a descent, or an imaginary type II
+  ascent for x.
+*/
+
+{
+  using namespace bitmap;
+
+  BitMap b(size());
+  size_t c = d_support->lengthLess(length(y));
+
+  b.fill(c);     // start with all elements < y in length
+  b.insert(y);   // and y itself
+
+  // primitivize (filter out those that are not primitive)
+  d_support->primitivize(b,descentSet(y));
+  // copy to list
+  e.reserve(e.size()+b.size()); // ensure tight fit after copy
+  std::copy(b.begin(),b.end(),back_inserter(e));
+
+  return;
+}
+
 
 /******** manipulators *******************************************************/
 void KLContext::fill()
@@ -1347,62 +1406,6 @@ MuCoeff Helper::lengthOneMu(BlockElt x, BlockElt y) const
 
   // if we get here, x is extremal w.r.t. y
   return recursiveMu(x,y);
-}
-
-void KLContext::makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const
-
-/*!
-  \brief Puts in e the list of all x extremal w.r.t. y.
-
-  Explanation: this means that either x = y, or length(x) < length(y),
-  and every descent for y is a descent for x.
-*/
-
-{
-  using namespace bitmap;
-
-  BitMap b(size());
-  size_t c = d_support->lengthLess(length(y));
-
-  b.fill(c);     // start with all elements < y in length
-  b.insert(y);   // and y itself
-
-  // extremalize (filter out those that are not extremal)
-  d_support->extremalize(b,descentSet(y));
-
-  // copy from bitset b to list e
-  e.reserve(e.size()+b.size()); // ensure tight fit after copy
-  std::copy(b.begin(),b.end(),back_inserter(e));
-
-  return;
-}
-
-void KLContext::makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const
-
-/*!
-  \brief Puts in e the list of all x primitive w.r.t. y.
-
-  Explanation: this means that either x = y, or length(x) < length(y),
-  and every descent for y is either a descent, or an imaginary type II
-  ascent for x.
-*/
-
-{
-  using namespace bitmap;
-
-  BitMap b(size());
-  size_t c = d_support->lengthLess(length(y));
-
-  b.fill(c);     // start with all elements < y in length
-  b.insert(y);   // and y itself
-
-  // primitivize (filter out those that are not primitive)
-  d_support->primitivize(b,descentSet(y));
-  // copy to list
-  e.reserve(e.size()+b.size()); // ensure tight fit after copy
-  std::copy(b.begin(),b.end(),back_inserter(e));
-
-  return;
 }
 
 MuCoeff Helper::recursiveMu(BlockElt x, BlockElt y) const
