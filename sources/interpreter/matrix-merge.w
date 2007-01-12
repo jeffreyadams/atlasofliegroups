@@ -83,7 +83,7 @@ template<unsigned int n>
       return false;
     }
   @)
-    unsigned int operator[] (unsigned int i) const { return comp[i]; }
+    unsigned int operator[] (unsigned int i) const @+{@; return comp[i]; }
   };
 
 @ For the hash function we should consider the fact that in practise most
@@ -306,7 +306,10 @@ input file.
   if (write_protect) name << '+'; // avoid overwriting file for one modulus
 }
 
-@
+@ We have kept track of the maximal number plus one for each of the moduli;
+these should give then number of polynomials for each modulus. For the
+combined modulus we just report the size of the hash table.
+
 @h <iomanip>
 
 @< Report limits of modular numbers and of generated numbers @>=
@@ -318,7 +321,10 @@ input file.
             << ": " << hash.size() << ".\n";
 }
 
-@
+@ The renumbering files are quite trivial, but huge; they form the reason that
+one cannot hope to run this program for split~$E_8$ on a 32-bit machine (the
+vector |pool| would not fit in virtual memory).
+
 @< Write files recording the renumbering performed @>=
 for (unsigned int i=0; i<n; ++i)
 { std::ostringstream name;
