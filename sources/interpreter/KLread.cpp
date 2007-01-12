@@ -2,7 +2,8 @@
 #include <fstream>
 #include <iostream>
 
-typedef unsigned long long ullong;
+typedef std::streamoff ullong; // sufficiently long unsigned type
+const ullong infty=~ullong(0);
 
 const std::ios_base::openmode binary_out=
 			    std::ios_base::out
@@ -55,8 +56,8 @@ int main(int argc,char** argv)
   while (true)
     {
       std::cout << "index: ";
-      ullong i=~0ull; std::cin >> i;
-      if (i==ullong(~0ull)) break;
+      ullong i=infty; std::cin >> i;
+      if (i==infty) break;
       if (i>=n_polynomials)
 	{
 	  std::cout << "index too large, limit is " << n_polynomials-1
