@@ -2,6 +2,8 @@
 #include <fstream>
 #include <iostream>
 
+typedef unsigned long long ullong;
+
 const std::ios_base::openmode binary_out=
 			    std::ios_base::out
 			  | std::ios_base::trunc
@@ -11,7 +13,7 @@ const std::ios_base::openmode binary_in=
 			    std::ios_base::in
 			  | std::ios_base::binary;
 
-size_t read_bytes(unsigned int n, std::istream& in)
+ullong read_bytes(unsigned int n, std::istream& in)
 {
   if (n==0) return 0;
   else
@@ -35,7 +37,7 @@ int main(int argc,char** argv)
   if (not in_file.is_open())
     { std::cerr << "Open failed"; exit(1); }
 
-  size_t n_polynomials=read_bytes(4,in_file);
+  ullong n_polynomials=read_bytes(4,in_file);
 
   std::streamoff index_begin=in_file.tellg();
   read_bytes(10,in_file); // skip initial 2 indices
@@ -43,7 +45,7 @@ int main(int argc,char** argv)
   std::cout << "Coefficient size " << coefficient_size << ".\n";
 
   in_file.seekg(index_begin+5*n_polynomials,std::ios_base::beg);
-  size_t n_coefficients =read_bytes(5,in_file)/coefficient_size;
+  ullong n_coefficients =read_bytes(5,in_file)/coefficient_size;
   std::streamoff coefficients_begin=in_file.tellg();
 
   std::cout << n_polynomials << " polynomials, "
@@ -53,8 +55,8 @@ int main(int argc,char** argv)
   while (true)
     {
       std::cout << "index: ";
-      size_t i=~0ul; std::cin >> i;
-      if (i==size_t(~0ul)) break;
+      ullong i=~0ull; std::cin >> i;
+      if (i==ullong(~0ull)) break;
       if (i>=n_polynomials)
 	{
 	  std::cout << "index too large, limit is " << n_polynomials-1
@@ -62,8 +64,8 @@ int main(int argc,char** argv)
 	  continue;
 	}
       in_file.seekg(index_begin+5*i,std::ios_base::beg);
-      size_t index=read_bytes(5,in_file);
-      size_t next_index=read_bytes(5,in_file);
+      ullong index=read_bytes(5,in_file);
+      ullong next_index=read_bytes(5,in_file);
       size_t length=(next_index-index)/coefficient_size;
       if (length>=33)
 	{
