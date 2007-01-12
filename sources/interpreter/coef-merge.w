@@ -237,6 +237,7 @@ the code below we use the fact that |m+mm=lcm|, and arrange to avoid even
 negative intermediate results (although that would not have caused any real
 problem, as long as only additive operations are used).
 
+@h <cassert>
 @< Function definitions @>=
 TabledChineseBox::TabledChineseBox(const ChineseBox& cb)
 : ChineseBox(cb), m_table(a/gcd+1), mm_table(m_table.rbegin())
