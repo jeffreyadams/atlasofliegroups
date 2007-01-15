@@ -245,7 +245,7 @@ inline void write_bytes(file_pos val, ulong n, std::ostream& out)
 
 void read_renumbering_table
   (ulong nr_pols, std::ifstream& in, std::vector<unsigned int>& table)
-  throw (std::bad_alloc)
+  throw (std::length_error,std::bad_alloc)
 { table.resize(nr_pols);
   for (ulong i=0; i<nr_pols; ++i) table[i]=read_bytes(4,in);
 }
@@ -573,9 +573,14 @@ int main(int argc, char** argv)
         { mod_info.push_back
            (new modulus_info_with_table(moduli[i],renumber_file,coef_file));
         }
+        catch (std::length_error)
+        { std::cout << "Renumbering table for modulus " << moduli[i] 
+                    << " is too large for architecture, doing without" << std::endl;
+        mod_info.push_back(new modulus_info(moduli[i],renumber_file,coef_file));
+        }
         catch (std::bad_alloc)
-        { std::cout << "Doing without renumbering table for modulus "
-        	    << moduli[i]  << '.' << std::endl;
+        { std::cout << "Not enough virtual memory for renumbering table for modulus "
+        	    << moduli[i]  << ", doing without." << std::endl;
         mod_info.push_back(new modulus_info(moduli[i],renumber_file,coef_file));
         }
       }

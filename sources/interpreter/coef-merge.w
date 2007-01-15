@@ -433,19 +433,24 @@ inline void write_bytes(file_pos val, ulong n, std::ostream& out)
 |read_renumbering_table| will read |nr_pols| $4$-byte numbers from the file
 |in| into the vector~|table|. The table will become quite large, namely
 |4*nr_pols| bytes. For this reason this function cannot succeed on a $32$-bit
-when processing the more than $1.1*10^9$ polynomials for split~$E_8$ system;
+system when processing the more than $1.1*10^9$ polynomials for split~$E_8$;
 for that case (and others where there is too little memory) we shall provide a
 safer (but slower) alternative solution. The simplest way to find out of there
 is sufficient memory to store the table is to try; if there isn't then
-|resize| will throw a |std::bad_alloc| which may be caught by one of our
-callers.
+|resize| will either throw a |std::length_error| or a |std::bad_alloc|
+exception, which may be caught by one of our callers. (More precisely, it will
+throw |std::length_error| if the requested size exceeds the maximal possible
+size of a vector of this type, as would be the case for split~$E_8$ on a
+$32$-bit system, while it will throw |std::bad_alloc| if a vector of the
+requested size could exist on the current architecture, but the current amount
+of (available) virtual memory does not allow it to be allocated.)
 
-Because of the size of the tables we take care to make their |capacity()|
-equal to their |size()| (so no space is uselessly reserved). The number
-|nr_pols| used here will in fact have been obtained by measuring the file size
-and dividing by~$4$, as we shall see below. Somewhat recklessly we do not
-subsequently test for end-of-file (hopefully nobody is truncating this file in
-the mean time).
+Because of the great size of the tables, we take care to make their
+|capacity()| equal to their final |size()| (so no space is uselessly
+reserved). The number |nr_pols| used here will in fact have been obtained by
+measuring the file size and dividing by~$4$, as we shall see below. Somewhat
+recklessly we do not subsequently test for end-of-file (hopefully nobody is
+truncating this file in the mean time).
 
 @h <vector>
 @h <fstream>
@@ -453,7 +458,7 @@ the mean time).
 @< Function definitions @>=
 void read_renumbering_table
   (ulong nr_pols, std::ifstream& in, std::vector<unsigned int>& table)
-  throw (std::bad_alloc)
+  throw (std::length_error,std::bad_alloc)
 { table.resize(nr_pols);
   for (ulong i=0; i<nr_pols; ++i) table[i]=read_bytes(4,in);
 }
@@ -1042,9 +1047,14 @@ try
 { mod_info.push_back
    (new modulus_info_with_table(moduli[i],renumber_file,coef_file));
 }
+catch (std::length_error)
+{ std::cout << "Renumbering table for modulus " << moduli[i] @|
+            << " is too large for architecture, doing without" << std::endl;
+@/mod_info.push_back(new modulus_info(moduli[i],renumber_file,coef_file));
+}
 catch (std::bad_alloc)
-{ std::cout << "Doing without renumbering table for modulus "
-	    << moduli[i] @| << '.' << std::endl;
+{ std::cout << "Not enough virtual memory for renumbering table for modulus "
+	    << moduli[i] @| << ", doing without." << std::endl;
 @/mod_info.push_back(new modulus_info(moduli[i],renumber_file,coef_file));
 }
 
