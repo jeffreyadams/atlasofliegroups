@@ -21,7 +21,7 @@ CTANGLEFLAGS := -p
 CWEBXMACROS := $(shell kpsewhich cwebxmac.tex)
 
 # these are used for C++ compilation and linking
-CXXFLAGS := -Wall -g $(INCLUDE_FLAGS)
+CXXFLAGS := -Wall -g
 ifeq ($(verbose),true)
     CXXFLAGS += -DVERBOSE
 endif
@@ -133,7 +133,7 @@ endif
 
 # a static pattern rule giving the usual C++ compilation
 $(c++objects) $(atlas_objects): %.o: %.cpp
-	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $< -o $@
+	$(CXX) -c $(CXXFLAGS) $(CPPFLAGS) $(INCLUDE_FLAGS) $< -o $@
 
 # here we cannot use a static pattern rule, since there are multiple targets
 # C++ source and header files are made from CWEBx files (.w) with the ++ switch
