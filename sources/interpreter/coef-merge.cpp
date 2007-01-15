@@ -107,9 +107,9 @@ class modulus_info
   file_pos coefficients_begin;
   file_pos nr_coefficients;
   ulong coefficient_size; // 1 for original files, but may be more
-  bool using_renumber;
-  std::ifstream& renumbering_file; // owned file reference
-  std::ifstream& coefficient_file; // owned file reference
+  bool using_renumber,owning_files;
+  std::ifstream& renumbering_file; // usually owned file reference
+  std::ifstream& coefficient_file; // usually owned file reference
 
 public:
   modulus_info(ulong mod, std::ifstream* ren_file, std::ifstream* coef_file);
@@ -117,12 +117,15 @@ public:
 private:
   modulus_info(const modulus_info&); // forbid copy constructor
 public:
-
+ // accessors
   virtual ulong length(file_pos i) const;
   // length (degree+1) of polynomial |i|
   virtual std::vector<ulong> coefficients(file_pos i) const;
     // coefficients of polynomial |i|
   ulong nr_pol() const { return nr_polynomials; }
+  // manipulator
+  bool set_owning_files(bool b)
+  { bool old=owning_files; owning_files=b; return old; }
 };
 
 class modulus_info_with_table : public modulus_info
@@ -251,8 +254,8 @@ modulus_info::modulus_info
   (ulong mod, std::ifstream* ren_file, std::ifstream* coef_file)
   : modulus(mod), nr_polynomials(), index_begin(), coefficients_begin()
   , coefficient_size(1)
-  , using_renumber(ren_file!=NULL)
-  , renumbering_file(*ren_file)
+, using_renumber(ren_file!=NULL), owning_files(true)
+, renumbering_file(*ren_file)
   , coefficient_file(*coef_file)
 { coefficient_file.seekg(0,std::ios_base::beg); // begin at the beginning
   file_pos nr_mod_pols=read_bytes(4,coefficient_file);
@@ -278,7 +281,8 @@ modulus_info::modulus_info
 }
 
 modulus_info::~modulus_info()
-{ delete &renumbering_file; delete &coefficient_file;}
+{ if (owning_files)
+   { delete &renumbering_file; delete &coefficient_file;}}
 
 ulong modulus_info::length (file_pos i) const
 { if (using_renumber)
@@ -313,8 +317,10 @@ modulus_info_with_table::modulus_info_with_table
   : modulus_info(mod,ren_file,coef_file)
   , renumber()
 { if (using_renumber)
-  { read_renumbering_table(nr_polynomials,renumbering_file,renumber);
+  { set_owning_files(false); // don't close files if next call fails
+    read_renumbering_table(nr_polynomials,renumbering_file,renumber);
     renumbering_file.close(); // close file when table is read in
+    set_owning_files(true); // upon success, base object takes charge again
   }
 }
 
@@ -490,7 +496,7 @@ int main(int argc, char** argv)
   std::string mat_base,coef_base;
   // base names for renumbering and coefficient files
   std::vector<ulong> moduli;
-  bool interactive= argc<1;
+  bool interactive= argc<2;
 
   
   if (interactive) argc=0; // ignore

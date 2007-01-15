@@ -475,9 +475,9 @@ class modulus_info
   file_pos coefficients_begin;
   file_pos nr_coefficients;
   ulong coefficient_size; // 1 for original files, but may be more
-  bool using_renumber;
-  std::ifstream& renumbering_file; // owned file reference
-  std::ifstream& coefficient_file; // owned file reference
+  bool using_renumber,owning_files;
+  std::ifstream& renumbering_file; // usually owned file reference
+  std::ifstream& coefficient_file; // usually owned file reference
 @)
 public:
   modulus_info(ulong mod, std::ifstream* ren_file, std::ifstream* coef_file);
@@ -485,32 +485,42 @@ public:
 private:
   modulus_info(const modulus_info&); // forbid copy constructor
 public:
-@)
+@) // accessors
   virtual ulong length(file_pos i) const;
   // length (degree+1) of polynomial |i|
   virtual std::vector<ulong> coefficients(file_pos i) const;
     // coefficients of polynomial |i|
   ulong nr_pol() const @+{@; return nr_polynomials; }
+@)  // manipulator
+  bool set_owning_files(bool b)
+  @+{@; bool old=owning_files; owning_files=b; return old; }
 };
 
 @ Constructing a |modulus_info| object requires both pertinent files to be
 opened and passed to the constructor. The constructor will store references to
 both files without for the moment reading from the~|renumbering_file| (in
-fact, it might be a null reference); from the coefficient file it will read
-some bytes at the beginning and at the end of the index part, in order to
-determine the necessary offsets into the file and the number of coefficients
-that it contains. The |coefficient_size| is computed as the minimum number of
-bytes that can hold arbitrary remainders for |modulus| (we might check here as
-well that this is the number of bytes used to store the unique coefficient of
+fact, it might be a null reference). The flag |owning_files| is set to |true|
+signalling that normally it is our responsibility to close these files upon
+destruction. From the coefficient file the constructor reads some bytes at the
+beginning and at the end of the index part, in order to determine the
+necessary offsets into the file and the number of coefficients that it
+contains. The |coefficient_size| is computed as the minimum number of bytes
+that can hold arbitrary remainders for |modulus| (we might check here as well
+that this is the number of bytes used to store the unique coefficient of
 polynomial number~|1|, which should represent the constant polynomial~|1|).
+The number of polynomials for this modulus, which is read from the coefficient
+file, is used to determine the end of the index part, but it is not
+necessarily the correct number |nr_polynomials| for the final modulus, unless
+the coefficient file already uses the canonical numbering. If it is not, it is
+the (length of) the renumbering file that determines |nr_polynomials|.
 
 @< Function definitions @>=
 modulus_info::modulus_info
   (ulong mod, std::ifstream* ren_file, std::ifstream* coef_file)
   : modulus(mod), nr_polynomials(), index_begin(), coefficients_begin()
   , coefficient_size(1)
-  , using_renumber(ren_file!=NULL)
-  , renumbering_file(*ren_file)
+@/, using_renumber(ren_file!=NULL), owning_files(true)
+@/, renumbering_file(*ren_file)
   , coefficient_file(*coef_file)
 { coefficient_file.seekg(0,std::ios_base::beg); // begin at the beginning
   file_pos nr_mod_pols=read_bytes(4,coefficient_file);
@@ -546,10 +556,10 @@ the file contents from the beginning.
     // return to start (do not collect \$200)
 }
 
-@ The destructor for |modulus_info| deletes the file pointers for which it
-holds references, thus closing those files (if it has not already been done
-explicitly before). This operation would cause a problem if we were to use an
-object of type |std::vector<modulus_info>|, since in that case the
+@ The destructor for |modulus_info| normally deletes the file pointers for
+which it holds references, thus closing those files (if it has not already
+been done explicitly before). This operation would cause a problem if we were
+to use an object of type |std::vector<modulus_info>|, since in that case the
 |modulus_info| objects, even if written as the argument to |push_back|, are
 not constructed directly into their final destination, but rather
 copy-constructed or assigned there (we did not investigate exactly how
@@ -563,7 +573,16 @@ create an object of type |std::vector<modulus_info>|, since this requires that
 an assignment operation be defined, and this cannot be done (at least not in
 the standard way) for an object containing a reference. Therefore this problem
 cannot arise, and for the same reason we have forbidden the copy constructor,
-so that it will not crop up in another setting either.
+so that it will not crop up in another setting either. There is however one
+more scenario that would cause problems: when we try to build a
+|modulus_info_with_table| object (a class derived from |modulus_info|) and the
+construction of the base object succeeds, but the allocation of the table
+fails for shortage of memory, then the destruction of the already completed
+base object would close the files, thwarting an attempt to salvage the
+situation by creating and working with just a |modulus_info| object instead.
+Therefore we have introduced the flag |owning_flags| that can be made
+temporarily false at the point where we may be thrown out of the constructor
+for the derived class.
 
 Of course we do need another solution to handle a sequence of |modulus_info|
 objects; the solution is to use an object of type |std::vector<modulus_info*>|
@@ -575,7 +594,8 @@ methods appropriately.
 
 @< Function definitions @>=
 modulus_info::~modulus_info()
-@+{@; delete &renumbering_file; delete &coefficient_file;}
+{@; if (owning_files)
+   {@; delete &renumbering_file; delete &coefficient_file;}}
 
 @ To get the length of a polynomial, we look up its renumbering if appropriate
 to get the proper index, then compare the index found with the next one. It is
@@ -657,8 +677,10 @@ modulus_info_with_table::modulus_info_with_table
   : modulus_info(mod,ren_file,coef_file)
   , renumber()
 { if (using_renumber)
-  { read_renumbering_table(nr_polynomials,renumbering_file,renumber);
+  { set_owning_files(false); // don't close files if next call fails
+    read_renumbering_table(nr_polynomials,renumbering_file,renumber);
     renumbering_file.close(); // close file when table is read in
+    set_owning_files(true); // upon success, base object takes charge again
   }
 }
 
@@ -877,7 +899,7 @@ int main(int argc, char** argv)
   std::string mat_base,coef_base;
   // base names for renumbering and coefficient files
   std::vector<ulong> moduli;
-  bool interactive= argc<1;
+  bool interactive= argc<2;
 
   @< Read in base names for files and |moduli| @>
 @)
