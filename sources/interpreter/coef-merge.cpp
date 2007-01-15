@@ -2,11 +2,13 @@
 #include  <cassert>
 #include  <vector>
 #include  <fstream>
+#include  <stdexcept>
 #include  <iomanip>
 #include  <sstream>
 
 
 typedef unsigned long int ulong;
+typedef std::streamoff file_pos;
 
 class ChineseBox
 { protected:
@@ -97,24 +99,44 @@ public: // constructor from basic |ChineseBox|
 };
 
 class modulus_info
-{ ulong modulus;
-  ulong nr_polynomials; // number of polynomials for this modulus
-  std::streamoff index_begin;
-  std::streamoff coefficients_begin;
-  ulong nr_coefficients;
+{ protected:
+  ulong modulus;
+  ulong nr_polynomials;
+    // number of polynomials for this modulus, in fact $<2^{32}$
+  file_pos index_begin;
+  file_pos coefficients_begin;
+  file_pos nr_coefficients;
   ulong coefficient_size; // 1 for original files, but may be more
-  std::vector<unsigned int> renumber;
   bool using_renumber;
+  std::ifstream& renumbering_file; // owned file reference
   std::ifstream& coefficient_file; // owned file reference
 
 public:
   modulus_info(ulong mod, std::ifstream* ren_file, std::ifstream* coef_file);
-  ~modulus_info();
+  virtual ~modulus_info();
+private:
+  modulus_info(const modulus_info&); // forbid copy constructor
+public:
 
-  ulong length(ulong i) const; // length (degree+1) of polynomial |i|
-  std::vector<ulong> coefficients(ulong i) const;
+  virtual ulong length(file_pos i) const;
+  // length (degree+1) of polynomial |i|
+  virtual std::vector<ulong> coefficients(file_pos i) const;
     // coefficients of polynomial |i|
   ulong nr_pol() const { return nr_polynomials; }
+};
+
+class modulus_info_with_table : public modulus_info
+{
+  std::vector<unsigned int> renumber;
+
+public:
+  modulus_info_with_table
+   (ulong mod, std::ifstream* ren_file, std::ifstream* coef_file);
+  virtual ~modulus_info_with_table() {} // nothing extra to destruct
+
+  virtual ulong length(file_pos i) const; // length of polynomial |i|
+  virtual std::vector<ulong> coefficients(file_pos i) const;
+    // coefficients of polynomial |i|
 };
 
 const std::ios_base::openmode binary_out=
@@ -206,64 +228,78 @@ ulong PrimeDoubleTabledChineseBox::lift_remainders(ulong s, ulong t) const
 return t<lcm-d ? t+d : t-(lcm-d);
 }
 
-ulong read_bytes(ulong n, std::istream& in)
+file_pos read_bytes(ulong n, std::istream& in)
 {
   if (n==0) return 0;
   char c; in.get(c);  unsigned char low=c; // make unsigned for arithmetic
   return low+(read_bytes(n-1,in)<<8);
 }
 
-inline void write_bytes(ulong val, ulong n, std::ostream& out)
+inline void write_bytes(file_pos val, ulong n, std::ostream& out)
 { while (n-->1) { out.put(char(val&0xFF)); val>>=8; } // write |n-1| bytes
   out.put(char(val)); // and one more
 }
 
 void read_renumbering_table
-  (std::ifstream& in, std::vector<unsigned int>& table)
-{ in.seekg(0,std::ios_base::end);
-  ulong file_size = in.tellg();
-  in.seekg(0,std::ios_base::beg); // return to start (do not collect \$200)
-
-  table.resize(file_size/4);
-  for (ulong i=0; i<table.size(); ++i) table[i]=read_bytes(4,in);
+  (ulong nr_pols, std::ifstream& in, std::vector<unsigned int>& table)
+  throw (std::bad_alloc)
+{ table.resize(nr_pols);
+  for (ulong i=0; i<nr_pols; ++i) table[i]=read_bytes(4,in);
 }
 
 modulus_info::modulus_info
   (ulong mod, std::ifstream* ren_file, std::ifstream* coef_file)
   : modulus(mod), nr_polynomials(), index_begin(), coefficients_begin()
-  , coefficient_size(1), renumber(), using_renumber(false)
+  , coefficient_size(1)
+  , using_renumber(ren_file!=NULL)
+  , renumbering_file(*ren_file)
   , coefficient_file(*coef_file)
 { coefficient_file.seekg(0,std::ios_base::beg); // begin at the beginning
-  nr_polynomials=read_bytes(4,coefficient_file);
+  file_pos nr_mod_pols=read_bytes(4,coefficient_file);
+    // number of polynomials for |mod|
   index_begin=coefficient_file.tellg();
-  coefficient_file.seekg(5*nr_polynomials,std::ios_base::cur);
+  coefficient_file.seekg(5*file_pos(nr_mod_pols),std::ios_base::cur);
   nr_coefficients =read_bytes(5,coefficient_file);
   coefficients_begin=coefficient_file.tellg();
+
+  if (using_renumber)
+    
+    { renumbering_file.seekg(0,std::ios_base::end);
+      nr_polynomials= renumbering_file.tellg()/4;
+      renumbering_file.seekg(0,std::ios_base::beg);
+        // return to start (do not collect \$200)
+    }
+  else nr_polynomials=nr_mod_pols;
+    // in canonical order, assume there were no collisions
 
   --mod; // make largest remainder
   while ((mod>>=8) != 0)
     ++coefficient_size; // compute number of bytes required
-  if (ren_file!=NULL)
-  { using_renumber=true; read_renumbering_table(*ren_file,renumber); }
-  delete ren_file; // close file when table is read in
 }
 
-modulus_info::~modulus_info() { delete &coefficient_file;}
+modulus_info::~modulus_info()
+{ delete &renumbering_file; delete &coefficient_file;}
 
-ulong modulus_info::length (ulong i) const
-{ if (using_renumber) i=renumber[i];
+ulong modulus_info::length (file_pos i) const
+{ if (using_renumber)
+  { renumbering_file.seekg(4*i,std::ios_base::beg);
+    i=read_bytes(4,renumbering_file);
+  }
   coefficient_file.seekg(index_begin+5*i,std::ios_base::beg);
     // locate index in file
-  ulong index=read_bytes(5,coefficient_file);
-  ulong next_index=read_bytes(5,coefficient_file);
+  file_pos index=read_bytes(5,coefficient_file);
+  file_pos next_index=read_bytes(5,coefficient_file);
   return (next_index-index)/coefficient_size;
 }
 
-std::vector<ulong> modulus_info::coefficients (ulong i) const
-{ if (using_renumber) i=renumber[i];
+std::vector<ulong> modulus_info::coefficients (file_pos i) const
+{ if (using_renumber)
+  { renumbering_file.seekg(4*i,std::ios_base::beg);
+    i=read_bytes(4,renumbering_file);
+  }
   coefficient_file.seekg(index_begin+5*i,std::ios_base::beg);
-  ulong index=read_bytes(5,coefficient_file);
-  ulong next_index=read_bytes(5,coefficient_file);
+  file_pos index=read_bytes(5,coefficient_file);
+  file_pos next_index=read_bytes(5,coefficient_file);
 
   coefficient_file.seekg(coefficients_begin+index,std::ios_base::beg);
   std::vector<ulong> result ((next_index-index)/coefficient_size);
@@ -272,7 +308,39 @@ std::vector<ulong> modulus_info::coefficients (ulong i) const
   return result;
 }
 
-ulong write_indices
+modulus_info_with_table::modulus_info_with_table
+  (ulong mod, std::ifstream* ren_file, std::ifstream* coef_file)
+  : modulus_info(mod,ren_file,coef_file)
+  , renumber()
+{ if (using_renumber)
+  { read_renumbering_table(nr_polynomials,renumbering_file,renumber);
+    renumbering_file.close(); // close file when table is read in
+  }
+}
+
+ulong modulus_info_with_table::length (file_pos i) const
+{ if (using_renumber) i=renumber[i];
+  coefficient_file.seekg(index_begin+5*i,std::ios_base::beg);
+    // locate index in file
+  file_pos index=read_bytes(5,coefficient_file);
+  file_pos next_index=read_bytes(5,coefficient_file);
+  return (next_index-index)/coefficient_size;
+}
+
+std::vector<ulong> modulus_info_with_table::coefficients (file_pos i) const
+{ if (using_renumber) i=renumber[i];
+  coefficient_file.seekg(index_begin+5*i,std::ios_base::beg);
+  file_pos index=read_bytes(5,coefficient_file);
+  file_pos next_index=read_bytes(5,coefficient_file);
+
+  coefficient_file.seekg(coefficients_begin+index,std::ios_base::beg);
+  std::vector<ulong> result ((next_index-index)/coefficient_size);
+  for (ulong i=0; i<result.size(); ++i)
+    result[i]=read_bytes(coefficient_size,coefficient_file);
+  return result;
+}
+
+file_pos write_indices
  (ulong coefficient_size,
   const std::vector<modulus_info*>& mod_info,
   std::ostream& out,
@@ -282,23 +350,25 @@ ulong write_indices
   write_bytes(nr_pols,4,out);
   for (ulong j=1; j<mod_info.size(); ++j)
     if (mod_info[j]->nr_pol()!=nr_pols)
+    
     { std::cout << "Conflicting numbers of polynomials in renumbering files: "
-	      << nr_pols << "!=" << mod_info[j]->nr_pol()
-		<< " (modulus nrs O, " << j << ").\n";
+              << nr_pols << "!=" << mod_info[j]->nr_pol()
+        	<< " (modulus nrs O, " << j << ").\n";
       exit(1);
     }
 
-  ulong index=0; // index of current polynomial to be written
+  file_pos index=0; // index of current polynomial to be written
   for (ulong i=0; i<nr_pols; ++i)
   { if (verbose and (i&0xFFF)==0)
       std::cerr << "Polynomial: " << std::setw(10) << i << '\r';
     ulong len=0; // maximum of degree+1 of polynomials selected
     for (ulong j=0; j<mod_info.size(); ++j)
     { ulong new_len = mod_info[j]->length(i);
+      
       if (new_len>32)
-      { std::cout << "Too large length " << new_len << " in polynomial " 
-                  << i << " for modulus nr " << j << ".\n";
-	exit(1);
+      { std::cout << "Too large length " << new_len << " in polynomial "
+      	    << i  << " for modulus nr " << j << ".\n";
+      throw std::logic_error("Oversize polynomial");
       }
       if (new_len>len) len=new_len;
     }
@@ -306,6 +376,8 @@ ulong write_indices
     index+=len*coefficient_size;
     // and advance by its number of coefficient bytes
   }
+  if (verbose) // make final polynomial displayed look right, and stay visible
+    std::cerr << "Polynomial: " << std::setw(10) << nr_pols-1 << '\n';
   if (output) write_bytes(index,5,out); // write final index
   return index;
 }
@@ -322,18 +394,19 @@ ulong write_coefficients
   ulong max=0;
   std::vector<ulong> rem(2*n-1);
       // remainders for |n| original and |n-1| derived moduli
+  std::vector<std::vector<ulong> > modular_pol(n);
+   // polynomials from the base moduli
 
   for (ulong i=0; i<nr_pols; ++i)
   { if (verbose and (i&0xFFF)==0)
       std::cerr << "Polynomial: " << std::setw(10) << i << '\r';
     ulong len=0; // maximum of degree+1 of polynomials selected
-    std::vector<std::vector<ulong> > modular_pol;
+
 
     
     for (ulong j=0; j<mod_info.size(); ++j)
-    { std::vector<ulong> p=mod_info[j]->coefficients(i);
-      modular_pol.push_back(p);
-      if (modular_pol.back().size()>len) len=modular_pol.back().size();
+    { modular_pol[j]=mod_info[j]->coefficients(i);
+      if (modular_pol[j].size()>len) len=modular_pol.back().size();
     }
     std::vector<ulong> lifted_pol(len);
     // the polynomial modulo the lcm of the moduli
@@ -349,7 +422,7 @@ ulong write_coefficients
 	 
 	 if (c>max)
 	 { max=c;
-	   std::cout << (verbose ? "\t\t\tm" : "M") << "aximal coefficient so far: " 
+	   std::cout << "Maximal coefficient so far: " 
 	             << max << ", in polynomial " << i << std::endl;
 	 }
          if (output) write_bytes(c, coefficient_size, out);
@@ -362,6 +435,8 @@ ulong write_coefficients
        }
     }
   }
+  if (verbose) // make final polynomial displayed look right, and stay visible
+    std::cerr << "Polynomial: " << std::setw(10) << nr_pols-1 << '\n';
   return max;
 }
 
@@ -477,7 +552,7 @@ int main(int argc, char** argv)
           new std::ifstream(name0.str().c_str(),binary_in);
         if (not renumber_file->is_open())
         { std::cout << "Assuming canonical order for modulus " << moduli[i]
-                    << ".\n";
+                    << "." << std::endl;
           renumber_file=NULL; // signal absence of renumbering file
         }
     
@@ -487,7 +562,16 @@ int main(int argc, char** argv)
         { std::cerr << "Could not open file '" << name1.str() << "'.\n";
           exit(1);
         }
+        
+        try
+        { mod_info.push_back
+           (new modulus_info_with_table(moduli[i],renumber_file,coef_file));
+        }
+        catch (std::bad_alloc)
+        { std::cout << "Doing without renumbering table for modulus "
+        	    << moduli[i]  << '.' << std::endl;
         mod_info.push_back(new modulus_info(moduli[i],renumber_file,coef_file));
+        }
       }
     
       if (output)
@@ -509,15 +593,15 @@ int main(int argc, char** argv)
       }
       else std::cout << "Not writing output files" << std::endl;
     }
-    ulong nr_c=
+    file_pos nr_c=
       write_indices(coefficient_size,mod_info,coefficient_file,verbose,output);
-    std::cout << "\nDone writing indices, will now write "
-              << nr_c << " coefficient bytes.\n";
+    std::cout << "Done writing indices, will now write "
+              << nr_c << " coefficient bytes." << std::endl;
     ulong max_coef=
        write_coefficients
          (coefficient_size,mod_info,box,coefficient_file,verbose,output);
-    std::cout << "\nMaximal coefficient found: "
-              << max_coef << ".\n";
+    std::cout << "Maximal coefficient found: "
+              << max_coef << "." << std::endl;
   }
   catch (...)
   { for (ulong i=0; i<mod_info.size(); ++i) delete mod_info[i];

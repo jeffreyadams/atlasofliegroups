@@ -87,7 +87,7 @@ webtexfiles   := $(cwebx_sources:%.w=%.tex)
 
 headers := $(filter-out main.h,$(cwebx_sources:%.w=%.h)) parser.tab.h
 
-dvifiles := $(cwebx_sources:%.w=%.dvi)
+dvifiles := $(cwebx_sources:%.w=%.dvi) matrix-merge.dvi coef-merge.dvi
 
 objects := $(c++objects) parser.tab.o $(atlas_objects)
 
@@ -106,7 +106,7 @@ rlincludes ?= -lreadline -lcurses
 .PHONY: all mostlyclean clean headers dvifiles compilable
 
 all:	headers dvifiles realex
-all:	KLread matrix-merge matrix-merge.dvi coef-merge coef-merge.dvi
+all:	KLread matrix-merge coef-merge
 
 mm-objects := ../utilities/bitmap.o ../utilities/constants.o \
               ../utilities/bits.o ../utilities/arithmetic.o ../error/error.o
