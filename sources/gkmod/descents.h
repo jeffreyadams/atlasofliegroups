@@ -5,9 +5,9 @@
 
 /*
   This is descents.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -59,13 +59,14 @@ through 7 are descents.
   static const unsigned ValMask = constants::charBits - 1;
 
   /*!
-\brief Bitwise "and" of Value with this is non-zero if Value is 4
-through 7.
-  */ 
+\brief Bitwise "and" of Value with this is non-zero if Value is one of
+ImaginaryCompact, ComplexDescent, RealTypeII, or RealTypeI (numbers 4--7)
+  */
   static const unsigned DescentMask = 0x4ul;
 
-  /*! 
-\brief Bitwise "and" of Value with this is equal to this if Value is 5.
+  /*!
+\brief Bitwise "and" of Value with this is equal to this if Value is either
+ComplexDescent (5) or RealTypeI (7)
   */
   static const unsigned DirectRecursionMask = 0x5ul;
 
@@ -81,35 +82,33 @@ The simple roots passing this test comprise the tau invariant for the
 representation.
   */
   static bool isDescent(Value v) {
-    return v & DescentMask;
+    return (v & DescentMask)!=0;
   }
 
   /*!
-\brief Tests whether Value is equal to 5.  This is a complex descent.
+\brief Tests whether both bits of DirectRecursionMask are set
 
-In the case of a complex descent there is a simple recursion formula
-for the KL element.
+In the case of a complex descent or a real type I descent there is a simple
+recursion formula for the KL element.
   */
   static bool isDirectRecursion(Value v) {
     return (v & DirectRecursionMask) == DirectRecursionMask;
   }
 
 // constructors and destructors
-  DescentStatus() {
-    // puts 0 in RANK_MAX bytes of memory starting at d_data
+  DescentStatus() { // sets statuses of all simple roots to 0 (ComplexAscent)
     memset(d_data,0,constants::RANK_MAX);
   }
 
   ~DescentStatus() {}
 
-// copy and assignment
+// copy and assignment (these copy statuses of all simple roots)
   DescentStatus(const DescentStatus& ds) {
-    //copies RANK_MAX bytes of memory starting at ds.d_data to d_data.
     memcpy(d_data,ds.d_data,constants::RANK_MAX);
   }
 
   DescentStatus& operator=(const DescentStatus& ds) {
-    memcpy(d_data,ds.d_data,constants::RANK_MAX); 
+    memcpy(d_data,ds.d_data,constants::RANK_MAX);
     return *this;
   }
 
@@ -119,7 +118,7 @@ for the KL element.
 \brief Returns descent status of simple root \#s.
 */
   Value operator[] (size_t s) const {
-    return static_cast<Value> (d_data[s]);
+    return static_cast<Value> (d_data[s]); // cast converts integer to enum
   }
 
 // manipulators
@@ -128,7 +127,7 @@ for the KL element.
 \brief Sets the descent status of simple root \#s to v.
 */
   void set(size_t s, Value v) {
-    d_data[s] = v;
+    d_data[s] = v; // no cast needed here; enum value converts to integral type
   }
 };
 
