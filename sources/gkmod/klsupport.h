@@ -126,8 +126,6 @@ class KLSupport {
   void fillDownsets();
 
   void fillPrimitivize();
-
-  size_t numExtremals();
 };
 
 }
