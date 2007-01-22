@@ -34,7 +34,8 @@ namespace atlas {
 
 namespace blocks {
 
-const BlockElt UndefBlock = BlockElt(~0);
+// reserve the last possible unsigned value; it is supposed unused
+const BlockElt UndefBlock = ~ BlockElt(0);
 
 }
 
@@ -87,58 +88,56 @@ class Block {
   size_t d_ysize;
 
   /*!
-\brief Element d_x[z] indexes the K orbit x on G/B for z.
+\brief Element d_x[z] identifies the K orbit x on G/B for z.
   */
-  kgb::KGBEltList d_x;
+  kgb::KGBEltList d_x;  // of size size()+1, with UndefKGB sentinel
 
   /*!
-\brief Element d_y[z] indexes the K^vee orbit y on G^vee/B^vee for z.
+\brief Element d_y[z] identifies the K^vee orbit y on G^vee/B^vee for z.
   */
-  kgb::KGBEltList d_y;
+  kgb::KGBEltList d_y; // of size size()+1, with UndefKGB sentinel
 
   /*!
-\brief Element d_cross[s] (for s a simple root) is the list whose zth
-entry is s x z.
+\brief d_cross[s][z] is $s \times z$ (for s a simple root, z a BlockElt).
   */
-  std::vector<BlockEltList> d_cross;
+  std::vector<BlockEltList> d_cross; // of size d_rank
 
   /*!
-\brief Element d_cayley[s] (for s a simple root) has zth
-entry the Cayley transform c_s(z) (z noncompact imaginary) or
-undefined (otherwise).
+\brief Element d_cayley[s][z] is the Cayley transform $c_s(z)$
+  (for s a simple root, z noncompact imaginary) or undefined (otherwise).
   */
-  std::vector<BlockEltPairList> d_cayley;
+  std::vector<BlockEltPairList> d_cayley; // of size d_rank
 
   /*!
-\brief Element d_inverseCayley[s] (for s a simple root) has zth
-entry the inverse Cayley transform c^s(z) (z is real type 1 or
-2) or undefined (otherwise).
+\brief Element d_inverseCayley[s]][z] is the inverse Cayley transform $c^s(z)$
+ (for s a simple root, z is real type 1 or 2) or undefined (otherwise).
   */
-  std::vector<BlockEltPairList> d_inverseCayley;
+  std::vector<BlockEltPairList> d_inverseCayley; // of size d_rank
 
 
   /*!
 \brief Entry z flags the descent status of the simple roots for block
 element z.
   */
-  descents::DescentStatusList d_descent;
+  descents::DescentStatusList d_descent; // of size size()
 
   /*!
 \brief Entry z is the length of block element z.
   */
-  std::vector<size_t> d_length;
+  std::vector<size_t> d_length; // of size size()
 
 
   /*!
 \brief Entry z (multiplied by the fixed outer automorphism delta) is
-the involution of theta_z of H attached to z.
+the involution $\theta_z$ of H attached to z
+(in other words, d_involution[z] is the twisted involution attached to z; MvL)
   */
-  weyl::WeylEltList d_involution;
+  weyl::WeylEltList d_involution; // of size size()
 
   /*!
-\brief Entry z flags the simple roots occurring in theta_z.
+\brief Entry z flags the simple roots occurring in $\theta_z$.
   */
-  std::vector<bitset::RankFlags> d_involutionSupport;
+  std::vector<bitset::RankFlags> d_involutionSupport; // of size size()
 
   /*!
 \brief Number (in the list maintained by the complex reductive group)
@@ -152,7 +151,7 @@ of the real form of G where the block lives.
   realform::RealForm d_dualForm;
 
   /*!
-\brief Records whether the Bruhat order on the block has been computed.
+\brief Records state bits (in fact one: whether the Bruhat order is computed).
   */
   bitset::BitSet<NumStates> d_state;
 
@@ -183,18 +182,22 @@ Not used in the present code (DV 10/14/06).
     return *d_bruhat;
   }
 
+  /*! \brief Cayley transform */
   BlockEltPair cayley(size_t s, BlockElt z) const {
     return d_cayley[s][z];
   }
 
+  /*! \brief cross action */
   BlockElt cross(size_t s, BlockElt z) const {
     return d_cross[s][z];
   }
 
+  /*! \brief vector of descent statuses of all simple roots */
   const descents::DescentStatus& descent(BlockElt z) const {
     return d_descent[z];
   }
 
+  /*! \brief descent type of s at z */
   descents::DescentStatus::Value descentValue(size_t s, BlockElt z) const {
     return d_descent[z][s];
   }
@@ -205,10 +208,12 @@ Not used in the present code (DV 10/14/06).
 
   size_t firstStrictDescent(BlockElt z) const;
 
+  /*! \brief inverse Cayley transform */
   BlockEltPair inverseCayley(size_t s, BlockElt z) const {
     return d_inverseCayley[s][z];
   }
 
+  /*! \brief the simple roots occurring in $\theta_z$. */
   const bitset::RankFlags& involutionSupport(size_t z) const {
     return d_involutionSupport[z];
   }
@@ -217,10 +222,12 @@ Not used in the present code (DV 10/14/06).
 
   bool isStrictDescent(size_t, BlockElt) const;
 
+  /*! \brief length of block element */
   size_t length(BlockElt z) const {
     return d_length[z];
   }
 
+  /*! \brief Semisimple rank of the group this block is constructed for */
   size_t rank() const {
     return d_rank;
   }
@@ -229,11 +236,21 @@ Not used in the present code (DV 10/14/06).
     return d_realForm;
   }
 
+  /*! \brief size of the block */
   size_t size() const {
-    return d_involution.size();
+    return d_involution.size(); // d_involution is one of many possible vectors
   }
 
-  const weyl::WeylElt& involution(BlockElt z) const;
+/*!
+  \brief Returns the twisted involution corresponding to z.
+
+This is the corresponding Weyl group element w, such that w.delta is the
+root datum involution tau corresponding to z
+*/
+  const weyl::WeylElt& involution(BlockElt z) const {
+    return d_involution[z];
+}
+
 
   const weyl::WeylGroup& weylGroup() const {
     return *d_weylGroup;
