@@ -920,6 +920,7 @@ int main(int argc, char** argv)
    // among other things this will hold the input files
   std::ofstream coefficient_file;
 @)
+  bool caught=false;
   try
   { if (interactive) test(moduli,box); // does not return
 
@@ -936,10 +937,16 @@ int main(int argc, char** argv)
               << max_coef << "." << std::endl;
   }
   catch (...)
-  { for (ulong i=0; i<mod_info.size(); ++i) delete mod_info[i];
-    for (ulong i=0; i<box.size(); ++i) delete box[i];
-    throw;
+  { caught=true;
+    // record that and exception was caught, and proceed to clean-up code
   }
+
+@//* the following code aught to have been done in a destructor, but we found
+     it to bothersome to define classes to pack |mod_info| and |box| into
+  */
+  for (ulong i=0; i<mod_info.size(); ++i) delete mod_info[i];
+  for (ulong i=0; i<box.size(); ++i) delete box[i];
+  if (caught) throw; // re-throw
 }
 
 @ When getting moduli, we check that they are indeed numeric and nonzero
