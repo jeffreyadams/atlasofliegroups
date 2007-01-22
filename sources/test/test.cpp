@@ -89,6 +89,7 @@ namespace {
   void klbasis_f();
   void kllist_f();
   void klwrite_f();
+  void blockwrite_f();
   void poscoroots_rootbasis_f();
   void posroots_rootbasis_f();
   void wcells_f();
@@ -108,6 +109,7 @@ namespace {
   void klbasis_h();
   void kllist_h();
   void klwrite_h();
+  void blockwrite_h();
   void wcells_h();
   void wgraph_h();
 
@@ -121,6 +123,7 @@ namespace {
   const char* klbasis_tag = "prints the KL basis for the Hecke module";
   const char* kllist_tag = "prints the list of distinct KL polynomials";
   const char* klwrite_tag = "writes the KL polynomials to disk";
+  const char* blockwrite_tag = "writes the block information to disk";
   const char* wcells_tag = "prints the Kazhdan-Lusztig cells for the block";
   const char* wgraph_tag = "prints the W-graph for the block";
 
@@ -229,6 +232,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("klbasis",klbasis_f);
   mode.add("kllist",kllist_f);
   mode.add("klwrite",klwrite_f);
+  mode.add("blockwrite",blockwrite_f);
   mode.add("wcells",wcells_f);
   mode.add("wgraph",wgraph_f);
 
@@ -359,6 +363,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("klbasis",klbasis_h);
   mode.add("kllist",kllist_h);
   mode.add("klwrite",klwrite_h);
+  mode.add("blockwrite",blockwrite_h);
   mode.add("wcells",wcells_h);
   mode.add("wgraph",wgraph_h);
 
@@ -377,6 +382,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"klbasis",klbasis_tag);
   insertTag(t,"kllist",kllist_tag);
   insertTag(t,"klwrite",klwrite_tag);
+  insertTag(t,"blockwrite",blockwrite_tag);
   insertTag(t,"wcells",wcells_tag);
   insertTag(t,"wgraph",wgraph_tag);
 
@@ -447,6 +453,13 @@ void klwrite_h()
 
 {
   io::printFile(std::cerr,"klwrite.help",io::MESSAGE_DIR);
+  return;
+}
+
+void blockwrite_h()
+
+{
+  io::printFile(std::cerr,"blockwrite.help",io::MESSAGE_DIR);
   return;
 }
 
@@ -1116,8 +1129,95 @@ void klwrite_f()
   catch (InputError& e) {
     e("aborted");
   }
+}
 
-  return;
+void blockwrite_f()
+
+/*
+  Synopsis: computes a block, and writes a binary file containing descent
+  set and ascent sets for all elements.
+*/
+
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
+  // reserve another BlockElt value
+  const blocks::BlockElt noGoodAscent = blocks::UndefBlock-1;
+
+  try {
+    G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    realform::RealForm drf;
+
+    interactive::getInteractive
+      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
+
+    std::ofstream block_out; // binary output files
+    while (true)
+      {
+	std::string file_name= interactive::getFileName
+	  ("File name for block output: ");
+	if (file_name=="") break; // if no name given, don't open a file
+	block_out.open(file_name.c_str(),
+		       std::ios_base::out
+		       | std::ios_base::trunc
+		       | std::ios_base::binary);
+	if (block_out.is_open()) break;
+	std::cerr << "Failed to open file for writing, try again.\n";
+      }
+
+    blocks::Block block(G_C,G_R.realForm(),drf);
+
+    unsigned char rank=block.rank(); // certainly fits in a byte
+
+    std::cerr << "Writing block data:\n";
+    basic_io::put_int(block.size(),block_out);  // block size in 4 bytes
+    block_out.put(rank);                        // rank in 1 byte
+
+    for (blocks::BlockElt y=0; y<block.size(); ++y)
+      {
+	bitset::RankFlags d;
+	for (size_t s = 0; s < rank; ++s)
+	  {
+	    descents::DescentStatus::Value v = block.descentValue(s,y);
+	    if (descents::DescentStatus::isDescent(v)) d.set(s);
+	  }
+	basic_io::put_int(d.to_ulong(),block_out); // write d as 32-bits value
+      }
+
+    for (blocks::BlockElt x=0; x<block.size(); ++x)
+      {
+#if VERBOSE
+	std::cerr << x << '\r';
+#endif
+	for (size_t s = 0; s < rank; ++s)
+	  {
+	    descents::DescentStatus::Value v = block.descentValue(s,x);
+            if (descents::DescentStatus::isDescent(v)
+		or v==descents::DescentStatus::ImaginaryTypeII)
+	      basic_io::put_int(noGoodAscent,block_out);
+	    else if (v == descents::DescentStatus::RealNonparity)
+	      basic_io::put_int(blocks::UndefBlock,block_out);
+	    else if (v == descents::DescentStatus::ComplexAscent)
+	      basic_io::put_int(block.cross(s,x),block_out);
+	    else if (v == descents::DescentStatus::ImaginaryTypeI)
+	      basic_io::put_int(block.cayley(s,x).first,block_out);
+	    else assert(false);
+	  }
+      }
+    std::cerr<< "\nDone.\n";
+  }
+  catch (error::MemoryOverflow& e) {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 }
 
 void poscoroots_rootbasis_f()
