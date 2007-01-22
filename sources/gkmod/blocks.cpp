@@ -78,12 +78,14 @@ class Helper:public Block {
 
 private:
 
-  size_t d_size;
+  size_t d_size; // number of block elements
 
   kgb::KGB d_kgb;
   kgb::KGB d_dualkgb;
 
-  std::vector<BlockElt> d_firstx;
+  // d_firstx maps KGB elements x to the first block element z with d_x[z]>=x
+  // and moreover d_firstx[d_kgb.size()]==d_size
+  std::vector<BlockElt> d_firstx; // of size d_kgb.size()+1
 
   weyl::WeylInterface d_toDualWeyl;
   const weyl::WeylGroup* d_dualWeylGroup;
@@ -216,8 +218,8 @@ void Block::swap(Block& other)
 size_t Block::firstStrictDescent(BlockElt z) const
 
 /*!
-  \brief Returns the first descent of z that is not imaginary compact,
-  rank() if there is no such.
+  \brief Returns the first descent for z (the number of a simple root) that is
+not imaginary compact, or rank() if there is no such descent.
 */
 
 {
@@ -245,9 +247,8 @@ bool Block::isStrictAscent(size_t s, BlockElt z) const
 {
   using namespace descents;
 
-  return (d_descent[z][s] == DescentStatus::ComplexAscent) or
-    (d_descent[z][s] == DescentStatus::ImaginaryTypeI) or
-    (d_descent[z][s] == DescentStatus::ImaginaryTypeII);
+  DescentStatus::Value v = descentValue(s,z);
+  return not DescentStatus::isDescent(v) and v!=DescentStatus::RealNonparity;
 }
 
 bool Block::isStrictDescent(size_t s, BlockElt z) const
@@ -262,23 +263,8 @@ bool Block::isStrictDescent(size_t s, BlockElt z) const
 {
   using namespace descents;
 
-  return (d_descent[z][s] == DescentStatus::ComplexDescent) or
-    (d_descent[z][s] == DescentStatus::RealTypeI) or
-    (d_descent[z][s] == DescentStatus::RealTypeII);
-}
-
-const weyl::WeylElt& Block::involution(BlockElt z) const
-
-/*!
-  \brief Returns the root datum involution corresponding to z.
-
-  In fact, returns the corresponding Weyl group element, s.t. w.delta = tau.
-
-  NOTE: this is not inlined to avoid a dependency on weyl.h
-*/
-
-{
-  return d_involution[z];
+  DescentStatus::Value v = descentValue(s,z);
+  return DescentStatus::isDescent(v) and v!=DescentStatus::ImaginaryCompact;
 }
 
 
@@ -288,9 +274,7 @@ void Block::fillBruhat()
 /*!
   \brief Constructs the BruhatOrder.
 
-  NOTE: may throw an Overflow error. Commit-or-rollback is guaranteed.
-
-  NOTE: we use an auto_ptr for exception-safety. My first!
+  NOTE: may throw a MemoryOverflow error. Commit-or-rollback is guaranteed.
 */
 
 {
@@ -300,23 +284,18 @@ void Block::fillBruhat()
   if (d_state.test(BruhatConstructed)) // work was already done
     return;
 
-  std::auto_ptr<BruhatOrder> bp;
-  std::vector<SetEltList> hd;
-
   try {
-    makeHasse(hd,*this);
-    bp = std::auto_ptr<BruhatOrder>(new BruhatOrder(hd));
+    std::vector<SetEltList> hd; makeHasse(hd,*this);
+    BruhatOrder* bp = new BruhatOrder(hd); // may throw here
+
+    // commit
+    delete d_bruhat; // this is overly careful: it must be NULL
+    d_bruhat = bp;
+    d_state.set(BruhatConstructed);
   }
-  catch (...) {
+  catch (std::bad_alloc) { // transform failed allocation into MemoryOverflow
     throw error::MemoryOverflow();
   }
-
-  // commit
-  delete d_bruhat;
-  d_bruhat = bp.release();
-  d_state.set(BruhatConstructed);
-
-  return;
 }
 
 }
@@ -367,13 +346,14 @@ Helper::Helper(realredgp::RealReductiveGroup& G,
   ComplexReductiveGroup& G_C = G.complexGroup();
   d_rank = G_C.semisimpleRank();
 
-  d_size = G_C.blockSize(d_realForm,d_dualForm);
+  d_size = G_C.blockSize(d_realForm,d_dualForm); // cannot use size() yet!
 
   // set sizes of main lists
   d_cross.resize(d_rank);
   d_cayley.resize(d_rank);
   d_inverseCayley.resize(d_rank);
 
+  // fill main lists with vectors of d_size default (undefined) values
   for (size_t s = 0; s < d_rank; ++s) {
     d_cross[s].assign(d_size,UndefBlock);
     d_cayley[s].assign(d_size,std::make_pair(UndefBlock,UndefBlock));
@@ -382,13 +362,13 @@ Helper::Helper(realredgp::RealReductiveGroup& G,
 
   d_descent.resize(d_size);
   d_length.assign(d_size,0);
-  d_involution.assign(d_size,WeylElt());
+  d_involution.assign(d_size,WeylElt()); // implicitly makes size() defined
 
   d_x.reserve(d_size+1);
   d_y.reserve(d_size+1);
-  d_firstx.assign(d_kgb.size()+1,UndefBlock);
+  d_firstx.reserve(d_kgb.size()+1);
 
-  // make list of allowable orbit pairs and fill x-offsets
+  // make list of allowable orbit pairs (block elements) and fill x-offsets
   orbitPairs();
 
   // fill in cross actions
@@ -477,12 +457,14 @@ void Helper::fillCayleyActions()
       KGBEltPair sy = d_dualkgb.inverseCayley(s,y(z));
       assert(sy.first != UndefKGB);
       KGBEltList::iterator i =
-	std::find(d_y.begin()+d_firstx[sx],d_y.end(),sy.first);
-      assert(i  < d_y.begin()+d_firstx[sx+1] or d_firstx[sx+1]==UndefBlock);
-      d_cayley[s][z].first = i - d_y.begin();
+	std::find(d_y.begin()+d_firstx[sx],d_y.begin()+d_firstx[sx+1]
+		 ,sy.first);
+      assert(i  < d_y.begin()+d_firstx[sx+1]);
+      BlockElt z0=i - d_y.begin();
+      d_cayley[s][z].first = z0;
       {
 	// fill in inverse Cayley entry
-	BlockEltPair& ic = d_inverseCayley[s][d_cayley[s][z].first];
+	BlockEltPair& ic = d_inverseCayley[s][z0];
 	if (z < ic.first) {
 	  ic.second = ic.first;
 	  ic.first = z;
@@ -493,12 +475,14 @@ void Helper::fillCayleyActions()
       if (sy.second == UndefKGB) // cayley transform is type I
 	continue;
       // if we get here the Cayley transform is two-valued
-      i = std::find(d_y.begin()+d_firstx[sx],d_y.end(),sy.second);
-      assert(  i  < d_y.begin()+d_firstx[sx+1] or d_firstx[sx+1]==UndefBlock);
-      d_cayley[s][z].second = i - d_y.begin();
+      i = std::find(d_y.begin()+d_firstx[sx],d_y.begin()+d_firstx[sx+1]
+		   ,sy.second);
+      assert(  i  < d_y.begin()+d_firstx[sx+1]);
+      BlockElt z1=i - d_y.begin();
+      d_cayley[s][z].second = z1;
       {
 	// fill in inverse Cayley entry
-	BlockEltPair& ic = d_inverseCayley[s][d_cayley[s][z].second];
+	BlockEltPair& ic = d_inverseCayley[s][z1];
 	assert(ic.first == UndefBlock);
 	ic.first = z;
       }
@@ -517,7 +501,10 @@ void Helper::fillCrossActions()
   just the corresponding action on each side. The main difficulty is in
   locating  the result. We do this with the aid off the d_firstx table:
   the result of cross(s,(x,y)) lies in the range beginning at
-  firstx(cross(s,x)).
+  firstx(cross(s,x)) and ending at firstx(cross(s,x)+1).
+
+  Note that std::find does a linear (left-to-right) search, so that no other
+  occurrence of sy will be found.
 */
 
 {
@@ -527,9 +514,10 @@ void Helper::fillCrossActions()
     for (BlockElt z = 0; z < size(); ++z) {
       KGBElt sx = d_kgb.cross(s,x(z));
       KGBElt sy = d_dualkgb.cross(s,y(z));
-      KGBEltList::iterator i = std::find(d_y.begin()+d_firstx[sx],d_y.end(),
-					 sy);
-      assert(i <  d_y.begin()+d_firstx[sx+1] or d_firstx[sx+1]==UndefBlock);
+      KGBEltList::iterator i =
+	std::find(d_y.begin()+d_firstx[sx],d_y.begin()+d_firstx[sx+1]
+		 ,sy);
+      assert(i <  d_y.begin()+d_firstx[sx+1]);
       d_cross[s][z] = i - d_y.begin();
     }
   }
@@ -736,25 +724,22 @@ void Helper::orbitPairs()
 	d_x.push_back(x);
 	d_y.push_back(y);
       }
-      if (yRange.second - yRange.first) {
-	d_firstx[x] = xOffset;
-	xOffset += yRange.second - yRange.first;
-      }
+      d_firstx[x] = xOffset;
+      xOffset += yRange.second - yRange.first;
     }
   }
+
+  assert(xOffset == d_size); // check that number of pairs is as expected
 
 #ifdef VERBOSE
   std::cerr << std::endl;
 #endif
 
-  d_firstx[d_kgb.size()] = xOffset;
-  // put guards at end of d_x and d_y
+  d_firstx[x] = xOffset; // make d_firstx[d_kgb.size()]==d_size
+  // put sentinels at end of d_x and d_y
   d_x.push_back(UndefKGB);
   d_y.push_back(UndefKGB);
 
-  assert(xOffset == d_size);
-
-  return;
 }
 
 }
