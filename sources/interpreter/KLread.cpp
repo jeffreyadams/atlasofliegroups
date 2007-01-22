@@ -40,30 +40,51 @@ ullong read_bytes(unsigned int n, std::istream& in)
     }
 }
 
-unsigned int read_block_file
-  (std::istream& in, descent_set_vector& d, ascent_table& t)
+struct block_info
 {
-  size_t block_size=read_bytes(4,in);
-  unsigned int rank=read_bytes(1,in);
+  unsigned int rank;
+  size_t size;
+  unsigned int max_length;
+  std::vector<BlockElt> start_length; // of size max_length+2;
+
+  descent_set_vector descent_set;      // 453060*4     =  1812240 bytes :  2 MB
+  ascent_table ascents;                // 453060*8*4   = 14497920 bytes : 13 MB
+
+  block_info(std::istream& in); // constructor reads file
+};
+
+block_info::block_info(std::istream& in)
+  : rank(), size(), max_length(), start_length(), descent_set(), ascents()
+  // don't initialise yet
+{
+  in.seekg(0,std::ios_base::beg); // ensure we are reading from the start
+  size=read_bytes(4,in);
+  rank=read_bytes(1,in);
+  max_length=read_bytes(1,in);
 
 #ifdef VERBOSE
-  std::cout << "rank=" << rank << ", block size=" << block_size << ".\n";
+  std::cout << "rank=" << rank << ", block size=" << size
+	    << ", maximal length=" << max_length << ".\n";
 #endif
-  d.reserve(block_size);
-  for (BlockElt y=0; y<block_size; ++y)
-    d.push_back(RankFlags(read_bytes(4,in)));
 
-  t.reserve(block_size);
-  for (BlockElt x=0; x<block_size; ++x)
+  start_length.resize(max_length+2);
+  start_length[0]=BlockElt(0);
+  for (size_t i=1; i<=max_length; ++i) start_length[i]=read_bytes(4,in);
+  start_length[max_length+1]=size;
+
+  descent_set.reserve(size);
+  for (BlockElt y=0; y<size; ++y)
+    descent_set.push_back(RankFlags(read_bytes(4,in)));
+
+  ascents.reserve(size);
+  for (BlockElt x=0; x<size; ++x)
     {
-      t.push_back(ascent_vector());
-      ascent_vector& a=t.back();
+      ascents.push_back(ascent_vector());
+      ascent_vector& a=ascents.back();
       a.reserve(rank);
       for (size_t s=0; s<rank; ++s)
 	a.push_back(read_bytes(4,in));
     }
-
-  return rank; // this value is otherwise somewhat buried in result
 
 }
 
@@ -107,11 +128,7 @@ class matrix_info
 {
   std::ifstream& matrix_file;
 
-  descent_set_vector descent_set;      // 453060*4     =  1812240 bytes :  2 MB
-  ascent_table ascents;                // 453060*8*4   = 14497920 bytes : 13 MB
-
-  unsigned int rank; // 4 bytes
-  size_t block_size; // 4 bytes
+  block_info block;
 
   std::vector<std::streampos> row_pos; // 453060*8     =  3624480 bytes :  3 MB
 //std::vector<prim_bitmap> prim_map;   // 453060*1600  =724896000 bytes :691 MB
@@ -138,7 +155,7 @@ void matrix_info::set_y(BlockElt y)
   if (y==cur_y)
     { matrix_file.seekg(cur_row_entries,std::ios_base::beg); return; }
   cur_y=y;
-  const prim_list& weak_prims=primitives_list[descent_set[y].to_ulong()];
+  const prim_list& weak_prims=primitives_list[block.descent_set[y].to_ulong()];
   unsigned int n_prim=weak_prims.size();
   cur_strong_prims.resize(0); // restart fom scratch, but don't destroy space
   matrix_file.seekg(row_pos[y],std::ios_base::beg);
@@ -154,8 +171,8 @@ void matrix_info::set_y(BlockElt y)
 KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y)
 {
   set_y(y);
-  RankFlags d=descent_set[y];
-  x=primitivise(x,d,ascents);
+  RankFlags d=block.descent_set[y];
+  x=primitivise(x,d,block.ascents);
   strong_prim_list::const_iterator it=
     std::lower_bound(cur_strong_prims.begin(),cur_strong_prims.end(),x);
   if (it==cur_strong_prims.end() or *it!=x) return KLIndex(0); // x not strong
@@ -187,25 +204,23 @@ unsigned int add_bits(unsigned long int x)
 
 matrix_info::matrix_info(std::ifstream* block_file,std::ifstream* m_file)
   : matrix_file(*m_file)
-  , descent_set(), ascents()
-  , rank(read_block_file(*block_file,descent_set,ascents))
-  , block_size(ascents.size())
-  , row_pos(block_size)
-  , primitives_list(make_prim_table(ascents,rank))
+  , block(*block_file) // read in block information
+  , row_pos(block.size)
+  , primitives_list(make_prim_table(block.ascents,block.rank))
   , cur_y(UndefBlock), cur_strong_prims(), cur_row_entries()
 {
   static const unsigned int ulsize=sizeof(unsigned long int);
   matrix_file.seekg(0,std::ios_base::beg);
-  for (BlockElt y=0; y<block_size; ++y)
+  for (BlockElt y=0; y<block.size; ++y)
     {
       if (read_bytes(4,matrix_file)!=y)
 	{ std::cerr << y << std::endl;
 	  throw std::runtime_error ("Alignment problem");
 	}
       unsigned int n_prim=read_bytes(4,matrix_file);
-      if (n_prim!=primitives_list[descent_set[y].to_ulong()].size())
+      if (n_prim!=primitives_list[block.descent_set[y].to_ulong()].size())
 	{ std::cerr << y << ": " << n_prim << "!="
-		    << primitives_list[descent_set[y].to_ulong()].size()
+		    << primitives_list[block.descent_set[y].to_ulong()].size()
 		    << std::endl;
 	  throw std::runtime_error ("Primitive count problem");
 	}
