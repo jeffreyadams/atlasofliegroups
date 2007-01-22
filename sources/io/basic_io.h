@@ -1,8 +1,8 @@
 /*
   This is basic_io.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -11,6 +11,7 @@
 #define BASIC_IO_H
 
 #include <iosfwd>
+#include <iostream>
 #include <vector>
 
 #include "abelian_fwd.h"
@@ -42,7 +43,7 @@ template<size_t dim>
 std::ostream& operator<< (std::ostream&, const latticetypes::LatticeElt&);
 
 // types from lietype
-std::ostream& operator<< (std::ostream& strm, 
+std::ostream& operator<< (std::ostream& strm,
 			  const lietype::SimpleLieType& slt);
 
 std::ostream& operator<< (std::ostream&, const lietype::LieType&);
@@ -52,13 +53,22 @@ std::ostream& operator<< (std::ostream&, const weyl::WeylWord&);
 
 // other functions
 template<typename I>
-std::ostream& seqPrint(std::ostream&, const I&, const I&, 
-		       const char* sep = ",", const char* pre = "", 
+std::ostream& seqPrint(std::ostream&, const I&, const I&,
+		       const char* sep = ",", const char* pre = "",
 		       const char* post = "");
 
+// binary output
+inline void put_int(unsigned int n, std::ostream& out)
+{
+  out.put(char(n&0xFF)); n>>=8;
+  out.put(char(n&0xFF)); n>>=8;
+  out.put(char(n&0xFF)); n>>=8;
+  out.put(char(n));
 }
 
-}
+} // namespace basic_io
+
+} // namespace atlas
 
 #include "basic_io_def.h"
 

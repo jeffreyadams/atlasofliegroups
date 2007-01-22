@@ -42,6 +42,7 @@
 #include <stdexcept>
 
 #include "bitmap.h"
+#include "basic_io.h"
 #include "blocks.h"
 #include "error.h"
 #include "kl_error.h"
@@ -744,7 +745,6 @@ void KLContext::makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const
   e.reserve(e.size()+b.size()); // ensure tight fit after copy
   std::copy(b.begin(),b.end(),back_inserter(e));
 
-  return;
 }
 
 void KLContext::makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const
@@ -772,7 +772,6 @@ void KLContext::makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const
   e.reserve(e.size()+b.size()); // ensure tight fit after copy
   std::copy(b.begin(),b.end(),back_inserter(e));
 
-  return;
 }
 
 
@@ -805,7 +804,6 @@ void KLContext::fill()
   std::cerr << "done" << std::endl;
 #endif
 
-  return;
 }
 
 /* accessors of KLContext used for output */
@@ -850,34 +848,28 @@ bitmap::BitMap KLContext::primMap (BlockElt y) const
    exceeding 2^32.)
    If you are using a 16 bits machine, this program is not for you, sorry.
 */
-inline void put_int(unsigned int n, std::ostream& out)
-{
-  out.put(char(n&0xFF)); n>>=8;
-  out.put(char(n&0xFF)); n>>=8;
-  out.put(char(n&0xFF)); n>>=8;
-  out.put(char(n));
-}
 
 void KLContext::writeKLRow (BlockElt y, std::ostream& out) const
 {
   bitmap::BitMap prims=primMap(y);
   assert(d_kl[y].size()==prims.size()); // check the number of KL polynomials
 
-  put_int(y,out);        // write row number for consistency check on reading
+  // write row number for consistency check on reading
+  basic_io::put_int(y,out);
 
   // write number of primitive elements (indep. of modulus) for convenience
-  put_int(prims.capacity(),out);
+  basic_io::put_int(prims.capacity(),out);
 
   // now write the bitmap as a sequence of unsigned int values
   for (size_t i=0; i<prims.capacity(); i+=32)
-    put_int(prims.range(i,32),out);
+    basic_io::put_int(prims.range(i,32),out);
 
  // the list of indices of nonzero KL polynomials in row y
   const KLRow& row=d_kl[y];
 
   // finally, write the indices of the KL polynomials themselves
   for (size_t i=0; i<row.size(); ++i)
-    put_int(row[i],out);
+    basic_io::put_int(row[i],out);
 
   // and signal if there was unsufficient space to write the row
   if (not out.good()) throw error::OutputError();
@@ -898,7 +890,7 @@ void KLContext::writeKLRow (BlockElt y, std::ostream& out) const
 
 void KLContext::writeKLStore (std::ostream& out) const
 {
-  put_int(d_store.size(),out); // write number of KL poynomials
+  basic_io::put_int(d_store.size(),out); // write number of KL poynomials
 
   // write sequence of 5-byte indices, computed on the fly
   size_t offset=0; // poition of first coefficient written
@@ -907,14 +899,14 @@ void KLContext::writeKLStore (std::ostream& out) const
       KLPolRef p=d_store[i]; // get reference to polynomial
 
       // output 5-byte value of offset
-      put_int(offset&0xFFFFFFFF,out);
+      basic_io::put_int(offset&0xFFFFFFFF,out);
       out.put(char(offset>>16>>16)); // >>32 would fail on 32 bits machines
 
       if (not p.isZero()) // superfluous since polynomials::MinusOne+1==0
 	offset += p.degree()+1; // add number of coefficients to be written
     }
   // write final 5-byte value (total size of coefficiant list)
-  put_int(offset&0xFFFFFFFF,out); out.put(char(offset>>16>>16));
+  basic_io::put_int(offset&0xFFFFFFFF,out); out.put(char(offset>>16>>16));
 
   // now write out coefficients
   for (size_t i=0; i<d_store.size(); ++i)
@@ -1331,7 +1323,7 @@ MuCoeff Helper::goodDescentMu(BlockElt x, BlockElt y, size_t s) const
 
   switch (descentValue(s,x)) {
   case DescentStatus::ImaginaryCompact: {
-    return 0;
+    return MuCoeff(0);
   }
   case DescentStatus::ComplexDescent: {
     BlockElt x1 = cross(s,x);
@@ -1573,7 +1565,6 @@ void Helper::completePacket(BlockElt y)
   if (not empty.empty()) // we are not done
     fillThickets(y);
 
-  return;
 }
 
 void Helper::directRecursion(BlockElt y, size_t s)
@@ -1601,7 +1592,6 @@ void Helper::directRecursion(BlockElt y, size_t s)
   // write result
   writeRow(klv,e,y);
 
-  return;
 }
 
 void Helper::fill()
@@ -1718,7 +1708,6 @@ void Helper::fill()
 
   pthread_mutex_destroy(&YThread.mutex);
 
-  return;
 }
 
 void Helper::fillKLRow(BlockElt y)
@@ -1758,7 +1747,6 @@ void Helper::fillKLRow(BlockElt y)
   if (not done)
     completePacket(y);
 
-  return;
 }
 
 void Helper::fillMuRow(BlockElt y)
@@ -1818,7 +1806,6 @@ void Helper::fillMuRow(BlockElt y)
       d_mu[y].push_back(std::make_pair(x,mu));
   }
 
-  return;
 }
 
 void Helper::fillThickets(BlockElt y)
@@ -1868,7 +1855,6 @@ void Helper::fillThickets(BlockElt y)
       thicket.fill();
     }
 
-  return;
 }
 
 void Helper::muCorrection(std::vector<KLPol>& klv,
@@ -1930,7 +1916,6 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 
   }
 
-  return;
 }
 
 void Helper::recursionRow(std::vector<KLPol>& klv,
@@ -2014,7 +1999,6 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   // do mu-correction
   muCorrection(klv,e,y,s);
 
-  return;
 }
 
 void Helper::writeRow(const std::vector<KLPol>& klv,
@@ -2291,7 +2275,6 @@ void Thicket::edgeCompute(BlockElt x, size_t pos, const Edge& e)
     *--d_firstPrim[pos] = x;
   }
 
-  return;
 }
 
 void Thicket::fill()
@@ -2375,7 +2358,6 @@ void Thicket::fill()
     pthread_mutex_unlock(&d_helper->stat_guard);
   }
 
-  return;
 }
 
 void Thicket::fillXList()
@@ -2399,7 +2381,6 @@ void Thicket::fillXList()
   d_xlist.reserve(xs.size());
   copy(xs.begin(),xs.end(),std::back_inserter(d_xlist));
 
-  return;
 }
 
   }
@@ -2560,7 +2541,6 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
     }
   }
 
-  return;
 }
 
 }
