@@ -40,6 +40,11 @@ ullong read_bytes(unsigned int n, std::istream& in)
     }
 }
 
+/* After each variable estimates of size for split E8, on a 32-bit machine.
+   Estimates are based on average of 12800 (weakly) primitive elements per
+   descent set and half that (6400) of strongly primitive elements per block
+   element y
+*/
 struct block_info
 {
   unsigned int rank;
@@ -50,11 +55,48 @@ struct block_info
   descent_set_vector descent_set;      // 453060*4     =  1812240 bytes :  2 MB
   ascent_table ascents;                // 453060*8*4   = 14497920 bytes : 13 MB
 
+//std::vector<prim_bitmap> prim_map;   // 453060*1600  =724896000 bytes :691 MB
+  prim_table primitives_list;          // 256*12800*4  = 13107200 bytes : 12 MB
+
   block_info(std::istream& in); // constructor reads file
 };
 
+
+const BlockElt UndefBlock= ~BlockElt(0);
+const BlockElt noGoodAscent= UndefBlock-1;
+
+BlockElt primitivise(BlockElt x, const RankFlags d, const ascent_table& t)
+{
+  unsigned int rank=t[0].size(); // any index gives the same value
+ start:
+  const ascent_vector& tx=t[x];
+  for (size_t s=0; s<rank; ++s)
+    if (d[s] and tx[s]!=noGoodAscent)
+      {
+	if (tx[s]==UndefBlock) return UndefBlock;
+	x=tx[s]; goto start; // this should raise x, now try another step
+      }
+  return x; // no raising possible, stop here
+}
+
+void make_prim_table
+  (const ascent_table& t, unsigned int rank, prim_table& result)
+{
+  size_t powerset_rank= 1ul<<rank;
+  size_t block_size=t.size();
+  result.resize(powerset_rank); // fills result with empty vectors
+  for (size_t s=0; s<powerset_rank; ++s)
+    {
+      RankFlags d(s);
+      for (BlockElt x=0; x<block_size; ++x)
+	if (x==primitivise(x,d,t)) result[s].push_back(x);
+      prim_list(result[s]).swap(result[s]); // reallocate to fit snugly
+    }
+}
+
 block_info::block_info(std::istream& in)
-  : rank(), size(), max_length(), start_length(), descent_set(), ascents()
+  : rank(), size(), max_length(), start_length()
+    , descent_set(), ascents(), primitives_list()
   // don't initialise yet
 {
   in.seekg(0,std::ios_base::beg); // ensure we are reading from the start
@@ -85,39 +127,7 @@ block_info::block_info(std::istream& in)
       for (size_t s=0; s<rank; ++s)
 	a.push_back(read_bytes(4,in));
     }
-
-}
-
-const BlockElt UndefBlock= ~BlockElt(0);
-const BlockElt noGoodAscent= UndefBlock-1;
-
-BlockElt primitivise(BlockElt x, const RankFlags d, const ascent_table& t)
-{
-  unsigned int rank=t[0].size(); // any index gives the same value
- start:
-  const ascent_vector& tx=t[x];
-  for (size_t s=0; s<rank; ++s)
-    if (d[s] and tx[s]!=noGoodAscent)
-      {
-	if (tx[s]==UndefBlock) return UndefBlock;
-	x=tx[s]; goto start; // this should raise x, now try another step
-      }
-  return x; // no raising possible, stop here
-}
-
-prim_table make_prim_table(const ascent_table& t, unsigned int rank)
-{
-  size_t powerset_rank= 1ul<<rank;
-  size_t block_size=t.size();
-  prim_table result(powerset_rank);
-  for (size_t s=0; s<powerset_rank; ++s)
-    {
-      RankFlags d(s);
-      for (BlockElt x=0; x<block_size; ++x)
-	if (x==primitivise(x,d,t)) result[s].push_back(x);
-      prim_list(result[s]).swap(result[s]); // reallocate to fit snugly
-    }
-  return result;
+  make_prim_table(ascents,rank,primitives_list);
 }
 
 // after each variable estimates size for split E8, on 32-bit machine
@@ -131,8 +141,6 @@ class matrix_info
   block_info block;
 
   std::vector<std::streampos> row_pos; // 453060*8     =  3624480 bytes :  3 MB
-//std::vector<prim_bitmap> prim_map;   // 453060*1600  =724896000 bytes :691 MB
-  prim_table primitives_list;          // 256*6400*4   =  6553600 bytes :  6 MB
 
   BlockElt cur_y;		       // 4 bytes
   strong_prim_list cur_strong_prims;   // 6400*4 = 25600 bytes  (but max 2MB)
@@ -141,7 +149,7 @@ class matrix_info
 //std::vector<size_t> cur_offset;      // 12800*4  =102400 bytes (but max 2MB)
 
   matrix_info(const matrix_info&); // copying forbidden
-  void set_y(BlockElt y);          // install |cur_y| and |cur_prim|
+  void set_y(BlockElt y);          // install |cur_y| and dependent data
 
 public:
   matrix_info(std::ifstream* block_file,std::ifstream* m_file);
@@ -152,13 +160,14 @@ public:
 
 void matrix_info::set_y(BlockElt y)
 {
-  if (y==cur_y)
-    { matrix_file.seekg(cur_row_entries,std::ios_base::beg); return; }
+  if (y==cur_y) { matrix_file.seekg(cur_row_entries); return; }
   cur_y=y;
-  const prim_list& weak_prims=primitives_list[block.descent_set[y].to_ulong()];
-  unsigned int n_prim=weak_prims.size();
+  const prim_list& weak_prims
+    = block.primitives_list[block.descent_set[y].to_ulong()];
   cur_strong_prims.resize(0); // restart fom scratch, but don't destroy space
-  matrix_file.seekg(row_pos[y],std::ios_base::beg);
+
+  matrix_file.seekg(row_pos[y]);
+  unsigned int n_prim=read_bytes(4,matrix_file);
   for (size_t i=0; i<n_prim; i+=32)
     {
       unsigned int chunk=read_bytes(4,matrix_file);
@@ -206,25 +215,38 @@ matrix_info::matrix_info(std::ifstream* block_file,std::ifstream* m_file)
   : matrix_file(*m_file)
   , block(*block_file) // read in block information
   , row_pos(block.size)
-  , primitives_list(make_prim_table(block.ascents,block.rank))
-  , cur_y(UndefBlock), cur_strong_prims(), cur_row_entries()
+  , cur_y(UndefBlock), cur_strong_prims(), cur_row_entries(0)
 {
   static const unsigned int ulsize=sizeof(unsigned long int);
+
+  size_t l=0; // length of y
   matrix_file.seekg(0,std::ios_base::beg);
   for (BlockElt y=0; y<block.size; ++y)
     {
+      while (l>=block.start_length[l+1]) ++l;
+      // now block.start_length[l] <= l < block.start_length[l+1]
+
       if (read_bytes(4,matrix_file)!=y)
 	{ std::cerr << y << std::endl;
 	  throw std::runtime_error ("Alignment problem");
 	}
       unsigned int n_prim=read_bytes(4,matrix_file);
-      if (n_prim!=primitives_list[block.descent_set[y].to_ulong()].size())
+      {
+	const prim_list& weak_prims
+	  = block.primitives_list[block.descent_set[y].to_ulong()];
+	prim_list::const_iterator i= // find limit of length<l values
+	  std::lower_bound(weak_prims.begin(),weak_prims.end()
+			  ,block.start_length[l]);
+	// test that number is that of weak_prims of length<l, plus 1 for y
+	if (n_prim!=size_t(i-weak_prims.begin())+1)
 	{ std::cerr << y << ": " << n_prim << "!="
-		    << primitives_list[block.descent_set[y].to_ulong()].size()
+		    << (i-weak_prims.begin())+1
 		    << std::endl;
 	  throw std::runtime_error ("Primitive count problem");
 	}
-      row_pos[y]=matrix_file.tellg();
+      }
+
+      row_pos[y]=matrix_file.tellg(); // record position where bitmap starts
       size_t count=n_prim/(8*ulsize); // number of unsigned longs to read
       std::streamoff n_strong_prim=0;
       while (count-->0)
