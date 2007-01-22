@@ -71,7 +71,6 @@ void KLSupport::swap(KLSupport& other)
   d_primset.swap(other.d_primset);
   d_lengthLess.swap(other.d_lengthLess);
 
-  return;
 }
 
 /******** accessors **********************************************************/
@@ -96,15 +95,14 @@ void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
     if (d.test(s))
       b &= d_downset[s];
 
-  return;
 }
 
 void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
   const
 
 /*
-  Synopsis: primitivizes b w.r.t. the values in d, i.e., throws out the
-  non-primitive elements.
+  Synopsis: primitivizes b w.r.t. the values whose descent set is d, i.e.,
+  throws out from b the non-primitive elements with respect to d
 
   Preconditions: the capacity of b is the size(); d contains d_rank valid
   flags;
@@ -121,7 +119,6 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
     if (d.test(s))
       b &= d_primset[s];
 
-  return;
 }
 
 /******** manipulators *******************************************************/
@@ -143,7 +140,7 @@ void KLSupport::fill()
     return;
 
   // fill lengthLess if necessary
-  if (d_state.test(LengthLessFilled) == false) {
+  if (not d_state.test(LengthLessFilled)) {
     fillLengthLess(d_lengthLess,block());
     d_state.set(LengthLessFilled);
   }
@@ -155,21 +152,24 @@ void KLSupport::fill()
   fillPrimitivize();
   d_state.set(Filled);
 
-  return;
 }
 
 void KLSupport::fillDownsets()
 
 /*
-  Synopsis: fills in the downsets bitmaps, the primset bitmaps, the descent
-  bitsets and the goodAscent bitsets.
+  Synopsis: fills in the downset, primset, descents and goodAscent bitset
+  vectors. Here downset and primset of vectors indexed by a simple reflection
+  s, and giving a bitset over all block elements, while descents and
+  goodAscent are vectors indexed by a block element z and giving a bitset over
+  all simple reflections.
 
-  Explanation: here descent is taken in the weak sense of s belonging to the
-  "tau-invariant" of z in b. In other words, s is a complex descent, real
-  noncompact (type I or type II), or imaginary compact. The primset bitset
-  records the x'es for which s is either a descent, or an imaginary type II
-  ascent. The goodAscent bitsets hold the ascents that are not imaginary type
-  II.
+  Explanation: here the predicate that s is a descent for z is taken in the
+  weak sense that s belonging to the "tau-invariant" of z in b, in other
+  words, it is a complex descent, real noncompact (type I or type II), or
+  imaginary compact. The goodAscent bitset for z holds the ascents for z that
+  are not imaginary type II. The primset bitset for s records the block
+  elements z for which s is not a goodAscent, in other words it is either
+  a descent, or an imaginary type I ascent.
 
   Sets the DownsetsFilled bit in d_state if successful. Commit-or-rollback
   is guaranteed.
@@ -198,11 +198,11 @@ void KLSupport::fillDownsets()
 	ds[s].insert(z);
 	ps[s].insert(z);
 	descents[z].set(s);
-      } else {
+      } else { // ascents
 	if (v == DescentStatus::ImaginaryTypeII)
-	  ps[s].insert(z);
+	  ps[s].insert(z);  // s is a "bad" ascent
 	else
-	  ga[z].set(s);
+	  ga[z].set(s); // good ascent
       }
     }
   }
@@ -214,7 +214,6 @@ void KLSupport::fillDownsets()
   d_goodAscent.swap(ga);
   d_state.set(DownsetsFilled);
 
-  return;
 }
 
 void KLSupport::fillPrimitivize()
@@ -223,9 +222,9 @@ void KLSupport::fillPrimitivize()
   Synopsis: fills in the table d_primitivize.
 
   Explanation: for each z in the block, and each set A of simple
-  roots, d_primitivize[A][z] comes by proper ascents of z through s
-  in A (either cross actions increasing length, or Cayley transforms)
-  or 0 (if we come to a real non-parity case).
+  roots, d_primitivize[A][z] is obtained from z by proper ascents through
+  simple roots s in A (either cross actions increasing length, or Cayley
+  transforms) or UndefBlock (if we come to a real non-parity case).
 
   Sets the PrimitivizeFilled bit in d_state if successful.
 */
@@ -235,23 +234,20 @@ void KLSupport::fillPrimitivize()
   using namespace descents;
   using namespace blocks;
 
-  if (d_state.test(PrimitivizeFilled))
-    return;
-  d_primitivize.reserve(1ul << rank());
-  d_primitivize.resize(1ul << rank());
+  if (d_state.test(PrimitivizeFilled)) return;
+  size_t nr_descent_sets= 1ul<<rank();
+  d_primitivize.resize(nr_descent_sets);
   size_t blocksize = d_block->size();
 
-for (unsigned long j = 0 ; j >> rank() == 0 ; ++j) {
-  BlockEltList prim;
-  prim.reserve(blocksize);
+for (unsigned long j = 0 ; j<nr_descent_sets ; ++j) {
+  BlockEltList& prim=d_primitivize[j];
   prim.resize(blocksize);
-   const bitset::RankFlags A(j);
-   for (BlockElt z = blocksize; z != 0;) {
-     --z;
+  const bitset::RankFlags A(j);
+
+  for (BlockElt z = blocksize; z-->0; ) {
   // primitivize
-     RankFlags a = goodAscentSet(z);
-     a &= A;
-     if (a.none()) {
+     RankFlags a = goodAscentSet(z)& A;
+     if (a.none()) { // if there are no good ascents for z in A, z is fixed
        prim[z] = z;
        continue;
      }
@@ -266,13 +262,10 @@ for (unsigned long j = 0 ; j >> rank() == 0 ; ++j) {
     else
       prim[z] = prim[d_block->cayley(s,z).first];
   }
-   // insert
-   d_primitivize[j] = prim;
  }
 
  d_state.set(PrimitivizeFilled);
 
- return;
 }
 
 } // namespace klsupport
