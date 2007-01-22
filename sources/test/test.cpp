@@ -1179,6 +1179,25 @@ void blockwrite_f()
     basic_io::put_int(block.size(),block_out);  // block size in 4 bytes
     block_out.put(rank);                        // rank in 1 byte
 
+    { // output length data
+      unsigned char max_length=block.length(block.size()-1);
+      block_out.put(max_length);
+
+      // basic_io::put_int(0,block_out); // obvious: no elements of length<0
+      size_t l=0;
+      for (blocks::BlockElt z=0; z<block.size(); ++z)
+	while (block.length(z)>l)
+	  {
+	    basic_io::put_int(z,block_out); // record: z elements of length<=l
+	    ++l;
+	  }
+      assert(l==max_length); // so max_length values are written
+
+      // basic_io::put_int(block.size(),block_out);
+      // also obvious: there are block.size() elements of length<=max_length
+    }
+
+
     for (blocks::BlockElt y=0; y<block.size(); ++y)
       {
 	bitset::RankFlags d;
