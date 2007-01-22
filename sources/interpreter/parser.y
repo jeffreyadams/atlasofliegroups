@@ -38,7 +38,8 @@
 %pure-parser
 %error-verbose
 
-%token QUIT TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
+%token QUIT TRUE FALSE QUIET VERBOOSE /* VERBOSE already used as macro */
+%token WHATTYPE SHOWALL
 %token DIVMOD
 %token <val> INT
 %token <expression> STRING
@@ -65,7 +66,7 @@ input:  '\n'			{ YYABORT } /* null input, skip evaluator */
 		{ global_set_identifier(reverse_expr_list($1),$3); YYABORT }
         | QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
         | QUIET	'\n'		{ *verbosity =0; YYABORT } /* quiet mode */
-        | VERBOSE '\n'		{ *verbosity =1; YYABORT } /* verbose mode */
+        | VERBOOSE '\n'		{ *verbosity =1; YYABORT } /* verbose mode */
 	| TOFILE exp '\n'	{ *parsed_expr=$2; *verbosity=2; }
 	| ADDTOFILE exp '\n'	{ *parsed_expr=$2; *verbosity=3; }
         | FROMFILE '\n'		{ include_file(); YYABORT } /* include file */
