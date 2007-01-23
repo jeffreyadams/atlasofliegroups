@@ -868,7 +868,7 @@ length.
 @< Read polynomial coefficients... @>=
 for (ulong j=0; j<mod_info.size(); ++j)
 { modular_pol[j]=mod_info[j]->coefficients(i);
-  if (modular_pol[j].size()>len) len=modular_pol.back().size();
+  if (modular_pol[j].size()>len) len=modular_pol[j].size();
 }
 
 @ Keeping track of the maximal coefficient is trivial; each time it increases

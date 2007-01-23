@@ -412,7 +412,7 @@ ulong write_coefficients
     
     for (ulong j=0; j<mod_info.size(); ++j)
     { modular_pol[j]=mod_info[j]->coefficients(i);
-      if (modular_pol[j].size()>len) len=modular_pol.back().size();
+      if (modular_pol[j].size()>len) len=modular_pol[j].size();
     }
     std::vector<ulong> lifted_pol(len);
     // the polynomial modulo the lcm of the moduli
