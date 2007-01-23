@@ -5,9 +5,10 @@
 #include <bitset>
 #include <stdexcept>
 #include <cassert>
+#include <cctype>
 
 typedef unsigned long long int ullong; // sufficiently long unsigned type
-const ullong infty=~ullong(0);
+
 
 typedef unsigned int BlockElt;
 typedef std::bitset<32> RankFlags; // we can go up to rank 32
@@ -21,6 +22,8 @@ typedef prim_list strong_prim_list; // strongly primitive elements for fixed y
 
 typedef std::vector<bool> prim_bitmap;     // has compact implementation
 typedef unsigned int KLIndex;
+
+const KLIndex UndefKLIndex=~KLIndex(0);
 
 const std::ios_base::openmode binary_out=
 			    std::ios_base::out
@@ -198,6 +201,7 @@ KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y)
   strong_prim_list::const_iterator it=
     std::lower_bound(cur_strong_prims.begin(),cur_strong_prims.end(),x);
   if (it==cur_strong_prims.end() or *it!=x) return KLIndex(0); // x not strong
+
   matrix_file.seekg(4*(it-cur_strong_prims.begin()),std::ios_base::cur);
   return KLIndex(read_bytes(4,matrix_file));
 }
@@ -243,7 +247,11 @@ matrix_info::matrix_info(std::ifstream* block_file,std::ifstream* m_file)
 	{ std::cerr << y << std::endl;
 	  throw std::runtime_error ("Alignment problem");
 	}
+
+      row_pos[y]=matrix_file.tellg(); // record position where row info starts
       unsigned int n_prim=read_bytes(4,matrix_file);
+
+      // test that this number is the number of weak primitive elements for y
       {
 	const prim_list& weak_prims
 	  = block.primitives_list[block.descent_set[y].to_ulong()];
@@ -256,21 +264,10 @@ matrix_info::matrix_info(std::ifstream* block_file,std::ifstream* m_file)
 	  std::cerr << y << ": " << n_prim << "!="
 		    << (i-weak_prims.begin())+1
 		    << std::endl;
-	  std::cerr << "Descent set: {";
-	  for (size_t i=0; i<block.rank; ++i)
-	    if (block.descent_set[y][i])
-	      std::cerr << i << (i+1<block.rank?',':'}');
-	  std::cerr << std::endl;
-	  std::cerr << "Weak primitives: ";
-	  for (size_t i=0; i<weak_prims.size(); ++i)
-	    std::cerr << weak_prims[i]
-		      << (i+1<weak_prims.size()?',':'.');
-	  std::cerr << std::endl;
 	  throw std::runtime_error ("Primitive count problem");
 	}
       }
 
-      row_pos[y]=matrix_file.tellg(); // record position where bitmap starts
       size_t count=n_prim/(8*ulsize); // number of unsigned longs to read
       std::streamoff n_strong_prim=0;
 
@@ -343,14 +340,39 @@ int main(int argc,char** argv)
 
   while (true)
     {
-      std::cout << "index: ";
-      ullong i=infty; std::cin >> i;
-      if (i==infty) break;
-      if (i>=n_polynomials)
+      if (mi.get()==NULL)
+	std::cout << "index: ";
+      else
+	std::cout << "give block elements x,y, or polynomial index i as #i: ";
+
+      KLIndex i=UndefKLIndex;
+      if (std::cin.peek()=='#' ? std::cin.get(), true : mi.get()==NULL )
 	{
-	  std::cout << "index too large, limit is " << n_polynomials-1
-		    << ".\n";
-	  continue;
+	  std::cin >> i;
+	  if (i==UndefKLIndex) break;
+	  if (i>=n_polynomials)
+	    {
+	      std::cout << "index too large, limit is " << n_polynomials-1
+			<< ".\n";
+	      continue;
+	    }
+	}
+      else
+	{
+	  int c; BlockElt x=UndefBlock,y=UndefBlock;
+	  while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
+	  std::cin >> x;
+	  if (x==UndefBlock) break;
+	  while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
+	  std::cin >> y;
+	  if (y==UndefBlock)
+	    { std::cout << "failure reading y, try again.\n";
+	      continue;
+	    }
+
+	  i=mi->find_pol_nr(x,y);
+	  std::cout << "Polynomial #" << i << "." << std::endl;
+
 	}
       coef_file.seekg(index_begin+5*i,std::ios_base::beg);
       ullong index=read_bytes(5,coef_file);
