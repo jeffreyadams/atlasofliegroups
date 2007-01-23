@@ -96,8 +96,7 @@ void make_prim_table
 
 block_info::block_info(std::istream& in)
   : rank(), size(), max_length(), start_length()
-    , descent_set(), ascents(), primitives_list()
-  // don't initialise yet
+  , descent_set(), ascents(), primitives_list() // don't initialise yet
 {
   in.seekg(0,std::ios_base::beg); // ensure we are reading from the start
   size=read_bytes(4,in);
@@ -174,6 +173,19 @@ void matrix_info::set_y(BlockElt y)
       for (size_t j=0; chunk!=0; ++j,chunk>>=1) // and certainly j<32
 	if ((chunk&1)!=0) cur_strong_prims.push_back(weak_prims[i+j]);
     }
+
+  // the last bit 1 was for |y, but we pushed the first element of its length
+  // in |weak_prims|; now check that statement, and replace the element by |y|
+  {
+    const BlockElt* i= // point after first block element of length of |y|
+      std::upper_bound(&block.start_length[0]
+		      ,&block.start_length[block.max_length]
+		      ,y);
+    const BlockElt* first= // point to first of |weak_prims| of that length
+      std::lower_bound(&weak_prims[0],&weak_prims[weak_prims.size()],*(i-1));
+    assert(cur_strong_prims.back()==*first);
+    cur_strong_prims.back()=y; // replace by |y|
+  }
   cur_row_entries=matrix_file.tellg();
 }
 
@@ -205,9 +217,9 @@ const unsigned int high_byte_shift=8*(sizeof(unsigned long int)-1);
 
 unsigned int add_bits(unsigned long int x)
 {
-  x-=(x&b0)>>1;        // replace pairs of bits 10->01 and 11->10
-  x=(x&~b1)+(x&b1>>2); // sideways add 2 groups of pairs of bits to 4-tuples
-  x += x>>4;           // sums of 8-tuples are now in lower 4-tuples of bytes
+  x-=(x&b0)>>1;          // replace pairs of bits 10->01 and 11->10
+  x=(x&~b1)+((x&b1)>>2); // sideways add 2 groups of pairs of bits to 4-tuples
+  x += x>>4;             // sums of 8-tuples are now in lower 4-tuples of bytes
   return (x&~b2)*ones >> high_byte_shift; // add bytes in high byte and extract
 }
 
@@ -223,8 +235,8 @@ matrix_info::matrix_info(std::ifstream* block_file,std::ifstream* m_file)
   matrix_file.seekg(0,std::ios_base::beg);
   for (BlockElt y=0; y<block.size; ++y)
     {
-      while (l>=block.start_length[l+1]) ++l;
-      // now block.start_length[l] <= l < block.start_length[l+1]
+      while (y>=block.start_length[l+1]) ++l;
+      // now block.start_length[l] <= y < block.start_length[l+1]
 
       if (read_bytes(4,matrix_file)!=y)
 	{ std::cerr << y << std::endl;
@@ -239,9 +251,20 @@ matrix_info::matrix_info(std::ifstream* block_file,std::ifstream* m_file)
 			  ,block.start_length[l]);
 	// test that number is that of weak_prims of length<l, plus 1 for y
 	if (n_prim!=size_t(i-weak_prims.begin())+1)
-	{ std::cerr << y << ": " << n_prim << "!="
+	{
+	  std::cerr << y << ": " << n_prim << "!="
 		    << (i-weak_prims.begin())+1
 		    << std::endl;
+	  std::cerr << "Descent set: {";
+	  for (size_t i=0; i<block.rank; ++i)
+	    if (block.descent_set[y][i])
+	      std::cerr << i << (i+1<block.rank?',':'}');
+	  std::cerr << std::endl;
+	  std::cerr << "Weak primitives: ";
+	  for (size_t i=0; i<weak_prims.size(); ++i)
+	    std::cerr << weak_prims[i]
+		      << (i+1<weak_prims.size()?',':'.');
+	  std::cerr << std::endl;
 	  throw std::runtime_error ("Primitive count problem");
 	}
       }
@@ -249,11 +272,14 @@ matrix_info::matrix_info(std::ifstream* block_file,std::ifstream* m_file)
       row_pos[y]=matrix_file.tellg(); // record position where bitmap starts
       size_t count=n_prim/(8*ulsize); // number of unsigned longs to read
       std::streamoff n_strong_prim=0;
+
       while (count-->0)
 	n_strong_prim+=add_bits(read_bytes(ulsize,matrix_file));
+
       count=(n_prim%(8*ulsize)+31)/32; // maybe some tetrabyte(s) left to read
       while (count-->0)
 	n_strong_prim+=add_bits(read_bytes(4,matrix_file));
+
       matrix_file.seekg(4*n_strong_prim,std::ios_base::cur);
       if (not matrix_file.good())
 	{ std::cerr << y << std::endl;
