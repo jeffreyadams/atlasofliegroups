@@ -4,6 +4,7 @@
 #include <vector>
 #include <bitset>
 #include <stdexcept>
+#include <cassert>
 
 typedef unsigned long long int ullong; // sufficiently long unsigned type
 const ullong infty=~ullong(0);
