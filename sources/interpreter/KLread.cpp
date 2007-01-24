@@ -393,7 +393,7 @@ int main(int argc,char** argv)
 	    {
 	      std::cout << "index too large, limit is " << n_polynomials-1
 			<< ".\n";
-	      continue;
+	      goto try_again;
 	    }
 	}
       else
@@ -401,21 +401,30 @@ int main(int argc,char** argv)
 	  int c; BlockElt x=UndefBlock,y=UndefBlock,xx;
 	  while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
 	  std::cin >> x;
-	  if (x==UndefBlock) break;
+	  if (x==UndefBlock)
+	    {
+	      std::cin.clear();
+	      std::cout<< "Really quit? ";
+	      while(std::cin.peek()!=EOF and std::cin.get()!='\n') {}
+	      while(isspace(c)) std::cin.get();
+	      int ans=std::cin.peek();
+	      if (ans==EOF or ans=='y' or ans=='Y') break;
+	      goto try_again;
+	    }
+
 	  while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
 	  std::cin >> y;
 	  if (y==UndefBlock)
 	    { std::cout << "failure reading y, try again.\n";
-  	      while(isalpha(c=std::cin.peek())) std::cin.get(); // remove text
-	      continue;
+	      goto try_again;
 	    }
 	  if (x>=mi->block_size())
 	    { std::cout << "first parameter too large, try again.\n";
-	      continue;
+	      goto try_again;
 	    }
 	  if (y>=mi->block_size())
 	    { std::cout << "second parameter too large, try again.\n";
-	      continue;
+	      goto try_again;
 	    }
 
 	  if (x>y)
@@ -424,51 +433,59 @@ int main(int argc,char** argv)
 	  i=mi->find_pol_nr(x,y,xx);
 	  if (xx==UndefBlock)
 	    { std::cout << "Result null by raising first argument.\n";
-	      continue; }
+	      goto try_again; }
 	  else
 	    std::cout << "P_{" << x << ',' << y << "}=P_{" << xx << ',' << y
 		      << "}=polynomial #" << i << ':' << std::endl;
 	}
-      coef_file.seekg(index_begin+5*i,std::ios_base::beg);
-      ullong index=read_bytes(5,coef_file);
-      ullong next_index=read_bytes(5,coef_file);
-      size_t length=(next_index-index)/coefficient_size;
-      if (length>=33)
-	{
-	  std::cout << "Degree found too large: " << length-1
-		    << ".\n";
-	  continue;
-	}
-      unsigned long* coefficients = new unsigned long[length];
-
-      coef_file.seekg(coefficients_begin+index,std::ios_base::beg);
-
-      unsigned int sum=0; // sum of coefficients, won't exceed 2^29
-      for (size_t i=0; i<length; ++i)
-	sum+=coefficients[i]=read_bytes(coefficient_size,coef_file);
-
-      if (not coef_file.good())
-	{
-	  std::cout << "Input error reading coefficients.\n";
-	  continue;
-	}
-
-      bool first=true;
-      for (size_t i=length; i-->0;)
-	if (coefficients[i]!=0)
+      {
+	coef_file.seekg(index_begin+5*i,std::ios_base::beg);
+	ullong index=read_bytes(5,coef_file);
+	ullong next_index=read_bytes(5,coef_file);
+	size_t length=(next_index-index)/coefficient_size;
+	if (length>=33)
 	  {
-	    if (first) first=false; else std::cout << " + ";
-	    if (coefficients[i]!=1 or i==0) std::cout << coefficients[i];
-	    std::cout << (i==0? "" : "q");
-	    if (i>1)
-	      if (i<10) std::cout << '^' << i;
-	      else std::cout << "^{" << i << '}';
+	    std::cout << "Degree found too large: " << length-1
+		      << ", for polynomial #" << i << ".\n";
+	    exit(1);
 	  }
-      if (length==0) std::cout << 0;
-      else if (length>1) std::cout << "; value at q=1: " << sum;
-      std::cout << '.' << std::endl;
+	unsigned long* coefficients = new unsigned long[length];
 
-      delete[] coefficients;
+	coef_file.seekg(coefficients_begin+index,std::ios_base::beg);
+
+	unsigned int sum=0; // sum of coefficients, won't exceed 2^29
+	for (size_t i=0; i<length; ++i)
+	  sum+=coefficients[i]=read_bytes(coefficient_size,coef_file);
+
+	if (not coef_file.good())
+	  {
+	    std::cout << "Input error reading coefficients.\n";
+	    coef_file.clear();
+	    goto clean_up;
+	  }
+
+	{
+	  bool first=true;
+	  for (size_t i=length; i-->0;)
+	    if (coefficients[i]!=0)
+	      {
+		if (first) first=false; else std::cout << " + ";
+		if (coefficients[i]!=1 or i==0) std::cout << coefficients[i];
+		std::cout << (i==0? "" : "q");
+		if (i>1)
+		  if (i<10) std::cout << '^' << i;
+		  else std::cout << "^{" << i << '}';
+	      }
+	}
+	if (length==0) std::cout << 0;
+	else if (length>1) std::cout << "; value at q=1: " << sum;
+	std::cout << '.' << std::endl;
+
+      clean_up:
+	delete[] coefficients;
+      }
+    try_again:
+      while(std::cin.peek()!=EOF and std::cin.get()!='\n') {}
 
     } // while(true)
 
