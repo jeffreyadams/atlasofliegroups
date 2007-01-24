@@ -21,8 +21,8 @@ typedef std::vector<prim_list> prim_table; // effectively indexed by RankFlags
 typedef prim_list strong_prim_list; // strongly primitive elements for fixed y
 
 typedef std::vector<bool> prim_bitmap;     // has compact implementation
-typedef unsigned int KLIndex;
 
+typedef ullong KLIndex; // must be long long to avoid problems when multiplied
 const KLIndex UndefKLIndex=~KLIndex(0);
 
 const std::ios_base::openmode binary_out=
@@ -83,6 +83,14 @@ BlockElt primitivise(BlockElt x, const RankFlags d, const ascent_table& t)
   return x; // no raising possible, stop here
 }
 
+bool is_primitive(BlockElt x, const RankFlags d, const ascent_table& t)
+{
+  const ascent_vector& tx=t[x];
+  for (size_t s=0; s<tx.size(); ++s)
+    if (d[s] and tx[s]!=noGoodAscent) return false;
+  return true; // now d[s] implies t[s]==noGoodAscent for all simple roots s
+}
+
 void make_prim_table
   (const ascent_table& t, unsigned int rank, prim_table& result)
 {
@@ -93,7 +101,7 @@ void make_prim_table
     {
       RankFlags d(s);
       for (BlockElt x=0; x<block_size; ++x)
-	if (x==primitivise(x,d,t)) result[s].push_back(x);
+	if (is_primitive(x,d,t)) result[s].push_back(x);
       prim_list(result[s]).swap(result[s]); // reallocate to fit snugly
     }
 }
@@ -158,7 +166,9 @@ public:
   matrix_info(std::ifstream* block_file,std::ifstream* m_file);
   ~matrix_info() { delete &matrix_file; }
 
-  KLIndex find_pol_nr(BlockElt x,BlockElt y); // sets y, so not const
+  BlockElt block_size() const { return block.size; }
+  KLIndex find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx);
+  // sets y, so not const
 };
 
 void matrix_info::set_y(BlockElt y)
@@ -178,12 +188,12 @@ void matrix_info::set_y(BlockElt y)
 	if ((chunk&1)!=0) cur_strong_prims.push_back(weak_prims[i+j]);
     }
 
-  // the last bit 1 was for |y, but we pushed the first element of its length
+  // the last bit 1 was for |y|, but we pushed the first element of its length
   // in |weak_prims|; now check that statement, and replace the element by |y|
   {
     const BlockElt* i= // point after first block element of length of |y|
       std::upper_bound(&block.start_length[0]
-		      ,&block.start_length[block.max_length]
+		      ,&block.start_length[block.max_length+1]
 		      ,y);
     const BlockElt* first= // point to first of |weak_prims| of that length
       std::lower_bound(&weak_prims[0],&weak_prims[weak_prims.size()],*(i-1));
@@ -193,14 +203,15 @@ void matrix_info::set_y(BlockElt y)
   cur_row_entries=matrix_file.tellg();
 }
 
-KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y)
+KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx)
 {
   set_y(y);
   RankFlags d=block.descent_set[y];
-  x=primitivise(x,d,block.ascents);
+  xx=primitivise(x,d,block.ascents);
+  if (xx==UndefBlock) return KLIndex(0); // primitivisation copped out
   strong_prim_list::const_iterator it=
-    std::lower_bound(cur_strong_prims.begin(),cur_strong_prims.end(),x);
-  if (it==cur_strong_prims.end() or *it!=x) return KLIndex(0); // x not strong
+    std::lower_bound(cur_strong_prims.begin(),cur_strong_prims.end(),xx);
+  if (it==cur_strong_prims.end() or *it!=xx) return KLIndex(0); // not strong
 
   matrix_file.seekg(4*(it-cur_strong_prims.begin()),std::ios_base::cur);
   return KLIndex(read_bytes(4,matrix_file));
@@ -323,7 +334,7 @@ int main(int argc,char** argv)
   if (not coef_file.is_open())
     { std::cerr << "Open failed"; exit(1); }
 
-  ullong n_polynomials=read_bytes(4,coef_file);
+  KLIndex n_polynomials=read_bytes(4,coef_file); // must be 64-bits, for 5*...
 
   std::streamoff index_begin=coef_file.tellg();
   read_bytes(10,coef_file); // skip initial 2 indices
@@ -345,6 +356,8 @@ int main(int argc,char** argv)
       else
 	std::cout << "give block elements x,y, or polynomial index i as #i: ";
 
+      while(isspace(std::cin.peek())) std::cin.get();
+
       KLIndex i=UndefKLIndex;
       if (std::cin.peek()=='#' ? std::cin.get(), true : mi.get()==NULL )
 	{
@@ -359,7 +372,7 @@ int main(int argc,char** argv)
 	}
       else
 	{
-	  int c; BlockElt x=UndefBlock,y=UndefBlock;
+	  int c; BlockElt x=UndefBlock,y=UndefBlock,xx;
 	  while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
 	  std::cin >> x;
 	  if (x==UndefBlock) break;
@@ -367,12 +380,28 @@ int main(int argc,char** argv)
 	  std::cin >> y;
 	  if (y==UndefBlock)
 	    { std::cout << "failure reading y, try again.\n";
+  	      while(isalpha(c=std::cin.peek())) std::cin.get(); // remove text
+	      continue;
+	    }
+	  if (x>=mi->block_size())
+	    { std::cout << "first parameter too large, try again.\n";
+	      continue;
+	    }
+	  if (y>=mi->block_size())
+	    { std::cout << "second parameter too large, try again.\n";
 	      continue;
 	    }
 
-	  i=mi->find_pol_nr(x,y);
-	  std::cout << "Polynomial #" << i << "." << std::endl;
+	  if (x>y)
+	    { std::cout << "Result null by triangularity.\n"; continue; }
 
+	  i=mi->find_pol_nr(x,y,xx);
+	  if (xx==UndefBlock)
+	    { std::cout << "Result null by raising first argument.\n";
+	      continue; }
+	  else
+	    std::cout << "P_{" << x << ',' << y << "}=P_{" << xx << ',' << y
+		      << "}=polynomial #" << i << ':' << std::endl;
 	}
       coef_file.seekg(index_begin+5*i,std::ios_base::beg);
       ullong index=read_bytes(5,coef_file);
@@ -387,19 +416,35 @@ int main(int argc,char** argv)
       unsigned long* coefficients = new unsigned long[length];
 
       coef_file.seekg(coefficients_begin+index,std::ios_base::beg);
-      for (unsigned int i=0; i<length; ++i)
-	coefficients[i]=read_bytes(coefficient_size,coef_file);
+
+      unsigned int sum=0; // sum of coefficients, won't exceed 2^29
+      for (size_t i=0; i<length; ++i)
+	sum+=coefficients[i]=read_bytes(coefficient_size,coef_file);
 
       if (not coef_file.good())
 	{
 	  std::cout << "Input error reading coefficients.\n";
 	  continue;
 	}
-      for (size_t i=0; i<length; ++i)
-	std::cout << coefficients[i] << "X^" << i
-		  << (i+1<length ? " + " : ".\n");
+
+      bool first=true;
+      for (size_t i=length; i-->0;)
+	if (coefficients[i]!=0)
+	  {
+	    if (first) first=false; else std::cout << " + ";
+	    if (coefficients[i]!=1 or i==0) std::cout << coefficients[i];
+	    std::cout << (i==0? "" : "q");
+	    if (i>1)
+	      if (i<10) std::cout << '^' << i;
+	      else std::cout << "^{" << i << '}';
+	  }
+      if (length==0) std::cout << 0;
+      else if (length>1) std::cout << "; value at q=1: " << sum;
+      std::cout << '.' << std::endl;
 
       delete[] coefficients;
-    }
+
+    } // while(true)
+
 
 }
