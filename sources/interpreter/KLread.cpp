@@ -99,6 +99,10 @@ void make_prim_table
   result.resize(powerset_rank); // fills result with empty vectors
   for (size_t s=0; s<powerset_rank; ++s)
     {
+#ifdef VERBOSE
+      std::cerr << "Constructing weakly primitive elements for descent set "
+		<< s << '\r';
+#endif
       RankFlags d(s);
       for (BlockElt x=0; x<block_size; ++x)
 	if (is_primitive(x,d,t)) result[s].push_back(x);
@@ -251,7 +255,17 @@ matrix_info::matrix_info(std::ifstream* block_file,std::ifstream* m_file)
   matrix_file.seekg(0,std::ios_base::beg);
   for (BlockElt y=0; y<block.size; ++y)
     {
-      while (y>=block.start_length[l+1]) ++l;
+#ifdef VERBOSE
+      std::cerr << y << '\r';
+#endif
+
+      while (y>=block.start_length[l+1])
+	{
+	  ++l;
+#ifdef VERBOSE
+	  std::cerr << "length=" << l << ", y=" << y << std::endl;
+#endif
+	}
       // now block.start_length[l] <= y < block.start_length[l+1]
 
       if (read_bytes(4,matrix_file)!=y)
