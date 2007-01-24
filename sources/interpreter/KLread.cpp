@@ -108,6 +108,9 @@ void make_prim_table
 	if (is_primitive(x,d,t)) result[s].push_back(x);
       prim_list(result[s]).swap(result[s]); // reallocate to fit snugly
     }
+#ifdef VERBOSE
+      std::cerr << "\nDone constructing weakly primitive elements.\n";
+#endif
 }
 
 block_info::block_info(std::istream& in)
@@ -251,6 +254,10 @@ matrix_info::matrix_info(std::ifstream* block_file,std::ifstream* m_file)
 {
   static const unsigned int ulsize=sizeof(unsigned long int);
 
+#ifdef VERBOSE
+      std::cerr << "Starting to scan matrix file by 'rows'.\n";
+#endif
+
   size_t l=0; // length of y
   matrix_file.seekg(0,std::ios_base::beg);
   for (BlockElt y=0; y<block.size; ++y)
@@ -263,7 +270,7 @@ matrix_info::matrix_info(std::ifstream* block_file,std::ifstream* m_file)
 	{
 	  ++l;
 #ifdef VERBOSE
-	  std::cerr << "length=" << l << ", y=" << y << std::endl;
+	  std::cerr << "length " << l << " starts at y=" << y << std::endl;
 #endif
 	}
       // now block.start_length[l] <= y < block.start_length[l+1]
@@ -308,7 +315,12 @@ matrix_info::matrix_info(std::ifstream* block_file,std::ifstream* m_file)
 	{ std::cerr << y << std::endl;
 	  throw std::runtime_error ("Premature end of file");
 	}
-    }
+    } // for y
+
+#ifdef VERBOSE
+      std::cerr << "\nDone scanning matrix file.\n";
+#endif
+
   delete block_file; // success, we no longer need the block file
 }
 
