@@ -554,7 +554,6 @@ class matrix_info
 
   block_info block;
 
-  std::vector< unsigned int> n_weak_prims; // $453060*4= 1812240$ bytes: 2 MB
   std::vector<std::streampos> row_pos;     // $453060*8= 3624480$ bytes: 3 MB
 
 /* We avoid storing:\hfill\break
@@ -572,7 +571,7 @@ class matrix_info
 @)
 public:
   enum mode @+{ old, revised, transform };
-  matrix_info(std::ifstream* block_file,std::fstream* m_file, mode format);
+  matrix_info(std::ifstream* block_file,std::fstream* m_file);
   ~matrix_info() @+{@; delete &matrix_file; }
 @)
   BlockElt block_size() const @+{@; return block.size; }
@@ -583,19 +582,19 @@ public:
 
 @ Before looking at the constructor, which has to scan the entire file to
 locate the positions~|row_pos[y]| in the file for all~$y$, we look at the
-method |set_y| that selects a row and prepares for reading from it. Apart from
-|row_pos[y]|, the number |n_weak_prims[y]| of weak primitive elements for~$y$
-has also been stored during construction, so after seeking to |row_pos[y]| we
-can go right ahead reading the bitmap. The interpretation of all bit positions
-except the final one depends only on |descent_set[y]|, namely the block
-element recorded at the corresponding position of the vector |weak_prims|
-defined below. The final bit is always set and corresponds to~|y|, which is
-probably not the next element of |weak_prims| (in retrospective it would have
-been better to exclude this useless bit from the matrix file, but it is not
-easy to change the format now). However, |y| is always present in
-|weak_prims|, so we run no risk in interpreting the bitmap on an initial part
-of |weak_prims| first, and then replacing the final element by~|y|; just to be
-sure, we do check that the element replaced is the one we expect it to be.
+method |set_y| that selects a row and prepares for reading from it. We start
+by reading the number of weakly primitive elements for this row, which gives
+the number of bits in the following bitmap. The interpretation of all bit
+positions except the final one depends only on |descent_set[y]|, namely the
+block element recorded at the corresponding position of the vector
+|weak_prims| defined below. The final bit is always set and corresponds
+to~|y|, which is probably not the next element of |weak_prims| (in
+retrospective it would have been better to exclude this useless bit from the
+matrix file, but it is not easy to change the format now). However, |y| is
+always present in |weak_prims|, so we run no risk in interpreting the bitmap
+on an initial part of |weak_prims| first, and then replacing the final element
+by~|y|; just to be sure, we do check that the element replaced is the one we
+expect it to be.
 
 @< Function definitions @>=
 void matrix_info::set_y(BlockElt y)
@@ -607,8 +606,8 @@ void matrix_info::set_y(BlockElt y)
   cur_strong_prims.resize(0);
   // restart building from scratch, but don't deallocate storage
 
-  unsigned int n_prim=n_weak_prims[y];
   matrix_file.seekg(row_pos[y]);
+  size_t n_prim=read_bytes<4>(matrix_file);
 @)
   @< Read $\lceil$|n_prim/32|$\rceil$ bytes of bitmap data from |matrix_file|,
      and extract |cur_strong_prims| from an initial portion |weak_prims|
@@ -701,23 +700,11 @@ The first $4$~bytes of each part should give the row number~|y|, but we allow
 a special exemption for |y==0|, so that the very first bytes of a file can be
 used to store a format identification.
 
-The final parameter |format| of this constructor is there to solve an
-inconvenience of the original file format, which make is laborious to find the
-extent of individual parts of the matrix file, as we shall see below. To
-alleviate this, a slightly modified file format is defined in which the
-necessary information for an immediate advance to the next part is written
-into the file. The constructor can be invoked assuming the original format,
-with |format==old|, or assuming the new format, with |format==revised|, or
-with s special value |format=transform|, in which case the format expected is
-the old one, but the constructor will proceed to rewrite the file into the new
-format.
-
 @< Function definitions @>=
 matrix_info::matrix_info
-  (std::ifstream* block_file,std::fstream* m_file, mode format)
+  (std::ifstream* block_file,std::fstream* m_file)
 @/: matrix_file(*m_file) // store reference to the matrix file
   , block(*block_file) // read in block information
-  , n_weak_prims(block.size)
   , row_pos(block.size) // dimension these vectors
   , cur_y(UndefBlock), cur_strong_prims(), cur_row_entries(0)
 {
@@ -731,14 +718,17 @@ matrix_info::matrix_info
     { @< Advance |l| if necessary to obtain |block.start_length[l] <= y
          < block.start_length[l+1]| @>
 
-      if (verbose and format!=revised) std::cerr << y << '\r';
+      if (verbose) std::cerr << y << '\r';
 @)
       if (read_bytes<4>(matrix_file)!=y and y!=0)
       @/{@; std::cerr << y << std::endl;
         throw std::runtime_error ("Alignment problem");
       }
+      row_pos[y]= matrix_file.tellg(); // record position after row number
+      size_t n_prim=read_bytes<4>(matrix_file);
 
-      @< Determine |n_weak_prims[y]| and |row_pos[y]| @>
+      @< Check that |n_prim| gives the number of weakly primitive
+         elements @>
       @< Advance the read pointer to the beginning of the next row of the
          matrix file @>
       if (not matrix_file.good())
@@ -766,99 +756,45 @@ while (y>=block.start_length[l+1])
     std::cerr << "length " << l << " starts at y=" << y << std::endl;
 }
 
-@ The original format for the matrix file contains as first entry after the
-row number the number of weakly primitive elements for this row. This is
-useful for the \.{matrix-merge} programs, since it allows the following bitmap
-to be interpreted without any knowledge about the block. Here however we do
-have the block information at hand, and we can compute the expected number of
-weakly primitive elements from it. This allows us on one hand to do a
-consistency check, but also to replace this number by another one that will
-speed up the construction of |matrix_info|, which is what is done for the
-revised format (since the matrix files can be huge, we prefer to revise the
-format in a way that does not change the file length and only overwrites small
-pieces of the file). When |format==transform| we shall in fact expect the old
-format, but write back the new format to the file. Therefore we perform the
-consistency check here when the |format| is |old| or |transform|, but when
-|format==revised| we just trust our prediction and store it in
-|n_weak_prims[y]|. Note that in the former case the read pointer has advanced
-past the (original) primitive count information, while the latter case it
-stays before that (revised) information, and |row_pos[y]| must be adjusted
-accordingly.
+@ The matrix file contains, as first entry after the row number, the number of
+weakly primitive elements for this row. This allows the \.{matrix-merge}
+program to interpret the following bitmap without any knowledge about the
+block. Here however we do have the block information at hand, and we can
+compute the expected number of weakly primitive elements from it. This allows
+us on one hand to do a consistency check.
 
-@< Determine |n_weak_prims[y]| and |row_pos[y]|... @>=
-{
-  unsigned int n_prim;
-
-  @< Compute in |n_prim| is the expected number of weak primitive elements
-     for |y| @>
-
-  if (format!=revised and read_bytes<4>(matrix_file)!=n_prim)
-    @/{@; std::cerr << y << std::endl;
-      throw std::runtime_error ("Primitive count problem");
-    }
-
-  n_weak_prims[y]=n_prim;
-  row_pos[y]= matrix_file.tellg(); // record position where bitmap starts
-  if (format==revised) row_pos[y]+=4;
-   // which is still 1 tetra-byte ahead if |format==revised|
-}
-
-@ Predicting the number of weakly primitive elements is easy: we just count
+Predicting the number of weakly primitive elements is easy: we just count
 the elements in the appropriate |prim_list| selected from the table
 |primitives_list|, of length strictly less than~|y| (which can be done by a
 binary search for the first element of the same length as~|y|), and add~$1$
 for the element~|y| itself, which is considered weakly primitive for its own
 row.
 
-@< Compute in |n_prim| is the expected number of weak primitive elements
-   for |y| @>=
-  {
-    const prim_list& weak_prims
+@< Check that |n_prim| gives the number of weakly primitive
+         elements @>=
+{ const prim_list& weak_prims
       = block.primitives_list[block.descent_set[y].to_ulong()];
-    prim_list::const_iterator i= // find limit of |length<l| values
+  prim_list::const_iterator i= // find limit of |length<l| values
       std::lower_bound(weak_prims.begin(),weak_prims.end()
 		      ,block.start_length[l]);
 
-    n_prim=size_t(i-weak_prims.begin())+1;
-    // number of |weak_prims| of length~$<l$, plus~$1$ for~|y|
-  }
 
-@ Now comes the part where the different formats come into play. If
-|format==revised| we are still before the revised primitive element count. The
-revision amounts to replacing the value of weakly primitive elements by the
-number of strongly primitive elements (for which the matrix file actually
-records a polynomial index); we read it in, then advance over a number of
-tetra-bytes equal to the number $\lceil$|n_weak_prims[y]/32|$\rceil$ of
-$32$-bit groups in the bitmap plus the number of strongly primitive elements
-just read.
+  if (n_prim!=size_t(i-weak_prims.begin())+1)
+    @/{@; std::cerr << y << std::endl;
+      throw std::runtime_error ("Primitive count problem");
+    }
+}
 
-When |format==transform| we need to compute |n_strong_prim| the hard way, but
-then we shall back up to overwrite the old count by this newly computed one
-for the new format. We save the location where this should be done in
-|prim_count_pos| even when |format==old|, which should not be too much of a
-waste.
+@ When we need to advance to the next part of the matrix file, we need to skip
+over the bitmap and then over as many tetra-bytes as there are bits set in the
+bitmap. Adding up all those bits will as a side effect move past the bitmap,
+so afterwards we just jump over the computed amount of tetra-bytes.
 
 @< Advance the read pointer... @>=
-{ std::streampos prim_count_pos=matrix_file.tellg()+std::streamoff(-4);
+{ size_t n_strong_prim=0;
+  @< Add to |n_strong_prim| all individual bits in the bitmap @>
 @)
-  size_t n_strong_prim;
-  if (format==revised)
-  { n_strong_prim=read_bytes<4>(matrix_file);
-    matrix_file.seekg(4*std::streamoff((n_weak_prims[y]+31)/32+n_strong_prim)
-		     ,std::ios_base::cur);
-  }
-  else
-  { @< Set |n_strong_prim| to the sum of the bits in the bitmap @>
-@)
-    if (format==transform)
-    { std::streampos here=matrix_file.tellg();
-      matrix_file.seekg(prim_count_pos); // back up
-      write_int(n_strong_prim,matrix_file);
-      matrix_file.seekg(here);
-    }
-    matrix_file.seekg(4*std::streamoff(n_strong_prim),std::ios_base::cur);
-
-  }
+  matrix_file.seekg(4*std::streamoff(n_strong_prim),std::ios_base::cur);
 }
 
 
@@ -921,17 +857,16 @@ that we could have added up the bits by a per-byte look-up in a variant of the
 function |read_bytes|, and the whole issue of efficiently summing of bits
 would disappear; it was however much more fun to do it this way.
 
-@< Set |n_strong_prim| to the sum of the bits in the bitmap @>=
+@< Add to |n_strong_prim| all individual bits in the bitmap @>=
 { static const unsigned int ulsize=sizeof(@[unsigned long int@]);
 @)
-  size_t count=n_weak_prims[y]/(8*ulsize);
+  size_t count=n_prim/(8*ulsize);
   // number of |unsigned long int|s to read
 
-  n_strong_prim=0;
   while (count-->0)
     n_strong_prim+=add_bits(read_var_bytes(ulsize,matrix_file));
 
-  count=(n_weak_prims[y]%(8*ulsize)+31)/32;
+  count=(n_prim%(8*ulsize)+31)/32;
    // maybe some tetra-byte(s) left to read
   while (count-->0)
     n_strong_prim+=add_bits(read_bytes<4>(matrix_file));
@@ -979,7 +914,7 @@ int main(int argc,char** argv)
   @< Scan arguments and do initial processing of input files @>
 @)
 
-  while (true) @< Process use input, do |break| when done @>
+  @< Process user input until exhausted @>
 
 
 }
@@ -1047,7 +982,7 @@ necessary).
     if (format==matrix_info::transform)
       @< Reopen the |matrix_file| for reading and writing @>
     mi=std::auto_ptr<matrix_info>
-       (new matrix_info(block_file,matrix_file,format));
+       (new matrix_info(block_file,matrix_file));
     if (format==matrix_info::transform) // successfully read and transformed
       @< Mark matrix file as being in revised format @>
   }
@@ -1093,7 +1028,10 @@ files. Therefore to request the upgrade, the program itself must be renamed
     << ".\n";
 }
 
-@
+@ To reopen the matrix file we just close and open again using the same file
+name, which is now in |argv[-1]|; then we write the |work_in_progress| flag
+and reset the read pointer.
+
 @< Reopen the |matrix_file| for reading and writing @>=
 { matrix_file->close();
   matrix_file->open(argv[-1],binary_in_out);
@@ -1106,15 +1044,25 @@ files. Therefore to request the upgrade, the program itself must be renamed
   matrix_file->seekg(0,std::ios_base::beg); // reset to beginning of file
 }
 
-@
+@ At the end of a successful conversion, we replace the |work_in_progress|
+indication by the |magic_code|.
+
 @< Mark matrix file as being in revised format @>=
 { matrix_file->seekg(0,std::ios_base::beg); // reset to beginning of file
   write_int(magic_code,*matrix_file);
   std::cout << "Conversion of matrix file successfully completed.\n";
 }
 
-@
-@< Process use input, do |break| when done @>=
+@ Here is the outline of the main loop of the user interaction. If no matrix
+information has been read, we just ask for a polynomial index, otherwise we
+ask for a pair of block elements separated by punctuation or white space; in
+this case we still allow an index to be entered directly by preceding it by a
+hash mark. One may leave the program by giving \.{quit} where an index in
+expected; for the case where block elements are expected the decision is taken
+in a further module.
+
+@< Process user input until exhausted @>=
+do
 {
   if (mi.get()==NULL)
     std::cout << "index: ";
@@ -1134,20 +1082,20 @@ files. Therefore to request the upgrade, the program itself must be renamed
   @< Locate the coefficients of polynomial~|i|,
      and print the polynomial @>
 try_again:
+  std::cin.clear(); // clear any previous error condition
   while(std::cin.peek()!=EOF and std::cin.get()!='\n') {}
   // skip to the end of the line
-
 }
+while (std::cin.peek()!=EOF); // stop if input is exhausted
 
-@
+@ Reading in an index is simple. We give an error indication if the input is
+non-numeric, or if the number is too great to select a polynomial.
+
 @< Read index~|i| from |std::cin|... @>=
 {
   std::cin >> i;
   if (not std::cin.good())
-  { std::string s; std::cin.clear(); std::cin>>s;
-    if (s=="quit") break;
-    std::cout << "index not correct.\n"; goto try_again;
-  }
+    @< See if input was \.{quit}; if so |break|, else |goto try_again| @>
   if (i>=pol.n_polynomials())
   { std::cout << "index too large, limit is " << pol.n_polynomials()-1
 	     << ".\n";
@@ -1155,20 +1103,34 @@ try_again:
   }
 }
 
-@
+@ This code has been made to a module so that it can be used twice.
+
+@< See if input was \.{quit}... @>=
+{
+  std::string s; std::cin.clear(); std::cin>>s;
+  if (s=="quit") break;
+  std::cout << "Non-numeric input.\n"; goto try_again;
+}
+
+@ When we read the block elements $x,y$, we make minimal tests for correct
+input, then we primitivise $x$ and print the information found, taking case to
+distinguish three reasons for finding a null polynomial: it could be that
+$x>y$, or that primitivisation hit an |UndefBlock| value, or finally the final
+look-up could simply return~|0|.
+
 @< Read in parameters |x,y|... @>=
 {
-  int c; BlockElt x=UndefBlock,y=UndefBlock,xx;
+  int c; BlockElt x,y,xx;
   while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
   // skip spaces/punctuation
   std::cin >> x;
-  if (x==UndefBlock) // non-numeric input
-    @< Ask if user wishes to quit; if so |break|, else |goto try_again| @>
+  if (not std::cin.good()) // non-numeric input
+    @< See if input was \.{quit}; if so |break|, else |goto try_again| @>
 
   while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
   // skip spaces/punctuation
   std::cin >> y;
-  if (y==UndefBlock)
+  if (not std::cin.good())
     {@; std::cout << "failure reading y, try again.\n";
       goto try_again;
     }
@@ -1197,21 +1159,12 @@ try_again:
 	      << "}=polynomial #" << i << ':' << std::endl;
 }
 
-@
-@< Ask if user wishes to quit... @>=
-{
-  std::cin.clear();
-  std::cout<< "Really quit? ";
-  while(std::cin.peek()!=EOF and std::cin.get()!='\n') {}
-  while(isspace(c)) std::cin.get();
-  int ans=std::cin.peek();
-  if (ans==EOF or ans=='y' or ans=='Y') break;
-  goto try_again;
-}
-
 @ Here we catch the |runtime_error| values that could be thrown while getting
 the coefficients of the polynomial. If that happens we print the message
-thrown, but then continue normally.
+thrown, but then continue normally. Otherwise this module mostly serves to
+present the polynomial in a nice format (people expect polynomials to be
+ordered by decreasing exponents), which moreover can be fed directly into the
+math mode of \TeX\ if desired.
 
 @< Locate the coefficients of polynomial~|i|... @>=
 try
@@ -1229,8 +1182,10 @@ try
 	else std::cout << "^{" << i << '}';
     }
   if (coefficients.size()==0) std::cout << 0;
+    // print something for the null polynomial
   else if (coefficients.size()>1)
-  { unsigned int sum=0; // sum of coefficients, won't exceed $2^{29}$
+  // for non-constant polynomials show value at $q=1$
+  { ullong sum=0; // sum of coefficients
     for (size_t i=0; i<coefficients.size(); ++i) sum+=coefficients[i];
     std::cout << "; value at q=1: " << sum;
   }
