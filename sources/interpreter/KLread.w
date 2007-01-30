@@ -571,12 +571,13 @@ class matrix_info
 @)
 public:
   enum mode @+{ old, revised, transform };
-  matrix_info(std::ifstream* block_file,std::fstream* m_file);
+  matrix_info(std::ifstream* block_file,std::fstream* m_file,bool new_format);
   ~matrix_info() @+{@; delete &matrix_file; }
 @)
   BlockElt block_size() const @+{@; return block.size; }
   KLIndex find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx);
   // sets |y|, so not |const|
+  std::streamoff row_offset(BlockElt y) const { return row_pos[y]; }
 };
 
 
@@ -689,27 +690,46 @@ KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx)
   return KLIndex(read_bytes<4>(matrix_file));
 }
 
-@ The constructor for |matrix_info| must do quite a bit of work, but its
-outline is quite simple. After storing the file reference (which will be
-needed throughout the life of the object) and reading initialising the |block|
-sub-object using the block file, we go through the parts of the matrix file in
-a loop. Since we shall need to know the length of the block element~|y|
-parametrising the current row, we keep a variable~|l| recording this, which is
-possibly updated for each new~|y|using the |length_start| vector of the block.
-The first $4$~bytes of each part should give the row number~|y|, but we allow
-a special exemption for |y==0|, so that the very first bytes of a file can be
-used to store a format identification.
+@ The constructor for |matrix_info| stores the file reference (which will be
+needed throughout the life of the object) and initialises the |block|
+sub-object using the block file, and then uses one of two methods to compute
+the positions |row_pos[y]| in the file for the parts corresponding to each
+block element~|y|, depending on the final argument |new_format|. If this
+argument is |false|, then the file format is apparently the original one, and
+we have to go through the parts of the matrix file in a loop, which can take a
+lot of time in case of large files with many parts, even just for visiting the
+beginning of each part. Therefore a new file format is provided that adds
+information to the end of the file that allows setting the values of
+|row_pos[y]| without doing a separate |seekg| for every element~|y|.
 
 @< Function definitions @>=
 matrix_info::matrix_info
-  (std::ifstream* block_file,std::fstream* m_file)
+  (std::ifstream* block_file,std::fstream* m_file, bool new_format)
 @/: matrix_file(*m_file) // store reference to the matrix file
   , block(*block_file) // read in block information
   , row_pos(block.size) // dimension these vectors
   , cur_y(UndefBlock), cur_strong_prims(), cur_row_entries(0)
 {
+  if (new_format)
+    @< Set the values |row_pos[y]| according to information at the end of the
+     |matrix_file| @>
+  else
+    @< Set the values |row_pos[y]| by scanning all the parts of the
+     |matrix_file| @>
+  delete block_file; // success, we no longer need the block file
+}
 
-  if (verbose)
+@ We first consider the original, laborious, way of setting the values
+of~|row_pos[y]|. Since we shall need to know the length of the block
+element~|y| parametrising the current row, we keep a variable~|l| recording
+this, which is possibly updated for each new~|y|using the |length_start|
+vector of the block. The first $4$~bytes of each part should give the row
+number~|y|, but we allow a special exemption for |y==0|, so that the very
+first bytes of a file can be used to store a format identification.
+
+@< Set the values |row_pos[y]| by scanning all the parts of the
+   |matrix_file| @>=
+{ if (verbose)
     std::cerr << "Starting to scan matrix file by 'rows'.\n";
 @)
   size_t l=0; // length of y
@@ -738,8 +758,6 @@ matrix_info::matrix_info
     }
 
     if (verbose) std::cerr << "\nDone scanning matrix file.\n";
-
-  delete block_file; // success, we no longer need the block file
 }
 
 @ Since the block elements are stored by weakly increasing length, and
@@ -864,12 +882,35 @@ would disappear; it was however much more fun to do it this way.
   // number of |unsigned long int|s to read
 
   while (count-->0)
-    n_strong_prim+=add_bits(read_var_bytes(ulsize,matrix_file));
+    n_strong_prim+=add_bits(read_bytes<ulsize>(matrix_file));
 
   count=(n_prim%(8*ulsize)+31)/32;
    // maybe some tetra-byte(s) left to read
   while (count-->0)
     n_strong_prim+=add_bits(read_bytes<4>(matrix_file));
+}
+
+@ After all that effort, the ways to set |row_pos[y]| using the new file
+format is very simple and fast. The main point is that we can find the block of
+information by positioning with respect to the end of the file rather than the
+beginning. The values stored are |block_size()| in number, and each is
+$4$~bytes long; the wider values |row_pos[y]| are obtained from them by
+accumulation after multiplication by~$4$, since the hole matrix file is
+written in $4$~byte units. We shall see below how these values were written
+here; essentially, they were obtained by first scanning the file in the old
+way.
+
+
+@< Set the values |row_pos[y]| according to information at the end of the
+     |matrix_file| @>=
+{ matrix_file.seekg(-4*std::streamoff(block_size()),std::ios_base::end);
+  if (verbose) std::cerr << "Reading indices into the matrix file...\n";
+  std::streamoff cumul=0;
+  for (BlockElt y=0; y<block_size(); ++y)
+  @/{@; cumul+= 4*std::streamoff(read_bytes<4>(matrix_file));
+    row_pos[y] = cumul;
+  }
+  if (verbose) std::cerr << "Done.\n";
 }
 
 @* The main program.
@@ -981,10 +1022,10 @@ necessary).
   { matrix_info::mode format; @< Determine the |format| of the matrix file @>
     if (format==matrix_info::transform)
       @< Reopen the |matrix_file| for reading and writing @>
-    mi=std::auto_ptr<matrix_info>
-       (new matrix_info(block_file,matrix_file));
-    if (format==matrix_info::transform) // successfully read and transformed
-      @< Mark matrix file as being in revised format @>
+    mi=std::auto_ptr<matrix_info> @|
+       (new matrix_info(block_file,matrix_file,format==matrix_info::revised));
+    if (format==matrix_info::transform)
+      @< Modify matrix file to be in revised format @>
   }
   else
     { std::cerr << "failed to open file '"
@@ -1010,7 +1051,6 @@ files. Therefore to request the upgrade, the program itself must be renamed
 
 @< Determine the |format|... @>=
 { unsigned int code=read_bytes<4>(*matrix_file);
-  matrix_file->seekg(0,std::ios_base::beg); // reset to beginning of file
   format= code==magic_code ? matrix_info::revised :  matrix_info::old;
   if (format== matrix_info::old and program_name=="KLwrite")
     format= matrix_info::transform;
@@ -1018,7 +1058,7 @@ files. Therefore to request the upgrade, the program itself must be renamed
     if (program_name=="KLwrite")
       std::cout << "Reattempting conversion of matrix file.\n";
     else
-    @/{@; std::cout << "Broken matrix file, retry the conversion.\n";
+    {@; std::cout << "Broken matrix file, retry the conversion.\n";
      exit(1);
     }
   std::cout << "Matrix file format: "
@@ -1030,7 +1070,9 @@ files. Therefore to request the upgrade, the program itself must be renamed
 
 @ To reopen the matrix file we just close and open again using the same file
 name, which is now in |argv[-1]|; then we write the |work_in_progress| flag
-and reset the read pointer.
+and reset the read pointer. We do this reopening before starting to scan the
+file in order to warn the user early if write permission for the file is
+missing.
 
 @< Reopen the |matrix_file| for reading and writing @>=
 { matrix_file->close();
@@ -1044,11 +1086,34 @@ and reset the read pointer.
   matrix_file->seekg(0,std::ios_base::beg); // reset to beginning of file
 }
 
-@ At the end of a successful conversion, we replace the |work_in_progress|
-indication by the |magic_code|.
+@ If we come to this module, then we have successfully read all the parts of
+the matrix file, and we have recorded all file positions |row_pos[y]| in~|mi|.
+After checking that we are in fact at the end of the file, we write the
+sequence of values that will allow the |row_pos[y]| to be reconstructed upon
+later reading. At the end of a successful conversion, we replace the
+|work_in_progress| indication by the |magic_code|.
 
-@< Mark matrix file as being in revised format @>=
-{ matrix_file->seekg(0,std::ios_base::beg); // reset to beginning of file
+@< Modify matrix file to be in revised format @>=
+{
+  std::streamoff here=matrix_file->tellg();
+  matrix_file->seekg(0,std::ios_base::end); // append to end of file
+  if (here!=std::streamoff(matrix_file->tellg()))
+    // but we should have been there already
+  { std::cerr << "Not at end of file after reading all parts: " << here @|
+    << "!=" << std::streamoff(matrix_file->tellg()) << ".\n";
+    exit(1);
+  }
+  std::cout << "Appending information to matrix file.\n";
+@)
+  write_int(mi->row_offset(0)/4,*matrix_file);
+    // first value written is not a difference
+  for (BlockElt y=1; y<mi->block_size(); ++y)
+  { if (mi->row_offset(y)%4!=0)
+      throw std::runtime_error("Matrix row alignment error");
+    write_int((mi->row_offset(y)-mi->row_offset(y-1))/4,*matrix_file);
+  }
+@)
+  matrix_file->seekg(0,std::ios_base::beg); // reset to beginning of file
   write_int(magic_code,*matrix_file);
   std::cout << "Conversion of matrix file successfully completed.\n";
 }
@@ -1067,7 +1132,8 @@ do
   if (mi.get()==NULL)
     std::cout << "index: ";
   else
-    std::cout << "give block elements x,y, or polynomial index i as #i: ";
+    std::cout << "give block elements x,y, or polynomial index i as #i: "
+    << std::flush;
 
   while(isspace(std::cin.peek())) std::cin.get();
 
