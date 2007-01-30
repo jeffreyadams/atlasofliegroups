@@ -87,7 +87,8 @@ webtexfiles   := $(cwebx_sources:%.w=%.tex)
 
 headers := $(filter-out main.h,$(cwebx_sources:%.w=%.h)) parser.tab.h
 
-dvifiles := $(cwebx_sources:%.w=%.dvi) matrix-merge.dvi coef-merge.dvi
+dvifiles := $(cwebx_sources:%.w=%.dvi) \
+	matrix-merge.dvi coef-merge.dvi KLread.dvi
 
 objects := $(c++objects) parser.tab.o $(atlas_objects)
 
@@ -95,7 +96,8 @@ objects := $(c++objects) parser.tab.o $(atlas_objects)
 # definition below. For me (on Debian or Ubuntu Linux) just "-lreadline"
 # suffices, but on some systems adding "-lcurses" seems to be necessary.
 # The author (Marc van Leeuwen) offers EUR 40.96 to the first person who can
-# provide a decent reason why one should have to add "-lcurses" here
+# provide a decent explanantion why it is reasonable that one should have to
+# add "-lcurses" here
 
 rlincludes ?= -lreadline -lcurses
 
