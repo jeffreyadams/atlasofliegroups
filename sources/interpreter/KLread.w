@@ -263,9 +263,11 @@ Next we shall consider the file with block data. It is not much more
 complicated than the one with polynomials, but we reconstruct from it some
 tables that will be necessary for converting pairs of indices into the matrix
 into ``primitive'' ones, and these will be stored together with the other data
-in the |block_info| structure (due to the fairly large number of fields that
-will be used by others, we shall in this case not bother to define a |class|
-with controlled access to these fields).
+in the |block_info| structure. The unique object of this structure will
+eventually be stored inside another class, which will regularly need access to
+its data and at the same time provides protection from outside access, which
+is the reason that we shall allow public access to most data members of
+|block_info|.
 
 The information stored about a block comes in three groups: some global
 information such as the block size and the rank, followed by a description of
@@ -306,14 +308,14 @@ typedef std::vector<BlockElt> prim_list;           // list of weak primitives
 typedef std::vector<prim_list> prim_table;
  // effectively indexed by |RankFlags|
 
-@ Here is the class holding the information about a block as read from a file.
-Since all the information is read in during construction we do not store a
-reference to the file stream. After each major variable we give estimates of
+@ Here is the structure holding the information about a block as read from a
+file. Since all the information is read in during construction we do not store
+a reference to the file stream. After each major variable we give estimates of
 memory consumption the represent for split~$E_8$, on a $32$-bit machine, based
 on average of $15000$ (weakly) primitive elements per descent set. These
 estimates show that memory consumption should not prohibit running this
-program on such an architecture. (One could not that for the empty descent set
-all block elements will be weakly primitive, and that this contribution of
+program on such an architecture. (One could note that for the empty descent
+set all block elements will be weakly primitive, and that this contribution of
 $453060$ can throw some doubt on the estimate of the average which was in fact
 roughly calculated after the fact from an average over the rows (rather than
 descent sets) of the number of \emph{strongly} primitive elements; if needed
@@ -330,13 +332,16 @@ struct block_info
    // size |max_length+2|; defines intervals for each length
 @)
   descent_set_vector descent_set;     // $453060*4    =  1812240$ bytes:  2~MB
-  ascent_table ascents;               // $453060*8*4  = 14497920$ bytes: 13~MB
 
+private:
+  ascent_table ascents;               // $453060*8*4  = 14497920$ bytes: 13~MB
   prim_table primitives_list;         // $256*15000*4 = 15360000$ bytes: 14~MB
 @)
+public:
   block_info(std::ifstream& in); // constructor reads file
 @)
   BlockElt primitivise(BlockElt x, const RankFlags d) const;
+  const prim_list& prims_for_descents_of(BlockElt y);
 private:
   bool is_primitive(BlockElt x, const RankFlags d) const;
   void compute_prim_table();
@@ -399,12 +404,10 @@ BlockElt block_info::primitivise(BlockElt x, const RankFlags d) const
   return x; // no raising possible, stop here
 }
 
-@ The auxiliary method |is_primitive| only uses the |ascents| member of the
-block, which means it can be called from the |block_info| constructor as soon
-as the |ascents| table is properly initialised; it will in fact be used to
-construct the |primitives_list| table. The value it returns can be expressed
-as |x==primitivise(x,d)|, but it is more efficiently computed in case this
-is~|false|.
+@ The auxiliary method |is_primitive| will be used is constructing the
+elements of the |primitives_list| table. It returns the Boolean value that is
+equivalent to |x==primitivise(x,d)|, but it computes this more efficiently in
+the case where the result is~|false|.
 
 @< Function definitions @>=
 
@@ -417,38 +420,32 @@ bool  block_info::is_primitive(BlockElt x, const RankFlags d) const
   // now |d[s]| implies |ascents[s]==noGoodAscent| for all simple roots |s|
 }
 
-@ The method |is_primitive| will be repeatedly called by another auxiliary
-method |compute_prim_table|, which also can be called as soon as |ascents| is
-initialised; for each descent set it traverses all block elements, collecting
-into the vector |primitives_list[s]| the ones that satisfy the condition
-|is_primitive|. We do not know beforehand how many elements this will give,
-but at the end we do not need any spare capacity, so we reallocate the final
-vector to one of the precise capacity needed: we copy-construct an anonymous
-duplicate (which will have no spare capacity), and then swap its contents with
-the original vector.
+@ The public method |prims_for_descents_of(y)| returns a reference to an
+element of the |primitives_list| selected for the descent set of~|y|. In order
+to not waste time at the construction of the |block_info| object for elements
+that might never be used, we implement lazy construction: initially all
+elements of |primitives_list| are empty vectors, and |prims_for_descents_of|
+constructs the list if necessary; for this reason this is not a |const|
+method.
+
+We do not know beforehand how many elements will be generated in the
+vector~|result|, but at the end we do not need any spare capacity, so we
+reallocate the final vector to one of the precise capacity needed: we
+copy-construct an anonymous duplicate (which will have no spare capacity)
+of~|result|, and then swap its contents with |result| itself.
 
 @< Function definitions @>=
 
-void block_info::compute_prim_table()
-{
-  size_t powerset_rank= 1ul<<rank;
-  primitives_list.resize(powerset_rank);
-    // fills |primitives_list| with empty vectors
-  for (size_t s=0; s<powerset_rank; ++s)
-    { prim_list& this_list=primitives_list[s];
-@)
-      if (verbose)
-	std::cerr << "Constructing weakly primitive elements for descent set "
-		  << s << '\r';
-@)
-      RankFlags d(s);
-      for (BlockElt x=0; x<size; ++x)
-	if (is_primitive(x,d)) this_list.push_back(x);
-      prim_list(this_list).swap(this_list); // reallocate to fit snugly
-    }
-@)
-    if (verbose)
-      std::cerr << "\nDone constructing weakly primitive elements.\n";
+const prim_list& block_info::prims_for_descents_of(BlockElt y)
+{ RankFlags d=descent_set[y];
+  unsigned long s=d.to_ulong();
+  prim_list& result=primitives_list[s];
+  if (result.empty())
+  { for (BlockElt x=0; x<size; ++x)
+      if (is_primitive(x,d)) result.push_back(x);
+    prim_list(result).swap(result); // reallocate to fit snugly
+  }
+  return result;
 }
 
 @ The constructor for a block basically just reads all of the block file, and
@@ -497,7 +494,7 @@ block_info::block_info(std::ifstream& in)
 	a.push_back(read_bytes<4>(in));
     }
 @)
-  compute_prim_table();
+  primitives_list.resize(1ul<<rank); // create $2^{rank}$ empty vectors
 }
 
 
@@ -577,7 +574,7 @@ public:
   BlockElt block_size() const @+{@; return block.size; }
   KLIndex find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx);
   // sets |y|, so not |const|
-  std::streamoff row_offset(BlockElt y) const { return row_pos[y]; }
+  std::streamoff row_offset(BlockElt y) const @+{@; return row_pos[y]; }
 };
 
 
@@ -602,8 +599,7 @@ void matrix_info::set_y(BlockElt y)
 {
   if (y==cur_y) {@; matrix_file.seekg(cur_row_entries); return; }
   cur_y=y;
-  const prim_list& weak_prims
-    = block.primitives_list[block.descent_set[y].to_ulong()];
+  const prim_list& weak_prims = block.prims_for_descents_of(y);
   cur_strong_prims.resize(0);
   // restart building from scratch, but don't deallocate storage
 
@@ -779,7 +775,7 @@ weakly primitive elements for this row. This allows the \.{matrix-merge}
 program to interpret the following bitmap without any knowledge about the
 block. Here however we do have the block information at hand, and we can
 compute the expected number of weakly primitive elements from it. This allows
-us on one hand to do a consistency check.
+us to do a consistency check.
 
 Predicting the number of weakly primitive elements is easy: we just count
 the elements in the appropriate |prim_list| selected from the table
@@ -790,8 +786,7 @@ row.
 
 @< Check that |n_prim| gives the number of weakly primitive
          elements @>=
-{ const prim_list& weak_prims
-      = block.primitives_list[block.descent_set[y].to_ulong()];
+{ const prim_list& weak_prims = block.prims_for_descents_of(y);
   prim_list::const_iterator i= // find limit of |length<l| values
       std::lower_bound(weak_prims.begin(),weak_prims.end()
 		      ,block.start_length[l]);
@@ -904,13 +899,13 @@ way.
 @< Set the values |row_pos[y]| according to information at the end of the
      |matrix_file| @>=
 { matrix_file.seekg(-4*std::streamoff(block_size()),std::ios_base::end);
-  if (verbose) std::cerr << "Reading indices into the matrix file...\n";
+  if (verbose) std::cerr << "Reading indices into the matrix file... ";
   std::streamoff cumul=0;
   for (BlockElt y=0; y<block_size(); ++y)
   @/{@; cumul+= 4*std::streamoff(read_bytes<4>(matrix_file));
     row_pos[y] = cumul;
   }
-  if (verbose) std::cerr << "Done.\n";
+  if (verbose) std::cerr << "done.\n";
 }
 
 @* The main program.
@@ -1069,10 +1064,9 @@ files. Therefore to request the upgrade, the program itself must be renamed
 }
 
 @ To reopen the matrix file we just close and open again using the same file
-name, which is now in |argv[-1]|; then we write the |work_in_progress| flag
-and reset the read pointer. We do this reopening before starting to scan the
-file in order to warn the user early if write permission for the file is
-missing.
+name, which is now in |argv[-1]|. We do this reopening before starting to scan
+the file in order to warn the user early if write permission for the file is
+missing, but we will not actually write until the initial scan is complete.
 
 @< Reopen the |matrix_file| for reading and writing @>=
 { matrix_file->close();
@@ -1082,8 +1076,6 @@ missing.
 		<< argv[-1] << "' for writing.\n";
       delete block_file; delete matrix_file; exit(1);
   }
-  write_int(work_in_progress,*matrix_file);
-  matrix_file->seekg(0,std::ios_base::beg); // reset to beginning of file
 }
 
 @ If we come to this module, then we have successfully read all the parts of
@@ -1096,7 +1088,9 @@ later reading. At the end of a successful conversion, we replace the
 @< Modify matrix file to be in revised format @>=
 {
   std::streamoff here=matrix_file->tellg();
-  matrix_file->seekg(0,std::ios_base::end); // append to end of file
+  matrix_file->seekg(0,std::ios_base::beg); // reset to beginning of file
+  write_int(work_in_progress,*matrix_file); // to set ``work in progress''
+  matrix_file->seekg(0,std::ios_base::end); // then append to end of file
   if (here!=std::streamoff(matrix_file->tellg()))
     // but we should have been there already
   { std::cerr << "Not at end of file after reading all parts: " << here @|
@@ -1152,7 +1146,7 @@ try_again:
   while(std::cin.peek()!=EOF and std::cin.get()!='\n') {}
   // skip to the end of the line
 }
-while (std::cin.peek()!=EOF); // stop if input is exhausted
+while (true); // this is not the place where we can decide whether to quit
 
 @ Reading in an index is simple. We give an error indication if the input is
 non-numeric, or if the number is too great to select a polynomial.
@@ -1169,10 +1163,16 @@ non-numeric, or if the number is too great to select a polynomial.
   }
 }
 
-@ This code has been made to a module so that it can be used twice.
+@ This code has been made to a module so that it can be used twice. If we
+reach end-of-file on input (if |std::cin| is a file, or if the user explicitly
+signals this by typing \.{\^D}), then although our module name does not
+mention it, this is the place where it should be detected, and we stop
+immediately since there is not point to reading on after end-of-file is
+reached. Otherwise we only stop if the next string on the input is |"quit"|,
+as the module name says; any other text just gives an error message.
 
 @< See if input was \.{quit}... @>=
-{
+{ if (std::cin.eof()) break;
   std::string s; std::cin.clear(); std::cin>>s;
   if (s=="quit") break;
   std::cout << "Non-numeric input.\n"; goto try_again;
