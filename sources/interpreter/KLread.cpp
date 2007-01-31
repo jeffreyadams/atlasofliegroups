@@ -101,6 +101,8 @@ public:
   KLIndex find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx);
   // sets |y|, so not |const|
   std::streamoff row_offset(BlockElt y) const { return row_pos[y]; }
+  BlockElt prim_nr(unsigned int i,BlockElt y);
+    // find primitive element by its index~|i|
 };
 
 const BlockElt UndefBlock= ~BlockElt(0);
@@ -310,6 +312,21 @@ KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx)
 
   matrix_file.seekg(4*size_t(it-cur_strong_prims.begin()),std::ios_base::cur);
   return KLIndex(read_bytes<4>(matrix_file));
+}
+
+BlockElt matrix_info::prim_nr(unsigned int i,BlockElt y)
+{ const prim_list& weak_prims = block.prims_for_descents_of(y);
+  const BlockElt* it= // point after first block element of length of |y|
+    std::upper_bound(&block.start_length[0]
+		    ,&block.start_length[block.max_length+1]
+		    ,y);
+  const BlockElt* first= // point to first of |weak_prims| of that length
+    std::lower_bound(&weak_prims[0],&weak_prims[weak_prims.size()],*(it-1));
+  size_t limit=first-&weak_prims[0]; // limiting value for |i|
+  if (i<limit) return weak_prims[i];
+  else if (i==limit) return y;
+  std::cerr << "Limit is " << limit << ".\n";
+  throw std::runtime_error("Weakly primitive element index too large");
 }
 
 matrix_info::matrix_info
@@ -527,105 +544,103 @@ int main(int argc,char** argv)
   
   do
   {
-    if (mi.get()==NULL)
-      std::cout << "index: ";
-    else
-      std::cout << "give block elements x,y, or polynomial index i as #i: "
-      << std::flush;
-  
-    while(isspace(std::cin.peek())) std::cin.get();
-  
-    KLIndex i;
-    if (std::cin.peek()=='#' ? std::cin.get(), true : mi.get()==NULL )
-      
-      {
-        std::cin >> i;
-        if (not std::cin.good())
-          
-          { if (std::cin.eof()) break;
-            std::string s; std::cin.clear(); std::cin>>s;
-            if (s=="quit") break;
-            std::cout << "Non-numeric input.\n"; goto try_again;
-          }
-        if (i>=pol.n_polynomials())
-        { std::cout << "index too large, limit is " << pol.n_polynomials()-1
-      	     << ".\n";
-          goto try_again;
-        }
-      }
-    else
-      
-      {
-        int c; BlockElt x,y,xx;
-        while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
-        // skip spaces/punctuation
-        std::cin >> x;
-        if (not std::cin.good()) // non-numeric input
-          
-          { if (std::cin.eof()) break;
-            std::string s; std::cin.clear(); std::cin>>s;
-            if (s=="quit") break;
-            std::cout << "Non-numeric input.\n"; goto try_again;
-          }
-        while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
-        // skip spaces/punctuation
-        std::cin >> y;
-        if (not std::cin.good())
-          { std::cout << "failure reading y, try again.\n";
-            goto try_again;
-          }
-        if (x>=mi->block_size())
-        { std::cout << "first parameter too large, try again.\n";
-            goto try_again;
-          }
-        if (y>=mi->block_size())
-        { std::cout << "second parameter too large, try again.\n";
-            goto try_again;
-          }
-      
-        if (x>y)
-          { std::cout << "Result null by triangularity.\n"; continue; }
-      
-        i=mi->find_pol_nr(x,y,xx);
-      
-        if (xx==UndefBlock) // this means |primitivise| hit a real non-parity case
-          { std::cout
-            << "Result is null because raising the first argument " 
-               "reaches a real non-parity case.\n";
-            goto try_again;
-          }
-        else
-          std::cout << "P_{" << x << ',' << y << "}=P_{" << xx << ',' << y 
-      	      << "}=polynomial #" << i << ':' << std::endl;
-      }
-    
     try
-    {
-      std::vector<ullong> coefficients(pol.coefficients(i));
-    
-      bool first=true;
-      for (size_t i=coefficients.size(); i-->0;)
-        if (coefficients[i]!=0)
-        { if (first) first=false; else std::cout << " + ";
-          if (coefficients[i]!=1 or i==0) std::cout << coefficients[i];
-          std::cout << (i==0? "" : "q");
-          if (i>1)
-    	if (i<10) std::cout << '^' << i;
-    	else std::cout << "^{" << i << '}';
+    { if (mi.get()==NULL)
+        std::cout << "index: ";
+      else
+        std::cout << "give block elements x,y, or polynomial index i as #i: ";
+  
+      while(isspace(std::cin.peek())) std::cin.get();
+  
+      KLIndex i;
+      if (std::cin.peek()=='#' ? std::cin.get(), true : mi.get()==NULL )
+        
+        {
+          std::cin >> i;
+          if (not std::cin.good())
+            
+            { if (std::cin.eof()) break;
+              std::string s; std::cin.clear(); std::cin>>s;
+              if (s=="quit") break;
+              throw std::runtime_error("Non-numeric input");
+            }
+          if (i>=pol.n_polynomials())
+          { std::cerr << "Limit is " << pol.n_polynomials()-1 << ".\n";
+            throw std::runtime_error("Index too large");
+          }
         }
-      if (coefficients.size()==0) std::cout << 0;
-        // print something for the null polynomial
-      else if (coefficients.size()>1)
-      // for non-constant polynomials show value at $q=1$
-      { ullong sum=0; // sum of coefficients
-        for (size_t i=0; i<coefficients.size(); ++i) sum+=coefficients[i];
-        std::cout << "; value at q=1: " << sum;
+      else
+        
+        {
+          int c; BlockElt x,y,xx;
+          while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
+          // skip spaces/punctuation
+          std::cin >> x;
+          if (not std::cin.good()) // non-numeric input
+            
+            { if (std::cin.eof()) break;
+              std::string s; std::cin.clear(); std::cin>>s;
+              if (s=="quit") break;
+              throw std::runtime_error("Non-numeric input");
+            }
+          
+          bool convert=std::cin.peek()=='#';
+          if (convert) std::cin.get(); 
+        
+          while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
+          // skip spaces/punctuation
+          std::cin >> y;
+          if (not std::cin.good())
+            throw std::runtime_error("Failure reading y");
+        
+          
+          if (convert) x=mi->prim_nr(x,y);
+          if (x>=mi->block_size())
+            throw std::runtime_error("First parameter too large");
+          if (y>=mi->block_size())
+            throw std::runtime_error("Second parameter too large");
+        
+          if (x>y)
+            throw std::runtime_error
+              ("Result null by triangularity."); // not really an error
+        
+          i=mi->find_pol_nr(x,y,xx);
+        
+          if (xx==UndefBlock) // this means |primitivise| hit a real non-parity case
+            throw std::runtime_error
+              ("Result is null because raising the first argument " 
+                  "reaches a real non-parity case."); // not really an error
+          else
+            std::cout << "P_{" << x << ',' << y << "}=P_{" << xx << ',' << y 
+        	      << "}=polynomial #" << i << ':' << std::endl;
+        }
+      
+      {
+        std::vector<ullong> coefficients(pol.coefficients(i));
+      
+        bool first=true;
+        for (size_t i=coefficients.size(); i-->0;)
+          if (coefficients[i]!=0)
+          { if (first) first=false; else std::cout << " + ";
+            if (coefficients[i]!=1 or i==0) std::cout << coefficients[i];
+            std::cout << (i==0? "" : "q");
+            if (i>1)
+      	if (i<10) std::cout << '^' << i;
+      	else std::cout << "^{" << i << '}';
+          }
+        if (coefficients.size()==0) std::cout << 0;
+          // print something for the null polynomial
+        else if (coefficients.size()>1)
+        // for non-constant polynomials show value at $q=1$
+        { ullong sum=0; // sum of coefficients
+          for (size_t i=0; i<coefficients.size(); ++i) sum+=coefficients[i];
+          std::cout << "; value at q=1: " << sum;
+        }
+        std::cout << '.' << std::endl;
       }
-      std::cout << '.' << std::endl;
     }
-    catch (std::runtime_error& e)
-    { std::cerr << e.what(); }
-  try_again:
+    catch (std::runtime_error& e) // try again after runtime errors
+    { std::cerr << e.what() << std::endl; }
     std::cin.clear(); // clear any previous error condition
     while(std::cin.peek()!=EOF and std::cin.get()!='\n') {}
     // skip to the end of the line
