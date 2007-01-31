@@ -103,13 +103,26 @@ template<unsigned int n>
     return h;
   }
 
+@ We shall make use of a vector of coordinate pairs; the following |typedef|
+facilitates this.
+
+@< Type definitions @>=
+typedef std::vector<std::pair<unsigned int,unsigned int> > coord_vector;
+
 @* Principal routines.
 %
 Our main task will be to read a matrix row from |n| different files, merge the
 information about the location of nonzero polynomials among the primitive
 pairs, and then enter tuples for all nonzero polynomials into the hash table;
 the sequence numbers returned from the hash table can then be written out to
-the file for the combined modulus.
+the file for the combined modulus. We provide two extra output parameters:
+|lim| in which an upper bound is recorded for the polynomial numbers
+encountered for each modulus, and |first_use|, where for each output
+polynomial produced we record the first matrix coordinates where it was found
+(the coordinate for~`$x$' is not the value of that block element, which we do
+not know here, but its position in bitmap of the ``row'' of the matrix
+written, in other words within the list of weakly primitive elements for (the
+descent set of) this~$y$.
 
 @h <iostream>
 @h <stdexcept>
@@ -121,7 +134,8 @@ template<unsigned int n>
     (unsigned int y,
      atlas::hashtable::HashTable<tuple_entry<n>,unsigned int>& hash,
      std::vector<std::istream*>in, std::ostream& out,
-     std::vector<unsigned int>& lim)
+     std::vector<unsigned int>& lim,
+     coord_vector* first_use)
   { for (unsigned int i=0; i<n; ++i)
       if (read_int(*in[i])!=y) @< Report alignment problem and abort @>
     unsigned int nr_prim=read_int(*in[0]);
@@ -166,17 +180,22 @@ associated to the zero polynomial. Note the use of |tuple_entry<n>| below is
 the sole reason that our current function is a template function.
 
 @< Traverse primitive elements with nonzero polynomial,... @>=
-for (bit_map::iterator i=out_map.begin(); i(); ++i)
+
+for (bit_map::iterator it=out_map.begin(); it(); ++it)
 { std::vector<unsigned int> tuple(n,0);
   for (unsigned int j=0; j<n; ++j)
-    if (in_map[j].isMember(*i))
+    if (in_map[j].isMember(*it))
     { tuple[j]=read_int(*in[j]);
       if (tuple[j]>=lim[j]) lim[j]=tuple[j]+1;
         // keep track of limit for modular numbers
     }
     else {} // |tuple[j]| stays 0; and nothing is read from |*in[j]|
   tuple_entry<n> e(tuple);
-  write_int(hash.match(e),out);
+  unsigned int size=hash.size();
+  unsigned int code=hash.match(e);
+  if (first_use!=NULL and code==size)
+    first_use->push_back(std::make_pair(*it,y));
+  write_int(code,out);
 }
 
 @ When we cannot recognise the start of a row, we say which one it is and
@@ -222,7 +241,10 @@ on~|n|.
 @h <sstream>
 @< Function definitions @>=
 template<unsigned int n>
-void do_work(std::string name_base, std::vector<unsigned int>& modulus)
+void do_work
+  (std::string name_base,
+   std::vector<unsigned int>& modulus,
+   coord_vector* first_use)
 { @< Open input and output files @>
 @)
   std::vector<tuple_entry<n> > pool;
@@ -233,7 +255,7 @@ void do_work(std::string name_base, std::vector<unsigned int>& modulus)
   for (unsigned int y=0; in_stream[0]->peek()!=EOF; ++y)
      // something remains to read
   {@; std::cerr << y << '\r';
-    combine_rows<n>(y,hash,in_stream,out_file,limits);
+    combine_rows<n>(y,hash,in_stream,out_file,limits,first_use);
   }
   std::cerr << "\ndone!\n";
   for (unsigned int i=0; i<n; ++i) delete in_file[i]; // close files
@@ -347,6 +369,20 @@ int main(int argc,char** argv)
 { atlas::constants::initConstants(); // don't forget!
 
   --argc; ++argv; // skip program name
+@)
+  coord_vector* uses=NULL;
+  std::ofstream uses_out;
+  if (argc>1 and std::string(*argv)=="-uses-to")
+    { uses=new coord_vector;
+      uses_out.open(argv[1]);
+      if (not uses_out.is_open())
+      @/{@;
+        std::cerr << "Could not open file '" << argv[1] << "' for writing.n";
+        exit(1);
+      }
+      argc-=2; argv+=2;
+    }
+@)
   std::string base;
   if (argc>0) {@; base=*argv++; --argc; }
   else
@@ -378,15 +414,23 @@ int main(int argc,char** argv)
 
 
   switch (moduli.size())
-  { case 1: do_work<1>(base,moduli); break;
-    case 2: do_work<2>(base,moduli); break;
-    case 3: do_work<3>(base,moduli); break;
-    case 4: do_work<4>(base,moduli); break;
-    case 5: do_work<5>(base,moduli); break;
-    case 6: do_work<6>(base,moduli); break;
+  { case 1: do_work<1>(base,moduli,uses); break;
+    case 2: do_work<2>(base,moduli,uses); break;
+    case 3: do_work<3>(base,moduli,uses); break;
+    case 4: do_work<4>(base,moduli,uses); break;
+    case 5: do_work<5>(base,moduli,uses); break;
+    case 6: do_work<6>(base,moduli,uses); break;
     default: std::cout << "I cannot handle " << moduli.size()
 		       << " moduli, sorry.\n";
   }
+@)
+  std::cerr << "Writing uses of polynomials to file... ";
+  if (uses!=NULL)
+    for (unsigned int i=0; i<uses->size(); ++i)
+      uses_out << i+1 << ": " << (*uses)[i].first
+                      << ", " << (*uses)[i].second << ".\n";
+  std::cerr << "done.\n";
+
 }
 
 @* Index.

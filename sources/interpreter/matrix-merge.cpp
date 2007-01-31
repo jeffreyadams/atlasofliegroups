@@ -32,6 +32,8 @@ template<unsigned int n>
     unsigned int operator[] (unsigned int i) const { return comp[i]; }
   };
 
+typedef std::vector<std::pair<unsigned int,unsigned int> > coord_vector;
+
 const std::ios_base::openmode binary_out=
 			    std::ios_base::out
 			  | std::ios_base::trunc
@@ -69,7 +71,8 @@ template<unsigned int n>
     (unsigned int y,
      atlas::hashtable::HashTable<tuple_entry<n>,unsigned int>& hash,
      std::vector<std::istream*>in, std::ostream& out,
-     std::vector<unsigned int>& lim)
+     std::vector<unsigned int>& lim,
+     coord_vector* first_use)
   { for (unsigned int i=0; i<n; ++i)
       if (read_int(*in[i])!=y) 
                             { std::cerr << "y=" << y << ", i=" << i << ":\n";
@@ -99,22 +102,29 @@ template<unsigned int n>
       out_map.setRange(i,32,b); write_int(b,out);
     }
     
-    for (bit_map::iterator i=out_map.begin(); i(); ++i)
+    for (bit_map::iterator it=out_map.begin(); it(); ++it)
     { std::vector<unsigned int> tuple(n,0);
       for (unsigned int j=0; j<n; ++j)
-        if (in_map[j].isMember(*i))
+        if (in_map[j].isMember(*it))
         { tuple[j]=read_int(*in[j]);
           if (tuple[j]>=lim[j]) lim[j]=tuple[j]+1;
             // keep track of limit for modular numbers
         }
         else {} // |tuple[j]| stays 0; and nothing is read from |*in[j]|
       tuple_entry<n> e(tuple);
-      write_int(hash.match(e),out);
+      unsigned int size=hash.size();
+      unsigned int code=hash.match(e);
+      if (first_use!=NULL and code==size)
+        first_use->push_back(std::make_pair(*it,y));
+      write_int(code,out);
     }
   }
 
 template<unsigned int n>
-void do_work(std::string name_base, std::vector<unsigned int>& modulus)
+void do_work
+  (std::string name_base,
+   std::vector<unsigned int>& modulus,
+   coord_vector* first_use)
 { 
   std::vector<std::ifstream*>in_file(n,NULL);
     std::vector<std::istream*>in_stream(n,NULL);
@@ -159,7 +169,7 @@ void do_work(std::string name_base, std::vector<unsigned int>& modulus)
   for (unsigned int y=0; in_stream[0]->peek()!=EOF; ++y)
      // something remains to read
   { std::cerr << y << '\r';
-    combine_rows<n>(y,hash,in_stream,out_file,limits);
+    combine_rows<n>(y,hash,in_stream,out_file,limits,first_use);
   }
   std::cerr << "\ndone!\n";
   for (unsigned int i=0; i<n; ++i) delete in_file[i]; // close files
@@ -193,6 +203,20 @@ int main(int argc,char** argv)
 { atlas::constants::initConstants(); // don't forget!
 
   --argc; ++argv; // skip program name
+
+  coord_vector* uses=NULL;
+  std::ofstream uses_out;
+  if (argc>1 and std::string(*argv)=="-uses-to")
+    { uses=new coord_vector;
+      uses_out.open(argv[1]);
+      if (not uses_out.is_open())
+      {
+        std::cerr << "Could not open file '" << argv[1] << "' for writing.n";
+        exit(1);
+      }
+      argc-=2; argv+=2;
+    }
+
   std::string base;
   if (argc>0) { base=*argv++; --argc; }
   else
@@ -224,15 +248,23 @@ int main(int argc,char** argv)
 
 
   switch (moduli.size())
-  { case 1: do_work<1>(base,moduli); break;
-    case 2: do_work<2>(base,moduli); break;
-    case 3: do_work<3>(base,moduli); break;
-    case 4: do_work<4>(base,moduli); break;
-    case 5: do_work<5>(base,moduli); break;
-    case 6: do_work<6>(base,moduli); break;
+  { case 1: do_work<1>(base,moduli,uses); break;
+    case 2: do_work<2>(base,moduli,uses); break;
+    case 3: do_work<3>(base,moduli,uses); break;
+    case 4: do_work<4>(base,moduli,uses); break;
+    case 5: do_work<5>(base,moduli,uses); break;
+    case 6: do_work<6>(base,moduli,uses); break;
     default: std::cout << "I cannot handle " << moduli.size()
 		       << " moduli, sorry.\n";
   }
+
+  std::cerr << "Writing uses of polynomials to file... ";
+  if (uses!=NULL)
+    for (unsigned int i=0; i<uses->size(); ++i)
+      uses_out << i+1 << ": " << (*uses)[i].first
+                      << ", " << (*uses)[i].second << ".\n";
+  std::cerr << "done.\n";
+
 }
 
 
