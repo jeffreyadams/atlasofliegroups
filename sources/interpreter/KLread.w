@@ -575,6 +575,8 @@ public:
   KLIndex find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx);
   // sets |y|, so not |const|
   std::streamoff row_offset(BlockElt y) const @+{@; return row_pos[y]; }
+  BlockElt prim_nr(unsigned int i,BlockElt y);
+    // find primitive element by its index~|i|
 };
 
 
@@ -670,7 +672,6 @@ would overflow elsewhere), but as a matter of principle we cast the pointer
 difference to an unsigned type of the same size (|size_t|) to ensure that the
 offset used is never widened to |std::streamoff| as a negative number.
 
-
 @< Function definitions @>=
 KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx)
 {
@@ -684,6 +685,28 @@ KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx)
 
   matrix_file.seekg(4*size_t(it-cur_strong_prims.begin()),std::ios_base::cur);
   return KLIndex(read_bytes<4>(matrix_file));
+}
+
+@ We allow looking up a primitive element by its index in the list of weakly
+primitive elements for~|y|, since it is in this form that they are identified
+in the \.{matrix-merge} program with the `\.{-uses-to}~\\{file}' option. We
+copy a piece of code used above to find the length of that list of  weakly
+primitive elements.
+
+@< Function definitions @>=
+BlockElt matrix_info::prim_nr(unsigned int i,BlockElt y)
+{ const prim_list& weak_prims = block.prims_for_descents_of(y);
+  const BlockElt* it= // point after first block element of length of |y|
+    std::upper_bound(&block.start_length[0]
+		    ,&block.start_length[block.max_length+1]
+		    ,y);
+  const BlockElt* first= // point to first of |weak_prims| of that length
+    std::lower_bound(&weak_prims[0],&weak_prims[weak_prims.size()],*(it-1));
+  size_t limit=first-&weak_prims[0]; // limiting value for |i|
+  if (i<limit) return weak_prims[i];
+  else if (i==limit) return y;
+  std::cerr << "Limit is " << limit << ".\n";
+  throw std::runtime_error("Weakly primitive element index too large");
 }
 
 @ The constructor for |matrix_info| stores the file reference (which will be
@@ -1112,36 +1135,41 @@ later reading. At the end of a successful conversion, we replace the
   std::cout << "Conversion of matrix file successfully completed.\n";
 }
 
-@ Here is the outline of the main loop of the user interaction. If no matrix
-information has been read, we just ask for a polynomial index, otherwise we
-ask for a pair of block elements separated by punctuation or white space; in
-this case we still allow an index to be entered directly by preceding it by a
-hash mark. One may leave the program by giving \.{quit} where an index in
-expected; for the case where block elements are expected the decision is taken
-in a further module.
+@ Here is the outline of the main loop of the user interaction. We catch the
+|runtime_error| values that could be thrown; if that happens we print the
+message thrown, but then continue normally.
+
+If no matrix information has been read, we just ask for a polynomial index,
+otherwise we ask for a pair of block elements separated by punctuation or
+white space; in this case we still allow an index to be entered directly by
+preceding it by a hash mark. One may leave the program by giving \.{quit}
+where an index in expected; for the case where block elements are expected the
+decision is taken in a further module.
 
 @< Process user input until exhausted @>=
 do
 {
-  if (mi.get()==NULL)
-    std::cout << "index: ";
-  else
-    std::cout << "give block elements x,y, or polynomial index i as #i: "
-    << std::flush;
+  try
+  { if (mi.get()==NULL)
+      std::cout << "index: ";
+    else
+      std::cout << "give block elements x,y, or polynomial index i as #i: ";
 
-  while(isspace(std::cin.peek())) std::cin.get();
+    while(isspace(std::cin.peek())) std::cin.get();
 
-  KLIndex i;
-  if (std::cin.peek()=='#' ? std::cin.get(), true : mi.get()==NULL )
-    @< Read index~|i| from |std::cin|; if |"quit"| is found instead do
-       |break|, and in case of errors |goto try_again| @>
-  else
-    @< Read in parameters |x,y|, and determine index~|i| of polynomial
-       while printing the information found,
-       or in anomalous cases |break| or |goto try_again| @>
-  @< Locate the coefficients of polynomial~|i|,
-     and print the polynomial @>
-try_again:
+    KLIndex i;
+    if (std::cin.peek()=='#' ? std::cin.get(), true : mi.get()==NULL )
+      @< Read index~|i| from |std::cin|; if |"quit"| is found instead do
+	 |break|, and in case of errors throw a |runtime_error| @>
+    else
+      @< Read in parameters |x,y|, and determine index~|i| of polynomial
+	 while printing the information found,
+	 or in anomalous cases |break| or throw a |runtime_error| @>
+    @< Locate the coefficients of polynomial~|i|,
+       and print the polynomial @>
+  }
+  catch (std::runtime_error& e) // try again after runtime errors
+  { std::cerr << e.what() << std::endl; }
   std::cin.clear(); // clear any previous error condition
   while(std::cin.peek()!=EOF and std::cin.get()!='\n') {}
   // skip to the end of the line
@@ -1155,11 +1183,11 @@ non-numeric, or if the number is too great to select a polynomial.
 {
   std::cin >> i;
   if (not std::cin.good())
-    @< See if input was \.{quit}; if so |break|, else |goto try_again| @>
+    @< See if input was \.{quit}; if so |break|,
+       else throw a |runtime_error| @>
   if (i>=pol.n_polynomials())
-  { std::cout << "index too large, limit is " << pol.n_polynomials()-1
-	     << ".\n";
-    goto try_again;
+  { std::cerr << "Limit is " << pol.n_polynomials()-1 << ".\n";
+    throw std::runtime_error("Index too large");
   }
 }
 
@@ -1175,14 +1203,15 @@ as the module name says; any other text just gives an error message.
 { if (std::cin.eof()) break;
   std::string s; std::cin.clear(); std::cin>>s;
   if (s=="quit") break;
-  std::cout << "Non-numeric input.\n"; goto try_again;
+  throw std::runtime_error("Non-numeric input");
 }
 
 @ When we read the block elements $x,y$, we make minimal tests for correct
 input, then we primitivise $x$ and print the information found, taking case to
 distinguish three reasons for finding a null polynomial: it could be that
 $x>y$, or that primitivisation hit an |UndefBlock| value, or finally the final
-look-up could simply return~|0|.
+look-up could simply return~|0|. As a feature not mentioned in the prompt, we
+allow asking for a special conversion of~|x| that is explained below.
 
 @< Read in parameters |x,y|... @>=
 {
@@ -1191,49 +1220,59 @@ look-up could simply return~|0|.
   // skip spaces/punctuation
   std::cin >> x;
   if (not std::cin.good()) // non-numeric input
-    @< See if input was \.{quit}; if so |break|, else |goto try_again| @>
-
+    @< See if input was \.{quit}; if so |break|,
+       else throw a |runtime_error| @>
+  @< Record whether the user wants |x| to be converted @>
+@)
   while(ispunct(c=std::cin.peek()) or isspace(c)) std::cin.get();
   // skip spaces/punctuation
   std::cin >> y;
   if (not std::cin.good())
-    {@; std::cout << "failure reading y, try again.\n";
-      goto try_again;
-    }
+    throw std::runtime_error("Failure reading y");
+@)
+  @< Convert |x| from index to primitive element if so requested @>
   if (x>=mi->block_size())
-  @/{@; std::cout << "first parameter too large, try again.\n";
-      goto try_again;
-    }
+    throw std::runtime_error("First parameter too large");
   if (y>=mi->block_size())
-  @/{@; std::cout << "second parameter too large, try again.\n";
-      goto try_again;
-    }
-
+    throw std::runtime_error("Second parameter too large");
+@)
   if (x>y)
-    {@; std::cout << "Result null by triangularity.\n"; continue; }
+    throw std::runtime_error
+      ("Result null by triangularity."); // not really an error
 @)
   i=mi->find_pol_nr(x,y,xx);
 @)
   if (xx==UndefBlock) // this means |primitivise| hit a real non-parity case
-    { std::cout
-      << "Result is null because raising the first argument " @|
-         "reaches a real non-parity case.\n";
-      goto try_again;
-    }
+    throw std::runtime_error
+      ("Result is null because raising the first argument " @|
+          "reaches a real non-parity case."); // not really an error
   else
     std::cout << "P_{" << x << ',' << y << "}=P_{" << xx << ',' << y @|
 	      << "}=polynomial #" << i << ':' << std::endl;
 }
 
-@ Here we catch the |runtime_error| values that could be thrown while getting
-the coefficients of the polynomial. If that happens we print the message
-thrown, but then continue normally. Otherwise this module mostly serves to
-present the polynomial in a nice format (people expect polynomials to be
-ordered by decreasing exponents), which moreover can be fed directly into the
-math mode of \TeX\ if desired.
+@ It is convenient to be able to specify |x| implicitly by its position in the
+list of weakly primitive elements for~|y|, in particular since it is in this
+way that the program \.{matrix-merge} knows them (it does not have the block
+information at hand to find the corresponding block element). The user can
+request this interpretation by writing `\.\#' directly after the first index.
+
+@< Record whether the user wants |x| to be converted @>=
+bool convert=std::cin.peek()=='#';
+if (convert) std::cin.get(); // skip the character if found
+
+@~The conversion itself is performed only after |y| has been read; the method
+|matrix_info::prim_nr| exits specifically for this.
+
+@< Convert |x| from index to primitive element if so requested @>=
+if (convert) x=mi->prim_nr(x,y);
+
+@ This module mostly serves to present the polynomial in a nice format (people
+expect polynomials to be ordered by decreasing exponents), which moreover can
+be fed directly into the math mode of \TeX\ if desired.
 
 @< Locate the coefficients of polynomial~|i|... @>=
-try
+
 {
   std::vector<ullong> coefficients(pol.coefficients(i));
 
@@ -1257,8 +1296,6 @@ try
   }
   std::cout << '.' << std::endl;
 }
-catch (std::runtime_error& e)
-{ std::cerr << e.what(); }
 
 @* Index.
 
