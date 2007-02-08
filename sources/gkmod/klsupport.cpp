@@ -130,7 +130,7 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
 
 }
 
-bool KLSupport::primitivize(size_t& x, const bitset::RankFlags& d) const
+bool KLSupport::primitivize(BlockElt& x, const bitset::RankFlags& d) const
 
 /*!
   \brief Replaces x (the number of a block element) with a primitive
@@ -279,21 +279,16 @@ void fillLengthLess(std::vector<BlockElt>& ll, const blocks::Block& b)
 */
 
 {
-  ll.clear(); ll.reserve(b.length(b.size()-1)+2);
+  ll.clear(); ll.resize(b.length(b.size()-1)+2);
 
-  size_t l = b.length(0); // length of first block element
-
-  for (size_t j = 0; j <= l; ++j)
-    ll.push_back(0);
-
-  for (BlockElt z = 0; z < b.size(); ++z)
-    while (b.length(z) > l) {
-      ll.push_back(z); // ll[l+1]=z;
-      ++l;
-    }
+  ll[0]=0; // no elements of length<0
+  size_t l=0;
+  for (blocks::BlockElt z=0; z<b.size(); ++z)
+    while (b.length(z)>l)
+      ll[++l]=z;  // invariant |l<=b.length(z)| after this statement
 
   // do not forget the last length!
-  ll.push_back(b.size()); // ll[l+1]=b.size() where l=max(lengths(b))
+  ll[l+1]=b.size(); // here l=b.length(b.size()-1)=max(lengths(b))
 }
 
 }
