@@ -38,17 +38,13 @@ namespace kl {
   */
   const KLPol Zero;
 
-  /*!
-\brief Polynomial 1.q^0.
-
-The constructor Polynomial(d) gives 1.q^d.
-  */
-
-  const KLPol One(0);
+  /*! \brief Polynomial 1.q^0. */
+  const KLPol One(0); // Polynomial(d) gives 1.q^d.
 
   const KLCoeff UndefKLCoeff = std::numeric_limits<KLCoeff>::max();
   const KLCoeff UndefMuCoeff = std::numeric_limits<MuCoeff>::max();
 
+typedef std::set<KLPol> KLStore;
 
 typedef std::vector<KLPtr> KLRow;
 
@@ -118,7 +114,7 @@ degree coefficient of P_{y,x}).
   /*!
 \brief Set of KL polynomials.
   */
-  std::set<KLPol> d_store;           // the actual polynomials
+  KLStore d_store;           // the distinct actual polynomials
   /*!
 \brief Pointer to the polynomial 0.
   */
@@ -128,7 +124,7 @@ degree coefficient of P_{y,x}).
   */
   KLPtr d_one;
 
- public:
+public:
 
 // constructors and destructors
   KLContext(klsupport::KLSupport&); // initial base object
@@ -147,6 +143,11 @@ degree coefficient of P_{y,x}).
   const blocks::Block& block() const {
     return d_support->block();
   }
+
+  // the following two were moved here from the Helper class
+  void makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const;
+
+  void makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const;
 
   /*!
 \brief List of the elements x_i that are primitive with respect to y and have
@@ -197,7 +198,7 @@ P_{y,x}).
   /*!
 \brief Returns the set of all non-zero KL polynomials for the block.
   */
-  const std::set<KLPol>& polStore() const {
+  const KLStore& polStore() const {
     return d_store;
   }
 
