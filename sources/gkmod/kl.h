@@ -5,9 +5,9 @@ Class definitions and function declarations for the class KLContext.
 */
 /*
   This is kl.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -49,7 +49,12 @@ The constructor Polynomial(d) gives 1.q^d.
   const KLCoeff UndefKLCoeff = std::numeric_limits<KLCoeff>::max();
   const KLCoeff UndefMuCoeff = std::numeric_limits<MuCoeff>::max();
 
-}
+
+typedef std::vector<KLPtr> KLRow;
+
+
+
+} // namespace kl
 
 /******** function declarations *********************************************/
 
@@ -61,7 +66,12 @@ namespace kl {
 
 /******** type definitions **************************************************/
 
+/* Namely: the definition of KLContext itself */
+
+
 namespace kl {
+
+ using blocks::BlockElt;
 
   /*!
 \brief Calculates and stores the Kazhdan-Lusztig polynomials for a
@@ -69,7 +79,7 @@ block of representations of G.
   */
 class KLContext {
 
- protected:
+ protected:  // permit access of our Helper class to the data members
 
   /*!
 \brief Records whether the KL polynomials for the block have all been computed.
@@ -121,10 +131,10 @@ degree coefficient of P_{y,x}).
  public:
 
 // constructors and destructors
-  KLContext() {}
+  KLContext(klsupport::KLSupport&); // initial base object
 
-  KLContext(klsupport::KLSupport&);
-  virtual ~KLContext() {}
+  // there is no point in making the destructor virtual
+  ~KLContext() {}
 
 // copy, assignment and swap
   KLContext(const KLContext&);
@@ -139,14 +149,14 @@ degree coefficient of P_{y,x}).
   }
 
   /*!
-\brief List of the elements x_i that are primitive
-with respect to y and have P_{y,x_i} not zero.
+\brief List of the elements x_i that are primitive with respect to y and have
+ P_{y,x_i} NOT ZERO. This method is somewhat of a misnomer
   */
-  const klsupport::PrimitiveRow& primitiveRow(size_t y) const {
+  const klsupport::PrimitiveRow& primitiveRow(BlockElt y) const {
     return d_prim[y];
   }
 
-  const bitset::RankFlags& descentSet(size_t y) const {
+  const bitset::RankFlags& descentSet(BlockElt y) const {
     return d_support->descentSet(y);
   }
 
@@ -154,30 +164,33 @@ with respect to y and have P_{y,x_i} not zero.
     return p == d_zero;
   }
 
-  const KLPol& klPol(size_t x, size_t y) const;
+  /*!
+\brief The Kazhdan-Lusztig-Vogan polynomial P_{x,y}
+*/
+  const KLPol& klPol(BlockElt x, BlockElt y) const;
 
   /*!
 \brief Returns the list of pointers to the non-zero KL polynomials
 P_{y,x_i} (with x_i primitive with respect to y).
   */
-  const KLRow& klRow(size_t y) const {
+  const KLRow& klRow(BlockElt y) const {
     return d_kl[y];
   }
 
   /*!
 \brief Length of y as a block element.
   */
-  size_t length(size_t y) const {
+  size_t length(BlockElt y) const {
     return d_support->length(y);
   }
 
-  MuCoeff mu(size_t x, size_t y) const;
+  MuCoeff mu(BlockElt x, BlockElt y) const;
 
   /*!
 \brief List of MuData, which are pairs (x, top degree coefficient of
 P_{y,x}).
   */
-  const MuRow& muRow(size_t y) const {
+  const MuRow& muRow(BlockElt y) const {
     return d_mu[y];
   }
 
@@ -203,9 +216,11 @@ P_{y,x}).
   }
 
 // manipulators
-  virtual void fill();
 
-  //  const KLPol& klPol(size_t, size_t);
+  // this method used to be virtual, but that seems completely silly. MvL
+  void fill();
+
+
 };
 
 }

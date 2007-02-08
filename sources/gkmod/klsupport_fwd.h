@@ -4,9 +4,9 @@
 */
 /*
   This is klsupport_fwd.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -17,6 +17,7 @@
 #include <vector>
 
 #include "polynomials_fwd.h"
+#include "blocks_fwd.h"
 
 namespace atlas {
 
@@ -27,7 +28,7 @@ namespace klsupport {
 class KLSupport;
 class KLSupport_new;
 
-typedef std::vector<unsigned int> PrimitiveRow;
+typedef std::vector<blocks::BlockElt> PrimitiveRow;
 
 }
 

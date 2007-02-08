@@ -4,9 +4,9 @@
 */
 /*
   This is klsupport.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -29,8 +29,7 @@ namespace atlas {
 
 namespace klsupport {
 
-class KLSupport_new {
-};
+  using blocks::BlockElt;
 
 class KLSupport {
 
@@ -42,17 +41,13 @@ class KLSupport {
 
   blocks::Block* d_block;  // non-owned pointer
   size_t d_rank;
-  size_t d_size;
+  BlockElt d_size;
 
   std::vector<bitset::RankFlags> d_descent;
   std::vector<bitset::RankFlags> d_goodAscent;
   std::vector<bitmap::BitMap> d_downset;
   std::vector<bitmap::BitMap> d_primset;
-
-  /*!
-\brief Entry l is the number of block elements of length strictly less than l.
-  */
-  std::vector<size_t> d_lengthLess;
+  std::vector<BlockElt> d_lengthLess;
 
  public:
 
@@ -67,56 +62,50 @@ class KLSupport {
   void swap(KLSupport&);
 
 // accessors
+
   const blocks::Block& block() const {
     return *d_block;
   }
 
-  size_t cross(size_t s, size_t z) const {
+  BlockElt cross(size_t s, BlockElt z) const {
     return d_block->cross(s,z);
   }
 
-  blocks::BlockEltPair cayley(size_t s, size_t z) const {
+  blocks::BlockEltPair cayley(size_t s, BlockElt z) const {
     return d_block->cayley(s,z);
   }
 
-  const bitset::RankFlags& descentSet(size_t z) const {
+  const bitset::RankFlags& descentSet(BlockElt z) const {
     return d_descent[z];
   }
 
   /*!
 \brief Descent status of simple root s for block element z.
   */
-  descents::DescentStatus::Value descentValue(size_t s, size_t z) const {
+  descents::DescentStatus::Value descentValue(size_t s, BlockElt z) const {
     return d_block->descentValue(s,z);
   }
 
   void extremalize(bitmap::BitMap&, const bitset::RankFlags&) const;
 
-  /*!
-\brief Flags the simple roots which are good ascents (complex or
-noncompact imaginary) for block element z.
-  */
-  const bitset::RankFlags& goodAscentSet(size_t z) const {
+  const bitset::RankFlags& goodAscentSet(BlockElt z) const {
     return d_goodAscent[z];
   }
 
-  /*!
-\brief Length of block element z.
-  */
-  size_t length(size_t z) const {
+  size_t length(BlockElt z) const {
     return d_block->length(z);
   }
 
   /*!
 \brief Number of block elements of length strictly less than l.
   */
-  size_t lengthLess(size_t l) const {
+  BlockElt lengthLess(size_t l) const {
     return d_lengthLess[l];
   }
 
   void primitivize(bitmap::BitMap&, const bitset::RankFlags&) const;
 
-  bool primitivize(size_t&, const bitset::RankFlags&) const;
+  bool primitivize(BlockElt&, const bitset::RankFlags&) const;
 
   size_t rank() const {
     return d_rank;
@@ -131,7 +120,6 @@ noncompact imaginary) for block element z.
 
   void fillDownsets();
 
-  size_t numExtremals();
 };
 
 }

@@ -18,9 +18,9 @@
 */
 /*
   This is kl.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -37,6 +37,7 @@
 #include <stdexcept>
 
 #include "bitmap.h"
+#include "basic_io.h"
 #include "blocks.h"
 #include "error.h"
 #include "kl_error.h"
@@ -68,8 +69,6 @@ namespace atlas {
   namespace kl {
   namespace helper {
 
-  void pause() {;}
-
   using namespace kl;
 
   size_t firstAscent(const descents::DescentStatus&,
@@ -82,11 +81,14 @@ namespace atlas {
     bool operator() (const MuData& lhs, const MuData& rhs) const {
       return lhs.first < rhs.first;
     }
-  };
+  }; // struct MuCompare
 
   class Thicket;
 
-  class Helper:public KLContext {
+
+  class Helper
+  : public KLContext
+  {
 
     friend class Thicket;
 
@@ -97,26 +99,24 @@ namespace atlas {
   public:
 
     // constructors and destructors
-    Helper() {}
-
     Helper(const KLContext&);
 
-    virtual ~Helper() {}
+    ~Helper() {}
 
     //accessors
-    MuCoeff ascentMu(size_t x, size_t y, size_t s) const;
+    MuCoeff ascentMu(BlockElt x, BlockElt y, size_t s) const;
 
     /*!
  \brief Cayley transform of block element y through simple root s.
     */
-    blocks::BlockEltPair cayley(size_t s, size_t y) const {
+    blocks::BlockEltPair cayley(size_t s, BlockElt y) const {
       return d_support->block().cayley(s,y);
     }
 
     /*!
  \brief Cross action of simple root s on block element y.
     */
-    size_t cross(size_t s, size_t y) const {
+    BlockElt cross(size_t s, BlockElt y) const {
       return d_support->block().cross(s,y);
     }
 
@@ -124,15 +124,15 @@ namespace atlas {
  \brief Returns vector of RANK_MAX unsigned char; entry s gives
  descent status of simple root s for block element y.
     */
-    const descents::DescentStatus& descent(size_t y) const {
+    const descents::DescentStatus& descent(BlockElt y) const {
       return d_support->block().descent(y);
     }
 
-    /*!  
+    /*!
 \brief Unsigned char whose value gives the descent status of
 simple root s for block element y.
     */
-    descents::DescentStatus::Value descentValue(size_t s, size_t y) const {
+    descents::DescentStatus::Value descentValue(size_t s, BlockElt y) const {
       return d_support->descentValue(s,y);
     }
 
@@ -140,65 +140,75 @@ simple root s for block element y.
 \brief Second coordinate (corresponding to K^vee orbit on G^vee/B^vee)
 of pair of integers specifying block element y.
     */
-    size_t dualOrbit(size_t y) const {
+    size_t dualOrbit(BlockElt y) const {
       return d_support->block().y(y);
     }
 
-    size_t firstDirectRecursion(size_t y) const;
+    size_t firstDirectRecursion(BlockElt y) const;
 
-    MuCoeff goodDescentMu(size_t x, size_t y, size_t s) const;
+    MuCoeff goodDescentMu(BlockElt x, BlockElt y, size_t s) const;
 
-    blocks::BlockEltPair inverseCayley(size_t s, size_t y) const {
+    blocks::BlockEltPair inverseCayley(size_t s, BlockElt y) const {
       return d_support->block().inverseCayley(s,y);
     }
-    // declares that klPol's from base class KLContext are also
-    // considered. Don't know why that isn't automatic. [DV 9/13/06].
+
+    /* Declare that member function klPol from base class KLContext is also
+       considered. This is necessary since it would otherwise be shadowed
+       rather than overloaded by a new definition with different signature
+       in the Helper class.
+    */
     using KLContext::klPol;
 
-    const KLPol& klPol(size_t x, size_t y, KLRow::const_iterator klv,
+    const KLPol& klPol(BlockElt x, BlockElt y, KLRow::const_iterator klv,
 		       klsupport::PrimitiveRow::const_iterator p_begin,
 		       klsupport::PrimitiveRow::const_iterator p_end) const;
 
-    MuCoeff lengthOneMu(size_t x, size_t y) const;
+    MuCoeff lengthOneMu(BlockElt x, BlockElt y) const;
 
-    void makeExtremalRow(klsupport::PrimitiveRow& e, size_t y) const;
+    void makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const;
 
-    void makePrimitiveRow(klsupport::PrimitiveRow& e, size_t y) const;
+    void makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const;
 
     /*!
 \brief First coordinate (corresponding to K orbit on G/B) of pair of
 integers specifying block element y.
     */
-    size_t orbit(size_t y) const {
+    size_t orbit(BlockElt y) const {
       return d_support->block().x(y);
     }
 
-    MuCoeff recursiveMu(size_t x, size_t y) const;
+    MuCoeff recursiveMu(BlockElt x, BlockElt y) const;
 
-    MuCoeff type2Mu(size_t x, size_t y) const;
+    MuCoeff type2Mu(BlockElt x, BlockElt y) const;
 
     // manipulators
-    void completePacket(size_t y);
+    void completePacket(BlockElt y);
 
-    void directRecursion(size_t y, size_t s);
+    void directRecursion(BlockElt y, size_t s);
 
-    virtual void fill();
+    void fill();
 
-    void fillKLRow(size_t y);
+    void fillKLRow(BlockElt y);
 
-    void fillMuRow(size_t y);
+    void fillMuRow(BlockElt y);
 
-    void fillThickets(size_t y);
+    void fillThickets(BlockElt y);
 
-    void muCorrection(std::vector<KLPol>& klv, const klsupport::PrimitiveRow& e,
-		      size_t y, size_t s);
+    void muCorrection(std::vector<KLPol>& klv,
+		      const klsupport::PrimitiveRow& e,
+		      BlockElt y, size_t s);
 
-    void recursionRow(std::vector<KLPol> & klv, 
-		      const klsupport::PrimitiveRow& e, size_t y, size_t s);
+    void recursionRow(std::vector<KLPol> & klv,
+		      const klsupport::PrimitiveRow& e, BlockElt y, size_t s);
 
-    void writeRow(const std::vector<KLPol>& klv, 
-		  const klsupport::PrimitiveRow& e, size_t s);
-  };
+    void writeRow(const std::vector<KLPol>& klv,
+		  const klsupport::PrimitiveRow& e, BlockElt y);
+  }; // class Helper
+
+
+
+
+    // class Thicket
 
     /*!
 \brief Collection of block elements y_j of the same length, differing
@@ -236,7 +246,7 @@ x, so finally we know all P_{x,y_j} for y_j in the Thicket.
 This computation is carried out in the member function fill().
     */
   class Thicket {
- 
+
   public:
 
     struct Edge;
@@ -250,7 +260,7 @@ This computation is carried out in the member function fill().
     /*!
 \brief List of elements y_j in Thicket.
     */
-    std::vector<size_t> d_vertices;
+    std::vector<BlockElt> d_vertices;
 
     /*!
 \brief Entry j lists the edges ending at y_j.
@@ -260,7 +270,7 @@ This computation is carried out in the member function fill().
     /*!
 \brief List of all x that are extremal with respect to some y in Thicket.
     */
-    std::vector<size_t> d_xlist;
+    std::vector<BlockElt> d_xlist;
 
     /*!
 \brief Entry j lists all x of length strictly less than l(y) that are
@@ -275,32 +285,32 @@ Extremal means that each descent for y_j is a descent for x.
 primitive with respect to y_j.
 
 Primitive means that each descent for y_j is either a descent for x or
-type II imaginary for x. 
+type II imaginary for x.
     */
     std::vector<klsupport::PrimitiveRow> d_prim;
 
     /*!
-\brief 
+\brief
     */
     std::vector<KLRow> d_klr;
 
     /*!
-\brief 
+\brief
     */
     std::vector<PI> d_firstPrim;
 
     /*!
-\brief 
+\brief
     */
     std::vector<KLI> d_firstKL;
     Helper* d_helper;
-     
+
   public:
 
     // constructors and destructors
     Thicket() {}
 
-    Thicket(Helper&, size_t);
+    Thicket(Helper&, BlockElt);
 
     ~Thicket() {}
 
@@ -309,7 +319,7 @@ type II imaginary for x.
     /*!
 \brief Cross action of simple reflection s on block element y.
     */
-    size_t cross(size_t s, size_t y) const {
+    BlockElt cross(size_t s, BlockElt y) const {
       return d_helper->cross(s,y);
     }
 
@@ -317,16 +327,16 @@ type II imaginary for x.
 \brief List of RankMax unsigned chars; number s gives the descent
 status 0-7 of simple root s for y.
     */
-    const descents::DescentStatus& descent(size_t y) const {
+    const descents::DescentStatus& descent(BlockElt y) const {
       return d_helper->descent(y);
     }
 
 
-    /*!  
+    /*!
 \brief Unsigned char between 0 and 7; gives the descent of
 simple root s for y.
     */
-    descents::DescentStatus::Value descentValue(size_t s, size_t y) const {
+    descents::DescentStatus::Value descentValue(size_t s, BlockElt y) const {
       return d_helper->descentValue(s,y);
     }
 
@@ -340,7 +350,7 @@ simple root s for y.
     /*!
 \brief KL polynomial P_{x,y_pos}, for any y_pos in Thicket.
     */
-    const KLPol& klPol(size_t x, size_t pos) const {
+    const KLPol& klPol(BlockElt x, size_t pos) const {
       return d_helper->klPol(x,d_vertices[pos],d_firstKL[pos],d_firstPrim[pos],
 			     d_prim[pos].end());
     }
@@ -350,13 +360,13 @@ simple root s for y.
 primitive with respect to y_j.
 
 Primitive means that each descent for y_j is either a descent for x or
-type II imaginary for x. 
+type II imaginary for x.
     */
     const klsupport::PrimitiveRow& primitiveRow(size_t j) const {
       return d_prim[j];
     }
 
-    size_t nonExtremal(size_t x) const;
+    size_t nonExtremal(BlockElt x) const;
 
     /*!
 \brief Pointer to the KL polynomial one.
@@ -382,7 +392,7 @@ type II imaginary for x.
     /*!
 \brief List of vertices in Thicket.
     */
-    const std::vector<size_t>& vertices() const {
+    const std::vector<BlockElt>& vertices() const {
       return d_vertices;
     }
 
@@ -394,15 +404,15 @@ type II imaginary for x.
     }
 
     // manipulators
-    bool ascentCompute(size_t x, size_t pos);
+    bool ascentCompute(BlockElt x, size_t pos);
 
-    void edgeCompute(size_t x, size_t pos, const Edge& e);
+    void edgeCompute(BlockElt x, size_t pos, const Edge& e);
 
     void fill();
 
     void fillXList();
 
-    KLRow& klRow(size_t y) {
+    KLRow& klRow(BlockElt y) {
       return d_helper->d_kl[y];
     }
 
@@ -410,7 +420,7 @@ type II imaginary for x.
       return d_helper->d_store;
     }
 
-  };
+    }; // class Thicket
 
     /*!
 \brief Pair (y , s x y) (with s type II real) in a Thicket.
@@ -419,7 +429,7 @@ type II imaginary for x.
   struct Thicket::Edge {
 
     /*!
-\brief Number of the block element at which the edge begins.
+\brief Index in d_vertices of the block element at which the edge begins.
     */
     size_t source;
 
@@ -440,7 +450,7 @@ list of elements primitive with respect to some y' in the Thicket.
     std::vector<KLPol> recursion;
     // constructors and destructors
     Edge() {}
-    Edge(size_t x, size_t y, size_t s, const std::vector<KLPol>& r)
+    Edge(BlockElt x, BlockElt y, size_t s, const std::vector<KLPol>& r)
       :source(x), y(y), s(s), recursion(r) {}
   };
 
@@ -467,26 +477,25 @@ list of elements primitive with respect to some y' in the Thicket.
       return not d_stack.empty();
     }
 
-    size_t operator* () const {
+    size_t operator* () const { // current vertex index, or size() at end
       return d_pos;
     }
 
-    const Thicket::Edge& edge() const {
+    const Thicket::Edge& edge() const { // current edge
       return *d_current;
     }
 
     // manipulators
     ThicketIterator& operator++();
-  };
+
+  }; // class ThicketIterator
 
   }
   }
 
 /*****************************************************************************
 
-        Chapter I -- The KLContext class.
-
-  ... explain here when it is stable ...
+        Chapter I -- Methods of the KLContext class.
 
  *****************************************************************************/
 
@@ -526,7 +535,7 @@ KLContext::KLContext(const KLContext& other)
 
   d_kl.resize(other.d_kl.size());
 
-  for (size_t y = 0; y < d_kl.size(); ++y) {
+  for (BlockElt y = 0; y < d_kl.size(); ++y) {
     d_kl[y].resize(other.d_kl[y].size());
     for (size_t j = 0; j < d_kl[y].size(); ++j)
       d_kl[y][j] = d_store.find(*other.d_kl[y][j]);
@@ -564,11 +573,9 @@ void KLContext::swap(KLContext& other)
   d_kl.swap(other.d_kl);
   d_mu.swap(other.d_mu);
 
-  d_store.swap(other.d_store);
+  d_store.swap(other.d_store);  // this puts the Helper store into base object
   std::swap(d_zero,other.d_zero);
   std::swap(d_one,other.d_one);
-
-  return;
 }
 
 /******** accessors **********************************************************/
@@ -594,7 +601,7 @@ void KLContext::fill()
   Helper help(*this);
 
   help.fill();
-  swap(help);
+  swap(help); // swaps the base object, including the d_store
 
   d_state.set(KLFilled);
 
@@ -602,10 +609,9 @@ void KLContext::fill()
   std::cerr << "done" << std::endl;
 #endif
 
-  return;
 }
 
-const KLPol& KLContext::klPol(size_t x, size_t y) const
+const KLPol& KLContext::klPol(BlockElt x, BlockElt y) const
 
 /*!
   \brief Returns the Kazhdan-Lusztig-Vogan polynomial P_{x,y}
@@ -617,7 +623,7 @@ const KLPol& KLContext::klPol(size_t x, size_t y) const
   primitive w.r.t. y, it moves x up, using the "easy" induction
   relations. At that point, we look x up in the primitive list for
   y. If it is found, we get a pointer to the result.  If it is not
-  found, the polynomial is zero. 
+  found, the polynomial is zero.
 */
 
 {
@@ -637,12 +643,12 @@ const KLPol& KLContext::klPol(size_t x, size_t y) const
       return Zero;
     }
   }
-  
+
   // if we get here, the primitivization hit a real compact ascent
   return Zero;
 }
 
-MuCoeff KLContext::mu(size_t x, size_t y) const
+MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
 
 /*!
   \brief Returns mu(x,y).
@@ -661,7 +667,7 @@ MuCoeff KLContext::mu(size_t x, size_t y) const
     return 0;
 
   return std::lower_bound(mr.begin(),mr.end(),
-	std::make_pair(x,static_cast<size_t>(0ul)), 
+	std::make_pair(x,static_cast<size_t>(0ul)),
 			  MuCompare())->second;
 }
 
@@ -683,7 +689,7 @@ Helper::Helper(const KLContext& kl)
 {}
 
 /******** accessors **********************************************************/
-MuCoeff Helper::ascentMu(size_t x, size_t y, size_t s) const
+MuCoeff Helper::ascentMu(BlockElt x, BlockElt y, size_t s) const
 
 /*!
   \brief Computes mu(x,y) in a good ascent situation.
@@ -695,13 +701,13 @@ MuCoeff Helper::ascentMu(size_t x, size_t y, size_t s) const
   so that the corresponding k-l polynomial is zero unless x ascends to y.
 */
 
-{    
+{
   using namespace blocks;
   using namespace descents;
 
   switch (descentValue(s,x)) {
   case DescentStatus::ComplexAscent: {
-    size_t x1 = cross(s,x);
+    BlockElt x1 = cross(s,x);
     return x1 == y ? 1 : 0;
   }
     break;
@@ -710,7 +716,7 @@ MuCoeff Helper::ascentMu(size_t x, size_t y, size_t s) const
   }
     break;
   case DescentStatus::ImaginaryTypeI: {
-    size_t x1 = cayley(s,x).first;
+    BlockElt x1 = cayley(s,x).first;
     return x1 == y ? 1 : 0;
   }
     break;
@@ -728,7 +734,7 @@ MuCoeff Helper::ascentMu(size_t x, size_t y, size_t s) const
   return UndefMuCoeff;
 }
 
-size_t Helper::firstDirectRecursion(size_t y) const
+size_t Helper::firstDirectRecursion(BlockElt y) const
 
 /*!
   \brief Returns the first descent generator that is not real type II
@@ -751,7 +757,7 @@ size_t Helper::firstDirectRecursion(size_t y) const
   return rank();
 }
 
-MuCoeff Helper::goodDescentMu(size_t x, size_t y, size_t s) const
+MuCoeff Helper::goodDescentMu(BlockElt x, BlockElt y, size_t s) const
 
 /*!
   \brief Gets mu(x,y) by a good descent recursion.
@@ -760,15 +766,15 @@ MuCoeff Helper::goodDescentMu(size_t x, size_t y, size_t s) const
   mu-rows have been filled in; s is a good descent for y;
 
   Explanation: a good descent for y is a descent that is not real type II,
-  and also not imaginary compact; these are the cases where mu(x,y) is 
+  and also not imaginary compact; these are the cases where mu(x,y) is
   directly expressed by recursion.
 */
 
-{    
+{
   using namespace blocks;
   using namespace descents;
 
-  size_t y1;
+  BlockElt y1;
 
   if (descentValue(s,y) == DescentStatus::ComplexDescent) {
     y1 = cross(s,y);
@@ -781,7 +787,7 @@ MuCoeff Helper::goodDescentMu(size_t x, size_t y, size_t s) const
     return 0;
   }
   case DescentStatus::ComplexDescent: {
-    size_t x1 = cross(s,x);
+    BlockElt x1 = cross(s,x);
     return mu(x1,y1);
   }
   case DescentStatus::RealTypeI: {
@@ -790,7 +796,7 @@ MuCoeff Helper::goodDescentMu(size_t x, size_t y, size_t s) const
   }
     break;
   case DescentStatus::RealTypeII: {
-    size_t x1 = inverseCayley(s,x).first;
+    BlockElt x1 = inverseCayley(s,x).first;
     return mu(x1,y1);
   }
     break;
@@ -802,7 +808,7 @@ MuCoeff Helper::goodDescentMu(size_t x, size_t y, size_t s) const
   return UndefMuCoeff;
 }
 
-const KLPol& Helper::klPol(size_t x, size_t y, 
+const KLPol& Helper::klPol(BlockElt x, BlockElt y,
 			   KLRow::const_iterator klv,
 			   klsupport::PrimitiveRow::const_iterator p_begin,
 			   klsupport::PrimitiveRow::const_iterator p_end) const
@@ -821,7 +827,7 @@ const KLPol& Helper::klPol(size_t x, size_t y,
 */
 
 {
-  size_t xp = x;
+  BlockElt xp = x;
 
   if (d_support->primitivize(xp,descentSet(y))) {
     if (std::binary_search(p_begin,p_end,xp)) { // result is nonzero
@@ -835,7 +841,7 @@ const KLPol& Helper::klPol(size_t x, size_t y,
   }
 }
 
-MuCoeff Helper::lengthOneMu(size_t x, size_t y) const
+MuCoeff Helper::lengthOneMu(BlockElt x, BlockElt y) const
 
 /*!
   \brief Computes mu(x,y) for l(y)-l(x) = 1.
@@ -843,7 +849,7 @@ MuCoeff Helper::lengthOneMu(size_t x, size_t y) const
   Preconditions: l(y) > 0; l(x) = l(y)-1; the mu-rows for y of smaller
   lengths have already been filled in.
 
-  Explanation: these are the mu-values that can come up in possibly 
+  Explanation: these are the mu-values that can come up in possibly
   non-extremal situations. They can be computed recursively by
   formulas using only other mu-values of the same kind.
 */
@@ -859,7 +865,7 @@ MuCoeff Helper::lengthOneMu(size_t x, size_t y) const
   return recursiveMu(x,y);
 }
 
-void Helper::makeExtremalRow(klsupport::PrimitiveRow& e, size_t y) const
+void Helper::makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const
 
 /*!
   \brief Puts in e the list of all x extremal w.r.t. y.
@@ -868,7 +874,7 @@ void Helper::makeExtremalRow(klsupport::PrimitiveRow& e, size_t y) const
   and every descent for y is a descent for x.
 */
 
-{    
+{
   using namespace bitmap;
 
   BitMap b(size());
@@ -885,7 +891,7 @@ void Helper::makeExtremalRow(klsupport::PrimitiveRow& e, size_t y) const
   return;
 }
 
-void Helper::makePrimitiveRow(klsupport::PrimitiveRow& e, size_t y) const
+void Helper::makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const
 
 /*!
   \brief Puts in e the list of all x primitive w.r.t. y.
@@ -895,7 +901,7 @@ void Helper::makePrimitiveRow(klsupport::PrimitiveRow& e, size_t y) const
   ascent for x.
 */
 
-{    
+{
   using namespace bitmap;
 
   BitMap b(size());
@@ -912,7 +918,7 @@ void Helper::makePrimitiveRow(klsupport::PrimitiveRow& e, size_t y) const
   return;
 }
 
-MuCoeff Helper::recursiveMu(size_t x, size_t y) const
+MuCoeff Helper::recursiveMu(BlockElt x, BlockElt y) const
 
 /*!
   \brief Gets mu(x,y) by direct recursion.
@@ -925,7 +931,7 @@ MuCoeff Helper::recursiveMu(size_t x, size_t y) const
   This is the "hard case" in lengthOneMu().
 */
 
-{  
+{
   using namespace blocks;
   using namespace descents;
 
@@ -937,7 +943,7 @@ MuCoeff Helper::recursiveMu(size_t x, size_t y) const
   return type2Mu(x,y);
 }
 
-MuCoeff Helper::type2Mu(size_t x, size_t y) const
+MuCoeff Helper::type2Mu(BlockElt x, BlockElt y) const
 
 /*!
   \brief Gets mu(x,y) by type II recursion.
@@ -965,7 +971,7 @@ MuCoeff Helper::type2Mu(size_t x, size_t y) const
   toDo.push(y);
 
   size_t s;
-  size_t y1 = y;
+  BlockElt y1 = y;
   MuCoeff mu = 0;
 
   while (not toDo.empty()) {
@@ -990,10 +996,10 @@ MuCoeff Helper::type2Mu(size_t x, size_t y) const
       }
       // at this point s is either real type II or imaginary compact
       if (v == DescentStatus::ImaginaryCompact)
-	continue; 
+	continue;
       // at this point, there is no hope to resolve the situation at y1
       {
-	size_t y2 = cross(s,y1);
+	BlockElt y2 = cross(s,y1);
 	if (rel.insert(std::make_pair(y2,s)).second) // new element
 	  toDo.push(y2);
       }
@@ -1013,7 +1019,7 @@ MuCoeff Helper::type2Mu(size_t x, size_t y) const
 }
 
 /******** manipulators *******************************************************/
-void Helper::completePacket(size_t y)
+void Helper::completePacket(BlockElt y)
 
 /*!
   \brief Finishes the filling of the R-packet starting at y.
@@ -1037,7 +1043,7 @@ void Helper::completePacket(size_t y)
   std::stack<size_t> filled;
   std::set<size_t> empty;
 
-  for (size_t y1 = y; orbit(y1) == o; ++y1) {
+  for (BlockElt y1 = y; orbit(y1) == o; ++y1) {
     if (d_kl[y1].size() != 0)
       filled.push(y1);
     else
@@ -1046,13 +1052,13 @@ void Helper::completePacket(size_t y)
 
   while (not filled.empty()) {
 
-    size_t y1 = filled.top();
+    BlockElt y1 = filled.top();
     filled.pop();
 
     for (size_t s = 0; s < rank(); ++s) {
      if (descentValue(s,y1) != DescentStatus::RealTypeII)
 	continue;
-      size_t y2 = cross(s,y1);
+      BlockElt y2 = cross(s,y1);
       std::set<size_t>::iterator i = empty.find(y2);
       if (i != empty.end()) { // found a new row
  	// fill row y2
@@ -1062,7 +1068,7 @@ void Helper::completePacket(size_t y)
 	recursionRow(klv,e,y2,s);
 	// klv[j] is P_{x,y2}+P_{x,y1}, for x = e[j]
 	for (size_t j = 0; j < klv.size(); ++j) {
-	  size_t x = e[j];
+	  BlockElt x = e[j];
 	  try {
 	    klv[j].safeSubtract(klPol(x,y1));
 	  }
@@ -1086,19 +1092,19 @@ void Helper::completePacket(size_t y)
   return;
 }
 
-void Helper::directRecursion(size_t y, size_t s)
+void Helper::directRecursion(BlockElt y, size_t s)
 
 /*!
   \brief Fills in the row for y using a direct recursion.
 
-  Precondition: s is either a complex, or a real type I descent generator for 
+  Precondition: s is either a complex, or a real type I descent generator for
   y.
 
   The real work is done by the recursionRow function, that will be used also
   in the real type II descents.
 */
 
-{  
+{
   using namespace klsupport;
 
   std::vector<KLPol> klv;
@@ -1130,7 +1136,7 @@ void Helper::fill()
   d_mu.resize(d_support->size());
 
   // fill the lists
-  size_t y = 0;
+  BlockElt y = 0;
   size_t minLength = length(0);
 
   // do the minimal length cases; they come first in the enumeration
@@ -1161,7 +1167,7 @@ void Helper::fill()
   return;
 }
 
-void Helper::fillKLRow(size_t y)
+void Helper::fillKLRow(BlockElt y)
 
 /*!
   \brief Fills in the row for y in the kl-table.
@@ -1186,7 +1192,7 @@ void Helper::fillKLRow(size_t y)
   bool done = true;
 
   // fill in the direct recursions in the R-packet
-  for (size_t y1 = y; orbit(y1) == o; ++y1) {
+  for (BlockElt y1 = y; orbit(y1) == o; ++y1) {
     size_t s = firstDirectRecursion(y1);
     if (s != rank()) { // direct recursion
       directRecursion(y1,s);
@@ -1201,7 +1207,7 @@ void Helper::fillKLRow(size_t y)
   return;
 }
 
-void Helper::fillMuRow(size_t y)
+void Helper::fillMuRow(BlockElt y)
 
 /*!
   \brief Fills in the row for y in the mu-table.
@@ -1229,7 +1235,7 @@ void Helper::fillMuRow(size_t y)
 
   // do cases of length < ly-1
   for (size_t j = 0; j < e.size(); ++j) {
-    size_t x = e[j];
+    BlockElt x = e[j];
     size_t lx = length(x);
     if (lx >= ly-1)
       break;
@@ -1247,19 +1253,19 @@ void Helper::fillMuRow(size_t y)
   }
 
   // do cases of length ly-1
-  size_t x_begin = d_support->lengthLess(ly-1);
-  size_t x_end = d_support->lengthLess(ly);
+  BlockElt x_begin = d_support->lengthLess(ly-1);
+  BlockElt x_end = d_support->lengthLess(ly);
 
-  for (size_t x = x_begin; x < x_end; ++x) {
+  for (BlockElt x = x_begin; x < x_end; ++x) {
     MuCoeff mu = lengthOneMu(x,y);
-    if (mu)
+    if (mu!=MuCoeff(0))
       d_mu[y].push_back(std::make_pair(x,mu));
   }
 
   return;
 }
 
-void Helper::fillThickets(size_t y)
+void Helper::fillThickets(BlockElt y)
 
 /*!
   \brief Finishes the filling of the R-packet starting at y.
@@ -1273,18 +1279,18 @@ void Helper::fillThickets(size_t y)
   is of the same form (for instance, it happens quite often that the principal
   series representations are a thicket.) Then we must use the "structural fact"
   in Lemma 6.2 of David's Park City notes: for each x lower than y, there is
-  an element y' of the thicket for which x has an ascent (or if there is no 
+  an element y' of the thicket for which x has an ascent (or if there is no
   such y', the k-l polynomial is zero.)
 
   Algorithm: (a) for each y' in the R-packet that has not already been filled,
   we determine the thicket of y' via a traversal algorithm, as usual (b) we
   fill in all the P_{x,y} in that thicket by a downwards recursion. In order
-  to do that, we put the union of all the x'es in the extremal lists in a 
+  to do that, we put the union of all the x'es in the extremal lists in a
   common ordered list. Then we move down the list; for each x, by assumption
   there is an y' in the thicket for which it is not extremal, and starting
   from there we can fill in P_{x,y} in all the rows where it needs to be
   filled.
-  
+
   NOTE: thickets are always small, at the very worst a few hundred elements,
   so we don't have to worry about efficiency here.
 
@@ -1300,7 +1306,7 @@ void Helper::fillThickets(size_t y)
 
   size_t o = orbit(y);
 
-  for (size_t y1 = y; orbit(y1) == o; ++y1)
+  for (BlockElt y1 = y; orbit(y1) == o; ++y1)
     if (d_kl[y1].size() == 0) {
       Thicket thicket(*this,y1);
       thicket.fill();
@@ -1309,22 +1315,22 @@ void Helper::fillThickets(size_t y)
   return;
 }
 
-void Helper::muCorrection(std::vector<KLPol>& klv, 
-			  const klsupport::PrimitiveRow& e, size_t y, size_t s)
+void Helper::muCorrection(std::vector<KLPol>& klv,
+			  const klsupport::PrimitiveRow& e, BlockElt y, size_t s)
 
 /*!
   \brief Subtracts from klv the correcting terms in the k-l recursion.
 
   Precondtion: klp contains the terms corresponding to c_s.c_y, for the x that
-  are extremal w.r.t. y; the mu-table and kl-table has been filled in for 
+  are extremal w.r.t. y; the mu-table and kl-table has been filled in for
   elements of length <= y.
 
   Explanation: the recursion formula is of the form:
-  
+
     lhs = c_s.c_{y1} - sum_{z} mu(z,y1)c_z
 
   where z runs over the elements < y s.t. s is a descent for z, y1 is s.y,
-  and lhs is c_y when s is a complex descent or real type I for y, and 
+  and lhs is c_y when s is a complex descent or real type I for y, and
   c_{y}+c_{s.y} when s is real type II.
 */
 
@@ -1333,7 +1339,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
   using namespace klsupport;
   using namespace polynomials;
 
-  size_t y1;
+  BlockElt y1;
 
   if (descentValue(s,y) == DescentStatus::ComplexDescent) {
     y1 = cross(s,y);
@@ -1356,7 +1362,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
     MuCoeff mu = mrow[i].second;
 
     for (size_t j = 0; j < e.size(); ++j) {
-      size_t x = e[j];
+      BlockElt x = e[j];
       if (length(x) > l_z)
 	break;
       // subtract x^d.mu.P_{x,z} from klv[j], where d = 1/2(l(y)-l(z))
@@ -1376,33 +1382,33 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
   return;
 }
 
-void Helper::recursionRow(std::vector<KLPol>& klv, 
-			  const klsupport::PrimitiveRow& e,size_t y, size_t s)
+void Helper::recursionRow(std::vector<KLPol>& klv,
+			  const klsupport::PrimitiveRow& e,BlockElt y, size_t s)
 
 /*!
   \brief Puts in klv the right-hand side of the recursion formula for y
   corresponding to the descent s.
 
-  Precondition: s is either a complex, or a real type I or type II descent 
+  Precondition: s is either a complex, or a real type I or type II descent
   generator for y.
 
-  Explanation: the shape of the formula is: 
+  Explanation: the shape of the formula is:
 
     P_{x,y} = (c_s.c_{y1})-part - correction term
 
   where y1 = cross(s,y) when s is complex for y, one of the two elements in
-  inverseCayley(s,y) when s is real. The (c_s.c_{y1})-part depends on the 
-  status of x w.r.t. s (we look only at extremal x, so we know it is a 
-  descent); the correction term, coming from sum_z mu(z,y1)c_z, depends only 
+  inverseCayley(s,y) when s is real. The (c_s.c_{y1})-part depends on the
+  status of x w.r.t. s (we look only at extremal x, so we know it is a
+  descent); the correction term, coming from sum_z mu(z,y1)c_z, depends only
   on y1.
 */
 
-{  
+{
   using namespace blocks;
   using namespace descents;
   using namespace klsupport;
 
-  size_t y1;
+  BlockElt y1;
 
   if (descentValue(s,y) == DescentStatus::ComplexDescent) {
     y1 = cross(s,y);
@@ -1413,7 +1419,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   klv.resize(e.size());
 
   for (size_t j = 0; j < klv.size()-1; ++j) {
-    size_t x = e[j];
+    BlockElt x = e[j];
     switch (descentValue(s,x)) {
     case DescentStatus::ImaginaryCompact: {
       // (q+1)P_{x,y1}
@@ -1422,7 +1428,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     }
       break;
     case DescentStatus::ComplexDescent: {
-      size_t x1 = cross(s,x);
+      BlockElt x1 = cross(s,x);
       // P_{x1,y1}+q.P_{x,y1}
       klv[j] = klPol(x1,y1);
       klv[j].safeAdd(klPol(x,y1),1);
@@ -1444,7 +1450,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
     }
       break;
     case DescentStatus::RealTypeII: {
-      size_t x1 = inverseCayley(s,x).first;
+      BlockElt x1 = inverseCayley(s,x).first;
       // P_{x_1,y_1}+qP_{x,y1}-P_{s.x,y1}
       klv[j] = klPol(x1,y1);
       klv[j].safeAdd(klPol(x,y1),1);
@@ -1472,8 +1478,8 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   return;
 }
 
-void Helper::writeRow(const std::vector<KLPol>& klv, 
-		      const klsupport::PrimitiveRow& er, size_t y)
+void Helper::writeRow(const std::vector<KLPol>& klv,
+		      const klsupport::PrimitiveRow& er, BlockElt y)
 
 /*!
   \brief Writes down row y in d_kl and d_prim.
@@ -1496,7 +1502,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
 
   PrimitiveRow pr;
   makePrimitiveRow(pr,y);
-  
+
   KLRow klr(pr.size());
   PrimitiveRow nzpr(pr.size());
   KLRow::iterator new_pol = klr.end();
@@ -1566,7 +1572,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
 namespace kl {
   namespace helper {
 
-Thicket::Thicket(Helper& h, size_t y)
+Thicket::Thicket(Helper& h, BlockElt y)
   :d_helper(&h)
 
 /*!
@@ -1596,13 +1602,13 @@ Thicket::Thicket(Helper& h, size_t y)
   thicket.insert(std::make_pair(y,EdgeList()));
 
   while (not toDo.empty()) {
-    size_t y1 = toDo.top();
+    BlockElt y1 = toDo.top();
     toDo.pop();
     EdgeList& e1 = thicket.find(y1)->second;
     for (size_t s = 0; s < rank(); ++s) {
       if (descentValue(s,y1) != DescentStatus::RealTypeII)
 	continue;
-      size_t y2 = cross(s,y1);
+      BlockElt y2 = cross(s,y1);
       std::pair<MI,bool> ins = thicket.insert(std::make_pair(y2,EdgeList()));
       if (ins.second) { // y2 was new
 	EdgeList& e2 = ins.first->second;
@@ -1652,7 +1658,7 @@ Thicket::Thicket(Helper& h, size_t y)
   for (size_t j = 0; j < size(); ++j) {
     EdgeList& el = d_edges[j];
     for (size_t i = 0; i < el.size(); ++i) {
-      size_t y2 = d_vertices[el[i].y];
+      BlockElt y2 = d_vertices[el[i].y];
       d_helper->recursionRow(el[i].recursion,d_extr[el[i].y],y2,el[i].s);
     }
   }
@@ -1664,16 +1670,16 @@ Thicket::Thicket(Helper& h, size_t y)
 }
 
 /******** accessors **********************************************************/
-size_t Thicket::nonExtremal(size_t x) const
+size_t Thicket::nonExtremal(BlockElt x) const
 
 /*!
-  \brief Returns the position in d_vertices of the first y that is not 
+  \brief Returns the position in d_vertices of the first y that is not
   extremal w.r.t. x, size() if there is no such y.
 */
 
 {
   for (size_t j = 0; j < d_vertices.size(); ++j) {
-    size_t y = d_vertices[j];
+    BlockElt y = d_vertices[j];
     size_t s = firstAscent(descent(x),descent(y),rank());
     if (s != rank()) // y was found
       return j;
@@ -1684,7 +1690,7 @@ size_t Thicket::nonExtremal(size_t x) const
 
 /******** manipulators *******************************************************/
 
-bool Thicket::ascentCompute(size_t x, size_t pos)
+bool Thicket::ascentCompute(BlockElt x, size_t pos)
 
 /*!
   \brief Checks if x has an ascent in row y_pos, and computes the K-L pol in
@@ -1692,7 +1698,7 @@ bool Thicket::ascentCompute(size_t x, size_t pos)
 
   Precondition: x is primitive in the row;
 
-  Explanation: If the ascent exists, it will be imaginary type II. if 
+  Explanation: If the ascent exists, it will be imaginary type II. if
   x1 = (x1.first,x1.second) is the corresponding Cayley transform, the
   formula is P_x = P_x1.first + P_x1.second, both of which can be read off
   from the known part of the row.
@@ -1701,7 +1707,7 @@ bool Thicket::ascentCompute(size_t x, size_t pos)
 {
   using namespace blocks;
 
-  size_t y = d_vertices[pos];
+  BlockElt y = d_vertices[pos];
   size_t s = firstAscent(descent(x),descent(y),rank());
 
   if (s == rank()) // no ascent
@@ -1718,11 +1724,11 @@ bool Thicket::ascentCompute(size_t x, size_t pos)
     --d_firstPrim[pos];
     *d_firstPrim[pos] = x;
   }
-  
+
   return true;
 }
 
-void Thicket::edgeCompute(size_t x, size_t pos, const Edge& e)
+void Thicket::edgeCompute(BlockElt x, size_t pos, const Edge& e)
 
 /*!
   \brief Computes the k-l polynomial for x in row pos, using the recurrence
@@ -1731,7 +1737,7 @@ void Thicket::edgeCompute(size_t x, size_t pos, const Edge& e)
   Precondition: x is extremal in the row; e points towards pos; the polynomial
   for x for the source of e is known.
 
-  Explanation: P_{x,pos} + P_{x,source} will be given by the recurrence 
+  Explanation: P_{x,pos} + P_{x,source} will be given by the recurrence
   relation corresponding to x.
 */
 
@@ -1758,7 +1764,7 @@ void Thicket::edgeCompute(size_t x, size_t pos, const Edge& e)
     --d_firstPrim[pos];
     *d_firstPrim[pos] = x;
   }
-  
+
   return;
 }
 
@@ -1797,7 +1803,7 @@ void Thicket::fill()
   // initialize rows, fill in last element, initialize iterators
   for (size_t j = 0; j < size(); ++j) {
     const PrimitiveRow& pr = primitiveRow(j); // last element is y_j
-    d_klr[j].resize(pr.size()); 
+    d_klr[j].resize(pr.size());
     d_klr[j].back() = d_helper->d_one;
     d_firstPrim[j] = d_prim[j].end()-1;
     d_firstKL[j] = d_klr[j].end()-1;
@@ -1806,7 +1812,7 @@ void Thicket::fill()
   // fill in rows
   for (size_t j = d_xlist.size(); j;) {
     --j;
-    size_t x = d_xlist[j];
+    BlockElt x = d_xlist[j];
     // find a vertex s.t. x is not extremal
     size_t iy = nonExtremal(x);
     if (iy == size()) // do nothing; zero polynomials are ignored
@@ -1814,7 +1820,7 @@ void Thicket::fill()
     for (ThicketIterator i(*this,iy); i(); ++i) {
       size_t pos = *i;
       const PrimitiveRow& pr = primitiveRow(pos);
-      if (not std::binary_search(pr.begin(),pr.end(),x)) 
+      if (not std::binary_search(pr.begin(),pr.end(),x))
 	// x is not primitive
 	continue;
       if (ascentCompute(x,pos)) // x is not extremal
@@ -1827,7 +1833,7 @@ void Thicket::fill()
   // write result
 
   for (size_t j = 0; j < size(); ++j) {
-    size_t y = d_vertices[j];
+    BlockElt y = d_vertices[j];
 
     d_helper->d_prim[y].reserve(d_prim[j].end() - d_firstPrim[j]);
     d_helper->d_kl[y].reserve(d_prim[j].end() - d_firstPrim[j]);
@@ -1979,15 +1985,15 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
   wg.resize(klc.size());
 
   // fill in descent sets
-  for (size_t y = 0; y < klc.size(); ++y)
+  for (BlockElt y = 0; y < klc.size(); ++y)
     wg.descent(y) = klc.descentSet(y);
 
   // fill in edges and coefficients
-  for (size_t y = 0; y < klc.size(); ++y) {
+  for (BlockElt y = 0; y < klc.size(); ++y) {
     const RankFlags& d_y = wg.descent(y);
     const MuRow& mrow = klc.muRow(y);
     for (size_t j = 0; j < mrow.size(); ++j) {
-      size_t x = mrow[j].first;
+      BlockElt x = mrow[j].first;
       const RankFlags& d_x = wg.descent(x);
       if (d_x == d_y)
 	continue;
@@ -2044,7 +2050,7 @@ size_t firstAscent(const descents::DescentStatus& d1,
   using namespace descents;
 
   for (size_t s = 0; s < rank; ++s) {
-    if ((DescentStatus::isDescent(d2[s])) and 
+    if ((DescentStatus::isDescent(d2[s])) and
 	(not DescentStatus::isDescent(d1[s])))
       return s;
   }
@@ -2066,7 +2072,7 @@ size_t goodAscent(const descents::DescentStatus& d1,
   using namespace descents;
 
   for (size_t s = 0; s < rank; ++s) {
-    if ((not DescentStatus::isDescent(d2[s])) or 
+    if ((not DescentStatus::isDescent(d2[s])) or
 	(DescentStatus::isDescent(d1[s])))
       continue;
     if (d1[s] != DescentStatus::ImaginaryTypeII)
@@ -2079,4 +2085,3 @@ size_t goodAscent(const descents::DescentStatus& d1,
 }
 }
 }
-

@@ -5,9 +5,9 @@
 
 /*
   This is blocks_fwd.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -26,7 +26,7 @@ namespace blocks {
 
   class Block;
 
-  typedef size_t BlockElt;
+  typedef unsigned int BlockElt;
   typedef std::vector<BlockElt> BlockEltList;
   typedef std::pair<BlockElt,BlockElt> BlockEltPair;
   typedef std::vector<BlockEltPair> BlockEltPairList;
