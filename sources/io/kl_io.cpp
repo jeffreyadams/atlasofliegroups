@@ -1,8 +1,8 @@
 /*
   This is kl_io.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -20,7 +20,7 @@
 
 /*****************************************************************************
 
-  Input/output functions for the KLContext data structure, defined in 
+  Input/output functions for the KLContext data structure, defined in
   sources/kl/kl.h
 
 ******************************************************************************/
@@ -100,7 +100,7 @@ std::ostream& printAllKL(std::ostream& strm, kl::KLContext& klc)
 std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
 
 /*!
-  \brief Outputs the non-zero primitive kl polynomials from klc to strm.
+  \brief Outputs the primitive kl polynomials from klc to strm.
 */
 
 {
@@ -117,15 +117,11 @@ std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
 
   for (size_t y = 0; y < klc.size(); ++y) {
 
-    const PrimitiveRow& e = klc.primitiveRow(y);
-    const KLRow& klr = klc.klRow(y);
+    PrimitiveRow e; klc.makePrimitiveRow(e,y); // list of ALL primitive x's
+
     strm << std::setw(width) << y << ": ";
     bool first = true;
-    for (size_t j  = 0; j < e.size(); ++j) {
-    //  if (klc.isZero(klr[j])) {
-    //    ++zeroCount;
-    // 	continue;
-    //      }
+    for (size_t j  = 0; j < e.size(); ++j) { // now x=e[j] is primitive for y
       if (first) {
 	strm << std::setw(width) << e[j] << ": ";
 	first = false;
@@ -133,7 +129,8 @@ std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
 	strm << std::setw(width+tab)<< ""
 	     << std::setw(width) << e[j] << ": ";
       }
-      printPol(strm,*klr[j],KLIndeterminate);
+
+      printPol(strm,klc.klPol(e[j],y),KLIndeterminate);
       strm << std::endl;
       ++count;
     }
@@ -158,13 +155,19 @@ std::ostream& printKLList(std::ostream& strm, kl::KLContext& klc)
   using namespace kl;
   using namespace prettyprint;
 
-  const std::set<KLPol>& store = klc.polStore();
+  const KLStore& store = klc.polStore();
   std::vector<KLPol> polList;
 
-  std::copy(store.begin(),store.end(),back_inserter(polList));
+  // get polynomials, omitting Zero
+  for (KLIndex i=0; i<store.size(); ++i)
+    {
+      const KLPol& r=store[i];
+      if (not r.isZero()) polList.push_back(r);
+    }
+
   std::sort(polList.begin(),polList.end(),polynomials::compare<KLCoeff>);
 
-  for (size_t j = 1; j < polList.size(); ++j) {
+  for (size_t j = 0; j < polList.size(); ++j) {
     printPol(strm,polList[j],KLIndeterminate);
     strm << std::endl;
   }

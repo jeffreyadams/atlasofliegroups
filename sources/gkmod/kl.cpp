@@ -67,6 +67,30 @@
 namespace atlas {
 
   namespace kl {
+// we wrap |KLPol| into a class |KLPolEntry| that can be used in a |HashTable|
+
+/* This associates the type |KLStore| as underlying storage type to |KLPol|,
+   and adds the methods |hashCode| (hash function) and |!=| (unequality), for
+   use by the |HashTable| template.
+ */
+
+class KLPolEntry : public KLPol
+  {
+  public:
+    // constructors
+    KLPolEntry() : KLPol() {} // default constructor builds zero polynomial
+    KLPolEntry(const KLPol& p) : KLPol(p) {} // lift polynomial to this class
+
+    // members required for an Entry parameter to the HashTable template
+    typedef KLStore Pooltype;		   // associated storage type
+    size_t hashCode(size_t modulus) const; // hash function
+
+    // compare polynomial with one from storage
+    bool operator!=(Pooltype::const_reference e) const;
+
+  };
+
+
   namespace helper {
 
   using namespace kl;
@@ -86,11 +110,15 @@ namespace atlas {
   class Thicket;
 
 
+  typedef hashtable::HashTable<KLPolEntry,KLIndex> KLHashStore;
+
   class Helper
   : public KLContext
   {
 
     friend class Thicket;
+
+    KLHashStore d_hashtable;
 
   public:
 
@@ -363,7 +391,7 @@ type II imaginary for x.
     /*!
 \brief Pointer to the KL polynomial one.
     */
-    KLPtr one() const {
+    KLIndex one() const {
       return d_helper->d_one;
     }
 
@@ -391,7 +419,7 @@ type II imaginary for x.
     /*!
 \brief Pointer to the KL polynomial zero.
     */
-    KLPtr zero() const {
+    KLIndex zero() const {
       return d_helper->d_zero;
     }
 
@@ -487,52 +515,48 @@ list of elements primitive with respect to some y' in the Thicket.
 
 /*****************************************************************************
 
-        Chapter I -- Methods of the KLContext class.
+        Chapter I -- Methods of the KLContext and KLPolEntry classes.
 
  *****************************************************************************/
+
+/* methods of KLContext */
+
 
 namespace kl {
   using namespace atlas::kl::helper;
 
 KLContext::KLContext(klsupport::KLSupport& kls)
-  :d_support(&kls)
-
+  :d_state(),
+   d_support(&kls),
+   d_prim(),
+   d_kl(),
+   d_mu(),
+   d_store(2),
+   d_zero(0),
+   d_one(1)
 {
-  d_store.insert(Zero);
-  d_store.insert(One);
-
-  d_zero = d_store.find(Zero);
-  d_one = d_store.find(One);
+  d_store[d_zero]=Zero;
+  d_store[d_one]=One;
 }
 
 /******** copy, assignment and swap ******************************************/
-KLContext::KLContext(const KLContext& other)
-  :d_state(other.d_state),
-   d_support(other.d_support),
-   d_prim(other.d_prim),
-   d_mu(other.d_mu),
-   d_store(other.d_store)
+
 
 /*!
   \brief Copy constructor.
 
-  The difficulty here is that copying the store invalidates all iterators
-  into it! So they must all be reset. This will be improved in the future.
+  Since we use indices instead of iterators, nothing gets invalidated any more
 */
-
-{
-  // reset iterators
-  d_zero = d_store.find(Zero);
-  d_one = d_store.find(One);
-
-  d_kl.resize(other.d_kl.size());
-
-  for (BlockElt y = 0; y < d_kl.size(); ++y) {
-    d_kl[y].resize(other.d_kl[y].size());
-    for (size_t j = 0; j < d_kl[y].size(); ++j)
-      d_kl[y][j] = d_store.find(*other.d_kl[y][j]);
-  }
-}
+KLContext::KLContext(const KLContext& other)
+  :d_state(other.d_state),
+   d_support(other.d_support),
+   d_prim(other.d_prim),
+   d_kl(other.d_kl),
+   d_mu(other.d_mu),
+   d_store(other.d_store),
+   d_zero(other.d_zero),
+   d_one(other.d_one)
+{}
 
 KLContext& KLContext::operator= (const KLContext& other)
 
@@ -599,7 +623,7 @@ const KLPol& KLContext::klPol(BlockElt x, BlockElt y) const
     EI xptr = std::lower_bound(pr.begin(),pr.end(),x);
     if (xptr != pr.end() and *xptr == x) { // result is nonzero
       size_t xpos = xptr - pr.begin();
-      return *klr[xpos];
+      return d_store[klr[xpos]];
     } else {
       return Zero;
     }
@@ -722,11 +746,46 @@ void KLContext::fill()
 
 }
 
+/* methods of KLPolEntry */
+
+
+/*!
+  \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
+
+  The function is in fact evaluation of the polynomial (with coefficients
+  interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
+  calculated quickly (without multiplications) and which gives a good spread
+  (which is not the case if 2105633 is replaced by a small number, because
+  the evaluation values will not grow fast enough for low degree
+  polynomials!).
+
+*/
+inline size_t KLPolEntry::hashCode(size_t modulus) const
+{ const polynomials::Polynomial<KLCoeff>& P=*this;
+  if (P.isZero()) return 0;
+  polynomials::Degree i=P.degree();
+  size_t h=P[i]; // start with leading coefficient
+  while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
+  return h;
+}
+
+bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
+{
+  if (degree()!=e.degree()) return true;
+  if (isZero()) return false; // since degrees match
+  for (polynomials::Degree i=0; i<=degree(); ++i)
+    if ((*this)[i]!=e[i]) return true;
+  return false; // no difference found
+}
 
 } // namespace kl
 
 
-/* Chapter II -- Methods of the Helper class.*/
+/*****************************************************************************
+
+        Chapter II -- Methods of the Helper class.
+
+ *****************************************************************************/
 
 namespace kl {
   namespace helper {
@@ -735,7 +794,7 @@ namespace kl {
 
 Helper::Helper(const KLContext& kl)
   :KLContext(kl)
-
+  , d_hashtable(d_store) // hash table refers to our own d_store
 {}
 
 /******** accessors **********************************************************/
@@ -872,7 +931,7 @@ const KLPol& Helper::klPol(BlockElt x, BlockElt y,
   if (d_support->primitivize(xp,descentSet(y))) {
     if (std::binary_search(p_begin,p_end,xp)) { // result is nonzero
       size_t xpos = std::lower_bound(p_begin,p_end,xp) - p_begin;
-      return *klv[xpos];
+      return d_store[klv[xpos]];
     } else {
       return Zero;
     }
@@ -1126,7 +1185,7 @@ void Helper::fill()
 
   // do the minimal length cases; they come first in the enumeration
   for (; y < d_kl.size() and length(y) == minLength; ++y) {
-    d_prim[y].push_back(y);
+    d_prim[y].push_back(y); // singleton list for this row
     // the K-L polynomial is 1
     d_kl[y].push_back(d_one);
     // there are no mu-coefficients
@@ -1226,13 +1285,15 @@ void Helper::fillMuRow(BlockElt y)
     if ((lx&1ul) == (ly&1ul))
       continue;
     size_t d = (ly-lx-1)/2;
-    KLPtr klp = d_kl[y][j];
+    KLIndex klp = d_kl[y][j];
     if (isZero(klp))
       continue;
-    if (klp->degree() < d)
+
+    const KLPol& p=d_store[klp];
+    if (p.degree() < d)
       continue;
     // if we get here, we found a mu-coefficient for x
-    d_mu[y].push_back(std::make_pair(x,(*klp)[d]));
+    d_mu[y].push_back(std::make_pair( x , p[d] ));
   }
 
   // do cases of length ly-1
@@ -1504,9 +1565,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
     // insert extremal polynomial
     if (not klv[j].isZero()) {
       *--new_extr = er[j];
-      *--new_pol = d_store.find(klv[j]);
-      if (*new_pol == d_store.end())
-	*new_pol = d_store.insert(klv[j]).first;
+      *--new_pol  = d_hashtable.match(klv[j]);
     }
     // do the others
     for (size_t i = stop[j+1]-1; i > stop[j];) {
@@ -1518,9 +1577,7 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
 
       if (not pol.isZero()) {
 	*--new_extr = pr[i];
-	*--new_pol = d_store.find(pol);
-	if (*new_pol == d_store.end())
-	  *new_pol = d_store.insert(pol).first;
+	*--new_pol  = d_hashtable.match(pol);
       }
     }
   }
@@ -1696,8 +1753,7 @@ bool Thicket::ascentCompute(BlockElt x, size_t pos)
   pol.safeAdd(klPol(x1.second,pos));
 
   if (not pol.isZero()) { // write pol
-    d_helper->d_store.insert(pol);
-    *--d_firstKL[pos] = d_helper->d_store.find(pol);
+    *--d_firstKL[pos] = d_helper->d_hashtable.match(pol);
     *--d_firstPrim[pos] = x;
   }
 
@@ -1734,10 +1790,10 @@ void Thicket::edgeCompute(BlockElt x, size_t pos, const Edge& e)
   }
 
   if (not pol.isZero()) { // write pol
-    d_helper->d_store.insert(pol);
-    *--d_firstKL[pos] = d_helper->d_store.find(pol);
+    *--d_firstKL[pos]   = d_helper->d_hashtable.match(pol);
     *--d_firstPrim[pos] = x;
   }
+
 }
 
 void Thicket::fill()
@@ -1999,7 +2055,7 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
 
 }
 
-}
+} // namespace kl
 
 /*****************************************************************************
 

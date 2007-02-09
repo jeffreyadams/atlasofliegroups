@@ -41,10 +41,7 @@ typedef unsigned int KLCoeff;
 */
 typedef polynomials::Polynomial<KLCoeff> KLPol;
 
-/*!
-\brief Pointer into a set of KLPol's.
-*/
-typedef std::set<KLPol>::iterator KLPtr;
+typedef unsigned int KLIndex; // less than 2^32 distinct polynomials for E8 !
 
 
 typedef KLCoeff MuCoeff;

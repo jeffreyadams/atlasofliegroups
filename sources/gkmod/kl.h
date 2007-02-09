@@ -16,7 +16,6 @@ Class definitions and function declarations for the class KLContext.
 #define KL_H
 
 #include <limits>
-#include <set>
 
 #include "kl_fwd.h"
 
@@ -24,6 +23,7 @@ Class definitions and function declarations for the class KLContext.
 
 #include "bitset.h"
 #include "klsupport.h"
+#include "hashtable.h"
 #include "polynomials.h"
 #include "wgraph.h"
 
@@ -44,9 +44,9 @@ namespace kl {
   const KLCoeff UndefKLCoeff = std::numeric_limits<KLCoeff>::max();
   const KLCoeff UndefMuCoeff = std::numeric_limits<MuCoeff>::max();
 
-typedef std::set<KLPol> KLStore;
+typedef std::vector<KLPol> KLStore;
 
-typedef std::vector<KLPtr> KLRow;
+typedef std::vector<KLIndex> KLRow;
 
 
 
@@ -118,11 +118,11 @@ degree coefficient of P_{y,x}).
   /*!
 \brief Pointer to the polynomial 0.
   */
-  KLPtr d_zero;
+  KLIndex d_zero;
   /*!
 \brief Pointer to the polynomial 1.
   */
-  KLPtr d_one;
+  KLIndex d_one;
 
 public:
 
@@ -161,7 +161,7 @@ public:
     return d_support->descentSet(y);
   }
 
-  bool isZero(const KLPtr p) const {
+  bool isZero(const KLIndex p) const {
     return p == d_zero;
   }
 
