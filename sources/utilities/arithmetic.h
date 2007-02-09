@@ -40,13 +40,14 @@ namespace arithmetic {
 	{ modular_int a(*this); a+=b; return a; }
       modular_int operator-() const
 	{  modular_int a; if (d_val!=0) a.d_val=modulus-d_val; return a;  }
+      void operator-=(modular_int b)
+        { if (d_val>=b.d_val) d_val-=b.d_val; else d_val+=modulus-b.d_val; }
       modular_int operator-(modular_int b) const
-	{ modular_int a(*this); a+= -b; return a; }
+	{ modular_int a(*this); a-=b; return a; }
       void operator*=(modular_int b)
         { unsigned s=d_val*b.d_val; d_val=s % modulus; }
       modular_int operator*(modular_int b) const
 	{ modular_int a(*this); a*=b; return a; }
-
 
       bool operator<(modular_int b) const { return d_val<b.d_val; }
       bool operator==(modular_int b) const { return d_val==b.d_val; }

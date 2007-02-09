@@ -19,7 +19,7 @@
 #include <iostream>
 #include <vector>
 
-/******** function declarations **********************************************/
+/******** class definition  **********************************************/
 
 namespace atlas {
 
@@ -31,9 +31,6 @@ namespace arithmetic {
       static std::vector<std::vector<modular_int> > mult_table;
 
       unsigned char d_val; // value, a remainder mod modulus
-
-      struct raw_tag {};
-      modular_int(unsigned char c,raw_tag) : d_val(c) {} // bypass reduction
 
     public:
       static void set_modulus(unsigned int n)
@@ -63,8 +60,10 @@ namespace arithmetic {
 	{ modular_int a(*this); a+=b; return a; }
       modular_int operator-() const
 	{  modular_int a; if (d_val!=0) a.d_val=modulus-d_val; return a;  }
+      void operator-=(modular_int b)
+        { if (d_val>=b.d_val) d_val-=b.d_val; else d_val+=modulus-b.d_val; }
       modular_int operator-(modular_int b) const
-	{ modular_int a(*this); a+= -b; return a; }
+	{ modular_int a(*this); a-=b; return a; }
       void operator*=(modular_int b)
         { d_val=mult_table[d_val][b.d_val]; }
       modular_int operator*(modular_int b) const
@@ -74,8 +73,6 @@ namespace arithmetic {
       bool operator==(modular_int b) const { return d_val==b.d_val; }
       bool operator!=(modular_int b) const { return d_val!=b.d_val; }
 
-      static modular_int raw_val (unsigned char c)
-	{ return modular_int(c,raw_tag()); }
       operator unsigned char () const { return d_val; }
       unsigned int unsigned_value() const { return d_val; }
     };
