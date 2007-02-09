@@ -6,15 +6,13 @@
   This is klsupport.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups version 0.2.4
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
 
 #ifndef KLSUPPORT_H  /* guard against multiple inclusions */
 #define KLSUPPORT_H
-
-#include <map>
 
 #include "klsupport_fwd.h"
 
@@ -32,9 +30,6 @@ namespace atlas {
 namespace klsupport {
 
   using blocks::BlockElt;
-
-class KLSupport_new {
-};
 
 class KLSupport {
 
@@ -86,6 +81,9 @@ class KLSupport {
     return d_descent[z];
   }
 
+  /*!
+\brief Descent status of simple root s for block element z.
+  */
   descents::DescentStatus::Value descentValue(size_t s, BlockElt z) const {
     return d_block->descentValue(s,z);
   }
@@ -100,6 +98,9 @@ class KLSupport {
     return d_block->length(z);
   }
 
+  /*!
+\brief Number of block elements of length strictly less than l.
+  */
   BlockElt lengthLess(size_t l) const {
     return d_lengthLess[l];
   }

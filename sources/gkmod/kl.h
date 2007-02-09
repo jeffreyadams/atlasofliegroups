@@ -217,9 +217,7 @@ typedef KLPool KLStore;
 
 typedef KLStore::const_reference KLPolRef;
 
-typedef KLIndex KLPtr;
-
-typedef std::vector<KLPtr> KLRow;
+typedef std::vector<KLIndex> KLRow;
 
 
 
@@ -291,11 +289,11 @@ degree coefficient of P_{y,x}).
   /*!
 \brief Pointer to the polynomial 0.
   */
-  KLPtr d_zero;
+  KLIndex d_zero;
   /*!
 \brief Pointer to the polynomial 1.
   */
-  KLPtr d_one;
+  KLIndex d_one;
 
 public:
 
@@ -337,17 +335,13 @@ public:
     return d_support->descentSet(y);
   }
 
-  bool isZero(const KLPtr p) const {
+  bool isZero(const KLIndex p) const {
     return p == d_zero;
   }
 
   /*!
 \brief The Kazhdan-Lusztig-Vogan polynomial P_{x,y}
-
-Note that it is returned by value, since we want to allow for the possibility
-of compressed storage, in chich case we cannot return an uncompressed
-polynomial by reference, but we can return it by value
-  */
+*/
   KLPolRef klPol(BlockElt x, BlockElt y) const;
 
   /*!

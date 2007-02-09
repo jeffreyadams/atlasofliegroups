@@ -110,8 +110,6 @@ class KLPolEntry : public KLPol
 
   namespace helper {
 
-  void pause() {} // possible breakpoint for debugger
-
   using namespace kl;
 
   size_t firstAscent(const descents::DescentStatus&,
@@ -129,7 +127,7 @@ class KLPolEntry : public KLPol
   class Thicket;
 
 
-    typedef hashtable::HashTable<KLPolEntry,KLIndex> KLHashStore;
+  typedef hashtable::HashTable<KLPolEntry,KLIndex> KLHashStore;
 
   class Helper
   : public KLContext
@@ -423,7 +421,7 @@ type II imaginary for x.
     /*!
 \brief Pointer to the KL polynomial one.
     */
-    KLPtr one() const {
+    KLIndex one() const {
       return d_helper->d_one;
     }
 
@@ -451,7 +449,7 @@ type II imaginary for x.
     /*!
 \brief Pointer to the KL polynomial zero.
     */
-    KLPtr zero() const {
+    KLIndex zero() const {
       return d_helper->d_zero;
     }
 
@@ -529,7 +527,7 @@ list of elements primitive with respect to some y' in the Thicket.
       return not d_stack.empty();
     }
 
-    size_t operator* () const { // current vertex index, or th.size() at end
+    size_t operator* () const { // current vertex index, or size() at end
       return d_pos;
     }
 
@@ -547,7 +545,7 @@ list of elements primitive with respect to some y' in the Thicket.
 
 /*****************************************************************************
 
-        Chapter I -- Mehtods of the KLContext, KLPolEntry and KLPool classes.
+        Chapter I -- Methods of the KLContext, KLPolEntry and KLPool classes.
 
  *****************************************************************************/
 
@@ -685,6 +683,63 @@ MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
     return 0; // x not found in mr
 
   return xloc->second;
+}
+
+/* The following two methods were moved here form the Helper class, since
+   they turn out to be useful even when no longer constructing the KLContext
+*/
+void KLContext::makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const
+
+/*!
+  \brief Puts in e the list of all x extremal w.r.t. y.
+
+  Explanation: this means that either x = y, or length(x) < length(y),
+  and every descent for y is a descent for x.
+*/
+
+{
+  using namespace bitmap;
+
+  BitMap b(size());
+  size_t c = d_support->lengthLess(length(y));
+
+  b.fill(c);     // start with all elements < y in length
+  b.insert(y);   // and y itself
+
+  // extremalize (filter out those that are not extremal)
+  d_support->extremalize(b,descentSet(y));
+
+  // copy from bitset b to list e
+  e.reserve(e.size()+b.size()); // ensure tight fit after copy
+  std::copy(b.begin(),b.end(),back_inserter(e));
+
+}
+
+void KLContext::makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const
+
+/*!
+  \brief Puts in e the list of all x primitive w.r.t. y.
+
+  Explanation: this means that either x = y, or length(x) < length(y),
+  and every descent for y is either a descent, or an imaginary type II
+  ascent for x.
+*/
+
+{
+  using namespace bitmap;
+
+  BitMap b(size());
+  size_t c = d_support->lengthLess(length(y));
+
+  b.fill(c);     // start with all elements < y in length
+  b.insert(y);   // and y itself
+
+  // primitivize (filter out those that are not primitive)
+  d_support->primitivize(b,descentSet(y));
+  // copy to list
+  e.reserve(e.size()+b.size()); // ensure tight fit after copy
+  std::copy(b.begin(),b.end(),back_inserter(e));
+
 }
 
 
@@ -841,34 +896,34 @@ void KLContext::writeKLStore (std::ostream& out) const
 /* methods of KLPolEntry */
 
 
-  /*!
-    \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
+/*!
+  \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
 
-    The function is in fact evaluation of the polynomial (with coefficients
-    interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
-    calculated quickly (without multiplications) and which gives a good spread
-    (which is not the case if 2105633 is replaced by a small number, because
-    the evaluation values will not grow fast enough for low degree
-    polynomials!).
+  The function is in fact evaluation of the polynomial (with coefficients
+  interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
+  calculated quickly (without multiplications) and which gives a good spread
+  (which is not the case if 2105633 is replaced by a small number, because
+  the evaluation values will not grow fast enough for low degree
+  polynomials!).
 
-  */
+*/
 inline size_t KLPolEntry::hashCode(size_t modulus) const
-  { const polynomials::Polynomial<KLCoeff>& P=*this;
-    if (P.isZero()) return 0;
-    polynomials::Degree i=P.degree();
-    size_t h=P[i]; // start with leading coefficient
-    while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
-    return h;
-  }
+{ const polynomials::Polynomial<KLCoeff>& P=*this;
+  if (P.isZero()) return 0;
+  polynomials::Degree i=P.degree();
+  size_t h=P[i]; // start with leading coefficient
+  while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
+  return h;
+}
 
 bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
- {
-   if (degree()!=e.degree()) return true;
-   if (isZero()) return false; // since degrees match
-   for (polynomials::Degree i=0; i<=degree(); ++i)
-     if ((*this)[i]!=e[i]) return true;
-   return false; // no difference found
- }
+{
+  if (degree()!=e.degree()) return true;
+  if (isZero()) return false; // since degrees match
+  for (polynomials::Degree i=0; i<=degree(); ++i)
+    if ((*this)[i]!=e[i]) return true;
+  return false; // no difference found
+}
 
 
 
@@ -1112,7 +1167,7 @@ MuCoeff Helper::goodDescentMu(BlockElt x, BlockElt y, size_t s) const
 
   switch (descentValue(s,x)) {
   case DescentStatus::ImaginaryCompact: {
-    return 0;
+    return MuCoeff(0);
   }
   case DescentStatus::ComplexDescent: {
     BlockElt x1 = cross(s,x);
@@ -1187,62 +1242,6 @@ MuCoeff Helper::lengthOneMu(BlockElt x, BlockElt y) const
 
   // if we get here, x is extremal w.r.t. y
   return recursiveMu(x,y);
-}
-
-void KLContext::makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const
-
-/*!
-  \brief Puts in e the list of all x extremal w.r.t. y.
-
-  Explanation: this means that either x = y, or length(x) < length(y),
-  and every descent for y is a descent for x.
-*/
-
-{
-  using namespace bitmap;
-
-  BitMap b(size());
-  size_t c = d_support->lengthLess(length(y));
-
-  b.fill(c);     // start with all elements < y in length
-  b.insert(y);   // and y itself
-
-  // extremalize (filter out those that are not extremal)
-  d_support->extremalize(b,descentSet(y));
-
-  // copy from bitset b to list e
-  e.reserve(e.size()+b.size()); // ensure tight fit after copy
-  std::copy(b.begin(),b.end(),back_inserter(e));
-
-  return;
-}
-
-void KLContext::makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const
-
-/*!
-  \brief Puts in e the list of all x primitive w.r.t. y.
-
-  Explanation: this means that either x = y, or length(x) < length(y),
-  and every descent for y is either a descent, or an imaginary type II
-  ascent for x.
-*/
-
-{
-  using namespace bitmap;
-
-  BitMap b(size());
-  size_t c = d_support->lengthLess(length(y));
-
-  b.fill(c);     // start with all elements < y in length
-  b.insert(y);   // and y itself
-
-  // primitivize (filter out those that are not primitive)
-  d_support->primitivize(b,descentSet(y));
-  // copy to list
-  e.reserve(e.size()+b.size()); // ensure tight fit after copy
-  std::copy(b.begin(),b.end(),back_inserter(e));
-
-  return;
 }
 
 MuCoeff Helper::recursiveMu(BlockElt x, BlockElt y) const
@@ -1410,7 +1409,6 @@ void Helper::completePacket(BlockElt y)
   if (not empty.empty()) // we are not done
     fillThickets(y);
 
-  return;
 }
 
 void Helper::directRecursion(BlockElt y, size_t s)
@@ -1438,7 +1436,6 @@ void Helper::directRecursion(BlockElt y, size_t s)
   // write result
   writeRow(klv,e,y);
 
-  return;
 }
 
 void Helper::fill()
@@ -1525,7 +1522,6 @@ void Helper::fill()
   std::cerr << std::endl;
 #endif
 
-  return;
 }
 
 void Helper::fillKLRow(BlockElt y)
@@ -1565,7 +1561,6 @@ void Helper::fillKLRow(BlockElt y)
   if (not done)
     completePacket(y);
 
-  return;
 }
 
 void Helper::fillMuRow(BlockElt y)
@@ -1604,7 +1599,7 @@ void Helper::fillMuRow(BlockElt y)
     if ((lx&1ul) == (ly&1ul))
       continue;
     size_t d = (ly-lx-1)/2;
-    KLPtr klp = d_kl[y][j];
+    KLIndex klp = d_kl[y][j];
     if (isZero(klp))
       continue;
 
@@ -1625,7 +1620,6 @@ void Helper::fillMuRow(BlockElt y)
       d_mu[y].push_back(std::make_pair(x,mu));
   }
 
-  return;
 }
 
 void Helper::fillThickets(BlockElt y)
@@ -1675,7 +1669,6 @@ void Helper::fillThickets(BlockElt y)
       thicket.fill();
     }
 
-  return;
 }
 
 void Helper::muCorrection(std::vector<KLPol>& klv,
@@ -1737,7 +1730,6 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 
   }
 
-  return;
 }
 
 void Helper::recursionRow(std::vector<KLPol>& klv,
@@ -1821,7 +1813,6 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   // do mu-correction
   muCorrection(klv,e,y,s);
 
-  return;
 }
 
 void Helper::writeRow(const std::vector<KLPol>& klv,
@@ -2057,7 +2048,7 @@ bool Thicket::ascentCompute(BlockElt x, size_t pos)
     return false;
 
   BlockEltPair x1 = d_helper->cayley(s,x);
-  KLPol pol =klPol(x1.first,pos);
+  KLPol pol = klPol(x1.first,pos);
   pol.safeAdd(klPol(x1.second,pos));
 
   if (not pol.isZero()) { // write pol
@@ -2096,7 +2087,6 @@ void Thicket::edgeCompute(BlockElt x, size_t pos, const Edge& e)
     *--d_firstPrim[pos] = x;
   }
 
-  return;
 }
 
 void Thicket::fill()
@@ -2178,7 +2168,6 @@ void Thicket::fill()
     d_helper->nr_of_prim_nulls += d_firstPrim[j]-d_prim[j].begin();
   }
 
-  return;
 }
 
 void Thicket::fillXList()
@@ -2202,7 +2191,6 @@ void Thicket::fillXList()
   d_xlist.reserve(xs.size());
   copy(xs.begin(),xs.end(),std::back_inserter(d_xlist));
 
-  return;
 }
 
   }
@@ -2363,10 +2351,9 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
     }
   }
 
-  return;
 }
 
-}
+} // namespace kl
 
 /*****************************************************************************
 

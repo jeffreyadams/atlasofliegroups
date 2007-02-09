@@ -144,7 +144,7 @@ class KLPolEntry : public KLPol
   class Thicket;
 
 
-    typedef hashtable::HashTable<KLPolEntry,KLIndex> KLHashStore;
+  typedef hashtable::HashTable<KLPolEntry,KLIndex> KLHashStore;
 
   class Helper
   : public KLContext
@@ -440,7 +440,7 @@ type II imaginary for x.
     /*!
 \brief Pointer to the KL polynomial one.
     */
-    KLPtr one() const {
+    KLIndex one() const {
       return d_helper->d_one;
     }
 
@@ -468,7 +468,7 @@ type II imaginary for x.
     /*!
 \brief Pointer to the KL polynomial zero.
     */
-    KLPtr zero() const {
+    KLIndex zero() const {
       return d_helper->d_zero;
     }
 
@@ -546,7 +546,7 @@ list of elements primitive with respect to some y' in the Thicket.
       return not d_stack.empty();
     }
 
-    size_t operator* () const { // current vertex index, or th.size() at end
+    size_t operator* () const { // current vertex index, or size() at end
       return d_pos;
     }
 
@@ -564,7 +564,7 @@ list of elements primitive with respect to some y' in the Thicket.
 
 /*****************************************************************************
 
-        Chapter I -- Mehtods of the KLContext, KLPolEntry and KLPool classes.
+        Chapter I -- Methods of the KLContext, KLPolEntry and KLPool classes.
 
  *****************************************************************************/
 
@@ -840,14 +840,6 @@ bitmap::BitMap KLContext::primMap (BlockElt y) const
 
   return result;
 }
-
-// this is a small auxiliary function, writing a 32-bit value as 4 bytes
-
-/* this assumes sizeof(unsigned int)>=4 (if the inequality is strict, not the
-   whole value is written, but we do not call this function wilth values
-   exceeding 2^32.)
-   If you are using a 16 bits machine, this program is not for you, sorry.
-*/
 
 void KLContext::writeKLRow (BlockElt y, std::ostream& out) const
 {
@@ -1203,11 +1195,7 @@ void KLPool::push_back(const KLPol& p)
 } // namespace kl
 
 
-/*****************************************************************************
-
-        Chapter II -- Methods of the Helper class.
-
- *****************************************************************************/
+/* Chapter II -- Methods of the Helper class.*/
 
 namespace kl {
   namespace helper {
@@ -1785,7 +1773,7 @@ void Helper::fillMuRow(BlockElt y)
     if ((lx&1ul) == (ly&1ul))
       continue;
     size_t d = (ly-lx-1)/2;
-    KLPtr klp = d_kl[y][j];
+    KLIndex klp = d_kl[y][j];
     if (isZero(klp))
       continue;
 
@@ -2236,7 +2224,7 @@ bool Thicket::ascentCompute(BlockElt x, size_t pos)
     return false;
 
   BlockEltPair x1 = d_helper->cayley(s,x);
-  KLPol pol =klPol(x1.first,pos);
+  KLPol pol = klPol(x1.first,pos);
   pol.safeAdd(klPol(x1.second,pos));
 
   if (not pol.isZero()) { // write pol
