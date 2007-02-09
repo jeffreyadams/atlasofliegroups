@@ -107,22 +107,24 @@ template<typename C> class Polynomial {
      safety concern, but we prefer not to introduce useless changes to kl.cpp
   */
 
-  void safeAdd(const Polynomial&, Degree d = 0, C c = C(1));
+  void safeAdd(const Polynomial& p, Degree d, C c); // *this += c*q^d*p
+  void safeAdd(const Polynomial& p, Degree d = 0);  // *this += q^d*p
 
-  void safeSubtract(const Polynomial& q, Degree d = 0, C c = C(1))
-    { safeAdd(q,d,-c); }
+  void safeSubtract(const Polynomial& p, Degree d, C c) { safeAdd(p,d,-c); }
+  void safeSubtract(const Polynomial& p, Degree d = 0 );
 
   // and some variants using PolRef<C> instead of const Polynomial&
 
-  void safeAdd(PolRef<C>, Degree d = 0, C c = C(1));
+  void safeAdd(PolRef<C> p, Degree d, C c); // *this += c*q^d*p
+  void safeAdd(PolRef<C> p, Degree d = 0);  // *this += q^d*p
 
-  void safeSubtract(PolRef<C> q, Degree d = 0, C c = C(1))
-    { safeAdd(q,d,-c); }
+  void safeSubtract(PolRef<C> p, Degree d, C c) { safeAdd(p,d,-c); }
+  void safeSubtract(PolRef<C> p, Degree d = 0 );
 
 };
 
 /* the class PolRef<C> simulates 'const Polynomial<C>&' when no actual such
-   polynomial is present in memory, a sequence containing all non-zero
+   polynomial is present in memory, but a sequence containing all non-zero
    coefficients is
 */
 

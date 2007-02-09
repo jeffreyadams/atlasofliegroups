@@ -90,8 +90,8 @@ void Polynomial<C>::adjustSize()
 /*!
   \brief Adds x^d.c.q, to *this
 
-  NOTE: we need to be careful in the case where q = *this, but we can
-  avoid making a copy, by doing the addition top-to-bottom.
+  NOTE: we need to be careful in the case where &q == this and d>0,
+  but we can avoid making a copy, by doing the addition top-to-bottom.
 */
 
 template<typename C>
@@ -103,32 +103,107 @@ void Polynomial<C>::safeAdd(const Polynomial& q, Degree d, C c)
   if (q.d_data.size()+d > d_data.size())
     d_data.resize(q.d_data.size()+d,C(0));
 
-  for (size_t j = q.degree()+1; j-->0;) {
-    C a = q[j];
+  typename std::vector<C>::const_iterator src(q.d_data.end());
+  typename std::vector<C>::iterator dst(d_data.begin()+q.d_data.size()+d);
+
+  while (src>q.d_data.begin()) {
+    C a = *--src;
     a*=c;
-    d_data[j+d]+=a;
+    *--dst +=a;
   }
 
   // set degree
   adjustSize();
 }
 
+// specialisation for the common case c==1
 template<typename C>
-void Polynomial<C>::safeAdd(PolRef<C> q, Degree d, C c)
+void Polynomial<C>::safeAdd(const Polynomial& q, Degree d)
 {
   if (q.isZero()) return; // do nothing
 
   // make sure d_data has all the coefficients to be modified
-  if (q.end()+d > d_data.size()) d_data.resize(q.end()+d, C(0) );
+  if (q.d_data.size()+d > d_data.size())
+    d_data.resize(q.d_data.size()+d,C(0));
 
-  for (size_t j = q.end(); j-->0;) d_data[j+d] += q[j]*c;
+  typename std::vector<C>::const_iterator src(q.d_data.end());
+  typename std::vector<C>::iterator dst(d_data.begin()+q.d_data.size()+d);
+
+  while (src>q.d_data.begin()) *--dst += *--src;
 
   // set degree
   adjustSize();
 }
 
+// another specialisation for subtraction
+template<typename C>
+void Polynomial<C>::safeSubtract(const Polynomial& q, Degree d)
+{
+  if (q.isZero()) return; // do nothing
+
+  // make sure d_data has all the coefficients to be modified
+  if (q.d_data.size()+d > d_data.size())
+    d_data.resize(q.d_data.size()+d,C(0));
+
+  typename std::vector<C>::const_iterator src(q.d_data.end());
+  typename std::vector<C>::iterator dst(d_data.begin()+q.d_data.size()+d);
+
+  while (src>q.d_data.begin()) *--dst -= *--src;
+
+  // set degree
+  adjustSize();
+}
+
+// general case for PolRef<C> argument (which does not provide iterators)
+template<typename C>
+void Polynomial<C>::safeAdd(PolRef<C> q, Degree d, C c)
+{
+  if (q.isZero()) return; // do nothing
+
+  // extend d_data if necessary (note that here q.end() is a number)
+  if (q.end()+d > d_data.size()) d_data.resize(q.end()+d, C(0) );
+
+  typename std::vector<C>::iterator dst(d_data.begin()+q.end()+d);
+  for (size_t j = q.end(); j-->0;) *--dst += q[j]*c;
+
+  // set degree
+  adjustSize();
+}
+
+// specialisation for the common case c==1
+template<typename C>
+void Polynomial<C>::safeAdd(PolRef<C> q, Degree d)
+{
+  if (q.isZero()) return; // do nothing
+
+  // extend d_data if necessary (note that here q.end() is a number)
+  if (q.end()+d > d_data.size()) d_data.resize(q.end()+d, C(0) );
+
+  typename std::vector<C>::iterator dst(d_data.begin()+q.end()+d);
+  for (size_t j = q.end(); j-->0;) *--dst += q[j];
+
+  // set degree
+  adjustSize();
+}
+
+// and a last specialisation for subtraction
+template<typename C>
+void Polynomial<C>::safeSubtract(PolRef<C> q, Degree d)
+{
+  if (q.isZero()) return; // do nothing
+
+  // extend d_data if necessary (note that here q.end() is a number)
+  if (q.end()+d > d_data.size()) d_data.resize(q.end()+d, C(0) );
+
+  typename std::vector<C>::iterator dst(d_data.begin()+q.end()+d);
+  for (size_t j = q.end(); j-->0;) *--dst -= q[j];
+
+  // set degree
+  adjustSize();
+}
 
 } // namespace polynomials
+
 
 /*****************************************************************************
 
