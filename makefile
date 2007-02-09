@@ -119,7 +119,7 @@ sources/interface/emptymode.o: $(sources)
 # also is different
 atlas.exe: $(objects)
 ifeq ($(profile),true)
-	$(CXX) -pg -o atlas.exe $(objects) $(LDFLAGS)
+	$(CXX) -pg -o atlas.exe $(objects) $(rlincludes) $(LDFLAGS)
 else
 	$(CXX) -o atlas.exe $(objects) $(rlincludes) $(LDFLAGS)
 endif
