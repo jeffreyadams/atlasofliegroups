@@ -1736,25 +1736,21 @@ void Helper::fillMuRow(BlockElt y)
 
   size_t ly = length(y);
 
-  // do cases of length < ly-1
-  for (size_t j = 0; j < e.size(); ++j) {
-    BlockElt x = e[j];
-    size_t lx = length(x);
-    if (lx >= ly-1)
-      break;
-    // check that lx and ly have opposite parity
-    if ((lx&1ul) == (ly&1ul))
-      continue;
-    size_t d = (ly-lx-1)/2;
-    KLIndex klp = d_kl[y][j];
-    if (isZero(klp))
-      continue;
+  PrimitiveRow::const_iterator start= e.begin();
+  // traverse lengths of opposite parity, up to ly-3
+  for (size_t lx=(ly-1)%2,d = (ly-1)/2; d>0; --d,lx+=2) {// d=(ly-1-lx)/2
 
-    KLPolRef p=d_store[klp];
-    if (p.degree() < d)
-      continue;
-    // if we get here, we found a mu-coefficient for x
-    d_mu[y].push_back(std::make_pair( x , p[d] ));
+    PrimitiveRow::const_iterator stop =
+      std::lower_bound(start,e.end(),d_support->lengthLess(lx+1));
+    for (start= std::lower_bound(start,stop,d_support->lengthLess(lx));
+	 start<stop; ++start) {
+      BlockElt x = *start;
+      KLIndex klp = d_kl[y][start-e.begin()];
+
+      KLPolRef p=d_store[klp];
+      if (p.degree()== d) // then we have found a mu-coefficient for x
+	d_mu[y].push_back(std::make_pair( x , p[d] ));
+    }
   }
 
   // do cases of length ly-1
