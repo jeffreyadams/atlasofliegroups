@@ -177,7 +177,6 @@ class KLPolEntry : public KLPol
     }
 
     //accessors
-    MuCoeff ascentMu(BlockElt x, BlockElt y, size_t s) const;
 
     /*!
  \brief Cayley transform of block element y through simple root s.
@@ -219,8 +218,6 @@ of pair of integers specifying block element y.
 
     size_t firstDirectRecursion(BlockElt y) const;
 
-    MuCoeff goodDescentMu(BlockElt x, BlockElt y, size_t s) const;
-
     blocks::BlockEltPair inverseCayley(size_t s, BlockElt y) const {
       return d_support->block().inverseCayley(s,y);
     }
@@ -236,6 +233,10 @@ of pair of integers specifying block element y.
 		   klsupport::PrimitiveRow::const_iterator p_begin,
 		   klsupport::PrimitiveRow::const_iterator p_end) const;
 
+    inline MuCoeff ascentMu(BlockElt x, BlockElt y, size_t s) const;
+
+    inline MuCoeff goodDescentMu(BlockElt x, BlockElt y, size_t s) const;
+
     MuCoeff lengthOneMu(BlockElt x, BlockElt y) const;
 
     /*!
@@ -245,8 +246,6 @@ integers specifying block element y.
     size_t orbit(BlockElt y) const {
       return d_support->block().x(y);
     }
-
-    MuCoeff recursiveMu(BlockElt x, BlockElt y) const;
 
     MuCoeff type2Mu(BlockElt x, BlockElt y) const;
 
@@ -674,23 +673,15 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 {
   using namespace klsupport;
 
-  typedef PrimitiveRow::const_iterator EI;
-
   const PrimitiveRow& pr = d_prim[y];
   const KLRow& klr = d_kl[y];
 
-  if (d_support->primitivize(x,descentSet(y))) {
-    EI xptr = std::lower_bound(pr.begin(),pr.end(),x);
-    if (xptr != pr.end() and *xptr == x) { // result is nonzero
-      size_t xpos = xptr - pr.begin();
-      return d_store[klr[xpos]];
-    } else {
-      return d_store[d_zero];
-    }
-  }
-
-  // if we get here, the primitivization hit a real compact ascent
-  return d_store[d_zero];
+  x=d_support->primitivize(x,descentSet(y));
+  if (x>y) return d_store[d_zero]; // includes case x==blocks::UndefBlock
+  PrimitiveRow::const_iterator xptr = std::lower_bound(pr.begin(),pr.end(),x);
+  if (xptr == pr.end() or *xptr != x) // not found
+    return d_store[d_zero];
+  return d_store[klr[xptr - pr.begin()]];
 }
 
 MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
@@ -1222,44 +1213,6 @@ Helper::Helper(const KLContext& kl)
 }
 
 /******** accessors **********************************************************/
-MuCoeff Helper::ascentMu(BlockElt x, BlockElt y, size_t s) const
-
-/*!
-  \brief Computes mu(x,y) in a good ascent situation.
-
-  Preconditions: l(y) > 0; l(x) = l(y)-1; s is an ascent for x w.r.t. y;
-
-  Explanation: this is the situation where mu(x,y) is directly expressible.
-  The point is that x will ascend to an element of the same length as y,
-  so that the corresponding k-l polynomial is zero unless x ascends to y.
-*/
-
-{
-  using namespace blocks;
-  using namespace descents;
-
-  switch (descentValue(s,x)) {
-  case DescentStatus::ComplexAscent: {
-    BlockElt x1 = cross(s,x);
-    return x1 == y ? 1 : 0;
-  }
-  case DescentStatus::RealNonparity: {
-    return 0;
-  }
-  case DescentStatus::ImaginaryTypeI: {
-    BlockElt x1 = cayley(s,x).first;
-    return x1 == y ? 1 : 0;
-  }
-  case DescentStatus::ImaginaryTypeII: {
-    BlockEltPair x1 = cayley(s,x);
-    // mu(x,y) = mu(x1.first,y) + mu(x1.second,y)
-    return (x1.first == y or x1.second == y) ? 1 : 0;
-  }
-  default: // this cannot happen
-    assert(false);
-    return MuCoeff(0); // keep compiler happy
-  }
-}
 
 size_t Helper::firstDirectRecursion(BlockElt y) const
 
@@ -1284,7 +1237,75 @@ size_t Helper::firstDirectRecursion(BlockElt y) const
   return rank();
 }
 
-MuCoeff Helper::goodDescentMu(BlockElt x, BlockElt y, size_t s) const
+KLPolRef Helper::klPol(BlockElt x, BlockElt y,
+		       KLRow::const_iterator klv,
+		       klsupport::PrimitiveRow::const_iterator p_begin,
+		       klsupport::PrimitiveRow::const_iterator p_end) const
+
+/*!
+  \brief Returns the Kazhdan-Lusztig polynomial for x corresponding to
+  the given row.
+
+  Precondition: klv holds the tail of the set of primitive Kazhdan-Lusztig
+  polynomials for y, enough to find the required one by elementary lookup;
+  [p_begin,p_end[ is the corresponding range of primitive elements.
+
+  Algorithm: primitivize x w.r.t. the descents in y; if a real nonparity
+  situation is encountered, return zero; otherwise look up the primitive x in
+  the range and return the corresponding element from klv
+*/
+
+{
+  BlockElt xp = d_support->primitivize(x,descentSet(y));
+
+  if (xp>y) return d_store[d_zero]; // includes case xp==blocks::UndefBlock
+  klsupport::PrimitiveRow::const_iterator xptr =
+    std::lower_bound(p_begin,p_end,xp);
+  if (xptr == p_end or *xptr != xp) return d_store[d_zero];
+  return d_store[klv[xptr-p_begin]];
+}
+
+
+inline MuCoeff Helper::ascentMu(BlockElt x, BlockElt y, size_t s) const
+
+/*!
+  \brief Computes mu(x,y) in a good ascent situation.
+
+  Preconditions: l(y) > 0; l(x) = l(y)-1; s is an ascent for x w.r.t. y;
+
+  Explanation: this is the situation where mu(x,y) is directly expressible.
+  The point is that x will ascend to an element of the same length as y,
+  so that the corresponding k-l polynomial is zero unless x ascends to y.
+*/
+
+{
+  using namespace blocks;
+  using namespace descents;
+
+  switch (descentValue(s,x)) {
+  case DescentStatus::ComplexAscent: {
+    BlockElt x1 = cross(s,x);
+    return x1 == y ? MuCoeff(1) : MuCoeff(0);
+  }
+  case DescentStatus::RealNonparity: {
+    return MuCoeff(0);
+  }
+  case DescentStatus::ImaginaryTypeI: {
+    BlockElt x1 = cayley(s,x).first;
+    return x1 == y ? MuCoeff(1) : MuCoeff(0);
+  }
+  case DescentStatus::ImaginaryTypeII: {
+    BlockEltPair x1 = cayley(s,x);
+    // mu(x,y) = mu(x1.first,y) + mu(x1.second,y)
+    return (x1.first == y or x1.second == y) ? MuCoeff(1) : MuCoeff(0);
+  }
+  default: // this cannot happen
+    assert(false);
+    return MuCoeff(0); // keep compiler happy
+  }
+}
+
+inline MuCoeff Helper::goodDescentMu(BlockElt x, BlockElt y, size_t s) const
 
 /*!
   \brief Gets mu(x,y) by a good descent recursion.
@@ -1331,38 +1352,6 @@ MuCoeff Helper::goodDescentMu(BlockElt x, BlockElt y, size_t s) const
   }
 }
 
-KLPolRef Helper::klPol(BlockElt x, BlockElt y,
-		       KLRow::const_iterator klv,
-		       klsupport::PrimitiveRow::const_iterator p_begin,
-		       klsupport::PrimitiveRow::const_iterator p_end) const
-
-/*!
-  \brief Returns the Kazhdan-Lusztig polynomial for x corresponding to
-  the given row.
-
-  Precondition: klv holds the tail of the set of primitive Kazhdan-Lusztig
-  polynomials for y, enough to find the required one by elementary lookup;
-  [p_begin,p_end[ is the corresponding range of primitve elements.
-
-  Algorithm: primitivize x w.r.t. the descents in y; if a real compact
-  situation is encountered, return zero; otherwise look up the primitive
-  x in the extremal range.
-*/
-
-{
-  BlockElt xp = x;
-
-  if (d_support->primitivize(xp,descentSet(y))) {
-    if (std::binary_search(p_begin,p_end,xp)) { // result is nonzero
-      size_t xpos = std::lower_bound(p_begin,p_end,xp) - p_begin;
-      return d_store[klv[xpos]];
-    } else {
-      return d_store[d_zero];
-    }
-  } else {
-    return d_store[d_zero];
-  }
-}
 
 MuCoeff Helper::lengthOneMu(BlockElt x, BlockElt y) const
 
@@ -1373,50 +1362,37 @@ MuCoeff Helper::lengthOneMu(BlockElt x, BlockElt y) const
   lengths have already been filled in.
 
   Explanation: these are the mu-values that can come up in possibly
-  non-extremal situations. They can be computed recursively by
-  formulas using only other mu-values of the same kind.
+  non-extremal situations. The value can be obtaind simply as the constant
+  coefficient of klPol(x,y), but for efficiency reasons we handle some easy
+  cases directly, avoiding the cost of calling klPol. In fact in all the cases
+  these values of mu can be, and used to be, computed recursively by formulas
+  using only other mu-values of the same kind.
 */
 
 {
   // look if x is extremal w.r.t. y
   size_t s = firstAscent(descent(x),descent(y),rank());
 
-  if (s != rank())
-    return ascentMu(x,y,s);
+  if (s != rank()) return ascentMu(x,y,s);
 
   // if we get here, x is extremal w.r.t. y
-  return recursiveMu(x,y);
-}
-
-MuCoeff Helper::recursiveMu(BlockElt x, BlockElt y) const
-
-/*!
-  \brief Gets mu(x,y) by direct recursion.
-
-  Precondition: length(y) > 0; length(x) = length(y)-1; all previous
-  mu-rows have been filled in.
-
-  Explanation: the mu-coefficients with length difference 1 are not
-  guaranteed to be in the k-l table, so they have to be computed directly.
-  This is the "hard case" in lengthOneMu().
-*/
-
-{
-  using namespace blocks;
-  using namespace descents;
-
-  size_t s = firstDirectRecursion(y);
-
+  s = firstDirectRecursion(y);
   if (s != rank()) // the answer is another mu
     return goodDescentMu(x,y,s);
 
-  return type2Mu(x,y);
-}
+  // Now that the easy cases are gone, just lookup the KL polynomial
+  KLPolRef p=klPol(x,y);
+  return p.isZero() ? MuCoeff(0) : p[0];
 
+  // the final case used to be: return type2Mu(x,y);
+
+}
 MuCoeff Helper::type2Mu(BlockElt x, BlockElt y) const
 
 /*!
   \brief Gets mu(x,y) by type II recursion.
+
+  This code is currently unused (see lengthOneMu above).
 
   Precondition: length(y) > 0; length(x) = length(y)-1; all previous
   mu-rows have been filled in; x is extremal w.r.t. y, and all descents
@@ -1688,9 +1664,6 @@ void Helper::fill()
   std::cerr << "d_store.size() = " << d_store.size()
             << ", prim_size = " << prim_size  << std::endl;
 
-  system(command.str().c_str());
-  // this is 'grep VmData /proc/<process id>/status'
-
   std::cerr << std::endl;
 #endif
 
@@ -1790,6 +1763,10 @@ void Helper::fillMuRow(BlockElt y)
 
   for (BlockElt x = x_begin; x < x_end; ++x) {
     MuCoeff mu = lengthOneMu(x,y);
+    /*
+    KLPolRef p=klPol(x,y);
+    assert(mu==(p.isZero() ? MuCoeff(0) : p[0]))
+    */
     if (mu!=MuCoeff(0))
       d_mu[y].push_back(std::make_pair(x,mu));
   }

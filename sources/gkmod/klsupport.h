@@ -107,11 +107,9 @@ class KLSupport {
 
   void primitivize(bitmap::BitMap&, const bitset::RankFlags&) const;
 
-  bool primitivize(BlockElt& x, const bitset::RankFlags& A) const {
-    if (d_primitivize[A.to_ulong()][x] == blocks::UndefBlock) return false;
-    x = d_primitivize[A.to_ulong()][x];
-    return true;
-}
+  BlockElt primitivize(BlockElt& x, const bitset::RankFlags& A) const {
+    return d_primitivize[A.to_ulong()][x];
+  }
 
   size_t rank() const {
     return d_rank;
