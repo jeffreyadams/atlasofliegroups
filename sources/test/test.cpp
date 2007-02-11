@@ -168,7 +168,6 @@ void addTestCommands<emptymode::EmptymodeTag>
   if (testMode == EmptyMode)
     mode.add("test",test_f);
 
-  return;
 }
 
 template<>
@@ -199,7 +198,6 @@ void addTestCommands<mainmode::MainmodeTag>
   mode.add("roots_rootbasis",roots_rootbasis_f);
   mode.add("rootdatum",rootdatum_f);
 
-  return;
 }
 
 template<>
@@ -236,7 +234,6 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("wcells",wcells_f);
   mode.add("wgraph",wgraph_f);
 
-  return;
 }
 
 template<> void addTestHelp<emptymode::EmptymodeTag>
@@ -322,7 +319,6 @@ template<> void addTestHelp<mainmode::MainmodeTag>
   insertTag(t,"roots_rootbasis",test_tag);
   insertTag(t,"rootdatum",test_tag);
 
-  return;
 }
 
 template<> void addTestHelp<realmode::RealmodeTag>
@@ -386,7 +382,6 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"wcells",wcells_tag);
   insertTag(t,"wgraph",wgraph_tag);
 
-  return;
 }
 
 }
@@ -397,84 +392,72 @@ void block_h()
 
 {
   io::printFile(std::cerr,"block.help",io::MESSAGE_DIR);
-  return;
 }
 
 void blockd_h()
 
 {
   io::printFile(std::cerr,"blockd.help",io::MESSAGE_DIR);
-  return;
 }
 
 void blocku_h()
 
 {
   io::printFile(std::cerr,"blocku.help",io::MESSAGE_DIR);
-  return;
 }
 
 void cmatrix_h()
 
 {
   io::printFile(std::cerr,"cmatrix.help",io::MESSAGE_DIR);
-  return;
 }
 
 void primkl_h()
 
 {
   io::printFile(std::cerr,"primkl.help",io::MESSAGE_DIR);
-  return;
 }
 
 void kgb_h()
 
 {
   io::printFile(std::cerr,"kgb.help",io::MESSAGE_DIR);
-  return;
 }
 
 void klbasis_h()
 
 {
   io::printFile(std::cerr,"klbasis.help",io::MESSAGE_DIR);
-  return;
 }
 
 void kllist_h()
 
 {
   io::printFile(std::cerr,"kllist.help",io::MESSAGE_DIR);
-  return;
 }
 
 void klwrite_h()
 
 {
   io::printFile(std::cerr,"klwrite.help",io::MESSAGE_DIR);
-  return;
 }
 
 void blockwrite_h()
 
 {
   io::printFile(std::cerr,"blockwrite.help",io::MESSAGE_DIR);
-  return;
 }
 
 void wcells_h()
 
 {
   io::printFile(std::cerr,"wcells.help",io::MESSAGE_DIR);
-  return;
 }
 
 void wgraph_h()
 
 {
   io::printFile(std::cerr,"wgraph.help",io::MESSAGE_DIR);
-  return;
 }
 
 }
@@ -549,7 +532,6 @@ void block_f()
   catch (InputError& e) {
     e("aborted");
   }
-  return;
 }
 
 void blockd_f()
@@ -601,7 +583,6 @@ void blockd_f()
     e("aborted");
   }
 
-  return;
 }
 
 void blocku_f()
@@ -648,7 +629,6 @@ void blocku_f()
     e("aborted");
   }
 
-  return;
 }
 
 void blockstabilizer_f()
@@ -697,7 +677,6 @@ void blockstabilizer_f()
   }
 
 
-  return;
 }
 
 void cmatrix_f()
@@ -717,7 +696,6 @@ void cmatrix_f()
   cartanMatrix(q,currentRootDatum());
   printMatrix(std::cout,q);
 
-  return;
 }
 
 void components_f()
@@ -741,7 +719,6 @@ void components_f()
   else
     std::cout << "group is connected" << std::endl;
 
-  return;
 }
 
 void coroots_rootbasis_f()
@@ -751,19 +728,23 @@ void coroots_rootbasis_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace lattice;
-  using namespace latticetypes;
+  try {
+    using namespace basic_io;
+    using namespace lattice;
+    using namespace latticetypes;
 
-  const rootdata::RootDatum& rd = currentRootDatum();
-  ioutils::OutputFile file;
+    const rootdata::RootDatum& rd = currentRootDatum();
+    ioutils::OutputFile file;
 
-  std::vector<Weight> v;
-  baseChange(rd.beginCoroot(),rd.endCoroot(),back_inserter(v),
-	     rd.beginSimpleCoroot(),rd.endSimpleCoroot());
-  seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    std::vector<Weight> v;
+    baseChange(rd.beginCoroot(),rd.endCoroot(),back_inserter(v),
+	       rd.beginSimpleCoroot(),rd.endSimpleCoroot());
+    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 
-  return;
 }
 
 void corder_f()
@@ -784,7 +765,6 @@ void corder_f()
     e("error: memory overflow");
   }
 
-  return;
 }
 
 void primkl_f()
@@ -858,7 +838,6 @@ void primkl_f()
     e("aborted");
   }
 
-  return;
 }
 
 void kgb_f()
@@ -868,22 +847,26 @@ void kgb_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace kgb;
-  using namespace kgb_io;
-  using namespace realmode;
-  using namespace realredgp;
+  try {
+    using namespace basic_io;
+    using namespace kgb;
+    using namespace kgb_io;
+    using namespace realmode;
+    using namespace realredgp;
 
-  RealReductiveGroup& G = currentRealGroup();
-  G.fillCartan();
+    RealReductiveGroup& G = currentRealGroup();
+    G.fillCartan();
 
-  std::cout << "kgbsize: " << G.kgbSize() << std::endl;
-  ioutils::OutputFile file;
+    std::cout << "kgbsize: " << G.kgbSize() << std::endl;
+    ioutils::OutputFile file;
 
-  KGB kgb(G);
-  printKGB(file,kgb);
+    KGB kgb(G);
 
-  return;
+    printKGB(file,kgb);
+  }
+  catch(error::InputError e) {
+    e("aborted");
+  }
 }
 
 void klbasis_f()
@@ -954,8 +937,6 @@ void klbasis_f()
   catch (InputError& e) {
     e("aborted");
   }
-
-  return;
 }
 
 void kllist_f()
@@ -1022,7 +1003,6 @@ void kllist_f()
     e("aborted");
   }
 
-  return;
 }
 
 void klwrite_f()
@@ -1111,17 +1091,23 @@ void klwrite_f()
     KLContext klc(kls);
     klc.fill();
 
-    std::cerr << "Writing matrix rows:\n";
-    for (blocks::BlockElt y=0; y<klc.size(); ++y)
+    if (matrix_out.is_open())
       {
+	std::cerr << "Writing matrix rows:\n";
+	for (blocks::BlockElt y=0; y<klc.size(); ++y)
+	  {
 #if VERBOSE
-	std::cerr << y << '\r';
+	    std::cerr << y << '\r';
 #endif
-      klc.writeKLRow(y,matrix_out);
+	    klc.writeKLRow(y,matrix_out);
+	  }
       }
-    std::cerr << "\nWriting all polynomial coefficients:\n";
-    klc.writeKLStore(coefficient_out);
-    std::cerr<< "Done.\n";
+    if (coefficient_out.is_open())
+      {
+	std::cerr << "\nWriting all polynomial coefficients:\n";
+	klc.writeKLStore(coefficient_out);
+	std::cerr<< "Done.\n";
+      }
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
@@ -1246,19 +1232,23 @@ void poscoroots_rootbasis_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace lattice;
-  using namespace latticetypes;
+  try {
+    using namespace basic_io;
+    using namespace lattice;
+    using namespace latticetypes;
 
-  const rootdata::RootDatum& rd = currentRootDatum();
-  ioutils::OutputFile file;
+    const rootdata::RootDatum& rd = currentRootDatum();
+    ioutils::OutputFile file;
 
-  std::vector<Weight> v;
-  baseChange(rd.beginPosCoroot(),rd.endPosCoroot(),back_inserter(v),
+    std::vector<Weight> v;
+    baseChange(rd.beginPosCoroot(),rd.endPosCoroot(),back_inserter(v),
 	     rd.beginSimpleCoroot(),rd.endSimpleCoroot());
-  seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 
-  return;
 }
 
 void posroots_rootbasis_f()
@@ -1268,19 +1258,23 @@ void posroots_rootbasis_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace lattice;
-  using namespace latticetypes;
+  try {
+    using namespace basic_io;
+    using namespace lattice;
+    using namespace latticetypes;
 
-  const rootdata::RootDatum& rd = currentRootDatum();
-  ioutils::OutputFile file;
+    const rootdata::RootDatum& rd = currentRootDatum();
+    ioutils::OutputFile file;
 
-  std::vector<Weight> v;
-  baseChange(rd.beginPosRoot(),rd.endPosRoot(),back_inserter(v),
-	     rd.beginSimpleRoot(),rd.endSimpleRoot());
-  seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    std::vector<Weight> v;
+    baseChange(rd.beginPosRoot(),rd.endPosRoot(),back_inserter(v),
+	       rd.beginSimpleRoot(),rd.endSimpleRoot());
+    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 
-  return;
 }
 
 void roots_rootbasis_f()
@@ -1290,19 +1284,23 @@ void roots_rootbasis_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace lattice;
-  using namespace latticetypes;
+  try {
+    using namespace basic_io;
+    using namespace lattice;
+    using namespace latticetypes;
 
-  const rootdata::RootDatum& rd = currentRootDatum();
-  ioutils::OutputFile file;
+    const rootdata::RootDatum& rd = currentRootDatum();
+    ioutils::OutputFile file;
 
-  std::vector<Weight> v;
-  baseChange(rd.beginRoot(),rd.endRoot(),back_inserter(v),
-	     rd.beginSimpleRoot(),rd.endSimpleRoot());
-  seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    std::vector<Weight> v;
+    baseChange(rd.beginRoot(),rd.endRoot(),back_inserter(v),
+	       rd.beginSimpleRoot(),rd.endSimpleRoot());
+    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 
-  return;
 }
 
 void rootdatum_f()
@@ -1312,12 +1310,16 @@ void rootdatum_f()
 */
 
 {
-  const rootdata::RootDatum& rd = currentRootDatum();
-  ioutils::OutputFile file;
+  try {
+    const rootdata::RootDatum& rd = currentRootDatum();
+    ioutils::OutputFile file;
 
-  testprint::print(file,rd);
+    testprint::print(file,rd);
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 
-  return;
 }
 
 void wcells_f()
@@ -1392,7 +1394,6 @@ void wcells_f()
     e("aborted");
   }
 
-  return;
 }
 
 void wgraph_f()
@@ -1465,7 +1466,6 @@ void wgraph_f()
     e("aborted");
   }
 
-  return;
 }
 
 void test_f()
@@ -1482,10 +1482,7 @@ void test_f()
   ComplexReductiveGroup& G = currentComplexGroup();
 
   InvolutionSet inv(G);
-
-  return;
 }
 
-}
-
-}
+} // namespace
+} // namespace atlas
