@@ -195,11 +195,10 @@ std::ostream& printMu(std::ostream& strm, const kl::KLContext& klc)
   for (size_t y = 0; y < klc.size(); ++y) {
     const MuRow& mrow = klc.muRow(y);
     strm << std::setw(width) << y << ": ";
-    for (size_t j = 0; j < mrow.size(); ++j) {
-      if (j)
+    for (size_t j = 0; j < mrow.first.size(); ++j) {
+      if (j>0)
 	strm << ",";
-      const MuData& md = mrow[j];
-      strm << "(" << md.first << "," << md.second << ")";
+      strm << "(" << mrow.first[j] << "," << mrow.second[j] << ")";
     }
     strm << std::endl;
   }

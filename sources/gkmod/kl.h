@@ -277,10 +277,9 @@ P_{y,x_i}, numbered as in the list d_prim[y].
   std::vector<KLRow> d_kl;           // list of polynomial pointers
 
   /*!
-\brief Entry d_mu[y] is a list of MuData, which are pairs (x, top
-degree coefficient of P_{y,x}).
+\brief Entry d_mu[y] is a MuRow, which has parallel vectors for x and mu(x,y)
   */
-  std::vector<MuRow> d_mu;           // list of mu-coefficients
+  std::vector<MuRow> d_mu;           // lists of x's and their mu-coefficients
 
   /*!
 \brief Set of KL polynomials.
