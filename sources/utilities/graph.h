@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -78,6 +78,10 @@ class OrientedGraph {
     return d_edges[x];
   }
 
+  Vertex newVertex() {
+    Vertex v=size(); d_edges.push_back(EdgeList()); return v;
+  }
+
   void reset() {
     d_edges.assign(d_edges.size(),EdgeList());
   }
@@ -85,6 +89,11 @@ class OrientedGraph {
   void resize(size_t n) {
     d_edges.resize(n);
   }
+
+  // auxiliary method
+private:
+void addLinks
+  (const std::vector<const EdgeList*>& out, const partition::Partition& pi);
 };
 
 }
