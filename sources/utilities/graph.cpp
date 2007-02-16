@@ -13,6 +13,7 @@
 
 #include <set>
 #include <stack>
+#include <cassert>
 
 #include "bitmap.h"
 
