@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -22,199 +22,239 @@ namespace atlas {
 
         Chapter I -- The OrientedGraph class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
-namespace {
-
-using namespace graph;
-  
-void getClass(const OrientedGraph&, Vertex, bitmap::BitMap&,
-	      partition::Partition&, OrientedGraph* p);
-
-}
 
 namespace graph {
 
 /******** accessors **********************************************************/
-void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* p) const
 
 /*!
-  Synopsis: puts in pi the partition of the vertex set into left cells, and,
-  if p != 0, puts in p the graph of the order relation induced on the quotient.
+  OrientedGraph::cells puts in pi the partition of the vertex set into strong
+  components for the graph, and if gr!=NULL also puts in *gr the graph of the
+  partial order relation induced by our graph on the quotient.
 
-  Explanation: define a preorder relation on the vertices by setting x <= y 
-  iff there is an oriented path from x to y. This function puts in pi the 
-  partition function corresponding to the equivalence classes of this preorder.
-  We use the Tarjan algorithm, explained in one of the Knuth books, but which 
-  I learned from Bill Casselman.
+  Explanation: define a preorder relation on the vertices by setting x <= y
+  iff there is an oriented path from x to y. This function puts in pi the
+  partition function corresponding to the equivalence classes of this
+  preorder, which are called strong components of the directed graph (two
+  vertices are strongly connected if there are oriented paths between them in
+  both directions). We use R. E. Tarjan's algorithm, explained in Knuths's
+  book The Stanford GraphBase, pp. 512-519 (and also in his future volume 4 of
+  The Art of Computer Programming). Fokko explained he had learned this
+  algorithm from Bill Casselman, but unfortunately his rendition was not
+  correct (even though it gave the right results in the vast majority of the
+  cases) so I had to adapt it, MvL.
 
-  The vertices for which the partition function is already defined will
-  be said to be dealt with. These are marked off in an auxiliary bitmap.
-  The algorithm goes as follows. Start with the first vertex that has not
-  been dealt with, say x0. Starting from x0, we are going to examine all
-  vertices y thaat are visible from x0 (i.e., >= x0). There will be a stack of
-  vertices, corresponding to a path originating from x0, such that at each
-  point in time, each vertex y >= x0 which has been examined will be
-  equivalent to an element of the stack; the least such (in the stack
-  ordering) will be called y_min, so that for instance x0_min = 0. We
-  record these values in an additional table, initialized to some inaccessible
-  value (here we use the size of the poset)
+  The strongly connected components are going to be discovered in a
+  highest-first topological order (the strange term "topological order" means
+  some total order compatible with a given partial order), in other words when
+  a strong component is discovered all outgoing edges from it lead to
+  components that were previously discovered. Since the elements of the
+  already discovered components are marked, and edges leading to them are
+  henceforth ignored, the problem at each moment is to try to isolate a strong
+  component with no outgoing edges.
 
-  Now let x be at the top of the stack. Look at the edges originating from
-  x. Ignore the ones that go to vertices which are dealt with. If there
-  are no edges left, x is minimal and is a class by itself; we can take
-  it off, mark it as dealt with, and continue. Otherwise, run through the
-  edges one by one. Let the edge be x->y. If y_min is defined, this means
-  that y has already been examined, and is not dealt with. But each such
-  element is equivalent to an element in the active stack, so y_min should
-  be one of the elements in the active stack, hence x is visible from y_min:
-  in other words, x and y are equivalent, and we set x_min = y_min if
-  y_min < x_min. Otherwise, y is seen for the first time; then we just put
-  it on the stack. When we are done with the edges of x, we have now the
-  value of x_min which is the inf over the edges originating from x of
-  the y_min. If this value is equal to the stack-position of x, we see that x 
-  is minimal in its class, and we get a new class by taking all the successors
-  of x not already dealt with. We then move to the parent of x and continue
-  the process there.
+  The vertices will be traversed in the order of depth-first search. When they
+  are first seen we say the become "active", and some data associated to them
+  is entered on a local vector structure |active| that behaves somewhat like a
+  stack (but we need more liberal access than |std::stack| would provide).
+  When all its descendants have been traverse we shall call a vertex "mature",
+  but in this case it remains in the |active structure. Finally when a strong
+  component is discovered, its elements become "settled"; the information in
+  |active| about them is then discarded. For each vertex |x| we keep a value
+  |rank[x]| which is |0| until |x| becomes active, at which point it becomes
+  the sequence number of |x| during the traversal (for once this numbering
+  starts from 1), and when |x| gets settled we set |rank[x]=infinity|. Nothing
+  particular happens when |x| becomes mature.
 
-  NOTE: I believe that in this process it is not guaranteed that x_min is
-  the actual minimal element of the stack equivalent to x (this is also why
-  we cannot take off a class simply by looking at x_min). The real 
-  interpretation of x_min is: the smallest element of the stack that is visible
-  from y using edges already processed. The important issue here is whether
-  x_min < x or not, and for this we only need to examine whether there is
-  a strict succesor y of x with y_min < x.
+  Extra information is kept for all vertices in |active| (this infomation is
+  accessible for the current vertex during traversal, but is not (easily)
+  accessible given just some Vertex value). We record the Vertex value |v| of
+  the current vertex, the location of its |parent| in |active| to be able to
+  continue the traversal when the vertex matures, and the index |next_edge| up
+  to which its edges have already been considered (for immature vertices).
+  Finally and most importantly, we record for |v| the minimal sequence number
+  |min| of any active vertex that is either |v| itself or can be reached in
+  one step from a mature descendant |d| of |v| (to be exact, this information
+  is incorporated into the |min| value of |v| once the branch of the
+  depth-first search tree from |v| containing |d| matures). When a vertex |v|
+  matures, its unsettled descendants are precisely the active vertices not
+  older than |v|, and |v| is the head of a strong componenent if and only if
+  its |min| value equals its own sequence number |rank[v]|; this means that
+  none of its descendants (including |v| itself) can reach an active vertex
+  older than |v|. When this happens, the unsettled descendants of |v| form the
+  final segment of |active| starting at |v|.
+
+  During the depth-first traversal, there are (apart from the settled vertices
+  that are ignored) two kind of vertex encounters: the initial ones for which
+  the edge leading to it becomes part of the search tree, and the encounters
+  of a vertex that is already active ("cross edges"). In the former case we
+  make the new vertex active, add its information, and make it current. In the
+  latter case we just take note, in the value of |min| for the current vertex,
+  of the fact that the other vertex can be reached . Finally when no edges for
+  the current vertex |x| remain, we must test whether it heads a strong
+  component, and if not update the |min| information of its parent; after that
+  the parent becomes current (again). It remains to prove that the criterion
+  |min==rank[v]| used for decicding whether |v| heads a strong component is
+  always correct; we shall do that below.
 */
-
-{
-  using namespace bitmap;
-
-  BitMap b(size());
-  std::vector<Vertex> min(size(),size());
-
-  pi.resize(size());
-
-  std::stack<Vertex> v;
-  std::stack<size_t> ecount;
-
-  for (Vertex x0 = 0; x0 < size(); ++x0) {
-
-    if (b.isMember(x0)) /* x0 is dealt with */
-      continue;
-
-    v.push(x0);
-    ecount.push(0);
-    min[x0] = 0;
-    size_t t = 1; // stack position
-
-    while(not v.empty()) {
-
-      Vertex x = v.top();
-      Vertex y;
-      const EdgeList& e = edgeList(x);
-
-      for (; ecount.top() < e.size(); ++ecount.top()) {
-	y = e[ecount.top()];
-	if (b.isMember(y))
-	  continue;
-	if (min[y] == size()) // y is new
-	  goto add_to_stack;
-	if (min[x] > min[y])
-	  min[x] = min[y];
-      }
-
-      // at this point we have exhausted the edges of x
-      v.pop();
-      ecount.pop();
-      if (min[x] == t-1) { // take off class
-	getClass(*this,x,b,pi,p);
-      }
-      --t;
-      continue;
-
-    add_to_stack:
-      v.push(y);
-      ecount.push(0);
-      min[y] = t;
-      ++t;
-    }
-  }
-
-  return;
-}
-
-}
-
-/*****************************************************************************
-
-        Chapter II -- Functions local to this module
-
-  ... explain here when it is stable ...
-
-******************************************************************************/
 
 namespace {
+typedef size_t seqno; // sequence number in depth-first traversal
+typedef size_t work_addr; // reference to an active vertex by location
 
-void getClass(const OrientedGraph& g, Vertex y, bitmap::BitMap& b,
-	      partition::Partition& pi, OrientedGraph* p)
+struct info
+{
+  Vertex v;    // identification of vertex in the graph
+  work_addr parent; // location of parent in depth-first traversal
+  size_t next_edge; // index in edge list of next edge to consider
+  seqno min;        // minimal rank of vertex reachable as indicated above
 
-/*!
-  Synopsis: marks off the class of y in b, and, if p !=0, extends the poset
-  p to accomodate the new vertex
+  // constructor
+  info (const Vertex x, work_addr p, seqno rank)
+    : v(x), parent(p), next_edge(0), min(rank) { }
+};
 
-  Precondition: y is the minimal element in its class, in terms of the
-  numbering of the vertices;
+} // namespace
 
-  After the element y has been identified as minimal among the elements not
-  already marked in b, this function marks off the equivalence class of y;
-  these are just the elements visible from y and not already marked in b.
-  The class is also written as a new class in pi.
+void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
+{
+  std::vector<seqno> rank(size(),0);
 
-  NOTE: the new class is always maximal in the poset-so-far, so only one
-  new row of edges needs to be added.
+  const work_addr nil= size(); // impossible index into |active|
+  const seqno infinity= size()+1; // impossible sequence number
+
+  std::vector<info> active;
+
+  pi.resize(size());           // |pi| will be a partition of the vertex set
+  if (gr!=NULL) gr->resize(0); // start induced graph with a clean slate
+
+  for (Vertex x0 = 0; x0 < size(); ++x0)
+  if (rank[x0]<infinity)
+    {
+      seqno count=1;
+      rank[x0]=count++;
+      active.push_back(info(x0,nil,rank[x0])); // x0 has no parent
+
+      work_addr cur_pos=0; // point current position to x0
+
+      while(cur_pos!=nil)
+	{
+	next_x:
+	  info& x = active[cur_pos];
+	  const EdgeList& edges = edgeList(x.v);
+
+	  while (x.next_edge < edges.size())
+	    {
+	      Vertex y = edges[x.next_edge++];
+	      if (rank[y]==0) // y is a fresh vertex
+		{
+		  work_addr y_pos=active.size();
+		  rank[y]=count++;
+		  active.push_back(info(y,cur_pos,rank[y]));
+		  cur_pos=y_pos;
+		  goto next_x;
+		}
+	      else // |y| was seen before (cross edge), or |y| is settled
+		{  // if |y| is settled nothing will happen
+		  if (rank[y] < x.min) // then record that we can reach y
+		    x.min = rank[y];
+		}
+	    } // while (x.next_edge < edges.size())
+
+	  // at this point we have exhausted the edges of |x.v|, it matures
+	  work_addr new_pos=x.parent; // we will back-up to parent of |x| next
+
+	  if (x.min == rank[x.v]) // no older vertex reachable from |x|
+	    { // split off component
+	      pi.newClass(x.v);  // x will be added again in loop, no harm done
+	      unsigned long c= pi(x.v);
+	      std::vector<const EdgeList*> out; // to gather outgoing edges
+	      out.reserve(active.size()-cur_pos);
+	      for (work_addr i=cur_pos; i<active.size(); ++i)
+		{
+		  Vertex y=active[i].v; // the first time |y==x.v|
+		  pi.addToClass(c,y);
+		  rank[y]=infinity;     // |y| is now settled
+		  out.push_back(&edgeList(y));
+		}
+	      // now remove |x| and its descendance from |active|
+	      active.erase(active.begin()+cur_pos,active.end());
+
+	      if (gr!=NULL) gr->addLinks(out,pi);
+	    }
+	  else // |x| matures but does not head a new strong component
+	    {  // note that |x| cannot be |x0|, so active[x.parent] exists
+	      if (x.min < active[x.parent].min) // then update parent info
+		active[x.parent].min=x.min; // what x sees, its parent sees
+	    }
+	  cur_pos=new_pos;
+	}  // while(cur_pos!=nil)
+
+      assert(active.empty());
+
+    } //for (x0) if (rank[x0]<infinity)
+
+}
+
+/*
+
+  We must still show that when |x.min==rank[x.v]| above holds, then |x.v| and
+  all of its unsettled descendants form a strong component. The propagation of
+  the |min| value to parents shows that |x.min==rank[x.v]| implies that none
+  of the descendants of |x.v| gives access to any active vertices older than
+  |x.v| (i.e., with a smaller sequence number). So it remains to show that
+  from any such proper active descendant |y| one _can_ reach |x.v| itself.
+  Since |y| did not head a strong component (otherwise it would have become
+  settled) it gives access to an active vertex strictly older than itself,
+  which must also be a descendant of |x.v|. Iterating, we finally reach |x.v|.
+
+  We must also show that removing the strong component does not change any of
+  the remaining |min| values (of course they stay the same, but their
+  interpretation as minimal sequence number bla bla should also remain valid).
+  But this is simply true because none of the removed vertices has any
+  descendants that remain active, and any removed vertex is newer than any
+  remaining vertex.
 */
 
+
+
+/*
+  The auxiliary method |addLinks| is called above to extend the induced graph
+  on the quotient structure (note how in the public accessor |cells| we made
+  use of our right to call private methods to call the manipulator |addLinks|
+  on a _different_ OrientedGraph!). The argument |out| gives a vector of
+  EdgeList pointers, whose destination vertices must be translated through the
+  parition function |pi| to obtain a set of existing vertices of the induced
+  graph, to which a freshly created vertex should be linked. There will almost
+  certainly be internal links in the component added, which means the new
+  vertex created will also appear among the images by |pi|, but it will be
+  ignored (no loop in the induced graph is created).
+
+  Precondition: all values y=(*out[i])[j] (which are vertices of some _other_
+  graph) have their value |pi(y)| already defined, and |pi(y)<=c| where
+  |c=size()| is the current size of the (induced) graph |*this| (it is
+  therefore also the number of the new vertex that |addLinks will create).
+*/
+
+void OrientedGraph::addLinks
+  (const std::vector<const EdgeList*>& out, const partition::Partition& pi)
 {
-  std::stack<Vertex> toDo;
+  Vertex c=newVertex(); // extend graph by vertex; it now has |c+1| vertices
+  bitmap::BitMap seen(c+1);
+  for (size_t i=0; i<out.size(); ++i)
+    for (size_t j = 0; j < (*out[i]).size(); ++j)
+      seen.insert(pi((*out[i])[j]));
+  seen.remove(c); // exclude any edge from class |c| to itself
+  EdgeList& e = edgeList(c); // the new edge list to define
+  e.reserve(seen.size());
 
-  toDo.push(y);
-  b.insert(y);
-  pi.newClass(y);
-  unsigned long c = pi(y);
-
-  std::set<Vertex> a;
-
-  while (not toDo.empty()) {
-
-    Vertex x = toDo.top();
-    toDo.pop();
-    const EdgeList& e = g.edgeList(x);
-
-    for (size_t j = 0; j < e.size(); ++j) {
-      Vertex z = e[j];
-      if (b.isMember(z)) {
-	if (p and (pi(z) < c)) /* add a new edge to p */
-	  a.insert(pi(z));
-	continue;
-      } else {
-	toDo.push(z);
-	b.insert(z);
-	pi.addToClass(c,z);
-      }
-    }
-  }
-
-  if (p) { // write new edges
-    p->resize(c+1);
-    EdgeList& f = p->edgeList(c);
-    std::copy(a.begin(),a.end(),back_inserter(f));
-  }
-
-  return;
-}
+  // by bitmap iterator's semantics we can thus add edges to set bit positions:
+  std::copy(seen.begin(),seen.end(),back_inserter(e));
 
 }
 
-}
+} // namespace graph
+
+} // namespace atlas
