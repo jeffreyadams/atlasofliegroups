@@ -379,7 +379,7 @@ class BitSetBase<1>::iterator {
   }
 
   bool operator() () const {
-    return d_bits;
+    return d_bits!=0;
   }
 
 // manipulators
