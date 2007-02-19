@@ -403,9 +403,15 @@ wgraph::WGraph wGraph
     } // for (x)
   } // for (y)
 
+  size_t n_edges=0;
+  for (BlockElt y = 0; y < mi.block_size(); ++y)
+    n_edges+=result.edgeList(y).size();
+
   if (max_mu==1) std::cout << "All edges found are simple.\n";
   else std::cout << "Maximal edge multiplicity " << max_mu << " for ("
 		 << max_pair.first << ',' << max_pair.second <<")\n";
+  std::cout << "Total number of (directed) edges in graph is " << n_edges
+	    << '.' << std::endl;
 
   return result;
 }
