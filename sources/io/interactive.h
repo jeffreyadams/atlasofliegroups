@@ -26,6 +26,8 @@
 #include "realform.h"
 #include "tags.h"
 
+#include <iostream>
+
 namespace atlas {
 
 /******** type declarations **************************************************/
@@ -41,6 +43,9 @@ namespace ioutils {
 /******** function declarations **********************************************/
 
 namespace interactive {
+
+  std::string getFileName(std::string prompt)
+    throw(error::InputError);
 
   void bitMapPrompt(std::string&, const char*, const bitmap::BitMap&);
 
@@ -96,11 +101,24 @@ class OutputFile {
   std::ostream* d_stream;
   bool d_foutput;
  public:
-  OutputFile();
+  OutputFile() throw(error::InputError);
   ~OutputFile();
   template<typename T> std::ostream& operator<< (const T& arg)
     {return *d_stream << arg;}
   operator std::ostream& () {return *d_stream;}
+};
+
+
+class InputFile {
+ private:
+  std::ifstream* d_stream;
+ public:
+  InputFile(std::string prompt,
+            std::ios_base::openmode mode
+	      =std::ios_base::in | std::ios_base::binary)
+    throw(error::InputError);
+  ~InputFile();
+  operator std::ifstream& () {return *d_stream;}
 };
 
 }

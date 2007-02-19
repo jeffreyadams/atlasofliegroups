@@ -29,6 +29,9 @@
 #include "interactive_lattice.h"
 #include "interactive_lietype.h"
 
+#ifndef NREADLINE
+#include <readline/readline.h>
+#endif
 
 #include "input.h"
 
@@ -63,29 +66,22 @@ namespace {
 
 /*****************************************************************************
 
-        Chapter I -- The OutputFile class
+        Chapter I -- The OutputFile and InputFile classes
 
   This was moved here from the ioutils module, for reasons explained in the
   file ioutils.h
 
-  This class implements is a well-known C++ trick : a file which is opened by
+  This classes implement is a well-known C++ trick : a file which is opened by
   its constructor, and closed by its destructor.
 
 ******************************************************************************/
 
 namespace ioutils {
 
-OutputFile::OutputFile()
-
+OutputFile::OutputFile() throw(error::InputError)
 {
-  using namespace input;
-
-  std::string name;
-  InputBuffer buf;
-
-  buf.getline(std::cin,"Name an output file (hit return for stdout): ",
-	       false);
-  buf >> name;
+  std::string name=interactive::getFileName
+    ("Name an output file (return for stdout, ? to abandon): ");
 
   if (name.empty()) {
     d_foutput = false;
@@ -98,18 +94,45 @@ OutputFile::OutputFile()
 }
 
 
-OutputFile::~OutputFile()
-
-/*
-  Closes *d_stream if it is not std::cout.
-*/
-
+OutputFile::~OutputFile() // Closes *d_stream if it is not std::cout.
 {
   if (d_foutput)
     delete d_stream;
 }
 
+InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
+   throw(error::InputError)
+{
+  // temporarily deactivate completion: default to file-name completion
+  rl_compentry_func_t* old_completion_function = rl_completion_entry_function;
+  rl_compdisp_func_t * old_hook = rl_completion_display_matches_hook;
+  rl_completion_entry_function = NULL;
+  rl_completion_display_matches_hook = NULL;
+
+  bool error=false;
+
+  try {
+    do {
+      std::string name=interactive::getFileName
+	("Give input file for "+ prompt+" (? to abandon): ");
+      d_stream = new std::ifstream(name.c_str(),mode);
+      if (d_stream->is_open())
+	break;
+      std::cout << "Failure opening file, try again.\n";
+    } while(true);
+  }
+  catch (error::InputError) {
+    error=true;
+  }
+  rl_completion_entry_function = old_completion_function;
+  rl_completion_display_matches_hook = old_hook;
+  if (error)
+    throw error::InputError();
 }
+
+InputFile::~InputFile() { delete d_stream; }
+
+} // namespace ioutils
 
 /*****************************************************************************
 
@@ -118,6 +141,24 @@ OutputFile::~OutputFile()
 ******************************************************************************/
 
 namespace interactive {
+
+/*
+  Synopsis: get a file name from terminal, abandon with InputError on '?'
+*/
+
+std::string getFileName(std::string prompt)
+  throw(error::InputError)
+{
+  input::InputBuffer buf;
+
+  buf.getline(std::cin, prompt.c_str(), false); // get line, no history
+
+  if (hasQuestionMark(buf))
+    throw error::InputError();
+
+  std::string name; buf >> name; return name;
+}
+
 
 void bitMapPrompt(std::string& prompt, const char* mess,
 		  const bitmap::BitMap& vals)
@@ -684,7 +725,7 @@ input::InputBuffer& inputLine()
   return inputBuf;
 }
 
-}
+} // namespace interactive
 
 /*****************************************************************************
 
@@ -725,6 +766,6 @@ bool checkInvolution(const latticetypes::LatticeMatrix& i,
   return m.divisible(d);
 }
 
-}
+} // namespace
 
-}
+} // namespace atlas
