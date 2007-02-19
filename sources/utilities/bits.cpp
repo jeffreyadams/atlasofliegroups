@@ -13,17 +13,10 @@
 
 #include "constants.h"
 
-/*****************************************************************************
-
-  ... explain here when it is stable ...
-
-******************************************************************************/
 
 /*****************************************************************************
 
         Chapter I -- Functions declared in bits.h
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -31,19 +24,41 @@ namespace atlas {
 
 namespace bits {
 
-unsigned bitCount(unsigned long f)
-
 /*!
-  Synopsis: returns the number of set bits in f.
+  Synopsis: returns the sum of the bits (i.e., the number of set bits) in x.
 */
+unsigned int bitCount(unsigned long x)
+/*
+  This used to be the following code
+  {
+    unsigned int count = 0;
+    while (x!=0) { x &= x-1 ; ++count; }
+    return count;
+  }
 
-{
-  unsigned count = 0;
+  The straight-line code below, taken from Knuth (pre-fascicle~1a ``Bitwise
+  tricks and techniques'' to volume~4 of ``The Art of Computer Programming'',
+  p.~11), is attributed to D.~B. Gillies and J.~C.~P. Miller. It is faster on
+  the average (assuming non-sparse bitsets), without depending on the number
+  of bits in |unsigned long| (except that it is a multiple of 8 less than 256)
+*/
+{ static const unsigned long int b0= ~(~0ul/3);
+     // |0xAAAA...|; flags odd bit positions
+  static const unsigned long int b1= ~(~0ul/5);
+     // |0xCCCC...|; flags positions $\cong2,3 \pmod4$
+  static const unsigned long int b2= ~(~0ul/17);
+     // |0xF0F0...|; flags positions $\cong4$--$7\pmod8$
+  static const unsigned long int ones= ~0ul/255;
+     // |0x0101...|; flags the low bit of each octet
+  static const unsigned int high_byte_shift=8*(sizeof(unsigned long int)-1);
 
-  for (; f; f &= f-1)
-    ++count;	/* see K&R */
-
-  return count;
+  x-=(x&b0)>>1;          // replace pairs of bits $10\to01$ and $11\to10$
+  x=(x&~b1)+((x&b1)>>2);
+   // sideways add 2 groups of pairs of bits to 4-tuples of bits
+  x += x>>4;
+   // the sums of octets (bytes) are now in lower 4-tuples of those octets
+  return (x&~b2)*ones >> high_byte_shift;
+   // add lower 4-tuples of bytes in high octet, and extract
 }
 
 size_t firstBit(unsigned long f)
