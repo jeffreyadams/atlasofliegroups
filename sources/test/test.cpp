@@ -61,6 +61,7 @@
 
 #include "testprint.h"
 #include "testrun.h"
+#include "filekl.h"
 
 /*****************************************************************************
 
@@ -75,24 +76,25 @@ namespace {
 
   // functions for the test commands
 
-  void block_f();
-  void blockd_f();
-  void blocku_f();
-  void blockstabilizer_f();
   void cmatrix_f();
   void corder_f();
   void components_f();
   void coroots_rootbasis_f();
-  void primkl_f();
-  void kgb_f();
-  void klbasis_f();
-  void kllist_f();
   void poscoroots_rootbasis_f();
   void posroots_rootbasis_f();
-  void wcells_f();
-  void wgraph_f();
   void roots_rootbasis_f();
   void rootdatum_f();
+  void primkl_f();
+  void kgb_f();
+  void block_f();
+  void blockd_f();
+  void blocku_f();
+  void blockstabilizer_f();
+  void klbasis_f();
+  void kllist_f();
+  void wcells_f();
+  void wgraph_f();
+  void extract_graph_f();
   void test_f();
 
   // help functions
@@ -112,16 +114,25 @@ namespace {
 
   const char* test_tag = "(test command)";
   const char* block_tag = "prints all the representations in a block";
-  const char* blocku_tag = "prints the unitary representations in the block at rho";
+  const char* blocku_tag =
+   "prints the unitary representations in the block at rho";
   const char* cmatrix_tag = "prints the Cartan matrix";
   const char* kgb_tag = "prints the orbits of K on G/B";
   const char* klbasis_tag = "prints the KL basis for the Hecke module";
   const char* kllist_tag = "prints the list of distinct KL polynomials";
   const char* wcells_tag = "prints the Kazhdan-Lusztig cells for the block";
   const char* wgraph_tag = "prints the W-graph for the block";
+  const char* extract_graph_tag =
+   "reads block and KL binary files and prints W-graph";
 
+/*
+  For convenience, the "test" command is added to the mode that is flagged by
+  the testMode constant defined here; therefore "test" appears (conditionally)
+  in every template instance of |addTestCommands| and of |addTestHelp| below.
+  Set this constant according to the requirements of the |test_f| function.
+*/
   enum TestMode {EmptyMode, MainMode, RealMode, numTestMode};
-  const TestMode testMode = MainMode;
+  const TestMode testMode = EmptyMode;
 
   // utilities
   const rootdata::RootDatum& currentRootDatum();
@@ -151,15 +162,13 @@ void addTestCommands<emptymode::EmptymodeTag>
 
   NOTE: the mode still needs to be passed as an argument, because this is
   called during the construction of the mode!
-
-  NOTE: for convenience, the "test" command is added to the mode that is
-  flagged by the testMode constant; this is EmptyMode by default, but should
-  be redefined to the correct value.
 */
 
 {
   if (testMode == EmptyMode)
     mode.add("test",test_f);
+
+  mode.add("extract-graph",extract_graph_f);
 
   return;
 }
@@ -173,10 +182,6 @@ void addTestCommands<mainmode::MainmodeTag>
 
   NOTE: the mode still needs to be passed as an argument, because this is
   called during the construction of the mode!
-
-  NOTE: for convenience, the "test" command is added to the mode that is
-  flagged by the testMode constant; this is EmptyMode by default, but should
-  be redefined to the correct value.
 */
 
 {
@@ -204,10 +209,6 @@ void addTestCommands<realmode::RealmodeTag>
 
   NOTE: the mode still needs to be passed as an argument, because this is
   called during the construction of the mode!
-
-  NOTE: for convenience, the "test" command is added to the mode that is
-  flagged by the testMode constant; this is EmptyMode by default, but should
-  be redefined to the correct value.
 */
 
 {
@@ -241,10 +242,6 @@ template<> void addTestHelp<emptymode::EmptymodeTag>
   NOTE: the mode still needs to be passed as an argument, because this is
   called during the construction of the mode!
 
-
-  NOTE: for convenience, the "test" command is added to the mode that is
-  flagged by the testMode constant; this is EmptyMode by default, but should
-  be redefined to the correct value.
 */
 
 {
@@ -255,6 +252,9 @@ template<> void addTestHelp<emptymode::EmptymodeTag>
     mode.add("test",nohelp_h);
     insertTag(t,"test",test_tag);
   }
+
+  mode.add("extract-graph",nohelp_h);
+  insertTag(t,"extract-graph",extract_graph_tag);
 
   // add additional help commands here:
 
@@ -274,10 +274,6 @@ template<> void addTestHelp<mainmode::MainmodeTag>
 
   NOTE: the mode still needs to be passed as an argument, because this is
   called during the construction of the mode!
-
-  NOTE: for convenience, the "test" command is added to the mode that is
-  flagged by the testMode constant; this is EmptyMode by default, but should
-  be redefined to the correct value.
 */
 
 {
@@ -326,10 +322,6 @@ template<> void addTestHelp<realmode::RealmodeTag>
 
   NOTE: the mode still needs to be passed as an argument, because this is
   called during the construction of the mode!
-
-  NOTE: for convenience, the "test" command is added to the mode that is
-  flagged by the testMode constant; this is EmptyMode by default, but should
-  be redefined to the correct value.
 */
 
 {
@@ -337,6 +329,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   using namespace helpmode;
 
   if (testMode == RealMode) {
+    mode.add("test",nohelp_h);
     insertTag(t,"test",test_tag);
   }
 
@@ -1210,24 +1203,30 @@ void wgraph_f()
   return;
 }
 
-void test_f()
-
-/*
-  Response to the "test" command.
-*/
-
+void extract_graph_f()
 {
-  using namespace involutions;
-  using namespace mainmode;
-  using namespace complexredgp;
+  try {
+    ioutils::InputFile block_file("block information");
+    ioutils::InputFile matrix_file("matrix information");
+    ioutils::InputFile polynomial_file("polynomial information");
+    wgraph::WGraph wg=filekl::wGraph(block_file,matrix_file,polynomial_file);
 
-  ComplexReductiveGroup& G = currentComplexGroup();
-
-  InvolutionSet inv(G);
-
-  return;
+    ioutils::OutputFile file;
+    wgraph_io::printWGraph(file,wg);
+  }
+  catch (error::InputError e) {
+    e("aborted");
+  }
 }
 
+void test_f()
+/*
+  Function invoked by the "test" command.
+*/
+{
+  // put your code here, and define testMode at top of file appropriately
 }
 
-}
+} // namespace
+
+} // namespace atlas
