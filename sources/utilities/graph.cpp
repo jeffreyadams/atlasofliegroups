@@ -200,7 +200,6 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
 }
 
 /*
-
   We must still show that when |x.min==rank[x.v]| above holds, then |x.v| and
   all of its unsettled descendants form a strong component. The propagation of
   the |min| value to parents shows that |x.min==rank[x.v]| implies that none
@@ -214,8 +213,8 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
   We must also show that removing the strong component does not change any of
   the remaining |min| values (of course they stay the same, but their
   interpretation as minimal sequence number bla bla should also remain valid).
-  But this is simply true because none of the removed vertices has any
-  descendants that remain active, and any removed vertex is newer than any
+  But this is simply true because none of the removed vertices gives access to
+  any vertices that remain active, and any removed vertex is newer than any
   remaining vertex.
 */
 
