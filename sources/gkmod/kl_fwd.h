@@ -45,8 +45,9 @@ typedef unsigned int KLIndex; // less than 2^32 distinct polynomials for E8 !
 
 
 typedef KLCoeff MuCoeff;
-typedef std::pair<blocks::BlockElt,MuCoeff> MuData;
-typedef std::vector<MuData> MuRow;
+
+// a pair of vectors may be much more compact that a vector of pairs
+typedef std::pair<std::vector<blocks::BlockElt>,std::vector<MuCoeff> > MuRow;
 
 }
 

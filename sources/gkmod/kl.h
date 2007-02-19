@@ -46,6 +46,8 @@ namespace kl {
 
 typedef std::vector<KLPol> KLStore;
 
+typedef KLStore::const_reference KLPolRef;
+
 typedef std::vector<KLIndex> KLRow;
 
 
@@ -106,10 +108,9 @@ P_{y,x_i}, numbered as in the list d_prim[y].
   std::vector<KLRow> d_kl;           // list of polynomial pointers
 
   /*!
-\brief Entry d_mu[y] is a list of MuData, which are pairs (x, top
-degree coefficient of P_{y,x}).
+\brief Entry d_mu[y] is a MuRow, which has parallel vectors for x and mu(x,y)
   */
-  std::vector<MuRow> d_mu;           // list of mu-coefficients
+  std::vector<MuRow> d_mu;           // lists of x's and their mu-coefficients
 
   /*!
 \brief Set of KL polynomials.
@@ -168,7 +169,7 @@ public:
   /*!
 \brief The Kazhdan-Lusztig-Vogan polynomial P_{x,y}
 */
-  const KLPol& klPol(BlockElt x, BlockElt y) const;
+  KLPolRef klPol(BlockElt x, BlockElt y) const;
 
   /*!
 \brief Returns the list of pointers to the non-zero KL polynomials
@@ -215,6 +216,15 @@ P_{y,x}).
   const size_t size() const {
     return d_kl.size();
   }
+
+// accessors for perfoming output
+
+  // get map of primitive elements for row y with nonzero KL polynomial
+  bitmap::BitMap primMap (BlockElt y) const;
+
+  void writeKLRow (BlockElt y, std::ostream& out) const; // write out d_kl[y]
+
+  void writeKLStore (std::ostream& out) const;   // write out d_store
 
 // manipulators
 

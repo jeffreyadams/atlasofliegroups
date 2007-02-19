@@ -130,43 +130,37 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
 
 }
 
-bool KLSupport::primitivize(BlockElt& x, const bitset::RankFlags& d) const
+BlockElt KLSupport::primitivize(BlockElt x, const bitset::RankFlags& d) const
 
 /*!
   \brief Replaces x (the number of a block element) with a primitive
   element above it, and returns true, or returns false, and x is not
   changed.
 
-  Explanation: a primitive element for d is one for which all elements
-  in d are descents or type II imaginary [?? DV 8/17/06]. So if x is
-  not primitive, it has an ascent that is either complex, imaginary
-  type I or real compact. In the first two cases we replace x by the
-  ascended element and continue; in the last case, we return false
-  (for k-l computations, this will indicate a zero k-l polynomial.)
+  Explanation: a primitive element for d is one for which all elements in d
+  are descents or type II imaginary ascents. So if x is not primitive, it has
+  an ascent that is either complex, imaginary type I or real compact. In the
+  first two cases we replace x by the ascended element and continue; in the
+  last case, we return UndefBlock (for K-L computations, this will imply that
+  $P_{x,y}=0$; the value of UndefBlock is conveniently larger than any valid
+  BlockElt y, so this condition can be handled together with triangularity).
 */
 
 {
-  using namespace bitset;
   using namespace descents;
 
-  size_t xp = x;
+  bitset::RankFlags a; // good ascents for x that are descents for y
 
-  for (RankFlags a = goodAscentSet(xp); a.any(d); a = goodAscentSet(xp)) {
-    a &= d;
+  while ((a = goodAscentSet(x)&d).any()) {
     size_t s = a.firstBit();
-    DescentStatus::Value v = descentValue(s,xp);
+    DescentStatus::Value v = descentValue(s,x);
     if (v == DescentStatus::RealNonparity)
-      return false;
-    // this should be replaced by the ascend table!
-    if (v == DescentStatus::ComplexAscent)
-      xp = d_block->cross(s,xp);
-    else
-      xp = d_block->cayley(s,xp).first;
+      return blocks::UndefBlock; // cop out
+    x = v == DescentStatus::ComplexAscent // complex or imaginary type I ?
+	? d_block->cross(s,x)
+	: d_block->cayley(s,x).first;
   }
-
-  // commit
-  x = xp;
-  return true;
+  return x;
 }
 
 /******** manipulators *******************************************************/
