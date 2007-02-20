@@ -90,7 +90,11 @@ class OrientedGraph {
     d_edges.resize(n);
   }
 
-  // auxiliary method
+  void reverseEdges ();      // make opposite oriented graph
+  void reverseNumbering ();  // same graph, but reverse numbering of vertices
+
+
+  // auxiliary methods
 private:
 void addLinks
   (const std::vector<const EdgeList*>& out, const partition::Partition& pi);

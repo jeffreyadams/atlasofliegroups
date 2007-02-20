@@ -15,7 +15,9 @@
 #include <stack>
 #include <cassert>
 
+
 #include "bitmap.h"
+#include "tags.h"
 
 namespace atlas {
 
@@ -47,14 +49,15 @@ namespace graph {
   correct (even though it gave the right results in the vast majority of the
   cases) so I had to adapt it, MvL.
 
-  The strongly connected components are going to be discovered in a
-  highest-first topological order (the strange term "topological order" means
-  some total order compatible with a given partial order), in other words when
-  a strong component is discovered all outgoing edges from it lead to
-  components that were previously discovered. Since the elements of the
-  already discovered components are marked, and edges leading to them are
-  henceforth ignored, the problem at each moment is to try to isolate a strong
-  component with no outgoing edges.
+  The strong components are going to be discovered in a highest-first
+  topological order ("topological order" means some total order compatible
+  with a given partial order): when a strong component is discovered all
+  outgoing edges from it lead to components that were previously discovered.
+  Since the elements of the already discovered components are marked, and
+  edges leading to them are henceforth ignored, the problem at each moment is
+  to try to isolate a strong component with no outgoing edges. Eventually we
+  prefer numbering in the opposite ordering to have the highest strong
+  component last, whence we perform a reversal at the end.
 
   The vertices will be traversed in the order of depth-first search. When they
   are first seen we say the become "active", and some data associated to them
@@ -131,13 +134,12 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
   pi.resize(size());           // |pi| will be a partition of the vertex set
   if (gr!=NULL) gr->resize(0); // start induced graph with a clean slate
 
-  for (Vertex x0 = 0; x0 < size(); ++x0)
-  if (rank[x0]<infinity)
+  for (Vertex x0 = 0; x0 <size(); ++x0) // find all CONNECTED graph components
+    if (rank[x0]<infinity)              // each time this holds gives a new one
     {
       seqno count=1;
       rank[x0]=count++;
       active.push_back(info(x0,nil,rank[x0])); // x0 has no parent
-
       work_addr cur_pos=0; // point current position to x0
 
       while(cur_pos!=nil)
@@ -168,7 +170,7 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
 	  work_addr new_pos=x.parent; // we will back-up to parent of |x| next
 
 	  if (x.min == rank[x.v]) // no older vertex reachable from |x|
-	    { // split off component
+	    { // split off strong component
 	      pi.newClass(x.v);  // x will be added again in loop, no harm done
 	      unsigned long c= pi(x.v);
 	      std::vector<const EdgeList*> out; // to gather outgoing edges
@@ -197,6 +199,18 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
 
     } //for (x0) if (rank[x0]<infinity)
 
+  // now reverse the numbering of the classes in the partition
+  if (false)
+  {
+    unsigned long last=pi.classCount()-1;
+    std::vector<unsigned long> f(pi.size());
+    for (size_t i=0; i<f.size(); ++i) f[i]=last-pi(i); // opposite renumbering
+
+    // replace |pi| by its reversely numbered equivalent
+    partition::Partition(f,tags::UnnormalizedTag()).swap(pi);
+
+    if (gr!=NULL) gr->reverseNumbering();
+  }
 }
 
 /*
@@ -219,6 +233,33 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
 */
 
 
+void OrientedGraph::reverseEdges()
+{
+  std::vector<EdgeList> new_edges(size(),EdgeList());
+  for (Vertex x=0; x<size(); ++x)
+    {
+      const EdgeList& el = edgeList(x);
+      for (size_t j=0; j<el.size(); ++j)
+	new_edges[el[j]].push_back(x);
+    }
+
+  d_edges=new_edges; // assignment removes spare capacity in lists, swap won't
+}
+
+void OrientedGraph::reverseNumbering()
+{
+  Vertex last=size()-1;
+  std::vector<EdgeList> new_edges(size(),EdgeList());
+
+  for (Vertex x=0; x<size(); ++x)
+    {
+      const EdgeList& el = edgeList(x);
+      EdgeList& new_list= new_edges[last-x]; new_list.reserve(el.size());
+      for (size_t j=el.size(); j-->0; )
+	new_list.push_back(last-el[j]);
+    }
+  d_edges.swap(new_edges); // swap preferred here: lists capacities are tight
+}
 
 /*
   The auxiliary method |addLinks| is called above to extend the induced graph
