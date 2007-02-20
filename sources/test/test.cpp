@@ -95,6 +95,7 @@ namespace {
   void wcells_f();
   void wgraph_f();
   void extract_graph_f();
+  void extract_cells_f();
   void test_f();
 
   // help functions
@@ -124,6 +125,8 @@ namespace {
   const char* wgraph_tag = "prints the W-graph for the block";
   const char* extract_graph_tag =
    "reads block and KL binary files and prints W-graph";
+  const char* extract_cells_tag =
+   "reads block and KL binary files and prints W-graph decomposition";
 
 /*
   For convenience, the "test" command is added to the mode that is flagged by
@@ -169,6 +172,7 @@ void addTestCommands<emptymode::EmptymodeTag>
     mode.add("test",test_f);
 
   mode.add("extract-graph",extract_graph_f);
+  mode.add("extract-cells",extract_cells_f);
 
   return;
 }
@@ -255,6 +259,8 @@ template<> void addTestHelp<emptymode::EmptymodeTag>
 
   mode.add("extract-graph",nohelp_h);
   insertTag(t,"extract-graph",extract_graph_tag);
+  mode.add("extract-cells",nohelp_h);
+  insertTag(t,"extract-cells",extract_cells_tag);
 
   // add additional help commands here:
 
@@ -1213,6 +1219,23 @@ void extract_graph_f()
 
     ioutils::OutputFile file;
     wgraph_io::printWGraph(file,wg);
+  }
+  catch (error::InputError e) {
+    e("aborted");
+  }
+}
+
+void extract_cells_f()
+{
+  try {
+    ioutils::InputFile block_file("block information");
+    ioutils::InputFile matrix_file("matrix information");
+    ioutils::InputFile polynomial_file("polynomial information");
+    ioutils::OutputFile file;
+
+    wgraph::WGraph wg=filekl::wGraph(block_file,matrix_file,polynomial_file);
+    wgraph::DecomposedWGraph dg(wg);
+    wgraph_io::printWDecomposition(file,dg);
   }
   catch (error::InputError e) {
     e("aborted");
