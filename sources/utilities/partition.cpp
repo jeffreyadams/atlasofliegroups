@@ -72,23 +72,22 @@ Partition::Partition(std::vector<unsigned long>& f)
 }
 
 Partition::Partition(std::vector<unsigned long>& f, tags::UnnormalizedTag)
-  :d_class(f)
-
 /*!
   \brief Like the previous one, but uses the actual values of f to number
   the classes.
 
-  NOTE: it is recommended that the range of f be of the form [0,a[
-  (with all values achieved); I'm not sure what might break down if it
-  isn't.
+  NOTE: it is required that the range of |f| be of the form [0,a[ (without
+  holes). The vector |d_classRep| is dimensioned to the _number_ of (distinct)
+  values in the image of |f|, but indexed by those values itself, which will
+  overflow the vector bounds if there were any holes in the range of |f|.
 */
-
+  :d_class(f) // just use (a copy of) |f| as class vector
 {
-  // make class representatives
-  std::map<unsigned long,unsigned long> val;
+  // find class representatives
+  std::map<unsigned long,unsigned long> val; // associates (class number,repr)
 
-  for (size_t j = 0; j < d_class.size(); ++j)
-    val.insert(std::make_pair(d_class[j],j));
+  for (size_t j = 0; j < f.size(); ++j)
+    val.insert(std::make_pair(f[j],j));
 
   d_classRep.resize(val.size());
 
@@ -134,7 +133,8 @@ unsigned long Partition::classSize(unsigned long c) const
 /*!
   \brief Counts the number of elements in class \#c.
 
-  NOTE: Straightforward implementation.
+  NOTE: Straightforward implementation. Successively computing |classSize| for
+  all classes would cost more time then necessary.
 */
 
 {
@@ -179,8 +179,8 @@ PartitionIterator::PartitionIterator(const Partition& pi)
 
   d_stop.push_back(d_data.begin());
 
-  if (d_data.size() == 0)
-    goto done;
+  if (d_data.size() == 0) // partition of empty set
+    goto done;            // we must avoid taking |d_data.front()| below
 
   for (unsigned long j = 0; j < d_data.size(); ++j)
     d_data[j] = j;
@@ -188,11 +188,10 @@ PartitionIterator::PartitionIterator(const Partition& pi)
   std::stable_sort(d_data.begin(),d_data.end(),Compare<Partition>(pi));
 
   {
-    std::vector<unsigned long>::const_iterator data_end = d_data.end();
+    SubIterator data_end = d_data.end();
     unsigned long thisClass = pi(d_data.front());
 
-    for (std::vector<unsigned long>::const_iterator i = d_data.begin();
-	 i != data_end; ++i)
+    for (SubIterator i = d_data.begin(); i != data_end; ++i)
       if (pi(*i) != thisClass) { // start a new class
 	d_stop.push_back(i);
 	thisClass = pi(*i);
@@ -203,9 +202,7 @@ PartitionIterator::PartitionIterator(const Partition& pi)
 
  done:
   d_stop.push_back(d_data.end());
-  d_range.first = d_stop[0];
-  d_range.second = d_stop[1];
-  d_currentEnd = d_stop.begin()+1;
+  rewind();
 }
 
 PartitionIterator& PartitionIterator::operator++ ()

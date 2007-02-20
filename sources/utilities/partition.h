@@ -182,39 +182,65 @@ class Partition {
 };
 
 class PartitionIterator {
-  /*!
+/*!
   The idea is that a PartitionIterator gives a convenient way of traversing
   the classes of a partition. It is intended that PartitionIterators are
   compared only if they refer to the same partition.
+
+  Usage: construct a partition iterator |it| from a partition |pi|, in general
+  in the context of a looping construct
+
+    for (PartitionIterator it(pi); it(); ++it) { ... }
+
+  Within the body of this loop, |*it| gives a pair of iterators into a vector
+  of integers (in fact into |d_data|) such that interating from the first to
+  the last traverses a class for |pi|;
+
+    for (PartitionIterator::SubIterator jt=it->first; jt!=it->second; ++jt)
+    { ... pi(*jt) is constant during this loop ... }
+
+  In fact after the outer loop has advanced i| times, one has |pi(*jt)==i|
+  throughout the inner loop, provided |pi| as a function is surjective to an
+  initial part of $\N$. Since the iterator runs through the classes for |pi|,
+  which are non-empty, the inner loop will run at least once in all cases.
 
   The vector d_data contains the integers [0,n[, where n is the size of the
   set being partitioned, sorted in the order of the partition values. The
   vector d_stop contains an iterator pointing to the beginning of each
   class, and a final iterator pointing after the end of d_data. We then
   only need to return two consecutive elements in d_stop to bound a class.
-  */
+
+  For convenience a (second-level) iterator |d_currentEnd| into |d_stop| is
+  provided, which always satifies |*d_currentEnd==d_range.second|. In fact
+  instead of |d_range| and |d_currentEnd| one could have maintained a single
+  index |i| such that |d_range| would be given implicitly as
+  |make_pair(stop[i],stop[i+1])|, and |d_currentEnd| as |d_stop.begin()+i+1|.
+
+  Since constructing a PartitionIterator requires computing |d_data| which is
+  quite a bit of work (and to a somewhat lesser extent the same holds for
+  copy-constructing or assigning), we provide a |rewind| method that allows
+  restarting a PartitionIterator used in a previous operation.
+*/
+ public:
+  typedef std::vector<unsigned long>::const_iterator SubIterator;
+
  private:
 
   std::vector<unsigned long> d_data;
-  std::vector<std::vector<unsigned long>::const_iterator> d_stop;
-  std::pair<std::vector<unsigned long>::const_iterator,
-    std::vector<unsigned long>::const_iterator> d_range;
-  std::vector<std::vector<unsigned long>::const_iterator>::const_iterator
-    d_currentEnd;
+  std::vector<SubIterator> d_stop;
+  std::pair<SubIterator,SubIterator> d_range;
+  std::vector<SubIterator>::const_iterator d_currentEnd; // points into d_stop
 
  public:
 
 // associated types
   typedef std::forward_iterator_tag iterator_category;
-  typedef std::pair<std::vector<unsigned long>::const_iterator,
-    std::vector<unsigned long>::const_iterator> value_type;
+  typedef std::pair<SubIterator,SubIterator> value_type;
   typedef ptrdiff_t difference_type;
   typedef const value_type* pointer;
   typedef const value_type& reference;
 
 // constructors and destructors
-  PartitionIterator() {}
-
   explicit PartitionIterator(const Partition&);
 
   PartitionIterator(const PartitionIterator& i,End) {
@@ -252,6 +278,12 @@ class PartitionIterator {
     PartitionIterator tmp(*this);
     ++(*this);
     return tmp;
+  }
+
+  void rewind () // set itereator to point to the first class
+  { d_range.first = d_stop[0];
+    d_range.second = d_stop[1];
+    d_currentEnd = d_stop.begin()+1;
   }
 
 };
