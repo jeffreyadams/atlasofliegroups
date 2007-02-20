@@ -1,6 +1,6 @@
 /*
   This is wgraph_io.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups
 
@@ -20,9 +20,11 @@ namespace atlas {
 
 namespace wgraph_io {
 
-  std::ostream& printCells(std::ostream&, const wgraph::WGraph&);
+  void printWGraph(std::ostream&, const wgraph::WGraph&);
 
-  std::ostream& printWGraph(std::ostream&, const wgraph::WGraph&);
+  void printCells(std::ostream&, const wgraph::WGraph&);
+
+  void printWDecomposition (std::ostream&, const wgraph::DecomposedWGraph&);
 
 }
 
