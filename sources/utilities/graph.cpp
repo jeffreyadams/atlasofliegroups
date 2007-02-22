@@ -134,8 +134,12 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
   pi.resize(size());           // |pi| will be a partition of the vertex set
   if (gr!=NULL) gr->resize(0); // start induced graph with a clean slate
 
-  for (Vertex x0 = 0; x0 <size(); ++x0) // find all CONNECTED graph components
-    if (rank[x0]<infinity)              // each time this holds gives a new one
+  /* the following loop guarantees that all strong components will be found
+     regardless of where in the graph we start, and whether or not it is
+     connected
+  */
+  for (Vertex x0 = 0; x0 <size(); ++x0)
+    if (rank[x0]<infinity)
     {
       seqno count=1;
       rank[x0]=count++;
@@ -199,7 +203,7 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
 
     } //for (x0) if (rank[x0]<infinity)
 
-  // now reverse the numbering of the classes in the partition
+  // maybe reverse the numbering of the classes in the partition (deactivated)
   if (false)
   {
     unsigned long last=pi.classCount()-1;
