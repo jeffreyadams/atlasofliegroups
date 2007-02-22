@@ -85,6 +85,7 @@ class HashTable
   typename Entry::Pooltype::const_reference operator[] (Number i) const
     { return d_pool[i]; }
   Number size() const { return Number(d_pool.size()); }
+  size_t capacity () const { return d_mod; }
 
  private: // auxiliary functions
   void rehash();  // ensure d_hash is coherent with d_pool and d_mod
