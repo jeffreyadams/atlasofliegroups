@@ -29,6 +29,10 @@
 
 #ifdef VERBOSE
 #include <iostream>
+#include <ctime>
+#include <sstream>
+#include <string>
+#include <unistd.h>
 #endif
 
 #include <cassert>
@@ -41,6 +45,7 @@
 #include "blocks.h"
 #include "error.h"
 #include "kl_error.h"
+#include "prettyprint.h"
 
 /*
   [Fokko's original description, which referred to a slighly older
@@ -114,12 +119,25 @@ class KLPolEntry : public KLPol
 
     KLHashStore d_hashtable;
 
+  // Members serving for statistics
+
+    size_t prim_size;            // number of pairs stored in d_prim
+    size_t nr_of_prim_nulls;     // number of zeroes suppressed from d_prim
+
   public:
 
     // constructors and destructors
     Helper(const KLContext&);
 
-    ~Helper() {}
+    ~Helper()
+    {
+#ifdef VERBOSE
+      std::cout << "Number of primitive pairs stored:     "
+		<< prim_size << ".\n";
+      std::cout << "Number of unrecorded primitive pairs: "
+	    << nr_of_prim_nulls << ".\n";
+#endif
+    }
 
     //accessors
 
@@ -174,9 +192,10 @@ of pair of integers specifying block element y.
     */
     using KLContext::klPol;
 
-    const KLPol& klPol(BlockElt x, BlockElt y, KLRow::const_iterator klv,
-		       klsupport::PrimitiveRow::const_iterator p_begin,
-		       klsupport::PrimitiveRow::const_iterator p_end) const;
+    KLPolRef klPol(BlockElt x, BlockElt y, KLRow::const_iterator klv,
+		   klsupport::PrimitiveRow::const_iterator p_begin,
+		   klsupport::PrimitiveRow::const_iterator p_end) const;
+
     inline bool ascentMu(BlockElt x, BlockElt y, size_t s) const;
 
     inline MuCoeff goodDescentMu(BlockElt x, BlockElt y, size_t s) const;
@@ -362,7 +381,7 @@ simple root s for y.
     /*!
 \brief KL polynomial P_{x,y_pos}, for any y_pos in Thicket.
     */
-    const KLPol& klPol(BlockElt x, size_t pos) const {
+    KLPolRef klPol(BlockElt x, size_t pos) const {
       return d_helper->klPol(x,d_vertices[pos],d_firstKL[pos],d_firstPrim[pos],
 			     d_prim[pos].end());
     }
@@ -588,7 +607,7 @@ void KLContext::swap(KLContext& other)
 
 /******** accessors **********************************************************/
 
-const KLPol& KLContext::klPol(BlockElt x, BlockElt y) const
+KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 
 /*!
   \brief Returns the Kazhdan-Lusztig-Vogan polynomial P_{x,y}
@@ -610,10 +629,10 @@ const KLPol& KLContext::klPol(BlockElt x, BlockElt y) const
   const KLRow& klr = d_kl[y];
 
   x=d_support->primitivize(x,descentSet(y));
-  if (x>y) return d_store[d_zero]; // includes case x==blocks::UndefBlock
+  if (x>y) return Zero; // includes case x==blocks::UndefBlock
   PrimitiveRow::const_iterator xptr = std::lower_bound(pr.begin(),pr.end(),x);
   if (xptr == pr.end() or *xptr != x) // not found
-    return d_store[d_zero];
+    return Zero;
   return d_store[klr[xptr - pr.begin()]];
 }
 
@@ -728,6 +747,117 @@ void KLContext::fill()
 
 }
 
+/* accessors of KLContext used for output */
+
+bitmap::BitMap KLContext::primMap (BlockElt y) const
+{
+  bitmap::BitMap b(size()); // block-size bitmap
+
+  // start with all elements < y in length
+  b.fill(d_support->lengthLess(length(y)));
+  b.insert(y);   // and y itself
+
+  // primitivize (filter out those that are not primitive)
+  d_support->primitivize(b,descentSet(y));
+
+  // now b holds a bitmap indicating primitive elements for y
+
+  // our result will be a bitmap of that size
+  bitmap::BitMap result (b.size()); // initiallly all bits are cleared
+
+ // the list of primitive elements with nonzero polynomials at y
+  const klsupport::PrimitiveRow& row=d_prim[y];
+
+  // traverse b, and for its elements that occur in row[i], set bits in result
+
+  size_t position=0; // position among set bits in b (avoids using b.position)
+  size_t j=0; // index into row;
+  for (bitmap::BitMap::iterator i=b.begin(); i(); ++position,++i)
+    if (*i==row[j]) // look if i points to current element of row
+      {
+	result.insert(position); ++j; // record position and advance in row
+	if (j==row.size()) break; // stop when row is exhausted
+      }
+
+  return result;
+}
+
+std::streamoff KLContext::writeKLRow (BlockElt y, std::ostream& out) const
+{
+  bitmap::BitMap prims=primMap(y);
+  assert(d_kl[y].size()==prims.size()); // check the number of KL polynomials
+
+  // write row number for consistency check on reading
+  basic_io::put_int(y,out);
+
+  std::streamoff start_row=out.tellp();
+
+  // write number of primitive elements (indep. of modulus) for convenience
+  basic_io::put_int(prims.capacity(),out);
+
+  // now write the bitmap as a sequence of unsigned int values
+  for (size_t i=0; i<prims.capacity(); i+=32)
+    basic_io::put_int(prims.range(i,32),out);
+
+ // the list of indices of nonzero KL polynomials in row y
+  const KLRow& row=d_kl[y];
+
+  // finally, write the indices of the KL polynomials themselves
+  for (size_t i=0; i<row.size(); ++i)
+    basic_io::put_int(row[i],out);
+
+  // and signal if there was unsufficient space to write the row
+  if (not out.good()) throw error::OutputError();
+
+  return start_row;
+}
+
+
+/* This routine prefers a simple format over an extremely space-optimised
+   representation on disk. After writing the number |N| of polynomials in 4
+   bytes, we write a sequence of |N+1| indices of 5 bytes each, giving for
+   each polynomial |i| the position of its first (degree 0) coefficient in the
+   global list and as final 5-byte value (number N) the total number of
+   coefficients. After that, starting from position 9+5*N, the list of all
+   coefficients, starting for each polynomial with the constant coefficient
+   and up to the leading coefficient. The degree of polynomial i is implicit
+   in the value of indices i and i+1: their difference, divided by the
+   coefficient size, is the number of coefficients, the degree is one less.
+*/
+
+void KLContext::writeKLStore (std::ostream& out) const
+{
+  const size_t coef_size=4; // dictated (for now) by |basic_io::put_int|
+
+  basic_io::put_int(d_store.size(),out); // write number of KL poynomials
+
+  // write sequence of 5-byte indices, computed on the fly
+  size_t offset=0; // position of first coefficient written
+  for (size_t i=0; i<d_store.size(); ++i)
+    {
+      KLPolRef p=d_store[i]; // get reference to polynomial
+
+      // output 5-byte value of offset
+      basic_io::put_int(offset&0xFFFFFFFF,out);
+      out.put(char(offset>>16>>16)); // >>32 would fail on 32 bits machines
+
+      if (not p.isZero()) // superfluous since polynomials::MinusOne+1==0
+	// add number of coefficient bytes to be written
+	offset += (p.degree()+1)*coef_size;
+    }
+  // write final 5-byte value (total size of coefficiant list)
+  basic_io::put_int(offset&0xFFFFFFFF,out); out.put(char(offset>>16>>16));
+
+  // now write out coefficients
+  for (size_t i=0; i<d_store.size(); ++i)
+    {
+      KLPolRef p=d_store[i]; // get reference to polynomial
+      if (not p.isZero())
+	for (size_t j=0; j<=p.degree(); ++j)
+	  basic_io::put_int(p[j],out);
+    }
+}
+
 /* methods of KLPolEntry */
 
 
@@ -775,8 +905,9 @@ namespace kl {
     /* main constructor */
 
 Helper::Helper(const KLContext& kl)
-  :KLContext(kl)
-  , d_hashtable(d_store) // hash table refers to our own d_store
+  : KLContext(kl)
+  , d_hashtable(d_store) // hash table refers to our base object's d_store
+  , prim_size(0), nr_of_prim_nulls(0)
 {}
 
 /******** accessors **********************************************************/
@@ -804,10 +935,10 @@ size_t Helper::firstDirectRecursion(BlockElt y) const
   return rank();
 }
 
-const KLPol& Helper::klPol(BlockElt x, BlockElt y,
-			   KLRow::const_iterator klv,
-			   klsupport::PrimitiveRow::const_iterator p_begin,
-			   klsupport::PrimitiveRow::const_iterator p_end) const
+KLPolRef Helper::klPol(BlockElt x, BlockElt y,
+		       KLRow::const_iterator klv,
+		       klsupport::PrimitiveRow::const_iterator p_begin,
+		       klsupport::PrimitiveRow::const_iterator p_end) const
 
 /*!
   \brief Returns the Kazhdan-Lusztig polynomial for x corresponding to
@@ -825,10 +956,10 @@ const KLPol& Helper::klPol(BlockElt x, BlockElt y,
 {
   BlockElt xp = d_support->primitivize(x,descentSet(y));
 
-  if (xp>y) return d_store[d_zero]; // includes case xp==blocks::UndefBlock
+  if (xp>y) return Zero; // includes case xp==blocks::UndefBlock
   klsupport::PrimitiveRow::const_iterator xptr =
     std::lower_bound(p_begin,p_end,xp);
-  if (xptr == p_end or *xptr != xp) return d_store[d_zero];
+  if (xptr == p_end or *xptr != xp) return Zero;
   return d_store[klv[xptr-p_begin]];
 }
 
@@ -1153,17 +1284,28 @@ void Helper::fill()
   // fill the lists
   BlockElt y = 0;
   size_t minLength = length(0);
+  size_t maxLength = length(d_kl.size() - 1);
 
   // do the minimal length cases; they come first in the enumeration
   for (; y < d_kl.size() and length(y) == minLength; ++y) {
     d_prim[y].push_back(y); // singleton list for this row
+    ++prim_size;
     // the K-L polynomial is 1
     d_kl[y].push_back(d_one);
     // there are no mu-coefficients
   }
 
+  //set timers for KL computation
+#ifdef VERBOSE
+  std::time_t time0;
+  std::time(&time0);
+  std::time_t time;
+#endif
+
+  size_t l=length(y); // minLength+1
+
   // do the other cases
-  for (; y < d_kl.size(); ++y) {
+  while (l<=maxLength) {
 #ifdef VERBOSE
     std::cerr << y << "\r";
 #endif
@@ -1173,9 +1315,38 @@ void Helper::fill()
       e("error: negative coefficient in k-l construction");
     }
     fillMuRow(y);
+    if (++y==d_support->lengthLess(l+1)) // new length reached
+      {
+#ifdef VERBOSE
+	size_t p_capacity // currently used memory for polynomials storage
+          =d_hashtable.capacity()*sizeof(KLIndex)
+	  + d_store.capacity()*sizeof(KLPol);
+        for (size_t i=0; i<d_store.size(); ++i)
+	  p_capacity+= (d_store[i].degree()+1)*sizeof(KLCoeff);
+
+	std::time(&time);
+	double deltaTime = difftime(time, time0);
+	std::cerr << "t="    << std::setw(5) << deltaTime
+		  << "s. l=" << std::setw(3) << l // completed length
+		  << ", y="  << std::setw(6) << y - 1 // last y value done
+		  << ", polys:"  << std::setw(11) << d_store.size()
+		  << ", pmem:" << std::setw(11) << p_capacity
+		  << ", mat:"  << std::setw(11) << prim_size
+		  <<  std::endl;
+#endif
+	// the following loop normally runs 1 time, but can handle length gaps
+	do ++l; while (l<=maxLength and d_support->lengthLess(l+1)==y);
+      }
   }
 
 #ifdef VERBOSE
+  std::time(&time);
+  double deltaTime = difftime(time, time0);
+  std::cerr << std::endl;
+  std::cerr << "Total elapsed time = " << deltaTime << "s." << std::endl;
+  std::cerr << d_store.size() << " polynomials, "
+            << prim_size << " matrix entries."<< std::endl;
+
   std::cerr << std::endl;
 #endif
 
@@ -1579,6 +1750,9 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
 
   copy(new_extr,nzpr.end(),back_inserter(d_prim[y]));
   copy(new_pol,klr.end(),back_inserter(d_kl[y]));
+
+  prim_size        += nzpr.end()-new_extr;
+  nr_of_prim_nulls += new_extr  -nzpr.begin(); // measure unused space
 }
 
   }
@@ -1859,6 +2033,9 @@ void Thicket::fill()
 
     copy(d_firstPrim[j],d_prim[j].end(),back_inserter(d_helper->d_prim[y]));
     copy(d_firstKL[j],d_klr[j].end(),back_inserter(d_helper->d_kl[y]));
+
+    d_helper->prim_size        += d_prim[j].end()-d_firstPrim[j];
+    d_helper->nr_of_prim_nulls += d_firstPrim[j]-d_prim[j].begin();
   }
 
 }
