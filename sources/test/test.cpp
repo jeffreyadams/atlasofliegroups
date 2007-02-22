@@ -11,6 +11,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <fstream>
 #include <iterator>
 #include <set>
 #include <sstream>
@@ -94,6 +95,8 @@ namespace {
   void kllist_f();
   void wcells_f();
   void wgraph_f();
+  void klwrite_f();
+  void blockwrite_f();
   void extract_graph_f();
   void extract_cells_f();
   void test_f();
@@ -108,6 +111,8 @@ namespace {
   void kgb_h();
   void klbasis_h();
   void kllist_h();
+  void klwrite_h();
+  void blockwrite_h();
   void wcells_h();
   void wgraph_h();
 
@@ -121,6 +126,8 @@ namespace {
   const char* kgb_tag = "prints the orbits of K on G/B";
   const char* klbasis_tag = "prints the KL basis for the Hecke module";
   const char* kllist_tag = "prints the list of distinct KL polynomials";
+  const char* klwrite_tag = "writes the KL polynomials to disk";
+  const char* blockwrite_tag = "writes the block information to disk";
   const char* wcells_tag = "prints the Kazhdan-Lusztig cells for the block";
   const char* wgraph_tag = "prints the W-graph for the block";
   const char* extract_graph_tag =
@@ -201,7 +208,6 @@ void addTestCommands<mainmode::MainmodeTag>
   mode.add("roots_rootbasis",roots_rootbasis_f);
   mode.add("rootdatum",rootdatum_f);
 
-  return;
 }
 
 template<>
@@ -229,10 +235,11 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("kgb",kgb_f);
   mode.add("klbasis",klbasis_f);
   mode.add("kllist",kllist_f);
+  mode.add("klwrite",klwrite_f);
+  mode.add("blockwrite",blockwrite_f);
   mode.add("wcells",wcells_f);
   mode.add("wgraph",wgraph_f);
 
-  return;
 }
 
 template<> void addTestHelp<emptymode::EmptymodeTag>
@@ -315,7 +322,6 @@ template<> void addTestHelp<mainmode::MainmodeTag>
   insertTag(t,"roots_rootbasis",test_tag);
   insertTag(t,"rootdatum",test_tag);
 
-  return;
 }
 
 template<> void addTestHelp<realmode::RealmodeTag>
@@ -352,6 +358,8 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("kgb",kgb_h);
   mode.add("klbasis",klbasis_h);
   mode.add("kllist",kllist_h);
+  mode.add("klwrite",klwrite_h);
+  mode.add("blockwrite",blockwrite_h);
   mode.add("wcells",wcells_h);
   mode.add("wgraph",wgraph_h);
 
@@ -369,10 +377,11 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"kgb",kgb_tag);
   insertTag(t,"klbasis",klbasis_tag);
   insertTag(t,"kllist",kllist_tag);
+  insertTag(t,"klwrite",klwrite_tag);
+  insertTag(t,"blockwrite",blockwrite_tag);
   insertTag(t,"wcells",wcells_tag);
   insertTag(t,"wgraph",wgraph_tag);
 
-  return;
 }
 
 }
@@ -383,70 +392,72 @@ void block_h()
 
 {
   io::printFile(std::cerr,"block.help",io::MESSAGE_DIR);
-  return;
 }
 
 void blockd_h()
 
 {
   io::printFile(std::cerr,"blockd.help",io::MESSAGE_DIR);
-  return;
 }
 
 void blocku_h()
 
 {
   io::printFile(std::cerr,"blocku.help",io::MESSAGE_DIR);
-  return;
 }
 
 void cmatrix_h()
 
 {
   io::printFile(std::cerr,"cmatrix.help",io::MESSAGE_DIR);
-  return;
 }
 
 void primkl_h()
 
 {
   io::printFile(std::cerr,"primkl.help",io::MESSAGE_DIR);
-  return;
 }
 
 void kgb_h()
 
 {
   io::printFile(std::cerr,"kgb.help",io::MESSAGE_DIR);
-  return;
 }
 
 void klbasis_h()
 
 {
   io::printFile(std::cerr,"klbasis.help",io::MESSAGE_DIR);
-  return;
 }
 
 void kllist_h()
 
 {
   io::printFile(std::cerr,"kllist.help",io::MESSAGE_DIR);
-  return;
+}
+
+void klwrite_h()
+
+{
+  io::printFile(std::cerr,"klwrite.help",io::MESSAGE_DIR);
+}
+
+void blockwrite_h()
+
+{
+  io::printFile(std::cerr,"blockwrite.help",io::MESSAGE_DIR);
 }
 
 void wcells_h()
 
 {
   io::printFile(std::cerr,"wcells.help",io::MESSAGE_DIR);
-  return;
 }
 
 void wgraph_h()
 
 {
   io::printFile(std::cerr,"wgraph.help",io::MESSAGE_DIR);
-  return;
 }
 
 }
@@ -498,33 +509,29 @@ void block_f()
 
   try {
     G_R.fillCartan();
+
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    OutputFile file;
+    printBlock(file,block);
+
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
-
-  Block block(G_C,G_R.realForm(),drf);
-
-  OutputFile file;
-  printBlock(file,block);
-
-  return;
 }
 
 void blockd_f()
@@ -553,33 +560,29 @@ void blockd_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    OutputFile file;
+    printBlockD(file,block);
+
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
 
-  Block block(G_C,G_R.realForm(),drf);
-
-  OutputFile file;
-  printBlockD(file,block);
-
-  return;
 }
 
 void blocku_f()
@@ -604,33 +607,28 @@ void blocku_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    OutputFile file;
+    printBlockU(file,block);
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
 
-  Block block(G_C,G_R.realForm(),drf);
-
-  OutputFile file;
-  printBlockU(file,block);
-
-  return;
 }
 
 void blockstabilizer_f()
@@ -654,42 +652,31 @@ void blockstabilizer_f()
 
   try {
     G_R.fillCartan();
+    size_t cn;
+
+    // get Cartan class; abort if unvalid
+    getCartanClass(cn,G_R.cartanSet(),currentLine());
+
+    const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(cn),DualTag());
+
+    OutputFile file;
+    realredgp_io::printBlockStabilizer(file,G_RI.realGroup(),cn,drf);
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  size_t cn;
-
-  // get Cartan class; abort if unvalid
-  try {
-    getCartanClass(cn,G_R.cartanSet(),currentLine());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
 
-  const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
 
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(cn),DualTag());
-  }
-  catch (InputError& e) {
-    e("aborted");
-    return;
-  }
-
-  OutputFile file;
-  realredgp_io::printBlockStabilizer(file,G_RI.realGroup(),cn,drf);
-
-  return;
 }
 
 void cmatrix_f()
@@ -709,7 +696,6 @@ void cmatrix_f()
   cartanMatrix(q,currentRootDatum());
   printMatrix(std::cout,q);
 
-  return;
 }
 
 void components_f()
@@ -733,7 +719,6 @@ void components_f()
   else
     std::cout << "group is connected" << std::endl;
 
-  return;
 }
 
 void coroots_rootbasis_f()
@@ -743,19 +728,23 @@ void coroots_rootbasis_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace lattice;
-  using namespace latticetypes;
+  try {
+    using namespace basic_io;
+    using namespace lattice;
+    using namespace latticetypes;
 
-  const rootdata::RootDatum& rd = currentRootDatum();
-  ioutils::OutputFile file;
+    const rootdata::RootDatum& rd = currentRootDatum();
+    ioutils::OutputFile file;
 
-  std::vector<Weight> v;
-  baseChange(rd.beginCoroot(),rd.endCoroot(),back_inserter(v),
-	     rd.beginSimpleCoroot(),rd.endSimpleCoroot());
-  seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    std::vector<Weight> v;
+    baseChange(rd.beginCoroot(),rd.endCoroot(),back_inserter(v),
+	       rd.beginSimpleCoroot(),rd.endSimpleCoroot());
+    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 
-  return;
 }
 
 void corder_f()
@@ -768,16 +757,14 @@ void corder_f()
 
   try {
     G_R.fillCartan();
+
+    std::cout << "hasse diagram of Cartan ordering:" << std::endl;
+    realredgp_io::printCartanOrder(std::cout,G_R);
   }
   catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
   }
 
-  std::cout << "hasse diagram of Cartan ordering:" << std::endl;
-  realredgp_io::printCartanOrder(std::cout,G_R);
-
-  return;
 }
 
 void primkl_f()
@@ -810,41 +797,36 @@ void primkl_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    OutputFile file;
+    file << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
+	 << std::endl << std::endl;
+    printPrimitiveKL(file,klc);
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
 
-  Block block(G_C,G_R.realForm(),drf);
-
-  KLSupport kls(block);
-  kls.fill();
-
-  KLContext klc(kls);
-  klc.fill();
-
-  OutputFile file;
-  file << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
-       << std::endl << std::endl;
-  printPrimitiveKL(file,klc);
-
-  return;
 }
 
 void kgb_f()
@@ -854,22 +836,26 @@ void kgb_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace kgb;
-  using namespace kgb_io;
-  using namespace realmode;
-  using namespace realredgp;
+  try {
+    using namespace basic_io;
+    using namespace kgb;
+    using namespace kgb_io;
+    using namespace realmode;
+    using namespace realredgp;
 
-  RealReductiveGroup& G = currentRealGroup();
-  G.fillCartan();
+    RealReductiveGroup& G = currentRealGroup();
+    G.fillCartan();
 
-  std::cout << "kgbsize: " << G.kgbSize() << std::endl;
-  ioutils::OutputFile file;
+    std::cout << "kgbsize: " << G.kgbSize() << std::endl;
+    ioutils::OutputFile file;
 
-  KGB kgb(G);
-  printKGB(file,kgb);
+    KGB kgb(G);
 
-  return;
+    printKGB(file,kgb);
+  }
+  catch(error::InputError e) {
+    e("aborted");
+  }
 }
 
 void klbasis_f()
@@ -900,41 +886,35 @@ void klbasis_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    OutputFile file;
+    file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
+	 << std::endl << std::endl;
+    printAllKL(file,klc);
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
-
-  Block block(G_C,G_R.realForm(),drf);
-
-  KLSupport kls(block);
-  kls.fill();
-
-  KLContext klc(kls);
-  klc.fill();
-
-  OutputFile file;
-  file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
-       << std::endl << std::endl;
-  printAllKL(file,klc);
-
-  return;
 }
 
 void kllist_f()
@@ -962,39 +942,255 @@ void kllist_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    OutputFile file;
+    printKLList(file,klc);
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
 
-  Block block(G_C,G_R.realForm(),drf);
+}
 
-  KLSupport kls(block);
-  kls.fill();
+void klwrite_f()
 
-  KLContext klc(kls);
-  klc.fill();
+/*
+  Synopsis: computes the KL polynomials, and writes the results to a pair of
+  binary files
+*/
 
-  OutputFile file;
-  printKLList(file,klc);
+{
+  using namespace basic_io;
+  using namespace blocks;
+  using namespace commands;
+  using namespace error;
+  using namespace interactive;
+  using namespace ioutils;
+  using namespace kl;
+  using namespace kl_io;
+  using namespace klsupport;
+  using namespace realform;
+  using namespace realmode;
+  using namespace realredgp;
+  using namespace tags;
 
-  return;
+  RealReductiveGroup& G_R = currentRealGroup();
+
+  try {
+    G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    std::ofstream matrix_out, coefficient_out; // binary output files
+    {
+      while (true)
+	{
+	  std::string file_name= interactive::getFileName
+	    ("File name for matrix output: ");
+	  if (file_name=="") break; // if no name given, don't open a file
+	  matrix_out.open(file_name.c_str(),
+			    std::ios_base::out
+			  | std::ios_base::trunc
+			  | std::ios_base::binary);
+	  if (matrix_out.is_open()) break;
+	  std::cerr << "Failed to open file for writing, try again.\n";
+	}
+
+      while (true)
+	{
+	  std::string file_name= interactive::getFileName
+	    ("File name for coefficient output: ");
+	  if (file_name=="") break; // if no name given, don't open a file
+	  coefficient_out.open(file_name.c_str(),
+			         std::ios_base::out
+			       | std::ios_base::trunc
+			       | std::ios_base::binary);
+	  if (coefficient_out.is_open()) break;
+	  std::cerr << "Failed to open file for writing, try again.\n";
+	}
+    }
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    if (matrix_out.is_open())
+      {
+	std::vector<unsigned int> delta(klc.size());
+	std::streamoff offset=0;
+	std::cerr << "Writing matrix rows:\n";
+	for (blocks::BlockElt y=0; y<klc.size(); ++y)
+	  {
+#if VERBOSE
+	    std::cerr << y << '\r';
+#endif
+	    std::streamoff new_offset=klc.writeKLRow(y,matrix_out);
+	    delta[y]=static_cast<unsigned int>((new_offset-offset)/4);
+	    offset=new_offset;
+	  }
+
+	if (true) {
+	// now write the values allowing rapid location of the matrix rows
+	for (blocks::BlockElt y=0; y<klc.size(); ++y)
+	  basic_io::put_int(delta[y],matrix_out);
+
+	// and finally sign file as being in new format by overwriting 4 bytes
+	matrix_out.seekp(0,std::ios_base::beg);
+	basic_io::put_int(filekl::magic_code,matrix_out);
+	}
+      }
+    if (coefficient_out.is_open())
+      {
+	std::cerr << "\nWriting all polynomial coefficients:\n";
+	klc.writeKLStore(coefficient_out);
+	std::cerr<< "Done.\n";
+      }
+  }
+  catch (MemoryOverflow& e) {
+    e("error: memory overflow");
+  }
+  catch (InputError& e) {
+    e("aborted");
+  }
+}
+
+void blockwrite_f()
+
+/*
+  Synopsis: computes a block, and writes a binary file containing descent
+  set and ascent sets for all elements.
+*/
+
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
+  // reserve another BlockElt value
+  const blocks::BlockElt noGoodAscent = blocks::UndefBlock-1;
+
+  try {
+    G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    realform::RealForm drf;
+
+    interactive::getInteractive
+      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
+
+    std::ofstream block_out; // binary output files
+    while (true)
+      {
+	std::string file_name= interactive::getFileName
+	  ("File name for block output: ");
+	if (file_name=="") break; // if no name given, don't open a file
+	block_out.open(file_name.c_str(),
+		       std::ios_base::out
+		       | std::ios_base::trunc
+		       | std::ios_base::binary);
+	if (block_out.is_open()) break;
+	std::cerr << "Failed to open file for writing, try again.\n";
+      }
+
+    blocks::Block block(G_C,G_R.realForm(),drf);
+
+    unsigned char rank=block.rank(); // certainly fits in a byte
+
+    std::cerr << "Writing block data:\n";
+    basic_io::put_int(block.size(),block_out);  // block size in 4 bytes
+    block_out.put(rank);                        // rank in 1 byte
+
+    { // output length data
+      unsigned char max_length=block.length(block.size()-1);
+      block_out.put(max_length);
+
+      // basic_io::put_int(0,block_out); // obvious: no elements of length<0
+      size_t l=0;
+      for (blocks::BlockElt z=0; z<block.size(); ++z)
+	while (block.length(z)>l)
+	  {
+	    basic_io::put_int(z,block_out); // record: z elements of length<=l
+	    ++l;
+	  }
+      assert(l==max_length); // so max_length values are written
+
+      // basic_io::put_int(block.size(),block_out);
+      // also obvious: there are block.size() elements of length<=max_length
+    }
+
+
+    for (blocks::BlockElt y=0; y<block.size(); ++y)
+      {
+	bitset::RankFlags d;
+	for (size_t s = 0; s < rank; ++s)
+	  {
+	    descents::DescentStatus::Value v = block.descentValue(s,y);
+	    if (descents::DescentStatus::isDescent(v)) d.set(s);
+	  }
+	basic_io::put_int(d.to_ulong(),block_out); // write d as 32-bits value
+      }
+
+    for (blocks::BlockElt x=0; x<block.size(); ++x)
+      {
+#if VERBOSE
+	std::cerr << x << '\r';
+#endif
+	for (size_t s = 0; s < rank; ++s)
+	  {
+	    descents::DescentStatus::Value v = block.descentValue(s,x);
+            if (descents::DescentStatus::isDescent(v)
+		or v==descents::DescentStatus::ImaginaryTypeII)
+	      basic_io::put_int(noGoodAscent,block_out);
+	    else if (v == descents::DescentStatus::RealNonparity)
+	      basic_io::put_int(blocks::UndefBlock,block_out);
+	    else if (v == descents::DescentStatus::ComplexAscent)
+	      basic_io::put_int(block.cross(s,x),block_out);
+	    else if (v == descents::DescentStatus::ImaginaryTypeI)
+	      basic_io::put_int(block.cayley(s,x).first,block_out);
+	    else assert(false);
+	  }
+      }
+    std::cerr<< "\nDone.\n";
+  }
+  catch (error::MemoryOverflow& e) {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 }
 
 void poscoroots_rootbasis_f()
@@ -1004,19 +1200,23 @@ void poscoroots_rootbasis_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace lattice;
-  using namespace latticetypes;
+  try {
+    using namespace basic_io;
+    using namespace lattice;
+    using namespace latticetypes;
 
-  const rootdata::RootDatum& rd = currentRootDatum();
-  ioutils::OutputFile file;
+    const rootdata::RootDatum& rd = currentRootDatum();
+    ioutils::OutputFile file;
 
-  std::vector<Weight> v;
-  baseChange(rd.beginPosCoroot(),rd.endPosCoroot(),back_inserter(v),
+    std::vector<Weight> v;
+    baseChange(rd.beginPosCoroot(),rd.endPosCoroot(),back_inserter(v),
 	     rd.beginSimpleCoroot(),rd.endSimpleCoroot());
-  seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 
-  return;
 }
 
 void posroots_rootbasis_f()
@@ -1026,19 +1226,23 @@ void posroots_rootbasis_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace lattice;
-  using namespace latticetypes;
+  try {
+    using namespace basic_io;
+    using namespace lattice;
+    using namespace latticetypes;
 
-  const rootdata::RootDatum& rd = currentRootDatum();
-  ioutils::OutputFile file;
+    const rootdata::RootDatum& rd = currentRootDatum();
+    ioutils::OutputFile file;
 
-  std::vector<Weight> v;
-  baseChange(rd.beginPosRoot(),rd.endPosRoot(),back_inserter(v),
-	     rd.beginSimpleRoot(),rd.endSimpleRoot());
-  seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    std::vector<Weight> v;
+    baseChange(rd.beginPosRoot(),rd.endPosRoot(),back_inserter(v),
+	       rd.beginSimpleRoot(),rd.endSimpleRoot());
+    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 
-  return;
 }
 
 void roots_rootbasis_f()
@@ -1048,19 +1252,23 @@ void roots_rootbasis_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace lattice;
-  using namespace latticetypes;
+  try {
+    using namespace basic_io;
+    using namespace lattice;
+    using namespace latticetypes;
 
-  const rootdata::RootDatum& rd = currentRootDatum();
-  ioutils::OutputFile file;
+    const rootdata::RootDatum& rd = currentRootDatum();
+    ioutils::OutputFile file;
 
-  std::vector<Weight> v;
-  baseChange(rd.beginRoot(),rd.endRoot(),back_inserter(v),
-	     rd.beginSimpleRoot(),rd.endSimpleRoot());
-  seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    std::vector<Weight> v;
+    baseChange(rd.beginRoot(),rd.endRoot(),back_inserter(v),
+	       rd.beginSimpleRoot(),rd.endSimpleRoot());
+    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 
-  return;
 }
 
 void rootdatum_f()
@@ -1070,12 +1278,16 @@ void rootdatum_f()
 */
 
 {
-  const rootdata::RootDatum& rd = currentRootDatum();
-  ioutils::OutputFile file;
+  try {
+    const rootdata::RootDatum& rd = currentRootDatum();
+    ioutils::OutputFile file;
 
-  testprint::print(file,rd);
+    testprint::print(file,rd);
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 
-  return;
 }
 
 void wcells_f()
@@ -1106,42 +1318,39 @@ void wcells_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    WGraph wg(klc.rank());
+    kl::wGraph(wg,klc);
+
+    OutputFile file;
+    printCells(file,wg);
+
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
 
-  Block block(G_C,G_R.realForm(),drf);
-
-  KLSupport kls(block);
-  kls.fill();
-
-  KLContext klc(kls);
-  klc.fill();
-
-  WGraph wg(klc.rank());
-  kl::wGraph(wg,klc);
-
-  OutputFile file;
-  printCells(file,wg);
-
-  return;
 }
 
 void wgraph_f()
@@ -1171,42 +1380,38 @@ void wgraph_f()
 
   try {
     G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    RealForm drf;
+
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+
+    Block block(G_C,G_R.realForm(),drf);
+
+    KLSupport kls(block);
+    kls.fill();
+
+    KLContext klc(kls);
+    klc.fill();
+
+    WGraph wg(klc.rank());
+    kl::wGraph(wg,klc);
+
+    OutputFile file;
+    printWGraph(file,wg);
+
   }
   catch (MemoryOverflow& e) {
     e("error: memory overflow");
-    return;
-  }
-
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const realredgp_io::Interface& G_RI = currentRealInterface();
-  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-  // get dual real form
-  RealForm drf;
-
-  try {
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
   }
   catch (InputError& e) {
     e("aborted");
-    return;
   }
 
-  Block block(G_C,G_R.realForm(),drf);
-
-  KLSupport kls(block);
-  kls.fill();
-
-  KLContext klc(kls);
-  klc.fill();
-
-  WGraph wg(klc.rank());
-  kl::wGraph(wg,klc);
-
-  OutputFile file;
-  printWGraph(file,wg);
-
-  return;
 }
 
 void extract_graph_f()
@@ -1215,9 +1420,9 @@ void extract_graph_f()
     ioutils::InputFile block_file("block information");
     ioutils::InputFile matrix_file("matrix information");
     ioutils::InputFile polynomial_file("polynomial information");
-    wgraph::WGraph wg=filekl::wGraph(block_file,matrix_file,polynomial_file);
-
     ioutils::OutputFile file;
+
+    wgraph::WGraph wg=filekl::wGraph(block_file,matrix_file,polynomial_file);
     wgraph_io::printWGraph(file,wg);
   }
   catch (error::InputError e) {
