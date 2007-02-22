@@ -222,7 +222,8 @@ P_{y,x}).
   // get map of primitive elements for row y with nonzero KL polynomial
   bitmap::BitMap primMap (BlockElt y) const;
 
-  void writeKLRow (BlockElt y, std::ostream& out) const; // write out d_kl[y]
+  // write out d_kl[y]
+  std::streamoff writeKLRow (BlockElt y, std::ostream& out) const;
 
   void writeKLStore (std::ostream& out) const;   // write out d_store
 
