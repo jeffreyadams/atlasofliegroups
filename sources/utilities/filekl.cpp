@@ -107,11 +107,17 @@ cached_pol_info::cached_pol_info(std::ifstream& coefficient_file)
 {
   for (KLIndex i=2; i<n_polynomials(); ++i)
   {
+#ifdef VERBOSE
+    if ((i&0xFFF)==0) std::cerr << i << '\r';
+#endif
     size_t d=polynomial_info::degree(i);
     if ((d&~degree_mask)!=0)
       throw std::runtime_error("Degree found too large (>=32)");
     cache[i-2]=d;
   }
+#ifdef VERBOSE
+    std::cerr << n_polynomials()-1 << '\n';
+#endif
 }
 
 size_t cached_pol_info::degree (KLIndex i) const
