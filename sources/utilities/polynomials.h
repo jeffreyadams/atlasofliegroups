@@ -6,7 +6,7 @@
   This is polynomials.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -25,7 +25,7 @@ namespace atlas {
 
 namespace polynomials {
 
-  const Degree UndefDegree = ~0ul;
+  const Degree MinusOne = ~ Degree(0); // -1 as unsigned, the degree of Zero
 
 }
 
@@ -51,13 +51,16 @@ void safeSubtract(C&, C);
 
 namespace polynomials {
 
-  /*!  \brief Polynomials with coefficients in C, which must be a
+  /*!  \brief Polynomials with coefficients in C, which is expected to be a
        standard unsigned type.
 
-       The coefficient type C must support addition, multiplication,
-       subtraction, and std::numeric_limits<C> (used to test for
-       overflow in the safeAdd operation).
+       The coefficient type C must support addition (+, +=), multiplication
+       (*, *=), subtraction (unary and binary -, -=), and
+       std::numeric_limits<C> (used to test for overflow in the safeAdd
+       operation); moreover comparisons (<, ==, !=) should be defined,
+       although < need not have any particular mathematical sense
   */
+
 template<typename C> class Polynomial {
 
  private:
@@ -69,7 +72,7 @@ template<typename C> class Polynomial {
  public:
 
 // constructors and destructors
-  Polynomial() {}
+  Polynomial() {} // zero polynomial Zero
 
   explicit Polynomial(Degree d);
 
@@ -79,7 +82,7 @@ template<typename C> class Polynomial {
   }
 
 // accessors
-  C operator[] (Degree j) const {     
+  C operator[] (Degree j) const {
     return d_data[j];
   }
 
@@ -90,28 +93,18 @@ template<typename C> class Polynomial {
   /*!
 \brief Operator < is the default from the standard library < on vector.
 
-The ordering in the boolean compare(P,Q) is a much more useful and
-  natural one. According to Fokko, the reason for using this unnatural
-  comparison operator is probably that profiling suggested that the
-  compare function was using a lot of time in Kazhdan-Lusztig
-  computations.  (Each new KL polynomial must be inserted into the set
-  of 
+  The comparison operation below is only defined in order to allow ordered
+  data types containing polynomials, such as |std::set<Polynomial<int> >|.
+  Currently no such types are used in the Atlas (but initially they were).
   */
-bool operator< (const Polynomial& q) const { return d_data < q.d_data;
-  }
+  bool operator< (const Polynomial& q) const { return d_data < q.d_data; }
 
-  Degree degree() const {
-    return d_data.size()-1;
-  }
+  Degree degree() const { return d_data.size()-1; }
 
-  bool isZero() const {
-    return d_data.size() == 0;
-  }
+  bool isZero() const { return d_data.size() == 0; } // because of reduction
 
 // manipulators
-  C& operator[] (Degree j) {
-    return d_data[j];
-  }
+  C& operator[] (Degree j) { return d_data[j]; } // non-const version of above
 
   Polynomial& operator+= (const Polynomial&);
 
@@ -119,9 +112,11 @@ bool operator< (const Polynomial& q) const { return d_data < q.d_data;
 
   Polynomial& operator*= (C);
 
-  Polynomial& safeAdd(const Polynomial&, Degree d = 0, C c = 1);
+  void safeAdd(const Polynomial& p, Degree d, C c); // *this += c*q^d*p
+  void safeAdd(const Polynomial& p, Degree d = 0);  // *this += q^d*p
 
-  Polynomial& safeSubtract(const Polynomial&, Degree d = 0, C c = 1);
+  void safeSubtract(const Polynomial& p, Degree d, C c);
+  void safeSubtract(const Polynomial& p, Degree d = 0 );
 };
 
 }

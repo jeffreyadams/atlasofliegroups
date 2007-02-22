@@ -18,10 +18,10 @@
   is that the degree operator, which is used a lot, is trivial.
 */
 /*
-  This is polynomials_def.h.  
+  This is polynomials_def.h.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -51,8 +51,6 @@ namespace atlas {
 /*****************************************************************************
 
         Chapter I -- The Polynomial class
-
-  ... explain here when it is stable ...
 
  *****************************************************************************/
 
@@ -100,12 +98,7 @@ void Polynomial<C>::adjustSize()
   }
 
   d_data.resize(d);
-
-  return;
 }
-
-template<typename C>
-Polynomial<C>& Polynomial<C>::safeAdd(const Polynomial& q, Degree d, C c)
 
 /*!
   \brief Adds x^d.c.q, to *this, watching for overflow.
@@ -115,10 +108,11 @@ Polynomial<C>& Polynomial<C>::safeAdd(const Polynomial& q, Degree d, C c)
   NOTE: we need to be careful in the case where q = *this, but we can
   avoid making a copy, by doing the addition top-to-bottom.
 */
-
+template<typename C>
+void Polynomial<C>::safeAdd(const Polynomial& q, Degree d, C c)
 {
   if (q.isZero()) // do nothing
-    return *this;
+    return;
 
   // save the degree of q
   Degree dq = q.degree();
@@ -133,12 +127,29 @@ Polynomial<C>& Polynomial<C>::safeAdd(const Polynomial& q, Degree d, C c)
     polynomials::safeProd(a,c);          // this may throw
     polynomials::safeAdd(d_data[j+d],a); // this may throw
   }
-
-  return *this;
 }
 
+/* A simplified version avoiding multiplication in the common case |c==1| */
+
 template<typename C>
-Polynomial<C>& Polynomial<C>::safeSubtract(const Polynomial& q, Degree d, C c)
+void Polynomial<C>::safeAdd(const Polynomial& q, Degree d)
+{
+  if (q.isZero()) // do nothing
+    return;
+
+  // save the degree of q
+  Degree dq = q.degree();
+
+  // find degree
+  if (q.d_data.size()+d > d_data.size())
+    d_data.resize(q.d_data.size()+d,0ul);
+
+  for (size_t j = dq+1; j;) {
+    --j;
+    polynomials::safeAdd(d_data[j+d],q[j]); // this may throw
+  }
+}
+
 
 /*!
   \brief Subtracts x^d.c.q from *this, watching for underflow.
@@ -148,10 +159,12 @@ Polynomial<C>& Polynomial<C>::safeSubtract(const Polynomial& q, Degree d, C c)
   NOTE: q = *this is possible only for d = 0; still, we do the prudent thing
   and subtract backwards.
 */
+template<typename C>
+void Polynomial<C>::safeSubtract(const Polynomial& q, Degree d, C c)
 
 {
   if (q.isZero()) // do nothing
-    return *this;
+    return;
 
   // save the degree of q
   Degree dq = q.degree();
@@ -168,8 +181,30 @@ Polynomial<C>& Polynomial<C>::safeSubtract(const Polynomial& q, Degree d, C c)
 
   // set degree
   adjustSize();
+}
 
-  return *this;
+/* Again a simplified version deals with the common case |c==1| */
+
+template<typename C>
+void Polynomial<C>::safeSubtract(const Polynomial& q, Degree d)
+
+{
+  if (q.isZero()) // do nothing
+    return;
+
+  // save the degree of q
+  Degree dq = q.degree();
+
+  if (dq+d > degree()) // underflow
+    throw error::NumericUnderflow();
+
+  for (size_t j = dq+1; j;) {
+    --j;
+    polynomials::safeSubtract(d_data[j+d],q[j]); // this may throw
+  }
+
+  // set degree
+  adjustSize();
 }
 
 }
@@ -197,7 +232,7 @@ bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
 {
   if (q.isZero())
     return false;
-	
+
   // now q is nonzero
   if (p.isZero())
     return true;
@@ -236,8 +271,6 @@ template<typename C> void safeAdd(C& a, C b)
     throw NumericOverflow();
   else
     a += b;
-
-  return;
 }
 
 template<typename C> void safeProd(C& a, C b)
@@ -258,8 +291,6 @@ template<typename C> void safeProd(C& a, C b)
     throw NumericOverflow();
   else
     a *= b;
-
-  return;
 }
 
 template<typename C> void safeSubtract(C& a, C b)
@@ -277,8 +308,6 @@ template<typename C> void safeSubtract(C& a, C b)
     throw NumericUnderflow();
   else
     a -= b;
-
-  return;
 }
 
 }
