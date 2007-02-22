@@ -119,7 +119,7 @@ class Block {
 \brief Entry z flags the descent status of the simple roots for block
 element z.
   */
-  descents::DescentStatusList d_descent;
+  descents::DescentStatusList d_descent; // of size size()
 
   /*!
 \brief Entry z is the length of block element z.
