@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cassert>
 #include <stdexcept>
+#include <memory>
 
 #include "filekl.h"
 #include "bits.h"
@@ -24,8 +25,6 @@ const std::ios_base::openmode binary_in_out=
 			    std::ios_base::in
 			  | std::ios_base::out
 			  | std::ios_base::binary;
-
-const unsigned int magic_code=0x06ABdCF0; // indication of new matrix format
 
 template <unsigned int n>
 inline ullong read_bytes(std::istream& in)
@@ -97,6 +96,36 @@ size_t polynomial_info::leading_coeff(KLIndex i) const
   ullong next_index=read_bytes<5>(file);
   file.seekg(coefficients_begin+next_index-coef_size,std::ios_base::beg);
   return read_var_bytes(coef_size,file);
+}
+
+
+    // Methods of the |cached_pol_info| class
+
+cached_pol_info::cached_pol_info(std::ifstream& coefficient_file)
+  : polynomial_info(coefficient_file)
+  , cache(n_polynomials()-2)
+{
+  for (KLIndex i=2; i<n_polynomials(); ++i)
+  {
+    size_t d=degree(i);
+    if ((d&~degree_mask)!=0)
+      throw std::runtime_error("Degree found too large (>=32)");
+    cache[i-2]=d;
+  }
+}
+
+size_t cached_pol_info::degree (KLIndex i) const
+{
+  return i<2 ? i-1 : cache[i-2]&degree_mask ;
+}
+
+size_t cached_pol_info::leading_coeff (KLIndex i) const
+{
+  if (i<2) return i;
+  if ((cache[i-2]&~degree_mask)!=0) return cache[i-2]/(degree_mask+1);
+  size_t lc=polynomial_info::leading_coeff(i); // look up in file
+  if (lc<=255/(degree_mask+1)) cache[i-2] |= lc*(degree_mask+1);
+  return lc;
 }
 
 
@@ -208,7 +237,13 @@ void matrix_info::set_y(BlockElt y)
   		    ,y);
     const BlockElt* first= // point to first of |weak_prims| of that length
       std::lower_bound(&weak_prims[0],&weak_prims[weak_prims.size()],*(i-1));
-    assert(cur_strong_prims.back()==*first);
+    if (cur_strong_prims.back()!=*first)
+      {
+	std::cerr << "For y=" << y << ", first weak prim found " << *first
+		  << " does not match computed value "
+		  << cur_strong_prims.back() << ".\n";
+	throw std::runtime_error("Panic");
+      }
 #endif
     cur_strong_prims.back()=y; // replace by |y|
   }
@@ -275,23 +310,11 @@ matrix_info::matrix_info
       }
       row_pos[y]= matrix_file.tellg(); // record position after row number
       size_t n_prim=read_bytes<4>(matrix_file);
-      {
-	const prim_list& weak_prims = block.prims_for_descents_of(y);
-	prim_list::const_iterator i= // find limit of |length<l| values
-	  std::lower_bound(weak_prims.begin(),weak_prims.end()
-			  ,block.start_length[l]);
-
-	if (n_prim!=size_t(i-weak_prims.begin())+1)
-        { std::cerr << y << std::endl;
-          throw std::runtime_error ("Primitive count problem");
-        }
-      }
 
       { size_t n_strong_prim=0;
         { // compute number of entries to skip, while reading bitmap
 	  static const unsigned int ulsize=sizeof(unsigned long int);
-	  size_t count=n_prim/(8*ulsize);
-	    // number of |unsigned long int|s to read
+	  size_t count=n_prim/(8*ulsize); // number of |unsigned long|s to read
 
 	  while (count-->0)
 	    n_strong_prim+=bits::bitCount(read_bytes<ulsize>(matrix_file));
@@ -331,8 +354,21 @@ wgraph::WGraph wGraph
   , std::ifstream& matrix_file
   , std::ifstream& KL_file)
 {
+  typedef std::auto_ptr<polynomial_info> pol_aptr;
+
   matrix_info mi(block_file,matrix_file);
-  polynomial_info poli(KL_file);
+  pol_aptr pol_p(NULL);
+
+  try
+  { pol_p=pol_aptr(new cached_pol_info(KL_file));
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << "Failed to use cached polynomials: " << e.what() << std::endl;
+    pol_p=pol_aptr(new polynomial_info(KL_file));
+  }
+
+  polynomial_info& poli=*pol_p;
 
   BlockElt dummy;
 

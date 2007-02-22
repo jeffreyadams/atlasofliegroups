@@ -25,6 +25,9 @@ namespace atlas {
   namespace filekl {
 
 
+const unsigned int magic_code=0x06ABdCF0; // indication of new matrix format
+
+
     // The |polynomial_info| class
 
 typedef unsigned long long int ullong; // a 64-bit type even on 32-bit machines
@@ -44,14 +47,29 @@ class polynomial_info
 
 public:
   polynomial_info(std::ifstream& coefficient_file);
+  virtual ~polynomial_info() { file.close(); }
 
   KLIndex n_polynomials() const { return n_pols; }
   unsigned int coefficient_size() const { return coef_size; }
   ullong n_coefficients() const { return n_coef; }
 
-  size_t degree(KLIndex i) const;
+  virtual size_t degree(KLIndex i) const;
   std::vector<size_t> coefficients(KLIndex i) const;
-  size_t leading_coeff(KLIndex i) const;
+  virtual size_t leading_coeff(KLIndex i) const;
+};
+
+// A derived class that caches the degrees, and some leading coefficients
+class cached_pol_info
+  : public polynomial_info
+{
+  static const size_t degree_mask = 0x1F; // degree must <32
+  mutable std::vector<unsigned char> cache;
+
+public:
+  cached_pol_info(std::ifstream& coefficient_file);
+
+  virtual size_t degree(KLIndex i) const;
+  virtual size_t leading_coeff(KLIndex i) const;
 };
 
     // The |block_info| class
