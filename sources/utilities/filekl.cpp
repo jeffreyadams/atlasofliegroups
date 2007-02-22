@@ -107,7 +107,7 @@ cached_pol_info::cached_pol_info(std::ifstream& coefficient_file)
 {
   for (KLIndex i=2; i<n_polynomials(); ++i)
   {
-    size_t d=degree(i);
+    size_t d=polynomial_info::degree(i);
     if ((d&~degree_mask)!=0)
       throw std::runtime_error("Degree found too large (>=32)");
     cache[i-2]=d;
@@ -404,13 +404,25 @@ wgraph::WGraph wGraph
         {
 	  BlockElt x = *start;
 	  KLIndex klp = mi.find_pol_nr(x,y,dummy);
+#ifdef VERBOSE
+	  std::cerr << "\nconsidering x=" << x << ", KL polynomial #" << klp;
+#endif
+
+
 	  if (poli.degree(klp)==d)
 	  {
 	    result.edgeList(x).push_back(y);
 	    size_t mu=poli.leading_coeff(klp);
 	    if (mu>max_mu) { max_mu=mu; max_pair=std::make_pair(x,y); }
 	    result.coeffList(x).push_back(mu);
+#ifdef VERBOSE
+	    std::cerr << "; accepted, mu=" << mu << ".\n";
 	  }
+	  else {
+	    std::cerr << "; rejected as deg=" << poli.degree(klp) << ".\n";
+#endif
+	  }
+
 	} // for (start...) if (descent!=d_y)
     } // for (lx,d)
 
