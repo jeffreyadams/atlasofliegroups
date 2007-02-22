@@ -77,17 +77,17 @@ size_t firstBit(unsigned long f)
 
   size_t fb = 0;
 
-  for (; (f & firstChar) == 0; f >>= charBits)
+  for (; (f & firstCharMask) == 0; f >>= charBits)
     fb += charBits;
 
-  return fb + firstbit[f & firstChar];
+  return fb + firstbit[f & firstCharMask];
 }
 
 size_t lastBit(unsigned long f)
 
 /*!
-  Synopsis: returns the position of the first [should be last - DV]
-  set bit in f, plus one.  Returns 0 if there is no such bit.
+  Synopsis: returns the position of the last (most significant)
+  set bit in f, PLUS ONE.  Returns 0 if there is no such bit.
 */
 
 {
@@ -98,7 +98,7 @@ size_t lastBit(unsigned long f)
 
   unsigned lb = 0;
 
-  for (; f & ~firstChar; f >>= charBits)
+  for (; f & ~firstCharMask; f >>= charBits)
     lb += charBits;
 
   return lb + lastbit[f];
