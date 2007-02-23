@@ -21,12 +21,11 @@
 
 namespace atlas {
 
-
 /******** constant declarations *********************************************/
 
 namespace polynomials {
 
-  const Degree MinusOne = ~0; // -1 as unsigned, the degree of Zero
+  const Degree MinusOne = ~ Degree(0); // -1 as unsigned, the degree of Zero
 
 }
 
@@ -49,11 +48,11 @@ void safeSubtract(C&, C);
 
 namespace polynomials {
 
-  /*!  \brief Polynomials with coefficients in C, which must be a
-       modular integral type
+  /*!  \brief Polynomials with coefficients in C, which is expected to be a
+       modular integral type.
 
-       The coefficient type C must support addition (+,+=),
-       multiplication (*=) and subtraction (unary and binary -),
+       The coefficient type C must support addition (+, +=),
+       multiplication (*, *=) and subtraction (unary and binary -, -=),
        and comparison (<, ==, !=) (where < need not have mathematical sense)
   */
 template<typename C> class Polynomial {
@@ -78,9 +77,7 @@ template<typename C> class Polynomial {
 
 // accessors
 
-/* N.B. result was changed from 'C' to 'const C&', in order to be able to set
-   const C* p_ptr= &p[0] when p is a constant polynomial */
-  const C& operator[] (Degree j) const {  return d_data[j]; }
+  C operator[] (Degree j) const {  return d_data[j]; }
 
   bool operator== (const Polynomial& q) const { return d_data == q.d_data; }
 
