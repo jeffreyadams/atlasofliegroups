@@ -907,7 +907,7 @@ Returns 1 if any bit of the BitSet is 1, and 0 otherwise.
   /*!
 \brief Tests whether BitSet and b have non-empty intersection.
 
-Returns 1 if any bit is 1 in both BitSet and b, and 0 otherwise.
+Returns whether any bit is 1 in both BitSet and b.
   */
   bool any(const BitSet& b) const {
     return Base::any(b);

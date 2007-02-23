@@ -74,7 +74,7 @@ void initConstants()
   firstbit[1] = 0;
 
   // find least significant set bit by a simple recurrence
-  for (unsigned int j = 1; j < (1 << charBits-1); ++j) {
+  for (unsigned int j = 1; j < (1 << (charBits-1)); ++j) {
     firstbit[2*j]   = firstbit[j]+1; // for even numbers use recursion
     firstbit[2*j+1] = 0;             // for odd numbers, it is 0
   }
@@ -87,7 +87,6 @@ void initConstants()
     lastbit[2*j]   = lastbit[j]+1; // for even numbers use recursion
     lastbit[2*j+1] = lastbit[j]+1; // for odd numbers use recursion as well
   }
-  return;
 }
 
 }
