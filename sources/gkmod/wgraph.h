@@ -1,8 +1,8 @@
 /*
   This is wgraph.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -51,7 +51,7 @@ class WGraph {
  public:
 
 // constructors and destructors
-  explicit WGraph(size_t);
+  explicit WGraph(size_t rank);
 
   ~WGraph();
 
@@ -102,7 +102,7 @@ class WGraph {
 
   void reset();
 
-  void resize(size_t);
+  void resize(size_t blocksize);
 };
 
 }
