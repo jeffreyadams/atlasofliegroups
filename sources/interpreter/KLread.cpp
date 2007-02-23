@@ -201,10 +201,9 @@ BlockElt block_info::primitivise(BlockElt x, const RankFlags d) const
   const ascent_vector& ax=ascents[x];
   for (size_t s=0; s<rank; ++s)
     if (d[s] and ax[s]!=noGoodAscent)
-      {
-	if (ax[s]==UndefBlock) return UndefBlock;
-	x=ax[s]; goto start; // this should raise x, now try another step
-      }
+    { if (ax[s]==UndefBlock) return UndefBlock;
+      x=ax[s]; goto start; // this should raise x, now try another step
+    }
   return x; // no raising possible, stop here
 }
 
@@ -370,6 +369,7 @@ matrix_info::matrix_info
           row_pos[y]= matrix_file.tellg(); // record position after row number
           size_t n_prim=read_bytes<4>(matrix_file);
     
+    #if 0
           
           { const prim_list& weak_prims = block.prims_for_descents_of(y);
             prim_list::const_iterator i= // find limit of |length<l| values
@@ -382,6 +382,7 @@ matrix_info::matrix_info
                 throw std::runtime_error ("Primitive count problem");
               }
           }
+    #endif
           
           { size_t n_strong_prim=0;
             
