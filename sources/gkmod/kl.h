@@ -28,7 +28,6 @@ Class definitions and function declarations for the class KLContext.
 
 #include "hashtable-stats.h-thread"
 #include "polynomials.h"
-#include "prettyprint.h"
 #include "wgraph.h"
 
 namespace atlas {
@@ -83,6 +82,7 @@ class KLPool
 
     // some parameters for storage layout
     static const int int_bits  =std::numeric_limits<unsigned int>::digits;
+    static const int half_int_bits = int_bits/2;
     static const size_t low_mask; // bit mask for lower order unsigned int
 
     static const unsigned int deg_limit=32; // (hard) degree limit
@@ -102,27 +102,34 @@ class KLPool
    out of memory for coefficient storage (on a 32-bit machine, this will
    certainly happen before we have accumulated 2^32 coefficents).
 
-   Unfortunately g++ warns about "shift amount >= word size" when compiling
-   for 32 bits machines, even though the instructions doing that are never
-   reached there (and hopefully optimised away). We have some advice for g++
-   implementers here: if the compiler detects this too large shift amount,
-   necessarily constant, why still produce the bitwise shift instruction,
-   whose effect (returning x for x>>32 or x<<32) is very unlikely to be what
-   the programmer intended, instead of generating a constant 0 which is much
-   more logical. Yes, this would means that the effect of shifting over the
-   same large amount would depend on whether that amount is a compile-time
-   constant (and triggers a warning) or not, but the fact that the behaviour
-   is officially undefined anyway gives implementers the licence to do this.
+   Initially we defined for instance |high_order_int(size_t x)| as
 
-   On a 32-bit machine, set_high_order will only be called with x==0, so one
-   could just write size_t(x)<<int_bits in that function to avoid the test,
-   after verifying that 0<<32 == 0
+   { return sizeof(x)>sizeof(unsigned int) ? x>>int_bits : 0; }
+
+   Unfortunately g++ then warns about "shift amount >= word size" when
+   compiling for 32 bits machines, even though the instructions doing that are
+   never reached there (and hopefully optimised away). There seems to be no
+   way to suppress that message, so finally we opted for two half-length
+   shifts, which the compiler should optimise to always 0 on 32 bits machines,
+   and to shift by a full length on 64-bits machines. Do note that for
+   |set_high_order| we must cast to |size_t| before shifting, or else the
+   result would always be 0 on any architecture!
+
+   We have some advice for g++ implementers here: if the compiler detects this
+   too large shift amount, necessarily constant, why still produce the bitwise
+   shift instruction, whose effect (returning x for x>>32 or x<<32) is very
+   unlikely to be what the programmer intended, instead of generating a
+   constant 0 which is much more logical. Yes, this would means that the
+   effect of shifting over the same large amount would depend on whether that
+   amount is a compile-time constant (and triggers a warning) or not, but the
+   fact that the behaviour is officially undefined anyway gives implementers
+   the licence to do this.
 */
 
     static inline unsigned int high_order_int(size_t x)
-      { return sizeof(x)>sizeof(unsigned int) ? x>>int_bits : 0; }
+      { return x>>half_int_bits>>half_int_bits; }
     static inline size_t set_high_order(unsigned int x)
-      { return sizeof(size_t)>sizeof(unsigned int) ? size_t(x)<<int_bits : 0; }
+      { return size_t(x)<<half_int_bits<<half_int_bits; }
 
 
 /* The following structure collects information about a group of |group_size|

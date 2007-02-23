@@ -46,6 +46,7 @@
 #include "blocks.h"
 #include "error.h"
 #include "kl_error.h"
+#include "prettyprint.h"
 
 /*
   [Fokko's original description, which referred to a slighly older
@@ -868,7 +869,7 @@ void KLContext::writeKLStore (std::ostream& out) const
   basic_io::put_int(d_store.size(),out); // write number of KL poynomials
 
   // write sequence of 5-byte indices, computed on the fly
-  size_t offset=0; // poition of first coefficient written
+  size_t offset=0; // position of first coefficient written
   for (size_t i=0; i<d_store.size(); ++i)
     {
       KLPolRef p=d_store[i]; // get reference to polynomial
@@ -896,34 +897,34 @@ void KLContext::writeKLStore (std::ostream& out) const
 /* methods of KLPolEntry */
 
 
-  /*!
-    \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
+/*!
+  \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
 
-    The function is in fact evaluation of the polynomial (with coefficients
-    interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
-    calculated quickly (without multiplications) and which gives a good spread
-    (which is not the case if 2105633 is replaced by a small number, because
-    the evaluation values will not grow fast enough for low degree
-    polynomials!).
+  The function is in fact evaluation of the polynomial (with coefficients
+  interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
+  calculated quickly (without multiplications) and which gives a good spread
+  (which is not the case if 2105633 is replaced by a small number, because
+  the evaluation values will not grow fast enough for low degree
+  polynomials!).
 
-  */
+*/
 inline size_t KLPolEntry::hashCode(size_t modulus) const
-  { const polynomials::Polynomial<KLCoeff>& P=*this;
-    if (P.isZero()) return 0;
-    polynomials::Degree i=P.degree();
-    size_t h=P[i]; // start with leading coefficient
-    while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
-    return h;
-  }
+{ const polynomials::Polynomial<KLCoeff>& P=*this;
+  if (P.isZero()) return 0;
+  polynomials::Degree i=P.degree();
+  size_t h=P[i]; // start with leading coefficient
+  while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
+  return h;
+}
 
 bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
- {
-   if (degree()!=e.degree()) return true;
-   if (isZero()) return false; // since degrees match
-   for (polynomials::Degree i=0; i<=degree(); ++i)
-     if ((*this)[i]!=e[i]) return true;
-   return false; // no difference found
- }
+{
+  if (degree()!=e.degree()) return true;
+  if (isZero()) return false; // since degrees match
+  for (polynomials::Degree i=0; i<=degree(); ++i)
+    if ((*this)[i]!=e[i]) return true;
+  return false; // no difference found
+}
 
 
 
@@ -1193,7 +1194,7 @@ Helper::Helper(const KLContext& kl)
   : KLContext(kl
 	      ,0x8000ul,22u   // 2^15 blocks of 2^22 coefficients
 	      ,0x4000ul,14u)  // 2^14 blocks of 2^14 index groups (of 2^4 each)
-    , d_hashtable(d_store) // hash table refers to our own d_store
+    , d_hashtable(d_store) // hash table refers to our base object's d_store
     , prim_size(0), nr_of_prim_nulls(0), stat_guard()
 {
   const KLPol Zero;   // default constructed polynomial has degree -1
@@ -1366,10 +1367,10 @@ MuCoeff Helper::lengthOneMu(BlockElt x, BlockElt y) const
 */
 
 {
-  // look if x is extremal w.r.t. y
-  size_t s = firstAscent(descent(x),descent(y),rank());
-
-  if (s != rank()) return ascentMu(x,y,s) ? MuCoeff(1) : MuCoeff(0);
+  // look if x has any ascents that are descents for y
+  bitset::RankFlags ascents=descentSet(y); ascents.andnot(descentSet(x));
+  if (ascents.any())
+    return ascentMu(x,y,ascents.firstBit()) ? MuCoeff(1) : MuCoeff(0);
 
   /* Doing the following case separately costs more time than it gains
 
@@ -1590,14 +1591,7 @@ void Helper::fill()
   pthread_mutex_init(&YThread.mutex, NULL);
 
   //set timers for KL computation
-
 #ifdef VERBOSE
-  const int pid = getpid();
-  std::stringstream command;
-  command << "grep VmData /proc/" << pid << "/status";
-  // system(command.str().c_str());
-  // std::cout << std::endl;
-
   std::time_t time0;
   std::time(&time0);
   std::time_t time;
@@ -1641,14 +1635,10 @@ void Helper::fill()
       std::cerr << "t="    << std::setw(6) << deltaTime
 		<< "s. l=" << std::setw(3) << l
 		<< ", y="  << std::setw(6) << d_support->lengthLess(l+1) - 1
-                << ", coef:"  << std::setw(11) << d_store.size()
-		<< ", store:" << std::setw(11) << d_hashtable.mem_capacity()
+                << ", polys:"  << std::setw(11) << d_store.size()
+		<< ", pmem:" << std::setw(11) << d_hashtable.mem_capacity()
                 << ", mat:"  << std::setw(11) << prim_size
 		<<  std::endl;
-
-      // system(command.str().c_str());
-      // this was 'grep VmData /proc/<process id>/status'
-
 #endif
 
   } // for (size_t l = minLength+1; l <= maxLength; ++l)
@@ -1658,11 +1648,9 @@ void Helper::fill()
   std::time(&time);
   double deltaTime = difftime(time, time0);
   std::cerr << std::endl;
-  std::cerr << "Total elapsed time = " << deltaTime
-            << "s.  Finished at l = " << maxLength
-            << ", y = " << d_kl.size() - 1 << std::endl;
-  std::cerr << "d_store.size() = " << d_store.size()
-            << ", prim_size = " << prim_size  << std::endl;
+  std::cerr << "Total elapsed time = " << deltaTime << "s." << std::endl;
+  std::cerr << d_store.size() << " polynomials, "
+            << prim_size << " matrix entries."<< std::endl;
 
   std::cerr << std::endl;
 #endif
@@ -1735,6 +1723,8 @@ void Helper::fillMuRow(BlockElt y)
   const PrimitiveRow& e = d_prim[y]; // list of nonzero polynomials
 
   size_t ly = length(y);
+  if (ly==0) // we are in fact never called for |y| values of length 0
+    return;  // but this is prudent, since next loop would fail for |ly==0|
 
   PrimitiveRow::const_iterator start= e.begin();
   // traverse lengths of opposite parity, up to ly-3
@@ -1887,7 +1877,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 	klv[j].safeSubtract(pol,d,mu); // subtract q^d.mu.P_{x,z} from klv[j]
       }
 
-  }
+  } // for (i)
 
 }
 
@@ -2444,8 +2434,6 @@ ThicketIterator& ThicketIterator::operator++ ()
 
         Chapter V -- Functions declared in kl.h
 
-  ... explain here when it is stable ...
-
  *****************************************************************************/
 
 namespace kl {
@@ -2459,13 +2447,13 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
   block; the corresponding descent set is the tau-invariant, i.e. the set of
   generators s that are either complex descents, real type I or II, or
   imaginary compact. Let x < y in the block such that mu(x,y) != 0, and
-  descent(x) != descent(y). Then there is an edge from x to y unless descent(x)
-  is contained in descent(y), and an edge from y to x unless descent(y) is
-  contained in descent(x). Note that the latter always happens when the length
-  difference is > 1, so that in that case there will only be an edge from
-  x to y (the edge must be there because we already assumed that the descent
-  sets were not equal.) In both cases, the coefficient corresponding to the
-  edge is mu(x,y).
+  descent(x) != descent(y). Then there is an edge from x to y unless
+  descent(x) is contained in descent(y), and an edge from y to x unless
+  descent(y) is contained in descent(x). Note that the latter containment
+  always holds when the length difference is > 1, so that in that case there
+  will only be an edge from x to y (the edge must be there because we already
+  assumed that the descent sets were not equal.) In both cases, the
+  coefficient corresponding to the edge is mu(x,y).
 
   NOTE: if I'm not mistaken, the edgelists come already out sorted.
 */
@@ -2499,17 +2487,13 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
 	continue;
       }
       // if we get here, the length difference is 1
-      RankFlags d = d_y;
-      d &= d_x;
-      if (d != d_y) { // d_y is not contained in d_x
-	              // add edge from y to x
-	wg.edgeList(y).push_back(x);
-	wg.coeffList(y).push_back(mu);
-      }
-      if (d != d_x) { // d_x is not contained in d_y
-	              // add edge from x to y
+      if (not d_y.contains(d_x)) { // then add edge from x to y
 	wg.edgeList(x).push_back(y);
 	wg.coeffList(x).push_back(mu);
+      }
+      if (not d_x.contains(d_y)) { // then add edge from y to x
+	wg.edgeList(y).push_back(x);
+	wg.coeffList(y).push_back(mu);
       }
     }
   }
