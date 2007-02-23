@@ -397,10 +397,9 @@ BlockElt block_info::primitivise(BlockElt x, const RankFlags d) const
   const ascent_vector& ax=ascents[x];
   for (size_t s=0; s<rank; ++s)
     if (d[s] and ax[s]!=noGoodAscent)
-      {
-	if (ax[s]==UndefBlock) return UndefBlock;
-	x=ax[s]; goto start; // this should raise x, now try another step
-      }
+    { if (ax[s]==UndefBlock) return UndefBlock;
+      x=ax[s]; goto start; // this should raise x, now try another step
+    }
   return x; // no raising possible, stop here
 }
 
@@ -746,6 +745,21 @@ vector of the block. The first $4$~bytes of each part should give the row
 number~|y|, but we allow a special exemption for |y==0|, so that the very
 first bytes of a file can be used to store a format identification.
 
+We perform a check at each row that we find the identification number we
+expect. The following number is also predictable, and we had a test here that
+the predicted value matched the actual value, which at the time was intended
+to allow confidently overwriting the number later in a new matrix format by a
+more direct indication of where to find the next row. That format did not turn
+out to be efficient, since it still needed to seek to the beginning of each
+row in order to locate these beginnings, which (rather than the computation
+that is also needed in the old format) proved to be the main bottleneck. Now
+that it has been established that the prediction is in fact correct, there is
+not much point to doing it every time, in particular since this check requires
+generating the list of weakly primitive elements which for high-rank cases
+turned out to form a bottleneck in itself (and to require lots of memory that
+was not necessarily going to be used otherwise). Therefore this check has now
+been excluded by a preprocessor directive.
+
 @< Set the values |row_pos[y]| by scanning all the parts of the
    |matrix_file| @>=
 { if (verbose)
@@ -766,8 +780,10 @@ first bytes of a file can be used to store a format identification.
       row_pos[y]= matrix_file.tellg(); // record position after row number
       size_t n_prim=read_bytes<4>(matrix_file);
 
+#if 0
       @< Check that |n_prim| gives the number of weakly primitive
          elements @>
+#endif
       @< Advance the read pointer to the beginning of the next row of the
          matrix file @>
       if (not matrix_file.good())
@@ -913,7 +929,7 @@ format is very simple and fast. The main point is that we can find the block of
 information by positioning with respect to the end of the file rather than the
 beginning. The values stored are |block_size()| in number, and each is
 $4$~bytes long; the wider values |row_pos[y]| are obtained from them by
-accumulation after multiplication by~$4$, since the hole matrix file is
+accumulation after multiplication by~$4$, since the whole matrix file is
 written in $4$~byte units. We shall see below how these values were written
 here; essentially, they were obtained by first scanning the file in the old
 way.
