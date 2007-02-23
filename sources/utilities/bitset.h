@@ -818,7 +818,7 @@ template<size_t n> class BaseSize {
 
   The first typedef defines Base to be BitSetBase<m>. Consequently function
   references of the form Base::contains refer to BitSetBase<m>::contains.
-  [DV also doesn't know whether this could have been avoided by replacing
+  [DV doesn't know whether this could have been avoided by replacing
   ":private BitSetBase" by ":public BitSetBase" in the template for BitSet,
   and just invoking the (public) member functions of the base class directly.
   MvL thinks that that would be possible; this depends on the fact (also used

@@ -1,8 +1,8 @@
 /*
   This is wgraph_io.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -49,7 +49,7 @@ std::ostream& printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
 /*
   Synopsis: outputs the structural data for the W-graph to strm.
 
-  The output format is as follows: one line peer vertex, consisting of three
+  The output format is as follows: one line per vertex, consisting of three
   colon-separated fields:
 
     - the vertex number (starting from 0);
@@ -60,7 +60,7 @@ std::ostream& printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
       of labels are 1, but not all of them in general;
 
   This format should be human-readable, but is purposefully kept simple so
-  that it can be easily parsed by another program (for instance, a 
+  that it can be easily parsed by another program (for instance, a
   prettyprinter?)
 */
 
