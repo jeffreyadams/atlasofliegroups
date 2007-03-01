@@ -105,16 +105,13 @@ void printWDecomposition(std::ostream& strm, const wgraph::DecomposedWGraph& g)
 
 
   strm << "\n// Induced graph on cells.\n";
+  for (size_t i = 0; i < g.inducedGraph().size(); ++i)
   {
-    const graph::OrientedGraph ind=g.inducedGraph();
-    for (size_t i = 0; i < ind.size(); ++i)
-    {
-      strm << '#' << i << ':';
-      const graph::EdgeList& el = ind.edgeList(i);
-      for (size_t j=0; j<el.size(); ++j)
-	strm << (j==0 ? "->#" : ",#") << el[j];
-      strm << ".\n";
-    }
+    strm << '#' << i << ':';
+    const graph::EdgeList& el = g.inducedGraph().edgeList(i);
+    for (size_t j=0; j<el.size(); ++j)
+      strm << (j==0 ? "->#" : ",#") << el[j];
+    strm << ".\n";
   }
 
   strm << "\n// Individual cells.\n";

@@ -135,8 +135,8 @@ class DecomposedWGraph {
 // accessors
   size_t rank () const { return d_cell[0].rank(); } // all ranks are equal
   size_t cellCount() const { return d_cell.size(); }
-  const graph::OrientedGraph inducedGraph() const { return d_induced; }
-  const wgraph::WGraph cell (size_t c) const { return d_cell[c]; }
+  const graph::OrientedGraph& inducedGraph() const { return d_induced; }
+  const wgraph::WGraph& cell (size_t c) const { return d_cell[c]; }
   const std::vector<blocks::BlockElt>& cellMembers(size_t c) const
     { return d_id[c]; }
 
