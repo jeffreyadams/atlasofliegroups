@@ -147,16 +147,8 @@ namespace constants {
   public:
     static const size_t value = 0ul;
   };
-}
+} // namespace constants
 
-/******** function definitions ***********************************************/
-
-namespace constants {
-
-  void initConstants();
-
-}
-
-}
+} // namespace atlas
 
 #endif

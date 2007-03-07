@@ -159,7 +159,6 @@
 #include <stdexcept>
 
 #include "commands.h"
-#include "constants.h"
 #include "emptymode.h"
 #include "error.h"
 #include "input.h"
@@ -170,13 +169,12 @@ int main(int argc, char* argv[])
   For now, we do nothing with the arguments.
 */
 
-  
+
 try
 
 {
   using namespace atlas;
 
-  constants::initConstants();
   input::initReadLine();
   commands::run(emptymode::emptyMode());
 
@@ -197,7 +195,7 @@ catch (atlas::error::NumericUnderflow& e) {
 
 catch (std::exception& e) {
 
-  std::cerr << "error: uncaught standard exceptions on exit" 
+  std::cerr << "error: uncaught standard exceptions on exit"
             << std::endl << e.what()
             << std::endl;
 }

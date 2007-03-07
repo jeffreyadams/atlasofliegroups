@@ -159,17 +159,16 @@ int main(int argc, char** argv)
 }
 
 @ Here are several calls necessary to get various parts of this program off to
-a good start, starting with the history and readline libraries.  Initialising
-the constants, although it sounds like a contradiction in terms, is vital for
-the Atlas library to function correctly.
+a good start, starting with the history and readline libraries. Initialising
+the constants in the Atlas library is no longer necessary, as it is done
+automatically before main is called. Our own compilation units do require
+explicit calling of their initialisation functions.
 
 @h "built-in-types.h"
 @h "constants.h"
 @< Initialise various parts of the program @>=
   using_history();
   rl_completion_entry_function = id_completion_func; // set up input completion
-
-@)atlas::constants::initConstants();
 
 @)initialise_evaluator(); initialise_builtin_types();
 

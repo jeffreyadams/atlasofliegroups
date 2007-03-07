@@ -32,15 +32,12 @@ unsigned char lastbit[1 << charBits];
 unsigned long leqMask[longBits];
 unsigned long lMask[longBits+1];
 
-const unsigned long* Primes = 0;
 
-}
+/******** auxiliary function ***********************************************/
 
-/******** function definitions ***********************************************/
+namespace {
 
-namespace constants {
-
-void initConstants()
+void init()
 
 /*
   This function initializes the following constants :
@@ -89,6 +86,20 @@ void initConstants()
   }
 }
 
-}
+/* Code that makes sure that |init| is called whenever this module is linked
+   into a program
+*/
 
-}
+class Kick
+{
+  struct Empty {};
+  static Empty member;
+};
+
+Kick::Empty Kick::member=(init(),Empty());
+
+} // namespace
+
+} // namespace constants
+
+} // namespace atlas
