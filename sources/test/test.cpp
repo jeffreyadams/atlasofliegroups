@@ -13,7 +13,6 @@
 #include <iostream>
 #include <fstream>
 #include <iterator>
-#include <set>
 #include <sstream>
 
 #include "basic_io.h"

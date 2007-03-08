@@ -29,7 +29,7 @@
   This is rootdata.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -40,7 +40,6 @@
 #include <list>
 #include <map>
 #include <memory>
-#include <set>
 
 #include "dynkin.h"
 #include "lattice.h"
@@ -94,7 +93,7 @@ namespace {
 
   using namespace rootdata;
 
-  void fillRoots(latticetypes::WeightList&, latticetypes::WeightList&, 
+  void fillRoots(latticetypes::WeightList&, latticetypes::WeightList&,
 		 RootList&, const RootDatum&);
   void fillPositiveRoots(RootList&, const RootDatum&);
 
@@ -128,7 +127,7 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
    d_coroots(prd.coroots()),
    d_twoRho(prd.rank(),0)
 
-{  
+{
   using namespace lattice;
   using namespace setutils;
   using namespace tags;
@@ -301,7 +300,7 @@ WRootIterator RootDatum::beginPosRoot() const
   positive roots.
 */
 
-{  
+{
   return WRootIterator(d_roots,d_posRoots.begin());
 }
 
@@ -323,14 +322,14 @@ WRootIterator RootDatum::beginSimpleRoot() const
   simple roots.
 */
 
-{  
+{
   return WRootIterator(d_roots,d_simpleRoots.begin());
 }
 
 void RootDatum::coreflection(Weight& v, RootNbr j) const
 
 /*!
-\brief  Applies to v the reflection about coroot number j. 
+\brief  Applies to v the reflection about coroot number j.
 
 In other words, v is transformed into v - <alpha_j,v>alpha_j^vee.
 */
@@ -350,7 +349,7 @@ In other words, v is transformed into v - <alpha_j,v>alpha_j^vee.
 WRootIterator RootDatum::endPosCoroot() const
 
 /*!
-\brief  Makes a WRootIterator pointing to the end of the list of positive 
+\brief  Makes a WRootIterator pointing to the end of the list of positive
   coroots.
 */
 
@@ -371,7 +370,7 @@ WRootIterator RootDatum::endPosRoot() const
 WRootIterator RootDatum::endSimpleCoroot() const
 
 /*!
-\brief Makes a WRootIterator pointing to the end of the list of simple 
+\brief Makes a WRootIterator pointing to the end of the list of simple
   coroots.
 */
 
@@ -422,7 +421,7 @@ bool RootDatum::isSimplyConnected() const
 void RootDatum::reflection(Weight& v, RootNbr j) const
 
 /*!
-\brief  Applies to v the reflection about root number j. 
+\brief  Applies to v the reflection about root number j.
 
 In other words, v is transformed into v - <v,alpha_j^vee>alpha_j
 */
@@ -442,7 +441,7 @@ void RootDatum::rootReflection(LatticeMatrix& q, RootNbr j) const
 \brief Puts in q the reflection for root \#j.
 
   NOTE: this is not intended for heavy use. If that is envisioned, it would be
-  better to construct the matrices once and for all and return const 
+  better to construct the matrices once and for all and return const
   references.
 */
 
@@ -589,7 +588,7 @@ void cartanMatrix(latticetypes::LatticeMatrix& c, const RootList& rb,
   return;
 }
 
-void dualBasedInvolution(LT::LatticeMatrix& di, const LT::LatticeMatrix& i, 
+void dualBasedInvolution(LT::LatticeMatrix& di, const LT::LatticeMatrix& i,
 			 const RootDatum& rd)
 
 /*!
@@ -627,11 +626,11 @@ void lieType(lietype::LieType& lt, const RootList& rb, const RootDatum& rd)
 /*!
 \brief puts in lt the Lie type of the root system spanned by rb.
 
-  Precondition: rb contains a basis of a sub-rootsystem of the root system of 
+  Precondition: rb contains a basis of a sub-rootsystem of the root system of
   rd.
 */
 
-{  
+{
   using namespace dynkin;
   using namespace latticetypes;
 
@@ -773,7 +772,7 @@ void rootBasis(RootList& rb, const RootSet& rs, const RootDatum& rd)
   return;
 }
 
-void rootPermutation(RootList& rl, const LT::LatticeMatrix& p, 
+void rootPermutation(RootList& rl, const LT::LatticeMatrix& p,
 		     const RootDatum& rd)
 
 /*!
@@ -802,7 +801,7 @@ void strongOrthogonalize(RootList& rl, const RootDatum& rd)
   Precondition: rl is a set of pairwise orthogonal roots;
 
   Algorithm: for i,j in rl, the sum can be a root iff i,j span a subsystem
-  of type B2, and are short there; we can then replace i and j by their sum 
+  of type B2, and are short there; we can then replace i and j by their sum
   and difference. Note that this will not create new bad pairs, as bad pairs
   are made up of short roots.
 */
@@ -878,7 +877,7 @@ void toDistinguished(LatticeMatrix& q, const RootDatum& rd)
   return;
 }
 
-void toMatrix(LatticeMatrix& q, const weyl::WeylWord& ww, 
+void toMatrix(LatticeMatrix& q, const weyl::WeylWord& ww,
 	      const RootDatum& rd)
 
 /*!
@@ -976,11 +975,11 @@ void toWeylWord(weyl::WeylWord& ww, RootNbr rn, const RootDatum& rd)
   return;
 }
 
-void toWeylWord(weyl::WeylWord& ww, const latticetypes::LatticeMatrix& q, 
+void toWeylWord(weyl::WeylWord& ww, const latticetypes::LatticeMatrix& q,
 		const RootDatum& rd)
 
 /*!
-\brief Writes in ww the expression of q as a product of simple 
+\brief Writes in ww the expression of q as a product of simple
   reflections.
 
   Precondition: q is expressible as such a product.
@@ -1002,7 +1001,7 @@ void twoRho(Weight& tr, const RootList& rl, const RootDatum& rd)
 /*!
 \brief Puts in tworho the sum of the positive roots in rl.
 
-  Precondition: rl holds the roots in a sub-rootsystem of the root system of 
+  Precondition: rl holds the roots in a sub-rootsystem of the root system of
   rd;
 */
 
@@ -1021,7 +1020,7 @@ void twoRho(Weight& tr, const RootSet& rs, const RootDatum& rd)
 /*!
 \brief Puts in tworho the sum of the positive roots in rs.
 
-  Precondition: rs holds the roots in a sub-rootsystem of the root system of 
+  Precondition: rs holds the roots in a sub-rootsystem of the root system of
   rd;
 */
 
@@ -1109,8 +1108,8 @@ void fillRoots(WeightList& rl, WeightList& crl, RootList& srl,
 \brief Fills in the list rl of all the roots in the system, and the
   list crl of all the co-roots.
 
- Begins with the data of the root-basis rb and the 
-  co-root basis crb. The idea is to start out from rb, and then saturate 
+ Begins with the data of the root-basis rb and the
+  co-root basis crb. The idea is to start out from rb, and then saturate
   through successive applications of simple reflections.
 
   The main problem is not to loose track of the root/co-root relationship.
@@ -1129,7 +1128,7 @@ void fillRoots(WeightList& rl, WeightList& crl, RootList& srl,
 
   I rb_end = rd.endSimpleRoot();
 
-  for (I ri = rd.beginSimpleRoot(), cri = rd.beginSimpleCoroot(); 
+  for (I ri = rd.beginSimpleRoot(), cri = rd.beginSimpleCoroot();
        ri != rb_end; ++ri, ++cri) {
     roots.insert(make_pair(*ri,*cri));
     new_roots.push_back(make_pair(*ri,*cri));
@@ -1159,7 +1158,7 @@ void fillRoots(WeightList& rl, WeightList& crl, RootList& srl,
 
   std::map<Weight,Weight>::iterator roots_end = roots.end();
 
-  for (std::map<Weight,Weight>::iterator rpi = roots.begin(); 
+  for (std::map<Weight,Weight>::iterator rpi = roots.begin();
        rpi != roots_end; ++rpi) {
     rl.push_back(rpi->first);
     crl.push_back(rpi->second);

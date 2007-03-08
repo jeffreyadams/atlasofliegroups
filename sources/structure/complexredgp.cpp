@@ -24,8 +24,6 @@
 
 #include "complexredgp.h"
 
-#include <set>
-
 #include "cartan.h"
 #include "dynkin.h"
 #include "lietype.h"
