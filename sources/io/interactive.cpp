@@ -104,6 +104,7 @@ InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
    throw(error::InputError)
 {
   // temporarily deactivate completion: default to file-name completion
+#ifndef NREADLINE
   rl_compentry_func_t* old_completion_function = rl_completion_entry_function;
   rl_compdisp_func_t * old_hook = rl_completion_display_matches_hook;
   rl_completion_entry_function = NULL;
@@ -112,6 +113,7 @@ InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
   bool error=false;
 
   try {
+#endif
     do {
       std::string name=interactive::getFileName
 	("Give input file for "+ prompt+" (? to abandon): ");
@@ -120,6 +122,7 @@ InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
 	break;
       std::cout << "Failure opening file, try again.\n";
     } while(true);
+#ifndef NREADLINE
   }
   catch (error::InputError) {
     error=true;
@@ -128,6 +131,7 @@ InputFile::InputFile(std::string prompt, std::ios_base::openmode mode)
   rl_completion_display_matches_hook = old_hook;
   if (error)
     throw error::InputError();
+#endif
 }
 
 InputFile::~InputFile() { delete d_stream; }
