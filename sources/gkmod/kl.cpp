@@ -29,10 +29,10 @@
 
 #ifdef VERBOSE
 #include <iostream>
+#include <fstream>
 #include <ctime>
 #include <sstream>
 #include <string>
-#include <unistd.h>
 #endif
 
 #include <cassert>
@@ -132,10 +132,10 @@ class KLPolEntry : public KLPol
     ~Helper()
     {
 #ifdef VERBOSE
-      std::cout << "Number of primitive pairs stored:     "
+      std::cout << "\nNumber of primitive pairs stored:     "
 		<< prim_size << ".\n";
       std::cout << "Number of unrecorded primitive pairs: "
-	    << nr_of_prim_nulls << ".\n";
+		<< nr_of_prim_nulls << '.' << std::endl;
 #endif
     }
 
@@ -1126,7 +1126,7 @@ MuCoeff Helper::type2Mu(BlockElt x, BlockElt y) const
     y1 = toDo.top();
     toDo.pop();
     if (y1 < y) { // mu(x,y1) can be gotten recursively
-      mu = Helper::mu(x,y1);
+      mu = KLContext::mu(x,y1);
       goto unwind;
     }
     s = firstAscent(descent(x),descent(y1),rank());
@@ -1300,6 +1300,8 @@ void Helper::fill()
   std::time_t time0;
   std::time(&time0);
   std::time_t time;
+
+  std::ifstream statm("/proc/self/statm"); // open file for memory status
 #endif
 
   size_t l=length(y); // minLength+1
@@ -1333,6 +1335,15 @@ void Helper::fill()
 		  << ", pmem:" << std::setw(11) << p_capacity
 		  << ", mat:"  << std::setw(11) << prim_size
 		  <<  std::endl;
+	{
+	  unsigned int size, resident,share,text,lib,data;
+	  statm.seekg(0,std::ios_base::beg);
+	  statm >> size >> resident >> share >> text >> lib >> data;
+	  std::cerr << "Current data size " << data*4 << "kB (" << data*4096
+		    << "), resident " << resident*4 << "kB, total "
+		    << size*4 << "kB.\n";
+	}
+
 #endif
 	// the following loop normally runs 1 time, but can handle length gaps
 	do ++l; while (l<=maxLength and d_support->lengthLess(l+1)==y);
