@@ -5,12 +5,14 @@
 #include <memory>
 
 #include "filekl.h"
+#include "basic_io.h"
 #include "bits.h"
 #include "wgraph.h"
 
 namespace atlas {
   namespace filekl {
 
+using basic_io::read_bytes;
 
     // Constants and auxiliary functions
 
@@ -25,32 +27,6 @@ const std::ios_base::openmode binary_in_out=
 			    std::ios_base::in
 			  | std::ios_base::out
 			  | std::ios_base::binary;
-
-template <unsigned int n>
-inline ullong read_bytes(std::istream& in)
-{
-  return static_cast<unsigned char>(in.get())+(read_bytes<n-1>(in)<<8);
-}
-
-template<>
-inline ullong read_bytes<1>(std::istream& in)
-{
-  return static_cast<unsigned char>(in.get());
-}
-
-ullong read_var_bytes(unsigned int n,std::istream& in)
-{ switch(n)
-  { case 1: return read_bytes<1>(in);
-    case 2: return read_bytes<2>(in);
-    case 3: return read_bytes<3>(in);
-    case 4: return read_bytes<4>(in);
-    case 5: return read_bytes<5>(in);
-    case 6: return read_bytes<6>(in);
-    case 7: return read_bytes<7>(in);
-    case 8: return read_bytes<8>(in);
-    default: throw std::runtime_error("Illegal read_var_bytes");
-  }
-}
 
 
     // Methods of the |polynomial_info| class
@@ -84,7 +60,7 @@ std::vector<size_t> polynomial_info::coefficients(KLIndex i) const
   file.seekg(coefficients_begin+index,std::ios_base::beg);
 
   for (size_t i=0; i<length; ++i)
-    result[i]=read_var_bytes(coef_size,file);
+    result[i]=basic_io::read_var_bytes(coef_size,file);
 
   return result;
 }
@@ -95,7 +71,7 @@ size_t polynomial_info::leading_coeff(KLIndex i) const
   file.seekg(index_begin+5*(i+1),std::ios_base::beg);
   ullong next_index=read_bytes<5>(file);
   file.seekg(coefficients_begin+next_index-coef_size,std::ios_base::beg);
-  return read_var_bytes(coef_size,file);
+  return basic_io::read_var_bytes(coef_size,file);
 }
 
 
@@ -154,7 +130,8 @@ bool  block_info::is_primitive(BlockElt x, const RankFlags d) const
 {
   const ascent_vector& ax=ascents[x];
   for (size_t s=0; s<ax.size(); ++s)
-    if (d[s] and ax[s]!=noGoodAscent) return false;
+    if (d[s] and ax[s]!=noGoodAscent)
+      return false;
   return true;
   // now |d[s]| implies |ascents[s]==noGoodAscent| for all simple roots |s|
 }
@@ -165,7 +142,8 @@ const prim_list& block_info::prims_for_descents_of(BlockElt y)
   prim_list& result=primitives_list[s];
   if (result.empty())
   { for (BlockElt x=0; x<size; ++x)
-      if (is_primitive(x,d)) result.push_back(x);
+      if (is_primitive(x,d))
+	result.push_back(x);
     prim_list(result).swap(result); // reallocate to fit snugly
   }
   return result;
@@ -257,14 +235,16 @@ void matrix_info::set_y(BlockElt y)
   cur_row_entries=matrix_file.tellg();
 }
 
-KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx)
+KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y)
 {
   set_y(y);
-  xx=block.primitivize(x,y);
-  if (xx>=y) return KLIndex(xx==y ? 1 : 0); // primitivisation copped out
+  x_prim=block.primitivize(x,y);
+  if (x_prim>=y)
+    return KLIndex(x_prim==y ? 1 : 0); // primitivisation copped out
   strong_prim_list::const_iterator it=
-    std::lower_bound(cur_strong_prims.begin(),cur_strong_prims.end(),xx);
-  if (it==cur_strong_prims.end() or *it!=xx) return KLIndex(0); // not strong
+    std::lower_bound(cur_strong_prims.begin(),cur_strong_prims.end(),x_prim);
+  if (it==cur_strong_prims.end() or *it!=x_prim)
+    return KLIndex(0); // not strong
 
   matrix_file.seekg(4*size_t(it-cur_strong_prims.begin()),std::ios_base::cur);
   return KLIndex(read_bytes<4>(matrix_file));
@@ -376,8 +356,6 @@ wgraph::WGraph wGraph
 
   polynomial_info& poli=*pol_p;
 
-  BlockElt dummy;
-
   size_t max_mu=1;                       // maximal mu found
   std::pair<BlockElt,BlockElt> max_pair; // corresponding (x,y)
 
@@ -409,7 +387,7 @@ wgraph::WGraph wGraph
 	if (mi.descent_set(*start)!=d_y)
         {
 	  BlockElt x = *start;
-	  KLIndex klp = mi.find_pol_nr(x,y,dummy);
+	  KLIndex klp = mi.find_pol_nr(x,y);
 
 	  if (poli.degree(klp)==d)
 	  {
@@ -428,7 +406,7 @@ wgraph::WGraph wGraph
     {
       RankFlags d_x=mi.descent_set(x);
       if (d_x==d_y) continue; // this case would lead nowhere anyway
-      KLIndex klp = mi.find_pol_nr(x,y,dummy);
+      KLIndex klp = mi.find_pol_nr(x,y);
       if (klp!=KLIndex(0)) // then some edge between |x| and |y| exists
       {
 	size_t mu=poli.leading_coeff(klp);

@@ -135,6 +135,7 @@ class matrix_info
   void set_y(BlockElt y);          // install |cur_y| and dependent data
 
 public:
+  BlockElt x_prim; // public variable that is set by |find_pol_nr|
 
 // constructor and destructor
   matrix_info(std::ifstream& block_file,std::ifstream& m_file);
@@ -151,7 +152,7 @@ public:
     { return block.primitivize(x,y); }
 
 // manipulators (they are so because they set |cur_y|)
-  KLIndex find_pol_nr(BlockElt x,BlockElt y,BlockElt& xx);
+  KLIndex find_pol_nr(BlockElt x,BlockElt y);
   BlockElt prim_nr(unsigned int i,BlockElt y);// find primitive element
   const strong_prim_list& strongly_primitives (BlockElt y)
     { set_y(y); return cur_strong_prims; } // changing |y| invalidates this!
