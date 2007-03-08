@@ -1,8 +1,8 @@
 /*
   This is basic_io_def.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -20,7 +20,7 @@ namespace atlas {
 namespace basic_io {
 
 template<size_t dim>
-  std::ostream& operator<< (std::ostream& strm, 
+  std::ostream& operator<< (std::ostream& strm,
 			    const bitvector::BitVector<dim>& v)
 
 /*
@@ -55,7 +55,7 @@ template<size_t d>
 }
 
 template<typename I>
-std::ostream& seqPrint(std::ostream& strm, const I& first, const I& last, 
+std::ostream& seqPrint(std::ostream& strm, const I& first, const I& last,
 		       const char* sep, const char* pre, const char* post)
 
 /*
@@ -82,6 +82,33 @@ std::ostream& seqPrint(std::ostream& strm, const I& first, const I& last,
   return strm;
 }
 
+// binary input
+template <unsigned int n>
+inline unsigned long long read_bytes(std::istream& in)
+{
+  return static_cast<unsigned char>(in.get())+(read_bytes<n-1>(in)<<8);
 }
 
+template<>
+inline unsigned long long read_bytes<1>(std::istream& in)
+{
+  return static_cast<unsigned char>(in.get());
 }
+
+// binary output
+template <unsigned int n>
+inline void write_bytes(unsigned long long val, std::ostream& out)
+{
+  out.put(char(val&0xFF)); write_bytes<n-1>(val>>8,out);
+}
+
+template <>
+inline void write_bytes<1>(unsigned long long val, std::ostream& out)
+{
+  out.put(char(val));
+}
+
+
+} // namespace basic_io
+
+} // namespace atlas

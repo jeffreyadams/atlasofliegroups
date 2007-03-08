@@ -10,6 +10,7 @@
 #include "basic_io.h"
 
 #include <iostream>
+#include <stdexcept>
 
 #include "lattice.h"
 #include "lietype.h"
@@ -123,6 +124,35 @@ std::ostream& operator<< (std::ostream& strm, const weyl::WeylWord& w)
   return strm;
 }
 
+unsigned long long read_var_bytes(unsigned int n,std::istream& in)
+{ switch(n)
+  { case 1: return read_bytes<1>(in);
+    case 2: return read_bytes<2>(in);
+    case 3: return read_bytes<3>(in);
+    case 4: return read_bytes<4>(in);
+    case 5: return read_bytes<5>(in);
+    case 6: return read_bytes<6>(in);
+    case 7: return read_bytes<7>(in);
+    case 8: return read_bytes<8>(in);
+  default: throw std::runtime_error("Illegal read_var_bytes");
+  }
 }
 
+void put_int (unsigned int val, std::ostream& out) { write_bytes<4>(val,out); }
+void write_bytes(unsigned int n, unsigned long long val, std::ostream& out)
+{ switch(n)
+  { case 1: return write_bytes<1>(val,out);
+    case 2: return write_bytes<2>(val,out);
+    case 3: return write_bytes<3>(val,out);
+    case 4: return write_bytes<4>(val,out);
+    case 5: return write_bytes<5>(val,out);
+    case 6: return write_bytes<6>(val,out);
+    case 7: return write_bytes<7>(val,out);
+    case 8: return write_bytes<8>(val,out);
+    default: throw std::runtime_error("Illegal write__bytes");
+  }
 }
+
+} // namespace basic_io
+
+} // namespace atlas
