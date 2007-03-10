@@ -10,6 +10,8 @@
 #ifndef WGRAPH_H  /* guard against multiple inclusions */
 #define WGRAPH_H
 
+#include <iostream>
+
 #include "bitset.h"
 #include "graph.h"
 #include "partition.h"
@@ -33,6 +35,13 @@ class WGraph;
 namespace wgraph {
 
 void cells(std::vector<WGraph>&, const WGraph&);
+
+// Functions
+
+WGraph wGraph
+  ( std::ifstream& block_file
+  , std::ifstream& matrix_file
+  , std::ifstream& KL_file);
 
 }
 

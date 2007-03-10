@@ -1421,7 +1421,7 @@ void extract_graph_f()
     ioutils::InputFile polynomial_file("polynomial information");
     ioutils::OutputFile file;
 
-    wgraph::WGraph wg=filekl::wGraph(block_file,matrix_file,polynomial_file);
+    wgraph::WGraph wg=wgraph::wGraph(block_file,matrix_file,polynomial_file);
     wgraph_io::printWGraph(file,wg);
   }
   catch (error::InputError e) {
@@ -1437,7 +1437,7 @@ void extract_cells_f()
     ioutils::InputFile polynomial_file("polynomial information");
     ioutils::OutputFile file;
 
-    wgraph::WGraph wg=filekl::wGraph(block_file,matrix_file,polynomial_file);
+    wgraph::WGraph wg=wgraph::wGraph(block_file,matrix_file,polynomial_file);
     wgraph::DecomposedWGraph dg(wg);
     wgraph_io::printWDecomposition(file,dg);
   }

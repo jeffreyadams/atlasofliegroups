@@ -7,7 +7,6 @@
 #include "filekl.h"
 #include "basic_io.h"
 #include "bits.h"
-#include "wgraph.h"
 
 namespace atlas {
   namespace filekl {
@@ -67,13 +66,18 @@ std::vector<size_t> polynomial_info::coefficients(KLIndex i) const
 
 // the leading coefficient is the last one stored before the next polynomial
 size_t polynomial_info::leading_coeff(KLIndex i) const
-{ if (i<2) return i;
+{ if (i<2) return i; // this makes "leading coefficient" of Zero return 0
   file.seekg(index_begin+5*(i+1),std::ios_base::beg);
   ullong next_index=read_bytes<5>(file);
   file.seekg(coefficients_begin+next_index-coef_size,std::ios_base::beg);
   return basic_io::read_var_bytes(coef_size,file);
 }
 
+ullong polynomial_info::coeff_start(KLIndex i) const
+{ file.seekg(index_begin+5*i,std::ios_base::beg);
+  ullong index=read_bytes<5>(file);
+  return index/coef_size;
+}
 
     // Methods of the |cached_pol_info| class
 
@@ -109,7 +113,6 @@ size_t cached_pol_info::leading_coeff (KLIndex i) const
   if (lc<=255/(degree_mask+1)) cache[i-2] |= lc*(degree_mask+1);
   return lc;
 }
-
 
     // Methods of the |block_info class|
 
@@ -326,116 +329,27 @@ matrix_info::matrix_info
 
 
 
-   // Functions declared in filekl.h
+    //  Methods of the progress_info class
 
-/* The following function is an alternative to the function |wGraph| defined
-   in kl.cpp. Here we do not assume that a KLContext is available, but that
-   binary files with information about the block, matrix, and KL polynomials
-   are avaialble. As a consequence we must redo the work of
-   |kl::Helper::fillMuRow| as well as that to the mentioned |wGraph| function.
-*/
 
-wgraph::WGraph wGraph
-  ( std::ifstream& block_file
-  , std::ifstream& matrix_file
-  , std::ifstream& KL_file)
-{
-  typedef std::auto_ptr<polynomial_info> pol_aptr;
-
-  matrix_info mi(block_file,matrix_file);
-  pol_aptr pol_p(NULL);
-
-  try
-  { pol_p=pol_aptr(new cached_pol_info(KL_file));
+progress_info::progress_info(std::ifstream& file)
+: first_pol()
+{ file.seekg(0,std::ios_base::end); // measure |file|
+  if (file.tellg()%12!=0)
+    throw std::runtime_error("Row file size not a multiple of 12");
+  BlockElt size= file.tellg()/12;
+  first_pol.reserve(size+1); first_pol.push_back(0);
+  file.seekg(0,std::ios_base::beg); // rewind
+  for (BlockElt y=0; y<size; ++y)
+  { file.seekg(8,std::ios_base::cur); // skip ahead
+    first_pol.push_back(first_pol.back()+read_bytes<4>(file));
   }
-  catch (std::exception& e)
-  {
-    std::cerr << "Failed to use cached polynomials: " << e.what() << std::endl;
-    pol_p=pol_aptr(new polynomial_info(KL_file));
-  }
+  file.close();
+}
 
-  polynomial_info& poli=*pol_p;
-
-  size_t max_mu=1;                       // maximal mu found
-  std::pair<BlockElt,BlockElt> max_pair; // corresponding (x,y)
-
-  wgraph::WGraph result(mi.rank()); result.resize(mi.block_size());
-
-  // fill in descent sets
-  for (BlockElt y = 0; y < mi.block_size(); ++y)
-  {
-    RankFlags d_y = result.descent(y) = mi.descent_set(y);
-    size_t ly = mi.length(y);
-    if (ly==0) continue; // nothing more to do; avoid negative |d| below
-
-#ifdef VERBOSE
-    std::cerr << "reading edges for y=" << y;
-    if (max_mu>1) std::cerr << ", maximal mu: " << max_mu;
-    std::cerr << '\r';
-#endif
-
-    const strong_prim_list& spy=mi.strongly_primitives(y);
-
-    strong_prim_list::const_iterator start= spy.begin();
-    // traverse lengths |lx| of opposite parity to |ly|, up to |ly-3|
-    for (size_t lx=(ly-1)%2,d = (ly-1)/2; d>0; --d,lx+=2) // d=(ly-1-lx)/2
-    {
-      strong_prim_list::const_iterator stop =
-	std::lower_bound(start,spy.end()-1,mi.first_of_length(lx+1));
-      for (start= std::lower_bound(start,stop,mi.first_of_length(lx));
-	   start<stop; ++start)
-	if (mi.descent_set(*start)!=d_y)
-        {
-	  BlockElt x = *start;
-	  KLIndex klp = mi.find_pol_nr(x,y);
-
-	  if (poli.degree(klp)==d)
-	  {
-	    result.edgeList(x).push_back(y);
-	    size_t mu=poli.leading_coeff(klp);
-	    if (mu>max_mu) { max_mu=mu; max_pair=std::make_pair(x,y); }
-	    result.coeffList(x).push_back(mu);
-	  }
-
-	} // for (start...) if (descent!=d_y)
-    } // for (lx,d)
-
-    // for length |ly-1| we cannot limit ourselves to strongly primitives
-    BlockElt end=mi.first_of_length(ly);
-    for (BlockElt x=mi.first_of_length(ly-1); x<end; ++x)
-    {
-      RankFlags d_x=mi.descent_set(x);
-      if (d_x==d_y) continue; // this case would lead nowhere anyway
-      KLIndex klp = mi.find_pol_nr(x,y);
-      if (klp!=KLIndex(0)) // then some edge between |x| and |y| exists
-      {
-	size_t mu=poli.leading_coeff(klp);
-	if (mu>max_mu) { max_mu=mu; max_pair=std::make_pair(x,y); }
-	if (not d_y.contains(d_x))
-	{
-	  result.edgeList(x).push_back(y);
-	  result.coeffList(x).push_back(mu);
-	}
-	if (not d_x.contains(d_y))
-	{
-	  result.edgeList(y).push_back(x);
-	  result.coeffList(y).push_back(mu);
-	}
-      } // if (klp!=KLIndex(0))
-    } // for (x)
-  } // for (y)
-
-  size_t n_edges=0;
-  for (BlockElt y = 0; y < mi.block_size(); ++y)
-    n_edges+=result.edgeList(y).size();
-
-  if (max_mu==1) std::cout << "All edges found are simple.\n";
-  else std::cout << "Maximal edge multiplicity " << max_mu << " for ("
-		 << max_pair.first << ',' << max_pair.second <<")\n";
-  std::cout << "Total number of (directed) edges in graph is " << n_edges
-	    << '.' << std::endl;
-
-  return result;
+BlockElt progress_info::first_row_for_pol(KLIndex i) const
+{ const KLIndex* p=std::upper_bound(&first_pol[1],&*first_pol.end(),i);
+  return p-&first_pol[1];
 }
 
 

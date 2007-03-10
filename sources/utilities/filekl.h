@@ -18,7 +18,6 @@
 
 #include "bitset_fwd.h"
 #include "blocks.h"
-#include "wgraph.h"
 
 namespace atlas {
 
@@ -32,8 +31,8 @@ const unsigned int magic_code=0x06ABdCF0; // indication of new matrix format
 
 typedef unsigned long long int ullong; // a 64-bit type even on 32-bit machines
 
-typedef ullong KLIndex;
- // here it must be |long long| to avoid problems when multiplied
+ typedef ullong KLIndex; // NOTE: this differs from the type kl:KLIndex
+ // here it must be |unsigned long long| to avoid problems when multiplied
 
 // A class giving access to the polynomial file (which remains open)
 class polynomial_info
@@ -56,6 +55,7 @@ public:
   virtual size_t degree(KLIndex i) const;
   std::vector<size_t> coefficients(KLIndex i) const;
   virtual size_t leading_coeff(KLIndex i) const;
+  ullong coeff_start(KLIndex i) const; // number of all preceding coefficients
 };
 
 // A derived class that caches the degrees, and some leading coefficients
@@ -107,7 +107,6 @@ public:
   const prim_list& prims_for_descents_of(BlockElt y);
 private:
   bool is_primitive(BlockElt x, const RankFlags d) const;
-  void compute_prim_table();
 };
 
 
@@ -158,12 +157,21 @@ public:
     { set_y(y); return cur_strong_prims; } // changing |y| invalidates this!
 };
 
-// Functions
 
-wgraph::WGraph wGraph
-  ( std::ifstream& block_file
-  , std::ifstream& matrix_file
-    , std::ifstream& KL_file);
+
+    // the progress_info class
+
+class progress_info
+{
+  std::vector<KLIndex> first_pol; // count distinct polynomials in rows before
+public:
+  progress_info(std::ifstream& progress_file);
+
+  BlockElt block_size() const { return first_pol.size()-1; }
+  KLIndex first_new_in_row(BlockElt y) const // |y==block_size()| is allowed
+    { return first_pol[y]; }
+  BlockElt first_row_for_pol(KLIndex i) const;
+};
 
 } // namespace filekl
 
