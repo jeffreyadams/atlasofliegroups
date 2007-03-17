@@ -250,17 +250,25 @@ void do_work
   std::vector<tuple_entry<n> > pool;
   atlas::hashtable::HashTable<tuple_entry<n>,unsigned int> hash(pool);
   hash.match(tuple_entry<n>()); // insert index of Zero, it does not occur!
-  std::vector<unsigned int> limits(n,1); // limit of modular sequence numbers
 @)
-  for (unsigned int y=0; in_stream[0]->peek()!=EOF; ++y)
+  std::vector<unsigned int> limits(n,1); // limit of modular sequence numbers
+  std::vector<unsigned int> words_for_row;
+  std::streamoff position=out_file.tellp(); // this should be |0|
+@)
+  unsigned int n_rows=0; // at end of loop this number will count the rows
+  for (unsigned int y=0; in_stream[0]->peek()!=EOF; n_rows=++y)
      // something remains to read
   {@; std::cerr << y << '\r';
     combine_rows<n>(y,hash,in_stream,out_file,limits,first_use);
+    std::streamoff new_pos=out_file.tellp(); // output position after row |y|
+    words_for_row.push_back((new_pos-position)/4); position=new_pos;
   }
   std::cerr << "\ndone!\n";
   for (unsigned int i=0; i<n; ++i) delete in_file[i]; // close files
 @)
   @< Report limits of modular numbers and of generated numbers @>
+  @< Using |words_for_row| write |y| row positions to |out_file|,
+     and record the format of that file as new @>
   @< Write files recording the renumbering performed @>
 }
 
@@ -341,6 +349,31 @@ combined modulus we just report the size of the hash table.
               << ": " << limits[i] << ",\n";
   std::cout << "Mod " << std::setw(10) << out_modulus
             << ": " << hash.size() << ".\n";
+}
+
+
+@ We have kept the numbers of $4$-byte words written to the output file for
+each row in the vector |words_for_row|. By adding writing these numbers to the
+end of the file, other software can rapidly locate the rows of the matrix file
+without having to seek to the beginning of all rows (and read in the bitmap to
+locate the next row) first. This is called the new format for matrix files; it
+is defined so that the sum of the first~$i$ $4$-byte words, multiplied by~$4$
+gives the offset of the start of the bitmap for row~$i$. Since there is one
+word (the row number) in each row preceding the bitmap, we write the
+number~$1$ first, and then all elements of |words_for_row| (which represent
+position differences that have already been divided by~$4$) except the last
+one. Finally we rewind the file, write the code for the new format over the
+initial row number~$0$, and close the output file.
+
+
+@< Using |words_for_row| write |y| row positions to |out_file|,... @>=
+{ static const unsigned int magic=0x06ABdCF0;
+  write_int(1,out_file); // offset in $4$-byte words of first bitmap is 1
+  for (unsigned int y=0; y<n_rows-1; ++y)
+    write_int(words_for_row[y],out_file);
+  out_file.seekp(0,std::ios_base::beg);
+  write_int(magic,out_file); // record new format
+  out_file.close();
 }
 
 @ The renumbering files are quite trivial, but huge; they form the reason that

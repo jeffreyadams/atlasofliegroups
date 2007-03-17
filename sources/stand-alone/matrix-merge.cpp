@@ -164,12 +164,18 @@ void do_work
   std::vector<tuple_entry<n> > pool;
   atlas::hashtable::HashTable<tuple_entry<n>,unsigned int> hash(pool);
   hash.match(tuple_entry<n>()); // insert index of Zero, it does not occur!
-  std::vector<unsigned int> limits(n,1); // limit of modular sequence numbers
 
-  for (unsigned int y=0; in_stream[0]->peek()!=EOF; ++y)
+  std::vector<unsigned int> limits(n,1); // limit of modular sequence numbers
+  std::vector<unsigned int> words_for_row;
+  std::streamoff position=out_file.tellp(); // this should be |0|
+
+  unsigned int n_rows=0; // at end of loop this number will count the rows
+  for (unsigned int y=0; in_stream[0]->peek()!=EOF; n_rows=++y)
      // something remains to read
   { std::cerr << y << '\r';
     combine_rows<n>(y,hash,in_stream,out_file,limits,first_use);
+    std::streamoff new_pos=out_file.tellp(); // output position after row |y|
+    words_for_row.push_back((new_pos-position)/4); position=new_pos;
   }
   std::cerr << "\ndone!\n";
   for (unsigned int i=0; i<n; ++i) delete in_file[i]; // close files
@@ -181,6 +187,15 @@ void do_work
                 << ": " << limits[i] << ",\n";
     std::cout << "Mod " << std::setw(10) << out_modulus
               << ": " << hash.size() << ".\n";
+  }
+  
+  { static const unsigned int magic=0x06ABdCF0;
+    write_int(1,out_file); // offset in $4$-byte words of first bitmap is 1
+    for (unsigned int y=0; y<n_rows-1; ++y)
+      write_int(words_for_row[y],out_file);
+    out_file.seekp(0,std::ios_base::beg);
+    write_int(magic,out_file); // record new format
+    out_file.close();
   }
   
   for (unsigned int i=0; i<n; ++i)
