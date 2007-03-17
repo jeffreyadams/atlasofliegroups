@@ -8,6 +8,7 @@
 
 #include "filekl.h"
 #include "basic_io.h"
+#include "tally.h"
 
 
 bool verbose=true;
@@ -16,140 +17,7 @@ bool with_mu=false;
 namespace atlas {
   namespace filekl {
 
-class tally_vec
-{
-  typedef std::map<KLIndex,ullong> map_type;
-  std::vector<unsigned char> count; // number of times seen
-  map_type overflow; // for multiplicities >=256
-  KLIndex max;
-  ullong total;
-
-public:
-  tally_vec(size_t limit) : count(0), overflow(), max(0), total(0)
-  { count.reserve(limit); }
-
-  bool tally (KLIndex i); // increase count for i by 1; tell whether new
-  bool tally (KLIndex i,unsigned int multiplicity); // same with multiplicity
-  KLIndex size() const { return max+1; } // size of collection now tallied
-  ullong multiplicity (KLIndex i) const
-  {
-    if (i<count.size())
-      return count[i]!=255 ? count[i] : overflow.find(i)->second;
-    map_type::const_iterator it=overflow.find(i);
-    return it==overflow.end() ? 0 : it->second;
-  }
-  ullong sum() const { return total; }
-
-  void advance(KLIndex& i) const; // like ++ and -- where |i| iterates
-  void lower(KLIndex& i) const;   // over indices with nonzero multiplicity
-
-  void write_to(std::ostream& out) const;
-};
-
-bool tally_vec::tally(KLIndex i)
-{
-  ++total;
-  if (i<count.size()) // then |i| is already recorded in |count| or |overflow|
-  {
-    if (count[i]!=255)
-      if (++count[i]==255) overflow[i]=255; // create entry upon hitting 255
-      else return count[i]==1;  // it just might be the first occurrence of |i|
-    else ++overflow[i];
-    return false;
-  }
-  if (i>max) max=i;
-  if (i<count.capacity()) // then slot for |i| can be created
-  {
-    while (count.size()<i) count.push_back(0);
-    count.push_back(1); return true;
-  }
-
-  // now |i>=count.capacity()|, it must be added to overflow
-  std::pair<map_type::iterator,bool> p =overflow.insert(std::make_pair(i,1));
-  if (not p.second) ++p.first->second; // if already recorded, increase tally
-  return p.second;
-}
-
-bool tally_vec::tally(KLIndex i,unsigned int multiplicity)
-{
-  total+=multiplicity;
-  if (i<count.size()) // then |i| is already recorded in |count| or |overflow|
-  {
-    if (count[i]!=255)
-      if (count[i]+multiplicity<255) // then |count[i]| not yet saturated
-      {
-	bool result= count[i]==0; // this might just be the first occurence
-	count[i]+=multiplicity;
-	return result;
-      }
-      else
-      {
-	overflow[i]=count[i]+multiplicity; // create new entry
-	count[i]=255; // and mark |count[i]| as saturated
-      }
-    else overflow[i]+=multiplicity;
-    return false;
-  }
-  if (i>max) max=i;
-  if (i<count.capacity()) // then slot for |i| can be created
-  {
-    while (count.size()<i) count.push_back(0);
-    count.push_back(multiplicity); return true;
-  }
-
-  // now |i>=count.capacity()|, it must be added to overflow
-  std::pair<map_type::iterator,bool> p
-    =overflow.insert(std::make_pair(i,multiplicity));
-  if (not p.second) // then it was already recorded
-    p.first->second+=multiplicity; // so increase tally for |i| instead
-  return p.second; // return whether |i| was previously unrecorded
-}
-
-void tally_vec::advance(KLIndex& i) const
-{
-  if (i>=max)
-  { i=size(); return; } // avoid fruitless search
-  ++i; // make sure we advance at least by one
-  while (i<count.size())
-    if (count[i]!=0) return;
-    else ++i;
-
-  // now find the first entry |j| in overflow with |j>=i|
-  map_type::const_iterator it=overflow.lower_bound(i);
-  assert(it!=overflow.end()); // there is at least one |j>=i|
-  i=it->first;
-}
-
-void tally_vec::lower(KLIndex& i) const
-{
-  if (i>count.size()) // then find last entry |j| in overflow with |j<i|
-  {
-    map_type::const_iterator it=overflow.lower_bound(i);
-    if (it!=overflow.begin() and (--it)->first>=count.size())
-    { i=it->first; return; }
-
-    else i=count.size(); // and fall through to search in |count|
-  }
-
-  // now |i<=count.size()|; find last entry |j<i| in count with |count[j]!=0|
-  while (i-->0)
-    if (count[i]!=0) return;
-
-  // we should not come here; there should be a sentinel |count[0]!=0|
-  throw std::runtime_error("lowering hit untallied 0");
-}
-
-void tally_vec::write_to(std::ostream& out) const
-{
-  basic_io::put_int(size(),out);
-  basic_io::put_int(overflow.size(),out);
-  for (size_t i=0; i<size(); ++i) out.put(count[i]);
-  for (map_type::const_iterator it=overflow.begin(); it!=overflow.end(); ++it)
-  {
-    basic_io::put_int(it->first,out);
-    basic_io::put_int(it->second,out);
-  }
-}
+typedef tally::TallyVec<unsigned char> tally_vec;
 
 /* A function that computes the vector saying for any strongly primitve
    element $x$ for $y$ how many $x_0$'s primitivise to $x$ for $y$.
@@ -225,9 +93,7 @@ void scan_matrix(matrix_info& m, size_t n_pol, bool with_multiplicities,
 
   t.write_to(tally_out);
 
-  tally_vec mu_mu(65536); mu_mu.tally(0); // provide sentinel
-  for (KLIndex i=0; i<t.size(); t.advance(i))
-    mu_mu.tally(t.multiplicity(i));
+  tally_vec mu_mu=t.derived<unsigned char>(65536);
 
   length_out << "frequencies of lowest multiplicities:\n";
   for (ullong i=1; i<=64 and i<mu_mu.size(); mu_mu.advance(i))
