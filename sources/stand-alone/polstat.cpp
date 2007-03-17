@@ -21,11 +21,14 @@ void scan_polynomials
     (const atlas::filekl::block_info& bi
     ,const atlas::filekl::polynomial_info& pi
     ,const atlas::filekl::progress_info& ri
-    )
+    ,const std::string file_name_base)
 {
   using blocks::BlockElt;
 
-  tally_vec deg_val(32*33/2); // degree-valuation joint distribution
+  const size_t deg_limit=bi.max_length/2;
+
+  tally_vec deg_val(deg_limit*(deg_limit+1)/2);
+                              // degree-valuation joint distribution
   tally_vec q_is_1(70000000); // distribution of specialisation at 1
   tally_vec q_is_0(9);        // distribution of specialisation at 0
   tally_vec q_is_2(1ul<<31);  // distribution of specialisation at 2
@@ -42,7 +45,9 @@ void scan_polynomials
   {
     for (blocks::BlockElt y=bi.start_length[l]; y<bi.start_length[l+1]; ++y)
     {
-      if (verbose) std::cerr << y << ", #" << ri.first_new_in_row(y) << '\r';
+      if (verbose)
+	std::cerr << y << ", #" << ri.first_new_in_row(y) << '\r'
+		  << std::flush;
       for (filekl::KLIndex i=ri.first_new_in_row(y);
 	   i<ri.first_new_in_row(y+1); ++i)
       {
@@ -99,11 +104,76 @@ void scan_polynomials
     << maxi_at_min1 <<  ", #"
     << maxi_lead <<  ", #"
     << mini_at_min1 << ".\n";
+
+  std::ofstream stat_out;
+  stat_out.open((file_name_base+"-deg_val").c_str());
+  if (not stat_out.is_open())
+    throw std::runtime_error("Opening deg_val file failed");
+  for (size_t d=0; d<deg_limit; ++d)
+  {
+    stat_out << "Degree " << d << ": ";
+    for (size_t v=0; v<=d; ++v)
+      stat_out << deg_val.multiplicity(d*(d+1)/2+v) << (v<d ? ',' : '\n');
+  }
+  stat_out.close();
+
+  stat_out.open((file_name_base+"@q=0").c_str());
+  if (not stat_out.is_open())
+    throw std::runtime_error("Opening q=0 file failed");
+  for (tally_vec::Index i=0; i<q_is_0.size(); q_is_0.advance(i))
+    stat_out << i << ": " << q_is_0.multiplicity(i) << ".\n";
+  stat_out.close();
+
+  stat_out.open((file_name_base+"@q=1").c_str());
+  if (not stat_out.is_open())
+    throw std::runtime_error("Opening q=1 file failed");
+  q_is_1.write_to(stat_out);
+  stat_out.close();
+
+  stat_out.open((file_name_base+"@q=2").c_str());
+  if (not stat_out.is_open())
+    throw std::runtime_error("Opening q=2 file failed");
+  q_is_2.write_to(stat_out);
+  stat_out.close();
+
+  stat_out.open((file_name_base+"@q=-1").c_str());
+  if (not stat_out.is_open())
+    throw std::runtime_error("Opening q=-1 file failed");
+
+  for (tally_vec::Index i=q_min_1_neg.size(); q_min_1_neg.lower(i);)
+    stat_out << ~(long long)i << ": "
+	     << q_min_1_neg.multiplicity(i) << ".\n";
+  for(tally_vec::Index i=0; i<q_min_1_pos.size(); q_min_1_pos.advance(i))
+    stat_out << i << ": " << q_min_1_pos.multiplicity(i) << ".\n";
+
+  stat_out.close();
+
+  stat_out.open((file_name_base+"-leading").c_str());
+  if (not stat_out.is_open())
+    throw std::runtime_error("Opening leading term file failed");
+  leading.write_to(stat_out);
+  stat_out.close();
+
+  stat_out.open((file_name_base+"-coefficients").c_str());
+  if (not stat_out.is_open())
+    throw std::runtime_error("Opening coefficients file failed");
+  coeff.write_to(stat_out);
+  stat_out.close();
+
 }
 
 
   } // namespace filekl
 } // namespace atlas
+
+
+std::string getFileName(std::string prompt)
+{
+  std::cerr << prompt;
+  std::string name;
+  std::cin >> name;
+  return name;
+}
 
 int main(int argc, char** argv)
 {
@@ -134,7 +204,10 @@ int main(int argc, char** argv)
   atlas::filekl::polynomial_info pi(pol_file);
   atlas::filekl::progress_info ri(row_file);
 
-  atlas::filekl::scan_polynomials(bi,pi,ri);
+  std::string file_name_base= getFileName
+    ("Base file name for statistics output: ");
+
+  atlas::filekl::scan_polynomials(bi,pi,ri,file_name_base);
 
 
 }
