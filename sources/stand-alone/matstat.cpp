@@ -106,8 +106,8 @@ void scan_matrix(matrix_info& m, size_t n_pol, bool with_multiplicities,
 
   std::vector<ullong> high_multiplicities; high_multiplicities.reserve(tier);
   ullong i=mu_mu.size();
-  for (size_t j=0; j<tier and i>0; ++j)
-  { mu_mu.lower(i); high_multiplicities.push_back(i); }
+  for (size_t j=0; j<tier and mu_mu.lower(i); ++j)
+    high_multiplicities.push_back(i);
 
   std::vector<std::vector<KLIndex> > top_tier
     (high_multiplicities.size(),std::vector<KLIndex>());
