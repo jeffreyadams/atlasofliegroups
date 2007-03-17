@@ -101,7 +101,12 @@ class DynkinDiagram {
 
 // accessors
 
+  int cartanEntry(size_t i,size_t j) const;
+
   bitset::RankFlags component(size_t) const;
+
+  Multiplicity edgeMultiplicity(size_t i,size_t j) const
+    { return cartanEntry(i,j)*cartanEntry(j,i); }
 
   bitset::RankFlags extremities() const;
 

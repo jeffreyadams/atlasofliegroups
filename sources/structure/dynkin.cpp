@@ -119,6 +119,16 @@ DynkinDiagram::DynkinDiagram(const bitset::RankFlags& c,
 
 /******** accessors **********************************************************/
 
+int DynkinDiagram::cartanEntry(size_t i,size_t j) const
+{
+  if (star(i).test(j))
+  {
+    std::map<Edge,Multiplicity>::const_iterator it=d_label.find(Edge(i,j));
+    return it==d_label.end() ? -1 : -int(it->second);
+  }
+  else return i==j ? 2 : 0;
+}
+
 bitset::RankFlags DynkinDiagram::component(size_t j) const
 
 /*!
