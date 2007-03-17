@@ -101,24 +101,22 @@ template <typename Count>
   }
 
 template <typename Count>
-  void TallyVec<Count>::lower(Index& i) const
+  bool TallyVec<Count>::lower(Index& i) const
   {
     if (i>count.size()) // then find last entry |j| in overflow with |j<i|
     {
       map_type::const_iterator it=overflow.lower_bound(i);
       if (it!=overflow.begin() and (--it)->first>=count.size())
-      { i=it->first; return; }
+      { i=it->first; return true; }
 
       else i=count.size(); // and fall through to search in |count|
     }
 
     // now |i<=count.size()|; find last entry |j<i| in count with |count[j]!=0|
     while (i-->0)
-      if (count[i]!=0) return;
+      if (count[i]!=0) return true;
 
-    i=0; return; // thus |0| always shows up on the radar, even if untallied
-    // this allows loops |for(i=tv.size()-1; i!=0; tv.lower(i))|, or more
-    // prudent |for(i=tv.size()-1; i!=0 or tv.multiplicity(0)>0; tv.lower(i))|
+    return false; // could not find lower entry
 }
 
 template <typename Count>

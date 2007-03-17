@@ -67,7 +67,9 @@ class TallyVec
   template<typename MuCount> TallyVec<MuCount> derived(size_t limit) const;
 
   void advance(Index& i) const; // like ++ and -- where |i| iterates
-  void lower(Index& i) const;   // over indices with nonzero multiplicity
+  bool lower(Index& i) const;   // over indices with nonzero multiplicity
+
+  // use |lower| as |i=t.size(); while (t.lower(i)) use(i);|
 
   void write_to(std::ostream& out) const; // dump table to file
 }; // class TallyVec
