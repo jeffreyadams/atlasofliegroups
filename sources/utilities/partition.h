@@ -143,7 +143,7 @@ class Partition {
   unsigned long classSize(unsigned long) const;
 
   /*!
-  \brief Number of classes in the partition.
+  \brief Number of elements of the underlying set of the partition.
    */
   unsigned long size() const {
     return d_class.size();
