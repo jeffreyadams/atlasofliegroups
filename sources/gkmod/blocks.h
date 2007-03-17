@@ -227,7 +227,10 @@ Not used in the present code (DV 10/14/06).
     return d_length[z];
   }
 
-  /*! \brief Semisimple rank of the group this block is constructed for */
+  /*! \brief the functor $T_{\alpha,\beta}$ */
+  BlockEltPair link(size_t alpha,size_t beta,BlockElt y) const;
+
+  /*! \brief semisimple rank of the group this block is constructed for */
   size_t rank() const {
     return d_rank;
   }

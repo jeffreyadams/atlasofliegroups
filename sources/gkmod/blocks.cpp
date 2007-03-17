@@ -267,6 +267,70 @@ bool Block::isStrictDescent(size_t s, BlockElt z) const
   return DescentStatus::isDescent(v) and v!=DescentStatus::ImaginaryCompact;
 }
 
+/*!
+  \brief the functor $T_{\alpha,\beta}$
+
+  Precondition: alpha and beta are adjacent roots, of which alpha is a descent
+  set for y, while beta is not a sescent for y.
+
+  In fact if this is not satisfied, we return a pair of UndefBlock elements
+*/
+
+BlockEltPair Block::link(size_t alpha,size_t beta,BlockElt y) const
+{
+  const descents::DescentStatus& d=descent(y);
+
+  std::vector<BlockElt> result(2,UndefBlock);
+  std::vector<BlockElt>::iterator it=result.begin();
+
+  BlockEltPair p=inverseCayley(alpha,y);
+  switch (d[alpha])
+  {
+  case descents::DescentStatus::ComplexDescent:
+    {
+      BlockElt y1=cross(alpha,y);
+      if (descents::DescentStatus::isDescent(descent(y1)[beta]))
+	*it++=y1;
+      break;
+    }
+  case descents::DescentStatus::RealTypeI:
+    if (descents::DescentStatus::isDescent(descent(p.second)[beta]))
+      *it++=p.second;
+    // FALL THROUGH
+  case descents::DescentStatus::RealTypeII:
+    if (descents::DescentStatus::isDescent(descent(p.first)[beta]))
+      *it++=p.first;
+    break;
+  default: {}
+  } // switch(d[alpha])
+
+  p=cayley(beta,y);
+  switch (d[beta])
+  {
+  case descents::DescentStatus::ComplexAscent:
+    {
+      BlockElt y1=cross(beta,y);
+      if (not descents::DescentStatus::isDescent(descent(y1)[alpha]))
+	*it++=y1;
+      break;
+    }
+  case descents::DescentStatus::ImaginaryTypeII:
+    if (not descents::DescentStatus::isDescent(descent(p.second)[alpha]))
+      *it++=p.second;
+    // FALL THROUGH
+  case descents::DescentStatus::ImaginaryTypeI:
+    if (not descents::DescentStatus::isDescent
+	(descent(p.first)[alpha]))
+      *it++=p.first;
+    break;
+  default: {}
+  } // switch(d[beta])
+
+  assert(&*it<=&result[2]);
+
+  return std::make_pair(result[0],result[1]);
+}
+
 
 /******** manipulators *******************************************************/
 void Block::fillBruhat()
