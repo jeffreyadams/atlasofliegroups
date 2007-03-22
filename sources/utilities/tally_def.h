@@ -73,7 +73,13 @@ template <typename Count>
     if (i<count.capacity()) // then slot for |i| can be created
     {
       while (count.size()<i) count.push_back(0);
-      count.push_back(multiplicity); return true;
+      if (multiplicity>=maxCount) // then |count[i]| saturated
+      {
+	overflow[i]=multiplicity; // create new entry
+	multiplicity=maxCount;    // and mark |count[i]| as saturated
+      }
+      count.push_back(multiplicity);
+      return true;
     }
 
     // now |i>=count.capacity()|, it must be added to overflow
@@ -147,6 +153,23 @@ template <typename Count>
     {
       Index k=basic_io::read_bytes<sizeof(Index)>(file);
       ullong v=basic_io::read_bytes<sizeof(ullong)>(file);
+      overflow.insert(std::make_pair(k,v));
+    }
+  }
+
+template <typename Count>
+  TallyVec<Count>::TallyVec (std::istream& file, size_t w_key, size_t w_val)
+  : count(0), overflow(), max(0), total(0)
+  {
+    file.seekg(0,std::ios_base::beg);
+    count.resize(basic_io::read_bytes<4>(file));
+    size_t ovf_size=basic_io::read_bytes<4>(file);
+    for (size_t i=0; i<count.size(); ++i)
+      count[i]=basic_io::read_bytes<sizeof(Count)>(file);
+    for (size_t i=0; i<ovf_size; ++i)
+    {
+      Index k=basic_io::read_var_bytes(w_key,file);
+      ullong v=basic_io::read_var_bytes(w_val,file);
       overflow.insert(std::make_pair(k,v));
     }
   }
