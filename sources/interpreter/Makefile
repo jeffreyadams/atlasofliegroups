@@ -73,7 +73,8 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/utilities/graph.o \
  $(atlas_sources)/error/kl_error.o \
  $(atlas_sources)/io/kgb_io.o \
- $(atlas_sources)/io/wgraph_io.o
+ $(atlas_sources)/io/wgraph_io.o \
+ $(atlas_sources)/utilities/filekl.o
 
 cwebx_sources := $(wildcard *.w)
 
