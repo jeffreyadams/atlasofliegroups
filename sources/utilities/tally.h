@@ -58,6 +58,9 @@ class TallyVec
   { count.reserve(limit); }
   TallyVec (std::istream& file); // recover table dumped to file
 
+  // same specifying width of keys and values in overflow table explicitly
+  TallyVec (std::istream& file, size_t w_key, size_t w_val);
+
   bool tally (Index i); // increase count for i by 1; tell whether new
   bool tally (Index i,ullong multiplicity); // same with multiplicity
   Index size() const { return max+1; } // size of collection now tallied

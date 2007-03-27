@@ -146,12 +146,14 @@ template <typename Count>
   {
     file.seekg(0,std::ios_base::beg);
     count.resize(basic_io::read_bytes<4>(file));
+    if (not count.empty()) max=count.size()-1;
     size_t ovf_size=basic_io::read_bytes<4>(file);
     for (size_t i=0; i<count.size(); ++i)
       count[i]=basic_io::read_bytes<sizeof(Count)>(file);
     for (size_t i=0; i<ovf_size; ++i)
     {
       Index k=basic_io::read_bytes<sizeof(Index)>(file);
+      if (k>max) max=k;
       ullong v=basic_io::read_bytes<sizeof(ullong)>(file);
       overflow.insert(std::make_pair(k,v));
     }
@@ -163,12 +165,14 @@ template <typename Count>
   {
     file.seekg(0,std::ios_base::beg);
     count.resize(basic_io::read_bytes<4>(file));
+    if (not count.empty()) max=count.size()-1;
     size_t ovf_size=basic_io::read_bytes<4>(file);
     for (size_t i=0; i<count.size(); ++i)
       count[i]=basic_io::read_bytes<sizeof(Count)>(file);
     for (size_t i=0; i<ovf_size; ++i)
     {
       Index k=basic_io::read_var_bytes(w_key,file);
+      if (k>max) max=k;
       ullong v=basic_io::read_var_bytes(w_val,file);
       overflow.insert(std::make_pair(k,v));
     }
