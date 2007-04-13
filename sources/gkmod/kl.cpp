@@ -1304,7 +1304,8 @@ void Helper::fill()
   std::ifstream statm("/proc/self/statm"); // open file for memory status
 #endif
 
-  size_t l=length(y); // minLength+1
+  //  size_t l=length(y); // minLength+1
+  size_t l=minLength+1; // length(y) if y < d_kl.size()
 
   // do the other cases
   while (l<=maxLength) {
