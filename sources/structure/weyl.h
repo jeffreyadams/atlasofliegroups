@@ -436,13 +436,14 @@ is out(x,s).x = x.s.
   the same size as an unsigned long.
 
   Notice that the unsigned char type miraculously suffices for all
-  subquotients of all groups up to rank 128 (indeed, the biggest
-  subquotient for B128 is of order 256), _provided_ the generators are
-  enumerated in an appropriate order. This forces us to do quite a bit
-  of type recognition, which is relegated to the dynkin
-  namespace. Because of this reordering, the group carries a little
-  interface that will translate back and forth from the external
-  ordering and the internal one.
+  subquotients of all groups up to rank 128 (indeed, the biggest subquotient
+  for B128 is of order 256), _provided_ the generators are enumerated in an
+  appropriate order. This forces us to do quite a bit of type recognition,
+  which is relegated to the dynkin namespace. Because of this reordering, the
+  group carries a little interface that will translate back and forth from the
+  external ordering and the internal one. To speed up some computations we
+  precompute in |d_min_star| for each generator the smallest other generator
+  with which it does not commute (or the generator itself if there are none).
 */
 class WeylGroup {
 
@@ -457,6 +458,7 @@ class WeylGroup {
   Twist d_twist;
   WeylInterface d_in;
   WeylInterface d_out;
+  std::vector<Generator> d_min_star;
 
 // private member functions
 // these interpret Generators and WeylWords internally, so not for public use!
@@ -475,6 +477,11 @@ class WeylGroup {
     const Transducer& tr = d_transducer[j];
     return tr.wordPiece(w[j]);
   }
+
+  /*!
+    \brief first generator $<s$ not commuting with |s|, or |s| if none exist
+  */
+  Generator min_neighbor (Generator s) const { return d_min_star[s]; }
 
   WeylElt generator (Generator i) const; // $s_i$ as Weyl group element
 
@@ -521,7 +528,9 @@ class WeylGroup {
   }
   void leftMult(WeylElt& w, const WeylElt& x) const;
 
-  /*
+  /* These additional definitions would be needed if TwistedInvolutions were a
+     type distinct from WeylElt (but they are not allowed as it is):
+
   void leftMult(TwistedInvolution& w, Generator s) const {
     leftProdIn(w.contents(),d_in[s]);
   }
