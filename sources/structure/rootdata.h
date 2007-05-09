@@ -6,7 +6,7 @@
   This is rootdata.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -51,15 +51,19 @@ template <typename I, typename O>
   void toRootBasis(const I&, const I&, O, const RootList&, const RootDatum&);
 
 template <typename I, typename O>
-  void toSimpleWeights(const I&, const I&, O, const RootList&, 
+  void toSimpleWeights(const I&, const I&, O, const RootList&,
 		       const RootDatum&);
 
 void cartanMatrix(LT::LatticeMatrix&, const RootDatum&);
 
 void cartanMatrix(LT::LatticeMatrix&, const RootList&, const RootDatum&);
 
-void dualBasedInvolution(LT::LatticeMatrix&, const LT::LatticeMatrix&, 
+void dualBasedInvolution(LT::LatticeMatrix&, const LT::LatticeMatrix&,
 			 const RootDatum&);
+
+// a functional version of previous one
+LT::LatticeMatrix dualBasedInvolution
+  (const LT::LatticeMatrix&, const RootDatum&);
 
 void lieType(lietype::LieType&, const RootList&, const RootDatum&);
 
@@ -95,7 +99,7 @@ void toPositive(weyl::WeylWord&, const LT::Weight&, const RootDatum&);
 
 void toWeylWord(weyl::WeylWord&, RootNbr, const RootDatum&);
 
-void toWeylWord(weyl::WeylWord&, const latticetypes::LatticeMatrix&, 
+void toWeylWord(weyl::WeylWord&, const latticetypes::LatticeMatrix&,
 		const RootDatum&);
 
 void twoRho(LT::Weight&, const RootList&, const RootDatum&);
@@ -133,7 +137,7 @@ class RootDatum {
 
  private:
  /*!
-\brief Names describing the  bits of the bitset d_status.  
+\brief Names describing the  bits of the bitset d_status.
 
 The last enum numFlags is there as a standard programming trick. Its
 value - in this case 2 - is one-past-the-last meaningful bit, for
@@ -150,69 +154,70 @@ use by accessors.
   size_t d_rank;
 
 /*!
-\brief Semisimple rank of the root datum.   
+\brief Semisimple rank of the root datum.
 */
-  size_t d_semisimpleRank;   
+  size_t d_semisimpleRank;
 /*!
 \brief  basis for orthogonal to roots.
 */
-  LT::WeightList d_coradicalBasis;  
+  LT::WeightList d_coradicalBasis;
 /*!
 \brief Basis for orthogonal to coroots.
 */
-  LT::WeightList d_radicalBasis; 
+  LT::WeightList d_radicalBasis;
 /*!
 \brief Full list of roots.
 */
-  LT::WeightList d_roots;           
+  LT::WeightList d_roots;
 /*!
 \brief Full list of coroots.
 */
-  LT::WeightList d_coroots;         
+  LT::WeightList d_coroots;
 /*!
 \brief Lists the negative of each root.
 */
-  RootList d_minus;               
+  RootList d_minus;
 /*!
 \brief Numbers of the positive roots.
 */
-  RootList d_posRoots;    
+  RootList d_posRoots;
 /*!
 \brief Numbers of the simple roots.
 */
-  RootList d_simpleRoots;       
+  RootList d_simpleRoots;
 /*!
 \brief  Simple weights.
 */
-  LT::RatWeightList d_weights;   
+  LT::RatWeightList d_weights;
 /*!
 \brief Simple coweights.
 */
-  LT::RatWeightList d_coweights;   
+  LT::RatWeightList d_coweights;
 /*!
 \brief Root permutations induced by simple reflections.
 */
-  std::vector<setutils::Permutation> d_rootPermutation;                     
+  std::vector<setutils::Permutation> d_rootPermutation;
 /*!
 \brief BitMap flagging positive roots.
 */
-  RootSet d_isPositive;       
+  RootSet d_isPositive;
 /*!
 \brief BitMap flagging simple roots.
 */
-  RootSet d_isSimple;         
+  RootSet d_isSimple;
 /*!
 \brief Sum of the positive roots.
 */
-  LT::Weight d_twoRho;              
+  LT::Weight d_twoRho;
 
   /*!
 \brief BitSet recording in bit 0 whether the root datum is adjoint, and in
-  bit 1 whether the root datum is simply connected.  
+  bit 1 whether the root datum is simply connected.
 
-  "Adjoint" here means that the center is connected.  "Simply
-  connected" means that the derived group is simply connected.  These
-  two properties are exchanged by passage to the dual root datum.
+  "Adjoint" here means that the center of the complex group determined by the
+  root datum is connected. "Simply connected" means that the derived group of
+  that complex group is simply connected. These two properties are exchanged
+  by passage to the dual root datum.
   */
   Status d_status;
 
@@ -222,8 +227,7 @@ use by accessors.
 
 // constructors and destructors
 
-  RootDatum() 
-    {}
+  RootDatum() : d_rank(0), d_semisimpleRank(0) {}
 
   explicit RootDatum(const prerootdata::PreRootDatum&);
 
@@ -367,7 +371,7 @@ use by accessors.
   bool isAdjoint() const;
 
   bool isOrthogonal(const latticetypes::Weight& v, RootNbr j) const {
-    return !LT::scalarProduct(v,coroot(j));
+    return LT::scalarProduct(v,coroot(j))==0;
   }
 
   bool isOrthogonal(RootNbr i, RootNbr j) const {
@@ -394,13 +398,23 @@ use by accessors.
     return d_minus[j];
   }
 
+  // the next method only works for _simple_ roots! (whence no RootNbr for |j|)
   const setutils::Permutation& rootPermutation(size_t j) const {
     return d_rootPermutation[j];
   }
 
-  void rootReflection(LT::LatticeMatrix& q, RootNbr j) const;
+  // here any matrix permuting the roots is allowed, e.g., rootReflection(r)
+  setutils::Permutation rootPermutation(const LT::LatticeMatrix& q) const;
 
-  LT::LatticeCoeff scalarProduct(const latticetypes::Weight& v, RootNbr j) 
+  void rootReflection(LT::LatticeMatrix& q, RootNbr r) const;
+
+  LT::LatticeMatrix rootReflection(RootNbr r) const;
+
+  void rootReflect(RootNbr& r, size_t i) const  { r=rootPermutation(i)[r]; }
+
+  weyl::WeylWord reflectionWord(RootNbr r) const;
+
+  LT::LatticeCoeff scalarProduct(const latticetypes::Weight& v, RootNbr j)
     const {
     return LT::scalarProduct(v,coroot(j));
   }
@@ -427,7 +441,7 @@ use by accessors.
     return d_rootPermutation[s][i];
   }
 
-  template <typename I, typename O> 
+  template <typename I, typename O>
     void toRootBasis(const I&, const I&, O) const;
 
   const LT::Weight& twoRho() const {
@@ -442,7 +456,7 @@ use by accessors.
 // NOTE: this should really be a template, depending on a RandomAccessIterator
 // with value_type RootNbr (so that in particular d_pos could be a pointer to
 // a RootNbr)
-  
+
 template<typename I>
    /*!
    \brief Iterator for traversing a set of roots.
@@ -475,21 +489,21 @@ class RootIterator { // constant Random Access Iterator
    RootIterator(const RootIterator& i)
      :d_list(i.d_list),d_pos(i.d_pos) {}
 
-   RootIterator(const LT::WeightList& wl, I i) 
+   RootIterator(const LT::WeightList& wl, I i)
      :d_list(wl.begin()), d_pos(i) {}
 
-   RootIterator(LT::WeightList::const_iterator wl, I i) 
+   RootIterator(LT::WeightList::const_iterator wl, I i)
      :d_list(wl), d_pos(i) {}
 
-   RootIterator(const RootDatum& rd, I i) 
+   RootIterator(const RootDatum& rd, I i)
      :d_list(rd.beginRoot()), d_pos(i) {}
 
    ~RootIterator() {}
 
 // assignment
    RootIterator& operator= (const RootIterator& i) {
-     d_list = i.d_list; 
-     d_pos = i.d_pos; 
+     d_list = i.d_list;
+     d_pos = i.d_pos;
      return *this;
    }
 
@@ -508,7 +522,7 @@ class RootIterator { // constant Random Access Iterator
    }
 
    RootIterator& operator++ () {
-     ++d_pos; 
+     ++d_pos;
      return *this;
    }
 
@@ -517,7 +531,7 @@ class RootIterator { // constant Random Access Iterator
    }
 
    RootIterator& operator-- () {
-     --d_pos; 
+     --d_pos;
      return *this;
    }
 
@@ -526,7 +540,7 @@ class RootIterator { // constant Random Access Iterator
    }
 
    RootIterator& operator+= (difference_type n) {
-     d_pos += n; 
+     d_pos += n;
      return *this;
    }
 
@@ -535,7 +549,7 @@ class RootIterator { // constant Random Access Iterator
    }
 
    RootIterator& operator-= (difference_type n) {
-     d_pos -= n; 
+     d_pos -= n;
      return *this;
    }
 
@@ -553,7 +567,7 @@ class RootIterator { // constant Random Access Iterator
 };
 
 template<typename I>
-inline RootIterator<I> operator+ (typename RootIterator<I>::difference_type n, 
+inline RootIterator<I> operator+ (typename RootIterator<I>::difference_type n,
 				  RootIterator<I> i)
   {
     return i+n;
@@ -563,7 +577,7 @@ inline RootIterator<I> operator+ (typename RootIterator<I>::difference_type n,
   /*!
   Old non-template version of RootIterator, now excluded by the
   preprocessor.  (Thanks to Marc for explaining this.)
-  */ 
+  */
 class RootIterator { // constant Random Access Iterator
 
  private:
@@ -586,21 +600,21 @@ class RootIterator { // constant Random Access Iterator
    RootIterator(const RootIterator& i)
      :d_list(i.d_list),d_pos(i.d_pos) {}
 
-   RootIterator(const LT::WeightList& wl, RootList::const_iterator i) 
+   RootIterator(const LT::WeightList& wl, RootList::const_iterator i)
      :d_list(wl.begin()), d_pos(i) {}
 
-   RootIterator(LT::WeightList::const_iterator wl, RootList::const_iterator i) 
+   RootIterator(LT::WeightList::const_iterator wl, RootList::const_iterator i)
      :d_list(wl), d_pos(i) {}
 
-   RootIterator(const RootDatum& rd, RootList::const_iterator i) 
+   RootIterator(const RootDatum& rd, RootList::const_iterator i)
      :d_list(rd.beginRoot()), d_pos(i) {}
 
    ~RootIterator() {}
 
 // assignment
    RootIterator& operator= (const RootIterator& i) {
-     d_list = i.d_list; 
-     d_pos = i.d_pos; 
+     d_list = i.d_list;
+     d_pos = i.d_pos;
      return *this;
    }
 
@@ -619,7 +633,7 @@ class RootIterator { // constant Random Access Iterator
    }
 
    RootIterator& operator++ () {
-     ++d_pos; 
+     ++d_pos;
      return *this;
    }
 
@@ -628,7 +642,7 @@ class RootIterator { // constant Random Access Iterator
    }
 
    RootIterator& operator-- () {
-     --d_pos; 
+     --d_pos;
      return *this;
    }
 
@@ -637,7 +651,7 @@ class RootIterator { // constant Random Access Iterator
    }
 
    RootIterator& operator+= (difference_type n) {
-     d_pos += n; 
+     d_pos += n;
      return *this;
    }
 
@@ -646,7 +660,7 @@ class RootIterator { // constant Random Access Iterator
    }
 
    RootIterator& operator-= (difference_type n) {
-     d_pos -= n; 
+     d_pos -= n;
      return *this;
    }
 

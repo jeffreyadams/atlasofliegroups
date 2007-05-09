@@ -6,7 +6,7 @@
   This is weyl.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -15,6 +15,7 @@
 #define WEYL_H
 
 #include "weyl_fwd.h"
+#include "rootdata_fwd.h"
 
 #include "constants.h"
 #include "error.h"
@@ -28,12 +29,19 @@ namespace atlas {
 
 namespace weyl {
 
-  typedef Generator WeylInterface[constants::RANK_MAX];
-  typedef std::pair<EltPiece,Generator> ShiftValue;
+  /*!
+\brief A permutation of the set of Generators, giving a diagram automorphism
+  */
+  typedef Generator Twist[constants::RANK_MAX];
 
-  class RowBase;
-  typedef RowBase ShiftRow;
-  typedef RowBase OutRow;
+  /*!
+\brief A mapping between one interpretation of Generators and another
+  */
+  typedef Generator WeylInterface[constants::RANK_MAX];
+
+  class RowBase; // information at one coset element in one transducer table
+  typedef RowBase ShiftRow; // the case of a transition entry
+  typedef RowBase OutRow;   // the case of a transduction entry
 
   class Transducer;
 
@@ -47,17 +55,16 @@ namespace weyl {
   const EltPiece UndefEltPiece = UndefValue;
   const Generator UndefGenerator = UndefValue;
   const unsigned long UndefOrder = 0; // is never a valid value
-
-  const Twist& identityTwist();
-
 }
 
 /******** function declarations *********************************************/
 
 namespace weyl {
+  const Twist& identityTwist(); // accesses static Twist constant
 
-  void copy(Twist&, const Twist&);
+  void copy(Twist&, const Twist&); // needed since Twist is not a class
 
+  /* generate the set of ordinary reflections in the Weyl group */
   void makeReflections(WeylEltList&, const WeylGroup&);
 
 }
@@ -82,11 +89,11 @@ class WeylElt {
 
 \brief Represents factorization of Weyl group element w as a product
 of shortest length coset representatives for parabolic subquotients
-W_{i-1}\\W_i. 
+W_{i-1}\\W_i.
 
-Entry \#i is an unsigned char parametrizing the ith coset
+Entry \#i-1 is an unsigned char parametrizing the ith coset
 representative w_i for an element of W_{i-1}\\W_i.  Then w =
-w_1.w_2...w_n.  
+w_1.w_2...w_n.
   */
   EltPiece d_data[constants::RANK_MAX];
 
@@ -98,29 +105,22 @@ w_1.w_2...w_n.
 \brief Constructs the identity element of W.
 */
   WeylElt() {
-    memset(d_data,0,constants::RANK_MAX);
+    memset(d_data,0,sizeof(d_data));
   }
 
-/*!
-\brief Constructs the element of W with all coset representatives
-equal to x.
+  /*! \brief interpret |w| in weyl group |W| */
+  WeylElt(const WeylWord& w, const WeylGroup& W);
 
-[Hard to see how this could possibly be used except with x=0.  DV 7/24/06.]
-*/
-  explicit WeylElt(EltPiece x) {
-    memset(d_data,x,constants::RANK_MAX);
-  }
-
-  ~WeylElt() 
+  ~WeylElt()
     {}
 
 // copy and assignment
   WeylElt(const WeylElt& w) {
-    memcpy(d_data,w.d_data,constants::RANK_MAX);
+    memcpy(d_data,w.d_data,sizeof(d_data));
   }
 
   WeylElt& operator=(const WeylElt& w) {
-    memcpy(d_data,w.d_data,constants::RANK_MAX); 
+    memcpy(d_data,w.d_data,sizeof(d_data));
     return *this;
   }
 
@@ -139,7 +139,7 @@ equal to x.
 strictly less than the Weyl group element following the < sign.
   */
   bool operator< (const WeylElt& w) const {
-    return memcmp(d_data,w.d_data,constants::RANK_MAX) < 0;
+    return memcmp(d_data,w.d_data,sizeof(d_data)) < 0;
   }
 
   /*!
@@ -147,7 +147,7 @@ strictly less than the Weyl group element following the < sign.
 group element following the == sign.
   */
   bool operator== (const WeylElt& w) const {
-    return !memcmp(d_data,w.d_data,constants::RANK_MAX);
+    return memcmp(d_data,w.d_data,sizeof(d_data))==0;
   }
 
   /*!
@@ -155,7 +155,7 @@ group element following the == sign.
 group element following the != sign.
   */
   bool operator!= (const WeylElt& w) const {
-    return memcmp(d_data,w.d_data,constants::RANK_MAX);
+    return memcmp(d_data,w.d_data,sizeof(d_data))!=0;
   }
 
 // manipulators
@@ -167,11 +167,21 @@ group element following the != sign.
 \brief Sets the Weyl group element equal to 1.
   */
   void clear() {
-    memset(d_data,0,constants::RANK_MAX);
+    memset(d_data,0,sizeof(d_data));
   }
-};
 
-const WeylElt Identity;
+// dummy methods that mark transition of interpretation
+
+  // from WeylElt interpretation
+  // nothing: cast to TwistedInvolution is allowed, and is a no-op
+
+  // from TwistedInvolution interpretation
+  const WeylElt& representative() const { return *this; }
+  WeylElt& contents() { return *this; }
+
+}; // class WeylElt
+
+const WeylElt Identity; // default constructor initialises to identity
 
 /*!
 \brief Represents one row of a transducer table for a Weyl group.
@@ -186,18 +196,18 @@ class RowBase {
 
 // constructors and destructors
   RowBase() {
-    memset(d_data,UndefValue,constants::RANK_MAX);
+    memset(d_data,UndefValue,sizeof(d_data));
   }
 
   ~RowBase() {}
 
 // copy and assignment
   RowBase(const RowBase& r) {
-    memcpy(d_data,r.d_data,constants::RANK_MAX);
+    memcpy(d_data,r.d_data,sizeof(d_data));
   }
 
   RowBase& operator=(const RowBase& r) {
-    memcpy(d_data,r.d_data,constants::RANK_MAX); return *this;
+    memcpy(d_data,r.d_data,sizeof(d_data)); return *this;
   }
 
 // accessors
@@ -216,7 +226,7 @@ class RowBase {
 group modulo a maximal parabolic subgroup.
 
 In the notation from the description of the class WeylGroup, there
-will be one transducer class for each parabolic subquotient
+will be one Transducer object for each parabolic subquotient
 W_{r-1}\\W_r. List the shortest length coset representatives for this
 subquotient as x_0,...,x_{N_r-1}.  Recall that the simple roots were
 ordered to guarantee that N_r-1 fits in an unsigned char, so each
@@ -225,44 +235,44 @@ compute the product x_i.s_j for j between 1 and r.  The key
 theoretical fact about multiplication is that there are two mutually
 exclusive possibilities:
 
-x_i.s_j = x_{i'}  (some i' ne i) 
+x_i.s_j = x_{i'}  (some i' ne i)
 
 OR
 
 x_i.s_j = s_k.x_i  (some k < r).
 
-The first possibility is called _transduction_ and the second
-_transition_.  Entry \#j of row i of the transduction table is equal
-to i' (in the first case) or to i (in the second).  This is stored in
-d_shift, and accessed by the member function shift.  The reflection
-s_k (which is defined only in the transition case -- that is, when
-shift(i,j) = i) is stored in d_out, and accessed by the member
-function out.
+The first possibility is called _transition_ and the second _transduction_.
+(Confusingly Fokko's 1999 paper interchanges these terms at their definition,
+but their usual meaning and the sequel makes clear that this was an error).
+
+The Transducer has tables to describe the two cases. the first table |d_shift|
+describes the transistions, namely |d_shift[i][j]==i'| in the first case; the
+cases that are tranductions can be distinguished from these by the fact that
+|d_shift[i][j]==i|. In these cases, the value |k| emitted by the transduction
+is stored in |d_out[i][j]|, which otherwise contains the value |UndefGenerator|
 */
+
 class Transducer {
+  // there is one such object for each $r\in\{1,2,\ldots,n\}$
+  // but $r$ is not explicitly stored in the Tranducer object
 
  private:
 
   /*!
-\brief Column \#j is the permutation action of s_j on W_{r-1}\\W_r.
-
-Entry i lists the (in its jth entry, for j less than the rank
-r) the unsigned char i' so that x_i.s_j has minimal coset
-representative x_i'.
+\brief Right multiplication by $s_j$ gives transition |i -> d_shift[i][j]|
   */
   std::vector<ShiftRow> d_shift;
 
   /*!
-\brief Column \#j gives the simple reflections s_k (if any) with x.s_j
-= s_k.x, and k<r.
+\brief If |d_shift[i][j]==i| then $s_j$ transduces in state $i$ to $s_k$
+ with $k=d_out[i][j]$ (otherwise |d_out[i][j]==UndefGenerator|).
 
-Entry i lists (in its jth entry, for j less than the rank
-r) the generator k so that x_i.s_j = s_k.x_i.   
+  In this case $x_i.s_j = s_k.x_i$, so the state $i$ remains unchanged.
   */
   std::vector<OutRow> d_out;
 
   /*!
-\brief Lengths of the minimal coset representatives.
+\brief Lengths of the minimal coset representatives $x_i$.
   */
   std::vector<unsigned long> d_length;
 
@@ -274,19 +284,19 @@ r) the generator k so that x_i.s_j = s_k.x_i.
  public:
 
 // constructors and destructors
-  Transducer() 
+  Transducer()
     {}
 
   Transducer(const latticetypes::LatticeMatrix&, size_t);
 
-  ~Transducer() 
+  ~Transducer()
     {}
 
 // accessors
 
 
   /*!
-\brief Length of minimal coset representative x. 
+\brief Length of minimal coset representative x.
   */
   unsigned long length(EltPiece x) const {
     return d_length[x];
@@ -297,7 +307,7 @@ r) the generator k so that x_i.s_j = s_k.x_i.
 \brief Maximal length of minimal coset representatives.
 
 This is the number of positive roots for the Levi subgroup L_r, minus
-the number of positive roots for L_{r-1}. 
+the number of positive roots for L_{r-1}.
   */
   unsigned long maxlength() const {
     return d_length.back();
@@ -305,10 +315,9 @@ the number of positive roots for L_{r-1}.
 
 
   /*!
-\brief Simple reflection t (strictly preceding s) so that xs = tx.
+\brief Simple reflection t (strictly preceding s) so that xs = tx, if any
 
-[I don't know what it returns in the case of transduction, when no
-such t exists. DV 7/24/06.]
+In case of a transition, this returns UndefGenerator.
   */
   Generator out(EltPiece x, Generator s) const {
     return d_out[x][s];
@@ -319,14 +328,14 @@ such t exists. DV 7/24/06.]
 
 When x' is not equal to s, this is an equality of minimal coset
 representatives. When x'=x, the equation for minimal coset representatives
-is out(x,s).x = x.s. 
+is out(x,s).x = x.s.
   */
   EltPiece shift(EltPiece x, Generator s) const {
     return d_shift[x][s];
   }
 
   /*!
-\brief Number of cosets W_{r-1}\\W_r. 
+\brief Number of cosets W_{r-1}\\W_r.
   */
   unsigned long size() const {
     return d_shift.size();
@@ -341,14 +350,21 @@ is out(x,s).x = x.s.
   }
 
 // this class should have no manipulators!
-};
+}; // class Transducer
 
 
   /*!
-\brief  Represents a  Weyl group.
+\brief Represents a Weyl group for the purpose of manipulating its elements
 
-  The WeylGroup class is a variation on my favourite implementation in terms
-  of transducers.
+  In fact at construction an involutive diagram automorphism |delta| is also
+  associated to the Weyl group. While WeylElt values are assumed to live just
+  in the Weyl group W, some of the functionality of this class implements
+  operations that are more naturally interprests them in $W semidirect Z/2Z$
+  (the second factor acting on the first via |delta|), namely in the
+  non-identity coset for $W$. These operations are marked by the term "twist"
+
+  The WeylGroup class is a variation on Fokko's own and favourite
+  implementation in terms of transducers.
 
   I have tried to make a careful choice of datatype for the group
   elements in order to strike the right balance between efficiency and
@@ -389,14 +405,14 @@ is out(x,s).x = x.s.
   representation as a single number is more compact, but will overflow
   even on 64-bit machines for some groups of rank <= 16, and much
   sooner of course on 32-bit machines; also it imposes some
-  computational overhead for packing and unpacking. 
-  
+  computational overhead for packing and unpacking.
+
   [Meaning of "representation as a single number:" if the cardinality
   of W fits in an unsigned long, then an element of W may be
   represented as the unsigned long
 
   x_1 + x_2(N_1) + x_3(N_1N_2) + ... +x_n(N_1...N_n).
-  
+
   In this formula I have changed the meaning of x_i: now it means the
   integer between 0 and N_i enumerating the coset representative
   previously called x_i. This representation is called the "packed
@@ -443,14 +459,24 @@ class WeylGroup {
   WeylInterface d_out;
 
 // private member functions
-  void leftProdIn(WeylElt&, Generator) const;
-  int prodIn(WeylElt&, Generator) const;
-  void prodIn(WeylElt&, const WeylWord&) const;
+// these interpret Generators and WeylWords internally, so not for public use!
 
-  const WeylWord& wordPiece(const WeylElt& w, size_t j) const {
+  // set |w=ws|, return value is $l(ws)-l(w)\in\{+1,-1}$
+  int prodIn(WeylElt& w, Generator s) const;
+
+  // set |w=wv|
+  void prodIn(WeylElt& w, const WeylWord& v) const;
+
+  // set |w=sw| (it is unclear why arguments are in the opposite order)
+  void leftProdIn(WeylElt& w, Generator s) const;
+
+  // get WeylWord for piece |j| of |w|
+  const WeylWord& wordPiece(const WeylElt& w, Generator j) const {
     const Transducer& tr = d_transducer[j];
     return tr.wordPiece(w[j]);
   }
+
+  WeylElt generator (Generator i) const; // $s_i$ as Weyl group element
 
  public:
 
@@ -460,41 +486,110 @@ class WeylGroup {
 
   WeylGroup(const latticetypes::LatticeMatrix&, const Twist* = 0);
 
+  // construct the "dual" Weyl group: the same group, but with a dual twist
   WeylGroup(const WeylGroup&, tags::DualTag);
 
-  ~WeylGroup() {}
+  ~WeylGroup()
+  {}
+
+// From this point on each Generator or WeylWord uses external numbering
 
 // accessors
-  void conjugacyClass(WeylEltList&, const WeylElt&, bool twisted = true)
-    const;
 
-  /*!
-\brief Conjugates w by the generator s.
+  // set |w=ws|
+  int prod(WeylElt& w, Generator s) const {
+    return prodIn(w,d_in[s]);
+  }
+
+  // set |w=wv|
+  void prod(WeylElt& w, const WeylElt& v) const;
+
+  // set |w=wv|
+  void prod(WeylElt&, const WeylWord&) const;
+
+  // set |w=sw| (argument order motivated by modification effect on |w|)
+  void leftProd(WeylElt& w, Generator s) const {
+    leftProdIn(w,d_in[s]);
+  }
+  // the same under a better chosen name
+  void leftMult(WeylElt& w, Generator s) const {
+    leftProdIn(w,d_in[s]);
+  }
+  void leftMult(WeylElt& w, const WeylWord& ww) const {
+    for (size_t i=ww.size(); i-->0; ) // use letters from right to left
+      leftMult(w,ww[i]);
+  }
+  void leftMult(WeylElt& w, const WeylElt& x) const;
+
+  /*
+  void leftMult(TwistedInvolution& w, Generator s) const {
+    leftProdIn(w.contents(),d_in[s]);
+  }
+  void leftMult(TwistedInvolution& w, const WeylWord& ww) const {
+    leftMult(w.contents(),ww);
+  }
+  void leftMult(TwistedInvolution& w, const WeylElt& x) const {
+    leftMult(w.contents(),x);
+  }
   */
+
+
+  unsigned long length(const WeylElt&) const;
+
+  void conjugacyClass(WeylEltList&, const WeylElt&) const;
+
+  void conjugacyClass(WeylEltList& l, const WeylElt& w, bool twisted) const
+    {
+      if (twisted) twistedConjugacyClass(l,w);
+      else conjugacyClass(l,w);
+    }
+
+  /*! \brief Conjugates |w| by the generator |s|: |w=sws|. */
   void conjugate(WeylElt& w, Generator s) const {
     leftProd(w,s);
     prod(w,s);
   }
 
-  bool hasDescent(Generator, const WeylElt&) const;
-
-  bool hasTwistedCommutation(Generator, const WeylElt&) const;
-
-  void invert(WeylElt&) const;
-
-  unsigned long involutionLength(const WeylElt&) const;
-
-  void involutionOut(WeylWord&, const WeylElt&) const;
-
-  void invProd(WeylElt&, const WeylWord&) const;
-
-  Generator leftDescent(const WeylElt&) const;
-
-  void leftProd(WeylElt& w, Generator s) const {
-    leftProdIn(w,d_in[s]);
+  /*!
+     \brief Twisted conjugates element |tw| by the generator |s|:
+     $tw:=s.tw.\delta(s)$.
+   */
+  void twistedConjugate(TwistedInvolution& tw, Generator s) const {
+    WeylElt& w=tw.contents();
+    leftProd(w,s);
+    prodIn(w,d_twist[d_in[s]]);
+  }
+  void twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
+  {
+    for (size_t i=ww.size(); i-->0; )
+      twistedConjugate(tw,ww[i]);
+  }
+  void inverseTwistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
+  {
+    for (size_t i=0; i<ww.size(); ++i )
+      twistedConjugate(tw,ww[i]);
   }
 
-  unsigned long length(const WeylElt&) const;
+  void twistedConjugacyClass(TwistedInvolutionList&, const TwistedInvolution&)
+    const;
+
+  /*!
+     \brief Twisted conjugates element |tw| by |w|: $tw:=w.tw.\delta(w^{-1})$.
+   */
+  void twistedConjugate(TwistedInvolution& tw, const WeylElt& w) const;
+
+  /*! \brief $w^(-1)$ */
+  WeylElt inverse(const WeylElt& w) const;
+
+  /*! \brief set |w=w^(-1)| */
+  void invert(WeylElt& w) const { w=inverse(w); }
+
+  /*! \brief return a left descent for |w|, or |UndefGenerator| if |w==e|
+
+   In fact the descent whose internal number is lowest is returned, but
+   converted to external numbering.
+ */
+  Generator leftDescent(const WeylElt& w) const;
 
   const WeylElt& longest() const {
     return d_longest;
@@ -504,29 +599,36 @@ class WeylGroup {
     return d_maxlength;
   }
 
+  /*! \brief the order of the Weyl group */
   const size::Size& order() const {
     return d_order;
   }
-
-  void out(WeylWord&, const WeylElt&) const;
-
-  void outerTwist(Twist&) const;
-
-  int prod(WeylElt& w, Generator s) const {
-    return prodIn(w,d_in[s]);
-  }
-
-  void prod(WeylElt&, const WeylElt&) const;
-
-  void prod(WeylElt&, const WeylWord&) const;
 
   size_t rank() const {
     return d_rank;
   }
 
-  unsigned long toUlong(const WeylElt&) const;
+  /* give representation of |w| as integral number, supposing this fits. */
+  unsigned long toUlong(const WeylElt& w) const;
 
+  /* inverse operation of |toUlong| */
   WeylElt toWeylElt(unsigned long) const;
+
+  /* reconstructs twist in form used upon construction of the WeylGroup */
+  void outerTwist(Twist&) const;
+
+  bool hasDescent(Generator, const WeylElt&) const;
+
+  bool hasTwistedCommutation(Generator, const TwistedInvolution&) const;
+
+/*!
+  \brief Returns the length of d_w as a twisted involution.
+*/
+  unsigned long involutionLength(const TwistedInvolution&) const;
+
+  void involutionOut(WeylWord&, const TwistedInvolution&) const;
+
+  void out(WeylWord&, const WeylElt&) const;
 
   void translate(WeylElt&, const WeylInterface&) const;
 
@@ -536,14 +638,21 @@ class WeylGroup {
     return d_twist[s];
   }
 
-  void twistedConjugate(WeylElt& w, Generator s) const {
-    leftProd(w,s);
-    prodIn(w,d_twist[d_in[s]]);
-  }
+  // standard reflection action of Weyl group using a root datum
+  void act(const rootdata::RootDatum& rd,
+	   const WeylElt& w,
+	   latticetypes::LatticeElt& v) const;
+
+  latticetypes::LatticeElt
+    imageBy(const rootdata::RootDatum& rd,
+	    const WeylElt& w,
+	    const latticetypes::LatticeElt& v) const;
+
 
 // manipulators
   void swap(WeylGroup&);
-};
+
+}; // class WeylGroup
 
 }
 

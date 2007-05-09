@@ -1,6 +1,6 @@
 /*!
 \file
-\brief Implementation of WeylGroup. 
+\brief Implementation of WeylGroup.
 
   I have decided to represent elements as fixed-size arrays of
   unsigned characters. This forces expressing things in the standard
@@ -12,10 +12,10 @@
   dataype, generality and efficiency.
 
 */
-/*  
+/*
   This is weyl.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -28,6 +28,7 @@
 
 #include "dynkin.h"
 #include "setutils.h"
+#include "rootdata.h"
 
 /*****************************************************************************
 
@@ -53,9 +54,13 @@ namespace {
 
   EltPiece dihedralMin(const Transducer&, EltPiece, Generator, Generator);
 
-  EltPiece dihedralShift(const Transducer&, EltPiece, Generator, Generator, 
+  EltPiece dihedralShift(const Transducer&, EltPiece, Generator, Generator,
 			 unsigned long);
 
+  /* This class exists only so that its constructor (for a static object) is
+     run exactly once, before any Weyl group needs the identity twist. It
+     would not be necessary if Twist had been a class rather than a typedef.
+  */
   class IdentityTwist{
   private:
     Twist d_twist;
@@ -71,12 +76,12 @@ namespace {
 
 /*****************************************************************************
 
-        Chapter I -- The WeylGroup class
+        Chapter I -- The WeylGroup and WeylElt classes
 
   The Weyl group class is a variation on my favourite implementation in terms
-  of transducers. 
+  of transducers.
 
-  I have tried to make a careful choice of datatype for the group elements in 
+  I have tried to make a careful choice of datatype for the group elements in
   order to strike the right balance between efficiency and generality. This has
   led me to the choice of _fixed size_ arrays of unsigned chars, representing
   the "parabolic subquotient" representation of a given element; in other
@@ -89,7 +94,7 @@ namespace {
   and unpacking. Any variable-size structure like the STL vector uses already
   three unsigned longs for its control structure (the address of the data, the
   size and the capacity), and then it still has to allocate. This could
-  perhaps be simplified to just a pointer (after all the size of the 
+  perhaps be simplified to just a pointer (after all the size of the
   allocation is known to the group) but you still have the big overhead of
   allocating and deallocating memory from the heap, and remembering to delete
   the pointers when they go out of scope, or else use autopointers ...
@@ -112,81 +117,82 @@ namespace {
 
 namespace weyl {
 
-WeylGroup::WeylGroup(const latticetypes::LatticeMatrix& c, const Twist* twist)
-  :d_rank(c.numColumns()),
-   d_maxlength(0UL),
-   d_transducer(d_rank)
-
 /*!
-  Synopsis : constructs the Weyl group corresponding to the Cartan matrix c,
-  and to the given twist.
+  \brief Build the Weyl group corresponding to the Cartan matrix c,
+  and incorporate the possibly given twist (take identity if twist==NULL).
 
-  NOTE: a zero value for the Twist pointer indicates that we have to use the
-  default (identity) twist.
-
-  NOTE : we need to reorder the vertices carefully so that the subquotients
-  fit in an unsigned char!
+  NOTE : |c| and |twist| use some (consistent) labelling of simple roots,
+  but we will determine an internal renumbering making the subquotients small
 */
-
+WeylGroup::WeylGroup(const latticetypes::LatticeMatrix& c, const Twist* twist)
+  : d_rank(c.numColumns()) // all other fields are computed later
+  , d_order() // this initialises this size::Size value to 1
+  , d_maxlength(0)
+  , d_longest()
+  , d_coxeterMatrix()
+  , d_transducer(d_rank)
+  , d_twist() // not copied from twist even if non-NULL: renumbering is needed
+  , d_in()    // being arrays, |d_in| and |d_out| cannot be initialised
+  , d_out()
 {
-  using namespace constants;
-  using namespace dynkin;
-  using namespace setutils;
+  /* analyse the Coxeter matrix */
 
-  // analyze the coxeter matrix
+  setutils::Permutation a;
+  dynkin::DynkinDiagram d(c); // make diagram from Cartan matrix
+  normalize(a,d);  // find renumbering |a| putting labels in canonical order
 
-  Permutation a;
-  DynkinDiagram d(c);
-  normalize(a,d);
-
-  // put appropriate permutations in d_in and d_out
-  // it should be so that d_in[j] is the _internal_ generator corresponding
-  // to the external j, and similarly d_out[j] is the _external_ generator
-  // corresponding to the internal j; of course d_in and d_out are inverses
-  // of each other.
-
+  /* now put appropriate permutations into |d_in| and |d_out|, so that
+     internal number |j| gives external number |d_out[j]|, and of course
+     |d_in[d_out[j]]==j|. By convention of |normalize|, this means |d_out==a|
+   */
   for (size_t j = 0; j < d_rank; ++j) {
     d_out[j] = a[j];
     d_in[d_out[j]] = j;
   }
-  
+
+
   // the default twist is the identity twist
+  if (twist == NULL)
+    copy(d_twist,identityTwist()); // no need for renumbering; id=id always
+  else
+    for (size_t j = 0; j < d_rank; ++j)
+      d_twist[j] = d_in[(*twist)[d_out[j]]]; // |j| internal, |twist| external
 
-  if (twist == 0)
-    copy(d_twist,identityTwist());
-  else for (size_t j = 0; j < d_rank; ++j)
-    d_twist[j] = d_in[(*twist)[d_out[j]]];
-
-  // fill in coxeter matrix
-
+  // deduce the Coxeter matrix from Cartan matrix |c| and renumbering |a|
   fillCoxMatrix(d_coxeterMatrix,c,a);
 
-  // construct the transducer
-
+  // now construct the transducer
   for (size_t j = 0; j < d_rank; ++j)
     d_transducer[j] = Transducer(d_coxeterMatrix,j);
 
-  // fill in the order, maxlength and longest element
-
+  // the longest element has the maximal valid value in each of its pieces
   for (size_t j = 0; j < d_rank; ++j)
     d_longest[j] = d_transducer[j].size()-1;
 
+  // its length is obtained by summing the (maximal) lengths of its pieces
   for (size_t j = 0; j < d_rank; ++j)
     d_maxlength += d_transducer[j].maxlength();
 
+  // and the Weyl group size is the product of the numbers of transducer states
   for (size_t j = 0; j < d_rank; ++j) {
     d_order *= d_transducer[j].size();
   }
 
 }
 
+  /* the "dual" Weyl group: the only difference with W is that the twist is
+      multiplied by conjugation with the longest element.
+  */
 WeylGroup::WeylGroup(const WeylGroup& W, tags::DualTag)
-  :d_rank(W.d_rank),
-   d_order(W.d_order),
-   d_maxlength(W.d_maxlength),
-   d_longest(W.d_longest),
-   d_coxeterMatrix(W.d_coxeterMatrix),
-   d_transducer(W.d_transducer)
+  : d_rank(W.d_rank)
+  , d_order(W.d_order)
+  , d_maxlength(W.d_maxlength)
+  , d_longest(W.d_longest)
+  , d_coxeterMatrix(W.d_coxeterMatrix)
+  , d_transducer(W.d_transducer)
+  , d_twist() // cannot initialise here
+  , d_in()    // cannot initialise here
+  , d_out()   // cannot initialise here
 
 /*!
   Synopsis: the only difference with W is that the twist is multiplied by
@@ -194,17 +200,19 @@ WeylGroup::WeylGroup(const WeylGroup& W, tags::DualTag)
 */
 
 {
-  memcpy(d_in,W.d_in,constants::RANK_MAX);
-  memcpy(d_out,W.d_out,constants::RANK_MAX);
-  memset(d_twist,0,constants::RANK_MAX);
+  memcpy(d_in,W.d_in,sizeof(d_in));
+  memcpy(d_out,W.d_out,sizeof(d_out));
+  memset(d_twist,0,sizeof(d_twist));
 
   for (size_t s = 0; s < d_rank; ++s) {
     WeylElt w = d_longest;
-    prodIn(w,W.d_twist[s]);
-    prod(w,d_longest);
+    prodIn(w,W.d_twist[s]); // no conversion, |d_twist| is already internal
+    prod(w,d_longest); // now |w| represents $w_0 twist_s w_0$ as WeylElt
+
+    // |w| should be some generator |t|; find which, and store it
     Generator t = 0;
     for (; t < d_rank; ++t)
-      if (w[t])
+      if (w[t]!=0)
 	break;
     d_twist[s] = t;
   }
@@ -212,8 +220,7 @@ WeylGroup::WeylGroup(const WeylGroup& W, tags::DualTag)
 
 void WeylGroup::swap(WeylGroup& other)
 
-{  
-  using namespace constants;
+{
 
   std::swap(d_rank,other.d_rank);
   std::swap(d_order,other.d_order);
@@ -224,7 +231,7 @@ void WeylGroup::swap(WeylGroup& other)
 
   // STL swap doesn't work for arrays!
 
-  Generator tmp[RANK_MAX];
+  Generator tmp[constants::RANK_MAX];
 
   memcpy(tmp,d_in,constants::RANK_MAX);
   memcpy(d_in,other.d_in,constants::RANK_MAX);
@@ -237,28 +244,183 @@ void WeylGroup::swap(WeylGroup& other)
   memcpy(tmp,d_twist,constants::RANK_MAX);
   memcpy(d_twist,other.d_twist,constants::RANK_MAX);
   memcpy(other.d_twist,tmp,constants::RANK_MAX);
-
-  return;
 }
 
 /******** accessors **********************************************************/
 
-void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w, bool twisted) 
+WeylElt WeylGroup::generator (Generator i) const
+{
+  WeylElt s; // initialise to identity
+  s[i]=1;    // then shift to piece #1 in $W_{i-1}\\W_i$, which is $s_i$
+  return s;
+}
+
+int WeylGroup::prodIn(WeylElt& w, Generator s) const
+
+/*!
+  \brief Multiply w on the right by the (internally labelled)
+  generator s: w *= s.
+
+  This just means exercising the transducer tables as they were designed to.
+
+  Returns +1 if the length moves up, -1 if the length goes down.
+
+  NOTE: The only way I see this could be written as an operator is if w
+  remembered the group that it came from!
+*/
+
+{
+  Generator t = s;
+
+  for (unsigned long j = d_rank; j;) {
+    --j;
+    if (d_transducer[j].out(w[j],t) == UndefGenerator) {
+      // no transduction; shift and terminate
+      unsigned long l = d_transducer[j].length(w[j]);
+      w[j] = d_transducer[j].shift(w[j],t);
+      if (d_transducer[j].length(w[j]) > l)
+	return 1;
+      else
+	return -1;
+    }
+    else {
+      // no shift; transduce and continue
+      t = d_transducer[j].out(w[j],t);
+    }
+  }
+
+  return 0; // this should never happen!
+}
+
+void WeylGroup::prodIn(WeylElt& w, const WeylWord& v) const
+
+/*!
+  \brief Multiply w on the right by v (written in internal generators): w *= v.
+
+  Precondition: v is written in the _internal_ generators.
+
+  Algorithm: do the elementary multiplication by the generators, running
+  through v left-to-right.
+*/
+
+{
+  for (size_t j = 0; j < v.size(); ++j)
+    prodIn(w,v[j]);
+}
+
+void WeylGroup::leftProdIn(WeylElt& w, Generator s) const
+
+/*!
+  \brief Transforms w into s*w.
+
+  Algorithm: note that our transducers are geared towards _right_
+  multiplication by a generator. But we note that passing from $w$ to $sw$
+  only affects the pieces $x_j$ in $w$ for $t <= j <= s$, where |t| is the
+  first generator that does not commute with |s| (remarkably, if $v$ is the
+  product of those pieces, $sv$ does have non-zero components only for that
+  set of indices; hard to believe at first but easy to prove).
+*/
+
+{
+  // find the generator t
+
+  Generator t = 0;
+
+  for(; t < s; ++t)
+    if (d_coxeterMatrix(s,t) != 2)
+      break;
+
+  WeylElt sw;
+  sw[s] = 1;
+
+  for (size_t j = t; j <= s; ++j)
+    prodIn(sw,wordPiece(w,j));
+
+  for (size_t j = t; j <= s; ++j)
+    w[j] = sw[j];
+}
+
+void WeylGroup::prod(WeylElt& w, const WeylElt& v) const
+
+/*!
+  \brief Multiply w on the right by v, and put the product in w: w*=v.
+
+  Algorithm: increment w by the various pieces of v, whose reduced
+  expressions are available from the transducer.
+*/
+
+{
+  for (size_t j = 0; j < d_rank; ++j)
+    prodIn(w,wordPiece(v,j));
+}
+
+void WeylGroup::prod(WeylElt& w, const WeylWord& v) const
+
+/*!
+  \brief Multiply w on the right by v, and put the product in w: w*=v.
+
+  Algorithm: do the elementary multiplication by the generators, running
+  through v left-to-right.
+*/
+
+{
+  for (size_t j = 0; j < v.size(); ++j)
+    prod(w,v[j]);
+}
+
+/*! \brief set |w=xw| */
+void WeylGroup::leftMult(WeylElt& w, const WeylElt& x) const
+{
+  WeylElt xx=x; prod(xx,w); w=xx;
+}
+
+WeylElt WeylGroup::inverse(const WeylElt& w) const
+
+/*!
+  \brief return inverse of |w|
+
+  Algorithm: read backwards the reduced expression gotten from the
+  pieces of w.
+*/
+
+{
+  WeylElt wi;
+
+  for (size_t j = d_rank; j-->0 ;) {
+    const WeylWord& x_ww = wordPiece(w,j);
+    for (size_t i = x_ww.size(); i-->0;) {
+      prodIn(wi,x_ww[i]);
+    }
+  }
+
+  return wi;
+}
+
+void WeylGroup::twistedConjugate
+  (TwistedInvolution& tw, const WeylElt& w) const
+{
+  WeylElt x=w; prod(x,tw.representative());
+
+  // now multiply $x$ by $\delta(w^{-1})$
+  for (size_t j = d_rank; j-->0 ;) {
+    const WeylWord& wj = wordPiece(w,j);
+    for (size_t i = wj.size(); i-->0;)
+      prodIn(x,d_twist[wj[i]]);
+  }
+  tw.contents()=x;
+}
+
+void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w)
   const
 
 /*!
   \brief Puts in c the conjugacy class of w.
 
-  Algorithm: the orbit is enumerated in a time proportional to (orbit size)*
-  rank. We maintain a stack of elements to be examined (initially w) and a
-  set of found elements. Then while the stack is not empty :
-    - v = stack.top(); pop the stack;
-    - insert the various s.v.s in the set; if they are new, push them on
-      the stack;
+  Algorithm: straightforward enumeration of the connected component of |w| in
+  the graph defined by the operation conjugate or twistedConjugate, using a
+  |std::set| structure to record previously encountered elements and a
+  |std::stack| to store elements whose neighbors have not yet been generated.
 
-  NOTE: should throw an error::MemoryOverflow in case of memory overrun! 
-  However I'm not sure how set and stack manage overflow conditions (if they 
-  do at all!)
 */
 
 {
@@ -268,32 +430,69 @@ void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w, bool twisted)
   found.insert(w);
   toDo.push(w);
 
-  while (!toDo.empty()) {
+  while (not toDo.empty()) {
 
-    WeylElt v = toDo.top();
-    toDo.pop();
+    WeylElt v = toDo.top(); toDo.pop();
 
     for (Generator s = 0; s < rank(); ++s) {
-      WeylElt v1 = v;
-      if (twisted)
-	twistedConjugate(v1,s);
-      else
-	conjugate(v1,s);
-      if (found.insert(v1).second)
-	toDo.push(v1);
+      conjugate(v,s);
+      if (found.insert(v).second) // then it was new, put it on to-do list
+	toDo.push(v);
     }
   }
 
-  c.clear();
-  copy(found.begin(),found.end(),back_inserter(c));
+  // now convert set |found| to vector
+  c.clear(); c.reserve(found.size());
+  std::copy(found.begin(),found.end(),back_inserter(c));
+}
 
-  return;
+void WeylGroup::twistedConjugacyClass
+  (TwistedInvolutionList& c, const TwistedInvolution& tw)
+  const
+/*!
+  \brief Puts in c the twistes conjugacy class of w.
+
+  Algorithm: straightforward enumeration of the connected component of |w| in
+  the graph defined by the operation conjugate or twistedConjugate, using a
+  |std::set| structure to record previously encountered elements and a
+  |std::stack| to store elements whose neighbors have not yet been generated.
+
+*/
+
+{
+  std::set<TwistedInvolution> found;
+  std::stack<TwistedInvolution> toDo;
+
+  found.insert(tw);
+  toDo.push(tw);
+
+  while (not toDo.empty()) {
+
+    TwistedInvolution v = toDo.top();
+    toDo.pop();
+
+    for (Generator s = 0; s < rank(); ++s) {
+	twistedConjugate(v,s);
+      if (found.insert(v).second)
+	toDo.push(v);
+    }
+  }
+
+  // now convert set |found| to vector
+  c.clear(); c.reserve(found.size());
+  std::copy(found.begin(),found.end(),back_inserter(c));
+
 }
 
 bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 
 /*!
   \brief Tells whether sw < w.
+
+  Method: we multiply from $s$ to $sw$, at least on the relevant pieces (those
+  from |min_neighbor(s)| to |s| inclusive); if any decent occurs we return
+  |true|, otherwise |false|. Despite the double loop below, this question is
+  resolved in very few operations on the average.
 */
 
 {
@@ -319,30 +518,6 @@ bool WeylGroup::hasTwistedCommutation(Generator s, const WeylElt& w) const
     return not hasDescent(s,ws);
 }
 
-void WeylGroup::invert(WeylElt& w) const
-
-/*!
-  \brief Transforms w into its inverse.
-
-  Algorithm: read backwards the reduced expression gotten from the
-  pieces of w.
-*/
-
-{
-  WeylElt wi;
-
-  for (size_t j = d_rank; j ;) {
-    --j;
-    const WeylWord& x_ww = wordPiece(w,j);
-    for (size_t i = x_ww.size(); i;) {
-      --i;
-      prodIn(wi,x_ww[i]);
-    }
-  }
-
-  w = wi;
-}
-
 unsigned long WeylGroup::involutionLength(const weyl::WeylElt& d_w) const
 
 /*!
@@ -350,7 +525,7 @@ unsigned long WeylGroup::involutionLength(const weyl::WeylElt& d_w) const
 
   Precondition: d_w is a twisted involution;
 
-  Algorithm: let s be a generator s.t. s.w < w. Then if w.delta(s) = s.w, the 
+  Algorithm: let s be a generator s.t. s.w < w. Then if w.delta(s) = s.w, the
   reduced expression is s.red(s.w); otherwise it is s.red(s.w.delta(s)).
 */
 
@@ -371,36 +546,45 @@ unsigned long WeylGroup::involutionLength(const weyl::WeylElt& d_w) const
   return length;
 }
 
-void WeylGroup::involutionOut(weyl::WeylWord& ww, const weyl::WeylElt& d_w) 
-  const
+void WeylGroup::involutionOut
+  (weyl::WeylWord& ww, const weyl::TwistedInvolution& tw) const
 
 /*!
-  \brief Puts in ww a reduced expression of d_w as a twisted involution.
+  \brief Puts in |ww| a reduced expression of |tw| as a twisted involution.
 
-  Precondition: d_w is a twisted involution;
+  Precondition: tw is a twisted involution: $tw^{-1}=\delta(tw)$.
 
-  Algorithm: let s be a generator s.t. s.w < w. Then if w.delta(s) = s.w, the 
-  reduced expression is s.red(s.w); otherwise it is s.red(s.w.delta(s)).
+  The argument given under |hasTwistedCommutation| shows that for every
+  generator |s| exactly one of $s.tw$ and $s.tw.\delta(s)$ is a twisted
+  involution distinct from $tw$, and that if $l(s.tw)<l(tw)$ (for the usual
+  length function on the Weyl group) then the length of this new twisted
+  involution is less than that of $tw$ (by 1 or 2, respectively). A "reduced
+  expression as a twisted involution" for $tw$ is obtained by iterating this
+  to bring the length down to $0$, and writing down the generators $s$ used in
+  reverse order. Working back from the identity, it can be determined for each
+  letter to which if the two types of transformation it corresponds. It is not
+  immediately obvious that all such reduced expressions have the same length.
+
+  The code below choses the first possible generator (for the internal
+  numbering) at each step, so the reduced expression found can be described as
+  backwards-lexicographically first for the internal ordering of the generators
 */
 
 {
-  using namespace weyl;
-
-  WeylElt w = d_w;
+  TwistedInvolution x = tw;
   ww.clear();
 
-  for (Generator s = leftDescent(w); s != UndefGenerator; s = leftDescent(w)) {
+  for (Generator s = leftDescent(x.representative()); s != UndefGenerator;
+                 s = leftDescent(x.representative())) {
     ww.push_back(s);
-    if (hasTwistedCommutation(s,w))
-      leftProd(w,s);
+    if (hasTwistedCommutation(s,x))
+      leftMult(x,s);
     else
-      twistedConjugate(w,s);
+      twistedConjugate(x,s);
   }
 
   // reverse ww
   std::reverse(ww.begin(),ww.end());
-
-  return;
 }
 
 Generator WeylGroup::leftDescent(const WeylElt& w) const
@@ -421,40 +605,6 @@ Generator WeylGroup::leftDescent(const WeylElt& w) const
   }
 
   return UndefGenerator; // this cannot be reached
-}
-
-void WeylGroup::leftProdIn(WeylElt& w, Generator s) const
-
-/*!
-  \brief Transforms w into s*w.
-
-  Algorithm: note that our transducers are geared towards _right_ 
-  multiplication by a generator. But we note that passing from w to sw
-  only affects the pieces x_j in w for t <= j <= s, where t is the first
-  generator that does not commute with s (remarkably, if v is the product
-  of those pieces, sv does have non-zero components only for that set of
-  indices; hard to believe at first but easy to prove.)
-*/
-
-{
-  // find the generator t
-
-  Generator t = 0;
-
-  for(; t < s; ++t)
-    if (d_coxeterMatrix(s,t) != 2)
-      break;
-
-  WeylElt sw;
-  sw[s] = 1;
-
-  for (size_t j = t; j <= s; ++j)
-    prodIn(sw,wordPiece(w,j));
-
-  for (size_t j = t; j <= s; ++j)
-    w[j] = sw[j];
-
-  return;
 }
 
 unsigned long WeylGroup::length(const WeylElt& w) const
@@ -498,6 +648,8 @@ void WeylGroup::outerTwist(Twist& t) const
 
 /*!
   \brief Puts the twist of the outer generators in t.
+
+  This reconstructs the twist with which the Weyl group was constructed
 */
 
 {
@@ -507,111 +659,23 @@ void WeylGroup::outerTwist(Twist& t) const
   return;
 }
 
-void WeylGroup::prod(WeylElt& w, const WeylElt& v) const
-
-/*!
-  \brief Multiply w on the right by v, and put the product in w: w*=v.
-
-  Algorithm: increment w by the various pieces of v, whose reduced
-  expressions are available from the transducer.
-*/
-
-{
-  for (size_t j = 0; j < d_rank; ++j)
-    prodIn(w,wordPiece(v,j));
-
-  return;
-}
-
-void WeylGroup::prod(WeylElt& w, const WeylWord& v) const
-
-/*!
-  \brief Multiply w on the right by v, and put the product in w: w*=v.
-
-  Algorithm: do the elementary multiplication by the generators, running
-  through v left-to-right.
-*/
-
-{
-  for (size_t j = 0; j < v.size(); ++j)
-    prod(w,v[j]);
-
-  return;
-}
-
-int WeylGroup::prodIn(WeylElt& w, Generator s) const
-
-/*!  
-  \brief Multiply w on the right by the (internally labelled)
-  generator s: w *= s.
-
-  Algorithm: the information for this is exactly contained in the transducer
-  tables!
-
-  Returns +1 if the length moves up, -1 if the length goes down.
-
-  NOTE: The only way I see this could be written as an operator is if w 
-  remembered the group that it came from!
-*/
-
-{
-  Generator t = s;
-
-  for (unsigned long j = d_rank; j;) {
-    --j;
-    if (d_transducer[j].out(w[j],t) == UndefGenerator) { 
-      // no transduction; shift and terminate
-      unsigned long l = d_transducer[j].length(w[j]);
-      w[j] = d_transducer[j].shift(w[j],t);
-      if (d_transducer[j].length(w[j]) > l)
-	return 1;
-      else
-	return -1;
-    }
-    else {
-      // no shift; transduce and continue
-      t = d_transducer[j].out(w[j],t);
-    }
-  }
-
-  return 0; // this should never happen!
-}
-
-void WeylGroup::prodIn(WeylElt& w, const WeylWord& v) const
-
-/*!
-  \brief Multiply w on the right by v (written in internal generators): w *= v.
-
-  Precondition: v is written in the _internal_ generators.
-
-  Algorithm: do the elementary multiplication by the generators, running
-  through v left-to-right.
-*/
-
-{
-  for (size_t j = 0; j < v.size(); ++j)
-    prodIn(w,v[j]);
-
-  return;
-}
-
 unsigned long WeylGroup::toUlong(const WeylElt& w) const
 
 /*!
-  \brief Return the packed form of w (see the explanation in toWeylElt).
+  \brief Return the packed form of w. This will work only if the order of
+  the group fits into an |unsigned long|, and should therefore not be used.
 
-  NOTE: will work only if the order of the group fits into an unsigned long,
-  i.e., if d_order is not equal to UndefOrder = 0;
+  This is the mixed-radix interpretation of the sequence of pieces, where
+  piece 0 is the least significant one: if $N_i$ is |d_transducer[i].size()|
+  and $a_i\in\{0,\ldots,N_i-1\}$ is the value of piece |i|, the value is
+  $a_0+N_0*(a_1+N_1*(a_2+... N_{n-2}*(a_{n-1})...))$
 */
 
 {
   unsigned long u = 0;
-  unsigned long a = 1;
 
-  for (size_t j = 0; j < d_rank; ++j) {
-    u += w[j]*a;
-    a *= d_transducer[j].size();
-  }
+  for (size_t j; j-->0; )
+    u=u*d_transducer[j].size()+w[j];
 
   return u;
 }
@@ -619,17 +683,10 @@ unsigned long WeylGroup::toUlong(const WeylElt& w) const
 WeylElt WeylGroup::toWeylElt(unsigned long u) const
 
 /*!
-  \brief Returns the WeylElt whose packed form is u.
+  \brief Returns the WeylElt whose packed form is u
 
-  Algorithm: the packed form of w is defined to be w_0.a_0 + ... + 
-  w_{n-1}.a_{n-1}, where w_0, ... , w_{n-1} are the pieces of w, and
-  a_0, ... , a_{n-1} are the cumulative subgroup sizes, defined by
-  a_0 = 1, a_j = a_{j-1}*d_transducer[j-1].size() (in other words,
-  the w_j are the "digits" of u in the variable base defined by the
-  a_j.) Hence unpacking is a series of modular operations.
-
-  NOTE: will work only if the order of the group fits into an unsigned long,
-  i.e., if d_order is not equal to UndefOrder = 0;
+  Its pieces for the mixed-radix representation of |u|, which as usual can be
+  found starting at the least significant end by repeated Euclidean divisions
 */
 
 {
@@ -667,111 +724,175 @@ void WeylGroup::translate(WeylElt& w, const WeylInterface& I) const
 void WeylGroup::twist(WeylElt& w) const
 
 /*!
-  \brief Twists the element w by the outer involution.
+  \brief Twists the element w by the involutive diagram automorphism |delta|
 
   Algorithm: we used the standard reduced decomposition of w.
 */
 
 {
   translate(w,d_twist);
-  return;
 }
 
+/*!
+  \brief let |w| act on |v| according to reflection action in root datum |rd|
+  Note that rightmost factors act first, as in a product of matrices
+*/
+void WeylGroup::act(const rootdata::RootDatum& rd,
+		    const WeylElt& w,
+		    latticetypes::LatticeElt& v) const
+{
+  for (size_t j = d_rank; j-->0; ) {
+    const WeylWord& xw = wordPiece(w,j);
+    for (size_t i = xw.size(); i-->0; )
+      rd.simpleReflection(v,d_out[xw[i]]);
+  }
 }
+
+/*!
+  \brief nondestructive version of |act| method
+*/
+latticetypes::LatticeElt
+WeylGroup::imageBy(const rootdata::RootDatum& rd,
+		   const WeylElt& w,
+		   const latticetypes::LatticeElt& v) const
+{
+  latticetypes::LatticeElt result=v; act(rd,w,result); return result;
+}
+
+/* One constructor for WeylElt was not defined in header file:
+   construct the element from a Weyl word |ww| in a given Weyl group |W|
+*/
+
+WeylElt::WeylElt(const WeylWord& ww, const WeylGroup& W)
+{
+  memset(d_data,0,sizeof(d_data)); // set to identity
+  W.prod(*this,ww); // multiply |ww| into current element
+}
+
+
+} // namespace weyl
+
 
 /*****************************************************************************
 
         Chapter II -- The Transducer class
 
-  ... explain here when it is stable ...
+  We implement here the construction of the Transducer tables (all accessors
+  are defined in the class definition, and there are are no manipulators).
+  This is described in section 4 of Fokko's 1999 paper "Transducer approach.."
+  Actually, that paper does almost everything by induction, in particular it
+  makes a (somewhat vague) reference to using previously constructed
+  transducer tables while bootstrapping the current one; this is not what is
+  done here, which proceeds strictly independently of other Transducer tables.
+  I think the mention of dihedral groups below replaces the inductive part. MvL
 
 ******************************************************************************/
 
 namespace weyl {
 
 Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
+  : d_shift(1), d_out(1) // start with tables of size 1
+  , d_length(1,0), d_piece(1,WeylWord()) // with empty word, length 0.
 
 /*!
-\brief Constructs subquotient \#r for the Coxeter matrix c. 
+\brief Constructs subquotient \#r for the Coxeter matrix c.
 
-  This uses the Coxeter matrix only up to index r.
+  This uses the Coxeter matrix only up to index r. In fact we can behave as
+  if generator |r| is the final one, since we ignore any higher ones for now.
 
   Precondition : c is a _normalized_ Coxeter matrix (meaning that all
   the parabolic subquotients W_{r-1}\\W_r are small enough to fit in
   an unsigned char); and r is < rank(c);
 
-  Algorithm : 
+  Algorithm :
 
-  The algorithm is a version of my favorite bootstrapping procedure for the 
-  construction of Weyl groups and parabolic quotients. We start with
-  a partially defined automaton containing only one element, and for which
-  all shifts not by smaller generators are undefined. At each point in time,
-  all shifts for all elements in the automaton that do _not_ take the length
-  up are defined; and we maintain a queue of elements that may have undefined
-  shifts.
+  The algorithm is a version of my favorite bootstrapping procedure for the
+  construction of Weyl groups and parabolic quotients. We start with a
+  partially defined automaton containing only one element, and for which all
+  shifts by the final generator $r$ are not yet defined (generators $i<r$ give
+  transduction of $i$). At each point in time, all shifts for all elements in
+  the automaton that do _not_ take the length up are defined; and we maintain
+  a queue of elements that may have as yet undefined shifts.
 
   We start up with one element in the automaton, with just one undefined
-  shift, the one by r. Then run through the elements of the automaton, and
-  for each undefined shift of x, say by s :
+  shift, the one by r. Then run through the elements $x$ of the automaton in
+  order of generation (which will also be in ShortLex order), and for each as
+  yet undefined shift of $x$ by $s$ :
 
-    - add a new element xs (this increases the size of the automaton, during
-      the loop!)
-    - for each generator t : we have to find out if xs.t goes up or down.
-      The trick for this is to look at the orbit of x under the dihedral
-      group <s,t>. In the full group, this has necessarily cardinality
-      2m, with m = m(s,t) the coefficient in the Coxeter matrix, and xs.t
-      goes down iff xs is the unique elt. of maximal length in the orbit,
-      hence x goes down m-1 times when applying t,s,t, ... In the parabolic
-      quotient, we can have either cardinality 2m, or cardinality m; in the
-      latter case, the orbit is a string of length m, and xs is maximal iff
-      x goes down m-2 times; then xs.t = u.xs, where u is the same generator
-      as the one output by the minimal element in the orbit for the one
-      among s,t which fixes it.
+    - add a new element $xs$ (this increases the size of the automaton, during
+      the loop!). At this point it is sure that this element is really new,
+      and that its normal form is obtained by adding $s$ to that of $x$
+
+    - then find all other elements $x'$ already in the automaton and $t$ such
+      that $xs==x't$ (so $x't$ gives a non-canonical but reduced expression
+      for $xs$). Do this by trying generators $t\neq s$: if $xst$ goes down
+      (has the same length as $x$) then $x'==xst$ gives such a case. The trick
+      for this is to look at the orbit of x under the dihedral group <s,t>. In
+      the full group, this has necessarily cardinality 2m, with m = m(s,t) the
+      coefficient in the Coxeter matrix, and $l(xst)==l(x)$ iff $xs$ is the
+      unique elt. of maximal length in the orbit, hence to have this $x$ must
+      goes down $m-1$ times when applying successively $t$, $s$, $t$, ... In
+      the parabolic quotient, the orbit of the dihedral group (which is not
+      reduced to a point) can either have cardinality $2m$ or cardinality $m$,
+      and in the latter case it is a string with $m-1$ steps between the
+      bottom and the top, with a stationary step at either extreme (to see
+      this, note that on one hand each step up in the full group gives a step
+      in the quotient that is either up or stationary, while on the other hand
+      a stationary step in the quotient causes then next step to be the
+      reverse of the previous one). So we have one of the following cases: (1)
+      $x$ goes down $m-1$ times; then the image of the orbit has $2m$ elements
+      and $xs==x't$ for $x'=x.(ts)^(m-1)$. (2) $x$ goes down $m-2$ times to
+      some element $a$ and is then stationary (if $s'\in\{s,t\}$ is the next
+      to apply, then $a.s'=g.a$ for some generator $g\in W_{r-1}$); then the
+      orbit has $m$ elements, and if $v$ is the alternating word in $\{s,t\}$
+      of length $m-2$ not starting with $s'$, so that $a.v=x$, one has
+      $v.st=s'vs$ whence $x.st=a.v.st=a.s'vs=g.a.vs=g.xs$ so that $xs$ has a
+      transduction for $t$ that outputs the generator $g$. (3) either $x$ goes
+      down less than $m-2$ times, or $m-2$ times followed by an upward step;
+      then $xst$ goes up.
 */
 
 {
-  // initialize
+  // first first row of transition and of transduction table
 
-  ShiftRow firstShift;
-  OutRow firstOut;
+  ShiftRow& firstShift=d_shift[0];
+  OutRow& firstOut=d_out[0];
 
   // all shifts lower than r should be defined
-
   for (size_t j = 0; j < r; ++j) {
-    firstShift[j] = 0;
-    firstOut[j] = j;
+    firstShift[j] = 0; // shift to (current) state 0, i.e., no transition
+    firstOut[j] = j;   // but transduction of the same generator
   }
-
-  d_shift.push_back(firstShift);
-  d_out.push_back(firstOut);
-  d_length.push_back(0);
-  d_piece.push_back(WeylWord()); // the empty WeylWord
+  // note that firstShift[r]==UndefValue==UndefEltPiece and
+  // firstOut[r]==UndefValue==UndefGenerator remain from default construction
 
   // in this loop, the table grows! the loop stops when x overtakes the
   // table size because no more new elements are created.
 
   for (EltPiece x = 0; x < d_shift.size(); ++x) {
     for (Generator s = 0; s <= r; ++s)
-      // we need to check d_out[x][s] only in type B128, and only for the
-      // last element of the last transducer ...
-      if ((d_shift[x][s] == UndefEltPiece) and 
-	  (d_shift[x][s] == UndefGenerator)) {
+      /* since RANK_MAX<128, |UndefEltPiece| is never a valid Piece number, so
+         its presencein a slot in |d_shift| assures that this slot is
+         unchanged from its intialisation value
+      */
+      if (d_shift[x][s] == UndefEltPiece) {
 
-	EltPiece xs = d_shift.size();
+	EltPiece xs = d_shift.size(); // index of state that will be added
 
-	d_shift.push_back(ShiftRow());
-	d_out.push_back(OutRow());
+	d_shift.push_back(ShiftRow()); // push a row of UndefValue both onto
+	d_out.push_back(OutRow());     // |d_shift| and onto |d_out|
 
-	d_shift[xs][s] = x;
 	d_shift[x][s] = xs;
+	d_shift[xs][s] = x;
 	// new element has length length(x)+1
 	d_length.push_back(d_length[x]+1);
-	
-	WeylWord xs_ww = d_piece[x];
-	xs_ww.push_back(s);
-	d_piece.push_back(xs_ww);
 
-	// define the shifts or transductions that do not take xs up
+	WeylWord xs_ww = d_piece[x]; // get normal form for |x|
+	xs_ww.push_back(s);          // and append a letter |s|
+	d_piece.push_back(xs_ww);    // which gives normal form for |xs|
+
+
+	// now define the shifts or transductions that do not take xs up
 
 	for (Generator t = 0; t <= r; ++t) {
 
@@ -784,12 +905,12 @@ Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
 	  unsigned long d = d_length[xs] - d_length[y];
 
 	  if (d < static_cast<unsigned long>(m-1))
-	    continue;  // t takes xs up
+	    continue;  // case (3):  $t$ takes $xs$ up, do nothing
 
 	  Generator st[] = {s,t};
 
-	  if (d == static_cast<unsigned long>(m)) { 
-	    // there is no transduction
+	  if (d == static_cast<unsigned long>(m)) {
+	    // case (1): there is no transduction
 	    // xs.t is computed by shifting up from y the other way around
 	    y = dihedralShift(*this,y,st[m%2],st[(m+1)%2],m-1);
 	    d_shift[xs][t] = y;
@@ -801,13 +922,13 @@ Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
 
 	  Generator u = st[(m+1)%2];
 
-	  if (d_shift[y][u] == y) { 
-	    // xs is fixed by t and outputs the same generator as y
+	  if (d_shift[y][u] == y) {
+	    // case (2): $xs$ is fixed by $t$, outputs the same $g$ as $y$
 	    d_shift[xs][t] = xs;
 	    d_out[xs][t] = d_out[y][u];
 	  }
-	  
-	  // else xs moves up, do nothing
+
+	  // else case (3) : $xs$ moves up, do nothing
 	}
       }
   }
@@ -818,8 +939,6 @@ Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
 /*****************************************************************************
 
         Chapter III -- Functions declared in weyl.h
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -835,7 +954,7 @@ void copy(Twist& dest, const Twist& source)
   memcpy(dest,source,constants::RANK_MAX);
   return;
 }
-  
+
 const Twist& identityTwist()
 
 /*!
@@ -851,7 +970,8 @@ const Twist& identityTwist()
 void makeReflections(WeylEltList& refl, const WeylGroup& W)
 
 /*!
-  \brief Puts in refl the list of all reflections in W.
+  \brief Puts in |refl| the list of all reflections (conjugates of generators)
+         in W.
 
   NOTE: the ordering of the reflections is the ordering induced by our
   operator<, which is not very significative mathematically, but has the
@@ -878,8 +998,6 @@ void makeReflections(WeylEltList& refl, const WeylGroup& W)
 
   refl.clear();
   copy(found.begin(),found.end(),back_inserter(refl));
-
-  return;
 }
 
 }
@@ -888,13 +1006,11 @@ void makeReflections(WeylEltList& refl, const WeylGroup& W)
 
         Chapter IV -- Auxiliary functions for this module
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace {
 
-EltPiece dihedralMin(const Transducer& qa, EltPiece x, Generator s, 
+EltPiece dihedralMin(const Transducer& qa, EltPiece x, Generator s,
 		       Generator t)
 
 /*!
@@ -919,11 +1035,11 @@ EltPiece dihedralMin(const Transducer& qa, EltPiece x, Generator s,
   }
 }
 
-EltPiece dihedralShift(const Transducer& qa, EltPiece x, Generator s, 
+EltPiece dihedralShift(const Transducer& qa, EltPiece x, Generator s,
 		       Generator t, unsigned long d)
 
 /*!
-  \brief Returns the result of applying s and t alternately to x, for a 
+  \brief Returns the result of applying s and t alternately to x, for a
   total of d times.
 */
 
@@ -941,7 +1057,7 @@ EltPiece dihedralShift(const Transducer& qa, EltPiece x, Generator s,
   return y;
 }
 
-void fillCoxMatrix(LatticeMatrix& cox, const LatticeMatrix& cart, 
+void fillCoxMatrix(LatticeMatrix& cox, const LatticeMatrix& cart,
 		   const Permutation& a)
 
 /*!
@@ -965,7 +1081,7 @@ void fillCoxMatrix(LatticeMatrix& cox, const LatticeMatrix& cart,
 
   for (size_t j = 0; j < cart.numColumns(); ++j)
     for (size_t i = j+1; i < cart.numRows(); ++i)
-      if (cart(i,j)) {
+      if (cart(i,j)!=0) {
 	if (cart(i,j)*cart(j,i) == 1) {
 	  cox(i,j) = 3;
 	  cox(j,i) = 3;
@@ -979,14 +1095,12 @@ void fillCoxMatrix(LatticeMatrix& cox, const LatticeMatrix& cart,
 	  cox(j,i) = 6;
 	}
       }
-  
+
   // permute
-  
+
   cox.permute(a);
-
-  return;
 }
 
-}
+} // namespace
 
-}
+} // namespace atlas

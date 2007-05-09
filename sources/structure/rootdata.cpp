@@ -418,27 +418,44 @@ bool RootDatum::isSimplyConnected() const
   return d_status[IsSimplyConnected];
 }
 
-void RootDatum::reflection(Weight& v, RootNbr j) const
+/*!
+\brief Returns the permutation of the roots induced by p.
+
+  Precondition: p permutes the roots;
+*/
+setutils::Permutation
+  RootDatum::rootPermutation(const LT::LatticeMatrix& q) const
+
+{
+  setutils::Permutation result(numRoots());
+
+  for (size_t j = 0; j < numRoots(); ++j) {
+    Root r(rank()); q.apply(r,root(j));
+    result[j] = rootNbr(r);
+  }
+
+  return result;
+}
+
+void RootDatum::reflection(Weight& v, RootNbr r) const
 
 /*!
-\brief  Applies to v the reflection about root number j.
+\brief  Applies to v the reflection about root number r.
 
-In other words, v is transformed into v - <v,alpha_j^vee>alpha_j
+In other words, v is transformed into v - <v,alpha_r^vee>alpha_r
 */
 
 {
-  LatticeCoeff a = LT::scalarProduct(v,d_coroots[j]);
-  Weight m = d_roots[j];
+  LatticeCoeff a = LT::scalarProduct(v,d_coroots[r]);
+  Weight m = d_roots[r];
   m *= a;
   v -= m;
-
-  return;
 }
 
-void RootDatum::rootReflection(LatticeMatrix& q, RootNbr j) const
+void RootDatum::rootReflection(LatticeMatrix& q, RootNbr r) const
 
 /*!
-\brief Puts in q the reflection for root \#j.
+\brief Puts in q the reflection for root \#r.
 
   NOTE: this is not intended for heavy use. If that is envisioned, it would be
   better to construct the matrices once and for all and return const
@@ -448,18 +465,33 @@ void RootDatum::rootReflection(LatticeMatrix& q, RootNbr j) const
 {
   q.resize(d_rank,d_rank);
 
-  const Root& r = d_roots[j];
-  const Root& cr = d_coroots[j];
+  const Root& root = d_roots[r];
+  const Root& coroot = d_coroots[r];
 
   for (size_t j = 0; j < d_rank; ++j)
     for (size_t i = 0; i < d_rank; ++i)
-      q(i,j) = -r[i]*cr[j];
+      q(i,j) = -root[i]*coroot[j];
 
   for (size_t i = 0; i < d_rank; ++i)
     q(i,i) += 1;
-
-  return;
 }
+
+LatticeMatrix RootDatum::rootReflection(RootNbr r) const
+{
+  LatticeMatrix result; rootReflection(result,r);
+  return result;
+}
+
+// this is a non-destructive version of |toWeylWord| below for reflections
+weyl::WeylWord RootDatum::reflectionWord(RootNbr r) const
+{
+  weyl::WeylWord ww;
+  Weight v = twoRho();
+  reflection(v,r);
+  toPositive(ww,v,*this);
+  return ww;
+}
+
 
 /******** manipulators *******************************************************/
 
@@ -608,17 +640,21 @@ void dualBasedInvolution(LT::LatticeMatrix& di, const LT::LatticeMatrix& i,
 */
 
 {
-  using namespace latticetypes;
-
-  LatticeMatrix w0;
+  LT::LatticeMatrix w0;
   longest(w0,rd);
 
   di = i;
   di *= w0;
   di.negate();
   di.transpose();
+}
 
-  return;
+
+LT::LatticeMatrix dualBasedInvolution // a functional version of previous one
+  (const LT::LatticeMatrix& i, const RootDatum& rd)
+{
+  LT::LatticeMatrix di; dualBasedInvolution(di,i,rd);
+  return di;
 }
 
 void lieType(lietype::LieType& lt, const RootList& rb, const RootDatum& rd)
@@ -729,13 +765,9 @@ void rootBasis(RootList& rb, const RootList& rl, const RootDatum& rd)
 */
 
 {
-  using namespace bitmap;
-
-  BitMap rs(rd.numRoots());
+  RootSet rs(rd.numRoots());
   rs.insert(rl.begin(),rl.end());
   rootBasis(rb,rs,rd);
-
-  return;
 }
 
 void rootBasis(RootList& rb, const RootSet& rs, const RootDatum& rd)
@@ -898,8 +930,6 @@ void toMatrix(LatticeMatrix& q, const weyl::WeylWord& ww,
     rd.rootReflection(r,rj);
     q *= r;
   }
-
-  return;
 }
 
 void toMatrix(LatticeMatrix& q, const RootList& rl, const RootDatum& rd)
@@ -921,8 +951,6 @@ void toMatrix(LatticeMatrix& q, const RootList& rl, const RootDatum& rd)
     rd.rootReflection(r,rl[j]);
     q *= r;
   }
-
-  return;
 }
 
 void toPositive(weyl::WeylWord& ww, const Weight& d_v, const RootDatum& rd)
@@ -971,8 +999,6 @@ void toWeylWord(weyl::WeylWord& ww, RootNbr rn, const RootDatum& rd)
   Weight v = rd.twoRho();
   rd.reflection(v,rn);
   toPositive(ww,v,rd);
-
-  return;
 }
 
 void toWeylWord(weyl::WeylWord& ww, const latticetypes::LatticeMatrix& q,
@@ -992,8 +1018,6 @@ void toWeylWord(weyl::WeylWord& ww, const latticetypes::LatticeMatrix& q,
   Weight v(rd.rank());
   q.apply(v,rd.twoRho());
   toPositive(ww,v,rd);
-
-  return;
 }
 
 void twoRho(Weight& tr, const RootList& rl, const RootDatum& rd)
@@ -1011,8 +1035,6 @@ void twoRho(Weight& tr, const RootList& rl, const RootDatum& rd)
   for (size_t j = 0; j < rl.size(); ++j)
     if (rd.isPosRoot(rl[j]))
       tr += rd.root(rl[j]);
-
-  return;
 }
 
 void twoRho(Weight& tr, const RootSet& rs, const RootDatum& rd)
@@ -1032,10 +1054,8 @@ void twoRho(Weight& tr, const RootSet& rs, const RootDatum& rd)
 
   RootSet::iterator rsp_end = rsp.end();
 
-  for (RootSet::iterator i = rsp.begin(); i != rsp.end(); ++i)
+  for (RootSet::iterator i = rsp.begin(); i != rsp_end; ++i)
     tr += rd.root(*i);
-
-  return;
 }
 
 }
@@ -1043,8 +1063,6 @@ void twoRho(Weight& tr, const RootSet& rs, const RootDatum& rd)
 /*****************************************************************************
 
                 Chapter III -- Auxiliary functions.
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 

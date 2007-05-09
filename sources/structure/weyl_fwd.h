@@ -6,7 +6,7 @@
   This is weyl_fwd.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -25,9 +25,11 @@ namespace atlas {
 namespace weyl {
 
   class WeylElt;
+  typedef WeylElt TwistedInvolution;
   class WeylGroup;
 
   typedef std::vector<WeylElt> WeylEltList;
+  typedef std::vector<TwistedInvolution> TwistedInvolutionList;
 
   /*!
 \brief Represents a simple root reflection (one of the standard
