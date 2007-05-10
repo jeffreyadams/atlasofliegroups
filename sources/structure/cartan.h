@@ -1,7 +1,8 @@
 /*!
 \file
-\brief Class definitions and function declarations for CartanClasses.
+\brief Class definition and function declarations for CartanClasses.
 */
+
 /*
   This is cartan.h
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -39,15 +40,25 @@ namespace cartan {
 namespace cartan {
 
   /*!
-\brief Stores all the stable conjugacy classes of Cartan subgroups of G.
+   \brief Stores the set of stable conjugacy classes of Cartan subgroups of G.
 
-Mathematically this means the W-conjugacy classes of twisted
-involutions in the extended Weyl group (W semidirect Gamma).  In
-addition to providing access to each of these individual Cartans, the
-class provides access to the partial order on the Cartans: (H,tau_1)
-is "more compact" than (H,tau_2) (tau_i being twisted involutions)
-if the identity component of the fixed point set H^tau_2 is
-W-conjugate to a subtorus of H^tau_1.
+Each stable conjugacy classes of Cartan subgroups corresponds to a W-conjugacy
+class of involutions in the Gamma-enlarged Weyl group (W semidirect <Gamma>,
+where <Gamma>=Z/2Z acts on W), contained in the complement of its subgroup W.
+Since such involutions are of the form (w,Gamma), they can be represented by
+their element w, which is called a twisted involution. The condition for being
+a twisted involution $t$ is $t\Gamma(t)=e$ and "twisted conjugacy" of $t$ by
+$w\in W$ is given by $w\cdot t=wt\Gamma(w^{-1})$. The stable conjugacy classes
+of Cartan subgroups will each be represented by a canonical representative of
+the corresponding twisted conjugacy class of twisted involutions.
+
+In addition to describing the set of Cartan classes, this class provides
+access (via the |d_cartan| array) to data for each individual one of them, and
+(vie |d_ordering|) to the partial order relation between them. For the latter,
+let |tau_i| be involutions acting on the complex torus |H| for various classes
+of Cartan subgroups; (H,tau_1) is considered "more compact" than (H,tau_2)
+if the identity component of the fixed point set H^tau_2 is W-conjugate to a
+subtorus of H^tau_1.
 
 The problem for the dual group of G is identical, the bijection taking
 the negative transpose of a twisted involution.  This bijection
@@ -55,22 +66,26 @@ reverses the partial order on Cartans.  The class provides also access
 to Cartans in the dual group.
   */
 
+using weyl::TwistedInvolution;
+using weyl::TwistedInvolutionList;
+
 class CartanClasses {
 
+  /* The following data members are accessible to our Helper class */
  protected:
 
   /*!
   \brief Fiber class for the fundamental Cartan subgroup.
 
-  The involution is delta, which preserves the simple roots.
+  The involution is delta, which is stored here. It permutes the simple roots.
   */
   cartanclass::Fiber d_fundamental;
 
   /*!
   \brief Fiber class for the fundamental Cartan in the dual group.
 
-  The fiber group here is the group of characters of the component
-  group of the quasisplit Cartan.
+  The fiber group here is the group of characters (i.e., the dual group)
+  of the component group of the quasisplit Cartan.
   */
   cartanclass::Fiber d_dualFundamental;
 
@@ -85,32 +100,32 @@ class CartanClasses {
   \brief (Representative) twisted involutions for each class of Cartan
   subgroup.
   */
-  weyl::WeylEltList d_twistedInvolution;
+  TwistedInvolutionList d_twistedInvolution;
 
   /*!
   \brief Partial order of Cartan subgroups.
 
-  This is the ordering by containment of H^theta up to conjugacy:
-  (H,theta_1) precedes (H,theta_2) if (H^theta_2)_0 is W-conjugate to
-  a subtorus of H^theta_1.
+  This is the ordering by containment of H^theta up to conjugacy: (H,theta_1)
+  precedes (H,theta_2) if (H^theta_2)_0 is W-conjugate to a subtorus of
+  H^theta_1. Numbering of elements is as in d_twistedInvolution
   */
   poset::Poset d_ordering;
 
   /*!
-  \brief Entry \#cn lists the real forms in which Cartan \#cn is defined.
+  \brief Entry \#n lists the real forms in which Cartan \#n is defined.
 
-  More precisely, d_realFormLabels(cn)[i] is the inner number of the real form
+  More precisely, d_realFormLabels[n][i] is the inner number of the real form
   that corresponds to part i of the partition cartan(n).fiber().weakReal()
 
   */
   std::vector<realform::RealFormList> d_realFormLabels;
 
   /*!
-  \brief Entry \#cn lists the dual real forms in which dual Cartan
-  \#cn is defined.
+  \brief Entry \#n lists the dual real forms in which dual Cartan \#n
+    is defined.
 
-  More precisely, d_dualRealFormLabels(cn)[i] is the inner number of the real
-  form that corresponds to part i of the partition
+  More precisely, d_dualRealFormLabels[n][i] is the inner number of the dual
+  real form that corresponds to part i of the partition
   cartan(n).dualFiber().weakReal()
   */
   std::vector<realform::RealFormList> d_dualRealFormLabels;
@@ -148,36 +163,39 @@ class CartanClasses {
 		const latticetypes::LatticeMatrix&,
 		const weyl::WeylGroup&);
 
-  virtual ~CartanClasses();
+  ~CartanClasses();
 
 // copy, assignment and swap
   CartanClasses(const CartanClasses&);
 
   CartanClasses& operator=(const CartanClasses&);
 
+ private:
+  // swap is needed to define Helper class, but should remain private
   void swap(CartanClasses&);
 
+ public:
 // accessors
 
   /*!
-  \brief
+  \brief Returns data for stable conjugacy class \#cn of Cartan subgroups.
   */
   const cartanclass::CartanClass& cartan(size_t cn) const {
     return *d_cartan[cn];
   }
 
   /*!
-  \brief Twisted involution for the fundamental Cartan.
+  \brief Recover the matrix of the involution for the fundamental Cartan.
 
-  This is the one permuting the simple roots, which defines the inner
-  class of G.
+  This is the one permuting the simple roots, the distinguished one among the
+  involutions in this inner class of G.
   */
   const latticetypes::LatticeMatrix& distinguished() const {
     return d_fundamental.involution();
   }
 
   /*!
-  \brief Twisted involution for the fundamental Cartan in the dual
+  \brief Matrix of involution for the fundamental Cartan in the dual
   group.
 
   This is -w_0 times the transpose of the fundamental involution.
@@ -321,7 +339,7 @@ class CartanClasses {
   \brief (Representative) twisted involutions for each class of Cartan
   subgroup.
   */
-  const weyl::WeylElt& twistedInvolution(size_t cn) const {
+  const TwistedInvolution& twistedInvolution(size_t cn) const {
     return d_twistedInvolution[cn];
   }
 

@@ -132,7 +132,7 @@ element z.
 the involution $\theta_z$ of H attached to z
 (in other words, d_involution[z] is the twisted involution attached to z; MvL)
   */
-  weyl::WeylEltList d_involution; // of size size()
+  weyl::TwistedInvolutionList d_involution; // of size size()
 
   /*!
 \brief Entry z flags the simple roots occurring in $\theta_z$.
@@ -170,7 +170,7 @@ Not used in the present code (DV 10/14/06).
   Block();
 
   Block(complexredgp::ComplexReductiveGroup&, realform::RealForm rf,
-	realform::RealForm df);
+	realform::RealForm drf);
 
   virtual ~Block();
 
@@ -250,7 +250,7 @@ Not used in the present code (DV 10/14/06).
 This is the corresponding Weyl group element w, such that w.delta is the
 root datum involution tau corresponding to z
 */
-  const weyl::WeylElt& involution(BlockElt z) const {
+  const weyl::TwistedInvolution& involution(BlockElt z) const{
     return d_involution[z];
 }
 

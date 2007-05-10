@@ -53,12 +53,14 @@ namespace complexredgp {
   problem is to enumerate the different real forms constituting this
   inner class.
 
-  Next we list in d_cartan the conjugacy classes of real Cartan
-  subgroups up to stable conjugacy; this classification does not refer
-  to a particular real form.  Each stable class corresponds to at most
-  one conjugacy class of real Cartan subgroups in each real form; so
-  for each stable class of Cartan subgroups, we enumerate the real
-  forms over which it is defined.
+  We list in d_cartan the conjugacy classes of real Cartan subgroups up to
+  stable conjugacy; this classification does not refer to a particular real
+  form. However, the enumeration of the real forms actually takes place during
+  the construction of the first (fundamental) Cartan subgroup. Each stable
+  class corresponds to at most one conjugacy class of real Cartan subgroups in
+  each real form; so for each stable class of Cartan subgroups, we enumerate
+  the real forms over which it is defined (the fundamental Cartan subgroup is
+  defined for all real forms).
 
   We compute the structure of the real Cartan subgroups (notably the
   groups of connected components); this depends only on the stable
@@ -66,14 +68,23 @@ namespace complexredgp {
   subgroups (which are _almost_ constant across the stable class, but
   not quite).
 
-  Everything is determined by (and computed from) two things: the
-  based root datum recorded in the RootDatum class d_rootDatum, and
-  its involutive automorphism (which is stored inside d_cartan).
-  involutive automorphism.  The computations take place mostly inside
-  the Tits group d_titsGroup, which is an extension of the (complex)
-  Weyl group by the elements of order 2 in the torus.  (More
-  precisely, this Tits group is extended by a Z/2Z corresponding to
-  the automorphism of the based root datum.)
+  Everything is determined by (and computed from) two things: the based root
+  datum recorded in the RootDatum class d_rootDatum, and its involutive
+  automorphism. Many computations take place inside the Tits group, which is
+  an extension of the (complex) Weyl group by the elements of order 2 in the
+  torus. (In fact the structure we store in |d_titsGroup| allows computing in
+  an even larger group, the semidirect product of the Tits group just
+  described by a factor Z/2Z whose action on the other factor is determined by
+  the given automorphism of the based root datum.)
+
+  The actual structure of this class is subdivided into three parts,
+  implemented by three other classes. The field |d_rootDatum| stores the root
+  datum, which must have been consructed before. The field |d_titsGroup| holds
+  the mentioned (enlarged) Tits group, which is constructed upon entry from
+  the root datum and the involution; it also gives access to just the
+  (complex) Weyl group when that is necessary. Finally |d_cartan| stores all
+  the information relative to (stable conjugacy classes of) Cartan subgroupes
+  and real forms.
 
   Because this class is one of the outer interfaces for the structure
   library, we use pointers for its data members, so that forward
@@ -82,10 +93,6 @@ namespace complexredgp {
 class ComplexReductiveGroup {
 
  private:
-
-// this class is one of the outer interfaces for the structure library
-// hence we use pointers for its data members so that forward declarations
-// suffice
 
   /*!
   \brief The based root datum.
@@ -99,22 +106,13 @@ class ComplexReductiveGroup {
   tits::TitsGroup* d_titsGroup;
 
   /*!
-  \brief  List of stable conjugacy classes of Cartan subgroups of the inner
-  class of real forms determined by the based root datum with
+  \brief Storage of data for each stable conjugacy class of Cartan subgroups
+  of the inner class of real forms determined by the based root datum with
   involution.
-
-  (In fact the present constructors provide only those classes defined
-  over the real forms that have already been considered by the
-  software: if the software has not yet been asked to look at the
-  quasisplit real form, then this list will be incomplete.  This
-  should probably be regarded as a defect in the software, although it
-  causes no mathematical problem.  A related difficulty is that the
-  ordering of the list can depend on the order in which real forms
-  have been considered.)
   */
   cartan::CartanClasses* d_cartan;
 
-// reserve and implement when necessary
+// copy, assignement are forbidden, and should not be implemented
   ComplexReductiveGroup(const ComplexReductiveGroup&);
   ComplexReductiveGroup& operator= (const ComplexReductiveGroup&);
 
@@ -160,10 +158,6 @@ class ComplexReductiveGroup {
 
   size_t mostSplit(realform::RealForm) const;
 
-  bool noInnerClass() const {
-    return d_cartan == 0;
-  }
-
   size_t numCartanClasses() const;
 
   size_t numDualRealForms() const;
@@ -192,7 +186,10 @@ class ComplexReductiveGroup {
     return *d_titsGroup;
   }
 
-  const weyl::WeylElt& twistedInvolution(size_t) const;
+/*!
+  \brief the twisted involution representative for class \#cn of Cartans
+*/
+  const weyl::TwistedInvolution& twistedInvolution(size_t) const;
 
 // manipulators
 

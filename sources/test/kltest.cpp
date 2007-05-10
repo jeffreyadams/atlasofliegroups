@@ -30,9 +30,9 @@ namespace atlas {
 
 namespace {
 
-  void involutionList(weyl::WeylEltList&, const kgb::KGB&);
+  void involutionList(weyl::TwistedInvolutionList&, const kgb::KGB&);
 
-  std::ostream& printBasePts(std::ostream&, const weyl::WeylEltList&,
+  std::ostream& printBasePts(std::ostream&, const weyl::TwistedInvolutionList&,
 			     const kgb::KGBEltList&, const kgb::KGB&);
 
 class InvolutionCompare {
@@ -41,17 +41,19 @@ private:
 public:
   explicit InvolutionCompare(const weyl::WeylGroup& W):d_W(&W) {}
   // one should have i < j iff
-  // (a) involutionLength(v) < involutinLength(w) or
+  // (a) involutionLength(v) < involutionLength(w) or
   // (b) involutionLengths are equal and length(v) < length (w) or
   // (c) both lengths are equal and v < w
-  bool operator() (const weyl::WeylElt& v, const weyl::WeylElt& w) const {
+  bool operator()
+   (const weyl::TwistedInvolution& v, const weyl::TwistedInvolution& w) const
+  {
     if (d_W->involutionLength(v) < d_W->involutionLength(w))
       return true;
     else if (d_W->involutionLength(w) < d_W->involutionLength(v))
       return false;
-    else if (d_W->length(v) < d_W->length(w))
+    else if (d_W->length(v.representative()) < d_W->length(w.representative()))
       return true;
-    else if (d_W->length(w) < d_W->length(v))
+    else if (d_W->length(w.representative()) < d_W->length(v.representative()))
       return false;
     else
       return v < w;
@@ -100,7 +102,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
 
   const WeylGroup& W = kgb.weylGroup();
   InvolutionCompare comp(W);
-  WeylEltList wl;
+  TwistedInvolutionList wl;
   involutionList(wl,kgb);
 
   KGBEltList basepts;
@@ -120,15 +122,15 @@ bool checkBasePoint(const kgb::KGB& kgb)
 #ifdef VERBOSE
     std::cerr << w_pos << "\r";
 #endif
-      const WeylElt& w = wl[w_pos];
+      const TwistedInvolution& w = wl[w_pos];
       WeylWord w_red;
       W.involutionOut(w_red,w);
       for (size_t s = 0; s < kgb.rank(); ++s)
-	if (W.hasDescent(s,w)) {
-	  WeylElt sw = w;
+	if (W.hasDescent(s,w.representative())) {
+	  TwistedInvolution sw = w;
 	  KGBElt sx_sw;
 	  if (W.hasTwistedCommutation(s,w)) {
-	    W.leftProd(sw,s);
+	    W.leftMult(sw,s);
 	    size_t sw_pos = std::lower_bound(wl.begin(),wl.end(),sw,comp) -
 	      wl.begin();
 	    sx_sw = kgb.cayley(s,basepts[sw_pos]);
@@ -184,8 +186,9 @@ void dualityPermutation(setutils::Permutation& a, const kl::KLContext& klc)
 
 namespace {
 
-std::ostream& printBasePts(std::ostream& strm, const weyl::WeylEltList& wl,
-			   const kgb::KGBEltList& bp, const kgb::KGB& kgb)
+std::ostream&
+printBasePts(std::ostream& strm, const weyl::TwistedInvolutionList& wl,
+	     const kgb::KGBEltList& bp, const kgb::KGB& kgb)
 
 /*
   Synopsis: outputs the list of basepoints to strm.
@@ -199,7 +202,7 @@ std::ostream& printBasePts(std::ostream& strm, const weyl::WeylEltList& wl,
 
   for (size_t j = 0; j < wl.size(); ++j) {
     strm << "(";
-    printWeylElt(strm,wl[j],kgb.weylGroup());
+    printWeylElt(strm,wl[j].representative(),kgb.weylGroup());
     strm << ",";
     printInvolution(strm,wl[j],kgb.weylGroup());  // added by jda: reduced form of the involution
     strm << "," << bp[j] << ")";
@@ -209,7 +212,7 @@ std::ostream& printBasePts(std::ostream& strm, const weyl::WeylEltList& wl,
   return strm;
 }
 
-void involutionList(weyl::WeylEltList& wl, const kgb::KGB& kgb)
+void involutionList(weyl::TwistedInvolutionList& wl, const kgb::KGB& kgb)
 
 /*
   Synopsis: put in wl the list of twisted involutions that appear in kgb.

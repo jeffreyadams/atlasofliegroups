@@ -97,7 +97,7 @@ public:
   virtual ~Helper() {};
 
   // accessors
-  weyl::WeylElt dualInvolution(const weyl::WeylElt&) const;
+  weyl::TwistedInvolution dualInvolution(const weyl::TwistedInvolution&) const;
 
   const weyl::WeylGroup& dualWeylGroup() const {
     return *d_dualWeylGroup;
@@ -426,7 +426,8 @@ Helper::Helper(realredgp::RealReductiveGroup& G,
 
   d_descent.resize(d_size);
   d_length.assign(d_size,0);
-  d_involution.assign(d_size,WeylElt()); // implicitly makes size() defined
+  d_involution.assign(d_size,TwistedInvolution()); // makes size() defined
+
 
   d_x.reserve(d_size+1);
   d_y.reserve(d_size+1);
@@ -455,7 +456,8 @@ Helper::Helper(realredgp::RealReductiveGroup& G,
 }
 
 /******** accessors **********************************************************/
-weyl::WeylElt Helper::dualInvolution(const weyl::WeylElt& d_w) const
+weyl::TwistedInvolution Helper::dualInvolution
+  (const weyl::TwistedInvolution& d_w) const
 
 /*!
   \brief Returns the twisted involution dual to d_w.
@@ -486,14 +488,14 @@ weyl::WeylElt Helper::dualInvolution(const weyl::WeylElt& d_w) const
   const WeylGroup& W = weylGroup();
 
   WeylElt v = W.longest();
-  WeylElt w = d_w;
+  WeylElt w = d_w.representative();
   W.translate(w,d_toDualWeyl);
 
   W.twist(w);
   W.prod(v,w);
   W.invert(v);
 
-  return v;
+  return TwistedInvolution(v);
 }
 
 /******** manipulators *******************************************************/
@@ -687,7 +689,7 @@ void Helper::fillInvolutionSupports()
 
   for (; z < size() and length(z) == minLength; ++z) {
     WeylWord ww;
-    W.out(ww,involution(z));
+    W.out(ww,involution(z).representative());
     for (size_t j = 0; j < ww.size(); ++j) {
       d_involutionSupport[z].set(ww[j]);
     }
@@ -780,8 +782,8 @@ void Helper::orbitPairs()
 #ifdef VERBOSE
     std::cerr << x << "\r";
 #endif
-    const WeylElt& w = d_kgb.involution(x);
-    WeylElt dw = dualInvolution(w);
+    const TwistedInvolution& w = d_kgb.involution(x);
+    TwistedInvolution dw = dualInvolution(w);
     KGBEltPair yRange = d_dualkgb.tauPacket(dw);
     for (; (x < d_kgb.size()) && (d_kgb.involution(x) == w); ++x) {
       for (size_t y = yRange.first; y < yRange.second; ++y) {

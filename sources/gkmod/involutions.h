@@ -4,9 +4,9 @@
 */
 /*
   This is involutions.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -43,8 +43,8 @@ class InvolutionSet {
   size_t d_rank;
   std::vector<std::vector<size_t> > d_action;
   std::vector<size_t> d_cartan;
-  std::vector<weyl::WeylElt> d_involution;
-  std::vector<weyl::WeylElt> d_dualInvolution;
+  std::vector<weyl::TwistedInvolution> d_involution;
+  std::vector<weyl::TwistedInvolution> d_dualInvolution;
 
  public:
   // constructors and destructors
@@ -62,15 +62,16 @@ class InvolutionSet {
     return d_action[s][w];
   }
 
-  const weyl::WeylElt& dualInvolution(size_t j) const {
+  const weyl::TwistedInvolution& dualInvolution(size_t j) const {
     return d_dualInvolution[j];
   }
 
-  const weyl::WeylElt& involution(size_t j) const {
+  const weyl::TwistedInvolution& involution(size_t j) const {
     return d_involution[j];
   }
 
-  size_t involutionNbr(const weyl::WeylElt&, const weyl::WeylGroup&) const;
+  size_t involutionNbr(const weyl::TwistedInvolution&, const weyl::WeylGroup&)
+    const;
 
   const size_t rank() const {
     return d_rank;

@@ -105,7 +105,6 @@ inverse Cayley transform of simple root \#j on KGB elements.
 
 If simple root \#j is not real for KGB element \#x, then element \#x of the
 list d_inverseCayley[j] is UndefKGB.
-
 */
   std::vector<KGBEltPairList> d_inverseCayley;
 
@@ -125,7 +124,7 @@ dimension) for KGB element \#j.
 \brief Twisted Weyl group element defining Cartan involution for KGB
 element \#j.
 */
-  weyl::WeylEltList d_involution;
+  weyl::TwistedInvolutionList d_involution;
 
 /*!
 \brief The Status in d_status[j] tells whether each simple root is real,
@@ -218,8 +217,9 @@ If simple root \#s is not real, returns a pair of UndefKGB.
 
   bool isDescent(size_t s, KGBElt x) const;
 
-/*! \brief Length (dimension of the K orbit on G/B, minus minimal orbit
-dimension) for KGB element \#x.
+/*!
+\brief Length (dimension of the K orbit on G/B, minus minimal orbit dimension)
+for KGB element \#x.
 */
   size_t length(KGBElt x) const {
     return d_length[x];
@@ -240,7 +240,8 @@ dimension) for KGB element \#x.
     return d_length.size();
   }
 
-/*! \brief Flag telling whether each simple root is real, complex, imaginary
+/*!
+\brief Flag telling whether each simple root is real, complex, imaginary
 compact, or imaginary noncompact for KGB element \#x.
  */
   const gradings::Status& status(KGBElt x) const {
@@ -248,16 +249,17 @@ compact, or imaginary noncompact for KGB element \#x.
   }
 
 
-/*! \brief Tells whether simple root \#s is real, complex, imaginary compact,
+/*!
+\brief Tells whether simple root \#s is real, complex, imaginary compact,
 or imaginary noncompact for KGB element \#x.
  */
   gradings::Status::Value status(size_t s, KGBElt x) const {
     return d_status[x][s];
   }
 
-  const weyl::WeylElt& involution(KGBElt) const;
+  const weyl::TwistedInvolution& involution(KGBElt) const;
 
-  KGBEltPair tauPacket(const weyl::WeylElt&) const;
+  KGBEltPair tauPacket(const weyl::TwistedInvolution&) const;
 
 /*!
 \brief The (twisted) Weyl group.

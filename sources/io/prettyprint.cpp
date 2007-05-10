@@ -1,8 +1,8 @@
 /*
   This is prettyprint.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -40,7 +40,7 @@ std::ostream& prettyPrint(std::ostream& strm, const bitmap::BitMap& b,
 			  size_t n)
 
 /*
-  Synopsis: outputs the first values of the bitmap left-to-right, on a single 
+  Synopsis: outputs the first values of the bitmap left-to-right, on a single
   line
 */
 
@@ -64,7 +64,7 @@ std::ostream& prettyPrint(std::ostream& strm, const abelian::GroupType& type)
   list of integers.
 */
 
-{  
+{
   using namespace abelian;
   using namespace basic_io;
 
@@ -75,7 +75,7 @@ std::ostream& prettyPrint(std::ostream& strm, const abelian::GroupType& type)
   return strm;
 }
 
-std::ostream& printCoroot(std::ostream& strm, const rootdata::RootNbr& j, 
+std::ostream& printCoroot(std::ostream& strm, const rootdata::RootNbr& j,
 			  const rootdata::RootDatum& rd)
 
 /*
@@ -88,7 +88,7 @@ std::ostream& printCoroot(std::ostream& strm, const rootdata::RootNbr& j,
   return strm << rd.coroot(j);
 }
 
-std::ostream& printCorootList(std::ostream& strm, const rootdata::RootList& r, 
+std::ostream& printCorootList(std::ostream& strm, const rootdata::RootList& r,
 			      const rootdata::RootDatum& rd, const char* sep)
 
 /*
@@ -106,7 +106,7 @@ std::ostream& printCorootList(std::ostream& strm, const rootdata::RootList& r,
   return strm;
 }
 
-std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d, 
+std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
 			      size_t rank, const char* sep, const char* pre,
 			      const char* post)
 
@@ -123,7 +123,7 @@ std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
 
   bool first = true;
 
-  for (size_t s = 0; s < rank; ++s) 
+  for (size_t s = 0; s < rank; ++s)
     if (d.test(s)) {
       if (first)
 	first = false;
@@ -137,11 +137,11 @@ std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
   return strm;
 }
 
-std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r, 
+std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
 			       const rootdata::RootDatum& rd)
 
 /*
-  Synopsis: outputs the set of roots contained in r to strm, expressed in root 
+  Synopsis: outputs the set of roots contained in r to strm, expressed in root
   coordinates.
 */
 
@@ -149,7 +149,7 @@ std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
   return printInRootBasis(strm,r.begin(),r.end(),rd);
 }
 
-std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n, 
+std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n,
 			       const rootdata::RootDatum& rd)
 
 /*
@@ -162,8 +162,8 @@ std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n,
   return printInRootBasis(strm,rd.root(n),rd);
 }
 
-std::ostream& printInRootBasis(std::ostream& strm, 
-			       const latticetypes::Weight& v, 
+std::ostream& printInRootBasis(std::ostream& strm,
+			       const latticetypes::Weight& v,
 			       const rootdata::RootDatum& rd)
 
 /*
@@ -185,7 +185,8 @@ std::ostream& printInRootBasis(std::ostream& strm,
   return strm;
 }
 
-std::ostream& printInvolution(std::ostream& strm, const weyl::WeylElt& w, 
+std::ostream& printInvolution(std::ostream& strm,
+			      const weyl::TwistedInvolution& w,
 			      const weyl::WeylGroup& W)
 
 /*
@@ -206,7 +207,7 @@ std::ostream& printInvolution(std::ostream& strm, const weyl::WeylElt& w,
   return strm;
 }
 
-std::ostream& printRoot(std::ostream& strm, const rootdata::RootNbr& j, 
+std::ostream& printRoot(std::ostream& strm, const rootdata::RootNbr& j,
 			const rootdata::RootDatum& rd)
 
 /*
@@ -219,7 +220,7 @@ std::ostream& printRoot(std::ostream& strm, const rootdata::RootNbr& j,
   return strm << rd.root(j);
 }
 
-std::ostream& printRootList(std::ostream& strm, const rootdata::RootList& r, 
+std::ostream& printRootList(std::ostream& strm, const rootdata::RootList& r,
 			    const rootdata::RootDatum& rd, const char* sep)
 
 /*
@@ -237,7 +238,7 @@ std::ostream& printRootList(std::ostream& strm, const rootdata::RootList& r,
   return strm;
 }
 
-std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs, 
+std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs,
 			  size_t rank)
 
 /*
@@ -280,7 +281,7 @@ std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs,
   return strm;
 }
 
-std::ostream& printTitsElt(std::ostream& strm, const tits::TitsElt& a, 
+std::ostream& printTitsElt(std::ostream& strm, const tits::TitsElt& a,
 			   const tits::TitsGroup& N)
 
 /*
@@ -317,7 +318,7 @@ std::ostream& printTorusType(std::ostream& strm, const tori::RealTorus& T)
   return strm;
 }
 
-std::ostream& printWeylElt(std::ostream& strm, const weyl::WeylElt& w, 
+std::ostream& printWeylElt(std::ostream& strm, const weyl::WeylElt& w,
 			   const weyl::WeylGroup& W)
 
 /*
@@ -336,7 +337,7 @@ std::ostream& printWeylElt(std::ostream& strm, const weyl::WeylElt& w,
 }
 
 std::ostream& printWeylList(std::ostream& strm, const weyl::WeylEltList& wl,
-			    const weyl::WeylGroup& W, const char* sep, 
+			    const weyl::WeylGroup& W, const char* sep,
 			    const char* pre, const char* post)
 
 /*

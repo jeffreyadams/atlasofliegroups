@@ -10,9 +10,9 @@
 */
 /*
   This is kgb.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -77,7 +77,7 @@ function conjugate.
 
 [There seems to exist no such external function; presumably it was
 replaced by the member function conjugate.  DV 7/21/06]
-  */ 
+  */
   friend void conjugate(FiberData&, size_t, const tits::TitsGroup&);
 
  private:
@@ -96,9 +96,9 @@ Z^n), endowed with the unique basis in row-reduced form.
 // constructors and destructors
   FiberData(const latticetypes::ComponentSubspace& sp):d_subspace(sp) {}
   FiberData(const latticetypes::ComponentList& b, size_t r):d_subspace(b,r) {}
-  
+
 // accessors
-  /*!  
+  /*!
 \brief Replaces the Tits element by the normal representative in its H
 conjugacy class.
   */
@@ -116,22 +116,21 @@ conjugacy class.
   }
 };
 
-      /*! 
+      /*!
 \brief Derived class of KGB, to carry out the construction of KGB.
       */
 class Helper:public KGB {
 
 private:
 
-  /*!
-\brief Constant iterator to the pair containing the WeylElt, or to the
-  end of the map if no such pair exists. 
+  /*! \brief Constant iterator to the pair containing the TwistedInvolution,
+or to the end of the map if no such pair exists.
   */
-  typedef std::map<weyl::WeylElt,FiberData>::const_iterator WI;
+  typedef std::map<weyl::TwistedInvolution,FiberData>::const_iterator WI;
 
   /*!
 \brief Constant iterator to the pair containing the TitsElt, or to the
-  end of the map if no such pair exists. 
+  end of the map if no such pair exists.
   */
   typedef std::map<tits::TitsElt,size_t>::const_iterator TI;
 
@@ -150,7 +149,7 @@ distinct orbits.
 \brief Inverse function of d_tits.
 
 This map allows us to search for a Tits element to see if it
-is new. 
+is new.
   */
   std::map<tits::TitsElt,size_t> d_titsMap;
 
@@ -166,7 +165,7 @@ function FiberData::normalize gets these distinguished
 representatives, and FiberData::conjugate changes FiberData when tau
 is replaced by a conjugate.
   */
-  std::map<weyl::WeylElt,FiberData> d_fiberData;
+  std::map<weyl::TwistedInvolution,FiberData> d_fiberData;
 
   // small auxiliary data
 
@@ -201,7 +200,7 @@ G in the base theta-stable Borel.
   latticetypes::ComponentMap d_twistMatrix;
 
 public:
-  
+
 // constructors and destructors
   Helper(realredgp::RealReductiveGroup&);
 
@@ -212,7 +211,7 @@ public:
     titsGroup().leftProd(a,s);
   }
 
-  WI find (const weyl::WeylElt& w) const {
+  WI find (const weyl::TwistedInvolution& w) const {
     return d_fiberData.find(w);
   }
 
@@ -259,11 +258,11 @@ public:
   }
 
 // manipulators
-  WI cayleyAdd(weyl::WeylElt&, size_t);
+  WI cayleyAdd(const weyl::TwistedInvolution&, size_t);
 
   TI cayleyAdd(size_t, size_t);
 
-  WI crossAdd(weyl::WeylElt&, size_t);
+  WI crossAdd(const weyl::TwistedInvolution&, size_t);
 
   TI crossAdd(size_t, size_t);
 
@@ -273,7 +272,7 @@ public:
 
   void fill();
 
-  void saturate(const weyl::WeylElt&);
+  void saturate(const weyl::TwistedInvolution&);
 
   void setStatus(size_t, size_t, size_t);
 
@@ -306,31 +305,33 @@ private:
   const weyl::WeylGroup* d_W;
 public:
   explicit InvolutionCompare(const weyl::WeylGroup& W):d_W(&W) {}
-  // one should have i < j iff 
-  // (a) involutionLength(v) < involutinLength(w) or
+  // one should have i < j iff
+  // (a) involutionLength(v) < involutionLength(w) or
   // (b) involutionLengths are equal and length(v) < length (w) or
   // (c) both lengths are equal and v < w
-  bool operator() (const weyl::WeylElt& v, const weyl::WeylElt& w) const {
+  bool operator()
+   (const weyl::TwistedInvolution& v, const weyl::TwistedInvolution& w) const
+  {
     if (d_W->involutionLength(v) < d_W->involutionLength(w))
       return true;
     else if (d_W->involutionLength(w) < d_W->involutionLength(v))
       return false;
-    else if (d_W->length(v) < d_W->length(w))
+    else if (d_W->length(v.representative()) < d_W->length(w.representative()))
       return true;
-    else if (d_W->length(w) < d_W->length(v))
+    else if (d_W->length(w.representative()) < d_W->length(v.representative()))
       return false;
     else
       return v < w;
   }
 };
-  
-    }
-  }
+
+} // namespace helper
+} // namespace kgb
 
   // namespace {
   namespace kgb {
     namespace helper {
-  using namespace kgb;
+
 
   void initGrading(gradings::Grading&, const realredgp::RealReductiveGroup&);
     }
@@ -348,7 +349,7 @@ namespace kgb {
 
   using namespace atlas::kgb::helper;
 
-KGB::KGB(size_t rank)   
+KGB::KGB(size_t rank)
   :d_rank(rank),
    d_cross(d_rank),
    d_cayley(d_rank),
@@ -358,7 +359,7 @@ KGB::KGB(size_t rank)
 /*!
   \brief Does only a trivial initialization.
 
-  Explanation: preliminary to the Helper constructor; rank is the semisimple 
+  Explanation: preliminary to the Helper constructor; rank is the semisimple
   rank of the underlying group.
 */
 
@@ -401,7 +402,7 @@ KGB::~KGB()
 
 void KGB::swap(KGB& other)
 
-{  
+{
   std::swap(d_rank,other.d_rank);
 
   d_cross.swap(other.d_cross);
@@ -426,10 +427,10 @@ void KGB::swap(KGB& other)
 bool KGB::compare (KGBElt x, KGBElt y) const
 
 /*!
-  \brief Returns whether involution(x) < involution(y). 
+  \brief Returns whether involution(x) < involution(y).
 
-  Explanation: the ordering is involution-length first, then weyl-length, 
-  then order of Weyl group elements in whatever way that comes out of their 
+  Explanation: the ordering is involution-length first, then weyl-length,
+  then order of Weyl group elements in whatever way that comes out of their
   representation. This is not an ordering, only a preordering of course.
 */
 
@@ -446,7 +447,7 @@ bool KGB::compare (KGBElt x, KGBElt y) const
     return involution(x) < involution(y);
 }
 
-const weyl::WeylElt& KGB::involution(KGBElt z) const
+const weyl::TwistedInvolution& KGB::involution(KGBElt z) const
 
 /*!
   \brief Returns the root datum involution corresponding to z.
@@ -499,7 +500,7 @@ bool KGB::isDescent(size_t s, KGBElt x) const
   return d_descent[x].test(s);
 }
 
-KGBEltPair KGB::tauPacket(const weyl::WeylElt& w) const
+KGBEltPair KGB::tauPacket(const weyl::TwistedInvolution& w) const
 
 /*!
   \brief Returns the range in which involution(z) = w.
@@ -510,8 +511,8 @@ KGBEltPair KGB::tauPacket(const weyl::WeylElt& w) const
 {
   using namespace weyl;
 
-  typedef std::pair<std::vector<WeylElt>::const_iterator,
-    std::vector<WeylElt>::const_iterator> IP;
+  typedef std::pair<std::vector<TwistedInvolution>::const_iterator,
+    std::vector<TwistedInvolution>::const_iterator> IP;
 
   InvolutionCompare comp(weylGroup());
 
@@ -532,7 +533,7 @@ size_t KGB::weylLength(KGBElt z) const
 */
 
 {
-  return d_weylGroup->length(d_involution[z]);
+  return d_weylGroup->length(d_involution[z].representative());
 }
 
 /******** manipulators *******************************************************/
@@ -598,12 +599,12 @@ Helper::Helper(realredgp::RealReductiveGroup& G)
   \brief The helper constructor just initializes the lists for the first
   element. The filling process is handled by fill().
 
-  Algorithm: from the datum of the real form (or more precisely, from the 
-  corresponding fundamental grading) we recover the basic cocycle that 
-  transforms the whole construction in a Tits group computation. 
+  Algorithm: from the datum of the real form (or more precisely, from the
+  corresponding fundamental grading) we recover the basic cocycle that
+  transforms the whole construction in a Tits group computation.
 */
 
-{  
+{
   using namespace bitvector;
   using namespace gradings;
   using namespace lattice;
@@ -630,20 +631,20 @@ Helper::Helper(realredgp::RealReductiveGroup& G)
     d_reflectionMap[s].transpose();
   }
 
-  // d_tits is a list of Tits group elements, that are constructed as 
+  // d_tits is a list of Tits group elements, that are constructed as
   // representatives for our orbits. It is initialized with a single element.
   d_tits.push_back(TitsElt(G.rank()));
 
-  // the map d_titsMap allows us to search for a Tits element to see if it is 
+  // the map d_titsMap allows us to search for a Tits element to see if it is
   // new. The associated integer is the index of the Tits element in d_tits
   d_titsMap.insert(std::make_pair(d_tits[0],static_cast<size_t>(0ul)));
 
-  // the map d_fiberData associates to each root datum involution the 
-  // corresponding representatives and projection. We need this to properly 
+  // the map d_fiberData associates to each root datum involution the
+  // corresponding representatives and projection. We need this to properly
   // normalize the Tits elements
   const RealTorus& T = G.cartan(0).dualFiber().torus();
   const ComponentSubspace& sp = T.topology().subspace();
-  d_fiberData.insert(std::make_pair(WeylElt(), FiberData(sp)));
+  d_fiberData.insert(std::make_pair(TwistedInvolution(), FiberData(sp)));
 
   // write down the initial grading
   initGrading(d_baseGrading,G);
@@ -654,7 +655,7 @@ Helper::Helper(realredgp::RealReductiveGroup& G)
   // initialize descent, length and tau
   d_length.push_back(0);
   d_descent.push_back(Descent());
-  d_involution.push_back(WeylElt());
+  d_involution.push_back(TwistedInvolution());
 
   // initialize cross and cayley tables
   // the undefined value for Cayley is 0 (nothing Cayley-tranforms to 0)
@@ -669,14 +670,14 @@ Helper::Helper(realredgp::RealReductiveGroup& G)
 
 /******** manipulators *******************************************************/
 
-Helper::WI Helper::cayleyAdd(weyl::WeylElt& w, size_t s)
+Helper::WI Helper::cayleyAdd(const weyl::TwistedInvolution& w, size_t s)
 
 /*!
   \brief Adds a new root datum involution by Cayley transform
   from the first argument, through simple root \#(second argument).
 
-  Precondition: w corresponds to a known root datum involution, and s 
-  twisted-commutes with w. 
+  Precondition: w corresponds to a known root datum involution, and s
+  twisted-commutes with w.
 
   Algorithm: the new reflection is s_alpha.tau; the new normalizing
   subspace is computed from the definition. [DV 7/21/06: the old
@@ -695,15 +696,15 @@ Helper::WI Helper::cayleyAdd(weyl::WeylElt& w, size_t s)
   using namespace tori;
   using namespace weyl;
 
-  WeylElt sw = w;
-  weylGroup().leftProd(sw,s);
+  TwistedInvolution sw = w;
+  weylGroup().leftMult(sw,s);
 
   // make the lattice involution corresponding to sw
   LatticeMatrix q;
   identityMatrix(q,realGroup().rank());
 
   WeylWord ww;
-  weylGroup().out(ww,sw);
+  weylGroup().out(ww,sw.representative());
 
   for (size_t j = 0; j < ww.size(); ++j) {
     q *= d_reflectionMatrix[ww[j]];
@@ -724,7 +725,7 @@ Helper::WI Helper::cayleyAdd(weyl::WeylElt& w, size_t s)
   FiberData fd(minus2,realGroup().rank());
   fd.conjugate(d_twistMatrix);
 
-  d_fiberData.insert(std::make_pair(sw,fd));  
+  d_fiberData.insert(std::make_pair(sw,fd));
   saturate(sw);
 
   return d_fiberData.find(sw);
@@ -737,13 +738,13 @@ Helper::TI Helper::cayleyAdd(size_t from, size_t s)
   argument] through simple root \#(second argument).
 */
 
-{    
+{
   using namespace gradings;
   using namespace tits;
 
   TitsElt a = d_tits[from];
   cayleyTransform(a,s);
-  WI fdi = find(a.w());
+  WI fdi = find(a.tw());
   fdi->second.normalize(a);
 
   size_t to = d_tits.size(); // index of the new element
@@ -752,7 +753,7 @@ Helper::TI Helper::cayleyAdd(size_t from, size_t s)
   // increment the lists
   d_descent.push_back(Descent());
   d_length.push_back(d_length[from]+1); // length goes always up
-  d_involution.push_back(a.w());
+  d_involution.push_back(a.tw());
   d_status.push_back(Status());
   for (size_t j = 0; j < d_rank; ++j) {
     d_cross[j].push_back(UndefKGB);
@@ -763,7 +764,7 @@ Helper::TI Helper::cayleyAdd(size_t from, size_t s)
   return d_titsMap.insert(std::make_pair(a,to)).first;
 }
 
-Helper::WI Helper::crossAdd(weyl::WeylElt& w, size_t s)
+Helper::WI Helper::crossAdd(const weyl::TwistedInvolution& w, size_t s)
 
 /*!
   \brief Adds a new root datum involution through cross action.
@@ -779,7 +780,7 @@ Helper::WI Helper::crossAdd(weyl::WeylElt& w, size_t s)
 {
   using namespace weyl;
 
-  WeylElt sws = w;
+  TwistedInvolution sws = w;
   weylGroup().twistedConjugate(sws,s);
 
   FiberData fd = find(w)->second;
@@ -803,7 +804,7 @@ Helper::TI Helper::crossAdd(size_t from, size_t s)
 
   TitsElt a = d_tits[from];
   twistedConjugate(a,s);
-  WI fdi = find(a.w());
+  WI fdi = find(a.tw());
   fdi->second.normalize(a);
 
   size_t to = d_tits.size(); // index of the new element
@@ -812,7 +813,7 @@ Helper::TI Helper::crossAdd(size_t from, size_t s)
   // increment the lists
   d_descent.push_back(Descent());
   d_length.push_back(d_length[from]);
-  d_involution.push_back(a.w());
+  d_involution.push_back(a.tw());
   d_status.push_back(Status());
   for (size_t j = 0; j < d_rank; ++j) {
     d_cross[j].push_back(UndefKGB);
@@ -821,7 +822,7 @@ Helper::TI Helper::crossAdd(size_t from, size_t s)
   }
 
   // adjust length
-  if (a.w() != d_involution[from]) // length goes up
+  if (a.tw() != d_involution[from]) // length goes up
     ++d_length[to];
 
   return d_titsMap.insert(std::make_pair(a,to)).first;
@@ -839,7 +840,7 @@ void Helper::cayleyExtend(size_t from)
   all downward links are already filled in.
 */
 
-{    
+{
   using namespace gradings;
   using namespace tits;
   using namespace weyl;
@@ -860,9 +861,9 @@ void Helper::cayleyExtend(size_t from)
     cayleyTransform(a,s);
 
     // find the root datum involution
-    WI fdi = find(a.w());
+    WI fdi = find(a.tw());
     if (isNew(fdi)) // add a new twisted involution
-      fdi = cayleyAdd(current.w(),s);
+      fdi = cayleyAdd(current.tw(),s);
 
     // find the Tits element
     const FiberData& fd = fdi->second;
@@ -905,7 +906,7 @@ void Helper::crossExtend(size_t from)
   all downward links are already filled in.
 */
 
-{    
+{
   using namespace gradings;
   using namespace tits;
   using namespace weyl;
@@ -923,9 +924,9 @@ void Helper::crossExtend(size_t from)
     twistedConjugate(a,s);
 
     // find the root datum involution
-    WI fdi = find(a.w());
+    WI fdi = find(a.tw());
     if (isNew(fdi)) // add a new twisted involution
-      fdi = crossAdd(current.w(),s);
+      fdi = crossAdd(current.tw(),s);
 
     // find the Tits element
     const FiberData& fd = fdi->second;
@@ -972,7 +973,7 @@ void Helper::fill()
 
 }
 
-void Helper::saturate(const weyl::WeylElt& w)
+void Helper::saturate(const weyl::TwistedInvolution& tw)
 
 /*!
   \brief Add all cross-transforms from from in the fiberDatum map.
@@ -984,19 +985,19 @@ void Helper::saturate(const weyl::WeylElt& w)
 {
   using namespace weyl;
 
-  std::set<WeylElt> found;
-  std::stack<WeylElt> toDo;
+  std::set<TwistedInvolution> found;
+  std::stack<TwistedInvolution> toDo;
 
-  found.insert(w);
-  toDo.push(w);
+  found.insert(tw);
+  toDo.push(tw);
 
   while (!toDo.empty()) {
 
-    WeylElt v = toDo.top();
+    TwistedInvolution v = toDo.top();
     toDo.pop();
 
     for (Generator s = 0; s < d_rank; ++s) {
-      WeylElt v1 = v;
+      TwistedInvolution v1 = v;
       weylGroup().twistedConjugate(v1,s);
       if (found.insert(v1).second)  { // found a new element
 	toDo.push(v1);
@@ -1124,7 +1125,7 @@ Each simple root for G is tested for membership in rset; if it passes,
 the corresponding bit of gr is set.
 */
 
-{  
+{
   using namespace rootdata;
 
   const RootDatum& rd = G.rootDatum();
@@ -1146,7 +1147,7 @@ void makeHasse(std::vector<set::SetEltList>& hd, const KGB& kgb)
 /*!
   \brief Puts in hd the hasse diagram data for the Bruhat ordering
   on kgb.
-  
+
   Explanation: this is the closure ordering of orbits. We use the
   algorithm from Richardson and Springer.
 */

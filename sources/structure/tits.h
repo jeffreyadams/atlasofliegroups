@@ -123,6 +123,13 @@ the choice of reduced decomposition.
     return d_w;
   }
 
+  /*!
+\brief twisted involution represented by canonical Weyl part
+  */
+  const weyl::TwistedInvolution tw() const {
+    return weyl::TwistedInvolution(d_w);
+  }
+
 // manipulators
 
   /*!
