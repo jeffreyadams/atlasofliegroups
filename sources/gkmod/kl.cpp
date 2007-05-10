@@ -1282,12 +1282,11 @@ void Helper::fill()
   d_mu.resize(d_support->size());
 
   // fill the lists
-  BlockElt y = 0;
   size_t minLength = length(0);
   size_t maxLength = length(d_kl.size() - 1);
 
   // do the minimal length cases; they come first in the enumeration
-  for (; y < d_kl.size() and length(y) == minLength; ++y) {
+  for (BlockElt y = 0; y < d_support->lengthLess(minLength+1); ++y) {
     d_prim[y].push_back(y); // singleton list for this row
     ++prim_size;
     // the K-L polynomial is 1
@@ -1304,52 +1303,55 @@ void Helper::fill()
   std::ifstream statm("/proc/self/statm"); // open file for memory status
 #endif
 
-  //  size_t l=length(y); // minLength+1
-  size_t l=minLength+1; // length(y) if y < d_kl.size()
-
   // do the other cases
-  while (l<=maxLength) {
+  for (size_t l=minLength+1; l<=maxLength; ++l)
+  {
+    for (BlockElt y=d_support->lengthLess(l);
+	 y<d_support->lengthLess(l+1); ++y) // |lengthLess(maxLength+1)| is OK
+    {
 #ifdef VERBOSE
-    std::cerr << y << "\r";
+      std::cerr << y << "\r";
 #endif
-    try {
-      fillKLRow(y);
-    } catch (kl_error::KLError& e) {
-      e("error: negative coefficient in k-l construction");
-    }
-    fillMuRow(y);
-    if (++y==d_support->lengthLess(l+1)) // new length reached
+      try
       {
-#ifdef VERBOSE
-	size_t p_capacity // currently used memory for polynomials storage
-          =d_hashtable.capacity()*sizeof(KLIndex)
-	  + d_store.capacity()*sizeof(KLPol);
-        for (size_t i=0; i<d_store.size(); ++i)
-	  p_capacity+= (d_store[i].degree()+1)*sizeof(KLCoeff);
-
-	std::time(&time);
-	double deltaTime = difftime(time, time0);
-	std::cerr << "t="    << std::setw(5) << deltaTime
-		  << "s. l=" << std::setw(3) << l // completed length
-		  << ", y="  << std::setw(6) << y - 1 // last y value done
-		  << ", polys:"  << std::setw(11) << d_store.size()
-		  << ", pmem:" << std::setw(11) << p_capacity
-		  << ", mat:"  << std::setw(11) << prim_size
-		  <<  std::endl;
-	{
-	  unsigned int size, resident,share,text,lib,data;
-	  statm.seekg(0,std::ios_base::beg);
-	  statm >> size >> resident >> share >> text >> lib >> data;
-	  std::cerr << "Current data size " << data*4 << "kB (" << data*4096
-		    << "), resident " << resident*4 << "kB, total "
-		    << size*4 << "kB.\n";
-	}
-
-#endif
-	// the following loop normally runs 1 time, but can handle length gaps
-	do ++l; while (l<=maxLength and d_support->lengthLess(l+1)==y);
+	fillKLRow(y);
       }
-  }
+      catch (kl_error::KLError& e)
+      {
+	e("error: negative coefficient in k-l construction");
+      }
+      fillMuRow(y);
+    }
+
+    // now length |l| is completed
+#ifdef VERBOSE
+    {
+      size_t p_capacity // currently used memory for polynomials storage
+	=d_hashtable.capacity()*sizeof(KLIndex)
+	+ d_store.capacity()*sizeof(KLPol);
+      for (size_t i=0; i<d_store.size(); ++i)
+	p_capacity+= (d_store[i].degree()+1)*sizeof(KLCoeff);
+
+      std::time(&time);
+      double deltaTime = difftime(time, time0);
+      std::cerr << "t="    << std::setw(5) << deltaTime
+		<< "s. l=" << std::setw(3) << l // completed length
+		<< ", y="  << std::setw(6)
+		<< d_support->lengthLess(l+1)-1 // last y value done
+		<< ", polys:"  << std::setw(11) << d_store.size()
+		<< ", pmem:" << std::setw(11) << p_capacity
+		<< ", mat:"  << std::setw(11) << prim_size
+		<<  std::endl;
+
+      unsigned int size, resident,share,text,lib,data;
+      statm.seekg(0,std::ios_base::beg);
+      statm >> size >> resident >> share >> text >> lib >> data;
+      std::cerr << "Current data size " << data*4 << "kB (" << data*4096
+		<< "), resident " << resident*4 << "kB, total "
+		<< size*4 << "kB.\n";
+    }
+#endif
+  } // for (l=min_length+1; l<=max_Length; ++l)
 
 #ifdef VERBOSE
   std::time(&time);
