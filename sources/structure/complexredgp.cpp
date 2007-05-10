@@ -24,6 +24,7 @@
 
 #include "complexredgp.h"
 
+#include "tags.h"
 #include "cartan.h"
 #include "dynkin.h"
 #include "lietype.h"
@@ -62,65 +63,50 @@ namespace {
 
 namespace complexredgp {
 
-ComplexReductiveGroup::ComplexReductiveGroup()
-  :d_rootDatum(0),
-   d_titsGroup(0),
-   d_cartan(0)
-
 /*!
-  The default constructor. It is called in order to obtain an object
-  whose fields will then by replaced by actual pointers to objects. But before
-  that is done, we must make sure that there are null pointers, so that if
-  the construction is abandoned, proper desctruction will occur.
-*/
+  \brief dummy default constructor
 
+  We must still produce pointers to valid subobjects
+*/
+ComplexReductiveGroup::ComplexReductiveGroup()
+  : d_rootDatum(new rootdata::RootDatum())
+  , d_titsGroup(new tits::TitsGroup())
+  , d_cartan(new cartan::CartanClasses())
 {}
 
-ComplexReductiveGroup::
-ComplexReductiveGroup(const rootdata::RootDatum* rd,
-		      const latticetypes::LatticeMatrix& d)
-  :d_rootDatum(rd),
-   d_titsGroup(0),
-   d_cartan(0)
-
 /*!
-  The main constructor constructs a ComplexReductiveGroup from its root datum
-  and a distinguished involution.
+  \brief main constructor
 
-  Precondition: d is an involution of the weight lattice of rd, which fixes rd
-  as a _based_ root datum (it permutes the simple roots). In the complex
-  group, this corresponds to a an involution fixing a chosen pinning, and in
-  particular the Borel subgroup.
+  constructs a ComplexReductiveGroup from its root datum and a distinguished
+  involution.
+
+  Precondition: d is a based root datum involution: it globally fixes the set
+  of positive roots
 
   NOTE: the ComplexReductiveGroup assumes ownership of the RootDatum pointed
-  to by rd. Perhaps this is not entirely safe.
+  to by rd; users beware of this.
 */
-
-{
-  d_titsGroup = new tits::TitsGroup(rootDatum(),d);
-  d_cartan = new cartan::CartanClasses(rootDatum(),d,d_titsGroup->weylGroup());
-  /* final call stores d in d_cartan->d_fundamental.d_torus->d_involution,
+ComplexReductiveGroup::ComplexReductiveGroup
+ (const rootdata::RootDatum* rd, const latticetypes::LatticeMatrix& d)
+  : d_rootDatum(rd) // we assume ownership
+  , d_titsGroup(new tits::TitsGroup(rootDatum(),d))
+  , d_cartan(new cartan::CartanClasses(rootDatum(),d,d_titsGroup->weylGroup()))
+  /* stores |d| in |d_cartan->d_fundamental.d_torus->d_involution|,
      and constructs the fundamental fibers for the group and dual group */
-}
+{}
 
 /*!
   \brief constructs the complex reductive group dual to G.
 */
 ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 					     tags::DualTag)
+  : d_rootDatum(new rootdata::RootDatum(G.rootDatum(),tags::DualTag()))
+  , d_titsGroup(new tits::TitsGroup
+    (rootDatum(),dualBasedInvolution(G.distinguished(),G.rootDatum())))
+  , d_cartan(new cartan::CartanClasses
+	     (rootDatum(),dualBasedInvolution(G.distinguished(),G.rootDatum())
+	     ,d_titsGroup->weylGroup()))
 {
-  using namespace cartan;
-  using namespace latticetypes;
-  using namespace rootdata;
-  using namespace tags;
-  using namespace tits;
-
-  LatticeMatrix d;
-  dualBasedInvolution(d,G.distinguished(),G.rootDatum());
-
-  d_rootDatum = new RootDatum(G.rootDatum(),DualTag());
-  d_titsGroup = new TitsGroup(rootDatum(),d);
-  d_cartan = new CartanClasses(rootDatum(),d,d_titsGroup->weylGroup());
 }
 
 ComplexReductiveGroup::~ComplexReductiveGroup()
@@ -430,19 +416,6 @@ void ComplexReductiveGroup::fillCartan(realform::RealForm rf)
   d_cartan->extend(d_titsGroup->weylGroup(),rootDatum(),rf);
 }
 
-void ComplexReductiveGroup::swap(ComplexReductiveGroup& other)
-
-/*!
-  NOTE: the components being given as pointers, it is enough to swap these!
-*/
-
-{
-  std::swap(d_cartan,other.d_cartan);
-  std::swap(d_rootDatum,other.d_rootDatum);
-  std::swap(d_titsGroup,other.d_titsGroup);
-
-  return;
-}
 
 } // namespace complexredgp
 

@@ -1,8 +1,8 @@
 /*
   This is mainmode.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -31,6 +31,8 @@ namespace mainmode {
   const commands::CommandMode& mainMode();
   complexredgp::ComplexReductiveGroup& currentComplexGroup();
   complexredgp_io::Interface& currentComplexInterface();
+  void replaceComplexGroup(complexredgp::ComplexReductiveGroup*
+			   ,complexredgp_io::Interface*);
 
 }
 

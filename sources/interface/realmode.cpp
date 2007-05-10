@@ -377,16 +377,16 @@ void type_f()
   using namespace mainmode;
 
   try {
-    Interface& G_I = currentComplexInterface();
-    getInteractive(G_I);
+    complexredgp::ComplexReductiveGroup* G;
+    complexredgp_io::Interface* I;
+
+    interactive::getInteractive(G,I);
+    mainmode::replaceComplexGroup(G,I);
+    exitMode();
   }
   catch (error::InputError& e) {
-    e("complex group not changed");
-    return;
+    e("complex group and real form not changed");
   }
-
-  exitMode();
-  return;
 }
 
 }

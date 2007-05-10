@@ -13,6 +13,7 @@
 #include "interactive_fwd.h"
 
 #include "bitmap_fwd.h"
+#include "complexredgp_fwd.h"
 #include "complexredgp_io_fwd.h"
 #include "prerootdata_fwd.h"
 #include "realredgp_fwd.h"
@@ -25,8 +26,6 @@
 #include "lietype.h"
 #include "realform.h"
 #include "tags.h"
-
-#include <iostream>
 
 namespace atlas {
 
@@ -79,7 +78,8 @@ namespace interactive {
 		      complexredgp_io::Interface&)
     throw(error::InputError);
 
-  void getInteractive(complexredgp_io::Interface&)
+  void getInteractive(complexredgp::ComplexReductiveGroup*&,
+		      complexredgp_io::Interface*&)
     throw(error::InputError);
 
   void getInteractive(unsigned long&, const char*, unsigned long)

@@ -83,9 +83,10 @@ namespace {
   void type_f();
 
   // local variables
+  // these have been changed to pointers to avoid swapping of G_C
 
-  complexredgp::ComplexReductiveGroup G_C;
-  complexredgp_io::Interface G_I(G_C);
+  complexredgp::ComplexReductiveGroup* G_C=NULL;
+  complexredgp_io::Interface* G_I=NULL;
 
  }
 
@@ -138,8 +139,7 @@ ThisMode::ThisMode()
 }
 
 ThisMode::~ThisMode()
-
-{}
+{ }
 
 const std::vector<const commands::CommandMode*>& ThisMode::next() const
 
@@ -175,37 +175,19 @@ void this_entry() throw(EntryError)
 */
 
 {
-  using namespace interactive;
-  using namespace realredgp;
-
   try {
-    getInteractive(G_I);
+    interactive::getInteractive(G_C,G_I);
   }
   catch(error::InputError& e) {
     e("complex group not set");
     throw EntryError();
   }
-
-  return;
 }
 
+// it is unclear whether this_exit can ever be called
 void this_exit()
-
-/*
-  Synopsis: resets G_C and G_I to their (meaningless) default values. This
-  ensures the destruction of the previous ones.
-*/
-
 {
-  using namespace complexredgp;
-  using namespace complexredgp_io;
-
-  ComplexReductiveGroup G_def;
-  G_C.swap(G_def);
-  Interface I_def(G_C);
-  G_I.swap(I_def);
-
-  return;
+  delete G_I; delete G_C;
 }
 
 }
@@ -250,14 +232,14 @@ void blocksizes_f()
   using namespace complexredgp_io;
 
   try {
-    G_C.fillCartan();
+    G_C->fillCartan();
   }
   catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
     return;
   }
 
-  printBlockSizes(std::cout,G_I);
+  printBlockSizes(std::cout,*G_I);
 
   return;
 }
@@ -276,7 +258,7 @@ void coroots_f()
 
   ioutils::OutputFile file;
 
-  const RootDatum& rd = G_C.rootDatum();
+  const RootDatum& rd = G_C->rootDatum();
 
   WeightList::const_iterator first = rd.beginCoroot();
   WeightList::const_iterator last = rd.endCoroot();
@@ -305,7 +287,7 @@ void poscoroots_f()
 
   ioutils::OutputFile file;
 
-  const RootDatum& rd = G_C.rootDatum();
+  const RootDatum& rd = G_C->rootDatum();
 
   WRootIterator first = rd.beginPosCoroot();
   WRootIterator last = rd.endPosCoroot();
@@ -327,7 +309,7 @@ void posroots_f()
 
   ioutils::OutputFile file;
 
-  const RootDatum& rd = G_C.rootDatum();
+  const RootDatum& rd = G_C->rootDatum();
 
   WRootIterator first = rd.beginPosRoot();
   WRootIterator last = rd.endPosRoot();
@@ -376,7 +358,7 @@ void roots_f()
 
   ioutils::OutputFile file;
 
-  const RootDatum& rd = G_C.rootDatum();
+  const RootDatum& rd = G_C->rootDatum();
 
   WeightList::const_iterator first = rd.beginRoot();
   WeightList::const_iterator last = rd.endRoot();
@@ -390,7 +372,7 @@ void showdualforms_f()
 {
   using namespace realform_io;
 
-  const realform_io::Interface rfi = G_I.dualRealFormInterface();
+  const realform_io::Interface rfi = G_I->dualRealFormInterface();
 
   std::cout << "(weak) dual real forms are:" << std::endl;
   printRealForms(std::cout,rfi);
@@ -403,7 +385,7 @@ void showrealforms_f()
 {
   using namespace realform_io;
 
-  const realform_io::Interface rfi = G_I.realFormInterface();
+  const realform_io::Interface rfi = G_I->realFormInterface();
 
   std::cout << "(weak) real forms are:" << std::endl;
   printRealForms(std::cout,rfi);
@@ -422,7 +404,7 @@ void simplecoroots_f()
   using namespace ioutils;
   using namespace rootdata;
 
-  const RootDatum& rd = G_C.rootDatum();
+  const RootDatum& rd = G_C->rootDatum();
 
   WRootIterator first = rd.beginSimpleCoroot();
   WRootIterator last = rd.endSimpleCoroot();
@@ -442,7 +424,7 @@ void simpleroots_f()
   using namespace ioutils;
   using namespace rootdata;
 
-  const RootDatum& rd = G_C.rootDatum();
+  const RootDatum& rd = G_C->rootDatum();
 
   WRootIterator first = rd.beginSimpleRoot();
   WRootIterator last = rd.endSimpleRoot();
@@ -459,18 +441,17 @@ void type_f()
 */
 
 {
-  using namespace interactive;
-  using namespace realredgp;
 
   try {
-    getInteractive(G_I);
+    complexredgp::ComplexReductiveGroup* G;
+    complexredgp_io::Interface* I;
+    interactive::getInteractive(G,I);
+    replaceComplexGroup(G,I);
   }
   catch(error::InputError& e) {
     e("complex group not changed");
-    return;
   }
 
-  return;
 }
 
 }
@@ -479,8 +460,6 @@ void type_f()
 
         Chapter III -- Functions declared in mainmode.h
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace mainmode {
@@ -488,15 +467,23 @@ namespace mainmode {
 complexredgp::ComplexReductiveGroup& currentComplexGroup()
 
 {
-  return G_C;
+  return *G_C;
 }
 
 complexredgp_io::Interface& currentComplexInterface()
-
 {
-  return G_I;
+  return *G_I;
 }
+
+void replaceComplexGroup(complexredgp::ComplexReductiveGroup* G
+			,complexredgp_io::Interface* I)
+{
+  delete G_C;
+  delete G_I;
+  G_C=G;
+  G_I=I;
 
 }
 
-}
+} // namespace mainmode
+} // namespace atlas

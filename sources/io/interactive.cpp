@@ -551,9 +551,6 @@ void getInteractive(realredgp::RealReductiveGroup& d_G,
   return;
 }
 
-void getInteractive(complexredgp_io::Interface& d_I)
-  throw(error::InputError)
-
 /*
   Synopsis: Replaces d_I by a new Interface gotten interactively from the
   user.
@@ -564,41 +561,29 @@ void getInteractive(complexredgp_io::Interface& d_I)
   NOTE: here it is assumed that at most one interface is looking at a given
   complex reductive group. If there could be several, some kind of reference
   counting must be used to avoid messing up other people's view.
+
+  We pass references to pointers to both a |ComplexReductiveGroup| and to a
+  |complexredgp_io::Interface|, both of which have to be pointed appropriately
 */
-
+  void getInteractive(complexredgp::ComplexReductiveGroup*& pG,
+		      complexredgp_io::Interface*& pI)
+    throw(error::InputError)
 {
-  using namespace complexredgp;
-  using namespace complexredgp_io;
-  using namespace latticetypes;
-  using namespace layout;
-  using namespace lietype;
-  using namespace prerootdata;
-  using namespace rootdata;
+  lietype::LieType lt; getInteractive(lt);  // may throw an InputError
 
-  ComplexReductiveGroup& d_G = d_I.complexGroup();
-
-  LieType lt;
-  getInteractive(lt);  // may throw an InputError
-
-  WeightList b;
-
-  PreRootDatum prd;
+  latticetypes::WeightList b; prerootdata::PreRootDatum prd;
   getInteractive(prd,b,lt); // may throw an InputError
 
-  Layout lo(lt,b);
+  layout::Layout lo(lt,b);
 
-  LatticeMatrix d;
-  getInnerClass(d,lo); // may throw an InputError
+  latticetypes::LatticeMatrix d; getInnerClass(d,lo); // may throw InputError
+
+  rootdata::RootDatum* rd = new rootdata::RootDatum(prd);
 
   // commit
-  RootDatum* rd = new RootDatum(prd);
-  ComplexReductiveGroup G(rd,d);
-  d_G.swap(G);
-
-  Interface I(d_G,lo);
-  d_I.swap(I);
-
-  return;
+  pG=new complexredgp::ComplexReductiveGroup(rd,d); // *pG now owns *rd
+  pI=new complexredgp_io::Interface(*pG,lo);
+  // the latter constructor also constructs two realform interfaces in *pI
 }
 
 void getInteractive(unsigned long& d_c, const char* prompt, unsigned long max)

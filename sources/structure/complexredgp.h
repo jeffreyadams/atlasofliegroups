@@ -112,9 +112,10 @@ class ComplexReductiveGroup {
   */
   cartan::CartanClasses* d_cartan;
 
-// copy, assignement are forbidden, and should not be implemented
+// copy, assignement and swap are forbidden, and should not be implemented
   ComplexReductiveGroup(const ComplexReductiveGroup&);
   ComplexReductiveGroup& operator= (const ComplexReductiveGroup&);
+  void swap(ComplexReductiveGroup& G);
 
  public:
 // constructors and destructors
@@ -204,8 +205,6 @@ class ComplexReductiveGroup {
   /* the following is not done via a default argument to the previous method
      since a default argument cannot refer to a class member (quasisplit) */
   void fillCartan() { fillCartan(quasisplit()); }
-
-  void swap(ComplexReductiveGroup& G);
 };
 
 }
