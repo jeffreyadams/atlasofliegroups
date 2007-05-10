@@ -1,0 +1,32 @@
+
+The "klwrite" command generates two binary files encoding the
+Kazhdan-Lusztig polynomials for a block: essentially what is output in
+human-readable form by the "klbasis" command.  These files are needed
+as input for some other commands, including "extract-cells" and
+"extract-graph."  They are translated interactively to human-readable
+form by the KLread utility (source code in
+sources/interpreter/KLread.cpp).
+
+The first file "matrix output" contains indexing data for the
+polynomials: which polynomial number is attached to which pair of
+block elements.  The user is asked to choose a name for it; something
+like 
+
+     sl6R-mat
+
+might be convenient if the real group in question is SL(6,R), but the
+choice is entirely up to the user.  The output can be placed in
+another directory by specifying something like
+
+     ../../atlasoutput/sl6r-mat
+
+The second file "coefficient output" contains a list of the (distinct)
+Kazhdan-Lusztig polynomials for the block.  (This is more or less what
+is produced in human-readable form by the "kllist" command, although
+here the polynomials are ordered by the order in which they were
+computed.) The user is asked to choose a name for it; something
+like 
+
+     sl6R-coef
+
+might be convenient.  
