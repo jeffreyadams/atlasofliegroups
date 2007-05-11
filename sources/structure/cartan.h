@@ -1,6 +1,6 @@
 /*!
 \file
-\brief Class definition and function declarations for CartanClasses.
+\brief Class definition and function declarations for CartanClassSet.
 */
 
 /*
@@ -16,6 +16,7 @@
 
 #include "cartan_fwd.h"
 #include "rootdata_fwd.h"
+#include "complexredgp.h"
 
 #include "bitmap.h"
 #include "cartanclass.h"
@@ -30,9 +31,9 @@ namespace atlas {
 namespace cartan {
 
   unsigned long blockSize(realform::RealForm, realform::RealForm,
-			  const CartanClasses&);
+		  	  const CartanClassSet&);
 
-  unsigned long kgbSize(realform::RealForm, const CartanClasses&);
+  unsigned long kgbSize(realform::RealForm, const CartanClassSet&);
 }
 
 /******** type definitions ***************************************************/
@@ -69,7 +70,12 @@ to Cartans in the dual group.
 using weyl::TwistedInvolution;
 using weyl::TwistedInvolutionList;
 
-class CartanClasses {
+class CartanClassSet {
+
+  /*!
+  \brief The inner class to which we are associated (and accessed from)
+  */
+  const complexredgp::ComplexReductiveGroup& d_parent;
 
   /* The following data members are accessible to our Helper class */
  protected:
@@ -157,22 +163,21 @@ class CartanClasses {
  public:
 
 // constructors and destructors
-  CartanClasses() {};
+  CartanClassSet(const complexredgp::ComplexReductiveGroup& parent)
+  : d_parent(parent) {}; // this is needed to get Helper class started
 
-  CartanClasses(const rootdata::RootDatum&,
-		const latticetypes::LatticeMatrix&,
-		const weyl::WeylGroup&);
+  // the main constructor.
+  CartanClassSet(const complexredgp::ComplexReductiveGroup& parent,
+	         const latticetypes::LatticeMatrix& distinguished);
 
-  ~CartanClasses();
+  ~CartanClassSet();
 
 // copy, assignment and swap
-  CartanClasses(const CartanClasses&);
-
-  CartanClasses& operator=(const CartanClasses&);
+  CartanClassSet(const CartanClassSet&);
 
  private:
-  // swap is needed to define Helper class, but should remain private
-  void swap(CartanClasses&);
+  // swap is needed to allow using the Helper class, but should remain private
+  void swap(CartanClassSet&);
 
  public:
 // accessors
@@ -328,11 +333,19 @@ class CartanClasses {
 
   unsigned long representative(realform::RealForm, size_t) const;
 
+  const rootdata::RootDatum& rootDatum() const {
+    return d_parent.rootDatum();
+  }
+
   /*!
   \brief Entry \#rf flags the Cartans defined in real form \#rf.
   */
   const bitmap::BitMap& support(realform::RealForm rf) const {
     return d_support[rf];
+  }
+
+  const weyl::WeylGroup& weylGroup() const {
+    return d_parent.weylGroup();
   }
 
   /*!
@@ -342,6 +355,15 @@ class CartanClasses {
   const TwistedInvolution& twistedInvolution(size_t cn) const {
     return d_twistedInvolution[cn];
   }
+
+/*!
+\brief matrix giving involution action of |tw| on weight lattice
+*/
+  latticetypes::LatticeMatrix
+    involutionMatrix(const TwistedInvolution& tw) const;
+
+void twistedAct(const weyl::TwistedInvolution& tw,latticetypes::LatticeElt& v)
+  const;
 
 // manipulators
   void extend(const weyl::WeylGroup&, const rootdata::RootDatum&,

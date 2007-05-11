@@ -86,9 +86,13 @@ namespace complexredgp {
   the information relative to (stable conjugacy classes of) Cartan subgroupes
   and real forms.
 
-  Because this class is one of the outer interfaces for the structure
-  library, we use pointers for its data members, so that forward
-  declarations suffice.
+  Because this class is one of the outer interfaces for the structure library,
+  we prefer to use references for its data members, so that forward
+  declarations of their classes suffice for users of this class. The choice to
+  use references instead of pointers (as had been done intially) is a
+  deliberate one to emphasise the rigid connection between the parts; there
+  should be no operation that can dissociate the three parts from the
+  top-level structure grouping them together (such as |swap| initially did).
   */
 class ComplexReductiveGroup {
 
@@ -97,20 +101,20 @@ class ComplexReductiveGroup {
   /*!
   \brief The based root datum.
   */
-  const rootdata::RootDatum* d_rootDatum;
+  const rootdata::RootDatum& d_rootDatum;
 
   /*!
   \brief The Tits group of the based root datum, extended by an
   involutive automorphism.
   */
-  tits::TitsGroup* d_titsGroup;
+  tits::TitsGroup& d_titsGroup;
 
   /*!
   \brief Storage of data for each stable conjugacy class of Cartan subgroups
   of the inner class of real forms determined by the based root datum with
   involution.
   */
-  cartan::CartanClasses* d_cartan;
+  cartan::CartanClassSet& d_cartan;
 
 // copy, assignement and swap are forbidden, and should not be implemented
   ComplexReductiveGroup(const ComplexReductiveGroup&);
@@ -176,7 +180,7 @@ class ComplexReductiveGroup {
   unsigned long representative(realform::RealForm, size_t) const;
 
   const rootdata::RootDatum& rootDatum() const {
-    return *d_rootDatum;
+    return d_rootDatum;
   }
 
   size_t semisimpleRank() const;
@@ -184,7 +188,11 @@ class ComplexReductiveGroup {
   const weyl::WeylGroup& weylGroup() const;
 
   const tits::TitsGroup& titsGroup() const {
-    return *d_titsGroup;
+    return d_titsGroup;
+  }
+
+  const cartan::CartanClassSet& cartanClasses() const {
+    return d_cartan;
   }
 
 /*!
@@ -194,11 +202,12 @@ class ComplexReductiveGroup {
 
 // manipulators
 
-/* actually fillCartan could be declared const, since it only modifies the
-   value pointed to by d_cartan, not the pointer itself. However, morally it
-   is a manipulator method, not an accessor, whence there is no const. In the
-   future a level of indirection could be removed, and in that case quilfying
-   fillCartan as const would even become impossible */
+/* actually fillCartan could maybe declared const, since it only modifies the
+   value referred to by d_cartan, not any members of the class itself
+   (technically, a const method may use a reference member in a non-const way).
+   However, morally it is a manipulator method, not an accessor, whence there
+   is no const. In the future a level of indirection could be removed, and in
+   that case quilfying fillCartan as const would even become impossible */
 
   void fillCartan(realform::RealForm rf);
 
