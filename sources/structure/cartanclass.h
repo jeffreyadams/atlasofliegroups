@@ -53,6 +53,27 @@ namespace cartanclass {
 
 namespace cartanclass {
 
+
+// this class gathers information associated to a root datum involution
+class InvolutionData
+{
+  setutils::Permutation d_rootInvolution; // permutation of all roots
+  rootdata::RootSet d_imaginary, d_real, d_complex;
+  rootdata::RootList d_simpleImaginary; // imaginary roots simple wrt subsystem
+ public:
+  InvolutionData(const rootdata::RootDatum&,
+		 const latticetypes::LatticeMatrix&);
+  void swap(InvolutionData&);
+  //accessors
+  const setutils::Permutation& root_involution() const
+    { return d_rootInvolution; }
+  const rootdata::RootSet& imaginary_roots() const  { return d_imaginary; }
+  const rootdata::RootSet& real_roots() const       { return d_real; }
+  const rootdata::RootSet& complex_roots() const    { return d_complex; }
+  const rootdata::RootList& imaginary_basis() const
+    { return d_simpleImaginary; }
+};
+
   /*!
   \brief Describes the fiber (over a fixed involution of a torus) in
   twisted Tits group.
@@ -89,51 +110,7 @@ class Fiber {
   */
   tori::RealTorus* d_torus;
 
-  /*!
-  \brief RootSet flagging the complex roots.
-
-  That is, a bitmap whose set bits are those corresponding to the
-  numbers (within the list of roots in RootDatum) of the complex roots
-  (those roots alpha with tau(alpha) equal neither to alpha nor to
-  -alpha).
-  */
-  rootdata::RootSet d_complex;
-
-  /*!
-  \brief RootSet flagging the imaginary roots.
-
-  That is, a bitmap whose set bits are those corresponding to the
-  numbers (within the list of roots in RootDatum) of the imaginary
-  roots (those roots alpha with tau(alpha)=alpha).
-  */
-  rootdata::RootSet d_imaginary;
-
-  /*!
-  \brief RootSet flagging the real roots.
-
-  That is, a bitmap whose set bits are those corresponding to the
-  numbers (within the list of roots in RootDatum) of the real roots
-  (those roots alpha with tau(alpha)=-alpha).
-  */
-  rootdata::RootSet d_real;
-
-  /*!
-  \brief RootList holding the numbers of the simple imaginary
-  roots.
-
-  These are simple for the positive imaginary roots given by the
-  (based) RootDatum.  They need not be simple in the entire root
-  system.
-  */
-  rootdata::RootList d_simpleImaginary;
-
-  /*!
-  \brief Records the action of the Cartan involution tau
-  on the set of roots.
-
-  root \#j is sent to root \#d_rootInvolution[j].
-  */
-  setutils::Permutation d_rootInvolution;
+  InvolutionData d_involutionData;
 
   /*!
   \brief Fiber group.
@@ -304,17 +281,15 @@ class Fiber {
 
 // constructors and destructors
 
-  Fiber():d_torus(0)
-    {}
-
+  // main constructor:
   Fiber(const rootdata::RootDatum&, const latticetypes::LatticeMatrix&);
 
   // constructor for dual fiber
   Fiber(const rootdata::RootDatum&, const latticetypes::LatticeMatrix&,
         tags::DualTag);
 
-  /* auxiliary constructor
-     the initial argument distinguishes it from the main constructor
+  // auxiliary constructor needed to get Helper class of Fiber going
+  // the initial argument distinguishes it from the main constructor
   Fiber(tori::RealTorus* p,
         const rootdata::RootDatum& rd, const latticetypes::LatticeMatrix& q)
   : d_torus(p)
@@ -333,7 +308,6 @@ class Fiber {
   , d_strongReal()
   , d_strongRealFormReps()
   {}
-  */
 
   ~Fiber();
 
@@ -346,6 +320,50 @@ class Fiber {
   void swap(Fiber&);
 
 // accessors
+
+/*!
+  \brief Real torus defined over R.
+
+  Represented as the lattice Z^n endowed with an involutive
+  automorphism (represented by its n x n integer matrix).
+*/
+  const tori::RealTorus& torus() const {
+    return *d_torus;
+  }
+
+/*!
+  \brief RootSet flagging the complex roots.
+
+  That is, a bitmap whose set bits are those corresponding to the
+  numbers (within the list of roots in RootDatum) of the complex roots
+  (those roots alpha with tau(alpha) equal neither to alpha nor to
+  -alpha).
+*/
+  const rootdata::RootSet& complexRootSet() const {
+    return d_involutionData.complex_roots();
+  }
+
+/*!
+  \brief RootSet flagging the imaginary roots.
+
+  That is, a bitmap whose set bits are those corresponding to the
+  numbers (within the list of roots in RootDatum) of the imaginary
+  roots (those roots alpha with tau(alpha)=alpha).
+*/
+  const rootdata::RootSet& imaginaryRootSet() const {
+    return d_involutionData.imaginary_roots();
+  }
+
+/*!
+  \brief RootSet flagging the real roots.
+
+  That is, a bitmap whose set bits are those corresponding to the
+  numbers (within the list of roots in RootDatum) of the real roots
+  (those roots alpha with tau(alpha)=-alpha).
+*/
+  const rootdata::RootSet& realRootSet() const {
+    return d_involutionData.real_roots();
+  }
 
 /*!
   \brief Fiber group for the adjoint group of G.
@@ -379,17 +397,6 @@ class Fiber {
 
   void compactRootSet(rootdata::RootSet&, unsigned long) const;
 
-/*!
-  \brief RootSet flagging the complex roots.
-
-  That is, a bitmap whose set bits are those corresponding to the
-  numbers (within the list of roots in RootDatum) of the complex roots
-  (those roots alpha with tau(alpha) equal neither to alpha nor to
-  -alpha).
-*/
-  const rootdata::RootSet& complexRootSet() const {
-    return d_complex;
-  }
 
 /*!
   \brief Fiber group.
@@ -446,17 +453,6 @@ void grading(gradings::Grading&, unsigned long) const;
 
   unsigned long gradingRep(const gradings::Grading&) const;
 
-/*!
-  \brief RootSet flagging the imaginary roots.
-
-  That is, a bitmap whose set bits are those corresponding to the
-  numbers (within the list of roots in RootDatum) of the imaginary
-  roots (those roots alpha with tau(alpha)=alpha).
-*/
-  const rootdata::RootSet& imaginaryRootSet() const {
-    return d_imaginary;
-  }
-
   const latticetypes::LatticeMatrix& involution() const;
 
 
@@ -490,21 +486,10 @@ void grading(gradings::Grading&, unsigned long) const;
   }
 
 /*!
-  \brief RootSet flagging the real roots.
-
-  That is, a bitmap whose set bits are those corresponding to the
-  numbers (within the list of roots in RootDatum) of the real roots
-  (those roots alpha with tau(alpha)=-alpha).
-*/
-  const rootdata::RootSet& realRootSet() const {
-    return d_real;
-  }
-
-/*!
 \brief Action of the Cartan involution on root \#j.
 */
   rootdata::RootNbr rootInvolution(rootdata::RootNbr j) const {
-    return d_rootInvolution[j];
+    return d_involutionData.root_involution()[j];
   }
 
 /*!
@@ -516,10 +501,10 @@ void grading(gradings::Grading&, unsigned long) const;
   system.
 */
   const rootdata::RootList& simpleImaginary() const {
-    return d_simpleImaginary;
+    return d_involutionData.imaginary_basis();
   }
   const rootdata::RootNbr simpleImaginary(size_t i) const {
-    return d_simpleImaginary[i];
+    return d_involutionData.imaginary_basis()[i];
   }
 
 
@@ -561,15 +546,6 @@ void grading(gradings::Grading&, unsigned long) const;
 */
   unsigned long toWeakReal(unsigned long, size_t) const;
 
-/*!
-  \brief Real torus defined over R.
-
-  Represented as the lattice Z^n endowed with an involutive
-  automorphism (represented by its n x n integer matrix).
-*/
-  const tori::RealTorus& torus() const {
-    return *d_torus;
-  }
 
 /*!
   \brief Partition of the weak real forms according to the
@@ -661,9 +637,6 @@ class CartanClass {
 public:
 
 // constructors and destructors
-
-  CartanClass()
-    {}
 
   CartanClass(const rootdata::RootDatum&, const latticetypes::LatticeMatrix&);
 

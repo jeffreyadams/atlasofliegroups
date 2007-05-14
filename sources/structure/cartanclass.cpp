@@ -27,17 +27,9 @@
 #include "weylsize.h"
 #include "tags.h"
 
-/*****************************************************************************
-
-  ... explain here when it is stable ...
-
-******************************************************************************/
-
 namespace atlas {
 
 namespace {
-
-  void pause() {;}
 
   using namespace cartanclass;
 
@@ -65,13 +57,14 @@ public:
 // constructors and destructors
   Helper(const rootdata::RootDatum&, const latticetypes::LatticeMatrix&);
 
-  virtual ~Helper();
+  ~Helper();
 
-// accessors
+private:
+// accessors (private because only needed during construction)
   void adjointInvolution(latticetypes::LatticeMatrix&) const;
 
   size_t imaginaryRank() const {
-    return d_simpleImaginary.size();
+    return simpleImaginary().size();
   }
 
   const rootdata::RootDatum& rootDatum() const {
@@ -85,25 +78,17 @@ public:
 
   void baseGrading();
 
-  void complexRootSet();
-
   void fiberGroup();
 
   void gradingGroup();
 
   void gradingShifts();
 
-  void imaginaryRootSet();
-
   void mAlpha();
 
   void makeToAdjoint();
 
   void realFormPartition();
-
-  void realRootSet();
-
-  void rootInvolution();
 
   void strongReal();
 
@@ -152,19 +137,39 @@ public:
 
 /*****************************************************************************
 
-        Chapter I -- The CartanClass class
-
-  ... explain here when it is stable ...
+        Chapter I -- The InvolutionData and CartanClass classes
 
 ******************************************************************************/
 
 namespace cartanclass {
 
-CartanClass::CartanClass(const rootdata::RootDatum& rd,
-			 const latticetypes::LatticeMatrix& q)
-   :d_fiber(rd,q)
+InvolutionData::InvolutionData(const rootdata::RootDatum& rd,
+			       const latticetypes::LatticeMatrix& q)
+  : d_rootInvolution(rd.rootPermutation(q))
+  , d_imaginary(rd.numRoots()), d_real(rd.numRoots()), d_complex(rd.numRoots())
+  , d_simpleImaginary()
+{
 
+  for (size_t j = 0; j < d_rootInvolution.size(); ++j)
+    if (d_rootInvolution[j] == j)
+      d_imaginary.insert(j);
+    else if (d_rootInvolution[j] == rd.rootMinus(j))
+      d_real.insert(j);
+    else
+      d_complex.insert(j);
 
+  // find simple imaginary roots
+  rootBasis(d_simpleImaginary,imaginary_roots(),rd);
+}
+
+void InvolutionData::swap(InvolutionData& other)
+{
+  d_rootInvolution.swap(other.d_rootInvolution);
+  d_imaginary.swap(other.d_imaginary);
+  d_real.swap(other.d_real);
+  d_complex.swap(other.d_complex);
+  d_simpleImaginary.swap(other.d_simpleImaginary);
+}
 
 /*!
   Synopsis: constructs the Cartan class with involution q.
@@ -174,20 +179,11 @@ CartanClass::CartanClass(const rootdata::RootDatum& rd,
   action of a Weyl group element w, which is called the twisted involution
   associated to q.
 */
-
+CartanClass::CartanClass(const rootdata::RootDatum& rd,
+			 const latticetypes::LatticeMatrix& q)
+   : d_fiber(rd,q)
+   , d_dualFiber(rd,q,tags::DualTag())
 {
-  using namespace latticetypes;
-  using namespace rootdata;
-  using namespace tags;
-
-  // make the dual fiber
-  RootDatum rdd(rd,DualTag());
-  LatticeMatrix qd = q;
-  qd.transpose();
-  qd.negate();
-
-  d_dualFiber = Fiber(rdd,qd);
-
   // make the simple complex roots
   makeSimpleComplex(d_simpleComplex,rd,*this);
 
@@ -204,8 +200,6 @@ void CartanClass::swap(CartanClass& other)
   d_dualFiber.swap(other.d_dualFiber);
   d_simpleComplex.swap(other.d_simpleComplex);
   std::swap(d_orbitSize,other.d_orbitSize);
-
-  return;
 }
 
 /******** accessors **********************************************************/
@@ -214,7 +208,7 @@ bool CartanClass::isMostSplit(unsigned long c) const
 
 /*!
   \brief Tells whether this cartan class is the most split one for
-  weak real form \#c.
+  weak real form corresponding to class \#c in fiber().weakReal().
 
   Algorithm: this is the case iff the grading corresponding to c is trivial.
 */
@@ -236,23 +230,41 @@ bool CartanClass::isMostSplit(unsigned long c) const
 
         Chapter II -- The Fiber class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace cartanclass {
 
-Fiber::Fiber(const rootdata::RootDatum& rd,
-	     const latticetypes::LatticeMatrix& q)
-  :d_torus(0)
-
 /*!
   \brief Constructs the fiber for the Cartan class determined by the
-  involution q of the root datum rd.
+  involution |q| of the root datum |rd|.
 */
+
+Fiber::Fiber(const rootdata::RootDatum& rd,
+	     const latticetypes::LatticeMatrix& q)
+  : d_torus(NULL)
+  , d_involutionData(rd,q) // dummy value will disappear after swap
 
 {
   Helper fhelp(rd,q);
+  swap(fhelp);
+}
+
+/*!
+  \brief Constructs the dual fiber for the Cartan class determined by the
+  involution q of the root datum rd.
+*/
+Fiber::Fiber(const rootdata::RootDatum& rd,
+	     const latticetypes::LatticeMatrix& q,
+	     tags::DualTag)
+  : d_torus(NULL)
+  , d_involutionData(rd,q) // dummy value will disappear after swap
+{
+  rootdata::RootDatum rdd(rd,tags::DualTag());
+  latticetypes::LatticeMatrix qd = q;
+  qd.transpose();
+  qd.negate();
+
+  Helper fhelp(rdd,qd);
   swap(fhelp);
 }
 
@@ -266,11 +278,7 @@ Fiber::~Fiber ()
 
 Fiber::Fiber(const Fiber& other)
   :d_torus(other.d_torus),
-   d_complex(other.d_complex),
-   d_imaginary(other.d_imaginary),
-   d_real(other.d_real),
-   d_simpleImaginary(other.d_simpleImaginary),
-   d_rootInvolution(other.d_rootInvolution),
+   d_involutionData(other.d_involutionData),
    d_fiberGroup(other.d_fiberGroup),
    d_adjointFiberGroup(other.d_adjointFiberGroup),
    d_toAdjoint(other.d_toAdjoint),
@@ -316,11 +324,7 @@ void Fiber::swap(Fiber& other)
 
 {
   std::swap(d_torus,other.d_torus);
-  d_complex.swap(other.d_complex);
-  d_imaginary.swap(other.d_imaginary);
-  d_real.swap(other.d_real);
-  d_simpleImaginary.swap(other.d_simpleImaginary);
-  d_rootInvolution.swap(other.d_rootInvolution);
+  d_involutionData.swap(other.d_involutionData);
   d_fiberGroup.swap(other.d_fiberGroup);
   d_adjointFiberGroup.swap(other.d_adjointFiberGroup);
   d_toAdjoint.swap(other.d_toAdjoint);
@@ -354,7 +358,7 @@ void Fiber::compactRootSet(rootdata::RootSet& rs, unsigned long x) const
 {
   noncompactRootSet(rs,x);
   ~rs;
-  rs &= d_imaginary;
+  rs &= imaginaryRootSet();
 
   return;
 }
@@ -423,18 +427,12 @@ void Fiber::mAlpha(latticetypes::Component& ma, const rootdata::Root& cr) const
 */
 
 {
-  using namespace lattice;
-  using namespace latticetypes;
-  using namespace rootdata;
-
   ma.resize(d_fiberGroup.dimension());
 
-  Component v;
-  mod2(v,cr);
+  latticetypes::Component v;
+  lattice::mod2(v,cr);
   d_fiberGroup.representative(ma,v);
   d_fiberGroup.toSubquotient(ma);
-
-  return;
 }
 
 size_t Fiber::minusRank() const
@@ -556,21 +554,15 @@ unsigned long Fiber::toWeakReal(unsigned long c, size_t rfc) const
   return d_weakReal(y);
 }
 
-}
+} // namespace cartanclass
 
 /*****************************************************************************
 
-        Chapter III -- The Helper class
-
-  ... explain here when it is stable ...
+        Chapter III -- The Helper class of the Fiber class
 
 ******************************************************************************/
 
 namespace {
-
-Helper::Helper(const rootdata::RootDatum& rd,
-	       const latticetypes::LatticeMatrix& q)
-  :d_rootDatum(&rd)
 
 /*!
   \brief Does the actual fiber construction.
@@ -578,26 +570,11 @@ Helper::Helper(const rootdata::RootDatum& rd,
   Precondition: q contains the root datum involution for this fiber.
 */
 
+Helper::Helper(const rootdata::RootDatum& rd,
+	       const latticetypes::LatticeMatrix& q)
+  : Fiber(new tori::RealTorus(q),rd,q) // auxiliary constructor for base object
+  , d_rootDatum(&rd)
 {
-  using namespace latticetypes;
-  using namespace rootdata;
-  using namespace tori;
-
-  // construct the torus
-  d_torus = new RealTorus(q);
-
-  // make the root involution
-  rootInvolution();
-
-  // make root sets
-  complexRootSet();
-  imaginaryRootSet();
-  realRootSet();
-
-  // find simple imaginary roots
-  RootList rl(d_imaginary.begin(),d_imaginary.end());
-  rootBasis(d_simpleImaginary,rl,rd);
-
   // make fiber groups
   fiberGroup();
   adjointFiberGroup();
@@ -618,7 +595,6 @@ Helper::Helper(const rootdata::RootDatum& rd,
   weakReal();
 
   // make real form classes and strong real forms
-  pause();
   realFormPartition();
   strongReal();
 
@@ -649,7 +625,7 @@ void Helper::adjointInvolution(latticetypes::LatticeMatrix& q) const
   RootList rl;
 
   for (size_t s = 0; s < rd.semisimpleRank(); ++s)
-    rl.push_back(d_rootInvolution[rd.simpleRootNbr(s)]);
+    rl.push_back(rootInvolution(rd.simpleRootNbr(s)));
 
   WeightList b;
 
@@ -717,7 +693,7 @@ void Helper::adjointMAlpha()
     Component v(n);
     // compute pairing with simple roots
     for(size_t j = 0; j < n; ++j) {
-      RootNbr r = d_simpleImaginary[i];
+      RootNbr r = simpleImaginary(i);
       LatticeCoeff c = scalarProduct(rd.coroot(r),rd.simpleRoot(j));
       if (c & 1) // scalar product is odd
 	v.set(j);
@@ -767,36 +743,16 @@ void Helper::baseGrading()
   d_baseGrading.truncate(imaginaryRank());
 
   // express imaginary roots in simple imaginary basis
-  RootList irl(d_imaginary.begin(),d_imaginary.end());
+  RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
 
   WeightList ir;
-  toRootBasis(irl.begin(),irl.end(),back_inserter(ir),d_simpleImaginary,rd);
+  toRootBasis(irl.begin(),irl.end(),back_inserter(ir),simpleImaginary(),rd);
   ComponentList ir2;
   mod2(ir2,ir);
 
   for (size_t j = 0; j < ir2.size(); ++j)
     if (ir2[j].count() & 1ul)
       d_baseNoncompact.insert(irl[j]);
-
-  return;
-}
-
-void Helper::complexRootSet()
-
-/*!
-  \brief Flags in d_complex the set of complex roots.
-*/
-
-{
-  d_complex.resize(rootDatum().numRoots());
-
-  for (size_t j = 0; j < d_rootInvolution.size(); ++j)
-    if (d_rootInvolution[j] == j)
-      continue;
-    else if (d_rootInvolution[j] == rootDatum().rootMinus(j))
-      continue;
-    else
-      d_complex.insert(j);
 
   return;
 }
@@ -826,7 +782,7 @@ void Helper::gradingGroup()
   const ComponentList& baf = d_adjointFiberGroup.space().basis();
 
   WeightList bsi;
-  toRootBasis(d_simpleImaginary.begin(),d_simpleImaginary.end(),
+  toRootBasis(simpleImaginary().begin(),simpleImaginary().end(),
 	      back_inserter(bsi),rd.simpleRootList(),rd);
   ComponentList bsi2;
   mod2(bsi2,bsi);
@@ -882,7 +838,7 @@ void Helper::gradingShifts()
   const RootDatum& rd = rootDatum();
 
   // express imaginary roots in simple root basis
-  RootList irl(d_imaginary.begin(),d_imaginary.end());
+  RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
   WeightList ir;
   toRootBasis(irl.begin(),irl.end(),back_inserter(ir),rd.simpleRootList(),rd);
   ComponentList ir2;
@@ -900,7 +856,7 @@ void Helper::gradingShifts()
   }
 
   // express simple imaginary roots in simple root basis
-  const RootList& sil = d_simpleImaginary;
+  const RootList& sil = simpleImaginary();
   WeightList si;
   toRootBasis(sil.begin(),sil.end(),back_inserter(si),rd.simpleRootList(),rd);
   ComponentList si2;
@@ -913,8 +869,6 @@ void Helper::gradingShifts()
 	gr.set(j);
     d_gradingShift.push_back(gr);
   }
-
-  return;
 }
 
 void Helper::fiberGroup()
@@ -928,35 +882,14 @@ void Helper::fiberGroup()
 */
 
 {
-  using namespace latticetypes;
-  using namespace tori;
-
-  LatticeMatrix q = involution();
+  latticetypes::LatticeMatrix q = involution();
 
   // do negative transpose
   q.transpose();
   q.negate();
 
   // construct subquotient
-  dualPi0(d_fiberGroup,q);
-
-  return;
-}
-
-void Helper::imaginaryRootSet()
-
-/*!
-  \brief Flags in d_imaginary the set of imaginary roots.
-*/
-
-{
-  d_imaginary.resize(rootDatum().numRoots());
-
-  for (size_t j = 0; j < d_rootInvolution.size(); ++j)
-    if (d_rootInvolution[j] == j)
-      d_imaginary.insert(j);
-
-  return;
+  tori::dualPi0(d_fiberGroup,q);
 }
 
 void Helper::mAlpha()
@@ -969,22 +902,16 @@ void Helper::mAlpha()
 */
 
 {
-  using namespace lattice;
-  using namespace latticetypes;
-  using namespace rootdata;
-
-  const RootDatum& rd = rootDatum();
+  const rootdata::RootDatum& rd = rootDatum();
   size_t n = rd.rank();
-  d_mAlpha.resize(imaginaryRank(),Component(n));
+  d_mAlpha.resize(imaginaryRank(),latticetypes::Component(n));
 
   for (size_t j = 0; j < imaginaryRank(); ++j) {
-    Component v(n);
-    mod2(v,rd.coroot(d_simpleImaginary[j]));
+    latticetypes::Component v(n);
+    lattice::mod2(v,rd.coroot(simpleImaginary(j)));
     d_fiberGroup.representative(d_mAlpha[j],v);
     d_fiberGroup.toSubquotient(d_mAlpha[j]);
   }
-
-  return;
 }
 
 void Helper::makeToAdjoint()
@@ -1085,46 +1012,6 @@ void Helper::realFormPartition()
   }
 
   d_realFormPartition = Partition(cl,UnnormalizedTag());
-
-  return;
-}
-
-void Helper::realRootSet()
-
-/*!
-  \brief Flags in d_real the set of real roots.
-*/
-
-{
-  d_real.resize(rootDatum().numRoots());
-
-  for (size_t j = 0; j < d_rootInvolution.size(); ++j)
-    if (d_rootInvolution[j] == rootDatum().rootMinus(j))
-      d_real.insert(j);
-
-  return;
-}
-
-void Helper::rootInvolution()
-
-/*!
-  \brief Makes the permutation of the roots corresponding to the torus
-  involution.
-*/
-
-{
-  using namespace latticetypes;
-  using namespace rootdata;
-
-  const RootDatum& rd = rootDatum();
-
-  d_rootInvolution.resize(rd.numRoots());
-
-  for (size_t j = 0; j < rd.numRoots(); ++j) {
-    Weight v(rd.rank());
-    involution().apply(v,rd.root(j));
-    d_rootInvolution[j] = rd.rootNbr(v);
-  }
 
   return;
 }
@@ -1291,8 +1178,6 @@ void Helper::weakReal()
 
         Chapter IV -- The FiberAction class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace {
@@ -1326,8 +1211,6 @@ unsigned long FiberAction::operator() (unsigned long s, unsigned long x) const
 /*****************************************************************************
 
         Chapter V -- Functions declared in cartanclass.cpp
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -1455,8 +1338,6 @@ void toMostSplit(rootdata::RootList& so, const cartanclass::Fiber& fundf,
 /*****************************************************************************
 
         Chapter VI -- Auxiliary functions
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
