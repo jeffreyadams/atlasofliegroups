@@ -77,8 +77,27 @@ class CartanClassSet {
   */
   const complexredgp::ComplexReductiveGroup& d_parent;
 
-  /* The following data members are accessible to our Helper class */
- protected:
+  /*!
+  \brief List of stable conjugacy classes of Cartan subgroups.
+
+  The list includes only Cartans appearing in real forms considered so far.
+  */
+  std::vector<cartanclass::CartanClass*> d_cartan;
+
+  /*!
+  \brief (Representative) twisted involutions for each class of Cartan
+  subgroup. Choice at |j| must match corresponding |cartan(j).involution()|
+  */
+  TwistedInvolutionList d_twistedInvolution;
+
+  /*!
+  \brief Partial order of Cartan subgroups.
+
+  This is the ordering by containment of H^theta up to conjugacy: (H,theta_1)
+  precedes (H,theta_2) if (H^theta_2)_0 is W-conjugate to a subtorus of
+  H^theta_1. Numbering of elements is as in d_twistedInvolution
+  */
+  poset::Poset d_ordering;
 
   /*!
   \brief Fiber class for the fundamental Cartan subgroup.
@@ -94,28 +113,6 @@ class CartanClassSet {
   of the component group of the quasisplit Cartan.
   */
   cartanclass::Fiber d_dualFundamental;
-
-  /*!
-  \brief List of stable conjugacy classes of Cartan subgroups.
-
-  The list includes only Cartans appearing in real forms considered so far.
-  */
-  std::vector<cartanclass::CartanClass*> d_cartan;
-
-  /*!
-  \brief (Representative) twisted involutions for each class of Cartan
-  subgroup.
-  */
-  TwistedInvolutionList d_twistedInvolution;
-
-  /*!
-  \brief Partial order of Cartan subgroups.
-
-  This is the ordering by containment of H^theta up to conjugacy: (H,theta_1)
-  precedes (H,theta_2) if (H^theta_2)_0 is W-conjugate to a subtorus of
-  H^theta_1. Numbering of elements is as in d_twistedInvolution
-  */
-  poset::Poset d_ordering;
 
   /*!
   \brief Entry \#n lists the real forms in which Cartan \#n is defined.
@@ -163,23 +160,31 @@ class CartanClassSet {
  public:
 
 // constructors and destructors
-  CartanClassSet(const complexredgp::ComplexReductiveGroup& parent)
-  : d_parent(parent) {}; // this is needed to get Helper class started
 
-  // the main constructor.
+  // the main and only (except for copy) constructor
   CartanClassSet(const complexredgp::ComplexReductiveGroup& parent,
 	         const latticetypes::LatticeMatrix& distinguished);
 
   ~CartanClassSet();
 
 // copy, assignment and swap
-  CartanClassSet(const CartanClassSet&);
+
+/* the copy constructor and assignment are forbidden, since a copy would point
+   to the parent without reciprocal relation. If a need to copy or assign
+   |ComplexReductiveGroup| objects should arise, this should be implemented
+   using the pseudo copy-constructor declared below (but as yet undefined).
+   For similar reasons, a swap operation hould not be defined.
+ */
 
  private:
-  // swap is needed to allow using the Helper class, but should remain private
-  void swap(CartanClassSet&);
+  CartanClassSet(const CartanClassSet&);
+  CartanClassSet& operator= (const CartanClassSet&);
 
  public:
+// pseudo copy-constructor that provides a new parent for the copy
+  CartanClassSet(const complexredgp::ComplexReductiveGroup& parent,
+		 const CartanClassSet&);
+
 // accessors
 
   /*!
@@ -318,7 +323,7 @@ class CartanClassSet {
   }
 
   /*!
-  \brief Retruns the (inner) number of the quasisplit real form.
+  \brief Returns the (inner) number of the quasisplit real form.
   */
   realform::RealForm quasisplit() const {
     return realform::RealForm(0);
@@ -331,6 +336,12 @@ class CartanClassSet {
     return d_realFormLabels[cn];
   }
 
+/*!
+  \brief An element of the orbit corresponding to |rf| in the
+  classification of weak real forms for cartan |\#cn|.
+
+  Precondition: cartan \#cn is defined for rf.
+*/
   unsigned long representative(realform::RealForm, size_t) const;
 
   const rootdata::RootDatum& rootDatum() const {
@@ -362,12 +373,47 @@ class CartanClassSet {
   latticetypes::LatticeMatrix
     involutionMatrix(const TwistedInvolution& tw) const;
 
+
+/*!
+\brief apply involution action of |tw| on weight lattice to |v|
+*/
 void twistedAct(const weyl::TwistedInvolution& tw,latticetypes::LatticeElt& v)
   const;
 
 // manipulators
-  void extend(const weyl::WeylGroup&, const rootdata::RootDatum&,
-	      realform::RealForm);
+  void extend(realform::RealForm);
+
+
+ private:
+// auxiliary accessors
+void leftReflect(weyl::TwistedInvolution&, rootdata::RootNbr) const;
+
+rootdata::RootSet noncompactPosRootSet(realform::RealForm, size_t) const;
+
+std::vector<weyl::WeylEltList> expand() const;
+
+// auxiliary manipulators
+
+/*!
+  \brief Adds a new cartan, obtained from cartan \#j by Cayley transform
+  through root \#rn.
+*/
+void addCartan(rootdata::RootNbr rn, size_t j);
+
+
+size_t addCanonicalRep(TwistedInvolution tw,TwistedInvolutionList& dest);
+
+void correlateForms();
+
+void correlateDualForms(const rootdata::RootDatum& rd,
+			const weyl::WeylGroup& W);
+
+void updateStatus(size_t prev_Cartan_size);
+
+void updateSupports(size_t last_Cartan_class_added);
+
+void updateTwistedInvolutions
+  (std::vector<weyl::WeylEltList>& known, const TwistedInvolution& tw);
 
 };
 

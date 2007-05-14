@@ -64,17 +64,6 @@ namespace {
 namespace complexredgp {
 
 /*!
-  \brief dummy default constructor
-
-  We must still produce references to valid subobjects
-*/
-ComplexReductiveGroup::ComplexReductiveGroup()
-  : d_rootDatum(*new rootdata::RootDatum())
-  , d_titsGroup(*new tits::TitsGroup())
-  , d_cartan(*new cartan::CartanClassSet(*this))
-{}
-
-/*!
   \brief main constructor
 
   constructs a ComplexReductiveGroup from its root datum and a distinguished
@@ -416,7 +405,7 @@ const weyl::TwistedInvolution&
 */
 void ComplexReductiveGroup::fillCartan(realform::RealForm rf)
 {
-  d_cartan.extend(d_titsGroup.weylGroup(),rootDatum(),rf);
+  d_cartan.extend(rf);
 }
 
 
