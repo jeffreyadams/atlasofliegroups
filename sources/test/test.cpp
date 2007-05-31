@@ -64,8 +64,6 @@
 #include "testrun.h"
 #include "filekl.h"
 
-#include "celltest.h"
-
 /*****************************************************************************
 
   This module contains some commands for testing the program.
@@ -1455,61 +1453,6 @@ void test_f()
 */
 {
   // put your code here, and define testMode at top of file appropriately
-
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-
-  try {
-    G_R.fillCartan();
-
-    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
-    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
-
-    // get dual real form
-    realform::RealForm drf;
-
-    interactive::getInteractive
-      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
-
-    blocks::Block block(G_C,G_R.realForm(),drf);
-
-    latticetypes::LatticeMatrix M;
-    rootdata::cartanMatrix(M,G_C.rootDatum());
-    graph::OrientedGraph g=
-      celltest::trivial_links(block,dynkin::DynkinDiagram(M));
-
-
-//     for (size_t v=0; v<g.size(); ++v)
-//     {
-//       std::cout << v;
-//       graph::EdgeList& el=g.edgeList(v);
-//       for (size_t i=0; i<el.size(); ++i)
-// 	std::cout << (i==0 ? "->" : ",") << el[i];
-//       std::cout << std::endl;
-//     }
-
-    partition::Partition pi;
-    g.cells(pi,NULL);
-
-    ioutils::OutputFile out;
-
-    out << "Connected components ["<< pi.classCount() << "]:\n";
-
-    for (partition::PartitionIterator it(pi); it(); ++it)
-    {
-      out << '[' << it->second-it->first << "] ";
-      for (partition::PartitionIterator::SubIterator jt=it->first;
-	   jt!=it->second; ++jt)
-	out << (jt==it->first ? '{' : ',') << *jt;
-      out << "}\n";
-    }
-  }
-  catch (error::MemoryOverflow& e) {
-    e("error: memory overflow");
-  }
-  catch (error::InputError& e) {
-    e("aborted");
-  }
 
 }
 
