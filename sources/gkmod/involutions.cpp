@@ -339,7 +339,7 @@ void Helper::fillDualInvolutions(const weyl::WeylGroup& W)
   d_dualInvolution.resize(d_size);
 
   for (size_t j = 0; j < d_size; ++j) {
-    WeylElt w = involution(j).representative();
+    WeylElt w = involution(j).w();
     W.translate(w,d_toDualWeyl);
     W.twist(w);
     WeylElt v = W.longest();

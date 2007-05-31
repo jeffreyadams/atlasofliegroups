@@ -90,12 +90,13 @@ This is stored as a subspace of the Z/2Z vector space of all elements
 of order 2 (which is naturally (Z/2Z)^n, since the coweight lattice is
 Z^n), endowed with the unique basis in row-reduced form.
   */
-  latticetypes::ComponentSubspace d_subspace;
+  latticetypes::SmallSubspace d_subspace;
 
  public:
 // constructors and destructors
-  FiberData(const latticetypes::ComponentSubspace& sp):d_subspace(sp) {}
-  FiberData(const latticetypes::ComponentList& b, size_t r):d_subspace(b,r) {}
+  FiberData(const latticetypes::SmallSubspace& sp):d_subspace(sp) {}
+  FiberData(const latticetypes::SmallBitVectorList& b, size_t r)
+    : d_subspace(b,r) {}
 
 // accessors
   /*!
@@ -111,7 +112,7 @@ conjugacy class.
 \brief changes FiberData when the defining involution tau is replaced
   by r tau r^{-1}.
   */
-  void conjugate(const latticetypes::ComponentMap& r) {
+  void conjugate(const latticetypes::BinaryMap& r) {
     d_subspace.apply(r);
   }
 };
@@ -186,7 +187,7 @@ G in the base theta-stable Borel.
   /*!
 \brief Entry \#i is the mod 2 matrix of simple reflection \#i.
   */
-  std::vector<latticetypes::ComponentMap> d_reflectionMap;
+  std::vector<latticetypes::BinaryMap> d_reflectionMap;
 
   /*!
 \brief Entry \#i is the matrix of simple reflection \#i.
@@ -197,7 +198,7 @@ G in the base theta-stable Borel.
 \brief The mod 2 matrix of the distinguished involution for the inner
   class (transposed).
   */
-  latticetypes::ComponentMap d_twistMatrix;
+  latticetypes::BinaryMap d_twistMatrix;
 
 public:
 
@@ -231,7 +232,7 @@ public:
     return *d_realGroup;
   }
 
-  const latticetypes::ComponentMap& reflectionMap(size_t s) const {
+  const latticetypes::BinaryMap& reflectionMap(size_t s) const {
     return d_reflectionMap[s];
   }
 
@@ -305,23 +306,20 @@ private:
   const weyl::WeylGroup* d_W;
 public:
   explicit InvolutionCompare(const weyl::WeylGroup& W):d_W(&W) {}
-  // one should have i < j iff
-  // (a) involutionLength(v) < involutionLength(w) or
-  // (b) involutionLengths are equal and length(v) < length (w) or
-  // (c) both lengths are equal and v < w
+
+  // one should have a < b iff
+  // (a) involutionLength(a) < involutionLength(b) or
+  // (b) involutionLengths are equal and length(a) < length (b) or
+  // (c) both lengths are equal and a < b
   bool operator()
-   (const weyl::TwistedInvolution& v, const weyl::TwistedInvolution& w) const
+   (const weyl::TwistedInvolution& a, const weyl::TwistedInvolution& b) const
   {
-    if (d_W->involutionLength(v) < d_W->involutionLength(w))
-      return true;
-    else if (d_W->involutionLength(w) < d_W->involutionLength(v))
-      return false;
-    else if (d_W->length(v.representative()) < d_W->length(w.representative()))
-      return true;
-    else if (d_W->length(w.representative()) < d_W->length(v.representative()))
-      return false;
+    if      (d_W->involutionLength(a) != d_W->involutionLength(b))
+      return d_W->involutionLength(a) < d_W->involutionLength(b) ;
+    else if (d_W->length(a.w()) != d_W->length(b.w()))
+      return d_W->length(a.w()) < d_W->length(b.w());
     else
-      return v < w;
+      return a < b;
   }
 };
 
@@ -533,7 +531,7 @@ size_t KGB::weylLength(KGBElt z) const
 */
 
 {
-  return d_weylGroup->length(d_involution[z].representative());
+  return d_weylGroup->length(d_involution[z].w());
 }
 
 /******** manipulators *******************************************************/
@@ -643,7 +641,7 @@ Helper::Helper(realredgp::RealReductiveGroup& G)
   // corresponding representatives and projection. We need this to properly
   // normalize the Tits elements
   const RealTorus& T = G.cartan(0).dualFiber().torus();
-  const ComponentSubspace& sp = T.topology().subspace();
+  const SmallSubspace& sp = T.topology().subspace();
   d_fiberData.insert(std::make_pair(TwistedInvolution(), FiberData(sp)));
 
   // write down the initial grading
@@ -704,7 +702,7 @@ Helper::WI Helper::cayleyAdd(const weyl::TwistedInvolution& w, size_t s)
   identityMatrix(q,realGroup().rank());
 
   WeylWord ww;
-  weylGroup().out(ww,sw.representative());
+  weylGroup().out(ww,sw.w());
 
   for (size_t j = 0; j < ww.size(); ++j) {
     q *= d_reflectionMatrix[ww[j]];
@@ -719,8 +717,7 @@ Helper::WI Helper::cayleyAdd(const weyl::TwistedInvolution& w, size_t s)
   // make subspace
   WeightList minus;
   plusBasis(minus,q);
-  ComponentList minus2;
-  mod2(minus2,minus);
+  SmallBitVectorList minus2(minus); // reduce mod 2
 
   FiberData fd(minus2,realGroup().rank());
   fd.conjugate(d_twistMatrix);

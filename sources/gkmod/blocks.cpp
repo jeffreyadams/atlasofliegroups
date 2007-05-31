@@ -488,7 +488,7 @@ weyl::TwistedInvolution Helper::dualInvolution
   const WeylGroup& W = weylGroup();
 
   WeylElt v = W.longest();
-  WeylElt w = d_w.representative();
+  WeylElt w = d_w.w();
   W.translate(w,d_toDualWeyl);
 
   W.twist(w);
@@ -689,7 +689,7 @@ void Helper::fillInvolutionSupports()
 
   for (; z < size() and length(z) == minLength; ++z) {
     WeylWord ww;
-    W.out(ww,involution(z).representative());
+    W.out(ww,involution(z).w());
     for (size_t j = 0; j < ww.size(); ++j) {
       d_involutionSupport[z].set(ww[j]);
     }
