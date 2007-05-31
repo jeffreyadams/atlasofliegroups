@@ -1,8 +1,8 @@
 /*
   This is realweyl.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -16,32 +16,29 @@
 #include "weyl.h"
 #include "weylsize.h"
 
-/*****************************************************************************
-
-  ... explain here when it is stable ...
-
-******************************************************************************/
 
 namespace atlas {
 
 namespace {
-void orthogonalMAlpha(rootdata::RootList&, unsigned long, 
-		      const cartanclass::Fiber&, const rootdata::RootDatum&);
-void rGenerators(latticetypes::ComponentList&, const rootdata::RootList&,
-		 const cartanclass::Fiber&, const rootdata::RootDatum&);
+void orthogonalMAlpha(rootdata::RootList&,
+		      unsigned long,
+		      const cartanclass::Fiber&,
+		      const rootdata::RootDatum&);
+void rGenerators(latticetypes::SmallBitVectorList&,
+		 const rootdata::RootList&,
+		 const cartanclass::Fiber&,
+		 const rootdata::RootDatum&);
 }
 
 /*****************************************************************************
 
         Chapter I -- The RealWeyl class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace realweyl {
 
-RealWeyl::RealWeyl(const cartanclass::CartanClass& cc, 
+RealWeyl::RealWeyl(const cartanclass::CartanClass& cc,
 		   unsigned long x, unsigned long y,
 		   const rootdata::RootDatum& rd, const weyl::WeylGroup& W)
   :d_group(&W)
@@ -94,17 +91,15 @@ RealWeyl::RealWeyl(const cartanclass::CartanClass& cc,
 
 /*****************************************************************************        Chapter II -- The RealWeylGenerators class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace realweyl {
 
 RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
-				       const cartanclass::CartanClass& cc, 
+				       const cartanclass::CartanClass& cc,
 				       const rootdata::RootDatum& rd)
   :d_group(&rw.weylGroup())
-  
+
 
 /*
   Synopsis: extracts the various generator lists from the data contained in rw.
@@ -121,21 +116,17 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_imaginaryCompact.assign(nic,e);
 
   for (size_t j = 0; j < nic; ++j) {
-    WeylWord ww;
-    toWeylWord(ww,rw.imaginaryCompact(j),rd);
-    W.prod(d_imaginaryCompact[j],ww);
+    W.prod(d_imaginaryCompact[j],rd.reflectionWord(rw.imaginaryCompact(j)));
   }
 
   size_t nir = rw.numImaginaryR();
   d_imaginaryR.assign(nir,e);
 
   for (size_t j = 0; j < nir; ++j) {
-    const latticetypes::Component& c = rw.imaginaryR(j);
+    const latticetypes::SmallBitVector& c = rw.imaginaryR(j);
     for (size_t i = 0; i < c.size(); ++i)
       if (c.test(i)) {
-	WeylWord ww;
-	toWeylWord(ww,rw.imaginaryOrth(i),rd);
-	W.prod(d_imaginaryR[j],ww);
+	W.prod(d_imaginaryR[j],rd.reflectionWord(rw.imaginaryOrth(i)));
       }
   }
 
@@ -143,30 +134,24 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_imaginary.assign(ni,e);
 
   for (size_t j = 0; j < ni; ++j) {
-    WeylWord ww;
-    toWeylWord(ww,rw.imaginary(j),rd);
-    W.prod(d_imaginary[j],ww);
+    W.prod(d_imaginary[j],rd.reflectionWord(rw.imaginary(j)));
   }
 
   size_t nrc = rw.numRealCompact();
   d_realCompact.assign(nrc,e);
 
   for (size_t j = 0; j < nrc; ++j) {
-    WeylWord ww;
-    toWeylWord(ww,rw.realCompact(j),rd);
-    W.prod(d_realCompact[j],ww);
+    W.prod(d_realCompact[j],rd.reflectionWord(rw.realCompact(j)));
   }
 
   size_t nrr = rw.numRealR();
   d_realR.assign(nrr,e);
 
   for (size_t j = 0; j < nrr; ++j) {
-    const latticetypes::Component& c = rw.realR(j);
+    const latticetypes::SmallBitVector& c = rw.realR(j);
     for (size_t i = 0; i < c.size(); ++i)
       if (c.test(i)) {
-	WeylWord ww;
-	toWeylWord(ww,rw.realOrth(i),rd);
-	W.prod(d_realR[j],ww);
+	W.prod(d_realR[j],rd.reflectionWord(rw.realOrth(i)));
       }
   }
 
@@ -174,22 +159,17 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_real.assign(nr,e);
 
   for (size_t j = 0; j < nr; ++j) {
-    WeylWord ww;
-    toWeylWord(ww,rw.real(j),rd);
-    W.prod(d_real[j],ww);
+    W.prod(d_real[j],rd.reflectionWord(rw.real(j)));
   }
 
   size_t nc = rw.numComplex();
   d_complex.assign(nc,e);
 
   for (size_t j = 0; j < nc; ++j) {
-    WeylWord ww;
     rootdata::RootNbr rn = rw.complex(j);
-    toWeylWord(ww,rn,rd);
-    W.prod(d_complex[j],ww);
-    rn = cc.rootInvolution(rn);
-    toWeylWord(ww,rn,rd);
-    W.prod(d_complex[j],ww);
+    W.prod(d_complex[j],rd.reflectionWord(rn));
+    rn = cc.involution_image_of_root(rn);
+    W.prod(d_complex[j],rd.reflectionWord(rn));
   }
 
   return;
@@ -297,8 +277,8 @@ void realWeylSize(size::Size& c, const RealWeyl& rw)
 
 namespace {
 
-void orthogonalMAlpha(rootdata::RootList& rl, unsigned long x, 
-		      const cartanclass::Fiber& f, 
+void orthogonalMAlpha(rootdata::RootList& rl, unsigned long x,
+		      const cartanclass::Fiber& f,
 		      const rootdata::RootDatum& rd)
 
 /*
@@ -335,8 +315,10 @@ void orthogonalMAlpha(rootdata::RootList& rl, unsigned long x,
   return;
 }
 
-void rGenerators(latticetypes::ComponentList& cl, const rootdata::RootList& rl,
-		 const cartanclass::Fiber& f, const rootdata::RootDatum& rd)
+void rGenerators(latticetypes::SmallBitVectorList& cl,
+		 const rootdata::RootList& rl,
+		 const cartanclass::Fiber& f,
+		 const rootdata::RootDatum& rd)
 
 /*
   Synopsis: puts in cl a basis of the R-group for this torus and this
@@ -347,9 +329,9 @@ void rGenerators(latticetypes::ComponentList& cl, const rootdata::RootList& rl,
   and pairwise strongly orthogonal);
 
   Explanation: let n be the number of elements in rl. We want to look at
-  the map (Z_2)^n -> elts. of order two in f's fiber group, that takes each 
-  element in rl to the corresponding m_alpha; the R-group is generated by the 
-  products of simple reflections in rl corresponding to the combinations that 
+  the map (Z_2)^n -> elts. of order two in f's fiber group, that takes each
+  element in rl to the corresponding m_alpha; the R-group is generated by the
+  products of simple reflections in rl corresponding to the combinations that
   lie in the _kernel_ of this map.
 */
 
@@ -362,7 +344,7 @@ void rGenerators(latticetypes::ComponentList& cl, const rootdata::RootList& rl,
   BitMatrix<RANK_MAX> m(f.fiberRank(),rln);
 
   for (size_t j = 0; j < rln; ++j) {
-    Component v(f.fiberRank());
+    SmallBitVector v(f.fiberRank());
     f.mAlpha(v,rd.coroot(rl[j]));
     for (size_t i = 0; i < f.fiberRank(); ++i)
       if (v[i])

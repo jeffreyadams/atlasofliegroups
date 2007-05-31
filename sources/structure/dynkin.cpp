@@ -19,7 +19,7 @@
 
 /*****************************************************************************
 
-  ... explain here when it is stable ...
+  Class and functions related to analysis of Dynkin diagrams
 
 ******************************************************************************/
 
@@ -48,7 +48,7 @@ namespace {
 
         Chapter I -- The DynkinDiagram class
 
-  ... explain here when it is stable ...
+  Represents the structure given by a Cartan matrix in graph form
 
 ******************************************************************************/
 
@@ -56,15 +56,14 @@ namespace dynkin {
 
 /******** constructors and destructors ***************************************/
 
-DynkinDiagram::DynkinDiagram(const latticetypes::LatticeMatrix& c)
-  :d_star(c.numColumns())
-
 /*!
   Constructs a Dynkin diagram from a Cartan matrix. The edge points from i to
   j when the Cartan matrix entry c(i,j) is < -1 (i.e. towards the shorter
   root.)
 */
-
+DynkinDiagram::DynkinDiagram(const latticetypes::LatticeMatrix& c)
+  : d_star(c.numColumns())
+  , d_label()
 {
   using namespace constants;
 
@@ -72,35 +71,30 @@ DynkinDiagram::DynkinDiagram(const latticetypes::LatticeMatrix& c)
     for (size_t i = 0; i < c.numRows(); ++i)
       if (c(i,j) and (i != j)) {
 	d_star[j].set(i);
-	if (c(i,j) < -1) {
-	  Edge e(i,j);
-	  d_label.insert(std::make_pair(e,-c(i,j)));
-	}
+	if (c(i,j) < -1) // only label multiple edges
+	  d_label.insert(std::make_pair(Edge(i,j),-c(i,j)));
       }
-
-  return;
 }
 
+/*!
+  Constructs the restriction of |d| to the subset of the vertices flagged
+  by |c|.
+*/
 DynkinDiagram::DynkinDiagram(const bitset::RankFlags& c,
 			     const DynkinDiagram& d)
-
-/*!
-  Constructs the restriction of d to the subset of the vertices flagged
-  by c.
-*/
-
+  : d_star()  // start with empty vector
+  , d_label() // start without any labels
 {
-  using namespace bitset;
+  d_star.reserve(c.count()); // vertices selected by |c|, renumbered from 0
 
-  // get the stars by intersection with c
-
-  for (RankFlags::iterator i = c.begin(); i(); ++i) {
-    RankFlags st = d.star(*i);
-    st.slice(c);
-    d_star.push_back(st);
+  // get the stars of retained vertices by intersection of old star with |c|
+  for (bitset::RankFlags::iterator i = c.begin(); i(); ++i) {
+    bitset::RankFlags st = d.star(*i);
+    st.slice(c); // extract bits set in |c| and repack to size |c.count()|
+    d_star.push_back(st); // pack new stars into vector
   }
 
-  // for the labels we just traverse the labels of d, and see which apply
+  // for the labels we just traverse the labels of |d|, and see which apply
 
   typedef std::map<Edge,Multiplicity>::const_iterator LI;
 
@@ -108,8 +102,9 @@ DynkinDiagram::DynkinDiagram(const bitset::RankFlags& c,
 
   for (LI i = d.d_label.begin(); i != label_end; ++i) {
     Edge e = i->first;
-    if ((c.test(e.first)) and (c.test(e.second))) {
-      // reset the label indices to their positions in c
+    if (c.test(e.first) and c.test(e.second)) // both end points retained?
+    {
+      // renumber the label indices according to bit positions in |c|
       e.first = c.position(e.first);
       e.second = c.position(e.second);
       d_label.insert(std::make_pair(e,i->second));
@@ -129,7 +124,6 @@ int DynkinDiagram::cartanEntry(size_t i,size_t j) const
   else return i==j ? 2 : 0;
 }
 
-bitset::RankFlags DynkinDiagram::component(size_t j) const
 
 /*!
   Returns the component of vertex \#j in the diagram.
@@ -138,7 +132,7 @@ bitset::RankFlags DynkinDiagram::component(size_t j) const
   by taking each new shell to be the elements of the union of the stars of
   the old shell, that were not already considered.
 */
-
+bitset::RankFlags DynkinDiagram::component(size_t j) const
 {
   using namespace bitset;
 
@@ -252,9 +246,9 @@ namespace dynkin {
 void bourbaki(setutils::Permutation& a, const DynkinDiagram& d)
 
 /*!
-  Synopsis: writes in a some permutation that will take d to Bourbaki form
+  Synopsis: writes in |a| some permutation that will take d to Bourbaki form
 
-  This means that nodes of the diagram d taken in the order a[0],...,a[r-1]
+  This means that nodes of the diagram |d| taken in the order |a[0],...,a[r-1]|
   traverse each of its connected components consecutively, and in the order
   prescribed by the the Bourbaki conventions for the type of that component
 */

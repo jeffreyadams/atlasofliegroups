@@ -485,12 +485,29 @@ LatticeMatrix RootDatum::rootReflection(RootNbr r) const
 // this is a non-destructive version of |toWeylWord| below for reflections
 weyl::WeylWord RootDatum::reflectionWord(RootNbr r) const
 {
-  weyl::WeylWord ww;
-  Weight v = twoRho();
-  reflection(v,r);
-  toPositive(ww,v,*this);
-  return ww;
+  Weight v = twoRho(); reflection(v,r);
+
+  weyl::WeylWord ww; toPositive(ww,v,*this); return ww;
 }
+
+/*!
+\brief Returns the expression of $q^{-1}$ as a product of simple
+  reflections.
+
+  Precondition: $q$ gives the action on the weight lattice of some Weyl group
+  element
+
+  Algorithm: apply $q$ to |twoRho|, then use |toPositive| to find a Weyl
+  word making it dominant again, which by assumption expresses $q^{-1}$.
+*/
+weyl::WeylWord RootDatum::word_of_inverse_matrix
+  (const latticetypes::LatticeMatrix& q) const
+{
+  Weight v(rank()); q.apply(v,twoRho());
+
+  weyl::WeylWord ww; toPositive(ww,v,*this); return ww;
+}
+
 
 
 /******** manipulators *******************************************************/
@@ -573,8 +590,6 @@ void RootDatum::fillStatus()
 
   This section defines the following functions, which were declared in
   rootdata.h :
-
-  ... list here when it is stable ...
 
 ******************************************************************************/
 
@@ -761,7 +776,8 @@ void rootBasis(RootList& rb, const RootList& rl, const RootDatum& rd)
 
   Precondition: rl holds the roots in a sub-root system of rd;
 
-  Forwarded to the RootSet version.
+  Forwarded to the RootSet version. Therefore the order of the roots in |rl|
+  is ignored! The roots of |rb| are by order of occurrence in |rd.roots()|
 */
 
 {
@@ -770,7 +786,7 @@ void rootBasis(RootList& rb, const RootList& rl, const RootDatum& rd)
   rootBasis(rb,rs,rd);
 }
 
-void rootBasis(RootList& rb, const RootSet& rs, const RootDatum& rd)
+void rootBasis(RootList& rb, RootSet rs, const RootDatum& rd)
 
 /*!
 \brief puts in rb the canonical basis (set of simple roots) of rs.
@@ -782,48 +798,22 @@ void rootBasis(RootList& rb, const RootSet& rs, const RootDatum& rd)
 */
 
 {
-  using namespace latticetypes;
-
-  RootSet rsl = rs;
-  rsl &= rd.posRootSet();
+  rs &= rd.posRootSet();
 
   // compute sum of positive roots
 
-  Weight twoRho(rd.rank(),0);
-  RootSet::iterator rsl_end = rsl.end();
+  latticetypes::Weight twoRho(rd.rank(),0);
 
-  for (RootSet::iterator i = rsl.begin(); i != rsl_end; ++i)
+  for (RootSet::iterator i = rs.begin(); i(); ++i)
     twoRho += rd.root(*i);
 
   rb.clear();
 
-  for (RootSet::iterator i = rsl.begin(); i != rsl_end; ++i)
+  for (RootSet::iterator i = rs.begin(); i(); ++i)
     if (rd.scalarProduct(twoRho,*i) == 2)
       rb.push_back(*i);
-
-  return;
 }
 
-void rootPermutation(RootList& rl, const LT::LatticeMatrix& p,
-		     const RootDatum& rd)
-
-/*!
-\brief Puts in rl the permutation of the roots induced by p.
-
-  Precondition: p permutes the roots;
-*/
-
-{
-  rl.resize(rd.numRoots());
-
-  for (size_t j = 0; j < rd.numRoots(); ++j) {
-    Root r(rd.rank());
-    p.apply(r,rd.root(j));
-    rl[j] = rd.rootNbr(r);
-  }
-
-  return;
-}
 
 void strongOrthogonalize(RootList& rl, const RootDatum& rd)
 
@@ -998,25 +988,6 @@ void toWeylWord(weyl::WeylWord& ww, RootNbr rn, const RootDatum& rd)
 {
   Weight v = rd.twoRho();
   rd.reflection(v,rn);
-  toPositive(ww,v,rd);
-}
-
-void toWeylWord(weyl::WeylWord& ww, const latticetypes::LatticeMatrix& q,
-		const RootDatum& rd)
-
-/*!
-\brief Writes in ww the expression of q as a product of simple
-  reflections.
-
-  Precondition: q is expressible as such a product.
-
-  Algorithm: apply q to twoRho, then use toPositive to find a Weyl
-  word making q(twoRho) dominant.
-*/
-
-{
-  Weight v(rd.rank());
-  q.apply(v,rd.twoRho());
   toPositive(ww,v,rd);
 }
 

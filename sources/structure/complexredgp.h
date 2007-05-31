@@ -17,7 +17,7 @@ ComplexReductiveGroup.
 
 #include "complexredgp_fwd.h"
 
-#include "cartan_fwd.h"
+#include "cartanset_fwd.h"
 #include "cartanclass_fwd.h"
 #include "latticetypes_fwd.h"
 #include "poset_fwd.h"
@@ -114,7 +114,7 @@ class ComplexReductiveGroup {
   of the inner class of real forms determined by the based root datum with
   involution.
   */
-  cartan::CartanClassSet& d_cartan;
+  cartanset::CartanClassSet& d_cartan;
 
 // copy, assignement and swap are forbidden, and should not be implemented
   ComplexReductiveGroup(const ComplexReductiveGroup&);
@@ -123,8 +123,6 @@ class ComplexReductiveGroup {
 
  public:
 // constructors and destructors
-  ComplexReductiveGroup();
-
   ComplexReductiveGroup(const rootdata::RootDatum*,
 			const latticetypes::LatticeMatrix&);
 
@@ -191,7 +189,7 @@ class ComplexReductiveGroup {
     return d_titsGroup;
   }
 
-  const cartan::CartanClassSet& cartanClasses() const {
+  const cartanset::CartanClassSet& cartanClasses() const {
     return d_cartan;
   }
 

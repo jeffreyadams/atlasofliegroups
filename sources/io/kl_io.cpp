@@ -136,9 +136,8 @@ std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
     strm << std::endl;
   }
 
-  strm << count  << " primitive pairs with nonzero polynomial." << std::endl;
-   //  strm << zeroCount << " zero polynomials; "
-   //   << count << " nonzero polynomials" << std::endl;
+  strm << count  << " primitive " << (count==1 ? "pair" : "pairs")
+       << std::endl;
 
   return strm;
 }

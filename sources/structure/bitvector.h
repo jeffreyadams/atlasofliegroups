@@ -15,8 +15,11 @@
 #define BITVECTOR_H
 
 #include "bitvector_fwd.h"
+#include "latticetypes_fwd.h"
+#include "lattice.h"
 
 #include <vector>
+#include <cassert>
 
 #include "bitset.h"
 
@@ -36,10 +39,6 @@ template<size_t dim>
 		   const bitset::BitSet<dim>&);
 
 template<size_t dim>
-  void complement(bitset::BitSet<dim>&, const std::vector<BitVector<dim> >&,
-		  size_t);
-
-template<size_t dim>
   bool firstSolution(bitset::BitSet<dim>&, const std::vector<BitVector<dim> >&,
 		     const BitVector<dim>&);
 
@@ -50,14 +49,18 @@ template<size_t dim> void identityMatrix(BitMatrix<dim>&, size_t);
 
 template<size_t dim> void initBasis(std::vector<BitVector<dim> >&, size_t);
 
-template<size_t dim> bool isIndependent(const std::vector<BitVector<dim> >&);
-
 template<size_t dim>
   void normalize(bitset::BitSet<dim>&, std::vector<BitVector<dim> >&);
 
 template<size_t dim>
   void normalSpanAdd(std::vector<BitVector<dim> >&, std::vector<size_t>&,
 		     const BitVector<dim>&);
+/* unused functions
+template<size_t dim>
+  void complement(bitset::BitSet<dim>&, const std::vector<BitVector<dim> >&,
+		  size_t);
+
+template<size_t dim> bool isIndependent(const std::vector<BitVector<dim> >&);
 
 template<size_t dim>
   void projection(BitMatrix<dim>& p, const std::vector<BitVector<dim> >& b,
@@ -70,6 +73,7 @@ template<size_t dim>
 template<size_t dim>
   void relations(std::vector<BitVector<dim> >&,
 		 const std::vector<BitVector<dim> >&);
+*/
 
 template<size_t dim>
   bool scalarProduct(const BitVector<dim>&, const BitVector<dim>&);
@@ -87,34 +91,41 @@ namespace bitvector {
   \brief A vector d_data in (Z/2Z)^d_size, with d_size a non-negative
   integer less than or equal to dim.
 
-  The class BitVector<dim> represents a vector in the first d_size
-  coordinates of the vector space (Z/2Z)^dim over the two-element
-  field.  The software envisions dim between 0 and four times the
-  machine word length (precisely, four times the constant longBits,
-  which is the number of bits in an unsigned long integer).  What is
-  now fully implemented allows dim to be one or two times the word
-  length (see the discussion in the description of the class
-  BitSet<n>).  What is now instantiated seems to be BitVectors of dim
-  equal to RANK_MAX or 2*RANK_MAX, (that is 16 or 32).
+  \brief The template class |BitVector<dim>| represents a number |size| with
+  |0<=size<=dim|, and a vector in the (Z/2Z)-vector space (Z/2Z)^size.
 
-  Let m be the smallest integer so that dim is at most m*longBits.  The
-  vector is stored as the BitSet d_data, which is a (fixed size) array
-  of m words of memory.  (On a 32 bit machine with RANK_MAX=16, this
-  means that d_data is a single word of memory.)  We look only at the
-  first d_size bits of d_data; but d_size can be changed by
-  manipulators (like the member functions resize and pushBack).
+  The software envisions dim between 0 and four times the machine word length
+  (precisely, four times the constant |longBits|, which is the number of bits
+  in an unsigned long integer). What is now fully implemented allows |dim| to
+  be one or two times the word length (see the discussion in the description
+  of the class BitSet<n>). It seems that only BitVector<RANK_MAX> and
+  BitVector<2*RANK_MAX> are now instantiated, (that is <16> or <32>), so |dim|
+  is not very relevant; one could imagine |dim==longBits| throughout.
+
+  Let the integer |m| be $\lceil dim/longBits \rceil$ (quotient rounded
+  upwards) . The vector is stored as the BitSet<dim> |d_data|, which is a
+  (fixed size) array of |m| words of memory. (On a 32 bit machine with
+  RANK_MAX=16 one always has |m==1|, so that |d_data| is a single word of
+  memory.) We look only at the first |d_size| bits of |d_data|; but |d_size|
+  can be changed by manipulators (like the member functions resize and
+  pushBack). [Maybe |d_size| never exceeds |RANK_MAX+1|, even for variables
+  declared as |BitVector<2*RANK_MAX>| MvL]
+
+  Given the number of methods that are passed on to the |BitSet<dim>| field
+  |d_data|, one might wonder if it would not have been better to publicly
+  derive from |BitSet<dim>|, MvL.
 
   A BitVector should be thought of as a column vector.  A Bitmatrix will
   in general act on it on the left.  [I thought that Fokko always
   prefers matrices acting on the right on row vectors; but if I am
   reading this correctly, that preference didn't make it into this
-  software.]
+  software. DV]
   */
 
 template<size_t dim> class BitVector{
 
-  friend BitVector<dim>& BitMatrix<dim>::apply(BitVector<dim>&,
-					       const BitVector<dim>&) const;
+  friend
+    void BitMatrix<dim>::apply(BitVector<dim>&,const BitVector<dim>&) const;
 
  private:
 
@@ -125,21 +136,24 @@ template<size_t dim> class BitVector{
 
   // constructors and destructors
   BitVector()
+    : d_data(), d_size(0)
     {}
 
-  explicit BitVector(size_t n)
-    :d_size(n)
+  explicit BitVector(size_t n) // initialised to 0 in $Z/2Z$
+    : d_data(), d_size(n)
     {}
 
-  BitVector(size_t n, size_t j)
-    :d_size(n) {
-    set(j);
-  }
+  BitVector(size_t n, size_t j) // canonical basis vector $e_j$ in $(Z/2Z)^n$
+    : d_data(), d_size(n)
+    {
+      set(j);
+    }
 
-  BitVector(bitset::BitSet<dim> data, size_t n)
-    :d_data(data),
-     d_size(n)
+  BitVector(bitset::BitSet<dim> data, size_t n) // view |data| as |BitVector|
+    : d_data(data), d_size(n)
     {}
+
+  BitVector(const latticetypes::LatticeElt& weight); // reduce weight mod 2
 
   ~BitVector()
     {}
@@ -159,10 +173,12 @@ template<size_t dim> class BitVector{
 // accessors
 
   bool operator< (const BitVector& v) const {
+    assert(d_size==v.d_size);
     return d_data < v.d_data;
   }
 
   bool operator[] (size_t i) const {
+    assert(i<d_size);
     return d_data[i];
   }
 
@@ -191,22 +207,26 @@ template<size_t dim> class BitVector{
   }
 
   bool test(size_t i) const {
+    assert(i<d_size);
     return d_data.test(i);
   }
 
 // manipulators
 
   BitVector& operator+= (const BitVector& v) {
+    assert(d_size==v.d_size);
     d_data ^= v.d_data;
     return *this;
   }
 
   BitVector& operator-= (const BitVector& v) { // same thing as +=
+    assert(d_size==v.d_size);
     d_data ^= v.d_data;
     return *this;
   }
 
   BitVector& operator&= (const BitVector& v) {
+    assert(d_size==v.d_size);
     d_data &= v.d_data;
     return *this;
   }
@@ -222,11 +242,27 @@ template<size_t dim> class BitVector{
   }
 
   BitVector& flip(size_t i) {
+    assert(i<d_size);
     d_data.flip(i);
     return *this;
   }
 
   BitVector& pushBack(bool);
+
+  BitVector& set(size_t i) {
+    assert(i<d_size);
+    d_data.set(i);
+    return *this;
+  }
+
+  void set(size_t i, bool b) {
+    assert(i<d_size);
+    d_data.set(i,b);
+  }
+
+  void set_mod2(size_t i, unsigned long v) {
+    set(i,(v&1)!=0);
+  }
 
   BitVector& reset() {
     d_data.reset();
@@ -234,43 +270,55 @@ template<size_t dim> class BitVector{
   }
 
   BitVector& reset(size_t i) {
+    assert(i<d_size);
     d_data.reset(i);
     return *this;
   }
 
   void resize(size_t n) {
+    assert(n<=dim);
     d_size = n;
   }
 
-  BitVector& set() {
-    set(d_data,d_size);
-    return *this;
-  }
-
-  BitVector& set(size_t i) {
-    d_data.set(i);
-    return *this;
-  }
-
-  BitVector& set(size_t i, bool b) {
-    d_data.set(i,b);
-    return *this;
-  }
-
   void slice(const bitset::BitSet<dim>&);
-};
+}; // class BitVector
 
-template<size_t dim> class FirstBit {
-
+/* the following template inherits everything from |std::vector| but after
+   some constructors that mimick those of |BitVector|, we also provide a
+   constructor that converts from |WeightList|, reducing coefficients mod 2
+ */
+template<size_t dim> class BitVectorList
+ : public std::vector<BitVector<dim> >
+{
  public:
+  // default constructor
+  BitVectorList() : std::vector<BitVector<dim> >() {}
 
-  typedef const BitVector<dim>& argument_type;
-  typedef size_t result_type;
+  // dimension-only constructor
+  BitVectorList(size_t n) : std::vector<BitVector<dim> >(n) {}
 
-  result_type operator() (argument_type v) const {
-    return v.firstBit();
-  }
+  // fixed element constructor
+  BitVectorList(size_t n,BitVector<dim> model)
+    : std::vector<BitVector<dim> >(n,model)
+    {}
+
+  // also allow explicit consversion (implicit would be too dangerous)
+  explicit BitVectorList(const std::vector<BitVector<dim> >& v)
+    : std::vector<BitVector<dim> >(v) // copy
+    {}
+
+  /* reduction mod 2 is done via range-constructor of vector, which on its
+     turn calls |BitVector<dim> (const LatticeElt&)| on the elements */
+  BitVectorList(const latticetypes::WeightList& l)
+    : std::vector<BitVector<dim> >(l.begin(),l.end())
+    {}
+
+  template<typename I> // input iterator
+    BitVectorList(I begin, I end)
+    : std::vector<BitVector<dim> >(begin,end)
+    {}
 };
+
 
 // note that the elements in d_data are the _column_ vectors of the
 // matrix
@@ -323,30 +371,47 @@ template<size_t dim> class BitMatrix {
 
 // constructors and destructors
   BitMatrix()
+    : d_data(), d_rows(0), d_columns(0)
     {}
 
-  explicit BitMatrix(size_t n)
-    :d_data(n),
-     d_rows(n),
-     d_columns(n)
-    {}
+  explicit BitMatrix(size_t n) // square matrix
+    : d_data(n) // make |n| default constructed |BitSet|s as columns
+    , d_rows(n)
+    , d_columns(n)
+    {
+      assert(n<=dim);
+    }
 
   BitMatrix(size_t m, size_t n)
-    :d_data(n),
-     d_rows(m),
-     d_columns(n)
-    {}
+    : d_data(n) // make |n| default constructed |BitSet|s as columns
+    , d_rows(m)
+    , d_columns(n)
+    {
+      assert(m<=dim); // having |n>dim| is not immediately fatal
+    }
 
-  explicit BitMatrix(const std::vector<BitVector<dim> >&);
+  explicit BitMatrix(const std::vector<BitVector<dim> >&); // set by columns
+
+  explicit BitMatrix(const latticetypes::LatticeMatrix& m) // set modulo 2
+    : d_data(m.numColumns(),bitset::BitSet<dim>())
+    , d_rows(m.numRows())
+    , d_columns(m.numColumns())
+    {
+      assert(m.numRows()<dim);
+      for (size_t i=0; i<d_rows; ++i)
+	for (size_t j=0; j<d_columns; ++j)
+	  d_data[j].set(i, (m(i,j)&1)!=0 );
+    }
+
 
   ~BitMatrix()
     {}
 
 // copy and assignment
   BitMatrix(const BitMatrix& m)
-    :d_data(m.d_data),
-     d_rows(m.d_rows),
-     d_columns(m.d_columns)
+    : d_data(m.d_data)
+    , d_rows(m.d_rows)
+    , d_columns(m.d_columns)
     {}
 
   BitMatrix& operator=(const BitMatrix& m) {
@@ -360,7 +425,7 @@ template<size_t dim> class BitMatrix {
 
 // accessors
 
-  BitVector<dim>& apply(BitVector<dim>&, const BitVector<dim>&) const;
+  void apply(BitVector<dim>&, const BitVector<dim>&) const;
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 
@@ -368,6 +433,7 @@ template<size_t dim> class BitMatrix {
   Returns column j of the BitMatrix, as a BitSet.
   */
   const bitset::BitSet<dim>& column(size_t j) const {
+    assert(j<d_columns);
     return d_data[j];
   }
 
@@ -404,6 +470,8 @@ template<size_t dim> class BitMatrix {
   Tests the (i,j) entry of the BitMatrix.
   */
   bool test(size_t i, size_t j) const {
+    assert(i<d_rows);
+    assert(j<d_columns);
     return d_data[j].test(i);
   }
 
@@ -414,8 +482,7 @@ template<size_t dim> class BitMatrix {
   BitMatrix& operator*= (const BitMatrix&);
 
   /*!
- Adds the BitSet f as a new column (the first one, pushing the others
- back) to the BitMatrix.
+ Adds the BitSet f as a new column at the end to the BitMatrix.
   */
   void addColumn(const bitset::BitSet<dim>& f) {
     d_data.push_back(f);
@@ -423,35 +490,47 @@ template<size_t dim> class BitMatrix {
   }
 
   void addColumn(const BitVector<dim>& c) {
-    addColumn(c.data());
+    assert(c.size()==d_rows);
+    addColumn(c.data()); // call previous method, which does |d_columns++|
   }
 
   /*!
  Adds the BitVector v to column j of the BitMatrix.
   */
   void addToColumn(size_t j, const BitVector<dim>& v) {
+    assert(v.size()==d_rows);
     d_data[j] ^= v.data();
   }
 
-  template<typename I> void addColumns(const I&, const I&);
+  BitMatrix& invert();  // currently unused, but defined anyway
 
-  template<typename I> void addRows(const I&, const I&);
-
-  void cutRows(size_t);
-
-  BitMatrix& flip(size_t i, size_t j) {
-    d_data[j].flip(i);
+  /*!
+  Puts a 1 in row i and column j of the BitMatrix.
+  */
+  BitMatrix& set(size_t i, size_t j) {
+    assert(i<d_rows);
+    assert(j<d_columns);
+    d_data[j].set(i);
     return *this;
   }
 
-  BitMatrix& invert();
-
-  void reset();
-
   BitMatrix& reset(size_t i, size_t j) {
+    assert(i<d_rows);
+    assert(j<d_columns);
     d_data[j].reset(i);
     return *this;
   }
+
+  void set(size_t i, size_t j, bool b) {
+    if (b) set(i,j); else reset(i,j);
+  }
+
+  void set_mod2(size_t i, size_t j, unsigned long v) {
+    set(i,j, (v&1)!=0 );
+  }
+
+  void reset();
+
 
   /*!
   Resizes the BitMatrix to an n by n square.
@@ -466,17 +545,11 @@ template<size_t dim> class BitMatrix {
   void resize(size_t m, size_t n);
 
   /*!
-  Puts a 1 in row i and column j of the BitMatrix.
-  */
-  BitMatrix& set(size_t i, size_t j) {
-    d_data[j].set(i);
-    return *this;
-  }
-
-  /*!
   Puts the BitSet data in column j of the BitMatrix.
   */
   void setColumn(size_t j, const bitset::BitSet<dim>& data) {
+    assert(j<d_columns);
+    assert(data.size()==d_rows);
     d_data[j] = data;
   }
 

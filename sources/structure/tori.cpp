@@ -7,7 +7,7 @@ Implementation of the class RealTorus
 /*
   This is tori.cpp
 
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -15,15 +15,10 @@ Implementation of the class RealTorus
 #include "tori.h"
 
 #include <algorithm>
+#include <cassert>
 
 #include "lattice.h"
 #include "smithnormal.h"
-
-/*****************************************************************************
-
-  ... explain here when it is stable ...
-
-******************************************************************************/
 
 namespace atlas {
 
@@ -37,7 +32,7 @@ namespace {
 
 using namespace tori;
 
-void makeTopology(ComponentSubquotient&, const RealTorus&);
+void makeTopology(SmallSubquotient&, const RealTorus&);
 
 void fullPlusBasis(WeightList&, LatticeMatrix&, const LatticeMatrix&);
 
@@ -49,35 +44,40 @@ void fullMinusBasis(WeightList&, LatticeMatrix&, const LatticeMatrix&);
 
         Chapter I -- The RealTorus class
 
-  ... the pi0 part is outdated ...
-
   The real torus class represents the datum of a torus defined over R. This
   is equivalent to the datum of a lattice with an involution; to be consistent
-  with the rest of the program, we use the involution theta which is the
+  with the rest of the program, we use the involution tau which is the
   negative of the Galois involution on the character lattice.
 
-  We always assume that the character lattice X is the standard lattice Z^n,
-  where n >= 0 is the rank. Then we have two sublattices X_+ and X_-, the
-  +1 and -1 eigenspaces for the involution. Both are supplementable in X, but
-  in general X is not equal to the direct sum X_+ + X_-.
+  The fundamental data are the rank d_rank (allowing us to identify the
+  character lattice X with d_rank-tuples of integers) and the integer matrix
+  d_involution of tau. Then we have two sublattices X_+ and X_-, the +1 and -1
+  eigenspaces for the involution. Both are supplementable in X, but in general
+  X is not equal to the direct sum X_+ + X_-.
 
   The most delicate invariant we shall have to deal with is the component
   group of the group of real points of T. This is an elementary abelian
-  2-group; we shall rather consider its dual dpi0(T). To describe its rank
-  is fairly easy : indeed, T may be decomposed as a product of compact, split
-  and complex factors; denote r_u, r_s and r_c the number of factors of each
-  type, so that the rank n of T is r_u + r_s + 2 r_c. Then we have : rk(X_+)
-  = r_u + r_c; rk(X_-) = r_s + r_c. Denote V = X/2X, a vector space over the
-  two-element field F_2, and denote V_+,V_- the images of X_+, X_- in V.
-  Then it is not hard to show that r_c = dim(V_+\cap V_-); one may prove
-  that this is also the image of theta - 1 in V.
+  2-group; we shall rather consider its dual dpi0(T). To describe its rank is
+  fairly easy . Indeed, T may be decomposed as a product of compact, split and
+  complex factors; denote r_u, r_s and r_c the number of factors of each type,
+  so that the rank n of T is r_u + r_s + 2 r_c, then the rank of the component
+  group is r_s. In the cases T=r_u and T=r_s the one-dimensional weight
+  lattice X is equal to X_+ respectively to X_-, while for T=r_c the lattice
+  X=Z^2 has X_+ as the diagonal and X_- as the anti-diagonal sublattice. It
+  follows that in general rk(X_+) = r_u + r_c and rk(X_-) = r_s + r_c. Denote
+  V = X/2X, a vector space over the two-element field F_2, and denote V_+,V_-
+  the images of X_+, X_- in V. Then factors r_u and r_s contribute
+  one-dimensional subspaces to V_+ and V_-, respectively, while a factor r_c
+  contributes the _same_ one-dimensional subspace both to V_+ and to V_-.
+  Therefore r_c = dim(V_ +cap V_-), and r_s = rk(X_-) - r_c. One may prove
+  that V_+- := V_+ cap V_- is also the image of the endomorphism of V induced
+  by tau - 1.
 
-  It is a little bit harder to describe dpi0(T) functorially as a vector space.
-  Denote V_+- the intersection V_+ \cap V_-. Then one may show that the group
-  T(2)(R) of real points of the group of elements of order 2 in T is in natural
-  duality with V/V_+-. There is a natural surjection from T(2)(R) to pi0(T),
-  so dpi0(T) is a sub-vector space of V/V_+-, which may in fact be described
-  as the image of V_-. This is how we will consider it.
+  It is a little bit harder to describe dpi0(T) functorially as a vector
+  space. The group T(2)(R) of real points of the group of elements of order 2
+  in T is in natural duality with V/V_+-. There is a natural surjection from
+  T(2)(R) to pi0(T), so dpi0(T) is a sub-vector space of V/V_+-, which may in
+  fact be described as the image of V_-. This is how we will consider it.
 
 ******************************************************************************/
 
@@ -86,7 +86,7 @@ namespace tori {
 RealTorus::RealTorus(const LatticeMatrix& i)
   :d_rank(i.numColumns()),
    d_involution(i),
-   d_topology(d_rank)
+   d_topology(d_rank) // set dimension of ambient space for subquotient
 
 /*!
   This function constructs the torus with involution i (the rank is recovered
@@ -112,12 +112,11 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
    d_involution(d_rank)
 
 /*!
-  Synopsis: constructs the torus dual to T.
+  Synopsis: constructs the torus "dual" to T.
 
-  This is the torus in the dual lattice (but the lattice and the dual lattice
-  are identical for us!) with involution -tau^t, where tau is the involution
-  for T. The minus sign is there because it is the way we wish to dualize
-  our real forms.
+  This is the torus whose weight lattice is dual to that of T, equipped with
+  the involution -tau^t, where tau is the involution for T. The minus sign is
+  there because it is the way we wish to dualize our real forms.
 */
 
 {
@@ -140,26 +139,23 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
 
 /******** accessors *********************************************************/
 
-void RealTorus::componentMap(ComponentMap& cm, const LatticeMatrix& m, 
+void RealTorus::componentMap(BinaryMap& cm, const LatticeMatrix& m,
 			     const RealTorus& T_dest) const
 
 /*!
-  Constructs the map induced at the level of dual component groups by a
-  map from X_source to X_dest, given by its matrix m. The idea is simple
-  enough : look at the columns of m modulo 2 and project them onto dpi0,
-  and then restrict to component representatives.
+  \brief Constructs the map |cm| induced, at the level of dual component
+  groups of real tori, by a map |m| from the weight lattice of our own
+  |RealTorus| to the one of |T_dest|.
+
+  The idea is simple enough: look at the columns of m modulo 2 and project
+  them onto dpi0, and then restrict to our dual component representatives.
+  But in fact this is hidden inside |subquotient::subquotientMap|.
 */
 
 {
-  using namespace lattice;
-  using namespace subquotient;
+  BinaryMap m2(m); // reduce mod2
 
-  ComponentMap m2;
-  mod2(m2,m);
-
-  subquotientMap(cm,d_topology,T_dest.topology(),m2);
-
-  return;
+  subquotient::subquotientMap(cm,d_topology,T_dest.topology(),m2);
 }
 
 /******** manipulators ******************************************************/
@@ -170,13 +166,11 @@ void RealTorus::componentMap(ComponentMap& cm, const LatticeMatrix& m,
 
         Chapter II -- Functions declared in tori.h
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace tori {
 
-void dualPi0(LT::ComponentSubquotient& dpi0, const LT::LatticeMatrix& q)
+void dualPi0(LT::SmallSubquotient& dpi0, const LT::LatticeMatrix& q)
 
 /*!
   Synopsis: puts in dpi0 what would have been the topology field for the
@@ -191,36 +185,37 @@ void dualPi0(LT::ComponentSubquotient& dpi0, const LT::LatticeMatrix& q)
 {
   using namespace lattice;
 
-  WeightList plus;
-  plusBasis(plus,q);
+  assert(q.numRows()==q.numColumns());
 
-  ComponentList plus2;
-  mod2(plus2,plus);
+  WeightList plus; plusBasis(plus,q);
 
-  ComponentMap i2;
-  mod2(i2,q);
+  SmallBitVectorList plus2(plus); // reduce modulo 2
 
-  ComponentMap id;
-  identityMatrix(id,q.numRows());
+  BinaryMap i2(q);  // reduce modulo 2
+  BinaryMap id; identityMatrix(id,q.numRows());
+
   i2 += id;
+  // now |i2| is modulo 2 image of $\tau-id$ (and also of $\tau+id$)
 
-  ComponentList b;
-  i2.kernel(b);
+  SmallBitVectorList b; i2.kernel(b);
+  // the kernel of |i2| is the sum $V_+ + V_-$
 
-  ComponentSubquotient cs(b,plus2,q.numRows());
+  SmallSubquotient cs(b,plus2,q.numRows());
+  assert(cs.rank()==q.numRows());
+
   dpi0.swap(cs);
+  assert(dpi0.rank()==q.numRows());
 
-  return;
 }
 
-void minusBasis(latticetypes::WeightList& mb, 
+void minusBasis(latticetypes::WeightList& mb,
 		const latticetypes::LatticeMatrix& i)
 
 /*!
   Synopsis: puts in mb a basis for the -1 eigenspace of the involution.
 
-  Algorithm: the vectors e-i(e), when e runs through b, generate a lattice 
-  commensurate with the eigenspace. Thus a smith basis for this lattice will 
+  Algorithm: the vectors e-i(e), when e runs through b, generate a lattice
+  commensurate with the eigenspace. Thus a smith basis for this lattice will
   do the trick.
 */
 
@@ -255,7 +250,7 @@ void minusBasis(latticetypes::WeightList& mb,
   return;
 }
 
-void minusMatrix(latticetypes::LatticeMatrix& qm, 
+void minusMatrix(latticetypes::LatticeMatrix& qm,
 		 const latticetypes::LatticeMatrix& q, const RealTorus& t)
 
 /*!
@@ -286,7 +281,7 @@ void plusBasis(latticetypes::WeightList& pb,
 /*!
   Synopsis: puts in mb a basis for the +1 eigenspace of the involution;
 
-  Algorithm: the vectors e+i(e), when e runs through b, generate a lattice 
+  Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
   commensurate with the eigenspace.
 */
 
@@ -321,7 +316,7 @@ void plusBasis(latticetypes::WeightList& pb,
   return;
 }
 
-void plusMatrix(latticetypes::LatticeMatrix& qp, 
+void plusMatrix(latticetypes::LatticeMatrix& qp,
 		const latticetypes::LatticeMatrix& q, const RealTorus& t)
 
 /*!
@@ -352,43 +347,40 @@ void plusMatrix(latticetypes::LatticeMatrix& qp,
 
         Chapter III -- Auxiliary functions
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace {
 
-void makeTopology(ComponentSubquotient& cs, const RealTorus& T)
+void makeTopology(SmallSubquotient& cs, const RealTorus& T)
 
 /*!
   Synopsis: puts the subquotient V^tau/V_+ in cs.
 
-  Explanation: V is X/2X; V_+ is the image of X_+ in V. So the subquotient
-  is the _dual_ of the component group of the torus.
+  Explanation: V is X/2X; V_+ is the image of X_+ in V, similarly for V_-,
+  and V^tau=V_+ + V_- is the kernel of the map induced by tau-1 on V.
+  So the subquotient V^tau/V_+ is (V_+ + V_-)/V_+ which is canonically
+  isomorphic to V_-/(V_+  cap V_-), which we know is the _dual_ of the
+  component group of the torus.
 */
 {
   using namespace lattice;
 
-  ComponentList plus2;
-  mod2(plus2,T.plusLattice());
+  SmallBitVectorList plus2(T.plusLattice()); // reduce mod 2
 
-  ComponentMap i2;
-  mod2(i2,T.involution());
-
-  ComponentMap id;
-  identityMatrix(id,T.rank());
+  BinaryMap i2(T.involution()); // reduce mod 2
+  BinaryMap id; identityMatrix(id,T.rank());
   i2 += id;
 
-  ComponentList b;
-  i2.kernel(b);
+  SmallBitVectorList b;
+  i2.kernel(b);  // kernel of map induced by tau-1 (or by tau+1), contains V_+
 
-  ComponentSubquotient cs1(b,plus2,T.rank());
+  SmallSubquotient cs1(b,plus2,T.rank());
   cs.swap(cs1);
 
   return;
 }
 
-void fullMinusBasis(latticetypes::WeightList& mb, 
+void fullMinusBasis(latticetypes::WeightList& mb,
 		    latticetypes::LatticeMatrix& tm,
 		    const latticetypes::LatticeMatrix& i)
 
@@ -400,8 +392,8 @@ void fullMinusBasis(latticetypes::WeightList& mb,
   of X_-. There is no significance to the chosen complement; the intention is
   that it should be used only for vectors already in X_-.
 
-  Algorithm: the vectors e-i(e), when e runs through b, generate a lattice 
-  commensurate with the eigenspace. Thus a smith basis for this lattice will 
+  Algorithm: the vectors e-i(e), when e runs through b, generate a lattice
+  commensurate with the eigenspace. Thus a smith basis for this lattice will
   do the trick. Such a basis also yields the projection matrix.
 */
 
@@ -450,7 +442,7 @@ void fullMinusBasis(latticetypes::WeightList& mb,
   return;
 }
 
-void fullPlusBasis(latticetypes::WeightList& pb, 
+void fullPlusBasis(latticetypes::WeightList& pb,
 		   latticetypes::LatticeMatrix& tp,
 		   const latticetypes::LatticeMatrix& i)
 
@@ -462,8 +454,8 @@ void fullPlusBasis(latticetypes::WeightList& pb,
   of X_+. There is no significance to the chosen complement; the intention is
   that it should be used only for vectors already in X_+.
 
-  Algorithm: the vectors e+i(e), when e runs through b, generate a lattice 
-  commensurate with the eigenspace. Thus a smith basis for this lattice will 
+  Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
+  commensurate with the eigenspace. Thus a smith basis for this lattice will
   do the trick. Such a basis also yields the projection matrix.
 */
 

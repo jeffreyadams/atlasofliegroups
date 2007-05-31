@@ -401,7 +401,7 @@ WeylElt WeylGroup::inverse(const WeylElt& w) const
 void WeylGroup::twistedConjugate
   (TwistedInvolution& tw, const WeylElt& w) const
 {
-  WeylElt x=w; prod(x,tw.representative());
+  WeylElt x=w; prod(x,tw.w());
 
   // now multiply $x$ by $\delta(w^{-1})$
   for (size_t j = d_rank; j-->0 ;) {
@@ -532,8 +532,6 @@ Generator WeylGroup::leftDescent(const WeylElt& w) const
   return UndefGenerator;
 }
 
-bool WeylGroup::hasTwistedCommutation(Generator s, const TwistedInvolution& w)
-  const
 
 /*!
   \brief Tells whether |w| twisted-commutes with |s|: $s.w.\delta(s)=w$
@@ -554,9 +552,10 @@ bool WeylGroup::hasTwistedCommutation(Generator s, const TwistedInvolution& w)
   which can only be by cancelling the extremal generators: $s.v.\delta(s)=v$
   which implies $w'=w$, and one has twisted commutation.
 */
-
+bool WeylGroup::hasTwistedCommutation(Generator s, const TwistedInvolution& tw)
+  const
 {
-  WeylElt x = w.representative();
+  WeylElt x = tw.w();
   int m = prodIn(x,d_twist[d_in[s]]); // now |x| is $w.delta(s)$
 
   return (m>0)==hasDescent(s,x); // lengths match iff members are equivalent
@@ -590,8 +589,8 @@ void WeylGroup::involutionOut
   TwistedInvolution x = tw;
   ww.clear();
 
-  for (Generator s = leftDescent(x.representative()); s != UndefGenerator;
-                 s = leftDescent(x.representative())) {
+  for (Generator s = leftDescent(x.w()); s != UndefGenerator;
+                 s = leftDescent(x.w())) {
     ww.push_back(s);
     if (hasTwistedCommutation(s,x))
       leftMult(x,s);
@@ -619,8 +618,8 @@ unsigned long WeylGroup::involutionLength
   TwistedInvolution x = tw;
   unsigned long length = 0;
 
-  for (Generator s = leftDescent(x.representative()); s != UndefGenerator;
-                 s = leftDescent(x.representative()),++length) {
+  for (Generator s = leftDescent(x.w()); s != UndefGenerator;
+                 s = leftDescent(x.w()),++length) {
     if (hasTwistedCommutation(s,x))
       leftMult(x,s);
     else

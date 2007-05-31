@@ -32,7 +32,7 @@ DV: I do not know whether the poset order is assumed compatible with the
 integer order (as it is in SymmetricPoset).
 
 MvL: Indeed, the simpleminded implementation of the basic method findMaximals
-shows that only posets compatible with the integer order (i<j in the poset
+shows that only posets compatible with the integral order (i<j in the poset
 implies i<j as integers) can be modelled by this class.
 
   */

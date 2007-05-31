@@ -25,7 +25,7 @@
 #include "complexredgp.h"
 
 #include "tags.h"
-#include "cartan.h"
+#include "cartanset.h"
 #include "dynkin.h"
 #include "lietype.h"
 #include "poset.h"
@@ -79,7 +79,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
  (const rootdata::RootDatum* rd, const latticetypes::LatticeMatrix& d)
   : d_rootDatum(*rd) // we assume ownership
   , d_titsGroup(*new tits::TitsGroup(rootDatum(),d))
-  , d_cartan(*new cartan::CartanClassSet(*this,d))
+  , d_cartan(*new cartanset::CartanClassSet(*this,d))
   /* stores |d| in |d_cartan->d_fundamental.d_torus->d_involution|,
      and constructs the fundamental fibers for the group and dual group */
 {}
@@ -96,7 +96,7 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
   : d_rootDatum(*new rootdata::RootDatum(G.rootDatum(),tags::DualTag()))
   , d_titsGroup(*new tits::TitsGroup
     (rootDatum(),dualBasedInvolution(G.distinguished(),G.rootDatum())))
-  , d_cartan(*new cartan::CartanClassSet
+  , d_cartan(*new cartanset::CartanClassSet
 	     (*this,dualBasedInvolution(G.distinguished(),G.rootDatum()))
 	    )
 {}
@@ -132,7 +132,7 @@ ComplexReductiveGroup::~ComplexReductiveGroup()
 unsigned long ComplexReductiveGroup::blockSize(realform::RealForm rf,
 					       realform::RealForm drf) const
 {
-  return cartan::blockSize(rf,drf,d_cartan);
+  return cartanset::blockSize(rf,drf,d_cartan);
 }
 
 
@@ -276,7 +276,7 @@ void ComplexReductiveGroup::grading
 */
 unsigned long ComplexReductiveGroup::kgbSize(realform::RealForm rf) const
 {
-  return cartan::kgbSize(rf,d_cartan);
+  return cartanset::kgbSize(rf,d_cartan);
 }
 
 /*!

@@ -1,6 +1,6 @@
 /*!
 \file
-\brief Forward declarations of classes and types for namespace latticetypes. 
+\brief Forward declarations of classes and types for namespace latticetypes.
 
 A LatticeCoeff is an integer.  A LatticeElt is a vector of
 LatticeCoeff's; that is, an element of Z^n.  A Weight is a LatticeElt.
@@ -13,7 +13,7 @@ A RatLatticeElt is a class corresponding to an element of Q^n.
   This is latticetypes_fwd.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -38,7 +38,7 @@ namespace latticetypes {
   /*!
   \brief
   A LatticeElt is a vector of LatticeCoeff's; that is, an element of
-  Z^n.  
+  Z^n.
   */
   typedef int LatticeCoeff;
 
@@ -49,14 +49,14 @@ namespace latticetypes {
   /*!
   \brief
   A LatticeElt is a vector of LatticeCoeff's; that is, an element of
-  Z^n.  
+  Z^n.
   */
   typedef std::vector<LatticeCoeff> LatticeElt;
 
   /*!
   \brief
   This type of list of integers is used as the list of invariant
-  factors in a Smith normal form. 
+  factors in a Smith normal form.
   */
   typedef std::vector<LatticeCoeff> CoeffList;
   class RatLatticeElt;
@@ -70,49 +70,65 @@ namespace latticetypes {
   typedef matrix::Matrix<LatticeCoeff> LatticeMatrix;
 
   /*!
-  \brief Element of (Z/2Z)^RANK_MAX.  
+  \brief Element of (Z/2Z)^RANK_MAX.
 
   Used to represent an element of a component group of a real torus;
   this is why it turns up in connection with lattices.
   */
   typedef bitvector::BitVector<constants::RANK_MAX> Component;
-  
+
+  /* In Fokko's code, the type |Component| hardly ever represents an element
+     of the component group of a real torus (or other variety). For this
+     reason I've introduced a more neutral name to replace such uses. MvL */
+
+  typedef bitvector::BitVector<constants::RANK_MAX> SmallBitVector;
+
+  typedef bitvector::BitVectorList<constants::RANK_MAX> SmallBitVectorList;
+
+  /* In Fokko's code, the type |LongComponent| is used (exclusively?) to
+     represent a line of an equation matrix over $Z/2Z$, with a left hand side
+     of at most |RANK_MAX| coefficient bits, and one bit right hand side. For
+     this reason I've introduced a more appropirate type for such uses. MvL */
+
+  typedef bitvector::BitVector<constants::RANK_MAX+1> BinaryEquation;
+
+  typedef bitvector::BitVectorList<constants::RANK_MAX+1> BinaryEquationList;
+
   /*!
-  \brief Element of (Z/2Z)^2*RANK_MAX. 
+  \brief Element of (Z/2Z)^2*RANK_MAX.
   */
   typedef bitvector::BitVector<2*constants::RANK_MAX> LongComponent;
-  
-  /*!
-  \brief Square matrix of size RANK_MAX with entries in Z/2Z.  
 
-  Used to represent the map on component groups of real tori induced by
-  a lattice map.
+  /*!
+  \brief Square matrix of size RANK_MAX with entries in Z/2Z.
+
+  Used to represent for instance the map on (dual) component groups of real
+  tori induced by a lattice map.
   */
-  typedef bitvector::BitMatrix<constants::RANK_MAX> ComponentMap;
+  typedef bitvector::BitMatrix<constants::RANK_MAX> BinaryMap;
 
   /*!
   \brief Subgroup of (Z/2Z)^RANK_MAX.
-  
+
   Used to represent a subgroup of the group of connected components of
   a real torus.
   */
-  typedef subquotient::NormalSubspace<constants::RANK_MAX> ComponentSubspace;
-  
-  
+  typedef subquotient::Subspace<constants::RANK_MAX> SmallSubspace;
+
+
   /*!
   \brief Subquotient of (Z/2Z)^RANK_MAX.
   */
-  typedef subquotient::NormalSubquotient<constants::RANK_MAX> 
-    ComponentSubquotient;
+  typedef subquotient::Subquotient<constants::RANK_MAX>
+    SmallSubquotient;
 
   /*!
   \brief List of elements of (Z/2Z)^RANK_MAX.
-  
+
   Used to represent a subset of the group of connected components of
   a real torus.
   */
   typedef std::vector<Component> ComponentList;
-
 
   /*!
   \brief List of elements of (Z/2Z)^2*RANK_MAX.

@@ -79,9 +79,7 @@ void reflectionMatrix(LT::LatticeMatrix&, RootNbr, const RootDatum&,
 
 void rootBasis(RootList&, const RootList&, const RootDatum&);
 
-void rootBasis(RootList&, const RootSet&, const RootDatum&);
-
-void rootPermutation(RootList&, const LT::LatticeMatrix&, const RootDatum&);
+void rootBasis(RootList&, RootSet, const RootDatum&);
 
 void strongOrthogonalize(RootList&, const RootDatum&);
 
@@ -98,9 +96,6 @@ void toMatrix(LT::LatticeMatrix&, const RootList&, const RootDatum&);
 void toPositive(weyl::WeylWord&, const LT::Weight&, const RootDatum&);
 
 void toWeylWord(weyl::WeylWord&, RootNbr, const RootDatum&);
-
-void toWeylWord(weyl::WeylWord&, const latticetypes::LatticeMatrix&,
-		const RootDatum&);
 
 void twoRho(LT::Weight&, const RootList&, const RootDatum&);
 
@@ -448,6 +443,10 @@ use by accessors.
     return d_twoRho;
   }
 
+  weyl::WeylWord word_of_inverse_matrix(const latticetypes::LatticeMatrix&)
+    const;
+
+
 // manipulators
 
   void swap(RootDatum&);
@@ -465,13 +464,14 @@ template<typename I>
    std::vector<RootNbr>::const_iterator.  Such a class stores two
    iterators: d_list, with value type LT::Weight, accessing a set of
    roots, and d_pos, with value type RootNbr, indexing that set of
-   roots.  (Thanks to Marc van Leeuwen for clarifying this.)
+   roots. Only the second one changes as the iterator advances, the first one
+   always points to the start of some |LT::WeightList|, so it can be |const|
    */
 class RootIterator { // constant Random Access Iterator
 
  private:
 
-   LT::WeightList::const_iterator d_list;
+   const LT::WeightList::const_iterator d_list;
    I d_pos;
 
  public:
@@ -575,8 +575,7 @@ inline RootIterator<I> operator+ (typename RootIterator<I>::difference_type n,
 
 #if 0
   /*!
-  Old non-template version of RootIterator, now excluded by the
-  preprocessor.  (Thanks to Marc for explaining this.)
+  Old non-template version of RootIterator, now excluded by the preprocessor.
   */
 class RootIterator { // constant Random Access Iterator
 

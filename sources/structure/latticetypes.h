@@ -1,12 +1,12 @@
 /*!
 \file
-\brief Declarations of classes and types for namespace latticetypes. 
+\brief Declarations of classes and types for namespace latticetypes.
 */
 /*
   This is latticetypes.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -54,7 +54,7 @@ namespace latticetypes {
 class RatLatticeElt {
 
  private:
-  
+
   /*!
   Vector of integers, representing the numerators of the RatLatticeElt.
   */
@@ -68,31 +68,31 @@ class RatLatticeElt {
  public:
 
 // constructors and destructors
-  RatLatticeElt() 
+  RatLatticeElt()
     {}
-  
+
   /*!
   Builds the RatLatticeElt with numerator v and denominator d.
   */
   RatLatticeElt(const LatticeElt& v, LatticeCoeff d)
-    :d_num(v), d_denom(d) 
+    :d_num(v), d_denom(d)
     {}
 
   /*!
   Builds a RatLatticeElt of in Z^n with denominator d and all entries zero.
   */
   RatLatticeElt(size_t n, LatticeCoeff d)
-    :d_num(n), d_denom(d) 
+    :d_num(n), d_denom(d)
     {}
 
   /*!
   Copies the RatLatticeElt v into  a new RatLatticeElt.
   */
   RatLatticeElt(const RatLatticeElt& v)
-    :d_num(v.d_num), d_denom(v.d_denom) 
+    :d_num(v.d_num), d_denom(v.d_denom)
     {}
 
-  ~RatLatticeElt() 
+  ~RatLatticeElt()
     {}
 
 // accessors

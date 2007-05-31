@@ -35,28 +35,26 @@ namespace {
   std::ostream& printBasePts(std::ostream&, const weyl::TwistedInvolutionList&,
 			     const kgb::KGBEltList&, const kgb::KGB&);
 
+  // the following class is copied integrally from kgb.cpp, helper namespace
 class InvolutionCompare {
 private:
   const weyl::WeylGroup* d_W;
 public:
   explicit InvolutionCompare(const weyl::WeylGroup& W):d_W(&W) {}
-  // one should have i < j iff
-  // (a) involutionLength(v) < involutionLength(w) or
-  // (b) involutionLengths are equal and length(v) < length (w) or
-  // (c) both lengths are equal and v < w
+
+  // one should have a < b iff
+  // (a) involutionLength(a) < involutionLength(b) or
+  // (b) involutionLengths are equal and length(a) < length (b) or
+  // (c) both lengths are equal and a < b
   bool operator()
-   (const weyl::TwistedInvolution& v, const weyl::TwistedInvolution& w) const
+   (const weyl::TwistedInvolution& a, const weyl::TwistedInvolution& b) const
   {
-    if (d_W->involutionLength(v) < d_W->involutionLength(w))
-      return true;
-    else if (d_W->involutionLength(w) < d_W->involutionLength(v))
-      return false;
-    else if (d_W->length(v.representative()) < d_W->length(w.representative()))
-      return true;
-    else if (d_W->length(w.representative()) < d_W->length(v.representative()))
-      return false;
+    if      (d_W->involutionLength(a) != d_W->involutionLength(b))
+      return d_W->involutionLength(a) < d_W->involutionLength(b) ;
+    else if (d_W->length(a.w()) != d_W->length(b.w()))
+      return d_W->length(a.w()) < d_W->length(b.w());
     else
-      return v < w;
+      return a < b;
   }
 };
 
@@ -122,14 +120,14 @@ bool checkBasePoint(const kgb::KGB& kgb)
 #ifdef VERBOSE
     std::cerr << w_pos << "\r";
 #endif
-      const TwistedInvolution& w = wl[w_pos];
+      const TwistedInvolution& tw = wl[w_pos];
       WeylWord w_red;
-      W.involutionOut(w_red,w);
+      W.involutionOut(w_red,tw);
       for (size_t s = 0; s < kgb.rank(); ++s)
-	if (W.hasDescent(s,w.representative())) {
-	  TwistedInvolution sw = w;
+	if (W.hasDescent(s,tw.w())) {
+	  TwistedInvolution sw = tw;
 	  KGBElt sx_sw;
-	  if (W.hasTwistedCommutation(s,w)) {
+	  if (W.hasTwistedCommutation(s,tw)) {
 	    W.leftMult(sw,s);
 	    size_t sw_pos = std::lower_bound(wl.begin(),wl.end(),sw,comp) -
 	      wl.begin();
@@ -202,7 +200,7 @@ printBasePts(std::ostream& strm, const weyl::TwistedInvolutionList& wl,
 
   for (size_t j = 0; j < wl.size(); ++j) {
     strm << "(";
-    printWeylElt(strm,wl[j].representative(),kgb.weylGroup());
+    printWeylElt(strm,wl[j].w(),kgb.weylGroup());
     strm << ",";
     printInvolution(strm,wl[j],kgb.weylGroup());  // added by jda: reduced form of the involution
     strm << "," << bp[j] << ")";

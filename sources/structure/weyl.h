@@ -176,7 +176,7 @@ group element following the != sign.
   // nothing: cast to TwistedInvolution is allowed, and is a no-op
 
   // from TwistedInvolution interpretation
-  const WeylElt& representative() const { return *this; }
+  const WeylElt& w() const { return *this; }
   WeylElt& contents() { return *this; }
 
 }; // class WeylElt
@@ -515,10 +515,6 @@ class WeylGroup {
   void prod(WeylElt&, const WeylWord&) const;
 
   // set |w=sw| (argument order motivated by modification effect on |w|)
-  void leftProd(WeylElt& w, Generator s) const {
-    leftProdIn(w,d_in[s]);
-  }
-  // the same under a better chosen name
   void leftMult(WeylElt& w, Generator s) const {
     leftProdIn(w,d_in[s]);
   }
@@ -545,17 +541,12 @@ class WeylGroup {
 
   unsigned long length(const WeylElt&) const;
 
-  void conjugacyClass(WeylEltList&, const WeylElt&) const;
-
-  void conjugacyClass(WeylEltList& l, const WeylElt& w, bool twisted) const
-    {
-      if (twisted) twistedConjugacyClass(l,w);
-      else conjugacyClass(l,w);
-    }
+  void conjugacyClass(WeylEltList&, const WeylElt&)
+    const;
 
   /*! \brief Conjugates |w| by the generator |s|: |w=sws|. */
   void conjugate(WeylElt& w, Generator s) const {
-    leftProd(w,s);
+    leftMult(w,s);
     prod(w,s);
   }
 
@@ -565,7 +556,7 @@ class WeylGroup {
    */
   void twistedConjugate(TwistedInvolution& tw, Generator s) const {
     WeylElt& w=tw.contents();
-    leftProd(w,s);
+    leftMult(w,s);
     prodIn(w,d_twist[d_in[s]]);
   }
   void twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const

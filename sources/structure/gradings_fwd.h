@@ -6,7 +6,7 @@
   This is gradings_fwd.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -26,8 +26,6 @@ namespace gradings {
 
   class Status;
   typedef std::vector<Status> StatusList;
-  class FullStatus;
-  typedef std::vector<FullStatus> FullStatusList;
 
   typedef bitset::RankFlags Grading;
   typedef std::vector<Grading> GradingList;

@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -41,27 +41,31 @@ namespace topology {
 
 namespace topology {
 
+/* class of which the constructor computes a basis for the dual of the
+   component group of a real reductive group (given its most split torus, and
+   the root datum that it is related to).
+ */
+
 class Connectivity {
 
  private:
-  size_t d_rank;
-  latticetypes::ComponentList d_dpi0;
+  latticetypes::SmallBitVectorList d_dpi0; // basis of dual component group
 
  public:
 // constructors and destructors
   Connectivity() {}
 
-  Connectivity(const tori::RealTorus&, const rootdata::RootDatum&);
+  Connectivity(const tori::RealTorus& most_split, const rootdata::RootDatum&);
 
   ~Connectivity() {}
 
 // accessors
-  const latticetypes::ComponentList& componentReps() const {
+  const latticetypes::SmallBitVectorList& dualComponentReps() const {
     return d_dpi0;
   }
 
 // manipulators
-  void swap(Connectivity&);
+  void swap(Connectivity& other) { d_dpi0.swap(other.d_dpi0);}
 };
 
 }

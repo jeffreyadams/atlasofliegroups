@@ -45,11 +45,6 @@ generators of W).
 
   typedef std::vector<Generator> WeylWord;
 
-  /*!
-\brief Entry \#j is the image of generator \#j under a fixed outer
-automorphism.
-  */
-  typedef Generator Twist[constants::RANK_MAX];
 
 }
 

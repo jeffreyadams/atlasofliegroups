@@ -168,10 +168,6 @@ namespace bitmap {
       d_map[n >> baseShift] |= constants::bitMask[n & posBits];
     }
 
-    template<typename I>
-      void insert(const I&, const I&);
-
-    iterator insert(iterator, unsigned long n);
     /*!
     Puts a 0 in position n of the bitmap (that is, removes an element of
     the set).
@@ -179,6 +175,20 @@ namespace bitmap {
     void remove(unsigned long n) {
       d_map[n >> baseShift] &= ~constants::bitMask[n & posBits];
     }
+
+    void set_to(unsigned long n,bool b) {
+      if (b) insert(n); else remove(n);
+    }
+
+    void set_mod2(unsigned long n, unsigned long v) {
+      set_to(n,(v&1)!=0);
+    }
+
+
+    template<typename I>
+      void insert(const I&, const I&);
+
+    iterator insert(iterator, unsigned long n);
 
     void reset() {
       d_map.assign(d_map.size(),0ul);

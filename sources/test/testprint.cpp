@@ -1,8 +1,8 @@
 /*
   This is testprint.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -73,7 +73,7 @@ std::ostream& print(std::ostream& strm, const rootdata::RootDatum& rd)
     - positive roots and coroots;
 */
 
-{  
+{
   using namespace basic_io;
   using namespace latticetypes;
   using namespace prettyprint;
@@ -107,12 +107,12 @@ std::ostream& print(std::ostream& strm, const rootdata::RootDatum& rd)
 
   strm << "positive roots :" << std::endl;
   WeightList r_pr(rd.beginPosRoot(),rd.endPosRoot());
-  seqPrint(strm,r_pr.begin(),r_pr.end(),"\n","","") 
+  seqPrint(strm,r_pr.begin(),r_pr.end(),"\n","","")
     << std::endl << std::endl;
 
   strm << "positive coroots :" << std::endl;
   WeightList r_pcr(rd.beginPosCoroot(),rd.endPosCoroot());
-  seqPrint(strm,r_pcr.begin(),r_pcr.end(),"\n","","") 
+  seqPrint(strm,r_pcr.begin(),r_pcr.end(),"\n","","")
     << std::endl << std::endl;
 
   return strm;
@@ -130,7 +130,7 @@ std::ostream& print(std::ostream& strm, const realredgp::RealReductiveGroup& G)
   return strm;
 }
 
-std::ostream& printBlockData(std::ostream& strm, 
+std::ostream& printBlockData(std::ostream& strm,
 			     const complexredgp_io::Interface& CI)
 
 /*
@@ -139,7 +139,7 @@ std::ostream& printBlockData(std::ostream& strm,
   Precondition: G.fullCartan() has been called successfully.
 */
 
-{  
+{
   using namespace basic_io;
   using namespace complexredgp;
   using namespace lietype;
@@ -170,7 +170,7 @@ std::ostream& printBlockData(std::ostream& strm,
   return strm;
 }
 
-std::ostream& printCartanClasses(std::ostream& strm, 
+std::ostream& printCartanClasses(std::ostream& strm,
 				 const complexredgp_io::Interface& CI)
 
 /*
@@ -193,7 +193,7 @@ std::ostream& printCartanClasses(std::ostream& strm,
   return strm;
 }
 
-std::ostream& printCartanMatrix(std::ostream& strm, 
+std::ostream& printCartanMatrix(std::ostream& strm,
 				const rootdata::RootList& rb,
 				const rootdata::RootDatum& rd)
 
@@ -202,7 +202,7 @@ std::ostream& printCartanMatrix(std::ostream& strm,
   outputting the matrix c where c(i,j) = root(rb[i]).coroot(rb[j]).
 */
 
-{  
+{
   using namespace latticetypes;
   using namespace prettyprint;
   using namespace rootdata;
@@ -216,12 +216,12 @@ std::ostream& printCartanMatrix(std::ostream& strm,
   return strm;
 }
 
-std::ostream& printComponents(std::ostream& strm, 
+std::ostream& printComponents(std::ostream& strm,
 			      const realredgp::RealReductiveGroup& G,
 			      const char* sep)
 
 /*
-  Prints the component group of G as a sep-separated list.
+  Prints the dual component group of G as a sep-separated list.
 */
 
 {
@@ -229,7 +229,7 @@ std::ostream& printComponents(std::ostream& strm,
   using namespace ioutils;
   using namespace latticetypes;
 
-  const ComponentList& cr = G.componentReps();
+  const SmallBitVectorList& cr = G.dualComponentReps();
   seqPrint(strm,cr.begin(),cr.end(),sep);
 
   return strm;

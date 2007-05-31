@@ -41,6 +41,7 @@
 #include "kgb.h"
 #include "kgb_io.h"
 #include "lattice.h"
+#include "latticetypes.h"
 #include "mainmode.h"
 #include "poset_io.h"
 #include "prettyprint.h"
@@ -62,6 +63,8 @@
 #include "testprint.h"
 #include "testrun.h"
 #include "filekl.h"
+
+#include "celltest.h"
 
 /*****************************************************************************
 
@@ -141,7 +144,7 @@ namespace {
   Set this constant according to the requirements of the |test_f| function.
 */
   enum TestMode {EmptyMode, MainMode, RealMode, numTestMode};
-  const TestMode testMode = EmptyMode;
+  const TestMode testMode = RealMode;
 
   // utilities
   const rootdata::RootDatum& currentRootDatum();
@@ -711,7 +714,7 @@ void components_f()
   using namespace testprint;
 
   const RealReductiveGroup& G = realmode::currentRealGroup();
-  const ComponentList& c = G.componentReps();
+  const ComponentList& c = G.dualComponentReps();
 
   if (c.size() > 0)
     std::cout << "component group is (Z/2)^" << c.size() << std::endl;
@@ -989,23 +992,22 @@ void klwrite_f()
   using namespace kl_io;
   using namespace klsupport;
   using namespace realform;
-  using namespace realmode;
   using namespace realredgp;
-  using namespace tags;
 
-  RealReductiveGroup& G_R = currentRealGroup();
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
   try {
     G_R.fillCartan();
 
     complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
     const complexredgp_io::Interface& G_I = G_RI.complexInterface();
 
     // get dual real form
-    RealForm drf;
+    realform::RealForm drf;
 
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+    interactive::getInteractive
+      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
 
     std::ofstream matrix_out, coefficient_out; // binary output files
     {
@@ -1446,12 +1448,69 @@ void extract_cells_f()
   }
 }
 
+
 void test_f()
 /*
   Function invoked by the "test" command.
 */
 {
   // put your code here, and define testMode at top of file appropriately
+
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
+  try {
+    G_R.fillCartan();
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    realform::RealForm drf;
+
+    interactive::getInteractive
+      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
+
+    blocks::Block block(G_C,G_R.realForm(),drf);
+
+    latticetypes::LatticeMatrix M;
+    rootdata::cartanMatrix(M,G_C.rootDatum());
+    graph::OrientedGraph g=
+      celltest::trivial_links(block,dynkin::DynkinDiagram(M));
+
+
+//     for (size_t v=0; v<g.size(); ++v)
+//     {
+//       std::cout << v;
+//       graph::EdgeList& el=g.edgeList(v);
+//       for (size_t i=0; i<el.size(); ++i)
+// 	std::cout << (i==0 ? "->" : ",") << el[i];
+//       std::cout << std::endl;
+//     }
+
+    partition::Partition pi;
+    g.cells(pi,NULL);
+
+    ioutils::OutputFile out;
+
+    out << "Connected components ["<< pi.classCount() << "]:\n";
+
+    for (partition::PartitionIterator it(pi); it(); ++it)
+    {
+      out << '[' << it->second-it->first << "] ";
+      for (partition::PartitionIterator::SubIterator jt=it->first;
+	   jt!=it->second; ++jt)
+	out << (jt==it->first ? '{' : ',') << *jt;
+      out << "}\n";
+    }
+  }
+  catch (error::MemoryOverflow& e) {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
+
 }
 
 } // namespace

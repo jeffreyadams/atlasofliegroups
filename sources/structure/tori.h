@@ -32,7 +32,7 @@ namespace tori {
 
 namespace tori {
 
-  void dualPi0(LT::ComponentSubquotient&, const LT::LatticeMatrix&);
+  void dualPi0(LT::SmallSubquotient&, const LT::LatticeMatrix&);
 
   void minusBasis(LT::WeightList&, const LT::LatticeMatrix&);
 
@@ -128,7 +128,7 @@ namespace tori {
   /*!
   group of connected components (a vector space over Z/2Z).
   */
-  LT::ComponentSubquotient d_topology;
+  LT::SmallSubquotient d_topology;
 
  public:
 
@@ -152,7 +152,7 @@ namespace tori {
     return d_complexRank;
   }
 
-  void componentMap(LT::ComponentMap&, const LT::LatticeMatrix&,
+  void componentMap(LT::BinaryMap&, const LT::LatticeMatrix&,
 		    const RealTorus&) const;
 
   const LT::LatticeMatrix& involution() const {
@@ -195,7 +195,7 @@ namespace tori {
     d_toPlus.apply(dest,source);
   }
 
-  const LT::ComponentSubquotient& topology() const {
+  const LT::SmallSubquotient& topology() const {
     return d_topology;
   }
 

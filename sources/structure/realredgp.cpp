@@ -45,7 +45,10 @@ namespace realredgp {
 RealReductiveGroup::RealReductiveGroup(
 		  complexredgp::ComplexReductiveGroup& G_C,
 		  realform::RealForm rf)
-  :d_complexGroup(&G_C),d_realForm(rf)
+  : d_complexGroup(&G_C)
+  , d_realForm(rf)
+  , d_connectivity()
+  , d_status()
 
 /*!
   Synopsis : constructs a real reductive group from the datum of a complex
@@ -82,7 +85,7 @@ RealReductiveGroup::RealReductiveGroup(
     d_status.set(IsSplit);
 
   d_connectivity = topology::Connectivity(T,rootDatum());
-  if (d_connectivity.componentReps().size() == 0)
+  if (d_connectivity.dualComponentReps().size() == 0)
     d_status.set(IsConnected);
 }
 
@@ -279,7 +282,7 @@ void RealReductiveGroup::fillCartan()
 */
 
 {
-  using namespace cartan;
+  using namespace cartanset;
 
   d_complexGroup->fillCartan(d_realForm);
 

@@ -60,7 +60,6 @@ namespace polynomials {
        operation); moreover comparisons (<, ==, !=) should be defined,
        although < need not have any particular mathematical sense
   */
-
 template<typename C> class Polynomial {
 
  private:

@@ -81,8 +81,8 @@ class RealReductiveGroup {
     return *d_complexGroup;
   }
 
-  const latticetypes::ComponentList& componentReps() const {
-    return d_connectivity.componentReps();
+  const latticetypes::SmallBitVectorList& dualComponentReps() const {
+    return d_connectivity.dualComponentReps();
   }
 
   const latticetypes::LatticeMatrix& distinguished() const;

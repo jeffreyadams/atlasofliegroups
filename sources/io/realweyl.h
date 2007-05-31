@@ -1,8 +1,8 @@
 /*
   This is realweyl.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -44,10 +44,10 @@ class RealWeyl {
   const weyl::WeylGroup* d_group;
   rootdata::RootList d_imaginaryCompact;
   rootdata::RootList d_imaginaryOrth;
-  latticetypes::ComponentList d_imaginaryR;
+  latticetypes::SmallBitVectorList d_imaginaryR;
   rootdata::RootList d_imaginary;
   rootdata::RootList d_realCompact;
-  latticetypes::ComponentList d_realR;
+  latticetypes::SmallBitVectorList d_realR;
   rootdata::RootList d_real;
   rootdata::RootList d_complex;
   lietype::LieType d_complexType;
@@ -62,7 +62,7 @@ class RealWeyl {
 // constructors and destructors
   RealWeyl():d_group(0) {}
 
-  RealWeyl(const cartanclass::CartanClass&, unsigned long, unsigned long, 
+  RealWeyl(const cartanclass::CartanClass&, unsigned long, unsigned long,
 	   const rootdata::RootDatum&, const weyl::WeylGroup&);
 
   ~RealWeyl() {}
@@ -104,7 +104,7 @@ class RealWeyl {
     return d_imaginaryOrth[j];
   }
 
-  const latticetypes::ComponentList& imaginaryR() const {
+  const latticetypes::SmallBitVectorList& imaginaryR() const {
     return d_imaginaryR;
   }
 
@@ -112,7 +112,7 @@ class RealWeyl {
     return d_imaginaryType;
   }
 
-  const latticetypes::Component& imaginaryR(size_t j) const {
+  const latticetypes::SmallBitVector& imaginaryR(size_t j) const {
     return d_imaginaryR[j];
   }
 
@@ -168,11 +168,11 @@ class RealWeyl {
     return d_realOrth[j];
   }
 
-  const latticetypes::ComponentList& realR() const {
+  const latticetypes::SmallBitVectorList& realR() const {
     return d_realR;
   }
 
-  const latticetypes::Component& realR(size_t j) const {
+  const latticetypes::SmallBitVector& realR(size_t j) const {
     return d_realR[j];
   }
 

@@ -1,8 +1,8 @@
 /*
   This is complexredgp_io.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -12,7 +12,7 @@
 #include "complexredgp_io.h"
 
 #include "basic_io.h"
-#include "cartan.h"
+#include "cartanset.h"
 #include "cartan_io.h"
 #include "cartanclass.h"
 #include "complexredgp.h"
@@ -26,7 +26,7 @@
 #include "tags.h"
 
 /*
-  This module contains the definition of an i/o interface for a 
+  This module contains the definition of an i/o interface for a
   ComplexReductiveGroup object. I have now convinced myself that the ownership
   relation should be that the intrface carries an unowned nonconstant pointer
   to the group object. So the group may evolve during its lifetime, being
@@ -52,7 +52,7 @@ namespace {
 
 namespace complexredgp_io {
 
-Interface::Interface(complexredgp::ComplexReductiveGroup& G, 
+Interface::Interface(complexredgp::ComplexReductiveGroup& G,
 		     const layout::Layout& lo)
   :d_complexGroup(&G),
    d_layout(lo),
@@ -132,7 +132,7 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
 {
   using namespace basic_io;
   using namespace cartan_io;
-  using namespace cartan;
+  using namespace cartanset;
   using namespace cartanclass;
   using namespace complexredgp;
   using namespace lietype;
@@ -197,7 +197,7 @@ std::ostream& printGradings(std::ostream& strm, size_t cn, const Interface& CI)
   output in the "cartan" command.
 */
 
-{  
+{
   using namespace cartanclass;
   using namespace complexredgp;
   using namespace realform;

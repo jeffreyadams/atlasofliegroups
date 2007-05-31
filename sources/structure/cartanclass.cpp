@@ -49,9 +49,10 @@ private:
   const rootdata::RootDatum* d_rootDatum;
 
   /*!
-  \brief Image of the map from the fiber group to the adjoint fiber group.
+  \brief Quotient of |d_adjointFiberGroup| by the image of the map
+     |d_toAdjoint| from the fiber group to the adjoint fiber group.
   */
-  latticetypes::ComponentSubquotient d_fiberImage;
+  latticetypes::SmallSubquotient d_fiberImage;
 
 public:
 // constructors and destructors
@@ -61,7 +62,6 @@ public:
 
 private:
 // accessors (private because only needed during construction)
-  void adjointInvolution(latticetypes::LatticeMatrix&) const;
 
   size_t imaginaryRank() const {
     return simpleImaginary().size();
@@ -71,30 +71,32 @@ private:
     return *d_rootDatum;
   }
 
+  latticetypes::SmallSubquotient fiberGroup() const;
+
+  latticetypes::SmallSubquotient adjointFiberGroup() const;
+
+  latticetypes::SmallSubspace gradingGroup() const;
+
+  latticetypes::LatticeMatrix adjointInvolution() const;
+
+  gradings::Grading baseGrading(rootdata::RootSet& flagged_roots) const;
+
+  gradings::GradingList gradingShifts(rootdata::RootSetList& all_shifts) const;
+
+  latticetypes::SmallBitVectorList adjointMAlpha() const;
+
+  latticetypes::SmallBitVectorList mAlpha() const;
+
 // manipulators
-  void adjointFiberGroup();
-
-  void adjointMAlpha();
-
-  void baseGrading();
-
-  void fiberGroup();
-
-  void gradingGroup();
-
-  void gradingShifts();
-
-  void mAlpha();
-
   void makeToAdjoint();
+
+  void weakReal();
 
   void realFormPartition();
 
   void strongReal();
 
   void strongRepresentatives();
-
-  void weakReal();
 };
 
   /*!
@@ -210,7 +212,8 @@ bool CartanClass::isMostSplit(unsigned long c) const
   \brief Tells whether this cartan class is the most split one for
   weak real form corresponding to class \#c in fiber().weakReal().
 
-  Algorithm: this is the case iff the grading corresponding to c is trivial.
+  Algorithm: this is the case iff the grading corresponding to c is trivial,
+  i.e., all imaginary roots are compact.
 */
 
 {
@@ -243,7 +246,17 @@ Fiber::Fiber(const rootdata::RootDatum& rd,
 	     const latticetypes::LatticeMatrix& q)
   : d_torus(NULL)
   , d_involutionData(rd,q) // dummy value will disappear after swap
-
+  , d_fiberGroup()
+  , d_adjointFiberGroup()
+  , d_toAdjoint()
+  , d_baseGrading()
+  , d_gradingShift()
+  , d_baseNoncompact()
+  , d_noncompactShift()
+  , d_weakReal()
+  , d_realFormPartition()
+  , d_strongReal()
+  , d_strongRealFormReps()
 {
   Helper fhelp(rd,q);
   swap(fhelp);
@@ -258,6 +271,17 @@ Fiber::Fiber(const rootdata::RootDatum& rd,
 	     tags::DualTag)
   : d_torus(NULL)
   , d_involutionData(rd,q) // dummy value will disappear after swap
+  , d_fiberGroup()
+  , d_adjointFiberGroup()
+  , d_toAdjoint()
+  , d_baseGrading()
+  , d_gradingShift()
+  , d_baseNoncompact()
+  , d_noncompactShift()
+  , d_weakReal()
+  , d_realFormPartition()
+  , d_strongReal()
+  , d_strongRealFormReps()
 {
   rootdata::RootDatum rdd(rd,tags::DualTag());
   latticetypes::LatticeMatrix qd = q;
@@ -277,23 +301,19 @@ Fiber::~Fiber ()
 // copy and assignment
 
 Fiber::Fiber(const Fiber& other)
-  :d_torus(other.d_torus),
-   d_involutionData(other.d_involutionData),
-   d_fiberGroup(other.d_fiberGroup),
-   d_adjointFiberGroup(other.d_adjointFiberGroup),
-   d_toAdjoint(other.d_toAdjoint),
-   d_gradingGroup(other.d_gradingGroup),
-   d_mAlpha(other.d_mAlpha),
-   d_adjointMAlpha(other.d_adjointMAlpha),
-   d_baseGrading(other.d_baseGrading),
-   d_gradingShift(other.d_gradingShift),
-   d_baseNoncompact(other.d_baseNoncompact),
-   d_noncompactShift(other.d_noncompactShift),
-   d_weakReal(other.d_weakReal),
-   d_realFormPartition(other.d_realFormPartition),
-   d_strongReal(other.d_strongReal),
-   d_strongRealFormReps(other.d_strongRealFormReps)
-
+  : d_torus(other.d_torus)
+  , d_involutionData(other.d_involutionData)
+  , d_fiberGroup(other.d_fiberGroup)
+  , d_adjointFiberGroup(other.d_adjointFiberGroup)
+  , d_toAdjoint(other.d_toAdjoint)
+  , d_baseGrading(other.d_baseGrading)
+  , d_gradingShift(other.d_gradingShift)
+  , d_baseNoncompact(other.d_baseNoncompact)
+  , d_noncompactShift(other.d_noncompactShift)
+  , d_weakReal(other.d_weakReal)
+  , d_realFormPartition(other.d_realFormPartition)
+  , d_strongReal(other.d_strongReal)
+  , d_strongRealFormReps(other.d_strongRealFormReps)
 {
   using namespace tori;
 
@@ -328,9 +348,6 @@ void Fiber::swap(Fiber& other)
   d_fiberGroup.swap(other.d_fiberGroup);
   d_adjointFiberGroup.swap(other.d_adjointFiberGroup);
   d_toAdjoint.swap(other.d_toAdjoint);
-  d_gradingGroup.swap(other.d_gradingGroup);
-  d_mAlpha.swap(other.d_mAlpha);
-  d_adjointMAlpha.swap(other.d_adjointMAlpha);
   d_baseGrading.swap(other.d_baseGrading);
   d_gradingShift.swap(other.d_gradingShift);
   d_baseNoncompact.swap(other.d_baseNoncompact);
@@ -378,7 +395,7 @@ void Fiber::grading(gradings::Grading& gr, unsigned long x) const
   using namespace latticetypes;
 
   RankFlags b(x);
-  Component v(b,adjointFiberRank());
+  SmallBitVector v(b,adjointFiberRank());
 
   gr = d_baseGrading;
 
@@ -418,7 +435,8 @@ const latticetypes::LatticeMatrix& Fiber::involution() const
   return d_torus->involution();
 }
 
-void Fiber::mAlpha(latticetypes::Component& ma, const rootdata::Root& cr) const
+void Fiber::mAlpha(latticetypes::SmallBitVector& ma, const rootdata::Root& cr)
+ const
 
 /*!
   \brief Puts in ma the m_alpha corresponding to cr.
@@ -429,10 +447,8 @@ void Fiber::mAlpha(latticetypes::Component& ma, const rootdata::Root& cr) const
 {
   ma.resize(d_fiberGroup.dimension());
 
-  latticetypes::Component v;
-  lattice::mod2(v,cr);
-  d_fiberGroup.representative(ma,v);
-  d_fiberGroup.toSubquotient(ma);
+  latticetypes::SmallBitVector v(cr);
+  ma= d_fiberGroup.toBasis(v);
 }
 
 size_t Fiber::minusRank() const
@@ -462,15 +478,13 @@ void Fiber::noncompactRootSet(rootdata::RootSet& rs, unsigned long x) const
   using namespace latticetypes;
 
   RankFlags b(x);
-  Component v(b,adjointFiberRank());
+  SmallBitVector v(b,adjointFiberRank());
 
   rs = d_baseNoncompact;
 
   for (size_t j = 0; j < v.size(); ++j)
     if (v.test(j))
       rs ^= d_noncompactShift[j];
-
-  return;
 }
 
 size_t Fiber::plusRank() const
@@ -498,9 +512,9 @@ unsigned long Fiber::toAdjoint(unsigned long x) const
   using namespace latticetypes;
 
   RankFlags xf(x);
-  Component v(xf,fiberRank());
+  SmallBitVector v(xf,fiberRank());
 
-  Component w(adjointFiberRank());
+  SmallBitVector w(adjointFiberRank());
   d_toAdjoint.apply(w,v);
 
   return w.data().to_ulong();
@@ -574,19 +588,16 @@ Helper::Helper(const rootdata::RootDatum& rd,
 	       const latticetypes::LatticeMatrix& q)
   : Fiber(new tori::RealTorus(q),rd,q) // auxiliary constructor for base object
   , d_rootDatum(&rd)
+  , d_fiberImage()
 {
   // make fiber groups
-  fiberGroup();
-  adjointFiberGroup();
-  gradingGroup();
+  d_fiberGroup=fiberGroup();
+  d_adjointFiberGroup=adjointFiberGroup();
+  assert(gradingGroup().dimension()==0);
 
-  // make m_alpha elements for the imaginary roots
-  mAlpha();
-  adjointMAlpha();
-
-  // make base grading and grading shifts
-  baseGrading();
-  gradingShifts();
+  // make base grading, its noncompact root set, and grading shifts
+  d_baseGrading=baseGrading(d_baseNoncompact);
+  d_gradingShift=gradingShifts(d_noncompactShift);
 
   // make fiber group map
   makeToAdjoint();
@@ -608,277 +619,15 @@ Helper::~Helper()
 
 /******** accessors *******************************************************/
 
-void Helper::adjointInvolution(latticetypes::LatticeMatrix& q) const
+latticetypes::SmallSubquotient Helper::fiberGroup() const
 
 /*!
-  \brief Puts in q the matrix of the negative involution in the simple
-  coweight basis.
-*/
-
-{
-  using namespace latticetypes;
-  using namespace rootdata;
-
-  const RootDatum& rd = rootDatum();
-
-  // write involution in root basis
-  RootList rl;
-
-  for (size_t s = 0; s < rd.semisimpleRank(); ++s)
-    rl.push_back(rootInvolution(rd.simpleRootNbr(s)));
-
-  WeightList b;
-
-  toRootBasis(rl.begin(),rl.end(),back_inserter(b),rd.simpleRootList(),rd);
-  q = LatticeMatrix(b);
-
-  // do negative transpose
-  q.transpose();
-  q.negate();
-
-  return;
-}
-
-/******** manipulators *******************************************************/
-
-void Helper::adjointFiberGroup()
-
-/*!
-  \brief Makes the group that acts 1-transitively on the adjoint fiber.
-
-  Algorithm: this is the topology subquotient for the negative transpose
-  of the involution induced by tau on the root lattice. We express it in
-  the basis of simple coweights (mod 2).
-*/
-
-{
-  using namespace latticetypes;
-  using namespace rootdata;
-  using namespace tori;
-
-  // write involution in root basis
-  LatticeMatrix qsr;
-  adjointInvolution(qsr);
-
-  // construct subquotient
-  dualPi0(d_adjointFiberGroup,qsr);
-
-  return;
-}
-
-void Helper::adjointMAlpha()
-
-/*!
-  \brief Constructs the m_alpha's for the adjoint group, and alpha
-  simple imaginary.
-
-  Algorithm: the cocharacter lattice for the adjoint group is the coweight
-  lattice. To get the coordinates of an element in the basis of X_* /2X_*
-  afforded by the simple coweights, it is enough to pair the corresponding
-  coroot with the simple roots. The resulting element is automatically tau-
-  invariant. Then what is left to do is to take its image modulo V_- for
-  the adjoint group.
-*/
-
-{
-  using namespace lattice;
-  using namespace latticetypes;
-  using namespace rootdata;
-
-  const RootDatum& rd = rootDatum();
-  size_t n = rd.semisimpleRank();
-  d_adjointMAlpha.resize(imaginaryRank(),Component(n));
-
-  for (size_t i = 0; i < imaginaryRank(); ++i) {
-    Component v(n);
-    // compute pairing with simple roots
-    for(size_t j = 0; j < n; ++j) {
-      RootNbr r = simpleImaginary(i);
-      LatticeCoeff c = scalarProduct(rd.coroot(r),rd.simpleRoot(j));
-      if (c & 1) // scalar product is odd
-	v.set(j);
-    }
-    // check that v is tau-invariant
-    // for testing purposes only
-    LatticeMatrix q;
-    adjointInvolution(q);
-    ComponentMap q2;
-    mod2(q2,q);
-    Component v1(v.size());
-    q2.apply(v1,v);
-    assert(v.data() == v1.data());
-    // reduce modulo V_-
-    d_adjointFiberGroup.representative(d_adjointMAlpha[i],v);
-    d_adjointFiberGroup.toSubquotient(d_adjointMAlpha[i]);
-  }
-
-  return;
-}
-
-void Helper::baseGrading()
-
-/*!
-  \brief Fills in d_baseGrading and d_baseNoncompact
-
-  Explanation: the base grading is the one where all the simple imaginary
-  roots are noncompact. The baseNoncompact RootSet flags the corresponding
-  noncompact roots.
-
-  Algorithm: for the noncompact roots, express imaginary roots in terms of
-  the simple ones, and see if the sum of coordinates is even.
-*/
-
-{
-  using namespace gradings;
-  using namespace lattice;
-  using namespace latticetypes;
-  using namespace rootdata;
-
-  const RootDatum& rd = rootDatum();
-
-  d_baseGrading.set();
-  d_baseNoncompact.resize(rd.numRoots());
-
-  // baseGrading is already filled with ones
-  d_baseGrading.truncate(imaginaryRank());
-
-  // express imaginary roots in simple imaginary basis
-  RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
-
-  WeightList ir;
-  toRootBasis(irl.begin(),irl.end(),back_inserter(ir),simpleImaginary(),rd);
-  ComponentList ir2;
-  mod2(ir2,ir);
-
-  for (size_t j = 0; j < ir2.size(); ++j)
-    if (ir2[j].count() & 1ul)
-      d_baseNoncompact.insert(irl[j]);
-
-  return;
-}
-
-void Helper::gradingGroup()
-
-/*!
-  \brief Makes the stabilizer of the grading in the adjoint fiber group.
-
-  Explanation: each real form defines a grading of the imaginary root system,
-  obtained by pairing with the simple imaginary roots. It should be the case
-  that the grading entirely defines the real form, i.e., the corresponding
-  W_i-orbit. However, this doesn't mean that the map from real form parameters
-  to gradings has to be injective. The grading group contains the kernel of
-  this map at the level of the adjoint fiber group.
-*/
-
-{
-  using namespace bitset;
-  using namespace lattice;
-  using namespace latticetypes;
-  using namespace rootdata;
-
-  const RootDatum& rd = rootDatum();
-
-  // define map
-  const ComponentList& baf = d_adjointFiberGroup.space().basis();
-
-  WeightList bsi;
-  toRootBasis(simpleImaginary().begin(),simpleImaginary().end(),
-	      back_inserter(bsi),rd.simpleRootList(),rd);
-  ComponentList bsi2;
-  mod2(bsi2,bsi);
-
-  ComponentList b;
-
-  // run through the subquotient basis representatives
-  for (RankFlags::iterator j = d_adjointFiberGroup.support().begin(); j();
-       ++j) {
-    Component v(imaginaryRank());
-    for (size_t i = 0; i < imaginaryRank(); ++i)
-      if (scalarProduct(baf[*j],bsi2[i]))
-	v.set(i);
-    b.push_back(v);
-  }
-
-  ComponentMap q(b);
-
-  // find kernel
-  ComponentList ker;
-  q.kernel(ker);
-
-  d_gradingGroup = ComponentSubspace(ker,adjointFiberRank());
-  assert(d_gradingGroup.dimension() == 0);
-
-  return;
-}
-
-void Helper::gradingShifts()
-
-/*!
-  \brief Fills in d_gradingShifts and d_noncompactShifts.
-
-  Explanation: d_gradingShift[j] contains the action of the j'th basis
-  vector of the canonical basis of the adjoint fiber group, on the
-  various simple imaginary roots. Similarly, d_noncompactShift[j] contains
-  the action on all imaginary roots. With these data, it is easy to
-  compute the grading for an arbitrary parameter.
-
-  Algorithm: the basis for the adjoint fiber group is expressed in the
-  simple weight basis. Therefore, in order to apply a root, it is enough
-  to express that root in the simple root basis, and do the scalar product
-  mod 2.
-*/
-
-{
-  using namespace bitset;
-  using namespace gradings;
-  using namespace lattice;
-  using namespace latticetypes;
-  using namespace rootdata;
-
-  const RootDatum& rd = rootDatum();
-
-  // express imaginary roots in simple root basis
-  RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
-  WeightList ir;
-  toRootBasis(irl.begin(),irl.end(),back_inserter(ir),rd.simpleRootList(),rd);
-  ComponentList ir2;
-  mod2(ir2,ir);
-
-  RankFlags supp = d_adjointFiberGroup.support();
-  const ComponentList b = d_adjointFiberGroup.space().basis();
-
-  for (RankFlags::iterator i = supp.begin(); i(); ++i) {
-    RootSet rs(rd.numRoots());
-    for (size_t j = 0; j < ir2.size(); ++j)
-      if (scalarProduct(b[*i],ir2[j]))
-	rs.insert(irl[j]);
-    d_noncompactShift.push_back(rs);
-  }
-
-  // express simple imaginary roots in simple root basis
-  const RootList& sil = simpleImaginary();
-  WeightList si;
-  toRootBasis(sil.begin(),sil.end(),back_inserter(si),rd.simpleRootList(),rd);
-  ComponentList si2;
-  mod2(si2,si);
-
-  for (RankFlags::iterator i = supp.begin(); i(); ++i) {
-    Grading gr;
-    for (size_t j = 0; j < si2.size(); ++j)
-      if (scalarProduct(b[*i],si2[j]))
-	gr.set(j);
-    d_gradingShift.push_back(gr);
-  }
-}
-
-void Helper::fiberGroup()
-
-/*!
-  \brief Makes the group that acts 1-transitively on each subset of the
+  \brief returns the group that acts 1-transitively on each subset of the
   fiber with fixed central square.
 
-  Explanation: this is the topology subquotient for the negative transpose
-  of the involution.
+  Explanation: the value returned is the subquotient $V_+ + V_-/V_+$ as
+  constructed by |tori::dualPi0|, but for the negative transpose of our
+  involution.
 */
 
 {
@@ -889,38 +638,84 @@ void Helper::fiberGroup()
   q.negate();
 
   // construct subquotient
-  tori::dualPi0(d_fiberGroup,q);
+  latticetypes::SmallSubquotient result;
+  tori::dualPi0(result,q);
+
+  return result;
 }
 
-void Helper::mAlpha()
+latticetypes::LatticeMatrix Helper::adjointInvolution() const
 
 /*!
-  \brief Constructs the m_alpha's.
+  \brief Returns the matrix of the transformation induced by negative of
+  our involution on the coweight lattice, expressed on the dual basis of the
+  simple root basis, which is the simple coweight basis.
 
-  Explanation: in fact, we simply write down the expression of the coroots
-  corresponding to the imaginary simple roots, and compute modulo 2X_*.
+  So we first transform the involution to one on the root basis, and then take
+  the negative transpose as in the |fiberGroup| method.
 */
 
 {
-  const rootdata::RootDatum& rd = rootDatum();
-  size_t n = rd.rank();
-  d_mAlpha.resize(imaginaryRank(),latticetypes::Component(n));
+  using namespace latticetypes;
+  using namespace rootdata;
+  const RootDatum& rd = rootDatum();
 
-  for (size_t j = 0; j < imaginaryRank(); ++j) {
-    latticetypes::Component v(n);
-    lattice::mod2(v,rd.coroot(simpleImaginary(j)));
-    d_fiberGroup.representative(d_mAlpha[j],v);
-    d_fiberGroup.toSubquotient(d_mAlpha[j]);
-  }
+  // write involution in root basis
+  RootList rl; // root numbers of images of simple roots by our involution
+
+  for (size_t s = 0; s < rd.semisimpleRank(); ++s)
+    rl.push_back(involution_image_of_root(rd.simpleRootNbr(s)));
+
+  WeightList b; // will contain members of |rl| expressed in simple roots
+
+  toRootBasis(rl.begin(),rl.end(),back_inserter(b),rd.simpleRootList(),rd);
+  latticetypes::LatticeMatrix q = LatticeMatrix(b);
+
+  // do negative transpose
+  q.transpose();
+  q.negate();
+
+  return q;
 }
 
-void Helper::makeToAdjoint()
+latticetypes::SmallSubquotient Helper::adjointFiberGroup() const
 
 /*!
-  \brief Fills in the toAdjoint matrix.
+  \brief Makes the group that acts 1-transitively on the adjoint fiber.
 
-  Explanation: this is the matrix of the projection from the fiber group
-  to the adjoint fiber group.
+  Algorithm: this is the subquotient $V_+ + V_-/V_+$ for the negative
+  transpose of the involution induced by tau on the root lattice (which is
+  computed by |adjointInvolution|).
+*/
+
+{
+  // write involution in root basis
+  latticetypes::LatticeMatrix qsr= adjointInvolution();
+
+  // construct subquotient
+  latticetypes::SmallSubquotient result; tori::dualPi0(result,qsr);
+
+  assert(result.rank()==rootDatum().semisimpleRank());
+
+  return result;
+}
+
+latticetypes::SmallSubspace Helper::gradingGroup() const
+
+/*!
+  \brief Makes the stabilizer of the grading in the adjoint fiber group.
+
+  Explanation: each real form defines a grading of the imaginary root system,
+  obtained by pairing with the simple imaginary roots. It should be the case
+  that the grading entirely defines the real form, i.e., the corresponding
+  W_i-orbit. However, this doesn't mean that the map from real form parameters
+  to gradings has to be injective. It could a priori be the case that some
+  real form parameters in the same W_i-orbit give identical gradings of the
+  imaginary root system; this would mean that the nonzero adjoint fiber
+  element that transforms one into the other gives a null pairing with every
+  imaginary root. It seems that this never happens, whence the |assert| below.
+  Nevertheless, and although never used, we compute the kernel of the map to
+  gradings shifts in the adjoint fiber group, calling it the "grading group".
 */
 
 {
@@ -929,36 +724,307 @@ void Helper::makeToAdjoint()
   using namespace latticetypes;
   using namespace rootdata;
 
-  const ComponentList b = d_fiberGroup.space().basis();
+  const rootdata::RootDatum& rd = rootDatum();
+
+  // define map
+  const SmallBitVectorList& baf = d_adjointFiberGroup.space().basis();
+
+  WeightList bsi; // express simple imaginary roots on (full) simple roots
+  toRootBasis(simpleImaginary().begin(),simpleImaginary().end(),
+	      back_inserter(bsi),rd.simpleRootList(),rd);
+
+
+  SmallBitVectorList bsi2(bsi); // and reduce mod 2
+
+  SmallBitVectorList b;
+
+  /* set b[j][i] = <e_j,bsi2[i]> where e_j=baf[j'], with |baf[j']| the
+     subquotient basis representative number |j| */
+  for (RankFlags::iterator j = d_adjointFiberGroup.support().begin();
+       j(); ++j)
+  {
+    SmallBitVector v(imaginaryRank());
+    for (size_t i = 0; i < imaginaryRank(); ++i)
+      v.set(i,scalarProduct(baf[*j],bsi2[i]));
+    b.push_back(v);
+  }
+
+  BinaryMap q(b);
+
+  // find kernel
+  SmallBitVectorList ker; q.kernel(ker);
+
+  return SmallSubspace(ker,adjointFiberRank());
+}
+
+
+gradings::Grading Helper::baseGrading(rootdata::RootSet& flagged_roots) const
+
+/*!
+  \brief Returns the base grading (all ones) on simple imaginary roots, while
+  flagging all noncompact imaginary roots in |flagged_roots|
+
+  Algorithm: for the noncompact roots, express imaginary roots in terms of
+  the simple ones, and see if the sum of coordinates is even.
+*/
+
+{
+  // express imaginary roots in simple imaginary basis
+  rootdata::RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
+
+  latticetypes::WeightList ir;
+  rootdata::toRootBasis(irl.begin(),irl.end(),back_inserter(ir)
+			,simpleImaginary(),rootDatum());
+  latticetypes::SmallBitVectorList ir2(ir); // |ir2.size()==irl.size()()|
+
+  // now flag all roots with noncompact grading
+  flagged_roots.resize(rootDatum().numRoots());
+
+  for (size_t j = 0; j < irl.size(); ++j)
+    flagged_roots.set_mod2(irl[j],ir2[j].count());
+
+  return gradings::Grading(constants::lMask[imaginaryRank()]); // all ones
+}
+
+gradings::GradingList Helper::gradingShifts(rootdata::RootSetList& all_shifts)
+  const
+
+/*!
+  \brief Computes grading shifts for simple imaginary roots, and also sets
+  |all_shifts| to flag the grading of the full set of imaginary roots.
+
+  Explanation: component |j| of the result contains the grading on the set of
+  simple imaginary roots given by the canonical basis vector |j| of the
+  adjoint fiber group. This is not the grading of a real form, but the amount
+  by which the grading changes by the action of that basis vector, whence the
+  name grading shitf. Similarly, |all_shifts[j]| is set to contain the action
+  on all imaginary roots. With these data and the "base" grading corresponding
+  to the real form parameter numbered $0$, it is easy to compute the grading
+  for an arbitrary real form parameter (represented by the element of the
+  adjoint fiber group moving the base element there).
+
+  Algorithm: the basis for the adjoint fiber group is the reduction modulo 2
+  of the simple coweight basis. Therefore, in order to apply to a root, it is
+  enough to express that root in the simple root basis, and do the scalar
+  product mod 2. Note that in contrast to |baseGrading| above, and in spite
+  of the reuse of the same names, we express on the (full) simple root basis
+  here, not on the simple imaginary root basis (which by the way is not a
+  subset of the former).
+*/
+
+{
+  using namespace bitset;
+  using namespace gradings;
+  using namespace lattice;
+  using namespace latticetypes;
+  using namespace rootdata;
+
+  const rootdata::RootDatum& rd = rootDatum();
+
+  // express imaginary roots in simple root basis
+  rootdata::RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
+
+  latticetypes::WeightList ir;
+  rootdata::toRootBasis(irl.begin(),irl.end(),back_inserter(ir),
+			rd.simpleRootList(),rd);
+  latticetypes::SmallBitVectorList ir2(ir); // |ir2.size()==irl.size()|
+
+
+  // also express simple imaginary roots in simple root basis
+  const rootdata::RootList& sil = simpleImaginary();
+  latticetypes::WeightList si;
+  rootdata::toRootBasis(sil.begin(),sil.end(),back_inserter(si),
+			rd.simpleRootList(),rd);
+  latticetypes::SmallBitVectorList si2(si); // reduce vectors mod 2
+
+  // now compute all results
+  bitset::RankFlags supp = d_adjointFiberGroup.support();
+  const SmallBitVectorList& b = d_adjointFiberGroup.space().basis();
+  gradings::GradingList result;
+
+  // traverse basis of the subquotient |d_adjointFiberGroup|
+  for (RankFlags::iterator i = supp.begin(); i(); ++i) {
+
+    // all imaginary roots part
+    RootSet rs(rd.numRoots());
+    for (size_t j = 0; j < ir2.size(); ++j)
+      rs.set_to(irl[j],scalarProduct(b[*i],ir2[j]));
+    all_shifts.push_back(rs);
+
+    // simple imaginary roots part
+    Grading gr;
+    for (size_t j = 0; j < si2.size(); ++j)
+      gr.set(j,scalarProduct(b[*i],si2[j]));
+    result.push_back(gr);
+  }
+
+  return result;
+}
+
+latticetypes::SmallBitVectorList Helper::mAlpha() const
+
+/*!
+  \brief Constructs the m_alpha's (images of coroots) in the fiber group,
+  for alpha simple imaginary.
+
+  Explanation: in fact, we simply take the coroots corresponding to the
+  imaginary simple roots, which in the root datum are already expressed in the
+  basis of the coweight lattice $X^*$ dual to the weight lattice, reduce
+  modulo 2, and interpret the result in the subquotient |d_fiberGroup| of
+  $X^*$.
+*/
+
+{
+  latticetypes::SmallBitVectorList result;
+  const rootdata::RootDatum& rd = rootDatum();
+  size_t n = rd.rank();
+  result.resize(imaginaryRank(),latticetypes::SmallBitVector(n));
+
+  for (size_t i = 0; i < imaginaryRank(); ++i) {
+    latticetypes::SmallBitVector v(rd.coroot(simpleImaginary(i)));
+    result[i]= d_fiberGroup.toBasis(v);
+  }
+  return result;
+}
+
+latticetypes::SmallBitVectorList Helper::adjointMAlpha() const
+
+/*!
+  \brief Constructs the m_alpha's (images of coroots) in the adjoint fiber
+  group, for alpha simple imaginary.
+
+  Algorithm: the cocharacter lattice for the adjoint group is spanned by the
+  simple coweights. To get the coordinates of an element in that basis (which
+  is dual to that of the simple roots), it is enough to pair it with the
+  simple roots. The resulting element for the corot of a simple imaginary
+  $\alpha$ is automatically $\tau$-invariant, since $\alpha$ is, so its
+  reduction modulo 2 lies in $V_+$ (for the cocharacter lattice). Then what is
+  left to do is to convert to the basis of the adjoint fiber group, which
+  amounts to reducing modulo $V_-$.
+*/
+
+{
+  const rootdata::RootDatum& rd = rootDatum();
+
+  latticetypes::SmallBitVectorList result(imaginaryRank());
+
+  for (size_t i = 0; i < imaginaryRank(); ++i) {
+    latticetypes::SmallBitVector v(rd.semisimpleRank());
+    // compute pairing with simple roots modulo 2
+    for(size_t j = 0; j < v.size(); ++j) {
+      latticetypes::LatticeCoeff c = latticetypes::scalarProduct
+	(rd.coroot(simpleImaginary(i)),rd.simpleRoot(j));
+      v.set_mod2(j,c);
+    }
+
+    // reduce |v| modulo V_-
+    result[i]=d_adjointFiberGroup.toBasis(v);
+  }
+  return result;
+}
+
+
+/******** manipulators *******************************************************/
+
+void Helper::makeToAdjoint()
+
+/*!
+  \brief Fills in the toAdjoint matrix.
+
+  Explanation: this is the matrix of the map from the fiber group to the
+  adjoint fiber group. Such a map exists because (1) the roots lattice is a
+  sublattice of the weight lattice, so there is a restriction map from the
+  coweight lattice $X^*$ (dual to the weight lattice) to the lattice $Y^*$
+  spanned by the fundamental coweights (dual to the root lattice), and (2)
+  this map sends $X^*_+$ to $Y^*_+$ and $X^*_-$ to $Y^*_-$ and of course
+  $2X^*$ to $2Y^*$, so it induces a map on the respective subquotients of the
+  form $(V_+ + V_-)/V_-$, where $V_+$ is the modulo $2X^*$ image of $X^*_+$
+  (or similarly for $Y^*_-$). While the map $X^* \to Y^*$ is injective (only)
+  in the semisimple case, little can be said about the induced map.
+
+  The above argument shows that the vector |v| computed below of scalar
+  products of a generator of the fiber group with simple roots can be validly
+  incorporated (by calling |d_adjointFiberGroup.toBasis|) into the adjoint
+  fiber group; notably, it represents an element of $V_+ + V_-$ in
+  $Y^* / 2Y^*$. (without space that formula would have ended our comment!)
+*/
+
+{
+  using namespace bitset;
+  using namespace lattice;
+  using namespace latticetypes;
+  using namespace rootdata;
+
+  const SmallBitVectorList& b = d_fiberGroup.space().basis();
   const RankFlags& supp = d_fiberGroup.support();
   const RootDatum& rd = rootDatum();
   size_t n = rd.semisimpleRank();
 
-  ComponentList b_sr(n);
-  for (size_t j = 0; j < b_sr.size(); ++j)
-    mod2(b_sr[j],rd.simpleRoot(j));
+  SmallBitVectorList b_sr(rd.beginSimpleRoot(),rd.endSimpleRoot()); // mod 2
 
-  ComponentList b_ad;
+  // images of fiber group basis in adjoint fiber group
+  SmallBitVectorList b_ad; b_ad.reserve(d_fiberGroup.dimension());
 
   for (RankFlags::iterator i = supp.begin(); i(); ++i) {
-    Component v(n);
+    SmallBitVector v(n);
     for(size_t j = 0; j < n; ++j) {
-      if (scalarProduct(b[*i],b_sr[j]))
-	v.set(j);
+      v.set(j,bitvector::scalarProduct(b[*i],b_sr[j]));
     }
-    d_adjointFiberGroup.representative(v,v);
-    d_adjointFiberGroup.toSubquotient(v);
-    b_ad.push_back(v);
+    b_ad.push_back(d_adjointFiberGroup.toBasis(v));
   }
 
-  d_toAdjoint = ComponentMap(b_ad);
+  d_toAdjoint = BinaryMap(b_ad);
 
-  ComponentList b_id;
-  initBasis(b_id,d_adjointFiberGroup.dimension());
-  d_fiberImage = ComponentSubquotient(b_id,b_ad,
+  SmallBitVectorList b_id;
+  bitvector::initBasis(b_id,d_adjointFiberGroup.dimension());
+
+  // construct |d_fiberImage| as quotient of spans of |b_id| (all) and |b_ad|
+  // which is a quotient of the adjoint fiber group!
+  d_fiberImage = SmallSubquotient(b_id,b_ad,
 				      d_adjointFiberGroup.dimension());
+  // |d_fiberImage| will be needed in |realFormPartition|
+}
 
-  return;
+void Helper::weakReal()
+
+/*!
+  \brief Writes in d_weakReal the partition of the adjoint fiber
+  corresponding to weak real forms.
+
+  Algorithm: we construct the FiberAction object corresponding to the adjoint
+  fiber.  The weak real forms correspond to the orbits of the
+  imaginary Weyl group on the adjoint Fiber group.  The group is
+  generated by the simple imaginary reflections
+*/
+
+{
+  using namespace bitset;
+  using namespace lattice;
+  using namespace latticetypes;
+  using namespace gradings;
+  using namespace rootdata;
+
+  // grading shifts are given by the "transpose" of the gradingShift data
+
+  GradingList gs(imaginaryRank());
+
+  for (size_t j = 0; j < imaginaryRank(); ++j)
+    for (size_t i = 0; i < d_gradingShift.size(); ++i)
+      if (d_gradingShift[i][j])
+	gs[j].set(i);
+
+  // make m_alpha elements for the imaginary roots
+  SmallBitVectorList d_adjointMAlpha=adjointMAlpha();
+
+  RankFlagsList ma;
+
+  for (size_t j = 0; j < imaginaryRank(); ++j)
+    ma.push_back(d_adjointMAlpha[j].data());
+
+  // make orbits
+  FiberAction fa(d_baseGrading,gs,ma);
+  size_t n = 1ul << adjointFiberRank();
+  makeOrbits(d_weakReal,fa,imaginaryRank(),n);
 }
 
 void Helper::realFormPartition()
@@ -993,27 +1059,19 @@ void Helper::realFormPartition()
 */
 
 {
-  using namespace bitset;
-  using namespace latticetypes;
-  using namespace partition;
-  using namespace tags;
-
-  std::vector<unsigned long> cl;
-  /*
-   */
-  cl.resize(d_weakReal.classCount());
+  std::vector<unsigned long> cl(d_weakReal.classCount());
 
   for (size_t j = 0; j < cl.size(); ++j) {
     unsigned long y = d_weakReal.classRep(j);
-    Component v = Component(RankFlags(y),d_adjointFiberGroup.dimension());
-    d_fiberImage.representative(v,v);
-    d_fiberImage.toSubquotient(v);
-    cl[j] = v.data().to_ulong();
+    latticetypes::SmallBitVector v
+      (bitset::RankFlags(y),d_adjointFiberGroup.dimension());
+
+    // reduce modulo image of map from fiber group to adjoint fiber group
+    cl[j] = d_fiberImage.toBasis(v).data().to_ulong();
   }
 
-  d_realFormPartition = Partition(cl,UnnormalizedTag());
-
-  return;
+  // partition $[0,d_weakReal.classCount()[$ accoring to values of |cl|
+  d_realFormPartition = partition::Partition(cl,tags::UnnormalizedTag());
 }
 
 void Helper::strongReal()
@@ -1051,7 +1109,7 @@ void Helper::strongReal()
   GradingList gst(fiberRank());
 
   for (size_t j = 0; j < gst.size(); ++j) {
-    Component v(adjointFiberRank());
+    SmallBitVector v(adjointFiberRank());
     d_toAdjoint.column(v,j);
     combination(gst[j],d_gradingShift,v.data());
   }
@@ -1062,6 +1120,8 @@ void Helper::strongReal()
     for (size_t i = 0; i < gst.size(); ++i)
       if (gst[i][j])
 	gs[j].set(i);
+
+  SmallBitVectorList d_mAlpha=mAlpha();
 
   // get the m_alpha's
   RankFlagsList ma;
@@ -1098,7 +1158,7 @@ void Helper::strongRepresentatives()
   using namespace latticetypes;
   using namespace partition;
 
-  ComponentList b(fiberRank());
+  SmallBitVectorList b(fiberRank());
 
   for (size_t j = 0; j < b.size(); ++j)
     d_toAdjoint.column(b[j],j);
@@ -1119,7 +1179,7 @@ void Helper::strongRepresentatives()
 
     // find preimage of y in the fiber
     yf ^= yf0;
-    Component v(yf,adjointFiberRank());
+    SmallBitVector v(yf,adjointFiberRank());
     RankFlags xf;
     firstSolution(xf,b,v); // there has to be a solution!
     unsigned long x = xf.to_ulong();
@@ -1131,48 +1191,8 @@ void Helper::strongRepresentatives()
   return;
 }
 
-void Helper::weakReal()
 
-/*!
-  \brief Writes in d_weakReal the partition of the adjoint fiber
-  corresponding to weak real forms.
-
-  Algorithm: we construct the FiberAction object corresponding to the adjoint
-  fiber.  The weak real forms correspond to the orbits of the
-  imaginary Weyl group on the adjoint Fiber group.  The group is
-  generated by the simple imaginary reflections
-*/
-
-{
-  using namespace bitset;
-  using namespace lattice;
-  using namespace latticetypes;
-  using namespace gradings;
-  using namespace rootdata;
-
-  // grading shifts are given by the "transpose" of the gradingShift data
-
-  GradingList gs(imaginaryRank());
-
-  for (size_t j = 0; j < imaginaryRank(); ++j)
-    for (size_t i = 0; i < d_gradingShift.size(); ++i)
-      if (d_gradingShift[i][j])
-	gs[j].set(i);
-
-  RankFlagsList ma;
-
-  for (size_t j = 0; j < imaginaryRank(); ++j)
-    ma.push_back(d_adjointMAlpha[j].data());
-
-  // make orbits
-  FiberAction fa(d_baseGrading,gs,ma);
-  size_t n = 1ul << adjointFiberRank();
-  makeOrbits(d_weakReal,fa,imaginaryRank(),n);
-
-  return;
-}
-
-}
+} // namespace
 
 /*****************************************************************************
 
@@ -1189,15 +1209,15 @@ unsigned long FiberAction::operator() (unsigned long s, unsigned long x) const
   the fiber group.
 
   Algorithm: we interpret the bits of x as the coordinates of the element in
-  the fiber group, in terms of the chosen basepoint. Then the action is
-  adding m_alpha[s] if the grading of alpha_s at x is noncompact, and doing
-  nothing otherwise.
+  the fiber group, in terms of the chosen basepoint. The choice of the
+  basepoint is incorporated in the |d_baseGrading| and |d_gradingShift| fields
+  of the |FiberAction| object, and implicitly accessed by the auxiliary methof
+  |grading|. Then the action is adding m_alpha[s] if the grading of $\alpha_s$
+  given by $x$ is noncompact (i.e., true, odd), and doing nothing otherwise.
 */
 
 {
-  using namespace bitset;
-
-  RankFlags b(x);
+  bitset::RankFlags b(x);
 
   if (grading(b,s))
     b ^= d_mAlpha[s];
@@ -1445,17 +1465,15 @@ void makeSimpleComplex(rootdata::RootList& sc, const rootdata::RootDatum& rd,
     for (RankFlags::iterator i = c.begin(); i(); ++i) {
       sc.push_back(rb[*i]);
       // find image of rb[*i] under the involution
-      RootNbr rTau = cc.rootInvolution(rb[*i]);
+      RootNbr rTau = cc.involution_image_of_root(rb[*i]);
       // erase all elements of b that are not orthogonal to rTau
       for (RankFlags::iterator j = b.begin(); j(); ++j)
 	if (not rd.isOrthogonal(rb[*j],rTau))
 	  b.reset(*j);
     }
   }
-
-  return;
 }
 
-}
+} // namespace
 
-}
+} // namespace atlas

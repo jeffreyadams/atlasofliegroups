@@ -175,7 +175,7 @@ void dualInnerClassType(InnerClassType& dict, const InnerClassType& ict,
 	dict[j] = 's';
       break;
     case 'D':
-      if (slt.second%2 == 1) {
+      if (slt.second%2 !=0) {
 	// interchange split and compact inner classes for D_{2n+1}
 	if (dict[j] == 's' or dict[j] == 'u')
 	  dict[j] = 'c';
@@ -392,7 +392,7 @@ void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
 	m(r+j,r+rs-1-j) = 1;
       break;
     case 'D':
-      if (rank(slt)%2 == 1)
+      if (rank(slt)%2 != 0)
 	addDInvolution(m,r,rs);
       else
 	addCompactInvolution(m,r,rs);

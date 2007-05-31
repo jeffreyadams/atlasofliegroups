@@ -6,13 +6,15 @@
   This is gradings.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
 
 #ifndef GRADINGS_H  /* guard against multiple inclusions */
 #define GRADINGS_H
+
+#include <functional>
 
 #include "gradings_fwd.h"
 
@@ -28,20 +30,20 @@ namespace atlas {
 
 namespace gradings {
 
-  void findGrading(rootdata::RootSet&, const rootdata::RootList&, 
+  void findGrading(rootdata::RootSet&, const rootdata::RootList&,
 		      const rootdata::RootList&, const rootdata::RootDatum&);
 
-  void gradingType(rootdata::RootList&, const Grading&, 
+  void gradingType(rootdata::RootList&, const Grading&,
 		   const rootdata::RootDatum&);
 
-  void compactRoots(rootdata::RootList&, const Grading&, 
+  void compactRoots(rootdata::RootList&, const Grading&,
 		    const rootdata::RootDatum&);
 
   bool isNonCompact(const rootdata::Root&, const Grading&);
 
   void makeGradings(GradingList&, const rootdata::RootDatum&);
 
-  void noncompactRoots(rootdata::RootList&, const Grading&, 
+  void noncompactRoots(rootdata::RootList&, const Grading&,
 		       const rootdata::RootDatum&);
 
 }
@@ -52,7 +54,7 @@ namespace gradings {
 
   /*!
   \brief Describes a four-valued root attribute for each simple root: to be
-  real, complex, imaginary compact or imaginary noncompact. 
+  real, complex, imaginary compact or imaginary noncompact.
 
   This information fits nicely in two bits, and these bits can then be
   packed in a TwoRankFlags bitset (which for the default bound on the
@@ -70,7 +72,7 @@ class Status {
   enum Value { Complex, ImaginaryCompact, Real, ImaginaryNoncompact };
 
 // constructors and destructors
-  Status() {}
+  Status() {} // all roots are |Complex| by default
 
   ~Status() {}
 
@@ -117,39 +119,10 @@ class Status {
   }
 };
 
-  /*!
-  \brief Early version of Status, no longer instantiated.
-  */
-class FullStatus {
 
- private:
-
-  bitmap::BitMap d_map;
-
- public:
-
-// constructors and destructors
-
-  explicit FullStatus(size_t n):d_map(n << 1) {}
-
-  ~FullStatus() {}
-
-// accessors
-  Status::Value operator[] (size_t j) const {
-    unsigned long a = d_map.range(j << 1,2);
-    return static_cast<Status::Value> (a);
-  }
-
-// manipulators
-  void set(unsigned long j, Status::Value v) {
-    unsigned long a = v;
-    d_map.setRange(j << 1,2,a);
-  }
-
-};
-
-class GradingCompare {
- public:
+struct GradingCompare
+  : public std::binary_function<const Grading& , const Grading& , bool>
+{
   bool operator() (const Grading&, const Grading&);
 };
 
