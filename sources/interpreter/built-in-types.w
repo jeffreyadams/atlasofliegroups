@@ -1271,7 +1271,7 @@ type would not work, and the copy constructor is necessary for the |clone|
 method. So instead, we shall share the Atlas object when duplicating our
 value, and maintain a reference count to allow destruction when the last copy
 disappears. The reference count needs to be shared of course, and since the
-links between the built in value and both the Atlas value it represents and
+links between the built in value and both the Atlas values it represents and
 the reference count are indissoluble, we use references for the data fields.
 
 The reference to the Atlas value is not constant, since at some point we need
@@ -1289,13 +1289,14 @@ transparency is not complete.
 #include "realform_io.h"
 
 @~The main constructor takes a auto-pointer to a |ComplexReductiveGroup| as
-argument, as a reminder that the called gives up ownership of this pointer
+argument, as a reminder that the caller gives up ownership of this pointer
 that should come from a call to~|new|; this pointer will henceforth be owned
 by the |inner_class_value| constructed, in shared ownership with any values
 later cloned from it: the last one of them to be destroyed will call |delete|
 for the pointer. The remaining pair of arguments of the main constructor must
-have been computed by |check_involution| above, to ensure their validity (but
-we prefer not to call that function from inside the constructor).
+have been computed by |check_involution| above, to ensure their validity (we
+prefer not to call that function from inside our constructor, which would have
+guaranteed this).
 
 Occasionally we shall need to refer to the dual inner class (for the dual
 group); since the construction of an instance even without its complete set of
@@ -1305,10 +1306,11 @@ construction of the |inner_class_value| and store it in the |dual| field where
 it will be available as needed.
 
 Contrary to what was the case for other value types, the copy constructor is
-public here, which will make it possible to store an |inner_class_value|
-inside another class that depends on the circumstance that the object
-referenced by our |val| is alive; the reference counting mechanism will then
-ensure that this is the case as long as the object of that class exists.
+public here. This makes it possible to store an |inner_class_value| inside
+another class, when that class depends on the object referenced by our |val|
+being alive; doing so does not cost much, and the reference counting mechanism
+will then ensure that the inner class remains valid at least as long as the
+object of that class exists.
 
 @< Type definitions @>=
 struct inner_class_value : public value_base
@@ -1730,14 +1732,14 @@ void quasisplit_form_wrapper()
 
 @*2 Functions operating on real reductive groups.
 %
-Here is a function that gives full information about the component group of
-a reals reductive group: it returns the rank~$r$ such that the component group
-is isomorphic to $(\Z/2\Z)^r$.
+Here is a function that gives information about the dual component group
+of a real reductive group: it returns the rank~$r$ such that the component
+group is isomorphic to $(\Z/2\Z)^r$.
 
 @< Local function def...@>=
 void components_rank_wrapper()
 { real_form_ptr R(get<real_form_value>());
-  const latticetypes::ComponentList c=R->val.componentReps();
+  const latticetypes::ComponentList c=R->val.dualComponentReps();
   push_value(new int_value(c.size()));
 }
 
@@ -1910,7 +1912,7 @@ typedef std::auto_ptr<Cartan_class_value> Cartan_class_ptr;
 @ In the constructor we check that the Cartan class with the given number
 currently exists. This check \emph{follows} the selection of the pointer to
 the |CartanClass| object that initialises the |val| field because we have no
-choice (a reference field cannot be set later); the danger is doing this is
+choice (a reference field cannot be set later); the danger in doing this is
 limited since the selection itself will probably not crash the program, and
 the nonsensical pointer so obtained will probably be stored away without
 inspection and then be forgotten when an error is thrown. Moreover, the
@@ -2088,7 +2090,7 @@ void fiber_part_wrapper()
   bitmap::BitMap b(cc->parent.val.cartanSet(rf->val.realForm()));
   if (!b.isMember(cc->number))
     throw std::runtime_error
-    ("fiber_part: inner class not defined for this real form");
+    ("fiber_part: Cartan class not defined for this real form");
 @)
   const partition::Partition& pi = cc->val.fiber().weakReal();
   const realform::RealFormList rf_nr=
@@ -2123,7 +2125,7 @@ void print_gradings_wrapper()
   bitmap::BitMap b(cc->parent.val.cartanSet(rf->val.realForm()));
   if (!b.isMember(cc->number))
     throw std::runtime_error
-    ("fiber_part: inner class not defined for this real form");
+    ("fiber_part: Cartan class not defined for this real form");
 @)
   const partition::Partition& pi = cc->val.fiber().weakReal();
   const realform::RealFormList rf_nr=
