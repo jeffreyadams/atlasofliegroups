@@ -980,18 +980,6 @@ void klwrite_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace blocks;
-  using namespace commands;
-  using namespace error;
-  using namespace interactive;
-  using namespace ioutils;
-  using namespace kl;
-  using namespace kl_io;
-  using namespace klsupport;
-  using namespace realform;
-  using namespace realredgp;
-
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
   try {
@@ -1036,13 +1024,11 @@ void klwrite_f()
 	}
     }
 
-    Block block(G_C,G_R.realForm(),drf);
+    blocks::Block block(G_C,G_R.realForm(),drf);
 
-    KLSupport kls(block);
-    kls.fill();
+    klsupport::KLSupport kls(block); kls.fill();
 
-    KLContext klc(kls);
-    klc.fill();
+    kl::KLContext klc(kls); klc.fill();
 
     if (matrix_out.is_open())
       {
@@ -1076,10 +1062,10 @@ void klwrite_f()
 	std::cerr<< "Done.\n";
       }
   }
-  catch (MemoryOverflow& e) {
+  catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
   }
-  catch (InputError& e) {
+  catch (error::InputError& e) {
     e("aborted");
   }
 }
@@ -1207,10 +1193,10 @@ void poscoroots_rootbasis_f()
     const rootdata::RootDatum& rd = currentRootDatum();
     ioutils::OutputFile file;
 
-    std::vector<Weight> v;
-    baseChange(rd.beginPosCoroot(),rd.endPosCoroot(),back_inserter(v),
-	     rd.beginSimpleCoroot(),rd.endSimpleCoroot());
-    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    latticetypes::WeightList v;
+    lattice::baseChange(rd.beginPosCoroot(),rd.endPosCoroot(),back_inserter(v),
+			rd.beginSimpleCoroot(),rd.endSimpleCoroot());
+    basic_io::seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
   }
   catch (error::InputError& e) {
     e("aborted");
@@ -1226,17 +1212,13 @@ void posroots_rootbasis_f()
 
 {
   try {
-    using namespace basic_io;
-    using namespace lattice;
-    using namespace latticetypes;
-
     const rootdata::RootDatum& rd = currentRootDatum();
     ioutils::OutputFile file;
 
-    std::vector<Weight> v;
-    baseChange(rd.beginPosRoot(),rd.endPosRoot(),back_inserter(v),
-	       rd.beginSimpleRoot(),rd.endSimpleRoot());
-    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    latticetypes::WeightList v;
+    lattice::baseChange(rd.beginPosRoot(),rd.endPosRoot(),back_inserter(v),
+			rd.beginSimpleRoot(),rd.endSimpleRoot());
+    basic_io::seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
   }
   catch (error::InputError& e) {
     e("aborted");
@@ -1252,17 +1234,13 @@ void roots_rootbasis_f()
 
 {
   try {
-    using namespace basic_io;
-    using namespace lattice;
-    using namespace latticetypes;
-
     const rootdata::RootDatum& rd = currentRootDatum();
     ioutils::OutputFile file;
 
-    std::vector<Weight> v;
-    baseChange(rd.beginRoot(),rd.endRoot(),back_inserter(v),
-	       rd.beginSimpleRoot(),rd.endSimpleRoot());
-    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    latticetypes::WeightList v;
+    lattice::baseChange(rd.beginRoot(),rd.endRoot(),back_inserter(v),
+			rd.beginSimpleRoot(),rd.endSimpleRoot());
+    basic_io::seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
   }
   catch (error::InputError& e) {
     e("aborted");
@@ -1296,57 +1274,37 @@ void wcells_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace blocks;
-  using namespace bruhat;
-  using namespace commands;
-  using namespace error;
-  using namespace interactive;
-  using namespace ioutils;
-  using namespace kl;
-  using namespace klsupport;
-  using namespace partition;
-  using namespace realform;
-  using namespace realmode;
-  using namespace realredgp;
-  using namespace tags;
-  using namespace wgraph;
-  using namespace wgraph_io;
-
-  RealReductiveGroup& G_R = currentRealGroup();
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
   try {
     G_R.fillCartan();
 
     complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
     const complexredgp_io::Interface& G_I = G_RI.complexInterface();
 
     // get dual real form
-    RealForm drf;
+    realform::RealForm drf;
 
+    interactive::getInteractive
+      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
 
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+    blocks::Block block(G_C,G_R.realForm(),drf);
 
-    Block block(G_C,G_R.realForm(),drf);
+    klsupport::KLSupport kls(block); kls.fill();
 
-    KLSupport kls(block);
-    kls.fill();
+    kl::KLContext klc(kls); klc.fill();
 
-    KLContext klc(kls);
-    klc.fill();
+    wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
 
-    WGraph wg(klc.rank());
-    kl::wGraph(wg,klc);
+    wgraph::DecomposedWGraph dg(wg);
 
-    OutputFile file;
-    printCells(file,wg);
-
+    ioutils::OutputFile file; wgraph_io::printWDecomposition(file,dg);
   }
-  catch (MemoryOverflow& e) {
+  catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
   }
-  catch (InputError& e) {
+  catch (error::InputError& e) {
     e("aborted");
   }
 
@@ -1359,55 +1317,36 @@ void wgraph_f()
 */
 
 {
-  using namespace basic_io;
-  using namespace blocks;
-  using namespace commands;
-  using namespace error;
-  using namespace interactive;
-  using namespace ioutils;
-  using namespace kl;
-  using namespace kl_io;
-  using namespace klsupport;
-  using namespace realform;
-  using namespace realmode;
-  using namespace realredgp;
-  using namespace tags;
-  using namespace wgraph;
-  using namespace wgraph_io;
-
-  RealReductiveGroup& G_R = currentRealGroup();
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
   try {
     G_R.fillCartan();
 
     complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
     const complexredgp_io::Interface& G_I = G_RI.complexInterface();
 
     // get dual real form
-    RealForm drf;
+    realform::RealForm drf;
 
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+    interactive::getInteractive
+      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
 
-    Block block(G_C,G_R.realForm(),drf);
+    blocks::Block block(G_C,G_R.realForm(),drf);
 
-    KLSupport kls(block);
-    kls.fill();
+    klsupport::KLSupport kls(block); kls.fill();
 
-    KLContext klc(kls);
-    klc.fill();
+    kl::KLContext klc(kls); klc.fill();
 
-    WGraph wg(klc.rank());
-    kl::wGraph(wg,klc);
+    wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
 
-    OutputFile file;
-    printWGraph(file,wg);
+    ioutils::OutputFile file; wgraph_io::printWGraph(file,wg);
 
   }
-  catch (MemoryOverflow& e) {
+  catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
   }
-  catch (InputError& e) {
+  catch (error::InputError& e) {
     e("aborted");
   }
 

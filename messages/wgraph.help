@@ -1,6 +1,4 @@
 
-******** temporary **********************************************************
-
 The "wgraph" command prints out the W-graph of the block. This is an
 oriented graph encoding the action of the Hecke generators in the
 Kazhdan-Lusztig basis.  [From the precise description given below,
@@ -8,11 +6,10 @@ wgraph seems better to encode the transpose of the Hecke algebra
 action.  Probably this is an artifact of some conflict of conventions
 between me and Fokko. DV 7/18/06]
 
-For now, we use the numbering of the elements in the block to
-parametrize representations. To give more meaning to these numbers,
-use the "block" command: that will relate each representation in the
-block to fundamental series representations, say, in terms of Cayley
-transforms and cross-actions.
+We use the numbering of the elements in the block to parametrize
+representations. To give more meaning to these numbers, use the "block"
+command: that will relate each representation in the block to fundamental
+series representations, say, in terms of Cayley transforms and cross-actions.
 
 There is one line of output for each element of the block, numbered 0
 to n-1. After the number of a block element is its tau invariant,
@@ -24,7 +21,7 @@ The presence of a pair means that there is an oriented edge of the
 W-graph joining the present element #j of the cell to element #k,
 having multiplicity m.  (The multiplicity is a coefficient of highest
 possible power of q in the Kazhdan-Lusztig polynomial indexed by j and
-k.)  
+k.)
 
 The presence of the edge from j to k means that two conditions are
 satisfied: first, that tau(j) is not contained in tau(k); and second,

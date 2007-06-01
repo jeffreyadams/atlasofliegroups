@@ -1,21 +1,29 @@
 
-The "extract-cells" command is an enhancement of the "wcells" command,
-printing the W-graph of the block.  It requires the three binary files
-produced by the "blockwrite" and "klwrite" commands.
+The "extract-cells" command provides the same information as the "wcells"
+command, however without explicitly computing the block and Kazhdan-Lusztig
+information. It is therefore necessary to have this infomation available in
+the form of three binary files; the command will prompt for their names. Such
+files can be produced by the commands "blockwrite" (the block information
+file) and "klwrite" (the matrix information and polynomial information files).
+The original application of this command was for the big block of split $E_8$,
+where these binary files themselves had to be produced by external processing
+of binary files with modular Kazhdan-Lusztig coefficients.
 
-First some general information is sent to standard output: the total
-number of directed edges in the W-graph of the entire block, and the
-maximum multiplicity of an edge.  The file output of the command is in
-three parts.  
+During the extraction of information from the binary files some summary
+information is printed to the terminal: the total number of directed edges in
+the W-graph of the entire block, and the maximum multiplicity of an edge.
+
+
+The output of the command that can be written to a file has three parts.
 
 The first part is introduced by the line "// Cells and their vertices."
-Each cell is introduced with a line of the form "// cell #xx." What
-follows is a list of cells, numbered 0 to m-1, one per line.  A cell
-is represented by a line like
+What follows is a list of cells, numbered #0 to #m-1, one per line. A cell is
+represented by a line like
 
 #2={2,3}
 
 This means that cell #2 consists of block elements 2 and 3.
+
 
 The second part is introduced by the line "// Induced graph on cells."
 What follows is a line for each cell, listing all the cells "below it"
@@ -27,21 +35,22 @@ This means that cell #3 has elements linked by directed edges to
 elements of cells #1 and #2. A consequence is that the
 "associated variety" for representations in cell #1 must strictly
 contain the associated variety for representations in cell #3.
- 
-The third and last part is introduced by the line "// Individual
-cells."  Cell #i is introduced by a line "// cell #i:" What follows is
+
+
+The third and last part is introduced by the line "// Individual cells."
+Cell #i is introduced by a line "// cell #i:" What follows is
 a list of elements in the cell, numbered 0 to n-1, one per line. The
 number is followed in brackets by the number of the corresponding
 block element.  Next comes the tau invariant, enclosed in braces,
 a subset of {1,...,r} (with r the number of simple roots).
 
-Following the tau invariant in row j is a collection of non-negative
+Following the tau invariant for vertex j is a collection of non-negative
 integers k (or pairs (k,m), with m a positive integer).  The integer k
 is shorthand for the pair (k,1).  The presence of a pair means that
-there is an oriented edge of the W-graph joining the present element
-#j of the cell to element #k, having multiplicity m.  (The
-multiplicity is a coefficient of highest possible power of q in the
-Kazhdan-Lusztig polynomial indexed by j and k.)
+there is an oriented edge of the W-graph joining the present vertex j
+of the cell to vertex k, having multiplicity m. (The multiplicity is
+a coefficient of highest possible power of q in the Kazhdan-Lusztig
+polynomial indexed by j and k.)
 
 The presence of the edge from j to k means that two conditions are
 satisfied: first, that tau(j) is not contained in tau(k); and second,
@@ -75,4 +84,3 @@ We conclude that the Weyl group representation attached to cell #1 is
 
 s_1(L_0) =  L_0 + L_1   s_2(L_0) = -L_0
 s_1(L_1) = -L_1         s_2(L_1) =  L_1 + L_0.
-
