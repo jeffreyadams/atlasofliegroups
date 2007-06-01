@@ -20,10 +20,16 @@ information about the set of stable conjugacy classes of Cartan subgroups.
   various real forms, all embed into the classification of conjugacy classes
   of root data involutions for the given inner class, equivalent to the
   classification of twisted involutions in the Weyl group, which is a purely
-  combinatorial Weyl group computation. This is not always a small
-  computation, but can still be managed within a few seconds even for E8. The
-  classification of real forms can be recovered in this picture as well, by
-  looking at the unique most split Cartan class for each real form.
+  combinatorial Weyl group computation. Fokko's original code proceeded more
+  or less by listing each of these conjugacy classes, checking each new
+  twisted involution for membership of each class of previously generated
+  ones. Here we find for each conjugacy class of twisted involutions a
+  canonical representative, which is relatively easy to compute. In this way
+  we avoid enumeration of each conjugacy class.
+
+  The classification of real forms can be recovered in this picture as
+  well, by looking at the unique most split Cartan class for each real
+  form.
 
   The most delicate part is the "correlation" part: for each Cartan, tell
   which orbit in the corresponding fiber corresponds to which real form, the
@@ -549,8 +555,6 @@ void CartanClassSet::extend(realform::RealForm rf)
 
   try
   {
-    std::vector<weyl::WeylEltList> known=expand(); // get full twisted classes
-
     const rootdata::RootDatum dualRootDatum(rootDatum(),tags::DualTag());
     const weyl::WeylGroup dualWeylGroup(weylGroup(),tags::DualTag());
 
@@ -570,16 +574,14 @@ void CartanClassSet::extend(realform::RealForm rf)
 	// multipy |twistedInvolution(j)| on the left by the reflection |*it|
 	TwistedInvolution tw=d_twistedInvolution[j]; leftReflect(tw,*it);
 
-	// check if |tw| gives a new class; if so, extend the cartan structure
-	size_t k=isMember(known,tw,j+1);// see if |tw| is in some class |k>j|
-	lks.insert(std::make_pair(j,k)); // insert a link $j\to k$ in any case
-
-	if (k == known.size()) { // found a new class
-	  addCartan(*it,j); // add new |CartanClass| for |tw|
-	  updateTwistedInvolutions(known,tw); // add |tw|, and extend |known|
-// begin testing that |cartan(k)|
-	  assert(cartan(k).orbitSize() == known[k].size());
-// end testing
+	// check if we have a new twisted involution
+	// if yes, extend the cartan structure
+	size_t old_size=d_twistedInvolution.size();
+	size_t k = addCanonicalRep(tw,d_twistedInvolution);
+	lks.insert(std::make_pair(j,k)); // insert link in any case
+	if (k == old_size) // then we found a new class
+	{
+	  addCartan(twistedInvolution(k)); // not |tw|, but its canonical form
 	  correlateForms();
 	  correlateDualForms(dualRootDatum,dualWeylGroup);
 	  updateSupports(k); // take into account Cartan class number |k|
@@ -627,6 +629,29 @@ void CartanClassSet::extend(realform::RealForm rf)
 ******************************************************************************/
 
 namespace cartanset {
+
+size_t CartanClassSet::addCanonicalRep
+  (TwistedInvolution sigma,TwistedInvolutionList& dest)
+  /*!
+\brief Position of the twisted involution to which w is conjugated by the
+       canonicalize of |sigma_0|
+  */
+{
+  canonicalize(sigma);
+
+  TwistedInvolution* psigma= std::find(&dest[0],&*dest.end(),sigma);
+
+  // if |sigma| was already present, return its index
+  if  (psigma!=&*dest.end())
+    return psigma-&dest[0];
+
+  // otherwise insert it and return its index
+  dest.push_back(sigma);
+
+  // now we cannot use |psigma-&dest[0]|, as |psigma| might be invalid
+  return dest.size()-1;
+}
+
 
 void CartanClassSet::leftReflect(TwistedInvolution& tw, rootdata::RootNbr rn)
   const
