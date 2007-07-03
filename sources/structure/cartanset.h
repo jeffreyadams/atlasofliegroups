@@ -41,6 +41,9 @@ namespace cartanset {
 
 namespace cartanset {
 
+using weyl::TwistedInvolution;
+using weyl::TwistedInvolutionList;
+
   /*!
    \brief Stores the set of stable conjugacy classes of Cartan subgroups of G.
 
@@ -56,7 +59,7 @@ the corresponding twisted conjugacy class of twisted involutions.
 
 In addition to describing the set of Cartan classes, this class provides
 access (via the |d_cartan| array) to data for each individual one of them, and
-(vie |d_ordering|) to the partial order relation between them. For the latter,
+(via |d_ordering|) to the partial order relation between them. For the latter,
 let |tau_i| be involutions acting on the complex torus |H| for various classes
 of Cartan subgroups; (H,tau_1) is considered "more compact" than (H,tau_2)
 if the identity component of the fixed point set H^tau_2 is W-conjugate to a
@@ -67,9 +70,6 @@ the negative transpose of a twisted involution.  This bijection
 reverses the partial order on Cartans.  The class provides also access
 to Cartans in the dual group.
   */
-
-using weyl::TwistedInvolution;
-using weyl::TwistedInvolutionList;
 
 class CartanClassSet {
 
