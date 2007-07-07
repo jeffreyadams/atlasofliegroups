@@ -432,7 +432,8 @@ annihilator_modulo
   smithnormal::smithNormal(lambda,b.begin(),M);
     // find Smith basis
 
-  latticetypes::LatticeMatrix A(b); A.invert(); A.transpose();
+  latticetypes::LatticeMatrix A
+    (latticetypes::LatticeMatrix(b).inverse().transposed());
 
   for (size_t j = 0; j < lambda.size(); ++j)
   { unsigned long f=(lambda[j]);
@@ -627,9 +628,9 @@ void based_involution_wrapper()
 @/lietype::involution
     (m->val,type->val
     ,transform_inner_class_type(str->val.c_str(),type->val));
-@)m->val *= basis->val;
-  latticetypes::LatticeCoeff d; basis->val.invert(d);
-  matrix::leftProd(m->val,basis->val);
+@)
+  latticetypes::LatticeCoeff d;
+  m->val = basis->val.inverse(d) * m->val * basis->val;
   if (d==0 or !m->val.divisible(d)) throw std::runtime_error
     ("inner class is not compatible with given lattice");
   m->val/=d; push_value(m);
@@ -753,9 +754,8 @@ in case our lattice matrix passes the test below, the |PreRootDatum| can
 safely be constructed and will be correct in all respects.
 
 @< Test whether the columns of |lattice->val| span the root lattice... @>=
-{ latticetypes::LatticeMatrix M(lattice->val);
-  latticetypes::LatticeCoeff d;
-  M.invert(d);
+{ latticetypes::LatticeCoeff d;
+  latticetypes::LatticeMatrix M=lattice->val.inverse(d);
   if (d==0) throw std::runtime_error
     ("Lattice matrix has dependent columns; in root_datum");
 @/latticetypes::LatticeMatrix tC;
@@ -1710,7 +1710,7 @@ void real_form_value::print(std::ostream& out) const
   << " real group" ;
 }
 
-@ To make a real form is easy, one provides a |inner_class_value| and a valid
+@ To make a real form is easy, one provides an |inner_class_value| and a valid
 index into its list of real forms. Since this number coming from the outside
 is to be interpreted as an outer index, we must convert it to an inner index
 at this point. As a special case we also provide the quasisplit form.
@@ -1834,7 +1834,7 @@ void dual_real_form_value::print(std::ostream& out) const
   << "'";
 }
 
-@ To make a dual real form, one provides a |inner_class_value| and a valid
+@ To make a dual real form, one provides an |inner_class_value| and a valid
 index into its list of dual real forms, which will be converted to an inner
 index. We also provide the dual quasisplit form.
 
@@ -2191,7 +2191,7 @@ different lines after commas if necessary.
   for (size_t i=0; i<pi.size(); ++i)
     if ( rf_nr[pi(i)] == rf->val.realForm())
     { os << ( first ? first=false,'[' : ',');
-      gradings::Grading gr; cc->val.fiber().grading(gr,i);
+      gradings::Grading gr=cc->val.fiber().grading(i);
       gr.permute(sigma);
       prettyprint::prettyPrint(os,gr,si.size());
     }

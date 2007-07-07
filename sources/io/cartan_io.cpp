@@ -110,8 +110,8 @@ std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
   LatticeMatrix cm;
 
   cartanMatrix(cm,si,rd);
-  Permutation a;
   DynkinDiagram d(cm);
+  Permutation a;
   bourbaki(a,d);
   cm.permute(a);
 
@@ -135,8 +135,7 @@ std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
     for (VI j = i->first; j != i_last; ++j) {
       if (j != i_first)
 	os << ",";
-      Grading gr;
-      f.grading(gr,*j);
+      Grading gr= f.grading(*j);
       gr.permute(a);
       prettyPrint(os,gr,f.simpleImaginary().size());
     }

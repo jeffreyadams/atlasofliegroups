@@ -41,6 +41,7 @@
 #include "realredgp.h"
 #include "tags.h"
 #include "weyl.h"
+#include "hashtable.h"
 
 /*
   This module aims to construct the fundamental combinatorial structure
@@ -62,7 +63,7 @@ namespace atlas {
   //namespace {
   namespace blocks {
     namespace helper {
-  void pause() {;}
+
 
 using namespace blocks;
 
@@ -131,17 +132,31 @@ public:
 
         Chapter I -- The Block class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace blocks {
 
   using namespace atlas::blocks::helper;
 
-Block::Block():d_bruhat(0)
-
-{}
+Block::Block()
+  : d_rank(0)
+  , d_xsize(0)
+  , d_ysize(0)
+  , d_x()
+  , d_y()
+  , d_cross()
+  , d_cayley()
+  , d_inverseCayley()
+  , d_descent()
+  , d_length()
+  , d_involution()
+  , d_involutionSupport()
+  , d_realForm(0)
+  , d_dualForm(0)
+  , d_state()
+  , d_bruhat(NULL)
+  , d_weylGroup(NULL)
+  {}
 
 Block::Block(complexredgp::ComplexReductiveGroup& G,
 	     realform::RealForm rf, realform::RealForm df)
@@ -268,7 +283,7 @@ bool Block::isStrictDescent(size_t s, BlockElt z) const
 }
 
 /*!
-  \brief the functor $T_{\alpha,\beta}$
+  \brief the functor \f$T_{\alpha,\beta}\f$
 
   Precondition: alpha and beta are adjacent roots, of which alpha is a descent
   set for y, while beta is not a sescent for y.
@@ -368,17 +383,11 @@ void Block::fillBruhat()
 
         Chapter II -- The Helper class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 // namespace {
   namespace blocks {
   namespace helper {
-Helper::Helper(realredgp::RealReductiveGroup& G,
-	       realredgp::RealReductiveGroup& dG)
-  :d_kgb(G),
-   d_dualkgb(dG)
 
 /*!
   \brief Constructor for the helper class.
@@ -389,16 +398,22 @@ Helper::Helper(realredgp::RealReductiveGroup& G,
   NOTE: simple-minded version. We don't aim for maximal efficiency here. This
   does way too much work for small blocks.
 */
-
+Helper::Helper(realredgp::RealReductiveGroup& G,
+	       realredgp::RealReductiveGroup& dG)
+  : Block()
+  , d_size(0)
+  , d_kgb(G)
+  , d_dualkgb(dG)
+  , d_firstx()
+  , d_toDualWeyl(G.semisimpleRank())
+  , d_dualWeylGroup(&d_dualkgb.weylGroup())
 {
   using namespace complexredgp;
   using namespace kgb;
   using namespace weyl;
 
-  pause();
-
   d_weylGroup = &d_kgb.weylGroup();
-  d_dualWeylGroup = &d_dualkgb.weylGroup();
+
   makeWeylCorrelation();
 
   d_xsize = d_kgb.size();
@@ -488,11 +503,10 @@ weyl::TwistedInvolution Helper::dualInvolution
   const WeylGroup& W = weylGroup();
 
   WeylElt v = W.longest();
-  WeylElt w = d_w.w();
-  W.translate(w,d_toDualWeyl);
+  WeylElt w = W.translate(d_w.w(),d_toDualWeyl);
 
   W.twist(w);
-  W.prod(v,w);
+  W.mult(v,w);
   W.invert(v);
 
   return TwistedInvolution(v);
@@ -752,7 +766,7 @@ void Helper::makeWeylCorrelation()
 
   for (size_t s = 0; s < W.rank(); ++s) {
     WeylElt w;
-    W.prod(w,s);
+    W.mult(w,s);
     WeylWord ww;
     dW.out(ww,w);
     d_toDualWeyl[s] = ww[0];
@@ -815,8 +829,6 @@ void Helper::orbitPairs()
 /*****************************************************************************
 
         Chapter III -- Functions local to blocks.cpp
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -920,8 +932,46 @@ void makeHasse(std::vector<set::SetEltList>& hd, const Block& block)
   return;
 }
 
+} // namespace helper
+
+/*****************************************************************************
+
+      Chapter IV -- Functions exported from blocks.cpp (declared in blocks.h)
+
+******************************************************************************/
+
+// defining the following class inside the function below did not work
+class PairEntry
+{
+  kgb::KGBElt x,y;
+public:
+  PairEntry(kgb::KGBElt xx,kgb::KGBElt yy) : x(xx),y(yy) {}
+
+  typedef std::vector<PairEntry> Pooltype;    // associated storage type
+  size_t hashCode(size_t modulus) const   // hash function
+  { return (x<<8)+(y<<5)+(x<<2)+y & modulus-1; }
+  bool operator!=(PairEntry o) const { return x!=o.x or y!=o.y; }
+};
+
+std::vector<BlockElt> dual_map(const Block& b, const Block& dual_b)
+{
+
+  assert(b.size()==dual_b.size());
+
+  std::vector<PairEntry> pool;
+  pool.reserve(dual_b.size());
+  for (BlockElt i=0; i<dual_b.size(); ++i)
+    pool.push_back(PairEntry(dual_b.x(i),dual_b.y(i)));
+
+  hashtable::HashTable<PairEntry,unsigned int> hash(pool);
+
+  std::vector<BlockElt> result(b.size());
+  for (BlockElt i=0; i<dual_b.size(); ++i)
+    result[i]=hash.match(PairEntry(b.y(i),b.x(i)));
+
+  return result;
 }
 
-}
+} // namespace blocks
 
-}
+} // namespace atlas

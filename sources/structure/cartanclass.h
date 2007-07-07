@@ -36,17 +36,21 @@ namespace atlas {
 
 namespace cartanclass {
 
-  void compactTwoRho(latticetypes::Weight&, unsigned long, const Fiber&,
-		     const rootdata::RootDatum&);
+  // quasi-constructor function for |Fiber| class
+  Fiber dualFiber
+    (const rootdata::RootDatum&, const latticetypes::LatticeMatrix&);
 
-  void restrictGrading(gradings::Grading&, const rootdata::RootSet&,
-		       const rootdata::RootList&);
+  latticetypes::Weight
+    compactTwoRho(unsigned long, const Fiber&, const rootdata::RootDatum&);
 
-  void specialGrading(gradings::Grading&, const Fiber&, realform::RealForm,
-		      const rootdata::RootDatum&);
+  gradings::Grading
+    restrictGrading(const rootdata::RootSet&, const rootdata::RootList&);
 
-  void toMostSplit(rootdata::RootList&, const Fiber&, realform::RealForm,
-		   const rootdata::RootDatum&);
+  gradings::Grading
+    specialGrading(const Fiber&,realform::RealForm,const rootdata::RootDatum&);
+
+  rootdata::RootList
+    toMostSplit(const Fiber&,realform::RealForm,const rootdata::RootDatum&);
 }
 
 /******** type definitions ***************************************************/
@@ -79,10 +83,16 @@ class InvolutionData
   twisted Tits group.
 
   This is an important but somewhat subtle class. In fact none of the data
-  stored directly describes the mentioned fiber. There is a "fiber group"
-  (which is a vector space over $Z/2Z$) that acts simply transitively on the
-  fiber, and after a choice of a base point, the fiber itself can be
-  identified which this fiber group.
+  stored directly describes the mentioned fiber, nor is it relevant here where
+  the "elements of the fiber" really live. There is a "fiber group" (which is
+  a vector space over $Z/2Z$) that acts simply transitively on the fiber, in
+  other words, the fiber is an affine space over $Z/2Z$ with the fiber group
+  as space of translations. After a choice of a base point, the fiber itself
+  can be identified which this fiber group. The way a fiber element manifests
+  itself is via a grading it defines on the imaginary roots; this grading is
+  determined for the entire fiber by giving the "base grading" for the base
+  point, and the "grading shifts" for translations by each of a set of
+  generators of the grading group.
 
   We fix an involutive automorphism tau of the complex torus H, and consider
   the collection of all strong real forms x of G (which are elements of G
@@ -90,12 +100,12 @@ class InvolutionData
   on the collection. Such a strong real form has square equal to some element
   z in Z(G)^delta. Changing the element z by (1+delta)Z is innocuous, and
   there are finitely many possibilities for Z^delta/[(1+delta)Z]. For each
-  fixed value of z, this collection of strong real forms (modulo H
-  conjugation) has a simply transitive action (left multiplication) of the
-  fiber group H^{-tau}/(1-tau)H, the component group of the complex group
-  H^{-tau} of fixed points of -tau. The fiber group is a Z/2Z vector space
-  that can be realized as a subquotient of the group H(2) of elements of order
-  2 (or 1) in H.
+  fixed value of z, this collection of strong real form representatives in
+  \f$G.\delta\f$ (modulo H conjugation) has a simply transitive action (left
+  multiplication) of the fiber group H^{-tau}/(1-tau)H, the component group of
+  the complex group H^{-tau} of fixed points of -tau. The fiber group is a
+  Z/2Z vector space that can be realized as a subquotient of the group H(2) of
+  elements of order 2 (or 1) in H.
 
   Equivalence classes of strong real forms (still with a fixed value
   of z) give a partition of the fiber group (depending on z).  These
@@ -109,7 +119,7 @@ class InvolutionData
   */
 class Fiber {
 
- protected:
+ private:
 
   /*!
   \brief Pointer to a torus defined over R.
@@ -124,35 +134,40 @@ class Fiber {
   /*!
   \brief Fiber group.
 
-  In terms of the complex torus H and the Cartan involution tau, it is equal
-  to F=H^{-tau}/(1-tau)H: the group of fixed points of -tau, modulo its
-  identity component. Here additive notation is used for multiplicative
-  composition; e.g., (1-tau) maps z in H to z/tau(z).
+  In terms of the complex torus $H$ and the Cartan involution \f$\tau\f$, it is
+  equal to \f$F=H^{-\tau}/(1-\tau)H\f$: the group of fixed points of \f$\-tau\f$,
+  modulo its identity component. Here additive notation is used for
+  multiplicative composition; e.g., \f$1-\tau\f$ maps \f$z\in H\f$ to \f$z/\tau(z)\f$;
+  this notation is natural when \f$\tau\f$ is viewed as operating on the weight
+  lattice, in which case \f$1-\tau\f$ acts as the identity matrix minus the matrix
+  giving \f$\tau\f$.
 
-  Recall that the group of real points H(R) is a product of p unit circle
-  groups, q groups R^x, and r groups C^x. It is easy to see that F=(Z/2Z)^p,
-  with one factor coming from each circle.
+  Recall that the group of real points $H(R)$ is a product of $p$ unit circle
+  groups, $q$ groups $R^\times$, and $r$ groups $C^\times$. It is easy to see
+  that $F=(\Z/2\Z)^p$, with one factor $\Z/2\Z$ coming from each circle.
 
-  The fiber group is represented as a subquotient of the group H(2) of
-  elements of order 2 (or 1) in the torus. Write Y for the lattice of
-  coweights of H; then one has natural isomorphisms H(2)=(1/2)Y/Y=Y/2Y. The
-  Cartan involution tau is always represented by the matrix q of its action on
-  the character lattice X, which is dual to Y; so its action on Y is given by
-  the matrix q^t. The action of -tau on Y is given by -q^t.
+  The fiber group is represented as a subquotient of the group $H(2)$ of
+  elements of order 2 (or 1) in the torus. Write $Y$ for the lattice of
+  coweights of $H$; then one has natural isomorphisms $H(2)=(1/2)Y/Y=Y/2Y$.
+  The Cartan involution \f$\tau\f$ is always represented by the matrix $q$ of its
+  action on the character lattice $X$, which is dual to $Y$; so its action on
+  $Y$ is given by the matrix $q^t$. The action of \f$-\tau\f$ on $Y$ is given by
+  $-q^t$.
 
-  Because H is the product (not direct) of the connected groups (H^tau)_0 and
-  (H^{-tau})_0, the group H^tau meets every component of H^{-tau}. The
-  intersection of H^tau and H^{-tau} consists of H(2)^tau, the tau-fixed
-  elements of order 2. It follows that the component group F may be identified
-  with H(2)^tau/(H(2) cap (1-tau)H). Thus F can be represented by a subquotient
-  of H(2)=Y/2Y=(Z/2Z)^n.
+  Because $H$ is the product (not direct) of the connected groups \f$(H^\tau)_0\f$
+  and \f$(H^{-\tau})_0\f$, the group \f$H^\tau\f$ meets every component of \f$H^{-tau}\f$.
+  The intersection of \f$H^\tau\f$ and \f$H^{-\tau}\f$ consists of \f$H(2)^\tau\f$, the
+  \f$\tau\f$-fixed elements of order 2. It follows that the component group $F$
+  may be identified with \f$H(2)^\tau/(H(2)\cap (1-\tau)H)\f$. Thus $F$ can be
+  represented by a subquotient of $H(2)=Y/2Y=(Z/2Z)^n$.
 
-  The larger group H(2)^tau is computed as the kernel of the action of (1+tau)
-  on H(2), which via the isomorphism H(2)=(Z/2Z)^n means the kernel of the
-  reduction mod 2 of the matrix I+q^t. The smaller group (H(2) cap (1-tau)H)
-  consists of the elements of order 2 in the connected group (H^{-tau})_0. It
-  is computed as the reduction mod 2 of the -1 eigenlattice Y^{-tau} (the
-  latter is the lattice of coweights of (H^{-tau})_0).
+  The larger group \f$H(2)^\tau\f$ is computed as the kernel of the action of
+  \f$(1+\tau)\f$ on $H(2)$, which via the isomorphism $H(2)=(Z/2Z)^n$ means the
+  kernel of the reduction mod 2 of the matrix $I+q^t$. The smaller group
+  \f$H(2)\cap (1-\tau)H\f$ consists of the elements of order 2 in the connected
+  group \f$(H^{-\tau})_0\f$. It is computed as the reduction mod 2 of the $-1$
+  eigenlattice \f$Y^{-\tau}\f$ (the latter is the lattice of coweights of
+  \f$(H^{-tau})_0\f$).
   */
   latticetypes::SmallSubquotient d_fiberGroup;
 
@@ -171,17 +186,10 @@ class Fiber {
   latticetypes::SmallSubquotient d_adjointFiberGroup;
 
   /*!
-  \brief Matrix (over Z/2Z) of the map from the fiber group F for G to the
-  fiber group F_ad for G_ad.
-
-  Although the map is induced by Y/2Y-->Y_ad/2Y_ad, whose matrix is the
-  reduction mod 2 of the matrix of Y-->Y_ad, that is _not_ the matrix in
-  d_toAdjoint, which must take into account the subquotients at both sides.
-  Each subquotient F and F_ad is equipped (by the row reduction algorithms in
-  Subquotient) with a distinguished basis, and what is recorded in
-  d_toAdjoint is the (dim F_ad) x (dim F) matrix with respect to those bases.
+  \brief Flags the noncompact imaginary roots for the base grading
+  among all the roots.
   */
-  latticetypes::BinaryMap d_toAdjoint;
+  rootdata::RootSet d_baseNoncompact;
 
   /*!
   \brief Grading with all simple imaginary roots noncompact.
@@ -193,6 +201,12 @@ class Fiber {
   gradings::Grading d_baseGrading;
 
   /*!
+  \brief RootSet \#j flags the imaginary roots whose grading is
+  changed by canonical basis vector \#j of the adjoint fiber group.
+  */
+  rootdata::RootSetList d_noncompactShift; // |size()==adjointFiberRank()|
+
+  /*!
   \brief Grading \#j flags the simple imaginary roots whose
   grading is changed by canonical basis vector \#j in the adjoint
   fiber group.
@@ -200,16 +214,17 @@ class Fiber {
   gradings::GradingList d_gradingShift; // |size()==adjointFiberRank()|
 
   /*!
-  \brief Flags the noncompact imaginary roots for the base grading
-  among all the roots.
-  */
-  rootdata::RootSet d_baseNoncompact;
+  \brief Matrix (over Z/2Z) of the map from the fiber group F for G to the
+  fiber group F_ad for G_ad.
 
-  /*!
-  \brief RootSet \#j flags the imaginary roots whose grading is
-  changed by canonical basis vector \#j of the adjoint fiber group.
+  Although the map is induced by Y/2Y-->Y_ad/2Y_ad, whose matrix is the
+  reduction mod 2 of the matrix of Y-->Y_ad, that is _not_ the matrix in
+  d_toAdjoint, which must take into account the subquotients at both sides.
+  Each subquotient F and F_ad is equipped (by the row reduction algorithms in
+  Subquotient) with a distinguished basis, and what is recorded in
+  d_toAdjoint is the (dim F_ad) x (dim F) matrix with respect to those bases.
   */
-  rootdata::RootSetList d_noncompactShift; // |size()==adjointFiberRank()|
+  latticetypes::BinaryMap d_toAdjoint;
 
   /*!
   \brief Partition of the adjoint fiber group according to weak real
@@ -260,30 +275,8 @@ class Fiber {
 
 // constructors and destructors
 
-  // main constructor:
+  // main and only constructor:
   Fiber(const rootdata::RootDatum&, const latticetypes::LatticeMatrix&);
-
-  // constructor for dual fiber
-  Fiber(const rootdata::RootDatum&, const latticetypes::LatticeMatrix&,
-        tags::DualTag);
-
-  // auxiliary constructor needed to get Helper class of Fiber going
-  // the initial argument distinguishes it from the main constructor
-  Fiber(tori::RealTorus* p,
-        const rootdata::RootDatum& rd, const latticetypes::LatticeMatrix& q)
-  : d_torus(p)
-  , d_involutionData(rd,q)
-  , d_fiberGroup()
-  , d_toAdjoint()
-  , d_baseGrading()
-  , d_gradingShift()
-  , d_baseNoncompact()
-  , d_noncompactShift()
-  , d_weakReal()
-  , d_realFormPartition()
-  , d_strongReal()
-  , d_strongRealFormReps()
-  {}
 
   ~Fiber();
 
@@ -371,8 +364,6 @@ class Fiber {
     return d_adjointFiberGroup.size();
   }
 
-  void compactRootSet(rootdata::RootSet&, unsigned long) const;
-
 
 /*!
   \brief Fiber group.
@@ -396,18 +387,26 @@ class Fiber {
   }
 
 
-  void grading(gradings::Grading&, unsigned long) const;
+  rootdata::RootSet compactRoots(unsigned long) const;
+
+  rootdata::RootSet noncompactRoots(unsigned long) const;
+
+  /*!
+  \brief grading associated to an adjoint fiber element
+  */
+  gradings::Grading grading(unsigned long) const;
 
   unsigned long gradingRep(const gradings::Grading&) const;
 
   const latticetypes::LatticeMatrix& involution() const;
 
 
-  void mAlpha(latticetypes::SmallBitVector&, const rootdata::Root&) const;
+  /*!
+  \brief Image of a coroot (expressed in weight basis) in the fiber group
+  */
+  latticetypes::SmallBitVector mAlpha(const rootdata::Root&) const;
 
   size_t minusRank() const;
-
-  void noncompactRootSet(rootdata::RootSet&, unsigned long) const;
 
 /*!
   \brief Number of weak real forms containing this Cartan.
@@ -454,6 +453,9 @@ class Fiber {
     return d_involutionData.imaginary_basis()[i];
   }
 
+  size_t imaginaryRank() const {
+    return simpleImaginary().size();
+  }
 
 /*!
  \brief Partitions of Fiber group cosets corresponding to the
@@ -502,25 +504,69 @@ class Fiber {
     return d_weakReal;
   }
 
+// private accessors only needed during construction
+
+private:
+
+
+  latticetypes::SmallSubquotient computeFiberGroup() const;
+
+  latticetypes::SmallSubquotient makeAdjointFiberGroup
+    (const rootdata::RootDatum&) const;
+
+  latticetypes::SmallSubspace gradingGroup(const rootdata::RootDatum&) const;
+
+  latticetypes::LatticeMatrix adjointInvolution
+    (const rootdata::RootDatum&) const;
+
+  gradings::Grading makeBaseGrading
+    (rootdata::RootSet& flagged_roots,const rootdata::RootDatum&) const;
+
+  gradings::GradingList makeGradingShifts
+    (rootdata::RootSetList& all_shifts,const rootdata::RootDatum&) const;
+
+  bitset::RankFlagsList adjointMAlphas (const rootdata::RootDatum&) const;
+
+  bitset::RankFlagsList mAlphas(const rootdata::RootDatum&) const;
+
+  latticetypes::BinaryMap makeFiberMap(const rootdata::RootDatum&) const;
+
+  partition::Partition makeWeakReal(const rootdata::RootDatum&) const;
+
+  partition::Partition makeRealFormPartition() const;
+
+  std::vector<partition::Partition> makeStrongReal
+    (const rootdata::RootDatum& rd) const;
+
+  std::vector<StrongRealFormRep> makeStrongRepresentatives() const;
+
+
 }; // class Fiber
 
-   /*!
-   \brief Represents a single stable conjugacy class of Cartan subgroups.
 
-   Mathematically this means the complex torus in the complex group,
-   together with an involutive automorphism of this torus (the Cartan
-   involution).  (More precisely, it is a W-conjugacy class of
-   involutive automorphisms.)  As the class is now used in the
-   software, the Cartan involution must be in the inner class
-   specified by ComplexReductiveGroup.  Most of the interesting
-   information is contained in the two underlying Fiber classes
-   d_fiber and d_dualFiber.  First of all, that is where the Cartan
-   involution lives (since the involution is needed to define the
-   fibers).  But the fiber classes also record for which real forms
-   this stable conjugacy class of Cartan subgroups is defined; and,
-   given the real form, which imaginary roots are compact and
-   noncompact.
-   */
+
+
+
+/*
+
+			The |CartanClass| class
+
+*/
+
+/*!
+\brief Represents a single stable conjugacy class of Cartan subgroups.
+
+Mathematically this means the complex torus in the complex group, together
+with an involutive automorphism of this torus (the Cartan involution). (More
+precisely, it is a W-conjugacy class of involutive automorphisms.) As the
+class is now used in the software, the Cartan involution must be in the inner
+class specified by ComplexReductiveGroup. Most of the interesting information
+is contained in the two underlying Fiber classes d_fiber and d_dualFiber.
+First of all, that is where the Cartan involution lives (since the involution
+is needed to define the fibers). But the fiber classes also record for which
+real forms this stable conjugacy class of Cartan subgroups is defined; and,
+given the real form, which imaginary roots are compact and noncompact.
+*/
 class CartanClass {
 
  private:
@@ -545,30 +591,31 @@ class CartanClass {
   /*!
   \brief Roots simple for the "complex factor" of W^tau.
 
-  The subgroup $W^\tau$ of Weyl group elements commuting with the Cartan
-  involution $\tau$ has two obvious (commuting) normal subgroups: the Weyl
-  group $W^\R$ of the real (that is, fixed by $-\tau$) roots, and the Weyl
-  group $W^{i\R}$ of the imaginary (that is, fixed by $\tau$) roots. But this
-  is not all of $W^\tau$, as is easily seen in the case of complex groups,
-  where both $W^\R$ and $W^{i\R}$ are trivial (there are no real or imaginary
-  roots), yet $\tau$, which interchanges two identical factors of a direct sum
-  clearly fixes diagonal elements of that sum. In general $W^\tau$ is a
-  semidirect product of $W^\R \times W^{i\R}$ (the normal subgroup) with a
-  group denoted $W^\C$. Here is how to describe $W^\C$.
+  The subgroup \f$W^\tau\f$ of Weyl group elements commuting with the Cartan
+  involution \f$\tau\f$ has two obvious (commuting) normal subgroups: the Weyl
+  group $W^R$ of the real (that is, fixed by \f$-\tau\f$) roots, and the Weyl
+  group $W^{iR}$ of the imaginary (that is, fixed by \f$\tau\f$) roots. But this
+  is not all of \f$W^\tau\f$, as is easily seen in the case of complex groups,
+  where both $W^R$ and $W^{iR}$ are trivial (there are no real or imaginary
+  roots), yet $W$ is a direct sum of two identical factors interchanged by
+  \f$\tau\f$, and the actions of diagonal elements of that sum clearly commute
+  with \f$\tau\f$. In general there is a group denoted $W^C such that \f$W^\tau\f$ is
+  a semidirect product of $W^R * W^{iR}$ (the normal subgroup) with
+  $W^C$. Here is how to describe $W^C$.
 
   Write $RC$ (standing for "complex roots") for the roots orthogonal to both
   the sum of positive real roots, and the sum of positive imaginary roots
   (this group depends on the choice of positive roots, but all choices lead to
   conjugate subgroups). It turns out that $RC$ as a root system is the direct
   sum of two isomorphic root systems $RC_0$ and $RC_1$ interchanged by $\tau$.
-  (There is no canonical choice of this decomposition.) Now $W^\C$ is the set
+  (There is no canonical choice of this decomposition.) Now $W^C$ is the set
   of $\tau$-fixed elements of $W(RC_0) \times W(RC_1)$, in other words its
   diagonal subgroup.
 
-  In general $W^\C$ is not the Weyl group of a root subsystem, but it is
+  In general $W^C$ is not the Weyl group of a root subsystem, but it is
   isomorphic the the Weyl group of (any choice of) $RC_0$ (or of $RC_1$). We
   make a choice for $RC_0$, and |d_simpleComplex| lists its simple roots, so
-  that $W^\C$ is isomorphic to the Weyl group generated by the reflections
+  that $W^C$ is isomorphic to the Weyl group generated by the reflections
   corresponding to the roots whose numbers are in |d_simpleComplex|.
   */
   rootdata::RootList d_simpleComplex;
@@ -616,7 +663,7 @@ public:
 
   That is, a bitmap whose set bits are those corresponding to the
   numbers (within the list of roots in RootDatum) of the imaginary
-  roots (those roots alpha with tau(alpha)=alpha).
+  roots (those roots \f$\alpha\f$ with \f$\tau(\alpha)=\alpha\f$).
   */
   const rootdata::RootSet& imaginaryRootSet() const {
     return d_fiber.imaginaryRootSet();
@@ -626,7 +673,7 @@ public:
 
   That is, a bitmap whose set bits are those corresponding to the
   numbers (within the list of roots in RootDatum) of the real roots
-  (those roots alpha with tau(alpha)=-alpha).
+  (those roots \f$\alpha\f$ with \f$\tau(\alpha)=-\alpha\f$).
   */
   const rootdata::RootSet& realRootSet() const {
     return d_fiber.realRootSet();
@@ -794,7 +841,15 @@ public:
     return d_fiber.weakReal();
   }
 
-};
+
+// private accessors only needed during construction
+
+private:
+  rootdata::RootList makeSimpleComplex(const rootdata::RootDatum&) const;
+
+  size::Size makeOrbitSize(const rootdata::RootDatum&) const;
+
+}; // class CartanClass
 
 }
 

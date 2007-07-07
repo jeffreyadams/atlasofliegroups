@@ -23,7 +23,6 @@ Class definitions and function declarations for the class KLContext.
 
 #include "bitset.h"
 #include "klsupport.h"
-#include "hashtable.h"
 #include "polynomials.h"
 #include "wgraph.h"
 
@@ -186,6 +185,12 @@ P_{y,x_i} (with x_i primitive with respect to y).
     return d_support->length(y);
   }
 
+  /*!
+\brief Length of y as a block element.
+  */
+  size_t lengthLess(size_t l) const {
+    return d_support->lengthLess(l);
+  }
   MuCoeff mu(BlockElt x, BlockElt y) const;
 
   /*!

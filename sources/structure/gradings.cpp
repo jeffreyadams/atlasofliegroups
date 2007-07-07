@@ -166,9 +166,9 @@ void makeGradings(GradingList& gl, const rootdata::RootDatum& rd)
 */
 
 {
-  GradingAction a(rd);
   partition::Partition pi;
-  partition::makeOrbits(pi,a,rd.semisimpleRank(),(1UL) << rd.semisimpleRank());
+  partition::makeOrbits
+    (pi,GradingAction(rd),rd.semisimpleRank(),(1UL) << rd.semisimpleRank());
 
   // sort orbits
 
@@ -195,9 +195,9 @@ void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
 
   The condition given amounts to solving a system of linear equations modulo
   2. In addition to the values 1 of |gr| on |o| given by (1), condition (2)
-  says that for any root $\alpha$ of |rs| orthogonal to |o|, the value
-  $gr(\alpha)$ should be equal modulo 2 to the number of roots $\beta$ of |o|
-  such that $\alpha+\beta$ is a root (of |rs|). Thus the values of |gr| are
+  says that for any root \f$\alpha\f$ of |rs| orthogonal to |o|, the value
+  \f$gr(\alpha)\f$ should be equal modulo 2 to the number of roots \f$\beta\f$ of |o|
+  such that \f$\alpha+\beta\f$ is a root (of |rs|). Thus the values of |gr| are
   fixed on |o| and on a basis of the root subsystem of |rs| orthogonal to |o|.
 
   NOTE: the solution is not unique in general. However the grading that is
@@ -368,7 +368,7 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
   $g(i)+g(s)$, where $s$ is now interpreted as the simple roots corresponding
   to the reflection; the second case applies if and only if the Cartan matrix
   has an odd entry at (i,s), since
-  $s(\alpha_i)=\alpha_i-\<alpha_i,\alpha_s^\vee>\alpha_s$. So if |g(s)==0|
+  \f$s(\alpha_i)=\alpha_i-\<alpha_i,\alpha_s^\vee>\alpha_s\f$. So if |g(s)==0|
   there is nothing to change for any |i|, while if |g(s)==1| we must add
   (modulo 2) column |s| of the Cartan matrix to |g|. For this reason we store
   upon construction the transpos Cartan matrix modulo 2.
@@ -462,9 +462,9 @@ void noncompactEquations(BinaryEquationList& eqn, const WeightList& nc)
   Recall that when descending through a short noncompact root |a|, if |b| is a
   short root in |rs| such that |a +- b| is a root (in other words, |a| and |b|
   are short roots generating a subsystem of type $B_2$), then the descent
-  through |a| _changes_ the grading of |b|. So for every root $\alpha$ of
+  through |a| _changes_ the grading of |b|. So for every root \f$\alpha\f$ of
   |o_orth|, the grading must take the value given by the parity of the number
-  of roots $\beta$ in |o| that with $\alpha$ so span a type $B_2$ system.
+  of roots \f$\beta\f$ in |o| that with \f$\alpha\f$ so span a type $B_2$ system.
 
   So the approach here is that we take a basis |oob| of the root system in
   |o_orth|, and compute the degree of the elements in that basis through this

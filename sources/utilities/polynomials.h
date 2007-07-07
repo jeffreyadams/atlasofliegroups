@@ -89,6 +89,11 @@ template<typename C> class Polynomial {
     return d_data == q.d_data;
   }
 
+  bool operator != (const Polynomial& q) const {
+    return d_data != q.d_data;
+  }
+
+
   /*!
 \brief Operator < is the default from the standard library < on vector.
 
@@ -105,11 +110,15 @@ template<typename C> class Polynomial {
 // manipulators
   C& operator[] (Degree j) { return d_data[j]; } // non-const version of above
 
-  Polynomial& operator+= (const Polynomial&);
+  Polynomial& operator+= (const Polynomial& q);
 
-  Polynomial& operator-= (const Polynomial&);
+  Polynomial& operator-= (const Polynomial& q);
+
+  Polynomial& subtract_from (const Polynomial& p); // *this = p - *this
 
   Polynomial& operator*= (C);
+
+  Polynomial operator* (const Polynomial& q) const;
 
   void safeAdd(const Polynomial& p, Degree d, C c); // *this += c*q^d*p
   void safeAdd(const Polynomial& p, Degree d = 0);  // *this += q^d*p

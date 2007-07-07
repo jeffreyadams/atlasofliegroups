@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -20,7 +20,32 @@ namespace atlas {
 
 namespace setutils {
 
-  typedef std::vector<unsigned long> Permutation;
+struct Permutation
+  : public std::vector<unsigned long>
+  {
+    typedef std::vector<unsigned long> Base;
+    Permutation() : Base() {}                       // empty
+    Permutation(unsigned long n) : Base(n) {}       // dimensioned only
+    Permutation(unsigned long n, int unsused);      // identity
+    Permutation(const Permutation& pi, int unused); // inverse
+    template<typename I> Permutation(I b,I e) : Base(b,e) {} // range copy
+
+  // right-compose with |p|
+  template<typename T>
+  std::vector<T> pull_back(const std::vector<T>& v) const;
+
+  // left-compose with |p|
+  template<typename U>
+  std::vector<U> renumber(const std::vector<U>& v) const;
+
+  // left-compose with |p|, but allowing an exception value
+  template<typename U>
+  std::vector<U> renumber(const std::vector<U>& v, U except) const;
+
+  // WARNING: this one has INVERSE interpretation of the permutation:
+  template<typename T> void permute(std::vector<T>& v) const;
+
+  };
 
 }
 
@@ -30,11 +55,10 @@ namespace setutils {
 
   void compose(Permutation&, const Permutation&, unsigned long n = 0);
 
-  void identity(Permutation&, unsigned long);
+  inline void identity(Permutation& p, unsigned long n) { p=Permutation(n,1); }
 
-  void invert(Permutation&, const Permutation&);
-
-  template<typename T> void permute(const Permutation&, std::vector<T>&);
+  inline void invert(Permutation& dst, const Permutation& src)
+    { Permutation(src,-1).swap(dst); }
 
 }
 

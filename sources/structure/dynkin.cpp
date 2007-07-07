@@ -312,12 +312,10 @@ void components(bitset::RankFlagsList& cl, const DynkinDiagram& d)
   return;
 }
 
-void lieType(lietype::LieType& lt, const latticetypes::LatticeMatrix& cm)
-
 /*!
   Synopsis: writes in lt the Lie type of the Cartan matrix cm.
 */
-
+void lieType(lietype::LieType& lt, const latticetypes::LatticeMatrix& cm)
 {
   using namespace lietype;
 
@@ -327,6 +325,7 @@ void lieType(lietype::LieType& lt, const latticetypes::LatticeMatrix& cm)
   bitset::RankFlagsList cl;
 
   components(cl,d);
+  lt.reserve(cl.size());
 
   for (size_t j = 0; j < cl.size(); ++j) {
     DynkinDiagram cd(cl[j],d);
@@ -334,8 +333,11 @@ void lieType(lietype::LieType& lt, const latticetypes::LatticeMatrix& cm)
     SimpleLieType slt(x,cd.rank());
     lt.push_back(slt);
   }
+}
 
-  return;
+lietype::LieType lieType(const latticetypes::LatticeMatrix& cm)
+{
+  lietype::LieType result; lieType(result,cm); return result;
 }
 
 void normalize(setutils::Permutation& a, const DynkinDiagram& d)

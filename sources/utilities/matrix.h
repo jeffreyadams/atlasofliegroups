@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -26,18 +26,18 @@ namespace atlas {
 namespace matrix {
 
 template<typename C>
-  void columnVectors(std::vector<std::vector<C> >& b, 
+  void columnVectors(std::vector<std::vector<C> >& b,
 		     const Matrix<C>& m);
 
 template<typename C>
 Matrix<C>& conjugate(Matrix<C>&, const Matrix<C>&);
 
 template<typename C>
-void extractBlock(Matrix<C>&, const Matrix<C>&, size_t, size_t, size_t, 
+void extractBlock(Matrix<C>&, const Matrix<C>&, size_t, size_t, size_t,
 		  size_t);
 
 template<typename C>
-void extractMatrix(Matrix<C>&, const Matrix<C>&, 
+void extractMatrix(Matrix<C>&, const Matrix<C>&,
 		   const std::vector<size_t>&, const std::vector<size_t>&);
 
 template<typename C>
@@ -48,9 +48,6 @@ template<typename C>
 
 template<typename C>
 Matrix<C>& invConjugate(Matrix<C>&, const Matrix<C>&);
-
-template<typename C>
-Matrix<C>& leftProd(Matrix<C>&, const Matrix<C>&);
 
 }
 
@@ -96,32 +93,32 @@ template<typename C> class Matrix {
   }
 
 // constructors and destructors
-  Matrix() 
+  Matrix()
     {}
 
   Matrix(size_t m, size_t n)
-    :d_data(m*n),d_rows(m),d_columns(n) 
+    :d_data(m*n),d_rows(m),d_columns(n)
     {}
 
   Matrix(size_t m, size_t n, const C& c)
-    :d_data(m*n,c),d_rows(m),d_columns(n) 
+    :d_data(m*n,c),d_rows(m),d_columns(n)
     {}
 
   explicit Matrix(size_t n)
-    :d_data(n*n),d_rows(n),d_columns(n) 
+    :d_data(n*n),d_rows(n),d_columns(n)
     {}
 
   explicit Matrix(const std::vector<std::vector<C> >&);
-    
+
   Matrix(const Matrix<C> &, const std::vector<std::vector<C> >&);
-    
+
   Matrix(const Matrix<C> &, size_t, size_t, size_t, size_t);
-    
+
   template<typename I> Matrix(const Matrix<C>&, const I&, const I&);
-    
+
   template<typename I> Matrix(const I&, const I&, tags::IteratorTag);
-    
-  virtual ~Matrix() 
+
+  virtual ~Matrix()
     {}
 
 // accessors
@@ -145,6 +142,16 @@ template<typename C> class Matrix {
 
   bool divisible(C) const;
 
+  Matrix<C> inverse() const
+  {
+    Matrix<C> result(*this); result.invert(); return result;
+  }
+
+  Matrix<C> inverse(C& d) const
+  {
+    Matrix<C> result(*this); result.invert(d); return result;
+  }
+
   bool isEmpty() const {
     return d_data.size() == 0;
   }
@@ -165,6 +172,17 @@ template<typename C> class Matrix {
     return d_columns;
   }
 
+  Matrix<C> transposed() const
+  {
+    Matrix<C> result(*this); result.transpose(); return result;
+  }
+
+  Matrix<C> negative_transposed() const
+  {
+    Matrix<C> result(*this); result.negate(); result.transpose();
+    return result;
+  }
+
 // manipulators
   C& operator() (size_t i, size_t j) {
     return d_data[i*d_columns+j];
@@ -175,6 +193,10 @@ template<typename C> class Matrix {
   Matrix<C>& operator-= (const Matrix<C>&);
 
   Matrix<C>& operator*= (const Matrix<C>&);
+
+  Matrix<C> operator* (const Matrix<C>&) const;
+
+  Matrix<C>& leftMult (const Matrix<C>& p) { return *this=p * *this; }
 
   Matrix<C>& operator/= (const C& c);
 
@@ -207,20 +229,20 @@ template<typename C> class Matrix {
   }
 
   void resize(size_t, size_t);
-  
+
   void resize(size_t, size_t, const C&);
-  
+
   void rowOperation(size_t, size_t, const C&);
-  
+
   void swap(Matrix&);
-  
+
   void swapColumns(size_t, size_t);
-  
+
   void swapRows(size_t, size_t);
-  
+
   void transpose();
 };
-  
+
 }
 
 }

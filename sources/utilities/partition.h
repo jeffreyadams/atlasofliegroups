@@ -42,7 +42,7 @@ namespace partition {
 
   // the template parameter F is the type of a binary function object
 template<typename F>
-  void makeOrbits(Partition&, F&, unsigned long, unsigned long);
+  void makeOrbits(Partition&, const F&, unsigned long, unsigned long);
 
 }
 
@@ -201,7 +201,7 @@ class PartitionIterator {
 
   In fact after the outer loop has advanced i| times, one has |pi(*jt)==i|
   throughout the inner loop, provided |pi| as a function is surjective to an
-  initial part of $\N$. Since the iterator runs through the classes for |pi|,
+  initial part of $N$. Since the iterator runs through the classes for |pi|,
   which are non-empty, the inner loop will run at least once in all cases.
 
   The vector d_data contains the integers [0,n[, where n is the size of the

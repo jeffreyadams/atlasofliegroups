@@ -44,8 +44,8 @@ namespace atlas {
   */
 namespace partition {
 
-template<typename F>
-  void makeOrbits(Partition& pi, F& a, unsigned long c, unsigned long n)
+template<typename F> // class serving as function object (ul,ul)->ul
+  void makeOrbits(Partition& pi,const F& a, unsigned long c, unsigned long n)
 
 /*!
   Constructs the orbit partition defined by the "action function" a.

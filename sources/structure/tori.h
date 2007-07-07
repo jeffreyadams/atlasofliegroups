@@ -36,10 +36,14 @@ namespace tori {
 
   void minusBasis(LT::WeightList&, const LT::LatticeMatrix&);
 
+  LT::WeightList minusBasis(const LT::LatticeMatrix&);
+
   void minusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&,
 		   const RealTorus&);
 
   void plusBasis(LT::WeightList&, const LT::LatticeMatrix&);
+
+  LT::WeightList plusBasis(const LT::LatticeMatrix&);
 
   void plusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&,
 		  const RealTorus&);
@@ -114,19 +118,20 @@ namespace tori {
   LT::WeightList d_minus;                    // basis for -1 eigenlattice
 
   /*!
-  (some) projection onto +1 eigenlattice X_+; kernel _need not be_ the
-  -1 eigenlattice
+  coordinate transformation from standard basis of $X$ to basis |d_plus| of
+  $X_+$; should be applied only to elements of $X_+$
   */
-  LT::LatticeMatrix d_toPlus;                // projection onto X_+
+  LT::LatticeMatrix d_toPlus;                // transform coordinates to $X_+$
 
   /*!
-  (some) projection onto -1 eigenlattice X_-; kernel _need not be_ the
-  +1 eigenlattice
+  coordinate transformation from standard basis of $X$ to basis |d_minus| of
+  $X_-$; should be applied only to elements of $X_-$
   */
-  LT::LatticeMatrix d_toMinus;               // projection onto X_-
+  LT::LatticeMatrix d_toMinus;               // transform coordinates to $X_-$
 
   /*!
-  group of connected components (a vector space over Z/2Z).
+  dual component group of real torus (a vector space over $Z/2Z$), realised
+  as the subquotient $(V_+ + V_-)/V_+$ of the $Z/2Z$ vector space $X/2X$
   */
   LT::SmallSubquotient d_topology;
 

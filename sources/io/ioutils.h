@@ -37,8 +37,10 @@ namespace ioutils {
 
 unsigned long digits(unsigned long, unsigned long);
 
-std::ostream& foldLine(std::ostream&, const std::string&, const char*,
-		       const char* postHyphens = "", size_t h = IndentSize,
+std::ostream& foldLine(std::ostream&, const std::string&,
+		       const char* preHyphens = " ",
+		       const char* postHyphens = "",
+		       size_t h = IndentSize,
 		       size_t lineSize = LineSize);
 
 std::istream& skipSpaces(std::istream&);

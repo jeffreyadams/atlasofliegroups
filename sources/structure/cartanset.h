@@ -53,7 +53,7 @@ where <Gamma>=Z/2Z acts on W), contained in the complement of its subgroup W.
 Since such involutions are of the form (w,Gamma), they can be represented by
 their element w, which is called a twisted involution. The condition for being
 a twisted involution $t$ is $t\Gamma(t)=e$ and "twisted conjugacy" of $t$ by
-$w\in W$ is given by $w\cdot t=wt\Gamma(w^{-1})$. The stable conjugacy classes
+\f$w\in W\f$ is given by \f$w\cdot t=wt\Gamma(w^{-1})\f$. The stable conjugacy classes
 of Cartan subgroups will each be represented by a canonical representative of
 the corresponding twisted conjugacy class of twisted involutions.
 
@@ -250,6 +250,23 @@ class CartanClassSet {
     return d_dualFundamental.involution();
   }
 
+  /*!
+  \brief The size of the fiber orbits corresponding to strong real forms lying
+   over weak real form \#rf, in cartan \#cn (all orbits have the same size)
+
+  Precondition: Real form \#rf is defined for cartan \#cn.
+*/
+unsigned long fiberSize(realform::RealForm rf, size_t cn) const;
+
+  /*!
+  \brief Fiber class for the fundamental Cartan subgroup.
+
+  The involution is delta, which preserves the simple roots.
+  */
+  const cartanclass::Fiber& fundamental() const {
+    return d_fundamental;
+  }
+
   unsigned long dualFiberSize(realform::RealForm, size_t) const;
 
   /*!
@@ -260,34 +277,6 @@ class CartanClassSet {
   */
   const cartanclass::Fiber& dualFundamental() const {
     return d_dualFundamental;
-  }
-
-  /*!
-  \brief Entry \#cn lists the dual real forms in which dual Cartan
-  \#cn is defined.
-  */
-  const realform::RealFormList& dualRealFormLabels(size_t cn) const {
-    return d_dualRealFormLabels[cn];
-  }
-
-  unsigned long dualRepresentative(realform::RealForm, size_t) const;
-
-  /*!
-  \brief Entry \#rf flags the dual Cartans defined in dual real form \#rf.
-  */
-  const bitmap::BitMap& dualSupport(realform::RealForm rf) const {
-    return d_dualSupport[rf];
-  }
-
-  unsigned long fiberSize(realform::RealForm, size_t) const;
-
-  /*!
-  \brief Fiber class for the fundamental Cartan subgroup.
-
-  The involution is delta, which preserves the simple roots.
-  */
-  const cartanclass::Fiber& fundamental() const {
-    return d_fundamental;
   }
 
   /*!
@@ -309,7 +298,17 @@ class CartanClassSet {
   fundamental Cartan in real form \#rf.
   */
   void noncompactRootSet(rootdata::RootSet& rs, realform::RealForm rf) const {
-    d_fundamental.noncompactRootSet(rs,d_fundamental.weakReal().classRep(rf));
+    rs=d_fundamental.noncompactRoots(d_fundamental.weakReal().classRep(rf));
+  }
+
+  /*!
+  \brief Returns the set of noncompact imaginary roots for (the representative
+  in the adjoint fiber of) the real form \#rf.
+  */
+  rootdata::RootSet noncompactRoots(realform::RealForm rf) const
+  {
+    return
+      d_fundamental.noncompactRoots(d_fundamental.weakReal().classRep(rf));
   }
 
   /*!
@@ -372,13 +371,29 @@ class CartanClassSet {
     return d_realFormLabels[cn];
   }
 
+ /*!
+  \brief Entry \#cn lists the dual real forms in which dual Cartan
+  \#cn is defined.
+  */
+  const realform::RealFormList& dualRealFormLabels(size_t cn) const {
+    return d_dualRealFormLabels[cn];
+  }
+
 /*!
-  \brief An element of the orbit corresponding to |rf| in the
-  classification of weak real forms for cartan |\#cn|.
+  \brief An element of the orbit in the adjoint fiber corresponding to |rf|
+  in the classification of weak real forms for cartan |\#cn|.
 
   Precondition: cartan \#cn is defined for rf.
 */
-  unsigned long representative(realform::RealForm, size_t) const;
+  unsigned long representative(realform::RealForm rf, size_t cn) const;
+
+/*!
+  \brief An element of the orbit in the adjoint dual fiber corresponding to
+  |drf| in the classification of dual weak real forms for cartan |\#cn|.
+
+  Precondition: cartan \#cn is defined for rf.
+*/
+  unsigned long dualRepresentative(realform::RealForm, size_t) const;
 
   const rootdata::RootDatum& rootDatum() const {
     return d_parent.rootDatum();
@@ -389,6 +404,13 @@ class CartanClassSet {
   */
   const bitmap::BitMap& support(realform::RealForm rf) const {
     return d_support[rf];
+  }
+
+  /*!
+  \brief Entry \#rf flags the dual Cartans defined in dual real form \#rf.
+  */
+  const bitmap::BitMap& dualSupport(realform::RealForm rf) const {
+    return d_dualSupport[rf];
   }
 
   const weyl::WeylGroup& weylGroup() const {

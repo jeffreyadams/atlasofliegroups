@@ -88,6 +88,9 @@ namespace {
   void primkl_f();
   void kgb_f();
   void block_f();
+  void dual_kgb_f();
+  void dual_block_f();
+  void dual_map_f();
   void blockd_f();
   void blocku_f();
   void blockstabilizer_f();
@@ -124,6 +127,9 @@ namespace {
    "prints the unitary representations in the block at rho";
   const char* cmatrix_tag = "prints the Cartan matrix";
   const char* kgb_tag = "prints the orbits of K on G/B";
+  const char* dual_kgb_tag = "prints the KGB data for a dual real form";
+  const char* dual_block_tag = "prints a block for the dual group";
+  const char* dual_map_tag = "prints a map from block to its dual block";
   const char* klbasis_tag = "prints the KL basis for the Hecke module";
   const char* kllist_tag = "prints the list of distinct KL polynomials";
   const char* klwrite_tag = "writes the KL polynomials to disk";
@@ -207,6 +213,7 @@ void addTestCommands<mainmode::MainmodeTag>
   mode.add("posroots_rootbasis",posroots_rootbasis_f);
   mode.add("roots_rootbasis",roots_rootbasis_f);
   mode.add("rootdatum",rootdatum_f);
+  mode.add("dualkgb",dual_kgb_f);
 
 }
 
@@ -233,6 +240,8 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("corder",corder_f);
   mode.add("primkl",primkl_f);
   mode.add("kgb",kgb_f);
+  mode.add("dualblock",dual_block_f);
+  mode.add("dualmap",dual_map_f);
   mode.add("klbasis",klbasis_f);
   mode.add("kllist",kllist_f);
   mode.add("klwrite",klwrite_f);
@@ -486,50 +495,38 @@ const rootdata::RootDatum& currentRootDatum()
 
 namespace {
 
-void block_f()
-
 /*
   Synopsis: constructs the block of the category of Harish-Chandra modules
   corresponding to a given real form and dual real form.
 */
-
+void block_f()
 {
-  using namespace block_io;
-  using namespace blocks;
-  using namespace commands;
-  using namespace error;
-  using namespace interactive;
-  using namespace ioutils;
-  using namespace realform;
-  using namespace realmode;
-  using namespace realredgp;
-  using namespace tags;
-
-  RealReductiveGroup& G_R = currentRealGroup();
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
   try {
     G_R.fillCartan();
 
 
     complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
     const complexredgp_io::Interface& G_I = G_RI.complexInterface();
 
     // get dual real form
-    RealForm drf;
+    realform::RealForm drf;
 
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+    interactive::getInteractive
+      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
 
-    Block block(G_C,G_R.realForm(),drf);
+    blocks::Block block(G_C,G_R.realForm(),drf);
 
-    OutputFile file;
-    printBlock(file,block);
+    ioutils::OutputFile file;
+    block_io::printBlock(file,block);
 
   }
-  catch (MemoryOverflow& e) {
+  catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
   }
-  catch (InputError& e) {
+  catch (error::InputError& e) {
     e("aborted");
   }
 }
@@ -816,7 +813,7 @@ void primkl_f()
     klc.fill();
 
     OutputFile file;
-    file << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
+    file << "Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
 	 << std::endl << std::endl;
     printPrimitiveKL(file,klc);
   }
@@ -829,12 +826,10 @@ void primkl_f()
 
 }
 
-void kgb_f()
-
 /*
   Outputs the kgb table.
 */
-
+void kgb_f()
 {
   try {
     using namespace basic_io;
@@ -854,6 +849,118 @@ void kgb_f()
     printKGB(file,kgb);
   }
   catch(error::InputError e) {
+    e("aborted");
+  }
+}
+
+/*
+  Outputs a kgb table for a dual real form.
+*/
+void dual_kgb_f()
+{
+  try {
+    complexredgp::ComplexReductiveGroup& G_C = mainmode::currentComplexGroup();
+    G_C.fillCartan();
+
+    const complexredgp_io::Interface& G_I =mainmode::currentComplexInterface();
+
+    const realform::RealFormList rfl =
+      G_C.dualRealFormLabels(G_C.mostSplit(G_C.quasisplit()));
+
+    realform::RealForm drf;
+
+    interactive::getInteractive(drf,G_I,rfl,tags::DualTag());
+
+    // the complex group must be in a variable: it is non-const for real group
+    complexredgp::ComplexReductiveGroup dG_C(G_C,tags::DualTag());
+    realredgp::RealReductiveGroup dG(dG_C,drf);
+    dG.fillCartan();
+
+    std::cout << "dual kgbsize: " << dG.kgbSize() << std::endl;
+    ioutils::OutputFile file;
+
+    kgb::KGB kgb(dG);
+
+    kgb_io::printKGB(file,kgb);
+  }
+  catch(error::InputError e) {
+    e("aborted");
+  }
+  catch (error::MemoryOverflow& e) {
+    e("error: memory overflow");
+  }
+}
+
+void dual_block_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
+  try {
+    G_R.fillCartan(); // must fill Cartans to get |G_R.mostSplit()|
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    realform::RealForm drf;
+
+    interactive::getInteractive
+      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
+
+    // the complex group must be in a variable: it is non-const for block
+    complexredgp::ComplexReductiveGroup dG_C(G_C,tags::DualTag());
+    dG_C.fillCartan();
+
+    blocks::Block block(dG_C,drf,G_R.realForm());
+
+    ioutils::OutputFile file;
+    block_io::printBlock(file,block);
+
+  }
+  catch (error::MemoryOverflow& e) {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
+}
+
+void dual_map_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
+  try {
+    G_R.fillCartan(); // must fill Cartans to get |G_R.mostSplit()|
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    realform::RealForm drf;
+
+    interactive::getInteractive
+      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
+
+    // the complex group must be in a variable: it is non-const for block
+    complexredgp::ComplexReductiveGroup dG_C(G_C,tags::DualTag());
+    dG_C.fillCartan();
+
+    blocks::Block block(G_C,G_R.realForm(),drf);
+    blocks::Block dual_block(dG_C,drf,G_R.realForm());
+
+    std::vector<blocks::BlockElt> v=blocks::dual_map(block,dual_block);
+
+    std::ostringstream s("");
+    basic_io::seqPrint(s,v.begin(),v.end(),", ","[","]\n");
+    ioutils::OutputFile file;
+    foldLine(file,s.str()," ");
+  }
+  catch (error::MemoryOverflow& e) {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e) {
     e("aborted");
   }
 }
@@ -1393,6 +1500,44 @@ void test_f()
 {
   // put your code here, and define testMode at top of file appropriately
 
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
+  try {
+    G_R.fillCartan(); // must fill Cartans to get |G_R.mostSplit()|
+
+    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
+    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+    // get dual real form
+    realform::RealForm drf;
+
+    interactive::getInteractive
+      (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
+
+    // the complex group must be in a variable: it is non-const for block
+    complexredgp::ComplexReductiveGroup dG_C(G_C,tags::DualTag());
+    dG_C.fillCartan();
+
+    blocks::Block block(G_C,G_R.realForm(),drf);
+    blocks::Block dual_block(dG_C,drf,G_R.realForm());
+
+    klsupport::KLSupport kls(block); kls.fill();
+    kl::KLContext klc(kls); klc.fill();
+
+
+    klsupport::KLSupport dual_kls(dual_block); dual_kls.fill();
+    kl::KLContext dual_klc(dual_kls); dual_klc.fill();
+
+    std::cout << ( kltest::dualityVerify(klc,dual_klc) ? "Succes" : "Failure" )
+	      << std::endl;
+  }
+  catch (error::MemoryOverflow& e) {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 }
 
 } // namespace

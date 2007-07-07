@@ -97,10 +97,6 @@ void toPositive(weyl::WeylWord&, const LT::Weight&, const RootDatum&);
 
 void toWeylWord(weyl::WeylWord&, RootNbr, const RootDatum&);
 
-void twoRho(LT::Weight&, const RootList&, const RootDatum&);
-
-void twoRho(LT::Weight&, const RootSet&, const RootDatum&);
-
 }
 
 /******** type definitions **************************************************/
@@ -432,6 +428,11 @@ use by accessors.
     reflection(v,d_simpleRoots[j]);
   }
 
+  LT::LatticeMatrix cartanMatrix() const;
+
+  LT::LatticeMatrix cartanMatrix(const RootList&) const; // for subsystem
+
+
   RootNbr rootPermutation(RootNbr i, size_t s) const {
     return d_rootPermutation[s][i];
   }
@@ -443,14 +444,22 @@ use by accessors.
     return d_twoRho;
   }
 
+  LT::Weight twoRho(const RootList&) const;
+
+  LT::Weight twoRho(const RootSet&) const;
+
+
   weyl::WeylWord word_of_inverse_matrix(const latticetypes::LatticeMatrix&)
     const;
 
+  RootList simpleBasis(const RootList& rl) const;
+  RootList simpleBasis(RootSet rs) const;
 
 // manipulators
 
   void swap(RootDatum&);
-};
+
+}; // class RootDatum
 
 // NOTE: this should really be a template, depending on a RandomAccessIterator
 // with value_type RootNbr (so that in particular d_pos could be a pointer to

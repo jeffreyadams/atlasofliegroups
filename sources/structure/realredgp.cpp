@@ -36,8 +36,6 @@ namespace {
 
         Chapter I -- The RealReductiveGroup class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace realredgp {
@@ -71,13 +69,11 @@ RealReductiveGroup::RealReductiveGroup(
   const Fiber& fundf = d_complexGroup->fundamental();
   const RootDatum& rd = d_complexGroup->rootDatum();
 
-  RootList so;
-  pause();
-  toMostSplit(so,fundf,rf,rd);
+  RootList so= toMostSplit(fundf,rf,rd);
 
   LatticeMatrix q;
-  toMatrix(q,so,rd);
-  leftProd(q,d_complexGroup->distinguished());
+  rootdata::toMatrix(q,so,rd);
+  q.leftMult(d_complexGroup->distinguished());
 
   RealTorus T(q);
 
@@ -151,20 +147,18 @@ const latticetypes::LatticeMatrix& RealReductiveGroup::distinguished() const
   return d_complexGroup->distinguished();
 }
 
-void RealReductiveGroup::grading(rootdata::RootSet& rs) const
-
 /*!
-  Synopsis: puts in rs the set of noncompact imaginary roots for the
-  representative of the real form.
+  Synopsis: Returns the set of noncompact imaginary roots for (the
+  representative of) the real form.
 
   NOTE : this is not inlined to avoid a compiling dependency on complexredgp.h
 */
-
+rootdata::RootSet RealReductiveGroup::noncompactRoots() const
 {
-  d_complexGroup->grading(rs,d_realForm);
-
-  return;
+  return d_complexGroup->noncompactRoots(d_realForm);
 }
+
+
 
 size_t RealReductiveGroup::kgbSize() const
 

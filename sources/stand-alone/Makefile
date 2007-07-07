@@ -39,7 +39,7 @@ webtexfiles   := $(cwebx_sources:%.w=%.tex)
 dvifiles := $(cwebx_sources:%.w=%.dvi)
 derived_cpp := $(cwebx_sources:%.w=%.cpp)
 
-illiterate_sources := matstat.cpp polstat.cpp searchpol.cpp
+illiterate_sources := matstat.cpp polstat.cpp linear.cpp
 
 matrix-merge_objects := ../utilities/bitmap.o ../utilities/constants.o \
               ../utilities/bits.o ../utilities/arithmetic.o ../error/error.o
@@ -100,8 +100,7 @@ coef-merge: coef-merge.cpp
 matstat: matstat.cpp $(matstat_objects)
 
 polstat: polstat.cpp $(polstat_objects)
-
-searchpol: searchpol.cpp $(searchpol_objects)
+linear: linear.cpp $(polstat_objects)
 
 # a static pattern rule giving the usual C++ single-module compilation
 $(executables): %: %.cpp

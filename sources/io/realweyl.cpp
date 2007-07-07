@@ -63,12 +63,7 @@ RealWeyl::RealWeyl(const cartanclass::CartanClass& cc,
   const Fiber& df = cc.dualFiber();
 
   // construct basis of imaginary compact roots
-  RootSet rs;
-
-  f.noncompactRootSet(rs,x);
-  ~rs;
-  rs &= f.imaginaryRootSet();
-  rootBasis(d_imaginaryCompact,rs,rd);
+  rootdata::rootBasis(d_imaginaryCompact,f.compactRoots(x),rd);
   lieType(d_imaginaryCompactType,d_imaginaryCompact,rd);
 
   // construct imaginary R-group
@@ -76,10 +71,7 @@ RealWeyl::RealWeyl(const cartanclass::CartanClass& cc,
   rGenerators(d_imaginaryR,d_imaginaryOrth,f,rd);
 
   // construct basis of real compact roots
-  df.noncompactRootSet(rs,y);
-  ~rs;
-  rs &= df.imaginaryRootSet();
-  rootBasis(d_realCompact,rs,drd);
+  rootBasis(d_realCompact,df.compactRoots(y),drd);
   lieType(d_realCompactType,d_realCompact,drd);
 
   // construct real R-group
@@ -116,7 +108,7 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_imaginaryCompact.assign(nic,e);
 
   for (size_t j = 0; j < nic; ++j) {
-    W.prod(d_imaginaryCompact[j],rd.reflectionWord(rw.imaginaryCompact(j)));
+    W.mult(d_imaginaryCompact[j],rd.reflectionWord(rw.imaginaryCompact(j)));
   }
 
   size_t nir = rw.numImaginaryR();
@@ -125,8 +117,8 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   for (size_t j = 0; j < nir; ++j) {
     const latticetypes::SmallBitVector& c = rw.imaginaryR(j);
     for (size_t i = 0; i < c.size(); ++i)
-      if (c.test(i)) {
-	W.prod(d_imaginaryR[j],rd.reflectionWord(rw.imaginaryOrth(i)));
+      if (c[i]) {
+	W.mult(d_imaginaryR[j],rd.reflectionWord(rw.imaginaryOrth(i)));
       }
   }
 
@@ -134,14 +126,14 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_imaginary.assign(ni,e);
 
   for (size_t j = 0; j < ni; ++j) {
-    W.prod(d_imaginary[j],rd.reflectionWord(rw.imaginary(j)));
+    W.mult(d_imaginary[j],rd.reflectionWord(rw.imaginary(j)));
   }
 
   size_t nrc = rw.numRealCompact();
   d_realCompact.assign(nrc,e);
 
   for (size_t j = 0; j < nrc; ++j) {
-    W.prod(d_realCompact[j],rd.reflectionWord(rw.realCompact(j)));
+    W.mult(d_realCompact[j],rd.reflectionWord(rw.realCompact(j)));
   }
 
   size_t nrr = rw.numRealR();
@@ -150,8 +142,8 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   for (size_t j = 0; j < nrr; ++j) {
     const latticetypes::SmallBitVector& c = rw.realR(j);
     for (size_t i = 0; i < c.size(); ++i)
-      if (c.test(i)) {
-	W.prod(d_realR[j],rd.reflectionWord(rw.realOrth(i)));
+      if (c[i]) {
+	W.mult(d_realR[j],rd.reflectionWord(rw.realOrth(i)));
       }
   }
 
@@ -159,7 +151,7 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_real.assign(nr,e);
 
   for (size_t j = 0; j < nr; ++j) {
-    W.prod(d_real[j],rd.reflectionWord(rw.real(j)));
+    W.mult(d_real[j],rd.reflectionWord(rw.real(j)));
   }
 
   size_t nc = rw.numComplex();
@@ -167,9 +159,9 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
 
   for (size_t j = 0; j < nc; ++j) {
     rootdata::RootNbr rn = rw.complex(j);
-    W.prod(d_complex[j],rd.reflectionWord(rn));
+    W.mult(d_complex[j],rd.reflectionWord(rn));
     rn = cc.involution_image_of_root(rn);
-    W.prod(d_complex[j],rd.reflectionWord(rn));
+    W.mult(d_complex[j],rd.reflectionWord(rn));
   }
 
   return;
@@ -296,13 +288,10 @@ void orthogonalMAlpha(rootdata::RootList& rl, unsigned long x,
   using namespace latticetypes;
   using namespace rootdata;
 
-  Weight tworho_ic;
-  compactTwoRho(tworho_ic,x,f,rd);
-
-  RootSet rs;
+  Weight tworho_ic = compactTwoRho(x,f,rd);
 
   // put positive imaginary noncompact roots in rs
-  f.noncompactRootSet(rs,x);
+  RootSet rs = f.noncompactRoots(x);
   rs &= rd.posRootSet();
 
   // keep the ones that are orthogonal to tworho_ic
@@ -311,8 +300,6 @@ void orthogonalMAlpha(rootdata::RootList& rl, unsigned long x,
   for (RootSet::iterator i = rs.begin(); i != rs_end; ++i)
     if (rd.isOrthogonal(tworho_ic,*i))
       rl.push_back(*i);
-
-  return;
 }
 
 void rGenerators(latticetypes::SmallBitVectorList& cl,
@@ -344,16 +331,12 @@ void rGenerators(latticetypes::SmallBitVectorList& cl,
   BitMatrix<RANK_MAX> m(f.fiberRank(),rln);
 
   for (size_t j = 0; j < rln; ++j) {
-    SmallBitVector v(f.fiberRank());
-    f.mAlpha(v,rd.coroot(rl[j]));
-    for (size_t i = 0; i < f.fiberRank(); ++i)
-      if (v[i])
-	m.set(i,j);
+    SmallBitVector v = f.mAlpha(rd.coroot(rl[j])); // |v.size()=f.fiberRank()|
+    for (size_t i = 0; i < v.size(); ++i)
+      m.set(i,j,v[i]);
   }
 
   m.kernel(cl);
-
-  return;
 }
 
 }

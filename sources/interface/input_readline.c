@@ -1,8 +1,8 @@
 /*
   This is input_readline.c
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -39,7 +39,11 @@ char* readLine(const char* prompt = "", bool toHistory = true);
 
         Chapter I -- The InputBuffer class
 
-  ... explain here when it is stable ...
+  An InputBuffer object can hold a line of input, and can be used as in
+  |std::istringstream| object (since it is publicly derived from that class),
+  in particular one can read from it using the 'source >> variable' syntax.
+  In addition, it provides a |getline| method that will fill the string that
+  it holds from standard input; unless NREADLINE was set this call readline.
 
 ******************************************************************************/
 
@@ -49,10 +53,14 @@ std::istream& InputBuffer::getline(std::istream& is, const char* prompt,
 				   bool toHistory)
 
 /*
-  Synopsis: reads 
+  Synopsis: reads
 */
 
 {
+  /* NOTE: the |char*| result returned from |readLine| is held in a static
+     variable of that function, so that IT will call |free| on it later; we
+     should not do that here!
+  */
   std::string line = readLine(prompt,toHistory);
 
   str(line);
@@ -82,7 +90,7 @@ void InputBuffer::reset(std::streampos pos)
   Clears the flags as well; the idea is to undo a peek-forward operation.
 */
 
-{  
+{
   clear();
   seekg(pos);
 
@@ -90,7 +98,7 @@ void InputBuffer::reset(std::streampos pos)
 }
 
 }
- 	
+
 
 /*****************************************************************************
 
@@ -147,7 +155,7 @@ HistoryBuffer::~HistoryBuffer()
   Resets the history to its original state
 */
 
-{  
+{
   clear_history();
 
   HISTORY_STATE* hs = history_get_history_state();
@@ -155,15 +163,13 @@ HistoryBuffer::~HistoryBuffer()
 
   history_set_history_state((HISTORY_STATE*)d_history);
 }
-  
+
 }
 
 /*****************************************************************************
 
-        Chapter III -- Functions declared in input.h 
+        Chapter III -- Functions declared in input.h
                     -- version _with_ readline
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -204,8 +210,6 @@ void initReadLine()
 
         Chapter III -- Local functions
                     -- version _with_ readline
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -250,7 +254,7 @@ char* completionGenerator(const char* text, int state)
 void displayCompletions(char** matches, int num, int)
 
 /*
-  Synopsis: function passed to the readline library for the display of 
+  Synopsis: function passed to the readline library for the display of
   completion lists
 */
 

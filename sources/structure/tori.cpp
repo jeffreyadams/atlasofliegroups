@@ -44,58 +44,83 @@ void fullMinusBasis(WeightList&, LatticeMatrix&, const LatticeMatrix&);
 
         Chapter I -- The RealTorus class
 
-  The real torus class represents the datum of a torus defined over R. This
-  is equivalent to the datum of a lattice with an involution; to be consistent
-  with the rest of the program, we use the involution tau which is the
-  negative of the Galois involution on the character lattice.
+  The real torus class represents the datum of a torus $H$ defined over $R$.
+  This is equivalent to the datum of a (character) lattice equipped with an
+  involution. To be consistent with the rest of the program, we use the Cartan
+  involution \f$\tau\f$ which is the negative of the Galois involution on the
+  character lattice. A fundamental fact is the the component group of $H(R)$
+  (the fixed points of the Galois involution) is canonically isomorphic to the
+  component group of the complex group \f$H(C)^\tau\f$ fixed under the Cartan
+  involution (even if these groups can be of quite different dimensions), the
+  latter of which is easy to determine in terms of the action of \f$\tau\f$ on the
+  character lattice.
 
-  The fundamental data are the rank d_rank (allowing us to identify the
-  character lattice X with d_rank-tuples of integers) and the integer matrix
-  d_involution of tau. Then we have two sublattices X_+ and X_-, the +1 and -1
-  eigenspaces for the involution. Both are supplementable in X, but in general
-  X is not equal to the direct sum X_+ + X_-.
+  The fundamental data are the rank stored in |d_rank| (allowing us to
+  represent the character lattice $X$ as $Z^n$ for $n=d_rank)$, and the
+  integran $n* n$ involution matrix |d_involution| giving the action of
+  \f$\tau\f$ on $X$. It determines two sublattices $X_+$ and $X_-$, cut out by its
+  eigenspaces for $+1$ and $-1$ respectively. Both are sublattices are
+  saturated, and therefore supplementable in $X$, but in general $X$ is not
+  equal to the direct sum $X_+ + X_-$, since that sum need not be saturated
+  (for instance in $Z^2$ when \f$\tau\f$ interchanges the vectors of a basis).
 
   The most delicate invariant we shall have to deal with is the component
-  group of the group of real points of T. This is an elementary abelian
-  2-group; we shall rather consider its dual dpi0(T). To describe its rank is
-  fairly easy . Indeed, T may be decomposed as a product of compact, split and
-  complex factors; denote r_u, r_s and r_c the number of factors of each type,
-  so that the rank n of T is r_u + r_s + 2 r_c, then the rank of the component
-  group is r_s. In the cases T=r_u and T=r_s the one-dimensional weight
-  lattice X is equal to X_+ respectively to X_-, while for T=r_c the lattice
-  X=Z^2 has X_+ as the diagonal and X_- as the anti-diagonal sublattice. It
-  follows that in general rk(X_+) = r_u + r_c and rk(X_-) = r_s + r_c. Denote
-  V = X/2X, a vector space over the two-element field F_2, and denote V_+,V_-
-  the images of X_+, X_- in V. Then factors r_u and r_s contribute
-  one-dimensional subspaces to V_+ and V_-, respectively, while a factor r_c
-  contributes the _same_ one-dimensional subspace both to V_+ and to V_-.
-  Therefore r_c = dim(V_ +cap V_-), and r_s = rk(X_-) - r_c. One may prove
-  that V_+- := V_+ cap V_- is also the image of the endomorphism of V induced
-  by tau - 1.
+  group of the real torus $H(R)$. This is an elementary abelian 2-group; we
+  shall rather consider its dual group $dpi0(H)$. To describe its rank is
+  fairly easy. Indeed, $H$ may be decomposed as a product of compact, split
+  and complex factors; this corresponds to a decomposition of $Z^n$ into a
+  direct sum of sublattices on which \f$\tau\f$ acts respectively as $1$
+  (identity), $-1$, and by a permutation of some basis with only 2-cycles.
+  While such a decomposition is not canonical, the number of factors of each
+  type is uniquely determined; denote them by $r_u$, $r_s$ and $r_c$ (they
+  give the ranks of the first two sublattices, and half the rank of the
+  third); the rank $n$ of $H$ is equal to $r_u + r_s + 2 r_c$. Then the rank
+  of the component group is $r_s$.
 
-  It is a little bit harder to describe dpi0(T) functorially as a vector
-  space. The group T(2)(R) of real points of the group of elements of order 2
-  in T is in natural duality with V/V_+-. There is a natural surjection from
-  T(2)(R) to pi0(T), so dpi0(T) is a sub-vector space of V/V_+-, which may in
-  fact be described as the image of V_-. This is how we will consider it.
+  We shall refrain from seeking such a non-canonical decomposition of $X$, and
+  work with the subspaces $X_+$ and $X_-$ instead. One has $rk(X_+) = r_u+r_c$
+  and $rk(X_-) = r_s+r_c$. Denote V = $X/2X$, a vector space over the
+  two-element field $Z/2Z$, and denote by $V_+,V_-$ the respective images of
+  $X_+, X_-$ in $V$. Then factors $r_u$ and $r_s$ contribute one-dimensional
+  subspaces to $V_+$ and $V_-$, respectively, while a factor $r_c$ contributes
+  the _same_ one-dimensional subspace both to $V_+$ and to $V_-$ (since after
+  reduction modulo $2$ the is no distinction between the diagonal and
+  anti-diagonal subpaces). Therefore on has \f$r_c = \dim(V_ +\cap V_-)\f$, and it
+  follows that \f$r_s = rk(X_-) - r_c=\dim(V_-/(V_ \cap V_-))\f$. It can be seen
+  that \f$V_+ \cap V_-\f$ is the image of the endomorphism of $V$ induced by
+  \f$\tau-1\f$ (or by \f$\tau+1\f$), while $V_+ + V_-$ is the kernel of that
+  endomorphism.
+
+  Having used only $X_+$ and $X_-$ we almost have a functorial description of
+  the component group of $H(R)$, which is an elementary 2-group isomorphic to
+  \f$V_-/(V_ \cap V_-)\f$, or equivalently to $(V_+ + V_-)/V_+$. However, having
+  started with the weight lattice $X$, the latter groups are actually dual
+  objects: $X/2X$ can be interpreted as $Hom(H(2),C^*)$ where $H(2)$
+  denotes the set of elements of order 2 (or 1) in $H$. Therefore each of the
+  mentioned subquotients naturally models the dual group $dpi0(H)$ of the
+  component group of $H(R)$ (or of \f$H(C)^\tau\f$). In practice we shall work
+  only with these dual groups, and use the subquotient $(V_+ + V_-)/V_+$ to
+  represent it (the latter precision is relevant, because even if the two
+  subquotients are canonically isomorphic, they cannot be used interchangeably
+  in all situations).
 
 ******************************************************************************/
 
 namespace tori {
 
-RealTorus::RealTorus(const LatticeMatrix& i)
-  :d_rank(i.numColumns()),
-   d_involution(i),
-   d_topology(d_rank) // set dimension of ambient space for subquotient
-
 /*!
-  This function constructs the torus with involution i (the rank is recovered
+  \brief Constructs the torus with involution |i| (the rank is recovered
   from the size of the matrix.)
 */
-
+RealTorus::RealTorus(const LatticeMatrix& i)
+  : d_rank(i.numColumns())
+  , d_complexRank(d_rank) // this value is too large; it is modified below
+  , d_involution(i)
+  , d_plus()
+  , d_minus()
+  , d_toPlus()
+  , d_topology(d_rank) // set dimension of ambient space for subquotient
 {
-  using namespace lattice;
-
   // make bases of +1 and -1 eigenlattices
 
   fullPlusBasis(d_plus,d_toPlus,d_involution);
@@ -104,7 +129,10 @@ RealTorus::RealTorus(const LatticeMatrix& i)
   // find component group data
 
   makeTopology(d_topology,*this);
-  d_complexRank = d_rank - d_topology.space().dimension();
+
+  /* one has $n=r_u+r_s+2r_c$ while $\dim(V_+ + V_-)=r_u+r_s+r_c$, so $r_c$
+     can be recovered by subtracting the latter from the former: */
+  d_complexRank -= d_topology.space().dimension();
 }
 
 RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
@@ -208,6 +236,56 @@ void dualPi0(LT::SmallSubquotient& dpi0, const LT::LatticeMatrix& q)
 
 }
 
+/*!
+  \brief Puts in mb a basis for the +1 eigenspace of the involution;
+
+  Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
+  commensurate with the eigenspace.
+*/
+void plusBasis(latticetypes::WeightList& pb,
+	       const latticetypes::LatticeMatrix& i)
+
+/*!
+  Synopsis: puts in mb a basis for the +1 eigenspace of the involution;
+
+  Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
+  commensurate with the eigenspace.
+*/
+
+{
+  using namespace latticetypes;
+  using namespace matrix;
+  using namespace smithnormal;
+
+  size_t n = i.numColumns();
+
+  // put in q the matrix of vectors i(e)+e in the basis b
+
+  LatticeMatrix q(i);
+  for (size_t j = 0; j < n; ++j)
+    q(j,j) += 1;
+
+  // find smith normal form
+
+  CoeffList invf;
+  WeightList bs;
+  initBasis(bs,n);
+
+  smithNormal(invf,bs.begin(),q);
+
+  // copy significant part of basis in pb
+
+  pb.reserve(invf.size());
+
+  for (size_t j = 0; j < invf.size(); ++j)
+    pb.push_back(bs[j]);
+}
+
+latticetypes::WeightList plsuBasis(const latticetypes::LatticeMatrix& i)
+{
+  latticetypes::WeightList result; plusBasis(result,i); return result;
+}
+
 void minusBasis(latticetypes::WeightList& mb,
 		const latticetypes::LatticeMatrix& i)
 
@@ -250,6 +328,11 @@ void minusBasis(latticetypes::WeightList& mb,
   return;
 }
 
+latticetypes::WeightList minusBasis(const latticetypes::LatticeMatrix& i)
+{
+  latticetypes::WeightList result; minusBasis(result,i); return result;
+}
+
 void minusMatrix(latticetypes::LatticeMatrix& qm,
 		 const latticetypes::LatticeMatrix& q, const RealTorus& t)
 
@@ -271,47 +354,6 @@ void minusMatrix(latticetypes::LatticeMatrix& qm,
     for (size_t i = 0; i < bm.size(); ++i)
       qm(i,j) = vm[i];
   }
-
-  return;
-}
-
-void plusBasis(latticetypes::WeightList& pb,
-	       const latticetypes::LatticeMatrix& i)
-
-/*!
-  Synopsis: puts in mb a basis for the +1 eigenspace of the involution;
-
-  Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
-  commensurate with the eigenspace.
-*/
-
-{
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace smithnormal;
-
-  size_t n = i.numColumns();
-
-  // put in q the matrix of vectors i(e)+e in the basis b
-
-  LatticeMatrix q(i);
-  for (size_t j = 0; j < n; ++j)
-    q(j,j) += 1;
-
-  // find smith normal form
-
-  CoeffList invf;
-  WeightList bs;
-  initBasis(bs,n);
-
-  smithNormal(invf,bs.begin(),q);
-
-  // copy significant part of basis in pb
-
-  pb.reserve(invf.size());
-
-  for (size_t j = 0; j < invf.size(); ++j)
-    pb.push_back(bs[j]);
 
   return;
 }
@@ -374,10 +416,7 @@ void makeTopology(SmallSubquotient& cs, const RealTorus& T)
   SmallBitVectorList b;
   i2.kernel(b);  // kernel of map induced by tau-1 (or by tau+1), contains V_+
 
-  SmallSubquotient cs1(b,plus2,T.rank());
-  cs.swap(cs1);
-
-  return;
+  cs=SmallSubquotient(b,plus2,T.rank());
 }
 
 void fullMinusBasis(latticetypes::WeightList& mb,
@@ -429,9 +468,8 @@ void fullMinusBasis(latticetypes::WeightList& mb,
   // rows of projection matrix are the first rows of the inverse of the
   // matrix of bs
 
-  LatticeMatrix p(bs);
-  LatticeCoeff d;
-  p.invert(d);
+  LatticeMatrix p=LatticeMatrix(bs).inverse();
+
 
   tm.resize(invf.size(),n);
 
@@ -444,19 +482,24 @@ void fullMinusBasis(latticetypes::WeightList& mb,
 
 void fullPlusBasis(latticetypes::WeightList& pb,
 		   latticetypes::LatticeMatrix& tp,
-		   const latticetypes::LatticeMatrix& i)
+		   const latticetypes::LatticeMatrix& tau)
 
 /*!
-  Synopsis: puts in mb a basis for the +1 eigenspace of the involution; puts
-  in tm the matrix of a projection onto X_+.
+  \brief puts in |pb| a basis for the +1 eigenlattice of the involution;
+  puts in |tp| the matrix of a coordinate transformation from the standard
+  basis to |pb|.
 
-  The matrix tm is in terms of the standard basis of X, and the chosen basis
-  of X_+. There is no significance to the chosen complement; the intention is
-  that it should be used only for vectors already in X_+.
+  Although |tp| can be applied to any element of $X$, the result is well
+  defined only when applied to an element already in $X_+$; otherwise the
+  image will have been projected parallel to an unspecified complement.
 
-  Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
-  commensurate with the eigenspace. Thus a smith basis for this lattice will
-  do the trick. Such a basis also yields the projection matrix.
+  Algorithm: a maximal rank sublattice of $X_+$ is spanned by the columns of
+  the matrix \f$\tau+1\f$. A Smith basis for this sublattice will start with a
+  basis for $X$ (whose cardinality is given by the number of invariant
+  factors), followed by a basis for a complement. The inveres of the matrix
+  with as columns the full Smith basis provides a coordinate transform from
+  the standard basis to the Smith basis; retaining only the rows that give the
+  initial coordinates we obtain the matrix |tp|.
 */
 
 {
@@ -464,11 +507,11 @@ void fullPlusBasis(latticetypes::WeightList& pb,
   using namespace matrix;
   using namespace smithnormal;
 
-  size_t n = i.numColumns();
+  size_t n = tau.numColumns();
 
-  // put in q the matrix of vectors i(e)+e in the basis b
+  // put in q the matrix of vectors tau(e)+e in the basis b
 
-  LatticeMatrix q(i);
+  LatticeMatrix q(tau);
   for (size_t j = 0; j < n; ++j)
     q(j,j) += 1;
 
@@ -487,21 +530,11 @@ void fullPlusBasis(latticetypes::WeightList& pb,
   for (size_t j = 0; j < invf.size(); ++j)
     pb.push_back(bs[j]);
 
-  // make projection matrix
-  // rows of projection matrix are the first rows of the inverse of the
-  // matrix of bs
+  // make coordinate transformation matrix
+  LatticeMatrix p=LatticeMatrix(bs).inverse();
 
-  LatticeMatrix p(bs);
-  LatticeCoeff d;
-  p.invert(d);
-
-  tp.resize(invf.size(),n);
-
-  for (size_t i = 0; i < invf.size(); ++i)
-    for (size_t j = 0; j < n; ++j)
-      tp(i,j) = p(i,j);
-
-  return;
+  // extract first |invf.size()| rows
+  tp=latticetypes::LatticeMatrix(p,0,0,invf.size(),n);
 }
 
 }

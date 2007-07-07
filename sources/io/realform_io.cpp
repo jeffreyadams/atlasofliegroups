@@ -1,8 +1,8 @@
 /*
   This is realform_io.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -30,15 +30,15 @@ namespace {
 
   void pause() {;}
 
-  std::ostream& printComplexType(std::ostream&, 
+  std::ostream& printComplexType(std::ostream&,
 				 const lietype::SimpleLieType&);
 
   std::ostream& printSimpleType(std::ostream&, const gradings::Grading&,
-				const lietype::SimpleLieType&, 
+				const lietype::SimpleLieType&,
 				lietype::TypeLetter);
 
   std::ostream& printType(std::ostream&, const gradings::Grading&,
-			  const lietype::LieType&, 
+			  const lietype::LieType&,
 			  const lietype::InnerClassType&);
 
 
@@ -113,12 +113,9 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   std::vector<RealFormData> rfd(G.numRealForms());
 
   for (RealForm rf = 0; rf < G.numRealForms(); ++rf) {
-    RootList so;
-    toMostSplit(so,fundf,rf,rd);
-    Grading gr;
-    specialGrading(gr,fundf,rf,rd);
-    RealFormData data(rf,gr,so);
-    rfd[rf] = data;
+    RootList so= toMostSplit(fundf,rf,rd);
+    Grading gr = specialGrading(fundf,rf,rd);
+    rfd[rf] = RealFormData(rf,gr,so);
   }
 
   std::sort(rfd.begin(),rfd.end());
@@ -164,12 +161,9 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   std::vector<RealFormData> rfd(G.numDualRealForms());
 
   for (RealForm rf = 0; rf < G.numDualRealForms(); ++rf) {
-    RootList so;
-    toMostSplit(so,fundf,rf,rd);
-    Grading gr;
-    specialGrading(gr,fundf,rf,rd);
-    RealFormData data(rf,gr,so);
-    rfd[rf] = data;
+    RootList so= toMostSplit(fundf,rf,rd);
+    Grading gr = specialGrading(fundf,rf,rd);
+    rfd[rf] = RealFormData(rf,gr,so);
   }
 
   std::sort(rfd.begin(),rfd.end());
@@ -204,7 +198,7 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 /******* copy, assignment and swap *******************************************/
 void Interface::swap(Interface& other)
 
-{  
+{
   d_in.swap(other.d_in);
   d_out.swap(other.d_out);
   d_name.swap(other.d_name);
@@ -243,7 +237,7 @@ std::ostream& printRealForms(std::ostream& strm, const Interface& I)
   Synopsis: outputs the list of real forms in I.
 */
 
-{  
+{
   for (size_t j = 0; j < I.numRealForms(); ++j) {
     std::cout << j << ": " << I.typeName(j) << std::endl;
   }
@@ -290,7 +284,7 @@ bool operator< (const RealFormData& first, const RealFormData& second)
   return firstGrading < secondGrading;
 }
 
-std::ostream& printComplexType(std::ostream& strm, 
+std::ostream& printComplexType(std::ostream& strm,
 			       const lietype::SimpleLieType& slt)
 
 /*
@@ -352,8 +346,8 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
   Synopsis: prints out the real form of slt represented by gr.
 
   Algorithm: it turns out that for each irreducible Dynkin diagram,
-  and for each non-compact equal rank real form, there is always at least 
-  one grading with exactly one noncompact simple imaginary root. In that case, 
+  and for each non-compact equal rank real form, there is always at least
+  one grading with exactly one noncompact simple imaginary root. In that case,
   gr is the one for which the noncompact root is smallest. In the non-equal
   rank case, this is true for all ireducible types except A_n, where the
   imaginary root system is not irreducible. In that case, of course, the
@@ -579,7 +573,7 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
   return strm;
 }
 
-std::ostream& printType(std::ostream& strm, 
+std::ostream& printType(std::ostream& strm,
 			const gradings::Grading& d_gr,
 			const lietype::LieType& lt,
 			const lietype::InnerClassType& ict)
@@ -623,4 +617,3 @@ std::ostream& printType(std::ostream& strm,
 }
 
 }
-

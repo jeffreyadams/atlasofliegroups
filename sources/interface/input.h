@@ -1,8 +1,8 @@
 /*
   This is input.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -18,7 +18,7 @@
 namespace atlas {
 
 namespace input {
-  
+
   class InputBuffer;
 
 #ifndef NREADLINE
@@ -32,7 +32,7 @@ namespace input {
 /******** function declarations ********************************************/
 
 namespace input {
-  
+
   bool hasQuestionMark(InputBuffer&);
   void initReadLine();
 
@@ -47,13 +47,14 @@ class InputBuffer:public std::istringstream {
  public:
 
 // constructors and destructors
-  InputBuffer():std::istringstream() 
+  InputBuffer():std::istringstream()
     {}
 
-  explicit InputBuffer(const std::string& str):std::istringstream(str) 
+  explicit InputBuffer(const std::string& str)
+    : std::istringstream(str)
     {}
 
-  virtual ~InputBuffer() 
+  virtual ~InputBuffer()
     {}
 
 // manipulators
@@ -80,7 +81,7 @@ class HistoryBuffer:public InputBuffer {
   explicit HistoryBuffer(const std::string& str);
 
   virtual ~HistoryBuffer();
-  
+
 };
 #endif
 

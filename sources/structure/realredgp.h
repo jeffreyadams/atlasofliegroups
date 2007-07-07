@@ -87,7 +87,7 @@ class RealReductiveGroup {
 
   const latticetypes::LatticeMatrix& distinguished() const;
 
-  void grading(rootdata::RootSet&) const;
+  rootdata::RootSet noncompactRoots() const;
 
   bool isConnected() const {
     return d_status[IsConnected];

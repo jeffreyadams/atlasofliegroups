@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -12,13 +12,22 @@
 #ifndef CTR_ITERATOR_H  /* guard against multiple inclusions */
 #define CTR_ITERATOR_H
 
+#include <iterator>
+
 namespace atlas {
 
-/*!
-  The purpose of this type is to be able to apply stl algorithms like find,
-  where the iterator is really an integer, ranging over a non-allocated range.
-  In other words, the iterator itself holds its value. It is assumed that
-  U is a (typically unsigned) integral type.
+/*! The purpose of this type is to be able to apply STL algorithms like
+  |std::find|, in situations where the values compared are really integers but
+  not actually all stored in memory. This is achieved by having the iterators
+  themselves containing the values, so that |operator*| just delivers the
+  value stored. To be of any interest, the comparison function should have
+  some special context dependent meaning, probably involving table lookup. It
+  is a major inconvenience that, since we are comparing integers, the values
+  compared against must be accessible in this way, in other words stored in
+  the same table that we are (implicitly) searching. For this reason these
+  iterators are currently unsused by atlas, and might well remain so forever.
+
+  It is assumed that U is a (typically unsigned) integral type.
 */
 
 /******** type declarations *************************************************/
@@ -35,7 +44,10 @@ namespace ctr_iterator {
 
 namespace ctr_iterator {
 
-template<typename U> class CounterIterator {
+template<typename U> class CounterIterator
+  // derive so that associated types are defined (no pointer and ref allowed)
+: public std::iterator<std::random_access_iterator_tag,U,ptrdiff_t,void,void>
+{
 
  private:
 
@@ -43,15 +55,8 @@ template<typename U> class CounterIterator {
 
  public:
 
-// associated types
-  typedef std::random_access_iterator_tag iterator_category;
-  typedef U value_type;
-  typedef ptrdiff_t difference_type;
-  typedef const value_type* pointer;
-  typedef const value_type& reference;
-
 // constructors and destructors
-  explicit CounterIterator(U n):d_val(n) {}
+  explicit CounterIterator(U n) : d_val(n) {}
 
   ~CounterIterator() {}
 
@@ -94,27 +99,27 @@ template<typename U> class CounterIterator {
   }
 
   CounterIterator& operator+= (difference_type n) {
-    d_val += n; 
+    d_val += n;
     return *this;
   }
-  
+
   CounterIterator operator+ (difference_type n) {
     return CounterIterator(d_val + n);
   }
-  
+
   CounterIterator& operator-= (difference_type n) {
-    d_val -= n; 
+    d_val -= n;
     return *this;
   }
-  
+
   CounterIterator operator- (difference_type n) {
     return CounterIterator(d_val - n);
   }
-  
+
   difference_type operator- (const CounterIterator& i) const {
     return d_val - i.d_val;
   }
-  
+
   U operator[] (difference_type n) {
     return d_val + n;
   }
@@ -122,7 +127,7 @@ template<typename U> class CounterIterator {
 };
 
 template<typename U>
-inline CounterIterator<U> operator+ 
+inline CounterIterator<U> operator+
   (typename CounterIterator<U>::difference_type n, CounterIterator<U> i) {
   return i+n;
 }

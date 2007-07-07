@@ -9,10 +9,10 @@
   connected form.
 */
 /*
-  This is prerootdata.cpp.  
+  This is prerootdata.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -28,7 +28,7 @@
 
   NOTE ... explain here when it's stable ...
 
-  ... explain about choosing the lie type and the lattice, cf. 
+  ... explain about choosing the lie type and the lattice, cf.
   PreRootDatum(Interactive).
 
 ******************************************************************************/
@@ -51,7 +51,7 @@ namespace {
         Chapter I -- The PreRootDatum class
 
   The PreRootDatum class is here just so that the ingredients for building
-  a RootDatum can be gotten conveniently in various ways (for instance, 
+  a RootDatum can be gotten conveniently in various ways (for instance,
   interactively). It contains the rank, and bases for the roots and the
   coroots, expressed in the current lattice.
 
@@ -61,14 +61,14 @@ namespace prerootdata {
 
 /******** constructors and destructors ***************************************/
 
-PreRootDatum::PreRootDatum(const lietype::LieType& lt, 
+PreRootDatum::PreRootDatum(const lietype::LieType& lt,
 			   const latticetypes::WeightList& b)
   :d_rank(lietype::rank(lt))
 
 /*!
 \brief  Constructs the PreRootDatum whose lattice has basis b,
 expressed in terms of the simply connected weight lattice basis for
-lt. 
+lt.
 
 More precisely, we begin with the direct product G^tilde of a simply
  connected semisimple group G_scss and a torus (C^times)^m.  The
@@ -79,14 +79,14 @@ More precisely, we begin with the direct product G^tilde of a simply
 The group G will be specified as a quotient of G^tilde by a finite
 central subgroup F.  The set of characters of H^tilde trivial on F is
 a sublattice of finite index in X^*(H^tilde).  The WeightList b is
-required to be a basis for this sublattice.  
+required to be a basis for this sublattice.
 
 The constructor puts d_roots the list of simple roots expressed in the
 basis b, and in d_coroots the list of simple coroots expressed in the
 dual basis.
 */
 
-{  
+{
   // get the Cartan matrix
 
   LatticeMatrix c;
@@ -113,7 +113,7 @@ void PreRootDatum::swap(PreRootDatum& other)
   d_roots.swap(other.d_roots);
   d_coroots.swap(other.d_coroots);
   std::swap(d_rank,other.d_rank);
-  
+
   return;
 }
 
@@ -136,7 +136,7 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm, const lietype::LieType& lt)
 
   Algorithm: the matrix is block diagonal, one block for each simple Lie
   type in lt.  The matrix is square, of size equal to the rank. Torus
-  factors contribute blocks of zeros.  
+  factors contribute blocks of zeros.
 
   The cartanMatrix function defined in the namespace rootdata, and
   printed by the cmatrix command, is of size equal to the semisimple
@@ -153,7 +153,7 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm, const lietype::LieType& lt)
 
   size_t n = rank(lt);
   cm.resize(n,n,0);
-  
+
   size_t r = 0;
 
   for (size_t j = 0; j < lt.size(); ++j) {
@@ -166,11 +166,11 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm, const lietype::LieType& lt)
   return;
 }
 
-void cartanMatrix(latticetypes::LatticeMatrix& cm, 
+void cartanMatrix(latticetypes::LatticeMatrix& cm,
 		    const lietype::SimpleLieType& slt)
 
 /*!
-  \brief Puts in cm the Cartan matrix corresponding to the simple Lie type 
+  \brief Puts in cm the Cartan matrix corresponding to the simple Lie type
   slt.
 
   Algorithm: case by case.  The matrix is initialized to zero (of the
@@ -307,7 +307,7 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm,
   This sections contains the definitions of some auxiliary functions private
   to the present module :
 
-    - void makeCorootBasis(WeightList&, const CartanMatrix&, 
+    - void makeCorootBasis(WeightList&, const CartanMatrix&,
       const WeightList&): writes down the simple coroots in the dual lattice
       basis;
     - void makeRootBasis(WeightList&, const CartanMatrix&, const WeightList&):
@@ -317,7 +317,7 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm,
 
 namespace {
 
-void makeCorootBasis(WeightList& crb, const LatticeMatrix& c, 
+void makeCorootBasis(WeightList& crb, const LatticeMatrix& c,
 		     const WeightList& lb)
 
 /*!
@@ -354,7 +354,7 @@ void makeCorootBasis(WeightList& crb, const LatticeMatrix& c,
   return;
 }
 
-void makeRootBasis(WeightList& rb, const LatticeMatrix& c, 
+void makeRootBasis(WeightList& rb, const LatticeMatrix& c,
 		   const WeightList& lb)
 
 /*!
@@ -373,8 +373,7 @@ void makeRootBasis(WeightList& rb, const LatticeMatrix& c,
 
   LatticeMatrix q(lb);
   LatticeCoeff d;
-  q.invert(d);
-  q *= c;
+  q = q.inverse(d)*c;
   q /= d;
 
   // push back non-zero columns on rb

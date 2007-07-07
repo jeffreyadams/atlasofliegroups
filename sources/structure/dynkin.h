@@ -56,6 +56,9 @@ namespace dynkin {
 
   void lieType(lietype::LieType&, const latticetypes::LatticeMatrix&);
 
+  // functional form of the same
+  lietype::LieType lieType(const latticetypes::LatticeMatrix&);
+
   void normalize(setutils::Permutation&, const DynkinDiagram&);
 
 }

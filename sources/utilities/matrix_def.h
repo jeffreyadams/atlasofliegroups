@@ -11,6 +11,7 @@
   See file main.cpp for full copyright notice
 */
 
+#include <cassert>
 #include "intutils.h"
 
 /*****************************************************************************
@@ -302,13 +303,13 @@ void Matrix<C>::row(std::vector<C>& v, size_t i) const
 
 /******** manipulators *******************************************************/
 
-template<typename C>
-Matrix<C>& Matrix<C>::operator+= (const Matrix<C>&  m)
-
 /*!
   Incrementation by addition with m. It is assumed that m and *this
   have the same shape.
 */
+
+template<typename C>
+Matrix<C>& Matrix<C>::operator+= (const Matrix<C>&  m)
 
 {
   for (size_t k = 0; k < d_data.size(); ++k) {
@@ -316,13 +317,13 @@ Matrix<C>& Matrix<C>::operator+= (const Matrix<C>&  m)
   }
 }
 
-template<typename C>
-Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
-
 /*!
   Incrementation by subtraction of m. It is assumed that m and *this
   have the same shape.
 */
+template<typename C>
+Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
+
 
 {
   for (size_t k = 0; k < d_data.size(); ++k) {
@@ -330,15 +331,37 @@ Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
   }
 }
 
+
+template<typename C>
+Matrix<C> Matrix<C>::operator* (const Matrix<C>&  m) const
+{
+  Matrix<C> result(d_rows,m.d_columns);
+
+  for (size_t i = 0; i < d_rows; ++i)
+    for (size_t k = 0; k < m.d_columns; ++k)
+    {
+      C c=0;
+      for (size_t j = 0; j < d_columns; ++j)
+	c += (*this)(i,j) * m(j,k);
+
+      result(i,k)=c;
+    }
+
+  return result;
+}
+
+/*!
+  \brief right multiplication by |m|.
+
+  It is of course required that the number of rows of |m| is equal to the
+  number of columns of |*this|.
+*/
 template<typename C>
 Matrix<C>& Matrix<C>::operator*= (const Matrix<C>&  m)
 
-/*!
-  Incrementation by right multiplication with m. It is assumed that the
-  number of rows of m is equal to the number of columns of *this.
-*/
-
 {
+  // I dont think the code below is faster than just |*this= *this * m|, MvL
+
   C zero = 0; // conversion from int
   Matrix<C> prod(d_rows,m.d_columns,zero);
 
@@ -351,10 +374,11 @@ Matrix<C>& Matrix<C>::operator*= (const Matrix<C>&  m)
       }
     }
 
-  swap(prod);
+  swap(prod); // replace contents of |*this| by newly computed matrix
 
   return *this;
 }
+
 
 template<typename C>
 Matrix<C>& Matrix<C>::operator/= (const C& c)
@@ -498,22 +522,16 @@ void Matrix<C>::eraseRow(size_t i)
   return;
 }
 
-template<typename C> void Matrix<C>::invert()
-
 /*!
   Here we invert the matrix without catching the denominator. The intent
   is that it should be used for invertible matrices only.
 */
+template<typename C> void Matrix<C>::invert()
 
 {
-  C d;
-  invert(d);
-
-  return;
+  C d; invert(d);
+  assert(d==1);
 }
-
-template<typename C>
-void Matrix<C>::invert(C& d)
 
 /*!
   This function inverts the matrix M. It is assumed that the coefficents
@@ -534,10 +552,12 @@ void Matrix<C>::invert(C& d)
   differently as we do here. In particular, the accounting of the row
   operations seems a bit different here from there.
 */
-
+template<typename C>
+void Matrix<C>::invert(C& d)
 {
-  if (d_rows == 0) // do nothing
-    return;
+  assert(d_rows==d_columns);
+  if (d_rows == 0) // do nothing to matrix, but set |d=1|
+  { d=1; return; }
 
   C zero = 0; // conversion from int should work!
   Matrix<C> row(d_rows,d_rows,zero);
@@ -868,11 +888,8 @@ Matrix<C>& conjugate(Matrix<C>& m, const Matrix<C>& p)
 */
 
 {
-  Matrix<C> tmp(p);
   C d;
-  tmp.invert(d);
-  leftProd(tmp,m);
-  leftProd(tmp,p);
+  Matrix<C> tmp(p*m*p.inverse(d));
   tmp /= d;
   m.swap(tmp);
 
@@ -959,32 +976,17 @@ template<typename C> Matrix<C>& invConjugate(Matrix<C>& m, const Matrix<C>& p)
 */
 
 {
-  Matrix<C> tmp(p);
   C d;
-  tmp.invert(d);
-  tmp *= m;
-  tmp *= p;
+  Matrix<C> tmp(p.inverse(d)*m*p);
   tmp /= d;
   m.swap(tmp);
 
   return m;
 }
 
-template<typename C> Matrix<C>& leftProd(Matrix<C>& m, const Matrix<C>& p)
 
-/*!
-  Like operator *=, but for left multiplication of m by p.
-*/
 
-{
-  Matrix<C> tmp(p);
-  tmp *= m;
-  m.swap(tmp);
-
-  return m;
-}
-
-}
+} // namespace matrix
 
 /*****************************************************************************
 

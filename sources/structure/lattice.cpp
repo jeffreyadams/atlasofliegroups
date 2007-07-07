@@ -103,10 +103,7 @@ void perp(WeightList& b1, const WeightList& b2, size_t r)
 
   // inverse transpose to get dual base change
 
-  LatticeMatrix sq(sb);
-  LatticeCoeff d;
-  sq.invert(d);
-  sq.transpose();
+  LatticeMatrix sq=LatticeMatrix(sb).inverse().transposed();
 
   // take last vectors
 

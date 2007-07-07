@@ -744,13 +744,10 @@ bool checkInvolution(const latticetypes::LatticeMatrix& i,
 
   // write d.p^{-1}.i.p
 
-  LatticeMatrix m(p);
-  leftProd(m,i);
   LatticeCoeff d;
-  p.invert(d);
-  leftProd(m,p);
+  LatticeMatrix m=p.inverse(d)*i*p;
 
-  // now i stabilizes the lattice iff d divides m
+  // now |i| stabilizes the lattice iff |d| divides |m|
 
   return m.divisible(d);
 }

@@ -7,9 +7,9 @@ the implementation of the KL algorithm.
 */
 /*
   This is kltest.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -37,6 +37,8 @@ namespace kltest {
   bool checkBasePoint(const kgb::KGB&);
 
   void dualityPermutation(setutils::Permutation&, const kl::KLContext&);
+
+  bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc);
 }
 
 /******** type definitions **************************************************/

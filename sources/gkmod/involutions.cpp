@@ -154,8 +154,6 @@ size_t InvolutionSet::involutionNbr(const weyl::TwistedInvolution& w,
 
         Chapter II -- The Helper class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 // namespace {
@@ -163,7 +161,8 @@ size_t InvolutionSet::involutionNbr(const weyl::TwistedInvolution& w,
   namespace helper {
 
 Helper::Helper(complexredgp::ComplexReductiveGroup& G)
-
+  : InvolutionSet()
+  , d_toDualWeyl(G.semisimpleRank())
 {
   using namespace weyl;
 
@@ -339,11 +338,10 @@ void Helper::fillDualInvolutions(const weyl::WeylGroup& W)
   d_dualInvolution.resize(d_size);
 
   for (size_t j = 0; j < d_size; ++j) {
-    WeylElt w = involution(j).w();
-    W.translate(w,d_toDualWeyl);
+    WeylElt w = W.translate(involution(j).w(),d_toDualWeyl);
     W.twist(w);
     WeylElt v = W.longest();
-    W.prod(v,w);
+    W.mult(v,w);
     W.invert(v);
     d_dualInvolution[j] = TwistedInvolution(v);
   }
@@ -370,14 +368,13 @@ void Helper::weylCorrelation(const complexredgp::ComplexReductiveGroup& G)
   LatticeMatrix c;
   cartanMatrix(c,G.rootDatum());
   c.transpose();
-  Twist t;
-  W.outerTwist(t);
+  Twist t(G.semisimpleRank());  W.outerTwist(t);
   WeylGroup dW(c,&t);
 
   // fill in d_toDualWeyl
   for (size_t s = 0; s < W.rank(); ++s) {
     WeylElt w;
-    W.prod(w,s);
+    W.mult(w,s);
     WeylWord ww;
     dW.out(ww,w);
     d_toDualWeyl[s] = ww[0];

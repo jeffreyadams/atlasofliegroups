@@ -181,6 +181,32 @@ CartanClassSet::~CartanClassSet()
 
 /******** accessors **********************************************************/
 
+unsigned long CartanClassSet::fiberSize(realform::RealForm rf, size_t cn) const
+
+/*!
+  \brief Returns the size of the fiber orbits corresponding to the strong
+  real forms lying over real form \#rf, in cartan \#cn.
+
+  Precondition: Real form \#rf is defined for cartan \#cn.
+*/
+
+{
+  const realform::RealFormList& rfl = d_realFormLabels[cn];
+  size_t p = std::find(rfl.begin(),rfl.end(),rf) - rfl.begin();
+  // |p| indexes a $W_{im}$ orbit on |cartan(cn).fiber().adjointFiberGroup()|
+
+  const cartanclass::Fiber& f = cartan(cn).fiber();
+  const cartanclass::StrongRealFormRep& srf = f.strongRepresentative(p);
+  const partition::Partition& pi =f.strongReal(srf.second);
+  /* |pi| is an (unnormalized) partition of |cartan(cn).fiber().fiberGroup()|
+     whose identifying values label central square classes, and are elements
+     of the quotient affine space $adjoint fiber/image of fiber group$
+  */
+
+  size_t c = pi(srf.first);
+  return pi.classSize(c);
+}
+
 unsigned long CartanClassSet::dualFiberSize(realform::RealForm rf, size_t cn)
   const
 /*!
@@ -228,31 +254,6 @@ unsigned long CartanClassSet::dualRepresentative(realform::RealForm rf,
   return pi.classRep(p);
 }
 
-unsigned long CartanClassSet::fiberSize(realform::RealForm rf, size_t cn) const
-
-/*!
-  \brief Returns the size of the fiber orbits corresponding to the strong
-  real forms lying over real form \#rf, in cartan \#cn.
-
-  Precondition: Real form \#rf is defined for cartan \#cn.
-*/
-
-{
-  using namespace cartanclass;
-  using namespace partition;
-
-  const realform::RealFormList& rfl = d_realFormLabels[cn];
-  size_t p = std::find(rfl.begin(),rfl.end(),rf) - rfl.begin();
-
-  const Fiber& f = cartan(cn).fiber();
-  const StrongRealFormRep& srf = f.strongRepresentative(p);
-  const Partition& pi =f.strongReal(srf.second);
-
-  size_t c = pi(srf.first);
-
-  return pi.classSize(c);
-}
-
 size_t CartanClassSet::numInvolutions() const
 
 /*!
@@ -269,9 +270,6 @@ size_t CartanClassSet::numInvolutions() const
   return count;
 }
 
-unsigned long CartanClassSet::representative(realform::RealForm rf, size_t cn)
-  const
-
 /*!
   \brief Returns a representative for real form \#rf in Cartan \#cn.
 
@@ -279,7 +277,8 @@ unsigned long CartanClassSet::representative(realform::RealForm rf, size_t cn)
 
   Explanation: this amounts to searching for rf in d_realFormLabels[cn].
 */
-
+unsigned long CartanClassSet::representative(realform::RealForm rf, size_t cn)
+  const
 {
   using namespace partition;
 
@@ -297,7 +296,7 @@ CartanClassSet::involutionMatrix(const weyl::TwistedInvolution& tw)
   weyl::WeylWord ww;
   weylGroup().out(ww,tw.w());
   latticetypes::LatticeMatrix result;
-  atlas::rootdata::toMatrix(result, ww,rootDatum());
+  rootdata::toMatrix(result, ww,rootDatum());
   result *= distinguished();
   return result;
 }
@@ -331,9 +330,7 @@ latticetypes::LatticeElt
   CartanClassSet::posRealRootSum(const TwistedInvolution& tw) const
 {
   cartanclass::InvolutionData d(rootDatum(),involutionMatrix(tw));
-  latticetypes::LatticeElt result;
-  rootdata::twoRho(result, d.real_roots(), rootDatum());
-  return result;
+  return rootDatum().twoRho(d.real_roots());
 }
 
   /*!
@@ -343,9 +340,7 @@ latticetypes::LatticeElt
   CartanClassSet::posImaginaryRootSum(const TwistedInvolution& tw) const
 {
   cartanclass::InvolutionData d(rootDatum(),involutionMatrix(tw));
-  latticetypes::LatticeElt result;
-  rootdata::twoRho(result, d.imaginary_roots(), rootDatum());
-  return result;
+  return rootDatum().twoRho(d.imaginary_roots());
 }
 
 /*! \brief Make |sigma| canonical and return Weyl group |w| element that
@@ -370,7 +365,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
 	{
 	  rd.reflection(rrs,rd.simpleRootNbr(i)); // apply $s_i$ to root sum
 	  weylGroup().twistedConjugate(sigma,i);  // adjust |sigma| accordingly
-	  weylGroup().prod(w,i);                  // and add generator to |w|
+	  weylGroup().mult(w,i);                  // and add generator to |w|
 	  break;     // after this change, continue the |do|-|while| loop
 	}
     while (i!=rd.semisimpleRank());    // i.e., until no change occurs any more
@@ -398,7 +393,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
 	{
 	  rd.reflection(irs,rd.simpleRootNbr(*it)); // apply $s_i$ to root sum
 	  weylGroup().twistedConjugate(sigma,*it);  // adjust |sigma|
-	  weylGroup().prod(w,*it);                  // and add generator to |w|
+	  weylGroup().mult(w,*it);                  // and add generator to |w|
 	  break;           // after this change, continue the |do|-|while| loop
 	}
     while (it()); // i.e., until no change occurs any more
@@ -437,7 +432,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
 	if (latticetypes::scalarProduct(rd.simpleCoroot(*it),x) < 0)
 	{
 	  weylGroup().twistedConjugate(sigma,*it); // adjust |sigma|
-	  weylGroup().prod(w,*it);                 // and add generator to |w|
+	  weylGroup().mult(w,*it);                 // and add generator to |w|
 	  break;                             // and continue |do|-|while| loop
 	}
     }
@@ -490,16 +485,16 @@ size_t CartanClassSet::cayley(size_t j, size_t i, weyl::WeylElt* conjugator)
 
 /******** manipulators *******************************************************/
 
-std::vector<weyl::WeylEltList> CartanClassSet::expand() const
-
 /*!
-  \brief Writes in wll the various conjugacy classes of twisted involutions
+  \brief Returns the various conjugacy classes of twisted involutions
   for the currently known Cartans.
+
+  This method is no longer used during constructiont of a |CartanClassSet|.
 
   Note: the lists come out sorted, to allow binary look-up; this is in fact
   dependent on the implementation of |weyl::WeylGroup::twistedConjugacyClass|
 */
-
+std::vector<weyl::WeylEltList> CartanClassSet::expand() const
 {
   const weyl::WeylGroup& W = weylGroup();
   std::vector<weyl::WeylEltList> result(d_cartan.size());
@@ -533,9 +528,9 @@ void CartanClassSet::extend(realform::RealForm rf)
 
   This is done by traversing all the known Cartan classes |j| defined for the
   real form |rf| (which includes at least the distinguished Cartan for the
-  inner class), and all non-compact positive imaginary roots $\alpha$ for
+  inner class), and all non-compact positive imaginary roots \f$\alpha\f$ for
   |(rf,j)|; the twisted involution |tw| for the Cartan class |j| is then
-  left-multiplied by $s_\alpha$ to obtain a new twisted involution |ti|, and
+  left-multiplied by \f$s_\alpha\f$ to obtain a new twisted involution |ti|, and
   if |ti| is not member of any of the known classes of twisted involutions, it
   starts a new Cartan class defined in |rf|, which will later itself be
   considered in the loop described here.
@@ -680,10 +675,10 @@ rootdata::RootSet CartanClassSet::noncompactPosRootSet
 */
 
 {
-  rootdata::RootSet result;
   const cartanclass::Fiber& f = cartan(j).fiber();
   unsigned long x = CartanClassSet::representative(rf,j);
-  f.noncompactRootSet(result,x);
+
+  rootdata::RootSet result=f.noncompactRoots(x);
   result &= rootDatum().posRootSet();
   return result;
 }
@@ -738,7 +733,7 @@ void CartanClassSet::correlateForms()
   // transform gradings and correlate forms
   for (size_t j = 0; j < rfl.size(); ++j) {
     unsigned long y = pi.classRep(j);
-    Grading gr; f.grading(gr,y);
+    Grading gr=f.grading(y);
     RootList rl = f.simpleImaginary(); // the roots of which |gr| are a grading
 
     transformGrading(gr,rl,so,rd);
@@ -808,8 +803,7 @@ void CartanClassSet::correlateDualForms(const rootdata::RootDatum& rd,
   // transform gradings and correlate forms
   for (size_t j = 0; j < rfl.size(); ++j) {
     unsigned long y = pi.classRep(j);
-    Grading gr;
-    f.grading(gr,y);
+    Grading gr=f.grading(y);
     RootList rl = f.simpleImaginary();
     transformGrading(gr,rl,so,rd);
     for (size_t i = 0; i < so.size(); ++i)
@@ -817,10 +811,12 @@ void CartanClassSet::correlateDualForms(const rootdata::RootDatum& rd,
     copy(so.begin(),so.end(),back_inserter(rl));
     crossTransform(rl,ww,rd);
 
+// begin testing
     /* now |gr| grades the roots in |rl|,
        which are imaginary for the dual fundamental fiber |fundf| */
     for (size_t i = 0; i < rl.size(); ++i)
       assert(fundf.imaginaryRootSet().isMember(rl[i]));
+// end testing
 
     unsigned long x = makeRepresentative(gr,rl,fundf);
     realform::RealForm rf = fundf.weakReal()(x);
@@ -1165,10 +1161,10 @@ unsigned long makeRepresentative(const gradings::Grading& gr,
   using namespace gradings;
   using namespace rootdata;
 
-  RootSet brs;
-  fundf.noncompactRootSet(brs,0); // noncompact roots for the base grading
-  Grading bgr;
-  restrictGrading(bgr,brs,rl);    // view it as a grading of the roots of |rl|
+  RootSet brs =
+    fundf.noncompactRoots(0); // noncompact roots for the base grading
+  Grading bgr =
+    restrictGrading(brs,rl);    // view it as a grading of the roots of |rl|
   SmallBitVector bc(bgr,rl.size()); // transform into binary vector
 
   // make right hand side
@@ -1178,10 +1174,7 @@ unsigned long makeRepresentative(const gradings::Grading& gr,
   // make grading shifts
   SmallBitVectorList cl(fundf.adjointFiberRank(),bc);
   for (size_t j = 0; j < cl.size(); ++j) {
-    RootSet rs;
-    fundf.noncompactRootSet(rs, 1 << j);
-    Grading gr1;
-    restrictGrading(gr1,rs,rl);
+    Grading gr1 = restrictGrading(fundf.noncompactRoots(1 << j),rl);
     cl[j] += SmallBitVector(gr1,rl.size()); // lhs[j] is |bc+gr1|
   }
 
@@ -1212,9 +1205,9 @@ void transformGrading(gradings::Grading& gr,
   from |gr|; this function transforms the grading |gr| into that new grading.
 
   Formula: the rule for Cayley-transforming a grading through an imaginary
-  noncompact root $\alpha$ in |so| is that the grading of $\beta$ in |rl| is
-  flipped if and only if $\alpha+\beta$ is a root. So in all the grading of
-  $\beta$ changes iff this condition is met for an odd number of $\alpha$s.
+  noncompact root \f$\alpha\f$ in |so| is that the grading of \f$\beta\f$ in |rl| is
+  flipped if and only if \f$\alpha+\beta\f$ is a root. So in all the grading of
+  \f$\beta\f$ changes iff this condition is met for an odd number of \f$\alpha\f$s.
 */
 
 {

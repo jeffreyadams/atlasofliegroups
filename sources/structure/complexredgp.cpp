@@ -79,8 +79,8 @@ ComplexReductiveGroup::ComplexReductiveGroup
  (const rootdata::RootDatum* rd, const latticetypes::LatticeMatrix& d)
   : d_rootDatum(*rd) // we assume ownership
   , d_titsGroup(*new tits::TitsGroup(rootDatum(),d))
-  , d_cartan(*new cartanset::CartanClassSet(*this,d))
-  /* stores |d| in |d_cartan->d_fundamental.d_torus->d_involution|,
+  , d_cartanSet(*new cartanset::CartanClassSet(*this,d))
+  /* stores |d| in |d_cartanSet->d_fundamental.d_torus->d_involution|,
      and constructs the fundamental fibers for the group and dual group */
 {}
 
@@ -96,15 +96,15 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
   : d_rootDatum(*new rootdata::RootDatum(G.rootDatum(),tags::DualTag()))
   , d_titsGroup(*new tits::TitsGroup
     (rootDatum(),dualBasedInvolution(G.distinguished(),G.rootDatum())))
-  , d_cartan(*new cartanset::CartanClassSet
-	     (*this,dualBasedInvolution(G.distinguished(),G.rootDatum()))
-	    )
+  , d_cartanSet(*new cartanset::CartanClassSet
+		(*this,dualBasedInvolution(G.distinguished(),G.rootDatum()))
+		)
 {}
 
 ComplexReductiveGroup::~ComplexReductiveGroup()
 
 {
-  delete &d_cartan;
+  delete &d_cartanSet;
   delete &d_titsGroup;
   delete &d_rootDatum;
 }
@@ -116,13 +116,14 @@ ComplexReductiveGroup::~ComplexReductiveGroup()
    They are not inlined to limit the dependencies of te header file.
 
    N.B. Given the immense number of methods that are simply forwarded to
-   |d_cartan|, one may wonder it it would no have been a better idea to derive
-   this class from CartanClassSet. To that one can oppose on one hand that an
-   inner class "has" rather than "is" a set of Cartan classes (if it is
-   anything, it is a class of real forms rather than Cartan subgroups, but
+   |d_cartanSet|, one may wonder it it would no have been a better idea to
+   derive this class from |CartanClassSet|. To that one can oppose on one hand
+   that an inner class "has" rather than "is" a set of Cartan classes (if it
+   is anything, it is a class of real forms rather than Cartan subgroups, but
    even that is not the point of view taken in this software library), and on
    the other hand that this would force us to construct the equivalent of
-   |d_cartan| _before_ the other data members, which would cause difficulties.
+   |d_cartanSet| _before_ the other data members, which would cause
+   difficulties.
 */
 
 /*!
@@ -132,7 +133,7 @@ ComplexReductiveGroup::~ComplexReductiveGroup()
 unsigned long ComplexReductiveGroup::blockSize(realform::RealForm rf,
 					       realform::RealForm drf) const
 {
-  return cartanset::blockSize(rf,drf,d_cartan);
+  return cartanset::blockSize(rf,drf,d_cartanSet);
 }
 
 
@@ -141,7 +142,7 @@ unsigned long ComplexReductiveGroup::blockSize(realform::RealForm rf,
 */
 const cartanclass::CartanClass& ComplexReductiveGroup::cartan(size_t cn) const
 {
-  return d_cartan.cartan(cn);
+  return d_cartanSet.cartan(cn);
 }
 
 /*!
@@ -149,7 +150,7 @@ const cartanclass::CartanClass& ComplexReductiveGroup::cartan(size_t cn) const
 */
 const poset::Poset& ComplexReductiveGroup::cartanOrdering() const
 {
-  return d_cartan.ordering();
+  return d_cartanSet.ordering();
 }
 
 /*!
@@ -158,7 +159,7 @@ const poset::Poset& ComplexReductiveGroup::cartanOrdering() const
 const bitmap::BitMap& ComplexReductiveGroup::cartanSet(realform::RealForm rf)
   const
 {
-  return d_cartan.support(rf);
+  return d_cartanSet.support(rf);
 }
 
 /*!
@@ -169,7 +170,7 @@ const bitmap::BitMap& ComplexReductiveGroup::dualCartanSet
   (realform::RealForm rf)
   const
 {
-  return d_cartan.dualSupport(rf);
+  return d_cartanSet.dualSupport(rf);
 }
 
 /*!
@@ -177,7 +178,14 @@ const bitmap::BitMap& ComplexReductiveGroup::dualCartanSet
 */
 const latticetypes::LatticeMatrix& ComplexReductiveGroup::distinguished() const
 {
-  return d_cartan.distinguished();
+  return d_cartanSet.distinguished();
+}
+
+latticetypes::LatticeMatrix
+ComplexReductiveGroup::involutionMatrix(const weyl::TwistedInvolution& tw)
+  const
+{
+  return d_cartanSet.involutionMatrix(tw);
 }
 
 /*!
@@ -194,7 +202,7 @@ const latticetypes::LatticeMatrix& ComplexReductiveGroup::distinguished() const
 unsigned long ComplexReductiveGroup::dualFiberSize
   (realform::RealForm drf, size_t cn) const
 {
-  return d_cartan.dualFiberSize(drf,cn);
+  return d_cartanSet.dualFiberSize(drf,cn);
 }
 
 /*!
@@ -205,7 +213,7 @@ unsigned long ComplexReductiveGroup::dualFiberSize
 */
 const cartanclass::Fiber& ComplexReductiveGroup::dualFundamental() const
 {
-  return d_cartan.dualFundamental();
+  return d_cartanSet.dualFundamental();
 }
 
 /*!
@@ -214,7 +222,7 @@ const cartanclass::Fiber& ComplexReductiveGroup::dualFundamental() const
 const realform::RealFormList&
 ComplexReductiveGroup::dualRealFormLabels(size_t cn) const
 {
-  return d_cartan.dualRealFormLabels(cn);
+  return d_cartanSet.dualRealFormLabels(cn);
 }
 
 /*!
@@ -226,7 +234,7 @@ ComplexReductiveGroup::dualRealFormLabels(size_t cn) const
 unsigned long ComplexReductiveGroup::dualRepresentative
  (realform::RealForm drf, size_t cn) const
 {
-  return d_cartan.dualRepresentative(drf,cn);
+  return d_cartanSet.dualRepresentative(drf,cn);
 }
 
 /*!
@@ -242,7 +250,7 @@ unsigned long ComplexReductiveGroup::dualRepresentative
 unsigned long ComplexReductiveGroup::fiberSize
   (realform::RealForm rf, size_t cn) const
 {
-  return d_cartan.fiberSize(rf,cn);
+  return d_cartanSet.fiberSize(rf,cn);
 }
 
 /*!
@@ -253,17 +261,18 @@ unsigned long ComplexReductiveGroup::fiberSize
 */
 const cartanclass::Fiber& ComplexReductiveGroup::fundamental() const
 {
-  return d_cartan.fundamental();
+  return d_cartanSet.fundamental();
 }
 
 /*!
-  \brief puts in rs the set of noncompact imaginary roots for the
+  \brief Returns the set of noncompact imaginary roots for the
   representative of rf
 */
-void ComplexReductiveGroup::grading
-  (rootdata::RootSet& rs, realform::RealForm rf) const
+rootdata::RootSet
+ComplexReductiveGroup::noncompactRoots(realform::RealForm rf) const
 {
-  d_cartan.noncompactRootSet(rs,rf);
+  rootdata::RootSet result; d_cartanSet.noncompactRootSet(result,rf);
+  return result;
 }
 
 /*!
@@ -276,7 +285,7 @@ void ComplexReductiveGroup::grading
 */
 unsigned long ComplexReductiveGroup::kgbSize(realform::RealForm rf) const
 {
-  return cartanset::kgbSize(rf,d_cartan);
+  return cartanset::kgbSize(rf,d_cartanSet);
 }
 
 /*!
@@ -287,7 +296,7 @@ unsigned long ComplexReductiveGroup::kgbSize(realform::RealForm rf) const
 */
 size_t ComplexReductiveGroup::numCartanClasses() const
 {
-  return d_cartan.numCartan();
+  return d_cartanSet.numCartan();
 }
 
 size_t ComplexReductiveGroup::mostSplit(realform::RealForm rf) const
@@ -299,7 +308,7 @@ size_t ComplexReductiveGroup::mostSplit(realform::RealForm rf) const
 */
 
 {
-  return d_cartan.mostSplit(rf);
+  return d_cartanSet.mostSplit(rf);
 }
 
 
@@ -308,7 +317,7 @@ size_t ComplexReductiveGroup::mostSplit(realform::RealForm rf) const
 */
 size_t ComplexReductiveGroup::numDualRealForms() const
 {
-  return d_cartan.numDualRealForms();
+  return d_cartanSet.numDualRealForms();
 }
 
 
@@ -318,7 +327,7 @@ size_t ComplexReductiveGroup::numDualRealForms() const
 */
 size_t ComplexReductiveGroup::numInvolutions() const
 {
-  return d_cartan.numInvolutions();
+  return d_cartanSet.numInvolutions();
 }
 
 
@@ -327,7 +336,7 @@ size_t ComplexReductiveGroup::numInvolutions() const
 */
 size_t ComplexReductiveGroup::numRealForms() const
 {
-  return d_cartan.numRealForms();
+  return d_cartanSet.numRealForms();
 }
 
 
@@ -336,7 +345,7 @@ size_t ComplexReductiveGroup::numRealForms() const
 */
 realform::RealForm ComplexReductiveGroup::quasisplit() const
 {
-  return d_cartan.quasisplit();
+  return d_cartanSet.quasisplit();
 }
 
 /*!
@@ -357,7 +366,7 @@ size_t ComplexReductiveGroup::rank() const
 const realform::RealFormList& ComplexReductiveGroup::realFormLabels(size_t cn)
   const
 {
-  return d_cartan.realFormLabels(cn);
+  return d_cartanSet.realFormLabels(cn);
 }
 
 /*!
@@ -369,7 +378,7 @@ const realform::RealFormList& ComplexReductiveGroup::realFormLabels(size_t cn)
 unsigned long ComplexReductiveGroup::representative
   (realform::RealForm rf,size_t cn) const
 {
-  return d_cartan.representative(rf,cn);
+  return d_cartanSet.representative(rf,cn);
 }
 
 /*!
@@ -395,7 +404,7 @@ const weyl::WeylGroup& ComplexReductiveGroup::weylGroup() const
 const weyl::TwistedInvolution&
   ComplexReductiveGroup::twistedInvolution(size_t cn) const
 {
-  return d_cartan.twistedInvolution(cn);
+  return d_cartanSet.twistedInvolution(cn);
 }
 
 /******** manipulators *******************************************************/
@@ -405,7 +414,7 @@ const weyl::TwistedInvolution&
 */
 void ComplexReductiveGroup::fillCartan(realform::RealForm rf)
 {
-  d_cartan.extend(rf);
+  d_cartanSet.extend(rf);
 }
 
 

@@ -30,13 +30,20 @@ namespace atlas {
 namespace bitvector {
 
 template<size_t dim>
-  void combination(BitVector<dim>&, const std::vector<BitVector<dim> >&,
+  void combination(BitVector<dim>&,
+		   const std::vector<BitVector<dim> >&,
 		   const bitset::BitSet<dim>&);
 
 template<size_t dim>
-  void combination(bitset::BitSet<dim>&,
-		   const std::vector<bitset::BitSet<dim> >&,
-		   const bitset::BitSet<dim>&);
+bitset::BitSet<dim> combination(const std::vector<bitset::BitSet<dim> >&,
+				const bitset::BitSet<dim>&);
+
+template<size_t dim>
+  void combination(bitset::BitSet<dim>& v,
+		   const std::vector<bitset::BitSet<dim> >& b,
+		   const bitset::BitSet<dim>& coef)
+  { v=combination(b,coef); }
+
 
 template<size_t dim>
   bool firstSolution(bitset::BitSet<dim>&, const std::vector<BitVector<dim> >&,
@@ -88,9 +95,6 @@ template<size_t dim>
 
 namespace bitvector {
   /*!
-  \brief A vector d_data in (Z/2Z)^d_size, with d_size a non-negative
-  integer less than or equal to dim.
-
   \brief The template class |BitVector<dim>| represents a number |size| with
   |0<=size<=dim|, and a vector in the (Z/2Z)-vector space (Z/2Z)^size.
 
@@ -102,7 +106,7 @@ namespace bitvector {
   BitVector<2*RANK_MAX> are now instantiated, (that is <16> or <32>), so |dim|
   is not very relevant; one could imagine |dim==longBits| throughout.
 
-  Let the integer |m| be $\lceil dim/longBits \rceil$ (quotient rounded
+  Let the integer |m| be \f$\lceil dim/longBits \rceil\f$ (quotient rounded
   upwards) . The vector is stored as the BitSet<dim> |d_data|, which is a
   (fixed size) array of |m| words of memory. (On a 32 bit machine with
   RANK_MAX=16 one always has |m==1|, so that |d_data| is a single word of
@@ -177,6 +181,16 @@ template<size_t dim> class BitVector{
     return d_data < v.d_data;
   }
 
+  bool operator== (const BitVector& v) const {
+    assert(d_size==v.d_size);
+    return d_data == v.d_data;
+  }
+
+  bool operator!= (const BitVector& v) const {
+    assert(d_size==v.d_size);
+    return d_data != v.d_data;
+  }
+
   bool operator[] (size_t i) const {
     assert(i<d_size);
     return d_data[i];
@@ -204,11 +218,6 @@ template<size_t dim> class BitVector{
 
   size_t size() const {
     return d_size;
-  }
-
-  bool test(size_t i) const {
-    assert(i<d_size);
-    return d_data.test(i);
   }
 
 // manipulators
@@ -430,16 +439,14 @@ template<size_t dim> class BitMatrix {
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 
   /*!
-  Returns column j of the BitMatrix, as a BitSet.
+  Returns column $j$ of the BitMatrix, as a BitVector.
   */
-  const bitset::BitSet<dim>& column(size_t j) const {
+  const BitVector<dim> column(size_t j) const {
     assert(j<d_columns);
-    return d_data[j];
+    return BitVector<dim>(d_data[j],d_rows);
   }
 
   void column(BitVector<dim>&, size_t) const;
-
-  void image(std::vector<BitVector<dim> >&) const;
 
   /*!
   Tests whether the BitMatrix is empty (has zero columns).
@@ -447,6 +454,9 @@ template<size_t dim> class BitMatrix {
   bool isEmpty() const {
     return d_data.size() == 0;
   }
+
+  // independent vectors spanning the image of the matrix
+  BitVectorList<dim> image() const;
 
   void kernel(std::vector<BitVector<dim> >&) const;
 

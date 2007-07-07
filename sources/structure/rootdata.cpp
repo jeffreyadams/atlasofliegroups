@@ -166,7 +166,7 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
       tc(j,i) = cartan(i,j);
 
   LatticeCoeff d;
-  tc.invert(d);
+  tc.invert(d); // this inverse matrix will serve twice!
 
   // the simple weights are given by the matrix Q.tC^{-1}, where Q is the
   // matrix of the simple roots, tC the transpose Cartan matrix
@@ -191,11 +191,11 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   }
 
   // fill in the simple root permutations
-  d_rootPermutation.resize(d_semisimpleRank);
+  d_rootPermutation.reserve(d_semisimpleRank);
 
   for (size_t j = 0; j < d_semisimpleRank; ++j) {
-    Permutation& rp = d_rootPermutation[j];
-    rp.resize(numRoots());
+    d_rootPermutation.push_back(Permutation(numRoots()));
+    Permutation& rp = d_rootPermutation.back();
     for (size_t i = 0; i < numRoots(); ++i) {
       Weight v = d_roots[i];
       simpleReflection(v,j);
@@ -490,6 +490,37 @@ weyl::WeylWord RootDatum::reflectionWord(RootNbr r) const
   weyl::WeylWord ww; toPositive(ww,v,*this); return ww;
 }
 
+
+LatticeMatrix RootDatum::cartanMatrix() const
+{
+  size_t r = semisimpleRank();
+
+  LatticeMatrix result(r,r);
+
+  for (size_t j = 0; j < r; ++j)
+    for (size_t i = 0; i < r; ++i)
+      result(i,j) = cartan(i,j);
+
+  return result;
+}
+
+
+/*!
+\brief Returns the Cartan matrix of the root subsystem with basis |rb|.
+*/
+LT::LatticeMatrix RootDatum::cartanMatrix(const RootList& rb) const
+{
+  size_t r = rb.size();
+
+  LatticeMatrix result(r,r);
+
+  for (size_t j = 0; j < r; ++j)
+    for (size_t i = 0; i < r; ++i)
+      result(i,j) = LT::scalarProduct(root(rb[i]),coroot(rb[j]));
+
+  return result;
+}
+
 /*!
 \brief Returns the expression of $q^{-1}$ as a product of simple
   reflections.
@@ -508,6 +539,72 @@ weyl::WeylWord RootDatum::word_of_inverse_matrix
   weyl::WeylWord ww; toPositive(ww,v,*this); return ww;
 }
 
+/*!
+\brief Returns the sum of the positive roots in rl.
+
+  Precondition: rl holds the roots in a sub-rootsystem of the root system of
+  rd;
+*/
+Weight RootDatum::twoRho(const RootList& rl) const
+{
+  Weight result(rank(),0);
+
+  for (size_t j = 0; j < rl.size(); ++j)
+    if (isPosRoot(rl[j])) result += root(rl[j]);
+  return result;
+}
+
+/*!
+\brief Returns the sum of the positive roots in rs.
+
+  Precondition: rs holds the roots in a sub-rootsystem of the root system of
+  rd;
+*/
+
+Weight RootDatum::twoRho(const RootSet& rs) const
+
+{
+  Weight result(rank(),0);
+
+  RootSet rsp = rs; rsp &= posRootSet();
+
+  for (RootSet::iterator i = rsp.begin(); i(); ++i)
+    result += root(*i);
+  return result;
+}
+
+/*!
+  \brief Returns the canonical basis (set of simple roots) of |rl|, which
+  should hold all roots (or positive roots) of a root subsystem of |rd|
+
+  Forwarded to the RootSet version. Therefore the order of the roots in |rl|
+  is ignored! The roots of |rb| are by order of occurrence in |rd.roots()|
+*/
+RootList RootDatum::simpleBasis(const RootList& rl) const
+{
+  RootSet rs(numRoots()); rs.insert(rl.begin(),rl.end());
+  return simpleBasis(rs);
+}
+
+/*!
+  \brief Returns the canonical basis (set of simple roots) of |rs|, which
+  should hold all roots (or positive roots) of a root subsystem of |rd|
+
+  Algorithm: compute the sum of the positive roots in |rs|; extract the
+  roots whose scalar product with that sum is 2.
+*/
+RootList RootDatum::simpleBasis(RootSet rs) const
+{
+  // compute sum of positive roots
+  latticetypes::Weight rho2=twoRho(rs);
+
+  RootList result;
+
+  for (RootSet::iterator i = rs.begin(); i(); ++i)
+    if (scalarProduct(rho2,*i) == 2) result.push_back(*i);
+
+  return result;
+}
 
 
 /******** manipulators *******************************************************/
@@ -914,12 +1011,8 @@ void toMatrix(LatticeMatrix& q, const weyl::WeylWord& ww,
 {
   identityMatrix(q,rd.rank());
 
-  for (size_t j = 0; j < ww.size(); ++j) {
-    RootNbr rj = rd.simpleRootNbr(ww[j]);
-    LatticeMatrix r;
-    rd.rootReflection(r,rj);
-    q *= r;
-  }
+  for (size_t j = 0; j < ww.size(); ++j)
+    q *= rd.rootReflection(rd.simpleRootNbr(ww[j]));
 }
 
 void toMatrix(LatticeMatrix& q, const RootList& rl, const RootDatum& rd)
@@ -991,45 +1084,8 @@ void toWeylWord(weyl::WeylWord& ww, RootNbr rn, const RootDatum& rd)
   toPositive(ww,v,rd);
 }
 
-void twoRho(Weight& tr, const RootList& rl, const RootDatum& rd)
 
-/*!
-\brief Puts in tworho the sum of the positive roots in rl.
-
-  Precondition: rl holds the roots in a sub-rootsystem of the root system of
-  rd;
-*/
-
-{
-  tr.assign(rd.rank(),0);
-
-  for (size_t j = 0; j < rl.size(); ++j)
-    if (rd.isPosRoot(rl[j]))
-      tr += rd.root(rl[j]);
-}
-
-void twoRho(Weight& tr, const RootSet& rs, const RootDatum& rd)
-
-/*!
-\brief Puts in tworho the sum of the positive roots in rs.
-
-  Precondition: rs holds the roots in a sub-rootsystem of the root system of
-  rd;
-*/
-
-{
-  tr.assign(rd.rank(),0);
-
-  RootSet rsp = rs;
-  rsp &= rd.posRootSet();
-
-  RootSet::iterator rsp_end = rsp.end();
-
-  for (RootSet::iterator i = rsp.begin(); i != rsp_end; ++i)
-    tr += rd.root(*i);
-}
-
-}
+} // namespace rootdata
 
 /*****************************************************************************
 

@@ -30,14 +30,21 @@ namespace atlas {
 namespace weyl {
 
   /*!
-\brief A permutation of the set of Generators, giving a diagram automorphism
-  */
-  typedef Generator Twist[constants::RANK_MAX];
-
-  /*!
 \brief A mapping between one interpretation of Generators and another
   */
-  typedef Generator WeylInterface[constants::RANK_MAX];
+  class WeylInterface
+  {
+    Generator d[constants::RANK_MAX];
+  public:
+    WeylInterface (size_t rank) { for (size_t i=0; i<rank; ++i) d[i]=i; }
+    Generator& operator[] (size_t i) { return d[i]; }
+    const Generator& operator[] (size_t i) const { return d[i]; }
+  };
+
+  /*!
+\brief A permutation of the set of Generators, giving a diagram automorphism
+  */
+  typedef WeylInterface Twist;
 
   class RowBase; // information at one coset element in one transducer table
   typedef RowBase ShiftRow; // the case of a transition entry
@@ -60,9 +67,6 @@ namespace weyl {
 /******** function declarations *********************************************/
 
 namespace weyl {
-  const Twist& identityTwist(); // accesses static Twist constant
-
-  void copy(Twist&, const Twist&); // needed since Twist is not a class
 
   /* generate the set of ordinary reflections in the Weyl group */
   void makeReflections(WeylEltList&, const WeylGroup&);
@@ -464,13 +468,13 @@ class WeylGroup {
 // these interpret Generators and WeylWords internally, so not for public use!
 
   // set |w=ws|, return value is $l(ws)-l(w)\in\{+1,-1}$
-  int prodIn(WeylElt& w, Generator s) const;
+  int multIn(WeylElt& w, Generator s) const;
 
   // set |w=wv|
-  void prodIn(WeylElt& w, const WeylWord& v) const;
+  void multIn(WeylElt& w, const WeylWord& v) const;
 
   // set |w=sw| (it is unclear why arguments are in the opposite order)
-  void leftProdIn(WeylElt& w, Generator s) const;
+  void leftMultIn(WeylElt& w, Generator s) const;
 
   // get WeylWord for piece |j| of |w|
   const WeylWord& wordPiece(const WeylElt& w, Generator j) const {
@@ -489,7 +493,17 @@ class WeylGroup {
 
 // constructors and destructors
   WeylGroup()
-    :d_rank(0UL),d_order(1UL),d_maxlength(0UL) {}
+    : d_rank(0)
+    , d_order(1)
+    , d_maxlength(0)
+    , d_longest()
+    , d_coxeterMatrix()
+    , d_transducer()
+    , d_twist(0)
+    , d_in(0)
+    , d_out(0)
+    , d_min_star()
+  {}
 
   WeylGroup(const latticetypes::LatticeMatrix&, const Twist* = 0);
 
@@ -503,20 +517,20 @@ class WeylGroup {
 
 // accessors
 
-  // set |w=ws|
-  int prod(WeylElt& w, Generator s) const {
-    return prodIn(w,d_in[s]);
+  // set |w=ws|, return length change
+  int mult(WeylElt& w, Generator s) const {
+    return multIn(w,d_in[s]);
   }
 
   // set |w=wv|
-  void prod(WeylElt& w, const WeylElt& v) const;
+  void mult(WeylElt& w, const WeylElt& v) const;
 
   // set |w=wv|
-  void prod(WeylElt&, const WeylWord&) const;
+  void mult(WeylElt&, const WeylWord&) const;
 
   // set |w=sw| (argument order motivated by modification effect on |w|)
   void leftMult(WeylElt& w, Generator s) const {
-    leftProdIn(w,d_in[s]);
+    leftMultIn(w,d_in[s]);
   }
   void leftMult(WeylElt& w, const WeylWord& ww) const {
     for (size_t i=ww.size(); i-->0; ) // use letters from right to left
@@ -524,11 +538,23 @@ class WeylGroup {
   }
   void leftMult(WeylElt& w, const WeylElt& x) const;
 
+  WeylElt prod(const WeylElt& w, Generator s) const
+    { WeylElt result=w; mult(result,s); return result; }
+  WeylElt prod(Generator s, const WeylElt& w) const
+    { WeylElt result=w; leftMult(result,s); return result; }
+  WeylElt prod(const WeylElt& w, const WeylElt& v) const
+    { WeylElt result=w; mult(result,v); return result; }
+  WeylElt prod(const WeylElt& w, const WeylWord& ww) const
+    { WeylElt result=w; mult(result,ww); return result; }
+  WeylElt prod(const WeylWord& ww,const WeylElt& w) const
+    { WeylElt result=w; leftMult(result,ww); return result; }
+
+
   /* These additional definitions would be needed if TwistedInvolutions were a
      type distinct from WeylElt (but they are not allowed as it is):
 
   void leftMult(TwistedInvolution& w, Generator s) const {
-    leftProdIn(w.contents(),d_in[s]);
+    leftMultIn(w.contents(),d_in[s]);
   }
   void leftMult(TwistedInvolution& w, const WeylWord& ww) const {
     leftMult(w.contents(),ww);
@@ -546,18 +572,17 @@ class WeylGroup {
 
   /*! \brief Conjugates |w| by the generator |s|: |w=sws|. */
   void conjugate(WeylElt& w, Generator s) const {
-    leftMult(w,s);
-    prod(w,s);
+    leftMult(w,s); mult(w,s);
   }
 
   /*!
      \brief Twisted conjugates element |tw| by the generator |s|:
-     $tw:=s.tw.\delta(s)$.
+     \f$tw:=s.tw.\delta(s)\f$.
    */
   void twistedConjugate(TwistedInvolution& tw, Generator s) const {
     WeylElt& w=tw.contents();
     leftMult(w,s);
-    prodIn(w,d_twist[d_in[s]]);
+    multIn(w,d_twist[d_in[s]]);
   }
   void twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
   {
@@ -570,11 +595,17 @@ class WeylGroup {
       twistedConjugate(tw,ww[i]);
   }
 
+  TwistedInvolution twistedConjugated(const TwistedInvolution& tw, Generator s)
+    const
+  {
+    TwistedInvolution result=tw; twistedConjugate(result,s); return result;
+  }
+
   void twistedConjugacyClass(TwistedInvolutionList&, const TwistedInvolution&)
     const;
 
   /*!
-     \brief Twisted conjugates element |tw| by |w|: $tw:=w.tw.\delta(w^{-1})$.
+     \brief Twisted conjugates element |tw| by |w|: \f$tw:=w.tw.\delta(w^{-1})\f$.
    */
   void twistedConjugate(TwistedInvolution& tw, const WeylElt& w) const;
 
@@ -630,7 +661,7 @@ class WeylGroup {
 
   void out(WeylWord&, const WeylElt&) const;
 
-  void translate(WeylElt&, const WeylInterface&) const;
+  WeylElt translate(const WeylElt&, const WeylInterface&) const;
 
   void twist(WeylElt&) const;
 

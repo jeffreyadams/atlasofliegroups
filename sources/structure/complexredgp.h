@@ -53,7 +53,7 @@ namespace complexredgp {
   problem is to enumerate the different real forms constituting this
   inner class.
 
-  We list in d_cartan the conjugacy classes of real Cartan subgroups up to
+  We list in d_cartanSet the conjugacy classes of real Cartan subgroups up to
   stable conjugacy; this classification does not refer to a particular real
   form. However, the enumeration of the real forms actually takes place during
   the construction of the first (fundamental) Cartan subgroup. Each stable
@@ -82,7 +82,7 @@ namespace complexredgp {
   datum, which must have been consructed before. The field |d_titsGroup| holds
   the mentioned (enlarged) Tits group, which is constructed upon entry from
   the root datum and the involution; it also gives access to just the
-  (complex) Weyl group when that is necessary. Finally |d_cartan| stores all
+  (complex) Weyl group when that is necessary. Finally |d_cartanSet| stores all
   the information relative to (stable conjugacy classes of) Cartan subgroupes
   and real forms.
 
@@ -114,7 +114,7 @@ class ComplexReductiveGroup {
   of the inner class of real forms determined by the based root datum with
   involution.
   */
-  cartanset::CartanClassSet& d_cartan;
+  cartanset::CartanClassSet& d_cartanSet;
 
 // copy, assignement and swap are forbidden, and should not be implemented
   ComplexReductiveGroup(const ComplexReductiveGroup&);
@@ -143,6 +143,9 @@ class ComplexReductiveGroup {
 
   const latticetypes::LatticeMatrix& distinguished() const;
 
+  latticetypes::LatticeMatrix involutionMatrix(const weyl::TwistedInvolution&)
+    const;
+
   unsigned long dualFiberSize(realform::RealForm, size_t) const;
 
   const cartanclass::Fiber& dualFundamental() const;
@@ -155,7 +158,7 @@ class ComplexReductiveGroup {
 
   const cartanclass::Fiber& fundamental() const;
 
-  void grading(rootdata::RootSet&, realform::RealForm) const;
+  rootdata::RootSet noncompactRoots(realform::RealForm) const;
 
   unsigned long kgbSize(realform::RealForm) const;
 
@@ -190,7 +193,7 @@ class ComplexReductiveGroup {
   }
 
   const cartanset::CartanClassSet& cartanClasses() const {
-    return d_cartan;
+    return d_cartanSet;
   }
 
 /*!
@@ -200,8 +203,8 @@ class ComplexReductiveGroup {
 
 // manipulators
 
-/* actually fillCartan could maybe declared const, since it only modifies the
-   value referred to by d_cartan, not any members of the class itself
+/* actually |fillCartan| could be declared |const|, since it only modifies the
+   value referred to by |d_cartanSet|, not any members of the class itself
    (technically, a const method may use a reference member in a non-const way).
    However, morally it is a manipulator method, not an accessor, whence there
    is no const. In the future a level of indirection could be removed, and in

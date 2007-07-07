@@ -43,14 +43,14 @@ namespace partition {
 /******** constructors and destructors ***************************************/
 
 Partition::Partition(std::vector<unsigned long>& f)
-  :d_class(f.size()),d_classRep()
-
+  : d_class(f.size())
+  , d_classRep()
 /*!
  \brief Constructs a partition from the class vector f.
 
  The partition is defined by values i and j belonging to the same class if and
  only if f[i]==f[j]. Note that f can have values in any range, but the
- Partition must label its classes consecutively.
+ Partition will label its classes consecutively from 0.
 */
 { /* at this point our object is already in a valid state (although not one
      describing the correct partition), so we feel free to call the methods
@@ -62,7 +62,7 @@ Partition::Partition(std::vector<unsigned long>& f)
 
   for (size_t j = 0; j < f.size(); ++j)
     if (val.insert(std::make_pair(f[j],s)).second)
-      // tentatively map f[j] to a new class number and test if this succeeded
+      // tentatively map f[j] to a new class number |s| and test for success
     { // found a new value
       newClass(j); // add a new class containing j to the partition
       ++s;
@@ -78,21 +78,23 @@ Partition::Partition(std::vector<unsigned long>& f, tags::UnnormalizedTag)
 
   NOTE: it is required that the range of |f| be of the form [0,a[ (without
   holes). The vector |d_classRep| is dimensioned to the _number_ of (distinct)
-  values in the image of |f|, but indexed by those values itself, which will
-  overflow the vector bounds if there were any holes in the range of |f|.
+  values in the image of |f|, but indexed by those values themselves, which
+  will overflow the vector bounds if there were any holes in the range of |f|.
 */
-  :d_class(f) // just use (a copy of) |f| as class vector
+  : d_class(f) // just use (a copy of) |f| as class vector
+  , d_classRep()
 {
   // find class representatives
   std::map<unsigned long,unsigned long> val; // associates (class number,repr)
 
   for (size_t j = 0; j < f.size(); ++j)
-    val.insert(std::make_pair(f[j],j));
+    val.insert(std::make_pair(f[j],j)); // ignore failures, first value sticks
 
-  d_classRep.resize(val.size());
+  d_classRep.resize(val.size()); // resize to size of image of |f|
 
   std::map<unsigned long,unsigned long>::iterator val_end = val.end();
 
+  // now convert |val| from an associative to an ordinary array
   for (std::map<unsigned long,unsigned long>::iterator i = val.begin();
        i != val_end; ++i)
     d_classRep[i->first] = i->second;
@@ -105,8 +107,6 @@ void Partition::swap(Partition& other)
 {
   d_class.swap(other.d_class);
   d_classRep.swap(other.d_classRep);
-
-  return;
 }
 
 /******** manipulators *******************************************************/

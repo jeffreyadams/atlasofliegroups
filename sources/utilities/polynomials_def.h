@@ -74,8 +74,6 @@ Polynomial<C>::Polynomial(Degree d)
 /******** accessors **********************************************************/
 
 /******** manipulators *******************************************************/
-template<typename C>
-void Polynomial<C>::adjustSize()
 
 /*!
   \brief Adjusts the size of d_data so that it corresponds to the degree + 1.
@@ -86,19 +84,89 @@ void Polynomial<C>::adjustSize()
   coefficient is the top one (or to have size zero if the polynomial is zero).
 */
 
+template<typename C>
+void Polynomial<C>::adjustSize()
 {
-  size_t d = d_data.size();
+  size_t j = d_data.size();
 
-  for (size_t j = d; j;) {
-    --j;
-    if (d_data[j])
-      break;
-    else
-      --d;
-  }
+  while (j-->0 and d_data[j]==C(0)) { }
 
-  d_data.resize(d);
+  d_data.resize(j+1);
 }
+
+template<typename C>
+Polynomial<C>& Polynomial<C>::operator+= (const Polynomial& q)
+{
+  if (q.isZero()) return *this; // do nothing (not really necessary to check)
+
+  // make sure d_data has all the coefficients to be modified
+  if (q.d_data.size() > d_data.size())
+    d_data.resize(q.d_data.size(),C(0));
+
+  const C* src=&*q.d_data.end();
+  C* dst=&d_data[q.d_data.size()];
+
+  while (src>&q.d_data[0]) *--dst += *--src;
+  // set degree
+  adjustSize(); return *this;
+}
+
+template<typename C>
+Polynomial<C>& Polynomial<C>::operator-= (const Polynomial& q)
+{
+  if (q.isZero()) return *this;
+  if (q.d_data.size() > d_data.size()) d_data.resize(q.d_data.size(),C(0));
+
+  const C* src=&*q.d_data.end(); C* dst=&d_data[q.d_data.size()];
+  while (src>&q.d_data[0]) *--dst -= *--src;
+
+  adjustSize(); return *this;
+}
+
+template<typename C>
+Polynomial<C>& Polynomial<C>::subtract_from (const Polynomial& p)
+{
+  if (p.d_data.size() > d_data.size()) d_data.resize(p.d_data.size(),C(0));
+
+  C* dst=&*d_data.end();
+  while (dst>&d_data[p.d_data.size()])
+  { --dst; *dst= -*dst; } // negate high coefficients
+
+  // now |dst==&d_data[p.d_data.size()]|
+  const C* src=&*p.d_data.end();
+  while (dst-->&d_data[0]) { *dst= *--src - *dst; }
+
+  adjustSize(); return *this;
+}
+
+template<typename C>
+Polynomial<C>& Polynomial<C>::operator*= (C c)
+{
+  if (c==C(0)) *this=Polynomial();
+  else
+    for (const C* p=&*d_data.end(); p>&d_data[0]; ) *--p *= c;
+
+  return *this;
+}
+
+template<typename C>
+Polynomial<C> Polynomial<C>::operator* (const Polynomial& q) const
+{
+  if (isZero() or q.isZero()) // we must avoid negative degrees!
+    return Polynomial();
+  Polynomial<C> result(degree()+q.degree());
+  result.d_data[result.degree()]=C(0); // clear leading coefficient
+
+  for (size_t j=d_data.size(); j-->0; )
+  {
+    C c=d_data[j];
+    const C* src=&*q.d_data.end();
+    C* dst=&result.d_data[q.d_data.size()+j];
+    while (src>&q.d_data[0]) *--dst += c * *--src;
+  }
+  return result;
+}
+
 
 /*!
   \brief Adds x^d.c.q, to *this, watching for overflow.
@@ -212,8 +280,6 @@ void Polynomial<C>::safeSubtract(const Polynomial& q, Degree d)
 /*****************************************************************************
 
         Chapter II -- Functions declared in polynomials.h
-
-  ... explain here when it is stable ...
 
  *****************************************************************************/
 

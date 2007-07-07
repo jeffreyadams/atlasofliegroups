@@ -41,6 +41,12 @@ const BlockElt UndefBlock = ~ BlockElt(0);
 
 /******** function declarations *********************************************/
 
+namespace blocks {
+
+  std::vector<BlockElt> dual_map(const Block& b, const Block& dual_b);
+
+}
+
 /******** type definitions **************************************************/
 
 namespace blocks {
@@ -98,7 +104,7 @@ class Block {
   kgb::KGBEltList d_y; // of size size()+1, with UndefKGB sentinel
 
   /*!
-\brief d_cross[s][z] is $s \times z$ (for s a simple root, z a BlockElt).
+\brief d_cross[s][z] is $s * z$ (for s a simple root, z a BlockElt).
   */
   std::vector<BlockEltList> d_cross; // of size d_rank
 
@@ -129,13 +135,13 @@ element z.
 
   /*!
 \brief Entry z (multiplied by the fixed outer automorphism delta) is
-the involution $\theta_z$ of H attached to z
+the involution \f$\theta_z\f$ of H attached to z
 (in other words, d_involution[z] is the twisted involution attached to z; MvL)
   */
   weyl::TwistedInvolutionList d_involution; // of size size()
 
   /*!
-\brief Entry z flags the simple roots occurring in $\theta_z$.
+\brief Entry z flags the simple roots occurring in \f$\theta_z\f$.
   */
   std::vector<bitset::RankFlags> d_involutionSupport; // of size size()
 
@@ -213,7 +219,7 @@ Not used in the present code (DV 10/14/06).
     return d_inverseCayley[s][z];
   }
 
-  /*! \brief the simple roots occurring in $\theta_z$. */
+  /*! \brief the simple roots occurring in \f$\theta_z\f$. */
   const bitset::RankFlags& involutionSupport(size_t z) const {
     return d_involutionSupport[z];
   }
@@ -227,7 +233,7 @@ Not used in the present code (DV 10/14/06).
     return d_length[z];
   }
 
-  /*! \brief the functor $T_{\alpha,\beta}$ */
+  /*! \brief the functor \f$T_{\alpha,\beta}\f$ */
   BlockEltPair link(size_t alpha,size_t beta,BlockElt y) const;
 
   /*! \brief semisimple rank of the group this block is constructed for */

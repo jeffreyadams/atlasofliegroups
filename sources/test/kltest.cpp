@@ -64,8 +64,6 @@ public:
 
         Chapter I -- Functions declared in kltest.h
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace kltest {
@@ -172,13 +170,54 @@ void dualityPermutation(setutils::Permutation& a, const kl::KLContext& klc)
 
 {}
 
+bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc)
+{
+  std::vector<blocks::BlockElt> dual =
+    blocks::dual_map(klc.block(),dual_klc.block());
+
+  setutils::Permutation inv_dual
+    (setutils::Permutation(dual.begin(),dual.end()),-1);
+
+  blocks::BlockElt block_size=klc.size();
+
+  for (blocks::BlockElt x=0; x<block_size; ++x)
+  {
+#ifdef VERBOSE
+    std::cerr << x <<'\r';
+#endif
+    blocks::BlockElt limit=dual_klc.lengthLess(dual_klc.length(dual[x]));
+    for (blocks::BlockElt dx=0; dx<limit; ++dx)
+    {
+      assert(dx<inv_dual.size());
+      kl::KLPol sum=klc.klPol(x,inv_dual[dx]);
+
+      // Warning: |l| below must be \emph{signed}, so initial $l = -1$ quits!
+      for (int l=klc.length(inv_dual[dx])-1; l>signed(klc.length(x)); --l)
+      {
+	kl::KLPol s=kl::Zero;
+	for (blocks::BlockElt y=klc.lengthLess(l); y<klc.lengthLess(l+1); ++y)
+	  s+= klc.klPol(x,y) * dual_klc.klPol(dx,dual[y]);
+	sum.subtract_from(s);
+      }
+
+      sum.subtract_from(dual_klc.klPol(dx,dual[x])); // contribution |y==x|
+
+      if (not sum.isZero())
+      {
+	std::cerr << "at (" << x << ',' << dx << "), non-zero entry :";
+	prettyprint::printPol(std::cerr,sum,"q"); std::cerr << std::endl;
+	return false;
+      }
+    }
+  }
+  return true;
 }
+
+} // namespace kltest
 
 /*****************************************************************************
 
         Chapter I -- Functions local to this module
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -210,14 +249,12 @@ printBasePts(std::ostream& strm, const weyl::TwistedInvolutionList& wl,
   return strm;
 }
 
-void involutionList(weyl::TwistedInvolutionList& wl, const kgb::KGB& kgb)
-
 /*
   Synopsis: put in wl the list of twisted involutions that appear in kgb.
 
   The result is equivalent to the internal d_tau in KGB.
 */
-
+void involutionList(weyl::TwistedInvolutionList& wl, const kgb::KGB& kgb)
 {
   using namespace weyl;
 

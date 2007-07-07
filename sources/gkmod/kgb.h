@@ -20,6 +20,7 @@ representing orbits of K on G/B.
 #include "bruhat_fwd.h"
 #include "realredgp_fwd.h"
 #include "weyl_fwd.h"
+#include "weyl.h"
 
 #include "gradings.h"
 
@@ -38,6 +39,16 @@ const KGBElt UndefKGB = ~0ul;
 /******** type definitions **************************************************/
 
 namespace kgb {
+
+struct KGBInfo
+{
+  gradings::Status status; ///< status of each simple root for this element
+  unsigned int length; ///< dimension of the K orbit on G/B, minus minimal one
+  Descent desc; ///< flags which simple reflections give a descent
+
+  KGBInfo(int l) : status(),length(l),desc()
+  {} // set length explicitly, both other fields set to their default value
+};
 
   /*!
 \brief Represents the orbits of K on G/B for a particular real form.
@@ -59,20 +70,19 @@ Cayley transform. Each of these is stored as a vector (indexed by orbit
 numbers) of lists of KGBElt's, one for each simple reflection (often the
 KGBElt UndefKGB = ~0 in the case of the Cayley transform)
 
-The actual construction of the orbit is carried out by the derived
-class Helper.  It is the Helper class that works with actual elements
-of the Tits group (by means of fiber groups).  After the construction,
-the fiber information (which uses a lot of memory) is discarded.  What
-is retained by the class kgb is only the Cayley transforms (always
-going from more compact to less compact involutions) and cross
-actions.  This information is all that is used by the Kazhdan-Lusztig
-algorithm.
-
+The actual construction of the orbit is carried out by the (no longer
+derived!) class KGBHelper. It is that class that works with actual elements of
+the Tits group (which encode both a twisted involution and an element of the
+associlated fiber group). After the construction, that detailed information
+(which uses a lot of memory) is discarded. What is retained by the class KGB
+is mainly the Cayley transforms (always going from more compact to less
+compact involutions) and cross actions; the associated twisted involution and
+|KGBInfo| record is stored as well. The inverse Cayley transforms are deduced
+from the forward ones and are also stored. This information is all that is
+used by the Kazhdan-Lusztig algorithm.
 */
 
 class KGB {
-
- protected:
 
   enum State { BruhatConstructed, NumStates };
 
@@ -109,28 +119,15 @@ list d_inverseCayley[j] is UndefKGB.
   std::vector<KGBEltPairList> d_inverseCayley;
 
 /*!
-\brief The Bitset d_descent[j] flags the simple roots which are
-descents for KGB element \#j.
+\brief Information about individual KGB elements
 */
-  DescentList d_descent;
-
-/*!
-\brief Length (dimension of the K orbit on G/B, minus minimal orbit
-dimension) for KGB element \#j.
-*/
-  std::vector<size_t> d_length;
+  std::vector<KGBInfo> d_info;
 
 /*!
 \brief Twisted Weyl group element defining Cartan involution for KGB
 element \#j.
 */
   weyl::TwistedInvolutionList d_involution;
-
-/*!
-\brief The Status in d_status[j] tells whether each simple root is real,
-complex, imaginary compact, or imaginary noncompact for KGB element \#j.
- */
-  gradings::StatusList d_status;
 
 /*!
 \brief Bit 0 flags whether or not the Bruhat order on KGB has already
@@ -154,14 +151,11 @@ bruhat::BruhatOrder* d_bruhat;
  public:
 
 // constructors and destructors
-  explicit KGB(size_t);
-
   explicit KGB(realredgp::RealReductiveGroup&);
 
-  virtual ~KGB();
+  ~KGB();
 
 // copy, assignment and swap
-  void swap(KGB&);
 
 // accessors
 
@@ -187,20 +181,29 @@ be a Cayley transform.
     return d_cayley[s][x];
   }
 
-  bool compare(KGBElt, KGBElt) const;
+/*!
+  \brief Returns whether involution(x) < involution(y).
+
+  Explanation: the ordering is involution-length first, then weyl-length, then
+  order by representative Weyl elements (weyl::TwistedInvolution::operator<).
+  This is only a partial ordering, that does not distinguish elements of a
+  fiber over one same twisted involution.
+*/
+  bool compare(KGBElt x, KGBElt y) const {
+  if      (length(x) != length(y))
+    return length(x) < length(y);
+  else if (weylLength(x) != weylLength(y))
+    return weylLength(x) < weylLength(y);
+  else
+    return involution(x) < involution(y);
+}
+
 
 /*!
  \brief Applies the cross action of simple root \#s to KGB element \#x.
 */
   KGBElt cross(size_t s, KGBElt x) const {
     return d_cross[s][x];
-  }
-
-/*! \brief Returns a Bitset flagging the simple roots which are descents for
-KGB element \#x.
-*/
-  const Descent& descent(KGBElt x) const {
-    return d_descent[x];
   }
 
 /*!
@@ -211,18 +214,6 @@ If simple root \#s is not real, returns a pair of UndefKGB.
 */
   KGBEltPair inverseCayley(size_t s, KGBElt x) const {
     return d_inverseCayley[s][x];
-  }
-
-  bool isAscent(size_t s, KGBElt x) const;
-
-  bool isDescent(size_t s, KGBElt x) const;
-
-/*!
-\brief Length (dimension of the K orbit on G/B, minus minimal orbit dimension)
-for KGB element \#x.
-*/
-  size_t length(KGBElt x) const {
-    return d_length[x];
   }
 
 /*!
@@ -237,15 +228,31 @@ for KGB element \#x.
 \brief Number of K orbits on G/B.
 */
   size_t size() const {
-    return d_length.size();
+    return d_info.size();
   }
+
+
+/*! \brief Returns a Bitset flagging the simple roots which are descents for
+KGB element \#x.
+*/
+  const Descent& descent(KGBElt x) const {
+    return d_info[x].desc;
+  }
+/*!
+\brief Length (dimension of the K orbit on G/B, minus minimal orbit dimension)
+for KGB element \#x.
+*/
+  size_t length(KGBElt x) const {
+    return d_info[x].length;
+  }
+
 
 /*!
 \brief Flag telling whether each simple root is real, complex, imaginary
 compact, or imaginary noncompact for KGB element \#x.
  */
   const gradings::Status& status(KGBElt x) const {
-    return d_status[x];
+    return d_info[x].status;
   }
 
 
@@ -254,10 +261,43 @@ compact, or imaginary noncompact for KGB element \#x.
 or imaginary noncompact for KGB element \#x.
  */
   gradings::Status::Value status(size_t s, KGBElt x) const {
-    return d_status[x][s];
+    return status(x)[s];
   }
 
-  const weyl::TwistedInvolution& involution(KGBElt) const;
+/*!
+  \brief Tells whether simple root \# s is a descent generator for KGB
+  element \#x.
+
+  Explanation: descent generators are the ones for which the twisted involution
+  tau descends; i.e. either s does not commute with tau and s.tau.s has shorter
+  length in the Weyl group, or it commutes, and s.tau has shorter length.
+*/
+bool isDescent(size_t s, KGBElt x) const
+{
+  return d_info[x].desc.test(s);
+}
+
+/*!
+  \brief Tells whether simple root \#s is an ascent generator for KGB
+  element \#x.
+
+  Explanation: ascent generators are the ones that are either a complex
+  ascent, or imaginary noncompact.
+*/
+bool isAscent(size_t s, KGBElt x) const
+{
+  return not isDescent(s,x)
+     and not (status(s,x) == gradings::Status::ImaginaryCompact);
+}
+
+/*!
+  \brief Returns the root datum involution corresponding to z.
+
+  In fact, returns the corresponding Weyl group element, s.t. w.delta = tau.
+*/
+  const weyl::TwistedInvolution& involution(KGBElt x) const {
+    return d_involution[x];
+  }
 
   KGBEltPair tauPacket(const weyl::TwistedInvolution&) const;
 
@@ -271,7 +311,11 @@ or imaginary noncompact for KGB element \#x.
   size_t weylLength(KGBElt) const;
 
 // manipulators
-  void fillBruhat(); // might throw
+  void fillBruhat(); // might throw MemoryOverflow
+
+// private methods, used during construction
+
+
 
 };
 

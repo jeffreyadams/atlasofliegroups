@@ -96,9 +96,8 @@ template<typename I, typename J, typename O>
   using namespace lattice;
   using namespace latticetypes;
 
-  LatticeMatrix q(firstb,lastb,tags::IteratorTag());
   LatticeCoeff d;
-  q.invert(d);
+  LatticeMatrix q=LatticeMatrix(firstb,lastb,tags::IteratorTag()).inverse(d);
 
   for (I i = first; i != last; ++i) {
     Weight v(q.numRows());

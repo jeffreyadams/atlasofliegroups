@@ -29,10 +29,7 @@ template<size_t dim>
 
 {
   for (size_t j = 0; j < v.size(); ++j)
-    if (v.test(j))
-      strm << "1";
-    else
-      strm << "0";
+    strm << (v[j]?'1':'0');
 
   return strm;
 }
@@ -46,10 +43,7 @@ template<size_t d>
 
 {
   for (size_t j = 0; j < d; ++j)
-    if (b.test(j))
-      strm << "1";
-    else
-      strm << "0";
+    strm << (b[j]?'1':'0');
 
   return strm;
 }

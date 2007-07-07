@@ -169,40 +169,44 @@ int main(int argc, char* argv[])
   For now, we do nothing with the arguments.
 */
 
-
-try
-
 {
-  using namespace atlas;
+  try
 
-  input::initReadLine();
-  commands::run(emptymode::emptyMode());
+  {
+    using namespace atlas;
 
-  return 0;
-}
+    input::initReadLine();
+    commands::run(emptymode::emptyMode());
 
-catch (atlas::error::NumericOverflow& e) {
+    exit(0);
+  }
 
-  std::cerr << "error: uncaught NumericOverflow" << std::endl;
+  catch (atlas::error::NumericOverflow& e) {
 
-}
+    std::cerr << "error: uncaught NumericOverflow" << std::endl;
 
-catch (atlas::error::NumericUnderflow& e) {
+  }
 
-  std::cerr << "error: uncaught NumericUnderflow" << std::endl;
+  catch (atlas::error::NumericUnderflow& e) {
 
-}
+    std::cerr << "error: uncaught NumericUnderflow" << std::endl;
 
-catch (std::exception& e) {
+  }
 
-  std::cerr << "error: uncaught standard exceptions on exit"
-            << std::endl << e.what()
-            << std::endl;
-}
+  catch (std::exception& e) {
+
+    std::cerr << "error: uncaught standard exceptions on exit"
+	      << std::endl << e.what()
+	      << std::endl;
+  }
 
 
-catch (...) {
+  catch (...) {
 
-  std::cerr << std::endl << "error: uncaught exceptions on exit" << std::endl;
+    std::cerr << std::endl << "error: uncaught exceptions on exit"
+	      << std::endl;
 
+  }
+
+  exit(1);
 }

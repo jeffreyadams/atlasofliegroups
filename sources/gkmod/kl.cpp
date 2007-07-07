@@ -44,6 +44,7 @@
 #include "basic_io.h"
 #include "blocks.h"
 #include "error.h"
+#include "hashtable.h"
 #include "kl_error.h"
 #include "prettyprint.h"
 
@@ -674,7 +675,7 @@ void KLContext::makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const
   using namespace bitmap;
 
   BitMap b(size());
-  size_t c = d_support->lengthLess(length(y));
+  size_t c = lengthLess(length(y));
 
   b.fill(c);     // start with all elements < y in length
   b.insert(y);   // and y itself
@@ -702,7 +703,7 @@ void KLContext::makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const
   using namespace bitmap;
 
   BitMap b(size());
-  size_t c = d_support->lengthLess(length(y));
+  size_t c = lengthLess(length(y));
 
   b.fill(c);     // start with all elements < y in length
   b.insert(y);   // and y itself
@@ -754,7 +755,7 @@ bitmap::BitMap KLContext::primMap (BlockElt y) const
   bitmap::BitMap b(size()); // block-size bitmap
 
   // start with all elements < y in length
-  b.fill(d_support->lengthLess(length(y)));
+  b.fill(lengthLess(length(y)));
   b.insert(y);   // and y itself
 
   // primitivize (filter out those that are not primitive)
@@ -1286,7 +1287,7 @@ void Helper::fill()
   size_t maxLength = length(d_kl.size() - 1);
 
   // do the minimal length cases; they come first in the enumeration
-  for (BlockElt y = 0; y < d_support->lengthLess(minLength+1); ++y) {
+  for (BlockElt y = 0; y < lengthLess(minLength+1); ++y) {
     d_prim[y].push_back(y); // singleton list for this row
     ++prim_size;
     // the K-L polynomial is 1
@@ -1306,8 +1307,8 @@ void Helper::fill()
   // do the other cases
   for (size_t l=minLength+1; l<=maxLength; ++l)
   {
-    for (BlockElt y=d_support->lengthLess(l);
-	 y<d_support->lengthLess(l+1); ++y) // |lengthLess(maxLength+1)| is OK
+    for (BlockElt y=lengthLess(l);
+	 y<lengthLess(l+1); ++y) // |lengthLess(maxLength+1)| is OK
     {
 #ifdef VERBOSE
       std::cerr << y << "\r";
@@ -1337,7 +1338,7 @@ void Helper::fill()
       std::cerr << "t="    << std::setw(5) << deltaTime
 		<< "s. l=" << std::setw(3) << l // completed length
 		<< ", y="  << std::setw(6)
-		<< d_support->lengthLess(l+1)-1 // last y value done
+		<< lengthLess(l+1)-1 // last y value done
 		<< ", polys:"  << std::setw(11) << d_store.size()
 		<< ", pmem:" << std::setw(11) << p_capacity
 		<< ", mat:"  << std::setw(11) << prim_size
@@ -1438,8 +1439,8 @@ void Helper::fillMuRow(BlockElt y)
   for (size_t lx=(ly-1)%2,d = (ly-1)/2; d>0; --d,lx+=2) {// d=(ly-1-lx)/2
 
     PrimitiveRow::const_iterator stop =
-      std::lower_bound(start,e.end(),d_support->lengthLess(lx+1));
-    for (start= std::lower_bound(start,stop,d_support->lengthLess(lx));
+      std::lower_bound(start,e.end(),lengthLess(lx+1));
+    for (start= std::lower_bound(start,stop,lengthLess(lx));
 	 start<stop; ++start) {
       BlockElt x = *start;
       KLIndex klp = d_kl[y][start-e.begin()];
@@ -1453,8 +1454,8 @@ void Helper::fillMuRow(BlockElt y)
   }
 
   // do cases of length ly-1
-  BlockElt x_begin = d_support->lengthLess(ly-1);
-  BlockElt x_end = d_support->lengthLess(ly);
+  BlockElt x_begin = lengthLess(ly-1);
+  BlockElt x_end = lengthLess(ly);
 
   for (BlockElt x = x_begin; x < x_end; ++x) {
     MuCoeff mu = lengthOneMu(x,y);

@@ -83,7 +83,7 @@ void BitVector<dim>::slice(const bitset::BitSet<dim>& t)
 
   // in the following loop |c<=j|, so we can inspect bit |j| and then set |c|
   for (size_t j = 0; j < size(); ++j)
-    if (t.test(j)) { // insert bit j at position c
+    if (t[j]) { // insert bit j at position c
       d_data.set(c,d_data[j]);
       ++c;
     }
@@ -145,7 +145,7 @@ void BitMatrix<dim>::apply(BitVector<dim>& dest,
   BitVector<dim> v(source); // for the case source = dest
 
   dest.resize(d_rows);
-  combination(dest.d_data,d_data,v.data());
+  dest.d_data=combination(d_data,v.data());
 }
 
 template<size_t dim> template<typename I, typename O>
@@ -202,19 +202,18 @@ template<size_t dim> void BitMatrix<dim>::row(BitVector<dim>& r, size_t i)
 
 
 /*!
-  \brief Puts in b the normalized basis of the image of the matrix.
+  \brief Puts in |b| a basis of the image of the matrix.
 */
 template<size_t dim>
-void BitMatrix<dim>::image(std::vector<BitVector<dim> >& b) const
-
+BitVectorList<dim> BitMatrix<dim>::image() const
 {
-  b.resize(d_columns);
+  BitVectorList<dim> b;
+  std::vector<size_t> f; // auxialiry to record leading bit positions
 
   for (size_t j = 0; j < d_columns; ++j)
-    column(b[j],j);  //puts column \#j of the matrix into bit vector |b[j]|
+    spanAdd(b,f,column(j));  // add column |j| to span of |b|
 
-  bitset::BitSet<dim> t;
-  normalize(t,b); // and forget |t|
+  return b;
 }
 
 template<size_t dim>
@@ -262,11 +261,11 @@ void BitMatrix<dim>::kernel(std::vector<BitVector<dim> >& b) const
 
 
   for (size_t j = 0; j < d_columns; ++j)
-    if (not t.test(j)) {
+    if (not t[j]) {
       BitVector<dim> v(d_columns,j); // start with unit vector $e_j$
       size_t c = 0;
       for (typename bitset::BitSet<dim>::iterator it=t.begin(); it(); ++it,++c)
-	v.set(*it,eqn[c].test(j)); // use |eqn[c]| to find |v[*it]|
+	v.set(*it,eqn[c][j]); // use |eqn[c]| to find |v[*it]|
       b.push_back(v);
     }
 }
@@ -310,7 +309,7 @@ BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
   for (size_t j = 0; j < m.d_columns; ++j) {
     /* set column |j| of result as linear combination of columns of left
        factor |*this| determined by column |j| of right factor |m| */
-    combination(res.d_data[j],d_data,m.d_data[j]);
+    res.d_data[j]=combination(d_data,m.d_data[j]);
   }
 
   swap(res); // put result in |*this|
@@ -361,7 +360,7 @@ template<size_t dim> BitMatrix<dim>& BitMatrix<dim>::invert()
     size_t n = firstBit(d_data[k]);
 
     for (size_t j = 0; j < k; ++j)
-      if (d_data[j].test(n)) {
+      if (d_data[j][n]) {
 	d_data[j] ^= d_data[k];
 	i.d_data[j] ^= i.d_data[k];
       }
@@ -460,29 +459,26 @@ template<size_t dim>
   v.reset(); // clear to 0
 
   for (size_t i = 0; i < b.size(); ++i)
-    if (e.test(i))
+    if (e[i])
       v += b[i];
 }
 
-template<size_t dim>
-  void combination(bitset::BitSet<dim>& v,
-		   const std::vector<bitset::BitSet<dim> >& b,
-		   const bitset::BitSet<dim>& e)
-
 /*!
-  \brief Puts in v the linear combination of the elements of b given by e.
+  \brief Returns the linear combination of the elements of |b| given by |coef|.
 
   Contrary to the previous case, there is no notion of size for |v|, and
   there is no need for any particular preparation.
 */
-
-{
-  v.reset(); // clear to 0
-
-  for (size_t i = 0; i < b.size(); ++i)
-    if (e.test(i))
-      v ^= b[i]; // not |+| here, these are |BitSet|s.
-}
+template<size_t dim>
+  bitset::BitSet<dim> combination(const std::vector<bitset::BitSet<dim> >& b,
+				  const bitset::BitSet<dim>& coef)
+  {
+    bitset::BitSet<dim> result(0);
+    for (size_t i = 0; i < b.size(); ++i)
+      if (coef[i])
+	result ^= b[i]; // not |+| here, these are |BitSet|s.
+    return result;
+  }
 
 template<size_t dim>
   bool firstSolution(bitset::BitSet<dim>& c,
@@ -519,12 +515,12 @@ template<size_t dim>
     BitSet<dim> r;
     // set r to i-th row of matrix whose columns are the |b[j]|
     for (size_t j = 0; j < b.size(); ++j)
-      r.set(j,b[j].test(i));
+      r.set(j,b[j][i]);
     bool x = rhs[i]; // now $(r,x)$ is one of the equations to solve
 
     // normalize |r| with respect to |a|: clear coefficients at previous pivots
     for (size_t j = 0; j < f.size(); ++j)
-      if (r.test(f[j])) {
+      if (r[f[j]]) {
 	r ^= a[j];
 	x ^= rh[j];
       }
@@ -537,7 +533,7 @@ template<size_t dim>
 
       // update previous equations, clearing their coefficient at position |m|
       for (size_t j = 0; j < a.size(); ++j)
-	if (a[j].test(m)) {
+	if (a[j][m]) {
 	  a[j] ^= r;
 	  rh.set(j,rh[j]^x);
 	}
@@ -591,7 +587,7 @@ bool firstSolution(BitVector<dim>& sol,
      to 0 (because it has its \emph{leading} bit at the final position), while
      absence of any equation for that indeterminate means we can make it $-1$.
    */
-  if (eqn.size()>0 and t.test(eqn[0].size()-1)) // no equations, no conflict
+  if (eqn.size()>0 and t[eqn[0].size()-1])
     return false;
 
   sol.reset(); // only now can we clear the solution
@@ -607,8 +603,8 @@ bool firstSolution(BitVector<dim>& sol,
   const size_t rhs = sol.size();
 
   for (size_t j = 0; j < rhs; ++j)
-    if (t.test(j)) {
-      sol.set(j,eqn[c].test(rhs));
+    if (t[j]) {
+      sol.set(j,eqn[c][rhs]);
       ++c;
     }
 
@@ -668,15 +664,16 @@ template<size_t dim> class FirstBit {
 
   What is flagged in |t| is the set $J$ in described in the comment for
   |normalSpanAdd| below. For any $j$, only |b[j]| has a nonzero bit at the
-  position $j'$ of set bit number |j| of |t|; consequently, for any $v\in V$,
-  the coordinate of |b[j]| in $v$ is $v[j']$.
+  position $j'$ of set bit number |j| of |t|; consequently, for any \f$v\in
+  V\f$, the coordinate of |b[j]| in $v$ is $v[j']$.
 
   This function works essentially be repeatedly calling |normalSpanAdd| for
   the vectors of |b|, replacing |b| by the resulting canonical basis at the
   end. However, the selected coordiante positions |f| do not come out
   increasingly this way, so we have to sort the canonical basis by leading bit
-  position. This amounts to setting $a'[k]=a[p(k)]$ where $p(0)\ldots,p(l-1)$
-  is the result of sorting $f[0]\ldots,f[l-1]$ with $l=f.size()=a.size()$.
+  position. This amounts to setting $a'[k]=a[p(k)]$ where
+  \f$p(0)\ldots,p(l-1)\f$ is the result of sorting \f$f[0]\ldots,f[l-1]\f$
+  with $l=f.size()=a.size()$.
 */
 template<size_t dim>
   void normalize(bitset::BitSet<dim>& t, std::vector<BitVector<dim> >& b)
@@ -709,12 +706,12 @@ template<size_t dim>
   |a[i][f[j]]==(i==j?1:0)| for all $i,j<l$.
 
   For each subvectorspace $V$ of $k^d$, let $I$ be a subset of
-  $\{0,\ldots,d-1\}$ such that the standard basis vectors $e_i$ for $i\in I$
+  \f$\{0,\ldots,d-1\}\f$ such that the standard basis vectors $e_i$ for \f$i\in I\f$
   generate a complementary subspace $e_I$ to $V$ (one can find such an $I$ by
   repeatedly throwing in $e_i$s linearly independent to $V$ and previously
   chosen ones). The normal basis of $V$ corresponding to $I$ is obtained by
   projecting the $e_j$ for $j$ in the complement $J$ of $I$ onto $V$ along
-  $e_I$ (i.e., according to the direct sum decompostion $k^d=V\oplus e_I$).
+  $e_I$ (i.e., according to the direct sum decompostion \f$k^d=V\oplus e_I\f$).
   This can be visualised by viewing $V$ as the function-graph of a linear map
   from $k^J$ to $k^I$; then the normal basis is the lift to $V$ of the
   standard basis of $k^J$. We define the canonical basis of $V$ be the normal
@@ -749,7 +746,7 @@ template<size_t dim>
 
   // substract canonical projection of |v| onto span of |a|
   for (size_t j = 0; j < a.size(); ++j)
-    if (w.test(f[j])) // if coordinate $v[f[j]]$ is $1$, subtract |a[j]|
+    if (w[f[j]]) // if coordinate $v[f[j]]$ is $1$, subtract |a[j]|
       w -= a[j];
 
   if (w.isZero()) // that is, if |v| is in span of |a|
@@ -762,7 +759,7 @@ template<size_t dim>
 
   // clear bit |n| in previous basis vectors
   for (size_t j = 0; j < a.size(); ++j)
-    if (a[j].test(n))
+    if (a[j][n])
       a[j] -= w;
 
   f.push_back(n);
@@ -804,7 +801,7 @@ template<size_t dim> void spanAdd(std::vector<BitVector<dim> >& a,
   BitVector<dim> w = v;
 
   for (unsigned long j = 0; j < a.size(); ++j)
-    if (w.test(f[j])) // if coordinate $v[f[j]]$ is $1$, subtract |a[j]|
+    if (w[f[j]]) // if coordinate $v[f[j]]$ is $1$, subtract |a[j]|
       w -= a[j];
 
   if (w.isZero()) // that is, if |v| is in span of |a|
@@ -909,7 +906,7 @@ template<size_t dim>
   size_t k = 0;
 
   for (size_t j = 0; j < d; ++j)
-    if (c.test(j)) {
+    if (c[j]) {
       p.set(k,j);
       ++k;
     }
@@ -940,7 +937,7 @@ template<size_t dim>
   identityMatrix(m,a.size());
 
   for (size_t j = 0; j < a.size(); ++j)
-    if (a_check.test(j))
+    if (a_check[j])
       m.addToColumn(j,a);
 }
 
@@ -973,7 +970,7 @@ template<size_t dim>
   for (size_t i = 0; i < d; ++i) {
     eqn[i].resize(b.size());
     for (size_t j = 0; j < b.size(); ++j)
-      if (b[j].test(i))
+      if (b[j][i])
 	eqn[i].set(j);
   }
 
@@ -987,19 +984,19 @@ template<size_t dim>
   // i in t, where the a_{i,j} are given by the columns in eqn
 
   for (size_t j = 0; j < r; ++j)
-    if (!t.test(j)) {
+    if (not t[j]) {
       BitVector<dim> v(r,j);
       size_t c;
       for (size_t i = 0; i < r; ++i)
-	if (t.test(i)) {
-	  if (eqn[c].test(j))
+	if (t[i]) {
+	  if (eqn[c][j])
 	    v.set(i);
 	  ++c;
 	}
       rel.push_back(v);
     }
 }
-#endif
+#endif // end of unused functions
 
 template<size_t dim> bool scalarProduct(const BitVector<dim>& vd,
 					const BitVector<dim>& v)

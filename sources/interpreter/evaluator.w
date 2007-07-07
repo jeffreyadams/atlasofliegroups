@@ -101,7 +101,7 @@ expression entered by the use; thus type errors can be signalled earlier and
 expressed more understandably than if would wait until an accident is about to
 happen at runtime. This means that types are to be represented independently
 of runtime values. Of course the interpreter executes the same code regardless
-of the types of the values is manipulates; those values are then accessed via
+of the types of the values it manipulates; those values are then accessed via
 generic pointers. The runtime values do also contain an indication of their
 actual type, which will allow us to do some dynamic testing to trap possible
 errors in the logic of our interpreter, but the user should never notice this.
@@ -113,13 +113,13 @@ errors in the logic of our interpreter, but the user should never notice this.
 |type_declarator| that will be detailed later. That name indicates that they
 describe the structure of values as accessible to the user, without attempting
 to present to the user a closed abstraction (as \Cpp~classes do). Note however
-that classes defined in the Atlas software will be presented to the user as
-primitive types, so we do provide abstraction there.
+that classes defined in the Atlas software library itself will be presented to
+the user as primitive types, so we do provide abstraction there.
 
 Different types cannot share any subtrees among each other, so a root of a
 type expression will own its tree. Usually types are built from the bottom up
 (from leaves to the root), but during type checking a top-down approach where
-types grow by substitution into type patters also occurs. In bottom-up
+types grow by substitution into type patterns also occurs. In bottom-up
 handling of types, they should not reside in local |type_declarator|
 variables, since these would require (recursive) copying in order to become a
 descendant type of another type. Instead they will be referred to by local
@@ -137,7 +137,7 @@ typedef std::auto_ptr<type_node> type_list_ptr;
 
 @ Since types and type lists own their trees, their copy constructors must
 make a deep copy. Most applications of the copy constructor for types will be
-via the function |copy|, which converts a pointer to a |type_declarator|, into
+via the function |copy|, which converts a pointer to a |type_declarator| into
 an auto-pointer to a copied instance of that type declarator. The change from
 pointer to auto-pointer should remind us that we have gained ownership of the
 copy.
@@ -148,7 +148,7 @@ type_ptr copy(const type_declarator* t);
 @~The deep copy is obtained by allocating a fresh |type_declarator|,
 copy-constructing its contents from the structure pointed to by the argument
 of~|copy|. The recursive copying will be implied by the definition if the copy
-constructor that will be defined later.
+constructor that will be given later.
 
 @< Function definitions @>=
 type_ptr copy(const type_declarator* t) @+
@@ -159,12 +159,12 @@ type_ptr copy(const type_declarator* t) @+
 The auxiliary type |type_list| gives a preview of matters related to
 ownership, that will also apply, in a more complex setting, to
 |type_declarator|. It is a simply linked list with component type~|t| given by
-a sub-object; compared with using a pointer this it is more compact and
-requires less (de)allocations. On the other hand it forced us to introduce the
-|type_declarator::set_from| (see below) to make the basic constructor below
-work efficiently; if we had initialised |t(*head)|, a recursive copy would
-have been made. Also, we must make sure this definition
-\emph{follows} that of |type_declarator| in the tangled code.
+a sub-object; compared with using a pointer this is more compact and requires
+less (de)allocations. On the other hand it forced us to introduce the
+|type_declarator::set_from| method (see below) to make the basic constructor
+below work efficiently; if we had initialised |t(*head)|, a recursive copy
+would have been made. Also, we must make sure this definition \emph{follows}
+that of |type_declarator| in the tangled code.
 
 @< Definition of |struct type_node@;| @>=
 struct type_node
@@ -1774,8 +1774,8 @@ struct int_list_list_conversion : public vector_conversion
   virtual void print(std::ostream& out) const;
 };
 
-@ The print functions are simple. They are not inside the structure
-definition, since their second `|<<|' cannot be matched there.
+@ The print functions are simple. They are not defined inside the structure
+definition, because in that case their second `|<<|' could not be matched.
 
 @< Function definitions @>=
 void matrix2_conversion::print(std::ostream& out) const
