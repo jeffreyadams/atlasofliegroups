@@ -30,11 +30,13 @@ namespace {
   void cartan_h();
   void realform_h();
   void realweyl_h();
+  void strongreal_h();
 
   // command tags for the help facility
   const char* cartan_tag = "prints the conjugacy classes of Cartan subgroups";
   const char* realform_tag = "sets the real form for the group";
   const char* realweyl_tag = "outputs the structure of the real Weyl group";
+  const char* strongreal_tag = "outputs information about strong real forms";
 
 }
 
@@ -54,10 +56,12 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("cartan",&cartan_h);
   mode.add("realform",realform_h);
   mode.add("realweyl",realweyl_h);
+  mode.add("strongreal",strongreal_h);
 
   insertTag(tagDict,"cartan",cartan_tag);
   insertTag(tagDict,"realform",realform_tag);
   insertTag(tagDict,"realweyl",realweyl_tag);
+  insertTag(tagDict,"strongreal",strongreal_tag);
 
   return;
 }
@@ -93,6 +97,14 @@ void realweyl_h()
 
 {
   io::printFile(std::cerr,"realweyl.help",io::MESSAGE_DIR);
+  return;
+}
+
+
+void strongreal_h()
+
+{
+  io::printFile(std::cerr,"strongreal.help",io::MESSAGE_DIR);
   return;
 }
 
