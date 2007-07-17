@@ -229,11 +229,8 @@ std::ostream& printRealWeyl(std::ostream& strm, const Interface& RI, size_t cn)
   // check if the size is correct
   Size c;
   realWeylSize(c,rw);
-  strm << c.toUlong();
   c *= G_C.fiberSize(rf,cn);
-  strm << G_C.fiberSize(rf,cn);
   c *= cc.orbitSize();
-  strm << cc.orbitSize();
   assert(c == W.order());
 
   return strm;
