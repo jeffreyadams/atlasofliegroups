@@ -1766,7 +1766,8 @@ void KGB_size_wrapper()
 
 @ Once the Cartan classes for a real form are constructed, we have a partial
 ordering on them. The function |Cartan_order_matrix| displays a matrix for
-this partial ordering.
+this partial ordering. This function more or less replaces the \.{corder}
+command in atlas.
 
 @h "poset.h"
 @< Local function def...@>=
@@ -2200,15 +2201,61 @@ different lines after commas if necessary.
 }
 
 @* Test functions.
-Now as an experiment we shall try to make available some commands without
-actually creating new data types. This means the values created to perform the
-computation will be discarded after the output is produced; our functions will
-typically return a $0$-tuple. This is probably not a desirable state of
-affairs, but it seems that the current Atlas software is functioning like this
-(the corresponding commands are defined in \.{test.cpp} which hardly has any
+%
+Now we shall make available some commands without actually creating new data
+types. This means the values created to perform the computation will be
+discarded after the output is produced; our functions will typically return a
+$0$-tuple. This is probably not a desirable state of affairs, but the current
+Atlas software is functioning like this (the corresponding commands are
+defined in \.{realmode.cpp} and in \.{test.cpp} which hardly has any
 persistent data) so for the moment it should not be so bad.
 
-We shall first implement the \.{block} command.
+@ The \.{realweyl} and \.{strongreal} commands require a real form and a
+compatible Cartan class.
+
+@h "realredgp_io.h"
+@< Local function def...@>=
+void print_realweyl_wrapper()
+{ push_tuple_components();
+  Cartan_class_ptr cc(get<Cartan_class_value>());
+  real_form_ptr rf(get<real_form_value>());
+@)
+  if (&rf->parent.val!=&cc->parent.val)
+    throw std::runtime_error @|
+    ("realweyl: inner class mismatch between arguments");
+  bitmap::BitMap b(rf->parent.val.cartanSet(rf->val.realForm()));
+  if (not b.isMember(cc->number))
+    throw std::runtime_error @|
+    ("realweyl: Cartan class not defined for real form");
+@)
+  realredgp_io::printRealWeyl (*output_stream,rf->val,cc->number);
+@)
+  wrap_tuple(0);
+}
+
+@)
+void print_strongreal_wrapper()
+{ push_tuple_components();
+  Cartan_class_ptr cc(get<Cartan_class_value>());
+  real_form_ptr rf(get<real_form_value>());
+@)
+  if (&rf->parent.val!=&cc->parent.val)
+    throw std::runtime_error @|
+    ("strongreal: inner class mismatch between arguments");
+  bitmap::BitMap b(rf->parent.val.cartanSet(rf->val.realForm()));
+  if (not b.isMember(cc->number))
+    throw std::runtime_error @|
+    ("strongreal: Cartan class not defined for real form");
+@)
+  realredgp_io::printStrongReal
+    (*output_stream,rf->val,rf->parent.interface,cc->number);
+@)
+  wrap_tuple(0);
+}
+
+
+@
+We shall next implement the \.{block} command.
 
 @h "blocks.h"
 @h "block_io.h"
@@ -2297,7 +2344,6 @@ the |realGroup| field of the |realredgp_io::Interface| was used in
 |realredgp_io::printBlockStabilizer|, we have changed its parameter
 specification to allow it to be called easily here.
 
-@h "realredgp_io.h"
 @< Local function def...@>=
 void print_blockstabilizer_wrapper()
 { push_tuple_components();
@@ -2531,6 +2577,10 @@ install_function(fiber_part_wrapper,"fiber_part"
 		,"(CartanClass,RealForm->[int])");
 install_function(print_gradings_wrapper,"print_gradings"
 		,"(CartanClass,RealForm->)");
+install_function(print_realweyl_wrapper,"print_real_Weyl"
+		,"(RealForm,CartanClass->)");
+install_function(print_strongreal_wrapper,"print_strong_real"
+		,"(RealForm,CartanClass->)");
 install_function(print_block_wrapper,"print_block"
 		,"(RealForm,DualRealForm->)");
 install_function(print_blocku_wrapper,"print_blocku"

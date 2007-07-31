@@ -216,12 +216,12 @@ print_Cartan_info: (CartanClass->): print information about the Cartan class
 
 fiber_part: (CartanClass,RealForm->[int]): part of fiber group for real form
   This produces an increasing sequence of integers that characterizes the real
-  form relative to the CartanClass. It describes a part of the fiber group
-  associated to the Cartan class (and elementary 2-group of rank r equal to the
-  number of compact factors of the real torus in the adjoint group defined by
-  the Cartan class), whose elements are represented by numbers 0 to 2^r; as
-  the real form traverses all those for which this Cartan class occurs, the
-  results of the function form a partition of that set of numbers.
+  form relative to the CartanClass. It describes a part of the adjoint fiber
+  group associated to the Cartan class (and elementary 2-group of rank r equal
+  to the number of compact factors of the real torus in the adjoint group
+  defined by the Cartan class), whose elements are represented by numbers 0 to
+  2^r-1; as the real form traverses all those for which this Cartan class
+  occurs, the results of the function form a partition of that set of numbers.
 
 print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   This more or less gives the output of the 'gradings' command in the Atlas
@@ -232,6 +232,9 @@ print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   the imaginary root system is given as a sequence of bits 0 (compact) or 1
   (non-compact), to be interpreted on the simple roots in the given order, and
   extended to the whose root subsystem as a Z/2Z grading.
+
+print_real_Weyl: (RealForm,CartanClass->)
+print_strong_real: (RealForm,CartanClass->)
 
 print_block: (RealForm,DualRealForm->):
 print_blocku: (RealForm,DualRealForm->):
@@ -244,7 +247,7 @@ print_KL_list: (RealForm,DualRealForm->): :print_KL_list:
 print_W_cells: (RealForm,DualRealForm->): :print_W_cells:
 print_W_graph: (RealForm,DualRealForm->):
   These commands give the output of the corresponding commands of the Atlas
-  software. It is required that the real form and dual real form (and in case
-  of blockstabilizer the Cartan class) be associated to the same inner class,
+  software. It is required that the real form and dual real form (and in
+  relevant cases the Cartan class) be associated to the same inner class,
   and that they have at least one Cartan class (respectively the given Cartan
   class) in common.
