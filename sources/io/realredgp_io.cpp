@@ -82,8 +82,6 @@ const realform_io::Interface& Interface::realFormInterface() const
 
         Chapter II -- Functions declared in realredgp_io.h
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace realredgp_io {
@@ -128,33 +126,27 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
   return strm;
 }
 
-std::ostream& printCartanClasses(std::ostream& strm,
-				 const realredgp_io::Interface& G_RI)
-
 /*
   Synopsis: outputs information about all the Cartan classes for
   G_RI.realGroup().
 */
 
+std::ostream& printCartanClasses(std::ostream& strm,
+				 const realredgp_io::Interface& G_RI)
 {
-  using namespace bitmap;
-  using namespace complexredgp_io;
-  using namespace ioutils;
-  using namespace realredgp;
-
-  const RealReductiveGroup& G_R = G_RI.realGroup();
+  const realredgp::RealReductiveGroup& G_R = G_RI.realGroup();
   const complexredgp_io::Interface& G_CI = G_RI.complexInterface();
 
-  const BitMap& b = G_R.cartanSet();
+  const bitmap::BitMap& b = G_R.cartanSet();
   bool first = true;
 
-  for (BitMap::iterator i = b.begin(); i != b.end(); ++i) {
+  for (bitmap::BitMap::iterator i = b.begin(); i(); ++i) {
     if (first)
       first = false;
     else
       strm << std::endl << std::endl;
     strm << "Cartan #" << *i << ":" << std::endl;
-    printCartanClass(strm,*i,G_CI);
+    cartan_io::printCartanClass(strm,*i,G_CI);
   }
 
   return strm;
@@ -193,7 +185,9 @@ std::ostream& printCartanOrder(std::ostream& strm,
   return strm;
 }
 
-std::ostream& printRealWeyl(std::ostream& strm, const Interface& RI, size_t cn)
+std::ostream& printRealWeyl(std::ostream& strm,
+			    const realredgp::RealReductiveGroup& G_R,
+			    size_t cn)
 
 /*
   Synopsis: outputs the real Weyl group corresponding to Cartan #cn.
@@ -211,15 +205,14 @@ std::ostream& printRealWeyl(std::ostream& strm, const Interface& RI, size_t cn)
   using namespace size;
   using namespace weyl;
 
-  const RealReductiveGroup& G_R = RI.realGroup();
-  const ComplexReductiveGroup& G_C = G_R.complexGroup();
+  const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
 
-  unsigned long rf = G_R.realForm();
+  realform::RealForm rf = G_R.realForm();
 
-  const RootDatum& rd = G_C.rootDatum();
-  const WeylGroup& W = G_C.weylGroup();
-  const CartanClass& cc = G_C.cartan(cn);
-  unsigned long x = G_C.representative(rf,cn);
+  const rootdata::RootDatum& rd = G_C.rootDatum();
+  const weyl::WeylGroup& W = G_C.weylGroup();
+  const cartanclass::CartanClass& cc = G_C.cartan(cn);
+  cartanclass::AdjointFiberElt x = G_C.representative(rf,cn);
 
   RealWeyl rw(cc,x,0,rd,W);
   RealWeylGenerators rwg(rw,cc,rd);
@@ -227,17 +220,14 @@ std::ostream& printRealWeyl(std::ostream& strm, const Interface& RI, size_t cn)
   realweyl_io::printRealWeyl(strm,rw,rwg,rd);
 
   // check if the size is correct
-  Size c;
-  realWeylSize(c,rw);
+  size::Size c;
+  realweyl::realWeylSize(c,rw);
   c *= G_C.fiberSize(rf,cn);
   c *= cc.orbitSize();
   assert(c == W.order());
 
   return strm;
 }
-
-std::ostream& printStrongReal(std::ostream& strm, const Interface& RI,
-			      size_t cn)
 
 /*
   Synopsis: outputs information about the strong real forms of G.
@@ -253,7 +243,10 @@ std::ostream& printStrongReal(std::ostream& strm, const Interface& RI,
   We output the orbits of W_im in X(z), which correspond to the various strong
   real forms; we label them with the corresponding weak real form.
 */
-
+std::ostream& printStrongReal(std::ostream& strm,
+			      const realredgp::RealReductiveGroup& G_R,
+			      const realform_io::Interface& rfi,
+			      size_t cn)
 {
   using namespace basic_io;
   using namespace cartanclass;
@@ -263,7 +256,7 @@ std::ostream& printStrongReal(std::ostream& strm, const Interface& RI,
   using namespace realform;
   using namespace rootdata;
 
-  const ComplexReductiveGroup& G_C = RI.complexGroup();
+  const ComplexReductiveGroup& G_C = G_R.complexGroup();
   const CartanClass& cc = G_C.cartan(cn);
 
   size_t n = cc.numRealFormClasses();
@@ -271,7 +264,6 @@ std::ostream& printStrongReal(std::ostream& strm, const Interface& RI,
   if (n == 1) { // simplified output
 
     const Partition& pi = cc.strongReal(0);
-    const realform_io::Interface& rfi = RI.realFormInterface();
     const RealFormList& rfl = G_C.realFormLabels(cn);
 
     unsigned long c = 0;
@@ -290,7 +282,7 @@ std::ostream& printStrongReal(std::ostream& strm, const Interface& RI,
       ++c;
     }
 
-    // print information about the center
+    // print information about the center (not implemented)
 
     return strm;
   }
@@ -301,7 +293,6 @@ std::ostream& printStrongReal(std::ostream& strm, const Interface& RI,
     strm << "class #" << j << ":" << std::endl;
 
     const Partition& pi = cc.strongReal(j);
-    const realform_io::Interface& rfi = RI.realFormInterface();
     const RealFormList& rfl = G_C.realFormLabels(cn);
 
     unsigned long c = 0;
@@ -320,7 +311,7 @@ std::ostream& printStrongReal(std::ostream& strm, const Interface& RI,
       ++c;
     }
 
-    // print information about the center
+    // print information about the center (not implemented)
 
     strm << std::endl;
   }

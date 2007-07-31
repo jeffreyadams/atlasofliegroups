@@ -26,10 +26,10 @@ namespace atlas {
 
 namespace realredgp_io {
 
-std::ostream& printBlockStabilizer(std::ostream&,
-				   const realredgp::RealReductiveGroup&,
-				   size_t,
-				   realform::RealForm);
+std::ostream& printBlockStabilizer(std::ostream& strm,
+				   const realredgp::RealReductiveGroup& G_R,
+				   size_t cn,
+				   realform::RealForm rf);
 
 std::ostream& printCartanClasses(std::ostream&,
 				 const realredgp_io::Interface&);
@@ -37,9 +37,14 @@ std::ostream& printCartanClasses(std::ostream&,
 std::ostream& printCartanOrder(std::ostream&,
 			       const realredgp::RealReductiveGroup&);
 
-std::ostream& printRealWeyl(std::ostream&, const Interface&, size_t);
+std::ostream& printRealWeyl(std::ostream& strm,
+			    const realredgp::RealReductiveGroup& G_R,
+			    size_t cn);
 
-std::ostream& printStrongReal(std::ostream&, const Interface&, size_t);
+std::ostream& printStrongReal(std::ostream& strm,
+			      const realredgp::RealReductiveGroup& G_R,
+			      const realform_io::Interface& rfi,
+			      size_t cn);
 
 }
 

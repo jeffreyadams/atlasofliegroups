@@ -314,7 +314,7 @@ void realweyl_f()
 
   OutputFile file;
   file << "\n";
-  printRealWeyl(file,G_RI,cn);
+  printRealWeyl(file,G_R,cn);
 
   return;
 }
@@ -356,7 +356,7 @@ void strongreal_f()
 
   OutputFile file;
   file << "\n";
-  printStrongReal(file,G_RI,cn);
+  printStrongReal(file,G_R,G_RI.realFormInterface(),cn);
 
   return;
 }
