@@ -13,6 +13,7 @@
 
 #include "basic_io.h"
 #include "bitset.h"
+#include "cartanset.h"
 #include "cartanclass.h"
 #include "complexredgp.h"
 #include "complexredgp_io.h"
@@ -25,11 +26,6 @@
 #include "setutils.h"
 #include "tori.h"
 
-/*****************************************************************************
-
-  ... explain here when it is stable ...
-
-******************************************************************************/
 
 namespace atlas {
 
@@ -44,11 +40,70 @@ namespace {
 
         Chapter I -- Functions declared in cartan_io.h
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace cartan_io {
+
+std::ostream& printCartanClass(std::ostream& strm, size_t cn,
+			       const complexredgp_io::Interface& CI)
+
+/*
+  Synopsis: prints information about the Cartan class #cn.
+*/
+
+{
+  using namespace basic_io; // for operators <<
+
+  const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
+  const rootdata::RootDatum& rd = G.rootDatum();
+
+  const cartanclass::CartanClass& cc = G.cartan(cn);
+
+  strm << "canonical twisted involution: ";
+  prettyprint::printWeylElt
+    (strm,G.cartanClasses().twistedInvolution(cn),G.weylGroup())
+       << std::endl;
+
+  prettyprint::printTorusType(strm,cc.fiber().torus()) << std::endl;
+  strm << "twisted involution orbit size: " << cc.orbitSize() << std::endl;
+
+  // print type of imaginary root system
+  lietype::LieType ilt;
+  rootdata::lieType(ilt,cc.simpleImaginary(),rd);
+
+  if (ilt.size() == 0)
+    strm << "imaginary root system is empty" << std::endl;
+  else
+    strm << "imaginary root system: " << ilt << std::endl;
+
+  // print type of real root system
+  lietype::LieType rlt;
+  rootdata::lieType(rlt,cc.simpleReal(),rd);
+
+  if (rlt.size() == 0)
+    strm << "real root system is empty" << std::endl;
+  else
+    strm << "real root system: " << rlt << std::endl;
+
+  // print type of complex root system
+  lietype::LieType clt;
+  rootdata::lieType(clt,cc.simpleComplex(),rd);
+
+  if (clt.size() == 0)
+    strm << "complex factor is empty" << std::endl;
+  else
+    strm << "complex factor: " << clt << std::endl;
+
+  realform::RealFormList rfl(cc.numRealForms());
+  const realform_io::Interface& rfi = CI.realFormInterface();
+
+  for (size_t i = 0; i < rfl.size(); ++i)
+    rfl[i] = rfi.out(G.realFormLabels(cn)[i]);
+
+  printFiber(strm,cc.fiber(),rfl);
+
+  return strm;
+}
 
 std::ostream& printFiber(std::ostream& strm, const cartanclass::Fiber& f,
 			 const realform::RealFormList& rfl)

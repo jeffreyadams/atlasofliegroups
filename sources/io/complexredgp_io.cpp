@@ -86,8 +86,6 @@ void Interface::swap(Interface& other)
 
         Chapter II --- Functions declared in complexredgp_io
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace complexredgp_io {
@@ -122,70 +120,6 @@ std::ostream& printBlockSizes(std::ostream& strm, const Interface& CI)
   return strm;
 }
 
-std::ostream& printCartanClass(std::ostream& strm, size_t cn,
-			       const Interface& CI)
-
-/*
-  Synopsis: prints information about the Cartan class #cn.
-*/
-
-{
-  using namespace basic_io;
-  using namespace cartan_io;
-  using namespace cartanset;
-  using namespace cartanclass;
-  using namespace complexredgp;
-  using namespace lietype;
-  using namespace prettyprint;
-  using namespace realform;
-  using namespace realform_io;
-  using namespace rootdata;
-
-  const ComplexReductiveGroup& G = CI.complexGroup();
-  const RootDatum& rd = G.rootDatum();
-
-  const CartanClass& cc = G.cartan(cn);
-
-  printTorusType(strm,cc.fiber().torus()) << std::endl;
-  strm << "twisted involution orbit size: " << cc.orbitSize() << std::endl;
-
-  // print type of imaginary root system
-  LieType ilt;
-  lieType(ilt,cc.simpleImaginary(),rd);
-
-  if (ilt.size() == 0)
-    strm << "imaginary root system is empty" << std::endl;
-  else
-    strm << "imaginary root system: " << ilt << std::endl;
-
-  // print type of real root system
-  LieType rlt;
-  lieType(rlt,cc.simpleReal(),rd);
-
-  if (rlt.size() == 0)
-    strm << "real root system is empty" << std::endl;
-  else
-    strm << "real root system: " << rlt << std::endl;
-
-  // print type of complex root system
-  LieType clt;
-  lieType(clt,cc.simpleComplex(),rd);
-
-  if (clt.size() == 0)
-    strm << "complex factor is empty" << std::endl;
-  else
-    strm << "complex factor: " << clt << std::endl;
-
-  RealFormList rfl(cc.numRealForms());
-  const realform_io::Interface& rfi = CI.realFormInterface();
-
-  for (size_t i = 0; i < rfl.size(); ++i)
-    rfl[i] = rfi.out(G.realFormLabels(cn)[i]);
-
-  printFiber(strm,cc.fiber(),rfl);
-
-  return strm;
-}
 
 std::ostream& printGradings(std::ostream& strm, size_t cn, const Interface& CI)
 

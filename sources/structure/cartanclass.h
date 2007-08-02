@@ -41,7 +41,7 @@ namespace cartanclass {
     (const rootdata::RootDatum&, const latticetypes::LatticeMatrix&);
 
   latticetypes::Weight
-    compactTwoRho(unsigned long, const Fiber&, const rootdata::RootDatum&);
+    compactTwoRho(AdjointFiberElt, const Fiber&, const rootdata::RootDatum&);
 
   gradings::Grading
     restrictGrading(const rootdata::RootSet&, const rootdata::RootList&);
@@ -56,7 +56,6 @@ namespace cartanclass {
 /******** type definitions ***************************************************/
 
 namespace cartanclass {
-
 
 // this class gathers information associated to a root datum involution
 class InvolutionData
@@ -264,7 +263,7 @@ class Fiber {
   /*!
   \brief Representative strong real form for each weak real form.
 
-  A StrongRealFormRep is a pair of unsigned long.  The second indexes
+  A StrongRealFormRep is a pair of numbers.  The second indexes
   the value of the square of the strong real form in
   Z^delta/[(1+delta)Z].  The first indexes a W_im orbit on the
   corresponding coset of the fiber group.
@@ -360,7 +359,7 @@ class Fiber {
 /*!
 \brief Cardinality of the adjoint fiber group.
 */
-  unsigned long adjointFiberSize() const {
+  size_t adjointFiberSize() const {
     return d_adjointFiberGroup.size();
   }
 
@@ -382,21 +381,21 @@ class Fiber {
   /*!
   \brief Cardinality of the fiber group: 2^dimension.
   */
-  unsigned long fiberSize() const {
+  size_t fiberSize() const {
     return d_fiberGroup.size();
   }
 
 
-  rootdata::RootSet compactRoots(unsigned long) const;
+  rootdata::RootSet compactRoots(AdjointFiberElt x) const;
 
-  rootdata::RootSet noncompactRoots(unsigned long) const;
+  rootdata::RootSet noncompactRoots(AdjointFiberElt x) const;
 
   /*!
   \brief grading associated to an adjoint fiber element
   */
-  gradings::Grading grading(unsigned long) const;
+  gradings::Grading grading(AdjointFiberElt x) const;
 
-  unsigned long gradingRep(const gradings::Grading&) const;
+  AdjointFiberElt gradingRep(const gradings::Grading&) const;
 
   const latticetypes::LatticeMatrix& involution() const;
 
@@ -422,13 +421,29 @@ class Fiber {
 
 /*!
   \brief Partition of the weak real forms according to the
-  corresponding classes in Z(G)/[(1+delta)Z(G)].
+  corresponding central square classes in Z(G)/[(1+delta)Z(G)].
 
   A weak real form (always containing our fixed real torus) is an
   orbit of W_i on the adjoint fiber group.
 */
   const partition::Partition& realFormPartition() const {
     return d_realFormPartition;
+  }
+
+/*!
+  \brief Returns the central square class to which a weak real form belongs.
+*/
+  square_class central_square_class (adjoint_fiber_orbit wrf) const
+  {
+    return square_class(d_realFormPartition(wrf));
+  }
+
+/*!
+  \brief Returns the base element for a central square class
+*/
+  AdjointFiberElt class_base(square_class c) const
+  {
+    return d_weakReal.classRep(d_realFormPartition.classRep(c));
   }
 
 /*!
@@ -469,31 +484,34 @@ class Fiber {
   Each of these c cosets is partitioned into W_i orbits; these orbits
   are described by the c partitions in d_strongReal.
 */
-  const partition::Partition& strongReal(size_t j) const {
+  const partition::Partition& strongReal(square_class j) const {
     return d_strongReal[j];
   }
 
 /*!
   \brief Representative strong real form for real form \#rf.
 
-  A StrongRealFormRep is a pair of unsigned long.  The second indexes
+  A StrongRealFormRep is a pair of numbers.  The second indexes
   the value of the square of the strong real form in
   Z^delta/[(1+delta)Z].  The first indexes a W_im orbit on the
   corresponding coset of the fiber group.
 */
-  const StrongRealFormRep& strongRepresentative(size_t rf) const {
-    return d_strongRealFormReps[rf];
+  const StrongRealFormRep& strongRepresentative(adjoint_fiber_orbit wrf) const
+  {
+    return d_strongRealFormReps[wrf];
   }
 
-/*!
+/*!\brief Natural linear map from fiber group to adjoint fiber group
 
+  This map is induced by the inclusion of the root lattice in the character
+  lattice
 */
-  unsigned long toAdjoint(unsigned long) const;
+  AdjointFiberElt toAdjoint(FiberElt) const;
 
-/*!
-
+/*!\brief Returns the class number in the weak real form partition of the
+  strong real form \#c in real form class \#rfc.
 */
-  unsigned long toWeakReal(unsigned long, size_t) const;
+  adjoint_fiber_orbit toWeakReal(fiber_orbit c, square_class csc) const;
 
 
 /*!
@@ -509,7 +527,7 @@ class Fiber {
 private:
 
 
-  latticetypes::SmallSubquotient computeFiberGroup() const;
+  latticetypes::SmallSubquotient makeFiberGroup() const;
 
   latticetypes::SmallSubquotient makeAdjointFiberGroup
     (const rootdata::RootDatum&) const;
@@ -726,13 +744,13 @@ public:
   }
 
 
-  bool isMostSplit(unsigned long) const;
+  bool isMostSplit(adjoint_fiber_orbit wrf) const;
 
   /*!
   \brief Number of weak real forms for the dual group containing the
   dual Cartan.
   */
-  unsigned long numDualRealForms() const {
+  size_t numDualRealForms() const {
     return d_dualFiber.numRealForms();
   }
   /*!
@@ -741,7 +759,7 @@ public:
   This is the number of orbits of the imaginary Weyl group on the
   adjoint fiber group.
   */
-  unsigned long numRealForms() const {
+  size_t numRealForms() const {
     return d_fiber.numRealForms();
   }
 
@@ -752,7 +770,7 @@ public:
   This is the number of classes in the partition of weak real forms
   according to Z^delta/[(1+delta)Z].
   */
-  unsigned long numRealFormClasses() const {
+  size_t numRealFormClasses() const {
     return d_fiber.realFormPartition().classCount();
   }
 
@@ -762,7 +780,7 @@ public:
   The number of distinct involutions defining the same stable conjugacy
   class of Cartan subgroups.
    */
-   unsigned long orbitSize() const {
+   size_t orbitSize() const {
     return d_orbitSize.toUlong();
   }
 
@@ -804,7 +822,7 @@ public:
   F. Each of these c cosets is partitioned into W_i orbits; these
   orbits are described by the c partitions in d_strongReal.
   */
-  const partition::Partition& strongReal(size_t j) const {
+  const partition::Partition& strongReal(square_class j) const {
     return d_fiber.strongReal(j);
   }
 
@@ -813,7 +831,7 @@ public:
 
   Precondition: x is a valid element in the fiber group.
   */
-  unsigned long toAdjoint(unsigned long x) const {
+  AdjointFiberElt toAdjoint(FiberElt x) const {
     return d_fiber.toAdjoint(x);
   }
 
@@ -829,7 +847,7 @@ public:
   rfc. The integer c labels an orbit of W_i on this fiber group coset;
   this orbit is the equivalence class of strong real forms.
   */
-  unsigned long toWeakReal(unsigned long c, size_t j) const {
+  adjoint_fiber_orbit toWeakReal(fiber_orbit c, square_class j) const {
     return d_fiber.toWeakReal(c,j);
   }
 

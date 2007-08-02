@@ -1,8 +1,8 @@
 /*
   This is cartan_io.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -12,6 +12,7 @@
 
 #include <iosfwd>
 
+#include "complexredgp_io_fwd.h"
 #include "cartanclass_fwd.h"
 #include "rootdata_fwd.h"
 
@@ -22,6 +23,9 @@
 namespace atlas {
 
 namespace cartan_io {
+
+std::ostream&
+printCartanClass(std::ostream&, size_t, const complexredgp_io::Interface&);
 
 std::ostream& printFiber(std::ostream&, const cartanclass::Fiber&,
 			 const realform::RealFormList&);
