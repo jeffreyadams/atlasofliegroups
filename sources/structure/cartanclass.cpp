@@ -167,16 +167,17 @@ void CartanClass::swap(CartanClass& other)
   Algorithm: this is the case iff the grading corresponding to wrf is trivial,
   i.e., all imaginary roots are compact. In this case it does not matter which
   representative fiber element |x| is chosen, since the action of the
-  imaginary Weyl group obviously stabilises the trivial grading; in fact there
-  will be only one such representative by injectivity of the map from the
-  adjoint fiber to gradings.
+  imaginary Weyl group obviously stabilises the trivial grading. [In fact
+  there should be only one such representative by injectivity of the map from
+  the adjoint fiber to gradings, as given by the assert statement below. MvL]
 */
 bool CartanClass::isMostSplit(adjoint_fiber_orbit wrf) const
 {
   AdjointFiberElt x = fiber().weakReal().classRep(wrf);
-  assert(fiber().weakReal().classSize(wrf)==1);
 
   gradings::Grading gr= fiber().grading(x);
+
+  assert(gr.any() or fiber().weakReal().classSize(wrf)==1);
 
   return gr.none();
 }
