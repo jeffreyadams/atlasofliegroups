@@ -1,4 +1,4 @@
-/*
+ /*
   This is kgb_io.h
   
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -21,6 +21,7 @@ namespace atlas {
 namespace kgb_io {
 
   std::ostream& printKGB(std::ostream&, const kgb::KGB&);
+  std::ostream& printKGBOrder(std::ostream&, const kgb::KGB&);
 
 }
 
