@@ -11,8 +11,10 @@
 #include <iostream>
 #include <sstream>
 
+#include "bitmap.h"
 #include "block_io.h"
-
+#include "bruhat.h"
+#include "set.h"
 #include "ioutils.h"
 #include "blocks.h"
 #include "descents.h"
@@ -143,6 +145,7 @@ std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
   int xwidth = ioutils::digits(block.xsize()-1,10ul);
   int ywidth = ioutils::digits(block.ysize()-1,10ul);
   int lwidth = ioutils::digits(block.length(block.size()-1),10ul);
+
   const int pad = 2;
 
   for (size_t j = 0; j < block.size(); ++j) {
@@ -195,6 +198,44 @@ std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
 
   return strm;
 }
+
+
+std::ostream& printBlockOrder(std::ostream& strm, const blocks::Block& block)
+
+/*
+  Synopsis: outputs the Hasse diagram of the Bruhat ordering on block to strm.
+
+*/
+
+{
+  using namespace basic_io;
+  using namespace bruhat;
+  using namespace blocks;
+  using namespace set;
+  // using namespace poset;
+
+  const bruhat::BruhatOrder& bruhat = block.bruhatOrder();
+  size_t blocksize = block.size();
+  const poset::SymmetricPoset& poset = bruhat.poset();
+  const bitmap::BitMap& row = poset.row(0);
+  size_t pairs = row.size();
+  strm << "0:" << std::endl;
+  for (size_t j = 1; j < blocksize; ++j) {
+    const SetEltList& e = bruhat.hasse(j);
+    const bitmap::BitMap& row = poset.row(j);
+    pairs += row.size();
+    //   if (e.empty())
+    //     continue;
+    strm << j << ": ";
+    SetEltList::const_iterator first = e.begin();
+    SetEltList::const_iterator last = e.end();
+    seqPrint(strm,first,last) << std::endl;
+  }
+  pairs = (pairs + blocksize)/2;
+    strm << "Number of comparable pairs = " << pairs << std::endl;
+
+  return strm;
+} //printBlockOrder
 
 std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
 
