@@ -879,7 +879,12 @@ void makeHasse(std::vector<set::SetEltList>& hd, const Block& block)
   \brief Puts in hd the hasse diagram data for the Bruhat
   ordering on the block.
 
-  Explanation: we use the algorithm from Vogan's 1982 Park City notes.
+  Explanation: we use the algorithm from Vogan's 1982 Park City notes, 
+...which used a bad definition.  Now modified to work like kgb
+makeHasse: seek an ascent s that is complex or type I real.  If it
+exists, use it as in kgb.  If it doesn't then we're essentially at a
+split principal series.  The immediate predecessors of z are just the
+inverse Cayley transforms.
 */
 
 {
@@ -903,12 +908,12 @@ void makeHasse(std::vector<set::SetEltList>& hd, const Block& block)
 	  sz.first = block.cross(s,z);
 	  sz.second = UndefBlock;
 	  h_z.insert(sz.first);
-	  break;
+	  continue;
 	case DescentStatus::RealTypeI: // cayley(s,z) is two-valued
 	  sz = block.inverseCayley(s,z);
 	  h_z.insert(sz.first);
 	  h_z.insert(sz.second);
-	  break;
+	  continue;
 	case DescentStatus::RealTypeII: // cayley(s,z) is single-valued
 	  sz.first = block.inverseCayley(s,z).first;
 	  sz.second = UndefBlock;
@@ -917,14 +922,7 @@ void makeHasse(std::vector<set::SetEltList>& hd, const Block& block)
 	default: // this cannot happen!
 	  break;
 	}
-
-	insertAscents(h_z,hd[sz.first],s,block);
-
-	if (sz.second != UndefBlock) {
-	  insertAscents(h_z,hd[sz.second],s,block);
 	}
-      }
-
     std::copy(h_z.begin(),h_z.end(),std::back_inserter(hd[z]));
 
   }
