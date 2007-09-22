@@ -85,6 +85,7 @@ namespace {
   void posroots_rootbasis_f();
   void roots_rootbasis_f();
   void rootdatum_f();
+  void kgborder_f();
   void primkl_f();
   void kgb_f();
   void block_f();
@@ -92,6 +93,7 @@ namespace {
   void dual_block_f();
   void dual_map_f();
   void blockd_f();
+  void blockorder_f();
   void blocku_f();
   void blockstabilizer_f();
   void klbasis_f();
@@ -108,8 +110,10 @@ namespace {
 
   void block_h();
   void blockd_h();
+  void blockorder_h();
   void blocku_h();
   void cmatrix_h();
+  void kgborder_h();
   void primkl_h();
   void kgb_h();
   void klbasis_h();
@@ -234,10 +238,12 @@ void addTestCommands<realmode::RealmodeTag>
 
   mode.add("block",block_f);
   mode.add("blockd",blockd_f);
+  mode.add("blockorder",blockorder_f);
   mode.add("blocku",blocku_f);
   mode.add("blockstabilizer",blockstabilizer_f);
   mode.add("components",components_f);
   mode.add("corder",corder_f);
+  mode.add("kgborder",kgborder_f);
   mode.add("primkl",primkl_f);
   mode.add("kgb",kgb_f);
   mode.add("dualblock",dual_block_f);
@@ -358,10 +364,12 @@ template<> void addTestHelp<realmode::RealmodeTag>
 
   mode.add("block",block_h);
   mode.add("blockd",blockd_h);
+  mode.add("blockorder",blockorder_h);
   mode.add("blocku",blocku_h);
   mode.add("blockstabilizer",nohelp_h);
   mode.add("components",nohelp_h);
   mode.add("corder",nohelp_h);
+  mode.add("kgborder",kgborder_h);
   mode.add("primkl",primkl_h);
   mode.add("involution",nohelp_h);
   mode.add("kgb",kgb_h);
@@ -377,10 +385,12 @@ template<> void addTestHelp<realmode::RealmodeTag>
   // add additional command tags here:
   insertTag(t,"block",block_tag);
   insertTag(t,"blockd",test_tag);
+  insertTag(t,"blockorder",test_tag);
   insertTag(t,"blocku",blocku_tag);
   insertTag(t,"blockstabilizer",test_tag);
   insertTag(t,"components",test_tag);
   insertTag(t,"corder",test_tag);
+  insertTag(t,"kgborder",test_tag);
   insertTag(t,"primkl",test_tag);
   insertTag(t,"involution",test_tag);
   insertTag(t,"kgb",kgb_tag);
@@ -409,6 +419,12 @@ void blockd_h()
   io::printFile(std::cerr,"blockd.help",io::MESSAGE_DIR);
 }
 
+void blockorder_h()
+
+{
+  io::printFile(std::cerr,"blockorder.help",io::MESSAGE_DIR);
+}
+
 void blocku_h()
 
 {
@@ -419,6 +435,12 @@ void cmatrix_h()
 
 {
   io::printFile(std::cerr,"cmatrix.help",io::MESSAGE_DIR);
+}
+
+void kgborder_h()
+
+{
+  io::printFile(std::cerr,"kgborder.help",io::MESSAGE_DIR);
 }
 
 void primkl_h()
@@ -580,6 +602,62 @@ void blockd_f()
     e("aborted");
   }
 
+}
+
+
+void blockorder_f()
+
+/*
+  Synopsis: prints the Hasse diagram for the Bruhat order on the block
+  of Harish-Chandra modules corresponding to a given real form and
+  dual real form. 
+*/
+
+{
+  using namespace block_io;
+  using namespace blocks;
+  using namespace commands;
+  using namespace error;
+  using namespace interactive;
+  using namespace ioutils;
+  using namespace realform;
+  using namespace realmode;
+  using namespace realredgp;
+  using namespace tags;
+
+  RealReductiveGroup& G_R = currentRealGroup();
+
+  try {
+    G_R.fillCartan();
+  }
+  catch (MemoryOverflow& e) {
+    e("error: memory overflow");
+    return;
+  }
+
+  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  const realredgp_io::Interface& G_RI = currentRealInterface();
+  const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+
+  // get dual real form
+  RealForm drf;
+
+  try {
+    getInteractive(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),DualTag());
+  }
+  catch (InputError& e) {
+    e("aborted");
+    return;
+  }
+
+  Block block(G_C,G_R.realForm(),drf);
+
+ std::cout << "block size: " << block.size() << std::endl;
+  OutputFile file;
+  block.fillBruhat();
+  printBlockOrder(file,block);
+
+  return;
 }
 
 void blocku_f()
@@ -762,6 +840,31 @@ void corder_f()
     e("error: memory overflow");
   }
 
+}
+
+void kgborder_f()
+
+/*
+  Synopsis: prints the Hasse diagram of the ordering of K orbits on G/B.
+*/
+{
+  using namespace basic_io;
+  using namespace kgb;
+  using namespace kgb_io;
+  using namespace realmode;
+  using namespace realredgp;
+
+  RealReductiveGroup& G = currentRealGroup();
+  G.fillCartan();
+
+  std::cout << "kgbsize: " << G.kgbSize() << std::endl;
+   ioutils::OutputFile file;
+
+  KGB kgb(G);
+  kgb.fillBruhat();
+  printKGBOrder(file,kgb);
+
+  return;
 }
 
 void primkl_f()
