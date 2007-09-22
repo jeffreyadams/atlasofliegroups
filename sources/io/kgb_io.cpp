@@ -10,11 +10,13 @@
 #include <iomanip>
 #include <iostream>
 
+#include "bruhat.h"
 #include "kgb_io.h"
 
 #include "ioutils.h"
 #include "kgb.h"
 #include "prettyprint.h"
+#include "set.h"
 
 /*****************************************************************************
 
@@ -95,6 +97,43 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
   return strm;
 }
 
-}
+  std::ostream& printKGBOrder(std::ostream& strm, const kgb::KGB& kgb)
 
-}
+/*
+  Synopsis: outputs the Hasse diagram of the closure ordering on kgb to strm.
+
+*/
+
+{
+  using namespace basic_io;
+  using namespace bruhat;
+  using namespace kgb;
+  using namespace set;
+  // using namespace poset;
+
+  const bruhat::BruhatOrder& bruhat = kgb.bruhatOrder();
+  size_t kgbsize = kgb.size();
+  const poset::SymmetricPoset& poset = bruhat.poset();
+  const bitmap::BitMap& row = poset.row(0);
+  size_t pairs = row.size();
+  strm << "0:" << std::endl;
+  for (size_t j = 1; j < kgbsize; ++j) {
+    const SetEltList& e = bruhat.hasse(j);
+    const bitmap::BitMap& row = poset.row(j);
+    pairs += row.size();
+    //   if (e.empty())
+    //     continue;
+    strm << j << ": ";
+    SetEltList::const_iterator first = e.begin();
+    SetEltList::const_iterator last = e.end();
+    seqPrint(strm,first,last) << std::endl;
+  }
+  pairs = (pairs + kgbsize)/2;
+    strm << "Number of comparable pairs = " << pairs << std::endl;
+
+  return strm;
+} //printKGBOrder 
+
+} //namespace kgb_io {
+
+} //namespace atlas {
