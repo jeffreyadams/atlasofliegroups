@@ -908,11 +908,13 @@ inverse Cayley transforms.
 	  sz.first = block.cross(s,z);
 	  sz.second = UndefBlock;
 	  h_z.insert(sz.first);
+	  insertAscents(h_z,hd[sz.first],s,block);
 	  continue;
-	case DescentStatus::RealTypeI: // cayley(s,z) is two-valued
+	case DescentStatus::RealTypeI: // inverseCayley(s,z) is two-valued
 	  sz = block.inverseCayley(s,z);
 	  h_z.insert(sz.first);
 	  h_z.insert(sz.second);
+	  insertAscents(h_z,hd[sz.first],s,block);
 	  continue;
 	case DescentStatus::RealTypeII: // cayley(s,z) is single-valued
 	  sz.first = block.inverseCayley(s,z).first;
