@@ -590,8 +590,9 @@ void KGBHelp::crossExtend(KGBElt parent)
       d_info.push_back(d_info[parent].length+(same_fiber ? 0 : 1));
     }
 
-    // set descent |s| for |x| (whether it was new or old)
-    d_info[x].desc.set(s,d_info[parent].length < d_info[x].length);
+    // set descent direction of complex |s| for |x| (whether it was new or old)
+    if (d_info[parent].length!=d_info[x].length)
+      d_info[x].desc.set(s,d_info[parent].length < d_info[x].length);
 
     // add new cross-links (with harmless redundancy if |parent==x|)
     d_cross[s][parent] = x;
