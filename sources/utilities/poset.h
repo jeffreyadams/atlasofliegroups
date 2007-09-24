@@ -19,21 +19,19 @@
 #include "bitmap.h"
 #include "graph.h"
 
-/******** type definitions **************************************************/
-
 namespace atlas {
 
 namespace poset {
 
+
+
+/******** type definitions **************************************************/
+
   /*!
 \brief Represents a poset by the matrix of order relations.
 
-DV: I do not know whether the poset order is assumed compatible with the
-integer order (as it is in SymmetricPoset).
-
-MvL: Indeed, the simpleminded implementation of the basic method findMaximals
-shows that only posets compatible with the integral order (i<j in the poset
-implies i<j as integers) can be modelled by this class.
+  It is required that the ordering be compatible with the natural ordering
+  on integers.
 
   */
 class Poset {
@@ -43,26 +41,33 @@ class Poset {
   /*!
 \brief Matrix of order relations.
 
-Bit i of d_closure[j] is set if and only if i is less than or equal to j in
-the poset. In other words, viewed as a set of integers, d_closure[j]
-represents the downwards closure in the poset of the singleton {j}.
+Bit i of d_below[j] is set if and only if |i| is less than |j| in the poset.
+In other words, viewed as a set of integers, d_below[j]union{j} represents the
+downwards closure in the poset of the singleton {j}.
+
+By the assumption on the poset structure, the capacity of |d_below[j]| need
+only be |j|.
   */
-std::vector<bitmap::BitMap> d_closure;
+std::vector<bitmap::BitMap> d_below;
 
  public:
 
 // constructors and destructors
-  Poset() {}
+  Poset() : d_below() {}
 
-  explicit Poset(size_t n);
+  explicit Poset(size_t n); // poset without any (nontrivial) comparabilities
 
-  explicit Poset(const std::vector<Link>&);
+  //! \brief Build Poset from its Hasse diagram
+  explicit Poset(const std::vector<set::SetEltList>& hasse);
+
+  //! \brief Build Poset from arbitrary list of links
+  Poset(size_t n,const std::vector<Link>&);
 
   ~Poset() {}
 
 // swap
   void swap(Poset& other) {
-    d_closure.swap(other.d_closure);
+    d_below.swap(other.d_below);
   }
 
 // accessors
@@ -72,16 +77,20 @@ std::vector<bitmap::BitMap> d_closure;
   */
 
   bool lesseq(set::SetElt i, set::SetElt j) const{
-    return d_closure[j].isMember(i);
+    return i<j ? d_below[j].isMember(i) : i==j;
   }
 
+  //! \brief Number of comparable pairs (including those on the diagonal)
+  unsigned long Poset::n_comparable() const;
+
   void findMaximals(set::SetEltList&, const bitmap::BitMap&) const;
+  set::SetEltList minima(const bitmap::BitMap&) const;
 
   /*!
 \brief Size of the poset.
   */
   size_t size() const {
-    return d_closure.size();
+    return d_below.size();
   }
 
   void hasseDiagram(graph::OrientedGraph&) const;
@@ -92,7 +101,7 @@ std::vector<bitmap::BitMap> d_closure;
   void resize(unsigned long);
 
   void extend(const std::vector<Link>&);
-};
+}; // class Poset
 
 /*!
 \brief Represents a poset by the symmetrization of the order relation
@@ -151,7 +160,14 @@ greater than j in the poset.
   }
 
 // manipulators
-};
+}; // class SymmetricPoset
+
+
+/* ********************** Function(s) *****************************/
+
+// memory-efficient version of |Poset(hasse).n_comparable()|
+unsigned long n_comparable_from_Hasse
+  (const std::vector<set::SetEltList>& hasse);
 
 }
 

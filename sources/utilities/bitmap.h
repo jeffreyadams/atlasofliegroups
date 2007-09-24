@@ -81,11 +81,19 @@ namespace bitmap {
     iterator pos(unsigned long) const;
 
 // constructors and destructors
-    BitMap() {}
+    BitMap() : d_map(), d_capacity(0) {}
 
-    explicit BitMap(unsigned long n);
+   /*! \brief
+       Constructs a zero-initialized bitmap with a capacity of n bits.
 
-    BitMap(const BitMap& b):d_map(b.d_map),d_capacity(b.d_capacity) {}
+      Notice that the size of the vector |d_map| exceeds |n >> baseShift| by
+      one unless |longBits| exactly divides |n|.
+   */
+    explicit BitMap(unsigned long n)
+      : d_map((n+posBits)>>baseShift,0), d_capacity(n)
+      {}
+
+    BitMap(const BitMap& b) : d_map(b.d_map), d_capacity(b.d_capacity) {}
 
     template <typename I, typename J>
       BitMap(const I&, const I&, const J&, const J&);
@@ -104,7 +112,9 @@ namespace bitmap {
       return (d_map == b.d_map);
     }
 
-    unsigned long back() const;
+    // decrement |n| (at least once) until it points to a member
+    // return value indicates whether this succeeded
+    bool back_up(unsigned long& n) const;
 
     /*!
     Number of bits in use in the bitmap. This is the capacity
@@ -143,15 +153,17 @@ namespace bitmap {
     size_type size() const; // the number of bits that are set in the bitmap
 
 // manipulators
+
+    // WARNING: the following looks like an accessor, but complements |*this|
     BitMap& operator~ ();
 
-    BitMap& operator&= (const BitMap&);
+    bool operator&= (const BitMap&);
 
     BitMap& operator|= (const BitMap&);
 
     BitMap& operator^= (const BitMap&);
 
-    BitMap& andnot(const BitMap&);
+    bool andnot(const BitMap&);
 
     void fill();
 
@@ -188,13 +200,17 @@ namespace bitmap {
     template<typename I>
       void insert(const I&, const I&);
 
+    // the first argument is ignored, just serves to get overloading OK
     iterator insert(iterator, unsigned long n);
 
+    // clear all bits, but do not change the capacity
     void reset() {
       d_map.assign(d_map.size(),0ul);
     }
 
-    void resize(unsigned long n);
+    // this was called |resize|, but sets |capacity()|, whence the new name
+    void set_capacity(unsigned long n);
+    void resize(unsigned long n) { set_capacity(n); } // temp. compatibilty
 
     void setRange(unsigned long, unsigned long, unsigned long);
 

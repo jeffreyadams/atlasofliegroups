@@ -1,8 +1,8 @@
 /*
   This is abelian.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -53,7 +53,7 @@ FiniteAbelianGroup::FiniteAbelianGroup(const std::vector<unsigned long>& t)
 
 /******** type conversions ***************************************************/
 
-void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, const GrpArr& a) 
+void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, const GrpArr& a)
   const
 
 /*!
@@ -78,7 +78,7 @@ void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, GrpNbr x) const
   in all cases, as the coefficients of v will be signed quantities.
 */
 
-{    
+{
   const GroupType& t = type();
 
   for (size_t j = 0; j < rank(); ++j) {
@@ -130,7 +130,7 @@ GrpNbr FiniteAbelianGroup::add(GrpNbr x, const GrpArr& b) const
 /*!
   Synopsis: x += b.
 
-  The main problem is to deal with the modular addition, so that the overflow 
+  The main problem is to deal with the modular addition, so that the overflow
   is handled correctly.
 */
 
@@ -147,7 +147,7 @@ GrpNbr FiniteAbelianGroup::add(GrpNbr x, GrpNbr y) const
 /*!
   Synopsis: x += y.
 
-  The main problem is to deal with the modular addition, so that the overflow 
+  The main problem is to deal with the modular addition, so that the overflow
   is handled correctly.
 */
 
@@ -245,7 +245,7 @@ unsigned long FiniteAbelianGroup::order(GrpNbr x) const
   return n;
 }
 
-unsigned long FiniteAbelianGroup::order(const bitmap::BitMap& B, 
+unsigned long FiniteAbelianGroup::order(const bitmap::BitMap& B,
 					GrpNbr x) const
 
 /*!
@@ -271,12 +271,12 @@ unsigned long FiniteAbelianGroup::order(const bitmap::BitMap& B,
   return n;
 }
 
-unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b) 
+unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b)
   const
 
 /*!
-  Synopsis: computes the m in [0,n[ s.t. a(b) = e^{2i pi m/n}, where a is 
-  interpreted as an element of the dual group, b as an element of the group, 
+  Synopsis: computes the m in [0,n[ s.t. a(b) = e^{2i pi m/n}, where a is
+  interpreted as an element of the dual group, b as an element of the group,
   and n is the annihilator of the group (the last entry in d_type).
 
   NOTE: this is a sloppy implementation, that doesn't deal carefully with
@@ -295,11 +295,11 @@ unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b)
 }
 
 unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b,
-					  unsigned long t) 
+					  unsigned long t)
   const
 
 /*!
-  Synopsis: computes the m in [0,t[ s.t. a(b) = e^{2i pi m/t}, where a is 
+  Synopsis: computes the m in [0,t[ s.t. a(b) = e^{2i pi m/t}, where a is
   interpreted as an element of the dual group, b as an element of the group.
 
   Precondition: pairing(a,b) is an element of t-torsion in Z/n, where n is
@@ -342,8 +342,8 @@ GrpNbr FiniteAbelianGroup::prod(GrpNbr x, unsigned long n) const
     ;
 
   GrpNbr y = x; // save the original value of x
-    
-  for (unsigned long j = n >> 1; j; j >>= 1) 
+
+  for (unsigned long j = n >> 1; j; j >>= 1)
     {
       p <<= 1;
       x = add(x,x);
@@ -385,7 +385,7 @@ GrpArr& FiniteAbelianGroup::subtract(GrpArr& a, const GrpArr& b) const
   to a group of type d_dest, where the elements are represented as arrays.
 
   As we know, for such a homomorphism to be well defined, the matrix entry
-  (i,j) should be a multiple of d_dest[i]/g, with g = 
+  (i,j) should be a multiple of d_dest[i]/g, with g =
   gcd(d_dest[i],d_source[j]).
 
   Here we take a different approach. We set M a common multiple of the
@@ -404,7 +404,7 @@ namespace abelian {
 
 /******** constructors and destructors ***************************************/
 
-Homomorphism::Homomorphism(const std::vector<GrpArr>& al, 
+Homomorphism::Homomorphism(const std::vector<GrpArr>& al,
 			   const GroupType& source, const GroupType& dest)
   :d_source(source),
    d_dest(dest),
@@ -501,7 +501,7 @@ bool Homomorphism::defined(const GrpArr& a) const
   This means that a satisfies the congruences stated in the apply function.
 */
 
-{  
+{
   for (size_t i = 0; i < d_dest.size(); ++i) {
     unsigned long b = 0;
     for (size_t j = 0; j < a.size(); ++j) {
@@ -525,7 +525,7 @@ bool Homomorphism::defined(GrpNbr x) const
 {
   GrpArr a(d_source.size());
   toArray(a,x,d_source);
-  
+
   return defined(a);
 }
 
@@ -542,23 +542,23 @@ bool Homomorphism::defined(GrpNbr x) const
 namespace abelian {
 
 void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
-	   const FiniteAbelianGroup& A) 
+	   const FiniteAbelianGroup& A)
 
 /*!
   Synopsis: writes A/B in canonical form.
 
-  Explanation: we see the current group A as a quotient of Z^d, where d is 
-  the rank of A, and the generators of the kernel are given by d_type. Then we 
+  Explanation: we see the current group A as a quotient of Z^d, where d is
+  the rank of A, and the generators of the kernel are given by d_type. Then we
   wish to write the quotient A/B in canonical form (i.e., as a product of
-  cyclic groups with cardinalities dividing each other.) For this, we put in b 
+  cyclic groups with cardinalities dividing each other.) For this, we put in b
   a scaled Smith normal basis for the inverse image of B in Z^d.
 
-  Note that A is not necessarily in canonical form, so even when B is the 
-  trivial subgroup this might yield a basis rather different from the kernel 
+  Note that A is not necessarily in canonical form, so even when B is the
+  trivial subgroup this might yield a basis rather different from the kernel
   basis.
 */
 
-{  
+{
   using namespace bitmap;
   using namespace latticetypes;
   using namespace matrix;
@@ -648,7 +648,7 @@ const bitmap::BitMap& cycGenerators(const FiniteAbelianGroup& A)
 
   if (Astat.type() != A.type()) { // update cyc
 
-    cyc.resize(A.size());
+    cyc.set_capacity(A.size());
     cyc.fill();
     BitMap::iterator cyc_end = cyc.end();
 
@@ -724,10 +724,10 @@ bool isElementaryAbelian(const std::vector<unsigned long>& c)
 }
 
 void quotReps(bitmap::BitMap& qr, const bitmap::BitMap& B,
-	      const FiniteAbelianGroup& A) 
+	      const FiniteAbelianGroup& A)
 
 /*!
-  Synopsis: puts in qr a list of representatives of the cosets modulo B. 
+  Synopsis: puts in qr a list of representatives of the cosets modulo B.
 
   Precondition: qr.size() = A.size();
 
@@ -765,7 +765,7 @@ void toArray(GrpArr& a, GrpNbr x, const GroupType& t)
   of x in the variable base defined by type.
 */
 
-{    
+{
   for (size_t j = 0; j < a.size(); ++j) {
     a[j] = x % t[j];
     x /= t[j];
@@ -816,7 +816,7 @@ void toEndomorphism(Endomorphism& e, const latticetypes::LatticeMatrix& q,
   for (size_t j = 0; j < q.numColumns(); ++j)
     for (size_t i = 0; i < q.numRows(); ++i)
       e(i,j) = remainder(q(i,j),A.type()[i]);
-     
+
   return;
 }
 
@@ -828,7 +828,7 @@ GrpNbr toGrpNbr(const GrpArr& a, const GroupType& t)
   Precondition: a is representable as a GrpNbr;
 */
 
-{    
+{
   GrpNbr x = 0;
 
   for (size_t j = a.size(); j;) {

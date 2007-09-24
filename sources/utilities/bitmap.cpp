@@ -11,6 +11,8 @@
 
 #include "bits.h"
 
+#include <cassert>
+
 /*!****************************************************************************
 \file
   \brief Contains the implementation of the BitMap class.
@@ -77,16 +79,6 @@ namespace bitmap {
 /******** constructors and destructors ***************************************/
 
 
-
-/*!
-  Constructs a zero-initialized bitmap with a capacity of n bits. Notice
-  that the size of the vector d_map is n >> baseShift + 1, except when
-  longBits exactly divides n; this is achieved by adding posBits==longBits-1.
-*/
-BitMap::BitMap(unsigned long n)
-  :d_map((n+posBits)>>baseShift,0),d_capacity(n)
-{}
-
 /******** assignment *********************************************************/
 
 BitMap& BitMap::operator= (const BitMap& a)
@@ -100,38 +92,32 @@ BitMap& BitMap::operator= (const BitMap& a)
 
 /*!******* range bounds *******************************************************/
 
-BitMap::iterator BitMap::begin() const
-
 /*!
   Returns an iterator pointing to the first set bit in the bitmap.
+
+  If the bitset is empty, this is will be equal to |end()|.
 */
-
+BitMap::iterator BitMap::begin() const
 {
-  unsigned long n = front();
-  unsigned long base = n >> baseShift;
-
-  return iterator(d_map.begin()+base,n,d_capacity);
+  return pos(front());
 }
 
-BitMap::iterator BitMap::end() const
-
 /*!
-  Synopsis: returns the past-the-end iterator for the bitmap.
-  Note that only the middle argument (d_capacity) is of importance, since the
-  only thing one can meaningfully do with end() is test for (in)equality.
-  The operator ++ below does not in fact advance to d_chunk==d_map.end() !
-*/
+  \brief returns the past-the-end iterator for the bitmap.
 
+  Note that only the middle argument |d_capacity| is of any importance, since
+  the only thing one can meaningfully do with end() is test for (in)equality.
+  The operator |++| below does not in fact advance to |d_chunk==d_map.end()|!
+*/
+BitMap::iterator BitMap::end() const
 {
   return iterator(d_map.end(),d_capacity,d_capacity);
 }
 
-BitMap::iterator BitMap::pos(unsigned long n) const
-
 /*!
   Synopsis: returns an iterator with bit-address n.
 */
-
+BitMap::iterator BitMap::pos(unsigned long n) const
 {
   unsigned long base = n >> baseShift;
   return iterator(d_map.begin()+base,n,d_capacity);
@@ -139,114 +125,96 @@ BitMap::iterator BitMap::pos(unsigned long n) const
 
 /******** accessors **********************************************************/
 
-unsigned long BitMap::back() const
 
 /*!
-  Synopsis: returns the address of the last member of the bitmap plus one,
-  0 if there is no such bit (consistent with first, as a reverse iterator.)
+  Synopsis: decrements |n| until it points to a member of the bitset,
+  or if none is found returns |false| (in which case |n| is unchanged)
 */
-
+bool BitMap::back_up(unsigned long& n) const
 {
-  using namespace bits;
-  using namespace constants;
+  unsigned int i=n>>baseShift;
+  unsigned int m=(n&posBits)==0 ? 0 : d_map[i]&constants::lMask[n&posBits];
 
-  if (empty())
-    return 0;
+  while(m==0 and i>0)
+    m=d_map[--i];
 
-  size_t b = d_map.size();
+  if (m==0) return false;
+  n = (i<<baseShift)+bits::lastBit(m)-1; // since |lastBit| overshoots by 1
 
-  for (; b;) {
-    --b;
-    if (d_map[b])
-      break;
-  }
-
-  unsigned long n = b*longBits;
-  n += lastBit(d_map[b]);
-
-  return n;
+  return true;
 }
 
 bool BitMap::contains(const BitMap& b) const
 
 /*!
-  Tells whether the current bitmap contains b. It is assumed that both have
-  the same capacity. It amounts to checking that b andnot this is empty.
+  Tells whether the current bitmap contains |b|. It is assumed that
+  |b.capacity()<=capacity()|.
+
+  This would amount to |b.andnot(*this).empty()| if |b| were by-value rather
+  than reference, and if capacities were equal.
 */
 
 {
-  for (unsigned long j = 0; j < d_map.size(); ++j)
-    if (b.d_map[j] & ~d_map[j])
+  assert(b.capacity()<=capacity());
+
+  for (unsigned long j = 0; j < b.d_map.size(); ++j)
+    if ((b.d_map[j] & ~d_map[j])!=0)
       return false;
 
   return true;
 }
 
-bool BitMap::empty() const
 
 /*!
   Tells whether the bitmap is empty. Thanks to our convention of zeroing
   unused bits, it is enough to check whether all the components of d_map
   are zero.
 */
-
+bool BitMap::empty() const
 {
   for (unsigned long j = 0; j < d_map.size(); ++j)
-    if (d_map[j])
+    if (d_map[j]!=0)
       return false;
 
   return true;
 }
 
-unsigned long BitMap::front() const
 
 /*!
   Synopsis: returns the address of the first member (set bit) of the bitmap,
-  or past-the-end indicator d_capacity if there is no such.
+  or past-the-end indicator |d_capacity| if there is no such.
 */
-
+unsigned long BitMap::front() const
 {
-  using namespace bits;
-  using namespace constants;
-
-  if (empty())
-    return d_capacity;
-
   size_t b = 0;
-
   for (; b < d_map.size(); ++b)
     if (d_map[b]!=0) break;
 
-  unsigned long n = b*longBits;
-  n += firstBit(d_map[b]);
-
-  return n;
+  if (b==d_map.size()) // then all bits were clear
+    return d_capacity;
+  else
+    return b*constants::longBits + bits::firstBit(d_map[b]);
 }
-
-bool BitMap::full() const
 
 /*!
   Tells whether the bitmap is full. This means that all blocks are full,
   except maybe for the last one where we have to look only at the significant
   part.
 */
-
+bool BitMap::full() const
 {
-  if (d_capacity == 0)
-    return true;
-
-  /* If nonempty, test final block. There should be excatly n bits set (in
-     other words the value should be lMask[n]), where n is congruent to
-     d_capacity modulo longBits and 1<=n<=longBits; this can be written
-     n=(d_capacity-1)%longBits+1. Fokko uses equivalently: leqMask[n-1]
+  /* Test final block if partial. There should be exactly |n| bits set (in
+     other words the value should be |lMask[n]|), where |n>0| is congruent to
+     |d_capacity%longBits|. Fokko had used |leqMask[(d_capacity-1)&posBits]|,
+     but needed an exception for |d_capacity==0|.
    */
-  if (d_map[d_map.size()-1] != constants::leqMask[(d_capacity-1)&posBits])
+  if ((d_capacity&posBits)!=0
+      and d_map.back()!=constants::lMask[d_capacity&posBits])
     return false;
 
-  if (d_map.size() > 1)
-    for (unsigned long j = 0; j < d_map.size()-1; ++j)
-      if (~d_map[j])
-	return false;
+  for (unsigned long j = (d_capacity>>baseShift); j-->0; )
+    if (~d_map[j]!=0)
+      return false;
 
   return true;
 }
@@ -299,60 +267,56 @@ unsigned long BitMap::n_th(unsigned long i) const
   return pos;
 }
 
-unsigned long BitMap::position(unsigned long n) const
-
 /*!
   Synopsis: returns the number of set bits in positions < n; viewing a bitset
   b as a container of unsigned long, this is the number of values < n that b
   contains. If n itself is a member of b, then n==b.n_th(b.position(n)).
 */
-
+unsigned long BitMap::position(unsigned long n) const
 {
-  using namespace bits;
-  using namespace constants;
-
   unsigned long p = 0;
   unsigned long b = n >> baseShift;
 
   for (size_t j = 0; j < b; ++j)
-    p += bitCount(d_map[j]);
+    p += bits::bitCount(d_map[j]);
 
-  unsigned long f = d_map[b] & lMask[n&posBits];
-  p += bitCount(f);
+  if ((n&posBits)!=0)
+    p += bits::bitCount(d_map[b] & constants::lMask[n&posBits]);
 
   return p;
 }
 
-unsigned long BitMap::range(unsigned long n, unsigned long r) const
 
 /*!
   Synopsis: returns r bits from position n.
 
   Precondition: r divides longBits, and n is a multiple of r.
 
-  Thus the bits extracted our found in single element of d_map, and such
+  Thus the bits extracted are found in single element of d_map, and such
   elements define an integral number of disjoint ranges
 
-  It is required that n<size(), but not that n+r<=size(); the last range is
-  padded out with zero bits.
+  It is required that |n<capacity()|, but not that |n+r<=capacity()|; if the
+  latter fails, the return value is padded out with (leading) zero bits.
 */
+unsigned long BitMap::range(unsigned long n, unsigned long r) const
 
 {
   using namespace constants;
 
-  unsigned long m = n >> baseShift;
+  unsigned long m = n >> baseShift; // index where relevant data is stored
 
   return (d_map[m] >> (n & posBits)) & lMask[r];
 
 }
 
-unsigned long BitMap::size() const
-
 /*!
   Returns the number of set bits in the bitmap (this is its size as a
   container of unsigned long.)
+
+  NOTE: correctness depends on unused bits in the final word being cleared.
 */
 
+unsigned long BitMap::size() const
 {
   typedef std::vector<unsigned long>::const_iterator I;
 
@@ -367,115 +331,111 @@ unsigned long BitMap::size() const
 
 /******** manipulators *******************************************************/
 
-BitMap& BitMap::operator~ ()
-
 /*!
-  Synopsis: transforms the complement into its bitwise complement.
+  Synopsis: transforms the bitmap into its bitwise complement at returns itself
 
   NOTE: one has to be careful about the last chunk, resetting the unused
   bits to zero.
-*/
 
+  NOTE: the naming of this manipulator is dangerous, as the user might write
+  something like |a &= ~b| and be surprised by the fact that |b| changes
+  value. Incidentally, for that special case there is |a.andnot(b)|.
+*/
+BitMap& BitMap::operator~ ()
 {
   for (unsigned long j = 0; j < d_map.size(); ++j)
     d_map[j] = ~d_map[j];
 
-  d_map[d_map.size()-1] &= constants::leqMask[(d_capacity-1)&posBits];
+  if ((d_capacity&posBits)!=0) // N.B. also makes |capacity()==0| safe (MvL)
+    d_map.back() &= constants::lMask[d_capacity&posBits];
 
   return *this;
 }
-
-BitMap& BitMap::operator&= (const BitMap& b)
 
 /*!
-  Synopsis: intersects the current bitmap with b.
+  Synopsis: intersects the current bitmap with |b|, return value tells whether
+  the result is non-empty.
 */
 
+bool BitMap::operator&= (const BitMap& b)
 {
-  for (unsigned long j = 0; j < d_map.size(); ++j)
-    d_map[j] &= b.d_map[j];
+  assert(b.capacity()<=capacity());
+  bool any=false;
+  for (unsigned long j = 0; j < b.d_map.size(); ++j)
+    if ((d_map[j] &= b.d_map[j])!=0) any=true;
 
-  return *this;
+  // don't forget to clear out everything beyond the end of |b|!
+  for (unsigned long j = b.d_map.size(); j<d_map.size(); ++j)
+    d_map[j] = 0;
+
+  return any;
 }
 
+/*!
+  Synopsis: unites |b| into the current bitmap.
+*/
 BitMap& BitMap::operator|= (const BitMap& b)
-
-/*!
-  Synopsis: unites the current bitmap with b
-*/
-
 {
-  for (unsigned long j = 0; j < d_map.size(); ++j)
+  assert(b.capacity()<=capacity());
+  for (unsigned long j = 0; j < b.d_map.size(); ++j)
     d_map[j] |= b.d_map[j];
 
   return *this;
 }
 
-BitMap& BitMap::operator^= (const BitMap& b)
-
 /*!
-  Synopsis: xor's the current bitmap with b
+  Synopsis: xor's |b| into the current bitmap.
 */
-
+BitMap& BitMap::operator^= (const BitMap& b)
 {
-  for (unsigned long j = 0; j < d_map.size(); ++j)
+  assert(b.capacity()<=capacity());
+  for (unsigned long j = 0; j < b.d_map.size(); ++j)
     d_map[j] ^= b.d_map[j];
 
   return *this;
 }
 
-BitMap& BitMap::andnot(const BitMap& b)
-
 /*!
-  Synopsis: takes the current bitmap into its set-difference with b, i.e. we
-  remove from our bitmap its intersection with b.
+  Synopsis: takes the current bitmap into its set-difference with |b|, i.e.,
+  removes from our bitmap any elements appearing in |b|.
+  Return whether any bits remain in the result.
 */
-
+bool BitMap::andnot(const BitMap& b)
 {
+  assert(b.capacity()<=capacity());
+  bool any=false;
   for (unsigned long j = 0; j < d_map.size(); ++j)
-    d_map[j] &= ~(b.d_map[j]);
+    if ((d_map[j] &= ~(b.d_map[j]))!=0) any=true;
 
-  return *this;
+  return any;
 }
-
-void BitMap::fill()
 
 /*!
   Synopsis: sets all the bits in the bitmap.
 
   As usual we have to be careful to leave the unused bits at the end to zero.
 */
-
+void BitMap::fill()
 {
-  if (d_capacity == 0) // do nothing
-    return;
+  d_map.assign(d_map.size(),~0ul); // (last word will be overwritten)
 
-  d_map.assign(d_map.size(),~0ul);
-  d_map[d_map.size()-1] &= constants::leqMask[(d_capacity-1)&posBits];
-
-  return;
+  if ((d_capacity&posBits)!=0) // N.B. also makes |capacity()=0| safe (MvL)
+    d_map.back() = constants::lMask[d_capacity&posBits];
 }
 
-void BitMap::fill(unsigned long n)
-
 /*!
-  Synopsis: sets all the bits in position < n.
+  Synopsis: sets all the bits in position < n, AND clears all later bits
 
-  Equivalent to fill if n >= d_capacity.
+  Equivalent to |fill()| if |n >= d_capacity|, and to |reset()| if |n=0|.
 */
-
+void BitMap::fill(unsigned long n)
 {
-  if (n >= d_capacity) { // fill
-    fill();
-    return;
-  }
-
+  if (n>d_capacity) n=d_capacity; // truncate |n|
   size_t map_size = d_map.size();
-  d_map.assign(n >> baseShift,~0ul);
-  d_map.resize(map_size,0ul);
-  d_map[n >> baseShift] = constants::lMask[n&posBits];
-
-  return;
+  d_map.assign(n >> baseShift,~0ul); // set initial part to all bits set
+  d_map.resize(map_size,0ul);        // and remainder to all bits clear
+  if ((n&posBits)!=0)
+    d_map[n >> baseShift] = constants::lMask[n&posBits]; // correct at boundary
 }
 
 BitMap::iterator BitMap::insert(iterator, unsigned long n)
@@ -484,7 +444,7 @@ BitMap::iterator BitMap::insert(iterator, unsigned long n)
   d_map[n >> baseShift] |= constants::bitMask[n & posBits];
   return iterator(d_map.begin()+(n >> baseShift),n,d_capacity);
 }
-void BitMap::resize(unsigned long n)
+
 
 /*!
   Synopsis: sets the capacity of the bitmap to n.
@@ -492,15 +452,14 @@ void BitMap::resize(unsigned long n)
   Does not modify the contents up to the previous size, at least if n is
   larger. The new elements are initialized to zero.
 */
-
+void BitMap::set_capacity(unsigned long n)
 {
-  d_map.resize((n >> baseShift) +(bool)(n & posBits),0);
+  if (n<d_capacity and (n&posBits)!=0)
+    d_map[n>>baseShift] &= constants::lMask[n&posBits]; // clear partial word
+  d_map.resize((n+posBits) >> baseShift,0);
   d_capacity = n;
-
-  return;
 }
 
-void BitMap::setRange(unsigned long n, unsigned long r, unsigned long a)
 
 /*!
   Synopsis: sets r bits from position n to the first r bits in a.
@@ -510,7 +469,7 @@ void BitMap::setRange(unsigned long n, unsigned long r, unsigned long a)
 
   In this way, we are sure that things happen inside a single word in d_map.
 */
-
+void BitMap::setRange(unsigned long n, unsigned long r, unsigned long a)
 {
   using namespace constants;
 
@@ -518,8 +477,6 @@ void BitMap::setRange(unsigned long n, unsigned long r, unsigned long a)
 
   d_map[m] &= ~(lMask[r] << (n & posBits));     // set bits to zero
   d_map[m] |= (a & lMask[r]) << (n & posBits);  // insert the bits from a
-
-  return;
 }
 
 void BitMap::swap(BitMap& other)
@@ -527,8 +484,6 @@ void BitMap::swap(BitMap& other)
 {
   d_map.swap(other.d_map);
   std::swap(d_capacity,other.d_capacity);
-
-  return;
 }
 
 }

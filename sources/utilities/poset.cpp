@@ -18,13 +18,13 @@ bit-matrix of the order relation.
   This file contains a simple-minded implementation of a poset structure,
   where one explicitly keeps the bit-matrix of the order relation.
 
+  However, only strictly sub-diagonal entries of the matrix are stored.
+
 ******************************************************************************/
 
 /*****************************************************************************
 
         Chapter I -- The Poset class
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -34,20 +34,60 @@ namespace poset {
 
 /******** constructors and destructors ***************************************/
 
-Poset::Poset(size_t n):d_closure(n,bitmap::BitMap(n))
 
 /*!
   Synopsis: constructs the discrete poset of size n.
 */
-
+Poset::Poset(size_t n)
+: d_below(n)
 {
   for (size_t j = 0; j < n; ++j)
-    d_closure[j].insert(j);
+  {
+    d_below[j].set_capacity(j); // clears all bits up to the diagaonal
+  }
+}
+
+/*!
+\brief Constructs a Poset from its Hasse diagram.
+
+  Precondition: it is assumed that for each x, hasse(x) contains the list
+  of elements covered by x, which elements must be numbers < x.
+
+  As a consequence, the closure at |x| can be computed once |hasse(x)|
+  is inspected, for increaing |x|.
+*/
+Poset::Poset(const std::vector<set::SetEltList>& hasse)
+: d_below(hasse.size())
+{
+  for (size_t x = 0; x < size(); ++x) {
+    bitmap::BitMap& b = d_below[x];
+    b.set_capacity(x);
+    const set::SetEltList& h = hasse[x];
+    for (size_t j = 0; j < h.size(); ++j)
+    {
+      b |= d_below[h[j]]; // note that |d_below[h[j]]| is shorter than |b|
+      b.insert(j); // this one was not stored in d_below[h[j]].
+    }
+  }
+}
+
+Poset::Poset(size_t n,const std::vector<Link>& lk)
+: d_below(n)
+{
+  extend(lk);
 }
 
 /******** accessors **********************************************************/
 
-void Poset::findMaximals(set::SetEltList& a, const bitmap::BitMap& b) const
+
+unsigned long Poset::n_comparable() const
+{
+  unsigned long n=size(); // account for (absent) diagonal
+  for (size_t i=0; i<size(); ++i)
+    n+=d_below[i].size();
+
+  return n;
+}
 
 /*!
   Synopsis: writes in a the elements in b that are maximal for the induced
@@ -56,23 +96,32 @@ void Poset::findMaximals(set::SetEltList& a, const bitmap::BitMap& b) const
   Algorithm: the largest element x in b (if any) is maximal; add that to a,
   remove from b the intersection with the closure of x, and iterate.
 */
-
+void Poset::findMaximals(set::SetEltList& a, const bitmap::BitMap& b) const
 {
-  using namespace bitmap;
-
-  BitMap bl = b;
   a.clear();
+  bitmap::BitMap bl = b; // working copy of |b|
+  unsigned long x=bl.capacity();
 
-  while (not bl.empty()) {
-    unsigned long x = bl.back()-1;
+  while (bl.back_up(x)) {
     a.push_back(x);
-    bl.andnot(d_closure[x]);
+    bl.andnot(d_below[x]); // don't care that |bl[x]| remains set
   }
-
-  return;
+  // in fact we could return |bl| as bitset here if that were asked for
 }
 
-void Poset::hasseDiagram(graph::OrientedGraph& h) const
+set::SetEltList Poset::minima(const bitmap::BitMap& b) const
+{
+  set::SetEltList result;
+  for (bitmap::BitMap::iterator it=b.begin(); it(); ++it)
+  {
+    size_t n=*it;
+    bitmap::BitMap t=b;
+    if (not(t&=d_below[n])) // this certainly clears |t[n]|
+      result.push_back(n); // if intersection was empty, |n| is minimal
+  }
+  return result;
+}
+
 
 /*!
 \brief Puts in h the Hasse diagram of the poset
@@ -81,86 +130,74 @@ void Poset::hasseDiagram(graph::OrientedGraph& h) const
   the elements of the poset, with an edge from each vertex to each vertex
   immediately below it.
 */
-
+void Poset::hasseDiagram(graph::OrientedGraph& h) const
 {
-  using namespace bitmap;
-  using namespace set;
-
   h.resize(size());
 
-  for (SetElt x = 0; x < size(); ++x) {
-    BitMap b = d_closure[x];
-    b.remove(x);
+  for (set::SetElt x = 0; x < size(); ++x) {
+    const bitmap::BitMap& b = d_below[x]; // |x| is already absent from |b|
     findMaximals(h.edgeList(x),b);
   }
 }
 
-void Poset::hasseDiagram(graph::OrientedGraph& h, set::SetElt max) const
-
 /*!
-\brief Puts in h the Hasse diagram of the closure of max.
+\brief Puts in |h| the Hasse diagram of the downward closure of |max|.
 
   Explanation: the Hasse diagram is the oriented graph whose vertices are
   the elements of the poset, with an edge from each vertex to each vertex
-  immediately below it.  Closure means all elements less than or equal to max.
+  immediately below it. Closure means all elements less than or equal to max.
 */
+void Poset::hasseDiagram(graph::OrientedGraph& h, set::SetElt max) const
+
 
 {
-  using namespace bitmap;
-
-  const BitMap& cl = d_closure[max];
+  bitmap::BitMap cl(max+1);
+  cl |= d_below[max]; cl.insert(max); // we must not forget |max| iself.
 
   h.resize(size());
 
-  for (BitMap::iterator i = cl.begin(); i != cl.end(); ++i) {
-    BitMap b = d_closure[*i];
-    b.remove(*i);
-    findMaximals(h.edgeList(*i),b);
+  for (bitmap::BitMap::iterator i = cl.begin(); i(); ++i) {
+    set::SetElt x=*i;
+    const bitmap::BitMap& b = d_below[x]; // |x| is already absent from |b|
+    findMaximals(h.edgeList(x),b);
   }
-
-  return;
 }
 
 /******** manipulators *******************************************************/
-void Poset::resize(unsigned long n)
 
 /*!
 \brief Resizes the poset to size n, adding only the diagonal for the
   new rows.
 */
-
+void Poset::resize(unsigned long n)
 {
   size_t prev = size();
-  d_closure.resize(n);
-
-  for (size_t j = 0; j < size(); ++j)
-    d_closure[j].resize(n);
+  d_below.resize(n);
 
   for (size_t j = prev; j < size(); ++j)
-    d_closure[j].insert(j);
-
-  return;
+    d_below[j].set_capacity(j);
 }
-
-void Poset::extend(const std::vector<Link>& lk)
 
 /*!
 \brief Transforms the poset into the weakest ordering containing the relations
-  it previously contained, plus the relations first < second for all elements
-  listed in lk.
+  it previously contained, plus the relations |first < second| for all elements
+  listed in |lk|.
 
-  Precondition: lk is sorted in increasing lexicographical order, or more
-  precisely the weaker (given the compatibility of the order relation with
-  integral ordering) condition that any occurrence of a value i as first in a
-  Link cannot be followed by any occurrence of i as second in another Link
+  Precondition: |lk| is sorted in increasing lexicographical order. More
+  precisely the following weaker (given the compatibility of the order
+  relation with integral ordering) condition is assumed: all occurrences of a
+  value |i| as first (smaller) member in a Link must follow all occurrences of
+  |i| as second (larger) member in another Link
 
 */
-
+void Poset::extend(const std::vector<Link>& lk)
 {
   for (size_t j = 0; j < lk.size(); ++j)
-    d_closure[lk[j].second] |= d_closure[lk[j].first];
-
-  return;
+  {
+    bitmap::BitMap& b=d_below[lk[j].second];
+    b |= d_below[lk[j].first];
+    b.insert(lk[j].first); // to compensate for unrepresented diagonal point
+  }
 }
 
 }
@@ -168,8 +205,6 @@ void Poset::extend(const std::vector<Link>& lk)
 /*****************************************************************************
 
         Chapter I -- The SymmetricPoset class
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -217,17 +252,52 @@ SymmetricPoset::SymmetricPoset(const std::vector<set::SetEltList>& hasse)
       b |= d_row[h[j]];
   }
 
-  // symmetrize; brute force for now
+  // symmetrize; set bits of row |x| in column |x| (brute force for now)
 
-  for (size_t x = 0; x < d_row.size(); ++x) {
-    BitMap::iterator b_end = d_row[x].end();
-    for (BitMap::iterator i = d_row[x].begin(); i != b_end; ++i) {
+  for (size_t x = 0; x < d_row.size(); ++x)
+    for (BitMap::iterator i = d_row[x].begin(); i(); ++i) {
       d_row[*i].insert(x);
-    }
   }
 
 }
 
+unsigned long n_comparable_from_Hasse
+  (const std::vector<set::SetEltList>& hasse)
+{
+  const size_t n=hasse.size();
+  std::vector<set::SetElt> min_after(n+1);
+  min_after[n]=n;
+
+  for (size_t i=n; i-->0;)
+  {
+    set::SetElt min=min_after[i+1];
+    for (size_t j=0; j<hasse[i].size(); ++j)
+      if (hasse[i][j]<min)
+	min=hasse[i][j];
+    min_after[i]=min;
+  }
+
+  std::vector<bitmap::BitMap> closure;
+  unsigned long count=0;
+
+  for (size_t i=0; i<n; ++i)
+  {
+    bitmap::BitMap& cl=closure[i];
+    cl.set_capacity(i+1); cl.insert(i);
+    for (size_t j=0; j<hasse[i].size(); ++j)
+      cl |= closure[hasse[i][j]];
+
+    count+=cl.size();
+
+    // now free memory of bitmaps that will no longer be needed
+    for (size_t j=min_after[i]; j<min_after[i+1]; ++j)
+      closure[j].set_capacity(0);
+  }
+
+  return count;
 }
 
-}
+
+} // namespace poset
+
+} // namespace atlas
