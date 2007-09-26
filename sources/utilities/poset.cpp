@@ -66,7 +66,7 @@ Poset::Poset(const std::vector<set::SetEltList>& hasse)
     for (size_t j = 0; j < h.size(); ++j)
     {
       b |= d_below[h[j]]; // note that |d_below[h[j]]| is shorter than |b|
-      b.insert(j); // this one was not stored in d_below[h[j]].
+      b.insert(h[j]); // this one was not stored in d_below[h[j]].
     }
   }
 }
