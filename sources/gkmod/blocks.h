@@ -164,7 +164,9 @@ of the real form of G where the block lives.
   /*!
 \brief Bruhat order on the block.
 
-Not used in the present code (DV 10/14/06).
+Definition now corrected mathematically from the bad definition of
+Vogan's Park City notes to one equivalent to the transitive closure of
+non-vanishing KL polynomial.
   */
   bruhat::BruhatOrder* d_bruhat;
 
