@@ -216,23 +216,16 @@ std::ostream& printBlockOrder(std::ostream& strm, const blocks::Block& block)
 
   const bruhat::BruhatOrder& bruhat = block.bruhatOrder();
   size_t blocksize = block.size();
-  const poset::SymmetricPoset& poset = bruhat.poset();
-  const bitmap::BitMap& row = poset.row(0);
-  size_t pairs = row.size();
   strm << "0:" << std::endl;
   for (size_t j = 1; j < blocksize; ++j) {
     const SetEltList& e = bruhat.hasse(j);
-    const bitmap::BitMap& row = poset.row(j);
-    pairs += row.size();
-    //   if (e.empty())
-    //     continue;
     strm << j << ": ";
     SetEltList::const_iterator first = e.begin();
     SetEltList::const_iterator last = e.end();
     seqPrint(strm,first,last) << std::endl;
   }
-  pairs = (pairs + blocksize)/2;
-    strm << "Number of comparable pairs = " << pairs << std::endl;
+
+  strm << "Number of comparable pairs = " << bruhat.n_comparable() << std::endl;
 
   return strm;
 } //printBlockOrder
