@@ -43,6 +43,7 @@ DV 7/21/06]
 BruhatOrder accessible from those classes, but these methods are never called.
 MvL 8 Nov 2006]
 
+[Now instantiated by the new commands blockorder and kgborder.]
   */
   class BruhatOrder {
 
@@ -55,12 +56,12 @@ Entry \#j lists the numbers of the immediate predecessors of element
   */
   std::vector<set::SetEltList> d_hasse;
   /*!
-\brief Symmetrization of the poset relation.
+\brief Poset relation.
 
 It is assumed that element \#i can precede element \#j in the poset
-only if i < j, so the symmetrized relation determines the relation.
+only if i < j.
   */
-  poset::SymmetricPoset d_poset;
+  poset::Poset d_poset;
 
  public:
 
@@ -77,9 +78,16 @@ only if i < j, so the symmetrized relation determines the relation.
   }
 
   /*!
-\brief Returns the symmetrization of the poset relation.
+\brief Returns the number of comparable pairs in the order.
+  */
+  unsigned long n_comparable() const {
+    return d_poset.n_comparable();
+  }
+
+  /*!
+\brief Returns the poset relation.
    */
-  const poset::SymmetricPoset& poset() const {
+  const poset::Poset& poset() const {
     return d_poset;
   }
 
