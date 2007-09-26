@@ -46,7 +46,7 @@ BruhatOrder::BruhatOrder(const std::vector<set::SetEltList>& hd)
 {
   using namespace poset;
 
-  SymmetricPoset p(d_hasse); // could throw
+  Poset p(d_hasse); // could throw
 
   // commit
   d_poset.swap(p);
