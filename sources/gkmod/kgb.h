@@ -162,8 +162,11 @@ bruhat::BruhatOrder* d_bruhat;
 /*!
 \brief Pointer to the Bruhat order on KGB.
 
-The class BruhatOrder provides the symmetrized bitmatrix of the
-partial order, and the Hasse diagram of covering relations.
+The class BruhatOrder as written by Fokko provided the symmetrized
+bitmatrix of the partial order, and the Hasse diagram of covering
+relations.  Marc van Leeuwen and I can see no application for the
+symmetrized bitmatrix at present, so this is now replaced by the
+bitmatrix of the relation x <= y, which is half the size.
 */
   const bruhat::BruhatOrder& bruhatOrder() const {
     return *d_bruhat;
