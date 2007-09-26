@@ -281,7 +281,7 @@ unsigned long n_comparable_from_Hasse
     min_after[i]=min;
   }
 
-  std::vector<bitmap::BitMap> closure;
+  std::vector<bitmap::BitMap> closure(n);
   unsigned long count=0;
 
   for (size_t i=0; i<n; ++i)
