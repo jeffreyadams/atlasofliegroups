@@ -74,6 +74,10 @@ Poset::Poset(const std::vector<set::SetEltList>& hasse)
 Poset::Poset(size_t n,const std::vector<Link>& lk)
 : d_below(n)
 {
+  for (size_t j = 0; j < n; ++j)
+  {
+    d_below[j].set_capacity(j); // clears all bits up to the diagaonal
+  }
   extend(lk);
 }
 
