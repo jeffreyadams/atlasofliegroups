@@ -30,7 +30,7 @@ BINDIR := $(INSTALLDIR)
 MESSAGEDIR := $(INSTALLDIR)/messages/
 
 # sourcedirs contains subdirectories of 'atlas/sources' that need compilation
-sourcedirs := utilities memory error structure gkmod io interface test
+sourcedirs := utilities error structure gkmod io interface test
 
 # sources contains a list of the source files (i.e., the .cpp files)
 sources := $(wildcard $(sourcedirs:%=sources/%/*.cpp))
