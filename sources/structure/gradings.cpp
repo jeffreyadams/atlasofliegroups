@@ -492,7 +492,7 @@ void compactEquations(BinaryEquationList& eqn, const RootList& o,
 
   for (unsigned long i = 0; i < oob.size(); ++i)
     for (unsigned long j = 0; j < o.size(); ++j)
-      if (sumIsRoot(oob[i],o[j],rd))
+      if (rd.sumIsRoot(oob[i],o[j]))
 	g.flip(i); // use |flip|, not |set|, as same |i| can have more flips
 
   // express oob in rs's root basis
