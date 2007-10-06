@@ -1093,7 +1093,7 @@ toMostSplit(const cartanclass::Fiber& fundf,
       if (not rd.isOrthogonal(rn,*i)) {
 	ir.remove(*i);
 	rs.remove(*i);
-      } else if (sumIsRoot(rn,*i,rd))
+      } else if (rd.sumIsRoot(rn,*i))
 	rs.flip(*i);
     }
     result.push_back(rn);

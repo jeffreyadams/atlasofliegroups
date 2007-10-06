@@ -1213,7 +1213,7 @@ void transformGrading(gradings::Grading& gr,
 {
   for (size_t i = 0; i < rl.size(); ++i)
     for (size_t j = 0; j < so.size(); ++j)
-      if (rootdata::sumIsRoot(rl[i],so[j],rd))
+      if (rd.sumIsRoot(rl[i],so[j]))
 	gr.flip(i);
 }
 
