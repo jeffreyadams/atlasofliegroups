@@ -221,50 +221,61 @@ const CommandMode& mainMode()
 
 namespace {
 
-void blocksizes_f()
-
 /*
-  Synopsis: prints the matrix of blocksizes.
+  Prints the roots in the lattice basis.
 */
-
+void roots_f()
 {
-  using namespace complexredgp;
-  using namespace complexredgp_io;
+  ioutils::OutputFile file;
 
-  try {
-    G_C->fillCartan();
-  }
-  catch (error::MemoryOverflow& e) {
-    e("error: memory overflow");
-    return;
-  }
+  const rootdata::RootDatum& rd = G_C->rootDatum();
 
-  printBlockSizes(std::cout,*G_I);
-
-  return;
+  latticetypes::WeightList::const_iterator first = rd.beginRoot();
+  latticetypes::WeightList::const_iterator last = rd.endRoot();
+  basic_io::seqPrint(file,first,last,"\n") << std::endl;
 }
-
-void coroots_f()
 
 /*
   Synopsis: prints the coroots in the lattice basis.
 */
-
+void coroots_f()
 {
-  using namespace basic_io;
-  using namespace ioutils;
-  using namespace latticetypes;
-  using namespace rootdata;
-
   ioutils::OutputFile file;
 
-  const RootDatum& rd = G_C->rootDatum();
+  const rootdata::RootDatum& rd = G_C->rootDatum();
 
-  WeightList::const_iterator first = rd.beginCoroot();
-  WeightList::const_iterator last = rd.endCoroot();
-  seqPrint(file,first,last,"\n") << std::endl;
+  latticetypes::WeightList::const_iterator first = rd.beginCoroot();
+  latticetypes::WeightList::const_iterator last = rd.endCoroot();
+  basic_io::seqPrint(file,first,last,"\n") << std::endl;
+}
 
-  return;
+
+/*
+  Synopsis: prints the positive roots in the lattice basis.
+*/
+void posroots_f()
+{
+  ioutils::OutputFile file;
+
+  const rootdata::RootDatum& rd = G_C->rootDatum();
+
+  rootdata::WRootIterator first = rd.beginPosRoot();
+  rootdata::WRootIterator last = rd.endPosRoot();
+  basic_io::seqPrint(file,first,last,"\n") << std::endl;
+}
+
+/*
+  Synopsis: prints the positive coroots in the lattice basis.
+*/
+void poscoroots_f()
+{
+  ioutils::OutputFile file;
+
+  const rootdata::RootDatum& rd = G_C->rootDatum();
+
+  rootdata::WRootIterator first = rd.beginPosCoroot();
+  rootdata::WRootIterator last = rd.endPosCoroot();
+  basic_io::seqPrint(file,first,last,"\n") << std::endl;
 }
 
 void help_f()
@@ -274,172 +285,86 @@ void help_f()
   return;
 }
 
-void poscoroots_f()
-
-/*
-  Synopsis: prints the positive coroots in the lattice basis.
-*/
-
-{
-  using namespace basic_io;
-  using namespace ioutils;
-  using namespace rootdata;
-
-  ioutils::OutputFile file;
-
-  const RootDatum& rd = G_C->rootDatum();
-
-  WRootIterator first = rd.beginPosCoroot();
-  WRootIterator last = rd.endPosCoroot();
-  seqPrint(file,first,last,"\n") << std::endl;
-
-  return;
-}
-
-void posroots_f()
-
-/*
-  Synopsis: prints the positive roots in the lattice basis.
-*/
-
-{
-  using namespace basic_io;
-  using namespace ioutils;
-  using namespace rootdata;
-
-  ioutils::OutputFile file;
-
-  const RootDatum& rd = G_C->rootDatum();
-
-  WRootIterator first = rd.beginPosRoot();
-  WRootIterator last = rd.endPosRoot();
-  seqPrint(file,first,last,"\n") << std::endl;
-
-  return;
-}
-
 void q_h()
-
 {
   io::printFile(std::cout,"q.help",io::MESSAGE_DIR);
-  return;
 }
 
-void realform_f()
+/*
+  Synopsis: prints the matrix of blocksizes.
+*/
+void blocksizes_f()
+{
+  try {
+    G_C->fillCartan();
+
+    complexredgp_io::printBlockSizes(std::cout,*G_I);
+
+  }
+  catch (error::MemoryOverflow& e) {
+    e("error: memory overflow");
+  }
+}
 
 /*
   Synopsis: activates real mode.
 */
-
+void realform_f()
 {
-  using namespace commands;
-
   try {
-    activate(realmode::realMode());
+    commands::activate(realmode::realMode());
   }
   catch (EntryError) {
-    return;
   }
-
-  return;
 }
 
-void roots_f()
-
-/*
-  Prints the roots in the natural coordinates.
-*/
-
-{
-  using namespace basic_io;
-  using namespace ioutils;
-  using namespace latticetypes;
-  using namespace rootdata;
-
-  ioutils::OutputFile file;
-
-  const RootDatum& rd = G_C->rootDatum();
-
-  WeightList::const_iterator first = rd.beginRoot();
-  WeightList::const_iterator last = rd.endRoot();
-  seqPrint(file,first,last,"\n") << std::endl;
-
-  return;
-}
-
-void showdualforms_f()
-
-{
-  using namespace realform_io;
-
-  const realform_io::Interface rfi = G_I->dualRealFormInterface();
-
-  std::cout << "(weak) dual real forms are:" << std::endl;
-  printRealForms(std::cout,rfi);
-
-  return;
-}
 
 void showrealforms_f()
-
 {
-  using namespace realform_io;
-
   const realform_io::Interface rfi = G_I->realFormInterface();
 
   std::cout << "(weak) real forms are:" << std::endl;
-  printRealForms(std::cout,rfi);
-
-  return;
+  realform_io::printRealForms(std::cout,rfi);
 }
-
-void simplecoroots_f()
-
-/*
-  Prints the simple coroots in the lattice coordinates.
-*/
+void showdualforms_f()
 
 {
-  using namespace basic_io;
-  using namespace ioutils;
-  using namespace rootdata;
+  const realform_io::Interface rfi = G_I->dualRealFormInterface();
 
-  const RootDatum& rd = G_C->rootDatum();
-
-  WRootIterator first = rd.beginSimpleCoroot();
-  WRootIterator last = rd.endSimpleCoroot();
-  seqPrint(std::cout,first,last,"\n") << std::endl;
-
-  return;
+  std::cout << "(weak) dual real forms are:" << std::endl;
+  realform_io::printRealForms(std::cout,rfi);
 }
 
-void simpleroots_f()
 
 /*
   Prints the simple roots in the lattice coordinates.
 */
-
+void simpleroots_f()
 {
-  using namespace basic_io;
-  using namespace ioutils;
-  using namespace rootdata;
+  const rootdata::RootDatum& rd = G_C->rootDatum();
 
-  const RootDatum& rd = G_C->rootDatum();
-
-  WRootIterator first = rd.beginSimpleRoot();
-  WRootIterator last = rd.endSimpleRoot();
-  seqPrint(std::cout,first,last,"\n") << std::endl;
-
-  return;
+  rootdata::WRootIterator first = rd.beginSimpleRoot();
+  rootdata::WRootIterator last = rd.endSimpleRoot();
+  basic_io::seqPrint(std::cout,first,last,"\n") << std::endl;
 }
 
-void type_f()
+/*
+  Prints the simple coroots in the lattice coordinates.
+*/
+void simplecoroots_f()
+{
+  const rootdata::RootDatum& rd = G_C->rootDatum();
+
+  rootdata::WRootIterator first = rd.beginSimpleCoroot();
+  rootdata::WRootIterator last = rd.endSimpleCoroot();
+  basic_io::seqPrint(std::cout,first,last,"\n") << std::endl;
+}
 
 /*
   Resets the type, effectively restarting the program. If the construction
   of the new type fails, the current type remains in force.
 */
-
+void type_f()
 {
 
   try {
