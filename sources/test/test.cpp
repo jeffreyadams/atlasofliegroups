@@ -610,7 +610,7 @@ void blockorder_f()
 /*
   Synopsis: prints the Hasse diagram for the Bruhat order on the block
   of Harish-Chandra modules corresponding to a given real form and
-  dual real form. 
+  dual real form.
 */
 
 {
@@ -652,12 +652,10 @@ void blockorder_f()
 
   Block block(G_C,G_R.realForm(),drf);
 
- std::cout << "block size: " << block.size() << std::endl;
+  std::cout << "block size: " << block.size() << std::endl;
   OutputFile file;
   block.fillBruhat();
   printBlockOrder(file,block);
-
-  return;
 }
 
 void blocku_f()
@@ -714,40 +712,32 @@ void blockstabilizer_f()
 */
 
 {
-  using namespace commands;
-  using namespace error;
-  using namespace interactive;
-  using namespace ioutils;
-  using namespace realform;
-  using namespace realmode;
-  using namespace realredgp;
-  using namespace tags;
-
-  RealReductiveGroup& G_R = currentRealGroup();
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
   try {
     G_R.fillCartan();
     size_t cn;
 
     // get Cartan class; abort if unvalid
-    getCartanClass(cn,G_R.cartanSet(),currentLine());
+    interactive::getCartanClass(cn,G_R.cartanSet(),commands::currentLine());
 
     const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-    const realredgp_io::Interface& G_RI = currentRealInterface();
+    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
     const complexredgp_io::Interface& G_I = G_RI.complexInterface();
 
     // get dual real form
-    RealForm drf;
+    realform::RealForm drf;
 
-    getInteractive(drf,G_I,G_C.dualRealFormLabels(cn),DualTag());
+    interactive::getInteractive
+      (drf,G_I,G_C.dualRealFormLabels(cn),tags::DualTag());
 
-    OutputFile file;
+    ioutils::OutputFile file;
     realredgp_io::printBlockStabilizer(file,G_RI.realGroup(),cn,drf);
   }
-  catch (MemoryOverflow& e) {
+  catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
   }
-  catch (InputError& e) {
+  catch (error::InputError& e) {
     e("aborted");
   }
 
@@ -761,15 +751,10 @@ void cmatrix_f()
 */
 
 {
-  using namespace latticetypes;
-  using namespace prettyprint;
-  using namespace rootdata;
-  using namespace testprint;
+  latticetypes::LatticeMatrix q;
 
-  LatticeMatrix q;
-
-  cartanMatrix(q,currentRootDatum());
-  printMatrix(std::cout,q);
+  rootdata::cartanMatrix(q,currentRootDatum());
+  prettyprint::printMatrix(std::cout,q);
 
 }
 
@@ -781,13 +766,8 @@ void components_f()
 */
 
 {
-  using namespace realredgp;
-  using namespace latticetypes;
-  using namespace ioutils;
-  using namespace testprint;
-
-  const RealReductiveGroup& G = realmode::currentRealGroup();
-  const ComponentList& c = G.dualComponentReps();
+  const realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  const latticetypes::ComponentList& c = G.dualComponentReps();
 
   if (c.size() > 0)
     std::cout << "component group is (Z/2)^" << c.size() << std::endl;
