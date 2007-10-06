@@ -892,7 +892,7 @@ template<size_t n> class BitSet
   /*!
 \brief Tests whether BitSet is nonempty.
 
-Returns 1 if any bit of the BitSet is 1, and 0 otherwise.
+Returns whether any bit of the BitSet is 1
   */
   bool any() const {
     return Base::any();
