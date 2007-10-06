@@ -15,6 +15,8 @@
   setutils.h
 */
 
+#include <cassert>
+
 namespace atlas {
 
 namespace setutils {

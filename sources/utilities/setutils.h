@@ -13,12 +13,17 @@
 #define SETUTILS_H
 
 #include <vector>
+#include <algorithm>
 
 /******** type declarations *************************************************/
 
 namespace atlas {
 
 namespace setutils {
+
+template<typename T>
+  inline size_t find_index(const std::vector<T>& v, const T& x)
+  { return std::find(v.begin(),v.end(),x)-v.begin(); }
 
 struct Permutation
   : public std::vector<unsigned long>
