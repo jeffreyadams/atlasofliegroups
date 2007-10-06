@@ -21,6 +21,7 @@
 #include "prerootdata_fwd.h"
 #include "weyl_fwd.h"
 
+#include "bitset.h"
 #include "bitmap.h"
 #include "latticetypes.h"
 #include "lietype.h"
@@ -77,6 +78,7 @@ void reflectionMatrix(LT::LatticeMatrix&, RootNbr, const RootDatum&);
 void reflectionMatrix(LT::LatticeMatrix&, RootNbr, const RootDatum&,
                       RootBasisTag);
 
+// compute a basis of a root subsystem
 void rootBasis(RootList&, const RootList&, const RootDatum&);
 
 void rootBasis(RootList&, RootSet, const RootDatum&);
@@ -84,8 +86,6 @@ void rootBasis(RootList&, RootSet, const RootDatum&);
 void strongOrthogonalize(RootList&, const RootDatum&);
 
 bool sumIsRoot(const LT::Weight&, const LT::Weight&, const RootDatum&);
-
-bool sumIsRoot(const RootNbr&, const RootNbr&, const RootDatum&);
 
 void toDistinguished(LT::LatticeMatrix&, const RootDatum&);
 
@@ -97,7 +97,7 @@ void toPositive(weyl::WeylWord&, const LT::Weight&, const RootDatum&);
 
 void toWeylWord(weyl::WeylWord&, RootNbr, const RootDatum&);
 
-}
+} // namespace rootdata
 
 /******** type definitions **************************************************/
 
@@ -286,9 +286,7 @@ use by accessors.
   }
 
   bool isRoot(const LT::Weight& v) const {
-    LT::WeightList::const_iterator first = d_roots.begin();
-    LT::WeightList::const_iterator last = d_roots.end();
-    return std::find(first,last,v) != last;
+    return setutils::find_index(d_roots,v) != d_roots.size();
   }
 
   bool isSemisimple() const {
@@ -328,9 +326,7 @@ use by accessors.
   }
 
   RootNbr rootNbr(const Root& r) const {
-    LT::WeightList::const_iterator first = d_roots.begin();
-    LT::WeightList::const_iterator last = d_roots.end();
-    return find(first,last,r) - first;
+    return setutils::find_index(d_roots,r);
   }
 
   RootNbr simpleRootNbr(size_t j) const {
@@ -352,9 +348,7 @@ use by accessors.
 // other accessors
 
   LT::LatticeCoeff cartan(size_t i, size_t j) const {
-    const LT::Weight& arg1 = simpleRoot(i);
-    const LT::Weight& arg2 = simpleCoroot(j);
-    return LT::scalarProduct(arg1,arg2);
+    return LT::scalarProduct(simpleRoot(i),simpleCoroot(j));
   }
 
   void coreflection(LT::Weight&, RootNbr) const;
@@ -401,19 +395,21 @@ use by accessors.
 
   LT::LatticeMatrix rootReflection(RootNbr r) const;
 
-  void rootReflect(RootNbr& r, size_t i) const  { r=rootPermutation(i)[r]; }
+  void rootReflect(RootNbr& r, size_t s) const  { r=rootPermutation(s)[r]; }
+
+  RootNbr reflectedRoot(RootNbr r, size_t s) const {
+    return d_rootPermutation[s][r];
+  }
 
   weyl::WeylWord reflectionWord(RootNbr r) const;
 
-  LT::LatticeCoeff scalarProduct(const latticetypes::Weight& v, RootNbr j)
-    const {
+  LT::LatticeCoeff scalarProduct(const LT::Weight& v, RootNbr j) const
+  {
     return LT::scalarProduct(v,coroot(j));
   }
 
   LT::LatticeCoeff scalarProduct(RootNbr i, RootNbr j) const {
-    const LT::Weight& arg1 = root(i);
-    const LT::Weight& arg2 = coroot(j);
-    return LT::scalarProduct(arg1,arg2);
+    return LT::scalarProduct(root(i),coroot(j));
   }
 
   size_t semisimpleRank() const {
@@ -433,12 +429,12 @@ use by accessors.
   LT::LatticeMatrix cartanMatrix(const RootList&) const; // for subsystem
 
 
-  RootNbr rootPermutation(RootNbr i, size_t s) const {
-    return d_rootPermutation[s][i];
-  }
-
+  // convert sequence of weights to basis of simple roots
   template <typename I, typename O>
     void toRootBasis(const I&, const I&, O) const;
+
+  // express root on basis of simple roots
+  LT::Weight onSimpleRoots(RootNbr n) const;
 
   const LT::Weight& twoRho() const {
     return d_twoRho;
@@ -454,6 +450,8 @@ use by accessors.
 
   RootList simpleBasis(const RootList& rl) const;
   RootList simpleBasis(RootSet rs) const;
+
+  bool sumIsRoot(RootNbr i, RootNbr j) const;
 
 // manipulators
 

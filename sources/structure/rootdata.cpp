@@ -149,11 +149,11 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   fillRoots(d_roots,d_coroots,d_simpleRoots,*this);
   fillPositiveRoots(d_posRoots,*this);
 
-  d_isPositive.resize(d_roots.size());
+  d_isPositive.set_capacity(d_roots.size());
   for (size_t j = 0; j < d_posRoots.size(); ++j)
     d_isPositive.insert(d_posRoots[j]);
 
-  d_isSimple.resize(d_roots.size());
+  d_isSimple.set_capacity(d_roots.size());
   for (size_t j = 0; j < d_simpleRoots.size(); ++j)
     d_isSimple.insert(d_simpleRoots[j]);
 
@@ -418,6 +418,17 @@ bool RootDatum::isSimplyConnected() const
   return d_status[IsSimplyConnected];
 }
 
+latticetypes::Weight RootDatum::onSimpleRoots(RootNbr n) const
+{
+  latticetypes::Weight r=root(n); // on chosen lattice basis
+  latticetypes::Weight result(d_semisimpleRank);
+  for (size_t i = 0; i<d_semisimpleRank; ++i)
+    result[i] = latticetypes::scalarProduct(d_coweights[i],r);
+  return result;
+}
+
+
+
 /*!
 \brief Returns the permutation of the roots induced by p.
 
@@ -628,8 +639,6 @@ void RootDatum::swap(RootDatum& other)
   d_isSimple.swap(other.d_isSimple);
   d_twoRho.swap(other.d_twoRho);
   d_status.swap(other.d_status);
-
-  return;
 }
 
 /******** private member functions ******************************************/
@@ -675,8 +684,6 @@ void RootDatum::fillStatus()
       d_status.reset(IsSimplyConnected);
       break;
     }
-
-  return;
 }
 
 }
@@ -769,15 +776,13 @@ LT::LatticeMatrix dualBasedInvolution // a functional version of previous one
   return di;
 }
 
-void lieType(lietype::LieType& lt, const RootList& rb, const RootDatum& rd)
-
 /*!
 \brief puts in lt the Lie type of the root system spanned by rb.
 
   Precondition: rb contains a basis of a sub-rootsystem of the root system of
   rd.
 */
-
+void lieType(lietype::LieType& lt, const RootList& rb, const RootDatum& rd)
 {
   using namespace dynkin;
   using namespace latticetypes;
@@ -785,11 +790,7 @@ void lieType(lietype::LieType& lt, const RootList& rb, const RootDatum& rd)
   LatticeMatrix cm;
   cartanMatrix(cm,rb,rd);
   dynkin::lieType(lt,cm);
-
-  return;
 }
-
-void longest(LT::LatticeMatrix& q, const RootDatum& rd)
 
 /*!
 \brief Puts in q the matrix of the action of w_0;
@@ -799,7 +800,7 @@ void longest(LT::LatticeMatrix& q, const RootDatum& rd)
   NOTE: not intended for heavy use. Should be precomputed if that is the
   case.
 */
-
+void longest(LT::LatticeMatrix& q, const RootDatum& rd)
 {
   using namespace latticetypes;
   using namespace weyl;
@@ -840,8 +841,6 @@ void makeOrthogonal(RootList& orth, const RootList& rl, const RootList& rs,
   not_orthogonal:
     continue;
   }
-
-  return;
 }
 
 void reflectionMatrix(LT::LatticeMatrix& qs, RootNbr n, const RootDatum& rd)
@@ -862,11 +861,7 @@ void reflectionMatrix(LT::LatticeMatrix& qs, RootNbr n, const RootDatum& rd)
       qs(i,j) = -v[i];
     qs(j,j) += 1;
   }
-
-  return;
 }
-
-void rootBasis(RootList& rb, const RootList& rl, const RootDatum& rd)
 
 /*!
 \brief Puts in rb the canonical basis (set of simple roots) of rl.
@@ -876,14 +871,13 @@ void rootBasis(RootList& rb, const RootList& rl, const RootDatum& rd)
   Forwarded to the RootSet version. Therefore the order of the roots in |rl|
   is ignored! The roots of |rb| are by order of occurrence in |rd.roots()|
 */
-
+void rootBasis(RootList& rb, const RootList& rl, const RootDatum& rd)
 {
   RootSet rs(rd.numRoots());
   rs.insert(rl.begin(),rl.end());
   rootBasis(rb,rs,rd);
 }
 
-void rootBasis(RootList& rb, RootSet rs, const RootDatum& rd)
 
 /*!
 \brief puts in rb the canonical basis (set of simple roots) of rs.
@@ -893,7 +887,7 @@ void rootBasis(RootList& rb, RootSet rs, const RootDatum& rd)
   Algorithm: compute the sum of the positive roots in rs; extract the
   positive roots whose scalar product with that sum is 2.
 */
-
+void rootBasis(RootList& rb, RootSet rs, const RootDatum& rd)
 {
   rs &= rd.posRootSet();
 
@@ -911,7 +905,6 @@ void rootBasis(RootList& rb, RootSet rs, const RootDatum& rd)
       rb.push_back(*i);
 }
 
-
 void strongOrthogonalize(RootList& rl, const RootDatum& rd)
 
 /*!
@@ -928,7 +921,7 @@ void strongOrthogonalize(RootList& rl, const RootDatum& rd)
 {
   for (size_t j = 0; j < rl.size(); ++j)
     for (size_t i = 0; i < j; ++i)
-      if (sumIsRoot(rl[i],rl[j],rd)) {
+      if (rd.sumIsRoot(rl[i],rl[j])) {
 	Weight v = rd.root(rl[i]);
 	v += rd.root(rl[j]);
 	Weight w = rd.root(rl[i]);
@@ -940,30 +933,27 @@ void strongOrthogonalize(RootList& rl, const RootDatum& rd)
   return;
 }
 
-bool sumIsRoot(const Weight& a, const Weight& b, const RootDatum& rd)
-
 /*!
 \brief Tells if a+b is a root.
 
   Precondition: a and b are roots;
 */
-
+bool sumIsRoot(const Weight& a, const Weight& b, const RootDatum& rd)
 {
   Weight v = a;
   v += b;
   return rd.isRoot(v);
 }
 
-bool sumIsRoot(const RootNbr& a, const RootNbr& b, const RootDatum& rd)
 
 /*!
 \brief Tells if (root number a)+(root number b) is a root.
 
   Precondition: a and b are root numbers;
 */
-
+bool RootDatum::sumIsRoot(RootNbr a, RootNbr b) const
 {
-  return sumIsRoot(rd.root(a),rd.root(b),rd);
+  return rootdata::sumIsRoot(root(a),root(b),*this);
 }
 
 void toDistinguished(LatticeMatrix& q, const RootDatum& rd)
