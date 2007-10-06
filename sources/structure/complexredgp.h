@@ -170,6 +170,8 @@ class ComplexReductiveGroup {
 
   size_t numInvolutions() const;
 
+  size_t numInvolutions(const bitmap::BitMap& Cartan_classes) const;
+
   size_t numRealForms() const;
 
   realform::RealForm quasisplit() const;

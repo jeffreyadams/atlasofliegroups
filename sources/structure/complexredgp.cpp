@@ -271,8 +271,7 @@ const cartanclass::Fiber& ComplexReductiveGroup::fundamental() const
 rootdata::RootSet
 ComplexReductiveGroup::noncompactRoots(realform::RealForm rf) const
 {
-  rootdata::RootSet result; d_cartanSet.noncompactRootSet(result,rf);
-  return result;
+  return d_cartanSet.noncompactRoots(rf);
 }
 
 /*!
@@ -323,11 +322,21 @@ size_t ComplexReductiveGroup::numDualRealForms() const
 
 /*!
   \brief returns the number of involutions for the currently defined
-  cartans.
+  Cartans.
 */
 size_t ComplexReductiveGroup::numInvolutions() const
 {
   return d_cartanSet.numInvolutions();
+}
+
+/*!
+  \brief returns the number of involutions for the indicated Cartans.
+*/
+size_t
+ComplexReductiveGroup::numInvolutions(const bitmap::BitMap& Cartan_classes)
+  const
+{
+  return d_cartanSet.numInvolutions(Cartan_classes);
 }
 
 
