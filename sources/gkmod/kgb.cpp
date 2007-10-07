@@ -24,14 +24,18 @@
 #include <memory>
 #include <set>
 #include <stdexcept>
-#include <list>
 
+#include <iostream>
+
+#include "bitmap.h"
 #include "bruhat.h"
+#include "cartanset.h"
 #include "cartanclass.h"
 #include "complexredgp.h"
 #include "error.h"
 #include "gradings.h"
 #include "hashtable.h"
+#include "latticetypes.h"
 #include "realredgp.h"
 #include "rootdata.h"
 #include "tits.h"
@@ -90,12 +94,15 @@ struct TE_Entry // To allow hash tables of TitsElt values
   /*!
 \brief A |FiberData| object associates to each twisted involution a subspace
 describing how corresponding Tits elements should be normalized.
+
+It also records the Cartan class each twisted involution belongs to.
   */
 class FiberData
 {
   TI_Entry::Pooltype pool;
   hashtable::HashTable<TI_Entry,unsigned int> hash_table;
   std::vector<latticetypes::SmallSubspace> data;
+  std::vector<unsigned int> Cartan_class;
 public:
   FiberData(const realredgp::RealReductiveGroup& GR);
 
@@ -105,6 +112,10 @@ public:
   }
   void reduce(tits::TitsElt& a) const { mod_space(a).mod_reduce(a.t()); }
 
+  size_t cartanClass(const weyl::TwistedInvolution& tw) const
+  {
+    return Cartan_class[hash_table.find(tw)];
+  }
 }; // class FiberData
 
 
@@ -113,6 +124,17 @@ public:
 /*
                  The |KGBHelp| class, a helper class for |KGB|
 
+ */
+
+/* The helper class stores the basic data for KGB elements that will be
+   exported to the |KGB| class, but also additional data that is used during
+   generation but is not retained in the final representation; notably for
+   each KGB element the Tits group element with which it is associated (the
+   correspondence between the two depends on fairly arbitrary choices, whence
+   retaining the Tits group element after generation is not really useful).
+   Also stored is a table |d_fiberData| recording per-twisted-involution data.
+   Upon exportation the numbering of the elements will be changed, and all
+   internally used indices modified to reflect the renumbering.
  */
 
 
@@ -131,7 +153,7 @@ class KGBHelp
   /*!
 \brief List of Tits elements parametrizing KGB orbits.
 
-  Access is usually via the hash table |d_tits|
+  Accessed usually via the hash table |d_tits| (and |d_tits[i]| is |d_pool[i]|)
   */
   TE_Entry::Pooltype d_pool;
   hashtable::HashTable<TE_Entry,KGBElt> d_tits;
@@ -152,16 +174,16 @@ G in the base theta-stable Borel.
 
   ~KGBHelp() {};
 
-// public accessor and manipulator:
+// public manipulators and accessor:
+
+//! fill the KGB set and return it
+KGBHelp& fill();
 
 //! deliver values to fields of a |KGB| object under construction.
   size_t export_tables(std::vector<KGBEltList>& cross,
 		       std::vector<KGBEltList>& cayley,
 		       weyl::TwistedInvolutionList& twisted,
 		       std::vector<KGBInfo>& info) const;
-
-//! fill the KGB set and return it
-KGBHelp& fill();
 
 // accessors (private)
 private:
@@ -386,6 +408,8 @@ void KGB::fillBruhat()
 
 ******************************************************************************/
 
+/*    II a. Small auxiliary classes |TI_Entry|, |TE_Entry|   */
+
 // namespace {
 namespace kgb {
   namespace {
@@ -406,25 +430,28 @@ size_t TE_Entry::hashCode(size_t modulus) const
   return hash+t().data().to_ulong() & modulus-1;
 }
 
+/*    II b. |FiberData|  */
 
 /*
-
   The |FiberData| constructor computes a subspace for each twisted involution
-  $tw$, representing an involution $\tau$ of $H$ and an involution
-  $q=tw.\delta$ of the weight lattice $X$. The space stores for it is the
-  result of acting by $w^{-1}$ on the image $I$ in $X^\vee/2X^\vee$ of the
-  $-1$ eigenspace $X^\vee_-$ of $q^t$. Since that eigenspace is stable by
-  $(q^t)^{-1}=\delta.w^{-1}$, the subspace is also equal to $\delta.I$.
+  $tw$ (representing an involution $\tau$ of $H$ and an involution
+  $q=tw.\delta$ of the weight lattice $X$) that occurs for $GR$. The subspace
+  of $X^\vee/2X^\vee$ that will be stored for $tw$ is the result of $tw^{-1}$
+  acting (always by inverse transpose) on the image $I$ of the $-1$ eigenspace
+  $X^\vee_-$ of $q^t$. Since this eigenspace is stable by the action of
+  $q=tw.\delta$, that subspace is also equal to $\delta.I$.
 
-  The subspace $I$ is what one divides by to get the fiber group of the real
-  Cartan associated to $H$ and $\tau$. The information of $w$ together with a
-  point of the fiber can be combined in a Tits group element of the form $t.w$
-  where $t\in X^\vee/2X^\vee$ lies in the image of $X^\vee_+ + X^\vee_-$, and
-  only its coset modulo $I$ matters. However such an element is in fact stored
-  in the form $w.t'$ where $t'=w^{-1}(t)$, and this torus part $t'$ is only
-  relevant modulo the space stored in the |FiberData| object. We shall work
-  with Tits elements whose torus parts are distinguished representatives of
-  these cosets. The method |reduce| transforms Tits elements to such a form.
+  The image $I$ corresponds to the subset of elements of order 2 in $H$ that
+  are of the form $h*\tau(h)^{-1}$. It is also what one divides by to get the
+  fiber group of the real Cartan associated to $H$ and $\tau$, and for Tits
+  group elements of the form $t.tw$, only the coset of $t$ modulo $I$ matters.
+  Note however that it is not true that such $t\in X^\vee/2X^\vee$ will always
+  lie in the image of $X^\vee_+ + X^\vee_-$ that is used to form the fiber
+  group. Another wrinkle (unnecessary this one) is that such a Tits group
+  element is in fact stored as $tw.t'$ where $t'=tw^{-1}(t)$, and this
+  explains why not $I$ but $tw^{-1}.I$ is stored: thus $t'$ gets to be reduced
+  (by the method |reduce|) modulo the space stored in the |data| field of the
+  |FiberData| object. The Cartan class associated to $tw$ is also recorded.
 
   $I$ also corresponds to the subset of elements of order 2 in $H$ that
   are of the form $h*\tau(h)^{-1}$.
@@ -433,6 +460,7 @@ FiberData::FiberData(const realredgp::RealReductiveGroup& GR)
   : pool()
   , hash_table(pool)
   , data()
+  , Cartan_class()
 {
   const complexredgp::ComplexReductiveGroup& G=GR.complexGroup();
   const weyl::WeylGroup& W=G.weylGroup();
@@ -451,6 +479,7 @@ FiberData::FiberData(const realredgp::RealReductiveGroup& GR)
   }
 
   data.reserve(G.numInvolutions());
+  Cartan_class.reserve(G.numInvolutions());
   for (bitmap::BitMap::iterator it=GR.cartanSet().begin(); it(); ++it)
   {
     cartanclass::CartanClass cc=G.cartan(*it);
@@ -465,21 +494,29 @@ FiberData::FiberData(const realredgp::RealReductiveGroup& GR)
       using namespace latticetypes;
       LatticeMatrix qtr= cc.involution().transposed();
       data.push_back(SmallSubspace(SmallBitVectorList(tori::minusBasis(qtr)),
-				   G.rank()));
-      data[i].apply(delta);
+				   G.rank())); // compute subspace $I$
+      data.back().apply(delta);   // twist the subspace $I$, as explained above
+      Cartan_class.push_back(*it);// record number of Cartan class
     }
 
-    for ( ; i<data.size(); ++i) // |data.size()|  increases during loop
+
+    // now generate all non-canonical twisted involutions for this Cartan class
+    for ( ; i<data.size(); ++i) // |data.size()|  increases during the loop
       for (size_t s=0; s<G.semisimpleRank(); ++s)
       {
 	weyl::TwistedInvolution stw=W.twistedConjugated(pool[i],s);
 	if (hash_table.match(stw)==data.size()) // then |stw| is new
 	{
-	  data.push_back(data[i]);
-	  data.back().apply(refl[s]);
-	}
+	  data.push_back(data[i]);     // start with copy of source subspace
+	  data.back().apply(refl[s]);  // modify according to cross action used
+	  Cartan_class.push_back(*it); // record number of Cartan class
+ 	}
       }
   }
+
+  // check that the number of generated elements is as predicted
+  assert(data.size()==G.numInvolutions(Cartan_classes));
+  assert(Cartan_class.size()==G.numInvolutions(Cartan_classes));
 }
 
 
@@ -509,8 +546,9 @@ KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
 {
   KGBElt size = GR.kgbSize();
 
-  // initialize descent, length, and associated (twisted) involution
-  d_info.reserve(size); d_info.push_back(0);
+  // initialize descent, length, Cartan, and associated (twisted) involution
+  d_info.reserve(size);
+  d_info.push_back(KGBInfo(0,d_fiberData.cartanClass(d_tits[0].tw())));
 
   // set up cross and cayley tables with undefined values
   for (size_t j = 0; j < d_rank; ++j) {
@@ -529,11 +567,12 @@ KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
   Precondition: the object is in the initial state, the one it is put in by
   the call to its constructor;
 
-  Algorithm: The idea is just to start out from the fundamental orbit,
+  Algorithm: The idea is just to start out from the given element,
   and then to saturate through cross actions and Cayley transforms.
 
   It is important that for each element the cross actions are defined before
-  the Cayley transforms is tried
+  the Cayley transforms is tried, because the status information set by the
+  former is used by the latter.
 */
 KGBHelp& KGBHelp::fill()
 {
@@ -587,7 +626,9 @@ void KGBHelp::crossExtend(KGBElt parent)
     if (x==d_info.size()) // add a new Tits element
     {
       bool same_fiber=d_tits[x].tw()==d_tits[parent].tw();
-      d_info.push_back(d_info[parent].length+(same_fiber ? 0 : 1));
+      d_info.push_back(KGBInfo(d_info[parent].length+(same_fiber ? 0 : 1),
+			       d_fiberData.cartanClass(a.tw())
+			       ));
     }
 
     // set descent direction of complex |s| for |x| (whether it was new or old)
@@ -640,10 +681,13 @@ void KGBHelp::setStatus(KGBElt from, KGBElt to, size_t s)
 }
 
 /*!
-  \brief Tries to enlarge the parameter set by cayley transforms from |parent|.
+  \brief Tries to enlarge the parameter set by Cayley transforms from |parent|.
 
-  Precondition: |parent| is the |KGBElt| (index in |d_pool|) we are extending
-  from.
+  Precondition: |parent| is a |KGBElt| whose |status| field in |d_info| has
+  been set to the proper value.
+
+  Calling this function also sets the fields |d_cayley[s][parent]| either to
+  the appropriate value or to |UndefKGB| (it was 0, which is neither of those)
 
   It is assumed that the it is an invariant of the |KGBHelp| structure that
   all downward links are already filled in.
@@ -670,8 +714,9 @@ void KGBHelp::cayleyExtend(KGBElt parent)
     d_fiberData.reduce(a); // subspace has grown, so mod out new supspace
     KGBElt x = d_tits.match(a);
     if (x==d_info.size()) // add a new Tits element
-      d_info.push_back(d_info[parent].length+1); // length goes always up
-
+      d_info.push_back(KGBInfo(d_info[parent].length+1, // length goes up
+			       d_fiberData.cartanClass(a.tw())
+			       ));
     // add new cayley link
     d_cayley[s][parent] = x;
 
