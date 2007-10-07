@@ -35,6 +35,12 @@ namespace cartanset {
 		  	  const CartanClassSet&);
 
   unsigned long kgbSize(realform::RealForm, const CartanClassSet&);
+
+  void cayley_and_cross_part(rootdata::RootList& cayley,
+			     weyl::WeylWord& cross,
+			     const weyl::TwistedInvolution& tw,
+			     const rootdata::RootDatum& rd,
+			     const weyl::WeylGroup& W);
 }
 
 /******** type definitions ***************************************************/
@@ -294,14 +300,6 @@ unsigned long fiberSize(realform::RealForm rf, size_t cn) const;
   }
 
   /*!
-  \brief Flags in rs the set of noncompact imaginary roots for the
-  fundamental Cartan in real form \#rf.
-  */
-  void noncompactRootSet(rootdata::RootSet& rs, realform::RealForm rf) const {
-    rs=d_fundamental.noncompactRoots(d_fundamental.weakReal().classRep(rf));
-  }
-
-  /*!
   \brief Returns the set of noncompact imaginary roots for (the representative
   in the adjoint fiber of) the real form \#rf.
   */
@@ -334,6 +332,7 @@ unsigned long fiberSize(realform::RealForm rf, size_t cn) const;
   }
 
   size_t numInvolutions() const;
+  size_t numInvolutions(const bitmap::BitMap& Cartan_classes) const;
 
   /*!
   \brief Returns the number of weak real forms of G.
@@ -441,8 +440,14 @@ unsigned long fiberSize(realform::RealForm rf, size_t cn) const;
 /*!
 \brief apply involution action of |tw| on weight lattice to |v|
 */
-void twistedAct(const weyl::TwistedInvolution& tw,latticetypes::LatticeElt& v)
+  void twistedAct
+    (const weyl::TwistedInvolution& tw,latticetypes::LatticeElt& v)
   const;
+
+  unsigned long KGB_size(realform::RealForm rf,
+			 const bitmap::BitMap& Cartan_classes) const;
+  unsigned long block_size(realform::RealForm, realform::RealForm,
+			   const bitmap::BitMap& Cartan_classes) const;
 
   latticetypes::LatticeElt posRealRootSum(const TwistedInvolution&) const;
 
@@ -463,7 +468,7 @@ void leftReflect(weyl::TwistedInvolution&, rootdata::RootNbr) const;
 
 rootdata::RootSet noncompactPosRootSet(realform::RealForm, size_t) const;
 
-std::vector<weyl::WeylEltList> expand() const;
+std::vector<weyl::WeylEltList> expand() const; // obsolete
 
 // auxiliary manipulators
 

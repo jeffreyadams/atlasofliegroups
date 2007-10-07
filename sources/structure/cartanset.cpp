@@ -115,12 +115,12 @@ namespace cartanset {
 CartanClassSet::CartanClassSet
   (const complexredgp::ComplexReductiveGroup& parent,
    const latticetypes::LatticeMatrix& d)
-  : d_parent(parent) // fix refernce to parent inner class
+  : d_parent(parent) // fix reference to parent inner class
 
   /* install the fundamental Cartan with associated data (like numRealForms) */
   , d_cartan(1,new cartanclass::CartanClass(parent.rootDatum(),d))
 
-  // initalise following structures to correspond to just fnudamental Cartan
+  // initalise following structures to correspond to just fundamental Cartan
   , d_twistedInvolution(1,TwistedInvolution(weyl::WeylElt()))
   , d_ordering(1) // Cartans for a one point poset for now
 
@@ -254,18 +254,32 @@ unsigned long CartanClassSet::dualRepresentative(realform::RealForm rf,
   return pi.classRep(p);
 }
 
-size_t CartanClassSet::numInvolutions() const
 
 /*!
   \brief Returns the total number of involutions corresponding to the
   currently defined set of cartans.
 */
-
+size_t CartanClassSet::numInvolutions() const
 {
   size_t count = 0;
 
   for (size_t cn = 0; cn < d_cartan.size(); ++cn)
     count += cartan(cn).orbitSize();
+
+  return count;
+}
+
+/*!
+  \brief Returns the total number of involutions corresponding to the
+  indicated set of Cartans.
+*/
+size_t CartanClassSet::numInvolutions(const bitmap::BitMap& Cartan_classes)
+  const
+{
+  size_t count = 0;
+
+  for (bitmap::BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
+    count += cartan(*it).orbitSize();
 
   return count;
 }
