@@ -716,7 +716,7 @@ void Helper::fillInvolutionSupports()
       size_t sz = cross(s,z);
       d_involutionSupport[z] = d_involutionSupport[sz];
       d_involutionSupport[z].set(s);
-      d_involutionSupport[z].set(W.twistGenerator(s));
+      d_involutionSupport[z].set(W.twist(s));
     } else { // do inverse cayley transform
       size_t sz = inverseCayley(s,z).first;
       d_involutionSupport[z] = d_involutionSupport[sz];
@@ -879,7 +879,7 @@ void makeHasse(std::vector<set::SetEltList>& hd, const Block& block)
   \brief Puts in hd the hasse diagram data for the Bruhat
   ordering on the block.
 
-  Explanation: we use the algorithm from Vogan's 1982 Park City notes, 
+  Explanation: we use the algorithm from Vogan's 1982 Park City notes,
 ...which used a bad definition.  Now modified to work like kgb
 makeHasse: seek an ascent s that is complex or type I real.  If it
 exists, use it as in kgb.  If it doesn't then we're essentially at a
