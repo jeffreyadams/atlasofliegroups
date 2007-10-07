@@ -334,6 +334,32 @@ class Fiber {
   }
 
 /*!
+  \brief RootList holding the numbers of the simple imaginary
+  roots.
+
+  These are simple for the positive imaginary roots given by the
+  (based) RootDatum.  They need not be simple in the entire root
+  system.
+*/
+  const rootdata::RootList& simpleImaginary() const {
+    return d_involutionData.imaginary_basis();
+  }
+  const rootdata::RootNbr simpleImaginary(size_t i) const {
+    return d_involutionData.imaginary_basis()[i];
+  }
+
+  size_t imaginaryRank() const {
+    return simpleImaginary().size();
+  }
+
+/*!
+\brief Action of the Cartan involution on root \#j.
+*/
+  rootdata::RootNbr involution_image_of_root(rootdata::RootNbr j) const {
+    return d_involutionData.root_involution()[j];
+  }
+
+/*!
   \brief Fiber group for the adjoint group of G.
 
   Writing H_ad for the complex torus in G_ad, and still writing tau
@@ -444,32 +470,6 @@ class Fiber {
   AdjointFiberElt class_base(square_class c) const
   {
     return d_weakReal.classRep(d_realFormPartition.classRep(c));
-  }
-
-/*!
-\brief Action of the Cartan involution on root \#j.
-*/
-  rootdata::RootNbr involution_image_of_root(rootdata::RootNbr j) const {
-    return d_involutionData.root_involution()[j];
-  }
-
-/*!
-  \brief RootList holding the numbers of the simple imaginary
-  roots.
-
-  These are simple for the positive imaginary roots given by the
-  (based) RootDatum.  They need not be simple in the entire root
-  system.
-*/
-  const rootdata::RootList& simpleImaginary() const {
-    return d_involutionData.imaginary_basis();
-  }
-  const rootdata::RootNbr simpleImaginary(size_t i) const {
-    return d_involutionData.imaginary_basis()[i];
-  }
-
-  size_t imaginaryRank() const {
-    return simpleImaginary().size();
   }
 
 /*!
