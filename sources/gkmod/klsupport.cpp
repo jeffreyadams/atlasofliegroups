@@ -225,8 +225,8 @@ void KLSupport::fillDownsets()
   std::vector<RankFlags> ga(size);
 
   for (size_t s = 0; s < ds.size(); ++s) {
-    ds[s].resize(size);
-    ps[s].resize(size);
+    ds[s].set_capacity(size);
+    ps[s].set_capacity(size);
     for (BlockElt z = 0; z < size; ++z) {
       DescentStatus::Value v = descentValue(s,z);
       if (DescentStatus::isDescent(v)) {
