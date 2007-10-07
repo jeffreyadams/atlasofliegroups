@@ -123,6 +123,20 @@ template<size_t dim> class Subspace {
     return v;
   }
 
+  /*!
+  \brief Interprets |v| in the subspace basis and returns external form
+  */
+  bitvector::BitVector<dim> fromBasis(bitvector::BitVector<dim> v) const
+  {
+    assert(v.size()==dimension());
+
+    // expand linear combination of basis given by |v|
+    bitvector::BitVector<dim> result(rank());
+    bitvector::combination(result,d_basis,v.data());
+
+    return result;
+  }
+
   bool contains(const bitvector::BitVector<dim>& v) const
     { return mod_image(v).isZero(); }
 
@@ -154,7 +168,7 @@ template<size_t dim> class Subspace {
 
   void swap(Subspace&);
 
-};
+}; // class Subspace
 
   /*!
   \brief Quotient of two subspaces of (Z/2Z)^d_rank.
@@ -299,8 +313,14 @@ bitset::BitSet<dim> d_rel_support;
   /*!
   \brief Expresses |v| in the subquotient basis.
 
-  It is assumed that |v| belongs to d_space, so that |representative| can
-  be called for it.
+  It is assumed that |v| belongs to |d_space|.
+
+  We know that the subset of basis vectors of |d_space| selected by
+  |d_rel_support| is independent modulo |d_subspace|, so if |v| is any linear
+  combination of them, it suffices to extract and pack those coefficients. We
+  can reduce to that situation by reducing |v| modulo |d_subspace|, which is
+  what the call to |mod_image| below does; this will clear the bits for the
+  support of |d_subspace|, while not taking us out of |d_space|.
   */
   bitvector::BitVector<dim> toBasis(const bitvector::BitVector<dim>& v)
     const
@@ -315,6 +335,17 @@ bitset::BitSet<dim> d_rel_support;
     assert(result.size()==dimension()); // i.e., dimension of the subquotient
 
     return result;
+  }
+
+  /*!
+  \brief Interprets |v| in the subspace basis and returns external form
+  */
+  bitvector::BitVector<dim> fromBasis(bitvector::BitVector<dim> v) const
+  {
+    assert(v.size()==dimension());
+
+    v.unslice(d_rel_support,d_space.dimension()); // insert null coordinates
+    return d_space.fromBasis(v);
   }
 
 // manipulators
