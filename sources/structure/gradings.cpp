@@ -319,19 +319,15 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
     // find grading
 
     for (unsigned long j = 0; j < rl.size(); ++j)
-      if (sumIsRoot(rd.root(n),rd.root(rl[j]),rd)) { // change parity
-	if (nc.isMember(rl[j]))
-	  nc.remove(rl[j]);
-	else
-	  nc.insert(rl[j]);
-      }
+      if (rd.sumIsRoot(n,rl[j])) // change parity
+	nc.flip(rl[j]);
   }
 
   // correct gt to be made of strongly orthogonal roots
 
   for (unsigned long i = 1; i < gt.size(); ++i)
     for (unsigned long j = 0; j < i; ++j)
-      if (sumIsRoot(rd.root(gt[i]),rd.root(gt[j]),rd)) {
+      if (rd.sumIsRoot(gt[i],gt[j])) {
 	// replace gt[i] and gt[j] by their sum and difference
 	// note that they generate a little B2 system
 	Weight a(rd.root(gt[i]));
@@ -342,8 +338,6 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
 	gt[i] = n;
 	gt[j] = rd.rootNbr(a);
       }
-
-  return;
 }
 
 } // namespace gradings
