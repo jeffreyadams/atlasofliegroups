@@ -378,6 +378,24 @@ unsigned long fiberSize(realform::RealForm rf, size_t cn) const;
     return d_dualRealFormLabels[cn];
   }
 
+/*! get part in the |weakReal| partition of the fiber in Cartan \#cn
+    corresponding to real form |rf|
+ */
+  cartanclass::adjoint_fiber_orbit
+    real_form_part(realform::RealForm rf, size_t cn) const
+  {
+    return setutils::find_index(d_realFormLabels[cn],rf);
+  }
+
+/*! get part in the |weakReal| partition of the dual fiber in Cartan \#cn
+    corresponding to dual real form |drf|
+ */
+  cartanclass::adjoint_fiber_orbit
+    dual_real_form_part(realform::RealForm drf, size_t cn) const
+  {
+    return setutils::find_index(d_dualRealFormLabels[cn],drf);
+  }
+
 /*!
   \brief An element of the orbit in the adjoint fiber corresponding to |rf|
   in the classification of weak real forms for cartan |\#cn|.
@@ -464,7 +482,8 @@ unsigned long fiberSize(realform::RealForm rf, size_t cn) const;
 
  private:
 // auxiliary accessors
-void leftReflect(weyl::TwistedInvolution&, rootdata::RootNbr) const;
+weyl::TwistedInvolution
+reflection(rootdata::RootNbr rn,const TwistedInvolution& tw) const;
 
 rootdata::RootSet noncompactPosRootSet(realform::RealForm, size_t) const;
 
@@ -486,8 +505,6 @@ void addCartan(TwistedInvolution tw)
   through root \#rn. This unused old version will be phased out.
 */
 void addCartan(rootdata::RootNbr rn, size_t j);
-
-size_t addCanonicalRep(TwistedInvolution tw,TwistedInvolutionList& dest);
 
 void correlateForms();
 
