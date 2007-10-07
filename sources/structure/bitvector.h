@@ -45,12 +45,30 @@ template<size_t dim>
   { v=combination(b,coef); }
 
 
+/*!
+  \brief Put into |c| a solution of the system with as left hand sides the
+  rows of a matrix whose columns are given by |b|, and as right hand sides the
+  bits of |rhs|, and return |true|; if no solution exists just return |false|.
+*/
 template<size_t dim>
-  bool firstSolution(bitset::BitSet<dim>&, const std::vector<BitVector<dim> >&,
-		     const BitVector<dim>&);
+  bool firstSolution(bitset::BitSet<dim>& c,
+		     const std::vector<BitVector<dim> >& b,
+		     const BitVector<dim>& rhs);
 
-template<size_t dim> bool firstSolution(BitVector<dim>&,
-					const std::vector<BitVector<dim> >&);
+/*!
+  \brief Either find a solution of the system of equations |eqn|, putting it
+  into |sol| and returning |true|, or return |false| if no solition exists.
+
+  Here |eqns| holds a system of equations, the last bit of each being
+  interpreted as the right hand side.
+
+  If there is a solution, |sol| will be resized to to number of
+  indeterminates, which is one less than the size of each equation; however,
+  if the set of equations is empty, |sol| is left unchanged.
+*/
+template<size_t dimsol, size_t dimeq>
+  bool firstSolution(BitVector<dimsol>& sol,
+		     const std::vector<BitVector<dimeq> >& eqns);
 
 template<size_t dim> void identityMatrix(BitMatrix<dim>&, size_t);
 
@@ -89,7 +107,7 @@ template<size_t dim>
   void spanAdd(std::vector<BitVector<dim> >&, std::vector<size_t>&,
 	       const BitVector<dim>&);
 
-}
+} // namespace bitvector
 
 /******** type definitions **************************************************/
 
@@ -289,7 +307,8 @@ template<size_t dim> class BitVector{
     d_size = n;
   }
 
-  void slice(const bitset::BitSet<dim>&);
+  void slice(const bitset::BitSet<dim>& mask);
+  void unslice(bitset::BitSet<dim> mask, size_t new_size);
 }; // class BitVector
 
 /* the following template inherits everything from |std::vector| but after

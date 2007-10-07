@@ -94,7 +94,27 @@ void BitVector<dim>::slice(const bitset::BitSet<dim>& t)
   d_size = c;
 }
 
+/*! \brief Undoes the effect of |slice|, inserting zero bits where needed.
+
+  This cannot be used to undo the use of |slice| to express a vector on a
+  subspace basis (you need to form a linear combination of the basis for
+  that), but when |slice| is used during a projection modulo a subspace (as
+  happens in subquotients), then |unslice| can reconstruct a preimage.
+
+  Note that |unslice| changes (weakly increases) the size of its |BitVector|.
+*/
+template<size_t dim>
+void BitVector<dim>::unslice(bitset::BitSet<dim> t,size_t new_size)
+{
+  bitset::BitSet<dim> result;
+  for (typename bitset::BitSet<dim>::iterator it=t.begin(); it();
+       d_data>>=1,++it)
+    result.set(*it,d_data[0]);
+  d_data=result;
+  d_size=new_size;
 }
+
+} // namespace bitvector
 
 /*****************************************************************************
 
@@ -480,16 +500,16 @@ template<size_t dim>
     return result;
   }
 
-template<size_t dim>
-  bool firstSolution(bitset::BitSet<dim>& c,
-		     const std::vector<BitVector<dim> >& b,
-		     const BitVector<dim>& rhs)
-
 /*!
   \brief Put into |c| a solution of the system with as left hand sides the
   rows of a matrix whose columns are given by |b|, and as right hand sides the
   bits of |rhs|, and return |true|; if no solution exists just return |false|.
 */
+template<size_t dim>
+  bool firstSolution(bitset::BitSet<dim>& c,
+		     const std::vector<BitVector<dim> >& b,
+		     const BitVector<dim>& rhs)
+
 
 {
   using namespace bitset;
@@ -559,10 +579,6 @@ template<size_t dim>
   return true;
 }
 
-template<size_t dim>
-bool firstSolution(BitVector<dim>& sol,
-		   const std::vector<BitVector<dim> >& d_eqn)
-
 /*!
   \brief Either find a solution of the system of equations |eqn|, putting it
   into |sol| and returning |true|, or return |false| if no solition exists.
@@ -575,10 +591,14 @@ bool firstSolution(BitVector<dim>& sol,
   the transpose matrix), and look for a kernel element with final coordinate
   equal to $-1$ (which working over $Z/2Z$ is of course the same as $1$).
 */
+template<size_t dimsol, size_t dimeq>
+bool firstSolution(BitVector<dimsol>& sol,
+		   const std::vector<BitVector<dimeq> >& eqns)
+
 
 {
-  std::vector<BitVector<dim> > eqn(d_eqn); // local copy
-  bitset::BitSet<dim> t;
+  std::vector<BitVector<dimeq> > eqn(eqns); // local copy
+  bitset::BitSet<dimeq> t;
 
   normalize(t,eqn); // normalize matrix, treating the last bit like all others
 
