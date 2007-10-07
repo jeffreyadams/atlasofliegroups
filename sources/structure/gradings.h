@@ -117,7 +117,14 @@ class Status {
     b <<= 2*j;
     d_flags |= b;
   }
-};
+
+  void set_imaginary(size_t j, bool grading)
+  {
+    bitset::TwoRankFlags b(grading ? ImaginaryNoncompact : ImaginaryCompact);
+    b <<= 2*j;
+    d_flags |= b;
+  }
+}; // class Status
 
 
 struct GradingCompare
