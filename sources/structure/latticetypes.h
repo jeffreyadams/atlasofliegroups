@@ -16,10 +16,10 @@
 
 #include "latticetypes_fwd.h"
 
-// these includes are not required by this file but we put them here
-// so that other files don't have to know about matrix and bitvector
-// directly.
-
+/* The following includes are not required by this file but we put them here
+   so that the types predeclared in "latticetypes_fwd.h" will be complete for
+   any module that includes the current file, without it having to separately
+   include "bitvector.h" and "matrix.h" */
 #include "bitvector.h"
 #include "matrix.h"
 
