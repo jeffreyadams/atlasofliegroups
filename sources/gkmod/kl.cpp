@@ -735,16 +735,23 @@ void KLContext::fill()
   if (d_state.test(KLFilled))
     return;
 
-  Helper help(*this);
+  try
+  {
+    Helper help(*this);
 
-  help.fill();
-  swap(help); // swaps the base object, including the d_store
+    help.fill();
+    swap(help); // swaps the base object, including the d_store
 
-  d_state.set(KLFilled);
+    d_state.set(KLFilled);
 
 #ifdef VERBOSE
-  std::cerr << "done" << std::endl;
+    std::cerr << "done" << std::endl;
 #endif
+  }
+  catch (std::bad_alloc) { // transform failed allocation into MemoryOverflow
+    std::cerr << "\n memory full, KL computation abondoned." << std::endl;
+    throw error::MemoryOverflow();
+  }
 
 }
 
@@ -2095,7 +2102,7 @@ ThicketIterator::ThicketIterator(const Thicket& th, size_t j)
 
 {
   d_stack.push(j);
-  d_done.resize(th.size()); // all bits unset initially
+  d_done.set_capacity(th.size()); // all bits unset initially
   d_done.insert(j);
   d_current = th.edgeList(j).begin();
   d_currentEnd = th.edgeList(j).end();
