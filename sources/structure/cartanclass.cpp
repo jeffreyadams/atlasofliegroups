@@ -436,7 +436,7 @@ gradings::Grading Fiber::makeBaseGrading
 			,simpleImaginary(),rd);
 
   // now flag all roots with noncompact grading
-  flagged_roots.resize(rd.numRoots());
+  flagged_roots.set_capacity(rd.numRoots());
 
   for (size_t j = 0; j < irl.size(); ++j)
   {
@@ -799,8 +799,13 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
     latticetypes::SmallBitVector v(yf,adjointFiberRank()); // the desired image
 
     // solve equation |toAdjoint(xf)=v|
-    RankFlags xf; bool success=bitvector::firstSolution(xf,b,v);
+    RankFlags xf;
+#ifdef DEBUG
+    bool success=bitvector::firstSolution(xf,b,v);
     assert(success);  // there has to be a solution!
+#else
+    bitvector::firstSolution(xf,b,v);
+#endif
 
     // make representative
     result[wrf] = std::make_pair(FiberElt(xf.to_ulong()),c);
