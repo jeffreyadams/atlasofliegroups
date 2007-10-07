@@ -1,18 +1,31 @@
 'blockd' is a slight variation of the 'block' command
 
-The final entry of the output of the 'block' command is a twisted
-involution tau in the Weyl group. See the help file for the 'kgb'
-command.  Thus tau=w*delta, and w=s_1...s_p where each s_i is
-conjugation by a simple reflection, or left multiplication by a simple
-reflection which commutes with tau. Such an expression is said to be
-involution-reduced if p is minimal.
+The final entry of the output of the 'block' command is a reduced expression
+for a twisted involution w in the Weyl group, defining an involution
+tau=w*delta of the root datum (see the help file for the 'kgb' command).
 
-The length of a twisted involution is the length of the corresponding
-orbit in X. In practical terms, this means that the last column in the
-output of 'block' could be replaced by a product whose number of terms
-is given by the length of this parameter, i.e. the value in the
-before-last column. This is what 'blockd' does: it replaces the last
-column of the output of block with an involution-reduced expression.
+A twisted involution w has a length l(w) in the Weyl group, but this is in
+general more than the length of orbits associated to this twisted involution.
+The reason is that tau=w*delta can be obtained from the the distinguished
+root datum involution delta by two types of operation: left (or right)
+multiplication by a simple relection commuting with the current tau, and for
+which l(sw)=l(w)+1, or conjugation by a simple relection not commuting with
+the current tau, and for which again l(sw)=l(w)+1; the former corresponds to
+a Cayley transform, and the latter to a length-increasing cross action. In
+the latter case the twisted commutation of w makes the Weyl group length go
+up by 2, but the length of associated kgb-orbits only inreases by 1.
+
+Thus instead of giving a reduced expression for w, we could specify a
+sequence of operations that is either left-multiplication or twisted
+conjugation by a simple reflection s; this is what we call an
+involution-reduced expression for the twisted involution, and its length is
+equal to the length of corresponding orbits. To make the distinction visible,
+we suffix the generator s by '^' in the former case (Cayley transform) and by
+'x' in the latter case (cross action). Since such operations are written to
+the left of their operand, the order of application in an involution-reduced
+expression is from right to left. The output of 'blockd' differs from that of
+'block' only in replacing the reduced expression in the final column by such
+an involution-reduced expression for the same twisted involution.
 
 Example:
 
@@ -26,11 +39,11 @@ representation of Sp(4,R):
  4( 4,4):   8   4    ( *, *)  ( *, *)    [C+,r1]  1  2
  5( 5,4):   9   5    ( *, *)  ( *, *)    [C+,r1]  1  2
  6( 6,5):   6   7    ( *, *)  ( *, *)    [r1,C+]  1  1
- 7( 7,2):   7   6    (10,11)  ( *, *)    [i2,C-]  2  212
- 8( 8,3):   4   9    ( *, *)  (10, *)    [C-,i1]  2  121
- 9( 9,3):   5   8    ( *, *)  (10, *)    [C-,i1]  2  121
-10(10,0):  11  10    ( *, *)  ( *, *)    [r2,r1]  3  1212
-11(10,1):  10  11    ( *, *)  ( *, *)    [r2,rn]  3  1212
+ 7( 7,2):   7   6    (10,11)  ( *, *)    [i2,C-]  2  2,1,2
+ 8( 8,3):   4   9    ( *, *)  (10, *)    [C-,i1]  2  1,2,1
+ 9( 9,3):   5   8    ( *, *)  (10, *)    [C-,i1]  2  1,2,1
+10(10,0):  11  10    ( *, *)  ( *, *)    [r2,r1]  3  1,2,1,2
+11(10,1):  10  11    ( *, *)  ( *, *)    [r2,rn]  3  1,2,1,2
 
 Here is the output of blockd for the same block:
 
@@ -38,14 +51,14 @@ Here is the output of blockd for the same block:
  1( 1,6):   0   3    ( 6, *)  ( 5, *)    [i1,i1]  0
  2( 2,6):   2   0    ( *, *)  ( 4, *)    [ic,i1]  0
  3( 3,6):   3   1    ( *, *)  ( 5, *)    [ic,i1]  0
- 4( 4,4):   8   4    ( *, *)  ( *, *)    [C+,r1]  1  2
- 5( 5,4):   9   5    ( *, *)  ( *, *)    [C+,r1]  1  2
- 6( 6,5):   6   7    ( *, *)  ( *, *)    [r1,C+]  1  1
- 7( 7,2):   7   6    (10,11)  ( *, *)    [i2,C-]  2  21
- 8( 8,3):   4   9    ( *, *)  (10, *)    [C-,i1]  2  12
- 9( 9,3):   5   8    ( *, *)  (10, *)    [C-,i1]  2  12
-10(10,0):  11  10    ( *, *)  ( *, *)    [r2,r1]  3  121
-11(10,1):  10  11    ( *, *)  ( *, *)    [r2,rn]  3  121
+ 4( 4,4):   8   4    ( *, *)  ( *, *)    [C+,r1]  1  2^
+ 5( 5,4):   9   5    ( *, *)  ( *, *)    [C+,r1]  1  2^
+ 6( 6,5):   6   7    ( *, *)  ( *, *)    [r1,C+]  1  1^
+ 7( 7,2):   7   6    (10,11)  ( *, *)    [i2,C-]  2  2x1^
+ 8( 8,3):   4   9    ( *, *)  (10, *)    [C-,i1]  2  1x2^
+ 9( 9,3):   5   8    ( *, *)  (10, *)    [C-,i1]  2  1x2^
+10(10,0):  11  10    ( *, *)  ( *, *)    [r2,r1]  3  1^2x1^
+11(10,1):  10  11    ( *, *)  ( *, *)    [r2,rn]  3  1^2x1^
 
-Note that the number of entries in the last column is the number in
+Note that the number of entries in the last column is equal to the number in
 the penultimate column.

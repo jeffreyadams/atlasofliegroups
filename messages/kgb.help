@@ -1,7 +1,7 @@
 The "kgb" command outputs the information describing the K orbits on
 G/B. This is for a particular (weak) real form, and the software will
-prompt the user to choose this if it has not been chosen yet. 
- 
+prompt the user to choose this if it has not been chosen yet.
+
 Each row of the output corresponds to a single orbit, and the first
 column is a numbering of the orbits from 0 to n-1 (with n the number
 of orbits).
@@ -12,27 +12,22 @@ means that the cross action by the j-th simple root takes orbit #k to
 orbit #i.
 
 The next r columns give the action of Cayley transforms by simple
-roots which are imaginary and non-compact. 
+roots which are imaginary and non-compact.
 
 The entry in brackets gives the type of each simple root: c (compact
 imaginary), n (non-compact imaginary), C (complex) or r (real).
+
+Next there is a column giving the Cartan class to which this orbit belongs
 
 The second to last column gives the length of this orbit O, which is
 dim(O)-dim(O_min) where O_min is a minimal orbit.
 
 There is a map p:X->W^\Gamma, the twised Weyl group. We have fixed a
-"fundamental" element delta in W^\gamma-W, this acts on W. (If G
-contains a compact Cartan subgroup this action is trivial).  Then
-tau=p(x)=w*delta. We say tau or w is a "twisted involution":
-w*delta(w)=1. We may write w=s_1...s_p, where each term s_i means
-conjugation by a simple reflection, or multiplication on the left by a
-simple reflection which commutes with tau (i.e. a real or imaginary
-root). These correspond to cross actions and Cayley transforms,
-respectively.
-
-The last column gives the element w as a product (not necessarily of
-minimal length) w=s_1...s_p as above. The absence of an entry in the
-last column corresponds to the empty product p(x)=delta. 
+"fundamental" element delta in W^\gamma-W, this acts on W. (If G contains a
+compact Cartan subgroup this action is trivial). Then tau=p(x)=w*delta. We say
+tau or w is a "twisted involution": w*delta(w)=1. The last column gives the
+element w as a product of simple reflections. The absence of an entry in the
+last column therefoe means w=e and so p(x)=delta.
 
 For example:
 empty: type
@@ -46,17 +41,17 @@ enter your choice: 2
 real: kgb
 kgbsize: 11
 Name an output file (hit return for stdout):
- 0:     1   2     4   6  [nn]  0
- 1:     0   1     4   *  [nc]  0
- 2:     3   0     5   6  [nn]  0
- 3:     2   3     5   *  [nc]  0
- 4:     4   8     *   *  [rC]  1  1
- 5:     5   9     *   *  [rC]  1  1
- 6:     7   6     *   *  [Cr]  1  2
- 7:     6   7     *  10  [Cn]  2  121
- 8:     9   4    10   *  [nC]  2  212
- 9:     8   5    10   *  [nC]  2  212
-10:    10  10     *   *  [rr]  3  2121
+ 0:     1   2     4   6  [nn]  0  0
+ 1:     0   1     4   *  [nc]  0  0
+ 2:     3   0     5   6  [nn]  0  0
+ 3:     2   3     5   *  [nc]  0  0
+ 4:     4   8     *   *  [rC]  2  1  1
+ 5:     5   9     *   *  [rC]  2  1  1
+ 6:     7   6     *   *  [Cr]  1  1  2
+ 7:     6   7     *  10  [Cn]  1  2  1,2,1
+ 8:     9   4    10   *  [nC]  2  2  2,1,2
+ 9:     8   5    10   *  [nC]  2  2  2,1,2
+10:    10  10     *   *  [rr]  3  3  2,1,2,1
 
 These are the 11 orbits of K on G/B for G=Sp(4,R). In this case the
 outer automorphism is trivial, twisted involutions correspond to

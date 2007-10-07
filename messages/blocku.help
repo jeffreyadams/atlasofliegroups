@@ -1,4 +1,3 @@
-
 The "blocku" command lists all the elements of the current block of
 representations that are unitary at infinitesimal character rho.
 These are precisely Zuckerman's "A_q" representations attached to
@@ -22,13 +21,13 @@ i2: alpha is imaginary type II noncompact (meaning that s_alpha is in
     the real Weyl group)
 ic: alpha is imaginary compact
 C+: alpha is complex, and theta(alpha) is positive.
-C-: alpha is negative, and theta(alpha) is negative.
+C-: alpha is complex, and theta(alpha) is negative.
 r2: alpha is a type II real root (meaning that alpha takes the value
     -1 on the real Cartan)
 r1: alpha is a type I real root (meaning that alpha does not take the
     value -1)
 
-(Non-parity real roots rn cannot appear for an A_q representation.) 
+(Non-parity real roots rn cannot appear for an A_q representation.)
 
 The next r columns give the descent status of the simple roots in the
 Levi subalgebra l of q; roots not in l are indicated with an
@@ -36,8 +35,8 @@ asterisk. Because the representation is trivial on l, the only
 possible entries in these columns are r1, r2, C-, and *.
 
 The next to last column gives the length of the representation (the
-difference between its K\G/B orbit dimension and the minimal such
-dimension). The final column describes a sequence of cross actions and
-Cayley transform reaching this representation from an irreducible
-fundamental series. The number of steps is the length of the
-representation. 
+difference between its K\G/B orbit dimension and the minimal such dimension).
+The final column describes a sequence of cross actions and Cayley transform
+reaching this representation from an irreducible fundamental series, as is
+described in the help for "blockd". The number of such steps is the length of
+the representation.

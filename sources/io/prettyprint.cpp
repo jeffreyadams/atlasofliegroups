@@ -185,24 +185,27 @@ std::ostream& printInRootBasis(std::ostream& strm,
   return strm;
 }
 
-std::ostream& printInvolution(std::ostream& strm,
-			      const weyl::TwistedInvolution& w,
-			      const weyl::WeylGroup& W)
-
 /*
-  Synopsis: outputs w as an involution-reduced expression.
+  Synopsis: outputs an expression for the twisted involution.
 
   Precondition: w is a (twisted) involution.
+
+  Symbols are to be interpreted from right to left as operations performed on
+  an initially empty twisted involution; if the number |s| is followed by a
+  period it means left multiplication by a (twisted-commuting) generator |s|,
+  if it is followed by an 'x' (for cross action) it means twiseted conjugation
+  by |s|.
 */
+std::ostream& printInvolution(std::ostream& strm,
+			      const weyl::TwistedInvolution& tw,
+			      const weyl::WeylGroup& W)
+
 
 {
-  using namespace basic_io;
-  using namespace weyl;
-
-  WeylWord ww;
-  W.involutionOut(ww,w);
-  std::reverse(ww.begin(),ww.end());
-  strm << ww;
+  std::vector<signed char> dec=W.involution_expr(tw);
+  for (size_t i=0; i<dec.size(); ++i)
+    if (dec[i]>=0) strm << static_cast<char>('1'+dec[i]) << '^';
+    else strm << static_cast<char>('1'+~dec[i]) << 'x';
 
   return strm;
 }
@@ -292,7 +295,8 @@ std::ostream& printTitsElt(std::ostream& strm, const tits::TitsElt& a,
 {
   using namespace basic_io;
 
-  printWeylElt(strm,a.w(),N.weylGroup()) << "[" << a.t() << "]";
+  printWeylElt(strm,a.w(),N.weylGroup())
+    << "[" << a.t() << "]";
 
   return strm;
 }

@@ -1,8 +1,8 @@
 /*
   This is kgb_io.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -20,7 +20,7 @@
 
 /*****************************************************************************
 
-  Input/output functions for the kgb data structure, defined in 
+  Input/output functions for the kgb data structure, defined in
   sources/kl/kgb.h
 
 ******************************************************************************/
@@ -42,10 +42,10 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
 /*
   Synopsis: outputs the data from kgb to strm.
 
-  Explanation: for each parameter, we output the cross-actions and 
-  cayley-actions for each generator, the length, and the underlying root
-  datum permutation (or rather, the corresponding Weyl group element).
-  We use a '*' for undefined cayley actions.
+  Explanation: for each parameter, we output the cross-actions and
+  cayley-actions for each generator, the Cartan class, the length, and the
+  underlying root datum permutation (or rather, the corresponding Weyl group
+  element). We use a '*' for undefined cayley actions.
 
   NOTE: this will print reasonably on 80 columns only for groups that are
   not too large (up to rank 4 or so). We haven't tried to go over to more
@@ -58,6 +58,7 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
 
   // compute maximal width of entry
   int width = ioutils::digits(kgb.size()-1,10ul);
+  int cwidth = ioutils::digits(kgb.Cartan_class(kgb.size()-1),10ul);
   int lwidth = ioutils::digits(kgb.length(kgb.size()-1),10ul);
   const int pad = 2;
 
@@ -82,6 +83,10 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
 
     // print status
     printStatus(strm,kgb.status(j),kgb.rank());
+    strm << std::setw(pad) << "";
+
+    // print Cartan class
+    strm << std::setw(cwidth) << kgb.Cartan_class(j);
     strm << std::setw(pad) << "";
 
     // print length
