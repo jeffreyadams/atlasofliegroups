@@ -99,6 +99,7 @@ It also records the Cartan class each twisted involution belongs to.
   */
 class FiberData
 {
+  const tits::TitsGroup& Tits;
   TI_Entry::Pooltype pool;
   hashtable::HashTable<TI_Entry,unsigned int> hash_table;
   std::vector<latticetypes::SmallSubspace> data;
@@ -108,9 +109,11 @@ public:
 
   const latticetypes::SmallSubspace& mod_space(const tits::TitsElt& a) const
   {
-    return data[hash_table.find(a.tw())];
+    size_t i=hash_table.find(a.tw());
+    assert(i!=hash_table.empty);
+    return data[i];
   }
-  void reduce(tits::TitsElt& a) const { mod_space(a).mod_reduce(a.t()); }
+  void reduce(tits::TitsElt& a) const;
 
   size_t cartanClass(const weyl::TwistedInvolution& tw) const
   {
@@ -188,7 +191,7 @@ KGBHelp& fill();
 // accessors (private)
 private:
   void cayleyTransform(tits::TitsElt& a, size_t s) const {
-    titsGroup().leftMult(a,s);
+    titsGroup().sigma_mult(s,a); // set |a| to $\sigma_s.a$
   }
 
   const tits::TitsGroup& titsGroup() const {
@@ -205,8 +208,8 @@ private:
 
   void basedTwistedConjugate(tits::TitsElt& a, size_t s) const {
     titsGroup().twistedConjugate(a,s);
-    if (d_baseGrading.test(s))
-      a += d_titsGroup.simpleCoroot(s);
+    if (d_baseGrading[s]) // this implies |titsGroup().twist(s)==s|
+      d_titsGroup.right_add(a,d_titsGroup.simpleCoroot(s));
   }
 
 // private manipulators
@@ -457,7 +460,8 @@ size_t TE_Entry::hashCode(size_t modulus) const
   are of the form $h*\tau(h)^{-1}$.
 */
 FiberData::FiberData(const realredgp::RealReductiveGroup& GR)
-  : pool()
+  : Tits(GR.titsGroup())
+  , pool()
   , hash_table(pool)
   , data()
   , Cartan_class()
@@ -472,7 +476,7 @@ FiberData::FiberData(const realredgp::RealReductiveGroup& GR)
   {
    // get endomorphism of weight lattice $X$ given by generator $twist(s)$
     latticetypes::LatticeMatrix r =
-      rd.rootReflection(rd.simpleRootNbr(G.titsGroup().twist(s)));
+      rd.rootReflection(rd.simpleRootNbr(Tits.twist(s)));
 
     // reflection map is induced vector space endomorphism of $X^* / 2X^*$
     refl[s] = latticetypes::BinaryMap(r.transposed());
@@ -520,6 +524,24 @@ FiberData::FiberData(const realredgp::RealReductiveGroup& GR)
 }
 
 
+void FiberData::reduce(tits::TitsElt& a) const
+{
+  a=tits::TitsElt(Tits,a.w(),
+		  mod_space(a).mod_image(Tits.right_torus_part(a)));
+}
+
+
+/*    II c. The main helper class |KGBHelp|  */
+
+/*
+   The actual KGB contruction takes place below. During the construction, the
+   elements are represented as Tits group elements. The links in the KGB
+   structure are realised by |KGBHelp::basedTwistedConjugate| for the cross
+   actions and by |KGBHelp::cayleyTransform| for Cayley transforms. After each
+   of these, the result is subject to |d_fiberdata.reduce| to normalise the
+   representation of a KGB element.
+*/
+
 /*!
   \brief The helper constructor just initializes the lists for the first
   element. The actual filling process is handled by the |fill| method.
@@ -537,7 +559,7 @@ KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
   , d_cayley(d_rank)
   , d_info()
 
-  , d_pool(1,tits::TitsElt(GR.rank())) // single element, identity
+  , d_pool(1,tits::TitsElt(d_titsGroup)) // single element, identity
   , d_tits(d_pool)
 
   // only the final two fields use the real form of |GR|
@@ -668,7 +690,8 @@ void KGBHelp::setStatus(KGBElt from, KGBElt to, size_t s)
   else
   { // now the root $\alpha_s$ is imaginary
     bool b = d_baseGrading.test(s);
-    b ^= scalarProduct(d_tits[from].t(),titsGroup().simpleRoot(twist(s)));
+    b ^= scalarProduct(titsGroup().right_torus_part(d_tits[from]),
+		       titsGroup().simpleRoot(twist(s)));
 
     if (b)
     {
@@ -707,7 +730,7 @@ void KGBHelp::cayleyExtend(KGBElt parent)
 
     // cayley-transform |current| by $\sigma_s$
     tits::TitsElt a = current; cayleyTransform(a,s);
-    assert(a.t()==current.t()); // involution part should go up
+    assert(titsGroup().length(a)>titsGroup().length(current)); // should go up
 
 
     // now look up the correspondingly reduced Tits element
