@@ -296,7 +296,7 @@ std::ostream& printTitsElt(std::ostream& strm, const tits::TitsElt& a,
   using namespace basic_io;
 
   printWeylElt(strm,a.w(),N.weylGroup())
-    << "[" << a.t() << "]";
+    << "[" << N.right_torus_part(a) << "]";
 
   return strm;
 }
