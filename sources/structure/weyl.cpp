@@ -220,26 +220,23 @@ void WeylGroup::swap(WeylGroup& other)
 
 /******** accessors **********************************************************/
 
-WeylElt WeylGroup::generator (Generator i) const
+WeylElt WeylGroup::genIn (Generator i) const
 {
   WeylElt s; // initialise to identity
   s[i]=1;    // then shift to piece #1 in $W_{i-1}\\W_i$, which is $s_i$
   return s;
 }
 
-int WeylGroup::multIn(WeylElt& w, Generator s) const
-
 /*!
-  \brief Multiply w on the right by the (internally labelled)
-  generator s: w *= s.
-
-  This just means exercising the transducer tables as they were designed to.
+  \brief Multiply w on the right by internally numbered generator s: w *= s.
 
   Returns +1 if the length moves up, -1 if the length goes down.
 
+  This just means exercising the transducer tables as they were designed to.
+
   Amazingly, I could simplify Fokko's original to the code below from. I left
-  the test for |UndefGenerator| first, because transduce is more frequent than
-  shift. Therefore the following even simpler code could be less efficient:
+  the test for |UndefGenerator| coming first, as transduce is more frequent
+  than shift. So the following even simpler code could be less efficient:
 
   Generator t=s;
   for (Generator j=d_rank; j-->0; t=d_transducer[j].out(w[j],t))
@@ -250,7 +247,7 @@ int WeylGroup::multIn(WeylElt& w, Generator s) const
 
   MvL
 */
-
+int WeylGroup::multIn(WeylElt& w, Generator s) const
 {
   unsigned long j = d_rank-1; // current transducer
 
@@ -264,24 +261,28 @@ int WeylGroup::multIn(WeylElt& w, Generator s) const
   return w[j]>wj ? 1 : -1; // no need to use d_length, numeric '>' suffices
 }
 
-void WeylGroup::multIn(WeylElt& w, const WeylWord& v) const
+/*!\brief Multiply w on the right by v (in internal numbering): w *= v.
 
-/*!
-  \brief Multiply w on the right by v (written in internal generators): w *= v.
+  Returns nonpositive even value $l(wv)-l(w)-l(v)$
 
   Precondition: v is written in the _internal_ generators.
 
   Algorithm: do the elementary multiplication by the generators, running
   through v left-to-right.
 */
+int WeylGroup::multIn(WeylElt& w, const WeylWord& v) const
 
 {
+  int result=0;
   for (size_t j = 0; j < v.size(); ++j)
-    multIn(w,v[j]);
+    if (multIn(w,v[j])<0) result-=2;
+
+  return result;
 }
 
 /*!
-  \brief Transforms w into s*w.
+  \brief Transforms w into s*w, with s in internal numbering;
+  returns $l(sw)-l(w)\in\{+1,-1}$
 
   Algorithm: note that our transducers are geared towards _right_
   multiplication by a generator. But we note that passing from $w$ to $sw$
@@ -291,17 +292,20 @@ void WeylGroup::multIn(WeylElt& w, const WeylWord& v) const
   components only for that set of indices; hard to believe at first but easy
   to prove).
 */
-void WeylGroup::leftMultIn(WeylElt& w, Generator s) const
+int WeylGroup::leftMultIn(WeylElt& w, Generator s) const
 {
-  WeylElt sw=generator(s);
+  WeylElt sw=genIn(s);
+  int l=1; //
 
-  // now compute $sv$ as above
+  // now compute $sv$ as above, keeping track of any length drop (at most 1)
   for (size_t j = min_neighbor(s); j <= s; ++j)
-    multIn(sw,wordPiece(w,j));
+    l+=multIn(sw,wordPiece(w,j));
 
   // and copy its relevant pieces into $w$
   for (size_t j = min_neighbor(s); j <= s; ++j)
     w[j] = sw[j];
+
+  return l;
 }
 
 /*!
@@ -444,7 +448,6 @@ void WeylGroup::twistedConjugacyClass
 
 }
 
-bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 
 /*!
   \brief Tells whether sw < w.
@@ -454,11 +457,11 @@ bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
   |true|, otherwise |false|. Despite the double loop below, this question is
   resolved in very few operations on the average.
 */
-
+bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 {
   s=d_in[s]; // inner numbering is used below
 
-  WeylElt x = generator(s); // becomes (part of) $sw$, unless early |return|
+  WeylElt x = genIn(s); // becomes (part of) $sw$, unless early |return|
 
   for (size_t j = min_neighbor(s); j <= s; ++j)
   {
@@ -471,7 +474,6 @@ bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
   return false; // since only ascents occur, we have $l(sw)>l(w)$
 }
 
-Generator WeylGroup::leftDescent(const WeylElt& w) const
 
 /*!
 
@@ -481,7 +483,7 @@ Generator WeylGroup::leftDescent(const WeylElt& w) const
   numbering, since the canonical (minimal for ShortLex) expression for |w|
   starts with this letter.
 */
-
+Generator WeylGroup::leftDescent(const WeylElt& w) const
 {
   for (Generator i=0; i<d_rank; ++i)
     if (w[i]>0) return d_out[i];
@@ -519,9 +521,6 @@ bool WeylGroup::hasTwistedCommutation(Generator s, const TwistedInvolution& tw)
   return (m>0)==hasDescent(s,x); // lengths match iff members are equivalent
 }
 
-void WeylGroup::involutionOut
-  (weyl::WeylWord& ww, const weyl::TwistedInvolution& tw) const
-
 /*!
   \brief Puts in |ww| a reduced expression of |tw| as a twisted involution.
 
@@ -535,14 +534,17 @@ void WeylGroup::involutionOut
   expression as a twisted involution" for $tw$ is obtained by iterating this
   to bring the length down to $0$, and writing down the generators $s$ used in
   reverse order. Working back from the identity, it can be determined for each
-  letter to which if the two types of transformation it corresponds. It is not
-  immediately obvious that all such reduced expressions have the same length.
+  letter to which if the two types of transformation it corresponds.
+
+  Although not immediately obvious, all such reduced expressions do have the
+  same length.
 
   The code below choses the first possible generator (for the internal
   numbering) at each step, so the reduced expression found can be described as
   backwards-lexicographically first for the internal ordering of the generators
 */
-
+void WeylGroup::involutionOut
+  (weyl::WeylWord& ww, const weyl::TwistedInvolution& tw) const
 {
   TwistedInvolution x = tw;
   ww.clear();
@@ -556,12 +558,36 @@ void WeylGroup::involutionOut
       twistedConjugate(x,s);
   }
 
-  // reverse ww
+  // reverse ww (it is not so clear why this convention is useful)
   std::reverse(ww.begin(),ww.end());
 }
 
-unsigned long WeylGroup::involutionLength
-  (const weyl::TwistedInvolution& tw) const
+/*!
+  This is a variation of previous function, making a distinction between the
+  generators used for composition and for conjugation; the index of the latter
+  are bitwise-complemented in the result. Here the result is not reversed!
+*/
+std::vector<signed char> WeylGroup::involution_expr(TwistedInvolution tw)
+  const
+{
+  std::vector<signed char> result; // result.reserve(involutionLength(tw));
+
+  for (Generator s = leftDescent(tw.w()); s != UndefGenerator;
+                 s = leftDescent(tw.w()))
+    if (hasTwistedCommutation(s,tw))
+    {
+      result.push_back(s);
+      leftMult(tw,s);
+    }
+    else
+    {
+      result.push_back(~s);
+      twistedConjugate(tw,s);
+    }
+
+  return result;
+}
+
 
 /*!
   \brief Returns the length of tw as a twisted involution.
@@ -571,7 +597,8 @@ unsigned long WeylGroup::involutionLength
   Algorithm: this is a simplified version of |involutionOut| that records only
   the length
 */
-
+unsigned long WeylGroup::involutionLength
+  (const weyl::TwistedInvolution& tw) const
 {
   TwistedInvolution x = tw;
   unsigned long length = 0;

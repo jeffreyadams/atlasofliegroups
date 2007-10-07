@@ -470,11 +470,11 @@ class WeylGroup {
   // set |w=ws|, return value is $l(ws)-l(w)\in\{+1,-1}$
   int multIn(WeylElt& w, Generator s) const;
 
-  // set |w=wv|
-  void multIn(WeylElt& w, const WeylWord& v) const;
+  // set |w=wv|, return value is $l(wv)-l(w)-l(v)\in -2\N$
+  int multIn(WeylElt& w, const WeylWord& v) const;
 
-  // set |w=sw| (it is unclear why arguments are in the opposite order)
-  void leftMultIn(WeylElt& w, Generator s) const;
+  // set |w=sw|, return value is $l(sw)-l(w)\in\{+1,-1}$
+  int leftMultIn(WeylElt& w, Generator s) const;
 
   // get WeylWord for piece |j| of |w|
   const WeylWord& wordPiece(const WeylElt& w, Generator j) const {
@@ -487,7 +487,11 @@ class WeylGroup {
   */
   Generator min_neighbor (Generator s) const { return d_min_star[s]; }
 
-  WeylElt generator (Generator i) const; // $s_i$ as Weyl group element
+  WeylElt genIn (Generator i) const; // $s_i$ as Weyl group element
+
+  Generator twistGenerator(Generator s) const {
+    return d_twist[s];
+  }
 
  public:
 
@@ -517,6 +521,9 @@ class WeylGroup {
 
 // accessors
 
+  WeylElt generator (Generator i) const // $s_i$ as Weyl group element
+    { return genIn(d_in[i]); }
+
   // set |w=ws|, return length change
   int mult(WeylElt& w, Generator s) const {
     return multIn(w,d_in[s]);
@@ -529,8 +536,8 @@ class WeylGroup {
   void mult(WeylElt&, const WeylWord&) const;
 
   // set |w=sw| (argument order motivated by modification effect on |w|)
-  void leftMult(WeylElt& w, Generator s) const {
-    leftMultIn(w,d_in[s]);
+  int leftMult(WeylElt& w, Generator s) const {
+    return leftMultIn(w,d_in[s]);
   }
   void leftMult(WeylElt& w, const WeylWord& ww) const {
     for (size_t i=ww.size(); i-->0; ) // use letters from right to left
@@ -566,6 +573,18 @@ class WeylGroup {
 
 
   unsigned long length(const WeylElt&) const;
+
+  // return (only) $l(w.s)-l(w)$
+  int length_change(WeylElt w, Generator s) const
+  {
+    return multIn(w,d_in[s]); // discard copied |w|
+  }
+
+  // return $l(s.w)-l(w)$
+  int length_change(Generator s,const WeylElt& w) const
+  {
+    return hasDescent(s,w) ? -1 : 1;
+  }
 
   void conjugacyClass(WeylEltList&, const WeylElt&)
     const;
@@ -639,6 +658,11 @@ class WeylGroup {
     return d_rank;
   }
 
+  WeylWord word(const WeylElt& w) const
+  {
+    WeylWord ww; out(ww,w); return ww;
+  }
+
   /* give representation of |w| as integral number, supposing this fits. */
   unsigned long toUlong(const WeylElt& w) const;
 
@@ -653,21 +677,27 @@ class WeylGroup {
   bool hasTwistedCommutation(Generator, const TwistedInvolution&) const;
 
 /*!
-  \brief Returns the length of d_w as a twisted involution.
+  \brief Returns the length of |tw| as a twisted involution.
 */
-  unsigned long involutionLength(const TwistedInvolution&) const;
+  unsigned long involutionLength(const TwistedInvolution& tw) const;
 
   void involutionOut(WeylWord&, const TwistedInvolution&) const;
+
+/*!
+  \brief Returns a reduced expression of |tw| as a twisted involution.
+
+  Positive entries correspond to generators of Cayley transforms, while cross
+  actions are indicated by making the generator negative by bitwise complement.
+*/
+  std::vector<signed char> involution_expr(TwistedInvolution tw) const;
 
   void out(WeylWord&, const WeylElt&) const;
 
   WeylElt translate(const WeylElt&, const WeylInterface&) const;
 
-  void twist(WeylElt&) const;
+  Generator twist(Generator s) const { return d_out[d_twist[d_in[s]]]; }
 
-  Generator twistGenerator(Generator s) const {
-    return d_twist[s];
-  }
+  void twist(WeylElt&) const;
 
   // standard reflection action of Weyl group using a root datum
   void act(const rootdata::RootDatum& rd,
