@@ -14,7 +14,6 @@
 
 #include "cartanclass.h"
 #include "complexredgp.h"
-#include "prerootdata.h"
 #include "rootdata.h"
 #include "tori.h"
 
