@@ -188,6 +188,16 @@ KGBHelp& fill();
 		       weyl::TwistedInvolutionList& twisted,
 		       std::vector<KGBInfo>& info) const;
 
+  // though used only from within |export_tables|, this method must be public
+  bool comp(KGBElt x,KGBElt y) const
+  {
+    if (d_info[x].length!=d_info[y].length)
+      return d_info[x].length<d_info[y].length;
+    unsigned long lx=weylGroup().length(d_pool[x].w());
+    unsigned long ly=weylGroup().length(d_pool[y].w());
+    return lx!=ly ? lx<ly : d_pool[x].w()<d_pool[y].w();
+  }
+
 // accessors (private)
 private:
   void cayleyTransform(tits::TitsElt& a, size_t s) const {
@@ -223,51 +233,48 @@ private:
 
 
 
+// this class serves to be able to search d_info by the length field only.
+struct lengthCompare {
+  bool operator() (const KGBInfo& v, const KGBInfo& w) const
+  { return v.length<w.length; }
+};
 
 /* the following auxiliary class serves for calling standard search and
-   sorting routines for twisted involutions; it is used by |tauPacket|
+   sorting routines for twisted involutions; it is used by |tauPacket| after_
+   selecting range of involution length. In other words
+   |d_W->involutionLength(v)==d_W->involutionLength(w)| is already known
 */
 class InvolutionCompare {
 private:
-  const weyl::WeylGroup& W;
+  const weyl::WeylGroup* d_W;
 public:
-  explicit InvolutionCompare(const weyl::WeylGroup& w) : W(w) {}
-
-  // one should have a < b iff
-  // (a) involutionLength(a) < involutionLength(b) or
-  // (b) involutionLengths are equal and length(a) < length (b) or
-  // (c) both lengths are equal and a < b
-  bool operator()
-   (const weyl::TwistedInvolution& a, const weyl::TwistedInvolution& b) const
+  explicit InvolutionCompare(const weyl::WeylGroup& W):d_W(&W) {}
+  bool operator() (const weyl::WeylElt& v, const weyl::WeylElt& w) const
   {
-    if      (W.involutionLength(a) != W.involutionLength(b))
-      return W.involutionLength(a) <  W.involutionLength(b) ;
-    else if (W.length(a.w()) != W.length(b.w()))
-      return W.length(a.w()) <  W.length(b.w());
-    else
-      return a < b;
+    return
+      d_W->length(w)!=d_W->length(v)
+      ? d_W->length(v) < d_W->length(w)
+      : v < w;
   }
 }; // class InvolutionCompare
 
 /* This class is used when calling |std::sort| to sort the KGB elements by
-   their associated twisted involutions, according to |InvolutionCompare|.
+   their associated twisted involutions, as in the |KGBHelp::comp| method.
    However what will be actualy sorted is a list of indices, so we add as
-   data member a reference to the vector that stores the Tits elements.
+   data member a reference to the helper object allowing the comparison.
 */
 class IndexCompare
-  : public InvolutionCompare
 {
 private:
-  const TE_Entry::Pooltype& pool;
+  const KGBHelp& kgb;
 public:
-  explicit IndexCompare(const weyl::WeylGroup& W,const TE_Entry::Pooltype& p)
-    : InvolutionCompare(W),pool(p) {}
+  explicit IndexCompare(const KGBHelp& h) : kgb(h) {}
 
   // here |unsigned long| arguments, as |setutils::Partition| contains such
   bool operator() (unsigned long i, unsigned long j) const {
-    return InvolutionCompare::operator()(pool[i].tw(),pool[j].tw());
+    return kgb.comp(i,j);
   }
-}; // class Compare
+}; // class IndexCompare
 
 } // namespace
 } // namespace kgb
@@ -343,17 +350,23 @@ KGB::~KGB()
 */
 KGBEltPair KGB::tauPacket(const weyl::TwistedInvolution& w) const
 {
-  using namespace weyl;
+  /* first search |length| range in |d_info| array, taking care to compute
+     |weylGroup().involutionLength(w)| only once, given enormous speed-up */
+  std::pair<const KGBInfo*,const KGBInfo*> length_range =
+    std::equal_range(&d_info[0],&*d_info.end(),
+		     KGBInfo(weylGroup().involutionLength(w),0), // dummy wrap
+		     lengthCompare());
 
-  typedef std::vector<TwistedInvolution>::const_iterator TI_it;
-
+  // now we are ready to search within that range for |w| itself
   InvolutionCompare comp(weylGroup());
 
-  std::pair<TI_it,TI_it> range =
-    std::equal_range(d_involution.begin(),d_involution.end(),w,comp);
+  std::pair<const weyl::WeylElt*,const weyl::WeylElt*> range =
+    std::equal_range(&d_involution[length_range.first -&d_info[0]],
+		     &d_involution[length_range.second-&d_info[0]],
+		     w,comp);
 
-  KGBElt first = range.first - d_involution.begin();
-  KGBElt last = range.second - d_involution.begin();
+  KGBElt first = range.first - &d_involution[0];
+  KGBElt last = range.second - &d_involution[0];
 
   return std::make_pair(first,last);
 }
@@ -761,7 +774,7 @@ size_t KGBHelp::export_tables(std::vector<KGBEltList>& cross,
 
   // sort (partially)
   Permutation a(size,1);
-  IndexCompare comp(weylGroup(),d_pool);
+  IndexCompare comp(*this);
   std::sort(a.begin(),a.end(),comp);
 
   // export the cross and cayley maps, permuting each constituent list
