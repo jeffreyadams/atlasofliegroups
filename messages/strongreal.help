@@ -1,19 +1,21 @@
 
-The "strongreal" command prints information about the strong real
-forms for the current reductive group G (always endowed with an inner
-class of real forms).
+The "strongreal" command prints information about the strong real forms for
+the current reductive group G (always endowed with an inner class of real
+forms). It gives the closest possible approximation to listing all of them for
+a given root datum involution, suppressing only the trivial repetition due to
+a translation action of the (possibly infinite) center of G
 
 Recall that G is endowed with a Borel subgroup B containing a Cartan
 H, a pinning, and an involutive automorphism delta preserving the
 pinning.  The extended group G^Gamma is the semidirect product of G
 with Gamma = {1, delta}.  A _strong involution_ is by definition an
 H-conjugacy class x of elements xi in the non-identity coset of
-G^Gamma, normalizing H, such that xi^2 is central in G. The adjoint
+G^Gamma, normalizing H, such that xi^2 is central in G. The conjugation
 action of xi on G defines an involutive automorphism theta_xi, which
-is the Cartan involution of the corresponding "strong real form."
+is the Cartan involution of the corresponding "weak real form."
 
-Two strong involutions are _equivalent_ if they are conjugate by G.  A
-_strong real form_ is an equivalence class of strong involutions.
+Two strong involutions are _equivalent_ if they are conjugate by G.
+A _strong real form_ is an equivalence class of strong involutions.
 
 Notice that each strong involution defines an involution tau_x of the
 root datum; this is the restriction to H of a Cartan involution
@@ -24,38 +26,41 @@ for the real form corresponds to a W-conjugacy class of involutions
 tau. (If the real form is quasisplit, this correspondence is
 surjective.)
 
-The command "strongreal" begins by asking for a Cartan subgroup; that
-is, for a W-conjugacy class of root datum involutions.  (At this point the
-real form under consideration should not matter, but in fact only
-Cartan subgroups in this real form are permitted.)  The software
-essentially fixes a representative involution tau_0.  The output of the
-command is a list of all the strong involutions x such that tau_x is
-equal to tau_0.
+The command "strongreal" begins by asking for a Cartan subgroup; that is, for
+a W-conjugacy class of root datum involutions. (At this point the real form
+under consideration should not matter, but in fact only Cartan subgroups in
+this real form are presented. If no real form was specified before, the
+software will first ask for one only so that it can generate its Cartan
+subgroups to choose from; here one can safely enter the last (quasisplit)
+choice, in order to see all the Cartan subgroups.) The software essentially
+fixes a representative involution tau_0. The output of the command is a list
+with one entry for each strong involution x such that tau_x is equal to tau_0,
+or more precisely for each coset for Z(G) of such strong involutions, so
+as to supress possibly infinite repetition as mentioned above.
 
-The output is organized first by "class."  If x is a strong
+The output is organized first by "square class".  If x is a strong
 involution, then x^2 = c is an element of Z(G)^delta (fixed points of
-the basic automorphism delta on the center. If x is multiplied by a
-central element z, then its square is multiplied by c delta(c).  Write
+the basic automorphism delta on the center). If x is multiplied by a
+central element z, then its square is multiplied by z.delta(z).  Write
 
-{c delta(c) | c in Z} = (1 + delta)Z.
+{z delta(z) | z in Z(G)} = (1 + delta)Z.
 
-The _class of x_ is by definition the image of x^2 in Z^delta/(1+delta)Z.
-It depends only on the (weak) real form defined by x.  
+The _square class of x_ is by definition the image of x^2 in
+Z^delta/(1+delta)Z. It depends only on the (weak) real form defined by x.
 
-The quotient group Z^delta/(1+delta)Z is finite; in fact it is a
-product of copies of Z/2Z.  Not every element of this quotient group
-can arise from a strong involution over the given tau_0; those which
-do form a subgroup. The software computes this subgroup, and lists its
-elements as #0, #1,... #(2^r - 1).
+The quotient group Z^delta/(1+delta)Z is finite; in fact it is a product of
+copies of Z/2Z. Not every element of this quotient group can arise from a
+strong involution over the given tau_0; those which do form a subgroup. The
+software computes this subgroup in abstract form, and lists its elements as
+#0, #1,... #(2^r - 1). No method is provided by the software to match these
+numbers to representative elements in Z(G).
 
-For each class, the software (more or less) picks a representative z_0
-in Z(G)^delta for the class, then picks a strong involution x_0 with
-square equal to z_0.  Then it finds all the strong involutions x lying
-over the fixed tau_0, with square equal to z_0.  It turns out that
-these x are parametrized by the "fiber group for tau_0," which is a
-product of m copies of Z/2Z (the number m is bounded by the rank of the +1
-eigenspace of tau_0).  The software numbers these 2^m strong involutions
-as 0, 1, 2,... 2^m -1.
+For each square class, the software virtually picks a representative z_0 in
+Z(G)^delta for the class, and then finds all the strong involutions x lying
+over the fixed tau_0, with square equal to z_0. It turns out that these x are
+parametrized by the "fiber group for tau_0", which is a product of m copies of
+Z/2Z for some m (which is bounded by the rank of the +1 eigenspace of tau_0).
+The software numbers these 2^m strong involutions as 0, 1, 2,... 2^m -1.
 
 Each line of the output shows all the strong involutions belonging to
 a fixed strong real form.  The line is labelled at the beginning by
@@ -93,7 +98,7 @@ The zeroth class corresponds to the real forms numbered 4 and 0 (which
 are so(4,4) and so(8) respectively).  The involution tau_0 turns out
 to be trivial (since the Cartan is compact; this is not displayed
 anywhere here).  We are interested in extending the trivial
-automorphism of the root datum to G.  
+automorphism of the root datum to G.
 
 The fiber group has order 16, so each class has 16 strong involutions
 numbered 0 to 15.  (The numberings within different classes have
@@ -107,5 +112,5 @@ In class #1, we find two different equivalence classes of strong
 involutions, each representing the real form so*(8)[0,1].  Each has
 eight different strong involutions.
 
-Classes #2 and #3 behave in the same way.  In fact these three classes
-are permuted by the diagram automorphisms of D4.
+Classes #2 and #3 behave in the same way. In fact these three classes, and the
+corresponding real forms, are permuted by the diagram automorphisms of D4.
