@@ -81,7 +81,7 @@ std::vector<bitmap::BitMap> d_below;
   }
 
   //! \brief Number of comparable pairs (including those on the diagonal)
-  unsigned long Poset::n_comparable() const;
+  unsigned long n_comparable() const;
 
   void findMaximals(set::SetEltList&, const bitmap::BitMap&) const;
   set::SetEltList minima(const bitmap::BitMap&) const;
