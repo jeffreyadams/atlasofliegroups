@@ -532,8 +532,8 @@ FiberData::FiberData(const realredgp::RealReductiveGroup& GR)
   }
 
   // check that the number of generated elements is as predicted
-  assert(data.size()==G.numInvolutions(Cartan_classes));
-  assert(Cartan_class.size()==G.numInvolutions(Cartan_classes));
+  assert(data.size()==G.numInvolutions());
+  assert(Cartan_class.size()==G.numInvolutions());
 }
 
 
