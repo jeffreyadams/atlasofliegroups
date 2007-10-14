@@ -337,8 +337,7 @@ latticetypes::LatticeMatrix Fiber::adjointInvolution
 
   latticetypes::WeightList b; // members of |rl| expressed in simple roots
 
-  rootdata::toRootBasis(rl.begin(),rl.end(),back_inserter(b),
-			rd.simpleRootList(),rd);
+  rd.toRootBasis(rl.begin(),rl.end(),back_inserter(b));
 
   return latticetypes::LatticeMatrix(b).negative_transposed();
 }
@@ -362,9 +361,6 @@ latticetypes::SmallSubquotient Fiber::makeAdjointFiberGroup
   return result;
 }
 
-latticetypes::SmallSubspace Fiber::gradingGroup
-  (const rootdata::RootDatum& rd) const
-
 /*!
   \brief Makes the stabilizer of the grading in the adjoint fiber group.
 
@@ -379,7 +375,8 @@ latticetypes::SmallSubspace Fiber::gradingGroup
   imaginary root. It seems that this never happens, whence the constructor for
   |Fiber| just calls this function to |assert| that the result is trivial.
 */
-
+latticetypes::SmallSubspace Fiber::gradingGroup
+  (const rootdata::RootDatum& rd) const
 {
   using namespace bitset;
   using namespace lattice;
@@ -389,32 +386,33 @@ latticetypes::SmallSubspace Fiber::gradingGroup
   // define map
   const SmallBitVectorList& baf = d_adjointFiberGroup.space().basis();
 
-  WeightList bsi; // express simple imaginary roots on (full) simple roots
-  toRootBasis(simpleImaginary().begin(),simpleImaginary().end(),
-	      back_inserter(bsi),rd.simpleRootList(),rd);
+  // express simple imaginary roots on (full) simple roots
+  latticetypes::WeightList bsi;
+  rd.toRootBasis(simpleImaginary().begin(),simpleImaginary().end(),
+		 back_inserter(bsi));
 
 
-  SmallBitVectorList bsi2(bsi); // and reduce mod 2
+  latticetypes::SmallBitVectorList bsi2(bsi); // and reduce mod 2
 
-  SmallBitVectorList b;
+  latticetypes::SmallBitVectorList b;
 
   /* set b[j][i] = <e_j,bsi2[i]> where e_j=baf[j'], with |baf[j']| the
      subquotient basis representative number |j| */
   for (RankFlags::iterator j = d_adjointFiberGroup.support().begin();
        j(); ++j)
   {
-    SmallBitVector v(imaginaryRank());
+    latticetypes::SmallBitVector v(imaginaryRank());
     for (size_t i = 0; i < imaginaryRank(); ++i)
       v.set(i,scalarProduct(baf[*j],bsi2[i]));
     b.push_back(v);
   }
 
-  BinaryMap q(b);
+  latticetypes::BinaryMap q(b);
 
   // find kernel
-  SmallBitVectorList ker; q.kernel(ker);
+  latticetypes::SmallBitVectorList ker; q.kernel(ker);
 
-  return SmallSubspace(ker,adjointFiberRank());
+  return latticetypes::SmallSubspace(ker,adjointFiberRank());
 }
 
 
@@ -432,8 +430,7 @@ gradings::Grading Fiber::makeBaseGrading
   // express all imaginary roots in simple imaginary basis
   rootdata::RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
   latticetypes::WeightList ir;
-  rootdata::toRootBasis(irl.begin(),irl.end(),back_inserter(ir)
-			,simpleImaginary(),rd);
+  rd.toRootBasis(irl.begin(),irl.end(),back_inserter(ir),simpleImaginary());
 
   // now flag all roots with noncompact grading
   flagged_roots.set_capacity(rd.numRoots());
@@ -477,16 +474,14 @@ gradings::GradingList Fiber::makeGradingShifts
   rootdata::RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
 
   latticetypes::WeightList ir;
-  rootdata::toRootBasis(irl.begin(),irl.end(),back_inserter(ir),
-			rd.simpleRootList(),rd);
+  rd.toRootBasis(irl.begin(),irl.end(),back_inserter(ir));
   latticetypes::SmallBitVectorList ir2(ir); // |ir2.size()==irl.size()|
 
 
   // also express simple imaginary roots in (full) simple root basis
   const rootdata::RootList& sil = simpleImaginary();
   latticetypes::WeightList si;
-  rootdata::toRootBasis(sil.begin(),sil.end(),back_inserter(si),
-			rd.simpleRootList(),rd);
+  rd.toRootBasis(sil.begin(),sil.end(),back_inserter(si));
   latticetypes::SmallBitVectorList si2(si); // reduce vectors mod 2
 
   // now compute all results

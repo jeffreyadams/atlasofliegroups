@@ -84,74 +84,52 @@ namespace {
 
 namespace gradings {
 
-bool isNonCompact(const rootdata::Root& v, const Grading& g)
-
 /*!
   Synopsis: tells whether |v| is noncompact w.r.t. the grading |g|.
 
   NOTE : it is essential that |v| is expressed in the root basis in which
-  |g| is also given! Use |baseChange| (declared in lattice.h) if necessary.
+  |g| is also given!
 
   Given this, the condition is just that the sum of the coordinates of |v|
-  that are flagged by set bits of |gr| is odd.
+  that are flagged by set bits of |g| is odd.
 */
-
+bool isNonCompact(const rootdata::Root& v, const Grading& g)
 {
   bool b = false;
 
   for (unsigned long j = 0; j < v.size(); ++j)
-    if (v[j]%2!=0)
-      b ^= g[j];
+    b ^= g[j] and v[j]%2!=0;
 
   return b;
 }
 
-  /* Here is an example of how to use |isNonCompact| */
+/* Here is an example of how one could use |isNonCompact|.
+
+  This function puts in |cr| the list of all roots in |rd| that are
+  noncompact for the grading |g| of the full root system.
+
+  This function is never used, and therefore left as a comment only, as we
+  never handle gradings that unconditionally apply to the full root system
+
+  An important point is _not_ to call |lattice::baseChange| (as was originally
+  done in this example) to convert roots to the the "basis" of simple roots,
+  since that set need not have full rank (in the non-semisimple case), and
+  |baseChange| cannot handle that. However |RootDatum::inSimpleRoots| is safe.
 
 void noncompactRoots(rootdata::RootList& ncr, const Grading& g,
 		     const rootdata::RootDatum& rd)
-
 {
   using namespace lattice;
 
   // need to have roots in root basis
 
-  WeightList rl;
-  baseChange(rd.beginRoot(),rd.endRoot(),back_inserter(rl),
-	     rd.beginSimpleRoot(),rd.endSimpleRoot());
-
-  // make list of compact roots
-
-  for (unsigned long j = 0; j < rl.size(); ++j)
-    if (isNonCompact(rl[j],g))
-      ncr.push_back(j);
+  WeightList rl; rl.reserve(rd.numRoots());
+  for (rootdata::RootNbr i=0; i<rd.numRoots(); ++i)
+    if (isNonCompact(rd.inSimpleRoots(i),g))
+      ncr.push_back(i);
 }
-
-void compactRoots(rootdata::RootList& cr, const Grading& g,
-		  const rootdata::RootDatum& rd)
-
-/*!
-  This function puts in |cr| the list of roots in |rd| that are compact for
-  the grading |g|.
 */
 
-{
-  using namespace lattice;
-
-  // need to have roots in root basis
-
-  WeightList rl;
-  baseChange(rd.beginRoot(),rd.endRoot(),back_inserter(rl),
-	     rd.beginSimpleRoot(),rd.endSimpleRoot());
-
-  // make list of compact roots
-
-  for (unsigned long j = 0; j < rl.size(); ++j)
-    if (not isNonCompact(rl[j],g))
-      cr.push_back(j);
-}
-
-void makeGradings(GradingList& gl, const rootdata::RootDatum& rd)
 
 /*!
   This function puts in |gl| a set of representatives of $W$-conjugacy classes
@@ -164,7 +142,7 @@ void makeGradings(GradingList& gl, const rootdata::RootDatum& rd)
   We return the first representative in each class with the least possible
   number of set bits
 */
-
+void makeGradings(GradingList& gl, const rootdata::RootDatum& rd)
 {
   partition::Partition pi;
   partition::makeOrbits
@@ -179,9 +157,6 @@ void makeGradings(GradingList& gl, const rootdata::RootDatum& rd)
 
   }
 }
-
-void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
-		 const RootDatum& rd)
 
 /*!
   Given a RootList |rs|, which is assumed to hold a root subsystem in |rd|,
@@ -206,7 +181,8 @@ void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
   unknowns; but even then the system can be degenerate. This happens already
   in case B2, for the split Cartan.
 */
-
+void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
+		 const RootDatum& rd)
 {
   using namespace lattice;
   using namespace rootdata;
@@ -217,11 +193,11 @@ void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
 
   // express roots of |o| in basis |rb| (of subsystem |rs| of |rd|) just found
   WeightList wo; // will hold "weights" of length |rb.size()| (actually roots)
-  toRootBasis(o.begin(),o.end(),back_inserter(wo),rb,rd);
+  rd.toRootBasis(o.begin(),o.end(),back_inserter(wo),rb);
 
   // do the same for all roots in |rs|
   WeightList wrs; // will hold "weights" of length |rb.size()| (actually roots)
-  toRootBasis(rs.begin(),rs.end(),back_inserter(wrs),rb,rd);
+  rd.toRootBasis(rs.begin(),rs.end(),back_inserter(wrs),rb);
 
 
   /* As "equation" is a $Z/2Z$-linear one for gradings of the root lattice
@@ -259,18 +235,16 @@ void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
   // |ncr| now holds a solution
 }
 
-void gradingType(rootdata::RootList& gt, const Grading& g,
-		 const rootdata::RootDatum& rd)
-
 /*!
-  Returns in gt a maximal set of strongly orthogonal noncompact roots for the
-  grading.
+  Returns in |gt| a maximal set of strongly orthogonal noncompact roots for
+  the grading |g|. This function is currently unused [MvL 14 oct 2007]
 
   The algorithm is simple: pick any noncompact root; find the orthogonal
-  system; write down the grading on the orthogonal; when done, transform the
-  system into a strongly orthogonal one if needed.
+  system; write down the grading on the orthogonal; and repeat. When done,
+  transform the system into a strongly orthogonal one if needed.
 */
-
+void gradingType(rootdata::RootList& gt, const Grading& g,
+		 const rootdata::RootDatum& rd)
 {
   using namespace lattice;
   using namespace bitmap;
@@ -279,45 +253,44 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
 
   // need to have roots in root basis
 
-  WeightList wl;
-  baseChange(rd.beginRoot(),rd.endRoot(),back_inserter(wl),
-	     rd.beginSimpleRoot(),rd.endSimpleRoot());
+  WeightList wl; wl.reserve(rd.numRoots());
+  for (rootdata::RootNbr i=0; i<rd.numRoots(); ++i)
+    wl.push_back(rd.inSimpleRoots(i));
 
   // find grading of all roots
 
   BitMap nc(wl.size());
 
-  for (unsigned long j = 0; j < wl.size(); ++j)
+  for (unsigned long j = 0; j < rd.numRoots(); ++j)
     if (isNonCompact(wl[j],g))
       nc.insert(j);
 
   // find maximal orthogonal set
 
-  RootList rl;
+  RootList rl; rl.reserve(rd.numRoots());
 
-  for (unsigned long j = 0; j < wl.size(); ++j)
+  // start with set of all roots
+  for (unsigned long j = 0; j < rd.numRoots(); ++j)
     rl.push_back(j);
 
   while (!nc.empty()) {
 
-    // insert new wlwment in gt
+    // insert new element, a noncompact root occurring in |rl|, into |gt|
 
     RootNbr n = nc.front();
     gt.push_back(n);
 
-    // put in rl the orthogonal to rl.front()
-
+    // put into |rl| the orthogonal to |gt.front()|
     RootList orth;
     for (unsigned long j = 0; j < rl.size(); ++j) {
       if (rd.isOrthogonal(n,rl[j]))
 	orth.push_back(rl[j]);
       else
-	nc.remove(rl[j]);
+	nc.remove(rl[j]); // roots dropped from list don't count as noncompact
     }
     rl.swap(orth);
 
-    // find grading
-
+    // find the new grading
     for (unsigned long j = 0; j < rl.size(); ++j)
       if (rd.sumIsRoot(n,rl[j])) // change parity
 	nc.flip(rl[j]);
@@ -495,7 +468,7 @@ void compactEquations(BinaryEquationList& eqn, const RootList& o,
 
   WeightList woob; // |oob| in form of "weights", expressed on basis |rsb|
 
-  toRootBasis(oob.begin(),oob.end(),back_inserter(woob),rsb,rd);
+  rd.toRootBasis(oob.begin(),oob.end(),back_inserter(woob),rsb);
 
   // write equations
 

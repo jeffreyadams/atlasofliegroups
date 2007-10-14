@@ -48,12 +48,6 @@ namespace rootdata {
 
 namespace rootdata {
 
-template <typename I, typename O>
-  void toRootBasis(const I&, const I&, O, const RootList&, const RootDatum&);
-
-template <typename I, typename O>
-  void toSimpleWeights(const I&, const I&, O, const RootList&,
-		       const RootDatum&);
 
 void cartanMatrix(LT::LatticeMatrix&, const RootDatum&);
 
@@ -428,13 +422,16 @@ use by accessors.
 
   LT::LatticeMatrix cartanMatrix(const RootList&) const; // for subsystem
 
+  // express root in basis of simple roots
+  LT::Weight inSimpleRoots(RootNbr n) const;
 
-  // convert sequence of weights to basis of simple roots
-  template <typename I, typename O>
-    void toRootBasis(const I&, const I&, O) const;
-
-  // express root on basis of simple roots
-  LT::Weight onSimpleRoots(RootNbr n) const;
+  // convert sequence of root numbers to expressions in the simple roots
+template <typename I, typename O>
+  void toRootBasis(const I&, const I&, O) const;
+template <typename I, typename O>
+  void toRootBasis(const I&, const I&, O, const RootList&) const;
+template <typename I, typename O>
+  void toSimpleWeights(const I&, const I&, O, const RootList&) const;
 
   const LT::Weight& twoRho() const {
     return d_twoRho;

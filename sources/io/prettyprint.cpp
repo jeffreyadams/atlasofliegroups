@@ -137,50 +137,30 @@ std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
   return strm;
 }
 
-std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
+
+/*
+  Outputs root #n to strm in the root coordinates.
+*/
+std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n,
 			       const rootdata::RootDatum& rd)
+{
+  using namespace basic_io;
+  return strm << rd.inSimpleRoots(n);
+}
 
 /*
   Synopsis: outputs the set of roots contained in r to strm, expressed in root
   coordinates.
 */
-
-{
-  return printInRootBasis(strm,r.begin(),r.end(),rd);
-}
-
-std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n,
+std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
 			       const rootdata::RootDatum& rd)
-
-/*
-  Outputs root #n to strm in the root coordinates.
-
-  NOTE : for now this goes through the general printInRootBasis function.
-*/
-
 {
-  return printInRootBasis(strm,rd.root(n),rd);
-}
+  latticetypes::WeightList rl;
 
-std::ostream& printInRootBasis(std::ostream& strm,
-			       const latticetypes::Weight& v,
-			       const rootdata::RootDatum& rd)
+  for (rootdata::RootSet::iterator i=r.begin(); i(); ++i)
+    rl.push_back(rd.inSimpleRoots(*i));
 
-/*
-  Outputs the element v, assumed to lie in the root lattice, to strm in
-  the root coordinates.
-*/
-
-{
-  using namespace basic_io;
-  using namespace latticetypes;
-
-  Weight vrb;
-  const Weight* vPtr = &v;
-  const Weight* nvPtr = vPtr+1;
-  rd.toRootBasis(vPtr,nvPtr,&vrb);
-
-  strm << vrb;
+  basic_io::seqPrint(strm,rl.begin(),rl.end(),"\n","","\n");
 
   return strm;
 }

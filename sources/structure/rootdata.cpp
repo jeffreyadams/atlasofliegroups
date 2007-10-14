@@ -418,7 +418,7 @@ bool RootDatum::isSimplyConnected() const
   return d_status[IsSimplyConnected];
 }
 
-latticetypes::Weight RootDatum::onSimpleRoots(RootNbr n) const
+latticetypes::Weight RootDatum::inSimpleRoots(RootNbr n) const
 {
   latticetypes::Weight r=root(n); // on chosen lattice basis
   latticetypes::Weight result(d_semisimpleRank);

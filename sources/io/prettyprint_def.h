@@ -16,43 +16,10 @@
 
 namespace atlas {
 
-namespace prettyprint {
-
-namespace {
-
-// private declarations
-
-template<typename I>
-std::ostream& printInRootBasis(std::ostream&,
-			       const I&,
-			       const I&,
-			       const rootdata::RootDatum&,
-			       const rootdata::RootNbr&,
-			       const char* sep = ",",
-			       const char* pre = "",
-			       const char* post = "");
-
-
-template<typename I>
-std::ostream& printInRootBasis(std::ostream&,
-			       const I&,
-			       const I&,
-			       const rootdata::RootDatum&,
-			       const latticetypes::Weight&,
-			       const char* sep = ",",
-			       const char* pre = "",
-			       const char* post = "");
-
-}
-
-}
-
 
 /*****************************************************************************
 
         Chapter I -- Template functions defined in prettyprint.h
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -139,30 +106,6 @@ std::ostream& printBasis(std::ostream& strm, const std::vector<V>& b)
   return strm;
 }
 
-template<typename I>
-std::ostream& printInRootBasis(std::ostream& strm,
-			       const I& first,
-			       const I& last,
-			       const rootdata::RootDatum& rd,
-			       const char* sep,
-			       const char* pre,
-			       const char* post)
-
-/*
-  Dispatching function for the printInRootBasis template. Basically we
-  want to deal with two sorts of iterators : those weight-valued ones
-  and RootNbr-valued ones. We call the two specialised functions
-  accordingly. C++ magic!
-*/
-
-{
-  // the sun CC compiler does not like this
-  typedef typename std::iterator_traits<I>::value_type VT;
-
-  VT dummy;
-  return printInRootBasis(strm,first,last,rd,dummy,sep,pre,post);
-}
-
 template<typename C>
 std::ostream& printMonomial(std::ostream& strm, C c, polynomials::Degree d,
 			    const char* x)
@@ -232,98 +175,18 @@ std::ostream& printPol(std::ostream& strm, const polynomials::Polynomial<C>& p,
 
         Chapter II -- Local functions
 
-  ... explain here when it is stable ...
-
   Of course, the functions are not really local, as this module will be
   included in many others!
 
 ******************************************************************************/
 
-namespace {
-
-template<typename I>
-std::ostream& printInRootBasis(std::ostream& strm,
-			       const I& first,
-			       const I& last,
-			       const rootdata::RootDatum& rd,
-			       const latticetypes::Weight&,
-			       const char* sep,
-			       const char* pre,
-			       const char* post)
-
-/*
-  In this function we assume that I is an iterator type whose value_type is
-  Weight; furthermore we assume that when i ranges from first to last, *i
-  is in the root lattice. This function then outputs the corresponding
-  sequence of weights written in the simple root basis, outputting through
-  seqPrint with the corresponding separator, prefix and postfix.
-
-  NOTE: the Weight& argument is just a placeholder to make the signature
-  unique.
-*/
-
-{
-  using namespace latticetypes;
-  using namespace rootdata;
-
-  WeightList rl;
-
-  rd.toRootBasis(first,last,back_inserter(rl));
-  basic_io::seqPrint(strm,rl.begin(),rl.end(),sep,pre,post);
-
-  return strm;
-}
-
-template<typename I>
-std::ostream& printInRootBasis(std::ostream& strm,
-			       const I& first,
-			       const I& last,
-			       const rootdata::RootDatum& rd,
-			       const rootdata::RootNbr&,
-			       const char* sep,
-			       const char* pre,
-			       const char* post)
-
-/*
-  In this function we assume that I is an iterator type whose value_type is
-  RootNbr; it is assumed that these numbers refer to the list rd.d_roots.
-  This function then outputs the corresponding sequence of roots written in
-  the simple root basis, outputting through seqPrint with the corresponding
-  separator, prefix and postfix.
-
-  NOTE: the RootNbr& argument is just a placeholder to make the signature
-  unique.
-*/
-
-{
-  using namespace basic_io;
-  using namespace latticetypes;
-
-  WeightList rl;
-
-  rootdata::RootIterator<I> firstR(rd.beginRoot(),first);
-  rootdata::RootIterator<I> lastR(rd.beginRoot(),last);
-
-  rd.toRootBasis(firstR,lastR,back_inserter(rl));
-
-  WeightList::const_iterator rl_begin = rl.begin();
-  WeightList::const_iterator rl_end = rl.end();
-  seqPrint(strm,rl_begin,rl_end,sep,pre,post);
-
-  return strm;
-}
-
-}
-
-template<typename C>
-std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix<C>& m,
-			  unsigned long width)
-
 /*
   Outputs the matrix to a stream. It is assumed that operator << is defined
   for C, and that C is "small" (in particular, has no newlines in its output.)
 */
-
+template<typename C>
+std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix<C>& m,
+			  unsigned long width)
 {
   using namespace matrix;
 
@@ -338,6 +201,6 @@ std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix<C>& m,
   return strm;
 }
 
-}
+} // namespace prettyprint
 
-}
+} // namespace atlas

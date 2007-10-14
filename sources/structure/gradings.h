@@ -31,20 +31,15 @@ namespace atlas {
 namespace gradings {
 
   void findGrading(rootdata::RootSet&, const rootdata::RootList&,
-		      const rootdata::RootList&, const rootdata::RootDatum&);
+		   const rootdata::RootList&, const rootdata::RootDatum&);
 
   void gradingType(rootdata::RootList&, const Grading&,
 		   const rootdata::RootDatum&);
-
-  void compactRoots(rootdata::RootList&, const Grading&,
-		    const rootdata::RootDatum&);
 
   bool isNonCompact(const rootdata::Root&, const Grading&);
 
   void makeGradings(GradingList&, const rootdata::RootDatum&);
 
-  void noncompactRoots(rootdata::RootList&, const Grading&,
-		       const rootdata::RootDatum&);
 
 }
 

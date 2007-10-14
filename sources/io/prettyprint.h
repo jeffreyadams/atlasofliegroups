@@ -70,20 +70,8 @@ std::ostream& printDescentSet(std::ostream&, const bitset::RankFlags&, size_t,
 std::ostream& printInRootBasis(std::ostream&, rootdata::RootNbr,
 			       const rootdata::RootDatum&);
 
-std::ostream& printInRootBasis(std::ostream&, const latticetypes::Weight&,
-			       const rootdata::RootDatum&);
-
 std::ostream& printInRootBasis(std::ostream&, const rootdata::RootSet&,
 			       const rootdata::RootDatum&);
-
-template<typename I>
-std::ostream& printInRootBasis(std::ostream&,
-			       const I&,
-			       const I&,
-			       const rootdata::RootDatum&,
-			       const char* sep = ",",
-			       const char* pre = "",
-			       const char* post = "");
 
 std::ostream& printInvolution(std::ostream&, const weyl::TwistedInvolution&,
 			      const weyl::WeylGroup&);
