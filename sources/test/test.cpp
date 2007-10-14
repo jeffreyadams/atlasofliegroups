@@ -776,32 +776,6 @@ void components_f()
 
 }
 
-void coroots_rootbasis_f()
-
-/*
-  Prints the coroots in the simple coroot coordinates.
-*/
-
-{
-  try {
-    using namespace basic_io;
-    using namespace lattice;
-    using namespace latticetypes;
-
-    const rootdata::RootDatum& rd = currentRootDatum();
-    ioutils::OutputFile file;
-
-    std::vector<Weight> v;
-    baseChange(rd.beginCoroot(),rd.endCoroot(),back_inserter(v),
-	       rd.beginSimpleCoroot(),rd.endSimpleCoroot());
-    seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
-  }
-  catch (error::InputError& e) {
-    e("aborted");
-  }
-
-}
-
 void corder_f()
 
 /*
@@ -1368,47 +1342,35 @@ void blockwrite_f()
   }
 }
 
-void poscoroots_rootbasis_f()
-
 /*
-  Prints the positive coroots in the simple coroot coordinates.
+  Prints the roots in the simple root coordinates.
 */
-
+void roots_rootbasis_f()
 {
   try {
-    using namespace basic_io;
-    using namespace lattice;
-    using namespace latticetypes;
-
     const rootdata::RootDatum& rd = currentRootDatum();
     ioutils::OutputFile file;
 
-    latticetypes::WeightList v;
-    lattice::baseChange(rd.beginPosCoroot(),rd.endPosCoroot(),back_inserter(v),
-			rd.beginSimpleCoroot(),rd.endSimpleCoroot());
-    basic_io::seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    for (rootdata::RootNbr i=0; i<rd.numRoots(); ++i)
+      prettyprint::printInRootBasis(file,i,rd) << std::endl;
   }
   catch (error::InputError& e) {
     e("aborted");
   }
 
 }
-
-void posroots_rootbasis_f()
 
 /*
   Prints the positive roots in the simple root coordinates.
 */
+void posroots_rootbasis_f()
 
 {
   try {
     const rootdata::RootDatum& rd = currentRootDatum();
     ioutils::OutputFile file;
 
-    latticetypes::WeightList v;
-    lattice::baseChange(rd.beginPosRoot(),rd.endPosRoot(),back_inserter(v),
-			rd.beginSimpleRoot(),rd.endSimpleRoot());
-    basic_io::seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    prettyprint::printInRootBasis(file,rd.posRootSet(),rd);
   }
   catch (error::InputError& e) {
     e("aborted");
@@ -1416,21 +1378,34 @@ void posroots_rootbasis_f()
 
 }
 
-void roots_rootbasis_f()
-
 /*
-  Prints the roots in the simple root coordinates.
+  Prints the coroots in the simple coroot coordinates.
 */
-
+void coroots_rootbasis_f()
 {
   try {
-    const rootdata::RootDatum& rd = currentRootDatum();
+    const rootdata::RootDatum rd (currentRootDatum(),tags::DualTag());
     ioutils::OutputFile file;
 
-    latticetypes::WeightList v;
-    lattice::baseChange(rd.beginRoot(),rd.endRoot(),back_inserter(v),
-			rd.beginSimpleRoot(),rd.endSimpleRoot());
-    basic_io::seqPrint(file,v.begin(),v.end(),"\n","","") << std::endl;
+    for (rootdata::RootNbr i=0; i<rd.numRoots(); ++i)
+      prettyprint::printInRootBasis(file,i,rd) << std::endl;
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
+
+}
+
+/*
+  Prints the positive coroots in the simple coroot coordinates.
+*/
+void poscoroots_rootbasis_f()
+{
+  try {
+    const rootdata::RootDatum rd (currentRootDatum(),tags::DualTag());
+    ioutils::OutputFile file;
+
+    prettyprint::printInRootBasis(file,rd.posRootSet(),rd);
   }
   catch (error::InputError& e) {
     e("aborted");
