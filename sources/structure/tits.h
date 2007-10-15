@@ -84,7 +84,7 @@ namespace tits {
    |TitsElt| values need some access to the |TitsGroup| (most often by being
    methods of that class), even though some would not need to use it depending
    on the implementation. In order to make this possible, we are obliged to
-   declare that class |friend|.
+   declare the |TitsGroup| class a |friend| of |TitsElt|.
 */
 
 /* We define |TitsElt| first, so |TitsGroup| inlines can call its methods; as
@@ -103,20 +103,21 @@ class TitsElt {
 
  private:
   /*!
+\brief Factor in T(2) of the Tits group element.
+  */
+  TorusPart d_t; // in fact thought of as to the left of |d_w|
+
+  /*!
 \brief Canonical Weyl part of the Tits group element.
 
 If the Weyl group element $w$ has a reduced decomposition $s_1,...,s_r$, then
 the canonical representative is the product of the corresponding Tits group
-elements \f$\sigma_1,...,\sigma_r\f$. Because the \f$\sigma_i\f$ satisfy the braid
-relations, this canonical representative is independent of the choice of
+elements \f$\sigma_1,...,\sigma_r\f$. Because the \f$\sigma_i\f$ satisfy the
+braid relations, this canonical representative is independent of the choice of
 reduced decomposition.
   */
   weyl::WeylElt d_w;
 
-  /*!
-\brief Factor in T(2) of the Tits group element.
-  */
-  TorusPart d_t; // in fact thought of as to the right of |d_w|
 
  public:
 
@@ -128,17 +129,17 @@ reduced decomposition.
   explicit TitsElt(const TitsGroup& Tits);
 
   /*!\brief The canonical representative of |w| in |Tits|. */
-  TitsElt(const TitsGroup& Tits,const weyl::WeylElt& w);
+  TitsElt(const TitsGroup& Tits,const weyl::WeylElt& w); // group defines rank
 
-  explicit TitsElt(const TitsGroup&, TorusPart t)
-  : d_w(weyl::WeylElt()), d_t(t)
+  TitsElt(const TitsGroup&, TorusPart t) // pure torus part
+  :  d_t(t),d_w(weyl::WeylElt())
   {}
 
-  TitsElt(const TitsGroup&, const weyl::WeylElt& w, TorusPart t)
-  : d_w(w), d_t(t)
-  {}
+  TitsElt(const TitsGroup&, const weyl::WeylElt& w, TorusPart t);
 
-  TitsElt(const TitsGroup& g, TorusPart t, const weyl::WeylElt& w);
+  TitsElt(const TitsGroup&, TorusPart t, const weyl::WeylElt& w)
+  : d_t(t),d_w(w)
+  {}
 
 // copy and assignment can be left to their defaults
 
@@ -281,6 +282,12 @@ value is available for future use in methods [MvL 19 June 2007]
     return d_twist[j];
   }
 
+// methods only involving a |TorusPart|
+
+// convert between torus parts $x$ and $y$ for which $x.w=w.y$ in Tits group
+  TorusPart push_across(TorusPart x, const weyl::WeylElt& w) const;
+  TorusPart pull_across(const weyl::WeylElt& w, TorusPart y) const;
+
 // methods that only access some |TitsElt|
 
   /*!\brief Length of the underlying Weyl group element. */
@@ -288,18 +295,13 @@ value is available for future use in methods [MvL 19 June 2007]
     return d_weyl.length(a.w());
   }
 
-// methods that
+  TorusPart left_torus_part(const TitsElt& a) const { return a.d_t; }
 
-  TorusPart left_torus_part(const TitsElt& a) const
-  { return pull_across(a.d_w,a.d_t); }
-
-  TorusPart right_torus_part(const TitsElt& a) const { return a.d_t; }
+  TorusPart right_torus_part(const TitsElt& a) const
+  { return push_across(a.d_t,a.d_w); }
 
 
-
-// convert between torus parts $x$ and $y$ for which $x.w=w.y$ in Tits group
-  TorusPart push_across(TorusPart x, const weyl::WeylElt& w) const;
-  TorusPart pull_across(const weyl::WeylElt& w, TorusPart y) const;
+// methods that manipulate a |TitsElt|
 
 // left and right multiplication by $\sigma_s$ and by its inverse
   void sigma_mult(weyl::Generator s,TitsElt& a) const;
@@ -307,12 +309,13 @@ value is available for future use in methods [MvL 19 June 2007]
   void mult_sigma(TitsElt&, weyl::Generator) const;
   void mult_sigma_inv(TitsElt&, weyl::Generator) const;
 
-  void mult(TitsElt&, const TitsElt&) const;
+  TitsElt prod(const TitsElt& a, TitsElt b) const;               // "a * b"
+  void mult(TitsElt& a, const TitsElt& b) const { a=prod(a,b); } // "a *= b"
 
   void right_add(TitsElt& a,TorusPart t) const
-  { a.d_t += t; }
+  { a.d_t += pull_across(a.d_w,t); }
   void left_add (TorusPart t,TitsElt& a) const
-  { a.d_t += push_across(t,a.d_w); }
+  { a.d_t += t; }
 
 /*!\brief Conjugate |a| by \f$\sigma_\alpha\f$, where \f$\alpha=\alpha_s\f$. */
   void sigma_conjugate(TitsElt& a, weyl::Generator s) const
@@ -341,12 +344,14 @@ torus parts are projected to the fiber group over that twisted involution, as
 is done in the KGB construction, it induces an involution on the quotient set.
   */
   void twistedConjugate(TitsElt& a, weyl::Generator s) const {
-/*
-  note: in the Tits group s^{-1} is s.m_s!
-*/
-    sigma_mult(s,a);
-    mult_sigma(a,d_twist[s]); right_add(a,d_simpleCoroot[d_twist[s]]);
+    sigma_mult(s,a); mult_sigma_inv(a,twist(s));
   }
+
+  // the inverse operation: twisted conjugation by $\sigma_s^{-1}$
+  void inverseTwistedConjugate(TitsElt& a, weyl::Generator s) const {
+    sigma_inv_mult(s,a); mult_sigma(a,twist(s));
+  }
+
 
   const weyl::WeylGroup& weylGroup() const {
     return d_weyl;
@@ -375,16 +380,16 @@ relations between Weyl group and torus parts of a Tits element.
 
 // postponed inlines of |TitsElt|
 inline TitsElt::TitsElt(const TitsGroup& Tits)
-: d_w(weyl::WeylElt()), d_t(Tits.rank())
+: d_t(Tits.rank()), d_w(weyl::WeylElt())
 {}
 
 inline TitsElt::TitsElt(const TitsGroup& Tits,const weyl::WeylElt& w)
-: d_w(w), d_t(Tits.rank())
+: d_t(Tits.rank()), d_w(w)
 {}
 
 inline TitsElt::TitsElt
-  (const TitsGroup& g, TorusPart t, const weyl::WeylElt& w)
-: d_w(w), d_t(g.push_across(t,w))
+  (const TitsGroup& Tits, const weyl::WeylElt& w, TorusPart t)
+: d_t(Tits.pull_across(w,t)), d_w(w)
 {}
 
 
