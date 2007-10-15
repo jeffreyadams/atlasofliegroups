@@ -715,6 +715,20 @@ class WeylGroup {
 
 }; // class WeylGroup
 
+// A small derived class to allow hash tables of TwistedInvolution values
+// (We might have put |Pooltype| and |hashCode| members in WeylElt directly)
+
+struct TI_Entry
+  : public weyl::TwistedInvolution
+{
+  TI_Entry(const weyl::TwistedInvolution& tw): weyl::TwistedInvolution(tw) {}
+
+  // members required for an Entry parameter to the HashTable template
+  typedef std::vector<TI_Entry> Pooltype; // associated storage type
+  size_t hashCode(size_t modulus) const;  // hash function
+}; // class TI_Entry
+
+
 }
 
 }

@@ -938,7 +938,15 @@ Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
   }
 }
 
+size_t TI_Entry::hashCode(size_t modulus) const
+{
+  unsigned int hash=0;
+  for (size_t i=constants::RANK_MAX; i-->0; )
+    hash = 13*(hash+(*this)[i]);
+  return hash & modulus-1;
 }
+
+} // namespace weyl
 
 /*****************************************************************************
 
