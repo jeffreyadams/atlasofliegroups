@@ -20,9 +20,11 @@
 #include "descents.h"
 #include "kgb_fwd.h"
 #include "complexredgp_fwd.h"
+#include "realredgp_fwd.h"
 #include "weyl_fwd.h"
 
 #include "bitset.h"
+#include "bitmap.h"
 #include "realform.h"
 #include "weyl.h"
 
@@ -44,6 +46,8 @@ const BlockElt UndefBlock = ~ BlockElt(0);
 namespace blocks {
 
   std::vector<BlockElt> dual_map(const Block& b, const Block& dual_b);
+  bitmap::BitMap common_Cartans(realredgp::RealReductiveGroup& GR,
+				realredgp::RealReductiveGroup& dGR);
 
 }
 
@@ -54,23 +58,24 @@ namespace blocks {
   /*!
 \brief Represents a block of representations of an inner form of G.
 
-For our fixed inner form, orbits of K on G/B are parametrized by
-certain elements x in N(H) (the normalizer in the extended group
-G^Gamma), each defined up to conjugation by H. (Dangerous bend: the H
-conjugacy class of x is a subset, usually proper, of the coset xH. The
-collection of all x is therefore NOT a subset of the extended Weyl
-group N(H)/H, but something more subtle.) The requirement on x is that
-it belong to to the G-conjugacy class of strong involutions defining
-the inner form.
+For our fixed inner form, orbits of $K$ on $G/B$ are parametrized by classes
+of elements $x$ in $N_G(H).\delta$ (which is the normalizer in the second half
+$G.\delta$ of the extended group $G^Gamma=G disju G.\delta$, where $\delta$ is
+(i.e., acts on $G$ as) an involution that itself normalises $H$) modulo the
+\emph{conjugation} action of $H$. (Dangerous bend: this $H$ conjugacy class of
+$x$ is a subset, usually proper, of the coset $xH$. The collection of all $x$
+is therefore NOT a subset of the extended Weyl group $N(H)/H$, but something
+more subtle.) The requirement on $x$ is that it belong to to the $G$-conjugacy
+class of strong involutions defining the inner form.
 
-Each x therefore defines an involution theta_x of H.  Describing the
-set of x with a fixed involution is accomplished by the Fiber class.
+Each $x$ therefore defines an involution $theta_x$ of $H$.  Describing the
+set of $x$ with a fixed involution is accomplished by the Fiber class.
 
 A block is characterized by specifying also an inner form of the dual
-group G^vee.  For this inner form, K^vee orbits on G^vee/B^vee are
-parametrized by elements y.  The basic theorem is that the block of
-representations is parametrized by pairs (x,y) as above, subject to
-the requirement that theta_y is the negative transpose of theta_x.
+group $G^vee$.  For this inner form, $K^vee$ orbits on $G^vee/B^vee$ are
+parametrized by elements $y$.  The basic theorem is that the block of
+representations is parametrized by pairs $(x,y)$ as above, subject to
+the requirement that $theta_y$ is the negative transpose of $theta_x$.
   */
 class Block {
 
@@ -103,6 +108,12 @@ class Block {
   */
   kgb::KGBEltList d_y; // of size size()+1, with UndefKGB sentinel
 
+/*!\brief maps KGB element |x| to the first block element |z| with |d_x[z]>=x|.
+
+  Moreover |d_firstx[d_xsize]==size()|
+*/
+  std::vector<BlockElt> d_firstx; // of size d_xsize+1
+
   /*!
 \brief d_cross[s][z] is $s * z$ (for s a simple root, z a BlockElt).
   */
@@ -134,8 +145,8 @@ element z.
 
 
   /*!
-\brief Entry z (multiplied by the fixed outer automorphism delta) is
-the involution \f$\theta_z\f$ of H attached to z
+\brief Entry z (multiplied by the fixed outer automorphism \delta) is
+the involution \f$\tau_z\f$ of H attached to z
 (in other words, d_involution[z] is the twisted involution attached to z; MvL)
   */
   weyl::TwistedInvolutionList d_involution; // of size size()
@@ -178,9 +189,9 @@ non-vanishing KL polynomial.
   Block();
 
   Block(complexredgp::ComplexReductiveGroup&, realform::RealForm rf,
-	realform::RealForm drf);
+	realform::RealForm drf, bool select_Cartans=false);
 
-  virtual ~Block();
+  ~Block();
 
 // copy, assignment and swap
   void swap(Block&);
@@ -271,14 +282,16 @@ root datum involution tau corresponding to z
     return d_x[z];
   }
 
-  size_t xsize() const {
-    return d_xsize;
-  }
-
   kgb::KGBElt y(BlockElt z) const {
     return d_y[z];
   }
 
+  //!\brief Look up element by |x|, |y| coordinates
+  BlockElt element(kgb::KGBElt x,kgb::KGBElt y) const;
+
+  size_t xsize() const {
+    return d_xsize;
+  }
   size_t ysize() const {
     return d_ysize;
   }

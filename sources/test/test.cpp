@@ -21,6 +21,7 @@
 #include "blocks.h"
 #include "bruhat.h"
 #include "cartan_io.h"
+#include "cartanset.h"
 #include "commands.h"
 #include "complexredgp.h"
 #include "complexredgp_io.h"
@@ -87,9 +88,13 @@ namespace {
   void rootdatum_f();
   void kgborder_f();
   void primkl_f();
+template<bool small>
   void kgb_f();
+template<bool small>
   void block_f();
+template<bool small>
   void dual_kgb_f();
+template<bool small>
   void dual_block_f();
   void dual_map_f();
   void blockd_f();
@@ -217,7 +222,7 @@ void addTestCommands<mainmode::MainmodeTag>
   mode.add("posroots_rootbasis",posroots_rootbasis_f);
   mode.add("roots_rootbasis",roots_rootbasis_f);
   mode.add("rootdatum",rootdatum_f);
-  mode.add("dualkgb",dual_kgb_f);
+  mode.add("dualkgb",dual_kgb_f<false>);
 
 }
 
@@ -236,22 +241,26 @@ void addTestCommands<realmode::RealmodeTag>
   if (testMode == RealMode)
     mode.add("test",test_f);
 
-  mode.add("block",block_f);
-  mode.add("blockd",blockd_f);
-  mode.add("blockorder",blockorder_f);
-  mode.add("blocku",blocku_f);
-  mode.add("blockstabilizer",blockstabilizer_f);
   mode.add("components",components_f);
   mode.add("corder",corder_f);
   mode.add("kgborder",kgborder_f);
-  mode.add("primkl",primkl_f);
-  mode.add("kgb",kgb_f);
-  mode.add("dualblock",dual_block_f);
+  mode.add("kgb",kgb_f<false>);
+  mode.add("block",block_f<false>);
+  mode.add("dualblock",dual_block_f<false>);
+  mode.add("blockd",blockd_f);
+  mode.add("blockorder",blockorder_f);
+  mode.add("blocku",blocku_f);
+  mode.add("smallkgb",kgb_f<true>);
+  mode.add("smallblock",block_f<true>);
+  mode.add("smalldualkgb",dual_kgb_f<true>);
+  mode.add("smalldualblock",dual_block_f<true>);
+  mode.add("blockstabilizer",blockstabilizer_f);
   mode.add("dualmap",dual_map_f);
+  mode.add("blockwrite",blockwrite_f);
   mode.add("klbasis",klbasis_f);
   mode.add("kllist",kllist_f);
+  mode.add("primkl",primkl_f);
   mode.add("klwrite",klwrite_f);
-  mode.add("blockwrite",blockwrite_f);
   mode.add("wcells",wcells_f);
   mode.add("wgraph",wgraph_f);
 
@@ -521,6 +530,7 @@ namespace {
   Synopsis: constructs the block of the category of Harish-Chandra modules
   corresponding to a given real form and dual real form.
 */
+template<bool small>
 void block_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
@@ -539,7 +549,7 @@ void block_f()
     interactive::getInteractive
       (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
 
-    blocks::Block block(G_C,G_R.realForm(),drf);
+    blocks::Block block(G_C,G_R.realForm(),drf,small);
 
     ioutils::OutputFile file;
     block_io::printBlock(file,block);
@@ -886,24 +896,49 @@ void primkl_f()
 /*
   Outputs the kgb table.
 */
+template<bool small>
 void kgb_f()
 {
   try {
-    using namespace basic_io;
-    using namespace kgb;
-    using namespace kgb_io;
-    using namespace realmode;
-    using namespace realredgp;
+    realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+    G_R.fillCartan();
 
-    RealReductiveGroup& G = currentRealGroup();
-    G.fillCartan();
 
-    std::cout << "kgbsize: " << G.kgbSize() << std::endl;
-    ioutils::OutputFile file;
+    if (small)
+    {
+      const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+      complexredgp::ComplexReductiveGroup dGC (G_C,tags::DualTag());
+      const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
+      const complexredgp_io::Interface& G_I = G_RI.complexInterface();
 
-    KGB kgb(G);
+      // get dual real form
+      realform::RealForm drf;
 
-    printKGB(file,kgb);
+      interactive::getInteractive
+	(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
+
+      realredgp::RealReductiveGroup dGR(dGC, drf);
+      dGR.fillCartan();
+
+      bitmap::BitMap common=blocks::common_Cartans(G_R,dGR);
+
+      std::cerr << "relevant Cartan classes: ";
+      basic_io::seqPrint(std::cerr,common.begin(),common.end(),",","{","}\n");
+
+      std::cout << "partial kgb size: " <<
+	G_C.cartanClasses().KGB_size(G_R.realForm(),common) << std::endl;
+
+      ioutils::OutputFile file;
+      kgb::KGB kgb(G_R,common);
+      kgb_io::printKGB(file,kgb);
+    }
+    else
+    {
+      std::cout << "kgbsize: " << G_R.kgbSize() << std::endl;
+      ioutils::OutputFile file;
+      kgb::KGB kgb(G_R);
+      kgb_io::printKGB(file,kgb);
+    }
   }
   catch(error::InputError e) {
     e("aborted");
@@ -913,32 +948,67 @@ void kgb_f()
 /*
   Outputs a kgb table for a dual real form.
 */
+template<bool small>
 void dual_kgb_f()
 {
   try {
-    complexredgp::ComplexReductiveGroup& G_C = mainmode::currentComplexGroup();
-    G_C.fillCartan();
 
-    const complexredgp_io::Interface& G_I =mainmode::currentComplexInterface();
+    if (small)
+    {
+      realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+      G_R.fillCartan(); // here we need only generate Cartans for real form
+      const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+      complexredgp::ComplexReductiveGroup dGC (G_C,tags::DualTag());
+      const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
+      const complexredgp_io::Interface& G_I = G_RI.complexInterface();
 
-    const realform::RealFormList rfl =
-      G_C.dualRealFormLabels(G_C.mostSplit(G_C.quasisplit()));
+      // get dual real form
+      realform::RealForm drf;
 
-    realform::RealForm drf;
+      interactive::getInteractive
+	(drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
 
-    interactive::getInteractive(drf,G_I,rfl,tags::DualTag());
+      realredgp::RealReductiveGroup dGR(dGC, drf);
+      dGR.fillCartan();
 
-    // the complex group must be in a variable: it is non-const for real group
-    complexredgp::ComplexReductiveGroup dG_C(G_C,tags::DualTag());
-    realredgp::RealReductiveGroup dG(dG_C,drf);
-    dG.fillCartan();
+      bitmap::BitMap common=blocks::common_Cartans(dGR,G_R);
 
-    std::cout << "dual kgbsize: " << dG.kgbSize() << std::endl;
-    ioutils::OutputFile file;
+      std::cerr << "relevant Cartan classes for dual group: ";
+      basic_io::seqPrint(std::cerr,common.begin(),common.end(),",","{","}\n");
 
-    kgb::KGB kgb(dG);
+      std::cout << "partial kgb size: " <<
+	dGC.cartanClasses().KGB_size(drf,common) << std::endl;
+      ioutils::OutputFile file;
 
-    kgb_io::printKGB(file,kgb);
+      kgb::KGB kgb(dGR,common);
+      kgb_io::printKGB(file,kgb);
+    }
+    else
+    {
+      complexredgp::ComplexReductiveGroup& G_C =
+	mainmode::currentComplexGroup();
+      G_C.fillCartan(); // must generate all Cartans: no real form chosen
+
+      const complexredgp_io::Interface& G_I =
+	mainmode::currentComplexInterface();
+      const realform::RealFormList rfl = // get list of all dual real forms
+	G_C.dualRealFormLabels(G_C.mostSplit(G_C.quasisplit()));
+
+      realform::RealForm drf;
+
+      interactive::getInteractive(drf,G_I,rfl,tags::DualTag());
+
+      // the complex group must be in a variable: is non-const for real group
+      complexredgp::ComplexReductiveGroup dG_C(G_C,tags::DualTag());
+      realredgp::RealReductiveGroup dG(dG_C,drf);
+      dG.fillCartan();
+
+      std::cout << "dual kgbsize: " << dG.kgbSize() << std::endl;
+      ioutils::OutputFile file;
+
+      kgb::KGB kgb(dG);
+      kgb_io::printKGB(file,kgb);
+    }
   }
   catch(error::InputError e) {
     e("aborted");
@@ -948,6 +1018,7 @@ void dual_kgb_f()
   }
 }
 
+template<bool small>
 void dual_block_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
@@ -967,9 +1038,9 @@ void dual_block_f()
 
     // the complex group must be in a variable: it is non-const for block
     complexredgp::ComplexReductiveGroup dG_C(G_C,tags::DualTag());
-    dG_C.fillCartan();
+    dG_C.fillCartan(drf);
 
-    blocks::Block block(dG_C,drf,G_R.realForm());
+    blocks::Block block(dG_C,drf,G_R.realForm(),small);
 
     ioutils::OutputFile file;
     block_io::printBlock(file,block);

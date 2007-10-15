@@ -34,8 +34,10 @@
 #include <memory>
 #include <set>
 
+#include "basic_io.h"
 #include "bruhat.h"
 #include "complexredgp.h"
+#include "cartanset.h"
 #include "descents.h"
 #include "kgb.h"
 #include "realredgp.h"
@@ -84,18 +86,15 @@ private:
   kgb::KGB d_kgb;
   kgb::KGB d_dualkgb;
 
-  // d_firstx maps KGB elements x to the first block element z with d_x[z]>=x
-  // and moreover d_firstx[d_kgb.size()]==d_size
-  std::vector<BlockElt> d_firstx; // of size d_kgb.size()+1
-
   weyl::WeylInterface d_toDualWeyl;
   const weyl::WeylGroup* d_dualWeylGroup;
 
 public:
   // constructors and destructors
-  Helper(realredgp::RealReductiveGroup& G, realredgp::RealReductiveGroup& dG);
+  Helper(realredgp::RealReductiveGroup& G, realredgp::RealReductiveGroup& dG,
+	 bool select_Cartans);
 
-  virtual ~Helper() {};
+  ~Helper() {}
 
   // accessors
   weyl::TwistedInvolution dualInvolution(const weyl::TwistedInvolution&) const;
@@ -119,7 +118,8 @@ public:
 
   void makeWeylCorrelation();
 
-  void orbitPairs();
+  void orbitPairs(realredgp::RealReductiveGroup& G,
+		  realredgp::RealReductiveGroup& dG);
 
   void tauCorrelation();
 
@@ -144,6 +144,7 @@ Block::Block()
   , d_ysize(0)
   , d_x()
   , d_y()
+  , d_firstx()
   , d_cross()
   , d_cayley()
   , d_inverseCayley()
@@ -158,10 +159,6 @@ Block::Block()
   , d_weylGroup(NULL)
   {}
 
-Block::Block(complexredgp::ComplexReductiveGroup& G,
-	     realform::RealForm rf, realform::RealForm df)
-  :d_bruhat(0)
-
 /*!
   \brief Constructor for the block class.
 
@@ -171,6 +168,27 @@ Block::Block(complexredgp::ComplexReductiveGroup& G,
 
   This is a big job; the work is deferred to the Helper constructor.
 */
+Block::Block(complexredgp::ComplexReductiveGroup& G,
+	     realform::RealForm rf, realform::RealForm df,
+	     bool select_Cartans)
+  : d_rank(0)
+  , d_xsize(0)
+  , d_ysize(0)
+  , d_x()
+  , d_y()
+  , d_firstx()
+  , d_cross()
+  , d_cayley()
+  , d_inverseCayley()
+  , d_descent()
+  , d_length()
+  , d_involution()
+  , d_involutionSupport()
+  , d_realForm(0)
+  , d_dualForm(0)
+  , d_state()
+  , d_bruhat(NULL)
+  , d_weylGroup(NULL)
 
 {
   using namespace complexredgp;
@@ -186,7 +204,7 @@ Block::Block(complexredgp::ComplexReductiveGroup& G,
   RealReductiveGroup dG_R(dG,df);
   dG_R.fillCartan();
 
-  Helper help(G_R,dG_R);
+  Helper help(G_R,dG_R,select_Cartans);
   swap(help);
 
 #ifdef VERBOSE
@@ -230,13 +248,29 @@ void Block::swap(Block& other)
 }
 
 /******** accessors **********************************************************/
-size_t Block::firstStrictDescent(BlockElt z) const
+
+/*!\brief Look up element by |x|, |y| coordinates
+
+  Precondition: |x| and |y| should be compatible: such a block element exists
+
+  This uses the |d_firstx| table to locate the range where the |x| coordinates
+  are correct; then comparing the given |y| value with the first one present
+  for |x| (there must be at least one) we can predict the value directly,
+  since for each fixes |x| value the values of |y| are consecutive.
+*/
+BlockElt Block::element(kgb::KGBElt x,kgb::KGBElt y) const
+{
+  BlockElt first=d_firstx[x];
+  BlockElt z = first +(y-d_y[first]);
+  assert(z<size() and d_x[z]==x and d_y[z]==y); // element should be found
+  return z;
+}
 
 /*!
   \brief Returns the first descent for z (the number of a simple root) that is
 not imaginary compact, or rank() if there is no such descent.
 */
-
+size_t Block::firstStrictDescent(BlockElt z) const
 {
   using namespace descents;
 
@@ -399,12 +433,12 @@ void Block::fillBruhat()
   does way too much work for small blocks.
 */
 Helper::Helper(realredgp::RealReductiveGroup& G,
-	       realredgp::RealReductiveGroup& dG)
+	       realredgp::RealReductiveGroup& dG,
+	       bool select_Cartans)
   : Block()
   , d_size(0)
-  , d_kgb(G)
-  , d_dualkgb(dG)
-  , d_firstx()
+  , d_kgb(G,select_Cartans ? common_Cartans(G,dG) : bitmap::BitMap(0))
+  , d_dualkgb(dG,select_Cartans ? common_Cartans(dG,G) : bitmap::BitMap(0))
   , d_toDualWeyl(G.semisimpleRank())
   , d_dualWeylGroup(&d_dualkgb.weylGroup())
 {
@@ -449,7 +483,7 @@ Helper::Helper(realredgp::RealReductiveGroup& G,
   d_firstx.reserve(d_kgb.size()+1);
 
   // make list of allowable orbit pairs (block elements) and fill x-offsets
-  orbitPairs();
+  orbitPairs(G,dG);
 
   // fill in cross actions
   fillCrossActions();
@@ -472,23 +506,23 @@ Helper::Helper(realredgp::RealReductiveGroup& G,
 
 /******** accessors **********************************************************/
 weyl::TwistedInvolution Helper::dualInvolution
-  (const weyl::TwistedInvolution& d_w) const
+  (const weyl::TwistedInvolution& tw) const
 
 /*!
-  \brief Returns the twisted involution dual to d_w.
+  \brief Returns the twisted involution dual to tw.
 
-  Explanation: we have tau = w.tau_f, with w in the Weyl group, and tau_f
+  Explanation: we have tau = tw.tau_f, with tw in the Weyl group, and tau_f
   the fundamental involution of the character lattice. We seek v s.t.
   -{}^t tau = v.tau_f^{vee}, where tau_f^{vee} = -w_0{}^t tau_f. So we
   have:
 
-        (-{}^t tau_f).{}^t w = v.w_0.(-{}^t tau_f)
+        (-{}^t tau_f).{}^t tw = v.w_0.(-{}^t tau_f)
 
-  which leads to v = ({}^t theta_f(w)).w_0, where theta_f comes from the
-  Dynkin diagram involution defining the inner class. The transposition
-  takes a root reflection to the corresponding coroot reflection, and reverses
-  the order (so in practice, it amounts to going over to the inverse of v)
-  and so we get:
+  which leads to v = ({}^t theta_f(tw)).w_0, where theta_f comes from the
+  Dynkin diagram involution defining the inner class. The transposition takes
+  a root reflection to the corresponding coroot reflection, and reverses the
+  order (so in practice, it amounts to going over to the inverse of
+  theta_f(tw)) and so we get:
 
         (theta_f(w))^{-1}.w_0 = v.
 
@@ -503,7 +537,7 @@ weyl::TwistedInvolution Helper::dualInvolution
   const WeylGroup& W = weylGroup();
 
   WeylElt v = W.longest();
-  WeylElt w = W.translate(d_w.w(),d_toDualWeyl);
+  WeylElt w = W.translate(tw.w(),d_toDualWeyl);
 
   W.twist(w);
   W.mult(v,w);
@@ -513,19 +547,33 @@ weyl::TwistedInvolution Helper::dualInvolution
 }
 
 /******** manipulators *******************************************************/
-void Helper::fillCayleyActions()
+
 
 /*!
-  \brief Fills in the cayley actions.
+  \brief Fills in the cross actions.
+
+  Explanation: in principle this is simple: in terms of orbit pairs, it is
+  just the corresponding action on each side. The main difficulty is locating
+  the result as block element, which the method |element| does for us.
+*/
+void Helper::fillCrossActions()
+{
+  for (size_t s = 0; s < d_rank; ++s) {
+    for (BlockElt z = 0; z < size(); ++z)
+     d_cross[s][z] = element(d_kgb.cross(s,x(z)),d_dualkgb.cross(s,y(z)));
+  }
+}
+
+/*!
+  \brief Fills in the Cayley transforms.
 
   Explanation: as for cross actions, this is obtained from kgb and dualkgb.
   The cayley transform of (x,y) is obtained by applying the direct Cayley
   transform to x, the inverse Cayley transform to y. The correlation between
   kgb and dualkgb is such that these operations are either both defined or
-  both undefined. Just as for cross-actions, the main difficulty is in
-  locating the result.
+  both undefined. Just as for cross-actions, |element| locates the result.
 */
-
+void Helper::fillCayleyActions()
 {
   using namespace kgb;
 
@@ -536,11 +584,7 @@ void Helper::fillCayleyActions()
 	continue;
       KGBEltPair sy = d_dualkgb.inverseCayley(s,y(z));
       assert(sy.first != UndefKGB);
-      KGBEltList::iterator i =
-	std::find(d_y.begin()+d_firstx[sx],d_y.begin()+d_firstx[sx+1]
-		 ,sy.first);
-      assert(i  < d_y.begin()+d_firstx[sx+1]);
-      BlockElt z0=i - d_y.begin();
+      BlockElt z0=element(sx,sy.first);
       d_cayley[s][z].first = z0;
       {
 	// fill in inverse Cayley entry
@@ -555,10 +599,7 @@ void Helper::fillCayleyActions()
       if (sy.second == UndefKGB) // cayley transform is type I
 	continue;
       // if we get here the Cayley transform is two-valued
-      i = std::find(d_y.begin()+d_firstx[sx],d_y.begin()+d_firstx[sx+1]
-		   ,sy.second);
-      assert(  i  < d_y.begin()+d_firstx[sx+1]);
-      BlockElt z1=i - d_y.begin();
+      BlockElt z1=element(sx,sy.second);
       d_cayley[s][z].second = z1;
       {
 	// fill in inverse Cayley entry
@@ -568,42 +609,8 @@ void Helper::fillCayleyActions()
       }
     }
   }
-
-  return;
 }
 
-void Helper::fillCrossActions()
-
-/*!
-  \brief Fills in the cross actions.
-
-  Explanation: in principle this is simple: in terms of orbit pairs, it is
-  just the corresponding action on each side. The main difficulty is in
-  locating  the result. We do this with the aid off the d_firstx table:
-  the result of cross(s,(x,y)) lies in the range beginning at
-  firstx(cross(s,x)) and ending at firstx(cross(s,x)+1).
-
-  Note that std::find does a linear (left-to-right) search, so that no other
-  occurrence of sy will be found.
-*/
-
-{
-  using namespace kgb;
-
-  for (size_t s = 0; s < d_rank; ++s) {
-    for (BlockElt z = 0; z < size(); ++z) {
-      KGBElt sx = d_kgb.cross(s,x(z));
-      KGBElt sy = d_dualkgb.cross(s,y(z));
-      KGBEltList::iterator i =
-	std::find(d_y.begin()+d_firstx[sx],d_y.begin()+d_firstx[sx+1]
-		 ,sy);
-      assert(i <  d_y.begin()+d_firstx[sx+1]);
-      d_cross[s][z] = i - d_y.begin();
-    }
-  }
-
-  return;
-}
 
 void Helper::fillDescents()
 
@@ -680,7 +687,7 @@ void Helper::fillInvolutionSupports()
 /*!
   \brief Fills in d_involutionSupport.
 
-  Explanation: d_involutionSupport[z] coontains the support of the
+  Explanation: d_involutionSupport[z] contains the support of the
   underlying involution, i.e. the generators s that occur either as
   s or as twist(s) in a reduced expression for w as an involution.
 
@@ -742,8 +749,6 @@ void Helper::fillLengths()
   return;
 }
 
-void Helper::makeWeylCorrelation()
-
 /*!
   \brief Fills d_toDualWeyl.
 
@@ -755,9 +760,9 @@ void Helper::makeWeylCorrelation()
   The compatibility can only be guaranteed for the _outer_ representations of
   the Weyl group elements. So, d_toDualWeyl is the transition map:
 
-          d_toDualWeyl[s] = d_dualin[d_out[s]]
+          d_toDualWeyl[s] = d_dualout[d_in[s]]
 */
-
+void Helper::makeWeylCorrelation()
 {
   using namespace weyl;
 
@@ -765,17 +770,12 @@ void Helper::makeWeylCorrelation()
   const weyl::WeylGroup& dW = d_dualkgb.weylGroup();
 
   for (size_t s = 0; s < W.rank(); ++s) {
-    WeylElt w;
-    W.mult(w,s);
-    WeylWord ww;
-    dW.out(ww,w);
+    WeylElt w=W.generator(s); // this converts |s| to inner numbering
+    WeylWord ww=dW.word(w); // interpret |w| in |dW|; gives singleton word
     d_toDualWeyl[s] = ww[0];
   }
-
-  return;
 }
 
-void Helper::orbitPairs()
 
 /*!
   \brief Puts in d_orbitPairs a list of all pairs of orbit parameters that
@@ -784,15 +784,23 @@ void Helper::orbitPairs()
   It also fills in the firstx array. For any given x in d_kgb, this gives
   the offset in d_orbitPairs of the first pair containing x.
 */
-
+void Helper::orbitPairs(realredgp::RealReductiveGroup& G,
+			realredgp::RealReductiveGroup& dG)
 {
   using namespace kgb;
   using namespace weyl;
 
+  bitmap::BitMap cartans=common_Cartans(G,dG);
+
   KGBElt x = 0;
-  BlockElt xOffset = 0;
+  BlockElt base_z = 0; // block element |z| where generation for |x| starts
 
   while (x < d_kgb.size()) {
+    if (not cartans.isMember(d_kgb.Cartan_class(x)))
+    {
+      d_firstx[x] = base_z; // |x| without block element still has |d_firstx|
+      ++x; continue; // skip |x|s for irrelevant Cartan classes
+    }
 #ifdef VERBOSE
     std::cerr << x << "\r";
 #endif
@@ -804,26 +812,48 @@ void Helper::orbitPairs()
 	d_x.push_back(x);
 	d_y.push_back(y);
       }
-      d_firstx[x] = xOffset;
-      xOffset += yRange.second - yRange.first;
+      d_firstx[x] = base_z;
+      base_z += yRange.second - yRange.first;
     }
   }
 
-  assert(xOffset == d_size); // check that number of pairs is as expected
+  if (base_z!=d_size)
+    std::cerr << "Block generated " << base_z << "!=" << d_size << std::endl;
+
+  assert(base_z == d_size); // check that number of pairs is as expected
 
 #ifdef VERBOSE
   std::cerr << std::endl;
 #endif
 
-  d_firstx[x] = xOffset; // make d_firstx[d_kgb.size()]==d_size
+  d_firstx[x] = base_z; // make d_firstx[d_kgb.size()]==d_size
   // put sentinels at end of d_x and d_y
   d_x.push_back(UndefKGB);
   d_y.push_back(UndefKGB);
 
 }
 
-}
-}
+#if 0
+  std::vector<weyl::TwistedInvolution> dual_twists;
+  {
+    const bitmap::BitMap& dual_Cartans=dGR.cartanSet();
+    dual_twists.reserve(dual_Cartans.size());
+    for (bitmap::BitMap::iterator it=dual_Cartans.begin(); it(); ++it)
+      dual_twists.push_back(dGC.twistedInvolution(*it));
+  }
+
+  for (bitmap::BitMap::iterator it=result.begin(); it(); ++it)
+  {
+    weyl::TwistedInvolution dual_tw =
+      dualInvolution(GR.complexGroup().twistedInvolution(*it));
+    dGC.cartanClasses().canonicalize(dual_tw);
+    if (setutils::find_index(dual_twists,dual_tw)==dual_twists.size())
+      result.remove(*it);
+  }
+#endif
+
+} // namespace helper
+} // namespace blocks
 
 
 /*****************************************************************************
@@ -968,6 +998,16 @@ std::vector<BlockElt> dual_map(const Block& b, const Block& dual_b)
   std::vector<BlockElt> result(b.size());
   for (BlockElt i=0; i<dual_b.size(); ++i)
     result[i]=hash.match(PairEntry(b.y(i),b.x(i)));
+
+  return result;
+}
+
+/*! Find Cartans classes of |G| whose dual involution occurs for |dG| */
+bitmap::BitMap common_Cartans(realredgp::RealReductiveGroup& GR,
+			      realredgp::RealReductiveGroup& dGR)
+{
+  bitmap::BitMap result=GR.cartanSet();
+  result &= GR.complexGroup().dualCartanSet(dGR.realForm());
 
   return result;
 }
