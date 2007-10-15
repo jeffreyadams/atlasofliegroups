@@ -81,6 +81,8 @@ class RealReductiveGroup {
     return *d_complexGroup;
   }
 
+  size_t numInvolutions() const;
+
   const latticetypes::SmallBitVectorList& dualComponentReps() const {
     return d_connectivity.dualComponentReps();
   }

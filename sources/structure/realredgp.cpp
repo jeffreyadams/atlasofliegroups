@@ -130,8 +130,12 @@ const bitmap::BitMap& RealReductiveGroup::cartanSet() const
 */
 
 {
-  return d_complexGroup->cartanSet(d_realForm);
+  return complexGroup().cartanSet(d_realForm);
 }
+
+size_t RealReductiveGroup::numInvolutions() const {
+    return complexGroup().numInvolutions(cartanSet());
+  }
 
 const latticetypes::LatticeMatrix& RealReductiveGroup::distinguished() const
 
