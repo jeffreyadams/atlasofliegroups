@@ -18,12 +18,12 @@ representing orbits of K on G/B.
 #include "kgb_fwd.h"
 
 #include "bitmap_fwd.h"
-#include "bruhat_fwd.h"
 #include "realredgp_fwd.h"
-#include "weyl_fwd.h"
-#include "weyl.h"
 
+#include "weyl.h"
+#include "bruhat.h" // class definition needed for inlined KGB destructor
 #include "gradings.h"
+#include "hashtable.h"
 
 namespace atlas {
 
@@ -123,7 +123,14 @@ those for which simple root \#j is not real, both components will be
 \brief Twisted Weyl group element defining Cartan involution for KGB
 element \#j.
 */
-  weyl::TwistedInvolutionList d_involution;
+  weyl::TwistedInvolutionList d_involution; // of size size()
+
+  //!\brief to help find range of elements with fixed twisted involution
+  std::vector<KGBElt> first_of_tau; // size: #distinct twisted involutions +1
+
+  //!\brief tables to map twisted involutions to their sequence number
+  weyl::TI_Entry::Pooltype d_pool;
+  hashtable::HashTable<weyl::TI_Entry,unsigned int> d_tau;
 
 /*!
 \brief Bit 0 flags whether or not the Bruhat order on KGB has already
@@ -132,10 +139,10 @@ been constructed.
   bitset::BitSet<NumStates> d_state;
 
 /*!
-\brief Pointer to the Bruhat order on KGB.
+\brief Owned pointer to the Bruhat order on KGB (or NULL).
 
-The class BruhatOrder provides the symmetrized bitmatrix of the
-partial order, and the Hasse diagram of covering relations.
+The class BruhatOrder contains a Poset describing the full partial order,
+and in addition the Hasse diagram (set of all covering relations).
 */
 bruhat::BruhatOrder* d_bruhat;
 
@@ -147,16 +154,25 @@ bruhat::BruhatOrder* d_bruhat;
  public:
 
 // constructors and destructors
-  explicit KGB(realredgp::RealReductiveGroup&);
+  explicit KGB(realredgp::RealReductiveGroup& GR,
+	       const bitmap::BitMap& Cartan_classes =  bitmap::BitMap(0));
 
-  ~KGB();
+  ~KGB() { delete d_bruhat; } // only |d_bruhat| is owned (if non NULL)
 
 // copy, assignment and swap
+// these are currently reserved; if defined, they shoud take care of |d_bruhat|
+ private:
+  KGB(const KGB&);
+  KGB& operator=(const KGB&);
+ public:
+
 
 // accessors
 
 /*!
-\brief Pointer to the Bruhat order on KGB.
+\brief Return reference to the Bruhat order on KGB.
+
+Precondition: the Bruhat order has been computed (|fillBruhat| was called)
 
 The class BruhatOrder as written by Fokko provided the symmetrized
 bitmatrix of the partial order, and the Hasse diagram of covering
@@ -176,13 +192,17 @@ simple root \#s; returns |UndefKGB| unless that root was noncompact imaginary.
   }
 
 /*!
-  \brief Returns whether involution(x) < involution(y).
+  \brief Method that used to return whether involution(x) < involution(y).
 
   Explanation: the ordering is involution-length first, then weyl-length, then
   order by representative Weyl elements (weyl::TwistedInvolution::operator<).
   This is only a partial ordering, that does not distinguish elements of a
   fiber over one same twisted involution.
-*/
+
+  A similar function is used to sort the elements of |KGB| upon construction,
+  so this method should hold whenever |x<y| and |involution(x)!=involution(y)|
+  and it turns out the method is never used, so I have commented it out. MvL.
+
   bool compare(KGBElt x, KGBElt y) const {
   if      (length(x) != length(y))
     return length(x) < length(y);
@@ -191,7 +211,7 @@ simple root \#s; returns |UndefKGB| unless that root was noncompact imaginary.
   else
     return involution(x) < involution(y);
 }
-
+*/
 
 /*!
  \brief Applies the cross action of simple root \#s to KGB element \#x.
@@ -312,7 +332,9 @@ bool isAscent(size_t s, KGBElt x) const
     return *d_weylGroup;
   }
 
-  size_t weylLength(KGBElt) const;
+  size_t weylLength(KGBElt z) const {
+    return weylGroup().length(d_involution[z].w());
+  }
 
 // manipulators
   void fillBruhat(); // might throw MemoryOverflow
