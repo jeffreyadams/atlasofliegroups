@@ -47,10 +47,10 @@ The terms in brackets give the type of each simple root:
 
 i1: imaginary, non-compact, type 1 (single valued Cayley transform)
 i2: imaginary, non-compact, type 2 (double valued Cayley transform)
-ic: imaginary compact
-r1: real, type 1
-r2: real, type 2
-rn: real, non-parity
+ic: imaginary compact (no Cayley or inverse Cayley transforms)
+r1: real, type 1 (double valued inverse Cayley transform)
+r2: real, type 2 (single valued inverse Cayley transform)
+rn: real, non-parity (no inverse Cayley or Cayley transforms)
 C+: complex, cross action increases length
 C-: complex, cross action decreases length
 
@@ -61,14 +61,14 @@ correpsond to PGL(2,R), in which the situation is reversed.
 
 A slightly different formulation of these explanations may be found in
 the help file for the blocku command.
- 
-The final two columns are the length of the parameter and the 
+
+The final two columns are the length of the parameter and the
 corresponding twisted involution of the Weyl group. See the help file
 for the kgb command.
 
 Example:
 
-mpty: type
+empty: type
 Lie type: C2 sc s
 main: block
 (weak) real forms are:
