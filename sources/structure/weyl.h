@@ -64,15 +64,6 @@ namespace weyl {
   const unsigned long UndefOrder = 0; // is never a valid value
 }
 
-/******** function declarations *********************************************/
-
-namespace weyl {
-
-  /* generate the set of ordinary reflections in the Weyl group */
-  void makeReflections(WeylEltList&, const WeylGroup&);
-
-}
-
 /******** type definitions **************************************************/
 
 namespace weyl {
@@ -86,6 +77,8 @@ representing a shortest length coset representative of a parabolic
 subquotient W_{i-1}\\W_i.
   */
 class WeylElt {
+
+  friend class WeylGroup; // so we can shield implementation from all others
 
  private:
 
@@ -115,9 +108,6 @@ w_1.w_2...w_n.
   /*! \brief interpret |w| in weyl group |W| */
   WeylElt(const WeylWord& w, const WeylGroup& W);
 
-  ~WeylElt()
-    {}
-
 // copy and assignment
   WeylElt(const WeylElt& w) {
     memcpy(d_data,w.d_data,sizeof(d_data));
@@ -130,13 +120,6 @@ w_1.w_2...w_n.
 
 // accessors
 
-
-/*!
-\brief Returns the jth factor of the Weyl group element.
-*/
-  EltPiece operator[] (size_t j) const {
-    return d_data[j];
-  }
 
   /*!
 \brief Tests whether this Weyl group element is lexicographically
@@ -162,18 +145,21 @@ group element following the != sign.
     return memcmp(d_data,w.d_data,sizeof(d_data))!=0;
   }
 
+protected: // these are for |WeylGroup| and |TI_Entry|'s eyes only
+
+/*!
+\brief Returns the jth factor of the Weyl group element.
+*/
+  EltPiece operator[] (size_t j) const {
+    return d_data[j];
+  }
+
 // manipulators
   EltPiece& operator[] (size_t j) {
     return d_data[j];
   }
 
-  /*!
-\brief Sets the Weyl group element equal to 1.
-  */
-  void clear() {
-    memset(d_data,0,sizeof(d_data));
-  }
-
+public:
 // dummy methods that mark transition of interpretation
 
   // from WeylElt interpretation
@@ -490,7 +476,7 @@ class WeylGroup {
   WeylElt genIn (Generator i) const; // $s_i$ as Weyl group element
 
   Generator twistGenerator(Generator s) const {
-    return d_twist[s];
+    return d_in[d_twist[d_out[s]]];
   }
 
  public:
@@ -509,13 +495,11 @@ class WeylGroup {
     , d_min_star()
   {}
 
-  WeylGroup(const latticetypes::LatticeMatrix&, const Twist* = 0);
+  WeylGroup(const latticetypes::LatticeMatrix&, const Twist* = NULL);
 
   // construct the "dual" Weyl group: the same group, but with a dual twist
   WeylGroup(const WeylGroup&, tags::DualTag);
 
-  ~WeylGroup()
-  {}
 
 // From this point on each Generator or WeylWord uses external numbering
 
@@ -601,7 +585,7 @@ class WeylGroup {
   void twistedConjugate(TwistedInvolution& tw, Generator s) const {
     WeylElt& w=tw.contents();
     leftMult(w,s);
-    multIn(w,d_twist[d_in[s]]);
+    mult(w,d_twist[s]);
   }
   void twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
   {
@@ -658,19 +642,15 @@ class WeylGroup {
     return d_rank;
   }
 
-  WeylWord word(const WeylElt& w) const
-  {
-    WeylWord ww; out(ww,w); return ww;
-  }
+  WeylWord word(const WeylElt& w) const;
+
+  WeylEltList reflections() const; // list all reflections
 
   /* give representation of |w| as integral number, supposing this fits. */
   unsigned long toUlong(const WeylElt& w) const;
 
   /* inverse operation of |toUlong| */
   WeylElt toWeylElt(unsigned long) const;
-
-  /* reconstructs twist in form used upon construction of the WeylGroup */
-  void outerTwist(Twist&) const;
 
   bool hasDescent(Generator, const WeylElt&) const;
 
@@ -691,13 +671,18 @@ class WeylGroup {
 */
   std::vector<signed char> involution_expr(TwistedInvolution tw) const;
 
-  void out(WeylWord&, const WeylElt&) const;
+  void out(WeylWord& ww, const WeylElt& w) const { ww=word(w); }
 
-  WeylElt translate(const WeylElt&, const WeylInterface&) const;
+  // apply automorphism of $(W,S)$ given by |f| in terms of outer numbering
+  WeylElt translation(const WeylElt& w, const WeylInterface& f) const;
 
-  Generator twist(Generator s) const { return d_out[d_twist[d_in[s]]]; }
+  void translate(WeylElt& w, const WeylInterface& i) const
+    { w=translation(w,i); }
 
-  void twist(WeylElt&) const;
+  Generator twisted(Generator s) const { return d_twist[s]; }
+  WeylElt twisted(const WeylElt& w) const { return translation(w,d_twist); }
+
+  void twist(WeylElt& w) const { w=twisted(w); }
 
   // standard reflection action of Weyl group using a root datum
   void act(const rootdata::RootDatum& rd,

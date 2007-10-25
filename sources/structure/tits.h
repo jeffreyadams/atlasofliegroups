@@ -116,7 +116,7 @@ elements \f$\sigma_1,...,\sigma_r\f$. Because the \f$\sigma_i\f$ satisfy the
 braid relations, this canonical representative is independent of the choice of
 reduced decomposition.
   */
-  weyl::WeylElt d_w;
+  weyl::TI_Entry d_w; // use |TI_Entry| rather than |WeylElt| for |TE_Entry|
 
 
  public:
@@ -173,6 +173,9 @@ reduced decomposition.
    only be used for non-mathematical purposes like computing a hash code */
  protected:
   TorusPart t() const { return d_t; }
+
+// to use |hashCode| method, we also give access to |d_w| as a |TI_Entry|
+  const weyl::TI_Entry& ti() const { return d_w; }
 
  public:
 /* no public manipulators: any operation defined without using the Tits group
@@ -391,6 +394,19 @@ inline TitsElt::TitsElt
   (const TitsGroup& Tits, const weyl::WeylElt& w, TorusPart t)
 : d_t(Tits.pull_across(w,t)), d_w(w)
 {}
+
+struct TE_Entry // To allow hash tables of TitsElt values
+  : public TitsElt
+{
+  TE_Entry(const TitsElt& t) : TitsElt(t) {}
+
+  // members required for an Entry parameter to the HashTable template
+  typedef std::vector<TE_Entry> Pooltype; // associated storage type
+  size_t TE_Entry::hashCode(size_t modulus) const // hash function
+    {
+      return ti().hashCode(modulus)+t().data().to_ulong() & modulus-1;
+    }
+}; // class TE_Entry
 
 
 } // namespace tits

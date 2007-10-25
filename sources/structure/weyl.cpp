@@ -116,13 +116,13 @@ WeylGroup::WeylGroup(const latticetypes::LatticeMatrix& c, const Twist* twist)
   , d_longest()
   , d_coxeterMatrix()
   , d_transducer(d_rank)
-  , d_twist(d_rank) // identity by default
+  , d_twist(twist==NULL ? Twist(d_rank) : *twist) // identity by default
   , d_in(0)
   , d_out(0)
   , d_min_star(d_rank)
 
 {
-  /* analyse the Coxeter matrix */
+  /* analyse the Cartan matrix */
 
   dynkin::DynkinDiagram d(c); // make diagram from Cartan matrix
   setutils::Permutation a;
@@ -136,10 +136,6 @@ WeylGroup::WeylGroup(const latticetypes::LatticeMatrix& c, const Twist* twist)
     d_out[j] = a[j];
     d_in[d_out[j]] = j;
   }
-
-  if (twist!=NULL) // if a twist is provided, we must stil internalise it
-    for (size_t j = 0; j < d_rank; ++j)
-      d_twist[j] = d_in[(*twist)[d_out[j]]]; // |j| internal, |twist| external
 
   // deduce the Coxeter matrix from Cartan matrix |c| and renumbering |a|
   fillCoxMatrix(d_coxeterMatrix,c,a);
@@ -189,14 +185,14 @@ WeylGroup::WeylGroup(const WeylGroup& W, tags::DualTag)
 {
   for (size_t s = 0; s < d_rank; ++s) {
     WeylElt w = d_longest;
-    multIn(w,W.d_twist[s]); // no conversion, |d_twist| is already internal
+    mult(w,W.d_twist[s]); // no |multIn|, as |s| and |d_twist| are external
     mult(w,d_longest); // now |w| represents $w_0 twist_s w_0$ as WeylElt
 
     // |w| should be some generator |t|; find which, and store it
     for (Generator t = 0; t < d_rank; ++t)
       if (w[t]!=0)
       {
-	d_twist[s] = t;
+	d_twist[s] = d_out[t]; // make outer, since |t| is inner
 	break;
       }
   }
@@ -233,10 +229,36 @@ WeylElt WeylGroup::genIn (Generator i) const
   Returns +1 if the length moves up, -1 if the length goes down.
 
   This just means exercising the transducer tables as they were designed to.
+*/
 
-  Amazingly, I could simplify Fokko's original to the code below from. I left
-  the test for |UndefGenerator| coming first, as transduce is more frequent
-  than shift. So the following even simpler code could be less efficient:
+/*
+  Amazingly, I could simplify Fokko's original to the code below.
+  Fokko's original code was (more or less):
+
+  Generator t = s;
+  for (unsigned long j = d_rank; j-->0;) {
+    if (d_transducer[j].out(w[j],t) == UndefGenerator) {
+      // no transduction; shift and terminate
+      unsigned long l = d_transducer[j].length(w[j]);
+      w[j] = d_transducer[j].shift(w[j],t);
+      if (d_transducer[j].length(w[j]) > l)
+	return 1;
+      else
+	return -1;
+    }
+    else {
+      // no shift; transduce and continue
+      t = d_transducer[j].out(w[j],t);
+    }
+  }
+
+  The main simplifications are to avoid calling |d_transducer[j].out| twice in
+  succession, and to avoid calling |d_transducer[j].length| at all (since
+  comparison of the |EltPiece| values suffices to decide sense of change).
+
+  I left the test for |UndefGenerator| coming first, as transduce is more
+  frequent than shift; hence the following even simpler code could be less
+  efficient:
 
   Generator t=s;
   for (Generator j=d_rank; j-->0; t=d_transducer[j].out(w[j],t))
@@ -338,15 +360,13 @@ void WeylGroup::leftMult(WeylElt& w, const WeylElt& x) const
   WeylElt xx=x; mult(xx,w); w=xx;
 }
 
-WeylElt WeylGroup::inverse(const WeylElt& w) const
-
 /*!
   \brief return inverse of |w|
 
   Algorithm: read backwards the reduced expression gotten from the
   pieces of w.
 */
-
+WeylElt WeylGroup::inverse(const WeylElt& w) const
 {
   WeylElt wi;
 
@@ -369,16 +389,13 @@ void WeylGroup::twistedConjugate
   for (size_t j = d_rank; j-->0 ;) {
     const WeylWord& wj = wordPiece(w,j);
     for (size_t i = wj.size(); i-->0;)
-      multIn(x,d_twist[wj[i]]);
+      multIn(x,twistGenerator(wj[i]));
   }
   tw.contents()=x;
 }
 
-void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w)
-  const
-
 /*!
-  \brief Puts in c the conjugacy class of w.
+  \brief Puts into |c| the conjugacy class of |w|.
 
   Algorithm: straightforward enumeration of the connected component of |w| in
   the graph defined by the operation conjugate or twistedConjugate, using a
@@ -386,7 +403,7 @@ void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w)
   |std::stack| to store elements whose neighbors have not yet been generated.
 
 */
-
+void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w) const
 {
   std::set<WeylElt> found;
   std::stack<WeylElt> toDo;
@@ -410,9 +427,6 @@ void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w)
   std::copy(found.begin(),found.end(),back_inserter(c));
 }
 
-void WeylGroup::twistedConjugacyClass
-  (TwistedInvolutionList& c, const TwistedInvolution& tw)
-  const
 /*!
   \brief Puts in c the twistes conjugacy class of w.
 
@@ -422,7 +436,9 @@ void WeylGroup::twistedConjugacyClass
   |std::stack| to store elements whose neighbors have not yet been generated.
 
 */
-
+void WeylGroup::twistedConjugacyClass
+  (TwistedInvolutionList& c, const TwistedInvolution& tw)
+  const
 {
   std::set<TwistedInvolution> found;
   std::stack<TwistedInvolution> toDo;
@@ -499,24 +515,25 @@ Generator WeylGroup::leftDescent(const WeylElt& w) const
   Precondition: |w| is a twisted involution: \f$w^{-1}=\delta(w)\f$. Therefore
   twisted commutation is equivalent to $s.w$ being a twisted involution.
 
-  This is in fact the case if and only if \f$s.w.\delta(s)\f$ has the same length
-  as $w$, by the following reasoning. Suppose first that $s.w$ is reduced,
-  then its twisted inverse \f$w.\delta(s)\f$ is reduced as well. Then the only
-  possible reduction in \f$s.w.\delta(s)\f$ is cancellation of the extremal
-  generators; whether this reduction applies is equivalent to having twisted
-  commutation. If $s.w$ is not reduced, then neither is \f$w.\delta(s)\f$, and
-  \f$w'=s.w.\delta(s)\f$ is a twisted involution not longer than $w$. If it is
-  strictly shorter then obviously twisted commutation fails. In the remaining
-  case that \f$l(s.w.\delta(s))=l(w)\f$, let $v=s.w$ so that $w=s.v$ and
-  \f$w'=v.\delta(s)\f$ are reduced, but \f$w.\delta(s)=s.v.\delta(s)\f$ does reduce,
-  which can only be by cancelling the extremal generators: \f$s.v.\delta(s)=v\f$
-  which implies $w'=w$, and one has twisted commutation.
+  This is in fact the case if and only if \f$s.w.\delta(s)\f$ has the same
+  length as $w$, by the following reasoning. Suppose first that $s.w$ is
+  reduced, then its twisted inverse \f$w.\delta(s)\f$ is reduced as well. Then
+  the only possible reduction in \f$s.w.\delta(s)\f$ is cancellation of the
+  extremal generators; whether this reduction applies is equivalent to having
+  twisted commutation. If $s.w$ is not reduced, then neither is
+  \f$w.\delta(s)\f$, and \f$w'=s.w.\delta(s)\f$ is a twisted involution not
+  longer than $w$. If it is strictly shorter then obviously twisted
+  commutation fails. In the remaining case that \f$l(s.w.\delta(s))=l(w)\f$,
+  let $v=s.w$ so that $w=s.v$ and \f$w'=v.\delta(s)\f$ are reduced, but
+  \f$w.\delta(s)=s.v.\delta(s)\f$ does reduce, which can only be by cancelling
+  the extremal generators: \f$s.v.\delta(s)=v\f$ which implies $w'=w$, and one
+  has twisted commutation.
 */
 bool WeylGroup::hasTwistedCommutation(Generator s, const TwistedInvolution& tw)
   const
 {
   WeylElt x = tw.w();
-  int m = multIn(x,d_twist[d_in[s]]); // now |x| is $w.\delta(s)$
+  int m = mult(x,d_twist[s]); // now |x| is $w.\delta(s)$
 
   return (m>0)==hasDescent(s,x); // lengths match iff members are equivalent
 }
@@ -595,7 +612,9 @@ std::vector<signed char> WeylGroup::involution_expr(TwistedInvolution tw)
   Precondition: tw is a twisted involution;
 
   Algorithm: this is a simplified version of |involutionOut| that records only
-  the length
+  the length. This statistic plays a predominant role in the kgb and block
+  structures; avoid calling this in sorting routines, since it is inefficient
+  in such circumstances; instead do with the stored length information there.
 */
 unsigned long WeylGroup::involutionLength
   (const weyl::TwistedInvolution& tw) const
@@ -614,12 +633,12 @@ unsigned long WeylGroup::involutionLength
   return length;
 }
 
-unsigned long WeylGroup::length(const WeylElt& w) const
-
 /*!
   \brief Returns the length of w.
-*/
 
+  This is relatively efficient (compared to |involutionLength|)
+*/
+unsigned long WeylGroup::length(const WeylElt& w) const
 {
   unsigned long p = 0;
 
@@ -630,43 +649,18 @@ unsigned long WeylGroup::length(const WeylElt& w) const
   return p;
 }
 
-void WeylGroup::out(WeylWord& ww, const WeylElt& w) const
-
-/*!
-  \brief Puts in ww an _external_ reduced expression for w.
-*/
-
+WeylWord WeylGroup::word(const WeylElt& w) const
 {
-  ww.resize(length(w));
-  size_t p = 0;
-
-  for (size_t j = 0; j < d_rank; ++j) {
+  WeylWord result; result.reserve(length(w));
+  for (size_t j = 0; j < d_rank; ++j)
+  {
     const WeylWord& xw = wordPiece(w,j);
-    for (size_t i = 0; i < xw.size(); ++i) {
-      ww[p] = d_out[xw[i]];
-      ++p;
-    }
+    for (size_t i = 0; i < xw.size(); ++i)
+      result.push_back(d_out[xw[i]]);
   }
 
-  return;
+  return result;
 }
-
-void WeylGroup::outerTwist(Twist& t) const
-
-/*!
-  \brief Puts the twist of the outer generators in t.
-
-  This reconstructs the twist with which the Weyl group was constructed
-*/
-
-{
-  for (size_t s = 0; s < d_rank; ++s)
-    t[s] = d_out[d_twist[d_in[s]]];
-
-  return;
-}
-
-unsigned long WeylGroup::toUlong(const WeylElt& w) const
 
 /*!
   \brief Return the packed form of w. This will work only if the order of
@@ -677,7 +671,7 @@ unsigned long WeylGroup::toUlong(const WeylElt& w) const
   and \f$a_i\in\{0,\ldots,N_i-1\}\f$ is the value of piece |i|, the value is
   $a_0+N_0*(a_1+N_1*(a_2+... N_{n-2}*(a_{n-1})...))$
 */
-
+unsigned long WeylGroup::toUlong(const WeylElt& w) const
 {
   unsigned long u = 0;
 
@@ -687,15 +681,13 @@ unsigned long WeylGroup::toUlong(const WeylElt& w) const
   return u;
 }
 
-WeylElt WeylGroup::toWeylElt(unsigned long u) const
-
 /*!
   \brief Returns the WeylElt whose packed form is u
 
   Its pieces for the mixed-radix representation of |u|, which as usual can be
   found starting at the least significant end by repeated Euclidean divisions
 */
-
+WeylElt WeylGroup::toWeylElt(unsigned long u) const
 {
   WeylElt w;
 
@@ -709,32 +701,24 @@ WeylElt WeylGroup::toWeylElt(unsigned long u) const
 
 /*!
 \brief Applies to |w| the generator permutation in |I|, which should be an
-  automorphism of the Dynkin diagram.
+  automorphism of the Dynkin diagram, expressed in terms of outer numbering.
 
   Algorithm: we use the standard reduced decomposition of |w|, and rebuild the
-  return value by repeated right-multiplication.
+  return value by repeated right-multiplication. We can do the multiplication
+  in the same Weyl group as the decomposition because |I| is supposed to be an
+  automorphism; if it weren't we would need a reference to a second Weyl group.
 */
-WeylElt WeylGroup::translate(const WeylElt& w, const WeylInterface& I) const
+WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
 {
   WeylElt result;
 
   for (size_t j = 0; j < rank(); ++j) {
     const WeylWord& xw = wordPiece(w,j);
     for (size_t i = 0; i < xw.size(); ++i)
-      multIn(result,I[xw[i]]);
+      mult(result,f[d_out[xw[i]]]);
   }
 
   return result;
-}
-
-/*!
-  \brief Twists the element w by the involutive diagram automorphism |delta|
-
-  Algorithm: we used the standard reduced decomposition of w.
-*/
-void WeylGroup::twist(WeylElt& w) const
-{
-  w=translate(w,d_twist);
 }
 
 /*!
@@ -829,31 +813,31 @@ Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
 
     - then find all other elements $x'$ already in the automaton and $t$ such
       that $xs==x't$ (so $x't$ gives a non-canonical but reduced expression
-      for $xs$). Do this by trying generators \f$t\neq s\f$: if $xst$ goes down
-      (has the same length as $x$) then $x'==xst$ gives such a case. The trick
-      for this is to look at the orbit of x under the dihedral group <s,t>. In
-      the full group, this has necessarily cardinality 2m, with m = m(s,t) the
-      coefficient in the Coxeter matrix, and $l(xst)==l(x)$ iff $xs$ is the
-      unique elt. of maximal length in the orbit, hence to have this $x$ must
-      goes down $m-1$ times when applying successively $t$, $s$, $t$, ... In
-      the parabolic quotient, the orbit of the dihedral group (which is not
-      reduced to a point) can either have cardinality $2m$ or cardinality $m$,
-      and in the latter case it is a string with $m-1$ steps between the
-      bottom and the top, with a stationary step at either extreme (to see
-      this, note that on one hand each step up in the full group gives a step
-      in the quotient that is either up or stationary, while on the other hand
-      a stationary step in the quotient causes then next step to be the
-      reverse of the previous one). So we have one of the following cases: (1)
-      $x$ goes down $m-1$ times; then the image of the orbit has $2m$ elements
-      and $xs==x't$ for $x'=x.(ts)^(m-1)$. (2) $x$ goes down $m-2$ times to
-      some element $a$ and is then stationary (if \f$s'\in\{s,t\}\f$ is the next
-      to apply, then $a.s'=g.a$ for some generator \f$g\in W_{r-1}\f$); then the
-      orbit has $m$ elements, and if $v$ is the alternating word in \f$\{s,t\}\f$
-      of length $m-2$ not starting with $s'$, so that $a.v=x$, one has
-      $v.st=s'vs$ whence $x.st=a.v.st=a.s'vs=g.a.vs=g.xs$ so that $xs$ has a
-      transduction for $t$ that outputs the generator $g$. (3) either $x$ goes
-      down less than $m-2$ times, or $m-2$ times followed by an upward step;
-      then $xst$ goes up.
+      for $xs$). Do this by trying generators \f$t\neq s\f$: if $xst$ goes
+      down (has the same length as $x$) then $x'==xst$ gives such a case. The
+      trick for this is to look at the orbit of x under the dihedral group
+      <s,t>. In the full group, this has necessarily cardinality 2m, with m =
+      m(s,t) the coefficient in the Coxeter matrix, and $l(xst)==l(x)$ iff
+      $xs$ is the unique elt. of maximal length in the orbit, hence to have
+      this $x$ must goes down $m-1$ times when applying successively $t$, $s$,
+      $t$, ... In the parabolic quotient, the orbit of the dihedral group
+      (which is not reduced to a point) can either have cardinality $2m$ or
+      cardinality $m$, and in the latter case it is a string with $m-1$ steps
+      between the bottom and the top, with a stationary step at either extreme
+      (to see this, note that on one hand each step up in the full group gives
+      a step in the quotient that is either up or stationary, while on the
+      other hand a stationary step in the quotient causes then next step to be
+      the reverse of the previous one). So we have one of the following cases:
+      (1) $x$ goes down $m-1$ times; then the image of the orbit has $2m$
+      elements and $xs==x't$ for $x'=x.(ts)^(m-1)$. (2) $x$ goes down $m-2$
+      times to some element $a$ and is then stationary (if \f$s'\in\{s,t\}\f$
+      is the next to apply, then $a.s'=g.a$ for some generator \f$g\in
+      W_{r-1}\f$); then the orbit has $m$ elements, and if $v$ is the
+      alternating word in \f$\{s,t\}\f$ of length $m-2$ not starting with
+      $s'$, so that $a.v=x$, one has $v.st=s'vs$ whence
+      $x.st=a.v.st=a.s'vs=g.a.vs=g.xs$ so that $xs$ has a transduction for $t$
+      that outputs the generator $g$. (3) either $x$ goes down less than $m-2$
+      times, or $m-2$ times followed by an upward step; then $xst$ goes up.
 */
 
 {
@@ -957,37 +941,33 @@ size_t TI_Entry::hashCode(size_t modulus) const
 namespace weyl {
 
 
-void makeReflections(WeylEltList& refl, const WeylGroup& W)
-
 /*!
-  \brief Puts in |refl| the list of all reflections (conjugates of generators)
-         in W.
+  \brief Returns |refl| the list of all reflections (conjugates of generators).
 
   NOTE: the ordering of the reflections is the ordering induced by our
   operator<, which is not very significative mathematically, but has the
   advantage that the STL search tools may be used.
 */
-
+WeylEltList WeylGroup::reflections() const
 {
-  WeylEltList simple(W.rank());
+  WeylEltList simple; simple.reserve(rank());
 
-  // put in simple the set of simple reflections
-  for (size_t j = 0; j < simple.size(); ++j)
-    simple[j][j] = 1;
+  // put in simple the set of simple reflections, along internal numbering
+  for (size_t j = 0; j < rank(); ++j)
+    simple.push_back(genIn(j));
 
   std::set<WeylElt> found;
 
   for (size_t j = 0; j < simple.size(); ++j)
-    // make new class if the reflection is not already found
-    if (found.insert(simple[j]).second) {
+    if (found.insert(simple[j]).second) // then generator still absent
+    { // generate conjugacy class of generator and insert its elements
       WeylEltList c;
-      W.conjugacyClass(c,simple[j]);
+      conjugacyClass(c,simple[j]);
       for (size_t i = 0; i < c.size(); ++i)
 	found.insert(c[i]);
     }
 
-  refl.clear();
-  copy(found.begin(),found.end(),back_inserter(refl));
+  return WeylEltList(found.begin(),found.end()); // convert set to vector
 }
 
 }
