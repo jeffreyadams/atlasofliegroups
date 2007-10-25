@@ -58,7 +58,8 @@ std::vector<bitmap::BitMap> d_below;
   explicit Poset(size_t n); // poset without any (nontrivial) comparabilities
 
   //! \brief Build Poset from its Hasse diagram
-  explicit Poset(const std::vector<set::SetEltList>& hasse);
+  template<typename C> // |C| is some container of |set::SetElt|
+  explicit Poset(const std::vector<C>& hasse);
 
   //! \brief Build Poset from arbitrary list of links
   Poset(size_t n,const std::vector<Link>&);
@@ -169,8 +170,35 @@ greater than j in the poset.
 unsigned long n_comparable_from_Hasse
   (const std::vector<set::SetEltList>& hasse);
 
+/*!
+\brief Constructs a Poset from its Hasse diagram.
+
+  Precondition: it is assumed that for each |x|, |hasse(x)| is a container |C|
+  listing elements covered by |x|, which elements must be numbers $<x$.
+
+  As a consequence, the closure at |x| can be computed once |hasse(x)|
+  is inspected, for increaing |x|.
+*/
+template<typename C>
+Poset::Poset(const std::vector<C>& hasse)
+: d_below(hasse.size())
+{
+  for (size_t x = 0; x < size(); ++x) {
+    bitmap::BitMap& b = d_below[x];
+    b.set_capacity(x);
+    const C& h = hasse[x];
+    for (typename C::const_iterator it=h.begin(); it!=h.end(); ++it)
+    {
+      size_t y=*it;    // element covered by |x|
+      b |= d_below[y]; // note that |d_below[y]| is shorter than |b|
+      b.insert(y);     // this one was not stored in d_below[y].
+    }
+  }
 }
 
-}
+
+} // namespace poset
+
+} // namespace atlas
 
 #endif

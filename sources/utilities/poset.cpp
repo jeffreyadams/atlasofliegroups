@@ -47,30 +47,6 @@ Poset::Poset(size_t n)
   }
 }
 
-/*!
-\brief Constructs a Poset from its Hasse diagram.
-
-  Precondition: it is assumed that for each x, hasse(x) contains the list
-  of elements covered by x, which elements must be numbers < x.
-
-  As a consequence, the closure at |x| can be computed once |hasse(x)|
-  is inspected, for increaing |x|.
-*/
-Poset::Poset(const std::vector<set::SetEltList>& hasse)
-: d_below(hasse.size())
-{
-  for (size_t x = 0; x < size(); ++x) {
-    bitmap::BitMap& b = d_below[x];
-    b.set_capacity(x);
-    const set::SetEltList& h = hasse[x];
-    for (size_t j = 0; j < h.size(); ++j)
-    {
-      b |= d_below[h[j]]; // note that |d_below[h[j]]| is shorter than |b|
-      b.insert(h[j]); // this one was not stored in d_below[h[j]].
-    }
-  }
-}
-
 Poset::Poset(size_t n,const std::vector<Link>& lk)
 : d_below(n)
 {
@@ -215,19 +191,16 @@ void Poset::extend(const std::vector<Link>& lk)
 namespace poset {
 
 /******** constructors and destructors ***************************************/
-SymmetricPoset::SymmetricPoset(size_t n):d_row(n,bitmap::BitMap(n))
 
 /*!
 \brief Constructs the discrete poset (no relations) of size n.
 */
-
+SymmetricPoset::SymmetricPoset(size_t n):d_row(n,bitmap::BitMap(n))
 {
   for (size_t j = 0; j < n; ++j)
     d_row[j].insert(j);
 }
 
-SymmetricPoset::SymmetricPoset(const std::vector<set::SetEltList>& hasse)
-  :d_row(hasse.size(),bitmap::BitMap(hasse.size()))
 
 /*!
 \brief Constructs a symmetric poset from its hasse diagram.
@@ -241,7 +214,8 @@ SymmetricPoset::SymmetricPoset(const std::vector<set::SetEltList>& hasse)
   by symmetrization; it could have been obtained by inverting the covering
   relations.
 */
-
+SymmetricPoset::SymmetricPoset(const std::vector<set::SetEltList>& hasse)
+  :d_row(hasse.size(),bitmap::BitMap(hasse.size()))
 {
   using namespace bitmap;
   using namespace set;
@@ -269,7 +243,7 @@ unsigned long n_comparable_from_Hasse
   (const std::vector<set::SetEltList>& hasse)
 {
   const size_t n=hasse.size();
-  std::vector<set::SetElt> min_after(n+1);
+  set::SetEltList min_after(n+1);
   min_after[n]=n;
 
   for (size_t i=n; i-->0;)
