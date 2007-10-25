@@ -17,6 +17,7 @@ the implementation of the KL algorithm.
 #include "kltest.h"
 
 #include <iostream>
+#include <cassert>
 
 #include "interactive.h"
 #include "ioutils.h"

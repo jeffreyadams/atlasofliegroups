@@ -10,9 +10,9 @@ memory problems.
 */
 /*
   This is pool.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -22,13 +22,12 @@ memory problems.
   2, regardless of the actual request. This seems to mesh well with the way
   push_back is usally implemented.
 
-  In fact, we have one pool 
+  In fact, we have one pool
 */
 
 #ifndef POOL_H
 #define POOL_H
 
-#include <cassert>
 #include <cstddef>
 #include <limits>
 #include <vector>
@@ -62,7 +61,7 @@ class Pool {
 
  private:
 
-  /*!  
+  /*!
     \brief Incremented each time Pool is instantiated, and
     decremented when a Pool is destroyed, so that it counts the number
     of Pool's.
@@ -93,7 +92,7 @@ class Pool {
   const size_t d_defaultRequest;
 
   /*
-    \brief 
+    \brief
    */
   const size_t d_maxAlloc;
   const size_t d_alignSize;
@@ -177,7 +176,7 @@ class SimplePool {
 
  private:
 
-  /*!  
+  /*!
     \brief Incremented each time SimplePool is instantiated, and
     decremented when a SimplePool is destroyed, so that it counts the number
     of SimplePool's.
@@ -237,7 +236,7 @@ class SimplePool {
   /*!
     \brief Entry \#j is a pointer to the beginning of the jth block
     (of size (d_atomSize)(2^d_systemRequest)) assigned by the system
-    to this SimplePool. 
+    to this SimplePool.
   */
   std::vector<void*> d_systemAllocs;
 

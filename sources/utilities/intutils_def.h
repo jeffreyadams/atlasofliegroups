@@ -10,8 +10,6 @@
   See file main.cpp for full copyright notice
 */
 
-#include <cassert>
-
 /*****************************************************************************
 
   This file contains some very simple templates for integer manipulations.
@@ -38,13 +36,14 @@ template<typename I> I abs(I a)
 
 /*!
   The result of divide(a,b) is the unique element q such that a = q.b + r,
-  with 0 <= r < b. Here b is assumed to be > 0, the sign of a may be arbitrary.
-  For instance, divide(-1,2) should be -1, so that -1 = -1.2 + 1. On my
-  machine, -1/2 is 0 (which is the other value accepted by the C standard.)
-  [Note that the correct symmetry to apply to |a|, one that maps classes with
-   the same quotient to each other, is not \f$a\to -a\f$ but \f$a\to -1-a\f$, where the
-   latter value can be conveniently written as |~a| in C or C++. Amazingly
-   Fokko's incorrect original expresion |-(-a/b -1)| never did any harm. MvL]
+  with 0 <= r < b. Here b is assumed to be > 0, the sign of a may be
+  arbitrary. For instance, divide(-1,2) should be -1, so that -1 = -1.2 + 1.
+  On my machine, -1/2 is 0 (which is the other value accepted by the C
+  standard.) [Note that the correct symmetry to apply to |a|, one that maps
+  classes with the same quotient to each other, is not \f$a\to -a\f$ but
+  \f$a\to -1-a\f$, where the latter value can be conveniently written as |~a|
+  in C or C++. Amazingly Fokko's incorrect original expresion |-(-a/b -1)|
+  never did any harm. MvL]
 */
 template<typename I> I divide(I a, I b)
 {

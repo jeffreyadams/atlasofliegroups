@@ -19,6 +19,7 @@ unsigned long integer).
 */
 
 #include <algorithm>
+#include <cassert>
 
 #include "comparison.h"
 

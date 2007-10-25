@@ -10,9 +10,9 @@ memory problems.
 */
 /*
   This is pool.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -24,6 +24,7 @@ memory problems.
 #include <cstring> // for memset
 #include <iostream>
 #include <fstream>
+#include <cassert>
 
 namespace atlas {
 
@@ -59,7 +60,7 @@ namespace pool {
 
   /*!
     \brief Record of destruction of one Pool.
-    
+
     Gives the instance number, the array d_allocated (whose mth entry
     is the number of blocks of 2^m units allocated), and
     d_systemAllocs (the size of the vector of pointers d_systemAllocs
@@ -86,11 +87,11 @@ namespace pool {
 
   /*!
     \brief Record of destruction of one SimplePool.
-    
+
     Gives the instance number, the number d_allocated (the number of
     units allocated), and d_systemAllocs (the size of the vector of
     pointers d_systemAllocs in SimplePool).
-  */ 
+  */
   struct SimplePoolDestruct {
     size_t d_instance;
     size_t d_allocated;
@@ -100,7 +101,7 @@ namespace pool {
   /*!
     \brief Sorts SimplePoolDestruct's by the instance number of the SimplePool.
   */
-  inline bool operator< (const SimplePoolDestruct& lhs, 
+  inline bool operator< (const SimplePoolDestruct& lhs,
 			 const SimplePoolDestruct& rhs) {
     return lhs.d_instance < rhs.d_instance;
   }
@@ -126,7 +127,7 @@ namespace pool {
   using namespace atlas::pool::helper;
 
 Pool::Pool(size_t a, size_t d)
-  :d_atomSize(a), 
+  :d_atomSize(a),
    d_defaultRequest(d),
    d_maxAlloc((1ul << constants::sizeBits - 1ul)/a),
    d_alignSize(a > sizeof(MemBlock*) ? a : sizeof(MemBlock*)),
@@ -142,7 +143,7 @@ Pool::Pool(size_t a, size_t d)
 
   ++instances;
 
-  memset(d_free,0,sizeBits*sizeof(void*)); 
+  memset(d_free,0,sizeBits*sizeof(void*));
   memset(d_used,0,sizeBits*sizeof(size_t));
   memset(d_allocated,0,sizeBits*sizeof(size_t));
 }
@@ -156,7 +157,7 @@ Pool::~Pool()
 {
   // The call to reportDestruction causes a crash on exit from the
   // program if stlvector is used.  Can't figure out why.  [DV
-  // 8/23/06]. 
+  // 8/23/06].
 
   // reportDestruction();
 
@@ -246,7 +247,7 @@ void Pool::memoryReport()
     log << std::endl;
     size_t a = pd.d_systemAllocs;
     log << "pool #" << pd.d_instance << ": "
-	     << a << " system allocation" << (a == 1ul ? "" : "s") 
+	     << a << " system allocation" << (a == 1ul ? "" : "s")
 	     << std::endl;
     log << "used: ";
     for (size_t i = 0; i < sizeBits; ++i) {
@@ -302,8 +303,8 @@ void* Pool::newBlock(size_t m)
 
     MemBlock* block = static_cast<MemBlock *> (d_free[m]);
     block->d_next = 0;
-    ++d_allocated[m]; 
-   
+    ++d_allocated[m];
+
     return d_free[m];
   }
 
@@ -451,7 +452,7 @@ void SimplePool::memoryReport()
     log << "pool #" << spd.d_instance << ": "
       	<< a << " system allocation" << (a == 1ul ? "" : "s") //add
 							      //"s" if
-							      //a=1 
+							      //a=1
 	<< std::endl;
     log << "used: " << spd.d_allocated << std::endl;
   }
@@ -463,7 +464,7 @@ void* SimplePool::newBlock()
 
 /*
   \brief Allocates a new block of size (d_atomSize)(2^d_systemRequest)
-  from the system. 
+  from the system.
 */
 {
   void* vptr = malloc(d_atomSize << d_systemRequest);  // requests
@@ -518,7 +519,7 @@ void SimplePool::reportDestruction()
 
 namespace pool {
 
-void memoryReport() 
+void memoryReport()
 
   /*!
   \brief Prints out a report on the memory usage.
