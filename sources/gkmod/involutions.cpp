@@ -338,7 +338,7 @@ void Helper::fillDualInvolutions(const weyl::WeylGroup& W)
   d_dualInvolution.resize(d_size);
 
   for (size_t j = 0; j < d_size; ++j) {
-    WeylElt w = W.translate(involution(j).w(),d_toDualWeyl);
+    WeylElt w = W.translation(involution(j).w(),d_toDualWeyl);
     W.twist(w);
     WeylElt v = W.longest();
     W.mult(v,w);
@@ -368,8 +368,7 @@ void Helper::weylCorrelation(const complexredgp::ComplexReductiveGroup& G)
   LatticeMatrix c;
   cartanMatrix(c,G.rootDatum());
   c.transpose();
-  Twist t(G.semisimpleRank());  W.outerTwist(t);
-  WeylGroup dW(c,&t);
+  WeylGroup dW(c); // twist is irrelevant here
 
   // fill in d_toDualWeyl
   for (size_t s = 0; s < W.rank(); ++s) {
