@@ -537,7 +537,7 @@ weyl::TwistedInvolution Helper::dualInvolution
   const WeylGroup& W = weylGroup();
 
   WeylElt v = W.longest();
-  WeylElt w = W.translate(tw.w(),d_toDualWeyl);
+  WeylElt w = W.translation(tw.w(),d_toDualWeyl);
 
   W.twist(w);
   W.mult(v,w);
@@ -723,7 +723,7 @@ void Helper::fillInvolutionSupports()
       size_t sz = cross(s,z);
       d_involutionSupport[z] = d_involutionSupport[sz];
       d_involutionSupport[z].set(s);
-      d_involutionSupport[z].set(W.twist(s));
+      d_involutionSupport[z].set(W.twisted(s));
     } else { // do inverse cayley transform
       size_t sz = inverseCayley(s,z).first;
       d_involutionSupport[z] = d_involutionSupport[sz];
