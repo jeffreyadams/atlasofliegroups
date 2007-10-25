@@ -76,16 +76,6 @@ void makeHasse(std::vector<set::SetEltList>&, const KGB&);
 	           Some small additional classes
 */
 
-struct TE_Entry // To allow hash tables of TitsElt values
-  : public tits::TitsElt
-{
-  TE_Entry(const tits::TitsElt& t) : tits::TitsElt(t) {}
-
-  // members required for an Entry parameter to the HashTable template
-  typedef std::vector<TE_Entry> Pooltype; // associated storage type
-  size_t hashCode(size_t modulus) const;  // hash function
-}; // class TE_Entry
-
   /*!
 \brief A |FiberData| object associates to each twisted involution a subspace
 describing how corresponding Tits elements should be normalized.
@@ -155,8 +145,8 @@ class KGBHelp
 
   Accessed usually via the hash table |d_tits| (and |d_tits[i]| is |d_pool[i]|)
   */
-  TE_Entry::Pooltype d_pool;
-  hashtable::HashTable<TE_Entry,KGBElt> d_tits;
+  tits::TE_Entry::Pooltype d_pool;
+  hashtable::HashTable<tits::TE_Entry,KGBElt> d_tits;
 
   // some values stored for easy access during the KGB generation:
   const complexredgp::ComplexReductiveGroup& d_G;
@@ -569,14 +559,6 @@ void KGB::fillBruhat()
 // namespace {
 namespace kgb {
   namespace {
-
-size_t TE_Entry::hashCode(size_t modulus) const
-{
-  unsigned int hash=0;
-  for (size_t i=constants::RANK_MAX; i-->0; )
-    hash = 13*(hash+w()[i]);
-  return hash+t().data().to_ulong() & modulus-1;
-}
 
 /*    II b. |FiberData|  */
 
