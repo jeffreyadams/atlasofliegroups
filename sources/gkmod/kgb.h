@@ -172,13 +172,8 @@ bruhat::BruhatOrder* d_bruhat;
 /*!
 \brief Return reference to the Bruhat order on KGB.
 
-Precondition: the Bruhat order has been computed (|fillBruhat| was called)
-
-The class BruhatOrder as written by Fokko provided the symmetrized
-bitmatrix of the partial order, and the Hasse diagram of covering
-relations.  Marc van Leeuwen and I can see no application for the
-symmetrized bitmatrix at present, so this is now replaced by the
-bitmatrix of the relation x <= y, which is half the size. DV.
+Precondition: the Bruhat order Hasse diagram has been computed
+(|fillBruhat| was called)
 */
   const bruhat::BruhatOrder& bruhatOrder() const {
     return *d_bruhat;
@@ -337,16 +332,19 @@ bool isAscent(size_t s, KGBElt x) const
   }
 
 // manipulators
-  void fillBruhat(); // might throw MemoryOverflow
+  void fillBruhat();
+
+  const poset::Poset& bruhatPoset() // this creates poset from Hasse diagram
+  { return d_bruhat->poset(); }
 
 // private methods, used during construction
 
 
 
-};
+}; // class KGB
 
-}
+} // namespace kgb
 
-}
+} // namespace atlas
 
 #endif

@@ -554,13 +554,11 @@ void KGB::fillBruhat()
 
 ******************************************************************************/
 
-/*    II a. Small auxiliary classes |TI_Entry|, |TE_Entry|   */
-
-// namespace {
 namespace kgb {
   namespace {
 
-/*    II b. |FiberData|  */
+
+/*    II a. |FiberData|  */
 
 /*
   The |FiberData| constructor computes a subspace for each twisted involution
@@ -650,7 +648,7 @@ void FiberData::reduce(tits::TitsElt& a) const
 }
 
 
-/*    II c. The main helper class |KGBHelp|  */
+/*    II b. The main helper class |KGBHelp|  */
 
 /*
    The actual KGB contruction takes place below. During the construction, the
