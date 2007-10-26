@@ -532,18 +532,10 @@ weyl::TwistedInvolution Helper::dualInvolution
 */
 
 {
-  using namespace weyl;
-
-  const WeylGroup& W = weylGroup();
-
-  WeylElt v = W.longest();
-  WeylElt w = W.translation(tw.w(),d_toDualWeyl);
-
-  W.twist(w);
-  W.mult(v,w);
-  W.invert(v);
-
-  return TwistedInvolution(v);
+  const weyl::WeylGroup& W = weylGroup();
+  return weyl::TwistedInvolution
+    (W.translation(W.inverse(W.prod(W.longest(),W.twisted(tw.w()))),
+		   d_toDualWeyl));
 }
 
 /******** manipulators *******************************************************/
@@ -760,7 +752,7 @@ void Helper::fillLengths()
   The compatibility can only be guaranteed for the _outer_ representations of
   the Weyl group elements. So, d_toDualWeyl is the transition map:
 
-          d_toDualWeyl[s] = d_dualout[d_in[s]]
+          d_toDualWeyl[s] = d_out[d_dualin[s]]
 */
 void Helper::makeWeylCorrelation()
 {
