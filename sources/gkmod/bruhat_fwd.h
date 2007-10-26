@@ -4,9 +4,9 @@
 */
 /*
   This is bruhat_fwd.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups  
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -26,11 +26,6 @@ namespace atlas {
 namespace bruhat {
 
 class BruhatOrder;
-
-typedef size_t BruhatElt;
-typedef std::vector<BruhatElt> BruhatEltList;
-
-typedef bitmap::BitMap BruhatRow;
 
 }
 
