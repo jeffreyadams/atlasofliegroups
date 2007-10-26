@@ -5,12 +5,6 @@
   This module provides support code for the Kazhdan-Lusztig computation,
   mostly the management of the list of primitive pairs, and primitivization
   of arbitrary subsets of the block.
-
-  After some hesitation, I think I _am_ going to assume that the block has
-  been sorted by length and root datum involution, and then by R-packet.
-  This does make the hard case in the recursion a lot simpler to handle:
-  "thickets" of representations are in fact R-packets, so they will be
-  consecutively numbered.
 */
 /*
   This is klsupport.cpp
@@ -27,10 +21,6 @@
 #include "descents.h"
 
 /*
-  This module provides support code for the Kazhdan-Lusztig computation,
-  mostly the management of the list of extremal pairs, and extremalization
-  of arbitrary subsets of the block.
-
   After some hesitation, I think I _am_ going to assume that the block has
   been sorted by length and root datum involution, and then by R-packet.
   This does make the hard case in the recursion a lot simpler to handle:
@@ -43,8 +33,6 @@ namespace atlas {
 namespace {
   using blocks::BlockElt;
 
-  void pause() {;}
-
   void fillLengthLess(std::vector<BlockElt>&, const blocks::Block&);
 
 } // namespace
@@ -52,8 +40,6 @@ namespace {
 /*****************************************************************************
 
         Chapter I -- The KLSupport class
-
-  ... explain here when it is stable ...
 
  *****************************************************************************/
 
@@ -67,8 +53,8 @@ KLSupport::KLSupport(blocks::Block& b)
 {}
 
 /******** copy, assignment and swap ******************************************/
-void KLSupport::swap(KLSupport& other)
 
+void KLSupport::swap(KLSupport& other)
 {
   d_state.swap(other.d_state);
 
@@ -85,8 +71,6 @@ void KLSupport::swap(KLSupport& other)
 }
 
 /******** accessors **********************************************************/
-void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
-  const
 
 /*!
   \brief: Flags in b those block elements which are extremal w.r.t. the
@@ -100,15 +84,14 @@ void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
   belong to the intersection of the downsets for the various descents in d.
 */
 
+void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
+  const
 {
   for (size_t s = 0; s < d_rank; ++s)
     if (d.test(s))
       b &= d_downset[s];
-
 }
 
-void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
-  const
 
 /*
   \brief Primitivizes b w.r.t. the values whose descent set is d, i.e.,
@@ -122,36 +105,37 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
   II, this amounts to requesting that z belong to the intersection of the
   primsets for the various descents in d.
 */
-
+void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
+  const
 {
   for (size_t s = 0; s < d_rank; ++s)
     if (d.test(s))
       b &= d_primset[s];
-
 }
 
-BlockElt KLSupport::primitivize(BlockElt x, const bitset::RankFlags& d) const
 
-/*!
-  \brief Replaces x (the number of a block element) with a primitive
-  element above it, and returns true, or returns false, and x is not
-  changed.
+/*!\brief
+  Either replaces the block element |x| if possible with a primitive element
+  for |d| above it, while returning that value, or returns |UndefBlock| if
+  a real nonparity case is hit (leaving |x| at the block element in question).
 
-  Explanation: a primitive element for d is one for which all elements in d
-  are descents or type II imaginary ascents. So if x is not primitive, it has
-  an ascent that is either complex, imaginary type I or real compact. In the
-  first two cases we replace x by the ascended element and continue; in the
-  last case, we return UndefBlock (for K-L computations, this will imply that
-  $P_{x,y}=0$; the value of UndefBlock is conveniently larger than any valid
-  BlockElt y, so this condition can be handled together with triangularity).
+  Explanation: a primitive element for |d| is one for which all elements in
+  |d| are either descents or type II imaginary ascents. So if |x| is not
+  primitive, it has an ascent in |d| that is either complex, imaginary type I
+  or real nonparity. In the first two cases we replace |x| by the (unique)
+  ascended element and continue; in the last case, we return |UndefBlock| (for
+  K-L computations, this case implies that $P_{x,y}=0$; the value of
+  |UndefBlock| is conveniently larger than any valid BlockElt |y|, so this
+  case will be handled effortlessly together with triangularity).
 */
-
+BlockElt KLSupport::primitivize(BlockElt x, const bitset::RankFlags& d) const
 {
-  using namespace descents;
+  using descents::DescentStatus;
 
   bitset::RankFlags a; // good ascents for x that are descents for y
 
-  while ((a = goodAscentSet(x)&d).any()) {
+  while ((a = goodAscentSet(x)&d).any())
+  {
     size_t s = a.firstBit();
     DescentStatus::Value v = descentValue(s,x);
     if (v == DescentStatus::RealNonparity)
@@ -164,12 +148,11 @@ BlockElt KLSupport::primitivize(BlockElt x, const bitset::RankFlags& d) const
 }
 
 /******** manipulators *******************************************************/
-void KLSupport::fill()
 
 /*
   \brief Fills the lengthLess table, and the downsets
 */
-
+void KLSupport::fill()
 {
   using namespace bitmap;
 
@@ -177,7 +160,8 @@ void KLSupport::fill()
     return;
 
   // fill lengthLess if necessary
-  if (not d_state.test(LengthLessFilled)) {
+  if (not d_state.test(LengthLessFilled))
+  {
     fillLengthLess(d_lengthLess,block());
     d_state.set(LengthLessFilled);
   }
@@ -189,7 +173,6 @@ void KLSupport::fill()
 
 }
 
-void KLSupport::fillDownsets()
 
 /*
   \brief Fills in the downset, primset, descents and goodAscent bitmap/set
@@ -204,12 +187,12 @@ void KLSupport::fillDownsets()
   imaginary compact. The goodAscent bitset for z holds the ascents for z that
   are not imaginary type II. The primset bitmap for s records the block
   elements z for which s is not a goodAscent, in other words it is either
-  a descent, or an imaginary type I ascent.
+  a descent, or an imaginary type II ascent.
 
   Sets the DownsetsFilled bit in d_state if successful. Commit-or-rollback
   is guaranteed.
 */
-
+void KLSupport::fillDownsets()
 {
   using namespace bitmap;
   using namespace bitset;
@@ -219,34 +202,34 @@ void KLSupport::fillDownsets()
     return;
 
   size_t size = d_block->size();
-  std::vector<BitMap> ds(d_rank);
-  std::vector<BitMap> ps(d_rank);
+  std::vector<BitMap> downset(d_rank);
+  std::vector<BitMap> primset(d_rank);
   std::vector<RankFlags> descents(size);
-  std::vector<RankFlags> ga(size);
+  std::vector<RankFlags> good_ascent(size);
 
-  for (size_t s = 0; s < ds.size(); ++s) {
-    ds[s].set_capacity(size);
-    ps[s].set_capacity(size);
+  for (size_t s = 0; s < downset.size(); ++s) {
+    downset[s].set_capacity(size);
+    primset[s].set_capacity(size);
     for (BlockElt z = 0; z < size; ++z) {
       DescentStatus::Value v = descentValue(s,z);
       if (DescentStatus::isDescent(v)) {
-	ds[s].insert(z);
-	ps[s].insert(z);
+	downset[s].insert(z);
+	primset[s].insert(z);
 	descents[z].set(s);
       } else { // ascents
 	if (v == DescentStatus::ImaginaryTypeII)
-	  ps[s].insert(z);  // s is a "bad" ascent
+	  primset[s].insert(z);  // s is a "bad" ascent
 	else
-	  ga[z].set(s); // good ascent
+	  good_ascent[z].set(s); // good ascent
       }
     }
   }
 
   // commit
-  d_downset.swap(ds);
-  d_primset.swap(ps);
+  d_downset.swap(downset);
+  d_primset.swap(primset);
   d_descent.swap(descents);
-  d_goodAscent.swap(ga);
+  d_goodAscent.swap(good_ascent);
   d_state.set(DownsetsFilled);
 
 }
@@ -261,8 +244,6 @@ void KLSupport::fillDownsets()
 
 namespace {
 
-void fillLengthLess(std::vector<BlockElt>& ll, const blocks::Block& b)
-
 /*
   \brief Makes ll into a vector of size max(lengths(b))+2 such that for
   0<=l<=max(lengths(b))+1, the element ll[l] is the first BlockElt of length
@@ -271,7 +252,7 @@ void fillLengthLess(std::vector<BlockElt>& ll, const blocks::Block& b)
 
   Precondition: b is sorted by length;
 */
-
+void fillLengthLess(std::vector<BlockElt>& ll, const blocks::Block& b)
 {
   ll.clear(); ll.resize(b.length(b.size()-1)+2);
 
@@ -285,6 +266,6 @@ void fillLengthLess(std::vector<BlockElt>& ll, const blocks::Block& b)
   ll[l+1]=b.size(); // here l=b.length(b.size()-1)=max(lengths(b))
 }
 
-}
+} // namsespace
 
-}
+} // namespace atlas
