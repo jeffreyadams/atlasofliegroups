@@ -15,6 +15,7 @@
 #define BLOCKS_H
 
 #include "blocks_fwd.h"
+#include <cassert>
 
 #include "bruhat_fwd.h"
 #include "descents.h"
@@ -193,11 +194,14 @@ non-vanishing KL polynomial.
 
   /*! \brief vector of descent statuses of all simple roots */
   const descents::DescentStatus& descent(BlockElt z) const {
+    assert(z<size());
     return d_descent[z];
   }
 
   /*! \brief descent type of s at z */
   descents::DescentStatus::Value descentValue(size_t s, BlockElt z) const {
+    assert(z<size());
+    assert(s<d_rank);
     return d_descent[z][s];
   }
 
@@ -214,11 +218,15 @@ non-vanishing KL polynomial.
 
   /*! \brief cross action */
   BlockElt cross(size_t s, BlockElt z) const {
+    assert(z<size());
+    assert(s<d_rank);
     return d_cross[s][z];
   }
 
   /*! \brief Cayley transform */
   BlockEltPair cayley(size_t s, BlockElt z) const {
+    assert(z<size());
+    assert(s<d_rank);
     if (not isWeakDescent(s,z))
       return d_cayley[s][z];
     else return BlockEltPair(UndefBlock,UndefBlock);
@@ -226,6 +234,8 @@ non-vanishing KL polynomial.
 
   /*! \brief inverse Cayley transform */
   BlockEltPair inverseCayley(size_t s, BlockElt z) const {
+    assert(z<size());
+    assert(s<d_rank);
     if (isWeakDescent(s,z))
       return d_cayley[s][z];
     else return BlockEltPair(UndefBlock,UndefBlock);
@@ -233,6 +243,7 @@ non-vanishing KL polynomial.
 
   /*! \brief the simple roots occurring in \f$\theta_z\f$. */
   const bitset::RankFlags& involutionSupport(size_t z) const {
+    assert(z<size());
     return d_involutionSupport[z];
   }
 
@@ -247,6 +258,7 @@ non-vanishing KL polynomial.
 
   /*! \brief Cartan class of block element */
   size_t Cartan_class(BlockElt z) const {
+    assert(z<size());
     return d_Cartan[z];
   }
 
@@ -274,6 +286,7 @@ This is the corresponding Weyl group element w, such that w.delta is the
 root datum involution tau corresponding to z
 */
   const weyl::TwistedInvolution& involution(BlockElt z) const{
+    assert(z<size());
     return d_involution[z];
 }
 
@@ -283,15 +296,24 @@ root datum involution tau corresponding to z
   }
 
   kgb::KGBElt x(BlockElt z) const {
+    assert(z<size());
     return d_x[z];
   }
 
   kgb::KGBElt y(BlockElt z) const {
+    assert(z<size());
     return d_y[z];
   }
 
   //!\brief Look up element by |x|, |y| coordinates
   BlockElt element(kgb::KGBElt x,kgb::KGBElt y) const;
+
+  std::pair<BlockElt,BlockElt> R_packet(BlockElt z) const
+  {
+    assert(z<size());
+    BlockElt x=d_x[z];
+    return std::make_pair(d_first_z_of_x[x],d_first_z_of_x[x+1]);
+  }
 
   size_t xsize() const {
     return d_xrange;

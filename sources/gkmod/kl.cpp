@@ -171,14 +171,6 @@ simple root s for block element y.
       return d_support->descentValue(s,y);
     }
 
-    /*!
-\brief Second coordinate (corresponding to K^vee orbit on G^vee/B^vee)
-of pair of integers specifying block element y.
-    */
-    size_t dualOrbit(BlockElt y) const {
-      return d_support->block().y(y);
-    }
-
     size_t firstDirectRecursion(BlockElt y) const;
 
     blocks::BlockEltPair inverseCayley(size_t s, BlockElt y) const {
@@ -208,6 +200,13 @@ integers specifying block element y.
     */
     size_t orbit(BlockElt y) const {
       return d_support->block().x(y);
+    }
+    /*!
+\brief Second coordinate (corresponding to K^vee orbit on G^vee/B^vee)
+of pair of integers specifying block element y.
+    */
+    size_t dualOrbit(BlockElt y) const {
+      return d_support->block().y(y);
     }
 
     MuCoeff type2Mu(BlockElt x, BlockElt y) const;
@@ -1157,11 +1156,12 @@ void Helper::completePacket(BlockElt y)
   using namespace descents;
   using namespace klsupport;
 
-  size_t o = orbit(y);
+  std::pair<blocks::BlockElt,blocks::BlockElt> packet = block().R_packet(y);
+  assert (packet.first==y);
   std::stack<BlockElt> filled;
   std::set<BlockElt> empty;
 
-  for (BlockElt y1 = y; orbit(y1) == o; ++y1) {
+  for (BlockElt y1 = packet.first; y1<packet.second; ++y1) {
     if (d_kl[y1].size() != 0)
       filled.push(y1);
     else
@@ -1354,11 +1354,12 @@ void Helper::fillKLRow(BlockElt y)
   if (d_kl[y].size()) // row has already been filled
     return;
 
-  size_t o = orbit(y);
+  std::pair<blocks::BlockElt,blocks::BlockElt> packet = block().R_packet(y);
+  assert (packet.first==y);
   bool done = true;
 
   // fill in the direct recursions in the R-packet
-  for (BlockElt y1 = y; orbit(y1) == o; ++y1) {
+  for (BlockElt y1 = packet.first; y1<packet.second; ++y1) {
     size_t s = firstDirectRecursion(y1);
     if (s != rank()) { // direct recursion
       directRecursion(y1,s);
@@ -1470,9 +1471,10 @@ void Helper::fillThickets(BlockElt y)
   using namespace descents;
   using namespace klsupport;
 
-  size_t o = orbit(y);
+  std::pair<blocks::BlockElt,blocks::BlockElt> packet = block().R_packet(y);
+  assert (packet.first==y);
 
-  for (BlockElt y1 = y; orbit(y1) == o; ++y1)
+  for (BlockElt y1 = packet.first; y1<packet.second; ++y1)
     if (d_kl[y1].size() == 0) {
       Thicket thicket(*this,y1);
       thicket.fill();

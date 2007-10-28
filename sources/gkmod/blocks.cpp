@@ -409,7 +409,7 @@ void Block::generate(realredgp::RealReductiveGroup& G,
 
   d_x.reserve(size);
   d_y.reserve(size);
-  d_first_z_of_x.reserve(d_xrange);
+  d_first_z_of_x.reserve(d_xrange+1);
 
   d_involution.reserve(size);
   d_length.reserve(size);
@@ -430,7 +430,7 @@ void Block::generate(realredgp::RealReductiveGroup& G,
 
       for (assert(x==xRange.first); x < xRange.second; ++x)
       {
-	d_first_z_of_x[x] = base_z; // set this even if there are no |y|s
+	d_first_z_of_x.push_back(base_z); // set even for |x| without any |y|
 	for (size_t y = yRange.first; y < yRange.second; ++y)
 	{
 	  d_x.push_back(x);
@@ -445,6 +445,10 @@ void Block::generate(realredgp::RealReductiveGroup& G,
     } // "for(tau)"
 
     assert(base_z == size); // check that number of pairs is as expected
+    d_first_z_of_x.push_back(base_z);// make |d_first_z_of_x[d_xrange]==d_size|
+
+    assert(d_first_z_of_x.size()==d_xrange+1);
+    assert(d_x.size()==size); // similarly for |d_y|, ..., |d_descent|
   } // end of generation of |(x,y)| tables
 
   // Now |element| can be safely called; install cross and Cayley tables
