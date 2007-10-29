@@ -188,10 +188,6 @@ non-vanishing KL polynomial.
 // copy, assignment and swap
 
 // accessors
-  const bruhat::BruhatOrder& bruhatOrder() const {
-    return *d_bruhat;
-  }
-
   /*! \brief vector of descent statuses of all simple roots */
   const descents::DescentStatus& descent(BlockElt z) const {
     assert(z<size());
@@ -323,9 +319,12 @@ root datum involution tau corresponding to z
   }
 
   // manipulators
-  void fillBruhat();
+  bruhat::BruhatOrder& bruhatOrder()
+  {
+    fillBruhat(); return *d_bruhat;
+  }
 
-  // private accessor and manipulator (used during construction)
+  // private accessor and manipulators
 private:
   weyl::TwistedInvolution dualInvolution
     (const weyl::TwistedInvolution& tw,weyl::WeylInterface to_dual) const;
@@ -333,6 +332,8 @@ private:
   void generate(realredgp::RealReductiveGroup& G,
 		realredgp::RealReductiveGroup& dG,
 		bool select_Cartans);
+
+  void fillBruhat();
 }; // class Block
 
 } // namespace blocks

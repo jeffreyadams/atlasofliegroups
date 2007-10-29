@@ -120,10 +120,14 @@ class KLSupport {
 
   void fillDownsets();
 
+  blocks::Block& block() {
+    return *d_block;
+  }
+
 };
 
-}
+} // namespace klsupport
 
-}
+} // namespace atlas
 
 #endif

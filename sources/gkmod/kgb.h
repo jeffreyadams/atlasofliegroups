@@ -169,16 +169,6 @@ bruhat::BruhatOrder* d_bruhat;
 
 // accessors
 
-/*!
-\brief Return reference to the Bruhat order on KGB.
-
-Precondition: the Bruhat order Hasse diagram has been computed
-(|fillBruhat| was called)
-*/
-  const bruhat::BruhatOrder& bruhatOrder() const {
-    return *d_bruhat;
-  }
-
 /*! \brief Takes the Cayley transform of KGB element \#x in the direction of
 simple root \#s; returns |UndefKGB| unless that root was noncompact imaginary.
 */
@@ -332,14 +322,17 @@ bool isAscent(size_t s, KGBElt x) const
   }
 
 // manipulators
+
+// Creates Hasse diagram for Bruhat order on KGB and returns reference to it
+  bruhat::BruhatOrder& bruhatOrder()
+  { fillBruhat(); return *d_bruhat; }
+
+  const poset::Poset& bruhatPoset() // this creates full poset on demand
+  { return bruhatOrder().poset(); }
+
+// private methods
+private:
   void fillBruhat();
-
-  const poset::Poset& bruhatPoset() // this creates poset from Hasse diagram
-  { return d_bruhat->poset(); }
-
-// private methods, used during construction
-
-
 
 }; // class KGB
 

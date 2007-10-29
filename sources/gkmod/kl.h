@@ -237,6 +237,11 @@ P_{y,x}).
   // this method used to be virtual, but that seems completely silly. MvL
   void fill();
 
+  blocks::Block& block() {
+    return d_support->block();
+  }
+
+
 
 };
 
