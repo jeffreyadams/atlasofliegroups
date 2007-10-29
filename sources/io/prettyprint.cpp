@@ -221,8 +221,6 @@ std::ostream& printRootList(std::ostream& strm, const rootdata::RootList& r,
   return strm;
 }
 
-std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs,
-			  size_t rank)
 
 /*
   Synopsis: prints the status flags.
@@ -233,14 +231,18 @@ std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs,
   C for complex, c for (imaginary) compact, n for (imaginary) noncompact,
   and r for real.
 */
-
+std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs,
+			  size_t rank)
 {
-  using namespace gradings;
+  using gradings::Status;
 
-  strm << "[";
+  strm << '[';
 
-  for (size_t s = 0; s < rank; ++s) {
-    switch (gs[s]) {
+  for (size_t s = 0; s < rank; ++s)
+  {
+    if (s>0) strm<<',';
+    switch (gs[s])
+    {
     case Status::Complex:
       strm << "C";
       break;
@@ -253,13 +255,10 @@ std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs,
     case Status::Real:
       strm << "r";
       break;
-    default: // should not happen!
-      strm << "*";
-      break;
     }
   }
 
-  strm << "]";
+  strm << ']';
 
   return strm;
 }

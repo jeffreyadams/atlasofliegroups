@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <cassert>
 
 #include "realredgp_io.h"
 
@@ -34,8 +35,6 @@ namespace atlas {
 
         Chapter I -- The Interface class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace realredgp_io {
@@ -52,26 +51,11 @@ void Interface::swap(Interface& other)
 /******** accessors **********************************************************/
 
 const complexredgp::ComplexReductiveGroup& Interface::complexGroup() const
-
-/*
-  Synopsis: returns the underyling complex reductive group.
-
-  NOTE: this is not inlined to avoid a dependency on realredgp.h.
-*/
-
 {
   return d_realGroup->complexGroup();
 }
 
 const realform_io::Interface& Interface::realFormInterface() const
-
-/*
-  Synopsis: returns the real form interface of the underlying complex group
-  interface.
-
-  NOTE: this is not inlined to avoid a dependency on complexredgp_io.h.
-*/
-
 {
   return d_complexInterface->realFormInterface();
 }
@@ -91,33 +75,24 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 				   size_t cn, realform::RealForm drf)
 
 {
-  using namespace cartanclass;
-  using namespace complexredgp;
-  using namespace realform;
-  using namespace realredgp;
-  using namespace realweyl;
-  using namespace rootdata;
-  using namespace size;
-  using namespace weyl;
+  const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  const rootdata::RootDatum& rd = G_R.rootDatum();
+  const weyl::WeylGroup& W = G_R.weylGroup();
 
-  const ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const RootDatum& rd = G_R.rootDatum();
-  const WeylGroup& W = G_R.weylGroup();
-
-  RealForm rf = G_R.realForm();
+  realform::RealForm rf = G_R.realForm();
 
   unsigned long x = G_C.representative(rf,cn);
   unsigned long y = G_C.dualRepresentative(drf,cn);
-  const CartanClass& cc = G_C.cartan(cn);
+  const cartanclass::CartanClass& cc = G_C.cartan(cn);
 
-  RealWeyl rw(cc,x,y,rd,W);
-  RealWeylGenerators rwg(rw,cc,rd);
+  realweyl::RealWeyl rw(cc,x,y,rd,W);
+  realweyl::RealWeylGenerators rwg(rw,cc,rd);
 
   realweyl_io::printBlockStabilizer(strm,rw,rwg,rd);
 
   // check if the size is correct
-  Size c;
-  blockStabilizerSize(c,rw);
+  size::Size c;
+  realweyl::blockStabilizerSize(c,rw);
   c *= G_C.fiberSize(rf,cn);
   c *= G_C.dualFiberSize(drf,cn);
   c *= cc.orbitSize();
@@ -126,11 +101,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
   return strm;
 }
 
-/*
-  Synopsis: outputs information about all the Cartan classes for
-  G_RI.realGroup().
-*/
-
+// Print information about all the Cartan classes for |G_RI.realGroup()|.
 std::ostream& printCartanClasses(std::ostream& strm,
 				 const realredgp_io::Interface& G_RI)
 {
@@ -152,13 +123,14 @@ std::ostream& printCartanClasses(std::ostream& strm,
   return strm;
 }
 
+/* the function below is much like |kgb_io::printBruhatOrder|, but will not
+   output any minimal elements except |0| (do such Cartan classes exist?).
+   Moreover it couldn't call that function, which needs a |BruhatOrder|.
+ */
+
+// Print the Hasse diagram of the Cartan ordering of G_R.
 std::ostream& printCartanOrder(std::ostream& strm,
 			       const realredgp::RealReductiveGroup& G_R)
-
-/*
-  Synopsis: prints the Hasse diagram of the Cartan ordering of G_R.
-*/
-
 {
   using namespace basic_io;
   using namespace graph;
@@ -185,26 +157,16 @@ std::ostream& printCartanOrder(std::ostream& strm,
   return strm;
 }
 
-std::ostream& printRealWeyl(std::ostream& strm,
-			    const realredgp::RealReductiveGroup& G_R,
-			    size_t cn)
 
 /*
-  Synopsis: outputs the real Weyl group corresponding to Cartan #cn.
+  Print the real Weyl group corresponding to Cartan #cn.
 
   Precondition: cartan #cn is defined for this real form.
 */
-
+std::ostream& printRealWeyl(std::ostream& strm,
+			    const realredgp::RealReductiveGroup& G_R,
+			    size_t cn)
 {
-  using namespace cartanclass;
-  using namespace complexredgp;
-  using namespace realredgp;
-  using namespace realweyl;
-  using namespace realweyl_io;
-  using namespace rootdata;
-  using namespace size;
-  using namespace weyl;
-
   const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
 
   realform::RealForm rf = G_R.realForm();
@@ -214,8 +176,8 @@ std::ostream& printRealWeyl(std::ostream& strm,
   const cartanclass::CartanClass& cc = G_C.cartan(cn);
   cartanclass::AdjointFiberElt x = G_C.representative(rf,cn);
 
-  RealWeyl rw(cc,x,0,rd,W);
-  RealWeylGenerators rwg(rw,cc,rd);
+  realweyl::RealWeyl rw(cc,x,0,rd,W);
+  realweyl::RealWeylGenerators rwg(rw,cc,rd);
 
   realweyl_io::printRealWeyl(strm,rw,rwg,rd);
 
