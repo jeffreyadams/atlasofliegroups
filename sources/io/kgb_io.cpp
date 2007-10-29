@@ -37,12 +37,12 @@ namespace kgb_io {
 
 
 /*
-  Synopsis: outputs the data from kgb to strm.
+  Print the data from |kgb| to |strm|.
 
-  Explanation: for each parameter, we output the length, the Cartan class, the
-  cross-actions and Cayley transforms for each generator, and the underlying
-  root datum permutation (or rather, the corresponding Weyl group element). We
-  use a '*' for undefined cayley actions.
+  Explanation: for each parameter, we output the length, the Cartan class,
+  root types, cross-actions and Cayley transforms for each generator, and the
+  underlying root datum involution (or rather, the corresponding Weyl group
+  element). We use a '*' for undefined Cayley transforms.
 
   NOTE: this will print reasonably on 80 columns only for groups that are
   not too large (up to rank 4 or so). We haven't tried to go over to more
@@ -68,13 +68,17 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
     strm << std::setw(cwidth) << kgb.Cartan_class(j);
     strm << std::setw(pad) << "";
 
+    // print status
+    prettyprint::printStatus(strm,kgb.status(j),kgb.rank());
+    strm << ' ';
+
     // print cross actions
     for (size_t s = 0; s < kgb.rank(); ++s) {
       strm << std::setw(width+pad) << kgb.cross(s,j);
     }
-    strm << ' ';
+    strm << std::setw(pad) << "";
 
-    // print cayley actions
+    // print cayley transforms
     for (size_t s = 0; s < kgb.rank(); ++s) {
       kgb::KGBElt z = kgb.cayley(s,j);
       if (z != kgb::UndefKGB)
@@ -82,10 +86,6 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
       else
 	strm << std::setw(width+pad) << '*';
     }
-    strm << std::setw(pad) << "";
-
-    // print status
-    prettyprint::printStatus(strm,kgb.status(j),kgb.rank());
     strm << std::setw(pad) << "";
 
     // print root datum involution

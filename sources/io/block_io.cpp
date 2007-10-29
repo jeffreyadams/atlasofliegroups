@@ -54,10 +54,6 @@ namespace block_io {
 */
 std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
 {
-  using namespace blocks;
-  using namespace kgb;
-  using namespace prettyprint;
-
   // compute maximal width of entry
   int width = ioutils::digits(block.size()-1,10ul);
   int xwidth = ioutils::digits(block.xsize()-1,10ul);
@@ -86,26 +82,27 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
 
     // print cross actions
     for (size_t s = 0; s < block.rank(); ++s) {
-      BlockElt z = block.cross(s,j);
-      if (z == UndefBlock)
+      blocks::BlockElt z = block.cross(s,j);
+      if (z == blocks::UndefBlock)
 	strm << std::setw(width+pad) << '*';
       else
 	strm << std::setw(width+pad) << z;
     }
     strm << std::setw(pad+1) << "";
 
-    // print cayley transforms
+    // print Cayley transforms
     for (size_t s = 0; s < block.rank(); ++s)
     {
-      BlockEltPair z = block.isWeakDescent(s,j) ? block.inverseCayley(s,j)
-	                                        : block.cayley(s,j);
+      blocks::BlockEltPair z = block.isWeakDescent(s,j)
+	                     ? block.inverseCayley(s,j)
+	                     : block.cayley(s,j);
       strm << '(' << std::setw(width);
-      if (z.first == UndefBlock)
+      if (z.first == blocks::UndefBlock)
 	strm << '*';
       else
 	strm << z.first;
       strm << ',' << std::setw(width);
-      if (z.second == UndefBlock)
+      if (z.second == blocks::UndefBlock)
 	strm << '*';
       else
 	strm << z.second;
@@ -114,7 +111,7 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
     strm << ' ';
 
     // print root datum involution
-    printWeylElt(strm,block.involution(j),block.weylGroup());
+    prettyprint::printWeylElt(strm,block.involution(j),block.weylGroup());
 
     strm << std::endl;
   }
@@ -139,16 +136,12 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
 */
 std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
 {
-  using namespace blocks;
-  using namespace kgb;
-  using namespace prettyprint;
-
   // compute maximal width of entry
   int width = ioutils::digits(block.size()-1,10ul);
   int xwidth = ioutils::digits(block.xsize()-1,10ul);
   int ywidth = ioutils::digits(block.ysize()-1,10ul);
   int lwidth = ioutils::digits(block.length(block.size()-1),10ul);
-
+  int cwidth = ioutils::digits(block.Cartan_class(block.size()-1),10ul);
   const int pad = 2;
 
   for (size_t j = 0; j < block.size(); ++j) {
@@ -161,40 +154,46 @@ std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
 
     // print length
     strm << std::setw(lwidth+pad) << block.length(j);
-    strm << "  ";
+
+    // print Cartan class
+    strm << std::setw(cwidth+pad) << block.Cartan_class(j);
+    strm << std::setw(pad) << "";
 
     // print descents
     printDescent(strm,block.descent(j),block.rank());
 
     // print cross actions
     for (size_t s = 0; s < block.rank(); ++s) {
-      BlockElt z = block.cross(s,j);
-      if (z == UndefBlock)
+      blocks::BlockElt z = block.cross(s,j);
+      if (z == blocks::UndefBlock)
 	strm << std::setw(width+pad) << '*';
       else
 	strm << std::setw(width+pad) << z;
     }
-    strm << std::setw(2*pad) << "";
+    strm << std::setw(pad+1) << "";
 
-    // print cayley transforms
-    for (size_t s = 0; s < block.rank(); ++s) {
-      BlockEltPair z = block.cayley(s,j);
-      strm << '(';
-      if (z.first == UndefBlock)
-	strm << std::setw(width) << '*';
+    // print Cayley transforms
+    for (size_t s = 0; s < block.rank(); ++s)
+    {
+      blocks::BlockEltPair z = block.isWeakDescent(s,j)
+	                     ? block.inverseCayley(s,j)
+	                     : block.cayley(s,j);
+      strm << '(' << std::setw(width);
+      if (z.first == blocks::UndefBlock)
+	strm << '*';
       else
-	strm << std::setw(width) << z.first;
-      strm << ',';
-      if (z.second == UndefBlock)
-	strm << std::setw(width) << '*';
+	strm << z.first;
+      strm << ',' << std::setw(width);
+      if (z.second == blocks::UndefBlock)
+	strm << '*';
       else
-	strm << std::setw(width) << z.second;
+	strm << z.second;
       strm << ')' << std::setw(pad) << "";
     }
-    strm << std::setw(pad) << "";
+    strm << ' ';
 
-    // print root datum involution
-    printInvolution(strm,block.involution(j),block.weylGroup());
+    // print root datum involution as involution reduced expression
+    prettyprint::printInvolution(strm,block.involution(j),block.weylGroup());
 
     strm << std::endl;
   }
@@ -225,6 +224,7 @@ std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
   int xwidth = ioutils::digits(block.xsize()-1,10ul);
   int ywidth = ioutils::digits(block.ysize()-1,10ul);
   int lwidth = ioutils::digits(block.length(block.size()-1),10ul);
+  int cwidth = ioutils::digits(block.Cartan_class(block.size()-1),10ul);
   const int pad = 2;
 
   for (size_t j = 0; j < block.size(); ++j) {
@@ -241,49 +241,56 @@ std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
     strm << std::setw(ywidth) << block.y(j) << ')';
     strm << ':';
 
-#if 0
-    // print cross actions
-    for (size_t s = 0; s < block.rank(); ++s) {
-      BlockElt z = block.cross(s,j);
-      if (z == UndefBlock)
-	strm << std::setw(width+pad) << '*';
-      else
-	strm << std::setw(width+pad) << z;
-    }
-    strm << std::setw(2*pad) << "";
+    // print length
+    strm << std::setw(lwidth+pad) << block.length(j);
 
-    // print cayley transforms
-    for (size_t s = 0; s < block.rank(); ++s) {
-      BlockEltPair z = block.cayley(s,j);
-      strm << '(';
-      if (z.first == UndefBlock)
-	strm << std::setw(width) << '*';
-      else
-	strm << std::setw(width) << z.first;
-      strm << ',';
-      if (z.second == UndefBlock)
-	strm << std::setw(width) << '*';
-      else
-	strm << std::setw(width) << z.second;
-      strm << ')' << std::setw(pad) << "";
-    }
-#endif
+    // print Cartan class
+    strm << std::setw(cwidth+pad) << block.Cartan_class(j);
     strm << std::setw(pad) << "";
 
     // print descents
     printDescent(strm,block.descent(j),block.rank());
     strm << std::setw(pad) << "";
 
-    // print descents
+    // print descents filtered
     printDescent(strm,block.descent(j),block.rank(),
 		 block.involutionSupport(j));
+    strm << std::setw(pad) << "";
 
-    // print length
-    strm << std::setw(lwidth+pad) << block.length(j);
-    strm << "  ";
+#if 0
+    // print cross actions
+    for (size_t s = 0; s < block.rank(); ++s) {
+      blocks::BlockElt z = block.cross(s,j);
+      if (z == UndefBlock)
+	strm << std::setw(width+pad) << '*';
+      else
+	strm << std::setw(width+pad) << z;
+    }
+    strm << std::setw(pad+1) << "";
 
-    // print root datum involution
-    printInvolution(strm,block.involution(j),block.weylGroup());
+    // print Cayley transforms
+    for (size_t s = 0; s < block.rank(); ++s)
+    {
+      blocks::BlockEltPair z = block.isWeakDescent(s,j)
+                             ? block.inverseCayley(s,j)
+	                     : block.cayley(s,j);
+      strm << '(' << std::setw(width);
+      if (z.first == blocks::UndefBlock)
+	strm << '*';
+      else
+	strm << z.first;
+      strm << ',' << std::setw(width);
+      if (z.second == blocks::UndefBlock)
+	strm << '*';
+      else
+	strm << z.second;
+      strm << ')' << std::setw(pad) << "";
+    }
+    strm << ' ';
+#endif
+
+    // print root datum involution as involution reduced expression
+    prettyprint::printInvolution(strm,block.involution(j),block.weylGroup());
 
     strm << std::endl;
 
