@@ -44,13 +44,10 @@ namespace {
 
 namespace cartan_io {
 
+
+// Print information about the Cartan class #cn.
 std::ostream& printCartanClass(std::ostream& strm, size_t cn,
 			       const complexredgp_io::Interface& CI)
-
-/*
-  Synopsis: prints information about the Cartan class #cn.
-*/
-
 {
   using namespace basic_io; // for operators <<
 
@@ -58,14 +55,20 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
   const rootdata::RootDatum& rd = G.rootDatum();
 
   const cartanclass::CartanClass& cc = G.cartan(cn);
+  const cartanclass::Fiber& f = cc.fiber();
+
+  prettyprint::printTorusType(strm,f.torus()) << std::endl;
 
   strm << "canonical twisted involution: ";
   prettyprint::printWeylElt
     (strm,G.cartanClasses().twistedInvolution(cn),G.weylGroup())
        << std::endl;
 
-  prettyprint::printTorusType(strm,cc.fiber().torus()) << std::endl;
-  strm << "twisted involution orbit size: " << cc.orbitSize() << std::endl;
+  size_t orbit_size=cc.orbitSize();
+  strm << "twisted involution orbit size: " << orbit_size
+       << ";  fiber rank: " << f.fiberRank()
+       << ";  #X_r: " << orbit_size*f.fiberSize()
+       <<std::endl;
 
   // print type of imaginary root system
   lietype::LieType ilt;
@@ -100,83 +103,63 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
   for (size_t i = 0; i < rfl.size(); ++i)
     rfl[i] = rfi.out(G.realFormLabels(cn)[i]);
 
-  printFiber(strm,cc.fiber(),rfl);
+  printFiber(strm,f,rfl);
 
   return strm;
 }
 
+
+// Print the fiber data.
 std::ostream& printFiber(std::ostream& strm, const cartanclass::Fiber& f,
 			 const realform::RealFormList& rfl)
-
-/*
-  Synopsis: prints out the fiber data.
-*/
-
 {
-  using namespace basic_io;
-  using namespace ioutils;
-  using namespace partition;
-
-  const Partition& pi = f.weakReal();
+  const partition::Partition& pi = f.weakReal();
   unsigned long c = 0;
 
-  for (PartitionIterator i(pi); i(); ++i,++c) {
+  for (partition::PartitionIterator i(pi); i(); ++i,++c) {
     std::ostringstream os;
     os << "real form #";
     os << rfl[c] << ": ";
-    std::vector<unsigned long>::const_iterator first = i->first;
-    std::vector<unsigned long>::const_iterator last = i->second;
-    seqPrint(os,first,last,",","[","]");
-    os << " (" << last - first << ")" << std::endl;
+    basic_io::seqPrint(os,i->first,i->second,",","[","]");
+    os << " (" << i->second - i->first << ")" << std::endl;
     std::string line = os.str();
-    foldLine(strm,line,"",",");
+    ioutils::foldLine(strm,line,"",",");
   }
 
   return strm;
 }
 
-std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
-			    const realform::RealFormList& rfl,
-			    const rootdata::RootDatum& rd)
-
 /*
-  Synopsis: outputs the gradings of the simple imaginary roots corresponding
-  to the various real forms defined for f.
+  Print the gradings of the simple imaginary roots corresponding
+  to the various real forms defined for |f|.
 
-  Precondition: rfl contains the outer numbering of the real forms;
+  Precondition: |rfl| contains the outer numbering of the real forms;
 
   The gradings are output in the same order as the orbit corresponding to the
   real form is output in the "cartan" command.
 */
-
+std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
+			    const realform::RealFormList& rfl,
+			    const rootdata::RootDatum& rd)
 {
-  using namespace dynkin;
-  using namespace gradings;
-  using namespace ioutils;
-  using namespace latticetypes;
-  using namespace partition;
-  using namespace prettyprint;
-  using namespace setutils;
-  using namespace rootdata;
-
   typedef std::vector<unsigned long>::const_iterator VI;
 
-  const RootList& si = f.simpleImaginary();
-  LatticeMatrix cm;
+  const rootdata::RootList& si = f.simpleImaginary();
+  latticetypes::LatticeMatrix cm;
 
-  cartanMatrix(cm,si,rd);
-  DynkinDiagram d(cm);
-  Permutation a;
-  bourbaki(a,d);
+  rootdata::cartanMatrix(cm,si,rd);
+  dynkin::DynkinDiagram d(cm);
+  setutils::Permutation a;
+  dynkin::bourbaki(a,d);
   cm.permute(a);
 
   strm << "cartan matrix of imaginary root system is:" << std::endl;
-  printMatrix(strm,cm);
+  prettyprint::printMatrix(strm,cm);
 
-  const Partition& pi = f.weakReal();
+  const partition::Partition& pi = f.weakReal();
   unsigned long c = 0;
 
-  for (PartitionIterator i(pi); i(); ++i) {
+  for (partition::PartitionIterator i(pi); i(); ++i) {
 
     std::ostringstream os;
     os << "real form #";
@@ -185,26 +168,26 @@ std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
     VI i_first = i->first;
     VI i_last = i->second;
 
-    os << "[";
+    os << '[';
 
     for (VI j = i->first; j != i_last; ++j) {
       if (j != i_first)
-	os << ",";
-      Grading gr= f.grading(*j);
+	os << ',';
+      gradings:: Grading gr= f.grading(*j);
       gr.permute(a);
-      prettyPrint(os,gr,f.simpleImaginary().size());
+      prettyprint::prettyPrint(os,gr,f.simpleImaginary().size());
     }
 
-    os << "]" << std::endl;
+    os << ']' << std::endl;
 
     std::string line = os.str();
-    foldLine(strm,line,"",",");
+    ioutils::foldLine(strm,line,"",",");
     ++c;
   }
 
   return strm;
 }
 
-}
+} // namespace cartan_io
 
-}
+} // namespace atlas

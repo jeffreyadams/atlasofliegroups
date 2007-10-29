@@ -43,10 +43,10 @@ namespace block_io {
 /*
   Print the data from block to strm.
 
-  Explanation: for each parameter, we output the cross-actions and
-  cayley-actions for each generator, the length, and the underlying root
-  datum permutation (or rather, the corresponding Weyl group element).
-  We use a '*' for undefined cayley actions.
+  Explanation: for each parameter, we output the length, Cartan class,
+  cross-actions and Cayley or inverse Cayley transform(s) for each generator,
+  and the underlying root datum permutation (or rather, the corresponding Weyl
+  group element). We use a '*' for absent (inverse) Cayley transforms.
 
   NOTE: this will print reasonably on 80 columns only for groups that are
   not too large (up to rank 4 or so). We haven't tried to go over to more
@@ -63,15 +63,26 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
   int xwidth = ioutils::digits(block.xsize()-1,10ul);
   int ywidth = ioutils::digits(block.ysize()-1,10ul);
   int lwidth = ioutils::digits(block.length(block.size()-1),10ul);
+  int cwidth = ioutils::digits(block.Cartan_class(block.size()-1),10ul);
   const int pad = 2;
 
   for (size_t j = 0; j < block.size(); ++j) {
     // print entry number and corresponding orbit pair
     strm << std::setw(width) << j;
-    strm << "(" << std::setw(xwidth) << block.x(j);
-    strm << ",";
-    strm << std::setw(ywidth) << block.y(j) << ")";
-    strm << ":";
+    strm << '(' << std::setw(xwidth) << block.x(j);
+    strm << ',';
+    strm << std::setw(ywidth) << block.y(j) << ')';
+    strm << ':';
+
+    // print length
+    strm << std::setw(lwidth+pad) << block.length(j);
+
+    // print Cartan class
+    strm << std::setw(cwidth+pad) << block.Cartan_class(j);
+    strm << std::setw(pad) << "";
+
+    // print descents
+    printDescent(strm,block.descent(j),block.rank());
 
     // print cross actions
     for (size_t s = 0; s < block.rank(); ++s) {
@@ -81,31 +92,26 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
       else
 	strm << std::setw(width+pad) << z;
     }
-    strm << std::setw(2*pad) << "";
+    strm << std::setw(pad+1) << "";
 
     // print cayley transforms
-    for (size_t s = 0; s < block.rank(); ++s) {
-      BlockEltPair z = block.cayley(s,j);
-      strm << "(";
+    for (size_t s = 0; s < block.rank(); ++s)
+    {
+      BlockEltPair z = block.isWeakDescent(s,j) ? block.inverseCayley(s,j)
+	                                        : block.cayley(s,j);
+      strm << '(' << std::setw(width);
       if (z.first == UndefBlock)
-	strm << std::setw(width) << '*';
+	strm << '*';
       else
-	strm << std::setw(width) << z.first;
-      strm << ",";
+	strm << z.first;
+      strm << ',' << std::setw(width);
       if (z.second == UndefBlock)
-	strm << std::setw(width) << '*';
+	strm << '*';
       else
-	strm << std::setw(width) << z.second;
-      strm << ")" << std::setw(pad) << "";
+	strm << z.second;
+      strm << ')' << std::setw(pad) << "";
     }
-    strm << std::setw(pad) << "";
-
-    // print descents
-    printDescent(strm,block.descent(j),block.rank());
-
-    // print length
-    strm << std::setw(lwidth+pad) << block.length(j);
-    strm << "  ";
+    strm << ' ';
 
     // print root datum involution
     printWeylElt(strm,block.involution(j),block.weylGroup());
@@ -148,10 +154,17 @@ std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
   for (size_t j = 0; j < block.size(); ++j) {
     // print entry number and corresponding orbit pair
     strm << std::setw(width) << j;
-    strm << "(" << std::setw(xwidth) << block.x(j);
-    strm << ",";
-    strm << std::setw(ywidth) << block.y(j) << ")";
-    strm << ":";
+    strm << '(' << std::setw(xwidth) << block.x(j);
+    strm << ',';
+    strm << std::setw(ywidth) << block.y(j) << ')';
+    strm << ':';
+
+    // print length
+    strm << std::setw(lwidth+pad) << block.length(j);
+    strm << "  ";
+
+    // print descents
+    printDescent(strm,block.descent(j),block.rank());
 
     // print cross actions
     for (size_t s = 0; s < block.rank(); ++s) {
@@ -166,26 +179,19 @@ std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
     // print cayley transforms
     for (size_t s = 0; s < block.rank(); ++s) {
       BlockEltPair z = block.cayley(s,j);
-      strm << "(";
+      strm << '(';
       if (z.first == UndefBlock)
 	strm << std::setw(width) << '*';
       else
 	strm << std::setw(width) << z.first;
-      strm << ",";
+      strm << ',';
       if (z.second == UndefBlock)
 	strm << std::setw(width) << '*';
       else
 	strm << std::setw(width) << z.second;
-      strm << ")" << std::setw(pad) << "";
+      strm << ')' << std::setw(pad) << "";
     }
     strm << std::setw(pad) << "";
-
-    // print descents
-    printDescent(strm,block.descent(j),block.rank());
-
-    // print length
-    strm << std::setw(lwidth+pad) << block.length(j);
-    strm << "  ";
 
     // print root datum involution
     printInvolution(strm,block.involution(j),block.weylGroup());
@@ -224,17 +230,16 @@ std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
   for (size_t j = 0; j < block.size(); ++j) {
     for (size_t s = 0; s < block.rank(); ++s) {
       if (not block.involutionSupport(j).test(s)) // s is not in the support
-	continue;
-      DescentStatus::Value v = block.descentValue(s,j);
-      if (not DescentStatus::isDescent(v)) // representation is not unitary
+	continue; // try next |s|
+      if (not block.isWeakDescent(s,j)) // representation is not unitary
 	goto nextj;
     }
     // print entry number and corresponding orbit pair
     strm << std::setw(width) << j;
-    strm << "(" << std::setw(xwidth) << block.x(j);
-    strm << ",";
-    strm << std::setw(ywidth) << block.y(j) << ")";
-    strm << ":";
+    strm << '(' << std::setw(xwidth) << block.x(j);
+    strm << ',';
+    strm << std::setw(ywidth) << block.y(j) << ')';
+    strm << ':';
 
 #if 0
     // print cross actions
@@ -250,17 +255,17 @@ std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
     // print cayley transforms
     for (size_t s = 0; s < block.rank(); ++s) {
       BlockEltPair z = block.cayley(s,j);
-      strm << "(";
+      strm << '(';
       if (z.first == UndefBlock)
 	strm << std::setw(width) << '*';
       else
 	strm << std::setw(width) << z.first;
-      strm << ",";
+      strm << ',';
       if (z.second == UndefBlock)
 	strm << std::setw(width) << '*';
       else
 	strm << std::setw(width) << z.second;
-      strm << ")" << std::setw(pad) << "";
+      strm << ')' << std::setw(pad) << "";
     }
 #endif
     strm << std::setw(pad) << "";
@@ -297,49 +302,48 @@ std::ostream& printDescent(std::ostream& strm,
 			   const descents::DescentStatus& ds,
 			   size_t rank, bitset::RankFlags supp)
 {
-  using namespace descents;
+  using descents::DescentStatus;
 
-  strm << "[";
+  strm << '[';
 
   for (size_t s = 0; s < rank; ++s) {
-    if (s)
-      strm << ",";
-    if (not supp.test(s)) {
+    if (s!=0)
+      strm << ',';
+    if (not supp.test(s))
       strm << "* ";
-      continue;
-    }
-    switch (ds[s]) {
-    case DescentStatus::ComplexDescent:
-      strm << "C-";
-      break;
-    case DescentStatus::ComplexAscent:
-      strm << "C+";
-      break;
-    case DescentStatus::ImaginaryCompact:
-      strm << "ic";
-      break;
-    case DescentStatus::RealNonparity:
-      strm << "rn";
-      break;
-    case DescentStatus::ImaginaryTypeI:
-      strm << "i1";
-      break;
-    case DescentStatus::ImaginaryTypeII:
-      strm << "i2";
-      break;
-    case DescentStatus::RealTypeI:
-      strm << "r1";
-      break;
-    case DescentStatus::RealTypeII:
-      strm << "r2";
-      break;
-    default: // should not happen!
-      strm << "*";
-      break;
-    }
+    else
+      switch (ds[s]) {
+      case DescentStatus::ComplexDescent:
+	strm << "C-";
+	break;
+      case DescentStatus::ComplexAscent:
+	strm << "C+";
+	break;
+      case DescentStatus::ImaginaryCompact:
+	strm << "ic";
+	break;
+      case DescentStatus::RealNonparity:
+	strm << "rn";
+	break;
+      case DescentStatus::ImaginaryTypeI:
+	strm << "i1";
+	break;
+      case DescentStatus::ImaginaryTypeII:
+	strm << "i2";
+	break;
+      case DescentStatus::RealTypeI:
+	strm << "r1";
+	break;
+      case DescentStatus::RealTypeII:
+	strm << "r2";
+	break;
+      default: // should not happen!
+	assert(false);
+	break;
+      }
   }
 
-  strm << "]";
+  strm << ']';
 
   return strm;
 }
