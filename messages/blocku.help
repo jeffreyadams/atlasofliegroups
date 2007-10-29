@@ -3,21 +3,19 @@ representations that are unitary at infinitesimal character rho.
 These are precisely Zuckerman's "A_q" representations attached to
 theta-stable parabolic subalgebras q.
 
-The output is a part of the output of the "block" command.  Each row of
-the output corresponds to a single unitary representation.  The first
-column is the number of the representation in the block.  The next two
-columns (enclosed in parentheses) give a kgb element x for G, and a
-kgb element y for the dual group vee^G.  That is, x is the number of
-an orbit of K on G/B (as enumerated by the kgb command) and y is the
-number of an orbit of vee^K on vee^G/ vee^B.
+The output is mostly a subset of the output of the "block" command. Each row
+of the output corresponds to a single unitary representation. The first
+column is the number of the representation in the block, followed by the $x$
+and $y$ coordinates for the element as in the block command. The next two
+colums give the length of the parameter, and the number of its Cartan class.
 
 The next r columns (where r is the number of simple roots) describe
 the descent status of the simple roots.  Possible entries for the
 simple root alpha are as follows (with theta the Cartan involution):
 
-i1: alpha is imaginary type I noncompact (meaning that s_alpha is not
+i1: alpha is imaginary type I noncompact (meaning that $s_\alpha$ is not
     in the real Weyl group)
-i2: alpha is imaginary type II noncompact (meaning that s_alpha is in
+i2: alpha is imaginary type II noncompact (meaning that $s_\alpha$ is in
     the real Weyl group)
 ic: alpha is imaginary compact
 C+: alpha is complex, and theta(alpha) is positive.
@@ -30,12 +28,10 @@ r1: alpha is a type I real root (meaning that alpha does not take the
 (Non-parity real roots rn cannot appear for an A_q representation.)
 
 The next r columns give the descent status of the simple roots in the
-Levi subalgebra l of q; roots not in l are indicated with an
-asterisk. Because the representation is trivial on l, the only
+Levi subalgebra $l$ of $q$; roots not in $l$ are indicated with an
+asterisk. Because the representation is trivial on $l$, the only
 possible entries in these columns are r1, r2, C-, and *.
 
-The next to last column gives the length of the representation (the
-difference between its K\G/B orbit dimension and the minimal such dimension).
 The final column describes a sequence of cross actions and Cayley transform
 reaching this representation from an irreducible fundamental series, as is
 described in the help for "blockd". The number of such steps is the length of

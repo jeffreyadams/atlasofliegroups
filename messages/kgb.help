@@ -1,33 +1,32 @@
-The "kgb" command outputs the information describing the K orbits on
-G/B. This is for a particular (weak) real form, and the software will
+The "kgb" command outputs the information describing the $K$ orbits on
+$G/B$. This is for a particular (weak) real form, and the software will
 prompt the user to choose this if it has not been chosen yet.
 
 Each row of the output corresponds to a single orbit, and the first
-column is a numbering of the orbits from 0 to n-1 (with n the number
+column is a numbering of the orbits from 0 to $n-1$ (with $n$ the number
 of orbits).
 
-The next r columns (where r is the number of simple roots) are the
-cross action of the simple roots. An entry i in column j of row k
-means that the cross action by the j-th simple root takes orbit #k to
-orbit #i.
+Next there are two columns giving the length and the Cartan class to which
+this orbit belongs (the length of orbit $O$, is $\dim(O)-\dim(O_min)$ where
+$O_min$ is a minimal orbit).
 
-The next r columns give the action of Cayley transforms by simple
-roots which are imaginary and non-compact.
+Follows a sequence of $r$ letters in brackets (where $r$ is the number of
+simple roots) giving the types of the simple roots: 'c' (compact imaginary),
+'n' (non-compact imaginary), 'C' (complex) or 'r' (real).
 
-The entry in brackets gives the type of each simple root: c (compact
-imaginary), n (non-compact imaginary), C (complex) or r (real).
+The next $r$ columns give the cross actions of the simple roots on this orbit,
+by specifying the number of the orbit reached from the current one by the
+cross action in qustion.
 
-Next there is a column giving the Cartan class to which this orbit belongs
+The next $r$ columns give the action of Cayley transforms by simple roots that
+are imaginary and non-compact (in other cases '*' is printed).
 
-The second to last column gives the length of this orbit O, which is
-dim(O)-dim(O_min) where O_min is a minimal orbit.
-
-There is a map p:X->W^\Gamma, the twised Weyl group. We have fixed a
-"fundamental" element delta in W^\gamma-W, this acts on W. (If G contains a
-compact Cartan subgroup this action is trivial). Then tau=p(x)=w*delta. We say
-tau or w is a "twisted involution": w*delta(w)=1. The last column gives the
-element w as a product of simple reflections. The absence of an entry in the
-last column therefoe means w=e and so p(x)=delta.
+There is a map $p:X->W^\Gamma$, the later being twised Weyl group. We have
+fixed a "fundamental" element delta in $W^\gamma-W$, this acts on $W$. (If $G$
+contains a compact Cartan subgroup this action is trivial). Then
+$\tau=p(x)=w*\delta$. We say $w$ is a "twisted involution": $w*delta(w)=1$.
+The last column gives the element $w$ as a product of simple reflections. The
+absence of an entry in the last column therefoe means $w=e$, so $p(x)=\delta$.
 
 For example:
 empty: type
@@ -41,23 +40,24 @@ enter your choice: 2
 real: kgb
 kgbsize: 11
 Name an output file (hit return for stdout):
- 0:     1   2     4   6  [nn]  0  0
- 1:     0   1     4   *  [nc]  0  0
- 2:     3   0     5   6  [nn]  0  0
- 3:     2   3     5   *  [nc]  0  0
- 4:     4   8     *   *  [rC]  2  1  1
- 5:     5   9     *   *  [rC]  2  1  1
- 6:     7   6     *   *  [Cr]  1  1  2
- 7:     6   7     *  10  [Cn]  1  2  1,2,1
- 8:     9   4    10   *  [nC]  2  2  2,1,2
- 9:     8   5    10   *  [nC]  2  2  2,1,2
-10:    10  10     *   *  [rr]  3  3  2,1,2,1
+ 0:  0  0  [n,n]    1   2     4   6
+ 1:  0  0  [n,c]    0   1     4   *
+ 2:  0  0  [n,n]    3   0     5   6
+ 3:  0  0  [n,c]    2   3     5   *
+ 4:  1  2  [r,C]    4   8     *   *  1
+ 5:  1  2  [r,C]    5   9     *   *  1
+ 6:  1  1  [C,r]    7   6     *   *  2
+ 7:  2  1  [C,n]    6   7     *  10  1,2,1
+ 8:  2  2  [n,C]    9   4    10   *  2,1,2
+ 9:  2  2  [n,C]    8   5    10   *  2,1,2
+10:  3  3  [r,r]   10  10     *   *  2,1,2,1
 
-These are the 11 orbits of K on G/B for G=Sp(4,R). In this case the
-outer automorphism is trivial, twisted involutions correspond to
-elements of W of order 2, and tau=1. There are 5 involutions in W: the
-identity; 1; 2; 121; 212; and the long element 2121. There are 4
-minimal orbits, which are projective lines CP^1 in this case. The
-cross action permutes these 4 lines among themselves, while Cayley
-transforms take them to orbits 4-6. There is a single orbit mapping to
-the long element of W.
+These are the 11 orbits of $K$ on $G/B$ for $G=Sp(4,\R)$. In this case the
+outer automorphism is trivial, twisted involutions correspond to involutions
+in $W$, and $\tau=1$. There are 6 involutions in $W$: the identity; 1; 2;
+1,2,1; 2,1,2; and the long element 2,1,2,1. Of these 2 and 1,2,1 are (twisted)
+conjugate (Cartan class #1) as are 1 and 2,1,2 (Cartan class #2); the other
+two form a conjugacy class by themselves (Cartan classes #0 and #3) There are
+4 minimal orbits, which are projective lines $\CP^1$ in this case. The cross
+action permutes these 4 lines among themselves, while Cayley transforms take
+them to orbits 4-6. The final orbit alone maps to the long element of $W$.
