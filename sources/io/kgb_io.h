@@ -1,8 +1,8 @@
  /*
   This is kgb_io.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -13,6 +13,7 @@
 #include <iosfwd>
 
 #include "kgb_fwd.h"
+#include "bruhat_fwd.h"
 
 namespace atlas {
 
@@ -21,7 +22,7 @@ namespace atlas {
 namespace kgb_io {
 
   std::ostream& printKGB(std::ostream&, const kgb::KGB&);
-  std::ostream& printKGBOrder(std::ostream&, const kgb::KGB&);
+  std::ostream& printBruhatOrder(std::ostream&, const bruhat::BruhatOrder&);
 
 }
 

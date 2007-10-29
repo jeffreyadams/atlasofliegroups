@@ -31,13 +31,10 @@ namespace atlas {
 
         Chapter I -- Functions declared in kgb_io.h
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace kgb_io {
 
-std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
 
 /*
   Synopsis: outputs the data from kgb to strm.
@@ -51,7 +48,7 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
   not too large (up to rank 4 or so). We haven't tried to go over to more
   sophisticated formatting for larger groups.
 */
-
+std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
 {
   using namespace kgb;
   using namespace prettyprint;
@@ -94,7 +91,7 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
     strm << std::setw(pad) << "";
 
     // print root datum involution
-    printWeylElt(strm,kgb.involution(j),kgb.weylGroup());
+    prettyprint::printWeylElt(strm,kgb.involution(j),kgb.weylGroup());
 
     strm << std::endl;
   }
@@ -102,35 +99,25 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
   return strm;
 }
 
-  std::ostream& printKGBOrder(std::ostream& strm, const kgb::KGB& kgb)
 
-/*
-  Synopsis: outputs the Hasse diagram of the closure ordering on kgb to strm.
-
-*/
-
+// Print the Hasse diagram of the Bruhat ordering |bruhat| to |strm|.
+std::ostream&
+printBruhatOrder(std::ostream& strm, const bruhat::BruhatOrder& bruhat)
 {
-  using namespace basic_io;
-  using namespace bruhat;
-  using namespace kgb;
-  using namespace set;
-  // using namespace poset;
-
-  const bruhat::BruhatOrder& bruhat = kgb.bruhatOrder();
-  size_t kgbsize = kgb.size();
+  size_t size = bruhat.size();
   strm << "0:" << std::endl;
-  for (size_t j = 1; j < kgbsize; ++j) {
-    const SetEltList& e = bruhat.hasse(j);
+  for (size_t j = 1; j < size; ++j) {
+    const set::SetEltList& e = bruhat.hasse(j);
     strm << j << ": ";
-    SetEltList::const_iterator first = e.begin();
-    SetEltList::const_iterator last = e.end();
-    seqPrint(strm,first,last) << std::endl;
+    basic_io::seqPrint(strm,e.begin(),e.end()) << std::endl;
   }
-  strm << "Number of comparable pairs = " << bruhat.n_comparable() << std::endl;
+
+  unsigned long nc=bruhat.n_comparable();
+  strm << "Number of comparable pairs = " << nc << std::endl;
 
   return strm;
-} //printKGBOrder 
+} //printBruhatOrder
 
-} //namespace kgb_io {
+} // namespace kgb_io
 
-} //namespace atlas {
+} // namespace atlas
