@@ -20,9 +20,9 @@ namespace atlas {
 
 namespace kl_io {
 
-  std::ostream& printAllKL(std::ostream&, const kl::KLContext&);
+  std::ostream& printAllKL(std::ostream&, kl::KLContext&);
 
-  std::ostream& printPrimitiveKL(std::ostream&, const kl::KLContext&);
+  std::ostream& printPrimitiveKL(std::ostream&, kl::KLContext&);
 
   std::ostream& printKLList(std::ostream&, const kl::KLContext&);
 

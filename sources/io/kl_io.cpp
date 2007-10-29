@@ -15,6 +15,9 @@
 #include "ioutils.h"
 #include "kl.h"
 #include "klsupport.h"
+#include "blocks.h"
+#include "bruhat.h"
+#include "poset.h"
 #include "prettyprint.h"
 
 /*****************************************************************************
@@ -43,29 +46,30 @@ namespace kl_io {
 
 
 // Print the non-zero Kazhdan-Lusztig-Vogan polynomials from klc to strm.
-std::ostream& printAllKL(std::ostream& strm, const kl::KLContext& klc)
+std::ostream& printAllKL(std::ostream& strm, kl::KLContext& klc)
 {
   size_t count = 0;
-  size_t zeroCount = 0;
 
   int width = ioutils::digits(klc.size()-1,10ul);
   int tab = 2;
 
-  for (size_t y = 0; y < klc.size(); ++y) {
+  for (size_t y = 0; y < klc.size(); ++y)
+  {
 
     strm << std::setw(width) << y << ": ";
     bool first = true;
 
     for (size_t x = 0; x <= y; ++x) {
       const kl::KLPol& pol = klc.klPol(x,y);
-      if (pol.isZero()) {
-	++zeroCount;
+      if (pol.isZero())
 	continue;
-      }
-      if (first) {
+      if (first)
+      {
 	strm << std::setw(width) << x << ": ";
 	first = false;
-      } else {
+      }
+      else
+      {
 	strm << std::setw(width+tab)<< ""
 	     << std::setw(width) << x << ": ";
       }
@@ -77,22 +81,31 @@ std::ostream& printAllKL(std::ostream& strm, const kl::KLContext& klc)
     strm << std::endl;
   }
 
-  strm << count + zeroCount << " pairs" << std::endl;
-  strm << zeroCount << " zero polynomials; "
-       << count << " nonzero polynomials" << std::endl;
+  strm << count << " nonzero polynomial" << (count==1 ? "" : "s")
+       << std::flush;
+
+  bruhat::BruhatOrder& Bruhat=klc.block().bruhatOrder(); // non-const!
+  size_t comp = Bruhat.n_comparable();
+  strm << ", and " << comp-count << " zero polynomial"
+       << (comp-count==1 ? "" : "s")
+       << ",\n at " << comp << " Bruhat-comparable pairs." << std::endl;
 
   return strm;
 }
 
 
 // Print the primitive kl polynomials from klc to strm.
-std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
+std::ostream& printPrimitiveKL(std::ostream& strm, kl::KLContext& klc)
 {
   size_t count = 0;
-  //  size_t zeroCount = 0;
+  size_t zero_count = 0;
+  size_t incomp_count = 0;
 
   int width = ioutils::digits(klc.size()-1,10ul);
   int tab = 2;
+
+  bruhat::BruhatOrder& b=klc.block().bruhatOrder(); // non-const!
+  const poset::Poset& Bruhat=b.poset(); // full poset is generated here
 
   for (size_t y = 0; y < klc.size(); ++y) {
 
@@ -101,26 +114,39 @@ std::ostream& printPrimitiveKL(std::ostream& strm, const kl::KLContext& klc)
 
     strm << std::setw(width) << y << ": ";
     bool first = true;
-    for (size_t j  = 0; j < e.size(); ++j,++count)
-    { // now x=e[j] is primitive for y
-      if (first)
-      {
-	strm << std::setw(width) << e[j] << ": ";
-	first = false;
+    for (size_t j  = 0; j < e.size(); ++j)
+      if (Bruhat.lesseq(e[j],y))
+      { // now |x=e[j]| is primitive for |y| and Bruhat-comparable
+	++count;
+	if ((klc.klPol(e[j],y).isZero()))
+	  ++zero_count;
+	if (first)
+	{
+	  strm << std::setw(width) << e[j] << ": ";
+	  first = false;
+	}
+	else
+	{
+	  strm << std::setw(width+tab)<< ""
+	       << std::setw(width) << e[j] << ": ";
+	}
+
+	prettyprint::printPol(strm,klc.klPol(e[j],y),KLIndeterminate);
+	strm << std::endl;
       }
       else
       {
-	strm << std::setw(width+tab)<< ""
-	     << std::setw(width) << e[j] << ": ";
+	assert(klc.klPol(e[j],y).isZero());
+	++incomp_count;
       }
-
-      prettyprint::printPol(strm,klc.klPol(e[j],y),KLIndeterminate);
-      strm << std::endl;
-    }
     strm << std::endl;
   }
 
-  strm << count  << " primitive " << (count==1 ? "pair" : "pairs")
+  strm << count  << " Bruhat-comparable primitive "
+       << (count==1 ? "pair" : "pairs")
+       << ", of which " << zero_count << " ha" << (zero_count==1 ? "s" : "ve")
+       << " null polynomial,\n and " << incomp_count
+       << " incomparable primitive " << (incomp_count==1 ? "pair" : "pairs")
        << std::endl;
 
   return strm;
