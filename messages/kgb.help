@@ -16,17 +16,17 @@ simple roots) giving the types of the simple roots: 'c' (compact imaginary),
 
 The next $r$ columns give the cross actions of the simple roots on this orbit,
 by specifying the number of the orbit reached from the current one by the
-cross action in qustion.
+cross action in question.
 
 The next $r$ columns give the action of Cayley transforms by simple roots that
 are imaginary and non-compact (in other cases '*' is printed).
 
-There is a map $p:X->W^\Gamma$, the later being twised Weyl group. We have
+There is a map $p:X->W^\Gamma$, the later being twisted Weyl group. We have
 fixed a "fundamental" element delta in $W^\gamma-W$, this acts on $W$. (If $G$
 contains a compact Cartan subgroup this action is trivial). Then
 $\tau=p(x)=w*\delta$. We say $w$ is a "twisted involution": $w*delta(w)=1$.
 The last column gives the element $w$ as a product of simple reflections. The
-absence of an entry in the last column therefoe means $w=e$, so $p(x)=\delta$.
+absence of an entry in the last column therefore means $w=e$, so $p(x)=\delta$.
 
 For example:
 empty: type

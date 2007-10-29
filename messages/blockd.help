@@ -8,13 +8,13 @@ A twisted involution $w$ has a length $l(w)$ in the Weyl group, but this is
 in general more than the length of orbits associated to this twisted
 involution. The reason is that $\tau=w*\delta$ can be obtained from the the
 distinguished root datum involution delta by two types of operation: left (or
-right) multiplication by a simple relection commuting with the current
-$\tau$, and for which $l(sw)=l(w)+1$, or conjugation by a simple relection
+right) multiplication by a simple reflection commuting with the current
+$\tau$, and for which $l(sw)=l(w)+1$, or conjugation by a simple reflection
 not commuting with the current $\tau$, and for which again $l(sw)=l(w)+1$;
 the former corresponds to a Cayley transform, and the latter to a
 length-increasing cross action. In the latter case the twisted commutation of
 $w$ makes the Weyl group length go up by 2, but the length of associated
-$K$ orbits on $G/B$ only inreases by 1.
+$K$ orbits on $G/B$ only increases by 1.
 
 Thus instead of giving a reduced expression for $w$, we could specify a
 sequence of operations that is either left-multiplication or twisted

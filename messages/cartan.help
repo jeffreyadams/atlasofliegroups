@@ -35,18 +35,18 @@ $W^C$ is the diagonal subgroup of the Weyl group of the complex root system
 (not a reflection subgroup of $W$). Here "x" denotes direct product, and "." a
 semidirect product.
 
-The last part outputs the orbit partition that leads to the classification
-of real forms. This computation really takes place in the adjoint group:
-it computes the orbits of $W_i$ acting on the component group of the torus
-dual to the fundamental torus in the adjoint group (see for instance the
+The last part outputs the orbit partition that leads to the classification of
+real forms. This computation really takes place in the adjoint group: it
+computes the orbits of $W_i$ acting on the component group of the torus dual
+to the fundamental torus in the adjoint group (see for instance the
 "Combinatorics for the representation theory of real reductive Lie groups"
-notes on the Atlas website, or the forthcoming paper by Jeff Adams and
-Fokko du Cloux.) The numbering of real forms is consistent through the
-various Cartan's, so that one can see which real form involves which Cartan,
+notes on the Atlas website, or the forthcoming paper by Jeff Adams and Fokko
+du Cloux.) The numbering of real forms is consistent through the various
+Cartan subgroups, so that one can see which real form involves which Cartan,
 and is also the numbering used by the "showrealforms" command, and everywhere
 else in the program where real forms occur.
 
-Here is a sample output for one of the Cartan classes of the ral form sp(12,R)
+Here is a sample output for one of the Cartan classes of the real form sp(12,R)
 
 Cartan #5:
 split: 0; compact: 2; complex: 2

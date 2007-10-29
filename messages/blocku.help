@@ -7,7 +7,7 @@ The output is mostly a subset of the output of the "block" command. Each row
 of the output corresponds to a single unitary representation. The first
 column is the number of the representation in the block, followed by the $x$
 and $y$ coordinates for the element as in the block command. The next two
-colums give the length of the parameter, and the number of its Cartan class.
+columns give the length of the parameter, and the number of its Cartan class.
 
 The next r columns (where r is the number of simple roots) describe
 the descent status of the simple roots.  Possible entries for the
