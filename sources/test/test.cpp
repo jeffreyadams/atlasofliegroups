@@ -295,7 +295,6 @@ template<> void addTestHelp<mainmode::MainmodeTag>
 
   mode.add("cmatrix",cmatrix_h);
   mode.add("coroots_rootbasis",nohelp_h);
-  mode.add("gradings",nohelp_h);
   mode.add("poscoroots_rootbasis",nohelp_h);
   mode.add("posroots_rootbasis",nohelp_h);
   mode.add("roots_rootbasis",nohelp_h);
@@ -305,7 +304,6 @@ template<> void addTestHelp<mainmode::MainmodeTag>
 
   insertTag(t,"cmatrix",cmatrix_tag);
   insertTag(t,"coroots_rootbasis",test_tag);
-  insertTag(t,"gradings",test_tag);
   insertTag(t,"poscoroots_rootbasis",test_tag);
   insertTag(t,"posroots_rootbasis",test_tag);
   insertTag(t,"roots_rootbasis",test_tag);
@@ -620,7 +618,6 @@ void kgborder_f()
   ioutils::OutputFile file;
 
   kgb::KGB kgb(G);
-  kgb.fillBruhat();
   kgb_io::printBruhatOrder(file,kgb.bruhatOrder());
 }
 
@@ -984,7 +981,6 @@ void blockorder_f()
 
   std::cout << "block size: " << block.size() << std::endl;
   ioutils::OutputFile file;
-  block.fillBruhat();
   kgb_io::printBruhatOrder(file,block.bruhatOrder());
 }
 
