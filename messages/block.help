@@ -26,8 +26,8 @@ form (or more simply by the 'dualkgb' command). The pair $(x,y)$ is a
 parameter for a representation of $G$ (so the negative transpose of the
 involution of $H$ associated to $i$ is the one of $H^\vee$ associated to $j$.)
 
-The next two colums give the length of the parameter $(x,y)$ and the number of
-the Cartan class determined by the abovementioned involution of $H$ (the
+The next two columns give the length of the parameter $(x,y)$ and the number of
+the Cartan class determined by the above-mentioned involution of $H$ (the
 numbering of the latter matches the one produced by the 'cartan' command).
 
 Then comes, in brackets, a sequence giving the types of all simple root:
@@ -44,7 +44,7 @@ C-: complex, cross action decreases length
 Type 1 real and imaginary roots correspond to a subgroup $SL(2,\R)$.
 The imaginary Cayley transforms are single valued, and the inverse real
 Cayley transforms are double valued. Type 2 real and imaginary roots
-correpsond to a subgroup $PGL(2,\R)$, in which the situation is reversed.
+correspond to a subgroup $PGL(2,\R)$, in which the situation is reversed.
 
 A slightly different formulation of these explanations may be found in
 the help file for the blocku command.
@@ -58,7 +58,7 @@ The next $r$ columns give Cayley transform(s) or inverse Cayley transform(s)
 of the current parameter by the respective simple root, if any are defined. In
 case of a non-compact imaginary root there are one or two Cayley transforms,
 and in the case of real type 1 or 2 root there are two or one inverse Cayley
-transforms, and in ither cases none are defined. The format used is $(k,k')$
+transforms, and in other cases none are defined. The format used is $(k,k')$
 where $k$ and $k'$ are either the number of a parameter reached from the
 current parameter by the Cayley transform or inverse Cayley transform, or '*'
 if at that position no such transform is defined.
