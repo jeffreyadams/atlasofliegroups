@@ -1,8 +1,8 @@
 /*
   This is kl_io.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -20,11 +20,11 @@ namespace atlas {
 
 namespace kl_io {
 
-  std::ostream& printAllKL(std::ostream&, kl::KLContext&);
+  std::ostream& printAllKL(std::ostream&, const kl::KLContext&);
 
   std::ostream& printPrimitiveKL(std::ostream&, const kl::KLContext&);
 
-  std::ostream& printKLList(std::ostream&, kl::KLContext&);
+  std::ostream& printKLList(std::ostream&, const kl::KLContext&);
 
   std::ostream& printMu(std::ostream&, const kl::KLContext&);
 
