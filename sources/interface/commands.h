@@ -1,8 +1,8 @@
 /*
   This is commands.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -42,8 +42,7 @@ namespace commands {
   void exitMode();
   void insertTag(TagDict&, const char*, const char*);
   void printTags(std::ostream&, const TagDict&);
-  void pushCommand(const char*);
-  void relax_f();
+  inline void relax_f() {}
   void run(const CommandMode&);
 
 }
@@ -78,17 +77,13 @@ class CommandMode {
 
   typedef std::map<const char*,Command,StrCmp> CommandDict;
 
-  static std::vector<const CommandMode*> d_empty;
+  std::vector<const CommandMode*> d_nextList; // direct successor modes
 
   CommandDict d_map;
   const char* d_prompt;
   void (*d_entry)();
   void (*d_exit)();
   void (*d_error)(const char*);
-
- protected:
-
-  const CommandMode* d_prev;
 
  public:
 
@@ -98,10 +93,10 @@ class CommandMode {
 // Constructors and destructors
   CommandMode(const char*,
 	      void (*entry)() = &relax_f,
-	      void (*exit)() = &relax_f, 
+	      void (*exit)() = &relax_f,
 	      void (*error)(const char*) = &defaultError);
 
-  virtual ~CommandMode();
+  virtual ~CommandMode() {}
 
 // accessors
   const_iterator begin() const {
@@ -111,6 +106,8 @@ class CommandMode {
   const_iterator end() const {
     return d_map.end();
   }
+
+  bool empty() const { return d_map.empty(); }
 
   const_iterator find(const char* name) const {
     return d_map.find(name);
@@ -139,16 +136,13 @@ class CommandMode {
   const_iterator findName(const char* name) const;
 
   virtual const std::vector<const CommandMode*>& next() const {
-    // dummy value for modes without descendants
-    return d_empty;
+    return d_nextList;
   }
+
+  size_t n_desc() const { return d_nextList.size(); }
 
   const CommandMode& nextMode(size_t j) const {
-    return next()[j][0];
-  }
-
-  const CommandMode& prev() const {
-    return *d_prev;
+    return *(d_nextList[j]);
   }
 
 // manipulators
@@ -158,13 +152,16 @@ class CommandMode {
 
   void add(const char* const, const Command&);
 
+  void add_descendant(CommandMode& c) // make |c| a descendant of |*this|
+  { d_nextList.push_back(&c); }
+
   iterator find(const char* name) {
     return d_map.find(name);
   }
 
   void setAction(const char*, void (*)());
 
-};
+}; // class CommandMode
 
 }
 

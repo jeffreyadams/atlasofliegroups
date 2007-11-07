@@ -29,6 +29,7 @@ namespace {
 
   // help commands
   void type_h();
+  void cmatrix_h();
   void simpleroots_h();
   void simplecoroots_h();
   void roots_h();
@@ -42,6 +43,7 @@ namespace {
 
   // command tags for the help facility
   const char* type_tag = "resets the group type";
+  const char* cmatrix_tag = "prints the Cartan matrix";
   const char* simpleroots_tag =
     "outputs the simple roots in the lattice basis";
   const char* simplecoroots_tag =
@@ -56,6 +58,7 @@ namespace {
   const char* showrealforms_tag =
     "outputs the weak real forms for this complex group";
   const char* blocksizes_tag = "outputs the matrix of blocksizes";
+  const char* dual_kgb_tag = "prints the KGB data for a dual real form";
   const char* gradings_tag = "shows the gradings of the imaginary root system";
 }
 
@@ -73,6 +76,7 @@ void addMainHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   using namespace commands;
 
   mode.add("type",type_h);
+  mode.add("cmatrix",cmatrix_h);
   mode.add("simpleroots",simpleroots_h);
   mode.add("simplecoroots",simplecoroots_h);
   mode.add("roots",roots_h);
@@ -85,6 +89,7 @@ void addMainHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("gradings",gradings_h);
 
   insertTag(tagDict,"type",type_tag);
+  insertTag(tagDict,"cmatrix",cmatrix_tag);
   insertTag(tagDict,"simpleroots",simpleroots_tag);
   insertTag(tagDict,"simplecoroots",simplecoroots_tag);
   insertTag(tagDict,"roots",roots_tag);
@@ -94,6 +99,7 @@ void addMainHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   insertTag(tagDict,"showdualforms",showdualforms_tag);
   insertTag(tagDict,"showrealforms",showrealforms_tag);
   insertTag(tagDict,"blocksizes",blocksizes_tag);
+  insertTag(tagDict,"dualkgb",dual_kgb_tag);
   insertTag(tagDict,"gradings",gradings_tag);
 
   return;
@@ -118,64 +124,59 @@ void type_h()
   return;
 }
 
+void cmatrix_h()
+{
+  io::printFile(std::cerr,"cmatrix.help",io::MESSAGE_DIR);
+}
+
 void simpleroots_h()
 {
   io::printFile(std::cerr,"simpleroots.help",io::MESSAGE_DIR);
-  return;
 }
 
 void simplecoroots_h()
 {
   io::printFile(std::cerr,"simplecoroots.help",io::MESSAGE_DIR);
-  return;
 }
 
 void roots_h()
 {
   io::printFile(std::cerr,"roots.help",io::MESSAGE_DIR);
-  return;
 }
 
 void coroots_h()
 {
   io::printFile(std::cerr,"coroots.help",io::MESSAGE_DIR);
-  return;
 }
 
 void posroots_h()
 {
   io::printFile(std::cerr,"posroots.help",io::MESSAGE_DIR);
-  return;
 }
 
 void poscoroots_h()
 {
   io::printFile(std::cerr,"poscoroots.help",io::MESSAGE_DIR);
-  return;
 }
 
 void showdualforms_h()
 {
   io::printFile(std::cerr,"showdualforms.help",io::MESSAGE_DIR);
-  return;
 }
 
 void showrealforms_h()
 {
   io::printFile(std::cerr,"showrealforms.help",io::MESSAGE_DIR);
-  return;
 }
 
 void blocksizes_h()
 {
   io::printFile(std::cerr,"blocksizes.help",io::MESSAGE_DIR);
-  return;
 }
 
 void gradings_h()
 {
   io::printFile(std::cerr,"gradings.help",io::MESSAGE_DIR);
-  return;
 }
 
 }

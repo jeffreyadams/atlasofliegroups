@@ -150,7 +150,7 @@ namespace interactive {
   Synopsis: get a file name from terminal, abandon with InputError on '?'
 */
 
-std::string getFileName(std::string prompt)
+std::string getFileName(const std::string& prompt)
   throw(error::InputError)
 {
   input::InputBuffer buf;
@@ -163,6 +163,21 @@ std::string getFileName(std::string prompt)
   std::string name; buf >> name; return name;
 }
 
+bool open_binary_file(std::ofstream& block_out,const std::string& prompt)
+{
+  while (true)
+  {
+    std::string file_name= getFileName(prompt);
+    if (file_name=="")
+      return false; // if no name given, don't open a file
+    block_out.open(file_name.c_str(),
+		   std::ios_base::out
+		   | std::ios_base::trunc
+		   | std::ios_base::binary);
+    if (block_out.is_open()) return true;
+    std::cerr << "Failed to open file for writing, try again.\n";
+  }
+}
 
 void bitMapPrompt(std::string& prompt, const char* mess,
 		  const bitmap::BitMap& vals)

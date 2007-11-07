@@ -734,8 +734,6 @@ void KLContext::fill()
 
 }
 
-/* accessors of KLContext used for output */
-
 bitmap::BitMap KLContext::primMap (BlockElt y) const
 {
   bitmap::BitMap b(size()); // block-size bitmap
@@ -761,88 +759,14 @@ bitmap::BitMap KLContext::primMap (BlockElt y) const
   size_t j=0; // index into row;
   for (bitmap::BitMap::iterator i=b.begin(); i(); ++position,++i)
     if (*i==row[j]) // look if i points to current element of row
-      {
-	result.insert(position); ++j; // record position and advance in row
-	if (j==row.size()) break; // stop when row is exhausted
-      }
+    {
+      result.insert(position); ++j; // record position and advance in row
+      if (j==row.size()) break; // stop when row is exhausted
+    }
 
   return result;
 }
 
-std::streamoff KLContext::writeKLRow (BlockElt y, std::ostream& out) const
-{
-  bitmap::BitMap prims=primMap(y);
-  assert(d_kl[y].size()==prims.size()); // check the number of KL polynomials
-
-  // write row number for consistency check on reading
-  basic_io::put_int(y,out);
-
-  std::streamoff start_row=out.tellp();
-
-  // write number of primitive elements (indep. of modulus) for convenience
-  basic_io::put_int(prims.capacity(),out);
-
-  // now write the bitmap as a sequence of unsigned int values
-  for (size_t i=0; i<prims.capacity(); i+=32)
-    basic_io::put_int(prims.range(i,32),out);
-
- // the list of indices of nonzero KL polynomials in row y
-  const KLRow& row=d_kl[y];
-
-  // finally, write the indices of the KL polynomials themselves
-  for (size_t i=0; i<row.size(); ++i)
-    basic_io::put_int(row[i],out);
-
-  // and signal if there was unsufficient space to write the row
-  if (not out.good()) throw error::OutputError();
-
-  return start_row;
-}
-
-
-/* This routine prefers a simple format over an extremely space-optimised
-   representation on disk. After writing the number |N| of polynomials in 4
-   bytes, we write a sequence of |N+1| indices of 5 bytes each, giving for
-   each polynomial |i| the position of its first (degree 0) coefficient in the
-   global list and as final 5-byte value (number N) the total number of
-   coefficients. After that, starting from position 9+5*N, the list of all
-   coefficients, starting for each polynomial with the constant coefficient
-   and up to the leading coefficient. The degree of polynomial i is implicit
-   in the value of indices i and i+1: their difference, divided by the
-   coefficient size, is the number of coefficients, the degree is one less.
-*/
-void KLContext::writeKLStore (std::ostream& out) const
-{
-  const size_t coef_size=4; // dictated (for now) by |basic_io::put_int|
-
-  basic_io::put_int(d_store.size(),out); // write number of KL poynomials
-
-  // write sequence of 5-byte indices, computed on the fly
-  size_t offset=0; // position of first coefficient written
-  for (size_t i=0; i<d_store.size(); ++i)
-    {
-      KLPolRef p=d_store[i]; // get reference to polynomial
-
-      // output 5-byte value of offset
-      basic_io::put_int(offset&0xFFFFFFFF,out);
-      out.put(char(offset>>16>>16)); // >>32 would fail on 32 bits machines
-
-      if (not p.isZero()) // superfluous since polynomials::MinusOne+1==0
-	// add number of coefficient bytes to be written
-	offset += (p.degree()+1)*coef_size;
-    }
-  // write final 5-byte value (total size of coefficiant list)
-  basic_io::put_int(offset&0xFFFFFFFF,out); out.put(char(offset>>16>>16));
-
-  // now write out coefficients
-  for (size_t i=0; i<d_store.size(); ++i)
-    {
-      KLPolRef p=d_store[i]; // get reference to polynomial
-      if (not p.isZero())
-	for (size_t j=0; j<=p.degree(); ++j)
-	  basic_io::put_int(p[j],out);
-    }
-}
 
 /* methods of KLPolEntry */
 

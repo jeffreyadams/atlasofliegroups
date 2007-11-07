@@ -12,6 +12,7 @@
 #include <iostream>
 
 #include "io.h"
+#include "helpmode.h"
 #include "realmode.h"
 #include "special.h"
 #include "test.h"
@@ -27,18 +28,26 @@ namespace atlas {
 namespace {
 
   // help commands
+  void components_h();
   void cartan_h();
+  void corder_h();
   void gradings_h();
   void realform_h();
   void realweyl_h();
   void strongreal_h();
+  void kgb_h();
+  void kgborder_h();
 
   // command tags for the help facility
+  const char* components_tag = "describes component group of the real group";
   const char* cartan_tag = "prints the conjugacy classes of Cartan subgroups";
-  const char* gradings_tag ="print gradings of imaginary roots for real forms";
+  const char* corder_tag = "shows Hasse diagram of ordering of Cartan classes";
+  const char* gradings_tag="prints gradings of imaginary roots for real forms";
   const char* realform_tag = "sets the real form for the group";
   const char* realweyl_tag = "outputs the structure of the real Weyl group";
   const char* strongreal_tag = "outputs information about strong real forms";
+  const char* kgb_tag = "prints the orbits of K on G/B";
+  const char* kgborder_tag = "prints the Bruhat ordering on K\\G/B";
 
 }
 
@@ -53,21 +62,27 @@ namespace realhelp {
 void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
 
 {
-  using namespace commands;
+  using commands::insertTag;
 
+  mode.add("components",helpmode::nohelp_h);
   mode.add("cartan",cartan_h);
+  mode.add("corder",helpmode::nohelp_h);
   mode.add("gradings",gradings_h);
   mode.add("realform",realform_h);
   mode.add("realweyl",realweyl_h);
   mode.add("strongreal",strongreal_h);
+  mode.add("kgb",kgb_h);
+  mode.add("kgborder",kgborder_h);
 
+  insertTag(tagDict,"components",components_tag);
   insertTag(tagDict,"cartan",cartan_tag);
+  insertTag(tagDict,"corder",corder_tag);
   insertTag(tagDict,"gradings",gradings_tag);
   insertTag(tagDict,"realform",realform_tag);
   insertTag(tagDict,"realweyl",realweyl_tag);
   insertTag(tagDict,"strongreal",strongreal_tag);
-
-  return;
+  insertTag(tagDict,"kgb",kgb_tag);
+  insertTag(tagDict,"kgb",kgborder_tag);
 }
 
 }
@@ -99,16 +114,24 @@ void realform_h()
 }
 
 void realweyl_h()
-
 {
   io::printFile(std::cerr,"realweyl.help",io::MESSAGE_DIR);
 }
 
 
 void strongreal_h()
-
 {
   io::printFile(std::cerr,"strongreal.help",io::MESSAGE_DIR);
+}
+
+void kgb_h()
+{
+  io::printFile(std::cerr,"kgb.help",io::MESSAGE_DIR);
+}
+
+void kgborder_h()
+{
+  io::printFile(std::cerr,"kgborder.help",io::MESSAGE_DIR);
 }
 
 } // namespace

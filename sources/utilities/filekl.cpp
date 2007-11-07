@@ -8,6 +8,9 @@
 #include "basic_io.h"
 #include "bits.h"
 
+#include "blocks.h"
+#include "kl.h"
+
 namespace atlas {
   namespace filekl {
 
@@ -27,92 +30,65 @@ const std::ios_base::openmode binary_in_out=
 			  | std::ios_base::out
 			  | std::ios_base::binary;
 
+// Here is how a block file is writtten
 
-    // Methods of the |polynomial_info| class
-
-polynomial_info::polynomial_info (std::ifstream& coefficient_file)
-: file(coefficient_file), n_pols(read_bytes<4>(file))
-, coef_size(), index_begin(file.tellg()), coefficients_begin()
-{ file.seekg(10,std::ios_base::cur); // skip initial 2 indices
-  coef_size=read_bytes<5>(file); // size of the |One|
-  file.seekg(index_begin+5*n_pols,std::ios_base::beg);
-  n_coef=read_bytes<5>(file)/coef_size;
-  coefficients_begin=file.tellg();
-}
-
-size_t polynomial_info::degree(KLIndex i) const
-{ if (i<2) return i-1; // quit exit for Zero and One
-  file.seekg(index_begin+5*i,std::ios_base::beg);
-  ullong index=read_bytes<5>(file);
-  ullong next_index=read_bytes<5>(file);
-  size_t length=(next_index-index)/coef_size;
-  return length-1;
-}
-
-std::vector<size_t> polynomial_info::coefficients(KLIndex i) const
-{ file.seekg(index_begin+5*i,std::ios_base::beg);
-  ullong index=read_bytes<5>(file);
-  ullong next_index=read_bytes<5>(file);
-  size_t length=(next_index-index)/coef_size;
-
-  std::vector<size_t> result(length);
-  file.seekg(coefficients_begin+index,std::ios_base::beg);
-
-  for (size_t i=0; i<length; ++i)
-    result[i]=basic_io::read_var_bytes(coef_size,file);
-
-  return result;
-}
-
-// the leading coefficient is the last one stored before the next polynomial
-size_t polynomial_info::leading_coeff(KLIndex i) const
-{ if (i<2) return i; // this makes "leading coefficient" of Zero return 0
-  file.seekg(index_begin+5*(i+1),std::ios_base::beg);
-  ullong next_index=read_bytes<5>(file);
-  file.seekg(coefficients_begin+next_index-coef_size,std::ios_base::beg);
-  return basic_io::read_var_bytes(coef_size,file);
-}
-
-ullong polynomial_info::coeff_start(KLIndex i) const
-{ file.seekg(index_begin+5*i,std::ios_base::beg);
-  ullong index=read_bytes<5>(file);
-  return index/coef_size;
-}
-
-    // Methods of the |cached_pol_info| class
-
-cached_pol_info::cached_pol_info(std::ifstream& coefficient_file)
-  : polynomial_info(coefficient_file)
-  , cache(n_polynomials()-2)
+void write_block_file(const blocks::Block& block, std::ostream& out)
 {
-  for (KLIndex i=2; i<n_polynomials(); ++i)
-  {
-#ifdef VERBOSE
-    if ((i&0xFFF)==0) std::cerr << i << '\r';
-#endif
-    size_t d=polynomial_info::degree(i);
-    if ((d&~degree_mask)!=0)
-      throw std::runtime_error("Degree found too large (>=32)");
-    cache[i-2]=d;
+  unsigned char rank=block.rank(); // certainly fits in a byte
+
+  basic_io::put_int(block.size(),out);  // block size in 4 bytes
+  out.put(rank);                        // rank in 1 byte
+
+  { // output length data
+    unsigned char max_length=block.length(block.size()-1);
+    out.put(max_length);
+
+    blocks::BlockElt z=0;
+    // basic_io::put_int(z,out); // obvious: no elements |z| with |length(z)<0|
+    for (size_t l=0; l<max_length; ++l)
+    {
+      while(block.length(z)<=l)
+	++z;
+      basic_io::put_int(z,out); // record: z elements of length<=l
+    }
+    assert(z<block.size());
+
+    // basic_io::put_int(block.size(),out);
+    // also obvious: there are block.size() elements of length<=max_length
   }
-#ifdef VERBOSE
-    std::cerr << n_polynomials()-1 << '\n';
+
+  // write descent sets
+  for (blocks::BlockElt y=0; y<block.size(); ++y)
+  {
+    bitset::RankFlags d;
+    for (size_t s = 0; s < rank; ++s)
+      d.set(s,block.isWeakDescent(s,y));
+    basic_io::put_int(d.to_ulong(),out); // write d as 32-bits value
+  }
+
+  // write table of primitivatisation successors
+  for (blocks::BlockElt x=0; x<block.size(); ++x)
+  {
+#if VERBOSE
+    std::cerr << x << '\r';
 #endif
+    for (size_t s = 0; s < rank; ++s)
+    {
+      descents::DescentStatus::Value v = block.descentValue(s,x);
+      if (descents::DescentStatus::isDescent(v)
+	  or v==descents::DescentStatus::ImaginaryTypeII)
+	basic_io::put_int(noGoodAscent,out);
+      else if (v == descents::DescentStatus::RealNonparity)
+	basic_io::put_int(blocks::UndefBlock,out);
+      else if (v == descents::DescentStatus::ComplexAscent)
+	basic_io::put_int(block.cross(s,x),out);
+      else if (v == descents::DescentStatus::ImaginaryTypeI)
+	basic_io::put_int(block.cayley(s,x).first,out);
+      else assert(false);
+    }
+  }
 }
 
-size_t cached_pol_info::degree (KLIndex i) const
-{
-  return i<2 ? i-1 : cache[i-2]&degree_mask ;
-}
-
-size_t cached_pol_info::leading_coeff (KLIndex i) const
-{
-  if (i<2) return i;
-  if ((cache[i-2]&~degree_mask)!=0) return cache[i-2]/(degree_mask+1);
-  size_t lc=polynomial_info::leading_coeff(i); // look up in file
-  if (lc<=255/(degree_mask+1)) cache[i-2] |= lc*(degree_mask+1);
-  return lc;
-}
 
     // Methods of the |block_info class|
 
@@ -183,11 +159,62 @@ block_info::block_info(std::ifstream& in)
 	a.push_back(read_bytes<4>(in));
     }
 
+  // lists of primitives lazily computed, on demand by |prims_for_descents_of|
   primitives_list.resize(1ul<<rank); // create $2^{rank}$ empty vectors
 }
 
 
+// Here is how a matrix file is writtten
 
+std::streamoff
+write_KL_row(const kl::KLContext& klc, BlockElt y, std::ostream& out)
+{
+  bitmap::BitMap prims=klc.primMap(y);
+  const kl::KLRow& klr=klc.klRow(y);
+
+  assert(klr.size()==prims.size()); // check the number of KL polynomials
+
+  // write row number for consistency check on reading
+  basic_io::put_int(y,out);
+
+  std::streamoff start_row=out.tellp();
+
+  // write number of primitive elements for convenience
+  basic_io::put_int(prims.capacity(),out);
+
+  // now write the bitmap as a sequence of unsigned int values
+  for (size_t i=0; i<prims.capacity(); i+=32)
+    basic_io::put_int(prims.range(i,32),out);
+
+  // finally, write the indices of the KL polynomials themselves
+  for (size_t i=0; i<klr.size(); ++i)
+    basic_io::put_int(klr[i],out);
+
+  // and signal if there was unsufficient space to write the row
+  if (not out.good()) throw error::OutputError();
+
+  return start_row;
+}
+
+void write_matrix_file(const kl::KLContext& klc, std::ostream& out)
+{
+  std::vector<unsigned int> delta(klc.size());
+  std::streamoff offset=0;
+  for (blocks::BlockElt y=0; y<klc.size(); ++y)
+  {
+    std::streamoff new_offset=write_KL_row(klc,y,out);
+    delta[y]=static_cast<unsigned int>((new_offset-offset)/4);
+    offset=new_offset;
+  }
+
+  // now write the values allowing rapid location of the matrix rows
+  for (blocks::BlockElt y=0; y<klc.size(); ++y)
+    basic_io::put_int(delta[y],out);
+
+  // and finally sign file as being in new format by overwriting 4 bytes
+  out.seekp(0,std::ios_base::beg);
+  basic_io::put_int(magic_code,out);
+}
     // Methods of the |matrix_info| class
 
 size_t matrix_info::length (BlockElt y) const
@@ -325,6 +352,139 @@ matrix_info::matrix_info
   } // if (...==magic_code)
 
   block_file.close(); // success, we no longer need the block file
+}
+
+
+// Here is how the polynomial file is written
+
+/* This routine prefers a simple format over an extremely space-optimised
+   representation on disk. After writing the number |N| of polynomials in 4
+   bytes, we write a sequence of |N+1| indices of 5 bytes each, giving for
+   each polynomial |i| the position of its first (degree 0) coefficient in the
+   global list and as final 5-byte value (number N) the total number of
+   coefficients. After that, starting from position 9+5*N, the list of all
+   coefficients, starting for each polynomial with the constant coefficient
+   and up to the leading coefficient. The degree of polynomial i is implicit
+   in the value of indices i and i+1: their difference, divided by the
+   coefficient size, is the number of coefficients, the degree is one less.
+*/
+void write_KL_store(const kl::KLStore& store, std::ostream& out)
+{
+  const size_t coef_size=4; // dictated (for now) by |basic_io::put_int|
+
+  basic_io::put_int(store.size(),out); // write number of KL poynomials
+
+  // write sequence of 5-byte indices, computed on the fly
+  size_t offset=0; // position of first coefficient written
+  for (size_t i=0; i<store.size(); ++i)
+  {
+    kl::KLPolRef p=store[i]; // get reference to polynomial
+
+    // output 5-byte value of offset
+    basic_io::put_int(offset&0xFFFFFFFF,out);
+    out.put(char(offset>>16>>16)); // >>32 would fail on 32 bits machines
+
+    if (not p.isZero()) // superfluous since polynomials::MinusOne+1==0
+      // add number of coefficient bytes to be written
+      offset += (p.degree()+1)*coef_size;
+  }
+  // write final 5-byte value (total size of coefficiant list)
+  basic_io::put_int(offset&0xFFFFFFFF,out); out.put(char(offset>>16>>16));
+
+  // now write out coefficients
+  for (size_t i=0; i<store.size(); ++i)
+  {
+    kl::KLPolRef p=store[i]; // get reference to polynomial
+    if (not p.isZero())
+      for (size_t j=0; j<=p.degree(); ++j)
+	basic_io::put_int(p[j],out);
+  }
+}
+
+    // Methods of the |polynomial_info| class
+
+polynomial_info::polynomial_info (std::ifstream& coefficient_file)
+: file(coefficient_file), n_pols(read_bytes<4>(file))
+, coef_size(), index_begin(file.tellg()), coefficients_begin()
+{ file.seekg(10,std::ios_base::cur); // skip initial 2 indices
+  coef_size=read_bytes<5>(file); // size of the |One|
+  file.seekg(index_begin+5*n_pols,std::ios_base::beg);
+  n_coef=read_bytes<5>(file)/coef_size;
+  coefficients_begin=file.tellg();
+}
+
+size_t polynomial_info::degree(KLIndex i) const
+{ if (i<2) return i-1; // quit exit for Zero and One
+  file.seekg(index_begin+5*i,std::ios_base::beg);
+  ullong index=read_bytes<5>(file);
+  ullong next_index=read_bytes<5>(file);
+  size_t length=(next_index-index)/coef_size;
+  return length-1;
+}
+
+std::vector<size_t> polynomial_info::coefficients(KLIndex i) const
+{ file.seekg(index_begin+5*i,std::ios_base::beg);
+  ullong index=read_bytes<5>(file);
+  ullong next_index=read_bytes<5>(file);
+  size_t length=(next_index-index)/coef_size;
+
+  std::vector<size_t> result(length);
+  file.seekg(coefficients_begin+index,std::ios_base::beg);
+
+  for (size_t i=0; i<length; ++i)
+    result[i]=basic_io::read_var_bytes(coef_size,file);
+
+  return result;
+}
+
+// the leading coefficient is the last one stored before the next polynomial
+size_t polynomial_info::leading_coeff(KLIndex i) const
+{ if (i<2) return i; // this makes "leading coefficient" of Zero return 0
+  file.seekg(index_begin+5*(i+1),std::ios_base::beg);
+  ullong next_index=read_bytes<5>(file);
+  file.seekg(coefficients_begin+next_index-coef_size,std::ios_base::beg);
+  return basic_io::read_var_bytes(coef_size,file);
+}
+
+ullong polynomial_info::coeff_start(KLIndex i) const
+{ file.seekg(index_begin+5*i,std::ios_base::beg);
+  ullong index=read_bytes<5>(file);
+  return index/coef_size;
+}
+
+    // Methods of the |cached_pol_info| class
+
+cached_pol_info::cached_pol_info(std::ifstream& coefficient_file)
+  : polynomial_info(coefficient_file)
+  , cache(n_polynomials()-2)
+{
+  for (KLIndex i=2; i<n_polynomials(); ++i)
+  {
+#ifdef VERBOSE
+    if ((i&0xFFF)==0) std::cerr << i << '\r';
+#endif
+    size_t d=polynomial_info::degree(i);
+    if ((d&~degree_mask)!=0)
+      throw std::runtime_error("Degree found too large (>=32)");
+    cache[i-2]=d;
+  }
+#ifdef VERBOSE
+    std::cerr << n_polynomials()-1 << '\n';
+#endif
+}
+
+size_t cached_pol_info::degree (KLIndex i) const
+{
+  return i<2 ? i-1 : cache[i-2]&degree_mask ;
+}
+
+size_t cached_pol_info::leading_coeff (KLIndex i) const
+{
+  if (i<2) return i;
+  if ((cache[i-2]&~degree_mask)!=0) return cache[i-2]/(degree_mask+1);
+  size_t lc=polynomial_info::leading_coeff(i); // look up in file
+  if (lc<=255/(degree_mask+1)) cache[i-2] |= lc*(degree_mask+1);
+  return lc;
 }
 
 

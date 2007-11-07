@@ -1,8 +1,8 @@
 /*
   This is commands.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -13,6 +13,8 @@
 #include <iostream>
 #include <sstream>
 #include <stack>
+
+#include "error.h"
 
 /*****************************************************************************
 
@@ -39,18 +41,12 @@
 
 namespace atlas {
 
-namespace commands {
-
-  std::vector<const CommandMode*> CommandMode::d_empty;
-
-}
-
 namespace { // declarations private to commands.cpp
 
   using namespace commands;
 
-  std::stack<const CommandMode*> modeStack; // the stack of command modes; the 
-                                            // active mode is the top of the 
+  std::stack<const CommandMode*> modeStack; // the stack of command modes; the
+                                            // active mode is the top of the
                                             // stack
 
   std::stack<const char*> commandStack;     // lets us postpone some commands;
@@ -106,41 +102,34 @@ namespace { // declarations private to commands.cpp
 
 namespace commands {
 
-CommandMode::CommandMode(const char* str,
-			 void (*entry)(),
-			 void (*exit)(), 
-			 void (*error)(const char*))
-  :d_prompt(str),
-   d_entry(entry),
-   d_exit(exit),
-   d_error(error),
-   d_prev(0)
 
 /*
-  Constructor for the command mode class. It makes sure that the empty string
-  is recognized.
+  Constructor for the command mode class.
 */
-
-{
-  add("",relax_f); // default action is to do nothing
-}
-
-CommandMode::~CommandMode()
-
-{}
+CommandMode::CommandMode(const char* str,
+			 void (*entry)(),
+			 void (*exit)(),
+			 void (*error)(const char*))
+  :d_nextList(), // start out without successors
+   d_map(),      // and without commands
+   d_prompt(str),
+   d_entry(entry),
+   d_exit(exit),
+   d_error(error)
+{} // don't add any commands, so that |empty()| is true initially
 
 /******** accessors *********************************************************/
 
-void CommandMode::extensions(std::set<const char*,StrCmp>& e, 
-			     const char* name) const
 
 /*
-  Synopsis: adds to e the list of commandnames in mode and its descendants,
-  that begin with name.
+  Synopsis: adds to |e| the list of command names in mode and its descendants,
+  that begin with |name|.
 */
 
+void CommandMode::extensions(std::set<const char*,StrCmp>& e,
+			     const char* name) const
 {
-  for (const_iterator pos = d_map.lower_bound(name); pos != d_map.end(); 
+  for (const_iterator pos = d_map.lower_bound(name); pos != d_map.end();
        ++pos) {
     if (isInitial(name,pos->first))
       e.insert(pos->first);
@@ -148,51 +137,48 @@ void CommandMode::extensions(std::set<const char*,StrCmp>& e,
       break;
   }
 
-  for (size_t j = 0; j < next().size(); ++j) {
+  for (size_t j = 0; j < n_desc(); ++j) {
     const CommandMode& mode = nextMode(j);
     mode.extensions(e,name);
   }
-
-  return;
 }
 
-void CommandMode::extensions(std::vector<const char*>& e, 
-			     const char* name) const
 
 /*
-  Synopsis: puts in e the list of commandnames in mode and its descendants,
-  that begin with name.
+  Synopsis: puts into |e| the list of command names in mode and its
+  descendants, that begin with |name|.
 
   Forwarded to the set-version, so that repetitions will be automatically
   weeded out.
 */
-
+void CommandMode::extensions(std::vector<const char*>& e,
+			     const char* name) const
 {
   std::set<const char*,StrCmp> es;
 
   extensions(es,name);
   e.clear();
 
-  for (std::set<const char*,StrCmp>::const_iterator i = es.begin(); 
+  for (std::set<const char*,StrCmp>::const_iterator i = es.begin();
        i != es.end(); ++i)
     e.push_back(*i);
 
   return;
 }
 
-CommandMode::const_iterator CommandMode::findName(const char* name) const
 
 /*
   Synopsis: finds the command in the current mode or one of its submodes.
 */
-
+CommandMode::const_iterator CommandMode::findName(const char* name) const
 {
-  const_iterator pos = find(name);
+  const_iterator pos = find(name); // search in current mode
 
   if (pos != end())
     return pos;
 
-  for (size_t j = 0; j < next().size(); ++j) {
+  // if not find here, look recursively in descendant modes
+  for (size_t j = 0; j < n_desc(); ++j) {
     const CommandMode& next = nextMode(j);
     pos = next.findName(name);
     if (pos != next.end())
@@ -204,7 +190,6 @@ CommandMode::const_iterator CommandMode::findName(const char* name) const
 
 /******** manipulators ******************************************************/
 
-void CommandMode::add(const char* const name, const Command& command)
 
 /*
   Synopsis: adds a new command to the mode.
@@ -215,35 +200,27 @@ void CommandMode::add(const char* const name, const Command& command)
 
   NOTE: if the name was already present, we override it.
 */
-
+void CommandMode::add(const char* const name, const Command& command)
 {
   std::pair<const char* const, Command> v(name,command);
 
   std::pair<CommandDict::iterator,bool> p
     = d_map.insert(v);
 
-  if (!p.second) {
-    // name was already present; override!
-    d_map.erase(p.first);
-    d_map.insert(v);
-  }
-
-  return;
+  if (not p.second) // then name was already present; override its command!
+    p.first->second=command; // and don't touch |p.first->first==name|
 }
 
-void CommandMode::setAction(const char* name, void (*a)())
 
 /*
   Sets the action of the command associated to name to a.
 
   NOTE : it is assumed that name will be found in mode.
 */
-
+void CommandMode::setAction(const char* name, void (*a)())
 {
   CommandMode::iterator pos = find(name);
   pos->second.action = a;
-
-  return;
 }
 
 }
@@ -261,7 +238,6 @@ void CommandMode::setAction(const char* name, void (*a)())
     - default_help() : the default help function;
     - exitInteractive() : sets runFlag to false;
     - printTags(stream&,map<std::string,const char*>&) : prints the tag list;
-    - pushCommand(const char*) : pushes a command on commandStack;
     - quitMode() : exits the current mode;
     - relax_f() : does nothing;
     - run(CommandMode*) :  runs the program;
@@ -270,51 +246,39 @@ void CommandMode::setAction(const char* name, void (*a)())
 
 namespace commands {
 
-void activate(const CommandMode& mode)
 
 /*
-  Attempts to activate the command mode mode, by executing its entry function.
-  Could throw an EntryError.
+  Attempts to activate the command mode |mode|, by executing its entry
+  function, which could throw an |EntryError|. If not, push |mode| onto stack.
 */
-
+void activate(const CommandMode& mode)
 {
   mode.entry(); // could throw an EntryError
-
-  const CommandMode* modePtr = &mode;
-  modeStack.push(modePtr);
-
-  return;
+  modeStack.push(&mode);
 }
 
-void addCommands(CommandMode& dest, const CommandMode& source)
 
 /*
   Synopsis: inserts the commands from source into dest. This is used when
-  going to a "derived" mode.
+  going to a "desecendant" mode, to inherit the commands defined for
+  the parent mode.
 
   NOTE: we do the insertion through add, so it will override existing
-  commands.
+  commands. Therefore to redefine commands with the same name in the
+  descendant mode, add them after making the call to |addCommands|.
 */
-
+void addCommands(CommandMode& dest, const CommandMode& source)
 {
-  CommandMode::const_iterator source_end = source.end();
-
-  for (CommandMode::const_iterator i = source.begin(); i != source_end; ++i) {
-    const char* name = i->first;
-    Command command = i->second;
-    dest.add(name,command);
-  }
-
-  return;
+  for (CommandMode::const_iterator i = source.begin(); i != source.end(); ++i)
+    dest.add(i->first,i->second);
 }
 
-CheckResult checkName(const CommandMode& mode, const char* name)
 
 /*
   Synopsis: tries to find name in mode, or in one of its descendants.
 */
-
-{  
+CheckResult checkName(const CommandMode& mode, const char* name)
+{
   CommandMode::const_iterator pos = mode.findName(name);
 
   if (pos == mode.end()) { // command was not found
@@ -349,68 +313,55 @@ input::InputBuffer& currentLine()
   return commandLine;
 }
 
-const CommandMode* currentMode()
 
 /*
   Synopsis: returns the currently active mode.
   Mostly useful for communication with readline.
 */
-
+const CommandMode* currentMode()
 {
   return modeStack.top();
 }
 
-void defaultError(const char* str)
 
 /*
-  Synopsis: default error handler when str is not a string which is recognized 
-  by the command tree.
+  Synopsis: default error handler, which is called when |str| is not a string
+  which is recognized by the command tree.
 
-  The default behaviour is to print the name of the read string an an error
-  message.
+  It prints the name of |str| and an error message.
 */
-
+void defaultError(const char* str)
 {
-  std::cout << str << " : not found" << std::endl;
-  return;
+  std::cout << str << ": not found" << std::endl;
 }
 
+
+/*
+  Synopsis: quits interactive mode, after exiting all active modes.
+
+  This should be called only if none of the modes in the stack can throw on
+  exit, which seems a reasonable assumption.
+*/
 void exitInteractive()
 
-/*
-  Synopsis: quits interactive mode. 
-
-  This should be called only when none of the modes in the stack can throw on 
-  exit.
-*/
-
 {
-  while (modeStack.size()) {
-    exitMode();
-  }
+  while (modeStack.size())
+    exitMode(); // applies to mode at top of stack, which is then popped
 
-  runFlag = false;
-  return;
+  runFlag = false; // this will cause the |run| loop to terminate
 }
 
-void exitMode()
 
 /*
-  Synopsis: exits the current mode. 
+  Synopsis: exits the current mode.
 */
-
+void exitMode()  // it is assumed that exit functions don't throw
 {
-  const CommandMode* mode = modeStack.top();
-
-  // it is assumed that exit functions don't throw
-  mode->exit();
-
+  modeStack.top()->exit();
   modeStack.pop();
-
-  return;
 }
 
-void insertTag(TagDict& t, const char* name, const char* tag)
+// The |TagDict| type is addressed below, but no instance is defined here.
 
 /*
   Synopsis: associates tag with name in t.
@@ -418,20 +369,18 @@ void insertTag(TagDict& t, const char* name, const char* tag)
   NOTE: this is the only way the sun CC compiler will accept it!
 */
 
-{  
-  TagDict::value_type v(name,tag);
+void insertTag(TagDict& t, const char* name, const char* tag)
+{
+  TagDict::value_type v(name,tag); // pair of strings acceptable to |TagDict|
   t.insert(v);
-
-  return;
 }
 
-void printTags(std::ostream& strm, const TagDict& t)
 
 /*
   Synopsis: outputs the list of commands with their attached tags.
 */
-
-{  
+void printTags(std::ostream& strm, const TagDict& t)
+{
   typedef TagDict::const_iterator I;
 
   for (I i = t.begin(); i != t.end(); ++i) {
@@ -439,81 +388,58 @@ void printTags(std::ostream& strm, const TagDict& t)
     const char* tag = i->second;
     strm << "  - " << key << " : " << tag << std::endl;
   }
-
-  return;
 }
-
-void pushCommand(const char* name)
-
-/*
-  Synopsis: pushes name on commandStack.
-*/
-
-{
-  commandStack.push(name);
-  return;
-}
-
-void relax_f()
-
-/*
-  Synopsis: does nothing. 
-
-  Useful as a default argument to functions which require a function pointer.
-*/
-
-{}
-
-void run(const CommandMode& initMode)
 
 /*
   Synopsis: runs an interactive session of the program.
 
-  Gets commands from the user until it gets the "qq" command, at which time it 
+  Gets commands from the user until it gets the "qq" command, at which time it
   returns control.
 
   It works as follows : get an input string from the user (leading whitespace
   is chopped off by default in C++); look it up in the current CommandMode, or,
-  in case of failure, in its descendants; execute it if it is found, get new 
+  in case of failure, in its descendants; execute it if it is found, get new
   input otherwise.
 
   The initMode argument is the startup mode of the interactive session;
   that is, the session starts by executing the entry function of initMode.
 */
-
+void run(const CommandMode& initMode)
 {
-  try {
-    activate(initMode);
+  try
+  {
+    activate(initMode); // enter mode, pushing it onto |modeStack|
+
+    const char* name;
+
+    for (runFlag = true; runFlag;)// exit is only through "qq"
+    {                             // (or "q" in startup mode)
+
+      const CommandMode* mode = modeStack.top();  // get current active mode
+      name = getCommand(mode);
+
+      std::vector<const char*> ext;
+      mode->extensions(ext,name);
+
+      switch (ext.size())
+      {
+      case 0: // command was not found
+	mode->error(name);
+	break;
+      case 1: // command can be unambiguously completed
+	execute(ext[0],mode);
+	break;
+      default: // ambiguous command; execute it if there is an exact match
+	if (isEqual(ext[0],name))
+	  execute(ext[0],mode);
+	else
+	  ambiguous(ext,name);
+	break;
+      }
+    } // for(runFlag)
   }
   catch(EntryError) { // something is very wrong
     return;
-  }
-
-  const char* name;
-  
-  for (runFlag = true; runFlag;) {   // exit is only through "qq"
-                                     // (or "q" in startup mode)
-
-    const CommandMode* mode = modeStack.top();  // get current active mode
-    name = getCommand(mode);
-
-    std::vector<const char*> ext;
-    mode->extensions(ext,name);
-
-    switch (ext.size()) {
-    case 0: // command was not found
-      mode->error(name);
-      break;
-    case 1: // command can be unambiguously completed
-      execute(ext[0],mode);
-      break;
-    default: // ambiguous command; execute it if there is an exact match
-      if (isEqual(ext[0],name))
-	execute(ext[0],mode);
-      else
-	ambiguous(ext,name);
-      break;
-    }
   }
 }
 
@@ -533,15 +459,14 @@ void run(const CommandMode& initMode)
 
 namespace {
 
-void ambiguous(const std::vector<const char*>& ext, const char* name)
 
 /*
-  Synopsis: outputs an informative message when name has more than one 
+  Synopsis: outputs an informative message when name has more than one
   completion in the dictionary.
 
   The message is name: ambiguous ( ... list of possible completions ... )
 */
-
+void ambiguous(const std::vector<const char*>& ext, const char* name)
 {
   typedef std::vector<const char*>::const_iterator I;
 
@@ -555,14 +480,11 @@ void ambiguous(const std::vector<const char*>& ext, const char* name)
   }
 
   std::cout << ")" << std::endl;
-
-  return;
 }
 
-void execute(const char* name, const CommandMode* mode)
 
-/*
-  Synopsis: executes the command "name".
+/*!
+  \brief Execute the command "name". Also install default error handling.
 
   Precondition: name is defined either in the current mode or in one of its
   descendants.
@@ -570,34 +492,42 @@ void execute(const char* name, const CommandMode* mode)
   If name is found in the current mode, we simply execute it. Otherwise,
   we find out in which descendant mode it is found, we attempt the mode
   change, and in case of success, push command on the stack, so that it
-  will be executed at the next loop in run().
+  will be executed at the next loop in |run|.
 */
-
+void execute(const char* name, const CommandMode* mode)
 {
   CommandMode::const_iterator pos = mode->find(name);
 
-  if (pos != mode->end()) { // the command was found in the current mode
-    const Command& command = pos->second;
-    command();
-  } else // we have to look in a submode
-    for (size_t j = 0; j < mode->next().size(); ++j) {
-      const CommandMode& next = mode->nextMode(j);
-      pos = next.findName(name);
-      if (pos != next.end()) { // name is defined in a descendent of next
-	try {
-	  activate(next);
-	}
-	catch (EntryError) {
-	  return;
-	}
-	pushCommand(name);
-      }
+  try
+  {
+    if (pos != mode->end()) // the command was found in the current mode
+    {
+      const Command& command = pos->second;
+      command();
     }
-
-  return;
+    else // we have to look in a submode
+      for (size_t j = 0; j < mode->n_desc(); ++j)
+      {
+	const CommandMode& next = mode->nextMode(j);
+	pos = next.findName(name);
+	if (pos != next.end()) // name is defined in a descendent of next
+	{
+	  activate(next);
+	  commandStack.push(name); // retry command if mode entry successful
+	  break; // only attempt to enter the first matching descendant
+	}
+      }
+  }
+  catch (commands::EntryError&) { // silently ignore failure to enter mode
+  }
+  catch (error::MemoryOverflow& e) {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e) {
+    e("aborted");
+  }
 }
 
-const char* getCommand(const CommandMode* mode)
 
 /*
   Synopsis: gets the name of the next command.
@@ -605,8 +535,8 @@ const char* getCommand(const CommandMode* mode)
   It is gotten either from the commandStack, if there are commands waiting
   to be processed, or interactively from the user.
 */
-
-{    
+const char* getCommand(const CommandMode* mode)
+{
   static std::string nameString;
   const char* name;
 
@@ -615,15 +545,13 @@ const char* getCommand(const CommandMode* mode)
     commandStack.pop();
   } else {  // get command from user
     nameString.erase();
-    getInteractive(std::cin,nameString,mode->prompt()); 
+    getInteractive(std::cin,nameString,mode->prompt());
     name = nameString.c_str();
   }
 
   return name;
 }
 
-std::istream& getInteractive(std::istream& strm, std::string& name, 
-			     const char* prompt)
 
 /*
   Synopsis: gets a command interactively from the user.
@@ -632,8 +560,9 @@ std::istream& getInteractive(std::istream& strm, std::string& name,
   we pack it into an InputBuffer (defined in input.h), in order to have a
   C++-like interaction.
 */
-
-{    
+std::istream& getInteractive(std::istream& strm, std::string& name,
+			     const char* prompt)
+{
   using namespace input;
 
   commandLine.getline(strm,prompt);
@@ -642,6 +571,6 @@ std::istream& getInteractive(std::istream& strm, std::string& name,
   return strm;
 }
 
-}
+} // namespace
 
-}
+} // namespace atlas

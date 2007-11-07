@@ -20,6 +20,8 @@
 #include "mainmode.h"
 #include "realredgp.h"
 #include "realredgp_io.h"
+#include "kgb.h"
+#include "kgb_io.h"
 #include "special.h"
 #include "test.h"
 
@@ -39,123 +41,139 @@ namespace {
 
   using namespace realmode;
 
-  class ThisMode:public commands::CommandMode {
-  public:
-    ThisMode();
-    ~ThisMode();
-  };
-
-  void this_entry() throw(commands::EntryError);
-  void this_exit();
+  void real_mode_entry() throw(commands::EntryError);
+  void real_mode_exit();
 
   // functions for the predefined commands
 
+  void components_f();
   void cartan_f();
+  void corder_f();
   void gradings_f();
-  void help_f();
-  void q_h();
   void realform_f();
   void realweyl_f();
   void strongreal_f();
+  void kgb_f();
+  void kgborder_f();
   void type_f();
+
 
   // local variables
 
-  realredgp::RealReductiveGroup G_R;
-  realredgp_io::Interface G_RI;
-
-}
-
-/****************************************************************************
-
-        Chapter I -- The ThisMode class
-
-  Only one instance of this class will be constructed, on the first call
-  of the function realMode().
-
-*****************************************************************************/
-
-namespace {
-
-ThisMode::ThisMode()
-  :commands::CommandMode("real: ",this_entry,this_exit)
-
-{
-  // set parent mode
-  d_prev = &mainmode::mainMode();
-
-  // add the commands from the main mode
-  commands::addCommands(*this,prev());
-
-  // add commands for this mode
-  add("cartan",cartan_f);
-  add("gradings",gradings_f);
-  add("help",help_f);
-  add("q",commands::exitMode);
-  add("realform",realform_f);
-  add("realweyl",realweyl_f);
-  add("strongreal",strongreal_f);
-  // the "type" command should be redefined here because it needs to exit
-  // the real mode
-  add("type",type_f);
-
-  // add special commands
-  special::addSpecialCommands(*this,RealmodeTag());
-
-  // add test commands
-  test::addTestCommands(*this,RealmodeTag());
-}
-
-ThisMode::~ThisMode()
-
-{}
-
-void this_entry() throw(commands::EntryError)
-
-/*
-  Synopsis: attempts to set a real form interactively. In case of failure,
-  throws an InputError and returns.
-*/
-
-{
-  using namespace interactive;
-  using namespace mainmode;
-
-  try {
-    getInteractive(G_R,currentComplexInterface());
-  }
-  catch(error::InputError& e) {
-    e("no real form set");
-    throw commands::EntryError();
-  }
-
-  realredgp_io::Interface RI(G_R,currentComplexInterface());
-  G_RI.swap(RI);
-
-  return;
-}
-
-void this_exit()
-
-/*
-  Synopsis: resets the real form to the default (meaningless!) real form,
-  and destructs the current one.
-*/
-
-{
-  using namespace realredgp;
-
-  RealReductiveGroup newG;
-  G_R.swap(newG);
-
-  return;
-}
+  realredgp::RealReductiveGroup* G_R_pointer=NULL;
+  realredgp_io::Interface* RI_pointer=NULL;
 
 }
 
 /*****************************************************************************
 
-        Chapter II --- Functions for the predefined commands
+        Chapter I -- Functions declared in realmode.h
+
+******************************************************************************/
+
+namespace realmode {
+
+// Return a |CommandMode| object that is constructed on first call.
+commands::CommandMode& realMode()
+{
+  static commands::CommandMode real_mode
+    ("real: ",real_mode_entry,real_mode_exit);
+  if (real_mode.empty()) // true upon first call
+  {
+    // add the commands from the main mode
+    commands::addCommands(real_mode,mainmode::mainMode());
+
+    // add commands for this mode
+    real_mode.add("components",components_f);
+    real_mode.add("cartan",cartan_f);
+    real_mode.add("corder",corder_f);
+    real_mode.add("gradings",gradings_f);
+    real_mode.add("realform",realform_f);
+    real_mode.add("realweyl",realweyl_f);
+    real_mode.add("strongreal",strongreal_f);
+    real_mode.add("kgb",kgb_f);
+    real_mode.add("kgborder",kgborder_f);
+    // the "type" command should be redefined here because it needs to exit
+    // the real mode
+    real_mode.add("type",type_f); // override
+
+    // add special commands
+    special::addSpecialCommands(real_mode,RealmodeTag());
+
+    // add test commands
+    test::addTestCommands(real_mode,RealmodeTag());
+  }
+  return real_mode;
+}
+
+realredgp::RealReductiveGroup& currentRealGroup()
+{
+  return *G_R_pointer;
+}
+
+realform::RealForm currentRealForm()
+{
+  return G_R_pointer->realForm();
+}
+
+realredgp_io::Interface& currentRealInterface()
+{
+  return *RI_pointer;
+}
+
+
+} // namespace realmode
+
+
+/****************************************************************************
+
+        Chapter II -- The real mode |CommandMode|
+
+  One instance of |CommandMode| for the real mode is created at the
+  first call of |realMode()|; further calls just return a reference to it.
+
+*****************************************************************************/
+
+namespace {
+
+/*
+  Synopsis: attempts to set a real form interactively. In case of failure,
+  throws an InputError and returns.
+*/
+void real_mode_entry() throw(commands::EntryError)
+{
+  using namespace interactive;
+  using namespace mainmode;
+
+  try {
+    G_R_pointer=new realredgp::RealReductiveGroup;
+    getInteractive(currentRealGroup(),currentComplexInterface());
+
+    RI_pointer=new realredgp_io::Interface
+      (currentRealGroup(),currentComplexInterface());
+  }
+  catch(error::InputError& e) {
+    real_mode_exit(); // clean up, even if unnecessary for |RI_pointer|
+    e("no real form set");
+    throw commands::EntryError();
+  }
+}
+
+
+/*
+  Synopsis: destroys the real group and its interface, resoring NULL pointers
+*/
+void real_mode_exit()
+{
+  delete G_R_pointer; delete RI_pointer; G_R_pointer=NULL; RI_pointer=NULL;
+}
+
+
+} // namespace
+
+/*****************************************************************************
+
+        Chapter III --- Functions for the predefined commands
 
   This section contains the definitions of the functions associated to the
   various commands defined in this mode.
@@ -165,78 +183,77 @@ void this_exit()
 namespace {
 
 /*
-  Synopsis: prints the cartan classes of G_R.
+  Print the (dual) component group of the current group. We print it out
+  in terms of the canonical basis of $T(2)^\vee$
 */
+void components_f()
+{
+  const realredgp::RealReductiveGroup& G = currentRealGroup();
+  const latticetypes::ComponentList& c = G.dualComponentReps();
+
+  if (c.size() > 0)
+    std::cout << "component group is (Z/2)^" << c.size() << std::endl;
+  else
+    std::cout << "group is connected" << std::endl;
+
+}
+
+
+// Print the cartan classes of G_R.
 void cartan_f()
 {
-  try {
-    G_R.fillCartan();
+  currentRealGroup().fillCartan();
 
-    ioutils::OutputFile file;
+  ioutils::OutputFile file;
 
-    static_cast<std::ostream&>(file) << std::endl;
-    realredgp_io::printCartanClasses(file,G_RI) << std::endl;
-  }
-  catch (error::MemoryOverflow& e) {
-    e("error: memory overflow");
-  }
-  catch (error::InputError& e) {
-    e("abort");
-  }
+  static_cast<std::ostream&>(file) << std::endl;
+  realredgp_io::printCartanClasses(file,currentRealInterface()) << std::endl;
 }
 
-/*
-  Synopsis: prints the gradings associated to the weak real forms.
-*/
+// Print the Hasse diagram of the ordering of Cartan classes.
+void corder_f()
+{
+  realredgp::RealReductiveGroup& G_R = currentRealGroup();
+  G_R.fillCartan();
+
+  std::cout << "Hasse diagram of Cartan class ordering:" << std::endl;
+  realredgp_io::printCartanOrder(std::cout,G_R);
+}
+
+
+// Print the gradings associated to the weak real forms.
 void gradings_f()
 {
-  try {
-    G_R.fillCartan();
+  currentRealGroup().fillCartan();
 
-    size_t cn;
+  size_t cn;
 
-    // get Cartan class; abort if unvalid
-    interactive::getCartanClass(cn,G_R.cartanSet(),commands::currentLine());
+  // get Cartan class; abort if unvalid
+  interactive::getCartanClass(cn,currentRealGroup().cartanSet(),
+			      commands::currentLine());
 
-    ioutils::OutputFile file;
+  ioutils::OutputFile file;
 
-    static_cast<std::ostream&>(file) << std::endl;
-    complexredgp_io::printGradings(file,cn,G_RI.complexInterface())
+  static_cast<std::ostream&>(file) << std::endl;
+  complexredgp_io::printGradings(file,cn,
+				 currentRealInterface().complexInterface())
       << std::endl;
-  }
-  catch (error::MemoryOverflow& e) {
-    e("error: memory overflow");
-  }
-  catch (error::InputError& e) {
-    e("aborted");
-  }
 
-}
-
-void help_f()
-{
-  activate(helpmode::helpMode());
 }
 
 /*
-  Synopsis: exits the current mode.
-*/
-void q_h()
-{
-  commands::exitMode();
-}
-
-/*
-  Synopsis: resets the type, effectively re-entering the real mode. If the
-  construction of the new type fails, the current type remains in force.
+  Reset the type, effectively re-entering the real mode. If the
+  construction of the new type fails, the current real form remains in force.
 */
 void realform_f()
 {
   try {
-    interactive::getInteractive(G_R,mainmode::currentComplexInterface());
+    interactive::getInteractive
+      (currentRealGroup(),mainmode::currentComplexInterface());
 
-    realredgp_io::Interface RI(G_R,mainmode::currentComplexInterface());
-    G_RI.swap(RI);
+    realredgp_io::Interface RI
+      (currentRealGroup(),mainmode::currentComplexInterface());
+    currentRealInterface().swap(RI);
 
   }
   catch (error::InputError& e) {
@@ -248,61 +265,68 @@ void realform_f()
   }
 }
 
-/*
-  Synopsis: prints out the structure of the real weyl group.
-*/
+// Show the structure of the real weyl group.
 void realweyl_f()
 {
-  try {
-    G_R.fillCartan();
+  currentRealGroup().fillCartan();
 
-    size_t cn;
+  size_t cn;
 
-    // get Cartan class; abort if unvalid
-    interactive::getCartanClass(cn,G_R.cartanSet(),commands::currentLine());
+  // get Cartan class; abort if unvalid
+  interactive::getCartanClass(cn,currentRealGroup().cartanSet(),
+				commands::currentLine());
 
-    ioutils::OutputFile file;
-    file << "\n";
-    realredgp_io::printRealWeyl(file,G_R,cn);
-
-  }
-  catch (error::MemoryOverflow& e) {
-    e("error: memory overflow");
-  }
-  catch (error::InputError& e) {
-    e("aborted");
-  }
+  ioutils::OutputFile file;
+  file << "\n";
+  realredgp_io::printRealWeyl(file,currentRealGroup(),cn);
 }
 
 
-/*
-  Synopsis: outputs information about strong real forms.
-*/
+// Print information about strong real forms.
 void strongreal_f()
 {
-  try {
-    G_R.fillCartan();
+  currentRealGroup().fillCartan();
 
-    size_t cn;
+  size_t cn;
 
-    // get Cartan class; abort if unvalid
-    interactive::getCartanClass(cn,G_R.cartanSet(),commands::currentLine());
+  // get Cartan class; abort if unvalid
+  interactive::getCartanClass(cn,currentRealGroup().cartanSet(),
+			      commands::currentLine());
 
-    ioutils::OutputFile file;
-    file << "\n";
-    realredgp_io::printStrongReal(file,G_R,G_RI.realFormInterface(),cn);
-  }
-  catch (error::MemoryOverflow& e) {
-    e("error: memory overflow");
-  }
-  catch (error::InputError& e) {
-    e("aborted");
-  }
+  ioutils::OutputFile file;
+  file << "\n";
+  realredgp_io::printStrongReal(file,
+				currentRealGroup(),
+				currentRealInterface().realFormInterface(),
+				cn);
 }
 
 
-/*
-  Synopsis: resets the type of the complex group.
+// Print the kgb table
+void kgb_f()
+{
+  realredgp::RealReductiveGroup& G_R = currentRealGroup();
+  G_R.fillCartan(); // must not forget this!
+  std::cout << "kgbsize: " << G_R.kgbSize() << std::endl;
+  ioutils::OutputFile file;
+  kgb::KGB kgb(G_R);
+  kgb_io::printKGB(file,kgb);
+}
+
+// Print the Hasse diagram of the ordering of K orbits on G/B.
+void kgborder_f()
+{
+  realredgp::RealReductiveGroup& G = currentRealGroup();
+  G.fillCartan();
+
+  std::cout << "kgbsize: " << G.kgbSize() << std::endl;
+  ioutils::OutputFile file;
+
+  kgb::KGB kgb(G);
+  kgb_io::printBruhatOrder(file,kgb.bruhatOrder());
+}
+
+/* Reset the type of the complex group.
 
   In case of success, the real forms are invalidated, and therefore we
   should exit real mode; in case of failure, we don't need to.
@@ -315,46 +339,14 @@ void type_f()
 
     interactive::getInteractive(G,I);
     mainmode::replaceComplexGroup(G,I);
-    commands::exitMode();
+    commands::exitMode(); // upon success pop real mode, destroying real group
   }
   catch (error::InputError& e) {
     e("complex group and real form not changed");
   }
 }
 
-}
 
-/*****************************************************************************
+} // namespace
 
-        Chapter III -- Functions declared in realmode.h
-
-******************************************************************************/
-
-namespace realmode {
-
-realredgp::RealReductiveGroup& currentRealGroup()
-
-{
-  return G_R;
-}
-
-realredgp_io::Interface& currentRealInterface()
-
-{
-  return G_RI;
-}
-
-/*
-  Synopsis: returns the ThisMode object.
-
-  It is constructed on first call.
-*/
-commands::CommandMode& realMode()
-{
-  static ThisMode mode;
-  return mode;
-}
-
-}
-
-}
+} // namespace atlas

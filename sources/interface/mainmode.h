@@ -28,7 +28,7 @@ namespace mainmode {
 
 namespace mainmode {
 
-  const commands::CommandMode& mainMode();
+  commands::CommandMode& mainMode();
   complexredgp::ComplexReductiveGroup& currentComplexGroup();
   complexredgp_io::Interface& currentComplexInterface();
   void replaceComplexGroup(complexredgp::ComplexReductiveGroup*

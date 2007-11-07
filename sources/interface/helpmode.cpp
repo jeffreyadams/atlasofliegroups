@@ -1,8 +1,8 @@
 /*
   This is helpmode.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -19,6 +19,7 @@
 #include "mainmode.h"
 #include "realhelp.h"
 #include "realmode.h"
+#include "blockmode.h"
 #include "special.h"
 #include "test.h"
 
@@ -33,15 +34,8 @@ namespace atlas {
 namespace {
   using namespace helpmode;
 
-  class ThisMode:public commands::CommandMode {
-  public:
-  // constructors and destructors
-    ThisMode();
-    virtual ~ThisMode();
-  };
-
-  void this_entry();
-  void this_exit();
+  void help_entry();
+  void help_exit();
 
   commands::TagDict tagDict;
 
@@ -56,7 +50,7 @@ namespace {
   const char* intro_tag =
     "(in help mode only) prints a message for first time users";
   const char* q_tag = "exits the current mode";
-  const char* questionMark_tag = 
+  const char* questionMark_tag =
     "(in help mode only) lists the available commands";
 }
 
@@ -71,51 +65,7 @@ namespace {
 
 namespace {
 
-ThisMode::ThisMode()
-  :CommandMode("help: ",this_entry,this_exit)
-
-{
-  using namespace commands;
-  using namespace emptyhelp;
-  using namespace emptymode;
-  using namespace mainhelp;
-  using namespace mainmode;
-  using namespace realhelp;
-  using namespace realmode;
-
-  add("q",commands::exitMode);
-  insertTag(tagDict,"q",q_tag);
- 
-  add("?",questionMark_h);
-  insertTag(tagDict,"?",questionMark_tag);
-
-  add("intro",intro_h);
-  insertTag(tagDict,"intro",intro_tag);
-
-// add help functions for the empty mode
-  addEmptyHelp(*this,tagDict);
-
-  special::addSpecialHelp(*this,tagDict,EmptymodeTag());
-  test::addTestHelp(*this,tagDict,EmptymodeTag());
-
-// add help functions for the main mode
-  addMainHelp(*this,tagDict);
-
-  special::addSpecialHelp(*this,tagDict,MainmodeTag());
-  test::addTestHelp(*this,tagDict,MainmodeTag());
-
-// add help functions for the real mode
-  addRealHelp(*this,tagDict);
-
-  special::addSpecialHelp(*this,tagDict,RealmodeTag());
-  test::addTestHelp(*this,tagDict,RealmodeTag());
-}
-
-ThisMode::~ThisMode()
-
-{}
-
-void this_entry()
+void help_entry()
 
 {
   std::cerr << "enter \"?\" for a list of available commands; "
@@ -125,7 +75,7 @@ void this_entry()
 	    << std::endl;
 }
 
-void this_exit()
+void help_exit()
 
 {}
 
@@ -135,7 +85,7 @@ void this_exit()
 
         Chapter II --- Functions for the help commands
 
-  This section contains the definitions of the help functions associated to 
+  This section contains the definitions of the help functions associated to
   the various commands defined in this mode.
 
 ******************************************************************************/
@@ -144,21 +94,21 @@ namespace {
 
 void help_h()
 
-{  
+{
   io::printFile(std::cerr,"help.help",io::MESSAGE_DIR);
   return;
 }
 
 void qq_h()
 
-{  
+{
   io::printFile(std::cerr,"qq.help",io::MESSAGE_DIR);
   return;
 }
 
 void questionMark_h()
 
-{  
+{
   std::cerr << std::endl;
   commands::printTags(std::cerr,tagDict);
   std::cerr << std::endl;
@@ -176,22 +126,59 @@ void questionMark_h()
 
 namespace helpmode {
 
-const commands::CommandMode& helpMode()
-
 /*
   Synopsis: returns the help mode.
 
   It is constructed on the first call.
 */
-
+const commands::CommandMode& helpMode()
 {
-  static ThisMode mode;
-  return mode;
+  static commands::CommandMode help_mode
+    ("help: ",help_entry,help_exit);
+  if (help_mode.empty()) // true upon first call
+  {
+    help_mode.add("q",commands::exitMode);
+    insertTag(tagDict,"q",q_tag);
+
+    help_mode.add("?",questionMark_h);
+    insertTag(tagDict,"?",questionMark_tag);
+
+    help_mode.add("intro",intro_h);
+    insertTag(tagDict,"intro",intro_tag);
+
+    // add help functions for the empty mode
+    emptyhelp::addEmptyHelp(help_mode,tagDict);
+
+    special::addSpecialHelp(help_mode,tagDict,emptymode::EmptymodeTag());
+    test::addTestHelp(help_mode,tagDict,emptymode::EmptymodeTag());
+
+  // add help functions for the main mode
+    mainhelp::addMainHelp(help_mode,tagDict);
+
+    special::addSpecialHelp(help_mode,tagDict,mainmode::MainmodeTag());
+    test::addTestHelp(help_mode,tagDict,mainmode::MainmodeTag());
+
+  // add help functions for the real mode
+    realhelp::addRealHelp(help_mode,tagDict);
+
+    special::addSpecialHelp(help_mode,tagDict,realmode::RealmodeTag());
+    test::addTestHelp(help_mode,tagDict,realmode::RealmodeTag());
+
+  // add help functions for the block mode
+    blockmode::addBlockHelp(help_mode,tagDict);
+
+    special::addSpecialHelp(help_mode,tagDict,blockmode::BlockmodeTag());
+    test::addTestHelp(help_mode,tagDict,blockmode::BlockmodeTag());
+
+  }
+  return help_mode;
 }
+
+
 
 void intro_h()
 
-{  
+{
   using namespace io;
 
   printFile(std::cerr,"intro_mess",io::MESSAGE_DIR);
@@ -205,7 +192,7 @@ void nohelp_h()
   Synopsis: help message for when there is no help.
 */
 
-{ 
+{
   std::cerr << "sorry, no help available for this command" << std::endl;
 
   return;

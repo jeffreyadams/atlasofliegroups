@@ -222,15 +222,8 @@ P_{y,x}).
     return d_kl.size();
   }
 
-// accessors for perfoming output
-
-  // get map of primitive elements for row y with nonzero KL polynomial
+// get bitmap of primitive elements for row |y| with nonzero KL polynomial
   bitmap::BitMap primMap (BlockElt y) const;
-
-  // write out d_kl[y]
-  std::streamoff writeKLRow (BlockElt y, std::ostream& out) const;
-
-  void writeKLStore (std::ostream& out) const;   // write out d_store
 
 // manipulators
 

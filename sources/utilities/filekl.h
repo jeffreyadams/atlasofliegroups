@@ -18,6 +18,7 @@
 
 #include "bitset_fwd.h"
 #include "blocks.h"
+#include "kl.h"
 
 namespace atlas {
 
@@ -172,6 +173,13 @@ public:
     { return first_pol[y]; }
   BlockElt first_row_for_pol(KLIndex i) const;
 };
+
+
+//             F u n c t i o n s
+
+void write_block_file(const blocks::Block& block, std::ostream& out);
+void write_matrix_file(const kl::KLContext& klc, std::ostream& out);
+void write_KL_store(const kl::KLStore& store, std::ostream& out);
 
 } // namespace filekl
 

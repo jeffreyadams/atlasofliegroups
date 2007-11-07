@@ -1,8 +1,8 @@
 /*
   This is realmode.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -12,6 +12,7 @@
 
 #include "commands_fwd.h"
 #include "realredgp_fwd.h"
+#include "realform.h"
 #include "realredgp_io_fwd.h"
 
 /******** type declarations *************************************************/
@@ -30,6 +31,7 @@ namespace realmode {
 
   commands::CommandMode& realMode();
   realredgp::RealReductiveGroup& currentRealGroup();
+  realform::RealForm currentRealForm();
   realredgp_io::Interface& currentRealInterface();
 
 }

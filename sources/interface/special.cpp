@@ -1,8 +1,8 @@
 /*
   This is special.cpp
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   See file main.cpp for full copyright notice
 */
@@ -30,7 +30,7 @@ namespace {
 
   using namespace special;
 
-  enum SpecialMode {EmptyMode, MainMode, RealMode, numSpecialMode};
+  enum SpecialMode {EmptyMode, MainMode, RealMode, BlockMode, numSpecialMode};
   SpecialMode specialMode = EmptyMode;
 
   // functions for the special commands
@@ -53,7 +53,7 @@ namespace {
 
   This section defines the functions declared in special.h :
 
-    - addSpecialCommands() : adds the special commands to the main command 
+    - addSpecialCommands() : adds the special commands to the main command
       tree;
     - addSpecialHelp() : adds help functionality;
 
@@ -61,14 +61,13 @@ namespace {
 
 namespace special {
 
-void addSpecialCommands (commands::CommandMode& mode, emptymode::EmptymodeTag)
 
 /*
   Adds to the empty mode the commands defined in special.cpp for that mode.
 
   NOTE : this is called in emptymode.cpp.
 */
-
+void addSpecialCommands (commands::CommandMode& mode, emptymode::EmptymodeTag)
 {
   if (specialMode == EmptyMode) {
     mode.add("special",special_f);
@@ -76,23 +75,18 @@ void addSpecialCommands (commands::CommandMode& mode, emptymode::EmptymodeTag)
     // add additional commands here :
 
   }
-
-  return;
 }
 
-void addSpecialCommands(commands::CommandMode& mode, mainmode::MainmodeTag)
 
 /*
   Adds to the main mode the commands defined in special.cpp for that mode.
 
-  Adds to the real mode the commands defined in special.cpp for that mode.
-
-  NOTE : this is called in realmode.cpp. The special command itself is added
-  to the empty mode by default. Change specialMode to MainMode if your 
+  NOTE : this is called in rmainmode.cpp. The special command itself is added
+  to the empty mode by default. Change specialMode to MainMode if your
   definition requires the main command mode (i.e., the knowledge of a
   complex reductive group.)
 */
-
+void addSpecialCommands(commands::CommandMode& mode, mainmode::MainmodeTag)
 {
   if (specialMode == MainMode) {
     mode.add("special",special_f);
@@ -100,21 +94,18 @@ void addSpecialCommands(commands::CommandMode& mode, mainmode::MainmodeTag)
     // add additional commands here :
 
   }
-
-  return;
 }
 
-void addSpecialCommands(commands::CommandMode& mode, realmode::RealmodeTag)
 
 /*
   Adds to the real mode the commands defined in special.cpp for that mode.
 
   NOTE : this is called in realmode.cpp. The special command itself is added
-  to the empty mode by default. Change specialMode to RealMode if your 
-  definition requires the real command mode (i.e., the knowledge of a real 
+  to the empty mode by default. Change specialMode to RealMode if your
+  definition requires the real command mode (i.e., the knowledge of a real
   form.)
 */
-
+void addSpecialCommands(commands::CommandMode& mode, realmode::RealmodeTag)
 {
   if (specialMode == RealMode) {
     mode.add("special",special_f);
@@ -122,20 +113,35 @@ void addSpecialCommands(commands::CommandMode& mode, realmode::RealmodeTag)
     // add additional commands here :
 
   }
-
-  return;
 }
 
-void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t, 
-		    emptymode::EmptymodeTag)
+/*
+  Adds to the block mode the commands defined in special.cpp for that mode.
+
+  NOTE : this is called in blockmode.cpp. The special command itself is added
+  to the empty mode by default. Change specialMode to BlockMode if your
+  definition requires the block command mode (i.e., the knowledge of a real
+  form and a dual real form.)
+*/
+void addSpecialCommands(commands::CommandMode& mode, blockmode::BlockmodeTag)
+{
+  if (specialMode == BlockMode) {
+    mode.add("special",special_f);
+
+    // add additional commands here :
+
+  }
+}
+
 
 /*
-  Adds the help functions for special commands which require the empty mode 
+  Adds the help functions for special commands which require the empty mode
   (i.e., nothing).
 
   NOTE: this is called in help.cpp.
 */
-
+void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t,
+		    emptymode::EmptymodeTag)
 {
   using namespace commands;
 
@@ -144,27 +150,24 @@ void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t,
 
     // add additional help commands here :
 
-  /******** tags **********************************************************/
+    // since "special" might be assigned to empty mode, define its tag here
 
     insertTag(t,"special",special_tag);
 
     // add additional tags here :
 
   }
-
-  return;
 }
 
-void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t, 
-		    mainmode::MainmodeTag)
 
 /*
-  Adds to mode the help commands for the commands defined in special.cpp, and 
+  Adds to mode the help commands for the commands defined in special.cpp, and
   which require the main mode; adds the tags to t.
 
   NOTE : this is called in help.cpp
 */
-
+void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t,
+		    mainmode::MainmodeTag)
 {
   using namespace commands;
 
@@ -173,27 +176,23 @@ void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t,
 
     // add additional help commands here :
 
-  /******** tags **********************************************************/
+    // since "special" might be assigned to main mode, define its tag here
 
     insertTag(t,"special",special_tag);
 
     // add additional tags here :
 
   }
-
-  return;
 }
 
-void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t, 
-		    realmode::RealmodeTag)
-
 /*
-  Adds to mode the help commands for the commands defined in special.cpp, and 
+  Adds to mode the help commands for the commands defined in special.cpp, and
   which require the real mode; adds the tags to t.
 
   NOTE : this is called in realhelp.cpp
 */
-
+void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t,
+		    realmode::RealmodeTag)
 {
   using namespace commands;
 
@@ -202,17 +201,39 @@ void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t,
 
     // add additional help commands here :
 
-  /******** tags **********************************************************/
+    // since "special" might be assigned to real mode, define its tag here
 
     insertTag(t,"special",special_tag);
 
     // add additional tags here :
 
   }
-
-  return;
 }
 
+/*
+  Adds to mode the help commands for the commands defined in special.cpp, and
+  which require the block mode; adds the tags to t.
+
+  NOTE : this is called in blockhelp.cpp
+*/
+void addSpecialHelp(commands::CommandMode& mode, commands::TagDict& t,
+		    blockmode::BlockmodeTag)
+{
+  using namespace commands;
+
+  if (specialMode == BlockMode) {
+    mode.add("special",special_h);
+
+    // add additional help commands here :
+
+    // since "special" might be assigned to block mode, define its tag here
+
+    insertTag(t,"special",special_tag);
+
+    // add additional tags here :
+
+  }
+}
 }
 
 /*****************************************************************************
@@ -253,7 +274,7 @@ void special_h()
   if you redefine the command.
 */
 
-{  
+{
   io::printFile(std::cerr,"special.help",io::MESSAGE_DIR);
   return;
 }

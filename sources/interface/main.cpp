@@ -160,6 +160,9 @@
 
 #include "commands.h"
 #include "emptymode.h"
+#include "mainmode.h"
+#include "realmode.h"
+#include "blockmode.h"
 #include "error.h"
 #include "input.h"
 
@@ -174,6 +177,10 @@ int main(int argc, char* argv[])
 
   {
     using namespace atlas;
+
+    emptymode::emptyMode().add_descendant(mainmode::mainMode());
+    mainmode::mainMode().add_descendant(realmode::realMode());
+    realmode::realMode().add_descendant(blockmode::blockMode());
 
     input::initReadLine();
     commands::run(emptymode::emptyMode());
