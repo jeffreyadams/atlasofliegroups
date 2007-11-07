@@ -18,13 +18,13 @@ Each row of the output corresponds to a single irreducible representation in
 the block. The output may be saved to a file, or viewed on the terminal.
 
 The first column is a numbering of the elements, from 0 to $n-1$ (with $n$ the
-number of elements in the block), each followed by a pair $(x,y)$. Here $i$ is
+number of elements in the block), each followed by a pair $(x,y)$. Here $x$ is
 the number of an orbit of $K$ on $G/B$, as enumerated by the 'kgb' command.
-Similarly $j$ is the number of an orbit of $K^\vee$ on $G^\vee/B^\vee$, as
+Similarly $y$ is the number of an orbit of $K^\vee$ on $G^\vee/B^\vee$, as
 enumerated by the 'kgb' command for the dual group and the chosen dual real
 form (or more simply by the 'dualkgb' command). The pair $(x,y)$ is a
 parameter for a representation of $G$ (so the negative transpose of the
-involution of $H$ associated to $i$ is the one of $H^\vee$ associated to $j$.)
+involution of $H$ associated to $x$ is the one of $H^\vee$ associated to $y$.)
 
 The next two columns give the length of the parameter $(x,y)$ and the number of
 the Cartan class determined by the above-mentioned involution of $H$ (the
