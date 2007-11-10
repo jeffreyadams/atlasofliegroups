@@ -88,7 +88,8 @@ std::ostream& printAllKL(std::ostream& strm, kl::KLContext& klc)
   size_t comp = Bruhat.n_comparable();
   strm << ", and " << comp-count << " zero polynomial"
        << (comp-count==1 ? "" : "s")
-       << ",\n at " << comp << " Bruhat-comparable pairs." << std::endl;
+       << ",\n at " << comp << " Bruhat-comparable "
+       << (comp==1 ? "pair." : "pairs.") << std::endl;
 
   return strm;
 }
