@@ -26,13 +26,13 @@ int main(int argc, char** argv)
       std::cout << '#' << i << ": ";
       const std::vector<size_t>& c =pi.coefficients(i);
       bool first=true;
-      for (size_t i=c.size(); i-->0;)
-	if (c[i]!=0)
+      for (size_t j=c.size(); j-->0;)
+	if (c[j]!=0)
 	{
 	  if (first) first=false; else std::cout << " + ";
-	  if (c[i]!=1 or i==0) std::cout << c[i];
-	  std::cout << (i==0? "" : "q");
-	  if (i>1) std::cout << '^' << i;
+	  if (c[j]!=1 or j==0) std::cout << c[j];
+	  std::cout << (j==0? "" : "q");
+	  if (j>1) std::cout << '^' << j;
 	}
       std::cout << '.' << std::endl;
     }
