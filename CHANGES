@@ -1,9 +1,26 @@
 Changes to the Atlas of Lie Groups Software
 
 A detailed history of the early development is found in the file
-workinglog. Newer changes are documented in the CVS repository. 
+workinglog. Newer changes are documented in the CVS repository.
 This file contains a summary of major changes to the software.
 
+Version 0.3
+* Classification of Cartan classes now uses canonical representatives
+* Added 'kgborder' and 'blockorder' commands
+* Added 'dualkgb', 'dualblock', and 'dualmap' commands
+* Added experimental commands 'smallkgb', 'smallblock', and smalldual variants
+* Significant speed-up of K\G/B and block constructions
+* Added a block mode on top of real mode
+* Computed block and K-L data is persistent until leaving block mode
+* Several subtle bugs (only rarely affecting results) were removed, notably
+  one causing wrong 'blocku' output in some unequal rank inner classes
+* Several changes to output format, including:
+  - inclusion of canonical representative in Cartan output
+  - addition of Cartan class infomation to K\G/B and block output
+  - double-valued Cayley transforms are always ordered increasingly
+  - addition of inverse Cayley transforms to block output
+  - distinction between cross and Cayley in involution-reduced expressions
+  - K-L output now makes reference to the Bruhat order
 Version 0.2.6.2
 * Fixed bug in wcells command
 Version 0.2.6.1
@@ -16,6 +33,7 @@ Version 0.2.5.1
 * New README and INSTALL files
 * fixed gcc 4.0.3 bug
 * includes realex command line interpreter
+* output of Weyl words now includes commas
 Version 0.2.5:
 * Modified makefile to produce an executable atlas.exe and make a
 symlink to it, so the help system will work when called from any
@@ -29,4 +47,3 @@ checkbasept, blockd, blocku, wgraph, wcells
 bit machine
 * Added doxygen comments
 * Fixed bug in (unused) sources/memory
-
