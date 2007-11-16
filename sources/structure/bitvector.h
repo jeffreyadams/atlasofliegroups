@@ -16,11 +16,11 @@
 
 #include "bitvector_fwd.h"
 #include "latticetypes_fwd.h"
-#include "lattice.h"
 
 #include <vector>
 #include <cassert>
 
+#include "matrix.h"
 #include "bitset.h"
 
 /******** function declarations **********************************************/
