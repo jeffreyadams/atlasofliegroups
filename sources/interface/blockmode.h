@@ -4,7 +4,7 @@
   Copyright (C) 2007 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
-  See file main.cpp for full copyright notice
+  For copyright and license information see the LICENSE file
 */
 
 #ifndef BLOCKMODE_H  /* guard against multiple inclusions */

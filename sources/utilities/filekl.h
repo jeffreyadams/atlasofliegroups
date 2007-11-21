@@ -6,7 +6,7 @@
   Copyright (C) 2007 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
-  See file main.cpp for full copyright notice
+  For license information see the LICENSE file
 */
 
 
