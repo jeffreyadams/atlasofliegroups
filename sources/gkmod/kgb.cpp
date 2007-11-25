@@ -1286,54 +1286,52 @@ square_class_grading_offset(const complexredgp::ComplexReductiveGroup& G,
   return cartanclass::restrictGrading(rset,G.rootDatum().simpleRootList());
 }
 
-void makeHasse(std::vector<set::SetEltList>& hd, const KGB& kgb)
 
 /*!
-  \brief Puts in hd the hasse diagram data for the Bruhat ordering on KGB.
+  \brief Puts in |Hasse| the Hasse diagram of the Bruhat ordering on |kgb|.
 
-  Explanation: this is the closure ordering of orbits. We use the
-  algorithm from Richardson and Springer.
+  Explanation: this is the closure ordering of orbits. We use the algorithm
+  from Richardson and Springer.
 */
-
+void makeHasse(std::vector<set::SetEltList>& Hasse, const KGB& kgb)
 {
-  using namespace gradings;
-  using namespace poset;
-  using namespace set;
+  using gradings::Status;
 
-  hd.resize(kgb.size());
+  Hasse.resize(kgb.size());
 
-  for (KGBElt x = 0; x < kgb.size(); ++x) {
-
-    const Descent& d = kgb.descent(x);
-    if (d.none()) // element is minimal in bruhat order
+  for (KGBElt x = 0; x < kgb.size(); ++x)
+  {
+    std::set<KGBElt> h_x;
+    const kgb::Descent& d = kgb.descent(x);
+    if (d.none()) // element is minimal in Bruhat order
       continue;
 
     size_t s = d.firstBit();
     KGBElt sx;
 
-    if (kgb.status(s,x) == Status::Complex) { // s is complex
+    if (kgb.status(s,x) == Status::Complex)
       sx = kgb.cross(s,x);
-      hd[x].push_back(sx);
-    } else { // s is real for x
+    else
+    { // |s| is real for |x|
       KGBEltPair sxp = kgb.inverseCayley(s,x);
-      hd[x].push_back(sxp.first);
-      if (sxp.second != UndefKGB) // s is real type I for x
-	hd[x].push_back(sxp.second);
-      sx = sxp.first;
+      sx = sxp.first; // and will be inserted below
+      if (sxp.second != UndefKGB) // |s| is real type I for |x|
+	h_x.insert(sxp.second);
     }
+    h_x.insert(sx);
 
-    for (size_t j = 0; j < hd[sx].size(); ++j) {
-      KGBElt z = hd[sx][j];
+    for (size_t j = 0; j < Hasse[sx].size(); ++j) {
+      KGBElt z = Hasse[sx][j];
       if (kgb.isAscent(s,z)) {
 	if (kgb.status(s,z) == Status::ImaginaryNoncompact)
-	  hd[x].push_back(kgb.cayley(s,z));
+	  h_x.insert(kgb.cayley(s,z));
 	else // s is complex for z
-	  hd[x].push_back(kgb.cross(s,z));
+	  h_x.insert(kgb.cross(s,z));
       }
     }
 
-    std::sort(hd[x].begin(),hd[x].end());
-  }
+    std::copy(h_x.begin(),h_x.end(),std::back_inserter(Hasse[x]));
+  } // for |x|
 
 }
 
