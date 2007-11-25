@@ -705,8 +705,8 @@ void makeHasse(std::vector<set::SetEltList>& Hasse, const Block& block)
 
   Hasse.resize(block.size());
 
-  for (BlockElt z = 0; z < block.size(); ++z) {
-
+  for (BlockElt z = 0; z < block.size(); ++z)
+  {
     std::set<BlockElt> h_z;
 
     size_t s=block.firstStrictGoodDescent(z);
@@ -735,7 +735,7 @@ void makeHasse(std::vector<set::SetEltList>& Hasse, const Block& block)
 	  h_z.insert(block.inverseCayley(s,z).first);
 
     std::copy(h_z.begin(),h_z.end(),std::back_inserter(Hasse[z])); // set->list
-  }
+  } // for |z|
 }
 
 } // namespace
