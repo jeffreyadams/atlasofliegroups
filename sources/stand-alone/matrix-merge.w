@@ -353,7 +353,7 @@ combined modulus we just report the size of the hash table.
 
 
 @ We have kept the numbers of $4$-byte words written to the output file for
-each row in the vector |words_for_row|. By adding writing these numbers to the
+each row in the vector |words_for_row|. By writing these numbers to the
 end of the file, other software can rapidly locate the rows of the matrix file
 without having to seek to the beginning of all rows (and read in the bitmap to
 locate the next row) first. This is called the new format for matrix files; it
@@ -409,7 +409,7 @@ int main(int argc,char** argv)
       uses_out.open(argv[1]);
       if (not uses_out.is_open())
       @/{@;
-        std::cerr << "Could not open file '" << argv[1] << "' for writing.n";
+        std::cerr << "Could not open file '" << argv[1] << "' for writing.\n";
         exit(1);
       }
       argc-=2; argv+=2;
