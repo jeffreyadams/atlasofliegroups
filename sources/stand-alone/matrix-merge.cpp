@@ -225,7 +225,7 @@ int main(int argc,char** argv)
       uses_out.open(argv[1]);
       if (not uses_out.is_open())
       {
-        std::cerr << "Could not open file '" << argv[1] << "' for writing.n";
+        std::cerr << "Could not open file '" << argv[1] << "' for writing.\n";
         exit(1);
       }
       argc-=2; argv+=2;

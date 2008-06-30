@@ -104,7 +104,8 @@ public:
 
 class progress_info
 {
-  std::vector<KLIndex> first_pol; // count distinct polynomials in rows before
+  std::vector<KLIndex> first_pol;
+    // count distinct polynomials in rows before this one
 public:
   progress_info(std::ifstream& progress_file);
 
@@ -461,20 +462,24 @@ progress_info::progress_info(std::ifstream& file)
 
 BlockElt progress_info::first_row_for_pol(KLIndex i) const
 { const KLIndex* p=std::upper_bound(&first_pol[1],&*first_pol.end(),i);
+  if (p==&*first_pol.end())
+    throw std::runtime_error("Polynomial index out of range");
   return p-&first_pol[1];
+}
+
+BlockElt locate_KL_polynomial (KLIndex i,matrix_info& mi,BlockElt y)
+{
+  for (BlockElt x=0; x<=y; ++x)
+    if (mi.find_pol_nr(x,y)==i) return x;
+  if (i==0 and y+1<mi.block_size())
+    return mi.x_prim=y+1; // an entry 0 above the diagonal
+  throw std::runtime_error("Polynomial could not be located");
 }
 
 std::pair<BlockElt,BlockElt> locate_KL_polynomial
   (KLIndex i,matrix_info& mi, const progress_info& pi)
 { BlockElt y=pi.first_row_for_pol(i);
-  for (BlockElt x=0; x<=y; ++x)
-    if (mi.find_pol_nr(x,y)==i)
-      return std::make_pair(x,y);
-  if (i==0) return std::make_pair(1,0); // the first |Zero|, if any exist
-  else
-  { std::cerr << i << std::endl;
-    throw std::runtime_error("Polynomial could not be located");
-  }
+  return std::make_pair(locate_KL_polynomial(i,mi,y),y);
 }
 
 void usage()
@@ -582,11 +587,13 @@ int main(int argc,char** argv)
       
       { std::ifstream row_file(*argv++,binary_in);
         if (row_file.is_open())
+        {
           row_info=std::auto_ptr<progress_info>(new progress_info(row_file));
+          if (row_info->block_size()!=mi->block_size())
+            throw std::runtime_error("Block size mismatch for row file");
+        }
         else
           std::cerr << "failed to open file '" << argv[-1] << "', doing without.\n";
-        if (row_info->block_size()!=mi->block_size())
-          throw std::runtime_error("Block size mismatch for row file");
       }
     }
   }
@@ -607,6 +614,7 @@ int main(int argc,char** argv)
   {
     try
     { if (mi.get()==NULL)
+        // if auto-pointer |mi| is unset, no matrix information is present
         std::cout << "index: ";
       else
         std::cout << "give block elements x,y, or polynomial index i as #i: ";
@@ -630,10 +638,33 @@ int main(int argc,char** argv)
             throw std::runtime_error("Index too large");
           }
         }
-        if (row_info.get()!=NULL)
-        { std::pair<BlockElt,BlockElt> p=locate_KL_polynomial(i,*mi,*row_info);
-          std::cout << "P_{" << p.first << ',' << p.second <<  "}=P_{"
-  	          << mi->x_prim << ',' << p.second << "}:\n";
+        if (mi.get()!=NULL and std::cin.peek()==':' or row_info.get()!=NULL)
+        { BlockElt x,y;
+  	if (std::cin.peek()==':' or std::cin.peek()=='>')
+          { bool once=std::cin.peek()==':';
+  	  
+  	  {
+  	    std::cin.get(); std::cin >> y;
+  	    if (not std::cin.good())
+  	    { std::cin.clear(); throw std::runtime_error("Non-numeric input"); }
+  	    if (y>=mi->block_size())
+  	      throw std::runtime_error("Row number too large");
+  	  }
+  	  if (once)
+  	    x=locate_KL_polynomial(i,*mi,y);
+  	  else
+  	    while(++y<mi->block_size())
+  	    { try { x=locate_KL_polynomial(i,*mi,y); break;}
+  	      catch(std::runtime_error) { std::cerr << y+1 << '\r'; }
+  	    }
+  	}
+          else
+          { std::pair<BlockElt,BlockElt> p=
+              locate_KL_polynomial(i,*mi,*row_info);
+          x=p.first; y=p.second;
+  	}
+          std::cout << "P_{" << x << ',' << y <<  "}=P_{"
+  	          << mi->x_prim << ',' << y << "}:\n";
         }
       }
       else
