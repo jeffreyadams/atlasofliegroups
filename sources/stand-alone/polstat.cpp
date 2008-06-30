@@ -6,7 +6,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "filekl.h"
+#include "filekl_in.h"
 #include "basic_io.h"
 #include "tally.h"
 
