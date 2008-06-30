@@ -42,13 +42,14 @@ derived_cpp := $(cwebx_sources:%.w=%.cpp)
 illiterate_sources := matstat.cpp polstat.cpp linear.cpp
 
 matrix-merge_objects := ../utilities/bitmap.o ../utilities/constants.o \
-              ../utilities/bits.o ../utilities/arithmetic.o ../error/error.o
+   ../utilities/bits.o ../utilities/arithmetic.o ../error/error.o
 
-matstat_objects:=../utilities/filekl.o ../io/basic_io.o ../utilities/bits.o \
-  ../utilities/constants.o
+matstat_objects:=../utilities/filekl_in.o ../io/basic_io.o \
+   ../utilities/bits.o ../utilities/bitset.o ../utilities/constants.o
 
-polstat_objects:=../utilities/filekl.o ../io/basic_io.o ../utilities/bits.o \
-  ../utilities/constants.o
+
+polstat_objects:=../utilities/filekl_in.o ../io/basic_io.o \
+   ../utilities/bits.o ../utilities/bitset.o ../utilities/constants.o
 
 searchpol_objects:=
 
