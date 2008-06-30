@@ -51,7 +51,7 @@ the modular remainders can be entered manually by the user.
 
 @ Honouring the memory of Fokko du Cloux, all calculations in this program
 will be done using only |unsigned long| integer arithmetic; no negative
-numbers will occur anywhere at any time. We shall even use the |ulong| type
+numbers will occur anywhere at any time. We shall use the |ulong| type
 even when in some cases less bits would probably suffice. Doing the extended
 Euclidean algorithm and lifting of modular remainders without using negative
 numbers is an interesting challenge that actually leads to a slick solution
