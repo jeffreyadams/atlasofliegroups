@@ -44,9 +44,9 @@ human-readable form.
 
 @ We shall use a global variable to controls whether constructing the internal
 data structures of this program will produce any output to |std::cout| or
-|std::cerr|. Normally constructors should bother writing output, but some of
-the data structures considered here may take a lot of time to construct, and
-it is informative for the user to know which one is taking the most time;
+|std::cerr|. Normally constructors should not bother writing output, but some
+of the data structures considered here may take a lot of time to construct,
+and it is informative for the user to know which one is taking the most time;
 therefore this flag is set by default.
 
 @< Global variable definitions @>=
@@ -153,11 +153,11 @@ There is not very much information we need to store permanently about this
 file. Apart from the reference to the file stream, we record the number of
 polynomials, the size in bytes and the number of the coefficients, and the
 offsets in the file where the index and coefficient parts start, respectively.
-We also store a value that limits the length of the polynomials that we expect
-to find, since this is quite an effective way to detect file corruption before
-it does too much harm. This value will be $32$ for split~$E_8$, but we allow
-it to be set in the constructor for this class, so that this value is not
-hard-wired into the program.
+We also store a value |max_length| that limits the length of the polynomials
+that we expect to find, since this is quite an effective way to detect file
+corruption before it does too much harm. This value will be $32$ for
+split~$E_8$, but we allow it to be set in the constructor for this class, so
+that this value is not hard-wired into the program.
 
 @h <fstream>
 @< Type definitions @>=
@@ -216,18 +216,19 @@ polynomial_info::polynomial_info
   coefficients_begin=file.tellg();
 }
 
-@ The main accessor function is the one that extracts a sequence of polynomial
-coefficients from the file. Their number is determined by the difference
-between two indices, divided by the coefficient size. If this number exceeds
-|max_length| we throw a |runtime_error| after indicating the poly index and
-degree in question. Otherwise we position the file for reading the
-coefficients, and read them. Afterwords we test is the file was large enough
-to allow reading, which is particularly relevant when we are so impatient that
-we run \.{KLread} before the file is completely written (for split~$E_8$ this
-can take as much as days, depending on the hardware used). If there was a
-problem reading the file we throw a |runtime_error|, but we clear the error
-status of the file first so that the user can try again with a more modest
-index.
+@ The main accessor function is |coefficients| which extracts a sequence of
+polynomial coefficients from the file. Their number is determined by the
+difference between two indices, divided by the coefficient size. If this
+number exceeds |max_length| we throw a |runtime_error| after indicating the
+poly index and degree in question. Otherwise we position the file for reading
+the coefficients, and read them. Afterwards we test if the file was large
+enough to allow reading, which is particularly relevant in case we are so
+impatient that we run \.{KLread} before the file is completely written (for
+split~$E_8$ that can take as much as days, depending on the hardware used,
+making the temptation to take a peek before the file is complete
+considerable). If there was a problem reading the file we throw a
+|runtime_error|, but we clear the error status of the file first so that the
+user can try again with a more modest index.
 
 @< Function definitions @>=
 std::vector<ullong> polynomial_info::coefficients(KLIndex i) const
@@ -948,19 +949,21 @@ way.
 @* The row progress file.
 %
 A new type of file recently added to the repertoire is the one on which the
-progress in terms of polynomials for each row is recorded. It contains a
-sequence of $12$-byte records, one for each ``row'' of the matrix, indexed by
-a |BlockElt y@;|. These records are composed of three $4$~byte integers giving
-total numbers for this row of respectively strongly primitive pairs, nonzero
-entries, and new distinct polynomials. Here we are only interested in the
-third number, in order to be able to quickly find the first occurrence of a
-given polynomial number.
+progress in terms of polynomials for each row is recorded; it can be created
+by applying the \.{matstat} program to the block and matrix files. The file
+contains a sequence of $12$-byte records, one for each ``row'' of the matrix,
+indexed by a |BlockElt y@;|. These records are composed of three $4$~byte
+integers giving total numbers for this row of respectively strongly primitive
+pairs, nonzero entries, and new distinct polynomials. Here we are only
+interested in the third number, in order to be able to quickly find the first
+occurrence of a given polynomial number.
 
 @< Type definitions @>=
 
 class progress_info
 {
-  std::vector<KLIndex> first_pol; // count distinct polynomials in rows before
+  std::vector<KLIndex> first_pol;
+    // count distinct polynomials in rows before this one
 public:
   progress_info(std::ifstream& progress_file);
 @)
@@ -996,39 +999,62 @@ progress_info::progress_info(std::ifstream& file)
 @ Looking up the row a polynomial first occurs in is done by a simple binary
 search for~|i| in the vector |first_pol|; we shall return the last index~|y|,
 with |0<=y<block_size()|, such that |first_pol[y]<=i| (then |i| occurs for the
-first time in row~|y|). This is achieved by calling |std::upper_bound|, which
-returns the pointer value |&first_pol[y+1]|, and subtracting the address
-|&first_pol[1]| from it. Note that the former pointer value should be the
-address |&first_pol[block_size()]| of the final entry of |first_pol| if |i|
-occurs first in the final row (|y==block_size()-1|). We also allow |i| to be
-larger than any polynomial index (notably we allow it to be the number of
-polynomial indices), in which case we shall return the value |block_size()|;
-therefore the second argument of |std::upper_bound| should be the pointer
-|&*first_pol.end()|, which is returned from |std::upper_bound| will make
-|block_size()| the value returned from |first_row_for_pol|. On the other hand
-we need not cater for the nonexistent values less than~|0|, so the first
-argument can be |&first_pol[1]|.
+first time in row~|y|), or it throws an error if |first_pol[block_size()]<=i|
+which indicates that|i| is too large to occur at all). This is achieved by
+calling |std::upper_bound|, which returns the pointer value |&first_pol[y+1]|,
+and subtracting the address |&first_pol[1]| from it. Note that the former
+pointer value should be the address |&first_pol[block_size()]| of the final
+entry of |first_pol| if |i| occurs first in the final row
+(|y==block_size()-1|). We also allow |i| to be larger than any polynomial
+index (notably we allow it to be the number of polynomial indices), in which
+case we shall return the value |block_size()|; therefore the second argument
+of |std::upper_bound| should be the pointer |&*first_pol.end()|, which is
+returned from |std::upper_bound| will make |block_size()| the value returned
+from |first_row_for_pol|. On the other hand we need not cater for the
+nonexistent values less than~|0|, so the first argument can be
+|&first_pol[1]|.
 
 @< Function definitions @>=
 BlockElt progress_info::first_row_for_pol(KLIndex i) const
 { const KLIndex* p=std::upper_bound(&first_pol[1],&*first_pol.end(),i);
+  if (p==&*first_pol.end())
+    throw std::runtime_error("Polynomial index out of range");
   return p-&first_pol[1];
 }
 
-@ To actually locate a polynomial by index, we can now proceed as follows.
+@ To actually locate a polynomial by index, we can now proceed as follows. The
+first version of the function |locate_KL_polynomial| takes a row number |y| as
+parameter so that any row can be (linearly) searched for a given polynomial;
+the second version of |locate_KL_polynomial| calls the first one with the
+first row number for which the polynomial occurs, so this one should not throw
+an error unless |i| is out of range. The case |i==0| is somewhat special. For
+a specified row, the first version of |locate_KL_polynomial| will normally
+return a column number where this row has a zero entry if it exists, since
+|mi.find_pol_nr| can return (the index of) the null polynomial. However, even
+if no zero entry is found in the lower triangular part of the given row, the
+column of the first (null) entry above the diagonal will be returned if there
+is any; in this case we ``manually'' set |mi.x_prim| equal to the value
+returned, since the value left from the last call of |find_pol_nr| is not
+relevant. This ``above-diagonal'' case this will apply in particular when the
+second version is called with |i==0| (provided that |mi.block_size()>1|), as
+it will compute |y==0|, and therefore return $(1,0)$: the zero polynomial is
+always recorded as present in the topmost row, even though it is not actually
+recorded in the matrix file.
 
 @< Function definitions @>=
+BlockElt locate_KL_polynomial (KLIndex i,matrix_info& mi,BlockElt y)
+{
+  for (BlockElt x=0; x<=y; ++x)
+    if (mi.find_pol_nr(x,y)==i) return x;
+  if (i==0 and y+1<mi.block_size())
+    return mi.x_prim=y+1; // an entry 0 above the diagonal
+  throw std::runtime_error("Polynomial could not be located");
+}
+@)
 std::pair<BlockElt,BlockElt> locate_KL_polynomial
   (KLIndex i,matrix_info& mi, const progress_info& pi)
 { BlockElt y=pi.first_row_for_pol(i);
-  for (BlockElt x=0; x<=y; ++x)
-    if (mi.find_pol_nr(x,y)==i)
-      return std::make_pair(x,y);
-  if (i==0) return std::make_pair(1,0); // the first |Zero|, if any exist
-  else
-  { std::cerr << i << std::endl;
-    throw std::runtime_error("Polynomial could not be located");
-  }
+  return std::make_pair(locate_KL_polynomial(i,mi,y),y);
 }
 
 @* The main program.
@@ -1249,11 +1275,13 @@ later reading. At the end of a successful conversion, we replace the
 @< Construct |progress_info| object... @>=
 { std::ifstream row_file(*argv++,binary_in);
   if (row_file.is_open())
+  {
     row_info=std::auto_ptr<progress_info>(new progress_info(row_file));
+    if (row_info->block_size()!=mi->block_size())
+      throw std::runtime_error("Block size mismatch for row file");
+  }
   else
     std::cerr << "failed to open file '" << argv[-1] << "', doing without.\n";
-  if (row_info->block_size()!=mi->block_size())
-    throw std::runtime_error("Block size mismatch for row file");
 }
 
 @ Here is the outline of the main loop of the user interaction. We catch the
@@ -1272,6 +1300,7 @@ do
 {
   try
   { if (mi.get()==NULL)
+      // if auto-pointer |mi| is unset, no matrix information is present
       std::cout << "index: ";
     else
       std::cout << "give block elements x,y, or polynomial index i as #i: ";
@@ -1282,10 +1311,26 @@ do
     if (std::cin.peek()=='#' ? std::cin.get(), true : mi.get()==NULL )
     { @< Read index~|i| from |std::cin|; if |"quit"| is found instead do
 	 |break|, and in case of errors throw a |runtime_error| @>
-      if (row_info.get()!=NULL)
-      { std::pair<BlockElt,BlockElt> p=locate_KL_polynomial(i,*mi,*row_info);
-        std::cout << "P_{" << p.first << ',' << p.second << @| "}=P_{"
-	          << mi->x_prim << ',' << p.second << "}:\n";
+      if (mi.get()!=NULL and std::cin.peek()==':' or row_info.get()!=NULL)
+      { BlockElt x,y;
+	if (std::cin.peek()==':' or std::cin.peek()=='>')
+        { bool once=std::cin.peek()==':';
+	  @< Read row number |y| from |std::cin| or throw a |runtime_error| @>
+	  if (once)
+	    x=locate_KL_polynomial(i,*mi,y);
+	  else
+	    while(++y<mi->block_size())
+	    { try {@; x=locate_KL_polynomial(i,*mi,y); break;}
+	      catch(std::runtime_error) {@; std::cerr << y+1 << '\r'; }
+	    }
+	}
+        else
+        { std::pair<BlockElt,BlockElt> p=
+            locate_KL_polynomial(i,*mi,*row_info);
+        @/x=p.first; y=p.second;
+	}
+        std::cout << "P_{" << x << ',' << y << @| "}=P_{"
+	          << mi->x_prim << ',' << y << "}:\n";
       }
     }
     else
@@ -1332,6 +1377,18 @@ as the module name says; any other text just gives an error message.
   if (s=="quit") break;
   throw std::runtime_error("Non-numeric input");
 }
+
+@ Reading a row number is even simpler, but we should not forget to discard
+the input character that led us into this case.
+@< Read row number |y| from |std::cin| or throw a |runtime_error| @>=
+{
+  std::cin.get(); std::cin >> y;
+  if (not std::cin.good())
+  { std::cin.clear(); throw std::runtime_error("Non-numeric input"); }
+  if (y>=mi->block_size())
+    throw std::runtime_error("Row number too large");
+}
+
 
 @ When we read the block elements $x,y$, we make minimal tests for correct
 input, then we primitivise $x$ and print the information found, taking case to
