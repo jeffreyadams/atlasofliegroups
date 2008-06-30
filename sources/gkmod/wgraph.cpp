@@ -8,7 +8,7 @@
 */
 
 #include "wgraph.h"
-#include "filekl.h"
+#include "filekl_in.h"
 #include "bitset.h"
 #include "blocks.h"
 
