@@ -97,8 +97,6 @@ objects := $(c++objects) parser.tab.o $(atlas_objects)
 
 rlincludes ?= -lreadline -lcurses
 
-
-
 # RULES follow now
 
 .PHONY: all mostlyclean clean headers dvifiles compilable
@@ -142,6 +140,9 @@ $(c++objects) $(atlas_objects): %.o: %.cpp
            then mv old_targets/$$i $$i; echo $$i unchanged;\
            fi done
 	@rm -r old_targets
+
+# prevent remaking files that are under CVS
+../utilities/filekl.h ../utilities/filekl.cpp ../utilities/filekl_in.h ../utilities/filekl_in.cpp : ../utilities/filekl.w ;
 
 # TeX files are also made from CWEBx files (.w) with the ++ switch, by cweavex
 %.tex: %.w
