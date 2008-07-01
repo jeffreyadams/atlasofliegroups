@@ -652,6 +652,8 @@ void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   insertTag(tagDict,"blockorder",blockorder_tag);
   insertTag(tagDict,"blockwrite",blockwrite_tag);
   insertTag(tagDict,"blockstabilizer",blockstabilizer_tag);
+  insertTag(tagDict,"dualblock",dual_block_tag);
+  insertTag(tagDict,"dualmap",dual_map_tag);
   insertTag(tagDict,"klbasis",klbasis_tag);
   insertTag(tagDict,"kllist",kllist_tag);
   insertTag(tagDict,"primkl",klprim_tag);
