@@ -168,7 +168,8 @@ void dualInnerClassType(InnerClassType& dict, const InnerClassType& ict,
       break;
     case 'A':
     case 'E':
-      // interchange split and compact inner classes
+    case 'T':
+      // Interchange split and compact inner classes
       if (dict[j] == 's')
 	dict[j] = 'c';
       else
