@@ -826,18 +826,18 @@ Helper::Helper(const KLContext& kl)
 /*!
   \brief Returns the first descent generator that is not real type II
 
-  Explanation: those are the ones that give a direct recursion formula for
-  the K-L basis element.
+  Explanation: those are the ones that give a direct recursion formula for the
+  K-L basis element. Explicitly, we search for a generator |s| such that
+  |descentValue(s,y)| is either |DescentStatus::ComplexDescent| or
+  |DescentStatus::RealTypeI|. If no such generator exists, we return |rank()|.
 */
 size_t Helper::firstDirectRecursion(BlockElt y) const
 {
-  using namespace descents;
-
   const descents::DescentStatus& d = descent(y);
 
   for (size_t s = 0; s < rank(); ++s) {
-    DescentStatus::Value v = d[s];
-    if (DescentStatus::isDirectRecursion(v))
+    descents::DescentStatus::Value v = d[s];
+    if (descents::DescentStatus::isDirectRecursion(v))
       return s;
   }
 
@@ -1364,14 +1364,13 @@ void Helper::fillMuRow(BlockElt y)
   Precondition: all the rows in the packet that are not part of a "thicket"
   have already been filled.
 
-  Explanation: a thicket is an element that has only real type II descents,
-  and that moreover is such that all elements in its conected component for
-  the relation of being connected by a sequence of real type II cross-actions,
-  is of the same form (for instance, it happens quite often that the principal
-  series representations are a thicket.) Then we must use the "structural fact"
-  in Lemma 6.2 of David's Park City notes: for each x lower than y, there is
-  an element y' of the thicket for which x has an ascent (or if there is no
-  such y', the K-L polynomial is zero.)
+  Explanation: a thicket is a connected component in the graph whose edges are
+  formed by real type II cross-actions, all of whose elements have _only_ real
+  type II descents (for instance, it happens quite often that the principal
+  series representations are in a thicket.) Then we must use the "structural
+  fact" in Lemma 6.2 of David's Park City notes: for each x lower than y,
+  there is an element y' of the thicket for which x has an ascent (or if there
+  is no such y', the K-L polynomial is zero.)
 
   Algorithm: (a) for each y' in the R-packet that has not already been filled,
   we determine the thicket of y' via a traversal algorithm, as usual (b) we
@@ -1408,19 +1407,29 @@ void Helper::fillThickets(BlockElt y)
 
 
 /*!
-  \brief Subtracts from klv the correcting terms in the K-L recursion.
+  \brief Subtracts from all polynomials in |klv| the correcting terms in the
+  K-L recursion.
 
-  Precondtion: klp contains the terms corresponding to c_s.c_y, for the x that
-  are extremal w.r.t. y; the mu-table and KL-table has been filled in for
-  elements of length <= y.
+  Precondtion: |klv| already contains, for all $x$ that are primitive w.r.t.
+  |y| in increasing order, the terms in $P_{x,y}$ corresponding to
+  $c_s.c_{y1}$, whery |y1| is $s.y$ if |s| is a complex descent, and |y1| is
+  an inverse Cayley transform of |y| if |s| is real type I or II.
+  The mu-table and KL-table have been filled in for elements of length < l(y).
 
   Explanation: the recursion formula is of the form:
+  $$
+    lhs = c_s.c_{y1} - \sum_{z} mu(z,y1)c_z
+  $$
+  where |z| runs over the elements $< y1$ such that |s| is a descent for |z|.
+  Here $lhs$ stands for $c_y$ when |s| is a complex descent or real type I for
+  |y|, and for $c_{y}+c_{s.y}$ when |s| is real type II; however it plays no
+  part in this function that only subtracts $\mu$-terms.
 
-    lhs = c_s.c_{y1} - sum_{z} mu(z,y1)c_z
-
-  where z runs over the elements < y such that s is a descent for z,
-  y1 is s.y, and lhs is c_y when s is a complex descent or real type I for y,
-  and c_{y}+c_{s.y} when s is real type II.
+  We construct a loop over |z| first, before traversing |klv| (the test for
+  $z<y1$ is absent, but $\mu(z,y1)\neq0$ implies $z\leq y1$, and $z=y1$ will
+  be rejected by the descent condition). The chosen loop order allows fetching
+  $\mu(z,y1)$ only once, and terminating the scan of |klv| once its values |x|
+  become too large to produce a non-zero $P_{x,z}$.
 */
 void Helper::muCorrection(std::vector<KLPol>& klv,
 			  const klsupport::PrimitiveRow& e,
@@ -1458,7 +1467,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 
       for (size_t j = 0; j < e.size(); ++j) {
 	BlockElt x = e[j];
-	if (length(x) > l_z) break;
+	if (length(x) > l_z) break; // once reached, no more terms for |z|
 
 	KLPolRef pol = klPol(x,z);
 	try {
@@ -1474,7 +1483,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 
       for (size_t j = 0; j < e.size(); ++j) {
 	BlockElt x = e[j];
-	if (length(x) > l_z) break;
+	if (length(x) > l_z) break; // once reached, no more terms for |z|
 
 	KLPolRef pol = klPol(x,z);
 	try{
@@ -1505,8 +1514,9 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
   where y1 = cross(s,y) when s is complex for y, one of the two elements in
   inverseCayley(s,y) when s is real. The (c_s.c_{y1})-part depends on the
   status of x w.r.t. s (we look only at extremal x, so we know it is a
-  descent); the correction term, coming from sum_z mu(z,y1)c_z, depends only
-  on y1.
+  descent). The correction term, coming from $\sum_z mu(z,y1)c_z$, is handled
+  by |muCorrection|; the form of the summation depends only on |y1| (which it
+  recomputes), but involves polynomials $P_{x,z}$ that depend on $x$ as well.
 */
 void Helper::recursionRow(std::vector<KLPol>& klv,
 			  const klsupport::PrimitiveRow& e,
@@ -1610,11 +1620,11 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
   PrimitiveRow pr;
   makePrimitiveRow(pr,y);
 
-  KLRow klr(pr.size());
-  PrimitiveRow nzpr(pr.size());
+  KLRow klr(pr.size()); // nonzero primitive entries (indexes into d_store)
+  PrimitiveRow nzpr(pr.size()); // column numbers of nonzero primitive entries
   KLRow::iterator new_pol = klr.end();
-  PrimitiveRow::iterator new_extr = nzpr.end();
-  PrimitiveRow::iterator nzpr_end = nzpr.end();
+  PrimitiveRow::iterator new_nzpr = nzpr.end();
+  const PrimitiveRow::iterator nzpr_end = nzpr.end();
 
   // set stops in pr at extremal elements
   std::vector<size_t> stop(er.size()+1);
@@ -1630,19 +1640,19 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
     --j;
     // insert extremal polynomial
     if (not klv[j].isZero()) {
-      *--new_extr = er[j];
+      *--new_nzpr = er[j];
       *--new_pol  = d_hashtable.match(klv[j]);
     }
-    // do the others
+    // do the others (primitive but not extremal ones), down to |stop[j]|
     for (size_t i = stop[j+1]-1; i > stop[j];) {
       --i;
       size_t s = firstAscent(descent(pr[i]),descent(y),rank());
-      BlockEltPair x1 = cayley(s,pr[i]);
-      KLPol pol = klPol(x1.first,y,new_pol,new_extr,nzpr_end);
-      pol.safeAdd(klPol(x1.second,y,new_pol,new_extr,nzpr_end));
+      BlockEltPair x1 = cayley(s,pr[i]); // must be imaginary type II
+      KLPol pol = klPol(x1.first,y,new_pol,new_nzpr,nzpr_end);
+      pol.safeAdd(klPol(x1.second,y,new_pol,new_nzpr,nzpr_end));
 
       if (not pol.isZero()) {
-	*--new_extr = pr[i];
+	*--new_nzpr = pr[i];
 	*--new_pol  = d_hashtable.match(pol);
       }
     }
@@ -1652,11 +1662,11 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
   d_prim[y].reserve(klr.end() - new_pol);
   d_kl[y].reserve(klr.end() - new_pol);
 
-  copy(new_extr,nzpr.end(),back_inserter(d_prim[y]));
+  copy(new_nzpr,nzpr.end(),back_inserter(d_prim[y]));
   copy(new_pol,klr.end(),back_inserter(d_kl[y]));
 
-  prim_size        += nzpr.end()-new_extr;
-  nr_of_prim_nulls += new_extr  -nzpr.begin(); // measure unused space
+  prim_size        += nzpr.end()-new_nzpr;
+  nr_of_prim_nulls += new_nzpr  -nzpr.begin(); // measure unused space
 }
 
 } // namespace helper
