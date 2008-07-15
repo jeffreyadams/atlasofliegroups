@@ -42,7 +42,7 @@ struct Layout {
     :d_type(lt),d_inner(),d_basis(b) {}
 
   /* In the new atlas interface, the Lie type and inner class type are
-     computes from the involution, and the lattice basis is unused */
+     computed from the involution, and the lattice basis is unused */
   Layout(const lietype::LieType& lt, const lietype::InnerClassType ict)
     :d_type(lt),d_inner(ict), d_basis() {}
 
