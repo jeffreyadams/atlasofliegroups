@@ -66,8 +66,8 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
 
   size_t orbit_size=cc.orbitSize();
   strm << "twisted involution orbit size: " << orbit_size
-       << ";  fiber rank: " << f.fiberRank()
-       << ";  #X_r: " << orbit_size*f.fiberSize()
+       << "; fiber size: " << f.fiberSize()
+       << "; strong inv: " << orbit_size*f.fiberSize()
        <<std::endl;
 
   // print type of imaginary root system
