@@ -66,7 +66,7 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
 
   mode.add("components",helpmode::nohelp_h);
   mode.add("cartan",cartan_h);
-  mode.add("corder",helpmode::nohelp_h);
+  mode.add("corder",corder_h);
   mode.add("gradings",gradings_h);
   mode.add("realform",realform_h);
   mode.add("realweyl",realweyl_h);
@@ -82,7 +82,7 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   insertTag(tagDict,"realweyl",realweyl_tag);
   insertTag(tagDict,"strongreal",strongreal_tag);
   insertTag(tagDict,"kgb",kgb_tag);
-  insertTag(tagDict,"kgb",kgborder_tag);
+  insertTag(tagDict,"kgborder",kgborder_tag);
 }
 
 }
@@ -101,6 +101,11 @@ namespace {
 void cartan_h()
 {
   io::printFile(std::cerr,"cartan.help",io::MESSAGE_DIR);
+}
+
+void corder_h()
+{
+  io::printFile(std::cerr,"corder.help",io::MESSAGE_DIR);
 }
 
 void gradings_h()
