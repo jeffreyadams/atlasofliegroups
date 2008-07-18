@@ -765,9 +765,9 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
       for (i=0; i<rd.semisimpleRank(); ++i)
 	if (latticetypes::scalarProduct(rd.simpleCoroot(i),rrs) < 0 )
 	{
-	  rd.reflection(rrs,rd.simpleRootNbr(i)); // apply $s_i$ to root sum
-	  weylGroup().twistedConjugate(sigma,i);  // adjust |sigma| accordingly
-	  weylGroup().mult(w,i);                  // and add generator to |w|
+	  rd.reflect(rrs,rd.simpleRootNbr(i));   // apply $s_i$ to root sum
+	  weylGroup().twistedConjugate(sigma,i); // adjust |sigma| accordingly
+	  weylGroup().mult(w,i);                 // and add generator to |w|
 	  break;     // after this change, continue the |do|-|while| loop
 	}
     while (i!=rd.semisimpleRank());    // i.e., until no change occurs any more
@@ -793,9 +793,9 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
       for (it=simple_orth.begin(); it(); ++it)
 	if (latticetypes::scalarProduct(rd.simpleCoroot(*it),irs) < 0)
 	{
-	  rd.reflection(irs,rd.simpleRootNbr(*it)); // apply $s_i$ to root sum
-	  weylGroup().twistedConjugate(sigma,*it);  // adjust |sigma|
-	  weylGroup().mult(w,*it);                  // and add generator to |w|
+	  rd.reflect(irs,rd.simpleRootNbr(*it));   // apply $s_i$ to root sum
+	  weylGroup().twistedConjugate(sigma,*it); // adjust |sigma|
+	  weylGroup().mult(w,*it);                 // and add generator to |w|
 	  break;           // after this change, continue the |do|-|while| loop
 	}
     while (it()); // i.e., until no change occurs any more

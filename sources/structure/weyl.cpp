@@ -732,7 +732,7 @@ void WeylGroup::act(const rootdata::RootDatum& rd,
   for (size_t j = d_rank; j-->0; ) {
     const WeylWord& xw = wordPiece(w,j);
     for (size_t i = xw.size(); i-->0; )
-      rd.simpleReflection(v,d_out[xw[i]]);
+      rd.simpleReflect(v,d_out[xw[i]]);
   }
 }
 
