@@ -33,7 +33,7 @@ namespace latticetypes {
   LatticeElt& operator-= (LatticeElt&, const LatticeElt&);
   LatticeElt& operator*= (LatticeElt&, const LatticeCoeff&);
   LatticeElt& operator/= (LatticeElt&, const LatticeCoeff&);
-  LatticeElt& operator- (LatticeElt&);
+  LatticeElt& operator- (LatticeElt&); // negates argument in place
 
   bool isZero(const LatticeElt&);
 
