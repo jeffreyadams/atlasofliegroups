@@ -28,6 +28,7 @@
 #include "klsupport.h"
 #include "kl.h"
 #include "kltest.h"
+#include "standardrepk.h"
 
 /*****************************************************************************
 
@@ -339,17 +340,9 @@ void test_f()
 
   try
   {
-    kl::KLContext& klc = blockmode::currentKL();
-
-    blocks::Block dual_block(blockmode::currentDualComplexGroup(),
-			     blockmode::currentDualRealForm(),
-			     realmode::currentRealForm());
-
-    klsupport::KLSupport dual_kls(dual_block); dual_kls.fill();
-    kl::KLContext dual_klc(dual_kls); dual_klc.fill();
-
-    std::cout << ( kltest::dualityVerify(klc,dual_klc) ? "Succes" : "Failure" )
-	      << std::endl;
+    standardrepk::KHatComputations khc
+      (mainmode::currentComplexGroup(),blockmode::currentBlock());
+    khc.go(blockmode::currentBlock());
   }
   catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
