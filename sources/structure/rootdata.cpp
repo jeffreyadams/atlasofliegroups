@@ -198,7 +198,7 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
     Permutation& rp = d_rootPermutation.back();
     for (size_t i = 0; i < numRoots(); ++i) {
       Weight v = d_roots[i];
-      simpleReflection(v,j);
+      simpleReflect(v,j);
       rp[i] = rootNbr(v);
     }
   }
@@ -261,7 +261,7 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
     rp.resize(numRoots());
     for (size_t i = 0; i < numRoots(); ++i) {
       Weight v = d_roots[i];
-      simpleReflection(v,j);
+      simpleReflect(v,j);
       rp[i] = rootNbr(v);
     }
   }
@@ -326,23 +326,17 @@ WRootIterator RootDatum::beginSimpleRoot() const
   return WRootIterator(d_roots,d_simpleRoots.begin());
 }
 
-void RootDatum::coreflection(Weight& v, RootNbr j) const
-
 /*!
-\brief  Applies to v the reflection about coroot number j.
+\brief  Applies to the coweight |v| the reflection about coroot number |j|.
 
 In other words, v is transformed into v - <alpha_j,v>alpha_j^vee.
 */
-
+void RootDatum::coreflect(Weight& v, RootNbr j) const
 {
-  using namespace latticetypes;
-
-  LatticeCoeff a = LT::scalarProduct(d_roots[j],v);
-  Weight m = d_coroots[j];
+  LT::LatticeCoeff a = LT::scalarProduct(d_roots[j],v);
+  LT::Weight m = d_coroots[j];
   m *= a;
   v -= m;
-
-  return;
 }
 
 
@@ -448,22 +442,18 @@ setutils::Permutation
   return result;
 }
 
-void RootDatum::reflection(Weight& v, RootNbr r) const
-
 /*!
 \brief  Applies to v the reflection about root number r.
 
 In other words, v is transformed into v - <v,alpha_r^vee>alpha_r
 */
-
+void RootDatum::reflect(Weight& v, RootNbr r) const
 {
   LatticeCoeff a = LT::scalarProduct(v,d_coroots[r]);
   Weight m = d_roots[r];
   m *= a;
   v -= m;
 }
-
-void RootDatum::rootReflection(LatticeMatrix& q, RootNbr r) const
 
 /*!
 \brief Puts in q the reflection for root \#r.
@@ -472,7 +462,7 @@ void RootDatum::rootReflection(LatticeMatrix& q, RootNbr r) const
   better to construct the matrices once and for all and return const
   references.
 */
-
+void RootDatum::rootReflection(LatticeMatrix& q, RootNbr r) const
 {
   q.resize(d_rank,d_rank);
 
@@ -496,7 +486,7 @@ LatticeMatrix RootDatum::rootReflection(RootNbr r) const
 // this is a non-destructive version of |toWeylWord| below for reflections
 weyl::WeylWord RootDatum::reflectionWord(RootNbr r) const
 {
-  Weight v = twoRho(); reflection(v,r);
+  Weight v = twoRho(); reflect(v,r);
 
   weyl::WeylWord ww; toPositive(ww,v,*this); return ww;
 }
@@ -571,9 +561,7 @@ Weight RootDatum::twoRho(const RootList& rl) const
   Precondition: rs holds the roots in a sub-rootsystem of the root system of
   rd;
 */
-
 Weight RootDatum::twoRho(const RootSet& rs) const
-
 {
   Weight result(rank(),0);
 
@@ -583,6 +571,16 @@ Weight RootDatum::twoRho(const RootSet& rs) const
     result += root(*i);
   return result;
 }
+
+/*! \brief Returns the 2rho for the dual group */
+LT::Weight RootDatum::dual_twoRho() const
+{
+  Weight result(rank(),0);
+  for (RootSet::iterator i = posRootSet().begin(); i(); ++i)
+    result += coroot(*i);
+  return result;
+}
+
 
 /*!
   \brief Returns the canonical basis (set of simple roots) of |rl|, which
@@ -822,14 +820,13 @@ void longest(LT::LatticeMatrix& q, const RootDatum& rd)
   return;
 }
 
-void makeOrthogonal(RootList& orth, const RootList& rl, const RootList& rs,
-		    const RootDatum& rd)
 
 /*!
 \brief Puts in orth the elements of rs which are orthogonal to all
   elements of rl.
 */
-
+void makeOrthogonal(RootList& orth, const RootList& rl, const RootList& rs,
+		    const RootDatum& rd)
 {
   orth.resize(0);
 
@@ -843,12 +840,11 @@ void makeOrthogonal(RootList& orth, const RootList& rl, const RootList& rs,
   }
 }
 
-void reflectionMatrix(LT::LatticeMatrix& qs, RootNbr n, const RootDatum& rd)
 
 /*!
 \brief Writes in qs the matrix of the reflection through root \#n.
 */
-
+void reflectionMatrix(LT::LatticeMatrix& qs, RootNbr n, const RootDatum& rd)
 {
   Weight vc = rd.coroot(n);
   qs.resize(rd.rank(),rd.rank());
@@ -1050,7 +1046,7 @@ void toPositive(weyl::WeylWord& ww, const Weight& d_v, const RootDatum& rd)
     goto end;
   add_reflection:
     ww.push_back(j);
-    rd.simpleReflection(v,j);
+    rd.simpleReflect(v,j);
   }
 
  end:
@@ -1070,7 +1066,7 @@ void toWeylWord(weyl::WeylWord& ww, RootNbr rn, const RootDatum& rd)
 
 {
   Weight v = rd.twoRho();
-  rd.reflection(v,rn);
+  rd.reflect(v,rn);
   toPositive(ww,v,rd);
 }
 
@@ -1175,8 +1171,8 @@ void fillRoots(WeightList& rl, WeightList& crl, RootList& srl,
     RP rp = new_roots.front();
     for (size_t j = 0; j < rd.semisimpleRank(); ++j) {
       RP rp_new = rp;
-      rd.simpleReflection(rp_new.first,j);
-      rd.simpleCoreflection(rp_new.second,j);
+      rd.simpleReflect(rp_new.first,j);
+      rd.simpleCoreflect(rp_new.second,j);
       if (roots.insert(rp_new).second) // we found a new root
 	new_roots.push_back(rp_new);
     }

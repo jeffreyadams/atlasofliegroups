@@ -69,8 +69,10 @@ void makeOrthogonal(RootList&, const RootList&, const RootList&,
 
 void reflectionMatrix(LT::LatticeMatrix&, RootNbr, const RootDatum&);
 
+/* not implemented (yet?), would give matrix on basis of simple roots
 void reflectionMatrix(LT::LatticeMatrix&, RootNbr, const RootDatum&,
                       RootBasisTag);
+*/
 
 // compute a basis of a root subsystem
 void rootBasis(RootList&, const RootList&, const RootDatum&);
@@ -345,7 +347,7 @@ use by accessors.
     return LT::scalarProduct(simpleRoot(i),simpleCoroot(j));
   }
 
-  void coreflection(LT::Weight&, RootNbr) const;
+  void coreflect(LT::Weight&, RootNbr) const;
 
   bool isAdjoint() const;
 
@@ -371,7 +373,7 @@ use by accessors.
     return d_rank;
   }
 
-  void reflection(LT::Weight&, RootNbr) const;
+  void reflect(LT::Weight&, RootNbr) const;
 
   RootNbr rootMinus(RootNbr j) const {
     return d_minus[j];
@@ -410,12 +412,12 @@ use by accessors.
     return d_semisimpleRank;
   }
 
-  void simpleCoreflection(LT::Weight& v, size_t j) const {
-    coreflection(v,d_simpleRoots[j]);
+  void simpleCoreflect(LT::Weight& v, size_t j) const {
+    coreflect(v,d_simpleRoots[j]);
   }
 
-  void simpleReflection(LT::Weight& v, size_t j) const {
-    reflection(v,d_simpleRoots[j]);
+  void simpleReflect(LT::Weight& v, size_t j) const {
+    reflect(v,d_simpleRoots[j]);
   }
 
   LT::LatticeMatrix cartanMatrix() const;
@@ -437,6 +439,7 @@ template <typename I, typename O>
     return d_twoRho;
   }
 
+  LT::Weight dual_twoRho() const;
   LT::Weight twoRho(const RootList&) const;
 
   LT::Weight twoRho(const RootSet&) const;
