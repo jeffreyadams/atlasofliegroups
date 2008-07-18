@@ -49,13 +49,13 @@ namespace {
   grading of the simple imaginary roots associated to the chosen base point of
   the fiber, (2) the grading shifts associated with the generators of the
   fiber group, and (3) the vectors |d_mAlpha[s]| by which each of the simple
-  imaginary roots \f$\alpha_s\f$ translates if it acts act non-trivially (this is
-  the image in the fiber group of the coroot of \f$\alpha_s\f$). The action of
-  \f$\alpha_s\f$ will translate |x| by |d_mAlpha[s]| if the grading at \f$\alpha_s\f$
-  associated to |x| is odd (noncompact). To facilitate the determination of
-  that grading, the grading shift information is stored as bitsets
-  |d_alpha[s]| for each simple imaginary root. Since in |Fiber|, the grading
-  shifts are organised by generator of the fiber group, the neceesary
+  imaginary roots \f$\alpha_s\f$ translates if it acts act non-trivially (this
+  is the image in the fiber group of the coroot of \f$\alpha_s\f$). The action
+  of \f$\alpha_s\f$ will translate |x| by |d_mAlpha[s]| if the grading at
+  \f$\alpha_s\f$ associated to |x| is odd (noncompact). To facilitate the
+  determination of that grading, the grading shift information is stored as
+  bitsets |d_alpha[s]| for each simple imaginary root. Since in |Fiber|, the
+  grading shifts are organised by generator of the fiber group, the neceesary
   "transposition" of the information is done by the constructor below.
   */
 
@@ -622,8 +622,8 @@ Fiber::makeFiberMap(const rootdata::RootDatum& rd) const
   Algorithm: we construct the FiberAction object corresponding to the action
   of the imaginary Weyl group on the adjoint fiber, and then call |makeOrbits|
   to make the partition. For the fiber action we can use the base grading and
-  the grading shifts "as is", while the fiber group elements \f$m_\alpha\f$ are
-  computed by |adjointMAlpha|.
+  the grading shifts "as is", while the fiber group elements \f$m_\alpha\f$
+  are computed by |adjointMAlpha|.
 */
 partition::Partition Fiber::makeWeakReal(const rootdata::RootDatum& rd) const
 {
@@ -654,8 +654,8 @@ partition::Partition Fiber::makeWeakReal(const rootdata::RootDatum& rd) const
   since for these weak real forms any \f$x=g.\delta\in G.\delta\f$ whose
   $H$-conjugacy class defines a fiber element in a strong real form lying over
   the weak real form gives the same value of \f$x^2\in Z(G)\f$ modulo
-  \f$(1+\delta)(Z(G))\f$. From the above it follows there are $2^m$ central square
-  classes where $m=adjointFiberRank-rank(toAdjoint)$.
+  \f$(1+\delta)(Z(G))\f$. From the above it follows there are $2^m$ central
+  square classes where $m=adjointFiberRank-rank(toAdjoint)$.
 
   Algorithm: we compute the quotient of the adjoint fiber group by the fiber
   group as a |Subquotient| object whose |space()| is the whole adjoint fiber

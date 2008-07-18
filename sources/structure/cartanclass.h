@@ -612,14 +612,14 @@ class CartanClass {
   The subgroup \f$W^\tau\f$ of Weyl group elements commuting with the Cartan
   involution \f$\tau\f$ has two obvious (commuting) normal subgroups: the Weyl
   group $W^R$ of the real (that is, fixed by \f$-\tau\f$) roots, and the Weyl
-  group $W^{iR}$ of the imaginary (that is, fixed by \f$\tau\f$) roots. But this
-  is not all of \f$W^\tau\f$, as is easily seen in the case of complex groups,
-  where both $W^R$ and $W^{iR}$ are trivial (there are no real or imaginary
-  roots), yet $W$ is a direct sum of two identical factors interchanged by
-  \f$\tau\f$, and the actions of diagonal elements of that sum clearly commute
-  with \f$\tau\f$. In general there is a group denoted $W^C such that \f$W^\tau\f$ is
-  a semidirect product of $W^R * W^{iR}$ (the normal subgroup) with
-  $W^C$. Here is how to describe $W^C$.
+  group $W^{iR}$ of the imaginary (that is, fixed by \f$\tau\f$) roots. But
+  this is not all of \f$W^\tau\f$, as is easily seen in the case of complex
+  groups, where both $W^R$ and $W^{iR}$ are trivial (there are no real or
+  imaginary roots), yet $W$ is a direct sum of two identical factors
+  interchanged by \f$\tau\f$, and the actions of diagonal elements of that sum
+  clearly commute with \f$\tau\f$. In general there is a group denoted $W^C
+  such that \f$W^\tau\f$ is a semidirect product of $W^R * W^{iR}$ (the normal
+  subgroup) with $W^C$. Here is how to describe $W^C$.
 
   Write $RC$ (standing for "complex roots") for the roots orthogonal to both
   the sum of positive real roots, and the sum of positive imaginary roots
