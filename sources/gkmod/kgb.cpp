@@ -228,7 +228,7 @@ private:
     return d_titsGroup.twist(s);
   }
 
-  /* The amazingly simple way to compute the grading a simple roots, for any
+  /* The amazingly simple way to compute the grading at simple roots, for any
      twisted involution for which they are imaginary. Let $w$ be the twisted
      involution associated to the Tits element |a| (i.e., its Weyl group part)
      and let $\alpha=\alpha_s$ be a simple root, with image $\beta=\alpha_t$
@@ -567,7 +567,7 @@ namespace kgb {
   of $X^\vee/2X^\vee$ that will be stored for $tw$ is the image $I$ of the
   $-1$ eigenspace $X^\vee_-$ of $q^t$. When a Tits group element of the form
   $x.\sigma_w$ occurs in the KGB construction, only the coset the left torus
-  part $x$ modulo $I$ matters, will after computation be systematically
+  part $x$ modulo $I$ matters, and it will after computation be systematically
   normalised by reducing the left torus part $x$ modulo $I$.
 
   The image $I$ corresponds to the subset of elements of order 2 in $H$ that
@@ -660,7 +660,7 @@ void FiberData::reduce(tits::TitsElt& a) const
 */
 
 /*! \brief
-  This constructor sets |gradingOffset| for |GR|, and a trival initial value.
+  This constructor sets |gradingOffset| for |GR|, and a trivial initial value.
 
   So we choose a different grading offset for each real form, but always start
   at the same Tits element. For an approach where different real forms can
