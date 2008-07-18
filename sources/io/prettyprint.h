@@ -77,6 +77,9 @@ std::ostream& printInvolution(std::ostream&, const weyl::TwistedInvolution&,
 			      const weyl::WeylGroup&);
 
 template<typename C>
+std::ostream& printVector(std::ostream&, const std::vector<C>&,
+			  unsigned long width = 2);
+template<typename C>
 std::ostream& printMatrix(std::ostream&, const matrix::Matrix<C>&,
 			  unsigned long width = 4);
 

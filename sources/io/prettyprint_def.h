@@ -180,6 +180,17 @@ std::ostream& printPol(std::ostream& strm, const polynomials::Polynomial<C>& p,
 
 ******************************************************************************/
 
+template<typename C>
+std::ostream& printVector(std::ostream& strm, const std::vector<C>& v,
+			  unsigned long width)
+{
+  for (size_t i = 0; i < v.size(); ++i)
+    strm << (i==0 ? '[' : ',') << std::setw(width) << v[i];
+
+  std::cout << " ]" << std::endl;
+  return strm;
+}
+
 /*
   Outputs the matrix to a stream. It is assumed that operator << is defined
   for C, and that C is "small" (in particular, has no newlines in its output.)
