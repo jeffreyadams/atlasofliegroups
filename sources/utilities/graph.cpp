@@ -37,18 +37,18 @@ namespace graph {
   partial order relation induced by our graph on the quotient.
 
   Explanation: define a preorder relation on the vertices by setting x <= y
-  iff there is an oriented path from x to y. This function puts in pi the
-  partition function corresponding to the equivalence classes of this
-  preorder, which are called strong components of the directed graph (two
-  vertices are strongly connected if there are oriented paths between them in
-  both directions). We use R. E. Tarjan's algorithm, explained in Knuths's
-  book The Stanford GraphBase, pp. 512-519 (and also in his future volume 4 of
-  The Art of Computer Programming). Fokko explained he had learned this
-  algorithm from Bill Casselman, but unfortunately his rendition was not
-  correct (even though it gave the right results in the vast majority of the
-  cases) so I had to adapt it, MvL.
+  iff there is an oriented path from x to y (note the "inversion": edges go
+  up). This function puts in pi the partition function corresponding to the
+  equivalence classes of this preorder, which are called strong components of
+  the directed graph (two vertices are strongly connected if there are
+  oriented paths between them in both directions). We use R. E. Tarjan's
+  algorithm, explained in Knuths's book The Stanford GraphBase, pp. 512-519
+  (and also in his future volume 4 of The Art of Computer Programming). Fokko
+  explained he had learned this algorithm from Bill Casselman, but
+  unfortunately his rendition was not correct (even though it gave the right
+  results in the vast majority of the cases) so I had to adapt it, MvL.
 
-  The strong components are going to be discovered in a highest-first
+  The strong components are going to be discovered in a highest (sink) first
   topological order ("topological order" means some total order compatible
   with a given partial order): when a strong component is discovered all
   outgoing edges from it lead to components that were previously discovered.
@@ -62,14 +62,14 @@ namespace graph {
   are first seen we say the become "active", and some data associated to them
   is entered on a local vector structure |active| that behaves somewhat like a
   stack (but we need more liberal access than |std::stack| would provide).
-  When all its descendants have been traverse we shall call a vertex "mature",
-  but in this case it remains in the |active structure. Finally when a strong
-  component is discovered, its elements become "settled"; the information in
-  |active| about them is then discarded. For each vertex |x| we keep a value
-  |rank[x]| which is |0| until |x| becomes active, at which point it becomes
-  the sequence number of |x| during the traversal (for once this numbering
-  starts from 1), and when |x| gets settled we set |rank[x]=infinity|. Nothing
-  particular happens when |x| becomes mature.
+  When all its descendants have been traversed we shall call a vertex
+  "mature", but in this case it remains in the |active| structure. Finally
+  when a strong component is discovered, its elements become "settled"; the
+  information in |active| about them is then discarded. For each vertex |x| we
+  keep a value |rank[x]| which is |0| until |x| becomes active, at which point
+  it becomes the sequence number of |x| during the traversal (therefore, for
+  once this numbering starts from 1), and when |x| gets settled we set
+  |rank[x]=infinity|. Nothing particular happens when |x| becomes mature.
 
   Extra information is kept for all vertices in |active| (this infomation is
   accessible for the current vertex during traversal, but is not (easily)
