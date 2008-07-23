@@ -182,10 +182,10 @@ CartanClassSet::~CartanClassSet()
   real form |rf| (which includes at least the distinguished Cartan for the
   inner class), and all non-compact positive imaginary roots \f$\alpha\f$ for
   |(rf,j)|; the twisted involution |tw| for the Cartan class |j| is then
-  left-multiplied by \f$s_\alpha\f$ to obtain a new twisted involution |ti|, and
-  if |ti| is not member of any of the known classes of twisted involutions, it
-  starts a new Cartan class defined in |rf|, which will later itself be
-  considered in the loop described here.
+  left-multiplied by \f$s_\alpha\f$ to obtain a new twisted involution |ti|,
+  and if |ti| is not member of any of the known classes of twisted
+  involutions, it starts a new Cartan class defined in |rf|, which will later
+  itself be considered in the loop described here.
 
   While generating the Cartan classes, the ordering is extended by a link from
   the Cartan class |j| to the Cartan class of any twisted involution |ti|
@@ -749,13 +749,22 @@ latticetypes::LatticeElt
     twisted conjugates the canonical representative back to original |sigma|.
 
     We find conjugating generators starting at the original `|sigma|' end, so
-    these form the letters of |w| from left to right.
+    these form the letters of |w| from left (last applied) to right (first).
 */
 const weyl::WeylElt
 CartanClassSet::canonicalize(TwistedInvolution &sigma) const
 {
   const rootdata::RootDatum& rd=rootDatum();
 
+/* the code below uses the following fact: if $S$ is a root subsystem of |rd|,
+   and $\alpha$ a simple root that does not lie in $S$, then the sum of
+   positive roots of $s_\alpha(S)$ is the image by $s_\alpha$ of the sum of
+   positive roots of $S$. The reason is that the action of $s_\alpha$ almost
+   preseves the notion of positivity; it only fails for the roots $\pm\alpha$,
+   which do not occur in $S$ or in $s_\alpha(S)$. The code only applies
+   $s_\alpha$ when the sum of positive of roots of $S$ is anti-dominant for
+   $\alpha$, which excludes the case that $\alpha$ lies in $S$.
+ */
   weyl::WeylElt w; // this will be the result
   latticetypes::LatticeElt rrs=posRealRootSum(sigma);
 
@@ -814,13 +823,13 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
 /* Now ensure that the involution |theta| associated to the twisted involution
    |sigma| fixes the dominant chamber for the root subsystem indicated in
    |simple_orth| (which we shall call the complex root subsystem). The vector
-   |x=rd.twoRho()| below is in the interior of the dominant for the whole root
-   system, so is a fortiori dominant of the subsystem. If its image is not
-   dominant for the complex root subsystem, (twisted) conjugating |sigma| by
-   any generator that makes the image more dominant will improve the situation
-   (but not in the same way as the action of that generator: the image of
-   |rd.twoRho()| under twisted action of |sigma| will get \emph{two} steps
-   closer to the dominant chamber!), which we repeat until the image of
+   |x=rd.twoRho()| below is in the interior of the dominant chamber for the
+   whole root system, so is a fortiori dominant of the subsystem. If its image
+   is not dominant for the complex root subsystem, (twisted) conjugating
+   |sigma| by any generator that makes the image more dominant will improve
+   the situation (but not in the same way as the action of that generator: the
+   image of |rd.twoRho()| under twisted action of |sigma| will get \emph{two}
+   steps closer to the dominant chamber!), which we repeat until the image of
    |rd.twoRho()| becomes dominant for the complex root subsystem.
 */
   {
