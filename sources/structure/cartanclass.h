@@ -77,45 +77,45 @@ class InvolutionData
     { return d_simpleImaginary; }
 };
 
-  /*!
-  \brief Describes "the fiber" (over a fixed involution of a torus) in
-  twisted Tits group.
+/*!
+\brief Describes "the fiber" (over a fixed involution of a torus) in
+twisted Tits group.
 
-  This is an important but somewhat subtle class. In fact none of the data
-  stored directly describes the mentioned fiber, nor is it relevant here where
-  the "elements of the fiber" really live. There is a "fiber group" (which is
-  a vector space over $Z/2Z$) that acts simply transitively on the fiber, in
-  other words, the fiber is an affine space over $Z/2Z$ with the fiber group
-  as space of translations. After a choice of a base point, the fiber itself
-  can be identified which this fiber group. The way a fiber element manifests
-  itself is via a grading it defines on the imaginary roots; this grading is
-  determined for the entire fiber by giving the "base grading" for the base
-  point, and the "grading shifts" for translations by each of a set of
-  generators of the grading group.
+This is an important but somewhat subtle class. In fact none of the data
+stored directly describes the mentioned fiber, nor is it relevant here where
+the "elements of the fiber" really live. There is a "fiber group" (which is
+a vector space over $Z/2Z$) that acts simply transitively on the fiber, in
+other words, the fiber is an affine space over $Z/2Z$ with the fiber group
+as space of translations. After a choice of a base point, the fiber itself
+can be identified which this fiber group. The way a fiber element manifests
+itself is via a grading it defines on the imaginary roots; this grading is
+determined for the entire fiber by giving the "base grading" for the base
+point, and the "grading shifts" for translations by each of a set of
+generators of the grading group.
 
-  We fix an involutive automorphism tau of the complex torus H, and consider
-  the collection of all strong real forms x of G (which are elements of G
-  semidirect delta) that induce tau on H, modulo the conjugation action of H
-  on the collection. Such a strong real form has square equal to some element
-  z in Z(G)^delta. Changing the element z by (1+delta)Z is innocuous, and
-  there are finitely many possibilities for Z^delta/[(1+delta)Z]. For each
-  fixed value of z, this collection of strong real form representatives in
-  \f$G.\delta\f$ (modulo H conjugation) has a simply transitive action (left
-  multiplication) of the fiber group H^{-tau}/(1-tau)H, the component group of
-  the complex group H^{-tau} of fixed points of -tau. The fiber group is a
-  Z/2Z vector space that can be realized as a subquotient of the group H(2) of
-  elements of order 2 (or 1) in H.
+We fix an involutive automorphism \f$\tau\f$ of the complex torus $H$, and
+consider the collection of all strong real forms $x$ of $G$ (which are
+elements of "G semidirect delta") that induce tau on H, modulo the conjugation
+action of H on the collection. Such a strong real form has square equal to
+some element z in Z(G)^delta. Changing the element z by (1+delta)Z is
+innocuous, and there are finitely many possibilities for Z^delta/[(1+delta)Z].
+For each fixed value of z, this collection of strong real form representatives
+in \f$G.\delta\f$ (modulo H conjugation) has a simply transitive action (left
+multiplication) of the fiber group H^{-tau}/(1-tau)H, the component group of
+the complex group H^{-tau} of fixed points of -tau. The fiber group is a
+$Z/2Z$ vector space that can be realized as a subquotient of the group H(2) of
+elements of order 2 (or 1) in H.
 
-  Equivalence classes of strong real forms (still with a fixed value
-  of z) give a partition of the fiber group (depending on z).  These
-  partitions are stored in d_strongReal, and accessed by the function
-  strongReal.
+Equivalence classes of strong real forms (still with a fixed value
+of z) give a partition of the fiber group (depending on z).  These
+partitions are stored in d_strongReal, and accessed by the function
+strongReal.
 
-  An equivalence class of strong real forms may be labelled by a pair
-  of integers: the second labelling the element z (or rather its coset
-  modulo [(1+delta)Z]), and the first the equivalence class in the
-  fiber group.
-  */
+An equivalence class of strong real forms may be labelled by a pair
+of integers: the second labelling the element z (or rather its coset
+modulo [(1+delta)Z]), and the first the equivalence class in the
+fiber group.
+*/
 class Fiber {
 
  private:
@@ -133,13 +133,13 @@ class Fiber {
   /*!
   \brief Fiber group.
 
-  In terms of the complex torus $H$ and the Cartan involution \f$\tau\f$, it is
-  equal to \f$F=H^{-\tau}/(1-\tau)H\f$: the group of fixed points of \f$\-tau\f$,
-  modulo its identity component. Here additive notation is used for
-  multiplicative composition; e.g., \f$1-\tau\f$ maps \f$z\in H\f$ to \f$z/\tau(z)\f$;
-  this notation is natural when \f$\tau\f$ is viewed as operating on the weight
-  lattice, in which case \f$1-\tau\f$ acts as the identity matrix minus the matrix
-  giving \f$\tau\f$.
+  In terms of the complex torus $H$ and the Cartan involution \f$\tau\f$, it
+  is equal to \f$F=H^{-\tau}/(1-\tau)H\f$: the group of fixed points of
+  \f$\-tau\f$, modulo its identity component. Here additive notation is used
+  for multiplicative composition; e.g., \f$1-\tau\f$ maps \f$z\in H\f$ to
+  \f$z/\tau(z)\f$; this notation is natural when \f$\tau\f$ is viewed as
+  operating on the weight lattice, in which case \f$1-\tau\f$ acts as the
+  identity matrix minus the matrix giving \f$\tau\f$.
 
   Recall that the group of real points $H(R)$ is a product of $p$ unit circle
   groups, $q$ groups $R^\times$, and $r$ groups $C^\times$. It is easy to see
@@ -148,25 +148,26 @@ class Fiber {
   The fiber group is represented as a subquotient of the group $H(2)$ of
   elements of order 2 (or 1) in the torus. Write $Y$ for the lattice of
   coweights of $H$; then one has natural isomorphisms $H(2)=(1/2)Y/Y=Y/2Y$.
-  The Cartan involution \f$\tau\f$ is always represented by the matrix $q$ of its
-  action on the character lattice $X$, which is dual to $Y$; so its action on
-  $Y$ is given by the matrix $q^t$. The action of \f$-\tau\f$ on $Y$ is given by
-  $-q^t$.
+  The Cartan involution \f$\tau\f$ is always represented by the matrix $q$ of
+  its action on the character lattice $X$, which is dual to $Y$; so its action
+  on $Y$ is given by the matrix $q^t$. The action of \f$-\tau\f$ on $Y$ is
+  given by $-q^t$.
 
-  Because $H$ is the product (not direct) of the connected groups \f$(H^\tau)_0\f$
-  and \f$(H^{-\tau})_0\f$, the group \f$H^\tau\f$ meets every component of \f$H^{-tau}\f$.
-  The intersection of \f$H^\tau\f$ and \f$H^{-\tau}\f$ consists of \f$H(2)^\tau\f$, the
-  \f$\tau\f$-fixed elements of order 2. It follows that the component group $F$
-  may be identified with \f$H(2)^\tau/(H(2)\cap (1-\tau)H)\f$. Thus $F$ can be
-  represented by a subquotient of $H(2)=Y/2Y=(Z/2Z)^n$.
+  Because $H$ is the product (not direct) of the connected groups
+  \f$(H^\tau)_0\f$ and \f$(H^{-\tau})_0\f$, the group \f$H^\tau\f$ meets every
+  component of \f$H^{-tau}\f$. The intersection of \f$H^\tau\f$ and
+  \f$H^{-\tau}\f$ consists of \f$H(2)^\tau\f$, the \f$\tau\f$-fixed elements
+  of order 2. It follows that the component group $F$ may be identified with
+  \f$H(2)^\tau/(H(2)\cap (1-\tau)H)\f$. Thus $F$ can be represented by a
+  subquotient of $H(2)=Y/2Y=(Z/2Z)^n$.
 
   The larger group \f$H(2)^\tau\f$ is computed as the kernel of the action of
-  \f$(1+\tau)\f$ on $H(2)$, which via the isomorphism $H(2)=(Z/2Z)^n$ means the
-  kernel of the reduction mod 2 of the matrix $I+q^t$. The smaller group
-  \f$H(2)\cap (1-\tau)H\f$ consists of the elements of order 2 in the connected
-  group \f$(H^{-\tau})_0\f$. It is computed as the reduction mod 2 of the $-1$
-  eigenlattice \f$Y^{-\tau}\f$ (the latter is the lattice of coweights of
-  \f$(H^{-tau})_0\f$).
+  \f$(1+\tau)\f$ on $H(2)$, which via the isomorphism $H(2)=(Z/2Z)^n$ means
+  the kernel of the reduction mod 2 of the matrix $I+q^t$. The smaller group
+  \f$H(2)\cap (1-\tau)H\f$ consists of the elements of order 2 in the
+  connected group \f$(H^{-\tau})_0\f$. It is computed as the reduction mod 2
+  of the $-1$ eigenlattice \f$Y^{-\tau}\f$ (the latter is the lattice of
+  coweights of \f$(H^{-tau})_0\f$).
   */
   latticetypes::SmallSubquotient d_fiberGroup;
 
