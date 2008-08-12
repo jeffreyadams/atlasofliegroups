@@ -195,7 +195,7 @@ reduced decomposition.
   relations and to \f$\sigma_\alpha^2= m_\alpha\f$; to get our group we just
   add a basis of elements of $H(2)$ as additional generators, and express the
   \f$m_\alpha\f$ in this basis. This makes for a simpler implementation, where
-  totus parts are just elements of the $\Z/2\Z$-vector space $H(2)$.
+  torus parts are just elements of the $\Z/2\Z$-vector space $H(2)$.
 
   We have not tried to be optimally efficient here, as it is not expected that
   Tits computations will be significant computationally (dixit Fokko).
@@ -244,9 +244,6 @@ involution of the inner class.
 
 Gives the action of the involution \f$\delta\f$ on $T(2)$, for computing in
 the \f$\delta\f$ coset of the Tits group.
-
-This data member is currently unused (|d_twist| suffices), but the correct
-value is available for future use in methods [MvL 19 June 2007]
   */
   latticetypes::BinaryMap d_involution;
 
@@ -270,18 +267,18 @@ value is available for future use in methods [MvL 19 June 2007]
   /*!\brief Rank of the torus. */
   const size_t rank() const { return d_rank; }
 
-  /*!\brief Element m_\alpha of T(2) for simple coroot \#j. */
+  //!\brief Element m_\alpha of T(2) for simple coroot \#j.
   TorusPart simpleCoroot(size_t j) const {
     return d_simpleCoroot[j];
   }
 
-  /*!\brief Image in the character lattice mod 2 of simple root \#j. */
+  //!\brief Image in the character lattice mod 2 of simple root \#j.
   TorusPart simpleRoot(size_t j) const {
     return d_simpleRoot[j];
   }
 
-  /*!\brief Image under inner class diagram involution of node \#j. */
-  size_t twist(size_t j) const {
+  //!\brief Image under inner class diagram involution of node \#j.
+  size_t twisted(size_t j) const {
     return d_twist[j];
   }
 
@@ -290,6 +287,16 @@ value is available for future use in methods [MvL 19 June 2007]
 // convert between torus parts $x$ and $y$ for which $x.w=w.y$ in Tits group
   TorusPart push_across(TorusPart x, const weyl::WeylElt& w) const;
   TorusPart pull_across(const weyl::WeylElt& w, TorusPart y) const;
+
+  //!\brief Binary matrix*vector product to compute twist on torus part
+  TorusPart twisted(const TorusPart& x) const {
+    return d_involution.apply(x);
+  }
+
+  //!\brief In-place imperative version of |twisted(TorusPart x)|
+  void twist(TorusPart& x) const {
+    d_involution.apply(x,x);
+  }
 
 // methods that only access some |TitsElt|
 
@@ -347,12 +354,12 @@ torus parts are projected to the fiber group over that twisted involution, as
 is done in the KGB construction, it induces an involution on the quotient set.
   */
   void twistedConjugate(TitsElt& a, weyl::Generator s) const {
-    sigma_mult(s,a); mult_sigma_inv(a,twist(s));
+    sigma_mult(s,a); mult_sigma_inv(a,twisted(s));
   }
 
   // the inverse operation: twisted conjugation by $\sigma_s^{-1}$
   void inverseTwistedConjugate(TitsElt& a, weyl::Generator s) const {
-    sigma_inv_mult(s,a); mult_sigma(a,twist(s));
+    sigma_inv_mult(s,a); mult_sigma(a,twisted(s));
   }
 
 
