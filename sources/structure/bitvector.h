@@ -29,15 +29,21 @@ namespace atlas {
 
 namespace bitvector {
 
+/*!
+  \brief Puts in |v| the $Z/2Z$-linear combination of the |BitVector|s of |b|
+  given by the bits of |e|. NOTE: |v| should already have the correct size.
+*/
 template<size_t dim>
-  void combination(BitVector<dim>&,
-		   const std::vector<BitVector<dim> >&,
-		   const bitset::BitSet<dim>&);
+  void combination(BitVector<dim>& v,
+		   const std::vector<BitVector<dim> >& b,
+		   const bitset::BitSet<dim>& e);
 
+// version with |BitSet|s instead of |BitVector|s; functional (size no issue)
 template<size_t dim>
 bitset::BitSet<dim> combination(const std::vector<bitset::BitSet<dim> >&,
 				const bitset::BitSet<dim>&);
 
+// same, imperative
 template<size_t dim>
   void combination(bitset::BitSet<dim>& v,
 		   const std::vector<bitset::BitSet<dim> >& b,
@@ -453,7 +459,10 @@ template<size_t dim> class BitMatrix {
 
 // accessors
 
-  void apply(BitVector<dim>&, const BitVector<dim>&) const;
+  void apply(BitVector<dim>& dst,const BitVector<dim>& src) const;
+
+  BitVector<dim> apply(const BitVector<dim>& src) const; // functional version
+
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 

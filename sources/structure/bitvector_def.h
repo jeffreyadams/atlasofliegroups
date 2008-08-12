@@ -150,27 +150,29 @@ BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b)
 
 /******** accessors *********************************************************/
 
-template<size_t dim>
-void BitMatrix<dim>::apply(BitVector<dim>& dest,
-			   const BitVector<dim>& source) const
-
 /*!
-  \brief Applies the |BitMatrix| to |source| and puts the result in |dest|.
+  \brief Applies the |BitMatrix| to |source| and returns the result
 
   It is assumed that |d_columns| is equal to |source.size()|. The result size
-  will be set from |d_rows|.
+  will be set from |d_rows|. Note that |source| is by value, which avoids
+  problems or need of copy when |dest| and |source| coincide.
 */
-
+template<size_t dim>
+void BitMatrix<dim>::apply(BitVector<dim>& dest,const BitVector<dim>& source)
+  const
 {
   assert(d_columns==source.size());
-  BitVector<dim> v(source); // for the case source = dest
 
   dest.resize(d_rows);
-  dest.d_data=combination(d_data,v.data());
+  dest.d_data=combination(d_data,source.data());
 }
 
-template<size_t dim> template<typename I, typename O>
-void BitMatrix<dim>::apply(const I& first, const I& last, O out) const
+// functional version
+template<size_t dim>
+BitVector<dim> BitMatrix<dim>::apply(const BitVector<dim>& source) const
+{
+  BitVector<dim> result; apply(result,source); return result;
+}
 
 /*!
   \brief A pipe-version of apply.
@@ -180,7 +182,8 @@ void BitMatrix<dim>::apply(const I& first, const I& last, O out) const
   value-type. Then we apply our matrix to each vector in [first,last[
   and output it to out.
 */
-
+template<size_t dim> template<typename I, typename O>
+void BitMatrix<dim>::apply(const I& first, const I& last, O out) const
 {
   for (I i = first; i != last; ++i) {
     BitVector<dim> v;
@@ -464,18 +467,16 @@ template<size_t dim> BitMatrix<dim>& BitMatrix<dim>::transpose()
 
 namespace bitvector {
 
-template<size_t dim>
-  void combination(BitVector<dim>& v, const std::vector<BitVector<dim> >& b,
-		   const bitset::BitSet<dim>& e)
-
 /*!
   \brief Puts in |v| the linear combination of the elements of |b| given by
   |e|.
 
   NOTE : it is the caller's responsibility to check that |v| already has the
-  correct size. The right size cannot be determined here if |b.size()=0|.
+  correct size. (The right size cannot be determined here if |b.size()=0|.)
 */
-
+template<size_t dim>
+  void combination(BitVector<dim>& v, const std::vector<BitVector<dim> >& b,
+		   const bitset::BitSet<dim>& e)
 {
   v.reset(); // clear to 0
 
