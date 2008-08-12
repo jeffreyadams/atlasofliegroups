@@ -409,102 +409,9 @@ void KGB::fillBruhat()
 
 ******************************************************************************/
 
+/*    II a. The classes |BasedTitsGroup| and |EnrichedTitsGroup| */
+
 namespace kgb {
-  namespace {
-
-
-/*    II a. |FiberData|  */
-
-/*
-  The |FiberData| constructor computes a subspace for each twisted involution
-  $tw$ (representing an involution $\tau$ of $H$ and an involution
-  $q=tw.\delta$ of the weight lattice $X$) that occurs for $GR$. The subspace
-  of $X^\vee/2X^\vee$ that will be stored for $tw$ is the image $I$ of the
-  $-1$ eigenspace $X^\vee_-$ of $q^t$. When a Tits group element of the form
-  $x.\sigma_w$ occurs in the KGB construction, only the coset the left torus
-  part $x$ modulo $I$ matters, and it will after computation be systematically
-  normalised by reducing the left torus part $x$ modulo $I$.
-
-  The image $I$ corresponds to the subset of elements of order 2 in $H$ that
-  are of the form $h*\tau(h)^{-1}$. It is also what one divides by to get the
-  fiber group of the real Cartan associated to $H$ and $\tau$. Note however
-  that it is not true that such $t\in X^\vee/2X^\vee$ will always lie in the
-  image of $X^\vee_+ + X^\vee_-$ that is used to form the fiber group.
-
-  The Cartan class associated to $tw$ is also recorded.
-
-  This constructor depends on the real form only via the set |Cartan_classes|
-  that determines (limits) the set of twisted involutions to be considered.
-*/
-FiberData::FiberData(const complexredgp::ComplexReductiveGroup& G,
-		     const bitmap::BitMap& Cartan_classes)
-  : Tits(G.titsGroup())
-  , pool()
-  , hash_table(pool)
-  , data()
-  , Cartan_class()
-{
-  { // dimension |data| and |Cartan_class|
-    size_t n_inv=G.numInvolutions(Cartan_classes);
-    data.reserve(n_inv); Cartan_class.reserve(n_inv);
-  }
-
-  const rootdata::RootDatum& rd=G.rootDatum();
-  latticetypes::BinaryMap delta(G.distinguished().transposed());
-
-  std::vector<latticetypes::BinaryMap> refl(G.semisimpleRank());
-  for (weyl::Generator s=0; s<refl.size(); ++s)
-  {
-   // get endomorphism of weight lattice $X$ given by generator $s$
-    latticetypes::LatticeMatrix r = rd.rootReflection(rd.simpleRootNbr(s));
-
-    // reflection map is induced vector space endomorphism of $X^* / 2X^*$
-    refl[s] = latticetypes::BinaryMap(r.transposed());
-  }
-
-  for (bitmap::BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
-  {
-    size_t cn=*it;
-    size_t i = hash_table.match(G.twistedInvolution(cn));
-    assert(i==data.size()); // this twisted involution should be new
-
-    { // store data for canonical twisted involution |i| of Cartan class |cn|
-      using namespace latticetypes;
-      LatticeMatrix qtr= G.cartan(cn).involution().transposed();
-      data.push_back(SmallSubspace(SmallBitVectorList(tori::minusBasis(qtr)),
-				   G.rank())); // compute subspace $I$
-      Cartan_class.push_back(cn); // record number of Cartan class
-    }
-
-
-    // now generate all non-canonical twisted involutions for this Cartan class
-    for ( ; i<data.size(); ++i) // |data.size()|  increases during the loop
-      for (size_t s=0; s<G.semisimpleRank(); ++s)
-      {
-	weyl::TwistedInvolution stw=G.weylGroup().twistedConjugated(pool[i],s);
-	if (hash_table.match(stw)==data.size()) // then |stw| is new
-	{
-	  data.push_back(data[i]);     // start with copy of source subspace
-	  data.back().apply(refl[s]);  // modify according to cross action used
-	  Cartan_class.push_back(cn);  // record number of Cartan class
- 	}
-      }
-  }
-
-  // check that the number of generated elements is as predicted
-  assert(data.size()==G.numInvolutions(Cartan_classes));
-  assert(Cartan_class.size()==G.numInvolutions(Cartan_classes));
-}
-
-
-void FiberData::reduce(tits::TitsElt& a) const
-{
-  a=tits::TitsElt(Tits,mod_space(a).mod_image(Tits.left_torus_part(a)),a.w());
-}
-
-
-
-/*    II b. The classes |BasedTitsGroup| and |EnrichedTitsGroup| */
 
 BasedTitsGroup::BasedTitsGroup(realredgp::RealReductiveGroup& GR)
   : Tg(GR.titsGroup())
@@ -782,6 +689,101 @@ found:
 
   return result;  // result should be reduced immediatly by caller
 }
+
+
+
+/*    II b. |FiberData|  */
+
+namespace { // |FiberData| and |KGBHelp| are in anonymous namespace
+
+/*
+  The |FiberData| constructor computes a subspace for each twisted involution
+  $tw$ (representing an involution $\tau$ of $H$ and an involution
+  $q=tw.\delta$ of the weight lattice $X$) that occurs for $GR$. The subspace
+  of $X^\vee/2X^\vee$ that will be stored for $tw$ is the image $I$ of the
+  $-1$ eigenspace $X^\vee_-$ of $q^t$. When a Tits group element of the form
+  $x.\sigma_w$ occurs in the KGB construction, only the coset the left torus
+  part $x$ modulo $I$ matters, and it will after computation be systematically
+  normalised by reducing the left torus part $x$ modulo $I$.
+
+  The image $I$ corresponds to the subset of elements of order 2 in $H$ that
+  are of the form $h*\tau(h)^{-1}$. It is also what one divides by to get the
+  fiber group of the real Cartan associated to $H$ and $\tau$. Note however
+  that it is not true that such $t\in X^\vee/2X^\vee$ will always lie in the
+  image of $X^\vee_+ + X^\vee_-$ that is used to form the fiber group.
+
+  The Cartan class associated to $tw$ is also recorded.
+
+  This constructor depends on the real form only via the set |Cartan_classes|
+  that determines (limits) the set of twisted involutions to be considered.
+*/
+FiberData::FiberData(const complexredgp::ComplexReductiveGroup& G,
+		     const bitmap::BitMap& Cartan_classes)
+  : Tits(G.titsGroup())
+  , pool()
+  , hash_table(pool)
+  , data()
+  , Cartan_class()
+{
+  { // dimension |data| and |Cartan_class|
+    size_t n_inv=G.numInvolutions(Cartan_classes);
+    data.reserve(n_inv); Cartan_class.reserve(n_inv);
+  }
+
+  const rootdata::RootDatum& rd=G.rootDatum();
+  latticetypes::BinaryMap delta(G.distinguished().transposed());
+
+  std::vector<latticetypes::BinaryMap> refl(G.semisimpleRank());
+  for (weyl::Generator s=0; s<refl.size(); ++s)
+  {
+   // get endomorphism of weight lattice $X$ given by generator $s$
+    latticetypes::LatticeMatrix r = rd.rootReflection(rd.simpleRootNbr(s));
+
+    // reflection map is induced vector space endomorphism of $X^* / 2X^*$
+    refl[s] = latticetypes::BinaryMap(r.transposed());
+  }
+
+  for (bitmap::BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
+  {
+    size_t cn=*it;
+    size_t i = hash_table.match(G.twistedInvolution(cn));
+    assert(i==data.size()); // this twisted involution should be new
+
+    { // store data for canonical twisted involution |i| of Cartan class |cn|
+      using namespace latticetypes;
+      LatticeMatrix qtr= G.cartan(cn).involution().transposed();
+      data.push_back(SmallSubspace(SmallBitVectorList(tori::minusBasis(qtr)),
+				   G.rank())); // compute subspace $I$
+      Cartan_class.push_back(cn); // record number of Cartan class
+    }
+
+
+    // now generate all non-canonical twisted involutions for this Cartan class
+    for ( ; i<data.size(); ++i) // |data.size()|  increases during the loop
+      for (size_t s=0; s<G.semisimpleRank(); ++s)
+      {
+	weyl::TwistedInvolution stw=G.weylGroup().twistedConjugated(pool[i],s);
+	if (hash_table.match(stw)==data.size()) // then |stw| is new
+	{
+	  data.push_back(data[i]);     // start with copy of source subspace
+	  data.back().apply(refl[s]);  // modify according to cross action used
+	  Cartan_class.push_back(cn);  // record number of Cartan class
+ 	}
+      }
+  }
+
+  // check that the number of generated elements is as predicted
+  assert(data.size()==G.numInvolutions(Cartan_classes));
+  assert(Cartan_class.size()==G.numInvolutions(Cartan_classes));
+}
+
+
+void FiberData::reduce(tits::TitsElt& a) const
+{
+  a=tits::TitsElt(Tits,mod_space(a).mod_image(Tits.left_torus_part(a)),a.w());
+}
+
+
 
 
 /*    II c. The main helper class |KGBHelp|  */
