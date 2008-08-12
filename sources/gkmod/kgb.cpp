@@ -148,7 +148,7 @@ class KGBHelp
   tits::TE_Entry::Pooltype d_pool;
   hashtable::HashTable<tits::TE_Entry,KGBElt> d_tits;
 
-  BasedTitsGroup basePoint; // the choice of base point resides here
+  BasedTitsGroup basePoint; // owned reference, base point choice resides here
 
   //! Permits reducing each Tits group element modulo its fiber denominator
   FiberData d_fiberData;
@@ -157,8 +157,11 @@ class KGBHelp
 
 // constructors and destructors
   KGBHelp(realredgp::RealReductiveGroup&);
-  KGBHelp(realredgp::RealReductiveGroup& GR,
-	  const bitmap::BitMap& Cartan_classes);
+  KGBHelp(const complexredgp::ComplexReductiveGroup& G,
+	  const bitmap::BitMap& Cartan_classes,
+	  KGBElt size,
+	  const BasedTitsGroup& base,
+	  const std::vector<tits::TitsElt>& seeds); // auxiliary constructor
 
   ~KGBHelp() {};
 
@@ -170,8 +173,9 @@ class KGBHelp
 //!\brief deliver values to fields of a |KGB| object under construction.
   size_t export_tables(std::vector<KGBEltList>& cross,
 		       std::vector<KGBEltList>& cayley,
-		       weyl::TwistedInvolutionList& twisted,
+		       tits::TitsEltList& tits,
 		       std::vector<KGBInfo>& info,
+		       BasedTitsGroup*& base,
 		       bool traditional) const;
 
   // though used only from within |export_tables|, this method must be public
@@ -195,10 +199,6 @@ private:
     return titsGroup().weylGroup();
   }
 
-  size_t twist(size_t s) const {
-    return titsGroup().twist(s);
-  }
-
 
 // private manipulators
   void cross_extend(KGBElt parent);
@@ -206,7 +206,9 @@ private:
 
 }; // class KGBHelp
 
-
+// A non-method construction function
+KGBHelp refined_helper(realredgp::RealReductiveGroup& GR,
+		       const bitmap::BitMap& Cartan_classes);
 
 
 /* The following auxiliary class provides a comparison object for calling
@@ -290,17 +292,17 @@ KGB::KGB(realredgp::RealReductiveGroup& GR,
   , d_cayley()
   , d_inverseCayley()
   , d_info()
-  , d_involution()
+  , d_tits()
   , first_of_tau()
   , d_pool(), d_tau(d_pool)
   , d_bruhat(NULL)
-  , d_weylGroup(&GR.weylGroup())
+  , d_base(NULL)
 {
   bool traditional= Cartan_classes.size()==0; // whether traditional generation
   size_t size =
-    (traditional ? KGBHelp(GR) : KGBHelp(GR,Cartan_classes))
+    (traditional ? KGBHelp(GR) : refined_helper(GR,Cartan_classes))
     .fill()
-    .export_tables(d_cross,d_cayley,d_involution,d_info,traditional);
+    .export_tables(d_cross,d_cayley,d_tits,d_info,d_base,traditional);
 
   // check that the size is right
   assert(size == (traditional ? GR.kgbSize()
@@ -320,7 +322,7 @@ KGB::KGB(realredgp::RealReductiveGroup& GR,
     for (KGBElt x=0; x<size; ++x)
     {
       unsigned int old = d_tau.size();
-      if (d_tau.match(d_involution[x])==old) // a new twisted involution
+      if (d_tau.match(involution(x))==old) // a new twisted involution
 	first_of_tau.push_back(x); // record first |x| for each |tau|
     }
     first_of_tau.push_back(size); // put final sentinel
@@ -364,45 +366,6 @@ KGBEltPair KGB::tauPacket(const weyl::TwistedInvolution& w) const
   return KGBEltPair(first_of_tau[i],first_of_tau[i+1]);
 }
 
-/*
-  We have left the original, much less efficient code, below for comparison.
-  An intermediate possibility is to first make a call to |std::equal_range| to
-  find the range where the stored |d_length| values match the involution
-  length of |w|, and then refine the search with a comparison object that does
-  not inspect involution lengths. This takes most of the sting out of the
-  inefficiency of |InvolutionCompare|, but we have not (also) kept that code.
-*/
-
-#if 0
-/*
-  A comment to the original code given below: [MvL: It was tempting to call
-  |std::equal_range| with type |ctr_iterator::CounterIterator<KGBElt>|
-  arguments, representing indices into |d_involution|, to find the range of
-  such indices that compare equal to |w| under (the now removed method)
-  |KGB::compare|. I even believe this is why Fokko defined |CounterIterator|
-  in the first place. The idea is doomed however, by the requirement that we
-  supply to |std::equal_range| as third argument a value of the same type as
-  comparison key. This means we would first have to supply an index |i| such
-  that |d_involution[i]==w|; such an |i| need not exist, and even if it does,
-  locating it is almost as hard as the task of |tauPacket| in the first place.
-  Therefore the class |InvolutionCompare| needs to be used instead.]
-*/
-{
-  using namespace weyl;
-
-  typedef std::vector<TwistedInvolution>::const_iterator TI_it;
-
-  InvolutionCompare comp(weylGroup());
-
-  std::pair<TI_it,TI_it> range =
-    std::equal_range(d_involution.begin(),d_involution.end(),w,comp);
-
-  KGBElt first = range.first - d_involution.begin();
-  KGBElt last = range.second - d_involution.begin();
-
-  return std::make_pair(first,last);
-}
-#endif
 
 /******** manipulators *******************************************************/
 
@@ -539,35 +502,48 @@ void FiberData::reduce(tits::TitsElt& a) const
   a=tits::TitsElt(Tits,mod_space(a).mod_image(Tits.left_torus_part(a)),a.w());
 }
 
-/*    II b. The class |BasedTitsGroup|  */
+
+
+/*    II b. The classes |BasedTitsGroup| and |EnrichedTitsGroup| */
 
 BasedTitsGroup::BasedTitsGroup(realredgp::RealReductiveGroup& GR)
   : Tg(GR.titsGroup())
   , rd(GR.complexGroup().rootDatum())
-  , srf() // fund.strongRepresentative(GR.realForm())
-  , base_compact() // fund.compactRoots(fund.class_base(d_srf.second))
-  , gradingOffset(grading_offset_for(GR))
+  , grading_offset(grading_offset_for(GR))
 {}
 
-BasedTitsGroup::BasedTitsGroup(realredgp::RealReductiveGroup& GR,
-			       const cartanclass::Fiber& fund)
-  : Tg(GR.titsGroup())
-  , rd(GR.complexGroup().rootDatum())
+tits::TitsElt BasedTitsGroup::twisted(const tits::TitsElt& a) const
+{
+  tits::TitsElt result(Tg,Tg.twisted(Tg.left_torus_part(a)));
+  weyl::WeylGroup W=Tg.weylGroup();
+  weyl::WeylWord ww=W.word(a.w());
+  for (size_t i=0; i<ww.size(); ++i)
+  {
+    weyl::Generator s=W.twisted(ww[i]);
+    Tg.mult_sigma(result,s);
+    if (grading_offset[s]) // $s$ noncompact imaginary: add $m_\alpha$
+      Tg.right_add(result,Tg.simpleCoroot(s));
+  }
+  return result;
+}
+
+EnrichedTitsGroup::EnrichedTitsGroup(realredgp::RealReductiveGroup& GR,
+				     const cartanclass::Fiber& fund)
+  : BasedTitsGroup(GR)
   , srf(fund.strongRepresentative(GR.realForm()))
   , base_compact(fund.compactRoots(fund.class_base(srf.second)))
-  , gradingOffset(square_class_grading_offset(fund,srf.second,rd))
-{}
-
-/* The following methods are only used for objects created using the second
-   constructor, when the fields |d_srf| and |d_base_compact| have been set. */
+{
+  // in this derived class, |grading_offset| depends only on the square class
+  grading_offset=square_class_grading_offset(fund,srf.second,rd);
+}
 
 /* The reasoning given for |simple_grading| fails for non-simple roots, so we
    cannot easily compute the grading at arbitrary imaginary roots even in the
-   fundamental fiber, using only |d_gradingOffset|. However, |d_base_compact|
+   fundamental fiber, using only |grading_offset|. However, |d_base_compact|
    knows the full grading by $x_0.\delta$; we can still use a scalar product.
 */
-bool BasedTitsGroup::is_compact(const tits::TorusPart& x, rootdata::RootNbr n)
-  const
+bool EnrichedTitsGroup::is_compact(const tits::TorusPart& x,
+				   rootdata::RootNbr n) const
 {
   latticetypes::SmallBitVector rn(rd.root(n));
   return base_compact.isMember(n) ^ bitvector::scalarProduct(x,rn);
@@ -577,7 +553,7 @@ bool BasedTitsGroup::is_compact(const tits::TorusPart& x, rootdata::RootNbr n)
    no simple closed formula seems avaiable. So we revert to appying a set of
    cross actions to convert the question into one about a simple root.
  */
-bool BasedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr n) const
+bool EnrichedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr n) const
 {
   if (not rd.isPosRoot(n))
     n=rd.rootMinus(n);
@@ -601,206 +577,10 @@ bool BasedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr n) const
   return false;
 }
 
-
-/*    II c. The main helper class |KGBHelp|  */
-
-/*
-   The actual KGB contruction takes place below. During the construction, the
-   elements are represented as Tits group elements. The links in the KGB
-   structure are realised by |BasedTitsGroup::basedTwistedConjugate| for the
-   cross actions and by |basedTitsGroup::Cayley_transform| for Cayley
-   transforms. After each of these, the result is subject to
-   |d_fiberdata.reduce| to normalise the representation of a KGB element.
+/* The methods below can be used to compute an initial Tits element for a
+   given real form |rf| at a given Cartan class |cn|. They employ various
+   methods, and have various degrees of success, as explained below.
 */
-
-/*! \brief
-  This constructor sets |gradingOffset| for |GR|, and a trivial initial value.
-
-  So we choose a different grading offset for each real form, but always start
-  at the same Tits element. For an approach where different real forms can
-  share a grading offset and thus make their KGB sets mesh together, see the
-  next constructor. About the current (more or less) constructor Fokko said:
-  ``from the datum of the real form (or more precisely, from the corresponding
-  fundamental grading) we recover the basic cocycle that transforms the whole
-  construction into a Tits group computation''. By the basic (1-)cocycle he
-  seems to have meant the map from \f$W\f$ to the \f$W\f$-module \f$Y/2Y\f$
-  defined by the mentioned adjoint fiber element as image of the identity, and
-  extended by the natural grading shifts for the simple reflections (only the
-  image of the identity was actually computed).
-
-  Currently the fields |d_srf| and |d_base_compact| are only (possibly) used
-  by the other constructor, and so are left just default-constructed here.
-*/
-
-KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
-  : d_rank(GR.semisimpleRank())
-
-  , d_cross(d_rank)
-  , d_cayley(d_rank)
-  , d_info()
-
-  , d_pool(), d_tits(d_pool)
-
-  // only the final fields depend on the real form of |GR|
-  , basePoint(GR)
-  , d_fiberData(GR.complexGroup(),GR.cartanSet())
-{
-  KGBElt size = GR.kgbSize();
-
-  d_pool.reserve(size);
-  d_info.reserve(size);
-
-  // set up cross and cayley tables with undefined values
-  for (size_t j = 0; j < d_rank; ++j)
-  {
-    d_cross[j].resize(size,UndefKGB);
-    d_cayley[j].resize(size,0); // leave unset (set by |cayleyExtend|)
-  }
-
-  // set identity Tits element as seed of the KGB construction
-  d_tits.match(tits::TitsElt(titsGroup()));
-
-  // store its length and Cartan class (the latter is in fact always 0)
-  d_info.push_back(KGBInfo(0,d_fiberData.cartanClass(d_tits[0].tw())));
-}
-
-
-/*!
-  \brief The helper constructor with a given set of Cartan classes initializes
-  the lists with an element for each minimal Cartan class.
-
-  The base grading is set up to correspond to (the chosen adjoint fiber
-  element in the fundamental Cartan for) the central square class of this
-  real form, which is done by the call to |square_class_grading_offset|.
-
-  The initial element then represents the place within its central square class
-  of one chosen strong real form |srf| lying over this weak real form; it has
-  the identity twisted involution, and a torus factor obtained by lifting the
-  representative fiber group element |srf.first| via the |fromBasis| method of
-  the fiber group back to the ``coweight lattice modulo 2'' \f$Y/2Y\f$.
-
-
-  Here we actually look up the strong real form in order to get a proper
-  initial Tits group element associated to this Cartan
-*/
-KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR,
-		 const bitmap::BitMap& Cartan_classes)
-  : d_rank(GR.semisimpleRank())
-
-  , d_cross(d_rank)
-  , d_cayley(d_rank)
-  , d_info()
-
-  , d_pool() // no elements a priori
-  , d_tits(d_pool)
-
-  // only the final fields depend on the real form of |GR|
-  , basePoint(GR,GR.complexGroup().fundamental())
-  , d_fiberData(GR.complexGroup(),Cartan_classes)
-{
-  const complexredgp::ComplexReductiveGroup& G=GR.complexGroup();
-  const cartanset::CartanClassSet& ccs=G.cartanClasses();
-  realform::RealForm rf=GR.realForm();
-  KGBElt size =  ccs.KGB_size(rf,Cartan_classes);
-
-  assert(basePoint.square()==
-	 GR.complexGroup().fundamental().central_square_class(rf));
-
-  d_pool.reserve(size);
-  d_info.reserve(size);
-
-  // set up cross and cayley tables with undefined values
-  for (size_t j = 0; j < d_rank; ++j) {
-    d_cross[j].resize(size,UndefKGB);
-    d_cayley[j].resize(size,0); // leave undefined (set by |cayleyExtend|)
-  }
-
-  set::SetEltList m=ccs.ordering().minima(Cartan_classes);
-  for (size_t i=0; i<m.size(); ++i)
-  {
-    tits::TitsElt a=basePoint.grading_seed(G,rf,m[i]); d_fiberData.reduce(a);
-
-    // now add KGB element for the reduced Tits group element
-#ifdef DEBUG
-    size_t k=d_tits.match(a);
-    assert(k==d_info.size()); // this KGB element should be new
-#else
-    d_tits.match(a); // enter new KGB element into the tables
-#endif
-
-    // add additional infomation (length,Cartan class) for this KGB element
-    d_info.push_back(KGBInfo(GR.weylGroup().involutionLength(a.tw()),m[i]));
-  }
-}
-
-/******** public methods ****************************************************/
-
-/*!
-  \brief Constructs the full orbit set.
-
-  Precondition: the object is in the initial state, the one it is put in by
-  the call to its constructor (at least one seed element is present).
-
-  Algorithm: The idea is just to start out from the given element,
-  and then to saturate through cross actions and Cayley transforms.
-
-  It is important that for each element the cross actions are defined before
-  the Cayley transforms is tried, because the status information set by the
-  former is used by the latter.
-*/
-KGBHelp& KGBHelp::fill()
-{
-  for (KGBElt j = 0; j < d_pool.size(); ++j) {
-    // these calls will usually enlarge |d_pool.size()|;
-    cross_extend(j);
-    cayleyExtend(j);
-  }
-  return *this;
-}
-
-size_t KGBHelp::export_tables(std::vector<KGBEltList>& cross,
-			      std::vector<KGBEltList>& cayley,
-			      weyl::TwistedInvolutionList& twisted,
-			      std::vector<KGBInfo>& info,
-			      bool traditional) const
-{
-  size_t size=d_info.size();
-
-  // sort (partially)
-  setutils::Permutation a(size,1);
-  IndexCompare comp(*this);
-  if (traditional)
-    std::sort(a.begin(),a.end(),comp);
-  else
-    std::stable_sort(a.begin(),a.end(),comp); // better, faster, more reliable
-
-  // export the cross and cayley maps, permuting each constituent list
-  cross.clear(); cayley.clear();
-  cross.reserve(d_rank); cayley.reserve(d_rank);
-  setutils::Permutation ai(a,-1); // compute inverse of |a|
-  for (size_t s = 0; s < d_rank; ++s) {
-    cross.push_back(a.pull_back(ai.renumber(d_cross[s])));
-    cayley.push_back(a.pull_back(ai.renumber(d_cayley[s],UndefKGB)));
-  }
-
-  // export the other lists
-  twisted.clear(); twisted.reserve(size);
-  for (KGBElt x=0; x<size; ++x)
-    twisted.push_back(d_pool[a[x]].tw()); // strip torus part off Tits elements
-
-
-  a.pull_back(d_info).swap(info);
-
-  return size;
-}
-
-/******** accessors (private) ***********************************************/
-
-/* The functions below can be used to compute an initial value for a (partial)
-   KGB construction for a weak real form |rf| starting at Cartan class |cn|,
-   using various methods with various degrees of success. They should be used
-   only from the |KGBHelp| constructor with a |Cartan_classes| argument.
- */
 
 /* The method |naive_seed| attempts to get an initial Tits group element by
    extracting the necessary information fom the |Fiber| object associated to
@@ -820,7 +600,7 @@ size_t KGBHelp::export_tables(std::vector<KGBEltList>& cross,
    fundamental fiber, and that it illustrates at least how lifting of
    information from the fiber group should be done.
  */
-tits::TitsElt BasedTitsGroup::naive_seed
+tits::TitsElt EnrichedTitsGroup::naive_seed
  (const complexredgp::ComplexReductiveGroup& G,
   realform::RealForm rf, size_t cn) const
 {
@@ -846,8 +626,8 @@ tits::TitsElt BasedTitsGroup::naive_seed
    corresponds to the real form |rf|. Thus no element is actually recovered
    from any fiber group, but rather a set of equations for the torus part is
    set up and solved. Giving the right grading, one hopes that the Tits
-   element automatically defines a strong involution, but we do not check this
-   below (in fact we do not know how such a check should be performed).
+   element automatically defines a strong involution in the square class; we
+   test this by an |assert| statement
 
    Although the system of equations is highly underdetermined, it might
    suffice to fix a correct torus part modulo the subspace by which these
@@ -862,7 +642,7 @@ tits::TitsElt BasedTitsGroup::naive_seed
    if this happens, too much elements will be generated Cartan classes that
    lie above more than one minimal Cartan class.
  */
-tits::TitsElt BasedTitsGroup::grading_seed
+tits::TitsElt EnrichedTitsGroup::grading_seed
   (const complexredgp::ComplexReductiveGroup& G,
    realform::RealForm rf, size_t cn) const
 {
@@ -908,6 +688,11 @@ tits::TitsElt BasedTitsGroup::grading_seed
   // double-check that we have found an element that gives the desired grading
   for (size_t i=0; i<f.imaginaryRank(); ++i)
     assert(grading(a,f.simpleImaginary(i))==form_grading[i]);
+
+  tits::TitsElt check=a; Tg.mult(check,twisted(check));
+
+  // maybe we should reduce here, but we don't have |FiberData| available...
+  assert(check==tits::TitsElt(Tg));
 #endif
 
   return a;  // result should be reduced immediatly by caller
@@ -921,7 +706,7 @@ tits::TitsElt BasedTitsGroup::grading_seed
    Cayley transforms, proves to be suited for every necessary Cayley transform
    (making the simple root involved noncompact).
  */
-tits::TitsElt BasedTitsGroup::backtrack_seed
+tits::TitsElt EnrichedTitsGroup::backtrack_seed
  (const complexredgp::ComplexReductiveGroup& G,
   realform::RealForm rf, size_t cn) const
 {
@@ -998,6 +783,236 @@ found:
   return result;  // result should be reduced immediatly by caller
 }
 
+
+/*    II c. The main helper class |KGBHelp|  */
+
+/*
+   The actual KGB contruction takes place below. During the construction, the
+   elements are represented as Tits group elements. The links in the KGB
+   structure are realised by |BasedTitsGroup::basedTwistedConjugate| for the
+   cross actions and by |basedTitsGroup::Cayley_transform| for Cayley
+   transforms. After each of these, the result is subject to
+   |d_fiberdata.reduce| to normalise the representation of a KGB element.
+*/
+
+/*! \brief
+  This constructor sets |basePoint| for |GR|, and a trivial initial value.
+
+  So we choose a different grading offset for each real form, but always start
+  at the same Tits element. For an approach where different real forms can
+  share a grading offset and thus make their KGB sets mesh together, see the
+  next constructor. About the current (more or less) constructor Fokko said:
+  ``from the datum of the real form (or more precisely, from the corresponding
+  fundamental grading) we recover the basic cocycle that transforms the whole
+  construction into a Tits group computation''. By the basic (1-)cocycle he
+  seems to have meant the map from \f$W\f$ to the \f$W\f$-module \f$Y/2Y\f$
+  defined by the mentioned adjoint fiber element as image of the identity, and
+  extended by the natural grading shifts for the simple reflections (only the
+  image of the identity was actually computed).
+
+  Currently the fields |d_srf| and |d_base_compact| are only (possibly) used
+  by the other constructor, and so are left just default-constructed here.
+*/
+
+KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
+  : d_rank(GR.semisimpleRank())
+
+  , d_cross(d_rank)
+  , d_cayley(d_rank)
+  , d_info()
+
+  , d_pool(), d_tits(d_pool)
+
+  // only the final fields depend on the real form of |GR|
+  , basePoint(GR)
+  , d_fiberData(GR.complexGroup(),GR.cartanSet())
+{
+  KGBElt size = GR.kgbSize();
+
+  d_pool.reserve(size);
+  d_info.reserve(size);
+
+  // set up cross and cayley tables with undefined values
+  for (size_t j = 0; j < d_rank; ++j)
+  {
+    d_cross[j].resize(size,UndefKGB);
+    d_cayley[j].resize(size,0); // leave unset (set by |cayleyExtend|)
+  }
+
+  // set identity Tits element as seed of the KGB construction
+  d_tits.match(tits::TitsElt(titsGroup()));
+
+  // store its length and Cartan class (the latter is in fact always 0)
+  d_info.push_back(KGBInfo(0,d_fiberData.cartanClass(d_tits[0].tw())));
+}
+
+/* The following constructor serves the pseudo-constructor |refined_helper|.
+   Its main purpose is to allow precomputation of the |basePoint| field as
+   the base object of a |EnrichedTitsGroup| object, and a set of |seeds|, one
+   for each minimal Cartan class. The other arguments serve mainly to transmit
+   values that are computed in |refined_helper| anyway, allowing them to be
+   used in the construction without recompuation.
+*/
+KGBHelp::KGBHelp(const complexredgp::ComplexReductiveGroup& G,
+		 const bitmap::BitMap& Cartan_classes,
+		 KGBElt size, // size of KGB for selected |Cartan_classes|
+		 const BasedTitsGroup& base, // base point information)
+		 const std::vector<tits::TitsElt>& seeds)
+  : d_rank(G.semisimpleRank())
+
+  , d_cross(d_rank)
+  , d_cayley(d_rank)
+  , d_info()
+
+  , d_pool() // no elements a priori, those from |seeds| are added below
+  , d_tits(d_pool)
+
+  // only the final fields depend on the real form of |GR|
+  , basePoint(base)
+  , d_fiberData(G,Cartan_classes)
+{
+  d_pool.reserve(size);
+  d_info.reserve(size);
+
+  // set up cross and cayley tables with undefined values
+  for (size_t j = 0; j < d_rank; ++j)
+  {
+    d_cross[j].resize(size,UndefKGB);
+    d_cayley[j].resize(size,0); // leave undefined (set by |cayleyExtend|)
+  }
+
+  set::SetEltList m=G.cartanClasses().ordering().minima(Cartan_classes);
+  assert(m.size()==seeds.size()); // one seed for every minimal Cartan class
+
+  for (size_t i=0; i<seeds.size(); ++i)
+  {
+    tits::TitsElt a= seeds[i];
+    d_fiberData.reduce(a);
+
+    // now add KGB element for the reduced Tits group element
+#ifdef DEBUG
+    size_t k=d_tits.match(a);
+    assert(k==d_info.size()); // this KGB element should be new
+#else
+    d_tits.match(a); // enter new KGB element into the tables
+#endif
+
+    // add additional infomation (length,Cartan class) for this KGB element
+    d_info.push_back(KGBInfo(G.weylGroup().involutionLength(a.tw()),m[i]));
+  }
+}
+
+
+/*!
+  \brief
+  This pseudo-constructor builds a |KGBHelp| object initialized with an
+  element for each minimal Cartan class, and base point for the square class.
+
+  The base grading is set up to correspond to (the chosen adjoint fiber
+  element in the fundamental Cartan for) the central square class of this
+  real form, which is done by the call to |square_class_grading_offset|.
+
+  The initial element then represents the place within its central square class
+  of one chosen strong real form |srf| lying over this weak real form; it has
+  the identity twisted involution, and a torus factor obtained by lifting the
+  representative fiber group element |srf.first| via the |fromBasis| method of
+  the fiber group back to the ``coweight lattice modulo 2'' \f$Y/2Y\f$.
+
+  Here we actually look up the strong real form in order to get a proper
+  initial Tits group element associated to this Cartan class
+*/
+KGBHelp refined_helper(realredgp::RealReductiveGroup& GR,
+		       const bitmap::BitMap& Cartan_classes)
+{
+  const complexredgp::ComplexReductiveGroup& G=GR.complexGroup();
+  EnrichedTitsGroup square_class_base(GR,G.fundamental());
+
+  realform::RealForm rf=GR.realForm();
+  assert(square_class_base.square()==
+	 G.fundamental().central_square_class(rf));
+
+  const cartanset::CartanClassSet& ccs=G.cartanClasses();
+  KGBElt size =  ccs.KGB_size(rf,Cartan_classes);
+
+  set::SetEltList m=ccs.ordering().minima(Cartan_classes);
+
+  std::vector<tits::TitsElt> seeds; seeds.reserve(m.size());
+  for (size_t i=0; i<m.size(); ++i)
+    seeds.push_back
+      (m.size()==1 // use backtrack only in case of multiple minimal classes
+       ? square_class_base.grading_seed(G,rf,m[i])
+       : square_class_base.backtrack_seed(G,rf,m[i])
+      );
+
+  return KGBHelp(G,Cartan_classes,size,square_class_base,seeds);
+}
+
+/******** public methods ****************************************************/
+
+/*!
+  \brief Constructs the full orbit set.
+
+  Precondition: the object is in the initial state, the one it is put in by
+  the call to its constructor (at least one seed element is present).
+
+  Algorithm: The idea is just to start out from the given element,
+  and then to saturate through cross actions and Cayley transforms.
+
+  It is important that for each element the cross actions are defined before
+  the Cayley transforms is tried, because the status information set by the
+  former is used by the latter.
+*/
+KGBHelp& KGBHelp::fill()
+{
+  for (KGBElt j = 0; j < d_pool.size(); ++j) {
+    // these calls will usually enlarge |d_pool.size()|;
+    cross_extend(j);
+    cayleyExtend(j);
+  }
+  return *this;
+}
+
+size_t KGBHelp::export_tables(std::vector<KGBEltList>& cross,
+			      std::vector<KGBEltList>& cayley,
+			      tits::TitsEltList& tits,
+			      std::vector<KGBInfo>& info,
+			      BasedTitsGroup*& base,
+			      bool traditional) const
+{
+  size_t size=d_info.size();
+
+  // sort (partially)
+  setutils::Permutation a(size,1);
+  IndexCompare comp(*this);
+  if (traditional)
+    std::sort(a.begin(),a.end(),comp);
+  else
+    std::stable_sort(a.begin(),a.end(),comp); // better, faster, more reliable
+
+  // export the cross and cayley maps, permuting each constituent list
+  cross.clear(); cayley.clear();
+  cross.reserve(d_rank); cayley.reserve(d_rank);
+  setutils::Permutation ai(a,-1); // compute inverse of |a|
+  for (size_t s = 0; s < d_rank; ++s) {
+    cross.push_back(a.pull_back(ai.renumber(d_cross[s])));
+    cayley.push_back(a.pull_back(ai.renumber(d_cayley[s],UndefKGB)));
+  }
+
+  // export the other lists
+  /* We cannot do |a.pull_back(d_pool).swap(tits);|, as we need to convert
+     a vector of |TE_Entry| to a vector of |TitsElt|; a loop is required */
+  tits.clear(); tits.reserve(size);
+  for (KGBElt x=0; x<size; ++x)
+    tits.push_back(d_pool[a[x]]);
+
+  // but here there is no difficulty
+  a.pull_back(d_info).swap(info); // pull back |d_info| through |a|, and export
+
+  base=new BasedTitsGroup(basePoint); // export base point infomation
+
+  return size;
+}
+
 /******** manipulators *******************************************************/
 
 /*!
@@ -1048,10 +1063,10 @@ void KGBHelp::cross_extend(KGBElt parent)
 
     /* test whether action was (more or less) as computed in cartanclass.cpp
     if (a.tw()!=current.tw())
-    { weyl::Generator t = titsGroup().twist(s);
+    { weyl::Generator t = titsGroup().twisted(s);
       tits::TorusPart x= current.t();
       titsGroup().reflect(x,t);
-      if (not d_gradingOffset.test(s))
+      if (not grading_offset.test(s))
 	x += titsGroup().simpleCoroot(t);
       tits::TitsElt b(weylGroup().twistedConjugated(current.w(),s),x);
       d_fiberData.reduce(b);
