@@ -46,8 +46,7 @@ std::ostream& prettyPrint(std::ostream&,
 
 template<size_t dim>
 std::ostream& prettyPrint(std::ostream&,
-			  const std::vector<bitvector::BitVector<dim> >&,
-			  size_t);
+			  const std::vector<bitvector::BitVector<dim> >&);
 
 template<size_t dim>
 std::ostream& prettyPrint(std::ostream&,

@@ -45,7 +45,7 @@ std::ostream& prettyPrint(std::ostream& strm, const bitset::BitSet<d>& b,
 
 template<size_t dim>
 std::ostream& prettyPrint(std::ostream& strm,
-			  const bitvector::BitVector<dim>& v,  size_t n)
+			  const bitvector::BitVector<dim>& v)
 
 /*
   Prints the n first bits of v on strm in a "vector-like" format.
@@ -54,11 +54,8 @@ std::ostream& prettyPrint(std::ostream& strm,
 {
   std::vector<int> vi;
 
-  for (size_t j = 0; j < n; ++j)
-    if (v.test(j))
-      vi.push_back(1);
-    else
-      vi.push_back(0);
+  for (size_t j = 0; j < v.size(); ++j)
+    vi.push_back(v[j]?1:0);
 
   basic_io::seqPrint(strm,vi.begin(),vi.end(),",","(",")");
 
