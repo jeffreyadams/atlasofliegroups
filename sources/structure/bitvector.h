@@ -153,7 +153,7 @@ namespace bitvector {
 template<size_t dim> class BitVector{
 
   friend
-    void BitMatrix<dim>::apply(BitVector<dim>&,const BitVector<dim>&) const;
+    void BitMatrix<dim>::apply(BitVector<dim>&, BitVector<dim>) const;
 
  private:
 
@@ -459,7 +459,8 @@ template<size_t dim> class BitMatrix {
 
 // accessors
 
-  void apply(BitVector<dim>& dst,const BitVector<dim>& src) const;
+  // second argument is by value, the implicit copy avoid aliasing problems
+  void apply(BitVector<dim>& dst, BitVector<dim> src) const;
 
   BitVector<dim> apply(const BitVector<dim>& src) const; // functional version
 

@@ -158,7 +158,7 @@ BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b)
   problems or need of copy when |dest| and |source| coincide.
 */
 template<size_t dim>
-void BitMatrix<dim>::apply(BitVector<dim>& dest,const BitVector<dim>& source)
+void BitMatrix<dim>::apply(BitVector<dim>& dest, BitVector<dim> source)
   const
 {
   assert(d_columns==source.size());
