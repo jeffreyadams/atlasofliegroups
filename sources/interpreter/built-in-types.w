@@ -2382,7 +2382,7 @@ void print_KGB_wrapper()
   *output_stream
     << "kgbsize: " << rf->val.kgbSize() << std::endl;
   kgb::KGB kgb(rf->val);
-  kgb_io::printKGB(*output_stream,kgb);
+  kgb_io::var_print_KGB(*output_stream,kgb);
 @)
   wrap_tuple(0);
 }
