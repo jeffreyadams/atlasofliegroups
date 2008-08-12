@@ -42,38 +42,31 @@ namespace atlas {
 
 
 
-StandardRepK::StandardRepK(blocks::BlockElt z, const blocks::Block& block,
-			   KHatComputations& kht)
+StandardRepK::StandardRepK(blocks::BlockElt z, KHatComputations& kht)
+  : d_cartan(), d_fiberElt(), d_lambda(), d_status()
 {
-  using namespace blocks;
-  using namespace complexredgp;
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace rootdata;
+  const complexredgp::ComplexReductiveGroup& G = kht.complexReductiveGroup();
+  d_cartan = G.cartanClasses().classNumber(kht.block().involution(z));
 
-  const ComplexReductiveGroup& G = kht.complexReductiveGroup();
-  RootDatum rd = G.rootDatum();
+
+  rootdata::RootDatum rd = G.rootDatum();
 
   // normalize theta to get w, also r = number of Cartan = index
   // of distinguished conjugate of theta
 
-  weyl::TwistedInvolution twi=block.involution(z);
+  weyl::TwistedInvolution twi=kht.block().involution(z);
   weyl::WeylElt w = G.cartanClasses().canonicalize(twi);
   // now |w| is the conjugating element that sends the new |twi| to the old one
 
-  Weight lambda=G.weylGroup().imageBy(rd,w,rd.twoRho());
+  G.weylGroup().invert(w);
+  latticetypes::Weight lambda=G.weylGroup().imageBy(rd,w,rd.twoRho());
 
-  // now lambda is the infin. character w*rho represented in (1/2)X^*
-  // it looks like this should be w^-1 * rho to have an inf. character at the
-  // distinguished conjugate of theta represented by (modified) |twi|
+  // now lambda is the infin. character w^-1*rho represented in (1/2)X^*,
+  // an inf. character at the distinuguished involution now given by |twi|
 
-  weyl::TwistedInvolution sigma_0 = block.involution(z);
-
-  size_t r = G.cartanClasses().classNumber(sigma_0);
-  Weight mu( kht.projectionMatrix(r).numRows());
-  kht.minusQuotient(mu,lambda,r);
+  latticetypes::Weight mu(kht.projectionMatrix(d_cartan).numRows());
+  kht.minusQuotient(mu,lambda,d_cartan);
   d_lambda = std::make_pair(mu,0); // the 0 should be somethin more interesting
-  d_cartan = r;
   d_status.set(IsStandard);
 
 };
@@ -109,10 +102,11 @@ namespace standardrepk {
 
 KHatComputations::KHatComputations
 (const complexredgp::ComplexReductiveGroup &G, const blocks::Block& b)
-  :d_G(&G)
-   ,d_realForm(b.realForm()), d_baseGrading()
-  ,d_basis(G.numCartanClasses()),d_basisInverse(G.numCartanClasses())
-  ,d_minusQuotient(G.numCartanClasses()), d_lift(G.numCartanClasses())
+  : d_G(&G)
+  , d_block(b)
+  , d_realForm(b.realForm()), d_baseGrading()
+  , d_basis(G.numCartanClasses()),d_basisInverse(G.numCartanClasses())
+  , d_minusQuotient(G.numCartanClasses()), d_lift(G.numCartanClasses())
 {
   using namespace latticetypes;
   using namespace matrix;
@@ -171,7 +165,7 @@ void KHatComputations::go (const blocks::Block& blk)
   std::set<CharForm> system;
   for (blocks::BlockElt z =0; z!=blk.size(); ++z)
   {
-    StandardRepK stdrpk(z,blk,*this);
+    StandardRepK stdrpk(z,*this);
     //  normalize(*stdrpk);
 
     CharForm map = character_formula(stdrpk);
@@ -623,13 +617,13 @@ CharForm  KHatComputations::character_formula(StandardRepK stdrep) const
   Char multmap;
   multmap.insert(std::make_pair(stdrep,1));//this handles the empty subset
 
+  Weight lambda = stdrep.d_lambda.first;
+  latticetypes::LatticeMatrix P=projectionMatrix(stdrep.d_cartan);
 
   for (unsigned long i=1; i<nsubset; ++i) // bits of |i| determine the subset
   {
     bitset::RankFlags subset(i);
 
-    Weight lambda = stdrep.d_lambda.first;
-    latticetypes::LatticeMatrix P=projectionMatrix(stdrep.d_cartan);
 
     for (bitset::RankFlags::iterator j =subset.begin(); j(); j++)
       if (rpairlist[*j].first == rpairlist[*j].second) // imaginary root

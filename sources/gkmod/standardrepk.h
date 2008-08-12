@@ -180,8 +180,8 @@ class StandardRepK {
 
   StandardRepK() {} // so dummies can be declared
 
-  StandardRepK(blocks::BlockElt, const blocks::Block&, KHatComputations&);
-  // other constructors should be added to this list! Using block is pointless
+  StandardRepK(blocks::BlockElt, KHatComputations&);
+  // other constructors should be added to this list! This is just a quick fix
 
   void swap(const StandardRepK&);
 
@@ -209,21 +209,20 @@ class StandardRepK {
 
   // manipulators
 
-  //  void normalize();
-
 }; // class StandardRepK
 
 
 // This class serves to store tables of previously computed mappings from
 // "bad" standard representations to good ones. Also the information
 // necessary to interpret the d_lambda field in StandardRepK are stored here
-// (in d_basis..d_minusQuotient)
+// (in d_realForm .. d_minusQuotient)
 
 class KHatComputations {
 
  private:
 
   const complexredgp::ComplexReductiveGroup* d_G;
+  const blocks::Block& d_block;
 
   // data necessary for interpretation of |StandardRepK| objects
   atlas::realform::RealForm d_realForm;
@@ -269,6 +268,8 @@ class KHatComputations {
   const complexredgp::ComplexReductiveGroup&
     complexReductiveGroup() const { return *d_G; }
 
+  const blocks::Block& block() const { return d_block; }
+
   const latticetypes::LatticeMatrix
     projectionMatrix(size_t r) const { return d_minusQuotient[r]; }
 
@@ -290,7 +291,7 @@ class KHatComputations {
     product_simpleroot(const StandardRepK& s,size_t k) const;
 
   /*!
-\brief Projection from X^* to X^* /(-1 eig of  theta_j).
+\brief Projection from X^* to X^* /(-1 eigenspace of  theta_j).
 
 The lattice element l is in X^*; its image in the quotient lattice is
 written in m.  The argument j tells which distinguished involution to
@@ -302,6 +303,15 @@ use.
     {
       d_minusQuotient[j].apply(m,l);
     }
+
+  // apply symmetry for root $\alpha_s$ to |a|
+  void reflect(tits::TitsElt a, size_t s);
+
+  //! brief Get grading on all simple roots, only relevant for imaginary ones
+  gradings::Grading grading(const StandardRepK& rep);
+
+  //! brief Cayley transform though simpre root |s|, assumed imaginary compact
+  void cayleyTransform(StandardRepK& rep, size_t s);
 
   void normalize(StandardRepK&) const;
 
