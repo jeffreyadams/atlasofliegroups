@@ -1032,24 +1032,23 @@ do.
 @< Includes... @>=
 #include "complexredgp.h"
 
-@*2 Analysing involutions.
-Our constructor for the current built-in type must do checking to see that a
-valid involution is entered, and an analysis of the involution to replace the
-values otherwise obtained from the user interaction, in other words we want to
-find which sequence of inner class letters could have been used to construct
-this involution. For simple factors this is relatively easy, since one just
-studies the permutation of the simple roots that the involution defines (if it
-does not, it is not an automorphism of the based root datum). For torus
-factors, this requires an analysis of the eigen-lattices of the involution,
-which is performed in the class |tori::RealTorus|. The problem of finding the
-inner class letters for the torus factors might not have a unique solution:
-certainly involutions that correspond to a Complex inner class, but on simple
-factors that are not adjacent, cannot be specified by inner class letters;
-on the other hand certain inner class letters are synonymous. Even apart from
-this there might, in cases where the group is not a direct product of its
-derived group and its central torus, be involutions that can arise in several
-different ways or not at all. Therefore the value we compute should be taken
-as an informed guess.
+@*2 Analysing involutions. Our constructor for the current built-in type must
+do checking to see that a valid involution is entered, and an analysis of the
+involution to replace the values otherwise obtained from the user interaction,
+in other words we want to find which sequence of inner class letters could
+have been used to construct this involution. For simple factors this is
+relatively easy, since one just studies the permutation of the simple roots
+that the involution defines (if it does not, it is not an automorphism of the
+based root datum). Still, the permutation might not correspond to any inner
+class letters: it could correspond to a Complex inner class, but on simple
+factors that are not adjacent. Also inner class letters are not unique, since
+depending on the type at hand certain inner class letters are synonymous. For
+torus factors, the problem requires an analysis of the eigen-lattices of the
+involution, which is performed in the class |tori::RealTorus|. But in cases
+where the group is not a direct product of its derived group and its central
+torus, there might be involutions that can arise for several different
+combinations of inner class letters, or not at all. Therefore the value we
+compute should be taken as an informed guess.
 
 We consider first the case of a pure torus. For any involution given by an
 integral matrix, the space can be decomposed into stable rank~$1$ subspaces
@@ -1111,11 +1110,13 @@ root datum, the question of stabilising that lattice is settled, but we must
 check that the matrix is indeed an involution, and that it gives an
 automorphism of the based root datum. While we are doing that, we can also
 determine the Lie type of the root datum and the inner class letters
-corresponds to each of its factors. The Lie type will in general be identical
-to that of the root datum (and in particular any torus factors will come at
-the end), but in case of Complex inner classes we may be forced to permute the
-simple factors to make the identical factors associated to such classes
-adjacent.
+corresponding to each of its factors. The Lie type will in general be
+identical to that of the root datum (and in particular any torus factors will
+come at the end), but in case of Complex inner classes we may be forced to
+permute the simple factors to make the identical factors associated to such
+classes adjacent. Also note that there is no difference between root data of
+type $B_2$ and $C_2$, so we shall classify those as $B_2$ regardless of the
+type used to create the root datum.
 
 We do not apply the function |classify_involution| defined above to the entire
 matrix describing a (purported) involution of the weight lattice, although we
@@ -1231,11 +1232,11 @@ number of the matching factor in the Lie type.
 @ Finally we have to give inner class symbols for the central torus. While it
 is not entirely clear that forming some quotient could not transform an inner
 class specified as |"sc"| by the user into one that we will classify as |"C"|
-or vice versa, the symbols we generate have a well defined interpretation: the
-correspond to the real torus in the central torus defined by the involution.
-The weight lattice of the central torus is the quotient of the full weight
-lattice by the rational span of the root lattice, so we determine the action
-of the involution on this quotient, and classify it using
+or vice versa, the symbols we generate have a well defined interpretation:
+they correspond to the real torus defined by the involution within the central
+torus. The weight lattice of the central torus is the quotient of the full
+weight lattice by the rational span of the root lattice, so we determine the
+action of the involution on this quotient, and classify it using
 |classify_involution|. To find the matrix of the action of the involution on
 the quotient lattice, we find a Smith basis for the root lattice (of which the
 first $r$ vectors span the lattice to be divided out), express the involution
@@ -1262,33 +1263,35 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 }
 
 @*2 Storing the inner class values.
-This is the first built-in type where we deviate from the previously used
-scheme of just having one data field |val| holding a value of a class
-defined in the Atlas. The reason is that the copy constructor for
-|complexredgp::ComplexReductiveGroup| is private (and nowhere defined), so
-that the straightforward definition of a copy constructor for such a built-in
-type would not work, and the copy constructor is necessary for the |clone|
-method. So instead, we shall share the Atlas object when duplicating our
-value, and maintain a reference count to allow destruction when the last copy
-disappears. The reference count needs to be shared of course, and since the
-links between the built in value and both the Atlas values it represents and
-the reference count are indissoluble, we use references for the data fields.
-
-The reference to the Atlas value is not constant, since at some point we need
-to apply the method |fillCartan| to it; this is not defined as a |const|
-method (in other words it is considered a manipulator), even though it could
-have been, given the fact that it only modifies values at the other side of
-the |d_cartan| pointer. The Atlas value so referred to then may change in the
-course of the computation, to store information about the group as it is
-computed, but apart from efficiency considerations the sharing should be
-transparent (not noticeable by the user). However the numbering of Cartan
-subgroups may be affected by the order of operations requested, so this
-transparency is not complete.
-
+Although abstractly an inner class value is described completely by an object
+of type |complexredgp::ComplexReductiveGroup|, we shall need to record
+additional information in order to be able to present meaningful names for the
+real forms and dual real forms in this inner class. The above analysis of
+involutions was necessary in order to obtain such information; it will be
+recorded in values of type |realform_io::Interface|.
 @< Includes... @>=
 #include "realform_io.h"
 
-@~The main constructor takes a auto-pointer to a |ComplexReductiveGroup| as
+@~The class |inner_class_value| will be the first built-in type where we
+deviate from the previously used scheme of holding an \.{atlas} object with
+the main value in a data member |val|. The reason is that the copy constructor
+for |complexredgp::ComplexReductiveGroup| is private (and nowhere defined), so
+that the straightforward definition of a copy constructor for such a built-in
+type would not work, and the copy constructor is necessary for the |clone|
+method. So instead, we shall share the \.{atlas} object when duplicating our
+value, and maintain a reference count to allow destruction when the last copy
+disappears. The reference count needs to be shared of course, and since the
+links between the |inner_class_value| and both the \.{atlas} value and the reference count are indissoluble, we use references for the
+members |val| and |ref_count|.
+
+The reference to |val| is not |const|, since at some point we need to apply
+the method |fillCartan| to it, which considered to be a manipulator and so is
+not defined as a |const| method (even though technically it could have been,
+given the fact that it only modifies values at the other side of the
+|d_cartan| pointer). The variability of |val| may in fact be noticeable to the
+user through effects on the numbering of Cartan classes.
+
+The main constructor takes a auto-pointer to a |ComplexReductiveGroup| as
 argument, as a reminder that the caller gives up ownership of this pointer
 that should come from a call to~|new|; this pointer will henceforth be owned
 by the |inner_class_value| constructed, in shared ownership with any values
@@ -1310,7 +1313,7 @@ public here. This makes it possible to store an |inner_class_value| inside
 another class, when that class depends on the object referenced by our |val|
 being alive; doing so does not cost much, and the reference counting mechanism
 will then ensure that the inner class remains valid at least as long as the
-object of that class exists.
+object of that containing class exists.
 
 @< Type definitions @>=
 struct inner_class_value : public value_base
@@ -1349,17 +1352,19 @@ inner_class_value::~inner_class_value()
 dual value to which a reference is stored, and allocates and initialises the
 reference count. To initialise the |interface| and |dual_interface| fields, we
 call the appropriate constructors with a |layout::Layout| structure provided
-by a constructor that we added to it specifically for the purpose. This
-constructor leaves the field holding a lattice basis empty, but this field is
-unused by the constructors for |realform_io::Interface|.
+by a constructor that we added to it specifically for the purpose, from values
+|lt|, |ict| passed to the main constructor. The field of |layout::Layout|
+holding a lattice basis will remain empty, but this field is unused by the
+constructors for |realform_io::Interface|.
 
-This constructor has the defect that the reference to which the |dual| field
-is initialised will not be freed if an exception should be thrown during the
-subsequent initialisations (which is not likely, but not impossible either).
-However, we see no means to correct this defect with the given structure,
-since a member of reference type has to be initialised to its definitive
-value, and no local variables are available during initialisation whose
-destructor could take care of liberating the memory referred to by~|dual|.
+The current constructor has the defect that the reference to which the |dual|
+field is initialised will not be freed if an exception should be thrown during
+the subsequent initialisations (which is not likely, but not impossible
+either). However, we see no means to correct this defect with the given
+structure, since a member of reference type has to be initialised to its
+definitive value, and no local variables are available during initialisation
+whose destructor could take care of liberating the memory referred to
+by~|dual|.
 
 @< Function def...@>=
 inner_class_value::inner_class_value
@@ -1441,9 +1446,15 @@ involution given.
 @ To simulate the functioning of the Atlas software, the function $set\_type$
 takes as argument the name of a Lie type, a matrix giving kernel generators,
 and a string describing the inner class. The evaluation of the call
-$set\_type(lt,gen,ic)$ effectively consists of setting $t={\it Lie\_type(lt)}$,
-${\it basis}={\it quotient\_basis(t,gen)}$, and then returning the value of
-${\it fix\_involution (root\_datum (t,basis),based\_involution(t,basis,ic))}$.
+$set\_type(lt,gen,ic)$ effectively consists of setting $t={\it
+Lie\_type(lt)}$, ${\it basis}={\it quotient\_basis(t,gen)}$, and then
+returning the value of ${\it fix\_involution (root\_datum
+(t,basis),based\_involution(t,basis,ic))}$. Note that neither the Lie type nor
+the inner class type are transmitted directly to the |inner_class_type|
+constructor; we are depending on |fix_involution_wrapper()| on reconstructing
+them. This can give some surprises such as transforming type $C_2$ into $B_2$,
+or inner class letters changing to synonyms (but the latter should not have
+externally visible effects).
 
 @< Local function def...@>=
 void set_type_wrapper()
