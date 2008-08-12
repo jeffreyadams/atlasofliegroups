@@ -22,6 +22,7 @@ namespace atlas {
 namespace kgb_io {
 
   std::ostream& printKGB(std::ostream&, const kgb::KGB&);
+  std::ostream& var_print_KGB(std::ostream&, const kgb::KGB&);
   std::ostream& printBruhatOrder(std::ostream&, const bruhat::BruhatOrder&);
 
 }

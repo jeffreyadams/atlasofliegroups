@@ -48,8 +48,11 @@ namespace kgb_io {
   not too large (up to rank 4 or so). We haven't tried to go over to more
   sophisticated formatting for larger groups.
 */
-std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
+std::ostream& print(std::ostream& strm, const kgb::KGB& kgb, bool extra)
 {
+  if (extra)
+    prettyprint::prettyPrint(strm << "Base grading: [",
+			     kgb.base_grading(),kgb.rank()) << "].\n";
   // compute maximal width of entry
   int width = ioutils::digits(kgb.size()-1,10ul);
   int cwidth = ioutils::digits(kgb.Cartan_class(kgb.size()-1),10ul);
@@ -88,6 +91,16 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
     }
     strm << std::setw(pad) << "";
 
+    if (extra)
+    {
+      tits::TitsElt a=kgb.titsElt(j);
+      const tits::TitsGroup& Tg=kgb.titsGroup();
+      Tg.mult(a,kgb.basedTitsGroup().twisted(a));
+      assert(a==tits::TitsElt(Tg));
+
+    // print torus part
+	prettyprint::prettyPrint(strm,kgb.torus_part(j)) << ' ';
+    }
     // print root datum involution
     prettyprint::printWeylElt(strm,kgb.involution(j),kgb.weylGroup());
 
@@ -96,6 +109,17 @@ std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
 
   return strm;
 }
+
+std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
+{
+  return print(strm,kgb,false);
+}
+
+std::ostream& var_print_KGB(std::ostream& strm, const kgb::KGB& kgb)
+{
+  return print(strm,kgb,true);
+}
+
 
 
 // Print the Hasse diagram of the Bruhat ordering |bruhat| to |strm|.
