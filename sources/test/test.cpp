@@ -22,9 +22,13 @@
 #include "commands.h"
 #include "rootdata.h"
 #include "complexredgp.h"
+#include "realredgp.h"
 #include "interactive.h"
+#include "ioutils.h"
 #include "prettyprint.h"
 #include "blocks.h"
+#include "kgb.h"
+#include "kgb_io.h"
 #include "klsupport.h"
 #include "kl.h"
 #include "kltest.h"
@@ -63,7 +67,7 @@ namespace {
   Set this constant according to the requirements of the |test_f| function.
 */
   enum TestMode {EmptyMode, MainMode, RealMode, BlockMode, numTestMode};
-  const TestMode testMode = BlockMode; // currently does a KL matrix test
+  const TestMode testMode = RealMode; // currently does a KL matrix test
 
   // utilities
   const rootdata::RootDatum& currentRootDatum();
@@ -340,9 +344,12 @@ void test_f()
 
   try
   {
-    standardrepk::KHatComputations khc
-      (mainmode::currentComplexGroup(),blockmode::currentBlock());
-    khc.go(blockmode::currentBlock());
+    realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+    G_R.fillCartan(); // must not forget this!
+    std::cout << "kgbsize: " << G_R.kgbSize() << std::endl;
+    ioutils::OutputFile file;
+    kgb::KGB kgb(G_R,G_R.cartanSet());
+    kgb_io::var_print_KGB(file,kgb);
   }
   catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
