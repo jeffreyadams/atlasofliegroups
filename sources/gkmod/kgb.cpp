@@ -207,7 +207,7 @@ private:
 }; // class KGBHelp
 
 // A non-method construction function
-KGBHelp refined_helper(realredgp::RealReductiveGroup& GR,
+KGBHelp refined_helper(const realredgp::RealReductiveGroup& GR,
 		       const bitmap::BitMap& Cartan_classes);
 
 
@@ -413,7 +413,7 @@ void KGB::fillBruhat()
 
 namespace kgb {
 
-BasedTitsGroup::BasedTitsGroup(realredgp::RealReductiveGroup& GR)
+BasedTitsGroup::BasedTitsGroup(const realredgp::RealReductiveGroup& GR)
   : Tg(GR.titsGroup())
   , rd(GR.complexGroup().rootDatum())
   , grading_offset(grading_offset_for(GR))
@@ -434,7 +434,7 @@ tits::TitsElt BasedTitsGroup::twisted(const tits::TitsElt& a) const
   return result;
 }
 
-EnrichedTitsGroup::EnrichedTitsGroup(realredgp::RealReductiveGroup& GR,
+EnrichedTitsGroup::EnrichedTitsGroup(const realredgp::RealReductiveGroup& GR,
 				     const cartanclass::Fiber& fund)
   : BasedTitsGroup(GR)
   , srf(fund.strongRepresentative(GR.realForm()))
@@ -442,6 +442,12 @@ EnrichedTitsGroup::EnrichedTitsGroup(realredgp::RealReductiveGroup& GR,
 {
   // in this derived class, |grading_offset| depends only on the square class
   grading_offset=square_class_grading_offset(fund,srf.second,rd);
+}
+
+EnrichedTitsGroup EnrichedTitsGroup::for_square_class // quasi-constructor
+  (const realredgp::RealReductiveGroup& GR)
+{
+  return EnrichedTitsGroup(GR,GR.complexGroup().fundamental());
 }
 
 /* The reasoning given for |simple_grading| fails for non-simple roots, so we
@@ -848,7 +854,7 @@ KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
   d_info.push_back(KGBInfo(0,d_fiberData.cartanClass(d_tits[0].tw())));
 }
 
-/* The following constructor serves the pseudo-constructor |refined_helper|.
+/* The following constructor serves the quasi-constructor |refined_helper|.
    Its main purpose is to allow precomputation of the |basePoint| field as
    the base object of a |EnrichedTitsGroup| object, and a set of |seeds|, one
    for each minimal Cartan class. The other arguments serve mainly to transmit
@@ -907,7 +913,7 @@ KGBHelp::KGBHelp(const complexredgp::ComplexReductiveGroup& G,
 
 /*!
   \brief
-  This pseudo-constructor builds a |KGBHelp| object initialized with an
+  This quasi-constructor builds a |KGBHelp| object initialized with an
   element for each minimal Cartan class, and base point for the square class.
 
   The base grading is set up to correspond to (the chosen adjoint fiber
@@ -923,12 +929,12 @@ KGBHelp::KGBHelp(const complexredgp::ComplexReductiveGroup& G,
   Here we actually look up the strong real form in order to get a proper
   initial Tits group element associated to this Cartan class
 */
-KGBHelp refined_helper(realredgp::RealReductiveGroup& GR,
+KGBHelp refined_helper(const realredgp::RealReductiveGroup& GR,
 		       const bitmap::BitMap& Cartan_classes)
 {
-  const complexredgp::ComplexReductiveGroup& G=GR.complexGroup();
-  EnrichedTitsGroup square_class_base(GR,G.fundamental());
+  EnrichedTitsGroup square_class_base(EnrichedTitsGroup::for_square_class(GR));
 
+  const complexredgp::ComplexReductiveGroup& G=GR.complexGroup();
   realform::RealForm rf=GR.realForm();
   assert(square_class_base.square()==
 	 G.fundamental().central_square_class(rf));

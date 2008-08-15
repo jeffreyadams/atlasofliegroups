@@ -32,13 +32,14 @@ namespace atlas {
 
 /******** function declarations *********************************************/
 
+
 /******** constant declarations *********************************************/
 
 namespace kgb {
 
 const KGBElt UndefKGB = ~0ul;
 
-}
+} // namespace kgb
 
 /******** type definitions **************************************************/
 
@@ -89,7 +90,7 @@ class BasedTitsGroup
   gradings::Grading grading_offset;
 
  public:
-  BasedTitsGroup(realredgp::RealReductiveGroup&);
+  BasedTitsGroup(const realredgp::RealReductiveGroup&);
 
   /* accessors */
 
@@ -121,9 +122,13 @@ class EnrichedTitsGroup : public BasedTitsGroup
   // all compact imaginary roots for basic form
   const rootdata::RootSet base_compact;
 
- public:
-  EnrichedTitsGroup(realredgp::RealReductiveGroup&,
+  // unique constructor is private; use the |for_square_class| method
+  EnrichedTitsGroup(const realredgp::RealReductiveGroup&,
 		    const cartanclass::Fiber&);
+
+ public:
+  static EnrichedTitsGroup
+    for_square_class(const realredgp::RealReductiveGroup& GR);
 
   cartanclass::fiber_orbit f_orbit() const { return srf.first; }
   cartanclass::square_class square() const { return srf.second; }
