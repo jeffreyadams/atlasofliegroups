@@ -210,28 +210,37 @@ typename Matrix<C>::index_pair Matrix<C>::absMinPos(size_t i_min,
   return std::make_pair(i_m,j_m);
 }
 
-template<typename C>
-void Matrix<C>::apply(std::vector<C>& v, const std::vector<C>& w) const
 
-/*!
-  Applies the matrix to the vector w, and puts the result in v. It is
-  assumed that the size of w is the number of columns, and that the size
-  of v is the number of rows.
+/*! \brief
+Applies the matrix to the vector w, and returns the result. It is assumed that
+the size of w is the number of columns; result size is the number of rows.
 */
+template<typename C>
+std::vector<C> Matrix<C>::apply(const std::vector<C>& w) const
 
 {
-  std::vector<C> tmp = w; // safeguard in case v = w
+  std::vector<C> result(d_rows);
 
-  for (size_t i = 0; i < d_rows; ++i) {
+  for (size_t i = 0; i < d_rows; ++i)
+  {
     C c = 0;
-    for (size_t j = 0; j < d_columns; ++j) {
-      C m_ij = (*this)(i,j);
-      c += m_ij*tmp[j];
-    }
-    v[i] = c;
+    for (size_t j = 0; j < d_columns; ++j)
+      c += (*this)(i,j) * w[j];
+    result[i] = c;
   }
 
-  return;
+  return result;
+}
+
+/*!
+Applies the matrix to the vector w, and returns the result. It is assumed that
+the size of w is the number of columns; v.size() is set to the number of rows.
+It is safe to call this method with |v| and |w| the same vector.
+*/
+template<typename C>
+void Matrix<C>::apply(std::vector<C>& v, const std::vector<C>& w) const
+{
+  v=apply(w);
 }
 
 template<typename C> template<typename I, typename O>

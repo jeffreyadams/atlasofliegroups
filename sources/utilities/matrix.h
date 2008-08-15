@@ -131,6 +131,7 @@ template<typename C> class Matrix {
   index_pair absMinPos(size_t i_min = 0, size_t j_min = 0) const;
 
   void apply(std::vector<C>&, const std::vector<C>&) const;
+  std::vector<C> apply(const std::vector<C>&) const; //functional version
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 
