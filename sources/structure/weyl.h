@@ -693,6 +693,14 @@ class WeylGroup {
     imageBy(const rootdata::RootDatum& rd,
 	    const WeylElt& w,
 	    const latticetypes::LatticeElt& v) const;
+  void inverseAct(const rootdata::RootDatum& rd,
+		  const WeylElt& w,
+		  latticetypes::LatticeElt& v) const;
+
+  latticetypes::LatticeElt
+    imageByInverse(const rootdata::RootDatum& rd,
+		   const WeylElt& w,
+		   const latticetypes::LatticeElt& v) const;
 
 
 // manipulators

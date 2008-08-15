@@ -722,7 +722,8 @@ WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
 }
 
 /*!
-  \brief let |w| act on |v| according to reflection action in root datum |rd|
+  \brief
+  Let |w| act on |v| according to reflection action in root datum |rd|
   Note that rightmost factors act first, as in a product of matrices
 */
 void WeylGroup::act(const rootdata::RootDatum& rd,
@@ -737,7 +738,23 @@ void WeylGroup::act(const rootdata::RootDatum& rd,
 }
 
 /*!
-  \brief nondestructive version of |act| method
+  \brief
+  Same as |act(rd,inverse(w),v)|, but avoiding computation of |inverse(w)|.
+  Here the leftmost factors act first.
+*/
+void WeylGroup::inverseAct(const rootdata::RootDatum& rd,
+			   const WeylElt& w,
+			   latticetypes::LatticeElt& v) const
+{
+  for (size_t j=0; j<d_rank; ++j ) {
+    const WeylWord& xw = wordPiece(w,j);
+    for (size_t i=0; i<xw.size(); ++i )
+      rd.simpleReflect(v,d_out[xw[i]]);
+  }
+}
+
+/*!
+  \brief Nondestructive version of |act| method
 */
 latticetypes::LatticeElt
 WeylGroup::imageBy(const rootdata::RootDatum& rd,
@@ -745,6 +762,17 @@ WeylGroup::imageBy(const rootdata::RootDatum& rd,
 		   const latticetypes::LatticeElt& v) const
 {
   latticetypes::LatticeElt result=v; act(rd,w,result); return result;
+}
+
+/*!
+  \brief Nondestructive version of |inverseAct| method
+*/
+latticetypes::LatticeElt
+WeylGroup::imageByInverse(const rootdata::RootDatum& rd,
+			  const WeylElt& w,
+			  const latticetypes::LatticeElt& v) const
+{
+  latticetypes::LatticeElt result=v; inverseAct(rd,w,result); return result;
 }
 
 /* One constructor for WeylElt was not defined in header file:
