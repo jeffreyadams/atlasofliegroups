@@ -35,7 +35,7 @@ type_of_Cartan_matrix: (mat->LieType): semisimple type given by Cartan matrix.
 Smith_Cartan: (LieType->mat,vec): compute generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
   roots, with corresponding invariant factors; almost equivalent to
-  Smith(transpose_mat(Cartan_matrix(type))), except that (1) each simple of
+  Smith(transpose_mat(Cartan_matrix(type))), except that (1) each simple or
   torus factor is normalised separately, (2) for torus factors there is
   a '1' is on the diagonal and a '0' appears as invariant factor, and (3) for
   factors D_{2n} an equivalent basis is given, which has been tweaked so that
@@ -79,7 +79,8 @@ based_involution: (LieType,mat,string->mat): basic involution on given basis.
 
 root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice.
 type_of_root_datum: (RootDatum->LieType): Lie type of a root datum.
-  This may differ from original type, by torus factors being moved to the end
+  This may differ from original type, by torus factors being moved to the end,
+  and factors entered as "C2" will be returned as 'B2'.
 
 quotient_datum: (LieType,mat->RootDatum): root datum as entrered in Atlas.
   quotient_datum(type,gens)=root_datum(type,quotient_basis(type,gens))
@@ -231,7 +232,7 @@ print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   in the list produced by fiber_part for the same arguments, the grading of
   the imaginary root system is given as a sequence of bits 0 (compact) or 1
   (non-compact), to be interpreted on the simple roots in the given order, and
-  extended to the whose root subsystem as a Z/2Z grading.
+  extended to the whole imaginary root subsystem as a Z/2Z grading.
 
 print_real_Weyl: (RealForm,CartanClass->)
 print_strong_real: (RealForm,CartanClass->)
