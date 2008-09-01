@@ -857,7 +857,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
 \brief find index of canonical representative of |sigma| in
   |d_twistedInvolution|, under the assumption that it is (already) present
   */
-size_t CartanClassSet::classNumber(TwistedInvolution sigma) const
+size_t CartanClassSet::classNumber(weyl::TwistedInvolution sigma) const
 {
   canonicalize(sigma);
   return setutils::find_index(d_twistedInvolution,sigma);
