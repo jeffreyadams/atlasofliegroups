@@ -184,7 +184,7 @@ std::ostream& printVector(std::ostream& strm, const std::vector<C>& v,
   for (size_t i = 0; i < v.size(); ++i)
     strm << (i==0 ? '[' : ',') << std::setw(width) << v[i];
 
-  std::cout << " ]" << std::endl;
+  std::cout << " ]";
   return strm;
 }
 
