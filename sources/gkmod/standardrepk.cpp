@@ -13,13 +13,18 @@ StandardRepK and KHatComputations.
   See file main.cpp for full copyright notice
 */
 
+#include "standardrepk.h"
+
 #include "cartanclass.h"
 #include "complexredgp.h"
+#include "realredgp.h"
+#include "kgb.h"
+#include "descents.h"
 #include "lattice.h"
 #include "rootdata.h"
 #include "smithnormal.h"
-#include "standardrepk.h"
 #include "cartanset.h"
+#include "tori.h"
 #include "basic_io.h"
 #include "intutils.h"
 #include "tags.h"
@@ -41,44 +46,14 @@ namespace atlas {
   namespace standardrepk {
 
 
-
-StandardRepK::StandardRepK(blocks::BlockElt z, KHatComputations& kht)
-  : d_cartan(), d_fiberElt(), d_lambda(), d_status()
-{
-  const complexredgp::ComplexReductiveGroup& G = kht.complexReductiveGroup();
-  d_cartan = G.cartanClasses().classNumber(kht.block().involution(z));
-
-
-  rootdata::RootDatum rd = G.rootDatum();
-
-  // normalize theta to get w, also r = number of Cartan = index
-  // of distinguished conjugate of theta
-
-  weyl::TwistedInvolution twi=kht.block().involution(z);
-  weyl::WeylElt w = G.cartanClasses().canonicalize(twi);
-  // now |w| is the conjugating element that sends the new |twi| to the old one
-
-  G.weylGroup().invert(w);
-  latticetypes::Weight lambda=G.weylGroup().imageBy(rd,w,rd.twoRho());
-
-  // now lambda is the infin. character w^-1*rho represented in (1/2)X^*,
-  // an inf. character at the distinuguished involution now given by |twi|
-
-  latticetypes::Weight mu(kht.projectionMatrix(d_cartan).numRows());
-  kht.minusQuotient(mu,lambda,d_cartan);
-  d_lambda = std::make_pair(mu,0); // the 0 should be somethin more interesting
-  d_status.set(IsStandard);
-
-};
-
-    // accessors
+// accessors
 
 bool StandardRepK::operator< (const StandardRepK& rhs) const
 {
   if (d_cartan != rhs.d_cartan) return d_cartan < rhs.d_cartan ;
   if (d_fiberElt != rhs.d_fiberElt) return d_fiberElt < rhs.d_fiberElt;
   return d_lambda < rhs.d_lambda;
-};
+}
 
 bool StandardRepK::operator== (const StandardRepK& other) const
 {
@@ -86,7 +61,8 @@ bool StandardRepK::operator== (const StandardRepK& other) const
     and d_fiberElt == other.d_fiberElt
     and d_lambda == other.d_lambda;
   // when these components match, the restrictions to $K$ will be the same
-};
+}
+
 } // namespace standardrepk
 
 
@@ -98,101 +74,155 @@ bool StandardRepK::operator== (const StandardRepK& other) const
 
 namespace standardrepk {
 
-  // for now we only construct a KHatComputations from a block
+  // for now we only construct a KHatComputations from a KGB structure
 
 KHatComputations::KHatComputations
-(const complexredgp::ComplexReductiveGroup &G, const blocks::Block& b)
-  : d_G(&G)
-  , d_block(b)
-  , d_realForm(b.realForm()), d_baseGrading()
-  , d_basis(G.numCartanClasses()),d_basisInverse(G.numCartanClasses())
-  , d_minusQuotient(G.numCartanClasses()), d_lift(G.numCartanClasses())
+  (const realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
+  : d_G(&GR.complexGroup())
+  , d_KGB(kgb)
+  , d_kHat()
+  , d_standardHechtSchmid()
+  , d_realForm(GR.realForm())
+  , d_Tg(kgb::EnrichedTitsGroup::for_square_class(GR))
+  , d_data(d_G->numCartanClasses())
 {
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace smithnormal;
-
-
-
-  // construct d_basis, etc., matrices
   // the following loop should be restricted to Cartan classes for real form
-  for (size_t r=0; r<d_G->numCartanClasses(); ++r)
+  for (size_t r=0; r<d_data.size(); ++r)
   {
     // d_G->cartan[r] is rth CartanClass
-    // which by now records the DISTINGUISHED involution for this class
+    // which by now records the canonical involution for this class
+    Cartan_info& ci=d_data[r];
 
-    LatticeMatrix theta = d_G->cartan(r).involution();
+    latticetypes::LatticeMatrix theta = d_G->cartan(r).involution();
 
     size_t n = rootDatum().rank();
 
-
-    // put in q the matrix of vectors theta(e)-e in the basis b
-    LatticeMatrix q(theta);
+    // put in $q$ the matrix of $\theta-1$
+    latticetypes::LatticeMatrix q=theta;
     for (size_t j = 0; j < n; ++j)
       q(j,j) -= 1;
 
-    // find smith normal form
-    WeightList bs; initBasis(bs,n);
-    CoeffList invf; smithNormal(invf,bs.begin(),q);
+    // find Smith basis relative to $q$
+    latticetypes::WeightList bs; matrix::initBasis(bs,n);
+    latticetypes::CoeffList invf; smithnormal::smithNormal(invf,bs.begin(),q);
 
-    d_basis[r]=LatticeMatrix(bs);
-    size_t l = invf.size(); // cast out the first |l| columns of |d_basis[r]|
-    if (l==n) d_lift[r].resize(n,0); // avoid construction from empty list
-    else d_lift[r]=LatticeMatrix(&bs[l],&bs[n],tags::IteratorTag());
+    latticetypes::LatticeMatrix basis(bs);
+    latticetypes::LatticeMatrix inv_basis=basis.inverse();
 
-    d_basisInverse[r]=d_basis[r].inverse();
-    d_minusQuotient[r].resize(n-l,n);
+
+    size_t l = invf.size();
+    size_t f=0; while (f<l and invf[f]==1) ++f; // ignore invariant factors 1
+
+    ci.torsionProjector.resize(l-f,n);
+
+    for (size_t i=f; i<l; ++i)
+    {
+      assert(invf[i]==2); // other invariant factors must be 2
+
+      using latticetypes::operator*=;
+      ci.torsionLift.push_back(bs[i]);
+      ci.torsionLift.back() *= 2; // double it, due to $(1/2)X^*$ basis
+
+      for (size_t j=0; j<n; ++j)
+	ci.torsionProjector.set_mod2(i,j,inv_basis(i,j));
+    }
+    if (l==n) // avoid construction from empty list
+      ci.freeLift.resize(n,0); // so set matrix to empty rectangle
+    else
+      ci.freeLift= // or take the final |n-l| basis vectors as columns
+	latticetypes::LatticeMatrix(&bs[l],&bs[n],tags::IteratorTag());
+
+    ci.freeProjector.resize(n-l,n);
 
     for (size_t i =l; i<n; ++i) // copy final rows from inverse
-      d_minusQuotient[r].copyRow(d_basisInverse[r],i-l,i);
+      ci.freeProjector.copyRow(inv_basis,i-l,i); // row |i| to |i-l|
 
+
+    latticetypes::LatticeElt e=inv_basis.apply(rootDatum().twoRho());
+    for (size_t i=0; i<n; ++i)
+      if (invf[i]!=2) e[i]=0; // clear components not on torsion part
+    ci.p2rho=basis.apply(e);
+
+    ci.fiber_modulus=latticetypes::SmallSubspace
+      (latticetypes::SmallBitVectorList(tori::minusBasis(theta.transposed())),
+       n);
   }
 }
 
-void KHatComputations::go (const blocks::Block& blk)
+/******** accessors *******************************************************/
+
+HCParam KHatComputations::project
+  (size_t cn, const latticetypes::Weight& lambda) const
 {
-  std::set<StandardRepK> stdRset; // set of standard representations
+  using latticetypes::operator-=;
+  using latticetypes::operator/=;
+  const Cartan_info& ci=d_data[cn];
 
-  rootdata::RootDatum rd = d_G->rootDatum();
+  latticetypes::Weight lambda_shifted=lambda;
+  (lambda_shifted -= rootDatum().twoRho()) /= 2; // final division is exact
+  return std::make_pair
+    (ci.freeProjector.apply(lambda),
+     ci.torsionProjector.apply(latticetypes::SmallBitVector(lambda_shifted))
+     .data());
+}
 
-  latticetypes::Weight tr=rd.twoRho();
-  latticetypes::Weight cotr =rd.dual_twoRho();
+latticetypes::Weight KHatComputations::lift(size_t cn, HCParam p) const
+{
+  using latticetypes::operator+=;
+  const Cartan_info& ci=d_data[cn];
+  latticetypes::Weight result=ci.freeLift.apply(p.first); // lift free part
 
-  atlas::latticetypes::LatticeCoeff
-    bound = atlas::latticetypes::scalarProduct (tr, cotr);
-  std::cout << " bound = " << bound << std::endl;
+  result+=ci.p2rho; // offset to lift from torsion part, may have odd parts
+  latticetypes::WeightList torsion_lift=ci.torsionLift;
+  for (size_t i=0; i<torsion_lift.size(); ++i)
+    if (p.second[i])
+      result += torsion_lift[i]; // add even vectors representing torsion part
 
-  std::set<CharForm> system;
-  for (blocks::BlockElt z =0; z!=blk.size(); ++z)
+  return result;
+}
+
+StandardRepK KHatComputations::std_rep
+  (const latticetypes::Weight& two_lambda, tits::TitsElt a) const
+{
+  weyl::TwistedInvolution sigma=a.tw();
+  weyl::WeylElt w = d_G->cartanClasses().canonicalize(sigma);
+  // now |sigma| is canonical and |w| conjugates |sigma| to |a.tw()|
+
+  const weyl::WeylGroup& W=d_G->weylGroup();
+
+  size_t cn = d_G->cartanClasses().classNumber(sigma);
+
+  // conjugate towards canonical element
   {
-    StandardRepK stdrpk(z,*this);
-    //  normalize(*stdrpk);
+    weyl::WeylWord ww=W.word(w);
+    for (size_t i=0; i<ww.size(); ++i) // left-to-right for inverse conjugation
+      d_Tg.basedTwistedConjugate(a,ww[i]);
+  }
+  assert(a.tw()==sigma); // we should now be at canonical twisted involution
 
-    CharForm map = character_formula(stdrpk);
+  const rootdata::RootDatum& rd=rootDatum();
+  latticetypes::Weight mu=W.imageByInverse(rd,w,two_lambda);
+  StandardRepK result(cn,
+		      d_data[cn].fiber_modulus.mod_image
+		        (d_Tg.titsGroup().left_torus_part(a)),
+		      project(cn,mu));
 
-    system.insert(map);
+  const cartanclass::Fiber& cc=d_G->cartan(cn).fiber();
+  for (size_t i=0; i<cc.imaginaryRank(); ++i)
+    if (rd.scalarProduct(mu,cc.simpleImaginary(i))<0)
+      return result; // without setting isStandard
 
-  } // for (z)
+  result.d_status.set(StandardRepK::IsStandard);
+  return result;
+}
 
-  std::cout << " size of initial formula set = " << system.size()
-	    << std::endl;
-
-
-  atlas::matrix::Matrix<CharCoeff> m = makeMULTmatrix(system, bound);
-
-  };
-
-/******** manipulators *******************************************************/
+StandardRepK KHatComputations::KGB_elt_rep(kgb::KGBElt z) const
+{
+  return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z));
+}
 
 void KHatComputations::normalize(StandardRepK& stdrep) const
-
 {
-  using namespace blocks;
-  using namespace complexredgp;
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace rootdata;
-
   if (not stdrep.isStandard())
   {
     std::cout << "cannot normalize properly continued standard representation"
@@ -200,7 +230,7 @@ void KHatComputations::normalize(StandardRepK& stdrep) const
     return ;
   }
 
-  RootDatum rd = rootDatum();
+  rootdata::RootDatum rd = rootDatum();
   size_t cn=stdrep.d_cartan;
   const weyl::TwistedInvolution sigma_0 =
     d_G->cartanClasses().twistedInvolution(cn);
@@ -209,29 +239,30 @@ void KHatComputations::normalize(StandardRepK& stdrep) const
 
   // lift lambda to X^*
 
-  Weight lambda = stdrep.d_lambda.first;
-  Weight lifted_lambda(rd.rank()); d_lift[cn].apply(lifted_lambda,lambda);
+  latticetypes::Weight lifted_lambda=lift(cn,stdrep.d_lambda);
 
   bitset::RankFlags bi_ortho_simples;
   { // find simple roots orthogonal to |real2rho| and |imaginary2rho|
     latticetypes::Weight real2rho=rd.twoRho(cc.realRootSet());
     latticetypes::Weight imaginary2rho=rd.twoRho(cc.imaginaryRootSet());
-    for (size_t  i=0; i <  rd.semisimpleRank(); ++i)
+    for (size_t i=0; i<rd.semisimpleRank(); ++i)
       if (rd.isOrthogonal(real2rho,i) and rd.isOrthogonal(imaginary2rho,i))
 	bi_ortho_simples.set(i);
   }
 
-  const LatticeMatrix& theta = cc.involution();
+  const latticetypes::LatticeMatrix& theta = cc.involution();
   atlas::rootdata::RootSet cplx = cc.fiber().complexRootSet();
 
   //  go through the orthogonal list
   //  select the complex roots in the list
 
   bitset::RankFlags::iterator i;
-  Weight tlifted_lambda(rd.rank()); // |(1+theta)lifted_lambda|
   do
   {
-    theta.apply(tlifted_lambda, lifted_lambda); tlifted_lambda +=lifted_lambda;
+    using latticetypes::operator+=;
+
+    latticetypes::Weight tlifted_lambda=theta.apply(lifted_lambda);
+    tlifted_lambda +=lifted_lambda;
 
     for (i= bi_ortho_simples.begin(); i(); ++i )
     {
@@ -243,32 +274,31 @@ void KHatComputations::normalize(StandardRepK& stdrep) const
 	assert (rd.isOrthogonal(alpha,talpha));
 	rd.reflect(lifted_lambda,alpha);
 	rd.reflect(lifted_lambda,talpha);
-	break; // and continue while loop
+	break; // and continue do-while loop
       }
     } // for
   }
   while (i()); // while |for|-loop was exited through |break|
 
 
-  // put the new weakly dominant lambda back in stdrep
+// put the new weakly dominant lambda back in stdrep
 
-  minusQuotient(stdrep.d_lambda.first, lifted_lambda,cn);
-  stdrep.d_status.set(stdrep.IsNormal);
-}
+  stdrep.d_lambda=project(cn,lifted_lambda);
+  stdrep.d_status.set(StandardRepK::IsNormal);
+
+} // normalize
+
 
 atlas::latticetypes::LatticeCoeff
-KHatComputations::product_simpleroot (const StandardRepK& s, size_t k) const
+KHatComputations::product_simpleroot
+  (const StandardRepK& s, rootdata::RootNbr k) const
 {
   using latticetypes::operator+=;
 
   if (not s.isNormal())
-    throw std::runtime_error("simpleroot: unnomalized standard rep");
+    throw std::runtime_error("simpleroot: unnormalized standard rep");
 
-  const rootdata::RootDatum& rd=rootDatum();
-  latticetypes::Weight v(rd.rank());
-  d_lift[s.d_cartan].apply(v,s.d_lambda.first);
-  latticetypes::Weight lifted=v;
-  d_G->cartan(s.d_cartan).involution().apply(v,v); lifted += v;
+  latticetypes::Weight lifted=theta_lift(s.d_cartan,s.d_lambda);
 
   return rootDatum().scalarProduct(lifted,k);
 }
@@ -281,205 +311,12 @@ KHatComputations::product_sumposroots(const StandardRepK& s) const
   if (not s.isNormal())
     throw std::runtime_error("sumposroots: unnormalized standard rep");
 
-  const rootdata::RootDatum& rd=rootDatum();
-  latticetypes::Weight v(rd.rank());
-  d_lift[s.d_cartan].apply(v,s.d_lambda.first);
-  latticetypes::Weight lifted=v;
-  d_G->cartan(s.d_cartan).involution().apply(v,v); lifted += v;
+  latticetypes::Weight lifted=theta_lift(s.d_cartan,s.d_lambda);
 
-  latticetypes::LatticeCoeff result=0;
-  for (rootdata::WRootIterator u = rd.beginPosCoroot();
-       u!=rd.endPosCoroot();++u)
-    result += intutils::abs(latticetypes::scalarProduct(lifted,*u));
+  latticetypes::Weight dual2rho=rootDatum().dual_twoRho();
 
-  return result;
+  return intutils::abs(latticetypes::scalarProduct(lifted,dual2rho));
 }
-
-
-void KHatComputations::makeHSMap(StandardRepK& stdrep)
-{
-  using namespace blocks;
-  using namespace complexredgp;
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace rootdata;
-  using namespace cartanset;
-  using namespace descents;
-
-  // Make a dummy standard rep with
-
-  StandardRepK undefstdrpk;
-
-  undefstdrpk.d_cartan = ~0ul;
-
-  // test if standard
-
-  if (stdrep.isStandard())
-  {
-
-    HechtSchmid hs(&undefstdrpk,&undefstdrpk,&undefstdrpk);
-
-    d_standardHechtSchmid.insert
-      (std::pair<StandardRepK,HechtSchmid>(stdrep,hs));
-  }
-
-  else
-  {
-    RootDatum rd = d_G->rootDatum();
-
-    LatticeMatrix theta = d_G->cartan(stdrep.d_cartan).involution();
-    const weyl::TwistedInvolution w =
-      d_G->cartanClasses().twistedInvolution(stdrep.d_cartan);
-    cartanclass::Fiber f = cartanclass::Fiber(rd, theta);
-    atlas::rootdata::RootList rl = f.simpleImaginary();
-    const CartanClassSet& tw = d_G->cartanClasses();
-
-    Weight lambda = stdrep.d_lambda.first;
-
-    // make a list of noncompact simple imaginary roots
-
-    // I am not using isNoncompact yet() because it requires solving systems of
-    // equations
-
-    rootdata::RootSet ncpi=tw.noncompactRoots(d_realForm);
-
-    // lift lambda to X^*
-
-
-
-    LatticeMatrix basis = d_basis[stdrep.d_cartan];
-
-    basis.resize(d_basis[stdrep.d_cartan].numRows(), lambda.size());
-
-    size_t l = d_basis[stdrep.d_cartan].numColumns() - lambda.size();
-    for (size_t k = 0 ; k != basis.numRows(); ++k)
-      for (size_t j  = l; j != d_basis[stdrep.d_cartan].numColumns() ; ++j)
-	basis(k,j-l)=  d_basis[stdrep.d_cartan](k,j);
-
-    Weight lifted_lambda(basis.numRows());
-    basis.apply(lifted_lambda,lambda);
-
-
-
-    for ( size_t i = 0; i!=rl.size(); ++i)
-    {
-//  I'll have to do this for the first non compact that satisfies the test below
-      if ( ncpi.isMember(rl[i]) &&
-	   latticetypes::scalarProduct( rd.coroot(rl[i]),lifted_lambda) < 0)
-
-      {
-	StandardRepK s, d1, d2;
-
-	s= stdrep;
-	d1 = stdrep;
-	d2 = undefstdrpk;
-
-
-
-	// compute s_i(lambda)
-
-	LatticeMatrix q;
-	rd.rootReflection(q,rd.simpleRootNbr(i));
-	q.apply(lifted_lambda,lifted_lambda);
-
-	Weight mu(d_minusQuotient[stdrep.d_cartan].numRows());
-	minusQuotient(mu, lifted_lambda, stdrep.d_cartan);
-	s.d_lambda.first = mu;
-
-	// Build the standard reps associated to the new Cartan
-
-	// Compute Map Lambda->w*lambda'
-
-	latticetypes::LatticeMatrix lbdmp = lambdamap(stdrep.d_cartan,i);
-	Weight wlbdp(lambda.size()-1);
-
-	lbdmp.apply(wlbdp, lambda);
-	d1.d_lambda.first = wlbdp;
-
-	// get the new Cartan
-
-	weyl::WeylElt w;
-	size_t j = tw.cayley(stdrep.d_cartan,i,&w);
-
-	LatticeMatrix stheta = d_G->cartan(j).involution();
-	latticetypes::LatticeMatrix qw;
-
-	weyl::WeylWord ww;
-	tw.weylGroup().out(ww,w);
-	atlas::rootdata::toMatrix(qw, ww,rd);
-	qw *= d_G->distinguished();
-	atlas::matrix::conjugate(stheta,qw); // stheta contains theta_prime
-
-	// I may need to change this as I do not fully understand ????
-
-
-	d1.d_cartan = j;
-	// d_G->cartan(j).involution() = stheta;
-	atlas::descents::DescentStatus ds;
-	atlas::descents::DescentStatus::Value v =
-	  ds.operator[](rd.simpleRootNbr(i));
-
-	// if i is of type I d2 = d1
-	if ( v == atlas::descents::DescentStatus::ImaginaryTypeII ) d2 = d1;
-
-	HechtSchmid hs(&s,&d1,&d2);
-	d_standardHechtSchmid.insert
-	  (std::pair<StandardRepK,HechtSchmid>(stdrep,hs));
-
-	break;
-
-      }
-
-    }
-
-
-  }
-  //std::cout << "HS map size " << d_standardHechtSchmid.size() << std::endl;
-}
-
-
-latticetypes::LatticeMatrix
-KHatComputations::lambdamap(size_t cartan_num,size_t i)
-{
-  using namespace blocks;
-  using namespace complexredgp;
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace rootdata;
-  using namespace cartanset;
-
-
-
-  RootDatum rd = d_G->rootDatum();
-  const CartanClassSet& tw = d_G->cartanClasses();
-  weyl::WeylElt w;
-  size_t j = tw.cayley(cartan_num,i,&w);
-
-  latticetypes::LatticeMatrix qw,m;
-  weyl::WeylWord ww;
-  tw.weylGroup().out(ww,w);
-  atlas::rootdata::toMatrix(qw, ww,rd);
-  qw*= d_G->cartanClasses().distinguished();
-
-  qw*=d_basisInverse[cartan_num];
-  m = d_basis[j];
-  m *=qw; // this matrix is the product of 3 n by n matrices
-
-  size_t r = d_minusQuotient[cartan_num].numRows();
-  //size_t r = d_lambda.first.size();
-  size_t n = m.numRows();
-
-  latticetypes::LatticeMatrix ldm(r-1,r);
-
-
-  for ( size_t k = 0; k!=r-1; ++k)
-    for ( size_t l = 0 ; l!=r; ++l)
-      ldm(k,l) = m(n-r+1+k,n-r+l);
-
-  return ldm;
-
-}
-
 
 PSalgebra
 KHatComputations::theta_stable_parabolic
@@ -563,13 +400,6 @@ KHatComputations::theta_stable_parabolic
 // Express irreducible K-module as a finite virtual sum of standard ones
 CharForm  KHatComputations::character_formula(StandardRepK stdrep) const
 {
-  using namespace blocks;
-  using namespace complexredgp;
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace rootdata;
-  using namespace cartanset;
-
   const cartanset::CartanClassSet& cs=d_G->cartanClasses();
   weyl::WeylWord conjugator;
 
@@ -577,9 +407,9 @@ CharForm  KHatComputations::character_formula(StandardRepK stdrep) const
 
   PSalgebra ps = theta_stable_parabolic(conjugator,cs,stdrep.d_cartan);
 
-  // For now we do not have the capability to distinguish between compact and
-  // non-compact imaginary roots. This information should be provided by the
-  // fiber group.
+  // We have the capability to distinguish between compact and non-compact
+  // imaginary roots. This information is provided by the fiber group.
+  // However, we do not do anything with that infomation yet.
 
   // Asumme that $u$ is the nilpotent part of |ps| in the Levi deompostion.
   // We will associate to stdrep, $n$ new standardreps, where $n$ is the
@@ -588,13 +418,10 @@ CharForm  KHatComputations::character_formula(StandardRepK stdrep) const
 
   // For now we will treat the imaginary roots as if they were non compact
 
-  // We load the indices of the vector $u$ in |u_list| in order to make
-  // debbuging easier once the algorithm is stable the implementation should
-  // be changed
   typedef std::pair<atlas::rootdata::RootNbr,atlas::rootdata::RootNbr> rpair;
   std::vector<rpair> rpairlist;
   {
-     // Get list of roots in u \cap pc for now we take unique pairs of roots.
+    // Get list of roots in u \cap pc for now we take unique pairs of roots.
     // Later the non compact imaginary roots will be obtained from the fiber
 
     std::set<rpair> rpairset;
@@ -617,22 +444,22 @@ CharForm  KHatComputations::character_formula(StandardRepK stdrep) const
   Char multmap;
   multmap.insert(std::make_pair(stdrep,1));//this handles the empty subset
 
-  Weight lambda = stdrep.d_lambda.first;
-  latticetypes::LatticeMatrix P=projectionMatrix(stdrep.d_cartan);
+  latticetypes::LatticeMatrix P=d_data[stdrep.d_cartan].freeProjector;
 
   for (unsigned long i=1; i<nsubset; ++i) // bits of |i| determine the subset
   {
     bitset::RankFlags subset(i);
 
-
+    latticetypes::Weight lambda = stdrep.d_lambda.first;
     for (bitset::RankFlags::iterator j =subset.begin(); j(); j++)
       if (rpairlist[*j].first == rpairlist[*j].second) // imaginary root
       { // nothing implemented yet for imaginary roots
       }
       else // complex pair of roots
       {
-	Weight mu(P.numRows());
-	P.apply(mu,cs.rootDatum().root(rpairlist[*j].first));
+	latticetypes::Weight mu=
+	  P.apply(cs.rootDatum().root(rpairlist[*j].first));
+	using latticetypes::operator+=;
 	lambda +=mu; // add the restriction of the first root to lambda
       }
 
@@ -657,10 +484,13 @@ CharForm  KHatComputations::character_formula(StandardRepK stdrep) const
   for (Char::iterator iter = multmap.begin();iter !=multmap.end();)
     if (iter->second == 0)
       multmap.erase(iter++); // must take care to do ++ before erase
-    else ++iter;
+    else
+      ++iter;
 
   return std::make_pair(stdrep, multmap);
 } // character_formula
+
+
 
 /* convert a system of equations into a list, adding equations for all terms
    recursively (they are generated by |character_formula|), up to the given
@@ -670,8 +500,8 @@ CharForm  KHatComputations::character_formula(StandardRepK stdrep) const
    trying to add a formula for one term but getting one for another.
  */
 std::vector<CharForm>
-KHatComputations::saturate (std::set<CharForm> system,
-			    atlas::latticetypes::LatticeCoeff bound) const
+KHatComputations::saturate(std::set<CharForm> system,
+			   atlas::latticetypes::LatticeCoeff bound) const
 {
   std::set<StandardRepK> lhs; // left hand sides of all formulae seen so far
   for (std::set<CharForm>::iterator it=system.begin(); it!=system.end(); ++it)
@@ -704,8 +534,230 @@ KHatComputations::saturate (std::set<CharForm> system,
   }
 
   return result;
+} // saturate
+
+
+// **************   manipulators **********************
+
+void KHatComputations::go (const kgb::KGB& kgb)
+{
+  std::set<StandardRepK> stdRset; // set of standard representations
+
+  rootdata::RootDatum rd = d_G->rootDatum();
+
+  latticetypes::Weight tr=rd.twoRho();
+  latticetypes::Weight cotr =rd.dual_twoRho();
+
+  atlas::latticetypes::LatticeCoeff
+    bound = atlas::latticetypes::scalarProduct (tr, cotr);
+  std::cout << " bound = " << bound << std::endl;
+
+  std::set<CharForm> system;
+  for (kgb::KGBElt z =0; z!=kgb.size(); ++z)
+  {
+    StandardRepK stdrpk=KGB_elt_rep(z);
+    //  normalize(*stdrpk);
+
+    CharForm map = character_formula(stdrpk);
+
+    system.insert(map);
+
+  } // for (z)
+
+  std::cout << " size of initial formula set = " << system.size()
+	    << std::endl;
+
+
+  atlas::matrix::Matrix<CharCoeff> m = makeMULTmatrix(system, bound);
+
+} // go
+
+
+
+// the following functions have been largely commented out to allow compilation
+
+void KHatComputations::makeHSMap(StandardRepK& stdrep)
+{
+  using namespace complexredgp;
+  using namespace latticetypes;
+  using namespace matrix;
+  using namespace rootdata;
+  using namespace cartanset;
+  using namespace descents;
+
+  // Make a dummy standard rep with
+
+  StandardRepK undefstdrpk;
+
+  undefstdrpk.d_cartan = ~0ul;
+
+  // test if standard
+
+  if (stdrep.isStandard())
+  {
+
+    HechtSchmid hs(&undefstdrpk,&undefstdrpk,&undefstdrpk);
+
+    d_standardHechtSchmid.insert
+      (std::pair<StandardRepK,HechtSchmid>(stdrep,hs));
+  }
+
+  else
+  {
+    RootDatum rd = d_G->rootDatum();
+
+    LatticeMatrix theta = d_G->cartan(stdrep.d_cartan).involution();
+    const weyl::TwistedInvolution w =
+      d_G->cartanClasses().twistedInvolution(stdrep.d_cartan);
+    cartanclass::Fiber f = cartanclass::Fiber(rd, theta);
+    atlas::rootdata::RootList rl = f.simpleImaginary();
+    const CartanClassSet& tw = d_G->cartanClasses();
+
+    Weight lambda = stdrep.d_lambda.first;
+
+    // make a list of noncompact simple imaginary roots
+
+    // I am not using isNoncompact yet() because it requires solving systems of
+    // equations
+
+    rootdata::RootSet ncpi=tw.noncompactRoots(d_realForm);
+
+    // lift lambda to X^*
+
+
+
+//   LatticeMatrix basis = d_basis[stdrep.d_cartan];
+
+//   basis.resize(d_basis[stdrep.d_cartan].numRows(), lambda.size());
+
+//   size_t l = d_basis[stdrep.d_cartan].numColumns() - lambda.size();
+//   for (size_t k = 0 ; k != basis.numRows(); ++k)
+//     for (size_t j  = l; j != d_basis[stdrep.d_cartan].numColumns() ; ++j)
+//	basis(k,j-l)=  d_basis[stdrep.d_cartan](k,j);
+
+//   Weight lifted_lambda(basis.numRows());
+//   basis.apply(lifted_lambda,lambda);
+
+
+
+//     for ( size_t i = 0; i!=rl.size(); ++i)
+//     {
+// //  I'll have to do this for the first non compact that satisfies the test below
+//       if ( ncpi.isMember(rl[i]) &&
+// 	   latticetypes::scalarProduct( rd.coroot(rl[i]),lifted_lambda) < 0)
+
+//       {
+// 	StandardRepK s, d1, d2;
+
+// 	s= stdrep;
+// 	d1 = stdrep;
+// 	d2 = undefstdrpk;
+
+
+
+// 	// compute s_i(lambda)
+
+// 	LatticeMatrix q;
+// 	rd.rootReflection(q,rd.simpleRootNbr(i));
+// 	q.apply(lifted_lambda,lifted_lambda);
+
+// 	Weight mu(d_minusQuotient[stdrep.d_cartan].numRows());
+//      // minusQuotient(mu, lifted_lambda, stdrep.d_cartan);
+// 	s.d_lambda.first = mu;
+
+// 	// Build the standard reps associated to the new Cartan
+
+// 	// Compute Map Lambda->w*lambda'
+
+// 	latticetypes::LatticeMatrix lbdmp = lambdamap(stdrep.d_cartan,i);
+// 	Weight wlbdp(lambda.size()-1);
+
+// 	lbdmp.apply(wlbdp, lambda);
+// 	d1.d_lambda.first = wlbdp;
+
+// 	// get the new Cartan
+
+// 	weyl::WeylElt w;
+// 	size_t j = tw.cayley(stdrep.d_cartan,i,&w);
+
+// 	LatticeMatrix stheta = d_G->cartan(j).involution();
+// 	latticetypes::LatticeMatrix qw;
+
+// 	weyl::WeylWord ww;
+// 	tw.weylGroup().out(ww,w);
+// 	atlas::rootdata::toMatrix(qw, ww,rd);
+// 	qw *= d_G->distinguished();
+// 	atlas::matrix::conjugate(stheta,qw); // stheta contains theta_prime
+
+// 	// I may need to change this as I do not fully understand ????
+
+
+// 	d1.d_cartan = j;
+// 	// d_G->cartan(j).involution() = stheta;
+// 	atlas::descents::DescentStatus ds;
+// 	atlas::descents::DescentStatus::Value v =
+// 	  ds.operator[](rd.simpleRootNbr(i));
+
+// 	// if i is of type I d2 = d1
+// 	if ( v == atlas::descents::DescentStatus::ImaginaryTypeII ) d2 = d1;
+
+// 	HechtSchmid hs(&s,&d1,&d2);
+// 	d_standardHechtSchmid.insert
+// 	  (std::pair<StandardRepK,HechtSchmid>(stdrep,hs));
+
+// 	break;
+
+//       }
+
+//     }
+
+
+  }
+  //std::cout << "HS map size " << d_standardHechtSchmid.size() << std::endl;
 }
 
+latticetypes::LatticeMatrix
+KHatComputations::lambdamap(size_t cartan_num,size_t i)
+{
+  using namespace complexredgp;
+  using namespace latticetypes;
+  using namespace matrix;
+  using namespace rootdata;
+  using namespace cartanset;
+
+
+
+  RootDatum rd = d_G->rootDatum();
+  const CartanClassSet& tw = d_G->cartanClasses();
+  weyl::WeylElt w;
+
+  latticetypes::LatticeMatrix qw,m;
+  weyl::WeylWord ww;
+  tw.weylGroup().out(ww,w);
+  atlas::rootdata::toMatrix(qw, ww,rd);
+  qw*= d_G->cartanClasses().distinguished();
+
+//size_t j = tw.cayley(cartan_num,i,&w);
+//qw*=d_basisInverse[cartan_num];
+//m = d_basis[j];
+//m *=qw; // this matrix is the product of 3 n by n matrices
+
+//size_t r = d_minusQuotient[cartan_num].numRows();
+//size_t n = m.numRows();
+
+  latticetypes::LatticeMatrix ldm; //(r-1,r);
+
+
+//   for ( size_t k = 0; k!=r-1; ++k)
+//     for ( size_t l = 0 ; l!=r; ++l)
+//       ldm(k,l) = m(n-r+1+k,n-r+l);
+
+  return ldm;
+
+}
+
+
+// ****************** functions ************************
 
 atlas::matrix::Matrix<CharCoeff>
 triangularize (const std::vector<CharForm>& system,
@@ -781,26 +833,24 @@ KHatComputations::makeMULTmatrix
  (std::set<CharForm>& column,
   const atlas::latticetypes::LatticeCoeff bound)
 {
-  using namespace blocks;
-  using namespace complexredgp;
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace rootdata;
+  using latticetypes::operator+=;
 
-  RootDatum rd = d_G->rootDatum();
+  rootdata::RootDatum rd = d_G->rootDatum();
   latticetypes::Weight tr=rd.twoRho();
-  latticetypes::Weight cotr = (* rd.beginPosCoroot());
+  latticetypes::Weight cotr = rd.dual_twoRho();
 
-  for (WRootIterator u = ++rd.beginPosCoroot(); u!=rd.endPosCoroot();++u)
-    cotr += (*u);
   std::set <atlas::latticetypes::Weight> lookup;
 
   //it is assumed that the characters in column.first are different
 
   for (std::set<CharForm>::iterator i = column.begin(); i != column.end();)
     if (product_sumposroots(i->first) > bound)
-      column.erase(i++);
-    else {lookup.insert(i->first.d_lambda.first);++i; }
+      column.erase(i++); // increment iterator before actual erase
+    else
+    {
+      lookup.insert(i->first.d_lambda.first);
+      ++i;
+    }
 
   assert (column.size()==lookup.size());
 
@@ -829,5 +879,5 @@ KHatComputations::makeMULTmatrix
 
 
 
-}
-}
+} // namespace standardrepk
+} // namespace atlas
