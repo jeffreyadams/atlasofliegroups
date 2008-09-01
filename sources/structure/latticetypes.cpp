@@ -4,10 +4,10 @@
   latticetypes.h.
 */
 /*
-  This is latticetypes.cpp.  
+  This is latticetypes.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -16,7 +16,7 @@
 
 /*****************************************************************************
 
-  This module defines a few simple operations on the types defined in 
+  This module defines a few simple operations on the types defined in
   latticetypes.h
 
 ******************************************************************************/
@@ -40,7 +40,7 @@ LatticeElt& operator+= (LatticeElt& v, const LatticeElt& w)
   Increments v by w.
 */
 
-{  
+{
   for (LatticeElt::size_type j = 0; j < v.size(); ++j)
     v[j] += w[j];
 
@@ -60,28 +60,24 @@ LatticeElt& operator-= (LatticeElt& v, const LatticeElt& w)
   return v;
 }
 
-LatticeElt& operator*= (LatticeElt& v, const LatticeCoeff& c)
-
 /*
   Multiplies each coordinate of v by c.
 */
-
-{  
+LatticeElt& operator*= (LatticeElt& v, LatticeCoeff c)
+{
   for (LatticeElt::size_type j = 0; j < v.size(); ++j)
     v[j] *= c;
 
   return v;
 }
 
-LatticeElt& operator/= (LatticeElt& v, const LatticeCoeff& d)
-
 /*
   Divides each coordinate of v by d. It is the callers responsibility to
   check that v is actually divisible by d; if not, he will just get the
   integral parts of the quotients.
 */
-
-{  
+LatticeElt& operator/= (LatticeElt& v, LatticeCoeff d)
+{
   for (LatticeElt::size_type j = 0; j < v.size(); ++j)
     v[j] /= d;
 
@@ -94,7 +90,7 @@ LatticeElt& operator- (LatticeElt& v)
   Changes the sign of each coordinate of v.
 */
 
-{  
+{
   for (LatticeElt::size_type j = 0; j < v.size(); ++j)
     v[j] = -v[j];
 
