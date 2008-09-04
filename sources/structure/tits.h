@@ -376,8 +376,8 @@ is done in the KGB construction, it induces an involution on the quotient set.
 \brief Applies to the element x of T(2) simple reflection s.
 
 This is the same thing as conjugating |x|, viewed as embedded in the Tits
-group, by \f$\sigma_s\f$, or equivalently (since $\sigma_s^2$ commute with
-$x$) by its inverse. This is used internally to compute the proper commutation
+group, by \f$\sigma_s\f$, or equivalently by its inverse (as \f$\sigma_s^2\f$
+commutes with $x$). This is used internally to compute the proper commutation
 relations between Weyl group and torus parts of a Tits element.
   */
   void reflect(TorusPart& x, weyl::Generator s) const {
