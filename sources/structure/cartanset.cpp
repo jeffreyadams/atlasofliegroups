@@ -768,7 +768,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
   weyl::WeylElt w; // this will be the result
   latticetypes::LatticeElt rrs=posRealRootSum(sigma);
 
-  {
+  { // first phase: make |rrs| dominant for all complex simple roots
     size_t i; // declare outside loop to allow inspection of final value
     do
       for (i=0; i<rd.semisimpleRank(); ++i)
@@ -787,16 +787,14 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
    |rrs| is dominant, we can limit our attention to simple roots: any positive
    root orthogonal to |rrs| is a sum of simple roots orthogonal to |rrs|.
 */
-
-  latticetypes::LatticeElt irs=posImaginaryRootSum(sigma);
-
   bitset::RankFlags simple_orth;
 
   for (size_t  i=0; i <  rd.semisimpleRank(); ++i)
     if (latticetypes::scalarProduct(rd.simpleCoroot(i),rrs) == 0)
       simple_orth.set(i);
 
-  {
+  latticetypes::LatticeElt irs=posImaginaryRootSum(sigma);
+  { // second phase: make |irs| dominant for all complex roots in |simple_orth|
     bitset::RankFlags::iterator it;
     do
       for (it=simple_orth.begin(); it(); ++it)
@@ -824,7 +822,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
    |sigma| fixes the dominant chamber for the root subsystem indicated in
    |simple_orth| (which we shall call the complex root subsystem). The vector
    |x=rd.twoRho()| below is in the interior of the dominant chamber for the
-   whole root system, so is a fortiori dominant of the subsystem. If its image
+   whole root system, so is a fortiori dominant for the subsystem. If its image
    is not dominant for the complex root subsystem, (twisted) conjugating
    |sigma| by any generator that makes the image more dominant will improve
    the situation (but not in the same way as the action of that generator: the
