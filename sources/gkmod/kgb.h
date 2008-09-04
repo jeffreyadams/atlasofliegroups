@@ -497,14 +497,14 @@ bool BasedTitsGroup::simple_grading(const tits::TitsElt& a, size_t s) const
    shall prefer to implement conjugation by $\sigma_s^{-1}$.
 
    For the twisted involution (the Weyl group part of |a|) this operation is
-   just twisted conjugation by $s^{-1}=s$. For the Tits group part |a|,
+   just twisted conjugation by $s^{-1}=s$. For the entire Tits group part |a|,
    twisted conjugation by $\sigma_s^{-1}$ gives an element $a'$ such that
-   $\sigma_s^{-1}a=a'\sigma_t^{-1}$ where $t=twist(s)$, but this is not the
-   whole story; in addition there is a contribution from interchanging $x_0$
-   and $\sigma_t$. Since $\sigma_t$ represents $t$ in the Weyl group, one has
-   $Ad(\sigma_t)(x_0)=t(x_0)$, so we should add $\<\alpha_t,x_0>m_t$ at the
-   right to the torus part of |a|. By our choice of $x_0$, this scalar product
-   can be nonzero only if $s=t$, and is equal to |grading_offset[s]|;
+   $\sigma_s^{-1}a=a'\sigma_t^{-1}$ where $t=twist(s)$, but this is not yet
+   the whole story; in addition there is a contribution from interchanging
+   $x_0$ and $\sigma_t$. Since $\sigma_t$ represents $t$ in the Weyl group,
+   one has $Ad(\sigma_t)(x_0)=t(x_0)$, so we should add $\<\alpha_t,x_0>m_t$
+   at the right to the torus part of |a|. By our choice of $x_0$, this scalar
+   product can be nonzero only if $s=t$, and is equal to |grading_offset[s]|;
    moreover the value of $m_s$ in the coordinates of the torus part is
    available as |Tg.simpleCoroot(s)|. By the remark above about conjugating by
    $m_s$, the contribution may be added into the left torus part instead of
