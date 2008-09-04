@@ -712,13 +712,14 @@ namespace { // |FiberData| and |KGBHelp| are in anonymous namespace
   part $x$ modulo $I$ matters, and it will after computation be systematically
   normalised by reducing the left torus part $x$ modulo $I$.
 
-  The image $I$ corresponds to the subset of elements of order 2 in $H$ that
-  are of the form $h*\tau(h)^{-1}$. It is also what one divides by to get the
-  fiber group of the real Cartan associated to $H$ and $\tau$. Note however
-  that it is not true that such $t\in X^\vee/2X^\vee$ will always lie in the
-  image of $X^\vee_+ + X^\vee_-$ that is used to form the fiber group.
-
-  The Cartan class associated to $tw$ is also recorded.
+  The image $I$ is what one divides by to get the fiber group of the real
+  Cartan associated to $H$ and $\tau$, in which case the "numerator" is the
+  image of $X^\vee_+ +X^\vee_-$. The possible values of the torus part $x$ are
+  such that there are as much values modulo $I$ as there are in the fiber
+  group, but they are not naturally in bijection, and $0$ need no be a valid
+  value for $x$: the possible values are such that the Tits group element $a$
+  given by $(x,w)$ satisfies $a.twisted(a)=id$, where the twisting is done
+  with respect to the based Tits group (determined by the base grading).
 
   This constructor depends on the real form only via the set |Cartan_classes|
   that determines (limits) the set of twisted involutions to be considered.
