@@ -289,6 +289,45 @@ void KHatComputations::normalize(StandardRepK& stdrep) const
 } // normalize
 
 
+HechtSchmid
+KHatComputations::HS_id(StandardRepK sr,rootdata::RootNbr alpha) const
+{
+  HechtSchmid id(sr);
+  tits::TitsElt a=titsElt(sr);
+  latticetypes::Weight lambda=lift(sr);
+  latticetypes::Weight mu=rootDatum().reflection(lambda,alpha);
+
+  if (d_Tg.grading(a,alpha))
+  { // |alpha| is a non-compact root
+    d_Tg.basedTwistedConjugate(a,alpha); // adds $m_\alpha$ to torus part
+    id.add_lh(std_rep(mu, a));
+
+    /* Now are equivalent:
+       = |id.lh2->d_fiberElt==sr.d_fiberElt|
+       = $m_s$ absorbed into quotient (i.e., $m_\alpha\in(X_*^- mod 2)$)
+       = $\alpha^\vee( (X^*)^\theta ) = 2\Z$
+       = $\alpha\notin(1-\theta_\alpha)X^*$  ($\theta_\alpha=\theta.s_\alpha$)
+       = Cayley transform is type II
+    */
+
+    d_Tg.Cayley_transform(a,alpha);
+    id.add_rh(std_rep(lambda, a));
+    if (id.lh2->d_fiberElt==sr.d_fiberElt) // type II
+    {
+      using latticetypes::operator+=;
+      latticetypes::Weight ra=rootDatum().simpleRoot(alpha);
+      lambda += ra; // other possibility
+      id.add_rh(std_rep(lambda, a));
+      assert(id.rh1->d_lambda != id.rh2->d_lambda);
+    }
+  }
+  else // |alpha| is a compact root; "easy" Hecht-Schmid identity
+    // based twisted conjugation fixed the Tits element; just reflect weight
+    id.add_lh(std_rep(mu, a)); // and no RHS
+
+  return id;
+}
+
 atlas::latticetypes::LatticeCoeff
 KHatComputations::product_simpleroot
   (const StandardRepK& s, rootdata::RootNbr k) const
@@ -358,8 +397,17 @@ KHatComputations::theta_stable_parabolic
     }
     while (i!=rd.semisimpleRank());
   }
-  // now |W.twistedConjugate(twi,conjugator)| would make
-  // |twi==|cs.twistedInvolution(Cartan_nr)| again
+/*
+   We have achieved that any real positive root is a sum of real simple roots.
+   For consider a counterexample that is minimal: a real positive root
+   $\alpha$ from which no real simple root can be subtracted while remaining
+   positive. Then this must be a sum of simple roots that are either complex
+   or imaginary; the $\theta$-images of such simple roots are all positive,
+   but their sum is $-\alpha$ which is negative, a contradiction.
+
+   Meanwhile |conjugator| is such that |W.twistedConjugate(twi,conjugator)|
+   would make |twi==cs.twistedInvolution(Cartan_nr)| again.
+*/
 
   // Build the parabolic subalgebra:
 
@@ -368,7 +416,7 @@ KHatComputations::theta_stable_parabolic
   PSalgebra result;
   result.cartan = Cartan_nr;
 
-  // Put real simple roots, transformed for original Cartan, into Levi
+  // Put real simple roots, transformed for original Cartan, into Levi factor
   for (size_t i=0; i <  rd.semisimpleRank(); ++i)
     if (id.real_roots().isMember(rd.simpleRootNbr(i)))
     {
@@ -378,6 +426,7 @@ KHatComputations::theta_stable_parabolic
       result.levi.push_back(alpha);
     }
 
+  // Put pairs of complex positive roots, transformed, into nilpotent radical
   rootdata::RootSet pos_roots=rd.posRootSet();
   for (rootdata::RootSet::iterator i = pos_roots.begin(); i(); ++i)
     if (not id.real_roots().isMember(*i))
@@ -522,7 +571,7 @@ KHatComputations::saturate(std::set<CharForm> system,
 	if (product_sumposroots(term->first) <= bound)
 	{
 	  rhs.insert(*term);
-	  if(lhs.count(term->first)==0) // no formula for this term seen yet
+	  if (lhs.count(term->first)==0) // no formula for this term seen yet
 	  {
 	    lhs.insert(term->first);
 	    system.insert(character_formula(term->first));
@@ -578,49 +627,49 @@ void KHatComputations::go (const kgb::KGB& kgb)
 
 void KHatComputations::makeHSMap(StandardRepK& stdrep)
 {
-  using namespace complexredgp;
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace rootdata;
-  using namespace cartanset;
-  using namespace descents;
+//   using namespace complexredgp;
+//   using namespace latticetypes;
+//   using namespace matrix;
+//   using namespace rootdata;
+//   using namespace cartanset;
+//   using namespace descents;
 
-  // Make a dummy standard rep with
+//   // Make a dummy standard rep with
 
-  StandardRepK undefstdrpk;
+//   StandardRepK undefstdrpk;
 
-  undefstdrpk.d_cartan = ~0ul;
+//   undefstdrpk.d_cartan = ~0ul;
 
-  // test if standard
+//   // test if standard
 
-  if (stdrep.isStandard())
-  {
+//   if (stdrep.isStandard())
+//   {
 
-    HechtSchmid hs(&undefstdrpk,&undefstdrpk,&undefstdrpk);
+//     HechtSchmid hs(&undefstdrpk,&undefstdrpk,&undefstdrpk);
 
-    d_standardHechtSchmid.insert
-      (std::pair<StandardRepK,HechtSchmid>(stdrep,hs));
-  }
+//     d_standardHechtSchmid.insert
+//       (std::pair<StandardRepK,HechtSchmid>(stdrep,hs));
+//   }
 
-  else
-  {
-    RootDatum rd = d_G->rootDatum();
+//   else
+//   {
+//     RootDatum rd = d_G->rootDatum();
 
-    LatticeMatrix theta = d_G->cartan(stdrep.d_cartan).involution();
-    const weyl::TwistedInvolution w =
-      d_G->cartanClasses().twistedInvolution(stdrep.d_cartan);
-    cartanclass::Fiber f = cartanclass::Fiber(rd, theta);
-    atlas::rootdata::RootList rl = f.simpleImaginary();
-    const CartanClassSet& tw = d_G->cartanClasses();
+//     LatticeMatrix theta = d_G->cartan(stdrep.d_cartan).involution();
+//     const weyl::TwistedInvolution w =
+//       d_G->cartanClasses().twistedInvolution(stdrep.d_cartan);
+//     cartanclass::Fiber f = cartanclass::Fiber(rd, theta);
+//     atlas::rootdata::RootList rl = f.simpleImaginary();
+//     const CartanClassSet& tw = d_G->cartanClasses();
 
-    Weight lambda = stdrep.d_lambda.first;
+//     Weight lambda = stdrep.d_lambda.first;
 
-    // make a list of noncompact simple imaginary roots
+//     // make a list of noncompact simple imaginary roots
 
-    // I am not using isNoncompact yet() because it requires solving systems of
-    // equations
+//     // I am not using isNoncompact yet() because it requires solving systems of
+//     // equations
 
-    rootdata::RootSet ncpi=tw.noncompactRoots(d_realForm);
+//     rootdata::RootSet ncpi=tw.noncompactRoots(d_realForm);
 
     // lift lambda to X^*
 
@@ -712,7 +761,7 @@ void KHatComputations::makeHSMap(StandardRepK& stdrep)
 //     }
 
 
-  }
+//  }
   //std::cout << "HS map size " << d_standardHechtSchmid.size() << std::endl;
 }
 
