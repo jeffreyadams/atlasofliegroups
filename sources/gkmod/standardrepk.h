@@ -1,4 +1,4 @@
- /*!
+/*!
 \file
 \brief Class definition and function declarations for the classes
 StandardRepK and KHatComputations.
@@ -50,12 +50,12 @@ namespace standardrepk {
     typedef std::map<StandardRepK,CharCoeff> Char;
     typedef std::pair< StandardRepK,Char> CharForm;
 
-    struct PSalgebra
+    struct PSalgebra // Parabolic subalgebra
     {
-      size_t cartan;
-      std::vector<atlas::rootdata::RootNbr> levi;
+      size_t cartan; // number of the Cartan class
+      std::vector<atlas::rootdata::RootNbr> levi; // simple basis subsystem
       std::vector<std::pair<atlas::rootdata::RootNbr,atlas::rootdata::RootNbr>
-		  > nilp;
+		  > nilp; // basis of nilpotent radical, with their theta-image
     };
 } // namespace standardrepk
 
@@ -292,8 +292,23 @@ class KHatComputations
   StandardRepK std_rep
     (const latticetypes::Weight& two_lambda, tits::TitsElt a) const;
 
+  StandardRepK std_rep_rho_plus
+    (latticetypes::Weight lambda, tits::TitsElt a) const
+    {
+      using latticetypes::operator *=;
+      using latticetypes::operator +=;
+      (lambda *= 2) += rootDatum().twoRho();
+      return std_rep(lambda,a);
+    }
+
   StandardRepK KGB_elt_rep(kgb::KGBElt z) const;
 
+  tits::TitsElt titsElt(StandardRepK s) const
+  {
+    return tits::TitsElt(d_Tg.titsGroup(),
+			 d_G->twistedInvolution(s.d_cartan),
+			 s.d_fiberElt);
+  }
   /*!
     Returns the sum of absolute values of the scalar products of lambda
     expressed in the full basis and the positive coroots. This gives a Weyl
@@ -324,6 +339,9 @@ class KHatComputations
       return result;
     }
 
+  latticetypes::Weight lift(StandardRepK s) const
+  { return lift(s.d_cartan,s.d_lambda); }
+
   // apply symmetry for root $\alpha_s$ to |a|
   void reflect(tits::TitsElt a, size_t s);
 
@@ -335,10 +353,14 @@ class KHatComputations
 
   void normalize(StandardRepK&) const;
 
+  // get Hecht-Schmid identity
+  // This assumes |s| is non-dominant for simple-imaginary root |alpha|
+  HechtSchmid HS_id(StandardRepK s,rootdata::RootNbr alpha) const;
+
   CharForm character_formula(StandardRepK) const; // call by value
 
   std::vector<CharForm> saturate
-    (std::set<CharForm> sytem, // call by value
+    (std::set<CharForm> system, // call by value
      atlas::latticetypes::LatticeCoeff bound) const;
 
 // manipulators
@@ -362,20 +384,25 @@ PSalgebra theta_stable_parabolic
 
 }; // class KHatComputatons
 
-// this class definition must be refined; represet a Hecht-Schmid identity
-class HechtSchmid {
+/* HechtSchmid identities are represented as equation with a main left hand
+   member |lh|, and optional second left member |lh2|, and two optional
+   right hand members |rh1| and |rh2|
+*/
+struct HechtSchmid {
 
- private:
-   StandardRepK* d_sameCartan;
-   StandardRepK* d_newCartan1;
-   StandardRepK* d_newCartan2;
+  StandardRepK lh;
+  StandardRepK* lh2; // owned pointers
+  StandardRepK* rh1;
+  StandardRepK* rh2;
 
- public:
+  HechtSchmid(StandardRepK s) : lh(s), lh2(NULL), rh1(NULL), rh2(NULL) {}
+  ~HechtSchmid() { delete lh2; delete rh1; delete rh2; }
 
-   HechtSchmid(StandardRepK* same, StandardRepK* new1, StandardRepK* new2)
-     : d_sameCartan(same), d_newCartan1 (new1),d_newCartan2(new2)
-     {}
-
+  void add_lh(const StandardRepK& s) { lh2=new StandardRepK(s); }
+  void add_rh(const StandardRepK& s)
+  {
+    if (rh1==NULL) rh1=new StandardRepK(s); else rh2=new StandardRepK(s);
+  }
 }; // class HechtSchmid
 
 
