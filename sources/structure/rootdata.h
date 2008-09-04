@@ -343,12 +343,6 @@ use by accessors.
 
 // other accessors
 
-  LT::LatticeCoeff cartan(size_t i, size_t j) const {
-    return LT::scalarProduct(simpleRoot(i),simpleCoroot(j));
-  }
-
-  void coreflect(LT::Weight&, RootNbr) const;
-
   bool isAdjoint() const;
 
   bool isOrthogonal(const latticetypes::Weight& v, RootNbr j) const {
@@ -373,15 +367,50 @@ use by accessors.
     return d_rank;
   }
 
-  void reflect(LT::Weight&, RootNbr) const;
+  size_t semisimpleRank() const {
+    return d_semisimpleRank;
+  }
 
   RootNbr rootMinus(RootNbr j) const {
     return d_minus[j];
   }
 
-  // the next method only works for _simple_ roots! (whence no RootNbr for |j|)
-  const setutils::Permutation& rootPermutation(size_t j) const {
-    return d_rootPermutation[j];
+  LT::LatticeCoeff scalarProduct(const LT::Weight& v, RootNbr j) const
+  {
+    return LT::scalarProduct(v,coroot(j));
+  }
+
+  LT::LatticeCoeff scalarProduct(RootNbr i, RootNbr j) const {
+    return LT::scalarProduct(root(i),coroot(j));
+  }
+
+  LT::LatticeCoeff cartan(size_t i, size_t j) const {
+    return LT::scalarProduct(simpleRoot(i),simpleCoroot(j));
+  }
+
+  LT::LatticeMatrix cartanMatrix() const;
+
+  LT::LatticeMatrix cartanMatrix(const RootList&) const; // for subsystem
+
+  void reflect(LT::Weight& lambda, RootNbr alpha) const;
+  void coreflect(LT::Weight& co_lambda, RootNbr alpha) const;
+
+  LT::Weight reflection(LT::Weight lambda, RootNbr alpha) const
+    { reflect(lambda,alpha); return lambda; }
+  LT::Weight coreflection(LT::Weight co_lambda, RootNbr alpha) const
+    { coreflect(co_lambda,alpha); return co_lambda; }
+
+  void simpleReflect(LT::Weight& v, size_t i) const {
+    reflect(v,d_simpleRoots[i]);
+  }
+
+  void simpleCoreflect(LT::Weight& v, size_t i) const {
+    coreflect(v,d_simpleRoots[i]);
+  }
+
+  // the next method only works for _simple_ roots! (whence no RootNbr for |i|)
+  const setutils::Permutation& rootPermutation(size_t i) const {
+    return d_rootPermutation[i];
   }
 
   // here any matrix permuting the roots is allowed, e.g., rootReflection(r)
@@ -398,31 +427,6 @@ use by accessors.
   }
 
   weyl::WeylWord reflectionWord(RootNbr r) const;
-
-  LT::LatticeCoeff scalarProduct(const LT::Weight& v, RootNbr j) const
-  {
-    return LT::scalarProduct(v,coroot(j));
-  }
-
-  LT::LatticeCoeff scalarProduct(RootNbr i, RootNbr j) const {
-    return LT::scalarProduct(root(i),coroot(j));
-  }
-
-  size_t semisimpleRank() const {
-    return d_semisimpleRank;
-  }
-
-  void simpleCoreflect(LT::Weight& v, size_t j) const {
-    coreflect(v,d_simpleRoots[j]);
-  }
-
-  void simpleReflect(LT::Weight& v, size_t j) const {
-    reflect(v,d_simpleRoots[j]);
-  }
-
-  LT::LatticeMatrix cartanMatrix() const;
-
-  LT::LatticeMatrix cartanMatrix(const RootList&) const; // for subsystem
 
   // express root in basis of simple roots
   LT::Weight inSimpleRoots(RootNbr n) const;
@@ -564,8 +568,8 @@ class RootIterator { // constant Random Access Iterator
      return RootIterator(d_list,d_pos-n);
    }
 
-   difference_type operator- (const RootIterator& j) const {
-     return d_pos-j.d_pos;
+   difference_type operator- (const RootIterator& i) const {
+     return d_pos-i.d_pos;
    }
 
    const LT::Weight& operator[] (difference_type n) {
@@ -674,8 +678,8 @@ class RootIterator { // constant Random Access Iterator
      return RootIterator(d_list,d_pos-n);
    }
 
-   difference_type operator- (const RootIterator& j) const {
-     return d_pos-j.d_pos;
+   difference_type operator- (const RootIterator& i) const {
+     return d_pos-i.d_pos;
    }
 
    const LT::Weight& operator[] (difference_type n) {
