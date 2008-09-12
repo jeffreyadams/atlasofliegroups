@@ -400,13 +400,16 @@ use by accessors.
   LT::Weight coreflection(LT::Weight co_lambda, RootNbr alpha) const
     { coreflect(co_lambda,alpha); return co_lambda; }
 
-  void simpleReflect(LT::Weight& v, size_t i) const {
-    reflect(v,d_simpleRoots[i]);
-  }
+  void simpleReflect(LT::Weight& v, size_t i) const
+    { reflect(v,d_simpleRoots[i]); }
+  void simpleCoreflect(LT::Weight& v, size_t i) const
+    { coreflect(v,d_simpleRoots[i]); }
 
-  void simpleCoreflect(LT::Weight& v, size_t i) const {
-    coreflect(v,d_simpleRoots[i]);
-  }
+  LT::Weight simpleReflection(LT::Weight lambda, size_t i) const
+    { simpleReflect(lambda,i); return lambda; }
+  LT::Weight simpleCoreflection(LT::Weight co_lambda, size_t i) const
+    { simpleCoreflect(co_lambda,i); return co_lambda; }
+
 
   // the next method only works for _simple_ roots! (whence no RootNbr for |i|)
   const setutils::Permutation& rootPermutation(size_t i) const {
