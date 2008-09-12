@@ -370,11 +370,6 @@ void getInteractive(lietype::InnerClassType& ict, const lietype::LieType& lt)
   return;
 }
 
-void getInteractive(prerootdata::PreRootDatum& d_prd,
-		    latticetypes::WeightList& d_b,
-		    const lietype::LieType& lt)
-  throw(error::InputError)
-
 /*
   Replaces prd with a new PreRootDatum gotten interactively from the user.
   The Lie type is given in lt.
@@ -387,35 +382,31 @@ void getInteractive(prerootdata::PreRootDatum& d_prd,
   Throws an InputError if the interaction with the user fails. In that case,
   d_b and d_prd are not touched.
 */
+void getInteractive(prerootdata::PreRootDatum& d_prd,
+		    latticetypes::WeightList& d_b,
+		    const lietype::LieType& lt)
+  throw(error::InputError)
 
 {
-  using namespace latticetypes;
-  using namespace prerootdata;
-
   // get lattice basis
 
-  WeightList b;
-  CoeffList invf;
+  latticetypes::WeightList b;
+  latticetypes::CoeffList invf;
 
-  smithBasis(invf,b,lt);
-  getLattice(invf,b);   // may throw an InputError
+  interactive_lattice::smithBasis(invf,b,lt);
+  interactive_lattice::getLattice(invf,b);   // may throw an InputError
 
   d_b.swap(b);
 
   // make new PreRootDatum
 
-  PreRootDatum prd(lt,d_b);
+  prerootdata::PreRootDatum prd(lt,d_b);
 
   // swap prd and d_prd; the old PreRootDatum will be destroyed on exit
 
   d_prd.swap(prd);
-
-  return;
 }
 
-void getInteractive(realform::RealForm& d_rf,
-		    const complexredgp_io::Interface& I)
-  throw(error::InputError)
 
 /*
   Synposis: replaces rf with a new real form gotten interactively from the
@@ -425,6 +416,9 @@ void getInteractive(realform::RealForm& d_rf,
   rf is not modified.
 */
 
+void getInteractive(realform::RealForm& d_rf,
+		    const complexredgp_io::Interface& I)
+  throw(error::InputError)
 {
   using namespace realform_io;
 
@@ -448,14 +442,8 @@ void getInteractive(realform::RealForm& d_rf,
   getInteractive(r,"enter your choice: ",rfi.numRealForms());
 
   d_rf = rfi.in(r);
-
-  return;
 }
 
-void getInteractive(realform::RealForm& rf,
-		    const complexredgp_io::Interface& I,
-		    tags::DualTag)
-  throw(error::InputError)
 
 /*
   Synposis: replaces rf with a new dual real form gotten interactively from
@@ -465,6 +453,10 @@ void getInteractive(realform::RealForm& rf,
   rf is not modified.
 */
 
+void getInteractive(realform::RealForm& rf,
+		    const complexredgp_io::Interface& I,
+		    tags::DualTag)
+  throw(error::InputError)
 {
   using namespace realform_io;
 
@@ -488,15 +480,8 @@ void getInteractive(realform::RealForm& rf,
   getInteractive(r,"enter your choice: ",rfi.numRealForms());
 
   rf = rfi.in(r);
-
-  return;
 }
 
-void getInteractive(realform::RealForm& rf,
-		    const complexredgp_io::Interface& I,
-		    const realform::RealFormList& drfl,
-		    tags::DualTag)
-  throw(error::InputError)
 
 /*
   Synposis: replaces rf with a new real form from the list drfl.
@@ -505,6 +490,11 @@ void getInteractive(realform::RealForm& rf,
   rf is not modified.
 */
 
+void getInteractive(realform::RealForm& rf,
+		    const complexredgp_io::Interface& I,
+		    const realform::RealFormList& drfl,
+		    tags::DualTag)
+  throw(error::InputError)
 {
   using namespace bitmap;
   using namespace realform;
@@ -536,13 +526,8 @@ void getInteractive(realform::RealForm& rf,
   getInteractive(r,"enter your choice: ",vals);
 
   rf = rfi.in(r);
-
-  return;
 }
 
-void getInteractive(realredgp::RealReductiveGroup& d_G,
-		    complexredgp_io::Interface& CI)
-  throw(error::InputError)
 
 /*
   Synopsis: replaces d_G by a new RealReductiveGroup gotten
@@ -552,6 +537,9 @@ void getInteractive(realredgp::RealReductiveGroup& d_G,
   in that case, d_G is not touched.
 */
 
+void getInteractive(realredgp::RealReductiveGroup& d_G,
+		    complexredgp_io::Interface& CI)
+  throw(error::InputError)
 {
   using namespace error;
   using namespace realredgp;
@@ -562,8 +550,6 @@ void getInteractive(realredgp::RealReductiveGroup& d_G,
   // commit
   RealReductiveGroup G(CI.complexGroup(),rf);
   d_G.swap(G);
-
-  return;
 }
 
 /*
@@ -601,8 +587,6 @@ void getInteractive(realredgp::RealReductiveGroup& d_G,
   // the latter constructor also constructs two realform interfaces in *pI
 }
 
-void getInteractive(unsigned long& d_c, const char* prompt, unsigned long max)
-  throw(error::InputError)
 
 /*
   Synopsis: gets a value for c from the user, with c in [0,max[.
@@ -612,6 +596,8 @@ void getInteractive(unsigned long& d_c, const char* prompt, unsigned long max)
 
 */
 
+void getInteractive(unsigned long& d_c, const char* prompt, unsigned long max)
+  throw(error::InputError)
 {
   using namespace error;
   using namespace input;
@@ -645,13 +631,8 @@ void getInteractive(unsigned long& d_c, const char* prompt, unsigned long max)
 
   // commit
   d_c = c;
-
-  return;
 }
 
-void getInteractive(unsigned long& d_c, const char* prompt,
-		    const bitmap::BitMap& vals, input::InputBuffer* linep)
-  throw(error::InputError)
 
 /*
   Synopsis: gets a value for d_c from the user, from the set vals; tries first
@@ -661,6 +642,9 @@ void getInteractive(unsigned long& d_c, const char* prompt,
   range. The value is unchanged in case of failure
 */
 
+void getInteractive(unsigned long& d_c, const char* prompt,
+		    const bitmap::BitMap& vals, input::InputBuffer* linep)
+  throw(error::InputError)
 {
   using namespace basic_io;
   using namespace input;
@@ -712,11 +696,29 @@ void getInteractive(unsigned long& d_c, const char* prompt,
 
   // commit
   d_c = c;
-
-  return;
 }
 
-input::InputBuffer& inputLine()
+// Get a weight, consisting of |rank| integers, into |lambda|
+void getInteractive(latticetypes::Weight& lambda, const char* prompt,
+		    size_t rank)
+  throw(error::InputError)
+{
+  input::InputBuffer ib;
+  ib.getline(std::cin,prompt,true);
+  latticetypes::Weight result(rank);
+
+  for (size_t i = 0; i<rank; ++i)
+  {
+    ioutils::skipSpaces(ib);
+    int c=ib.peek();
+    if (not(isdigit(c) or c=='-'))
+      throw error::InputError();
+    ib >> result[i];
+  }
+
+  lambda.swap(result);
+}
+
 
 /*
   Synopsis: returns inputBuf.
@@ -725,6 +727,7 @@ input::InputBuffer& inputLine()
   to read from inputLine() before re-getting it.
 */
 
+input::InputBuffer& inputLine()
 {
   return inputBuf;
 }

@@ -51,7 +51,7 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
  void bitMapPrompt(std::string&, const char*, const bitmap::BitMap&);
 
  void getCartanClass(size_t&, const bitmap::BitMap&,
-		      input::InputBuffer&)
+		     input::InputBuffer&)
     throw(error::InputError);
 
   void getInnerClass(latticetypes::LatticeMatrix&, layout::Layout&)
@@ -84,11 +84,17 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
 		      complexredgp_io::Interface*&)
     throw(error::InputError);
 
-  void getInteractive(unsigned long&, const char*, unsigned long)
+  void getInteractive(unsigned long& x, const char* prompt,
+		      unsigned long limit)
     throw(error::InputError);
 
-  void getInteractive(unsigned long&, const char*, const bitmap::BitMap&,
+  void getInteractive(unsigned long& v, const char* prompt,
+		      const bitmap::BitMap& choices,
 		      input::InputBuffer* linep = 0)
+    throw(error::InputError);
+
+  void getInteractive(latticetypes::Weight& lambda, const char* prompt,
+		      size_t rank)
     throw(error::InputError);
 
   input::InputBuffer& inputLine();
