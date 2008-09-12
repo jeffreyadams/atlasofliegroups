@@ -67,6 +67,12 @@ class InputBuffer:public std::istringstream {
 };
 
 #ifndef NREADLINE
+
+/* A class like |InputBuffer|, but each instance creates a local version of
+   the history during its lifetime. The global (old) history is inaccessable
+   during that period, but restored at the end, at which time the local
+   history is irrevocalbly forgotten. A historian's nightmare.
+*/
 class HistoryBuffer:public InputBuffer {
 
  private:
