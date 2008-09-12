@@ -18,6 +18,7 @@ StandardRepK and KHatComputations.
 #include <map>
 #include <set>
 #include <vector>
+#include <iostream>
 
 #include "bitset.h"
 #include "bitvector_fwd.h"
@@ -26,6 +27,8 @@ StandardRepK and KHatComputations.
 #include "realform.h"
 #include "tits.h"
 #include "kgb.h"
+#include "hashtable.h"
+#include "free_abelian.h"
 
 namespace atlas {
 
@@ -45,9 +48,11 @@ namespace standardrepk {
        bitset::RankFlags         // torsion part, compact representation
       > HCParam;
 
-    typedef long  CharCoeff;
-    //    typedef std::pair<StandardRepK,CharCoeff> CharTerm;
-    typedef std::map<StandardRepK,CharCoeff> Char;
+    // a linear combination of |StandardRepK|s
+    typedef free_abelian::Free_Abelian<StandardRepK> Char;
+    typedef long int CharCoeff; // this is what |Free_Abelian| uses
+
+    // a character formula; first component stands for its lowest $K$-type
     typedef std::pair< StandardRepK,Char> CharForm;
 
     struct PSalgebra // Parabolic subalgebra
@@ -153,7 +158,8 @@ class StandardRepK {
  private:
 
   enum StatusFlagNames { IsStandard, IsNonZero, IsNormal, IsFinal, numFlags };
-/* standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ imaginary
+/*
+   standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ imaginary
    normal: $\<\lambda,\alpha\vee+\theta\alpha\vee>\geq0$ when $\alpha$ simple,
      complex, and orthogonal to sums of positive imaginary resp. real roots.
    final: $\<\lambda,\alpha\vee>$ odd for all simple real roots $\alpha$
@@ -212,7 +218,7 @@ public:
     return d_status[IsFinal];
   }
 
-  bool isNonZero() const { // this does not exclude equation setting it ==0 !
+  bool isNonZero() const {
     return d_status[IsNonZero];
   }
 
@@ -225,9 +231,40 @@ public:
   }
 
 
-  // manipulators
+// manipulators: none (done by friend class KHatComputations)
+
+// special members required by hashtable::HashTable
+
+  typedef std::vector<StandardRepK> Pooltype;
+  bool operator!=(const StandardRepK& another) const
+    { return not operator==(another); }
+  size_t hashCode(size_t modulus) const;
 
 }; // class StandardRepK
+
+
+// class handling rewriting of StandardRepK values by directed equations
+// all left hand sides are assumed distinct, so just repeated substitutions
+class SR_rewrites
+{
+public:
+  typedef int hash_value;
+  typedef free_abelian::Free_Abelian<hash_value> combination;
+  typedef std::map<hash_value,combination> sys_t;
+
+private:
+
+  sys_t system;
+
+public:
+  SR_rewrites() : system() {}
+
+  const combination& lookup(hash_value h) const; // an equation must exist!
+
+  // manipulators
+  void equate(hash_value h, const combination& rhs);
+
+}; // SR_equations
 
 //! \brief per Cartan class information for handling |StandardRepK| values
 struct Cartan_info
@@ -247,6 +284,7 @@ struct Cartan_info
 
   // space that fiber parts are reduced modulo
   latticetypes::SmallSubspace fiber_modulus;
+
 }; // Cartan_info
 
 // This class serves to store tables of previously computed mappings from
@@ -259,11 +297,13 @@ class KHatComputations
   const complexredgp::ComplexReductiveGroup* d_G;
   const kgb::KGB& d_KGB;
 
-  std::set<StandardRepK> d_kHat;  //all the interesting Final StandardRepK's
+  typedef hashtable::HashTable<StandardRepK,SR_rewrites::hash_value> Hash;
 
-  // the next member maps each interesting Normal StandardRepK
-  // to a more Final form
-  std::map<StandardRepK,HechtSchmid> d_standardHechtSchmid;
+  StandardRepK::Pooltype pool;
+  Hash hash;
+
+  // a set of equations rewriting to Standard, Normal, Final, NonZero elements
+  SR_rewrites d_rules;
 
 // the remaining data members allow interpretation of |StandardRepK| objects
   atlas::realform::RealForm d_realForm;
@@ -301,7 +341,11 @@ class KHatComputations
       return std_rep(lambda,a);
     }
 
-  StandardRepK KGB_elt_rep(kgb::KGBElt z) const;
+  StandardRepK KGB_elt_rep(kgb::KGBElt z) const
+    {
+      return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z));
+    }
+
 
   tits::TitsElt titsElt(StandardRepK s) const
   {
@@ -309,6 +353,9 @@ class KHatComputations
 			 d_G->twistedInvolution(s.d_cartan),
 			 s.d_fiberElt);
   }
+
+  std::ostream& print(std::ostream& strm,StandardRepK sr);
+
   /*!
     Returns the sum of absolute values of the scalar products of lambda
     expressed in the full basis and the positive coroots. This gives a Weyl
@@ -354,8 +401,8 @@ class KHatComputations
   void normalize(StandardRepK&) const;
 
   // get Hecht-Schmid identity
-  // This assumes |s| is non-dominant for simple-imaginary root |alpha|
-  HechtSchmid HS_id(StandardRepK s,rootdata::RootNbr alpha) const;
+  // This assumes |s| is non-dominant for simple-imaginary root $\alpha$
+  HechtSchmid HS_id(StandardRepK s, rootdata::RootNbr alpha) const;
 
   CharForm character_formula(StandardRepK) const; // call by value
 
@@ -363,24 +410,22 @@ class KHatComputations
     (std::set<CharForm> system, // call by value
      atlas::latticetypes::LatticeCoeff bound) const;
 
-// manipulators
-
-  void go(const kgb::KGB&);
-  void makeHSMap(StandardRepK&);
+  PSalgebra theta_stable_parabolic
+    (weyl::WeylWord& conjugator,
+     const cartanset::CartanClassSet& cs,
+     const size_t Cartan_nr) const;
 
   atlas::matrix::Matrix<CharCoeff>
     makeMULTmatrix(std::set<CharForm>& system,
-		   const atlas::latticetypes::LatticeCoeff bound);
+		   const atlas::latticetypes::LatticeCoeff bound) const;
 
+// manipulators
 
-//other functions
+  SR_rewrites::combination standardize(const StandardRepK& sr);
 
-latticetypes::LatticeMatrix lambdamap(size_t, size_t);
+  SR_rewrites::combination standardize(const Char& chi);
 
-PSalgebra theta_stable_parabolic
-  (weyl::WeylWord& conjugator,
-   const cartanset::CartanClassSet& cs,
-   const size_t Cartan_nr) const;
+  void go(kgb::KGBElt, const latticetypes::Weight&);
 
 }; // class KHatComputatons
 

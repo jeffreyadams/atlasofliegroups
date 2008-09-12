@@ -347,8 +347,15 @@ void test_f()
     realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
     G_R.fillCartan(); // must not forget this!
     kgb::KGB kgb(G_R,G_R.cartanSet());
+
+    kgb_io::var_print_KGB(std::cout,kgb);
+
+    unsigned long x;
+    latticetypes::Weight lambda;
+    interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
+    interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
     standardrepk::KHatComputations khc(G_R,kgb);
-    khc.go(kgb);
+    khc.go(x,lambda);
   }
   catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
