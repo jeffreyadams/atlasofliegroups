@@ -264,18 +264,10 @@ std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs,
 }
 
 std::ostream& printTitsElt(std::ostream& strm, const tits::TitsElt& a,
-			   const tits::TitsGroup& N)
-
-/*
-  Synopsis: outputs a in the format w[...], where the Weyl part w is output
-  as a reduced expression, and the torus part as a bitvector.
-*/
-
+			   const tits::TitsGroup& Tg)
 {
-  using namespace basic_io;
-
-  printWeylElt(strm,a.w(),N.weylGroup())
-    << "[" << N.right_torus_part(a) << "]";
+  prettyPrint(strm,Tg.left_torus_part(a));
+  printWeylElt(strm,a.w(),Tg.weylGroup());
 
   return strm;
 }
