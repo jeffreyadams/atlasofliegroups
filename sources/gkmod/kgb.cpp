@@ -708,7 +708,7 @@ namespace { // |FiberData| and |KGBHelp| are in anonymous namespace
   $q=tw.\delta$ of the weight lattice $X$) that occurs for $GR$. The subspace
   of $X^\vee/2X^\vee$ that will be stored for $tw$ is the image $I$ of the
   $-1$ eigenspace $X^\vee_-$ of $q^t$. When a Tits group element of the form
-  $x.\sigma_w$ occurs in the KGB construction, only the coset the left torus
+  $x.\sigma_w$ occurs in the KGB construction, only the coset of the left torus
   part $x$ modulo $I$ matters, and it will after computation be systematically
   normalised by reducing the left torus part $x$ modulo $I$.
 
