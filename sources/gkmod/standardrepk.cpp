@@ -23,6 +23,7 @@ StandardRepK and KHatComputations.
 #include "lattice.h"
 #include "rootdata.h"
 #include "smithnormal.h"
+#include "intutils.h"
 #include "cartanset.h"
 #include "tori.h"
 #include "basic_io.h"
@@ -293,28 +294,79 @@ SR_rewrites::combination KHatComputations::standardize(const Char& chi)
 }
 
 // the basic case
-SR_rewrites::combination KHatComputations::standardize(const StandardRepK& sr)
+SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
 {
-  if (sr.isStandard())
-  {
-    // later include test for Zero or non-Final here
-    return SR_rewrites::combination(hash.match(sr));
-  }
-
   {
     SR_rewrites::hash_value h=hash.find(sr); // see if we've already done |sr|
     if (h!=Hash::empty)
-      return d_rules.lookup(h);
+      return pool[h].isFinal()
+	? SR_rewrites::combination(h) // single term known to be final
+	: d_rules.lookup(h); // in all other cases an equation should be known
+  }
+
+  const cartanclass::Fiber& f=d_G->cartan(sr.d_cartan).fiber();
+  const rootdata::RootDatum& rd=rootDatum();
+
+  latticetypes::Weight lambda=lift(sr);
+
+  if (sr.isStandard())
+  {
+    normalize(sr);
+    tits::TitsElt a=titsElt(sr);
+    for (size_t i=0; i<f.imaginaryRank(); ++i)
+      if (not d_Tg.grading(a,f.simpleImaginary(i))
+          and rd.scalarProduct(lambda,f.simpleImaginary(i))==0)
+      {
+	SR_rewrites::combination zero;
+	d_rules.equate(hash.match(sr),zero);
+	return zero;
+      }
+    sr.d_status.set(StandardRepK::IsNonZero);
+
+    // find any simple-real root for which |sr| fails to be Final
+    // since coordinates are doubled, the scalar product is 0 or 2 mod 4
+    rootdata::RootNbr alpha;
+    {
+      size_t i;
+      for (i=0; i<f.realRank(); ++i)
+	if (rd.scalarProduct(lambda,f.simpleReal(i))%4 == 0)
+	  break;
+      if (i==f.realRank())
+      {
+	sr.d_status.set(StandardRepK::IsFinal);
+	return SR_rewrites::combination(hash.match(sr));
+      }
+      alpha=f.simpleReal(i);
+    }
+
+    HechtSchmid equation= back_HS_id(sr,alpha);
+    assert(equation.lh2==NULL); // |back_HS_id| never produces a second member
+
+    print(std::cout << "RHS: ",sr)<<" = ";
+
+    assert(equation.rh1!=NULL);
+
+    Char rhs(*equation.rh1); // rhs stars as second member negated
+    print(std::cout,*equation.rh1);
+    if (equation.rh2!=NULL)
+    {
+      print(std::cout<<'+',*equation.rh2);
+      rhs+= Char(*equation.rh2);
+    }
+    std::cout << std::endl;
+
+    // now recursively standardize all terms, storing rules
+    SR_rewrites::combination result= standardize(rhs);
+    d_rules.equate(hash.match(sr),result); // and finally add rule for |sr|
+    return result;
   }
 
   // find (again) simple-imaginary root for which |sr| fails to be Standard
   rootdata::RootNbr alpha;
   {
-    const cartanclass::Fiber& f=d_G->cartan(sr.d_cartan).fiber();
-    latticetypes::Weight lambda=lift(sr);
     size_t i;
     for (i=0; i<f.imaginaryRank(); ++i)
-      if (rootDatum().scalarProduct(lambda,f.simpleImaginary(i))<0)
+      if (rd.scalarProduct(lambda,f.simpleImaginary(i))<0)
 	break;
     assert(i<f.imaginaryRank()); // otherwise |sr| would have been Standard
     alpha=f.simpleImaginary(i);
@@ -346,37 +398,31 @@ SR_rewrites::combination KHatComputations::standardize(const StandardRepK& sr)
   return result;
 } // standardize
 
-void KHatComputations::normalize(StandardRepK& stdrep) const
+void KHatComputations::normalize(StandardRepK& sr) const
 {
-  if (not stdrep.isStandard())
+  if (not sr.isStandard())
   {
     std::cout << "cannot normalize properly continued standard representation"
 	      << std::endl;
     return ;
   }
 
-  rootdata::RootDatum rd = rootDatum();
-  size_t cn=stdrep.d_cartan;
-  const weyl::TwistedInvolution sigma_0 =
-    d_G->cartanClasses().twistedInvolution(cn);
+  const rootdata::RootDatum& rd = rootDatum();
+  const cartanclass::Fiber& f=d_G->cartan(sr.d_cartan).fiber();
 
-  const cartanclass::CartanClass& cc=d_G->cartan(cn);
-
-  // lift lambda to X^*
-
-  latticetypes::Weight lifted_lambda=lift(cn,stdrep.d_lambda);
+  latticetypes::Weight lambda=lift(sr);
 
   bitset::RankFlags bi_ortho_simples;
   { // find simple roots orthogonal to |real2rho| and |imaginary2rho|
-    latticetypes::Weight real2rho=rd.twoRho(cc.realRootSet());
-    latticetypes::Weight imaginary2rho=rd.twoRho(cc.imaginaryRootSet());
+    latticetypes::Weight real2rho=rd.twoRho(f.realRootSet());
+    latticetypes::Weight imaginary2rho=rd.twoRho(f.imaginaryRootSet());
     for (size_t i=0; i<rd.semisimpleRank(); ++i)
       if (rd.isOrthogonal(real2rho,i) and rd.isOrthogonal(imaginary2rho,i))
 	bi_ortho_simples.set(i);
   }
 
-  const latticetypes::LatticeMatrix& theta = cc.involution();
-  atlas::rootdata::RootSet cplx = cc.fiber().complexRootSet();
+  const latticetypes::LatticeMatrix& theta = f.involution();
+  atlas::rootdata::RootSet cplx = f.complexRootSet();
 
   //  go through the orthogonal list
   //  select the complex roots in the list
@@ -386,19 +432,19 @@ void KHatComputations::normalize(StandardRepK& stdrep) const
   {
     using latticetypes::operator+=;
 
-    latticetypes::Weight tlifted_lambda=theta.apply(lifted_lambda);
-    tlifted_lambda +=lifted_lambda;
+    latticetypes::Weight mu=theta.apply(lambda);
+    mu +=lambda; // $\mu=(1+\theta)\alpha$, simplifies scalar product below
 
     for (i= bi_ortho_simples.begin(); i(); ++i )
     {
       rootdata::RootNbr alpha = rd.simpleRootNbr(*i);
-      rootdata::RootNbr talpha= cc.involution_image_of_root(alpha);
 
-      if (cplx.isMember(alpha) and rd.scalarProduct(tlifted_lambda,alpha)<0)
+      if (cplx.isMember(alpha) and rd.scalarProduct(mu,alpha)<0)
       {
-	assert (rd.isOrthogonal(alpha,talpha));
-	rd.reflect(lifted_lambda,alpha);
-	rd.reflect(lifted_lambda,talpha);
+	rootdata::RootNbr beta= f.involution_image_of_root(alpha);
+	assert (rd.isOrthogonal(alpha,beta));
+	rd.reflect(lambda,alpha);
+	rd.reflect(lambda,beta);
 	break; // and continue do-while loop
       }
     } // for
@@ -406,10 +452,10 @@ void KHatComputations::normalize(StandardRepK& stdrep) const
   while (i()); // while |for|-loop was exited through |break|
 
 
-// put the new weakly dominant lambda back in stdrep
+// put the new weakly dominant lambda back in sr
 
-  stdrep.d_lambda=project(cn,lifted_lambda);
-  stdrep.d_status.set(StandardRepK::IsNormal);
+  sr.d_lambda=project(sr.d_cartan,lambda);
+  sr.d_status.set(StandardRepK::IsNormal);
 
 } // normalize
 
@@ -441,7 +487,7 @@ KHatComputations::HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
     i=0; // and start over
   }
 
-  latticetypes::Weight mu=rootDatum().simpleReflection(lambda,i);
+  latticetypes::Weight mu=rd.simpleReflection(lambda,i);
   if (d_Tg.simple_grading(a,i))
   { // |alpha| is a non-compact root
     d_Tg.basedTwistedConjugate(a,i); // adds $m_i$ to torus part
@@ -474,6 +520,90 @@ KHatComputations::HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
 
   return id;
 } // HS_id
+
+/*
+  The method |HS_id| is only called when |lambda| is non-dominant for |alpha|
+  and therefore gives a second term with a strictly more dominant weight.
+
+  For those simple-imaginary $\alpha$ with $\<\lambda,\alpha^\vee>=0$ the
+  corresponding Hecht-Schmid identity has equal weights in the left hand
+  terms, and is never generated from |HS_id|, but it is nevertheless valid,
+  and (for Standard representations) useful. Its use is as follows:
+
+  - if $\alpha$ is compact, the easy HS identity makes (twice) the
+    Standard representation equal to 0.
+
+  - if $\alpha$ is non-compact, the left hand terms are either distinct
+    because of their fiber part (type I) or identical (type II).
+
+    - in the type I case the right hand side is a single term whose (modularly
+      reduced) weight takes an even value on the (now real) root alpha, and is
+      therefore non-final. The identity can be used to express that
+      representation as the sum of the (Standard) left hand terms.
+
+    - in the type II case the left hand terms are equal and the two right hand
+      terms have distinct non-final parameters (differing in the weight by
+      $\alpha$), but designate the same representation (due to a shifted
+      action of the real Weyl group).One may therefore equate them and divide
+      by 2, so that either of the right hand terms is equated to the original
+      representation.
+
+   The purpose of |back_HS_id| is generating the equations for the type I and
+   type II cases, for a non-final parameter |sr| and witnessing root |alpha|
+ */
+HechtSchmid
+KHatComputations::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
+{
+  HechtSchmid id(sr);
+  const rootdata::RootDatum& rd=rootDatum();
+  tits::TitsElt a=titsElt(sr);
+  latticetypes::Weight lambda=lift(sr);
+
+  // basis used is of $(1/2)X^*$, so scalar product with coroot always even
+  assert(rd.scalarProduct(lambda,alpha)%4 == 0); // the non-final condition
+
+  {
+    using latticetypes::operator*=;
+    using latticetypes::operator-=;
+    latticetypes::Weight mu=rd.root(alpha);
+    mu *= rd.scalarProduct(lambda,alpha)/2;
+    lambda -= mu; // this makes lambda invariant under $s_\alpha$
+  }
+
+  // again, move to situation where $\alpha$ is simple: $\alpha=\alpha_i$
+  size_t i=0; // simple root index (value will be set in following loop)
+  while (true) // we shall exit halfway when $\alpha=\alpha_i$
+  {
+    while (rd.scalarProduct(alpha,rd.simpleRootNbr(i))<=0)
+    {
+      ++i;
+      assert(i<rd.semisimpleRank());
+    }
+    // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-imaginary
+    // and \alpha_i$ is complex for the involution |a.tw()|
+    if (alpha==rd.simpleRootNbr(i)) break; // found it
+    // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
+    rd.rootReflect(alpha,i);
+    rd.simpleReflect(lambda,i);
+    d_Tg.basedTwistedConjugate(a,i);
+    i=0; // and start over
+  }
+
+  // one right term is obtained by undoing Cayley for |a|, with lifted |lambda|
+  // we could use |Cayley_transform| instead; it would give the "other" term
+  d_Tg.inverse_Cayley_transform(a,i);
+  id.add_rh(std_rep(lambda,a));
+
+  // there will be another term in case of a type I HechtSchmid identity
+  // it differs only in the fiber part, by $m_i$; if this vanishes into the
+  // quotient, the HechtSchmid identity is type II and nothing is added
+  d_Tg.basedTwistedConjugate(a,i);
+  StandardRepK other=std_rep(lambda,a);
+  if (other.d_fiberElt!=id.rh1->d_fiberElt) // type I
+    id.add_rh(other);
+
+  return id;
+}
 
 atlas::latticetypes::LatticeCoeff
 KHatComputations::product_simpleroot
@@ -794,14 +924,23 @@ void KHatComputations::go
   {
     const StandardRepK& sr=pool[i];
     print(std::cout << 'R' << i << ": ",sr)
-      << (sr.isStandard() ? " S." : ".") << std::endl;
+      << ( sr.isFinal() ? " Final."
+	 : sr.isNonZero() ? " Non Final."
+	 : sr.isStandard() ? " Zero."
+	 : " Non Standard."
+	 )
+      << std::endl;
   }
 
   std::cout << "Standardized expression:\n";
   for (SR_rewrites::combination::const_iterator it=chi.begin();
        it!=chi.end(); ++it)
   {
-    std::cout << " + " << it->second << "*R" << it->first;
+    std::cout << (it->second>0 ? it==chi.begin() ? "" : " + " : " - ");
+    long int ac=intutils::abs<long int>(it->second);
+    if (ac!=1)
+      std::cout << ac << '*';
+    std::cout << 'R' << it->first;
   }
   std::cout << std::endl;
 

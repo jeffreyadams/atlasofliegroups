@@ -356,24 +356,6 @@ class KHatComputations
 
   std::ostream& print(std::ostream& strm,StandardRepK sr);
 
-  /*!
-    Returns the sum of absolute values of the scalar products of lambda
-    expressed in the full basis and the positive coroots. This gives a Weyl
-    group invariant limit on the size of the weights that will be needed.
-  */
-  atlas::latticetypes::LatticeCoeff
-    product_sumposroots (const StandardRepK& s) const;
-
-  /*!
-    When a standardrepK lambda is normalized this will return the product of
-    (1+theta)*(the lifted lambda) with coroot |k|. A constituent in the above.
-  */
-  atlas::latticetypes::LatticeCoeff
-    product_simpleroot(const StandardRepK& s, rootdata::RootNbr k) const;
-
-  //!\brief Projection |Weight| to |HCParam|
-  HCParam project(size_t cn, const latticetypes::Weight& lambda) const;
-
   //!\brief A section of |project|
   latticetypes::Weight lift(size_t cn, HCParam p) const;
 
@@ -392,17 +374,18 @@ class KHatComputations
   // apply symmetry for root $\alpha_s$ to |a|
   void reflect(tits::TitsElt a, size_t s);
 
-  //! brief Get grading on all simple roots, only relevant for imaginary ones
-  gradings::Grading grading(const StandardRepK& rep);
+  //!\brief Projection |Weight| to |HCParam|
+  HCParam project(size_t cn, const latticetypes::Weight& lambda) const;
 
-  //! brief Cayley transform though simpre root |s|, assumed imaginary compact
-  void cayleyTransform(StandardRepK& rep, size_t s);
 
   void normalize(StandardRepK&) const;
 
-  // get Hecht-Schmid identity
-  // This assumes |s| is non-dominant for simple-imaginary root $\alpha$
+  // Hecht-Schmid identity for simple-imaginary root $\alpha$
   HechtSchmid HS_id(StandardRepK s, rootdata::RootNbr alpha) const;
+
+  // Hecht-Schmid identity for simple-real root $\alpha$
+  HechtSchmid back_HS_id(StandardRepK s, rootdata::RootNbr alpha) const;
+
 
   CharForm character_formula(StandardRepK) const; // call by value
 
@@ -414,6 +397,21 @@ class KHatComputations
     (weyl::WeylWord& conjugator,
      const cartanset::CartanClassSet& cs,
      const size_t Cartan_nr) const;
+  /*!
+    Returns the sum of absolute values of the scalar products of lambda
+    expressed in the full basis and the positive coroots. This gives a Weyl
+    group invariant limit on the size of the weights that will be needed.
+  */
+  atlas::latticetypes::LatticeCoeff
+    product_sumposroots (const StandardRepK& s) const;
+
+  /*!
+    When a standardrepK lambda is normalized this will return the product of
+    (1+theta)*(the lifted lambda) with coroot |k|. A constituent in the above.
+  */
+  atlas::latticetypes::LatticeCoeff
+    product_simpleroot(const StandardRepK& s, rootdata::RootNbr k) const;
+
 
   atlas::matrix::Matrix<CharCoeff>
     makeMULTmatrix(std::set<CharForm>& system,
@@ -421,7 +419,7 @@ class KHatComputations
 
 // manipulators
 
-  SR_rewrites::combination standardize(const StandardRepK& sr);
+  SR_rewrites::combination standardize(StandardRepK sr); // call by value
 
   SR_rewrites::combination standardize(const Char& chi);
 
