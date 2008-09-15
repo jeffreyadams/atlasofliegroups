@@ -109,6 +109,11 @@ class BasedTitsGroup
     Tg.sigma_mult(s,a); // set |a| to $\sigma_s.a$
   }
 
+  // inverse Cayley transform for real simple roots
+  void inverse_Cayley_transform(tits::TitsElt& a, size_t s) const {
+    Tg.sigma_inv_mult(s,a); // set |a| to $\sigma_s.a$
+  }
+
   // conjugate Tits group element by $\delta_1$
   tits::TitsElt twisted(const tits::TitsElt& a) const;
 
