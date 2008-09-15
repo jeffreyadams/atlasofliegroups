@@ -63,6 +63,7 @@ class InvolutionData
   setutils::Permutation d_rootInvolution; // permutation of all roots
   rootdata::RootSet d_imaginary, d_real, d_complex;
   rootdata::RootList d_simpleImaginary; // imaginary roots simple wrt subsystem
+  rootdata::RootList d_simpleReal; // real roots simple wrt subsystem
  public:
   InvolutionData(const rootdata::RootDatum&,
 		 const latticetypes::LatticeMatrix&);
@@ -75,6 +76,8 @@ class InvolutionData
   const rootdata::RootSet& complex_roots() const    { return d_complex; }
   const rootdata::RootList& imaginary_basis() const
     { return d_simpleImaginary; }
+  const rootdata::RootList& real_basis() const
+    { return d_simpleReal; }
 };
 
 /*!
@@ -335,8 +338,7 @@ class Fiber {
   }
 
 /*!
-  \brief RootList holding the numbers of the simple imaginary
-  roots.
+  \brief RootList holding the numbers of the simple imaginary roots.
 
   These are simple for the positive imaginary roots given by the
   (based) RootDatum.  They need not be simple in the entire root
@@ -351,6 +353,24 @@ class Fiber {
 
   size_t imaginaryRank() const {
     return simpleImaginary().size();
+  }
+
+/*!
+  \brief RootList holding the numbers of the simple real roots.
+
+  These are simple for the positive real roots given by the
+  (based) RootDatum.  They need not be simple in the entire root
+  system.
+*/
+  const rootdata::RootList& simpleReal() const {
+    return d_involutionData.real_basis();
+  }
+  const rootdata::RootNbr simpleReal(size_t i) const {
+    return d_involutionData.real_basis()[i];
+  }
+
+  size_t realRank() const {
+    return simpleReal().size();
   }
 
 /*!
@@ -712,16 +732,22 @@ public:
   \brief RootList holding the numbers of the simple real roots.
 
   These are simple for subsystem of real roots. They need not be simple in the
-  entire root system. Since only the _numbers_ are needed, we can take those
-  of the simple imaginary roots in the dual fiber (this depends on the fact
-  that the constructor for a dual root system preserves the numbering of the
-  roots (but exchanging roots and coroots of course). This dependency should
-  be removed in the future, MvL.
-
+  entire root system.
   */
   const rootdata::RootList& simpleReal() const {
-    return d_dualFiber.simpleImaginary();
+    return d_fiber.simpleReal();
   }
+/* Since only the _numbers_ of simple-real roots are returned, this used to be
+   obtained as |d_dualFiber.simpleImaginary()|, before the |InvolutionData|
+   contained the basis for the real root system as well. That is indeed the
+   same value, given that the constructor for a dual root system preserves the
+   numbering of the roots (but exchanging roots and coroots of course). Such a
+   root datum differs however from one that could be constructed directly
+   (because its coroots rather than its roots are sorted lexicographically);
+   as the construction of root data might change in the future, it seems safer
+   and more robust to just take the basis of the real root subsystem. MvL.
+*/
+
 
   /*!
   \brief Class of the fiber group H^{-tau}/[(1-tau)H] for this

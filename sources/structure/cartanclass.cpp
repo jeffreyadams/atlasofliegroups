@@ -108,6 +108,7 @@ InvolutionData::InvolutionData(const rootdata::RootDatum& rd,
   , d_real(rd.numRoots())
   , d_complex(rd.numRoots())
   , d_simpleImaginary()        // here even dimensioning is pointless
+  , d_simpleReal()
 {
 
   for (size_t j = 0; j < d_rootInvolution.size(); ++j)
@@ -120,6 +121,7 @@ InvolutionData::InvolutionData(const rootdata::RootDatum& rd,
 
   // find simple imaginary roots
   d_simpleImaginary=rd.simpleBasis(imaginary_roots());
+  d_simpleReal=rd.simpleBasis(real_roots());
 }
 
 void InvolutionData::swap(InvolutionData& other)
@@ -145,7 +147,9 @@ CartanClass::CartanClass(const rootdata::RootDatum& rd,
   , d_dualFiber(cartanclass::dualFiber(rd,q)) // call non-member |dualFiber|
   , d_simpleComplex(makeSimpleComplex(rd))
   , d_orbitSize(makeOrbitSize(rd))
-{}
+{
+  assert(d_dualFiber.simpleReal()==d_fiber.simpleImaginary());
+}
 
 /******** copy and assignment ************************************************/
 
