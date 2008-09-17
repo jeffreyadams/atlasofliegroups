@@ -277,9 +277,7 @@ struct Cartan_info
   // matrix used to lift free part of |HCParam| back to a weight
   latticetypes::LatticeMatrix freeLift;
 
-  // projection of 2rho onto torsion component; offset for torsion lift
-  latticetypes::Weight p2rho;
-  // list of even vectors used to lift torsion part of |HCParam| to a weight
+  // list of vectors used to lift torsion part of |HCParam| to a weight
   latticetypes::WeightList torsionLift;
 
   // space that fiber parts are reduced modulo
@@ -375,7 +373,7 @@ class KHatComputations
   void reflect(tits::TitsElt a, size_t s);
 
   //!\brief Projection |Weight| to |HCParam|
-  HCParam project(size_t cn, const latticetypes::Weight& lambda) const;
+  HCParam project(size_t cn, latticetypes::Weight lambda) const; // by value
 
 
   void normalize(StandardRepK&) const;

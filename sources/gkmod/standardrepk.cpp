@@ -133,7 +133,7 @@ KHatComputations::KHatComputations
   , d_Tg(kgb::EnrichedTitsGroup::for_square_class(GR))
   , d_data(d_G->numCartanClasses())
 {
-  // the following loop should be restricted to Cartan classes for real form
+  // the following loop should be restricted to the Cartan classes for |GR|
   for (size_t r=0; r<d_data.size(); ++r)
   {
     // d_G->cartan[r] is rth CartanClass
@@ -172,13 +172,12 @@ KHatComputations::KHatComputations
     {
       assert(invf[i]==2); // other invariant factors must be 2
 
-      using latticetypes::operator*=;
       ci.torsionLift.push_back(bs[i]);
-      ci.torsionLift.back() *= 2; // double it, due to $(1/2)X^*$ basis
 
       for (size_t j=0; j<n; ++j)
-	ci.torsionProjector.set_mod2(i-f,j,inv_basis(i,j));
+ 	ci.torsionProjector.set_mod2(i-f,j,inv_basis(i,j));
     }
+
     if (l==n) // avoid construction from empty list
       ci.freeLift.resize(n,0); // so set matrix to empty rectangle
     else
@@ -188,18 +187,7 @@ KHatComputations::KHatComputations
     ci.freeProjector.resize(n-l,n);
 
     for (size_t i =l; i<n; ++i) // copy final rows from inverse
-//     { std::cout << i << "->" << i-l << std::endl;
       ci.freeProjector.copyRow(inv_basis,i-l,i); // row |i| to |i-l|
-//     }
-
-
-    latticetypes::LatticeElt e=inv_basis.apply(rootDatum().twoRho());
-//     prettyprint::printVector(std::cout,e) << std::endl;
-
-    for (size_t i=0; i<n; ++i)
-      if (i<f or i>=l)
-	e[i]=0; // clear components not on torsion part
-    ci.p2rho=basis.apply(e);
 
     ci.fiber_modulus=latticetypes::SmallSubspace
       (latticetypes::SmallBitVectorList(tori::minusBasis(theta.transposed())),
@@ -210,31 +198,32 @@ KHatComputations::KHatComputations
 /******** accessors *******************************************************/
 
 HCParam KHatComputations::project
-  (size_t cn, const latticetypes::Weight& lambda) const
+  (size_t cn, latticetypes::Weight lambda) const
 {
   using latticetypes::operator-=;
   using latticetypes::operator/=;
   const Cartan_info& ci=d_data[cn];
 
-  latticetypes::Weight lambda_shifted=lambda;
-  (lambda_shifted -= rootDatum().twoRho()) /= 2; // final division is exact
+  (lambda -= rootDatum().twoRho()) /= 2; // final division is exact
+
   return std::make_pair
     (ci.freeProjector.apply(lambda),
-     ci.torsionProjector.apply(latticetypes::SmallBitVector(lambda_shifted))
-     .data());
+     ci.torsionProjector.apply(latticetypes::SmallBitVector(lambda)).data()
+     );
 }
 
 latticetypes::Weight KHatComputations::lift(size_t cn, HCParam p) const
 {
+  using latticetypes::operator*=;
   using latticetypes::operator+=;
   const Cartan_info& ci=d_data[cn];
   latticetypes::Weight result=ci.freeLift.apply(p.first); // lift free part
 
-  result+=ci.p2rho; // offset to lift from torsion part, may have odd parts
   latticetypes::WeightList torsion_lift=ci.torsionLift;
   for (size_t i=0; i<torsion_lift.size(); ++i)
     if (p.second[i])
       result += torsion_lift[i]; // add even vectors representing torsion part
+  (result *= 2) += rootDatum().twoRho();
 
   return result;
 }
@@ -579,7 +568,7 @@ KHatComputations::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
       ++i;
       assert(i<rd.semisimpleRank());
     }
-    // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-imaginary
+    // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-real
     // and \alpha_i$ is complex for the involution |a.tw()|
     if (alpha==rd.simpleRootNbr(i)) break; // found it
     // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
