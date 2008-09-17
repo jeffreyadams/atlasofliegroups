@@ -129,10 +129,19 @@ KHatComputations::KHatComputations
   , pool()
   , hash(pool)
   , d_rules()
+  , simple_reflection_mod_2()
   , d_realForm(GR.realForm())
   , d_Tg(kgb::EnrichedTitsGroup::for_square_class(GR))
   , d_data(d_G->numCartanClasses())
 {
+  const rootdata::RootDatum& rd=rootDatum();
+  simple_reflection_mod_2.reserve(d_G->semisimpleRank());
+  for (size_t i=0; i<d_G->semisimpleRank(); ++i)
+    simple_reflection_mod_2.push_back
+      (latticetypes::BinaryMap(rd.rootReflection(rd.simpleRootNbr(i)).transposed()));
+
+  size_t n = rootDatum().rank();
+
   // the following loop should be restricted to the Cartan classes for |GR|
   for (size_t r=0; r<d_data.size(); ++r)
   {
@@ -142,7 +151,6 @@ KHatComputations::KHatComputations
 
     latticetypes::LatticeMatrix theta = d_G->cartan(r).involution();
 
-    size_t n = rootDatum().rank();
 
     // put in $q$ the matrix of $\theta-1$
     latticetypes::LatticeMatrix q=theta;
@@ -175,7 +183,7 @@ KHatComputations::KHatComputations
       ci.torsionLift.push_back(bs[i]);
 
       for (size_t j=0; j<n; ++j)
- 	ci.torsionProjector.set_mod2(i-f,j,inv_basis(i,j));
+	ci.torsionProjector.set_mod2(i-f,j,inv_basis(i,j));
     }
 
     if (l==n) // avoid construction from empty list
@@ -559,6 +567,9 @@ KHatComputations::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
     lambda -= mu; // this makes lambda invariant under $s_\alpha$
   }
 
+  latticetypes::SmallSubspace mod_space=
+    d_data[sr.d_cartan].fiber_modulus; // make a copy to be modified
+
   // again, move to situation where $\alpha$ is simple: $\alpha=\alpha_i$
   size_t i=0; // simple root index (value will be set in following loop)
   while (true) // we shall exit halfway when $\alpha=\alpha_i$
@@ -575,12 +586,26 @@ KHatComputations::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
     rd.rootReflect(alpha,i);
     rd.simpleReflect(lambda,i);
     d_Tg.basedTwistedConjugate(a,i);
+    mod_space.apply(simple_reflection_mod_2[i]);
     i=0; // and start over
   }
 
   // one right term is obtained by undoing Cayley for |a|, with lifted |lambda|
   // we could use |Cayley_transform| instead; it would give the "other" term
   d_Tg.inverse_Cayley_transform(a,i);
+
+  if (not d_Tg.simple_grading(a,i)) // $\alpha_i$ should not become a compact root!
+  {
+    size_t j;
+    for (j=0; j<mod_space.dimension(); ++j)
+      if (bitvector::scalarProduct(mod_space.basis(j),
+				   d_Tg.titsGroup().simpleRoot(i)))
+	break; // we found an element on which $\alpha_i$ takes the value $-1$
+    assert(j<mod_space.dimension()); // some vector subspace _must_ do the trick
+
+    d_Tg.titsGroup().left_add(mod_space.basis(j),a); // correct torus part of |a|
+    assert(d_Tg.simple_grading(a,i)); // this should correct the problem
+  }
   id.add_rh(std_rep(lambda,a));
 
   // there will be another term in case of a type I HechtSchmid identity

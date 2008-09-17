@@ -303,6 +303,8 @@ class KHatComputations
   // a set of equations rewriting to Standard, Normal, Final, NonZero elements
   SR_rewrites d_rules;
 
+  std::vector<latticetypes::BinaryMap> simple_reflection_mod_2;
+
 // the remaining data members allow interpretation of |StandardRepK| objects
   atlas::realform::RealForm d_realForm;
   const kgb::EnrichedTitsGroup d_Tg;
