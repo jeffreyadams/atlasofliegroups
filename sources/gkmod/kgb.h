@@ -111,7 +111,7 @@ class BasedTitsGroup
 
   // inverse Cayley transform for real simple roots
   void inverse_Cayley_transform(tits::TitsElt& a, size_t s) const {
-    Tg.sigma_inv_mult(s,a); // set |a| to $\sigma_s.a$
+    Tg.sigma_inv_mult(s,a); // set |a| to $\sigma_s^{-1}.a$
   }
 
   // conjugate Tits group element by $\delta_1$
