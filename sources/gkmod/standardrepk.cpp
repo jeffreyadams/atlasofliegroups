@@ -138,7 +138,8 @@ KHatComputations::KHatComputations
   simple_reflection_mod_2.reserve(d_G->semisimpleRank());
   for (size_t i=0; i<d_G->semisimpleRank(); ++i)
     simple_reflection_mod_2.push_back
-      (latticetypes::BinaryMap(rd.rootReflection(rd.simpleRootNbr(i)).transposed()));
+      (latticetypes::BinaryMap
+       (rd.rootReflection(rd.simpleRootNbr(i)).transposed()));
 
   size_t n = rootDatum().rank();
 
@@ -397,12 +398,7 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
 
 void KHatComputations::normalize(StandardRepK& sr) const
 {
-  if (not sr.isStandard())
-  {
-    std::cout << "cannot normalize properly continued standard representation"
-	      << std::endl;
-    return ;
-  }
+  assert(sr.isStandard()); // must be standard before normalize is meaningful
 
   const rootdata::RootDatum& rd = rootDatum();
   const cartanclass::Fiber& f=d_G->cartan(sr.d_cartan).fiber();
@@ -414,7 +410,8 @@ void KHatComputations::normalize(StandardRepK& sr) const
     latticetypes::Weight real2rho=rd.twoRho(f.realRootSet());
     latticetypes::Weight imaginary2rho=rd.twoRho(f.imaginaryRootSet());
     for (size_t i=0; i<rd.semisimpleRank(); ++i)
-      if (rd.isOrthogonal(real2rho,i) and rd.isOrthogonal(imaginary2rho,i))
+      if (rd.isOrthogonal(real2rho,rd.simpleRootNbr(i)) and
+	  rd.isOrthogonal(imaginary2rho,rd.simpleRootNbr(i)))
 	bi_ortho_simples.set(i);
   }
 
@@ -594,16 +591,18 @@ KHatComputations::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
   // we could use |Cayley_transform| instead; it would give the "other" term
   d_Tg.inverse_Cayley_transform(a,i);
 
-  if (not d_Tg.simple_grading(a,i)) // $\alpha_i$ should not become a compact root!
+  if (not d_Tg.simple_grading(a,i)) // $\alpha_i$ should not become compact!
   {
+    // we must find a vector in |mod_space| affecting grading at $\alpha_1$
     size_t j;
-    for (j=0; j<mod_space.dimension(); ++j)
+    for (j=0; j<mod_space.dimension(); ++j) // a basis vector will do
       if (bitvector::scalarProduct(mod_space.basis(j),
 				   d_Tg.titsGroup().simpleRoot(i)))
-	break; // we found an element on which $\alpha_i$ takes the value $-1$
-    assert(j<mod_space.dimension()); // some vector subspace _must_ do the trick
+	break; // scalar product true means grading affected: we found it
 
-    d_Tg.titsGroup().left_add(mod_space.basis(j),a); // correct torus part of |a|
+    assert(j<mod_space.dimension()); // some basis vector _must_ do the trick
+
+    d_Tg.titsGroup().left_add(mod_space.basis(j),a); // adjust |a|'s torus part
     assert(d_Tg.simple_grading(a,i)); // this should correct the problem
   }
   id.add_rh(std_rep(lambda,a));
@@ -930,8 +929,19 @@ KHatComputations::saturate(std::set<CharForm> system,
 void KHatComputations::go
   (kgb::KGBElt x, const latticetypes::Weight& lambda)
 {
-  StandardRepK stdrpk=std_rep_rho_plus(lambda,d_KGB.titsElt(x));
-  SR_rewrites::combination chi=standardize(stdrpk);
+  StandardRepK sr=std_rep_rho_plus(lambda,d_KGB.titsElt(x));
+
+  {
+    using latticetypes::operator*=;
+    using latticetypes::operator+=;
+    latticetypes::Weight mu=lambda;
+    (mu *= 2) += rootDatum().twoRho();
+    prettyprint::printVector(std::cout << "Weight entered: (1/2)",mu);
+    prettyprint::printVector(std::cout << " converted to: (1/2)",lift(sr))
+      << std::endl;
+  }
+
+  SR_rewrites::combination chi=standardize(sr);
 
   std::cout << "Continued standard representations:\n";
   for (size_t i=0; i<pool.size(); ++i)
