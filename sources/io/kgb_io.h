@@ -14,6 +14,7 @@
 
 #include "kgb_fwd.h"
 #include "bruhat_fwd.h"
+#include "complexredgp_fwd.h"
 
 namespace atlas {
 
@@ -22,7 +23,9 @@ namespace atlas {
 namespace kgb_io {
 
   std::ostream& printKGB(std::ostream&, const kgb::KGB&);
-  std::ostream& var_print_KGB(std::ostream&, const kgb::KGB&);
+  std::ostream& var_print_KGB(std::ostream&,
+			      const complexredgp::ComplexReductiveGroup&,
+			      const kgb::KGB&);
   std::ostream& printBruhatOrder(std::ostream&, const bruhat::BruhatOrder&);
 
 }

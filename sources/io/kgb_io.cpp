@@ -14,6 +14,7 @@
 #include "kgb_io.h"
 
 #include "ioutils.h"
+#include "complexredgp.h"
 #include "kgb.h"
 #include "prettyprint.h"
 #include "set.h"
@@ -48,8 +49,12 @@ namespace kgb_io {
   not too large (up to rank 4 or so). We haven't tried to go over to more
   sophisticated formatting for larger groups.
 */
-std::ostream& print(std::ostream& strm, const kgb::KGB& kgb, bool extra)
+std::ostream& print(std::ostream& strm,
+		    const complexredgp::ComplexReductiveGroup* G,
+		    const kgb::KGB& kgb)
 {
+  bool extra= G!=NULL;
+
   if (extra)
     prettyprint::prettyPrint(strm << "Base grading: [",
 			     kgb.base_grading(),kgb.rank()) << "].\n";
@@ -67,9 +72,11 @@ std::ostream& print(std::ostream& strm, const kgb::KGB& kgb, bool extra)
     strm << std::setw(lwidth) << kgb.length(j);
     strm << std::setw(pad) << "";
 
-    // print Cartan class
-    strm << std::setw(cwidth) << kgb.Cartan_class(j);
-    strm << std::setw(pad) << "";
+    if (not extra)  // print Cartan class (in traditional mode)
+    {
+      strm << std::setw(cwidth) << kgb.Cartan_class(j);
+      strm << std::setw(pad) << "";
+    }
 
     // print status
     prettyprint::printStatus(strm,kgb.status(j),kgb.rank());
@@ -99,7 +106,10 @@ std::ostream& print(std::ostream& strm, const kgb::KGB& kgb, bool extra)
       assert(a==tits::TitsElt(Tg));
 
     // print torus part
-	prettyprint::prettyPrint(strm,kgb.torus_part(j)) << ' ';
+      prettyprint::prettyPrint(strm,kgb.torus_part(j)) <<
+	(kgb.involution(j)==G->twistedInvolution(kgb.Cartan_class(j))
+	? '#' : ' ') <<
+	std::setw(cwidth) << kgb.Cartan_class(j) << std::setw(pad) << "";
     }
     // print root datum involution
     prettyprint::printWeylElt(strm,kgb.involution(j),kgb.weylGroup());
@@ -112,12 +122,14 @@ std::ostream& print(std::ostream& strm, const kgb::KGB& kgb, bool extra)
 
 std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
 {
-  return print(strm,kgb,false);
+  return print(strm,NULL,kgb);
 }
 
-std::ostream& var_print_KGB(std::ostream& strm, const kgb::KGB& kgb)
+std::ostream& var_print_KGB(std::ostream& strm,
+			    const complexredgp::ComplexReductiveGroup& G,
+			    const kgb::KGB& kgb)
 {
-  return print(strm,kgb,true);
+  return print(strm,&G,kgb);
 }
 
 

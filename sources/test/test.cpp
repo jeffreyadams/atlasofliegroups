@@ -348,7 +348,7 @@ void test_f()
     G_R.fillCartan(); // must not forget this!
     kgb::KGB kgb(G_R,G_R.cartanSet());
 
-    kgb_io::var_print_KGB(std::cout,kgb);
+    kgb_io::var_print_KGB(std::cout,mainmode::currentComplexGroup(),kgb);
 
     unsigned long x;
     latticetypes::Weight lambda;
