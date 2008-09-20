@@ -305,11 +305,11 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
   const cartanclass::Fiber& f=d_G->cartan(sr.d_cartan).fiber();
   const rootdata::RootDatum& rd=rootDatum();
 
-  latticetypes::Weight lambda=lift(sr);
-
   if (sr.isStandard())
   {
     normalize(sr);
+    latticetypes::Weight lambda=lift(sr);
+
     tits::TitsElt a=titsElt(sr);
     for (size_t i=0; i<f.imaginaryRank(); ++i)
       if (not d_Tg.grading(a,f.simpleImaginary(i))
@@ -360,6 +360,7 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
   }
 
   // find (again) simple-imaginary root for which |sr| fails to be Standard
+  latticetypes::Weight lambda=lift(sr);
   rootdata::RootNbr alpha;
   {
     size_t i;
