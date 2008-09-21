@@ -51,6 +51,7 @@ namespace {
   void poscoroots_rootbasis_f();
   void posroots_rootbasis_f();
   void roots_rootbasis_f();
+  void KGB_f();
   void test_f();
 
   // help functions
@@ -129,6 +130,10 @@ void addTestCommands<realmode::RealmodeTag>
 {
   if (testMode == RealMode)
     mode.add("test",test_f);
+
+  // add additional commands here :
+
+  mode.add("KGB",KGB_f);
 
 }
 
@@ -211,6 +216,13 @@ template<> void addTestHelp<realmode::RealmodeTag>
     mode.add("test",helpmode::nohelp_h);
     insertTag(t,"test",test_tag);
   }
+
+  mode.add("KGB",helpmode::nohelp_h);
+
+
+  // add additional command tags here :
+
+  insertTag(t,"KGB",test_tag);
 
 }
 
@@ -325,6 +337,13 @@ void poscoroots_rootbasis_f()
 
 // Real mode functions
 
+void KGB_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  G_R.fillCartan(); // must not forget this!
+  kgb::KGB kgb(G_R,G_R.cartanSet());
+  kgb_io::var_print_KGB(std::cout,mainmode::currentComplexGroup(),kgb);
+}
 
 
 
@@ -345,14 +364,17 @@ void test_f()
   try
   {
     realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
     G_R.fillCartan(); // must not forget this!
     kgb::KGB kgb(G_R,G_R.cartanSet());
 
-    kgb_io::var_print_KGB(std::cout,mainmode::currentComplexGroup(),kgb);
+//     kgb_io::var_print_KGB(std::cout,mainmode::currentComplexGroup(),kgb);
 
     unsigned long x;
     latticetypes::Weight lambda;
     interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
+    prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
+      << std::endl;
     interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
     standardrepk::KHatComputations khc(G_R,kgb);
     khc.go(x,lambda);
