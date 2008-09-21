@@ -94,18 +94,6 @@ void SR_rewrites::equate (hash_value h, const combination& rhs)
   std::pair<sys_t::iterator,bool> p=system.insert(std::make_pair(h,rhs));
   assert(p.second); // left hand side should be a new |StandardRepK|
 
-  // the following code turns out to be superfluous!
-  for (sys_t::iterator i=system.begin(); i!=system.end(); ++i)
-    if (i!=p.first) // skip equation we just added
-    {
-      combination::base::iterator q=i->second.find(h); // locate lhs
-      if (q!=i->second.end()) // if there is a matching term
-      {
-	size_t m=q->second; // save coefficient
-	i->second.erase(q); // remove term
-	i->second.add_multiple(rhs,m); // and add back its expansion
-      }
-    }
 }
 
 } // namespace standardrepk
@@ -294,8 +282,11 @@ SR_rewrites::combination KHatComputations::standardize(const Char& chi)
 // the basic case
 SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
 {
-  {
-    SR_rewrites::hash_value h=hash.find(sr); // see if we've already done |sr|
+  if (sr.isStandard()) // start with normalizing, but only if it makes sense
+    normalize(sr);
+
+  { // now check if we've already done |sr|
+    SR_rewrites::hash_value h=hash.find(sr);
     if (h!=Hash::empty)
       return pool[h].isFinal()
 	? SR_rewrites::combination(h) // single term known to be final
@@ -304,12 +295,10 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
 
   const cartanclass::Fiber& f=d_G->cartan(sr.d_cartan).fiber();
   const rootdata::RootDatum& rd=rootDatum();
+  latticetypes::Weight lambda=lift(sr);
 
   if (sr.isStandard())
   {
-    normalize(sr);
-    latticetypes::Weight lambda=lift(sr);
-
     tits::TitsElt a=titsElt(sr);
     for (size_t i=0; i<f.imaginaryRank(); ++i)
       if (not d_Tg.grading(a,f.simpleImaginary(i))
@@ -340,27 +329,34 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
     HechtSchmid equation= back_HS_id(sr,alpha);
     assert(equation.lh2==NULL); // |back_HS_id| never produces a second member
 
-    print(std::cout << "RHS: ",sr)<<" = ";
+#ifdef VERBOSE
+//     print(std::cout << "RHS: ",sr)<<" = ";
+#endif
 
     assert(equation.rh1!=NULL);
 
     Char rhs(*equation.rh1); // rhs stars as second member negated
+#ifdef VERBOSE
     print(std::cout,*equation.rh1);
+#endif
     if (equation.rh2!=NULL)
     {
+#ifdef VERBOSE
       print(std::cout<<'+',*equation.rh2);
+#endif
       rhs+= Char(*equation.rh2);
     }
+#ifdef VERBOSE
     std::cout << std::endl;
+#endif
 
     // now recursively standardize all terms, storing rules
     SR_rewrites::combination result= standardize(rhs);
     d_rules.equate(hash.match(sr),result); // and finally add rule for |sr|
     return result;
-  }
+  } // if (sr.isStandard())
 
   // find (again) simple-imaginary root for which |sr| fails to be Standard
-  latticetypes::Weight lambda=lift(sr);
   rootdata::RootNbr alpha;
   {
     size_t i;
@@ -374,22 +370,30 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
   HechtSchmid equation= HS_id(sr,alpha);
   assert(equation.lh2!=NULL); // all cases of |HS_id| produce a second member
 
+#ifdef VERBOSE
   print(print(std::cout << "HS: ",sr)<<'+',*(equation.lh2)) << " = ";
+#endif
 
   Char rhs(*equation.lh2,-1); // rhs stars as second member negated
 
   if (equation.rh1!=NULL)
   {
+#ifdef VERBOSE
     print(std::cout,*equation.rh1);
+#endif
     rhs+= Char(*equation.rh1);
     if (equation.rh2!=NULL)
     {
+#ifdef VERBOSE
       print(std::cout<<'+',*equation.rh2);
+#endif
       rhs+= Char(*equation.rh2);
     }
   }
+#ifdef VERBOSE
   else std::cout << '0';
   std::cout << std::endl;
+#endif
 
   // now recursively standardize all terms, storing rules
   SR_rewrites::combination result= standardize(rhs);
