@@ -1116,31 +1116,32 @@ toMostSplit(const cartanclass::Fiber& fundf,
 
 ******************************************************************************/
 
-/*!
-  \brief Computes the list of the simple roots for a complex factor
-  in \f$W^\tau\f$, where \f$\tau\f$ is the root datum involution of our Cartan class.
+/*! \brief Computes the list of the simple roots for a complex factor in
+  \f$W^\tau\f$, where \f$\tau\f$ is the root datum involution of our Cartan
+  class.
 
   Explanation: \f$W^\tau\f$ is the semidirect product of $W^R x W^{iR}$ (Weyl
   groups of the real and imaginary root systems), with the diagonal subgroup
   of $W^C$, where $W^C$ is the Weyl group of the root system $Phi^C$
   orthogonal to both the sums of positive imaginary and real roots. That root
-  system is complex for the involution induced by \f$\tau\f$, i.e., it decomposes
-  as orthogonal sum of two subsystems interchanged by \f$\tau\f$; we return a
-  basis of one "half" of it.
+  system is complex for the involution induced by \f$\tau\f$, i.e., it
+  decomposes as orthogonal sum of two subsystems interchanged by \f$\tau\f$;
+  we return a basis of one "half" of it.
 
   NOTE: there was a bad bug here in an earlier version, which amounted to the
   implicit assumption that the standard positive root system for the $Phi^C$
-  is \f$\tau\f$-stable; this is very false. It would be true for an involution of
-  the based root datum (the distinguished involution of the inner class),
-  which would stabilise everyting mentioned here; in general however although
-  $Phi^C$ is \f$\tau\f$-stable (the sum of positive imaginary roots is
-  \f$\tau\f$-fixed, and the sum of positive real roots is \f$\tau\f$-negated), its
-  subsets of positive and simple roots is not. As a consequence the root
-  |rTau| below need not correspond to any vertex of the Dynkin diagram |dd|.
-  The component of |dd| to whose root system the various |rTau| found for the
-  component |c| belong (the "other half" that we want to exclude) can be
-  characterised as the vertices |j| whose simple roots |rb[j]| are
-  non-orthogonal to some of those roots |rTau|. Hence we exclude for each
+  is \f$\tau\f$-stable; this is very false. It would be true for an involution
+  of the based root datum (the distinguished involution of the inner class),
+  which would stabilise everyting mentioned here, and in fact it is also true
+  for any involution that is canonical in its (twisted conjugation) class; in
+  general however although $Phi^C$ is \f$\tau\f$-stable (the sum of positive
+  imaginary roots is \f$\tau\f$-fixed, and the sum of positive real roots is
+  \f$\tau\f$-negated), its subsets of positive and simple roots is not. As a
+  consequence the root |rTau| below need not correspond to any vertex of the
+  Dynkin diagram |dd|. The component of |dd| to whose root system the various
+  |rTau| found for the component |c| belong (the "other half" that we want to
+  exclude) can be characterised as the vertices |j| whose simple roots |rb[j]|
+  are non-orthogonal to some of those roots |rTau|. Hence we exclude for each
   |rTau| any nodes that are non-orthogonal to it.
 */
 rootdata::RootList
