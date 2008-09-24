@@ -330,7 +330,7 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
     assert(equation.lh2==NULL); // |back_HS_id| never produces a second member
 
 #ifdef VERBOSE
-//     print(std::cout << "RHS: ",sr)<<" = ";
+    print(std::cout << "RHS: ",sr)<<" = ";
 #endif
 
     assert(equation.rh1!=NULL);
