@@ -335,10 +335,10 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
   $g(i)+g(s)$, where $s$ is now interpreted as the simple roots corresponding
   to the reflection; the second case applies if and only if the Cartan matrix
   has an odd entry at (i,s), since
-  \f$s(\alpha_i)=\alpha_i-\<alpha_i,\alpha_s^\vee>\alpha_s\f$. So if |g(s)==0|
-  there is nothing to change for any |i|, while if |g(s)==1| we must add
-  (modulo 2) column |s| of the Cartan matrix to |g|. For this reason we store
-  upon construction the transpos Cartan matrix modulo 2.
+  \f$s(\alpha_i)=\alpha_i-\left<\alpha_i,\alpha_s^\vee\right>\alpha_s\f$. So if
+  |g(s)==0| there is nothing to change for any |i|, while if |g(s)==1| we must
+  add (modulo 2) column |s| of the Cartan matrix to |g|. For this reason we
+  store upon construction the transpos Cartan matrix modulo 2.
 
   NOTE : the conversion to/from |unsigned long| depends on the fact that
   |RANK_MAX| does not exceed the number of bits in an |unsigned long|. It
