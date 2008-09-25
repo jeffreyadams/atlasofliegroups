@@ -27,11 +27,14 @@ StandardRepK and KHatComputations.
 #include "cartanset.h"
 #include "tori.h"
 #include "basic_io.h"
+#include "ioutils.h"
 #include "intutils.h"
 #include "tags.h"
 #include "graph.h"
 #include "prettyprint.h"
+#include <cassert>
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 
 namespace atlas {
@@ -82,18 +85,16 @@ size_t StandardRepK::hashCode(size_t modulus) const
 
 namespace standardrepk {
 
-const SR_rewrites::combination& SR_rewrites::lookup(hash_value h) const
+const SR_rewrites::combination& SR_rewrites::lookup(seq_no n) const
 {
-  sys_t::const_iterator it=system.find(h);
-  assert (it!=system.end());
-  return it->second;
+  assert(n<system.size());
+  return system[n];
 }
 
-void SR_rewrites::equate (hash_value h, const combination& rhs)
+void SR_rewrites::equate (seq_no n, const combination& rhs)
 {
-  std::pair<sys_t::iterator,bool> p=system.insert(std::make_pair(h,rhs));
-  assert(p.second); // left hand side should be a new |StandardRepK|
-
+  assert(n==system.size()); // left hand side should be a new |StandardRepK|
+  system.push_back(rhs);
 }
 
 } // namespace standardrepk
@@ -114,8 +115,8 @@ KHatComputations::KHatComputations
   (const realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
   : d_G(&GR.complexGroup())
   , d_KGB(kgb)
-  , pool()
-  , hash(pool)
+  , nonfinal_pool(),final_pool()
+  , nonfinals(nonfinal_pool), finals(final_pool)
   , d_rules()
   , simple_reflection_mod_2()
   , d_realForm(GR.realForm())
@@ -282,15 +283,15 @@ SR_rewrites::combination KHatComputations::standardize(const Char& chi)
 // the basic case
 SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
 {
-  if (sr.isStandard()) // start with normalizing, but only if it makes sense
-    normalize(sr);
+  normalize(sr);
 
-  { // now check if we've already done |sr|
-    SR_rewrites::hash_value h=hash.find(sr);
-    if (h!=Hash::empty)
-      return pool[h].isFinal()
-	? SR_rewrites::combination(h) // single term known to be final
-	: d_rules.lookup(h); // in all other cases an equation should be known
+  { // first check if we've already done |sr|
+    SR_rewrites::seq_no n=nonfinals.find(sr);
+    if (n!=Hash::empty)
+      return d_rules.lookup(n); // in this case an equation should be known
+    if (sr.isStandard() // then also check if we already know |sr| to be Final
+	and (n=finals.find(sr)!=Hash::empty))
+      return SR_rewrites::combination(n); // single term known to be final
   }
 
   const cartanclass::Fiber& f=d_G->cartan(sr.d_cartan).fiber();
@@ -305,7 +306,7 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
           and rd.scalarProduct(lambda,f.simpleImaginary(i))==0)
       {
 	SR_rewrites::combination zero;
-	d_rules.equate(hash.match(sr),zero);
+	d_rules.equate(nonfinals.match(sr),zero);
 	return zero;
       }
     sr.d_status.set(StandardRepK::IsNonZero);
@@ -321,7 +322,7 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
       if (i==f.realRank())
       {
 	sr.d_status.set(StandardRepK::IsFinal);
-	return SR_rewrites::combination(hash.match(sr));
+	return SR_rewrites::combination(finals.match(sr));
       }
       alpha=f.simpleReal(i);
     }
@@ -352,7 +353,7 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
 
     // now recursively standardize all terms, storing rules
     SR_rewrites::combination result= standardize(rhs);
-    d_rules.equate(hash.match(sr),result); // and finally add rule for |sr|
+    d_rules.equate(nonfinals.match(sr),result); // and add rule for |sr|
     return result;
   } // if (sr.isStandard())
 
@@ -397,14 +398,12 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
 
   // now recursively standardize all terms, storing rules
   SR_rewrites::combination result= standardize(rhs);
-  d_rules.equate(hash.match(sr),result); // and finally add rule for |sr|
+  d_rules.equate(nonfinals.match(sr),result); // and add rule for |sr|
   return result;
 } // standardize
 
 void KHatComputations::normalize(StandardRepK& sr) const
 {
-  assert(sr.isStandard()); // must be standard before normalize is meaningful
-
   const rootdata::RootDatum& rd = rootDatum();
   const cartanclass::Fiber& f=d_G->cartan(sr.d_cartan).fiber();
 
@@ -454,7 +453,6 @@ void KHatComputations::normalize(StandardRepK& sr) const
 // put the new weakly dominant lambda back in sr
 
   sr.d_lambda=project(sr.d_cartan,lambda);
-  sr.d_status.set(StandardRepK::IsNormal);
 
 } // normalize
 
@@ -574,6 +572,7 @@ KHatComputations::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
 
   // again, move to situation where $\alpha$ is simple: $\alpha=\alpha_i$
   size_t i=0; // simple root index (value will be set in following loop)
+
   while (true) // we shall exit halfway when $\alpha=\alpha_i$
   {
     while (rd.scalarProduct(alpha,rd.simpleRootNbr(i))<=0)
@@ -593,23 +592,8 @@ KHatComputations::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
   }
 
   // one right term is obtained by undoing Cayley for |a|, with lifted |lambda|
-  // we could use |Cayley_transform| instead; it would give the "other" term
-  d_Tg.inverse_Cayley_transform(a,i);
+  d_Tg.inverse_Cayley_transform(a,i,mod_space);
 
-  if (not d_Tg.simple_grading(a,i)) // $\alpha_i$ should not become compact!
-  {
-    // we must find a vector in |mod_space| affecting grading at $\alpha_1$
-    size_t j;
-    for (j=0; j<mod_space.dimension(); ++j) // a basis vector will do
-      if (bitvector::scalarProduct(mod_space.basis(j),
-				   d_Tg.titsGroup().simpleRoot(i)))
-	break; // scalar product true means grading affected: we found it
-
-    assert(j<mod_space.dimension()); // some basis vector _must_ do the trick
-
-    d_Tg.titsGroup().left_add(mod_space.basis(j),a); // adjust |a|'s torus part
-    assert(d_Tg.simple_grading(a,i)); // this should correct the problem
-  }
   id.add_rh(std_rep(lambda,a));
 
   // there will be another term in case of a type I HechtSchmid identity
@@ -629,9 +613,6 @@ KHatComputations::product_simpleroot
 {
   using latticetypes::operator+=;
 
-  if (not s.isNormal())
-    throw std::runtime_error("simpleroot: unnormalized standard rep");
-
   latticetypes::Weight lifted=theta_lift(s.d_cartan,s.d_lambda);
 
   return rootDatum().scalarProduct(lifted,k);
@@ -641,9 +622,6 @@ atlas::latticetypes::LatticeCoeff
 KHatComputations::product_sumposroots(const StandardRepK& s) const
 {
   using latticetypes::operator+=;
-
-  if (not s.isNormal())
-    throw std::runtime_error("sumposroots: unnormalized standard rep");
 
   latticetypes::Weight lifted=theta_lift(s.d_cartan,s.d_lambda);
 
@@ -858,7 +836,6 @@ CharForm  KHatComputations::character_formula(StandardRepK stdrep) const
     StandardRepK new_rep = stdrep;
 
     new_rep.d_lambda.first = lambda; // replace |lambda| by modified version
-    new_rep.d_status.reset(new_rep.isNormal());
 
     normalize(new_rep);
 
@@ -948,30 +925,47 @@ void KHatComputations::go
 
   SR_rewrites::combination chi=standardize(sr);
 
-  std::cout << "Continued standard representations:\n";
-  for (size_t i=0; i<pool.size(); ++i)
+#ifdef VERBOSE
+  if (nonfinal_pool.size()>0)
   {
-    const StandardRepK& sr=pool[i];
-    print(std::cout << 'R' << i << ": ",sr)
-      << ( sr.isFinal() ? " Final."
-	 : sr.isNonZero() ? " Non Final."
-	 : sr.isStandard() ? " Zero."
-	 : " Non Standard."
-	 )
-      << std::endl;
+    std::cout << "Non-final representations:\n";
+    for (size_t i=0; i<nonfinal_pool.size(); ++i)
+    {
+      const StandardRepK& sr=nonfinal_pool[i];
+      assert(not sr.isFinal());
+      print(std::cout << 'N' << i << ": ",sr)
+		      << ( sr.isNonZero() ? " Non Final."
+			   : sr.isStandard() ? " Zero."
+			   : " Non Standard."
+			   )
+		      << std::endl;
+    }
+  }
+#endif
+
+  std::cout << "Standard normal final limit representations:\n";
+  for (size_t i=0; i<final_pool.size(); ++i)
+  {
+    const StandardRepK& sr=final_pool[i];
+    assert(sr.isFinal());
+    print(std::cout << 'R' << i << ": ",sr) << std::endl;
   }
 
   std::cout << "Standardized expression:\n";
-  for (SR_rewrites::combination::const_iterator it=chi.begin();
-       it!=chi.end(); ++it)
   {
-    std::cout << (it->second>0 ? it==chi.begin() ? "" : " + " : " - ");
-    long int ac=intutils::abs<long int>(it->second);
-    if (ac!=1)
-      std::cout << ac << '*';
-    std::cout << 'R' << it->first;
+    std::ostringstream s;
+    for (SR_rewrites::combination::const_iterator it=chi.begin();
+	 it!=chi.end(); ++it)
+    {
+      s << (it->second>0 ? it==chi.begin() ? "" : " + " : " - ");
+      long int ac=intutils::abs<long int>(it->second);
+      if (ac!=1)
+	s << ac << '*';
+      s << 'R' << it->first;
+    }
+    ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
-  std::cout << std::endl;
+
 
 } // go
 

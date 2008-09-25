@@ -44,7 +44,7 @@ namespace standardrepk {
 
 // An image of a weight of the $\rho$-cover mod $(1-\theta)X^*$
     typedef std::pair
-      <latticetypes::LatticeElt, // free part, one halved basis
+      <latticetypes::LatticeElt, // free part, after subtraction of rho
        bitset::RankFlags         // torsion part, compact representation
       > HCParam;
 
@@ -157,7 +157,7 @@ class StandardRepK {
 
  private:
 
-  enum StatusFlagNames { IsStandard, IsNonZero, IsNormal, IsFinal, numFlags };
+  enum StatusFlagNames { IsStandard, IsNonZero, IsFinal, numFlags };
 /*
    standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ imaginary
    normal: $\<\lambda,\alpha\vee+\theta\alpha\vee>\geq0$ when $\alpha$ simple,
@@ -222,10 +222,6 @@ public:
     return d_status[IsNonZero];
   }
 
-  bool isNormal() const {
-    return d_status[IsNormal];
-  }
-
   bool isStandard() const {
     return d_status[IsStandard];
   }
@@ -248,9 +244,9 @@ public:
 class SR_rewrites
 {
 public:
-  typedef int hash_value;
-  typedef free_abelian::Free_Abelian<hash_value> combination;
-  typedef std::map<hash_value,combination> sys_t;
+  typedef unsigned int seq_no;
+  typedef free_abelian::Free_Abelian<seq_no> combination;
+  typedef std::vector<combination> sys_t;
 
 private:
 
@@ -259,10 +255,10 @@ private:
 public:
   SR_rewrites() : system() {}
 
-  const combination& lookup(hash_value h) const; // an equation must exist!
+  const combination& lookup(seq_no n) const; // an equation must exist!
 
   // manipulators
-  void equate(hash_value h, const combination& rhs);
+  void equate(seq_no n, const combination& rhs);
 
 }; // SR_equations
 
@@ -295,10 +291,10 @@ class KHatComputations
   const complexredgp::ComplexReductiveGroup* d_G;
   const kgb::KGB& d_KGB;
 
-  typedef hashtable::HashTable<StandardRepK,SR_rewrites::hash_value> Hash;
+  typedef hashtable::HashTable<StandardRepK,SR_rewrites::seq_no> Hash;
 
-  StandardRepK::Pooltype pool;
-  Hash hash;
+  StandardRepK::Pooltype nonfinal_pool,final_pool;
+  Hash nonfinals,finals;
 
   // a set of equations rewriting to Standard, Normal, Final, NonZero elements
   SR_rewrites d_rules;
