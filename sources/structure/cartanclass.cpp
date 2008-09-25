@@ -799,7 +799,7 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 
     // solve equation |toAdjoint(xf)=v|
     RankFlags xf;
-#ifdef DEBUG
+#ifndef NDEBUG
     bool success=bitvector::firstSolution(xf,b,v);
     assert(success);  // there has to be a solution!
 #else
