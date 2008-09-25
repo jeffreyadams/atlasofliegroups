@@ -419,6 +419,48 @@ BasedTitsGroup::BasedTitsGroup(const realredgp::RealReductiveGroup& GR)
   , grading_offset(grading_offset_for(GR))
 {}
 
+/* Inverse Cayley transform is more delicate than Cayley transform, since the
+   torus part has been modularly reduced when passing from an the involution
+   $\theta$ to $\theta_\alpha$. While before the Cayley transform the value
+   ($\pm1$) of each $\theta$-stable weight on the torus part was well defined,
+   the modular reduction retains only the values for $\theta_\alpha$-stable
+   weights. When going back, the values of all $\theta$-stable weights must be
+   defined again, but some might have changed by the reduction. It turns out
+   that our reconstruction of the torus part is valid if and only if the
+   evaluation of the simple root $\alpha=\alpha_i$ through which we transform
+   (and which becomes imaginary) is $-1$, so that $\alpha$ becomes noncompact.
+   Indeed, if the transformation was type I, then the value of this root is
+   already determined by the values of weights fixed by the new involution:
+   the modular reduction was by $m_\alpha$, for which $\alpha$ evaluates to
+   $+1$, and which forms the difference between the torus parts of the two
+   elements which the same value of the Cayley transform, from which we have
+   to make a choice anyway. If the transformation was type II, then the
+   sublattice of $\theta$-stable weights is the direct sum of the
+   $\theta_\alpha$-stable weights and the multiples of $\alpha$, and lifting
+   the torus part means determining the evaluation of $\alpha$ at it; since
+   there are always two possible lifts, one of them makes $\alpha$ noncompact.
+ */
+void BasedTitsGroup::inverse_Cayley_transform
+  (tits::TitsElt& a, size_t i,
+   const latticetypes::SmallSubspace& mod_space) const
+{
+  Tg.sigma_inv_mult(i,a); // set |a| to $\sigma_i^{-1}.a$
+  if (not simple_grading(a,i)) // $\alpha_i$ should not become compact!
+  {
+    // we must find a vector in |mod_space| affecting grading at $\alpha_i$
+    for (size_t j=0; j<mod_space.dimension(); ++j) // a basis vector will do
+      if (bitvector::scalarProduct(mod_space.basis(j),
+				   Tg.simpleRoot(i)))
+      { // scalar product true means grading is affected: we found it
+	Tg.left_add(mod_space.basis(j),a); // adjust |a|'s torus part
+	break;
+      }
+
+    assert(simple_grading(a,i)); // the problem must now be corrected
+  }
+}
+
+
 tits::TitsElt BasedTitsGroup::twisted(const tits::TitsElt& a) const
 {
   tits::TitsElt result(Tg,Tg.twisted(Tg.left_torus_part(a)));
@@ -588,7 +630,7 @@ tits::TitsElt EnrichedTitsGroup::grading_seed
 
   // solve, and tack a solution |x| to the left of |a|.
   tits::TorusPart x(G.rank());
-#ifdef DEBUG
+#ifndef NDEBUG
   bool success=bitvector::firstSolution(x,eqns);
   assert(success);
 #else
@@ -597,15 +639,15 @@ tits::TitsElt EnrichedTitsGroup::grading_seed
 
   titsGroup().left_add(x,a); // form element $x.\sigma_w$
 
-#ifdef DEBUG
+#ifndef NDEBUG
   // double-check that we have found an element that gives the desired grading
   for (size_t i=0; i<f.imaginaryRank(); ++i)
     assert(grading(a,f.simpleImaginary(i))==form_grading[i]);
 
-  tits::TitsElt check=a; Tg.mult(check,twisted(check));
+  tits::TitsElt check=a; titsGroup().mult(check,twisted(check));
 
   // maybe we should reduce here, but we don't have |FiberData| available...
-  assert(check==tits::TitsElt(Tg));
+  assert(check==tits::TitsElt(titsGroup()));
 #endif
 
   return a;  // result should be reduced immediatly by caller
@@ -899,7 +941,7 @@ KGBHelp::KGBHelp(const complexredgp::ComplexReductiveGroup& G,
     d_fiberData.reduce(a);
 
     // now add KGB element for the reduced Tits group element
-#ifdef DEBUG
+#ifndef NDEBUG
     size_t k=d_tits.match(a);
     assert(k==d_info.size()); // this KGB element should be new
 #else

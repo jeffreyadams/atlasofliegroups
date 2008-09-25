@@ -110,9 +110,10 @@ class BasedTitsGroup
   }
 
   // inverse Cayley transform for real simple roots
-  void inverse_Cayley_transform(tits::TitsElt& a, size_t s) const {
-    Tg.sigma_inv_mult(s,a); // set |a| to $\sigma_s^{-1}.a$
-  }
+  // this requires knowing the subspace by which torus part has been reduced
+  void inverse_Cayley_transform(tits::TitsElt& a, size_t s,
+				const latticetypes::SmallSubspace& mod_space)
+    const;
 
   // conjugate Tits group element by $\delta_1$
   tits::TitsElt twisted(const tits::TitsElt& a) const;
