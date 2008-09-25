@@ -52,7 +52,7 @@ includedirs := $(addprefix -Isources/,$(sourcedirs))
 # optimizing (oflags), development with debugging (gflags), profiling (pflags)
 
 oflags := -c $(includedirs) -Wall -O3 -DNDEBUG
- gflags := -c $(includedirs) -Wall -ggdb
+gflags := -c $(includedirs) -Wall -ggdb
 pflags := -c $(includedirs) -Wall -pg -O -DNREADLINE
 
 # the default setting is optimizing
