@@ -42,16 +42,15 @@ namespace partition {
 
 /******** constructors and destructors ***************************************/
 
+/*!
+  \brief Counts the number of elements in class \#c.
+
+  NOTE: Straightforward implementation. Successively computing |classSize| for
+  all classes would cost more time then necessary.
+*/
 Partition::Partition(std::vector<unsigned long>& f)
   : d_class(f.size())
   , d_classRep()
-/*!
- \brief Constructs a partition from the class vector f.
-
- The partition is defined by values i and j belonging to the same class if and
- only if f[i]==f[j]. Note that f can have values in any range, but the
- Partition will label its classes consecutively from 0.
-*/
 { /* at this point our object is already in a valid state (although not one
      describing the correct partition), so we feel free to call the methods
      newClass and addToClass for the object under construction */
@@ -71,16 +70,13 @@ Partition::Partition(std::vector<unsigned long>& f)
     }
 }
 
-Partition::Partition(std::vector<unsigned long>& f, tags::UnnormalizedTag)
 /*!
-  \brief Like the previous one, but uses the actual values of f to number
-  the classes.
+  \brief Counts the number of elements in class \#c.
 
-  NOTE: it is required that the range of |f| be of the form [0,a[ (without
-  holes). The vector |d_classRep| is dimensioned to the _number_ of (distinct)
-  values in the image of |f|, but indexed by those values themselves, which
-  will overflow the vector bounds if there were any holes in the range of |f|.
+  NOTE: Straightforward implementation. Successively computing |classSize| for
+  all classes would cost more time then necessary.
 */
+Partition::Partition(std::vector<unsigned long>& f, tags::UnnormalizedTag)
   : d_class(f) // just use (a copy of) |f| as class vector
   , d_classRep()
 {
@@ -103,7 +99,6 @@ Partition::Partition(std::vector<unsigned long>& f, tags::UnnormalizedTag)
 /******** copy and assignment ************************************************/
 
 void Partition::swap(Partition& other)
-
 {
   d_class.swap(other.d_class);
   d_classRep.swap(other.d_classRep);
@@ -111,24 +106,17 @@ void Partition::swap(Partition& other)
 
 /******** manipulators *******************************************************/
 
-void Partition::newClass(unsigned long j)
-
 /*!
-\brief Starts a new class at location j.
+  \brief Counts the number of elements in class \#c.
 
-Previous classes are labelled 0 through d_classRep.size()-1, so the
-new class is labelled d_classRep.size().  The location j is added to
-the end of d_classRep, as the representative of this new class.
+  NOTE: Straightforward implementation. Successively computing |classSize| for
+  all classes would cost more time then necessary.
 */
-
+void Partition::newClass(unsigned long j)
 {
   d_class[j] = d_classRep.size();
   d_classRep.push_back(j);
-
-  return;
 }
-
-unsigned long Partition::classSize(unsigned long c) const
 
 /*!
   \brief Counts the number of elements in class \#c.
@@ -136,7 +124,7 @@ unsigned long Partition::classSize(unsigned long c) const
   NOTE: Straightforward implementation. Successively computing |classSize| for
   all classes would cost more time then necessary.
 */
-
+unsigned long Partition::classSize(unsigned long c) const
 {
   unsigned long n = 0;
 
@@ -167,16 +155,12 @@ unsigned long Partition::classSize(unsigned long c) const
 
 namespace partition {
 
-PartitionIterator::PartitionIterator(const Partition& pi)
-  :d_data(pi.size())
-
 /*!
   Initializes a PartitionIterator ready to run through the classes of pi.
 */
-
+PartitionIterator::PartitionIterator(const Partition& pi)
+  :d_data(pi.size())
 {
-  using namespace comparison;
-
   d_stop.push_back(d_data.begin());
 
   if (d_data.size() == 0) // partition of empty set
@@ -185,7 +169,7 @@ PartitionIterator::PartitionIterator(const Partition& pi)
   for (unsigned long j = 0; j < d_data.size(); ++j)
     d_data[j] = j;
 
-  std::stable_sort(d_data.begin(),d_data.end(),Compare<Partition>(pi));
+  std::stable_sort(d_data.begin(),d_data.end(),comparison::compare(pi));
 
   {
     SubIterator data_end = d_data.end();
