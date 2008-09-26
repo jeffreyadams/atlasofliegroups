@@ -14,7 +14,6 @@
 #include <iostream>
 #include <vector>
 
-#include "abelian_fwd.h"
 #include "bitset_fwd.h"
 #include "latticetypes_fwd.h"
 #include "rootdata_fwd.h"
@@ -26,10 +25,7 @@
 
 namespace atlas {
 
-namespace basic_io {
-
-// types from abelian
-std::ostream& operator<< (std::ostream&, const abelian::GrpArr&);
+// Non-member operators are directly in atlas namespace, to facilitate use
 
 // types from bitset
 template<size_t d>
@@ -50,6 +46,8 @@ std::ostream& operator<< (std::ostream&, const lietype::LieType&);
 
 // types from weyl
 std::ostream& operator<< (std::ostream&, const weyl::WeylWord&);
+
+namespace basic_io {
 
 // other functions
 template<typename I>

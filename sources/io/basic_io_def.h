@@ -17,8 +17,6 @@
 
 namespace atlas {
 
-namespace basic_io {
-
 template<size_t dim>
   std::ostream& operator<< (std::ostream& strm,
 			    const bitvector::BitVector<dim>& v)
@@ -47,6 +45,8 @@ template<size_t d>
 
   return strm;
 }
+
+namespace basic_io {
 
 template<typename I>
 std::ostream& seqPrint(std::ostream& strm, const I& first, const I& last,

@@ -27,23 +27,6 @@
 
 namespace atlas {
 
-namespace basic_io {
-
-/******** from abelian *******************************************************/
-
-std::ostream& operator<< (std::ostream& strm, const abelian::GrpArr& a)
-
-{
-  using namespace abelian;
-
-  GrpArr::const_iterator first = a.begin();
-  GrpArr::const_iterator last = a.end();
-
-  return seqPrint(strm,first,last,",","[","]");
-}
-
-/******** from latticetypes **************************************************/
-
 std::ostream& operator<< (std::ostream& strm,
 			  const latticetypes::LatticeElt& v)
 
@@ -60,7 +43,7 @@ std::ostream& operator<< (std::ostream& strm,
   LatticeElt::const_iterator first = v.begin();
   LatticeElt::const_iterator last = v.end();
 
-  return seqPrint(strm, first, last, ",", "[", "]");
+  return basic_io::seqPrint(strm, first, last, ",", "[", "]");
 }
 
 /******** from lietype *******************************************************/
@@ -93,7 +76,7 @@ std::ostream& operator<< (std::ostream& strm, const lietype::LieType& lt)
   LieType::const_iterator first = lt.begin();
   LieType::const_iterator last = lt.end();
 
-  return seqPrint(strm,first,last,".");
+  return basic_io::seqPrint(strm,first,last,".");
 }
 
 /******** from weyl **********************************************************/
@@ -123,6 +106,8 @@ std::ostream& operator<< (std::ostream& strm, const weyl::WeylWord& w)
 
   return strm;
 }
+
+namespace basic_io {
 
 unsigned long long read_var_bytes(unsigned int n,std::istream& in)
 { switch(n)
