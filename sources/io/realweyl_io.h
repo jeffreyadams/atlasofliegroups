@@ -1,8 +1,8 @@
 /*
   This is realweyl_io.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -23,16 +23,13 @@ namespace atlas {
 namespace realweyl_io {
 
   std::ostream& printBlockStabilizer(std::ostream&, const realweyl::RealWeyl&,
-				     const realweyl::RealWeylGenerators&,
-				     const rootdata::RootDatum& rd);
+				     const realweyl::RealWeylGenerators&);
 
   std::ostream& printDualRealWeyl(std::ostream&, const realweyl::RealWeyl&,
-				  const realweyl::RealWeylGenerators&,
-				  const rootdata::RootDatum& rd);
+				  const realweyl::RealWeylGenerators&);
 
   std::ostream& printRealWeyl(std::ostream&, const realweyl::RealWeyl&,
-			      const realweyl::RealWeylGenerators&,
-			      const rootdata::RootDatum& rd);
+			      const realweyl::RealWeylGenerators&);
 
 }
 

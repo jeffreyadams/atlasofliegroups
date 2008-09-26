@@ -44,8 +44,6 @@ void Interface::swap(Interface& other)
 {
   std::swap(d_realGroup,other.d_realGroup);
   std::swap(d_complexInterface,other.d_complexInterface);
-
-  return;
 }
 
 /******** accessors **********************************************************/
@@ -88,7 +86,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
   realweyl::RealWeyl rw(cc,x,y,rd,W);
   realweyl::RealWeylGenerators rwg(rw,cc,rd);
 
-  realweyl_io::printBlockStabilizer(strm,rw,rwg,rd);
+  realweyl_io::printBlockStabilizer(strm,rw,rwg);
 
   // check if the size is correct
   size::Size c;
@@ -132,26 +130,19 @@ std::ostream& printCartanClasses(std::ostream& strm,
 std::ostream& printCartanOrder(std::ostream& strm,
 			       const realredgp::RealReductiveGroup& G_R)
 {
-  using namespace basic_io;
-  using namespace graph;
-  using namespace poset;
-
-  const Poset& p = G_R.cartanOrdering();
+  const poset::Poset& p = G_R.cartanOrdering();
   size_t cn = G_R.mostSplit();
 
-  OrientedGraph g(0);
+  graph::OrientedGraph g(0);
   p.hasseDiagram(g,cn);
 
   strm << "0:" << std::endl;
 
-  for (size_t j = 1; j < g.size(); ++j) {
-    const VertexList& e = g.edgeList(j);
-    if (e.empty())
-      continue;
-    strm << j << ": ";
-    VertexList::const_iterator first = e.begin();
-    VertexList::const_iterator last = e.end();
-    seqPrint(strm,first,last) << std::endl;
+  for (size_t j = 1; j < g.size(); ++j)
+  {
+    const graph::VertexList& e = g.edgeList(j);
+    if (not e.empty())
+      basic_io::seqPrint(strm << j << ": ",e.begin(),e.end()) << std::endl;
   }
 
   return strm;
@@ -179,7 +170,7 @@ std::ostream& printRealWeyl(std::ostream& strm,
   realweyl::RealWeyl rw(cc,x,0,rd,W);
   realweyl::RealWeylGenerators rwg(rw,cc,rd);
 
-  realweyl_io::printRealWeyl(strm,rw,rwg,rd);
+  realweyl_io::printRealWeyl(strm,rw,rwg);
 
   // check if the size is correct
   size::Size c;
@@ -210,72 +201,37 @@ std::ostream& printStrongReal(std::ostream& strm,
 			      const realform_io::Interface& rfi,
 			      size_t cn)
 {
-  using namespace basic_io;
-  using namespace cartanclass;
-  using namespace complexredgp;
-  using namespace ioutils;
-  using namespace partition;
-  using namespace realform;
-  using namespace rootdata;
-
-  const ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const CartanClass& cc = G_C.cartan(cn);
+  const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  const cartanclass::CartanClass& cc = G_C.cartan(cn);
 
   size_t n = cc.numRealFormClasses();
 
-  if (n == 1) { // simplified output
+  if (n>1)
+    strm << "there are " << n << " real form classes:\n" << std::endl;
 
-    const Partition& pi = cc.strongReal(0);
-    const RealFormList& rfl = G_C.realFormLabels(cn);
+  for (size_t j = 0; j < n; ++j)
+  {
+    if (n>1)
+      strm << "class #" << j << ":" << std::endl;
+
+    const partition::Partition& pi = cc.strongReal(j);
+    const realform::RealFormList& rfl = G_C.realFormLabels(cn);
 
     unsigned long c = 0;
 
-    for (PartitionIterator i(pi); i(); ++i) {
+    for (partition::PartitionIterator i(pi); i(); ++i,++c) {
       std::ostringstream os;
-      os << "real form #";
-      RealForm rf = rfl[cc.toWeakReal(c,0)];
-      os << rfi.out(rf) << ": ";
-      std::vector<unsigned long>::const_iterator first = i->first;
-      std::vector<unsigned long>::const_iterator last = i->second;
-      seqPrint(os,first,last,",","[","]");
-      os << " (" << last - first << ")" << std::endl;
-      std::string line = os.str();
-      foldLine(strm,line,"",",");
-      ++c;
+      realform::RealForm rf = rfl[cc.toWeakReal(c,j)];
+      os << "real form #" << rfi.out(rf) << ": ";
+      basic_io::seqPrint(os,i->first,i->second,",","[","]")
+	<< " (" << i->second - i->first << ")" << std::endl;
+      ioutils::foldLine(strm,os.str(),"",",");
     }
 
     // print information about the center (not implemented)
 
-    return strm;
-  }
-
-  strm << "there are " << n << " real form classes:" << std::endl << std::endl;
-
-  for (size_t j = 0; j < n; ++j) {
-    strm << "class #" << j << ":" << std::endl;
-
-    const Partition& pi = cc.strongReal(j);
-    const RealFormList& rfl = G_C.realFormLabels(cn);
-
-    unsigned long c = 0;
-
-    for (PartitionIterator i(pi); i(); ++i) {
-      std::ostringstream os;
-      os << "real form #";
-      RealForm rf = rfl[cc.toWeakReal(c,j)];
-      os << rfi.out(rf) << ": ";
-      std::vector<unsigned long>::const_iterator first = i->first;
-      std::vector<unsigned long>::const_iterator last = i->second;
-      seqPrint(os,first,last,",","[","]");
-      os << " (" << last - first << ")" << std::endl;
-      std::string line = os.str();
-      foldLine(strm,line,"",",");
-      ++c;
-    }
-
-    // print information about the center (not implemented)
-
-    strm << std::endl;
+    if (n>1)
+      strm << std::endl;
   }
 
   return strm;
