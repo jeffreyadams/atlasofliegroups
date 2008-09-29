@@ -196,13 +196,11 @@ template<typename C>
 std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix<C>& m,
 			  unsigned long width)
 {
-  using namespace matrix;
+  for (size_t i = 0; i < m.columnSize(); ++i)
+  {
+    for (size_t j = 0; j < m.rowSize(); ++j)
+      strm << std::setw(width) << m(i,j);
 
-  for (size_t i = 0; i < m.columnSize(); ++i) {
-    for (size_t j = 0; j < m.rowSize(); ++j) {
-      strm << std::setw(width);
-      strm << m(i,j);
-    }
     strm << std::endl;
   }
 

@@ -66,18 +66,16 @@ void Subspace<dim>::representative
   (bitvector::BitVector<dim>& r, const bitvector::BitVector<dim>& v) const
 
 {
-  using namespace bitvector;
-
   assert(v.size()==rank());
 
   // get projection to subspace expressed in d_basis
-  BitVector<dim> pv = v;
+  bitvector::BitVector<dim> pv = v;
   pv.slice(d_support);
 
   assert(pv.size()==dimension());
 
   // expand that linear combination to an element of $(Z/2Z)^n$
-  BitVector<dim> w(v.size());
+  bitvector::BitVector<dim> w(v.size());
   combination(w,d_basis,pv.data());
 
   assert(w.size()==rank());

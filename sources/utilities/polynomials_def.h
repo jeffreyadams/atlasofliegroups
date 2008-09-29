@@ -56,9 +56,6 @@ namespace atlas {
 
 namespace polynomials {
 
-template<typename C>
-Polynomial<C>::Polynomial(Degree d)
-  :d_data(d+1,0ul)
 
 /*!
   \brief Constructs x^d.
@@ -66,7 +63,9 @@ Polynomial<C>::Polynomial(Degree d)
   We construct x^d, and not the zero polynomial, so that our basic assumption
   about the degree is satisfied.
 */
-
+template<typename C>
+Polynomial<C>::Polynomial(Degree d)
+  :d_data(d+1,0ul)
 {
   d_data[d] = 1;
 }
@@ -229,7 +228,6 @@ void Polynomial<C>::safeAdd(const Polynomial& q, Degree d)
 */
 template<typename C>
 void Polynomial<C>::safeSubtract(const Polynomial& q, Degree d, C c)
-
 {
   if (q.isZero()) // do nothing
     return;
@@ -285,8 +283,6 @@ void Polynomial<C>::safeSubtract(const Polynomial& q, Degree d)
 
 namespace polynomials {
 
-template<typename C>
-bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
 
 /*!
   \brief Polynomial comparison.
@@ -294,7 +290,8 @@ bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
   Explanation: p < q if deg(p) < deg(q), or if degrees are equal, and the
   comparison holds for coefficients, in lex-order starting from the top.
 */
-
+template<typename C>
+bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
 {
   if (q.isZero())
     return false;
@@ -322,60 +319,51 @@ bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
   return false;
 }
 
-template<typename C> void safeAdd(C& a, C b)
 
 /*!
   \brief a += b.
 
   Throws a NumericOverflow exception in case of overflow.
 */
-
+template<typename C> void safeAdd(C& a, C b)
 {
-  using namespace error;
-
   if (b > std::numeric_limits<C>::max() - a)
-    throw NumericOverflow();
+    throw error::NumericOverflow();
   else
     a += b;
 }
 
-template<typename C> void safeProd(C& a, C b)
 
 /*!
   \brief a *= b.
 
   Throws a NumericOverflow exception in case of overflow.
 */
-
+template<typename C> void safeProd(C& a, C b)
 {
-  using namespace error;
-
   if (a == 0) // do nothing
     return;
 
   if (b > std::numeric_limits<C>::max()/a)
-    throw NumericOverflow();
+    throw error::NumericOverflow();
   else
     a *= b;
 }
 
-template<typename C> void safeSubtract(C& a, C b)
 
 /*!
-  \brief a -= b.
+  \brief a *= b.
 
-  Throws a NumericUnderflow exception in case of underflow.
+  Throws a NumericOverflow exception in case of overflow.
 */
-
+template<typename C> void safeSubtract(C& a, C b)
 {
-  using namespace error;
-
   if (b > a)
-    throw NumericUnderflow();
+    throw error::NumericUnderflow();
   else
     a -= b;
 }
 
-}
+} // namespace polynomials
 
-}
+} // namespace atlas
