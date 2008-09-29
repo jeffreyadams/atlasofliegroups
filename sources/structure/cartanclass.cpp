@@ -368,27 +368,24 @@ latticetypes::SmallSubquotient Fiber::makeAdjointFiberGroup
 /*!
   \brief Makes the stabilizer of the grading in the adjoint fiber group.
 
-  Explanation: each real form defines a grading of the imaginary root system,
-  obtained by pairing with the simple imaginary roots. It should be the case
-  that the grading entirely defines the real form, i.e., the corresponding
-  W_i-orbit. However, this doesn't mean that the map from real form parameters
-  to gradings has to be injective. It could a priori be the case that some
-  real form parameters in the same W_i-orbit give identical gradings of the
-  imaginary root system; this would mean that the nonzero adjoint fiber
-  element that transforms one into the other gives a null pairing with every
-  imaginary root. It seems that this never happens, whence the constructor for
-  |Fiber| just calls this function to |assert| that the result is trivial.
+  Explanation: each real form parameter defines a grading of the imaginary
+  root system, obtained by pairing with the simple imaginary roots. It should
+  be the case that the grading entirely defines the real form, i.e., the
+  corresponding W_i-orbit. However, this doesn't mean that the map from real
+  form parameters to gradings has to be injective. It could a priori be the
+  case that some real form parameters in the same W_i-orbit give identical
+  gradings of the imaginary root system; this would mean that the nonzero
+  adjoint fiber element that transforms one into the other gives a null
+  pairing with every imaginary root. It appears that this never happens,
+  whence the constructor for |Fiber| just calls this function to |assert| that
+  the result is trivial.
 */
 latticetypes::SmallSubspace Fiber::gradingGroup
   (const rootdata::RootDatum& rd) const
 {
-  using namespace bitset;
-  using namespace lattice;
-  using namespace latticetypes;
-  using namespace rootdata;
-
   // define map
-  const SmallBitVectorList& baf = d_adjointFiberGroup.space().basis();
+  const latticetypes::SmallBitVectorList& baf =
+    d_adjointFiberGroup.space().basis();
 
   // express simple imaginary roots on (full) simple roots
   latticetypes::WeightList bsi;
@@ -402,7 +399,7 @@ latticetypes::SmallSubspace Fiber::gradingGroup
 
   /* set b[j][i] = <e_j,bsi2[i]> where e_j=baf[j'], with |baf[j']| the
      subquotient basis representative number |j| */
-  for (RankFlags::iterator j = d_adjointFiberGroup.support().begin();
+  for (bitset::RankFlags::iterator j = d_adjointFiberGroup.support().begin();
        j(); ++j)
   {
     latticetypes::SmallBitVector v(imaginaryRank());
@@ -548,10 +545,10 @@ bitset::RankFlagsList Fiber::mAlphas (const rootdata::RootDatum& rd) const
   simple coweights. To get the coordinates of an element in that basis (which
   is dual to that of the simple roots), it is enough to pair it with the
   simple roots. The resulting element for the coroot of a simple imaginary
-  \f$\alpha\f$ is automatically \f$\tau\f$-invariant, since \f$\alpha\f$ is, so its
-  reduction modulo 2 lies in $V_+$ (for the cocharacter lattice). Then what is
-  left to do is to convert to the basis of the adjoint fiber group, which
-  amounts to reducing modulo $V_-$.
+  \f$\alpha\f$ is automatically \f$\tau\f$-invariant, since \f$\alpha\f$ is,
+  so its reduction modulo 2 lies in $V_+$ (for the cocharacter lattice). Then
+  what is left to do is to convert to the basis of the adjoint fiber group,
+  which amounts to reducing modulo $V_-$.
 */
 bitset::RankFlagsList
 Fiber::adjointMAlphas (const rootdata::RootDatum& rd) const
