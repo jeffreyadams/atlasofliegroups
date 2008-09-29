@@ -43,19 +43,10 @@ Preliminaries
 
 namespace atlas {
 
-namespace interactive {
-
-  using namespace interactive_lattice;
-  using namespace interactive_lietype;
-
-}
 
 namespace {
 
-  using namespace std;
-  using namespace interactive;
-
-  input::InputBuffer inputBuf;
+  input::InputBuffer inputBuf; // buffer shared by all input functions
 
   bool checkInvolution(latticetypes::LatticeMatrix&,
 		       const latticetypes::WeightList&);
@@ -149,7 +140,6 @@ namespace interactive {
 /*
   Synopsis: get a file name from terminal, abandon with InputError on '?'
 */
-
 std::string getFileName(const std::string& prompt)
   throw(error::InputError)
 {
@@ -179,8 +169,6 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt)
   }
 }
 
-void bitMapPrompt(std::string& prompt, const char* mess,
-		  const bitmap::BitMap& vals)
 
 /*
   Synopsis: puts in prompt an informative string for getting a value from vals.
@@ -188,24 +176,18 @@ void bitMapPrompt(std::string& prompt, const char* mess,
   Explanation: the string is actually "mess (one of ...): ", where ... stands
   for the set elements in vals.
 */
-
+void bitMapPrompt(std::string& prompt, const char* mess,
+		  const bitmap::BitMap& vals)
 {
-  using namespace basic_io;
-
   std::ostringstream values;
-  seqPrint(values,vals.begin(),vals.end());
+  basic_io::seqPrint(values,vals.begin(),vals.end());
 
   prompt = mess;
   prompt.append(" (one of ");
   prompt.append(values.str());
   prompt.append("): ");
-
-  return;
 }
 
-void getCartanClass(size_t& cn, const bitmap::BitMap& cs,
-		    input::InputBuffer& line)
-  throw(error::InputError)
 
 /*
   Synopsis: gets a cartan class number from the user.
@@ -216,7 +198,9 @@ void getCartanClass(size_t& cn, const bitmap::BitMap& cs,
 
   Throws an InputError if not successful; cn is not touched in that case.
 */
-
+void getCartanClass(size_t& cn, const bitmap::BitMap& cs,
+		    input::InputBuffer& line)
+  throw(error::InputError)
 {
   // if there is a unique cartan class, choose it
   if (cs.size() == 1) {
@@ -233,13 +217,8 @@ void getCartanClass(size_t& cn, const bitmap::BitMap& cs,
   getInteractive(c,prompt.c_str(),cs,&line); // may throw an InputError
   // commit
   cn = c;
-
-  return;
 }
 
-void getInnerClass(latticetypes::LatticeMatrix& d,
-		   layout::Layout& lo)
-  throw(error::InputError)
 
 /*
   Synopsis: puts in d a distinguished involution for prd.
@@ -265,39 +244,37 @@ void getInnerClass(latticetypes::LatticeMatrix& d,
 
   Throws an InputError if the interaction is not successful.
 */
-
+void getInnerClass(latticetypes::LatticeMatrix& d,
+		   layout::Layout& lo)
+  throw(error::InputError)
 {
-  using namespace latticetypes;
-  using namespace lietype;
+  const lietype::LieType& lt = lo.d_type;
 
-  const LieType& lt = lo.d_type;
-
-  InnerClassType ict;
+  lietype::InnerClassType ict;
   getInteractive(ict,lt); //< may throw an InputError
 
-  LatticeMatrix i;
-  involution(i,lt,ict);
+  latticetypes::LatticeMatrix i;
+  lietype::involution(i,lt,ict);
 
   while (not checkInvolution(i,lo)) { // reget the inner class
     std::cerr
       << "sorry, that inner class is not compatible with the weight lattice"
       << std::endl;
     getInteractive(ict,lt);
-    involution(i,lt,ict);
+    lietype::involution(i,lt,ict);
   }
 
   lo.d_inner = ict;
 
   // construct the matrix
-  LatticeMatrix p(lo.d_basis);
+  latticetypes::LatticeMatrix p(lo.d_basis);
 
   d = i;
-  invConjugate(d,p);
+  matrix::invConjugate(d,p);
 
   return;
 }
 
-void getInteractive(lietype::LieType& d_lt) throw(error::InputError)
 
 /*
   Synopsis: gets a LieType interactively from the user.
@@ -305,22 +282,18 @@ void getInteractive(lietype::LieType& d_lt) throw(error::InputError)
   Throws an InputError is the interaction does not end in a correct assignment
   of lt. Does not touch lt unless the assignment succeeds.
 */
-
+void getInteractive(lietype::LieType& d_lt) throw(error::InputError)
 {
-  using namespace error;
-  using namespace input;
-  using namespace lietype;
-
-  HistoryBuffer hb;
+  input::HistoryBuffer hb;
   hb.getline(std::cin,"Lie type: ");
 
   if (hasQuestionMark(hb))
-    throw InputError();
+    throw error::InputError();
 
-  while (not checkLieType(hb)) { // retry
+  while (not interactive_lietype::checkLieType(hb)) { // retry
     hb.getline(std::cin,"Lie type (? to abort): ");
     if (hasQuestionMark(hb))
-      throw InputError();
+      throw error::InputError();
   }
 
   // if we reach this point, the type is correct
@@ -328,15 +301,11 @@ void getInteractive(lietype::LieType& d_lt) throw(error::InputError)
   inputBuf.str(hb.str());
   inputBuf.reset();
 
-  LieType lt;
-  readLieType(lt,inputBuf);
+  lietype::LieType lt;
+  interactive_lietype::readLieType(lt,inputBuf);
   d_lt.swap(lt);
-
-  return;
 }
 
-void getInteractive(lietype::InnerClassType& ict, const lietype::LieType& lt)
-  throw(error::InputError)
 
 /*
   Synopsis: gets an InnerClassType interactively from the user.
@@ -344,30 +313,25 @@ void getInteractive(lietype::InnerClassType& ict, const lietype::LieType& lt)
   Throws an InputError is the interaction does not end in a correct assignment
   of ict. Does not touch ict unless the assignment succeeds.
 */
-
+void getInteractive(lietype::InnerClassType& ict, const lietype::LieType& lt)
+  throw(error::InputError)
 {
-  using namespace error;
-  using namespace input;
-  using namespace lietype;
-
-  if (checkInnerClass(inputBuf,lt,false))
+  if (interactive_lietype::checkInnerClass(inputBuf,lt,false))
     goto read;
 
   inputBuf.getline(std::cin,"enter inner class(es): ",false);
 
   if (hasQuestionMark(inputBuf))
-    throw InputError();
+    throw error::InputError();
 
-  while (not checkInnerClass(inputBuf,lt)) { // retry
+  while (not interactive_lietype::checkInnerClass(inputBuf,lt)) { // retry
     inputBuf.getline(std::cin,"enter inner class(es) (? to abort): ",false);
     if (hasQuestionMark(inputBuf))
-      throw InputError();
+      throw error::InputError();
   }
 
  read:
-  readInnerClass(ict,inputBuf,lt);
-
-  return;
+  interactive_lietype::readInnerClass(ict,inputBuf,lt);
 }
 
 /*
@@ -420,8 +384,6 @@ void getInteractive(realform::RealForm& d_rf,
 		    const complexredgp_io::Interface& I)
   throw(error::InputError)
 {
-  using namespace realform_io;
-
   const realform_io::Interface rfi = I.realFormInterface();
 
   // if there is only one choice, make it
@@ -458,8 +420,6 @@ void getInteractive(realform::RealForm& rf,
 		    tags::DualTag)
   throw(error::InputError)
 {
-  using namespace realform_io;
-
   const realform_io::Interface rfi = I.dualRealFormInterface();
 
   // if there is only one choice, make it
@@ -496,15 +456,11 @@ void getInteractive(realform::RealForm& rf,
 		    tags::DualTag)
   throw(error::InputError)
 {
-  using namespace bitmap;
-  using namespace realform;
-  using namespace realform_io;
-
   const realform_io::Interface rfi = I.dualRealFormInterface();
 
   // if there is only one choice, make it
   if (drfl.size() == 1) {
-    RealForm rfo = rfi.out(drfl[0]);
+    realform::RealForm rfo = rfi.out(drfl[0]);
     std::cout << "there is a unique dual real form choice: "
 	      << rfi.typeName(rfo) << std::endl;
     rf = drfl[0];
@@ -512,13 +468,13 @@ void getInteractive(realform::RealForm& rf,
   }
 
   // else get choice from user
-  BitMap vals(rfi.numRealForms());
+  bitmap::BitMap vals(rfi.numRealForms());
   for (size_t j = 0; j < drfl.size(); ++j)
     vals.insert(rfi.out(drfl[j]));
 
   std::cout << "possible (weak) dual real forms are:" << std::endl;
-  BitMap::iterator vals_end = vals.end();
-  for (BitMap::iterator i = vals.begin(); i != vals_end; ++i) {
+  bitmap::BitMap::iterator vals_end = vals.end();
+  for (bitmap::BitMap::iterator i = vals.begin(); i != vals_end; ++i) {
     std::cout << *i << ": " << rfi.typeName(*i) << std::endl;
   }
 
@@ -541,14 +497,11 @@ void getInteractive(realredgp::RealReductiveGroup& d_G,
 		    complexredgp_io::Interface& CI)
   throw(error::InputError)
 {
-  using namespace error;
-  using namespace realredgp;
-
   realform::RealForm rf = 0;
   getInteractive(rf,CI); // may throw an InputError
 
   // commit
-  RealReductiveGroup G(CI.complexGroup(),rf);
+  realredgp::RealReductiveGroup G(CI.complexGroup(),rf);
   d_G.swap(G);
 }
 
@@ -595,20 +548,15 @@ void getInteractive(realredgp::RealReductiveGroup& d_G,
   range. The value is unchanged in case of failure.
 
 */
-
 void getInteractive(unsigned long& d_c, const char* prompt, unsigned long max)
   throw(error::InputError)
 {
-  using namespace error;
-  using namespace input;
-  using namespace ioutils;
-
-  InputBuffer ib;
+  input::InputBuffer ib;
   ib.getline(std::cin,prompt,false);
 
-  skipSpaces(ib);
+  ioutils::skipSpaces(ib);
   if (hasQuestionMark(ib))
-    throw InputError();
+    throw error::InputError();
 
   unsigned long c;
 
@@ -620,9 +568,9 @@ void getInteractive(unsigned long& d_c, const char* prompt, unsigned long max)
   while (c >= max) {
     std::cout << "sorry, value must be between 0 and " << max-1 << std::endl;
     ib.getline(std::cin,"try again (? to abort): ",false);
-    skipSpaces(ib);
+    ioutils::skipSpaces(ib);
     if (hasQuestionMark(ib))
-      throw InputError();
+      throw error::InputError();
     if (isdigit(ib.peek()))
       ib >> c;
     else
@@ -646,17 +594,13 @@ void getInteractive(unsigned long& d_c, const char* prompt,
 		    const bitmap::BitMap& vals, input::InputBuffer* linep)
   throw(error::InputError)
 {
-  using namespace basic_io;
-  using namespace input;
-  using namespace ioutils;
-  using namespace error;
 
   unsigned long c;
 
   if (linep) { // try to get value from line
 
-    InputBuffer& line = *linep;
-    skipSpaces(line);
+    input::InputBuffer& line = *linep;
+    ioutils::skipSpaces(line);
 
     if (isdigit(line.peek())) {
       line >> c;
@@ -668,13 +612,13 @@ void getInteractive(unsigned long& d_c, const char* prompt,
 
   }
 
-  InputBuffer ib;
+  input::InputBuffer ib;
   ib.getline(std::cin,prompt,false);
 
-  skipSpaces(ib);
+  ioutils::skipSpaces(ib);
 
   if (hasQuestionMark(ib))
-    throw InputError();
+    throw error::InputError();
 
   if (isdigit(ib.peek()))
     ib >> c;
@@ -683,11 +627,11 @@ void getInteractive(unsigned long& d_c, const char* prompt,
 
   while (not vals.isMember(c)) {
     std::cout << "sorry, value must be one of ";
-    seqPrint(cout,vals.begin(),vals.end()) << std::endl;
+    basic_io::seqPrint(std::cout,vals.begin(),vals.end()) << std::endl;
     ib.getline(std::cin,"try again (? to abort): ",false);
-    skipSpaces(ib);
+    ioutils::skipSpaces(ib);
     if (hasQuestionMark(ib))
-      throw InputError();
+      throw error::InputError();
     if (isdigit(ib.peek()))
       ib >> c;
     else
@@ -742,8 +686,6 @@ input::InputBuffer& inputLine()
 
 namespace {
 
-bool checkInvolution(const latticetypes::LatticeMatrix& i,
-		     const layout::Layout& lo)
 
 /*
   Synopsis: checks whether the inner class described in ict is compatible with
@@ -752,18 +694,17 @@ bool checkInvolution(const latticetypes::LatticeMatrix& i,
   Precondition: lo contains the lie type and lattice basis resulting from
   the interactive construction of the group.
 */
-
+bool checkInvolution(const latticetypes::LatticeMatrix& i,
+		     const layout::Layout& lo)
 {
-  using namespace latticetypes;
+  const latticetypes::WeightList& b = lo.d_basis;
 
-  const WeightList& b = lo.d_basis;
-
-  LatticeMatrix p(b);
+  latticetypes::LatticeMatrix p(b);
 
   // write d.p^{-1}.i.p
 
-  LatticeCoeff d;
-  LatticeMatrix m=p.inverse(d)*i*p;
+  latticetypes::LatticeCoeff d;
+  latticetypes::LatticeMatrix m=p.inverse(d)*i*p;
 
   // now |i| stabilizes the lattice iff |d| divides |m|
 

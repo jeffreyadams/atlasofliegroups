@@ -27,8 +27,6 @@
 
 namespace atlas {
 
-std::ostream& operator<< (std::ostream& strm,
-			  const latticetypes::LatticeElt& v)
 
 /*
   Synopsis: output of a lattice element.
@@ -36,52 +34,40 @@ std::ostream& operator<< (std::ostream& strm,
   Uses the template seqPrint. It is output as a bracket-enclosed,
   comma-separated list.
 */
-
+std::ostream& operator<< (std::ostream& strm,
+			  const latticetypes::LatticeElt& v)
 {
-  using namespace latticetypes;
-
-  LatticeElt::const_iterator first = v.begin();
-  LatticeElt::const_iterator last = v.end();
+  latticetypes::LatticeElt::const_iterator first = v.begin();
+  latticetypes::LatticeElt::const_iterator last = v.end();
 
   return basic_io::seqPrint(strm, first, last, ",", "[", "]");
 }
 
 /******** from lietype *******************************************************/
 
-std::ostream& operator<< (std::ostream& strm,
-			  const lietype::SimpleLieType& slt)
 
 /*
   Synopsis: outputs a simple Lie type.
 */
-
+std::ostream& operator<< (std::ostream& strm,
+			  const lietype::SimpleLieType& slt)
 {
-  using namespace lietype;
-
-  TypeLetter x = type(slt);
-  size_t l = rank(slt);
+  lietype::TypeLetter x = lietype::type(slt);
+  size_t l = lietype::rank(slt);
 
   return strm << x << l;
 }
 
 std::ostream& operator<< (std::ostream& strm, const lietype::LieType& lt)
-
-/*
-  Synopsis: outputs the LieType as a dot-separated string of simple Lie types.
-*/
-
 {
-  using namespace lietype;
-
-  LieType::const_iterator first = lt.begin();
-  LieType::const_iterator last = lt.end();
+  lietype::LieType::const_iterator first = lt.begin();
+  lietype::LieType::const_iterator last = lt.end();
 
   return basic_io::seqPrint(strm,first,last,".");
 }
 
 /******** from weyl **********************************************************/
 
-std::ostream& operator<< (std::ostream& strm, const weyl::WeylWord& w)
 
 /*
   Synopsis: outputs w as a string of digits
@@ -94,10 +80,8 @@ std::ostream& operator<< (std::ostream& strm, const weyl::WeylWord& w)
   functions, so there is no place to insert that distinction into the code.
   Therefore we have inserted commas here. MvL
 */
-
+std::ostream& operator<< (std::ostream& strm, const weyl::WeylWord& w)
 {
-  using namespace weyl;
-
   for (size_t j = 0; j < w.size(); ++j) {
     unsigned a = w[j]+1;
     strm << a;

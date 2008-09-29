@@ -13,7 +13,6 @@
 #include <iostream>
 #include <sstream>
 
-#include "abelian.h"
 #include "basic_io.h"
 #include "bitmap.h"
 #include "gradings.h"
@@ -28,22 +27,19 @@
 
         Chapter I -- Functions declared in prettyprint.h
 
-  ... fill in here when it is stable ...
-
 ******************************************************************************/
 
 namespace atlas {
 
 namespace prettyprint {
 
-std::ostream& prettyPrint(std::ostream& strm, const bitmap::BitMap& b,
-			  size_t n)
 
 /*
   Synopsis: outputs the first values of the bitmap left-to-right, on a single
   line
 */
-
+std::ostream& prettyPrint(std::ostream& strm, const bitmap::BitMap& b,
+			  size_t n)
 {
   if (n == 0)
     n = b.capacity();
@@ -57,45 +53,24 @@ std::ostream& prettyPrint(std::ostream& strm, const bitmap::BitMap& b,
   return strm;
 }
 
-std::ostream& prettyPrint(std::ostream& strm, const abelian::GroupType& type)
 
 /*
-  Synopsis: outputs the group type as a bracket-enclosed, comma-separated
-  list of integers.
+  Synopsis: outputs the first values of the bitmap left-to-right, on a single
+  line
 */
-
-{
-  using namespace abelian;
-  using namespace basic_io;
-
-  GroupType::const_iterator first = type.begin();
-  GroupType::const_iterator last = type.end();
-  seqPrint(strm,first,last,",","[","]");
-
-  return strm;
-}
-
 std::ostream& printCoroot(std::ostream& strm, const rootdata::RootNbr& j,
 			  const rootdata::RootDatum& rd)
-
-/*
-  Synopsis: prints coroot #j in the lattice basis.
-*/
-
 {
-  using namespace basic_io;
-
   return strm << rd.coroot(j);
 }
 
-std::ostream& printCorootList(std::ostream& strm, const rootdata::RootList& r,
-			      const rootdata::RootDatum& rd, const char* sep)
 
 /*
   Synopsis: prints the coroots in the list in the lattice basis, by default
   as one per line.
 */
-
+std::ostream& printCorootList(std::ostream& strm, const rootdata::RootList& r,
+			      const rootdata::RootDatum& rd, const char* sep)
 {
   for (size_t j = 0; j < r.size(); ++j) {
     printCoroot(strm,r[j],rd);
@@ -106,9 +81,6 @@ std::ostream& printCorootList(std::ostream& strm, const rootdata::RootList& r,
   return strm;
 }
 
-std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
-			      size_t rank, const char* sep, const char* pre,
-			      const char* post)
 
 /*
   Synopsis: prints the descent set d to strm.
@@ -117,7 +89,9 @@ std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
   pre * sep * ... * post, where the * are the bits in d, output as their
   bitposition starting from 1.
 */
-
+std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
+			      size_t rank, const char* sep, const char* pre,
+			      const char* post)
 {
   strm << pre;
 
@@ -144,7 +118,6 @@ std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
 std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n,
 			       const rootdata::RootDatum& rd)
 {
-  using namespace basic_io;
   return strm << rd.inSimpleRoots(n);
 }
 
@@ -179,8 +152,6 @@ std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
 std::ostream& printInvolution(std::ostream& strm,
 			      const weyl::TwistedInvolution& tw,
 			      const weyl::WeylGroup& W)
-
-
 {
   std::vector<signed char> dec=W.involution_expr(tw);
   for (size_t i=0; i<dec.size(); ++i)
@@ -190,27 +161,24 @@ std::ostream& printInvolution(std::ostream& strm,
   return strm;
 }
 
-std::ostream& printRoot(std::ostream& strm, const rootdata::RootNbr& j,
-			const rootdata::RootDatum& rd)
 
 /*
   Synopsis: prints coroot #j in the lattice basis.
 */
 
+std::ostream& printRoot(std::ostream& strm, const rootdata::RootNbr& j,
+			const rootdata::RootDatum& rd)
 {
-  using namespace basic_io;
-
   return strm << rd.root(j);
 }
 
-std::ostream& printRootList(std::ostream& strm, const rootdata::RootList& r,
-			    const rootdata::RootDatum& rd, const char* sep)
 
 /*
   Synopsis: prints the roots in the list in the lattice basis, by default
   as one per line.
 */
-
+std::ostream& printRootList(std::ostream& strm, const rootdata::RootList& r,
+			    const rootdata::RootDatum& rd, const char* sep)
 {
   for (size_t j = 0; j < r.size(); ++j) {
     printRoot(strm,r[j],rd);
@@ -234,8 +202,6 @@ std::ostream& printRootList(std::ostream& strm, const rootdata::RootList& r,
 std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs,
 			  size_t rank)
 {
-  using gradings::Status;
-
   strm << '[';
 
   for (size_t s = 0; s < rank; ++s)
@@ -243,16 +209,16 @@ std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs,
     if (s>0) strm<<',';
     switch (gs[s])
     {
-    case Status::Complex:
+    case gradings::Status::Complex:
       strm << "C";
       break;
-    case Status::ImaginaryCompact:
+    case gradings::Status::ImaginaryCompact:
       strm << "c";
       break;
-    case Status::ImaginaryNoncompact:
+    case gradings::Status::ImaginaryNoncompact:
       strm << "n";
       break;
-    case Status::Real:
+    case gradings::Status::Real:
       strm << "r";
       break;
     }
@@ -272,14 +238,13 @@ std::ostream& printTitsElt(std::ostream& strm, const tits::TitsElt& a,
   return strm;
 }
 
-std::ostream& printTorusType(std::ostream& strm, const tori::RealTorus& T)
 
 /*
   Synopsis: outputs the type of the real torus.
 
   Explanation: T(R) is of the form (R^x)^p.(U(1))^q.(C^x)^r.
 */
-
+std::ostream& printTorusType(std::ostream& strm, const tori::RealTorus& T)
 {
   strm << "split: ";
   strm << T.splitRank();
@@ -293,51 +258,35 @@ std::ostream& printTorusType(std::ostream& strm, const tori::RealTorus& T)
   return strm;
 }
 
-std::ostream& printWeylElt(std::ostream& strm, const weyl::WeylElt& w,
-			   const weyl::WeylGroup& W)
 
 /*
   Synopsis: outputs w as a reduced expression.
 */
-
+std::ostream& printWeylElt(std::ostream& strm, const weyl::WeylElt& w,
+			   const weyl::WeylGroup& W)
 {
-  using namespace basic_io;
-  using namespace weyl;
-
-  WeylWord ww;
-  W.out(ww,w);
-  strm << ww;
-
+  strm << W.word(w);
   return strm;
 }
-
-std::ostream& printWeylList(std::ostream& strm, const weyl::WeylEltList& wl,
-			    const weyl::WeylGroup& W, const char* sep,
-			    const char* pre, const char* post)
 
 /*
   Synopsis: outputs the list of WeylElts as words in the outer representation,
   with the given separator, prefix and postfix.
 */
-
+std::ostream& printWeylList(std::ostream& strm, const weyl::WeylEltList& wl,
+			    const weyl::WeylGroup& W, const char* sep,
+			    const char* pre, const char* post)
 {
-  using namespace basic_io;
-  using namespace weyl;
+  std::vector<weyl::WeylWord> wwl(wl.size());
 
-  std::vector<WeylWord> wwl(wl.size());
+  for (size_t j = 0; j < wl.size(); ++j)
+    wwl[j]=W.word(wl[j]);
 
-  for (size_t j = 0; j < wl.size(); ++j) {
-    WeylWord& ww = wwl[j];
-    W.out(ww,wl[j]);
-  }
-
-  std::vector<WeylWord>::const_iterator first = wwl.begin();
-  std::vector<WeylWord>::const_iterator last = wwl.end();
-  seqPrint(strm,first,last,sep,pre,post);
+  basic_io::seqPrint(strm,wwl.begin(),wwl.end(),sep,pre,post);
 
   return strm;
 }
 
-}
+} // namespace prettyprint
 
-}
+} // namespace atlas

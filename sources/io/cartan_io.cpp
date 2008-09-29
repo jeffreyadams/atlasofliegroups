@@ -29,13 +29,6 @@
 
 namespace atlas {
 
-namespace {
-
-  typedef abelian::FiniteAbelianGroup AbGrp;
-  template<typename T> void ignore(const T&) {}
-
-}
-
 /*****************************************************************************
 
         Chapter I -- Functions declared in cartan_io.h
@@ -49,8 +42,6 @@ namespace cartan_io {
 std::ostream& printCartanClass(std::ostream& strm, size_t cn,
 			       const complexredgp_io::Interface& CI)
 {
-  using namespace basic_io; // for operators <<
-
   const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
   const rootdata::RootDatum& rd = G.rootDatum();
 

@@ -41,18 +41,15 @@ namespace {
 
 namespace interactive_lietype {
 
-bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
-		     bool output)
-
 /*!
   Synopsis: checks if a valid inner class for lt will be read from buf.
 */
 
+bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
+		     bool output)
 {
-  using namespace lietype;
-
   std::streampos pos = buf.tellg();
-  std::string icl(innerClassLetters);
+  std::string icl(lietype::innerClassLetters);
   std::string uer(UnequalRankTypes);
 
   for (size_t j = 0; j < lt.size(); ++j) {
@@ -69,14 +66,14 @@ bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
     if (icl.find_first_of(x) == std::string::npos) { // bad type
       if (output)
 	std::cerr << "bad inner class symbol " << x
-		  << " (should be one of " << innerClassLetters << ")"
-		  << std::endl;
+		  << " (should be one of " << lietype::innerClassLetters
+		  << ")" << std::endl;
       buf.reset(pos);
       return false;
     }
 
     if (x == 'C') { // complex case
-      SimpleLieType slt = lt[j];
+      lietype::SimpleLieType slt = lt[j];
       if (j == lt.size()-1 or lt[j+1] != slt) { // bad type
 	if (output)
 	  std::cerr << "bad inner class symbol C" << std::endl
@@ -89,9 +86,9 @@ bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
     }
 
     if (x == 'u') { // we must have an unequal-rank inner class
-      SimpleLieType slt = lt[j];
-      TypeLetter t = type(slt);
-      size_t l = rank(slt);
+      lietype::SimpleLieType slt = lt[j];
+      lietype::TypeLetter t = lietype::type(slt);
+      size_t l = lietype::rank(slt);
       if (uer.find_first_of(t) == std::string::npos or
 	  (t == 'A' and l == 1) or
 	  (t == 'E' and l != 6)) { // bad type
@@ -110,7 +107,6 @@ bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
   return true;
 }
 
-bool checkLieType(input::InputBuffer& buf)
 
 /*!
   Synopsis: checks if buf starts with a valid Lie type.
@@ -123,10 +119,8 @@ bool checkLieType(input::InputBuffer& buf)
 
   Return value is 0 for correct input, non-zero otherwise.
 */
-
+bool checkLieType(input::InputBuffer& buf)
 {
-  using namespace constants;
-
   std::streampos pos = buf.tellg();
 
   bool notDone = true;
@@ -146,33 +140,31 @@ bool checkLieType(input::InputBuffer& buf)
   buf.reset(pos);
 
   if (not checkTotalRank(buf)) { // bad rank
-    std::cerr << "sorry, rank should not exceed " << RANK_MAX << std::endl;
+    std::cerr << "sorry, rank should not exceed " << constants::RANK_MAX
+	      << std::endl;
     return false;
   }
 
   return true;
 }
 
-bool checkSimpleLieType(input::InputBuffer& buf)
 
 /*!
   Synopsis: checks if reading a SimpleLieType from buf will succeed.
 */
-
+bool checkSimpleLieType(input::InputBuffer& buf)
 {
-  using namespace constants;
-  using namespace lietype;
-
   std::streampos pos = buf.tellg();
 
-  TypeLetter x = 0;
+  lietype::TypeLetter x = 0;
   buf >> x;
 
-  std::string tl(typeLetters);
+  std::string tl(lietype::typeLetters);
 
   if (tl.find_first_of(x) == std::string::npos) { // bad type
     std::cerr << "sorry, bad type " << x
-	      << " (should be one of " << typeLetters << ")" << std::endl;
+	      << " (should be one of " << lietype::typeLetters << ")"
+	      << std::endl;
     buf.reset(pos);
     return false;
   }
@@ -180,7 +172,7 @@ bool checkSimpleLieType(input::InputBuffer& buf)
   size_t l = 0;
   buf >> l;
 
-  if (not checkRank(x,l)) { // bad rank
+  if (not lietype::checkRank(x,l)) { // bad rank
     printRankMessage(std::cerr,x);
     buf.reset(pos);
     return false;
@@ -190,7 +182,6 @@ bool checkSimpleLieType(input::InputBuffer& buf)
   return true;
 }
 
-bool checkTotalRank(input::InputBuffer& buf)
 
 /*!
   Synopsis: checks that the total rank does not exceed RANK_MAX.
@@ -199,23 +190,20 @@ bool checkTotalRank(input::InputBuffer& buf)
   on buf will yield a valid simple type, optionally followed by a dot and
   a valid type.
 */
-
+bool checkTotalRank(input::InputBuffer& buf)
 {
-  using namespace constants;
-  using namespace lietype;
-
   std::streampos pos = buf.tellg();
 
   size_t l_tot = 0;
   bool notDone = true;
 
   while (notDone) {
-    TypeLetter x;
+    lietype::TypeLetter x;
     size_t l;
     buf >> x;
     buf >> l;
     l_tot += l;
-    if (l_tot > RANK_MAX) {
+    if (l_tot > constants::RANK_MAX) {
       buf.reset(pos);
       return false;
     }
@@ -228,47 +216,44 @@ bool checkTotalRank(input::InputBuffer& buf)
   return true;
 }
 
-std::ostream& printRankMessage(std::ostream& strm, lietype::TypeLetter x)
 
 /*!
   Prints the message appropriate for a bad choice of rank for type x.
 */
-
+std::ostream& printRankMessage(std::ostream& strm, lietype::TypeLetter x)
 {
-  using namespace constants;
-  using namespace std;
-
+  using constants::RANK_MAX;
   switch (x) {
   case 'A':
-    cerr << "sorry, in type A the rank must be between 1 and " << RANK_MAX
-	 << endl;
+    std::cerr << "sorry, in type A the rank must be between 1 and "
+	      << RANK_MAX << std::endl;
     break;
   case 'B':
-    cerr << "sorry, in type B the rank must be between 2 and " << RANK_MAX
-	 << endl;
+    std::cerr << "sorry, in type B the rank must be between 2 and "
+	      << RANK_MAX << std::endl;
     break;
   case 'C':
-    cerr << "sorry, in type C the rank must be between 2 and " << RANK_MAX
-	 << endl;
+    std::cerr << "sorry, in type C the rank must be between 2 and "
+	      << RANK_MAX << std::endl;
     break;
   case 'D':
-    cerr << "sorry, in type D the rank must be between 4 and " << RANK_MAX
-	 << endl;
+    std::cerr << "sorry, in type D the rank must be between 4 and "
+	      << RANK_MAX << std::endl;
     break;
   case 'E':
-    cerr << "sorry, in type E the rank must be 6, 7 or 8" << endl;
+    std::cerr << "sorry, in type E the rank must be 6, 7 or 8" << std::endl;
     break;
   case 'F':
   case 'f':
-    cerr << "sorry, in type " << x << " the rank must be 4" << endl;
+    std::cerr << "sorry, in type " << x << " the rank must be 4" << std::endl;
     break;
   case 'G':
   case 'g':
-    cerr << "sorry, in type " << x << " the rank must be 2" << endl;
+    std::cerr << "sorry, in type " << x << " the rank must be 2" << std::endl;
     break;
   case 'T':
-    cerr << "sorry, in type T the rank must be between 1 and " << RANK_MAX
-	 << endl;
+    std::cerr << "sorry, in type T the rank must be between 1 and "
+	      << RANK_MAX << std::endl;
     break;
   default: // cannot happen
     assert(false && "unexpected type in printRankMessage");
@@ -277,8 +262,6 @@ std::ostream& printRankMessage(std::ostream& strm, lietype::TypeLetter x)
   return strm;
 }
 
-void readInnerClass(lietype::InnerClassType& ict, input::InputBuffer& buf,
-		    const lietype::LieType& lt)
 
 /*!
   Synopsis: reads an inner class type from buf.
@@ -288,29 +271,25 @@ void readInnerClass(lietype::InnerClassType& ict, input::InputBuffer& buf,
   Maps e ("equal rank") to c; maps "u" (unequal rank) to s except for type
   D_2n.
 */
-
+void readInnerClass(lietype::InnerClassType& ict, input::InputBuffer& buf,
+		    const lietype::LieType& lt)
 {
-  using namespace lietype;
-
   ict.clear();
 
   for (size_t j = 0; j < lt.size(); ++j) {
-    TypeLetter x = 0;
+    lietype::TypeLetter x = 0;
     buf >> x;
     if (x == 'e')
       x = 'c';
     if (x == 'u')
-      if (type(lt[j]) != 'D' or rank(lt[j])%2 != 0)
+      if (lietype::type(lt[j]) != 'D' or lietype::rank(lt[j])%2 != 0)
 	x = 's';
     ict.push_back(x);
     if (x == 'C')
       ++j;
   }
-
-  return;
 }
 
-void readLieType(lietype::LieType& lt, input::InputBuffer& buf)
 
 /*!
   Synopsis: reads the Lie type from buf.
@@ -323,33 +302,28 @@ void readLieType(lietype::LieType& lt, input::InputBuffer& buf)
   To normalize the occurrence of torus factors, this function expands Tn with
   n>1 to n copies of T1
 */
-
+void readLieType(lietype::LieType& lt, input::InputBuffer& buf)
 {
-  using namespace constants;
-  using namespace lietype;
-
   bool read = true;
 
   while (read) {
-    TypeLetter x;
+    lietype::TypeLetter x;
     size_t l;
     buf >> x;
     buf >> l;
     if (x=='T')
-      while (l-->0) lt.push_back(SimpleLieType('T',1));
+      while (l-->0) lt.push_back(lietype::SimpleLieType('T',1));
     else
-      lt.push_back(SimpleLieType(x,l));
+      lt.push_back(lietype::SimpleLieType(x,l));
     buf >> x;
     if (x != '.') {
       buf.unget(); // put character back
       break;
     }
   }
-
-  return;
 }
 
-}
+} // namespace interactive_lietype
 
 /*****************************************************************************
 
@@ -359,7 +333,6 @@ void readLieType(lietype::LieType& lt, input::InputBuffer& buf)
 
 namespace {
 
-void ignoreSimpleLieType(input::InputBuffer& buf)
 
 /*!
   Synopsis: takes a SimpleLieType off the buffer.
@@ -369,20 +342,15 @@ void ignoreSimpleLieType(input::InputBuffer& buf)
 
   Useful when reading forward for testing purposes
 */
-
+void ignoreSimpleLieType(input::InputBuffer& buf)
 {
-  using namespace constants;
-  using namespace lietype;
-
-  TypeLetter x;
+  lietype::TypeLetter x;
   buf >> x;
 
   size_t l;
   buf >> l;
-
-  return;
 }
 
-}
+} // namespace
 
-}
+} // namespace atlas

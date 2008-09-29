@@ -13,7 +13,6 @@
 #include <iosfwd>
 #include <vector>
 
-#include "abelian_fwd.h"
 #include "bitmap_fwd.h"
 #include "bitset_fwd.h"
 #include "gradings_fwd.h"
@@ -34,8 +33,6 @@ namespace prettyprint {
 
 std::ostream& prettyPrint(std::ostream&, const bitmap::BitMap&,
 			  size_t n = 0);
-
-std::ostream& prettyPrint(std::ostream&, const abelian::GroupType&);
 
 template<size_t d>
 std::ostream& prettyPrint(std::ostream&, const bitset::BitSet<d>&, size_t);

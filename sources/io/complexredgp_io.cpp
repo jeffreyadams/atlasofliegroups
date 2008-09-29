@@ -11,7 +11,6 @@
 
 #include "complexredgp_io.h"
 
-#include "basic_io.h"
 #include "cartanset.h"
 #include "cartan_io.h"
 #include "cartanclass.h"
@@ -36,17 +35,9 @@
 
 namespace atlas {
 
-namespace {
-
-  void pause() {;}
-
-}
-
 /*****************************************************************************
 
         Chapter I --- The Interface class
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -91,20 +82,15 @@ void Interface::swap(Interface& other)
 namespace complexredgp_io {
 
 std::ostream& printBlockSizes(std::ostream& strm, const Interface& CI)
-
 {
-  using namespace complexredgp;
-  using namespace matrix;
-  using namespace prettyprint;
-
-  const ComplexReductiveGroup& G = CI.complexGroup();
+  const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
   const realform_io::Interface rfi = CI.realFormInterface();
   const realform_io::Interface drfi = CI.dualRealFormInterface();
 
   size_t rf = G.numRealForms();
   size_t drf = G.numDualRealForms();
 
-  Matrix<unsigned long> block(rf,drf);
+  matrix::Matrix<unsigned long> block(rf,drf);
   unsigned long maxEntry = 0;
 
   for (size_t i = 0; i < block.numRows(); ++i)
@@ -115,13 +101,12 @@ std::ostream& printBlockSizes(std::ostream& strm, const Interface& CI)
     }
 
   int width = ioutils::digits(maxEntry,10ul);
-  printMatrix(strm,block,width+2);
+  prettyprint::printMatrix(strm,block,width+2);
 
   return strm;
 }
 
 
-std::ostream& printGradings(std::ostream& strm, size_t cn, const Interface& CI)
 
 /*
   Synopsis: outputs the gradings corresponding to the various real forms
@@ -130,16 +115,12 @@ std::ostream& printGradings(std::ostream& strm, size_t cn, const Interface& CI)
   The gradings are output in the same order as the corresponding orbits are
   output in the "cartan" command.
 */
-
+std::ostream& printGradings(std::ostream& strm, size_t cn, const Interface& CI)
 {
-  using namespace cartanclass;
-  using namespace complexredgp;
-  using namespace realform;
+  const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
+  const cartanclass::CartanClass& cc = G.cartan(cn);
 
-  const ComplexReductiveGroup& G = CI.complexGroup();
-  const CartanClass& cc = G.cartan(cn);
-
-  RealFormList rfl(cc.numRealForms());
+  realform::RealFormList rfl(cc.numRealForms());
   const realform_io::Interface& rfi = CI.realFormInterface();
 
   for (size_t i = 0; i < rfl.size(); ++i)
