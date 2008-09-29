@@ -514,8 +514,6 @@ template<size_t dim>
 
 
 {
-  using namespace bitset;
-
   if (b.size() == 0) // then there are no unknowns to solve
   {
     if (rhs.isZero()) {
@@ -529,12 +527,12 @@ template<size_t dim>
   size_t n = b[0].size();
   assert(n==rhs.size());
 
-  std::vector<BitSet<dim> > a; // list of normalised equations, lhs part
-  BitSet<dim> rh;              // corresponding right hand sides
+  std::vector<bitset::BitSet<dim> > a; // list of normalised eqns, lhs part
+  bitset::BitSet<dim> rh;      // corresponding right hand sides
   std::vector<size_t> f;       // list indicating "pivot" positions in |a|
 
   for (size_t i = 0; i < n; ++i) {
-    BitSet<dim> r;
+    bitset::BitSet<dim> r;
     // set r to i-th row of matrix whose columns are the |b[j]|
     for (size_t j = 0; j < b.size(); ++j)
       r.set(j,b[j][i]);
@@ -887,9 +885,6 @@ template<size_t dim> bool isIndependent(const std::vector<BitVector<dim> >& b)
   return true;
 }
 
-template<size_t dim>
-  void projection(BitMatrix<dim>& p, const std::vector<BitVector<dim> >& b,
-		  size_t d)
 
 /*!
   \brief Puts in p the matrix of the projection on the canonical
@@ -902,13 +897,13 @@ template<size_t dim>
 
   NOTE : we need to pass the dimension in case b is empty.
 */
-
+template<size_t dim>
+  void projection(BitMatrix<dim>& p, const std::vector<BitVector<dim> >& b,
+		  size_t d)
 {
-  using namespace bitset;
-
   // flag the indices for the canonical complement
 
-  BitSet<dim> c;
+  bitset::BitSet<dim> c;
   std::vector<size_t> f;
 
   bitset::set(c,d);
@@ -936,7 +931,7 @@ template<size_t dim>
   for (size_t j = 0; j < b.size(); ++j) {
     BitVector<dim> v = b[j];
     v.slice(c);
-    const BitSet<dim>& vd = v.data();
+    const bitset::BitSet<dim>& vd = v.data();
     p.setColumn(f[j],vd);
   }
 }
@@ -976,8 +971,6 @@ template<size_t dim>
 */
 
 {
-  using namespace bitset;
-
   rel.resize(0);
 
   if (b.size() == 0) // do nothing
@@ -998,7 +991,7 @@ template<size_t dim>
 
   // normalize e
 
-  BitSet<dim> t; // will flag a subset of [0,r[
+  bitset::BitSet<dim> t; // will flag a subset of [0,r[
   normalize(t,eqn);
 
   // now we get a relation for each j in [0,d[ not flagged by t

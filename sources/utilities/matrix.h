@@ -26,7 +26,7 @@ namespace atlas {
 namespace matrix {
 
 template<typename C>
-  void columnVectors(std::vector<std::vector<C> >& b,
+  void columnVectors(std::vector<Vector<C> >& b,
 		     const Matrix<C>& m);
 
 template<typename C>
@@ -44,7 +44,7 @@ template<typename C>
   void identityMatrix(Matrix<C>&, size_t);
 
 template<typename C>
-  void initBasis(std::vector<std::vector<C> >&, size_t);
+  void initBasis(std::vector<Vector<C> >&, size_t);
 
 template<typename C>
 Matrix<C>& invConjugate(Matrix<C>&, const Matrix<C>&);
@@ -54,6 +54,30 @@ Matrix<C>& invConjugate(Matrix<C>&, const Matrix<C>&);
 /******** type definitions ***************************************************/
 
 namespace matrix {
+
+template<typename C>
+  class Vector : public std::vector<C>
+  {
+    typedef std::vector<C> base;
+  public:
+    Vector () : base() {}
+    explicit Vector (size_t n) : base(n) {} // entries remain undefined!
+    explicit Vector (const base& b) : base(b) {} // std::vector -> Vector
+    Vector (size_t n,C c) : base(n,c) {}
+    template<typename I>
+      Vector (I b, I e) : base(b,e) {} // construction from iterators
+
+    Vector<C>& operator+= (const Vector<C>&);
+    Vector<C>& operator-= (const Vector<C>&);
+    Vector<C>& operator*= (C);
+    Vector<C>& operator/= (C);
+    Vector<C>& negate (); // negates argument in place
+
+    C scalarProduct (const Vector<C>&) const;
+    bool isZero() const;
+
+}; // Vector
+
 
 template<typename C> class Matrix {
   /*!
@@ -66,15 +90,15 @@ template<typename C> class Matrix {
 
  private:
 
-  std::vector<C> d_data;
+  Vector<C> d_data;
   size_t d_rows;
   size_t d_columns;
 
  public:
 
 // iterators
-  typedef typename std::vector<C>::iterator iterator;
-  typedef typename std::vector<C>::const_iterator const_iterator;
+  typedef typename Vector<C>::iterator iterator;
+  typedef typename Vector<C>::const_iterator const_iterator;
 
   iterator begin() {
     return d_data.begin();
@@ -108,9 +132,9 @@ template<typename C> class Matrix {
     :d_data(n*n),d_rows(n),d_columns(n)
     {}
 
-  explicit Matrix(const std::vector<std::vector<C> >&);
+  explicit Matrix(const std::vector<Vector<C> >&); // ctor from column vectors
 
-  Matrix(const Matrix<C> &, const std::vector<std::vector<C> >&);
+  Matrix(const Matrix<C> &, const std::vector<Vector<C> >&); // on other basis
 
   Matrix(const Matrix<C> &, size_t, size_t, size_t, size_t);
 
@@ -130,12 +154,12 @@ template<typename C> class Matrix {
 
   index_pair absMinPos(size_t i_min = 0, size_t j_min = 0) const;
 
-  void apply(std::vector<C>&, const std::vector<C>&) const;
-  std::vector<C> apply(const std::vector<C>&) const; //functional version
+  void apply(Vector<C>&, const Vector<C>&) const;
+  Vector<C> apply(const Vector<C>&) const; //functional version
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 
-  void column(std::vector<C>&, size_t) const;
+  void column(Vector<C>&, size_t) const;
 
   size_t columnSize() const {
     return d_rows;
@@ -167,7 +191,7 @@ template<typename C> class Matrix {
     return d_columns;
   }
 
-  void row(std::vector<C>&, size_t) const;
+  void row(Vector<C>&, size_t) const;
 
   size_t rowSize() const {
     return d_columns;

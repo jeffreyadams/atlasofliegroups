@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -21,25 +21,25 @@ namespace atlas {
 namespace smithnormal {
 
 template<typename C>
-  void addMultiple(std::vector<C>&, const std::vector<C>&, const C&);
+  void addMultiple(matrix::Vector<C>&, const matrix::Vector<C>&, const C&);
 
 template<typename C>
-  void blockReduce(typename std::vector<std::vector<C> >::iterator, 
+  void blockReduce(typename std::vector<matrix::Vector<C> >::iterator,
 		   matrix::Matrix<C>&);
 
 template<typename C>
-  void blockShape(typename std::vector<std::vector<C> >::iterator, 
+  void blockShape(typename std::vector<matrix::Vector<C> >::iterator,
 		  matrix::Matrix<C>&);
 
 template<typename C>
   void columnReduce(matrix::Matrix<C>&, size_t);
 
 template <typename C>
-  typename matrix::Matrix<C>::index_pair 
+  typename matrix::Matrix<C>::index_pair
   findBlockReduction(const matrix::Matrix<C>&);
 
 template <typename C>
-  typename matrix::Matrix<C>::index_pair 
+  typename matrix::Matrix<C>::index_pair
   findReduction(const matrix::Matrix<C>&);
 
 template<typename C>
@@ -49,29 +49,29 @@ template<typename C>
   bool hasReduction(const matrix::Matrix<C>&);
 
 template<typename C>
-  void prepareMatrix(typename std::vector<std::vector<C> >::iterator, 
+  void prepareMatrix(typename std::vector<matrix::Vector<C> >::iterator,
 		     matrix::Matrix<C>&);
 
 template<typename C>
-  void reduce(typename std::vector<std::vector<C> >::iterator, 
+  void reduce(typename std::vector<matrix::Vector<C> >::iterator,
 	      matrix::Matrix<C>&);
 
 template<typename C>
-  void rowReduce(typename std::vector<std::vector<C> >::iterator, 
+  void rowReduce(typename std::vector<matrix::Vector<C> >::iterator,
 		 matrix::Matrix<C>&, size_t);
 
 template<typename C>
-  void smithNormal(std::vector<C>&, 
-		   typename std::vector<std::vector<C> >::iterator, 
+  void smithNormal(std::vector<C>&,
+		   typename std::vector<matrix::Vector<C> >::iterator,
 		   const matrix::Matrix<C>&);
 
 template<typename C>
   void smithNormal(std::vector<C>&,
-		   typename std::vector<std::vector<C> >::iterator, 
-		   const std::vector<std::vector<C> >&);
+		   typename std::vector<matrix::Vector<C> >::iterator,
+		   const std::vector<matrix::Vector<C> >&);
 
 template<typename C>
-  void smithStep(typename std::vector<std::vector<C> >::iterator, 
+  void smithStep(typename std::vector<matrix::Vector<C> >::iterator,
 		 matrix::Matrix<C>&);
 
 }

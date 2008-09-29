@@ -51,7 +51,7 @@ namespace latticetypes {
   A LatticeElt is a vector of LatticeCoeff's; that is, an element of
   Z^n.
   */
-  typedef std::vector<LatticeCoeff> LatticeElt;
+  typedef matrix::Vector<LatticeCoeff> LatticeElt;
 
   /*!
   \brief

@@ -89,8 +89,6 @@ template<typename I, typename J, typename O>
   void baseChange(const I& first, const I& last, O out, const J& firstb,
 		  const J& lastb)
 {
-  using latticetypes::operator/=;
-
   latticetypes::LatticeCoeff d;
   latticetypes::LatticeMatrix q =
     latticetypes::LatticeMatrix(firstb,lastb,tags::IteratorTag()).inverse(d);

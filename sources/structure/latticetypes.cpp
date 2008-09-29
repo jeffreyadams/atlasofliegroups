@@ -23,10 +23,12 @@
 
 /*****************************************************************************
 
-        Chapter I : the LatticeElt class
+        Chapter I -- Functions declared in latticetypes.h
 
-  A LatticeElt is just a vector of some signed integral type, which will
-  be fixed in the whole of the program.
+  This section contains the definition of the function declared in
+  latticetypes.h :
+
+    - isZero(const LatticeElt& v)
 
 ******************************************************************************/
 
@@ -34,90 +36,11 @@ namespace atlas {
 
 namespace latticetypes {
 
-LatticeElt& operator+= (LatticeElt& v, const LatticeElt& w)
-
-/*
-  Increments v by w.
-*/
-
-{
-  for (LatticeElt::size_type j = 0; j < v.size(); ++j)
-    v[j] += w[j];
-
-  return v;
-}
-
-LatticeElt& operator-= (LatticeElt& v, const LatticeElt& w)
-
-/*
-  Decrements v by w.
-*/
-
-{
-  for (LatticeElt::size_type j = 0; j < v.size(); ++j)
-    v[j] -= w[j];
-
-  return v;
-}
-
-/*
-  Multiplies each coordinate of v by c.
-*/
-LatticeElt& operator*= (LatticeElt& v, LatticeCoeff c)
-{
-  for (LatticeElt::size_type j = 0; j < v.size(); ++j)
-    v[j] *= c;
-
-  return v;
-}
-
-/*
-  Divides each coordinate of v by d. It is the callers responsibility to
-  check that v is actually divisible by d; if not, he will just get the
-  integral parts of the quotients.
-*/
-LatticeElt& operator/= (LatticeElt& v, LatticeCoeff d)
-{
-  for (LatticeElt::size_type j = 0; j < v.size(); ++j)
-    v[j] /= d;
-
-  return v;
-}
-
-LatticeElt& operator- (LatticeElt& v)
-
-/*
-  Changes the sign of each coordinate of v.
-*/
-
-{
-  for (LatticeElt::size_type j = 0; j < v.size(); ++j)
-    v[j] = -v[j];
-
-  return v;
-}
-
-}
-
-/*****************************************************************************
-
-        Chapter II -- Functions declared in latticetypes.h
-
-  This section contains the definition of the functions declared in
-  latticetypes.h :
-
-    - scalarProduct(const LatticeElt&, const LatticeElt&);
-
-******************************************************************************/
-
-namespace latticetypes {
-
-bool isZero(const LatticeElt& v)
 
 /*
   Returns true if all components of v are zero, false otherwise.
 */
-
+bool isZero(const LatticeElt& v)
 {
   for (size_t j = 0; j < v.size(); ++j)
     if (v[j])
@@ -126,46 +49,6 @@ bool isZero(const LatticeElt& v)
   return true;
 }
 
-LatticeCoeff scalarProduct(const LatticeElt& v, const LatticeElt& w)
+} // namespace latticetypes
 
-/*
-  Returns the scalar product of v and w, which are assumed to be of same
-  size.
-*/
-
-{
-  LatticeCoeff sp = 0;
-
-  for (size_t j = 0; j < v.size(); ++j) {
-    sp += v[j]*w[j];
-  }
-
-  return sp;
-}
-
-LatticeCoeff scalarProduct(const RatLatticeElt& v, const LatticeElt& w)
-
-/*
-  Returns the scalar product of v and w, which are assumed to be of same
-  size and such that the scalar product is integral.
-
-  NOTE : this implementation does not worry about overflow. It is appropriate
-  only for small denominators.
-*/
-
-{
-  LatticeCoeff sp = 0;
-  const LatticeElt& vnum = v.numerator();
-
-  for (size_t j = 0; j < w.size(); ++j) {
-    sp += vnum[j]*w[j];
-  }
-
-  sp /= v.denominator();
-
-  return sp;
-}
-
-}
-
-}
+} // namespace atlas

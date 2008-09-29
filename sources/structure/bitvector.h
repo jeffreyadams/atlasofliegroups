@@ -15,7 +15,7 @@
 #define BITVECTOR_H
 
 #include "bitvector_fwd.h"
-#include "latticetypes_fwd.h"
+#include "latticetypes_fwd.h" // not "latticetypes.h", which includes us!
 
 #include <vector>
 #include <cassert>

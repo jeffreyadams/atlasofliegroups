@@ -205,9 +205,10 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
 
   // make the d_minus list
 
-  for (size_t j = 0; j < d_roots.size(); ++j) {
-    Root v(d_roots[j]);
-    RootNbr jm = lower_bound(d_roots.begin(),d_roots.end(),-v)-d_roots.begin();
+  for (size_t j = 0; j < d_roots.size(); ++j)
+  {
+    Root v(d_roots[j]); v.negate();
+    RootNbr jm = lower_bound(d_roots.begin(),d_roots.end(),v)-d_roots.begin();
     d_minus.push_back(jm);
   }
 
@@ -417,7 +418,7 @@ latticetypes::Weight RootDatum::inSimpleRoots(RootNbr n) const
   latticetypes::Weight r=root(n); // on chosen lattice basis
   latticetypes::Weight result(d_semisimpleRank);
   for (size_t i = 0; i<d_semisimpleRank; ++i)
-    result[i] = latticetypes::scalarProduct(d_coweights[i],r);
+    result[i] = d_coweights[i].scalarProduct(r);
   return result;
 }
 

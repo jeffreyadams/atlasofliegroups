@@ -15,13 +15,13 @@
 #define LATTICETYPES_H
 
 #include "latticetypes_fwd.h"
+#include "matrix.h" // to make |LatticeElt| a complete type
 
-/* The following includes are not required by this file but we put them here
+/* The following include is not required by this file but we put it here
    so that the types predeclared in "latticetypes_fwd.h" will be complete for
    any module that includes the current file, without it having to separately
-   include "bitvector.h" and "matrix.h" */
+   include "bitvector.h" */
 #include "bitvector.h"
-#include "matrix.h"
 
 /******** function declarations **********************************************/
 
@@ -29,16 +29,14 @@ namespace atlas {
 
 namespace latticetypes {
 
-  LatticeElt& operator+= (LatticeElt&, const LatticeElt&);
-  LatticeElt& operator-= (LatticeElt&, const LatticeElt&);
-  LatticeElt& operator*= (LatticeElt&, LatticeCoeff);
-  LatticeElt& operator/= (LatticeElt&, LatticeCoeff);
-  LatticeElt& operator- (LatticeElt&); // negates argument in place
+  //  LatticeElt& operator- (LatticeElt&); // negates argument in place
 
   bool isZero(const LatticeElt&);
 
-  LatticeCoeff scalarProduct(const LatticeElt&, const LatticeElt&);
-  LatticeCoeff scalarProduct(const RatLatticeElt&, const LatticeElt&);
+  inline LatticeCoeff scalarProduct(const LatticeElt& v, const LatticeElt& w)
+    {
+      return v.scalarProduct(w);
+    }
 
 }
 
@@ -69,6 +67,7 @@ class RatLatticeElt {
 
 // constructors and destructors
   RatLatticeElt()
+    :d_num(), d_denom(1)
     {}
 
   /*!
@@ -82,7 +81,7 @@ class RatLatticeElt {
   Builds a RatLatticeElt of in Z^n with denominator d and all entries zero.
   */
   RatLatticeElt(size_t n, LatticeCoeff d)
-    :d_num(n), d_denom(d)
+    :d_num(n,0), d_denom(d)
     {}
 
   /*!
@@ -108,6 +107,18 @@ class RatLatticeElt {
     return d_num.size();
   }
 
+/*
+  Returns the scalar product of |*this| and |w|, which are assumed to be of
+  same size and such that the scalar product is integral.
+
+  NOTE : this implementation does not worry about overflow. It is appropriate
+  only for small denominators.
+*/
+  LatticeCoeff  scalarProduct(const LatticeElt& w) const
+    {
+      return d_num.scalarProduct(w)/d_denom;
+    }
+
 //manipulators
   LatticeCoeff& denominator() {
     return d_denom;
@@ -117,10 +128,10 @@ class RatLatticeElt {
     return d_num;
   }
 
-};
+}; // class RatLatticeElt
 
-}
+} // namespace latticetypes
 
-}
+} // namespace atlas
 
 #endif
