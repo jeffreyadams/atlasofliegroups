@@ -279,7 +279,7 @@ namespace kgb {
   but if any Cartan classes are specified, only for those classes
 
   This really handles two cases (the standard construction and a specialised
-  on for a small set of Cartan classes) in one. The reason that they are
+  one for a small set of Cartan classes) in one. The reason that they are
   combined into a single constructor is that this allows a single constructor
   of a containing class to choose between the two methods (a constructor
   method must use a fixed constructor for each of its subobjects, so having
@@ -860,9 +860,6 @@ void FiberData::reduce(tits::TitsElt& a) const
   defined by the mentioned adjoint fiber element as image of the identity, and
   extended by the natural grading shifts for the simple reflections (only the
   image of the identity was actually computed).
-
-  Currently the fields |d_srf| and |d_base_compact| are only (possibly) used
-  by the other constructor, and so are left just default-constructed here.
 */
 
 KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
@@ -1235,10 +1232,8 @@ formed by extracting only the information concerning the presence of the
 */
 gradings::Grading grading_offset_for(const realredgp::RealReductiveGroup& G)
 {
-  const rootdata::RootDatum& rd = G.rootDatum();
-  rootdata::RootSet rset= G.noncompactRoots();
-
-  return cartanclass::restrictGrading(rset,rd.simpleRootList());
+  rootdata::RootSet rset= G.noncompactRoots(); // grading for real form rep
+  return cartanclass::restrictGrading(rset,G.rootDatum().simpleRootList());
 }
 
 /*!
