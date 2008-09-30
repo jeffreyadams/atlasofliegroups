@@ -346,7 +346,7 @@ use by accessors.
   bool isAdjoint() const;
 
   bool isOrthogonal(const latticetypes::Weight& v, RootNbr j) const {
-    return LT::scalarProduct(v,coroot(j))==0;
+    return v.scalarProduct(coroot(j))==0;
   }
 
   bool isOrthogonal(RootNbr i, RootNbr j) const {
@@ -377,15 +377,17 @@ use by accessors.
 
   LT::LatticeCoeff scalarProduct(const LT::Weight& v, RootNbr j) const
   {
-    return LT::scalarProduct(v,coroot(j));
+    return v.scalarProduct(coroot(j));
   }
 
-  LT::LatticeCoeff scalarProduct(RootNbr i, RootNbr j) const {
-    return LT::scalarProduct(root(i),coroot(j));
+  // This method is badly named: the relation is asymmetric
+  LT::LatticeCoeff scalarProduct(RootNbr i, RootNbr j) const
+  {
+    return root(i).scalarProduct(coroot(j));
   }
 
   LT::LatticeCoeff cartan(size_t i, size_t j) const {
-    return LT::scalarProduct(simpleRoot(i),simpleCoroot(j));
+    return simpleRoot(i).scalarProduct(simpleCoroot(j));
   }
 
   LT::LatticeMatrix cartanMatrix() const;

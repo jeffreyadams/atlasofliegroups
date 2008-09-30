@@ -331,8 +331,6 @@ class KHatComputations
   StandardRepK std_rep_rho_plus
     (latticetypes::Weight lambda, tits::TitsElt a) const
     {
-      using latticetypes::operator *=;
-      using latticetypes::operator +=;
       (lambda *= 2) += rootDatum().twoRho();
       return std_rep(lambda,a);
     }
@@ -358,8 +356,7 @@ class KHatComputations
   //!\brief (1+theta)* lifted value; this is independent of choice of lift
   latticetypes::Weight theta_lift(size_t cn, HCParam p) const
     {
-      using latticetypes::operator+=;
-       latticetypes::Weight result=lift(cn,p);
+      latticetypes::Weight result=lift(cn,p);
       result += d_G->cartan(cn).involution().apply(result);
       return result;
     }

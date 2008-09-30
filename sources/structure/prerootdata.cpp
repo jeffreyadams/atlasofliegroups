@@ -37,12 +37,12 @@ namespace atlas {
 
 namespace {
 
-  using namespace latticetypes;
-  using namespace lietype;
-  using namespace prerootdata;
-
-  void makeCorootBasis(WeightList&, const LatticeMatrix&, const WeightList&);
-  void makeRootBasis(WeightList&, const LatticeMatrix&, const WeightList&);
+  void makeCorootBasis(latticetypes::WeightList&,
+		       const latticetypes::LatticeMatrix&,
+		       const latticetypes::WeightList&);
+  void makeRootBasis(latticetypes::WeightList&,
+		     const latticetypes::LatticeMatrix&,
+		     const latticetypes::WeightList&);
 
 }
 
@@ -61,9 +61,6 @@ namespace prerootdata {
 
 /******** constructors and destructors ***************************************/
 
-PreRootDatum::PreRootDatum(const lietype::LieType& lt,
-			   const latticetypes::WeightList& b)
-  :d_rank(lietype::rank(lt))
 
 /*!
 \brief  Constructs the PreRootDatum whose lattice has basis b,
@@ -85,11 +82,13 @@ The constructor puts d_roots the list of simple roots expressed in the
 basis b, and in d_coroots the list of simple coroots expressed in the
 dual basis.
 */
-
+PreRootDatum::PreRootDatum(const lietype::LieType& lt,
+			   const latticetypes::WeightList& b)
+  :d_rank(lietype::rank(lt))
 {
   // get the Cartan matrix
 
-  LatticeMatrix c;
+  latticetypes::LatticeMatrix c;
   cartanMatrix(c,lt);
 
   // NOTE : the _tranpose_ of c is the matrix of the simple root vectors in
@@ -113,8 +112,6 @@ void PreRootDatum::swap(PreRootDatum& other)
   d_roots.swap(other.d_roots);
   d_coroots.swap(other.d_coroots);
   std::swap(d_rank,other.d_rank);
-
-  return;
 }
 
 }
@@ -129,7 +126,6 @@ void PreRootDatum::swap(PreRootDatum& other)
 
 namespace prerootdata {
 
-void cartanMatrix(latticetypes::LatticeMatrix& cm, const lietype::LieType& lt)
 
 /*!
   \brief Puts in cm the Cartan matrix corresponding to the Lie type lt.
@@ -146,28 +142,21 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm, const lietype::LieType& lt)
   fundamental weights.  The columns of cm express the simple coroots
   in the basis of fundamental coweights.
 */
-
+void cartanMatrix(latticetypes::LatticeMatrix& cm, const lietype::LieType& lt)
 {
-  using namespace latticetypes;
-  using namespace lietype;
-
-  size_t n = rank(lt);
+  size_t n = lietype::rank(lt);
   cm.resize(n,n,0);
 
   size_t r = 0;
 
   for (size_t j = 0; j < lt.size(); ++j) {
-    LatticeMatrix cmp;
+    latticetypes::LatticeMatrix cmp;
     cartanMatrix(cmp,lt[j]);
     cm.copy(cmp,r,r);
-    r += rank(lt[j]);
+    r += lietype::rank(lt[j]);
   }
-
-  return;
 }
 
-void cartanMatrix(latticetypes::LatticeMatrix& cm,
-		    const lietype::SimpleLieType& slt)
 
 /*!
   \brief Puts in cm the Cartan matrix corresponding to the simple Lie type
@@ -176,52 +165,50 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm,
   Algorithm: case by case.  The matrix is initialized to zero (of the
   correct size), then the non-zero entries are added.
 */
-
+void cartanMatrix(latticetypes::LatticeMatrix& cm,
+		  const lietype::SimpleLieType& slt)
 {
-  using namespace latticetypes;
-  using namespace lietype;
+  cm.resize(lietype::rank(slt),lietype::rank(slt),0);
 
-  cm.resize(rank(slt),rank(slt),0);
-
-  if (type(slt) == 'T') // do nothing
+  if (lietype::type(slt) == 'T') // do nothing
     goto done;
 
-  for (size_t i = 0; i < rank(slt); ++i)
+  for (size_t i = 0; i < lietype::rank(slt); ++i)
     cm(i,i) = 2;
 
-  switch (type(slt)) {
+  switch (lietype::type(slt)) {
   case 'A':
-    for (size_t i = 1; i < rank(slt); ++i) {
+    for (size_t i = 1; i < lietype::rank(slt); ++i) {
       cm(i-1,i) = -1;
       cm(i,i-1) = -1;
     }
     goto done;
   case 'B': // rank is at least 2
-    for (size_t i = 1; i < rank(slt)-1; ++i) {
+    for (size_t i = 1; i < lietype::rank(slt)-1; ++i) {
       cm(i-1,i) = -1;
       cm(i,i-1) = -1;
     }
-    cm(rank(slt)-2,rank(slt)-1) = -2;
-    cm(rank(slt)-1,rank(slt)-2) = -1;
+    cm(lietype::rank(slt)-2,lietype::rank(slt)-1) = -2;
+    cm(lietype::rank(slt)-1,lietype::rank(slt)-2) = -1;
     goto done;
   case 'C': // rank is at least 2
-    for (size_t i = 1; i < rank(slt)-1; ++i) {
+    for (size_t i = 1; i < lietype::rank(slt)-1; ++i) {
       cm(i-1,i) = -1;
       cm(i,i-1) = -1;
     }
-    cm(rank(slt)-2,rank(slt)-1) = -1;
-    cm(rank(slt)-1,rank(slt)-2) = -2;
+    cm(lietype::rank(slt)-2,lietype::rank(slt)-1) = -1;
+    cm(lietype::rank(slt)-1,lietype::rank(slt)-2) = -2;
     goto done;
   case 'D': // rank is at least 4
-    for (size_t i = 1; i < rank(slt)-1; ++i) {
+    for (size_t i = 1; i < lietype::rank(slt)-1; ++i) {
       cm(i-1,i) = -1;
       cm(i,i-1) = -1;
     }
-    cm(rank(slt)-3,rank(slt)-1) = -1;
-    cm(rank(slt)-1,rank(slt)-3) = -1;
+    cm(lietype::rank(slt)-3,lietype::rank(slt)-1) = -1;
+    cm(lietype::rank(slt)-1,lietype::rank(slt)-3) = -1;
     goto done;
   case 'E':
-    switch (rank(slt)) {
+    switch (lietype::rank(slt)) {
     case 6:
       cm(0,2) = -1;
       cm(2,0) = -1;
@@ -295,7 +282,7 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm,
   }
 
  done:
-  ;
+  {}
 }
 
 }
@@ -317,12 +304,8 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm,
 
 namespace {
 
-void makeCorootBasis(WeightList& crb, const LatticeMatrix& c,
-		     const WeightList& lb)
 
-/*!
-  \brief Writes down the simple coroots in the dual lattice
-  basis.
+/*! \brief Writes down the simple coroots in the dual lattice basis.
 
   Given the lattice basis lb, expressed in terms of the simple weight basis,
   and the transposed Cartan matrix c, this function writes in crb the
@@ -333,12 +316,14 @@ void makeCorootBasis(WeightList& crb, const LatticeMatrix& c,
   there are torus factors, to detect which columns in q correspond to these
   factors.
 */
-
+void makeCorootBasis(latticetypes::WeightList& crb,
+		     const latticetypes::LatticeMatrix& c,
+		     const latticetypes::WeightList& lb)
 {
-  LatticeMatrix q(lb);
+  latticetypes::LatticeMatrix q(lb);
   q.transpose();
 
-  Weight r(q.numRows());
+  latticetypes::Weight r(q.numRows());
 
   for (size_t j = 0; j < q.numColumns(); ++j) {
     bool nonZero = false;
@@ -350,12 +335,8 @@ void makeCorootBasis(WeightList& crb, const LatticeMatrix& c,
     if (nonZero)
       crb.push_back(r);
   }
-
-  return;
 }
 
-void makeRootBasis(WeightList& rb, const LatticeMatrix& c,
-		   const WeightList& lb)
 
 /*!
  \brief Writes down the simple roots in the lattice basis.
@@ -367,27 +348,27 @@ void makeRootBasis(WeightList& rb, const LatticeMatrix& c,
   a base change. When there are torus factors, we should be careful to not
   push back the null columns from c that would correspond to these.
 */
-
+void makeRootBasis(latticetypes::WeightList& rb,
+		   const latticetypes::LatticeMatrix& c,
+		   const latticetypes::WeightList& lb)
 {
   // multiply c by q^{-1} on the left
 
-  LatticeMatrix q(lb);
-  LatticeCoeff d;
+  latticetypes::LatticeMatrix q(lb);
+  latticetypes::LatticeCoeff d;
   q = q.inverse(d)*c;
   q /= d;
 
   // push back non-zero columns on rb
 
   for (size_t j = 0; j < q.numColumns(); ++j) {
-    Weight r;
+    latticetypes::Weight r;
     q.column(r,j);
-    if (!isZero(r))
+    if (not r.isZero())
       rb.push_back(r);
   }
-
-  return;
 }
 
-}
+} // namsepace
 
-}
+} // namespace atlas

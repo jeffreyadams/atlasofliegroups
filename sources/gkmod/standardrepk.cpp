@@ -198,8 +198,6 @@ KHatComputations::KHatComputations
 HCParam KHatComputations::project
   (size_t cn, latticetypes::Weight lambda) const
 {
-  using latticetypes::operator-=;
-  using latticetypes::operator/=;
   const Cartan_info& ci=d_data[cn];
 
   (lambda -= rootDatum().twoRho()) /= 2; // final division is exact
@@ -212,8 +210,6 @@ HCParam KHatComputations::project
 
 latticetypes::Weight KHatComputations::lift(size_t cn, HCParam p) const
 {
-  using latticetypes::operator*=;
-  using latticetypes::operator+=;
   const Cartan_info& ci=d_data[cn];
   latticetypes::Weight result=ci.freeLift.apply(p.first); // lift free part
 
@@ -428,8 +424,6 @@ void KHatComputations::normalize(StandardRepK& sr) const
   bitset::RankFlags::iterator i;
   do
   {
-    using latticetypes::operator+=;
-
     latticetypes::Weight mu=theta.apply(lambda);
     mu +=lambda; // $\mu=(1+\theta)\alpha$, simplifies scalar product below
 
@@ -504,7 +498,6 @@ KHatComputations::HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
     id.add_rh(std_rep(lambda, a));
     if (id.lh2->d_fiberElt==sr.d_fiberElt) // type II
     {
-      using latticetypes::operator+=;
       lambda += rootDatum().simpleRoot(i); // other possibility
       lambda += rootDatum().simpleRoot(i); // add twice: doubled coordinates
       id.add_rh(std_rep(lambda, a));
@@ -560,8 +553,6 @@ KHatComputations::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
   assert(rd.scalarProduct(lambda,alpha)%4 == 0); // the non-final condition
 
   {
-    using latticetypes::operator*=;
-    using latticetypes::operator-=;
     latticetypes::Weight mu=rd.root(alpha);
     mu *= rd.scalarProduct(lambda,alpha)/2;
     lambda -= mu; // this makes lambda invariant under $s_\alpha$
@@ -611,8 +602,6 @@ atlas::latticetypes::LatticeCoeff
 KHatComputations::product_simpleroot
   (const StandardRepK& s, rootdata::RootNbr k) const
 {
-  using latticetypes::operator+=;
-
   latticetypes::Weight lifted=theta_lift(s.d_cartan,s.d_lambda);
 
   return rootDatum().scalarProduct(lifted,k);
@@ -621,13 +610,11 @@ KHatComputations::product_simpleroot
 atlas::latticetypes::LatticeCoeff
 KHatComputations::product_sumposroots(const StandardRepK& s) const
 {
-  using latticetypes::operator+=;
-
   latticetypes::Weight lifted=theta_lift(s.d_cartan,s.d_lambda);
 
   latticetypes::Weight dual2rho=rootDatum().dual_twoRho();
 
-  return intutils::abs(latticetypes::scalarProduct(lifted,dual2rho));
+  return intutils::abs(lifted.scalarProduct(dual2rho));
 }
 
 PSalgebra
@@ -723,8 +710,6 @@ KHatComputations::makeMULTmatrix
  (std::set<CharForm>& column,
   const atlas::latticetypes::LatticeCoeff bound) const
 {
-  using latticetypes::operator+=;
-
   rootdata::RootDatum rd = d_G->rootDatum();
   latticetypes::Weight tr=rd.twoRho();
   latticetypes::Weight cotr = rd.dual_twoRho();
@@ -828,7 +813,6 @@ CharForm  KHatComputations::character_formula(StandardRepK stdrep) const
       {
 	latticetypes::Weight mu=
 	  P.apply(cs.rootDatum().root(rpairlist[*j].first));
-	using latticetypes::operator+=;
 	lambda +=mu; // add the restriction of the first root to lambda
       }
 
@@ -914,8 +898,6 @@ void KHatComputations::go
   StandardRepK sr=std_rep_rho_plus(lambda,d_KGB.titsElt(x));
 
   {
-    using latticetypes::operator*=;
-    using latticetypes::operator+=;
     latticetypes::Weight mu=lambda;
     (mu *= 2) += rootDatum().twoRho();
     prettyprint::printVector(std::cout << "Weight entered: (1/2)",mu);

@@ -334,7 +334,7 @@ In other words, v is transformed into v - <alpha_j,v>alpha_j^vee.
 */
 void RootDatum::coreflect(Weight& v, RootNbr j) const
 {
-  LT::LatticeCoeff a = LT::scalarProduct(d_roots[j],v);
+  LT::LatticeCoeff a = v.scalarProduct(d_roots[j]);
   LT::Weight m = d_coroots[j];
   m *= a;
   v -= m;
@@ -450,7 +450,7 @@ In other words, v is transformed into v - <v,alpha_r^vee>alpha_r
 */
 void RootDatum::reflect(Weight& v, RootNbr r) const
 {
-  LatticeCoeff a = LT::scalarProduct(v,d_coroots[r]);
+  LatticeCoeff a = v.scalarProduct(d_coroots[r]);
   Weight m = d_roots[r];
   m *= a;
   v -= m;
@@ -518,7 +518,7 @@ LT::LatticeMatrix RootDatum::cartanMatrix(const RootList& rb) const
 
   for (size_t j = 0; j < r; ++j)
     for (size_t i = 0; i < r; ++i)
-      result(i,j) = LT::scalarProduct(root(rb[i]),coroot(rb[j]));
+      result(i,j) = root(rb[i]).scalarProduct(coroot(rb[j]));
 
   return result;
 }
@@ -698,12 +698,11 @@ void RootDatum::fillStatus()
 
 namespace rootdata {
 
-void cartanMatrix(latticetypes::LatticeMatrix& c, const RootDatum& rd)
 
 /*!
 \brief Puts in c the Cartan matrix of the root datum
 */
-
+void cartanMatrix(latticetypes::LatticeMatrix& c, const RootDatum& rd)
 {
   size_t r = rd.semisimpleRank();
 
@@ -712,30 +711,18 @@ void cartanMatrix(latticetypes::LatticeMatrix& c, const RootDatum& rd)
   for (size_t j = 0; j < r; ++j)
     for (size_t i = 0; i < r; ++i)
       c(i,j) = rd.cartan(i,j);
-
-  return;
 }
 
-void cartanMatrix(latticetypes::LatticeMatrix& c, const RootList& rb,
-		  const RootDatum& rd)
 
 /*!
 \brief Puts in c the Cartan matrix of the root basis rb.
 
-  Precondition: rb contains a basis of a sub-root system of the root system
-  of rd.
+  Precondition: rb contains a basis of a root subsystem of that of rd.
 */
-
+void cartanMatrix(latticetypes::LatticeMatrix& c, const RootList& rb,
+		  const RootDatum& rd)
 {
-  size_t r = rb.size();
-
-  c.resize(r,r,0);
-
-  for (size_t j = 0; j < r; ++j)
-    for (size_t i = 0; i < r; ++i)
-      c(i,j) = LT::scalarProduct(rd.root(rb[i]),rd.coroot(rb[j]));
-
-  return;
+  c=rd.cartanMatrix(rb);
 }
 
 void dualBasedInvolution(LT::LatticeMatrix& di, const LT::LatticeMatrix& i,
@@ -1042,7 +1029,7 @@ void toPositive(weyl::WeylWord& ww, const Weight& d_v, const RootDatum& rd)
   for (;;) {
     size_t j = 0;
     for (; j < rd.semisimpleRank(); ++j)
-      if (LT::scalarProduct(v,rd.simpleCoroot(j)) < 0)
+      if (v.scalarProduct(rd.simpleCoroot(j)) < 0)
 	goto add_reflection;
     goto end;
   add_reflection:

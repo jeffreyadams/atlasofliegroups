@@ -111,6 +111,15 @@ template<typename C>
   return result;
 }
 
+template<typename C>
+  bool Vector<C>::isZero() const
+{
+  for (size_t i=0; i<base::size(); ++i)
+    if ((*this)[i]!=0)
+      return false;
+  return true;
+}
+
 } // namespace matrix
 
 /*****************************************************************************
@@ -928,7 +937,7 @@ template<typename C>
   void initBasis(std::vector<Vector<C> >& b, size_t r)
 {
   C zero = 0; // conversion from int
-  b.assign(r,Vector<C> (r,zero));
+  b.assign(r,Vector<C>(r,zero));
 
   for (size_t j = 0; j < r; ++j) {
     b[j][j] = 1;

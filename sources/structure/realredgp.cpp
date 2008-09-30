@@ -25,12 +25,6 @@
 
 namespace atlas {
 
-namespace {
-
-  void pause() {}
-
-}
-
 /*****************************************************************************
 
         Chapter I -- The RealReductiveGroup class
@@ -39,6 +33,11 @@ namespace {
 
 namespace realredgp {
 
+
+/*!
+  Synopsis : constructs a real reductive group from the datum of a complex
+  reductive group and a real form.
+*/
 RealReductiveGroup::RealReductiveGroup(
 		  complexredgp::ComplexReductiveGroup& G_C,
 		  realform::RealForm rf)
@@ -46,18 +45,7 @@ RealReductiveGroup::RealReductiveGroup(
   , d_realForm(rf)
   , d_connectivity()
   , d_status()
-
-/*!
-  Synopsis : constructs a real reductive group from the datum of a complex
-  reductive group and a real form.
-*/
-
 {
-  using namespace cartanclass;
-  using namespace latticetypes;
-  using namespace rootdata;
-  using namespace tori;
-
   if (rootDatum().rank() == rootDatum().semisimpleRank())
     d_status.set(IsSemisimple);
 
@@ -65,16 +53,16 @@ RealReductiveGroup::RealReductiveGroup(
 
   // construct the torus for the most split Cartan
 
-  const Fiber& fundf = d_complexGroup->fundamental();
-  const RootDatum& rd = d_complexGroup->rootDatum();
+  const cartanclass::Fiber& fundf = d_complexGroup->fundamental();
+  const rootdata::RootDatum& rd = d_complexGroup->rootDatum();
 
-  RootList so= toMostSplit(fundf,rf,rd);
+  rootdata::RootList so= cartanclass::toMostSplit(fundf,rf,rd);
 
-  LatticeMatrix q;
+  latticetypes::LatticeMatrix q;
   rootdata::toMatrix(q,so,rd);
   q.leftMult(d_complexGroup->distinguished());
 
-  RealTorus T(q);
+  tori::RealTorus T(q);
 
   if (T.isSplit())
     d_status.set(IsSplit);
@@ -84,13 +72,9 @@ RealReductiveGroup::RealReductiveGroup(
     d_status.set(IsConnected);
 }
 
-RealReductiveGroup::~RealReductiveGroup()
-
-{}
 
 /******** accessors *********************************************************/
 
-const cartanclass::CartanClass& RealReductiveGroup::cartan(size_t cn) const
 
 /*!
   Synopsis: returns cartan \#cn in the group.
@@ -99,12 +83,11 @@ const cartanclass::CartanClass& RealReductiveGroup::cartan(size_t cn) const
 
   NOTE: this is not inlined to avoid a dependency on complexredegp.h
 */
-
+const cartanclass::CartanClass& RealReductiveGroup::cartan(size_t cn) const
 {
   return d_complexGroup->cartan(cn);
 }
 
-const poset::Poset& RealReductiveGroup::cartanOrdering() const
 
 /*!
   Synopsis: returns the poset of Cartan classes.
@@ -115,12 +98,11 @@ const poset::Poset& RealReductiveGroup::cartanOrdering() const
 
   NOTE: this is not inlined to avoid a dependency on complexredegp.h
 */
-
+const poset::Poset& RealReductiveGroup::cartanOrdering() const
 {
   return d_complexGroup->cartanOrdering();
 }
 
-const bitmap::BitMap& RealReductiveGroup::cartanSet() const
 
 /*!
   Synopsis: returns the support of the set of Cartan classes for this
@@ -128,7 +110,7 @@ const bitmap::BitMap& RealReductiveGroup::cartanSet() const
 
   NOTE: this is not inlined to avoid a dependency on complexredegp.h
 */
-
+const bitmap::BitMap& RealReductiveGroup::cartanSet() const
 {
   return complexGroup().cartanSet(d_realForm);
 }
@@ -137,7 +119,6 @@ size_t RealReductiveGroup::numInvolutions() const {
     return complexGroup().numInvolutions(cartanSet());
   }
 
-const latticetypes::LatticeMatrix& RealReductiveGroup::distinguished() const
 
 /*!
   Synopsis: returns the distinguished involution of the underlying complex
@@ -145,7 +126,7 @@ const latticetypes::LatticeMatrix& RealReductiveGroup::distinguished() const
 
   NOTE : this is not inlined to avoid a compiling dependency on complexredgp.h
 */
-
+const latticetypes::LatticeMatrix& RealReductiveGroup::distinguished() const
 {
   return d_complexGroup->distinguished();
 }
@@ -161,21 +142,16 @@ rootdata::RootSet RealReductiveGroup::noncompactRoots() const
   return d_complexGroup->noncompactRoots(d_realForm);
 }
 
-
-
-size_t RealReductiveGroup::kgbSize() const
-
 /*!
   Synopsis: returns the cardinality of K\\G/B.
 
   Precondition: fillCartan() has been called.
 */
-
+size_t RealReductiveGroup::kgbSize() const
 {
   return d_complexGroup->kgbSize(d_realForm);
 }
 
-size_t RealReductiveGroup::mostSplit() const
 
 /*!
   Synopsis: returns the most split cartan subgroup.
@@ -184,12 +160,10 @@ size_t RealReductiveGroup::mostSplit() const
 
   NOTE: this is not inlined to avoid a dependency on complexredgp.h
 */
-
+size_t RealReductiveGroup::mostSplit() const
 {
   return d_complexGroup->mostSplit(d_realForm);
 }
-
-size_t RealReductiveGroup::numCartan() const
 
 /*!
   Synopsis: returns the number of conjugacy classes of Cartan subgroups.
@@ -199,74 +173,69 @@ size_t RealReductiveGroup::numCartan() const
 
   NOTE: this is not inlined in order to avoid a dependency on bitmap.h
 */
-
+size_t RealReductiveGroup::numCartan() const
 {
   return cartanSet().size();
 }
 
-size_t RealReductiveGroup::rank() const
 
 /*!
   Synopsis: returns the rank of the group.
 
   NOTE: this is not inlined to avoid a compiler dependency on rootdata.h
 */
-
+size_t RealReductiveGroup::rank() const
 {
   return rootDatum().rank();
 }
 
-const rootdata::RootDatum& RealReductiveGroup::rootDatum() const
 
 /*!
   Synopsis: returns the root datum of the underlying complex group.
 
   NOTE: this is not inlined to avoid a compiler dependency on complexredgp.h
 */
-
+const rootdata::RootDatum& RealReductiveGroup::rootDatum() const
 {
   return d_complexGroup->rootDatum();
 }
 
-size_t RealReductiveGroup::semisimpleRank() const
 
 /*!
   Synopsis: returns the semisimple rank of the group.
 
   NOTE: this is not inlined to avoid a compiler dependency on rootdata.h
 */
-
+size_t RealReductiveGroup::semisimpleRank() const
 {
   return rootDatum().semisimpleRank();
 }
 
-const tits::TitsGroup& RealReductiveGroup::titsGroup() const
 
 /*!
   Synopsis: returns a reference to the Tits group.
 
   NOTE: this is not inlined to avoid a compiler dependency on complexredgp.h
 */
-
+const tits::TitsGroup& RealReductiveGroup::titsGroup() const
 {
   return d_complexGroup->titsGroup();
 }
 
-const weyl::WeylGroup& RealReductiveGroup::weylGroup() const
 
 /*!
-  Synopsis: returns the rank of the group.
+  Synopsis: returns the Weyl group of the associated complex group.
 
   NOTE: this is not inlined to avoid a compiler dependency on complexredgp.h
 */
 
+const weyl::WeylGroup& RealReductiveGroup::weylGroup() const
 {
   return d_complexGroup->weylGroup();
 }
 
 /******** manipulators ******************************************************/
 
-void RealReductiveGroup::fillCartan()
 
 /*!
   Synopsis: makes representatives of conjugacy classes of Cartan subgroups
@@ -277,7 +246,7 @@ void RealReductiveGroup::fillCartan()
 
   NOTE: may forward an Overflow exception.
 */
-
+void RealReductiveGroup::fillCartan()
 {
   using namespace cartanset;
 
@@ -287,7 +256,6 @@ void RealReductiveGroup::fillCartan()
 }
 
 void RealReductiveGroup::swap(RealReductiveGroup& other)
-
 {
   std::swap(d_complexGroup,other.d_complexGroup);
   std::swap(d_realForm,other.d_realForm);
@@ -297,6 +265,6 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
   return;
 }
 
-}
+} // namespace realredgp
 
-}
+} // namespace atlas

@@ -37,18 +37,6 @@ namespace atlas {
 namespace latticetypes {
 
 
-/*
-  Returns true if all components of v are zero, false otherwise.
-*/
-bool isZero(const LatticeElt& v)
-{
-  for (size_t j = 0; j < v.size(); ++j)
-    if (v[j])
-      return false;
-
-  return true;
-}
-
 } // namespace latticetypes
 
 } // namespace atlas

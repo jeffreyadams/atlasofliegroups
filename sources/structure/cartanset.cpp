@@ -772,7 +772,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
     size_t i; // declare outside loop to allow inspection of final value
     do
       for (i=0; i<rd.semisimpleRank(); ++i)
-	if (latticetypes::scalarProduct(rd.simpleCoroot(i),rrs) < 0 )
+	if (rrs.scalarProduct(rd.simpleCoroot(i)) < 0 )
 	{
 	  rd.reflect(rrs,rd.simpleRootNbr(i));   // apply $s_i$ to root sum
 	  weylGroup().twistedConjugate(sigma,i); // adjust |sigma| accordingly
@@ -790,7 +790,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
   bitset::RankFlags simple_orth;
 
   for (size_t  i=0; i <  rd.semisimpleRank(); ++i)
-    if (latticetypes::scalarProduct(rd.simpleCoroot(i),rrs) == 0)
+    if (rrs.scalarProduct(rd.simpleCoroot(i)) == 0)
       simple_orth.set(i);
 
   latticetypes::LatticeElt irs=posImaginaryRootSum(sigma);
@@ -798,7 +798,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
     bitset::RankFlags::iterator it;
     do
       for (it=simple_orth.begin(); it(); ++it)
-	if (latticetypes::scalarProduct(rd.simpleCoroot(*it),irs) < 0)
+	if (irs.scalarProduct(rd.simpleCoroot(*it)) < 0)
 	{
 	  rd.reflect(irs,rd.simpleRootNbr(*it));   // apply $s_i$ to root sum
 	  weylGroup().twistedConjugate(sigma,*it); // adjust |sigma|
@@ -814,7 +814,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
 
   // clear those simple roots in |simp_orth| not orthogonal to |irs|
   for (bitset::RankFlags::iterator it=simple_orth.begin(); it(); ++it)
-    if (latticetypes::scalarProduct(rd.simpleCoroot(*it),irs) > 0)
+    if (irs.scalarProduct(rd.simpleCoroot(*it)) > 0)
       simple_orth.reset(*it);
 
 
@@ -834,11 +834,11 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
     bitset::RankFlags::iterator it;
     do
     {
-      latticetypes::LatticeElt x=rd.twoRho(); // take fresh dominant each time
+      latticetypes::Weight x=rd.twoRho(); // take fresh dominant each time
       twistedAct(sigma,x); // and (re)compute the effect of |sigma| into |x|
 
       for (it=simple_orth.begin(); it(); ++it)
-	if (latticetypes::scalarProduct(rd.simpleCoroot(*it),x) < 0)
+	if (x.scalarProduct(rd.simpleCoroot(*it)) < 0)
 	{
 	  weylGroup().twistedConjugate(sigma,*it); // adjust |sigma|
 	  weylGroup().mult(w,*it);                 // and add generator to |w|

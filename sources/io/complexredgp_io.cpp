@@ -45,33 +45,27 @@ namespace complexredgp_io {
 
 Interface::Interface(complexredgp::ComplexReductiveGroup& G,
 		     const layout::Layout& lo)
-  :d_complexGroup(&G),
-   d_layout(lo),
-   d_realFormInterface(G,lo)
-
-{
-  pause();
-  d_dualRealFormInterface = realform_io::Interface(G,lo,tags::DualTag());
-}
+  : d_complexGroup(&G)
+  , d_layout(lo)
+  , d_realFormInterface(G,lo)
+  , d_dualRealFormInterface(realform_io::Interface(G,lo,tags::DualTag()))
+{}
 
 /******** copy, assignment and swap ******************************************/
-void Interface::swap(Interface& other)
 
 /*
   Note: recall that the complex group is not owned; only the pointers are
   swapped.
 */
-
+void Interface::swap(Interface& other)
 {
   std::swap(d_complexGroup,other.d_complexGroup);
   d_layout.swap(other.d_layout);
   d_realFormInterface.swap(other.d_realFormInterface);
   d_dualRealFormInterface.swap(other.d_dualRealFormInterface);
-
-  return;
 }
 
-}
+} // namespace complexredgp_io
 
 /*****************************************************************************
 

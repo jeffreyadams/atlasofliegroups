@@ -559,8 +559,8 @@ Fiber::adjointMAlphas (const rootdata::RootDatum& rd) const
     latticetypes::SmallBitVector v(rd.semisimpleRank());
     // compute pairing with simple roots modulo 2
     for(size_t j = 0; j < v.size(); ++j) {
-      latticetypes::LatticeCoeff c = latticetypes::scalarProduct
-	(rd.coroot(simpleImaginary(i)),rd.simpleRoot(j));
+      latticetypes::LatticeCoeff c =
+	rd.coroot(simpleImaginary(i)).scalarProduct(rd.simpleRoot(j));
       v.set_mod2(j,c);
     }
 

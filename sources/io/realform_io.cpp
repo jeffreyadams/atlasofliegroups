@@ -28,8 +28,6 @@ namespace atlas {
 
 namespace {
 
-  void pause() {;}
-
   std::ostream& printComplexType(std::ostream&,
 				 const lietype::SimpleLieType&);
 
@@ -180,8 +178,6 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   // write names
   d_name.resize(rfd.size());
   std::ostringstream os;
-
-  pause();
 
   LieType dlt;
   dualLieType(dlt,lo.d_type);

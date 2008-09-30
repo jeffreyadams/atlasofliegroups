@@ -79,7 +79,7 @@ template <typename I, typename O>
 
   for (I i = first; i != last; ++i) {
     for (unsigned long j = 0; j < rb.size(); ++j)
-      v[j] = latticetypes::scalarProduct(root(*i),coroot(rb[j]));
+      v[j] = root(*i).scalarProduct(coroot(rb[j]));
     *out++ = v;
   }
 }

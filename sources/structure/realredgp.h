@@ -68,8 +68,6 @@ class RealReductiveGroup {
 
   RealReductiveGroup(complexredgp::ComplexReductiveGroup&, realform::RealForm);
 
-  ~RealReductiveGroup();
-
 // accessors
   const cartanclass::CartanClass& cartan(size_t) const;
 

@@ -27,18 +27,6 @@
 
 namespace atlas {
 
-namespace latticetypes {
-
-  //  LatticeElt& operator- (LatticeElt&); // negates argument in place
-
-  bool isZero(const LatticeElt&);
-
-  inline LatticeCoeff scalarProduct(const LatticeElt& v, const LatticeElt& w)
-    {
-      return v.scalarProduct(w);
-    }
-
-}
 
 /******** type definitions ***************************************************/
 
