@@ -1848,6 +1848,7 @@ struct vector_value : public value_base
 { latticetypes::Weight val;
 @)
   explicit vector_value(const latticetypes::Weight& v) : val(v) @+ {}
+  explicit vector_value(const latticetypes::CoeffList& v) : val(v) @+ {}
   ~vector_value()@+ {}
   virtual void print(std::ostream& out) const;
   vector_value* clone() const @+{@; return new vector_value(*this); }

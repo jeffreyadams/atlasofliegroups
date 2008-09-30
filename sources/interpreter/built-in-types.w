@@ -208,11 +208,10 @@ ensure that we can print its values. We can use an operator defined in
 @h "basic_io.h"
 @< Function definitions @>=
 void Lie_type_value::print(std::ostream& out) const
-{ if (val.empty()) out << "empty Lie type";
+{ using atlas::operator<<;
+  if (val.empty()) out << "empty Lie type";
   else
-  {@; using basic_io::operator<<;
     out << "Lie type '" << val << '\'';
-  }
 }
 
 @*2 Auxiliary functions for Lie types.
@@ -326,7 +325,7 @@ void smithBasis(latticetypes::CoeffList& invf, latticetypes::WeightList& b,
 
     if (lietype::type(lt[j]) == 'D' and r%2 == 0)
       // adjust generators back to canonical basis
-      latticetypes::operator+=(bp[r-2],bp[r-1]);
+      bp[r-2]+=bp[r-1];
     }
     bp += r;
   }
@@ -2001,9 +2000,8 @@ compilation unit \.{cartan\_io} uses them.
 
 @< Local function def...@>=
 void print_Cartan_info_wrapper()
-{ using basic_io::operator<<;
-
-@/Cartan_class_ptr cc(get<Cartan_class_value>());
+{ using atlas::operator<<;
+  Cartan_class_ptr cc(get<Cartan_class_value>());
 
   const rootdata::RootDatum& rd=cc->parent.val.rootDatum();
 
@@ -2174,7 +2172,7 @@ for this case.
 { *output_stream << "Imaginary root system is ";
   if (si.size()==0) *output_stream<<"empty.\n";
   else
-  { using basic_io::operator<<;
+  { using atlas::operator<<;
     lietype::LieType t; dynkin::lieType(t,cm);
 
     *output_stream << "of type " << t << ", with simple root"
@@ -2393,7 +2391,7 @@ void print_KGB_wrapper()
   *output_stream
     << "kgbsize: " << rf->val.kgbSize() << std::endl;
   kgb::KGB kgb(rf->val);
-  kgb_io::var_print_KGB(*output_stream,kgb);
+  kgb_io::var_print_KGB(*output_stream,rf->val.complexGroup(),kgb);
 @)
   wrap_tuple(0);
 }
