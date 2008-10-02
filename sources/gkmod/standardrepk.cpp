@@ -36,6 +36,7 @@ StandardRepK and KHatComputations.
 #include <iostream>
 #include <sstream>
 #include <stdexcept>
+#include <deque>
 
 namespace atlas {
 
@@ -623,8 +624,8 @@ KHatComputations::theta_stable_parabolic
    const cartanset::CartanClassSet& cs,
    const size_t Cartan_nr) const
 {
-  const rootdata::RootDatum rd=cs.rootDatum();
-  const weyl::WeylGroup W=cs.weylGroup();
+  const rootdata::RootDatum& rd=cs.rootDatum();
+  const weyl::WeylGroup& W=cs.weylGroup();
   weyl::TwistedInvolution twi=cs.twistedInvolution(Cartan_nr);
   // latticetypes::LatticeMatrix theta=cs.involutionMatrix(twi);
 
@@ -640,14 +641,14 @@ KHatComputations::theta_stable_parabolic
 
   {
     size_t i;
-    do // get list of simple complex roots
+    do // try to twisted-conjugate by complex simple root mapped to negative
     {
-      cartanclass::InvolutionData id(rd,cs.involutionMatrix(twi));
       for (i=0; i<rd.semisimpleRank(); ++i)
       {
 	rootdata::RootNbr alpha=rd.simpleRootNbr(i);
-	if (id.complex_roots().isMember(alpha)
-	    and not rd.isPosRoot(id.root_involution()[alpha]))
+	rootdata::RootNbr beta= // image of |alpha| by |twi|
+	  rd.permuted_root(W.word(twi.w()),rd.simpleRootNbr(W.twisted(i)));
+	if (not rd.isPosRoot(beta) and beta!=rd.rootMinus(alpha))
 	{
 	  W.twistedConjugate(twi,i);
 	  conjugator.push_back(i);
@@ -659,7 +660,7 @@ KHatComputations::theta_stable_parabolic
   }
 /*
    We have achieved that any real positive root is a sum of real simple roots.
-   For consider a counterexample that is minimal: a real positive root
+   Here's why. Consider a counterexample that is minimal: a real positive root
    $\alpha$ from which no real simple root can be subtracted while remaining
    positive. Then this must be a sum of simple roots that are either complex
    or imaginary; the $\theta$-images of such simple roots are all positive,
@@ -671,39 +672,37 @@ KHatComputations::theta_stable_parabolic
 
   // Build the parabolic subalgebra:
 
-  cartanclass::InvolutionData id(rd,cs.involutionMatrix(twi));
-
-  PSalgebra result;
-  result.cartan = Cartan_nr;
-
-  // Put real simple roots, transformed for original Cartan, into Levi factor
-  for (size_t i=0; i <  rd.semisimpleRank(); ++i)
-    if (id.real_roots().isMember(rd.simpleRootNbr(i)))
-    {
-      rootdata::RootNbr alpha=rd.simpleRootNbr(i);
-      for (size_t j=conjugator.size(); j-->0; )
-	rd.rootReflect(alpha,conjugator[j]);
-      result.levi.push_back(alpha);
-    }
-
-  // Put pairs of complex positive roots, transformed, into nilpotent radical
-  rootdata::RootSet pos_roots=rd.posRootSet();
-  for (rootdata::RootSet::iterator i = pos_roots.begin(); i(); ++i)
-    if (not id.real_roots().isMember(*i))
-    {
-      rootdata::RootNbr alpha=*i;
-      rootdata::RootNbr beta=id.root_involution()[alpha];
-      for (size_t j=conjugator.size(); j-->0; )
-      {
-	rd.rootReflect(alpha,conjugator[j]);
-	rd.rootReflect(beta,conjugator[j]);
-      }
-      result.nilp.push_back(std::make_pair(alpha,beta));
-    }
-
-  return result;
+  return  PSalgebra(cs,twi);
 
 } // theta_stable_parabolic
+
+kgb::KGBEltList KHatComputations::sub_KGB(const PSalgebra& q) const
+{
+  bitmap::BitMap flagged(d_KGB.size());
+  kgb::KGBElt root=d_KGB.tauPacket(q.theta()).first; // choose a torus part
+  flagged.insert(root);
+  std::deque<kgb::KGBElt> queue(1,root);
+  do
+  {
+    kgb::KGBElt x=queue.front(); queue.pop_front();
+    for (bitset::RankFlags::iterator it=q.levi().begin(); it(); ++it)
+    {
+      kgb::KGBElt y=d_KGB.cross(*it,x);
+      if (not flagged.isMember(y))
+      {
+	flagged.insert(y); queue.push_back(y);
+      }
+      y=d_KGB.inverseCayley(*it,x).first; // second will follow if present
+      if (y!=kgb::UndefKGB and not flagged.isMember(y))
+      {
+	flagged.insert(y); queue.push_back(y);
+      }
+    }
+  }
+  while (not queue.empty());
+
+  return kgb::KGBEltList(flagged.begin(),flagged.end());
+}
 
 atlas::matrix::Matrix<CharCoeff>
 KHatComputations::makeMULTmatrix
@@ -782,11 +781,11 @@ CharForm  KHatComputations::character_formula(StandardRepK stdrep) const
     std::set<rpair> rpairset;
 
     // make pairs unique by sorting the two elements, then insert into set
-    for ( size_t k = 0; k!=ps.nilp.size(); ++k)
+    for ( size_t k = 0; k!=ps.radical().size(); ++k)
     {
-      rpair rp = ps.nilp[k];
-      if (rp.first > rp.second) std::swap(rp.first,rp.second);
-      rpairset.insert(rp);
+//       rpair rp = ps.radical().n_th(k);
+//       if (rp.first > rp.second) std::swap(rp.first,rp.second);
+//       rpairset.insert(rp);
     }
     rpairlist.assign(rpairset.begin(),rpairset.end());
   }
@@ -926,9 +925,9 @@ void KHatComputations::go
 #endif
 
   std::cout << "Standard normal final limit representations:\n";
-  for (size_t i=0; i<final_pool.size(); ++i)
+  for (SR_rewrites::seq_no i=0; i<nr_reps(); ++i)
   {
-    const StandardRepK& sr=final_pool[i];
+    const StandardRepK& sr=rep_no(i);
     assert(sr.isFinal());
     print(std::cout << 'R' << i << ": ",sr) << std::endl;
   }
@@ -951,10 +950,35 @@ void KHatComputations::go
 
 } // go
 
+/*****************************************************************************
+
+        Chapter IV -- The PSalgebra class
+
+******************************************************************************/
+
+PSalgebra::PSalgebra (const cartanset::CartanClassSet& cs,
+		      const weyl::TwistedInvolution& theta)
+    : twi(theta), cartan(cs.classNumber(twi))
+    , L(), nilpotents(cs.rootDatum().numRoots())
+{
+  const rootdata::RootDatum& rd=cs.rootDatum();
+  cartanclass::InvolutionData id(rd,cs.involutionMatrix(twi));
+
+  // Put real simple roots into Levi factor
+  for (size_t i=0; i<rd.semisimpleRank(); ++i)
+    if (id.real_roots().isMember(rd.simpleRootNbr(i)))
+      L.set(i);
+
+
+  // put any imaginary or complex positive roots into radical
+  for (rootdata::RootSet::iterator it = rd.posRootSet().begin(); it(); ++it)
+    if (not id.real_roots().isMember(*it))
+      nilpotents.insert(*it);
+}
 
 
 
-// ****************** functions ************************
+// ****************** Chapter V -- functions ************************
 
 atlas::matrix::Matrix<CharCoeff>
 triangularize (const std::vector<CharForm>& system,

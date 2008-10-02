@@ -38,30 +38,24 @@ namespace atlas {
 
 namespace standardrepk {
 
-    class StandardRepK;
-    class KHatComputations;
-    class HechtSchmid;
+class StandardRepK;
+class KHatComputations;
+class HechtSchmid;
+class PSalgebra;
 
 // An image of a weight of the $\rho$-cover mod $(1-\theta)X^*$
-    typedef std::pair
-      <latticetypes::LatticeElt, // free part, after subtraction of rho
-       bitset::RankFlags         // torsion part, compact representation
-      > HCParam;
+typedef std::pair
+  <latticetypes::LatticeElt, // free part, after subtraction of rho
+   bitset::RankFlags         // torsion part, compact representation
+  > HCParam;
 
-    // a linear combination of |StandardRepK|s
-    typedef free_abelian::Free_Abelian<StandardRepK> Char;
-    typedef long int CharCoeff; // this is what |Free_Abelian| uses
+// a linear combination of |StandardRepK|s
+typedef free_abelian::Free_Abelian<StandardRepK> Char;
+typedef long int CharCoeff; // this is what |Free_Abelian| uses
 
-    // a character formula; first component stands for its lowest $K$-type
-    typedef std::pair< StandardRepK,Char> CharForm;
+// a character formula; first component stands for its lowest $K$-type
+typedef std::pair< StandardRepK,Char> CharForm;
 
-    struct PSalgebra // Parabolic subalgebra
-    {
-      size_t cartan; // number of the Cartan class
-      std::vector<atlas::rootdata::RootNbr> levi; // simple basis subsystem
-      std::vector<std::pair<atlas::rootdata::RootNbr,atlas::rootdata::RootNbr>
-		  > nilp; // basis of nilpotent radical, with their theta-image
-    };
 } // namespace standardrepk
 
 /******** function declarations *********************************************/
@@ -348,6 +342,13 @@ class KHatComputations
 			 s.d_fiberElt);
   }
 
+  SR_rewrites::seq_no nr_reps() const { return final_pool.size(); }
+
+  StandardRepK rep_no(SR_rewrites::seq_no i) const
+    {
+      return final_pool[i];
+    }
+
   std::ostream& print(std::ostream& strm,StandardRepK sr);
 
   //!\brief A section of |project|
@@ -379,6 +380,7 @@ class KHatComputations
   // Hecht-Schmid identity for simple-real root $\alpha$
   HechtSchmid back_HS_id(StandardRepK s, rootdata::RootNbr alpha) const;
 
+  kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
 
   CharForm character_formula(StandardRepK) const; // call by value
 
@@ -441,6 +443,20 @@ struct HechtSchmid {
   }
 }; // class HechtSchmid
 
+class PSalgebra // Parabolic subalgebra
+{
+  weyl::TwistedInvolution twi;
+  size_t cartan; // number of the Cartan class
+  bitset::RankFlags L; // subset of simple roots, basis of Levi factor
+  rootdata::RootSet nilpotents; // (positive) roots in nilpotent radical
+ public:
+  PSalgebra (const cartanset::CartanClassSet& cs,
+	     const weyl::TwistedInvolution& twi);
+
+  const weyl::TwistedInvolution& theta() const { return twi; }
+  bitset::RankFlags levi() const { return L; }
+  const rootdata::RootSet& radical() const { return nilpotents; }
+}; // class PSalgebra
 
 
 } // namespace standardrepk

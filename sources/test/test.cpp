@@ -33,6 +33,7 @@
 #include "kl.h"
 #include "kltest.h"
 #include "standardrepk.h"
+#include "free_abelian.h"
 
 /*****************************************************************************
 
@@ -52,6 +53,8 @@ namespace {
   void posroots_rootbasis_f();
   void roots_rootbasis_f();
   void KGB_f();
+  void sub_KGB_f();
+  void trivial_f();
   void test_f();
 
   // help functions
@@ -134,6 +137,8 @@ void addTestCommands<realmode::RealmodeTag>
   // add additional commands here :
 
   mode.add("KGB",KGB_f);
+  mode.add("sub_KGB",sub_KGB_f);
+  mode.add("trivial",trivial_f);
 
 }
 
@@ -218,11 +223,15 @@ template<> void addTestHelp<realmode::RealmodeTag>
   }
 
   mode.add("KGB",helpmode::nohelp_h);
+  mode.add("sub_KGB",helpmode::nohelp_h);
+  mode.add("trivial",helpmode::nohelp_h);
 
 
   // add additional command tags here :
 
   insertTag(t,"KGB",test_tag);
+  insertTag(t,"sub_KGB",test_tag);
+  insertTag(t,"trivial",test_tag);
 
 }
 
@@ -343,6 +352,71 @@ void KGB_f()
   G_R.fillCartan(); // must not forget this!
   kgb::KGB kgb(G_R,G_R.cartanSet());
   kgb_io::var_print_KGB(std::cout,mainmode::currentComplexGroup(),kgb);
+}
+
+void sub_KGB_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  G_R.fillCartan(); // must not forget this!
+  kgb::KGB kgb(G_R,G_R.cartanSet());
+  unsigned long cn;
+  interactive::getInteractive(cn,"Cartan class: ",G_R.cartanSet());
+  standardrepk::KHatComputations khc(G_R,kgb);
+
+  weyl::WeylWord ww;
+  standardrepk::PSalgebra q=
+    khc.theta_stable_parabolic(ww,G_R.complexGroup().cartanClasses(),cn);
+  kgb::KGBEltList sub=khc.sub_KGB(q);
+
+  std::cout << "Conjugating word [" << ww << "]\n";
+  kgb_io::print_sub_KGB(std::cout,kgb,sub);
+}
+
+void trivial_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  G_R.fillCartan(); // must not forget this!
+  const rootdata::RootDatum& rd=G_R.rootDatum();
+
+  kgb::KGB kgb(G_R,G_R.cartanSet());
+  standardrepk::KHatComputations khc(G_R,kgb);
+
+  standardrepk::SR_rewrites::combination sum;
+
+  size_t max_l=kgb.length(kgb.size()-1);
+
+  for (kgb::KGBElt x=0; x<kgb.size(); ++x)
+  {
+    standardrepk::StandardRepK sr=khc.std_rep(rd.twoRho(),kgb.titsElt(x));
+    standardrepk::SR_rewrites::combination c=khc.standardize(sr);
+    if ((max_l-kgb.length(x))%2 == 0)
+      sum += c;
+    else
+      sum-=c;
+  }
+
+  std::cout << "Standard normal final limit representations:\n";
+  for (standardrepk::SR_rewrites::seq_no i=0; i<khc.nr_reps(); ++i)
+  {
+    const standardrepk::StandardRepK& sr=khc.rep_no(i);
+    khc.print(std::cout << 'R' << i << ": ",sr) << std::endl;
+  }
+
+  std::cout << "Standardized expression:\n";
+  {
+    std::ostringstream s;
+    for (standardrepk::SR_rewrites::combination::const_iterator
+	   it=sum.begin(); it!=sum.end(); ++it)
+    {
+      s << (it->second>0 ? it==sum.begin() ? "" : " + " : " - ");
+      long int ac=intutils::abs<long int>(it->second);
+      if (ac!=1)
+	s << ac << '*';
+      s << 'R' << it->first;
+    }
+    ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+  }
+
 }
 
 
