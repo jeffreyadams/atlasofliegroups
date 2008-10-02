@@ -427,6 +427,13 @@ use by accessors.
 
   void rootReflect(RootNbr& r, size_t s) const  { r=rootPermutation(s)[r]; }
 
+  RootNbr permuted_root(const weyl::WeylWord& ww, RootNbr r) const
+    {
+      for (size_t i=ww.size(); i-->0; )
+	rootReflect(r,ww[i]);
+      return r;
+    }
+
   RootNbr reflectedRoot(RootNbr r, size_t s) const {
     return d_rootPermutation[s][r];
   }
