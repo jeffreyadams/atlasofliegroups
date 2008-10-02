@@ -695,10 +695,8 @@ latticetypes::LatticeMatrix
 CartanClassSet::involutionMatrix(const weyl::TwistedInvolution& tw)
   const
 {
-  weyl::WeylWord ww;
-  weylGroup().out(ww,tw.w());
   latticetypes::LatticeMatrix result;
-  rootdata::toMatrix(result, ww,rootDatum());
+  rootdata::toMatrix(result,weylGroup().word(tw.w()),rootDatum());
   result *= distinguished();
   return result;
 }
