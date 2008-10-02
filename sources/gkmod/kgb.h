@@ -413,7 +413,7 @@ bool isAscent(size_t s, KGBElt x) const
     return d_base->titsGroup().weylGroup();
   }
 /*!
-  \brief Returns the root datum involution corresponding to z.
+  \brief Returns the root datum involution corresponding to x.
 
   In fact, returns the twisted involution $w$ with \f$w.\delta = \tau\f$.
 */
@@ -437,8 +437,8 @@ bool isAscent(size_t s, KGBElt x) const
 
   gradings::Grading base_grading() const { return d_base->base_grading(); }
 
-  size_t weylLength(KGBElt z) const {
-    return weylGroup().length(involution(z).w());
+  size_t weylLength(KGBElt x) const {
+    return weylGroup().length(involution(x).w());
   }
 
 // manipulators

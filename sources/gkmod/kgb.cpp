@@ -350,7 +350,7 @@ KGB::KGB(realredgp::RealReductiveGroup& GR,
 
 
 /*!
-  \brief Returns the range of |KGBElt| values |z| with |involution(z)==w|.
+  \brief Returns the range of |KGBElt| values |x| with |involution(x)==w|.
 
   It is possible to return a range of |KGBElt|, since these elements have
   been sorted by considering the associated twisted involution first.
