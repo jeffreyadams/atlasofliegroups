@@ -51,6 +51,9 @@ struct Free_Abelian : public std::map<T,long int>
   Free_Abelian& operator+=(const Free_Abelian& p)
   { return add_multiple(p,1); }
 
+  Free_Abelian& operator-=(const Free_Abelian& p)
+  { return add_multiple(p,-1); }
+
 }; // Free_Abelian
 
 } // namespace free_abelian
