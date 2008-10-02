@@ -50,12 +50,15 @@ namespace kgb_io {
   sophisticated formatting for larger groups.
 */
 std::ostream& print(std::ostream& strm,
+		    const kgb::KGB& kgb,
 		    const complexredgp::ComplexReductiveGroup* G,
-		    const kgb::KGB& kgb)
+		    const kgb::KGBEltList* which)
 {
   bool extra= G!=NULL;
+  bool subset= which!=NULL;
+  bool traditional = not (extra or subset);
 
-  if (extra)
+  if (not traditional)
     prettyprint::prettyPrint(strm << "Base grading: [",
 			     kgb.base_grading(),kgb.rank()) << "].\n";
   // compute maximal width of entry
@@ -64,15 +67,17 @@ std::ostream& print(std::ostream& strm,
   int lwidth = ioutils::digits(kgb.length(kgb.size()-1),10ul);
   const int pad = 2;
 
-  for (size_t j = 0; j < kgb.size(); ++j)
+  size_t size= subset ? which->size() : kgb.size();
+  for (size_t i = 0; i<size; ++i)
   {
+    size_t j = subset ? (*which)[i] : i;
     strm << std::setw(width) << j << ":  ";
 
     // print length
     strm << std::setw(lwidth) << kgb.length(j);
     strm << std::setw(pad) << "";
 
-    if (not extra)  // print Cartan class (in traditional mode)
+    if (traditional)  // print Cartan class (in traditional mode)
     {
       strm << std::setw(cwidth) << kgb.Cartan_class(j);
       strm << std::setw(pad) << "";
@@ -98,7 +103,7 @@ std::ostream& print(std::ostream& strm,
     }
     strm << std::setw(pad) << "";
 
-    if (extra)
+    if (not traditional)
     {
       tits::TitsElt a=kgb.titsElt(j);
       const tits::TitsGroup& Tg=kgb.titsGroup();
@@ -107,7 +112,7 @@ std::ostream& print(std::ostream& strm,
 
     // print torus part
       prettyprint::prettyPrint(strm,kgb.torus_part(j)) <<
-	(kgb.involution(j)==G->twistedInvolution(kgb.Cartan_class(j))
+	(extra and kgb.involution(j)==G->twistedInvolution(kgb.Cartan_class(j))
 	? '#' : ' ') <<
 	std::setw(cwidth) << kgb.Cartan_class(j) << std::setw(pad) << "";
     }
@@ -122,14 +127,21 @@ std::ostream& print(std::ostream& strm,
 
 std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
 {
-  return print(strm,NULL,kgb);
+  return print(strm,kgb,NULL,NULL);
+}
+
+std::ostream& print_sub_KGB(std::ostream& strm,
+			    const kgb::KGB& kgb,
+			    const kgb::KGBEltList& which)
+{
+  return print(strm,kgb,NULL,&which);
 }
 
 std::ostream& var_print_KGB(std::ostream& strm,
 			    const complexredgp::ComplexReductiveGroup& G,
 			    const kgb::KGB& kgb)
 {
-  return print(strm,&G,kgb);
+  return print(strm,kgb,&G,NULL);
 }
 
 

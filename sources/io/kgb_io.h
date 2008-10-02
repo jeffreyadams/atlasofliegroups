@@ -26,6 +26,10 @@ namespace kgb_io {
   std::ostream& var_print_KGB(std::ostream&,
 			      const complexredgp::ComplexReductiveGroup&,
 			      const kgb::KGB&);
+
+  std::ostream& print_sub_KGB(std::ostream& strm,
+			      const kgb::KGB& kgb,
+			      const kgb::KGBEltList& which);
   std::ostream& printBruhatOrder(std::ostream&, const bruhat::BruhatOrder&);
 
 }
