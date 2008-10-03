@@ -643,6 +643,7 @@ class WeylGroup {
   }
 
   WeylWord word(const WeylElt& w) const;
+  WeylElt element(const WeylWord& ww) const { return prod(WeylElt(),ww); }
 
   WeylEltList reflections() const; // list all reflections
 
