@@ -349,7 +349,7 @@ class KHatComputations
       return final_pool[i];
     }
 
-  std::ostream& print(std::ostream& strm,StandardRepK sr);
+  std::ostream& print(std::ostream& strm,StandardRepK sr) const;
 
   //!\brief A section of |project|
   latticetypes::Weight lift(size_t cn, HCParam p) const;
@@ -420,6 +420,12 @@ class KHatComputations
 
   void go(kgb::KGBElt, const latticetypes::Weight&);
 
+// private methods
+
+// private:
+  free_abelian::Free_Abelian<StandardRepK>
+    KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda) const;
+
 }; // class KHatComputatons
 
 /* HechtSchmid identities are represented as equation with a main left hand
@@ -454,7 +460,7 @@ class PSalgebra // Parabolic subalgebra
 	     const weyl::TwistedInvolution& twi);
 
   const weyl::TwistedInvolution& theta() const { return twi; }
-  bitset::RankFlags levi() const { return L; }
+  bitset::RankFlags Levi_gens() const { return L; }
   const rootdata::RootSet& radical() const { return nilpotents; }
 }; // class PSalgebra
 

@@ -37,6 +37,7 @@ StandardRepK and KHatComputations.
 #include <sstream>
 #include <stdexcept>
 #include <deque>
+#include <algorithm>
 
 namespace atlas {
 
@@ -260,6 +261,7 @@ StandardRepK KHatComputations::std_rep
 
 
 std::ostream& KHatComputations::print(std::ostream& strm,StandardRepK sr)
+  const
 {
   prettyprint::printVector(strm,lift(sr)) << '@';
   prettyprint::prettyPrint(strm,sr.d_fiberElt) << '#' << sr.d_cartan;
@@ -535,7 +537,7 @@ KHatComputations::HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
     - in the type II case the left hand terms are equal and the two right hand
       terms have distinct non-final parameters (differing in the weight by
       $\alpha$), but designate the same representation (due to a shifted
-      action of the real Weyl group).One may therefore equate them and divide
+      action of the real Weyl group). One may therefore equate them and divide
       by 2, so that either of the right hand terms is equated to the original
       representation.
 
@@ -555,8 +557,12 @@ KHatComputations::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
 
   {
     latticetypes::Weight mu=rd.root(alpha);
-    mu *= rd.scalarProduct(lambda,alpha)/2;
+    mu *= rd.scalarProduct(lambda,alpha)/2; // an integer multiple of $\alpha$
     lambda -= mu; // this makes lambda invariant under $s_\alpha$
+    /* in type I, $\alpha$ is in $(1-\theta)X^*$ and correction is neutral
+       in type II, correction need not be in $(1-\theta)X^*$, but adding
+       $\alpha$ gives HC parameter designating the same representation
+    */
   }
 
   latticetypes::SmallSubspace mod_space=
@@ -685,7 +691,7 @@ kgb::KGBEltList KHatComputations::sub_KGB(const PSalgebra& q) const
   do
   {
     kgb::KGBElt x=queue.front(); queue.pop_front();
-    for (bitset::RankFlags::iterator it=q.levi().begin(); it(); ++it)
+    for (bitset::RankFlags::iterator it=q.Levi_gens().begin(); it(); ++it)
     {
       kgb::KGBElt y=d_KGB.cross(*it,x);
       if (not flagged.isMember(y))
@@ -702,7 +708,134 @@ kgb::KGBEltList KHatComputations::sub_KGB(const PSalgebra& q) const
   while (not queue.empty());
 
   return kgb::KGBEltList(flagged.begin(),flagged.end());
-}
+} // sub_KGB
+
+free_abelian::Free_Abelian<StandardRepK>
+KHatComputations::KGB_sum(const PSalgebra& q,
+			  const latticetypes::Weight& lambda) const
+{
+  const rootdata::RootDatum& rd=rootDatum();
+  kgb::KGBEltList sub=sub_KGB(q); std::reverse(sub.begin(),sub.end());
+
+  std::vector<size_t> sub_inv(d_KGB.size(),~0);
+
+  for (size_t i=0; i<sub.size(); ++i)
+    sub_inv[sub[i]]=i; // partially fill array with inverse index
+
+  std::vector<latticetypes::Weight> mu; mu.reserve(sub.size());
+
+  mu.push_back(lambda); (mu[0]-=rd.twoRho())/=2; // rho-centered weight
+
+  for (size_t i=1; i<sub.size(); ++i)
+  {
+    kgb::KGBElt x=sub[i];
+    bitset::RankFlags::iterator it;
+    for (it=q.Levi_gens().begin(); it(); ++it)
+    {
+      if (d_KGB.cross(*it,x)>x) // then we can use ascending cross action
+      {
+	assert(sub_inv[d_KGB.cross(*it,x)]!=~0ul); // we land in the subset
+	latticetypes::Weight nu=mu[sub_inv[d_KGB.cross(*it,x)]];
+	mu.push_back(rd.simpleReflection(nu,*it)); // rho-centered reflection
+	break;
+      }
+    }
+    if (it()) continue; // if we could use a cross action, we're done for |i|
+
+    // now similarly try Cayley transforms
+    for (it=q.Levi_gens().begin(); it(); ++it)
+    {
+      if (d_KGB.cayley(*it,x)!=kgb::UndefKGB) // then we can use this Cayley
+      {
+	size_t k=sub_inv[d_KGB.cayley(*it,x)];
+	assert(k!=~0ul); // we land in the subset
+	latticetypes::Weight nu=mu[k];
+	assert(nu.scalarProduct(rd.simpleCoroot(*it))%2 == 0); // finality
+	latticetypes::Weight alpha=rd.simpleRoot(*it);
+	nu -= (alpha *= nu.scalarProduct(rd.simpleCoroot(*it))/2); // project
+	mu.push_back(nu); break;
+      }
+    }
+    assert(it()); // if no cross action worked, some Cayley transform must
+  }
+  assert(mu.size()==sub.size());
+
+  size_t max_l=d_KGB.length(sub[0]);
+
+  free_abelian::Free_Abelian<StandardRepK> result;
+  for (size_t i=0; i<sub.size(); ++i)
+  {
+    kgb::KGBElt x=sub[i];
+    standardrepk::StandardRepK sr=std_rep_rho_plus(mu[i],d_KGB.titsElt(x));
+    result += free_abelian::Free_Abelian<StandardRepK>
+               (sr, ((max_l-d_KGB.length(x))%2 == 0 ? 1 : -1));
+  }
+
+  return result;
+} // KGB_sum
+
+// Express irreducible K-module as a finite virtual sum of standard ones
+CharForm  KHatComputations::character_formula(StandardRepK sr) const
+{
+  const cartanset::CartanClassSet& cs=d_G->cartanClasses();
+  const weyl::WeylGroup& W=cs.weylGroup();
+  const rootdata::RootDatum& rd=cs.rootDatum();
+
+  // Get theta stable parabolic subalgebra
+
+  weyl::WeylWord conjugator;
+  PSalgebra q = theta_stable_parabolic(conjugator,cs,sr.d_cartan);
+  weyl::WeylElt w=W.element(conjugator);
+
+  latticetypes::Weight lambda=W.imageByInverse(rd,w,lift(sr));
+
+  Char multmap(sr);//this handles the empty subset
+
+  latticetypes::LatticeMatrix P=d_data[sr.d_cartan].freeProjector;
+
+  size_t nsubset;
+
+  for (unsigned long i=1; i<nsubset; ++i) // bits of |i| determine the subset
+  {
+    bitset::RankFlags subset(i);
+
+    latticetypes::Weight lambda = sr.d_lambda.first;
+//    for (bitset::RankFlags::iterator j =subset.begin(); j(); j++)
+//       if (rpairlist[*j].first == rpairlist[*j].second) // imaginary root
+//       { // nothing implemented yet for imaginary roots
+//       }
+//       else // complex pair of roots
+//       {
+// 	latticetypes::Weight mu=
+// 	  P.apply(cs.rootDatum().root(rpairlist[*j].first));
+// 	lambda +=mu; // add the restriction of the first root to lambda
+//       }
+
+
+    StandardRepK new_rep = sr;
+
+    new_rep.d_lambda.first = lambda; // replace |lambda| by modified version
+
+    normalize(new_rep);
+
+    // now add $(-1)^{\#S}$ to the coefficient of |new_rep| in |multmap|
+    long sign=subset.count()%2 == 0 ? 1 : -1;
+    std::pair<Char::iterator,bool> p=
+      multmap.insert(std::make_pair(new_rep,sign));
+    if (not p.second) p.first->second += sign;
+
+  } // for (subsets)
+
+  // finally remove items with multiplicity 0
+
+  for (Char::iterator iter = multmap.begin();iter !=multmap.end();)
+    if (iter->second == 0)
+      multmap.erase(iter++); // must take care to do ++ before erase
+    else
+      ++iter;
+
+  return std::make_pair(sr, multmap);
+} // character_formula
 
 atlas::matrix::Matrix<CharCoeff>
 KHatComputations::makeMULTmatrix
@@ -750,96 +883,6 @@ KHatComputations::makeMULTmatrix
 
 } // makeMULTmatrix
 
-
-// Express irreducible K-module as a finite virtual sum of standard ones
-CharForm  KHatComputations::character_formula(StandardRepK stdrep) const
-{
-  const cartanset::CartanClassSet& cs=d_G->cartanClasses();
-  weyl::WeylWord conjugator;
-
-  // Get theta stable parabolic subalgebra
-
-  PSalgebra ps = theta_stable_parabolic(conjugator,cs,stdrep.d_cartan);
-
-  // We have the capability to distinguish between compact and non-compact
-  // imaginary roots. This information is provided by the fiber group.
-  // However, we do not do anything with that infomation yet.
-
-  // Asumme that $u$ is the nilpotent part of |ps| in the Levi deompostion.
-  // We will associate to stdrep, $n$ new standardreps, where $n$ is the
-  // number of non-empty subsets $A$ of the non-compact of $u$. Each new
-  // standardrep will have parameter lambda+sum(of roots in A)
-
-  // For now we will treat the imaginary roots as if they were non compact
-
-  typedef std::pair<atlas::rootdata::RootNbr,atlas::rootdata::RootNbr> rpair;
-  std::vector<rpair> rpairlist;
-  {
-    // Get list of roots in u \cap pc for now we take unique pairs of roots.
-    // Later the non compact imaginary roots will be obtained from the fiber
-
-    std::set<rpair> rpairset;
-
-    // make pairs unique by sorting the two elements, then insert into set
-    for ( size_t k = 0; k!=ps.radical().size(); ++k)
-    {
-//       rpair rp = ps.radical().n_th(k);
-//       if (rp.first > rp.second) std::swap(rp.first,rp.second);
-//       rpairset.insert(rp);
-    }
-    rpairlist.assign(rpairset.begin(),rpairset.end());
-  }
-  size_t u_size = rpairlist.size();
-
-  unsigned long nsubset=1<<u_size; // number of subsets
-
-  normalize(stdrep);
-
-  Char multmap(stdrep);//this handles the empty subset
-
-  latticetypes::LatticeMatrix P=d_data[stdrep.d_cartan].freeProjector;
-
-  for (unsigned long i=1; i<nsubset; ++i) // bits of |i| determine the subset
-  {
-    bitset::RankFlags subset(i);
-
-    latticetypes::Weight lambda = stdrep.d_lambda.first;
-    for (bitset::RankFlags::iterator j =subset.begin(); j(); j++)
-      if (rpairlist[*j].first == rpairlist[*j].second) // imaginary root
-      { // nothing implemented yet for imaginary roots
-      }
-      else // complex pair of roots
-      {
-	latticetypes::Weight mu=
-	  P.apply(cs.rootDatum().root(rpairlist[*j].first));
-	lambda +=mu; // add the restriction of the first root to lambda
-      }
-
-
-    StandardRepK new_rep = stdrep;
-
-    new_rep.d_lambda.first = lambda; // replace |lambda| by modified version
-
-    normalize(new_rep);
-
-    // now add $(-1)^{\#S}$ to the coefficient of |new_rep| in |multmap|
-    long sign=subset.count()%2 == 0 ? 1 : -1;
-    std::pair<Char::iterator,bool> p=
-      multmap.insert(std::make_pair(new_rep,sign));
-    if (not p.second) p.first->second += sign;
-
-  } // for (subsets)
-
-  // finally remove items with multiplicity 0
-
-  for (Char::iterator iter = multmap.begin();iter !=multmap.end();)
-    if (iter->second == 0)
-      multmap.erase(iter++); // must take care to do ++ before erase
-    else
-      ++iter;
-
-  return std::make_pair(stdrep, multmap);
-} // character_formula
 
 
 

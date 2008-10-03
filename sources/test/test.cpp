@@ -55,6 +55,7 @@ namespace {
   void KGB_f();
   void sub_KGB_f();
   void trivial_f();
+  void KGB_sum_f();
   void test_f();
 
   // help functions
@@ -139,6 +140,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("KGB",KGB_f);
   mode.add("sub_KGB",sub_KGB_f);
   mode.add("trivial",trivial_f);
+  mode.add("KGB_sum",KGB_sum_f);
 
 }
 
@@ -225,6 +227,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("KGB",helpmode::nohelp_h);
   mode.add("sub_KGB",helpmode::nohelp_h);
   mode.add("trivial",helpmode::nohelp_h);
+  mode.add("KGB_sum",helpmode::nohelp_h);
 
 
   // add additional command tags here :
@@ -232,6 +235,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"KGB",test_tag);
   insertTag(t,"sub_KGB",test_tag);
   insertTag(t,"trivial",test_tag);
+  insertTag(t,"KGB_sum",test_tag);
 
 }
 
@@ -419,6 +423,53 @@ void trivial_f()
 
 }
 
+void KGB_sum_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  const weyl::WeylGroup& W=G_R.weylGroup();
+  G_R.fillCartan(); // must not forget this!
+  const rootdata::RootDatum& rd=G_R.rootDatum();
+
+  kgb::KGB kgb(G_R,G_R.cartanSet());
+  standardrepk::KHatComputations khc(G_R,kgb);
+
+  unsigned long cn;
+  interactive::getInteractive(cn,"Cartan class: ",G_R.cartanSet());
+  prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
+				    << std::endl;
+
+  weyl::WeylWord ww;
+  standardrepk::PSalgebra q=
+    khc.theta_stable_parabolic(ww,G_R.complexGroup().cartanClasses(),cn);
+
+  prettyprint::printWeylElt(std::cout << "involution is ", q.theta(),W)
+				     << std::endl;
+
+  latticetypes::Weight lambda;
+  interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
+
+  (lambda*=2) += rd.twoRho();
+
+  free_abelian::Free_Abelian<standardrepk::StandardRepK> sum=
+    khc.KGB_sum(q,lambda);
+
+  std::cout << "KGB sum:\n";
+  {
+    std::ostringstream s;
+    for (free_abelian::Free_Abelian<standardrepk::StandardRepK>::base::
+	   const_iterator it=sum.begin(); it!=sum.end(); ++it)
+    {
+      s << (it->second>0 ? it==sum.begin() ? "" : " + " : " - ");
+      long int ac=intutils::abs<long int>(it->second);
+      if (ac!=1)
+	s << ac << '*';
+      khc.print(s,it->first);
+    }
+    ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+  }
+
+}
+
 
 
 // Block mode functions
@@ -441,8 +492,6 @@ void test_f()
 
     G_R.fillCartan(); // must not forget this!
     kgb::KGB kgb(G_R,G_R.cartanSet());
-
-//     kgb_io::var_print_KGB(std::cout,mainmode::currentComplexGroup(),kgb);
 
     unsigned long x;
     latticetypes::Weight lambda;
