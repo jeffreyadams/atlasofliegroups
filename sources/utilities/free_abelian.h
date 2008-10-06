@@ -34,7 +34,8 @@ namespace free_abelian {
 template<typename T>
 struct Free_Abelian : public std::map<T,long int>
 {
-  typedef std::map<T,long int> base;
+  typedef long int coef_t;
+  typedef std::map<T,coef_t> base;
 
   Free_Abelian() : base() {}
 
@@ -43,10 +44,10 @@ struct Free_Abelian : public std::map<T,long int>
   explicit Free_Abelian(T p) : base()
   { base::insert(std::make_pair(p,1L)); }
 
-  Free_Abelian(T p,long int m) : base()
+  Free_Abelian(T p,coef_t m) : base()
   { base::insert(std::make_pair(p,m)); }
 
-  Free_Abelian& add_multiple(const Free_Abelian& p, long int m);
+  Free_Abelian& add_multiple(const Free_Abelian& p, coef_t m);
 
   Free_Abelian& operator+=(const Free_Abelian& p)
   { return add_multiple(p,1); }
