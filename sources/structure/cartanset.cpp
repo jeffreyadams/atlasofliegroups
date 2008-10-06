@@ -62,12 +62,6 @@ namespace atlas {
 
 namespace cartanset{
 
-  void crossPart(weyl::WeylWord&, const weyl::WeylWord&,
-		   const weyl::WeylGroup&);
-
-  void cayleyPart(rootdata::RootList&, const weyl::WeylWord&,
-		    const rootdata::RootDatum&, const weyl::WeylGroup&);
-
   void crossTransform(rootdata::RootList&,
 		      const weyl::WeylWord&, const rootdata::RootDatum&);
 
@@ -749,8 +743,10 @@ latticetypes::LatticeElt
     We find conjugating generators starting at the original `|sigma|' end, so
     these form the letters of |w| from left (last applied) to right (first).
 */
-const weyl::WeylElt
-CartanClassSet::canonicalize(TwistedInvolution &sigma) const
+const weyl::WeylElt // return value is conjugating element
+CartanClassSet::canonicalize(TwistedInvolution &sigma, // element to modify
+			     bitset::RankFlags gens) // subset of generators
+  const
 {
   const rootdata::RootDatum& rd=rootDatum();
 
@@ -770,7 +766,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
     size_t i; // declare outside loop to allow inspection of final value
     do
       for (i=0; i<rd.semisimpleRank(); ++i)
-	if (rrs.scalarProduct(rd.simpleCoroot(i)) < 0 )
+	if (gens.test(i) and rrs.scalarProduct(rd.simpleCoroot(i)) < 0 )
 	{
 	  rd.reflect(rrs,rd.simpleRootNbr(i));   // apply $s_i$ to root sum
 	  weylGroup().twistedConjugate(sigma,i); // adjust |sigma| accordingly
@@ -787,9 +783,11 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma) const
 */
   bitset::RankFlags simple_orth;
 
-  for (size_t  i=0; i <  rd.semisimpleRank(); ++i)
+  for (size_t  i=0; i<rd.semisimpleRank(); ++i)
     if (rrs.scalarProduct(rd.simpleCoroot(i)) == 0)
       simple_orth.set(i);
+
+  simple_orth&=gens; // restrict to selected generators
 
   latticetypes::LatticeElt irs=posImaginaryRootSum(sigma);
   { // second phase: make |irs| dominant for all complex roots in |simple_orth|
@@ -972,18 +970,18 @@ unsigned long kgbSize(realform::RealForm rf, const CartanClassSet& ccl)
   \brief Puts into |so| the composite Cayley transform, and into |cross| the
    cross action corresponding to the twisted involution |ti|.
 
-  Explanation: to each root datum involution |q|, we may associate a
-  transformation from the fundamental involution to |q| that factors as the
+  Explanation: to each root datum involution $q$, we may associate a
+  transformation from the fundamental involution to $q$ that factors as the
   composition of a cross action (conjugation by the inverse of an element
-  |cross| of |W|) and a composite Cayley transform (composition with
-  (commuting) reflections for the roots of a strongly orthogonal set |so| of
-  imaginary roots). This function computes |cross| and |so|, for the
-  involution |q| corresponding to the twisted involution |ti|.
+  |cross| of |W|), followed by a composite Cayley transform (composition at
+  left or right with the product of (commuting) reflections for the roots of a
+  strongly orthogonal set |so| of imaginary roots). This function computes
+  |cross| and |so|, where $q$ is given by the twisted involution |ti|.
 
   Note that conjugation is by the inverse of |cross| only because conjugation
   uses the letters of a Weyl word successively from right to left, whereas we
   collect the letters of |cross| from left to right as we go from the (twisted
-  ivolution representing) the fundamental involution back to |q|.
+  involution representing) the fundamental involution back to $q$.
 */
 void cayley_and_cross_part(rootdata::RootList& so,
 			   weyl::WeylWord& cross,
@@ -994,16 +992,16 @@ void cayley_and_cross_part(rootdata::RootList& so,
   std::vector<signed char> dec=W.involution_expr(ti);
   TwistedInvolution tw; // to reconstruct |ti| as a check
 
-  so.clear();
+  so.clear(); cross.clear();
 
   for (size_t j=dec.size(); j-->0; )
-    if (dec[j]>=0)
+    if (dec[j]>=0) // Cayley transform by simple root
     {
       weyl::Generator s=dec[j];
       so.push_back(rd.simpleRootNbr(s));
       W.leftMult(tw,s);
     }
-    else
+    else // cross action by simple root
     {
       weyl::Generator s=~dec[j];
       cross.push_back(s); // record cross action
@@ -1026,93 +1024,15 @@ void cayley_and_cross_part(rootdata::RootList& so,
 
 namespace cartanset {
 
-void cayleyPart(rootdata::RootList& so,
-		const weyl::WeylWord& wi,
-		const rootdata::RootDatum& rd,
-		const weyl::WeylGroup& W)
-
 /*!
-  \brief Puts in so the composite Cayley transform corresponding to wi.
+  \brief Cross-transforms the roots in |rl| according to |ww|.
 
-  Precondition: |wi| is a reduced expression for a twisted involution |tw|;
-
-  Explanation: to each root datum involution, we may associate a transformation
-  from the fundamental Cartan to the current Cartan, that factors as the
-  composition of a cross action and a composite Cayley transform. This function
-  puts in |so| a system of strongly orthogonal roots representing the Cayley
-  transform.
-
-  The interpretation of the result is that the involution corresponding to
-  |tw| can be obtained from a conjugate of the distinguished involution by
-  multiplication by the (commuting) reflections for the roots in the strongly
-  orthogonal set. The element by which the distinguished involution should be
-  conjugated (more precisely its inverse) is given by |crossPart(.,wi,W)|
+  NOTE: the cross-transformations of |ww| are done in right to left order.
 */
-
-{
-  using namespace rootdata;
-  using namespace weyl;
-
-  TwistedInvolution tw;
-  so.clear();
-
-  for (size_t j = 0; j < wi.size(); ++j) {
-    Generator s = wi[j];
-    if (W.hasTwistedCommutation(s,tw)) { // add new root to |so|
-      so.push_back(rd.simpleRootNbr(s));
-      W.leftMult(tw,s);
-    }
-    else { // conjugate roots in |so|
-      for (size_t i = 0; i < so.size(); ++i)
-	so[i] = rd.rootPermutation(s)[so[i]];
-      W.twistedConjugate(tw,s); // and twisted-conjugate |tw|
-    }
-  }
-
-  strongOrthogonalize(so,rd);
-}
-
-void crossPart(weyl::WeylWord& ww, const weyl::WeylWord& wi,
-		       const weyl::WeylGroup& W)
-
-/*!
-  \brief Puts in ww the cross action corresponding to wi.
-
-  Explanation: to each root datum involution, we may associate a transformation
-  from the fundamental cartan to the current cartan, that factors as the
-  composition of a cross action and a composite Cayley transform. This function
-  puts in ww a weyl word representing the cross action part.
-*/
-
-{
-  using namespace weyl;
-
-  TwistedInvolution tw;
-  ww.clear();
-
-  for (size_t j = 0; j < wi.size(); ++j) {
-    Generator s = wi[j];
-    if (W.hasTwistedCommutation(s,tw)) { // cayley transform
-      W.leftMult(tw,s);
-    } else { // cross action
-      ww.push_back(s);
-      W.twistedConjugate(tw,s);
-    }
-  }
-}
-
 void crossTransform(rootdata::RootList& rl,
 		    const weyl::WeylWord& ww,
 		    const rootdata::RootDatum& rd)
-
-/*!
-  \brief Cross-transforms the roots in rl according to ww.
-
-  NOTE: the cross-transformations are done in _reverse_ order.
-*/
-
 {
-
   for (size_t j = ww.size(); j-->0;) {
     setutils::Permutation a = rd.rootPermutation(ww[j]);
     for (size_t i = 0; i < rl.size(); ++i)

@@ -20,6 +20,7 @@
 #include "complexredgp.h"
 
 #include "bitmap.h"
+#include "constants.h"
 #include "cartanclass.h"
 #include "poset.h"
 #include "realform.h"
@@ -445,7 +446,9 @@ unsigned long fiberSize(realform::RealForm rf, size_t cn) const;
 /*! \brief Make |sigma| canonical and return Weyl group |w| element that
     twisted conjugates the canonical representative back to |sigma|
 */
-  const weyl::WeylElt canonicalize(TwistedInvolution&) const;
+  const weyl::WeylElt
+    canonicalize(TwistedInvolution&,
+		 bitset::RankFlags gens= bitset::RankFlags(~0)) const;
 
 
 /*!
