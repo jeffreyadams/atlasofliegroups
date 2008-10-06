@@ -71,6 +71,8 @@ class InvolutionData
   //accessors
   const setutils::Permutation& root_involution() const
     { return d_rootInvolution; }
+  rootdata::RootNbr root_involution(rootdata::RootNbr alpha) const
+    { return d_rootInvolution[alpha]; }
   const rootdata::RootSet& imaginary_roots() const  { return d_imaginary; }
   const rootdata::RootSet& real_roots() const       { return d_real; }
   const rootdata::RootSet& complex_roots() const    { return d_complex; }
