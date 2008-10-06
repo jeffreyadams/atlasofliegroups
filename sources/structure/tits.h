@@ -153,6 +153,7 @@ reduced decomposition.
   }
 
 // the same componenent under another name (to make it smell sweeter)
+// however note that this returns a value, not a reference (we have none)
 
 /*!\brief twisted involution represented by canonical Weyl part */
   const weyl::TwistedInvolution tw() const {
@@ -167,6 +168,11 @@ reduced decomposition.
 
   bool operator!= (const TitsElt& a) const {
     return d_w != a.d_w or d_t != a.d_t;
+  }
+
+  bool operator< (const TitsElt& a) const // comparison for STL use
+  { // test torus part first, which is easier
+    return d_t != a.d_t ? d_t < a.d_t : d_w < a.d_w;
   }
 
 /* exceptionally we expose the raw torus part to derived classes; this should
