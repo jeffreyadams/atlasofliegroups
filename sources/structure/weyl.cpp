@@ -753,28 +753,6 @@ void WeylGroup::inverseAct(const rootdata::RootDatum& rd,
   }
 }
 
-/*!
-  \brief Nondestructive version of |act| method
-*/
-latticetypes::LatticeElt
-WeylGroup::imageBy(const rootdata::RootDatum& rd,
-		   const WeylElt& w,
-		   const latticetypes::LatticeElt& v) const
-{
-  latticetypes::LatticeElt result=v; act(rd,w,result); return result;
-}
-
-/*!
-  \brief Nondestructive version of |inverseAct| method
-*/
-latticetypes::LatticeElt
-WeylGroup::imageByInverse(const rootdata::RootDatum& rd,
-			  const WeylElt& w,
-			  const latticetypes::LatticeElt& v) const
-{
-  latticetypes::LatticeElt result=v; inverseAct(rd,w,result); return result;
-}
-
 /* One constructor for WeylElt was not defined in header file:
    construct the element from a Weyl word |ww| in a given Weyl group |W|
 */

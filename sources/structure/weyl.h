@@ -689,19 +689,27 @@ class WeylGroup {
   void act(const rootdata::RootDatum& rd,
 	   const WeylElt& w,
 	   latticetypes::LatticeElt& v) const;
-
+/*!
+  \brief Nondestructive version of |act| method
+*/
   latticetypes::LatticeElt
     imageBy(const rootdata::RootDatum& rd,
 	    const WeylElt& w,
-	    const latticetypes::LatticeElt& v) const;
+	    latticetypes::LatticeElt v) const
+    { act(rd,w,v); return v; }
+
   void inverseAct(const rootdata::RootDatum& rd,
 		  const WeylElt& w,
 		  latticetypes::LatticeElt& v) const;
 
+/*!
+  \brief Nondestructive version of |inverseAct| method
+*/
   latticetypes::LatticeElt
     imageByInverse(const rootdata::RootDatum& rd,
 		   const WeylElt& w,
-		   const latticetypes::LatticeElt& v) const;
+		   latticetypes::LatticeElt v) const
+    { inverseAct(rd,w,v); return v; }
 
 
 // manipulators
