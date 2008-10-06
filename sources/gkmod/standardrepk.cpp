@@ -19,6 +19,7 @@ StandardRepK and KHatComputations.
 #include "complexredgp.h"
 #include "realredgp.h"
 #include "kgb.h"
+#include "tits.h"
 #include "descents.h"
 #include "lattice.h"
 #include "rootdata.h"
@@ -233,8 +234,6 @@ StandardRepK KHatComputations::std_rep
 
   const weyl::WeylGroup& W=d_G->weylGroup();
 
-  size_t cn = d_G->cartanClasses().classNumber(sigma);
-
   // conjugate towards canonical element
   {
     weyl::WeylWord ww=W.word(w);
@@ -245,6 +244,8 @@ StandardRepK KHatComputations::std_rep
 
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight mu=W.imageByInverse(rd,w,two_lambda);
+
+  size_t cn = d_G->cartanClasses().classNumber(sigma);
   StandardRepK result(cn,
 		      d_data[cn].fiber_modulus.mod_image
 		        (d_Tg.titsGroup().left_torus_part(a)),
@@ -257,8 +258,36 @@ StandardRepK KHatComputations::std_rep
 
   result.d_status.set(StandardRepK::IsStandard);
   return result;
-} // std_rep
+} // |std_rep|
 
+// the following is a variant of |std_rep_rho_plus| intended for |KGB_sum|
+// it should only transform the parameters for the Levi factor given by |gens|
+// since |lambda| is $\rho$-centered, care should be taken in transforming it
+RawRep KHatComputations::Levi_rep
+    (latticetypes::Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
+  const
+{
+  weyl::TwistedInvolution sigma=a.tw();
+  weyl::WeylElt w = d_G->cartanClasses().canonicalize(sigma,gens);
+  // now |sigma| is canonical for |gens|, and |w| conjugates it to |a.tw()|
+
+  const rootdata::RootDatum& rd=rootDatum();
+
+  // conjugate towards canonical element
+  {
+    weyl::WeylWord ww=d_G->weylGroup().word(w);
+    for (size_t i=0; i<ww.size(); ++i) // left-to-right for inverse conjugation
+    {
+      assert(gens.test(ww[i])); // check that we only used elements in $W(L)$
+      d_Tg.basedTwistedConjugate(a,ww[i]);
+      rd.simpleReflect(lambda,ww[i]);
+      lambda-=rd.simpleRoot(ww[i]); // make affine reflection fixing $-\rho$
+    }
+  }
+  assert(a.tw()==sigma); // we should now be at canonical twisted involution
+
+  return RawRep (lambda,a);
+} // |Levi_rep|
 
 std::ostream& KHatComputations::print(std::ostream& strm,StandardRepK sr)
   const
@@ -678,7 +707,7 @@ KHatComputations::theta_stable_parabolic
 
   // Build the parabolic subalgebra:
 
-  return  PSalgebra(cs,twi);
+  return PSalgebra(d_KGB.tauPacket(twi).first,d_KGB,cs,d_Tg);
 
 } // theta_stable_parabolic
 
@@ -710,9 +739,8 @@ kgb::KGBEltList KHatComputations::sub_KGB(const PSalgebra& q) const
   return kgb::KGBEltList(flagged.begin(),flagged.end());
 } // sub_KGB
 
-free_abelian::Free_Abelian<StandardRepK>
-KHatComputations::KGB_sum(const PSalgebra& q,
-			  const latticetypes::Weight& lambda) const
+RawChar KHatComputations::KGB_sum(const PSalgebra& q,
+				  const latticetypes::Weight& lambda) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   kgb::KGBEltList sub=sub_KGB(q); std::reverse(sub.begin(),sub.end());
@@ -722,9 +750,10 @@ KHatComputations::KGB_sum(const PSalgebra& q,
   for (size_t i=0; i<sub.size(); ++i)
     sub_inv[sub[i]]=i; // partially fill array with inverse index
 
-  std::vector<latticetypes::Weight> mu; mu.reserve(sub.size());
+  std::vector<latticetypes::Weight> mu; // will contain $\rho$-centered weights
+  mu.reserve(sub.size());               // one for every element of the sub KGB
 
-  mu.push_back(lambda); (mu[0]-=rd.twoRho())/=2; // rho-centered weight
+  mu.push_back(lambda); (mu[0]-=rd.twoRho())/=2; // make $\rho$-centered weight
 
   for (size_t i=1; i<sub.size(); ++i)
   {
@@ -734,9 +763,9 @@ KHatComputations::KGB_sum(const PSalgebra& q,
     {
       if (d_KGB.cross(*it,x)>x) // then we can use ascending cross action
       {
-	assert(sub_inv[d_KGB.cross(*it,x)]!=~0ul); // we land in the subset
-	latticetypes::Weight nu=mu[sub_inv[d_KGB.cross(*it,x)]];
-	mu.push_back(rd.simpleReflection(nu,*it)); // rho-centered reflection
+	size_t k=sub_inv[d_KGB.cross(*it,x)];
+	assert(k!=~0ul); // we ought to land in the subset
+	mu.push_back(rd.simpleReflection(mu[k],*it)); // $\rho$-centered
 	break;
       }
     }
@@ -748,27 +777,27 @@ KHatComputations::KGB_sum(const PSalgebra& q,
       if (d_KGB.cayley(*it,x)!=kgb::UndefKGB) // then we can use this Cayley
       {
 	size_t k=sub_inv[d_KGB.cayley(*it,x)];
-	assert(k!=~0ul); // we land in the subset
-	latticetypes::Weight nu=mu[k];
+	assert(k!=~0ul); // we ought to land in the subset
+	latticetypes::Weight nu=mu[k]; // $\rho-\lambda$ at split side
 	assert(nu.scalarProduct(rd.simpleCoroot(*it))%2 == 0); // finality
 	latticetypes::Weight alpha=rd.simpleRoot(*it);
 	nu -= (alpha *= nu.scalarProduct(rd.simpleCoroot(*it))/2); // project
-	mu.push_back(nu); break;
+	mu.push_back(nu); // use projected weight at compact side of transform
+	break;
       }
     }
-    assert(it()); // if no cross action worked, some Cayley transform must
+    assert(it()); // if no cross action worked, some Cayley transform must have
   }
   assert(mu.size()==sub.size());
 
   size_t max_l=d_KGB.length(sub[0]);
 
-  free_abelian::Free_Abelian<StandardRepK> result;
+  RawChar result;
   for (size_t i=0; i<sub.size(); ++i)
   {
     kgb::KGBElt x=sub[i];
-    standardrepk::StandardRepK sr=std_rep_rho_plus(mu[i],d_KGB.titsElt(x));
-    result += free_abelian::Free_Abelian<StandardRepK>
-               (sr, ((max_l-d_KGB.length(x))%2 == 0 ? 1 : -1));
+    RawRep r= Levi_rep(mu[i],d_KGB.titsElt(x),q.Levi_gens());
+    result += RawChar(r, ((max_l-d_KGB.length(x))%2 == 0 ? 1 : -1));
   }
 
   return result;
@@ -785,56 +814,66 @@ CharForm  KHatComputations::character_formula(StandardRepK sr) const
 
   weyl::WeylWord conjugator;
   PSalgebra q = theta_stable_parabolic(conjugator,cs,sr.d_cartan);
-  weyl::WeylElt w=W.element(conjugator);
 
-  latticetypes::Weight lambda=W.imageByInverse(rd,w,lift(sr));
+  latticetypes::Weight lambda=
+    W.imageByInverse(rd,W.element(conjugator),lift(sr));
 
-  Char multmap(sr);//this handles the empty subset
+  RawChar KGB_sum_q= KGB_sum(q,lambda);
 
-  latticetypes::LatticeMatrix P=d_data[sr.d_cartan].freeProjector;
+  tits::TE_Entry::Pooltype pool;
+  hashtable::HashTable<tits::TE_Entry,unsigned> hash(pool);
 
-  size_t nsubset;
+  for (RawChar::const_iterator it=KGB_sum_q.begin(); it!=KGB_sum_q.end(); ++it)
+    hash.match(it->first.second);
 
-  for (unsigned long i=1; i<nsubset; ++i) // bits of |i| determine the subset
+  // per strong involution (|TitsElt|) set of roots, to sum over its powerset
+  std::vector<rootdata::RootSet>
+    sum_set(pool.size(),rootdata::RootSet(rd.numRoots()));
+
+  for (size_t i=0; i<pool.size(); ++i)
   {
-    bitset::RankFlags subset(i);
+    tits::TitsElt strong_inv=pool[i];
+    cartanclass::InvolutionData id(rd,cs.involutionMatrix(strong_inv.tw()));
+    for (bitmap::BitMap::iterator
+	   rt=q.radical().begin(); rt!=q.radical().end(); ++rt)
+    {
+      rootdata::RootNbr alpha=*rt;
+      assert(not id.real_roots().isMember(alpha));
+      if (id.imaginary_roots().isMember(alpha))
+	sum_set[i].set_to(alpha,d_Tg.grading(strong_inv,alpha));
+      else // complex root
+      {
+	rootdata::RootNbr beta=id.root_involution(alpha);
+	assert(rd.isPosRoot(beta));
+	sum_set[i].set_to(alpha,beta>alpha);
+      }
+    }
+  }
 
-    latticetypes::Weight lambda = sr.d_lambda.first;
-//    for (bitset::RankFlags::iterator j =subset.begin(); j(); j++)
-//       if (rpairlist[*j].first == rpairlist[*j].second) // imaginary root
-//       { // nothing implemented yet for imaginary roots
-//       }
-//       else // complex pair of roots
-//       {
-// 	latticetypes::Weight mu=
-// 	  P.apply(cs.rootDatum().root(rpairlist[*j].first));
-// 	lambda +=mu; // add the restriction of the first root to lambda
-//       }
+  Char result;
+  for (RawChar::const_iterator it=KGB_sum_q.begin(); it!=KGB_sum_q.end(); ++it)
+  {
+    Char::coef_t c=it->second;
+    const latticetypes::Weight& mu=it->first.first;
+    const tits::TitsElt& te=it->first.second;
 
+    rootdata::RootSet Aset=sum_set[hash.find(te)];
+    rootdata::RootList A(Aset.begin(),Aset.end()); // convert to list of roots
 
-    StandardRepK new_rep = sr;
+    size_t nsubset= 1ul<<A.size();
 
-    new_rep.d_lambda.first = lambda; // replace |lambda| by modified version
+    for (unsigned long i=0; i<nsubset; ++i) // bits of |i| determine the subset
+    {
+      bitset::RankFlags subset(i);
+      latticetypes::Weight nu=mu;
 
-    normalize(new_rep);
+      for (bitset::RankFlags::iterator j =subset.begin(); j(); ++j)
+	nu+=rd.root(A[*j]);
 
-    // now add $(-1)^{\#S}$ to the coefficient of |new_rep| in |multmap|
-    long sign=subset.count()%2 == 0 ? 1 : -1;
-    std::pair<Char::iterator,bool> p=
-      multmap.insert(std::make_pair(new_rep,sign));
-    if (not p.second) p.first->second += sign;
-
-  } // for (subsets)
-
-  // finally remove items with multiplicity 0
-
-  for (Char::iterator iter = multmap.begin();iter !=multmap.end();)
-    if (iter->second == 0)
-      multmap.erase(iter++); // must take care to do ++ before erase
-    else
-      ++iter;
-
-  return std::make_pair(sr, multmap);
+      result += Char(std_rep_rho_plus(nu,te), subset.count()%2 == 0 ? c : -c);
+    }
+  } // for sum over KGB for L
+  return std::make_pair(sr, result);
 } // character_formula
 
 atlas::matrix::Matrix<CharCoeff>
@@ -999,24 +1038,38 @@ void KHatComputations::go
 
 ******************************************************************************/
 
-PSalgebra::PSalgebra (const cartanset::CartanClassSet& cs,
-		      const weyl::TwistedInvolution& theta)
-    : twi(theta), cartan(cs.classNumber(twi))
-    , L(), nilpotents(cs.rootDatum().numRoots())
+PSalgebra::PSalgebra (kgb::KGBElt root,
+		      const kgb::KGB& kgb,
+		      const cartanset::CartanClassSet& cs,
+		      const kgb::EnrichedTitsGroup& Tg)
+    : x_min(root), strong_inv(kgb.titsElt(root))
+    , cn(cs.classNumber(theta()))
+    , sub_diagram()
+    , nilpotents(cs.rootDatum().numRoots())
+    , noncompacts(cs.rootDatum().numRoots())
 {
   const rootdata::RootDatum& rd=cs.rootDatum();
-  cartanclass::InvolutionData id(rd,cs.involutionMatrix(twi));
+  cartanclass::InvolutionData id(rd,cs.involutionMatrix(theta()));
 
   // Put real simple roots into Levi factor
   for (size_t i=0; i<rd.semisimpleRank(); ++i)
     if (id.real_roots().isMember(rd.simpleRootNbr(i)))
-      L.set(i);
+      sub_diagram.set(i);
 
 
   // put any imaginary or complex positive roots into radical
   for (rootdata::RootSet::iterator it = rd.posRootSet().begin(); it(); ++it)
-    if (not id.real_roots().isMember(*it))
-      nilpotents.insert(*it);
+  {
+    rootdata::RootNbr alpha=*it;
+    if (not id.real_roots().isMember(alpha))
+    {
+      nilpotents.insert(alpha);
+      if (id.imaginary_roots().isMember(alpha))
+	noncompacts.set_to(alpha,Tg.grading(strong_inv,alpha));
+      else // complex root: choose the lower numberd one of theta-pair
+	noncompacts.set_to(alpha,id.root_involution(alpha)>alpha);
+    }
+  }
 }
 
 

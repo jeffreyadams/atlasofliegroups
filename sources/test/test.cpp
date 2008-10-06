@@ -55,7 +55,7 @@ namespace {
   void KGB_f();
   void sub_KGB_f();
   void trivial_f();
-  void KGB_sum_f();
+  void charform_f();
   void test_f();
 
   // help functions
@@ -140,7 +140,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("KGB",KGB_f);
   mode.add("sub_KGB",sub_KGB_f);
   mode.add("trivial",trivial_f);
-  mode.add("KGB_sum",KGB_sum_f);
+  mode.add("charform",charform_f);
 
 }
 
@@ -227,7 +227,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("KGB",helpmode::nohelp_h);
   mode.add("sub_KGB",helpmode::nohelp_h);
   mode.add("trivial",helpmode::nohelp_h);
-  mode.add("KGB_sum",helpmode::nohelp_h);
+  mode.add("charform",helpmode::nohelp_h);
 
 
   // add additional command tags here :
@@ -235,7 +235,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"KGB",test_tag);
   insertTag(t,"sub_KGB",test_tag);
   insertTag(t,"trivial",test_tag);
-  insertTag(t,"KGB_sum",test_tag);
+  insertTag(t,"charform",test_tag);
 
 }
 
@@ -385,12 +385,19 @@ void trivial_f()
   kgb::KGB kgb(G_R,G_R.cartanSet());
   standardrepk::KHatComputations khc(G_R,kgb);
 
+  size_t most_split=G_R.mostSplit();
+
+  weyl::WeylWord ww;
+  standardrepk::PSalgebra q=khc.theta_stable_parabolic
+    (ww,G_R.complexGroup().cartanClasses(),most_split);
+
+  kgb::KGBEltList subset=khc.sub_KGB(q);
+  size_t max_l=kgb.length(subset.back());
+
   standardrepk::SR_rewrites::combination sum;
-
-  size_t max_l=kgb.length(kgb.size()-1);
-
-  for (kgb::KGBElt x=0; x<kgb.size(); ++x)
+  for (size_t i=0; i<subset.size(); ++i)
   {
+    kgb::KGBElt x=subset[i];
     standardrepk::StandardRepK sr=khc.std_rep(rd.twoRho(),kgb.titsElt(x));
     standardrepk::SR_rewrites::combination c=khc.standardize(sr);
     if ((max_l-kgb.length(x))%2 == 0)
@@ -399,67 +406,47 @@ void trivial_f()
       sum-=c;
   }
 
-  std::cout << "Standard normal final limit representations:\n";
-  for (standardrepk::SR_rewrites::seq_no i=0; i<khc.nr_reps(); ++i)
-  {
-    const standardrepk::StandardRepK& sr=khc.rep_no(i);
-    khc.print(std::cout << 'R' << i << ": ",sr) << std::endl;
-  }
-
-  std::cout << "Standardized expression:\n";
   {
     std::ostringstream s;
     for (standardrepk::SR_rewrites::combination::const_iterator
 	   it=sum.begin(); it!=sum.end(); ++it)
     {
-      s << (it->second>0 ? it==sum.begin() ? "" : " + " : " - ");
+      s << (it->second>0 ? " + " : " - ");
       long int ac=intutils::abs<long int>(it->second);
       if (ac!=1)
 	s << ac << '*';
-      s << 'R' << it->first;
+      khc.print(s,khc.rep_no(it->first));
     }
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
 
 }
 
-void KGB_sum_f()
+void charform_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  const weyl::WeylGroup& W=G_R.weylGroup();
   G_R.fillCartan(); // must not forget this!
-  const rootdata::RootDatum& rd=G_R.rootDatum();
 
   kgb::KGB kgb(G_R,G_R.cartanSet());
   standardrepk::KHatComputations khc(G_R,kgb);
 
-  unsigned long cn;
-  interactive::getInteractive(cn,"Cartan class: ",G_R.cartanSet());
-  prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
-				    << std::endl;
-
-  weyl::WeylWord ww;
-  standardrepk::PSalgebra q=
-    khc.theta_stable_parabolic(ww,G_R.complexGroup().cartanClasses(),cn);
-
-  prettyprint::printWeylElt(std::cout << "involution is ", q.theta(),W)
-				     << std::endl;
-
+  unsigned long x;
   latticetypes::Weight lambda;
+  interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
+  prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
+    << std::endl;
   interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
 
-  (lambda*=2) += rd.twoRho();
+  standardrepk::CharForm cf=
+    khc.character_formula(khc.std_rep_rho_plus(lambda,kgb.titsElt(x)));
 
-  free_abelian::Free_Abelian<standardrepk::StandardRepK> sum=
-    khc.KGB_sum(q,lambda);
-
-  std::cout << "KGB sum:\n";
+  khc.print(std::cout << "Character formula for mu(",cf.first) << "):\n";
   {
     std::ostringstream s;
-    for (free_abelian::Free_Abelian<standardrepk::StandardRepK>::base::
-	   const_iterator it=sum.begin(); it!=sum.end(); ++it)
+    for (standardrepk::Char::const_iterator
+	   it=cf.second.begin(); it!=cf.second.end(); ++it)
     {
-      s << (it->second>0 ? it==sum.begin() ? "" : " + " : " - ");
+      s << (it->second>0 ? " + " : " - ");
       long int ac=intutils::abs<long int>(it->second);
       if (ac!=1)
 	s << ac << '*';

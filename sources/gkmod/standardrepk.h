@@ -51,10 +51,13 @@ typedef std::pair
 
 // a linear combination of |StandardRepK|s
 typedef free_abelian::Free_Abelian<StandardRepK> Char;
-typedef long int CharCoeff; // this is what |Free_Abelian| uses
+typedef Char::coef_t CharCoeff;
 
 // a character formula; first component stands for its lowest $K$-type
 typedef std::pair< StandardRepK,Char> CharForm;
+
+typedef std::pair<latticetypes::LatticeElt,tits::TitsElt> RawRep;
+typedef free_abelian::Free_Abelian<RawRep> RawChar;
 
 } // namespace standardrepk
 
@@ -329,6 +332,10 @@ class KHatComputations
       return std_rep(lambda,a);
     }
 
+  RawRep Levi_rep
+    (latticetypes::Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
+    const;
+
   StandardRepK KGB_elt_rep(kgb::KGBElt z) const
     {
       return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z));
@@ -422,9 +429,9 @@ class KHatComputations
 
 // private methods
 
-// private:
-  free_abelian::Free_Abelian<StandardRepK>
-    KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda) const;
+private:
+  RawChar KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda)
+    const;
 
 }; // class KHatComputatons
 
@@ -447,20 +454,26 @@ struct HechtSchmid {
   {
     if (rh1==NULL) rh1=new StandardRepK(s); else rh2=new StandardRepK(s);
   }
-}; // class HechtSchmid
+}; // struct HechtSchmid
 
 class PSalgebra // Parabolic subalgebra
 {
-  weyl::TwistedInvolution twi;
-  size_t cartan; // number of the Cartan class
-  bitset::RankFlags L; // subset of simple roots, basis of Levi factor
+  kgb::KGBElt x_min; // point from where parabolic algebra is constructed
+  tits::TitsElt strong_inv; // corresponding strong involution
+  size_t cn; // number of the Cartan class
+  bitset::RankFlags sub_diagram; // simple roots forming basis of Levi factor
   rootdata::RootSet nilpotents; // (positive) roots in nilpotent radical
+  rootdata::RootSet noncompacts; // noncpcts and half of complexes in radical
  public:
-  PSalgebra (const cartanset::CartanClassSet& cs,
-	     const weyl::TwistedInvolution& twi);
+  PSalgebra (kgb::KGBElt root,
+	     const kgb::KGB& kgb,
+	     const cartanset::CartanClassSet& cs,
+	     const kgb::EnrichedTitsGroup& Tg);
 
-  const weyl::TwistedInvolution& theta() const { return twi; }
-  bitset::RankFlags Levi_gens() const { return L; }
+  const tits::TitsElt& strong_involution() const { return strong_inv; }
+  weyl::TwistedInvolution theta() const { return strong_inv.tw(); }
+  size_t Cartan_no() const { return cn; }
+  bitset::RankFlags Levi_gens() const { return sub_diagram; }
   const rootdata::RootSet& radical() const { return nilpotents; }
 }; // class PSalgebra
 
