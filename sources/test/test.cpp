@@ -455,6 +455,25 @@ void charform_f()
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
 
+  standardrepk::SR_rewrites::combination sum;
+  for (standardrepk::Char::const_iterator
+	   it=cf.second.begin(); it!=cf.second.end(); ++it)
+    sum.add_multiple(khc.standardize(it->first),it->second);
+
+  std::cout << "Converted to Standard normal final limit form:\n";
+  {
+    std::ostringstream s;
+    for (standardrepk::SR_rewrites::combination::const_iterator
+	   it=sum.begin(); it!=sum.end(); ++it)
+    {
+      s << (it->second>0 ? " + " : " - ");
+      long int ac=intutils::abs<long int>(it->second);
+      if (ac!=1)
+	s << ac << '*';
+      khc.print(s,khc.rep_no(it->first));
+    }
+    ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+  }
 }
 
 
