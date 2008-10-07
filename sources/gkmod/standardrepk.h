@@ -321,6 +321,7 @@ class KHatComputations
     complexReductiveGroup() const { return *d_G; }
 
   const rootdata::RootDatum& rootDatum() const { return d_G->rootDatum(); }
+  const weyl::WeylGroup& weylGroup() const { return d_G->weylGroup(); }
 
   StandardRepK std_rep
     (const latticetypes::Weight& two_lambda, tits::TitsElt a) const;
@@ -356,7 +357,10 @@ class KHatComputations
       return final_pool[i];
     }
 
-  std::ostream& print(std::ostream& strm,StandardRepK sr) const;
+  std::ostream& print(std::ostream& strm, StandardRepK sr) const;
+  std::ostream& print(std::ostream& strm, Char ch) const;
+  std::ostream& print(std::ostream& strm, SR_rewrites::combination ch,
+		      bool brief=false) const;
 
   //!\brief A section of |project|
   latticetypes::Weight lift(size_t cn, HCParam p) const;
@@ -398,7 +402,7 @@ class KHatComputations
   PSalgebra theta_stable_parabolic
     (weyl::WeylWord& conjugator,
      const cartanset::CartanClassSet& cs,
-     const size_t Cartan_nr) const;
+     tits::TitsElt te) const;
   /*!
     Returns the sum of absolute values of the scalar products of lambda
     expressed in the full basis and the positive coroots. This gives a Weyl
@@ -458,14 +462,12 @@ struct HechtSchmid {
 
 class PSalgebra // Parabolic subalgebra
 {
-  kgb::KGBElt x_min; // point from where parabolic algebra is constructed
   tits::TitsElt strong_inv; // corresponding strong involution
   size_t cn; // number of the Cartan class
   bitset::RankFlags sub_diagram; // simple roots forming basis of Levi factor
   rootdata::RootSet nilpotents; // (positive) roots in nilpotent radical
-  rootdata::RootSet noncompacts; // noncpcts and half of complexes in radical
  public:
-  PSalgebra (kgb::KGBElt root,
+  PSalgebra (tits::TitsElt base,
 	     const kgb::KGB& kgb,
 	     const cartanset::CartanClassSet& cs,
 	     const kgb::EnrichedTitsGroup& Tg);

@@ -142,7 +142,7 @@ KHatComputations::KHatComputations
     // which by now records the canonical involution for this class
     Cartan_info& ci=d_data[r];
 
-    latticetypes::LatticeMatrix theta = d_G->cartan(r).involution();
+    const latticetypes::LatticeMatrix& theta = d_G->cartan(r).involution();
 
 
     // put in $q$ the matrix of $\theta-1$
@@ -157,16 +157,10 @@ KHatComputations::KHatComputations
     latticetypes::LatticeMatrix basis(bs);
     latticetypes::LatticeMatrix inv_basis=basis.inverse();
 
-//     prettyprint::printMatrix(std::cout,basis);
-//     prettyprint::printMatrix(std::cout,inv_basis);
-
-
     size_t l = invf.size();
     size_t f=0; while (f<l and invf[f]==1) ++f; // ignore invariant factors 1
 
-//     std::cout << "n=" << n << ", f=" << f << ", l=" << l << std::endl;
-
-    // get columns [f,l) of |basis| to |torsionLift|, doubling the vectors,
+    // get columns [f,l) of |basis| to |torsionLift|
     // and corresponding columns of |inv_basis| to |torsionProjector|, mod 2
     ci.torsionProjector.resize(l-f,n);
     for (size_t i=f; i<l; ++i)
@@ -294,6 +288,37 @@ std::ostream& KHatComputations::print(std::ostream& strm,StandardRepK sr)
 {
   prettyprint::printVector(strm,lift(sr)) << '@';
   prettyprint::prettyPrint(strm,sr.d_fiberElt) << '#' << sr.d_cartan;
+  return strm;
+}
+
+std::ostream& KHatComputations::print(std::ostream& strm,Char ch) const
+{
+  for (Char::const_iterator it=ch.begin(); it!=ch.end(); ++it)
+  {
+    strm << (it->second>0 ? " + " : " - ");
+    long int ac=intutils::abs<long int>(it->second);
+    if (ac!=1)
+      strm << ac << '*';
+    print(strm,it->first);
+  }
+  return strm;
+}
+
+std::ostream& KHatComputations::print(std::ostream& strm,
+				      SR_rewrites::combination ch,
+				      bool brief) const
+{
+  for (SR_rewrites::combination::const_iterator
+	 it=ch.begin(); it!=ch.end(); ++it)
+  {
+    strm << (it->second>0 ? " + " : " - ");
+    long int ac=intutils::abs<long int>(it->second);
+    if (ac!=1)
+      strm << ac << '*';
+    if (brief)
+      strm << 'R' << it->first;
+    else print(strm,rep_no(it->first));
+  }
   return strm;
 }
 
@@ -657,19 +682,16 @@ PSalgebra
 KHatComputations::theta_stable_parabolic
   (weyl::WeylWord& conjugator,
    const cartanset::CartanClassSet& cs,
-   const size_t Cartan_nr) const
+   tits::TitsElt strong) const
 {
-  const rootdata::RootDatum& rd=cs.rootDatum();
-  const weyl::WeylGroup& W=cs.weylGroup();
-  weyl::TwistedInvolution twi=cs.twistedInvolution(Cartan_nr);
-  // latticetypes::LatticeMatrix theta=cs.involutionMatrix(twi);
+  const rootdata::RootDatum& rd=rootDatum();
+  const weyl::WeylGroup& W=weylGroup();
 
-
-/* Conjugate |twi| by simple complex roots to make the positive root system
-   more theta stable. There is no hope for real roots, but for complex roots
-   we try to achieve that the $\theta$-image of simple roots is positive. As
-   our notion of positive roots is fixed, we conjugate $\theta$ itself (in
-   fact twisted-conjugating |twi|) which changes the notions of
+/* Conjugate |strong.tw()| by simple complex roots to make the positive root
+   system more theta stable. There is no hope for real roots, but for complex
+   roots we try to achieve that the $\theta$-image of simple roots is
+   positive. As our notion of positive roots is fixed, we conjugate $\theta$
+   itself (in fact based-twisted-conjugating |strong|) which changes the notions of
    imaginary/real/complex roots.
 */
   conjugator.resize(0);
@@ -682,10 +704,10 @@ KHatComputations::theta_stable_parabolic
       {
 	rootdata::RootNbr alpha=rd.simpleRootNbr(i);
 	rootdata::RootNbr beta= // image of |alpha| by |twi|
-	  rd.permuted_root(W.word(twi.w()),rd.simpleRootNbr(W.twisted(i)));
+	  rd.permuted_root(W.word(strong.w()),rd.simpleRootNbr(W.twisted(i)));
 	if (not rd.isPosRoot(beta) and beta!=rd.rootMinus(alpha))
 	{
-	  W.twistedConjugate(twi,i);
+	  d_Tg.basedTwistedConjugate(strong,i);
 	  conjugator.push_back(i);
 	  break; // and repeat do-while loop
 	}
@@ -701,20 +723,44 @@ KHatComputations::theta_stable_parabolic
    or imaginary; the $\theta$-images of such simple roots are all positive,
    but their sum is $-\alpha$ which is negative, a contradiction.
 
-   Meanwhile |conjugator| is such that |W.twistedConjugate(twi,conjugator)|
-   would make |twi==cs.twistedInvolution(Cartan_nr)| again.
+   Also |conjugator| is such that |W.twistedConjugate(strong.tw(),conjugator)|
+   would make |strong.tw()| equal to its original value again.
 */
 
   // Build the parabolic subalgebra:
 
-  return PSalgebra(d_KGB.tauPacket(twi).first,d_KGB,cs,d_Tg);
+  { // first ensure |strong| is in reduced
+    latticetypes::LatticeMatrix theta=cs.involutionMatrix(strong.tw());
+    latticetypes::SmallSubspace mod_space=latticetypes::SmallSubspace
+      (latticetypes::SmallBitVectorList(tori::minusBasis(theta.transposed())),
+       rootDatum().rank());
+    const tits::TitsGroup& Tg=d_Tg.titsGroup();
+    strong=tits::TitsElt(Tg,
+			 mod_space.mod_image(Tg.left_torus_part(strong)),
+			 strong.tw());
+  }
+
+  return PSalgebra(strong,d_KGB,cs,d_Tg);
 
 } // theta_stable_parabolic
 
 kgb::KGBEltList KHatComputations::sub_KGB(const PSalgebra& q) const
 {
   bitmap::BitMap flagged(d_KGB.size());
-  kgb::KGBElt root=d_KGB.tauPacket(q.theta()).first; // choose a torus part
+  tits::TitsElt strong=q.strong_involution();
+
+  kgb::KGBElt root;
+  {
+    kgb::KGBEltPair p=d_KGB.tauPacket(q.theta());
+    kgb::KGBElt x;
+    for (x=p.first; x<p.second; ++x)
+      if (d_KGB.titsElt(x)==q.strong_involution())
+      {
+	root=x; break;
+      }
+    assert(x<p.second); // search should succeed
+  }
+
   flagged.insert(root);
   std::deque<kgb::KGBElt> queue(1,root);
   do
@@ -813,7 +859,7 @@ CharForm  KHatComputations::character_formula(StandardRepK sr) const
   // Get theta stable parabolic subalgebra
 
   weyl::WeylWord conjugator;
-  PSalgebra q = theta_stable_parabolic(conjugator,cs,sr.d_cartan);
+  PSalgebra q = theta_stable_parabolic(conjugator,cs,titsElt(sr));
 
   latticetypes::Weight lambda=
     W.imageByInverse(rd,W.element(conjugator),lift(sr));
@@ -855,9 +901,9 @@ CharForm  KHatComputations::character_formula(StandardRepK sr) const
   {
     Char::coef_t c=it->second;
     const latticetypes::Weight& mu=it->first.first;
-    const tits::TitsElt& te=it->first.second;
+    const tits::TitsElt& strong=it->first.second;
 
-    rootdata::RootSet Aset=sum_set[hash.find(te)];
+    rootdata::RootSet Aset=sum_set[hash.find(strong)];
     rootdata::RootList A(Aset.begin(),Aset.end()); // convert to list of roots
 
     size_t nsubset= 1ul<<A.size();
@@ -870,7 +916,8 @@ CharForm  KHatComputations::character_formula(StandardRepK sr) const
       for (bitset::RankFlags::iterator j =subset.begin(); j(); ++j)
 	nu+=rd.root(A[*j]);
 
-      result += Char(std_rep_rho_plus(nu,te), subset.count()%2 == 0 ? c : -c);
+      result += Char(std_rep_rho_plus(nu,strong),
+		     subset.count()%2 == 0 ? c : -c);
     }
   } // for sum over KGB for L
   return std::make_pair(sr, result);
@@ -1016,16 +1063,7 @@ void KHatComputations::go
 
   std::cout << "Standardized expression:\n";
   {
-    std::ostringstream s;
-    for (SR_rewrites::combination::const_iterator it=chi.begin();
-	 it!=chi.end(); ++it)
-    {
-      s << (it->second>0 ? it==chi.begin() ? "" : " + " : " - ");
-      long int ac=intutils::abs<long int>(it->second);
-      if (ac!=1)
-	s << ac << '*';
-      s << 'R' << it->first;
-    }
+    std::ostringstream s; print(s,chi,true);
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
 
@@ -1038,15 +1076,14 @@ void KHatComputations::go
 
 ******************************************************************************/
 
-PSalgebra::PSalgebra (kgb::KGBElt root,
+PSalgebra::PSalgebra (tits::TitsElt base,
 		      const kgb::KGB& kgb,
 		      const cartanset::CartanClassSet& cs,
 		      const kgb::EnrichedTitsGroup& Tg)
-    : x_min(root), strong_inv(kgb.titsElt(root))
+    : strong_inv(base)
     , cn(cs.classNumber(theta()))
     , sub_diagram()
     , nilpotents(cs.rootDatum().numRoots())
-    , noncompacts(cs.rootDatum().numRoots())
 {
   const rootdata::RootDatum& rd=cs.rootDatum();
   cartanclass::InvolutionData id(rd,cs.involutionMatrix(theta()));
@@ -1062,13 +1099,7 @@ PSalgebra::PSalgebra (kgb::KGBElt root,
   {
     rootdata::RootNbr alpha=*it;
     if (not id.real_roots().isMember(alpha))
-    {
       nilpotents.insert(alpha);
-      if (id.imaginary_roots().isMember(alpha))
-	noncompacts.set_to(alpha,Tg.grading(strong_inv,alpha));
-      else // complex root: choose the lower numberd one of theta-pair
-	noncompacts.set_to(alpha,id.root_involution(alpha)>alpha);
-    }
   }
 }
 

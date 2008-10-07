@@ -363,13 +363,14 @@ void sub_KGB_f()
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
   G_R.fillCartan(); // must not forget this!
   kgb::KGB kgb(G_R,G_R.cartanSet());
-  unsigned long cn;
-  interactive::getInteractive(cn,"Cartan class: ",G_R.cartanSet());
   standardrepk::KHatComputations khc(G_R,kgb);
 
+  unsigned long x;
+  interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
+
   weyl::WeylWord ww;
-  standardrepk::PSalgebra q=
-    khc.theta_stable_parabolic(ww,G_R.complexGroup().cartanClasses(),cn);
+  standardrepk::PSalgebra q=khc.theta_stable_parabolic
+    (ww,G_R.complexGroup().cartanClasses(),kgb.titsElt(x));
   kgb::KGBEltList sub=khc.sub_KGB(q);
 
   std::cout << "Conjugating word [" << ww << "]\n";
@@ -385,11 +386,11 @@ void trivial_f()
   kgb::KGB kgb(G_R,G_R.cartanSet());
   standardrepk::KHatComputations khc(G_R,kgb);
 
-  size_t most_split=G_R.mostSplit();
+  kgb::KGBElt last=kgb.size()-1;
 
   weyl::WeylWord ww;
   standardrepk::PSalgebra q=khc.theta_stable_parabolic
-    (ww,G_R.complexGroup().cartanClasses(),most_split);
+    (ww,G_R.complexGroup().cartanClasses(),kgb.titsElt(last));
 
   kgb::KGBEltList subset=khc.sub_KGB(q);
   size_t max_l=kgb.length(subset.back());
@@ -406,17 +407,9 @@ void trivial_f()
       sum-=c;
   }
 
+
   {
-    std::ostringstream s;
-    for (standardrepk::SR_rewrites::combination::const_iterator
-	   it=sum.begin(); it!=sum.end(); ++it)
-    {
-      s << (it->second>0 ? " + " : " - ");
-      long int ac=intutils::abs<long int>(it->second);
-      if (ac!=1)
-	s << ac << '*';
-      khc.print(s,khc.rep_no(it->first));
-    }
+    std::ostringstream s; khc.print(s,sum);
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
 
@@ -431,10 +424,11 @@ void charform_f()
   standardrepk::KHatComputations khc(G_R,kgb);
 
   unsigned long x;
-  latticetypes::Weight lambda;
   interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
+
   prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
     << std::endl;
+  latticetypes::Weight lambda;
   interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
 
   standardrepk::CharForm cf=
@@ -442,16 +436,7 @@ void charform_f()
 
   khc.print(std::cout << "Character formula for mu(",cf.first) << "):\n";
   {
-    std::ostringstream s;
-    for (standardrepk::Char::const_iterator
-	   it=cf.second.begin(); it!=cf.second.end(); ++it)
-    {
-      s << (it->second>0 ? " + " : " - ");
-      long int ac=intutils::abs<long int>(it->second);
-      if (ac!=1)
-	s << ac << '*';
-      khc.print(s,it->first);
-    }
+    std::ostringstream s; khc.print(s,cf.second);
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
 
@@ -462,16 +447,7 @@ void charform_f()
 
   std::cout << "Converted to Standard normal final limit form:\n";
   {
-    std::ostringstream s;
-    for (standardrepk::SR_rewrites::combination::const_iterator
-	   it=sum.begin(); it!=sum.end(); ++it)
-    {
-      s << (it->second>0 ? " + " : " - ");
-      long int ac=intutils::abs<long int>(it->second);
-      if (ac!=1)
-	s << ac << '*';
-      khc.print(s,khc.rep_no(it->first));
-    }
+    std::ostringstream s; khc.print(s,sum);
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
 }
