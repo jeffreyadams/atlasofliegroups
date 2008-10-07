@@ -318,7 +318,7 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
     if (n!=Hash::empty)
       return d_rules.lookup(n); // in this case an equation should be known
     if (sr.isStandard() // then also check if we already know |sr| to be Final
-	and (n=finals.find(sr)!=Hash::empty))
+	and (n=finals.find(sr))!=Hash::empty)
       return SR_rewrites::combination(n); // single term known to be final
   }
 
