@@ -400,9 +400,7 @@ class KHatComputations
      atlas::latticetypes::LatticeCoeff bound) const;
 
   PSalgebra theta_stable_parabolic
-    (weyl::WeylWord& conjugator,
-     const cartanset::CartanClassSet& cs,
-     tits::TitsElt te) const;
+    (weyl::WeylWord& conjugator, tits::TitsElt te) const;
   /*!
     Returns the sum of absolute values of the scalar products of lambda
     expressed in the full basis and the positive coroots. This gives a Weyl
@@ -473,7 +471,7 @@ class PSalgebra // Parabolic subalgebra
 	     const kgb::EnrichedTitsGroup& Tg);
 
   const tits::TitsElt& strong_involution() const { return strong_inv; }
-  weyl::TwistedInvolution theta() const { return strong_inv.tw(); }
+  weyl::TwistedInvolution involution() const { return strong_inv.tw(); }
   size_t Cartan_no() const { return cn; }
   bitset::RankFlags Levi_gens() const { return sub_diagram; }
   const rootdata::RootSet& radical() const { return nilpotents; }

@@ -369,8 +369,7 @@ void sub_KGB_f()
   interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
 
   weyl::WeylWord ww;
-  standardrepk::PSalgebra q=khc.theta_stable_parabolic
-    (ww,G_R.complexGroup().cartanClasses(),kgb.titsElt(x));
+  standardrepk::PSalgebra q=khc.theta_stable_parabolic(ww,kgb.titsElt(x));
   kgb::KGBEltList sub=khc.sub_KGB(q);
 
   std::cout << "Conjugating word [" << ww << "]\n";
@@ -389,8 +388,7 @@ void trivial_f()
   kgb::KGBElt last=kgb.size()-1;
 
   weyl::WeylWord ww;
-  standardrepk::PSalgebra q=khc.theta_stable_parabolic
-    (ww,G_R.complexGroup().cartanClasses(),kgb.titsElt(last));
+  standardrepk::PSalgebra q=khc.theta_stable_parabolic(ww,kgb.titsElt(last));
 
   kgb::KGBEltList subset=khc.sub_KGB(q);
   size_t max_l=kgb.length(subset.back());
@@ -443,7 +441,19 @@ void charform_f()
   standardrepk::SR_rewrites::combination sum;
   for (standardrepk::Char::const_iterator
 	   it=cf.second.begin(); it!=cf.second.end(); ++it)
-    sum.add_multiple(khc.standardize(it->first),it->second);
+  {
+#ifdef VERBOSE
+    size_t old_size=khc.nr_reps();
+    standardrepk::SR_rewrites::combination st=khc.standardize(it->first);
+    for (size_t i=old_size; i<khc.nr_reps(); ++i)
+      khc.print(std::cout << 'R' << i << ": ",khc.rep_no(i)) << std::endl;
+
+    std::ostringstream s; khc.print(s,it->first) << " = ";
+    khc.print(s,st,true);
+    ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+#endif
+    sum.add_multiple(st,it->second);
+  }
 
   std::cout << "Converted to Standard normal final limit form:\n";
   {

@@ -293,6 +293,8 @@ std::ostream& KHatComputations::print(std::ostream& strm,StandardRepK sr)
 
 std::ostream& KHatComputations::print(std::ostream& strm,Char ch) const
 {
+  if (ch.empty())
+    return strm << '0';
   for (Char::const_iterator it=ch.begin(); it!=ch.end(); ++it)
   {
     strm << (it->second>0 ? " + " : " - ");
@@ -308,6 +310,8 @@ std::ostream& KHatComputations::print(std::ostream& strm,
 				      SR_rewrites::combination ch,
 				      bool brief) const
 {
+  if (ch.empty())
+    return strm << '0';
   for (SR_rewrites::combination::const_iterator
 	 it=ch.begin(); it!=ch.end(); ++it)
   {
@@ -680,9 +684,7 @@ KHatComputations::product_sumposroots(const StandardRepK& s) const
 
 PSalgebra
 KHatComputations::theta_stable_parabolic
-  (weyl::WeylWord& conjugator,
-   const cartanset::CartanClassSet& cs,
-   tits::TitsElt strong) const
+  (weyl::WeylWord& conjugator, tits::TitsElt strong) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   const weyl::WeylGroup& W=weylGroup();
@@ -729,6 +731,7 @@ KHatComputations::theta_stable_parabolic
 
   // Build the parabolic subalgebra:
 
+  const cartanset::CartanClassSet& cs=d_G->cartanClasses();
   { // first ensure |strong| is in reduced
     latticetypes::LatticeMatrix theta=cs.involutionMatrix(strong.tw());
     latticetypes::SmallSubspace mod_space=latticetypes::SmallSubspace
@@ -751,7 +754,7 @@ kgb::KGBEltList KHatComputations::sub_KGB(const PSalgebra& q) const
 
   kgb::KGBElt root;
   {
-    kgb::KGBEltPair p=d_KGB.tauPacket(q.theta());
+    kgb::KGBEltPair p=d_KGB.tauPacket(q.involution());
     kgb::KGBElt x;
     for (x=p.first; x<p.second; ++x)
       if (d_KGB.titsElt(x)==q.strong_involution())
@@ -853,13 +856,13 @@ RawChar KHatComputations::KGB_sum(const PSalgebra& q,
 CharForm  KHatComputations::character_formula(StandardRepK sr) const
 {
   const cartanset::CartanClassSet& cs=d_G->cartanClasses();
-  const weyl::WeylGroup& W=cs.weylGroup();
-  const rootdata::RootDatum& rd=cs.rootDatum();
+  const weyl::WeylGroup& W=weylGroup();
+  const rootdata::RootDatum& rd=rootDatum();
 
   // Get theta stable parabolic subalgebra
 
   weyl::WeylWord conjugator;
-  PSalgebra q = theta_stable_parabolic(conjugator,cs,titsElt(sr));
+  PSalgebra q = theta_stable_parabolic(conjugator,titsElt(sr));
 
   latticetypes::Weight lambda=
     W.imageByInverse(rd,W.element(conjugator),lift(sr));
@@ -1081,12 +1084,12 @@ PSalgebra::PSalgebra (tits::TitsElt base,
 		      const cartanset::CartanClassSet& cs,
 		      const kgb::EnrichedTitsGroup& Tg)
     : strong_inv(base)
-    , cn(cs.classNumber(theta()))
+    , cn(cs.classNumber(base.tw()))
     , sub_diagram()
     , nilpotents(cs.rootDatum().numRoots())
 {
   const rootdata::RootDatum& rd=cs.rootDatum();
-  cartanclass::InvolutionData id(rd,cs.involutionMatrix(theta()));
+  cartanclass::InvolutionData id(rd,cs.involutionMatrix(base.tw()));
 
   // Put real simple roots into Levi factor
   for (size_t i=0; i<rd.semisimpleRank(); ++i)
