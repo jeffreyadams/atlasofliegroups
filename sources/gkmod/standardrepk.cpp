@@ -1058,19 +1058,8 @@ KHatComputations::saturate(std::set<CharForm> system,
 
 // **************   manipulators **********************
 
-void KHatComputations::go
-  (kgb::KGBElt x, const latticetypes::Weight& lambda)
+void KHatComputations::go(const StandardRepK& sr)
 {
-  StandardRepK sr=std_rep_rho_plus(lambda,d_KGB.titsElt(x));
-
-  {
-    latticetypes::Weight mu=lambda;
-    (mu *= 2) += rootDatum().twoRho();
-    prettyprint::printVector(std::cout << "Weight entered: (1/2)",mu);
-    prettyprint::printVector(std::cout << " converted to: (1/2)",lift(sr))
-      << std::endl;
-  }
-
   SR_rewrites::combination chi=standardize(sr);
 
 #ifdef VERBOSE

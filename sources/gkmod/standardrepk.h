@@ -223,6 +223,7 @@ public:
     return d_status[IsStandard];
   }
 
+  size_t Cartan() const { return d_cartan; }
 
 // manipulators: none (done by friend class KHatComputations)
 
@@ -426,7 +427,7 @@ class KHatComputations
 
   SR_rewrites::combination standardize(const Char& chi);
 
-  void go(kgb::KGBElt, const latticetypes::Weight&);
+  void go(const StandardRepK& sr);
 
 // private methods
 

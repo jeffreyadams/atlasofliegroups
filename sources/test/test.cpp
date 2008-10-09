@@ -429,33 +429,54 @@ void charform_f()
   latticetypes::Weight lambda;
   interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
 
-  standardrepk::CharForm cf=
-    khc.character_formula(khc.std_rep_rho_plus(lambda,kgb.titsElt(x)));
+  standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
 
-  khc.print(std::cout << "Character formula for mu(",cf.first) << "):\n";
+  standardrepk::SR_rewrites::combination comb=khc.standardize(sr);
+
+  if (comb.empty())
   {
-    std::ostringstream s; khc.print(s,cf.second);
+    khc.print(std::cout << "Representation ",sr) << " is zero.\n"; return;
+  }
+  else if (comb.size()>1 or khc.rep_no(comb.begin()->first)!=sr)
+  {
+    std::ostringstream s;
+    khc.print(s << "Rewrote input as ",sr) << " = ";
+    khc.print(s,comb);
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
 
   standardrepk::SR_rewrites::combination sum;
-  for (standardrepk::Char::const_iterator
-	   it=cf.second.begin(); it!=cf.second.end(); ++it)
-  {
-#ifdef VERBOSE
-    khc.print(std::cout,it->first) << " has height " << khc.height(it->first)
-				   << std::endl;
-    size_t old_size=khc.nr_reps();
-    standardrepk::SR_rewrites::combination st=khc.standardize(it->first);
-    for (size_t i=old_size; i<khc.nr_reps(); ++i)
-      khc.print(std::cout << 'R' << i << ": ",khc.rep_no(i))
-	<< ", height: " << khc.height(khc.rep_no(i)) << std::endl;
 
-    std::ostringstream s; khc.print(s,it->first) << " = ";
-    khc.print(s,st,true);
-    ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+  for (standardrepk::SR_rewrites::combination::const_iterator
+	 ci=comb.begin(); ci!=comb.end(); ++ci)
+  {
+    std::cout << std::endl;
+    standardrepk::CharForm cf=khc.character_formula(khc.rep_no(ci->first));
+
+    khc.print(std::cout << "Character formula for mu(",cf.first) << "):\n";
+    {
+      std::ostringstream s; khc.print(s,cf.second);
+      ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+    }
+
+    for (standardrepk::Char::const_iterator
+	   it=cf.second.begin(); it!=cf.second.end(); ++it)
+    {
+#ifdef VERBOSE
+      khc.print(std::cout,it->first) << " has height " << khc.height(it->first)
+				     << std::endl;
+      size_t old_size=khc.nr_reps();
+      standardrepk::SR_rewrites::combination st=khc.standardize(it->first);
+      for (size_t i=old_size; i<khc.nr_reps(); ++i)
+	khc.print(std::cout << 'R' << i << ": ",khc.rep_no(i))
+          << ", height: " << khc.height(khc.rep_no(i)) << std::endl;
+
+      std::ostringstream s; khc.print(s,it->first) << " = ";
+      khc.print(s,st,true);
+      ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
 #endif
-    sum.add_multiple(st,it->second);
+      sum.add_multiple(st,ci->second*it->second);
+    }
   }
 
   std::cout << "Converted to Standard normal final limit form:\n";
@@ -484,6 +505,7 @@ void test_f()
   try
   {
     realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+    const complexredgp::ComplexReductiveGroup& G=G_R.complexGroup();
 
     G_R.fillCartan(); // must not forget this!
     kgb::KGB kgb(G_R,G_R.cartanSet());
@@ -495,7 +517,20 @@ void test_f()
       << std::endl;
     interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
     standardrepk::KHatComputations khc(G_R,kgb);
-    khc.go(x,lambda);
+
+    standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
+
+    (lambda *= 2) += G.rootDatum().twoRho();
+    prettyprint::printVector(std::cout << "Weight (1/2)",lambda);
+    prettyprint::printVector(std::cout << " converted to (1/2)",khc.lift(sr));
+
+    const weyl::TwistedInvolution& canonical=G.twistedInvolution(sr.Cartan());
+    if (kgb.involution(x)!=canonical)
+      prettyprint::printWeylElt(std::cout << " at involution ",
+				canonical, G.weylGroup());
+    std::cout << "\nHeight is " << khc.height(sr) << std::endl;
+
+    khc.go(sr);
   }
   catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
