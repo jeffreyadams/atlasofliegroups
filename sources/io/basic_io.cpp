@@ -19,9 +19,7 @@
 
         Chapter I -- operator<< functions
 
-  NOTE: there are more definitions as templates.
-
-  ... fill in here when it is stable ...
+  NOTE: there are more definitions, given as templates in basic_io_def.h
 
 ******************************************************************************/
 
@@ -82,6 +80,9 @@ std::ostream& operator<< (std::ostream& strm, const lietype::LieType& lt)
 */
 std::ostream& operator<< (std::ostream& strm, const weyl::WeylWord& w)
 {
+  if (w.size()==0)
+    return strm << 'e';
+
   for (size_t j = 0; j < w.size(); ++j) {
     unsigned a = w[j]+1;
     strm << a;
