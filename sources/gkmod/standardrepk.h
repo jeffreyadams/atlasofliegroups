@@ -322,6 +322,7 @@ class KHatComputations
 
   const rootdata::RootDatum& rootDatum() const { return d_G->rootDatum(); }
   const weyl::WeylGroup& weylGroup() const { return d_G->weylGroup(); }
+  const tits::TitsGroup& titsGroup() const { return d_Tg.titsGroup(); }
 
   StandardRepK std_rep
     (const latticetypes::Weight& two_lambda, tits::TitsElt a) const;
@@ -345,7 +346,7 @@ class KHatComputations
 
   tits::TitsElt titsElt(StandardRepK s) const
   {
-    return tits::TitsElt(d_Tg.titsGroup(),
+    return tits::TitsElt(titsGroup(),
 			 d_G->twistedInvolution(s.d_cartan),
 			 s.d_fiberElt);
   }
@@ -376,6 +377,19 @@ class KHatComputations
   latticetypes::Weight lift(StandardRepK s) const
   { return lift(s.d_cartan,s.d_lambda); }
 
+  /*!
+    Returns the sum of absolute values of the scalar products of lambda
+    expressed in the full basis and the positive coroots. This gives a Weyl
+    group invariant limit on the size of the weights that will be needed.
+  */
+  latticetypes::LatticeCoeff height(const StandardRepK& s) const;
+
+  //! The same, but without packaging into a |StandardRepK|
+  latticetypes::LatticeCoeff
+    height(const latticetypes::Weight& lambda,
+	   const weyl::TwistedInvolution& twi) const;
+
+
   // apply symmetry for root $\alpha_s$ to |a|
   void reflect(tits::TitsElt a, size_t s);
 
@@ -401,21 +415,6 @@ class KHatComputations
 
   PSalgebra theta_stable_parabolic
     (weyl::WeylWord& conjugator, tits::TitsElt te) const;
-  /*!
-    Returns the sum of absolute values of the scalar products of lambda
-    expressed in the full basis and the positive coroots. This gives a Weyl
-    group invariant limit on the size of the weights that will be needed.
-  */
-  atlas::latticetypes::LatticeCoeff
-    product_sumposroots (const StandardRepK& s) const;
-
-  /*!
-    When a standardrepK lambda is normalized this will return the product of
-    (1+theta)*(the lifted lambda) with coroot |k|. A constituent in the above.
-  */
-  atlas::latticetypes::LatticeCoeff
-    product_simpleroot(const StandardRepK& s, rootdata::RootNbr k) const;
-
 
   atlas::matrix::Matrix<CharCoeff>
     makeMULTmatrix(std::set<CharForm>& system,

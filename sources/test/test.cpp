@@ -443,10 +443,13 @@ void charform_f()
 	   it=cf.second.begin(); it!=cf.second.end(); ++it)
   {
 #ifdef VERBOSE
+    khc.print(std::cout,it->first) << " has height " << khc.height(it->first)
+				   << std::endl;
     size_t old_size=khc.nr_reps();
     standardrepk::SR_rewrites::combination st=khc.standardize(it->first);
     for (size_t i=old_size; i<khc.nr_reps(); ++i)
-      khc.print(std::cout << 'R' << i << ": ",khc.rep_no(i)) << std::endl;
+      khc.print(std::cout << 'R' << i << ": ",khc.rep_no(i))
+	<< ", height: " << khc.height(khc.rep_no(i)) << std::endl;
 
     std::ostringstream s; khc.print(s,it->first) << " = ";
     khc.print(s,st,true);
