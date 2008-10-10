@@ -466,8 +466,10 @@ void Ktypeform_f()
 #ifdef VERBOSE
     khc.print(std::cout,it->first) << " has height " << khc.height(it->first)
 				   << std::endl;
-    size_t old_size=khc.nr_reps();
+#endif
     standardrepk::SR_rewrites::combination st=khc.standardize(it->first);
+#ifdef VERBOSE
+    size_t old_size=khc.nr_reps();
     for (size_t i=old_size; i<khc.nr_reps(); ++i)
       khc.print(std::cout << 'R' << i << ": ",khc.rep_no(i))
         << ", height: " << khc.height(khc.rep_no(i)) << std::endl;
