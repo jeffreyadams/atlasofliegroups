@@ -312,17 +312,21 @@ class KhatContext
     }
 
 /*
+  The conditions below (and Normal which is not used in tests) are define by
    Standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ imaginary
    Normal: $\<\lambda,\alpha\vee+\theta\alpha\vee>\geq0$ when $\alpha$ simple,
      complex, and orthogonal to sums of positive imaginary resp. real roots.
    Zero: $\<\lambda,\alpha\vee>=0$ for some simple-imaginary compact $\alpha$
    Final: $\<\lambda,\alpha\vee>$ odd for all simple real roots $\alpha$
 
-   The |witness| parameter is set to an index of a root that witnesses
-   the failure to be Standard, non-Zero, or Final in case of such verdicts.
-   This index is into |f.simpleImaginary| for |isStandard| and |isZero|, and
-   it is int |f.simpleReal| for |isFinal|, where |f| is the |Fiber| at the
-   canonical twisted involution for the cartan class of |sr|.
+  The condition Zero is a sufficient, but possibly not necessary, condition
+  for the parameter to determine a zero representation.
+
+  The |witness| parameter is set to an index of a root that witnesses
+  the failure to be Standard, non-Zero, or Final in case of such verdicts.
+  This index is into |f.simpleImaginary| for |isStandard| and |isZero|, and
+  it is int |f.simpleReal| for |isFinal|, where |f| is the |Fiber| at the
+  canonical twisted involution for the cartan class of |sr|.
 */
   bool isStandard(const StandardRepK& sr, size_t& witness) const;
   bool isZero(const StandardRepK& sr, size_t& witness) const;
@@ -342,9 +346,9 @@ class KhatContext
       return final_pool[i];
     }
 
-  std::ostream& print(std::ostream& strm, StandardRepK sr) const;
-  std::ostream& print(std::ostream& strm, Char ch) const;
-  std::ostream& print(std::ostream& strm, SR_rewrites::combination ch,
+  std::ostream& print(std::ostream& strm, const StandardRepK& sr) const;
+  std::ostream& print(std::ostream& strm, const Char& ch) const;
+  std::ostream& print(std::ostream& strm, const SR_rewrites::combination& ch,
 		      bool brief=false) const;
 
   //!\brief A section of |project|
@@ -358,8 +362,11 @@ class KhatContext
       return result;
     }
 
-  latticetypes::Weight lift(StandardRepK s) const
+  latticetypes::Weight lift(const StandardRepK& s) const
   { return lift(s.d_cartan,s.d_lambda); }
+
+  latticetypes::Weight theta_lift(const StandardRepK& s) const
+  { return theta_lift(s.d_cartan,s.d_lambda); }
 
   /*!
     Returns the sum of absolute values of the scalar products of lambda
@@ -384,21 +391,21 @@ class KhatContext
   void normalize(StandardRepK&) const;
 
   // Hecht-Schmid identity for simple-imaginary root $\alpha$
-  HechtSchmid HS_id(StandardRepK s, rootdata::RootNbr alpha) const;
+  HechtSchmid HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
 
   // Hecht-Schmid identity for simple-real root $\alpha$
-  HechtSchmid back_HS_id(StandardRepK s, rootdata::RootNbr alpha) const;
+  HechtSchmid back_HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
 
   kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
 
-  CharForm K_type_formula(StandardRepK sr) const; // call by value
+  CharForm K_type_formula(const StandardRepK& sr) const; // call by value
 
   std::vector<CharForm> saturate
     (std::set<CharForm> system, // call by value
      atlas::latticetypes::LatticeCoeff bound) const;
 
   PSalgebra theta_stable_parabolic
-    (weyl::WeylWord& conjugator, tits::TitsElt te) const;
+    (const StandardRepK& sr, weyl::WeylWord& conjugator) const;
 
   atlas::matrix::Matrix<CharCoeff>
     makeMULTmatrix(std::set<CharForm>& system,
@@ -431,7 +438,8 @@ struct HechtSchmid {
   StandardRepK* rh1;
   StandardRepK* rh2;
 
-  HechtSchmid(StandardRepK s) : lh(s), lh2(NULL), rh1(NULL), rh2(NULL) {}
+  HechtSchmid(const StandardRepK& s)
+    : lh(s), lh2(NULL), rh1(NULL), rh2(NULL) {}
   ~HechtSchmid() { delete lh2; delete rh1; delete rh2; }
 
   void add_lh(const StandardRepK& s) { lh2=new StandardRepK(s); }

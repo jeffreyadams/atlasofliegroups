@@ -368,8 +368,15 @@ void sub_KGB_f()
   unsigned long x;
   interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
 
+  prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
+    << std::endl;
+  latticetypes::Weight lambda;
+  interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
+
+  standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
+
   weyl::WeylWord ww;
-  standardrepk::PSalgebra q=khc.theta_stable_parabolic(ww,kgb.titsElt(x));
+  standardrepk::PSalgebra q= khc.theta_stable_parabolic(sr,ww);
   kgb::KGBEltList sub=khc.sub_KGB(q);
 
   std::cout << "Conjugating word [" << ww << "]\n";
@@ -388,7 +395,8 @@ void trivial_f()
   kgb::KGBElt last=kgb.size()-1;
 
   weyl::WeylWord ww;
-  standardrepk::PSalgebra q=khc.theta_stable_parabolic(ww,kgb.titsElt(last));
+  standardrepk::PSalgebra q=
+    khc.theta_stable_parabolic(khc.KGB_elt_rep(last),ww);
 
   kgb::KGBEltList subset=khc.sub_KGB(q);
   size_t max_l=kgb.length(subset.back());

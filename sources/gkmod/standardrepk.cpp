@@ -326,7 +326,7 @@ bool KhatContext::isFinal(const StandardRepK& sr, size_t& witness) const
 }
 
 
-std::ostream& KhatContext::print(std::ostream& strm,StandardRepK sr)
+std::ostream& KhatContext::print(std::ostream& strm,const StandardRepK& sr)
   const
 {
   prettyprint::printVector(strm,lift(sr)) << '@';
@@ -334,7 +334,7 @@ std::ostream& KhatContext::print(std::ostream& strm,StandardRepK sr)
   return strm;
 }
 
-std::ostream& KhatContext::print(std::ostream& strm,Char ch) const
+std::ostream& KhatContext::print(std::ostream& strm,const Char& ch) const
 {
   if (ch.empty())
     return strm << '0';
@@ -350,8 +350,8 @@ std::ostream& KhatContext::print(std::ostream& strm,Char ch) const
 }
 
 std::ostream& KhatContext::print(std::ostream& strm,
-				      SR_rewrites::combination ch,
-				      bool brief) const
+				 const SR_rewrites::combination& ch,
+				 bool brief) const
 {
   if (ch.empty())
     return strm << '0';
@@ -528,7 +528,7 @@ void KhatContext::normalize(StandardRepK& sr) const
 
 
 HechtSchmid
-KhatContext::HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
+KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 {
   HechtSchmid id(sr);
   const rootdata::RootDatum& rd=rootDatum();
@@ -618,7 +618,7 @@ KhatContext::HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
    type II cases, for a non-final parameter |sr| and witnessing root |alpha|
  */
 HechtSchmid
-KhatContext::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
+KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 {
   HechtSchmid id(sr);
   const rootdata::RootDatum& rd=rootDatum();
@@ -680,10 +680,10 @@ KhatContext::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
 
 
 latticetypes::LatticeCoeff
-KhatContext::height(const StandardRepK& s) const
+KhatContext::height(const StandardRepK& sr) const
 {
   const rootdata::RootDatum& rd=rootDatum();
-  const latticetypes::Weight mu=theta_lift(s.d_cartan,s.d_lambda);
+  const latticetypes::Weight mu=theta_lift(sr);
 
   latticetypes::LatticeCoeff sum=0;
   for (rootdata::WRootIterator
@@ -711,41 +711,67 @@ KhatContext::height(const latticetypes::Weight& lambda,
   return sum/2; // each |scalarProduct| above is even (in doubled coordinates)
 }
 
+/*!
+  The purpose of |theta_stable_parabolic| is to move to a situation in which
+  |dom| is dominant, and in which the only positive roots sent to negative
+  ones by the involution $\theta$ are the real ones. Then the real roots
+  define the Levi factor, and the remaining positive roots the radical of a
+  $\theta$-stable parabolic subalgebra. The involution $\theta$ is given by
+  the twisted involution in |strong|; we think of keeping it fixed while
+  gradually moving around the set of positive roots, each time replacing some
+  complex root in the simple basis by its opposite. In realitity the positive
+  system is fixed, and the moves conjugate $\theta$ and reflect |dom|. In fact
+  we shall need a fiber part as well as an involution once we have obtained
+  our goal, so conjugetion is in fact |basedTwistedConjugate| on |strong|.
+ */
 PSalgebra
 KhatContext::theta_stable_parabolic
-  (weyl::WeylWord& conjugator, tits::TitsElt strong) const
+  (const StandardRepK& sr, weyl::WeylWord& conjugator) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   const weyl::WeylGroup& W=weylGroup();
 
-/* Conjugate |strong.tw()| by simple complex roots to make the positive root
-   system more theta stable. There is no hope for real roots, but for complex
-   roots we try to achieve that the $\theta$-image of simple roots is
-   positive. As our notion of positive roots is fixed, we conjugate $\theta$
-   itself (in fact based-twisted-conjugating |strong|) which changes the
-   notions of imaginary/real/complex roots.
-*/
-  conjugator.resize(0);
+  latticetypes::Weight dom=theta_lift(sr);
+  tits::TitsElt strong=titsElt(sr);
 
+  conjugator.resize(0); // clear this output parameter
+
+  /* the following loop terminates because we either increase the number of
+     positive coroots with strictly positive evaluation on |dom|, or we keep
+     that number constant and decrease the number of positive complex roots
+     that the involution sends to negative ones.
+  */
+  while (true) // loop will terminate if inner loop runs to completion
   {
     size_t i;
-    do // try to twisted-conjugate by complex simple root mapped to negative
+    for (i=0; i<rd.semisimpleRank(); ++i)
     {
-      for (i=0; i<rd.semisimpleRank(); ++i)
-      {
-	rootdata::RootNbr alpha=rd.simpleRootNbr(i);
-	rootdata::RootNbr beta= // image of |alpha| by |twi|
-	  rd.permuted_root(W.word(strong.w()),rd.simpleRootNbr(W.twisted(i)));
-	if (not rd.isPosRoot(beta) and beta!=rd.rootMinus(alpha))
-	{
-	  d_Tg.basedTwistedConjugate(strong,i);
-	  conjugator.push_back(i);
-	  break; // and repeat do-while loop
-	}
-      } // for i
+      rootdata::RootNbr alpha=rd.simpleRootNbr(i);
+      latticetypes::LatticeCoeff v=dom.scalarProduct(rd.simpleCoroot(i));
+
+      if (v<0) // first priority: |dom| should be made dominant
+	break; // found value of |i| to used in conjugation/reflection
+      else if (v>0) continue; // don't touch |alpha| in this case
+
+      // now |dom| is on reflection hyperplan for |alpha|
+
+      // second priority give |alpha| and its $\theta$ image the same sign
+      rootdata::RootNbr beta= // image of |alpha| by $\theta$
+	rd.permuted_root(W.word(strong.w()),rd.simpleRootNbr(W.twisted(i)));
+      if (not rd.isPosRoot(beta) and beta!=rd.rootMinus(alpha))
+	break; // found |i| in this case as well
+
+    } // for i
+
+    if (i<rd.semisimpleRank()) // then we found a reflection |i| to apply
+    {
+      d_Tg.basedTwistedConjugate(strong,i);
+      rd.simpleReflect(dom,i);
+      conjugator.push_back(i);
     }
-    while (i!=rd.semisimpleRank());
-  }
+    else break; // no simple roots give any improvement any more, so stop
+  } // |while(true)|
+
 /*
    We have achieved that any real positive root is a sum of real simple roots.
    Here's why. Consider a counterexample that is minimal: a real positive root
@@ -882,7 +908,7 @@ RawChar KhatContext::KGB_sum(const PSalgebra& q,
 } // KGB_sum
 
 // Express irreducible K-module as a finite virtual sum of standard ones
-CharForm  KhatContext::K_type_formula(StandardRepK sr) const
+CharForm  KhatContext::K_type_formula(const StandardRepK& sr) const
 {
   const cartanset::CartanClassSet& cs=d_G->cartanClasses();
   const weyl::WeylGroup& W=weylGroup();
@@ -891,7 +917,7 @@ CharForm  KhatContext::K_type_formula(StandardRepK sr) const
   // Get theta stable parabolic subalgebra
 
   weyl::WeylWord conjugator;
-  PSalgebra q = theta_stable_parabolic(conjugator,titsElt(sr));
+  PSalgebra q = theta_stable_parabolic(sr,conjugator);
 
   latticetypes::Weight lambda=
     W.imageByInverse(rd,W.element(conjugator),lift(sr));
