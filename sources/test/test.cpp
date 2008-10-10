@@ -55,7 +55,7 @@ namespace {
   void KGB_f();
   void sub_KGB_f();
   void trivial_f();
-  void charform_f();
+  void Ktypeform_f();
   void test_f();
 
   // help functions
@@ -140,7 +140,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("KGB",KGB_f);
   mode.add("sub_KGB",sub_KGB_f);
   mode.add("trivial",trivial_f);
-  mode.add("charform",charform_f);
+  mode.add("Ktypeform",Ktypeform_f);
 
 }
 
@@ -227,7 +227,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("KGB",helpmode::nohelp_h);
   mode.add("sub_KGB",helpmode::nohelp_h);
   mode.add("trivial",helpmode::nohelp_h);
-  mode.add("charform",helpmode::nohelp_h);
+  mode.add("Ktypeform",helpmode::nohelp_h);
 
 
   // add additional command tags here :
@@ -235,7 +235,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"KGB",test_tag);
   insertTag(t,"sub_KGB",test_tag);
   insertTag(t,"trivial",test_tag);
-  insertTag(t,"charform",test_tag);
+  insertTag(t,"Ktypeform",test_tag);
 
 }
 
@@ -363,7 +363,7 @@ void sub_KGB_f()
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
   G_R.fillCartan(); // must not forget this!
   kgb::KGB kgb(G_R,G_R.cartanSet());
-  standardrepk::KHatComputations khc(G_R,kgb);
+  standardrepk::KhatContext khc(G_R,kgb);
 
   unsigned long x;
   interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
@@ -383,7 +383,7 @@ void trivial_f()
   const rootdata::RootDatum& rd=G_R.rootDatum();
 
   kgb::KGB kgb(G_R,G_R.cartanSet());
-  standardrepk::KHatComputations khc(G_R,kgb);
+  standardrepk::KhatContext khc(G_R,kgb);
 
   kgb::KGBElt last=kgb.size()-1;
 
@@ -413,13 +413,13 @@ void trivial_f()
 
 }
 
-void charform_f()
+void Ktypeform_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
   G_R.fillCartan(); // must not forget this!
 
   kgb::KGB kgb(G_R,G_R.cartanSet());
-  standardrepk::KHatComputations khc(G_R,kgb);
+  standardrepk::KhatContext khc(G_R,kgb);
 
   unsigned long x;
   interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
@@ -451,7 +451,7 @@ void charform_f()
 	 ci=comb.begin(); ci!=comb.end(); ++ci)
   {
     std::cout << std::endl;
-    standardrepk::CharForm cf=khc.character_formula(khc.rep_no(ci->first));
+    standardrepk::CharForm cf=khc.K_type_formula(khc.rep_no(ci->first));
 
     khc.print(std::cout << "Character formula for mu(",cf.first) << "):\n";
     {
@@ -516,7 +516,7 @@ void test_f()
     prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
       << std::endl;
     interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
-    standardrepk::KHatComputations khc(G_R,kgb);
+    standardrepk::KhatContext khc(G_R,kgb);
 
     standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
 

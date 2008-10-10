@@ -1,7 +1,7 @@
 /*!
 \file
 \brief Class definition and function declarations for the classes
-StandardRepK and KHatComputations.
+StandardRepK and KhatContext.
 */
 /*
   This is standardrepk.h
@@ -39,7 +39,7 @@ namespace atlas {
 namespace standardrepk {
 
 class StandardRepK;
-class KHatComputations;
+class KhatContext;
 class HechtSchmid;
 class PSalgebra;
 
@@ -92,7 +92,7 @@ class StandardRepK {
   This is a parameter type like Tits elements; the important operations are
   modifying and comparing values, not storing additional data that
   facilitate methods. For that auxiliary classes similar to |WeylGroup| with
-  respect to |WeylElt| will be used; here mainly |KHatComputations|.
+  respect to |WeylElt| will be used; here mainly |KhatContext|.
 
   For us a standard Harish-Chandra module is attached to
   1) a real Cartan subgroup $H(R)=H(R)_c H(R)_s$, with $H(R)_c = H(R)\cap K$
@@ -144,36 +144,22 @@ class StandardRepK {
   consisting of an integer vector and an integer respesenting a bit vector;
   the integer vector gives the non-torsion part of
   $(X^*+\rho)/(1-\theta)X^*$ on a basis of $(1/2)X^*$ held in
-  |KHatComputations|, and the bitvector gives the torsion part, via a basis
+  |KhatContext|, and the bitvector gives the torsion part, via a basis
   also given there.
 
 */
 
 
-  friend class KHatComputations; // which is like |WeylGroup| is for |WeylElt|
+  friend class KhatContext; // which is like |WeylGroup| is for |WeylElt|
 
  private:
-
-  enum StatusFlagNames { IsStandard, IsNonZero, IsFinal, numFlags };
-/*
-   standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ imaginary
-   normal: $\<\lambda,\alpha\vee+\theta\alpha\vee>\geq0$ when $\alpha$ simple,
-     complex, and orthogonal to sums of positive imaginary resp. real roots.
-   final: $\<\lambda,\alpha\vee>$ odd for all simple real roots $\alpha$
-   zero: $\<\lambda,\alpha\vee>=0$ for some simple-imaginary compact $\alpha$
-
-   The remaining three predicates can only be applied if standard is ensured
-*/
-
-  typedef bitset::BitSet<numFlags> Status;
-
 
 /*!
   \brief Number of the Cartan to which the HC module is associated.
 */
   size_t d_cartan;
 
-// no real form or base grading recorded in elements; in |KHatComputations|
+// no real form or base grading recorded in elements; in |KhatContext|
 /*!
   \brief Element of the fiber group; left torus part of the strong involution
 */
@@ -184,21 +170,12 @@ class StandardRepK {
 */
   HCParam d_lambda;
 
-/*!\brief
-  Records whether this continued standard module is actually standard, and
-  whether it is known to be in normal position, final or zero. Apart from
-  isStandard, an unset bit does not mean the property necessarily lacks.
-
-  This field is not used in comparisons.
-*/
-  Status d_status;
-
 // constructors, destructors, and swap
 
-  // main constructor is private, used by |KHatComputations| methods
+  // main constructor is private, used by |KhatContext| methods
   // fundamental bare-bones constructor; no status is set here
   StandardRepK(size_t cn, const tits::TorusPart& x, const HCParam& lambda)
-    : d_cartan(cn), d_fiberElt(x), d_lambda(lambda), d_status() {}
+    : d_cartan(cn), d_fiberElt(x), d_lambda(lambda) {}
 
 public:
 
@@ -211,21 +188,9 @@ public:
   bool operator< (const StandardRepK&) const;
   bool operator== (const StandardRepK&) const;
 
-  bool isFinal() const {
-    return d_status[IsFinal];
-  }
-
-  bool isNonZero() const {
-    return d_status[IsNonZero];
-  }
-
-  bool isStandard() const {
-    return d_status[IsStandard];
-  }
-
   size_t Cartan() const { return d_cartan; }
 
-// manipulators: none (done by friend class KHatComputations)
+// manipulators: none (done by friend class KhatContext)
 
 // special members required by hashtable::HashTable
 
@@ -284,7 +249,7 @@ struct Cartan_info
 // necessary to interpret the d_lambda field in StandardRepK are stored here
 // (in d_realForm .. d_minusQuotient)
 
-class KHatComputations
+class KhatContext
 {
   const complexredgp::ComplexReductiveGroup* d_G;
   const kgb::KGB& d_KGB;
@@ -309,12 +274,12 @@ class KHatComputations
 
 // constructors, destructors, and swap
 
-  KHatComputations(const realredgp::RealReductiveGroup &G,
+  KhatContext(const realredgp::RealReductiveGroup &G,
 		   const kgb::KGB& kgb);
 
-  ~KHatComputations() {}
+  ~KhatContext() {}
 
-  void swap(KHatComputations&);
+  void swap(KhatContext&);
 
 // accessors
 
@@ -324,6 +289,8 @@ class KHatComputations
   const rootdata::RootDatum& rootDatum() const { return d_G->rootDatum(); }
   const weyl::WeylGroup& weylGroup() const { return d_G->weylGroup(); }
   const tits::TitsGroup& titsGroup() const { return d_Tg.titsGroup(); }
+  const cartanclass::Fiber& fiber(const StandardRepK& sr) const
+    { return d_G->cartan(sr.Cartan()).fiber(); }
 
   StandardRepK std_rep
     (const latticetypes::Weight& two_lambda, tits::TitsElt a) const;
@@ -344,8 +311,24 @@ class KHatComputations
       return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z));
     }
 
+/*
+   Standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ imaginary
+   Normal: $\<\lambda,\alpha\vee+\theta\alpha\vee>\geq0$ when $\alpha$ simple,
+     complex, and orthogonal to sums of positive imaginary resp. real roots.
+   Zero: $\<\lambda,\alpha\vee>=0$ for some simple-imaginary compact $\alpha$
+   Final: $\<\lambda,\alpha\vee>$ odd for all simple real roots $\alpha$
 
-  tits::TitsElt titsElt(StandardRepK s) const
+   The |witness| parameter is set to an index of a root that witnesses
+   the failure to be Standard, non-Zero, or Final in case of such verdicts.
+   This index is into |f.simpleImaginary| for |isStandard| and |isZero|, and
+   it is int |f.simpleReal| for |isFinal|, where |f| is the |Fiber| at the
+   canonical twisted involution for the cartan class of |sr|.
+*/
+  bool isStandard(const StandardRepK& sr, size_t& witness) const;
+  bool isZero(const StandardRepK& sr, size_t& witness) const;
+  bool isFinal(const StandardRepK& sr, size_t& witness) const;
+
+  tits::TitsElt titsElt(const StandardRepK& s) const
   {
     return tits::TitsElt(titsGroup(),
 			 d_G->twistedInvolution(s.d_cartan),
@@ -408,7 +391,7 @@ class KHatComputations
 
   kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
 
-  CharForm character_formula(StandardRepK) const; // call by value
+  CharForm K_type_formula(StandardRepK sr) const; // call by value
 
   std::vector<CharForm> saturate
     (std::set<CharForm> system, // call by value

@@ -1,7 +1,7 @@
 /*!
 \file
 \brief Implementation for the classes
-StandardRepK and KHatComputations.
+StandardRepK and KhatContext.
 */
 /*
   This is standardrepk.cpp
@@ -106,15 +106,15 @@ void SR_rewrites::equate (seq_no n, const combination& rhs)
 
 /*****************************************************************************
 
-        Chapter III -- The KHatComputations class
+        Chapter III -- The KhatContext class
 
 ******************************************************************************/
 
 namespace standardrepk {
 
-  // for now we only construct a KHatComputations from a KGB structure
+  // for now we only construct a KhatContext from a KGB structure
 
-KHatComputations::KHatComputations
+KhatContext::KhatContext
   (const realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
   : d_G(&GR.complexGroup())
   , d_KGB(kgb)
@@ -192,7 +192,7 @@ KHatComputations::KHatComputations
 
 /******** accessors *******************************************************/
 
-HCParam KHatComputations::project
+HCParam KhatContext::project
   (size_t cn, latticetypes::Weight lambda) const
 {
   const Cartan_info& ci=d_data[cn];
@@ -205,7 +205,7 @@ HCParam KHatComputations::project
      );
 }
 
-latticetypes::Weight KHatComputations::lift(size_t cn, HCParam p) const
+latticetypes::Weight KhatContext::lift(size_t cn, HCParam p) const
 {
   const Cartan_info& ci=d_data[cn];
   latticetypes::Weight result=ci.freeLift.apply(p.first); // lift free part
@@ -219,7 +219,7 @@ latticetypes::Weight KHatComputations::lift(size_t cn, HCParam p) const
   return result;
 }
 
-StandardRepK KHatComputations::std_rep
+StandardRepK KhatContext::std_rep
   (const latticetypes::Weight& two_lambda, tits::TitsElt a) const
 {
   weyl::TwistedInvolution sigma=a.tw();
@@ -245,19 +245,13 @@ StandardRepK KHatComputations::std_rep
 		        (titsGroup().left_torus_part(a)),
 		      project(cn,mu));
 
-  const cartanclass::Fiber& cc=d_G->cartan(cn).fiber();
-  for (size_t i=0; i<cc.imaginaryRank(); ++i)
-    if (rd.scalarProduct(mu,cc.simpleImaginary(i))<0)
-      return result; // without setting isStandard
-
-  result.d_status.set(StandardRepK::IsStandard);
   return result;
 } // |std_rep|
 
 // the following is a variant of |std_rep_rho_plus| intended for |KGB_sum|
 // it should only transform the parameters for the Levi factor given by |gens|
 // since |lambda| is $\rho$-centered, care should be taken in transforming it
-RawRep KHatComputations::Levi_rep
+RawRep KhatContext::Levi_rep
     (latticetypes::Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
   const
 {
@@ -283,7 +277,56 @@ RawRep KHatComputations::Levi_rep
   return RawRep (lambda,a);
 } // |Levi_rep|
 
-std::ostream& KHatComputations::print(std::ostream& strm,StandardRepK sr)
+bool KhatContext::isStandard(const StandardRepK& sr, size_t& witness) const
+{
+  const rootdata::RootDatum& rd=rootDatum();
+  latticetypes::Weight lambda=lift(sr);
+  const cartanclass::Fiber& f=fiber(sr);
+
+  for (size_t i=0; i<f.imaginaryRank(); ++i)
+    if (lambda.scalarProduct(rd.coroot(f.simpleImaginary(i)))<0)
+    {
+      witness=i; return false;
+    }
+
+  return true;
+}
+
+bool KhatContext::isZero(const StandardRepK& sr, size_t& witness) const
+{
+  const rootdata::RootDatum& rd=rootDatum();
+  latticetypes::Weight lambda=lift(sr);
+  const cartanclass::Fiber& f=fiber(sr);
+  tits::TitsElt a=titsElt(sr);
+
+  for (size_t i=0; i<f.imaginaryRank(); ++i)
+    if (not d_Tg.grading(a,f.simpleImaginary(i)) // i.e., compact
+	and lambda.scalarProduct(rd.coroot(f.simpleImaginary(i)))==0)
+    {
+      witness=i; return true;
+    }
+
+  return false;
+}
+
+bool KhatContext::isFinal(const StandardRepK& sr, size_t& witness) const
+{
+  const rootdata::RootDatum& rd=rootDatum();
+  latticetypes::Weight lambda=lift(sr);
+  const cartanclass::Fiber& f=fiber(sr);
+
+  // since coordinates are doubled, the scalar product below is always even
+  for (size_t i=0; i<f.realRank(); ++i)
+    if (lambda.scalarProduct(rd.coroot(f.simpleReal(i)))%4 == 0)
+    {
+      witness=i; return false;
+    }
+
+  return true;
+}
+
+
+std::ostream& KhatContext::print(std::ostream& strm,StandardRepK sr)
   const
 {
   prettyprint::printVector(strm,lift(sr)) << '@';
@@ -291,7 +334,7 @@ std::ostream& KHatComputations::print(std::ostream& strm,StandardRepK sr)
   return strm;
 }
 
-std::ostream& KHatComputations::print(std::ostream& strm,Char ch) const
+std::ostream& KhatContext::print(std::ostream& strm,Char ch) const
 {
   if (ch.empty())
     return strm << '0';
@@ -306,7 +349,7 @@ std::ostream& KHatComputations::print(std::ostream& strm,Char ch) const
   return strm;
 }
 
-std::ostream& KHatComputations::print(std::ostream& strm,
+std::ostream& KhatContext::print(std::ostream& strm,
 				      SR_rewrites::combination ch,
 				      bool brief) const
 {
@@ -328,7 +371,7 @@ std::ostream& KHatComputations::print(std::ostream& strm,
 
 // map a character to one containing only Standard terms
 // this version ensures the basic one is recursively called first
-SR_rewrites::combination KHatComputations::standardize(const Char& chi)
+SR_rewrites::combination KhatContext::standardize(const Char& chi)
 {
   SR_rewrites::combination result;
   for (Char::base::const_iterator i=chi.begin(); i!=chi.end(); ++i)
@@ -338,7 +381,7 @@ SR_rewrites::combination KHatComputations::standardize(const Char& chi)
 }
 
 // the basic case
-SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
+SR_rewrites::combination KhatContext::standardize(StandardRepK sr)
 {
   normalize(sr);
 
@@ -346,45 +389,28 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
     SR_rewrites::seq_no n=nonfinals.find(sr);
     if (n!=Hash::empty)
       return d_rules.lookup(n); // in this case an equation should be known
-    if (sr.isStandard() // then also check if we already know |sr| to be Final
-	and (n=finals.find(sr))!=Hash::empty)
-      return SR_rewrites::combination(n); // single term known to be final
   }
 
-  const cartanclass::Fiber& f=d_G->cartan(sr.d_cartan).fiber();
-  const rootdata::RootDatum& rd=rootDatum();
-  latticetypes::Weight lambda=lift(sr);
-
-  if (sr.isStandard())
+  size_t witness;
+  if (isStandard(sr,witness))
   {
-    tits::TitsElt a=titsElt(sr);
-    for (size_t i=0; i<f.imaginaryRank(); ++i)
-      if (not d_Tg.grading(a,f.simpleImaginary(i))
-          and rd.scalarProduct(lambda,f.simpleImaginary(i))==0)
-      {
-	SR_rewrites::combination zero;
-	d_rules.equate(nonfinals.match(sr),zero);
-	return zero;
-      }
-    sr.d_status.set(StandardRepK::IsNonZero);
-
-    // find any simple-real root for which |sr| fails to be Final
-    // since coordinates are doubled, the scalar product is 0 or 2 mod 4
-    rootdata::RootNbr alpha;
-    {
-      size_t i;
-      for (i=0; i<f.realRank(); ++i)
-	if (rd.scalarProduct(lambda,f.simpleReal(i))%4 == 0)
-	  break;
-      if (i==f.realRank())
-      {
-	sr.d_status.set(StandardRepK::IsFinal);
-	return SR_rewrites::combination(finals.match(sr));
-      }
-      alpha=f.simpleReal(i);
+    { // now check if we already know |sr| to be Final
+      SR_rewrites::seq_no n=finals.find(sr);
+      if (n!=Hash::empty)
+	return SR_rewrites::combination(n); // single term known to be final
     }
 
-    HechtSchmid equation= back_HS_id(sr,alpha);
+    if (isZero(sr,witness))
+    {
+      SR_rewrites::combination zero;
+      d_rules.equate(nonfinals.match(sr),zero);
+      return zero;
+    }
+
+    if (isFinal(sr,witness))
+      return SR_rewrites::combination(finals.match(sr));
+
+    HechtSchmid equation= back_HS_id(sr,fiber(sr).simpleReal(witness));
     assert(equation.lh2==NULL); // |back_HS_id| never produces a second member
 
 #ifdef VERBOSE
@@ -412,20 +438,9 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
     SR_rewrites::combination result= standardize(rhs);
     d_rules.equate(nonfinals.match(sr),result); // and add rule for |sr|
     return result;
-  } // if (sr.isStandard())
+  } // if (isStandard(sr,witness))
 
-  // find (again) simple-imaginary root for which |sr| fails to be Standard
-  rootdata::RootNbr alpha;
-  {
-    size_t i;
-    for (i=0; i<f.imaginaryRank(); ++i)
-      if (rd.scalarProduct(lambda,f.simpleImaginary(i))<0)
-	break;
-    assert(i<f.imaginaryRank()); // otherwise |sr| would have been Standard
-    alpha=f.simpleImaginary(i);
-  }
-
-  HechtSchmid equation= HS_id(sr,alpha);
+  HechtSchmid equation= HS_id(sr,fiber(sr).simpleImaginary(witness));
   assert(equation.lh2!=NULL); // all cases of |HS_id| produce a second member
 
 #ifdef VERBOSE
@@ -459,7 +474,7 @@ SR_rewrites::combination KHatComputations::standardize(StandardRepK sr)
   return result;
 } // standardize
 
-void KHatComputations::normalize(StandardRepK& sr) const
+void KhatContext::normalize(StandardRepK& sr) const
 {
   const rootdata::RootDatum& rd = rootDatum();
   const cartanclass::Fiber& f=d_G->cartan(sr.d_cartan).fiber();
@@ -513,7 +528,7 @@ void KHatComputations::normalize(StandardRepK& sr) const
 
 
 HechtSchmid
-KHatComputations::HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
+KhatContext::HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
 {
   HechtSchmid id(sr);
   const rootdata::RootDatum& rd=rootDatum();
@@ -603,7 +618,7 @@ KHatComputations::HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
    type II cases, for a non-final parameter |sr| and witnessing root |alpha|
  */
 HechtSchmid
-KHatComputations::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
+KhatContext::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
 {
   HechtSchmid id(sr);
   const rootdata::RootDatum& rd=rootDatum();
@@ -665,7 +680,7 @@ KHatComputations::back_HS_id(StandardRepK sr, rootdata::RootNbr alpha) const
 
 
 latticetypes::LatticeCoeff
-KHatComputations::height(const StandardRepK& s) const
+KhatContext::height(const StandardRepK& s) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   const latticetypes::Weight mu=theta_lift(s.d_cartan,s.d_lambda);
@@ -679,7 +694,7 @@ KHatComputations::height(const StandardRepK& s) const
 }
 
 latticetypes::LatticeCoeff
-KHatComputations::height(const latticetypes::Weight& lambda,
+KhatContext::height(const latticetypes::Weight& lambda,
 			 const weyl::TwistedInvolution& twi) const
 {
   const rootdata::RootDatum& rd=rootDatum();
@@ -697,7 +712,7 @@ KHatComputations::height(const latticetypes::Weight& lambda,
 }
 
 PSalgebra
-KHatComputations::theta_stable_parabolic
+KhatContext::theta_stable_parabolic
   (weyl::WeylWord& conjugator, tits::TitsElt strong) const
 {
   const rootdata::RootDatum& rd=rootDatum();
@@ -761,7 +776,7 @@ KHatComputations::theta_stable_parabolic
 
 } // theta_stable_parabolic
 
-kgb::KGBEltList KHatComputations::sub_KGB(const PSalgebra& q) const
+kgb::KGBEltList KhatContext::sub_KGB(const PSalgebra& q) const
 {
   bitmap::BitMap flagged(d_KGB.size());
   tits::TitsElt strong=q.strong_involution();
@@ -802,7 +817,7 @@ kgb::KGBEltList KHatComputations::sub_KGB(const PSalgebra& q) const
   return kgb::KGBEltList(flagged.begin(),flagged.end());
 } // sub_KGB
 
-RawChar KHatComputations::KGB_sum(const PSalgebra& q,
+RawChar KhatContext::KGB_sum(const PSalgebra& q,
 				  const latticetypes::Weight& lambda) const
 {
   const rootdata::RootDatum& rd=rootDatum();
@@ -867,7 +882,7 @@ RawChar KHatComputations::KGB_sum(const PSalgebra& q,
 } // KGB_sum
 
 // Express irreducible K-module as a finite virtual sum of standard ones
-CharForm  KHatComputations::character_formula(StandardRepK sr) const
+CharForm  KhatContext::K_type_formula(StandardRepK sr) const
 {
   const cartanset::CartanClassSet& cs=d_G->cartanClasses();
   const weyl::WeylGroup& W=weylGroup();
@@ -959,10 +974,10 @@ CharForm  KHatComputations::character_formula(StandardRepK sr) const
     }
   } // for sum over KGB for L
   return std::make_pair(sr, result);
-} // character_formula
+} // K_type_formula
 
 atlas::matrix::Matrix<CharCoeff>
-KHatComputations::makeMULTmatrix
+KhatContext::makeMULTmatrix
  (std::set<CharForm>& column,
   const atlas::latticetypes::LatticeCoeff bound) const
 {
@@ -1011,14 +1026,14 @@ KHatComputations::makeMULTmatrix
 
 
 /* convert a system of equations into a list, adding equations for all terms
-   recursively (they are generated by |character_formula|), up to the given
+   recursively (they are generated by |K_type_formula|), up to the given
    bound (everything with |height(...)> bound| is pruned away).
-   It is assumed that |character_formula| will ensure all |StandardRepK|s in
+   It is assumed that |K_type_formula| will ensure all |StandardRepK|s in
    left and right hand sides are normalized, so that there is no risk of
    trying to add a formula for one term but getting one for another.
  */
 std::vector<CharForm>
-KHatComputations::saturate(std::set<CharForm> system,
+KhatContext::saturate(std::set<CharForm> system,
 			   atlas::latticetypes::LatticeCoeff bound) const
 {
   std::set<StandardRepK> lhs; // left hand sides of all formulae seen so far
@@ -1043,7 +1058,7 @@ KHatComputations::saturate(std::set<CharForm> system,
 	  if (lhs.count(term->first)==0) // no formula for this term seen yet
 	  {
 	    lhs.insert(term->first);
-	    system.insert(character_formula(term->first));
+	    system.insert(K_type_formula(term->first));
 	  }
 	}
 
@@ -1058,24 +1073,32 @@ KHatComputations::saturate(std::set<CharForm> system,
 
 // **************   manipulators **********************
 
-void KHatComputations::go(const StandardRepK& sr)
+void KhatContext::go(const StandardRepK& initial)
 {
-  SR_rewrites::combination chi=standardize(sr);
+  SR_rewrites::combination chi=standardize(initial);
 
 #ifdef VERBOSE
   if (nonfinal_pool.size()>0)
   {
-    std::cout << "Non-final representations:\n";
+    const rootdata::RootDatum& rd=rootDatum();
+    std::cout << "Intermediate representations:\n";
     for (size_t i=0; i<nonfinal_pool.size(); ++i)
     {
       const StandardRepK& sr=nonfinal_pool[i];
-      assert(not sr.isFinal());
-      print(std::cout << 'N' << i << ": ",sr)
-		      << ( sr.isNonZero() ? " Non Final."
-			   : sr.isStandard() ? " Zero."
-			   : " Non Standard."
-			   )
-		      << std::endl;
+      size_t witness;
+      const cartanclass::Fiber& f=fiber(sr);
+      print(std::cout << 'N' << i << ": ",sr);
+
+      if (not isStandard(sr,witness))
+	std::cout << ", non Standard, witness "
+		  << rd.coroot(f.simpleImaginary(witness));
+      if (isZero(sr,witness))
+	std::cout << ", Zero, witness "
+		  << rd.coroot(f.simpleImaginary(witness));
+      if (not isFinal(sr,witness))
+	std::cout << ", non Final, witness "
+		  << rd.coroot(f.simpleReal(witness));
+      std::cout << std::endl;
     }
   }
 #endif
@@ -1084,11 +1107,10 @@ void KHatComputations::go(const StandardRepK& sr)
   for (SR_rewrites::seq_no i=0; i<nr_reps(); ++i)
   {
     const StandardRepK& sr=rep_no(i);
-    assert(sr.isFinal());
     print(std::cout << 'R' << i << ": ",sr) << std::endl;
   }
 
-  std::cout << "Standardized expression:\n";
+  print(std::cout << "Standardized expression for ",initial) << ":\n";
   {
     std::ostringstream s; print(s,chi,true);
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
