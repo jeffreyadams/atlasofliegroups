@@ -18,16 +18,17 @@
   \brief Contains the implementation of the BitMap class.
 
   A BitMap should be seen as a container of _unsigned long_, not bits; the
-  idea is that the unsigned longs it contains are the bit-addresses of
-  the set bits. It obeys the semantics of a Forward Container (notion
-  from the C++ standard library;
+  idea is that the unsigned longs it contains are the bit-addresses of the set
+  bits, i.e., their indices in the bit-array. It obeys the semantics of a
+  Forward Container (notion from the C++ standard library).
 
-  The basic idea is that a bitmap is a vector of unsigned long, representing
-  the "chunks" of the map. We wish to provide bit-address access to this
-  map; for this purpose we use the reference trick from vector<bool>. Also
-  we wish to define an iterator class, which traverses the _set_ bits of
-  the bitmap; so that for instance, b.begin() would be a reference to the
-  first set bit. Dereferencing the iterator yields its bit-address.
+  A bitmap is a implemented as a vector of unsigned long, each representing a
+  "chunk" of bits in the map. We wish to provide bit-address access to this
+  map; for this purpose we use the reference trick from vector<bool>. Also we
+  wish to define an iterator class, which traverses the _set_ bits of the
+  bitmap; so that for instance, |b.begin()| would give access to the first set
+  bit (but is not a pointer or a reference to any value). Dereferencing the
+  iterator returns the integer bit-address of that first set bit.
 
 ******************************************************************************/
 
@@ -144,7 +145,6 @@ bool BitMap::back_up(unsigned long& n) const
   return true;
 }
 
-bool BitMap::contains(const BitMap& b) const
 
 /*!
   Tells whether the current bitmap contains |b|. It is assumed that
@@ -153,7 +153,7 @@ bool BitMap::contains(const BitMap& b) const
   This would amount to |b.andnot(*this).empty()| if |b| were by-value rather
   than reference, and if capacities were equal.
 */
-
+bool BitMap::contains(const BitMap& b) const
 {
   assert(b.capacity()<=capacity());
 
@@ -219,7 +219,6 @@ bool BitMap::full() const
   return true;
 }
 
-unsigned long BitMap::n_th(unsigned long i) const
 
 /*!
   Synopsis: returns the index of set bit number i in the bitset; in other
@@ -229,7 +228,7 @@ unsigned long BitMap::n_th(unsigned long i) const
   is no such element, in other words if at most i bits are set in the bitmap.
   The condition b.position(b.n_th(i))==i holds whenever 0<=i<=size().
 */
-
+unsigned long BitMap::n_th(unsigned long i) const
 {
   using namespace bits;
   using namespace constants;
@@ -299,7 +298,6 @@ unsigned long BitMap::position(unsigned long n) const
   latter fails, the return value is padded out with (leading) zero bits.
 */
 unsigned long BitMap::range(unsigned long n, unsigned long r) const
-
 {
   using namespace constants;
 
@@ -315,7 +313,6 @@ unsigned long BitMap::range(unsigned long n, unsigned long r) const
 
   NOTE: correctness depends on unused bits in the final word being cleared.
 */
-
 unsigned long BitMap::size() const
 {
   typedef std::vector<unsigned long>::const_iterator I;
@@ -356,7 +353,6 @@ BitMap& BitMap::operator~ ()
   Synopsis: intersects the current bitmap with |b|, return value tells whether
   the result is non-empty.
 */
-
 bool BitMap::operator&= (const BitMap& b)
 {
   assert(b.capacity()<=capacity());
@@ -492,12 +488,21 @@ void BitMap::swap(BitMap& other)
 
         Chapter II -- The BitMap::iterator class
 
-  Because of the nature of a bitmap, only constant iterators make sense;
-  one cannot "change the value" of an element at a given position because
-  the value _is_ the position. The most delicate operation is the increment,
-  which has to find the position of the next set bit, while avoiding falling
-  off the bitmap if there is no such. Because of this we had to pass the
-  data for the end of the bitmap into the iterator.
+  Because of the nature of a bitmap, only constant iterators make sense (just
+  like for iterators into |std::set|); one cannot "change the value" of an
+  element at a given position because the position is determined by the value
+  (values are always increasing; in fact a small value-change could be
+  realised by swapping a set bit with neighboring unset bits, but that is of
+  course not what a non-constant iterator should allow doing). On the other
+  hand we may modify our bitmap |M| using this iterator |it|, notably to clear
+  the set bit |it| points at by |M.remove(*it)|. Unlike the situation for
+  |std::set|, such a removal does not invalidate the iterator |it| itself, do
+  it is not an invariant of the |BitMap::iterator| class that it always points
+  at a set bit.
+
+  The most delicate operation is |operator++|, which has to move to the the
+  next set bit, or stop at the end of the bitmap if there is no such.
+  Therefore we included the data for the end of the bitmap in the iterator.
 
 ******************************************************************************/
 
@@ -513,68 +518,61 @@ BitMap::iterator& BitMap::iterator::operator= (const BitMap::iterator& i)
   return *this;
 }
 
-BitMap::iterator& BitMap::iterator::operator++ ()
-
 /*!
   The incrementation operator; it has to move the bitAddress to the next
   set bit, and move the chunk if necessary.
+
+  This code below assumes that in case of an incomplete last chunk, there are
+  no bits set in that chunk beyond the end of the bitmap; if there were,
+  |firstBit(f)| below (both instances) could make the iterator advance to such
+  a bit when it should have halted at |d_capacity|.
 */
 
+BitMap::iterator& BitMap::iterator::operator++ ()
 {
   using namespace bits;
   using namespace constants;
 
-  // put in f the remaining part of the chunk, shifted to the right edge;
 
+  // re-fetch current chunk, and shift away any bits we already passed over
   unsigned long f = *d_chunk >> (d_bitAddress & posBits);
 
-  // doing this separately avoids (undefined) shift over longBits=posBits+1:
-  f >>= 1;
+  //  here |(f&1)!=0|, unless we just did |remove(*it)| for our iterator |it|
 
-  if (f!=0) { // we stay in the same chunk
+  // separating the followin shift from the previous one avoids an undefined
+  // shift over longBits=posBits+1 when iterator steps into the next chunk
+  f >>= 1; // discard the bit we were placed at; we move on!
+
+  if (f!=0) { // if there is still some bit set in this chunk, jump to it
     d_bitAddress += firstBit(f)+1; // +1 to account for the f>>=1
     return *this;
   }
 
-  // now we must advance d_chunk
-  d_bitAddress &= baseBits;  // remove bit-position within d_chunk
+  // if not, we're done with this chunk; we must advance d_chunk at least once
+  d_bitAddress &= baseBits;  // prepare to advance by multiples of |longBits|
 
-  if ((d_capacity - d_bitAddress) <= longBits) { // we were in the last chunk
-    d_bitAddress = d_capacity; // so now we we are out-of-bounds
-    return *this;
-  }
-
-  // go to beginning of next chunk
-
-  d_bitAddress += longBits;  // first bit in next chunk
-  ++d_chunk;
-
-  for(; (d_capacity - d_bitAddress) > longBits; ++d_chunk) {
-    if (*d_chunk!=0) { // first bit is found
-      d_bitAddress += firstBit(*d_chunk);
+  do
+    if ((d_bitAddress+=longBits)<d_capacity)
+      f=*++d_chunk;
+    else
+    {
+      d_bitAddress = d_capacity; // so now we we are out-of-bounds
       return *this;
     }
-    else
-      d_bitAddress += longBits;
-  }
+  while(f==0);
 
-  // when we reach this point, we have reached the last chunk
-
-  if (*d_chunk!=0)
-    d_bitAddress += firstBit(*d_chunk);
-  else // past-the-end
-    d_bitAddress = d_capacity;
-
+  // now the bit to advance to is in the current chunk, and not out of bounds
+  d_bitAddress += firstBit(f);
   return *this;
 }
 
-BitMap::iterator BitMap::iterator::operator++ (int)
 
 /*!
   Post-increment operator; it should return the value as it was _before_ the
-  incrementation.
+  incrementation. This operator can mostly by avoided, as |M.remove(*it++)|
+  can safely be replaced by |M.remove(*it),it++|
 */
-
+BitMap::iterator BitMap::iterator::operator++ (int)
 {
   BitMap::iterator tmp = *this;
   ++(*this);

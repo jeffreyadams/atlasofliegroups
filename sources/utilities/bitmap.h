@@ -81,7 +81,7 @@ namespace bitmap {
     iterator pos(unsigned long) const;
 
 // constructors and destructors
-    BitMap() : d_map(), d_capacity(0) {}
+    BitMap() : d_map(), d_capacity(0) {} // create a bitmap without capacity
 
    /*! \brief
        Constructs a zero-initialized bitmap with a capacity of n bits.
@@ -93,10 +93,12 @@ namespace bitmap {
       : d_map((n+posBits)>>baseShift,0), d_capacity(n)
       {}
 
+    //! \brief Copy constructor
     BitMap(const BitMap& b) : d_map(b.d_map), d_capacity(b.d_capacity) {}
 
+    //! Set of offsets into [first,last[ of values (also) found in [fsub,lsub[
     template <typename I, typename J>
-      BitMap(const I&, const I&, const J&, const J&);
+      BitMap(const I& first, const I& last, const J& fsub, const J& lsub);
 
     ~BitMap() {}
 
@@ -104,18 +106,6 @@ namespace bitmap {
     BitMap& operator= (const BitMap&);
 
 // accessors
-    bool operator< (const BitMap& b) const {
-      return d_map < b.d_map;
-    }
-
-    bool operator== (const BitMap& b) const {
-      return (d_map == b.d_map);
-    }
-
-    // decrement |n| (at least once) until it points to a member
-    // return value indicates whether this succeeded
-    bool back_up(unsigned long& n) const;
-
     /*!
     Number of bits in use in the bitmap. This is the capacity
     of the BitMap as a standard library container, not d_map.size(), which is
@@ -125,13 +115,19 @@ namespace bitmap {
       return d_capacity;
     }
 
-    bool contains(const BitMap& b) const;
+    size_type size() const; // the number of bits that are set in the bitmap
 
-    bool empty() const;
+    bool operator< (const BitMap& b) const {
+      return d_map < b.d_map;
+    }
 
-    unsigned long front() const;
+    bool operator== (const BitMap& b) const {
+      return (d_map == b.d_map);
+    }
 
-    bool full() const;
+    bool empty() const; // whether |size()==0|
+
+    bool full() const; // whether |size()==capacity()|
 
     /*!
   Tests whether bit n in the bitmap is set; that is, whether element n
@@ -143,14 +139,23 @@ namespace bitmap {
       return d_map[n >> baseShift] & constants::bitMask[n & posBits];
     }
 
-    unsigned long n_th(unsigned long) const;
+    //! \brief Whether all elements of |b| satisfy |isMember|
+    bool contains(const BitMap& b) const;
 
-    unsigned long position(unsigned long) const;
+    //! \brief Value at index |n| if viewed as list of |unsigned long| values
+    unsigned long n_th(unsigned long n) const;
+
+    //! \brief Number of values |<n| present (set) in the bitmap
+    unsigned long position(unsigned long n) const;
+
+    unsigned long front() const;
+
+    // decrement |n| (at least once) until it points to a member
+    // return value indicates whether this succeeded
+    bool back_up(unsigned long& n) const;
 
     // get a range of bits as unsigned long value; see bitmap.ccp for details
     unsigned long range(unsigned long first, unsigned long number) const;
-
-    size_type size() const; // the number of bits that are set in the bitmap
 
 // manipulators
 
@@ -173,16 +178,16 @@ namespace bitmap {
       d_map[n >> baseShift] ^= constants::bitMask[n & posBits];
     }
     /*!
-    Puts a 1 in position n of the bitmap (that is, inserts an element of
-    the set).
+    Set the bit at position n (that is, inserts the value |n| into the set);
+    this makes |isMember(n)| hold.
     */
     void insert(unsigned long n) {
       d_map[n >> baseShift] |= constants::bitMask[n & posBits];
     }
 
     /*!
-    Puts a 0 in position n of the bitmap (that is, removes an element of
-    the set).
+    Clear the bit at position n (that is, removes an element of the set);
+    this makes |isMember(n)| false.
     */
     void remove(unsigned long n) {
       d_map[n >> baseShift] &= ~constants::bitMask[n & posBits];
@@ -196,10 +201,11 @@ namespace bitmap {
       set_to(n,(v&1)!=0);
     }
 
-
+    // insert a range of values (which need not be listed increasingly)
     template<typename I>
       void insert(const I&, const I&);
 
+    //! \brief insert value |n| and return iterator pointing to it.
     // the first argument is ignored, just serves to get overloading OK
     iterator insert(iterator, unsigned long n);
 
@@ -210,7 +216,6 @@ namespace bitmap {
 
     // this was called |resize|, but sets |capacity()|, whence the new name
     void set_capacity(unsigned long n);
-    void resize(unsigned long n) { set_capacity(n); } // temp. compatibilty
 
     void setRange(unsigned long, unsigned long, unsigned long);
 
@@ -221,21 +226,23 @@ namespace bitmap {
   /*!
   \brief Traverses the set bits of a BitMap.
 
-  Because of the nature of a bitmap (as a collection of addresses of
-  set bits), only constant iterators make sense; one cannot "change
-  the value" of an element at a given position because the value _is_
-  the position. The most delicate operation is the increment, which
-  has to find the position of the next set bit, while avoiding falling
-  off the bitmap if there is no such. Because of this we had to pass
-  the data for the end of the bitmap into the iterator.
+  Because of the nature of a bitmap, only constant iterators make sense (just
+  like for iterators into std::set); one cannot "change the value" of an
+  element at a given position because the position is determined by the value
+  (values are always increasing; in fact a small value-change could be
+  realised by swapping a set bit with neighboring unset bits, but that is of
+  course not what a non-constant iterator should allow doing). The most
+  delicate operation is the increment, which has to find the position of the
+  next set bit, while avoiding falling off the bitmap if there is no such.
+  Therefore we included the data for the end of the bitmap in the iterator.
   */
 class BitMap::iterator { // is really a const_iterator
 
  private:
 
-  std::vector<unsigned long>::const_iterator d_chunk;
-  unsigned long d_bitAddress;
-  unsigned long d_capacity;
+  std::vector<unsigned long>::const_iterator d_chunk; // point to current chunk
+  unsigned long d_bitAddress; // value returned if dereferenced
+  unsigned long d_capacity; // beyond-the-end bit-address, normally constant
 
  public:
 
