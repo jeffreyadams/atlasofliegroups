@@ -431,52 +431,44 @@ void Ktypeform_f()
 
   standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
 
-  standardrepk::SR_rewrites::combination comb=khc.standardize(sr);
-
-  if (comb.empty())
   {
-    khc.print(std::cout << "Representation ",sr) << " is zero.\n"; return;
+    size_t witness;
+    if (not khc.isFinal(sr,witness))
+    {
+      khc.print(std::cout << "Representation ",sr)
+        << " is not final, as witnessed by coroot "
+	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+      return;
+    }
   }
-  else if (comb.size()>1 or khc.rep_no(comb.begin()->first)!=sr)
+
+  standardrepk::CharForm kf= khc.K_type_formula(sr);
+
+  khc.print(std::cout << "K-type formula for mu(",kf.first) << "):\n";
   {
-    std::ostringstream s;
-    khc.print(s << "Rewrote input as ",sr) << " = ";
-    khc.print(s,comb);
+    std::ostringstream s; khc.print(s,kf.second);
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
 
   standardrepk::SR_rewrites::combination sum;
 
-  for (standardrepk::SR_rewrites::combination::const_iterator
-	 ci=comb.begin(); ci!=comb.end(); ++ci)
+  for (standardrepk::Char::const_iterator
+	 it=kf.second.begin(); it!=kf.second.end(); ++it)
   {
-    std::cout << std::endl;
-    standardrepk::CharForm cf=khc.K_type_formula(khc.rep_no(ci->first));
-
-    khc.print(std::cout << "Character formula for mu(",cf.first) << "):\n";
-    {
-      std::ostringstream s; khc.print(s,cf.second);
-      ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
-    }
-
-    for (standardrepk::Char::const_iterator
-	   it=cf.second.begin(); it!=cf.second.end(); ++it)
-    {
 #ifdef VERBOSE
-      khc.print(std::cout,it->first) << " has height " << khc.height(it->first)
-				     << std::endl;
-      size_t old_size=khc.nr_reps();
-      standardrepk::SR_rewrites::combination st=khc.standardize(it->first);
-      for (size_t i=old_size; i<khc.nr_reps(); ++i)
-	khc.print(std::cout << 'R' << i << ": ",khc.rep_no(i))
-          << ", height: " << khc.height(khc.rep_no(i)) << std::endl;
+    khc.print(std::cout,it->first) << " has height " << khc.height(it->first)
+				   << std::endl;
+    size_t old_size=khc.nr_reps();
+    standardrepk::SR_rewrites::combination st=khc.standardize(it->first);
+    for (size_t i=old_size; i<khc.nr_reps(); ++i)
+      khc.print(std::cout << 'R' << i << ": ",khc.rep_no(i))
+        << ", height: " << khc.height(khc.rep_no(i)) << std::endl;
 
-      std::ostringstream s; khc.print(s,it->first) << " = ";
-      khc.print(s,st,true);
-      ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+    std::ostringstream s; khc.print(s,it->first) << " = ";
+    khc.print(s,st,true);
+    ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
 #endif
-      sum.add_multiple(st,ci->second*it->second);
-    }
+    sum.add_multiple(st,it->second);
   }
 
   std::cout << "Converted to Standard normal final limit form:\n";
