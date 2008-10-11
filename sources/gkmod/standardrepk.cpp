@@ -412,27 +412,13 @@ SR_rewrites::combination KhatContext::standardize(StandardRepK sr)
 
     HechtSchmid equation= back_HS_id(sr,fiber(sr).simpleReal(witness));
     assert(equation.lh2==NULL); // |back_HS_id| never produces a second member
-
-#ifdef VERBOSE
-    print(std::cout << "RHS: ",sr)<<" = ";
-#endif
-
     assert(equation.rh1!=NULL);
 
     Char rhs(*equation.rh1); // rhs stars as second member negated
-#ifdef VERBOSE
-    print(std::cout,*equation.rh1);
-#endif
     if (equation.rh2!=NULL)
     {
-#ifdef VERBOSE
-      print(std::cout<<'+',*equation.rh2);
-#endif
       rhs+= Char(*equation.rh2);
     }
-#ifdef VERBOSE
-    std::cout << std::endl;
-#endif
 
     // now recursively standardize all terms, storing rules
     SR_rewrites::combination result= standardize(rhs);
@@ -443,30 +429,16 @@ SR_rewrites::combination KhatContext::standardize(StandardRepK sr)
   HechtSchmid equation= HS_id(sr,fiber(sr).simpleImaginary(witness));
   assert(equation.lh2!=NULL); // all cases of |HS_id| produce a second member
 
-#ifdef VERBOSE
-  print(print(std::cout << "HS: ",sr)<<'+',*(equation.lh2)) << " = ";
-#endif
-
   Char rhs(*equation.lh2,-1); // rhs stars as second member negated
 
   if (equation.rh1!=NULL)
   {
-#ifdef VERBOSE
-    print(std::cout,*equation.rh1);
-#endif
     rhs+= Char(*equation.rh1);
     if (equation.rh2!=NULL)
     {
-#ifdef VERBOSE
-      print(std::cout<<'+',*equation.rh2);
-#endif
       rhs+= Char(*equation.rh2);
     }
   }
-#ifdef VERBOSE
-  else std::cout << '0';
-  std::cout << std::endl;
-#endif
 
   // now recursively standardize all terms, storing rules
   SR_rewrites::combination result= standardize(rhs);
@@ -695,7 +667,7 @@ KhatContext::height(const StandardRepK& sr) const
 
 latticetypes::LatticeCoeff
 KhatContext::height(const latticetypes::Weight& lambda,
-			 const weyl::TwistedInvolution& twi) const
+		    const weyl::TwistedInvolution& twi) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   const latticetypes::LatticeMatrix& theta=
@@ -854,10 +826,10 @@ RawChar KhatContext::KGB_sum(const PSalgebra& q,
   for (size_t i=0; i<sub.size(); ++i)
     sub_inv[sub[i]]=i; // partially fill array with inverse index
 
-  std::vector<latticetypes::Weight> mu; // will contain $\rho$-centered weights
-  mu.reserve(sub.size());               // one for every element of the sub KGB
+  std::vector<latticetypes::Weight> mu; // list of $\rho$-centered weights,
+  mu.reserve(sub.size());               // associated to the elements of |sub|
 
-  mu.push_back(lambda); (mu[0]-=rd.twoRho())/=2; // make $\rho$-centered weight
+  mu.push_back(lambda); (mu[0]-=rd.twoRho())/=2; // make $\rho$-centered
 
   for (size_t i=1; i<sub.size(); ++i)
   {
@@ -928,7 +900,7 @@ CharForm  KhatContext::K_type_formula(const StandardRepK& sr) const
   hashtable::HashTable<tits::TE_Entry,unsigned> hash(pool);
 
   for (RawChar::const_iterator it=KGB_sum_q.begin(); it!=KGB_sum_q.end(); ++it)
-    hash.match(it->first.second);
+    hash.match(it->first.second); // enter relevant Tits elements into table
 
   // per strong involution (|TitsElt|) set of roots, to sum over its powerset
   std::vector<rootdata::RootSet>
@@ -952,16 +924,6 @@ CharForm  KhatContext::K_type_formula(const StandardRepK& sr) const
 	sum_set[i].set_to(alpha,beta>alpha);
       }
     }
-#ifdef VERBOSE
-    {
-      prettyprint::printTitsElt(std::cout << "At ",strong_inv,titsGroup())
-         << " add subsets of roots ";
-      typedef rootdata::RootIterator<rootdata::RootSet::iterator> RI;
-      basic_io::seqPrint(std::cout,
-			 RI(rd,sum_set[i].begin()), RI(rd,sum_set[i].end()),
-			 ", ", "{ ", " }\n");
-    }
-#endif
   }
 
   Char result;
@@ -971,15 +933,6 @@ CharForm  KhatContext::K_type_formula(const StandardRepK& sr) const
     const latticetypes::Weight& mu=it->first.first;
     const tits::TitsElt& strong=it->first.second;
 
-#ifdef VERBOSE
-    {
-      latticetypes::Weight nu=mu;
-      (nu*=2)+=rd.twoRho();
-      prettyprint::printVector(std::cout << "Base ",nu);
-      prettyprint::printTitsElt(std::cout << " at ",strong,titsGroup())
-	 << " has height " << height(nu,strong.tw()) << std::endl;
-    }
-#endif
 
     rootdata::RootSet Aset=sum_set[hash.find(strong)];
     rootdata::RootList A(Aset.begin(),Aset.end()); // convert to list of roots
@@ -1002,51 +955,50 @@ CharForm  KhatContext::K_type_formula(const StandardRepK& sr) const
   return std::make_pair(sr, result);
 } // K_type_formula
 
-atlas::matrix::Matrix<CharCoeff>
-KhatContext::makeMULTmatrix
- (std::set<CharForm>& column,
-  const atlas::latticetypes::LatticeCoeff bound) const
+// Apply |K_type_formula| for known Final representation, and |standardize|
+SR_rewrites::equation KhatContext::mu_equation(SR_rewrites::seq_no n)
 {
-  rootdata::RootDatum rd = d_G->rootDatum();
-  latticetypes::Weight tr=rd.twoRho();
-  latticetypes::Weight cotr = rd.dual_twoRho();
+  CharForm kf= K_type_formula(rep_no(n));
 
-  std::set <atlas::latticetypes::Weight> lookup;
+  SR_rewrites::equation result(n,standardrepk::SR_rewrites::combination());
+  standardrepk::SR_rewrites::combination& sum=result.second;
 
-  //it is assumed that the characters in column.first are different
+  for (Char::const_iterator it=kf.second.begin(); it!=kf.second.end(); ++it)
+    sum.add_multiple(standardize(it->first),it->second);
 
-  for (std::set<CharForm>::iterator i = column.begin(); i != column.end();)
-    if (height(i->first) > bound)
-      column.erase(i++); // increment iterator before actual erase
-    else
-    {
-      lookup.insert(i->first.d_lambda.first);
-      ++i;
-    }
-
-  assert (column.size()==lookup.size());
+  return result;
+}
 
 
-  std::vector<CharForm> system=saturate(column,bound);
 
-  std::vector<StandardRepK> new_order;
+atlas::matrix::Matrix<CharCoeff> KhatContext::K_type_matrix
+ (std::set<SR_rewrites::equation>& eq_set,
+  const atlas::latticetypes::LatticeCoeff bound,
+  std::vector<SR_rewrites::seq_no>& new_order)
+{
+  std::vector<SR_rewrites::equation> system=saturate(eq_set,bound);
+
   atlas::matrix::Matrix<CharCoeff>  m=triangularize(system,new_order);
-  for (std::vector<StandardRepK>::const_iterator
+
+#ifdef VERBOSE
+  std::cout << "Ordering of representations/K-types:\n";
+  for (std::vector<SR_rewrites::seq_no>::const_iterator
 	 it=new_order.begin(); it!=new_order.end(); ++it)
-  {
-    const latticetypes::Weight& l=it->d_lambda.first;
-    basic_io::seqPrint(std::cout,l.begin(),l.end(), ", ", "[", "]\n");
-  }
+    print(std::cout,rep_no(*it)) << ", height " << height(rep_no(*it))
+       << std::endl;
 
   prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
+#endif
 
-  matrix::Matrix<CharCoeff>m_inv=inverse_upper_triangular(m);
+  matrix::Matrix<CharCoeff>m_inv=inverse_lower_triangular(m);
 
+#ifdef VERBOSE
   prettyprint::printMatrix(std::cout<<"Inverse matrix:\n",m_inv,3);
+#endif
 
   return m_inv;
 
-} // makeMULTmatrix
+} // K_type_matrix
 
 
 
@@ -1054,41 +1006,52 @@ KhatContext::makeMULTmatrix
 /* convert a system of equations into a list, adding equations for all terms
    recursively (they are generated by |K_type_formula|), up to the given
    bound (everything with |height(...)> bound| is pruned away).
-   It is assumed that |K_type_formula| will ensure all |StandardRepK|s in
+   It is assumed that |mu_equation| will ensure all |SR_rewrites::seq_no|s in
    left and right hand sides are normalized, so that there is no risk of
    trying to add a formula for one term but getting one for another.
  */
-std::vector<CharForm>
-KhatContext::saturate(std::set<CharForm> system,
-			   atlas::latticetypes::LatticeCoeff bound) const
+std::vector<SR_rewrites::equation>
+KhatContext::saturate(std::set<SR_rewrites::equation> system, // call by value
+		      atlas::latticetypes::LatticeCoeff bound)
 {
-  std::set<StandardRepK> lhs; // left hand sides of all formulae seen so far
-  for (std::set<CharForm>::iterator it=system.begin(); it!=system.end(); ++it)
-    lhs.insert(it->first);
+  std::set<SR_rewrites::seq_no> lhs; // left hand sides of all equations seen
 
-  std::vector<CharForm> result;
+  for (std::set<SR_rewrites::equation>::iterator
+	 it=system.begin(); it!=system.end(); ++it)
+    lhs.insert(it->first); // include all left hand sides of original system
+
+  std::vector<SR_rewrites::equation> result;
 
   while (not system.empty())
   {
-    std::set<CharForm>::iterator current=system.begin(); // choose one
-    const CharForm& cf=*current;           // this is an unprocessed formula
-    if (height(cf.first) <= bound) // ignore if out of bounds
+    // choose an equation and keep a pointer to it
+    std::set<SR_rewrites::equation>::iterator current=system.begin();
+    const SR_rewrites::equation& cf=*current; // this is an unprocessed formula
+
+    if (height(rep_no(cf.first)) <= bound) // ignore if out of bounds
     {
-      result.push_back(CharForm(cf.first,Char())); // start with empty rhs
-      Char& rhs=result.back().second;
-      for (Char::const_iterator
+      // start with empty rhs
+      result.push_back
+	(SR_rewrites::equation(cf.first,SR_rewrites::combination()));
+      SR_rewrites::combination& rhs=result.back().second;
+
+      for (SR_rewrites::combination::const_iterator
 	     term=cf.second.begin(); term!=cf.second.end(); ++term)
-	if (height(term->first) <= bound)
+      {
+	const StandardRepK& sr=rep_no(term->first);
+	if (height(sr) <= bound)
 	{
 	  rhs.insert(*term);
 	  if (lhs.count(term->first)==0) // no formula for this term seen yet
 	  {
 	    lhs.insert(term->first);
-	    system.insert(K_type_formula(term->first));
+	    system.insert(mu_equation(term->first));
 	  }
 	}
+      } // |for(term)|
 
-    }
+    } // if (height(lhs)<=bound)
+
     system.erase(current); // we are done with this formula
   }
 
@@ -1183,31 +1146,34 @@ PSalgebra::PSalgebra (tits::TitsElt base,
 // ****************** Chapter V -- functions ************************
 
 atlas::matrix::Matrix<CharCoeff>
-triangularize (const std::vector<CharForm>& system,
-	       std::vector<StandardRepK>& new_order)
+triangularize (const std::vector<SR_rewrites::equation>& system,
+	       std::vector<SR_rewrites::seq_no>& new_order)
 {
-  std::vector<CharForm> equation(system.begin(),system.end()); // numbering
+  // order set of equations
+  std::vector<SR_rewrites::equation> equation(system.begin(),system.end());
   size_t n=equation.size();
 
   atlas::matrix::Matrix<CharCoeff> M(n,n,0);
-  graph::OrientedGraph usage(n);
-  for (size_t i=0; i<n; ++i) // loop over equations
+  graph::OrientedGraph incidence(n);
+
+  for (size_t j=0; j<n; ++j) // loop over equations
   {
     size_t n_terms=0;
-    for (size_t j=0; j<n; ++j) // loop over left hand sides
+    for (size_t i=0; i<n; ++i) // loop over left hand sides
     {
-      Char::base::const_iterator p= equation[i].second.find(equation[j].first);
-      if (p!=equation[i].second.end())
-      { // |OrientedGraph::cells| put sinks in front, so record edge $j\to i$.
-	usage.edgeList(j).push_back(i); M(i,j)=p->second;
+      SR_rewrites::combination::const_iterator
+	p= equation[j].second.find(equation[i].first);
+      if (p!=equation[j].second.end())
+      { // |OrientedGraph::cells| puts sinks in front, so record edge $i\to j$.
+	incidence.edgeList(i).push_back(j); M(i,j)=p->second;
 	++n_terms;
       }
     }
-    if (equation[i].second.size()!=n_terms)
+    if (equation[j].second.size()!=n_terms)
       throw std::runtime_error ("triangularize: system not saturated");
   }
 
-  partition::Partition order; usage.cells(order,NULL);
+  partition::Partition order; incidence.cells(order,NULL);
 
   new_order.resize(n);
   for (size_t i=0; i<n; ++i)
@@ -1218,33 +1184,34 @@ triangularize (const std::vector<CharForm>& system,
   }
 
   atlas::matrix::Matrix<CharCoeff> result(n,n,0);
-  for (size_t j=0; j<n; ++j)
+  for (size_t i=0; i<n; ++i)
     for (graph::EdgeList::const_iterator
-	   p=usage.edgeList(j).begin(); p != usage.edgeList(j).end(); ++p)
-      result(order(*p),order(j))=M(*p,j);
+	   p=incidence.edgeList(i).begin(); p!=incidence.edgeList(i).end(); ++p)
+      result(order(i),order(*p))=M(i,*p); // edge |i->*p|, |order(i)>=order(*p)|
+
   return result;
 } // triangularize
 
-matrix::Matrix<CharCoeff> inverse_upper_triangular
-  (const atlas::matrix::Matrix<CharCoeff>& U)
+matrix::Matrix<CharCoeff> inverse_lower_triangular
+  (const atlas::matrix::Matrix<CharCoeff>& L)
 {
-  size_t n=U.numColumns();
-  if (U.numRows()!=n)
+  size_t n=L.numColumns();
+  if (L.numRows()!=n)
     throw std::runtime_error ("invert triangular: matrix is not square");
 
   matrix::Matrix<CharCoeff> result(n,n,0);
 
-  for (size_t j=0; j<n; ++j)
+  for (size_t i=0; i<n; ++i)
   {
-    if (U(j,j)!=1)
+    if (L(i,i)!=1)
       throw std::runtime_error ("invert triangular: not unitriangular");
-    result(j,j)=1;
+    result(i,i)=1;
 
-    for (size_t i=j; i-->0; )
+    for (size_t j=i; j-->0; )
     {
       CharCoeff sum=0;
-      for (size_t k=j; k>i; --k)
-	sum += U(i,k)*result(k,j);
+      for (size_t k=i; k>j; --k) // $j<k\leq i$
+	sum += result(i,k)*L(k,j);
       result(i,j) = -sum;
     }
   }

@@ -56,6 +56,7 @@ namespace {
   void sub_KGB_f();
   void trivial_f();
   void Ktypeform_f();
+  void Ktypemat_f();
   void test_f();
 
   // help functions
@@ -141,6 +142,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("sub_KGB",sub_KGB_f);
   mode.add("trivial",trivial_f);
   mode.add("Ktypeform",Ktypeform_f);
+  mode.add("Ktypemat",Ktypemat_f);
 
 }
 
@@ -228,6 +230,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("sub_KGB",helpmode::nohelp_h);
   mode.add("trivial",helpmode::nohelp_h);
   mode.add("Ktypeform",helpmode::nohelp_h);
+  mode.add("Ktypemat",helpmode::nohelp_h);
 
 
   // add additional command tags here :
@@ -236,6 +239,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"sub_KGB",test_tag);
   insertTag(t,"trivial",test_tag);
   insertTag(t,"Ktypeform",test_tag);
+  insertTag(t,"Ktypemat",test_tag);
 
 }
 
@@ -486,6 +490,75 @@ void Ktypeform_f()
     std::ostringstream s; khc.print(s,sum);
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
+}
+
+void Ktypemat_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  G_R.fillCartan(); // must not forget this!
+
+  kgb::KGB kgb(G_R,G_R.cartanSet());
+  standardrepk::KhatContext khc(G_R,kgb);
+
+  unsigned long x;
+  interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
+
+  prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
+    << std::endl;
+  latticetypes::Weight lambda;
+  interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
+
+  standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
+
+  {
+    size_t witness;
+    if (not khc.isStandard(sr,witness))
+    {
+      khc.print(std::cout << "Representation ",sr)
+        << " is not standard, as witnessed by coroot "
+	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+      return;
+    }
+    if (not khc.isFinal(sr,witness))
+    {
+      khc.print(std::cout << "Representation ",sr)
+        << " is not final, as witnessed by coroot "
+	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+      return;
+    }
+  }
+
+  standardrepk::SR_rewrites::combination c=khc.standardize(sr);
+
+  if (c.empty())
+  {
+    khc.print(std::cout << "Representation ",sr) << " is zero.\n";
+    return;
+  }
+
+  assert(c.size()==1 and khc.rep_no(c.begin()->first)==sr);
+
+  khc.print(std::cout << "Height of representation ",sr) << " is "
+    << khc.height(sr) << ".\n";
+  unsigned long bound;
+  interactive::getInteractive(bound,"Give height bound: ",9999);
+
+  std::set<standardrepk::SR_rewrites::equation> singleton;
+  singleton.insert(khc.mu_equation(c.begin()->first));
+
+  {
+    standardrepk::SR_rewrites::equation init=*singleton.begin();
+    khc.print(std::cout << "Initial formula: mu(",khc.rep_no(init.first))
+      << ") =\n";
+    {
+      std::ostringstream s; khc.print(s,init.second);
+      ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+    }
+  }
+
+  std::vector<standardrepk::SR_rewrites::seq_no> new_order;
+  khc.K_type_matrix(singleton,bound,new_order);
+
 }
 
 

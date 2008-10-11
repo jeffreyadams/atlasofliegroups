@@ -53,11 +53,36 @@ typedef std::pair
 typedef free_abelian::Free_Abelian<StandardRepK> Char;
 typedef Char::coef_t CharCoeff;
 
-// a character formula; first component stands for its lowest $K$-type
-typedef std::pair< StandardRepK,Char> CharForm;
+// a $K$-type formula; first component stands for its lowest $K$-type
+typedef std::pair<StandardRepK,Char> CharForm;
 
 typedef std::pair<latticetypes::LatticeElt,tits::TitsElt> RawRep;
 typedef free_abelian::Free_Abelian<RawRep> RawChar;
+
+// class handling rewriting of StandardRepK values by directed equations
+// all left hand sides are assumed distinct, so just repeated substitutions
+class SR_rewrites
+{
+public:
+  typedef unsigned int seq_no;
+  typedef free_abelian::Free_Abelian<seq_no> combination;
+  typedef std::vector<combination> sys_t;
+  typedef std::pair<seq_no,combination> equation;
+
+private:
+
+  sys_t system;
+
+public:
+  SR_rewrites() : system() {}
+
+  const combination& lookup(seq_no n) const; // an equation must exist!
+
+  // manipulators
+  void equate(seq_no n, const combination& rhs);
+
+}; // SR_equations
+
 
 } // namespace standardrepk
 
@@ -66,10 +91,10 @@ typedef free_abelian::Free_Abelian<RawRep> RawChar;
 namespace standardrepk {
 
   atlas::matrix::Matrix<CharCoeff> triangularize
-    (const std::vector<CharForm>& system,
-     std::vector<StandardRepK>& new_order);
+    (const std::vector<SR_rewrites::equation>& system,
+     std::vector<SR_rewrites::seq_no>& new_order);
 
-  atlas::matrix::Matrix<CharCoeff> inverse_upper_triangular
+  atlas::matrix::Matrix<CharCoeff> inverse_lower_triangular
     (const atlas::matrix::Matrix<CharCoeff>& U);
 
 } // namespace standardrepk
@@ -202,29 +227,6 @@ public:
 }; // class StandardRepK
 
 
-// class handling rewriting of StandardRepK values by directed equations
-// all left hand sides are assumed distinct, so just repeated substitutions
-class SR_rewrites
-{
-public:
-  typedef unsigned int seq_no;
-  typedef free_abelian::Free_Abelian<seq_no> combination;
-  typedef std::vector<combination> sys_t;
-
-private:
-
-  sys_t system;
-
-public:
-  SR_rewrites() : system() {}
-
-  const combination& lookup(seq_no n) const; // an equation must exist!
-
-  // manipulators
-  void equate(seq_no n, const combination& rhs);
-
-}; // SR_equations
-
 //! \brief per Cartan class information for handling |StandardRepK| values
 struct Cartan_info
 {
@@ -281,7 +283,7 @@ class KhatContext
 
   void swap(KhatContext&);
 
-// accessors
+// accessors and manipulators
 
   const complexredgp::ComplexReductiveGroup&
     complexReductiveGroup() const { return *d_G; }
@@ -396,26 +398,29 @@ class KhatContext
   // Hecht-Schmid identity for simple-real root $\alpha$
   HechtSchmid back_HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
 
+  SR_rewrites::combination standardize(StandardRepK sr); // call by value
+
+  SR_rewrites::combination standardize(const Char& chi);
+
   kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
 
-  CharForm K_type_formula(const StandardRepK& sr) const; // call by value
+  CharForm K_type_formula(const StandardRepK& sr) const;
+  SR_rewrites::equation mu_equation(SR_rewrites::seq_no); // adds equations
 
-  std::vector<CharForm> saturate
-    (std::set<CharForm> system, // call by value
-     atlas::latticetypes::LatticeCoeff bound) const;
+  std::vector<SR_rewrites::equation> saturate
+    (std::set<SR_rewrites::equation> system, // call by value
+     atlas::latticetypes::LatticeCoeff bound);
 
   PSalgebra theta_stable_parabolic
     (const StandardRepK& sr, weyl::WeylWord& conjugator) const;
 
+  // saturate and invert |system| up to |bound|, writing list into |reps|
   atlas::matrix::Matrix<CharCoeff>
-    makeMULTmatrix(std::set<CharForm>& system,
-		   const atlas::latticetypes::LatticeCoeff bound) const;
+    K_type_matrix(std::set<SR_rewrites::equation>& system,
+		  const atlas::latticetypes::LatticeCoeff bound,
+		  std::vector<SR_rewrites::seq_no>& reps);
 
 // manipulators
-
-  SR_rewrites::combination standardize(StandardRepK sr); // call by value
-
-  SR_rewrites::combination standardize(const Char& chi);
 
   void go(const StandardRepK& sr);
 
