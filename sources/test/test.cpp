@@ -516,7 +516,8 @@ void Ktypemat_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< ".\n";
       return;
     }
     if (not khc.isFinal(sr,witness))
