@@ -15,6 +15,7 @@ StandardRepK and KhatContext.
 
 #include "standardrepk.h"
 
+#include "constants.h"
 #include "cartanclass.h"
 #include "complexredgp.h"
 #include "realredgp.h"
@@ -41,7 +42,6 @@ StandardRepK and KhatContext.
 #include <algorithm>
 
 namespace atlas {
-
 
 
 /*****************************************************************************
@@ -88,7 +88,7 @@ size_t StandardRepK::hashCode(size_t modulus) const
 
 namespace standardrepk {
 
-const SR_rewrites::combination& SR_rewrites::lookup(seq_no n) const
+const combination& SR_rewrites::lookup(seq_no n) const
 {
   assert(n<system.size());
   return system[n];
@@ -118,13 +118,14 @@ KhatContext::KhatContext
   (const realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
   : d_G(&GR.complexGroup())
   , d_KGB(kgb)
-  , nonfinal_pool(),final_pool()
-  , nonfinals(nonfinal_pool), finals(final_pool)
-  , d_rules()
-  , simple_reflection_mod_2()
   , d_realForm(GR.realForm())
   , d_Tg(kgb::EnrichedTitsGroup::for_square_class(GR))
   , d_data(d_G->numCartanClasses())
+  , simple_reflection_mod_2()
+  , nonfinal_pool(),final_pool()
+  , nonfinals(nonfinal_pool), finals(final_pool)
+  , height_of()
+  , d_rules()
 {
   const rootdata::RootDatum& rd=rootDatum();
   simple_reflection_mod_2.reserve(d_G->semisimpleRank());
@@ -350,13 +351,12 @@ std::ostream& KhatContext::print(std::ostream& strm,const Char& ch) const
 }
 
 std::ostream& KhatContext::print(std::ostream& strm,
-				 const SR_rewrites::combination& ch,
+				 const combination& ch,
 				 bool brief) const
 {
   if (ch.empty())
     return strm << '0';
-  for (SR_rewrites::combination::const_iterator
-	 it=ch.begin(); it!=ch.end(); ++it)
+  for (combination::const_iterator it=ch.begin(); it!=ch.end(); ++it)
   {
     strm << (it->second>0 ? " + " : " - ");
     long int ac=intutils::abs<long int>(it->second);
@@ -371,9 +371,10 @@ std::ostream& KhatContext::print(std::ostream& strm,
 
 // map a character to one containing only Standard terms
 // this version ensures the basic one is recursively called first
-SR_rewrites::combination KhatContext::standardize(const Char& chi)
+combination KhatContext::standardize(const Char& chi)
 {
-  SR_rewrites::combination result;
+  combination result(height_order());
+
   for (Char::base::const_iterator i=chi.begin(); i!=chi.end(); ++i)
     result.add_multiple(standardize(i->first),i->second);
 
@@ -381,12 +382,12 @@ SR_rewrites::combination KhatContext::standardize(const Char& chi)
 }
 
 // the basic case
-SR_rewrites::combination KhatContext::standardize(StandardRepK sr)
+combination KhatContext::standardize(StandardRepK sr)
 {
   normalize(sr);
 
   { // first check if we've already done |sr|
-    SR_rewrites::seq_no n=nonfinals.find(sr);
+    seq_no n=nonfinals.find(sr);
     if (n!=Hash::empty)
       return d_rules.lookup(n); // in this case an equation should be known
   }
@@ -395,20 +396,24 @@ SR_rewrites::combination KhatContext::standardize(StandardRepK sr)
   if (isStandard(sr,witness))
   {
     { // now check if we already know |sr| to be Final
-      SR_rewrites::seq_no n=finals.find(sr);
+      seq_no n=finals.find(sr);
       if (n!=Hash::empty)
-	return SR_rewrites::combination(n); // single term known to be final
+	return combination(n,height_order()); // single term known to be final
     }
 
     if (isZero(sr,witness))
     {
-      SR_rewrites::combination zero;
+      combination zero(height_order());
       d_rules.equate(nonfinals.match(sr),zero);
       return zero;
     }
 
     if (isFinal(sr,witness))
-      return SR_rewrites::combination(finals.match(sr));
+    {
+      assert(height_of.size()==final_pool.size());
+      height_of.push_back(height(sr));
+      return combination(finals.match(sr),height_order());
+    }
 
     HechtSchmid equation= back_HS_id(sr,fiber(sr).simpleReal(witness));
     assert(equation.lh2==NULL); // |back_HS_id| never produces a second member
@@ -421,7 +426,7 @@ SR_rewrites::combination KhatContext::standardize(StandardRepK sr)
     }
 
     // now recursively standardize all terms, storing rules
-    SR_rewrites::combination result= standardize(rhs);
+    combination result= standardize(rhs);
     d_rules.equate(nonfinals.match(sr),result); // and add rule for |sr|
     return result;
   } // if (isStandard(sr,witness))
@@ -441,7 +446,7 @@ SR_rewrites::combination KhatContext::standardize(StandardRepK sr)
   }
 
   // now recursively standardize all terms, storing rules
-  SR_rewrites::combination result= standardize(rhs);
+  combination result= standardize(rhs);
   d_rules.equate(nonfinals.match(sr),result); // and add rule for |sr|
   return result;
 } // standardize
@@ -464,7 +469,7 @@ void KhatContext::normalize(StandardRepK& sr) const
   }
 
   const latticetypes::LatticeMatrix& theta = f.involution();
-  atlas::rootdata::RootSet cplx = f.complexRootSet();
+  rootdata::RootSet cplx = f.complexRootSet();
 
   //  go through the orthogonal list
   //  select the complex roots in the list
@@ -648,16 +653,16 @@ KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
     id.add_rh(other);
 
   return id;
-}
+} // |back_HS_id|
 
 
-latticetypes::LatticeCoeff
+level
 KhatContext::height(const StandardRepK& sr) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   const latticetypes::Weight mu=theta_lift(sr);
 
-  latticetypes::LatticeCoeff sum=0;
+  level sum=0;
   for (rootdata::WRootIterator
 	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
     sum +=intutils::abs(mu.scalarProduct(*it));
@@ -665,7 +670,7 @@ KhatContext::height(const StandardRepK& sr) const
   return sum/2; // each |scalarProduct| above is even (in doubled coordinates)
 }
 
-latticetypes::LatticeCoeff
+level
 KhatContext::height(const latticetypes::Weight& lambda,
 		    const weyl::TwistedInvolution& twi) const
 {
@@ -675,7 +680,7 @@ KhatContext::height(const latticetypes::Weight& lambda,
   latticetypes::Weight mu=lambda;
   mu+=theta.apply(mu);
 
-  latticetypes::LatticeCoeff sum=0;
+  level sum=0;
   for (rootdata::WRootIterator
 	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
     sum +=intutils::abs(mu.scalarProduct(*it));
@@ -879,8 +884,19 @@ RawChar KhatContext::KGB_sum(const PSalgebra& q,
   return result;
 } // KGB_sum
 
+combination KhatContext::truncate(const combination& c, level bound) const
+{
+  combination result(height_order());
+  for (combination::const_iterator it=c.begin(); it!=c.end(); ++it)
+    if (height(it->first)<=bound)
+      result.insert(result.end(),*it);
+
+  return result;
+}
+
 // Express irreducible K-module as a finite virtual sum of standard ones
-CharForm  KhatContext::K_type_formula(const StandardRepK& sr) const
+CharForm
+KhatContext::K_type_formula(const StandardRepK& sr, level bound) const
 {
   const cartanset::CartanClassSet& cs=d_G->cartanClasses();
   const weyl::WeylGroup& W=weylGroup();
@@ -948,43 +964,43 @@ CharForm  KhatContext::K_type_formula(const StandardRepK& sr) const
       for (bitset::RankFlags::iterator j =subset.begin(); j(); ++j)
 	nu+=rd.root(A[*j]);
 
-      result += Char(std_rep_rho_plus(nu,strong),
-		     subset.count()%2 == 0 ? c : -c);
+      StandardRepK sr = std_rep_rho_plus(nu,strong);
+      result += Char(sr,subset.count()%2 == 0 ? c : -c);
     }
   } // for sum over KGB for L
   return std::make_pair(sr, result);
 } // K_type_formula
 
 // Apply |K_type_formula| for known Final representation, and |standardize|
-SR_rewrites::equation KhatContext::mu_equation(SR_rewrites::seq_no n)
+equation KhatContext::mu_equation(seq_no n, level bound)
 {
-  CharForm kf= K_type_formula(rep_no(n));
+  CharForm kf= K_type_formula(rep_no(n),bound);
 
-  SR_rewrites::equation result(n,standardrepk::SR_rewrites::combination());
-  standardrepk::SR_rewrites::combination& sum=result.second;
+  equation result(n,combination(height_order()));
+  combination& sum=result.second;
 
   for (Char::const_iterator it=kf.second.begin(); it!=kf.second.end(); ++it)
-    sum.add_multiple(standardize(it->first),it->second);
+    sum.add_multiple(truncate(standardize(it->first),bound),it->second);
 
   return result;
 }
 
 
 
-atlas::matrix::Matrix<CharCoeff> KhatContext::K_type_matrix
- (std::set<SR_rewrites::equation>& eq_set,
-  const atlas::latticetypes::LatticeCoeff bound,
-  std::vector<SR_rewrites::seq_no>& new_order)
+matrix::Matrix<CharCoeff> KhatContext::K_type_matrix
+ (std::set<equation>& eq_set,
+  level bound,
+  std::vector<seq_no>& new_order)
 {
-  std::vector<SR_rewrites::equation> system=saturate(eq_set,bound);
+  std::vector<equation> system=saturate(eq_set,bound);
 
-  atlas::matrix::Matrix<CharCoeff>  m=triangularize(system,new_order);
+  matrix::Matrix<CharCoeff>  m=triangularize(system,new_order);
 
 #ifdef VERBOSE
   std::cout << "Ordering of representations/K-types:\n";
-  for (std::vector<SR_rewrites::seq_no>::const_iterator
+  for (std::vector<seq_no>::const_iterator
 	 it=new_order.begin(); it!=new_order.end(); ++it)
-    print(std::cout,rep_no(*it)) << ", height " << height(rep_no(*it))
+    print(std::cout,rep_no(*it)) << ", height " << height(*it)
        << std::endl;
 
   prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
@@ -992,67 +1008,90 @@ atlas::matrix::Matrix<CharCoeff> KhatContext::K_type_matrix
 
   matrix::Matrix<CharCoeff>m_inv=inverse_lower_triangular(m);
 
-#ifdef VERBOSE
-  prettyprint::printMatrix(std::cout<<"Inverse matrix:\n",m_inv,3);
-#endif
-
   return m_inv;
 
 } // K_type_matrix
 
 
+combination
+KhatContext::branch(seq_no s, level bound)
+{
+  combination result(height_order()); // a linear combination of $K$-types
+
+  if (height(s)>bound)
+    return result;
+
+  // a linear combination of Final representations
+  combination remainder(s,height_order()); // terms will have |height<=bound|
+  do
+  {
+    combination::iterator head=remainder.begin(); // leading term
+
+    equation eq=mu_equation(head->first,bound);
+
+    result += combination(eq.first,head->second,height_order());
+    remainder.add_multiple(eq.second,-head->second);
+  }
+  while (not remainder.empty());
+
+  return result;
+}
+
 
 
 /* convert a system of equations into a list, adding equations for all terms
-   recursively (they are generated by |K_type_formula|), up to the given
+   recursively (they are generated by |mu_equation|), up to the given
    bound (everything with |height(...)> bound| is pruned away).
-   It is assumed that |mu_equation| will ensure all |SR_rewrites::seq_no|s in
+   It is assumed that |mu_equation| will ensure all |seq_no|s in
    left and right hand sides are normalized, so that there is no risk of
    trying to add a formula for one term but getting one for another.
+
+   Precondition: the right hand sides contain no terms with |height>bound|; if
+   they are obtained from |mu_equation| with the same |bound|, this is assured.
  */
-std::vector<SR_rewrites::equation>
-KhatContext::saturate(std::set<SR_rewrites::equation> system, // call by value
-		      atlas::latticetypes::LatticeCoeff bound)
+std::vector<equation>
+KhatContext::saturate(const std::set<equation>& system, level bound)
 {
-  std::set<SR_rewrites::seq_no> lhs; // left hand sides of all equations seen
+  bitmap::BitMap lhs(nr_reps()); // left hand sides of all equations seen
 
-  for (std::set<SR_rewrites::equation>::iterator
+  std::deque<equation> queue;
+
+  for (std::set<equation>::iterator
 	 it=system.begin(); it!=system.end(); ++it)
-    lhs.insert(it->first); // include all left hand sides of original system
-
-  std::vector<SR_rewrites::equation> result;
-
-  while (not system.empty())
-  {
-    // choose an equation and keep a pointer to it
-    std::set<SR_rewrites::equation>::iterator current=system.begin();
-    const SR_rewrites::equation& cf=*current; // this is an unprocessed formula
-
-    if (height(rep_no(cf.first)) <= bound) // ignore if out of bounds
+    if (height(it->first)<=bound)
     {
-      // start with empty rhs
-      result.push_back
-	(SR_rewrites::equation(cf.first,SR_rewrites::combination()));
-      SR_rewrites::combination& rhs=result.back().second;
+      queue.push_back(*it);
+      lhs.insert(it->first); // include left hand sides from original system
+    }
 
-      for (SR_rewrites::combination::const_iterator
-	     term=cf.second.begin(); term!=cf.second.end(); ++term)
+  std::vector<equation> result;
+
+  while (not queue.empty())
+  {
+    // ensure bitmap provides space for all current terms
+    if (nr_reps()>lhs.capacity())
+      lhs.set_capacity( (nr_reps()+constants::posBits)
+			& ~constants::posBits); // round up to wordsize
+
+    const equation& cf=queue.front(); // an unprocessed formula
+    assert(height(cf.first) <= bound);
+
+    result.push_back(equation(cf.first,combination(height_order())));
+    combination& rhs=result.back().second;
+
+    for (combination::const_iterator
+	   term=cf.second.begin(); term!=cf.second.end(); ++term)
+    {
+      assert(height(term->first) <= bound); // guaranteed by |mu_equation|
+      rhs.insert(*term);
+      if (not lhs.isMember(term->first)) // no formula for this term seen yet
       {
-	const StandardRepK& sr=rep_no(term->first);
-	if (height(sr) <= bound)
-	{
-	  rhs.insert(*term);
-	  if (lhs.count(term->first)==0) // no formula for this term seen yet
-	  {
-	    lhs.insert(term->first);
-	    system.insert(mu_equation(term->first));
-	  }
-	}
-      } // |for(term)|
+	lhs.insert(term->first);
+	queue.push_back(mu_equation(term->first,bound));
+      }
+    }
 
-    } // if (height(lhs)<=bound)
-
-    system.erase(current); // we are done with this formula
+    queue.pop_front(); // we are done with this formula
   }
 
   return result;
@@ -1064,7 +1103,7 @@ KhatContext::saturate(std::set<SR_rewrites::equation> system, // call by value
 
 void KhatContext::go(const StandardRepK& initial)
 {
-  SR_rewrites::combination chi=standardize(initial);
+  combination chi=standardize(initial);
 
 #ifdef VERBOSE
   if (nonfinal_pool.size()>0)
@@ -1076,7 +1115,7 @@ void KhatContext::go(const StandardRepK& initial)
       const StandardRepK& sr=nonfinal_pool[i];
       size_t witness;
       const cartanclass::Fiber& f=fiber(sr);
-      print(std::cout << 'N' << i << ": ",sr);
+      print(std::cout << 'N' << i << ": ",sr) << " [" << height(sr) << ']';
 
       if (not isStandard(sr,witness))
 	std::cout << ", non Standard, witness "
@@ -1093,10 +1132,11 @@ void KhatContext::go(const StandardRepK& initial)
 #endif
 
   std::cout << "Standard normal final limit representations:\n";
-  for (SR_rewrites::seq_no i=0; i<nr_reps(); ++i)
+  for (seq_no i=0; i<nr_reps(); ++i)
   {
     const StandardRepK& sr=rep_no(i);
-    print(std::cout << 'R' << i << ": ",sr) << std::endl;
+    print(std::cout << 'R' << i << ": ",sr) << " [" << height(i) << ']'
+      << std::endl;
   }
 
   print(std::cout << "Standardized expression for ",initial) << ":\n";
@@ -1145,30 +1185,27 @@ PSalgebra::PSalgebra (tits::TitsElt base,
 
 // ****************** Chapter V -- functions ************************
 
-atlas::matrix::Matrix<CharCoeff>
-triangularize (const std::vector<SR_rewrites::equation>& system,
-	       std::vector<SR_rewrites::seq_no>& new_order)
+matrix::Matrix<CharCoeff>
+triangularize (const std::vector<equation>& system,
+	       std::vector<seq_no>& new_order)
 {
   // order set of equations
-  std::vector<SR_rewrites::equation> equation(system.begin(),system.end());
+  std::vector<equation> equation(system.begin(),system.end());
   size_t n=equation.size();
 
-  atlas::matrix::Matrix<CharCoeff> M(n,n,0);
+  matrix::Matrix<CharCoeff> M(n,n,0);
   graph::OrientedGraph incidence(n);
 
   for (size_t j=0; j<n; ++j) // loop over equations
   {
     size_t n_terms=0;
     for (size_t i=0; i<n; ++i) // loop over left hand sides
-    {
-      SR_rewrites::combination::const_iterator
-	p= equation[j].second.find(equation[i].first);
-      if (p!=equation[j].second.end())
+      if ((M(i,j)=equation[j].second[equation[i].first])!=0)
       { // |OrientedGraph::cells| puts sinks in front, so record edge $i\to j$.
-	incidence.edgeList(i).push_back(j); M(i,j)=p->second;
+	incidence.edgeList(i).push_back(j);
 	++n_terms;
       }
-    }
+
     if (equation[j].second.size()!=n_terms)
       throw std::runtime_error ("triangularize: system not saturated");
   }
@@ -1183,17 +1220,17 @@ triangularize (const std::vector<SR_rewrites::equation>& system,
     new_order[order(i)]=equation[i].first;
   }
 
-  atlas::matrix::Matrix<CharCoeff> result(n,n,0);
+  matrix::Matrix<CharCoeff> result(n,n,0);
   for (size_t i=0; i<n; ++i)
-    for (graph::EdgeList::const_iterator
-	   p=incidence.edgeList(i).begin(); p!=incidence.edgeList(i).end(); ++p)
-      result(order(i),order(*p))=M(i,*p); // edge |i->*p|, |order(i)>=order(*p)|
+    for (graph::EdgeList::const_iterator p=incidence.edgeList(i).begin();
+	 p!=incidence.edgeList(i).end(); ++p) // there is an edge |i| to |*p|
+      result(order(i),order(*p))=M(i,*p);     // so |order(i)>=order(*p)|
 
   return result;
 } // triangularize
 
 matrix::Matrix<CharCoeff> inverse_lower_triangular
-  (const atlas::matrix::Matrix<CharCoeff>& L)
+  (const matrix::Matrix<CharCoeff>& L)
 {
   size_t n=L.numColumns();
   if (L.numRows()!=n)

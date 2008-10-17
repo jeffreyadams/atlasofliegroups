@@ -59,15 +59,36 @@ typedef std::pair<StandardRepK,Char> CharForm;
 typedef std::pair<latticetypes::LatticeElt,tits::TitsElt> RawRep;
 typedef free_abelian::Free_Abelian<RawRep> RawChar;
 
+
+typedef unsigned int seq_no;
+typedef unsigned int level; // unsigned latticetypes::LatticeCoeff
+
+// a comparison object that first takes into account a grading (height)
+class graded_compare
+{
+  const std::vector<level>* h; // pointer, so assignable
+
+public:
+  graded_compare (const std::vector<level>& a) : h(&a) {}
+
+  bool operator()(seq_no x, seq_no y) const
+  {
+    level hx=(*h)[x], hy=(*h)[y];
+    return hx!=hy ? hx<hy : x<y;
+  }
+}; // |class graded_compare|
+
+typedef free_abelian::Free_Abelian<seq_no,graded_compare> combination;
+typedef std::pair<seq_no,combination> equation;
+
+
 // class handling rewriting of StandardRepK values by directed equations
 // all left hand sides are assumed distinct, so just repeated substitutions
 class SR_rewrites
 {
 public:
-  typedef unsigned int seq_no;
-  typedef free_abelian::Free_Abelian<seq_no> combination;
+
   typedef std::vector<combination> sys_t;
-  typedef std::pair<seq_no,combination> equation;
 
 private:
 
@@ -81,7 +102,7 @@ public:
   // manipulators
   void equate(seq_no n, const combination& rhs);
 
-}; // SR_equations
+}; // SR_rewrites
 
 
 } // namespace standardrepk
@@ -90,12 +111,12 @@ public:
 
 namespace standardrepk {
 
-  atlas::matrix::Matrix<CharCoeff> triangularize
-    (const std::vector<SR_rewrites::equation>& system,
-     std::vector<SR_rewrites::seq_no>& new_order);
+  matrix::Matrix<CharCoeff> triangularize
+    (const std::vector<equation>& system,
+     std::vector<seq_no>& new_order);
 
-  atlas::matrix::Matrix<CharCoeff> inverse_lower_triangular
-    (const atlas::matrix::Matrix<CharCoeff>& U);
+  matrix::Matrix<CharCoeff> inverse_lower_triangular
+    (const matrix::Matrix<CharCoeff>& U);
 
 } // namespace standardrepk
 
@@ -256,21 +277,25 @@ class KhatContext
   const complexredgp::ComplexReductiveGroup* d_G;
   const kgb::KGB& d_KGB;
 
-  typedef hashtable::HashTable<StandardRepK,SR_rewrites::seq_no> Hash;
+// these data members allow interpretation of |StandardRepK| objects
+  realform::RealForm d_realForm;
+  const kgb::EnrichedTitsGroup d_Tg;
+
+  std::vector<Cartan_info> d_data;
+
+// this member is precopumputed to increase efficiency of certain operations
+  std::vector<latticetypes::BinaryMap> simple_reflection_mod_2;
+
+  typedef hashtable::HashTable<StandardRepK,seq_no> Hash;
 
   StandardRepK::Pooltype nonfinal_pool,final_pool;
   Hash nonfinals,finals;
 
+  std::vector<level> height_of; // alongside |final_pool|
+
   // a set of equations rewriting to Standard, Normal, Final, NonZero elements
   SR_rewrites d_rules;
 
-  std::vector<latticetypes::BinaryMap> simple_reflection_mod_2;
-
-// the remaining data members allow interpretation of |StandardRepK| objects
-  atlas::realform::RealForm d_realForm;
-  const kgb::EnrichedTitsGroup d_Tg;
-
-  std::vector<Cartan_info> d_data;
 
  public:
 
@@ -293,6 +318,8 @@ class KhatContext
   const tits::TitsGroup& titsGroup() const { return d_Tg.titsGroup(); }
   const cartanclass::Fiber& fiber(const StandardRepK& sr) const
     { return d_G->cartan(sr.Cartan()).fiber(); }
+
+  graded_compare height_order() const { return graded_compare(height_of); }
 
   StandardRepK std_rep
     (const latticetypes::Weight& two_lambda, tits::TitsElt a) const;
@@ -341,16 +368,16 @@ class KhatContext
 			 s.d_fiberElt);
   }
 
-  SR_rewrites::seq_no nr_reps() const { return final_pool.size(); }
+  seq_no nr_reps() const { return final_pool.size(); }
 
-  StandardRepK rep_no(SR_rewrites::seq_no i) const
+  StandardRepK rep_no(seq_no i) const
     {
       return final_pool[i];
     }
 
   std::ostream& print(std::ostream& strm, const StandardRepK& sr) const;
   std::ostream& print(std::ostream& strm, const Char& ch) const;
-  std::ostream& print(std::ostream& strm, const SR_rewrites::combination& ch,
+  std::ostream& print(std::ostream& strm, const combination& ch,
 		      bool brief=false) const;
 
   //!\brief A section of |project|
@@ -358,11 +385,11 @@ class KhatContext
 
   //!\brief (1+theta)* lifted value; this is independent of choice of lift
   latticetypes::Weight theta_lift(size_t cn, HCParam p) const
-    {
-      latticetypes::Weight result=lift(cn,p);
-      result += d_G->cartan(cn).involution().apply(result);
-      return result;
-    }
+  {
+    latticetypes::Weight result=lift(cn,p);
+    result += d_G->cartan(cn).involution().apply(result);
+    return result;
+  }
 
   latticetypes::Weight lift(const StandardRepK& s) const
   { return lift(s.d_cartan,s.d_lambda); }
@@ -375,10 +402,14 @@ class KhatContext
     expressed in the full basis and the positive coroots. This gives a Weyl
     group invariant limit on the size of the weights that will be needed.
   */
-  latticetypes::LatticeCoeff height(const StandardRepK& s) const;
+  level height(const StandardRepK& s) const;
+  level height(seq_no i) const
+  {
+    return height_of[i]; // which will equal |height(rep_no(i))|
+  }
 
   //! The same, but without packaging into a |StandardRepK|
-  latticetypes::LatticeCoeff
+  level
     height(const latticetypes::Weight& lambda,
 	   const weyl::TwistedInvolution& twi) const;
 
@@ -398,27 +429,31 @@ class KhatContext
   // Hecht-Schmid identity for simple-real root $\alpha$
   HechtSchmid back_HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
 
-  SR_rewrites::combination standardize(StandardRepK sr); // call by value
+  combination standardize(StandardRepK sr); // call by value
 
-  SR_rewrites::combination standardize(const Char& chi);
+  combination standardize(const Char& chi);
 
   kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
 
-  CharForm K_type_formula(const StandardRepK& sr) const;
-  SR_rewrites::equation mu_equation(SR_rewrites::seq_no); // adds equations
+  combination truncate(const combination& c, level bound) const;
 
-  std::vector<SR_rewrites::equation> saturate
-    (std::set<SR_rewrites::equation> system, // call by value
-     atlas::latticetypes::LatticeCoeff bound);
+  CharForm K_type_formula(const StandardRepK& sr, level bound=~0u) const;
+  equation mu_equation(seq_no, level bound=~0u); // adds equations
+
+  std::vector<equation> saturate
+    (const std::set<equation>& system, level bound);
 
   PSalgebra theta_stable_parabolic
     (const StandardRepK& sr, weyl::WeylWord& conjugator) const;
 
   // saturate and invert |system| up to |bound|, writing list into |reps|
-  atlas::matrix::Matrix<CharCoeff>
-    K_type_matrix(std::set<SR_rewrites::equation>& system,
-		  const atlas::latticetypes::LatticeCoeff bound,
-		  std::vector<SR_rewrites::seq_no>& reps);
+  matrix::Matrix<CharCoeff>
+    K_type_matrix(std::set<equation>& system,
+		  level bound,
+		  std::vector<seq_no>& reps);
+
+  combination branch(seq_no s, level bound);
+
 
 // manipulators
 
