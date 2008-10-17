@@ -34,6 +34,7 @@
 #include "kltest.h"
 #include "standardrepk.h"
 #include "free_abelian.h"
+#include "smithnormal.h"
 
 /*****************************************************************************
 
@@ -57,6 +58,8 @@ namespace {
   void trivial_f();
   void Ktypeform_f();
   void Ktypemat_f();
+  void mod_lattice_f();
+  void branch_f();
   void test_f();
 
   // help functions
@@ -143,6 +146,8 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("trivial",trivial_f);
   mode.add("Ktypeform",Ktypeform_f);
   mode.add("Ktypemat",Ktypemat_f);
+  mode.add("mod_lattice",mod_lattice_f);
+  mode.add("branch",branch_f);
 
 }
 
@@ -231,6 +236,8 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("trivial",helpmode::nohelp_h);
   mode.add("Ktypeform",helpmode::nohelp_h);
   mode.add("Ktypemat",helpmode::nohelp_h);
+  mode.add("mod_lattice",helpmode::nohelp_h);
+  mode.add("branch",helpmode::nohelp_h);
 
 
   // add additional command tags here :
@@ -240,6 +247,8 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"trivial",test_tag);
   insertTag(t,"Ktypeform",test_tag);
   insertTag(t,"Ktypemat",test_tag);
+  insertTag(t,"mod_lattice",test_tag);
+  insertTag(t,"branch",test_tag);
 
 }
 
@@ -405,12 +414,12 @@ void trivial_f()
   kgb::KGBEltList subset=khc.sub_KGB(q);
   size_t max_l=kgb.length(subset.back());
 
-  standardrepk::SR_rewrites::combination sum;
+  standardrepk::combination sum(khc.height_order());
   for (size_t i=0; i<subset.size(); ++i)
   {
     kgb::KGBElt x=subset[i];
     standardrepk::StandardRepK sr=khc.std_rep(rd.twoRho(),kgb.titsElt(x));
-    standardrepk::SR_rewrites::combination c=khc.standardize(sr);
+    standardrepk::combination c=khc.standardize(sr);
     if ((max_l-kgb.length(x))%2 == 0)
       sum += c;
     else
@@ -423,7 +432,7 @@ void trivial_f()
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
 
-}
+} // trivial
 
 void Ktypeform_f()
 {
@@ -462,7 +471,7 @@ void Ktypeform_f()
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
 
-  standardrepk::SR_rewrites::combination sum;
+  standardrepk::combination sum(khc.height_order());
 
   for (standardrepk::Char::const_iterator
 	 it=kf.second.begin(); it!=kf.second.end(); ++it)
@@ -470,13 +479,13 @@ void Ktypeform_f()
 #ifdef VERBOSE
     khc.print(std::cout,it->first) << " has height " << khc.height(it->first)
 				   << std::endl;
-#endif
-    standardrepk::SR_rewrites::combination st=khc.standardize(it->first);
-#ifdef VERBOSE
     size_t old_size=khc.nr_reps();
+#endif
+    standardrepk::combination st=khc.standardize(it->first);
+#ifdef VERBOSE
     for (size_t i=old_size; i<khc.nr_reps(); ++i)
       khc.print(std::cout << 'R' << i << ": ",khc.rep_no(i))
-        << ", height: " << khc.height(khc.rep_no(i)) << std::endl;
+        << ", height: " << khc.height(i) << std::endl;
 
     std::ostringstream s; khc.print(s,it->first) << " = ";
     khc.print(s,st,true);
@@ -490,7 +499,7 @@ void Ktypeform_f()
     std::ostringstream s; khc.print(s,sum);
     ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
   }
-}
+} // |Kypeform_f|
 
 void Ktypemat_f()
 {
@@ -529,7 +538,7 @@ void Ktypemat_f()
     }
   }
 
-  standardrepk::SR_rewrites::combination c=khc.standardize(sr);
+  standardrepk::combination c=khc.standardize(sr);
 
   if (c.empty())
   {
@@ -540,15 +549,15 @@ void Ktypemat_f()
   assert(c.size()==1 and khc.rep_no(c.begin()->first)==sr);
 
   khc.print(std::cout << "Height of representation ",sr) << " is "
-    << khc.height(sr) << ".\n";
+    << khc.height(c.begin()->first) << ".\n";
   unsigned long bound;
   interactive::getInteractive(bound,"Give height bound: ",9999);
 
-  std::set<standardrepk::SR_rewrites::equation> singleton;
-  singleton.insert(khc.mu_equation(c.begin()->first));
+  std::set<standardrepk::equation> singleton;
+  singleton.insert(khc.mu_equation(c.begin()->first,bound));
 
   {
-    standardrepk::SR_rewrites::equation init=*singleton.begin();
+    standardrepk::equation init=*singleton.begin();
     khc.print(std::cout << "Initial formula: mu(",khc.rep_no(init.first))
       << ") =\n";
     {
@@ -557,12 +566,130 @@ void Ktypemat_f()
     }
   }
 
-  std::vector<standardrepk::SR_rewrites::seq_no> new_order;
-  khc.K_type_matrix(singleton,bound,new_order);
+  std::vector<standardrepk::equation> system =
+    khc.saturate(singleton,bound);
 
-}
+  std::vector<standardrepk::seq_no> new_order;
+  matrix::Matrix<standardrepk::CharCoeff> m =
+    standardrepk::triangularize(system,new_order);
 
+  std::cout << "Ordering of representations/K-types:\n";
+  for (std::vector<standardrepk::seq_no>::const_iterator
+	 it=new_order.begin(); it!=new_order.end(); ++it)
+    khc.print(std::cout,khc.rep_no(*it)) << ", height " << khc.height(*it)
+      << std::endl;
 
+#ifdef VERBOSE
+  prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
+#endif
+
+  prettyprint::printMatrix(std::cout<<"Matrix of K-type multiplicites:\n",
+			   standardrepk::inverse_lower_triangular(m),
+			   3);
+
+} // |Ktypemat_f|
+
+void mod_lattice_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  G_R.fillCartan(); // must not forget this!
+
+  unsigned long cn;
+  interactive::getInteractive(cn,"Cartan class: ",G_R.cartanSet());
+
+  latticetypes::LatticeMatrix q = G_R.cartan(cn).involution();
+  for (size_t j = 0; j<q.numRows(); ++j)
+    q(j,j) -= 1;
+
+  latticetypes::WeightList bs; matrix::initBasis(bs,q.numRows());
+  latticetypes::CoeffList invf; smithnormal::smithNormal(invf,bs.begin(),q);
+
+   size_t l = invf.size();
+   size_t f=0; while (f<l and invf[f]==1) ++f; // skip invariant factors 1
+
+   std::cout << "At Cartan class " << cn;
+   if (l==0)
+     std::cout << " weights are used unchanged";
+   else
+   {
+     std::cout << " weights are modulo";
+     if (f>0)
+     {
+       std::cout << " multiples of ";
+       basic_io::seqPrint(std::cout,&bs[0],&bs[f],", ", "", "");
+       if (f<l)
+	 std::cout << " and";
+     }
+     if (f<l)
+     {
+       std::cout << " even multiples of ";
+       basic_io::seqPrint(std::cout,&bs[f],&bs[l],", ", "", "");
+     }
+   }
+   std::cout << ".\n";
+
+} // |mod_lattice_f|
+
+void branch_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  G_R.fillCartan(); // must not forget this!
+
+  kgb::KGB kgb(G_R,G_R.cartanSet());
+  standardrepk::KhatContext khc(G_R,kgb);
+
+  unsigned long x;
+  interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
+
+  prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
+    << std::endl;
+  latticetypes::Weight lambda;
+  interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
+
+  standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
+
+  {
+    size_t witness;
+    if (not khc.isStandard(sr,witness))
+    {
+      khc.print(std::cout << "Representation ",sr)
+        << " is not standard, as witnessed by coroot "
+	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< ".\n";
+      return;
+    }
+    if (not khc.isFinal(sr,witness))
+    {
+      khc.print(std::cout << "Representation ",sr)
+        << " is not final, as witnessed by coroot "
+	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+      return;
+    }
+  }
+
+  standardrepk::combination c=khc.standardize(sr);
+
+  if (c.empty())
+  {
+    khc.print(std::cout << "Representation ",sr) << " is zero.\n";
+    return;
+  }
+
+  assert(c.size()==1 and khc.rep_no(c.begin()->first)==sr);
+
+  khc.print(std::cout << "Height of representation ",sr) << " is "
+    << khc.height(c.begin()->first) << ".\n";
+  unsigned long bound;
+  interactive::getInteractive(bound,"Give height bound: ",9999);
+
+  standardrepk::combination result=khc.branch(c.begin()->first,bound);
+
+  {
+    std::ostringstream s; khc.print(s,result);
+    ioutils::foldLine(std::cout,s.str(),"+","",1) << std::endl;
+  }
+
+} // |branch_f|
 
 // Block mode functions
 
