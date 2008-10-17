@@ -31,21 +31,27 @@ namespace free_abelian {
 namespace free_abelian {
 
 // A class that represent an element of the free abelian group on the set T
-template<typename T>
-struct Free_Abelian : public std::map<T,long int>
+template<typename T, typename Compare=std::less<T> >
+struct Free_Abelian : public std::map<T,long int,Compare>
 {
   typedef long int coef_t;
-  typedef std::map<T,coef_t> base;
+  typedef std::map<T,coef_t,Compare> base;
 
-  Free_Abelian() : base() {}
+  Free_Abelian() : base(Compare()) {}
+
+  Free_Abelian(Compare c) : base(c) {}
 
   explicit Free_Abelian(const base& m) : base(m) {}
 
-  explicit Free_Abelian(T p) : base()
+  explicit Free_Abelian(T p, Compare c=Compare()) : base(c)
   { base::insert(std::make_pair(p,1L)); }
 
-  Free_Abelian(T p,coef_t m) : base()
+  Free_Abelian(T p,coef_t m, Compare c=Compare()) : base(c)
   { base::insert(std::make_pair(p,m)); }
+
+  template<typename InputIterator>
+  Free_Abelian(InputIterator first, InputIterator last, Compare c=Compare())
+    : base(first,last,c) {}
 
   Free_Abelian& add_multiple(const Free_Abelian& p, coef_t m);
 
@@ -54,6 +60,12 @@ struct Free_Abelian : public std::map<T,long int>
 
   Free_Abelian& operator-=(const Free_Abelian& p)
   { return add_multiple(p,-1); }
+
+  coef_t operator[] (const T& t) const // find coefficient of |t| in |*this|
+  {
+    typename base::const_iterator p=base::find(t);
+    return p==base::end() ? coef_t(0) : p->second;
+  }
 
 }; // Free_Abelian
 
