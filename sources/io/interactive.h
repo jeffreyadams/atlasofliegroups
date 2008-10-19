@@ -25,6 +25,7 @@
 #include "layout.h"
 #include "lietype.h"
 #include "realform.h"
+#include "standardrepk.h"
 #include "tags.h"
 
 namespace atlas {
@@ -50,9 +51,7 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
 
  void bitMapPrompt(std::string&, const char*, const bitmap::BitMap&);
 
- void getCartanClass(size_t&, const bitmap::BitMap&,
-		     input::InputBuffer&)
-    throw(error::InputError);
+ size_t get_Cartan_class(const bitmap::BitMap& cs) throw(error::InputError);
 
   void getInnerClass(latticetypes::LatticeMatrix&, layout::Layout&)
     throw(error::InputError);
@@ -62,7 +61,8 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
   void getInteractive(lietype::InnerClassType&, const lietype::LieType&)
     throw(error::InputError);
 
-  void getInteractive(prerootdata::PreRootDatum&, latticetypes::WeightList&,
+  void getInteractive(prerootdata::PreRootDatum&,
+		      latticetypes::WeightList&,
 		      const lietype::LieType&) throw(error::InputError);
 
   void getInteractive(realform::RealForm&, const complexredgp_io::Interface&)
@@ -84,8 +84,9 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
 		      complexredgp_io::Interface*&)
     throw(error::InputError);
 
-  void getInteractive(unsigned long& x, const char* prompt,
-		      unsigned long limit)
+  unsigned long get_bounded_int(input::InputBuffer& ib,
+				const char* prompt,
+				unsigned long limit)
     throw(error::InputError);
 
   void getInteractive(unsigned long& v, const char* prompt,
@@ -93,11 +94,18 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
 		      input::InputBuffer* linep = 0)
     throw(error::InputError);
 
-  void getInteractive(latticetypes::Weight& lambda, const char* prompt,
-		      size_t rank)
+  latticetypes::Weight get_weight(input::InputBuffer& ib,
+				  const char* prompt,
+				  size_t rank)
     throw(error::InputError);
 
-  input::InputBuffer& inputLine();
+  standardrepk::StandardRepK get_standardrep
+    (const standardrepk::KhatContext& khc)
+    throw(error::InputError);
+
+  input::InputBuffer& common_input();
+  input::InputBuffer& sr_input();
+
 }
 
 /******** type definitions ***************************************************/

@@ -441,11 +441,8 @@ void blockstabilizer_f()
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
   realredgp::RealReductiveGroup& dGR = currentDualRealGroup();
 
-  bitmap::BitMap common=blocks::common_Cartans(G_R,dGR);
-
   // get Cartan class; abort if unvalid
-  size_t cn;
-  interactive::getCartanClass(cn,common,commands::currentLine());
+  size_t cn=interactive::get_Cartan_class(blocks::common_Cartans(G_R,dGR));
 
   ioutils::OutputFile file;
   realredgp_io::printBlockStabilizer

@@ -13,6 +13,10 @@
 #include <iosfwd>
 #include <sstream>
 
+#ifndef NREADLINE
+#include <readline/history.h>
+#endif
+
 /******** type declarations ************************************************/
 
 namespace atlas {
@@ -69,15 +73,15 @@ class InputBuffer:public std::istringstream {
 #ifndef NREADLINE
 
 /* A class like |InputBuffer|, but each instance creates a local version of
-   the history during its lifetime. The global (old) history is inaccessable
-   during that period, but restored at the end, at which time the local
-   history is irrevocalbly forgotten. A historian's nightmare.
+   the history during its lifetime. This is managed in such a way that it is
+   invisible to other instances, or to that static history record maintained
+   in the history library.
 */
-class HistoryBuffer:public InputBuffer {
+class HistoryBuffer : public InputBuffer {
 
  private:
 
-  void* d_history;
+  HISTORY_STATE state; // records our branch of history
 
  public:
 
@@ -87,6 +91,9 @@ class HistoryBuffer:public InputBuffer {
   explicit HistoryBuffer(const std::string& str);
 
   virtual ~HistoryBuffer();
+
+  virtual std::istream& getline(std::istream&, const char* prompt = "",
+				bool toHistory = true);
 
 };
 #endif

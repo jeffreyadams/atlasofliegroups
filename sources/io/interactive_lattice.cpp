@@ -46,6 +46,8 @@ namespace {
   void readGenerator(latticetypes::RatWeight&,
 		     const latticetypes::CoeffList& u,
 		     input::InputBuffer&);
+
+  input::HistoryBuffer kernelgen_input_buffer;
 }
 
 /*****************************************************************************
@@ -112,7 +114,7 @@ void getGenerators(latticetypes::RatWeightList& d_rwl,
   latticetypes::RatWeightList rwl;
 
   std::string genString;
-  interactive::inputLine() >> genString;
+  interactive::common_input() >> genString;
 
   if (genString.find("sc") == 0)
     goto simplyconnected;
@@ -133,7 +135,7 @@ void getGenerators(latticetypes::RatWeightList& d_rwl,
 	    << std::endl;
 
   {
-    input::InputBuffer ib;
+    input::InputBuffer& ib=kernelgen_input_buffer;
 
     while (true) {
       ib.getline(std::cin,"");
@@ -206,7 +208,6 @@ void getGenerators(latticetypes::RatWeightList& d_rwl,
 
  finish:
   d_rwl.swap(rwl);
-  return;
 }
 
 void getLattice(latticetypes::CoeffList& invf, latticetypes::WeightList& b)

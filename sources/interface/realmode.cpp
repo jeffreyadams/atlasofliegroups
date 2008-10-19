@@ -226,11 +226,8 @@ void gradings_f()
 {
   currentRealGroup().fillCartan();
 
-  size_t cn;
-
   // get Cartan class; abort if unvalid
-  interactive::getCartanClass(cn,currentRealGroup().cartanSet(),
-			      commands::currentLine());
+  size_t cn=interactive::get_Cartan_class(currentRealGroup().cartanSet());
 
   ioutils::OutputFile file;
 
@@ -270,11 +267,8 @@ void realweyl_f()
 {
   currentRealGroup().fillCartan();
 
-  size_t cn;
-
   // get Cartan class; abort if unvalid
-  interactive::getCartanClass(cn,currentRealGroup().cartanSet(),
-				commands::currentLine());
+  size_t cn=interactive::get_Cartan_class(currentRealGroup().cartanSet());
 
   ioutils::OutputFile file;
   file << "\n";
@@ -287,11 +281,8 @@ void strongreal_f()
 {
   currentRealGroup().fillCartan();
 
-  size_t cn;
-
   // get Cartan class; abort if unvalid
-  interactive::getCartanClass(cn,currentRealGroup().cartanSet(),
-			      commands::currentLine());
+  size_t cn=interactive::get_Cartan_class(currentRealGroup().cartanSet());
 
   ioutils::OutputFile file;
   file << "\n";

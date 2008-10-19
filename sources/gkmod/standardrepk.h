@@ -311,13 +311,14 @@ class KhatContext
 // accessors and manipulators
 
   const complexredgp::ComplexReductiveGroup&
-    complexReductiveGroup() const { return *d_G; }
+    complexGroup() const { return *d_G; }
 
   const rootdata::RootDatum& rootDatum() const { return d_G->rootDatum(); }
   const weyl::WeylGroup& weylGroup() const { return d_G->weylGroup(); }
   const tits::TitsGroup& titsGroup() const { return d_Tg.titsGroup(); }
   const cartanclass::Fiber& fiber(const StandardRepK& sr) const
     { return d_G->cartan(sr.Cartan()).fiber(); }
+  const kgb::KGB& kgb() const { return d_KGB; }
 
   graded_compare height_order() const { return graded_compare(height_of); }
 

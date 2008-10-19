@@ -367,8 +367,11 @@ void KGB_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
   G_R.fillCartan(); // must not forget this!
+
+  ioutils::OutputFile f;
+
   kgb::KGB kgb(G_R,G_R.cartanSet());
-  kgb_io::var_print_KGB(std::cout,mainmode::currentComplexGroup(),kgb);
+  kgb_io::var_print_KGB(f,mainmode::currentComplexGroup(),kgb);
 }
 
 void sub_KGB_f()
@@ -378,15 +381,7 @@ void sub_KGB_f()
   kgb::KGB kgb(G_R,G_R.cartanSet());
   standardrepk::KhatContext khc(G_R,kgb);
 
-  unsigned long x;
-  interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
-
-  prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
-    << std::endl;
-  latticetypes::Weight lambda;
-  interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
-
-  standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
+  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
   weyl::WeylWord ww;
   standardrepk::PSalgebra q= khc.theta_stable_parabolic(sr,ww);
@@ -442,15 +437,7 @@ void Ktypeform_f()
   kgb::KGB kgb(G_R,G_R.cartanSet());
   standardrepk::KhatContext khc(G_R,kgb);
 
-  unsigned long x;
-  interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
-
-  prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
-    << std::endl;
-  latticetypes::Weight lambda;
-  interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
-
-  standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
+  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
   {
     size_t witness;
@@ -463,12 +450,14 @@ void Ktypeform_f()
     }
   }
 
+  ioutils::OutputFile f;
+
   standardrepk::CharForm kf= khc.K_type_formula(sr);
 
-  khc.print(std::cout << "K-type formula for mu(",kf.first) << "):\n";
+  khc.print(f << "K-type formula for mu(",kf.first) << "):\n";
   {
     std::ostringstream s; khc.print(s,kf.second);
-    ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+    ioutils::foldLine(f,s.str(),"+-","",1) << std::endl;
   }
 
   standardrepk::combination sum(khc.height_order());
@@ -477,27 +466,27 @@ void Ktypeform_f()
 	 it=kf.second.begin(); it!=kf.second.end(); ++it)
   {
 #ifdef VERBOSE
-    khc.print(std::cout,it->first) << " has height " << khc.height(it->first)
+    khc.print(f,it->first) << " has height " << khc.height(it->first)
 				   << std::endl;
     size_t old_size=khc.nr_reps();
 #endif
     standardrepk::combination st=khc.standardize(it->first);
 #ifdef VERBOSE
     for (size_t i=old_size; i<khc.nr_reps(); ++i)
-      khc.print(std::cout << 'R' << i << ": ",khc.rep_no(i))
+      khc.print(f << 'R' << i << ": ",khc.rep_no(i))
         << ", height: " << khc.height(i) << std::endl;
 
     std::ostringstream s; khc.print(s,it->first) << " = ";
     khc.print(s,st,true);
-    ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+    ioutils::foldLine(f,s.str(),"+-","",1) << std::endl;
 #endif
     sum.add_multiple(st,it->second);
   }
 
-  std::cout << "Converted to Standard normal final limit form:\n";
+  f << "Converted to Standard normal final limit form:\n";
   {
     std::ostringstream s; khc.print(s,sum);
-    ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+    ioutils::foldLine(f,s.str(),"+-","",1) << std::endl;
   }
 } // |Kypeform_f|
 
@@ -509,15 +498,7 @@ void Ktypemat_f()
   kgb::KGB kgb(G_R,G_R.cartanSet());
   standardrepk::KhatContext khc(G_R,kgb);
 
-  unsigned long x;
-  interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
-
-  prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
-    << std::endl;
-  latticetypes::Weight lambda;
-  interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
-
-  standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
+  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
   {
     size_t witness;
@@ -550,19 +531,23 @@ void Ktypemat_f()
 
   khc.print(std::cout << "Height of representation ",sr) << " is "
     << khc.height(c.begin()->first) << ".\n";
-  unsigned long bound;
-  interactive::getInteractive(bound,"Give height bound: ",9999);
+  unsigned long bound=
+    interactive::get_bounded_int(interactive::common_input(),
+				 "Give height bound: ",
+				 9999);
+
+  ioutils::OutputFile f;
 
   std::set<standardrepk::equation> singleton;
   singleton.insert(khc.mu_equation(c.begin()->first,bound));
 
   {
     standardrepk::equation init=*singleton.begin();
-    khc.print(std::cout << "Initial formula: mu(",khc.rep_no(init.first))
+    khc.print(f << "Initial formula: mu(",khc.rep_no(init.first))
       << ") =\n";
     {
       std::ostringstream s; khc.print(s,init.second);
-      ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+      ioutils::foldLine(f,s.str(),"+-","",1) << std::endl;
     }
   }
 
@@ -573,17 +558,17 @@ void Ktypemat_f()
   matrix::Matrix<standardrepk::CharCoeff> m =
     standardrepk::triangularize(system,new_order);
 
-  std::cout << "Ordering of representations/K-types:\n";
+  f << "Ordering of representations/K-types:\n";
   for (std::vector<standardrepk::seq_no>::const_iterator
 	 it=new_order.begin(); it!=new_order.end(); ++it)
-    khc.print(std::cout,khc.rep_no(*it)) << ", height " << khc.height(*it)
+    khc.print(f,khc.rep_no(*it)) << ", height " << khc.height(*it)
       << std::endl;
 
 #ifdef VERBOSE
-  prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
+  prettyprint::printMatrix(f<<"Triangular system:\n",m,3);
 #endif
 
-  prettyprint::printMatrix(std::cout<<"Matrix of K-type multiplicites:\n",
+  prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",
 			   standardrepk::inverse_lower_triangular(m),
 			   3);
 
@@ -594,8 +579,7 @@ void mod_lattice_f()
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
   G_R.fillCartan(); // must not forget this!
 
-  unsigned long cn;
-  interactive::getInteractive(cn,"Cartan class: ",G_R.cartanSet());
+  unsigned long cn=interactive::get_Cartan_class(G_R.cartanSet());
 
   latticetypes::LatticeMatrix q = G_R.cartan(cn).involution();
   for (size_t j = 0; j<q.numRows(); ++j)
@@ -638,15 +622,7 @@ void branch_f()
   kgb::KGB kgb(G_R,G_R.cartanSet());
   standardrepk::KhatContext khc(G_R,kgb);
 
-  unsigned long x;
-  interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
-
-  prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
-    << std::endl;
-  latticetypes::Weight lambda;
-  interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
-
-  standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
+  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
   {
     size_t witness;
@@ -679,14 +655,18 @@ void branch_f()
 
   khc.print(std::cout << "Height of representation ",sr) << " is "
     << khc.height(c.begin()->first) << ".\n";
-  unsigned long bound;
-  interactive::getInteractive(bound,"Give height bound: ",9999);
+  unsigned long bound=
+    interactive::get_bounded_int(interactive::common_input(),
+				 "Give height bound: ",
+				 9999);
+
+  ioutils::OutputFile f;
 
   standardrepk::combination result=khc.branch(c.begin()->first,bound);
 
   {
     std::ostringstream s; khc.print(s,result);
-    ioutils::foldLine(std::cout,s.str(),"+","",1) << std::endl;
+    ioutils::foldLine(f,s.str(),"+","",1) << std::endl;
   }
 
 } // |branch_f|
@@ -713,12 +693,16 @@ void test_f()
     G_R.fillCartan(); // must not forget this!
     kgb::KGB kgb(G_R,G_R.cartanSet());
 
-    unsigned long x;
-    latticetypes::Weight lambda;
-    interactive::getInteractive(x,"Choose KGB element: ",kgb.size());
+    unsigned long x=interactive::get_bounded_int
+      (interactive::sr_input(),"Choose KGB element: ",kgb.size());
+
     prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
       << std::endl;
-    interactive::getInteractive(lambda,"Give lambda-rho: ",G_R.rank());
+
+    latticetypes::Weight lambda=
+      interactive::get_weight(interactive::sr_input(),
+			      "Give lambda-rho: ",
+			      G_R.rank());
     standardrepk::KhatContext khc(G_R,kgb);
 
     standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));

@@ -43,18 +43,17 @@ char* readLine(const char* prompt = "", bool toHistory = true);
   |std::istringstream| object (since it is publicly derived from that class),
   in particular one can read from it using the 'source >> variable' syntax.
   In addition, it provides a |getline| method that will fill the string that
-  it holds from standard input; unless NREADLINE was set this call readline.
+  it holds from standard input; this calls readline unless NREADLINE was set.
 
 ******************************************************************************/
 
 namespace input {
 
+/*!
+  Forget string in input buffer, read a new line, and position at start
+*/
 std::istream& InputBuffer::getline(std::istream& is, const char* prompt,
 				   bool toHistory)
-
-/*
-  Synopsis: reads
-*/
 
 {
   /* NOTE: the |char*| result returned from |readLine| is held in a static
@@ -82,89 +81,111 @@ void InputBuffer::reset()
   return;
 }
 
-void InputBuffer::reset(std::streampos pos)
 
 /*
   Synopsis: resets the stream to position pos.
 
   Clears the flags as well; the idea is to undo a peek-forward operation.
 */
-
+void InputBuffer::reset(std::streampos pos)
 {
   clear();
   seekg(pos);
-
-  return;
 }
 
-}
+} // namespace input
 
 
 /*****************************************************************************
 
         Chapter II -- The HistoryBuffer class -- assumes NREADLINE undefined
 
-  A HistoryBuffer is an input buffer with its own history. On exit, the
-  original history is restored.
+  A HistoryBuffer is an input buffer with its own history. Each time a line is
+  read, the history pointer is temporarily made to point to our own history
+  record.
+
+  The implementation below cannot be understood without looking into the
+  sources of the history library. Rather than packing its static history
+  variables into a static |HISTORY_STATE| structure, every call to
+  |history_get_history_state| |malloc|s a fresh such structure, but pointers
+  to such structures are never freed in the library (in particular not at the
+  end of a |history_set_history_state| call). It it therefore our sorry duty
+  as user to clean up the mess left by the history library. On th upside, we
+  can call |history_set_history_state| with a pointer to our |state| record.
 
 ******************************************************************************/
 
 namespace input {
 
-HistoryBuffer::HistoryBuffer()
-  :InputBuffer()
-
 /*
   Synopsis: the default constructor.
 
-  Saves the current state of history, and starts a new one.
+  Creates a clean slate history record, and empty input buffer.
 */
-
+HistoryBuffer::HistoryBuffer()
+  :InputBuffer()
 {
-  d_history = history_get_history_state();
-
-  HISTORY_STATE* hs = (HISTORY_STATE*)malloc(sizeof(HISTORY_STATE));
-  memset(hs,0,sizeof(HISTORY_STATE));
-
-  history_set_history_state(hs);
+  state.entries=NULL;
+  state.offset=0;
+  state.length=0;
+  state.size=0;
+  state.flags=0;
 }
-
-HistoryBuffer::HistoryBuffer(const std::string& str)
-  :InputBuffer(str)
 
 /*
-  Synopsis: constructor for a HistoryBuffer initialized with str.
-
-  Saves the current state of history, and starts a new one.
+  Synopsis: constructor for a HistoryBuffer whose input buffer is initialized
+  with str, while its history record is a clean slate.
 */
 
+HistoryBuffer::HistoryBuffer(const std::string& str)
+  : InputBuffer(str), state()
 {
-  d_history = history_get_history_state();
-
-  HISTORY_STATE* hs = (HISTORY_STATE*)malloc(sizeof(HISTORY_STATE));
-  memset(hs,0,sizeof(HISTORY_STATE));
-
-  history_set_history_state(hs);
+  state.entries=NULL;
+  state.offset=0;
+  state.length=0;
+  state.size=0;
+  state.flags=0;
 }
-
-HistoryBuffer::~HistoryBuffer()
 
 /*
   Synopsis: destructor
 
-  Resets the history to its original state
+  Frees memory occupied by the history record about to be forgotten.
 */
+HistoryBuffer::~HistoryBuffer()
 
 {
-  clear_history();
+  HISTORY_STATE* global_history=history_get_history_state();
+  history_set_history_state(&state); // substitue our history record
 
-  HISTORY_STATE* hs = history_get_history_state();
-  free(hs);
+  clear_history(); // free all memory occupied by our history entries
+  free(history_list()); // also free the array of history entries
 
-  history_set_history_state((HISTORY_STATE*)d_history);
+  history_set_history_state(global_history); // restore history record
+  free(global_history);
 }
 
+// redefine the virtual |getline| method to use our own history record
+std::istream&
+HistoryBuffer::getline(std::istream& is, const char* prompt, bool toHistory)
+{
+  HISTORY_STATE* global_history=history_get_history_state();
+  history_set_history_state(&state); // substitue our history record
+
+  std::istream& result=
+  InputBuffer::getline(is,prompt,toHistory); // now call the base method
+
+  HISTORY_STATE* our_history=history_get_history_state();
+  state=*our_history; // copy history back
+  free (our_history);
+
+  history_set_history_state(global_history); // restore history record
+  free(global_history);
+
+  return result;
 }
+
+} // namespace input
 
 /*****************************************************************************
 
@@ -274,40 +295,31 @@ void displayCompletions(char** matches, int num, int)
   return;
 }
 
-char * readLine (const char* prompt, bool toHistory)
 
 /*
   Synopsis: gets a line of input using the GNU readline library.
 
-  NOTE: this is lifted from the readline manual.
-
-  NOTE: this is sure to use C-style i/o, and in particular stdin instead of
-  cin. So we cannot forego synchronizing standard streams, unless and until
-  a C++-version makes its appearance!
+  NOTE: this code is more or less taken from the readline manual.
 */
-
+char * readLine (const char* prompt, bool toHistory)
 {
-  static char *line_read = 0;
+  /* since |readline| allocates, and we shall |free| in a subsequent call, we
+     need to hold the buffer pointer in a |static| variable
+  */
+  static char *line_read = NULL;
 
-  /* If the buffer has already been allocated,
-     return the memory to the free pool. */
-  if (line_read) {
-      free (line_read);
-      line_read = 0;
-    }
+  if (line_read!=NULL) // deallocate first on every call except the first
+    free (line_read); // no need to clear |line_read|, it is overwritten next
 
   /* Get a line from the user. */
-  line_read = readline (prompt);
+  line_read = readline(prompt); // this returns a freshly |malloc|ed buffer
 
-  /* If the line has any text in it, and toHistory is true,
-     save it on the history. */
-  if (toHistory)
-    if (line_read && *line_read)
-      add_history (line_read);
+  if (toHistory and line_read!=NULL and line_read[0]!='\0') // skip empty lines
+    add_history(line_read); // add to the global (static) history record
 
   return (line_read);
 }
 
-}
+} // namespace
 
-}
+} // namespace atlas
