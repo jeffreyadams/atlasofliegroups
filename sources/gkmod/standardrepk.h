@@ -291,7 +291,8 @@ class KhatContext
   StandardRepK::Pooltype nonfinal_pool,final_pool;
   Hash nonfinals,finals;
 
-  std::vector<level> height_of; // alongside |final_pool|
+  std::vector<level> height_bound; // alongside |nonfinal_pool|
+  std::vector<level> height_of;    // alongside |final_pool|
 
   // a set of equations rewriting to Standard, Normal, Final, NonZero elements
   SR_rewrites d_rules;
@@ -404,8 +405,17 @@ class KhatContext
     group invariant limit on the size of the weights that will be needed.
   */
   level height(const StandardRepK& s) const;
+
+  // lower bound to heights of non-Final representation
+  level height_lower_bound(seq_no i) const
+  {
+    assert(i<height_bound.size());
+    return height_bound[i]; // which will equal |height(rep_no(i))|
+  }
+
   level height(seq_no i) const
   {
+    assert(i<height_of.size());
     return height_of[i]; // which will equal |height(rep_no(i))|
   }
 
@@ -430,15 +440,15 @@ class KhatContext
   // Hecht-Schmid identity for simple-real root $\alpha$
   HechtSchmid back_HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
 
-  combination standardize(StandardRepK sr); // call by value
+  combination standardize(StandardRepK sr, level& height_min); // call by value
 
-  combination standardize(const Char& chi);
+  combination standardize(const Char& chi, level& height_min);
 
   kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
 
   combination truncate(const combination& c, level bound) const;
 
-  CharForm K_type_formula(const StandardRepK& sr, level bound=~0u) const;
+  CharForm K_type_formula(const StandardRepK& sr, level bound=~0u);
   equation mu_equation(seq_no, level bound=~0u); // adds equations
 
   std::vector<equation> saturate

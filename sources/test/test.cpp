@@ -414,7 +414,8 @@ void trivial_f()
   {
     kgb::KGBElt x=subset[i];
     standardrepk::StandardRepK sr=khc.std_rep(rd.twoRho(),kgb.titsElt(x));
-    standardrepk::combination c=khc.standardize(sr);
+    standardrepk::level dummy=~0u;
+    standardrepk::combination c=khc.standardize(sr,dummy);
     if ((max_l-kgb.length(x))%2 == 0)
       sum += c;
     else
@@ -424,7 +425,7 @@ void trivial_f()
 
   {
     std::ostringstream s; khc.print(s,sum);
-    ioutils::foldLine(std::cout,s.str(),"+-","",1) << std::endl;
+    ioutils::foldLine(std::cout,s.str(),"+\n- ","",1) << std::endl;
   }
 
 } // trivial
@@ -457,8 +458,13 @@ void Ktypeform_f()
   khc.print(f << "K-type formula for mu(",kf.first) << "):\n";
   {
     std::ostringstream s; khc.print(s,kf.second);
-    ioutils::foldLine(f,s.str(),"+-","",1) << std::endl;
+    ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
   }
+
+  for (size_t i=0; i<khc.nr_reps(); ++i)
+    khc.print(f << 'R' << i << ": ",khc.rep_no(i))
+      << ", height: " << khc.height(i) << std::endl;
+
 
   standardrepk::combination sum(khc.height_order());
 
@@ -466,19 +472,21 @@ void Ktypeform_f()
 	 it=kf.second.begin(); it!=kf.second.end(); ++it)
   {
 #ifdef VERBOSE
-    khc.print(f,it->first) << " has height " << khc.height(it->first)
-				   << std::endl;
+    khc.print(f,it->first) << " has height " << khc.height(it->first);
     size_t old_size=khc.nr_reps();
 #endif
-    standardrepk::combination st=khc.standardize(it->first);
+    standardrepk::level low_mark=~0u;
+    standardrepk::combination st=khc.standardize(it->first,low_mark);
 #ifdef VERBOSE
+    f << ", height lower bound = " << low_mark << '.' << std::endl;
+
     for (size_t i=old_size; i<khc.nr_reps(); ++i)
       khc.print(f << 'R' << i << ": ",khc.rep_no(i))
         << ", height: " << khc.height(i) << std::endl;
 
     std::ostringstream s; khc.print(s,it->first) << " = ";
     khc.print(s,st,true);
-    ioutils::foldLine(f,s.str(),"+-","",1) << std::endl;
+    ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
 #endif
     sum.add_multiple(st,it->second);
   }
@@ -486,7 +494,7 @@ void Ktypeform_f()
   f << "Converted to Standard normal final limit form:\n";
   {
     std::ostringstream s; khc.print(s,sum);
-    ioutils::foldLine(f,s.str(),"+-","",1) << std::endl;
+    ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
   }
 } // |Kypeform_f|
 
@@ -519,7 +527,8 @@ void Ktypemat_f()
     }
   }
 
-  standardrepk::combination c=khc.standardize(sr);
+  standardrepk::level dummy=~0u;
+  standardrepk::combination c=khc.standardize(sr,dummy);
 
   if (c.empty())
   {
@@ -547,7 +556,7 @@ void Ktypemat_f()
       << ") =\n";
     {
       std::ostringstream s; khc.print(s,init.second);
-      ioutils::foldLine(f,s.str(),"+-","",1) << std::endl;
+      ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
     }
   }
 
@@ -643,7 +652,8 @@ void branch_f()
     }
   }
 
-  standardrepk::combination c=khc.standardize(sr);
+  standardrepk::level dummy=~0u;
+  standardrepk::combination c=khc.standardize(sr,dummy);
 
   if (c.empty())
   {
