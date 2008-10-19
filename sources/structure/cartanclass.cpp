@@ -674,7 +674,7 @@ partition::Partition Fiber::makeRealFormPartition() const
   latticetypes::SmallBitVectorList b_id;
   bitvector::initBasis(b_id,d_adjointFiberGroup.dimension());
 
-  /* construct |modFiberImage| as quotient of spans of |b_id| (all) and
+  /* construct |modFiberImage| as quotient of spans of |b_id| (i.e., all) and
      image of |d_toAdjoint|; it is a quotient of the adjoint fiber group! */
   latticetypes::SmallSubquotient modFiberImage
     (b_id,d_toAdjoint.image(),d_adjointFiberGroup.dimension());
@@ -765,7 +765,7 @@ std::vector<partition::Partition> Fiber::makeStrongReal
   affine space corresponding to its central square class) that maps to the
   chosen adjoint fiber element representative of |wrf|. The auxiliary method
   |makeStrongRepresentatives| makes a vector of size |numRealForms())| (to be
-  stored in |d_strongRepresentatives|) whose element |wrf| is the pair
+  stored in |d_strongRealFormReps|) whose element |wrf| is the pair
   $(x,c)$.
 */
 std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
