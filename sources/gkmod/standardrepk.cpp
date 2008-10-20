@@ -1001,21 +1001,25 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
       for (bitset::RankFlags::iterator j =subset.begin(); j(); ++j)
 	nu+=rd.root(A[*j]);
 
+      StandardRepK new_rep = std_rep_rho_plus(nu,strong);
+
+#if 1 // turn off incorrect optimisation
+      result += Char(new_rep,subset.count()%2 == 0 ? c : -c); // contribute
+#else
       if (i&1!=1) // useless to try to be smart for odd values
-	result += Char(sr,subset.count()%2 == 0 ? c : -c); // contribute
+	result += Char(new_rep,subset.count()%2 == 0 ? c : -c); // contribute
       else
       { // for even values of |i| we can maybe skip following "larger" terms
-	StandardRepK sr = std_rep_rho_plus(nu,strong);
-
 	level low_mark=~0u;
-	standardize(sr,low_mark); // discarded result is retained in the tables
+	standardize(new_rep,low_mark); // discard result (retained in tables
 	if (low_mark<=bound) // then this or some greater term might contribute
-	  result += Char(sr,subset.count()%2 == 0 ? c : -c); // do it anyway
+	  result += Char(new_rep,subset.count()%2 == 0 ? c : -c);
 	else if (i==0) // this case needs to be handled separately
 	  break; // nothing at all will be contributed for this loop
 	else // nothing contrubuted from here upwards; skip larger terms
 	  i |= i-1; // raise all bits after rightmost set bit, then increment
       }
+#endif
     }
   } // for sum over KGB for L
   return std::make_pair(sr, result);
