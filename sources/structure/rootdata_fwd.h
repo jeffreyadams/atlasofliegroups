@@ -1,12 +1,12 @@
 /*!
 \file
-\brief Class declarations and type definitions for RootDatum.   
+\brief Class declarations and type definitions for RootDatum.
 */
 /*
   This is rootdata_fwd.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -23,7 +23,7 @@ namespace atlas {
 
 namespace rootdata {
 
-  /*!  
+  /*!
 \brief Integer representing the location of a root on the list
 maintained by a RootDatum.
 
@@ -37,18 +37,22 @@ maintained by a RootDatum.
 
   /*!
  \brief Type for a root, coroot, character, or cocharacter: an element
- of the lattice Z^n. 
+ of the lattice Z^n.
   */
   typedef latticetypes::LatticeElt Root;
 
   /*!
 \brief List of _numbers_ of roots, referring to the list of roots in
-  RootDatum.  
+  RootDatum.
 
 According to Fokko, this type should therefore have been called RootNbrList.
   */
   typedef std::vector<RootNbr> RootList;
-  typedef RootIterator<RootList::const_iterator> WRootIterator;
+
+  /* A WRootIterator used to be an instance of RootIterator; this is no longer
+     needed, as the relevant root sets are now contiguous ranges in |d_roots|
+  */
+  typedef latticetypes::WeightList::const_iterator WRootIterator;
   /*!
 \brief BitMap representing a set of roots (such as the set of
   positive roots, or noncompact roots).

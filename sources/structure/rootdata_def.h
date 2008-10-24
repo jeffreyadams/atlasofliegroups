@@ -47,7 +47,7 @@ template <typename I, typename O>
   Cartan matrix of |rb|) being square, we can then apply |baseChange|.
 
   We could have done this more directly if |d_coweights| had been available
-  for arbitrary roots, but the are only stored for somple roots.
+  for arbitrary roots, but the are only stored for simple roots.
 */
 template <typename I, typename O>
   void RootDatum::toRootBasis(const I& first, const I& last, O out,
