@@ -16,12 +16,8 @@
 
 #include <iostream>
 
-namespace { // localize to avoid namespace pollution
-
 #include <readline/history.h>
 #include <readline/readline.h>
-
-}
 
 #include "commands.h"
 
@@ -29,9 +25,9 @@ namespace atlas {
 
 namespace {
 
+const char* readLine(const char* prompt = "", bool toHistory = true);
 char* completionGenerator(const char*, int);
 void displayCompletions(char**, int, int);
-char* readLine(const char* prompt = "", bool toHistory = true);
 
 }
 
@@ -60,9 +56,9 @@ std::istream& InputBuffer::getline(std::istream& is, const char* prompt,
      variable of that function, so that IT will call |free| on it later; we
      should not do that here!
   */
-  std::string line = readLine(prompt,toHistory);
+  const char* line = readLine(prompt,toHistory); // non-owned pointer
 
-  str(line);
+  str(line==NULL ? std::cout << "qq\n","qq" : line); // 'qq' at end of input
   reset();
 
   return is;
@@ -93,8 +89,7 @@ void InputBuffer::reset(std::streampos pos)
   seekg(pos);
 }
 
-} // namespace input
-
+} // |namespace input|
 
 /*****************************************************************************
 
@@ -221,8 +216,6 @@ void initReadLine()
 
   rl_completion_entry_function = completionGenerator;
   rl_completion_display_matches_hook = displayCompletions;
-
-  return;
 }
 
 }
@@ -301,7 +294,7 @@ void displayCompletions(char** matches, int num, int)
 
   NOTE: this code is more or less taken from the readline manual.
 */
-char * readLine (const char* prompt, bool toHistory)
+const char* readLine (const char* prompt, bool toHistory)
 {
   /* since |readline| allocates, and we shall |free| in a subsequent call, we
      need to hold the buffer pointer in a |static| variable
@@ -317,7 +310,7 @@ char * readLine (const char* prompt, bool toHistory)
   if (toHistory and line_read!=NULL and line_read[0]!='\0') // skip empty lines
     add_history(line_read); // add to the global (static) history record
 
-  return (line_read);
+  return line_read;
 }
 
 } // namespace
