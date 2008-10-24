@@ -133,18 +133,33 @@ to compile without this feature.
 -------------------------------------------------------------------
 Compiling with readline on a Mac (contributed by David Vogan)
 
-Get readline-5.1.tar.gz, for example from
+Get readline-5.2.tar.gz, for example from
 
-ftp://ftp.cwru.edu/pub/bash/readline-5.1.tar.gz
+ftp://ftp.cwru.edu/pub/bash/readline-5.2.tar.gz
 
-Mac automatically unzips.  Put file readline-5.1.tar someplace
+Mac automatically unzips.  Put file readline-5.2.tar someplace
 convenient.  In a terminal window, go to the directory with this tar
 file, and type
 
-  tar -xvf readline-5.1.tar
+  tar -xvf readline-5.2.tar
 
-This will create a new subdirectory "readline-5.1."  Do a cd to that
-directory, and type
+This will create a new subdirectory "readline-5.2."  Do a cd to that
+directory.
+
+There appears to be a small problem with the "configure" script when
+it is used with OS 10.4. To work around it, edit the file
+
+readline-5.2/support/shobj-conf
+
+Line 170 should be changed from
+
+SHOBJ_LDFLAGS='-dynamic'
+
+to
+
+SHOBJ_LDFLAGS='-dynamiclib'
+
+Back in the readline-5.2 directory, type
 
   ./configure
 
@@ -166,7 +181,7 @@ will find most of the readline commands in someplace like
 instead of in the Gnu readline library that you just installed, which
 lives at
 
-/usr/local/lib/libreadline.5.1.dylib
+/usr/local/lib/libreadline.5.dylib
 
 The difficulty is that the Mac library lacks two or three of the
 commands used in the atlas readline, so the linker will refuse to
@@ -177,11 +192,9 @@ thing which works is to edit the atlas makefile, modifying the line
 
 to read
 
-        rlincludes := -lreadline.5.1 -lcurses
+        rlincludes := -lreadline.5 -lcurses
 
-Now the atlas software should link; there will be some warnings that
-the symbols UP, PC, and BC were multiply defined, but as far as I can
-see they are harmless.
+Now the atlas software should link.
 -------------------------------------------------------------------
 Using the interpreter (unix only)
 
