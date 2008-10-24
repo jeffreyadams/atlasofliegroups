@@ -67,7 +67,34 @@ struct Free_Abelian : public std::map<T,long int,Compare>
     return p==base::end() ? coef_t(0) : p->second;
   }
 
-}; // Free_Abelian
+}; // |class Free_Abelian|
+
+/* When we also want a multiplication, |T| must have operator+=. Rather than
+   defining operator*= in Free_Abelian (possibly unused), we prefer to derive.
+*/
+template<typename T, typename Compare=std::less<T> >
+struct Monoid_Ring : public Free_Abelian<T,Compare>
+{
+  typedef Free_Abelian<T,Compare> base;
+  typedef typename base::coef_t coef_t;
+
+  Monoid_Ring() : base(Compare()) {}
+  Monoid_Ring(Compare c) : base(c) {}
+
+  explicit Monoid_Ring(const typename base::base& m) : base(m) {}
+  explicit Monoid_Ring(T p, Compare c=Compare()) : base(p,c) {}
+  Monoid_Ring(T p,coef_t m, Compare c=Compare()) : base(p,m,c) {}
+
+  template<typename InputIterator>
+  Monoid_Ring(InputIterator first, InputIterator last, Compare c=Compare())
+    : base(first,last,c) {}
+
+  Monoid_Ring operator*(const Monoid_Ring& p);
+
+  Monoid_Ring& add_multiple(const Monoid_Ring& p, coef_t m,const T& expon);
+
+}; // |class Monoid_Ring|
+
 
 } // namespace free_abelian
 

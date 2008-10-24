@@ -40,14 +40,48 @@ Free_Abelian<T,Compare>&
   typename base::iterator last=base::begin();
   for (typename base::const_iterator src=p.begin(); src!=p.end(); ++src)
   {
-    last=insert(last,std::make_pair(src->first,0)); // hinted insert
-    last->second+=m*src->second; // add multiplicity
+    last=insert(last,std::make_pair(src->first,coef_t(0))); // hinted insert
+    last->second += m*src->second; // add multiplicity
     if (last->second==0)
       erase(last++); // remove null entry
     // else we could do |++last| to improve hint, but risk negative pay-off
   }
 
   return *this;
+}
+
+template<typename T, typename Compare>
+Monoid_Ring<T,Compare>&
+  Monoid_Ring<T,Compare>::add_multiple(const Monoid_Ring<T,Compare>& p,
+				       coef_t m,
+				       const T& expon)
+{
+  if (m==0)
+    return *this; // avoid useless work that might introduce null entries
+
+  typename base::base::iterator last=base::begin();
+  for (typename base::base::const_iterator src=p.begin(); src!=p.end(); ++src)
+  {
+    std::pair<T,coef_t> term(src->first,coef_t(0));
+    term.first += expon;
+    last=insert(last,term); // hinted insert
+    last->second += m*src->second; // add multiplicity
+    if (last->second==0)
+      erase(last++); // remove null entry
+  }
+
+  return *this;
+}
+
+template<typename T, typename Compare>
+Monoid_Ring<T,Compare>
+  Monoid_Ring<T,Compare>::operator*(const Monoid_Ring<T,Compare>& p)
+{
+  Monoid_Ring<T,Compare> result(base::base::key_compare);
+  for (typename base::base::const_iterator src=p.begin(); src!=p.end(); ++src)
+    result.add_mutiple(*this,src->second,src->first);
+
+  return result;
 }
 
   } // namespace free_abelian

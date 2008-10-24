@@ -369,37 +369,27 @@ std::ostream& KhatContext::print(std::ostream& strm,
   return strm;
 }
 
-/* map character |chi| to a linear combination of Standard Normal non Zero
-   Final representations, having been entered into |finals| and represented by
-   their |seq_no| into that array. The value of |height_min| is possibly
-   lowered to the minimum of heights of |StandardRepK|s encountered, even
-   counting those that given no contribution to the final result (being Zero
-   or by some other cancellation).
-   This method ensures the basic |standardize| method is recursively called.
-*/
-combination KhatContext::standardize(const Char& chi, level& height_min)
+// map a character to one containing only Standard terms
+// this version ensures the basic one is recursively called first
+combination KhatContext::standardize(const Char& chi)
 {
   combination result(height_order());
 
   for (Char::base::const_iterator i=chi.begin(); i!=chi.end(); ++i)
-    result.add_multiple(standardize(i->first,height_min),i->second);
+    result.add_multiple(standardize(i->first),i->second);
 
   return result;
 }
 
 // the basic case
-combination KhatContext::standardize(StandardRepK sr, level& height_min)
+combination KhatContext::standardize(StandardRepK sr)
 {
   normalize(sr);
 
   { // first check if we've already done |sr|
     seq_no n=nonfinals.find(sr);
     if (n!=Hash::empty)
-    {
-      if (height_lower_bound(n)<height_min)
-	height_min=height_bound[n];
       return d_rules.lookup(n); // in this case an equation should be known
-    }
   }
 
   size_t witness;
@@ -408,22 +398,13 @@ combination KhatContext::standardize(StandardRepK sr, level& height_min)
     { // now check if we already know |sr| to be Final
       seq_no n=finals.find(sr);
       if (n!=Hash::empty)
-      {
-	if (height(n)<height_min)
-	  height_min=height_of[n];
 	return combination(n,height_order()); // single term known to be final
-      }
     }
 
     if (isZero(sr,witness))
     {
       combination zero(height_order());
-      seq_no n=nonfinals.match(sr);
-      d_rules.equate(n,zero);
-      assert(n==height_bound.size()); // new, since nonfinals.find(sr) failed
-      height_bound.push_back(height(sr));
-      if (height_bound.back()<height_min)
-	height_min=height_bound.back();
+      d_rules.equate(nonfinals.match(sr),zero);
       return zero;
     }
 
@@ -431,8 +412,6 @@ combination KhatContext::standardize(StandardRepK sr, level& height_min)
     {
       assert(height_of.size()==final_pool.size());
       height_of.push_back(height(sr));
-      if (height_of.back()<height_min)
-	height_min=height_of.back();
       return combination(finals.match(sr),height_order()); // single term
     }
 
@@ -447,16 +426,8 @@ combination KhatContext::standardize(StandardRepK sr, level& height_min)
     }
 
     // now recursively standardize all terms, storing rules
-    level low_mark=~0u;
-    combination result= standardize(rhs,low_mark);
-    seq_no n=nonfinals.match(sr);
-    d_rules.equate(n,result); // and add rule for |sr|
-
-    assert(n==height_bound.size()); // new, since nonfinals.find(sr) failed
-    assert(low_mark<=height(sr)); // decrease possible by later HS identities
-    height_bound.push_back(low_mark);
-    if (low_mark<height_min)
-      height_min=low_mark;
+    combination result= standardize(rhs);
+    d_rules.equate(nonfinals.match(sr),result); // and add rule for |sr|
     return result;
   } // if (isStandard(sr,witness))
 
@@ -475,16 +446,8 @@ combination KhatContext::standardize(StandardRepK sr, level& height_min)
   }
 
   // now recursively standardize all terms, storing rules
-  level low_mark=~0u;
-  combination result= standardize(rhs,low_mark);
-  seq_no n=nonfinals.match(sr);
-  d_rules.equate(n,result); // and add rule for |sr|
-
-  assert(n==height_bound.size()); // new, since nonfinals.find(sr) failed
-  assert(low_mark<=height(sr)); // in forward HS identity level may go down
-  height_bound.push_back(low_mark);
-  if (low_mark<height_min)
-    height_min=low_mark;
+  combination result= standardize(rhs);
+  d_rules.equate(nonfinals.match(sr),result); // and add rule for |sr|
   return result;
 } // standardize
 
@@ -933,7 +896,7 @@ combination KhatContext::truncate(const combination& c, level bound) const
 
 // Express irreducible K-module as a finite virtual sum of standard ones
 CharForm
-KhatContext::K_type_formula(const StandardRepK& sr, level bound)
+KhatContext::K_type_formula(const StandardRepK& sr, level bound) const
 {
   const cartanset::CartanClassSet& cs=d_G->cartanClasses();
   const weyl::WeylGroup& W=weylGroup();
@@ -987,39 +950,22 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
     const tits::TitsElt& strong=it->first.second;
 
 
-    rootdata::RootSet Aset=sum_set[hash.find(strong)];
-    rootdata::RootList A(Aset.begin(),Aset.end()); // convert to list of roots
+    const rootdata::RootSet& Aset=sum_set[hash.find(strong)];
 
-    assert(A.size()<constants::longBits); // we're not ready to handle that yet
-    size_t nsubset= 1ul<<A.size();
+    typedef free_abelian::Monoid_Ring<latticetypes::Weight> polynomial;
 
-    for (unsigned long i=0; i<nsubset; ++i) // bits of |i| determine the subset
+    polynomial pol(mu,c);
+
+    for (rootdata::RootSet::iterator it=Aset.begin(); it!=Aset.end(); ++it)
     {
-      bitset::RankFlags subset(i);
-      latticetypes::Weight nu=mu;
+      polynomial copy=pol; // since |add_multiple| assumes no aliasing
+      pol.add_multiple(copy,-1,rd.root(*it));
+    }
 
-      for (bitset::RankFlags::iterator j =subset.begin(); j(); ++j)
-	nu+=rd.root(A[*j]);
-
-      StandardRepK new_rep = std_rep_rho_plus(nu,strong);
-
-#if 1 // turn off incorrect optimisation
-      result += Char(new_rep,subset.count()%2 == 0 ? c : -c); // contribute
-#else
-      if (i&1!=1) // useless to try to be smart for odd values
-	result += Char(new_rep,subset.count()%2 == 0 ? c : -c); // contribute
-      else
-      { // for even values of |i| we can maybe skip following "larger" terms
-	level low_mark=~0u;
-	standardize(new_rep,low_mark); // discard result (retained in tables
-	if (low_mark<=bound) // then this or some greater term might contribute
-	  result += Char(new_rep,subset.count()%2 == 0 ? c : -c);
-	else if (i==0) // this case needs to be handled separately
-	  break; // nothing at all will be contributed for this loop
-	else // nothing contrubuted from here upwards; skip larger terms
-	  i |= i-1; // raise all bits after rightmost set bit, then increment
-      }
-#endif
+    for (polynomial::base::base::iterator it=pol.begin(); it!=pol.end(); ++it)
+    {
+      StandardRepK new_rep = std_rep_rho_plus(it->first,strong);
+      result += Char(new_rep,it->second); // contribute a term
     }
   } // for sum over KGB for L
   return std::make_pair(sr, result);
@@ -1033,9 +979,8 @@ equation KhatContext::mu_equation(seq_no n, level bound)
   equation result(n,combination(height_order()));
   combination& sum=result.second;
 
-  standardrepk::level dummy=~0u;
   for (Char::const_iterator it=kf.second.begin(); it!=kf.second.end(); ++it)
-    sum.add_multiple(truncate(standardize(it->first,dummy),bound),it->second);
+    sum.add_multiple(truncate(standardize(it->first),bound),it->second);
 
   return result;
 }
@@ -1158,8 +1103,7 @@ KhatContext::saturate(const std::set<equation>& system, level bound)
 
 void KhatContext::go(const StandardRepK& initial)
 {
-  standardrepk::level dummy=~0u;
-  combination chi=standardize(initial,dummy);
+  combination chi=standardize(initial);
 
 #ifdef VERBOSE
   if (nonfinal_pool.size()>0)
@@ -1229,9 +1173,9 @@ PSalgebra::PSalgebra (tits::TitsElt base,
 
 
   // put any imaginary or complex positive roots into radical
-  for (rootdata::RootSet::iterator it = rd.posRootSet().begin(); it(); ++it)
+  for (size_t i=0; i<rd.numPosRoots(); ++i)
   {
-    rootdata::RootNbr alpha=*it;
+    rootdata::RootNbr alpha=rd.posRootNbr(i);
     if (not id.real_roots().isMember(alpha))
       nilpotents.insert(alpha);
   }

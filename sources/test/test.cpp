@@ -414,8 +414,7 @@ void trivial_f()
   {
     kgb::KGBElt x=subset[i];
     standardrepk::StandardRepK sr=khc.std_rep(rd.twoRho(),kgb.titsElt(x));
-    standardrepk::level dummy=~0u;
-    standardrepk::combination c=khc.standardize(sr,dummy);
+    standardrepk::combination c=khc.standardize(sr);
     if ((max_l-kgb.length(x))%2 == 0)
       sum += c;
     else
@@ -472,14 +471,12 @@ void Ktypeform_f()
 	 it=kf.second.begin(); it!=kf.second.end(); ++it)
   {
 #ifdef VERBOSE
-    khc.print(f,it->first) << " has height " << khc.height(it->first);
+    khc.print(f,it->first) << " has height " << khc.height(it->first)
+				   << std::endl;
     size_t old_size=khc.nr_reps();
 #endif
-    standardrepk::level low_mark=~0u;
-    standardrepk::combination st=khc.standardize(it->first,low_mark);
+    standardrepk::combination st=khc.standardize(it->first);
 #ifdef VERBOSE
-    f << ", height lower bound = " << low_mark << '.' << std::endl;
-
     for (size_t i=old_size; i<khc.nr_reps(); ++i)
       khc.print(f << 'R' << i << ": ",khc.rep_no(i))
         << ", height: " << khc.height(i) << std::endl;
@@ -527,8 +524,7 @@ void Ktypemat_f()
     }
   }
 
-  standardrepk::level dummy=~0u;
-  standardrepk::combination c=khc.standardize(sr,dummy);
+  standardrepk::combination c=khc.standardize(sr);
 
   if (c.empty())
   {
@@ -652,8 +648,7 @@ void branch_f()
     }
   }
 
-  standardrepk::level dummy=~0u;
-  standardrepk::combination c=khc.standardize(sr,dummy);
+  standardrepk::combination c=khc.standardize(sr);
 
   if (c.empty())
   {
