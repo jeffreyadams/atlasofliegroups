@@ -81,8 +81,6 @@ void rootBasis(RootList&, RootSet, const RootDatum&);
 
 void strongOrthogonalize(RootList&, const RootDatum&);
 
-bool sumIsRoot(const LT::Weight&, const LT::Weight&, const RootDatum&);
-
 void toDistinguished(LT::LatticeMatrix&, const RootDatum&);
 
 void toMatrix(LT::LatticeMatrix&, const weyl::WeylWord&, const RootDatum&);
@@ -144,62 +142,27 @@ use by accessors.
 \brief Semisimple rank of the root datum.
 */
   size_t d_semisimpleRank;
-/*!
-\brief  basis for orthogonal to roots.
-*/
-  LT::WeightList d_coradicalBasis;
-/*!
-\brief Basis for orthogonal to coroots.
-*/
-  LT::WeightList d_radicalBasis;
-/*!
-\brief Full list of roots.
-*/
-  LT::WeightList d_roots;
-/*!
-\brief Full list of coroots.
-*/
-  LT::WeightList d_coroots;
-/*!
-\brief Lists the negative of each root.
-*/
-  RootList d_minus;
-/*!
-\brief Numbers of the positive roots.
-*/
-  RootList d_posRoots;
-/*!
-\brief Numbers of the simple roots.
-*/
-  RootList d_simpleRoots;
-/*!
-\brief  Simple weights.
-*/
-  LT::RatWeightList d_weights;
-/*!
-\brief Simple coweights.
-*/
-  LT::RatWeightList d_coweights;
+
+  LT::WeightList d_roots; //!< Full list of roots.
+  LT::WeightList d_coroots; //!< Full list of coroots.
+  LT::RatWeightList d_weights; //!< Simple weights.
+  LT::RatWeightList d_coweights; //!< Simple coweights.
+  LT::WeightList d_radicalBasis; //!< Basis for orthogonal to coroots.
+  LT::WeightList d_coradicalBasis; //!< Basis for orthogonal to roots.
+
 /*!
 \brief Root permutations induced by simple reflections.
 */
   std::vector<setutils::Permutation> d_rootPermutation;
-/*!
-\brief BitMap flagging positive roots.
-*/
-  RootSet d_isPositive;
-/*!
-\brief BitMap flagging simple roots.
-*/
-  RootSet d_isSimple;
+
 /*!
 \brief Sum of the positive roots.
 */
-  LT::Weight d_twoRho;
+  LT::Weight d_2rho;
+  LT::Weight d_dual_2rho;
 
   /*!
-\brief BitSet recording in bit 0 whether the root datum is adjoint, and in
-  bit 1 whether the root datum is simply connected.
+\brief BitSet recording whether the root datum is adjoint/simply connected.
 
   "Adjoint" here means that the center of the complex group determined by the
   root datum is connected. "Simply connected" means that the derived group of
@@ -208,7 +171,6 @@ use by accessors.
   */
   Status d_status;
 
-  void fillStatus();
 
  public:
 
@@ -227,123 +189,155 @@ use by accessors.
   ~RootDatum();
 
 // accessors
+
+  unsigned long numRoots() const { return d_roots.size(); }
+
+  unsigned long numPosRoots() const { return numRoots()/2; }
+
+  size_t rank() const { return d_rank; }
+
+  size_t semisimpleRank() const { return d_semisimpleRank; }
+
 // root list access
 
-  LT::WeightList::const_iterator beginCoradical() const {
-    return d_coradicalBasis.begin();
-  }
+  LT::WeightList::const_iterator beginRoot() const
+    { return d_roots.begin(); }
 
-  LT::WeightList::const_iterator endCoradical() const {
-    return d_coradicalBasis.end();
-  }
+  LT::WeightList::const_iterator endRoot() const
+    { return d_roots.end(); }
 
-  LT::WeightList::const_iterator beginRadical() const {
-    return d_radicalBasis.begin();
-  }
+  LT::WeightList::const_iterator beginCoroot() const
+    { return d_coroots.begin(); }
 
-  LT::WeightList::const_iterator endRadical() const {
-    return d_radicalBasis.end();
-  }
+  LT::WeightList::const_iterator endCoroot() const
+    { return d_coroots.end(); }
 
-  LT::WeightList::const_iterator beginCoroot() const {
-    return d_coroots.begin();
-  }
+  LT::WeightList::const_iterator beginRadical() const
+    { return d_radicalBasis.begin(); }
 
-  LT::WeightList::const_iterator beginRoot() const {
-    return d_roots.begin();
-  }
+  LT::WeightList::const_iterator endRadical() const
+    { return d_radicalBasis.end(); }
 
-  LT::WeightList::const_iterator endRoot() const {
-    return d_roots.end();
-  }
+  LT::WeightList::const_iterator beginCoradical() const
+    { return d_coradicalBasis.begin(); }
 
-  LT::WeightList::const_iterator endCoroot() const {
-    return d_coroots.end();
-  }
+  LT::WeightList::const_iterator endCoradical() const
+    { return d_coradicalBasis.end(); }
 
-  WRootIterator beginPosCoroot() const;
+  WRootIterator beginSimpleRoot() const // simple roots start halfway
+    { return beginRoot()+numPosRoots(); }
 
-  WRootIterator endPosCoroot() const;
+  WRootIterator endSimpleRoot() const // and end after |semisimpleRank()|
+    { return beginSimpleRoot()+semisimpleRank(); }
 
-  WRootIterator beginPosRoot() const;
+  WRootIterator beginPosRoot() const // positive roots start halfway
+    { return  beginSimpleRoot(); }
 
-  WRootIterator endPosRoot() const;
+  WRootIterator endPosRoot() const // an continue to the end
+    { return endRoot(); }
 
-  WRootIterator beginSimpleCoroot() const;
+  WRootIterator beginSimpleCoroot() const
+    { return beginCoroot()+numPosRoots(); }
 
-  WRootIterator endSimpleCoroot() const;
+  WRootIterator endSimpleCoroot() const
+    { return beginSimpleCoroot()+semisimpleRank(); }
 
-  WRootIterator beginSimpleRoot() const;
+  WRootIterator beginPosCoroot() const // positive coroots start halfway
+    { return  beginSimpleCoroot(); }
 
-  WRootIterator endSimpleRoot() const;
+  WRootIterator endPosCoroot() const
+    { return endCoroot(); }
 
-  bool isPosRoot(RootNbr j) const {
-    return d_isPositive.isMember(j);
-  }
 
-  bool isRoot(const LT::Weight& v) const {
-    return setutils::find_index(d_roots,v) != d_roots.size();
-  }
+  bool isSimpleRoot(RootNbr j) const
+    { return j-numPosRoots()<semisimpleRank(); } // uses |RootNbr| is unsigned
 
-  bool isSemisimple() const {
-    return d_rank == d_semisimpleRank;
-  }
+  bool isPosRoot(RootNbr j) const { return j>=numPosRoots(); } // second half
 
-  bool isSimpleRoot(RootNbr j) const {
-    return d_isSimple.isMember(j);
-  }
+  bool isRoot(const LT::Weight& v) const // ask this of a weight
+    { return setutils::find_index(d_roots,v) != d_roots.size(); }
 
-  const LT::Weight& coroot(RootNbr j) const {
-    return d_coroots[j];
-  }
+  bool isSemisimple() const { return d_rank == d_semisimpleRank; }
 
-  const LT::Weight& posCoroot(size_t j) const {
-    return d_coroots[d_posRoots[j]];
-  }
+  const LT::Weight& root(RootNbr j) const
+    { assert(j<numRoots()); return d_roots[j]; }
 
-  const LT::Weight& posRoot(size_t j) const {
-    return d_roots[d_posRoots[j]];
-  }
+  RootNbr simpleRootNbr(size_t j) const
+    { assert(j<semisimpleRank());  return beginSimpleRoot()-beginRoot()+j; }
 
-  const LT::Weight& root(RootNbr j) const {
-    return d_roots[j];
-  }
+  const LT::Weight& simpleRoot(size_t j) const
+    { assert(j<semisimpleRank()); return *(beginSimpleRoot()+j); }
 
-  const LT::Weight& simpleCoroot(size_t j) const {
-    return d_coroots[d_simpleRoots[j]];
-  }
+  RootNbr posRootNbr(size_t j) const
+    { assert(j<numPosRoots()); return beginPosRoot()-beginRoot()+j; }
 
-  const LT::Weight& simpleRoot(size_t j) const {
-    return d_roots[d_simpleRoots[j]];
-  }
+  const LT::Weight& posRoot(size_t j) const
+    { assert(j<numPosRoots()); return *(beginPosRoot()+j); }
 
-  RootNbr posRootNbr(size_t j) const {
-    return d_posRoots[j];
-  }
+  RootNbr rootNbr(const Root& r) const
+    { return setutils::find_index(d_roots,r); }
 
-  RootNbr rootNbr(const Root& r) const {
-    return setutils::find_index(d_roots,r);
-  }
 
-  RootNbr simpleRootNbr(size_t j) const {
-    return d_simpleRoots[j];
-  }
+  const LT::Weight& coroot(RootNbr j) const
+    { assert(j<numRoots()); return d_coroots[j]; }
 
-  const RootSet& posRootSet() const {
-    return d_isPositive;
-  }
+  const LT::Weight& simpleCoroot(size_t j) const
+    { assert(j<semisimpleRank()); return *(beginSimpleCoroot()+j); }
 
-  const RootList& simpleRootList() const {
-    return d_simpleRoots;
-  }
+  const LT::Weight& posCoroot(size_t j) const
+    { assert(j<numPosRoots()); return  *(beginPosCoroot()+j); }
 
-  const RootSet& simpleRootSet() const {
-    return d_isSimple;
-  }
+
+  RootNbr rootMinus(RootNbr j) const // roots are ordered symmetrically
+    { return numRoots()-1-j; }
+
+
+  RootSet simpleRootSet() const // NOT for iteration over it, seems never used
+    {
+      RootSet simple_roots(numRoots());
+      for (size_t i=0; i<semisimpleRank(); ++i)
+	simple_roots.insert(simpleRootNbr(i));
+      return simple_roots;
+    }
+
+  RootList simpleRootList() const // NOT for iteration over it
+    {
+      RootList simple_roots(semisimpleRank());
+      for (size_t i=0; i<semisimpleRank(); ++i)
+	simple_roots[i]=simpleRootNbr(i);
+      return simple_roots;
+    }
+
+  RootSet posRootSet() const // NOT for iteration over it, may serve as mask
+    {
+      RootSet pos_roots(numRoots());
+      for (size_t i=0; i<numPosRoots(); ++i)
+	pos_roots.insert(posRootNbr(i));
+      return pos_roots;
+    }
 
 // other accessors
 
-  bool isAdjoint() const;
+/*!
+\brief Tells whether the rootdatum is the rootdatum of an adjoint group.
+
+  NOTE: we define a reductive group to be adjoint if its center is
+  connected.  An equivalent condition is that the derived group
+  of the dual group is simply connected.
+*/
+  bool isAdjoint() const { return d_status[IsAdjoint]; }
+
+/*!
+\brief Tells whether the rootdatum is the rootdatum of a simply connected
+  group.
+
+  NOTE: this is the dual condition to being adjoint: it means
+  that the derived group is simply connected.  An equivalent condition
+  is that the center of the dual group is connected.
+*/
+  bool isSimplyConnected() const { return d_status[IsSimplyConnected]; }
+
+
 
   bool isOrthogonal(const latticetypes::Weight& v, RootNbr j) const {
     return v.scalarProduct(coroot(j))==0;
@@ -353,27 +347,9 @@ use by accessors.
     return isOrthogonal(root(i),j);
   }
 
-  bool isSimplyConnected() const;
+  const LT::Weight& twoRho() const { return d_2rho; }
+  const LT::Weight& dual_twoRho() const { return d_dual_2rho; }
 
-  unsigned long numPosRoots() const {
-    return d_posRoots.size();
-  }
-
-  unsigned long numRoots() const {
-    return d_roots.size();
-  }
-
-  size_t rank() const {
-    return d_rank;
-  }
-
-  size_t semisimpleRank() const {
-    return d_semisimpleRank;
-  }
-
-  RootNbr rootMinus(RootNbr j) const {
-    return d_minus[j];
-  }
 
   LT::LatticeCoeff scalarProduct(const LT::Weight& v, RootNbr j) const
   {
@@ -403,9 +379,9 @@ use by accessors.
     { coreflect(co_lambda,alpha); return co_lambda; }
 
   void simpleReflect(LT::Weight& v, size_t i) const
-    { reflect(v,d_simpleRoots[i]); }
+    { reflect(v,simpleRootNbr(i)); }
   void simpleCoreflect(LT::Weight& v, size_t i) const
-    { coreflect(v,d_simpleRoots[i]); }
+    { coreflect(v,simpleRootNbr(i)); }
 
   LT::Weight simpleReflection(LT::Weight lambda, size_t i) const
     { simpleReflect(lambda,i); return lambda; }
@@ -451,13 +427,7 @@ template <typename I, typename O>
 template <typename I, typename O>
   void toSimpleWeights(const I&, const I&, O, const RootList&) const;
 
-  const LT::Weight& twoRho() const {
-    return d_twoRho;
-  }
-
-  LT::Weight dual_twoRho() const;
   LT::Weight twoRho(const RootList&) const;
-
   LT::Weight twoRho(const RootSet&) const;
 
 
@@ -467,29 +437,42 @@ template <typename I, typename O>
   RootList simpleBasis(const RootList& rl) const;
   RootList simpleBasis(RootSet rs) const;
 
-  bool sumIsRoot(RootNbr i, RootNbr j) const;
+
+  bool sumIsRoot(const LT::Weight&, const LT::Weight&) const;
+  bool sumIsRoot(RootNbr i, RootNbr j) const
+    { return sumIsRoot(root(i),root(j)); }
+
+  RootList high_roots() const;
 
 // manipulators
 
   void swap(RootDatum&);
 
+// private methods used during construction
+ private:
+
+  void fill_positives(latticetypes::WeightList& roots,
+		     latticetypes::WeightList& coroots);
+
+  std::vector<size_t>
+  sort_roots(const latticetypes::WeightList& roots,
+	     const latticetypes::WeightList& simple_coweights) const;
+
+  void fillStatus();
+
+
 }; // class RootDatum
 
-// NOTE: this should really be a template, depending on a RandomAccessIterator
-// with value_type RootNbr (so that in particular d_pos could be a pointer to
-// a RootNbr)
-
-template<typename I>
    /*!
    \brief Iterator for traversing a set of roots.
 
-   This template class is instantiated via WRootIterator, with I set to
-   std::vector<RootNbr>::const_iterator.  Such a class stores two
-   iterators: d_list, with value type LT::Weight, accessing a set of
-   roots, and d_pos, with value type RootNbr, indexing that set of
-   roots. Only the second one changes as the iterator advances, the first one
+   This template class has two main instances, with I=bitmap;:BitMap::iterator
+   and with I=std::vector<RootNbr>::const_iterator. Apart from the iterator
+   |d_po| of this type the class stores a iterator |d_list|, accessing a set
+   of roots. Only |d_pos| changes as the iterator advances, while |d_list|
    always points to the start of some |LT::WeightList|, so it can be |const|
    */
+template<typename I>
 class RootIterator { // constant Random Access Iterator
 
  private:
@@ -587,8 +570,9 @@ class RootIterator { // constant Random Access Iterator
    const LT::Weight& operator[] (difference_type n) {
      return d_list[d_pos[n]];
    }
-};
+}; // |template<typename I> class RootIterator|
 
+// non-member operator + which interchanges operand order
 template<typename I>
 inline RootIterator<I> operator+ (typename RootIterator<I>::difference_type n,
 				  RootIterator<I> i)
@@ -596,118 +580,10 @@ inline RootIterator<I> operator+ (typename RootIterator<I>::difference_type n,
     return i+n;
   }
 
-#if 0
-  /*!
-  Old non-template version of RootIterator, now excluded by the preprocessor.
-  */
-class RootIterator { // constant Random Access Iterator
 
- private:
+} // |namespace rootdata|
 
-   LT::WeightList::const_iterator d_list;
-   I d_pos;
-
- public:
-
-// associated types
-   typedef LT::Weight value_type;
-   typedef ptrdiff_t difference_type;
-   typedef const LT::Weight& reference;
-   typedef const LT::Weight* pointer;
-   typedef std::random_access_iterator_tag iterator_category;
-
-// constructors and destructors
-   RootIterator() {}
-
-   RootIterator(const RootIterator& i)
-     :d_list(i.d_list),d_pos(i.d_pos) {}
-
-   RootIterator(const LT::WeightList& wl, RootList::const_iterator i)
-     :d_list(wl.begin()), d_pos(i) {}
-
-   RootIterator(LT::WeightList::const_iterator wl, RootList::const_iterator i)
-     :d_list(wl), d_pos(i) {}
-
-   RootIterator(const RootDatum& rd, RootList::const_iterator i)
-     :d_list(rd.beginRoot()), d_pos(i) {}
-
-   ~RootIterator() {}
-
-// assignment
-   RootIterator& operator= (const RootIterator& i) {
-     d_list = i.d_list;
-     d_pos = i.d_pos;
-     return *this;
-   }
-
-// comparison
-   bool operator== (const RootIterator& i) const {
-     return d_pos == i.d_pos;
-   }
-
-   bool operator!= (const RootIterator& i) const {
-     return d_pos != i.d_pos;
-   }
-
-// iterator operations
-   const LT::Weight& operator* () {
-     return d_list[*d_pos];
-   }
-
-   RootIterator& operator++ () {
-     ++d_pos;
-     return *this;
-   }
-
-   RootIterator operator++ (int) {
-     return RootIterator(d_list,d_pos++);
-   }
-
-   RootIterator& operator-- () {
-     --d_pos;
-     return *this;
-   }
-
-   RootIterator operator-- (int) {
-     return RootIterator(d_list,d_pos--);
-   }
-
-   RootIterator& operator+= (difference_type n) {
-     d_pos += n;
-     return *this;
-   }
-
-   RootIterator operator+ (difference_type n) {
-     return RootIterator(d_list,d_pos+n);
-   }
-
-   RootIterator& operator-= (difference_type n) {
-     d_pos -= n;
-     return *this;
-   }
-
-   RootIterator operator- (difference_type n) {
-     return RootIterator(d_list,d_pos-n);
-   }
-
-   difference_type operator- (const RootIterator& i) const {
-     return d_pos-i.d_pos;
-   }
-
-   const LT::Weight& operator[] (difference_type n) {
-     return d_list[d_pos[n]];
-   }
-};
-
-inline RootIterator operator+ (RootIterator::difference_type n, RootIterator i)
-  {
-    return i+n;
-  }
-#endif
-
-}
-
-}
+} // |namespace atlas|
 
 #include "rootdata_def.h"
 
