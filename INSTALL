@@ -149,7 +149,7 @@ directory.
 There appears to be a small problem with the "configure" script when
 it is used with OS 10.4. To work around it, edit the file
 
-readline-5.2/shobj-conf
+readline-5.2/support/shobj-conf
 
 Line 170 should be changed from
 
