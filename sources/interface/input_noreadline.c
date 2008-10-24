@@ -1,8 +1,8 @@
 /*
   This is input_noreadline.c
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For copyright and license information see the LICENSE file
 */
@@ -30,23 +30,26 @@ const char* readLine(const char* prompt = "", bool toHistory = true);
 
         Chapter I -- The InputBuffer class
 
-  ... explain here when it is stable ...
+  An InputBuffer object can hold a line of input, and can be used as in
+  |std::istringstream| object (since it is publicly derived from that class),
+  in particular one can read from it using the 'source >> variable' syntax.
+  In addition, it provides a |getline| method that will fill the string that
+  it holds from standard input; this calls readline unless NREADLINE was set.
 
 ******************************************************************************/
 
 namespace input {
 
+/*!
+  Forget string in input buffer, read a new line, and position at start
+*/
 std::istream& InputBuffer::getline(std::istream& is, const char* prompt,
 				   bool toHistory)
 
-/*
-  Synopsis: reads 
-*/
-
 {
-  std::string line = readLine(prompt,toHistory);
+  const char* line = readLine(prompt,toHistory); // non-owned pointer
 
-  str(line);
+  str(line==NULL ? std::cout << "qq\n","qq" : line); // 'qq' at end of input
   reset();
 
   return is;
@@ -65,29 +68,24 @@ void InputBuffer::reset()
   return;
 }
 
-void InputBuffer::reset(std::streampos pos)
 
 /*
   Synopsis: resets the stream to position pos.
 
   Clears the flags as well; the idea is to undo a peek-forward operation.
 */
-
-{  
+void InputBuffer::reset(std::streampos pos)
+{
   clear();
   seekg(pos);
-
-  return;
 }
 
-}
+} // |namespace input|
 
 /*****************************************************************************
 
         Chapter III -- Functions declared in input.h
                     -- version _without_ readline
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -119,18 +117,15 @@ void initReadLine()
         Chapter IV -- Local functions
                    -- version _without_ readline
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
-namespace {
 
-const char* readLine (const char* prompt, bool toHistory)
+namespace {
 
 /*
   Synopsis: gets a line of input.
 */
-
+const char* readLine (const char* prompt, bool toHistory)
 {
   static std::string line;
 
@@ -140,6 +135,6 @@ const char* readLine (const char* prompt, bool toHistory)
   return line.c_str();
 }
 
-}
+} // namespace
 
-}
+} // namespace atlas
