@@ -918,54 +918,62 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound) const
   for (RawChar::const_iterator it=KGB_sum_q.begin(); it!=KGB_sum_q.end(); ++it)
     hash.match(it->first.second); // enter relevant Tits elements into table
 
+  // type of formal linear combination of weights, associated to Tits element
+  typedef free_abelian::Monoid_Ring<latticetypes::Weight> polynomial;
+  polynomial one(latticetypes::Weight(complexGroup().rank(),0),1);
+
   // per strong involution (|TitsElt|) set of roots, to sum over its powerset
-  std::vector<rootdata::RootSet>
-    sum_set(pool.size(),rootdata::RootSet(rd.numRoots()));
+  std::vector<polynomial> sum_poly; sum_poly.reserve(pool.size());
 
   for (size_t i=0; i<pool.size(); ++i)
   {
     tits::TitsElt strong_inv=pool[i];
     cartanclass::InvolutionData id(rd,cs.involutionMatrix(strong_inv.tw()));
+
+    rootdata::RootSet A(rd.numRoots());
     for (bitmap::BitMap::iterator
 	   rt=q.radical().begin(); rt!=q.radical().end(); ++rt)
     {
       rootdata::RootNbr alpha=*rt;
       assert(not id.real_roots().isMember(alpha));
       if (id.imaginary_roots().isMember(alpha))
-	sum_set[i].set_to(alpha,d_Tg.grading(strong_inv,alpha));
+	A.set_to(alpha,d_Tg.grading(strong_inv,alpha)); // add if noncompact
       else // complex root
       {
 	rootdata::RootNbr beta=id.root_involution(alpha);
 	assert(rd.isPosRoot(beta));
-	sum_set[i].set_to(alpha,beta>alpha);
+	A.set_to(alpha,beta>alpha); // add first of two complex roots
       }
     }
-  }
+    sum_poly.push_back(one);
+    polynomial& pol=sum_poly.back();
 
-  Char result;
-  for (RawChar::const_iterator it=KGB_sum_q.begin(); it!=KGB_sum_q.end(); ++it)
-  {
-    Char::coef_t c=it->second;
-    const latticetypes::Weight& mu=it->first.first;
-    const tits::TitsElt& strong=it->first.second;
-
-
-    const rootdata::RootSet& Aset=sum_set[hash.find(strong)];
-
-    typedef free_abelian::Monoid_Ring<latticetypes::Weight> polynomial;
-
-    polynomial pol(mu,c);
-
-    for (rootdata::RootSet::iterator it=Aset.begin(); it!=Aset.end(); ++it)
+    for (rootdata::RootSet::iterator it=A.begin(); it!=A.end(); ++it)
     {
       polynomial copy=pol; // since |add_multiple| assumes no aliasing
       pol.add_multiple(copy,-1,rd.root(*it));
     }
 
-    for (polynomial::base::base::iterator it=pol.begin(); it!=pol.end(); ++it)
+  }
+
+  Char result;
+  for (RawChar::const_iterator it=KGB_sum_q.begin(); it!=KGB_sum_q.end(); ++it)
+  {
+    Char::coef_t c=it->second; // coefficient from |KGB_sum_q|
+    const latticetypes::Weight& mu=it->first.first; // weight from |KGB_sum_q|
+    const tits::TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_q|
+
+    // recall the formal sum of weights that was associated to |strong|
+    const polynomial& pol=sum_poly[hash.find(strong)];
+
+    // iterate over terms in formal sum, taking weights += |mu|, coef *= |c|
+    for (polynomial::base::base::const_iterator
+	   term=pol.begin(); term!=pol.end(); ++term)
     {
-      StandardRepK new_rep = std_rep_rho_plus(it->first,strong);
-      result += Char(new_rep,it->second); // contribute a term
+      latticetypes::Weight lambda=term->first;
+      polynomial::coef_t coef=term->second;
+      lambda += mu;
+      result += Char(std_rep_rho_plus(lambda,strong),c*coef); // contribute
     }
   } // for sum over KGB for L
   return std::make_pair(sr, result);
