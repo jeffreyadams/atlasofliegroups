@@ -4,6 +4,8 @@ A detailed history of the early development is found in the file
 workinglog. Newer changes are documented in the CVS repository.
 This file contains a summary of major changes to the software.
 
+Version 0.3.1
+* Updated INSTALL file with new readline instructions for the mac
 Version 0.3
 * Classification of Cartan classes now uses canonical representatives
 * Added 'kgborder' and 'blockorder' commands
