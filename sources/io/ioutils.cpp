@@ -97,7 +97,7 @@ std::ostream& foldLine(std::ostream& strm, const std::string& line,
     }
     for (size_t i=0; i<post.size(); ++i)
     {
-      size_t bp=line.rfind(pre[i],old_break+lineSize-indent);
+      size_t bp=line.rfind(post[i],old_break+lineSize-indent);
       if (bp!=std::string::npos and bp+post[i].size()>point)
 	point=bp+post[i].size();
     }

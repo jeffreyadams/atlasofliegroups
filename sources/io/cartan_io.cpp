@@ -50,10 +50,13 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
 
   prettyprint::printTorusType(strm,f.torus()) << std::endl;
 
-  strm << "canonical twisted involution: ";
-  prettyprint::printWeylElt
-    (strm,G.cartanClasses().twistedInvolution(cn),G.weylGroup())
-       << std::endl;
+  {
+    std::ostringstream os;
+    os << "canonical twisted involution: ";
+    prettyprint::printWeylElt
+      (os,G.cartanClasses().twistedInvolution(cn),G.weylGroup());
+    ioutils::foldLine(strm,os.str(),"",",") << std::endl;
+  }
 
   size_t orbit_size=cc.orbitSize();
   strm << "twisted involution orbit size: " << orbit_size
@@ -107,14 +110,14 @@ std::ostream& printFiber(std::ostream& strm, const cartanclass::Fiber& f,
   const partition::Partition& pi = f.weakReal();
   unsigned long c = 0;
 
-  for (partition::PartitionIterator i(pi); i(); ++i,++c) {
+  for (partition::PartitionIterator i(pi); i(); ++i,++c)
+  {
     std::ostringstream os;
     os << "real form #";
     os << rfl[c] << ": ";
     basic_io::seqPrint(os,i->first,i->second,",","[","]");
     os << " (" << i->second - i->first << ")" << std::endl;
-    std::string line = os.str();
-    ioutils::foldLine(strm,line,"",",");
+    ioutils::foldLine(strm,os.str(),"",",");
   }
 
   return strm;
