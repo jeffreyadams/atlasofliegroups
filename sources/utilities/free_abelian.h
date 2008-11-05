@@ -36,6 +36,8 @@ struct Free_Abelian : public std::map<T,long int,Compare>
 {
   typedef long int coef_t;
   typedef std::map<T,coef_t,Compare> base;
+  typedef typename base::iterator iterator;
+  typedef typename base::const_iterator const_iterator;
 
   Free_Abelian() : base(Compare()) {}
 
@@ -77,6 +79,8 @@ struct Monoid_Ring : public Free_Abelian<T,Compare>
 {
   typedef Free_Abelian<T,Compare> base;
   typedef typename base::coef_t coef_t;
+  typedef typename base::iterator iterator;
+  typedef typename base::const_iterator const_iterator;
 
   Monoid_Ring() : base(Compare()) {}
   Monoid_Ring(Compare c) : base(c) {}

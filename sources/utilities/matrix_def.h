@@ -152,8 +152,8 @@ Matrix<C>::Matrix(const std::vector<Vector<C> >& b)
   d_columns = b.size();
   d_data.resize(d_rows*d_columns);
 
-  for (size_t j = 0; j < d_columns; ++j) {
-    for (size_t i = 0; i < d_rows; ++i)
+  for (size_t j = 0; j<d_columns; ++j) {
+    for (size_t i = 0; i<d_rows; ++i)
       (*this)(i,j) = b[j][i];
   }
 }
@@ -184,8 +184,8 @@ Matrix<C>::Matrix(const Matrix<C>& source, size_t r_first, size_t c_first,
    d_rows(r_last-r_first),
    d_columns(c_last-c_first)
 {
-  for (size_t j = 0; j < d_columns; ++j)
-    for (size_t i = 0; i < d_rows; ++i)
+  for (size_t j = 0; j<d_columns; ++j)
+    for (size_t i = 0; i<d_rows; ++i)
       (*this)(i,j) = source(r_first+i,c_first+j);
 }
 
@@ -232,8 +232,8 @@ Matrix<C>::Matrix(const I& first, const I& last, tags::IteratorTag)
   d_columns = b.size();
   d_data.resize(d_rows*d_columns);
 
-  for (size_t i = 0; i < d_rows; ++i)
-    for (size_t j = 0; j < d_columns; ++j)
+  for (size_t i = 0; i<d_rows; ++i)
+    for (size_t j = 0; j<d_columns; ++j)
       (*this)(i,j) = b[j][i];
 }
 
@@ -259,13 +259,13 @@ typename Matrix<C>::index_pair Matrix<C>::absMinPos(size_t i_min,
   size_t i_m = d_rows;
   size_t j_m = d_columns;
 
-  for (size_t i = i_min; i < d_rows; ++i)
-    for (size_t j = j_min; j < d_columns; ++j)
+  for (size_t i = i_min; i<d_rows; ++i)
+    for (size_t j = j_min; j<d_columns; ++j)
     {
       C c = (*this)(i,j);
       if (c == 0)
 	continue;
-      if (intutils::abs(c) < minCoeff) // new smallest value
+      if (intutils::abs(c)<minCoeff) // new smallest value
       {
 	minCoeff = intutils::abs(c);
 	i_m = i;
@@ -288,10 +288,10 @@ Vector<C> Matrix<C>::apply(const Vector<C>& w) const
 {
   Vector<C> result(d_rows);
 
-  for (size_t i = 0; i < d_rows; ++i)
+  for (size_t i = 0; i<d_rows; ++i)
   {
     C c = 0;
-    for (size_t j = 0; j < d_columns; ++j)
+    for (size_t j = 0; j<d_columns; ++j)
       c += (*this)(i,j) * w[j];
     result[i] = c;
   }
@@ -327,6 +327,26 @@ void Matrix<C>::apply(const I& first, const I& last, O out) const
   }
 }
 
+/*! \brief
+Multiplies the matrix to right to the row-vector w, and returns the result.
+It is assumed that the size of w is the number of rows; result size is the
+number of columns. This is the proper sense of application for dual space.
+*/
+template<typename C>
+Vector<C> Matrix<C>::right_apply(const Vector<C>& w) const
+{
+  Vector<C> result(d_columns);
+
+    for (size_t j = 0; j<d_columns; ++j)
+  {
+    C c = 0;
+    for (size_t i = 0; i<d_rows; ++i)
+      c += w[i] * (*this)(i,j);
+    result[j] = c;
+  }
+
+  return result;
+}
 
 /*!
   Puts the j-th column of the matrix in v.
@@ -336,7 +356,7 @@ void Matrix<C>::column(Vector<C>& v, size_t j) const
 {
   v.resize(d_rows);
 
-  for (size_t i = 0; i < d_rows; ++i)
+  for (size_t i = 0; i<d_rows; ++i)
     v[i] = (*this)(i,j);
 }
 
@@ -347,7 +367,7 @@ void Matrix<C>::column(Vector<C>& v, size_t j) const
 template<typename C>
 bool Matrix<C>::divisible(C c) const
 {
-  for (size_t j = 0; j < d_data.size(); ++j)
+  for (size_t j = 0; j<d_data.size(); ++j)
     if (d_data[j]%c)
       return false;
 
@@ -363,7 +383,7 @@ void Matrix<C>::row(Vector<C>& v, size_t i) const
 {
   v.resize(d_columns);
 
-  for (size_t j = 0; j < d_columns; ++j)
+  for (size_t j = 0; j<d_columns; ++j)
     v[j] = (*this)(i,j);
 }
 
@@ -376,7 +396,10 @@ void Matrix<C>::row(Vector<C>& v, size_t i) const
 template<typename C>
 Matrix<C>& Matrix<C>::operator+= (const Matrix<C>&  m)
 {
+  assert(numRows()==m.numRows());
+  assert(numColumns()==m.numColumns());
   d_data += m.d_data;
+  return *this;
 }
 
 /*!
@@ -386,7 +409,10 @@ Matrix<C>& Matrix<C>::operator+= (const Matrix<C>&  m)
 template<typename C>
 Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
 {
-    d_data -= m.d_data;
+  assert(numRows()==m.numRows());
+  assert(numColumns()==m.numColumns());
+  d_data -= m.d_data;
+  return *this;
 }
 
 
@@ -396,11 +422,11 @@ Matrix<C> Matrix<C>::operator* (const Matrix<C>&  m) const
   assert(d_columns==m.d_rows);
   Matrix<C> result(d_rows,m.d_columns);
 
-  for (size_t i = 0; i < d_rows; ++i)
-    for (size_t k = 0; k < m.d_columns; ++k)
+  for (size_t i = 0; i<d_rows; ++i)
+    for (size_t k = 0; k<m.d_columns; ++k)
     {
       C c=0;
-      for (size_t j = 0; j < d_columns; ++j)
+      for (size_t j = 0; j<d_columns; ++j)
 	c += (*this)(i,j) * m(j,k);
 
       result(i,k)=c;
@@ -425,9 +451,9 @@ Matrix<C>& Matrix<C>::operator*= (const Matrix<C>&  m)
   C zero = 0; // conversion from int
   Matrix<C> prod(d_rows,m.d_columns,zero);
 
-  for (size_t i = 0; i < d_rows; ++i)
-    for (size_t j = 0; j < m.d_columns; ++j)
-      for (size_t k = 0; k < d_columns; ++k)
+  for (size_t i = 0; i<d_rows; ++i)
+    for (size_t j = 0; j<m.d_columns; ++j)
+      for (size_t k = 0; k<d_columns; ++k)
       {
 	C t_ik = (*this)(i,k);
 	C m_kj = m(k,j);
@@ -455,7 +481,7 @@ Matrix<C>& Matrix<C>::operator/= (const C& c)
 template<typename C>
 void Matrix<C>::changeColumnSign(size_t j)
 {
-  for (size_t i = 0; i < d_rows; ++i) {
+  for (size_t i = 0; i<d_rows; ++i) {
     (*this)(i,j) *= -1;
   }
 }
@@ -467,7 +493,7 @@ void Matrix<C>::changeColumnSign(size_t j)
 template<typename C>
 void Matrix<C>::changeRowSign(size_t i)
 {
-  for (size_t j = 0; j < d_columns; ++j) {
+  for (size_t j = 0; j<d_columns; ++j) {
     (*this)(i,j) *= -1;
   }
 }
@@ -480,7 +506,7 @@ void Matrix<C>::changeRowSign(size_t i)
 template<typename C>
 void Matrix<C>::columnOperation(size_t i, size_t j, const C& c)
 {
-  for (size_t k = 0; k < columnSize(); ++k)
+  for (size_t k = 0; k<columnSize(); ++k)
     (*this)(k,i) += c*(*this)(k,j);
 }
 
@@ -492,8 +518,8 @@ void Matrix<C>::columnOperation(size_t i, size_t j, const C& c)
 template<typename C>
 void Matrix<C>::copy(const Matrix<C>& source, size_t r, size_t c)
 {
-  for (size_t j = 0; j < source.d_columns; ++j)
-    for (size_t i = 0; i < source.d_rows; ++i)
+  for (size_t j = 0; j<source.d_columns; ++j)
+    for (size_t i = 0; i<source.d_rows; ++i)
       (*this)(r+i,c+j) = source(i,j);
 }
 
@@ -505,7 +531,7 @@ void Matrix<C>::copy(const Matrix<C>& source, size_t r, size_t c)
 template<typename C>
 void Matrix<C>::copyColumn(const Matrix<C>& m, size_t c_d, size_t c_s)
 {
-  for (size_t i = 0; i < d_rows; ++i)
+  for (size_t i = 0; i<d_rows; ++i)
     (*this)(i,c_d) = m(i,c_s);
 }
 
@@ -517,7 +543,7 @@ void Matrix<C>::copyColumn(const Matrix<C>& m, size_t c_d, size_t c_s)
 template<typename C>
 void Matrix<C>::copyRow(const Matrix<C>& m, size_t r_d, size_t r_s)
 {
-  for (size_t j = 0; j < d_columns; ++j)
+  for (size_t j = 0; j<d_columns; ++j)
     (*this)(r_d,j) = m(r_s,j);
 }
 
@@ -532,7 +558,7 @@ void Matrix<C>::eraseColumn(size_t j)
   iterator pos = begin() + j;
   --d_columns;
 
-  for (size_t k = 0; k < d_rows; ++k, pos += d_columns)
+  for (size_t k = 0; k<d_rows; ++k, pos += d_columns)
     d_data.erase(pos);
 }
 
@@ -589,14 +615,14 @@ void Matrix<C>::invert(C& d)
 
   // set res to identity
 
-  for (size_t j = 0; j < d_rows; ++j)
+  for (size_t j = 0; j<d_rows; ++j)
     row(j,j) = 1;
 
   Matrix<C> col(row);
 
   // take *this to triangular form
 
-  for (size_t r = 0; r < d_rows; ++r) {
+  for (size_t r = 0; r<d_rows; ++r) {
 
     if (isZero(r,r)) { // null matrix left; matrix is not invertible
       d = 0;
@@ -615,7 +641,7 @@ void Matrix<C>::invert(C& d)
       col.swapColumns(r,k.second);
     }
 
-    if ((*this)(r,r) < 0) {
+    if ((*this)(r,r)<0) {
       changeRowSign(r);
       row.changeRowSign(r);
     }
@@ -641,7 +667,7 @@ void Matrix<C>::invert(C& d)
 
   // now multiply out diagonal
 
-  for (size_t j = 1; j < d_rows; ++j) {
+  for (size_t j = 1; j<d_rows; ++j) {
     (*this)(j,j) *= (*this)(j-1,j-1);
   }
 
@@ -649,7 +675,7 @@ void Matrix<C>::invert(C& d)
 
   d = (*this)(d_rows-1,d_rows-1); // minimal denominator
 
-  for (size_t j = 0; j < d_rows; ++j) {
+  for (size_t j = 0; j<d_rows; ++j) {
     (*this)(j,j) = d/(*this)(j,j);
   }
 
@@ -668,8 +694,8 @@ bool Matrix<C>::isZero(size_t i_min, size_t j_min) const
   if (d_data.size() == 0) // empty matrix
     return true;
 
-  for (size_t i = i_min; i < d_rows; ++i)
-    for (size_t j = j_min; j < d_columns; ++j)
+  for (size_t i = i_min; i<d_rows; ++i)
+    for (size_t j = j_min; j<d_columns; ++j)
       if ((*this)(i,j))
 	return false;
 
@@ -705,8 +731,8 @@ void Matrix<C>::permute(const setutils::Permutation& a)
 {
   Matrix<C> q(d_columns);
 
-  for (size_t j = 0; j < d_columns; ++j)
-    for (size_t i = 0; i < d_rows; ++i) {
+  for (size_t j = 0; j<d_columns; ++j)
+    for (size_t i = 0; i<d_rows; ++i) {
       size_t a_i = a[i];
       size_t a_j = a[j];
       q(i,j) = (*this)(a_i,a_j);
@@ -754,7 +780,7 @@ void Matrix<C>::resize(size_t m, size_t n, const C& c)
 template<typename C>
 void Matrix<C>::rowOperation(size_t i, size_t j, const C& c)
 {
-  for (size_t k = 0; k < rowSize(); ++k)
+  for (size_t k = 0; k<rowSize(); ++k)
     (*this)(i,k) += c*(*this)(j,k);
 }
 
@@ -782,7 +808,7 @@ void Matrix<C>::swap(Matrix<C>& m)
 template<typename C>
 void Matrix<C>::swapColumns(size_t i, size_t j)
 {
-  for (size_t k = 0; k < columnSize(); ++k) {
+  for (size_t k = 0; k<columnSize(); ++k) {
     C tmp = (*this)(k,i);
     (*this)(k,i) = (*this)(k,j);
     (*this)(k,j) = tmp;
@@ -796,7 +822,7 @@ void Matrix<C>::swapColumns(size_t i, size_t j)
 template<typename C>
 void Matrix<C>::swapRows(size_t i, size_t j)
 {
-  for (size_t k = 0; k < rowSize(); ++k) {
+  for (size_t k = 0; k<rowSize(); ++k) {
     C tmp = (*this)(i,k);
     (*this)(i,k) = (*this)(j,k);
     (*this)(j,k) = tmp;
@@ -812,8 +838,8 @@ void Matrix<C>::swapRows(size_t i, size_t j)
 template<typename C> void Matrix<C>::transpose()
 {
   if (d_rows == d_columns) {// matrix is square
-    for (size_t j = 0; j < d_columns; ++j)
-      for (size_t i = j+1; i < d_rows; ++i) {
+    for (size_t j = 0; j<d_columns; ++j)
+      for (size_t i = j+1; i<d_rows; ++i) {
 	C t = (*this)(i,j);
 	(*this)(i,j) = (*this)(j,i);
 	(*this)(j,i) = t;
@@ -829,8 +855,8 @@ template<typename C> void Matrix<C>::transpose()
 
   // write data for transpose matrix in v
 
-  for (size_t j = 0; j < d_columns; ++j)
-    for (size_t i = 0; i < d_rows; ++i) {
+  for (size_t j = 0; j<d_columns; ++j)
+    for (size_t i = 0; i<d_rows; ++i) {
       v[k] = (*this)(i,j);
       k++;
     }
@@ -863,7 +889,7 @@ template<typename C>
 {
   b.resize(m.numColumns());
 
-  for (size_t j = 0; j < b.size(); ++j) {
+  for (size_t j = 0; j<b.size(); ++j) {
     m.column(b[j],j);
   }
 }
@@ -896,8 +922,8 @@ void extractBlock(Matrix<C>& dest, const Matrix<C>& source, size_t firstRow,
 {
   dest.resize(lastRow - firstRow, lastColumn - firstColumn);
 
-  for (size_t j = 0; j < dest.numColumns(); ++j)
-    for (size_t i = 0; i < dest.numRows(); ++i)
+  for (size_t j = 0; j<dest.numColumns(); ++j)
+    for (size_t i = 0; i<dest.numRows(); ++i)
       dest(i,j) = source(firstRow+i,firstColumn+j);
 }
 
@@ -912,8 +938,8 @@ void extractMatrix(Matrix<C>& dest, const Matrix<C>& source,
 {
   dest.resize(r.size(),c.size());
 
-  for (size_t j = 0; j < c.size(); ++j)
-    for (size_t i = 0; i < c.size(); ++i)
+  for (size_t i = 0; i<c.size(); ++i)
+    for (size_t j = 0; j<c.size(); ++j)
       dest(i,j) = source(r[i],c[j]);
 }
 
@@ -923,11 +949,10 @@ void extractMatrix(Matrix<C>& dest, const Matrix<C>& source,
 */
 template<typename C> void identityMatrix(Matrix<C>& m, size_t n)
 {
-  C zero = 0; // conversion from int
-  m.resize(n,n,zero);
+  m.resize(n,n,C(0));
 
-  for (size_t j = 0; j < n; ++j)
-    m(j,j) = 1;
+  for (size_t i = 0; i<n; ++i)
+    m(i,i) = C(1);
 }
 
 /*!
@@ -936,11 +961,10 @@ template<typename C> void identityMatrix(Matrix<C>& m, size_t n)
 template<typename C>
   void initBasis(std::vector<Vector<C> >& b, size_t r)
 {
-  C zero = 0; // conversion from int
-  b.assign(r,Vector<C>(r,zero));
+  b.assign(r,Vector<C>(r,C(0)));
 
-  for (size_t j = 0; j < r; ++j) {
-    b[j][j] = 1;
+  for (size_t i = 0; i<r; ++i) {
+    b[i][i] = C(1);
   }
 }
 
@@ -999,8 +1023,8 @@ void blockReduce(Matrix<C>& m, size_t d, Matrix<C>& r, Matrix<C>& c)
   }
 
   if (m(d,d) > 1) // divide
-    for (size_t j = d+1; j < m.rowSize(); ++j)
-      for (size_t i = d+1; i < m.columnSize(); ++i)
+    for (size_t j = d+1; j<m.rowSize(); ++j)
+      for (size_t i = d+1; i<m.columnSize(); ++i)
 	m(i,j) /= m(d,d);
 }
 
@@ -1014,7 +1038,7 @@ void blockShape(Matrix<C>& m, size_t d, Matrix<C>& r,Matrix<C>& c)
 {
   C a = m(d,d);
 
-  for (size_t j = d+1; j < m.rowSize(); ++j) {
+  for (size_t j = d+1; j<m.rowSize(); ++j) {
     if (m(d,j) == 0)
       continue;
     C q = m(d,j)/a;
@@ -1023,7 +1047,7 @@ void blockShape(Matrix<C>& m, size_t d, Matrix<C>& r,Matrix<C>& c)
     c.columnOperation(j,d,q);
   }
 
-  for (size_t i = d+1; i < m.columnSize(); ++i) {
+  for (size_t i = d+1; i<m.columnSize(); ++i) {
     if (m(i,d) == 0)
       continue;
     C q = m(i,d)/a;
@@ -1063,8 +1087,8 @@ typename Matrix<C>::index_pair findBlockReduction(const Matrix<C>& m,
 {
   C a = m(r,r);
 
-  for (size_t j = r+1; j < m.rowSize(); ++j) {
-    for (size_t i = r+1; i < m.columnSize(); ++i) {
+  for (size_t j = r+1; j<m.rowSize(); ++j) {
+    for (size_t i = r+1; i<m.columnSize(); ++i) {
       if (m(i,j)%a)
 	return std::make_pair(i,j);
     }
@@ -1085,12 +1109,12 @@ typename Matrix<C>::index_pair findReduction(const Matrix<C>& m,
 {
   C a = m(r,r);
 
-  for (size_t j = r+1; j < m.rowSize(); ++j) {
+  for (size_t j = r+1; j<m.rowSize(); ++j) {
     if (m(r,j)%a)
       return std::make_pair(r,j);
   }
 
-  for (size_t i = r+1; i < m.columnSize(); ++i) {
+  for (size_t i = r+1; i<m.columnSize(); ++i) {
     if (m(i,r)%a)
       return std::make_pair(i,r);
   }
@@ -1112,8 +1136,8 @@ bool hasBlockReduction(const Matrix<C>& m, size_t r)
   if (a == 1)
     return false;
 
-  for (size_t j = r+1; j < m.rowSize(); ++j) {
-    for (size_t i = r+1; i < m.columnSize(); ++i) {
+  for (size_t j = r+1; j<m.rowSize(); ++j) {
+    for (size_t i = r+1; i<m.columnSize(); ++i) {
       if (m(i,j)%a)
 	return true;
     }
@@ -1135,12 +1159,12 @@ bool hasReduction(const Matrix<C>& m, size_t r)
   if (a == 1)
     return false;
 
-  for (size_t j = r+1; j < m.rowSize(); ++j) {
+  for (size_t j = r+1; j<m.rowSize(); ++j) {
     if (m(r,j)%a)
       return true;
   }
 
-  for (size_t i = r+1; i < m.columnSize(); ++i) {
+  for (size_t i = r+1; i<m.columnSize(); ++i) {
     if (m(i,r)%a)
       return true;
   }
