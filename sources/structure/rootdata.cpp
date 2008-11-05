@@ -107,19 +107,17 @@ namespace rootdata {
 
 RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   : d_rank(prd.rank())
+  , d_semisimpleRank(prd.roots().size())
   , d_roots(prd.roots()) // temporarily set roots to \emph{simple} roots
   , d_coroots(prd.coroots()) // same for coroots
+  , weight_numer(), coweight_numer()
+  , d_radicalBasis(), d_coradicalBasis()
+  , d_rootPermutation() // size |numRoots()| is not yet known
   , d_2rho(prd.rank(),0)
   , d_dual_2rho(prd.rank(),0)
+  , Cartan_denom()
+  , d_status()
 {
-  d_semisimpleRank = d_roots.size();
-
-  // get basis of co-radical character lattice
-
-  if (d_semisimpleRank < d_rank) {
-    lattice::perp(d_coradicalBasis,d_coroots,d_rank);
-    lattice::perp(d_radicalBasis,d_roots,d_rank);
-  }
   // fill in the weights and coweights
 
   latticetypes::LatticeMatrix tc(d_semisimpleRank); // transpose Cartan matrix
@@ -128,31 +126,30 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
     for (size_t i = 0; i < d_semisimpleRank; ++i)
       tc(j,i) = d_roots[i].scalarProduct(d_coroots[j]);
 
-  latticetypes::LatticeCoeff d;
-  tc.invert(d); // this inverse matrix will serve twice!
+  tc.invert(Cartan_denom); // this inverse matrix will serve twice!
 
   // the simple weights are given by the matrix Q.tC^{-1}, where Q is the
   // matrix of the simple roots, tC the transpose Cartan matrix
   latticetypes::LatticeMatrix q(d_roots);
+  latticetypes::LatticeMatrix qc(d_coroots);
+  qc *= tc;
+  tc.transpose(); // now we have the non-transposed Cartan matrix
   q *= tc;
 
   for (size_t j = 0; j < d_semisimpleRank; ++j) {
     latticetypes::Weight v;
     q.column(v,j);
-    d_weights.push_back(latticetypes::RatWeight(v,d));
+    weight_numer.push_back(v);
+    qc.column(v,j);
+    coweight_numer.push_back(v);
   }
 
-  latticetypes::WeightList simple_coweight(d_semisimpleRank); // without denom
+  // get basis of co-radical character lattice
 
-  // do the same for coweights
-  tc.transpose(); // now we have the non-transposed Cartan matrix
-  latticetypes::LatticeMatrix qc(d_coroots);
-  qc *= tc;
-
-  for (size_t j = 0; j < d_semisimpleRank; ++j)
+  if (d_semisimpleRank < d_rank)
   {
-    qc.column(simple_coweight[j],j);
-    d_coweights.push_back(latticetypes::RatWeight(simple_coweight[j],d));
+    lattice::perp(d_coradicalBasis,d_coroots,d_rank);
+    lattice::perp(d_radicalBasis,d_roots,d_rank);
   }
 
   latticetypes::WeightList pos_roots, pos_coroots;
@@ -161,7 +158,7 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   fill_positives(pos_roots,pos_coroots); // also sets |d_2rho|, |d_dual_2rho|
 
   // find permutation ordering roots by height, and simple roots in order
-  std::vector<size_t> reorder= sort_roots(pos_roots,simple_coweight);
+  std::vector<size_t> reorder= sort_roots(pos_roots,coweight_numer);
 
   for (size_t i=0; i<d_semisimpleRank; ++i)
     assert(pos_roots[reorder[i]]==d_roots[i]); // check position simple roots
@@ -208,23 +205,26 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
 /*!
 \brief Constructs the root system dual to the given one.
 
-  Since we do not use distnct types for weights and coweights, we can proceed
-  by essentially interchanging roots and coroots. The numbering of the roots
-  correspond to that of the original root datum (root |i| of the dual datum is
-  coroot |i| of the orginal datum), but users should \emph{not} depend on this.
+  Since we do not use distinct types for weights and coweights, we can proceed
+  by interchanging roots and coroots. The ordering of the roots corresponds to
+  that of the original root datum (root |i| of the dual datum is coroot |i| of
+  the orginal datum; this is not the ordering that would have been used in a
+  freshly constructed root datum), but users should \emph{not} depend on this.
 */
 RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
-  :d_rank(rd.d_rank)
-  ,d_semisimpleRank(rd.d_semisimpleRank)
-  ,d_roots(rd.d_coroots)
-  ,d_coroots(rd.d_roots)
-  ,d_weights(rd.d_coweights)
-  ,d_coweights(rd.d_weights)
-  ,d_radicalBasis(rd.d_coradicalBasis)
-  ,d_coradicalBasis(rd.d_radicalBasis)
-  ,d_rootPermutation(rd.d_rootPermutation) // root permutation is the same
-  ,d_2rho(rd.d_dual_2rho)
-  ,d_dual_2rho(rd.d_2rho)
+  : d_rank(rd.d_rank)
+  , d_semisimpleRank(rd.d_semisimpleRank)
+  , d_roots(rd.d_coroots)
+  , d_coroots(rd.d_roots)
+  , weight_numer(rd.coweight_numer)
+  , coweight_numer(rd.weight_numer)
+  , d_radicalBasis(rd.d_coradicalBasis)
+  , d_coradicalBasis(rd.d_radicalBasis)
+  , d_rootPermutation(rd.d_rootPermutation) // root permutation is the same
+  , d_2rho(rd.d_dual_2rho)
+  , d_dual_2rho(rd.d_2rho)
+  , Cartan_denom(rd.Cartan_denom)
+  , d_status()
 {
   // fill in the status
 
@@ -242,10 +242,9 @@ RootDatum::~RootDatum()
 
 latticetypes::Weight RootDatum::inSimpleRoots(RootNbr n) const
 {
-  latticetypes::Weight r=root(n); // on chosen lattice basis
   latticetypes::Weight result(d_semisimpleRank);
   for (size_t i = 0; i<d_semisimpleRank; ++i)
-    result[i] = d_coweights[i].scalarProduct(r);
+    result[i] = root(n).scalarProduct(coweight_numer[i])/Cartan_denom;
   return result;
 }
 
@@ -256,7 +255,6 @@ latticetypes::Weight RootDatum::inSimpleRoots(RootNbr n) const
 */
 setutils::Permutation
   RootDatum::rootPermutation(const LT::LatticeMatrix& q) const
-
 {
   setutils::Permutation result(numRoots());
 
@@ -485,13 +483,14 @@ void RootDatum::swap(RootDatum& other)
   std::swap(d_semisimpleRank,other.d_semisimpleRank);
   d_roots.swap(other.d_roots);
   d_coroots.swap(other.d_coroots);
-  d_weights.swap(other.d_weights);
-  d_coweights.swap(other.d_coweights);
+  weight_numer.swap(other.weight_numer);
+  coweight_numer.swap(other.coweight_numer);
   d_radicalBasis.swap(other.d_radicalBasis);
   d_coradicalBasis.swap(other.d_coradicalBasis);
   d_rootPermutation.swap(other.d_rootPermutation),
   d_2rho.swap(other.d_2rho);
   d_dual_2rho.swap(other.d_dual_2rho);
+  std::swap(Cartan_denom,other.Cartan_denom);
   d_status.swap(other.d_status);
 }
 
@@ -653,13 +652,8 @@ void longest(LT::LatticeMatrix& q, const RootDatum& rd)
 
   identityMatrix(q,rd.rank());
 
-  for (size_t j = 0; j < ww.size(); ++j) {
-    LatticeMatrix r;
-    rd.rootReflection(r,rd.simpleRootNbr(ww[j]));
-    q *= r;
-  }
-
-  return;
+  for (size_t i = 0; i < ww.size(); ++i)
+    q *= rd.rootReflection(rd.simpleRootNbr(ww[i]));
 }
 
 
@@ -770,20 +764,15 @@ void strongOrthogonalize(RootList& rl, const RootDatum& rd)
       }
 }
 
-void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
 
 /*!
 \brief Transforms q into w.q, where w is the unique element such that
   w.q fixes the positive Weyl chamber.
 
-  Note that wq is then automatically an involution; w_0.w.q permutes the simple
-  roots. [DV: I don't understand this last remark.  Probably q is
-  meant to be an involutive automorphism of order 2 of the (unbased)
-  root datum.  This would make w.q an involution of the based root
-  datum, but then w_0.w.q would send the simple roots to their
-  negatives.]
+  Note that wq is then automatically an involution, permuting the simple roots
 */
 
+void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
 {
   latticetypes::Weight v(rd.rank());
   q.apply(v,rd.twoRho());
@@ -798,8 +787,6 @@ void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
   q.swap(p);
 }
 
-void toMatrix(latticetypes::LatticeMatrix& q, const weyl::WeylWord& ww,
-	      const RootDatum& rd)
 
 /*!
 \brief Writes in q the matrix represented by ww.
@@ -809,17 +796,14 @@ void toMatrix(latticetypes::LatticeMatrix& q, const weyl::WeylWord& ww,
   However, that would be for the ComplexGroup to do, as it is it that has
   access to both the Weyl group and the root datum.
 */
-
+void toMatrix(latticetypes::LatticeMatrix& q, const weyl::WeylWord& ww,
+	      const RootDatum& rd)
 {
   identityMatrix(q,rd.rank());
 
-  for (size_t j = 0; j < ww.size(); ++j)
-    q *= rd.rootReflection(rd.simpleRootNbr(ww[j]));
+  for (size_t i = 0; i < ww.size(); ++i)
+    q *= rd.rootReflection(rd.simpleRootNbr(ww[i]));
 }
-
-void toMatrix(latticetypes::LatticeMatrix& q,
-	      const RootList& rl,
-	      const RootDatum& rd)
 
 /*!
 \brief Writes in q the matrix represented by rl (the product of the
@@ -830,14 +814,14 @@ void toMatrix(latticetypes::LatticeMatrix& q,
   roots, so that the order doesn't matter.
 */
 
+void toMatrix(latticetypes::LatticeMatrix& q,
+	      const RootList& rl,
+	      const RootDatum& rd)
+
 {
   identityMatrix(q,rd.rank());
-
-  for (size_t j = 0; j < rl.size(); ++j) {
-    latticetypes::LatticeMatrix r;
-    rd.rootReflection(r,rl[j]);
-    q *= r;
-  }
+  for (size_t i = 0; i < rl.size(); ++i)
+    q *= rd.rootReflection(rl[i]);
 }
 
 

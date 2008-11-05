@@ -145,8 +145,8 @@ use by accessors.
 
   LT::WeightList d_roots; //!< Full list of roots.
   LT::WeightList d_coroots; //!< Full list of coroots.
-  LT::RatWeightList d_weights; //!< Simple weights.
-  LT::RatWeightList d_coweights; //!< Simple coweights.
+  LT::WeightList weight_numer; //!< Simple weight numerators.
+  LT::WeightList coweight_numer; //!< Simple coweight numerators.
   LT::WeightList d_radicalBasis; //!< Basis for orthogonal to coroots.
   LT::WeightList d_coradicalBasis; //!< Basis for orthogonal to roots.
 
@@ -161,6 +161,7 @@ use by accessors.
   LT::Weight d_2rho;
   LT::Weight d_dual_2rho;
 
+  LT::LatticeCoeff Cartan_denom;//!< Denominator |weight_numer|,|coweight_numer|
   /*!
 \brief BitSet recording whether the root datum is adjoint/simply connected.
 
