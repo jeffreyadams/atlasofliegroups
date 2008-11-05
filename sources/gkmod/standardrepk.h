@@ -265,12 +265,26 @@ struct Cartan_info
   // space that fiber parts are reduced modulo
   latticetypes::SmallSubspace fiber_modulus;
 
-}; // Cartan_info
+}; // |struct Cartan_info|
 
 // This class serves to store tables of previously computed mappings from
 // "bad" standard representations to good ones. Also the information
 // necessary to interpret the d_lambda field in StandardRepK are stored here
 // (in d_realForm .. d_minusQuotient)
+
+struct proj_info
+{
+  latticetypes::LatticeMatrix projection;
+  latticetypes::LatticeCoeff denom;
+}; // |struct proj_info|
+
+struct bitset_entry : public bitset::RankFlags
+{
+  typedef bitset::RankFlags base;
+  typedef std::vector<bitset_entry> Pooltype;
+  bitset_entry(base b) : base(b) {}
+  size_t hashCode(size_t modulus) const { return to_ulong()&modulus-1; }
+}; // |struct bitset_entry|
 
 class KhatContext
 {
@@ -296,6 +310,10 @@ class KhatContext
   // a set of equations rewriting to Standard, Normal, Final, NonZero elements
   SR_rewrites d_rules;
 
+  bitset_entry::Pooltype proj_pool;
+  hashtable::HashTable<bitset_entry,unsigned long> proj_sets;
+
+  std::vector<proj_info> proj_data;
 
  public:
 
@@ -410,10 +428,8 @@ class KhatContext
     return height_of[i]; // which will equal |height(rep_no(i))|
   }
 
-  //! The same, but without packaging into a |StandardRepK|
-  level
-    height(const latticetypes::Weight& lambda,
-	   const weyl::TwistedInvolution& twi) const;
+  //! Lower bound for height of representation after adding positive roots
+  level height_bound(const latticetypes::Weight& lambda);
 
 
   // apply symmetry for root $\alpha_s$ to |a|
@@ -439,7 +455,7 @@ class KhatContext
 
   combination truncate(const combination& c, level bound) const;
 
-  CharForm K_type_formula(const StandardRepK& sr, level bound=~0u) const;
+  CharForm K_type_formula(const StandardRepK& sr, level bound=~0u);
   equation mu_equation(seq_no, level bound=~0u); // adds equations
 
   std::vector<equation> saturate
@@ -466,6 +482,8 @@ class KhatContext
 private:
   RawChar KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda)
     const;
+
+  const proj_info& get_projection(bitset::RankFlags gens);
 
 }; // class KHatComputatons
 

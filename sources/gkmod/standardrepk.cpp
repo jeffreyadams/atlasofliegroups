@@ -43,6 +43,17 @@ StandardRepK and KhatContext.
 
 namespace atlas {
 
+/*
+     Chapter 0 -- Local function declarations
+*/
+
+namespace {
+
+latticetypes::LatticeMatrix
+orth_projection(const rootdata::RootDatum& rd, bitset::RankFlags gens,
+		latticetypes::LatticeCoeff& denom);
+
+} // |namespace|
 
 /*****************************************************************************
 
@@ -126,6 +137,7 @@ KhatContext::KhatContext
   , nonfinals(nonfinal_pool), finals(final_pool)
   , height_of()
   , d_rules()
+  , proj_pool(), proj_sets(proj_pool), proj_data()
 {
   const rootdata::RootDatum& rd=rootDatum();
   simple_reflection_mod_2.reserve(d_G->semisimpleRank());
@@ -375,7 +387,7 @@ combination KhatContext::standardize(const Char& chi)
 {
   combination result(height_order());
 
-  for (Char::base::const_iterator i=chi.begin(); i!=chi.end(); ++i)
+  for (Char::const_iterator i=chi.begin(); i!=chi.end(); ++i)
     result.add_multiple(standardize(i->first),i->second);
 
   return result;
@@ -671,21 +683,27 @@ KhatContext::height(const StandardRepK& sr) const
 }
 
 level
-KhatContext::height(const latticetypes::Weight& lambda,
-		    const weyl::TwistedInvolution& twi) const
+KhatContext::height_bound(const latticetypes::Weight& lambda)
 {
   const rootdata::RootDatum& rd=rootDatum();
-  const latticetypes::LatticeMatrix& theta=
-    d_G->cartanClasses().involutionMatrix(twi);
-  latticetypes::Weight mu=lambda;
-  mu+=theta.apply(mu);
 
-  level sum=0;
-  for (rootdata::WRootIterator
-	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
-    sum +=intutils::abs(mu.scalarProduct(*it));
+  bitset::RankFlags negatives,new_negatives;
+  latticetypes::Weight mu;
 
-  return sum/2; // each |scalarProduct| above is even (in doubled coordinates)
+  do
+  {
+    new_negatives.reset();
+    mu=get_projection(negatives).projection.apply(lambda);
+    for (size_t i=0; i<rd.semisimpleRank(); ++i)
+      if (not negatives[i] and mu.scalarProduct(rd.simpleCoroot(i))<0)
+	new_negatives.set(i);
+    negatives |= new_negatives;
+  }
+  while (new_negatives.any());
+
+  level sp=mu.scalarProduct(rd.dual_twoRho());
+  level d=2*get_projection(negatives).denom; // double to match |sum/2| above
+  return (sp+d-1)/d; // round upwards, since height is always integer
 }
 
 /*!
@@ -877,7 +895,7 @@ RawChar KhatContext::KGB_sum(const PSalgebra& q,
   for (size_t i=0; i<sub.size(); ++i)
   {
     kgb::KGBElt x=sub[i];
-    RawRep r= Levi_rep(mu[i],d_KGB.titsElt(x),q.Levi_gens());
+    RawRep r(mu[i],d_KGB.titsElt(x));
     result += RawChar(r, ((max_l-d_KGB.length(x))%2 == 0 ? 1 : -1));
   }
 
@@ -896,7 +914,7 @@ combination KhatContext::truncate(const combination& c, level bound) const
 
 // Express irreducible K-module as a finite virtual sum of standard ones
 CharForm
-KhatContext::K_type_formula(const StandardRepK& sr, level bound) const
+KhatContext::K_type_formula(const StandardRepK& sr, level bound)
 {
   const cartanset::CartanClassSet& cs=d_G->cartanClasses();
   const weyl::WeylGroup& W=weylGroup();
@@ -912,23 +930,16 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound) const
 
   RawChar KGB_sum_q= KGB_sum(q,lambda);
 
-  tits::TE_Entry::Pooltype pool;
-  hashtable::HashTable<tits::TE_Entry,unsigned> hash(pool);
-
-  for (RawChar::const_iterator it=KGB_sum_q.begin(); it!=KGB_sum_q.end(); ++it)
-    hash.match(it->first.second); // enter relevant Tits elements into table
-
   // type of formal linear combination of weights, associated to Tits element
-  typedef free_abelian::Monoid_Ring<latticetypes::Weight> polynomial;
-  polynomial one(latticetypes::Weight(complexGroup().rank(),0),1);
 
-  // per strong involution (|TitsElt|) set of roots, to sum over its powerset
-  std::vector<polynomial> sum_poly; sum_poly.reserve(pool.size());
-
-  for (size_t i=0; i<pool.size(); ++i)
+  Char result;
+  for (RawChar::const_iterator it=KGB_sum_q.begin(); it!=KGB_sum_q.end(); ++it)
   {
-    tits::TitsElt strong_inv=pool[i];
-    cartanclass::InvolutionData id(rd,cs.involutionMatrix(strong_inv.tw()));
+    Char::coef_t c=it->second; // coefficient from |KGB_sum_q|
+    const latticetypes::Weight& mu=it->first.first; // weight from |KGB_sum_q|
+    const tits::TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_q|
+    const latticetypes::LatticeMatrix theta=cs.involutionMatrix(strong.tw());
+    cartanclass::InvolutionData id(rd,theta);
 
     rootdata::RootSet A(rd.numRoots());
     for (bitmap::BitMap::iterator
@@ -937,7 +948,7 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound) const
       rootdata::RootNbr alpha=*rt;
       assert(not id.real_roots().isMember(alpha));
       if (id.imaginary_roots().isMember(alpha))
-	A.set_to(alpha,d_Tg.grading(strong_inv,alpha)); // add if noncompact
+	A.set_to(alpha,d_Tg.grading(strong,alpha)); // add if noncompact
       else // complex root
       {
 	rootdata::RootNbr beta=id.root_involution(alpha);
@@ -945,34 +956,37 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound) const
 	A.set_to(alpha,beta>alpha); // add first of two complex roots
       }
     }
-    sum_poly.push_back(one);
-    polynomial& pol=sum_poly.back();
 
+//     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
+
+    typedef free_abelian::Monoid_Ring<latticetypes::Weight> polynomial;
+
+    // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
+    polynomial pol(mu);
     for (rootdata::RootSet::iterator it=A.begin(); it!=A.end(); ++it)
     {
       polynomial copy=pol; // since |add_multiple| assumes no aliasing
       pol.add_multiple(copy,-1,rd.root(*it));
+
+      // filter out terms that cannot affect anything below |bound|
+      for (polynomial::iterator term=pol.begin(); term!=pol.end();)
+      {
+	latticetypes::Weight lambda=term->first;
+	(lambda*=2) += rd.twoRho();
+	lambda += theta.apply(lambda);
+	if (height_bound(lambda)>bound)
+	  pol.erase(term++);
+	else
+	  term++;
+      }
     }
-
-  }
-
-  Char result;
-  for (RawChar::const_iterator it=KGB_sum_q.begin(); it!=KGB_sum_q.end(); ++it)
-  {
-    Char::coef_t c=it->second; // coefficient from |KGB_sum_q|
-    const latticetypes::Weight& mu=it->first.first; // weight from |KGB_sum_q|
-    const tits::TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_q|
-
-    // recall the formal sum of weights that was associated to |strong|
-    const polynomial& pol=sum_poly[hash.find(strong)];
+//     std::cout << pol.size() << " terms." << std::endl;
 
     // iterate over terms in formal sum, taking weights += |mu|, coef *= |c|
-    for (polynomial::base::base::const_iterator
-	   term=pol.begin(); term!=pol.end(); ++term)
+    for (polynomial::const_iterator term=pol.begin(); term!=pol.end(); ++term)
     {
       latticetypes::Weight lambda=term->first;
       polynomial::coef_t coef=term->second;
-      lambda += mu;
       result += Char(std_rep_rho_plus(lambda,strong),c*coef); // contribute
     }
   } // for sum over KGB for L
@@ -1021,8 +1035,7 @@ matrix::Matrix<CharCoeff> KhatContext::K_type_matrix
 } // K_type_matrix
 
 
-combination
-KhatContext::branch(seq_no s, level bound)
+combination KhatContext::branch(seq_no s, level bound)
 {
   combination result(height_order()); // a linear combination of $K$-types
 
@@ -1105,7 +1118,18 @@ KhatContext::saturate(const std::set<equation>& system, level bound)
   return result;
 } // saturate
 
+const proj_info& KhatContext::get_projection(bitset::RankFlags gens)
+{
+  size_t old_size=proj_data.size();
+  size_t h=proj_sets.match(bitset_entry(gens));
+  if (h<old_size)
+    return proj_data[h];
 
+  proj_data.push_back(proj_info());
+  proj_data.back().projection=
+    orth_projection(rootDatum(),gens,proj_data.back().denom);
+  return proj_data.back();
+}
 
 // **************   manipulators **********************
 
@@ -1263,8 +1287,43 @@ matrix::Matrix<CharCoeff> inverse_lower_triangular
   return result;
 }
 
-
-
-
 } // namespace standardrepk
+
+// ****************** Chapter VI -- local functions ************************
+
+namespace {
+
+// orthogonal projection onto the intersection of kernels of coroots in |gens|
+// the projection is parallel to the span of the roots in |gens|
+latticetypes::LatticeMatrix
+orth_projection(const rootdata::RootDatum& rd, bitset::RankFlags gens,
+		latticetypes::LatticeCoeff& denom)
+{
+  size_t m=gens.count(), r=rd.rank();
+  latticetypes::LatticeMatrix root_mat(r,m);
+  latticetypes::LatticeMatrix sub_Cartan(m,m);
+  latticetypes::LatticeMatrix coroot_mat(m,r);
+  for (bitset::RankFlags::iterator i=gens.begin(); i(); ++i)
+  {
+    size_t ii=gens.position(*i);
+    for (bitset::RankFlags::iterator j=gens.begin(); j(); ++j)
+      sub_Cartan(ii,gens.position(*j))=rd.cartan(*i,*j);
+    for (size_t j=0; j<r; ++j)
+    {
+      root_mat(j,ii)=rd.simpleRoot(ii)[j];
+      coroot_mat(ii,j)=rd.simpleCoroot(ii)[j];
+    }
+  }
+  sub_Cartan.invert(denom); // invert and compute necessary denominator
+
+  latticetypes::LatticeMatrix result(r,r,0); // set to identity scaled |denom|
+  for (size_t i=0; i<r; ++i)
+    result(i,i)=denom;
+  result -= root_mat * sub_Cartan * coroot_mat;
+  return result;
+}
+
+} // namespace
+
+
 } // namespace atlas
