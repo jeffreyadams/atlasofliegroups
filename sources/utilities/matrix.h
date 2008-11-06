@@ -156,6 +156,7 @@ template<typename C> class Matrix {
 
   void apply(Vector<C>&, const Vector<C>&) const;
   Vector<C> apply(const Vector<C>&) const; //functional version
+  Vector<C> right_apply(const Vector<C>&) const;
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 
