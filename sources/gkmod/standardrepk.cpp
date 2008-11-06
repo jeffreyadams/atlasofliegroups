@@ -957,7 +957,7 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
       }
     }
 
-//     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
+    std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
 
     typedef free_abelian::Monoid_Ring<latticetypes::Weight> polynomial;
 
@@ -980,7 +980,7 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
 	  term++;
       }
     }
-//     std::cout << pol.size() << " terms." << std::endl;
+    std::cout << pol.size() << " terms." << std::endl;
 
     // iterate over terms in formal sum, taking weights += |mu|, coef *= |c|
     for (polynomial::const_iterator term=pol.begin(); term!=pol.end(); ++term)
@@ -1301,17 +1301,17 @@ orth_projection(const rootdata::RootDatum& rd, bitset::RankFlags gens,
 {
   size_t m=gens.count(), r=rd.rank();
   latticetypes::LatticeMatrix root_mat(r,m);
-  latticetypes::LatticeMatrix sub_Cartan(m,m);
+  latticetypes::LatticeMatrix sub_Cartan(m,m); // transposed, later inverted
   latticetypes::LatticeMatrix coroot_mat(m,r);
   for (bitset::RankFlags::iterator i=gens.begin(); i(); ++i)
   {
     size_t ii=gens.position(*i);
     for (bitset::RankFlags::iterator j=gens.begin(); j(); ++j)
-      sub_Cartan(ii,gens.position(*j))=rd.cartan(*i,*j);
+      sub_Cartan(ii,gens.position(*j))=rd.cartan(*j,*i);
     for (size_t j=0; j<r; ++j)
     {
-      root_mat(j,ii)=rd.simpleRoot(ii)[j];
-      coroot_mat(ii,j)=rd.simpleCoroot(ii)[j];
+      root_mat(j,ii)=rd.simpleRoot(*i)[j];
+      coroot_mat(ii,j)=rd.simpleCoroot(*i)[j];
     }
   }
   sub_Cartan.invert(denom); // invert and compute necessary denominator
