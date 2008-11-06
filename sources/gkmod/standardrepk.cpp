@@ -957,7 +957,7 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
       }
     }
 
-    std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
+//     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
 
     typedef free_abelian::Monoid_Ring<latticetypes::Weight> polynomial;
 
@@ -980,7 +980,7 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
 	  term++;
       }
     }
-    std::cout << pol.size() << " terms." << std::endl;
+//     std::cout << pol.size() << " terms." << std::endl;
 
     // iterate over terms in formal sum, taking weights += |mu|, coef *= |c|
     for (polynomial::const_iterator term=pol.begin(); term!=pol.end(); ++term)
