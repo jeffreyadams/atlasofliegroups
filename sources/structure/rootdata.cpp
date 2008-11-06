@@ -132,9 +132,9 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   // matrix of the simple roots, tC the transpose Cartan matrix
   latticetypes::LatticeMatrix q(d_roots);
   latticetypes::LatticeMatrix qc(d_coroots);
-  qc *= tc;
-  tc.transpose(); // now we have the non-transposed Cartan matrix
   q *= tc;
+  tc.transpose(); // now we have the non-transposed Cartan matrix
+  qc *= tc;
 
   for (size_t j = 0; j < d_semisimpleRank; ++j) {
     latticetypes::Weight v;
