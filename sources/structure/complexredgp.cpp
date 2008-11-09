@@ -74,6 +74,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
  (const rootdata::RootDatum* rd, const latticetypes::LatticeMatrix& d)
   : d_rootDatum(*rd) // we assume ownership
   , d_titsGroup(*new tits::TitsGroup(rootDatum(),d))
+  , root_twist(make_root_twist())
   , d_cartanSet(*new cartanset::CartanClassSet(*this,d))
   /* stores |d| in |d_cartanSet->d_fundamental.d_torus->d_involution|,
      and constructs the fundamental fibers for the group and dual group */
@@ -91,10 +92,20 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
   : d_rootDatum(*new rootdata::RootDatum(G.rootDatum(),tags::DualTag()))
   , d_titsGroup(*new tits::TitsGroup
     (rootDatum(),dualBasedInvolution(G.distinguished(),G.rootDatum())))
+  , root_twist(make_root_twist())
   , d_cartanSet(*new cartanset::CartanClassSet
 		(*this,dualBasedInvolution(G.distinguished(),G.rootDatum()))
 		)
 {}
+
+setutils::Permutation ComplexReductiveGroup::make_root_twist() const
+{
+  setutils::Permutation twist(d_rootDatum.semisimpleRank());
+  for (size_t i=0; i<twist.size(); ++i)
+    twist[i]= d_titsGroup.twisted(i);
+
+  return rootDatum().root_permutation(twist);
+}
 
 ComplexReductiveGroup::~ComplexReductiveGroup()
 

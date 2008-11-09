@@ -53,26 +53,14 @@ void cartanMatrix(LT::LatticeMatrix&, const RootDatum&);
 
 void cartanMatrix(LT::LatticeMatrix&, const RootList&, const RootDatum&);
 
-void dualBasedInvolution(LT::LatticeMatrix&, const LT::LatticeMatrix&,
-			 const RootDatum&);
-
 // a functional version of previous one
 LT::LatticeMatrix dualBasedInvolution
   (const LT::LatticeMatrix&, const RootDatum&);
 
 void lieType(lietype::LieType&, const RootList&, const RootDatum&);
 
-void longest(LT::LatticeMatrix&, const RootDatum&);
-
 void makeOrthogonal(RootList&, const RootList&, const RootList&,
 		    const RootDatum&);
-
-void reflectionMatrix(LT::LatticeMatrix&, RootNbr, const RootDatum&);
-
-/* not implemented (yet?), would give matrix on basis of simple roots
-void reflectionMatrix(LT::LatticeMatrix&, RootNbr, const RootDatum&,
-                      RootBasisTag);
-*/
 
 // compute a basis of a root subsystem
 void rootBasis(RootList&, const RootList&, const RootDatum&);
@@ -87,9 +75,7 @@ void toMatrix(LT::LatticeMatrix&, const weyl::WeylWord&, const RootDatum&);
 
 void toMatrix(LT::LatticeMatrix&, const RootList&, const RootDatum&);
 
-void toPositive(weyl::WeylWord&, const LT::Weight&, const RootDatum&);
-
-void toWeylWord(weyl::WeylWord&, RootNbr, const RootDatum&);
+weyl::WeylWord toPositive(LT::Weight, const RootDatum&);
 
 } // namespace rootdata
 
@@ -155,21 +141,23 @@ use by accessors.
 */
   std::vector<setutils::Permutation> d_rootPermutation;
 
+  std::vector<bitset::RankFlags> descent_set; //!< simple reflections lowering
+
 /*!
 \brief Sum of the positive roots.
 */
   LT::Weight d_2rho;
   LT::Weight d_dual_2rho;
 
-  LT::LatticeCoeff Cartan_denom;//!< Denominator |weight_numer|,|coweight_numer|
-  /*!
-\brief BitSet recording whether the root datum is adjoint/simply connected.
+  LT::LatticeCoeff Cartan_denom; //!< Denominator for (co)|weight_numer|
+
+/*!\brief BitSet recording whether the root datum is adjoint/simply connected.
 
   "Adjoint" here means that the center of the complex group determined by the
   root datum is connected. "Simply connected" means that the derived group of
   that complex group is simply connected. These two properties are exchanged
   by passage to the dual root datum.
-  */
+*/
   Status d_status;
 
 
@@ -339,15 +327,6 @@ use by accessors.
   bool isSimplyConnected() const { return d_status[IsSimplyConnected]; }
 
 
-
-  bool isOrthogonal(const latticetypes::Weight& v, RootNbr j) const {
-    return v.scalarProduct(coroot(j))==0;
-  }
-
-  bool isOrthogonal(RootNbr i, RootNbr j) const {
-    return isOrthogonal(root(i),j);
-  }
-
   const LT::Weight& twoRho() const { return d_2rho; }
   const LT::Weight& dual_twoRho() const { return d_dual_2rho; }
 
@@ -357,10 +336,21 @@ use by accessors.
     return v.scalarProduct(coroot(j));
   }
 
-  // This method is badly named: the relation is asymmetric
-  LT::LatticeCoeff scalarProduct(RootNbr i, RootNbr j) const
+  bool isOrthogonal(const latticetypes::Weight& v, RootNbr j) const {
+    return v.scalarProduct(coroot(j))==0;
+  }
+
+  bool isOrthogonal(RootNbr alpha, RootNbr j) const
   {
-    return root(i).scalarProduct(coroot(j));
+    return isOrthogonal(root(alpha),j);
+  }
+
+  bitset::RankFlags descents(RootNbr alpha) const
+    { return descent_set[alpha]; }
+  bool is_descent(size_t i, RootNbr alpha) const
+  {
+    return descent_set[alpha].test(i);
+    // iff |scalarProduct(root(alpha),simpleCoroot(i))>0|
   }
 
   LT::LatticeCoeff cartan(size_t i, size_t j) const {
@@ -371,8 +361,12 @@ use by accessors.
 
   LT::LatticeMatrix cartanMatrix(const RootList&) const; // for subsystem
 
-  void reflect(LT::Weight& lambda, RootNbr alpha) const;
-  void coreflect(LT::Weight& co_lambda, RootNbr alpha) const;
+  //!\brief  Applies to v the reflection about root alpha.
+  void reflect(LT::Weight& lambda, RootNbr alpha) const
+    { lambda -= d_roots[alpha]*lambda.scalarProduct(d_coroots[alpha]); }
+  //!\brief  Applies reflection about coroot |alpha| to a coweight
+  void coreflect(LT::Weight& co_lambda, RootNbr alpha) const
+    { co_lambda -= d_coroots[alpha]*co_lambda.scalarProduct(d_roots[alpha]); }
 
   LT::Weight reflection(LT::Weight lambda, RootNbr alpha) const
     { reflect(lambda,alpha); return lambda; }
@@ -391,28 +385,37 @@ use by accessors.
 
 
   // the next method only works for _simple_ roots! (whence no RootNbr for |i|)
-  const setutils::Permutation& rootPermutation(size_t i) const {
-    return d_rootPermutation[i];
-  }
+  const setutils::Permutation& simple_root_permutation(size_t i) const
+    { return d_rootPermutation[i]; }
 
+  // for arbitrary roots, reduce root number to positive root offset first
+  const setutils::Permutation& root_permutation(RootNbr alpha) const
+    {
+      size_t i =
+	isPosRoot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha;
+      return d_rootPermutation[i];
+    }
   // here any matrix permuting the roots is allowed, e.g., rootReflection(r)
   setutils::Permutation rootPermutation(const LT::LatticeMatrix& q) const;
-
-  void rootReflection(LT::LatticeMatrix& q, RootNbr r) const;
+  // extend diagram automorphism to permutation of all roots
+  setutils::Permutation root_permutation(const setutils::Permutation& ) const;
+  // extend root datum automorphism given on simple roots to all roots
+  setutils::Permutation extend_to_roots(const std::vector<RootNbr>&) const;
 
   LT::LatticeMatrix rootReflection(RootNbr r) const;
 
-  void rootReflect(RootNbr& r, size_t s) const  { r=rootPermutation(s)[r]; }
+  void simple_reflect_root(RootNbr& r, size_t s) const
+    { r=simple_root_permutation(s)[r]; }
 
   RootNbr permuted_root(const weyl::WeylWord& ww, RootNbr r) const
     {
       for (size_t i=ww.size(); i-->0; )
-	rootReflect(r,ww[i]);
+	simple_reflect_root(r,ww[i]);
       return r;
     }
 
-  RootNbr reflectedRoot(RootNbr r, size_t s) const {
-    return d_rootPermutation[s][r];
+  RootNbr simple_reflected_root(RootNbr r, size_t s) const {
+    return simple_root_permutation(s)[r];
   }
 
   weyl::WeylWord reflectionWord(RootNbr r) const;

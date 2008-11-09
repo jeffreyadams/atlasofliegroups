@@ -292,8 +292,7 @@ std::vector<weyl::WeylEltList> CartanClassSet::expand() const
 void CartanClassSet::addCartan(rootdata::RootNbr rn, size_t j)
 {
   const rootdata::RootDatum& rd = rootDatum();
-  latticetypes::LatticeMatrix q;
-  rd.rootReflection(q,rn);
+  latticetypes::LatticeMatrix q=rd.rootReflection(rn);
   q *= cartan(j).involution();
   d_cartan.push_back(new cartanclass::CartanClass(rd,q));
 }
@@ -723,7 +722,7 @@ bool isImaginary (const latticetypes::LatticeElt& v,
 latticetypes::LatticeElt
   CartanClassSet::posRealRootSum(const TwistedInvolution& tw) const
 {
-  cartanclass::InvolutionData d(rootDatum(),involutionMatrix(tw));
+  cartanclass::InvolutionData d(d_parent,tw);
   return rootDatum().twoRho(d.real_roots());
 }
 
@@ -733,7 +732,7 @@ latticetypes::LatticeElt
 latticetypes::LatticeElt
   CartanClassSet::posImaginaryRootSum(const TwistedInvolution& tw) const
 {
-  cartanclass::InvolutionData d(rootDatum(),involutionMatrix(tw));
+  cartanclass::InvolutionData d(d_parent,tw);
   return rootDatum().twoRho(d.imaginary_roots());
 }
 
@@ -861,8 +860,8 @@ size_t CartanClassSet::classNumber(weyl::TwistedInvolution sigma) const
 
   \brief returns index of canonical form of the product of twisted involution
   |d_twistedInvolution[j]| with the reflection through its |i|-th imaginary
-  simple root. If |conjugator| is non-null, the conjugating element as returnd
-  by |canonicalize| is assigned to |conjugator|.
+  simple root. If |conjugator| is non-NULL, the conjugating element as
+  returned by |canonicalize| is assigned to |conjugator|.
 
   Note that the mentioned reflection twisted-commutes with
   |d_twistedInvolution[j]|, so that the product is again a twisted involution.
@@ -870,13 +869,13 @@ size_t CartanClassSet::classNumber(weyl::TwistedInvolution sigma) const
 size_t CartanClassSet::cayley(size_t j, size_t i, weyl::WeylElt* conjugator)
   const
 {
-  cartanclass::InvolutionData d
-    (rootDatum(),involutionMatrix(d_twistedInvolution[j]));
-  atlas::rootdata::RootNbr rn = d.imaginary_basis()[i];
+  TwistedInvolution ti=d_twistedInvolution[j]; // copy for later modification
 
-  weyl::WeylWord rw=rootDatum().reflectionWord(rn);
+  cartanclass::InvolutionData d(d_parent,ti);
+  atlas::rootdata::RootNbr alpha = d.imaginary_basis()[i];
 
-  TwistedInvolution ti=d_twistedInvolution[j]; weylGroup().leftMult(ti,rw);
+  weyl::WeylWord rw=rootDatum().reflectionWord(alpha);
+  weylGroup().leftMult(ti,rw); // left-multiply |ti| by reflection |alpha|
 
   if (conjugator==NULL) canonicalize(ti);
   else *conjugator=canonicalize(ti);
@@ -1007,7 +1006,7 @@ void cayley_and_cross_part(rootdata::RootList& so,
       cross.push_back(s); // record cross action
       W.twistedConjugate(tw,s); // and twisted-conjugate |tw|
       for (size_t i = 0; i < so.size(); ++i) // and conjugate roots in |so|:
-	rd.rootReflect(so[i],s);
+	rd.simple_reflect_root(so[i],s);
     }
 
   assert(tw==ti);
@@ -1033,11 +1032,8 @@ void crossTransform(rootdata::RootList& rl,
 		    const weyl::WeylWord& ww,
 		    const rootdata::RootDatum& rd)
 {
-  for (size_t j = ww.size(); j-->0;) {
-    setutils::Permutation a = rd.rootPermutation(ww[j]);
-    for (size_t i = 0; i < rl.size(); ++i)
-      rl[i] = a[rl[i]];
-  }
+  for (size_t j = ww.size(); j-->0;)
+    rd.simple_root_permutation(ww[j]).left_mult(rl);
 }
 
 unsigned long makeRepresentative(const gradings::Grading& gr,

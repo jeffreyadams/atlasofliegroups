@@ -29,6 +29,7 @@
 #include "setutils.h"
 #include "size.h"
 #include "subquotient.h"
+#include "complexredgp_fwd.h"
 
 namespace atlas {
 
@@ -67,6 +68,8 @@ class InvolutionData
  public:
   InvolutionData(const rootdata::RootDatum&,
 		 const latticetypes::LatticeMatrix&);
+  InvolutionData(const complexredgp::ComplexReductiveGroup&,
+		 const weyl::TwistedInvolution&);
   void swap(InvolutionData&);
   //accessors
   const setutils::Permutation& root_involution() const

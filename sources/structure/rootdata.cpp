@@ -112,7 +112,8 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   , d_coroots(prd.coroots()) // same for coroots
   , weight_numer(), coweight_numer()
   , d_radicalBasis(), d_coradicalBasis()
-  , d_rootPermutation() // size |numRoots()| is not yet known
+  , d_rootPermutation() // size will be |numPosRoots()| times |numRoots()|
+  , descent_set() // size will be |numRoots()|
   , d_2rho(prd.rank(),0)
   , d_dual_2rho(prd.rank(),0)
   , Cartan_denom()
@@ -164,8 +165,9 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
     assert(pos_roots[reorder[i]]==d_roots[i]); // check position simple roots
 
   const size_t half=pos_roots.size();
-  d_roots.clear(); d_roots.reserve(2*half);
-  d_coroots.clear(); d_coroots.reserve(2*half);
+  const size_t whole=2*half;
+  d_roots.clear(); d_roots.reserve(whole);
+  d_coroots.clear(); d_coroots.reserve(whole);
 
   // enter negative roots first, from most negative to negative simples
   for (size_t i=half; i-->0; )
@@ -181,20 +183,30 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
     d_coroots.push_back(pos_coroots[reorder[i]]);
   }
 
-  // fill in the simple root permutations
-  d_rootPermutation.reserve(d_semisimpleRank);
+  d_rootPermutation.resize(half,setutils::Permutation(whole));
+  descent_set.resize(whole);
 
-  for (size_t j = 0; j < d_semisimpleRank; ++j) {
-    d_rootPermutation.push_back(setutils::Permutation(numRoots()));
-    setutils::Permutation& rp = d_rootPermutation.back();
-    for (size_t i = 0; i < numRoots(); ++i) {
-      latticetypes::Weight v = d_roots[i];
-      simpleReflect(v,j);
-      rp[i] = rootNbr(v);
+  // first fill in the simple root permutations and descent sets
+  for (size_t i=0; i<d_semisimpleRank; ++i)
+    for (RootNbr alpha=0; alpha<whole; ++alpha)
+    {
+      RootNbr beta = rootNbr(simpleReflection(root(alpha),i));
+      assert(beta<whole); // some root must be found
+      d_rootPermutation[i][alpha] = beta;
+      descent_set[alpha].set(i,beta<alpha);
+      assert(not descent_set[beta].test(i)); // as |beta>alpha| not yet done
     }
+
+  // extend permutations to all positive roots by conjugation from lower root
+  for (size_t alpha=half+d_semisimpleRank; alpha<whole; ++alpha)
+  {
+    size_t i=descent_set[alpha].firstBit();
+    assert(i<d_semisimpleRank);
+    setutils::Permutation& alpha_perm=d_rootPermutation[alpha-half];
+    alpha_perm=d_rootPermutation[i];
+    d_rootPermutation[d_rootPermutation[i][alpha]-half].left_mult(alpha_perm);
+    d_rootPermutation[i].left_mult(alpha_perm);
   }
-
-
   // fill in the status
 
   fillStatus();
@@ -221,6 +233,7 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
   , d_radicalBasis(rd.d_coradicalBasis)
   , d_coradicalBasis(rd.d_radicalBasis)
   , d_rootPermutation(rd.d_rootPermutation) // root permutation is the same
+  , descent_set(rd.descent_set) // and therefore descent set as well
   , d_2rho(rd.d_dual_2rho)
   , d_dual_2rho(rd.d_2rho)
   , Cartan_denom(rd.Cartan_denom)
@@ -249,83 +262,120 @@ latticetypes::Weight RootDatum::inSimpleRoots(RootNbr n) const
 }
 
 /*!
-\brief Returns the permutation of the roots induced by p.
+\brief Returns the permutation of the roots induced by |q|.
 
-  Precondition: p permutes the roots;
+  Precondition: |q| permutes the roots;
 */
 setutils::Permutation
   RootDatum::rootPermutation(const LT::LatticeMatrix& q) const
 {
   setutils::Permutation result(numRoots());
 
-  for (size_t j = 0; j < numRoots(); ++j) {
-    Root r(rank()); q.apply(r,root(j));
-    result[j] = rootNbr(r);
+  for (RootNbr alpha=0; alpha<numRoots(); ++alpha)
+  {
+    result[alpha] = rootNbr(q.apply(root(alpha)));
+    assert(result[alpha]<numRoots()); // image by |q| must be some root
   }
 
   return result;
 }
 
-/*!
-\brief  Applies to v the reflection about root number r.
-
-In other words, v is transformed into v - <v,alpha_r^vee>alpha_r
-*/
-void RootDatum::reflect(latticetypes::Weight& v, RootNbr r) const
+// extend diagram automorphism to permutation of all roots
+setutils::Permutation
+  RootDatum::root_permutation(const setutils::Permutation& twist) const
 {
-  latticetypes::LatticeCoeff a = v.scalarProduct(d_coroots[r]);
-  latticetypes::Weight m = d_roots[r];
-  m *= a;
-  v -= m;
+  assert(twist.size()==semisimpleRank());
+  setutils::Permutation result(numRoots());
+
+  // copy twist for simple roots
+  for (size_t i=0; i<twist.size(); ++i)
+    result[simpleRootNbr(i)]=simpleRootNbr(twist[i]);
+
+  // extend to positive roots
+  for (size_t alpha=endSimpleRoot()-beginRoot(); alpha<numRoots(); ++alpha)
+  {
+    size_t i=descents(alpha).firstBit();
+    assert(i<semisimpleRank());
+    assert(isPosRoot(simple_reflected_root(alpha,i)));
+    assert(simple_reflected_root(alpha,i)<alpha); // result is already defined
+    result[alpha] =
+      simple_reflected_root(result[simple_reflected_root(alpha,i)],twist[i]);
+  }
+
+  // finally extend to negative roots, using symmetry of root permutation
+  for (size_t alpha=0; alpha<numPosRoots(); ++alpha) // |alpha| negative root
+    result[alpha]=rootMinus(result[rootMinus(alpha)]);
+
+  return result;
 }
 
-/*!
-\brief  Applies to the coweight |v| the reflection about coroot number |j|.
-
-In other words, v is transformed into v - <alpha_j,v>alpha_j^vee.
-*/
-void RootDatum::coreflect(latticetypes::Weight& v, RootNbr j) const
+// more generally extend any root datum automorphism from simple to all roots
+setutils::Permutation
+  RootDatum::extend_to_roots(const std::vector<RootNbr>& simple_image) const
 {
-  LT::LatticeCoeff a = v.scalarProduct(d_roots[j]);
-  LT::Weight m = d_coroots[j];
-  m *= a;
-  v -= m;
+  assert(simple_image.size()==semisimpleRank());
+  setutils::Permutation result(numRoots());
+
+  std::vector<const setutils::Permutation*> image_reflection;
+
+  // prepare permutations for reflections for roots in |simple_image|
+  image_reflection.reserve(semisimpleRank());
+  for (size_t i=0; i<semisimpleRank(); ++i)
+    image_reflection.push_back(&root_permutation(simple_image[i]));
+
+  // copy images of simple roots
+  for (size_t i=0; i<semisimpleRank(); ++i)
+    result[simpleRootNbr(i)]=simple_image[i];
+
+  // extend to positive roots
+  for (size_t alpha=numPosRoots()+semisimpleRank(); alpha<numRoots(); ++alpha)
+  {
+    size_t i=descents(alpha).firstBit();
+    assert(i<semisimpleRank());
+    assert(isPosRoot(simple_reflected_root(alpha,i)));
+    assert(simple_reflected_root(alpha,i)<alpha); // result is already defined
+    result[alpha] =
+      (*image_reflection[i])[result[simple_reflected_root(alpha,i)]];
+  }
+
+  // finally extend to negative roots, using symmetry of root permutation
+  for (size_t alpha=0; alpha<numPosRoots(); ++alpha) // |alpha| negative root
+    result[alpha]=rootMinus(result[rootMinus(alpha)]);
+
+  return result;
 }
 
+
 /*!
-\brief Puts in q the reflection for root \#r.
+\brief Returns the reflection for root \#alpha.
 
   NOTE: this is not intended for heavy use. If that is envisioned, it would be
   better to construct the matrices once and for all and return const
   references.
 */
-void RootDatum::rootReflection(latticetypes::LatticeMatrix& q, RootNbr r) const
+latticetypes::LatticeMatrix RootDatum::rootReflection(RootNbr alpha) const
 {
-  q.resize(d_rank,d_rank);
+  latticetypes:: LatticeMatrix result;
+  matrix::identityMatrix(result,d_rank);
 
-  const Root& root = d_roots[r];
-  const Root& coroot = d_coroots[r];
+/*
+  result -=
+    matrix::column_matrix(root(alpha)) * matrix::row_matrix(coroot(alpha));
+*/
 
-  for (size_t j = 0; j < d_rank; ++j)
-    for (size_t i = 0; i < d_rank; ++i)
-      q(i,j) = -root[i]*coroot[j];
+  const Root& root = d_roots[alpha];
+  const Root& coroot = d_coroots[alpha];
 
-  for (size_t i = 0; i < d_rank; ++i)
-    q(i,i) += 1;
-}
+  for (size_t i=0; i<d_rank; ++i)
+    for (size_t j=0; j<d_rank; ++j)
+      result(i,j) -= root[i]*coroot[j];
 
-latticetypes::LatticeMatrix RootDatum::rootReflection(RootNbr r) const
-{
- latticetypes:: LatticeMatrix result; rootReflection(result,r);
   return result;
 }
 
-// this is a non-destructive version of |toWeylWord| below for reflections
-weyl::WeylWord RootDatum::reflectionWord(RootNbr r) const
+weyl::WeylWord RootDatum::reflectionWord(RootNbr alpha) const
 {
-  latticetypes::Weight v = twoRho(); reflect(v,r);
-
-  weyl::WeylWord ww; toPositive(ww,v,*this); return ww;
+  return toPositive(reflection(twoRho(),alpha),*this);
 }
 
 
@@ -352,16 +402,15 @@ LT::LatticeMatrix RootDatum::cartanMatrix(const RootList& rb) const
 
   latticetypes::LatticeMatrix result(r,r);
 
-  for (size_t j = 0; j < r; ++j)
-    for (size_t i = 0; i < r; ++i)
+  for (size_t i=0; i<r; ++i)
+    for (size_t j=0; j<r; ++j)
       result(i,j) = root(rb[i]).scalarProduct(coroot(rb[j]));
 
   return result;
 }
 
-/*!
-\brief Returns the expression of $q^{-1}$ as a product of simple
-  reflections.
+/*!\brief
+  Returns the expression of $q^{-1}$ as a product of simple reflections.
 
   Precondition: $q$ gives the action on the weight lattice of some Weyl group
   element
@@ -372,9 +421,7 @@ LT::LatticeMatrix RootDatum::cartanMatrix(const RootList& rb) const
 weyl::WeylWord RootDatum::word_of_inverse_matrix
   (const latticetypes::LatticeMatrix& q) const
 {
-  latticetypes::Weight v(rank()); q.apply(v,twoRho());
-
-  weyl::WeylWord ww; toPositive(ww,v,*this); return ww;
+  return toPositive(q.apply(twoRho()),*this);
 }
 
 /*!
@@ -387,9 +434,9 @@ latticetypes::Weight RootDatum::twoRho(const RootList& rl) const
 {
   latticetypes::Weight result(rank(),0);
 
-  for (size_t j = 0; j < rl.size(); ++j)
-    if (isPosRoot(rl[j]))
-      result += root(rl[j]);
+  for (size_t i = 0; i < rl.size(); ++i)
+    if (isPosRoot(rl[i]))
+      result += root(rl[i]);
 
   return result;
 }
@@ -461,15 +508,9 @@ bool RootDatum::sumIsRoot(const latticetypes::Weight& a,
 RootList RootDatum::high_roots() const
 {
   RootList h;
-  for (RootNbr alpha=0; alpha<numRoots(); ++alpha)
-  {
-    size_t i;
-    for (i=0; i<semisimpleRank(); ++i)
-      if (sumIsRoot(alpha,simpleRootNbr(i)))
-	break; // alpha not highest
-    if (i==semisimpleRank()) //previous loop ran to completion
-      h.push_back(alpha);
-  }
+  for (RootNbr alpha=0; alpha<numPosRoots(); ++alpha)
+    if (descents(alpha).none())
+      h.push_back(rootMinus(alpha));
 
   return h;
 }
@@ -488,6 +529,7 @@ void RootDatum::swap(RootDatum& other)
   d_radicalBasis.swap(other.d_radicalBasis);
   d_coradicalBasis.swap(other.d_coradicalBasis);
   d_rootPermutation.swap(other.d_rootPermutation),
+  descent_set.swap(other.descent_set),
   d_2rho.swap(other.d_2rho);
   d_dual_2rho.swap(other.d_dual_2rho);
   std::swap(Cartan_denom,other.Cartan_denom);
@@ -518,8 +560,8 @@ void RootDatum::fillStatus()
 
   d_status.set(IsAdjoint);
 
-  for (size_t j = 0; j < invf.size(); ++j)
-    if (invf[j] != 1) {
+  for (size_t i = 0; i < invf.size(); ++i)
+    if (invf[i] != 1) {
       d_status.reset(IsAdjoint);
       break;
     }
@@ -532,8 +574,8 @@ void RootDatum::fillStatus()
 
   d_status.set(IsSimplyConnected);
 
-  for (size_t j = 0; j < invf.size(); ++j)
-    if (invf[j] != 1) {
+  for (size_t i = 0; i < invf.size(); ++i)
+    if (invf[i] != 1) {
       d_status.reset(IsSimplyConnected);
       break;
     }
@@ -562,8 +604,8 @@ void cartanMatrix(latticetypes::LatticeMatrix& c, const RootDatum& rd)
 
   c.resize(r,r,0);
 
-  for (size_t j = 0; j < r; ++j)
-    for (size_t i = 0; i < r; ++i)
+  for (size_t i=0; i<r; ++i)
+    for (size_t j= 0; j<r; ++j)
       c(i,j) = rd.cartan(i,j);
 }
 
@@ -581,38 +623,30 @@ void cartanMatrix(latticetypes::LatticeMatrix& c, const RootList& rb,
 
 
 /*!
-\brief Puts i^vee in di.
+\brief Returns matrix of dual involution of the one given by |i|
 
-  Precondition: i is an involution of rd as a _based_ root datum;
+  Precondition: |q| is an involution of |rd| as a _based_ root datum
 
-  Postcondition: di is an involution of the dual based root datum;
+  Postcondition: |di| is an involution of the dual based root datum
 
-  Algorithm: di is (w_0^t)(-i^t).  (The first factor is the long
-  element of the Weyl group, acting on the dual root datum, and the
-  second factor is the negative transpose of i.)
+  Formula: $(w_0^t)(-q^t) = (-q.w_0)^t$
 
-  [DV 13 July 2006: since RootDatum no longer contains the involution
-  defining the inner class, this function seems not to belong in the
-  rootdata namespace.  Not sure where would be a better home.]
+  In other words, to |-i| we apply the (longest) Weyl group element $w_0$
+  making the image of the dominant chamber dominant again, then transpose
+
+  Since $-w_0$ is central in the group of based root datum automorphisms, it
+  doesn't matter whether one multiplies by $w_0$ on the left or on the right
 */
-void dualBasedInvolution(LT::LatticeMatrix& di, const LT::LatticeMatrix& i,
-			 const RootDatum& rd)
+
+LT::LatticeMatrix dualBasedInvolution
+  (const LT::LatticeMatrix& q, const RootDatum& rd)
 {
-  LT::LatticeMatrix w0;
-  longest(w0,rd);
+  LT::LatticeMatrix di=q;
+  weyl::WeylWord ww=toPositive(-rd.twoRho(),rd);
+  for (size_t i=0; i<ww.size(); ++i)
+    di *= rd.rootReflection(rd.simpleRootNbr(ww[i]));
 
-  di = i;
-  di *= w0;
-  di.negate();
-  di.transpose();
-}
-
-
-LT::LatticeMatrix dualBasedInvolution // a functional version of previous one
-  (const LT::LatticeMatrix& i, const RootDatum& rd)
-{
-  LT::LatticeMatrix di; dualBasedInvolution(di,i,rd);
-  return di;
+  return di.negative_transposed();
 }
 
 /*!
@@ -631,30 +665,6 @@ void lieType(lietype::LieType& lt, const RootList& rb, const RootDatum& rd)
   dynkin::lieType(lt,cm);
 }
 
-/*!
-\brief Puts in q the matrix of the action of w_0;
-
-  Algorithm: w_0 is the element making -twoRho positive.
-
-  NOTE: not intended for heavy use. Should be precomputed if that is the
-  case.
-*/
-void longest(LT::LatticeMatrix& q, const RootDatum& rd)
-{
-  using namespace latticetypes;
-  using namespace weyl;
-
-  Weight v = rd.twoRho();
-  v *= -1;
-
-  WeylWord ww;
-  toPositive(ww,v,rd);
-
-  identityMatrix(q,rd.rank());
-
-  for (size_t i = 0; i < ww.size(); ++i)
-    q *= rd.rootReflection(rd.simpleRootNbr(ww[i]));
-}
 
 
 /*!
@@ -673,25 +683,6 @@ void makeOrthogonal(RootList& orth, const RootList& rl, const RootList& rs,
     orth.push_back(rs[i]);
   not_orthogonal:
     continue;
-  }
-}
-
-
-/*!
-\brief Writes in qs the matrix of the reflection through root \#n.
-*/
-void reflectionMatrix(LT::LatticeMatrix& qs, RootNbr n, const RootDatum& rd)
-{
-  latticetypes::Weight vc = rd.coroot(n);
-  qs.resize(rd.rank(),rd.rank());
-
-  for (size_t j = 0; j < rd.rank(); ++j) {
-    latticetypes::LatticeCoeff a = vc[j];
-    latticetypes::Weight v = rd.root(n);
-    v *= a;
-    for (size_t i = 0; i < rd.rank(); ++i)
-      qs(i,j) = -v[i];
-    qs(j,j) += 1;
   }
 }
 
@@ -777,8 +768,7 @@ void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
   latticetypes::Weight v(rd.rank());
   q.apply(v,rd.twoRho());
 
-  weyl::WeylWord ww;
-  toPositive(ww,v,rd);
+  weyl::WeylWord ww=toPositive(v,rd);
 
   latticetypes::LatticeMatrix p;
   toMatrix(p,ww,rd);
@@ -825,53 +815,32 @@ void toMatrix(latticetypes::LatticeMatrix& q,
 }
 
 
-/*!
-\brief Puts in ww a list of simple reflections constituting a reduced
-  expression of the unique shortest element w in the Weyl group such that
-  w.v is in the positive chamber.
+/*!\brief
+  Returns a reduced expression of the shortest |w| making |w.v| dominant
 
   Algorithm: the greedy algorithm -- if v is not positive, there is a
   simple coroot alpha^v such that <v,alpha^v> is < 0; then s_alpha.v takes
-  v closer to the positive chamber.
+  v closer to the dominant chamber.
 */
-void toPositive(weyl::WeylWord& ww,
-		const latticetypes::Weight& d_v,
-		const RootDatum& rd)
+weyl::WeylWord toPositive(latticetypes::Weight v, const RootDatum& rd)
 {
-  latticetypes::Weight v = d_v;
-  ww.clear();
+  weyl::WeylWord result;
 
-  for (;;) {
-    size_t j = 0;
-    for (; j < rd.semisimpleRank(); ++j)
+  size_t j;
+  do
+    for (j=0; j<rd.semisimpleRank(); ++j)
       if (v.scalarProduct(rd.simpleCoroot(j)) < 0)
-	goto add_reflection;
-    goto end;
+      {
+	result.push_back(j);
+	rd.simpleReflect(v,j);
+	break;
+      }
+  while (j<rd.semisimpleRank());
 
-  add_reflection:
-    ww.push_back(j);
-    rd.simpleReflect(v,j);
-  }
-
- end:
-
-  // reverse ww
-  std::reverse(ww.begin(),ww.end());
+  // reverse result (action is from right to left)
+  std::reverse(result.begin(),result.end());
+  return result;
 }
-
-void toWeylWord(weyl::WeylWord& ww, RootNbr rn, const RootDatum& rd)
-
-/*!
-\brief Writes in ww the expression of the reflection about root \#rn
-  as a product of simple reflections.
-*/
-
-{
-  latticetypes::Weight v = rd.twoRho();
-  rd.reflect(v,rn);
-  toPositive(ww,v,rd);
-}
-
 
 } // namespace rootdata
 

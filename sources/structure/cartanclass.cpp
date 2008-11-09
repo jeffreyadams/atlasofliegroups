@@ -27,6 +27,7 @@
 #include "weyl.h"
 #include "weylsize.h"
 #include "tags.h"
+#include "complexredgp.h"
 
 namespace atlas {
 
@@ -110,6 +111,40 @@ InvolutionData::InvolutionData(const rootdata::RootDatum& rd,
   , d_simpleImaginary()        // here even dimensioning is pointless
   , d_simpleReal()
 {
+  for (size_t j = 0; j < d_rootInvolution.size(); ++j)
+    if (d_rootInvolution[j] == j)
+      d_imaginary.insert(j);
+    else if (d_rootInvolution[j] == rd.rootMinus(j))
+      d_real.insert(j);
+    else
+      d_complex.insert(j);
+
+  // find simple imaginary roots
+  d_simpleImaginary=rd.simpleBasis(imaginary_roots());
+  d_simpleReal=rd.simpleBasis(real_roots());
+}
+
+InvolutionData::InvolutionData(const complexredgp::ComplexReductiveGroup& G,
+			       const weyl::TwistedInvolution& tw)
+  : d_rootInvolution()
+  , d_imaginary(G.rootDatum().numRoots())
+  , d_real(G.rootDatum().numRoots())
+  , d_complex(G.rootDatum().numRoots())
+  , d_simpleImaginary()
+  , d_simpleReal()
+{
+  const rootdata::RootDatum& rd=G.rootDatum();
+  { // follow the inner class twist by the action of |tw| on roots
+    std::vector<rootdata::RootNbr> simple_image(rd.semisimpleRank());
+    for (size_t i=0; i<rd.semisimpleRank(); ++i)
+      simple_image[i]=G.twisted_root(rd.simpleRootNbr(i));
+
+    weyl::WeylWord ww=G.weylGroup().word(tw.w());
+    for (size_t i=ww.size(); i-->0;)
+      rd.simple_root_permutation(ww[i]).left_mult(simple_image);
+
+    d_rootInvolution=rd.extend_to_roots(simple_image);
+  }
 
   for (size_t j = 0; j < d_rootInvolution.size(); ++j)
     if (d_rootInvolution[j] == j)

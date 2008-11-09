@@ -28,6 +28,7 @@ ComplexReductiveGroup.
 #include "lietype.h"
 #include "realform.h"
 #include "tags.h"
+#include "setutils.h"
 
 /******** function declarations **********************************************/
 
@@ -96,8 +97,6 @@ namespace complexredgp {
   */
 class ComplexReductiveGroup {
 
- private:
-
   /*!
   \brief The based root datum.
   */
@@ -108,6 +107,9 @@ class ComplexReductiveGroup {
   involutive automorphism.
   */
   tits::TitsGroup& d_titsGroup;
+
+  //!\brief the permutation of the roots given by the based automorphism
+  setutils::Permutation root_twist;
 
   /*!
   \brief Storage of data for each stable conjugacy class of Cartan subgroups
@@ -198,6 +200,10 @@ class ComplexReductiveGroup {
     return d_cartanSet;
   }
 
+  const setutils::Permutation& root_involution() const { return root_twist; }
+  rootdata::RootNbr twisted_root(rootdata::RootNbr alpha) const
+    { return root_twist[alpha]; }
+
 /*!
   \brief the twisted involution representative for class \#cn of Cartans
 */
@@ -207,17 +213,22 @@ class ComplexReductiveGroup {
 
 /* actually |fillCartan| could be declared |const|, since it only modifies the
    value referred to by |d_cartanSet|, not any members of the class itself
-   (technically, a const method may use a reference member in a non-const way).
-   However, morally it is a manipulator method, not an accessor, whence there
-   is no const. In the future a level of indirection could be removed, and in
-   that case quilfying fillCartan as const would even become impossible */
-
+   (technically, a |const| method may use a reference member in a non-const
+   manner). However, morally it is a manipulator method, not an accessor,
+   whence there is no |const|. In the future a level of indirection could be
+   removed, and in that case qualifying |fillCartan| as |const| would even
+   become impossible
+ */
   void fillCartan(realform::RealForm rf);
 
   /* the following is not done via a default argument to the previous method
      since a default argument cannot refer to a class member (quasisplit) */
   void fillCartan() { fillCartan(quasisplit()); }
-};
+
+ private:
+  setutils::Permutation make_root_twist() const;
+
+}; // |class ComplexReductiveGroup|
 
 }
 

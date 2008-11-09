@@ -508,27 +508,27 @@ bool EnrichedTitsGroup::is_compact(const tits::TorusPart& x,
    no simple closed formula seems avaiable. So we revert to appying a set of
    cross actions to convert the question into one about a simple root.
  */
-bool EnrichedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr n) const
+bool EnrichedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr alpha) const
 {
-  if (not rd.isPosRoot(n))
-    n=rd.rootMinus(n);
+  if (not rd.isPosRoot(alpha))
+    alpha=rd.rootMinus(alpha);
 
-  assert(rd.isPosRoot(n));
+  assert(rd.isPosRoot(alpha));
   size_t i; // declare outside loop to allow inspection of final value
   do
     for (i=0; i<rd.semisimpleRank(); ++i)
-      if (rd.scalarProduct(rd.simpleRootNbr(i),n)>0)
-	if (n==rd.simpleRootNbr(i))
+      if (rd.is_descent(i,alpha))
+	if (alpha==rd.simpleRootNbr(i))
 	  return simple_grading(a,i);
 	else
 	{
-	  rd.rootReflect(n,i);
+	  rd.simple_reflect_root(alpha,i);
 	  basedTwistedConjugate(a,i);
 	  break;
 	}
   while (i!=rd.semisimpleRank()); // i.e., until no change occurs any more
 
-  assert(false); // root |n| cannot become negative without becoming simple
+  assert(false); // |alpha| cannot become negative without becoming simple
   return false;
 }
 
@@ -682,7 +682,7 @@ tits::TitsElt EnrichedTitsGroup::backtrack_seed
   // transform strong orthogonal set |Cayley| back to distinguished involution
   for (size_t i=0; i<Cayley.size(); ++i)
     for (size_t j=cross.size(); j-->0; )
-      rd.rootReflect(Cayley[i],cross[j]);
+      rd.simple_reflect_root(Cayley[i],cross[j]);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying Cayley transforms in the strongly orthogonal set |Cayley|, and
@@ -1042,8 +1042,8 @@ size_t KGBHelp::export_tables(std::vector<KGBEltList>& cross,
   cross.reserve(d_rank); cayley.reserve(d_rank);
   setutils::Permutation ai(a,-1); // compute inverse of |a|
   for (size_t s = 0; s < d_rank; ++s) {
-    cross.push_back(a.pull_back(ai.renumber(d_cross[s])));
-    cayley.push_back(a.pull_back(ai.renumber(d_cayley[s],UndefKGB)));
+    cross.push_back(a.pull_back(ai.renumbering(d_cross[s])));
+    cayley.push_back(a.pull_back(ai.renumbering(d_cayley[s],UndefKGB)));
   }
 
   // export the other lists

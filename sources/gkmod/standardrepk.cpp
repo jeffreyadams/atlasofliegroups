@@ -523,21 +523,23 @@ KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
   const rootdata::RootDatum& rd=rootDatum();
   tits::TitsElt a=titsElt(sr);
   latticetypes::Weight lambda=lift(sr);
-  assert(rd.isPosRoot(alpha)); // in fact it must be simple-imaginary
+  assert(rd.isPosRoot(alpha)); // in fact it must be |a.tw()| simple-imaginary
 
   size_t i=0; // simple root index (value will be set in following loop)
   while (true) // we shall exit halfway when $\alpha=\alpha_i$
   {
-    while (rd.scalarProduct(alpha,rd.simpleRootNbr(i))<=0)
+    while (not rd.is_descent(i,alpha))
     {
       ++i;
       assert(i<rd.semisimpleRank());
     }
     // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-imaginary
     // and \alpha_i$ is complex for the involution |a.tw()|
+
     if (alpha==rd.simpleRootNbr(i)) break; // found it
+
     // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
-    rd.rootReflect(alpha,i);
+    rd.simple_reflect_root(alpha,i);
     rd.simpleReflect(lambda,i);
     d_Tg.basedTwistedConjugate(a,i);
     i=0; // and start over
@@ -613,6 +615,7 @@ KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
   const rootdata::RootDatum& rd=rootDatum();
   tits::TitsElt a=titsElt(sr);
   latticetypes::Weight lambda=lift(sr);
+  assert(rd.isPosRoot(alpha)); // in fact it must be simple-real for |a.tw()|
 
   // basis used is of $(1/2)X^*$, so scalar product with coroot always even
   assert(rd.scalarProduct(lambda,alpha)%4 == 0); // the non-final condition
@@ -635,16 +638,18 @@ KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 
   while (true) // we shall exit halfway when $\alpha=\alpha_i$
   {
-    while (rd.scalarProduct(alpha,rd.simpleRootNbr(i))<=0)
+    while (not rd.is_descent(i,alpha))
     {
       ++i;
       assert(i<rd.semisimpleRank());
     }
     // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-real
     // and \alpha_i$ is complex for the involution |a.tw()|
+
     if (alpha==rd.simpleRootNbr(i)) break; // found it
+
     // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
-    rd.rootReflect(alpha,i);
+    rd.simple_reflect_root(alpha,i);
     rd.simpleReflect(lambda,i);
     d_Tg.basedTwistedConjugate(a,i);
     mod_space.apply(simple_reflection_mod_2[i]);
@@ -938,8 +943,7 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
     Char::coef_t c=it->second; // coefficient from |KGB_sum_q|
     const latticetypes::Weight& mu=it->first.first; // weight from |KGB_sum_q|
     const tits::TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_q|
-    const latticetypes::LatticeMatrix theta=cs.involutionMatrix(strong.tw());
-    cartanclass::InvolutionData id(rd,theta);
+    cartanclass::InvolutionData id(complexGroup(),strong.tw());
 
     rootdata::RootSet A(rd.numRoots());
     for (bitmap::BitMap::iterator
@@ -960,6 +964,7 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
 //     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
 
     typedef free_abelian::Monoid_Ring<latticetypes::Weight> polynomial;
+    const latticetypes::LatticeMatrix theta=cs.involutionMatrix(strong.tw());
 
     // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
     polynomial pol(mu);
@@ -1192,11 +1197,11 @@ PSalgebra::PSalgebra (tits::TitsElt base,
 		      const kgb::EnrichedTitsGroup& Tg)
     : strong_inv(base)
     , cn(cs.classNumber(base.tw()))
-    , sub_diagram()
+    , sub_diagram() // class |RankFlags| needs no dimensioning
     , nilpotents(cs.rootDatum().numRoots())
 {
   const rootdata::RootDatum& rd=cs.rootDatum();
-  cartanclass::InvolutionData id(rd,cs.involutionMatrix(base.tw()));
+  cartanclass::InvolutionData id(cs.complexGroup(),base.tw());
 
   // Put real simple roots into Levi factor
   for (size_t i=0; i<rd.semisimpleRank(); ++i)
