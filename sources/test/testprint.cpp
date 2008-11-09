@@ -181,20 +181,13 @@ std::ostream& printCartanClasses(std::ostream& strm,
 
 /*
   In this function, rb should contain a basis of some rootsystem; we are
-  outputting the matrix c where c(i,j) = root(rb[i]).coroot(rb[j]).
+  outputting the matrix with M(i,j)=root(rb[i]).scalarProduct(coroot(rb[j]))
 */
 std::ostream& printCartanMatrix(std::ostream& strm,
 				const rootdata::RootList& rb,
 				const rootdata::RootDatum& rd)
 {
-  latticetypes::LatticeMatrix q(rb.size());
-
-  for (size_t j = 0; j < rb.size(); ++j)
-    for (size_t i = 0; i < rb.size(); ++i)
-      q(i,j) = rd.scalarProduct(rb[i],rb[j]);
-
-  prettyprint::printMatrix(strm,q);
-  return strm;
+  return prettyprint::printMatrix(strm,rd.cartanMatrix(rb));
 }
 
 
