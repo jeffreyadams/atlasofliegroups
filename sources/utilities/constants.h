@@ -22,10 +22,6 @@ namespace atlas {
 namespace constants {
 
   const unsigned char ucharMax = std::numeric_limits<unsigned char>::max();
-  /*!
-  2**32 - 1 on Mac.
-   */
-  const unsigned long ulongMax = std::numeric_limits<unsigned long>::max();
 
 
   // Fokko: I was surprised by the fact that the digits for char returns 7
