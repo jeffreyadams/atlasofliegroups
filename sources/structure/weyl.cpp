@@ -29,6 +29,7 @@
 #include "dynkin.h"
 #include "setutils.h"
 #include "rootdata.h"
+#include "complexredgp.h"
 
 /*****************************************************************************
 
@@ -44,18 +45,30 @@
 
 namespace atlas {
 
+  namespace weyl { // constants needed only in this file
+
+  const EltPiece UndefEltPiece = UndefValue;
+  const Generator UndefGenerator = UndefValue;
+
+}
+
 namespace {
 
-  using namespace latticetypes;
-  using namespace setutils;
-  using namespace weyl;
 
-  void fillCoxMatrix(LatticeMatrix&, const LatticeMatrix&, const Permutation&);
+  void fillCoxMatrix(latticetypes::LatticeMatrix&,
+		     const latticetypes::LatticeMatrix&,
+		     const setutils::Permutation&);
 
-  EltPiece dihedralMin(const Transducer&, EltPiece, Generator, Generator);
+  weyl::EltPiece dihedralMin(const weyl::Transducer&,
+			     weyl::EltPiece,
+			     weyl::Generator,
+			     weyl::Generator);
 
-  EltPiece dihedralShift(const Transducer&, EltPiece, Generator, Generator,
-			 unsigned long);
+  weyl::EltPiece dihedralShift(const weyl::Transducer&,
+			       weyl::EltPiece,
+			       weyl::Generator,
+			       weyl::Generator,
+			       unsigned long);
 
 }
 
@@ -847,7 +860,7 @@ Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
 */
 
 {
-  // first first row of transition and of transduction table
+  // first row of transition and of transduction table
 
   ShiftRow& firstShift=d_shift[0];
   OutRow& firstOut=d_out[0];
@@ -863,13 +876,14 @@ Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
   // in this loop, the table grows! the loop stops when x overtakes the
   // table size because no more new elements are created.
 
-  for (EltPiece x = 0; x < d_shift.size(); ++x) {
+  for (EltPiece x = 0; x < d_shift.size(); ++x)
     for (Generator s = 0; s <= r; ++s)
       /* since RANK_MAX<128, |UndefEltPiece| is never a valid Piece number, so
          its presencein a slot in |d_shift| assures that this slot is
          unchanged from its intialisation value
       */
-      if (d_shift[x][s] == UndefEltPiece) {
+      if (d_shift[x][s] == UndefEltPiece)
+      {
 
 	EltPiece xs = d_shift.size(); // index of state that will be added
 
@@ -893,17 +907,17 @@ Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
 	  if (t == s)
 	    continue;
 
-	  LatticeCoeff m = c(s,t); // coefficient of the Coxeter matrix
+	  unsigned long m = c(s,t); // coef from Coxeter matrix
 
 	  EltPiece y  = dihedralMin(*this,xs,s,t);
 	  unsigned long d = d_length[xs] - d_length[y];
 
-	  if (d < static_cast<unsigned long>(m-1))
+	  if (d < m-1)
 	    continue;  // case (3):  $t$ takes $xs$ up, do nothing
 
 	  Generator st[] = {s,t};
 
-	  if (d == static_cast<unsigned long>(m)) {
+	  if (d == m) {
 	    // case (1): there is no transduction
 	    // xs.t is computed by shifting up from y the other way around
 	    y = dihedralShift(*this,y,st[m%2],st[(m+1)%2],m-1);
@@ -924,8 +938,7 @@ Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
 
 	  // else case (3) : $xs$ moves up, do nothing
 	}
-      }
-  }
+      } // |if (..==UndefEltPiece)|, |for|, |for|
 }
 
 size_t TI_Entry::hashCode(size_t modulus) const
@@ -976,7 +989,7 @@ WeylEltList WeylGroup::reflections() const
   return WeylEltList(found.begin(),found.end()); // convert set to vector
 }
 
-}
+} // |namespace weyl|
 
 /*****************************************************************************
 
@@ -986,20 +999,20 @@ WeylEltList WeylGroup::reflections() const
 
 namespace {
 
-EltPiece dihedralMin(const Transducer& qa, EltPiece x, Generator s,
-		       Generator t)
-
 /*!
   \brief Returns the minimal element in the orbit of x under s and t.
 
   Precondition : s is in the descent set of x;
 */
-
+weyl::EltPiece dihedralMin(const weyl::Transducer& qa,
+			   weyl::EltPiece x,
+			   weyl::Generator s,
+			   weyl::Generator t)
 {
-  Generator u = s;
-  Generator v = t;
+  weyl::Generator u = s;
+  weyl::Generator v = t;
 
-  EltPiece y = x;
+  weyl::EltPiece y = x;
 
   for (;;) {
     // this is ok even if the shift is still undefined
@@ -1011,19 +1024,21 @@ EltPiece dihedralMin(const Transducer& qa, EltPiece x, Generator s,
   }
 }
 
-EltPiece dihedralShift(const Transducer& qa, EltPiece x, Generator s,
-		       Generator t, unsigned long d)
 
 /*!
   \brief Returns the result of applying s and t alternately to x, for a
   total of d times.
 */
-
+weyl::EltPiece dihedralShift(const weyl::Transducer& qa,
+			     weyl::EltPiece x,
+			     weyl::Generator s,
+			     weyl::Generator t,
+			     unsigned long d)
 {
-  Generator u = s;
-  Generator v = t;
+  weyl::Generator u = s;
+  weyl::Generator v = t;
 
-  EltPiece y = x;
+  weyl::EltPiece y = x;
 
   for (unsigned long j = 0; j < d; ++j) {
     y = qa.shift(y,u);
@@ -1033,8 +1048,6 @@ EltPiece dihedralShift(const Transducer& qa, EltPiece x, Generator s,
   return y;
 }
 
-void fillCoxMatrix(LatticeMatrix& cox, const LatticeMatrix& cart,
-		   const Permutation& a)
 
 /*!
   \brief Fills in the Coxeter matrix cox.
@@ -1046,7 +1059,9 @@ void fillCoxMatrix(LatticeMatrix& cox, const LatticeMatrix& cart,
   Postcondition : cox holds the normalized Coxeter matrix corresponding to
   cox and a;
 */
-
+void fillCoxMatrix(latticetypes::LatticeMatrix& cox,
+		   const latticetypes::LatticeMatrix& cart,
+		   const setutils::Permutation& a)
 {
   cox.resize(cart.numColumns(),cart.numColumns(),2);
 

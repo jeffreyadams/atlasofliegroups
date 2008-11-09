@@ -59,9 +59,8 @@ namespace weyl {
 namespace weyl {
 
   const unsigned char UndefValue = constants::ucharMax;
-  const EltPiece UndefEltPiece = UndefValue;
-  const Generator UndefGenerator = UndefValue;
   const unsigned long UndefOrder = 0; // is never a valid value
+
 }
 
 /******** type definitions **************************************************/
@@ -162,10 +161,12 @@ protected: // these are for |WeylGroup| and |TI_Entry|'s eyes only
 public:
 // dummy methods that mark transition of interpretation
 
-  // from WeylElt interpretation
-  // nothing: cast to TwistedInvolution is allowed, and is a no-op
+  // from WeylElt interpretation to TwistedInvolution
+  // nothing: cast to TwistedInvolution is allowed, would do construction if
+  // TwistedInvolution were a derived class, and is a no-op in reality
 
-  // from TwistedInvolution interpretation
+  // from TwistedInvolution interpretation to WeylElt
+  // calls of these mark referral to the "base" class of |TwistedInvolution|
   const WeylElt& w() const { return *this; }
   WeylElt& contents() { return *this; }
 
@@ -445,7 +446,7 @@ class WeylGroup {
   WeylElt d_longest;
   latticetypes::LatticeMatrix d_coxeterMatrix;
   std::vector<Transducer> d_transducer;
-  Twist d_twist;
+  Twist d_twist; // expressed in external root numbering
   WeylInterface d_in;
   WeylInterface d_out;
   std::vector<Generator> d_min_star;
@@ -475,9 +476,8 @@ class WeylGroup {
 
   WeylElt genIn (Generator i) const; // $s_i$ as Weyl group element
 
-  Generator twistGenerator(Generator s) const {
-    return d_in[d_twist[d_out[s]]];
-  }
+  Generator twistGenerator(Generator s) const // twist in internal numbering
+    { return d_in[d_twist[d_out[s]]]; }
 
  public:
 
