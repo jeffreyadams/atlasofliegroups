@@ -32,7 +32,7 @@ std::vector<T> Permutation::pull_back(const std::vector<T>& v) const
   const Permutation& pi=*this;
   std::vector<T> result; result.reserve(v.size());
 
-  for (unsigned long i = 0; i < v.size(); ++i)
+  for (unsigned long i=0; i<v.size(); ++i)
     result.push_back(v[pi[i]]);
 
   return result;
@@ -40,9 +40,8 @@ std::vector<T> Permutation::pull_back(const std::vector<T>& v) const
 
 // Replace each index |i| in |v| by |pi[i]|, where |pi| is our permutation
 template<typename U>
-std::vector<U> Permutation::renumber(const std::vector<U>& v) const
+std::vector<U> Permutation::renumbering(const std::vector<U>& v) const
 {
-  assert(v.size()==size());
   const Permutation& pi=*this;
   std::vector<U> result; result.reserve(v.size());
   for (size_t i=0; i<v.size(); ++i)
@@ -54,14 +53,22 @@ std::vector<U> Permutation::renumber(const std::vector<U>& v) const
    of |v|, but the exceptional value of |except| is passed unchanged */
 template<typename U>
 std::vector<U>
-   Permutation::renumber(const std::vector<U>& v, U except) const
+   Permutation::renumbering(const std::vector<U>& v, U except) const
 {
-  assert(v.size()==size());
   const Permutation& pi=*this;
   std::vector<U> result; result.reserve(v.size());
   for (size_t i=0; i<v.size(); ++i)
     result.push_back(v[i]==except ? except : pi[v[i]]);
   return result;
+}
+
+// Replace each index |i| in |v| by |(*this)[i]|
+template<typename U>
+void Permutation::left_mult(std::vector<U>& v) const
+{
+  const Permutation& pi=*this;
+  for (size_t i=0; i<v.size(); ++i)
+    v[i]=pi[v[i]];
 }
 
 /*!

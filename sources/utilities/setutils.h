@@ -35,19 +35,23 @@ struct Permutation
     Permutation(const Permutation& pi, int unused); // inverse
     template<typename I> Permutation(I b,I e) : Base(b,e) {} // range copy
 
-  // right-compose with |p|
+  // right-compose with |*this|
   template<typename T>
   std::vector<T> pull_back(const std::vector<T>& v) const;
 
-  // left-compose with |p|
+  // left-compose with |*this|
   template<typename U>
-  std::vector<U> renumber(const std::vector<U>& v) const;
+  std::vector<U> renumbering(const std::vector<U>& v) const;
 
-  // left-compose with |p|, but allowing an exception value
+  // left-compose with |*this|, but allowing an exception value
   template<typename U>
-  std::vector<U> renumber(const std::vector<U>& v, U except) const;
+  std::vector<U> renumbering(const std::vector<U>& v, U except) const;
 
-  // WARNING: this one has INVERSE interpretation of the permutation:
+  // left-multiply by |*this|; imperative version of |renumbering|
+  template<typename U> void left_mult(std::vector<U>& v) const;
+
+  // WARNING: has INVERSE interpretation of |*this| as |pull_back|:
+  // right-compose with the inverse of the permutation (defining a left action)
   template<typename T> void permute(std::vector<T>& v) const;
 
   };
