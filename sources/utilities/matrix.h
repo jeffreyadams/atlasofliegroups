@@ -29,6 +29,9 @@ template<typename C>
   void columnVectors(std::vector<Vector<C> >& b,
 		     const Matrix<C>& m);
 
+template<typename C> Matrix<C> row_matrix(Vector<C> v);
+template<typename C> Matrix<C> column_matrix(Vector<C> v);
+
 template<typename C>
 Matrix<C>& conjugate(Matrix<C>&, const Matrix<C>&);
 
@@ -75,6 +78,18 @@ template<typename C>
 
     C scalarProduct (const Vector<C>&) const;
     bool isZero() const;
+
+    Vector<C> operator+ (const Vector<C>& v) const
+      { Vector<C> result(*this); return result +=v; }
+    Vector<C> operator- (const Vector<C>&v) const
+      { Vector<C> result(*this); return result -=v; }
+    Vector<C> operator* (C c) const
+      { Vector<C> result(*this); return result *=c; }
+    Vector<C> operator/ (C c) const
+      { Vector<C> result(*this); return result /=c; }
+    Vector<C> operator- () const
+      { Vector<C> result(*this); return result.negate(); }
+
 
 }; // Vector
 

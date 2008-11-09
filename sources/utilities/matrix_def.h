@@ -889,10 +889,28 @@ template<typename C>
 {
   b.resize(m.numColumns());
 
-  for (size_t j = 0; j<b.size(); ++j) {
+  for (size_t j = 0; j<b.size(); ++j)
     m.column(b[j],j);
-  }
 }
+
+template<typename C> Matrix<C> row_matrix(Vector<C> v)
+{
+  Matrix<C> result(1,v.size());
+  for (size_t j=0; j<v.size(); ++j)
+    result(0,j)=v[j];
+
+  return result;
+}
+
+template<typename C> Matrix<C> column_matrix(Vector<C> v)
+{
+  Matrix<C> result(v.size(),1);
+  for (size_t i=0; i<v.size(); ++i)
+    result(i,0)=v[i];
+
+  return result;
+}
+
 
 
 /*!
