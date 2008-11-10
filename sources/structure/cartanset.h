@@ -391,8 +391,13 @@ class CartanClassSet {
     twisted conjugates the canonical representative back to |sigma|
 */
   const weyl::WeylElt
-    canonicalize(TwistedInvolution&,
-		 bitset::RankFlags gens= bitset::RankFlags(~0)) const;
+    canonicalize(TwistedInvolution& sigma, bitset::RankFlags gens) const;
+
+  const weyl::WeylElt canonicalize(TwistedInvolution& sigma) const
+    { return canonicalize
+	(sigma,
+	 bitset::RankFlags(constants::lMask[d_parent.semisimpleRank()]));
+    }
 
 
 //!\brief matrix giving involution action of |tw| on weight lattice

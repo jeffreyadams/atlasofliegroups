@@ -748,6 +748,12 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma, // element to modify
   const
 {
   const rootdata::RootDatum& rd=rootDatum();
+  const weyl::WeylGroup& W=weylGroup();
+  weyl::WeylElt w; // this will be the result
+  cartanclass::InvolutionData id(d_parent,sigma);
+
+  latticetypes::LatticeElt rrs=rd.twoRho(id.real_roots());
+  latticetypes::LatticeElt irs=rd.twoRho(id.imaginary_roots());
 
 /* the code below uses the following fact: if $S$ is a root subsystem of |rd|,
    and $\alpha$ a simple root that does not lie in $S$, then the sum of
@@ -755,51 +761,29 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma, // element to modify
    positive roots of $S$. The reason is that the action of $s_\alpha$ almost
    preseves the notion of positivity; it only fails for the roots $\pm\alpha$,
    which do not occur in $S$ or in $s_\alpha(S)$. The code only applies
-   $s_\alpha$ when the sum of positive of roots of $S$ is anti-dominant for
-   $\alpha$, which excludes the case that $\alpha$ lies in $S$.
+   $s_\alpha$ when the sum of positive of roots of $S$ is strictly
+   anti-dominant for $\alpha$, and $S$ is either the system of real or
+   imaginary roots; then $\alpha$ is a complex root, and in particular
+   $\alpha$ does not lie in $S$.
  */
-  weyl::WeylElt w; // this will be the result
-  latticetypes::LatticeElt rrs=posRealRootSum(sigma);
 
-  { // first phase: make |rrs| dominant for all complex simple roots
-    size_t i; // declare outside loop to allow inspection of final value
+  { // first phase: make |rrs| dominant for all complex simple roots in |gens|
+    // and make |irs| dominant for all such roots that are orthogonal to |rrs|
+    bitset::RankFlags::iterator it; // allow inspection of final value
     do
-      for (i=0; i<rd.semisimpleRank(); ++i)
-	if (gens.test(i) and rrs.scalarProduct(rd.simpleCoroot(i)) < 0 )
+      for (it=gens.begin(); it(); ++it)
+      {
+	size_t i=*it;
+	latticetypes::LatticeCoeff c=rrs.scalarProduct(rd.simpleCoroot(i));
+	if (c<0 or c==0 and irs.scalarProduct(rd.simpleCoroot(i))<0)
 	{
-	  rd.reflect(rrs,rd.simpleRootNbr(i));   // apply $s_i$ to root sum
-	  weylGroup().twistedConjugate(sigma,i); // adjust |sigma| accordingly
-	  weylGroup().mult(w,i);                 // and add generator to |w|
+	  rd.reflect(rrs,rd.simpleRootNbr(i));   // apply $s_i$ to re-root sum
+	  rd.reflect(irs,rd.simpleRootNbr(i));   // apply $s_i$ to im-root sum
+	  W.twistedConjugate(sigma,i); // adjust |sigma| accordingly
+	  W.mult(w,i);                 // and add generator to |w|
 	  break;     // after this change, continue the |do|-|while| loop
 	}
-    while (i!=rd.semisimpleRank());    // i.e., until no change occurs any more
-  }
-
-
-/* now continue normalization, processing roots orthogonal to |rrs|. Since
-   |rrs| is dominant, we can limit our attention to simple roots: any positive
-   root orthogonal to |rrs| is a sum of simple roots orthogonal to |rrs|.
-*/
-  bitset::RankFlags simple_orth;
-
-  for (size_t  i=0; i<rd.semisimpleRank(); ++i)
-    if (rrs.scalarProduct(rd.simpleCoroot(i)) == 0)
-      simple_orth.set(i);
-
-  simple_orth&=gens; // restrict to selected generators
-
-  latticetypes::LatticeElt irs=posImaginaryRootSum(sigma);
-  { // second phase: make |irs| dominant for all complex roots in |simple_orth|
-    bitset::RankFlags::iterator it;
-    do
-      for (it=simple_orth.begin(); it(); ++it)
-	if (irs.scalarProduct(rd.simpleCoroot(*it)) < 0)
-	{
-	  rd.reflect(irs,rd.simpleRootNbr(*it));   // apply $s_i$ to root sum
-	  weylGroup().twistedConjugate(sigma,*it); // adjust |sigma|
-	  weylGroup().mult(w,*it);                 // and add generator to |w|
-	  break;           // after this change, continue the |do|-|while| loop
-	}
+      }
     while (it()); // i.e., until no change occurs any more
   }
 
@@ -808,9 +792,10 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma, // element to modify
 
 
   // clear those simple roots in |simp_orth| not orthogonal to |irs|
-  for (bitset::RankFlags::iterator it=simple_orth.begin(); it(); ++it)
-    if (irs.scalarProduct(rd.simpleCoroot(*it)) > 0)
-      simple_orth.reset(*it);
+  for (bitset::RankFlags::iterator it=gens.begin(); it(); ++it)
+    if (rrs.scalarProduct(rd.simpleCoroot(*it))>0 or
+	irs.scalarProduct(rd.simpleCoroot(*it))>0)
+      gens.reset(*it);
 
 
 /* Now ensure that the involution |theta| associated to the twisted involution
@@ -828,18 +813,19 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma, // element to modify
   {
     bitset::RankFlags::iterator it;
     do
-    {
-      latticetypes::Weight x=rd.twoRho(); // take fresh dominant each time
-      twistedAct(sigma,x); // and (re)compute the effect of |sigma| into |x|
-
-      for (it=simple_orth.begin(); it(); ++it)
-	if (x.scalarProduct(rd.simpleCoroot(*it)) < 0)
+      for (it=gens.begin(); it(); ++it)
+      {
+	size_t i=*it;
+	rootdata::RootNbr alpha=rd.simpleRootNbr(i);
+	rootdata::RootNbr beta= // image of |alpha| by $\theta$
+	  rd.permuted_root(W.word(sigma.w()),d_parent.twisted_root(alpha));
+	if (not rd.isPosRoot(beta))
 	{
-	  weylGroup().twistedConjugate(sigma,*it); // adjust |sigma|
-	  weylGroup().mult(w,*it);                 // and add generator to |w|
-	  break;                             // and continue |do|-|while| loop
+	  W.twistedConjugate(sigma,i); // adjust |sigma|
+	  W.mult(w,i);                 // and add generator to |w|
+	  break;                       // and continue |do|-|while| loop
 	}
-    }
+      }
     while (it()); // i.e., while |for| loop was interrupted
   }
 
