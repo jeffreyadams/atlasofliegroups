@@ -68,8 +68,6 @@ namespace kl {
 
 namespace kl {
 
- using blocks::BlockElt;
-
   /*!
 \brief Calculates and stores the Kazhdan-Lusztig polynomials for a
 block of representations of G.
@@ -145,19 +143,19 @@ public:
   }
 
   // the following two were moved here from the Helper class
-  void makeExtremalRow(klsupport::PrimitiveRow& e, BlockElt y) const;
+  void makeExtremalRow(klsupport::PrimitiveRow& e, blocks::BlockElt y) const;
 
-  void makePrimitiveRow(klsupport::PrimitiveRow& e, BlockElt y) const;
+  void makePrimitiveRow(klsupport::PrimitiveRow& e, blocks::BlockElt y) const;
 
   /*!
 \brief List of the elements x_i that are primitive with respect to y and have
  P_{y,x_i} NOT ZERO. This method is somewhat of a misnomer
   */
-  const klsupport::PrimitiveRow& primitiveRow(BlockElt y) const {
+  const klsupport::PrimitiveRow& primitiveRow(blocks::BlockElt y) const {
     return d_prim[y];
   }
 
-  const bitset::RankFlags& descentSet(BlockElt y) const {
+  const bitset::RankFlags& descentSet(blocks::BlockElt y) const {
     return d_support->descentSet(y);
   }
 
@@ -168,20 +166,20 @@ public:
   /*!
 \brief The Kazhdan-Lusztig-Vogan polynomial P_{x,y}
 */
-  KLPolRef klPol(BlockElt x, BlockElt y) const;
+  KLPolRef klPol(blocks::BlockElt x, blocks::BlockElt y) const;
 
   /*!
 \brief Returns the list of pointers to the non-zero KL polynomials
 P_{y,x_i} (with x_i primitive with respect to y).
   */
-  const KLRow& klRow(BlockElt y) const {
+  const KLRow& klRow(blocks::BlockElt y) const {
     return d_kl[y];
   }
 
   /*!
 \brief Length of y as a block element.
   */
-  size_t length(BlockElt y) const {
+  size_t length(blocks::BlockElt y) const {
     return d_support->length(y);
   }
 
@@ -191,13 +189,13 @@ P_{y,x_i} (with x_i primitive with respect to y).
   size_t lengthLess(size_t l) const {
     return d_support->lengthLess(l);
   }
-  MuCoeff mu(BlockElt x, BlockElt y) const;
+  MuCoeff mu(blocks::BlockElt x, blocks::BlockElt y) const;
 
   /*!
 \brief List of MuData, which are pairs (x, top degree coefficient of
 P_{y,x}).
   */
-  const MuRow& muRow(BlockElt y) const {
+  const MuRow& muRow(blocks::BlockElt y) const {
     return d_mu[y];
   }
 
@@ -223,7 +221,7 @@ P_{y,x}).
   }
 
 // get bitmap of primitive elements for row |y| with nonzero KL polynomial
-  bitmap::BitMap primMap (BlockElt y) const;
+  bitmap::BitMap primMap (blocks::BlockElt y) const;
 
 // manipulators
 
@@ -238,8 +236,8 @@ P_{y,x}).
 
 };
 
-}
+} // |namespace kl|
 
-}
+} // |namespace atlas|
 
 #endif

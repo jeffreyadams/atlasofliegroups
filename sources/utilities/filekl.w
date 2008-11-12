@@ -217,24 +217,23 @@ void write_block_file(const blocks::Block& block, std::ostream& out)
 @ The |block_info| class
 
 @< Input class declarations @>=
-using blocks::BlockElt;
-using bitset::RankFlags;
 
-typedef std::vector<RankFlags> descent_set_vector; // indexed by block element
+typedef std::vector<bitset::RankFlags>
+  descent_set_vector; // indexed by block element
 
-typedef std::vector<BlockElt> ascent_vector;       // indexed by simple root
+typedef std::vector<blocks::BlockElt> ascent_vector; // indexed by simple root
 typedef std::vector<ascent_vector> ascent_table;   // indexed by block element
 
-typedef std::vector<BlockElt> prim_list;           // list of weak primitives
+typedef std::vector<blocks::BlockElt> prim_list;   // list of weak primitives
 typedef std::vector<prim_list> prim_table;
 
 
 struct block_info
 {
   unsigned int rank;
-  BlockElt size;
+  blocks::BlockElt size;
   unsigned int max_length; // maximal length of block elements
-  std::vector<BlockElt> start_length;
+  std::vector<blocks::BlockElt> start_length;
    // array has size |max_length+2|; it defines intervals for each length
 
   descent_set_vector descent_set;     // descent (bit)set listed per BlockElt
@@ -246,10 +245,10 @@ private:
 public:
   block_info(std::ifstream& in); // constructor reads, and closes, file
 
-  BlockElt primitivize(BlockElt x, BlockElt y) const;
-  const prim_list& prims_for_descents_of(BlockElt y);
+  blocks::BlockElt primitivize(blocks::BlockElt x, blocks::BlockElt y) const;
+  const prim_list& prims_for_descents_of(blocks::BlockElt y);
 private:
-  bool is_primitive(BlockElt x, const RankFlags d) const;
+  bool is_primitive(blocks::BlockElt x, const bitset::RankFlags d) const;
 };
 
 
@@ -257,9 +256,10 @@ private:
 
 @< Methods for reading binary files @>=
 
-BlockElt block_info::primitivize(BlockElt x, BlockElt y) const
+blocks::BlockElt
+block_info::primitivize(blocks::BlockElt x, blocks::BlockElt y) const
 {
-  RankFlags d=descent_set[y];
+  bitset::RankFlags d=descent_set[y];
 start:
   if (x>=y) return x; // possibly with |x==UndefBlock|
   const ascent_vector& ax=ascents[x];
@@ -272,7 +272,8 @@ start:
 @
 @< Methods for reading binary files @>=
 
-bool  block_info::is_primitive(BlockElt x, const RankFlags d) const
+bool
+block_info::is_primitive(blocks::BlockElt x, const bitset::RankFlags d) const
 {
   const ascent_vector& ax=ascents[x];
   for (size_t s=0; s<ax.size(); ++s)
@@ -285,12 +286,12 @@ bool  block_info::is_primitive(BlockElt x, const RankFlags d) const
 @
 @< Methods for reading binary files @>=
 
-const prim_list& block_info::prims_for_descents_of(BlockElt y)
-{ RankFlags d=descent_set[y];
+const prim_list& block_info::prims_for_descents_of(blocks::BlockElt y)
+{ bitset::RankFlags d=descent_set[y];
   unsigned long s=d.to_ulong();
   prim_list& result=primitives_list[s];
   if (result.empty())
-  { for (BlockElt x=0; x<size; ++x)
+  { for (blocks::BlockElt x=0; x<size; ++x)
       if (is_primitive(x,d))
 	result.push_back(x);
     prim_list(result).swap(result); // reallocate to fit snugly
@@ -312,18 +313,18 @@ block_info::block_info(std::ifstream& in)
 
   // read intervals of block elements for each length
   start_length.resize(max_length+2);
-  start_length[0]=BlockElt(0);
+  start_length[0]=blocks::BlockElt(0);
   for (size_t i=1; i<=max_length; ++i) start_length[i]=read_bytes<4>(in);
   start_length[max_length+1]=size;
 
   // read descent sets
   descent_set.reserve(size);
-  for (BlockElt y=0; y<size; ++y)
-    descent_set.push_back(RankFlags(read_bytes<4>(in)));
+  for (blocks::BlockElt y=0; y<size; ++y)
+    descent_set.push_back(bitset::RankFlags(read_bytes<4>(in)));
 
   // read ascent table
   ascents.reserve(size);
-  for (BlockElt x=0; x<size; ++x)
+  for (blocks::BlockElt x=0; x<size; ++x)
     {
       ascents.push_back(ascent_vector());
       ascent_vector& a=ascents.back();
@@ -413,16 +414,16 @@ class matrix_info
   std::vector<std::streampos> row_pos; // positions where each row starts
 
 // data for currently selected row~|y|
-  BlockElt cur_y;		       // row number
+  blocks::BlockElt cur_y;		// row number
   strong_prim_list cur_strong_prims;   // strongly primitives for this row
   std::streampos cur_row_entries; // indices of polynomials for row start here
 
 //private methods
   matrix_info(const matrix_info&); // copying forbidden
-  void set_y(BlockElt y);          // install |cur_y| and dependent data
+  void set_y(blocks::BlockElt y);  // install |cur_y| and dependent data
 
 public:
-  BlockElt x_prim; // public variable that is set by |find_pol_nr|
+  blocks::BlockElt x_prim; // public variable that is set by |find_pol_nr|
 
 // constructor and destructor
   matrix_info(std::ifstream& block_file,std::ifstream& m_file);
@@ -430,18 +431,21 @@ public:
 
 // accessors
   size_t rank() const { return block.rank; }
-  BlockElt block_size() const { return block.size; }
-  size_t length (BlockElt y) const; // length in block
-  BlockElt first_of_length (size_t l) const { return block.start_length[l]; }
-  RankFlags descent_set (BlockElt y) const { return block.descent_set[y]; }
-  std::streamoff row_offset(BlockElt y) const { return row_pos[y]; }
-  BlockElt primitivize (BlockElt x,BlockElt y) const
+  blocks::BlockElt block_size() const { return block.size; }
+  size_t length (blocks::BlockElt y) const; // length in block
+  blocks::BlockElt first_of_length (size_t l) const
+    { return block.start_length[l]; }
+  bitset::RankFlags descent_set (blocks::BlockElt y) const
+    { return block.descent_set[y]; }
+  std::streamoff row_offset(blocks::BlockElt y) const { return row_pos[y]; }
+  blocks::BlockElt primitivize (blocks::BlockElt x,blocks::BlockElt y) const
     { return block.primitivize(x,y); }
 
 // manipulators (they are so because they set |cur_y|)
-  KLIndex find_pol_nr(BlockElt x,BlockElt y);
-  BlockElt prim_nr(unsigned int i,BlockElt y);// find primitive element
-  const strong_prim_list& strongly_primitives (BlockElt y)
+  KLIndex find_pol_nr(blocks::BlockElt x,blocks::BlockElt y);
+  blocks::BlockElt prim_nr(unsigned int i,blocks::BlockElt y);
+    // find primitive element
+  const strong_prim_list& strongly_primitives (blocks::BlockElt y)
     { set_y(y); return cur_strong_prims; } // changing |y| invalidates this!
 };
 
@@ -450,7 +454,7 @@ public:
 
 @< Methods for reading binary files @>=
 
-size_t matrix_info::length (BlockElt y) const
+size_t matrix_info::length (blocks::BlockElt y) const
 { return
     std::upper_bound(block.start_length.begin(),block.start_length.end(),y)
     -block.start_length.begin() // index of first element of length |l(y)+1|
@@ -460,7 +464,7 @@ size_t matrix_info::length (BlockElt y) const
 @
 @< Methods for reading binary files @>=
 
-void matrix_info::set_y(BlockElt y)
+void matrix_info::set_y(blocks::BlockElt y)
 {
   if (y==cur_y) { matrix_file.seekg(cur_row_entries); return; }
   cur_y=y;
@@ -481,11 +485,13 @@ void matrix_info::set_y(BlockElt y)
 
   {
 #ifndef NDEBUG
-    const BlockElt* i= // point after first block element of length of |y|
+    const blocks::BlockElt* i=
+      // point after first block element of length of |y|
       std::upper_bound(&block.start_length[0]
   		    ,&block.start_length[block.max_length+1]
   		    ,y);
-    const BlockElt* first= // point to first of |weak_prims| of that length
+    const blocks::BlockElt* first=
+      // point to first of |weak_prims| of that length
       std::lower_bound(&weak_prims[0],&weak_prims[weak_prims.size()],*(i-1));
     if (cur_strong_prims.back()!=*first)
       {
@@ -504,7 +510,7 @@ void matrix_info::set_y(BlockElt y)
 @
 @< Methods for reading binary files @>=
 
-KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y)
+KLIndex matrix_info::find_pol_nr(blocks::BlockElt x,blocks::BlockElt y)
 {
   set_y(y);
   x_prim=block.primitivize(x,y);
@@ -523,13 +529,15 @@ KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y)
 @
 @< Methods for reading binary files @>=
 
-BlockElt matrix_info::prim_nr(unsigned int i,BlockElt y)
+blocks::BlockElt matrix_info::prim_nr(unsigned int i,blocks::BlockElt y)
 { const prim_list& weak_prims = block.prims_for_descents_of(y);
-  const BlockElt* it= // point after first block element of length of |y|
+  const blocks::BlockElt* it=
+    // point after first block element of length of |y|
     std::upper_bound(&block.start_length[0]
 		    ,&block.start_length[block.max_length+1]
 		    ,y);
-  const BlockElt* first= // point to first of |weak_prims| of that length
+  const blocks::BlockElt* first=
+    // point to first of |weak_prims| of that length
     std::lower_bound(&weak_prims[0],&weak_prims[weak_prims.size()],*(it-1));
   size_t limit=first-&weak_prims[0]; // limiting value for |i|
   if (i<limit) return weak_prims[i];
@@ -552,7 +560,7 @@ matrix_info::matrix_info
   if (read_bytes<4>(matrix_file)==magic_code)
   { matrix_file.seekg(-4*std::streamoff(block_size()),std::ios_base::end);
     std::streamoff cumul=0;
-    for (BlockElt y=0; y<block_size(); ++y)
+    for (blocks::BlockElt y=0; y<block_size(); ++y)
     { cumul+= 4*std::streamoff(read_bytes<4>(matrix_file));
       row_pos[y] = cumul;
     }
@@ -562,7 +570,7 @@ matrix_info::matrix_info
   {
     size_t l=0; // length of y
     matrix_file.seekg(0,std::ios_base::beg);
-    for (BlockElt y=0; y<block.size; ++y)
+    for (blocks::BlockElt y=0; y<block.size; ++y)
     {
       while (y>=block.start_length[l+1]) ++l;
 
@@ -594,7 +602,7 @@ matrix_info::matrix_info
       { std::cerr << y << std::endl;
 	throw std::runtime_error ("Premature end of file");
       }
-    } // for (BlockElt y...)
+    } // for (blocks::BlockElt y...)
   } // |if (...==magic_code)|
 
   block_file.close(); // success, we no longer need the block file
@@ -809,10 +817,11 @@ class progress_info
 public:
   progress_info(std::ifstream& progress_file);
 
-  BlockElt block_size() const { return first_pol.size()-1; }
-  KLIndex first_new_in_row(BlockElt y) const // |y==block_size()| is allowed
+  blocks::BlockElt block_size() const { return first_pol.size()-1; }
+  KLIndex first_new_in_row(blocks::BlockElt y) // |y==block_size()| is allowed
+    const
     { return first_pol[y]; }
-  BlockElt first_row_for_pol(KLIndex i) const;
+  blocks::BlockElt first_row_for_pol(KLIndex i) const;
 };
 
 @  Methods of the |progress_info| class
@@ -824,17 +833,17 @@ progress_info::progress_info(std::ifstream& file)
 { file.seekg(0,std::ios_base::end); // measure |file|
   if (file.tellg()%12!=0)
     throw std::runtime_error("Row file size not a multiple of 12");
-  BlockElt size= file.tellg()/12;
+  blocks::BlockElt size= file.tellg()/12;
   first_pol.reserve(size+1); first_pol.push_back(0);
   file.seekg(0,std::ios_base::beg); // rewind
-  for (BlockElt y=0; y<size; ++y)
+  for (blocks::BlockElt y=0; y<size; ++y)
   { file.seekg(8,std::ios_base::cur); // skip ahead
     first_pol.push_back(first_pol.back()+read_bytes<4>(file));
   }
   file.close();
 }
 
-BlockElt progress_info::first_row_for_pol(KLIndex i) const
+blocks::BlockElt progress_info::first_row_for_pol(KLIndex i) const
 { const KLIndex* p=std::upper_bound(&first_pol[1],&*first_pol.end(),i);
   return p-&first_pol[1];
 }

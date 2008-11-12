@@ -29,8 +29,6 @@ namespace atlas {
 
 namespace klsupport {
 
-  using blocks::BlockElt;
-
 class KLSupport {
 
  private:
@@ -41,13 +39,13 @@ class KLSupport {
 
   blocks::Block* d_block;  // non-owned pointer
   size_t d_rank;
-  BlockElt d_size;
+  blocks::BlockElt d_size;
 
   std::vector<bitset::RankFlags> d_descent;
   std::vector<bitset::RankFlags> d_goodAscent;
   std::vector<bitmap::BitMap> d_downset;
   std::vector<bitmap::BitMap> d_primset;
-  std::vector<BlockElt> d_lengthLess;
+  std::vector<blocks::BlockElt> d_lengthLess;
 
  public:
 
@@ -67,45 +65,46 @@ class KLSupport {
     return *d_block;
   }
 
-  BlockElt cross(size_t s, BlockElt z) const {
+  blocks::BlockElt cross(size_t s, blocks::BlockElt z) const {
     return d_block->cross(s,z);
   }
 
-  blocks::BlockEltPair cayley(size_t s, BlockElt z) const {
+  blocks::BlockEltPair cayley(size_t s, blocks::BlockElt z) const {
     return d_block->cayley(s,z);
   }
 
-  const bitset::RankFlags& descentSet(BlockElt z) const {
+  const bitset::RankFlags& descentSet(blocks::BlockElt z) const {
     return d_descent[z];
   }
 
   /*!
 \brief Descent status of simple root s for block element z.
   */
-  descents::DescentStatus::Value descentValue(size_t s, BlockElt z) const {
-    return d_block->descentValue(s,z);
-  }
+  descents::DescentStatus::Value descentValue(size_t s, blocks::BlockElt z)
+    const
+    { return d_block->descentValue(s,z); }
 
   void extremalize(bitmap::BitMap&, const bitset::RankFlags&) const;
 
-  const bitset::RankFlags& goodAscentSet(BlockElt z) const {
+  const bitset::RankFlags& goodAscentSet(blocks::BlockElt z) const {
     return d_goodAscent[z];
   }
 
-  size_t length(BlockElt z) const {
+  size_t length(blocks::BlockElt z) const {
     return d_block->length(z);
   }
 
   /*!
 \brief Number of block elements of length strictly less than l.
   */
-  BlockElt lengthLess(size_t l) const {
+  blocks::BlockElt lengthLess(size_t l) const {
     return d_lengthLess[l];
   }
 
   void primitivize(bitmap::BitMap&, const bitset::RankFlags&) const;
 
-  BlockElt primitivize(BlockElt x, const bitset::RankFlags& A) const;
+  blocks::BlockElt primitivize(blocks::BlockElt x, const bitset::RankFlags& A)
+    const;
 
   size_t rank() const {
     return d_rank;
