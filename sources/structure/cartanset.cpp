@@ -775,7 +775,7 @@ CartanClassSet::canonicalize(TwistedInvolution &sigma, // element to modify
       {
 	size_t i=*it;
 	latticetypes::LatticeCoeff c=rrs.scalarProduct(rd.simpleCoroot(i));
-	if (c<0 or c==0 and irs.scalarProduct(rd.simpleCoroot(i))<0)
+	if (c<0 or (c==0 and irs.scalarProduct(rd.simpleCoroot(i))<0))
 	{
 	  rd.reflect(rrs,rd.simpleRootNbr(i));   // apply $s_i$ to re-root sum
 	  rd.reflect(irs,rd.simpleRootNbr(i));   // apply $s_i$ to im-root sum

@@ -283,7 +283,7 @@ struct bitset_entry : public bitset::RankFlags
   typedef bitset::RankFlags base;
   typedef std::vector<bitset_entry> Pooltype;
   bitset_entry(base b) : base(b) {}
-  size_t hashCode(size_t modulus) const { return to_ulong()&modulus-1; }
+  size_t hashCode(size_t modulus) const { return to_ulong()&(modulus-1); }
 }; // |struct bitset_entry|
 
 class KhatContext

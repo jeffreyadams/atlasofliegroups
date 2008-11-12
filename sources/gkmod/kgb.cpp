@@ -518,6 +518,7 @@ bool EnrichedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr alpha) const
   do
     for (i=0; i<rd.semisimpleRank(); ++i)
       if (rd.is_descent(i,alpha))
+      {
 	if (alpha==rd.simpleRootNbr(i))
 	  return simple_grading(a,i);
 	else
@@ -526,6 +527,7 @@ bool EnrichedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr alpha) const
 	  basedTwistedConjugate(a,i);
 	  break;
 	}
+      }
   while (i!=rd.semisimpleRank()); // i.e., until no change occurs any more
 
   assert(false); // |alpha| cannot become negative without becoming simple
