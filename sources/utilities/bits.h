@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -24,10 +24,6 @@ namespace atlas {
 namespace bits {
 
   unsigned bitCount(unsigned long);
-
-  inline void copy(void* dest, const void* source, size_t d) {
-    memcpy(dest,source,d);
-  }
 
   size_t firstBit(unsigned long);
 
