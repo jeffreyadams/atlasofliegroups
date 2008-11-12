@@ -65,11 +65,11 @@ namespace { // declarations private to commands.cpp
   // auxiliary functions
 
   inline bool isEqual(const char* a, const char* b) {
-    return !memcmp(a,b,strlen(a));
+    return std::memcmp(a,b,strlen(a))==0;
   }
 
   inline bool isInitial(const char* a, const char* b) {
-    return !memcmp(a,b,strlen(a));
+    return std::memcmp(a,b,strlen(a))==0;
   }
 
 }

@@ -14,6 +14,8 @@
 #ifndef WEYL_H  /* guard against multiple inclusions */
 #define WEYL_H
 
+#include <cstring>
+
 #include "weyl_fwd.h"
 #include "rootdata_fwd.h"
 
@@ -101,21 +103,14 @@ w_1.w_2...w_n.
 \brief Constructs the identity element of W.
 */
   WeylElt() {
-    memset(d_data,0,sizeof(d_data));
+    std::memset(d_data,0,sizeof(d_data));
   }
 
   /*! \brief interpret |w| in weyl group |W| */
   WeylElt(const WeylWord& w, const WeylGroup& W);
 
 // copy and assignment
-  WeylElt(const WeylElt& w) {
-    memcpy(d_data,w.d_data,sizeof(d_data));
-  }
-
-  WeylElt& operator=(const WeylElt& w) {
-    memcpy(d_data,w.d_data,sizeof(d_data));
-    return *this;
-  }
+// use standard definitions (raw copy of array)
 
 // accessors
 
@@ -125,7 +120,7 @@ w_1.w_2...w_n.
 strictly less than the Weyl group element following the < sign.
   */
   bool operator< (const WeylElt& w) const {
-    return memcmp(d_data,w.d_data,sizeof(d_data)) < 0;
+    return std::memcmp(d_data,w.d_data,sizeof(d_data)) < 0;
   }
 
   /*!
@@ -133,7 +128,7 @@ strictly less than the Weyl group element following the < sign.
 group element following the == sign.
   */
   bool operator== (const WeylElt& w) const {
-    return memcmp(d_data,w.d_data,sizeof(d_data))==0;
+    return std::memcmp(d_data,w.d_data,sizeof(d_data))==0;
   }
 
   /*!
@@ -141,7 +136,7 @@ group element following the == sign.
 group element following the != sign.
   */
   bool operator!= (const WeylElt& w) const {
-    return memcmp(d_data,w.d_data,sizeof(d_data))!=0;
+    return std::memcmp(d_data,w.d_data,sizeof(d_data))!=0;
   }
 
 protected: // these are for |WeylGroup| and |TI_Entry|'s eyes only
@@ -187,18 +182,18 @@ class RowBase {
 
 // constructors and destructors
   RowBase() {
-    memset(d_data,UndefValue,sizeof(d_data));
+    std::memset(d_data,UndefValue,sizeof(d_data));
   }
 
   ~RowBase() {}
 
 // copy and assignment
   RowBase(const RowBase& r) {
-    memcpy(d_data,r.d_data,sizeof(d_data));
+    std::memcpy(d_data,r.d_data,sizeof(d_data));
   }
 
   RowBase& operator=(const RowBase& r) {
-    memcpy(d_data,r.d_data,sizeof(d_data)); return *this;
+    std::memcpy(d_data,r.d_data,sizeof(d_data)); return *this;
   }
 
 // accessors

@@ -12,6 +12,7 @@
 #include "bitset.h"
 #include "blocks.h"
 
+#include <memory>
 #include <algorithm>
 #include <iostream>
 

@@ -16,6 +16,7 @@
 
 #include <iostream>
 
+#include <cstdlib>
 #include <readline/history.h>
 #include <readline/readline.h>
 
@@ -154,7 +155,7 @@ HistoryBuffer::~HistoryBuffer()
   history_set_history_state(&state); // substitue our history record
 
   clear_history(); // free all memory occupied by our history entries
-  free(history_list()); // also free the array of history entries
+  std::free(history_list()); // also free the array of history entries
 
   history_set_history_state(global_history); // restore history record
   free(global_history);

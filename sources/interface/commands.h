@@ -4,7 +4,7 @@
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups
 
-  For copyright and license information see the LICENSE file 
+  For copyright and license information see the LICENSE file
 */
 
 #ifndef COMMANDS_H  /* guard against multiple inclusions */
@@ -15,6 +15,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <cstring>
 
 #include "input.h"
 

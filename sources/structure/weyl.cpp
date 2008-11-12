@@ -772,7 +772,7 @@ void WeylGroup::inverseAct(const rootdata::RootDatum& rd,
 
 WeylElt::WeylElt(const WeylWord& ww, const WeylGroup& W)
 {
-  memset(d_data,0,sizeof(d_data)); // set to identity
+  std::memset(d_data,0,sizeof(d_data)); // set to identity
   W.mult(*this,ww); // multiply |ww| into current element
 }
 
@@ -946,7 +946,7 @@ size_t TI_Entry::hashCode(size_t modulus) const
   unsigned int hash=0;
   for (size_t i=constants::RANK_MAX; i-->0; )
     hash = 13*(hash+(*this)[i]);
-  return hash & modulus-1;
+  return hash & (modulus-1);
 }
 
 } // namespace weyl
