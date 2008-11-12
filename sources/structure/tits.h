@@ -417,7 +417,7 @@ struct TE_Entry // To allow hash tables of TitsElt values
   typedef std::vector<TE_Entry> Pooltype; // associated storage type
   size_t hashCode(size_t modulus) const // hash function
     {
-      return ti().hashCode(modulus)+t().data().to_ulong() & modulus-1;
+      return (ti().hashCode(modulus)+t().data().to_ulong()) & (modulus-1);
     }
 }; // class TE_Entry
 
