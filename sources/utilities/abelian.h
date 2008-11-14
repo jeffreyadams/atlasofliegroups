@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -24,11 +24,6 @@
 
 namespace atlas {
 
-namespace abelian {
-
-typedef matrix::Matrix<unsigned long> Endomorphism;
-
-}
 
 /******** function declarations **********************************************/
 
@@ -52,14 +47,14 @@ namespace abelian {
   void quotReps(bitmap::BitMap&, const bitmap::BitMap&,
 		const FiniteAbelianGroup&);
 
-  void toArray(GrpArr&, GrpNbr, const GroupType&);
+  void to_array(GrpArr&, GrpNbr, const GroupType&);
 
-  void toArray(GrpArr&, const latticetypes::Weight&, const GroupType&);
+  void to_array(GrpArr&, const latticetypes::Weight&, const GroupType&);
 
   void toEndomorphism(Endomorphism&, const latticetypes::LatticeMatrix&,
 		      const FiniteAbelianGroup&);
 
-  GrpNbr toGrpNbr(const GrpArr&, const GroupType&);
+  GrpNbr to_GrpNbr(const GrpArr&, const GroupType&);
 
   void transpose(Endomorphism&, const FiniteAbelianGroup&);
 
@@ -69,23 +64,22 @@ namespace abelian {
 
 namespace abelian {
 
+/*!
+  A class representing a finite Abelian group as a product of finite cyclic
+  groups of orders d_type[0], d_type[1], d_type[2]... It is assumed that
+  d_type[0] divides d_type[1], which divides d_type[2], and so on; these
+  orders are therefore invariants that characterise the group. The vector
+  d_cotype has in its jth coordinate the quotient d_type[last]/d_type[j]. This
+  means that the jth factor of the group may be written as the quotient of the
+  cyclic group of order d_type[last] by the subgroup of order d_cotype[j]. The
+  integer d_size is the order of the group.
+*/
 class FiniteAbelianGroup {
-  /*!  
-  A product of finite cyclic groups of orders d_type[0], d_type[1],
-  d_type[2]...  It is assumed that d_type[0] divides d_type[1], which
-  divides d_type[2], and so on; these orders are therefore an
-  invariant of the group. The vector d_cotype has in its jth
-  coordinate the quotient d_type[last]/d_type[j].  This means that the
-  jth factor of the group may be written as the quotient of the cyclic
-  group of order d_type[last] by the subgroup of order d_cotype[j].
-  The integer d_size is the order of the group.
-  */
 
- protected:
   /*!
 Cardinality of the group.
   */
-  unsigned long d_size;
+  unsigned long d_size; // this limits the order of representable groups
   /*!
   Sizes of the canonical cyclic factors, arranged so that each divides
   the next.
@@ -96,38 +90,21 @@ Cardinality of the group.
   the group is a product of quotients of Z/mZ, by the subgroups of
   order d_cotype[j]; each of these orders divides its predecessor, and
   d_cotype[last] is equal to 1.
-  */  
+  */
   GroupType d_cotype;
 
  public:
 
 // constructors and destructors
-  FiniteAbelianGroup() 
+  FiniteAbelianGroup()
     {}
 
   explicit FiniteAbelianGroup(const std::vector<unsigned long>&);
 
-  ~FiniteAbelianGroup() 
+  ~FiniteAbelianGroup()
     {}
 
 // copy and assignment: defaults are ok
-
-// type conversions
-  void toArray(GrpArr& a, GrpNbr x) const {
-    return abelian::toArray(a,x,d_type);
-  }
-
-  void toArray(GrpArr& a, const latticetypes::Weight& v) const {
-    return abelian::toArray(a,v,d_type);
-  }
-
-  GrpNbr toGrpNbr(const GrpArr& a) const {
-    return abelian::toGrpNbr(a,d_type);
-  }
-
-  void toWeight(latticetypes::Weight&, const GrpArr&) const;
-
-  void toWeight(latticetypes::Weight&, GrpNbr) const;
 
 // accessors
   bool operator== (const FiniteAbelianGroup& A) const {
@@ -137,6 +114,25 @@ Cardinality of the group.
   bool operator!= (const FiniteAbelianGroup& A) const {
     return not operator==(A);
   }
+
+  unsigned long rank() const { return d_type.size(); }
+  const GroupType& type() const {  return d_type; }
+  unsigned long size() const { return d_size; } // order of entire gruop
+
+// representation conversions
+  GrpArr toArray(GrpNbr x) const
+    { GrpArr result(rank()); to_array(result,x,d_type); return result; }
+
+  GrpArr toArray(const latticetypes::Weight& v) const
+    { GrpArr result(rank()); to_array(result,v,d_type); return result; }
+
+  GrpNbr toGrpNbr(const GrpArr& a) const { return to_GrpNbr(a,d_type); }
+
+  void toWeight(latticetypes::Weight&, const GrpArr&) const;
+
+  void toWeight(latticetypes::Weight&, GrpNbr) const;
+
+  // arithmetic on group elements
 
   GrpNbr add(GrpNbr, GrpNbr) const;
 
@@ -168,64 +164,61 @@ Cardinality of the group.
 
   GrpNbr prod(GrpNbr, unsigned long) const;
 
-  unsigned long rank() const {
-    return d_type.size();
-  }
-
-  unsigned long size() const {
-    return d_size;
-  }
-
   GrpNbr subtract(GrpNbr, const GrpNbr) const;
 
   GrpArr& subtract(GrpArr&, const GrpArr&) const;
 
-  const GroupType& type() const {
-    return d_type;
-  }
-};
+}; // |class FiniteAbelianGroup|
 
 /*!
-  A Homomorphism object represents a homomorphism from a group of type d_source
-  to a group of type d_dest, where the elements are represented as arrays.
+  A |Homomorphism| object represents a homomorphism from a group of type
+  |d_source| to a group of type |d_dest|. The essential data is a matrix
+  |d_matrix| with integral coefficients. As usual the matrix entry (i,j)
+  expresses component $i$ of the image of generator $j$.
 
-  As we know, for such a homomorphism to be well defined, the matrix entry
-  (i,j) should be a multiple of d_dest[i]/g, with g = 
-  gcd(d_dest[i],d_source[j]).
+  For such a homomorphism to be well defined, the matrix entry (i,j) should be
+  a multiple of |d_dest[i]/g|, with |g == gcd(d_dest[i],d_source[j])|.
 
-  Here we take a different approach. We set M a common multiple of the
-  annihilators of d_source and d_dest. Then
-  we allow arbitrary coefficients in Z/M. The corresponding matrix is
-  interpreted as follows. It is defined only for those tuples (x_1,...,x_m)
-  s.t. for all i, sum_j a_ij q_j x_j is of index t_i in Z/M, where (q_j)
-  is the cotype of d_source w.r.t. M; and then the corresponding value y_i is
-  (sum_j a_ij q_j x_j)/(M/t_i). It is easy to see that this definition is
-  in fact independent of the choice of M (of course we will take the lcm
-  of the annihilators.)
+  Computationally we shall proceed as follows. We set $M$ to a common multiple
+  of the annihilators of |d_source| and |d_dest|, and think of all cyclic
+  groups as embedded in $Z/M$; this means that before acting upon a source
+  element $(x_1,...,x_m)$ we should multiply each component $x_j$ by the
+  cotype $q_j=M/s_j$ of that component with respect to $M$, where $s_j$ is
+  |d_source[j]|. After forming $y_j=\sum_j a_{i,j} q_j x_j$ for each $i$, the
+  component $y_i$ must be in the subgroup of index $t_i$ in $Z/M$, where $t_i$
+  is |d_dest[i]|, in other words it must be divisible by $M/t_i$, and the
+  compoentn $i$ of the final result will be $y_i/(M/t_i)$. This definition is
+  independent of the choice of $M$; we will take the lcm of the annihilators.
+
+  In fact this definition might work for some group elements of the source but
+  not for all. In that case we don't really have a homomorphism, but we allow
+  applying to those group elements for which it works nontheless. The
+  predicates |defined| serve to find out whether a source element is OK.
 */
-
 class Homomorphism {
 
  private:
 
   GroupType d_source;
   GroupType d_dest;
-  GroupType d_cosource;
-  GroupType d_codest;
-  unsigned long d_annihilator;
+  GroupType d_cosource; // cotypes of source components with respect to $M$
+  GroupType d_codest;   // cotypes destination components with respect to $M$
+  unsigned long d_annihilator; // the common multiple $M$
   matrix::Matrix<unsigned long> d_matrix;
 
  public:
 
 // constructors and destructors
-  Homomorphism(const std::vector<GrpArr>&, const GroupType&, const GroupType&);
+  Homomorphism(const std::vector<GrpArr>&,
+	       const FiniteAbelianGroup&,
+	       const FiniteAbelianGroup&);
 
 // accessors
-  void apply(GrpArr&, const GrpArr&) const;
+  GrpArr apply(const GrpArr&) const;
 
   GrpNbr apply(GrpNbr) const;
 
-  bool defined(const GrpArr&) const;
+  bool defined(const GrpArr&) const; // whether homomorphism can be applied
 
   bool defined(GrpNbr) const;
 };

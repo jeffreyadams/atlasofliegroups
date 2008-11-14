@@ -2,9 +2,9 @@
 \file
   This is abelian_fwd.h
 */
-/*  
+/*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -24,23 +24,23 @@ namespace atlas {
 
 namespace abelian {
 
-typedef unsigned long GrpNbr;
+typedef unsigned long GrpNbr;  //!< element of Abelian group, compact repr.
 typedef std::vector<GrpNbr> GrpNbrList;
-typedef std::vector<unsigned long> GrpArr;
-typedef std::vector<GrpArr> GrpArrList; 
+typedef std::vector<unsigned long> GrpArr; //!< group element, array repr.
+typedef std::vector<GrpArr> GrpArrList;
 typedef std::vector<unsigned long> GroupType;
 typedef matrix::Matrix<unsigned long> Endomorphism;
 
 class Homomorphism;
 
 class FiniteAbelianGroup;
- class GeneralFiniteAbelianGroup; //not implemented
- class ElementaryTwoGroup; //not implemented
+class GeneralFiniteAbelianGroup; //not implemented
+class ElementaryTwoGroup; //not implemented
 
 class SubgroupIterator;
 
-}
+} // |namespace abelian|
 
-}
+} // |namespace atlas|
 
 #endif

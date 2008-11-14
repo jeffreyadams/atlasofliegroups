@@ -20,16 +20,14 @@
 /*!****************************************************************************
 \file
   This is a partial and tentative implementation of the concept of a finite
-  abelian group. Typically we have in mind the center of a reductive semisimple
-  group.
+  abelian group. Typically we have in mind the center of a reductive
+  semisimple group.
 
 ******************************************************************************/
 
 /*****************************************************************************
 
         Chapter I -- The FiniteAbelianGroup class
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
@@ -45,53 +43,47 @@ FiniteAbelianGroup::FiniteAbelianGroup(const std::vector<unsigned long>& t)
   d_size = 1;
 
   for (size_t j = 0; j < t.size(); ++j)
+  {
     d_size *= t[j];
-
-  for (size_t j = 0; j < t.size(); ++j)
+    assert(t.back()%t[j]==0);
     d_cotype[j] = t.back()/t[j];
+  }
 }
 
 /******** type conversions ***************************************************/
 
+/* What is a |GrpArr|, and what is a representative weight for it?
+   Why is this a method of |FiniteAbelianGroup|, without using |*this|? MvL
+*/
+
+/*!
+  Synopsis: put in |v| a representative of |a|.
+
+  NOTE: sloppy implementation; we don't check for overflow, which may happen
+  in all cases, as the coefficients of v will be signed quantities.
+*/
 void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, const GrpArr& a)
   const
-
-/*!
-  Synopsis: put in v a representative of a.
-
-  NOTE: sloppy implementation; we don't check for overflow, which may happen
-  in all cases, as the coefficients of v will be signed quantities.
-*/
-
 {
-  v.assign(a.begin(),a.end());
-
-  return;
+  v.assign(a.begin(),a.end()); // copy all elements; |v=a| would mismatch type
 }
 
-void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, GrpNbr x) const
 
 /*!
-  Synopsis: put in v a representative of a.
-
-  NOTE: sloppy implementation; we don't check for overflow, which may happen
-  in all cases, as the coefficients of v will be signed quantities.
+  Synopsis: put in |v| a representative of |x|.
 */
-
+void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, GrpNbr x) const
 {
   const GroupType& t = type();
 
   for (size_t j = 0; j < rank(); ++j) {
-    v[j] = x % t[j];
+    v[j] = x % t[j]; // extract coefficient in cyclic factor |j|
     x /= t[j];
   }
-
-  return;
 }
 
 /******** accessors **********************************************************/
 
-GrpArr& FiniteAbelianGroup::add(GrpArr& a, const GrpArr& b) const
 
 /*!
   Synopsis: a += b.
@@ -100,7 +92,7 @@ GrpArr& FiniteAbelianGroup::add(GrpArr& a, const GrpArr& b) const
 
   The only difficulty is doing it without triggering overflow.
 */
-
+GrpArr& FiniteAbelianGroup::add(GrpArr& a, const GrpArr& b) const
 {
   for (size_t j = 0; j < a.size(); ++j) {
     if (a[j] < d_type[j] - b[j])
@@ -112,20 +104,15 @@ GrpArr& FiniteAbelianGroup::add(GrpArr& a, const GrpArr& b) const
   return a;
 }
 
-GrpArr& FiniteAbelianGroup::add(GrpArr& a, GrpNbr x) const
 
 /*!
   Synopsis: a += x.
 */
-
+GrpArr& FiniteAbelianGroup::add(GrpArr& a, GrpNbr x) const
 {
-  GrpArr b(rank());
-  toArray(b,x);
-
-  return add(a,b);
+  return add(a,toArray(x));
 }
 
-GrpNbr FiniteAbelianGroup::add(GrpNbr x, const GrpArr& b) const
 
 /*!
   Synopsis: x += b.
@@ -133,54 +120,41 @@ GrpNbr FiniteAbelianGroup::add(GrpNbr x, const GrpArr& b) const
   The main problem is to deal with the modular addition, so that the overflow
   is handled correctly.
 */
-
+GrpNbr FiniteAbelianGroup::add(GrpNbr x, const GrpArr& b) const
 {
-  GrpArr a(d_type.size());
-  toArray(a,x);
-  add(a,b);
-
-  return toGrpNbr(a);
+  GrpArr a=toArray(x);
+  return toGrpNbr(add(a,b));
 }
 
-GrpNbr FiniteAbelianGroup::add(GrpNbr x, GrpNbr y) const
 
 /*!
   Synopsis: x += y.
 
   The main problem is to deal with the modular addition, so that the overflow
-  is handled correctly.
+  is handled correctly; |arithmetic::modAdd| does just that
 */
-
+GrpNbr FiniteAbelianGroup::add(GrpNbr x, GrpNbr y) const
 {
-  GrpArr a(rank());
-  toArray(a,x);
+  GrpArr a=toArray(x);
 
-  for (size_t j = 0; j < a.size(); ++j) {
-    unsigned long yj = y % d_type[j];
-    if (a[j] < d_type[j] - yj)
-      a[j] += yj;
-    else // overflow
-      a[j] -= d_type[j] - yj;
+  for (size_t j = 0; j < a.size(); ++j)
+  {
+    arithmetic::modAdd(a[j], y%d_type[j], d_type[j]);
     y /= d_type[j];
   }
 
   return toGrpNbr(a);
 }
 
-unsigned long FiniteAbelianGroup::annihilator() const
 
 /*!
-  Synopsis: returns the s.c.m. of the orders of the elements of the group.
+  Synopsis: returns the l.c.m. of the orders of the elements of the group.
 */
-
+unsigned long FiniteAbelianGroup::annihilator() const
 {
-  if (d_type.size())
-    return d_type.back();
-  else
-    return 1;
+  return d_type.size()==0 ? 1 : d_type.back();
 }
 
-GrpNbr FiniteAbelianGroup::leftApply(GrpNbr x, const Endomorphism& q) const
 
 /*!
   Synopsis: applies the matrix q to the element x, on the left.
@@ -188,16 +162,14 @@ GrpNbr FiniteAbelianGroup::leftApply(GrpNbr x, const Endomorphism& q) const
   The idea is that the matrix defines an endomorphism of the group in terms
   of the array representation.
 */
-
+GrpNbr FiniteAbelianGroup::leftApply(GrpNbr x, const Endomorphism& q) const
 {
-  GrpArr a(rank());
-  toArray(a,x);
+  GrpArr a=toArray(x);
   leftApply(a,q);
 
   return toGrpNbr(a);
 }
 
-GrpArr& FiniteAbelianGroup::leftApply(GrpArr& a, const Endomorphism& q) const
 
 /*!
   Synopsis: applies the matrix q to the array a, on the left.
@@ -205,18 +177,16 @@ GrpArr& FiniteAbelianGroup::leftApply(GrpArr& a, const Endomorphism& q) const
   The idea is that the matrix defines an endomorphism of the group in terms
   of the array representation.
 */
-
+GrpArr& FiniteAbelianGroup::leftApply(GrpArr& a, const Endomorphism& q) const
 {
-  using namespace arithmetic;
-
   GrpArr tmp = a;
 
   for (size_t i = 0; i < q.numRows(); ++i) {
     unsigned long r = 0;
     for (size_t j = 0; j < q.numColumns(); ++j) {
       unsigned long s = tmp[j];
-      modProd(s,q(i,j),d_type[i]);
-      modAdd(r,s,d_type[i]);
+      arithmetic::modProd(s,q(i,j),d_type[i]);
+      arithmetic::modAdd(r,s,d_type[i]);
     }
     a[i] = r;
   }
@@ -224,18 +194,16 @@ GrpArr& FiniteAbelianGroup::leftApply(GrpArr& a, const Endomorphism& q) const
   return a;
 }
 
-unsigned long FiniteAbelianGroup::order(GrpNbr x) const
 
 /*!
   Synopsis: computes the order of x in the group.
 */
-
+unsigned long FiniteAbelianGroup::order(GrpNbr x) const
 {
   using namespace arithmetic;
 
   unsigned long n = 1;
-  GrpArr v(rank());
-  toArray(v,x);
+  GrpArr v=toArray(x);
 
   for (size_t j = 0; j < d_type.size(); ++j) {
     unsigned long m = gcd(static_cast<long>(v[j]),d_type[j]);
@@ -271,8 +239,6 @@ unsigned long FiniteAbelianGroup::order(const bitmap::BitMap& B,
   return n;
 }
 
-unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b)
-  const
 
 /*!
   Synopsis: computes the m in [0,n[ s.t. a(b) = e^{2i pi m/n}, where a is
@@ -282,7 +248,8 @@ unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b)
   NOTE: this is a sloppy implementation, that doesn't deal carefully with
   overflow. It is expected to be used only for very small groups.
 */
-
+unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b)
+  const
 {
   unsigned long m = 0;
 
@@ -381,22 +348,29 @@ GrpArr& FiniteAbelianGroup::subtract(GrpArr& a, const GrpArr& b) const
 
         Chapter II -- The Homomorphism class
 
-  A Homomorphism object represents a homomorphism from a group of type d_source
-  to a group of type d_dest, where the elements are represented as arrays.
+  A |Homomorphism| object represents a homomorphism from a group of type
+  |d_source| to a group of type |d_dest|. The essential data is a matrix
+  |d_matrix| with integral coefficients. As usual the matrix entry (i,j)
+  expresses component $i$ of the image of generator $j$.
 
-  As we know, for such a homomorphism to be well defined, the matrix entry
-  (i,j) should be a multiple of d_dest[i]/g, with g =
-  gcd(d_dest[i],d_source[j]).
+  For such a homomorphism to be well defined, the matrix entry (i,j) should be
+  a multiple of |d_dest[i]/g|, with |g == gcd(d_dest[i],d_source[j])|.
 
-  Here we take a different approach. We set M a common multiple of the
-  annihilators of d_source and d_dest. Then
-  we allow arbitrary coefficients in Z/M. The corresponding matrix is
-  interpreted as follows. It is defined only for those tuples (x_1,...,x_m)
-  s.t. for all i, sum_j a_ij q_j x_j is of index t_i in Z/M, where (q_j)
-  is the cotype of d_source w.r.t. M; and then the corresponding value y_i is
-  (sum_j a_ij q_j x_j)/(M/t_i). It is easy to see that this definition is
-  in fact independent of the choice of M (of course we will take the lcm
-  of the annihilators.)
+  Computationally we shall proceed as follows. We set $M$ to a common multiple
+  of the annihilators of |d_source| and |d_dest|, and think of all cyclic
+  groups as embedded in $Z/M$; this means that before acting upon a source
+  element $(x_1,...,x_m)$ we should multiply each component $x_j$ by the
+  cotype $q_j=M/s_j$ of that component with respect to $M$, where $s_j$ is
+  |d_source[j]|. After forming $y_j=\sum_j a_{i,j} q_j x_j$ for each $i$, the
+  component $y_i$ must be in the subgroup of index $t_i$ in $Z/M$, where $t_i$
+  is |d_dest[i]|, in other words it must be divisible by $M/t_i$, and the
+  compoentn $i$ of the final result will be $y_i/(M/t_i)$. This definition is
+  independent of the choice of $M$; we will take the lcm of the annihilators.
+
+  In fact this definition might work for some group elements of the source but
+  not for all. In that case we don't really have a homomorphism, but we allow
+  applying to those group elements for which it works nontheless. The
+  predicates |defined| serve to find out whether a source element is OK.
 
 ******************************************************************************/
 
@@ -404,38 +378,28 @@ namespace abelian {
 
 /******** constructors and destructors ***************************************/
 
-Homomorphism::Homomorphism(const std::vector<GrpArr>& al,
-			   const GroupType& source, const GroupType& dest)
-  :d_source(source),
-   d_dest(dest),
-   d_cosource(source.size()),
-   d_codest(dest.size()),
-   d_matrix(dest.size(),source.size())
 
 /*!
-  Synopsis: constructs the homomorphism with matrix al, from a group of
-  type source to a group of type dest.
+  Constructs the homomorphism with matrix al, from groups |source| to |dest|.
 
-  Precondition: the elements of al are of size source.size(), and their
-  number is dest.size();
+  Precondition: the elements of |al| are of size source.rank(), and their
+  number is dest.rank(). Note that the matrix is therefore given by rows
+  (linear forms on |source|), not by columns (images in |dest|); unusal!
 */
-
+Homomorphism::Homomorphism(const std::vector<GrpArr>& al,
+			   const FiniteAbelianGroup& source,
+			   const FiniteAbelianGroup& dest)
+  :d_source(source.type()),
+   d_dest(dest.type()),
+   d_cosource(d_source.size()),
+   d_codest(d_dest.size()),
+   d_matrix(d_dest.size(),d_source.size())
 {
-  using namespace arithmetic;
-
   for (size_t i = 0; i < dest.size(); ++i)
     for (size_t j = 0; j < source.size(); ++j)
       d_matrix(i,j) = al[i][j];
 
-  unsigned long a = 1;
-  if (source.size())
-    a = source.back(); // annihilator of source
-
-  unsigned long b = 1;
-  if (dest.size())
-    b = dest.back();   // annihilator of dest
-
-  d_annihilator = lcm(a,b);
+  d_annihilator = arithmetic::lcm(source.annihilator(),dest.annihilator());
 
   for (size_t j = 0; j < d_cosource.size(); ++j)
     d_cosource[j] = d_annihilator/d_source[j];
@@ -446,35 +410,30 @@ Homomorphism::Homomorphism(const std::vector<GrpArr>& al,
 
 /******** accessors **********************************************************/
 
-void Homomorphism::apply(GrpArr& dest, const GrpArr& source) const
-
 /*!
   Synopsis: applies the homomorphism to source according to the rules explained
   in the introduction to this section, and puts the result in dest.
 
-  Precondition: source is in the subgroup for which this makes sense; dest
-  is already allocated to the correct size.
-
-  NOTE: we put in an assertion for safety.
+  Precondition: source is in the subgroup for which this makes sense.
 
   NOTE: sloppy implementation; we don't worry about overflow.
 */
-
+GrpArr Homomorphism::apply(const GrpArr& source) const
 {
-  for (size_t i = 0; i < dest.size(); ++i) {
-    dest[i] = 0;
-    for (size_t j = 0; j < source.size(); ++j) {
+  GrpArr dest(d_dest.size(),0);
+  for (size_t i = 0; i < dest.size(); ++i)
+  {
+    for (size_t j = 0; j < source.size(); ++j)
       dest[i] += d_matrix(i,j)*d_cosource[j]*source[j];
-    }
-    assert((dest[i]*d_dest[i])%d_annihilator == 0);
+
+    assert(dest[i]%(d_annihilator/d_dest[i]) == 0);
     dest[i] /= (d_annihilator/d_dest[i]);
     dest[i] %= d_dest[i];
   }
 
-  return;
+  return dest;
 }
 
-GrpNbr Homomorphism::apply(GrpNbr source) const
 
 /*!
   Synopsis: return h(source).
@@ -483,66 +442,58 @@ GrpNbr Homomorphism::apply(GrpNbr source) const
 
   Forwarded to the GrpArr form.
 */
-
+GrpNbr Homomorphism::apply(GrpNbr source) const
 {
   GrpArr a(d_source.size());
-  toArray(a,source,d_source);
-  GrpArr dest(d_dest.size());
-  apply(dest,a);
+  to_array(a,source,d_source);
 
-  return toGrpNbr(dest,d_dest);
+  return to_GrpNbr(apply(a),d_dest);
 }
 
-bool Homomorphism::defined(const GrpArr& a) const
 
 /*!
   Synopsis: tells whether a is in the domain.
 
   This means that a satisfies the congruences stated in the apply function.
 */
-
+bool Homomorphism::defined(const GrpArr& a) const
 {
-  for (size_t i = 0; i < d_dest.size(); ++i) {
+  for (size_t i = 0; i < d_dest.size(); ++i)
+  {
     unsigned long b = 0;
-    for (size_t j = 0; j < a.size(); ++j) {
+    for (size_t j = 0; j < a.size(); ++j)
       b += d_matrix(i,j)*d_cosource[j]*a[j];
-    }
-    if ((b*d_dest[i])%d_annihilator != 0)
+
+    if (b%(d_annihilator/d_dest[i]) != 0)
       return false;
   }
 
   return true;
 }
 
-bool Homomorphism::defined(GrpNbr x) const
 
 /*!
   Synopsis: tells whether x is in the domain.
 
   Forwarded to the array-version.
 */
-
+bool Homomorphism::defined(GrpNbr x) const
 {
   GrpArr a(d_source.size());
-  toArray(a,x,d_source);
+  to_array(a,x,d_source);
 
   return defined(a);
 }
 
-}
+} // |namespace abelian|
 
 /*****************************************************************************
 
         Chapter III -- Functions declared in abelian.h
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace abelian {
-
-void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
-	   const FiniteAbelianGroup& A)
 
 /*!
   Synopsis: writes A/B in canonical form.
@@ -557,7 +508,8 @@ void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
   trivial subgroup this might yield a basis rather different from the kernel
   basis.
 */
-
+void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
+	   const FiniteAbelianGroup& A)
 {
   using namespace bitmap;
   using namespace latticetypes;
@@ -591,7 +543,7 @@ void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
 
   // get smith normal basis
 
-  initBasis(b,A.rank());
+  matrix::initBasis(b,A.rank());
   smithNormal(invf,b.begin(),m);
 
   // scale
@@ -602,8 +554,6 @@ void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
   return;
 }
 
-void coset(bitmap::BitMap& C, const bitmap::BitMap& B, GrpNbr x,
-	   const FiniteAbelianGroup& A)
 
 /*!
   Synopsis: puts in C the coset x+B in A.
@@ -613,7 +563,8 @@ void coset(bitmap::BitMap& C, const bitmap::BitMap& B, GrpNbr x,
   NOTE : this is a straightforward implementation, shifting elements of B
   individually.
 */
-
+void coset(bitmap::BitMap& C, const bitmap::BitMap& B, GrpNbr x,
+	   const FiniteAbelianGroup& A)
 {
   using namespace bitmap;
 
@@ -624,8 +575,6 @@ void coset(bitmap::BitMap& C, const bitmap::BitMap& B, GrpNbr x,
     GrpNbr y = *i;
     C.insert(A.add(y,x));
   }
-
-  return;
 }
 
 const bitmap::BitMap& cycGenerators(const FiniteAbelianGroup& A)
@@ -670,14 +619,13 @@ const bitmap::BitMap& cycGenerators(const FiniteAbelianGroup& A)
   return cyc;
 }
 
-void generateSubgroup(bitmap::BitMap& B, GrpNbr x, const FiniteAbelianGroup& A)
 
 /*!
   Synopsis: transforms B into the subgroup generated by B and x in A.
 
   NOTE : this is a simple-minded implementation; we do not aim for speed.
 */
-
+void generateSubgroup(bitmap::BitMap& B, GrpNbr x, const FiniteAbelianGroup& A)
 {
   using namespace bitmap;
 
@@ -696,25 +644,21 @@ void generateSubgroup(bitmap::BitMap& B, GrpNbr x, const FiniteAbelianGroup& A)
   return;
 }
 
-void generators(GrpNbrList& gen, const bitmap::BitMap& B,
-		const FiniteAbelianGroup& A)
 
 /*!
   Synopsis: puts in gen a list of generators of the subgroup B.
 */
-
+void generators(GrpNbrList& gen, const bitmap::BitMap& B,
+		const FiniteAbelianGroup& A)
 {
   gen.assign(B.begin(),B.end());
-
-  return;
 }
 
-bool isElementaryAbelian(const std::vector<unsigned long>& c)
 
 /*!
   Tells if c is all twos.
 */
-
+bool isElementaryAbelian(const std::vector<unsigned long>& c)
 {
   for (size_t j = 0; j < c.size(); ++j)
     if (c[j] != 2)
@@ -723,8 +667,6 @@ bool isElementaryAbelian(const std::vector<unsigned long>& c)
   return true;
 }
 
-void quotReps(bitmap::BitMap& qr, const bitmap::BitMap& B,
-	      const FiniteAbelianGroup& A)
 
 /*!
   Synopsis: puts in qr a list of representatives of the cosets modulo B.
@@ -736,24 +678,21 @@ void quotReps(bitmap::BitMap& qr, const bitmap::BitMap& B,
 
   The efficiency depends on the efficiency of coset computations.
 */
-
+void quotReps(bitmap::BitMap& qr, const bitmap::BitMap& B,
+	      const FiniteAbelianGroup& A)
 {
-  using namespace bitmap;
-
   qr.fill();
-  BitMap::iterator qr_end = qr.end();
+  bitmap::BitMap::iterator qr_end = qr.end();
 
-  for (BitMap::iterator i = qr.begin(); i != qr_end; ++i) {
-    BitMap c(A.size());
+  for (bitmap::BitMap::iterator i = qr.begin(); i != qr_end; ++i)
+  {
+    bitmap::BitMap c(A.size());
     coset(c,B,*i,A);
     c.remove(*i);
     qr.andnot(c);
   }
-
-  return;
 }
 
-void toArray(GrpArr& a, GrpNbr x, const GroupType& t)
 
 /*!
   Synopsis: puts the array-form of x in a.
@@ -762,19 +701,16 @@ void toArray(GrpArr& a, GrpNbr x, const GroupType& t)
   result is the expression of x modulo that product.
 
   Explanation: the array-form (relative to type) is the unique expression
-  of x in the variable base defined by type.
+  of x in the variable-radix base defined by type.
 */
-
+void to_array(GrpArr& a, GrpNbr x, const GroupType& t)
 {
   for (size_t j = 0; j < a.size(); ++j) {
     a[j] = x % t[j];
     x /= t[j];
   }
-
-  return;
 }
 
-void toArray(GrpArr& a, const latticetypes::Weight& v, const GroupType& t)
 
 /*!
   Synopsis: reduces v mod d_type.
@@ -784,63 +720,45 @@ void toArray(GrpArr& a, const latticetypes::Weight& v, const GroupType& t)
 
   Precondition: a is set to v.size();
 */
-
+void to_array(GrpArr& a, const latticetypes::Weight& v, const GroupType& t)
 {
-  using namespace arithmetic;
-
   for (size_t j = 0; j < v.size(); ++j)
-    a[j] = remainder(v[j],t[j]);
-
-  return;
+    a[j] = arithmetic::remainder(v[j],t[j]);
 }
 
-void toEndomorphism(Endomorphism& e, const latticetypes::LatticeMatrix& q,
-		    const FiniteAbelianGroup& A)
 
 /*!
   Synopsis: transforms q into the corresponding Endomorphism.
 
   This just involves rewriting the coeficients as unsigned longs modulo
-  the type factors. Just in case the conventions for modular arithmetic
-  with negative numbers are not what we want, we make sure that we
-  deal with nonnegative numbers all along.
-
-  NOTE: there should be some better way to do this!
+  the type factors.
 */
-
+void toEndomorphism(Endomorphism& e, const latticetypes::LatticeMatrix& q,
+		    const FiniteAbelianGroup& A)
 {
-  using namespace arithmetic;
-
   e.resize(q.numRows(),q.numColumns());
 
   for (size_t j = 0; j < q.numColumns(); ++j)
     for (size_t i = 0; i < q.numRows(); ++i)
-      e(i,j) = remainder(q(i,j),A.type()[i]);
-
-  return;
+      e(i,j) = arithmetic::remainder(q(i,j),A.type()[i]);
 }
 
-GrpNbr toGrpNbr(const GrpArr& a, const GroupType& t)
 
 /*!
   Synopsis: returns the number-form of a.
 
   Precondition: a is representable as a GrpNbr;
 */
-
+GrpNbr to_GrpNbr(const GrpArr& a, const GroupType& t)
 {
   GrpNbr x = 0;
 
-  for (size_t j = a.size(); j;) {
-    --j;
-    x *= t[j];
-    x += a[j];
-  }
+  for (size_t j = a.size(); j-->0;)
+    (x *= t[j]) += a[j];
 
   return x;
 }
 
-void transpose(Endomorphism& e, const FiniteAbelianGroup& A)
 
 /*!
   Synopsis: transposes the endomorphism e.
@@ -854,7 +772,7 @@ void transpose(Endomorphism& e, const FiniteAbelianGroup& A)
   NOTE: this implementation works for homomorphisms between different groups
   just as well (except that one needs two grouptypes then.)
 */
-
+void transpose(Endomorphism& e, const FiniteAbelianGroup& A)
 {
   using namespace arithmetic;
 
@@ -874,6 +792,6 @@ void transpose(Endomorphism& e, const FiniteAbelianGroup& A)
   return;
 }
 
-}
+} // |namespace abelian|
 
-}
+} // |namespace atlas|
