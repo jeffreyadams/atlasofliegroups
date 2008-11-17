@@ -157,7 +157,7 @@ blocks::Block& currentBlock()
   {
     block_pointer=new
       blocks::Block(mainmode::currentComplexGroup(),
-		    realmode::currentRealGroup().realForm(),
+		    realmode::currentRealForm(),
 		    dual_G_R_pointer->realForm());
   }
   return *block_pointer;
@@ -201,14 +201,13 @@ namespace {
 
 /*
   Synopsis: attempts to set a real form interactively. In case of failure,
-  throws an InputError and returns.
+  throws an InputError and returns. All Cartan classes are generated.
 */
 void block_mode_entry() throw(commands::EntryError)
 {
   try
   {
     realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-    G_R.fillCartan();
 
     complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
     const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
@@ -290,7 +289,7 @@ void type_f()
 void realform_f()
 {
   try {
-    realredgp::RealReductiveGroup& G_R=realmode::currentRealGroup();
+    realredgp::RealReductiveGroup& G_R=realmode::currentRawRealGroup();
     interactive::getInteractive(G_R,mainmode::currentComplexInterface());
 
     realredgp_io::Interface RI(G_R,mainmode::currentComplexInterface());

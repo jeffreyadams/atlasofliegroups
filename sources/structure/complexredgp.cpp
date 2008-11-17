@@ -134,7 +134,7 @@ ComplexReductiveGroup::~ComplexReductiveGroup()
 
 /*!
   \brief the size of the block defined by the weak real form rf
-  and the weak dual real form drf.
+  and the weak dual real form drf. Requires Cartan for |rf| to be generated
 */
 unsigned long ComplexReductiveGroup::blockSize(realform::RealForm rf,
 					       realform::RealForm drf) const
@@ -152,7 +152,7 @@ const cartanclass::CartanClass& ComplexReductiveGroup::cartan(size_t cn) const
 }
 
 /*!
-  \brief returns the ordering of the Cartan subgroups
+  \brief returns the ordering of the (currently generated) Cartan classes
 */
 const poset::Poset& ComplexReductiveGroup::cartanOrdering() const
 {
@@ -160,7 +160,8 @@ const poset::Poset& ComplexReductiveGroup::cartanOrdering() const
 }
 
 /*!
-  \brief returns the support of the set of Cartan classes for rf
+  \brief returns the set of Cartan classes for |rf|
+  Requires those Cartan to be already generated
 */
 const bitmap::BitMap& ComplexReductiveGroup::cartanSet(realform::RealForm rf)
   const
@@ -169,8 +170,8 @@ const bitmap::BitMap& ComplexReductiveGroup::cartanSet(realform::RealForm rf)
 }
 
 /*!
-  \brief returns the support of the set of Cartan classes for the dual real
-  form rf
+  \brief returns the set of Cartan classes for the dual real form rf
+  Only those Cartan classes already generated will show up
 */
 const bitmap::BitMap& ComplexReductiveGroup::dualCartanSet
   (realform::RealForm rf)
@@ -194,9 +195,9 @@ ComplexReductiveGroup::involutionMatrix(const weyl::TwistedInvolution& tw)
   return d_cartanSet.involutionMatrix(tw);
 }
 
-/*!
-  \brief returns the size of the fiber size corresponding to dual real
-  form \#drf and cartan \#cn.
+/*! \brief
+  Returns the size of the fiber size corresponding to dual real form \#drf
+  and cartan \#cn (which obviously must have been generated before)
 
   Explanation: this is the size of the orbits, for the shifted action of
   the dual imaginary Weyl group (a.k.a. the real Weyl group), that correspond
@@ -304,14 +305,13 @@ size_t ComplexReductiveGroup::numCartanClasses() const
   return d_cartanSet.numCartan();
 }
 
-size_t ComplexReductiveGroup::mostSplit(realform::RealForm rf) const
 
 /*!
   \brief returns the most split cartan subgroup for real form \#rf.
 
-  Precondition: fillCartan() has been called for rf.
+  Precondition: |fillCartan()| has been called, or at least |fillCartan(rf)|
 */
-
+size_t ComplexReductiveGroup::mostSplit(realform::RealForm rf) const
 {
   return d_cartanSet.mostSplit(rf);
 }
@@ -425,7 +425,7 @@ const weyl::TwistedInvolution&
 /******** manipulators *******************************************************/
 
 /*!
-  \brief fills in the Cartan classes that are defined for the real form x.
+  \brief fills in the Cartan classes that are defined for the real form |rf|.
 */
 void ComplexReductiveGroup::fillCartan(realform::RealForm rf)
 {

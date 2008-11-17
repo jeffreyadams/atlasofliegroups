@@ -89,20 +89,6 @@ const cartanclass::CartanClass& RealReductiveGroup::cartan(size_t cn) const
 }
 
 
-/*!
-  Synopsis: returns the poset of Cartan classes.
-
-  NOTE: the poset may be only partially constructed. The only guarantee is
-  that the part of it for this up to the most split Cartan of this real
-  form is valid.
-
-  NOTE: this is not inlined to avoid a dependency on complexredegp.h
-*/
-const poset::Poset& RealReductiveGroup::cartanOrdering() const
-{
-  return d_complexGroup->cartanOrdering();
-}
-
 
 /*!
   Synopsis: returns the support of the set of Cartan classes for this
@@ -244,15 +230,14 @@ const weyl::WeylGroup& RealReductiveGroup::weylGroup() const
   More precisely, it makes sure that the CartanClasses structure of the
   underlying complex group contains all the cartans for this group.
 
-  NOTE: may forward an Overflow exception.
+  This function can be called for any real form, but the atlas code has been
+  rewritten to call it only for the quasisplit form, so that the numbering of
+  the Cartan classes for an inner class is independent of the order in which
+  the various real forms are first considered (and their Cartans generated)
 */
 void RealReductiveGroup::fillCartan()
 {
-  using namespace cartanset;
-
   d_complexGroup->fillCartan(d_realForm);
-
-  return;
 }
 
 void RealReductiveGroup::swap(RealReductiveGroup& other)
@@ -261,8 +246,6 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
   std::swap(d_realForm,other.d_realForm);
   d_connectivity.swap(other.d_connectivity);
   std::swap(d_status,other.d_status);
-
-  return;
 }
 
 } // namespace realredgp

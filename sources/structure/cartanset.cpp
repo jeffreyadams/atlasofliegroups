@@ -334,15 +334,14 @@ CartanClassSet::reflection(rootdata::RootNbr rn,const TwistedInvolution& tw)
   return result;
 }
 
-rootdata::RootSet CartanClassSet::noncompactPosRootSet
-  (realform::RealForm rf, size_t j) const
 /*!
   \brief Flags in rs the set of noncompact positive roots for Cartan \#j.
 */
-
+rootdata::RootSet CartanClassSet::noncompactPosRootSet
+  (realform::RealForm rf, size_t j) const
 {
   const cartanclass::Fiber& f = cartan(j).fiber();
-  unsigned long x = CartanClassSet::representative(rf,j);
+  unsigned long x = representative(rf,j); // real form orbit-representative
 
   rootdata::RootSet result=f.noncompactRoots(x);
   result &= rootDatum().posRootSet();

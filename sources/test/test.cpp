@@ -366,7 +366,6 @@ void poscoroots_rootbasis_f()
 void KGB_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  G_R.fillCartan(); // must not forget this!
 
   ioutils::OutputFile f;
 
@@ -377,7 +376,6 @@ void KGB_f()
 void sub_KGB_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  G_R.fillCartan(); // must not forget this!
   kgb::KGB kgb(G_R,G_R.cartanSet());
   standardrepk::KhatContext khc(G_R,kgb);
 
@@ -394,7 +392,6 @@ void sub_KGB_f()
 void trivial_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  G_R.fillCartan(); // must not forget this!
   const rootdata::RootDatum& rd=G_R.rootDatum();
 
   kgb::KGB kgb(G_R,G_R.cartanSet());
@@ -432,7 +429,6 @@ void trivial_f()
 void Ktypeform_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  G_R.fillCartan(); // must not forget this!
 
   kgb::KGB kgb(G_R,G_R.cartanSet());
   standardrepk::KhatContext khc(G_R,kgb);
@@ -498,7 +494,6 @@ void Ktypeform_f()
 void Ktypemat_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  G_R.fillCartan(); // must not forget this!
 
   kgb::KGB kgb(G_R,G_R.cartanSet());
   standardrepk::KhatContext khc(G_R,kgb);
@@ -582,7 +577,6 @@ void Ktypemat_f()
 void mod_lattice_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  G_R.fillCartan(); // must not forget this!
 
   unsigned long cn=interactive::get_Cartan_class(G_R.cartanSet());
 
@@ -622,7 +616,6 @@ void mod_lattice_f()
 void branch_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  G_R.fillCartan(); // must not forget this!
 
   kgb::KGB kgb(G_R,G_R.cartanSet());
   standardrepk::KhatContext khc(G_R,kgb);
@@ -695,7 +688,6 @@ void test_f()
     realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
     const complexredgp::ComplexReductiveGroup& G=G_R.complexGroup();
 
-    G_R.fillCartan(); // must not forget this!
     kgb::KGB kgb(G_R,G_R.cartanSet());
 
     unsigned long x=interactive::get_bounded_int

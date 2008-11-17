@@ -121,27 +121,27 @@ std::ostream& printCartanClasses(std::ostream& strm,
   return strm;
 }
 
-/* the function below is much like |kgb_io::printBruhatOrder|, but will not
-   output any minimal elements except |0| (do such Cartan classes exist?).
-   Moreover it couldn't call that function, which needs a |BruhatOrder|.
+/* the function below is much like |kgb_io::printBruhatOrder|, but cannot
+   call that function, which needs a different type, nameley |BruhatOrder|.
  */
 
 // Print the Hasse diagram of the Cartan ordering of G_R.
 std::ostream& printCartanOrder(std::ostream& strm,
 			       const realredgp::RealReductiveGroup& G_R)
 {
-  const poset::Poset& p = G_R.cartanOrdering();
+  const poset::Poset& p = G_R.complexGroup().cartanOrdering();
   size_t cn = G_R.mostSplit();
 
   graph::OrientedGraph g(0);
-  p.hasseDiagram(g,cn);
+  p.hasseDiagram(g,cn); // everything below |cn| is for real form of |G_R|
 
-  strm << "0:" << std::endl;
+  strm << "0:" << std::endl; // this is the only minimal element
 
+  // all covering relations are grouped by lower (covered) element
   for (size_t j = 1; j < g.size(); ++j)
   {
     const graph::VertexList& e = g.edgeList(j);
-    if (not e.empty())
+    if (not e.empty()) // suppress non-covered elements; they are not for |G_R|
       basic_io::seqPrint(strm << j << ": ",e.begin(),e.end()) << std::endl;
   }
 

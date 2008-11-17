@@ -71,8 +71,6 @@ class RealReductiveGroup {
 // accessors
   const cartanclass::CartanClass& cartan(size_t) const;
 
-  const poset::Poset& cartanOrdering() const;
-
   const bitmap::BitMap& cartanSet() const;
 
   const complexredgp::ComplexReductiveGroup& complexGroup() const {
