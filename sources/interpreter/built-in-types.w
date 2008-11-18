@@ -1787,7 +1787,7 @@ void Cartan_order_matrix_wrapper()
   size_t n=rf->val.numCartan();
   matrix_value* M =
      new matrix_value(latticetypes::LatticeMatrix(n,n,0));
-  const poset::Poset& p = rf->val.cartanOrdering();
+  const poset::Poset& p = rf->val.complexGroup().cartanOrdering();
   for (size_t i=0; i<n; ++i)
     for (size_t j=i; j<n; ++j)
       if (p.lesseq(i,j)) M->val(i,j)=1;
@@ -2518,8 +2518,9 @@ void print_W_cells_wrapper()
   kl::KLContext klc(kls); klc.fill();
 
   wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
+  wgraph::DecomposedWGraph dg(wg);
 @)
-  wgraph_io::printCells(*output_stream,wg);
+  wgraph_io::printWDecomposition(*output_stream,dg);
 @)
   wrap_tuple(0);
 }
