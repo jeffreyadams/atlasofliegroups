@@ -46,7 +46,9 @@ RealReductiveGroup::RealReductiveGroup(
   , d_connectivity()
   , d_status()
 {
-  if (rootDatum().rank() == rootDatum().semisimpleRank())
+  const rootdata::RootDatum& rd = G_C.rootDatum();
+
+  if (rd.rank() == rd.semisimpleRank())
     d_status.set(IsSemisimple);
 
   if (rf == G_C.quasisplit()) d_status.set(IsQuasisplit);
@@ -54,8 +56,6 @@ RealReductiveGroup::RealReductiveGroup(
   // construct the torus for the most split Cartan
 
   const cartanclass::Fiber& fundf = d_complexGroup->fundamental();
-  const rootdata::RootDatum& rd = d_complexGroup->rootDatum();
-
   rootdata::RootList so= cartanclass::toMostSplit(fundf,rf,rd);
 
   latticetypes::LatticeMatrix q;
@@ -67,7 +67,7 @@ RealReductiveGroup::RealReductiveGroup(
   if (T.isSplit())
     d_status.set(IsSplit);
 
-  d_connectivity = topology::Connectivity(T,rootDatum());
+  d_connectivity = topology::Connectivity(T,rd);
   if (d_connectivity.dualComponentReps().size() == 0)
     d_status.set(IsConnected);
 }
