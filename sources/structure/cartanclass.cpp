@@ -110,19 +110,32 @@ InvolutionData::InvolutionData(const rootdata::RootDatum& rd,
   , d_complex(rd.numRoots())
   , d_simpleImaginary()        // here even dimensioning is pointless
   , d_simpleReal()
+{ classify_roots(rd); }
+
+void InvolutionData::classify_roots(const rootdata::RootDatum& rd)
 {
-  for (size_t j = 0; j < d_rootInvolution.size(); ++j)
-    if (d_rootInvolution[j] == j)
-      d_imaginary.insert(j);
-    else if (d_rootInvolution[j] == rd.rootMinus(j))
-      d_real.insert(j);
+  for (size_t alpha = 0; alpha<d_rootInvolution.size(); ++alpha)
+    if (d_rootInvolution[alpha] == alpha)
+      d_imaginary.insert(alpha);
+    else if (d_rootInvolution[alpha] == rd.rootMinus(alpha))
+      d_real.insert(alpha);
     else
-      d_complex.insert(j);
+      d_complex.insert(alpha);
 
   // find simple imaginary roots
   d_simpleImaginary=rd.simpleBasis(imaginary_roots());
   d_simpleReal=rd.simpleBasis(real_roots());
 }
+
+InvolutionData::InvolutionData(const rootdata::RootDatum& rd,
+			       const std::vector<rootdata::RootNbr>& s_image)
+  : d_rootInvolution(rd.extend_to_roots(s_image))
+  , d_imaginary(rd.numRoots()) // we can only dimension root sets for now
+  , d_real(rd.numRoots())
+  , d_complex(rd.numRoots())
+  , d_simpleImaginary()
+  , d_simpleReal()
+{ classify_roots(rd); }
 
 InvolutionData::InvolutionData(const complexredgp::ComplexReductiveGroup& G,
 			       const weyl::TwistedInvolution& tw)
@@ -145,18 +158,7 @@ InvolutionData::InvolutionData(const complexredgp::ComplexReductiveGroup& G,
 
     d_rootInvolution=rd.extend_to_roots(simple_image);
   }
-
-  for (size_t j = 0; j < d_rootInvolution.size(); ++j)
-    if (d_rootInvolution[j] == j)
-      d_imaginary.insert(j);
-    else if (d_rootInvolution[j] == rd.rootMinus(j))
-      d_real.insert(j);
-    else
-      d_complex.insert(j);
-
-  // find simple imaginary roots
-  d_simpleImaginary=rd.simpleBasis(imaginary_roots());
-  d_simpleReal=rd.simpleBasis(real_roots());
+  classify_roots(rd);
 }
 
 void InvolutionData::swap(InvolutionData& other)

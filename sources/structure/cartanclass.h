@@ -68,6 +68,8 @@ class InvolutionData
  public:
   InvolutionData(const rootdata::RootDatum&,
 		 const latticetypes::LatticeMatrix&);
+  InvolutionData(const rootdata::RootDatum& rd,
+		 const std::vector<rootdata::RootNbr>& s_image);
   InvolutionData(const complexredgp::ComplexReductiveGroup&,
 		 const weyl::TwistedInvolution&);
   void swap(InvolutionData&);
@@ -83,6 +85,8 @@ class InvolutionData
     { return d_simpleImaginary; }
   const rootdata::RootList& real_basis() const
     { return d_simpleReal; }
+private:
+  void classify_roots(const rootdata::RootDatum& rd);
 };
 
 /*!
