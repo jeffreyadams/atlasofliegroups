@@ -110,7 +110,7 @@ CartanClassSet::CartanClassSet
   , d_cartan(1,new cartanclass::CartanClass(parent.rootDatum(),q))
 
   // initalise following structures to correspond to just fundamental Cartan
-  , d_twistedInvolution(1,TwistedInvolution(weyl::WeylElt()))
+  , d_twistedInvolution(1,weyl::TwistedInvolution(weyl::WeylElt()))
   , d_ordering(1) // Cartans for a one point poset for now
 
   // the fundamental fiber can be copied from the fundamental Cartan
@@ -166,6 +166,13 @@ CartanClassSet::~CartanClassSet()
 
 // This should remain empty!
 
+/******** accessors *******************************************************/
+
+/* currently these cannot be inlined because CartanClassSet needs to be
+   complete before ComplexReductiveGroup is, as the latter contains the former
+*/
+
+
 /******** manipulators *******************************************************/
 
 /*!
@@ -213,7 +220,7 @@ void CartanClassSet::extend(realform::RealForm rf)
       {
 
 	// multipy |twistedInvolution(j)| on the left by the reflection |*it|
-	TwistedInvolution tw=reflection(*it,d_twistedInvolution[j]);
+	weyl::TwistedInvolution tw=reflection(*it,d_twistedInvolution[j]);
 
 	/* check if we have a new twisted involution;
 	   if so, extend the cartan structure */
@@ -319,15 +326,15 @@ namespace cartanset {
   This is a twisted involution if |s_rn| twisted-commutes with |tw|;
   in practice root \#rn will in fact be imaginary for |tw|
 */
-TwistedInvolution
-CartanClassSet::reflection(rootdata::RootNbr rn,const TwistedInvolution& tw)
-  const
+weyl::TwistedInvolution
+CartanClassSet::reflection(rootdata::RootNbr rn,
+			   const weyl::TwistedInvolution& tw) const
 {
   const weyl::WeylGroup& W = weylGroup();
 
   weyl::WeylWord rw=rootDatum().reflectionWord(rn);
 
-  TwistedInvolution result=tw;
+  weyl::TwistedInvolution result=tw;
   for (size_t i=rw.size(); i-->0; ) // left multiply |tw| by |rw|
     W.leftMult(result,rw[i]);
 
@@ -350,61 +357,56 @@ rootdata::RootSet CartanClassSet::noncompactPosRootSet
 
 /******** private manipulators **********************************************/
 
-void CartanClassSet::correlateForms()
 
 /*!
   \brief Adds a new real form label list to d_realFormLabels.
 
+  Explanation: this is called when a new Cartan class has just been added
+  to |d_cartan|. Then this function finds the labels corresponding to the
+  real forms for which this Cartan is defined (the labelling of real forms
+  being defined by the adjoint orbit picture in the fundamental fiber.)
+
   Algorithm: the gradings of the imaginary root system corresponding to the
-  various real forms for which the new cartan is defined are known. We find
+  various real forms for which the new Cartan is defined are known. We find
   a cross-action followed by a composite Cayley transform, taking the
-  fundamental cartan to the new one. Then for each real form, we take a
-  representative grading, and compute a grading for the fundamental cartan
+  fundamental Cartan to the new one. Then for each real form, we take a
+  representative grading, and compute a grading for the fundamental Cartan
   transforming to it. This amounts to solving a system of linear equations
   mod 2.
-
-  Explanation: this is called when a new cartan class has just been added
-  to d_cartan. Then this function finds the labels corresponding to the
-  real forms for which this cartan is defined (the labelling of real forms
-  being defined by the adjoint orbit picture in the fundamental fiber.)
 */
-
+void CartanClassSet::correlateForms()
 {
-  using namespace cartanclass;
-  using namespace gradings;
-  using namespace partition;
-  using namespace rootdata;
-  using namespace weyl;
+  const rootdata::RootDatum& rd = rootDatum();
 
-  const RootDatum& rd = rootDatum();
+  const weyl::WeylGroup& W = weylGroup();
 
-  const WeylGroup& W = weylGroup();
+  const cartanclass::Fiber& fundf = fundamental();
+  const cartanclass::Fiber& f =
+    d_cartan.back()->fiber(); // fiber of Cartan just added
 
-  const Fiber& fundf = fundamental();
-  const Fiber& f = d_cartan.back()->fiber();
-
-  const TwistedInvolution& ti = d_twistedInvolution.back();
+  const weyl::TwistedInvolution& ti = d_twistedInvolution.back();
 
   // find cayley part and cross part
-  RootList so;
-  WeylWord ww;
+  rootdata::RootList so;
+  weyl::WeylWord ww;
   cayley_and_cross_part(so,ww,ti,rd,W);
 
   assert(checkDecomposition(ti,ww,so,W,rd,distinguished()));
 
-  const Partition& pi = f.weakReal();
+  const partition::Partition& pi = f.weakReal();
   realform::RealFormList rfl(f.numRealForms());
 
   // transform gradings and correlate forms
   for (size_t j = 0; j < rfl.size(); ++j) {
     unsigned long y = pi.classRep(j);
-    Grading gr=f.grading(y);
-    RootList rl = f.simpleImaginary(); // the roots of which |gr| are a grading
+    gradings::Grading gr=f.grading(y);
+    rootdata::RootList rl =
+      f.simpleImaginary(); // the roots of which |gr| are a grading
 
     transformGrading(gr,rl,so,rd);
     for (size_t i = 0; i < so.size(); ++i)
       gr.set(rl.size()+i);             // make grading set for roots in |so|
-    copy(so.begin(),so.end(),back_inserter(rl)); // extend |rl| with |so|
+    std::copy(so.begin(),so.end(),back_inserter(rl)); // extend |rl| with |so|
     crossTransform(rl,ww,rd);  // apply cross part of |ti| to roots in |rl|
 
     /* now |gr| grades the roots in |rl|,
@@ -424,39 +426,32 @@ void CartanClassSet::correlateDualForms(const rootdata::RootDatum& rd,
 					const weyl::WeylGroup& W)
   // arguments are dual root datum and dual group
 {
-  using namespace cartanclass;
-  using namespace gradings;
-  using namespace latticetypes;
-  using namespace partition;
-  using namespace rootdata;
-  using namespace weyl;
-
-  const Fiber& fundf = dualFundamental();
-  const Fiber& f = d_cartan.back()->dualFiber();
+  const cartanclass::Fiber& fundf = dualFundamental();
+  const cartanclass::Fiber& f = d_cartan.back()->dualFiber();
 
   /* find dual twisted involution by right-multiplication of |f| by |fundf|.
      However since |word_of_inverse_matrix| is used, we compute |q=fundf*f|. */
-  LatticeMatrix q = fundf.involution();
+  latticetypes::LatticeMatrix q = fundf.involution();
   q *= f.involution();
-  WeylWord tiww=rd.word_of_inverse_matrix(q);
-  TwistedInvolution ti(WeylElt(tiww,W));
+  weyl::WeylWord tiww=rd.word_of_inverse_matrix(q);
+  weyl::TwistedInvolution ti(weyl::WeylElt(tiww,W));
 
   // find cayley part and cross part
-  RootList so;
-  WeylWord ww;
+  rootdata::RootList so;
+  weyl::WeylWord ww;
   cayley_and_cross_part(so,ww,ti,rd,W);
 // begin testing
   assert(checkDecomposition(ti,ww,so,W,rd,fundf.involution()));
 // end testing
 
-  const Partition& pi = f.weakReal();
+  const partition::Partition& pi = f.weakReal();
   realform::RealFormList rfl(f.numRealForms());
 
   // transform gradings and correlate forms
   for (size_t j = 0; j < rfl.size(); ++j) {
     unsigned long y = pi.classRep(j);
-    Grading gr=f.grading(y);
-    RootList rl = f.simpleImaginary();
+    gradings::Grading gr=f.grading(y);
+    rootdata::RootList rl = f.simpleImaginary();
     transformGrading(gr,rl,so,rd);
     for (size_t i = 0; i < so.size(); ++i)
       gr.set(rl.size()+i);
@@ -527,8 +522,6 @@ void CartanClassSet::updateSupports(size_t last)
 */
 
 {
-  using namespace bitmap;
-
   for (size_t j = 0; j < d_support.size(); ++j)
     d_support[j].set_capacity(last+1);
 
@@ -550,7 +543,7 @@ void CartanClassSet::updateSupports(size_t last)
 
 void CartanClassSet::updateTwistedInvolutions
   (std::vector<weyl::WeylEltList>& known,
-   const TwistedInvolution& tw)
+   const weyl::TwistedInvolution& tw)
 
 /*!
   \brief Updates the known list by adding the twisted class of tw to it.
@@ -719,7 +712,7 @@ bool isImaginary (const latticetypes::LatticeElt& v,
 \brief Sum of the real roots.
 */
 latticetypes::LatticeElt
-  CartanClassSet::posRealRootSum(const TwistedInvolution& tw) const
+  CartanClassSet::posRealRootSum(const weyl::TwistedInvolution& tw) const
 {
   cartanclass::InvolutionData d(d_parent,tw);
   return rootDatum().twoRho(d.real_roots());
@@ -729,7 +722,7 @@ latticetypes::LatticeElt
 \brief Sum of the imaginary roots.
   */
 latticetypes::LatticeElt
-  CartanClassSet::posImaginaryRootSum(const TwistedInvolution& tw) const
+  CartanClassSet::posImaginaryRootSum(const weyl::TwistedInvolution& tw) const
 {
   cartanclass::InvolutionData d(d_parent,tw);
   return rootDatum().twoRho(d.imaginary_roots());
@@ -742,8 +735,9 @@ latticetypes::LatticeElt
     these form the letters of |w| from left (last applied) to right (first).
 */
 const weyl::WeylElt // return value is conjugating element
-CartanClassSet::canonicalize(TwistedInvolution &sigma, // element to modify
-			     bitset::RankFlags gens) // subset of generators
+CartanClassSet::canonicalize
+  (weyl::TwistedInvolution &sigma, // element to modify
+   bitset::RankFlags gens) // subset of generators
   const
 {
   const rootdata::RootDatum& rd=rootDatum();
@@ -854,7 +848,7 @@ size_t CartanClassSet::classNumber(weyl::TwistedInvolution sigma) const
 size_t CartanClassSet::cayley(size_t j, size_t i, weyl::WeylElt* conjugator)
   const
 {
-  TwistedInvolution ti=d_twistedInvolution[j]; // copy for later modification
+  weyl::TwistedInvolution ti=d_twistedInvolution[j]; // copy for later modification
 
   cartanclass::InvolutionData d(d_parent,ti);
   atlas::rootdata::RootNbr alpha = d.imaginary_basis()[i];
@@ -974,7 +968,7 @@ void cayley_and_cross_part(rootdata::RootList& so,
 			   const weyl::WeylGroup& W)
 {
   std::vector<signed char> dec=W.involution_expr(ti);
-  TwistedInvolution tw; // to reconstruct |ti| as a check
+  weyl::TwistedInvolution tw; // to reconstruct |ti| as a check
 
   so.clear(); cross.clear();
 
@@ -1021,9 +1015,6 @@ void crossTransform(rootdata::RootList& rl,
     rd.simple_root_permutation(ww[j]).left_mult(rl);
 }
 
-unsigned long makeRepresentative(const gradings::Grading& gr,
-				 const rootdata::RootList& rl,
-				 const cartanclass::Fiber& fundf)
 /*!
   \brief Returns an element |x| (interpreted as element of the adjoint fiber
   of |fundf|) such that it grades the elements in |rl| according to |gr|.
@@ -1033,34 +1024,33 @@ unsigned long makeRepresentative(const gradings::Grading& gr,
   in |rl| should probably be linearly independent, since linearly dependent
   roots would only make the existence of a solution less likely.
 */
-
+unsigned long makeRepresentative(const gradings::Grading& gr,
+				 const rootdata::RootList& rl,
+				 const cartanclass::Fiber& fundf)
 {
-  using namespace bitset;
-  using namespace cartanclass;
-  using namespace latticetypes;
-  using namespace gradings;
-  using namespace rootdata;
-
-  RootSet brs =
+  rootdata::RootSet brs =
     fundf.noncompactRoots(0); // noncompact roots for the base grading
-  Grading bgr =
-    restrictGrading(brs,rl);    // view it as a grading of the roots of |rl|
-  SmallBitVector bc(bgr,rl.size()); // transform into binary vector
+  gradings::Grading bgr =
+    cartanclass::restrictGrading(brs,rl); // view as grading of roots of |rl|
+  latticetypes::SmallBitVector bc(bgr,rl.size()); // transform to binary vector
 
   // make right hand side
-  SmallBitVector rhs(gr,rl.size()); // view |gr| as binary vector (same length)
+  latticetypes::SmallBitVector
+                 rhs(gr,rl.size()); // view |gr| as binary vector (same length)
   rhs += bc;                        // and add the one for the base grading
 
   // make grading shifts
-  SmallBitVectorList cl(fundf.adjointFiberRank(),bc);
+  latticetypes::SmallBitVectorList cl(fundf.adjointFiberRank(),bc);
   for (size_t j = 0; j < cl.size(); ++j) {
-    Grading gr1 = restrictGrading(fundf.noncompactRoots(1 << j),rl);
-    cl[j] += SmallBitVector(gr1,rl.size()); // cl[j] is shift for vector e[j]
+    gradings::Grading gr1 =
+      cartanclass::restrictGrading(fundf.noncompactRoots(1 << j),rl);
+    cl[j] += // cl[j] is shift for vector e[j]
+      latticetypes::SmallBitVector(gr1,rl.size());
   }
 
   // set up equations
-  RankFlags x;
-  firstSolution(x,cl,rhs);
+  bitset::RankFlags x;
+  bitvector::firstSolution(x,cl,rhs);
 
   return x.to_ulong();
 }
@@ -1111,10 +1101,7 @@ bool checkDecomposition(const weyl::TwistedInvolution& ti,
 			const rootdata::RootDatum& rd,
 			const latticetypes::LatticeMatrix& q)
 {
-  using namespace rootdata;
-  using namespace weyl;
-
-  TwistedInvolution tw;
+  weyl::TwistedInvolution tw;
 
   // cross action part
   for (size_t j = 0; j < ww.size(); ++j)
@@ -1129,5 +1116,5 @@ bool checkDecomposition(const weyl::TwistedInvolution& ti,
   return tw == ti;
 }
 
-} // namespace cartanset
-} // namespace atlas
+} // |namespace cartanset|
+} // |namespace atlas|
