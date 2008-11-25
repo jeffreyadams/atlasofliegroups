@@ -427,7 +427,7 @@ annihilator_modulo
   latticetypes::WeightList b; matrix::initBasis(b,m);
     // standard basis of rank $m$
 
-  latticetypes::CoeffList lambda;
+  latticetypes::CoeffList lambda; // invariant factors; in fact non-negative
   smithnormal::smithNormal(lambda,b.begin(),M);
     // find Smith basis
 
@@ -436,7 +436,7 @@ annihilator_modulo
 
   for (size_t j = 0; j < lambda.size(); ++j)
   { unsigned long f=(lambda[j]);
-    unsigned long c=denominator/arithmetic::gcd(f,denominator);
+    unsigned long c=denominator/arithmetic::gcd(denominator,f);
     for (size_t i=0; i<m; ++i) A(i,j)*=c; // multiply column by |c|
   }
   return A;
