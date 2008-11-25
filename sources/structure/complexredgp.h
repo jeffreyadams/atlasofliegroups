@@ -93,7 +93,7 @@ class ComplexReductiveGroup
   /*!
   \brief The based root datum.
   */
-  const rootdata::RootDatum& d_rootDatum;
+  const rootdata::RootDatum d_rootDatum;
 
   /*!
   \brief The Tits group of the based root datum, extended by an
@@ -118,12 +118,10 @@ class ComplexReductiveGroup
 
  public:
 // constructors and destructors
-  ComplexReductiveGroup(const rootdata::RootDatum*,
+  ComplexReductiveGroup(const rootdata::RootDatum&,
 			const latticetypes::LatticeMatrix&);
 
   ComplexReductiveGroup(const ComplexReductiveGroup&, tags::DualTag);
-
-  ~ComplexReductiveGroup();
 
 // accessors
 

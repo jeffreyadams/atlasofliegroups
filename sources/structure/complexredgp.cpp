@@ -71,8 +71,8 @@ namespace complexredgp {
   to by rd; users beware of this.
 */
 ComplexReductiveGroup::ComplexReductiveGroup
- (const rootdata::RootDatum* rd, const latticetypes::LatticeMatrix& d)
-  : d_rootDatum(*rd) // we assume ownership
+ (const rootdata::RootDatum& rd, const latticetypes::LatticeMatrix& d)
+  : d_rootDatum(rd) // we assume ownership
   , d_titsGroup(rootDatum(),d)
   , root_twist(make_root_twist())
   , d_cartanSet(*this,d)
@@ -89,7 +89,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
 */
 ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 					     tags::DualTag)
-  : d_rootDatum(*new rootdata::RootDatum(G.rootDatum(),tags::DualTag()))
+  : d_rootDatum(G.rootDatum(),tags::DualTag())
   , d_titsGroup(rootDatum(),
 		dualBasedInvolution(G.distinguished(),G.rootDatum()))
   , root_twist(make_root_twist())
@@ -103,12 +103,6 @@ setutils::Permutation ComplexReductiveGroup::make_root_twist() const
     twist[i]= d_titsGroup.twisted(i);
 
   return rootDatum().root_permutation(twist);
-}
-
-ComplexReductiveGroup::~ComplexReductiveGroup()
-
-{
-  delete &d_rootDatum;
 }
 
 /******** accessors **********************************************************/
