@@ -107,8 +107,8 @@ void adjustBasis(latticetypes::WeightList& b, latticetypes::CoeffList& invf,
   It throws an InputError if the interaction with the user does not conclude
   successfully. In that case, d_gl is not modified.
 */
-void getGenerators(latticetypes::RatWeightList& d_rwl,
-		   const latticetypes::CoeffList& u)
+int getGenerators(latticetypes::RatWeightList& d_rwl,
+		  const latticetypes::CoeffList& u)
   throw(error::InputError)
 {
   latticetypes::RatWeightList rwl;
@@ -116,13 +116,10 @@ void getGenerators(latticetypes::RatWeightList& d_rwl,
   std::string genString;
   interactive::common_input() >> genString;
 
-  if (genString.find("sc") == 0)
-    goto simplyconnected;
+  if (genString.find("sc") == 0) // match must be a start of string
+    return 1; // code for simply connected
   if (genString.find("ad") == 0)
-    goto adjoint;
-
-  if (topology::isTrivial(u))
-    goto simplyconnected;
+    return 2; // code for adjoint
 
   std::cout
     << "elements of finite order in the center of the simply connected group:"
@@ -146,9 +143,10 @@ void getGenerators(latticetypes::RatWeightList& d_rwl,
       if (genString.empty()) // done
 	break;
       if (genString.find("sc") == 0)
-	goto simplyconnected;
+	return 1; // code for simply connected
       if (genString.find("ad") == 0)
-	goto adjoint;
+	return 2; // code for adjoint
+
       ib.reset();
       size_t j;
       latticetypes::LatticeCoeff d;
@@ -184,34 +182,9 @@ void getGenerators(latticetypes::RatWeightList& d_rwl,
     }
   }
 
-  goto finish;
-
- adjoint: // return the full center of the _derived_ group
-  // put in rwl a list of ratvectors of 0/1's
-  rwl.assign(u.size(),
-	     latticetypes::RatWeight
-	       (latticetypes::Weight(u.size(), latticetypes::ZeroCoeff),
-		latticetypes::OneCoeff));
-
-  for (size_t j = 0; j < rwl.size(); ++j)
-    if (u[j]) {
-      rwl[j].numerator()[j] = 1;
-      rwl[j].denominator() = u[j];
-    }
-
-  goto finish;
-
- simplyconnected: // return the empty list
-  rwl.clear();
-
-  goto finish;
-
- finish:
   d_rwl.swap(rwl);
+  return 0; // "normal" exit
 }
-
-void getLattice(latticetypes::CoeffList& invf, latticetypes::WeightList& b)
-  throw(error::InputError)
 
 /*
   Gets the lattice interactively from the user.
@@ -236,26 +209,32 @@ void getLattice(latticetypes::CoeffList& invf, latticetypes::WeightList& b)
   Throws an InputError if the interaction with the user fails. In that case,
   b and invf are not modified.
 */
-
+int getLattice(latticetypes::CoeffList& root_invf,
+		latticetypes::WeightList& root_lattice_basis)
+  throw(error::InputError)
 {
   latticetypes::Weight u;
-  getUniversal(u,invf);  // collect non-unit invariant factors into |u|
+  getUniversal(u,root_invf);  // collect non-unit invariant factors into |u|
 
   // get generators of character group
 
   latticetypes::RatWeightList rwl;  // generator list
-  getGenerators(rwl,u);      // input any generators of size |u.size()|
-                             // might throw an InputError
+  int code=getGenerators(rwl,u);    // input any generators of size |u.size()|
+                                    // might throw an InputError
+
+  if (code>0)
+    return code; // bypass computation if user typed "sc" or "ad"
 
   // make basis elements corresponding to those central elements
 
   latticetypes::LatticeMatrix q;
-  latticetypes::CoeffList linvf;
-  makeOrthogonal(q,linvf,rwl,u.size());
+  latticetypes::CoeffList orth_invf;
+  makeOrthogonal(q,orth_invf,rwl,u.size());
 
   latticetypes::WeightList lb;
-  localBasis(lb,b,invf);
+  localBasis(lb,root_lattice_basis,root_invf);
 
+  // convert |lb| according to |q|
   latticetypes::LatticeMatrix m(lb);
   m *= q;
   for (size_t j = 0; j < lb.size(); ++j)
@@ -263,7 +242,8 @@ void getLattice(latticetypes::CoeffList& invf, latticetypes::WeightList& b)
 
   // make actual basis
 
-  adjustBasis(b,invf,lb,linvf);
+  adjustBasis(root_lattice_basis,root_invf,lb,orth_invf);
+  return 0; // normal exit
 }
 
 /*
@@ -322,25 +302,25 @@ void smithBasis(latticetypes::CoeffList& invf, latticetypes::WeightList& b,
   matrix::initBasis(b,lietype::rank(lt));
   latticetypes::WeightList::iterator bp = b.begin();
 
-  for (size_t j = 0; j < lt.size(); ++j) {
+  for (size_t i=0; i<lt.size(); ++i)
+  {
+    size_t r = lietype::rank(lt[i]);
 
-    size_t r = lietype::rank(lt[j]);
-
-    if (lietype::type(lt[j]) == 'T') { // torus type
-      invf.insert(invf.end(),r,latticetypes::ZeroCoeff);
-      bp += r;
+    if (lietype::type(lt[i]) == 'T') // torus type T_r
+    {
+      invf.insert(invf.end(),r,latticetypes::ZeroCoeff); // add |r| factors 0
+      bp += r; // and leave standard basis vectors unchanged
       continue;
     }
 
     latticetypes::LatticeMatrix ms;
-    prerootdata::cartanMatrix(ms,lt[j]);
+    prerootdata::cartanMatrix(ms,lt[i]);
     ms.transpose();
-    smithnormal::smithNormal(invf,bp,ms);
+    smithnormal::smithNormal(invf,bp,ms); // adapt next |r| vectors to lattice
 
-    if (lietype::type(lt[j]) == 'D' and (lietype::rank(lt[j])&1UL) == 0) {
-      //make a small adjustment
+    //make a small adjustment for types $D_{2n}$
+    if (lietype::type(lt[i]) == 'D' and lietype::rank(lt[i])%2 == 0)
       bp[r-2] += bp[r-1];
-    }
 
     bp += r;
 
@@ -437,7 +417,7 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
   Synopsis: puts in q the matrix of a Smith basis for the lattice orthogonal
   to d_rwl, and in invf the corresponding invariant factors.
 
-  Precondition: r is the dimension of the elements of d_rwl.
+  Precondition: each of the elements of d_rwl has size r.
 
   Explanation: here the elements of d_rwl are interpreted as elements of finite
   order in the torus (more precisely, the order divides the denominator.) So
@@ -478,13 +458,10 @@ void makeOrthogonal(latticetypes::LatticeMatrix& q,
   // write invariant factors of orthogonal lattice
   invf.resize(b.size(),1UL);
 
-  if (rwl.size()) {
+  if (rwl.size()>0) {
     unsigned long d = rwl[0].denominator();
-    for (size_t j = 0; j < linvf.size(); ++j) {
-      unsigned long c = linvf[j];
-      c = arithmetic::gcd(c,d);
-      invf[j] = d/c;
-    }
+    for (size_t j = 0; j < linvf.size(); ++j)
+      invf[j] = d/arithmetic::gcd(linvf[j],d);
   }
 }
 

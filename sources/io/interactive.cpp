@@ -363,9 +363,36 @@ void getInteractive(prerootdata::PreRootDatum& d_prd,
   latticetypes::CoeffList invf;
 
   interactive_lattice::smithBasis(invf,b,lt);
-  interactive_lattice::getLattice(invf,b);   // may throw an InputError
+  switch (interactive_lattice::getLattice(invf,b)) // may throw an InputError
+  {
+  case 1: // simply connected
+    {
+      matrix::initBasis(d_b,lietype::rank(lt)); // replace with standard basis
+    } break;
+  case 2: // adjoint
+    { // Take root basis for simple factors, standard basis for torus factors
 
-  d_b.swap(b);
+      matrix::initBasis(d_b,lietype::rank(lt)); // initially standard basis
+      latticetypes::WeightList::iterator bp = d_b.begin();
+
+      for (size_t i=0; i<lt.size(); ++i)
+      {
+	size_t r = lietype::rank(lt[i]);
+	if (lietype::type(lt[i]) == 'T') // torus type T_r
+	  bp += r; // leave |r| standard basis vectors
+	else
+	{
+	  size_t d=bp-d_b.begin();
+	  latticetypes::LatticeMatrix ms; prerootdata::cartanMatrix(ms,lt[i]);
+	  for (size_t j=0; j<r; ++j,++bp)
+	    for (size_t k=0; k<r; ++k)
+	      (*bp)[d+k]=ms(j,k); // row |j|: simple root |j| in simple factor
+	}
+      }
+    } break;
+    default: // user specified lattice basis is now in |b|
+      d_b.swap(b);
+  }
 
   // make new PreRootDatum
 
@@ -509,12 +536,12 @@ void getInteractive(realredgp::RealReductiveGroup& d_G,
   d_G.swap(G);
 }
 
-/*
-  Synopsis: Replaces d_I by a new Interface gotten interactively from the
-  user.
+/*!\brief
+  Replaces |pI| by a  pointer to a new |Interface| gotten interactively from
+  the user, and |pG| by a poitner the the corresponding inner class
 
-  Throws an InputError if the interaction with the user is not successful;
-  in that case, d_I is not touched.
+  Throws an |InputError| if the interaction with the user is not successful;
+  in that case both pointers are unchanged.
 
   NOTE: here it is assumed that at most one interface is looking at a given
   complex reductive group. If there could be several, some kind of reference
@@ -536,10 +563,8 @@ void getInteractive(realredgp::RealReductiveGroup& d_G,
 
   latticetypes::LatticeMatrix d; getInnerClass(d,lo); // may throw InputError
 
-  rootdata::RootDatum* rd = new rootdata::RootDatum(prd);
-
-  // commit
-  pG=new complexredgp::ComplexReductiveGroup(rd,d); // *pG now owns *rd
+  // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
+  pG=new complexredgp::ComplexReductiveGroup(rootdata::RootDatum(prd),d);
   pI=new complexredgp_io::Interface(*pG,lo);
   // the latter constructor also constructs two realform interfaces in *pI
 }
