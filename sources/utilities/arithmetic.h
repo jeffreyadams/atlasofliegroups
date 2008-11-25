@@ -18,8 +18,9 @@ namespace atlas {
 
 namespace arithmetic {
 
-  // inlined
-  unsigned long gcd (unsigned long, unsigned long);
+  unsigned long gcd (long, unsigned long); // signed first argument only!
+
+  unsigned long unsigned_gcd (unsigned long, unsigned long); // avoid overload
 
   unsigned long lcm (unsigned long, unsigned long);
 
@@ -45,13 +46,14 @@ namespace arithmetic {
   }
 
   inline unsigned long& modAdd(unsigned long& a, unsigned long b,
-			      unsigned long n) {
-    if (a < n-b)
-      a += b;
-    else
-      a -= n-b;
-    return a;
-  }
+			       unsigned long n)
+    {
+      if (a < n-b)
+	a += b;
+      else
+	a -= n-b;
+      return a;
+    }
 
 } // |namespace arithmetic|
 

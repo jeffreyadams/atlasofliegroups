@@ -27,44 +27,44 @@ namespace atlas {
 
 namespace arithmetic {
 
-unsigned long gcd(unsigned long a, unsigned long b)
 
 /*!
-  Synopsis: the classic Euclidian algorithm. It is assumed that
+  The classical Euclidian algorithm. It is assumed that
 
   Precondition: b > 0;
 */
-
+unsigned long unsigned_gcd(unsigned long a, unsigned long b)
 {
-  if (a == 0)
-    return b;
+  unsigned long r;
 
-  if (a < b)  /* exchange a and b */
-    return gcd(b,a);
-
-  unsigned long r = a%b;
-
-  while (r != 0)
-    {
-      a = b;
-      b = r;
-      r = a%b;
-    }
+  while ((r= a%b) != 0)
+  {
+    a = b;
+    b = r;
+  }
 
   return b;
 }
 
-unsigned long lcm(unsigned long a, unsigned long b)
 
 /*!
   Synopsis: returns the lowest common multiple of a and b.
 
   Precondition: b > 0;
 */
-
+unsigned long lcm (unsigned long a, unsigned long b)
 {
-  unsigned long c = gcd(a,b);
-  return (a/c)*b;
+  unsigned long c=a, d=b; // local variables for the sake of readability
+  unsigned long m_c=0, m_d=b; // multiples of |b|, cong. to  |-c|,|d| mod |a|
+
+  do // invariant: |c*m_d+d*m_c==ab|
+  {
+    m_c += (c/d)*m_d; c%=d;
+    if (c==0) return m_c;
+    m_d += (d/c)*m_c; d%=c;
+  } while (d>0);
+
+  return m_d;
 }
 
 unsigned long& modProd(unsigned long& a, unsigned long b, unsigned long n)

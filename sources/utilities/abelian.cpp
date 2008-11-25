@@ -200,14 +200,13 @@ GrpArr& FiniteAbelianGroup::leftApply(GrpArr& a, const Endomorphism& q) const
 */
 unsigned long FiniteAbelianGroup::order(GrpNbr x) const
 {
-  using namespace arithmetic;
-
   unsigned long n = 1;
   GrpArr v=toArray(x);
 
-  for (size_t j = 0; j < d_type.size(); ++j) {
-    unsigned long m = gcd(static_cast<long>(v[j]),d_type[j]);
-    n = lcm(n,d_type[j]/m);
+  for (size_t i=0; i<d_type.size(); ++i)
+  {
+    unsigned long m = arithmetic::unsigned_gcd(v[i],d_type[i]);
+    n = arithmetic::lcm(n,d_type[i]/m);
   }
 
   return n;
@@ -253,8 +252,8 @@ unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b)
 {
   unsigned long m = 0;
 
-  for (size_t j = 0; j < rank(); ++j)
-    m += a[j]*b[j]*d_cotype[j];
+  for (size_t i = 0; i < rank(); ++i)
+    m += a[i]*b[i]*d_cotype[i];
 
   m %= annihilator();
 
@@ -589,9 +588,6 @@ const bitmap::BitMap& cycGenerators(const FiniteAbelianGroup& A)
 */
 
 {
-  using namespace arithmetic;
-  using namespace bitmap;
-
   static FiniteAbelianGroup Astat;
   static bitmap::BitMap cyc;
 
@@ -599,13 +595,15 @@ const bitmap::BitMap& cycGenerators(const FiniteAbelianGroup& A)
 
     cyc.set_capacity(A.size());
     cyc.fill();
-    BitMap::iterator cyc_end = cyc.end();
+    bitmap::BitMap::iterator cyc_end = cyc.end();
 
-    for (BitMap::iterator i = ++cyc.begin(); i != cyc_end; ++i) {
+    for (bitmap::BitMap::iterator i = ++cyc.begin(); i != cyc_end; ++i)
+    {
       GrpNbr x = *i;
       unsigned long n = A.order(x);
-      for (unsigned long j = 2; j < n; ++j) {
-	if (gcd(n,j) != 1) // j is not prime to n
+      for (unsigned long j = 2; j < n; ++j)
+      {
+	if (arithmetic::unsigned_gcd(n,j) != 1) // j is not prime to n
 	  continue;
 	GrpNbr xj = A.prod(x,j);
 	cyc.remove(xj);

@@ -1060,12 +1060,11 @@ void setCycGenerator(BitMap& cyc, const std::vector<BitMap>& prev,
   return;
 }
 
-void shape(Shape& s, const LieType& lt)
 
 /*
   Puts the shape of lt in s.
 */
-
+void shape(Shape& s, const LieType& lt)
 {
   using namespace lietype;
 
@@ -1073,12 +1072,8 @@ void shape(Shape& s, const LieType& lt)
 
   for (unsigned long j = 0; j < lt.size(); ++j)
     s.push_back(rank(lt[j]));
-
-  return;
 }
 
-void updateCycGenerator(BitMap& cyc, const FiniteAbelianGroup& A,
-			const BitMap& B, GrpNbr x)
 
 /*
   Synopsis: eliminates from cyc those elements which together with B will
@@ -1090,24 +1085,21 @@ void updateCycGenerator(BitMap& cyc, const FiniteAbelianGroup& A,
   Algorithm: we go through the multiples of x that generate the same subgroup
   as x mod B, and eliminate the corresponding B-cosets from cyc.
 */
-
+void updateCycGenerator(BitMap& cyc, const FiniteAbelianGroup& A,
+			const BitMap& B, GrpNbr x)
 {
-  using namespace arithmetic;
-
   unsigned long n = A.order(B,x);
 
   for (unsigned long j = 1; j < n; ++j) {
-    if (gcd(n,j) != 1)
+    if (arithmetic::unsigned_gcd(n,j) != 1)
       continue;
     GrpNbr xj = A.prod(x,j);
     BitMap c(A.size());
     coset(c,B,xj,A);
     cyc.andnot(c);
   }
-
-  return;
 }
 
-}
+} // |namespace|
 
-}
+} // |namespace atlas|
