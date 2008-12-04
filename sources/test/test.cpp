@@ -369,14 +369,14 @@ void KGB_f()
 
   ioutils::OutputFile f;
 
-  kgb::KGB kgb(G_R,G_R.cartanSet());
+  kgb::KGB kgb(G_R,G_R.Cartan_set());
   kgb_io::var_print_KGB(f,mainmode::currentComplexGroup(),kgb);
 }
 
 void sub_KGB_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  kgb::KGB kgb(G_R,G_R.cartanSet());
+  kgb::KGB kgb(G_R,G_R.Cartan_set());
   standardrepk::KhatContext khc(G_R,kgb);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
@@ -394,7 +394,7 @@ void trivial_f()
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
   const rootdata::RootDatum& rd=G_R.rootDatum();
 
-  kgb::KGB kgb(G_R,G_R.cartanSet());
+  kgb::KGB kgb(G_R,G_R.Cartan_set());
   standardrepk::KhatContext khc(G_R,kgb);
 
   kgb::KGBElt last=kgb.size()-1;
@@ -430,7 +430,7 @@ void Ktypeform_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
-  kgb::KGB kgb(G_R,G_R.cartanSet());
+  kgb::KGB kgb(G_R,G_R.Cartan_set());
   standardrepk::KhatContext khc(G_R,kgb);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
@@ -495,7 +495,7 @@ void Ktypemat_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
-  kgb::KGB kgb(G_R,G_R.cartanSet());
+  kgb::KGB kgb(G_R,G_R.Cartan_set());
   standardrepk::KhatContext khc(G_R,kgb);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
@@ -578,7 +578,7 @@ void mod_lattice_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
-  unsigned long cn=interactive::get_Cartan_class(G_R.cartanSet());
+  unsigned long cn=interactive::get_Cartan_class(G_R.Cartan_set());
 
   latticetypes::LatticeMatrix q = G_R.cartan(cn).involution();
   for (size_t j = 0; j<q.numRows(); ++j)
@@ -617,7 +617,7 @@ void branch_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
-  kgb::KGB kgb(G_R,G_R.cartanSet());
+  kgb::KGB kgb(G_R,G_R.Cartan_set());
   standardrepk::KhatContext khc(G_R,kgb);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
@@ -688,7 +688,7 @@ void test_f()
     realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
     const complexredgp::ComplexReductiveGroup& G=G_R.complexGroup();
 
-    kgb::KGB kgb(G_R,G_R.cartanSet());
+    kgb::KGB kgb(G_R,G_R.Cartan_set());
 
     unsigned long x=interactive::get_bounded_int
       (interactive::sr_input(),"Choose KGB element: ",kgb.size());

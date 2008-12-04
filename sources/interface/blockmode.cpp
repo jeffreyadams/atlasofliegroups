@@ -23,7 +23,6 @@
 #include "filekl.h"
 #include "realredgp.h"
 #include "realredgp_io.h"
-#include "cartanset.h"
 #include "kgb.h"
 #include "kgb_io.h"
 #include "blocks.h"
@@ -319,8 +318,8 @@ void small_kgb_f()
 
   std::cout
     << "partial kgb size: "
-    << mainmode::currentComplexGroup().cartanClasses().KGB_size
-        (realmode::currentRealForm(),common)
+    << mainmode::currentComplexGroup().KGB_size
+         (realmode::currentRealForm(),common)
     << std::endl;
 
   ioutils::OutputFile file;
@@ -340,7 +339,7 @@ void small_dual_kgb_f()
   basic_io::seqPrint(std::cout,common.begin(),common.end(),",","{","}\n");
 
   std::cout << "partial kgb size: " <<
-    dGC.cartanClasses().KGB_size(currentDualRealForm(),common) << std::endl;
+    dGC.KGB_size(currentDualRealForm(),common) << std::endl;
   ioutils::OutputFile file;
 
   kgb::KGB kgb(dGR,common);

@@ -38,7 +38,6 @@
 #include "basic_io.h"
 #include "bruhat.h"
 #include "complexredgp.h"
-#include "cartanset.h"
 #include "descents.h"
 #include "kgb.h"
 #include "realredgp.h"
@@ -405,7 +404,7 @@ void Block::generate(realredgp::RealReductiveGroup& G,
   d_yrange = dual_kgb.size();
 
   complexredgp::ComplexReductiveGroup& G_C = G.complexGroup();
-  size_t size=G_C.blockSize(d_realForm,d_dualForm); // not stored in |Block| !
+  size_t size=G_C.block_size(d_realForm,d_dualForm); // not stored in |Block| !
 
   d_x.reserve(size);
   d_y.reserve(size);
@@ -758,15 +757,11 @@ std::vector<BlockElt> dual_map(const Block& b, const Block& dual_b)
   return result;
 }
 
-/*! Find Cartans classes of |G| whose dual involution occurs for |dG| */
 bitmap::BitMap common_Cartans(realredgp::RealReductiveGroup& GR,
 			      realredgp::RealReductiveGroup& dGR)
-{
-  bitmap::BitMap result=GR.cartanSet();
-  result &= GR.complexGroup().dualCartanSet(dGR.realForm());
-
-  return result;
-}
+  { return GR.Cartan_set()
+      & GR.complexGroup().dual_Cartan_set(dGR.realForm());
+  }
 
 } // namespace blocks
 

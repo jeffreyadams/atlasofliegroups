@@ -71,7 +71,7 @@ class RealReductiveGroup {
 // accessors
   const cartanclass::CartanClass& cartan(size_t) const;
 
-  const bitmap::BitMap& cartanSet() const;
+  const bitmap::BitMap& Cartan_set() const;
 
   const complexredgp::ComplexReductiveGroup& complexGroup() const {
     return *d_complexGroup;
@@ -103,7 +103,7 @@ class RealReductiveGroup {
     return d_status[IsSplit];
   }
 
-  size_t kgbSize() const;
+  size_t KGB_size() const;
 
   size_t mostSplit() const;
 

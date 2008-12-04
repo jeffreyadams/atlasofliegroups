@@ -1423,10 +1423,9 @@ void fix_involution_wrapper()
   std::pair<lietype::LieType,lietype::InnerClassType> cl
     =check_involution(M->val,rd->val);
   if (verbosity>0) @< Report the type and inner class found @>
-  rootdata::RootDatum* rdp=new rootdata::RootDatum(rd->val);
-   // just a shorthand
+
   std::auto_ptr<complexredgp::ComplexReductiveGroup>@|
-    G(new complexredgp::ComplexReductiveGroup(rdp,M->val));
+    G(new complexredgp::ComplexReductiveGroup(rd->val,M->val));
   push_value(new inner_class_value(G,cl.first,cl.second));
 }
 
@@ -1577,7 +1576,7 @@ void block_sizes_wrapper()
   for (size_t i = 0; i < M->val.numRows(); ++i)
     for (size_t j = 0; j < M->val.numColumns(); ++j)
       M->val(i,j) =
-      G->val.blockSize(G->interface.in(i),G->dual_interface.in(j));
+      G->val.block_size(G->interface.in(i),G->dual_interface.in(j));
   push_value(M);
 }
 
@@ -1594,7 +1593,7 @@ void occurrence_matrix_wrapper()
   matrix_ptr
     M(new matrix_value(latticetypes::LatticeMatrix(nr,nc)));
   for (size_t i=0; i<nr; ++i)
-  { bitmap::BitMap b=G->val.cartanSet(G->interface.in(i));
+  { bitmap::BitMap b=G->val.Cartan_set(G->interface.in(i));
     for (size_t j=0; j<nc; ++j)
       M->val(i,j)= b.isMember(j) ? 1 : 0;
   }
@@ -1614,7 +1613,7 @@ void dual_occurrence_matrix_wrapper()
   matrix_ptr
     M(new matrix_value(latticetypes::LatticeMatrix(nr,nc)));
   for (size_t i=0; i<nr; ++i)
-  { bitmap::BitMap b=G->val.dualCartanSet(G->dual_interface.in(i));
+  { bitmap::BitMap b=G->val.dual_Cartan_set(G->dual_interface.in(i));
     for (size_t j=0; j<nc; ++j)
       M->val(i,j)= b.isMember(j) ? 1 : 0;
   }
@@ -1771,7 +1770,7 @@ form, once the corresponding Cartan classes have been generated.
 void KGB_size_wrapper()
 { real_form_ptr rf(get<real_form_value>());
   rf->val.fillCartan();
-  push_value(new int_value(rf->val.kgbSize()));
+  push_value(new int_value(rf->val.KGB_size()));
 }
 
 @ Once the Cartan classes for a real form are constructed, we have a partial
@@ -1787,7 +1786,7 @@ void Cartan_order_matrix_wrapper()
   size_t n=rf->val.numCartan();
   matrix_value* M =
      new matrix_value(latticetypes::LatticeMatrix(n,n,0));
-  const poset::Poset& p = rf->val.complexGroup().cartanOrdering();
+  const poset::Poset& p = rf->val.complexGroup().Cartan_ordering();
   for (size_t i=0; i<n; ++i)
     for (size_t j=i; j<n; ++j)
       if (p.lesseq(i,j)) M->val(i,j)=1;
@@ -1962,7 +1961,7 @@ void Cartan_class_wrapper()
     throw std::runtime_error
     ("illegal Cartan class number: "+num(i->val)
     +", this real form only has "+num(rf->val.numCartan())+" of them");
-  bitmap::BitMap cs=rf->val.cartanSet();
+  bitmap::BitMap cs=rf->val.Cartan_set();
   push_value(new Cartan_class_value(rf->parent,cs.n_th(i->val)));
 }
 
@@ -2056,7 +2055,7 @@ void real_forms_of_Cartan_wrapper()
 @/row_ptr result @|
     (new row_value(std::vector<value>(cc->val.numRealForms())));
   for (size_t i=0,k=0; i<ic.val.numRealForms(); ++i)
-  { bitmap::BitMap b(ic.val.cartanSet(ic.interface.in(i)));
+  { bitmap::BitMap b(ic.val.Cartan_set(ic.interface.in(i)));
     if (b.isMember(cc->number))
       result->val[k++]=new real_form_value(ic,ic.interface.in(i));
   }
@@ -2069,7 +2068,7 @@ void dual_real_forms_of_Cartan_wrapper()
 @/row_ptr result @|
     (new row_value(std::vector<value>(cc->val.numDualRealForms())));
   for (size_t i=0,k=0; i<ic.val.numDualRealForms(); ++i)
-  { bitmap::BitMap b(ic.val.dualCartanSet(ic.dual_interface.in(i)));
+  { bitmap::BitMap b(ic.val.dual_Cartan_set(ic.dual_interface.in(i)));
     if (b.isMember(cc->number))
       result->val[k++]=new dual_real_form_value(ic,ic.dual_interface.in(i));
   }
@@ -2097,7 +2096,7 @@ void fiber_part_wrapper()
   if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error
     ("inner class mismatch between real form and Cartan class");
-  bitmap::BitMap b(cc->parent.val.cartanSet(rf->val.realForm()));
+  bitmap::BitMap b(cc->parent.val.Cartan_set(rf->val.realForm()));
   if (!b.isMember(cc->number))
     throw std::runtime_error
     ("fiber_part: Cartan class not defined for this real form");
@@ -2132,7 +2131,7 @@ void print_gradings_wrapper()
   if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error
     ("inner class mismatch between real form and Cartan class");
-  bitmap::BitMap b(cc->parent.val.cartanSet(rf->val.realForm()));
+  bitmap::BitMap b(cc->parent.val.Cartan_set(rf->val.realForm()));
   if (!b.isMember(cc->number))
     throw std::runtime_error
     ("fiber_part: Cartan class not defined for this real form");
@@ -2232,7 +2231,7 @@ void print_realweyl_wrapper()
   if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error @|
     ("realweyl: inner class mismatch between arguments");
-  bitmap::BitMap b(rf->parent.val.cartanSet(rf->val.realForm()));
+  bitmap::BitMap b(rf->parent.val.Cartan_set(rf->val.realForm()));
   if (not b.isMember(cc->number))
     throw std::runtime_error @|
     ("realweyl: Cartan class not defined for real form");
@@ -2251,7 +2250,7 @@ void print_strongreal_wrapper()
   if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error @|
     ("strongreal: inner class mismatch between arguments");
-  bitmap::BitMap b(rf->parent.val.cartanSet(rf->val.realForm()));
+  bitmap::BitMap b(rf->parent.val.Cartan_set(rf->val.realForm()));
   if (not b.isMember(cc->number))
     throw std::runtime_error @|
     ("strongreal: Cartan class not defined for real form");
@@ -2279,7 +2278,7 @@ void print_block_wrapper()
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  bitmap::BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
   if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_block: real form and dual real form are incompatible");
@@ -2304,7 +2303,7 @@ void print_blockd_wrapper()
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  bitmap::BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
   if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_blockd: real form and dual real form are incompatible");
@@ -2326,7 +2325,7 @@ void print_blocku_wrapper()
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  bitmap::BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
   if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_blocku: real form and dual real form are incompatible");
@@ -2364,8 +2363,8 @@ void print_blockstabilizer_wrapper()
       &rf->parent.val!=&cc->parent.val)
     throw std::runtime_error @|
     ("blockstabilizer: inner class mismatch between arguments");
-  bitmap::BitMap b(rf->parent.val.cartanSet(rf->val.realForm()));
-  b &= bitmap::BitMap(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  bitmap::BitMap b(rf->parent.val.Cartan_set(rf->val.realForm()));
+  b &= bitmap::BitMap(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
   if (not b.isMember(cc->number))
     throw std::runtime_error @|
     ("blockstabilizer: Cartan class not defined for both real forms");
@@ -2389,7 +2388,7 @@ void print_KGB_wrapper()
   rf->val.fillCartan();
 @)
   *output_stream
-    << "kgbsize: " << rf->val.kgbSize() << std::endl;
+    << "kgbsize: " << rf->val.KGB_size() << std::endl;
   kgb::KGB kgb(rf->val);
   kgb_io::var_print_KGB(*output_stream,rf->val.complexGroup(),kgb);
 @)
@@ -2412,7 +2411,7 @@ void print_KL_basis_wrapper()
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  bitmap::BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
   if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_KL_basis: real form and dual real form are incompatible");
@@ -2442,7 +2441,7 @@ void print_prim_KL_wrapper()
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  bitmap::BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
   if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_prim_KL: real form and dual real form are incompatible");
@@ -2473,7 +2472,7 @@ void print_KL_list_wrapper()
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  bitmap::BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
   if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_KL_list: real form and dual real form are incompatible");
@@ -2506,7 +2505,7 @@ void print_W_cells_wrapper()
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  bitmap::BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
   if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_W_cells: real form and dual real form are incompatible");
@@ -2538,7 +2537,7 @@ void print_W_graph_wrapper()
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
-  bitmap::BitMap b(rf->parent.val.dualCartanSet(drf->val.realForm()));
+  bitmap::BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
   if (!b.isMember(rf->val.mostSplit()))
     throw std::runtime_error @|
     ("print_W_graph: real form and dual real form are incompatible");

@@ -31,7 +31,7 @@ namespace atlas {
 
 namespace {
 
-  enum GeneratorError { NoError = 0, FormatError, BadDenominator,
+  enum GeneratorError { NoError=0, FormatError, BadDenominator,
 			NegDenominator, TooFew };
 
   GeneratorError checkGenerator(input::InputBuffer&, size_t&,
@@ -78,27 +78,22 @@ void adjustBasis(latticetypes::WeightList& b, latticetypes::CoeffList& invf,
 		 const latticetypes::CoeffList& linvf)
 
 {
-  // replace the elements in b corresponding to lb by the elements of lb;
-  // also adjust invariant factors
-  size_t i = 0;
+  // adjust invariant factors, and replace the elements in b corresponding
+  // to lb by the elements of lb; then scale by corresponding invariant factor
 
-  for (size_t j = 0; j < invf.size(); ++j)
-    if (invf[j] != 1) {
-      const latticetypes::Weight& v = lb[i];
-      b[j] = v;
-      invf[j] = linvf[i];
+  for (size_t i=0,j=0; j<invf.size(); ++j)
+    if (invf[j] != 1)
+    {
+      invf[j]=linvf[i];
+      b[j] = lb[i];
       ++i;
     }
 
   // scale b to the lattice basis
 
-  for (size_t j = 0; j < invf.size(); ++j)
-    if (invf[j] != 1) {
-      latticetypes::LatticeCoeff a = invf[j];
-      b[j] *= a;
-    }
-
-  return;
+  for (size_t j=0; j<invf.size(); ++j)
+    if (invf[j] != 1)
+      b[j] *= invf[j];
 }
 
 /*! \brief
@@ -148,27 +143,27 @@ int getGenerators(latticetypes::RatWeightList& d_rwl,
 	return 2; // code for adjoint
 
       ib.reset();
-      size_t j;
+      size_t i;
       latticetypes::LatticeCoeff d;
-      switch (checkGenerator(ib,j,d,u)) {
+      switch (checkGenerator(ib,i,d,u)) {
       case NoError:
 	break;
       case FormatError:
-	std::cerr << "bad format in entry #" << j+1
+	std::cerr << "bad format in entry #" << i+1
 		  << " (should be of the form a/";
-	if (u[j])
-	  std::cerr << u[j] << ")" << std::endl;
+	if (u[i])
+	  std::cerr << u[i] << ")" << std::endl;
 	else
 	  std::cerr << "b, b > 0)" << std::endl;
 	std::cerr << "bad input line --- ignored" << std::endl;
 	continue;
       case BadDenominator:
-	std::cerr << "denominator in entry #" << j+1
-		  << " should be " << u[j] << std::endl
+	std::cerr << "denominator in entry #" << i+1
+		  << " should be " << u[i] << std::endl
 		  << "bad input line --- ignored" << std::endl;
 	continue;
       case NegDenominator:
-	std::cerr << "denominator in entry #" << j+1
+	std::cerr << "denominator in entry #" << i+1
 		  << " should be positive" << std::endl
 		  << "bad input line --- ignored" << std::endl;
 	continue;
@@ -237,8 +232,8 @@ int getLattice(latticetypes::CoeffList& root_invf,
   // convert |lb| according to |q|
   latticetypes::LatticeMatrix m(lb);
   m *= q;
-  for (size_t j = 0; j < lb.size(); ++j)
-    m.column(lb[j],j);
+  for (size_t i=0; i<lb.size(); ++i)
+    m.column(lb[i],i);
 
   // make actual basis
 
@@ -256,9 +251,9 @@ void getUniversal(latticetypes::CoeffList& u,
 {
   u.clear();
 
-  for (size_t j = 0; j < invf.size(); ++j) {
-    if (invf[j] != 1)
-      u.push_back(invf[j]);
+  for (size_t i=0; i<invf.size(); ++i) {
+    if (invf[i] != 1)
+      u.push_back(invf[i]);
   }
 }
 
@@ -270,11 +265,9 @@ void localBasis(latticetypes::WeightList& lb,
 		const latticetypes::WeightList& b,
 		const latticetypes::CoeffList& invf)
 {
-  for (size_t j = 0; j < invf.size(); ++j)
-    if (invf[j] != 1)
-      lb.push_back(b[j]);
-
-  return;
+  for (size_t i=0; i<invf.size(); ++i)
+    if (invf[i] != 1)
+      lb.push_back(b[i]);
 }
 
 
@@ -297,7 +290,7 @@ void localBasis(latticetypes::WeightList& lb,
 void smithBasis(latticetypes::CoeffList& invf, latticetypes::WeightList& b,
 		const lietype::LieType& lt)
 {
-  // smith-normalize for each simple factor
+  // Smith-normalize for each simple factor
 
   matrix::initBasis(b,lietype::rank(lt));
   latticetypes::WeightList::iterator bp = b.begin();
@@ -342,13 +335,13 @@ namespace {
 
   Precondition: buf should contain a comma-separated list, with one entry for
   each member of u (extra entries are ignored). The entries should be of the
-  form a/b, where b = u[j] if u[j] > 0, b > 0 arbitrary otherwise.
+  form a/b, where b = u[i] if u[i] > 0, b > 0 arbitrary otherwise.
 
-  Explanation: the element a/b (with b = u[j] if u[j] > 0) represents the
+  Explanation: the element a/b (with b = u[i] if u[i] > 0) represents the
   element exp(2i.pi.a/b) in a one-dimensional torus factor.
 
   In case of failure, the entry number where the rank occurs is put in r. In
-  case of success, the l.c.m. of the various b's and u[j]'s is put in d.
+  case of success, the l.c.m. of the various b's and u[i]'s is put in d.
 
   NOTE: no overflow checking is done on d.
 */
@@ -359,7 +352,7 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
   std::streampos pos = buf.tellg();
   unsigned long lc = 1;
 
-  for (size_t j = 0; j < u.size(); ++j) {
+  for (size_t i=0; i<u.size(); ++i) {
 
     if (buf.peek() == EOF) {
       buf.reset(pos);
@@ -368,10 +361,10 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
 
     latticetypes::LatticeCoeff a;
     buf >> a;
-    char x = 0;
+    char x=0;
     buf >> x;
     if (x != '/') {
-      r = j;
+      r = i;
       buf.reset(pos);
       return FormatError;
     }
@@ -380,14 +373,14 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
     buf >> b;
 
     // check denominator
-    if (u[j] == 0) {
+    if (u[i] == 0) {
       if (b <= 0) { // negative denominator error
-	r = j;
+	r = i;
 	buf.reset(pos);
 	return NegDenominator;
       }
-    } else if (b != u[j]) { // bad denominator error
-      r = j;
+    } else if (b != u[i]) { // bad denominator error
+      r = i;
       buf.reset(pos);
       return BadDenominator;
     }
@@ -396,7 +389,7 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
     if (a)
       lc = arithmetic::lcm(lc,b);
 
-    if (j+1 < u.size()) { // next non-white character should be a comma
+    if (i+1<u.size()) { // next non-white character should be a comma
       char x = 0;
       buf >> x;
       if (x != ',') {
@@ -458,16 +451,17 @@ void makeOrthogonal(latticetypes::LatticeMatrix& q,
   // write invariant factors of orthogonal lattice
   invf.resize(b.size(),1UL);
 
-  if (rwl.size()>0) {
+  if (rwl.size()>0)
+  {
     unsigned long d = rwl[0].denominator();
-    for (size_t j = 0; j < linvf.size(); ++j)
-      invf[j] = d/arithmetic::gcd(linvf[j],d);
+    for (size_t i=0; i<linvf.size(); ++i)
+      invf[i] = d/arithmetic::gcd(linvf[i],d);
   }
 }
 
 
 /*
-  Synposis: prints the sencter of the simply connected group.
+  Synposis: prints the center of the simply connected group.
 
   Precondition: u contains the necessary data: the orders of a natural set of
   generators for the center of the derived group, and a zero for each torus
@@ -475,14 +469,13 @@ void makeOrthogonal(latticetypes::LatticeMatrix& q,
 */
 std::ostream& printCenter(std::ostream& strm, const latticetypes::CoeffList& u)
 {
-  for (size_t j = 0; j < u.size(); ++j) {
-    if (u[j]) {
-      strm << "Z/";
-      strm << u[j];
-    } else {
+  for (size_t i=0; i<u.size(); ++i)
+  {
+    if (u[i])
+      strm << "Z/" << u[i];
+    else
       strm << "Q/Z";
-    }
-    if (j < u.size()-1)
+    if (i<u.size()-1)
       strm << ".";
   }
 
@@ -502,7 +495,7 @@ void readGenerator(latticetypes::RatWeight& v,
 {
   latticetypes::LatticeCoeff d = v.denominator();
 
-  for (size_t j = 0; j < v.size(); ++j) {
+  for (size_t i=0; i<v.size(); ++i) {
 
     latticetypes::LatticeCoeff a = 0;
     buf >> a;
@@ -512,13 +505,13 @@ void readGenerator(latticetypes::RatWeight& v,
 
     latticetypes::LatticeCoeff b;
     buf >> b;
-    v.numerator()[j] = d/b;
-    v.numerator()[j] *= a;
+    v.numerator()[i] = d/b;
+    v.numerator()[i] *= a;
 
     buf >> x; // get rid of the comma-separator
   }
 }
 
-}
+} // |namespace|
 
-}
+} // |namespace atlas|

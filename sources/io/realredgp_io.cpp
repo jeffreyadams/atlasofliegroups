@@ -106,7 +106,7 @@ std::ostream& printCartanClasses(std::ostream& strm,
   const realredgp::RealReductiveGroup& G_R = G_RI.realGroup();
   const complexredgp_io::Interface& G_CI = G_RI.complexInterface();
 
-  const bitmap::BitMap& b = G_R.cartanSet();
+  const bitmap::BitMap& b = G_R.Cartan_set();
   bool first = true;
 
   for (bitmap::BitMap::iterator i = b.begin(); i(); ++i) {
@@ -129,7 +129,7 @@ std::ostream& printCartanClasses(std::ostream& strm,
 std::ostream& printCartanOrder(std::ostream& strm,
 			       const realredgp::RealReductiveGroup& G_R)
 {
-  const poset::Poset& p = G_R.complexGroup().cartanOrdering();
+  const poset::Poset& p = G_R.complexGroup().Cartan_ordering();
   size_t cn = G_R.mostSplit();
 
   graph::OrientedGraph g(0);

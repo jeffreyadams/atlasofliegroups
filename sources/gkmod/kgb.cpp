@@ -30,7 +30,6 @@
 
 #include "bitmap.h"
 #include "bruhat.h"
-#include "cartanset.h"
 #include "cartanclass.h"
 #include "complexredgp.h"
 #include "error.h"
@@ -305,9 +304,8 @@ KGB::KGB(realredgp::RealReductiveGroup& GR,
     .export_tables(d_cross,d_cayley,d_tits,d_info,d_base,traditional);
 
   // check that the size is right
-  assert(size == (traditional ? GR.kgbSize()
-		  : GR.complexGroup().cartanClasses().KGB_size
-		     (GR.realForm(),Cartan_classes)
+  assert(size == (traditional ? GR.KGB_size()
+		  : GR.complexGroup().KGB_size(GR.realForm(),Cartan_classes)
 		  ));
 
   // reserve one more that the number of twisted involutions present
@@ -563,8 +561,7 @@ tits::TitsElt EnrichedTitsGroup::naive_seed
 {
   // locate fiber, weak and strong real forms, and check central square class
   const cartanclass::Fiber& f=G.cartan(cn).fiber();
-  const cartanset::CartanClassSet& ccs=G.cartanClasses();
-  cartanclass::adjoint_fiber_orbit wrf = ccs.real_form_part(rf,cn);
+  cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
   cartanclass::StrongRealFormRep srf=f.strongRepresentative(wrf);
   assert(srf.second==f.central_square_class(wrf));
 
@@ -573,7 +570,7 @@ tits::TitsElt EnrichedTitsGroup::naive_seed
   tits::TorusPart x = f.fiberGroup().fromBasis(v);
 
   // right-multiply this torus part by canonical twisted involution for |cn|
-  tits::TitsElt result(titsGroup(),x,ccs.twistedInvolution(cn));
+  tits::TitsElt result(titsGroup(),x,G.twistedInvolution(cn));
 
   return result; // result should be reduced immediatly by caller
 }
@@ -605,11 +602,10 @@ tits::TitsElt EnrichedTitsGroup::grading_seed
 {
   // locate fiber and weak real form
   const cartanclass::Fiber& f=G.cartan(cn).fiber();
-  const cartanset::CartanClassSet& ccs=G.cartanClasses();
-  cartanclass::adjoint_fiber_orbit wrf = ccs.real_form_part(rf,cn);
+  cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
 
   // get an element lying over the canonical twisted involution for |cn|
-  tits::TitsElt a(titsGroup(),ccs.twistedInvolution(cn)); // trial element
+  tits::TitsElt a(titsGroup(),G.twistedInvolution(cn)); // trial element
 
   // get the grading of the imaginary root system given by the element |a|
   gradings::Grading base_grading;
@@ -669,12 +665,11 @@ tits::TitsElt EnrichedTitsGroup::backtrack_seed
 {
   const weyl::WeylGroup& W= titsGroup().weylGroup();
 
-  const cartanset::CartanClassSet& ccs=G.cartanClasses();
-  const weyl::TwistedInvolution& tw=ccs.twistedInvolution(cn);
+  const weyl::TwistedInvolution& tw=G.twistedInvolution(cn);
 
   rootdata::RootList Cayley;
   weyl::WeylWord cross;
-  cartanset::cayley_and_cross_part(Cayley,cross,tw,rd,W);
+  G.Cayley_and_cross_part(Cayley,cross,tw);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying cross actions according to |cross|, and then applying Cayley
@@ -875,9 +870,9 @@ KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
 
   // only the final fields depend on the real form of |GR|
   , basePoint(GR)
-  , d_fiberData(GR.complexGroup(),GR.cartanSet())
+  , d_fiberData(GR.complexGroup(),GR.Cartan_set())
 {
-  KGBElt size = GR.kgbSize();
+  KGBElt size = GR.KGB_size();
 
   d_pool.reserve(size);
   d_info.reserve(size);
@@ -931,7 +926,7 @@ KGBHelp::KGBHelp(const complexredgp::ComplexReductiveGroup& G,
     d_cayley[j].resize(size,0); // leave undefined (set by |cayleyExtend|)
   }
 
-  set::SetEltList m=G.cartanClasses().ordering().minima(Cartan_classes);
+  set::SetEltList m=G.Cartan_ordering().minima(Cartan_classes);
   assert(m.size()==seeds.size()); // one seed for every minimal Cartan class
 
   for (size_t i=0; i<seeds.size(); ++i)
@@ -981,10 +976,9 @@ KGBHelp refined_helper(const realredgp::RealReductiveGroup& GR,
   assert(square_class_base.square()==
 	 G.fundamental().central_square_class(rf));
 
-  const cartanset::CartanClassSet& ccs=G.cartanClasses();
-  KGBElt size =  ccs.KGB_size(rf,Cartan_classes);
+  KGBElt size =  G.KGB_size(rf,Cartan_classes);
 
-  set::SetEltList m=ccs.ordering().minima(Cartan_classes);
+  set::SetEltList m=G.Cartan_ordering().minima(Cartan_classes);
 
   std::vector<tits::TitsElt> seeds; seeds.reserve(m.size());
   for (size_t i=0; i<m.size(); ++i)

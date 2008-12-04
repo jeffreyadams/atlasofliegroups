@@ -42,7 +42,6 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/utilities/setutils.o \
  $(atlas_sources)/structure/complexredgp.o \
  $(atlas_sources)/structure/tits.o \
- $(atlas_sources)/structure/cartanset.o \
  $(atlas_sources)/structure/cartanclass.o \
  $(atlas_sources)/structure/weyl.o \
  $(atlas_sources)/utilities/partition.o \

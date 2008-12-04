@@ -13,7 +13,6 @@
 
 #include "basic_io.h"
 #include "bitset.h"
-#include "cartanset.h"
 #include "cartanclass.h"
 #include "complexredgp.h"
 #include "complexredgp_io.h"
@@ -53,8 +52,7 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
   {
     std::ostringstream os;
     os << "canonical twisted involution: ";
-    prettyprint::printWeylElt
-      (os,G.cartanClasses().twistedInvolution(cn),G.weylGroup());
+    prettyprint::printWeylElt(os,G.twistedInvolution(cn),G.weylGroup());
     ioutils::foldLine(strm,os.str(),"",",") << std::endl;
   }
 

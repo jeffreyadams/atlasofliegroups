@@ -353,7 +353,7 @@ void dual_kgb_f()
   realredgp::RealReductiveGroup dG(dG_C,drf);
   dG.fillCartan();
 
-  std::cout << "dual kgbsize: " << dG.kgbSize() << std::endl;
+  std::cout << "dual kgbsize: " << dG.KGB_size() << std::endl;
   ioutils::OutputFile file;
 
   kgb::KGB kgb(dG);

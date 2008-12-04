@@ -96,13 +96,13 @@ const cartanclass::CartanClass& RealReductiveGroup::cartan(size_t cn) const
 
   NOTE: this is not inlined to avoid a dependency on complexredegp.h
 */
-const bitmap::BitMap& RealReductiveGroup::cartanSet() const
+const bitmap::BitMap& RealReductiveGroup::Cartan_set() const
 {
-  return complexGroup().cartanSet(d_realForm);
+  return complexGroup().Cartan_set(d_realForm);
 }
 
 size_t RealReductiveGroup::numInvolutions() const {
-    return complexGroup().numInvolutions(cartanSet());
+    return complexGroup().numInvolutions(Cartan_set());
   }
 
 
@@ -133,9 +133,9 @@ rootdata::RootSet RealReductiveGroup::noncompactRoots() const
 
   Precondition: fillCartan() has been called.
 */
-size_t RealReductiveGroup::kgbSize() const
+size_t RealReductiveGroup::KGB_size() const
 {
-  return d_complexGroup->kgbSize(d_realForm);
+  return d_complexGroup->KGB_size(d_realForm);
 }
 
 
@@ -161,7 +161,7 @@ size_t RealReductiveGroup::mostSplit() const
 */
 size_t RealReductiveGroup::numCartan() const
 {
-  return cartanSet().size();
+  return Cartan_set().size();
 }
 
 

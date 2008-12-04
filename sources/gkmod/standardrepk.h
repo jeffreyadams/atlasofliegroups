@@ -518,7 +518,7 @@ class PSalgebra // Parabolic subalgebra
  public:
   PSalgebra (tits::TitsElt base,
 	     const kgb::KGB& kgb,
-	     const cartanset::CartanClassSet& cs,
+	     const complexredgp::ComplexReductiveGroup& G,
 	     const kgb::EnrichedTitsGroup& Tg);
 
   const tits::TitsElt& strong_involution() const { return strong_inv; }

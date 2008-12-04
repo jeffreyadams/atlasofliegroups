@@ -157,6 +157,16 @@ namespace bitmap {
     // get a range of bits as unsigned long value; see bitmap.ccp for details
     unsigned long range(unsigned long first, unsigned long number) const;
 
+    BitMap operator& (const BitMap& other) const
+      { BitMap result(*this); result&=other; return result; }
+
+    BitMap operator| (const BitMap& other) const
+      { BitMap result(*this); result|=other; return result; }
+
+    BitMap operator^ (const BitMap& other) const
+      { BitMap result(*this); result^=other; return result; }
+
+
 // manipulators
 
     // WARNING: the following looks like an accessor, but complements |*this|

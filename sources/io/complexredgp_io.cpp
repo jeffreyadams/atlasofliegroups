@@ -11,7 +11,6 @@
 
 #include "complexredgp_io.h"
 
-#include "cartanset.h"
 #include "cartan_io.h"
 #include "cartanclass.h"
 #include "complexredgp.h"
@@ -89,7 +88,7 @@ std::ostream& printBlockSizes(std::ostream& strm, const Interface& CI)
 
   for (size_t i = 0; i < block.numRows(); ++i)
     for (size_t j = 0; j < block.numColumns(); ++j) {
-      block(i,j) = G.blockSize(rfi.in(i),drfi.in(j));
+      block(i,j) = G.block_size(rfi.in(i),drfi.in(j));
       if (block(i,j) > maxEntry)
 	maxEntry = block(i,j);
     }

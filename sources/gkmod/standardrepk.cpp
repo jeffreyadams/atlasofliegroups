@@ -26,7 +26,6 @@ StandardRepK and KhatContext.
 #include "rootdata.h"
 #include "smithnormal.h"
 #include "intutils.h"
-#include "cartanset.h"
 #include "tori.h"
 #include "basic_io.h"
 #include "ioutils.h"
@@ -236,7 +235,7 @@ StandardRepK KhatContext::std_rep
   (const latticetypes::Weight& two_lambda, tits::TitsElt a) const
 {
   weyl::TwistedInvolution sigma=a.tw();
-  weyl::WeylElt w = d_G->cartanClasses().canonicalize(sigma);
+  weyl::WeylElt w = d_G->canonicalize(sigma);
   // now |sigma| is canonical and |w| conjugates |sigma| to |a.tw()|
 
   const weyl::WeylGroup& W=d_G->weylGroup();
@@ -252,7 +251,7 @@ StandardRepK KhatContext::std_rep
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight mu=W.imageByInverse(rd,w,two_lambda);
 
-  size_t cn = d_G->cartanClasses().classNumber(sigma);
+  size_t cn = d_G->class_number(sigma);
   StandardRepK result(cn,
 		      d_data[cn].fiber_modulus.mod_image
 		        (titsGroup().left_torus_part(a)),
@@ -269,7 +268,7 @@ RawRep KhatContext::Levi_rep
   const
 {
   weyl::TwistedInvolution sigma=a.tw();
-  weyl::WeylElt w = d_G->cartanClasses().canonicalize(sigma,gens);
+  weyl::WeylElt w = d_G->canonicalize(sigma,gens);
   // now |sigma| is canonical for |gens|, and |w| conjugates it to |a.tw()|
 
   const rootdata::RootDatum& rd=rootDatum();
@@ -786,9 +785,8 @@ KhatContext::theta_stable_parabolic
 
   // Build the parabolic subalgebra:
 
-  const cartanset::CartanClassSet& cs=d_G->cartanClasses();
   { // first ensure |strong| is in reduced
-    latticetypes::LatticeMatrix theta=cs.involutionMatrix(strong.tw());
+    latticetypes::LatticeMatrix theta=d_G->involutionMatrix(strong.tw());
     latticetypes::SmallSubspace mod_space=latticetypes::SmallSubspace
       (latticetypes::SmallBitVectorList(tori::minusBasis(theta.transposed())),
        rootDatum().rank());
@@ -798,7 +796,7 @@ KhatContext::theta_stable_parabolic
 			 strong.tw());
   }
 
-  return PSalgebra(strong,d_KGB,cs,d_Tg);
+  return PSalgebra(strong,d_KGB,*d_G,d_Tg);
 
 } // theta_stable_parabolic
 
@@ -844,7 +842,7 @@ kgb::KGBEltList KhatContext::sub_KGB(const PSalgebra& q) const
 } // sub_KGB
 
 RawChar KhatContext::KGB_sum(const PSalgebra& q,
-				  const latticetypes::Weight& lambda) const
+			     const latticetypes::Weight& lambda) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   kgb::KGBEltList sub=sub_KGB(q); std::reverse(sub.begin(),sub.end());
@@ -921,7 +919,6 @@ combination KhatContext::truncate(const combination& c, level bound) const
 CharForm
 KhatContext::K_type_formula(const StandardRepK& sr, level bound)
 {
-  const cartanset::CartanClassSet& cs=d_G->cartanClasses();
   const weyl::WeylGroup& W=weylGroup();
   const rootdata::RootDatum& rd=rootDatum();
 
@@ -964,7 +961,7 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
 //     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
 
     typedef free_abelian::Monoid_Ring<latticetypes::Weight> polynomial;
-    const latticetypes::LatticeMatrix theta=cs.involutionMatrix(strong.tw());
+    const latticetypes::LatticeMatrix theta=d_G->involutionMatrix(strong.tw());
 
     // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
     polynomial pol(mu);
@@ -1193,15 +1190,15 @@ void KhatContext::go(const StandardRepK& initial)
 
 PSalgebra::PSalgebra (tits::TitsElt base,
 		      const kgb::KGB& kgb,
-		      const cartanset::CartanClassSet& cs,
+		      const complexredgp::ComplexReductiveGroup& G,
 		      const kgb::EnrichedTitsGroup& Tg)
     : strong_inv(base)
-    , cn(cs.classNumber(base.tw()))
+    , cn(G.class_number(base.tw()))
     , sub_diagram() // class |RankFlags| needs no dimensioning
-    , nilpotents(cs.rootDatum().numRoots())
+    , nilpotents(G.rootDatum().numRoots())
 {
-  const rootdata::RootDatum& rd=cs.rootDatum();
-  cartanclass::InvolutionData id(cs.complexGroup(),base.tw());
+  const rootdata::RootDatum& rd=G.rootDatum();
+  cartanclass::InvolutionData id(G,base.tw());
 
   // Put real simple roots into Levi factor
   for (size_t i=0; i<rd.semisimpleRank(); ++i)
