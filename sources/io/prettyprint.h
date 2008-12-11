@@ -70,7 +70,7 @@ std::ostream& printInRootBasis(std::ostream&, const rootdata::RootSet&,
 			       const rootdata::RootDatum&);
 
 std::ostream& printInvolution(std::ostream&, const weyl::TwistedInvolution&,
-			      const weyl::WeylGroup&);
+			      const weyl::TwistedWeylGroup&);
 
 template<typename C>
 std::ostream& printVector(std::ostream&, const std::vector<C>&,

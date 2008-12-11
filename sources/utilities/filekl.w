@@ -91,7 +91,6 @@ namespace atlas {
     using basic_io::read_bytes;
 
     @< Constants common for writing and reading @>@;
-    @< Constant defintions needed to for reading files @>@;
 
     @< Methods for reading binary files @>@;
   }@;
@@ -137,18 +136,6 @@ const blocks::BlockElt UndefBlock= ~blocks::BlockElt(0);
 const blocks::BlockElt noGoodAscent= UndefBlock-1;
 
 const unsigned int magic_code=0x06ABdCF0; // indication of new matrix format
-
-@
-@< Constant defintions needed to for reading files @>=
-
-const std::ios_base::openmode binary_in=
-			    std::ios_base::in
-			  | std::ios_base::binary;
-
-const std::ios_base::openmode binary_in_out=
-			    std::ios_base::in
-			  | std::ios_base::out
-			  | std::ios_base::binary;
 
 @ Here is how a block file is written
 

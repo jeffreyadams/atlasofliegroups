@@ -56,9 +56,9 @@ namespace tits {
   the fundamental involution |d|.
 */
 TitsGroup::TitsGroup(const rootdata::RootDatum& rd,
-		     const latticetypes::LatticeMatrix& d)
-  : d_twist(makeTwist(d,rd))
-  , d_weyl(*new weyl::WeylGroup(rd.cartanMatrix(),&d_twist))
+		     const latticetypes::LatticeMatrix& d,
+		     const weyl::Twist& twist)
+  : d_weyl(*new weyl::TwistedWeylGroup(rd.cartanMatrix(),twist))
   , d_rank(rd.rank())
   , d_simpleRoot(rd.semisimpleRank())   // set number of vectors, but not yet
   , d_simpleCoroot(rd.semisimpleRank()) // their size (which will be |d_rank|)
@@ -179,42 +179,5 @@ TitsElt TitsGroup::prod(const TitsElt& a, TitsElt b) const
 
 } // namespace tits
 
-/****************************************************************************
-
-        Chapter II -- Functions declared in tits.h
-
-*****************************************************************************/
-
-namespace tits {
-
-/*!
-  Synopsis: Returns the twist defined by |d|.
-
-  Precondition: |d| holds an involution of the root datum which fixes the
-  positive Weyl chamber.
-
-  The value computed essentially gives the functionality of WeylGroup::twist
-  and of TitsGroup::twist, but it cannot use those methods since it is called
-  before they are available: our task here is to prepare the data that will be
-  used by those methods.
-*/
-weyl::Twist makeTwist(const latticetypes::LatticeMatrix& d,
-		      const rootdata::RootDatum& rd)
-{
-  latticetypes::WeightList sr(rd.beginSimpleRoot(),rd.endSimpleRoot());
-
-  weyl::Twist result(sr.size());
-
-  for (size_t j = 0; j<sr.size(); ++j) {
-    latticetypes::Weight v(rd.rank());
-    d.apply(v,sr[j]); // set |v| to $d(\alpha_j)$ as weight vector
-    result[j] = setutils::find_index(sr,v); // find index of that simple root
-    assert (result[j]<sr.size());
-  }
-
-  return result;
-}
-
-} // namespace tits
 
 } // namespace atlas

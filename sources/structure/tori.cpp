@@ -167,8 +167,6 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
 
 /******** accessors *********************************************************/
 
-void RealTorus::componentMap(BinaryMap& cm, const LatticeMatrix& m,
-			     const RealTorus& T_dest) const
 
 /*!
   \brief Constructs the map |cm| induced, at the level of dual component
@@ -179,7 +177,8 @@ void RealTorus::componentMap(BinaryMap& cm, const LatticeMatrix& m,
   them onto dpi0, and then restrict to our dual component representatives.
   But in fact this is hidden inside |subquotient::subquotientMap|.
 */
-
+void RealTorus::componentMap(BinaryMap& cm, const LatticeMatrix& m,
+			     const RealTorus& T_dest) const
 {
   BinaryMap m2(m); // reduce mod2
 

@@ -26,7 +26,8 @@ TitsGroup and TitsElt.
 
 namespace atlas {
 
-/******** type declarations *************************************************/
+
+/******** type definitions **************************************************/
 
 namespace tits {
 
@@ -40,20 +41,6 @@ namespace tits {
   */
   typedef latticetypes::SmallBitVector TorusPart;
 
-}
-
-/******** function declarations *********************************************/
-
-namespace tits {
-
-  weyl::Twist makeTwist(const latticetypes::LatticeMatrix&,
-			const rootdata::RootDatum&);
-
-}
-
-/******** type definitions **************************************************/
-
-namespace tits {
 
 /* We define two main classes, |TitsElt| and |TitsGroup|, as for Weyl groups.
    A |TitsElt| value stores both a |weyl::WeylElt| value and a |TorusPart|,
@@ -148,17 +135,14 @@ reduced decomposition.
 // only the Weyl group component is exposed as constant reference.
 
 /*!\brief Canonical Weyl part of the Tits group element. */
-  const weyl::WeylElt& w() const {
-    return d_w;
-  }
+  const weyl::WeylElt& w() const { return d_w; }
 
 // the same componenent under another name (to make it smell sweeter)
 // however note that this returns a value, not a reference (we have none)
 
 /*!\brief twisted involution represented by canonical Weyl part */
-  const weyl::TwistedInvolution tw() const {
-    return weyl::TwistedInvolution(d_w);
-  }
+  const weyl::TwistedInvolution tw() const
+    { return weyl::TwistedInvolution(d_w); }
 
 
 // for the rest, only equality tests can bypass any use of the |TitsGroup|
@@ -187,6 +171,8 @@ reduced decomposition.
 /* no public manipulators: any operation defined without using the Tits group
    object would expose the implementation in an inacceptable way */
 }; // class TitsElt
+
+
 
 /*!\brief
   Represents a finite subgroup of the normalizer in $G$ of the Cartan $H$.
@@ -219,11 +205,8 @@ reduced decomposition.
 */
 class TitsGroup {
 
-/*! \brief Diagram automorphism given by \f$\delta\f$  */
-  weyl::Twist d_twist; // must come before |d_weyl|, needed in its construction
-
 /*! \brief Owned reference to the underlying Weyl group. */
-  weyl::WeylGroup& d_weyl;
+  weyl::TwistedWeylGroup& d_weyl;
 
   /*!
 \brief Dimension of the Cartan T. This is the size of torus parts of elements.
@@ -262,7 +245,9 @@ the \f$\delta\f$ coset of the Tits group.
  public:
 
 // constructors and destructors
-  TitsGroup(const rootdata::RootDatum&, const latticetypes::LatticeMatrix&);
+  TitsGroup(const rootdata::RootDatum&,
+	    const latticetypes::LatticeMatrix& d,
+	    const weyl::Twist&);
 
   ~TitsGroup() { delete &d_weyl; } // Weyl group was owned
 
@@ -273,20 +258,17 @@ the \f$\delta\f$ coset of the Tits group.
   /*!\brief Rank of the torus. */
   const size_t rank() const { return d_rank; }
 
+  const weyl::WeylGroup& weylGroup() const { return d_weyl; }
+  const weyl::TwistedWeylGroup& twistedWeylGroup() const { return d_weyl; }
+
   //!\brief Element m_\alpha of T(2) for simple coroot \#j.
-  TorusPart simpleCoroot(size_t j) const {
-    return d_simpleCoroot[j];
-  }
+  TorusPart simpleCoroot(size_t j) const { return d_simpleCoroot[j]; }
 
   //!\brief Image in the character lattice mod 2 of simple root \#j.
-  TorusPart simpleRoot(size_t j) const {
-    return d_simpleRoot[j];
-  }
+  TorusPart simpleRoot(size_t j) const { return d_simpleRoot[j]; }
 
   //!\brief Image under inner class diagram involution of node \#j.
-  size_t twisted(size_t j) const {
-    return d_twist[j];
-  }
+  size_t twisted(size_t j) const { return d_weyl.twisted(j); }
 
 // methods only involving a |TorusPart|
 
@@ -295,9 +277,7 @@ the \f$\delta\f$ coset of the Tits group.
   TorusPart pull_across(const weyl::WeylElt& w, TorusPart y) const;
 
   //!\brief Binary matrix*vector product to compute twist on torus part
-  TorusPart twisted(const TorusPart& x) const {
-    return d_involution.apply(x);
-  }
+  TorusPart twisted(const TorusPart& x) const { return d_involution.apply(x); }
 
   //!\brief In-place imperative version of |twisted(TorusPart x)|
   void twist(TorusPart& x) const {
@@ -307,9 +287,7 @@ the \f$\delta\f$ coset of the Tits group.
 // methods that only access some |TitsElt|
 
   /*!\brief Length of the underlying Weyl group element. */
-  unsigned long length(const TitsElt& a) const {
-    return d_weyl.length(a.w());
-  }
+  unsigned long length(const TitsElt& a) const { return d_weyl.length(a.w()); }
 
   TorusPart left_torus_part(const TitsElt& a) const { return a.d_t; }
 
@@ -368,10 +346,6 @@ is done in the KGB construction, it induces an involution on the quotient set.
     sigma_inv_mult(s,a); mult_sigma(a,twisted(s));
   }
 
-
-  const weyl::WeylGroup& weylGroup() const {
-    return d_weyl;
-  }
 
 // manipulators (none)
 

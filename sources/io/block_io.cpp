@@ -193,9 +193,8 @@ std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
     strm << ' ';
 
     // print root datum involution as involution reduced expression
-    prettyprint::printInvolution(strm,block.involution(j),block.weylGroup());
-
-    strm << std::endl;
+    prettyprint::printInvolution
+      (strm,block.involution(j),block.twistedWeylGroup()) << std::endl;
   }
 
   return strm;
@@ -290,9 +289,8 @@ std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
 #endif
 
     // print root datum involution as involution reduced expression
-    prettyprint::printInvolution(strm,block.involution(j),block.weylGroup());
-
-    strm << std::endl;
+    prettyprint::printInvolution
+      (strm,block.involution(j),block.twistedWeylGroup()) << std::endl;
 
   nextj:
     continue;

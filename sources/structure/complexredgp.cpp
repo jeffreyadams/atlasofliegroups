@@ -92,6 +92,9 @@ namespace atlas {
 
 namespace complexredgp{
 
+  weyl::Twist make_twist(const rootdata::RootDatum& rd,
+			 const latticetypes::LatticeMatrix& d);
+
   void crossTransform(rootdata::RootList&,
 		      const weyl::WeylWord&, const rootdata::RootDatum&);
 
@@ -113,7 +116,7 @@ namespace complexredgp{
   bool checkDecomposition(const weyl::TwistedInvolution& ti,
 			  const weyl::WeylWord& cross,
 			  const rootdata::RootList& cayley,
-			  const weyl::WeylGroup&,
+			  const weyl::TwistedWeylGroup&,
 			  const rootdata::RootDatum&,
 			  const latticetypes::LatticeMatrix& distinguished);
 
@@ -145,24 +148,19 @@ namespace complexredgp {
 */
 ComplexReductiveGroup::ComplexReductiveGroup
  (const rootdata::RootDatum& rd, const latticetypes::LatticeMatrix& d)
-  : d_rootDatum(rd) // we assume ownership
-  , d_titsGroup(rd,d)
-  , root_twist(make_root_twist())
+  : d_rootDatum(rd)
+  , d_fundamental(rd,d) // will also be fiber of cartan(0)
+  , d_dualFundamental(rootdata::RootDatum(rd,tags::DualTag()),
+		      dualBasedInvolution(d,rd)) // dual fiber of most split
+
+  , d_titsGroup(rd,d,make_twist(rd,d))
+  , root_twist(rd.root_permutation(simple_twist()))
   // install the fundamental Cartan, with associated data (like numRealForms)
-  , d_cartan(1,new cartanclass::CartanClass(d_rootDatum,d))
+  , d_cartan(1,new cartanclass::CartanClass(rd,d))
   // initalise following structures to correspond to just fundamental Cartan
   , d_twistedInvolution(1,weyl::TwistedInvolution(weyl::WeylElt()))
 
   // the fundamental fiber can be copied from the fundamental Cartan
-  , d_fundamental(cartan(0).fiber())
-  /* for the dual fundamental fiber it is tempting to give arguments either
-     |cartan(0).dualFiber()| or |rootDatum(),q,tags::DualTag()|.
-     Both would give the same, wrong, result; one needs |dualBasedInvolution|.
-     This fiber will be equal to the dual fiber for the most split Cartan.
-  */
-  , d_dualFundamental(rootdata::RootDatum(rd,tags::DualTag())
-		     ,dualBasedInvolution(d,d_rootDatum))
-
   , d_mostSplit(numRealForms(),UndefMostSplit)
   , Cartan_poset(1) // Cartans for a one point poset for now
 
@@ -183,7 +181,8 @@ ComplexReductiveGroup::ComplexReductiveGroup
 
   // for dual real forms, |correlateDualForms| adds the proper singleton list
   correlateDualForms(rootdata::RootDatum(rootDatum(),tags::DualTag())
-		    ,weyl::WeylGroup(weylGroup(),tags::DualTag()));
+		    ,weyl::TwistedWeylGroup
+		      (twistedWeylGroup(),tags::DualTag()));
 
   // mark the fundamental Cartan in each real form, and in one dual real form
   updateSupports(0); // take into account Cartan class number |0|
@@ -195,28 +194,23 @@ ComplexReductiveGroup::ComplexReductiveGroup
 
 /*!
   \brief constructs the complex reductive group dual to G.
-
-  We have to compute the dual based involution twice, since we have no
-  variables available during initialisation to store the previous value (and
-  d_titsGroup does not save it)
 */
 ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 					     tags::DualTag)
   : d_rootDatum(G.rootDatum(),tags::DualTag())
-  , d_titsGroup(d_rootDatum,
-		dualBasedInvolution(G.distinguished(),G.rootDatum()))
-  , root_twist(make_root_twist())
+  , d_fundamental(G.dualFundamental())
+  // for the dual fundamental fiber we similarly copy a fiber, but from |G|
+  , d_dualFundamental(G.fundamental())
+
+  , d_titsGroup(d_rootDatum,d_fundamental.involution(),
+		make_twist(d_rootDatum,d_fundamental.involution()))
+
+  , root_twist(d_rootDatum.root_permutation(simple_twist()))
   // install the fundamental Cartan, with associated data (like numRealForms)
   , d_cartan(1,new cartanclass::CartanClass
-	        (d_rootDatum,
-		 dualBasedInvolution(G.distinguished(),G.rootDatum())))
+	            (d_rootDatum,d_fundamental.involution()))
 
   , d_twistedInvolution(1,weyl::TwistedInvolution(weyl::WeylElt()))
-
-  // the fundamental fiber can be copied from our (new) fundamental Cartan
-  , d_fundamental(cartan(0).fiber())
-  // for the dual fundamental fiber we similarly copy a fiber, but from |G|
-  , d_dualFundamental(G.cartan(0).fiber())
 
   , d_mostSplit(numRealForms(),UndefMostSplit)
 
@@ -237,7 +231,7 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
     d_realFormLabels[0][i]=i;
 
   // for dual real forms, |correlateDualForms| adds the proper singleton list
-  correlateDualForms(G.rootDatum(),G.weylGroup());
+  correlateDualForms(G.rootDatum(),G.twistedWeylGroup());
 
   // mark the fundamental Cartan in each real form, and in one dual real form
   updateSupports(0); // take into account Cartan class number |0|
@@ -247,14 +241,6 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
   updateStatus(0); // here the |0| means from Cartan |0| on.
 }
 
-setutils::Permutation ComplexReductiveGroup::make_root_twist() const
-{
-  setutils::Permutation twist(d_rootDatum.semisimpleRank());
-  for (size_t i=0; i<twist.size(); ++i)
-    twist[i]= d_titsGroup.twisted(i);
-
-  return rootDatum().root_permutation(twist);
-}
 
 /*!
   The only data explicitly allocated by the ComplexReductiveGroup is that
@@ -336,7 +322,8 @@ void ComplexReductiveGroup::extend(realform::RealForm rf)
   try
   {
     const rootdata::RootDatum dualRootDatum(rootDatum(),tags::DualTag());
-    const weyl::WeylGroup dualWeylGroup(weylGroup(),tags::DualTag());
+    const weyl::TwistedWeylGroup
+      dualWeylGroup(twistedWeylGroup(),tags::DualTag());
 
     std::set<poset::Link> lks;
 
@@ -435,7 +422,7 @@ void ComplexReductiveGroup::correlateForms()
   Cayley_and_cross_part(so,ww,ti);
 
   assert(checkDecomposition
-	 (ti,ww,so,weylGroup(),rd,fundf.involution()));
+	 (ti,ww,so,twistedWeylGroup(),rd,fundf.involution()));
 
   const partition::Partition& pi = f.weakReal();
   realform::RealFormList rfl(f.numRealForms());
@@ -449,7 +436,7 @@ void ComplexReductiveGroup::correlateForms()
 
     transformGrading(gr,rl,so,rd);
     for (size_t i = 0; i < so.size(); ++i)
-      gr.set(rl.size()+i);             // make grading set for roots in |so|
+      gr.set(rl.size()+i);        // make grading noncompact for roots in |so|
     std::copy(so.begin(),so.end(),back_inserter(rl)); // extend |rl| with |so|
     crossTransform(rl,ww,rd);  // apply cross part of |ti| to roots in |rl|
 
@@ -467,7 +454,7 @@ void ComplexReductiveGroup::correlateForms()
 }
 
 void ComplexReductiveGroup::correlateDualForms(const rootdata::RootDatum& rd,
-					       const weyl::WeylGroup& W)
+					       const weyl::TwistedWeylGroup& W)
   // arguments are dual root datum and dual group
 {
   const cartanclass::Fiber& fundf = d_dualFundamental;
@@ -742,7 +729,7 @@ ComplexReductiveGroup::canonicalize
   const
 {
   const rootdata::RootDatum& rd=rootDatum();
-  const weyl::WeylGroup& W=weylGroup();
+  const weyl::TwistedWeylGroup& W=twistedWeylGroup();
   weyl::WeylElt w; // this will be the result
   cartanclass::InvolutionData id(*this,sigma);
 
@@ -905,7 +892,7 @@ void ComplexReductiveGroup::twisted_act
      const weyl::TwistedInvolution& ti) const
 {
   const rootdata::RootDatum& rd=rootDatum();
-  const weyl::WeylGroup& W=weylGroup();
+  const weyl::TwistedWeylGroup& W=twistedWeylGroup();
 
   std::vector<signed char> dec=W.involution_expr(ti);
   weyl::TwistedInvolution tw; // to reconstruct |ti| as a check
@@ -962,6 +949,33 @@ void lieType(lietype::LieType& lt, const ComplexReductiveGroup& G)
     lietype::SimpleLieType slt('T',rd.rank()-rd.semisimpleRank());
     lt.push_back(slt);
   }
+}
+
+/*****************************************************************************
+
+        Chapter V -- Local Functions
+
+******************************************************************************/
+
+/*!\brief Returns the twist defined by |d| relative to |rd|.
+
+  Precondition: |d| is an involution of the \emph{based} root datum |rd|.
+*/
+weyl::Twist make_twist(const rootdata::RootDatum& rd,
+		       const latticetypes::LatticeMatrix& d)
+{
+  latticetypes::WeightList
+    simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
+
+  weyl::Twist result;
+
+  for (size_t i = 0; i<simple_roots.size(); ++i)
+  {
+    result[i] = setutils::find_index(simple_roots,d.apply(simple_roots[i]));
+    assert (result[i]<simple_roots.size());
+  }
+
+  return result;
 }
 
 /*!
@@ -1037,9 +1051,10 @@ void transformGrading(gradings::Grading& gr,
   from |gr|; this function transforms the grading |gr| into that new grading.
 
   Formula: the rule for Cayley-transforming a grading through an imaginary
-  noncompact root \f$\alpha\f$ in |so| is that the grading of \f$\beta\f$ in |rl| is
-  flipped if and only if \f$\alpha+\beta\f$ is a root. So in all the grading of
-  \f$\beta\f$ changes iff this condition is met for an odd number of \f$\alpha\f$s.
+  noncompact root \f$\alpha\f$ in |so| is that the grading of \f$\beta\f$ in
+  |rl| is flipped if and only if \f$\alpha+\beta\f$ is a root. So in all the
+  grading of \f$\beta\f$ changes iff this condition is met for an odd number
+  of \f$\alpha\f$s.
 */
 
 {
@@ -1059,7 +1074,7 @@ void transformGrading(gradings::Grading& gr,
 bool checkDecomposition(const weyl::TwistedInvolution& ti,
 			const weyl::WeylWord& ww,
 			const rootdata::RootList& so,
-			const weyl::WeylGroup& W,
+			const weyl::TwistedWeylGroup& W,
 			const rootdata::RootDatum& rd,
 			const latticetypes::LatticeMatrix& q)
 {

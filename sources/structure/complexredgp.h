@@ -43,55 +43,8 @@ namespace complexredgp {
 
 /******** type definitions ***************************************************/
 
-namespace complexredgp {
-
-/* the following definition is "forward" in that |ComplexReductiveGroup|
-   is not yet a complete type, which it should be when reading the ".h" file
-*/
-
-  /*!
-   \brief Stores the set of stable conjugacy classes of Cartan subgroups of G.
-
-  */
-struct CartanClassSet {
-
-  /*!
-  \brief The inner class to which we are associated (and accessed from)
-  */
-  complexredgp::ComplexReductiveGroup& d_parent;
-
- public:
-
-// constructors and destructors
-
-// the main and only constructor
-  CartanClassSet(complexredgp::ComplexReductiveGroup& parent,
-	         const latticetypes::LatticeMatrix& distinguished);
-
-// copy, assignment and swap
-
-/* the copy constructor and assignment are forbidden, since a copy would point
-   to the parent without reciprocal relation. If a need to copy or assign
-   |ComplexReductiveGroup| objects should arise, this should be implemented
-   using the pseudo copy-constructor declared below (but as yet undefined).
-   For similar reasons, a swap operation should not be defined.
- */
-
- private:
-  CartanClassSet(const CartanClassSet&);
-  CartanClassSet& operator= (const CartanClassSet&);
-
-public:
-
-
-}; // |struct CartanClassSet|
-
-} // |namespace complexredgp|
-
 
 namespace complexredgp {
-
-
 
   /*!
   \brief Complex reductive group endowed with an inner class of real
@@ -168,6 +121,21 @@ class ComplexReductiveGroup
   const rootdata::RootDatum d_rootDatum;
 
   /*!
+  \brief Fiber class for the fundamental Cartan subgroup.
+
+  The involution is delta, which is stored here. It permutes the simple roots.
+  */
+  cartanclass::Fiber d_fundamental;
+
+  /*!
+  \brief Fiber class for the fundamental Cartan in the dual group.
+
+  The fiber group here is the group of characters (i.e., the dual group)
+  of the component group of the quasisplit Cartan.
+  */
+  cartanclass::Fiber d_dualFundamental;
+
+  /*!
   \brief The Tits group of the based root datum, extended by an
   involutive automorphism.
   */
@@ -200,21 +168,6 @@ class ComplexReductiveGroup
   */
   weyl::TwistedInvolutionList d_twistedInvolution;
 
-
-  /*!
-  \brief Fiber class for the fundamental Cartan subgroup.
-
-  The involution is delta, which is stored here. It permutes the simple roots.
-  */
-  cartanclass::Fiber d_fundamental;
-
-  /*!
-  \brief Fiber class for the fundamental Cartan in the dual group.
-
-  The fiber group here is the group of characters (i.e., the dual group)
-  of the component group of the quasisplit Cartan.
-  */
-  cartanclass::Fiber d_dualFundamental;
 
   /*!
   \brief Entry \#rf is the number of the most split Cartan for real form \#rf.
@@ -307,6 +260,13 @@ class ComplexReductiveGroup
   const rootdata::RootDatum& rootDatum() const { return d_rootDatum; }
 
   const weyl::WeylGroup& weylGroup() const { return d_titsGroup.weylGroup(); }
+  const weyl::TwistedWeylGroup& twistedWeylGroup() const
+    { return d_titsGroup.twistedWeylGroup(); }
+
+  setutils::Permutation simple_twist() const
+    { return setutils::Permutation
+	(&twistedWeylGroup().twist()[0],
+	 &twistedWeylGroup().twist()[semisimpleRank()]); }
 
   //!\brief returns a reference to the Weyl group (owned by the Tits group).
   const tits::TitsGroup& titsGroup() const { return d_titsGroup; }
@@ -589,8 +549,6 @@ void fillCartan() { fillCartan(quasisplit()); }
 
  private:
 // auxiliary accessors
-setutils::Permutation make_root_twist() const;
-
 weyl::TwistedInvolution
   reflection(rootdata::RootNbr rn,const weyl::TwistedInvolution& tw) const;
 
@@ -611,7 +569,7 @@ void addCartan(weyl::TwistedInvolution tw)
 void correlateForms();
 
 void correlateDualForms(const rootdata::RootDatum& dual_rd,
-			const weyl::WeylGroup& dual_W);
+			const weyl::TwistedWeylGroup& dual_W);
 
 void updateSupports(size_t last_Cartan_class_added);
 

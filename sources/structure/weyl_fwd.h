@@ -27,6 +27,7 @@ namespace weyl {
   class WeylElt;
   typedef WeylElt TwistedInvolution;
   class WeylGroup;
+  class TwistedWeylGroup;
 
   typedef std::vector<WeylElt> WeylEltList;
   typedef std::vector<TwistedInvolution> TwistedInvolutionList;
@@ -37,11 +38,6 @@ generators of W).
   */
   typedef unsigned char Generator;
 
-  /*!
-\brief Represents a minimal length coset representative for one of the
-  parabolic subquotients W_{i-1}\\W_i.
-  */
-  typedef unsigned char EltPiece;
 
   typedef std::vector<Generator> WeylWord;
 

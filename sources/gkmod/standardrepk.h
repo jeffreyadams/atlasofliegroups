@@ -333,6 +333,8 @@ class KhatContext
 
   const rootdata::RootDatum& rootDatum() const { return d_G->rootDatum(); }
   const weyl::WeylGroup& weylGroup() const { return d_G->weylGroup(); }
+  const weyl::TwistedWeylGroup& twistedWeylGroup() const
+    { return d_G->twistedWeylGroup(); }
   const tits::TitsGroup& titsGroup() const { return d_Tg.titsGroup(); }
   const cartanclass::Fiber& fiber(const StandardRepK& sr) const
     { return d_G->cartan(sr.Cartan()).fiber(); }

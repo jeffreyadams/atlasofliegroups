@@ -14,16 +14,6 @@ namespace atlas {
     
     const unsigned int magic_code=0x06ABdCF0; 
 
-    
-    const std::ios_base::openmode binary_in=
-    			    std::ios_base::in
-    			  | std::ios_base::binary;
-    
-    const std::ios_base::openmode binary_in_out=
-    			    std::ios_base::in
-    			  | std::ios_base::out
-    			  | std::ios_base::binary;
-
 
     
     blocks::BlockElt

@@ -151,7 +151,7 @@ std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
 */
 std::ostream& printInvolution(std::ostream& strm,
 			      const weyl::TwistedInvolution& tw,
-			      const weyl::WeylGroup& W)
+			      const weyl::TwistedWeylGroup& W)
 {
   std::vector<signed char> dec=W.involution_expr(tw);
   for (size_t i=0; i<dec.size(); ++i)

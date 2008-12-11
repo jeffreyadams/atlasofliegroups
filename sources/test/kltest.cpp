@@ -36,12 +36,13 @@ namespace {
   std::ostream& printBasePts(std::ostream&, const weyl::TwistedInvolutionList&,
 			     const kgb::KGBEltList&, const kgb::KGB&);
 
-  // the following class is copied integrally from kgb.cpp, helper namespace
-class InvolutionCompare {
+// the following class was copied integrally from kgb.cpp, helper namespace
+class InvolutionCompare
+{
 private:
-  const weyl::WeylGroup* d_W;
+  const weyl::TwistedWeylGroup* d_W;
 public:
-  explicit InvolutionCompare(const weyl::WeylGroup& W):d_W(&W) {}
+  explicit InvolutionCompare(const weyl::TwistedWeylGroup& W):d_W(&W) {}
 
   // one should have a < b iff
   // (a) involutionLength(a) < involutionLength(b) or
@@ -57,7 +58,7 @@ public:
     else
       return a < b;
   }
-};
+}; // |class InvolutionCompare|
 
 }
 
@@ -68,8 +69,6 @@ public:
 ******************************************************************************/
 
 namespace kltest {
-
-bool checkBasePoint(const kgb::KGB& kgb)
 
 /*!
   \brief Checks whether the conjectural basepoint in each R-packet is
@@ -86,68 +85,67 @@ bool checkBasePoint(const kgb::KGB& kgb)
   conjecture amounts to saying that for any descent s for w, s.x_{sw} is
   independent of the choice of s.
 */
-
+bool checkBasePoint(const kgb::KGB& kgb)
 {
-  using namespace gradings;
-  using namespace ioutils;
-  using namespace kgb;
-  using namespace weyl;
-
 #ifdef VERBOSE
   std::cerr << "entering checkBasePoint ..." << std::endl;
 #endif
 
-  const WeylGroup& W = kgb.weylGroup();
+  const weyl::TwistedWeylGroup& W = kgb.twistedWeylGroup();
   InvolutionCompare comp(W);
-  TwistedInvolutionList wl;
+  weyl::TwistedInvolutionList wl;
   involutionList(wl,kgb);
 
-  KGBEltList basepts;
+  kgb::KGBEltList basepts;
 
   for (size_t x0 = 0; x0 < kgb.size() and kgb.length(x0) == 0; ++x0) {
     // check if x0 is large
     for (size_t s = 0; s < kgb.rank(); ++s) {
-      Status::Value v = kgb.status(s,x0);
-      if (v == Status::ImaginaryCompact)
+      gradings::Status::Value v = kgb.status(s,x0);
+      if (v == gradings::Status::ImaginaryCompact)
 	goto nextx0;
     }
     // if we get here, x0 is large
     // check that basepoint is well-defined
-    basepts.assign(wl.size(),UndefKGB);
+    basepts.assign(wl.size(),kgb::UndefKGB);
     basepts[0] = x0;
     for (size_t w_pos = 1; w_pos < wl.size(); ++w_pos) {
 #ifdef VERBOSE
     std::cerr << w_pos << "\r";
 #endif
-      const TwistedInvolution& tw = wl[w_pos];
-      WeylWord w_red;
-      W.involutionOut(w_red,tw);
+      const weyl::TwistedInvolution& tw = wl[w_pos];
+
       for (size_t s = 0; s < kgb.rank(); ++s)
-	if (W.hasDescent(s,tw.w())) {
-	  TwistedInvolution sw = tw;
-	  KGBElt sx_sw;
-	  if (W.hasTwistedCommutation(s,tw)) {
+	if (W.hasDescent(s,tw.w()))
+	{
+	  weyl::TwistedInvolution sw = tw;
+	  kgb::KGBElt sx_sw;
+	  if (W.hasTwistedCommutation(s,tw))
+	  {
 	    W.leftMult(sw,s);
 	    size_t sw_pos = std::lower_bound(wl.begin(),wl.end(),sw,comp) -
 	      wl.begin();
 	    sx_sw = kgb.cayley(s,basepts[sw_pos]);
-	    if (sx_sw == UndefKGB)
+	    if (sx_sw == kgb::UndefKGB)
 	      return false;
-	  } else {
+	  }
+	  else
+	  {
 	    W.twistedConjugate(sw,s);
 	    size_t sw_pos = std::lower_bound(wl.begin(),wl.end(),sw,comp) -
 	      wl.begin();
 	    sx_sw = kgb.cross(s,basepts[sw_pos]);
 	  }
-	  if (basepts[w_pos] == UndefKGB) { // x_w is new
+
+	  if (basepts[w_pos] == kgb::UndefKGB) // x_w is new
+	  {
 	    basepts[w_pos] = sx_sw;
 	    // check if basepoint is large
 	    // this is automatic according to David
 	    // ... not done yet, need to think a little ...
-	  } else {
-	    if (sx_sw != basepts[w_pos])
-	      return false;
 	  }
+	  else if (sx_sw != basepts[w_pos])
+	    return false;
 	}
     }
 #ifdef VERBOSE
@@ -161,7 +159,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
   std::cerr << "done" << std::endl;
 #endif
 
-  OutputFile file;
+  ioutils::OutputFile file;
   printBasePts(file,wl,basepts,kgb);
 
   return true;
@@ -242,7 +240,8 @@ printBasePts(std::ostream& strm, const weyl::TwistedInvolutionList& wl,
     strm << "(";
     printWeylElt(strm,wl[j].w(),kgb.weylGroup());
     strm << ",";
-    printInvolution(strm,wl[j],kgb.weylGroup());  // added by jda: reduced form of the involution
+    printInvolution
+      (strm,wl[j],kgb.twistedWeylGroup()); // added by jda: red. form of invol.
     strm << "," << bp[j] << ")";
     strm << std::endl;
   }
@@ -257,15 +256,11 @@ printBasePts(std::ostream& strm, const weyl::TwistedInvolutionList& wl,
 */
 void involutionList(weyl::TwistedInvolutionList& wl, const kgb::KGB& kgb)
 {
-  using namespace weyl;
-
   wl.push_back(kgb.involution(0));
 
   for (size_t x = 0; x < kgb.size(); ++x)
     if (kgb.involution(x) != wl.back())
       wl.push_back(kgb.involution(x));
-
-  return;
 }
 
 

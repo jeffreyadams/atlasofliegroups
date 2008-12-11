@@ -401,35 +401,27 @@ bool isAscent(size_t s, KGBElt x) const
 }
 
 //! \brief The based Tits group.
-  const BasedTitsGroup& basedTitsGroup() const {
-    return *d_base;
-  }
+  const BasedTitsGroup& basedTitsGroup() const { return *d_base; }
 //! \brief The Tits group.
-  const tits::TitsGroup& titsGroup() const {
-    return d_base->titsGroup();
-  }
-//! \brief The (twisted) Weyl group.
-  const weyl::WeylGroup& weylGroup() const {
-    return d_base->titsGroup().weylGroup();
-  }
+  const tits::TitsGroup& titsGroup() const { return d_base->titsGroup(); }
+//! \brief The Weyl group.
+  const weyl::WeylGroup& weylGroup() const
+    { return d_base->titsGroup().weylGroup(); }
+//! \brief The twisted Weyl group.
+  const weyl::TwistedWeylGroup& twistedWeylGroup() const
+    { return d_base->titsGroup().twistedWeylGroup(); }
+
 /*!
   \brief Returns the root datum involution corresponding to x.
 
   In fact, returns the twisted involution $w$ with \f$w.\delta = \tau\f$.
 */
-  weyl::TwistedInvolution involution(KGBElt x) const {
-    return d_tits[x].tw();
-  }
-  tits::TorusPart torus_part(KGBElt x) const {
-    return d_base->titsGroup().left_torus_part(d_tits[x]);
-  }
-  tits::TitsElt titsElt(KGBElt x) const {
-    return d_tits[x];
-  }
+  weyl::TwistedInvolution involution(KGBElt x) const { return d_tits[x].tw(); }
+  tits::TorusPart torus_part(KGBElt x) const
+   { return d_base->titsGroup().left_torus_part(d_tits[x]); }
+  tits::TitsElt titsElt(KGBElt x) const { return d_tits[x]; }
 //! \brief The (non-semisimple) rank of torus parts.
-  size_t torus_rank() const {
-    return d_base->rootDatum().rank();
-  }
+  size_t torus_rank() const { return d_base->rootDatum().rank(); }
 
 
   KGBEltPair tauPacket(const weyl::TwistedInvolution&) const;

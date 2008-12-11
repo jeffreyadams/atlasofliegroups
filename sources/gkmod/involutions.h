@@ -40,9 +40,9 @@ class InvolutionSet {
  protected:
 
   size_t d_size;
-  size_t d_rank;
-  std::vector<std::vector<size_t> > d_action;
-  std::vector<size_t> d_cartan;
+  size_t d_rank; // semisimple rank
+  std::vector<std::vector<size_t> > d_action; // indexed by generator first
+  std::vector<size_t> d_cartan;               // indexed by involution
   std::vector<weyl::TwistedInvolution> d_involution;
   std::vector<weyl::TwistedInvolution> d_dualInvolution;
 
@@ -58,34 +58,26 @@ class InvolutionSet {
   void swap(InvolutionSet&);
 
   // accessors
-  size_t action(size_t s, size_t w) const {
-    return d_action[s][w];
-  }
+  size_t action(size_t s, size_t w) const { return d_action[s][w]; }
 
-  const weyl::TwistedInvolution& dualInvolution(size_t j) const {
-    return d_dualInvolution[j];
-  }
+  const weyl::TwistedInvolution& involution(size_t j) const
+    { return d_involution[j]; }
 
-  const weyl::TwistedInvolution& involution(size_t j) const {
-    return d_involution[j];
-  }
+  const weyl::TwistedInvolution& dualInvolution(size_t j) const
+    { return d_dualInvolution[j]; }
 
-  size_t involutionNbr(const weyl::TwistedInvolution&, const weyl::WeylGroup&)
-    const;
+  size_t involutionNbr(const weyl::TwistedInvolution&,
+		       const weyl::TwistedWeylGroup&) const;
 
-  const size_t rank() const {
-    return d_rank;
-  }
+  const size_t rank() const { return d_rank; }
 
-  const size_t size() const {
-    return d_size;
-  }
+  const size_t size() const { return d_size; }
 
   // manipulators
-};
+}; // |class InvolutionSet|
 
-}
+} // |namespace involutions|
 
-}
+} // |namesspace atlas|
 
 #endif

@@ -37,20 +37,24 @@
   in $dpi0(T~)=dpi0(S)\times dpi0(T_1(\R))$, where $S$ a maximally split torus
   in $H(\R)$, is just the second factor.
 
-  Then the inverse of $dpi0(G~(\R))$ in $dpi0(T)$ we are after is also the
-  kernel of the map $dpi0(T) \to dpi0(S)$. But we may take for $H$ the simply
-  connected cover of the derived group of $G$; hence we may suppose that the
-  weight lattice of $H$ is the weight lattice of the root system of $G$ (the
-  set of weights in the $\Q$-span of the roots that are integral for the
-  coroots): restriction to the derived group means projecting the weight
+  Then the inverse image of $dpi0(G~(\R))$ in $dpi0(T)$ we are after is also
+  the kernel of the map $dpi0(T) \to dpi0(S)$. But we may take for $H$ the
+  simply connected cover of the derived group of $G$; hence we may suppose
+  that the weight lattice of $H$ is the weight lattice of the root system of
+  $G$ (the set of weights in the $\Q$-span of the roots that are integral for
+  the coroots): restriction to the derived group means projecting the weight
   lattice onto the $\Q$-span of the roots, and taking the simply connected
   cover means extending the lattice to all integral weights for the coroots.
-  Then the coweight lattice is jsut the coroot lattice of $G$; it is easy to
+  Then the coweight lattice is just the coroot lattice of $G$; it is easy to
   write down the involution of that lattice (this amounts to writing the
   involution on coroot basis), and then to construct the torus $S$ of $H$.
 
-  From this functorial description, it is easy to find out what happens to
-  the component group under homomorphisms.
+  The upshot is that (1) the central torus $T_1$ of $G$ is irrelevant to the
+  question, and (2) it suffices to know the involution for the maximally split
+  torus $T$ of $G(\R)$ (in the original coordinates), and the involution for
+  the maximally split torus $S$ of $H(\R)$ (in simple weight coordinates).
+  The actual computation of components is done by computing an induced map at
+  the level of subquotients and then taking its kernel.
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -129,11 +133,13 @@ Connectivity::Connectivity(const tori::RealTorus& t,
 
   // write involution in coroot basis
 
-  LatticeMatrix i(t.involution()); // |t.involution()| acts on weight lattice
+  latticetypes::LatticeMatrix i(t.involution());
+  // |t.involution()| acts on weight lattice
+
   i.transpose();                   // |i| acts on coweight lattice
-  WeightList b(rd.beginSimpleCoroot(),rd.endSimpleCoroot());
+  latticetypes::WeightList b(rd.beginSimpleCoroot(),rd.endSimpleCoroot());
   copy(rd.beginRadical(),rd.endRadical(),back_inserter(b)); // coroots+radical
-  LatticeMatrix i_sw(i,b); // matrix of |i| in coroot+radical basis
+  latticetypes::LatticeMatrix i_sw(i,b); // matrix of |i| in this basis
 
   /* [certainly |i_sw| respects the decomposition into coroot and radical
      subspaces, in other words it is in block form. MvL]  */
@@ -145,7 +151,7 @@ Connectivity::Connectivity(const tori::RealTorus& t,
      coroot+radical first and transformed |i| to that basis. The main problem
      with is that is that the simple weights need not be integral. MvL */
 
-  RealTorus t_sc(i_sw);
+  tori::RealTorus t_sc(i_sw);
 
   // the map from t's lattice to the lattice of the derived group of t_sc
   // is given by the transpose of the matrix of coroot vectors. To go
@@ -154,9 +160,9 @@ Connectivity::Connectivity(const tori::RealTorus& t,
   for (size_t j = rd.semisimpleRank(); j < rd.rank(); ++j)
     b[j] = Weight(rd.rank(),0); // clear out radical part of basis |b|
 
-  LatticeMatrix m(b); m.transpose();
+  latticetypes::LatticeMatrix m(b); m.transpose();
 
-  BinaryMap m2;
+  latticetypes::BinaryMap m2;
   t.componentMap(m2,m,t_sc);
 
   m2.kernel(d_dpi0);

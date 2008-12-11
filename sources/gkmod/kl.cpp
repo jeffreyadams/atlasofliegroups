@@ -73,6 +73,15 @@
 namespace atlas {
 
   namespace kl {
+
+  /*!
+\brief Polynomial 0, which is stored as a vector of size 0.
+  */
+  const KLPol Zero;
+
+  /*! \brief Polynomial 1.q^0. */
+  const KLPol One(0); // Polynomial(d) gives 1.q^d.
+
 // we wrap |KLPol| into a class |KLPolEntry| that can be used in a |HashTable|
 
 /* This associates the type |KLStore| as underlying storage type to |KLPol|,

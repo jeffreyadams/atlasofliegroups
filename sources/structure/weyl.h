@@ -31,23 +31,6 @@ namespace atlas {
 
 namespace weyl {
 
-  /*!
-\brief A mapping between one interpretation of Generators and another
-  */
-  class WeylInterface
-  {
-    Generator d[constants::RANK_MAX];
-  public:
-    WeylInterface (size_t rank) { for (size_t i=0; i<rank; ++i) d[i]=i; }
-    Generator& operator[] (size_t i) { return d[i]; }
-    const Generator& operator[] (size_t i) const { return d[i]; }
-  };
-
-  /*!
-\brief A permutation of the set of Generators, giving a diagram automorphism
-  */
-  typedef WeylInterface Twist;
-
   class RowBase; // information at one coset element in one transducer table
   typedef RowBase ShiftRow; // the case of a transition entry
   typedef RowBase OutRow;   // the case of a transduction entry
@@ -70,6 +53,23 @@ namespace weyl {
 namespace weyl {
 
   /*!
+\brief A mapping between one interpretation of Generators and another
+  */
+  class WeylInterface
+  {
+    Generator d[constants::RANK_MAX];
+  public:
+    Generator& operator[] (size_t i) { return d[i]; }
+    const Generator& operator[] (size_t i) const { return d[i]; }
+  };
+
+  /*!
+\brief A permutation of the set of Generators, giving a diagram automorphism
+  */
+  typedef WeylInterface Twist; // use the same implementation
+
+
+  /*!
 \brief Element of a Weyl group.
 
 The representation is described in detail in the description of the
@@ -80,6 +80,13 @@ subquotient W_{i-1}\\W_i.
 class WeylElt {
 
   friend class WeylGroup; // so we can shield implementation from all others
+
+public:
+  /*!
+\brief Represents a minimal length coset representative for one of the
+  parabolic subquotients W_{i-1}\\W_i.
+  */
+  typedef unsigned char EltPiece;
 
  private:
 
@@ -284,9 +291,7 @@ class Transducer {
   /*!
 \brief Length of minimal coset representative x.
   */
-  unsigned long length(EltPiece x) const {
-    return d_length[x];
-  }
+  unsigned long length(WeylElt::EltPiece x) const { return d_length[x]; }
 
 
   /*!
@@ -305,9 +310,7 @@ the number of positive roots for L_{r-1}.
 
 In case of a transition, this returns UndefGenerator.
   */
-  Generator out(EltPiece x, Generator s) const {
-    return d_out[x][s];
-  }
+  Generator out(WeylElt::EltPiece x, Generator s) const { return d_out[x][s]; }
 
   /*!
 \brief Right coset x' defined by x' = xs.
@@ -316,9 +319,8 @@ When x' is not equal to s, this is an equality of minimal coset
 representatives. When x'=x, the equation for minimal coset representatives
 is out(x,s).x = x.s.
   */
-  EltPiece shift(EltPiece x, Generator s) const {
-    return d_shift[x][s];
-  }
+  WeylElt::EltPiece shift(WeylElt::EltPiece x, Generator s) const
+   { return d_shift[x][s]; }
 
   /*!
 \brief Number of cosets W_{r-1}\\W_r.
@@ -331,9 +333,7 @@ is out(x,s).x = x.s.
   /*!
 \brief Reduced decomposition in W (or W_r) of minimal coset representative x.
   */
-  const WeylWord& wordPiece(EltPiece x) const {
-    return d_piece[x];
-  }
+  const WeylWord& wordPiece(WeylElt::EltPiece x) const { return d_piece[x]; }
 
 // this class should have no manipulators!
 }; // class Transducer
@@ -341,13 +341,6 @@ is out(x,s).x = x.s.
 
   /*!
 \brief Represents a Weyl group for the purpose of manipulating its elements
-
-  In fact at construction an involutive diagram automorphism |delta| is also
-  associated to the Weyl group. While WeylElt values are assumed to live just
-  in the Weyl group W, some of the functionality of this class implements
-  operations that are more naturally interprests them in $W semidirect Z/2Z$
-  (the second factor acting on the first via |delta|), namely in the
-  non-identity coset for $W$. These operations are marked by the term "twist"
 
   The WeylGroup class is a variation on Fokko's own and favourite
   implementation in terms of transducers.
@@ -441,7 +434,6 @@ class WeylGroup {
   WeylElt d_longest;
   latticetypes::LatticeMatrix d_coxeterMatrix;
   std::vector<Transducer> d_transducer;
-  Twist d_twist; // expressed in external root numbering
   WeylInterface d_in;
   WeylInterface d_out;
   std::vector<Generator> d_min_star;
@@ -459,10 +451,8 @@ class WeylGroup {
   int leftMultIn(WeylElt& w, Generator s) const;
 
   // get WeylWord for piece |j| of |w|
-  const WeylWord& wordPiece(const WeylElt& w, Generator j) const {
-    const Transducer& tr = d_transducer[j];
-    return tr.wordPiece(w[j]);
-  }
+  const WeylWord& wordPiece(const WeylElt& w, Generator j) const
+    { return d_transducer[j].wordPiece(w[j]); }
 
   /*!
     \brief first generator $<s$ not commuting with |s|, or |s| if none exist
@@ -471,32 +461,11 @@ class WeylGroup {
 
   WeylElt genIn (Generator i) const; // $s_i$ as Weyl group element
 
-  Generator twistGenerator(Generator s) const // twist in internal numbering
-    { return d_in[d_twist[d_out[s]]]; }
-
- public:
+// From this point on each Generator or WeylWord uses external numbering
+public:
 
 // constructors and destructors
-  WeylGroup()
-    : d_rank(0)
-    , d_order(1)
-    , d_maxlength(0)
-    , d_longest()
-    , d_coxeterMatrix()
-    , d_transducer()
-    , d_twist(0)
-    , d_in(0)
-    , d_out(0)
-    , d_min_star()
-  {}
-
-  WeylGroup(const latticetypes::LatticeMatrix&, const Twist* = NULL);
-
-  // construct the "dual" Weyl group: the same group, but with a dual twist
-  WeylGroup(const WeylGroup&, tags::DualTag);
-
-
-// From this point on each Generator or WeylWord uses external numbering
+  WeylGroup(const latticetypes::LatticeMatrix& c);
 
 // accessors
 
@@ -504,9 +473,7 @@ class WeylGroup {
     { return genIn(d_in[i]); }
 
   // set |w=ws|, return length change
-  int mult(WeylElt& w, Generator s) const {
-    return multIn(w,d_in[s]);
-  }
+  int mult(WeylElt& w, Generator s) const { return multIn(w,d_in[s]); }
 
   // set |w=wv|
   void mult(WeylElt& w, const WeylElt& v) const;
@@ -515,10 +482,9 @@ class WeylGroup {
   void mult(WeylElt&, const WeylWord&) const;
 
   // set |w=sw| (argument order motivated by modification effect on |w|)
-  int leftMult(WeylElt& w, Generator s) const {
-    return leftMultIn(w,d_in[s]);
-  }
-  void leftMult(WeylElt& w, const WeylWord& ww) const {
+  int leftMult(WeylElt& w, Generator s) const { return leftMultIn(w,d_in[s]); }
+  void leftMult(WeylElt& w, const WeylWord& ww) const
+  {
     for (size_t i=ww.size(); i-->0; ) // use letters from right to left
       leftMult(w,ww[i]);
   }
@@ -551,7 +517,7 @@ class WeylGroup {
   */
 
 
-  unsigned long length(const WeylElt&) const;
+  unsigned int length(const WeylElt&) const;
 
   // return (only) $l(w.s)-l(w)$
   int length_change(WeylElt w, Generator s) const
@@ -565,47 +531,14 @@ class WeylGroup {
     return hasDescent(s,w) ? -1 : 1;
   }
 
-  void conjugacyClass(WeylEltList&, const WeylElt&)
-    const;
+  // letter |i| of Weyl word for |w|
+  Generator letter(const WeylElt& w, unsigned int i) const;
+
+  void conjugacyClass(WeylEltList&, const WeylElt&) const;
 
   /*! \brief Conjugates |w| by the generator |s|: |w=sws|. */
-  void conjugate(WeylElt& w, Generator s) const {
-    leftMult(w,s); mult(w,s);
-  }
-
-  /*!
-     \brief Twisted conjugates element |tw| by the generator |s|:
-     \f$tw:=s.tw.\delta(s)\f$.
-   */
-  void twistedConjugate(TwistedInvolution& tw, Generator s) const {
-    WeylElt& w=tw.contents();
-    leftMult(w,s);
-    mult(w,d_twist[s]);
-  }
-  void twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
-  {
-    for (size_t i=ww.size(); i-->0; )
-      twistedConjugate(tw,ww[i]);
-  }
-  void inverseTwistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
-  {
-    for (size_t i=0; i<ww.size(); ++i )
-      twistedConjugate(tw,ww[i]);
-  }
-
-  TwistedInvolution twistedConjugated(const TwistedInvolution& tw, Generator s)
-    const
-  {
-    TwistedInvolution result=tw; twistedConjugate(result,s); return result;
-  }
-
-  void twistedConjugacyClass(TwistedInvolutionList&, const TwistedInvolution&)
-    const;
-
-  /*!
-     \brief Twisted conjugates element |tw| by |w|: \f$tw:=w.tw.\delta(w^{-1})\f$.
-   */
-  void twistedConjugate(TwistedInvolution& tw, const WeylElt& w) const;
+  void conjugate(WeylElt& w, Generator s) const
+    { leftMult(w,s); mult(w,s); }
 
   /*! \brief $w^(-1)$ */
   WeylElt inverse(const WeylElt& w) const;
@@ -620,22 +553,14 @@ class WeylGroup {
  */
   Generator leftDescent(const WeylElt& w) const;
 
-  const WeylElt& longest() const {
-    return d_longest;
-  }
+  const WeylElt& longest() const { return d_longest; }
 
-  unsigned long maxlength() const {
-    return d_maxlength;
-  }
+  unsigned long maxlength() const { return d_maxlength; }
 
   /*! \brief the order of the Weyl group */
-  const size::Size& order() const {
-    return d_order;
-  }
+  const size::Size& order() const { return d_order; }
 
-  size_t rank() const {
-    return d_rank;
-  }
+  size_t rank() const { return d_rank; }
 
   WeylWord word(const WeylElt& w) const;
   WeylElt element(const WeylWord& ww) const { return prod(WeylElt(),ww); }
@@ -650,35 +575,11 @@ class WeylGroup {
 
   bool hasDescent(Generator, const WeylElt&) const;
 
-  bool hasTwistedCommutation(Generator, const TwistedInvolution&) const;
-
-/*!
-  \brief Returns the length of |tw| as a twisted involution.
-*/
-  unsigned long involutionLength(const TwistedInvolution& tw) const;
-
-  void involutionOut(WeylWord&, const TwistedInvolution&) const;
-
-/*!
-  \brief Returns a reduced expression of |tw| as a twisted involution.
-
-  Positive entries correspond to generators of Cayley transforms, while cross
-  actions are indicated by making the generator negative by bitwise complement.
-*/
-  std::vector<signed char> involution_expr(TwistedInvolution tw) const;
-
-  void out(WeylWord& ww, const WeylElt& w) const { ww=word(w); }
-
   // apply automorphism of $(W,S)$ given by |f| in terms of outer numbering
   WeylElt translation(const WeylElt& w, const WeylInterface& f) const;
 
   void translate(WeylElt& w, const WeylInterface& i) const
     { w=translation(w,i); }
-
-  Generator twisted(Generator s) const { return d_twist[s]; }
-  WeylElt twisted(const WeylElt& w) const { return translation(w,d_twist); }
-
-  void twist(WeylElt& w) const { w=twisted(w); }
 
   // standard reflection action of Weyl group using a root datum
   void act(const rootdata::RootDatum& rd,
@@ -708,9 +609,87 @@ class WeylGroup {
 
 
 // manipulators
-  void swap(WeylGroup&);
 
-}; // class WeylGroup
+}; // |class WeylGroup|
+
+/*
+  We have split off in the following derived class functionality that involves
+  an involutive diagram automorphism |delta|. While WeylElt values are assumed
+  to live just in the Weyl group W, this derived class implements operations
+  that are more naturally interprests them in $W semidirect Z/2Z$ (the second
+  factor acting on the first via |delta|), namely in the non-identity coset
+  for $W$. This derived class is totally ignorant of the internal numberig
+*/
+class TwistedWeylGroup : public WeylGroup
+{
+  const Twist d_twist; // cannot be reference, if dual is to be constructible
+
+public:
+  TwistedWeylGroup(const latticetypes::LatticeMatrix&, const Twist&);
+
+  // construct the "dual" twisted Weyl group: differs by a dual twist
+  TwistedWeylGroup(const TwistedWeylGroup&, tags::DualTag);
+
+  /*!
+     \brief Twisted conjugates element |tw| by the generator |s|:
+     \f$tw:=s.tw.\delta(s)\f$.
+   */
+  void twistedConjugate(TwistedInvolution& tw, Generator s) const
+  {
+    WeylElt& w=tw.contents();
+    leftMult(w,s);
+    mult(w,d_twist[s]);
+  }
+  void twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
+  {
+    for (size_t i=ww.size(); i-->0; )
+      twistedConjugate(tw,ww[i]);
+  }
+  void inverseTwistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
+  {
+    for (size_t i=0; i<ww.size(); ++i )
+      twistedConjugate(tw,ww[i]);
+  }
+
+  TwistedInvolution twistedConjugated(const TwistedInvolution& tw, Generator s)
+    const
+  {
+    TwistedInvolution result=tw; twistedConjugate(result,s); return result;
+  }
+
+  void twistedConjugacyClass(TwistedInvolutionList&, const TwistedInvolution&)
+    const;
+
+  /*!\brief
+    Twisted conjugates element |tw| by |w|: \f$tw:=w.tw.\delta(w^{-1})\f$.
+   */
+  void twistedConjugate(TwistedInvolution& tw, const WeylElt& w) const;
+
+  bool hasTwistedCommutation(Generator, const TwistedInvolution&) const;
+
+/*!
+  \brief Returns the length of |tw| as a twisted involution.
+*/
+  unsigned long involutionLength(const TwistedInvolution& tw) const;
+
+/*!
+  \brief Returns a reduced expression of |tw| as a twisted involution.
+
+  Positive entries correspond to generators of Cayley transforms, while cross
+  actions are indicated by making the generator negative by bitwise complement.
+*/
+  std::vector<signed char> involution_expr(TwistedInvolution tw) const;
+
+  Generator twisted(Generator s) const { return d_twist[s]; }
+  WeylElt twisted(const WeylElt& w) const { return translation(w,d_twist); }
+
+  const weyl::Twist& twist() const {return d_twist; } // noun "twist"
+  void twist(WeylElt& w) const { w=twisted(w); }      // verb "twist"
+
+  Twist dual_twist() const;
+
+}; // |class TwistedWeylGroup|
+
 
 // A small derived class to allow hash tables of TwistedInvolution values
 // (We might have put |Pooltype| and |hashCode| members in WeylElt directly)

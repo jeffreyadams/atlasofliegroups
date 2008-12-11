@@ -96,7 +96,7 @@ of the real form of G where the block lives.
   /*! \brief Semisimple rank of G. */
   size_t d_rank;
 
-  const weyl::WeylGroup& d_weylGroup;
+  const weyl::TwistedWeylGroup& d_weylGroup;
 
   /*!
 \brief Number of K orbits on G/B.
@@ -287,9 +287,9 @@ root datum involution tau corresponding to z
 }
 
 
-  const weyl::WeylGroup& weylGroup() const {
-    return d_weylGroup;
-  }
+  const weyl::WeylGroup& weylGroup() const { return d_weylGroup; }
+  const weyl::TwistedWeylGroup& twistedWeylGroup() const
+    { return d_weylGroup; }
 
   kgb::KGBElt x(BlockElt z) const {
     assert(z<size());

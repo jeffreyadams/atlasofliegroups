@@ -173,7 +173,7 @@ Block::Block(complexredgp::ComplexReductiveGroup& G,
   : d_realForm(rf)
   , d_dualForm(df)
   , d_rank(G.semisimpleRank())
-  , d_weylGroup(G.weylGroup())
+  , d_weylGroup(G.twistedWeylGroup())
   , d_xrange(0), d_yrange(0) // set by |generate|
   , d_x(), d_y(), d_first_z_of_x() // filled by |generate|
   , d_cross(d_rank), d_cayley(d_rank) // each entry filled by |generate|
@@ -219,7 +219,7 @@ Block::Block(complexredgp::ComplexReductiveGroup& G,
     { // use value from shorter cross neighbour, setting |s| and |twist(s)|
       d_involutionSupport[z] = d_involutionSupport[cross(s,z)];
       d_involutionSupport[z].set(s);
-      d_involutionSupport[z].set(weylGroup().twisted(s));
+      d_involutionSupport[z].set(twistedWeylGroup().twisted(s));
     }
     else // Real Type I or II
     { // use (some) inverse Cayley transform and set |s|
@@ -561,7 +561,7 @@ void Block::fillBruhat()
 weyl::TwistedInvolution Block::dualInvolution
   (const weyl::TwistedInvolution& tw,weyl::WeylInterface to_dual) const
 {
-  const weyl::WeylGroup& W = weylGroup();
+  const weyl::TwistedWeylGroup& W = twistedWeylGroup();
   return weyl::TwistedInvolution
     (W.translation(W.inverse(W.prod(W.longest(),W.twisted(tw.w()))),
 		   to_dual));
@@ -606,7 +606,7 @@ weyl::WeylInterface
 correlation(const weyl::WeylGroup& W,const weyl::WeylGroup& dW)
 {
   size_t rank=W.rank();
-  weyl::WeylInterface result(rank);
+  weyl::WeylInterface result;
   for (size_t s = 0; s < rank; ++s)
   {
     weyl::WeylElt w=dW.generator(s); // converts |s| to inner numbering |dW|

@@ -221,9 +221,9 @@ KGBHelp refined_helper(const realredgp::RealReductiveGroup& GR,
 */
 class InvolutionCompare {
 private:
-  const weyl::WeylGroup& W;
+  const weyl::TwistedWeylGroup& W;
 public:
-  explicit InvolutionCompare(const weyl::WeylGroup& w) : W(w) {}
+  explicit InvolutionCompare(const weyl::TwistedWeylGroup& w) : W(w) {}
 
   // one should have a < b iff
   // (a) involutionLength(a) < involutionLength(b) or
@@ -462,7 +462,7 @@ void BasedTitsGroup::inverse_Cayley_transform
 tits::TitsElt BasedTitsGroup::twisted(const tits::TitsElt& a) const
 {
   tits::TitsElt result(Tg,Tg.twisted(Tg.left_torus_part(a)));
-  weyl::WeylGroup W=Tg.weylGroup();
+  weyl::TwistedWeylGroup W=Tg.twistedWeylGroup();
   weyl::WeylWord ww=W.word(a.w());
   for (size_t i=0; i<ww.size(); ++i)
   {
@@ -663,7 +663,7 @@ tits::TitsElt EnrichedTitsGroup::backtrack_seed
  (const complexredgp::ComplexReductiveGroup& G,
   realform::RealForm rf, size_t cn) const
 {
-  const weyl::WeylGroup& W= titsGroup().weylGroup();
+  const weyl::TwistedWeylGroup& W= titsGroup().twistedWeylGroup();
 
   const weyl::TwistedInvolution& tw=G.twistedInvolution(cn);
 
@@ -777,38 +777,38 @@ FiberData::FiberData(const complexredgp::ComplexReductiveGroup& G,
   }
 
   const rootdata::RootDatum& rd=G.rootDatum();
-  latticetypes::BinaryMap delta(G.distinguished().transposed());
 
-  std::vector<latticetypes::BinaryMap> refl(G.semisimpleRank());
-  for (weyl::Generator s=0; s<refl.size(); ++s)
-  {
-   // get endomorphism of weight lattice $X$ given by generator $s$
-    latticetypes::LatticeMatrix r = rd.rootReflection(rd.simpleRootNbr(s));
+   std::vector<latticetypes::BinaryMap> refl(G.semisimpleRank());
+   for (weyl::Generator s=0; s<refl.size(); ++s)
+   {
+    // get endomorphism of weight lattice $X$ given by generator $s$
+     latticetypes::LatticeMatrix r = rd.rootReflection(rd.simpleRootNbr(s));
 
-    // reflection map is induced vector space endomorphism of $X^* / 2X^*$
-    refl[s] = latticetypes::BinaryMap(r.transposed());
-  }
+     // reflection map is induced vector space endomorphism of $X^* / 2X^*$
+     refl[s] = latticetypes::BinaryMap(r.transposed());
+   }
 
-  for (bitmap::BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
-  {
-    size_t cn=*it;
-    size_t i = hash_table.match(G.twistedInvolution(cn));
-    assert(i==data.size()); // this twisted involution should be new
+   for (bitmap::BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
+   {
+     size_t cn=*it;
+     size_t i = hash_table.match(G.twistedInvolution(cn));
+     assert(i==data.size()); // this twisted involution should be new
 
-    { // store data for canonical twisted involution |i| of Cartan class |cn|
-      using namespace latticetypes;
-      LatticeMatrix qtr= G.cartan(cn).involution().transposed();
-      data.push_back(SmallSubspace(SmallBitVectorList(tori::minusBasis(qtr)),
-				   G.rank())); // compute subspace $I$
-      Cartan_class.push_back(cn); // record number of Cartan class
-    }
+     { // store data for canonical twisted involution |i| of Cartan class |cn|
+       using namespace latticetypes;
+       LatticeMatrix qtr= G.cartan(cn).involution().transposed();
+       data.push_back(SmallSubspace(SmallBitVectorList(tori::minusBasis(qtr)),
+				    G.rank())); // compute subspace $I$
+       Cartan_class.push_back(cn); // record number of Cartan class
+     }
 
 
-    // now generate all non-canonical twisted involutions for this Cartan class
-    for ( ; i<data.size(); ++i) // |data.size()|  increases during the loop
-      for (size_t s=0; s<G.semisimpleRank(); ++s)
-      {
-	weyl::TwistedInvolution stw=G.weylGroup().twistedConjugated(pool[i],s);
+     // now generate all non-canonical twisted involutions for Cartan class
+     for ( ; i<data.size(); ++i) // |data.size()|  increases during the loop
+       for (size_t s=0; s<G.semisimpleRank(); ++s)
+       {
+	 weyl::TwistedInvolution stw =
+	   G.twistedWeylGroup().twistedConjugated(pool[i],s);
 	if (hash_table.match(stw)==data.size()) // then |stw| is new
 	{
 	  data.push_back(data[i]);     // start with copy of source subspace
@@ -943,7 +943,8 @@ KGBHelp::KGBHelp(const complexredgp::ComplexReductiveGroup& G,
 #endif
 
     // add additional infomation (length,Cartan class) for this KGB element
-    d_info.push_back(KGBInfo(G.weylGroup().involutionLength(a.tw()),m[i]));
+    d_info.push_back(KGBInfo(G.twistedWeylGroup().involutionLength(a.tw()),
+			     m[i]));
   }
 }
 

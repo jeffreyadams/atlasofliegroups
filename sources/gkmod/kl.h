@@ -32,16 +32,7 @@ namespace atlas {
 
 namespace kl {
 
-  /*!
-\brief Polynomial 0, which is stored as a vector of size 0.
-  */
-  const KLPol Zero;
-
-  /*! \brief Polynomial 1.q^0. */
-  const KLPol One(0); // Polynomial(d) gives 1.q^d.
-
-  const KLCoeff UndefKLCoeff = std::numeric_limits<KLCoeff>::max();
-  const KLCoeff UndefMuCoeff = std::numeric_limits<MuCoeff>::max();
+extern const KLPol Zero;
 
 typedef std::vector<KLPol> KLStore;
 

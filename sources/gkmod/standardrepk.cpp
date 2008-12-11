@@ -728,7 +728,7 @@ KhatContext::theta_stable_parabolic
   (const StandardRepK& sr, weyl::WeylWord& conjugator) const
 {
   const rootdata::RootDatum& rd=rootDatum();
-  const weyl::WeylGroup& W=weylGroup();
+  const weyl::TwistedWeylGroup& W=twistedWeylGroup();
 
   latticetypes::Weight dom=theta_lift(sr);
   tits::TitsElt strong=titsElt(sr);
@@ -786,7 +786,8 @@ KhatContext::theta_stable_parabolic
   // Build the parabolic subalgebra:
 
   { // first ensure |strong| is in reduced
-    latticetypes::LatticeMatrix theta=d_G->involutionMatrix(strong.tw());
+    const latticetypes::LatticeMatrix theta =
+      d_G->involutionMatrix(strong.tw());
     latticetypes::SmallSubspace mod_space=latticetypes::SmallSubspace
       (latticetypes::SmallBitVectorList(tori::minusBasis(theta.transposed())),
        rootDatum().rank());

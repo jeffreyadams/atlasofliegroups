@@ -59,9 +59,9 @@ representation in $W$ coincides with that of |s| in the dual Weyl group
 
     void fillCartan(const complexredgp::ComplexReductiveGroup&);
 
-    void fillInvolutions(const weyl::WeylGroup&);
+    void fillInvolutions(const weyl::TwistedWeylGroup&);
 
-    void fillDualInvolutions(const weyl::WeylGroup&);
+    void fillDualInvolutions(const weyl::TwistedWeylGroup&);
 
     void weylCorrelation(const complexredgp::ComplexReductiveGroup&);
  };
@@ -126,22 +126,18 @@ void InvolutionSet::swap(InvolutionSet& other)
   action pointers.
 */
 size_t InvolutionSet::involutionNbr(const weyl::TwistedInvolution& w,
-				    const weyl::WeylGroup& W) const
+				    const weyl::TwistedWeylGroup& W) const
 {
-  using namespace weyl;
+  std::vector<signed char> ww=W.involution_expr(w);
+  size_t x = 0; // initial, distinguished, involution
 
-  WeylWord ww;
-  W.involutionOut(ww,w);
-
-  size_t x = 0;
-
-  for (size_t j = 0; j < ww.size(); ++j)
-    x = action(ww[j],x);
+  for (size_t i = ww.size(); i-->0; )
+    x = action(ww[i]>=0 ? ww[i] : ~ww[i],x);
 
   return x;
 }
 
-}
+} // |namespace involutions|
 
 /*****************************************************************************
 
@@ -155,18 +151,16 @@ size_t InvolutionSet::involutionNbr(const weyl::TwistedInvolution& w,
 
 Helper::Helper(complexredgp::ComplexReductiveGroup& G)
   : InvolutionSet()
-  , d_toDualWeyl(G.semisimpleRank())
+  , d_toDualWeyl()
 {
-  using namespace weyl;
-
   // fill in the full cartan structure for G
   G.fillCartan();
 
   d_size = G.numInvolutions();
   d_rank = G.semisimpleRank();
 
-  weylCorrelation(G);
-  fill(G);
+  weylCorrelation(G); // fills |d_toDualWeyl|
+  fill(G); // completes filling the base object
 }
 
 /******** manipulators *******************************************************/
@@ -180,7 +174,7 @@ Helper::Helper(complexredgp::ComplexReductiveGroup& G)
 void Helper::fill(const complexredgp::ComplexReductiveGroup& G)
 {
 
-  const weyl::WeylGroup& W = G.weylGroup();
+  const weyl::TwistedWeylGroup& W = G.twistedWeylGroup();
 
   // fill the action and involution tables
   fillInvolutions(W);
@@ -207,9 +201,7 @@ void Helper::fill(const complexredgp::ComplexReductiveGroup& G)
 */
 void Helper::fillCartan(const complexredgp::ComplexReductiveGroup& G)
 {
-  using namespace weyl;
-
-  const WeylGroup& W = G.weylGroup();
+  const weyl::TwistedWeylGroup& W = G.twistedWeylGroup();
 
   d_cartan.resize(d_size);
 
@@ -218,7 +210,7 @@ void Helper::fillCartan(const complexredgp::ComplexReductiveGroup& G)
 
   for (size_t cn = 0; cn < G.numCartanClasses(); ++cn) {
 
-    const TwistedInvolution& w = G.twistedInvolution(cn);
+    const weyl::TwistedInvolution& w = G.twistedInvolution(cn);
     size_t x0 = involutionNbr(w,W);
 
     // find cross-orbit of x0
@@ -232,8 +224,8 @@ void Helper::fillCartan(const complexredgp::ComplexReductiveGroup& G)
       size_t x = toDo.top();
       toDo.pop();
 
-      for (Generator s = 0; s < d_rank; ++s) {
-	const TwistedInvolution& w = involution(x);
+      for (weyl::Generator s = 0; s < d_rank; ++s) {
+	const weyl::TwistedInvolution& w = involution(x);
 	if (W.hasTwistedCommutation(s,w))
 	  continue;
 	size_t sx = action(s,x);
@@ -265,17 +257,15 @@ void Helper::fillCartan(const complexredgp::ComplexReductiveGroup& G)
   filled, computing the result and looking it up in a set of elements for the
   next length.
 */
-void Helper::fillInvolutions(const weyl::WeylGroup& W)
+void Helper::fillInvolutions(const weyl::TwistedWeylGroup& W)
 {
-  using namespace weyl;
-
   d_action.resize(d_rank);
   for (size_t s = 0; s < d_action.size(); ++s)
     d_action[s].resize(d_size,UndefInvolution);
 
   d_involution.resize(d_size);
 
-  std::map<TwistedInvolution,size_t> found;
+  std::map<weyl::TwistedInvolution,size_t> found;
   size_t nextLength = 1;
   size_t firstNew = 1;
 
@@ -291,8 +281,8 @@ void Helper::fillInvolutions(const weyl::WeylGroup& W)
       if (action(s,x) != UndefInvolution)
 	continue;
 
-      const TwistedInvolution& w = involution(x);
-      TwistedInvolution sw = w;
+      const weyl::TwistedInvolution& w = involution(x);
+      weyl::TwistedInvolution sw = w;
 
       if (W.hasTwistedCommutation(s,w)) { // action is product
 	W.leftMult(sw,s);
@@ -321,19 +311,19 @@ void Helper::fillInvolutions(const weyl::WeylGroup& W)
   Precondition: the action and involution tables have been filled; d_toDualWeyl
   is set;
 */
-void Helper::fillDualInvolutions(const weyl::WeylGroup& W)
+void Helper::fillDualInvolutions(const weyl::TwistedWeylGroup& W)
 {
-  using namespace weyl;
-
   d_dualInvolution.resize(d_size);
 
-  for (size_t j = 0; j < d_size; ++j) {
-    WeylElt w = involution(j).w();
+  for (size_t i = 0; i < d_size; ++i)
+  {
+    weyl::WeylElt w = involution(i).w();
     W.twist(w);
-    WeylElt v = W.longest();
+    weyl::WeylElt v = W.longest();
     W.mult(v,w);
     W.invert(v);
-    d_dualInvolution[j] = TwistedInvolution(W.translation(v,d_toDualWeyl));
+    d_dualInvolution[i] =
+      weyl::TwistedInvolution(W.translation(v,d_toDualWeyl));
   }
 }
 
