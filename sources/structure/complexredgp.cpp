@@ -166,7 +166,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
 
   /* for now each (dual) real form knows about one Cartan (filled in later) */
   , d_support(numRealForms(),bitmap::BitMap(1))
-  , d_dualSupport(numRealForms(),bitmap::BitMap(1))
+  , d_dualSupport(numDualRealForms(),bitmap::BitMap(1))
   // for real form labels install single list (filled later)
 
   , d_realFormLabels(1,realform::RealFormList(numRealForms()))
@@ -218,7 +218,7 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 
   /* for now each (dual) real form knows about one Cartan (filled in later) */
   , d_support(numRealForms(),bitmap::BitMap(1))
-  , d_dualSupport(numRealForms(),bitmap::BitMap(1))
+  , d_dualSupport(numDualRealForms(),bitmap::BitMap(1))
   // for real form labels install single list (filled later)
   , d_realFormLabels(1,realform::RealFormList(numRealForms()))
   // for dual real forms, |correlateDualForms| will add such a list
@@ -527,7 +527,7 @@ void ComplexReductiveGroup::updateStatus(size_t prev)
     {
       if (cartan(j).isMostSplit(c))
       { // flag the form identified by class |c| in fiber of Cartan |j|
-	d_status.insert(rfl[c]);
+	d_status.insert(rfl[c]); // real form |rfl[c]| now fully generated
 	d_mostSplit[rfl[c]] = j;
 	// might do |break|, since no two real forms share a most split Cartan
       }
