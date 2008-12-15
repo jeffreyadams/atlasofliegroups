@@ -76,8 +76,7 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
 		      const realform::RealFormList&, tags::DualTag)
     throw(error::InputError);
 
-  void getInteractive(realredgp::RealReductiveGroup&,
-		      complexredgp_io::Interface&)
+  realredgp::RealReductiveGroup getRealGroup(complexredgp_io::Interface&)
     throw(error::InputError);
 
   void getInteractive(complexredgp::ComplexReductiveGroup*&,

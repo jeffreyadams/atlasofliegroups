@@ -311,14 +311,15 @@ void Helper::fillInvolutions(const weyl::TwistedWeylGroup& W)
   Precondition: the action and involution tables have been filled; d_toDualWeyl
   is set;
 */
-void Helper::fillDualInvolutions(const weyl::TwistedWeylGroup& W)
+void Helper::fillDualInvolutions(const weyl::TwistedWeylGroup& tW)
 {
+  const weyl::WeylGroup& W=tW.weylGroup();
   d_dualInvolution.resize(d_size);
 
   for (size_t i = 0; i < d_size; ++i)
   {
     weyl::WeylElt w = involution(i).w();
-    W.twist(w);
+    tW.twist(w);
     weyl::WeylElt v = W.longest();
     W.mult(v,w);
     W.invert(v);

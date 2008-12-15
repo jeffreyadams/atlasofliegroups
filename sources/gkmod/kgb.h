@@ -57,106 +57,9 @@ struct KGBInfo
   {} // set length explicitly, both other fields set to their default value
 };
 
-/*! \brief
-Augments the |TitsGroup| class with the choice of a base point, which makes
-possible the additional methods |simple_grading|, |basedTwistedConjugate| and
-|Cayley_transform| (but the last does not actually use the base point choice).
-*/
-
-class BasedTitsGroup
-{
-  const tits::TitsGroup& Tg;
- protected:
-  const rootdata::RootDatum& rd;
-
-  /*! \brief
-    Flags the noncompact imaginary roots for the basic strong involution,
-    among the simple roots for G.
-
-    This is an important parameter in the KGB generation. It depends on an
-    implicitly chosen "basic strong involution" in the fundamental fiber,
-    i.e., one of the form \f$x_0\delta\f$ with \f$x_0\in H\f$. The element
-    $x_0$ is determined, up a factor in $Z(G)$, by the evaluations of simple
-    roots at it; these are given by \f$\alpha_i(x_0)=(-1)^{g_i}\f$ for all
-    $i$, where $g_i$ denotes |gradingOffset[i]|. When \f$\alpha_i\f$ is
-    imaginary for \f$\delta\f$, the value $g_i$ is fixed by the choice of a
-    $W_{im}$ orbit representative in the real form; otherwise (\f$\alpha_i\f$
-    is complex for \f$\delta\f$) we choose $g_i=0$, which choice can be
-    accommodated by $H$-conjugation of \f$x_0\delta\f$. Thanks to the latter
-    convention, we are able to compute, using |grading_offset|, gradings at
-    simple roots that are imaginary in the fiber given by \emph{any} twisted
-    involution, even if those roots were complex in the fundamental fiber.
-  */
-  gradings::Grading grading_offset;
-
- public:
-  BasedTitsGroup(const realredgp::RealReductiveGroup&);
-
-  /* accessors */
-
-  const tits::TitsGroup& titsGroup() const { return Tg; }
-  const rootdata::RootDatum& rootDatum() const { return rd; }
-  gradings::Grading base_grading() const { return grading_offset; }
-
-  // grading of KGB element represented by |a| at simple root |s|
-  inline bool simple_grading(const tits::TitsElt& a, size_t s) const;
-
-  // operation defining cross action of simple roots
-  inline void basedTwistedConjugate(tits::TitsElt& a, size_t s) const;
-
-  // operation defining Cayley transform in non-compact imaginary simple roots
-  void Cayley_transform(tits::TitsElt& a, size_t s) const {
-    Tg.sigma_mult(s,a); // set |a| to $\sigma_s.a$
-  }
-
-  // inverse Cayley transform for real simple roots
-  // this requires knowing the subspace by which torus part has been reduced
-  void inverse_Cayley_transform(tits::TitsElt& a, size_t s,
-				const latticetypes::SmallSubspace& mod_space)
-    const;
-
-  // conjugate Tits group element by $\delta_1$
-  tits::TitsElt twisted(const tits::TitsElt& a) const;
-
-}; // BasedTitsGroup
-
-// A richer version of |BasedTitsGroup|, with more methods
-class EnrichedTitsGroup : public BasedTitsGroup
-{
-  // strong real form representative
-  const cartanclass::StrongRealFormRep srf;
-  // all compact imaginary roots for basic form
-  const rootdata::RootSet base_compact;
-
-  // unique constructor is private; use the |for_square_class| method
-  EnrichedTitsGroup(const realredgp::RealReductiveGroup&,
-		    const cartanclass::Fiber&);
-
- public:
-  static EnrichedTitsGroup
-    for_square_class(const realredgp::RealReductiveGroup& GR);
-
-  cartanclass::fiber_orbit f_orbit() const { return srf.first; }
-  cartanclass::square_class square() const { return srf.second; }
-
-  // whether arbitrary root |n| is compact for |x| in fundamental fiber
-  bool is_compact(const tits::TorusPart& x, rootdata::RootNbr n) const;
-
-  // general case of grading of a KGB element at an imaginary root
-  bool grading(tits::TitsElt a, rootdata::RootNbr n) const;
-
-  // various methods that provide a starting KGB element for any Cartan class
-  tits::TitsElt naive_seed (const complexredgp::ComplexReductiveGroup& G,
-			    realform::RealForm rf, size_t cn) const;
-  tits::TitsElt grading_seed (const complexredgp::ComplexReductiveGroup& G,
-			      realform::RealForm rf, size_t cn) const;
-  tits::TitsElt backtrack_seed (const complexredgp::ComplexReductiveGroup& G,
-				realform::RealForm rf, size_t cn) const;
-
-}; // EnrichedTitsGroup
 
 
-  /*!
+/*!
 \brief Represents the orbits of K on G/B for a particular real form.
 
 Each orbit x defines an involution \f$\theta_x\f$ of H, represented by a
@@ -191,10 +94,8 @@ class KGB {
 
   enum State { BruhatConstructed, NumStates };
 
-/*!
-\brief Semisimple rank of the underlying group.
-*/
-  size_t d_rank;
+  size_t d_rank; //!< semisimple rank
+  size_t d_torus_rank; //!< full rank used in torus parts
 
 /*!
  \brief The list d_cross[j] lists the images of the cross action
@@ -249,7 +150,7 @@ and in addition the Hasse diagram (set of all covering relations).
   bruhat::BruhatOrder* d_bruhat;
 
   //! \brief Owned pointer to the based Tits group.
-  BasedTitsGroup* d_base; // pointer, because constructed in helper class
+  tits::BasedTitsGroup* d_base; // pointer, because constructed in helper class
 
  public:
 
@@ -401,7 +302,7 @@ bool isAscent(size_t s, KGBElt x) const
 }
 
 //! \brief The based Tits group.
-  const BasedTitsGroup& basedTitsGroup() const { return *d_base; }
+  const tits::BasedTitsGroup& basedTitsGroup() const { return *d_base; }
 //! \brief The Tits group.
   const tits::TitsGroup& titsGroup() const { return d_base->titsGroup(); }
 //! \brief The Weyl group.
@@ -409,7 +310,7 @@ bool isAscent(size_t s, KGBElt x) const
     { return d_base->titsGroup().weylGroup(); }
 //! \brief The twisted Weyl group.
   const weyl::TwistedWeylGroup& twistedWeylGroup() const
-    { return d_base->titsGroup().twistedWeylGroup(); }
+    { return d_base->titsGroup(); } // in fact its base object
 
 /*!
   \brief Returns the root datum involution corresponding to x.
@@ -421,7 +322,7 @@ bool isAscent(size_t s, KGBElt x) const
    { return d_base->titsGroup().left_torus_part(d_tits[x]); }
   tits::TitsElt titsElt(KGBElt x) const { return d_tits[x]; }
 //! \brief The (non-semisimple) rank of torus parts.
-  size_t torus_rank() const { return d_base->rootDatum().rank(); }
+  size_t torus_rank() const { return d_torus_rank; }
 
 
   KGBEltPair tauPacket(const weyl::TwistedInvolution&) const;
@@ -447,73 +348,6 @@ private:
   void fillBruhat();
 
 }; // class KGB
-
-// inline definitions
-
-/* The amazingly simple way to compute the grading at simple roots, for any
-   twisted involution for which they are imaginary. Let $w$ be the twisted
-   involution associated to the Tits element |a| (i.e., its Weyl group part)
-   and let $\alpha=\alpha_s$ be a simple root, with image $\beta=\alpha_t$
-   under the distinguished involution $\delta$ (so $t=twist(s)$, and $s=t$ if
-   $\alpha$ is imaginary for $\delta$). The precondition is that $s$ is
-   imaginary for $w$ which means that $s.w.t=w$ in $W$ and $l(s.w)>l(w)$, so
-   that $s.w=w.t$ are both reduced. This means that this equation lifts to
-   canonical Weyl elements in the Tits group, so in that group conjugation by
-   $\sigma_w$ sends $\sigma_t$ to $\sigma_s$ (rather than its inverse).
-   Therefore in $G$, the action of $Ad(\sigma_w.\delta)$ is the identity on
-   the $SL(2)$ or $PSL(2)$ subgroup containing $\sigma_s$ whose Lie algebra
-   contains $X_\alpha$ and $X_alpha$, and so those roots are fixed under the
-   adjoint action of $\sigma_w.\delta$. Then the adjoint action of the strong
-   involution $x.\sigma_w.x_0.\delta$ (which |a| represents) on the root
-   vector $X_\alpha$ gives $(Ad(x).Ad(\sigma_w).Ad(x_0))(X_\beta)
-   =\alpha(x)\beta(x_0)X_\alpha$. So the grading $g$ to be computed here
-   should satisfy $(-1)^g=\alpha(x)\beta(x_0)$, or $g=\<\alpha,x>+\<beta,x_0>$
-   in $\Z/2\Z$. The first term is computed by |scalarProduct|, while the
-   second term is the grading of $x_0.\delta$ on the root $X_\beta=X_\alpha$
-   if it is imaginary for $\delta$ (i.e., $s=t$), or $0$ if $X_\alpha$ and
-   $X_beta$ are complex (thanks to the choice of $x_0$); either way,
-   $\<beta,x_0>$ equals |grading_offset[s]|.
-
-   Note that by using the a left torus factor |x| rather than a right
-   factor, we need not refer to $\beta$, i.e., |simpleRoot(twist(s))| below.
-*/
-bool BasedTitsGroup::simple_grading(const tits::TitsElt& a, size_t s) const
-{
-  return grading_offset[s]
-    ^bitvector::scalarProduct(Tg.left_torus_part(a),Tg.simpleRoot(s));
-}
-
-/* Apart from the grading methods, this is another place where we use
-   |grading_offset|. The task is to compute the conjugate of the strong
-   involution $a.x_0.\delta$ by $\sigma_s$ or by $\sigma_s^{-1}=\sigma_s^3$.
-   Note that since conjugation by $\sigma_s^2=m_s$ is not a trivial
-   operation at the Tits group level, there is a difference between these
-   operations, and they do not define an involution, but the difference can
-   be seen to disappear into the modular reduction that is systematically
-   applied to torus parts of Tits group elements; therefore this operation
-   will define an involution at the level of the KGB structure. In fact we
-   shall prefer to implement conjugation by $\sigma_s^{-1}$.
-
-   For the twisted involution (the Weyl group part of |a|) this operation is
-   just twisted conjugation by $s^{-1}=s$. For the entire Tits group part |a|,
-   twisted conjugation by $\sigma_s^{-1}$ gives an element $a'$ such that
-   $\sigma_s^{-1}a=a'\sigma_t^{-1}$ where $t=twist(s)$, but this is not yet
-   the whole story; in addition there is a contribution from interchanging
-   $x_0$ and $\sigma_t$. Since $\sigma_t$ represents $t$ in the Weyl group,
-   one has $Ad(\sigma_t)(x_0)=t(x_0)$, so we should add $\<\alpha_t,x_0>m_t$
-   at the right to the torus part of |a|. By our choice of $x_0$, this scalar
-   product can be nonzero only if $s=t$, and is equal to |grading_offset[s]|;
-   moreover the value of $m_s$ in the coordinates of the torus part is
-   available as |Tg.simpleCoroot(s)|. By the remark above about conjugating by
-   $m_s$, the contribution may be added into the left torus part instead of
-   the right torus part, which is what is done in the code below.
-*/
-void BasedTitsGroup::basedTwistedConjugate(tits::TitsElt& a, size_t s) const
-{
-  Tg.inverseTwistedConjugate(a,s);
-  if (grading_offset[s]) // this implies |Tg.twist(s)==s|
-    Tg.left_add(Tg.simpleCoroot(s),a);
-}
 
 } // namespace kgb
 

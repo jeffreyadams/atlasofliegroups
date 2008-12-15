@@ -397,7 +397,8 @@ void Block::generate(realredgp::RealReductiveGroup& G,
 #endif
 
   const weyl::WeylGroup& dual_Weyl_group(dual_kgb.weylGroup());
-  weyl::WeylInterface to_dual_Weyl=correlation(d_weylGroup,dual_Weyl_group);
+  weyl::WeylInterface to_dual_Weyl=correlation(d_weylGroup.weylGroup(),
+					       dual_Weyl_group);
 
   // set |d_xrange| and |d_yrange|
   d_xrange = kgb.size();
@@ -561,9 +562,10 @@ void Block::fillBruhat()
 weyl::TwistedInvolution Block::dualInvolution
   (const weyl::TwistedInvolution& tw,weyl::WeylInterface to_dual) const
 {
-  const weyl::TwistedWeylGroup& W = twistedWeylGroup();
+  const weyl::TwistedWeylGroup& tW = twistedWeylGroup();
+  const weyl::WeylGroup& W = tW.weylGroup();
   return weyl::TwistedInvolution
-    (W.translation(W.inverse(W.prod(W.longest(),W.twisted(tw.w()))),
+    (W.translation(W.inverse(W.prod(W.longest(),tW.twisted(tw.w()))),
 		   to_dual));
 }
 

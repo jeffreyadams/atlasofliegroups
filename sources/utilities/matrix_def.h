@@ -352,7 +352,7 @@ Vector<C> Matrix<C>::right_apply(const Vector<C>& w) const
   Puts the j-th column of the matrix in v.
 */
 template<typename C>
-void Matrix<C>::column(Vector<C>& v, size_t j) const
+void Matrix<C>::set_column(Vector<C>& v, size_t j) const
 {
   v.resize(d_rows);
 
@@ -890,7 +890,7 @@ template<typename C>
   b.resize(m.numColumns());
 
   for (size_t j = 0; j<b.size(); ++j)
-    m.column(b[j],j);
+    m.set_column(b[j],j);
 }
 
 template<typename C> Matrix<C> row_matrix(Vector<C> v)

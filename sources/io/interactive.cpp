@@ -524,16 +524,13 @@ void getInteractive(realform::RealForm& rf,
   in that case, d_G is not touched.
 */
 
-void getInteractive(realredgp::RealReductiveGroup& d_G,
-		    complexredgp_io::Interface& CI)
+realredgp::RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
   throw(error::InputError)
 {
   realform::RealForm rf = 0;
   getInteractive(rf,CI); // may throw an InputError
 
-  // commit
-  realredgp::RealReductiveGroup G(CI.complexGroup(),rf);
-  d_G.swap(G);
+  return realredgp::RealReductiveGroup(CI.complexGroup(),rf);
 }
 
 /*!\brief

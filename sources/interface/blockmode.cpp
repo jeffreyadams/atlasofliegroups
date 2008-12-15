@@ -287,12 +287,14 @@ void type_f()
 */
 void realform_f()
 {
-  try {
-    realredgp::RealReductiveGroup& G_R=realmode::currentRawRealGroup();
-    interactive::getInteractive(G_R,mainmode::currentComplexInterface());
+  try
+  { // we can call the swap method for rvalues, but not with and rvalue arg
+    interactive::getRealGroup(mainmode::currentComplexInterface()).swap
+      (realmode::currentRawRealGroup());
 
-    realredgp_io::Interface RI(G_R,mainmode::currentComplexInterface());
-    realmode::currentRealInterface().swap(RI);
+    realredgp_io::Interface(realmode::currentRawRealGroup(),
+			    mainmode::currentComplexInterface()).swap
+      (realmode::currentRealInterface());
 
     commands::exitMode(); // upon success pop block mode, destroying dual group
   }

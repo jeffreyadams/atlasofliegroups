@@ -287,7 +287,7 @@ root datum involution tau corresponding to z
 }
 
 
-  const weyl::WeylGroup& weylGroup() const { return d_weylGroup; }
+  const weyl::WeylGroup& weylGroup() const { return d_weylGroup.weylGroup(); }
   const weyl::TwistedWeylGroup& twistedWeylGroup() const
     { return d_weylGroup; }
 

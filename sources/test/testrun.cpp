@@ -453,9 +453,7 @@ void CoveringIterator::makeBasis(latticetypes::WeightList& b)
     b[j] = d_smithBasis[j];
 
   for (size_t j = s_rank; j < b.size(); ++j)
-    m_sb.column(b[j],j-s_rank);
-
-  return;
+    b[j] = m_sb.column(j-s_rank);
 }
 
 }

@@ -51,10 +51,11 @@ public:
   bool operator()
    (const weyl::TwistedInvolution& a, const weyl::TwistedInvolution& b) const
   {
+    const weyl::WeylGroup& W=d_W->weylGroup();
     if      (d_W->involutionLength(a) != d_W->involutionLength(b))
-      return d_W->involutionLength(a) < d_W->involutionLength(b) ;
-    else if (d_W->length(a.w()) != d_W->length(b.w()))
-      return d_W->length(a.w()) < d_W->length(b.w());
+      return d_W->involutionLength(a) <  d_W->involutionLength(b) ;
+    else if (W.length(a.w()) != W.length(b.w()))
+      return W.length(a.w()) <  W.length(b.w());
     else
       return a < b;
   }
@@ -116,7 +117,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
       const weyl::TwistedInvolution& tw = wl[w_pos];
 
       for (size_t s = 0; s < kgb.rank(); ++s)
-	if (W.hasDescent(s,tw.w()))
+	if (W.weylGroup().hasDescent(s,tw.w()))
 	{
 	  weyl::TwistedInvolution sw = tw;
 	  kgb::KGBElt sx_sw;

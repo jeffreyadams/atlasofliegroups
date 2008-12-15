@@ -135,6 +135,8 @@ class ComplexReductiveGroup
   */
   cartanclass::Fiber d_dualFundamental;
 
+  const weyl::WeylGroup W;
+
   /*!
   \brief The Tits group of the based root datum, extended by an
   involutive automorphism.
@@ -259,9 +261,9 @@ class ComplexReductiveGroup
 
   const rootdata::RootDatum& rootDatum() const { return d_rootDatum; }
 
-  const weyl::WeylGroup& weylGroup() const { return d_titsGroup.weylGroup(); }
+  const weyl::WeylGroup& weylGroup() const { return W; }
   const weyl::TwistedWeylGroup& twistedWeylGroup() const
-    { return d_titsGroup.twistedWeylGroup(); }
+    { return d_titsGroup; } // in fact its base object
 
   setutils::Permutation simple_twist() const
     { return setutils::Permutation
@@ -544,7 +546,7 @@ void fillCartan(realform::RealForm rf) { extend(rf); }
 
 /* the following is not done via a default argument to the previous method
    since a default argument cannot refer to a class member (quasisplit) */
-void fillCartan() { fillCartan(quasisplit()); }
+ void fillCartan() { fillCartan(quasisplit()); }
 
 
  private:

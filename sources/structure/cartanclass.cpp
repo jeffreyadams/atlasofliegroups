@@ -367,14 +367,14 @@ latticetypes::SmallSubquotient Fiber::makeFiberGroup() const
   So we first transform the involution to one on the root basis, and then take
   the negative transpose.
 */
-latticetypes::LatticeMatrix Fiber::adjointInvolution
-  (const rootdata::RootDatum& rd) const
+latticetypes::LatticeMatrix
+adjoint_involution(const rootdata::RootDatum& rd, const InvolutionData& id)
 {
   // write involution in root basis
   rootdata::RootList rl; // root numbers of involution images of simple roots
 
   for (size_t s = 0; s < rd.semisimpleRank(); ++s)
-    rl.push_back(involution_image_of_root(rd.simpleRootNbr(s)));
+    rl.push_back(id.root_involution(rd.simpleRootNbr(s)));
 
   latticetypes::WeightList b; // members of |rl| expressed in simple roots
 
@@ -388,14 +388,14 @@ latticetypes::LatticeMatrix Fiber::adjointInvolution
 
   Algorithm: this is the subquotient $V_+ + V_-/V_+$ for the negative
   transpose of the involution induced by \f$\tau\f$ on the root lattice (which
-  is computed by |adjointInvolution|).
+  is computed by |adjoint_involution|).
 */
-latticetypes::SmallSubquotient Fiber::makeAdjointFiberGroup
-  (const rootdata::RootDatum& rd) const
+latticetypes::SmallSubquotient
+Fiber::makeAdjointFiberGroup(const rootdata::RootDatum& rd) const
 {
   // construct subquotient
   latticetypes::SmallSubquotient result;
-  tori::dualPi0(result,adjointInvolution(rd));
+  tori::dualPi0(result,adjoint_involution(rd,d_involutionData));
 
   assert(result.rank()==rd.semisimpleRank());
 

@@ -230,10 +230,8 @@ int getLattice(latticetypes::CoeffList& root_invf,
   localBasis(lb,root_lattice_basis,root_invf);
 
   // convert |lb| according to |q|
-  latticetypes::LatticeMatrix m(lb);
-  m *= q;
-  for (size_t i=0; i<lb.size(); ++i)
-    m.column(lb[i],i);
+  latticetypes::LatticeMatrix m(lb); m *= q;
+  matrix::columnVectors(lb,m); // redefine |lb| as converted columns
 
   // make actual basis
 

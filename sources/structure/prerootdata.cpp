@@ -24,14 +24,6 @@
 #include "lietype.h"
 #include "smithnormal.h"
 
-/*****************************************************************************
-
-  NOTE ... explain here when it's stable ...
-
-  ... explain about choosing the lie type and the lattice, cf.
-  PreRootDatum(Interactive).
-
-******************************************************************************/
 
 namespace atlas {
 
@@ -120,8 +112,6 @@ void PreRootDatum::swap(PreRootDatum& other)
 
         Chapter II -- Functions declared in prerootdata.h
 
-  --- explain here when it is stable ---
-
 ******************************************************************************/
 
 namespace prerootdata {
@@ -149,11 +139,11 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm, const lietype::LieType& lt)
 
   size_t r = 0;
 
-  for (size_t j = 0; j < lt.size(); ++j) {
+  for (size_t i = 0; i < lt.size(); ++i) {
     latticetypes::LatticeMatrix cmp;
-    cartanMatrix(cmp,lt[j]);
+    cartanMatrix(cmp,lt[i]);
     cm.copy(cmp,r,r);
-    r += lietype::rank(lt[j]);
+    r += lietype::rank(lt[i]);
   }
 }
 
@@ -361,9 +351,9 @@ void makeRootBasis(latticetypes::WeightList& rb,
 
   // push back non-zero columns on rb
 
-  for (size_t j = 0; j < q.numColumns(); ++j) {
-    latticetypes::Weight r;
-    q.column(r,j);
+  for (size_t j = 0; j < q.numColumns(); ++j)
+  {
+    latticetypes::Weight r= q.column(j);
     if (not r.isZero())
       rb.push_back(r);
   }

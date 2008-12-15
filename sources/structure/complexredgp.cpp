@@ -1,3 +1,4 @@
+
 /*!
 \file
 \brief Implementation for the class ComplexReductiveGroup.
@@ -153,7 +154,8 @@ ComplexReductiveGroup::ComplexReductiveGroup
   , d_dualFundamental(rootdata::RootDatum(rd,tags::DualTag()),
 		      dualBasedInvolution(d,rd)) // dual fiber of most split
 
-  , d_titsGroup(rd,d,make_twist(rd,d))
+  , W(rd.cartanMatrix())
+  , d_titsGroup(rd,W,d,make_twist(rd,d))
   , root_twist(rd.root_permutation(simple_twist()))
   // install the fundamental Cartan, with associated data (like numRealForms)
   , d_cartan(1,new cartanclass::CartanClass(rd,d))
@@ -202,7 +204,8 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
   // for the dual fundamental fiber we similarly copy a fiber, but from |G|
   , d_dualFundamental(G.fundamental())
 
-  , d_titsGroup(d_rootDatum,d_fundamental.involution(),
+  , W(G.W)
+  , d_titsGroup(d_rootDatum,W,d_fundamental.involution(),
 		make_twist(d_rootDatum,d_fundamental.involution()))
 
   , root_twist(d_rootDatum.root_permutation(simple_twist()))
@@ -465,7 +468,7 @@ void ComplexReductiveGroup::correlateDualForms(const rootdata::RootDatum& rd,
   latticetypes::LatticeMatrix q = fundf.involution();
   q *= f.involution();
   weyl::WeylWord tiww=rd.word_of_inverse_matrix(q);
-  weyl::TwistedInvolution ti(weyl::WeylElt(tiww,W));
+  weyl::TwistedInvolution ti(weyl::WeylElt(tiww,W.weylGroup()));
 
   // find cayley part and cross part
   rootdata::RootList so;
@@ -1085,8 +1088,9 @@ bool checkDecomposition(const weyl::TwistedInvolution& ti,
     W.twistedConjugate(tw,ww[j]);
 
   // cayley transform part
-  for (size_t j = 0; j < so.size(); ++j) {
-    assert(isImaginary(rd.root(so[j]),tw,W,rd,q));
+  for (size_t j = 0; j < so.size(); ++j)
+  {
+    assert(isImaginary(rd.root(so[j]),tw,W.weylGroup(),rd,q));
     W.leftMult(tw,rd.reflectionWord(so[j]));
   }
 

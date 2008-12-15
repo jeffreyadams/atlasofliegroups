@@ -155,9 +155,8 @@ namespace {
 void real_mode_entry() throw(commands::EntryError)
 {
   try {
-    G_R_pointer=new realredgp::RealReductiveGroup;
-    interactive::getInteractive(currentRawRealGroup(),
-				mainmode::currentComplexInterface());
+    G_R_pointer=new realredgp::RealReductiveGroup
+      (interactive::getRealGroup(mainmode::currentComplexInterface()));
 
     RI_pointer=new realredgp_io::Interface
       (currentRawRealGroup(),mainmode::currentComplexInterface());
@@ -253,14 +252,14 @@ void gradings_f()
 */
 void realform_f()
 {
-  try {
-    interactive::getInteractive
-      (currentRawRealGroup(),mainmode::currentComplexInterface());
+  try
+  { // we can call the swap method for rvalues, but not with and rvalue arg
+    interactive::getRealGroup(mainmode::currentComplexInterface()).swap
+      (realmode::currentRawRealGroup());
 
-    realredgp_io::Interface RI
-      (currentRawRealGroup(),mainmode::currentComplexInterface());
-    currentRealInterface().swap(RI);
-
+    realredgp_io::Interface(realmode::currentRawRealGroup(),
+			    mainmode::currentComplexInterface()).swap
+      (realmode::currentRealInterface());
   }
   catch (error::InputError& e) {
     e("real form not changed");

@@ -179,41 +179,6 @@ WeylGroup::WeylGroup(const latticetypes::LatticeMatrix& c)
 
 }
 
-TwistedWeylGroup::TwistedWeylGroup
-  (const latticetypes::LatticeMatrix& c, const Twist& twist)
-  : WeylGroup(c)
-  , d_twist(twist)
-{
-}
-
-Twist TwistedWeylGroup::dual_twist() const
-{
-  Twist twist; // "dimensioned" but not initialised
-  for (size_t s=0; s<rank(); ++s)
-  {
-    WeylElt w = longest();
-    mult(w,twisted(s));
-    mult(w,longest()); // now |w| represents $w_0 twist_s w_0$ as WeylElt
-
-    // |w| should be some generator |t|; find which, and store it
-    for (Generator t=0; t<rank(); ++t)
-      if (w==generator(t))
-      {
-	twist[s] = t; // make outer, since |t| is inner
-	break;
-      }
-  }
-  return twist;
-}
-
-/* the "dual" Weyl group: the only difference with W is that the twist is
-   multiplied by conjugation with the longest element.
-*/
-TwistedWeylGroup::TwistedWeylGroup(const TwistedWeylGroup& W, tags::DualTag)
-  : WeylGroup(W)
-  , d_twist(W.dual_twist())
-{}
-
 
 /******** accessors **********************************************************/
 
@@ -382,18 +347,6 @@ WeylElt WeylGroup::inverse(const WeylElt& w) const
   return wi;
 }
 
-void TwistedWeylGroup::twistedConjugate // $tw = w.tw.twist(w)^{-1}$
-  (TwistedInvolution& tw, const WeylElt& w) const
-{
-  WeylElt x=w; mult(x,tw.w());
-
-  // now multiply $x$ by $\delta(w^{-1})$
-  for (size_t i = length(w); i-->0 ;)
-    mult(x,twisted(letter(w,i)));
-
-  tw.contents()=x;
-}
-
 /*!
   \brief Puts into |c| the conjugacy class of |w|.
 
@@ -426,44 +379,6 @@ void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w) const
   c.clear(); c.reserve(found.size());
   std::copy(found.begin(),found.end(),back_inserter(c));
 }
-
-/*!
-  \brief Puts in c the twistes conjugacy class of w.
-
-  Algorithm: straightforward enumeration of the connected component of |w| in
-  the graph defined by the operation twistedConjugate, using a
-  |std::set| structure to record previously encountered elements and a
-  |std::stack| to store elements whose neighbors have not yet been generated.
-
-*/
-void TwistedWeylGroup::twistedConjugacyClass
-  (TwistedInvolutionList& c, const TwistedInvolution& tw)
-  const
-{
-  std::set<TwistedInvolution> found;
-  std::stack<TwistedInvolution> toDo;
-
-  found.insert(tw);
-  toDo.push(tw);
-
-  while (not toDo.empty()) {
-
-    TwistedInvolution v = toDo.top();
-    toDo.pop();
-
-    for (Generator s = 0; s < rank(); ++s) {
-	twistedConjugate(v,s);
-      if (found.insert(v).second)
-	toDo.push(v);
-    }
-  }
-
-  // now convert set |found| to vector
-  c.clear(); c.reserve(found.size());
-  std::copy(found.begin(),found.end(),back_inserter(c));
-
-}
-
 
 /*!
   \brief Tells whether sw < w.
@@ -509,107 +424,6 @@ Generator WeylGroup::leftDescent(const WeylElt& w) const
   return UndefGenerator;
 }
 
-
-/*!
-  \brief Tells whether |w| twisted-commutes with |s|: \f$s.w.\delta(s)=w\f$
-
-  Precondition: |w| is a twisted involution: \f$w^{-1}=\delta(w)\f$. Therefore
-  twisted commutation is equivalent to $s.w$ being a twisted involution.
-
-  This is in fact the case if and only if \f$s.w.\delta(s)\f$ has the same
-  length as $w$, by the following reasoning. Suppose first that $s.w$ is
-  reduced, then its twisted inverse \f$w.\delta(s)\f$ is reduced as well. Then
-  the only possible reduction in \f$s.w.\delta(s)\f$ is cancellation of the
-  extremal generators; whether this reduction applies is equivalent to having
-  twisted commutation. If $s.w$ is not reduced, then neither is
-  \f$w.\delta(s)\f$, and \f$w'=s.w.\delta(s)\f$ is a twisted involution not
-  longer than $w$. If it is strictly shorter then obviously twisted
-  commutation fails. In the remaining case that \f$l(s.w.\delta(s))=l(w)\f$,
-  let $v=s.w$ so that $w=s.v$ and \f$w'=v.\delta(s)\f$ are reduced, but
-  \f$w.\delta(s)=s.v.\delta(s)\f$ does reduce, which can only be by cancelling
-  the extremal generators: \f$s.v.\delta(s)=v\f$ which implies $w'=w$, and one
-  has twisted commutation.
-*/
-bool TwistedWeylGroup::hasTwistedCommutation
-  (Generator s, const TwistedInvolution& tw) const
-{
-  WeylElt x = tw.w();
-  int m = mult(x,d_twist[s]); // now |x| is $w.\delta(s)$
-
-  return (m>0)==hasDescent(s,x); // lengths match iff members are equivalent
-}
-
-
-/*!
-  Precondition: tw is a twisted involution: \f$tw^{-1}=\delta(tw)\f$.
-
-  The argument given under |hasTwistedCommutation| shows that for every
-  generator |s| exactly one of $s.tw$ and \f$s.tw.\delta(s)\f$ is a twisted
-  involution distinct from $tw$, and that if $l(s.tw)<l(tw)$ (for the usual
-  length function on the Weyl group) then the length of this new twisted
-  involution is less than that of $tw$ (by 1 or 2, respectively). A "reduced
-  expression as a twisted involution" for $tw$ is obtained by iterating this
-  to bring the length down to $0$. Working back from the identity (so reading
-  our expression from right to left), it can be determined for each letter to
-  which if the two types of transformation it corresponds; nevertheless, we
-  encode which case prevails in the sign of the generator recorded: we
-  bitwise-complement for the case of conjugation.
-
-  Although not immediately obvious, all such reduced expressions do have the
-  same length.
-
-  The code below choses the first possible generator (for the internal
-  numbering, as returned by |leftDescent|) at each step, so the reduced
-  expression found is lexicographically first for the internal renumbering
-*/
-std::vector<signed char> TwistedWeylGroup::involution_expr
-  (TwistedInvolution tw) const
-{
-  std::vector<signed char> result; // result.reserve(involutionLength(tw));
-
-  for (Generator s = leftDescent(tw.w()); s != UndefGenerator;
-                 s = leftDescent(tw.w()))
-    if (hasTwistedCommutation(s,tw))
-    {
-      result.push_back(s);
-      leftMult(tw,s);
-    }
-    else
-    {
-      result.push_back(~s);
-      twistedConjugate(tw,s);
-    }
-
-  return result;
-}
-
-
-/*!
-  \brief Returns the length of tw as a twisted involution.
-
-  Precondition: tw is a twisted involution;
-
-  Algorithm: this is a simplified version of |involutionOut| that records only
-  the length. This statistic plays a predominant role in the kgb and block
-  structures; avoid calling this in sorting routines, since it is inefficient
-  in such circumstances; instead do with the stored length information there.
-*/
-unsigned long TwistedWeylGroup::involutionLength
-  (const weyl::TwistedInvolution& tw) const
-{
-  TwistedInvolution x = tw;
-  unsigned long length = 0;
-
-  for (Generator s = leftDescent(x.w()); s != UndefGenerator;
-                 s = leftDescent(x.w()),++length) {
-    if (hasTwistedCommutation(s,x))
-      leftMult(x,s);
-    else
-      twistedConjugate(x,s);
-  }
-
-  return length;
-}
 
 /*!
   \brief Returns the length of w.
@@ -749,6 +563,199 @@ WeylElt::WeylElt(const WeylWord& ww, const WeylGroup& W)
 {
   std::memset(d_data,0,sizeof(d_data)); // set to identity
   W.mult(*this,ww); // multiply |ww| into current element
+}
+
+
+
+/*
+               TwistedWeylGroup implementation
+*/
+
+TwistedWeylGroup::TwistedWeylGroup
+  (const WeylGroup& d_W, const Twist& twist)
+  : W(d_W)
+  , d_twist(twist)
+{
+}
+
+Twist TwistedWeylGroup::dual_twist() const
+{
+  Twist twist; // "dimensioned" but not initialised
+  for (size_t s=0; s<W.rank(); ++s)
+  {
+    WeylElt w = W.longest();
+    mult(w,twisted(s));
+    mult(w,W.longest()); // now |w| represents $w_0 twist_s w_0$ as WeylElt
+
+    // |w| should be some generator |t|; find which, and store it
+    for (Generator t=0; t<W.rank(); ++t)
+      if (w==W.generator(t))
+      {
+	twist[s] = t; // make outer, since |t| is inner
+	break;
+      }
+  }
+  return twist;
+}
+
+/* the "dual" Weyl group: the only difference with W is that the twist is
+   multiplied by conjugation with the longest element.
+*/
+TwistedWeylGroup::TwistedWeylGroup(const TwistedWeylGroup& tW, tags::DualTag)
+  : W(tW.W)
+  , d_twist(tW.dual_twist())
+{}
+
+void TwistedWeylGroup::twistedConjugate // $tw = w.tw.twist(w)^{-1}$
+  (TwistedInvolution& tw, const WeylElt& w) const
+{
+  WeylElt x=w; W.mult(x,tw.w());
+
+  // now multiply $x$ by $\delta(w^{-1})$
+  for (size_t i = W.length(w); i-->0 ;)
+    mult(x,twisted(W.letter(w,i)));
+
+  tw.contents()=x;
+}
+
+/*!
+  \brief Puts in c the twistes conjugacy class of w.
+
+  Algorithm: straightforward enumeration of the connected component of |w| in
+  the graph defined by the operation twistedConjugate, using a
+  |std::set| structure to record previously encountered elements and a
+  |std::stack| to store elements whose neighbors have not yet been generated.
+
+*/
+void TwistedWeylGroup::twistedConjugacyClass
+  (TwistedInvolutionList& c, const TwistedInvolution& tw)
+  const
+{
+  std::set<TwistedInvolution> found;
+  std::stack<TwistedInvolution> toDo;
+
+  found.insert(tw);
+  toDo.push(tw);
+
+  while (not toDo.empty()) {
+
+    TwistedInvolution v = toDo.top();
+    toDo.pop();
+
+    for (Generator s=0; s<W.rank(); ++s)
+    {
+	twistedConjugate(v,s);
+      if (found.insert(v).second)
+	toDo.push(v);
+    }
+  }
+
+  // now convert set |found| to vector
+  c.clear(); c.reserve(found.size());
+  std::copy(found.begin(),found.end(),back_inserter(c));
+
+}
+
+
+/*!
+  \brief Tells whether |w| twisted-commutes with |s|: \f$s.w.\delta(s)=w\f$
+
+  Precondition: |w| is a twisted involution: \f$w^{-1}=\delta(w)\f$. Therefore
+  twisted commutation is equivalent to $s.w$ being a twisted involution.
+
+  This is in fact the case if and only if \f$s.w.\delta(s)\f$ has the same
+  length as $w$, by the following reasoning. Suppose first that $s.w$ is
+  reduced, then its twisted inverse \f$w.\delta(s)\f$ is reduced as well. Then
+  the only possible reduction in \f$s.w.\delta(s)\f$ is cancellation of the
+  extremal generators; whether this reduction applies is equivalent to having
+  twisted commutation. If $s.w$ is not reduced, then neither is
+  \f$w.\delta(s)\f$, and \f$w'=s.w.\delta(s)\f$ is a twisted involution not
+  longer than $w$. If it is strictly shorter then obviously twisted
+  commutation fails. In the remaining case that \f$l(s.w.\delta(s))=l(w)\f$,
+  let $v=s.w$ so that $w=s.v$ and \f$w'=v.\delta(s)\f$ are reduced, but
+  \f$w.\delta(s)=s.v.\delta(s)\f$ does reduce, which can only be by cancelling
+  the extremal generators: \f$s.v.\delta(s)=v\f$ which implies $w'=w$, and one
+  has twisted commutation.
+*/
+bool TwistedWeylGroup::hasTwistedCommutation
+  (Generator s, const TwistedInvolution& tw) const
+{
+  WeylElt x = tw.w();
+  int m = mult(x,d_twist[s]); // now |x| is $w.\delta(s)$
+
+  return (m>0)==W.hasDescent(s,x); // lengths match iff members are equivalent
+}
+
+
+/*!
+  Precondition: tw is a twisted involution: \f$tw^{-1}=\delta(tw)\f$.
+
+  The argument given under |hasTwistedCommutation| shows that for every
+  generator |s| exactly one of $s.tw$ and \f$s.tw.\delta(s)\f$ is a twisted
+  involution distinct from $tw$, and that if $l(s.tw)<l(tw)$ (for the usual
+  length function on the Weyl group) then the length of this new twisted
+  involution is less than that of $tw$ (by 1 or 2, respectively). A "reduced
+  expression as a twisted involution" for $tw$ is obtained by iterating this
+  to bring the length down to $0$. Working back from the identity (so reading
+  our expression from right to left), it can be determined for each letter to
+  which if the two types of transformation it corresponds; nevertheless, we
+  encode which case prevails in the sign of the generator recorded: we
+  bitwise-complement for the case of conjugation.
+
+  Although not immediately obvious, all such reduced expressions do have the
+  same length.
+
+  The code below choses the first possible generator (for the internal
+  numbering, as returned by |leftDescent|) at each step, so the reduced
+  expression found is lexicographically first for the internal renumbering
+*/
+std::vector<signed char> TwistedWeylGroup::involution_expr
+  (TwistedInvolution tw) const
+{
+  std::vector<signed char> result; // result.reserve(involutionLength(tw));
+
+  for (Generator s = W.leftDescent(tw.w()); s != UndefGenerator;
+                 s = W.leftDescent(tw.w()))
+    if (hasTwistedCommutation(s,tw))
+    {
+      result.push_back(s);
+      leftMult(tw,s);
+    }
+    else
+    {
+      result.push_back(~s);
+      twistedConjugate(tw,s);
+    }
+
+  return result;
+}
+
+
+/*!
+  \brief Returns the length of tw as a twisted involution.
+
+  Precondition: tw is a twisted involution;
+
+  Algorithm: this is a simplified version of |involutionOut| that records only
+  the length. This statistic plays a predominant role in the kgb and block
+  structures; avoid calling this in sorting routines, since it is inefficient
+  in such circumstances; instead do with the stored length information there.
+*/
+unsigned long TwistedWeylGroup::involutionLength
+  (const weyl::TwistedInvolution& tw) const
+{
+  TwistedInvolution x = tw;
+  unsigned long length = 0;
+
+  for (Generator s = W.leftDescent(x.w()); s != UndefGenerator;
+                 s = W.leftDescent(x.w()),++length) {
+    if (hasTwistedCommutation(s,x))
+      leftMult(x,s);
+    else
+      twistedConjugate(x,s);
+  }
+
+  return length;
 }
 
 

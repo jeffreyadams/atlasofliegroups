@@ -175,7 +175,9 @@ template<typename C> class Matrix {
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 
-  void column(Vector<C>&, size_t) const;
+  void set_column(Vector<C>&, size_t) const;
+
+  Vector<C> column(size_t j) const { Vector<C> c; set_column(c,j); return c; }
 
   size_t columnSize() const {
     return d_rows;

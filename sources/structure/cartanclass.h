@@ -41,6 +41,9 @@ namespace cartanclass {
   Fiber dualFiber
     (const rootdata::RootDatum&, const latticetypes::LatticeMatrix&);
 
+  latticetypes::LatticeMatrix adjoint_involution
+    (const rootdata::RootDatum&, const InvolutionData&);
+
   latticetypes::Weight
     compactTwoRho(AdjointFiberElt, const Fiber&, const rootdata::RootDatum&);
 
@@ -243,9 +246,7 @@ class Fiber {
   forms.
 
   The imaginary Weyl group acts on the adjoint fiber group; the
-  partition is by orbits of this action.  It is constructed by the
-  function weakReal in the Helper class of the unnamed namespace of
-  cartanclass.cpp.
+  partition is by orbits of this action.
   */
   partition::Partition d_weakReal;
 
@@ -311,6 +312,8 @@ class Fiber {
   const tori::RealTorus& torus() const {
     return *d_torus;
   }
+
+  const InvolutionData& involution_data() const { return d_involutionData; }
 
 /*!
   \brief RootSet flagging the complex roots.
@@ -507,12 +510,12 @@ class Fiber {
   possible square classes in Z^delta/[(1+delta)Z].
 
   The Fiber group acts in a simply transitive way on strong real forms
-  (inducing tau on H) with a fixed square in Z^delta.  The number of
-  squares that occur (modulo (1+delta)Z) is equal to the number c of
-  classes in the partition d_weakReal.  The collection of strong real
-  forms is therefore a collection of c cosets of the fiber group F.
-  Each of these c cosets is partitioned into W_i orbits; these orbits
-  are described by the c partitions in d_strongReal.
+  (inducing tau on H) with a fixed square in Z^delta. The number of squares
+  that occur (modulo (1+delta)Z) is equal to the number c of classes in the
+  partition d_realFormPartition. The collection of strong real forms is
+  therefore a collection of c cosets of the fiber group F. Each of these c
+  cosets is partitioned into W_i orbits; these orbits are described by the c
+  partitions in d_strongReal.
 */
   const partition::Partition& strongReal(square_class j) const {
     return d_strongReal[j];
@@ -521,9 +524,9 @@ class Fiber {
 /*!
   \brief Representative strong real form for real form \#rf.
 
-  A StrongRealFormRep is a pair of numbers.  The second indexes
-  the value of the square of the strong real form in
-  Z^delta/[(1+delta)Z].  The first indexes a W_im orbit on the
+  A StrongRealFormRep is a pair of numbers. The second indexes the value of
+  the square of the strong real form in Z^delta/[(1+delta)Z], it equals
+  |central_square_class(wrf). The first indexes a W_im orbit on the
   corresponding coset of the fiber group.
 */
   const StrongRealFormRep& strongRepresentative(adjoint_fiber_orbit wrf) const
@@ -563,9 +566,6 @@ private:
     (const rootdata::RootDatum&) const;
 
   latticetypes::SmallSubspace gradingGroup(const rootdata::RootDatum&) const;
-
-  latticetypes::LatticeMatrix adjointInvolution
-    (const rootdata::RootDatum&) const;
 
   gradings::Grading makeBaseGrading
     (rootdata::RootSet& flagged_roots,const rootdata::RootDatum&) const;

@@ -293,7 +293,7 @@ class KhatContext
 
 // these data members allow interpretation of |StandardRepK| objects
   realform::RealForm d_realForm;
-  const kgb::EnrichedTitsGroup d_Tg;
+  const tits::EnrichedTitsGroup d_Tg;
 
   std::vector<Cartan_info> d_data;
 
@@ -521,7 +521,7 @@ class PSalgebra // Parabolic subalgebra
   PSalgebra (tits::TitsElt base,
 	     const kgb::KGB& kgb,
 	     const complexredgp::ComplexReductiveGroup& G,
-	     const kgb::EnrichedTitsGroup& Tg);
+	     const tits::EnrichedTitsGroup& Tg);
 
   const tits::TitsElt& strong_involution() const { return strong_inv; }
   weyl::TwistedInvolution involution() const { return strong_inv.tw(); }

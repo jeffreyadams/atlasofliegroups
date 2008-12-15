@@ -613,22 +613,32 @@ public:
 }; // |class WeylGroup|
 
 /*
-  We have split off in the following derived class functionality that involves
-  an involutive diagram automorphism |delta|. While WeylElt values are assumed
-  to live just in the Weyl group W, this derived class implements operations
-  that are more naturally interprests them in $W semidirect Z/2Z$ (the second
+  We have split off in the following class functionality that involves an
+  involutive diagram automorphism |delta|. While WeylElt values are assumed to
+  live just in the Weyl group W, this derived class implements operations that
+  are more naturally interprests them in $W semidirect Z/2Z$ (the second
   factor acting on the first via |delta|), namely in the non-identity coset
-  for $W$. This derived class is totally ignorant of the internal numberig
+  for $W$. This derived class is totally ignorant of the internal numbering
 */
-class TwistedWeylGroup : public WeylGroup
+class TwistedWeylGroup
 {
+  const WeylGroup& W;  // non-owned reference
   const Twist d_twist; // cannot be reference, if dual is to be constructible
 
 public:
-  TwistedWeylGroup(const latticetypes::LatticeMatrix&, const Twist&);
+  TwistedWeylGroup(const WeylGroup&, const Twist&);
 
   // construct the "dual" twisted Weyl group: differs by a dual twist
   TwistedWeylGroup(const TwistedWeylGroup&, tags::DualTag);
+
+  const WeylGroup& weylGroup() const { return W; }
+  int mult(WeylElt& w, Generator s) const { return W.mult(w,s); }
+  void mult(WeylElt& w, const WeylElt& v) const { W.mult(w,v); }
+  void mult(WeylElt& w, const WeylWord& ww) const { W.mult(w,ww); }
+
+  int leftMult(WeylElt& w, Generator s) const { return W.leftMult(w,s); }
+  void leftMult(WeylElt& w, const WeylWord& ww) const { W.leftMult(w,ww); }
+  WeylWord word(const WeylElt& w) const { return W.word(w); }
 
   /*!
      \brief Twisted conjugates element |tw| by the generator |s|:
@@ -637,8 +647,8 @@ public:
   void twistedConjugate(TwistedInvolution& tw, Generator s) const
   {
     WeylElt& w=tw.contents();
-    leftMult(w,s);
-    mult(w,d_twist[s]);
+    W.leftMult(w,s);
+    W.mult(w,d_twist[s]);
   }
   void twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
   {
@@ -681,7 +691,7 @@ public:
   std::vector<signed char> involution_expr(TwistedInvolution tw) const;
 
   Generator twisted(Generator s) const { return d_twist[s]; }
-  WeylElt twisted(const WeylElt& w) const { return translation(w,d_twist); }
+  WeylElt twisted(const WeylElt& w) const { return W.translation(w,d_twist); }
 
   const weyl::Twist& twist() const {return d_twist; } // noun "twist"
   void twist(WeylElt& w) const { w=twisted(w); }      // verb "twist"

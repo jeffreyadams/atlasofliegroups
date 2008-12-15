@@ -17,6 +17,8 @@
 #include "rootdata.h"
 #include "tori.h"
 
+#include <cassert>
+
 /*****************************************************************************
 
   The function pause just serves as a convenient debugging break point
@@ -38,10 +40,9 @@ namespace realredgp {
   Synopsis : constructs a real reductive group from the datum of a complex
   reductive group and a real form.
 */
-RealReductiveGroup::RealReductiveGroup(
-		  complexredgp::ComplexReductiveGroup& G_C,
-		  realform::RealForm rf)
-  : d_complexGroup(&G_C)
+RealReductiveGroup::RealReductiveGroup
+  (complexredgp::ComplexReductiveGroup& G_C, realform::RealForm rf)
+  : d_complexGroup(G_C)
   , d_realForm(rf)
   , d_connectivity()
   , d_status()
@@ -55,12 +56,12 @@ RealReductiveGroup::RealReductiveGroup(
 
   // construct the torus for the most split Cartan
 
-  const cartanclass::Fiber& fundf = d_complexGroup->fundamental();
+  const cartanclass::Fiber& fundf = d_complexGroup.fundamental();
   rootdata::RootList so= cartanclass::toMostSplit(fundf,rf,rd);
 
   latticetypes::LatticeMatrix q;
   rootdata::toMatrix(q,so,rd);
-  q.leftMult(d_complexGroup->distinguished());
+  q.leftMult(d_complexGroup.distinguished());
 
   tori::RealTorus T(q);
 
@@ -76,149 +77,6 @@ RealReductiveGroup::RealReductiveGroup(
 /******** accessors *********************************************************/
 
 
-/*!
-  Synopsis: returns cartan \#cn in the group.
-
-  Precondition: cn belongs to cartanSet().
-
-  NOTE: this is not inlined to avoid a dependency on complexredegp.h
-*/
-const cartanclass::CartanClass& RealReductiveGroup::cartan(size_t cn) const
-{
-  return d_complexGroup->cartan(cn);
-}
-
-
-
-/*!
-  Synopsis: returns the support of the set of Cartan classes for this
-  real form.
-
-  NOTE: this is not inlined to avoid a dependency on complexredegp.h
-*/
-const bitmap::BitMap& RealReductiveGroup::Cartan_set() const
-{
-  return complexGroup().Cartan_set(d_realForm);
-}
-
-size_t RealReductiveGroup::numInvolutions() const {
-    return complexGroup().numInvolutions(Cartan_set());
-  }
-
-
-/*!
-  Synopsis: returns the distinguished involution of the underlying complex
-  group.
-
-  NOTE : this is not inlined to avoid a compiling dependency on complexredgp.h
-*/
-const latticetypes::LatticeMatrix& RealReductiveGroup::distinguished() const
-{
-  return d_complexGroup->distinguished();
-}
-
-/*!
-  Synopsis: Returns the set of noncompact imaginary roots for (the
-  representative of) the real form.
-
-  NOTE : this is not inlined to avoid a compiling dependency on complexredgp.h
-*/
-rootdata::RootSet RealReductiveGroup::noncompactRoots() const
-{
-  return d_complexGroup->noncompactRoots(d_realForm);
-}
-
-/*!
-  Synopsis: returns the cardinality of K\\G/B.
-
-  Precondition: fillCartan() has been called.
-*/
-size_t RealReductiveGroup::KGB_size() const
-{
-  return d_complexGroup->KGB_size(d_realForm);
-}
-
-
-/*!
-  Synopsis: returns the most split cartan subgroup.
-
-  Precondition: fillCartan() has been called.
-
-  NOTE: this is not inlined to avoid a dependency on complexredgp.h
-*/
-size_t RealReductiveGroup::mostSplit() const
-{
-  return d_complexGroup->mostSplit(d_realForm);
-}
-
-/*!
-  Synopsis: returns the number of conjugacy classes of Cartan subgroups.
-
-  NOTE: the value returned is correct only after fullCartan() has been
-  called.
-
-  NOTE: this is not inlined in order to avoid a dependency on bitmap.h
-*/
-size_t RealReductiveGroup::numCartan() const
-{
-  return Cartan_set().size();
-}
-
-
-/*!
-  Synopsis: returns the rank of the group.
-
-  NOTE: this is not inlined to avoid a compiler dependency on rootdata.h
-*/
-size_t RealReductiveGroup::rank() const
-{
-  return rootDatum().rank();
-}
-
-
-/*!
-  Synopsis: returns the root datum of the underlying complex group.
-
-  NOTE: this is not inlined to avoid a compiler dependency on complexredgp.h
-*/
-const rootdata::RootDatum& RealReductiveGroup::rootDatum() const
-{
-  return d_complexGroup->rootDatum();
-}
-
-
-/*!
-  Synopsis: returns the semisimple rank of the group.
-
-  NOTE: this is not inlined to avoid a compiler dependency on rootdata.h
-*/
-size_t RealReductiveGroup::semisimpleRank() const
-{
-  return rootDatum().semisimpleRank();
-}
-
-
-/*!
-  Synopsis: returns a reference to the Tits group.
-
-  NOTE: this is not inlined to avoid a compiler dependency on complexredgp.h
-*/
-const tits::TitsGroup& RealReductiveGroup::titsGroup() const
-{
-  return d_complexGroup->titsGroup();
-}
-
-
-/*!
-  Synopsis: returns the Weyl group of the associated complex group.
-
-  NOTE: this is not inlined to avoid a compiler dependency on complexredgp.h
-*/
-
-const weyl::WeylGroup& RealReductiveGroup::weylGroup() const
-{
-  return d_complexGroup->weylGroup();
-}
 
 /******** manipulators ******************************************************/
 
@@ -237,12 +95,12 @@ const weyl::WeylGroup& RealReductiveGroup::weylGroup() const
 */
 void RealReductiveGroup::fillCartan()
 {
-  d_complexGroup->fillCartan(d_realForm);
+  d_complexGroup.fillCartan(d_realForm);
 }
 
 void RealReductiveGroup::swap(RealReductiveGroup& other)
 {
-  std::swap(d_complexGroup,other.d_complexGroup);
+  assert(&d_complexGroup==&other.d_complexGroup); // cannot swap references
   std::swap(d_realForm,other.d_realForm);
   d_connectivity.swap(other.d_connectivity);
   std::swap(d_status,other.d_status);

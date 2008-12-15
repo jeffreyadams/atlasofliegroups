@@ -129,7 +129,7 @@ KhatContext::KhatContext
   : d_G(&GR.complexGroup())
   , d_KGB(kgb)
   , d_realForm(GR.realForm())
-  , d_Tg(kgb::EnrichedTitsGroup::for_square_class(GR))
+  , d_Tg(tits::EnrichedTitsGroup::for_square_class(GR))
   , d_data(d_G->numCartanClasses())
   , simple_reflection_mod_2()
   , nonfinal_pool(),final_pool()
@@ -1192,7 +1192,7 @@ void KhatContext::go(const StandardRepK& initial)
 PSalgebra::PSalgebra (tits::TitsElt base,
 		      const kgb::KGB& kgb,
 		      const complexredgp::ComplexReductiveGroup& G,
-		      const kgb::EnrichedTitsGroup& Tg)
+		      const tits::EnrichedTitsGroup& Tg)
     : strong_inv(base)
     , cn(G.class_number(base.tw()))
     , sub_diagram() // class |RankFlags| needs no dimensioning

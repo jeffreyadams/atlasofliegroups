@@ -22,8 +22,9 @@ namespace atlas {
 
 namespace cartanclass {
 
-  class CartanClass;
+  class InvolutionData;
   class Fiber;
+  class CartanClass;
 
   //!\brief Element of the adjoint fiber or adjoint fiber group
   typedef unsigned int AdjointFiberElt;

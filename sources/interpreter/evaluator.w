@@ -2054,9 +2054,9 @@ void vec_list_conversion::evaluate() const
   row_ptr result
     (new row_value(std::vector<value>(m->val.numColumns(),NULL)));
   for(size_t i=0; i<m->val.numColumns(); ++i)
-  { vector_value*column=new vector_value(latticetypes::Weight());
-    result->val[i]=column; // now |column | is owned
-    m->val.column(column->val,i); // insert column into result vector
+  { vector_value* column=new vector_value(latticetypes::Weight());
+    result->val[i]=column; // now |column| is owned
+    column->val=m->val.column(i); // insert column into result vector
   }
   push_value(result.release());
 }
@@ -2066,9 +2066,8 @@ void int_list_list_conversion::evaluate() const
   row_ptr result
     (new row_value(std::vector<value>(m->val.numColumns(),NULL)));
   for(size_t i=0; i<m->val.numColumns(); ++i)
-  { latticetypes::Weight column; m->val.column(column,i);
-    result->val[i]=weight_to_row(column);
-  }
+    result->val[i]=weight_to_row(m->val.column(i));
+
   push_value(result.release());
 }
 

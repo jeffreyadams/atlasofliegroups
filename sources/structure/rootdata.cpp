@@ -137,16 +137,10 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   tc.transpose(); // now we have the non-transposed Cartan matrix
   qc *= tc;
 
-  for (size_t j = 0; j < d_semisimpleRank; ++j) {
-    latticetypes::Weight v;
-    q.column(v,j);
-    weight_numer.push_back(v);
-    qc.column(v,j);
-    coweight_numer.push_back(v);
-  }
+  matrix::columnVectors(weight_numer,q);
+  matrix::columnVectors(coweight_numer,qc);
 
   // get basis of co-radical character lattice
-
   if (d_semisimpleRank < d_rank)
   {
     lattice::perp(d_coradicalBasis,d_coroots,d_rank);
