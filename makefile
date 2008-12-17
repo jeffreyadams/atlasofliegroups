@@ -74,6 +74,7 @@ endif
 
 ifeq ($(readline),false)
     cflags += -DNREADLINE
+    rlincludes =
 else
     rlincludes ?= -lreadline -lcurses
 
