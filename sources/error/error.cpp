@@ -10,6 +10,7 @@
 #include "error.h"
 
 #include <iostream>
+#include <cstdlib>
 
 /*****************************************************************************
 
@@ -33,7 +34,7 @@ void FatalError::operator() (const char* mess)
 
 {
   std::cerr << mess << std::endl;
-  exit(0);
+  std::exit(0);
 }
 
 void InputError::operator() (const char* mess)
