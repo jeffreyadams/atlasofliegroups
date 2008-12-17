@@ -29,6 +29,7 @@
 #include "dynkin.h"
 #include "lietype.h"
 #include "poset.h"
+#include "bitmap.h"
 #include "rootdata.h"
 #include "tits.h"
 #include "weyl.h"
@@ -422,7 +423,7 @@ void ComplexReductiveGroup::correlateForms()
   // find cayley part and cross part
   rootdata::RootList so;
   weyl::WeylWord ww;
-  Cayley_and_cross_part(so,ww,ti);
+  Cayley_and_cross_part(so,ww,ti,rd,twistedWeylGroup());
 
   assert(checkDecomposition
 	 (ti,ww,so,twistedWeylGroup(),rd,fundf.involution()));
@@ -431,13 +432,13 @@ void ComplexReductiveGroup::correlateForms()
   realform::RealFormList rfl(f.numRealForms());
 
   // transform gradings and correlate forms
-  for (size_t j = 0; j < rfl.size(); ++j) {
-    unsigned long y = pi.classRep(j);
-    gradings::Grading gr=f.grading(y);
-    rootdata::RootList rl =
-      f.simpleImaginary(); // the roots of which |gr| are a grading
+  for (size_t j = 0; j < rfl.size(); ++j)
+  {
+    unsigned long y = pi.classRep(j); //  orbit |j| has representative |y|
+    gradings::Grading gr=f.grading(y); // and |gr| is it's grading
+    rootdata::RootList rl = f.simpleImaginary(); // of the roots in |rl|
 
-    transformGrading(gr,rl,so,rd);
+    transformGrading(gr,rl,so,rd); // now we grade those roots at |fundf|
     for (size_t i = 0; i < so.size(); ++i)
       gr.set(rl.size()+i);        // make grading noncompact for roots in |so|
     std::copy(so.begin(),so.end(),back_inserter(rl)); // extend |rl| with |so|
@@ -473,7 +474,7 @@ void ComplexReductiveGroup::correlateDualForms(const rootdata::RootDatum& rd,
   // find cayley part and cross part
   rootdata::RootList so;
   weyl::WeylWord ww;
-  Cayley_and_cross_part(so,ww,ti);
+  Cayley_and_cross_part(so,ww,ti,rd,W); // computation is in dual setting!
 // begin testing
   assert(checkDecomposition(ti,ww,so,W,rd,fundf.involution()));
 // end testing
@@ -882,21 +883,25 @@ void ComplexReductiveGroup::twisted_act
   |cross| of |W|), followed by a composite Cayley transform (composition at
   left or right with the product of (commuting) reflections for the roots of a
   strongly orthogonal set |so| of imaginary roots). This function computes
-  |cross| and |so|, where $q$ is given by the twisted involution |ti|.
+  |cross| and |so|, where $q$ is given by the twisted involution |ti|. Neither
+  of the two parts of this decomposition are unique; for instance in the equal
+  rank case the initial conjugation is entirely without effect.
 
   Note that conjugation is by the inverse of |cross| only because conjugation
   uses the letters of a Weyl word successively from right to left, whereas we
   collect the letters of |cross| from left to right as we go from the (twisted
-  involution representing) the fundamental involution back to $q$.
+  involution representing) the fundamental involution back to $q$. While cross
+  actions and Cayley transforms are found in an interleaved fashion, we push
+  the latter systematically to the end in the result; this means the
+  corresponding roots are to be reflected by the cross actions that were found
+  later, but those cross actions themselves are unchanged by the interchange.
 */
-  void ComplexReductiveGroup::Cayley_and_cross_part
-    (rootdata::RootList& so,
-     weyl::WeylWord& cross,
-     const weyl::TwistedInvolution& ti) const
+  void Cayley_and_cross_part(rootdata::RootList& so,
+			     weyl::WeylWord& cross,
+			     const weyl::TwistedInvolution& ti,
+			     const rootdata::RootDatum& rd,
+			     const weyl::TwistedWeylGroup& W)
 {
-  const rootdata::RootDatum& rd=rootDatum();
-  const weyl::TwistedWeylGroup& W=twistedWeylGroup();
-
   std::vector<signed char> dec=W.involution_expr(ti);
   weyl::TwistedInvolution tw; // to reconstruct |ti| as a check
 

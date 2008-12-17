@@ -461,7 +461,7 @@ tits::TitsElt EnrichedTitsGroup::backtrack_seed
 
   rootdata::RootList Cayley;
   weyl::WeylWord cross;
-  G.Cayley_and_cross_part(Cayley,cross,tw);
+  complexredgp::Cayley_and_cross_part(Cayley,cross,tw,G.rootDatum(),Tg);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying cross actions according to |cross|, and then applying Cayley

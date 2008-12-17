@@ -143,9 +143,10 @@ reduced decomposition.
 /*!\brief Canonical Weyl part of the Tits group element. */
   const weyl::WeylElt& w() const { return d_w; }
 
-// the same componenent under another name (to make it smell sweeter)
-// however note that this returns a value, not a reference (we have none)
-
+/* the same componenent under another name (to make it smell sweeter); note
+   however that this returns a value, not a reference (we would have none if
+   |weyl::TwistedInvolutio| were a distinct type from |weyl::WeylElt|)
+*/
 /*!\brief twisted involution represented by canonical Weyl part */
   const weyl::TwistedInvolution tw() const
     { return weyl::TwistedInvolution(d_w); }

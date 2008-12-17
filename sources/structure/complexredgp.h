@@ -39,6 +39,15 @@ namespace complexredgp {
 
   void lieType(lietype::LieType&, const ComplexReductiveGroup&);
 
+/* this function should NOT be made into a method, suppressing the |rd| and |W|
+   parameters, as these can be be dual to those in the |ComplexReductiveGroup|!
+*/
+  void Cayley_and_cross_part(rootdata::RootList& cayley,
+			     weyl::WeylWord& cross,
+			     const weyl::TwistedInvolution& tw,
+			     const rootdata::RootDatum& rd,
+			     const weyl::TwistedWeylGroup& W);
+
 }
 
 /******** type definitions ***************************************************/
@@ -488,10 +497,6 @@ class ComplexReductiveGroup
 
   rootdata::RootNbr twisted_root(rootdata::RootNbr alpha) const
     { return root_twist[alpha]; }
-
-  void Cayley_and_cross_part(rootdata::RootList& cayley,
-			     weyl::WeylWord& cross,
-			     const weyl::TwistedInvolution& tw) const;
 
 /*! \brief Make |sigma| canonical and return Weyl group |w| element that
     twisted conjugates the canonical representative back to |sigma|
