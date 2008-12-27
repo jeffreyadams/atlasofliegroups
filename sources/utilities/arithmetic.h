@@ -40,9 +40,9 @@ namespace arithmetic {
 
   inline unsigned long gcd (long a, unsigned long b) {
     if (a < 0)
-      return gcd(static_cast<unsigned long>(-a),b);
+      return unsigned_gcd(static_cast<unsigned long>(-a),b);
     else
-      return gcd(static_cast<unsigned long>(a),b);
+      return unsigned_gcd(static_cast<unsigned long>(a),b);
   }
 
   inline unsigned long& modAdd(unsigned long& a, unsigned long b,
