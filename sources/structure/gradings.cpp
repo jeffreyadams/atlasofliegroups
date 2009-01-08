@@ -380,7 +380,6 @@ unsigned long GradingAction::operator() (unsigned long s, unsigned long g)
 
 namespace gradings {
 
-bool GradingCompare::operator() (const Grading& lhs, const Grading& rhs)
 
 /*!
   Synopsis: compares |lhs| and |rhs|, returns whether |lhs<rhs| as gradings
@@ -388,7 +387,7 @@ bool GradingCompare::operator() (const Grading& lhs, const Grading& rhs)
   By definition this holds iff either |lhs| has fewer set bits, or they have
   the number, and |lhs<rhs| holds in the usual (bitwise lexicographic) sense.
 */
-
+bool GradingCompare::operator() (const Grading& lhs, const Grading& rhs)
 {
   size_t lhc=lhs.count(), rhc=rhs.count();
   return lhc!=rhc ? lhc<rhc : lhs<rhs;

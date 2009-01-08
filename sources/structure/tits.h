@@ -20,6 +20,7 @@ TitsGroup and TitsElt.
 #include "gradings_fwd.h"
 #include "complexredgp_fwd.h"
 #include "realredgp_fwd.h"
+#include "tags.h"
 
 #include "rootdata.h"
 #include "bitvector.h"
@@ -29,10 +30,22 @@ TitsGroup and TitsElt.
 #include "realform.h"
 
 #include "cartanclass.h"
+#include "tori.h"
 
 namespace atlas {
 
 namespace tits {
+
+/******** function declarations *********************************************/
+
+  // 2-subgroup by which each |TorusPart| at involution |inv| will be reduced
+  inline
+  latticetypes::SmallSubspace fiber_denom(latticetypes::LatticeMatrix inv)
+  {
+    latticetypes::SmallBitVectorList b(tori::minusBasis(inv.transposed()));
+    return latticetypes::SmallSubspace(b,inv.numRows());
+  }
+
 
 
 /******** type definitions **************************************************/
@@ -261,6 +274,14 @@ the \f$\delta\f$ coset of the Tits group.
 	    const weyl::WeylGroup& W,
 	    const weyl::Twist& twist);
 
+  //\brief Like a copy contructor, but reference |W| rather than share or copy
+  TitsGroup(const TitsGroup& Tg, const weyl::WeylGroup& W)
+    : TwistedWeylGroup(W,Tg.twist())
+    , d_rank(Tg.d_rank)
+    , d_simpleRoot(Tg.d_simpleRoot)
+    , d_simpleCoroot(Tg.d_simpleCoroot)
+    , d_involution(Tg.d_involution)
+  {}
 
 // All methods being accessors, we classify by behaviour w.r.t. TitsElt objects
 
@@ -275,13 +296,14 @@ the \f$\delta\f$ coset of the Tits group.
   //!\brief Image in the character lattice mod 2 of simple root \#j.
   TorusPart simpleRoot(size_t j) const { return d_simpleRoot[j]; }
 
-  using TwistedWeylGroup::twisted;   // overloaded in this class
-
 // methods only involving a |TorusPart|
 
 // convert between torus parts $x$ and $y$ for which $x.w=w.y$ in Tits group
   TorusPart push_across(TorusPart x, const weyl::WeylElt& w) const;
   TorusPart pull_across(const weyl::WeylElt& w, TorusPart y) const;
+
+  using TwistedWeylGroup::twisted; // overloaded in this class
+  using TwistedWeylGroup::twist;   // idem
 
   //!\brief Binary matrix*vector product to compute twist on torus part
   TorusPart twisted(const TorusPart& x) const { return d_involution.apply(x); }
@@ -329,8 +351,6 @@ the \f$\delta\f$ coset of the Tits group.
   }
 
 
-
-
   /*!
 \brief Twisted conjugates the TitsElt |a| by |sigma_alpha| where |alpha| is
   simple root \#s.
@@ -343,15 +363,19 @@ However, if for elements whose Weyl group part is a twisted involution the
 torus parts are projected to the fiber group over that twisted involution, as
 is done in the KGB construction, it induces an involution on the quotient set.
   */
-  void twistedConjugate(TitsElt& a, weyl::Generator s) const {
-    sigma_mult(s,a); mult_sigma_inv(a,twisted(s));
-  }
+  void twistedConjugate(TitsElt& a, weyl::Generator s) const
+  { sigma_mult(s,a); mult_sigma_inv(a,twisted(s)); }
 
   // the inverse operation: twisted conjugation by $\sigma_s^{-1}$
-  void inverseTwistedConjugate(TitsElt& a, weyl::Generator s) const {
-    sigma_inv_mult(s,a); mult_sigma(a,twisted(s));
-  }
+  void inverseTwistedConjugate(TitsElt& a, weyl::Generator s) const
+  { sigma_inv_mult(s,a); mult_sigma(a,twisted(s)); }
 
+  void left_torus_reduce(tits::TitsElt& a, latticetypes::SmallSubspace V) const
+    { a.d_t=V.mod_image(a.d_t); }
+
+  void right_torus_reduce(tits::TitsElt& a, latticetypes::SmallSubspace V)
+    const
+  { a=TitsElt(*this,a.w(),V.mod_image(right_torus_part(a))); }
 
 // manipulators (none)
 
@@ -366,8 +390,8 @@ group, by \f$\sigma_s\f$, or equivalently by its inverse (as \f$\sigma_s^2\f$
 commutes with $x$). This is used internally to compute the proper commutation
 relations between Weyl group and torus parts of a Tits element.
   */
-  void reflect(TorusPart& x, weyl::Generator s) const {
-    if (bitvector::scalarProduct(x,d_simpleRoot[s]))
+  void reflect(TorusPart& x, weyl::Generator s) const
+  { if (bitvector::scalarProduct(x,d_simpleRoot[s]))
       x += d_simpleCoroot[s];
   }
 
@@ -438,9 +462,12 @@ class BasedTitsGroup
   BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
 		 gradings::Grading base_grading);
 
-  ~BasedTitsGroup() { delete(my_Tits_group); }
-
   BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G);// adjoint case
+
+  BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
+		 tags::DualTag);// dual adjoint case
+
+  ~BasedTitsGroup() { delete(my_Tits_group); }
 
   /* accessors */
 
@@ -454,6 +481,9 @@ class BasedTitsGroup
   // operation defining cross action of simple roots
   inline void basedTwistedConjugate(tits::TitsElt& a, size_t s) const;
 
+  void basedTwistedConjugate(tits::TitsElt& a, const weyl::WeylWord& w) const;
+  void basedTwistedConjugate(const weyl::WeylWord& w, tits::TitsElt& a) const;
+
   // operation defining Cayley transform in non-compact imaginary simple roots
   void Cayley_transform(tits::TitsElt& a, size_t s) const
     { Tg.sigma_mult(s,a); } // set |a| to $\sigma_s.a$
@@ -464,6 +494,12 @@ class BasedTitsGroup
 				const latticetypes::SmallSubspace& mod_space)
     const;
 
+  void left_torus_reduce(tits::TitsElt& a, latticetypes::SmallSubspace V) const
+  { titsGroup().left_torus_reduce(a,V); }
+
+  void right_torus_reduce(tits::TitsElt& a, latticetypes::SmallSubspace V)
+  { titsGroup().right_torus_reduce(a,V); }
+
   // conjugate Tits group element by $\delta_1$
   tits::TitsElt twisted(const tits::TitsElt& a) const;
 
@@ -471,9 +507,9 @@ class BasedTitsGroup
   bool grading(tits::TitsElt a, rootdata::RootNbr n) const;
 
   // various methods that provide a starting KGB element for any Cartan class
-  tits::TitsElt naive_seed (const complexredgp::ComplexReductiveGroup& G,
+  tits::TitsElt naive_seed (complexredgp::ComplexReductiveGroup& G,
 			    realform::RealForm rf, size_t cn) const;
-  tits::TitsElt grading_seed (const complexredgp::ComplexReductiveGroup& G,
+  tits::TitsElt grading_seed (complexredgp::ComplexReductiveGroup& G,
 			      realform::RealForm rf, size_t cn) const;
 
 }; // BasedTitsGroup

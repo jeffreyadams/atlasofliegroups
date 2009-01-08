@@ -25,9 +25,9 @@ namespace atlas {
 
 namespace complexredgp_io {
 
-std::ostream& printBlockSizes(std::ostream&, const Interface&);
+std::ostream& printBlockSizes(std::ostream&, Interface&);
 
-std::ostream& printGradings(std::ostream&, size_t, const Interface&);
+std::ostream& printGradings(std::ostream&, size_t, Interface&);
 
 }
 

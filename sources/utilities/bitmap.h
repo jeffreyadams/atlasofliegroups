@@ -117,13 +117,11 @@ namespace bitmap {
 
     size_type size() const; // the number of bits that are set in the bitmap
 
-    bool operator< (const BitMap& b) const {
-      return d_map < b.d_map;
-    }
+    bool operator< (const BitMap& b) const { return d_map < b.d_map; }
 
-    bool operator== (const BitMap& b) const {
-      return (d_map == b.d_map);
-    }
+    bool operator== (const BitMap& b) const { return d_map == b.d_map; }
+
+    bool operator!=(const BitMap& b) const { return d_map != b.d_map; }
 
     bool empty() const; // whether |size()==0|
 

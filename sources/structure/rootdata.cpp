@@ -255,6 +255,14 @@ latticetypes::Weight RootDatum::inSimpleRoots(RootNbr n) const
   return result;
 }
 
+latticetypes::Weight RootDatum::inSimpleCoroots(RootNbr n) const
+{
+  latticetypes::Weight result(d_semisimpleRank);
+  for (size_t i = 0; i<d_semisimpleRank; ++i)
+    result[i] = coroot(n).scalarProduct(weight_numer[i])/Cartan_denom;
+  return result;
+}
+
 /*!
 \brief Returns the permutation of the roots induced by |q|.
 

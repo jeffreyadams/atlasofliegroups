@@ -18,6 +18,7 @@
 
 #include "bitmap.h"
 #include "graph.h"
+#include "tags.h"
 
 namespace atlas {
 
@@ -38,7 +39,7 @@ class Poset {
 
  private:
 
-  /*!
+/*!
 \brief Matrix of order relations.
 
 Bit i of d_below[j] is set if and only if |i| is less than |j| in the poset.
@@ -47,8 +48,13 @@ downwards closure in the poset of the singleton {j}.
 
 By the assumption on the poset structure, the capacity of |d_below[j]| need
 only be |j|.
-  */
-std::vector<bitmap::BitMap> d_below;
+*/
+  std::vector<bitmap::BitMap> d_below;
+
+  //! The basic method to add elementary relations
+  void new_cover(unsigned long  x,unsigned long y) // add $x<y$, $y$ maximal
+  { (d_below[y] |= d_below[x]).insert(x); }
+
 
  public:
 
@@ -64,6 +70,8 @@ std::vector<bitmap::BitMap> d_below;
   //! \brief Build Poset from arbitrary list of links
   Poset(size_t n,const std::vector<Link>&);
 
+  Poset(const Poset& p, tags::DualTag);
+
   ~Poset() {}
 
 // swap
@@ -77,9 +85,8 @@ std::vector<bitmap::BitMap> d_below;
 \brief The order relation itself.
   */
 
-  bool lesseq(set::SetElt i, set::SetElt j) const{
-    return i<j ? d_below[j].isMember(i) : i==j;
-  }
+  bool lesseq(set::SetElt i, set::SetElt j) const
+  { return i<j ? d_below[j].isMember(i) : i==j; }
 
   //! \brief Number of comparable pairs (including those on the diagonal)
   unsigned long n_comparable() const;
@@ -90,9 +97,9 @@ std::vector<bitmap::BitMap> d_below;
   /*!
 \brief Size of the poset.
   */
-  size_t size() const {
-    return d_below.size();
-  }
+  size_t size() const { return d_below.size(); }
+
+  bool operator==(const Poset& other) const;
 
   void hasseDiagram(graph::OrientedGraph&) const;
 
@@ -101,67 +108,38 @@ std::vector<bitmap::BitMap> d_below;
 // manipulators
   void resize(unsigned long);
 
-  void extend(const std::vector<Link>&);
-}; // class Poset
-
 /*!
-\brief Represents a poset by the symmetrization of the order relation
-matrix.
+\brief Transforms the poset into the weakest ordering containing the relations
+  it previously contained, plus the relations |first < second| for all elements
+  listed in |lk|.
 
-The poset is {0,1,...,n-1}, and it is assumed that i less than j in
-the poset implies i < j as integers.  Entry (j,i) is set if and only
-if one of i and j is less than or equal to the other in the poset.
+  Precondition: |lk| is sorted in increasing lexicographical order, and is
+  compatible with relations already present in the poset. More precisely the
+  following (weaker, given the compatibility of the order relation with
+  integral ordering) condition is assumed: all occurrences of a value |i| as
+  first (smaller) member in a Link must follow all occurrences of |i| as
+  second (larger) member in another Link, and no element smaller in a
+  pre-existing relation should be the larger element of a link. This
+  guarantees that the calls of |new_cover| generate the transitive closure.
+
 */
-class SymmetricPoset {
-
- private:
-
-  /*!
-\brief Rows of the symmetric poset BitMap.
-
-Row \#j is a BitMap of size n (the size of the poset); bit i is set if
-and only i and j are comparable in the poset.
-  */
-  std::vector<bitmap::BitMap> d_row;
-
- public:
-
-// constructors and destructors
-  SymmetricPoset() {}
-
-  explicit SymmetricPoset(size_t n);
-
-  explicit SymmetricPoset(const std::vector<set::SetEltList>&);
-
-  ~SymmetricPoset() {}
-
-// swap
-  void swap(SymmetricPoset& other) {
-    d_row.swap(other.d_row);
+  void extend(const std::vector<Link>& lks)
+  {
+    for (size_t i=0; i<lks.size(); ++i)
+      new_cover(lks[i].first,lks[i].second);
   }
 
-// accessors
+  template<typename C> void new_max(C container)
+  {
+    size_t y=d_below.size();
+    d_below.push_back(bitmap::BitMap(y));
 
-  /*!
-\brief Row \#j of the symmetric poset matrix.
-
-For i<j, bit i is set if and only if i is less than j in the poset.
-Bit j is always set.  For i>j, bit j is set if and only if i is
-greater than j in the poset.
-  */
-  const bitmap::BitMap& row(size_t j) const {
-    return d_row[j];
+    for (typename C::const_iterator
+	   it=container.begin(); it!=container.end(); ++it)
+      new_cover(*it,y);
   }
 
-  /*!
-\brief Size of the poset.
-  */
-  size_t size() const {
-    return d_row.size();
-  }
-
-// manipulators
-}; // class SymmetricPoset
+}; // class Poset
 
 
 /* ********************** Function(s) *****************************/
@@ -183,17 +161,10 @@ template<typename C>
 Poset::Poset(const std::vector<C>& hasse)
 : d_below(hasse.size())
 {
-  for (size_t x = 0; x < size(); ++x) {
-    bitmap::BitMap& b = d_below[x];
-    b.set_capacity(x);
-    const C& h = hasse[x];
-    for (typename C::const_iterator it=h.begin(); it!=h.end(); ++it)
-    {
-      size_t y=*it;    // element covered by |x|
-      b |= d_below[y]; // note that |d_below[y]| is shorter than |b|
-      b.insert(y);     // this one was not stored in d_below[y].
-    }
-  }
+  for (size_t i=0; i<hasse.size(); ++i)
+    for (typename C::const_iterator
+	   it=hasse[i].begin(); it!=hasse[i].end(); ++it)
+      new_cover(*it,i);
 }
 
 

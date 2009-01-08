@@ -69,11 +69,11 @@ const realform_io::Interface& Interface::realFormInterface() const
 namespace realredgp_io {
 
 std::ostream& printBlockStabilizer(std::ostream& strm,
-				   const realredgp::RealReductiveGroup& G_R,
+				   realredgp::RealReductiveGroup& G_R,
 				   size_t cn, realform::RealForm drf)
 
 {
-  const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
   const rootdata::RootDatum& rd = G_R.rootDatum();
   const weyl::WeylGroup& W = G_R.weylGroup();
 
@@ -101,10 +101,10 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 
 // Print information about all the Cartan classes for |G_RI.realGroup()|.
 std::ostream& printCartanClasses(std::ostream& strm,
-				 const realredgp_io::Interface& G_RI)
+				 realredgp_io::Interface& G_RI)
 {
   const realredgp::RealReductiveGroup& G_R = G_RI.realGroup();
-  const complexredgp_io::Interface& G_CI = G_RI.complexInterface();
+  complexredgp_io::Interface& G_CI = G_RI.complexInterface();
 
   const bitmap::BitMap& b = G_R.Cartan_set();
   bool first = true;
@@ -155,10 +155,10 @@ std::ostream& printCartanOrder(std::ostream& strm,
   Precondition: cartan #cn is defined for this real form.
 */
 std::ostream& printRealWeyl(std::ostream& strm,
-			    const realredgp::RealReductiveGroup& G_R,
+			    realredgp::RealReductiveGroup& G_R,
 			    size_t cn)
 {
-  const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
 
   realform::RealForm rf = G_R.realForm();
 
@@ -197,11 +197,11 @@ std::ostream& printRealWeyl(std::ostream& strm,
   real forms; we label them with the corresponding weak real form.
 */
 std::ostream& printStrongReal(std::ostream& strm,
-			      const realredgp::RealReductiveGroup& G_R,
+			      realredgp::RealReductiveGroup& G_R,
 			      const realform_io::Interface& rfi,
 			      size_t cn)
 {
-  const complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
   const cartanclass::CartanClass& cc = G_C.cartan(cn);
 
   size_t n = cc.numRealFormClasses();

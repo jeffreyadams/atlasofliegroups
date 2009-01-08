@@ -90,7 +90,7 @@ class FiberData
   std::vector<latticetypes::SmallSubspace> data;
   std::vector<unsigned int> Cartan_class;
 public:
-  FiberData(const complexredgp::ComplexReductiveGroup& G,
+  FiberData(complexredgp::ComplexReductiveGroup& G,
 	    const bitmap::BitMap& Cartan_classes);
 
   void reduce(tits::TitsElt& a) const;
@@ -154,7 +154,7 @@ class KGBHelp
 
 // constructors and destructors
   KGBHelp(realredgp::RealReductiveGroup&);
-  KGBHelp(const complexredgp::ComplexReductiveGroup& G,
+  KGBHelp(complexredgp::ComplexReductiveGroup& G,
 	  const bitmap::BitMap& Cartan_classes,
 	  KGBElt size,
 	  const tits::BasedTitsGroup& base,
@@ -204,7 +204,7 @@ private:
 }; // class KGBHelp
 
 // A non-method construction function
-KGBHelp refined_helper(const realredgp::RealReductiveGroup& GR,
+KGBHelp refined_helper(realredgp::RealReductiveGroup& GR,
 		       const bitmap::BitMap& Cartan_classes);
 
 
@@ -435,7 +435,7 @@ namespace { // |FiberData| and |KGBHelp| are in anonymous namespace
   This constructor depends on the real form only via the set |Cartan_classes|
   that determines (limits) the set of twisted involutions to be considered.
 */
-FiberData::FiberData(const complexredgp::ComplexReductiveGroup& G,
+FiberData::FiberData(complexredgp::ComplexReductiveGroup& G,
 		     const bitmap::BitMap& Cartan_classes)
   : Tits(G.titsGroup())
   , pool()
@@ -467,10 +467,8 @@ FiberData::FiberData(const complexredgp::ComplexReductiveGroup& G,
      assert(i==data.size()); // this twisted involution should be new
 
      { // store data for canonical twisted involution |i| of Cartan class |cn|
-       using namespace latticetypes;
-       LatticeMatrix qtr= G.cartan(cn).involution().transposed();
-       data.push_back(SmallSubspace(SmallBitVectorList(tori::minusBasis(qtr)),
-				    G.rank())); // compute subspace $I$
+       latticetypes::LatticeMatrix q= G.cartan(cn).involution();
+       data.push_back(tits::fiber_denom(q)); // compute subspace $I$
        Cartan_class.push_back(cn); // record number of Cartan class
      }
 
@@ -498,7 +496,7 @@ FiberData::FiberData(const complexredgp::ComplexReductiveGroup& G,
 
 void FiberData::reduce(tits::TitsElt& a) const
 {
-  a=tits::TitsElt(Tits,mod_space(a).mod_image(Tits.left_torus_part(a)),a.w());
+  Tits.left_torus_reduce(a,mod_space(a));
 }
 
 
@@ -570,7 +568,7 @@ KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
    values that are computed in |refined_helper| anyway, allowing them to be
    used in the construction without recompuation.
 */
-KGBHelp::KGBHelp(const complexredgp::ComplexReductiveGroup& G,
+KGBHelp::KGBHelp(complexredgp::ComplexReductiveGroup& G,
 		 const bitmap::BitMap& Cartan_classes,
 		 KGBElt size, // size of KGB for selected |Cartan_classes|
 		 const tits::BasedTitsGroup& base, // base point information)
@@ -639,13 +637,13 @@ KGBHelp::KGBHelp(const complexredgp::ComplexReductiveGroup& G,
   Here we actually look up the strong real form in order to get a proper
   initial Tits group element associated to this Cartan class
 */
-KGBHelp refined_helper(const realredgp::RealReductiveGroup& GR,
+KGBHelp refined_helper(realredgp::RealReductiveGroup& GR,
 		       const bitmap::BitMap& Cartan_classes)
 {
   tits::EnrichedTitsGroup
     square_class_base(tits::EnrichedTitsGroup::for_square_class(GR));
 
-  const complexredgp::ComplexReductiveGroup& G=GR.complexGroup();
+  complexredgp::ComplexReductiveGroup& G=GR.complexGroup();
   realform::RealForm rf=GR.realForm();
   assert(square_class_base.square()==
 	 G.fundamental().central_square_class(rf));

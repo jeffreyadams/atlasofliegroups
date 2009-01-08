@@ -81,23 +81,6 @@ RealReductiveGroup::RealReductiveGroup
 /******** manipulators ******************************************************/
 
 
-/*!
-  Synopsis: makes representatives of conjugacy classes of Cartan subgroups
-  for this group.
-
-  More precisely, it makes sure that the CartanClasses structure of the
-  underlying complex group contains all the cartans for this group.
-
-  This function can be called for any real form, but the atlas code has been
-  rewritten to call it only for the quasisplit form, so that the numbering of
-  the Cartan classes for an inner class is independent of the order in which
-  the various real forms are first considered (and their Cartans generated)
-*/
-void RealReductiveGroup::fillCartan()
-{
-  d_complexGroup.fillCartan(d_realForm);
-}
-
 void RealReductiveGroup::swap(RealReductiveGroup& other)
 {
   assert(&d_complexGroup==&other.d_complexGroup); // cannot swap references

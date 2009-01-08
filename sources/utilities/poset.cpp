@@ -57,7 +57,35 @@ Poset::Poset(size_t n,const std::vector<Link>& lk)
   extend(lk);
 }
 
+Poset::Poset(const Poset& p, tags::DualTag)
+  : d_below()
+{
+  size_t n=p.size()-1;
+  d_below.reserve(n+1);
+  for (size_t i=0; i<=n; ++i)
+  {
+    d_below.push_back(bitmap::BitMap(i));
+    bitmap::BitMap& below_i=d_below.back();
+    for (size_t j=0; j<i; ++j)
+      if (p.lesseq(n-i,n-j))
+	below_i.insert(j); // in this case the new poset makes $j<i$
+  }
+}
+
+
 /******** accessors **********************************************************/
+
+bool Poset::operator==(const Poset& other) const
+{
+  if (size()!=other.size())
+    return false;
+
+  for (size_t i=0; i<size(); ++i)
+    if (d_below[i]!=other.d_below[i])
+    return false;
+
+  return true;
+}
 
 
 unsigned long Poset::n_comparable() const
@@ -82,9 +110,10 @@ void Poset::findMaximals(set::SetEltList& a, const bitmap::BitMap& b) const
   bitmap::BitMap bl = b; // working copy of |b|
   unsigned long x=bl.capacity();
 
-  while (bl.back_up(x)) {
-    a.push_back(x);
-    bl.andnot(d_below[x]); // don't care that |bl[x]| remains set
+  while (bl.back_up(x))
+  {
+    a.push_back(x);  // add currently maximal |x|
+    bl.andnot(d_below[x]); // revove below |x| (|bl[x]| may safely remain set)
   }
   // in fact we could return |bl| as bitset here if that were asked for
 }
@@ -158,28 +187,6 @@ void Poset::resize(unsigned long n)
     d_below[j].set_capacity(j);
 }
 
-/*!
-\brief Transforms the poset into the weakest ordering containing the relations
-  it previously contained, plus the relations |first < second| for all elements
-  listed in |lk|.
-
-  Precondition: |lk| is sorted in increasing lexicographical order. More
-  precisely the following weaker (given the compatibility of the order
-  relation with integral ordering) condition is assumed: all occurrences of a
-  value |i| as first (smaller) member in a Link must follow all occurrences of
-  |i| as second (larger) member in another Link
-
-*/
-void Poset::extend(const std::vector<Link>& lk)
-{
-  for (size_t j = 0; j < lk.size(); ++j)
-  {
-    bitmap::BitMap& b=d_below[lk[j].second];
-    b |= d_below[lk[j].first];
-    b.insert(lk[j].first); // to compensate for unrepresented diagonal point
-  }
-}
-
 }
 
 /*****************************************************************************
@@ -191,53 +198,6 @@ void Poset::extend(const std::vector<Link>& lk)
 namespace poset {
 
 /******** constructors and destructors ***************************************/
-
-/*!
-\brief Constructs the discrete poset (no relations) of size n.
-*/
-SymmetricPoset::SymmetricPoset(size_t n):d_row(n,bitmap::BitMap(n))
-{
-  for (size_t j = 0; j < n; ++j)
-    d_row[j].insert(j);
-}
-
-
-/*!
-\brief Constructs a symmetric poset from its hasse diagram.
-
-  Precondition: it is assumed that for each x, hasse(x) contains the list
-  of elements covered by x, and that the enumeration is such that those all
-  have numbers < x.
-
-  Algorithm: the poset part is easy: d_row[x] contains x and the union of
-  the d_row[z], where z runs through hasse(x). The dual poset part is obtained
-  by symmetrization; it could have been obtained by inverting the covering
-  relations.
-*/
-SymmetricPoset::SymmetricPoset(const std::vector<set::SetEltList>& hasse)
-  :d_row(hasse.size(),bitmap::BitMap(hasse.size()))
-{
-  using namespace bitmap;
-  using namespace set;
-
-  // make poset part
-
-  for (size_t x = 0; x < d_row.size(); ++x) {
-    BitMap& b = d_row[x];
-    b.insert(x);
-    const SetEltList& h = hasse[x];
-    for (size_t j = 0; j < h.size(); ++j)
-      b |= d_row[h[j]];
-  }
-
-  // symmetrize; set bits of row |x| in column |x| (brute force for now)
-
-  for (size_t x = 0; x < d_row.size(); ++x)
-    for (BitMap::iterator i = d_row[x].begin(); i(); ++i) {
-      d_row[*i].insert(x);
-  }
-
-}
 
 unsigned long n_comparable_from_Hasse
   (const std::vector<set::SetEltList>& hasse)

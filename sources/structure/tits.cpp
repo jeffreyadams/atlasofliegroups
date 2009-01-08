@@ -229,6 +229,35 @@ BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G)
     grading_offset.set(i,Tg.twisted(i)==i);
 }
 
+// Based Tits group for the adjoint group
+BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
+			       tags::DualTag)
+  : my_Tits_group(new tits::TitsGroup(G.rootDatum().cartanMatrix().transposed(),
+				      G.weylGroup(),
+				      G.twistedWeylGroup().dual_twist()))
+  , Tg(*my_Tits_group)
+  , grading_offset()
+  , rd(G.dualRootDatum())
+{ // make all imaginary simple roots noncompact
+  for (unsigned i=0; i<G.semisimpleRank(); ++i)
+    grading_offset.set(i,Tg.twisted(i)==i);
+}
+
+void BasedTitsGroup::basedTwistedConjugate
+  (tits::TitsElt& a, const weyl::WeylWord& w) const
+{
+  for (size_t i=0; i<w.size(); ++i)
+    basedTwistedConjugate(a,w[i]);
+}
+
+void BasedTitsGroup::basedTwistedConjugate
+  (const weyl::WeylWord& w, tits::TitsElt& a) const
+{
+  for (size_t i=w.size(); i-->0; )
+    basedTwistedConjugate(a,w[i]);
+}
+
+
 /* Inverse Cayley transform is more delicate than Cayley transform, since the
    torus part has been modularly reduced when passing from an the involution
    $\theta$ to $\theta_\alpha$. While before the Cayley transform the value
@@ -320,7 +349,7 @@ bool BasedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr alpha) const
    information from the fiber group should be done.
  */
 tits::TitsElt BasedTitsGroup::naive_seed
- (const complexredgp::ComplexReductiveGroup& G,
+ (complexredgp::ComplexReductiveGroup& G,
   realform::RealForm rf, size_t cn) const
 {
   // locate fiber, weak and strong real forms, and check central square class
@@ -361,7 +390,7 @@ tits::TitsElt BasedTitsGroup::naive_seed
    lie above more than one minimal Cartan class.
  */
 tits::TitsElt BasedTitsGroup::grading_seed
-  (const complexredgp::ComplexReductiveGroup& G,
+  (complexredgp::ComplexReductiveGroup& G,
    realform::RealForm rf, size_t cn) const
 {
   // locate fiber and weak real form

@@ -221,7 +221,6 @@ void block_mode_entry() throw(commands::EntryError)
     dual_G_C_pointer=new
       complexredgp::ComplexReductiveGroup(G_C,tags::DualTag());
     dual_G_R_pointer=new realredgp::RealReductiveGroup(*dual_G_C_pointer,drf);
-    dual_G_R_pointer->fillCartan(); // this will be needed in all cases
   }
   catch(error::InputError& e)
   {

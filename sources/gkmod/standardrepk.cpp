@@ -125,7 +125,7 @@ namespace standardrepk {
   // for now we only construct a KhatContext from a KGB structure
 
 KhatContext::KhatContext
-  (const realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
+  (realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
   : d_G(&GR.complexGroup())
   , d_KGB(kgb)
   , d_realForm(GR.realForm())
@@ -241,11 +241,8 @@ StandardRepK KhatContext::std_rep
   const weyl::WeylGroup& W=d_G->weylGroup();
 
   // conjugate towards canonical element
-  {
-    weyl::WeylWord ww=W.word(w);
-    for (size_t i=0; i<ww.size(); ++i) // left-to-right for inverse conjugation
-      d_Tg.basedTwistedConjugate(a,ww[i]);
-  }
+  d_Tg.basedTwistedConjugate(a,W.word(w)); // left-to-right, inverse conjugation
+
   assert(a.tw()==sigma); // we should now be at canonical twisted involution
 
   const rootdata::RootDatum& rd=rootDatum();
@@ -289,7 +286,7 @@ RawRep KhatContext::Levi_rep
   return RawRep (lambda,a);
 } // |Levi_rep|
 
-bool KhatContext::isStandard(const StandardRepK& sr, size_t& witness) const
+bool KhatContext::isStandard(const StandardRepK& sr, size_t& witness)
 {
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight lambda=lift(sr);
@@ -304,7 +301,7 @@ bool KhatContext::isStandard(const StandardRepK& sr, size_t& witness) const
   return true;
 }
 
-bool KhatContext::isZero(const StandardRepK& sr, size_t& witness) const
+bool KhatContext::isZero(const StandardRepK& sr, size_t& witness)
 {
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight lambda=lift(sr);
@@ -321,7 +318,7 @@ bool KhatContext::isZero(const StandardRepK& sr, size_t& witness) const
   return false;
 }
 
-bool KhatContext::isFinal(const StandardRepK& sr, size_t& witness) const
+bool KhatContext::isFinal(const StandardRepK& sr, size_t& witness)
 {
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight lambda=lift(sr);
@@ -788,13 +785,7 @@ KhatContext::theta_stable_parabolic
   { // first ensure |strong| is in reduced
     const latticetypes::LatticeMatrix theta =
       d_G->involutionMatrix(strong.tw());
-    latticetypes::SmallSubspace mod_space=latticetypes::SmallSubspace
-      (latticetypes::SmallBitVectorList(tori::minusBasis(theta.transposed())),
-       rootDatum().rank());
-    const tits::TitsGroup& Tg=titsGroup();
-    strong=tits::TitsElt(Tg,
-			 mod_space.mod_image(Tg.left_torus_part(strong)),
-			 strong.tw());
+    titsGroup().left_torus_reduce(strong,tits::fiber_denom(theta));
   }
 
   return PSalgebra(strong,d_KGB,*d_G,d_Tg);

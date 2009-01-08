@@ -82,7 +82,7 @@ class RealReductiveGroup {
   const weyl::WeylGroup& weylGroup() const
     { return d_complexGroup.weylGroup(); }
 
-  const bitmap::BitMap& Cartan_set() const
+  bitmap::BitMap Cartan_set() const
     { return complexGroup().Cartan_set(d_realForm); }
 
 /*!\brief Returns cartan \#cn in the group.
@@ -106,7 +106,7 @@ class RealReductiveGroup {
 
   size_t semisimpleRank() const { return rootDatum().semisimpleRank(); }
 
-  size_t numInvolutions() const
+  size_t numInvolutions()
     { return complexGroup().numInvolutions(Cartan_set()); }
 
 /*!\brief Returns the cardinality of K\\G/B.
@@ -152,8 +152,6 @@ formed by extracting only the information concerning the presence of the
 // manipulators
   complexredgp::ComplexReductiveGroup& complexGroup()
     { return d_complexGroup; }
-
-  void fillCartan();
 
   void swap(RealReductiveGroup&);
 };

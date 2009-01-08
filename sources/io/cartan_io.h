@@ -25,7 +25,7 @@ namespace atlas {
 namespace cartan_io {
 
 std::ostream&
-printCartanClass(std::ostream&, size_t, const complexredgp_io::Interface&);
+printCartanClass(std::ostream&, size_t, complexredgp_io::Interface&);
 
 std::ostream& printFiber(std::ostream&, const cartanclass::Fiber&,
 			 const realform::RealFormList&);

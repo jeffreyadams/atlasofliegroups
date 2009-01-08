@@ -304,7 +304,6 @@ void help_f() // override more extensive help of empty mode by simple help
 // Print the matrix of blocksizes.
 void blocksizes_f()
 {
-  currentComplexGroup().fillCartan();
   complexredgp_io::printBlockSizes(std::cout,currentComplexInterface());
 }
 
@@ -338,7 +337,6 @@ void showdualforms_f()
 void dual_kgb_f()
 {
   complexredgp::ComplexReductiveGroup& G_C = currentComplexGroup();
-  G_C.fillCartan(); // must generate all Cartans: no real form chosen
 
   const complexredgp_io::Interface& G_I = currentComplexInterface();
   const realform::RealFormList rfl = // get list of all dual real forms
@@ -351,7 +349,6 @@ void dual_kgb_f()
   // the complex group must be in a variable: is non-const for real group
   complexredgp::ComplexReductiveGroup dG_C(G_C,tags::DualTag());
   realredgp::RealReductiveGroup dG(dG_C,drf);
-  dG.fillCartan();
 
   std::cout << "dual kgbsize: " << dG.KGB_size() << std::endl;
   ioutils::OutputFile file;

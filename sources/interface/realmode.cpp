@@ -113,7 +113,6 @@ realredgp::RealReductiveGroup& currentRawRealGroup()
 
 realredgp::RealReductiveGroup& currentRealGroup()
 {
-  mainmode::currentComplexGroup().fillCartan(); // generate ALL Cartan classes
   return *G_R_pointer;
 }
 
@@ -124,7 +123,6 @@ realform::RealForm currentRawRealForm()
 
 realform::RealForm currentRealForm()
 {
-  mainmode::currentComplexGroup().fillCartan(); // generate ALL Cartan classes
   return G_R_pointer->realForm();
 }
 
@@ -211,8 +209,6 @@ void components_f()
 // Print the cartan classes of G_R.
 void cartan_f()
 {
-  mainmode::currentComplexGroup().fillCartan(); // generate ALL Cartan classes
-
   ioutils::OutputFile file;
 
   static_cast<std::ostream&>(file) << std::endl;

@@ -288,7 +288,7 @@ struct bitset_entry : public bitset::RankFlags
 
 class KhatContext
 {
-  const complexredgp::ComplexReductiveGroup* d_G;
+  complexredgp::ComplexReductiveGroup* d_G;
   const kgb::KGB& d_KGB;
 
 // these data members allow interpretation of |StandardRepK| objects
@@ -319,8 +319,7 @@ class KhatContext
 
 // constructors, destructors, and swap
 
-  KhatContext(const realredgp::RealReductiveGroup &G,
-		   const kgb::KGB& kgb);
+  KhatContext(realredgp::RealReductiveGroup &G,const kgb::KGB& kgb);
 
   ~KhatContext() {}
 
@@ -336,7 +335,7 @@ class KhatContext
   const weyl::TwistedWeylGroup& twistedWeylGroup() const
     { return d_G->twistedWeylGroup(); }
   const tits::TitsGroup& titsGroup() const { return d_Tg.titsGroup(); }
-  const cartanclass::Fiber& fiber(const StandardRepK& sr) const
+  const cartanclass::Fiber& fiber(const StandardRepK& sr)
     { return d_G->cartan(sr.Cartan()).fiber(); }
   const kgb::KGB& kgb() const { return d_KGB; }
 
@@ -378,9 +377,9 @@ class KhatContext
   it is int |f.simpleReal| for |isFinal|, where |f| is the |Fiber| at the
   canonical twisted involution for the cartan class of |sr|.
 */
-  bool isStandard(const StandardRepK& sr, size_t& witness) const;
-  bool isZero(const StandardRepK& sr, size_t& witness) const;
-  bool isFinal(const StandardRepK& sr, size_t& witness) const;
+  bool isStandard(const StandardRepK& sr, size_t& witness);
+  bool isZero(const StandardRepK& sr, size_t& witness);
+  bool isFinal(const StandardRepK& sr, size_t& witness);
 
   tits::TitsElt titsElt(const StandardRepK& s) const
   {

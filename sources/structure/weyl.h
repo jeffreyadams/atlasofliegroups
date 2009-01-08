@@ -555,6 +555,9 @@ public:
 
   const WeylElt& longest() const { return d_longest; }
 
+  // correspondence with dual Weyl group; is coherent with twist on right
+  WeylElt opposite (const WeylElt& w) const { return prod(w,d_longest); }
+
   unsigned long maxlength() const { return d_maxlength; }
 
   /*! \brief the order of the Weyl group */
@@ -632,6 +635,8 @@ public:
   TwistedWeylGroup(const TwistedWeylGroup&, tags::DualTag);
 
   const WeylGroup& weylGroup() const { return W; }
+  size_t rank() const { return W.rank(); }
+
   int mult(WeylElt& w, Generator s) const { return W.mult(w,s); }
   void mult(WeylElt& w, const WeylElt& v) const { W.mult(w,v); }
   void mult(WeylElt& w, const WeylWord& ww) const { W.mult(w,ww); }
@@ -639,6 +644,14 @@ public:
   int leftMult(WeylElt& w, Generator s) const { return W.leftMult(w,s); }
   void leftMult(WeylElt& w, const WeylWord& ww) const { W.leftMult(w,ww); }
   WeylWord word(const WeylElt& w) const { return W.word(w); }
+
+  Generator twisted(Generator s) const { return d_twist[s]; }
+  WeylElt twisted(const WeylElt& w) const { return W.translation(w,d_twist); }
+
+  const Twist& twist() const { return d_twist; } // noun "twist"
+  void twist(WeylElt& w) const { w=twisted(w); } // verb "twist"
+
+  Twist dual_twist() const; // the twist for the dual twisted Weyl group
 
   /*!
      \brief Twisted conjugates element |tw| by the generator |s|:
@@ -690,13 +703,13 @@ public:
 */
   std::vector<signed char> involution_expr(TwistedInvolution tw) const;
 
-  Generator twisted(Generator s) const { return d_twist[s]; }
-  WeylElt twisted(const WeylElt& w) const { return W.translation(w,d_twist); }
+  //!\brief Roots that are images of the simple roots under involution of |tw|
+  std::vector<rootdata::RootNbr> simple_images
+    (rootdata::RootDatum rd, TwistedInvolution tw) const;
 
-  const weyl::Twist& twist() const {return d_twist; } // noun "twist"
-  void twist(WeylElt& w) const { w=twisted(w); }      // verb "twist"
-
-  Twist dual_twist() const;
+//!\brief Matrix of involution of |tw| in adjoint coordinates
+  latticetypes::LatticeMatrix involution_matrix(rootdata::RootDatum rd,
+						TwistedInvolution tw) const;
 
 }; // |class TwistedWeylGroup|
 

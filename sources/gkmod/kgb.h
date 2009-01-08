@@ -30,20 +30,14 @@ representing orbits of K on G/B.
 
 namespace atlas {
 
-/******** function declarations *********************************************/
-
+namespace kgb {
 
 /******** constant declarations *********************************************/
 
-namespace kgb {
-
 const KGBElt UndefKGB = ~0ul;
 
-} // namespace kgb
 
 /******** type definitions **************************************************/
-
-namespace kgb {
 
 //! \brief per KGB element information
 struct KGBInfo
@@ -107,7 +101,7 @@ of simple root \#j on the KGB elements.
 \brief The list |d_cayley[j]| lists the images of the Cayley transform
 action of the simple root |\#j| on KGB elements, or |UndefKGB| if not defined
 */
-std::vector<KGBEltList> d_cayley;
+  std::vector<KGBEltList> d_cayley;
 
 /*! \brief The list d_inverseCayley[j] lists the images of the inverse Cayley
 transform of simple root \#j on KGB elements.

@@ -153,9 +153,6 @@ Helper::Helper(complexredgp::ComplexReductiveGroup& G)
   : InvolutionSet()
   , d_toDualWeyl()
 {
-  // fill in the full cartan structure for G
-  G.fillCartan();
-
   d_size = G.numInvolutions();
   d_rank = G.semisimpleRank();
 

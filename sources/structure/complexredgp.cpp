@@ -136,6 +136,17 @@ namespace complexredgp{
 
 namespace complexredgp {
 
+  ComplexReductiveGroup::C_info::C_info
+  (const ComplexReductiveGroup& G,const weyl::TwistedInvolution twi, size_t i)
+  : tw(twi)
+  , real_forms(G.numRealForms()), dual_real_forms(G.numDualRealForms())
+  , rep(G.numRealForms()),        dual_rep(G.numDualRealForms())
+  , below(i)
+  , class_pt(NULL)
+  , real_labels(), dual_real_labels() // these start out emtpy
+  {}
+
+
 /*!
   \brief main constructor
 
@@ -151,48 +162,213 @@ namespace complexredgp {
 ComplexReductiveGroup::ComplexReductiveGroup
  (const rootdata::RootDatum& rd, const latticetypes::LatticeMatrix& d)
   : d_rootDatum(rd)
+  , d_dualRootDatum(rd,tags::DualTag())
   , d_fundamental(rd,d) // will also be fiber of cartan(0)
   , d_dualFundamental(rootdata::RootDatum(rd,tags::DualTag()),
 		      dualBasedInvolution(d,rd)) // dual fiber of most split
 
   , W(rd.cartanMatrix())
   , d_titsGroup(rd,W,d,make_twist(rd,d))
+  , d_dualTitsGroup(d_dualRootDatum,W,dualDistinguished(),
+		    make_twist(d_dualRootDatum,dualDistinguished()))
   , root_twist(rd.root_permutation(simple_twist()))
-  // install the fundamental Cartan, with associated data (like numRealForms)
-  , d_cartan(1,new cartanclass::CartanClass(rd,d))
-  // initalise following structures to correspond to just fundamental Cartan
-  , d_twistedInvolution(1,weyl::TwistedInvolution(weyl::WeylElt()))
 
-  // the fundamental fiber can be copied from the fundamental Cartan
-  , d_mostSplit(numRealForms(),UndefMostSplit)
-  , Cartan_poset(1) // Cartans for a one point poset for now
-
-  /* for now each (dual) real form knows about one Cartan (filled in later) */
-  , d_support(numRealForms(),bitmap::BitMap(1))
-  , d_dualSupport(numDualRealForms(),bitmap::BitMap(1))
-  // for real form labels install single list (filled later)
-
-  , d_realFormLabels(1,realform::RealFormList(numRealForms()))
-  // for dual real forms, |correlateDualForms| will add such a list
-  , d_dualRealFormLabels()
-  , d_status(numRealForms())
+  , Cartan(1,C_info(*this,weyl::TwistedInvolution(),0))
+  , Cartan_poset() // poset is extended and populated below
+  , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 {
-  /* since the fundamental Cartan is the reference for the numbering of real
-     forms, each real form label for it just refers to itself */
-  for (size_t i=0; i<d_realFormLabels[0].size(); ++i)
-    d_realFormLabels[0][i]=i;
+  {
+    const tits::BasedTitsGroup adj_Tg(*this);     // based adjoint Tits group
+    const tits::TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting base
 
-  // for dual real forms, |correlateDualForms| adds the proper singleton list
-  correlateDualForms(rootdata::RootDatum(rootDatum(),tags::DualTag())
-		    ,weyl::TwistedWeylGroup
-		      (twistedWeylGroup(),tags::DualTag()));
+    {
+      const cartanclass::Fiber& f=fundamental();
+      const partition::Partition& weak_real=f.weakReal();
+      // fill initial |form_reps| vector with assignment from |weak_real|
+      for (unsigned long i=0; i<weak_real.classCount(); ++i)
+      {
+	Cartan[0].real_forms.insert(i); // Cartan 0 exists at all real forms
+	// setting the initial torus part for each real form is subtle.
+	Cartan[0].rep[i]=              // in |adj_Tg|, a torus part is a
+	  cartanclass::restrictGrading // |Grading| of simple roots, where
+	  (f.compactRoots(weak_real.classRep(i)), // compact ones need bit set
+	   rd.simpleRootList());       // to flip the base (noncompact) grading
+      }
+    }
 
-  // mark the fundamental Cartan in each real form, and in one dual real form
-  updateSupports(0); // take into account Cartan class number |0|
+    for (size_t i=0; i<Cartan.size(); ++i) // |Cartan| grows as loop advances
+    {
+      Cartan_poset.new_max(Cartan[i].below); // include now completed level
 
-  /* mark the (compact) real form for which the fundamental Cartan is the most
-     split one as done in |d_status|, and fill its value in |d_mostSplit| */
-  updateStatus(0); // here the |0| means starting from Cartan |0|
+      size_t entry_level=Cartan.size();
+      cartanclass::InvolutionData id(*this,Cartan[i].tw);
+      rootdata::RootSet pos_im = id.imaginary_roots() & rd.posRootSet();
+      for (rootdata::RootSet::iterator it=pos_im.begin(); it(); ++it)
+      {
+	rootdata::RootNbr alpha=*it;
+	latticetypes::SmallBitVector alpha_bin(rd.inSimpleRoots(alpha));
+
+	// create a test element with null torus part
+	tits::TitsElt a(Tg,Cartan[i].tw);
+	weyl::WeylWord conjugator;
+
+	size_t j; // declare outside loop to allow inspection of final value
+	while (alpha!=rd.simpleRootNbr(j=rd.descents(alpha).firstBit()))
+	{
+	  conjugator.push_back(j);
+	  adj_Tg.basedTwistedConjugate(a,j);
+	  rd.simple_reflect_root(alpha,j);
+	}
+
+	bool zero_grading = adj_Tg.simple_grading(a,j); // grading of test elt
+
+	weyl::TwistedInvolution sigma = W.prod(j,a.tw()); // "Cayley transform"
+	weyl::WeylWord ww = W.word(canonicalize(sigma));
+
+	size_t ii;
+	for (ii=0; ii<Cartan.size(); ++ii)
+	  if (Cartan[ii].tw==sigma)
+	    break; // found a previously encountered Cartan class
+
+	if (ii==Cartan.size())
+	  Cartan.push_back(C_info(*this,sigma,ii));
+
+	Cartan[ii].below.insert(i);
+
+	bool is_new = ii>=entry_level; // |Cartan[ii]| came from |Cartan[i]|
+
+	for (bitmap::BitMap::iterator
+	       rfi=Cartan[i].real_forms.begin(); rfi(); ++rfi)
+	{
+	  realform::RealForm rf = *rfi;
+	  const bitset::RankFlags in_rep = Cartan[i].rep[rf];
+	  bitset::RankFlags& out_rep = Cartan[ii].rep[rf];
+	  tits::TorusPart tp(in_rep,alpha_bin.size());
+	  if (bitvector::scalarProduct(alpha_bin,tp)!=zero_grading)
+	  {
+	    if (not Cartan[ii].real_forms.isMember(rf))
+	    { // this is the first hit of |ii| for |rf|
+	      assert(is_new); // we may populate only newborn sets
+	      Cartan[ii].real_forms.insert(rf); // mark existence for |rf|
+
+	      tits::TitsElt x(Tg,tp,Cartan[i].tw);
+	      adj_Tg.basedTwistedConjugate(x,conjugator);
+	      adj_Tg.Cayley_transform(x,j);
+	      adj_Tg.basedTwistedConjugate(x,ww);
+	      assert(x.tw()==sigma);
+
+	      out_rep=Tg.left_torus_part(x).data();
+	      d_mostSplit[rf]=ii; // the last such assignment for |rf| sticks
+	    }
+	  }
+	} // for (rf)
+      } // for (alpha)
+    } // |for (i<Cartan.size())|
+  } // end of (forward) Cartan class generation
+
+  {
+    const tits::BasedTitsGroup dual_adj_Tg (*this,tags::DualTag());
+    const tits::TitsGroup& dual_Tg = dual_adj_Tg.titsGroup();
+
+    { // first initialise |Cartan.back().dual_rep|
+      weyl::TwistedInvolution w0(W.longest()); // this is always a twisted inv.
+      weyl::WeylWord ww = W.word(canonicalize(w0)); // but not always canonical
+      assert(w0==Cartan.back().tw);
+
+      const cartanclass::Fiber& f=dualFundamental();
+      const partition::Partition& weak_real=f.weakReal();
+      // fill initial |form_reps| vector with assignment from |weak_real|
+      for (unsigned long i=0; i<weak_real.classCount(); ++i)
+      {
+	// most split Cartan exists at all dual real forms
+	Cartan.back().dual_real_forms.insert(i);
+
+	bitset::RankFlags gr = // as above, torus part is obtained as a grading
+	  cartanclass::restrictGrading // values at simple roots give torus part
+	  (f.compactRoots(weak_real.classRep(i)), // compact ones need a set bit
+	   rd.simpleRootList()); // this reproduces grading at imaginary simples
+	tits::TitsElt x(dual_Tg,tits::TorusPart(gr,rd.semisimpleRank()));
+	dual_adj_Tg.basedTwistedConjugate(x,ww); // transform to canonical
+	Cartan.back().dual_rep[i] = dual_Tg.left_torus_part(x).data();
+      }
+    }
+
+    bitmap::BitMap seen(Cartan.size()); // mark any Cartan here when first seen
+    seen.insert(Cartan.size()-1); // starting off with most split Cartan seen
+
+    for (size_t i=Cartan.size(); i-->0; )
+    {
+
+      bitmap::BitMap done = seen; // record Cartans seen before |i| was started
+
+      cartanclass::InvolutionData id(*this,Cartan[i].tw);
+      rootdata::RootSet pos_re = id.real_roots() & rd.posRootSet();
+      for (rootdata::RootSet::iterator it=pos_re.begin(); it(); ++it)
+      {
+	rootdata::RootNbr alpha=*it;
+	latticetypes::SmallBitVector alpha_bin(rd.inSimpleCoroots(alpha));
+
+	weyl::TwistedInvolution tw = Cartan[i].tw; // non-dual
+	weyl::TwistedInvolution tw_dual = W.opposite(tw);
+
+	// create a test element with null torus part
+	tits::TitsElt a(dual_Tg,tw_dual);
+	weyl::WeylWord conjugator;
+
+	size_t j; // declare outside loop to allow inspection of final value
+	while (alpha!=rd.simpleRootNbr(j=rd.descents(alpha).firstBit()))
+	{
+	  conjugator.push_back(j);
+	  dual_adj_Tg.basedTwistedConjugate(a,j);
+	  twistedWeylGroup().twistedConjugate(tw,j);
+	  rd.simple_reflect_root(alpha,j);
+	}
+
+	bool zero_grading = dual_adj_Tg.simple_grading(a,j);
+
+	assert(tw==W.opposite(a.tw())); // coherence with dual group
+
+	W.leftMult(tw,j); // "Cayley transform"
+	weyl::WeylWord ww=W.word(canonicalize(tw)); // in non-dual setting
+
+	size_t ii;
+
+	for (ii=i; ii-->0; )
+	  if (Cartan[ii].tw==tw)
+	    break; // found a previously encountered Cartan class (must happen)
+	assert(ii<Cartan.size() and Cartan[i].below.isMember(ii));
+
+	bool is_new = not done.isMember(ii);
+	seen.insert(ii);
+
+	for (bitmap::BitMap::iterator
+	       drfi=Cartan[i].dual_real_forms.begin(); drfi(); ++drfi)
+	{
+	  realform::RealForm drf = *drfi;
+	  const bitset::RankFlags in_rep = Cartan[i].dual_rep[drf];
+	  bitset::RankFlags& out_rep = Cartan[ii].dual_rep[drf];
+	  tits::TorusPart tp(in_rep,alpha_bin.size());
+	  if (bitvector::scalarProduct(alpha_bin,tp)!=zero_grading)
+	  {
+	    if (not Cartan[ii].dual_real_forms.isMember(drf))
+	    { // this is the first hit of |ii| for |rf|
+	      Cartan[ii].dual_real_forms.insert(drf);
+
+	      tits::TitsElt x(dual_Tg,tp,tw_dual);
+	      dual_adj_Tg.basedTwistedConjugate(x,conjugator);
+	      dual_adj_Tg.Cayley_transform(x,j);
+	      dual_adj_Tg.basedTwistedConjugate(x,ww);
+	      assert(x.tw()==W.opposite(tw));
+
+	      out_rep=dual_Tg.left_torus_part(x).data();
+	      assert(is_new); // may populate only newborn sets
+	    }
+	  }
+	} // for (rf)
+      } // for (alpha)
+    } // |for (i=Cartan.size()-->0)|
+
+  }
 }
 
 /*!
@@ -200,60 +376,76 @@ ComplexReductiveGroup::ComplexReductiveGroup
 */
 ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 					     tags::DualTag)
-  : d_rootDatum(G.rootDatum(),tags::DualTag())
-  , d_fundamental(G.dualFundamental())
-  // for the dual fundamental fiber we similarly copy a fiber, but from |G|
-  , d_dualFundamental(G.fundamental())
+  : d_rootDatum(G.d_dualRootDatum)
+  , d_dualRootDatum(G.d_rootDatum)
+  , d_fundamental(G.d_dualFundamental)
+  , d_dualFundamental(G.d_fundamental)
 
   , W(G.W)
-  , d_titsGroup(d_rootDatum,W,d_fundamental.involution(),
-		make_twist(d_rootDatum,d_fundamental.involution()))
+  , d_titsGroup(G.d_dualTitsGroup,W)
+  , d_dualTitsGroup(G.d_titsGroup,W)
 
   , root_twist(d_rootDatum.root_permutation(simple_twist()))
-  // install the fundamental Cartan, with associated data (like numRealForms)
-  , d_cartan(1,new cartanclass::CartanClass
-	            (d_rootDatum,d_fundamental.involution()))
 
-  , d_twistedInvolution(1,weyl::TwistedInvolution(weyl::WeylElt()))
-
-  , d_mostSplit(numRealForms(),UndefMostSplit)
-
-  , Cartan_poset(1) // Cartans for a one point poset for now
-
-  /* for now each (dual) real form knows about one Cartan (filled in later) */
-  , d_support(numRealForms(),bitmap::BitMap(1))
-  , d_dualSupport(numDualRealForms(),bitmap::BitMap(1))
-  // for real form labels install single list (filled later)
-  , d_realFormLabels(1,realform::RealFormList(numRealForms()))
-  // for dual real forms, |correlateDualForms| will add such a list
-  , d_dualRealFormLabels()
-  , d_status(numRealForms())
+ , Cartan() // filled below
+  , Cartan_poset(G.Cartan_poset,tags::DualTag())
+  , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 {
-  /* since the fundamental Cartan is the reference for the numbering of real
-     forms, each real form label for it just refers to itself */
-  for (size_t i=0; i<d_realFormLabels[0].size(); ++i)
-    d_realFormLabels[0][i]=i;
+  Cartan.reserve(G.Cartan.size());
 
-  // for dual real forms, |correlateDualForms| adds the proper singleton list
-  correlateDualForms(G.rootDatum(),G.twistedWeylGroup());
+  for (size_t i=G.Cartan.size(); i-->0; )
+  {
+    const C_info& src = G.Cartan[i];
+    Cartan.push_back(C_info(*this,W.opposite(src.tw),Cartan.size()));
+    C_info& dst = Cartan.back();
 
-  // mark the fundamental Cartan in each real form, and in one dual real form
-  updateSupports(0); // take into account Cartan class number |0|
+    const tits::BasedTitsGroup adj_Tg(*this);     // based adjoint Tits group
+    const tits::TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting base
+    const tits::BasedTitsGroup dual_adj_Tg (*this,tags::DualTag());
+    const tits::TitsGroup& dual_Tg = dual_adj_Tg.titsGroup();
 
-  /* mark the (compact) real form for which the fundamental Cartan is the most
-     split one as done in |d_status|, and fill its value in |d_mostSplit| */
-  updateStatus(0); // here the |0| means from Cartan |0| on.
+    const weyl::TwistedInvolution tw_org=dst.tw;
+    weyl::WeylWord conjugator = W.word(canonicalize(dst.tw));
+
+    dst.real_forms = src.dual_real_forms;
+    dst.dual_real_forms = src.real_forms;
+    dst.rep = src.dual_rep; // these are torus parts at |tw_org|, and this
+    dst.dual_rep = src.rep; // assignment is mainly to set their size in |dst|
+
+    for (bitmap::BitMap::iterator it=dst.real_forms.begin(); it(); ++it)
+    {
+      tits::TitsElt x(Tg,
+		      tits::TorusPart(dst.rep[*it],semisimpleRank()),
+		      tw_org);
+      adj_Tg.basedTwistedConjugate(x,conjugator);
+      dst.rep[*it] =Tg.left_torus_part(x).data();
+      d_mostSplit[*it]=Cartan.size()-1; // last occurrence of |*it| will stick
+    }
+    for (bitmap::BitMap::iterator it=dst.dual_real_forms.begin(); it(); ++it)
+    {
+      tits::TitsElt y(dual_Tg,
+		      tits::TorusPart(dst.dual_rep[*it],semisimpleRank()),
+		      tw_org);
+      dual_adj_Tg.basedTwistedConjugate(y,conjugator);
+      dst.dual_rep[*it] = dual_Tg.left_torus_part(y).data();
+    }
+
+    for (size_t j=i+1; j<G.Cartan.size(); ++j)
+      if (G.Cartan[j].below.isMember(i))
+	dst.below.insert(G.Cartan.size()-1-j);
+  }
+
 }
 
 
 /*!
   The only data explicitly allocated by the ComplexReductiveGroup is that
-  for the CartanClass pointers.
+  for any non-NULL |CartanClass| pointers.
 */
 ComplexReductiveGroup::~ComplexReductiveGroup()
 {
-  for (size_t j = 0; j<d_cartan.size(); ++j)
-    delete d_cartan[j];
+  for (size_t i = 0; i<numCartanClasses(); ++i)
+    delete Cartan[i].class_pt;
 }
 
 /********* copy, assignment and swap *****************************************/
@@ -297,110 +489,22 @@ ComplexReductiveGroup::reflection(rootdata::RootNbr rn,
 
 /******** manipulators *******************************************************/
 
-/*!
-  \brief Extends the CartanClassSet structure so that it contains all Cartans
-  for the real form |rf|.
-
-  This is done by traversing all the known Cartan classes |j| defined for the
-  real form |rf| (which includes at least the distinguished Cartan for the
-  inner class), and all non-compact positive imaginary roots \f$\alpha\f$ for
-  |(rf,j)|; the twisted involution |tw| for the Cartan class |j| is then
-  left-multiplied by \f$s_\alpha\f$ to obtain a new twisted involution |ti|,
-  and if |ti| is not member of any of the known classes of twisted
-  involutions, it starts a new Cartan class defined in |rf|, which will later
-  itself be considered in the loop described here.
-
-  While generating the Cartan classes, the ordering is extended by a link from
-  the Cartan class |j| to the Cartan class of any twisted involution |ti|
-  obtained directly from it.
-
-*/
-void ComplexReductiveGroup::extend(realform::RealForm rf)
+void ComplexReductiveGroup::add_Cartan(size_t cn)
 {
-  if (d_status.isMember(rf)) // nothing to be done
-    return;
-
-  size_t prev_Cartans=numCartanClasses(); // mark size for roll-back
-  bitmap::BitMap prev_status=d_status; // save, hard to roll back
-
-  try
-  {
-    const rootdata::RootDatum dualRootDatum(rootDatum(),tags::DualTag());
-    const weyl::TwistedWeylGroup
-      dualWeylGroup(twistedWeylGroup(),tags::DualTag());
-
-    std::set<poset::Link> lks;
-
-    // d_cartan.size() may grow in the course of the loop
-    for (size_t j = 0; j<numCartanClasses(); ++j)
-    {
-      if (not is_defined(rf,j))
-	continue;
-
-      rootdata::RootSet rs=noncompactPosRootSet(rf,j);
-
-      for (rootdata::RootSet::iterator it = rs.begin(); it(); ++it)
-      {
-
-	// multipy |twistedInvolution(j)| on the left by the reflection |*it|
-	weyl::TwistedInvolution tw=reflection(*it,d_twistedInvolution[j]);
-
-	/* check if we have a new twisted involution;
-	   if so, extend the cartan structure */
-
-	canonicalize(tw);
-	size_t k = setutils::find_index(d_twistedInvolution,tw);
-	lks.insert(std::make_pair(j,k)); // insert link in any case
-	if (k == d_twistedInvolution.size()) // class |k| is new
-	{
-	  d_twistedInvolution.push_back(tw);
-	     // record new canonical form
-	  addCartan(tw); // and add corresponding Cartan class
-	  correlateForms();
-	  correlateDualForms(dualRootDatum,dualWeylGroup);
-	  updateSupports(k); // incorporate Cartan class number |k|
-	}
-      } // for (it)
-    } // for (j)
-
-    // update the order relation
-    std::vector<poset::Link> lk(lks.begin(),lks.end());
-    Cartan_poset.resize(numCartanClasses());
-    Cartan_poset.extend(lk);
-
-    // update |d_status| and |d_mostSplit| values for now completed real forms
-    updateStatus(prev_Cartans);
-
-  } // try
-
-  catch (...) // ensure roll-back on (for instance) memory overflow
-  { // the restoring code below avoids having to copy everything on entry
-    d_cartan.resize(prev_Cartans);
-    d_twistedInvolution.resize(prev_Cartans);
-    Cartan_poset.resize(prev_Cartans);
-    d_realFormLabels.resize(prev_Cartans);
-    d_dualRealFormLabels.resize(prev_Cartans);
-
-    for (size_t i=0; i<numRealForms(); ++i)
-    {
-      d_support[i].set_capacity(prev_Cartans);
-      d_dualSupport[i].set_capacity(prev_Cartans);
-    }
-    d_status.swap(prev_status); // restore set of completed real forms
-    prev_status.andnot(d_status); // now |prev_status| flags "new" real forms
-    for (bitmap::BitMap::iterator it=prev_status.begin(); it(); ++it)
-      d_mostSplit[*it]=UndefMostSplit; // clear unsure most split Cartans
-    throw; // rethrow same exception
-  }
+  Cartan[cn].class_pt =
+    new cartanclass::CartanClass(rootDatum(),
+				 involutionMatrix(Cartan[cn].tw));
+  correlateForms(cn);
+  correlateDualForms(cn);
 }
 
 /*!
   \brief Adds a new real form label list to d_realFormLabels.
 
-  This is called when a new Cartan class has just been added to |d_cartan|.
-  Then this function finds the labels corresponding to the real forms for
-  which this Cartan is defined (the labelling of real forms being defined by
-  the adjoint orbit picture in the fundamental fiber.)
+  This is called when a new |CartanClass| has just been constructed at index
+  |cn|. Then this function finds the labels corresponding to the real forms
+  for which this Cartan is defined (the labelling of real forms being defined
+  by the adjoint orbit picture in the fundamental fiber.)
 
   Algorithm: the gradings of the imaginary root system corresponding to the
   various real forms for which the new Cartan is defined are known. We find
@@ -410,23 +514,21 @@ void ComplexReductiveGroup::extend(realform::RealForm rf)
   transforming to it. This amounts to solving a system of linear equations
   mod 2.
 */
-void ComplexReductiveGroup::correlateForms()
+void ComplexReductiveGroup::correlateForms(size_t cn)
 {
   const rootdata::RootDatum& rd = rootDatum();
-
+  const weyl::TwistedWeylGroup& W = twistedWeylGroup();
   const cartanclass::Fiber& fundf = d_fundamental;
-  const cartanclass::Fiber& f =
-    cartan(numCartanClasses()-1).fiber(); // fiber of Cartan just added
+  const cartanclass::Fiber& f = cartan(cn).fiber(); // fiber of this Cartan
 
-  const weyl::TwistedInvolution& ti = d_twistedInvolution.back();
+  const weyl::TwistedInvolution& ti = twistedInvolution(cn);
 
   // find cayley part and cross part
   rootdata::RootList so;
   weyl::WeylWord ww;
-  Cayley_and_cross_part(so,ww,ti,rd,twistedWeylGroup());
+  Cayley_and_cross_part(so,ww,ti,rd,W);
 
-  assert(checkDecomposition
-	 (ti,ww,so,twistedWeylGroup(),rd,fundf.involution()));
+  assert(checkDecomposition(ti,ww,so,W,rd,fundf.involution()));
 
   const partition::Partition& pi = f.weakReal();
   realform::RealFormList rfl(f.numRealForms());
@@ -454,15 +556,15 @@ void ComplexReductiveGroup::correlateForms()
     rfl[j] = rf;
   }
 
-  d_realFormLabels.push_back(rfl);
+  Cartan[cn].real_labels = rfl;
 }
 
-void ComplexReductiveGroup::correlateDualForms(const rootdata::RootDatum& rd,
-					       const weyl::TwistedWeylGroup& W)
-  // arguments are dual root datum and dual group
+void ComplexReductiveGroup::correlateDualForms(size_t cn)
 {
+  const rootdata::RootDatum& rd = dualRootDatum();
+  const weyl::TwistedWeylGroup& W = dualTwistedWeylGroup();
   const cartanclass::Fiber& fundf = d_dualFundamental;
-  const cartanclass::Fiber& f = cartan(numCartanClasses()-1).dualFiber();
+  const cartanclass::Fiber& f = cartan(cn).dualFiber();
 
   /* find dual twisted involution by right-multiplication of |f| by |fundf|.
      However since |word_of_inverse_matrix| is used, we compute |q=fundf*f|. */
@@ -475,9 +577,8 @@ void ComplexReductiveGroup::correlateDualForms(const rootdata::RootDatum& rd,
   rootdata::RootList so;
   weyl::WeylWord ww;
   Cayley_and_cross_part(so,ww,ti,rd,W); // computation is in dual setting!
-// begin testing
+
   assert(checkDecomposition(ti,ww,so,W,rd,fundf.involution()));
-// end testing
 
   const partition::Partition& pi = f.weakReal();
   realform::RealFormList rfl(f.numRealForms());
@@ -505,82 +606,8 @@ void ComplexReductiveGroup::correlateDualForms(const rootdata::RootDatum& rd,
     rfl[j] = rf;
   }
 
-  d_dualRealFormLabels.push_back(rfl);
+  Cartan[cn].dual_real_labels = rfl;
 }
-
-
-/*!
-  \brief Updates d_status.
-
-  Precondition: prev is the previous size of d_cartan;
-
-  Explanation: d_status holds the subset of the set of real forms for
-  which the full set of Cartan classes is constructed; equivalently, those
-  for which the most split Cartan has been reached.
-*/
-void ComplexReductiveGroup::updateStatus(size_t prev)
-{
-  for (size_t j=prev; j<numCartanClasses(); ++j) // traverse new Cartan classes
-  {
-
-    const cartanclass::Fiber& f = cartan(j).fiber();
-    const partition::Partition& pi = f.weakReal();
-    const realform::RealFormList& rfl = d_realFormLabels[j];
-
-    for (unsigned long c = 0; c < pi.classCount(); ++c) // traverse weak reals
-    {
-      if (cartan(j).isMostSplit(c))
-      { // flag the form identified by class |c| in fiber of Cartan |j|
-	d_status.insert(rfl[c]); // real form |rfl[c]| now fully generated
-	d_mostSplit[rfl[c]] = j;
-	// might do |break|, since no two real forms share a most split Cartan
-      }
-    }
-
-  }
-}
-
-void ComplexReductiveGroup::updateSupports(size_t last)
-
-/*!
-  \brief Updates d_support and d_dualSupport.
-
-  Explanation: for each real form rf, d_support[rf] contains the subset of the
-  set of the currently defined cartans which are defined for rf; and
-  analogously for d_dualSupport[rf]. This information is in fact a
-  "cross-section" of the realFormLabels lists, which for each Cartan list the
-  set of real forms for which the Cartan is defined. This function is called
-  each time a new Cartan is added, and updates these lists.
-*/
-
-{
-  for (size_t j = 0; j < d_support.size(); ++j)
-    d_support[j].set_capacity(last+1);
-
-  for (size_t j = 0; j < d_dualSupport.size(); ++j)
-    d_dualSupport[j].set_capacity(last+1);
-
-  const realform::RealFormList& rfl = d_realFormLabels[last];
-
-  for (size_t j = 0; j < rfl.size(); ++j) {
-    d_support[rfl[j]].insert(last);
-  }
-
-  const realform::RealFormList& drfl = d_dualRealFormLabels[last];
-
-  for (size_t j = 0; j < drfl.size(); ++j) {
-    d_dualSupport[drfl[j]].insert(last);
-  }
-}
-
-/*****************************************************************************
-
-        Chapter III --- public accessor methods for ComplexReductiveGroup
-
-******************************************************************************/
-
-
-/******** accessors **********************************************************/
 
 /*!
   \brief Returns the size of the fiber orbits corresponding to the strong
@@ -589,7 +616,7 @@ void ComplexReductiveGroup::updateSupports(size_t last)
   Precondition: Real form \#rf is defined for cartan \#cn.
 */
 unsigned long
-ComplexReductiveGroup::fiberSize(realform::RealForm rf, size_t cn) const
+ComplexReductiveGroup::fiberSize(realform::RealForm rf, size_t cn)
 {
   cartanclass::adjoint_fiber_orbit wrf = real_form_part(rf,cn);
   // |wrf| indexes a $W_{im}$ orbit on |cartan(cn).fiber().adjointFiberGroup()|
@@ -618,7 +645,7 @@ ComplexReductiveGroup::fiberSize(realform::RealForm rf, size_t cn) const
 */
 
 unsigned long
-ComplexReductiveGroup::dualFiberSize(realform::RealForm rf, size_t cn) const
+ComplexReductiveGroup::dualFiberSize(realform::RealForm rf, size_t cn)
 {
   cartanclass::adjoint_fiber_orbit wrf=dual_real_form_part(rf,cn);
 
@@ -634,11 +661,44 @@ ComplexReductiveGroup::dualFiberSize(realform::RealForm rf, size_t cn) const
   return pi.classSize(c);
 }
 
+
+
+/*****************************************************************************
+
+        Chapter III --- public accessor methods for ComplexReductiveGroup
+
+******************************************************************************/
+
+
+/******** accessors **********************************************************/
+
+bitmap::BitMap
+ComplexReductiveGroup::Cartan_set(realform::RealForm rf) const
+{
+  bitmap::BitMap support(Cartan.size());
+  for (size_t i=0; i<Cartan.size(); ++i)
+    if (Cartan[i].real_forms.isMember(rf))
+      support.insert(i);
+
+  return support;
+}
+
+bitmap::BitMap
+ComplexReductiveGroup::dual_Cartan_set(realform::RealForm drf) const
+{
+  bitmap::BitMap support(Cartan.size());
+  for (size_t i=0; i<Cartan.size(); ++i)
+    if (Cartan[i].dual_real_forms.isMember(drf))
+      support.insert(i);
+
+  return support;
+}
+
 /*!
   \brief Returns the total number of involutions corresponding to the
   currently defined set of Cartans.
 */
-size_t ComplexReductiveGroup::numInvolutions() const
+size_t ComplexReductiveGroup::numInvolutions()
 {
   size_t count = 0;
 
@@ -653,7 +713,7 @@ size_t ComplexReductiveGroup::numInvolutions() const
   indicated set of Cartans.
 */
 size_t ComplexReductiveGroup::numInvolutions
-  (const bitmap::BitMap& Cartan_classes) const
+  (const bitmap::BitMap& Cartan_classes)
 {
   size_t count = 0;
 
@@ -690,7 +750,7 @@ bool isImaginary (const latticetypes::LatticeElt& v,
   \brief Flags in rs the set of noncompact positive roots for Cartan \#j.
 */
 rootdata::RootSet ComplexReductiveGroup::noncompactPosRootSet
-  (realform::RealForm rf, size_t j) const
+  (realform::RealForm rf, size_t j)
 {
   const cartanclass::Fiber& f = cartan(j).fiber();
   unsigned long x = representative(rf,j); // real form orbit-representative
@@ -817,14 +877,16 @@ ComplexReductiveGroup::canonicalize
   return  w; // but the main result is the modfied value left in |sigma|
 }
 
-  /*!
-\brief find index of canonical representative of |sigma| in
-  |d_twistedInvolution|, under the assumption that it is (already) present
-  */
+//!\brief find number of Cartan class containing twisted involution |sigma|
 size_t ComplexReductiveGroup::class_number(weyl::TwistedInvolution sigma) const
 {
   canonicalize(sigma);
-  return setutils::find_index(d_twistedInvolution,sigma);
+  for (size_t i=0; i<Cartan.size(); ++i)
+    if (sigma==Cartan[i].tw)
+      return i;
+
+  assert(false); // all canonical twisted involutions should occur in |Cartan|
+  return ~0;
 }
 
 
@@ -836,7 +898,7 @@ size_t ComplexReductiveGroup::class_number(weyl::TwistedInvolution sigma) const
 */
 unsigned long
 ComplexReductiveGroup::KGB_size(realform::RealForm rf,
-				const bitmap::BitMap& Cartan_classes) const
+				const bitmap::BitMap& Cartan_classes)
 {
   unsigned long result=0;
   for (bitmap::BitMap::iterator it = Cartan_classes.begin(); it(); ++it)
@@ -849,7 +911,7 @@ ComplexReductiveGroup::KGB_size(realform::RealForm rf,
 unsigned long
 ComplexReductiveGroup::block_size(realform::RealForm rf,
 				  realform::RealForm drf,
-				  const bitmap::BitMap& Cartan_classes) const
+				  const bitmap::BitMap& Cartan_classes)
 {
   unsigned long result=0;
   for (bitmap::BitMap::iterator it = Cartan_classes.begin(); it(); ++it)

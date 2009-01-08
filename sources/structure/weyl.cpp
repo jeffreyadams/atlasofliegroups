@@ -758,6 +758,29 @@ unsigned long TwistedWeylGroup::involutionLength
   return length;
 }
 
+std::vector<rootdata::RootNbr> TwistedWeylGroup::simple_images
+  (rootdata::RootDatum rd, TwistedInvolution tw) const
+{
+  std::vector<rootdata::RootNbr> result(rank());
+  for (size_t i=0; i<rank(); ++i)
+    result[i]=rd.simpleRootNbr(twisted(i));
+  weyl::WeylWord ww=word(tw.w());
+  for (size_t i=ww.size(); i-->0;)
+    rd.simple_root_permutation(ww[i]).left_mult(result);
+
+  return result;
+}
+
+latticetypes::LatticeMatrix TwistedWeylGroup::involution_matrix
+  (rootdata::RootDatum rd, TwistedInvolution tw) const
+{
+  std::vector<rootdata::RootNbr> simple_image=simple_images(rd,tw);
+  latticetypes::WeightList b;
+  for (size_t i=0; i<rank(); ++i)
+    b.push_back(rd.inSimpleRoots(simple_image[i]));
+
+  return latticetypes::LatticeMatrix(b);
+}
 
 } // namespace weyl
 

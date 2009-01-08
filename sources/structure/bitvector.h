@@ -40,8 +40,8 @@ template<size_t dim>
 
 // version with |BitSet|s instead of |BitVector|s; functional (size no issue)
 template<size_t dim>
-bitset::BitSet<dim> combination(const std::vector<bitset::BitSet<dim> >&,
-				const bitset::BitSet<dim>&);
+  bitset::BitSet<dim> combination(const std::vector<bitset::BitSet<dim> >&,
+				  const bitset::BitSet<dim>&);
 
 // same, imperative
 template<size_t dim>

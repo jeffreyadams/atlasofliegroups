@@ -391,16 +391,16 @@ BitMap& BitMap::operator^= (const BitMap& b)
   return *this;
 }
 
-/*!
-  Synopsis: takes the current bitmap into its set-difference with |b|, i.e.,
-  removes from our bitmap any elements appearing in |b|.
+/*! Synopsis: takes the current bitmap into its set-difference with |b|, i.e.,
+  removes from our bitmap any elements appearing in |b|; the latter should not
+  exceed the size of the current bitmap (but may be smaller).
   Return whether any bits remain in the result.
 */
 bool BitMap::andnot(const BitMap& b)
 {
   assert(b.capacity()<=capacity());
   bool any=false;
-  for (unsigned long j = 0; j < d_map.size(); ++j)
+  for (unsigned long j = 0; j < b.d_map.size(); ++j)
     if ((d_map[j] &= ~(b.d_map[j]))!=0) any=true;
 
   return any;

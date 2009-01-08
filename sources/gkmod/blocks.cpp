@@ -185,7 +185,6 @@ Block::Block(complexredgp::ComplexReductiveGroup& G,
   realredgp::RealReductiveGroup G_R(G,rf);
   complexredgp::ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
   realredgp::RealReductiveGroup dG_R(dG,df);
-  dG_R.fillCartan();
 
 #ifdef VERBOSE
   std::cerr << "entering block construction... " << std::flush;

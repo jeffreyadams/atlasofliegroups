@@ -74,9 +74,9 @@ void Interface::swap(Interface& other)
 
 namespace complexredgp_io {
 
-std::ostream& printBlockSizes(std::ostream& strm, const Interface& CI)
+std::ostream& printBlockSizes(std::ostream& strm, Interface& CI)
 {
-  const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
+  complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
   const realform_io::Interface rfi = CI.realFormInterface();
   const realform_io::Interface drfi = CI.dualRealFormInterface();
 
@@ -108,9 +108,9 @@ std::ostream& printBlockSizes(std::ostream& strm, const Interface& CI)
   The gradings are output in the same order as the corresponding orbits are
   output in the "cartan" command.
 */
-std::ostream& printGradings(std::ostream& strm, size_t cn, const Interface& CI)
+std::ostream& printGradings(std::ostream& strm, size_t cn, Interface& CI)
 {
-  const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
+  complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
   const cartanclass::CartanClass& cc = G.cartan(cn);
 
   realform::RealFormList rfl(cc.numRealForms());

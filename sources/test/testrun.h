@@ -1,6 +1,6 @@
 /*
   This is testrun.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
   part of the Atlas of Reductive Lie Groups
 
@@ -46,7 +46,7 @@ namespace testrun {
 
 namespace testrun {
 
-// base class for group iterators
+// base class for group iterators (currently nothing derived from it)
 
 class GroupIterator {
 
@@ -80,7 +80,7 @@ class GroupIterator {
   virtual GroupIterator& operator++ () = 0;
 // note : operator++ (int) cannot be defined here because it must return
 // an object.
-};
+};  // |class GroupIterator|
 
 class LieTypeIterator {
 
@@ -97,14 +97,13 @@ class LieTypeIterator {
 // associated types
   typedef std::forward_iterator_tag iterator_category;
   typedef lietype::LieType value_type;
-  typedef ptrdiff_t difference_type;
   typedef const value_type* pointer;
   typedef const value_type& reference;
 
 // constructors and destructors
   LieTypeIterator() {}
 
-  LieTypeIterator(Category, size_t);
+  LieTypeIterator(Category cat, size_t rank);
 
   virtual ~LieTypeIterator() {}
 
@@ -133,21 +132,21 @@ class LieTypeIterator {
   LieTypeIterator& operator++ ();
 
   LieTypeIterator operator++ (int) {
-    LieTypeIterator tmp(*this); 
-    ++(*this); 
+    LieTypeIterator tmp(*this);
+    ++(*this);
     return tmp;
   }
-};
+};  // |class LieTypeIterator|
 
 class TorusPartIterator {
 
  private:
 
   size_t d_rank;
-  std::vector<bitmap::BitMap::iterator> d_data;
-  std::vector<abelian::GrpNbr> d_returnValue;
   bitmap::BitMap::iterator d_first;
   bitmap::BitMap::iterator d_last;
+  std::vector<bitmap::BitMap::iterator> d_data; // internal state
+  std::vector<abelian::GrpNbr> d_returnValue;   // dereferenced |d_data|
   bool d_done;
 
  public:
@@ -155,7 +154,6 @@ class TorusPartIterator {
 // associated types
   typedef std::forward_iterator_tag iterator_category;
   typedef std::vector<abelian::GrpNbr> value_type;
-  typedef ptrdiff_t difference_type;
   typedef const value_type* pointer;
   typedef const value_type& reference;
 
@@ -164,9 +162,9 @@ class TorusPartIterator {
 
   TorusPartIterator(size_t, const bitmap::BitMap&);
 
-  TorusPartIterator(size_t, const std::vector<bitmap::BitMap::iterator>&,
-		    const bitmap::BitMap::iterator&, 
-		    const bitmap::BitMap::iterator&);
+  TorusPartIterator(size_t, const std::vector<bitmap::BitMap::iterator>& pos,
+		    const bitmap::BitMap::iterator& begin,
+		    const bitmap::BitMap::iterator& end);
 
   ~TorusPartIterator() {}
 
@@ -199,13 +197,13 @@ class TorusPartIterator {
   TorusPartIterator& operator++ ();
 
   TorusPartIterator operator++ (int) {
-    TorusPartIterator tmp(*this); 
-    ++(*this); 
+    TorusPartIterator tmp(*this);
+    ++(*this);
     return tmp;
   }
 
   void reset(const bitmap::BitMap&);
-};
+};  // |class TorusPartIterator|
 
 class SubgroupIterator {
 
@@ -275,11 +273,11 @@ class SubgroupIterator {
   SubgroupIterator& operator++ ();
 
   SubgroupIterator operator++ (int) {
-    SubgroupIterator tmp(*this); 
-    ++(*this); 
+    SubgroupIterator tmp(*this);
+    ++(*this);
     return tmp;
   }
-};
+}; // |class SubgroupIterator|
 
 class CoveringIterator {
 
@@ -288,8 +286,8 @@ class CoveringIterator {
   lietype::LieType d_lieType;
   abelian::FiniteAbelianGroup* d_dcenter;
   size_t d_rank;
-  size_t d_torusRank;
   size_t d_semisimpleRank;
+  size_t d_torusRank;
 
 // iterator management
   bitmap::BitMap d_quotReps;
@@ -312,7 +310,6 @@ class CoveringIterator {
 // associated types
   typedef std::forward_iterator_tag iterator_category;
   typedef prerootdata::PreRootDatum value_type;
-  typedef ptrdiff_t difference_type;
   typedef const value_type* pointer;
   typedef const value_type& reference;
 
@@ -355,14 +352,14 @@ class CoveringIterator {
 // manipulators
   CoveringIterator& operator++ ();
   CoveringIterator operator++ (int) {
-    CoveringIterator tmp(*this); 
-    ++(*this); 
+    CoveringIterator tmp(*this);
+    ++(*this);
     return tmp;
   }
-};
+};  // |class CoveringIterator|
 
 class RealFormIterator {
-};
+};  // |class RealFormIterator|
 
 }
 

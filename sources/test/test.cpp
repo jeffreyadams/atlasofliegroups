@@ -20,6 +20,7 @@
 #include "blockmode.h"
 
 #include "commands.h"
+#include "prerootdata.h"
 #include "rootdata.h"
 #include "complexredgp.h"
 #include "realredgp.h"
@@ -35,6 +36,7 @@
 #include "standardrepk.h"
 #include "free_abelian.h"
 #include "smithnormal.h"
+#include "testrun.h"
 
 /*****************************************************************************
 
@@ -61,6 +63,7 @@ namespace {
   void mod_lattice_f();
   void branch_f();
   void test_f();
+  void testrun_f();
 
   // help functions
 
@@ -108,6 +111,7 @@ template<>
 void addTestCommands<emptymode::EmptymodeTag>
   (commands::CommandMode& mode, emptymode::EmptymodeTag)
 {
+  mode.add("testrun",testrun_f);
   if (testMode == EmptyMode)
     mode.add("test",test_f);
 
@@ -331,15 +335,17 @@ void posroots_rootbasis_f()
 // Print the coroots in the simple coroot coordinates.
 void coroots_rootbasis_f()
 {
-  try {
-    const rootdata::RootDatum rd (mainmode::currentComplexGroup().rootDatum(),
-				  tags::DualTag());
+  try
+  {
+    const rootdata::RootDatum rd
+      (mainmode::currentComplexGroup().dualRootDatum());
     ioutils::OutputFile file;
 
     for (rootdata::RootNbr i=0; i<rd.numRoots(); ++i)
       prettyprint::printInRootBasis(file,i,rd) << std::endl;
   }
-  catch (error::InputError& e) {
+  catch (error::InputError& e)
+  {
     e("aborted");
   }
 
@@ -348,14 +354,16 @@ void coroots_rootbasis_f()
 // Print the positive coroots in the simple coroot coordinates.
 void poscoroots_rootbasis_f()
 {
-  try {
-    const rootdata::RootDatum rd (mainmode::currentComplexGroup().rootDatum(),
-				  tags::DualTag());
+  try
+  {
+    const rootdata::RootDatum rd
+      (mainmode::currentComplexGroup().dualRootDatum());
     ioutils::OutputFile file;
 
     prettyprint::printInRootBasis(file,rd.posRootSet(),rd);
   }
-  catch (error::InputError& e) {
+  catch (error::InputError& e)
+  {
     e("aborted");
   }
 
@@ -722,6 +730,27 @@ void test_f()
   catch (error::InputError& e) {
     e("aborted");
   }
+}
+
+void testrun_f()
+{
+  unsigned long rank=interactive::get_bounded_int
+    (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
+  for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
+  {
+    std::cout<< *it << std::endl;
+    size_t count=0;
+    for (testrun::CoveringIterator cit(*it); cit(); ++cit)
+    {
+      if (count>0) std::cout << ',' << std::flush;
+      rootdata::RootDatum rd(*cit);
+      latticetypes::LatticeMatrix id; matrix::identityMatrix(id,rd.rank());
+      complexredgp::ComplexReductiveGroup G(rd,id);
+      std::cout << ++count;
+    }
+    std::cout << '.' << std::endl;
+  }
+
 }
 
 } // namespace

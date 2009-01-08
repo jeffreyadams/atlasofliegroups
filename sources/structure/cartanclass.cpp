@@ -147,17 +147,11 @@ InvolutionData::InvolutionData(const complexredgp::ComplexReductiveGroup& G,
   , d_simpleReal()
 {
   const rootdata::RootDatum& rd=G.rootDatum();
-  { // follow the inner class twist by the action of |tw| on roots
-    std::vector<rootdata::RootNbr> simple_image(rd.semisimpleRank());
-    for (size_t i=0; i<rd.semisimpleRank(); ++i)
-      simple_image[i]=G.twisted_root(rd.simpleRootNbr(i));
 
-    weyl::WeylWord ww=G.weylGroup().word(tw.w());
-    for (size_t i=ww.size(); i-->0;)
-      rd.simple_root_permutation(ww[i]).left_mult(simple_image);
+  // follow the inner class twist by the action of |tw| on roots
+  d_rootInvolution =
+    rd.extend_to_roots(G.twistedWeylGroup().simple_images(rd,tw));
 
-    d_rootInvolution=rd.extend_to_roots(simple_image);
-  }
   classify_roots(rd);
 }
 
@@ -190,14 +184,6 @@ CartanClass::CartanClass(const rootdata::RootDatum& rd,
 
 /******** copy and assignment ************************************************/
 
-void CartanClass::swap(CartanClass& other)
-
-{
-  d_fiber.swap(other.d_fiber);
-  d_dualFiber.swap(other.d_dualFiber);
-  d_simpleComplex.swap(other.d_simpleComplex);
-  std::swap(d_orbitSize,other.d_orbitSize);
-}
 
 /******** accessors **********************************************************/
 
@@ -240,7 +226,7 @@ namespace cartanclass {
 
 Fiber::Fiber(const rootdata::RootDatum& rd,
 	     const latticetypes::LatticeMatrix& q)
-  : d_torus(new tori::RealTorus(q))
+  : d_torus(q)
   , d_involutionData(rd,q)
   , d_fiberGroup(makeFiberGroup())
   , d_adjointFiberGroup(makeAdjointFiberGroup(rd))
@@ -278,16 +264,10 @@ Fiber dualFiber
   return Fiber(rootdata::RootDatum(rd,tags::DualTag()),qd);
 }
 
-Fiber::~Fiber ()
-
-{
-  delete d_torus;
-}
-
 // copy and assignment
 
 Fiber::Fiber(const Fiber& other)
-  : d_torus(other.d_torus==NULL ? NULL : new tori::RealTorus(*other.d_torus))
+  : d_torus(other.d_torus)
   , d_involutionData(other.d_involutionData)
   , d_fiberGroup(other.d_fiberGroup)
   , d_adjointFiberGroup(other.d_adjointFiberGroup)
@@ -302,7 +282,6 @@ Fiber::Fiber(const Fiber& other)
   , d_strongRealFormReps(other.d_strongRealFormReps)
 {}
 
-Fiber& Fiber::operator= (const Fiber& other)
 
 /*!
   Synopsis: assignment operator.
@@ -310,7 +289,7 @@ Fiber& Fiber::operator= (const Fiber& other)
   Use copy constructor. This requires a check for self-assignment, or the
   source would be destroyed!
 */
-
+Fiber& Fiber::operator= (const Fiber& other)
 {
   // handle self-assignment
   if (&other != this) {
@@ -319,24 +298,6 @@ Fiber& Fiber::operator= (const Fiber& other)
   }
 
   return *this;
-}
-
-void Fiber::swap(Fiber& other)
-
-{
-  std::swap(d_torus,other.d_torus); // swap pointers here
-  d_involutionData.swap(other.d_involutionData);
-  d_fiberGroup.swap(other.d_fiberGroup);
-  d_adjointFiberGroup.swap(other.d_adjointFiberGroup);
-  d_gradingShift.swap(other.d_gradingShift);
-  d_baseGrading.swap(other.d_baseGrading);
-  d_noncompactShift.swap(other.d_noncompactShift);
-  d_baseNoncompact.swap(other.d_baseNoncompact);
-  d_toAdjoint.swap(other.d_toAdjoint);
-  d_weakReal.swap(other.d_weakReal);
-  d_realFormPartition.swap(other.d_realFormPartition);
-  d_strongReal.swap(other.d_strongReal);
-  d_strongRealFormReps.swap(other.d_strongRealFormReps);
 }
 
 /*       Private accessors of |Fiber| used during construction      */
@@ -928,17 +889,6 @@ AdjointFiberElt Fiber::gradingRep(const gradings::Grading& gr) const
 }
 
 /*!
-  \brief Returns the matrix of the involution on the weight lattice
-  of the Cartan subgroup.
-
-  NOTE: this is not inlined to avoid a dependency upon tori.h in the .h file.
-*/
-const latticetypes::LatticeMatrix& Fiber::involution() const
-{
-  return d_torus->involution();
-}
-
-/*!
   \brief Returns the fiber group element \f$m_\alpha\f$ corresponding to |cr|.
 
   Precondition: |cr| a weight vector for an imaginary coroot \f$\alpha^\vee\f$
@@ -948,31 +898,6 @@ latticetypes::SmallBitVector Fiber::mAlpha(const rootdata::Root& cr) const
 {
   return d_fiberGroup.toBasis(latticetypes::SmallBitVector(cr));
 }
-
-size_t Fiber::plusRank() const
-
-/*!
-  \brief Returns the dimension of the +1 eigenspace of the involution.
-
-  NOTE: this is not inlined to avoid a dependency upon tori.h in the .h file.
-*/
-
-{
-  return d_torus->plusRank();
-}
-
-size_t Fiber::minusRank() const
-
-/*!
-  \brief Returns the dimension of the -1 eigenspace of the involution.
-
-  NOTE: this is not inlined to avoid a dependency upon tori.h in the .h file.
-*/
-
-{
-  return d_torus->minusRank();
-}
-
 
 /*!
   \brief Returns the image of x in the adjoint fiber group.
@@ -1072,11 +997,12 @@ restrictGrading(const rootdata::RootSet& rs, const rootdata::RootList& rl)
 
   Precondition: |f| is the fundamental fiber;
 
-  Explanation: for each noncompact noncomplex irreducible real form, there
-  is at least one grading with exactly one noncompact simple root. Our choice
-  amounts to a grading which induces one of the aforementioned ones on each
-  noncompact noncomplex simple factor. The function of this is to enable
-  easy type recognition.
+  Explanation: for each noncompact noncomplex irreducible real form, there is
+  at least one grading with exactly one noncompact simple root. Our choice for
+  non-simple types then will be a grading which induces one of the
+  aforementioned ones on each noncompact noncomplex simple factor, which is
+  achieved by minimising the number of noncompact simple roots. The purpose of
+  having this function this is to enable easy type recognition.
 
   NOTE : the grading is represented in terms of simple roots for the root
   system |rd|. This is OK; knowledge of the gradings of those roots is enough
@@ -1088,12 +1014,9 @@ specialGrading(const cartanclass::Fiber& f,
 
 
 {
-  using namespace bitset;
-  using namespace cartanclass;
-  using namespace gradings;
-  using namespace rootdata;
+  std::set<gradings::Grading,gradings::GradingCompare> grs;
+  // |gradings::GradingCompare| first compares number of set bits
 
-  std::set<Grading,GradingCompare> grs;
   unsigned long n = f.adjointFiberSize();
 
   // sort the gradings that occur in this class

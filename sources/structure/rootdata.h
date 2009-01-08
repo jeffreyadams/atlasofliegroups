@@ -422,6 +422,8 @@ use by accessors.
 
   // express root in basis of simple roots
   LT::Weight inSimpleRoots(RootNbr n) const;
+  // express coroot in basis of simple coroots
+  LT::Weight inSimpleCoroots(RootNbr n) const;
 
   // convert sequence of root numbers to expressions in the simple roots
 template <typename I, typename O>

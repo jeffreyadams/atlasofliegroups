@@ -30,10 +30,9 @@ std::ostream& print(std::ostream&, const rootdata::RootDatum&);
 
 std::ostream& print(std::ostream&, const realredgp::RealReductiveGroup&);
 
-std::ostream& printBlockData(std::ostream&, const complexredgp_io::Interface&);
+std::ostream& printBlockData(std::ostream&, complexredgp_io::Interface&);
 
-std::ostream& printCartanClasses(std::ostream&,
-				 const complexredgp_io::Interface&);
+std::ostream& printCartanClasses(std::ostream&, complexredgp_io::Interface&);
 
 std::ostream& printCartanMatrix(std::ostream&, const rootdata::RootList&,
 				const rootdata::RootDatum&);

@@ -39,9 +39,9 @@ namespace cartan_io {
 
 // Print information about the Cartan class #cn.
 std::ostream& printCartanClass(std::ostream& strm, size_t cn,
-			       const complexredgp_io::Interface& CI)
+			       complexredgp_io::Interface& CI)
 {
-  const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
+  complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
   const rootdata::RootDatum& rd = G.rootDatum();
 
   const cartanclass::CartanClass& cc = G.cartan(cn);

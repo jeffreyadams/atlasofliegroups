@@ -131,7 +131,7 @@ std::ostream& print
   Precondition: G.fullCartan() has been called successfully.
 */
 std::ostream& printBlockData(std::ostream& strm,
-			     const complexredgp_io::Interface& CI)
+			     complexredgp_io::Interface& CI)
 {
   const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
   const rootdata::RootDatum& rd = G.rootDatum();
@@ -164,7 +164,7 @@ std::ostream& printBlockData(std::ostream& strm,
   Prints information about the conjugacy classes of Cartan subgroups.
 */
 std::ostream& printCartanClasses(std::ostream& strm,
-				 const complexredgp_io::Interface& CI)
+				 complexredgp_io::Interface& CI)
 {
   const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
 
