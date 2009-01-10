@@ -357,6 +357,7 @@ tits::TitsElt BasedTitsGroup::naive_seed
   cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
   cartanclass::StrongRealFormRep srf=f.strongRepresentative(wrf);
   assert(srf.second==f.central_square_class(wrf));
+  // the |grading_offset| of our |BasedTitsGroup| gives the square class base
 
   // now lift strong real form from fiber group to a torus part in |result|
   latticetypes::SmallBitVector v(bitset::RankFlags(srf.first),f.fiberRank());
