@@ -404,7 +404,9 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
     const tits::BasedTitsGroup dual_adj_Tg (*this,tags::DualTag());
     const tits::TitsGroup& dual_Tg = dual_adj_Tg.titsGroup();
 
-    const weyl::TwistedInvolution tw_org=dst.tw;
+    const weyl::TwistedInvolution tw_org = dst.tw;
+    const weyl::TwistedInvolution dual_tw_org = src.tw;
+
     weyl::WeylWord conjugator = W.word(canonicalize(dst.tw));
 
     dst.real_forms = src.dual_real_forms;
@@ -418,6 +420,7 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 		      tits::TorusPart(dst.rep[*it],semisimpleRank()),
 		      tw_org);
       adj_Tg.basedTwistedConjugate(x,conjugator);
+      assert(x.tw()==dst.tw);
       dst.rep[*it] =Tg.left_torus_part(x).data();
       d_mostSplit[*it]=Cartan.size()-1; // last occurrence of |*it| will stick
     }
@@ -425,8 +428,9 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
     {
       tits::TitsElt y(dual_Tg,
 		      tits::TorusPart(dst.dual_rep[*it],semisimpleRank()),
-		      tw_org);
+		      dual_tw_org);
       dual_adj_Tg.basedTwistedConjugate(y,conjugator);
+      assert(y.tw()==W.opposite(dst.tw));
       dst.dual_rep[*it] = dual_Tg.left_torus_part(y).data();
     }
 
@@ -557,6 +561,7 @@ void ComplexReductiveGroup::correlateForms(size_t cn)
   }
 
   Cartan[cn].real_labels = rfl;
+  assert(rfl[0]==quasisplit()); // adjoint base grading is always quasisplit
 }
 
 void ComplexReductiveGroup::correlateDualForms(size_t cn)
@@ -607,6 +612,7 @@ void ComplexReductiveGroup::correlateDualForms(size_t cn)
   }
 
   Cartan[cn].dual_real_labels = rfl;
+  assert(rfl[0]==0); // adjoint base grading is always quasisplit
 }
 
 /*!
