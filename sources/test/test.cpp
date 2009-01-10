@@ -64,6 +64,8 @@ namespace {
   void branch_f();
   void test_f();
   void testrun_f();
+  void exam_f();
+
 
   // help functions
 
@@ -152,6 +154,8 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("Ktypemat",Ktypemat_f);
   mode.add("mod_lattice",mod_lattice_f);
   mode.add("branch",branch_f);
+
+  mode.add("examine",exam_f);
 
 }
 
@@ -732,6 +736,95 @@ void test_f()
   }
 }
 
+void examine(complexredgp::ComplexReductiveGroup& G,size_t cn)
+{
+  tits::BasedTitsGroup adj_Tg(G);
+  tits::BasedTitsGroup dual_adj_Tg(G,tags::DualTag());
+  const cartanclass::CartanClass& Cartan = G.cartan(cn);
+  const cartanclass::Fiber& f = Cartan.fiber();
+  const realform::RealFormList& form_labels=G.realFormLabels(cn);
+  const partition::Partition& weak_real = Cartan.weakReal();
+  const cartanclass::Fiber& dual_f = Cartan.dualFiber();
+  const realform::RealFormList& dual_form_labels=G.dualRealFormLabels(cn);
+  const partition::Partition& dual_weak_real = dual_f.weakReal();
+
+  const weyl::TwistedInvolution& tw = G.twistedInvolution(cn);
+  const weyl::TwistedInvolution dual_tw =G.weylGroup().opposite(tw);
+
+  assert(Cartan.numRealForms()==G.numRealForms(cn));
+  assert(Cartan.numDualRealForms()==G.numDualRealForms(cn));
+
+  rootdata::RootList sim = Cartan.simpleImaginary();
+  rootdata::RootList sre = dual_f.simpleImaginary(); //Cartan.simpleReal();
+  // or equivalently we could have done |dual_f.simpleImaginary()|
+
+  tits::TorusPart base = G.sample_torus_part(cn,G.quasisplit());
+  tits::TorusPart dual_base = G.dual_sample_torus_part(cn,0);
+  tits::TitsElt a(adj_Tg.titsGroup(),base,tw);
+  gradings::Grading ref_gr; // reference grading for quasisplit form
+  for (size_t i=0; i<sim.size(); ++i)
+    ref_gr.set(i,adj_Tg.grading(a,sim[i]));
+
+  cartanclass::AdjointFiberElt rep = f.gradingRep(ref_gr);
+
+  // now lift |rep| to a torus part and subtract from |base|
+  latticetypes::SmallBitVector v(bitset::RankFlags(rep),
+				 f.adjointFiberRank());
+  base -= f.adjointFiberGroup().fromBasis(v);
+
+  tits::TitsElt dual_a(dual_adj_Tg.titsGroup(),dual_base,dual_tw);
+  gradings::Grading dual_ref_gr; // reference for dual quasisplit form
+  for (size_t i=0; i<sre.size(); ++i)
+    dual_ref_gr.set(i,dual_adj_Tg.grading(dual_a,sre[i]));
+
+  cartanclass::AdjointFiberElt dual_rep = dual_f.gradingRep(dual_ref_gr);
+
+  // now lift |rep| to a torus part and subtract from |base|
+  latticetypes::SmallBitVector u(bitset::RankFlags(dual_rep),
+				 dual_f.adjointFiberRank());
+  dual_base -= dual_f.adjointFiberGroup().fromBasis(u);
+
+
+  for (bitmap::BitMap::iterator
+	 rfi=G.real_forms(cn).begin(); rfi(); ++rfi)
+  {
+    realform::RealForm rf = *rfi;
+    tits::TorusPart tp = G.sample_torus_part(cn,rf);
+    tits::TitsElt b(adj_Tg.titsGroup(),tp,tw);
+    gradings::Grading gr;
+    for (size_t i=0; i<sim.size(); ++i)
+      gr.set(i,adj_Tg.grading(b,sim[i]));
+
+    cartanclass::AdjointFiberElt rep = f.gradingRep(gr);
+
+    assert(form_labels[weak_real(rep)]==rf);
+
+    tp-=base;
+    assert(weak_real(f.adjointFiberGroup().toBasis(tp)
+		     .data().to_ulong())==
+	   weak_real(rep));
+  }
+  for (bitmap::BitMap::iterator
+	 drfi=G.dual_real_forms(cn).begin(); drfi(); ++drfi)
+  {
+    realform::RealForm drf = *drfi;
+    tits::TorusPart tp = G.dual_sample_torus_part(cn,drf);
+    tits::TitsElt b(dual_adj_Tg.titsGroup(),tp,dual_tw);
+    gradings::Grading gr;
+    for (size_t i=0; i<sre.size(); ++i)
+      gr.set(i,dual_adj_Tg.grading(b,sre[i]));
+
+    cartanclass::AdjointFiberElt rep = dual_f.gradingRep(gr);
+
+    assert(dual_form_labels[dual_weak_real(rep)]==drf);
+
+    tp-=dual_base;
+    assert(dual_weak_real(dual_f.adjointFiberGroup().toBasis(tp)
+			  .data().to_ulong())==
+	   dual_weak_real(rep));
+  }
+}
+
 void testrun_f()
 {
   unsigned long rank=interactive::get_bounded_int
@@ -745,12 +838,36 @@ void testrun_f()
       if (count>0) std::cout << ',' << std::flush;
       rootdata::RootDatum rd(*cit);
       latticetypes::LatticeMatrix id; matrix::identityMatrix(id,rd.rank());
-      complexredgp::ComplexReductiveGroup G(rd,id);
+      complexredgp::ComplexReductiveGroup G0(rd,id);
+      for (int n=0; n<2; ++n)
+      {
+	complexredgp::ComplexReductiveGroup* p = n==0 ? &G0
+	  : new complexredgp::ComplexReductiveGroup(G0,tags::DualTag());
+	for (size_t cn=0; cn<p->numCartanClasses(); ++cn)
+	{
+	  examine(*p,cn);
+	}
+	if (n==1) delete p; // clean up dual group
+      }
       std::cout << ++count;
     }
     std::cout << '.' << std::endl;
   }
 
+}
+
+void exam_f()
+{
+  size_t cn =
+    interactive::get_Cartan_class(realmode::currentRealGroup().Cartan_set());
+  examine(mainmode::currentComplexGroup(),cn);
+  std::cout << "G OK" << std::endl;
+  complexredgp::ComplexReductiveGroup dG
+    (mainmode::currentComplexGroup(),tags::DualTag());
+  assert(mainmode::currentComplexGroup().numCartanClasses()
+	 ==dG.numCartanClasses());
+  examine(dG,cn);
+  std::cout << "dual G OK" << std::endl;
 }
 
 } // namespace
