@@ -311,12 +311,25 @@ class ComplexReductiveGroup
 //!\brief Returns the number of weak real forms of the dual group of G.
   size_t numDualRealForms() const { return dualFundamental().numRealForms(); }
 
+/*!\brief
+  Returns the number of weak real forms of G for which Cartan \#cn is defined.
+*/
+  size_t numRealForms(size_t cn) const { return Cartan[cn].real_forms.size(); }
 
+/*!\brief
+  Returns the number of weak real forms of the dual group for which the dual
+  of Cartan \#cn is defined.
+*/
+  size_t numDualRealForms(size_t cn) const
+  { return Cartan[cn].dual_real_forms.size(); }
+
+  const bitmap::BitMap& real_forms(size_t cn) const
+  { return Cartan[cn].real_forms; }
+  const bitmap::BitMap& dual_real_forms(size_t cn) const
+  { return Cartan[cn].dual_real_forms; }
 
 //!\brief Returns the (inner) number of the quasisplit real form.
   realform::RealForm quasisplit() const { return realform::RealForm(0); }
-
-
 
 /*!
   \brief Entry \#|rf| gives the most split Cartan for real form \#|rf|.
@@ -364,8 +377,8 @@ class ComplexReductiveGroup
   size_t class_number(weyl::TwistedInvolution) const;
 
 /*!\brief
-  Returns the set of noncompact imaginary roots for (the representative
-  in the adjoint fiber of) the real form \#rf.
+  Returns the set of noncompact imaginary roots at the distinguished involution
+  for (the representative in the adjoint fiber of) the real form \#rf.
 */
   rootdata::RootSet noncompactRoots(realform::RealForm rf) const
   {
@@ -379,10 +392,16 @@ class ComplexReductiveGroup
   latticetypes::LatticeElt
     posImaginaryRootSum(const weyl::TwistedInvolution&) const;
 
-
 //!\brief apply involution action of |tw| on weight lattice to |v|
   void twisted_act
     (const weyl::TwistedInvolution& tw,latticetypes::LatticeElt& v) const;
+
+  tits::TorusPart sample_torus_part(size_t cn, realform::RealForm rf) const
+  { return tits::TorusPart(Cartan[cn].rep[rf],semisimpleRank()); }
+  tits::TorusPart dual_sample_torus_part(size_t cn, realform::RealForm drf)
+    const
+  { return tits::TorusPart(Cartan[cn].dual_rep[drf],semisimpleRank()); }
+
 
 // manipulators
 
@@ -396,18 +415,6 @@ class ComplexReductiveGroup
       add_Cartan(cn);
     return *Cartan[cn].class_pt;
   }
-
-/*!\brief
-  Returns the number of weak real forms of G for which Cartan \#cn is defined.
-*/
-  size_t numRealForms(size_t cn) { return cartan(cn).numRealForms(); }
-
-
-/*!\brief
-  Returns the number of weak real forms of the dual group for which the dual
-  of Cartan \#cn is defined.
-*/
-  size_t numDualRealForms(size_t cn) { return cartan(cn).numDualRealForms(); }
 
 /*!\brief
   An element of the orbit in the adjoint fiber corresponding to |rf|
