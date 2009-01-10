@@ -173,12 +173,11 @@ template<size_t dim> class Subspace {
   /*!
   \brief Quotient of two subspaces of (Z/2Z)^d_rank.
 
-  Elements of the vector space are BitVector's of capacity dim; the
-  first d_rank coordinates are significant.  (The number d_rank is
-  owned by d_space and by d_subspace, not directly by
-  Subquotient.  The number is accessible by the public member
-  function rank().) The larger subspace is specified by the
-  Subspace d_space.  The smaller subspace is specified by the
+  Elements of the vector space are BitVector's of capacity dim; the first
+  d_rank coordinates are significant. (The number d_rank is owned both by
+  d_space and by d_subspace, not directly by Subquotient. The number is
+  accessible by the public member function rank().) The larger subspace is
+  specified by the Subspace d_space. The smaller subspace is specified by the
   Subspace d_subspace.
 
   A consequence of (d_subspace contained in d_space) is that the
@@ -262,13 +261,8 @@ bitset::BitSet<dim> d_rel_support;
     return d_space.rank();
   }
 
-  const Subspace<dim>& space() const {
-    return d_space;
-  }
-
-  const Subspace<dim>& subspace() const {
-    return d_subspace;
-  }
+  const Subspace<dim>& space() const { return d_space; }       // numerator
+  const Subspace<dim>& subspace() const { return d_subspace; } // denominator
 
   /* we call this |support| to the outside world, since it flags basis
     representatives for the quotient among the basis for |d_space| */
@@ -286,10 +280,9 @@ bitset::BitSet<dim> d_rel_support;
   /*!
     \brief Puts in |r| the canonical representative of |w| modulo |d_subspace|.
 
-    Express the image of w in the subquotient using the image of the
-    standard basis of the larger space.  Then r is the corresponding
-    combination of those standard basis vectors.  It is assumed that w
-    belongs to the larger space.
+    It is assumed that |w| belongs to the "numerator" subspace |d_space|. Then
+    all that needs to be done is reduce modulo the "denominator" |d_subspace|.
+    The value remains in $(Z/2Z)^n$; see |toBasis| to express in subquotient.
   */
   void representative(bitvector::BitVector<dim>& r,
 		      const bitvector::BitVector<dim>& w) const {
