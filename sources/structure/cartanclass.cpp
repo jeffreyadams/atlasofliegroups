@@ -877,7 +877,7 @@ AdjointFiberElt Fiber::gradingRep(const gradings::Grading& gr) const
   latticetypes::SmallBitVector target(gr,ir);
   target -= latticetypes::SmallBitVector(d_baseGrading,ir);
 
-  latticetypes::SmallBitVectorList shifts(fiberRank());
+  latticetypes::SmallBitVectorList shifts(adjointFiberRank());
   for (size_t j = 0; j < shifts.size(); ++j)
     shifts[j]=latticetypes::SmallBitVector(d_gradingShift[j],ir);
 
