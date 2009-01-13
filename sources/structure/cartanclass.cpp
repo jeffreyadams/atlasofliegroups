@@ -397,12 +397,12 @@ latticetypes::SmallSubspace Fiber::gradingGroup
 
   /* set b[j][i] = <e_j,bsi2[i]> where e_j=baf[j'], with |baf[j']| the
      subquotient basis representative number |j| */
-  for (bitset::RankFlags::iterator j = d_adjointFiberGroup.support().begin();
-       j(); ++j)
+  for (bitset::RankFlags::iterator
+	 jt = d_adjointFiberGroup.support().begin(); jt(); ++jt)
   {
     latticetypes::SmallBitVector v(imaginaryRank());
     for (size_t i = 0; i < imaginaryRank(); ++i)
-      v.set(i,scalarProduct(baf[*j],bsi2[i]));
+      v.set(i,bsi2[i].dot(baf[*jt]));
     b.push_back(v);
   }
 
@@ -438,8 +438,9 @@ gradings::Grading Fiber::makeBaseGrading
   {
     latticetypes::Weight v=ir[j];
     int count=0;
-    for (size_t i=0; i<v.size(); ++i) count+=v[i]; // add coefficients
-    flagged_roots.set_mod2(irl[j],count);          // and take result mod 2
+    for (size_t i=0; i<v.size(); ++i)
+      count+=v[i];                           // add coefficients
+    flagged_roots.set_mod2(irl[j],count);    // and take result mod 2
   }
   return gradings::Grading(constants::lMask[imaginaryRank()]); // all ones
 }
@@ -490,18 +491,18 @@ gradings::GradingList Fiber::makeGradingShifts
   gradings::GradingList result;
 
   // traverse basis of the subquotient |d_adjointFiberGroup|
-  for (bitset::RankFlags::iterator i = supp.begin(); i(); ++i) {
-
+  for (bitset::RankFlags::iterator it = supp.begin(); it(); ++it)
+  {
     // all imaginary roots part
     rootdata::RootSet rs(rd.numRoots());
     for (size_t j = 0; j < ir2.size(); ++j)
-      rs.set_to(irl[j],scalarProduct(b[*i],ir2[j]));
+      rs.set_to(irl[j],ir2[j].dot(b[*it]));
     all_shifts.push_back(rs);
 
     // simple imaginary roots part
     gradings::Grading gr;
     for (size_t j = 0; j < si2.size(); ++j)
-      gr.set(j,scalarProduct(b[*i],si2[j]));
+      gr.set(j,si2[j].dot(b[*it]));
     result.push_back(gr);
   }
 
@@ -602,11 +603,12 @@ Fiber::makeFiberMap(const rootdata::RootDatum& rd) const
   const latticetypes::SmallBitVectorList& b = d_fiberGroup.space().basis();
   const bitset::RankFlags& supp = d_fiberGroup.support();
   size_t n = rd.semisimpleRank();
-  for (bitset::RankFlags::iterator i = supp.begin(); i(); ++i) {
+  for (bitset::RankFlags::iterator it = supp.begin(); it(); ++it)
+  {
     latticetypes::SmallBitVector v(n);
-    for(size_t j = 0; j < n; ++j) {
-      v.set(j,bitvector::scalarProduct(b[*i],b_sr[j]));
-    }
+    for(size_t i = 0; i < n; ++i)
+      v.set(i, b_sr[i].dot(b[*it]) );
+
     b_ad.push_back(d_adjointFiberGroup.toBasis(v));
   }
 
@@ -678,13 +680,14 @@ partition::Partition Fiber::makeRealFormPartition() const
     (b_id,d_toAdjoint.image(),d_adjointFiberGroup.dimension());
 
   // take representatives of weak real forms and reduce modulo fiber image
-  for (size_t j = 0; j < cl.size(); ++j) {
-    unsigned long y = d_weakReal.classRep(j);
+  for (size_t i = 0; i < cl.size(); ++i)
+  {
+    unsigned long y = d_weakReal.classRep(i);
     latticetypes::SmallBitVector v
       (bitset::RankFlags(y),d_adjointFiberGroup.dimension());
 
     // reduce modulo image of map from fiber group to adjoint fiber group
-    cl[j] = modFiberImage.toBasis(v).data().to_ulong();
+    cl[i] = modFiberImage.toBasis(v).data().to_ulong();
   }
 
   /* partition the set $[0,numRealForms()[$ according to the
@@ -739,8 +742,8 @@ std::vector<partition::Partition> Fiber::makeStrongReal
 
   gradings::GradingList gs(fiberRank());
 
-  for (size_t j = 0; j < gs.size(); ++j)
-    gs[j]=bitvector::combination(d_gradingShift,d_toAdjoint.column(j).data());
+  for (size_t i = 0; i < gs.size(); ++i)
+    gs[i]=bitvector::combination(d_gradingShift,d_toAdjoint.column(i).data());
 
   // get the $m_\alpha$s
   bitset::RankFlagsList ma=mAlphas(rd);
@@ -749,10 +752,10 @@ std::vector<partition::Partition> Fiber::makeStrongReal
 
   std::vector<partition::Partition> result(d_realFormPartition.classCount());
 
-  for (square_class j = 0; j < result.size(); ++j) {
-    gradings::Grading bg=grading(class_base(j));
+  for (square_class i = 0; i < result.size(); ++i) {
+    gradings::Grading bg=grading(class_base(i));
     size_t n = fiberSize(); // order of fiber group
-    partition::makeOrbits(result[j],FiberAction(bg,gs,ma),imaginaryRank(),n);
+    partition::makeOrbits(result[i],FiberAction(bg,gs,ma),imaginaryRank(),n);
   }
 
   return result;
@@ -774,8 +777,8 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 
   latticetypes::SmallBitVectorList b(fiberRank());
 
-  for (size_t j = 0; j < b.size(); ++j)
-    b[j]=d_toAdjoint.column(j);
+  for (size_t i = 0; i < b.size(); ++i)
+    b[i]=d_toAdjoint.column(i);
 
   std::vector<StrongRealFormRep> result(numRealForms());
 
@@ -829,9 +832,9 @@ rootdata::RootSet Fiber::noncompactRoots(AdjointFiberElt x) const
   bitset::RankFlags bit(x);
   rootdata::RootSet result = d_baseNoncompact;
 
-  for (size_t j=0; j<adjointFiberRank() ; ++j)
-    if (bit[j])
-      result ^= d_noncompactShift[j];
+  for (size_t i=0; i<adjointFiberRank() ; ++i)
+    if (bit[i])
+      result ^= d_noncompactShift[i];
   return result;
 }
 
@@ -878,8 +881,8 @@ AdjointFiberElt Fiber::gradingRep(const gradings::Grading& gr) const
   target -= latticetypes::SmallBitVector(d_baseGrading,ir);
 
   latticetypes::SmallBitVectorList shifts(adjointFiberRank());
-  for (size_t j = 0; j < shifts.size(); ++j)
-    shifts[j]=latticetypes::SmallBitVector(d_gradingShift[j],ir);
+  for (size_t i = 0; i < shifts.size(); ++i)
+    shifts[i]=latticetypes::SmallBitVector(d_gradingShift[i],ir);
 
   bitset::RankFlags result; bool success=firstSolution(result,shifts,target);
   if (not success)
@@ -985,8 +988,8 @@ gradings::Grading
 restrictGrading(const rootdata::RootSet& rs, const rootdata::RootList& rl)
 {
   gradings::Grading result;
-  for (size_t j = 0; j < rl.size(); ++j)
-    result.set(j,rs.isMember(rl[j]));
+  for (size_t i = 0; i < rl.size(); ++i)
+    result.set(i,rs.isMember(rl[i]));
 
   return result;
 }
@@ -1020,9 +1023,9 @@ specialGrading(const cartanclass::Fiber& f,
   unsigned long n = f.adjointFiberSize();
 
   // sort the gradings that occur in this class
-  for (unsigned long j = 0; j < n; ++j) {
-    if (f.weakReal()(j) == rf)
-      grs.insert(restrictGrading(f.noncompactRoots(j),rd.simpleRootList()));
+  for (unsigned long i = 0; i < n; ++i) {
+    if (f.weakReal()(i) == rf)
+      grs.insert(restrictGrading(f.noncompactRoots(i),rd.simpleRootList()));
   }
 
   // return the first element
@@ -1097,7 +1100,7 @@ toMostSplit(const cartanclass::Fiber& fundf,
   consequence the root |rTau| below need not correspond to any vertex of the
   Dynkin diagram |dd|. The component of |dd| to whose root system the various
   |rTau| found for the component |c| belong (the "other half" that we want to
-  exclude) can be characterised as the vertices |j| whose simple roots |rb[j]|
+  exclude) can be characterised as the vertices |i| whose simple roots |rb[i]|
   are non-orthogonal to some of those roots |rTau|. Hence we exclude for each
   |rTau| any nodes that are non-orthogonal to it.
 */
@@ -1109,10 +1112,10 @@ CartanClass::makeSimpleComplex(const rootdata::RootDatum& rd) const
 
   // collect roots orthogonal to both sums of positive roots
   rootdata::RootList rl;
-  for (size_t j = 0; j < rd.numRoots(); ++j)
-    if (rd.isOrthogonal(tri,j) and
-	rd.isOrthogonal(trr,j))
-      rl.push_back(j);
+  for (size_t i = 0; i < rd.numRoots(); ++i)
+    if (rd.isOrthogonal(tri,i) and
+	rd.isOrthogonal(trr,i))
+      rl.push_back(i);
 
   // get a (positive) basis for that root system, and its Cartan matrix
   rootdata::RootList rb=rd.simpleBasis(rl);
@@ -1131,17 +1134,17 @@ CartanClass::makeSimpleComplex(const rootdata::RootDatum& rd) const
     // get component of chosen vertex, and flag them as done (i.e., reset)
     bitset::RankFlags c = dd.component(s); b.andnot(c);
 
-    for (bitset::RankFlags::iterator i = c.begin(); i(); ++i)
+    for (bitset::RankFlags::iterator it = c.begin(); it(); ++it)
     {
       // include roots corresponding to vertices in this component |c|
-      result.push_back(rb[*i]);
+      result.push_back(rb[*it]);
 
       /* exclude matching componont by removing vertices of simple roots
-         non-orthogonal to the (non-simple) $\tau$-image of |rb[*i]| */
-      rootdata::RootNbr rTau = involution_image_of_root(rb[*i]);
-      for (bitset::RankFlags::iterator j = b.begin(); j(); ++j)
-	if (not rd.isOrthogonal(rb[*j],rTau))
-	  b.reset(*j);
+         non-orthogonal to the (non-simple) $\tau$-image of |rb[*it]| */
+      rootdata::RootNbr rTau = involution_image_of_root(rb[*it]);
+      for (bitset::RankFlags::iterator jt = b.begin(); jt(); ++jt)
+	if (not rd.isOrthogonal(rb[*jt],rTau))
+	  b.reset(*jt);
     }
   }
   return result;

@@ -193,31 +193,14 @@ void BitMatrix<dim>::apply(const I& first, const I& last, O out) const
   }
 }
 
-template<size_t dim> void BitMatrix<dim>::column(BitVector<dim>& c, size_t j)
-  const
-
-/*!
-  \brief Puts in c the j-th column of the matrix.
-
-  NOTE: we cannot simply return d_data[j] because that would be a BitSet,
-  not a BitVector!
-*/
-
-{
-  assert(j<d_columns);
-  c = BitVector<dim>(d_data[j],d_rows);
-}
-
-template<size_t dim> void BitMatrix<dim>::row(BitVector<dim>& r, size_t i)
-  const
-
 /*!
   Puts in r the i-th row of the matrix.
 */
 
+template<size_t dim> void BitMatrix<dim>::get_row(BitVector<dim>& r, size_t i)
+  const
 {
   assert(d_columns<=dim);
-  r.reset();
   r.resize(d_columns);
 
   for (size_t j = 0; j < d_columns; ++j)
@@ -240,22 +223,21 @@ BitVectorList<dim> BitMatrix<dim>::image() const
   return b;
 }
 
-template<size_t dim>
-void BitMatrix<dim>::kernel(std::vector<BitVector<dim> >& b) const
 
-/*! \brief Puts in |b| a normal basis for the kernel of the matrix (but not
-  the canonical basis of that subspace; it is normal for the lexicographically
-  \emph{maximal} possible set of bit positions).
+/*! \brief Puts in |b| an echelon basis for the kernel of the matrix (but not
+  the canonical basis of that subspace; it is echelon from high to low bit
+  positions).
 
-  This is based on normalizing the transpose matrix, and then solving the
+  This is based on making the transpose matrix echelon, and then solving the
   resulting trivialised system of equations.
 */
-
+template<size_t dim>
+void BitMatrix<dim>::kernel(std::vector<BitVector<dim> >& b) const
 {
   b.clear();
 
   if (isEmpty())
-    return;
+    return; // no unknowns, no nontrivial solutions
 
   assert(d_columns<=dim);
   std::vector<BitVector<dim> > eqn(d_rows);
@@ -263,7 +245,7 @@ void BitMatrix<dim>::kernel(std::vector<BitVector<dim> >& b) const
   // get rows of the matrix into |eqn|
 
   for (size_t i = 0; i < d_rows; ++i)
-    row(eqn[i],i);
+    get_row(eqn[i],i);
 
   // normalize |eqn|
 
@@ -1012,20 +994,6 @@ template<size_t dim>
     }
 }
 #endif // end of unused functions
-
-template<size_t dim> bool scalarProduct(const BitVector<dim>& vd,
-					const BitVector<dim>& v)
-
-/*!
-  \brief Applies the dual vector vd to v.
-*/
-
-{
-  BitVector<dim> w = v;
-  w &= vd;
-
-  return (w.count()&1)!=0;
-}
 
 
 } // namespace bitvector

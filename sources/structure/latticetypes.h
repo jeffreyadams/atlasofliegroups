@@ -27,10 +27,17 @@
 
 namespace atlas {
 
+namespace latticetypes {
+
+  inline
+  BinaryEquation make_equation(const SmallBitVector lhs, bool rhs)
+  {
+    BinaryEquation eqn(lhs.data(),lhs.size());
+    eqn.pushBack(rhs);
+    return eqn;
+  }
 
 /******** type definitions ***************************************************/
-
-namespace latticetypes {
 
   /*!
   \brief Element of lattice tensored with rational numbers.

@@ -373,6 +373,8 @@ class ComplexReductiveGroup
 */
   const weyl::TwistedInvolution& twistedInvolution(size_t cn) const
     { return Cartan[cn].tw; }
+  weyl::TwistedInvolution dualTwistedInvolution(size_t cn) const
+    { return W.opposite(Cartan[cn].tw); }
 
   size_t class_number(weyl::TwistedInvolution) const;
 
@@ -535,8 +537,10 @@ bool is_defined(realform::RealForm rf, size_t cn) const
 
 void add_Cartan(size_t cn);
 
-void correlateForms(size_t cn);
+void map_real_forms(size_t cn);      // set |Cartan[cn].real_labels|
+void map_dual_real_forms(size_t cn); // set |Cartan[cn].dual_real_labels|
 
+ void correlateForms(size_t cn);     // the old way to do the same things
 void correlateDualForms(size_t cn);
 
 }; // |class ComplexReductiveGroup|

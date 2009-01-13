@@ -207,6 +207,23 @@ TitsElt TitsGroup::prod(const TitsElt& a, TitsElt b) const
   return b;
 }
 
+// here the we basically to Weyl group action at torus side, including twist
+latticetypes::BinaryMap
+TitsGroup::involutionMatrix(const weyl::WeylWord& ww) const
+{
+  latticetypes::BinaryMap result(rank(),0);
+  for (size_t i=0; i<rank(); ++i)
+  {
+    latticetypes::SmallBitVector v(rank(),i); // basis vector $e_i$
+    // act by letters of |ww| from left to right (because transposed action)
+    for (size_t j=0; j<ww.size(); ++j)
+      reflect(v,ww[j]);
+    result.addColumn(twisted(v)); // finally twist
+  }
+  return result;
+}
+
+
 BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
 			       gradings::Grading base_grading)
   : my_Tits_group(NULL) // no ownership in this case
@@ -288,8 +305,7 @@ void BasedTitsGroup::inverse_Cayley_transform
   {
     // we must find a vector in |mod_space| affecting grading at $\alpha_i$
     for (size_t j=0; j<mod_space.dimension(); ++j) // a basis vector will do
-      if (bitvector::scalarProduct(mod_space.basis(j),
-				   Tg.simpleRoot(i)))
+      if (Tg.simpleRoot(i).dot(mod_space.basis(j)))
       { // scalar product true means grading is affected: we found it
 	Tg.left_add(mod_space.basis(j),a); // adjust |a|'s torus part
 	break;
@@ -373,22 +389,31 @@ tits::TitsElt BasedTitsGroup::naive_seed
    |naive_seed| by insisting on obtaining an element exhibiting a grading that
    corresponds to the real form |rf|. Thus no element is actually recovered
    from any fiber group, but rather a set of equations for the torus part is
-   set up and solved. Giving the right grading, one hopes that the Tits
-   element automatically defines a strong involution in the square class; we
-   test this by an |assert| statement
+   set up and solved. The equations come in two parts: a first section for
+   establishing the correct coset of T(2) with respect to the "numerator"
+   subgroup of the subquotient that defines th fiber group, and a second
+   section for requiring the correct grading of the imaginary roots for the
+   real form that is intended.
 
-   Although the system of equations is highly underdetermined, it might
-   suffice to fix a correct torus part modulo the subspace by which these
-   torus parts are systematically reduced, and modulo torus parts that lie in
-   $Z(G)$ (which cannot be detected by any grading of roots, but which for the
-   same reason have no effect on the construction); in any case the seed
-   produced here seems to work for partial KGB constructions that are useful
-   or the construction of (small) blocks. In the more general case that there
-   can be more than one minimal Cartan class in the set demanded, this method
-   would risk giving non-coherent seeds in different classes, since nothing
-   guarantees that the choices made will belong to the same strong real form;
-   if this happens, too much elements will be generated Cartan classes that
-   lie above more than one minimal Cartan class.
+   The equations of the first section are derived from our test of being in
+   the proper coset for this square class, namely that the Tits element |a|
+   with this left torus part and canonical twisted involution for the Cartan
+   satisfies a*twisted(a)=e in our based twisted Tits group. This leads to
+   linear equations for the torus part of |a|, of which the inhomogeneous part
+   is found by applying the test with a null torus part. The linear part of
+   the equations is just the action of the involution on torus parts, as
+   provided by |Tg.involutionMatrix| for the twisted involution.
+
+   It is not obvious that the equations of this first section actually have a
+   solution, but since the KGB construction will find elements, we assert that
+   there are solutions, and also that the proper grading can be achieved by
+   some element of the coset. The solution is only meaningful modulo the
+   "denominator" subgroup of the subquotient that defines th fiber group, so
+   the result returned should be reduced modulo that subgroup by the caller.
+
+   If grading seeds are determined for different Cartan classes, there is no
+   guarantee that the will belong to the same strong real form. Therefore this
+   method should only be called in cases where only one seed is needed.
  */
 tits::TitsElt BasedTitsGroup::grading_seed
   (complexredgp::ComplexReductiveGroup& G,
@@ -397,9 +422,10 @@ tits::TitsElt BasedTitsGroup::grading_seed
   // locate fiber and weak real form
   const cartanclass::Fiber& f=G.cartan(cn).fiber();
   cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
+  const weyl::TwistedInvolution& tw = G.twistedInvolution(cn);
 
   // get an element lying over the canonical twisted involution for |cn|
-  tits::TitsElt a(titsGroup(),G.twistedInvolution(cn)); // trial element
+  tits::TitsElt a(Tg,tw); // trial element
 
   // get the grading of the imaginary root system given by the element |a|
   gradings::Grading base_grading;
@@ -409,15 +435,28 @@ tits::TitsElt BasedTitsGroup::grading_seed
   // get the grading of the same system given by chosen representative of |wrf|
   gradings::Grading form_grading = f.grading(f.weakReal().classRep(wrf));
 
-  /* set up equations with simple imaginary roots as left hand sides, and with
-     the the bits of |base_grading-form_grading| as right hand side.
-   */
-  latticetypes::BinaryEquationList eqns(f.imaginaryRank());
-  for (size_t i = 0; i < eqns.size(); ++i)
+  // now prepare equations for coset for "fiber numerator" group of torus part
+  Tg.mult(a,twisted(a)); // now |a.t()| gives inhomogenous part
+
+  latticetypes::BinaryEquationList eqns;  // equations for our seed
+  eqns.reserve(G.rank()+f.imaginaryRank()); // for coset + grading
+
+  latticetypes::BinaryMap refl = Tg.involutionMatrix(G.weylGroup().word(tw));
+
+  // coset equations
+  for (size_t i=0; i<G.rank(); ++i)
   {
-    latticetypes::BinaryEquation& equation = eqns[i];
-    equation = latticetypes::BinaryEquation(rd.root(f.simpleImaginary(i)));
+    latticetypes::SmallBitVector lhs = refl.row(i);
+    lhs.flip(i); // left hand side is row $i$ of $TorusPartInvolution-1$
+    eqns.push_back(latticetypes::make_equation(lhs,Tg.left_torus_part(a)[i]));
+  }
+  // grading equations
+  for (size_t i=0; i<f.imaginaryRank(); ++i)
+  {
+    latticetypes::BinaryEquation equation =
+      latticetypes::BinaryEquation(rd.root(f.simpleImaginary(i)));
     equation.pushBack((base_grading^form_grading)[i]);
+    eqns.push_back(equation);
   }
 
   // solve, and tack a solution |x| to the left of |a|.
@@ -429,20 +468,19 @@ tits::TitsElt BasedTitsGroup::grading_seed
   bitvector::firstSolution(x,eqns);
 #endif
 
-  titsGroup().left_add(x,a); // form element $x.\sigma_w$
+  tits::TitsElt seed(Tg,x,tw); // $x.\sigma_w$
 
 #ifndef NDEBUG
-  // double-check that we have found an element that gives the desired grading
+  // double-check that we have found an element with require properties
+
+  tits::TitsElt check=seed; Tg.mult(check,twisted(check));
+  assert(check==tits::TitsElt(Tg)); // we are in the proper coset
+
   for (size_t i=0; i<f.imaginaryRank(); ++i)
-    assert(grading(a,f.simpleImaginary(i))==form_grading[i]);
-
-  tits::TitsElt check=a; titsGroup().mult(check,twisted(check));
-
-  // maybe we should reduce here, but we don't have |FiberData| available...
-  assert(check==tits::TitsElt(titsGroup()));
+    assert(grading(seed,f.simpleImaginary(i))==form_grading[i]); // wrf OK
 #endif
 
-  return a;  // result should be reduced immediatly by caller
+  return seed;  // result should be reduced immediatly by caller
 }
 
 /*!

@@ -379,7 +379,7 @@ bool Matrix<C>::divisible(C c) const
   Puts the i-th row of the matrix in v.
 */
 template<typename C>
-void Matrix<C>::row(Vector<C>& v, size_t i) const
+void Matrix<C>::set_row(Vector<C>& v, size_t i) const
 {
   v.resize(d_columns);
 

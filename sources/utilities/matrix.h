@@ -161,9 +161,18 @@ template<typename C> class Matrix {
     {}
 
 // accessors
-  const C& operator() (size_t i, size_t j) const {
-    return d_data[i*d_columns+j];
-  }
+  size_t numRows() const { return d_rows; }
+  size_t numColumns() const { return d_columns; }
+  size_t rowSize() const { return d_columns;  }
+  size_t columnSize() const { return d_rows; }
+
+  const C& operator() (size_t i, size_t j) const
+  { return d_data[i*d_columns+j]; }
+
+  Vector<C> column(size_t j) const { Vector<C> c; set_column(c,j); return c; }
+  std::vector<Vector<C> > columns() const
+  {std::vector<Vector<C> > result; columnVectors(result,*this); return result; }
+  Vector<C> row(size_t i) const { Vector<C> r; set_column(r,i); return r; }
 
   bool operator== (const Matrix<C>&) const;
 
@@ -176,12 +185,8 @@ template<typename C> class Matrix {
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 
   void set_column(Vector<C>&, size_t) const;
+  void set_row(Vector<C>&, size_t) const;
 
-  Vector<C> column(size_t j) const { Vector<C> c; set_column(c,j); return c; }
-
-  size_t columnSize() const {
-    return d_rows;
-  }
 
   bool divisible(C) const;
 
@@ -201,19 +206,8 @@ template<typename C> class Matrix {
 
   bool isZero(size_t i_min = 0, size_t j_min = 0) const;
 
-  size_t numRows() const {
-    return d_rows;
-  }
 
-  size_t numColumns() const {
-    return d_columns;
-  }
 
-  void row(Vector<C>&, size_t) const;
-
-  size_t rowSize() const {
-    return d_columns;
-  }
 
   Matrix<C> transposed() const
   {

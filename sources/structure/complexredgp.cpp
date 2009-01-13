@@ -235,8 +235,6 @@ ComplexReductiveGroup::ComplexReductiveGroup
 
 	Cartan[ii].below.insert(i);
 
-	bool is_new = ii>=entry_level; // |Cartan[ii]| came from |Cartan[i]|
-
 	for (bitmap::BitMap::iterator
 	       rfi=Cartan[i].real_forms.begin(); rfi(); ++rfi)
 	{
@@ -244,11 +242,11 @@ ComplexReductiveGroup::ComplexReductiveGroup
 	  const bitset::RankFlags in_rep = Cartan[i].rep[rf];
 	  bitset::RankFlags& out_rep = Cartan[ii].rep[rf];
 	  tits::TorusPart tp(in_rep,alpha_bin.size());
-	  if (bitvector::scalarProduct(alpha_bin,tp)!=zero_grading)
+	  if (alpha_bin.dot(tp)!=zero_grading)
 	  {
 	    if (not Cartan[ii].real_forms.isMember(rf))
 	    { // this is the first hit of |ii| for |rf|
-	      assert(is_new); // we may populate only newborn sets
+	      assert(ii>=entry_level); // we may populate only newborn sets
 	      Cartan[ii].real_forms.insert(rf); // mark existence for |rf|
 
 	      tits::TitsElt x(Tg,tp,Cartan[i].tw);
@@ -293,14 +291,8 @@ ComplexReductiveGroup::ComplexReductiveGroup
       }
     }
 
-    bitmap::BitMap seen(Cartan.size()); // mark any Cartan here when first seen
-    seen.insert(Cartan.size()-1); // starting off with most split Cartan seen
-
     for (size_t i=Cartan.size(); i-->0; )
     {
-
-      bitmap::BitMap done = seen; // record Cartans seen before |i| was started
-
       cartanclass::InvolutionData id(*this,Cartan[i].tw);
       rootdata::RootSet pos_re = id.real_roots() & rd.posRootSet();
       for (rootdata::RootSet::iterator it=pos_re.begin(); it(); ++it)
@@ -338,9 +330,6 @@ ComplexReductiveGroup::ComplexReductiveGroup
 	    break; // found a previously encountered Cartan class (must happen)
 	assert(ii<Cartan.size() and Cartan[i].below.isMember(ii));
 
-	bool is_new = not done.isMember(ii);
-	seen.insert(ii);
-
 	for (bitmap::BitMap::iterator
 	       drfi=Cartan[i].dual_real_forms.begin(); drfi(); ++drfi)
 	{
@@ -348,7 +337,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
 	  const bitset::RankFlags in_rep = Cartan[i].dual_rep[drf];
 	  bitset::RankFlags& out_rep = Cartan[ii].dual_rep[drf];
 	  tits::TorusPart tp(in_rep,alpha_bin.size());
-	  if (bitvector::scalarProduct(alpha_bin,tp)!=zero_grading)
+	  if (alpha_bin.dot(tp)!=zero_grading)
 	  {
 	    if (not Cartan[ii].dual_real_forms.isMember(drf))
 	    { // this is the first hit of |ii| for |rf|
@@ -361,7 +350,6 @@ ComplexReductiveGroup::ComplexReductiveGroup
 	      assert(x.tw()==W.opposite(tw));
 
 	      out_rep=dual_Tg.left_torus_part(x).data();
-	      assert(is_new); // may populate only newborn sets
 	    }
 	  }
 	} // for (rf)
@@ -493,13 +481,89 @@ ComplexReductiveGroup::reflection(rootdata::RootNbr rn,
 
 /******** manipulators *******************************************************/
 
+
+
 void ComplexReductiveGroup::add_Cartan(size_t cn)
 {
   Cartan[cn].class_pt =
     new cartanclass::CartanClass(rootDatum(),
 				 involutionMatrix(Cartan[cn].tw));
-  correlateForms(cn);
-  correlateDualForms(cn);
+  map_real_forms(cn);      // used to be |correlateForms(cn);|
+  map_dual_real_forms(cn); // used to be |correlateDualForms(cn);|
+}
+
+void ComplexReductiveGroup::map_real_forms(size_t cn)
+{
+  tits::BasedTitsGroup adj_Tg(*this);
+  const cartanclass::Fiber& f = Cartan[cn].class_pt->fiber();
+  const partition::Partition& weak_real = f.weakReal();
+  const weyl::TwistedInvolution& tw = Cartan[cn].tw;
+  const rootdata::RootList& sim = f.simpleImaginary();
+
+  Cartan[cn].real_labels.resize(weak_real.classCount());
+  assert(weak_real.classCount()==Cartan[cn].real_forms.size());
+
+  tits::TorusPart base = sample_torus_part(cn,quasisplit());
+  tits::TitsElt a(adj_Tg.titsGroup(),base,tw);
+  gradings::Grading ref_gr; // reference grading for quasisplit form
+  for (size_t i=0; i<sim.size(); ++i)
+    ref_gr.set(i,adj_Tg.grading(a,sim[i]));
+
+  cartanclass::AdjointFiberElt rep = f.gradingRep(ref_gr);
+
+  // now lift |rep| to a torus part and subtract from |base|
+  latticetypes::SmallBitVector v(bitset::RankFlags(rep),
+				 f.adjointFiberRank());
+  base -= f.adjointFiberGroup().fromBasis(v);
+
+  for (bitmap::BitMap::iterator
+	 rfi=Cartan[cn].real_forms.begin(); rfi(); ++rfi)
+  {
+    realform::RealForm rf = *rfi;
+    tits::TorusPart tp = sample_torus_part(cn,rf);
+    cartanclass::AdjointFiberElt rep =
+      f.adjointFiberGroup().toBasis(tp-=base).data().to_ulong();
+    Cartan[cn].real_labels[weak_real(rep)]=rf;
+  }
+  assert(Cartan[cn].real_labels[0]==quasisplit());
+  Cartan[cn].rep[0] = base.data(); // change representative to remember base
+}
+
+void ComplexReductiveGroup::map_dual_real_forms(size_t cn)
+{
+  tits::BasedTitsGroup dual_adj_Tg(*this,tags::DualTag());
+  const cartanclass::Fiber& dual_f = Cartan[cn].class_pt->dualFiber();
+  const partition::Partition& dual_weak_real = dual_f.weakReal();
+  const weyl::TwistedInvolution dual_tw =W.opposite(Cartan[cn].tw);
+  const rootdata::RootList& sre = dual_f.simpleImaginary(); // simple real
+
+  Cartan[cn].dual_real_labels.resize(dual_weak_real.classCount());
+  assert(dual_weak_real.classCount()==Cartan[cn].dual_real_forms.size());
+
+  tits::TorusPart dual_base = dual_sample_torus_part(cn,0);
+  tits::TitsElt dual_a(dual_adj_Tg.titsGroup(),dual_base,dual_tw);
+  gradings::Grading dual_ref_gr; // reference for dual quasisplit form
+  for (size_t i=0; i<sre.size(); ++i)
+    dual_ref_gr.set(i,dual_adj_Tg.grading(dual_a,sre[i]));
+
+  cartanclass::AdjointFiberElt dual_rep = dual_f.gradingRep(dual_ref_gr);
+
+  // now lift |rep| to a torus part and subtract from |base|
+  latticetypes::SmallBitVector v(bitset::RankFlags(dual_rep),
+				 dual_f.adjointFiberRank());
+  dual_base -= dual_f.adjointFiberGroup().fromBasis(v);
+
+  for (bitmap::BitMap::iterator
+	 drfi=Cartan[cn].dual_real_forms.begin(); drfi(); ++drfi)
+  {
+    realform::RealForm drf = *drfi;
+    tits::TorusPart tp = dual_sample_torus_part(cn,drf);
+    cartanclass::AdjointFiberElt rep =
+      dual_f.adjointFiberGroup().toBasis(tp-=dual_base).data().to_ulong();
+    Cartan[cn].dual_real_labels[dual_weak_real(rep)]=drf;
+  }
+  assert(Cartan[cn].dual_real_labels[0]==0);
+  Cartan[cn].dual_rep[0] = dual_base.data();
 }
 
 /*!
@@ -521,7 +585,7 @@ void ComplexReductiveGroup::add_Cartan(size_t cn)
 void ComplexReductiveGroup::correlateForms(size_t cn)
 {
   const rootdata::RootDatum& rd = rootDatum();
-  const weyl::TwistedWeylGroup& W = twistedWeylGroup();
+  const weyl::TwistedWeylGroup& tW = twistedWeylGroup();
   const cartanclass::Fiber& fundf = d_fundamental;
   const cartanclass::Fiber& f = cartan(cn).fiber(); // fiber of this Cartan
 
@@ -530,9 +594,9 @@ void ComplexReductiveGroup::correlateForms(size_t cn)
   // find cayley part and cross part
   rootdata::RootList so;
   weyl::WeylWord ww;
-  Cayley_and_cross_part(so,ww,ti,rd,W);
+  Cayley_and_cross_part(so,ww,ti,rd,tW);
 
-  assert(checkDecomposition(ti,ww,so,W,rd,fundf.involution()));
+  assert(checkDecomposition(ti,ww,so,tW,rd,fundf.involution()));
 
   const partition::Partition& pi = f.weakReal();
   realform::RealFormList rfl(f.numRealForms());
@@ -567,29 +631,26 @@ void ComplexReductiveGroup::correlateForms(size_t cn)
 void ComplexReductiveGroup::correlateDualForms(size_t cn)
 {
   const rootdata::RootDatum& rd = dualRootDatum();
-  const weyl::TwistedWeylGroup& W = dualTwistedWeylGroup();
+  const weyl::TwistedWeylGroup& tW = dualTwistedWeylGroup();
   const cartanclass::Fiber& fundf = d_dualFundamental;
   const cartanclass::Fiber& f = cartan(cn).dualFiber();
 
-  /* find dual twisted involution by right-multiplication of |f| by |fundf|.
-     However since |word_of_inverse_matrix| is used, we compute |q=fundf*f|. */
-  latticetypes::LatticeMatrix q = fundf.involution();
-  q *= f.involution();
-  weyl::WeylWord tiww=rd.word_of_inverse_matrix(q);
-  weyl::TwistedInvolution ti(weyl::WeylElt(tiww,W.weylGroup()));
+  weyl::TwistedInvolution ti = dualTwistedInvolution(cn);
+
 
   // find cayley part and cross part
   rootdata::RootList so;
   weyl::WeylWord ww;
-  Cayley_and_cross_part(so,ww,ti,rd,W); // computation is in dual setting!
+  Cayley_and_cross_part(so,ww,ti,rd,tW); // computation is in dual setting!
 
-  assert(checkDecomposition(ti,ww,so,W,rd,fundf.involution()));
+  assert(checkDecomposition(ti,ww,so,tW,rd,fundf.involution()));
 
   const partition::Partition& pi = f.weakReal();
   realform::RealFormList rfl(f.numRealForms());
 
   // transform gradings and correlate forms
-  for (size_t j = 0; j < rfl.size(); ++j) {
+  for (size_t j = 0; j < rfl.size(); ++j)
+  {
     unsigned long y = pi.classRep(j);
     gradings::Grading gr=f.grading(y);
     rootdata::RootList rl = f.simpleImaginary();

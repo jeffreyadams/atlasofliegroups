@@ -107,9 +107,6 @@ template<size_t dim>
 */
 
 template<size_t dim>
-  bool scalarProduct(const BitVector<dim>&, const BitVector<dim>&);
-
-template<size_t dim>
   void spanAdd(std::vector<BitVector<dim> >&, std::vector<size_t>&,
 	       const BitVector<dim>&);
 
@@ -220,29 +217,21 @@ template<size_t dim> class BitVector{
     return d_data[i];
   }
 
-  size_t count() {
-    return d_data.count();
-  }
+  size_t size() const { return d_size; }
 
-  const bitset::BitSet<dim>& data() const {
-    return d_data;
-  }
+  const bitset::BitSet<dim>& data() const { return d_data; }
 
-  size_t firstBit() const {
-    return d_data.firstBit();
-  }
+  size_t firstBit() const { return d_data.firstBit(); }
 
-  bool isZero() const {
-    return d_data.none();
-  }
+  size_t count() { return d_data.count(); }
 
-  bool nonZero() const {
-    return d_data.any();
-  }
+  bool isZero() const { return d_data.none(); }
 
-  size_t size() const {
-    return d_size;
-  }
+  bool nonZero() const { return d_data.any(); }
+
+  //! scalar product with value in $\Z/2$
+  bool dot(const BitVector& v) const
+  { return ((d_data & v.d_data).count()&1u)!=0; }
 
 // manipulators
 
@@ -459,7 +448,15 @@ template<size_t dim> class BitMatrix {
 
 // accessors
 
-  // second argument is by value, the implicit copy avoid aliasing problems
+  //! The (i,j) entry of the BitMatrix.
+  bool test(size_t i, size_t j) const
+  {
+    assert(i<d_rows);
+    assert(j<d_columns);
+    return d_data[j].test(i);
+  }
+
+  // second argument is by value, the implicit copy avoids aliasing problems
   void apply(BitVector<dim>& dst, BitVector<dim> src) const;
 
   BitVector<dim> apply(const BitVector<dim>& src) const; // functional version
@@ -467,15 +464,6 @@ template<size_t dim> class BitMatrix {
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 
-  /*!
-  Returns column $j$ of the BitMatrix, as a BitVector.
-  */
-  const BitVector<dim> column(size_t j) const {
-    assert(j<d_columns);
-    return BitVector<dim>(d_data[j],d_rows);
-  }
-
-  void column(BitVector<dim>&, size_t) const;
 
   /*!
   Tests whether the BitMatrix is empty (has zero columns).
@@ -503,16 +491,19 @@ template<size_t dim> class BitMatrix {
     return d_rows;
   }
 
-  void row(BitVector<dim>&, size_t) const;
 
-  /*!
-  Tests the (i,j) entry of the BitMatrix.
-  */
-  bool test(size_t i, size_t j) const {
-    assert(i<d_rows);
+  void get_row(BitVector<dim>&, size_t) const;
+  BitVector<dim> row(size_t i) const
+  { BitVector<dim> result; get_row(result,i); return result; }
+
+  //! Column $j$ of the BitMatrix, as a BitVector.
+  BitVector<dim> column(size_t j) const
+  {
     assert(j<d_columns);
-    return d_data[j].test(i);
+    return BitVector<dim>(d_data[j],d_rows);
   }
+  void get_column(BitVector<dim>& c, size_t j) const { c=column(j); }
+
 
 // manipulators
 

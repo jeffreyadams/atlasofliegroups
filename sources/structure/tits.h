@@ -308,6 +308,9 @@ the \f$\delta\f$ coset of the Tits group.
   //!\brief Binary matrix*vector product to compute twist on torus part
   TorusPart twisted(const TorusPart& x) const { return d_involution.apply(x); }
 
+  //!\brief Reflection of |TorusPart|s defined by a twisted involution
+  latticetypes::BinaryMap involutionMatrix(const weyl::WeylWord& tw) const;
+
   //!\brief In-place imperative version of |twisted(TorusPart x)|
   void twist(TorusPart& x) const { d_involution.apply(x,x); }
 
@@ -391,7 +394,7 @@ commutes with $x$). This is used internally to compute the proper commutation
 relations between Weyl group and torus parts of a Tits element.
   */
   void reflect(TorusPart& x, weyl::Generator s) const
-  { if (bitvector::scalarProduct(x,d_simpleRoot[s]))
+  { if (d_simpleRoot[s].dot(x))
       x += d_simpleCoroot[s];
   }
 
@@ -502,6 +505,9 @@ class BasedTitsGroup
 
   // conjugate Tits group element by $\delta_1$
   tits::TitsElt twisted(const tits::TitsElt& a) const;
+  // also keep vversion for torus part only
+  tits::TorusPart twisted(const tits::TorusPart& t) const
+  { return Tg.twisted(t);}
 
   // general case of grading of a KGB element at an imaginary root
   bool grading(tits::TitsElt a, rootdata::RootNbr n) const;
@@ -572,8 +578,7 @@ class EnrichedTitsGroup : public BasedTitsGroup
 */
 bool BasedTitsGroup::simple_grading(const tits::TitsElt& a, size_t s) const
 {
-  return grading_offset[s]
-    ^bitvector::scalarProduct(Tg.left_torus_part(a),Tg.simpleRoot(s));
+  return grading_offset[s] ^ Tg.simpleRoot(s).dot(Tg.left_torus_part(a));
 }
 
 /* Apart from the grading methods, this is another place where we use
