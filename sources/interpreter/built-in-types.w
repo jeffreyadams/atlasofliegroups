@@ -1283,12 +1283,9 @@ disappears. The reference count needs to be shared of course, and since the
 links between the |inner_class_value| and both the \.{atlas} value and the reference count are indissoluble, we use references for the
 members |val| and |ref_count|.
 
-The reference to |val| is not |const|, since at some point we need to apply
-the method |fillCartan| to it, which considered to be a manipulator and so is
-not defined as a |const| method (even though technically it could have been,
-given the fact that it only modifies values at the other side of the
-|d_cartan| pointer). The variability of |val| may in fact be noticeable to the
-user through effects on the numbering of Cartan classes.
+The reference to |val| is not |const|, since some methods will as a side
+effect generate |CartanClass| objects in the inner class, whence they are
+technically manipulators rather than accessors.
 
 The main constructor takes a auto-pointer to a |ComplexReductiveGroup| as
 argument, as a reminder that the caller gives up ownership of this pointer
@@ -1567,7 +1564,6 @@ are currently computationally feasible.
 @< Local function def...@>=
 void block_sizes_wrapper()
 { inner_class_ptr G(get<inner_class_value>());
-  G->val.fillCartan();
   matrix_ptr
   M(new matrix_value @|
     (latticetypes::LatticeMatrix(G->val.numRealForms()
@@ -1587,7 +1583,6 @@ the columns by Cartan classes (note the alliteration).
 @< Local function def...@>=
 void occurrence_matrix_wrapper()
 { inner_class_ptr G(get<inner_class_value>());
-  G->val.fillCartan();
   size_t nr=G->val.numRealForms();
   size_t nc=G->val.numCartanClasses();
   matrix_ptr
@@ -1607,7 +1602,6 @@ to write this function.
 @< Local function def...@>=
 void dual_occurrence_matrix_wrapper()
 { inner_class_ptr G(get<inner_class_value>());
-  G->val.fillCartan();
   size_t nr=G->val.numDualRealForms();
   size_t nc=G->val.numCartanClasses();
   matrix_ptr
@@ -1753,13 +1747,10 @@ void components_rank_wrapper()
 }
 
 @ And here is one that counts the number of Cartan classes for the real form.
-Note that we must call |fillCartan()| here to ensure that the Cartan classes
-are in fact generated.
 
 @< Local function def...@>=
 void count_Cartans_wrapper()
 { real_form_ptr rf(get<real_form_value>());
-  rf->val.fillCartan();
   push_value(new int_value(rf->val.numCartan()));
 }
 
@@ -1769,7 +1760,6 @@ form, once the corresponding Cartan classes have been generated.
 @< Local function def...@>=
 void KGB_size_wrapper()
 { real_form_ptr rf(get<real_form_value>());
-  rf->val.fillCartan();
   push_value(new int_value(rf->val.KGB_size()));
 }
 
@@ -1782,7 +1772,6 @@ command in atlas.
 @< Local function def...@>=
 void Cartan_order_matrix_wrapper()
 { real_form_ptr rf(get<real_form_value>());
-  rf->val.fillCartan();
   size_t n=rf->val.numCartan();
   matrix_value* M =
      new matrix_value(latticetypes::LatticeMatrix(n,n,0));
@@ -1880,13 +1869,10 @@ Another type of value associated to inner classes are Cartan classes, which
 describe equivalence classes (for ``stable conjugacy'') of Cartan subgroups of
 real reductive groups in an inner class. The Atlas software associates a fixed
 set of Cartan classes to each inner class, and records for each real form the
-subset of those Cartan classes that occur for the real form. Contrary to real
-forms, the complete list of Cartan classes is not generated directly upon
-construction of the |ComplexReductiveGroup|; to ensure that all Cartan classes
-for a given real form~|f| of an inner class~|C| exist, one should first call
-|C.fillCartan(f)| (or equivalently the method |fillCartan()| for a
-|RealReductiveGroup| object constructed using~|f|), or call |C.fillCartan()|
-which will generate the full list of Cartan classes for this inner class.
+subset of those Cartan classes that occur for the real form. Since
+versions 0.3.5 of the software from, the Cartan classes are identified and
+numbered upon construction of a |ComplexReductiveGroup| object, but
+|CartanClass| objects are constructed on demand.
 
 @< Includes... @>=
 #include "cartanclass.h"
@@ -1956,7 +1942,6 @@ void Cartan_class_wrapper()
 { push_tuple_components();
   int_ptr i(get<int_value>());
   real_form_ptr rf(get<real_form_value>());
-  rf->val.fillCartan();
   if (size_t(i->val)>=rf->val.numCartan())
     throw std::runtime_error
     ("illegal Cartan class number: "+num(i->val)
@@ -1975,7 +1960,6 @@ real form, but we have a direct access to it via the |mostSplit| method for
 @< Local function def...@>=
 void most_split_Cartan_wrapper()
 { real_form_ptr rf(get<real_form_value>());
-  rf->val.fillCartan();
   push_value(new Cartan_class_value(rf->parent,rf->val.mostSplit()));
 }
 
@@ -2274,7 +2258,6 @@ void print_block_wrapper()
   dual_real_form_ptr drf(get<dual_real_form_value>());
   real_form_ptr rf(get<real_form_value>());
 @)
-  rf->val.fillCartan();
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
@@ -2299,7 +2282,6 @@ void print_blockd_wrapper()
   dual_real_form_ptr drf(get<dual_real_form_value>());
   real_form_ptr rf(get<real_form_value>());
 @)
-  rf->val.fillCartan();
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
@@ -2321,7 +2303,6 @@ void print_blocku_wrapper()
   dual_real_form_ptr drf(get<dual_real_form_value>());
   real_form_ptr rf(get<real_form_value>());
 @)
-  rf->val.fillCartan();
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
@@ -2385,8 +2366,6 @@ void print_blockstabilizer_wrapper()
 void print_KGB_wrapper()
 { real_form_ptr rf(get<real_form_value>());
 @)
-  rf->val.fillCartan();
-@)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
   kgb::KGB kgb(rf->val);
@@ -2407,7 +2386,6 @@ void print_KL_basis_wrapper()
   dual_real_form_ptr drf(get<dual_real_form_value>());
   real_form_ptr rf(get<real_form_value>());
 @)
-  rf->val.fillCartan();
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
@@ -2437,7 +2415,6 @@ void print_prim_KL_wrapper()
   dual_real_form_ptr drf(get<dual_real_form_value>());
   real_form_ptr rf(get<real_form_value>());
 @)
-  rf->val.fillCartan();
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
@@ -2468,7 +2445,6 @@ void print_KL_list_wrapper()
   dual_real_form_ptr drf(get<dual_real_form_value>());
   real_form_ptr rf(get<real_form_value>());
 @)
-  rf->val.fillCartan();
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
@@ -2501,7 +2477,6 @@ void print_W_cells_wrapper()
   dual_real_form_ptr drf(get<dual_real_form_value>());
   real_form_ptr rf(get<real_form_value>());
 @)
-  rf->val.fillCartan();
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
@@ -2533,7 +2508,6 @@ void print_W_graph_wrapper()
   dual_real_form_ptr drf(get<dual_real_form_value>());
   real_form_ptr rf(get<real_form_value>());
 @)
-  rf->val.fillCartan();
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
     ("inner class mismatch between real form and dual real form");
