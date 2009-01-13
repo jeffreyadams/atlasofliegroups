@@ -134,6 +134,8 @@ void addTestCommands<mainmode::MainmodeTag>
   mode.add("posroots_rootbasis",posroots_rootbasis_f);
   mode.add("coroots_rootbasis",coroots_rootbasis_f);
   mode.add("poscoroots_rootbasis",poscoroots_rootbasis_f);
+
+  mode.add("examine",exam_f);
 }
 
 
@@ -154,8 +156,6 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("Ktypemat",Ktypemat_f);
   mode.add("mod_lattice",mod_lattice_f);
   mode.add("branch",branch_f);
-
-  mode.add("examine",exam_f);
 
 }
 
@@ -755,11 +755,10 @@ void examine(complexredgp::ComplexReductiveGroup& G,size_t cn)
   assert(Cartan.numDualRealForms()==G.numDualRealForms(cn));
 
   rootdata::RootList sim = Cartan.simpleImaginary();
-  rootdata::RootList sre = dual_f.simpleImaginary(); //Cartan.simpleReal();
+  rootdata::RootList sre = Cartan.simpleReal();
   // or equivalently we could have done |dual_f.simpleImaginary()|
 
   tits::TorusPart base = G.sample_torus_part(cn,G.quasisplit());
-  tits::TorusPart dual_base = G.dual_sample_torus_part(cn,0);
   tits::TitsElt a(adj_Tg.titsGroup(),base,tw);
   gradings::Grading ref_gr; // reference grading for quasisplit form
   for (size_t i=0; i<sim.size(); ++i)
@@ -772,6 +771,7 @@ void examine(complexredgp::ComplexReductiveGroup& G,size_t cn)
 				 f.adjointFiberRank());
   base -= f.adjointFiberGroup().fromBasis(v);
 
+  tits::TorusPart dual_base = G.dual_sample_torus_part(cn,0);
   tits::TitsElt dual_a(dual_adj_Tg.titsGroup(),dual_base,dual_tw);
   gradings::Grading dual_ref_gr; // reference for dual quasisplit form
   for (size_t i=0; i<sre.size(); ++i)
@@ -827,44 +827,35 @@ void examine(complexredgp::ComplexReductiveGroup& G,size_t cn)
 
 void testrun_f()
 {
-  unsigned long rank=interactive::get_bounded_int
+  unsigned long rank = interactive::get_bounded_int
     (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
+  latticetypes::LatticeMatrix id; matrix::identityMatrix(id,rank);
   for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
   {
     std::cout<< *it << std::endl;
-    size_t count=0;
-    for (testrun::CoveringIterator cit(*it); cit(); ++cit)
+    rootdata::RootDatum rd
+      (prerootdata::PreRootDatum(*it,id.columns())); // simply connected
+    complexredgp::ComplexReductiveGroup G(rd,id); // equal rank case only
+    for (size_t cn=0; cn<G.numCartanClasses(); ++cn)
     {
-      if (count>0) std::cout << ',' << std::flush;
-      rootdata::RootDatum rd(*cit);
-      latticetypes::LatticeMatrix id; matrix::identityMatrix(id,rd.rank());
-      complexredgp::ComplexReductiveGroup G0(rd,id);
-      for (int n=0; n<2; ++n)
-      {
-	complexredgp::ComplexReductiveGroup* p = n==0 ? &G0
-	  : new complexredgp::ComplexReductiveGroup(G0,tags::DualTag());
-	for (size_t cn=0; cn<p->numCartanClasses(); ++cn)
-	{
-	  examine(*p,cn);
-	}
-	if (n==1) delete p; // clean up dual group
-      }
-      std::cout << ++count;
+      examine(G,cn);
+      complexredgp::ComplexReductiveGroup dG(G,tags::DualTag());
+      examine(dG,cn);
     }
-    std::cout << '.' << std::endl;
   }
 
 }
 
 void exam_f()
 {
-  size_t cn =
-    interactive::get_Cartan_class(realmode::currentRealGroup().Cartan_set());
+  complexredgp::ComplexReductiveGroup& G = mainmode::currentComplexGroup();
+  size_t cn = interactive::get_bounded_int
+    (interactive::common_input(),"Cartan class: ",G.numCartanClasses());
   examine(mainmode::currentComplexGroup(),cn);
   std::cout << "G OK" << std::endl;
   complexredgp::ComplexReductiveGroup dG
     (mainmode::currentComplexGroup(),tags::DualTag());
-  assert(mainmode::currentComplexGroup().numCartanClasses()
+  assert(G.numCartanClasses()
 	 ==dG.numCartanClasses());
   examine(dG,cn);
   std::cout << "dual G OK" << std::endl;
