@@ -172,7 +172,14 @@ template<typename C> class Matrix {
   Vector<C> column(size_t j) const { Vector<C> c; set_column(c,j); return c; }
   std::vector<Vector<C> > columns() const
   {std::vector<Vector<C> > result; columnVectors(result,*this); return result; }
-  Vector<C> row(size_t i) const { Vector<C> r; set_column(r,i); return r; }
+  Vector<C> row(size_t i) const { Vector<C> r; set_row(r,i); return r; }
+  std::vector<Vector<C> > rows() const
+  {
+    std::vector<Vector<C> > result(numRows());
+    for (size_t i=0; i<numRows(); ++i)
+      set_row(result[i],i);
+    return result;
+  }
 
   bool operator== (const Matrix<C>&) const;
 
