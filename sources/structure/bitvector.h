@@ -420,7 +420,7 @@ template<size_t dim> class BitMatrix {
     , d_rows(m.numRows())
     , d_columns(m.numColumns())
     {
-      assert(m.numRows()<dim);
+      assert(m.numRows()<=dim);
       for (size_t i=0; i<d_rows; ++i)
 	for (size_t j=0; j<d_columns; ++j)
 	  d_data[j].set(i, (m(i,j)&1)!=0 );
