@@ -293,8 +293,6 @@ CoveringIterator::CoveringIterator(const CoveringIterator& i)
   , d_smithBasis(i.d_smithBasis)
   , d_preRootDatum(i.d_preRootDatum)
 {
-  using namespace abelian;
-
   if (d_dcenter) // get own copy
     d_dcenter = new abelian::FiniteAbelianGroup(*d_dcenter);
 
@@ -311,24 +309,22 @@ CoveringIterator::CoveringIterator(const CoveringIterator& i)
 				  d_quotReps.end());
 }
 
-CoveringIterator::~CoveringIterator()
 
 /*
   We need to delete the d_dcenter pointer.
 */
-
+CoveringIterator::~CoveringIterator()
 {
   delete d_dcenter;
 }
 
 /******** assignment ********************************************************/
 
-CoveringIterator& CoveringIterator::operator= (const CoveringIterator& i)
 
 /*
   Assignment operator; uses copy constructor.
 */
-
+CoveringIterator& CoveringIterator::operator= (const CoveringIterator& i)
 {
   // handle self-assignment
   if (&i != this) {
@@ -341,7 +337,6 @@ CoveringIterator& CoveringIterator::operator= (const CoveringIterator& i)
 
 /******** manipulators ******************************************************/
 
-CoveringIterator& CoveringIterator::operator++ ()
 
 /*
   Advances the iterator to the next subgroup. This is hard!
@@ -353,10 +348,8 @@ CoveringIterator& CoveringIterator::operator++ ()
   one, and so on. To keep track of what we are doing, we push each group
   that is found onto d_subgroup, as a bitmap.
 */
-
+CoveringIterator& CoveringIterator::operator++ ()
 {
-  using namespace prerootdata;
-
   // advance the torus part
 
   ++d_torusPart;
@@ -384,12 +377,11 @@ finish: // update d_preRootDatum
   latticetypes::WeightList lb;
   makeBasis(lb);
 
-  d_preRootDatum = PreRootDatum(d_lieType,lb);
+  d_preRootDatum = prerootdata::PreRootDatum(d_lieType,lb);
 
   return *this;
 }
 
-void CoveringIterator::makeBasis(latticetypes::WeightList& b)
 
 /*
   Puts in b the basis corresponding to d_group and d_torusPart.
@@ -405,10 +397,8 @@ void CoveringIterator::makeBasis(latticetypes::WeightList& b)
   by these combinations. That will yield a basis for our lattice (not a
   smith basis in general, but we don't mind.)
 */
-
+void CoveringIterator::makeBasis(latticetypes::WeightList& b)
 {
-  using namespace tags;
-
   // the sizes that are involved
 
   size_t c_rank = d_dcenter->rank();
@@ -437,7 +427,7 @@ void CoveringIterator::makeBasis(latticetypes::WeightList& b)
 
   latticetypes::LatticeMatrix m_cb(cb);
   latticetypes::LatticeMatrix m_sb
-    (d_smithBasis.begin() + s_rank,d_smithBasis.end(), IteratorTag());
+    (d_smithBasis.begin() + s_rank,d_smithBasis.end(), tags::IteratorTag());
 
   m_sb *= m_cb;
 
@@ -458,8 +448,6 @@ void CoveringIterator::makeBasis(latticetypes::WeightList& b)
 
         Chapter V -- The SubgroupIterator class
 
-  ... explain here when it is stable ...
-
   NOTE: this class keeps a pointer to the abelian group it is iterating
   through. This should have been a constant pointer, except for the fact
   that the iterator may trigger the lazy construction of the c_cycGenerators
@@ -471,18 +459,15 @@ void CoveringIterator::makeBasis(latticetypes::WeightList& b)
 
 namespace testrun {
 
-SubgroupIterator::SubgroupIterator(abelian::FiniteAbelianGroup& A)
-  :d_group(&A)
 
 /*
   Constructs the SubgroupIterator that (using reset as well as ++) will
   allow us to iterate through the various subgroups of the finite abelian
   group of the given shape.
 */
-
+SubgroupIterator::SubgroupIterator(abelian::FiniteAbelianGroup& A)
+  :d_group(&A)
 {
-  using namespace bitmap;
-
   // make data for the trivial subgroup
 
   d_subgroup.set_capacity(d_group->size());
@@ -520,12 +505,11 @@ SubgroupIterator::SubgroupIterator(const SubgroupIterator& i)
 
 /******** assignment *********************************************************/
 
-SubgroupIterator& SubgroupIterator::operator= (const SubgroupIterator& i)
 
 /*
   Synopsis: assignment operator
 */
-
+SubgroupIterator& SubgroupIterator::operator= (const SubgroupIterator& i)
 {
   d_group = i.d_group;
   d_prevRank = i.d_prevRank;
@@ -544,7 +528,6 @@ SubgroupIterator& SubgroupIterator::operator= (const SubgroupIterator& i)
 /******** manipulators *******************************************************/
 
 SubgroupIterator& SubgroupIterator::operator++ ()
-
 {
   incrementGenerator();
 
@@ -555,7 +538,6 @@ SubgroupIterator& SubgroupIterator::operator++ ()
 }
 
 void SubgroupIterator::incrementGenerator()
-
 {
   ++d_generator;
 
@@ -570,11 +552,8 @@ void SubgroupIterator::incrementGenerator()
   updateCycGenerator(d_cycGenerators,*d_group,*d_prev,*d_generator);
 
   d_thisRank.insert(d_subgroup);
-
-  return;
 }
 
-void SubgroupIterator::resetGenerator()
 
 /*
   This function should be called when the iterator reaches past-the-end.
@@ -582,7 +561,7 @@ void SubgroupIterator::resetGenerator()
   such, it will go to the next rank; if there is no such, it will set the
   iterator to past-the-end.
 */
-
+void SubgroupIterator::resetGenerator()
 {
   // advance d_prev to the next valid subgroup
 
@@ -617,8 +596,6 @@ void SubgroupIterator::resetGenerator()
  finish:
     d_generator = d_cycGenerators.begin(); // sentinel value
     incrementGenerator();
-
-    return;
 }
 
 }
@@ -643,12 +620,11 @@ namespace testrun {
 
 namespace {
 
-void firstType(lietype::LieType& lt, const Shape& s)
 
 /*
   Sets lt to the first type in its shape.
 */
-
+void firstType(lietype::LieType& lt, const Shape& s)
 {
   lt.resize(s.size());
 
@@ -659,7 +635,6 @@ void firstType(lietype::LieType& lt, const Shape& s)
   return;
 }
 
-bool firstType(lietype::LieType& lt, Category c, size_t l)
 
 /*
   This function puts in lt the first type of rank l in category c. It is
@@ -667,14 +642,15 @@ bool firstType(lietype::LieType& lt, Category c, size_t l)
 
   Returns false if the construction succeeds, true otherwise.
 */
-
+bool firstType(lietype::LieType& lt, Category c, size_t l)
 {
-  if ((l == 0) or (l >= constants::RANK_MAX))
+  if (l==0 or l>constants::RANK_MAX)
     return true;
 
   lt.resize(0);
 
-  switch (c) {
+  switch (c)
+  {
   case Simple: // first type is A;
     lt.push_back(lietype::SimpleLieType('A',l));
     return false;
@@ -684,15 +660,14 @@ bool firstType(lietype::LieType& lt, Category c, size_t l)
     return false;
   default:
     return true;
-  };
+  }
 }
 
-bool isLast(const lietype::SimpleLieType& slt)
 
 /*
   Returns true if slt is the last type in its rank, false otherwise.
 */
-
+bool isLast(const lietype::SimpleLieType& slt)
 {
   size_t l = lietype::rank(slt);
 
@@ -727,24 +702,22 @@ bool isLast(const lietype::SimpleLieType& slt)
   };
 }
 
-bool isLast(const Shape& s)
 
 /*
   Tells if the shape is the last one for its number of parts. This means
   that there are only two part sizes, differring by one. So it is trivial!
 */
-
+bool isLast(const Shape& s)
 {
   return (s.back()-s.front()) <= 1;
 }
 
-bool isLastInShape(const lietype::LieType& lt)
 
 /*
   Returns true if lt is the last Lie type in its shape. This means simply
   that each of the simple types is maximal for its rank.
 */
-
+bool isLastInShape(const lietype::LieType& lt)
 {
   for (unsigned long j = 0; j < lt.size(); ++j)
     if (!isLast(lt[j]))
@@ -753,7 +726,6 @@ bool isLastInShape(const lietype::LieType& lt)
   return true;
 }
 
-void nextInShape(lietype::LieType& lt)
 
 /*
   Advances lt to the next Lie type of the same shape. It is assumed that
@@ -763,7 +735,7 @@ void nextInShape(lietype::LieType& lt)
   we set the next ones of the same rank to be equal, and the next ones of
   larger ranks to their minimal values.
 */
-
+void nextInShape(lietype::LieType& lt)
 {
   unsigned long c = lt.size()-1;
 
@@ -783,7 +755,6 @@ void nextInShape(lietype::LieType& lt)
   return;
 }
 
-bool nextSemisimpleType(lietype::LieType& lt)
 
 /*
   Assuming that lt holds a valid semisimple type, this function advances
@@ -805,7 +776,7 @@ bool nextSemisimpleType(lietype::LieType& lt)
   where everyone is maximal. The we need to move to the next partition of
   l and start over again.
 */
-
+bool nextSemisimpleType(lietype::LieType& lt)
 {
   if (lt.size() == lietype::rank(lt))
     return true;
@@ -822,7 +793,6 @@ bool nextSemisimpleType(lietype::LieType& lt)
   return false;
 }
 
-void nextShape(Shape& s)
 
 /*
   Advance shape to the next partition of the same integer. Keep the
@@ -839,7 +809,7 @@ void nextShape(Shape& s)
   Note also that the condition for the last shape is all ones; we assume
   that that has already been checked not to be the case.
 */
-
+void nextShape(Shape& s)
 {
     if (isLast(s)) { // we have to increase the number of parts
 
@@ -895,20 +865,17 @@ void nextShape(Shape& s)
   }
 }
 
-lietype::SimpleLieType nextSimpleType(const lietype::SimpleLieType& slt)
 
 /*
   Assuming that slt holds a simple Lie type of rank l, this function returns
   the next one of the same rank. It is assumed that isLast has been called on
   slt and has returned false.
 */
-
+lietype::SimpleLieType nextSimpleType(const lietype::SimpleLieType& slt)
 {
-  using namespace lietype;
-
   size_t l = lietype::rank(slt);
 
-  switch (type(slt)) {
+  switch (lietype::type(slt)) {
   case 'A': // l is at least two, next is B
     return lietype::SimpleLieType('B',l);
   case 'B': // l is at least two; next is G if l is two, C otherwise
@@ -944,7 +911,7 @@ bool nextType(lietype::LieType& lt, Category c)
       return true;
     else {
       lt[0] = nextSimpleType(lt[0]);
-    return false;
+      return false;
     }
   case Semisimple:
     return nextSemisimpleType(lt);
@@ -1039,17 +1006,16 @@ void setCycGenerator(bitmap::BitMap& cyc,
       cyc.andnot(prev[j]);
 
   // eliminate generators from groups in this rank
-
-  std::set<bitmap::BitMap>::const_iterator current_end = current.end();
-
-  for (std::set<bitmap::BitMap>::const_iterator i = current.begin(); i != current_end;
-       ++i)
-    if (i->contains(*b)) {
+  for (std::set<bitmap::BitMap>::const_iterator
+	 i=current.begin(); i!=current.end(); ++i)
+    if (i->contains(*b))
+    {
       abelian::GrpNbr x = quotGenerator(A,*i,*b);
       updateCycGenerator(cyc,A,*b,x);
     }
 
-  if (cyc.empty()) { // advance to the next group
+  if (cyc.empty()) // advance to the next group
+  {
     ++b;
     setCycGenerator(cyc,prev,current,b,A);
   }
@@ -1065,12 +1031,10 @@ void setCycGenerator(bitmap::BitMap& cyc,
 */
 void shape(Shape& s, const lietype::LieType& lt)
 {
-  using namespace lietype;
-
   s.resize(0);
 
   for (unsigned long j = 0; j < lt.size(); ++j)
-    s.push_back(rank(lt[j]));
+    s.push_back(lietype::rank(lt[j]));
 }
 
 
