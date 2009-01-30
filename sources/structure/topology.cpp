@@ -112,9 +112,6 @@ namespace atlas {
 
 namespace topology {
 
-Connectivity::Connectivity(const tori::RealTorus& t,
-			   const rootdata::RootDatum& rd)
-
 /*!
   Builds the component group of our given group from the most split Cartan |t|
   (see the introduction to this module.) Since pi_0(G) is canonically a
@@ -125,12 +122,9 @@ Connectivity::Connectivity(const tori::RealTorus& t,
   The computation of dpi0 is explained in the introduction to this module.
 */
 
+Connectivity::Connectivity(const tori::RealTorus& t,
+			   const rootdata::RootDatum& rd)
 {
-  using namespace lattice;
-  using namespace latticetypes;
-  using namespace rootdata;
-  using namespace tori;
-
   // write involution in coroot basis
 
   latticetypes::LatticeMatrix i(t.involution());
@@ -138,7 +132,8 @@ Connectivity::Connectivity(const tori::RealTorus& t,
 
   i.transpose();                   // |i| acts on coweight lattice
   latticetypes::WeightList b(rd.beginSimpleCoroot(),rd.endSimpleCoroot());
-  copy(rd.beginRadical(),rd.endRadical(),back_inserter(b)); // coroots+radical
+  std::copy(rd.beginRadical(),rd.endRadical(),
+	    std::back_inserter(b)); // coroots+radical
   latticetypes::LatticeMatrix i_sw(i,b); // matrix of |i| in this basis
 
   /* [certainly |i_sw| respects the decomposition into coroot and radical
@@ -158,7 +153,7 @@ Connectivity::Connectivity(const tori::RealTorus& t,
   // into t_sc itself we add rows of zeroes.
 
   for (size_t j = rd.semisimpleRank(); j < rd.rank(); ++j)
-    b[j] = Weight(rd.rank(),0); // clear out radical part of basis |b|
+    b[j] = latticetypes::Weight(rd.rank(),0); // clear radical part of basis |b|
 
   latticetypes::LatticeMatrix m(b); m.transpose();
 

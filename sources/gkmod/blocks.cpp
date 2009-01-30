@@ -132,9 +132,6 @@ namespace atlas {
 namespace blocks {
 namespace {
 
-
-using namespace blocks;
-
 weyl::WeylInterface
 correlation(const weyl::WeylGroup& W,const weyl::WeylGroup& dW);
 
@@ -269,10 +266,9 @@ BlockElt Block::element(kgb::KGBElt x,kgb::KGBElt y) const
 */
 bool Block::isStrictAscent(size_t s, BlockElt z) const
 {
-  using namespace descents;
-
-  DescentStatus::Value v = descentValue(s,z);
-  return not DescentStatus::isDescent(v) and v!=DescentStatus::RealNonparity;
+  descents::DescentStatus::Value v = descentValue(s,z);
+  return not descents::DescentStatus::isDescent(v)
+    and v!=descents::DescentStatus::RealNonparity;
 }
 
 /*!
@@ -283,10 +279,9 @@ bool Block::isStrictAscent(size_t s, BlockElt z) const
 */
 bool Block::isStrictDescent(size_t s, BlockElt z) const
 {
-  using descents::DescentStatus;
-
-  DescentStatus::Value v = descentValue(s,z);
-  return DescentStatus::isDescent(v) and v!=DescentStatus::ImaginaryCompact;
+  descents::DescentStatus::Value v = descentValue(s,z);
+  return descents::DescentStatus::isDescent(v)
+    and v!=descents::DescentStatus::ImaginaryCompact;
 }
 
 /*!
@@ -495,15 +490,12 @@ void Block::generate(realredgp::RealReductiveGroup& G,
 */
 void Block::fillBruhat()
 {
-  using namespace bruhat;
-  using namespace set;
-
   if (d_state.test(BruhatConstructed)) // work was already done
     return;
 
   try {
-    std::vector<SetEltList> hd; makeHasse(hd,*this);
-    BruhatOrder* bp = new BruhatOrder(hd); // may throw here
+    std::vector<set::SetEltList> hd; makeHasse(hd,*this);
+    bruhat::BruhatOrder* bp = new bruhat::BruhatOrder(hd); // may throw here
 
     // commit
     delete d_bruhat; // this is overly careful: it must be NULL
@@ -627,31 +619,28 @@ descents::DescentStatus descents(kgb::KGBElt x,
 				 const kgb::KGB& kgb,
 				 const kgb::KGB& dual_kgb)
 {
-  using gradings::Status;
-  using descents::DescentStatus;
-
-  DescentStatus result;
+  descents::DescentStatus result;
   for (size_t s = 0; s < kgb.rank(); ++s)
-    if (kgb.status(s,x) == Status::Complex) // s is complex
+    if (kgb.status(s,x) == gradings::Status::Complex) // s is complex
       if (kgb.isDescent(s,x))
-	result.set(s,DescentStatus::ComplexDescent);
+	result.set(s,descents::DescentStatus::ComplexDescent);
       else
-	result.set(s,DescentStatus::ComplexAscent);
-    else if (kgb.status(s,x) == Status::ImaginaryNoncompact)
+	result.set(s,descents::DescentStatus::ComplexAscent);
+    else if (kgb.status(s,x) == gradings::Status::ImaginaryNoncompact)
       if (kgb.cross(s,x)!=x) // type I
-	result.set(s,DescentStatus::ImaginaryTypeI);
+	result.set(s,descents::DescentStatus::ImaginaryTypeI);
       else // type II
-	result.set(s,DescentStatus::ImaginaryTypeII);
-    else if (dual_kgb.status(s,y) == Status::ImaginaryNoncompact)
+	result.set(s,descents::DescentStatus::ImaginaryTypeII);
+    else if (dual_kgb.status(s,y) == gradings::Status::ImaginaryNoncompact)
       if (dual_kgb.cross(s,y)!=y) // type II
-	result.set(s,DescentStatus::RealTypeII);
+	result.set(s,descents::DescentStatus::RealTypeII);
       else // type I
-	result.set(s,DescentStatus::RealTypeI);
+	result.set(s,descents::DescentStatus::RealTypeI);
     // now s is imaginary compact or real nonparity
-    else if (kgb.status(s,x) == Status::Real)
-      result.set(s,DescentStatus::RealNonparity);
+    else if (kgb.status(s,x) == gradings::Status::Real)
+      result.set(s,descents::DescentStatus::RealNonparity);
     else
-      result.set(s,DescentStatus::ImaginaryCompact);
+      result.set(s,descents::DescentStatus::ImaginaryCompact);
 
   return result;
 }
@@ -665,20 +654,18 @@ descents::DescentStatus descents(kgb::KGBElt x,
 void insertAscents(std::set<BlockElt>& hs, const set::SetEltList& hr, size_t s,
 		   const Block& block)
 {
-  using descents::DescentStatus;
-
   for (size_t j = 0; j < hr.size(); ++j)
   {
     BlockElt z = hr[j];
     switch (block.descentValue(s,z))
     {
-    case DescentStatus::ComplexAscent:
+    case descents::DescentStatus::ComplexAscent:
       hs.insert(block.cross(s,z));
       break;
-    case DescentStatus::ImaginaryTypeI:
+    case descents::DescentStatus::ImaginaryTypeI:
       hs.insert(block.cayley(s,z).first);
       break;
-    case DescentStatus::ImaginaryTypeII:
+    case descents::DescentStatus::ImaginaryTypeII:
       hs.insert(block.cayley(s,z).first);
       hs.insert(block.cayley(s,z).second);
       break;
@@ -701,8 +688,6 @@ void insertAscents(std::set<BlockElt>& hs, const set::SetEltList& hr, size_t s,
 */
 void makeHasse(std::vector<set::SetEltList>& Hasse, const Block& block)
 {
-  using descents::DescentStatus;
-
   Hasse.resize(block.size());
 
   for (BlockElt z = 0; z < block.size(); ++z)
@@ -714,14 +699,14 @@ void makeHasse(std::vector<set::SetEltList>& Hasse, const Block& block)
       switch (block.descentValue(s,z))
       {
       default: assert(false); break;
-      case DescentStatus::ComplexDescent:
+      case descents::DescentStatus::ComplexDescent:
 	{
 	  BlockElt sz = block.cross(s,z);
 	  h_z.insert(sz);
 	  insertAscents(h_z,Hasse[sz],s,block);
 	}
 	break;
-      case DescentStatus::RealTypeI: // inverseCayley(s,z) is two-valued
+      case descents::DescentStatus::RealTypeI: // inverseCayley(s,z) two-valued
 	{
 	  BlockEltPair sz = block.inverseCayley(s,z);
 	  h_z.insert(sz.first);
@@ -731,7 +716,7 @@ void makeHasse(std::vector<set::SetEltList>& Hasse, const Block& block)
       }
     else // now just gather all RealTypeII descents of |z|
       for (size_t s = 0; s < block.rank(); ++s)
-	if (block.descentValue(s,z)==DescentStatus::RealTypeII)
+	if (block.descentValue(s,z)==descents::DescentStatus::RealTypeII)
 	  h_z.insert(block.inverseCayley(s,z).first);
 
     std::copy(h_z.begin(),h_z.end(),std::back_inserter(Hasse[z])); // set->list

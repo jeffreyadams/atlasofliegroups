@@ -11,7 +11,7 @@
 
 /*****************************************************************************
 
-  ... explain here when it is stable ...
+  Implementation of |SizeType| class template
 
 ******************************************************************************/
 
@@ -20,7 +20,7 @@
 
 /*****************************************************************************
 
-        Chapter I -- The SizeType class
+        Chapter I -- The SizeType class template
 
 ******************************************************************************/
 
@@ -30,7 +30,7 @@ namespace size {
 
 
 /*!
-  Synopsis: constructs the SizeType object representing a.
+  Synopsis: constructs the SizeType object representing value |a|.
 
   Triggers a fatal error if a is not representable as a SizeType
 */
@@ -39,13 +39,10 @@ template<typename C> SizeType<C>::SizeType(unsigned long a)
   if (a == 0)
     error::PrimesError()("error: 0 is not representable as a SizeType");
 
-  memset(d_data,0,PRIMES_MAX);
+  for (size_t n=0; n<PRIMES_MAX; ++n)
+    for (d_exp[n]=0; a%prime(n)==0; a/=prime(n))
+      ++d_exp[n];
 
-  for (size_t n = 0; n < PRIMES_MAX; ++n)
-    while (a%prime(n) == 0) {
-      ++d_data[n];
-      a /= prime(n);
-    }
 
   if (a > 1) // a was not representable
     error::PrimesError()("error: number not representable as SizeType");
@@ -55,25 +52,25 @@ template<typename C> SizeType<C>::SizeType(unsigned long a)
 
 
 /*!
-  Synopsis: return the unsigned long value of prime(j)^^d_data[j]
+  Synopsis: return the unsigned long value of prime(i)^^d_exp[i]
 
   The algorithm is the classical algorithm with squarings and multiplications,
-  logarithmic in j.
+  logarithmic in i.
 
   NOTE: in case of overflow, we simply return the value modulo 2^^longBits.
 */
 template<typename C>
-  unsigned long SizeType<C>::piece(size_t j) const
+  unsigned long SizeType<C>::piece(size_t k) const
 {
   unsigned long c = 1;
-  unsigned long p = prime(j);
+  unsigned long p = prime(k);
 
-  bitset::BitSet<constants::longBits> r(d_data[j]);
+  bitset::BitSet<constants::longBits> r(d_exp[k]);
 
-  for (size_t j = r.lastBit(); j;) {
-    --j;
+  for (size_t i=r.lastBit(); i-->0;) // |lastBit()| is one beyond last bit
+  {
     c *= c;
-    if (r.test(j))
+    if (r.test(i)) // always true on first iteration, if any
       c *= p;
   }
 
@@ -91,8 +88,8 @@ template<typename C>
 {
   unsigned long c = 1;
 
-  for (size_t j = 0; j < PRIMES_MAX; ++j)
-    c *= piece(j);
+  for (size_t i=0; i<PRIMES_MAX; ++i)
+    c *= piece(i);
 
   return c;
 }
@@ -105,28 +102,8 @@ template<typename C>
 template<typename C>
   SizeType<C>& SizeType<C>::operator*= (const SizeType& a)
 {
-  for (size_t j = 0; j < PRIMES_MAX; ++j) {
-    C c = a.d_data[j];
-    d_data[j] += c;
-  }
-
-  return *this;
-}
-
-
-/*!
-  Synopsis: current *= SizeType(a).
-
-  Precondition: a is representable as a SizeType.
-*/
-template<typename C>
-  SizeType<C>& SizeType<C>::operator*= (unsigned long a)
-{
-  for (size_t n = 0; n < PRIMES_MAX; ++n)
-    while (a%prime(n) == 0) {
-      ++d_data[n];
-      a /= prime(n);
-    }
+  for (size_t i=0; i < PRIMES_MAX; ++i)
+    d_exp[i] += a.d_exp[i];
 
   return *this;
 }
@@ -138,8 +115,8 @@ template<typename C>
 template<typename C>
   SizeType<C>& SizeType<C>::operator/= (const SizeType& a)
 {
-  for (size_t j = 0; j < PRIMES_MAX; ++j)
-    d_data[j] -= a.d_data[j];
+  for (size_t i=0; i < PRIMES_MAX; ++i)
+    d_exp[i] -= a.d_exp[i];
 
   return *this;
 }
@@ -148,25 +125,13 @@ template<typename C>
 
 /*****************************************************************************
 
-        Chapter I -- The SizeType class
+        Chapter II -- The |factorial| function
 
 ******************************************************************************/
 
 namespace size {
 
 
-/*!
-  Synopsis: puts in a the factorial of n.
-
-  Precondition: n is not greater than the PRIMES_MAX-th prime number.
-*/
-template<typename C> void factorial (SizeType<C>& a, unsigned long n)
-{
-  a.reset();
-
-  for (size_t j = 2; j <= n; ++j)
-    a *= j;
-}
 
 } // namespace size
 

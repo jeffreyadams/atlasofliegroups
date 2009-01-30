@@ -375,15 +375,12 @@ KGBEltPair KGB::tauPacket(const weyl::TwistedInvolution& w) const
 void KGB::fillBruhat()
 
 {
-  using namespace bruhat;
-  using namespace set;
-
   if (d_state.test(BruhatConstructed)) // work was already done
     return;
 
   try {
-    std::vector<SetEltList> hd; makeHasse(hd,*this);
-    BruhatOrder* bp = new BruhatOrder(hd); // may throw here
+    std::vector<set::SetEltList> hd; makeHasse(hd,*this);
+    bruhat::BruhatOrder* bp = new bruhat::BruhatOrder(hd); // may throw here
 
     // commit
     delete d_bruhat; // this is overly careful: it must be NULL
@@ -896,8 +893,6 @@ namespace kgb {
 */
 void makeHasse(std::vector<set::SetEltList>& Hasse, const KGB& kgb)
 {
-  using gradings::Status;
-
   Hasse.resize(kgb.size());
 
   for (KGBElt x = 0; x < kgb.size(); ++x)
@@ -910,7 +905,7 @@ void makeHasse(std::vector<set::SetEltList>& Hasse, const KGB& kgb)
     size_t s = d.firstBit();
     KGBElt sx;
 
-    if (kgb.status(s,x) == Status::Complex)
+    if (kgb.status(s,x) == gradings::Status::Complex)
       sx = kgb.cross(s,x);
     else
     { // |s| is real for |x|
@@ -924,7 +919,7 @@ void makeHasse(std::vector<set::SetEltList>& Hasse, const KGB& kgb)
     for (size_t j = 0; j < Hasse[sx].size(); ++j) {
       KGBElt z = Hasse[sx][j];
       if (kgb.isAscent(s,z)) {
-	if (kgb.status(s,z) == Status::ImaginaryNoncompact)
+	if (kgb.status(s,z) == gradings::Status::ImaginaryNoncompact)
 	  h_x.insert(kgb.cayley(s,z));
 	else // s is complex for z
 	  h_x.insert(kgb.cross(s,z));

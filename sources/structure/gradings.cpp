@@ -27,19 +27,17 @@
 */
 
 namespace atlas {
-
+namespace gradings {
 namespace {
-
-  using namespace constants;
-  using namespace gradings;
-  using namespace latticetypes;
-  using namespace rootdata;
 
   // local function declarations
 
-  void noncompactEquations(BinaryEquationList&, const WeightList&);
-  void compactEquations(BinaryEquationList&, const RootList&, const RootList&,
-			const RootDatum&);
+  void noncompactEquations(latticetypes::BinaryEquationList&,
+			   const latticetypes::WeightList&);
+  void compactEquations(latticetypes::BinaryEquationList&,
+			const rootdata::RootList&,
+			const rootdata::RootList&,
+			const rootdata::RootDatum&);
   // local class declarations: |BitCount| and |GradingAction|
 
   /* The class |BitCount| makes an adaptable unary function object (for use by
@@ -68,13 +66,14 @@ namespace {
       return d_cartan[j].test(i);
     }
   public:
-    GradingAction(const RootDatum& rd);
+    GradingAction(const rootdata::RootDatum& rd);
     // apply simple generator |s| to grading encoded by |g|
     unsigned long operator()(unsigned long s, unsigned long g) const;
 
   };
 
-}
+} // |namespace|
+} // |namespace gradings|
 
 /*****************************************************************************
 
@@ -119,11 +118,8 @@ bool isNonCompact(const rootdata::Root& v, const Grading& g)
 void noncompactRoots(rootdata::RootList& ncr, const Grading& g,
 		     const rootdata::RootDatum& rd)
 {
-  using namespace lattice;
-
   // need to have roots in root basis
-
-  WeightList rl; rl.reserve(rd.numRoots());
+  latticetypes::WeightList rl; rl.reserve(rd.numRoots());
   for (rootdata::RootNbr i=0; i<rd.numRoots(); ++i)
     if (isNonCompact(rd.inSimpleRoots(i),g))
       ncr.push_back(i);
@@ -181,22 +177,21 @@ void makeGradings(GradingList& gl, const rootdata::RootDatum& rd)
   unknowns; but even then the system can be degenerate. This happens already
   in case B2, for the split Cartan.
 */
-void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
-		 const RootDatum& rd)
+void findGrading(rootdata::RootSet& ncr,
+		 const rootdata::RootList& o,
+		 const rootdata::RootList& rs,
+		 const rootdata::RootDatum& rd)
 {
-  using namespace lattice;
-  using namespace rootdata;
-
   // find basis |rb| for |rs|
 
-  RootList rb; rootdata::rootBasis(rb,rs,rd);
+  rootdata::RootList rb; rootdata::rootBasis(rb,rs,rd);
 
   // express roots of |o| in basis |rb| (of subsystem |rs| of |rd|) just found
-  WeightList wo; // will hold "weights" of length |rb.size()| (actually roots)
+  latticetypes::WeightList wo; // will hold "weights" of length |rb.size()|
   rd.toRootBasis(o.begin(),o.end(),back_inserter(wo),rb);
 
   // do the same for all roots in |rs|
-  WeightList wrs; // will hold "weights" of length |rb.size()| (actually roots)
+  latticetypes::WeightList wrs; // will hold "weights" of length |rb.size()|
   rd.toRootBasis(rs.begin(),rs.end(),back_inserter(wrs),rb);
 
 
@@ -212,7 +207,7 @@ void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
 
   // write equations for the roots in o
 
-  BinaryEquationList eqn; noncompactEquations(eqn,wo);
+  latticetypes::BinaryEquationList eqn; noncompactEquations(eqn,wo);
   // now |eqn| describes gradings with value 1 on elements of |o|.
 
   // add equations for the maximality
@@ -221,7 +216,7 @@ void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
 
   // solve system
 
-  BinaryEquation gc(rb.size());
+  latticetypes::BinaryEquation gc(rb.size());
   firstSolution(gc,eqn);
 
   Grading g = gc.data();
@@ -246,20 +241,17 @@ void findGrading(RootSet& ncr, const RootList& o, const RootList& rs,
 void gradingType(rootdata::RootList& gt, const Grading& g,
 		 const rootdata::RootDatum& rd)
 {
-  using namespace lattice;
-  using namespace bitmap;
-
-  typedef BitMap::iterator BI;
+  typedef bitmap::BitMap::iterator BI;
 
   // need to have roots in root basis
 
-  WeightList wl; wl.reserve(rd.numRoots());
+  latticetypes::WeightList wl; wl.reserve(rd.numRoots());
   for (rootdata::RootNbr i=0; i<rd.numRoots(); ++i)
     wl.push_back(rd.inSimpleRoots(i));
 
   // find grading of all roots
 
-  BitMap nc(wl.size());
+  bitmap::BitMap nc(wl.size());
 
   for (unsigned long j = 0; j < rd.numRoots(); ++j)
     if (isNonCompact(wl[j],g))
@@ -267,27 +259,26 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
 
   // find maximal orthogonal set
 
-  RootList rl; rl.reserve(rd.numRoots());
+  rootdata::RootList rl; rl.reserve(rd.numRoots());
 
   // start with set of all roots
   for (unsigned long j = 0; j < rd.numRoots(); ++j)
     rl.push_back(j);
 
-  while (!nc.empty()) {
+  while (not nc.empty())
+  { // insert new element, a noncompact root occurring in |rl|, into |gt|
 
-    // insert new element, a noncompact root occurring in |rl|, into |gt|
-
-    RootNbr n = nc.front();
+    rootdata::RootNbr n = nc.front();
     gt.push_back(n);
 
     // put into |rl| the orthogonal to |gt.front()|
-    RootList orth;
-    for (unsigned long j = 0; j < rl.size(); ++j) {
+    rootdata::RootList orth;
+    for (unsigned long j = 0; j < rl.size(); ++j)
       if (rd.isOrthogonal(n,rl[j]))
 	orth.push_back(rl[j]);
       else
 	nc.remove(rl[j]); // roots dropped from list don't count as noncompact
-    }
+
     rl.swap(orth);
 
     // find the new grading
@@ -303,9 +294,9 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
       if (rd.sumIsRoot(gt[i],gt[j])) {
 	// replace gt[i] and gt[j] by their sum and difference
 	// note that they generate a little B2 system
-	Weight a(rd.root(gt[i]));
+	latticetypes::Weight a(rd.root(gt[i]));
 	a += rd.root(gt[j]);
-	RootNbr n = rd.rootNbr(a);
+	rootdata::RootNbr n = rd.rootNbr(a);
 	a = rd.root(gt[i]);
 	a -= rd.root(gt[j]);
 	gt[i] = n;
@@ -313,7 +304,7 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
       }
 }
 
-} // namespace gradings
+} // |namespace gradings|
 
 /*****************************************************************************
 
@@ -346,10 +337,10 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
   The restriction however is already built into |partition::makeOrbit|, which
   can only make orbits on sets whose points are represeted by |unsigned long|.
 */
-
+namespace gradings {
 namespace {
 
-GradingAction::GradingAction(const RootDatum& rd)
+GradingAction::GradingAction(const rootdata::RootDatum& rd)
   : d_cartan(rd.semisimpleRank())
 {
   for (unsigned long i = 0; i < rd.semisimpleRank(); ++i)
@@ -368,7 +359,8 @@ unsigned long GradingAction::operator() (unsigned long s, unsigned long g)
 }
 
 
-}
+} // |namespace|
+} // |namespace gradings|
 
 /*****************************************************************************
 
@@ -393,7 +385,7 @@ bool GradingCompare::operator() (const Grading& lhs, const Grading& rhs)
   return lhc!=rhc ? lhc<rhc : lhs<rhs;
 }
 
-}
+} // |namespace gradings|
 
 /*****************************************************************************
 
@@ -401,18 +393,20 @@ bool GradingCompare::operator() (const Grading& lhs, const Grading& rhs)
 
 ******************************************************************************/
 
+namespace gradings {
 namespace {
 
-void noncompactEquations(BinaryEquationList& eqn, const WeightList& nc)
 
 /*!
   This function adds to eqn the equations saying that the grading should
   be noncompact (have value 1) at each element of |nc|.
 */
-
+void noncompactEquations(latticetypes::BinaryEquationList& eqn,
+			 const latticetypes::WeightList& nc)
 {
-  for (unsigned long j = 0; j < nc.size(); ++j) {
-    BinaryEquation e(nc[j]); // reduce mod 2
+  for (unsigned long j = 0; j < nc.size(); ++j)
+  {
+    latticetypes::BinaryEquation e(nc[j]); // reduce mod 2
     e.pushBack(true); // add a bit 1, saying that value should be noncompact
     eqn.push_back(e);
   }
@@ -437,19 +431,19 @@ void noncompactEquations(BinaryEquationList& eqn, const WeightList& nc)
   rule. This then gives us the equations, to the number of rank(o_orth), that
   we have to add to |eqn|.
 */
-void compactEquations(BinaryEquationList& eqn, const RootList& o,
-		      const RootList& rs, const RootDatum& rd)
+  void compactEquations(latticetypes::BinaryEquationList& eqn,
+			const rootdata::RootList& o,
+			const rootdata::RootList& rs,
+			const rootdata::RootDatum& rd)
 {
-  using namespace lattice;
-
   // make orthogonal root system
 
-  RootList o_orth;
+  rootdata::RootList o_orth;
   makeOrthogonal(o_orth,o,rs,rd);
 
   // find basis
 
-  RootList oob; // basis of |o_orth|
+  rootdata::RootList oob; // basis of |o_orth|
   rootdata::rootBasis(oob,o_orth,rd);
 
   // find signs
@@ -462,23 +456,24 @@ void compactEquations(BinaryEquationList& eqn, const RootList& o,
 	g.flip(i); // use |flip|, not |set|, as same |i| can have more flips
 
   // express oob in rs's root basis
-  RootList rsb; // simple basis of |rs| (could have been transmitted as arg)
-  rootBasis(rsb,rs,rd);
+  rootdata::RootList rsb; // simple basis of |rs| (could be transmitted as arg)
+  rootdata::rootBasis(rsb,rs,rd);
 
-  WeightList woob; // |oob| in form of "weights", expressed on basis |rsb|
+  latticetypes::WeightList woob; // "weight" form of |oob|, on basis |rsb|
 
   rd.toRootBasis(oob.begin(),oob.end(),back_inserter(woob),rsb);
 
   // write equations
 
 
-  for (unsigned long j = 0; j < woob.size(); ++j) {
-    BinaryEquation e(woob[j]); // reduce left hand side modulo 2
+  for (unsigned long j = 0; j < woob.size(); ++j)
+  {
+    latticetypes::BinaryEquation e(woob[j]); // reduce left hand side modulo 2
     e.pushBack(g[j]); // value grading should take on root |oob[j]| (rhs)
     eqn.push_back(e);
   }
 }
 
-}
-
-}
+} // |namespace|
+} // |namespace gradings|
+} // |namespace atlas|

@@ -99,8 +99,6 @@ PreRootDatum::PreRootDatum(const lietype::LieType& lt,
 void PreRootDatum::swap(PreRootDatum& other)
 
 {
-  using namespace lietype;
-
   d_roots.swap(other.d_roots);
   d_coroots.swap(other.d_coroots);
   std::swap(d_rank,other.d_rank);

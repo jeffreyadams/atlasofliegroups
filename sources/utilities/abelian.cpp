@@ -288,39 +288,35 @@ unsigned long FiniteAbelianGroup::pairing(const GrpArr& a, const GrpArr& b,
   return r/n;
 }
 
-GrpNbr FiniteAbelianGroup::prod(GrpNbr x, unsigned long n) const
 
 /*!
   Replaces x with n.x. We use the classic logarithmic algorithm, where the
   result is obtained through a sequence of additions and multiplications by
   two.
 */
-
+GrpNbr FiniteAbelianGroup::prod(GrpNbr x, unsigned long n) const
 {
-  using namespace constants;
-
   if (n == 0)
     return 0;
 
   unsigned long p = n;
 
-  for (; ~p & hiBit; p <<= 1)  /* shift n up to high powers */
-    ;
+  while((p & constants::hiBit)==0)
+    p <<= 1;  /* shift n up to high powers */
 
   GrpNbr y = x; // save the original value of x
 
-  for (unsigned long j = n >> 1; j; j >>= 1)
+  for (unsigned long j = n >> 1; j!=0; j >>= 1)
     {
       p <<= 1;
       x = add(x,x);
-      if (p & hiBit)
+      if ((p & constants::hiBit)!=0)
 	x = add(x,y);
     }
 
   return x;
 }
 
-GrpArr& FiniteAbelianGroup::subtract(GrpArr& a, const GrpArr& b) const
 
 /*!
   Synopsis: a -= b.
@@ -329,14 +325,13 @@ GrpArr& FiniteAbelianGroup::subtract(GrpArr& a, const GrpArr& b) const
 
   The only difficulty is doing it without triggering overflow.
 */
-
+GrpArr& FiniteAbelianGroup::subtract(GrpArr& a, const GrpArr& b) const
 {
-  for (size_t j = 0; j < a.size(); ++j) {
+  for (size_t j = 0; j < a.size(); ++j)
     if (b[j] <= a[j])
       a[j] -= b[j];
     else // underflow
       a[j] += d_type[j] - b[j];
-  }
 
   return a;
 }
@@ -510,17 +505,13 @@ namespace abelian {
 void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
 	   const FiniteAbelianGroup& A)
 {
-  using namespace bitmap;
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace smithnormal;
-
-  WeightList gl;
+  latticetypes::WeightList gl;
 
   // put in the kernel basis
 
-  for (size_t j = 0; j < A.rank(); ++j) {
-    gl.push_back(Weight(A.rank(),0));
+  for (size_t j = 0; j < A.rank(); ++j)
+  {
+    gl.push_back(latticetypes::Weight(A.rank(),0));
     gl.back()[j] = A.type()[j];
   }
 
@@ -529,21 +520,22 @@ void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
   GrpNbrList gen;
   generators(gen,B,A);
 
-  for (size_t j = 0; j < gen.size(); ++j) {
-    Weight v(A.rank());
+  for (size_t j = 0; j < gen.size(); ++j)
+  {
+    latticetypes::Weight v(A.rank());
     A.toWeight(v,gen[j]);
     gl.push_back(v);
   }
 
   // write matrix corresponding to gl
 
-  LatticeMatrix m(gl);
-  CoeffList invf;
+  latticetypes::LatticeMatrix m(gl);
+  latticetypes::CoeffList invf;
 
   // get smith normal basis
 
   matrix::initBasis(b,A.rank());
-  smithNormal(invf,b.begin(),m);
+  smithnormal::smithNormal(invf,b.begin(),m);
 
   // scale
 
@@ -565,12 +557,11 @@ void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
 void coset(bitmap::BitMap& C, const bitmap::BitMap& B, GrpNbr x,
 	   const FiniteAbelianGroup& A)
 {
-  using namespace bitmap;
-
   C.reset();
-  BitMap::iterator B_end = B.end();
+  bitmap::BitMap::iterator B_end = B.end();
 
-  for (BitMap::iterator i = B.begin(); i != B_end; ++i) {
+  for (bitmap::BitMap::iterator i = B.begin(); i != B_end; ++i)
+  {
     GrpNbr y = *i;
     C.insert(A.add(y,x));
   }
@@ -625,21 +616,18 @@ const bitmap::BitMap& cycGenerators(const FiniteAbelianGroup& A)
 */
 void generateSubgroup(bitmap::BitMap& B, GrpNbr x, const FiniteAbelianGroup& A)
 {
-  using namespace bitmap;
-
   unsigned long n = A.order(x);
-  BitMap b(B);
-  BitMap c(A.size());
+  bitmap::BitMap b(B);
+  bitmap::BitMap c(A.size());
 
-  for (unsigned long j = 1; j < n; ++j) {
+  for (unsigned long j = 1; j < n; ++j)
+  {
     GrpNbr xj = A.prod(x,j);
     coset(c,B,xj,A);
     b |= c;
   }
 
   B.swap(b);
-
-  return;
 }
 
 
@@ -772,22 +760,19 @@ GrpNbr to_GrpNbr(const GrpArr& a, const GroupType& t)
 */
 void transpose(Endomorphism& e, const FiniteAbelianGroup& A)
 {
-  using namespace arithmetic;
-
-  const GroupType& type = A.type();
+  const GroupType& type = A.type(); // vector of |unsigned long|
   Endomorphism tmp = e;
   e.resize(tmp.numColumns(),tmp.numRows());
 
   for (size_t j = 0; j < e.numColumns(); ++j)
-    for (size_t i = 0; i < e.numRows(); ++i) {
-      unsigned long d = gcd(type[i],type[j]);
+    for (size_t i = 0; i < e.numRows(); ++i)
+    {
+      unsigned long d = arithmetic::unsigned_gcd(type[i],type[j]);
       // tmp(i,j) has to be divisible by type[i]/d
       unsigned long ni = type[i]/d;
       unsigned long nj = type[j]/d;
       e(j,i) = nj*(tmp(i,j)/ni);
     }
-
-  return;
 }
 
 } // |namespace abelian|

@@ -106,12 +106,11 @@ namespace lietype {
 
 namespace lietype {
 
-void dualLieType(LieType& dlt, const LieType& lt)
 
 /*!
   Synopsis: puts in dlt the dual Lie type of lt.
 */
-
+void dualLieType(LieType& dlt, const LieType& lt)
 {
   dlt = lt;
 
@@ -136,17 +135,14 @@ void dualLieType(LieType& dlt, const LieType& lt)
       dlt[j].first = 'G';
       break;
     }
-
-  return;
 }
 
-void dualInnerClassType(InnerClassType& dict, const InnerClassType& ict,
-			const LieType& lt)
 
 /*!
   Synopsis: puts in dict the dual inner class type of ict.
 */
-
+void dualInnerClassType(InnerClassType& dict, const InnerClassType& ict,
+			const LieType& lt)
 {
   dict = ict;
 
@@ -187,34 +183,30 @@ void dualInnerClassType(InnerClassType& dict, const InnerClassType& ict,
     }
     ++ltj;
   }
-
-  return;
 }
 
-bool checkRank(const TypeLetter& x, size_t l)
 
 /*!
   Synopsis: checks if the rank l is in the valid range for x.
 */
-
+bool checkRank(const TypeLetter& x, size_t l)
 {
-  using namespace constants;
-
-  switch (x) {
+  switch (x)
+  {
   case 'A': // rank must be >= 1
-    if ((l < 1) or (l > RANK_MAX))
+    if ((l < 1) or (l > constants::RANK_MAX))
       return false;
     break;
   case 'B': // rank must be >= 2
-    if ((l < 2) or (l > RANK_MAX))
+    if ((l < 2) or (l > constants::RANK_MAX))
       return false;
     break;
   case 'C': // rank must be >= 2
-    if ((l < 2) or (l > RANK_MAX))
+    if ((l < 2) or (l > constants::RANK_MAX))
       return false;
     break;
   case 'D': // rank must be >= 4
-    if ((l < 4) or (l > RANK_MAX))
+    if ((l < 4) or (l > constants::RANK_MAX))
       return false;
     break;
   case 'E': // rank must be 6, 7 or 8
@@ -232,7 +224,7 @@ bool checkRank(const TypeLetter& x, size_t l)
       return false;
     break;
   case 'T': // rank must be >= 1
-    if ((l < 1) or (l > RANK_MAX))
+    if ((l < 1) or (l > constants::RANK_MAX))
       return false;
     break;
   default: // this cannot happen!
@@ -243,8 +235,6 @@ bool checkRank(const TypeLetter& x, size_t l)
   return true;
 }
 
-void involution(latticetypes::LatticeMatrix& i, const lietype::LieType& lt,
-		const lietype::InnerClassType& ic)
 
 /*!
   Synopsis: constructs the fundamental involution for the Lie type lt and the
@@ -253,10 +243,9 @@ void involution(latticetypes::LatticeMatrix& i, const lietype::LieType& lt,
   Precondition: it has already been checked that ic holds a valid inner class
   type for lt.
 */
-
+void involution(latticetypes::LatticeMatrix& i, const lietype::LieType& lt,
+		const lietype::InnerClassType& ic)
 {
-  using namespace lietype;
-
   size_t n = rank(lt);
   i.resize(n,n,0);
 

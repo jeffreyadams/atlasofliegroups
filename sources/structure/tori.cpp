@@ -24,21 +24,21 @@ namespace atlas {
 
 namespace tori {
 
-  using namespace latticetypes;
-
-}
-
 namespace {
 
-using namespace tori;
+void makeTopology(latticetypes::SmallSubquotient&, const RealTorus&);
 
-void makeTopology(SmallSubquotient&, const RealTorus&);
+void fullPlusBasis(latticetypes::WeightList&,
+		   latticetypes::LatticeMatrix&,
+		   const latticetypes::LatticeMatrix&);
 
-void fullPlusBasis(WeightList&, LatticeMatrix&, const LatticeMatrix&);
+void fullMinusBasis(latticetypes::WeightList&,
+		    latticetypes::LatticeMatrix&,
+		    const latticetypes::LatticeMatrix&);
 
-void fullMinusBasis(WeightList&, LatticeMatrix&, const LatticeMatrix&);
+} // |namespace|
 
-}
+} // |namespace tori|
 
 /*****************************************************************************
 
@@ -52,14 +52,14 @@ void fullMinusBasis(WeightList&, LatticeMatrix&, const LatticeMatrix&);
   (the fixed points of the Galois involution) is canonically isomorphic to the
   component group of the complex group \f$H(C)^\tau\f$ fixed under the Cartan
   involution (even if these groups can be of quite different dimensions), the
-  latter of which is easy to determine in terms of the action of \f$\tau\f$ on the
-  character lattice.
+  latter of which is easy to determine in terms of the action of \f$\tau\f$ on
+  the character lattice.
 
   The fundamental data are the rank stored in |d_rank| (allowing us to
   represent the character lattice $X$ as $Z^n$ for $n=d_rank)$, and the
   integran $n* n$ involution matrix |d_involution| giving the action of
-  \f$\tau\f$ on $X$. It determines two sublattices $X_+$ and $X_-$, cut out by its
-  eigenspaces for $+1$ and $-1$ respectively. Both are sublattices are
+  \f$\tau\f$ on $X$. It determines two sublattices $X_+$ and $X_-$, cut out by
+  its eigenspaces for $+1$ and $-1$ respectively. Both are sublattices are
   saturated, and therefore supplementable in $X$, but in general $X$ is not
   equal to the direct sum $X_+ + X_-$, since that sum need not be saturated
   (for instance in $Z^2$ when \f$\tau\f$ interchanges the vectors of a basis).
@@ -85,17 +85,17 @@ void fullMinusBasis(WeightList&, LatticeMatrix&, const LatticeMatrix&);
   subspaces to $V_+$ and $V_-$, respectively, while a factor $r_c$ contributes
   the _same_ one-dimensional subspace both to $V_+$ and to $V_-$ (since after
   reduction modulo $2$ the is no distinction between the diagonal and
-  anti-diagonal subpaces). Therefore on has \f$r_c = \dim(V_ +\cap V_-)\f$, and it
-  follows that \f$r_s = rk(X_-) - r_c=\dim(V_-/(V_ \cap V_-))\f$. It can be seen
-  that \f$V_+ \cap V_-\f$ is the image of the endomorphism of $V$ induced by
-  \f$\tau-1\f$ (or by \f$\tau+1\f$), while $V_+ + V_-$ is the kernel of that
-  endomorphism.
+  anti-diagonal subpaces). Therefore on has \f$r_c = \dim(V_ +\cap V_-)\f$,
+  and it follows that \f$r_s = rk(X_-) - r_c=\dim(V_-/(V_ \cap V_-))\f$. It
+  can be seen that \f$V_+ \cap V_-\f$ is the image of the endomorphism of $V$
+  induced by \f$\tau-1\f$ (or by \f$\tau+1\f$), while $V_+ + V_-$ is the
+  kernel of that endomorphism.
 
   Having used only $X_+$ and $X_-$ we almost have a functorial description of
   the component group of $H(R)$, which is an elementary 2-group isomorphic to
-  \f$V_-/(V_ \cap V_-)\f$, or equivalently to $(V_+ + V_-)/V_+$. However, having
-  started with the weight lattice $X$, the latter groups are actually dual
-  objects: $X/2X$ can be interpreted as $Hom(H(2),C^*)$ where $H(2)$
+  \f$V_-/(V_ \cap V_-)\f$, or equivalently to $(V_+ + V_-)/V_+$. However,
+  having started with the weight lattice $X$, the latter groups are actually
+  dual objects: $X/2X$ can be interpreted as $Hom(H(2),C^*)$ where $H(2)$
   denotes the set of elements of order 2 (or 1) in $H$. Therefore each of the
   mentioned subquotients naturally models the dual group $dpi0(H)$ of the
   component group of $H(R)$ (or of \f$H(C)^\tau\f$). In practice we shall work
@@ -112,7 +112,7 @@ namespace tori {
   \brief Constructs the torus with involution |i| (the rank is recovered
   from the size of the matrix.)
 */
-RealTorus::RealTorus(const LatticeMatrix& i)
+RealTorus::RealTorus(const latticetypes::LatticeMatrix& i)
   : d_rank(i.numColumns())
   , d_complexRank(d_rank) // this value is too large; it is modified below
   , d_involution(i)
@@ -177,10 +177,11 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
   them onto dpi0, and then restrict to our dual component representatives.
   But in fact this is hidden inside |subquotient::subquotientMap|.
 */
-void RealTorus::componentMap(BinaryMap& cm, const LatticeMatrix& m,
+void RealTorus::componentMap(latticetypes::BinaryMap& cm,
+			     const latticetypes::LatticeMatrix& m,
 			     const RealTorus& T_dest) const
 {
-  BinaryMap m2(m); // reduce mod2
+  latticetypes::BinaryMap m2(m); // reduce mod2
 
   subquotient::subquotientMap(cm,d_topology,T_dest.topology(),m2);
 }
@@ -210,24 +211,22 @@ void dualPi0(LT::SmallSubquotient& dpi0, const LT::LatticeMatrix& q)
 */
 
 {
-  using namespace lattice;
-
   assert(q.numRows()==q.numColumns());
 
-  WeightList plus; plusBasis(plus,q);
+  latticetypes::WeightList plus; plusBasis(plus,q);
 
-  SmallBitVectorList plus2(plus); // reduce modulo 2
+  latticetypes::SmallBitVectorList plus2(plus); // reduce modulo 2
 
-  BinaryMap i2(q);  // reduce modulo 2
-  BinaryMap id; identityMatrix(id,q.numRows());
+  latticetypes::BinaryMap i2(q);  // reduce modulo 2
+  latticetypes::BinaryMap id; identityMatrix(id,q.numRows());
 
   i2 += id;
   // now |i2| is modulo 2 image of $\tau-id$ (and also of $\tau+id$)
 
-  SmallBitVectorList b; i2.kernel(b);
+  latticetypes::SmallBitVectorList b; i2.kernel(b);
   // the kernel of |i2| is the sum $V_+ + V_-$
 
-  SmallSubquotient cs(b,plus2,q.numRows());
+  latticetypes::SmallSubquotient cs(b,plus2,q.numRows());
   assert(cs.rank()==q.numRows());
 
   dpi0.swap(cs);
@@ -252,25 +251,22 @@ void plusBasis(latticetypes::WeightList& pb,
 */
 
 {
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace smithnormal;
-
   size_t n = i.numColumns();
 
   // put in q the matrix of vectors i(e)+e in the basis b
 
-  LatticeMatrix q(i);
+  latticetypes::LatticeMatrix q(i);
   for (size_t j = 0; j < n; ++j)
     q(j,j) += 1;
 
   // find smith normal form
 
-  CoeffList invf;
-  WeightList bs;
-  initBasis(bs,n);
+  latticetypes::CoeffList invf;
+  latticetypes::WeightList bs;
 
-  smithNormal(invf,bs.begin(),q);
+  matrix::initBasis(bs,n);
+
+  smithnormal::smithNormal(invf,bs.begin(),q);
 
   // copy significant part of basis in pb
 
@@ -285,9 +281,6 @@ latticetypes::WeightList plsuBasis(const latticetypes::LatticeMatrix& i)
   latticetypes::WeightList result; plusBasis(result,i); return result;
 }
 
-void minusBasis(latticetypes::WeightList& mb,
-		const latticetypes::LatticeMatrix& i)
-
 /*!
   Synopsis: puts in mb a basis for the -1 eigenspace of the involution.
 
@@ -295,27 +288,24 @@ void minusBasis(latticetypes::WeightList& mb,
   commensurate with the eigenspace. Thus a smith basis for this lattice will
   do the trick.
 */
-
+void minusBasis(latticetypes::WeightList& mb,
+		const latticetypes::LatticeMatrix& i)
 {
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace smithnormal;
-
   size_t n = i.numColumns();
 
   // put in q the matrix of vectors i(e)-e in the basis b
 
-  LatticeMatrix q(i);
+  latticetypes::LatticeMatrix q(i);
   for (size_t j = 0; j < n; ++j)
     q(j,j) -= 1;
 
   // find smith normal form
 
-  CoeffList invf;
-  WeightList bs;
-  initBasis(bs,n);
+  latticetypes::CoeffList invf;
+  latticetypes::WeightList bs;
+  matrix::initBasis(bs,n);
 
-  smithNormal(invf,bs.begin(),q);
+  smithnormal::smithNormal(invf,bs.begin(),q);
 
   // copy significant part of basis in mb
 
@@ -332,57 +322,52 @@ latticetypes::WeightList minusBasis(const latticetypes::LatticeMatrix& i)
   latticetypes::WeightList result; minusBasis(result,i); return result;
 }
 
-void minusMatrix(latticetypes::LatticeMatrix& qm,
-		 const latticetypes::LatticeMatrix& q, const RealTorus& t)
-
 /*!
   Synopsis: writes in qm the matrix of the restriction of q to X_-.
 
   Precondition: q commutes with the involution;
 */
-
+void minusMatrix(latticetypes::LatticeMatrix& qm,
+		 const latticetypes::LatticeMatrix& q, const RealTorus& t)
 {
-  const WeightList& bm = t.minusLattice();
+  const latticetypes::WeightList& bm = t.minusLattice();
   qm.resize(bm.size(),bm.size());
 
-  for (size_t j = 0; j < bm.size(); ++j) {
-    Weight v(t.rank());
+  for (size_t j = 0; j < bm.size(); ++j)
+  {
+    latticetypes::Weight v(t.rank());
     q.apply(v,bm[j]);
-    Weight vm(bm.size());
+    latticetypes::Weight vm(bm.size());
     t.toMinus(vm,v);
     for (size_t i = 0; i < bm.size(); ++i)
       qm(i,j) = vm[i];
   }
-
-  return;
 }
 
-void plusMatrix(latticetypes::LatticeMatrix& qp,
-		const latticetypes::LatticeMatrix& q, const RealTorus& t)
 
 /*!
   Synopsis: writes in qp the matrix of the restriction of q to X_+.
 
   Precondition: q commutes with the involution;
 */
-
+void plusMatrix(latticetypes::LatticeMatrix& qp,
+		const latticetypes::LatticeMatrix& q, const RealTorus& t)
 {
-  const WeightList& bp = t.plusLattice();
+  const latticetypes::WeightList& bp = t.plusLattice();
   qp.resize(bp.size(),bp.size());
 
-  for (size_t j = 0; j < bp.size(); ++j) {
-    Weight v(t.rank());
+  for (size_t j = 0; j < bp.size(); ++j)
+  {
+    latticetypes::Weight v(t.rank());
     q.apply(v,bp[j]);
-    Weight vp(bp.size());
+    latticetypes::Weight vp(bp.size());
     t.toPlus(vp,v);
     for (size_t i = 0; i < bp.size(); ++i)
       qp(i,j) = vp[i];
   }
-
-  return;
 }
 
-}
+}  // |namespace tori|
 
 /*****************************************************************************
 
@@ -390,9 +375,10 @@ void plusMatrix(latticetypes::LatticeMatrix& qp,
 
 ******************************************************************************/
 
+namespace tori {
+
 namespace {
 
-void makeTopology(SmallSubquotient& cs, const RealTorus& T)
 
 /*!
   Synopsis: puts the subquotient V^tau/V_+ in cs.
@@ -403,24 +389,20 @@ void makeTopology(SmallSubquotient& cs, const RealTorus& T)
   isomorphic to V_-/(V_+  cap V_-), which we know is the _dual_ of the
   component group of the torus.
 */
+void makeTopology(latticetypes::SmallSubquotient& cs, const RealTorus& T)
 {
-  using namespace lattice;
+  latticetypes::SmallBitVectorList plus2(T.plusLattice()); // reduce mod 2
 
-  SmallBitVectorList plus2(T.plusLattice()); // reduce mod 2
-
-  BinaryMap i2(T.involution()); // reduce mod 2
-  BinaryMap id; identityMatrix(id,T.rank());
+  latticetypes::BinaryMap i2(T.involution()); // reduce mod 2
+  latticetypes::BinaryMap id; identityMatrix(id,T.rank());
   i2 += id;
 
-  SmallBitVectorList b;
+  latticetypes::SmallBitVectorList b;
   i2.kernel(b);  // kernel of map induced by tau-1 (or by tau+1), contains V_+
 
-  cs=SmallSubquotient(b,plus2,T.rank());
+  cs = latticetypes::SmallSubquotient(b,plus2,T.rank());
 }
 
-void fullMinusBasis(latticetypes::WeightList& mb,
-		    latticetypes::LatticeMatrix& tm,
-		    const latticetypes::LatticeMatrix& i)
 
 /*!
   Synopsis: puts in mb a basis for the -1 eigenspace of the involution; puts
@@ -434,27 +416,25 @@ void fullMinusBasis(latticetypes::WeightList& mb,
   commensurate with the eigenspace. Thus a smith basis for this lattice will
   do the trick. Such a basis also yields the projection matrix.
 */
-
+void fullMinusBasis(latticetypes::WeightList& mb,
+		    latticetypes::LatticeMatrix& tm,
+		    const latticetypes::LatticeMatrix& i)
 {
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace smithnormal;
-
   size_t n = i.numColumns();
 
   // put in q the matrix of vectors i(e)-e in the basis b
 
-  LatticeMatrix q(i);
+  latticetypes::LatticeMatrix q(i);
   for (size_t j = 0; j < n; ++j)
     q(j,j) -= 1;
 
   // find smith normal form
 
-  CoeffList invf;
-  WeightList bs;
-  initBasis(bs,n);
+  latticetypes::CoeffList invf;
+  latticetypes::WeightList bs;
+  matrix::initBasis(bs,n);
 
-  smithNormal(invf,bs.begin(),q);
+  smithnormal::smithNormal(invf,bs.begin(),q);
 
   // copy significant part of basis in mb
 
@@ -467,7 +447,7 @@ void fullMinusBasis(latticetypes::WeightList& mb,
   // rows of projection matrix are the first rows of the inverse of the
   // matrix of bs
 
-  LatticeMatrix p=LatticeMatrix(bs).inverse();
+  latticetypes::LatticeMatrix p=latticetypes::LatticeMatrix(bs).inverse();
 
 
   tm.resize(invf.size(),n);
@@ -479,9 +459,6 @@ void fullMinusBasis(latticetypes::WeightList& mb,
   return;
 }
 
-void fullPlusBasis(latticetypes::WeightList& pb,
-		   latticetypes::LatticeMatrix& tp,
-		   const latticetypes::LatticeMatrix& tau)
 
 /*!
   \brief puts in |pb| a basis for the +1 eigenlattice of the involution;
@@ -500,27 +477,25 @@ void fullPlusBasis(latticetypes::WeightList& pb,
   the standard basis to the Smith basis; retaining only the rows that give the
   initial coordinates we obtain the matrix |tp|.
 */
-
+void fullPlusBasis(latticetypes::WeightList& pb,
+		   latticetypes::LatticeMatrix& tp,
+		   const latticetypes::LatticeMatrix& tau)
 {
-  using namespace latticetypes;
-  using namespace matrix;
-  using namespace smithnormal;
-
   size_t n = tau.numColumns();
 
   // put in q the matrix of vectors tau(e)+e in the basis b
 
-  LatticeMatrix q(tau);
+  latticetypes::LatticeMatrix q(tau);
   for (size_t j = 0; j < n; ++j)
     q(j,j) += 1;
 
   // find smith normal form
 
-  CoeffList invf;
-  WeightList bs;
-  initBasis(bs,n);
+  latticetypes::CoeffList invf;
+  latticetypes::WeightList bs;
+  matrix::initBasis(bs,n);
 
-  smithNormal(invf,bs.begin(),q);
+  smithnormal::smithNormal(invf,bs.begin(),q);
 
   // copy significant part of basis in pb
 
@@ -530,12 +505,14 @@ void fullPlusBasis(latticetypes::WeightList& pb,
     pb.push_back(bs[j]);
 
   // make coordinate transformation matrix
-  LatticeMatrix p=LatticeMatrix(bs).inverse();
+  latticetypes::LatticeMatrix p = latticetypes::LatticeMatrix(bs).inverse();
 
   // extract first |invf.size()| rows
   tp=latticetypes::LatticeMatrix(p,0,0,invf.size(),n);
 }
 
-}
+} // |namespace|
 
-}
+} // |namespace tori|
+
+} // |namespace atlas|

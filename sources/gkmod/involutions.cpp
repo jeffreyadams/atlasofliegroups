@@ -32,8 +32,6 @@ namespace atlas {
   namespace involutions {
   namespace helper {
 
-  using namespace involutions;
-
       /*!
 \brief Derived class of InvolutionSet, to carry out the construction
 of InvolutionSet.
@@ -79,8 +77,6 @@ representation in $W$ coincides with that of |s| in the dual Weyl group
 
 namespace involutions {
 
-  using namespace atlas::involutions::helper;
-
 InvolutionSet::InvolutionSet()
 
 {}
@@ -97,7 +93,7 @@ InvolutionSet::InvolutionSet()
 */
 InvolutionSet::InvolutionSet(complexredgp::ComplexReductiveGroup& G)
 {
-  Helper help(G);
+  helper::Helper help(G);
   swap(help);
 }
 
@@ -338,17 +334,13 @@ void Helper::fillDualInvolutions(const weyl::TwistedWeylGroup& tW)
 */
 void Helper::weylCorrelation(const complexredgp::ComplexReductiveGroup& G)
 {
-  using namespace latticetypes;
-  using namespace rootdata;
-  using namespace weyl;
-
-  const WeylGroup& W = G.weylGroup();
+  const weyl::WeylGroup& W = G.weylGroup();
 
   // make dual Weyl group
-  LatticeMatrix c;
-  cartanMatrix(c,G.rootDatum());
+  latticetypes::LatticeMatrix c;
+  rootdata::cartanMatrix(c,G.rootDatum());
   c.transpose();   // transposing the Cartan matrix may change Weyl group
-  WeylGroup dW(c); // twist is irrelevant here
+  weyl::WeylGroup dW(c); // twist is irrelevant here
 
   // fill in d_toDualWeyl
   for (size_t s = 0; s < W.rank(); ++s) {

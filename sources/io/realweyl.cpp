@@ -172,98 +172,59 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
 
         Chapter III -- Functions declared in realweyl.h
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace realweyl {
 
-void blockStabilizerSize(size::Size& c, const RealWeyl& rw)
 
 /*
   Synopsis: puts in c the size of the block stabilizer for rw.
 */
-
+void blockStabilizerSize(size::Size& c, const RealWeyl& rw)
 {
-  using namespace size;
-  using namespace weylsize;
-
-  c.reset();
-  Size cp;
-
-  weylSize(cp,rw.complexType());
-  c *= cp;
-  weylSize(cp,rw.imaginaryCompactType());
-  c *= cp;
-  weylSize(cp,rw.realCompactType());
-  c *= cp;
+  c =  weylsize::weylSize(rw.complexType());
+  c *= weylsize::weylSize(rw.imaginaryCompactType());
+  c *= weylsize::weylSize(rw.realCompactType());
 
   size_t twoPower = rw.numImaginaryR();
   twoPower += rw.numRealR();
   c.twoShift(twoPower);
 
-  return;
 }
 
-void dualRealWeylSize(size::Size& c, const RealWeyl& rw)
-
-/*
-  Synopsis: puts in c the size of the dual real weyl group for rw.
-*/
-
-{
-  using namespace size;
-  using namespace weylsize;
-
-  c.reset();
-  Size cp;
-
-  weylSize(cp,rw.complexType());
-  c *= cp;
-  weylSize(cp,rw.imaginaryType());
-  c *= cp;
-  weylSize(cp,rw.realCompactType());
-  c *= cp;
-
-  size_t twoPower = rw.numRealR();
-  c.twoShift(twoPower);
-
-  return;
-}
-
-void realWeylSize(size::Size& c, const RealWeyl& rw)
 
 /*
   Synopsis: puts in c the size of the real weyl group for rw.
 */
-
+void realWeylSize(size::Size& c, const RealWeyl& rw)
 {
-  using namespace size;
-  using namespace weylsize;
-
-  c.reset();
-  Size cp;
-
-  weylSize(cp,rw.complexType());
-  c *= cp;
-  weylSize(cp,rw.imaginaryCompactType());
-  c *= cp;
-  weylSize(cp,rw.realType());
-  c *= cp;
+  c =  weylsize::weylSize(rw.complexType());
+  c *= weylsize::weylSize(rw.imaginaryCompactType());
+  c *= weylsize::weylSize(rw.realType());
 
   size_t twoPower = rw.numImaginaryR();
   c.twoShift(twoPower);
-
-  return;
 }
 
+
+/*
+  Synopsis: puts in c the size of the dual real weyl group for rw.
+*/
+void dualRealWeylSize(size::Size& c, const RealWeyl& rw)
+{
+  c =  weylsize::weylSize(rw.complexType());
+  c *= weylsize::weylSize(rw.imaginaryType());
+  c *= weylsize::weylSize(rw.realCompactType());
+
+  size_t twoPower = rw.numRealR();
+  c.twoShift(twoPower);
 }
+
+} // |namespace realweyl|
 
 /*****************************************************************************
 
         Chapter IV -- Local functions
-
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 

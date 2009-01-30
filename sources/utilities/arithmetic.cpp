@@ -80,11 +80,8 @@ unsigned long& modProd(unsigned long& a, unsigned long b, unsigned long n)
 */
 
 {
-  using namespace constants;
-  using namespace error;
-
-  if (n > (1UL << (longBits >> 1)))
-    FatalError() ("error: overflow in modProd");
+  if (n > (1UL << (constants::longBits >> 1)))
+    error::FatalError() ("error: overflow in modProd");
 
   a *= b;
   a %= n;

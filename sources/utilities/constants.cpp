@@ -48,10 +48,11 @@ void init()
 
     for lMask the index j==longBits is useful and used; Fokko forgot this!
 
-    - firstbit : firstbit[j] gives position of first set bit in j (0<j<256),
-		 or 8 (charBits) for j==0
-    - lastbit : lastbit[j] gives position+1 of last set bit in j (0<j<256),
-		 or 0 for j==0;
+    - firstbit : |firstbit[j]| gives greatest $k$ such that $2^k$ divides $j$
+                 (number of trailing bits 0); it is the position of lowest
+		 set bit for $j>0$, and $8$ (|charBits|) for $j=0$
+    - lastbit : |lastbit[j]| gives least $k$ with $j<2^k$; it is ONE MORE than
+                position of highest set bit in $j$ for $j>0$, and $0$ for $j=0$
 
 */
 

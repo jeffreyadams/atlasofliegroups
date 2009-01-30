@@ -24,10 +24,8 @@
 ******************************************************************************/
 
 namespace atlas {
-
+namespace dynkin{
 namespace {
-
-  using namespace dynkin;
 
   void componentOrder(setutils::Permutation&, const bitset::RankFlagsList&);
   void componentNormalize(setutils::Permutation&, const bitset::RankFlagsList&,
@@ -42,7 +40,8 @@ namespace {
   void typeFNormalize(setutils::Permutation&, const DynkinDiagram&);
   void typeGNormalize(setutils::Permutation&, const DynkinDiagram&);
 
-}
+} // |namespace|
+} // |namespace dynkin|
 
 /*****************************************************************************
 
@@ -65,11 +64,10 @@ DynkinDiagram::DynkinDiagram(const latticetypes::LatticeMatrix& c)
   : d_star(c.numColumns())
   , d_label()
 {
-  using namespace constants;
-
   for (size_t j = 0; j < c.numColumns(); ++j)
     for (size_t i = 0; i < c.numRows(); ++i)
-      if (c(i,j) and (i != j)) {
+      if (c(i,j) and (i != j))
+      {
 	d_star[j].set(i);
 	if (c(i,j) < -1) // only label multiple edges
 	  d_label.insert(std::make_pair(Edge(i,j),-c(i,j)));
@@ -134,31 +132,28 @@ int DynkinDiagram::cartanEntry(size_t i,size_t j) const
 */
 bitset::RankFlags DynkinDiagram::component(size_t j) const
 {
-  using namespace bitset;
-
-  RankFlags c;
-  RankFlags newElts;
+  bitset::RankFlags c;
+  bitset::RankFlags newElts;
 
   for (newElts.set(j); newElts.any(); newElts.andnot(c)) {
     c |= newElts;
-    for (RankFlags::iterator i = newElts.begin(); i(); ++i)
+    for (bitset::RankFlags::iterator i = newElts.begin(); i(); ++i)
       newElts |= d_star[*i];
   }
 
   return c;
 }
 
-bitset::RankFlags DynkinDiagram::extremities() const
 
 /*!
-  Synopsis : returns the subset of the vertices which are extremities of the
-  graph (i.e. whose star has zero or one element).
+  Synopsis : returns the largest multiplicity in the graph.
+
+  NOTE : we return 1 when there are no labelled edges, even when there are
+  no edges at all!
 */
-
+bitset::RankFlags DynkinDiagram::extremities() const
 {
-  using namespace bitset;
-
-  RankFlags e;
+  bitset::RankFlags e;
 
   for (size_t j = 0; j < d_star.size(); ++j)
     if (d_star[j].count() <= 1)
@@ -167,24 +162,6 @@ bitset::RankFlags DynkinDiagram::extremities() const
   return e;
 }
 
-Edge DynkinDiagram::labelEdge() const
-
-/*!
-  Synopsis : returns the multiple edge of d.
-
-  Precondition : d is irreducible and not simply laced;
-
-  NOTE : if d is not simply laced but not irreducible, will return the first
-  multiple edge of d. There is guaranteed to be only one if d is irreducible.
-*/
-
-{
-  std::pair<Edge,Multiplicity> p = *(d_label.begin());
-
-  return p.first;
-}
-
-Multiplicity DynkinDiagram::maxMultiplicity() const
 
 /*!
   Synopsis : returns the largest multiplicity in the graph.
@@ -192,7 +169,21 @@ Multiplicity DynkinDiagram::maxMultiplicity() const
   NOTE : we return 1 when there are no labelled edges, even when there are
   no edges at all!
 */
+Edge DynkinDiagram::labelEdge() const
+{
+  std::pair<Edge,Multiplicity> p = *(d_label.begin());
 
+  return p.first;
+}
+
+
+/*!
+  Synopsis : returns the largest multiplicity in the graph.
+
+  NOTE : we return 1 when there are no labelled edges, even when there are
+  no edges at all!
+*/
+Multiplicity DynkinDiagram::maxMultiplicity() const
 {
   Multiplicity m = 1;
 
@@ -209,7 +200,6 @@ Multiplicity DynkinDiagram::maxMultiplicity() const
   return m;
 }
 
-size_t DynkinDiagram::node() const
 
 /*!
   Synopsis : returns the node of the graph.
@@ -220,7 +210,7 @@ size_t DynkinDiagram::node() const
   return value is -1 in this case). If the graph has more than one node,
   it will return the first of them.
 */
-
+size_t DynkinDiagram::node() const
 {
   // look for the first element whose star has more than two elements
 
@@ -231,19 +221,16 @@ size_t DynkinDiagram::node() const
   return ~0;
 }
 
-}
+}  // |namespace dynkin|
 
 /*****************************************************************************
 
         Chapter II -- Functions declared in dynkin.h
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace dynkin {
 
-void bourbaki(setutils::Permutation& a, const DynkinDiagram& d)
 
 /*!
   Synopsis: writes in |a| some permutation that will take d to Bourbaki form
@@ -252,10 +239,8 @@ void bourbaki(setutils::Permutation& a, const DynkinDiagram& d)
   traverse each of its connected components consecutively, and in the order
   prescribed by the the Bourbaki conventions for the type of that component
 */
-
+void bourbaki(setutils::Permutation& a, const DynkinDiagram& d)
 {
-  using namespace lietype;
-
   a.resize(d.rank());
   bitset::RankFlagsList cl;
 
@@ -268,14 +253,16 @@ void bourbaki(setutils::Permutation& a, const DynkinDiagram& d)
 
   size_t r = 0;
 
-  for (size_t j = 0; j < cl.size(); ++j) {
+  for (size_t j = 0; j < cl.size(); ++j)
+  {
 
     // get type of component
     DynkinDiagram cd(cl[j],d);
-    TypeLetter x = irreducibleType(cd);
+    lietype::TypeLetter x = irreducibleType(cd);
 
     // reverse if type is BCD
-    if (x == 'B' or x == 'C' or x == 'D') {
+    if (x == 'B' or x == 'C' or x == 'D')
+    {
       size_t m = cl[j].count();
       for (size_t i = 0; i < m/2; ++i)
 	std::swap(a[r+i],a[r+m-1-i]);
@@ -283,98 +270,8 @@ void bourbaki(setutils::Permutation& a, const DynkinDiagram& d)
 
     r += cl[j].count();
   }
-
-  return;
 }
 
-void components(bitset::RankFlagsList& cl, const DynkinDiagram& d)
-
-/*!
-  Writes in cl the list of the connected components of d.
-*/
-
-{
-  using namespace bitset;
-  using namespace constants;
-
-  cl.clear();
-
-  RankFlags v;
-  set(v,d.rank());
-
-  for (; v.any();) {
-    size_t j = v.firstBit();
-    RankFlags c = d.component(j);
-    cl.push_back(c);
-    v.andnot(c);
-  }
-
-  return;
-}
-
-/*!
-  Synopsis: writes in lt the Lie type of the Cartan matrix cm.
-*/
-void lieType(lietype::LieType& lt, const latticetypes::LatticeMatrix& cm)
-{
-  using namespace lietype;
-
-  lt.clear();
-
-  DynkinDiagram d(cm);
-  bitset::RankFlagsList cl;
-
-  components(cl,d);
-  lt.reserve(cl.size());
-
-  for (size_t j = 0; j < cl.size(); ++j) {
-    DynkinDiagram cd(cl[j],d);
-    TypeLetter x = irreducibleType(cd);
-    SimpleLieType slt(x,cd.rank());
-    lt.push_back(slt);
-  }
-}
-
-lietype::LieType lieType(const latticetypes::LatticeMatrix& cm)
-{
-  lietype::LieType result; lieType(result,cm); return result;
-}
-
-void normalize(setutils::Permutation& a, const DynkinDiagram& d)
-
-/*!
-  Synopsis: writes in a a permutation that will take d to normal form
-
-  This means that components of d are numbered consecutively, and that each
-  component is normalized according to the Bourbaki conventions for the
-  exceptional types, opposite-to-Bourbaki for the classical ones (this is the
-  right ordering for the convenient implementation of Weyl groups.)
-*/
-
-{
-  a.resize(d.rank());
-  bitset::RankFlagsList cl;
-
-  components(cl,d);
-  componentOrder(a,cl);
-  componentNormalize(a,cl,d);
-
-  return;
-}
-
-}
-
-/*****************************************************************************
-
-        Chapter III -- Auxiliary functions for this module
-
-  ... explain here when it is stable ...
-
-******************************************************************************/
-
-namespace {
-
-void componentOrder(setutils::Permutation& a, const bitset::RankFlagsList& cl)
 
 /*!
   Returns in a a permutation such that the various components, listed in cl,
@@ -384,24 +281,98 @@ void componentOrder(setutils::Permutation& a, const bitset::RankFlagsList& cl)
   its inverse. Our convention is that the _new_ vertex \#i is the _old_ vertex
   \# a[i].
 */
-
+void components(bitset::RankFlagsList& cl, const DynkinDiagram& d)
 {
-  using namespace bitset;
+  cl.clear();
 
+  bitset::RankFlags v;
+  set(v,d.rank());
+
+  for (; v.any();)
+  {
+    size_t j = v.firstBit();
+    bitset::RankFlags c = d.component(j);
+    cl.push_back(c);
+    v.andnot(c);
+  }
+}
+
+/*!
+  Synopsis: writes in lt the Lie type of the Cartan matrix cm.
+*/
+void lieType(lietype::LieType& lt, const latticetypes::LatticeMatrix& cm)
+{
+  lt.clear();
+
+  DynkinDiagram d(cm);
+  bitset::RankFlagsList cl;
+
+  components(cl,d);
+  lt.reserve(cl.size());
+
+  for (size_t j = 0; j < cl.size(); ++j)
+  {
+    DynkinDiagram cd(cl[j],d);
+    lietype::TypeLetter x = irreducibleType(cd);
+    lietype::SimpleLieType slt(x,cd.rank());
+    lt.push_back(slt);
+  }
+}
+
+lietype::LieType lieType(const latticetypes::LatticeMatrix& cm)
+{
+  lietype::LieType result; lieType(result,cm); return result;
+}
+
+
+/*!
+  Returns in a a permutation such that the various components, listed in cl,
+  are numbered by successive indices.
+
+  NOTE : it is always very confusing to choose between the permutation and
+  its inverse. Our convention is that the _new_ vertex \#i is the _old_ vertex
+  \# a[i].
+*/
+void normalize(setutils::Permutation& a, const DynkinDiagram& d)
+{
+  a.resize(d.rank());
+  bitset::RankFlagsList cl;
+
+  components(cl,d);
+  componentOrder(a,cl);
+  componentNormalize(a,cl,d);
+}
+
+} // |namespace dynkin|
+
+/*****************************************************************************
+
+        Chapter III -- Auxiliary functions for this module
+
+******************************************************************************/
+
+namespace dynkin {
+namespace {
+
+/*!
+  Returns in a a permutation such that the various components, listed in cl,
+  are numbered by successive indices.
+
+  NOTE : it is always very confusing to choose between the permutation and
+  its inverse. Our convention is that the _new_ vertex \#i is the _old_ vertex
+  \# a[i].
+*/
+void componentOrder(setutils::Permutation& a, const bitset::RankFlagsList& cl)
+{
   // traverse each component, write down its elements in sequence
 
   a.clear();
 
   for (size_t j = 0; j < cl.size(); ++j)
-    for (RankFlags::iterator i = cl[j].begin(); i(); ++i)
+    for (bitset::RankFlags::iterator i = cl[j].begin(); i(); ++i)
       a.push_back(*i);
-
-  return;
 }
 
-void componentNormalize(setutils::Permutation& a,
-			const bitset::RankFlagsList& cl,
-			const DynkinDiagram& d)
 
 /*!
   Precondition : a contains a component ordering of d; cl contains the
@@ -411,11 +382,10 @@ void componentNormalize(setutils::Permutation& a,
   normalized ordering on each component, which is Bourbaki for the
   exceptional types, opposite-to-Bourbaki for the classical ones.
 */
-
+void componentNormalize(setutils::Permutation& a,
+			const bitset::RankFlagsList& cl,
+			const DynkinDiagram& d)
 {
-  using namespace constants;
-  using namespace setutils;
-
   size_t r = 0;
 
   for (size_t j = 0; j < cl.size(); ++j) {
@@ -424,20 +394,17 @@ void componentNormalize(setutils::Permutation& a,
     DynkinDiagram cd(cl[j],d);
 
     // normalize it
-    Permutation b;
+    setutils::Permutation b;
     irreducibleNormalize(b,cd);
 
     // piece together the permutation
-    compose(a,b,r);
+    setutils::compose(a,b,r);
 
     // update r
     r += cl[j].count();
   }
-
-  return;
 }
 
-void irreducibleNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 /*!
   Precondition : d is an _irreducible_ Dynkin diagram;
@@ -448,10 +415,8 @@ void irreducibleNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   It is essentially a dispatching function for the various possible simple
   types.
 */
-
+void irreducibleNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 {
-  using namespace lietype;
-
   lietype::TypeLetter x = irreducibleType(d);
 
   switch (x) {
@@ -482,33 +447,33 @@ void irreducibleNormalize(setutils::Permutation& a, const DynkinDiagram& d)
     assert(false && "unexpected type in irreducibleNormalize");
     break;
   }
-
-  return;
 }
 
-lietype::TypeLetter irreducibleType(const DynkinDiagram& d)
 
 /*!
-  Synopsis : returns the type of the Dynkin diagram (one of the letters A-G).
+  Synopsis : puts in a a permutation that will enumerate d in Bourbaki order.
 
-  Precondition : d is irreducible;
+  Precondition : d is irreducible of type A, of rank >= 1;
+
+  Postcondition : a holds a permutation which linearly enumerates the graph
+  (which is a string in this case) --- there are exactly two such except in
+  rank one;
 */
-
+lietype::TypeLetter irreducibleType(const DynkinDiagram& d)
 {
-  using namespace bitset;
-  using namespace constants;
+  const bitset::RankFlagsList& st = d.star();
 
-  const RankFlagsList& st = d.star();
+  bitset::RankFlags extr = d.extremities();
 
-  RankFlags extr = d.extremities();
-
-  switch (extr.count()) {
+  switch (extr.count())
+  {
 
   case 1: // type is A1
     return 'A';
 
   case 2: // type is A,B,C,F or G
-    switch (d.maxMultiplicity()) {
+    switch (d.maxMultiplicity())
+    {
 
     case 1: // type is A
       return 'A';
@@ -532,22 +497,22 @@ lietype::TypeLetter irreducibleType(const DynkinDiagram& d)
       return 0;
     }
 
-  case 3: { // type is D or E
-    size_t n = d.node();
-    RankFlags sh = st[n]; // sh has three elements
-    sh &= extr;           // now sh counts the number of short arms
-    if (sh.count() == 1) // type is E
-      return 'E';
-    else
-      return 'D';
-  }
+  case 3:
+    { // type is D or E
+      size_t n = d.node();
+      bitset::RankFlags sh = st[n]; // sh has three elements
+      sh &= extr;           // now sh counts the number of short arms
+      if (sh.count() == 1) // type is E
+	return 'E';
+      else
+	return 'D';
+    }
 
   default: // should never happen
     return 0;
   }
 }
 
-void typeANormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 /*!
   Synopsis : puts in a a permutation that will enumerate d in Bourbaki order.
@@ -558,33 +523,28 @@ void typeANormalize(setutils::Permutation& a, const DynkinDiagram& d)
   (which is a string in this case) --- there are exactly two such except in
   rank one;
 */
-
+void typeANormalize(setutils::Permutation& a, const DynkinDiagram& d)
 {
-  using namespace bitset;
-  using namespace constants;
-
   size_t r = d.rank();
   a.resize(r);
 
-  RankFlags e = d.extremities(); // e has one or two set elements
+  bitset::RankFlags e = d.extremities(); // e has one or two set elements
   a[0] = e.firstBit();
 
   if (r == 1)
     return;
 
-  RankFlags st = d.star(a[0]);  // st has a single element
+  bitset::RankFlags st = d.star(a[0]);  // st has a single element
   a[1] = st.firstBit();
 
-  for (size_t j = 2; j < d.rank(); ++j) {
-    RankFlags next = d.star(a[j-1]);
+  for (size_t j = 2; j < d.rank(); ++j)
+  {
+    bitset::RankFlags next = d.star(a[j-1]);
     next.reset(a[j-2]);
     a[j] = next.firstBit();
   }
-
-  return;
 }
 
-void typeBNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 /*!
   Synopsis : puts in a a permutation that will enumerate d in opposite-to-
@@ -596,11 +556,8 @@ void typeBNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   (which is a string in this case), with the label carried by the first edge,
   and the edge pointing toward the first vertex. This is unique.
 */
-
+void typeBNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 {
-  using namespace bitset;
-  using namespace constants;
-
   size_t r = d.rank();
   a.resize(r);
 
@@ -609,16 +566,14 @@ void typeBNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   a[0] = e.second;
   a[1] = e.first;
 
-  for (size_t j = 2; j < r; ++j) {
-    RankFlags next = d.star(a[j-1]);
+  for (size_t j = 2; j < r; ++j)
+  {
+    bitset::RankFlags next = d.star(a[j-1]);
     next.reset(a[j-2]);
     a[j] = next.firstBit();
   }
-
-  return;
 }
 
-void typeCNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 /*!
   Synopsis : puts in a a permutation that will enumerate d in opposite-to-
@@ -630,11 +585,8 @@ void typeCNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   (which is a string in this case), with the label carried by the first edge,
   and the edge pointing toward the second vertex. This is unique.
 */
-
+void typeCNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 {
-  using namespace bitset;
-  using namespace constants;
-
   size_t r = d.rank();
   a.resize(r);
 
@@ -643,16 +595,14 @@ void typeCNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   a[0] = e.first;
   a[1] = e.second;
 
-  for (size_t j = 2; j < r; ++j) {
-    RankFlags next = d.star(a[j-1]);
+  for (size_t j = 2; j < r; ++j)
+  {
+    bitset::RankFlags next = d.star(a[j-1]);
     next.reset(a[j-2]);
     a[j] = next.firstBit();
   }
-
-  return;
 }
 
-void typeDNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 /*!
   Synopsis : puts in a a permutation that will enumerate d in opposite-to-
@@ -665,23 +615,20 @@ void typeDNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   the third branch is enumerated linearly downward from the node. There
   are two such enumerations when the rank is > 4, six when the rank is 4.
 */
-
+void typeDNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 {
-  using namespace bitset;
-  using namespace constants;
-
   size_t r = d.rank();
   a.resize(r);
 
   size_t n = d.node();
   a[2] = n;
 
-  RankFlags st = d.star(n);
-  RankFlags shortArms = d.extremities();
+  bitset::RankFlags st = d.star(n);
+  bitset::RankFlags shortArms = d.extremities();
   // this will make shortArms hold the short arms of the diagram
   shortArms &= st;
 
-  RankFlags::iterator i = shortArms.begin();
+  bitset::RankFlags::iterator i = shortArms.begin();
   a[0] = *i;
   a[1] = *(++i);
 
@@ -692,16 +639,14 @@ void typeDNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
   a[3] = st.firstBit();
 
-  for (size_t j = 4; j < r; ++j) {
-    RankFlags next = d.star(a[j-1]);
+  for (size_t j = 4; j < r; ++j)
+  {
+    bitset::RankFlags next = d.star(a[j-1]);
     next.reset(a[j-2]);
     a[j] = next.firstBit();
   }
-
-  return;
 }
 
-void typeENormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 /*!
   Synopsis : puts in a a permutation that will enumerate d in Bourbaki order.
@@ -714,45 +659,44 @@ void typeENormalize(setutils::Permutation& a, const DynkinDiagram& d)
   the other element of that branch, and the elements of the last branch are
   enumerated from the node. There are two solutions in type E6, one otherwise.
 */
-
+void typeENormalize(setutils::Permutation& a, const DynkinDiagram& d)
 {
-  using namespace bitset;
-  using namespace constants;
-
   size_t r = d.rank();
   a.resize(r);
 
   size_t n = d.node();
   a[3] = n;
 
-  RankFlags st = d.star(n);
-  RankFlags extr = d.extremities();
+  bitset::RankFlags st = d.star(n);
+  bitset::RankFlags extr = d.extremities();
 
-  RankFlags shortArms = extr;
+  bitset::RankFlags shortArms = extr;
   // this will make shortArms hold the short arm
   shortArms &= st;
   a[1] = shortArms.firstBit();
 
   st.andnot(shortArms);
-  RankFlags::iterator i = st.begin();
+  bitset::RankFlags::iterator i = st.begin();
 
   size_t x = *i;
   size_t y = *(++i);
 
-  RankFlags st_x = d.star(x);
-  RankFlags st_y = d.star(y);
+  bitset::RankFlags st_x = d.star(x);
+  bitset::RankFlags st_y = d.star(y);
 
-  RankFlags e_x = st_x;
+  bitset::RankFlags e_x = st_x;
   e_x &= extr;
 
-  if (e_x.any()) { // x is the origin of a branch of length 2
+  if (e_x.any()) // x is the origin of a branch of length 2
+  {
     a[2] = x;
     a[0] = e_x.firstBit();
     a[4] = y;
   }
-  else { // y is the origin of a branch of length 2
+  else // y is the origin of a branch of length 2
+  {
     a[2] = y;
-    RankFlags e_y = st_y;
+    bitset::RankFlags e_y = st_y;
     e_y &= extr;
     a[0] = e_y.firstBit();
     a[4] = x;
@@ -760,16 +704,14 @@ void typeENormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
   // enumerate the last branch
 
-  for (size_t j = 5; j < d.rank(); ++j) {
-    RankFlags next = d.star(a[j-1]);
+  for (size_t j = 5; j < d.rank(); ++j)
+  {
+    bitset::RankFlags next = d.star(a[j-1]);
     next.reset(a[j-2]);
     a[j] = next.firstBit();
   }
-
-  return;
 }
 
-void typeFNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 /*!
   Synopsis : puts in a a permutation that will enumerate d in Bourbaki order.
@@ -780,11 +722,8 @@ void typeFNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   order, for which the middle edge is oriented from 1 to 2; such a permutation
   is unique.
 */
-
+void typeFNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 {
-  using namespace bitset;
-  using namespace constants;
-
   a.resize(4);
 
   Edge e = d.labelEdge();
@@ -792,18 +731,15 @@ void typeFNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   a[1] = e.first;
   a[2] = e.second;
 
-  RankFlags st = d.star(a[1]);
+  bitset::RankFlags st = d.star(a[1]);
   st.reset(a[2]);
   a[0] = st.firstBit();
 
   st = d.star(a[2]);
   st.reset(a[1]);
   a[3] = st.firstBit();
-
-  return;
 }
 
-void typeGNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
 /*!
   Synopsis : puts in a a permutation that will enumerate d in Bourbaki order.
@@ -813,7 +749,7 @@ void typeGNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   Postcondition : a holds the permutation for which the edge is oriented from
   0 to 1; this is unique.
 */
-
+void typeGNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 {
   a.resize(2);
 
@@ -821,10 +757,8 @@ void typeGNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
   a[0] = e.first;
   a[1] = e.second;
-
-  return;
 }
 
-}
-
-}
+} // |namespace|
+} // |namespace dynkin|
+} // |namespace atlas|

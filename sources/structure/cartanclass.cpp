@@ -31,9 +31,9 @@
 
 namespace atlas {
 
-namespace {
+  namespace cartanclass {
 
-  using namespace cartanclass;
+    namespace {
 
   /*!
   \brief Constructs a function object defining the action of the simple
@@ -92,7 +92,9 @@ namespace {
     }
   };
 
-} // namespace
+} // |namespace|
+
+} // |namespace cartanclass|
 
 /*****************************************************************************
 
@@ -771,10 +773,6 @@ std::vector<partition::Partition> Fiber::makeStrongReal
 */
 std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 {
-  using namespace bitset;
-  using namespace latticetypes;
-  using namespace partition;
-
   latticetypes::SmallBitVectorList b(fiberRank());
 
   for (size_t i = 0; i < b.size(); ++i)
@@ -782,8 +780,8 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 
   std::vector<StrongRealFormRep> result(numRealForms());
 
-  for (size_t wrf = 0; wrf<result.size(); ++wrf) {
-
+  for (size_t wrf = 0; wrf<result.size(); ++wrf)
+  {
     size_t c = central_square_class(wrf);
 
     // find representative |yf| of |wrf| in the adjoint fiber (group)
@@ -796,7 +794,7 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
     latticetypes::SmallBitVector v(yf,adjointFiberRank()); // the desired image
 
     // solve equation |toAdjoint(xf)=v|
-    RankFlags xf;
+    bitset::RankFlags xf;
 #ifndef NDEBUG
     bool success=bitvector::firstSolution(xf,b,v);
     assert(success);  // there has to be a solution!
@@ -949,8 +947,6 @@ AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
 */
 adjoint_fiber_orbit Fiber::toWeakReal(fiber_orbit c, square_class csc) const
 {
-  using namespace partition;
-
   // get the basepoint for this real form class
   AdjointFiberElt by = class_base(csc);
 
@@ -1043,21 +1039,22 @@ rootdata::RootList
 toMostSplit(const cartanclass::Fiber& fundf,
 	    realform::RealForm rf, const rootdata::RootDatum& rd)
 {
-  using namespace cartanclass;
-  using namespace rootdata;
-
-  RootSet ir = fundf.imaginaryRootSet();
+  rootdata::RootSet ir = fundf.imaginaryRootSet();
   unsigned long rep = fundf.weakReal().classRep(rf);
-  RootSet rs=fundf.noncompactRoots(rep);
+  rootdata::RootSet rs=fundf.noncompactRoots(rep);
 
   rootdata::RootList result;
-  while (not rs.empty()) {
-    RootNbr rn = rs.front();
-    for (RootSet::iterator i = ir.begin(); i(); ++i) {
-      if (not rd.isOrthogonal(rn,*i)) {
+  while (not rs.empty())
+  {
+    rootdata::RootNbr rn = rs.front();
+    for (rootdata::RootSet::iterator i = ir.begin(); i(); ++i)
+    {
+      if (not rd.isOrthogonal(rn,*i))
+      {
 	ir.remove(*i);
 	rs.remove(*i);
-      } else if (rd.sumIsRoot(rn,*i))
+      }
+      else if (rd.sumIsRoot(rn,*i))
 	rs.flip(*i);
     }
     result.push_back(rn);
@@ -1068,13 +1065,15 @@ toMostSplit(const cartanclass::Fiber& fundf,
   return result;
 }
 
-}
+} // |namespace cartanclass|
 
 /*****************************************************************************
 
         Chapter VI -- Auxiliary methods of |CartanClass|
 
 ******************************************************************************/
+
+namespace cartanclass {
 
 /*! \brief Computes the list of the simple roots for a complex factor in
   \f$W^\tau\f$, where \f$\tau\f$ is the root datum involution of our Cartan
@@ -1158,21 +1157,21 @@ size::Size CartanClass::makeOrbitSize(const rootdata::RootDatum& rd) const
   lietype::LieType lt=dynkin::lieType(rd.cartanMatrix());
 
   // initialise |result| to size of full Weyl group
-  size::Size result; weylsize::weylSize(result,lt);
+  size::Size result = weylsize::weylSize(lt);
 
   // divide by product of imaginary, real and complex sizes
-  size::Size ws;
+  result /=
+    weylsize::weylSize(dynkin::lieType(rd.cartanMatrix(simpleImaginary())));
 
-  weylsize::weylSize(ws,dynkin::lieType(rd.cartanMatrix(simpleImaginary())));
-  result /= ws;
+  result /=
+    weylsize::weylSize(dynkin::lieType(rd.cartanMatrix(simpleReal())));
 
-  weylsize::weylSize(ws,dynkin::lieType(rd.cartanMatrix(simpleReal())));
-  result /= ws;
-
-  weylsize::weylSize(ws,dynkin::lieType(rd.cartanMatrix(simpleComplex())));
-  result /= ws;
+  result /=
+    weylsize::weylSize(dynkin::lieType(rd.cartanMatrix(simpleComplex())));
 
   return result;
 }
+
+}  // |namespace cartanclass|
 
 } // namespace atlas

@@ -162,19 +162,14 @@ template<> class BitSetBase<1> {
   /*!
 \brief Returns the value of bit j in the BitSet.
   */
-  bool operator[] (size_t j) const {
-    return d_bits & constants::bitMask[j];
-  }
+  bool operator[] (size_t j) const
+  { return (d_bits & constants::bitMask[j])!=0; }
   /*!
 \brief  Returns 1 if any bit of the BitSet is 1, and 0 otherwise.
   */
-  bool any() const {
-    return d_bits!=0;
-  }
+  bool any() const { return d_bits!=0; }
 
-  bool any(const BitSetBase<1>& b) const {
-    return (d_bits & b.d_bits)!=0;
-  }
+  bool any(const BitSetBase<1>& b) const { return (d_bits & b.d_bits)!=0; }
 
   iterator begin() const;
 
@@ -193,40 +188,30 @@ template<> class BitSetBase<1> {
     return bits::bitCount(d_bits);
   }
 
-  size_t firstBit() const {
-    return bits::firstBit(d_bits);
-  }
+  size_t firstBit() const // index of least set bit; |longBits| if |none()|
+  { return bits::firstBit(d_bits); }
 
-  size_t lastBit() const {
-    return bits::lastBit(d_bits);
-  }
+  size_t lastBit() const // index of highest set bit PLUS ONE, 0 if |none()|
+  { return bits::lastBit(d_bits); }
 
-  bool none() const {
-    return !d_bits;
-  }
+  bool none() const { return d_bits==0; }
 
-  size_t position(size_t j) const {
      /*!
 \brief Number of set bits in position < j.
 
-If j is set, this is the position of j in the collection of set bits.
+If j is itself set, this is the position of bit j among the SET bit
    */
-    return bits::bitCount(d_bits & constants::lMask[j]);
-  }
+  size_t position(size_t j) const
+  { return bits::bitCount(d_bits & constants::lMask[j]); }
 
   bool scalarProduct(const BitSetBase<1>& b) const;
 
-  bool test(size_t j) const {
-    return d_bits & constants::bitMask[j];
-  }
+  // an other name for |operator[]|
+  bool test(size_t j) const { return (d_bits & constants::bitMask[j])!=0; }
 
-  unsigned long to_ulong() const {
-    return d_bits;
-  }
+  unsigned long to_ulong() const { return d_bits; }
 
-  unsigned long to_ulong1() const { // second unsigned long slice
-    return 0ul;
-  }
+  unsigned long to_ulong1() const { return 0ul; } // second unsigned long slice
 
 // manipulators
 
@@ -245,25 +230,23 @@ If j is set, this is the position of j in the collection of set bits.
     return *this;
   }
 
-  BitSetBase<1>& operator<<= (size_t c) {
-  /*!
-  We have to make sure that shift by constants::longBits yields 0.
-  */
-    if (c < constants::longBits)
+  // We have to make sure that shift by constants::longBits yields 0.
+  BitSetBase<1>& operator<<= (size_t c)
+  {
+    if (c < constants::longBits) // bit shifts by more than this are undefined!
       d_bits <<= c;
     else
-      d_bits = 0ul;
+      d_bits = 0ul; // simulate shifting out of all bits
     return *this;
   }
 
-  BitSetBase<1>& operator>>= (size_t c) {
-  /*!
-  We have to make sure that shift by constants::longBits yields 0.
-  */
-    if (c < constants::longBits)
+  // We have to make sure that shift by constants::longBits yields 0.
+  BitSetBase<1>& operator>>= (size_t c)
+  {
+    if (c < constants::longBits) // bit shifts by more than this are undefined!
       d_bits >>= c;
     else
-      d_bits = 0ul;
+      d_bits = 0ul; // simulate shifting out of all bits
     return *this;
   }
 
@@ -471,9 +454,11 @@ template<> class BitSetBase<2> {
     return d_bits[0] != b.d_bits[0] or d_bits[1] != b.d_bits[1];
   }
 
-  bool operator< (const BitSetBase<2>& b) const {
-    return d_bits[1] < b.d_bits[1] or
-      (d_bits[1] == b.d_bits[1] and d_bits[0] < b.d_bits[0]);
+  bool operator< (const BitSetBase<2>& b) const
+  {
+    return d_bits[1] == b.d_bits[1]
+      ? d_bits[0] < b.d_bits[0]
+      : d_bits[1] < b.d_bits[1];
   }
 
   bool operator[] (size_t j) const { return test(j); }
@@ -514,14 +499,12 @@ template<> class BitSetBase<2> {
       return bits::lastBit(d_bits[0]);
   }
 
-  bool none() const {
-    return (!d_bits[0]) and (!d_bits[1]);
-  }
+  bool none() const { return d_bits[0]==0 and d_bits[1]==0; }
 
    /*!
 \brief Number of set bits in position < j.
 
-If j is set, this is the position of j in the collection of set bits.
+If j itself is set, this is the position of bit j among the set bits.
    */
   size_t position(size_t j) const {
     if (j >> constants::baseShift !=0) // two terms
@@ -539,13 +522,9 @@ If j is set, this is the position of j in the collection of set bits.
            & constants::bitMask[j & constants::posBits])!=0;
   }
 
-  unsigned long to_ulong() const {
-    return d_bits[0];
-  }
+  unsigned long to_ulong() const { return d_bits[0]; }
 
-  unsigned long to_ulong1() const {
-    return d_bits[1];
-  }
+  unsigned long to_ulong1() const { return d_bits[1]; }
 
 // manipulators
 
@@ -942,9 +921,7 @@ Returns the capacity of the BitSet if there is no such bit.
   }
 
   /*!
-\brief position of the last set bit in BitSet.
-
-Returns 0 if there is no such bit.
+\brief position of the last set bit PLUS ONE in BitSet, or 0 if |none()|
   */
   size_t lastBit() const {
     return Base::lastBit();

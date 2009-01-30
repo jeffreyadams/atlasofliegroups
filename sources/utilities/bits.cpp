@@ -70,41 +70,33 @@ size_t firstBit(unsigned long f)
 */
 
 {
-  using namespace constants;
-
   if (f == 0)
-    return longBits;
+    return constants::longBits;
 
   size_t fb = 0;
 
-  for (; (f & firstCharMask) == 0; f >>= charBits)
-    fb += charBits;
+  for (; (f & constants::firstCharMask) == 0; f >>= constants::charBits)
+    fb += constants::charBits;
 
-  return fb + firstbit[f & firstCharMask];
+  return fb + constants::firstbit[f & constants::firstCharMask];
 }
 
-size_t lastBit(unsigned long f)
 
 /*!
   Synopsis: returns the position of the last (most significant)
   set bit in f, PLUS ONE.  Returns 0 if there is no such bit.
 */
-
+size_t lastBit(unsigned long f)
 {
-  using namespace constants;
-
   if (f == 0)
     return 0;
 
-  unsigned lb = 0;
+  unsigned lb; // number of skipped low-order bits
+  for (lb=0; (f & ~constants::firstCharMask)!=0; f >>= constants::charBits)
+    lb += constants::charBits;
 
-  for (; f & ~firstCharMask; f >>= charBits)
-    lb += charBits;
-
-  return lb + lastbit[f];
+  return lb + constants::lastbit[f];
 }
-
-void permute(unsigned long& f, const setutils::Permutation& a)
 
 /*!
   Synopsis: permutes the bits of f according to a: if the bits of f are
@@ -118,18 +110,15 @@ void permute(unsigned long& f, const setutils::Permutation& a)
   permutation of vector entries in setutils::permute, given in setutils_def.h
 */
 
+void permute(unsigned long& f, const setutils::Permutation& a)
 {
-  using namespace constants;
-
   unsigned long f_new = 0;
 
   for (size_t j = 0; j < a.size(); ++j)
-    if (f & bitMask[a[j]])
-      f_new |= bitMask[j];
+    if ((f & constants::bitMask[a[j]])!=0)
+      f_new |= constants::bitMask[j];
 
   f = f_new;
-
-  return;
 }
 
 }

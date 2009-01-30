@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -15,7 +15,8 @@
 
 /*****************************************************************************
 
-  ... explain here when it is stable ...
+  Provide a one-time precomputation of the necessary seqence of small primes,
+  which are then accessible as |primes(i)|
 
 ******************************************************************************/
 
@@ -23,27 +24,19 @@ namespace atlas {
 
 namespace {
 
-  using namespace size;
+// a class instantiated once as a static object; ctor does precomputation
+class PrimeHelper
+{
+  unsigned long d_primes[size::PRIMES_MAX];
+public:
 
-  class PrimeHelper {
+  explicit PrimeHelper(unsigned long n); // computes primes up to |n|
+  ~PrimeHelper() {}
 
-  private:
+  unsigned long operator[] (size_t j) { return d_primes[j]; }
+}; // |class PrimeHelper|
 
-    unsigned long d_primes[PRIMES_MAX];
-
-  public:
-
-    // constructors and destructors
-    explicit PrimeHelper(unsigned long);
-    ~PrimeHelper() {}
-
-    // accessors
-    unsigned long operator[] (size_t j) {
-      return d_primes[j];
-    }
-  };
-
-}
+} // |namespace|
 
 /*****************************************************************************
 
@@ -53,21 +46,31 @@ namespace {
 
 namespace size {
 
-unsigned long prime(size_t j)
 
 /*!
   Synopsis: returns the j-th prime number, counting from 0.
 
   Precondition: j < PRIMES_MAX;
 */
-
+unsigned long prime(size_t j)
 {
   static PrimeHelper p(constants::RANK_MAX+1);
 
   return p[j];
 }
 
+//! Return the factorial of |n|.
+Size factorial (unsigned long n)
+{
+  Size result(1);
+
+  for (; n>1; --n)
+    result *= Size(n);
+
+  return result;
 }
+
+} // |namespace size|
 
 /*****************************************************************************
 
@@ -77,36 +80,40 @@ unsigned long prime(size_t j)
 
 namespace {
 
-PrimeHelper::PrimeHelper(unsigned long n)
 
 /*!
   Synopsis: constructs a PrimeHelper object containing the primes <= n.
 
   Also checks that PRIMES_MAX is large enough to contain the list; triggers
-  a fatal error otherwise.
+  a (fatal) |error::PrimesError| otherwise.
 */
-
+PrimeHelper::PrimeHelper(unsigned long n)
 {
-  using namespace error;
+  size_t count=0; // number of primes found
 
-  size_t size = 0;
+  for (size_t j=2; j <= n; ++j) // |j| is candidate prime
+  {
+    size_t i; // allow inspection after loop
+    for (i=0; i<count; ++i) // test for division by |prime(i)|
+    {
+      // the next test is optional, only saves time if |n| is fairly large
+      if (d_primes[i]*d_primes[i]>j) // no further divisions necessary
+      { i=count; break; } // skip useless remainder of loop
 
-  for (size_t j = 2; j <= n; ++j) {
-    for (size_t i = 0; i < size; ++i) {
       if (j%d_primes[i] == 0) // j is not prime
-	goto nextj;
-      if (j/d_primes[i] < d_primes[i]) // no further divisions necessary
-	break;
+	break; // exit with |i<count|
     }
-    if (size == PRIMES_MAX) // error
-      PrimesError()("error: value of PRIMES_MAX is too small");
-    d_primes[size] = j;
-    ++size;
-  nextj:
-    continue;
+
+    if (i==count) // then |j| is prime
+    {
+      if (count == size::PRIMES_MAX) // error, cannot add one more prime
+	error::PrimesError()("error: value of PRIMES_MAX is too small");
+      d_primes[count]=j;
+      ++count;
+    }
   }
 }
 
-}
+} // |namespace|
 
-}
+} // |namespace atlas|

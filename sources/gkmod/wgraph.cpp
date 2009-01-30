@@ -55,7 +55,6 @@ void WGraph::swap(WGraph& other)
 }
 
 /******** manipulators *******************************************************/
-void WGraph::reset()
 
 /*
   Synopsis: resets the W-graph
@@ -63,37 +62,30 @@ void WGraph::reset()
   Preserves size and rank; resets edge and coefficient lists to empty lists;
   resets descent sets to empty.
 */
-
+void WGraph::reset()
 {
   d_graph.reset();
   d_coeff.assign(size(),CoeffList());
   d_descent.assign(size(),bitset::RankFlags());
-
-  return;
 }
 
-void WGraph::resize(size_t n)
 
 /*
   Synopsis: resizes the lists to size n
 
   Preserves the existing parts if n > size().
 */
-
+void WGraph::resize(size_t n)
 {
   d_graph.resize(n);
   d_coeff.resize(n);
   d_descent.resize(n);
-
-  return;
 }
 
 DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   : d_cell(), d_part(wg.size()), d_id(), d_induced()
 {
-  using partition::Partition; using partition::PartitionIterator;
-
-  Partition pi;
+  partition::Partition pi;
   wg.cells(pi,&d_induced);
 
   d_cell.reserve(pi.classCount()); // there will be this many cells
@@ -101,7 +93,7 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
 
 
   std::vector<unsigned int> relno(wg.size()); // number of element in its cell
-  PartitionIterator i(pi);
+  partition::PartitionIterator i(pi);
   for (cell_no n=0; n<d_id.size(); ++n,++i)
   {
     d_cell.push_back(WGraph(wg.rank()));
@@ -110,7 +102,8 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
     std::vector<unsigned int>& idn=d_id[n];
     idn.resize(cur_cell.size());
 
-    for (PartitionIterator::SubIterator j=i->first; j!=i->second; ++j)
+    for (partition::PartitionIterator::SubIterator
+	   j=i->first; j!=i->second; ++j)
     {
       size_t y = *j; size_t z=j-i->first; // |y| gets renamed |z| in cell
 
@@ -125,7 +118,8 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   for (i.rewind(); i(); ++i)
   {
     cell_no n=d_part[*i->first]; // cell number, constant through next loop
-    for (PartitionIterator::SubIterator j=i->first; j!=i->second; ++j)
+    for (partition::PartitionIterator::SubIterator
+	   j=i->first; j!=i->second; ++j)
     {
       size_t y = *j; size_t z=relno[y]; // |z==j-i->first|
       const graph::EdgeList& edge = wg.edgeList(y);
@@ -153,20 +147,17 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
 
 namespace wgraph {
 
-void cells(std::vector<WGraph>& wc, const WGraph& wg)
 
 /*
   Synopsis: puts in wc the cells of the W-graph wg.
 */
-
+void cells(std::vector<WGraph>& wc, const WGraph& wg)
 {
-  using namespace graph;
-  using namespace partition;
-
-  Partition pi;
+  partition::Partition pi;
   wg.cells(pi); // do not collect information about induced graph here
 
-  for (PartitionIterator i(pi); i(); ++i) {
+  for (partition::PartitionIterator i(pi); i(); ++i)
+  {
     wc.push_back(WGraph(wg.rank()));
     WGraph& wci = wc.back();
     wci.resize(i->second - i->first);
@@ -174,11 +165,12 @@ void cells(std::vector<WGraph>& wc, const WGraph& wg)
     /* looping over |z| rather than using |*i| directly implements the
        renumbering of each cell (what was |y=*(i->first+z)| becomes just |z|)
     */
-    for (size_t z = 0; z < wci.size(); ++z) {
+    for (size_t z = 0; z < wci.size(); ++z)
+    {
       size_t y = i->first[z];
       wci.descent(z) = wg.descent(y);
-      const EdgeList& el = wg.edgeList(y);
-      EdgeList& eli = wci.edgeList(z);
+      const graph::EdgeList& el = wg.edgeList(y);
+      graph::EdgeList& eli = wci.edgeList(z);
       const CoeffList& cl = wg.coeffList(y);
       CoeffList& cli = wci.coeffList(z);
       for (size_t j = 0; j < el.size(); ++j) {
@@ -201,13 +193,11 @@ void cells(std::vector<WGraph>& wc, const WGraph& wg)
    are avaialble. As a consequence we must redo the work of
    |kl::Helper::fillMuRow| as well as that to the mentioned |wGraph| function.
 */
-
 WGraph wGraph
   ( std::ifstream& block_file
   , std::ifstream& matrix_file
   , std::ifstream& KL_file)
 {
-  using blocks::BlockElt;
   typedef std::auto_ptr<filekl::polynomial_info> pol_aptr;
 
   filekl::matrix_info mi(block_file,matrix_file);
@@ -225,12 +215,12 @@ WGraph wGraph
   filekl::polynomial_info& poli=*pol_p;
 
   size_t max_mu=1;                       // maximal mu found
-  std::pair<BlockElt,BlockElt> max_pair; // corresponding (x,y)
+  std::pair<blocks::BlockElt,blocks::BlockElt> max_pair; // corresponding (x,y)
 
   WGraph result(mi.rank()); result.resize(mi.block_size());
 
   // fill in descent sets
-  for (BlockElt y = 0; y < mi.block_size(); ++y)
+  for (blocks::BlockElt y = 0; y < mi.block_size(); ++y)
   {
     bitset::RankFlags d_y = result.descent(y) = mi.descent_set(y);
     size_t ly = mi.length(y);
@@ -254,7 +244,7 @@ WGraph wGraph
 	   start<stop; ++start)
 	if (mi.descent_set(*start)!=d_y)
         {
-	  BlockElt x = *start;
+	  blocks::BlockElt x = *start;
 	  filekl::KLIndex klp = mi.find_pol_nr(x,y);
 
 	  if (poli.degree(klp)==d)
@@ -269,8 +259,8 @@ WGraph wGraph
     } // for (lx,d)
 
     // for length |ly-1| we cannot limit ourselves to strongly primitives
-    BlockElt end=mi.first_of_length(ly);
-    for (BlockElt x=mi.first_of_length(ly-1); x<end; ++x)
+    blocks::BlockElt end=mi.first_of_length(ly);
+    for (blocks::BlockElt x=mi.first_of_length(ly-1); x<end; ++x)
     {
       bitset::RankFlags d_x=mi.descent_set(x);
       if (d_x==d_y) continue; // this case would lead nowhere anyway
@@ -294,7 +284,7 @@ WGraph wGraph
   } // for (y)
 
   size_t n_edges=0;
-  for (BlockElt y = 0; y < mi.block_size(); ++y)
+  for (blocks::BlockElt y = 0; y < mi.block_size(); ++y)
     n_edges+=result.edgeList(y).size();
 
   if (max_mu==1) std::cout << "All edges found are simple.\n";
@@ -307,6 +297,6 @@ WGraph wGraph
 }
 
 
-}
+} // |namespace wgraph|
 
-}
+} // |namespace atlas|

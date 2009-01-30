@@ -31,9 +31,8 @@
 namespace atlas {
 
 namespace {
-  using blocks::BlockElt;
 
-  void fillLengthLess(std::vector<BlockElt>&, const blocks::Block&);
+  void fillLengthLess(std::vector<blocks::BlockElt>&, const blocks::Block&);
 
 } // namespace
 
@@ -128,19 +127,18 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
   |UndefBlock| is conveniently larger than any valid BlockElt |y|, so this
   case will be handled effortlessly together with triangularity).
 */
-BlockElt KLSupport::primitivize(BlockElt x, const bitset::RankFlags& d) const
+ blocks::BlockElt
+ KLSupport::primitivize(blocks::BlockElt x, const bitset::RankFlags& d) const
 {
-  using descents::DescentStatus;
-
   bitset::RankFlags a; // good ascents for x that are descents for y
 
   while ((a = goodAscentSet(x)&d).any())
   {
     size_t s = a.firstBit();
-    DescentStatus::Value v = descentValue(s,x);
-    if (v == DescentStatus::RealNonparity)
+    descents::DescentStatus::Value v = descentValue(s,x);
+    if (v == descents::DescentStatus::RealNonparity)
       return blocks::UndefBlock; // cop out
-    x = v == DescentStatus::ComplexAscent // complex or imaginary type I ?
+    x = v == descents::DescentStatus::ComplexAscent // complex or imag type I ?
 	? d_block->cross(s,x)
 	: d_block->cayley(s,x).first;
   }
@@ -154,8 +152,6 @@ BlockElt KLSupport::primitivize(BlockElt x, const bitset::RankFlags& d) const
 */
 void KLSupport::fill()
 {
-  using namespace bitmap;
-
   if (d_state.test(Filled)) // do nothing
     return;
 
@@ -194,34 +190,31 @@ void KLSupport::fill()
 */
 void KLSupport::fillDownsets()
 {
-  using namespace bitmap;
-  using namespace bitset;
-  using namespace descents;
-
   if (d_state.test(DownsetsFilled))
     return;
 
   size_t size = d_block->size();
-  std::vector<BitMap> downset(d_rank);
-  std::vector<BitMap> primset(d_rank);
-  std::vector<RankFlags> descents(size);
-  std::vector<RankFlags> good_ascent(size);
+  std::vector<bitmap::BitMap> downset(d_rank);
+  std::vector<bitmap::BitMap> primset(d_rank);
+  std::vector<bitset::RankFlags> descents(size);
+  std::vector<bitset::RankFlags> good_ascent(size);
 
   for (size_t s = 0; s < downset.size(); ++s) {
     downset[s].set_capacity(size);
     primset[s].set_capacity(size);
-    for (BlockElt z = 0; z < size; ++z) {
-      DescentStatus::Value v = descentValue(s,z);
-      if (DescentStatus::isDescent(v)) {
+    for (blocks::BlockElt z = 0; z < size; ++z) {
+      descents::DescentStatus::Value v = descentValue(s,z);
+      if (descents::DescentStatus::isDescent(v))
+      {
 	downset[s].insert(z);
 	primset[s].insert(z);
 	descents[z].set(s);
-      } else { // ascents
-	if (v == DescentStatus::ImaginaryTypeII)
+      }
+      else // ascents
+	if (v == descents::DescentStatus::ImaginaryTypeII)
 	  primset[s].insert(z);  // s is a "bad" ascent
 	else
 	  good_ascent[z].set(s); // good ascent
-      }
     }
   }
 
@@ -252,7 +245,7 @@ namespace {
 
   Precondition: b is sorted by length;
 */
-void fillLengthLess(std::vector<BlockElt>& ll, const blocks::Block& b)
+void fillLengthLess(std::vector<blocks::BlockElt>& ll, const blocks::Block& b)
 {
   ll.clear(); ll.resize(b.length(b.size()-1)+2);
 

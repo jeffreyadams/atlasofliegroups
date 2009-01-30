@@ -230,25 +230,21 @@ bool BitMap::full() const
 */
 unsigned long BitMap::n_th(unsigned long i) const
 {
-  using namespace bits;
-  using namespace constants;
-
-  typedef std::vector<unsigned long>::const_iterator I;
-
   unsigned long pos = 0;
   unsigned long f;
 
-  I map_end = d_map.end();
-
-  for (I iter = d_map.begin(); iter != map_end; ++iter) {
+  for (std::vector<unsigned long>::const_iterator
+	 iter = d_map.begin(); iter != d_map.end(); ++iter)
+  {
     unsigned long chunkSize = bits::bitCount(*iter);
-    if (chunkSize > i) {
+    if (chunkSize > i)
+    {
       f = *iter;
       goto found;
     }
     else {
       i -= chunkSize;
-      pos += longBits;
+      pos += constants::longBits;
     }
   }
 
@@ -261,7 +257,7 @@ unsigned long BitMap::n_th(unsigned long i) const
   for (size_t j = 0; j < i; ++j)
     f &= (f-1);
 
-  pos += firstBit(f);
+  pos += bits::firstBit(f);
 
   return pos;
 }
@@ -299,11 +295,9 @@ unsigned long BitMap::position(unsigned long n) const
 */
 unsigned long BitMap::range(unsigned long n, unsigned long r) const
 {
-  using namespace constants;
+  unsigned long m = n >> constants::baseShift; // index where data is stored
 
-  unsigned long m = n >> baseShift; // index where relevant data is stored
-
-  return (d_map[m] >> (n & posBits)) & lMask[r];
+  return (d_map[m] >> (n & constants::posBits)) & constants::lMask[r];
 
 }
 
@@ -467,12 +461,10 @@ void BitMap::set_capacity(unsigned long n)
 */
 void BitMap::setRange(unsigned long n, unsigned long r, unsigned long a)
 {
-  using namespace constants;
+  unsigned long m = n >> constants::baseShift;
 
-  unsigned long m = n >> baseShift;
-
-  d_map[m] &= ~(lMask[r] << (n & posBits));     // set bits to zero
-  d_map[m] |= (a & lMask[r]) << (n & posBits);  // insert the bits from a
+  d_map[m] &= ~(constants::lMask[r] << (n & constants::posBits)); // clear bits
+  d_map[m] |= (a & constants::lMask[r]) << (n & constants::posBits); // insert
 }
 
 void BitMap::swap(BitMap& other)
@@ -530,12 +522,8 @@ BitMap::iterator& BitMap::iterator::operator= (const BitMap::iterator& i)
 
 BitMap::iterator& BitMap::iterator::operator++ ()
 {
-  using namespace bits;
-  using namespace constants;
-
-
   // re-fetch current chunk, and shift away any bits we already passed over
-  unsigned long f = *d_chunk >> (d_bitAddress & posBits);
+  unsigned long f = *d_chunk >> (d_bitAddress & constants::posBits);
 
   //  here |(f&1)!=0|, unless we just did |remove(*it)| for our iterator |it|
 
@@ -544,7 +532,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
   f >>= 1; // discard the bit we were placed at; we move on!
 
   if (f!=0) { // if there is still some bit set in this chunk, jump to it
-    d_bitAddress += firstBit(f)+1; // +1 to account for the f>>=1
+    d_bitAddress += bits::firstBit(f)+1; // +1 to account for the f>>=1
     return *this;
   }
 
@@ -552,7 +540,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
   d_bitAddress &= baseBits;  // prepare to advance by multiples of |longBits|
 
   do
-    if ((d_bitAddress+=longBits)<d_capacity)
+    if ((d_bitAddress+=constants::longBits)<d_capacity)
       f=*++d_chunk;
     else
     {
@@ -562,7 +550,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
   while(f==0);
 
   // now the bit to advance to is in the current chunk, and not out of bounds
-  d_bitAddress += firstBit(f);
+  d_bitAddress += bits::firstBit(f);
   return *this;
 }
 
