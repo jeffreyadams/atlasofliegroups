@@ -459,7 +459,7 @@ class BasedTitsGroup
   */
   gradings::Grading grading_offset;
 
-  const rootdata::RootDatum& rd; // up to isogeny: only root relations used
+  const rootdata::RootSystem& rs;
 
  public:
   BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,

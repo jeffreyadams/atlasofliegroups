@@ -977,13 +977,14 @@ template<typename C> void identityMatrix(Matrix<C>& m, size_t n)
   Synopsis: sets b to the canonical basis in dimension r.
 */
 template<typename C>
-  void initBasis(std::vector<Vector<C> >& b, size_t r)
+  std::vector<Vector<C> > standard_basis(size_t r)
 {
-  b.assign(r,Vector<C>(r,C(0)));
+  std::vector<Vector<C> > result(r,Vector<C>(r,C(0)));
 
-  for (size_t i = 0; i<r; ++i) {
-    b[i][i] = C(1);
-  }
+  for (size_t i = 0; i<r; ++i)
+    result[i][i] = C(1);
+
+  return result;
 }
 
 

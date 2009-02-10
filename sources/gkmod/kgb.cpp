@@ -449,13 +449,9 @@ FiberData::FiberData(complexredgp::ComplexReductiveGroup& G,
 
    std::vector<latticetypes::BinaryMap> refl(G.semisimpleRank());
    for (weyl::Generator s=0; s<refl.size(); ++s)
-   {
     // get endomorphism of weight lattice $X$ given by generator $s$
-     latticetypes::LatticeMatrix r = rd.rootReflection(rd.simpleRootNbr(s));
-
-     // reflection map is induced vector space endomorphism of $X^* / 2X^*$
-     refl[s] = latticetypes::BinaryMap(r.transposed());
-   }
+    // reflection map is induced vector space endomorphism of $X^* / 2X^*$
+     refl[s] = latticetypes::BinaryMap(rd.simple_reflection(s).transposed());
 
    for (bitmap::BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
    {

@@ -46,7 +46,7 @@ class RealFormData {
 
     realform::RealForm d_realForm;
     gradings::Grading d_grading;
-    rootdata::RootList d_orth;
+    rootdata::RootSet d_orth;
 
   public:
 
@@ -54,23 +54,15 @@ class RealFormData {
     RealFormData() {}
 
     RealFormData(realform::RealForm rf, const gradings::Grading& gr,
-		 const rootdata::RootList& so)
+		 const rootdata::RootSet& so)
       :d_realForm(rf),d_grading(gr),d_orth(so) {}
 
     ~RealFormData() {}
 
 // accessors
-    const gradings::Grading& grading() const {
-      return d_grading;
-    }
-
-    realform::RealForm realForm() const {
-      return d_realForm;
-    }
-
-    const rootdata::RootList& orth() const {
-      return d_orth;
-    }
+    const gradings::Grading& grading() const { return d_grading; }
+    realform::RealForm realForm() const { return d_realForm; }
+    const rootdata::RootSet& orth() const { return d_orth; }
   };
 
   bool operator< (const RealFormData& first, const RealFormData& second);
@@ -81,14 +73,10 @@ class RealFormData {
 
         Chapter I -- The Interface class
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace realform_io {
 
-Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
-		     const layout::Layout& lo)
 
 /*
   Synopsis: builds the standard real form interface for G and lo.
@@ -98,21 +86,18 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   interface) of rf --- so d_in and d_out are inverses of each other. The
   names are names for the corresponding Lie algebras.
 */
-
+Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
+		     const layout::Layout& lo)
 {
-  using namespace cartanclass;
-  using namespace gradings;
-  using namespace realform;
-  using namespace rootdata;
-
-  const RootDatum& rd = G.rootDatum();
-  const Fiber& fundf = G.fundamental();
+  const rootdata::RootSystem& rs = G.rootSystem();
+  const cartanclass::Fiber& fundf = G.fundamental();
 
   std::vector<RealFormData> rfd(G.numRealForms());
 
-  for (RealForm rf = 0; rf < G.numRealForms(); ++rf) {
-    RootList so= toMostSplit(fundf,rf,rd);
-    Grading gr = specialGrading(fundf,rf,rd);
+  for (realform::RealForm rf = 0; rf < G.numRealForms(); ++rf)
+  {
+    rootdata::RootSet so= toMostSplit(fundf,rf,rs);
+    gradings::Grading gr = specialGrading(fundf,rf,rs);
     rfd[rf] = RealFormData(rf,gr,so);
   }
 
@@ -122,7 +107,8 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   d_in.resize(rfd.size());
   d_out.resize(rfd.size());
 
-  for (size_t j = 0; j < rfd.size(); ++j) {
+  for (size_t j = 0; j < rfd.size(); ++j)
+  {
     d_in[j] = rfd[j].realForm();
     d_out[d_in[j]] = j;
   }
@@ -131,36 +117,30 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   d_name.resize(rfd.size());
   std::ostringstream os;
 
-  for (size_t j = 0; j < rfd.size(); ++j) {
+  for (size_t j = 0; j < rfd.size(); ++j)
+  {
     os.str("");
     printType(os,rfd[j].grading(),lo.d_type,lo.d_inner);
     d_name[j] = os.str();
   }
 }
 
-Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
-		     const layout::Layout& lo, tags::DualTag)
 
 /*
   Synopsis: like the previous one, but for the _dual_ real forms.
 */
-
+Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
+		     const layout::Layout& lo, tags::DualTag)
 {
-  using namespace cartanclass;
-  using namespace gradings;
-  using namespace lietype;
-  using namespace realform;
-  using namespace rootdata;
-  using namespace tags;
-
-  const RootDatum& rd = RootDatum(G.rootDatum(),DualTag());
-  const Fiber& fundf = G.dualFundamental();
+  const rootdata::RootSystem& rs = G.dualRootSystem();
+  const cartanclass::Fiber& fundf = G.dualFundamental();
 
   std::vector<RealFormData> rfd(G.numDualRealForms());
 
-  for (RealForm rf = 0; rf < G.numDualRealForms(); ++rf) {
-    RootList so= toMostSplit(fundf,rf,rd);
-    Grading gr = specialGrading(fundf,rf,rd);
+  for (realform::RealForm rf = 0; rf < G.numDualRealForms(); ++rf)
+  {
+    rootdata::RootSet so= toMostSplit(fundf,rf,G.rootSystem());
+    gradings::Grading gr = cartanclass::specialGrading(fundf,rf,rs);
     rfd[rf] = RealFormData(rf,gr,so);
   }
 
@@ -170,7 +150,8 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   d_in.resize(rfd.size());
   d_out.resize(rfd.size());
 
-  for (size_t j = 0; j < rfd.size(); ++j) {
+  for (size_t j = 0; j < rfd.size(); ++j)
+  {
     d_in[j] = rfd[j].realForm();
     d_out[d_in[j]] = j;
   }
@@ -179,12 +160,11 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   d_name.resize(rfd.size());
   std::ostringstream os;
 
-  LieType dlt;
-  dualLieType(dlt,lo.d_type);
-  InnerClassType dict;
-  dualInnerClassType(dict,lo.d_inner,lo.d_type);
+  lietype::LieType dlt = lietype::dual_type(lo.d_type);
+  lietype::InnerClassType dict = lietype::dual_type(lo.d_inner,lo.d_type);
 
-  for (size_t j = 0; j < rfd.size(); ++j) {
+  for (size_t j = 0; j < rfd.size(); ++j)
+  {
     os.str("");
     printType(os,rfd[j].grading(),dlt,dict);
     d_name[j] = os.str();
@@ -264,8 +244,6 @@ bool operator< (const RealFormData& first, const RealFormData& second)
 */
 
 {
-  using namespace gradings;
-
   size_t firstSize = first.orth().size();
   size_t secondSize = second.orth().size();
 
@@ -274,42 +252,39 @@ bool operator< (const RealFormData& first, const RealFormData& second)
   if (firstSize > secondSize)
     return false;
 
-  const Grading& firstGrading = first.grading();
-  const Grading& secondGrading = second.grading();
+  const gradings::Grading& firstGrading = first.grading();
+  const gradings::Grading& secondGrading = second.grading();
 
   return firstGrading < secondGrading;
 }
 
-std::ostream& printComplexType(std::ostream& strm,
-			       const lietype::SimpleLieType& slt)
 
 /*
   Synopsis: prints out the complex form of slt.
 */
-
+std::ostream& printComplexType(std::ostream& strm,
+			       const lietype::SimpleLieType& slt)
 {
-  using namespace lietype;
-
-  switch (type(slt)) {
+  switch (lietype::type(slt)) {
   case 'A':
     strm << "sl(";
-    strm << rank(slt)+1 << ",C)";
+    strm << lietype::rank(slt)+1 << ",C)";
     break;
   case 'B':
     strm << "so(";
-    strm << 2*rank(slt)+1 << ",C)";
+    strm << 2*lietype::rank(slt)+1 << ",C)";
     break;
   case 'C':
     strm << "sp(";
-    strm << 2*rank(slt) << ",C)";
+    strm << 2*lietype::rank(slt) << ",C)";
     break;
   case 'D':
     strm << "so(";
-    strm << 2*rank(slt) << ",C)";
+    strm << 2*lietype::rank(slt) << ",C)";
     break;
   case 'E':
     strm << "e";
-    strm << rank(slt) << "(C)";
+    strm << lietype::rank(slt) << "(C)";
     break;
   case 'F':
   case 'f':
@@ -321,9 +296,9 @@ std::ostream& printComplexType(std::ostream& strm,
     break;
   case 'T':
     strm << "gl(1,C)";
-    if (rank(slt) > 1) {
+    if (lietype::rank(slt) > 1) {
       strm << "^";
-      strm << rank(slt);
+      strm << lietype::rank(slt);
     }
     break;
   default:
@@ -334,9 +309,6 @@ std::ostream& printComplexType(std::ostream& strm,
   return strm;
 }
 
-std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
-			      const lietype::SimpleLieType& slt,
-			      const lietype::TypeLetter ic)
 
 /*
   Synopsis: prints out the real form of slt represented by gr.
@@ -349,15 +321,15 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
   imaginary root system is not irreducible. In that case, of course, the
   only choice is whether gr is trivial or not, so it is easy enough to decide.
 */
-
+std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
+			      const lietype::SimpleLieType& slt,
+			      const lietype::TypeLetter ic)
 {
-  using namespace lietype;
-
   size_t fb = gr.firstBit();
 
-  switch (type(slt)) {
+  switch (lietype::type(slt)) {
   case 'A':
-    if (rank(slt) == 1) {
+    if (lietype::rank(slt) == 1) {
       if (gr.count() == 1)
 	strm << "sl(2,R)";
       else
@@ -366,91 +338,91 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
     else
       switch (ic) {
       case 's':
-	if (rank(slt) & 1UL) {
+	if (lietype::rank(slt) & 1UL) {
 	  if (gr.count() == 1) {
 	    strm << "sl(";
-	    strm << rank(slt)+1 << ",R)";
+	    strm << lietype::rank(slt)+1 << ",R)";
 	  } else {
 	    strm << "sl(";
-	    strm << (rank(slt)+1)/2 << ",H)";
+	    strm << (lietype::rank(slt)+1)/2 << ",H)";
 	  }
 	} else {
 	    strm << "sl(";
-	    strm << rank(slt)+1 << ",R)";
+	    strm << lietype::rank(slt)+1 << ",R)";
 	}
 	break;
       case 'c':
 	if (gr.count()) {
-	  size_t p = rank(slt) - fb;
+	  size_t p = lietype::rank(slt) - fb;
 	  strm << "su(";
 	  strm << p << ",";
 	  strm << fb+1 << ")";
 	} else {
 	  strm << "su(";
-	  strm << rank(slt)+1 << ")";
+	  strm << lietype::rank(slt)+1 << ")";
 	}
 	break;
       }
     break;
   case 'B':
     if (gr.count()) {
-      size_t mid = (rank(slt)-1)/2;
+      size_t mid = (lietype::rank(slt)-1)/2;
       if (fb < mid) {
 	strm << "so(";
-	strm << 2*rank(slt)+1-2*(fb+1) << "," << 2*(fb+1) << ")";
+	strm << 2*lietype::rank(slt)+1-2*(fb+1) << "," << 2*(fb+1) << ")";
       } else {
-	size_t c = rank(slt)-fb-1;
+	size_t c = lietype::rank(slt)-fb-1;
 	strm << "so(";
-	strm << 2*rank(slt)-2*c << "," <<  2*c+1 << ")";
+	strm << 2*lietype::rank(slt)-2*c << "," <<  2*c+1 << ")";
       }
     } else {
       strm << "so(";
-      strm << 2*rank(slt)+1 << ")";
+      strm << 2*lietype::rank(slt)+1 << ")";
     }
     break;
   case 'C':
     if (gr.count() == 0) {
       strm << "sp(";
-      strm << rank(slt) << ")";
-    } else if (fb == rank(slt)-1) {
+      strm << lietype::rank(slt) << ")";
+    } else if (fb == lietype::rank(slt)-1) {
       strm << "sp(";
-      strm << 2*rank(slt) << ",R)";
+      strm << 2*lietype::rank(slt) << ",R)";
     } else {
       strm << "sp(";
-      strm << rank(slt)-fb-1 << "," << fb+1 << ")";
+      strm << lietype::rank(slt)-fb-1 << "," << fb+1 << ")";
     }
     break;
   case 'D':
-    if (rank(slt) & 1UL)
+    if (lietype::rank(slt) & 1UL)
       switch (ic) {
       case 's':
 	if (gr.count() == 0) { // distinguished form
 	  strm << "so(";
-	  strm << 2*rank(slt)-1<< "," << 1 << ")";
+	  strm << 2*lietype::rank(slt)-1<< "," << 1 << ")";
 	} else {
 	  strm << "so(";
-	  strm << 2*rank(slt)-2*fb-3 << "," << 2*fb+3 << ")";
+	  strm << 2*lietype::rank(slt)-2*fb-3 << "," << 2*fb+3 << ")";
 	}
 	break;
       case 'c':
 	if (gr.count() == 0) {
 	  strm << "so(";
-	  strm << 2*rank(slt) << ")";
-	} else if (fb == rank(slt)-2) {
+	  strm << 2*lietype::rank(slt) << ")";
+	} else if (fb == lietype::rank(slt)-2) {
 	  strm << "so*(";
-	  strm << 2*rank(slt) << ")";
+	  strm << 2*lietype::rank(slt) << ")";
 	} else {
 	  strm << "so(";
-	  strm << 2*rank(slt)-2*fb-2 << "," << 2*fb+2 << ")";
+	  strm << 2*lietype::rank(slt)-2*fb-2 << "," << 2*fb+2 << ")";
 	}
 	break;
       case 'u':
         if (gr.count() == 0) { // distinguished form
           strm << "so(";
-          strm << 2*rank(slt)-1<< "," << 1 << ")";
+          strm << 2*lietype::rank(slt)-1<< "," << 1 << ")";
         } else {
           strm << "so(";
-          strm << 2*rank(slt)-2*fb-3 << "," << 2*fb+3 << ")";
+          strm << 2*lietype::rank(slt)-2*fb-3 << "," << 2*fb+3 << ")";
         }
       }
     else
@@ -459,37 +431,38 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
       case 'c':
 	if (gr.count() == 0) { // compact type
 	  strm << "so(";
-	  strm << 2*rank(slt) << ")";
-	} else if (fb == rank(slt)-2) { // so* type; labelling depends on rank
+	  strm << 2*lietype::rank(slt) << ")";
+	} else if (fb == lietype::rank(slt)-2) { // so* type; labelling depends on rank
 	  strm << "so*(";
-	  if ((rank(slt) >> 1) & 1UL) // rank not divisible by 4
-	    strm << 2*rank(slt) << ")[1,0]";
+	  if ((lietype::rank(slt) >> 1) & 1UL) // rank not divisible by 4
+	    strm << 2*lietype::rank(slt) << ")[1,0]";
 	  else // rank divisible by 4
-	    strm << 2*rank(slt) << ")[0,1]";
-	} else if (fb == rank(slt)-1) { // so* type; labelling depends on rank
+	    strm << 2*lietype::rank(slt) << ")[0,1]";
+	} else if (fb == lietype::rank(slt)-1) { // so* type; labelling depends on rank
 	  strm << "so*(";
-	  if ((rank(slt) >> 1) & 1UL) // rank not divisible by 4
-	    strm << 2*rank(slt) << ")[0,1]";
+	  if ((lietype::rank(slt) >> 1) & 1UL) // rank not divisible by 4
+	    strm << 2*lietype::rank(slt) << ")[0,1]";
 	  else // rank divisible by 4
-	    strm << 2*rank(slt) << ")[1,0]";
+	    strm << 2*lietype::rank(slt) << ")[1,0]";
 	} else { // so(p,q) type
 	  strm << "so(";
-	  strm << 2*rank(slt)-2*fb-2 << "," << 2*fb+2 << ")";
+	  strm << 2*lietype::rank(slt)-2*fb-2 << "," << 2*fb+2 << ")";
 	}
 	break;
       case 'u':
 	if (gr.count() == 0) { // distinguished form
 	  strm << "so(";
-	  strm << 2*rank(slt)-1<< "," << 1 << ")";
+	  strm << 2*lietype::rank(slt)-1<< "," << 1 << ")";
 	} else {
 	  strm << "so(";
-	  strm << 2*rank(slt)-2*fb-3 << "," << 2*fb+3 << ")";
+	  strm << 2*lietype::rank(slt)-2*fb-3 << "," << 2*fb+3 << ")";
 	}
 	break;
       }
     break;
   case 'E':
-    switch (rank(slt)) {
+    switch (lietype::rank(slt))
+    {
     case 6:
       switch (ic) {
       case 's':
@@ -556,9 +529,9 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
       strm << "gl(1,R)";
     else if (ic == 'c')
       strm << "u(1)";
-    if (rank(slt) > 1) {
+    if (lietype::rank(slt) > 1) {
       strm << "^";
-      strm << rank(slt);
+      strm << lietype::rank(slt);
     }
     break;
   default: // cannot happen
@@ -569,10 +542,6 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
   return strm;
 }
 
-std::ostream& printType(std::ostream& strm,
-			const gradings::Grading& d_gr,
-			const lietype::LieType& lt,
-			const lietype::InnerClassType& ict)
 
 /*
   Synopsis: outputs the real form of lt represented by gr.
@@ -582,26 +551,30 @@ std::ostream& printType(std::ostream& strm,
   given inner class, and which contains one noncompact root for each
   noncompact noncomplex simple factor.
 */
-
+std::ostream& printType(std::ostream& strm,
+			const gradings::Grading& d_gr,
+			const lietype::LieType& lt,
+			const lietype::InnerClassType& ict)
 {
-  using namespace gradings;
-  using namespace lietype;
-
-  Grading gr = d_gr;
+  gradings::Grading gr = d_gr;
   size_t c = 0;
 
-  for (size_t j = 0; j < ict.size(); ++j) {
-    SimpleLieType slt = lt[c];
-    if (ict[j] == 'C') {
+  for (size_t j = 0; j < ict.size(); ++j)
+  {
+    lietype::SimpleLieType slt = lt[c];
+    if (ict[j] == 'C')
+    {
       printComplexType(strm,slt);
-      gr >>= semisimpleRank(slt);
+      gr >>= lietype::semisimpleRank(slt);
       ++c;
-    } else {
-      Grading grs = gr;
-      grs.truncate(rank(slt));
+    }
+    else
+    {
+      gradings::Grading grs = gr;
+      grs.truncate(lietype::rank(slt));
       printSimpleType(strm,grs,slt,ict[j]);
     }
-    gr >>= semisimpleRank(slt);
+    gr >>= lietype::semisimpleRank(slt);
     ++c;
     if (j < ict.size()-1)
       strm << ".";

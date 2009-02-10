@@ -55,7 +55,7 @@ BitVector<dim>::BitVector(const latticetypes::LatticeElt& v) // reduce mod 2
 template<size_t dim> BitVector<dim>& BitVector<dim>::pushBack(bool b)
 
 {
-  assert(d_size<dim);
+  assert(d_size<dim); // inequality must be strict here
   d_data.set(d_size,b);
 
   ++d_size;

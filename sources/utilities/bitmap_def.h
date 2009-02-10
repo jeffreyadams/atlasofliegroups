@@ -5,7 +5,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -20,8 +20,6 @@ namespace atlas {
 
 namespace bitmap {
 
-template <typename I, typename J>
-  BitMap::BitMap(const I& first, const I& last, const J& fsub, const J& lsub)
 
 /*!
   In this constructor template we assume that I and J are iterator types with
@@ -32,7 +30,8 @@ template <typename I, typename J>
   iterator.) It is assumed of course that the elements from [fsub,lsub[
   will be found in [first,last[.
 */
-
+template <typename I, typename J>
+  BitMap::BitMap(const I& first, const I& last, const J& fsub, const J& lsub)
 {
   resize(last-first);
 
@@ -40,20 +39,17 @@ template <typename I, typename J>
     insert(lower_bound(first,last,*j)-first);
 }
 
-template<typename I> void BitMap::insert(const I& first, const I& last)
 
 /*!
   Here we assume that I is an iterator whose value_type is unsigned long,
   and we do the sequence of insertions from the range [first,last[.
 */
-
+template<typename I> void BitMap::insert(const I& first, const I& last)
 {
   for (I i = first; i != last; ++i)
     insert(*i);
-
-  return;
 }
 
-}
+} // |namespace bitset|
 
-}
+} // |namespace atlas|

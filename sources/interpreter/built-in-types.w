@@ -254,9 +254,7 @@ factors of type $A_1$.
 @< Local function definitions @>=
 void type_of_Cartan_matrix_wrapper ()
 { matrix_ptr m(get<matrix_value>());
-  lietype::LieType t;
-  dynkin::lieType(t,m->val);
-  push_value(new Lie_type_value(t));
+  push_value(new Lie_type_value(dynkin::Lie_type(m->val)));
 }
 @~Again we install our wrapper functions.
 @< Install wrapper functions @>=
@@ -588,8 +586,8 @@ void basic_involution_wrapper()
 @/Lie_type_ptr t(get<Lie_type_value>());
 @)matrix_ptr m
      (new matrix_value(latticetypes::LatticeMatrix()));
-@/lietype::involution(m->val,t->val
-                     ,transform_inner_class_type(str->val.c_str(),t->val));
+@/m->val = lietype::involution
+           (t->val,transform_inner_class_type(str->val.c_str(),t->val));
   push_value(m);
 }
 
@@ -624,9 +622,8 @@ void based_involution_wrapper()
     ("lattice matrix should be "+num(r)+'x'+num(r)+ " for this type");
   matrix_ptr m
      (new matrix_value(latticetypes::LatticeMatrix()));
-@/lietype::involution
-    (m->val,type->val
-    ,transform_inner_class_type(str->val.c_str(),type->val));
+@/m->val = lietype::involution
+           (type->val,transform_inner_class_type(str->val.c_str(),type->val));
 @)
   latticetypes::LatticeCoeff d;
   m->val = basis->val.inverse(d) * m->val * basis->val;
@@ -680,8 +677,8 @@ nothing for torus factors, so we add any necessary torus factors at the end.
 
 @< Local fun... @>=
 lietype::LieType type_of_datum(const rootdata::RootDatum& rd)
-{ latticetypes::LatticeMatrix Cartan; rootdata::cartanMatrix(Cartan,rd);
-@/lietype::LieType t; dynkin::lieType(t,Cartan);
+{ latticetypes::LatticeMatrix Cartan = rd.cartanMatrix();
+@/lietype::LieType t = dynkin::Lie_type(Cartan);
   if (!rd.isSemisimple())
     for (size_t i=rd.semisimpleRank(); i<rd.rank(); ++i)
       t.push_back(lietype::SimpleLieType('T',1));
@@ -938,8 +935,7 @@ void simple_coroots_wrapper()
 @)
 void datum_Cartan_wrapper()
 { root_datum_ptr rd(get<root_datum_value>());
-  latticetypes::LatticeMatrix M;
-  rootdata::cartanMatrix(M,rd->val);
+  latticetypes::LatticeMatrix M = rd->val.cartanMatrix();
   push_value(new matrix_value(M));
 }
 
@@ -1169,11 +1165,11 @@ lies in another component of the diagram we have a Complex inner class.
 @h "dynkin.h"
 
 @< Compute the Lie type |type| and the inner class |inner_class| @>=
-{ latticetypes::LatticeMatrix(C); rootdata::cartanMatrix(C,rd);
+{ latticetypes::LatticeMatrix C = rd.cartanMatrix();
 @/dynkin::DynkinDiagram diagr(C);
-@/lietype::LieType type0; dynkin::lieType(type0,C); // type before rearranging
-@/bitset::RankFlagsList component; // list of connected components of diagram
-  dynkin::components(component,diagr);
+@/lietype::LieType type0 = dynkin::Lie_type(C); // type before rearranging
+@/bitset::RankFlagsList component = dynkin::components(diagr);
+    // list of connected components of diagram
   std::vector<char> letter(component.size());
   size_t nr_Complex_letters=0;
   for (size_t i=0; i<component.size(); ++i)
@@ -1986,17 +1982,16 @@ void print_Cartan_info_wrapper()
 { using atlas::operator<<;
   Cartan_class_ptr cc(get<Cartan_class_value>());
 
-  const rootdata::RootDatum& rd=cc->parent.val.rootDatum();
-
   prettyprint::printTorusType(*output_stream,cc->val.fiber().torus())
   << std::endl;
 
   *output_stream << "twisted involution orbit size: " << cc->val.orbitSize()
    << std::endl;
 
+  const rootdata::RootSystem& rs=cc->parent.val.rootDatum();
+
 @)// print type of imaginary root system
-  lietype::LieType ilt,rlt,clt;
-  rootdata::lieType(ilt,cc->val.simpleImaginary(),rd);
+  lietype::LieType ilt = rs.Lie_type(cc->val.simpleImaginary());
 
   if (ilt.size() == 0)
     *output_stream << "imaginary root system is empty" << std::endl;
@@ -2004,7 +1999,8 @@ void print_Cartan_info_wrapper()
     *output_stream << "imaginary root system: " << ilt << std::endl;
 
 @)// print type of real root system
-  rootdata::lieType(rlt,cc->val.simpleReal(),rd);
+
+  lietype::LieType rlt = rs.Lie_type(cc->val.simpleReal());
 
   if (rlt.size() == 0)
     *output_stream << "real root system is empty" << std::endl;
@@ -2012,7 +2008,8 @@ void print_Cartan_info_wrapper()
     *output_stream << "real root system: " << rlt << std::endl;
 
 @)// print type of complex root system
-  rootdata::lieType(clt,cc->val.simpleComplex(),rd);
+
+  lietype::LieType clt = rs.Lie_type(cc->val.simpleComplex());
 
   if (clt.size() == 0)
     *output_stream << "complex factor is empty" << std::endl;
@@ -2144,8 +2141,8 @@ void print_gradings_wrapper()
 functions from \.{dynkin.cpp}.
 
 @< Compute the Cartan matrix |cm|... @>=
-{ rootdata::cartanMatrix(cm,si,cc->parent.val.rootDatum());
-  dynkin::DynkinDiagram d(cm); dynkin::bourbaki(sigma,d);
+{ cm=cc->parent.val.rootDatum().cartanMatrix(si);
+  dynkin::DynkinDiagram d(cm); sigma = dynkin::bourbaki(d);
 }
 
 @ The imaginary root system might well be empty, so we make special provisions
@@ -2156,7 +2153,7 @@ for this case.
   if (si.size()==0) *output_stream<<"empty.\n";
   else
   { using atlas::operator<<;
-    lietype::LieType t; dynkin::lieType(t,cm);
+    lietype::LieType t = dynkin::Lie_type(cm);
 
     *output_stream << "of type " << t << ", with simple root"
               << (si.size()==1 ? " " : "s ");

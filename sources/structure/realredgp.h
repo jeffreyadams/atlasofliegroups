@@ -44,10 +44,8 @@ namespace realredgp {
  dependent on the owner of the complex group, and once it is destructed, the
  RealReductiveGroup objects referring to it become invalid.
 */
-class RealReductiveGroup {
-
- private:
-
+class RealReductiveGroup
+{
   enum StatusFlagNames { IsConnected, IsQuasisplit, IsSemisimple, IsSplit,
 			 NumStatusFlags };
 
@@ -81,6 +79,9 @@ class RealReductiveGroup {
 
   const weyl::WeylGroup& weylGroup() const
     { return d_complexGroup.weylGroup(); }
+
+  const weyl::TwistedWeylGroup& twistedWeylGroup() const
+    { return d_complexGroup.twistedWeylGroup(); }
 
   bitmap::BitMap Cartan_set() const
     { return complexGroup().Cartan_set(d_realForm); }
@@ -136,6 +137,8 @@ formed by extracting only the information concerning the presence of the
   cartanclass::square_class square_class() const
     { return d_complexGroup.fundamental().central_square_class(d_realForm); }
 
+  const size_t component_rank() const
+    { return d_connectivity.component_rank(); }
   const latticetypes::SmallBitVectorList& dualComponentReps() const
     { return d_connectivity.dualComponentReps(); }
 

@@ -662,10 +662,8 @@ KLContext::makeExtremalRow(klsupport::PrimitiveRow& e, blocks::BlockElt y)
   const
 {
   bitmap::BitMap b(size());
-  size_t c = lengthLess(length(y));
-
-  b.fill(c);     // start with all elements < y in length
-  b.insert(y);   // and y itself
+  b.fill(0,lengthLess(length(y))); // start with all elements < y in length
+  b.insert(y);                     // and y itself
 
   // extremalize (filter out those that are not extremal)
   d_support->extremalize(b,descentSet(y));
@@ -689,10 +687,8 @@ KLContext::makePrimitiveRow(klsupport::PrimitiveRow& e, blocks::BlockElt y)
   const
 {
   bitmap::BitMap b(size());
-  size_t c = lengthLess(length(y));
-
-  b.fill(c);     // start with all elements < y in length
-  b.insert(y);   // and y itself
+  b.fill(0,lengthLess(length(y))); // start with all elements < y in length
+  b.insert(y);                     // and y itself
 
   // primitivize (filter out those that are not primitive)
   d_support->primitivize(b,descentSet(y));
@@ -745,7 +741,7 @@ bitmap::BitMap KLContext::primMap (blocks::BlockElt y) const
   bitmap::BitMap b(size()); // block-size bitmap
 
   // start with all elements < y in length
-  b.fill(lengthLess(length(y)));
+  b.fill(0,lengthLess(length(y)));
   b.insert(y);   // and y itself
 
   // primitivize (filter out those that are not primitive)
@@ -759,15 +755,15 @@ bitmap::BitMap KLContext::primMap (blocks::BlockElt y) const
  // the list of primitive elements with nonzero polynomials at y
   const klsupport::PrimitiveRow& row=d_prim[y];
 
-  // traverse b, and for its elements that occur in row[i], set bits in result
+  // traverse |b|, and for its elements that occur in, set bits in |result|
 
   size_t position=0; // position among set bits in b (avoids using b.position)
   size_t j=0; // index into row;
-  for (bitmap::BitMap::iterator i=b.begin(); i(); ++position,++i)
-    if (*i==row[j]) // look if i points to current element of row
+  for (bitmap::BitMap::iterator it=b.begin(); it(); ++position,++it)
+    if (*it==row[j]) // look if |it| points to current element of row
     {
       result.insert(position); ++j; // record position and advance in row
-      if (j==row.size()) break; // stop when row is exhausted
+      if (j==row.size()) break;     // stop when row is exhausted
     }
 
   return result;

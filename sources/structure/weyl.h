@@ -465,7 +465,7 @@ class WeylGroup {
 public:
 
 // constructors and destructors
-  WeylGroup(const latticetypes::LatticeMatrix& c);
+  WeylGroup(const latticetypes::LatticeMatrix& cartan); // from Cartan matrix
 
 // accessors
 
@@ -701,15 +701,17 @@ public:
   Positive entries correspond to generators of Cayley transforms, while cross
   actions are indicated by making the generator negative by bitwise complement.
 */
-  std::vector<signed char> involution_expr(TwistedInvolution tw) const;
+  std::vector<signed char>
+    involution_expr(TwistedInvolution tw) const; // call by value
 
   //!\brief Roots that are images of the simple roots under involution of |tw|
-  std::vector<rootdata::RootNbr> simple_images
-    (rootdata::RootDatum rd, TwistedInvolution tw) const;
+  rootdata::RootList simple_images
+    (const rootdata::RootSystem& rs, const TwistedInvolution& tw) const;
 
 //!\brief Matrix of involution of |tw| in adjoint coordinates
-  latticetypes::LatticeMatrix involution_matrix(rootdata::RootDatum rd,
-						TwistedInvolution tw) const;
+  latticetypes::LatticeMatrix
+    involution_matrix(const rootdata::RootSystem& rs,
+		      const TwistedInvolution& tw) const;
 
 }; // |class TwistedWeylGroup|
 

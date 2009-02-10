@@ -142,8 +142,7 @@ KhatContext::KhatContext
   simple_reflection_mod_2.reserve(d_G->semisimpleRank());
   for (size_t i=0; i<d_G->semisimpleRank(); ++i)
     simple_reflection_mod_2.push_back
-      (latticetypes::BinaryMap
-       (rd.rootReflection(rd.simpleRootNbr(i)).transposed()));
+      (latticetypes::BinaryMap(rd.simple_reflection(i).transposed()));
 
   size_t n = rootDatum().rank();
 

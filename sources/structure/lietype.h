@@ -6,7 +6,7 @@
   This is lietype.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -25,18 +25,18 @@ namespace atlas {
 namespace lietype {
   /*!
   Used by the interaction in interactive_lietype.cpp to tell the user
-  what input is expected for a Lie type. 
+  what input is expected for a Lie type.
   */
   const char* const typeLetters = "ABCDEFGT";
 
   /*!
   Used by the interaction in interactive_lietype.cpp to tell the user
-  what input is expected for an inner class type.  
+  what input is expected for an inner class type.
 
   The letter "C" stands for "complex"; it goes with two adjacent equal
   Lie types, to say that the group has the corresponding complex
   simple factor.  (For example, a Lie type of A4.A4 and inner type C
-  refers to SL(5,C).)  
+  refers to SL(5,C).)
 
   The letter "c" stands for "compact"; it designates the inner class
   of forms in which rank(G) = rank(K) (so that there is a compact
@@ -62,7 +62,7 @@ namespace lietype {
   (odd,odd).
 
   The letter "e" stands for "equal rank," and is mapped in every case to
-  "c." 
+  "c."
   */
   const char* const innerClassLetters = "Ccesu";
 
@@ -74,29 +74,23 @@ namespace lietype {
 
   bool checkRank(const TypeLetter&, size_t);
 
-  void dualLieType(LieType&, const LieType&);
+  LieType dual_type(LieType lt);
 
-  void dualInnerClassType(InnerClassType&, const InnerClassType&,
-			  const LieType& lt);
+  InnerClassType dual_type(InnerClassType, const LieType& lt);
 
-  void involution(latticetypes::LatticeMatrix&, const lietype::LieType&, 
-		  const lietype::InnerClassType&);
+  latticetypes::LatticeMatrix involution(const lietype::LieType&,
+					 const lietype::InnerClassType&);
 
   size_t rank(const LieType&);
 
-  inline size_t rank(const SimpleLieType& slt) {
-    return slt.second;
-  }
+  inline size_t rank(const SimpleLieType& slt) { return slt.second; }
 
   size_t semisimpleRank(const LieType&);
 
-  inline size_t semisimpleRank(const SimpleLieType& slt) {
-    return slt.first == 'T' ? 0UL : slt.second;
-  }
+  inline size_t semisimpleRank(const SimpleLieType& slt)
+  { return slt.first == 'T' ? 0UL : slt.second; }
 
-  inline TypeLetter type(const SimpleLieType& slt) {
-    return slt.first;
-  }
+  inline TypeLetter type(const SimpleLieType& slt) { return slt.first; }
 
 }
 

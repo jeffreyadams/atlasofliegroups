@@ -52,22 +52,15 @@ std::ostream& prettyPrint(std::ostream&,
 template<typename V>
 std::ostream& printBasis(std::ostream&, const std::vector<V>&);
 
-std::ostream& printCoroot(std::ostream&, const rootdata::RootNbr&,
-			  const rootdata::RootDatum&);
-
-std::ostream& printCorootList(std::ostream&, const rootdata::RootList&,
-			      const rootdata::RootDatum&,
-			      const char* sep = "\n");
-
 std::ostream& printDescentSet(std::ostream&, const bitset::RankFlags&, size_t,
 			      const char* sep = ",", const char* pre = "{",
 			      const char* post = "}");
 
 std::ostream& printInRootBasis(std::ostream&, rootdata::RootNbr,
-			       const rootdata::RootDatum&);
+			       const rootdata::RootSystem&);
 
 std::ostream& printInRootBasis(std::ostream&, const rootdata::RootSet&,
-			       const rootdata::RootDatum&);
+			       const rootdata::RootSystem&);
 
 std::ostream& printInvolution(std::ostream&, const weyl::TwistedInvolution&,
 			      const weyl::TwistedWeylGroup&);
@@ -87,12 +80,13 @@ template<typename C>
 std::ostream& printPol(std::ostream&, const polynomials::Polynomial<C>&,
 		       const char*);
 
-std::ostream& printRoot(std::ostream&, const rootdata::RootNbr&,
-			const rootdata::RootDatum&);
-
 std::ostream& printRootList(std::ostream&, const rootdata::RootList&,
 			    const rootdata::RootDatum&,
 			    const char* sep = "\n");
+
+std::ostream& printCorootList(std::ostream&, const rootdata::RootList&,
+			      const rootdata::RootDatum&,
+			      const char* sep = "\n");
 
 std::ostream& printStatus(std::ostream&, const gradings::Status&, size_t);
 

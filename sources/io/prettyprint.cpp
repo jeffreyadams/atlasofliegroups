@@ -54,32 +54,6 @@ std::ostream& prettyPrint(std::ostream& strm, const bitmap::BitMap& b,
 }
 
 
-/*
-  Synopsis: outputs the first values of the bitmap left-to-right, on a single
-  line
-*/
-std::ostream& printCoroot(std::ostream& strm, const rootdata::RootNbr& j,
-			  const rootdata::RootDatum& rd)
-{
-  return strm << rd.coroot(j);
-}
-
-
-/*
-  Synopsis: prints the coroots in the list in the lattice basis, by default
-  as one per line.
-*/
-std::ostream& printCorootList(std::ostream& strm, const rootdata::RootList& r,
-			      const rootdata::RootDatum& rd, const char* sep)
-{
-  for (size_t j = 0; j < r.size(); ++j) {
-    printCoroot(strm,r[j],rd);
-    if (j+1 < r.size())
-      strm << sep;
-  }
-
-  return strm;
-}
 
 
 /*
@@ -98,7 +72,8 @@ std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
   bool first = true;
 
   for (size_t s = 0; s < rank; ++s)
-    if (d.test(s)) {
+    if (d.test(s))
+    {
       if (first)
 	first = false;
       else
@@ -116,9 +91,9 @@ std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
   Outputs root #n to strm in the root coordinates.
 */
 std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n,
-			       const rootdata::RootDatum& rd)
+			       const rootdata::RootSystem& rs)
 {
-  return strm << rd.inSimpleRoots(n);
+  return strm << rs.root_expr(n);
 }
 
 /*
@@ -126,18 +101,50 @@ std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n,
   coordinates.
 */
 std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
-			       const rootdata::RootDatum& rd)
+			       const rootdata::RootSystem& rs)
 {
-  latticetypes::WeightList rl;
+  latticetypes::WeightList rl; rl.reserve(r.size());
 
-  for (rootdata::RootSet::iterator i=r.begin(); i(); ++i)
-    rl.push_back(rd.inSimpleRoots(*i));
+  for (rootdata::RootSet::iterator it=r.begin(); it(); ++it)
+    rl.push_back(rs.root_expr(*it));
 
   basic_io::seqPrint(strm,rl.begin(),rl.end(),"\n","","\n");
 
   return strm;
 }
 
+/*
+  Synopsis: prints the roots in the list in the lattice basis, by default
+  as one per line.
+*/
+std::ostream& printRootList(std::ostream& strm, const rootdata::RootList& r,
+			    const rootdata::RootDatum& rd, const char* sep)
+{
+  for (size_t i=0; i<r.size(); ++i)
+  {
+    strm << rd.root(r[i]);
+    if (i+1 < r.size())
+      strm << sep;
+  }
+
+  return strm;
+}
+
+/*
+  Synopsis: prints the coroots in the list in the lattice basis, by default
+  as one per line.
+*/
+std::ostream& printCorootList(std::ostream& strm, const rootdata::RootList& r,
+			      const rootdata::RootDatum& rd, const char* sep)
+{
+  for (size_t j=0; j<r.size(); ++j) {
+    strm << rd.coroot(r[j]);
+    if (j+1 < r.size())
+      strm << sep;
+  }
+
+  return strm;
+}
 /*
   Synopsis: outputs an expression for the twisted involution.
 
@@ -162,32 +169,6 @@ std::ostream& printInvolution(std::ostream& strm,
 }
 
 
-/*
-  Synopsis: prints coroot #j in the lattice basis.
-*/
-
-std::ostream& printRoot(std::ostream& strm, const rootdata::RootNbr& j,
-			const rootdata::RootDatum& rd)
-{
-  return strm << rd.root(j);
-}
-
-
-/*
-  Synopsis: prints the roots in the list in the lattice basis, by default
-  as one per line.
-*/
-std::ostream& printRootList(std::ostream& strm, const rootdata::RootList& r,
-			    const rootdata::RootDatum& rd, const char* sep)
-{
-  for (size_t j = 0; j < r.size(); ++j) {
-    printRoot(strm,r[j],rd);
-    if (j+1 < r.size())
-      strm << sep;
-  }
-
-  return strm;
-}
 
 
 /*
@@ -279,8 +260,8 @@ std::ostream& printWeylList(std::ostream& strm, const weyl::WeylEltList& wl,
 {
   std::vector<weyl::WeylWord> wwl(wl.size());
 
-  for (size_t j = 0; j < wl.size(); ++j)
-    wwl[j]=W.word(wl[j]);
+  for (size_t i = 0; i < wl.size(); ++i)
+    wwl[i]=W.word(wl[i]);
 
   basic_io::seqPrint(strm,wwl.begin(),wwl.end(),sep,pre,post);
 

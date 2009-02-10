@@ -37,15 +37,13 @@ namespace atlas {
 
 namespace complexredgp {
 
-  void lieType(lietype::LieType&, const ComplexReductiveGroup&);
-
 /* this function should NOT be made into a method, suppressing the |rd| and |W|
    parameters, as these can be be dual to those in the |ComplexReductiveGroup|!
 */
-  void Cayley_and_cross_part(rootdata::RootList& cayley,
+  void Cayley_and_cross_part(rootdata::RootSet& Cayley,
 			     weyl::WeylWord& cross,
 			     const weyl::TwistedInvolution& tw,
-			     const rootdata::RootDatum& rd,
+			     const rootdata::RootSystem& rs,
 			     const weyl::TwistedWeylGroup& W);
 
 }
@@ -214,16 +212,20 @@ class ComplexReductiveGroup
 
 // accessors
 
-/*!
-  \brief returns the rank of the group.
-*/
-  size_t rank() const { return d_rootDatum.rank(); }
-
-//!\brief returns the semisimple rank of the group.
-  size_t semisimpleRank() const { return d_rootDatum.semisimpleRank(); }
 
   const rootdata::RootDatum& rootDatum() const { return d_rootDatum; }
   const rootdata::RootDatum& dualRootDatum() const { return d_dualRootDatum; }
+  const rootdata::RootSystem& rootSystem() const {return d_rootDatum; } // base
+  const rootdata::RootSystem& dualRootSystem() const
+  {return d_dualRootDatum; } // base object
+
+/*!
+  \brief returns the rank of the group.
+*/
+  size_t rank() const { return rootDatum().rank(); }
+
+//!\brief returns the semisimple rank of the group.
+  size_t semisimpleRank() const { return rootSystem().rank(); }
 
   const weyl::WeylGroup& weylGroup() const { return W; }
   const weyl::TwistedWeylGroup& twistedWeylGroup() const

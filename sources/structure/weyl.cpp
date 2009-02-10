@@ -137,8 +137,8 @@ WeylGroup::WeylGroup(const latticetypes::LatticeMatrix& c)
   /* analyse the Cartan matrix */
 
   dynkin::DynkinDiagram d(c); // make diagram from Cartan matrix
-  setutils::Permutation a;
-  normalize(a,d);  // find renumbering |a| putting labels in canonical order
+  // find renumbering |a| putting labels in canonical order
+  setutils::Permutation a= dynkin::normalize(d);
 
   /* now put appropriate permutations into |d_in| and |d_out|, so that
      internal number |j| gives external number |d_out[j]|, and of course
@@ -532,10 +532,11 @@ void WeylGroup::act(const rootdata::RootDatum& rd,
 		    const WeylElt& w,
 		    latticetypes::LatticeElt& v) const
 {
-  for (size_t j = d_rank; j-->0; ) {
-    const WeylWord& xw = wordPiece(w,j);
-    for (size_t i = xw.size(); i-->0; )
-      rd.simpleReflect(v,d_out[xw[i]]);
+  for (size_t i = d_rank; i-->0; )
+  {
+    const WeylWord& xw = wordPiece(w,i);
+    for (size_t j = xw.size(); j-->0; )
+      rd.simpleReflect(v,d_out[xw[j]]);
   }
 }
 
@@ -548,23 +549,22 @@ void WeylGroup::inverseAct(const rootdata::RootDatum& rd,
 			   const WeylElt& w,
 			   latticetypes::LatticeElt& v) const
 {
-  for (size_t j=0; j<d_rank; ++j ) {
-    const WeylWord& xw = wordPiece(w,j);
-    for (size_t i=0; i<xw.size(); ++i )
-      rd.simpleReflect(v,d_out[xw[i]]);
+  for (size_t i=0; i<d_rank; ++i )
+  {
+    const WeylWord& xw = wordPiece(w,i);
+    for (size_t j=0; j<xw.size(); ++j )
+      rd.simpleReflect(v,d_out[xw[j]]);
   }
 }
 
 /* One constructor for WeylElt was not defined in header file:
    construct the element from a Weyl word |ww| in a given Weyl group |W|
 */
-
 WeylElt::WeylElt(const WeylWord& ww, const WeylGroup& W)
 {
   std::memset(d_data,0,sizeof(d_data)); // set to identity
   W.mult(*this,ww); // multiply |ww| into current element
 }
-
 
 
 /*
@@ -709,8 +709,8 @@ bool TwistedWeylGroup::hasTwistedCommutation
   numbering, as returned by |leftDescent|) at each step, so the reduced
   expression found is lexicographically first for the internal renumbering
 */
-std::vector<signed char> TwistedWeylGroup::involution_expr
-  (TwistedInvolution tw) const
+std::vector<signed char>
+TwistedWeylGroup::involution_expr(TwistedInvolution tw) const
 {
   std::vector<signed char> result; // result.reserve(involutionLength(tw));
 
@@ -758,26 +758,26 @@ unsigned long TwistedWeylGroup::involutionLength
   return length;
 }
 
-std::vector<rootdata::RootNbr> TwistedWeylGroup::simple_images
-  (rootdata::RootDatum rd, TwistedInvolution tw) const
+rootdata::RootList TwistedWeylGroup::simple_images
+(const rootdata::RootSystem& rs, const TwistedInvolution& tw) const
 {
-  std::vector<rootdata::RootNbr> result(rank());
+  rootdata::RootList result(rank());
   for (size_t i=0; i<rank(); ++i)
-    result[i]=rd.simpleRootNbr(twisted(i));
+    result[i]=rs.simpleRootNbr(twisted(i));
   weyl::WeylWord ww=word(tw.w());
   for (size_t i=ww.size(); i-->0;)
-    rd.simple_root_permutation(ww[i]).left_mult(result);
+    rs.simple_root_permutation(ww[i]).left_mult(result);
 
   return result;
 }
 
 latticetypes::LatticeMatrix TwistedWeylGroup::involution_matrix
-  (rootdata::RootDatum rd, TwistedInvolution tw) const
+  (const rootdata::RootSystem& rs, const TwistedInvolution& tw) const
 {
-  std::vector<rootdata::RootNbr> simple_image=simple_images(rd,tw);
-  latticetypes::WeightList b;
+  rootdata::RootList simple_image = simple_images(rs,tw);
+  latticetypes::WeightList b(rank());
   for (size_t i=0; i<rank(); ++i)
-    b.push_back(rd.inSimpleRoots(simple_image[i]));
+    b[i] = rs.root_expr(simple_image[i]);
 
   return latticetypes::LatticeMatrix(b);
 }

@@ -35,7 +35,7 @@ std::ostream& printBlockData(std::ostream&, complexredgp_io::Interface&);
 std::ostream& printCartanClasses(std::ostream&, complexredgp_io::Interface&);
 
 std::ostream& printCartanMatrix(std::ostream&, const rootdata::RootList&,
-				const rootdata::RootDatum&);
+				const rootdata::RootSystem&);
 
 std::ostream& printComponents(std::ostream&,
 			      const realredgp::RealReductiveGroup&,

@@ -46,7 +46,8 @@ namespace topology {
    the root datum that it is related to).
  */
 
-class Connectivity {
+class Connectivity
+{
 
  private:
   latticetypes::SmallBitVectorList d_dpi0; // basis of dual component group
@@ -60,16 +61,18 @@ class Connectivity {
   ~Connectivity() {}
 
 // accessors
-  const latticetypes::SmallBitVectorList& dualComponentReps() const {
-    return d_dpi0;
-  }
+  const latticetypes::SmallBitVectorList& dualComponentReps() const
+  { return d_dpi0; }
+
+  const size_t component_rank() const { return d_dpi0.size(); }
 
 // manipulators
   void swap(Connectivity& other) { d_dpi0.swap(other.d_dpi0);}
-};
 
-}
+}; // |class Connectivity|
 
-}
+} // |namespace topology|
+
+} // |namespace atlas|
 
 #endif

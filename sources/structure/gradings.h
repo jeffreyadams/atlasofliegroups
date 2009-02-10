@@ -30,16 +30,14 @@ namespace atlas {
 
 namespace gradings {
 
-  void findGrading(rootdata::RootSet&, const rootdata::RootList&,
-		   const rootdata::RootList&, const rootdata::RootDatum&);
+  rootdata::RootSet max_orth(const rootdata::RootSet& non_compact,
+			     const rootdata::RootSet& subsys,
+			     const rootdata::RootSystem& rs);
 
-  void gradingType(rootdata::RootList&, const Grading&,
-		   const rootdata::RootDatum&);
-
-  bool isNonCompact(const rootdata::Root&, const Grading&);
-
-  void makeGradings(GradingList&, const rootdata::RootDatum&);
-
+  void transform_grading(gradings::Grading&,
+			const rootdata::RootList&,
+			const rootdata::RootSet&,
+			const rootdata::RootSystem&);
 
 }
 

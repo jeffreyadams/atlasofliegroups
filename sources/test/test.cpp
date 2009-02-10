@@ -308,11 +308,12 @@ namespace {
 void roots_rootbasis_f()
 {
   try {
-    const rootdata::RootDatum& rd=mainmode::currentComplexGroup().rootDatum();
+    const rootdata::RootSystem& rs =
+      mainmode::currentComplexGroup().rootSystem();
     ioutils::OutputFile file;
 
-    for (rootdata::RootNbr i=0; i<rd.numRoots(); ++i)
-      prettyprint::printInRootBasis(file,i,rd) << std::endl;
+    for (rootdata::RootNbr i=0; i<rs.numRoots(); ++i)
+      prettyprint::printInRootBasis(file,i,rs) << std::endl;
   }
   catch (error::InputError& e) {
     e("aborted");
@@ -325,10 +326,11 @@ void posroots_rootbasis_f()
 
 {
   try {
-    const rootdata::RootDatum& rd=mainmode::currentComplexGroup().rootDatum();
+    const rootdata::RootSystem& rs =
+      mainmode::currentComplexGroup().rootSystem();
     ioutils::OutputFile file;
 
-    prettyprint::printInRootBasis(file,rd.posRootSet(),rd);
+    prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
   }
   catch (error::InputError& e) {
     e("aborted");
@@ -341,12 +343,12 @@ void coroots_rootbasis_f()
 {
   try
   {
-    const rootdata::RootDatum rd
-      (mainmode::currentComplexGroup().dualRootDatum());
+    const rootdata::RootSystem rs
+      (mainmode::currentComplexGroup().dualRootSystem());
     ioutils::OutputFile file;
 
-    for (rootdata::RootNbr i=0; i<rd.numRoots(); ++i)
-      prettyprint::printInRootBasis(file,i,rd) << std::endl;
+    for (rootdata::RootNbr i=0; i<rs.numRoots(); ++i)
+      prettyprint::printInRootBasis(file,i,rs) << std::endl;
   }
   catch (error::InputError& e)
   {
@@ -360,11 +362,11 @@ void poscoroots_rootbasis_f()
 {
   try
   {
-    const rootdata::RootDatum rd
-      (mainmode::currentComplexGroup().dualRootDatum());
+    const rootdata::RootSystem rs
+      (mainmode::currentComplexGroup().dualRootSystem());
     ioutils::OutputFile file;
 
-    prettyprint::printInRootBasis(file,rd.posRootSet(),rd);
+    prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
   }
   catch (error::InputError& e)
   {
@@ -736,92 +738,32 @@ void test_f()
   }
 }
 
-void examine(complexredgp::ComplexReductiveGroup& G,size_t cn)
+void examine(const rootdata::RootDatum& rd,
+	     const rootdata::RootSystem& rs)
 {
-  tits::BasedTitsGroup adj_Tg(G);
-  tits::BasedTitsGroup dual_adj_Tg(G,tags::DualTag());
-  const cartanclass::CartanClass& Cartan = G.cartan(cn);
-  const cartanclass::Fiber& f = Cartan.fiber();
-  const realform::RealFormList& form_labels=G.realFormLabels(cn);
-  const partition::Partition& weak_real = Cartan.weakReal();
-  const cartanclass::Fiber& dual_f = Cartan.dualFiber();
-  const realform::RealFormList& dual_form_labels=G.dualRealFormLabels(cn);
-  const partition::Partition& dual_weak_real = dual_f.weakReal();
+  latticetypes::LatticeMatrix C=rs.cartanMatrix();
+  assert(rd.cartanMatrix()==C);
+  assert (rd.numRoots()==rs.numRoots());
 
-  const weyl::TwistedInvolution& tw = G.twistedInvolution(cn);
-  const weyl::TwistedInvolution dual_tw =G.weylGroup().opposite(tw);
-
-  assert(Cartan.numRealForms()==G.numRealForms(cn));
-  assert(Cartan.numDualRealForms()==G.numDualRealForms(cn));
-
-  rootdata::RootList sim = Cartan.simpleImaginary();
-  rootdata::RootList sre = Cartan.simpleReal();
-  // or equivalently we could have done |dual_f.simpleImaginary()|
-
-  tits::TorusPart base = G.sample_torus_part(cn,G.quasisplit());
-  tits::TitsElt a(adj_Tg.titsGroup(),base,tw);
-  gradings::Grading ref_gr; // reference grading for quasisplit form
-  for (size_t i=0; i<sim.size(); ++i)
-    ref_gr.set(i,adj_Tg.grading(a,sim[i]));
-
-  cartanclass::AdjointFiberElt rep = f.gradingRep(ref_gr);
-
-  // now lift |rep| to a torus part and subtract from |base|
-  latticetypes::SmallBitVector v(bitset::RankFlags(rep),
-				 f.adjointFiberRank());
-  base -= f.adjointFiberGroup().fromBasis(v);
-
-  tits::TorusPart dual_base = G.dual_sample_torus_part(cn,0);
-  tits::TitsElt dual_a(dual_adj_Tg.titsGroup(),dual_base,dual_tw);
-  gradings::Grading dual_ref_gr; // reference for dual quasisplit form
-  for (size_t i=0; i<sre.size(); ++i)
-    dual_ref_gr.set(i,dual_adj_Tg.grading(dual_a,sre[i]));
-
-  cartanclass::AdjointFiberElt dual_rep = dual_f.gradingRep(dual_ref_gr);
-
-  // now lift |rep| to a torus part and subtract from |base|
-  latticetypes::SmallBitVector u(bitset::RankFlags(dual_rep),
-				 dual_f.adjointFiberRank());
-  dual_base -= dual_f.adjointFiberGroup().fromBasis(u);
-
-
-  for (bitmap::BitMap::iterator
-	 rfi=G.real_forms(cn).begin(); rfi(); ++rfi)
+  const weyl::WeylGroup W(C);
+  for (rootdata::RootNbr alpha=0; alpha<rs.numRoots(); ++alpha)
   {
-    realform::RealForm rf = *rfi;
-    tits::TorusPart tp = G.sample_torus_part(cn,rf);
-    tits::TitsElt b(adj_Tg.titsGroup(),tp,tw);
-    gradings::Grading gr;
-    for (size_t i=0; i<sim.size(); ++i)
-      gr.set(i,adj_Tg.grading(b,sim[i]));
-
-    cartanclass::AdjointFiberElt rep = f.gradingRep(gr);
-
-    assert(form_labels[weak_real(rep)]==rf);
-
-    tp-=base;
-    assert(weak_real(f.adjointFiberGroup().toBasis(tp)
-		     .data().to_ulong())==
-	   weak_real(rep));
-  }
-  for (bitmap::BitMap::iterator
-	 drfi=G.dual_real_forms(cn).begin(); drfi(); ++drfi)
-  {
-    realform::RealForm drf = *drfi;
-    tits::TorusPart tp = G.dual_sample_torus_part(cn,drf);
-    tits::TitsElt b(dual_adj_Tg.titsGroup(),tp,dual_tw);
-    gradings::Grading gr;
-    for (size_t i=0; i<sre.size(); ++i)
-      gr.set(i,dual_adj_Tg.grading(b,sre[i]));
-
-    cartanclass::AdjointFiberElt rep = dual_f.gradingRep(gr);
-
-    assert(dual_form_labels[dual_weak_real(rep)]==drf);
-
-    tp-=dual_base;
-    assert(dual_weak_real(dual_f.adjointFiberGroup().toBasis(tp)
-			  .data().to_ulong())==
-	   dual_weak_real(rep));
+    latticetypes::Weight v=rd.inSimpleRoots(alpha);
+    latticetypes::Weight w=rs.root_expr(alpha);
+    assert(v==w);
+    assert(rd.root_permutation(alpha)==rs.root_permutation(alpha));
+    assert(weyl::WeylElt(rd.reflectionWord(alpha),W)==
+	   weyl::WeylElt(rs.reflectionWord(alpha),W));
+    assert(rd.descent_set(alpha)==rs.descent_set(alpha));
+    rootdata::RootSet orth(rs.numRoots());
+    for (rootdata::RootNbr beta=0; beta<rs.numRoots(); ++beta)
+    {
+      assert(rd.root(alpha).dot(rd.coroot(beta))==rs.bracket(alpha,beta));
+      assert(rd.sumIsRoot(alpha,beta)==rs.sumIsRoot(alpha,beta));
+      orth.set_to(beta,rd.isOrthogonal(alpha,beta));
+      assert(orth.isMember(beta)==rs.isOrthogonal(alpha,beta));
+    }
+    assert(rd.simpleBasis(orth)==rs.simpleBasis(orth));
   }
 }
 
@@ -833,32 +775,25 @@ void testrun_f()
   for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
   {
     std::cout<< *it << std::endl;
-    rootdata::RootDatum rd
+    const rootdata::RootDatum rd
       (prerootdata::PreRootDatum(*it,id.columns())); // simply connected
-    complexredgp::ComplexReductiveGroup G(rd,id); // equal rank case only
-    for (size_t cn=0; cn<G.numCartanClasses(); ++cn)
-    {
-      examine(G,cn);
-      complexredgp::ComplexReductiveGroup dG(G,tags::DualTag());
-      examine(dG,cn);
-    }
+    const rootdata::RootSystem rs(rd.cartanMatrix());
+    examine(rd,rs);
+    examine(rootdata::RootDatum(rd,tags::DualTag()),
+	    rootdata::RootSystem(rs,tags::DualTag()));
   }
 
 }
 
 void exam_f()
 {
-  complexredgp::ComplexReductiveGroup& G = mainmode::currentComplexGroup();
-  size_t cn = interactive::get_bounded_int
-    (interactive::common_input(),"Cartan class: ",G.numCartanClasses());
-  examine(mainmode::currentComplexGroup(),cn);
-  std::cout << "G OK" << std::endl;
-  complexredgp::ComplexReductiveGroup dG
-    (mainmode::currentComplexGroup(),tags::DualTag());
-  assert(G.numCartanClasses()
-	 ==dG.numCartanClasses());
-  examine(dG,cn);
-  std::cout << "dual G OK" << std::endl;
+  const rootdata::RootDatum rd = mainmode::currentComplexGroup().rootDatum();
+  const rootdata::RootSystem rs(rd.cartanMatrix());
+  examine(rd,rs);
+  std::cout << "root system OK" << std::endl;
+  examine(rootdata::RootDatum(rd,tags::DualTag()),
+	  rootdata::RootSystem(rs,tags::DualTag()));
+  std::cout << "dual root system OK" << std::endl;
 }
 
 } // namespace

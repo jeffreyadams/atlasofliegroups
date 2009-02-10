@@ -40,9 +40,9 @@ namespace partition {
 
 namespace partition {
 
-  // the template parameter F is the type of a binary function object
-template<typename F>
-  void makeOrbits(Partition&, const F&, unsigned long, unsigned long);
+
+template<typename F>  // F is the type of a binary function object
+  Partition orbits(const F&, unsigned long, unsigned long);
 
 }
 
@@ -66,7 +66,8 @@ namespace partition {
   space (Z/2Z)^m. Typical partitions are into the orbits of a Weyl group
   acting on this vector space (such partitions are computed by makeOrbits).
   */
-class Partition {
+class Partition : public std::unary_function<unsigned long,unsigned long>
+{
 
  private:
 
@@ -167,11 +168,9 @@ class Partition {
   /*!
 \brief Clears all entries of d_classRep.
   */
-  void clear() {
-    d_classRep.clear();
-  }
+  void clear() { d_classRep.clear(); }
 
-  void newClass(unsigned long c);
+  unsigned long new_class(unsigned long c);
 
   /*!
 \brief Resizes the class to be a partition of [0,n[.
@@ -199,9 +198,9 @@ class PartitionIterator {
     for (PartitionIterator::SubIterator jt=it->first; jt!=it->second; ++jt)
     { ... pi(*jt) is constant during this loop ... }
 
-  In fact after the outer loop has advanced i| times, one has |pi(*jt)==i|
+  In fact after the outer loop has advanced |i| times, one has |pi(*jt)==i|
   throughout the inner loop, provided |pi| as a function is surjective to an
-  initial part of $N$. Since the iterator runs through the classes for |pi|,
+  initial part of $\N$. Since the iterator runs through the classes for |pi|,
   which are non-empty, the inner loop will run at least once in all cases.
 
   The vector d_data contains the integers [0,n[, where n is the size of the

@@ -47,7 +47,11 @@ template<typename C>
   void identityMatrix(Matrix<C>&, size_t);
 
 template<typename C>
-  void initBasis(std::vector<Vector<C> >&, size_t);
+  std::vector<Vector<C> > standard_basis(size_t n);
+
+template<typename C>
+  void initBasis(std::vector<Vector<C> >& v, size_t n)
+ { v=standard_basis<C>(n); }
 
 template<typename C>
 Matrix<C>& invConjugate(Matrix<C>&, const Matrix<C>&);
@@ -77,6 +81,7 @@ template<typename C>
     Vector<C>& negate (); // negates argument in place
 
     C scalarProduct (const Vector<C>&) const;
+    C dot(const Vector<C>& v) const { return scalarProduct(v); } // alias
     bool isZero() const;
 
     Vector<C> operator+ (const Vector<C>& v) const
@@ -157,10 +162,7 @@ template<typename C> class Matrix {
 
   template<typename I> Matrix(const I&, const I&, tags::IteratorTag);
 
-  virtual ~Matrix()
-    {}
-
-// accessors
+  // accessors
   size_t numRows() const { return d_rows; }
   size_t numColumns() const { return d_columns; }
   size_t rowSize() const { return d_columns;  }

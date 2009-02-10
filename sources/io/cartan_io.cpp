@@ -42,7 +42,7 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
 			       complexredgp_io::Interface& CI)
 {
   complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
-  const rootdata::RootDatum& rd = G.rootDatum();
+  const rootdata::RootSystem& rs = G.rootDatum();
 
   const cartanclass::CartanClass& cc = G.cartan(cn);
   const cartanclass::Fiber& f = cc.fiber();
@@ -63,8 +63,7 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
        <<std::endl;
 
   // print type of imaginary root system
-  lietype::LieType ilt;
-  rootdata::lieType(ilt,cc.simpleImaginary(),rd);
+  lietype::LieType ilt = rs.Lie_type(cc.simpleImaginary());
 
   if (ilt.size() == 0)
     strm << "imaginary root system is empty" << std::endl;
@@ -72,8 +71,7 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
     strm << "imaginary root system: " << ilt << std::endl;
 
   // print type of real root system
-  lietype::LieType rlt;
-  rootdata::lieType(rlt,cc.simpleReal(),rd);
+  lietype::LieType rlt = rs.Lie_type(cc.simpleReal());
 
   if (rlt.size() == 0)
     strm << "real root system is empty" << std::endl;
@@ -81,8 +79,7 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
     strm << "real root system: " << rlt << std::endl;
 
   // print type of complex root system
-  lietype::LieType clt;
-  rootdata::lieType(clt,cc.simpleComplex(),rd);
+  lietype::LieType clt = rs.Lie_type(cc.simpleComplex());
 
   if (clt.size() == 0)
     strm << "complex factor is empty" << std::endl;
@@ -132,17 +129,14 @@ std::ostream& printFiber(std::ostream& strm, const cartanclass::Fiber& f,
 */
 std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
 			    const realform::RealFormList& rfl,
-			    const rootdata::RootDatum& rd)
+			    const rootdata::RootSystem& rs)
 {
   typedef std::vector<unsigned long>::const_iterator VI;
 
   const rootdata::RootList& si = f.simpleImaginary();
-  latticetypes::LatticeMatrix cm;
-
-  rootdata::cartanMatrix(cm,si,rd);
+  latticetypes::LatticeMatrix cm = rs.cartanMatrix(si);
   dynkin::DynkinDiagram d(cm);
-  setutils::Permutation a;
-  dynkin::bourbaki(a,d);
+  setutils::Permutation a = dynkin::bourbaki(d);
   cm.permute(a);
 
   strm << "cartan matrix of imaginary root system is:" << std::endl;

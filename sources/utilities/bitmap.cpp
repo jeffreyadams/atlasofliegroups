@@ -150,7 +150,7 @@ bool BitMap::back_up(unsigned long& n) const
   Tells whether the current bitmap contains |b|. It is assumed that
   |b.capacity()<=capacity()|.
 
-  This would amount to |b.andnot(*this).empty()| if |b| were by-value rather
+  This would amount to |not b.andnot(*this)| if |b| were by-value rather
   than reference, and if capacities were equal.
 */
 bool BitMap::contains(const BitMap& b) const
@@ -413,19 +413,40 @@ void BitMap::fill()
     d_map.back() = constants::lMask[d_capacity&posBits];
 }
 
-/*!
-  Synopsis: sets all the bits in position < n, AND clears all later bits
-
-  Equivalent to |fill()| if |n >= d_capacity|, and to |reset()| if |n=0|.
-*/
-void BitMap::fill(unsigned long n)
+//!\brief Sets all the bits in positions |i| with |start<=i<stop|.
+void BitMap::fill(size_t start, size_t stop)
 {
-  if (n>d_capacity) n=d_capacity; // truncate |n|
-  size_t map_size = d_map.size();
-  d_map.assign(n >> baseShift,~0ul); // set initial part to all bits set
-  d_map.resize(map_size,0ul);        // and remainder to all bits clear
-  if ((n&posBits)!=0)
-    d_map[n >> baseShift] = constants::lMask[n&posBits]; // correct at boundary
+  if (start>=stop) return;
+  size_t begin = start >> baseShift;
+  size_t end   = stop >> baseShift;
+  if (begin==end) // then only one word is affected
+    d_map[begin] |= constants::lMask[stop-start] << (start&posBits);
+  else
+  {
+    d_map[begin] |= ~constants::lMask[start&posBits];
+    for (size_t i=begin+1; i<end; ++i)
+      d_map[i] = ~0ul;
+    if ((stop&posBits)!=0) // protect against out-of-bounds setting of 0 bits
+      d_map[end] |= constants::lMask[stop&posBits];
+  }
+}
+
+//!\brief Sets all the bits in positions |i| with |start<=i<stop|.
+void BitMap::clear(size_t start, size_t stop)
+{
+  if (start>=stop) return;
+  size_t begin = start >> baseShift;
+  size_t end   = stop >> baseShift;
+  if (begin==end) // then only one word is affected
+    d_map[begin] &= ~(constants::lMask[stop-start] << (start&posBits));
+  else
+  {
+    d_map[begin] &= constants::lMask[start&posBits];
+    for (size_t i=begin+1; i<end; ++i)
+      d_map[i] = 0ul;
+    if ((stop&posBits)!=0) // protect against out-of-bounds setting of 0 bits
+      d_map[end] &= ~constants::lMask[stop&posBits];
+  }
 }
 
 BitMap::iterator BitMap::insert(iterator, unsigned long n)
@@ -454,17 +475,18 @@ void BitMap::set_capacity(unsigned long n)
 /*!
   Synopsis: sets r bits from position n to the first r bits in a.
 
-  Precondition: r divides longBits, and n is aligned (i.e., n is a multiple
-  of r).
-
-  In this way, we are sure that things happen inside a single word in d_map.
+  Precondition: |n| and |n+r-1| have same integer quotient by |longBits| (or
+  |r==0| in which case nothing happens), so in particular |r<=longBits|.
+  This condition is always satisfied if |r| divides |longBits| and |n| is a
+  multiple of |r|. It ensures that only a single word in |d_map| is affected.
 */
 void BitMap::setRange(unsigned long n, unsigned long r, unsigned long a)
 {
-  unsigned long m = n >> constants::baseShift;
+  unsigned long m = n >> baseShift;
+  unsigned shift = n & posBits;
 
-  d_map[m] &= ~(constants::lMask[r] << (n & constants::posBits)); // clear bits
-  d_map[m] |= (a & constants::lMask[r]) << (n & constants::posBits); // insert
+  d_map[m] &= ~(constants::lMask[r] << shift);     // set bits to zero
+  d_map[m] |= (a & constants::lMask[r]) << shift;  // insert the bits from a
 }
 
 void BitMap::swap(BitMap& other)

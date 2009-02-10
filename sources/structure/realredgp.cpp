@@ -44,33 +44,30 @@ RealReductiveGroup::RealReductiveGroup
   (complexredgp::ComplexReductiveGroup& G_C, realform::RealForm rf)
   : d_complexGroup(G_C)
   , d_realForm(rf)
-  , d_connectivity()
+  , d_connectivity() // wait for most split torus to be constructed below
   , d_status()
 {
-  const rootdata::RootDatum& rd = G_C.rootDatum();
+  tori::RealTorus T = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
+  d_connectivity = topology::Connectivity(T,G_C.rootDatum());
 
-  if (rd.rank() == rd.semisimpleRank())
-    d_status.set(IsSemisimple);
+  d_status.set(IsSemisimple,G_C.rank() == G_C.semisimpleRank());
+  d_status.set(IsQuasisplit,rf == G_C.quasisplit());
+  d_status.set(IsConnected,d_connectivity.component_rank() == 0);
+  d_status.set(IsSplit,T.isSplit());
 
-  if (rf == G_C.quasisplit()) d_status.set(IsQuasisplit);
-
+#ifndef NDEBUG
   // construct the torus for the most split Cartan
+  const cartanclass::Fiber& fundf = G_C.fundamental();
+  rootdata::RootSet so= cartanclass::toMostSplit(fundf,rf,G_C.rootSystem());
 
-  const cartanclass::Fiber& fundf = d_complexGroup.fundamental();
-  rootdata::RootList so= cartanclass::toMostSplit(fundf,rf,rd);
+  // recompute matrix of most split Cartan
+  const rootdata::RootDatum& rd = G_C.rootDatum();
+  tori::RealTorus T1
+    (refl_prod(so,rd) * G_C.distinguished()); // factors commute in fact
 
-  latticetypes::LatticeMatrix q;
-  rootdata::toMatrix(q,so,rd);
-  q.leftMult(d_complexGroup.distinguished());
-
-  tori::RealTorus T(q);
-
-  if (T.isSplit())
-    d_status.set(IsSplit);
-
-  d_connectivity = topology::Connectivity(T,rd);
-  if (d_connectivity.dualComponentReps().size() == 0)
-    d_status.set(IsConnected);
+  topology::Connectivity c(T1,rd);
+  assert(d_connectivity.component_rank() == c.component_rank());
+#endif
 }
 
 

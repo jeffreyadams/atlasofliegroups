@@ -93,9 +93,9 @@ template<typename I, typename J, typename O>
   latticetypes::LatticeMatrix q =
     latticetypes::LatticeMatrix(firstb,lastb,tags::IteratorTag()).inverse(d);
 
-  for (I i = first; i != last; ++i) {
-    latticetypes::Weight v(q.numRows());
-    q.apply(v,*i);
+  for (I i = first; i != last; ++i)
+  {
+    latticetypes::Weight v = q.apply(*i);
     v/=d;
     *out++ = v;
   }

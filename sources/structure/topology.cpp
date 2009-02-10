@@ -127,10 +127,7 @@ Connectivity::Connectivity(const tori::RealTorus& t,
 {
   // write involution in coroot basis
 
-  latticetypes::LatticeMatrix i(t.involution());
-  // |t.involution()| acts on weight lattice
-
-  i.transpose();                   // |i| acts on coweight lattice
+  latticetypes::LatticeMatrix i = t.involution().transposed(); // coroot latt.
   latticetypes::WeightList b(rd.beginSimpleCoroot(),rd.endSimpleCoroot());
   std::copy(rd.beginRadical(),rd.endRadical(),
 	    std::back_inserter(b)); // coroots+radical

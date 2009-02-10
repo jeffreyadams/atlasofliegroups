@@ -35,14 +35,10 @@ namespace atlas {
 
 /******** function declarations **********************************************/
 
-namespace cartanclass {
-
-  // quasi-constructor function for |Fiber| class
-  Fiber dualFiber
-    (const rootdata::RootDatum&, const latticetypes::LatticeMatrix&);
-
+namespace cartanclass
+{
   latticetypes::LatticeMatrix adjoint_involution
-    (const rootdata::RootDatum&, const InvolutionData&);
+    (const rootdata::RootSystem&, const InvolutionData&);
 
   latticetypes::Weight
     compactTwoRho(AdjointFiberElt, const Fiber&, const rootdata::RootDatum&);
@@ -51,10 +47,10 @@ namespace cartanclass {
     restrictGrading(const rootdata::RootSet&, const rootdata::RootList&);
 
   gradings::Grading
-    specialGrading(const Fiber&,realform::RealForm,const rootdata::RootDatum&);
+    specialGrading(const Fiber&,realform::RealForm,const rootdata::RootSystem&);
 
-  rootdata::RootList
-    toMostSplit(const Fiber&,realform::RealForm,const rootdata::RootDatum&);
+  rootdata::RootSet
+    toMostSplit(const Fiber&,realform::RealForm,const rootdata::RootSystem&);
 }
 
 /******** type definitions ***************************************************/
@@ -71,8 +67,8 @@ class InvolutionData
  public:
   InvolutionData(const rootdata::RootDatum&,
 		 const latticetypes::LatticeMatrix&);
-  InvolutionData(const rootdata::RootDatum& rd,
-		 const std::vector<rootdata::RootNbr>& s_image);
+  InvolutionData(const rootdata::RootSystem& rs,
+		 const rootdata::RootList& s_image);
   InvolutionData(const complexredgp::ComplexReductiveGroup&,
 		 const weyl::TwistedInvolution&);
   void swap(InvolutionData&);
@@ -93,7 +89,7 @@ class InvolutionData
   const rootdata::RootList& real_basis() const { return d_simpleReal; }
   rootdata::RootNbr real_basis(size_t i) const { return d_simpleReal[i]; }
 private:
-  void classify_roots(const rootdata::RootDatum& rd);
+  void classify_roots(const rootdata::RootSystem& rs);
 };
 
 /*!
@@ -545,23 +541,23 @@ private:
   latticetypes::SmallSubquotient makeFiberGroup() const;
 
   latticetypes::SmallSubquotient makeAdjointFiberGroup
-    (const rootdata::RootDatum&) const;
+    (const rootdata::RootSystem&) const;
 
-  latticetypes::SmallSubspace gradingGroup(const rootdata::RootDatum&) const;
+  latticetypes::SmallSubspace gradingGroup(const rootdata::RootSystem&) const;
 
   gradings::Grading makeBaseGrading
-    (rootdata::RootSet& flagged_roots,const rootdata::RootDatum&) const;
+    (rootdata::RootSet& flagged_roots,const rootdata::RootSystem&) const;
 
   gradings::GradingList makeGradingShifts
-    (rootdata::RootSetList& all_shifts,const rootdata::RootDatum&) const;
+    (rootdata::RootSetList& all_shifts,const rootdata::RootSystem&) const;
 
-  bitset::RankFlagsList adjointMAlphas (const rootdata::RootDatum&) const;
+  bitset::RankFlagsList adjointMAlphas (const rootdata::RootSystem&) const;
 
   bitset::RankFlagsList mAlphas(const rootdata::RootDatum&) const;
 
   latticetypes::BinaryMap makeFiberMap(const rootdata::RootDatum&) const;
 
-  partition::Partition makeWeakReal(const rootdata::RootDatum&) const;
+  partition::Partition makeWeakReal(const rootdata::RootSystem&) const;
 
   partition::Partition makeRealFormPartition() const;
 
@@ -661,8 +657,9 @@ class CartanClass {
 public:
 
 // constructors and destructors
-
-  CartanClass(const rootdata::RootDatum&, const latticetypes::LatticeMatrix&);
+  CartanClass(const rootdata::RootDatum& rd,
+	      const rootdata::RootDatum& dual_rd,
+	      const latticetypes::LatticeMatrix& involution);
 
 // copy and assignment: defaults are ok for copy and assignment
 
@@ -878,7 +875,7 @@ public:
 private:
   rootdata::RootList makeSimpleComplex(const rootdata::RootDatum&) const;
 
-  size::Size makeOrbitSize(const rootdata::RootDatum&) const;
+  size::Size orbit_size(const rootdata::RootSystem& rs) const;
 
 }; // class CartanClass
 

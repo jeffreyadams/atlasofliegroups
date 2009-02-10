@@ -55,24 +55,24 @@ RealWeyl::RealWeyl(const cartanclass::CartanClass& cc,
 
   RootDatum drd(rd,DualTag());
 
-  lieType(d_complexType,d_complex,rd);
-  lieType(d_imaginaryType,d_imaginary,rd);
-  lieType(d_realType,d_real,drd);
+  d_complexType = rd.Lie_type(d_complex);
+  d_imaginaryType = rd.Lie_type(d_imaginary);
+  d_realType = drd.Lie_type(d_real);
 
   const Fiber& f = cc.fiber();
   const Fiber& df = cc.dualFiber();
 
   // construct basis of imaginary compact roots
-  rootdata::rootBasis(d_imaginaryCompact,f.compactRoots(x),rd);
-  lieType(d_imaginaryCompactType,d_imaginaryCompact,rd);
+  d_imaginaryCompact= rd.simpleBasis(f.compactRoots(x));
+  d_imaginaryCompactType = rd.Lie_type(d_imaginaryCompact);
 
   // construct imaginary R-group
   orthogonalMAlpha(d_imaginaryOrth,x,f,rd);
   rGenerators(d_imaginaryR,d_imaginaryOrth,f,rd);
 
   // construct basis of real compact roots
-  rootBasis(d_realCompact,df.compactRoots(y),drd);
-  lieType(d_realCompactType,d_realCompact,drd);
+  d_realCompact = drd.simpleBasis(df.compactRoots(y));
+  d_realCompactType = drd.Lie_type(d_realCompact);
 
   // construct real R-group
   orthogonalMAlpha(d_realOrth,y,df,drd);
@@ -230,10 +230,6 @@ void dualRealWeylSize(size::Size& c, const RealWeyl& rw)
 
 namespace {
 
-void orthogonalMAlpha(rootdata::RootList& rl, unsigned long x,
-		      const cartanclass::Fiber& f,
-		      const rootdata::RootDatum& rd)
-
 /*
   Synopsis: puts in rl the list of positive imaginary roots that are orthogonal
   to the sum of positive imaginary compact roots for the fiber.
@@ -244,29 +240,21 @@ void orthogonalMAlpha(rootdata::RootList& rl, unsigned long x,
 
   NOTE: they are even super-orthogonal, see IC4, prop 3.20.
 */
-
+void orthogonalMAlpha(rootdata::RootList& rl, unsigned long x,
+		      const cartanclass::Fiber& f,
+		      const rootdata::RootDatum& rd)
 {
-  using namespace latticetypes;
-  using namespace rootdata;
-
-  Weight tworho_ic = compactTwoRho(x,f,rd);
+  latticetypes::Weight tworho_ic = compactTwoRho(x,f,rd);
 
   // put positive imaginary noncompact roots in rs
-  RootSet rs = f.noncompactRoots(x);
+  rootdata::RootSet rs = f.noncompactRoots(x);
   rs &= rd.posRootSet();
 
   // keep the ones that are orthogonal to tworho_ic
-  RootSet::iterator rs_end = rs.end();
-
-  for (RootSet::iterator i = rs.begin(); i != rs_end; ++i)
-    if (rd.isOrthogonal(tworho_ic,*i))
-      rl.push_back(*i);
+  for (rootdata::RootSet::iterator it=rs.begin(); it(); ++it)
+    if (rd.isOrthogonal(tworho_ic,*it))
+      rl.push_back(*it);
 }
-
-void rGenerators(latticetypes::SmallBitVectorList& cl,
-		 const rootdata::RootList& rl,
-		 const cartanclass::Fiber& f,
-		 const rootdata::RootDatum& rd)
 
 /*
   Synopsis: puts in cl a basis of the R-group for this torus and this
@@ -282,17 +270,18 @@ void rGenerators(latticetypes::SmallBitVectorList& cl,
   products of simple reflections in rl corresponding to the combinations that
   lie in the _kernel_ of this map.
 */
-
+void rGenerators(latticetypes::SmallBitVectorList& cl,
+		 const rootdata::RootList& rl,
+		 const cartanclass::Fiber& f,
+		 const rootdata::RootDatum& rd)
 {
-  using namespace bitvector;
-  using namespace constants;
-  using namespace latticetypes;
-
   size_t rln = rl.size();
-  BitMatrix<RANK_MAX> m(f.fiberRank(),rln);
+  latticetypes::BinaryMap m(f.fiberRank(),rln);
 
-  for (size_t j = 0; j < rln; ++j) {
-    SmallBitVector v = f.mAlpha(rd.coroot(rl[j])); // |v.size()=f.fiberRank()|
+  for (size_t j=0; j<rln; ++j)
+  {
+    latticetypes::SmallBitVector v = // |v.size()=f.fiberRank()|
+      f.mAlpha(rd.coroot(rl[j]));
     for (size_t i = 0; i < v.size(); ++i)
       m.set(i,j,v[i]);
   }

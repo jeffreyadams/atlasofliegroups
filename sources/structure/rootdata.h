@@ -25,6 +25,7 @@
 #include "bitmap.h"
 #include "latticetypes.h"
 #include "lietype.h"
+#include "dynkin.h"
 #include "setutils.h"
 #include "tags.h"
 
@@ -38,42 +39,20 @@ namespace rootdata {
 
 /******** type declarations *************************************************/
 
-namespace rootdata {
-
-  struct RootBasisTag {};
-
-}
 
 /******** function declarations *********************************************/
 
 namespace rootdata {
 
-
-void cartanMatrix(LT::LatticeMatrix&, const RootDatum&);
-
-void cartanMatrix(LT::LatticeMatrix&, const RootList&, const RootDatum&);
-
-// a functional version of previous one
 LT::LatticeMatrix dualBasedInvolution
   (const LT::LatticeMatrix&, const RootDatum&);
 
-void lieType(lietype::LieType&, const RootList&, const RootDatum&);
-
-void makeOrthogonal(RootList&, const RootList&, const RootList&,
-		    const RootDatum&);
-
-// compute a basis of a root subsystem
-void rootBasis(RootList&, const RootList&, const RootDatum&);
-
-void rootBasis(RootList&, RootSet, const RootDatum&);
-
-void strongOrthogonalize(RootList&, const RootDatum&);
+RootSet makeOrthogonal(const RootSet& o, const RootSet& subsys,
+		       const RootSystem& rs);
 
 void toDistinguished(LT::LatticeMatrix&, const RootDatum&);
 
-void toMatrix(LT::LatticeMatrix&, const weyl::WeylWord&, const RootDatum&);
-
-void toMatrix(LT::LatticeMatrix&, const RootList&, const RootDatum&);
+LT::LatticeMatrix refl_prod(const RootSet&, const RootDatum&);
 
 weyl::WeylWord toPositive(LT::Weight, const RootDatum&);
 
@@ -82,29 +61,224 @@ weyl::WeylWord toPositive(LT::Weight, const RootDatum&);
 /******** type definitions **************************************************/
 
 namespace rootdata {
-  /*!
-  \brief Based root datum for a complex reductive group.
 
-  What we call a root datum in this program is what is usually called
-  a based root datum.
 
-  The root datum defines the complex reductive group entirely.
+class RootSystem
+{
+  typedef signed char byte;
+  typedef matrix::Vector<byte> Byte_vector;
+  struct root_info
+  {
+    Byte_vector root, dual; // root in root basis, coroot in coroot basis
+    bitset::RankFlags descents,ascents; // for reflections by simple roots
 
-  The lattices in which the roots and coroots live are both Z^d_rank;
-  lists of roots or coroots are lists of vectors of integers, of size
-  d_rank. RootDatum begins with the lists of simple roots and coroots,
-  then constructs the remaining roots.  Also constructed are various
-  useful auxiliary things, like d_twoRho (the sum of the positive
-  roots) and d_rootPermutation (a list of permutations of the roots,
-  with the jth permutation given by reflection in the jth simple
-  root).
+    root_info(const Byte_vector& v)
+    : root(v), dual(), descents(), ascents() {}
+  };
+  struct root_compare; // necessary for sorting roots
 
-  The code is designed to make it preferable always to refer to a root
-  by its number (its location in the list d_root).  The type RootList
-  should in fact (per Fokko) have been called RootNbrList, since it is
-  a list of such numbers.
-  */
-class RootDatum {
+  size_t rk; // rank of root system
+
+  Byte_vector Cmat;
+
+  std::vector<root_info> ri; //!< List of information about positive roots
+
+//!\brief Root permutations induced by reflections in positive roots.
+  std::vector<setutils::Permutation> root_perm;
+
+  // internal access methods
+  byte& Cartan_entry(size_t i, size_t j) { return Cmat[i*rk+j]; }
+  const byte& Cartan_entry(size_t i, size_t j) const { return Cmat[i*rk+j]; }
+  Byte_vector& root(size_t i) { return ri[i].root;}
+  Byte_vector& coroot(size_t i) { return ri[i].dual;}
+  const Byte_vector& root(size_t i) const { return ri[i].root;}
+  const Byte_vector& coroot(size_t i) const { return ri[i].dual;}
+  RootNbr abs(RootNbr alpha) const // offset of corresponding positive root
+  { return isPosRoot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha; }
+
+  void cons(const latticetypes::LatticeMatrix& Cartan_matrix); // panse bete
+ public:
+
+// constructors and destructors
+
+  explicit RootSystem(const latticetypes::LatticeMatrix& Cartan_matrix);
+
+  RootSystem(const RootSystem& rs, tags::DualTag);
+
+// accessors
+
+  size_t rank() const { return rk; } // semisimple rank when part of |RootDatum|
+  unsigned long numPosRoots() const { return ri.size(); }
+  unsigned long numRoots() const { return 2*numPosRoots(); }
+
+  // Cartan matrix by entry and as a whole
+  latticetypes::LatticeCoeff cartan(size_t i, size_t j) const
+  { return Cartan_entry(i,j); };
+  latticetypes::LatticeMatrix cartanMatrix() const;
+  lietype::LieType Lie_type() const
+  { return dynkin::Lie_type(cartanMatrix()); }
+
+  // for subsystem
+  latticetypes::LatticeMatrix cartanMatrix(const RootList& sub) const;
+  lietype::LieType Lie_type(RootList sub) const
+  { return dynkin::Lie_type(cartanMatrix(sub)); }
+
+
+
+// root list access
+
+  latticetypes::LatticeElt root_expr(RootNbr alpha) const;  // in simple roots
+  latticetypes::LatticeElt coroot_expr(RootNbr alpha) const;// in simple coroots
+
+  // convert sequence of root numbers to expressions in the simple roots
+  template <typename I, typename O>
+    void toRootBasis(const I&, const I&, O) const;
+  // convert sequence of root numbers to expressions in subsystem simple weights
+  template <typename I, typename O>
+    void toSimpleWeights(const I&, const I&, O, const RootList&) const;
+  // convert sequence of root numbers to expressions in subsystem simple roots
+  template <typename I, typename O>
+    void toRootBasis(const I&, const I&, O, const RootList&) const;
+
+  bool isSimpleRoot(RootNbr alpha) const
+  { return alpha-numPosRoots()<rk; } // this uses that |RootNbr| is unsigned
+
+  bool isPosRoot(RootNbr alpha) const
+  { return alpha>=numPosRoots(); } // second half
+
+  RootNbr simpleRootNbr(size_t i) const
+  { assert(i<rk);  return numPosRoots()+i; }
+
+  RootNbr posRootNbr(size_t alpha) const
+  { assert(alpha<numPosRoots()); return numPosRoots()+alpha; }
+
+  RootNbr rootMinus(RootNbr alpha) const // roots are ordered symmetrically
+  { return numRoots()-1-alpha; }
+
+
+  RootSet simpleRootSet() const // NOT for iteration over it, seems never used
+  {
+    RootSet simple_roots(numRoots());
+    simple_roots.fill(numPosRoots(),numPosRoots()+rk);
+    return simple_roots;
+  }
+
+  RootList simpleRootList() const // NOT for iteration over it
+  {
+    RootList simple_roots(rk);
+    for (size_t i=0; i<rk; ++i)
+      simple_roots[i]=simpleRootNbr(i);
+    return simple_roots;
+  }
+
+  RootSet posRootSet() const // NOT for iteration over it, may serve as mask
+  {
+    RootSet pos_roots(numRoots());
+    pos_roots.fill(numPosRoots(),numRoots());
+    return pos_roots;
+  }
+
+// other accessors
+
+  // the next method only works for _simple_ roots! (whence no RootNbr for |i|)
+  const setutils::Permutation& simple_root_permutation(size_t i) const
+    { return root_perm[i]; }
+
+  bitset::RankFlags descent_set(RootNbr alpha) const
+  {
+    RootNbr a = abs(alpha);
+    return isPosRoot(alpha) ? ri[a].descents : ri[a].ascents;
+  }
+  bitset::RankFlags ascent_set(RootNbr alpha) const
+  {
+    RootNbr a = abs(alpha);
+    return isPosRoot(alpha) ? ri[a].ascents : ri[a].descents;
+  }
+
+  size_t find_descent(RootNbr alpha) const
+  { return descent_set(alpha).firstBit(); }
+
+  bool is_descent(size_t i, RootNbr alpha) const
+  { return root_perm[i][alpha]<alpha; } // easier than using |descent_set|
+
+  bool is_ascent(size_t i, RootNbr alpha) const
+  { return root_perm[i][alpha]>alpha; }
+
+  RootNbr simple_reflected_root(RootNbr r, size_t i) const
+  { return simple_root_permutation(i)[r]; }
+
+  void simple_reflect_root(RootNbr& r, size_t i) const
+  { r=simple_root_permutation(i)[r]; }
+
+  RootNbr permuted_root(const weyl::WeylWord& ww, RootNbr r) const
+  {
+    for (size_t i=ww.size(); i-->0; )
+      simple_reflect_root(r,ww[i]);
+    return r;
+  }
+
+
+  // for arbitrary roots, reduce root number to positive root offset first
+  const setutils::Permutation& root_permutation(RootNbr alpha) const
+  { return root_perm[abs(alpha)]; }
+
+  bool isOrthogonal(RootNbr alpha, RootNbr beta) const
+  { return root_permutation(alpha)[beta]==beta; }
+
+  // pairing between root |alpha| and coroot |beta|
+  latticetypes::LatticeCoeff bracket(RootNbr alpha, RootNbr beta) const;
+
+
+
+  // find permutation of roots induced by diagram automorphism
+  setutils::Permutation root_permutation(const setutils::Permutation& ) const;
+
+  // extend root datum automorphism given on simple roots to all roots
+  setutils::Permutation extend_to_roots(const RootList&) const;
+
+
+  weyl::WeylWord reflectionWord(RootNbr r) const;
+
+  RootList simpleBasis(RootSet rs) const;
+
+  bool sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const;
+  bool sumIsRoot(RootNbr alpha, RootNbr beta) const
+  { RootNbr dummy; return sumIsRoot(alpha,beta,dummy); }
+
+  RootSet long_orthogonalize(const RootSet& rest) const;
+
+  RootList high_roots() const;
+
+// manipulators
+
+
+}; // |class RootSystem|
+
+/*!
+\brief Based root datum for a complex reductive group.
+
+What we call a root datum in this program is what is usually called a based
+root datum, in other words a fixed choiceof positive roots is always assumed.
+
+The root datum defines the complex reductive group entirely. It consists of a
+|RootSystem| that describes the roots and coroots in the lattices they span
+themselves, and of additional data that correspond to embeddings of these
+lattices into mutually dual free abelian groups (weight and coweight lattices).
+
+The rank |d_rank| is that of the weight and coweight lattices, the root system
+itself has rank |semisimpleRank()| which may be smaller. The roots and coroots
+are stored in compact form in the |RootSystem|, and again as represented
+ointhe weight and coweight lattices, for efficiency of retrieval under this
+form. Also constructed are various useful auxiliary things, like d_twoRho (the
+sum of the positive roots).
+
+The code is designed to make it preferable always to refer to a root by its
+number (index in the root system), for which we use the type name |RootNbr|.
+The type |RootList| should in fact (per Fokko) have been called |RootNbrList|.
+*/
+class RootDatum
+: public RootSystem
+{
 
  private:
  /*!
@@ -124,24 +298,12 @@ use by accessors.
 */
   size_t d_rank;
 
-/*!
-\brief Semisimple rank of the root datum.
-*/
-  size_t d_semisimpleRank;
-
   LT::WeightList d_roots; //!< Full list of roots.
   LT::WeightList d_coroots; //!< Full list of coroots.
   LT::WeightList weight_numer; //!< Simple weight numerators.
   LT::WeightList coweight_numer; //!< Simple coweight numerators.
   LT::WeightList d_radicalBasis; //!< Basis for orthogonal to coroots.
   LT::WeightList d_coradicalBasis; //!< Basis for orthogonal to roots.
-
-/*!
-\brief Root permutations induced by simple reflections.
-*/
-  std::vector<setutils::Permutation> d_rootPermutation;
-
-  std::vector<bitset::RankFlags> descent_set; //!< simple reflections lowering
 
 /*!
 \brief Sum of the positive roots.
@@ -165,7 +327,10 @@ use by accessors.
 
 // constructors and destructors
 
-  RootDatum() : d_rank(0), d_semisimpleRank(0) {}
+ RootDatum()
+   : RootSystem(LT::LatticeMatrix(0,0))
+   , d_rank(0)
+  {}
 
   explicit RootDatum(const prerootdata::PreRootDatum&);
 
@@ -179,13 +344,9 @@ use by accessors.
 
 // accessors
 
-  unsigned long numRoots() const { return d_roots.size(); }
-
-  unsigned long numPosRoots() const { return numRoots()/2; }
-
+  const RootSystem& root_system() const { return *this; } // base object ref
   size_t rank() const { return d_rank; }
-
-  size_t semisimpleRank() const { return d_semisimpleRank; }
+  size_t semisimpleRank() const { return RootSystem::rank(); }
 
 // root list access
 
@@ -238,27 +399,16 @@ use by accessors.
     { return endCoroot(); }
 
 
-  bool isSimpleRoot(RootNbr j) const
-    { return j-numPosRoots()<semisimpleRank(); } // uses |RootNbr| is unsigned
-
-  bool isPosRoot(RootNbr j) const { return j>=numPosRoots(); } // second half
-
   bool isRoot(const LT::Weight& v) const // ask this of a weight
     { return setutils::find_index(d_roots,v) != d_roots.size(); }
 
-  bool isSemisimple() const { return d_rank == d_semisimpleRank; }
+  bool isSemisimple() const { return d_rank == semisimpleRank(); }
 
   const LT::Weight& root(RootNbr j) const
     { assert(j<numRoots()); return d_roots[j]; }
 
-  RootNbr simpleRootNbr(size_t j) const
-    { assert(j<semisimpleRank());  return beginSimpleRoot()-beginRoot()+j; }
-
   const LT::Weight& simpleRoot(size_t j) const
     { assert(j<semisimpleRank()); return *(beginSimpleRoot()+j); }
-
-  RootNbr posRootNbr(size_t j) const
-    { assert(j<numPosRoots()); return beginPosRoot()-beginRoot()+j; }
 
   const LT::Weight& posRoot(size_t j) const
     { assert(j<numPosRoots()); return *(beginPosRoot()+j); }
@@ -275,35 +425,6 @@ use by accessors.
 
   const LT::Weight& posCoroot(size_t j) const
     { assert(j<numPosRoots()); return  *(beginPosCoroot()+j); }
-
-
-  RootNbr rootMinus(RootNbr j) const // roots are ordered symmetrically
-    { return numRoots()-1-j; }
-
-
-  RootSet simpleRootSet() const // NOT for iteration over it, seems never used
-    {
-      RootSet simple_roots(numRoots());
-      for (size_t i=0; i<semisimpleRank(); ++i)
-	simple_roots.insert(simpleRootNbr(i));
-      return simple_roots;
-    }
-
-  RootList simpleRootList() const // NOT for iteration over it
-    {
-      RootList simple_roots(semisimpleRank());
-      for (size_t i=0; i<semisimpleRank(); ++i)
-	simple_roots[i]=simpleRootNbr(i);
-      return simple_roots;
-    }
-
-  RootSet posRootSet() const // NOT for iteration over it, may serve as mask
-    {
-      RootSet pos_roots(numRoots());
-      for (size_t i=0; i<numPosRoots(); ++i)
-	pos_roots.insert(posRootNbr(i));
-      return pos_roots;
-    }
 
 // other accessors
 
@@ -345,21 +466,9 @@ use by accessors.
     return isOrthogonal(root(alpha),j);
   }
 
-  bitset::RankFlags descents(RootNbr alpha) const
-    { return descent_set[alpha]; }
-  bool is_descent(size_t i, RootNbr alpha) const
-  {
-    return descent_set[alpha].test(i);
-    // iff |scalarProduct(root(alpha),simpleCoroot(i))>0|
-  }
-
   LT::LatticeCoeff cartan(size_t i, size_t j) const {
     return simpleRoot(i).scalarProduct(simpleCoroot(j));
   }
-
-  LT::LatticeMatrix cartanMatrix() const;
-
-  LT::LatticeMatrix cartanMatrix(const RootList&) const; // for subsystem
 
   //!\brief  Applies to v the reflection about root alpha.
   void reflect(LT::Weight& lambda, RootNbr alpha) const
@@ -384,54 +493,22 @@ use by accessors.
     { simpleCoreflect(co_lambda,i); return co_lambda; }
 
 
-  // the next method only works for _simple_ roots! (whence no RootNbr for |i|)
-  const setutils::Permutation& simple_root_permutation(size_t i) const
-    { return d_rootPermutation[i]; }
-
-  // for arbitrary roots, reduce root number to positive root offset first
-  const setutils::Permutation& root_permutation(RootNbr alpha) const
-    {
-      size_t i =
-	isPosRoot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha;
-      return d_rootPermutation[i];
-    }
-  // here any matrix permuting the roots is allowed, e.g., rootReflection(r)
+  // here any matrix permuting the roots is allowed, e.g., root_reflection(r)
   setutils::Permutation rootPermutation(const LT::LatticeMatrix& q) const;
   // extend diagram automorphism to permutation of all roots
-  setutils::Permutation root_permutation(const setutils::Permutation& ) const;
-  // extend root datum automorphism given on simple roots to all roots
-  setutils::Permutation extend_to_roots(const std::vector<RootNbr>&) const;
 
-  LT::LatticeMatrix rootReflection(RootNbr r) const;
+  LT::LatticeMatrix root_reflection(RootNbr r) const;
+  LT::LatticeMatrix simple_reflection(size_t i) const
+    { return root_reflection(simpleRootNbr(i)); }
 
-  void simple_reflect_root(RootNbr& r, size_t s) const
-    { r=simple_root_permutation(s)[r]; }
-
-  RootNbr permuted_root(const weyl::WeylWord& ww, RootNbr r) const
-    {
-      for (size_t i=ww.size(); i-->0; )
-	simple_reflect_root(r,ww[i]);
-      return r;
-    }
-
-  RootNbr simple_reflected_root(RootNbr r, size_t s) const {
-    return simple_root_permutation(s)[r];
-  }
+  LT::LatticeMatrix matrix(const weyl::WeylWord& ww) const;
 
   weyl::WeylWord reflectionWord(RootNbr r) const;
 
   // express root in basis of simple roots
-  LT::Weight inSimpleRoots(RootNbr n) const;
+  LT::Weight inSimpleRoots(RootNbr alpha) const { return root_expr(alpha); }
   // express coroot in basis of simple coroots
-  LT::Weight inSimpleCoroots(RootNbr n) const;
-
-  // convert sequence of root numbers to expressions in the simple roots
-template <typename I, typename O>
-  void toRootBasis(const I&, const I&, O) const;
-template <typename I, typename O>
-  void toRootBasis(const I&, const I&, O, const RootList&) const;
-template <typename I, typename O>
-  void toSimpleWeights(const I&, const I&, O, const RootList&) const;
+  LT::Weight inSimpleCoroots(RootNbr alpha) const { return coroot_expr(alpha); }
 
   LT::Weight twoRho(const RootList&) const;
   LT::Weight twoRho(const RootSet&) const;
@@ -440,29 +517,12 @@ template <typename I, typename O>
   weyl::WeylWord word_of_inverse_matrix(const latticetypes::LatticeMatrix&)
     const;
 
-  RootList simpleBasis(const RootList& rl) const;
-  RootList simpleBasis(RootSet rs) const;
-
-
-  bool sumIsRoot(const LT::Weight&, const LT::Weight&) const;
-  bool sumIsRoot(RootNbr i, RootNbr j) const
-    { return sumIsRoot(root(i),root(j)); }
-
-  RootList high_roots() const;
-
 // manipulators
 
   void swap(RootDatum&);
 
 // private methods used during construction
  private:
-
-  void fill_positives(latticetypes::WeightList& roots,
-		     latticetypes::WeightList& coroots);
-
-  std::vector<size_t>
-  sort_roots(const latticetypes::WeightList& roots,
-	     const latticetypes::WeightList& simple_coweights) const;
 
   void fillStatus();
 
@@ -473,7 +533,7 @@ template <typename I, typename O>
    \brief Iterator for traversing a set of roots.
 
    This template class has two main instances, with I=bitmap;:BitMap::iterator
-   and with I=std::vector<RootNbr>::const_iterator. Apart from the iterator
+   and with I=RootList::const_iterator. Apart from the iterator
    |d_po| of this type the class stores a iterator |d_list|, accessing a set
    of roots. Only |d_pos| changes as the iterator advances, while |d_list|
    always points to the start of some |LT::WeightList|, so it can be |const|

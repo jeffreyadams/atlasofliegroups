@@ -100,8 +100,6 @@ namespace lietype {
 
         Chapter I -- Functions declared in lietype.h
 
-  ... explain here when stable ...
-
 ******************************************************************************/
 
 namespace lietype {
@@ -110,51 +108,52 @@ namespace lietype {
 /*!
   Synopsis: puts in dlt the dual Lie type of lt.
 */
-void dualLieType(LieType& dlt, const LieType& lt)
+LieType dual_type(LieType lt)
 {
-  dlt = lt;
-
-  for (size_t j = 0; j < dlt.size(); ++j)
-    switch (dlt[j].first) {
+  for (size_t i=0; i<lt.size(); ++i)
+    switch (lt[i].first) {
     case 'B':
-      dlt[j].first = 'C';
+      lt[i].first = 'C';
       break;
     case 'C':
-      dlt[j].first = 'B';
+      lt[i].first = 'B';
       break;
     case 'F':
-      dlt[j].first = 'f';
+      lt[i].first = 'f';
       break;
     case 'f':
-      dlt[j].first = 'F';
+      lt[i].first = 'F';
       break;
     case 'G':
-      dlt[j].first = 'g';
+      lt[i].first = 'g';
       break;
     case 'g':
-      dlt[j].first = 'G';
+      lt[i].first = 'G';
       break;
     }
+
+  return lt;
 }
 
 
 /*!
   Synopsis: puts in dict the dual inner class type of ict.
 */
-void dualInnerClassType(InnerClassType& dict, const InnerClassType& ict,
-			const LieType& lt)
+InnerClassType dual_type(InnerClassType ict, const LieType& lt)
 {
-  dict = ict;
 
   size_t ltj = 0;
 
-  for (size_t j = 0; j < dict.size(); ++j) {
-    if (dict[j] == 'C') { // dual type is complex
+  for (size_t i=0; i<ict.size(); ++i)
+  {
+    if (ict[i] == 'C') // dual type remains complex
+    {
       ltj += 2;
       continue;
     }
     SimpleLieType slt = lt[ltj];
-    switch(slt.first) {
+    switch(slt.first)
+    {
     case 'B':
     case 'C':
     case 'F':
@@ -166,23 +165,25 @@ void dualInnerClassType(InnerClassType& dict, const InnerClassType& ict,
     case 'E':
     case 'T':
       // Interchange split and compact inner classes
-      if (dict[j] == 's')
-	dict[j] = 'c';
+      if (ict[i] == 's')
+	ict[i] = 'c';
       else
-	dict[j] = 's';
+	ict[i] = 's';
       break;
     case 'D':
       if (slt.second%2 !=0) {
 	// interchange split and compact inner classes for D_{2n+1}
-	if (dict[j] == 's' or dict[j] == 'u')
-	  dict[j] = 'c';
+	if (ict[i] == 's' or ict[i] == 'u')
+	  ict[i] = 'c';
 	else
-	  dict[j] = 's';
+	  ict[i] = 's';
       }
       break;
     }
     ++ltj;
   }
+
+  return ict;
 }
 
 
@@ -243,73 +244,72 @@ bool checkRank(const TypeLetter& x, size_t l)
   Precondition: it has already been checked that ic holds a valid inner class
   type for lt.
 */
-void involution(latticetypes::LatticeMatrix& i, const lietype::LieType& lt,
-		const lietype::InnerClassType& ic)
+latticetypes::LatticeMatrix involution(const lietype::LieType& lt,
+				       const lietype::InnerClassType& ic)
 {
   size_t n = rank(lt);
-  i.resize(n,n,0);
+  latticetypes::LatticeMatrix result(n,n,0);
 
   size_t r = 0;
   size_t pos = 0;
 
-  for (size_t j = 0; j < ic.size(); ++j) {
+  for (size_t j = 0; j < ic.size(); ++j)
+  {
     SimpleLieType slt = lt[pos];
-    addSimpleInvolution(i,r,slt,ic[j]);
-    if (ic[j] == 'C') { // consume an extra Lie type
+    addSimpleInvolution(result,r,slt,ic[j]);
+    if (ic[j] == 'C')
+    { // consume an extra Lie type
       pos += 2;
       r += 2*rank(slt);
-    } else {
+    }
+    else
+    {
       ++pos;
       r += rank(slt);
     }
   }
 
+  return result;
 }
 
-size_t rank(const LieType& lt)
 
 /*!
   Synopsis: returns the rank of the group.
 */
-
+size_t rank(const LieType& lt)
 {
   size_t r = 0;
 
-  for (size_t j = 0; j < lt.size(); ++j)
-    r += rank(lt[j]);
+  for (size_t i=0; i<lt.size(); ++i)
+    r += rank(lt[i]);
 
   return r;
 }
 
-size_t semisimpleRank(const LieType& lt)
 
 /*!
   Synopsis: returns the semisimple rank of the group.
 */
-
+size_t semisimpleRank(const LieType& lt)
 {
   size_t r = 0;
 
-  for (size_t j = 0; j < lt.size(); ++j)
-    r += semisimpleRank(lt[j]);
+  for (size_t i=0; i<lt.size(); ++i)
+    r += semisimpleRank(lt[i]);
 
   return r;
 }
 
-}
+} // |namespace lietype|
 
 /*****************************************************************************
 
         Chapter II -- Private functions
 
-  ... explain here when stable ...
-
 ******************************************************************************/
 
 namespace lietype {
 
-void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
-			  size_t rs)
 
 /*!
   Synopsis: sets the block of size (rs,rs) starting from (r,r) to the
@@ -317,15 +317,13 @@ void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
 
   Precondition: the block is set to zero.
 */
-
+void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
+			  size_t rs)
 {
-  for (size_t j = 0; j < rs; ++j)
-    m(r+j,r+j) = 1;
-
-  return;
+  for (size_t i=0; i<rs; ++i)
+    m(r+i,r+i) = 1;
 }
 
-void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
 
 /*!
   Synopsis: flips the last two vectors in the block of size rs starting
@@ -333,18 +331,15 @@ void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
 
   Precondition: the block is set to zero.
 */
-
+void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
 {
-  for (size_t j = 0; j < rs-2; ++j)
-    m(r+j,r+j) = 1;
+  for (size_t i=0; i<rs-2; ++i)
+    m(r+i,r+i) = 1;
 
   m(r+rs-2,r+rs-1) = 1;
   m(r+rs-1,r+rs-2) = 1;
-
-  return;
 }
 
-void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
 
 /*!
   Synopsis: sets the block of size (rs,rs) starting from (r,r) to minus the
@@ -352,22 +347,19 @@ void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
 
   Precondition: the block is set to zero.
 */
-
+void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
 {
-  for (size_t j = 0; j < rs; ++j)
-    m(r+j,r+j) = -1;
-
-  return;
+  for (size_t i=0; i<rs; ++i)
+    m(r+i,r+i) = -1;
 }
 
-void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
-			 const SimpleLieType& slt, TypeLetter x)
 
 /*!
   Synopsis: appends to m, from position (r,r), the fundamental involution
   corresponding to x in size rs.
 */
-
+void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
+			 const SimpleLieType& slt, TypeLetter x)
 {
   size_t rs = rank(slt);
 
@@ -378,8 +370,8 @@ void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
   case 's': // add split involution
     switch (type(slt)) {
     case 'A': // antidiagonal matrix
-      for (size_t j = 0; j < rs; ++j)
-	m(r+j,r+rs-1-j) = 1;
+      for (size_t i=0; i<rs; ++i)
+	m(r+i,r+rs-1-i) = 1;
       break;
     case 'D':
       if (rank(slt)%2 != 0)
@@ -405,12 +397,13 @@ void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
     default: // identity involution for types B,C,E7,E8,F,f,G,g
       addCompactInvolution(m,r,rs);
       break;
-    };
+    }
     break;
   case 'C': // rs-dimensional flip
-    for (size_t j = 0; j < rs; ++j) {
-      m(r+j,r+rs+j) = 1;
-      m(r+rs+j,r+j) = 1;
+    for (size_t i=0; i<rs; ++i)
+    {
+      m(r+i,r+rs+i) = 1;
+      m(r+rs+i,r+i) = 1;
     }
     break;
   case 'u': // flip the last two vectors
@@ -419,11 +412,9 @@ void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
   default: // this should not happen!
     assert(false && "wrong inner class letter in addSimpleInvolution");
     break;
-  };
-
-  return;
+  }
 }
 
-}
+} // |namespace lietype|
 
-}
+} // |namespace atlas|

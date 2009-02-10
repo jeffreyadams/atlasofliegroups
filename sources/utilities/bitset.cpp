@@ -2,22 +2,17 @@
 \file
 \brief Implementation of the BitSet class.
 */
-/*  
+/*
   This is bitset.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
 
 #include "bitset.h"
 
-/*****************************************************************************
-
-  ... explain here when it is stable ...
-
-******************************************************************************/
 
 namespace atlas {
 

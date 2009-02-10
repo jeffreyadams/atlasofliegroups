@@ -20,7 +20,7 @@ acting on elements of order 2 in a torus.
   For license information see the LICENSE file
 */
 
-#include <stack>
+#include <deque>
 
 #include "bitmap.h"
 
@@ -28,7 +28,7 @@ acting on elements of order 2 in a torus.
 
   This file contains the definitions of the templates declared in partition.h:
 
-    - makeOrbits(Partition&, F a, unsigned long, unsigned long) : constructs
+    - Partition orbits(F a, unsigned long n, unsigned long limit) : constructs
       the orbit partition defined by the "action function" a;
 
 ******************************************************************************/
@@ -74,40 +74,39 @@ namespace partition {
             if x'=a(j,x) is in B:
               remove x' from B, push x' onto S, and add it to the current orbit
 */
-template<typename F> // class serving as function object (ul,ul)->ul
-  void makeOrbits(Partition& pi,const F& a, unsigned long c, unsigned long n)
+template<typename F> // class F serving as function object (ul,ul)->ul
+  Partition orbits(const F& a, size_t c, unsigned long n)
 {
-  pi.resize(n);
-  pi.clear();
+  Partition result(n);
 
-  bitmap::BitMap b(n);
-  b.fill();
+  bitmap::BitMap b(n); // as yet unclassified elements
+  b.fill();            // initially that means everyone
 
-  std::stack<unsigned long> toDo;
-  const bitmap::BitMap::iterator b_end = b.end();
+  for (bitmap::BitMap::iterator it=b.begin(); it(); ++it) // |b| will shrink
+  {
+    unsigned long root = *it; // starting element for a fresh orbit
+    unsigned long thisClass = result.new_class(root);
+    std::deque<unsigned long> queue(1,root);
+    b.remove(root); // avoid looping back to |root| later
 
-  for (bitmap::BitMap::iterator i = b.begin(); i != b_end; ++i) {
+    do
+    {
+      unsigned long x = queue.front(); queue.pop_front();
 
-    pi.newClass(*i);
-    unsigned long thisClass = pi(*i);
-    toDo.push(*i);
-    b.remove(*i);
-
-    while (not toDo.empty()) {
-
-      unsigned long x = toDo.top();
-      toDo.pop();
-
-      for (unsigned long j = 0; j < c; ++j) {
-	unsigned long y = a(j,x);
-	if (b.isMember(y)) { // new element was found
+      for (unsigned long i=0; i<c; ++i)
+      {
+	unsigned long y = a(i,x);
+	if (b.isMember(y)) // new element was found
+	{
 	  b.remove(y);
-	  pi.addToClass(thisClass,y);
-	  toDo.push(y);
+	  result.addToClass(thisClass,y);
+	  queue.push_back(y);
 	}
       }
     }
+    while (not queue.empty());
   }
+  return result;
 }
 
 } // namespace partition

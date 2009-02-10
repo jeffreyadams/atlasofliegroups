@@ -124,21 +124,21 @@ int DynkinDiagram::cartanEntry(size_t i,size_t j) const
 
 
 /*!
-  Returns the component of vertex \#j in the diagram.
+  Returns the component of vertex \#i in the diagram.
 
-  The algorithm is to start with j, and to construct "shells" from there,
+  The algorithm is to start with i, and to construct "shells" from there,
   by taking each new shell to be the elements of the union of the stars of
   the old shell, that were not already considered.
 */
-bitset::RankFlags DynkinDiagram::component(size_t j) const
+bitset::RankFlags DynkinDiagram::component(size_t i) const
 {
   bitset::RankFlags c;
   bitset::RankFlags newElts;
 
-  for (newElts.set(j); newElts.any(); newElts.andnot(c)) {
+  for (newElts.set(i); newElts.any(); newElts.andnot(c)) {
     c |= newElts;
-    for (bitset::RankFlags::iterator i = newElts.begin(); i(); ++i)
-      newElts |= d_star[*i];
+    for (bitset::RankFlags::iterator it = newElts.begin(); it(); ++it)
+      newElts |= d_star[*it];
   }
 
   return c;
@@ -155,9 +155,9 @@ bitset::RankFlags DynkinDiagram::extremities() const
 {
   bitset::RankFlags e;
 
-  for (size_t j = 0; j < d_star.size(); ++j)
-    if (d_star[j].count() <= 1)
-      e.set(j);
+  for (size_t i = 0; i < d_star.size(); ++i)
+    if (d_star[i].count() <= 1)
+      e.set(i);
 
   return e;
 }
@@ -214,9 +214,9 @@ size_t DynkinDiagram::node() const
 {
   // look for the first element whose star has more than two elements
 
-  for (size_t j = 0; j < d_star.size(); ++j)
-    if (d_star[j].count() > 2)
-      return j;
+  for (size_t i = 0; i < d_star.size(); ++i)
+    if (d_star[i].count() > 2)
+      return i;
 
   return ~0;
 }
@@ -233,95 +233,94 @@ namespace dynkin {
 
 
 /*!
-  Synopsis: writes in |a| some permutation that will take d to Bourbaki form
+  Synopsis: Returns some permutation that will take |d| to Bourbaki form
 
   This means that nodes of the diagram |d| taken in the order |a[0],...,a[r-1]|
   traverse each of its connected components consecutively, and in the order
   prescribed by the the Bourbaki conventions for the type of that component
 */
-void bourbaki(setutils::Permutation& a, const DynkinDiagram& d)
+setutils::Permutation bourbaki(const DynkinDiagram& d)
 {
-  a.resize(d.rank());
-  bitset::RankFlagsList cl;
+  setutils::Permutation result(d.rank());
+  bitset::RankFlagsList cl = components(d);
 
   // do the normalization as in normalize
-  components(cl,d);
-  componentOrder(a,cl);
-  componentNormalize(a,cl,d);
+  componentOrder(result,cl);
+  componentNormalize(result,cl,d);
 
   // examine components
 
   size_t r = 0;
 
-  for (size_t j = 0; j < cl.size(); ++j)
+  for (size_t i = 0; i < cl.size(); ++i)
   {
 
     // get type of component
-    DynkinDiagram cd(cl[j],d);
+    DynkinDiagram cd(cl[i],d);
     lietype::TypeLetter x = irreducibleType(cd);
 
     // reverse if type is BCD
     if (x == 'B' or x == 'C' or x == 'D')
     {
-      size_t m = cl[j].count();
-      for (size_t i = 0; i < m/2; ++i)
-	std::swap(a[r+i],a[r+m-1-i]);
+      size_t m = cl[i].count();
+      for (size_t k = 0; k < m/2; ++k)
+	std::swap(result[r+k],result[r+m-1-k]);
     }
 
-    r += cl[j].count();
+    r += cl[i].count();
   }
+
+  return result;
 }
 
 
 /*!
-  Returns in a a permutation such that the various components, listed in cl,
+  Returns a permutation such that the various components, listed in cl,
   are numbered by successive indices.
 
   NOTE : it is always very confusing to choose between the permutation and
   its inverse. Our convention is that the _new_ vertex \#i is the _old_ vertex
   \# a[i].
 */
-void components(bitset::RankFlagsList& cl, const DynkinDiagram& d)
+bitset::RankFlagsList components(const DynkinDiagram& d)
 {
-  cl.clear();
+  bitset::RankFlagsList cl;
 
   bitset::RankFlags v;
-  set(v,d.rank());
+  bitset::set(v,d.rank());
 
   for (; v.any();)
   {
-    size_t j = v.firstBit();
-    bitset::RankFlags c = d.component(j);
+    size_t i = v.firstBit();
+    bitset::RankFlags c = d.component(i);
     cl.push_back(c);
     v.andnot(c);
   }
+
+  return cl;
 }
 
 /*!
-  Synopsis: writes in lt the Lie type of the Cartan matrix cm.
+  Returns the Lie type of the Cartan matrix cm.
 */
-void lieType(lietype::LieType& lt, const latticetypes::LatticeMatrix& cm)
+lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm)
 {
-  lt.clear();
+  lietype::LieType result;
 
   DynkinDiagram d(cm);
-  bitset::RankFlagsList cl;
+  bitset::RankFlagsList cl = components(d);
 
-  components(cl,d);
-  lt.reserve(cl.size());
+  result.reserve(cl.size());
 
-  for (size_t j = 0; j < cl.size(); ++j)
+  for (size_t i = 0; i < cl.size(); ++i)
   {
-    DynkinDiagram cd(cl[j],d);
+    DynkinDiagram cd(cl[i],d);
     lietype::TypeLetter x = irreducibleType(cd);
     lietype::SimpleLieType slt(x,cd.rank());
-    lt.push_back(slt);
+    result.push_back(slt);
   }
-}
 
-lietype::LieType lieType(const latticetypes::LatticeMatrix& cm)
-{
-  lietype::LieType result; lieType(result,cm); return result;
+  return result;
 }
 
 
@@ -333,14 +332,15 @@ lietype::LieType lieType(const latticetypes::LatticeMatrix& cm)
   its inverse. Our convention is that the _new_ vertex \#i is the _old_ vertex
   \# a[i].
 */
-void normalize(setutils::Permutation& a, const DynkinDiagram& d)
+setutils::Permutation normalize(const DynkinDiagram& d)
 {
-  a.resize(d.rank());
-  bitset::RankFlagsList cl;
+  setutils::Permutation result(d.rank());
+  bitset::RankFlagsList cl = components(d);
 
-  components(cl,d);
-  componentOrder(a,cl);
-  componentNormalize(a,cl,d);
+  componentOrder(result,cl);
+  componentNormalize(result,cl,d);
+
+  return result;
 }
 
 } // |namespace dynkin|
@@ -368,9 +368,9 @@ void componentOrder(setutils::Permutation& a, const bitset::RankFlagsList& cl)
 
   a.clear();
 
-  for (size_t j = 0; j < cl.size(); ++j)
-    for (bitset::RankFlags::iterator i = cl[j].begin(); i(); ++i)
-      a.push_back(*i);
+  for (size_t i = 0; i < cl.size(); ++i)
+    for (bitset::RankFlags::iterator it = cl[i].begin(); it(); ++it)
+      a.push_back(*it);
 }
 
 
@@ -388,10 +388,10 @@ void componentNormalize(setutils::Permutation& a,
 {
   size_t r = 0;
 
-  for (size_t j = 0; j < cl.size(); ++j) {
+  for (size_t i = 0; i < cl.size(); ++i) {
 
     // make a Dynkin diagram for the component
-    DynkinDiagram cd(cl[j],d);
+    DynkinDiagram cd(cl[i],d);
 
     // normalize it
     setutils::Permutation b;
@@ -401,7 +401,7 @@ void componentNormalize(setutils::Permutation& a,
     setutils::compose(a,b,r);
 
     // update r
-    r += cl[j].count();
+    r += cl[i].count();
   }
 }
 
@@ -537,11 +537,11 @@ void typeANormalize(setutils::Permutation& a, const DynkinDiagram& d)
   bitset::RankFlags st = d.star(a[0]);  // st has a single element
   a[1] = st.firstBit();
 
-  for (size_t j = 2; j < d.rank(); ++j)
+  for (size_t i = 2; i < d.rank(); ++i)
   {
-    bitset::RankFlags next = d.star(a[j-1]);
-    next.reset(a[j-2]);
-    a[j] = next.firstBit();
+    bitset::RankFlags next = d.star(a[i-1]);
+    next.reset(a[i-2]);
+    a[i] = next.firstBit();
   }
 }
 
@@ -566,11 +566,11 @@ void typeBNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   a[0] = e.second;
   a[1] = e.first;
 
-  for (size_t j = 2; j < r; ++j)
+  for (size_t i = 2; i < r; ++i)
   {
-    bitset::RankFlags next = d.star(a[j-1]);
-    next.reset(a[j-2]);
-    a[j] = next.firstBit();
+    bitset::RankFlags next = d.star(a[i-1]);
+    next.reset(a[i-2]);
+    a[i] = next.firstBit();
   }
 }
 
@@ -595,11 +595,11 @@ void typeCNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   a[0] = e.first;
   a[1] = e.second;
 
-  for (size_t j = 2; j < r; ++j)
+  for (size_t i = 2; i < r; ++i)
   {
-    bitset::RankFlags next = d.star(a[j-1]);
-    next.reset(a[j-2]);
-    a[j] = next.firstBit();
+    bitset::RankFlags next = d.star(a[i-1]);
+    next.reset(a[i-2]);
+    a[i] = next.firstBit();
   }
 }
 
@@ -628,9 +628,9 @@ void typeDNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   // this will make shortArms hold the short arms of the diagram
   shortArms &= st;
 
-  bitset::RankFlags::iterator i = shortArms.begin();
-  a[0] = *i;
-  a[1] = *(++i);
+  bitset::RankFlags::iterator it = shortArms.begin();
+  a[0] = *it;
+  a[1] = *(++it);
 
   // a[3] is the last element in st
 
@@ -639,11 +639,11 @@ void typeDNormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
   a[3] = st.firstBit();
 
-  for (size_t j = 4; j < r; ++j)
+  for (size_t i = 4; i < r; ++i)
   {
-    bitset::RankFlags next = d.star(a[j-1]);
-    next.reset(a[j-2]);
-    a[j] = next.firstBit();
+    bitset::RankFlags next = d.star(a[i-1]);
+    next.reset(a[i-2]);
+    a[i] = next.firstBit();
   }
 }
 
@@ -704,11 +704,11 @@ void typeENormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
   // enumerate the last branch
 
-  for (size_t j = 5; j < d.rank(); ++j)
+  for (size_t i = 5; i < d.rank(); ++i)
   {
-    bitset::RankFlags next = d.star(a[j-1]);
-    next.reset(a[j-2]);
-    a[j] = next.firstBit();
+    bitset::RankFlags next = d.star(a[i-1]);
+    next.reset(a[i-2]);
+    a[i] = next.firstBit();
   }
 }
 

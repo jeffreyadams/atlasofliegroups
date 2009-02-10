@@ -207,7 +207,7 @@ TitsElt TitsGroup::prod(const TitsElt& a, TitsElt b) const
   return b;
 }
 
-// here the we basically to Weyl group action at torus side, including twist
+// here the we basically do Weyl group action at torus side, including twist
 latticetypes::BinaryMap
 TitsGroup::involutionMatrix(const weyl::WeylWord& ww) const
 {
@@ -229,7 +229,7 @@ BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
   : my_Tits_group(NULL) // no ownership in this case
   , Tg(G.titsGroup())
   , grading_offset(base_grading)
-  , rd(G.rootDatum())
+  , rs(G.rootDatum())
 {
 }
 
@@ -240,7 +240,7 @@ BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G)
 				      G.twistedWeylGroup().twist()))
   , Tg(*my_Tits_group)
   , grading_offset()
-  , rd(G.rootDatum())
+  , rs(G.rootDatum())
 { // make all imaginary simple roots noncompact
   for (unsigned i=0; i<G.semisimpleRank(); ++i)
     grading_offset.set(i,Tg.twisted(i)==i);
@@ -254,7 +254,7 @@ BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
 				      G.twistedWeylGroup().dual_twist()))
   , Tg(*my_Tits_group)
   , grading_offset()
-  , rd(G.dualRootDatum())
+  , rs(G.dualRootDatum())
 { // make all imaginary simple roots noncompact
   for (unsigned i=0; i<G.semisimpleRank(); ++i)
     grading_offset.set(i,Tg.twisted(i)==i);
@@ -332,15 +332,15 @@ tits::TitsElt BasedTitsGroup::twisted(const tits::TitsElt& a) const
 
 bool BasedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr alpha) const
 {
-  if (not rd.isPosRoot(alpha))
-    alpha=rd.rootMinus(alpha);
+  if (not rs.isPosRoot(alpha))
+    alpha=rs.rootMinus(alpha);
 
-  assert(rd.isPosRoot(alpha));
+  assert(rs.isPosRoot(alpha));
   size_t i; // declare outside loop to allow inspection of final value
-  while (alpha!=rd.simpleRootNbr(i=rd.descents(alpha).firstBit()))
+  while (alpha!=rs.simpleRootNbr(i=rs.find_descent(alpha)))
   {
     basedTwistedConjugate(a,i);
-    rd.simple_reflect_root(alpha,i);
+    rs.simple_reflect_root(alpha,i);
   }
 
   return simple_grading(a,i);
@@ -454,7 +454,7 @@ tits::TitsElt BasedTitsGroup::grading_seed
   for (size_t i=0; i<f.imaginaryRank(); ++i)
   {
     latticetypes::BinaryEquation equation =
-      latticetypes::BinaryEquation(rd.root(f.simpleImaginary(i)));
+      latticetypes::BinaryEquation(G.rootDatum().root(f.simpleImaginary(i)));
     equation.pushBack((base_grading^form_grading)[i]);
     eqns.push_back(equation);
   }
@@ -485,15 +485,15 @@ tits::TitsElt BasedTitsGroup::grading_seed
 
 /*!
  \brief Returns the grading offset for the base real form of the square class
- (coset in adjoint fiber group) |csc|; |f| and |rd| are corresponding values
+ (coset in adjoint fiber group) |csc|; |f| and |rs| are corresponding values
  */
 gradings::Grading
 square_class_grading_offset(const cartanclass::Fiber& f,
 			    cartanclass::square_class csc,
-			    const rootdata::RootDatum& rd)
+			    const rootdata::RootSystem& rs)
 {
   rootdata::RootSet rset = f.noncompactRoots(f.class_base(csc));
-  return cartanclass::restrictGrading(rset,rd.simpleRootList());
+  return cartanclass::restrictGrading(rset,rs.simpleRootList());
 }
 
 EnrichedTitsGroup::EnrichedTitsGroup(const realredgp::RealReductiveGroup& GR,
@@ -527,9 +527,9 @@ tits::TitsElt EnrichedTitsGroup::backtrack_seed
 
   const weyl::TwistedInvolution& tw=G.twistedInvolution(cn);
 
-  rootdata::RootList Cayley;
+  rootdata::RootSet rset;
   weyl::WeylWord cross;
-  complexredgp::Cayley_and_cross_part(Cayley,cross,tw,G.rootDatum(),Tg);
+  complexredgp::Cayley_and_cross_part(rset,cross,tw,G.rootDatum(),Tg);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying cross actions according to |cross|, and then applying Cayley
@@ -537,6 +537,7 @@ tits::TitsElt EnrichedTitsGroup::backtrack_seed
   */
 
   // transform strong orthogonal set |Cayley| back to distinguished involution
+  rootdata::RootList Cayley(rset.begin(),rset.end()); // convert to |RootList|
   for (size_t i=0; i<Cayley.size(); ++i)
     for (size_t j=cross.size(); j-->0; )
       G.rootDatum().simple_reflect_root(Cayley[i],cross[j]);

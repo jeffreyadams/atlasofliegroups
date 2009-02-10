@@ -114,30 +114,30 @@ InvolutionData::InvolutionData(const rootdata::RootDatum& rd,
   , d_simpleReal()
 { classify_roots(rd); }
 
-void InvolutionData::classify_roots(const rootdata::RootDatum& rd)
+void InvolutionData::classify_roots(const rootdata::RootSystem& rs)
 {
   for (size_t alpha = 0; alpha<d_rootInvolution.size(); ++alpha)
     if (d_rootInvolution[alpha] == alpha)
       d_imaginary.insert(alpha);
-    else if (d_rootInvolution[alpha] == rd.rootMinus(alpha))
+    else if (d_rootInvolution[alpha] == rs.rootMinus(alpha))
       d_real.insert(alpha);
     else
       d_complex.insert(alpha);
 
   // find simple imaginary roots
-  d_simpleImaginary=rd.simpleBasis(imaginary_roots());
-  d_simpleReal=rd.simpleBasis(real_roots());
+  d_simpleImaginary=rs.simpleBasis(imaginary_roots());
+  d_simpleReal=rs.simpleBasis(real_roots());
 }
 
-InvolutionData::InvolutionData(const rootdata::RootDatum& rd,
-			       const std::vector<rootdata::RootNbr>& s_image)
-  : d_rootInvolution(rd.extend_to_roots(s_image))
-  , d_imaginary(rd.numRoots()) // we can only dimension root sets for now
-  , d_real(rd.numRoots())
-  , d_complex(rd.numRoots())
+InvolutionData::InvolutionData(const rootdata::RootSystem& rs,
+			       const rootdata::RootList& s_image)
+  : d_rootInvolution(rs.extend_to_roots(s_image))
+  , d_imaginary(rs.numRoots()) // we can only dimension root sets for now
+  , d_real(rs.numRoots())
+  , d_complex(rs.numRoots())
   , d_simpleImaginary()
   , d_simpleReal()
-{ classify_roots(rd); }
+{ classify_roots(rs); }
 
 InvolutionData::InvolutionData(const complexredgp::ComplexReductiveGroup& G,
 			       const weyl::TwistedInvolution& tw)
@@ -148,13 +148,13 @@ InvolutionData::InvolutionData(const complexredgp::ComplexReductiveGroup& G,
   , d_simpleImaginary()
   , d_simpleReal()
 {
-  const rootdata::RootDatum& rd=G.rootDatum();
+  const rootdata::RootSystem& rs=G.rootSystem();
 
   // follow the inner class twist by the action of |tw| on roots
   d_rootInvolution =
-    rd.extend_to_roots(G.twistedWeylGroup().simple_images(rd,tw));
+    rs.extend_to_roots(G.twistedWeylGroup().simple_images(rs,tw));
 
-  classify_roots(rd);
+  classify_roots(rs);
 }
 
 void InvolutionData::swap(InvolutionData& other)
@@ -175,11 +175,12 @@ void InvolutionData::swap(InvolutionData& other)
   associated to q.
 */
 CartanClass::CartanClass(const rootdata::RootDatum& rd,
+			 const rootdata::RootDatum& dual_rd,
 			 const latticetypes::LatticeMatrix& q)
   : d_fiber(rd,q)
-  , d_dualFiber(cartanclass::dualFiber(rd,q)) // call non-member |dualFiber|
+  , d_dualFiber(dual_rd,q.negative_transposed())
   , d_simpleComplex(makeSimpleComplex(rd))
-  , d_orbitSize(makeOrbitSize(rd))
+  , d_orbitSize(orbit_size(rd))
 {
   assert(d_dualFiber.simpleReal()==d_fiber.simpleImaginary());
 }
@@ -243,27 +244,6 @@ Fiber::Fiber(const rootdata::RootDatum& rd,
   , d_strongRealFormReps(makeStrongRepresentatives())
 {
   assert(gradingGroup(rd).dimension()==0);
-}
-
-/*!
-  \brief Constructs the dual fiber for the Cartan class determined by the
-  involution |q| of the root datum |rd|.
-
-  This is the fiber for the dual root datum and the negative transpose matrix.
-
-  This used to be a separate constructor, but it is more practical to make it
-  a function external to the class. This gives us the opportunity to prepare
-  the dual root datum and involution locally, and let the main constructor do
-  the real work; making this an official constructor would have given us the
-  obligation to initialise the member data to irrelevant values, before being
-  able to compute the dual root datum and matrix and start the construction.
-*/
-Fiber dualFiber
-  (const rootdata::RootDatum& rd, const latticetypes::LatticeMatrix& q)
-{
-  latticetypes::LatticeMatrix qd = q; qd.transpose(); qd.negate();
-
-  return Fiber(rootdata::RootDatum(rd,tags::DualTag()),qd);
 }
 
 // copy and assignment
@@ -331,17 +311,13 @@ latticetypes::SmallSubquotient Fiber::makeFiberGroup() const
   the negative transpose.
 */
 latticetypes::LatticeMatrix
-adjoint_involution(const rootdata::RootDatum& rd, const InvolutionData& id)
+adjoint_involution(const rootdata::RootSystem& rs, const InvolutionData& id)
 {
   // write involution in root basis
-  rootdata::RootList rl; // root numbers of involution images of simple roots
+  latticetypes::WeightList b(rs.rank()); // involution images in simple roots
 
-  for (size_t s = 0; s < rd.semisimpleRank(); ++s)
-    rl.push_back(id.root_involution(rd.simpleRootNbr(s)));
-
-  latticetypes::WeightList b; // members of |rl| expressed in simple roots
-
-  rd.toRootBasis(rl.begin(),rl.end(),back_inserter(b));
+  for (size_t s=0; s<b.size(); ++s)
+    b[s] = rs.root_expr(id.root_involution(rs.simpleRootNbr(s)));
 
   return latticetypes::LatticeMatrix(b).negative_transposed();
 }
@@ -354,13 +330,13 @@ adjoint_involution(const rootdata::RootDatum& rd, const InvolutionData& id)
   is computed by |adjoint_involution|).
 */
 latticetypes::SmallSubquotient
-Fiber::makeAdjointFiberGroup(const rootdata::RootDatum& rd) const
+Fiber::makeAdjointFiberGroup(const rootdata::RootSystem& rs) const
 {
   // construct subquotient
   latticetypes::SmallSubquotient result;
-  tori::dualPi0(result,adjoint_involution(rd,d_involutionData));
+  tori::dualPi0(result,adjoint_involution(rs,d_involutionData));
 
-  assert(result.rank()==rd.semisimpleRank());
+  assert(result.rank()==rs.rank());
 
   return result;
 }
@@ -380,8 +356,8 @@ Fiber::makeAdjointFiberGroup(const rootdata::RootDatum& rd) const
   whence the constructor for |Fiber| just calls this function to |assert| that
   the result is trivial.
 */
-latticetypes::SmallSubspace Fiber::gradingGroup
-  (const rootdata::RootDatum& rd) const
+latticetypes::SmallSubspace
+Fiber::gradingGroup (const rootdata::RootSystem& rs) const
 {
   // define map
   const latticetypes::SmallBitVectorList& baf =
@@ -389,7 +365,7 @@ latticetypes::SmallSubspace Fiber::gradingGroup
 
   // express simple imaginary roots on (full) simple roots
   latticetypes::WeightList bsi;
-  rd.toRootBasis(simpleImaginary().begin(),simpleImaginary().end(),
+  rs.toRootBasis(simpleImaginary().begin(),simpleImaginary().end(),
 		 back_inserter(bsi));
 
 
@@ -425,16 +401,16 @@ latticetypes::SmallSubspace Fiber::gradingGroup
   the simple ones, and see if the sum of coordinates is even.
 */
 gradings::Grading Fiber::makeBaseGrading
-  (rootdata::RootSet& flagged_roots,const rootdata::RootDatum& rd) const
+  (rootdata::RootSet& flagged_roots,const rootdata::RootSystem& rs) const
 
 {
   // express all imaginary roots in simple imaginary basis
   rootdata::RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
   latticetypes::WeightList ir;
-  rd.toRootBasis(irl.begin(),irl.end(),back_inserter(ir),simpleImaginary());
+  rs.toRootBasis(irl.begin(),irl.end(),back_inserter(ir),simpleImaginary());
 
   // now flag all roots with noncompact grading
-  flagged_roots.set_capacity(rd.numRoots());
+  flagged_roots.set_capacity(rs.numRoots());
 
   for (size_t j = 0; j < irl.size(); ++j)
   {
@@ -470,20 +446,20 @@ gradings::Grading Fiber::makeBaseGrading
   simple root basis here, not on the simple imaginary root basis.
 */
 gradings::GradingList Fiber::makeGradingShifts
-  (rootdata::RootSetList& all_shifts,const rootdata::RootDatum& rd) const
+  (rootdata::RootSetList& all_shifts,const rootdata::RootSystem& rs) const
 {
   // express imaginary roots in (full) simple root basis
   rootdata::RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
 
   latticetypes::WeightList ir;
-  rd.toRootBasis(irl.begin(),irl.end(),back_inserter(ir));
+  rs.toRootBasis(irl.begin(),irl.end(),back_inserter(ir));
   latticetypes::SmallBitVectorList ir2(ir); // |ir2.size()==irl.size()|
 
 
   // also express simple imaginary roots in (full) simple root basis
   const rootdata::RootList& sil = simpleImaginary();
   latticetypes::WeightList si;
-  rd.toRootBasis(sil.begin(),sil.end(),back_inserter(si));
+  rs.toRootBasis(sil.begin(),sil.end(),back_inserter(si));
   latticetypes::SmallBitVectorList si2(si); // reduce vectors mod 2
 
   // now compute all results
@@ -496,10 +472,10 @@ gradings::GradingList Fiber::makeGradingShifts
   for (bitset::RankFlags::iterator it = supp.begin(); it(); ++it)
   {
     // all imaginary roots part
-    rootdata::RootSet rs(rd.numRoots());
+    rootdata::RootSet rset(rs.numRoots());
     for (size_t j = 0; j < ir2.size(); ++j)
-      rs.set_to(irl[j],ir2[j].dot(b[*it]));
-    all_shifts.push_back(rs);
+      rset.set_to(irl[j],ir2[j].dot(b[*it]));
+    all_shifts.push_back(rset);
 
     // simple imaginary roots part
     gradings::Grading gr;
@@ -552,16 +528,18 @@ bitset::RankFlagsList Fiber::mAlphas (const rootdata::RootDatum& rd) const
   which amounts to reducing modulo $V_-$.
 */
 bitset::RankFlagsList
-Fiber::adjointMAlphas (const rootdata::RootDatum& rd) const
+Fiber::adjointMAlphas (const rootdata::RootSystem& rs) const
 {
   bitset::RankFlagsList result(imaginaryRank());
 
-  for (size_t i = 0; i<result.size(); ++i) {
-    latticetypes::SmallBitVector v(rd.semisimpleRank());
+  for (size_t i = 0; i<result.size(); ++i)
+  {
+    latticetypes::SmallBitVector v(rs.rank());
     // compute pairing with simple roots modulo 2
-    for(size_t j = 0; j < v.size(); ++j) {
+    for(size_t j = 0; j < v.size(); ++j)
+    {
       latticetypes::LatticeCoeff c =
-	rd.coroot(simpleImaginary(i)).scalarProduct(rd.simpleRoot(j));
+	rs.bracket(simpleImaginary(i),rs.simpleRootNbr(j));
       v.set_mod2(j,c);
     }
 
@@ -628,15 +606,14 @@ Fiber::makeFiberMap(const rootdata::RootDatum& rd) const
   the grading shifts "as is", while the fiber group elements \f$m_\alpha\f$
   are computed by |adjointMAlpha|.
 */
-partition::Partition Fiber::makeWeakReal(const rootdata::RootDatum& rd) const
+partition::Partition Fiber::makeWeakReal(const rootdata::RootSystem& rs) const
 {
-  bitset::RankFlagsList ma=adjointMAlphas(rd);
+  bitset::RankFlagsList ma=adjointMAlphas(rs);
 
   // make orbits
   partition::Partition result;
-  partition::makeOrbits(result,FiberAction(d_baseGrading,d_gradingShift,ma),
-			imaginaryRank(),adjointFiberSize());
-  return result;
+  return partition::orbits(FiberAction(d_baseGrading,d_gradingShift,ma),
+			   imaginaryRank(),adjointFiberSize());
 }
 
 
@@ -748,16 +725,19 @@ std::vector<partition::Partition> Fiber::makeStrongReal
     gs[i]=bitvector::combination(d_gradingShift,d_toAdjoint.column(i).data());
 
   // get the $m_\alpha$s
-  bitset::RankFlagsList ma=mAlphas(rd);
+  bitset::RankFlagsList ma = mAlphas(rd);
 
   // make the various partitions
 
-  std::vector<partition::Partition> result(d_realFormPartition.classCount());
+  std::vector<partition::Partition> result;
+  result.reserve(d_realFormPartition.classCount());
 
-  for (square_class i = 0; i < result.size(); ++i) {
-    gradings::Grading bg=grading(class_base(i));
-    size_t n = fiberSize(); // order of fiber group
-    partition::makeOrbits(result[i],FiberAction(bg,gs,ma),imaginaryRank(),n);
+  size_t order = fiberSize(); // order of fiber group
+  for (square_class i=0; i<d_realFormPartition.classCount(); ++i)
+  {
+    gradings::Grading bg = grading(class_base(i));
+    result.push_back
+      (partition::orbits(FiberAction(bg,gs,ma),imaginaryRank(),order));
   }
 
   return result;
@@ -984,7 +964,7 @@ gradings::Grading
 restrictGrading(const rootdata::RootSet& rs, const rootdata::RootList& rl)
 {
   gradings::Grading result;
-  for (size_t i = 0; i < rl.size(); ++i)
+  for (size_t i=0; i<rl.size(); ++i)
     result.set(i,rs.isMember(rl[i]));
 
   return result;
@@ -1009,7 +989,7 @@ restrictGrading(const rootdata::RootSet& rs, const rootdata::RootList& rl)
 */
 gradings::Grading
 specialGrading(const cartanclass::Fiber& f,
-	       realform::RealForm rf, const rootdata::RootDatum& rd)
+	       realform::RealForm rf, const rootdata::RootSystem& rs)
 
 
 {
@@ -1021,7 +1001,7 @@ specialGrading(const cartanclass::Fiber& f,
   // sort the gradings that occur in this class
   for (unsigned long i = 0; i < n; ++i) {
     if (f.weakReal()(i) == rf)
-      grs.insert(restrictGrading(f.noncompactRoots(i),rd.simpleRootList()));
+      grs.insert(restrictGrading(f.noncompactRoots(i),rs.simpleRootList()));
   }
 
   // return the first element
@@ -1032,37 +1012,17 @@ specialGrading(const cartanclass::Fiber& f,
   \brief Returns a set of strongly orthogonal roots, leading from
   the fundamental Cartan to the most split one for the strong real form |rf|
 
-  Algorithm: this is quite simple: as long as there are noncompact imaginary
+  Algorithm: a greedy one: as long as there are noncompact imaginary
   roots, use one of them to get to a less compact Cartan.
 */
-rootdata::RootList
+rootdata::RootSet
 toMostSplit(const cartanclass::Fiber& fundf,
-	    realform::RealForm rf, const rootdata::RootDatum& rd)
+	    realform::RealForm rf, const rootdata::RootSystem& rs)
 {
   rootdata::RootSet ir = fundf.imaginaryRootSet();
   unsigned long rep = fundf.weakReal().classRep(rf);
-  rootdata::RootSet rs=fundf.noncompactRoots(rep);
 
-  rootdata::RootList result;
-  while (not rs.empty())
-  {
-    rootdata::RootNbr rn = rs.front();
-    for (rootdata::RootSet::iterator i = ir.begin(); i(); ++i)
-    {
-      if (not rd.isOrthogonal(rn,*i))
-      {
-	ir.remove(*i);
-	rs.remove(*i);
-      }
-      else if (rd.sumIsRoot(rn,*i))
-	rs.flip(*i);
-    }
-    result.push_back(rn);
-  }
-
-  strongOrthogonalize(result,rd);
-
-  return result;
+  return gradings::max_orth(fundf.noncompactRoots(rep),ir,rs);
 }
 
 } // |namespace cartanclass|
@@ -1110,16 +1070,16 @@ CartanClass::makeSimpleComplex(const rootdata::RootDatum& rd) const
   latticetypes::Weight trr=rd.twoRho(realRootSet());
 
   // collect roots orthogonal to both sums of positive roots
-  rootdata::RootList rl;
+  rootdata::RootSet rs(rd.numRoots());
   for (size_t i = 0; i < rd.numRoots(); ++i)
     if (rd.isOrthogonal(tri,i) and
 	rd.isOrthogonal(trr,i))
-      rl.push_back(i);
+      rs.insert(i);
 
   // get a (positive) basis for that root system, and its Cartan matrix
-  rootdata::RootList rb=rd.simpleBasis(rl);
+  rootdata::RootList rb=rd.simpleBasis(rs);
 
-  latticetypes::LatticeMatrix cm; cartanMatrix(cm,rb,rd);
+  latticetypes::LatticeMatrix cm =rd.cartanMatrix(rb);
 
   dynkin::DynkinDiagram dd(cm);
 
@@ -1152,22 +1112,22 @@ CartanClass::makeSimpleComplex(const rootdata::RootDatum& rd) const
 /*!
    \brief Returns the size of the twisted involution orbit for this class.
 */
-size::Size CartanClass::makeOrbitSize(const rootdata::RootDatum& rd) const
+size::Size CartanClass::orbit_size(const rootdata::RootSystem& rs) const
 {
-  lietype::LieType lt=dynkin::lieType(rd.cartanMatrix());
+  lietype::LieType lt=dynkin::Lie_type(rs.cartanMatrix());
 
   // initialise |result| to size of full Weyl group
   size::Size result = weylsize::weylSize(lt);
 
   // divide by product of imaginary, real and complex sizes
   result /=
-    weylsize::weylSize(dynkin::lieType(rd.cartanMatrix(simpleImaginary())));
+    weylsize::weylSize(dynkin::Lie_type(rs.cartanMatrix(simpleImaginary())));
 
   result /=
-    weylsize::weylSize(dynkin::lieType(rd.cartanMatrix(simpleReal())));
+    weylsize::weylSize(dynkin::Lie_type(rs.cartanMatrix(simpleReal())));
 
   result /=
-    weylsize::weylSize(dynkin::lieType(rd.cartanMatrix(simpleComplex())));
+    weylsize::weylSize(dynkin::Lie_type(rs.cartanMatrix(simpleComplex())));
 
   return result;
 }

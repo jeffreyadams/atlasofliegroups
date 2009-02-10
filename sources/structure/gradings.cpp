@@ -30,45 +30,21 @@ namespace atlas {
 namespace gradings {
 namespace {
 
-  // local function declarations
 
-  void noncompactEquations(latticetypes::BinaryEquationList&,
-			   const latticetypes::WeightList&);
-  void compactEquations(latticetypes::BinaryEquationList&,
-			const rootdata::RootList&,
-			const rootdata::RootList&,
-			const rootdata::RootDatum&);
-  // local class declarations: |BitCount| and |GradingAction|
-
-  /* The class |BitCount| makes an adaptable unary function object (for use by
-     comparison::Compare) from |bits::bitCount|. The |argument_type| actually
-     represents a |Grading|, but at the point of use, the gradings in question
-     are actually encoded as |unsigned long| values inside a |Partition|.
-  */
-  struct BitCount
-    : public std::unary_function<unsigned long, unsigned long>
-  {
-    result_type operator() (argument_type a) const
-    { return bits::bitCount(a); }
-  };
-
-
-  /* The class |GradingAction| serves to provide an action functino argument
+  /* The class |GradingAction| serves to provide an action function argument
      to |partition::makeOrbits|.
   */
   class GradingAction
-    : public std::binary_function<unsigned long, unsigned long, unsigned long>
-  // derivation is not really necessary here
   {
     GradingList d_cartan; // transpose Cartan matrix reduced modulo 2
 
-    bool cartan(unsigned long i, unsigned long j) const {
-      return d_cartan[j].test(i);
-    }
+    bool cartan(unsigned long i, unsigned long j) const
+    { return d_cartan[j].test(i); }
   public:
-    GradingAction(const rootdata::RootDatum& rd);
+    GradingAction(const latticetypes::WeightList& wts)
+      : d_cartan(wts.begin(),wts.end()) {}
     // apply simple generator |s| to grading encoded by |g|
-    unsigned long operator()(unsigned long s, unsigned long g) const;
+    unsigned long operator()(size_t s, unsigned long g) const;
 
   };
 
@@ -83,6 +59,41 @@ namespace {
 
 namespace gradings {
 
+/* find maximal long orthogonal set of roots in |subsys| so that, with
+   |non_compact| as initial set of noncompact roots, each root is non-compact,
+   and passing through these roots only compact roots remain in the orthogonal
+ */
+rootdata::RootSet max_orth(const rootdata::RootSet& non_compact,
+			   const rootdata::RootSet& subsys,
+			   const rootdata::RootSystem& rs)
+{
+  rootdata::RootSet ncr = non_compact; // working variables
+  rootdata::RootSet sub = subsys;
+
+  ncr &= rs.posRootSet();    // restricting to positive roots is safe
+  sub &= rs.posRootSet(); // and improves performance
+
+  rootdata::RootSet result(rs.numRoots());
+  while (not ncr.empty())
+  {
+    rootdata::RootNbr alpha = ncr.front();
+    result.insert(alpha);
+    for (rootdata::RootSet::iterator it = sub.begin(); it(); ++it)
+      if (not rs.isOrthogonal(alpha,*it))
+	sub.remove(*it);
+      else if (rs.sumIsRoot(alpha,*it))
+	ncr.flip(*it);
+
+    ncr &= sub; // this removes in particular |alpha|
+  }
+
+  return rs.long_orthogonalize(result);
+}
+
+
+
+#if 1 // the following functions are never used
+
 /*!
   Synopsis: tells whether |v| is noncompact w.r.t. the grading |g|.
 
@@ -96,8 +107,8 @@ bool isNonCompact(const rootdata::Root& v, const Grading& g)
 {
   bool b = false;
 
-  for (unsigned long j = 0; j < v.size(); ++j)
-    b ^= g[j] and v[j]%2!=0;
+  for (unsigned long i = 0; i < v.size(); ++i)
+    b ^= g[i] and v[i]%2!=0;
 
   return b;
 }
@@ -107,69 +118,171 @@ bool isNonCompact(const rootdata::Root& v, const Grading& g)
   This function puts in |cr| the list of all roots in |rd| that are
   noncompact for the grading |g| of the full root system.
 
-  This function is never used, and therefore left as a comment only, as we
-  never handle gradings that unconditionally apply to the full root system
-
   An important point is _not_ to call |lattice::baseChange| (as was originally
   done in this example) to convert roots to the the "basis" of simple roots,
   since that set need not have full rank (in the non-semisimple case), and
-  |baseChange| cannot handle that. However |RootDatum::inSimpleRoots| is safe.
-
-void noncompactRoots(rootdata::RootList& ncr, const Grading& g,
-		     const rootdata::RootDatum& rd)
-{
-  // need to have roots in root basis
-  latticetypes::WeightList rl; rl.reserve(rd.numRoots());
-  for (rootdata::RootNbr i=0; i<rd.numRoots(); ++i)
-    if (isNonCompact(rd.inSimpleRoots(i),g))
-      ncr.push_back(i);
-}
+  |baseChange| cannot handle that. However |RootSystem::root_expr| is safe.
 */
+
+rootdata::RootSet
+noncompact_roots(const Grading& g, const rootdata::RootSystem& rs)
+{
+  rootdata::RootSet result(rs.numRoots());
+  for (rootdata::RootNbr i=0; i<rs.numRoots(); ++i)
+    result.set_to(i,isNonCompact(rs.root_expr(i),g));
+  return result;
+}
 
 
 /*!
-  This function puts in |gl| a set of representatives of $W$-conjugacy classes
-  of $Z/2Z$-gradings on the root system of |rd|, which arise from a
-  $Z$-grading.
+  This function returns a set of representatives of $W$-conjugacy classes
+  of $Z/2Z$-gradings on the root system |rs|, which arise from a $Z$-grading.
 
   Such a grading is determined freely by its value at each simple root;
   therefore a grading is represented by bitset::RankFlags (=BitSet<RANK_MAX>).
 
   We return the first representative in each class with the least possible
-  number of set bits
+  number of set bits. This code appears to be nowher used.
 */
-void makeGradings(GradingList& gl, const rootdata::RootDatum& rd)
+GradingList grading_classes(const rootdata::RootSystem& rs)
 {
-  partition::Partition pi;
-  partition::makeOrbits
-    (pi,GradingAction(rd),rd.semisimpleRank(),(1UL) << rd.semisimpleRank());
+  partition::Partition pi = partition::orbits
+    (GradingAction(rs.cartanMatrix().columns()),rs.rank(),1ul<<rs.rank());
 
   // sort orbits
+  GradingList result; result.reserve(pi.classCount());
+  for (partition::PartitionIterator i(pi); i(); ++i)
+    result.push_back
+      (Grading(*std::min_element
+	       (i->first,
+		i->second,
+		comparison::compare(std::ptr_fun(&bits::bitCount)))
+	       ));
 
-  for (partition::PartitionIterator i(pi); i(); ++i) {
-    gl.push_back(Grading(*std::min_element
-			 (i->first,i->second,comparison::compare(BitCount()))
-			 ));
-
-  }
+  return result;
 }
 
 /*!
-  Given a RootList |rs|, which is assumed to hold a root subsystem in |rd|,
-  and an orthogonal subsystem |o| inside |rs|, this function returns a grading
-  |g| of the root system |rs| (expressed in terms of its canonical basis) for
-  which |o| is a maximal orthogonal set of noncompact roots (or more
-  precisely, for which (1) all roots in |o| are noncompact for |gr|, and (2)
-  the descent of |gr| through the roots of |o| to the subsystem of |rs|
-  orthogonal to |o| leads to a compact grading of that subsystem.) The answer
-  is written directly in the RootSet |ncr|, which flags the noncompact roots.
+  This function returns the equations saying that the grading should
+  be noncompact (have value 1) at each element of |nc|.
+*/
+latticetypes::BinaryEquationList
+noncompact_eqns(const latticetypes::WeightList& nc)
+{
+  latticetypes::BinaryEquationList result; result.reserve(nc.size());
+  for (size_t i=0; i<nc.size(); ++i)
+  {
+    latticetypes::BinaryEquation e(nc[i]); // reduce mod 2
+    e.pushBack(true); // add a bit 1, saying that value should be noncompact
+    result.push_back(e);
+  }
+  return result;
+}
+
+/*!
+  \brief Transforms the grading |gr| of |rl| according to |so|.
+
+  Precondition: |gr| is a grading of the roots in |rl|; |so| is a set of
+  long-orthogonal roots, orthogonal to the roots in |rl|.
+
+  Assume that all roots in |rl| and |so| are imaginary for some involution,
+  and that a grading is given that matches |gr| on |rl|, and for which all
+  roots of |so| are noncompact (grading 1). Then by Cayley-transforming though
+  the roots of |so| (in any order, since they are long-orthogonal) one
+  gets an involution for which the roots in |rl| are still imaginary (those in
+  |so| have become real), and a grading of those roots that possibly differs
+  from |gr|; this function transforms the grading |gr| into that new grading.
+
+  Formula: the rule for Cayley-transforming a grading through an imaginary
+  noncompact root \f$\alpha\f$ in |so| is that the grading of \f$\beta\f$ in
+  |rl| is flipped if and only if \f$\alpha+\beta\f$ is a root. So in all the
+  grading of \f$\beta\f$ changes iff this condition is met for an odd number
+  of \f$\alpha\f$s.
+*/
+void transform_grading(gradings::Grading& gr,
+		      const rootdata::RootList& rl,
+		      const rootdata::RootSet& so,
+		      const rootdata::RootSystem& rs)
+{
+  for (size_t i = 0; i < rl.size(); ++i)
+    for (rootdata::RootSet::iterator jt=so.begin(); jt(); ++jt)
+      if (rs.sumIsRoot(rl[i],*jt))
+	gr.flip(i);
+}
+
+/*!
+  In this function we assume that |o| is an orthogonal set of roots in the
+  root system |rs|. Let |o_orth| be the set of roots of |rs| orthogonal to
+  |o|. Then we add to |eqn| the equations which express the fact that after
+  descent through |o|, the roots in |o_orth| have to be all compact (i.e., the
+  grading on |rs| becomes the trivial grading on |o_orth|.)
+
+  Recall that when descending through a short noncompact root |a|, if |b| is a
+  short root in |rs| such that |a +- b| is a root (in other words, |a| and |b|
+  are short roots generating a subsystem of type $B_2$), then the descent
+  through |a| _changes_ the grading of |b|. So for every root \f$\alpha\f$ of
+  |o_orth|, the grading must take the value given by the parity of the number
+  of roots \f$\beta\f$ in |o| that with \f$\alpha\f$ so span a type $B_2$
+  system.
+
+  So the approach here is that we take a basis |oob| of the root system in
+  |o_orth|, and compute the degree of the elements in that basis through this
+  rule. This then gives us the equations, to the number of rank(o_orth), that
+  we have to add to |eqn|.
+*/
+  void add_compact_eqns(latticetypes::BinaryEquationList& eqn,
+			const rootdata::RootSet& o,
+			const rootdata::RootSet& subsys,
+			const rootdata::RootSystem& rs)
+{
+  // make orthogonal root system
+
+  rootdata::RootSet o_orth = rootdata::makeOrthogonal(o,subsys,rs);
+
+  // find a basis, since having the desired grading on a basis will suffice
+  rootdata::RootList oob = rs.simpleBasis(o_orth);
+
+  // find signs
+
+  Grading g; // compact grading on basis |oob|, "length" is |oob.size()|
+  transform_grading(g,oob,o,rs);
+
+  // express oob in subsys's root basis
+  rootdata::RootList rsb = rs.simpleBasis(subsys); // (caller knew this value)
+
+  latticetypes::WeightList woob; // "weight" form of |oob|, on basis |rsb|
+
+  rs.toRootBasis(oob.begin(),oob.end(),back_inserter(woob),rsb);
+
+  // write equations
+
+
+  for (unsigned long i = 0; i < woob.size(); ++i)
+  {
+    latticetypes::BinaryEquation e(woob[i]); // reduce left hand side modulo 2
+    e.pushBack(g[i]); // value grading should take on root |oob[i]| (rhs)
+    eqn.push_back(e);
+  }
+}
+
+
+/*!
+  Given a RootSet |subsys|, which is assumed to hold a root subsystem in |rs|,
+  and an orthogonal subsystem |o| inside |subsys|, this function returns a
+  grading |g| of the root system |subsys| (expressed in terms of its canonical
+  basis) for which |o| is a maximal orthogonal set of noncompact roots (or
+  more precisely, for which (1) all roots in |o| are noncompact for |gr|, and
+  (2) the descent of |gr| through the roots of |o| to the subsystem of
+  |subsys| orthogonal to |o| leads to a compact grading of that subsystem.)
+  The answer is given as the |RootSet| which flags the noncompact roots.
 
   The condition given amounts to solving a system of linear equations modulo
   2. In addition to the values 1 of |gr| on |o| given by (1), condition (2)
-  says that for any root \f$\alpha\f$ of |rs| orthogonal to |o|, the value
-  \f$gr(\alpha)\f$ should be equal modulo 2 to the number of roots \f$\beta\f$ of |o|
-  such that \f$\alpha+\beta\f$ is a root (of |rs|). Thus the values of |gr| are
-  fixed on |o| and on a basis of the root subsystem of |rs| orthogonal to |o|.
+  says that for any root \f$\alpha\f$ of |subsys| orthogonal to |o|, the value
+  \f$gr(\alpha)\f$ should be equal modulo 2 to the number of roots \f$\beta\f$
+  of |o| such that \f$\alpha+\beta\f$ is a root (of |rs|). Thus the values of
+  |gr| are fixed on |o| and on a basis of the root subsystem of |subsys|
+  orthogonal to |o|.
 
   NOTE: the solution is not unique in general. However the grading that is
   found should be unique up to conjugacy. If the subspace orthogonal to |o| is
@@ -177,41 +290,28 @@ void makeGradings(GradingList& gl, const rootdata::RootDatum& rd)
   unknowns; but even then the system can be degenerate. This happens already
   in case B2, for the split Cartan.
 */
-void findGrading(rootdata::RootSet& ncr,
-		 const rootdata::RootList& o,
-		 const rootdata::RootList& rs,
-		 const rootdata::RootDatum& rd)
+rootdata::RootSet grading_for_orthset
+  (const rootdata::RootSet& o,
+   const rootdata::RootSet& subsys,
+   const rootdata::RootSystem& rs)
 {
-  // find basis |rb| for |rs|
+  // find basis |rb| for |subsys|
+  rootdata::RootList rb = rs.simpleBasis(subsys);
 
-  rootdata::RootList rb; rootdata::rootBasis(rb,rs,rd);
-
-  // express roots of |o| in basis |rb| (of subsystem |rs| of |rd|) just found
+  // express roots of |o| in basis |rb| (of |subsys|) just found
   latticetypes::WeightList wo; // will hold "weights" of length |rb.size()|
-  rd.toRootBasis(o.begin(),o.end(),back_inserter(wo),rb);
+  rs.toRootBasis(o.begin(),o.end(),back_inserter(wo),rb);
 
-  // do the same for all roots in |rs|
+  // now do the same for \emph{all} roots in |subsys|
   latticetypes::WeightList wrs; // will hold "weights" of length |rb.size()|
-  rd.toRootBasis(rs.begin(),rs.end(),back_inserter(wrs),rb);
-
-
-  /* As "equation" is a $Z/2Z$-linear one for gradings of the root lattice
-     modulo 2 of the root subsystem |rs| with basis |rb|. Each equation
-     describes an element of that modular lattice, and a value in $Z/2Z$ that
-     the grading should take on that element. Equations are represented by the
-     type |latticetypes::BinaryEquation|, which allows for |RANK_MAX+1| bits,
-     of which |rb.size()+1| bits are used. The first |rb.size()| bits give the
-     (mod 2) coefficients of root vector the left hand side of the equation,
-     the final bit gives the right hand side.
-   */
+  rs.toRootBasis(subsys.begin(),subsys.end(),back_inserter(wrs),rb);
 
   // write equations for the roots in o
-
-  latticetypes::BinaryEquationList eqn; noncompactEquations(eqn,wo);
+  latticetypes::BinaryEquationList eqn = noncompact_eqns(wo);
   // now |eqn| describes gradings with value 1 on elements of |o|.
 
   // add equations for the maximality
-  compactEquations(eqn,o,rs,rd);
+  add_compact_eqns(eqn,o,subsys,rs);
   // now |eqn| also requires specific values on roots orthogonal to |o|
 
   // solve system
@@ -221,13 +321,15 @@ void findGrading(rootdata::RootSet& ncr,
 
   Grading g = gc.data();
 
-  // write the grading in ncr
+  // return the grading
 
-  for (unsigned long j = 0; j < wrs.size(); ++j)
-    if (isNonCompact(wrs[j],g))
-      ncr.insert(rs[j]);
+  rootdata::RootSet result;
 
-  // |ncr| now holds a solution
+  for (unsigned long i = 0; i < wrs.size(); ++i)
+    if (isNonCompact(wrs[i],g))
+      result.insert(subsys.n_th(i));
+
+  return result;
 }
 
 /*!
@@ -236,73 +338,16 @@ void findGrading(rootdata::RootSet& ncr,
 
   The algorithm is simple: pick any noncompact root; find the orthogonal
   system; write down the grading on the orthogonal; and repeat. When done,
-  transform the system into a strongly orthogonal one if needed.
+  transform the system (if it isn't already) into a strongly orthogonal one.
 */
-void gradingType(rootdata::RootList& gt, const Grading& g,
-		 const rootdata::RootDatum& rd)
-{
-  typedef bitmap::BitMap::iterator BI;
+rootdata::RootSet grading_type(const Grading& g,
+			       const rootdata::RootSystem& rs)
+{ // start with set of all roots
+  rootdata::RootSet all_roots(rs.numRoots()); all_roots.fill();
 
-  // need to have roots in root basis
-
-  latticetypes::WeightList wl; wl.reserve(rd.numRoots());
-  for (rootdata::RootNbr i=0; i<rd.numRoots(); ++i)
-    wl.push_back(rd.inSimpleRoots(i));
-
-  // find grading of all roots
-
-  bitmap::BitMap nc(wl.size());
-
-  for (unsigned long j = 0; j < rd.numRoots(); ++j)
-    if (isNonCompact(wl[j],g))
-      nc.insert(j);
-
-  // find maximal orthogonal set
-
-  rootdata::RootList rl; rl.reserve(rd.numRoots());
-
-  // start with set of all roots
-  for (unsigned long j = 0; j < rd.numRoots(); ++j)
-    rl.push_back(j);
-
-  while (not nc.empty())
-  { // insert new element, a noncompact root occurring in |rl|, into |gt|
-
-    rootdata::RootNbr n = nc.front();
-    gt.push_back(n);
-
-    // put into |rl| the orthogonal to |gt.front()|
-    rootdata::RootList orth;
-    for (unsigned long j = 0; j < rl.size(); ++j)
-      if (rd.isOrthogonal(n,rl[j]))
-	orth.push_back(rl[j]);
-      else
-	nc.remove(rl[j]); // roots dropped from list don't count as noncompact
-
-    rl.swap(orth);
-
-    // find the new grading
-    for (unsigned long j = 0; j < rl.size(); ++j)
-      if (rd.sumIsRoot(n,rl[j])) // change parity
-	nc.flip(rl[j]);
-  }
-
-  // correct gt to be made of strongly orthogonal roots
-
-  for (unsigned long i = 1; i < gt.size(); ++i)
-    for (unsigned long j = 0; j < i; ++j)
-      if (rd.sumIsRoot(gt[i],gt[j])) {
-	// replace gt[i] and gt[j] by their sum and difference
-	// note that they generate a little B2 system
-	latticetypes::Weight a(rd.root(gt[i]));
-	a += rd.root(gt[j]);
-	rootdata::RootNbr n = rd.rootNbr(a);
-	a = rd.root(gt[i]);
-	a -= rd.root(gt[j]);
-	gt[i] = n;
-	gt[j] = rd.rootNbr(a);
-      }
+  return max_orth(noncompact_roots(g,rs),all_roots,rs);
 }
+#endif
 
 } // |namespace gradings|
 
@@ -340,16 +385,7 @@ void gradingType(rootdata::RootList& gt, const Grading& g,
 namespace gradings {
 namespace {
 
-GradingAction::GradingAction(const rootdata::RootDatum& rd)
-  : d_cartan(rd.semisimpleRank())
-{
-  for (unsigned long i = 0; i < rd.semisimpleRank(); ++i)
-    for (unsigned long j = 0; j < rd.semisimpleRank(); ++j)
-      d_cartan[j].set(i,rd.cartan(i,j)%2!=0); // reduce modulo 2, transposing
-}
-
-unsigned long GradingAction::operator() (unsigned long s, unsigned long g)
-  const
+unsigned long GradingAction::operator() (size_t s, unsigned long g) const
 {
   Grading gr(g); // convert from |unsigned long|
   if (gr.test(s))
@@ -385,95 +421,5 @@ bool GradingCompare::operator() (const Grading& lhs, const Grading& rhs)
   return lhc!=rhc ? lhc<rhc : lhs<rhs;
 }
 
-} // |namespace gradings|
-
-/*****************************************************************************
-
-        Chapter III -- Auxiliary functions
-
-******************************************************************************/
-
-namespace gradings {
-namespace {
-
-
-/*!
-  This function adds to eqn the equations saying that the grading should
-  be noncompact (have value 1) at each element of |nc|.
-*/
-void noncompactEquations(latticetypes::BinaryEquationList& eqn,
-			 const latticetypes::WeightList& nc)
-{
-  for (unsigned long j = 0; j < nc.size(); ++j)
-  {
-    latticetypes::BinaryEquation e(nc[j]); // reduce mod 2
-    e.pushBack(true); // add a bit 1, saying that value should be noncompact
-    eqn.push_back(e);
-  }
-}
-
-/*!
-  In this function we assume that |o| is an orthogonal set of roots in the
-  root system |rs|. Let |o_orth| be the set of roots of |rs| orthogonal to
-  |o|. Then we add to |eqn| the equations which express the fact that after
-  descent through |o|, the roots in |o_orth| have to be all compact (i.e., the
-  grading on |rs| becomes the trivial grading on |o_orth|.)
-
-  Recall that when descending through a short noncompact root |a|, if |b| is a
-  short root in |rs| such that |a +- b| is a root (in other words, |a| and |b|
-  are short roots generating a subsystem of type $B_2$), then the descent
-  through |a| _changes_ the grading of |b|. So for every root \f$\alpha\f$ of
-  |o_orth|, the grading must take the value given by the parity of the number
-  of roots \f$\beta\f$ in |o| that with \f$\alpha\f$ so span a type $B_2$ system.
-
-  So the approach here is that we take a basis |oob| of the root system in
-  |o_orth|, and compute the degree of the elements in that basis through this
-  rule. This then gives us the equations, to the number of rank(o_orth), that
-  we have to add to |eqn|.
-*/
-  void compactEquations(latticetypes::BinaryEquationList& eqn,
-			const rootdata::RootList& o,
-			const rootdata::RootList& rs,
-			const rootdata::RootDatum& rd)
-{
-  // make orthogonal root system
-
-  rootdata::RootList o_orth;
-  makeOrthogonal(o_orth,o,rs,rd);
-
-  // find basis
-
-  rootdata::RootList oob; // basis of |o_orth|
-  rootdata::rootBasis(oob,o_orth,rd);
-
-  // find signs
-
-  Grading g; // grading on basis |oob|, therefore of length |oob.size()|
-
-  for (unsigned long i = 0; i < oob.size(); ++i)
-    for (unsigned long j = 0; j < o.size(); ++j)
-      if (rd.sumIsRoot(oob[i],o[j]))
-	g.flip(i); // use |flip|, not |set|, as same |i| can have more flips
-
-  // express oob in rs's root basis
-  rootdata::RootList rsb; // simple basis of |rs| (could be transmitted as arg)
-  rootdata::rootBasis(rsb,rs,rd);
-
-  latticetypes::WeightList woob; // "weight" form of |oob|, on basis |rsb|
-
-  rd.toRootBasis(oob.begin(),oob.end(),back_inserter(woob),rsb);
-
-  // write equations
-
-
-  for (unsigned long j = 0; j < woob.size(); ++j)
-  {
-    latticetypes::BinaryEquation e(woob[j]); // reduce left hand side modulo 2
-    e.pushBack(g[j]); // value grading should take on root |oob[j]| (rhs)
-    eqn.push_back(e);
-  }
-}
-
-} // |namespace|
 } // |namespace gradings|
 } // |namespace atlas|

@@ -196,12 +196,12 @@ namespace {
 void components_f()
 {
   const realredgp::RealReductiveGroup& G = currentRawRealGroup();
-  const latticetypes::ComponentList& c = G.dualComponentReps();
+  size_t r = G.component_rank();
 
-  if (c.size() > 0)
-    std::cout << "component group is (Z/2)^" << c.size() << std::endl;
+  if (r>0)
+    std::cout << "component group is (Z/2)^" << r << std::endl;
   else
-    std::cout << "group is connected" << std::endl;
+    std::cout << "real group is connected" << std::endl;
 
 }
 

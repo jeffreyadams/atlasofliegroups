@@ -300,11 +300,13 @@ If j is itself set, this is the position of bit j among the SET bit
 
   BitSetBase<1>& slice(const BitSetBase<1>& c);
 
-  void swap(BitSetBase<1>& source) {
+  void swap(BitSetBase<1>& source)
+  {
     std::swap(d_bits,source.d_bits);
   }
 
-  BitSetBase<1>& truncate(size_t m) {
+  BitSetBase<1>& truncate(size_t m)
+  {
     if (m < constants::longBits)
       d_bits &= constants::lMask[m];
     return *this;
@@ -655,12 +657,14 @@ If j itself is set, this is the position of bit j among the set bits.
   }
 
   BitSetBase<2>& truncate(size_t m) {
-    if (m < constants::longBits) {
+    if (m < constants::longBits)
+    {
       d_bits[0] &= constants::lMask[m];
       d_bits[1] = 0ul;
-    } else if (m < 2*constants::longBits) {
-      d_bits[1] &= constants::lMask[m & constants::posBits];
     }
+    else if (m < 2*constants::longBits)
+      d_bits[1] &= constants::lMask[m & constants::posBits];
+
     return *this;
   }
 
@@ -803,8 +807,8 @@ template<size_t n> class BaseSize {
   BitSetBase that are only for internal use by BitSet implementations.]
 */
 template<size_t n> class BitSet
-  :private BitSetBase<BaseSize<n>::value> {
-
+  :private BitSetBase<BaseSize<n>::value>
+{
  private:
   /*!
   \brief Class from which BitSet<n> is derived.
@@ -822,42 +826,35 @@ template<size_t n> class BitSet
 
   explicit BitSet(unsigned long b):Base(b) {}
 
+  template<typename I> // integer type
+    explicit BitSet(const std::vector<I>& v);
+
   ~BitSet() {}
   /*!
   Copy from other size BitSets is by truncation or extension by zero.
   */
   template<size_t m>
-    BitSet(const BitSet<m>& b)
-    :Base(b) {
-    truncate(n);
-  }
+    BitSet(const BitSet<m>& b) : Base(b) { truncate(n); }
   /*!
   Assignment from other size BitSets is by truncation or extension by zero.
   */
   template<size_t m>
-    BitSet& operator= (const BitSet<m>& b) {
-    Base::operator= (b);
-    truncate(n);
-    return *this;
-  }
+    BitSet& operator= (const BitSet<m>& b)
+    {
+      Base::operator= (b);
+      truncate(n);
+      return *this;
+    }
 
 // accessors
 
-  bool operator== (const BitSet& b) const {
-    return Base::operator== (b);
-  }
+  bool operator== (const BitSet& b) const { return Base::operator== (b); }
 
-  bool operator!= (const BitSet& b) const {
-    return Base::operator!= (b);
-  }
+  bool operator!= (const BitSet& b) const { return Base::operator!= (b); }
 
-  bool operator< (const BitSet& b) const {
-    return Base::operator< (b);
-  }
+  bool operator< (const BitSet& b) const { return Base::operator< (b); }
 
-  bool operator[] (size_t j) const {
-    return Base::operator[] (j);
-  }
+  bool operator[] (size_t j) const { return Base::operator[] (j); }
 
   // non-assignment logical operators added by MvL
   BitSet operator& (const BitSet& b) const // logical AND
@@ -873,194 +870,114 @@ template<size_t n> class BitSet
 
 Returns whether any bit of the BitSet is 1
   */
-  bool any() const {
-    return Base::any();
-  }
+  bool any() const { return Base::any(); }
 
   /*!
 \brief Tests whether BitSet and b have non-empty intersection.
 
 Returns whether any bit is 1 in both BitSet and b.
   */
-  bool any(const BitSet& b) const {
-    return Base::any(b);
-  }
+  bool any(const BitSet& b) const { return Base::any(b); }
 
   /*!
   Iterator pointing to the first set bit of BitSet.
 
 Seems not yet to be implemented for BitSetBase<2>.
   */
-  iterator begin() const {
-    return Base::begin();
-  }
+  iterator begin() const { return Base::begin(); }
 
   /*!
 \brief Tests whether BitSet contains b.
   */
-  bool contains(const BitSet& b) const {
-    return Base::contains(b);
-  }
+  bool contains(const BitSet& b) const { return Base::contains(b); }
 
   /*!
 \brief Number of set bits in BitSet.
 
 This is the cardinality of the corresponding set.
   */
-  size_t count() const {
-    return Base::count();
-  }
+  size_t count() const { return Base::count(); }
 
   /*!
 \brief Position of the first set bit in BitSet.
 
 Returns the capacity of the BitSet if there is no such bit.
   */
-  size_t firstBit() const {
-    return Base::firstBit();
-  }
+  size_t firstBit() const { return Base::firstBit(); }
 
   /*!
 \brief position of the last set bit PLUS ONE in BitSet, or 0 if |none()|
   */
-  size_t lastBit() const {
-    return Base::lastBit();
-  }
+  size_t lastBit() const { return Base::lastBit(); }
 
   /*!
 \brief Tests whether the corresponding set is empty.
 
   Returns 1 if no bit of BitSet is set, and 0 otherwise.
   */
-  bool none() const {
-    return Base::none();
-  }
+  bool none() const { return Base::none(); }
 
    /*!
 \brief Number of set bits in position < j.
 
 If j is set, this  is the position of j in the set of set bits.
    */
-  size_t position(size_t j) const {
-    return Base::position(j);
-  }
+  size_t position(size_t j) const { return Base::position(j); }
 
-  bool scalarProduct(const BitSet& b) const {
-    return Base::scalarProduct(b);
-  }
+  bool scalarProduct(const BitSet& b) const { return Base::scalarProduct(b); }
+  bool dot(BitSet b) const { return Base::scalarProduct(b); }
 
-  size_t size() const {
-    return n;
-  }
+  size_t size() const { return n; }
 
   /*!
 \brief Tests bit j of BitSet.
   */
-  bool test(size_t j) const {
-    return Base::test(j);
-  }
+  bool test(size_t j) const { return Base::test(j); }
 
   /*!
 \brief  The first wordlength bits of BitSet, interpreted as an unsigned
   long integer.
   */
-  unsigned long to_ulong() const {
-    return Base::to_ulong();
-  }
+  unsigned long to_ulong() const { return Base::to_ulong(); }
 
   /*!
 \brief  The second wordlength bits of BitSet, interpreted as an unsigned
   long integer.
   */
-  unsigned long to_ulong1() const {
-    return Base::to_ulong1();
-  }
+  unsigned long to_ulong1() const { return Base::to_ulong1(); }
 
 // manipulators
 
-  BitSet& operator^= (const BitSet& b) {
-    Base::operator^=(b);
-    return *this;
-  }
+  BitSet& operator^= (const BitSet& b) { Base::operator^=(b); return *this; }
+  BitSet& operator|= (const BitSet& b) { Base::operator|=(b); return *this; }
+  BitSet& operator&= (const BitSet& b) { Base::operator&=(b); return *this; }
 
-  BitSet& operator|= (const BitSet& b) {
-    Base::operator|=(b);
-    return *this;
-  }
+  BitSet& operator<<= (size_t c) { Base::operator<<=(c); return *this; }
+  BitSet& operator>>= (size_t c) { Base::operator>>=(c); return *this; }
 
-  BitSet& operator&= (const BitSet& b) {
-    Base::operator&=(b);
-    return *this;
-  }
-
-  BitSet& operator<<= (size_t c) {
-    Base::operator<<=(c);
-    return *this;
-  }
-
-  BitSet& operator>>= (size_t c) {
-    Base::operator>>=(c);
-    return *this;
-  }
-  /*!
-  Performs a bitwise "and not" of this BitSet with the argument BitSet
-  b (which remains unchanged).
-  */
-  BitSet& andnot (const BitSet& b) {
-    Base::andnot(b);
-    return *this;
-  }
-
-  BitSet& flip() {
-    Base::flip();
-    truncate(n);
-    return *this;
-  }
-
-  BitSet& flip(size_t j) {
-    Base::flip(j);
-    return *this;
-  }
+//! Performs a bitwise "and not" of this BitSet with the argument BitSet |b|
+  BitSet& andnot (const BitSet& b) { Base::andnot(b); return *this; }
+  BitSet& flip() { Base::flip(); truncate(n); return *this; }
+  BitSet& flip(size_t j) { Base::flip(j); return *this; }
 
   /*!
 \brief Applies the permutation a to the BitSet.
   */
-  BitSet& permute(const setutils::Permutation& a) {
-    Base::permute(a);
-    return *this;
-  }
+  BitSet& permute(const setutils::Permutation& a)
+  { Base::permute(a); return *this; }
 
   /*!
 \brief Sets every bit of BitSet to zero.  (Empties the set.)
   */
-  BitSet& reset() {
-    Base::reset();
-    return *this;
-  }
-
-  BitSet& reset(size_t j) {
-    Base::reset(j);
-    return *this;
-  }
+  BitSet& reset()         { Base::reset();  return *this; }
+  BitSet& reset(size_t j) { Base::reset(j); return *this; }
 
   /*!
 \brief  Sets the first n bits of BitSet to one.  (Fills the set.)
   */
-  BitSet& set() {
-    Base::set();
-    truncate(n);
-    return *this;
-  }
-
-  BitSet& set(size_t j) {
-    Base::set(j);
-    return *this;
-  }
-
-  BitSet& set(size_t j, bool b) {
-    Base::set(j,b);
-    return *this;
-  }
+  BitSet& set()         { Base::set(); truncate(n); return *this; }
+  BitSet& set(size_t j) { Base::set(j); return *this; }
+  BitSet& set(size_t j, bool b) { Base::set(j,b); return *this; }
 
   /*!
   \brief Replaces the bitset by the "defragmented" intersection
@@ -1078,28 +995,20 @@ If j is set, this  is the position of j in the set of set bits.
   BitVector belongs to this subspace, then applying slice(c) puts in
   the BitVector its coordinates with respect to the row-reduced basis.
   */
-  BitSet& slice(const BitSet& c) {
-    Base::slice(c);
-    return *this;
-  }
+  BitSet& slice(const BitSet& c) { Base::slice(c); return *this; }
 
-  void swap(BitSet& source) {
-    Base::swap(source);
-  }
+  void swap(BitSet& source) { Base::swap(source); }
 
   /*!
 \brief Sets all bits after m to zero.
   */
-  BitSet& truncate(size_t m) {
-    Base::truncate(m);
-    return *this;
-  }
+  BitSet& truncate(size_t m) { Base::truncate(m); return *this; }
 
-};
+}; // |template<size_t n> class BitSet|
 
-}
+} // |namespace bitset|
 
-}
+} // |namespace atlas|
 
 #include "bitset_def.h"
 

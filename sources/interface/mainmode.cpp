@@ -211,10 +211,8 @@ namespace {
 // Print the Cartan matrix on stdout.
 void cmatrix_f()
 {
-  latticetypes::LatticeMatrix q;
-
-  rootdata::cartanMatrix(q,currentComplexGroup().rootDatum());
-  prettyprint::printMatrix(std::cout,q);
+  prettyprint::printMatrix
+    (std::cout,currentComplexGroup().rootDatum().cartanMatrix());
 
 }
 

@@ -325,28 +325,48 @@ void Helper::fillDualInvolutions(const weyl::TwistedWeylGroup& tW)
 \brief Fills in d_toDualWeyl.
 
   Explanation: |d_toDualWeyl[s]| is the outer representation of the generator
-  that in the Weyl group has the same inner representation as |s| has in the
-  dual Weyl group. Thus we can move elements from the Weyl group to the dual
-  Weyl group by translating them via |d_toDualWeyl| and then interpreting the
-  resulting inner representation in the dual Weyl group (translation operates
-  on inner representations but uses a table defined in terms of outer
-  representations).
+  that in the Weyl group has the same inner representation $j$ as |s| has in
+  the dual Weyl group: |W.d_in[d_toDualWeyl[s]]==j==dW.d_in[s]|. Thus we can
+  move elements from the Weyl group to the dual Weyl group by translating them
+  via |d_toDualWeyl| and then interpreting the resulting inner representation
+  in the dual Weyl group (translation operates on inner representations but
+  uses a table defined in terms of outer representations).
+
+  This is a bit complicated to understand, as it deals with the fact that the
+  (untwisted) Weyl group |W| and the dual Weyl group |dW|, while equivalent
+  for all ordinary uses, may use different translation tables (this happens
+  for (B2,C2), (G2,g2) and (F4,f4)), which difference becomes noticeable when
+  |WeylElt| values are transferred from one setting to the other. Here is what
+  happens. Suppose generator $s$ has inner representation $i$ in |W| but a
+  different inner representation $j$ in |dW|, which in |W| would correspond to
+  the (outer) generator $t$. Then we make sure that |d_toDualWeyl[s]==t|. Now
+  any reference to $s$ in a |WeylElt| for |W| is encoded as $i$; if we
+  translate it using |d_toDualWeyl|, an occurrence of $i$ is first converted
+  to outer, i.e., to |W.d_out(i)==s|, then mapped by |d_toDualWeyl| to
+  |d_toDualWeyl[s]==t|, then reconverted to inner |W.d_in[t]==j| (since
+  translate knows nothing about a second Weyl group. Now interpreting this $j$
+  in |dW| we get outer value |dW.d_out[j]==s|, the same that we started with.
+
+  So to build |d_toDualWeyl|, we convert |s| to inner under |dW| (giving $j$),
+  then convert under |W| to outer (giving $t$), and store |d_toDualWeyl[s]=t|.
+  The transitions are by conversions between |WeylElt| and |WeylWord|, which
+  is the only accessible way to find out about the arrays |d_in| and |d_out|.
 */
 void Helper::weylCorrelation(const complexredgp::ComplexReductiveGroup& G)
 {
   const weyl::WeylGroup& W = G.weylGroup();
 
-  // make dual Weyl group
-  latticetypes::LatticeMatrix c;
-  rootdata::cartanMatrix(c,G.rootDatum());
-  c.transpose();   // transposing the Cartan matrix may change Weyl group
+  // make dual Weyl group (transposing Cartan matrix may change Weyl group!)
+  latticetypes::LatticeMatrix c = G.rootDatum().cartanMatrix().transposed();
   weyl::WeylGroup dW(c); // twist is irrelevant here
 
   // fill in d_toDualWeyl
-  for (size_t s = 0; s < W.rank(); ++s) {
-    weyl::WeylElt w=dW.generator(s); // converts |s| to inner numbering |dW|
-    weyl::WeylWord ww=W.word(w); // interpret |w| in |dW|; gives singleton
-    d_toDualWeyl[s] = ww[0];
+  for (size_t s = 0; s < W.rank(); ++s)
+  {
+    weyl::WeylElt j = dW.generator(s); // converts |s| to inner numbering |dW|
+    weyl::WeylWord ww = W.word(j); // interpret |w| in |W|
+    assert(ww.size()==1);    // should give singleton
+    d_toDualWeyl[s] = ww[0]; // the element called |t| above
   }
 }
 

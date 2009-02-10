@@ -41,25 +41,22 @@ typedef unsigned Multiplicity;
 
 class DynkinDiagram;
 
-}
+} // |namespace dynkin|
 
 /******** function declarations *********************************************/
 
 namespace dynkin {
 
-  void bourbaki(setutils::Permutation&, const DynkinDiagram&);
+  lietype::LieType Lie_type(const latticetypes::LatticeMatrix&);
 
-  void components(bitset::RankFlagsList&, const DynkinDiagram&);
+  setutils::Permutation bourbaki(const DynkinDiagram&);
 
-  void components(bitset::RankFlagsList&, const DynkinDiagram&,
-		  const bitset::RankFlags&); // to be implemented
+  bitset::RankFlagsList components(const DynkinDiagram&);
 
-  void lieType(lietype::LieType&, const latticetypes::LatticeMatrix&);
+  bitset::RankFlagsList
+    components(const DynkinDiagram&,const bitset::RankFlags&);
 
-  // functional form of the same
-  lietype::LieType lieType(const latticetypes::LatticeMatrix&);
-
-  void normalize(setutils::Permutation&, const DynkinDiagram&);
+  setutils::Permutation normalize(const DynkinDiagram&);
 
 }
 

@@ -32,7 +32,7 @@ std::ostream& printFiber(std::ostream&, const cartanclass::Fiber&,
 
 std::ostream& printGradings(std::ostream&, const cartanclass::Fiber&,
 			    const realform::RealFormList&,
-			    const rootdata::RootDatum&);
+			    const rootdata::RootSystem&);
 
 }
 

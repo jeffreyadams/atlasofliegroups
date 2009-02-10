@@ -14,7 +14,7 @@
   This is prerootdata.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -40,7 +40,7 @@ namespace prerootdata {
 namespace prerootdata {
 
   void cartanMatrix(latticetypes::LatticeMatrix&, const lietype::LieType&);
-  void cartanMatrix(latticetypes::LatticeMatrix&, 
+  void cartanMatrix(latticetypes::LatticeMatrix&,
 		    const lietype::SimpleLieType&);
 
 }
@@ -99,26 +99,31 @@ class PreRootDatum{
   }
 
   /*!
-  \brief List of the simple coroots as elements of Z^d_rank, expressed
-  in the dual of the basis specified by argument b of the constructor.
-  */
-  const latticetypes::WeightList& coroots() const {
-    return d_coroots;
-  }
-
-  /*!
   \brief Rank of the root datum.
   */
-  size_t rank() const {
-    return d_rank;
-  }
+  size_t rank() const { return d_rank; }
 
-  /*!
+/*!
 \brief  List of the simple roots as elements of Z^d_rank,
 expressed in the basis specified by argument b of the constructor.
-  */
-  const latticetypes::WeightList& roots() const {
-    return d_roots;
+*/
+  const latticetypes::WeightList& roots() const { return d_roots; }
+/*!
+\brief List of the simple coroots as elements of Z^d_rank, expressed
+in the dual of the basis specified by argument b of the constructor.
+*/
+  const latticetypes::WeightList& coroots() const { return d_coroots; }
+
+
+  latticetypes::LatticeMatrix Cartan_matrix() const
+  {
+    latticetypes::LatticeMatrix Cartan(d_roots.size(),d_coroots.size());
+
+    for (size_t i = 0; i < d_roots.size(); ++i)
+      for (size_t j = 0; j < d_coroots.size(); ++j)
+	Cartan(i,j) = d_roots[i].dot(d_coroots[j]);
+
+    return Cartan;
   }
 
 // manipulators

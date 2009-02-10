@@ -59,15 +59,15 @@ Partition::Partition(std::vector<unsigned long>& f)
 
   std::map<unsigned long,unsigned long> val; // bijective map im(f)->[0,s[
 
-  for (size_t j = 0; j < f.size(); ++j)
-    if (val.insert(std::make_pair(f[j],s)).second)
-      // tentatively map f[j] to a new class number |s| and test for success
+  for (size_t i=0; i<f.size(); ++i)
+    if (val.insert(std::make_pair(f[i],s)).second)
+      // tentatively map f[i] to a new class number |s| and test for success
     { // found a new value
-      newClass(j); // add a new class containing j to the partition
+      new_class(i); // add a new class containing i to the partition
       ++s;
-    } else { // f[j] had already been seen, find its class and record j in it
-      addToClass(val.find(f[j])->second, j);
     }
+    else // |f[i]| had already been seen, find its class and record |i| in it
+      addToClass(val.find(f[i])->second, i);
 }
 
 /*!
@@ -107,15 +107,16 @@ void Partition::swap(Partition& other)
 /******** manipulators *******************************************************/
 
 /*!
-  \brief Counts the number of elements in class \#c.
+  \brief Creates a fresh class for element |j|, and returns its number
 
   NOTE: Straightforward implementation. Successively computing |classSize| for
   all classes would cost more time then necessary.
 */
-void Partition::newClass(unsigned long j)
+unsigned long Partition::new_class(unsigned long j)
 {
   d_class[j] = d_classRep.size();
   d_classRep.push_back(j);
+  return d_class[j];
 }
 
 /*!

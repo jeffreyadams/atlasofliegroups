@@ -111,9 +111,7 @@ namespace bitmap {
     of the BitMap as a standard library container, not d_map.size(), which is
     approximately longBits times smaller.
     */
-    unsigned long capacity() const {
-      return d_capacity;
-    }
+    unsigned long capacity() const { return d_capacity; }
 
     size_type size() const; // the number of bits that are set in the bitmap
 
@@ -178,9 +176,10 @@ namespace bitmap {
 
     bool andnot(const BitMap&);
 
-    void fill();
+    void fill(); // set all bits
 
-    void fill(unsigned long);
+    void fill(size_t start,size_t stop); // set consecutive range of bits
+    void clear(size_t start,size_t stop); // clear consecutive range of bits
 
     void flip(unsigned long n) {
       d_map[n >> baseShift] ^= constants::bitMask[n & posBits];
@@ -223,7 +222,7 @@ namespace bitmap {
     }
 
     // this was called |resize|, but sets |capacity()|, whence the new name
-    void set_capacity(unsigned long n);
+    void set_capacity(unsigned long n); // any new bits will start out cleared
 
     void setRange(unsigned long, unsigned long, unsigned long);
 

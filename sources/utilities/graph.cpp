@@ -174,8 +174,8 @@ void OrientedGraph::cells(partition::Partition& pi, OrientedGraph* gr) const
 
 	  if (x.min == rank[x.v]) // no older vertex reachable from |x|
 	    { // split off strong component
-	      pi.newClass(x.v);  // x will be added again in loop, no harm done
-	      unsigned long c= pi(x.v);
+	      unsigned long c =
+		pi.new_class(x.v);  // x will be added again in loop, harmless
 	      std::vector<const EdgeList*> out; // to gather outgoing edges
 	      out.reserve(active.size()-cur_pos);
 	      for (work_addr i=cur_pos; i<active.size(); ++i)

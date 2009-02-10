@@ -33,6 +33,7 @@ maintained by a RootDatum.
   typedef unsigned long RootNbr;
 
   template<typename I> class RootIterator;
+  class RootSystem;
   class RootDatum;
 
   /*!

@@ -261,15 +261,14 @@ void getInnerClass(latticetypes::LatticeMatrix& d,
   lietype::InnerClassType ict;
   getInteractive(ict,lt); //< may throw an InputError
 
-  latticetypes::LatticeMatrix i;
-  lietype::involution(i,lt,ict);
+  latticetypes::LatticeMatrix i = lietype::involution(lt,ict);
 
   while (not checkInvolution(i,lo)) { // reget the inner class
     std::cerr
       << "sorry, that inner class is not compatible with the weight lattice"
       << std::endl;
     getInteractive(ict,lt);
-    lietype::involution(i,lt,ict);
+    i = lietype::involution(lt,ict);
   }
 
   lo.d_inner = ict;

@@ -55,8 +55,6 @@ struct OrbitData {
 
         Chapter I -- Functions defined in testprint.h
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace testprint {
@@ -136,8 +134,7 @@ std::ostream& printBlockData(std::ostream& strm,
   const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
   const rootdata::RootDatum& rd = G.rootDatum();
 
-  lietype::LieType lt;
-  complexredgp::lieType(lt,G);
+  lietype::LieType lt = rd.Lie_type();
 
   strm << std::setw(25) << "" << "Block data"
        << std::endl;
@@ -185,9 +182,9 @@ std::ostream& printCartanClasses(std::ostream& strm,
 */
 std::ostream& printCartanMatrix(std::ostream& strm,
 				const rootdata::RootList& rb,
-				const rootdata::RootDatum& rd)
+				const rootdata::RootSystem& rs)
 {
-  return prettyprint::printMatrix(strm,rd.cartanMatrix(rb));
+  return prettyprint::printMatrix(strm,rs.cartanMatrix(rb));
 }
 
 
