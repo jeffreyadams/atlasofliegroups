@@ -92,7 +92,7 @@ rootdata::RootSet max_orth(const rootdata::RootSet& non_compact,
 
 
 
-#if 1 // the following functions are never used
+#if 0 // the following functions are never used
 
 /*!
   Synopsis: tells whether |v| is noncompact w.r.t. the grading |g|.
