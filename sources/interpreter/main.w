@@ -183,14 +183,14 @@ suppress printing if the uninteresting value.
 @< Analyse types and then evaluate and print... @>=
 { bool type_OK=false;
   try
-  { expression e;
+  { expression_ptr e;
     type_ptr type=analyse_types(parse_tree,e);
     type_OK=true;
     if (verbosity>0)
       *output_stream << "Type found: " << *type << endl @|
 	<< "Converted expression: " << *e << endl;
-    value v= e==NULL ? evaluate(parse_tree) :(e->evaluate(),pop_value());
-    static type_declarator empty((type_node*)NULL);
+    value v= e.get()==NULL ? evaluate(parse_tree) :(e->evaluate(),pop_value());
+    static type_declarator empty(type_list_ptr(NULL));
     if (*type!=empty) *output_stream << "Value: " << *v << endl;
     destroy_expr(parse_tree); delete v;
   }

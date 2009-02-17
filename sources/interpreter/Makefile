@@ -174,6 +174,6 @@ parser.tab.o: parser.tab.c parsetree.h
 # file, since cweave scans the same header files as the C++ compiler
 
 lexer.o lexer.tex: parser.tab.h buffer.h
-evaluator.o evaluator.tex: lexer.h parsetree.h
+evaluator.o evaluator.tex: evaluator.h lexer.h parsetree.h
 built-in-types.o built-in-types.tex: evaluator.h
 main.o main.tex: $(headers)

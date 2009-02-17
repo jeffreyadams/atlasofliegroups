@@ -890,7 +890,7 @@ void SL_wrapper()
   push_value(type);
   matrix_ptr lattice
      (new matrix_value(latticetypes::LatticeMatrix()));
-  identityMatrix(lattice->val,r);
+  matrix::identityMatrix(lattice->val,r);
   for (size_t i=0; i<r-1; ++i) lattice->val(i,i+1)=-1;
   push_value(lattice);
 @/wrap_tuple(2); root_datum_wrapper();
@@ -906,7 +906,7 @@ void GL_wrapper()
   push_value(type);
   matrix_ptr lattice
      (new matrix_value(latticetypes::LatticeMatrix()));
-  identityMatrix(lattice->val,r+1);
+  matrix::identityMatrix(lattice->val,r+1);
   for (size_t i=0; i<r; ++i)
   @/{@; lattice->val(n->val-1,i)=1; lattice->val(i,i+1)=-1; }
   push_value(lattice);
@@ -1079,7 +1079,7 @@ the presence of a torus part.
     ("involution should be a "+num(r)+"x"+num(r)+" matrix, got a "
      +num(M.numRows())+"x"+num(M.numColumns())+" matrix");
   latticetypes::LatticeMatrix I,Q(M);
-  identityMatrix(I,r); Q*=M; // $Q=M^2$
+  matrix::identityMatrix(I,r); Q*=M; // $Q=M^2$
   if (!(Q==I)) throw std::runtime_error
       ("given transformation is not an involution");
 }
@@ -1531,8 +1531,7 @@ produces the list, and then use it twice.
 
 @< Local function def...@>=
 void push_name_list(const realform_io::Interface& interface)
-{ row_ptr result
-    (new row_value(std::vector<value>()));
+{ row_ptr result(new row_value(0));
   for (size_t i=0; i<interface.numRealForms(); ++i)
     result->val.push_back(new string_value(interface.typeName(i)));
   push_value(result);
@@ -2033,8 +2032,7 @@ for dual real forms.
 void real_forms_of_Cartan_wrapper()
 { Cartan_class_ptr cc(get<Cartan_class_value>());
   const inner_class_value& ic=cc->parent;
-@/row_ptr result @|
-    (new row_value(std::vector<value>(cc->val.numRealForms())));
+  @/row_ptr result @| (new row_value(cc->val.numRealForms()));
   for (size_t i=0,k=0; i<ic.val.numRealForms(); ++i)
   { bitmap::BitMap b(ic.val.Cartan_set(ic.interface.in(i)));
     if (b.isMember(cc->number))
@@ -2046,8 +2044,7 @@ void real_forms_of_Cartan_wrapper()
 void dual_real_forms_of_Cartan_wrapper()
 { Cartan_class_ptr cc(get<Cartan_class_value>());
   const inner_class_value& ic=cc->parent;
-@/row_ptr result @|
-    (new row_value(std::vector<value>(cc->val.numDualRealForms())));
+@/row_ptr result @| (new row_value(cc->val.numDualRealForms()));
   for (size_t i=0,k=0; i<ic.val.numDualRealForms(); ++i)
   { bitmap::BitMap b(ic.val.dual_Cartan_set(ic.dual_interface.in(i)));
     if (b.isMember(cc->number))
@@ -2086,8 +2083,7 @@ void fiber_part_wrapper()
   const realform::RealFormList rf_nr=
      cc->parent.val.realFormLabels(cc->number);
      // translate part number of |pi| to real form
-  row_ptr result
-    (new row_value(std::vector<value>()));
+  row_ptr result (new row_value(0));
   for (size_t i=0; i<pi.size(); ++i)
     if ( rf_nr[pi(i)] == rf->val.realForm())
       result->val.push_back(new int_value(i));
