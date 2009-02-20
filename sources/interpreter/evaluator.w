@@ -27,6 +27,7 @@ expressions, that were produced by the parser with the help of the types and
 functions defined in the unit \.{parsetree}.
 
 @h "evaluator.h"
+@h <cstdlib>
 @c
 namespace atlas { namespace interpreter {
 @< Local type definitions @>@;
@@ -1225,180 +1226,46 @@ type_error::type_error(const type_error& e)
 
 @* The evaluator.
 %
+The expression returned by the parser is type-checked before execution starts.
+In a first version of the interpreter, type-checking was done using two
+functions, one to derive the type of an expression in an open context, and
+another to test, in a context requiring a particular type, that an expression
+has that type. The difference is important, since in the latter case
+conversions can be inserted to make types match, for instance between a list
+of integers and a vector value; this is in fact the only way the user can
+produce the latter kind of values. However the two functions are now merged
+into on called |convert_expr|, which in addition builds (upon success) an
+|expression| value. Apart from the |expr| value produced by the parser, it
+takes a type as argument, in the form of a non-constant reference to a
+|type_declarator type@;|. If this type is undefined then it will be set to the
+type derived for the expression; if it is defined then it will just be tested.
+However it can also be a partially defined type (such as \.{(int,*)}, meaning
+``pair on an integer and something'') initially, in which case derivation and
+testing functionality are combined; this gives a particular flexibility to
+|convert_expr|. In general, upon successful completion the type will have
+become a completely defined type for the expression, unless the expression can
+actually have multiple types, such the empty list which gets type~\.{[*]}. The
+type should be owned by the caller, who will automatically gain ownership of
+any new nodes added; nothing is ever destroyed in |convert_expr|. All changes
+are in fact the result of calling the |specialise| method for |type| or for
+its descendants, so in particular any new parts to the type are freshly
+copied.
+
 With the translation of expressions into |expression| values, there is no need
-for an evaluator in the strict sense, since we shall just call the |evaluate|
-method. Nevertheless we leave in places the scaffolding of the direct
-evaluator that was previously used, until the new system is fully functional
-(it actually is, but it is currently only used when the \.{verbose} command
-has been given to the interpreter). This evaluator is realised as a function
-that maps expressions produced by the parser directly to values of a type
-derived from |value_type|
+for a separate evaluator function: we shall just call the |evaluate| method of
+the expression object, which will do its work with the help of the similar
+methods of its subexpressions, resulting in an indirectly recursive evaluation
+framework.
 
 @< Declarations of exported functions @>=
-value evaluate(expr e)
-  throw(std::bad_alloc,std::logic_error,std::runtime_error);
-
-@~ Here we shall define just the outer level of |evaluate| and the simplest
-cases of its main |switch|, namely those for denotations, leaving the cases
-for other syntactic categories until later. The functions involved with type
-checking will be similarly presented, so that most code will be presented
-grouped together based on the syntactic category involved, rather than on the
-particular function the code belongs to.
-
-Evaluating a denotation is trivial, and yields the constant value stored in
-the denotation. We assign the value to be returned to a variable rather than
-calling |return| in the various branches, in order to make the conversion to
-|value| less implicit, and to avoid compiler warnings about ending a non-void
-function without~|return|. (It is fairly curious that such a warning should be
-given when there is no warning for missing cases in the switch, and all cases
-end with |return|; other functions defined below show alternative methods to
-keep the compiler from complaining.)
-
-@h<cstdlib>
-@< Function definitions @>=
-value evaluate(expr e)
-  throw(std::bad_alloc,std::logic_error,std::runtime_error)
-{ value result=NULL;
-  switch(e.kind)
-  { case integer_denotation:
-      result= new int_value(e.e.int_denotation_variant);
-      break;
-    case string_denotation:
-      result= new string_value(e.e.str_denotation_variant);
-      break;
-    case boolean_denotation:
-      result= new bool_value(e.e.int_denotation_variant);
-      break;
-    @\@< Cases for evaluating other kinds of expressions, which store the
-    value obtained in |result|  @>
-  }
-  return result;
-}
-
-@*1 Finding the type of an expression.
-%
-Although the above code can directly evaluate expressions as returned by the
-parser, we wish to proceed with more precaution, and check types first. One
-reason is that it is best to signal type errors early and at a level where
-they can be understood by the user, rather than discovering a wrong type in
-the middle of the computation where the context of the actual  error has
-disappeared. Type checking also allows us to embark upon the construction of
-rigidly typed values needed  by the Atlas software, such as
-|std::vector<int>|, with confidence that no values of the wrong type will pop
-up in the process.
-
-Type checking can appear in several forms. The simplest idea is to take an
-expression and find its type, which is what the function |find_type| does. In
-this approach it may happen that |find_type| is called for a subexpression for
-which it is known beforehand that only one type is acceptable; this happens
-notably for arguments of (non-overloaded) functions. In this case it is more
-useful to proceed with knowledge of that type; among other things, this allows
-conversion functions to be inserted in a more flexible way. The function
-|check_type| that will be given later does this. Finally, There is an approach
-that will eventually replace both |find_type| and |check_type|, which behaves
-like |check_type| but with a given type pattern that is partially
-undetermined, and which is specialised as a result of the checking process.
-This functionality is implemented in |convert_expr|, which in the mean time
-also converts the expression from the form returned by the parser into a
-\Cpp-object of a class derived from~|expression_base|, whose |evaluate| method
-can be used instead of calling the function |evaluate|. For reasons explained
-later it is most convenient for |convert_expr| to return an ordinary pointer,
-but the caller should take possession of the result.
-
-@< Declarations of exported functions @>=
-type_ptr find_type (expr e) throw(std::bad_alloc,program_error);
-void check_type (const type_declarator& t,expr& e)
-   throw(std::bad_alloc,program_error);
 expression convert_expr(const expr& e, type_declarator& type)
   throw(std::bad_alloc,program_error);
 
-@~For all of these functions we shall proceed by a straightforward traversal
-of the parse tree; |find_type| is the simplest one, with type information
-flowing from the bottom (leaves) up uniquely. As for |evaluate|, we begin with
-an outline of these functions that only handle the denotation case.
-
-@< Function definitions @>=
-type_ptr find_type (expr e) throw(std::bad_alloc,program_error)
-{ switch(e.kind)
-  { case integer_denotation: return make_prim_type(integral_type);
-    case string_denotation: return make_prim_type(string_type);
-    case boolean_denotation: return make_prim_type(boolean_type);
-  @\@< Cases for finding the type of other kinds of expressions, all of which
-       either |return| the type found, or |throw| a |type_error| @>
-  }
-  return type_ptr(NULL); // keep the compiler happy, never reached
-}
-
-@*1 Checking if an expression has a given type.
-A refinement of the notion of type checking will occur in contexts that we
-have not encountered yet, such as function arguments, where in descending the
-parse tree we already know which type is required, and we must check if it
-matches the actual type of the expression. The distinction is important
-because of implicit type conversions: if the type is already known, such
-conversions can be inserted (and this is in fact the only way that we shall be
-able to construct such built-in types as matrices), and by taking into account
-the required type during the descent, the conversions can be more flexible.
-For instance, we have insisted in |find_type| that types in a list display be
-exactly equal, but if the (row) type of the lists display is known beforehand,
-it will be sufficient that each component expression can individually be
-converted into the required component type.
-
-@~In spite of the fact that a type is specified, our first concern is analyse
-the expression, as for |find_type|. We adopt a somewhat peculiar convention
-that an error is signalled by setting the type |actual| to a non-null value;
-this avoids having to place |throw| expressions in many places. When we do
-throw a |type_error| after finding |actual| to be set, we need to copy the
-required type~|t| for inclusion in the error object.
-
-@< Function definitions @>=
-void check_type (const type_declarator& t,expr& e)
-   throw(std::bad_alloc,program_error)
-{ type_ptr actual(NULL);
-  switch(e.kind)
-  { case integer_denotation: if (t!=int_type) actual= copy(int_type);
-    break;
-    case string_denotation:  if (t!=str_type) actual= copy(str_type);
-    break;
-    case boolean_denotation: if (t!=bool_type) actual= copy(bool_type);
-    break;
-  @\@< Other cases for testing whether the type of |e| matches |t|,
-       which in case of failure set |actual| to the erroneous type @>
-  }
-  if (actual.get()!=NULL) throw type_error(e,actual,copy(t));
-@.Type error@>
-}
-
-@*1 Type checking with conversion to executable values.
-%
-The function |convert_expr| type-checks an expression, given as |expr| value,
-and upon success converts it to an |expression| value. Apart from the
-expression, it takes a type as argument in the form of a non-constant
-reference to a |type_declarator type;| this may be a partially defined type
-(such as \.{(int,*)} for ``pair on an integer and something'') initially, and
-upon success it will have become a completely defined type for the expression
-(unless the expression can actually have multiple types, such the empty list
-which gets type~\.{[*]}). The type should be owned by the caller, and we never
-destroy any of it in this function; all changes are affected by calling the
-|specialise| method for |type| or for its descendants, so in particular any
-new parts to the type are freshly copied.
-
-@ The function |convert_expr| descends the expression tree in the same way as
-|evaluate| does, but returns a pointer to the conversion of the |expr| to
-|expression|. Since this is a freshly created tree structure, the caller
-should take ownership, for instance by constructing an |expression_ptr| from
-it. The reason we don't return an |expression_ptr| directly is that the result
-will be produced, in the numerous cases distinguished, either from a call to
-|new| that constructs a node for a derived type of |expression_node|, or from
-an auto-pointer to such a node. Even in the latter case it is easier to
-release to auto-pointer to an ordinary one that will be converted to one to
-the base type, than to convert directly to an auto-pointer to that base type:
-the problem is that \emph{two} automatic conversions between such auto-pointer
-types are provided, so that straightforwardly returning the auto-pointer would
-lead to an ambiguous conversion, which is refused by the compiler.
-
-For the cases of denotations we first try to specialise to the required
-type and test whether that succeeded; thus the cases where |type| is initially
-undetermined or equal to the correct type are handled together.
+@ The function |convert_expr| returns a pointer to the conversion of the
+|expr| to |expression|. This is a freshly created tree structure, so the
+caller should take ownership, for instance by constructing an |expression_ptr|
+from it. The reason we don't return an |expression_ptr| is entirely pragmatic:
+the current solution seems to involve pointer conversions in fewer places.
 
 @< Function definitions @>=
 expression convert_expr(const expr& e, type_declarator& type)
@@ -1427,18 +1294,18 @@ expression convert_expr(const expr& e, type_declarator& type)
 
 @*1 List displays.
 %
-Now we shall consider how these various functions handle list displays,
-expressions that build a list of values by constructing each component by an
-explicit expression. We start by defining the structure used to represent list
-displays after conversion in the type check. The logical name |list_display|
-for this structure is already taken, so we call it a |list_expression|
-instead.
+Now we shall consider the handling of list displays, expressions that build a
+list of values by constructing each component by an explicit expression. We
+start by defining the structure used to represent list displays after
+conversion in the type check. The logical name |list_display| for this
+structure is already taken, so we call it a |list_expression| instead.
 
 @< Type definitions @>=
 struct list_expression : public expression_base
 { std::vector<expression> component;
 @)
   explicit list_expression(size_t n) : component(n,NULL) @+{}
+   // always start out with null pointers
   virtual ~list_expression();
   virtual void evaluate() const;
   virtual void print(std::ostream& out) const;
@@ -1465,78 +1332,31 @@ void list_expression::print(std::ostream& out) const
 }
 
 
-@ If a list display has are multiple components, they must all have the same
-type, and the result type will be ``row of'' that type. There are two possible
-complications: (1)~when there are no components at all, the component type
-could be anything, and (2)~if some non-row type is required (such as vector or
-matrix) a type error may be avoided by inserting a conversion to that type,
-provided it exists and the components have an appropriate type (the simplest
-case is converting ``row of integer'' to ``vector''). Complication (1) only
-occurs if no final type is required (as in |find_type|), while (2) only occurs
-in the opposite case (as in |check_type|).
+@ If a list display has multiple components, they must all have the same
+type~$t$, and the result type will be ``row of''~$t$. If a type of that form
+is required, the components will be required to have type $t$, if no
+particular type is require then the components will just be required to have
+equal types; in addition we want to allow additional cases which can be made
+to conform by inserting conversion routines.
 
-In |find_type| we ``solve'' the problem of finding the type of an empty row
-display by arbitrarily giving it type ``row of integer''. In other cases the
-first type found will be required in all other positions; this is obtained by
-calling |check_type| instead of recursively calling |find_type|.
+The function |convert_expr| handles all this in an elegant way. As we proceed
+along the components, our type may get specialised, and in case of definitely
+unequal types we may look up if a conversion between them is defined. It may
+even happen that the type remains partly undetermined, in case of an empty
+list. The current code does have a slight asymmetry, in that types from
+previous components may guide conversions applied to later components but not
+vice versa: if some components are vectors and other are lists of integers,
+then everything will be converted to the first kind that occurs (unless the
+context requires a particular type, in which case all components are converted
+accordingly).
 
-@< Cases for finding the type of other kinds of expression... @>=
-case list_display:
-{ if (e.e.sublist==NULL) return copy(row_of_int_type);
-  type_ptr component_type=find_type(e.e.sublist->e);
-  for (expr_list l=e.e.sublist->next; l!=NULL; l=l->next)
-    check_type(*component_type,l->e);
-  return make_row_type(component_type);
-}
-
-@ As we mentioned, |check_type| has no difficulty with empty list displays,
-but it has to do something if the required type is not a row type. In most
-cases it will then have to throw a |type_error|, but there are some cases that
-can be salvaged by inserting a conversion function; the details for this will
-be given later. Note that the possibility of automatically inserting these
-conversions was one of the most compelling reasons that we chose to have type
-checking even in the very earliest versions of this interpreter.
-
-If the type required for a list display is a row type, we can simply test that
-all component expressions have the required component type. In the case where
-no known type conversion can solve the conflict between the required type and
-a list display, we want to signal an error without further checking the list
-display (since this could come across other less relevant type errors, and an
-error so thrown would preempt our attempt to signal the error), so we signal
-the type found by the pattern \.{[*]}, an unspecified row type.
-
-@< Other cases for testing whether the type of |e| matches |t|... @>=
-case list_display:
-  if (t.kind==row_type)
-    for (expr_list l=e.e.sublist; l!=NULL; l=l->next)
-      check_type(*t.component_type,l->e);
-  else
-  { @< If the type |t| can be converted from a list type, insert the
-       conversion into |e|, and check the types of the component expressions
-       in |e.e.sublist|, then |break| @>
-    actual=copy(row_of_type);
-    // otherwise signal a ``row of'' type where none can be handled
-  }
-break;
-
-
-@ The function |convert_expr| handles the cases dealt with above in an
-original manner. If the required type was completely undetermined, we
-specialise it to a row type with undetermined component type before proceeding
-recursively with the component expressions; thus we build up our type from the
-top (root) down. As a side effect of this strategy, the type will remain
-partly undefined in the case of an empty list, and it is even possible that
-for a list display whose first component has such a partly defined type, the
-further components will progressively refine this. This approach also allows
-us to conveniently merge the cases corresponding to |find_type| and
-|check_type| above. Of course we do have the additional obligation here to
-build a converted |list_expression| representing the list display; we know its
-size beforehand, and upon allocation we fill it with null pointers that will
-progressively be replaced, in order to ensure proper destruction in case a
-|type_error| is thrown by a component expression. When a type other than ``row
-of'' is expected, we must of course take explicit action to see whether some
-type conversion can resolve the conflict; as for |check_type| we postpone that
-code for now.
+We also have the obligation here to build a converted |list_expression|
+representing the list display; we know its size beforehand, and upon
+allocation we fill it with null pointers that will progressively be replaced,
+in order to ensure proper destruction in case a |type_error| is thrown by a
+component expression. When a type other than ``row of'' is expected, we must
+of course take explicit action to see whether some type conversion can resolve
+the conflict.
 
 @< Other cases for type-checking and converting... @>=
 case list_display:
@@ -1551,24 +1371,6 @@ case list_display:
   @< If |type| can be converted from some row-of type, check the components of
      |e.e.sublist| against the required type, and apply a conversion function
      to the converted expression; otherwise |throw| a |type_error| @>
-
-@ Evaluating a list display is quite straightforward. We first calculate the
-length the resulting value will have, then construct a |row_value| object of
-the proper size, pointed to by an auto-pointer and filled with null pointers.
-These null pointers are then successively replaced by the results of
-evaluating the expressions in the list display. Proceeding in this order
-guarantees that if any evaluation should throw an exception, then the results
-of previous evaluations will be destroyed.
-
-@< Cases for evaluating other kinds of expressions... @>=
-case list_display:
-{ row_ptr v(new row_value(length(e.e.sublist)));
-  size_t i=0;
-  for (expr_list l=e.e.sublist;l!=NULL; l=l->next)
-    v->val[i++]=evaluate(l->e);
-  result=v.release();
-}
-break;
 
 @ The evaluation of a |list_expression| evaluates the components in a simple
 loop and wraps the result in a |row_value|. Since evaluation pushes the
@@ -1587,87 +1389,32 @@ void list_expression::evaluate() const
 
 @*1 Conversion to rigid vectors and matrices.
 %
-The following sections deal with interfacing to the Atlas library rather than
-with the evaluator proper: they deal with converting data from the evaluator's
-``native'' format of nested lists to vectors and matrices that can be used by
-the library. Currently the conversions from the type ``row of integer'' to the
-type ``vector'' and from the types ``row of row of integer'' and ``row of
-vector'' to the type ``matrix'' are implemented. Here ``vector'' really means
-|latticetypes::Weight|, which stands for |matrix::Vector<int>|, while ``matrix''
-means |latticetypes::LatticeMatrix|, which stands for |matrix::Matrix<int>|.
-These declarations are given in~\.{structure/latticetypes\_fwd.h}, while the
-template class |matrix::Matrix| is defined in~\.{utilities/matrix.h}.
+The following sections deal particularly with interfacing to the Atlas
+library, but address a problem that would be present for other libraries as
+well: how can a user of the interpreter construct data in the internal format
+of the library, rather than that (essentially nested lists) of the
+interpreter? The answer is via conversion routines, calls of which are
+implicitly inserted when the type analysis detects their necessity. Currently
+the conversions from the type ``row of integer'' to and from the type
+``vector', as well as those from the types ``row of row of integer'' and ``row
+of vector'' to and from the type ``matrix'' are implemented. Here ``vector''
+really means |latticetypes::Weight|, which stands for |matrix::Vector<int>|,
+while ``matrix'' means |latticetypes::LatticeMatrix|, which stands for
+|matrix::Matrix<int>|. These declarations are given
+in~\.{structure/latticetypes\_fwd.h}, while the template class
+|matrix::Matrix| is defined in~\.{utilities/matrix.h}.
 
 
 @< Includes... @>=
 #include "latticetypes_fwd.h"
 #include "matrix.h" // this makes |latticetypes::LatticeMatrix| a complete type
 
-@ These conversion functions to vector and matrix will be defined below.
-
-@< Declarations of local functions @>=
-latticetypes::Weight cast_intlist_to_weight(const value);
-latticetypes::LatticeMatrix cast_intlistlist_to_matrix(const value);
-
 @*2 Inserting conversion functions.
 %
-In |check_type| we come to the code below when a list display is found in a
-position where some non-row type is required. If that required type is vector
-or matrix, we proceed as if it were row of integer respectively row of vector,
-while inserting a call to the appropriate conversion function into the
-expression tree. Since we are already past the point where the case of a
-required ``row of'' type is treated, we have to repeat its code, which is that
-of recursively calling |check_type| in a loop over the component expressions.
-We can however merge the cases of required types vector and matrix, using a
-variable~|comp| for the required component type.
-
-@< If the type |t| can be converted from a list type... @>=
-{ expr_list l=e.e.sublist; // the list of component expressions
-  type_ptr comp(NULL); // the type that they should have
-  if (t==vec_type)
-  {@; @< Insert a vector conversion at |e| @>
-    comp=copy(int_type);
-  }
-  else if (t==mat_type)
-  {@; @< Insert a matrix conversion at |e| @>
-    comp=copy(vec_type);
-  }
-  if (comp.get()!=NULL) // a substitute component type was set
-  { for (; l!=NULL; l=l->next) check_type(*comp,l->e);
-    break; // from enclosing |switch|
-  }
-}
-
-@ A function call is created by calling |make_application_node| with as
-arguments the code for a function identifier (currently the only possibility)
-and a pointer to the argument list. Here there is a single argument, namely
-the list display, so we build a singleton list from it. The function
-identifier is obtained from the main hash table, and since the conversion
-functions are not intended to be entered explicitly by the user, they are
-entered into the table under names `\.{>vec<[int]:}' and `\.{>mat<[vec]:}'
-that cannot result from user input. This module and the following one will be
-reused in other cases where a conversion function needs to be inserted.
-
-@< Insert a vector conversion at |e| @>=
-{ expr_list arg=make_exprlist_node(e,null_expr_list);
-  e=make_application_node
-       (main_hash_table->match_literal(">vec<[int]:"),arg);
-}
-
-@~The only difference between vector and matrix conversion is the name of the
-conversion function.
-
-@< Insert a matrix conversion at |e| @>=
-{ expr_list arg=make_exprlist_node(e,null_expr_list);
-  e=make_application_node
-       (main_hash_table->match_literal(">mat<[vec]:"),arg);
-}
-
-@ In the setting of |convert_expr|, the conversion to vector or matrix will be
-represented by a special kind of converted expression, which behaves like a
-function call of a fixed function. For each function a different structure
-derived from |expression_base| is used; they only differ among each other by
-their virtual methods |evaluate| and |print|.
+The conversion to vector or matrix will be represented by a special kind of
+expression, which behaves like a function call of a fixed function. For each
+function a different structure derived from |expression_base| is used; they
+only differ among each other by their virtual methods |evaluate| and |print|.
 
 @< Type definitions @>=
 struct vector_conversion : public expression_base
@@ -1722,24 +1469,18 @@ vector_conversion| of |new matrix_conversion|.
 
 @*2 Coercion of types.
 %
-The cases above, where a list display in a context requiring a vector or a
-matrix is transformed by following it by a conversion function, and the most
-important application of these conversions, since they provide a way for the
-user to enter a value of type vector or matrix that would not otherwise be
-available. However, it seems logical to provide the same conversions also when
+The most important instances where conversions are inserted are the cases
+above, where a list display occurs in a context requiring a vector or a
+matrix, since they provide a way for the user to construct vectors and
+matrices. However, it seems logical to provide the same conversions also when
 the expression is not a list display, for instance an applied identifier or a
 function call. In those cases the need for a conversion will usually arise
 from a difference between the required type and an already fully determined
-type of the subexpression (this is clear in case the subexpression is an
-applied identifier, and for a (non-overloaded) function call the result type
-is also available even before analysing the argument expression). Since
-multiple syntactic classes are involved, it is not attractive to handle such
-conversions separately for the various branches of the big switch on the
-expression~|kind| in the type analysis, so we put in place a general mechanism
-that will insert a conversion depending on the pair of the expression type and
-required type, if it exists. As this mechanism is fairly new, it is not
-incorporated in the obsolescent functions |find_type| and |get_type|, but only
-in |convert_expr|.
+type of the subexpression. Since multiple syntactic classes are involved, it
+is not attractive to handle such conversions separately for the various
+branches of the big switch on the expression~|kind| in the type analysis, so
+we put in place a general mechanism that will insert a conversion depending on
+the pair of the expression type and required type, if it exists.
 
 The mechanism is realised by a function |coerce|. Its final argument~|e| is a
 reference to the previously converted expression having |from_type|, and if
@@ -1779,32 +1520,15 @@ conversion_info coerce_table[]= { @<Initialiser for |coerce_table| @>@;@;};
 
 const size_t nr_coercions=sizeof(coerce_table)/sizeof(conversion_info);
 
-@ The function |coerce| simply traverses the |coerce_table| looking for an
-appropriate entry, and applies the |converter| if it finds one. As indicated
-above, it is the task of |coerce| to keep ownership while calling the
-conversion function, and switch to owning the full expression afterwards.
-
-@< Function definitions @>=
-bool coerce( const type_declarator& from_type, const type_declarator& to_type
-	   , expression_ptr& e) throw(std::bad_alloc)
-{ for (size_t i=0; i<nr_coercions; ++i)
-    if (from_type==coerce_table[i].from and to_type==coerce_table[i].to)
-    @/{@; e.reset(coerce_table[i].conv(e));
-      return true;
-    }
-  return false;
-}
-
-@ We need functions to instantiate |conversion_info::conv| from. We need to
-declare these functions before we come to the global variable definitions.
+@ We need |converter| functions to instantiate |conversion_info::conv| from.
+We need to declare these functions before we come to the global variable
+definitions.
 
 @< Declarations of local functions @>=
 expression vector_converter(expression_ptr e);
 expression matrix_converter(expression_ptr e);
 
-@ Without the burden of ownership management, the conversion-inserting
-functions are reduced to simple packaging routines; here are the ones for
-|vector_conversion| and |matrix_conversion|.
+@ The conversion-inserting functions are simple packaging routines.
 
 @< Function definitions @>=
 expression vector_converter(expression_ptr e) @+
@@ -1819,9 +1543,26 @@ conversion_info(copy(row_of_int_type), copy(vec_type), vector_converter), @/
 conversion_info(copy(row_of_vec_type), copy(mat_type), matrix_converter), @/
 @[@]
 
-@ We shall now extend our range of conversions with other possibilities. For
-each we need to define a type derived from |expression_base|; in fact we can
-derive from |vector_conversion|, like |matrix_conversion| did.
+@ The function |coerce| simply traverses the |coerce_table| looking for an
+appropriate entry, and applies the |converter| if it finds one. As indicated
+above, it is the task of |coerce| to keep ownership while calling the
+conversion function, and switch to owning the full expression afterwards.
+
+@< Function definitions @>=
+bool coerce( const type_declarator& from_type, const type_declarator& to_type
+	   , expression_ptr& e) throw(std::bad_alloc)
+{ for (conversion_info*
+       it=&coerce_table[0]; it<&coerce_table[nr_coercions]; ++it)
+    if (from_type==it->from and to_type==it->to)
+    @/{@; e.reset(it->conv(e));
+      return true;
+    }
+  return false;
+}
+
+@ We extend our range of conversions with other possibilities. For each we
+need to define a type derived from |expression_base|; in fact we can derive
+from |vector_conversion|, like for |matrix_conversion|.
 
 @<Type definitions@>=
 
@@ -1858,8 +1599,11 @@ struct int_list_list_conversion : public vector_conversion
   virtual void print(std::ostream& out) const;
 };
 
-@ The print functions are simple. They are not defined inside the structure
-definition, because in that case their second `|<<|' could not be matched.
+@ The print functions are very simple. As before, these definitions were
+nevertheless not in-lined in the structure definition, because in the header
+file type definitions come before the point where operators are declared,
+notably the instance of the operator~`|<<|' used to print the
+|expression_base| reference `|*exp|'.
 
 @< Function definitions @>=
 void matrix2_conversion::print(std::ostream& out) const
@@ -1879,7 +1623,7 @@ expression int_list_converter(expression_ptr e);
 expression vec_list_converter(expression_ptr e);
 expression int_list_list_converter(expression_ptr e);
 
-@~Their definitions are hardly surprising
+@~Their definitions are hardly surprising.
 
 @< Function definitions @>=
 expression matrix2_converter(expression_ptr e)
@@ -1914,24 +1658,29 @@ types will be considered as primitive at the level of the evaluator.
 vector_type, matrix_type, @[@]
 
 @~In choosing the short names below, we choose to hide the specific
-mathematical meaning that was implied in the names these types have in the
-Atlas software. We believe that a more extensive name might be more confusing
-that helpful to users; besides, the interpretation of the values is not
-entirely fixed (vectors are used for coweights and (co)roots as well as for
-weights, and matrices could denote either a basis or an automorphism of a
-lattice.
+mathematical meaning that was implied in the names (like |Weight|) these types
+have in the Atlas software. We believe that a more extensive name might be
+more confusing that helpful to users; besides, the interpretation of the
+values is not entirely fixed (vectors are used for coweights and (co)roots as
+well as for weights, and matrices could denote either a basis or an
+automorphism of a lattice.
 
 @< Other primitive type names @>=
 "vec", "mat", @[@]
 
-@ Here are the corresponding types derived from |value_base|.
+@ Here are the corresponding types derived from |value_base|. In the
+constructor for |vector_value|, the argument is a reference to
+|latticetypes::CoeffList|, which stands for
+|std::vector<latticetypes::LatticeCoeff>|, from which |latticetypes::Weight|
+is derived (without adding data members), and since a constructor for the
+latter from the former is defined, we can do with just one constructor for
+|vector_value|.
 
 @< Type definitions @>=
 
 struct vector_value : public value_base
 { latticetypes::Weight val;
 @)
-  explicit vector_value(const latticetypes::Weight& v) : val(v) @+ {}
   explicit vector_value(const latticetypes::CoeffList& v) : val(v) @+ {}
   ~vector_value()@+ {}
   virtual void print(std::ostream& out) const;
@@ -1960,8 +1709,10 @@ private:
 typedef std::auto_ptr<matrix_value> matrix_ptr;
 @)
 
-@ To make a small but visible difference, weights will be printed in equal
-width fields one longer than the minimum necessary.
+@ To make a small but visible difference in printing between vectors and lists
+of integers, weights will be printed in equal width fields one longer than the
+minimum necessary.
+
 @h<sstream>
 @h<iomanip>
 @< Function def... @>=
@@ -2000,25 +1751,28 @@ void matrix_value::print(std::ostream& out) const
 
 @*2 Implementing the conversion functions.
 %
-We now define the functions that perform the required conversions at run time:
-these are the functions |cast_intlist_to_weight| and
-|cast_intlistlist_to_matrix|. Both of these use an auxiliary function
-|row_to_weight|, which constructs a new |Weight| value while leaving the task
-to clean up the original |value| to their caller. These callers ensure that
-this destruction takes place regardless of the possible raising of exceptions
-by immediately converting their argument to a |row_ptr|. In retrospect it
-might have been better to define them as wrapper functions, which in the
-current set-up still remains to be done later.
+The conversions into vectors or matrices these use an auxiliary function
+|row_to_weight|, which constructs a new |Weight| from a row of integers,
+leaving the task to clean up that row to their caller.
 
 Note that |row_to_weight| returns its result by value (rather than by
 assignment to a reference parameter); in principle this involves making a copy
 of the vector |result| (which includes duplicating its entries). However since
 there is only one |return| statement, the code generated by a decent compiler
-like \.{g++} creates the vector object at its destination in this case, and
-does not call the copy constructor (more generally this is avoided if all
-|return| statements use the same variable). So we shall not hesitate to use
-this idiom henceforth; in fact, while it was exceptional when this code was
-first written, it is now being used throughout the Atlas library.
+like \.{g++} creates the vector object directly at its destination in this
+case (whose location is passed as a hidden pointer argument), and does not
+call the copy constructor at all More generally this is avoided if all
+|return| statements return the same variable, or if all of them return
+expressions instead. So we shall not hesitate to use this idiom henceforth; in
+fact, while it was exceptional when this code was first written, it is now
+being used throughout the Atlas library.
+
+For |vector_conversion|, the |evaluate| method is easy, and follows a pattern
+that we shall see a lot more: evaluate the subexpression, pop the result off
+the |execution_stack| while converting it to an appropriate auto-pointer,
+then produce and push the resulting |value|. The conversion to the
+appropriate kind of pointer is safe since we type-checked the expression, and
+the auto-pointer will clean up the used argument.
 
 @< Function definition... @>=
 latticetypes::Weight row_to_weight(const row_value& r)
@@ -2028,92 +1782,61 @@ latticetypes::Weight row_to_weight(const row_value& r)
   return result;
 }
 @)
-latticetypes::Weight cast_intlist_to_weight(const value v)
-{ row_ptr r(force<row_value>(v));
-  return row_to_weight(*r); // destroys |*r| on returning
-}
-
-@ Converting to a lattice matrix is slightly longer but not really more
-complicated. When the call was inserted by the code above, the components of
-the list display will have type ``vector'' (possibly after conversion from
-``row of integer''), but this function accepts a ``row of row of integer''
-value as well (which could be the value of an applied identifier). The
-component vectors or lists will become the columns of the matrix, although
-this fact is not evident from the code below; it is due to the way in which
-the constructor of a |latticetypes::LatticeMatrix| from a
-|latticetypes::WeightList| is defined.
-
-@< Function definition... @>=
-latticetypes::LatticeMatrix cast_intlistlist_to_latmat(const value v)
-{ row_ptr rr(force<row_value>(v)); // we must destroy |*rr| at end
-@/latticetypes::WeightList res_vec;
-  res_vec.reserve(rr->val.size());
-  size_t depth=0; // maximal length of vectors
-  for(size_t i=0; i<rr->val.size(); ++i)
-  { row_value* r=dynamic_cast<row_value*>(rr->val[i]);
-    if (r!=NULL) // case of conversion from \.{[[int]]}
-      res_vec.push_back(row_to_weight(*r));
-    else // case of conversion from \.{[vec]}
-      res_vec.push_back(force<vector_value>(rr->val[i])->val);
-    if (res_vec[i].size()>depth) depth=res_vec[i].size();
-  }
-  for(size_t i=0; i<res_vec.size(); ++i) // extend weights with 0's if necessary
-    if (res_vec[i].size()<depth)
-    { size_t j=res_vec[i].size();
-      res_vec[i].resize(depth);
-      for (;j<depth; ++j) res_vec[i][j]=0;
-    }
-  return latticetypes::LatticeMatrix(res_vec);
-}
-
-@ For |vector_conversion| and |matrix_conversion|, the |evaluate| methods are
-relatively easy; we know that when a |matrix_conversion| was generated, the
-expression |exp| returns a value of type \.{[vec]} (a row of vectors).
-
-@< Function definitions @>=
 void vector_conversion::evaluate() const
 { exp->evaluate(); @+ row_ptr r(get<row_value>());
   push_value(new vector_value(row_to_weight(*r)));
 }
-@)
+
+@ For |matrix_conversion|, the |evaluate| method is longer, but still
+straightforward. Since the type of the argument was checked to be \.{[vec]},
+we can safely cast the argument pointer to |(row_value*)|, and each of its
+component pointers to |(vector_value*)|. Any ragged columns are silently
+extended will null entries to make a rectangular shape for the matrix.
+
+@< Function definitions @>=
 void matrix_conversion::evaluate() const
 { exp->evaluate(); @+ row_ptr r(get<row_value>());
-@/latticetypes::WeightList res_vec;
-  res_vec.reserve(r->val.size());
+@/latticetypes::WeightList column_list;
+  column_list.reserve(r->val.size());
   size_t depth=0; // maximal length of vectors
   for(size_t i=0; i<r->val.size(); ++i)
-  { res_vec.push_back(force<vector_value>(r->val[i])->val);
-    if (res_vec[i].size()>depth) depth=res_vec[i].size();
+  { column_list.push_back(force<vector_value>(r->val[i])->val);
+    if (column_list[i].size()>depth) depth=column_list[i].size();
   }
-  for(size_t i=0; i<res_vec.size(); ++i) // extend weights with 0's if necessary
-    if (res_vec[i].size()<depth)
-    { size_t j=res_vec[i].size();
-      res_vec[i].resize(depth);
-      for (;j<depth; ++j) res_vec[i][j]=0;
+  for(size_t i=0; i<column_list.size(); ++i)
+    // extend weights with 0's if necessary
+    if (column_list[i].size()<depth)
+    { size_t j=column_list[i].size();
+      column_list[i].resize(depth);
+      for (;j<depth; ++j) column_list[i][j]=0;
     }
-  push_value(new matrix_value(latticetypes::LatticeMatrix(res_vec)));
+  push_value(new matrix_value(latticetypes::LatticeMatrix(column_list)));
 }
 
-@ Here is the remaining ``internalising'' conversion function, from row of row
-of integer to matrix.
+@ The remaining ``internalising'' conversion function, from row of row of
+integer to matrix, is very similar. Only this times the argument was checked
+to be of type \.{[[int]]}, so we cast the component pointers to
+|(row_value*)|, and then use |row_to_weight| to build column vectors to be
+used by the matrix constructor.
 
 @< Function definitions @>=
 void matrix2_conversion::evaluate() const
 { exp->evaluate(); @+ row_ptr r(get<row_value>());
-@/latticetypes::WeightList res_vec;
-  res_vec.reserve(r->val.size());
+@/latticetypes::WeightList column_list;
+  column_list.reserve(r->val.size());
   size_t depth=0; // maximal length of vectors
   for(size_t i=0; i<r->val.size(); ++i)
-  { res_vec.push_back(row_to_weight(*force<row_value>(r->val[i])));
-    if (res_vec[i].size()>depth) depth=res_vec[i].size();
+  { column_list.push_back(row_to_weight(*force<row_value>(r->val[i])));
+    if (column_list[i].size()>depth) depth=column_list[i].size();
   }
-  for(size_t i=0; i<res_vec.size(); ++i) // extend weights with 0's if necessary
-    if (res_vec[i].size()<depth)
-    { size_t j=res_vec[i].size();
-      res_vec[i].resize(depth);
-      for (;j<depth; ++j) res_vec[i][j]=0;
+  for(size_t i=0; i<column_list.size(); ++i)
+    // extend weights with 0's if necessary
+    if (column_list[i].size()<depth)
+    { size_t j=column_list[i].size();
+      column_list[i].resize(depth);
+      for (;j<depth; ++j) column_list[i][j]=0;
     }
-  push_value(new matrix_value(latticetypes::LatticeMatrix(res_vec)));
+  push_value(new matrix_value(latticetypes::LatticeMatrix(column_list)));
 
 }
 
@@ -2194,27 +1917,6 @@ void tuple_expression::print(std::ostream& out) const
 }
 
 
-@ We must now add the relevant cases for the variant |tuple_display| to the
-functions |find_type|, |check_type|, and~|convert_expr|. Calling |find_type|
-for a tuple display, we must collect the types in a tuple type, which is again
-a linked list. This recursive activity most easily done by a recursive
-function.
-
-@< Declarations of local functions @>=
-type_list_ptr find_type_list(expr_list);
-
-@~Given this function, all we need to do call it and wrap up.
-
-@< Cases for finding the type of other kinds of expressions... @>=
-case tuple_display:  return make_tuple_type(find_type_list(e.e.sublist));
-
-@ The definition of this recursive function is straightforward.
-@< Function def...@>=
-type_list_ptr find_type_list(expr_list l)
-{ if (l==NULL) return type_list_ptr(NULL);
-  return make_type_list(find_type(l->e),find_type_list(l->next));
-}
-
 @ For type checking, we shall need a tuple pattern with any number of unknown
 components.
 
@@ -2231,50 +1933,12 @@ type_ptr unknown_tuple(size_t n)
 }
 
 
-@ If in |check_type| the type required for a tuple display is a tuple type, we
-can simply test that all component expressions have the required number and
-component types. If not, we call a type error with an instance of
-|unknown_tuple|, since we did not in fact type-check the component
-expressions.
-
-@< Other cases for testing whether the type of |e| matches |t|... @>=
-case tuple_display:
-  if (t.kind==tuple_type)
-    @< Check that the components of |e.e.sublist| has the number and types
-       specified by |t.tuple| @>
-  else actual=unknown_tuple(length(e.e.sublist));
-break;
-
-
-@ If we did find a tuple display where a tuple type was required, but the
-number of components does not match, we throw a |program_error| rather than a
-|type_error| to indicate the problem, since the format of a |type_error| value
-is not well suited to this case (but see the next section for a way to use it
-anyway). The solution adopted is quite coarse, and it does not single out the
-offending tuple. Note that we do signal a |type_error| that is found in the
-initial components, even if the number of components should disagree; we only
-complain about the number of components if we run out either of component
-types or of component expressions to check, without finding any erroneous
-types in the preceding components.
-
-@< Check that the components of |e.e.sublist| has the number and types
-       specified by |t.tuple| @>=
-{ expr_list a=e.e.sublist; type_list l=t.tuple;
-  for (; a!=NULL and l!=NULL; a=a->next,l=l->next)
-    check_type(l->t,a->e);
-  if (a!=NULL or l!=NULL) throw @|
-      program_error("Too "+ std::string(a==NULL ? "few" : "many")
-		   +" components in tuple");
-@.Too few components in tuple@>
-@.Too many components in tuple@>
-}
-
 @ When converting a tuple expression, we first try to specialise an unknown
 type to a tuple with the right number of components; unless the type was
 completely undetermined, this just amounts to a test that it is a tuple type
-with the right number of components. Here we report a wrong number of
-components via a type pattern, which is probably as clear as mentioning too
-few or too many components.
+with the right number of components. We report a wrong number of components
+via a type pattern, which is probably as clear as mentioning too few or too
+many components.
 
 @< Other cases for type-checking and converting... @>=
 case tuple_display:
@@ -2293,11 +1957,11 @@ break;
 
 @*2 Evaluating tuple displays.
 %
-Evaluating a tuple display is much like evaluating a list display. Thanks to
-dynamically typed values, we can collect the components of a tuple in a vector
-without problem. In fact we could reuse the type |row_value| to hold the
-components of a tuple, if it weren't for the fact that it would print with
-brackets, as a list. Therefore let us trivially derive a new class from
+Evaluating a tuple display is much like evaluating a list display. Since we
+use dynamically typed values internally, we can collect the components of a
+tuple in a vector without problem. In fact we could reuse the type |row_value|
+to hold the components of a tuple, if it weren't for the fact that it would
+then print with brackets. Therefore we trivially derive a new class from
 |row_value|.
 
 @< Type definitions @>=
@@ -2363,19 +2027,6 @@ void wrap_tuple(size_t n)
     result->val[n]=pop_value();
   push_value(result);
 }
-
-@ We could use the same code as for list displays to evaluate a tuple display.
-However, since tuples are usually small and we have |wrap_tuple| available, we
-can do it more concisely as follows.
-
-@< Cases for evaluating other kinds of expressions... @>=
-case tuple_display:
-{ for (expr_list l=e.e.sublist; l!=NULL; l=l->next)
-    push_value(evaluate(l->e));
-  wrap_tuple(length(e.e.sublist));
-  result=pop_value();
-}
-break;
 
 @ The evaluation of a tuple display evaluates the components in a simple loop
 and wraps the result in a |tuple_value|, which is accomplished by
@@ -2554,46 +2205,10 @@ not own the types coming from the table, we must copy them if we want to
 export them, either as type of the call or in the error value thrown in case
 of a type mismatch.
 
-@< Cases for finding the type of other kinds of expressions... @>=
-case function_call:
-{ type_declarator* f_type=global_id_table->type_of(e.e.call_variant->fun);
-  if (f_type==NULL || f_type->kind!=function_type)
-    throw program_error("Call of "
-                        + std::string(f_type==NULL ? "unknown " : "non-" )
-			+"function '"
-			+ main_hash_table->name_of(e.e.call_variant->fun)
-		        +"'");
-@.Call of unknown function@>
-@.Call of non-function@>
-  check_type(f_type->func->arg_type,e.e.call_variant->arg);
-  return copy(f_type->func->result_type);
-}
-
-@ When a function call appears where a fixed type is expected, we first test
-that the function returns this type, and then go on to check the types of the
-arguments.
-
-@< Other cases for testing whether the type of |e| matches |t|... @>=
-case function_call:
-{ type_declarator* f_type=global_id_table->type_of(e.e.call_variant->fun);
-  if (f_type==NULL || f_type->kind!=function_type)
-    throw program_error("Call of "
-                        + std::string(f_type==NULL ? "unknown " : "non-" )
-			+"function '"
-			+ main_hash_table->name_of(e.e.call_variant->fun)
-		        +"'");
-@.Call of unknown function@>
-@.Call of non-function@>
-  if (f_type->func->result_type!=t)
-    actual=copy(f_type->func->result_type); // signal an error
-  else check_type(f_type->func->arg_type,e.e.call_variant->arg);
-}
-break;
-
-@ In the function |convert_expr| we first get the function from the identifier
+In the function |convert_expr| we first get the function from the identifier
 table, test if it is known and of function type, then type-check and convert
 the argument expression, and build a converted function call~|call|. Finally
-we test if the required type matches the return type (in which case we simple
+we test if the required type matches the return type (in which case we simply
 return~|call|), or if the return type can be coerced to it (in which case we
 return |call| as transformed by |coerce|); if neither is possible we throw
 a~|type_error|.
@@ -2621,14 +2236,10 @@ case function_call:
 
 @*2 Evaluating function calls.
 %
-The evaluation of a function call is usually demanded explicitly by the user,
-but |check_type| may have inserted calls of conversion functions that will
-also be executed by the part of |evaluate| given below (the result of
-|conv_expr| however does not encode conversions by ordinary function calls).
-In either case what is really executed is a ``wrapper function'', that usually
-consists of a call to a library function sandwiched between unpacking and
-repacking statements; in some simple cases a wrapper function may decide to do
-the entire job itself.
+The evaluation of the call of a built-in function executes is a ``wrapper
+function'', that usually consists of a call to a library function sandwiched
+between unpacking and repacking statements; in some simple cases a wrapper
+function may decide to do the entire job itself.
 
 The arguments and results of wrapper functions will be transferred from and to
 stack as a |value|, so a wrapper function has neither arguments nor a result
@@ -2646,7 +2257,6 @@ struct builtin_value : public value_base
   std::string print_name;
   builtin_value(wrapper_function v,const char* n)
   : val(v), print_name(n) @+ {}
-  ~builtin_value()@+ {} // don't try to destroy the function pointed to!
   virtual void print(std::ostream& out) const
   @+{@; out << ':' << print_name << ':'; }
   builtin_value* clone() const @+{@; return new builtin_value(*this); }
@@ -2654,31 +2264,11 @@ struct builtin_value : public value_base
 private:
   builtin_value(const builtin_value& v)
   : val(v.val), print_name(v.print_name)
-  {} // copy constructor, used by |clone|
+  @+{}
 };
 @)
 typedef std::auto_ptr<builtin_value> builtin_ptr;
 
-
-@ Finally we can say what to do when a function call is requested. Recall that
-for the moment the function expression is always an identifier, so the
-associated (wrapper function) value can be found in the |global_id_table|.
-
-@< Cases for evaluating other kinds of expressions... @>=
-case function_call:
-{ push_value(evaluate(e.e.call_variant->arg));
-    // evaluate and push argument
-  std::string name=main_hash_table->name_of(e.e.call_variant->fun);
-    // for error messages
-  value f_val=global_id_table->value_of(e.e.call_variant->fun);
-  if (f_val==NULL) throw
-    std::logic_error("built-in function absent: "+name);
-@.built-in function absent@>
-  force<builtin_value>(f_val)->val();
-  // call the wrapper function, leaving result on the stack
-  result=pop_value(); // get the result to return it from |evaluate|
-}
-break;
 
 @ To evaluate a |call_expression| object we evaluate the arguments, get and
 check the wrapper function, and call it. Since values are handled via the
@@ -2694,11 +2284,56 @@ void call_expression::evaluate() const
   // call the wrapper function, leaving result on the stack
 }
 
+@*1 Invoking the type checker.
+%
+Let us recapitulate what will happen. The parser will read what the user
+types, and returns an |expr| value. Then we shall call |convert_expr| for this
+value, and if this does not throw any exceptions, we are ready to call
+|evaluate| (for the |expr| value that may have been modified by the insertion
+of conversion functions) of the |evaluate| method of the |expression| value
+returned by |convert_expr|; after this main program will print the result. The
+call to |convert_expr| is done via |analyse_types|.
+
+@< Declarations of exported functions @>=
+type_ptr analyse_types(const expr& e,expression_ptr& p)
+   throw(std::bad_alloc,std::runtime_error);
+
+@~An important reason for having this function is that it will give us an
+occasion to catch any thrown |type_error| and |program_error| exceptions,
+something we did not want to do inside the (implicitly) recursive function
+|convert_expr|; since we cannot return normally from |analyse_types| in the
+presence of these errors, we map these errors to |std::runtime_error|, an
+exception for which the code that calls us will have to provide a handler
+anyway.
+
+@< Function definitions @>=
+type_ptr analyse_types(const expr& e,expression_ptr& p)
+  throw(std::bad_alloc,std::runtime_error)
+{ try
+  {@; type_ptr type=copy(unknown_type);
+    p.reset(convert_expr(e,*type));
+    return type;
+  }
+  catch (type_error& err)
+  { std::cerr << err.what() << std::endl <<
+    "Subexpression " << err.offender << @|
+    " has wrong type: found " << *err.actual << @|
+    " while " << *err.required << " was needed.\n";
+@.Subexpression has wrong type@>
+  }
+  catch (program_error& err)
+  {@; std::cerr << err.what() <<
+          " in expression '" << e << "'\n";
+  }
+  throw std::runtime_error("Type check failed");
+@.Type check failed@>
+}
+
 @*1 Wrapper functions.
 %
 We have not defined any wrapper functions yet, and therefore have nothing in
-the |global_id_table|. Let us start with some preparations for the former.
-Wrapper functions will routinely have to do some unpacking of values, which
+the |global_id_table|. We start with some preparations for defining wrapper
+functions. They will routinely have to do some unpacking of values, which
 will involve dynamically casting the |value| to the type they are known to
 have because we passed the type checker; should the cast fail we shall throw a
 |std::logic_error|. We define a template function to do the unpacking for
@@ -2719,18 +2354,11 @@ template <typename D> // |D| is a type derived from |value_base|
 }
 @.Argument is no ...@>
 
-@ Here are our first wrapper functions. The function |id_wrapper| is a trivial
-function, but it will be put into the |main_id_table| under different names
-and signatures, each forcing a particular argument type.
+@ Our first wrapper function is a trivial one, but which will be put
+into the |global_id_table| under different names and signatures, each forcing
+a particular argument type.
 
 @< Function definitions @>=
-void intlist_to_weight_wrapper ()
-{@; push_value(new vector_value(cast_intlist_to_weight(pop_value())));
-}
-
-void intlistlist_to_latmat_wrapper ()
-{@; push_value(new matrix_value(cast_intlistlist_to_latmat(pop_value())));
-}
 
 void id_wrapper () @+{} // nothing to do, value stays on the stack
 
@@ -2751,77 +2379,19 @@ inline void install_function
                       ,new builtin_value(f,name),make_type(type));
 }
 
-@~Although they would not get type-checked since they are
-inserted automatically, we do put types in place for the wrapper functions
-|intlist_to_weight_wrapper| and |intlistlist_to_latmat_wrapper| defined above.
+@ Here we install the trivial wrapper function under two different identity
+signatures.
 
 @< Function definitions @>=
 void initialise_evaluator()
 { execution_stack.reserve(16); // avoid some early reallocations
 @)
-  install_function(intlist_to_weight_wrapper,">vec<[int]:","([int]->vec)");
-  install_function(intlistlist_to_latmat_wrapper
-                  ,">mat<[vec]:","([vec]->mat)");
   install_function(id_wrapper,"vec","(vec->vec)");
   install_function(id_wrapper,"mat","(mat->mat)");
 @/@< Installation of other built-in functions @>
 }
 
-@*1 Invoking the type checker.
-%
-Let us recapitulate what will happen. The parser will read what the user
-types, and returns an |expr| value. Then we shall call |find_type| or
-|convert_expr| for this value, and if this does not throw any exceptions, we
-are ready to call |evaluate| (for the |expr| value that may have been modified
-by the insertion of conversion functions) of the |evaluate| method of the
-|expression| value returned by |convert_expr|; after this main program will
-print the result. The invocation of the type checker is done by a call to
-|analyse_types|. Its signature allows it to be based either on |find_type| or
-|convert_expr|; in the former case the pointer~|p| will be made null.
-
-@< Declarations of exported functions @>=
-type_ptr analyse_types(const expr& e,expression_ptr& p)
-   throw(std::bad_alloc,std::runtime_error);
-
-@~The main reason for having this function this function will give us an
-occasion to catch any thrown |type_error| and |program_error| exceptions,
-something we did not want to do inside the recursive functions |find_type|,
-|check_type| and |convert_expr|; since we cannot return normally from
-|analyse_types| in the presence of these errors, we map these errors to
-|std::runtime_error|, an exception for which the code that calls us will have
-to provide a handler anyway.
-
-The choice between |find_type| and |convert_expr| is currently based on
-|verbosity|, so that the user may switch between two forms of evaluation
-dynamically; this will however go away soon (only |convert_expr| will remain).
-
-@< Function definitions @>=
-type_ptr analyse_types(const expr& e,expression_ptr& p)
-  throw(std::bad_alloc,std::runtime_error)
-{ try
-  { if (verbosity==0) {@; p.reset(); return find_type(e); }
-    type_ptr type=copy(unknown_type);
-    p.reset(convert_expr(e,*type));
-    return type;
-  }
-  catch (type_error& err)
-  { std::cerr << err.what() << std::endl <<
-    "Subexpression " << err.offender << @|
-    " has wrong type: found " << *err.actual << @|
-    " while " << *err.required << " was needed.\n";
-@.Subexpression has wrong type@>
-  }
-  catch (program_error& err)
-  { std::cerr << err.what() <<
-          " in expression '" << e << "'\n";
-  }
-  throw std::runtime_error("Type check failed");
-@.Type check failed@>
-}
-
-@*1 Some built-in functions.
-%
-We shall now introduce some real built-in functions, starting with integer
+@ We shall now introduce some real built-in functions, starting with integer
 arithmetic. Arithmetic operators are implemented by wrapper functions with two
 integer arguments (or one in the case of unary minus). Note that the values
 are pulled from the stack in reverse order, which is important for the
@@ -2893,19 +2463,6 @@ void print_wrapper ()
   *output_stream << s->val << std::endl;
   wrap_tuple(0); // don't forget to return a value
 }
-
-@ We install the function above. The names of  the arithmetic operators
-correspond to the ones used in the parser definition file \.{parser.y}.
-
-@< Installation of other built-in functions @>=
-install_function(plus_wrapper,"+","(int,int->int)");
-install_function(minus_wrapper,"-","(int,int->int)");
-install_function(times_wrapper,"*","(int,int->int)");
-install_function(divide_wrapper,"/","(int,int->int)");
-install_function(modulo_wrapper,"%","(int,int->int)");
-install_function(unary_minus_wrapper,"-u","(int->int)");
-install_function(divmod_wrapper,"/%","(int,int->int,int)");
-install_function(print_wrapper,"print","(string->)");
 
 
 @ We now define a few functions, to really exercise something, even if it is
@@ -3005,10 +2562,10 @@ void mm_prod_wrapper ()
   push_value(l);
 }
 
-@ Here is finally the Smith normal form algorithm. We provide both the
-invariant factors and the rewritten basis on which the normal for is assumed,
-as separate functions, and to illustrate the possibilities of tuples, the two
-combined into a single function.
+@ As a last example, here is the Smith normal form algorithm. We provide both
+the invariant factors and the rewritten basis on which the normal for is
+assumed, as separate functions, and to illustrate the possibilities of tuples,
+the two combined into a single function.
 
 @h "smithnormal.h"
 
@@ -3065,8 +2622,19 @@ void invert_wrapper ()
 @/push_value(m); push_value(denom); wrap_tuple(2);
 }
 
-@ We must not forget to install what we have defined
+@ We must not forget to install what we have defined. The names of the
+arithmetic operators correspond to the ones used in the parser definition
+file \.{parser.y}.
+
 @< Installation of other built-in functions @>=
+install_function(plus_wrapper,"+","(int,int->int)");
+install_function(minus_wrapper,"-","(int,int->int)");
+install_function(times_wrapper,"*","(int,int->int)");
+install_function(divide_wrapper,"/","(int,int->int)");
+install_function(modulo_wrapper,"%","(int,int->int)");
+install_function(unary_minus_wrapper,"-u","(int->int)");
+install_function(divmod_wrapper,"/%","(int,int->int,int)");
+install_function(print_wrapper,"print","(string->)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
 install_function(transpose_mat_wrapper,"transpose_mat","(mat->mat)");
 install_function(diagonal_wrapper,"diagonal_mat","(vec->mat)");
@@ -3102,24 +2670,11 @@ struct identifier_expression : public expression_base
 void identifier_expression::print(std::ostream& out) const
 {@; out<< main_hash_table->name_of(code); }
 
-@ To evaluate an applied identifier, we just pick the value from the
+@ The method |identifier_expression::evaluate| just picks the value from the
 identifier table, not forgetting to duplicate it, since values are destroyed
 after being used in evaluation. Actually implementing this the first time was
 more work than it would seem, since we had to introduce the |clone| virtual
 method of |value_base| (and types derived from it) in order to do it.
-
-@< Cases for evaluating other kinds of expressions... @>=
-case applied_identifier:
-{ value p=global_id_table->value_of(e.e.identifier_variant);
-  if (p==NULL) throw std::logic_error
-  @|   ("Identifier without value:"
-	+main_hash_table->name_of(e.e.identifier_variant));
-@.Identifier without value@>
-  result=p->clone();
-}
-break;
-
-@ The method |identifier_expression::evaluate| follows the same scheme.
 
 @< Function definitions @>=
 void identifier_expression::evaluate() const
@@ -3130,46 +2685,8 @@ void identifier_expression::evaluate() const
   push_value(p->clone());
 }
 
-@ For finding the type, matters are quite the same: we just copy a type
-plucked from the table.
-
-@< Cases for finding the type of other kinds of expressions... @>=
-case applied_identifier:
-{ type_declarator* it=global_id_table->type_of(e.e.identifier_variant);
-  if (it==NULL) throw program_error
-  @|   ("Undefined identifier "
-	+main_hash_table->name_of(e.e.identifier_variant));
-@.Undefined identifier@>
-  return copy(*it);
-}
-
-@ For an applied identifier there is not much difference in type checking for
-the case where a definite type is required: the type found in the table must
-now equal the specified one. Only we must cater for the fact that the types
-only match after conversion. In this case we cannot push down the conversion
-into the expression as we did for list displays so we must handle simple and
-composite conversions.
-
-@< Other cases for testing whether the type of |e| matches |t|... @>=
-case applied_identifier:
-{ type_declarator* it=global_id_table->type_of(e.e.identifier_variant);
-  if (it==NULL) throw program_error
-  @|   ("Undefined identifier "
-	+main_hash_table->name_of(e.e.identifier_variant));
-@.Undefined identifier@>
-  if (*it!=t)
-  { if (t==vec_type && *it==row_of_int_type)
-      @< Insert a vector conversion at |e| @>
-    else if (t==mat_type and
-           (*it==row_row_of_int_type or *it==row_of_vec_type))
-      @< Insert a matrix conversion at |e| @>
-    else actual=copy(*it); // if no conversion works, signal an error
-  }
-}
-break;
-
-@ For |convert_expr| the logic is similar, but we use the general |coerce|
-routine.
+@ For an applied identifier the type found in the table must equal the
+specified one, or be convertible using |coerce|.
 
 @< Other cases for type-checking and converting... @>=
 case applied_identifier:
@@ -3236,58 +2753,17 @@ void matrix_subscription::print(std::ostream& out) const
     out << *array << '[' << *p->component[0] << ',' << *p->component[1] << ']';
 }
 
-@ Here is the case for subscriptions in |find_type|; we only treat the case of
-subscription from a row, since this implementation is of temporary use anyway.
-Upon success we avoid copying the component type from the row type found,
-since |array_type| is going to destruct its component just after; rather we
-copy the pointer into an auto-pointer and then reset the original pointer
-to~|NULL|.
-
-@< Cases for finding the type of other kinds of expressions... @>=
-case subscription:
-{ type_ptr array_type=find_type(e.e.subscription_variant->array);
-  type_ptr index_type=find_type(e.e.subscription_variant->index);
-  if (*index_type!=int_type)  throw type_error
-      (e.e.subscription_variant->index,index_type,copy(int_type));
-  else if (array_type->kind!=row_type) throw type_error
-      (e.e.subscription_variant->array,array_type,copy(row_of_type));
-  else
-  { type_ptr result_type(array_type->component_type);
-    array_type->component_type=NULL;
-    return result_type;
-  }
-}
-
-@ When a subscription appears where a fixed type is expected, one might
-imagine testing the index first and then imposing the corresponding row-of
-type on the array expression. However, this is not a good idea in general,
-since subscription from different aggregate types, such as \.{[int]} and
-\.{vec} might produce the same type as result, so we cannot reliably predict
-the type of the array expression. Therefore this code proceeds along the same
-lines as that of the previous section.
-
-@< Other cases for testing whether the type of |e| matches |t|... @>=
-case subscription:
-{ type_ptr array_type=find_type(e.e.subscription_variant->array);
-  type_ptr index_type=find_type(e.e.subscription_variant->index);
-  if (*index_type!=int_type)  throw type_error
-      (e.e.subscription_variant->index,index_type,copy(int_type));
-  else if (array_type->kind!=row_type) throw type_error
-      (e.e.subscription_variant->array,array_type,copy(row_of_type));
-  else if (*array_type->component_type!=t)
-   // then signal type error for entire subscription
-  @/{@; actual=type_ptr(array_type->component_type);
-    array_type->component_type=NULL;
-  }
-}
-break;
-
 @ When encountering a subscription in |convert_expr|, we determine the types
-of array and index expression separately. Then we look if the types agree with
-any of the four types of subscription expressions that we can convert to.
-If none match,
- or to signal an error if none
-applies.
+of array and of the indexing expression separately, ignoring so far any type
+required by the context. Then we look if the types agree with any of the three
+types of subscription expressions that we can convert to, throwing an error if
+none does. Finally we check is the a priori type |subscr_type| of the
+subscripted expression equals of specialises the required |type|, or can be
+converted to it by |coerce|, again throwing an error if nothing works. For the
+indexing expression only equality of types is admitted, since nothing can be
+coerced to \.{int} or to \.{(int,int)} anyway, and there is little point in
+catering for (indexing) expressions having completely undetermined type (which
+can only happen for expressions that cannot be evaluated without error).
 
 @< Other cases for type-checking and converting... @>=
 case subscription:
@@ -3302,7 +2778,7 @@ case subscription:
     if (index_type!=int_type) throw type_error
       (e.e.subscription_variant->index,copy(index_type),copy(int_type));
     else
-    { subscr_type.specialise(*array_type.component_type);
+    { subscr_type.specialise(*array_type.component_type); // type after indexing
       subscr.reset(new row_subscription(array,index));
     }
   else if (array_type==vec_type)
@@ -3328,23 +2804,12 @@ case subscription:
 }
 
 
-@ Evaluating subscriptions is currently very inefficient, since it requires a
-copy of the array object to be evaluated, of which all but one component will
-be thrown away. Later we should optimise at least the case where the array
-object is given by an applied identifier, to avoid the copy.
-
-@< Cases for evaluating other kinds of expressions... @>=
-case subscription:
-{ row_ptr array(force<row_value>(evaluate(e.e.subscription_variant->array)));
-  int_ptr index(force<int_value>(evaluate(e.e.subscription_variant->index)));
-  if (static_cast<unsigned int>(index->val)>=array->val.size())
-    throw std::runtime_error("Index "+num(index->val)+" out of range");
-  result=array->val[index->val]->clone();
-}
-break;
-
 @ Here are the |evaluate| methods for the various subscription expressions.
-For |matrix_subscription|, note that |push_tuple_components()| takes care of
+Evaluating subscriptions is currently very inefficient, since it requires a
+copy of the array object to be evaluated, of which all but one component will
+be thrown away. This situation should be repaired by allowing for sharing of
+pointers to runtime values, with of course a modified notion of ownership. For
+|matrix_subscription|, note that |push_tuple_components()| takes care of
 giving access to the individual index values without ownership conflict (by
 the time |j| and |i| are accessed, the tuple is already destroyed, but its
 components survive).
@@ -3403,8 +2868,7 @@ be activated.
 @< Global variable definitions @>=
 int verbosity=0;
 
-@*1 Built-in types defined elsewhere.
-In order for this compilation unit to function properly, it must know of the
+@ In order for this compilation unit to function properly, it must know of the
 existence and names for other built-in types. We could scoop up these names
 using clever \&{\#include} directives, but that is not really worth the hassle
 (when adding such types you have to recompile this unit anyway; it is not so
@@ -3422,9 +2886,19 @@ the final enumeration value |nr_of_primitive_types|).
 complex_lie_type_type , root_datum_type, inner_class_type, real_form_type,
 dual_real_form_type, Cartan_class_type, @[@]
 
+@ It is useful to print type information, either for a single expression or for
+all identifiers in the table. We declare the pointer that was already used in
+|print_wrapper|.
 
-@*1 Making global definitions.
-For the moment, applied identifiers can only get their value through the
+@< Declarations of global variables @>=
+extern std::ostream* output_stream;
+
+@ The |output_stream| will normally point to |std::cout|.
+
+@< Global variable definitions @>=
+std::ostream* output_stream= &std::cout;
+
+@ For the moment, applied identifiers can only get their value through the
 function |global_set_identifier| that was declared in \.{parsetree.h}. We
 define it here since it uses the services of the evaluator. It will be called
 by the parser for global identifier definitions (simple or multiple);
@@ -3437,7 +2911,7 @@ in |global_id_table|. To provide some feedback to the user we report the type
 assigned, but not the value since this might result in more output than is
 desirable in case of an assignment.
 
- A |std::runtime_error| may be thrown either during the initial analysis of
+A |std::runtime_error| may be thrown either during the initial analysis of
 the assignment statement or during type check or evaluation, and we catch all
 those cases here. Note however that no exception can be thrown between the
 successful return from |evaluate| and a non-multiple assignment, so we can use
@@ -3456,7 +2930,7 @@ void global_set_identifier(expr_list ids, expr rhs)
     if (ids->next!=NULL)
       @< Check that identifiers are distinct and that |t| is an appropriate
          tuple type; if not, |throw| a |runtime_error| @>
-    value v= e.get()==NULL ? evaluate(rhs) :(e->evaluate(),pop_value());
+    value v= (e->evaluate(),pop_value());
     if (ids->next==NULL)
     { cout << "Identifier " << ids->e << ": " << *t << std::endl;
       global_id_table->add(ids->e.e.identifier_variant,v,t); // releases |t|
@@ -3531,20 +3005,6 @@ the tuple value. We report the type of each variable assigned separately.
   }
 }
 
-@*1 Printing type information.
-%
-It is useful to print type information, either for a single expression or for
-all identifiers in the table. We declare the pointer that was already used in
-|print_wrapper|.
-
-@< Declarations of global variables @>=
-extern std::ostream* output_stream;
-
-@ The |output_stream| will normally point to |std::cout|.
-
-@< Global variable definitions @>=
-std::ostream* output_stream= &std::cout;
-
 @ The function |type_of_expr| prints the type of a single expression, without
 evaluating it; since the expression is not limited to being a single
 identifier, we must cater for the possibility that the type analysis fails, in
@@ -3556,18 +3016,15 @@ be thrown while merely type checking).
 extern "C"
 void type_of_expr(expr e)
 { try
-  { expression_ptr p;
+  {@; expression_ptr p;
     *output_stream << "type: " << *analyse_types(e,p) << std::endl;
   }
-  catch (std::runtime_error& err) { std::cerr<<err.what()<<std::endl; }
+  catch (std::runtime_error& err) {@; std::cerr<<err.what()<<std::endl; }
 }
 
 @ The function |show_ids| prints a table of all known identifiers and their
-types. It does this by copying the identifiers from the global identifier
-table into a |map| object, and then traversing that object to print their
 types.
 
-@h <map>
 @< Function definitions @>=
 extern "C"
 void show_ids()

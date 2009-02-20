@@ -189,7 +189,7 @@ suppress printing if the uninteresting value.
     if (verbosity>0)
       *output_stream << "Type found: " << *type << endl @|
 	<< "Converted expression: " << *e << endl;
-    value v= e.get()==NULL ? evaluate(parse_tree) :(e->evaluate(),pop_value());
+    value v= (e->evaluate(),pop_value());
     static type_declarator empty(type_list_ptr(NULL));
     if (*type!=empty) *output_stream << "Value: " << *v << endl;
     destroy_expr(parse_tree); delete v;
