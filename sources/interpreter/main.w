@@ -189,10 +189,11 @@ suppress printing if the uninteresting value.
     if (verbosity>0)
       *output_stream << "Type found: " << *type << endl @|
 	<< "Converted expression: " << *e << endl;
-    value v= (e->evaluate(),pop_value());
+    e->evaluate();
+    owned_value v(pop_value()->clone());
     static type_declarator empty(type_list_ptr(NULL));
     if (*type!=empty) *output_stream << "Value: " << *v << endl;
-    destroy_expr(parse_tree); delete v;
+    destroy_expr(parse_tree);
   }
   catch (runtime_error& err)
   { if (type_OK) cerr << "Runtime error: ";

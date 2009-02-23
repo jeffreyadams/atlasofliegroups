@@ -114,6 +114,7 @@ public:
 };
 @)
 typedef std::auto_ptr<Lie_type_value> Lie_type_ptr;
+typedef std::tr1::shared_ptr<Lie_type_value> shared_Lie_type;
 
 @ The type |lietype::LieType| is defined as |std::vector<SimpleLieType>| where
 |SimpleLieType| stands for |std::pair<char,size_t>|. Therefore it
@@ -172,7 +173,7 @@ inline void skip_punctuation(const char* &p)
 {@; while (std::ispunct(*p) || std::isspace(*p)) ++p;}
 @)
 void Lie_type_wrapper() throw(std::bad_alloc,std::runtime_error)
-{ string_ptr s(get<string_value>());
+{ shared_string s=get<string_value>();
   Lie_type_ptr result(new Lie_type_value);
   size_t total_rank=0;
 @/const char* p=s->val.c_str(); skip_punctuation(p);
@@ -237,9 +238,8 @@ size_t Lie_type_value::semisimple_rank() const
 @h "prerootdata.h"
 @< Local function definitions @>=
 void Cartan_matrix_wrapper()
-{ Lie_type_ptr t(get<Lie_type_value>());
-  matrix_ptr
-    result(new matrix_value(latticetypes::LatticeMatrix()));
+{ shared_Lie_type t=get<Lie_type_value>();
+  matrix_ptr result(new matrix_value(latticetypes::LatticeMatrix()));
   prerootdata::cartanMatrix(result->val,t->val);
   push_value(result);
 }
@@ -253,7 +253,7 @@ factors of type $A_1$.
 @h "dynkin.h"
 @< Local function definitions @>=
 void type_of_Cartan_matrix_wrapper ()
-{ matrix_ptr m(get<matrix_value>());
+{ shared_matrix m=get<matrix_value>();
   push_value(new Lie_type_value(dynkin::Lie_type(m->val)));
 }
 @~Again we install our wrapper functions.
@@ -338,7 +338,7 @@ null.
 
 @< Local function definitions @>=
 void Smith_Cartan_wrapper()
-{ Lie_type_ptr t(get<Lie_type_value>());
+{ shared_Lie_type t=get<Lie_type_value>();
   vector_ptr inv_factors (new vector_value(latticetypes::CoeffList(0)));
   latticetypes::WeightList b; @+
   smithBasis(inv_factors->val,b,t->val);
@@ -366,9 +366,9 @@ call, and auto-pointers should not be used; incidentally |erase| and
 
 @< Local function definitions @>=
 void filter_units_wrapper ()
-{ tuple_value* t=force<tuple_value>(execution_stack.back());
-  matrix_value* basis=force<matrix_value>(t->val[0]);
-  vector_value* inv_f=force<vector_value>(t->val[1]);
+{ push_tuple_components();
+  shared_vector inv_f=get<vector_value>();
+  shared_matrix basis=get<matrix_value>();
   if (inv_f->val.size()!=basis->val.numColumns())
     throw std::runtime_error("Size mismatch "+
       num(inv_f->val.size())+':'+num(basis->val.numColumns())+
@@ -381,6 +381,8 @@ void filter_units_wrapper ()
     {@; inv_f->val.erase(inv_f->val.begin()+i);
         basis->val.eraseColumn(i);
     }
+  push_value(basis); push_value(inv_f);
+  wrap_tuple(2);
 }
 
 @ Here is another function, copied from |makeOrthogonal| in
@@ -449,8 +451,8 @@ modifiable reference.
 @< Local function definitions @>=
 void ann_mod_wrapper()
 { push_tuple_components();
-  int_ptr d(get<int_value>());
-  matrix_ptr m(get<matrix_value>());
+  shared_int d=get<int_value>();
+  shared_matrix m=get<matrix_value>();
 @)
   latticetypes::LatticeMatrix A=
     annihilator_modulo(m->val,d->val);
@@ -473,10 +475,10 @@ returned by |Smith_Cartan| and a matrix.
 @< Local function definitions @>=
 void replace_gen_wrapper ()
 { push_tuple_components(); // a pair
-  matrix_ptr new_generators(get<matrix_value>());
+  shared_matrix new_generators=get<matrix_value>();
   push_tuple_components(); // a pair as returned by \.{Smith\_Cartan}
-  vector_ptr inv_f(get<vector_value>());
-  matrix_ptr old_generators(get<matrix_value>());
+  shared_vector inv_f=get<vector_value>();
+  shared_matrix old_generators=get<matrix_value>();
 @)
   if (new_generators->val.numRows()!=old_generators->val.numRows())
     throw std::runtime_error("Column lengths do not match in replace_gen");
@@ -582,8 +584,8 @@ group given by a root datum.
 @< Local function def... @>=
 void basic_involution_wrapper()
 { push_tuple_components();
-@/string_ptr str(get<string_value>());
-@/Lie_type_ptr t(get<Lie_type_value>());
+@/shared_string str=get<string_value>();
+@/shared_Lie_type t=get<Lie_type_value>();
 @)matrix_ptr m
      (new matrix_value(latticetypes::LatticeMatrix()));
 @/m->val = lietype::involution
@@ -612,15 +614,15 @@ defined here.
 @< Local function def... @>=
 void based_involution_wrapper()
 { push_tuple_components();
-@/string_ptr str(get<string_value>());
-@/matrix_ptr basis(get<matrix_value>());
-@/Lie_type_ptr type(get<Lie_type_value>());
+@/shared_string str(get<string_value>());
+@/shared_matrix basis(get<matrix_value>());
+@/shared_Lie_type type(get<Lie_type_value>());
 @)
   size_t r=type->rank();
   if (basis->val.numRows()!=r or basis->val.numRows()!=r)
     throw std::runtime_error @|
     ("lattice matrix should be "+num(r)+'x'+num(r)+ " for this type");
-  matrix_ptr m
+  shared_matrix m
      (new matrix_value(latticetypes::LatticeMatrix()));
 @/m->val = lietype::involution
            (type->val,transform_inner_class_type(str->val.c_str(),type->val));
@@ -667,6 +669,7 @@ private:
 };
 @)
 typedef std::auto_ptr<root_datum_value> root_datum_ptr;
+typedef std::tr1::shared_ptr<root_datum_value> shared_root_datum;
 
 @*2 Printing root data. We shall not print the complete information contained
 in the root datum. However we do exercise the routines in \.{dynkin.cpp} to
@@ -700,7 +703,7 @@ void root_datum_value::print(std::ostream& out) const
 @ We also make the derivation of the type available by a wrapper function.
 @< Local fun...@>=
 void type_of_root_datum_wrapper()
-{ root_datum_ptr rd(get<root_datum_value>());
+{ shared_root_datum rd(get<root_datum_value>());
   push_value(new Lie_type_value(type_of_datum(rd->val)));
 }
 
@@ -716,8 +719,8 @@ type.
 @< Local function definitions @>=
 void root_datum_wrapper()
 { push_tuple_components();
-  matrix_ptr lattice(get<matrix_value>());
-  Lie_type_ptr type(get<Lie_type_value>());
+  shared_matrix lattice(get<matrix_value>());
+  shared_Lie_type type(get<Lie_type_value>());
   if (lattice->val.numRows()!=lattice->val.numColumns() @| or
       lattice->val.numRows()!=type->rank())
     throw std::runtime_error
@@ -790,16 +793,16 @@ version of the stack top.
 @< Local function definitions @>=
 void quotient_basis_wrapper()
 { push_tuple_components();
-  matrix_ptr M(get<matrix_value>());
+  shared_matrix M(get<matrix_value>());
   // leave Lie type on stack for $Smith\_Cartan$
   Smith_Cartan_wrapper(); // compute $S=Smith\_Cartan(t)$
-  value S=execution_stack.back();
+  shared_value S=execution_stack.back();
     // leave |S| on stack for call of $replace\_gen$
-  push_value(S->clone()); // push a copy for call of $filter\_units$
+  push_value(S); // push a copy for call of $filter\_units$
   filter_units_wrapper(); // compute |(C,v)|
   push_tuple_components();
-  vector_ptr v(get<vector_value>());
-  matrix_ptr C(get<matrix_value>());
+  shared_vector v(get<vector_value>());
+  shared_matrix C(get<matrix_value>());
 @/size_t d=1;
   for (size_t i=0; i<v->val.size(); ++i)
     if (v->val[i]!=0) d=arithmetic::lcm(d,v->val[i]);
@@ -833,8 +836,8 @@ $quotient\_datum(t,M)$ is equivalent to $root\_datum(t,quotient\_basis(t,M))$.
 
 @< Local function definitions @>=
 void quotient_datum_wrapper()
-{ tuple_ptr args(get<tuple_value>());
-  push_value(args->val[0]->clone()); // the Lie type, for call of $root\_datum$
+{ shared_tuple args(get<tuple_value>());
+  push_value(args->val[0]); // the Lie type, for call of $root\_datum$
   push_value(args); quotient_basis_wrapper();
 @/wrap_tuple(2); root_datum_wrapper();
 }
@@ -849,17 +852,17 @@ that all null diagonal entries are replaced by ones.
 
 @< Local function definitions @>=
 void simply_connected_datum_wrapper()
-{ Lie_type_value* type=get<Lie_type_value>(); push_value(type);
+{ shared_Lie_type type=get<Lie_type_value>(); push_value(type);
   push_value(new int_value(type->rank()));
   id_mat_wrapper();
 @/wrap_tuple(2); root_datum_wrapper();
 }
 @)
 void adjoint_datum_wrapper()
-{ Lie_type_value* type=get<Lie_type_value>(); push_value(type);
-  push_value(type->clone());
+{ shared_Lie_type type=get<Lie_type_value>(); push_value(type);
+  push_value(type);
   Cartan_matrix_wrapper(); transpose_mat_wrapper();
-  matrix_value* M=get<matrix_value>();
+  shared_matrix M=get<matrix_value>();
   for (size_t i=0; i<type->rank(); ++i)
     if (M->val(i,i)==0) M->val(i,i)=1;
   push_value(M);
@@ -882,7 +885,7 @@ for ${\bf GL}_n$.
 
 @< Local function definitions @>=
 void SL_wrapper()
-{ int_ptr n(get<int_value>());
+{ shared_int n(get<int_value>());
   if (n->val<1) throw std::runtime_error("Non positive argument for SL");
   const size_t r=n->val-1;
   Lie_type_ptr type(new Lie_type_value());
@@ -897,7 +900,7 @@ void SL_wrapper()
 }
 @)
 void GL_wrapper()
-{ int_ptr n(get<int_value>());
+{ shared_int n(get<int_value>());
   if (n->val<1) throw std::runtime_error("Non positive argument for GL");
   const size_t r=n->val-1;
   Lie_type_ptr type(new Lie_type_value());
@@ -920,21 +923,21 @@ a root datum value, and the associated Cartan matrix.
 
 @< Local function definitions @>=
 void simple_roots_wrapper()
-{ root_datum_ptr rd(get<root_datum_value>());
+{ shared_root_datum rd(get<root_datum_value>());
   latticetypes::WeightList l
     (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
   push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(l)));
 }
 @)
 void simple_coroots_wrapper()
-{ root_datum_ptr rd(get<root_datum_value>());
+{ shared_root_datum rd(get<root_datum_value>());
   latticetypes::WeightList l
     (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
   push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(l)));
 }
 @)
 void datum_Cartan_wrapper()
-{ root_datum_ptr rd(get<root_datum_value>());
+{ shared_root_datum rd(get<root_datum_value>());
   latticetypes::LatticeMatrix M = rd->val.cartanMatrix();
   push_value(new matrix_value(M));
 }
@@ -944,14 +947,14 @@ a root datum value.
 
 @< Local function definitions @>=
 void roots_wrapper()
-{ root_datum_ptr rd(get<root_datum_value>());
+{ shared_root_datum rd(get<root_datum_value>());
   latticetypes::WeightList l
     (rd->val.beginRoot(),rd->val.endRoot());
   push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(l)));
 }
 @)
 void coroots_wrapper()
-{ root_datum_ptr rd(get<root_datum_value>());
+{ shared_root_datum rd(get<root_datum_value>());
   latticetypes::WeightList l
     (rd->val.beginCoroot(),rd->val.endCoroot());
   push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(l)));
@@ -962,7 +965,7 @@ coradical, and for the sum of the coroot lattice and the radical.
 
 @< Local function definitions @>=
 void root_coradical_wrapper()
-{ root_datum_ptr rd(get<root_datum_value>());
+{ shared_root_datum rd(get<root_datum_value>());
   latticetypes::WeightList l
     (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
   l.insert(l.end(),rd->val.beginCoradical(),rd->val.endCoradical());
@@ -970,7 +973,7 @@ void root_coradical_wrapper()
 }
 @)
 void coroot_radical_wrapper()
-{ root_datum_ptr rd(get<root_datum_value>());
+{ shared_root_datum rd(get<root_datum_value>());
   latticetypes::WeightList l
     (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
   l.insert(l.end(),rd->val.beginRadical(),rd->val.endRadical());
@@ -982,7 +985,7 @@ void coroot_radical_wrapper()
 @h "tags.h"
 @< Local function definitions @>=
 void dual_datum_wrapper()
-{ root_datum_ptr rd(get<root_datum_value>());
+{ shared_root_datum rd(get<root_datum_value>());
   rootdata::RootDatum dual(rd->val,tags::DualTag());
   rd->val.swap(dual);
   push_value(rd);
@@ -1090,7 +1093,7 @@ ranks, in that order.
 
 @< Local function def...@>=
 void classify_wrapper()
-{ matrix_ptr M(get<matrix_value>());
+{ shared_matrix M(get<matrix_value>());
   size_t r=M->val.numRows();
   std::pair<size_t,size_t> p=classify_involution(M->val,r);
   push_value(new int_value(p.first)); // compact rank
@@ -1329,6 +1332,7 @@ struct inner_class_value : public value_base
 };
 @)
 typedef std::auto_ptr<inner_class_value> inner_class_ptr;
+typedef std::tr1::shared_ptr<inner_class_value> shared_inner_class;
 
 @ Here are the copy constructor and the destructor.
 @< Function def...@>=
@@ -1411,8 +1415,8 @@ datum.
 @< Local function def...@>=
 void fix_involution_wrapper()
 { push_tuple_components();
-  matrix_ptr M(get<matrix_value>());
-  root_datum_ptr rd(get<root_datum_value>());
+  shared_matrix M(get<matrix_value>());
+  shared_root_datum rd(get<root_datum_value>());
   std::pair<lietype::LieType,lietype::InnerClassType> cl
     =check_involution(M->val,rd->val);
   if (verbosity>0) @< Report the type and inner class found @>
@@ -1450,16 +1454,16 @@ externally visible effects).
 @< Local function def...@>=
 void set_type_wrapper()
 { push_tuple_components();
-  string_ptr ict(get<string_value>());
-  matrix_ptr gen(get<matrix_value>());
+  shared_string ict(get<string_value>());
+  shared_matrix gen(get<matrix_value>());
   Lie_type_wrapper(); // convert string to Lie type
-  Lie_type_ptr t(get<Lie_type_value>());
+  shared_Lie_type t(get<Lie_type_value>());
 @)
-  push_value(t->clone()); push_value(gen);
+  push_value(t); push_value(gen);
   wrap_tuple(2); quotient_basis_wrapper();
-  matrix_ptr basis(get<matrix_value>());
+  shared_matrix basis(get<matrix_value>());
 @)
-  push_value(t->clone()); push_value(basis->clone());
+  push_value(t); push_value(basis);
   wrap_tuple(2); root_datum_wrapper();
 @/push_value(t); push_value(basis);
   push_value(ict);
@@ -1485,15 +1489,15 @@ of the expression ${\it fix\_involution(rd,based\_involution(t,basis,ict))}$.
 @< Local function def...@>=
 void set_inner_class_wrapper()
 { push_tuple_components();
-  string_ptr ict(get<string_value>());
-  root_datum_ptr rd(get<root_datum_value>());
+  shared_string ict(get<string_value>());
+  shared_root_datum rd(get<root_datum_value>());
 @)
-  push_value(rd->clone()); type_of_root_datum_wrapper();
-  Lie_type_ptr t(get<Lie_type_value>());
+  push_value(rd); type_of_root_datum_wrapper();
+  shared_Lie_type t(get<Lie_type_value>());
 @)
-  push_value(rd->clone());
+  push_value(rd);
   coroot_radical_wrapper(); transpose_mat_wrapper();
-  matrix_ptr basis(get<matrix_value>());
+  shared_matrix basis(get<matrix_value>());
 @)
   push_value(rd);
 @/push_value(t); push_value(basis);
@@ -1510,17 +1514,17 @@ dual inner class.
 
 @< Local function def...@>=
 void distinguished_involution_wrapper()
-{ inner_class_ptr G(get<inner_class_value>());
+{ shared_inner_class G(get<inner_class_value>());
   push_value(new matrix_value(G->val.distinguished()));
 }
 
 void root_datum_of_inner_class_wrapper()
-{ inner_class_ptr G(get<inner_class_value>());
+{ shared_inner_class G(get<inner_class_value>());
   push_value(new root_datum_value(G->val.rootDatum()));
 }
 
 void dual_inner_class_wrapper()
-{ inner_class_ptr G(get<inner_class_value>());
+{ shared_inner_class G(get<inner_class_value>());
   push_value(new inner_class_value(*G,tags::DualTag()));
 }
 
@@ -1533,17 +1537,18 @@ produces the list, and then use it twice.
 void push_name_list(const realform_io::Interface& interface)
 { row_ptr result(new row_value(0));
   for (size_t i=0; i<interface.numRealForms(); ++i)
-    result->val.push_back(new string_value(interface.typeName(i)));
+    result->val.push_back
+      (shared_value(new string_value(interface.typeName(i))));
   push_value(result);
 }
 
 void form_names_wrapper()
-{@; inner_class_ptr G(get<inner_class_value>());
+{@; shared_inner_class G(get<inner_class_value>());
   push_name_list(G->interface);
 }
 
 void dual_form_names_wrapper()
-{@; inner_class_ptr G(get<inner_class_value>());
+{@; shared_inner_class G(get<inner_class_value>());
   push_name_list(G->dual_interface);
 }
 
@@ -1558,7 +1563,7 @@ are currently computationally feasible.
 
 @< Local function def...@>=
 void block_sizes_wrapper()
-{ inner_class_ptr G(get<inner_class_value>());
+{ shared_inner_class G(get<inner_class_value>());
   matrix_ptr
   M(new matrix_value @|
     (latticetypes::LatticeMatrix(G->val.numRealForms()
@@ -1577,7 +1582,7 @@ the columns by Cartan classes (note the alliteration).
 
 @< Local function def...@>=
 void occurrence_matrix_wrapper()
-{ inner_class_ptr G(get<inner_class_value>());
+{ shared_inner_class G(get<inner_class_value>());
   size_t nr=G->val.numRealForms();
   size_t nc=G->val.numCartanClasses();
   matrix_ptr
@@ -1596,7 +1601,7 @@ to write this function.
 
 @< Local function def...@>=
 void dual_occurrence_matrix_wrapper()
-{ inner_class_ptr G(get<inner_class_value>());
+{ shared_inner_class G(get<inner_class_value>());
   size_t nr=G->val.numDualRealForms();
   size_t nc=G->val.numCartanClasses();
   matrix_ptr
@@ -1690,6 +1695,7 @@ protected:
 };
 @)
 typedef std::auto_ptr<real_form_value> real_form_ptr;
+typedef std::tr1::shared_ptr<real_form_value> shared_real_form;
 
 @ When printing a real form, we give the name by which it was chosen (where
 for once we do use the |parent| field), and provide some information about its
@@ -1716,15 +1722,15 @@ at this point. As a special case we also provide the quasisplit form.
 @< Local function def...@>=
 void real_form_wrapper()
 { push_tuple_components();
-  int_ptr i(get<int_value>());
-  inner_class_ptr G(get<inner_class_value>());
+  shared_int i(get<int_value>());
+  shared_inner_class G(get<inner_class_value>());
   if (size_t(i->val)>=G->val.numRealForms())
     throw std::runtime_error ("illegal real form number: "+num(i->val));
   push_value(new real_form_value(*G,G->interface.in(i->val)));
 }
 @)
 void quasisplit_form_wrapper()
-{ inner_class_ptr G(get<inner_class_value>());
+{ shared_inner_class G(get<inner_class_value>());
   push_value(new real_form_value(*G,G->val.quasisplit()));
 }
 
@@ -1736,7 +1742,7 @@ group is isomorphic to $(\Z/2\Z)^r$.
 
 @< Local function def...@>=
 void components_rank_wrapper()
-{ real_form_ptr R(get<real_form_value>());
+{ shared_real_form R(get<real_form_value>());
   const latticetypes::ComponentList c=R->val.dualComponentReps();
   push_value(new int_value(c.size()));
 }
@@ -1745,7 +1751,7 @@ void components_rank_wrapper()
 
 @< Local function def...@>=
 void count_Cartans_wrapper()
-{ real_form_ptr rf(get<real_form_value>());
+{ shared_real_form rf(get<real_form_value>());
   push_value(new int_value(rf->val.numCartan()));
 }
 
@@ -1754,7 +1760,7 @@ form, once the corresponding Cartan classes have been generated.
 
 @< Local function def...@>=
 void KGB_size_wrapper()
-{ real_form_ptr rf(get<real_form_value>());
+{ shared_real_form rf(get<real_form_value>());
   push_value(new int_value(rf->val.KGB_size()));
 }
 
@@ -1766,7 +1772,7 @@ command in atlas.
 @h "poset.h"
 @< Local function def...@>=
 void Cartan_order_matrix_wrapper()
-{ real_form_ptr rf(get<real_form_value>());
+{ shared_real_form rf(get<real_form_value>());
   size_t n=rf->val.numCartan();
   matrix_value* M =
      new matrix_value(latticetypes::LatticeMatrix(n,n,0));
@@ -1815,6 +1821,7 @@ private:
 };
 @)
 typedef std::auto_ptr<dual_real_form_value> dual_real_form_ptr;
+typedef std::tr1::shared_ptr<dual_real_form_value> shared_dual_real_form;
 
 @ The only real difference with real forms is a slightly modified output
 routine.
@@ -1835,15 +1842,15 @@ index. We also provide the dual quasisplit form.
 @< Local function def...@>=
 void dual_real_form_wrapper()
 { push_tuple_components();
-  int_ptr i(get<int_value>());
-  inner_class_ptr G(get<inner_class_value>());
+  shared_int i(get<int_value>());
+  shared_inner_class G(get<inner_class_value>());
   if (size_t(i->val)>=G->val.numDualRealForms())
     throw std::runtime_error ("illegal dual real form number: "+num(i->val));
   push_value(new dual_real_form_value(*G,G->dual_interface.in(i->val)));
 }
 @)
 void dual_quasisplit_form_wrapper()
-{ inner_class_ptr G(get<inner_class_value>());
+{ shared_inner_class G(get<inner_class_value>());
   push_value(new dual_real_form_value(*G,G->dual.quasisplit()));
 }
 
@@ -1853,7 +1860,7 @@ associated to the dual inner class.
 
 @< Local function def...@>=
 void real_form_from_dual_wrapper()
-{ dual_real_form_ptr d(get<dual_real_form_value>());
+{ shared_dual_real_form d(get<dual_real_form_value>());
   push_value(new real_form_value
                  (inner_class_value(d->parent,tags::DualTag())
                  ,d->val.realForm()));
@@ -1899,6 +1906,7 @@ private:
 };
 @)
 typedef std::auto_ptr<Cartan_class_value> Cartan_class_ptr;
+typedef std::tr1::shared_ptr<Cartan_class_value> shared_Cartan_class;
 
 @ In the constructor we check that the Cartan class with the given number
 currently exists. This check \emph{follows} the selection of the pointer to
@@ -1935,8 +1943,8 @@ valid index into its list of Cartan classes.
 @< Local function def...@>=
 void Cartan_class_wrapper()
 { push_tuple_components();
-  int_ptr i(get<int_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_int i(get<int_value>());
+  shared_real_form rf(get<real_form_value>());
   if (size_t(i->val)>=rf->val.numCartan())
     throw std::runtime_error
     ("illegal Cartan class number: "+num(i->val)
@@ -1954,7 +1962,7 @@ real form, but we have a direct access to it via the |mostSplit| method for
 
 @< Local function def...@>=
 void most_split_Cartan_wrapper()
-{ real_form_ptr rf(get<real_form_value>());
+{ shared_real_form rf(get<real_form_value>());
   push_value(new Cartan_class_value(rf->parent,rf->val.mostSplit()));
 }
 
@@ -1979,7 +1987,7 @@ compilation unit \.{cartan\_io} uses them.
 @< Local function def...@>=
 void print_Cartan_info_wrapper()
 { using atlas::operator<<;
-  Cartan_class_ptr cc(get<Cartan_class_value>());
+  shared_Cartan_class cc(get<Cartan_class_value>());
 
   prettyprint::printTorusType(*output_stream,cc->val.fiber().torus())
   << std::endl;
@@ -2030,25 +2038,27 @@ for dual real forms.
 
 @< Local function def...@>=
 void real_forms_of_Cartan_wrapper()
-{ Cartan_class_ptr cc(get<Cartan_class_value>());
+{ shared_Cartan_class cc(get<Cartan_class_value>());
   const inner_class_value& ic=cc->parent;
   @/row_ptr result @| (new row_value(cc->val.numRealForms()));
   for (size_t i=0,k=0; i<ic.val.numRealForms(); ++i)
   { bitmap::BitMap b(ic.val.Cartan_set(ic.interface.in(i)));
     if (b.isMember(cc->number))
-      result->val[k++]=new real_form_value(ic,ic.interface.in(i));
+      result->val[k++] =
+	shared_value(new real_form_value(ic,ic.interface.in(i)));
   }
   push_value(result);
 }
 @)
 void dual_real_forms_of_Cartan_wrapper()
-{ Cartan_class_ptr cc(get<Cartan_class_value>());
+{ shared_Cartan_class cc(get<Cartan_class_value>());
   const inner_class_value& ic=cc->parent;
 @/row_ptr result @| (new row_value(cc->val.numDualRealForms()));
   for (size_t i=0,k=0; i<ic.val.numDualRealForms(); ++i)
   { bitmap::BitMap b(ic.val.dual_Cartan_set(ic.dual_interface.in(i)));
     if (b.isMember(cc->number))
-      result->val[k++]=new dual_real_form_value(ic,ic.dual_interface.in(i));
+      result->val[k++] =
+	shared_value(new dual_real_form_value(ic,ic.dual_interface.in(i)));
   }
   push_value(result);
 }
@@ -2069,8 +2079,8 @@ of the partition is returned as a list of integral values.
 @< Local function def...@>=
 void fiber_part_wrapper()
 { push_tuple_components();
-  real_form_ptr rf(get<real_form_value>());
-  Cartan_class_ptr cc(get<Cartan_class_value>());
+  shared_real_form rf(get<real_form_value>());
+  shared_Cartan_class cc(get<Cartan_class_value>());
   if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error
     ("inner class mismatch between real form and Cartan class");
@@ -2086,7 +2096,7 @@ void fiber_part_wrapper()
   row_ptr result (new row_value(0));
   for (size_t i=0; i<pi.size(); ++i)
     if ( rf_nr[pi(i)] == rf->val.realForm())
-      result->val.push_back(new int_value(i));
+      result->val.push_back(shared_value(new int_value(i)));
   push_value(result);
 }
 
@@ -2103,8 +2113,8 @@ sequence of bits corresponding to the simple imaginary roots.
 @< Local function def...@>=
 void print_gradings_wrapper()
 { push_tuple_components();
-  real_form_ptr rf(get<real_form_value>());
-@/Cartan_class_ptr cc(get<Cartan_class_value>());
+  shared_real_form rf(get<real_form_value>());
+@/shared_Cartan_class cc(get<Cartan_class_value>());
   if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error
     ("inner class mismatch between real form and Cartan class");
@@ -2202,8 +2212,8 @@ compatible Cartan class.
 @< Local function def...@>=
 void print_realweyl_wrapper()
 { push_tuple_components();
-  Cartan_class_ptr cc(get<Cartan_class_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_Cartan_class cc(get<Cartan_class_value>());
+  shared_real_form rf(get<real_form_value>());
 @)
   if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error @|
@@ -2221,8 +2231,8 @@ void print_realweyl_wrapper()
 @)
 void print_strongreal_wrapper()
 { push_tuple_components();
-  Cartan_class_ptr cc(get<Cartan_class_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_Cartan_class cc(get<Cartan_class_value>());
+  shared_real_form rf(get<real_form_value>());
 @)
   if (&rf->parent.val!=&cc->parent.val)
     throw std::runtime_error @|
@@ -2248,8 +2258,8 @@ We shall next implement the \.{block} command.
 @< Local function def...@>=
 void print_block_wrapper()
 { push_tuple_components();
-  dual_real_form_ptr drf(get<dual_real_form_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_dual_real_form drf(get<dual_real_form_value>());
+  shared_real_form rf(get<real_form_value>());
 @)
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
@@ -2272,8 +2282,8 @@ variations of \.{block}.
 @< Local function def...@>=
 void print_blockd_wrapper()
 { push_tuple_components();
-  dual_real_form_ptr drf(get<dual_real_form_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_dual_real_form drf(get<dual_real_form_value>());
+  shared_real_form rf(get<real_form_value>());
 @)
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
@@ -2293,8 +2303,8 @@ void print_blockd_wrapper()
 @)
 void print_blocku_wrapper()
 { push_tuple_components();
-  dual_real_form_ptr drf(get<dual_real_form_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_dual_real_form drf(get<dual_real_form_value>());
+  shared_real_form rf(get<real_form_value>());
 @)
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
@@ -2329,9 +2339,9 @@ specification to allow it to be called easily here.
 @< Local function def...@>=
 void print_blockstabilizer_wrapper()
 { push_tuple_components();
-  Cartan_class_ptr cc(get<Cartan_class_value>());
-  dual_real_form_ptr drf(get<dual_real_form_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_Cartan_class cc(get<Cartan_class_value>());
+  shared_dual_real_form drf(get<dual_real_form_value>());
+  shared_real_form rf(get<real_form_value>());
 @)
   if (&rf->parent.val!=&drf->parent.val or
       &rf->parent.val!=&cc->parent.val)
@@ -2357,7 +2367,7 @@ void print_blockstabilizer_wrapper()
 
 @< Local function def...@>=
 void print_KGB_wrapper()
-{ real_form_ptr rf(get<real_form_value>());
+{ shared_real_form rf(get<real_form_value>());
 @)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
@@ -2376,8 +2386,8 @@ parametrisation is concerned.
 @< Local function def...@>=
 void print_KL_basis_wrapper()
 { push_tuple_components();
-  dual_real_form_ptr drf(get<dual_real_form_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_dual_real_form drf(get<dual_real_form_value>());
+  shared_real_form rf(get<real_form_value>());
 @)
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
@@ -2405,8 +2415,8 @@ void print_KL_basis_wrapper()
 @< Local function def...@>=
 void print_prim_KL_wrapper()
 { push_tuple_components();
-  dual_real_form_ptr drf(get<dual_real_form_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_dual_real_form drf(get<dual_real_form_value>());
+  shared_real_form rf(get<real_form_value>());
 @)
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
@@ -2435,8 +2445,8 @@ outputs just a list of all distinct Kazhdan-Lusztig-Vogan polynomials.
 @< Local function def...@>=
 void print_KL_list_wrapper()
 { push_tuple_components();
-  dual_real_form_ptr drf(get<dual_real_form_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_dual_real_form drf(get<dual_real_form_value>());
+  shared_real_form rf(get<real_form_value>());
 @)
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
@@ -2467,8 +2477,8 @@ after having built the |klc::KLContext|.
 @< Local function def...@>=
 void print_W_cells_wrapper()
 { push_tuple_components();
-  dual_real_form_ptr drf(get<dual_real_form_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_dual_real_form drf(get<dual_real_form_value>());
+  shared_real_form rf(get<real_form_value>());
 @)
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|
@@ -2498,8 +2508,8 @@ of the output routine of |print_W_cells|.
 @< Local function def...@>=
 void print_W_graph_wrapper()
 { push_tuple_components();
-  dual_real_form_ptr drf(get<dual_real_form_value>());
-  real_form_ptr rf(get<real_form_value>());
+  shared_dual_real_form drf(get<dual_real_form_value>());
+  shared_real_form rf(get<real_form_value>());
 @)
   if (&rf->parent.val!=&drf->parent.val)
     throw std::runtime_error @|

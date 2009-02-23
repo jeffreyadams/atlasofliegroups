@@ -786,12 +786,14 @@ regardless of their types, which could be arbitrarily complicated. We could
 either use void pointers to represent generic values and cast them when
 necessary, or use inheritance and the dynamic cast feature of \Cpp. We choose
 the second option, which is quite convenient to use, although this means that
-in reality we have dynamic type information stored in the values as well as an
-external |type_declarator| value describing their type. We shall use this
-information to double-check our type analysis at runtime.
+in reality we have dynamic type information stored within the values, even
+though that information had already been determined during type analysis. We
+shall in fact use this information to double-check our type analysis at
+runtime.
 
 @< Includes needed in the header file @>=
-#include <iostream>
+#include <iostream> // needed for specification of |print| method below
+#include <tr1/memory>
 
 @~We start with a base class for values. There must be at least one virtual
 function in the class, which can conveniently be a function for printing. This
@@ -799,26 +801,29 @@ allows the base class to be defined abstract (one cannot declare a destructor
 purely virtual since it will always be called, after the destructor for a
 derived class). The printing function will demonstrate the ease of using
 dynamic typing via inheritance. It does not even require any dynamic casting,
-but other operations on values will. The possibility of the user of our
-interpreter to assign to identifiers leads to the need to be able to clone
-objects of types derived from |value_base|, which is done by another (purely)
-virtual method, |clone|. The method |name| is useful in reporting logic errors
-from template functions; since these usually do not have any object at hand to
-call this method from, it is defined |static| rather than |virtual|. We forbid
-assignment, since these objects should always be handled by reference; the
-class is abstract anyway, but this ensures us that for no derived class an
-implicitly defined assignment operator is accidentally invoked. Copy
-constructors will in fact be defined for all derived types, as they are needed
-to implement the |clone| method; these will be |private| or |protected| as
-well, so as to forbid accidental use elsewhere, but they don't copy-construct
-the |value_base| base object (rather they default-construct it). We can then
-declare the |value_base| copy constructor |private| so that in case of
-accidental omission the use of a synthesised constructor will be caught.
+but other operations on values will. Apart from |print| we define another
+(purely) virtual method, |clone|, which allows making a copy of a runtime
+value of any type derived from |value_base|.
 
-As mentioned values are always handled via pointers. We define pointer types
-|value| and |owned_value|, where the latter is in fact an auto-pointer;
-however these cannot be stored in STL containers, so we must use |value| there
-even if we do have ownership.
+The method |name| is useful in reporting logic errors from template functions,
+notably the failure of a value to be of the predicted type. Since the template
+function may know the type (via a template argument) but need not have any
+object of the type at hand, we define |name| as a |static| rather than
+|virtual| method. We forbid assignment of |value_base| objects, since they
+should always be handled by reference; the base class is abstract anyway, but
+this ensures us that for no derived class an implicitly defined assignment
+operator is accidentally invoked. Copy constructors will in fact be defined
+for all derived types, as they are needed to implement the |clone| method;
+these will be |private| or |protected| as well, so as to forbid accidental use
+elsewhere, but they don't copy-construct the |value_base| base object (rather
+they default-construct it). We can then declare the |value_base| copy
+constructor |private| so that in case of accidental omission the use of a
+synthesised constructor will be caught here as well.
+
+As mentioned values are always handled via pointers. We a raw pointer type
+|value|, an auto-pointer |owned_value| (which cannot be stored in STL
+containers), and a shared smart pointer |shared_value| (which by contrast can
+be stored in STL containers).
 
 @< Type definitions @>=
 struct value_base
@@ -834,6 +839,7 @@ private: //copying and assignment forbidden
 @)
 typedef value_base* value;
 typedef std::auto_ptr<value_base> owned_value;
+typedef std::tr1::shared_ptr<value_base> shared_value;
 
 @ We can already make sure that the operator~`|<<|' will do the right thing
 for any of our values.
@@ -868,6 +874,7 @@ private:
 };
 @)
 typedef std::auto_ptr<int_value> int_ptr;
+typedef std::tr1::shared_ptr<int_value> shared_int;
 @)
 
 struct string_value : public value_base
@@ -883,6 +890,7 @@ private:
 };
 @)
 typedef std::auto_ptr<string_value> string_ptr;
+typedef std::tr1::shared_ptr<string_value> shared_string;
 @)
 
 struct bool_value : public value_base
@@ -898,6 +906,7 @@ private:
 };
 @)
 typedef std::auto_ptr<bool_value> bool_ptr;
+typedef std::tr1::shared_ptr<bool_value> shared_bool;
 
 @ Here we define one more type derived from |value_base|, namely the type for
 ``row of'' types.
@@ -908,76 +917,32 @@ typedef std::auto_ptr<bool_value> bool_ptr;
 @~Row values are implemented using vectors from the standard template library.
 Since the actual values accessed will be of types derived from |value_base|,
 we must pass through a level of indirection, so we have a vector of pointers.
-These pointers are owned, but cannot be auto-pointers, so we need a nontrivial
-destructor. However, if we also have a copy-constructor, needed to implement
-the |clone| method, then the destructor will not be activated until the copy
-is complete, which would leave previously cloned components dangling if some
-call of |clone| should throw |std::bad_alloc|. The simplest remedy is to first
-define a type with a destructor but no copy constructor, use this as a
-sub-object, and do the cloning of the copy-constructor only after the
-sub-object is constructed. Another option would have been to not define a copy
-constructor at all, and do the copying of clones into a freshly constructed
-vector explicitly within the |clone| method.
+We define these pointers to be |shared_value| pointers, so that the row takes
+(shared) ownership of its components without needing a explicit destructor.
+This as the additional advantage over explicit ownership management that the
+copy constructor, needed for the |clone| method, can safely just
+copy-construct the vector of pointers: a possible exception thrown during the
+copy is guaranteed to clean up any pointers present in the vector.
 
-@< Type definitions @>=
-struct row_value_impl : public std::vector<value>
-{
-  typedef std::vector<value> base;
-  row_value_impl(size_t n) : base(n,NULL) @+{}
-  ~row_value_impl();
-private: row_value_impl(const row_value_impl&); // forbid copy
-};
-
-@ The destructor straightforwardly deletes everything pointed to by non-|NULL|
-pointers. It uses the fact (without which life would be much harder) that
-|delete| will do the right thing even if it is called with a pointer to a base
-class of the class for which the pointer was created.
-
-@< Function definitions @>=
-row_value_impl::~row_value_impl()
-{@; for (base::iterator p=begin(); p!=end(); ++p)
-    delete *p;
-}
-
-@ The structure |row_value| contains as unique data member a |row_value_impl|,
-called |val| as in the previous value structures. It will usually be filled by
-assigning previously computed pointers to the components of |val|. Since this
-assumes ownership from the moment of the assignment, it would be hard to
-construct from a vector of pointers while avoiding temporary double or
-non-ownership, so instead the main constructor just specifies a size, for
-which slots initially containing null pointers are created. Pointers assigned
-to these slots should be either freshly allocated or released be a previous
-owner just before the assignment. Although there can be no auto-pointers
-internally, will be common to have an auto-pointer to a row value, so we
-define |row_ptr| to be just that.
+Of course ownership of pointers to |row_value| objects also needs to be
+managed, which could be either by an auto-pointer |row_ptr| (if the pointer is
+known to be unshared) or by a shared pointer |shared_row|.
 
 @< Type definitions @>=
 struct row_value : public value_base
-{ row_value_impl val;
+{ std::vector<shared_value> val;
 @)
-  explicit row_value(size_t n) : val(n) @+{} // start with |n| null pointers
+  explicit row_value(size_t n) : val(n) @+{} // start with |n| empty pointers
   void print(std::ostream& out) const;
   size_t length() const @+{@; return val.size(); }
   row_value* clone() const @+{@; return new row_value(*this); }
   static const char* name() @+{@; return "row value"; }
 protected:
-  row_value(const row_value& v);
+  row_value(const row_value& v) : val(v.val) @+{}
 };
 @)
 typedef std::auto_ptr<row_value> row_ptr;
-
-@ Since the |val| field contains a vector of pointers, the copy constructor
-(needed for the |clone| method) explicitly clones the pointed-to objects
-accessed by~|v|, assigning the resulting pointer to the correct slot in the
-|val| field where it replaces an initial |NULL| pointer. Since that already
-has an activated destructor, everything gets properly cleaned up even if an
-exception occurs halfway.
-
-@< Function definitions @>=
-row_value::row_value(const row_value& v) : val(v.val.size())
-{ for (size_t i=0; i<val.size(); ++i)
-    val[i]=v.val[i]->clone();
-}
+typedef std::tr1::shared_ptr<row_value> shared_row;
 
 @ So here is the first occasion where we shall use virtual functions. For the
 moment the output routine performs an immediate recursion; later we shall try
@@ -989,7 +954,7 @@ void row_value::print(std::ostream& out) const
 { if (val.empty()) out << "[]";
   else
   { out << '[';
-    std::vector<value>::const_iterator p=val.begin();
+    std::vector<shared_value>::const_iterator p=val.begin();
     do {@; (*p)->print(out); ++p; out << (p==val.end() ? ']' : ','); }
     while (p!=val.end());
   }
@@ -999,7 +964,12 @@ void row_value::print(std::ostream& out) const
 analysis. We can convert to that type using a |dynamic_cast|, but at such
 moments we wish to throw a |logic_error| in case our type prediction was
 wrong. To avoid having such casts and |throw| statements all over the place,
-we define a template function to do the casting and throwing.
+we define a template function to do the casting and throwing. It is defined at
+the level of ordinary pointers, and it is not intended for use where the
+caller assumes ownership of the result; original pointer is assumed to retain
+ownership as long as the result of this call survives, and in particular that
+result should not be converted to a smart pointer, lest double deletion would
+ensue.
 
 @< Template and inline function definitions @>=
 template <typename D> // |D| is a type derived from |value_base|
@@ -1047,10 +1017,18 @@ inline std::ostream& operator<< (std::ostream& out, const expression_base& e)
 
 
 @ Since our |evaluate| methods will put values on the execution stack, let us
-declare it right away.
+declare it right away. We decide that values on the execution stack can be
+shared with other values (for instance when the user subscripts a row, vector
+or matrix bound to an identifier, it would be wasteful to duplicate that
+entire structure just so that it can briefly reside on the execution stack),
+whence we use |shared_value| smart pointers in the stack. This choice will
+have consequences in many places in the evaluator, since once a value is
+referred to by such a smart pointer, its ownership cannot be transferred to
+any other regime; when strict ownership should be needed, the only option will
+be to make a copy by calling |clone|.
 
 @< Declarations of global variables @>=
-extern std::vector<value> execution_stack;
+extern std::vector<shared_value> execution_stack;
 
 @~We define the stack as a static variable of this compilation unit; it is
 initially empty. All usable built-in functions will be provided with a small
@@ -1059,47 +1037,53 @@ there again. Parameters are placed on the stack in order, and should therefore
 be popped from the stack in reverse order.
 
 @< Global variable definitions @>=
-std::vector<value> execution_stack;
+std::vector<shared_value> execution_stack;
 
 @ Here are two functions to facilitate manipulating the stack. Being inline,
-we define them right away. There is a remote chance that the |push_back|
-method runs out of stack space and throws an exception; to prevent a memory
-leak we therefore temporarily place the pointer in an |owned_value|. If the
-value already resides in an auto-pointer (possibly of a derived type), we also
-allow passing that pointer by value (which might be more efficient than
-releasing it to be captured just afterwards), by defining a second variant of
-|push_value|; this has to be a template function since a conversion from
-auto-pointer-of-derived-type to |value_base| is not possible without a cast in
-a function argument position. For |pop_value| we don't return an auto-pointer,
-since in most cases we have to perform a |dynamic_cast| to the result anyway.
+we define them right away. For exception safety |push_value| takes an
+auto-pointer as argument; for convenience we make it a template function that
+accepts an auto-pointer to a type derived from |value_base| (since a
+conversion of auto-pointers from derived to base is not possible without a
+cast in a function argument position). For even more convenience we also
+provide a variant taking an ordinary pointer, so that expressions using |new|
+can be written without cast in the argument of |push_value|. Since
+|push_value| has only one argument, such use of does not compromise exception
+safety: nothing can throw between the return of |new| and the conversions of
+its result into an auto-pointer.
 
 @< Template and inline function definitions @>=
-inline void push_value(value v)
-{@; owned_value safe(v); execution_stack.push_back(v); safe.release(); }
 template<typename D> // |D| is a type derived from |value_base|
   inline void push_value(std::auto_ptr<D> v)
-  @+{@; execution_stack.push_back(v.get()); v.release(); }
+  @+{@; execution_stack.push_back(std::tr1::shared_ptr<D>(v)); }
+
+template<typename D> // |D| is a type derived from |value_base|
+  inline void push_value(std::tr1::shared_ptr<D> v)
+  @+{@; execution_stack.push_back(v); }
+
+inline void push_value(value_base* p) @+{@; push_value(owned_value(p)); }
+
 @)
-inline value pop_value()
-{@; value arg=execution_stack.back(); execution_stack.pop_back();
-    return arg;
+inline shared_value pop_value()
+{@; shared_value arg(execution_stack.back());
+  execution_stack.pop_back();
+  return arg;
 }
 
 @ Now let us define classes derived from |expression_base|. The simplest is
-|denotation|, which simply stores a |value|, which it returns upon
-evaluation. A denotation owns the value it stores, which it must therefore
-clone upon evaluation and delete upon destruction. This is not optimally
-efficient for denotations that are evaluated just once, but in those
-situations (evaluating expressions entered by the user directly) efficiency is
-not a major concern.
+|denotation|, which simply stores a |value|, which it returns upon evaluation.
+The constructor is passed a smart pointer for the usual reason: if the
+constructor should be part of a |new| expression (as is practice it will) then
+the allocation for that |new| happens between the moment of passing the
+constructor arguments and the invocation of the constructor, and if that
+allocation throws it would produce a memory leak if raw a pointer were passed.
+This does force us to cast the arguments to |shared_value| below.
 
 
 @< Type definitions @>=
 struct denotation : public expression_base
-{ value denoted_value;
+{ shared_value denoted_value;
 @)
-  explicit denotation(owned_value v) : denoted_value(v.release()) @+{}
-  virtual ~denotation() @+ {@; delete denoted_value; }
+  explicit denotation(shared_value v) : denoted_value(v) @+{}
   virtual void evaluate() const;
   virtual void print(std::ostream& out) const
   @+{@; denoted_value->print(out); }
@@ -1112,7 +1096,7 @@ in doing so for virtual methods (calls via the vtable cannot be inlined).
 
 @< Function def... @>=
 void denotation::evaluate() const
-@+{@; push_value(denoted_value->clone()); }
+@+{@; push_value(denoted_value); }
 
 
 @ Let us finish with some functions related to the execution stack. The stack
@@ -1137,9 +1121,8 @@ void clear_execution_stack ()
   { if (verbosity!=0)
       std::cerr << "Discarding from execution stack:" << std::endl;
     do
-    { value v=execution_stack.back();
+    { shared_value v=pop_value();
       if (verbosity!=0) std::cerr << *v << std::endl;
-      delete v; execution_stack.pop_back();
     }
     while (!execution_stack.empty());
   }
@@ -1274,17 +1257,17 @@ expression convert_expr(const expr& e, type_declarator& type)
   { case integer_denotation:
       if(type.specialise(int_type)) // change undefined type to integral
         return new denotation
-          (owned_value(new int_value(e.e.int_denotation_variant)));
+          (shared_value(new int_value(e.e.int_denotation_variant)));
       else throw type_error(e,copy(int_type),copy(type));
    case string_denotation:
       if (type.specialise(str_type)) // change undefined type to string
         return new denotation
-          (owned_value(new string_value(e.e.str_denotation_variant)));
+          (shared_value(new string_value(e.e.str_denotation_variant)));
       else throw type_error(e,copy(str_type),copy(type));
    case boolean_denotation:
       if (type.specialise(bool_type)) // change undefined type to boolean
         return new denotation
-          (owned_value(new bool_value(e.e.int_denotation_variant)));
+          (shared_value(new bool_value(e.e.int_denotation_variant)));
       else throw type_error(e,copy(bool_type),copy(type));
    @\@< Other cases for type-checking and converting expression~|e| against
    |type|, all of which either |return| or |throw| a |type_error| @>
@@ -1384,7 +1367,7 @@ void list_expression::evaluate() const
 { row_ptr result(new row_value(component.size()));
   for (size_t i=0; i<component.size(); ++i)
     component[i]->evaluate(),result->val[i]=pop_value();
-  push_value(result);
+  push_value(result); // result will be shared from here on
 }
 
 @*1 Conversion to rigid vectors and matrices.
@@ -1691,6 +1674,7 @@ private:
 };
 @)
 typedef std::auto_ptr<vector_value> vector_ptr;
+typedef std::tr1::shared_ptr<vector_value> shared_vector;
 @)
 
 
@@ -1707,6 +1691,7 @@ private:
 };
 @)
 typedef std::auto_ptr<matrix_value> matrix_ptr;
+typedef std::tr1::shared_ptr<matrix_value> shared_matrix;
 @)
 
 @ To make a small but visible difference in printing between vectors and lists
@@ -1769,21 +1754,21 @@ being used throughout the Atlas library.
 
 For |vector_conversion|, the |evaluate| method is easy, and follows a pattern
 that we shall see a lot more: evaluate the subexpression, pop the result off
-the |execution_stack| while converting it to an appropriate auto-pointer,
+the |execution_stack| while converting it to an appropriate shared pointer,
 then produce and push the resulting |value|. The conversion to the
 appropriate kind of pointer is safe since we type-checked the expression, and
-the auto-pointer will clean up the used argument.
+the shared pointer will clean up the used argument.
 
 @< Function definition... @>=
 latticetypes::Weight row_to_weight(const row_value& r)
 { latticetypes::Weight result(r.val.size());
   for(size_t i=0; i<r.val.size(); ++i)
-    result[i]=force<int_value>(r.val[i])->val;
+    result[i]=force<int_value>(r.val[i].get())->val;
   return result;
 }
 @)
 void vector_conversion::evaluate() const
-{ exp->evaluate(); @+ row_ptr r(get<row_value>());
+{ exp->evaluate(); @+ shared_row r(get<row_value>());
   push_value(new vector_value(row_to_weight(*r)));
 }
 
@@ -1795,12 +1780,12 @@ extended will null entries to make a rectangular shape for the matrix.
 
 @< Function definitions @>=
 void matrix_conversion::evaluate() const
-{ exp->evaluate(); @+ row_ptr r(get<row_value>());
+{ exp->evaluate(); @+ shared_row r(get<row_value>());
 @/latticetypes::WeightList column_list;
   column_list.reserve(r->val.size());
   size_t depth=0; // maximal length of vectors
   for(size_t i=0; i<r->val.size(); ++i)
-  { column_list.push_back(force<vector_value>(r->val[i])->val);
+  { column_list.push_back(force<vector_value>(r->val[i].get())->val);
     if (column_list[i].size()>depth) depth=column_list[i].size();
   }
   for(size_t i=0; i<column_list.size(); ++i)
@@ -1815,18 +1800,18 @@ void matrix_conversion::evaluate() const
 
 @ The remaining ``internalising'' conversion function, from row of row of
 integer to matrix, is very similar. Only this times the argument was checked
-to be of type \.{[[int]]}, so we cast the component pointers to
+to be of type \.{[[int]]}, so we cast the raw component pointers to
 |(row_value*)|, and then use |row_to_weight| to build column vectors to be
 used by the matrix constructor.
 
 @< Function definitions @>=
 void matrix2_conversion::evaluate() const
-{ exp->evaluate(); @+ row_ptr r(get<row_value>());
+{ exp->evaluate(); @+ shared_row r(get<row_value>());
 @/latticetypes::WeightList column_list;
   column_list.reserve(r->val.size());
   size_t depth=0; // maximal length of vectors
   for(size_t i=0; i<r->val.size(); ++i)
-  { column_list.push_back(row_to_weight(*force<row_value>(r->val[i])));
+  { column_list.push_back(row_to_weight(*force<row_value>(r->val[i].get())));
     if (column_list[i].size()>depth) depth=column_list[i].size();
   }
   for(size_t i=0; i<column_list.size(); ++i)
@@ -1850,28 +1835,28 @@ pointing to it.
 value weight_to_row(const latticetypes::Weight& v)
 { row_ptr result (new row_value(v.size()));
   for(size_t i=0; i<v.size(); ++i)
-    result->val[i]=new int_value(v[i]);
+    result->val[i]=shared_value(new int_value(v[i]));
   return result.release();
 }
 @)
 void int_list_conversion::evaluate() const
-{ exp->evaluate(); @+ vector_ptr v(get<vector_value>());
+{ exp->evaluate(); @+ shared_vector v(get<vector_value>());
   push_value(weight_to_row(v->val));
 }
 @)
 void vec_list_conversion::evaluate() const
-{ exp->evaluate(); @+ matrix_ptr m(get<matrix_value>());
+{ exp->evaluate(); @+ shared_matrix m(get<matrix_value>());
   row_ptr result(new row_value(m->val.numColumns()));
   for(size_t i=0; i<m->val.numColumns(); ++i)
-    result->val[i] = new vector_value(m->val.column(i));
+    result->val[i]=shared_value(new vector_value(m->val.column(i)));
   push_value(result.release());
 }
 @)
 void int_list_list_conversion::evaluate() const
-{ exp->evaluate(); @+ matrix_ptr m(get<matrix_value>());
+{ exp->evaluate(); @+ shared_matrix m(get<matrix_value>());
   row_ptr result(new row_value(m->val.numColumns()));
   for(size_t i=0; i<m->val.numColumns(); ++i)
-    result->val[i]=weight_to_row(m->val.column(i));
+    result->val[i]=shared_value(weight_to_row(m->val.column(i)));
 
   push_value(result.release());
 }
@@ -1976,6 +1961,7 @@ private:
 };
 @)
 typedef std::auto_ptr<tuple_value> tuple_ptr;
+typedef std::tr1::shared_ptr<tuple_value> shared_tuple;
 
 @ We just need to redefine the |print| method.
 @< Function definitions @>=
@@ -1983,7 +1969,7 @@ void tuple_value::print(std::ostream& out) const
 { if (val.empty()) out << "()";
   else
   { out << '(';
-    std::vector<value>::const_iterator p=val.begin();
+    std::vector<shared_value>::const_iterator p=val.begin();
     do {@; (*p)->print(out); ++p; out << (p==val.end() ? ')' : ','); }
     while (p!=val.end());
   }
@@ -2003,18 +1989,16 @@ void wrap_tuple(size_t n);
 @~These functions use the same convention for stack order: the last tuple
 component is on top of the stack. In |push_tuple_components| we start by
 popping a value and checking it to be a tuple, which is done by
-|get<tuple_value>| that will be defined later. We also take care to unlink
-each component before handing it to |push_value|, to prevent double ownership
-at the moment the stack expands.
+|get<tuple_value>| that will be defined later. The |shared_value| type takes
+care of ownership; there is (at least) double shared ownership of the
+components as the stack expands, but this is normal, and afterwards this
+sharing disappears with |tuple|.
 
 @< Function definitions @>=
 void push_tuple_components()
-{ tuple_ptr tuple(get<tuple_value>());
+{ shared_tuple tuple(get<tuple_value>());
   for (size_t i=0; i<tuple->length(); ++i)
-  { value v=tuple->val[i];
-    tuple->val[i]=NULL; // remove component so it remains unshared
-    push_value(v); // push component
-  }
+    push_value(tuple->val[i]); // push component
 }
 
 @ We need no auto-pointer in |wrap_tuple|, as shrinking the stack will not
@@ -2022,8 +2006,8 @@ throw any exceptions.
 
 @< Function definitions @>=
 void wrap_tuple(size_t n)
-{ tuple_value* result=new tuple_value(n);
-  while (n-->0) // not |(--n>=0)|, since |n| is unsigned!
+{ shared_tuple result(new tuple_value(n));
+  while (n-->0) // standard idiom; not |(--n>=0)|, since |n| is unsigned!
     result->val[n]=pop_value();
   push_value(result);
 }
@@ -2069,21 +2053,24 @@ void call_expression::print(std::ostream& out) const
 }
 
 @*2 Identifier tables.
+%
 As we said above, we need an identifier table to record the types of known
 functions (and later other types of identifiers). For the moment we use a
 single flat table; there will doubtlessly be need for handling scopes later.
 We shall actually store both a type and a value in the table. Each such pair
-form an |id_data| structure; it is intended only to reside inside a table, so
-we do not give it ownership of the pointers it contains, which would
-complicate duplication and therefore insertion into the table. As a
-consequence we only allow construction in an empty state; the pointers should
-be set only after insertion into the table, which then assumes their ownership.
+form an |id_data| structure; it is intended only to reside inside a table. The
+entry has shared ownership of the value, and the containing table will have
+strict ownership of the type. Giving ownership of the type directly to
+|id_data| would complicate its duplication, and therefore insertion into the
+table. As a consequence we only allow construction in an empty state; the
+pointers should be set only after insertion into the table, which then assumes
+their ownership for the type.
 
 @< Type definitions @>=
 
 struct id_data
-{ value val; @+ type_declarator* type;
-  id_data() : val(NULL),type(NULL)@+ {}
+{ shared_value val; @+ type_declarator* type;
+  id_data() : val(),type(NULL)@+ {}
 };
 
 @ We cannot store auto pointers in a table, so upon entering into the table we
@@ -2097,12 +2084,7 @@ referred to only takes place when the table itself is destructed.
 #include "lexer.h"
 
 @~We currently do not do overloading, so a simple associative table with the
-identifier as key is used. The signature of the |add| method is somewhat
-strange in that it assumes ownership of both the value |v| and the type |t|,
-but only the latter is an auto-pointer; however, passing |v| as an ordinary
-pointer turns out to be more convenient, since values tend to come from
-sources (like |new|, or popping of the execution stack) that relinquish
-ownership of pointers without converting them to auto-pointers.
+identifier as key is used.
 
 @< Type definitions @>=
 class Id_table
@@ -2114,57 +2096,55 @@ public:
   Id_table() : table() @+{} // the default and only accessible constructor
   ~Id_table(); // destructor of all values referenced in the table
 @)
-  void add(Hash_table::id_type id, value v, type_ptr t); // insertion
+  void add(Hash_table::id_type id, shared_value v, type_ptr t); // insertion
   type_declarator* type_of(Hash_table::id_type id) const; // lookup
-  value value_of(Hash_table::id_type id) const; // lookup
+  shared_value value_of(Hash_table::id_type id) const; // lookup
 @)
   size_t size() const @+{@; return table.size(); }
   void print(std::ostream&) const;
 };
 
-@ Since we have stored pointers, the destructor must explicitly delete them,
-even though we have no immediate plans for destroying identifier tables.
+@ As was indicated above, the table has strict ownership of the contained
+types, so the destructor must explicitly delete them.
 
 @< Function def... @>=
 Id_table::~Id_table()
 { for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
-  @/{@; delete p->second.val; delete p->second.type; }
+  @/{@; delete p->second.type; }
 }
 
-@ The method |add| starts by asserting its ownership of |v|. It then tries to
-insert the new mapping from the key |id| to a new value-type pair. Doing so,
-it must distinguish the case that the key |id| is already present. In that
-case the |insert| method will not overwrite the old value, making no change
-instead, which is fortunate since it gives us the occasion to clean up the old
-values; it then does return both a pointer (iterator) to the obstructing
-(key,data) pair, and a boolean failure status. When detecting that status, we
-perform the clean-up, and finally (in both cases) we overwrite pointers to
-|val| and |type| into the node in the table.
+@ The method |add| tries to insert the new mapping from the key |id| to a new
+value-type pair. Doing so, it must distinguish the case that the key |id| is
+already present. In that case the |insert| method will not overwrite the old
+value, making no change instead, which is fortunate since it gives us the
+occasion to clean up the old values; it then does return both a pointer
+(iterator) to the obstructing (key,data) pair, and a boolean failure status.
+When detecting that status, we perform the clean-up, and finally (in both
+cases) we overwrite pointers to |val| and |type| into the node in the table.
 
 @< Function... @>=
-void Id_table::add(Hash_table::id_type id, value v, type_ptr type)
-{ owned_value val(v); // assume ownership
-  std::pair<map_type::iterator,bool> trial
+void Id_table::add(Hash_table::id_type id, shared_value val, type_ptr type)
+{ std::pair<map_type::iterator,bool> trial
      =table.insert(std::make_pair(id,id_data()));
-  if (not trial.second) // then key was present; destroy its data first
-  {@; delete trial.first->second.val; delete trial.first->second.type; }
+  if (not trial.second) // then key was present; destroy associated type
+  {@; delete trial.first->second.type; }
 
-  trial.first->second.val=val.release();
+  trial.first->second.val= shared_value(val);
   trial.first->second.type=type.release();
 }
 
 @ In order to have |const| lookup methods, we must refrain from inserting into
 the table if the key is not found; we return a null pointer in that case. The
-returned pointers remain owned by the table.
+pointer returned by |type_of| remains owned by the table.
 
 @< Function... @>=
 type_declarator* Id_table::type_of(Hash_table::id_type id) const
 {@; map_type::const_iterator p=table.find(id);
   return p==table.end() ? NULL : p->second.type;
 }
-value Id_table::value_of(Hash_table::id_type id) const
+shared_value Id_table::value_of(Hash_table::id_type id) const
 {@; map_type::const_iterator p=table.find(id);
-  return p==table.end() ? NULL : p->second.val;
+  return p==table.end() ? shared_value(value(NULL)) : p->second.val;
 }
 
 @ We provide a |print| member that shows the contents of the entire table.
@@ -2268,6 +2248,7 @@ private:
 };
 @)
 typedef std::auto_ptr<builtin_value> builtin_ptr;
+typedef std::tr1::shared_ptr<builtin_value> shared_builtin;
 
 
 @ To evaluate a |call_expression| object we evaluate the arguments, get and
@@ -2277,7 +2258,8 @@ execution stack, we don't see them at all in this code.
 @< Function definitions @>=
 void call_expression::evaluate() const
 { argument->evaluate(); // push evaluated argument on stack
-  value f_val=global_id_table->value_of(function);
+  value f_val=global_id_table->value_of(function).get();
+    // ownership assured by table
   if (f_val==NULL) throw std::logic_error("built-in function absent");
 @.built-in function absent@>
   force<builtin_value>(f_val)->val();
@@ -2343,13 +2325,10 @@ to clean it up in case we have to signal a |logic_error|
 
 @< Template and inline function definitions @>=
 template <typename D> // |D| is a type derived from |value_base|
- D* get() throw(std::logic_error)
-{ value v=pop_value();
-  D* p=dynamic_cast<D*>(v);
-  if (p==NULL)
-  @/{@; delete v;
-      throw std::logic_error(std::string("Argument is no ")+D::name());
-    }
+ std::tr1::shared_ptr<D> get() throw(std::logic_error)
+{ std::tr1::shared_ptr<D> p=std::tr1::dynamic_pointer_cast<D>(pop_value());
+  if (p.get()==NULL)
+    throw std::logic_error(std::string("Argument is no ")+D::name());
   return p;
 }
 @.Argument is no ...@>
@@ -2375,8 +2354,9 @@ void initialise_evaluator();
 @< Template and inline... @>=
 inline void install_function
  (wrapper_function f,const char*name, const char* type)
-{ global_id_table->add(main_hash_table->match_literal(name)
-                      ,new builtin_value(f,name),make_type(type));
+{ shared_value val(new builtin_value(f,name));
+  global_id_table->add
+    (main_hash_table->match_literal(name),val,make_type(type));
 }
 
 @ Here we install the trivial wrapper function under two different identity
@@ -2401,28 +2381,28 @@ shared, we reuse one the first value object and destroy the second.
 @< Definition of other wrapper functions @>=
 void plus_wrapper ()
 { push_tuple_components();
-  int_ptr j(get<int_value>()); int_ptr i(get<int_value>());
+  shared_int j(get<int_value>()); shared_int i(get<int_value>());
   i->val+=j->val;
   push_value(i);
 }
 @)
 void minus_wrapper ()
 { push_tuple_components();
-  int_ptr j(get<int_value>()); int_ptr i(get<int_value>());
+  shared_int j(get<int_value>()); shared_int i(get<int_value>());
   i->val-=j->val;
   push_value(i);
 }
 @)
 void times_wrapper ()
 { push_tuple_components();
-  int_ptr j(get<int_value>()); int_ptr i(get<int_value>());
+  shared_int j(get<int_value>()); shared_int i(get<int_value>());
   i->val*=j->val;
   push_value(i);
 }
 @)
 void divide_wrapper ()
 { push_tuple_components();
-  int_ptr j(get<int_value>()); int_ptr i(get<int_value>());
+  shared_int j(get<int_value>()); shared_int i(get<int_value>());
   if (j->val==0) throw std::runtime_error("Division by zero");
   i->val/=j->val;
   push_value(i);
@@ -2430,18 +2410,18 @@ void divide_wrapper ()
 @)
 void modulo_wrapper ()
 { push_tuple_components();
-  int_ptr  j(get<int_value>()); int_ptr i(get<int_value>());
+  shared_int  j(get<int_value>()); shared_int i(get<int_value>());
   if (j->val==0) throw std::runtime_error("Modulo zero");
   i->val%=j->val;
   push_value(i);
 }
 @)
 void unary_minus_wrapper ()
-@+{@; int_value* i=get<int_value>(); i->val =-i->val; push_value(i); }
+@+{@; shared_int i=get<int_value>(); i->val =-i->val; push_value(i); }
 @)
 void divmod_wrapper ()
 { push_tuple_components();
-  int_ptr j(get<int_value>()); int_ptr i(get<int_value>());
+  shared_int j(get<int_value>()); shared_int i(get<int_value>());
   if (j->val==0) throw std::runtime_error("DivMod by zero");
   int mod=i->val%j->val;
   i->val/=j->val; j->val=mod;
@@ -2459,7 +2439,7 @@ global variable.
 
 @< Definition of other wrapper functions @>=
 void print_wrapper ()
-{ string_ptr s(get<string_value>());
+{ shared_string s(get<string_value>());
   *output_stream << s->val << std::endl;
   wrap_tuple(0); // don't forget to return a value
 }
@@ -2494,19 +2474,19 @@ a diagonal matrix from a vector.
 
 @< Definition of other wrapper functions @>=
 void id_mat_wrapper ()
-{ int_ptr i(get<int_value>());
+{ shared_int i(get<int_value>());
   matrix_ptr m
      (new matrix_value(latticetypes::LatticeMatrix()));
   matrix::identityMatrix(m->val,std::abs(i->val)); push_value(m);
 }
 @)
 void transpose_mat_wrapper ()
-{@; matrix_ptr m(get<matrix_value>());
+{@; shared_matrix m(get<matrix_value>());
   m->val.transpose(); push_value(m);
 }
 @)
 void diagonal_wrapper ()
-{ vector_ptr d(get<vector_value>());
+{ shared_vector d(get<vector_value>());
   size_t n=d->val.size();
   matrix_ptr m
      (new matrix_value(latticetypes::LatticeMatrix(n,n,0)));
@@ -2537,8 +2517,8 @@ they are to be popped from the stack in reverse order, but in the case of
 @< Definition of other wrapper functions @>=
 void mv_prod_wrapper ()
 { push_tuple_components();
-  vector_ptr v(get<vector_value>());
-  matrix_ptr m(get<matrix_value>());
+  shared_vector v(get<vector_value>());
+  shared_matrix m(get<matrix_value>());
   if (m->val.numColumns()!=v->val.size())
     throw std::runtime_error(std::string("Size mismatch ")@|
      + num(m->val.numColumns()) + ":" + num(v->val.size()) + " in mv_prod");
@@ -2550,8 +2530,8 @@ void mv_prod_wrapper ()
 @)
 void mm_prod_wrapper ()
 { push_tuple_components();
-  matrix_ptr r(get<matrix_value>()); // right factor
-  matrix_ptr l(get<matrix_value>()); // left factor
+  shared_matrix r(get<matrix_value>()); // right factor
+  shared_matrix l(get<matrix_value>()); // left factor
   if (l->val.numColumns()!=r->val.numRows())
   { std::ostringstream s;
     s<< "Size mismatch " << l->val.numColumns() << ":" << r->val.numRows()
@@ -2571,7 +2551,7 @@ the two combined into a single function.
 
 @< Definition of other wrapper functions @>=
 void invfact_wrapper ()
-{ matrix_ptr m(get<matrix_value>());
+{ shared_matrix m(get<matrix_value>());
   size_t nr=m->val.numRows();
   latticetypes::WeightList b; @+ matrix::initBasis(b,nr);
   vector_ptr inv_factors
@@ -2581,7 +2561,7 @@ void invfact_wrapper ()
 }
 @)
 void Smith_basis_wrapper ()
-{ matrix_ptr m(get<matrix_value>());
+{ shared_matrix m(get<matrix_value>());
   size_t nr=m->val.numRows();
   latticetypes::WeightList b; @+ matrix::initBasis(b,nr);
   latticetypes::Weight inv_factors(0);
@@ -2593,7 +2573,7 @@ void Smith_basis_wrapper ()
 @)
 
 void Smith_wrapper ()
-{ matrix_ptr m(get<matrix_value>());
+{ shared_matrix m(get<matrix_value>());
   size_t nr=m->val.numRows();
   latticetypes::WeightList b; @+ matrix::initBasis(b,nr);
   vector_ptr inv_factors
@@ -2610,7 +2590,7 @@ general over the integers, we return an integral matrix and a common
 denominator to be applied to all coefficients.
 @< Definition of other wrapper functions @>=
 void invert_wrapper ()
-{ matrix_ptr m(get<matrix_value>());
+{ shared_matrix m(get<matrix_value>());
   if (m->val.numRows()!=m->val.numColumns())
   { std::ostringstream s;
     s<< "Cannot invert a " @|
@@ -2674,15 +2654,18 @@ void identifier_expression::print(std::ostream& out) const
 identifier table, not forgetting to duplicate it, since values are destroyed
 after being used in evaluation. Actually implementing this the first time was
 more work than it would seem, since we had to introduce the |clone| virtual
-method of |value_base| (and types derived from it) in order to do it.
+method of |value_base| (and types derived from it) in order to do it. Now that
+the identifier table and execution stack use shared values, no call to |clone|
+is used here any more, but the move to shared values was nontrivial, and did
+necessitate the use of |clone| elsewhere.
 
 @< Function definitions @>=
 void identifier_expression::evaluate() const
-{ value p=global_id_table->value_of(code);
+{ shared_value p=global_id_table->value_of(code);
   if (p==NULL) throw std::logic_error
   @|   ("Identifier without value:"+main_hash_table->name_of(code));
 @.Identifier without value@>
-  push_value(p->clone());
+  push_value(p);
 }
 
 @ For an applied identifier the type found in the table must equal the
@@ -2805,27 +2788,23 @@ case subscription:
 
 
 @ Here are the |evaluate| methods for the various subscription expressions.
-Evaluating subscriptions is currently very inefficient, since it requires a
-copy of the array object to be evaluated, of which all but one component will
-be thrown away. This situation should be repaired by allowing for sharing of
-pointers to runtime values, with of course a modified notion of ownership. For
-|matrix_subscription|, note that |push_tuple_components()| takes care of
+For |matrix_subscription|, note that |push_tuple_components()| takes care of
 giving access to the individual index values without ownership conflict (by
 the time |j| and |i| are accessed, the tuple is already destroyed, but its
 components survive).
 
 @< Function definitions @>=
 void row_subscription::evaluate() const
-{ int_ptr i((index->evaluate(),get<int_value>()));
-  row_ptr r((array->evaluate(),get<row_value>()));
+{ shared_int i((index->evaluate(),get<int_value>()));
+  shared_row r((array->evaluate(),get<row_value>()));
   if (static_cast<unsigned int>(i->val)>=r->val.size())
     throw std::runtime_error("index "+num(i->val)+" out of range");
-  push_value(r->val[i->val]->clone());
+  push_value(r->val[i->val]);
 }
 @)
 void vector_subscription::evaluate() const
-{ int_ptr i((index->evaluate(),get<int_value>()));
-  vector_ptr v((array->evaluate(),get<vector_value>()));
+{ shared_int i((index->evaluate(),get<int_value>()));
+  shared_vector v((array->evaluate(),get<vector_value>()));
   if (static_cast<unsigned int>(i->val)>=v->val.size())
     throw std::runtime_error("index "+num(i->val)+" out of range");
   push_value(new int_value(v->val[i->val]));
@@ -2833,9 +2812,9 @@ void vector_subscription::evaluate() const
 @)
 void matrix_subscription::evaluate() const
 { index->evaluate(); push_tuple_components();
-  int_ptr j(get<int_value>());
-  int_ptr i(get<int_value>());
-  matrix_ptr m((array->evaluate(),get<matrix_value>()));
+  shared_int j(get<int_value>());
+  shared_int i(get<int_value>());
+  shared_matrix m((array->evaluate(),get<matrix_value>()));
   if (static_cast<unsigned int>(i->val)>=m->val.numRows())
     throw std::runtime_error("initial index "+num(i->val)+" out of range");
   if (static_cast<unsigned int>(j->val)>=m->val.numColumns())
@@ -2930,10 +2909,11 @@ void global_set_identifier(expr_list ids, expr rhs)
     if (ids->next!=NULL)
       @< Check that identifiers are distinct and that |t| is an appropriate
          tuple type; if not, |throw| a |runtime_error| @>
-    value v= (e->evaluate(),pop_value());
+    e->evaluate();
+    shared_value v=pop_value();
     if (ids->next==NULL)
     { cout << "Identifier " << ids->e << ": " << *t << std::endl;
-      global_id_table->add(ids->e.e.identifier_variant,v,t); // releases |t|
+      global_id_table->add(ids->e.e.identifier_variant,v,t);
     }
     else @< Perform a multiple assignment @>
   }
@@ -2994,14 +2974,13 @@ the tuple value. We report the type of each variable assigned separately.
 
 
 @< Perform a multiple assignment @>=
-{ tuple_ptr tv(force<tuple_value>(v));
+{ tuple_value* tv = force<tuple_value>(v.get());
   cout << "Identifiers ";
   size_t i=0; type_list tl=t->tuple;
   for (expr_list l=ids; l!=NULL; l=l->next,++i,tl=tl->next)
   { cout << l->e << ": " << tl->t << ( l->next!=NULL ? ", " : ".\n");
-    global_id_table->
-      add(l->e.e.identifier_variant,tv->val[i],copy(tl->t));
-    tv->val[i]=NULL; // ensure value in table is unshared
+    shared_value val = tv->val[i];
+    global_id_table->add(l->e.e.identifier_variant,val,copy(tl->t));
   }
 }
 
