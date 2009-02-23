@@ -465,6 +465,7 @@ RootSet RootSystem::long_orthogonalize(const RootSet& rset) const
 	result.insert(gamma);
 	result.insert(root_permutation(*jt)[gamma]);
 	result.remove(*it); result.remove(*jt);
+	break; // move to next |*it|; without this inner loop won't terminate!
       }
   return result;
 }
