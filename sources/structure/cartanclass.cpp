@@ -539,7 +539,7 @@ Fiber::adjointMAlphas (const rootdata::RootSystem& rs) const
     for(size_t j = 0; j < v.size(); ++j)
     {
       latticetypes::LatticeCoeff c =
-	rs.bracket(simpleImaginary(i),rs.simpleRootNbr(j));
+	rs.bracket(rs.simpleRootNbr(j),simpleImaginary(i));
       v.set_mod2(j,c);
     }
 
