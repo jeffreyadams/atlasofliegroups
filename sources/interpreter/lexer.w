@@ -49,8 +49,9 @@ namespace atlas { namespace interpreter {
 }@; }@;
 #endif
 
-@ Here we include only our own header file \.{lexer.h}, all other include
-directive will go to that file.
+@ Here we include only our own header file \.{lexer.h}; all other include
+directives will go to that file, as indicated in the previous section (this
+might be a bit wasteful, but only system header files are concerned).
 
 @c
 #include "lexer.h"
@@ -144,9 +145,7 @@ String_pool::~String_pool(void)
 @+{@; delete prev; delete[] start; }
 
 @*1 The hash table. Our hash table will use an instance of |String_pool| for
-storing its keys. Since we do not consider a hash table as a specialisation of
-a string pool, we shall just define a member field of that type rather than
-use inheritance. The functionality of the hash table is quite simple, and it
+storing its keys. The functionality of the hash table is quite simple, and it
 hides the actual hashing. Upon construction the hash table is empty, and its
 stores every distinct string that is passed to it, never removing one. It
 matches the string against all strings it has seen before, and returns a
@@ -173,8 +172,7 @@ public: // interface
     id_type match(const char* s, size_t l) @+{@; return do_match(s,l,true); }
     id_type match_literal(const char* s) /* literal null-terminated string */
       {@; return do_match(s,strlen(s),false); }
-    std::string name_of(id_type nr) const
-       @+{@; return std::string(name_tab[nr]); }
+    const char* name_of(id_type nr) const @+{@; return name_tab[nr]; }
     id_type nr_entries() const @+{@; return name_tab.size(); }
 private: // auxiliary functions
     static const id_type initial_hash_mod=97;
@@ -254,12 +252,13 @@ too-full condition has been resolved, and we know that |str| is new, we can
 avoid recursion and perform a simplified computation of the new hash code in
 this case.
 
+@h <cstring>
 @< Definitions of class members @>=
 Hash_table::id_type Hash_table::do_match
 	(const char* str, size_t l, bool copy_string)
 { id_type i,h=hash(str,l);
   while ((i=hash_tab[h])>=0)
-    if (strncmp(name_tab[i],str,l)==0 && name_tab[i][l]=='\0') return i;
+    if (std::strncmp(name_tab[i],str,l)==0 && name_tab[i][l]=='\0') return i;
           /* identifier found in table */
     else if (++h==mod) h=0; /* move past occupied slot */
   if (name_tab.size()>=max_fill())
@@ -276,15 +275,17 @@ Hash_table::id_type Hash_table::do_match
 @ When the hash table becomes too full, we can throw away the |hash_tab|
 because the |name_tab| contains all the information required; therefore we can
 assign a larger vector to |hash_tab| rather than using |hash_tab.resize()|
-which would copy the old entries. The code for inserting the indices of
-rehashed strings from |name_tab| is simpler than in the basic matching loop,
-since we know that all those strings are distinct; it suffices to find for
-each an empty slot. The sequence number associated to each string does not
-change. We finally reserve enough space for |name_tab| to last until the next
-time rehashing is necessary.
+which would copy the old entries. By performing the assignment via the |swap|
+method (necessarily taken from the newly constructed value) we can avoid any
+risk of copying of the new (empty) slots that an assignment might imply. The
+code for inserting the indices of rehashed strings from |name_tab| is simpler
+than in the basic matching loop, since we know that all those strings are
+distinct; it suffices to find for each an empty slot. The sequence number
+associated to each string does not change. We finally reserve enough space for
+|name_tab| to last until the next time rehashing is necessary.
 
 @< Extend hash table @>=
-{ hash_tab=vector<id_type>(mod=2*mod-1); // keep it odd
+{ vector<id_type>(mod=2*mod-1).swap(hash_tab); // keep it odd
   for (int h=0; h<mod; ++h) hash_tab[h]=-1;
   for (size_t i=0; i<name_tab.size(); ++i)
   { int h=hash(name_tab[i],strlen(name_tab[i])); // rehash the string
@@ -314,7 +315,7 @@ but strictly speaking this has nothing to do with lexical analysis. The
 completion function will be installed in the main program, and it will be
 called from the |readline| function (which is probably called by
 |BufferedInput::getline|) if the user asks for it. The function prototype is
-prescribed by the \.{readline} library.
+dictated by the \.{readline} library.
 
 @< Declarations of exported functions @>=
 extern "C"
@@ -349,14 +350,14 @@ char* id_completion_func(const char* text, int state)
   }
   while (i<n)
     // |i| is initialised above when |state==0|, and incremented below
-  { std::string s=main_hash_table->name_of(i++);
+  { const char* s=main_hash_table->name_of(i++);
       // get stored identifier and increment loop
-    if (s.compare(0,l,text,l) == 0) // is |text| a prefix of |s|?
-    { char* res=static_cast<char*>(std::malloc(s.length()+1));
+    if (std::strncmp(text,s,l) == 0) // is |text| a prefix of |s|?
+    { char* res=static_cast<char*>(std::malloc(std::strlen(s)+1));
         // we need a |malloc|ed string
       if (res==NULL)
-	 return NULL; // if memory gets full here, that's just too bad
-      s.copy(res,s.length()); res[s.length()]='\0'; // was not done by |copy|!
+	return NULL; // if memory gets full here, that's just too bad
+      std::strcpy(res,s);
       return res;
     }
   }
@@ -695,7 +696,6 @@ and to define a corresponding destructor for in case the parser should decide
 to drop the token after a following syntax error (for a token value that is a
 string denotation expression, this is already handled by |destroy_expr|).
 
-@h <cstring>
 @< Scan a string... @>=
 {@; valp->expression=make_string_denotation(scan_quoted_string());
   code=STRING;

@@ -65,7 +65,12 @@ in the same order as in the \.{\%token} declaration in \.{parser.y}.
 @< Local static data @>=
 
 const char* keywords[] =
- {"quit","true","false","quiet","verbose","whattype","showall",NULL};
+ {"quit"
+ ,"let","in"
+ ,"true","false"
+ ,"quiet","verbose"
+ ,"whattype","showall"
+ ,NULL};
 
 @ Our lexical analyser is defined as a class, which we shall instantiate in
 the main program. In order for the lexical analyser wrapper function to access
@@ -198,15 +203,15 @@ suppress printing if the uninteresting value.
   catch (runtime_error& err)
   { if (type_OK) cerr << "Runtime error: ";
     cerr << err.what() << ", evaluation aborted.\n";
-    clear_execution_stack(); main_input_buffer->close_includes();
+    reset_evaluator(); main_input_buffer->close_includes();
   }
   catch (logic_error& err)
-  { cerr << "Unexpected error: " << err.what() << ", evaluation aborted.\n";
-    clear_execution_stack(); main_input_buffer->close_includes();
+  { cerr << "Internal error: " << err.what() << ", evaluation aborted.\n";
+    reset_evaluator(); main_input_buffer->close_includes();
   }
   catch (exception& err)
   { cerr << err.what() << ", evaluation aborted.\n";
-    clear_execution_stack(); main_input_buffer->close_includes();
+    reset_evaluator(); main_input_buffer->close_includes();
   }
 }
 

@@ -117,7 +117,7 @@ char* str_denotation_variant;
 @< Enumeration tags for |expr_kind| @>=
 integer_denotation, string_denotation, boolean_denotation, @[@]
 
-@ To print an integer denotation we just print its |v| field; for string
+@ To print an integer denotation we just print its variant field; for string
 denotations we do the same but enclosed in quotes, while for Boolean
 denotations we reproduce the keyword that gives the denotation.
 
@@ -126,7 +126,7 @@ case integer_denotation: out << e.e.int_denotation_variant; break;
 case string_denotation:
   out << '"' << e.e.str_denotation_variant << '"'; break;
 case boolean_denotation:
-  out << (e.e.int_denotation_variant ? "true" : "false"); break;
+  out << (e.e.int_denotation_variant!=0 ? "true" : "false"); break;
 
 @~When a string denotation is destroyed, we free the string that was created
 by the lexical scanner.
@@ -144,8 +144,6 @@ expr make_bool_denotation(int val);
 
 @~The definition of these functions is quite trivial, as will be typical for
 node-building functions.
-
-@h <cstdio>
 
 @< Definitions of functions in \Cee... @>=
 expr make_int_denotation (int val)
@@ -190,7 +188,7 @@ break;
 @< Cases for destroying... @>=
 case applied_identifier: break;
 
-@ To build the node for denotations we provide the function
+@ To build the node for applied identifiers we provide the function
 |make_applied_identifier|.
 
 @< Declaration of functions in \Cee-style for the parser @>=
@@ -262,7 +260,7 @@ parser, as it may need to discard tokens holding such lists.
 @< Declaration of functions in \Cee-style for the parser @>=
 void destroy_exprlist(expr_list l);
 
-@~This function recursively destroys subexpressions, and clear up the nodes of
+@~This function recursively destroys subexpressions, and cleans up the nodes of
 the list themselves when we are done with them. Note that | l=l->next| cannot
 be the final statement in the loop body below.
 
@@ -296,8 +294,8 @@ expr wrap_list_display(expr_list l);
 
 @~The definition of |make_expr_list| is quite trivial, and |reverse_expr_list|
 is easy as well. Of the two possible and equivalent list reversal paradigms,
-we use the ``hold the head'' style which starts with |t=e|; the other option
-is ``hold the tail'', which would start with |t=e->next|. Either one would do
+we use the ``hold the head'' style which starts with |t=l|; the other option
+is ``hold the tail'', which would start with |t=l->next|. Either one would do
 just as well. We do not call |reverse_expr_list| from |wrap_expr_list| although
 the two are usually combined, since whether or not the list should be reversed
 can only be understood when the grammar rules are given.
@@ -425,10 +423,120 @@ this is already done by the parser before calling |make_application_node|.
 expr make_application_node(id_type f, expr_list args)
 { app a=new application_node; a->fun=f;
   if (args!=NULL && args->next==NULL) // a single argument
-  { a->arg=args->e; delete args; }
+  {@; a->arg=args->e; delete args; }
   else a->arg=wrap_tuple_display(args);
   expr result; result.kind=function_call; result.e.call_variant=a;
   return result;
+}
+
+@*1 Let expressions.
+We introduce let-expressions that introduce and bind local identifiers, as a
+first step towards having use defined functions. Indeed let-expressions will
+be implemented (initially) as a user-defined function that is immediately
+called with the values bound in the let-expression. The reason to do this
+before considereing user-defined functions in general is that this avoids for
+now having to specify in the user program the types of the parameters of the
+function, these type being determined by the values provided.
+
+@< Typedefs... @>=
+typedef struct let_expr_node* let;
+
+@~A let-expression will have non-empty a list of let-bindings followed by a
+body giving the value to be returned. We therefore define a node for the list
+of bindings, and a structure for the whole let-expression that contains such a
+node and a body.
+
+@< Structure and typedef declarations for types built upon |expr| @>=
+typedef struct let_node* let_list;
+struct let_node {@; id_type id; expr val; let_list next; };
+struct let_expr_node {@; struct let_node first; expr body; };
+
+@ The tag used for let-expressions is |let_expr|.
+
+@< Enumeration tags for |expr_kind| @>= let_expr, @[@]
+
+@~Without surprise there is a class of |expr| values with a |let| as parsing
+value.
+
+@< Variants... @>=
+let let_variant;
+
+@ To print a let-expression we do the obvious things, wihtout worrying about
+parentrheses; this should be fixed (for all printing routines).
+
+@h "lexer.h"
+@< Cases for printing... @>=
+case let_expr:
+  { let lexp=e.e.let_variant;
+    out << "let ";
+    let_list p=&lexp->first;
+    do
+      out << main_hash_table->name_of(p->id) << '=' << p->val
+          << (p->next!=NULL ? "," : " in ");
+    while ((p=p->next)!=NULL);
+    out << lexp->body;
+  }
+  break;
+
+@ Destroying lists of declarations will be done in a function callable from the
+parser, like |destroy_exprlist|.
+
+@< Declaration of functions in \Cee-style for the parser @>=
+void destroy_letlist(let_list l);
+
+@~Like |destroy_exprlist|, this function recursively destroys nodes, and the
+expressions they contain.
+
+@< Definitions of functions in \Cee-style for the parser @>=
+void destroy_letlist(let_list l)
+{@; while (l!=NULL)
+    {@;
+      let_list p=l; l=l->next;
+      destroy_expr(p->val);
+      delete p;
+    }
+}
+
+@~Here we clean up all declarations, and then the body of the let-expression.
+
+@< Cases for destroying... @>=
+case let_expr:
+  { let lexp=e.e.let_variant;
+    destroy_expr(lexp->first.val);
+    destroy_letlist(lexp->first.next);
+    destroy_expr(lexp->body);
+    delete lexp;
+  }
+  break;
+
+@ For building let-expressions, two functions will be defined. The function
+|add_let_node| adds one declaration (it is called with |prev==NULL| for the
+first clause), while |make_let_expr_node| wraps up the let-expression by
+adding the body.
+
+@< Declaration of functions in \Cee-style for the parser @>=
+let_list add_let_node(let_list prev, id_type id, expr val);
+expr make_let_expr_node(let_list decls, expr body);
+
+@~In |make_let_expr_node| we must take care to reverse the list of
+declarations, since the last one added will be at the head of the list.
+
+@< Definitions of functions in \Cee... @>=
+let_list add_let_node(let_list prev, id_type id, expr val)
+{@; let_list l=new let_node;
+  l->id=id; l->val=val; l->next=prev;
+  return l;
+}
+@)
+expr make_let_expr_node(let_list decls, expr body)
+{ let l=new let_expr_node; l->body=body;
+  if (decls->next!=NULL) // then reverse list of declarations
+  { let_list q=decls->next; decls->next=NULL;
+    do {@; let_list t=q->next; q->next=decls; decls=q; q=t; }
+    while (q!=NULL);
+  }
+  l->first=*decls; delete decls;
+  expr result; result.kind=let_expr; result.e.let_variant=l; return result;
 }
 
 @*1 Array subscriptions.

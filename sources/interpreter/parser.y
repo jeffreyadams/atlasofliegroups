@@ -30,6 +30,7 @@
   short id_code;    /* For identifier codes  */
   expr	expression; /* For generic expressions */
   expr_list expression_list; /* For any list of expressions */
+  let_list decls; /* declarations in a LET expression */
 }
 
 %locations
@@ -38,16 +39,18 @@
 %pure-parser
 %error-verbose
 
-%token QUIT TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
+%token QUIT LET IN TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
 %token DIVMOD
 %token <val> INT
 %token <expression> STRING
 %token <id_code> IDENT
 %token TOFILE ADDTOFILE FROMFILE
-%type  <expression> exp primary
-%destructor { destroy_expr ($$); } exp primary
+%type  <expression> exp quaternary formula primary
+%destructor { destroy_expr ($$); } exp quaternary formula primary
 %type  <expression_list> commalist commabarlist idlist
 %destructor { destroy_exprlist($$); } commalist commabarlist idlist
+%type <decls> declarations
+%destructor { destroy_letlist($$); } declarations
 %nonassoc DIVMOD
 %left '-' '+'
 %left '*' '/' '%'
@@ -73,49 +76,60 @@ input:  '\n'			{ YYABORT } /* null input, skip evaluator */
         | SHOWALL '\n'          { show_ids(); YYABORT } /* print id table */
 ;
 
-exp     : exp '+' exp
+exp     : quaternary ;
+
+
+quaternary: LET declarations IN quaternary { $$ = make_let_expr_node($2,$4); }
+        | formula
+;
+
+formula : formula '+' formula
         { $$ = make_application_node
 	       (lookup_identifier("+")
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
-        | exp '-' exp
+        | formula '-' formula
         { $$ = make_application_node
 	       (lookup_identifier("-")
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
-        | exp '*' exp
+        | formula '*' formula
         { $$ = make_application_node
 	       (lookup_identifier("*")
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
-        | exp '/' exp
+        | formula '/' formula
         { $$ = make_application_node
 	       (lookup_identifier("/")
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
-        | exp '%' exp
+        | formula '%' formula
         { $$ = make_application_node
 	       (lookup_identifier("%")
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
-        | '-' exp  %prec NEG
+        | '-' formula  %prec NEG
         { $$ = make_application_node
 	       (lookup_identifier("-u")
 	       ,make_exprlist_node($2,null_expr_list)
 	       );
         }
-	| exp DIVMOD exp
+	| formula DIVMOD formula
         { $$ = make_application_node
 	       (lookup_identifier("/%")
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
         | primary
+;
+
+declarations: declarations ',' IDENT '=' exp { $$ = add_let_node($1,$3,$5); }
+        | IDENT '=' exp { $$ = add_let_node(NULL,$1,$3); }
 ;
 
 primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }
