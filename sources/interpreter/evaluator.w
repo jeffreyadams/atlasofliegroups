@@ -1084,17 +1084,18 @@ be popped from the stack in reverse order.
 @< Global variable definitions @>=
 std::vector<shared_value> execution_stack;
 
-@ Here are two functions to facilitate manipulating the stack. Being inline,
-we define them right away. For exception safety |push_value| takes an
-auto-pointer as argument; for convenience we make it a template function that
-accepts an auto-pointer to a type derived from |value_base| (since a
-conversion of auto-pointers from derived to base is not possible without a
-cast in a function argument position). For even more convenience we also
-provide a variant taking an ordinary pointer, so that expressions using |new|
-can be written without cast in the argument of |push_value|. Since
-|push_value| has only one argument, such use of does not compromise exception
-safety: nothing can throw between the return of |new| and the conversions of
-its result into an auto-pointer.
+@ We shall define some inline functions to facilitate manipulating the stack.
+The function |push_value| does what its name suggests. For exception safety it
+takes either an auto-pointer or a shared pointer as argument; the former is
+converted into the latter, in which case the |use_count| will becme~$1$. For
+convenience we make these template functions that accept a smart pointer to
+any type derived from |value_base| (since a conversion of such pointers from
+derived to base is not possible without a cast in a function argument
+position). For even more convenience we also provide a variant taking an
+ordinary pointer, so that expressions using |new| can be written without cast
+in the argument of |push_value|. Since |push_value| has only one argument,
+such use of does not compromise exception safety: nothing can throw between
+the return of |new| and the conversions of its result into an auto-pointer.
 
 @< Template and inline function definitions @>=
 template<typename D> // |D| is a type derived from |value_base|
@@ -1107,12 +1108,45 @@ template<typename D> // |D| is a type derived from |value_base|
 
 inline void push_value(value_base* p) @+{@; push_value(owned_value(p)); }
 
-@)
+@ There is a counterpart |pop_value| to |push_value|. Most often the result
+pust be dynamically cast to the type they are known to have because we passed
+the type checker; should the cast fail we shall throw a |std::logic_error|.
+The template function |get| with explicitly provided type serves for this
+purpose; it is very much like the template function |force|, but returns a
+shared pointer (because the value on the stack might be shared). Finally we
+provide a variant template function |get_own| that returns a privately owned
+copy of the value from the stack, to which modifications can be made without
+danger of altering shared instances. Since there is no way to persuade a
+|shared_ptr| to release its ownership even if ith happens to be the unique
+owner, we must unconditionally call |clone| to achieve this.
+
+@< Template and inline function definitions @>=
+
 inline shared_value pop_value()
-{@; shared_value arg(execution_stack.back());
+{@; shared_value arg=execution_stack.back();
   execution_stack.pop_back();
   return arg;
 }
+@)
+template <typename D> // |D| is a type derived from |value_base|
+ std::tr1::shared_ptr<D> get() throw(std::logic_error)
+{ std::tr1::shared_ptr<D> p=std::tr1::dynamic_pointer_cast<D>(pop_value());
+  if (p.get()==NULL)
+    throw std::logic_error(std::string("Argument is no ")+D::name());
+  return p;
+}
+@.Argument is no ...@>
+@)
+template <typename D> // |D| is a type derived from |value_base|
+ std::auto_ptr<D> get_own() throw(std::logic_error)
+{ D* p=dynamic_cast<D*>(execution_stack.back().get());
+  if (p==NULL)
+    throw std::logic_error(std::string("Argument is no ")+D::name());
+  std::auto_ptr<D> result(p->clone());
+  execution_stack.pop_back(); // only now can we release the shared pointer
+  return result;
+}
+@.Argument is no ...@>
 
 @ Now let us define classes derived from |expression_base|. The simplest is
 |denotation|, which simply stores a |value|, which it returns upon evaluation.
@@ -1159,18 +1193,20 @@ void reset_evaluator ();
 @~We shall monitor disappearing values when clearing the stack. This provides
 some output that may not be easy to interpret for an unsuspecting user, so we
 limit this to the case that the |verbosity| parameter (defined below) is
-nonzero.
+nonzero. Other actions necessary for a clean restart will be added later.
 
 @< Function definitions @>=
 void reset_evaluator()
 { if (!execution_stack.empty())
-  { if (verbosity!=0)
+  { if (verbosity==0)
+      execution_stack.clear();
+    else
+    {
       std::cerr << "Discarding from execution stack:" << std::endl;
-    do
-    { shared_value v=pop_value();
-      if (verbosity!=0) std::cerr << *v << std::endl;
+      do
+        std::cerr << *pop_value() << std::endl;
+      while (!execution_stack.empty());
     }
-    while (!execution_stack.empty());
   }
   @< Actions to reset the evaluator @>
 }
@@ -1943,15 +1979,15 @@ void matrix2_conversion::evaluate() const
 @ The other three conversion functions perform the inverse transformations of
 those given above. Again it will be handy to have a basic function
 |weight_to_row| that performs more or less the inverse transformation of
-|row_to_weight|, but rather than returning a |row_value| it returns a |value|
-pointing to it.
+|row_to_weight|, but rather than returning a |row_value| it returns a
+|row_ptr| pointing to it.
 
 @< Function definitions @>=
-value weight_to_row(const latticetypes::Weight& v)
+row_ptr weight_to_row(const latticetypes::Weight& v)
 { row_ptr result (new row_value(v.size()));
   for(size_t i=0; i<v.size(); ++i)
     result->val[i]=shared_value(new int_value(v[i]));
-  return result.release();
+  return result;
 }
 @)
 void int_list_conversion::evaluate() const
@@ -1964,16 +2000,16 @@ void vec_list_conversion::evaluate() const
   row_ptr result(new row_value(m->val.numColumns()));
   for(size_t i=0; i<m->val.numColumns(); ++i)
     result->val[i]=shared_value(new vector_value(m->val.column(i)));
-  push_value(result.release());
+  push_value(result);
 }
 @)
 void int_list_list_conversion::evaluate() const
 { exp->evaluate(); @+ shared_matrix m(get<matrix_value>());
   row_ptr result(new row_value(m->val.numColumns()));
   for(size_t i=0; i<m->val.numColumns(); ++i)
-    result->val[i]=shared_value(weight_to_row(m->val.column(i)));
+    result->val[i]=shared_value(weight_to_row(m->val.column(i)).release());
 
-  push_value(result.release());
+  push_value(result);
 }
 
 
@@ -2429,28 +2465,9 @@ type_ptr analyse_types(const expr& e,expression_ptr& p)
 @*1 Wrapper functions.
 %
 We have not defined any wrapper functions yet, and therefore have nothing in
-the |global_id_table|. We start with some preparations for defining wrapper
-functions. They will routinely have to do some unpacking of values, which
-will involve dynamically casting the |value| to the type they are known to
-have because we passed the type checker; should the cast fail we shall throw a
-|std::logic_error|. We define a template function to do the unpacking for
-every type derived from |value_base|. It is very much like the template
-function |force|, but we pull the value off the stack, and therefore take care
-to clean it up in case we have to signal a |logic_error|
-
-@< Template and inline function definitions @>=
-template <typename D> // |D| is a type derived from |value_base|
- std::tr1::shared_ptr<D> get() throw(std::logic_error)
-{ std::tr1::shared_ptr<D> p=std::tr1::dynamic_pointer_cast<D>(pop_value());
-  if (p.get()==NULL)
-    throw std::logic_error(std::string("Argument is no ")+D::name());
-  return p;
-}
-@.Argument is no ...@>
-
-@ Our first wrapper function is a trivial one, but which will be put
-into the |global_id_table| under different names and signatures, each forcing
-a particular argument type.
+the |global_id_table|. Our first wrapper function is a trivial one, but which
+will be put into the |global_id_table| under different names and signatures,
+each forcing a particular argument type.
 
 @< Function definitions @>=
 
@@ -2490,57 +2507,52 @@ void initialise_evaluator()
 arithmetic. Arithmetic operators are implemented by wrapper functions with two
 integer arguments (or one in the case of unary minus). Note that the values
 are pulled from the stack in reverse order, which is important for the
-non-commutative operations like `|-|', `|/|' and~`|%|'. Since values are not
-shared, we reuse one the first value object and destroy the second.
+non-commutative operations like `|-|', `|/|' and~`|%|'. Since values are
+shared, we must allocate new value objects for the results.
 
 @< Definition of other wrapper functions @>=
 void plus_wrapper ()
 { push_tuple_components();
   shared_int j(get<int_value>()); shared_int i(get<int_value>());
-  i->val+=j->val;
-  push_value(i);
+  push_value(new int_value(i->val+j->val));
 }
 @)
 void minus_wrapper ()
 { push_tuple_components();
   shared_int j(get<int_value>()); shared_int i(get<int_value>());
-  i->val-=j->val;
-  push_value(i);
+  push_value(new int_value(i->val-j->val));
 }
 @)
 void times_wrapper ()
 { push_tuple_components();
   shared_int j(get<int_value>()); shared_int i(get<int_value>());
-  i->val*=j->val;
-  push_value(i);
+  push_value(new int_value(i->val*j->val));
 }
 @)
 void divide_wrapper ()
 { push_tuple_components();
   shared_int j(get<int_value>()); shared_int i(get<int_value>());
   if (j->val==0) throw std::runtime_error("Division by zero");
-  i->val/=j->val;
-  push_value(i);
+  push_value(new int_value(i->val/j->val));
 }
 @)
 void modulo_wrapper ()
 { push_tuple_components();
   shared_int  j(get<int_value>()); shared_int i(get<int_value>());
   if (j->val==0) throw std::runtime_error("Modulo zero");
-  i->val%=j->val;
-  push_value(i);
+  push_value(new int_value(i->val%j->val));
 }
 @)
 void unary_minus_wrapper ()
-@+{@; shared_int i=get<int_value>(); i->val =-i->val; push_value(i); }
+{@; shared_int i=get<int_value>();  push_value(new int_value(-i->val)); }
 @)
 void divmod_wrapper ()
 { push_tuple_components();
   shared_int j(get<int_value>()); shared_int i(get<int_value>());
   if (j->val==0) throw std::runtime_error("DivMod by zero");
-  int mod=i->val%j->val;
-  i->val/=j->val; j->val=mod;
-@/push_value(i); push_value(j); wrap_tuple(2);
+  push_value(new int_value(i->val%j->val));
+  push_value(new int_value(i->val/j->val));
+  wrap_tuple(2);
 }
 
 @ Here is a simple function that outputs a string without its quotes, but with
@@ -2581,11 +2593,9 @@ matrix object (which implies copying its contents). Actually this is a case
 where the compiler might avoid such a copy if the identity matrix were
 produced directly in the argument to |new matrix_value| (rather than in a
 variable), but there is (currently) no constructor or function that produces
-an identity matrix as result. In |transpose_mat_wrapper| we can in fact return
-the same |matrix_value| that held the argument, but this does not absolve us
-from using an auto-pointer while |transpose| is active. We also define
-|diagonal_wrapper|, a slight generalisation of |id_mat_wrapper| that produces
-a diagonal matrix from a vector.
+an identity matrix as result. We also define |diagonal_wrapper|, a slight
+generalisation of |id_mat_wrapper| that produces a diagonal matrix from a
+vector.
 
 @< Definition of other wrapper functions @>=
 void id_mat_wrapper ()
@@ -2596,8 +2606,8 @@ void id_mat_wrapper ()
 }
 @)
 void transpose_mat_wrapper ()
-{@; shared_matrix m(get<matrix_value>());
-  m->val.transpose(); push_value(m);
+{ shared_matrix m(get<matrix_value>());
+  push_value(new matrix_value(m->val.transposed()));
 }
 @)
 void diagonal_wrapper ()
@@ -2637,10 +2647,7 @@ void mv_prod_wrapper ()
   if (m->val.numColumns()!=v->val.size())
     throw std::runtime_error(std::string("Size mismatch ")@|
      + num(m->val.numColumns()) + ":" + num(v->val.size()) + " in mv_prod");
-  vector_ptr w@|
-    (new vector_value(latticetypes::Weight(m->val.numRows())));
-  m->val.apply(w->val,v->val);
-  push_value(w);
+  push_value(new vector_value(m->val.apply(v->val)));
 }
 @)
 void mm_prod_wrapper ()
@@ -2653,8 +2660,7 @@ void mm_prod_wrapper ()
     @| << " in mm_prod";
     throw std::runtime_error(s.str());
   }
-  l->val*=r->val;
-  push_value(l);
+  push_value(new matrix_value(l->val*r->val));
 }
 
 @ As a last example, here is the Smith normal form algorithm. We provide both
@@ -2681,9 +2687,7 @@ void Smith_basis_wrapper ()
   latticetypes::WeightList b; @+ matrix::initBasis(b,nr);
   latticetypes::Weight inv_factors(0);
   smithnormal::smithNormal(inv_factors,b.begin(),m->val);
-  latticetypes::LatticeMatrix new_basis(b); // convert basis into matrix
-  m->val.swap(new_basis);
-  push_value(m);
+  push_value(new matrix_value(latticetypes::LatticeMatrix(b)));
 }
 @)
 
@@ -2694,9 +2698,9 @@ void Smith_wrapper ()
   vector_ptr inv_factors
      @| (new vector_value(latticetypes::Weight(0)));
   smithnormal::smithNormal(inv_factors->val,b.begin(),m->val);
-  latticetypes::LatticeMatrix new_basis(b); // convert basis into matrix
-  m->val.swap(new_basis);
-@/push_value(m); push_value(inv_factors); wrap_tuple(2);
+@/push_value(new matrix_value(latticetypes::LatticeMatrix(b)));
+  push_value(inv_factors);
+  wrap_tuple(2);
 }
 
 @ Here is one more wrapper function that uses the Smith normal form algorithm,
@@ -2713,8 +2717,9 @@ void invert_wrapper ()
     throw std::runtime_error(s.str());
   }
   int_ptr denom(new int_value(0));
-  m->val.invert(denom->val);
-@/push_value(m); push_value(denom); wrap_tuple(2);
+@/push_value(new matrix_value(m->val.inverse(denom->val)));
+  push_value(denom);
+  wrap_tuple(2);
 }
 
 @ We must not forget to install what we have defined. The names of the
@@ -3013,7 +3018,7 @@ void closure_value::print(std::ostream& out) const
 }
 
 @ The following code defines in essence a call-by-value $\lambda$ calculus
-evaluator. The method |call_expression::evaluate| should be extended later to
+evaluator. Later one should extend the method |call_expression::evaluate| to
 allow for the possibility the the function part evaluates to a built-in
 function, but currently that cannot happen, since |call_expression| values are
 only produced from let-expressions.

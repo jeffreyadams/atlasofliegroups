@@ -509,9 +509,9 @@ void Lexical_analyser::skip_space(void)
 @ Another auxiliary method is used for scanning a quoted string; it should be
 called when an initial double-quote character has been recognised, and after
 scanning the string returns a pointer to the designated string (with quotes
-and escapes removed), null terminated and allocated by |new|. We currently use
-a simple model for strings. They should be contained in a single line, and the
-only escapes used are the doubling of double-quote characters. We copy the
+and escapes removed), null terminated and allocated by |new[]|. We currently
+use a simple model for strings. They should be contained in a single line, and
+the only escapes used are the doubling of double-quote characters. We copy the
 string while reducing doubled double-quote characters to single ones.
 
 
@@ -586,8 +586,8 @@ thus ensuring that the command will only be executed if it constitutes the
 complete user input.
 
 (One may imagine that premature reduction could cause problems in other
-positions as well, but this is by far the most irritating one where no grammar
-rewriting can help.)
+positions as well, but this is by far the most irritating case, and one where
+no grammar rewriting can help.)
 
 The implementation of this two-token termination reporting is by setting
 |state=ended| when the token |'\n'| is returned, and testing this condition as
@@ -624,9 +624,7 @@ case we start with looking it up in the table, and then the numeric value of
 the code returned will allow us to discriminate the possibilities. In this
 scanner we cannot yet handle multiple distinct keywords that should scan as
 the same category because of a similar syntactic role, although this is
-probably desirable. Currently keywords cannot set |prevent_termination|, but
-those that would want to are most probably also the ones that raise the
-nesting level, making this superfluous.
+probably desirable.
 
 @< Scan an identifier or a keyword @>=
 { const char* p=input.point@[()@]-1; // start of token
@@ -634,7 +632,15 @@ nesting level, making this superfluous.
   input.unshift();
   Hash_table::id_type id_code=id_table.match(p,input.point()-p);
   if (id_code>=keyword_limit) {@; valp->id_code=id_code; code=IDENT; }
-  else code=QUIT+id_code;
+  else
+  { code=QUIT+id_code;
+    switch(code)
+    {
+      case LET: ++nesting; input.push_prompt('L'); break;
+      case IN: --nesting; input.pop_prompt(); prevent_termination='I'; break;
+      case WHATTYPE: prevent_termination='W'; break;
+    }
+  }
 }
 
 @ Numbers do not include a sign, and are always scanned as |unsigned long|
@@ -693,8 +699,9 @@ the |(char *)| value returned by |scan_quoted_string()|, thus performing some
 work that is usually left to the parser. The reason for this is that it avoids
 having to extend union of possible token values with a variant for |(char *)|
 and to define a corresponding destructor for in case the parser should decide
-to drop the token after a following syntax error (for a token value that is a
-string denotation expression, this is already handled by |destroy_expr|).
+to drop the token because of a syntax error. In the current situation the
+token value is a (string denotation) expression, and its destruction is
+handled by |destroy_expr|.
 
 @< Scan a string... @>=
 {@; valp->expression=make_string_denotation(scan_quoted_string());
@@ -703,9 +710,10 @@ string denotation expression, this is already handled by |destroy_expr|).
 
 @ Since file names have a different lexical structure than identifiers, they
 are treated separately in the scanner; moreover since at most one file name
-can occur per command, we store in a field |file_name| of the lexical scanner
-reserved for that purpose. We allow a file name to be either a sequence of
-non-space characters not starting with a quote, or a quoted string.
+can occur per command, we store it in a field |file_name| of the lexical
+scanner reserved for that purpose. We allow a file name to be either a
+sequence of non-space characters not starting with a quote, or a quoted
+string.
 
 @< Read in |file_name| @>=
 if ((skip_space(),c=input.shift())=='"')

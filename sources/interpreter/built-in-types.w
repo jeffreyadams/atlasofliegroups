@@ -342,9 +342,8 @@ void Smith_Cartan_wrapper()
   vector_ptr inv_factors (new vector_value(latticetypes::CoeffList(0)));
   latticetypes::WeightList b; @+
   smithBasis(inv_factors->val,b,t->val);
-  matrix_ptr m @| (new matrix_value(latticetypes::LatticeMatrix(b)));
-    // convert from |WeightList|
-  push_value(m); push_value(inv_factors); wrap_tuple(2);
+  push_value(new matrix_value(latticetypes::LatticeMatrix(b)));
+  push_value(inv_factors); wrap_tuple(2);
 }
 
 @ The result of |Smith_Cartan| can serve among other things to help specifying
@@ -367,8 +366,8 @@ call, and auto-pointers should not be used; incidentally |erase| and
 @< Local function definitions @>=
 void filter_units_wrapper ()
 { push_tuple_components();
-  shared_vector inv_f=get<vector_value>();
-  shared_matrix basis=get<matrix_value>();
+  vector_ptr inv_f=get_own<vector_value>();
+  matrix_ptr basis=get_own<matrix_value>();
   if (inv_f->val.size()!=basis->val.numColumns())
     throw std::runtime_error("Size mismatch "+
       num(inv_f->val.size())+':'+num(basis->val.numColumns())+
@@ -454,10 +453,7 @@ void ann_mod_wrapper()
   shared_int d=get<int_value>();
   shared_matrix m=get<matrix_value>();
 @)
-  latticetypes::LatticeMatrix A=
-    annihilator_modulo(m->val,d->val);
-  m->val.swap(A);
-  push_value(m);
+  push_value(new matrix_value(annihilator_modulo(m->val,d->val)));
 }
 
 @ Next a simple administrative routine, needed here because we cannot handle
@@ -478,12 +474,13 @@ void replace_gen_wrapper ()
   shared_matrix new_generators=get<matrix_value>();
   push_tuple_components(); // a pair as returned by \.{Smith\_Cartan}
   shared_vector inv_f=get<vector_value>();
-  shared_matrix old_generators=get<matrix_value>();
+  matrix_ptr generators=get_own<matrix_value>();
+   // old generators serve as model for new
 @)
-  if (new_generators->val.numRows()!=old_generators->val.numRows())
+  if (new_generators->val.numRows()!=generators->val.numRows())
     throw std::runtime_error("Column lengths do not match in replace_gen");
 @.Column lengths do not match@>
-  if (inv_f->val.size()!=old_generators->val.numColumns())
+  if (inv_f->val.size()!=generators->val.numColumns())
     throw std::runtime_error("Number of columns mismatch in replace_gen");
 @.Size mismatch in replace\_gen@>
 @)
@@ -494,11 +491,11 @@ void replace_gen_wrapper ()
         throw std::runtime_error
           ("Not enough replacement columns in replace_gen");
 @.Not enough replacement columns@>
-      for (size_t i=0; i<old_generators->val.numRows(); ++i)
-        old_generators->val(i,j)=new_generators->val(i,k);
+      for (size_t i=0; i<generators->val.numRows(); ++i)
+        generators->val(i,j)=new_generators->val(i,k);
       ++k;
     }
-  push_value(old_generators);
+  push_value(generators);
 }
 
 @*2 Specifying inner classes. Now we move ahead a bit in the theory, from
@@ -585,12 +582,9 @@ group given by a root datum.
 void basic_involution_wrapper()
 { push_tuple_components();
 @/shared_string str=get<string_value>();
-@/shared_Lie_type t=get<Lie_type_value>();
-@)matrix_ptr m
-     (new matrix_value(latticetypes::LatticeMatrix()));
-@/m->val = lietype::involution
-           (t->val,transform_inner_class_type(str->val.c_str(),t->val));
-  push_value(m);
+  shared_Lie_type t=get<Lie_type_value>();
+@/push_value(new matrix_value @| (lietype::involution
+           (t->val,transform_inner_class_type(str->val.c_str(),t->val))));
 }
 
 @ The function just defined gives an involution on the basis of fundamental
@@ -623,10 +617,8 @@ void based_involution_wrapper()
     throw std::runtime_error @|
     ("lattice matrix should be "+num(r)+'x'+num(r)+ " for this type");
   shared_matrix m
-     (new matrix_value(latticetypes::LatticeMatrix()));
-@/m->val = lietype::involution
-           (type->val,transform_inner_class_type(str->val.c_str(),type->val));
-@)
+     (new matrix_value @| (lietype::involution
+           (type->val,transform_inner_class_type(str->val.c_str(),type->val))));
   latticetypes::LatticeCoeff d;
   m->val = basis->val.inverse(d) * m->val * basis->val;
   if (d==0 or !m->val.divisible(d)) throw std::runtime_error
@@ -793,7 +785,7 @@ version of the stack top.
 @< Local function definitions @>=
 void quotient_basis_wrapper()
 { push_tuple_components();
-  shared_matrix M(get<matrix_value>());
+  matrix_ptr M(get_own<matrix_value>());
   // leave Lie type on stack for $Smith\_Cartan$
   Smith_Cartan_wrapper(); // compute $S=Smith\_Cartan(t)$
   shared_value S=execution_stack.back();
@@ -801,7 +793,7 @@ void quotient_basis_wrapper()
   push_value(S); // push a copy for call of $filter\_units$
   filter_units_wrapper(); // compute |(C,v)|
   push_tuple_components();
-  shared_vector v(get<vector_value>());
+  vector_ptr v(get_own<vector_value>());
   shared_matrix C(get<matrix_value>());
 @/size_t d=1;
   for (size_t i=0; i<v->val.size(); ++i)
@@ -862,7 +854,7 @@ void adjoint_datum_wrapper()
 { shared_Lie_type type=get<Lie_type_value>(); push_value(type);
   push_value(type);
   Cartan_matrix_wrapper(); transpose_mat_wrapper();
-  shared_matrix M=get<matrix_value>();
+  matrix_ptr M=get_own<matrix_value>();
   for (size_t i=0; i<type->rank(); ++i)
     if (M->val(i,i)==0) M->val(i,i)=1;
   push_value(M);
@@ -986,9 +978,8 @@ void coroot_radical_wrapper()
 @< Local function definitions @>=
 void dual_datum_wrapper()
 { shared_root_datum rd(get<root_datum_value>());
-  rootdata::RootDatum dual(rd->val,tags::DualTag());
-  rd->val.swap(dual);
-  push_value(rd);
+  push_value(new root_datum_value@|
+      (rootdata::RootDatum(rd->val,tags::DualTag())));
 }
 
 @ Let us install the above wrapper functions.
@@ -1564,8 +1555,7 @@ are currently computationally feasible.
 @< Local function def...@>=
 void block_sizes_wrapper()
 { shared_inner_class G(get<inner_class_value>());
-  matrix_ptr
-  M(new matrix_value @|
+  matrix_ptr M(new matrix_value @|
     (latticetypes::LatticeMatrix(G->val.numRealForms()
                                 ,G->val.numDualRealForms())
     ));
@@ -1585,8 +1575,7 @@ void occurrence_matrix_wrapper()
 { shared_inner_class G(get<inner_class_value>());
   size_t nr=G->val.numRealForms();
   size_t nc=G->val.numCartanClasses();
-  matrix_ptr
-    M(new matrix_value(latticetypes::LatticeMatrix(nr,nc)));
+  matrix_ptr M(new matrix_value(latticetypes::LatticeMatrix(nr,nc)));
   for (size_t i=0; i<nr; ++i)
   { bitmap::BitMap b=G->val.Cartan_set(G->interface.in(i));
     for (size_t j=0; j<nc; ++j)
@@ -1604,8 +1593,7 @@ void dual_occurrence_matrix_wrapper()
 { shared_inner_class G(get<inner_class_value>());
   size_t nr=G->val.numDualRealForms();
   size_t nc=G->val.numCartanClasses();
-  matrix_ptr
-    M(new matrix_value(latticetypes::LatticeMatrix(nr,nc)));
+  matrix_ptr M(new matrix_value(latticetypes::LatticeMatrix(nr,nc)));
   for (size_t i=0; i<nr; ++i)
   { bitmap::BitMap b=G->val.dual_Cartan_set(G->dual_interface.in(i));
     for (size_t j=0; j<nc; ++j)
@@ -1774,8 +1762,7 @@ command in atlas.
 void Cartan_order_matrix_wrapper()
 { shared_real_form rf(get<real_form_value>());
   size_t n=rf->val.numCartan();
-  matrix_value* M =
-     new matrix_value(latticetypes::LatticeMatrix(n,n,0));
+  matrix_ptr M(new matrix_value(latticetypes::LatticeMatrix(n,n,0)));
   const poset::Poset& p = rf->val.complexGroup().Cartan_ordering();
   for (size_t i=0; i<n; ++i)
     for (size_t j=i; j<n; ++j)

@@ -45,10 +45,10 @@
 %token <expression> STRING
 %token <id_code> IDENT
 %token TOFILE ADDTOFILE FROMFILE
-%type  <expression> exp quaternary formula primary
-%destructor { destroy_expr ($$); } exp quaternary formula primary
-%type  <expression_list> commalist commabarlist idlist
-%destructor { destroy_exprlist($$); } commalist commabarlist idlist
+%type  <expression> exp quaternary lettail formula primary
+%destructor { destroy_expr ($$); } exp quaternary lettail formula primary
+%type  <expression_list> commalist commalistopt commabarlist idlist
+%destructor { destroy_exprlist($$); } commalist commalistopt commabarlist idlist
 %type <decls> declarations
 %destructor { destroy_letlist($$); } declarations
 %nonassoc DIVMOD
@@ -79,8 +79,12 @@ input:  '\n'			{ YYABORT } /* null input, skip evaluator */
 exp     : quaternary ;
 
 
-quaternary: LET declarations IN quaternary { $$ = make_let_expr_node($2,$4); }
+quaternary: LET lettail { $$=$2; }
         | formula
+;
+
+lettail : declarations IN quaternary { $$ = make_let_expr_node($1,$3); }
+        | declarations ';' lettail  { $$ = make_let_expr_node($1,$3); }
 ;
 
 formula : formula '+' formula
@@ -147,7 +151,7 @@ primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }
 	| STRING
         | IDENT { $$=make_applied_identifier($1); }
         | '(' exp ')'          { $$=$2; }
-        | '[' commalist ']'    { $$=wrap_list_display(reverse_expr_list($2)); }
+        | '[' commalistopt ']' { $$=wrap_list_display(reverse_expr_list($2)); }
 	| '[' commabarlist ']'
           { $$=make_application_node
 	        (lookup_identifier("transpose_mat")
@@ -161,17 +165,20 @@ primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }
         }
 ;
 
-commalist:  /* empty */  { $$=null_expr_list; }
-	| exp            { $$=make_exprlist_node($1,null_expr_list); }
+commalistopt: commalist
+        | /* empty */       { $$=null_expr_list; }
+;
+
+commalist: exp              { $$=make_exprlist_node($1,null_expr_list); }
 	| commalist ',' exp { $$=make_exprlist_node($3,$1); }
 ;
 
-commabarlist: commalist '|' commalist
+commabarlist: commalistopt '|' commalistopt
         { $$ = make_exprlist_node(wrap_list_display(reverse_expr_list($3))
 		 ,make_exprlist_node(wrap_list_display(reverse_expr_list($1))
 		   ,null_expr_list));
         }
-	| commabarlist '|' commalist
+	| commabarlist '|' commalistopt
         { $$=make_exprlist_node(wrap_list_display(reverse_expr_list($3)),$1); }
 ;
 
