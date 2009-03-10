@@ -31,6 +31,8 @@
   expr	expression; /* For generic expressions */
   expr_list expression_list; /* For any list of expressions */
   let_list decls; /* declarations in a LET expression */
+  struct id_pat ip;
+  patlist pl;
 }
 
 %locations
@@ -40,7 +42,7 @@
 %error-verbose
 
 %token QUIT LET IN TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
-%token DIVMOD
+%token DIVMOD "/%"
 %token <val> INT
 %token <expression> STRING
 %token <id_code> IDENT
@@ -55,6 +57,11 @@
 %left '-' '+'
 %left '*' '/' '%'
 %left NEG     /* negation--unary minus */
+
+%type <ip> pattern pattern_opt
+%destructor { destroy_id_pat(&$$); } pattern pattern_opt
+%type <pl> pat_list
+%destructor { destroy_pattern($$); } pat_list
 
 %{
   int yylex (YYSTYPE *, YYLTYPE *);
@@ -85,6 +92,25 @@ quaternary: LET lettail { $$=$2; }
 
 lettail : declarations IN quaternary { $$ = make_let_expr_node($1,$3); }
         | declarations ';' lettail  { $$ = make_let_expr_node($1,$3); }
+;
+
+declarations: declarations ',' pattern '=' exp { $$ = add_let_node($1,$3,$5); }
+        | pattern '=' exp { $$ = add_let_node(NULL,$1,$3); }
+;
+
+pattern : IDENT             { $$.kind=0x1; $$.name=$1; }
+        | '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
+        | IDENT ':' '(' pat_list ')'
+            { $$.kind=0x3; $$.name=$1; $$.sublist=reverse_patlist($4);}
+;
+
+pattern_opt : pattern
+        | /* empty */ { $$.kind=0x0; }
+;
+
+pat_list: pattern_opt ',' pattern_opt
+          { $$=make_pattern_node(make_pattern_node(NULL,&$1),&$3); }
+        | pat_list ',' pattern_opt { $$=make_pattern_node($1,&$3); }
 ;
 
 formula : formula '+' formula
@@ -130,10 +156,6 @@ formula : formula '+' formula
 	       );
         }
         | primary
-;
-
-declarations: declarations ',' IDENT '=' exp { $$ = add_let_node($1,$3,$5); }
-        | IDENT '=' exp { $$ = add_let_node(NULL,$1,$3); }
 ;
 
 primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }

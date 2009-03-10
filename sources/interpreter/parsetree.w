@@ -429,6 +429,92 @@ expr make_application_node(id_type f, expr_list args)
   return result;
 }
 
+@*1 Identifier patterns.
+%
+For each case where local identifiers will be introduced (like let-expressions
+of function headings) we shall in fact allow more general patterns. A defining
+occurrence of an identifier \\{ident} may be replaced by some tuple, say
+$(x,y,z)$ (which assumes the value to be bound will be a $3$-tuple), or it
+could be both, as in \\{ident}:$(x,y,z)$; for the nested identifiers the same
+options apply recursively, and in addition the identifier may be suppressed
+altogether, to allow such partial tagging of components as \\{ident}:$(,,z)$.
+To accommodate such possibilities we introduce the following recursive types.
+While not visible from these definitions, out grammar will ensure that
+whenever a sublist is present, it has at least 2 nodes.
+
+@< Typedefs... @>=
+typedef struct pattern_node* patlist;
+struct id_pat
+{ patlist sublist;
+  id_type name;
+  unsigned char kind; /* bit 0: has name, bit 1: has sublist */
+};
+struct pattern_node
+{@; patlist next;
+  struct id_pat body;
+};
+
+@ These types do not themselves represent a variant of |expru|, but will be
+used inside such variants. We can already provide a printing function.
+
+@< Declarations of \Cpp... @>=
+std::ostream& operator<< (std::ostream& out, const id_pat& p);
+
+@~Only parts whose presence is indicated in |kind| are printed. If any
+|sublist| is present, the grammar guarantees that there are at least two nodes
+present, so we can print a first comma unconditionally.
+
+@< Definitions of \Cpp...@>=
+std::ostream& operator<< (std::ostream& out, const id_pat& p)
+{ if ((p.kind & 0x1)!=0)
+    out << main_hash_table->name_of(p.name);
+  if (p.kind==0x3) // both parts present
+    out << ':';
+  if ((p.kind & 0x2)!=0)
+  { out << '(' << p.sublist->body << ',';
+    for (patlist l=p.sublist->next; l!=NULL; l=l->next)
+      out << l->body << (l->next!=NULL ? ',' : ')');
+  }
+  return out;
+}
+
+@ The function to build a node takes a pointer to a structure with the
+contents of the current node; in practice this is the address of a local
+variable in the parser. Patterns also need cleaning up, which
+|destroy_pattern| and |destroy_id_pat| will handle, and reversal as handled by
+|reverse_patlist|.
+
+@< Declarations in \Cee... @>=
+patlist make_pattern_node(patlist next,struct id_pat* body);
+void destroy_pattern(patlist p);
+void destroy_id_pat(struct id_pat* p);
+patlist reverse_patlist(patlist p);
+
+@ The function just assembles the pieces. In practice the |next| pointer will
+point to previously parsed nodes, so (as usual) reversal will be necessary.
+Being bored, we add a variation on list reversal.
+
+@< Definitions of functions in \Cee... @>=
+patlist make_pattern_node(patlist next,struct id_pat* body)
+{@; patlist l=new pattern_node; l->next=next; l->body=*body; return l; }
+@)
+void destroy_pattern(patlist p)
+{@; while (p!=NULL)
+  {@; patlist q=p; p=p->next; destroy_id_pat(&q->body); delete q; }
+}
+@)
+void destroy_id_pat(struct id_pat* p)
+{@; if ((p->kind & 0x2)!=0)
+    destroy_pattern(p->sublist);
+}
+@)
+patlist reverse_patlist(patlist p)
+{@; patlist q=NULL;
+  while (p!=NULL)
+  {@; patlist t=q; q=p; p=q->next; q->next=t; }
+  return q;
+}
+
 @*1 Let expressions.
 We introduce let-expressions that introduce and bind local identifiers, as a
 first step towards having use defined functions. Indeed let-expressions will
@@ -441,15 +527,16 @@ function, these type being determined by the values provided.
 @< Typedefs... @>=
 typedef struct let_expr_node* let;
 
-@~A let-expression will have non-empty a list of let-bindings followed by a
-body giving the value to be returned. We therefore define a node for the list
-of bindings, and a structure for the whole let-expression that contains such a
-node and a body.
+@~After parsing, let-expression will have a single let-bindings followed by a
+body giving the value to be returned. During parsing however, we may form a
+list of let-bindings that will be converted into one with a tuple as left hand
+side. We therefore define a node for the list of bindings, and a structure for
+the whole let-expression that contains one binding and a body.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 typedef struct let_node* let_list;
-struct let_node {@; id_type id; expr val; let_list next; };
-struct let_expr_node {@; struct let_node first; expr body; };
+struct let_node {@; struct id_pat pattern; expr val; let_list next; };
+struct let_expr_node {@; struct id_pat pattern; expr val; expr body; };
 
 @ The tag used for let-expressions is |let_expr|.
 
@@ -462,19 +549,13 @@ value.
 let let_variant;
 
 @ To print a let-expression we do the obvious things, wihtout worrying about
-parentrheses; this should be fixed (for all printing routines).
+parentheses; this should be fixed (for all printing routines).
 
 @h "lexer.h"
 @< Cases for printing... @>=
 case let_expr:
   { let lexp=e.e.let_variant;
-    out << "let ";
-    let_list p=&lexp->first;
-    do
-      out << main_hash_table->name_of(p->id) << '=' << p->val
-          << (p->next!=NULL ? "," : " in ");
-    while ((p=p->next)!=NULL);
-    out << lexp->body;
+    out << "let " << lexp->pattern << '=' << lexp->val <<  " in " << lexp->body;
   }
   break;
 
@@ -489,54 +570,81 @@ expressions they contain.
 
 @< Definitions of functions in \Cee-style for the parser @>=
 void destroy_letlist(let_list l)
-{@; while (l!=NULL)
-    {@;
-      let_list p=l; l=l->next;
+{ while (l!=NULL)
+    @/{@; let_list p=l; l=l->next;
+      destroy_id_pat(&p->pattern);
       destroy_expr(p->val);
       delete p;
     }
 }
 
-@~Here we clean up all declarations, and then the body of the let-expression.
+@~Here we clean up the declaration, and then the body of the let-expression.
 
 @< Cases for destroying... @>=
 case let_expr:
   { let lexp=e.e.let_variant;
-    destroy_expr(lexp->first.val);
-    destroy_letlist(lexp->first.next);
+    destroy_id_pat(&lexp->pattern);
+    destroy_expr(lexp->val);
     destroy_expr(lexp->body);
     delete lexp;
   }
   break;
 
 @ For building let-expressions, two functions will be defined. The function
-|add_let_node| adds one declaration (it is called with |prev==NULL| for the
-first clause), while |make_let_expr_node| wraps up the let-expression by
-adding the body.
+|add_let_node| adds one declaration to a list (it is called with |prev==NULL|
+for the first clause), while |make_let_expr_node| wraps up the let-expression.
 
 @< Declaration of functions in \Cee-style for the parser @>=
-let_list add_let_node(let_list prev, id_type id, expr val);
+let_list add_let_node(let_list prev, struct id_pat pattern, expr val);
 expr make_let_expr_node(let_list decls, expr body);
 
-@~In |make_let_expr_node| we must take care to reverse the list of
-declarations, since the last one added will be at the head of the list.
+@~In |make_let_expr_node| we may need to convert multiple declarations to one,
+in which case we must take care to reverse the order, since the last one added
+will be at the head of the list. Fortunately it is actually easier to build a
+merged list in reverse order. We provide local exception safety here, although
+we realise that the parser function being written in \Cee, it will not be able
+to do any cleaning up of values referred to in its stack, in case of a thrown
+exception (here, or in calls to make-functions elsewhere). In fact the problem
+is not just one of programming language: even a parser generated as \Cpp~code
+would not help without special provisions (such as an exception handler in the
+parser function), since the |union| used for values on the parsing stack
+cannot have objects that handle their own cleaning up as members. Rather, this
+situation should probably be corrected by using a different allocation
+strategy while building the parse tree (avoiding explicit calls to |new| but
+allocating from local storage pools that can explicitly be emptied), in which
+case all cleaning up in the code below should also be removed.
 
 @< Definitions of functions in \Cee... @>=
-let_list add_let_node(let_list prev, id_type id, expr val)
+let_list add_let_node(let_list prev,struct id_pat pattern, expr val)
 {@; let_list l=new let_node;
-  l->id=id; l->val=val; l->next=prev;
+  l->pattern=pattern; l->val=val; l->next=prev;
   return l;
 }
 @)
 expr make_let_expr_node(let_list decls, expr body)
 { let l=new let_expr_node; l->body=body;
-  if (decls->next!=NULL) // then reverse list of declarations
-  { let_list q=decls->next; decls->next=NULL;
-    do {@; let_list t=q->next; q->next=decls; decls=q; q=t; }
-    while (q!=NULL);
+  expr result; result.kind=let_expr; result.e.let_variant=l;
+  try
+  { if (decls->next==NULL) // single declaration
+    @/{@; l->pattern=decls->pattern; l->val=decls->val;
+      delete decls;
+    }
+    else
+    { l->pattern.kind=0x2; l->pattern.sublist=NULL;
+      l->val=wrap_tuple_display(null_expr_list);
+      while (decls!=NULL)
+      { l->pattern.sublist =
+          make_pattern_node(l->pattern.sublist,&decls->pattern);
+        l->val.e.sublist=make_exprlist_node(decls->val,l->val.e.sublist);
+        let_list p=decls; decls=p->next; delete p;
+      }
+    }
+    return result;
   }
-  l->first=*decls; delete decls;
-  expr result; result.kind=let_expr; result.e.let_variant=l; return result;
+  catch(...)
+  {@; destroy_expr(result);
+    throw;
+  }
 }
 
 @*1 Array subscriptions.
