@@ -1,3 +1,5 @@
+\def\emph#1{{\it#1\/}}
+
 @* Building the parse tree.
 This is the program unit \.{parsetree} which produces the implementation file
 \.{parsetree.cpp} and the header file \.{parsetree.h}; the latter is read in
@@ -360,11 +362,10 @@ typedef struct application_node* app;
 
 @~Now that we have tuples, a function application just takes one argument, so
 an |application_node| contains an identifier tag and an argument expression.
-Later the identifier tag will be replaced by an arbitrary expression, but for
-the moment only named functions are allowed.
+Function and argument can be arbitrary expressions.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct application_node {@; id_type fun; expr arg; };
+struct application_node {@; expr fun; expr arg; };
 
 @ The tag used for expressions that will invoke a built-in function is
 |function_call|. It is used for operator invocations as well.
@@ -382,22 +383,23 @@ hash table, and either print a tuple display or a single expression enclosed
 in parentheses for which we call the operator~`|<<|' recursively. We do not
 attempt to reconstruct infix formulae.
 
-@h "lexer.h"
 @< Cases for printing... @>=
 case function_call:
   { app a=e.e.call_variant;
-    out << main_hash_table->name_of(a->fun);
-    expr arg=a->arg;
+    expr fun=a->fun,arg=a->arg;
+    if (fun.kind==applied_identifier) out << fun;
+    else out << '(' << fun << ')';
     if (arg.kind==tuple_display) out << arg;
     else out << '(' << arg << ')';
   }
   break;
 
-@~Here we clean up the argument expression, and then the node for the function
+@~Here we clean up function and argument, and then the node for the function
 call itself.
 
 @< Cases for destroying... @>=
 case function_call:
+  destroy_expr(e.e.call_variant->fun);
   destroy_expr(e.e.call_variant->arg);
   delete e.e.call_variant;
   break;
@@ -411,7 +413,7 @@ the current method should be compatible with providing multiple arguments as a
 single tuple value.
 
 @< Declaration of functions in \Cee-style for the parser @>=
-expr make_application_node(id_type f, expr_list args);
+expr make_application_node(expr f, expr_list args);
 
 @~Here for once there is some work to do. If a singleton argument list is
 provided, the argument expression must be picked from it, but in all other
@@ -420,7 +422,7 @@ convenient here that |wrap_tuple_display| does not reverse the list, since
 this is already done by the parser before calling |make_application_node|.
 
 @< Definitions of functions in \Cee... @>=
-expr make_application_node(id_type f, expr_list args)
+expr make_application_node(expr f, expr_list args)
 { app a=new application_node; a->fun=f;
   if (args!=NULL && args->next==NULL) // a single argument
   {@; a->arg=args->e; delete args; }
@@ -551,7 +553,6 @@ let let_variant;
 @ To print a let-expression we do the obvious things, wihtout worrying about
 parentheses; this should be fixed (for all printing routines).
 
-@h "lexer.h"
 @< Cases for printing... @>=
 case let_expr:
   { let lexp=e.e.let_variant;
@@ -645,6 +646,114 @@ expr make_let_expr_node(let_list decls, expr body)
   {@; destroy_expr(result);
     throw;
   }
+}
+
+@*1 Types and user defined functions.
+%
+One reason let-expression were introduced before user-defined functions, is
+that it avoids to problem of having to specify types in the user program.
+Inevitably we have to deal with that though, since for a function definition
+there is no way to know the type of the arguments with certainty, unless the
+user specifies them (at least this is true if we want to allow such things as
+type coercion and function overloading to be possible, so that types cannot be
+deduced by analysis of the \emph{usage} of the parameters in the function
+only). The syntax for types is easy enough, but we have to decide what kind of
+object the parser will use to represent types specified by the user. The
+evaluator has an internal type |struct type_declarator@;| to represent them,
+but the \Cpp\ definition of that type cannot be understood by the parser. So
+we tried to manage with pointers to incomplete types. That does not work
+either, because |struct type_declarator@;| is actually defined within a
+|namespace|, so we cannot give the correct name and be understood in \Cee,
+while if we lie about the name of the |struct| then \Cpp\ will complain about
+converting between pointers to different structures. So we shall cast to and
+from pointers to |void|.
+
+@< Typedefs that are required... @>=
+typedef void* ptr;
+
+@~The functions declared below provide an interface to routines defined in
+the module \.{evaluator.w}.
+
+@< Declarations in \Cee... @>=
+ptr mk_type_singleton(ptr t);
+ptr mk_type_list(ptr t,ptr l);
+ptr mk_prim_type(int p);
+ptr mk_row_type(ptr c);
+ptr mk_tuple_type(ptr l);
+ptr mk_function_type(ptr a,ptr r);
+ptr first_type(ptr typel);
+void destroy_type(ptr t);
+void destroy_type_list(ptr t);
+
+@ For user-defined functions we shall use a structure |lambda_node|.
+@< Typedefs that are required... @>=
+typedef struct lambda_node* lambda;
+
+@~It contains a pattern for the formal parameter(s), its type (a void pointer
+that actually points to a |type_declarator| structure defined
+in \.{evaluator.w}), and an  expression (the body of the function).
+
+@< Structure and typedef... @>=
+struct lambda_node
+{@; struct id_pat pattern; ptr arg_type; expr body; };
+
+@ The tag used for user-defined functions is |lambda_expr|.
+@< Enumeration tags... @>=
+lambda_expr,@[@]
+
+@ We introduce the variant of |union expru@;| as usual.
+@< Variants of |union... @>=
+lambda lambda_variant;
+
+@ We must take care of printing lambda expressions; we avoid a double set of
+parentheses.
+
+@< Cases for printing... @>=
+case lambda_expr:
+  { lambda fun=e.e.lambda_variant;
+    if ((fun->pattern.kind&0x1)!=0)
+      out << '(' << fun->pattern << ')';
+    else
+      out << fun->pattern;
+    out << ':' << fun->body;
+  }
+  break;
+
+@ And we must of course take care of destroying lambda expressions, which just
+call handler functions.
+
+@< Cases for destroying an expression |e| @>=
+case lambda_expr:
+  { lambda fun=e.e.lambda_variant;
+    destroy_id_pat(&fun->pattern);
+    destroy_type(fun->arg_type);
+    destroy_expr(fun->body);
+  }
+
+@ Finally there is as usual a function for constructing a node, to be called
+by the parser.
+
+@< Declaration of functions... @>=
+expr make_lambda_node(patlist patl, ptr typel, expr body);
+
+@~There is a twist in building a lambda node, in that it is passed lists of
+patterns and types rather than single ones. We must distinguish the case of a
+singleton, where the head node must be unpacked, and the multiple case, where
+a tuple pattern and type must be wrapped up from the lists.
+
+@< Definitions of functions... @>=
+expr make_lambda_node(patlist patl, ptr typel, expr body)
+{ lambda fun=new lambda_node; fun->body=body;
+  if (patl!=NULL and patl->next==NULL)
+  { fun->pattern=patl->body; delete patl; // clean up node
+    fun->arg_type = first_type(typel);
+  }
+  else
+  { fun->pattern.kind=0x2; fun->pattern.sublist=patl;
+    fun->arg_type=mk_tuple_type(typel);
+  }
+  expr result; result.kind=lambda_expr; result.e.lambda_variant=fun;
+  return result;
 }
 
 @*1 Array subscriptions.
