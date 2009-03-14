@@ -246,15 +246,15 @@ subexpressions.
 
 @< Cases for printing... @>=
 case list_display:
-  { expr_list l=e.e.sublist;
-    if (l==NULL) out << "[]";
-    else
-    { out << '[';
-      do {@; out << l->e; l=l->next; out << (l==NULL ? ']' : ',');}
-      while (l!=NULL);
-    }
+{ expr_list l=e.e.sublist;
+  if (l==NULL) out << "[]";
+  else
+  { out << '[';
+    do {@; out << l->e; l=l->next; out << (l==NULL ? ']' : ',');}
+    while (l!=NULL);
   }
-  break;
+}
+break;
 
 @ Destroying lists of expressions will be done in a function callable from the
 parser, as it may need to discard tokens holding such lists.
@@ -328,15 +328,15 @@ parentheses instead of brackets.
 
 @< Cases for printing... @>=
 case tuple_display:
-  { expr_list l=e.e.sublist;
-    if (l==NULL) out << "()";
-    else
-    { out << '(';
-      do {@; out << l->e; l=l->next; out << (l==NULL ? ')' : ',');}
-      while (l!=NULL);
-    }
+{ expr_list l=e.e.sublist;
+  if (l==NULL) out << "()";
+  else
+  { out << '(';
+    do {@; out << l->e; l=l->next; out << (l==NULL ? ')' : ',');}
+    while (l!=NULL);
   }
-  break;
+}
+break;
 
 @~Destroying a tuple display is the same as destroying a list display.
 
@@ -385,14 +385,14 @@ attempt to reconstruct infix formulae.
 
 @< Cases for printing... @>=
 case function_call:
-  { app a=e.e.call_variant;
-    expr fun=a->fun,arg=a->arg;
-    if (fun.kind==applied_identifier) out << fun;
-    else out << '(' << fun << ')';
-    if (arg.kind==tuple_display) out << arg;
-    else out << '(' << arg << ')';
-  }
-  break;
+{ app a=e.e.call_variant;
+  expr fun=a->fun,arg=a->arg;
+  if (fun.kind==applied_identifier) out << fun;
+  else out << '(' << fun << ')';
+  if (arg.kind==tuple_display) out << arg;
+  else out << '(' << arg << ')';
+}
+break;
 
 @~Here we clean up function and argument, and then the node for the function
 call itself.
@@ -402,7 +402,7 @@ case function_call:
   destroy_expr(e.e.call_variant->fun);
   destroy_expr(e.e.call_variant->arg);
   delete e.e.call_variant;
-  break;
+break;
 
 
 @ To build an |application_node|, we combine the function identifier with an
@@ -462,9 +462,12 @@ used inside such variants. We can already provide a printing function.
 @< Declarations of \Cpp... @>=
 std::ostream& operator<< (std::ostream& out, const id_pat& p);
 
-@~Only parts whose presence is indicated in |kind| are printed. If any
-|sublist| is present, the grammar guarantees that there are at least two nodes
-present, so we can print a first comma unconditionally.
+@~Only parts whose presence is indicated in |kind| are printed. Although the
+grammar for patterns only allows sublists of length at least~2, we also visit
+this code when printing user-defined functions, so we take care that even if
+|sublist| is marked as present, it might be null. However, the list cannot be
+of length~1, so having put aside that case we can print a first comma
+unconditionally.
 
 @< Definitions of \Cpp...@>=
 std::ostream& operator<< (std::ostream& out, const id_pat& p)
@@ -473,10 +476,13 @@ std::ostream& operator<< (std::ostream& out, const id_pat& p)
   if (p.kind==0x3) // both parts present
     out << ':';
   if ((p.kind & 0x2)!=0)
-  { out << '(' << p.sublist->body << ',';
-    for (patlist l=p.sublist->next; l!=NULL; l=l->next)
+    if (p.sublist==NULL)
+      out << "()";
+    else
+    { out << '(' << p.sublist->body << ',';
+      for (patlist l=p.sublist->next; l!=NULL; l=l->next)
       out << l->body << (l->next!=NULL ? ',' : ')');
-  }
+    }
   return out;
 }
 
@@ -555,10 +561,10 @@ parentheses; this should be fixed (for all printing routines).
 
 @< Cases for printing... @>=
 case let_expr:
-  { let lexp=e.e.let_variant;
-    out << "let " << lexp->pattern << '=' << lexp->val <<  " in " << lexp->body;
-  }
-  break;
+{ let lexp=e.e.let_variant;
+  out << "let " << lexp->pattern << '=' << lexp->val <<  " in " << lexp->body;
+}
+break;
 
 @ Destroying lists of declarations will be done in a function callable from the
 parser, like |destroy_exprlist|.
@@ -583,13 +589,13 @@ void destroy_letlist(let_list l)
 
 @< Cases for destroying... @>=
 case let_expr:
-  { let lexp=e.e.let_variant;
-    destroy_id_pat(&lexp->pattern);
-    destroy_expr(lexp->val);
-    destroy_expr(lexp->body);
-    delete lexp;
-  }
-  break;
+{ let lexp=e.e.let_variant;
+  destroy_id_pat(&lexp->pattern);
+  destroy_expr(lexp->val);
+  destroy_expr(lexp->body);
+  delete lexp;
+}
+break;
 
 @ For building let-expressions, two functions will be defined. The function
 |add_let_node| adds one declaration to a list (it is called with |prev==NULL|
@@ -648,9 +654,9 @@ expr make_let_expr_node(let_list decls, expr body)
   }
 }
 
-@*1 Types and user defined functions.
+@*1 Types and user-defined functions.
 %
-One reason let-expression were introduced before user-defined functions, is
+One reason let-expressions were introduced before user-defined functions, is
 that it avoids to problem of having to specify types in the user program.
 Inevitably we have to deal with that though, since for a function definition
 there is no way to know the type of the arguments with certainty, unless the
@@ -665,8 +671,8 @@ we tried to manage with pointers to incomplete types. That does not work
 either, because |struct type_declarator@;| is actually defined within a
 |namespace|, so we cannot give the correct name and be understood in \Cee,
 while if we lie about the name of the |struct| then \Cpp\ will complain about
-converting between pointers to different structures. So we shall cast to and
-from pointers to |void|.
+converting between pointers to different structures. So, grudgingly, we shall
+cast to and from pointers to |void|.
 
 @< Typedefs that are required... @>=
 typedef void* ptr;
@@ -710,25 +716,26 @@ parentheses.
 
 @< Cases for printing... @>=
 case lambda_expr:
-  { lambda fun=e.e.lambda_variant;
-    if ((fun->pattern.kind&0x1)!=0)
-      out << '(' << fun->pattern << ')';
-    else
-      out << fun->pattern;
-    out << ':' << fun->body;
-  }
-  break;
+{ lambda fun=e.e.lambda_variant;
+  if ((fun->pattern.kind&0x1)!=0)
+    out << '(' << fun->pattern << ')';
+  else
+    out << fun->pattern;
+  out << ':' << fun->body;
+}
+break;
 
 @ And we must of course take care of destroying lambda expressions, which just
 call handler functions.
 
 @< Cases for destroying an expression |e| @>=
 case lambda_expr:
-  { lambda fun=e.e.lambda_variant;
-    destroy_id_pat(&fun->pattern);
-    destroy_type(fun->arg_type);
-    destroy_expr(fun->body);
-  }
+{ lambda fun=e.e.lambda_variant;
+  destroy_id_pat(&fun->pattern);
+  destroy_type(fun->arg_type);
+  destroy_expr(fun->body);
+}
+break;
 
 @ Finally there is as usual a function for constructing a node, to be called
 by the parser.
@@ -791,19 +798,19 @@ parentheses directly inside the brackets.
 @h "lexer.h"
 @< Cases for printing... @>=
 case subscription:
-  { sub s=e.e.subscription_variant; out << s->array << '[';
-    expr i=s->index;
-    if (i.kind!=tuple_display) out << i;
-    else
-    { expr_list l=i.e.sublist;
-      if (l!=NULL)
-      {@; out << l->e;
-        while ((l=l->next)!=NULL) out << ',' << l->e;
-      }
+{ sub s=e.e.subscription_variant; out << s->array << '[';
+  expr i=s->index;
+  if (i.kind!=tuple_display) out << i;
+  else
+  { expr_list l=i.e.sublist;
+    if (l!=NULL)
+    {@; out << l->e;
+      while ((l=l->next)!=NULL) out << ',' << l->e;
     }
-    out << ']';
   }
-  break;
+  out << ']';
+}
+break;
 
 @~Here we recursively destroy both subexpressions, and then the node for the
 subscription call itself.
@@ -813,7 +820,7 @@ case subscription:
   destroy_expr(e.e.subscription_variant->array);
   destroy_expr(e.e.subscription_variant->index);
   delete e.e.subscription_variant;
-  break;
+break;
 
 
 @ To build an |subscription_node|, we simply combine the array and the index
