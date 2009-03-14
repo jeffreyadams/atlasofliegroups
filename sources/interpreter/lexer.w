@@ -383,13 +383,15 @@ class Lexical_analyser
 @)BufferedInput& input;
   Hash_table& id_table;
   Hash_table::id_type keyword_limit; // first non-keyword identifier
+  Hash_table::id_type type_limit; // first non-type identifier
   int nesting; // number of pending opening symbols
   char prevent_termination; // either |'\0'| or character requiring more input
   int comment_start, comment_end; // characters that start/end a comment
   states state; // to trigger special behaviour
   std::string file_name; // stores a file name for I/O redirection
 public:
-  Lexical_analyser(BufferedInput&, Hash_table&, const char**);
+  Lexical_analyser
+    (BufferedInput&, Hash_table&, const char**, const char** type_names);
   int get_token(YYSTYPE *valp, YYLTYPE* locp);
   bool reset(); // get clean slate, return |false| if |getline()| fails
   void set_comment_delims (char c, char d) @+
@@ -431,10 +433,11 @@ unwieldy, we use another value.
 
 @< Definitions of class members @>=
 Lexical_analyser::Lexical_analyser
-  (BufferedInput& source, Hash_table& hash, const char** keywords)
+  (BufferedInput& source, Hash_table& hash,
+   const char** keywords, const char** type_names)
 : input(source),id_table(hash),nesting(0)
  ,prevent_termination('\0'),state(initial)
-{ @< Install |keywords| into |id_table| @>
+{ @< Install |keywords| and |type_names| into |id_table| @>
   comment_start=comment_end=256; // a non-|char| value
 }
 
@@ -442,13 +445,17 @@ Lexical_analyser::Lexical_analyser
 entered into |id_table|; therefore the order in the list |keyword| passed to
 the constructor should match the numeric \.{\%token} values define in
 \.{parser.y}. The actual code transmitted for keywords will be obtained by
-adding the constant |FIRST_KEYWORD_CODE| to the value returned from the hash
-table look-up.
+adding the constant |QUIT| to the value returned from the hash table look-up.
+Type names are next in |id_table|, but they all will return the token |TYPE|,
+while recording which names was entered in the semantic value.
 
-@< Install |keywords| into |id_table| @>=
+@< Install |keywords| and |type_names| into |id_table| @>=
 { for (size_t i=0; keywords[i]!=0; ++i)
     id_table.match_literal(keywords[i]);
   keyword_limit=id_table.nr_entries();
+  for (size_t i=0; type_names[i]!=0; ++i)
+    id_table.match_literal(type_names[i]);
+  type_limit=id_table.nr_entries();
 }
 
 @ The member function |reset| can be called to reset the lexical analyser,
@@ -619,19 +626,21 @@ int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
 @/if (state==initial) state=normal; return code;
 }
 
-@ Everything that looks like an identifier is either that or a keyword. In any
-case we start with looking it up in the table, and then the numeric value of
-the code returned will allow us to discriminate the possibilities. In this
-scanner we cannot yet handle multiple distinct keywords that should scan as
-the same category because of a similar syntactic role, although this is
-probably desirable.
+@ Everything that looks like an identifier is either that or a keyword, or a
+type name. In any case we start with looking it up in the table, and then the
+numeric value of the code returned will allow us to discriminate the
+possibilities. In this scanner we cannot yet handle multiple distinct keywords
+that should scan as the same category because of a similar syntactic role,
+although this is probably desirable. However type names
 
 @< Scan an identifier or a keyword @>=
 { const char* p=input.point@[()@]-1; // start of token
   do c=input.shift(); while(isalpha(c) || isdigit(c) || c=='_');
   input.unshift();
   Hash_table::id_type id_code=id_table.match(p,input.point()-p);
-  if (id_code>=keyword_limit) {@; valp->id_code=id_code; code=IDENT; }
+  if (id_code>=type_limit) {@; valp->id_code=id_code; code=IDENT; }
+  else if (id_code>=keyword_limit)
+  {@; valp->type_code=id_code-keyword_limit; code=TYPE; }
   else
   { code=QUIT+id_code;
     switch(code)
@@ -682,11 +691,12 @@ then we prepare for output redirection.
     @/// |else| {\bf fall through}
          case '=':
          case '+':
-         case '-':
          case '*':
          case '%':
          case '^':
          case ':': prevent_termination=c; code=c;
+  break; case '-': prevent_termination=c;
+    code = input.shift()=='>' ? ARROW : (input.unshift(),'-');
   break; case '/': prevent_termination=c;
     code= input.shift()=='%' ? DIVMOD : (input.unshift(),'/');
   break; case '\n': state=ended; // and {\bf fall through}.

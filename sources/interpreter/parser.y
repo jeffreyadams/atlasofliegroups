@@ -28,11 +28,14 @@
 %union {
   int   val;        /* For integral constants.  */
   short id_code;    /* For identifier codes  */
+  unsigned short type_code; /* For type names */
   expr	expression; /* For generic expressions */
   expr_list expression_list; /* For any list of expressions */
   let_list decls; /* declarations in a LET expression */
   struct id_pat ip;
+  struct { ptr typel; patlist patl; } id_sp;
   patlist pl;
+  ptr gen_ptr;
 }
 
 %locations
@@ -62,6 +65,14 @@
 %destructor { destroy_id_pat(&$$); } pattern pattern_opt
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
+%token <type_code> TYPE
+%type <gen_ptr> type types
+%destructor { destroy_type($$); } type
+%destructor { destroy_type_list($$); } types
+%type <id_sp> id_specs
+%destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); } id_specs
+
+%token ARROW
 
 %{
   int yylex (YYSTYPE *, YYLTYPE *);
@@ -87,6 +98,8 @@ exp     : quaternary ;
 
 
 quaternary: LET lettail { $$=$2; }
+        | '(' id_specs ')' ':' quaternary
+        { $$=make_lambda_node($2.patl,$2.typel,$5); }
         | formula
 ;
 
@@ -113,45 +126,65 @@ pat_list: pattern_opt ',' pattern_opt
         | pat_list ',' pattern_opt { $$=make_pattern_node($1,&$3); }
 ;
 
+id_specs: type pattern
+        { $$.typel=mk_type_singleton($1);
+          $$.patl=make_pattern_node(NULL,&$2);
+        }
+        | type pattern ',' id_specs
+        { $$.typel=mk_type_list($1,$4.typel);
+          $$.patl=make_pattern_node($4.patl,&$2);
+        }
+;
+
+type    : TYPE                    { $$=mk_prim_type($1); }
+        | '(' type ARROW type ')' { $$=mk_function_type($2,$4); }
+        | '[' type ']'            { $$=mk_row_type($2); }
+        | '(' types ')'           { $$=mk_tuple_type($2); }
+;
+
+types   : type ',' type  { $$=mk_type_list($1,mk_type_singleton($3)); }
+        | type ',' types { $$=mk_type_list($1,$3); }
+;
+
 formula : formula '+' formula
         { $$ = make_application_node
-	       (lookup_identifier("+")
+	       (make_applied_identifier(lookup_identifier("+"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
         | formula '-' formula
         { $$ = make_application_node
-	       (lookup_identifier("-")
+	       (make_applied_identifier(lookup_identifier("-"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
         | formula '*' formula
         { $$ = make_application_node
-	       (lookup_identifier("*")
+	       (make_applied_identifier(lookup_identifier("*"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
         | formula '/' formula
         { $$ = make_application_node
-	       (lookup_identifier("/")
+	       (make_applied_identifier(lookup_identifier("/"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
         | formula '%' formula
         { $$ = make_application_node
-	       (lookup_identifier("%")
+	       (make_applied_identifier(lookup_identifier("%"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
         | '-' formula  %prec NEG
         { $$ = make_application_node
-	       (lookup_identifier("-u")
+	       (make_applied_identifier(lookup_identifier("-u"))
 	       ,make_exprlist_node($2,null_expr_list)
 	       );
         }
 	| formula DIVMOD formula
         { $$ = make_application_node
-	       (lookup_identifier("/%")
+	       (make_applied_identifier(lookup_identifier("/%"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
@@ -165,7 +198,7 @@ primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }
                     (reverse_expr_list(make_exprlist_node($5,$3)))
                ) ;
 	  }
-	| IDENT '(' commalist ')'
+	| primary '(' commalist ')'
 		{ $$=make_application_node($1,reverse_expr_list($3)); }
         | INT { $$ = make_int_denotation($1); }
         | TRUE { $$ = make_bool_denotation(1); }
@@ -176,7 +209,7 @@ primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }
         | '[' commalistopt ']' { $$=wrap_list_display(reverse_expr_list($2)); }
 	| '[' commabarlist ']'
           { $$=make_application_node
-	        (lookup_identifier("transpose_mat")
+	        (make_applied_identifier(lookup_identifier("transpose_mat"))
                 ,make_exprlist_node(wrap_list_display(reverse_expr_list($2))
 				   ,null_expr_list)
                 );

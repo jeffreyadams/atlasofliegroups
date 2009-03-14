@@ -124,7 +124,7 @@ int main(int argc, char** argv)
 			    ,use_readline ? add_history : NULL);
   main_input_buffer= &input_buffer;
 @/Hash_table hash; main_hash_table= &hash;
-@/Lexical_analyser ana(input_buffer,hash,keywords); lex=&ana;
+@/Lexical_analyser ana(input_buffer,hash,keywords,prim_names); lex=&ana;
 @/Id_table main_table; @+ global_id_table=&main_table;
 @)
   @< Initialise various parts of the program @>
