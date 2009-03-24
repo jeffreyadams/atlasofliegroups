@@ -123,7 +123,8 @@ RootSystem::RootSystem(const latticetypes::LatticeMatrix& Cartan_matrix)
   , ri()
   , root_perm()
 {
-cons(Cartan_matrix);
+  if (rk>0)
+    cons(Cartan_matrix);
 }
 
 void RootSystem::cons(const latticetypes::LatticeMatrix& Cartan_matrix)
@@ -132,7 +133,7 @@ void RootSystem::cons(const latticetypes::LatticeMatrix& Cartan_matrix)
   std::vector<Byte_vector> simple_coroot(rk,Byte_vector(rk));
   std::vector<RootList> link;
   std::vector<std::set<Byte_vector,root_compare> >
-    roots_of_length(4*rk); // more than enough; $E_8$ needs |30==3.75*rk|
+    roots_of_length(4*rk); // more than enough if |rk>0|; $E_8$ needs size 31
 
   for (size_t i=0; i<rk; ++i)
   {
