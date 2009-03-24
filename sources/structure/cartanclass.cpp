@@ -972,7 +972,7 @@ restrictGrading(const rootdata::RootSet& rs, const rootdata::RootList& rl)
 
 /*!
   \brief Returns a grading in the orbit corresponding to |rf|, with the
-  smallest possible number of noncompact roots.
+  smallest possible number of noncompact roots among the simple roots.
 
   Precondition: |f| is the fundamental fiber;
 
