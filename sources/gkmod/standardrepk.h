@@ -366,7 +366,7 @@ class KhatContext
    Normal: $\<\lambda,\alpha\vee+\theta\alpha\vee>\geq0$ when $\alpha$ simple,
      complex, and orthogonal to sums of positive imaginary resp. real roots.
    Zero: $\<\lambda,\alpha\vee>=0$ for some simple-imaginary compact $\alpha$
-   Final: $\<\lambda,\alpha\vee>$ odd for all simple real roots $\alpha$
+   Final: $\<\lambda,\alpha\vee>$ odd for all simple-real roots $\alpha$
 
   The condition Zero is a sufficient, but possibly not necessary, condition
   for the parameter to determine a zero representation.
