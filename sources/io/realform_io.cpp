@@ -139,7 +139,7 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 
   for (realform::RealForm rf = 0; rf < G.numDualRealForms(); ++rf)
   {
-    rootdata::RootSet so= toMostSplit(fundf,rf,G.rootSystem());
+    rootdata::RootSet so= toMostSplit(fundf,rf,rs);
     gradings::Grading gr = cartanclass::specialGrading(fundf,rf,rs);
     rfd[rf] = RealFormData(rf,gr,so);
   }
@@ -265,26 +265,28 @@ bool operator< (const RealFormData& first, const RealFormData& second)
 std::ostream& printComplexType(std::ostream& strm,
 			       const lietype::SimpleLieType& slt)
 {
-  switch (lietype::type(slt)) {
+  size_t rk = lietype::rank(slt);
+  switch (lietype::type(slt))
+  {
   case 'A':
     strm << "sl(";
-    strm << lietype::rank(slt)+1 << ",C)";
+    strm << rk+1 << ",C)";
     break;
   case 'B':
     strm << "so(";
-    strm << 2*lietype::rank(slt)+1 << ",C)";
+    strm << 2*rk+1 << ",C)";
     break;
   case 'C':
     strm << "sp(";
-    strm << 2*lietype::rank(slt) << ",C)";
+    strm << 2*rk << ",C)";
     break;
   case 'D':
     strm << "so(";
-    strm << 2*lietype::rank(slt) << ",C)";
+    strm << 2*rk << ",C)";
     break;
   case 'E':
     strm << "e";
-    strm << lietype::rank(slt) << "(C)";
+    strm << rk << "(C)";
     break;
   case 'F':
   case 'f':
@@ -296,9 +298,9 @@ std::ostream& printComplexType(std::ostream& strm,
     break;
   case 'T':
     strm << "gl(1,C)";
-    if (lietype::rank(slt) > 1) {
+    if (rk > 1) {
       strm << "^";
-      strm << lietype::rank(slt);
+      strm << rk;
     }
     break;
   default:
@@ -326,103 +328,109 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
 			      const lietype::TypeLetter ic)
 {
   size_t fb = gr.firstBit();
+  size_t rk = lietype::rank(slt);
 
-  switch (lietype::type(slt)) {
+  switch (lietype::type(slt))
+  {
   case 'A':
-    if (lietype::rank(slt) == 1) {
+    if (rk == 1)
       if (gr.count() == 1)
 	strm << "sl(2,R)";
       else
 	strm << "su(2)";
-    }
     else
-      switch (ic) {
+      switch (ic)
+      {
       case 's':
-	if (lietype::rank(slt) & 1UL) {
+	if (rk & 1UL) {
 	  if (gr.count() == 1) {
 	    strm << "sl(";
-	    strm << lietype::rank(slt)+1 << ",R)";
+	    strm << rk+1 << ",R)";
 	  } else {
 	    strm << "sl(";
-	    strm << (lietype::rank(slt)+1)/2 << ",H)";
+	    strm << (rk+1)/2 << ",H)";
 	  }
 	} else {
 	    strm << "sl(";
-	    strm << lietype::rank(slt)+1 << ",R)";
+	    strm << rk+1 << ",R)";
 	}
 	break;
       case 'c':
-	if (gr.count()) {
-	  size_t p = lietype::rank(slt) - fb;
+	if (gr.count()>0) {
+	  size_t p = rk - fb;
 	  strm << "su(";
 	  strm << p << ",";
 	  strm << fb+1 << ")";
 	} else {
 	  strm << "su(";
-	  strm << lietype::rank(slt)+1 << ")";
+	  strm << rk+1 << ")";
 	}
 	break;
       }
     break;
   case 'B':
-    if (gr.count()) {
-      size_t mid = (lietype::rank(slt)-1)/2;
-      if (fb < mid) {
+    if (gr.count()>0)
+    {
+      size_t mid = (rk-1)/2;
+      if (fb <= mid) {
 	strm << "so(";
-	strm << 2*lietype::rank(slt)+1-2*(fb+1) << "," << 2*(fb+1) << ")";
+	strm << 2*rk+1-2*(fb+1) << "," << 2*(fb+1) << ")";
       } else {
-	size_t c = lietype::rank(slt)-fb-1;
+	size_t c = rk-fb-1;
 	strm << "so(";
-	strm << 2*lietype::rank(slt)-2*c << "," <<  2*c+1 << ")";
+	strm << 2*rk-2*c << "," <<  2*c+1 << ")";
       }
-    } else {
+    }
+    else
+    {
       strm << "so(";
-      strm << 2*lietype::rank(slt)+1 << ")";
+      strm << 2*rk+1 << ")";
     }
     break;
   case 'C':
     if (gr.count() == 0) {
       strm << "sp(";
-      strm << lietype::rank(slt) << ")";
-    } else if (fb == lietype::rank(slt)-1) {
+      strm << rk << ")";
+    } else if (fb == rk-1) {
       strm << "sp(";
-      strm << 2*lietype::rank(slt) << ",R)";
+      strm << 2*rk << ",R)";
     } else {
       strm << "sp(";
-      strm << lietype::rank(slt)-fb-1 << "," << fb+1 << ")";
+      strm << rk-fb-1 << "," << fb+1 << ")";
     }
     break;
   case 'D':
-    if (lietype::rank(slt) & 1UL)
-      switch (ic) {
+    if ((rk & 1UL)!=0)
+      switch (ic)
+      {
       case 's':
 	if (gr.count() == 0) { // distinguished form
 	  strm << "so(";
-	  strm << 2*lietype::rank(slt)-1<< "," << 1 << ")";
+	  strm << 2*rk-1<< "," << 1 << ")";
 	} else {
 	  strm << "so(";
-	  strm << 2*lietype::rank(slt)-2*fb-3 << "," << 2*fb+3 << ")";
+	  strm << 2*rk-2*fb-3 << "," << 2*fb+3 << ")";
 	}
 	break;
       case 'c':
 	if (gr.count() == 0) {
 	  strm << "so(";
-	  strm << 2*lietype::rank(slt) << ")";
-	} else if (fb == lietype::rank(slt)-2) {
+	  strm << 2*rk << ")";
+	} else if (fb == rk-2) {
 	  strm << "so*(";
-	  strm << 2*lietype::rank(slt) << ")";
+	  strm << 2*rk << ")";
 	} else {
 	  strm << "so(";
-	  strm << 2*lietype::rank(slt)-2*fb-2 << "," << 2*fb+2 << ")";
+	  strm << 2*rk-2*fb-2 << "," << 2*fb+2 << ")";
 	}
 	break;
       case 'u':
         if (gr.count() == 0) { // distinguished form
           strm << "so(";
-          strm << 2*lietype::rank(slt)-1<< "," << 1 << ")";
+          strm << 2*rk-1<< "," << 1 << ")";
         } else {
           strm << "so(";
-          strm << 2*lietype::rank(slt)-2*fb-3 << "," << 2*fb+3 << ")";
+          strm << 2*rk-2*fb-3 << "," << 2*fb+3 << ")";
         }
       }
     else
@@ -431,40 +439,41 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
       case 'c':
 	if (gr.count() == 0) { // compact type
 	  strm << "so(";
-	  strm << 2*lietype::rank(slt) << ")";
-	} else if (fb == lietype::rank(slt)-2) { // so* type; labelling depends on rank
+	  strm << 2*rk << ")";
+	} else if (fb == rk-2) { // so* type; labelling depends on rank
 	  strm << "so*(";
-	  if ((lietype::rank(slt) >> 1) & 1UL) // rank not divisible by 4
-	    strm << 2*lietype::rank(slt) << ")[1,0]";
+	  if ((rk >> 1) & 1UL) // rank not divisible by 4
+	    strm << 2*rk << ")[1,0]";
 	  else // rank divisible by 4
-	    strm << 2*lietype::rank(slt) << ")[0,1]";
-	} else if (fb == lietype::rank(slt)-1) { // so* type; labelling depends on rank
+	    strm << 2*rk << ")[0,1]";
+	} else if (fb == rk-1) { // so* type; labelling depends on rank
 	  strm << "so*(";
-	  if ((lietype::rank(slt) >> 1) & 1UL) // rank not divisible by 4
-	    strm << 2*lietype::rank(slt) << ")[0,1]";
+	  if ((rk >> 1) & 1UL) // rank not divisible by 4
+	    strm << 2*rk << ")[0,1]";
 	  else // rank divisible by 4
-	    strm << 2*lietype::rank(slt) << ")[1,0]";
+	    strm << 2*rk << ")[1,0]";
 	} else { // so(p,q) type
 	  strm << "so(";
-	  strm << 2*lietype::rank(slt)-2*fb-2 << "," << 2*fb+2 << ")";
+	  strm << 2*rk-2*fb-2 << "," << 2*fb+2 << ")";
 	}
 	break;
       case 'u':
 	if (gr.count() == 0) { // distinguished form
 	  strm << "so(";
-	  strm << 2*lietype::rank(slt)-1<< "," << 1 << ")";
+	  strm << 2*rk-1<< "," << 1 << ")";
 	} else {
 	  strm << "so(";
-	  strm << 2*lietype::rank(slt)-2*fb-3 << "," << 2*fb+3 << ")";
+	  strm << 2*rk-2*fb-3 << "," << 2*fb+3 << ")";
 	}
 	break;
       }
     break;
   case 'E':
-    switch (lietype::rank(slt))
+    switch (rk)
     {
     case 6:
-      switch (ic) {
+      switch (ic)
+      {
       case 's':
 	if (gr.count() == 0)
 	  strm << "e6(f4)";
@@ -529,9 +538,9 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
       strm << "gl(1,R)";
     else if (ic == 'c')
       strm << "u(1)";
-    if (lietype::rank(slt) > 1) {
+    if (rk > 1) {
       strm << "^";
-      strm << lietype::rank(slt);
+      strm << rk;
     }
     break;
   default: // cannot happen
