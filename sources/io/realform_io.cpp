@@ -22,6 +22,7 @@
 #include "layout.h"
 #include "lietype.h"
 #include "rootdata.h"
+#include "setutils.h"
 #include "tori.h"
 
 namespace atlas {
@@ -35,37 +36,37 @@ namespace {
 				const lietype::SimpleLieType&,
 				lietype::TypeLetter);
 
-  std::ostream& printType(std::ostream&, const gradings::Grading&,
-			  const lietype::LieType&,
-			  const lietype::InnerClassType&);
+  std::ostream& printType(std::ostream& out,
+			  const gradings::Grading& gr,
+			  const lietype::LieType& lt,
+			  const lietype::InnerClassType& ict,
+			  const setutils::Permutation& perm);
 
+// a class to temporarily group data necessary for classifying real forms
+class RealFormData
+{
+  realform::RealForm d_realForm;
+  gradings::Grading d_grading;
+  rootdata::RootSet d_orth;
 
-class RealFormData {
-
-  private:
-
-    realform::RealForm d_realForm;
-    gradings::Grading d_grading;
-    rootdata::RootSet d_orth;
-
-  public:
+public:
 
 // constructors and destructors
-    RealFormData() {}
+  RealFormData() {}
 
-    RealFormData(realform::RealForm rf, const gradings::Grading& gr,
-		 const rootdata::RootSet& so)
-      :d_realForm(rf),d_grading(gr),d_orth(so) {}
-
-    ~RealFormData() {}
+  RealFormData(realform::RealForm rf,
+	       const gradings::Grading& gr,
+	       const rootdata::RootSet& so)
+    :d_realForm(rf),d_grading(gr),d_orth(so) {}
 
 // accessors
-    const gradings::Grading& grading() const { return d_grading; }
-    realform::RealForm realForm() const { return d_realForm; }
-    const rootdata::RootSet& orth() const { return d_orth; }
-  };
+  const gradings::Grading& grading() const { return d_grading; }
+  realform::RealForm realForm() const { return d_realForm; }
+  const rootdata::RootSet& orth() const { return d_orth; }
+};
 
-  bool operator< (const RealFormData& first, const RealFormData& second);
+// this determines the external numbering of real forms
+bool operator< (const RealFormData& first, const RealFormData& second);
 
 }
 
@@ -92,13 +93,13 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   const rootdata::RootSystem& rs = G.rootSystem();
   const cartanclass::Fiber& fundf = G.fundamental();
 
-  std::vector<RealFormData> rfd(G.numRealForms());
+  std::vector<RealFormData> rfd; rfd.reserve(G.numRealForms());
 
   for (realform::RealForm rf = 0; rf < G.numRealForms(); ++rf)
   {
-    rootdata::RootSet so= toMostSplit(fundf,rf,rs);
-    gradings::Grading gr = specialGrading(fundf,rf,rs);
-    rfd[rf] = RealFormData(rf,gr,so);
+    rootdata::RootSet so = cartanclass::toMostSplit(fundf,rf,rs);
+    gradings::Grading gr = cartanclass::specialGrading(fundf,rf,rs);
+    rfd.push_back(RealFormData(rf,gr,so));
   }
 
   std::sort(rfd.begin(),rfd.end());
@@ -120,7 +121,7 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   for (size_t j = 0; j < rfd.size(); ++j)
   {
     os.str("");
-    printType(os,rfd[j].grading(),lo.d_type,lo.d_inner);
+    printType(os,rfd[j].grading(),lo.d_type,lo.d_inner,lo.d_perm);
     d_name[j] = os.str();
   }
 }
@@ -135,13 +136,13 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   const rootdata::RootSystem& rs = G.dualRootSystem();
   const cartanclass::Fiber& fundf = G.dualFundamental();
 
-  std::vector<RealFormData> rfd(G.numDualRealForms());
+  std::vector<RealFormData> rfd; rfd.reserve(G.numDualRealForms());
 
   for (realform::RealForm rf = 0; rf < G.numDualRealForms(); ++rf)
   {
-    rootdata::RootSet so= toMostSplit(fundf,rf,rs);
+    rootdata::RootSet so = cartanclass::toMostSplit(fundf,rf,rs);
     gradings::Grading gr = cartanclass::specialGrading(fundf,rf,rs);
-    rfd[rf] = RealFormData(rf,gr,so);
+    rfd.push_back(RealFormData(rf,gr,so));
   }
 
   std::sort(rfd.begin(),rfd.end());
@@ -160,13 +161,13 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   d_name.resize(rfd.size());
   std::ostringstream os;
 
-  lietype::LieType dlt = lietype::dual_type(lo.d_type);
-  lietype::InnerClassType dict = lietype::dual_type(lo.d_inner,lo.d_type);
+  lietype::LieType dual_lt = lietype::dual_type(lo.d_type);
+  lietype::InnerClassType dual_ict = lietype::dual_type(lo.d_inner,lo.d_type);
 
   for (size_t j = 0; j < rfd.size(); ++j)
   {
     os.str("");
-    printType(os,rfd[j].grading(),dlt,dict);
+    printType(os,rfd[j].grading(),dual_lt,dual_ict,lo.d_perm);
     d_name[j] = os.str();
   }
 }
@@ -201,18 +202,15 @@ const char* Interface::typeName(realform::RealForm rf) const
 
         Chapter II -- Functions declared in realform_io.h
 
-  ... explain here when it is stable ...
-
 ******************************************************************************/
 
 namespace realform_io {
-
-std::ostream& printRealForms(std::ostream& strm, const Interface& I)
 
 /*
   Synopsis: outputs the list of real forms in I.
 */
 
+std::ostream& printRealForms(std::ostream& strm, const Interface& I)
 {
   for (size_t j = 0; j < I.numRealForms(); ++j) {
     std::cout << j << ": " << I.typeName(j) << std::endl;
@@ -227,35 +225,30 @@ std::ostream& printRealForms(std::ostream& strm, const Interface& I)
 
         Chapter III -- Auxiliary functions local to this module
 
-  ... explain here when it is stable ...
 
 ******************************************************************************/
 
 namespace {
 
-bool operator< (const RealFormData& first, const RealFormData& second)
-
 /*
   Synopsis: comparison of RealFormData.
 
   Sorts the data by compacity (most compact forms first), and for equal
-  compacity, by their grading. This ensures that the ordering will be the
-  same for all covering groups.
-*/
+  compacity, by their grading. This ensures that the ordering will be the same
+  for all covering groups. However the comparisons of gradings depends on the
+  permutation of simple roots relative to the standard ordering of the diagram
+  for the Lie type, which could be improved.
 
+*/
+bool operator< (const RealFormData& first, const RealFormData& second)
 {
   size_t firstSize = first.orth().size();
   size_t secondSize = second.orth().size();
 
-  if (firstSize < secondSize)
-    return true;
-  if (firstSize > secondSize)
-    return false;
+  if (firstSize != secondSize)
+    return firstSize < secondSize;
 
-  const gradings::Grading& firstGrading = first.grading();
-  const gradings::Grading& secondGrading = second.grading();
-
-  return firstGrading < secondGrading;
+  return first.grading() < second.grading();
 }
 
 
@@ -555,17 +548,20 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
 /*
   Synopsis: outputs the real form of lt represented by gr.
 
-  Precondition: gr contains a grading of the simple roots of the root system
-  that are imaginary for the fundamental involution, which represents the
-  given inner class, and which contains one noncompact root for each
-  noncompact noncomplex simple factor.
+  Precondition: |gr| contains a grading of the simple-simaginary roots (simple
+  roots of the imaginary roots system for the fundamental involution), which
+  represents the given real form, and which contains one noncompact root for
+  each noncompact noncomplex simple factor.
 */
 std::ostream& printType(std::ostream& strm,
 			const gradings::Grading& d_gr,
 			const lietype::LieType& lt,
-			const lietype::InnerClassType& ict)
+			const lietype::InnerClassType& ict,
+			const setutils::Permutation& perm)
 {
   gradings::Grading gr = d_gr;
+  gr.permute(perm); // adapt grading to standard ordering of type |lt|
+
   size_t c = 0;
 
   for (size_t j = 0; j < ict.size(); ++j)
