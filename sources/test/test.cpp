@@ -776,7 +776,7 @@ void testrun_f()
   {
     std::cout<< *it << std::endl;
     const rootdata::RootDatum rd
-      (prerootdata::PreRootDatum(*it,id.columns())); // simply connected
+      (prerootdata::PreRootDatum::build(*it,id.columns())); // simply connected
     const rootdata::RootSystem rs(rd.cartanMatrix());
     examine(rd,rs);
     examine(rootdata::RootDatum(rd,tags::DualTag()),

@@ -273,7 +273,7 @@ CoveringIterator::CoveringIterator(const lietype::LieType& lt)
   latticetypes::WeightList lb;
   makeBasis(lb);
 
-  d_preRootDatum = prerootdata::PreRootDatum(d_lieType,lb);
+  d_preRootDatum = prerootdata::PreRootDatum::build(d_lieType,lb);
 }
 
 
@@ -377,7 +377,7 @@ finish: // update d_preRootDatum
   latticetypes::WeightList lb;
   makeBasis(lb);
 
-  d_preRootDatum = prerootdata::PreRootDatum(d_lieType,lb);
+  d_preRootDatum = prerootdata::PreRootDatum::build(d_lieType,lb);
 
   return *this;
 }
