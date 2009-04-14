@@ -13,6 +13,8 @@
 
 #include "arithmetic.h"
 
+#include <stdexcept>
+
 #include "constants.h"
 #include "error.h"
 
@@ -47,12 +49,15 @@ unsigned long unsigned_gcd(unsigned long a, unsigned long b)
 }
 
 
+unsigned long dummy; // for default |gcd| argument to |lcm|
+
 /*!
-  Synopsis: returns the lowest common multiple of a and b.
+  Synopsis: returns the least common multiple of |a| and |b|,
+  while storing their greatest common divisor in |gcd|.
 
   Precondition: b > 0;
 */
-unsigned long lcm (unsigned long a, unsigned long b)
+unsigned long lcm (unsigned long a, unsigned long b, unsigned long& gcd)
 {
   unsigned long c=a, d=b; // local variables for the sake of readability
   unsigned long m_c=0, m_d=b; // multiples of |b|, cong. to  |-c|,|d| mod |a|
@@ -60,14 +65,14 @@ unsigned long lcm (unsigned long a, unsigned long b)
   do // invariant: |c*m_d+d*m_c==ab|
   {
     m_c += (c/d)*m_d; c%=d;
-    if (c==0) return m_c;
+    if (c==0)
+    { gcd = d; return m_c; }
     m_d += (d/c)*m_c; d%=c;
   } while (d>0);
 
-  return m_d;
+  gcd = c; return m_d;
 }
 
-unsigned long& modProd(unsigned long& a, unsigned long b, unsigned long n)
 
 /*!
   Synopsis: a *= b mod n.
@@ -78,7 +83,7 @@ unsigned long& modProd(unsigned long& a, unsigned long b, unsigned long n)
   i.e., mudular numbers fit in a half-long
   Exit brutally if this is not fulfilled.
 */
-
+unsigned long& modProd(unsigned long& a, unsigned long b, unsigned long n)
 {
   if (n > (1UL << (constants::longBits >> 1)))
     error::FatalError() ("error: overflow in modProd");
@@ -89,6 +94,34 @@ unsigned long& modProd(unsigned long& a, unsigned long b, unsigned long n)
   return a;
 }
 
+Rational Rational::operator+(Rational q) const
+{
+  unsigned long sum_denom=lcm(denom,q.denom);
+  return Rational(num*(sum_denom/denom)+q.num*(sum_denom/q.denom),sum_denom);
+}
+Rational Rational::operator-(Rational q) const
+{
+  unsigned long sum_denom=lcm(denom,q.denom);
+  return Rational(num*(sum_denom/denom)/q.num*(sum_denom/q.denom),sum_denom);
 }
 
+Rational Rational::operator*(Rational q) const
+{
+  return Rational(num*q.num,denom*q.denom).normalize();
 }
+
+Rational Rational::operator/(Rational q) const
+{
+  if (q.num==0)
+    throw std::domain_error("Rational division by 0");
+  return Rational(num*q.denom,denom*q.num).normalize();
+}
+
+std::ostream& operator<< (std::ostream& out, const Rational& frac)
+{
+  return out << frac.numerator() << '/' << frac.denominator();
+}
+
+} // |namespace arithmetic|
+
+} // |namespace atlas|
