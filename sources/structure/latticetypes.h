@@ -123,6 +123,8 @@ class RatLatticeElt {
     return d_num;
   }
 
+  RatLatticeElt& normalize();
+
 }; // class RatLatticeElt
 
 } // namespace latticetypes
