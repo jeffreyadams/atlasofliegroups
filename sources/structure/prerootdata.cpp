@@ -29,12 +29,10 @@ namespace atlas {
 
 namespace {
 
-  void makeCorootBasis(latticetypes::WeightList&,
-		       const latticetypes::LatticeMatrix&,
-		       const latticetypes::WeightList&);
-  void makeRootBasis(latticetypes::WeightList&,
-		     const latticetypes::LatticeMatrix&,
-		     const latticetypes::WeightList&);
+  latticetypes::WeightList rootBasis(const latticetypes::LatticeMatrix& cartan,
+				     const latticetypes::WeightList&);
+  latticetypes::WeightList corootBasis(const latticetypes::LatticeMatrix&,
+				       const latticetypes::WeightList&);
 
 }
 
@@ -55,43 +53,32 @@ namespace prerootdata {
 
 
 /*!
-\brief  Constructs the PreRootDatum whose lattice has basis b,
-expressed in terms of the simply connected weight lattice basis for
-lt.
+\brief Constructs the PreRootDatum whose lattice has basis b,
+expressed in terms of the simply connected weight lattice basis for lt.
 
-More precisely, we begin with the direct product G^tilde of a simply
- connected semisimple group G_scss and a torus (C^times)^m.  The
- weight lattice X^*(H^tilde) for the torus H^tilde of this group has
- basis the fundamental weights for G_scss and the standard basis for
- Z^m.
+More precisely, we build the unique rootdatum whose Cartan matrix is the
+standard (Bourbaki) Cartan matrix of the semisimple part of the type |lt|
+(i.e., the Cartan matrix of |lt| with any null rows and columns for torus
+factors removed), and such that the the vectors |b| express the basis of |X|
+in terms of the fundamental weights (dual basis to the simple coroots) for the
+root system and the standard basis for the torus factor(s) of |lt| (the torus
+coordinates can be present between the simple factors, as indicated in |lt|).
 
-The group G will be specified as a quotient of G^tilde by a finite
-central subgroup F.  The set of characters of H^tilde trivial on F is
-a sublattice of finite index in X^*(H^tilde).  The WeightList b is
-required to be a basis for this sublattice.
+This somewhat convoluted description comes from the way the lattice |X| is
+chosen (via user interaction) as a sublattice of the lattice for a simply
+connected group.
 
 The constructor puts d_roots the list of simple roots expressed in the
 basis b, and in d_coroots the list of simple coroots expressed in the
 dual basis.
 */
-PreRootDatum::PreRootDatum(const lietype::LieType& lt,
-			   const latticetypes::WeightList& b)
-  :d_rank(lietype::rank(lt))
+PreRootDatum PreRootDatum::build(const lietype::LieType& lt,
+				 const latticetypes::WeightList& b)
 {
-  // get the Cartan matrix
+  latticetypes::LatticeMatrix c; cartanMatrix(c,lt);  // get the Cartan matrix
+  c.transpose(); // now the columns express simple roots in fundamental weights
 
-  latticetypes::LatticeMatrix c;
-  cartanMatrix(c,lt);
-
-  // NOTE : the _tranpose_ of c is the matrix of the simple root vectors in
-  // the basis of simple weight vectors. I got this wrong the first time!
-
-  c.transpose();
-
-  // write simple roots and coroots
-
-  makeRootBasis(d_roots,c,b);
-  makeCorootBasis(d_coroots,c,b);
+  return PreRootDatum(rootBasis(c,b),corootBasis(c,b),lietype::rank(lt));
 }
 
 /******** manipulators *******************************************************/
@@ -282,48 +269,14 @@ void cartanMatrix(latticetypes::LatticeMatrix& cm,
   This sections contains the definitions of some auxiliary functions private
   to the present module :
 
-    - void makeCorootBasis(WeightList&, const CartanMatrix&,
-      const WeightList&): writes down the simple coroots in the dual lattice
-      basis;
-    - void makeRootBasis(WeightList&, const CartanMatrix&, const WeightList&):
+    - WeightList& rootBasis(const CartanMatrix&, const WeightList&):
       writes down the simple roots in the lattice basis;
+    - WeightList corootBasis(const CartanMatrix&,const WeightList&): writes
+      down the simple coroots in the dual lattice basis;
 
 ******************************************************************************/
 
 namespace {
-
-
-/*! \brief Writes down the simple coroots in the dual lattice basis.
-
-  Given the lattice basis lb, expressed in terms of the simple weight basis,
-  and the transposed Cartan matrix c, this function writes in crb the
-  simple coroots of the system. In fact, if q is the matrix of lb in the
-  simple weight basis, its transpose is the matrix of the dual basis of
-  the simple weight basis, i.e. the simple coroot basis, in the dual
-  lattice basis. So the only reason we need c at all is for the case where
-  there are torus factors, to detect which columns in q correspond to these
-  factors.
-*/
-void makeCorootBasis(latticetypes::WeightList& crb,
-		     const latticetypes::LatticeMatrix& c,
-		     const latticetypes::WeightList& lb)
-{
-  latticetypes::LatticeMatrix q(lb);
-  q.transpose();
-
-  latticetypes::Weight r(q.numRows());
-
-  for (size_t j = 0; j < q.numColumns(); ++j) {
-    bool nonZero = false;
-    for (size_t i = 0; i < q.numRows(); ++i) {
-      r[i] = q(i,j);
-      if (c(i,j))
-	nonZero = true;
-    }
-    if (nonZero)
-      crb.push_back(r);
-  }
-}
 
 
 /*!
@@ -336,9 +289,8 @@ void makeCorootBasis(latticetypes::WeightList& crb,
   a base change. When there are torus factors, we should be careful to not
   push back the null columns from c that would correspond to these.
 */
-void makeRootBasis(latticetypes::WeightList& rb,
-		   const latticetypes::LatticeMatrix& c,
-		   const latticetypes::WeightList& lb)
+latticetypes::WeightList rootBasis(const latticetypes::LatticeMatrix& c,
+				   const latticetypes::WeightList& lb)
 {
   // multiply c by q^{-1} on the left
 
@@ -349,13 +301,49 @@ void makeRootBasis(latticetypes::WeightList& rb,
 
   // push back non-zero columns on rb
 
+  latticetypes::WeightList result;
   for (size_t j = 0; j < q.numColumns(); ++j)
   {
     latticetypes::Weight r= q.column(j);
     if (not r.isZero())
-      rb.push_back(r);
+      result.push_back(r);
   }
+  return result;
 }
+
+/*! \brief Writes down the simple coroots in the dual lattice basis.
+
+  Given the lattice basis lb, expressed in terms of the simple weight basis,
+  and the transposed Cartan matrix c, this function writes in crb the
+  simple coroots of the system. In fact, if q is the matrix of lb in the
+  simple weight basis, its transpose is the matrix of the dual basis of
+  the simple weight basis, i.e. the simple coroot basis, in the dual
+  lattice basis. So the only reason we need c at all is for the case where
+  there are torus factors, to detect which columns in q correspond to these
+  factors.
+*/
+latticetypes::WeightList corootBasis(const latticetypes::LatticeMatrix& c,
+				     const latticetypes::WeightList& lb)
+{
+  latticetypes::LatticeMatrix q(lb);
+  q.transpose();
+
+  latticetypes::Weight r(q.numRows());
+
+  latticetypes::WeightList result;
+  for (size_t j = 0; j < q.numColumns(); ++j) {
+    bool nonZero = false;
+    for (size_t i = 0; i < q.numRows(); ++i) {
+      r[i] = q(i,j);
+      if (c(i,j))
+	nonZero = true;
+    }
+    if (nonZero)
+      result.push_back(r);
+  }
+  return result;
+}
+
 
 } // namsepace
 

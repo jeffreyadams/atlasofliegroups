@@ -21,6 +21,7 @@
 #include "prerootdata_fwd.h"
 #include "weyl_fwd.h"
 
+#include "arithmetic.h"
 #include "bitset.h"
 #include "bitmap.h"
 #include "latticetypes.h"
@@ -55,6 +56,12 @@ void toDistinguished(LT::LatticeMatrix&, const RootDatum&);
 LT::LatticeMatrix refl_prod(const RootSet&, const RootDatum&);
 
 weyl::WeylWord toPositive(LT::Weight, const RootDatum&);
+
+RootDatum integrality_datum(const RootDatum& rd,
+			    const LT::RatLatticeElt& lambda);
+
+arithmetic::RationalList integrality_points(const RootDatum& rd,
+					    LT::RatWeight& nu);
 
 } // namespace rootdata
 

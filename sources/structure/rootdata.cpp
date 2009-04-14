@@ -39,6 +39,7 @@
 #include <cassert>
 #include <set>
 
+#include "arithmetic.h"
 #include "dynkin.h"
 #include "lattice.h"
 #include "partition.h"
@@ -758,7 +759,6 @@ namespace rootdata {
   Since $-w_0$ is central in the group of based root datum automorphisms, it
   doesn't matter whether one multiplies by $w_0$ on the left or on the right
 */
-
 LT::LatticeMatrix dualBasedInvolution
   (const LT::LatticeMatrix& q, const RootDatum& rd)
 {
@@ -793,10 +793,6 @@ RootSet makeOrthogonal(const RootSet& o, const RootSet& subsys,
 
   return result;
 }
-
-
-
-
 
 
 /*!
@@ -837,7 +833,6 @@ reflections for the set of roots |rset|.
 
 The roots must be mutiually orthogonal so that the order doesn't matter.
 */
-
 latticetypes::LatticeMatrix refl_prod(const RootSet& rset, const RootDatum& rd)
 {
   latticetypes::LatticeMatrix q; identityMatrix(q,rd.rank());
@@ -872,6 +867,53 @@ weyl::WeylWord toPositive(latticetypes::Weight v, const RootDatum& rd)
   // reverse result (action is from right to left)
   std::reverse(result.begin(),result.end());
   return result;
+}
+
+RootDatum integrality_datum(const RootDatum& rd,
+			    const latticetypes::RatWeight& lambda)
+{
+  latticetypes::LatticeCoeff n=lambda.denominator();
+  const latticetypes::Weight& v=lambda.numerator();
+  RootSet int_roots(rd.numRoots());
+  for (size_t i=0; i<rd.numPosRoots(); ++i)
+    if (v.dot(rd.posCoroot(i))%n == 0)
+      int_roots.insert(rd.posRootNbr(i));
+
+  RootList simple = rd.simpleBasis(int_roots);
+
+  latticetypes::WeightList roots;   roots.reserve(simple.size());
+  latticetypes::WeightList coroots; coroots.reserve(simple.size());
+
+  for (size_t i=0; i<simple.size(); ++i)
+  {
+    roots.push_back(rd.root(simple[i]));
+    coroots.push_back(rd.coroot(simple[i]));
+  }
+
+  return RootDatum(prerootdata::PreRootDatum(roots,coroots,rd.rank()));
+}
+
+arithmetic::RationalList integrality_points
+  (const RootDatum& rd, latticetypes::RatLatticeElt& nu)
+{
+  nu.normalize();
+  unsigned long d = abs(nu.denominator());
+
+  std::set<long> products;
+  for (size_t i=0; i<rd.numPosRoots(); ++i)
+  {
+    long p = abs(nu.numerator().dot(rd.posCoroot(i)));
+    if (p!=0)
+      products.insert(p);
+  }
+
+  std::set<arithmetic::Rational> fracs;
+  for (std::set<long>::iterator it= products.begin(); it!=products.end(); ++it)
+  {
+    for (long s=d; s<=*it; s+=d)
+      fracs.insert(arithmetic::Rational(s,*it));
+  }
+  return arithmetic::RationalList(fracs.begin(),fracs.end());
 }
 
 } // namespace rootdata

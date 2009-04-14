@@ -88,7 +88,13 @@ class PreRootDatum{
 // constructors and destructors
   PreRootDatum() {}
 
-  PreRootDatum(const lietype::LieType& lt, const latticetypes::WeightList&);
+  PreRootDatum(const latticetypes::WeightList& roots,
+               const latticetypes::WeightList& coroots,
+	       size_t rank)
+    : d_roots(roots),d_coroots(coroots), d_rank(rank) {}
+
+  static PreRootDatum build // pseudo constructor
+    (const lietype::LieType& lt, const latticetypes::WeightList&);
 
   ~PreRootDatum() {}
 

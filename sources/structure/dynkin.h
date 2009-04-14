@@ -13,7 +13,8 @@
 #ifndef DYNKIN_H  /* guard against multiple inclusions */
 #define DYNKIN_H
 
-#include <map>
+#include <utility> // for |std::pair|
+#include <vector>
 
 #include "latticetypes_fwd.h"
 
@@ -47,16 +48,18 @@ class DynkinDiagram;
 
 namespace dynkin {
 
-  lietype::LieType Lie_type(const latticetypes::LatticeMatrix&);
+  // find (semisimple) Lie type given by Cartan matrix
+  lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm);
 
-  setutils::Permutation bourbaki(const DynkinDiagram&);
+  // same, also set |pi| to permutation "straightening" each diagram component
+  lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm,
+			    bool Bourbaki, setutils::Permutation& pi);
 
-  bitset::RankFlagsList components(const DynkinDiagram&);
+  bitset::RankFlagsList components(const DynkinDiagram& d);
 
-  bitset::RankFlagsList
-    components(const DynkinDiagram&,const bitset::RankFlags&);
+  setutils::Permutation normalize(const DynkinDiagram& d);
 
-  setutils::Permutation normalize(const DynkinDiagram&);
+  setutils::Permutation bourbaki(const DynkinDiagram& d);
 
 }
 
@@ -82,10 +85,9 @@ class DynkinDiagram {
   std::vector<bitset::RankFlags> d_star;
 
   /*!
-  Map from certain pairs of vertices (multiple edges of the Dynkin diagram)
-  to unsigned integers (their multiplicities).
+  \brief List of edges from longer to shorter node, with edge label (2 or 3)
   */
-  std::map<Edge,Multiplicity> d_label;
+  std::vector<std::pair<Edge,Multiplicity> > d_downedge;
 
  public:
 
@@ -126,13 +128,9 @@ class DynkinDiagram {
     return d_star.size();
   }
 
-  const bitset::RankFlagsList& star() const {
-    return d_star;
-  }
+  const bitset::RankFlagsList& star() const { return d_star; }
 
-  const bitset::RankFlags& star(size_t j) const {
-    return d_star[j];
-  }
+  bitset::RankFlags star(size_t j) const { return d_star[j]; }
 
 // manipulators
 };
