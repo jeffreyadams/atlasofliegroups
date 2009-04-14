@@ -353,6 +353,7 @@ suggests this without stating it clearly), so calling |free| would be an
 error.
 
 @h <cstring>
+@h <cstdlib>
 
 @< Read a line... @>=
 if (stream==&std::cin) // which implies |input_stack.empty()|
@@ -366,7 +367,7 @@ if (stream==&std::cin) // which implies |input_stack.empty()|
     else
     @/{@; line=l;
       if (add_hist!=NULL and *l!='\0') add_hist(l);
-      else free(l);
+      else std::free(l);
     }
   }
   else {@; std::cout << pr; std::getline(std::cin,line,'\n'); }

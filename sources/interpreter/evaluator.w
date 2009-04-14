@@ -278,8 +278,8 @@ enum type_tag
 { undetermined_type, primitive_type, row_type, tuple_type, function_type };
 
 enum primitive_tag
-{ integral_type, string_type, boolean_type
-  , @< Other primitive type tags @>@;@;
+{ integral_type, rational_type, string_type, boolean_type
+  , @< Other primitive type tags @>@;@; @|
   @+nr_of_primitive_types };
 
 @ For printing types (and later for parsing them) we shall need names for the
@@ -294,7 +294,7 @@ terminated by a null pointer.
 
 @< Global variable definitions @>=
 const char* prim_names[]=
-{"int","string","bool",@< Other primitive type names@>@;@; NULL };
+{"int","rat","string","bool",@< Other primitive type names@>@;@; NULL };
 
 @*2 Type declarators.
 %
@@ -401,6 +401,8 @@ shallow copy of the topmost nodes pointed to. This is achieved by using the
 |set_from| method to fill the initially undetermined slots with a shallow copy
 of the types, in the same way as was done in the constructor for~|type_node|.
 The copy constructor needs no special care, as it makes a deep copy.
+
+@s result_type normal
 
 @< Type definitions @>=
 struct func_type
@@ -671,15 +673,17 @@ ptr mk_function_type(ptr a,ptr r)
     type_ptr(static_cast<type_declarator*>(r))).release(); }
 @)
 extern "C"
-ptr first_type(ptr typel)
-{@; return &static_cast<type_node*>(typel)->t; }
-
-extern "C"
 void destroy_type(ptr t)@+
 {@; delete static_cast<type_declarator*>(t); }
 extern "C"
 void destroy_type_list(ptr t)@+
 {@; delete static_cast<type_list>(t); }
+
+ptr first_type(ptr typel)
+{@; return &static_cast<type_node*>(typel)->t; }
+
+std::ostream& print_type(std::ostream& out, ptr type)
+{@; return out << static_cast<type_node*>(type); }
 
 @*2 Specifying types by strings.
 %
@@ -779,13 +783,16 @@ type_list_ptr scan_type_list(const char*& s)
   return make_type_list(head,scan_type_list(++s));
 }
 
-@ For primitive types we use the same strings as for printing them. We use the
-fact that no name is a prefix of another one, so the first match is decisive.
+@ For primitive types we use the same strings as for printing them. We test as
+many characters as the type name has, and the fact that no alphanumeric
+character follows, so that a longer type name will not match a prefix of it.
 
+@h <cctype>
 @< Scan and |return| a primitive type, or |throw| a |logic_error| @>=
 { for (size_t i=0; i<nr_of_primitive_types; ++i)
   { std::string name=prim_names[i];
-    if (name.compare(0,name.length(),s,name.length())==0)
+    if (name.compare(0,name.length(),s,name.length())==0 and
+        not isalpha(s[name.length()]))
     @/{@; s+=name.length();
       return make_prim_type(static_cast<primitive_tag>(i));
     }
@@ -803,6 +810,7 @@ introduced later.
 @< Declarations of global variables @>=
 extern const type_declarator unknown_type; // \.{*}
 extern const type_declarator int_type; // \.{int}
+extern const type_declarator rat_type; // \.{int}
 extern const type_declarator str_type; // \.{string}
 extern const type_declarator bool_type; // \.{bool}
 extern const type_declarator vec_type; // \.{vec}
@@ -824,6 +832,7 @@ produce by |copy| applied to a previous |type_declarator|.
 
 const type_declarator unknown_type; // uses default constructor
 const type_declarator int_type(integral_type);
+const type_declarator rat_type(rational_type);
 const type_declarator str_type(string_type);
 const type_declarator bool_type(boolean_type);
 const type_declarator vec_type(vector_type);
@@ -912,10 +921,16 @@ to, and returns the reference to the output stream object.
 std::ostream& operator<< (std::ostream& out, const value_base& v)
 {@; v.print(out); return out; }
 
-@ Now we derive the first ``primitive'' value types. For each type we define
-a corresponding auto-pointer type (whose name ends with \&{\_ptr}), since we
-shall often need to hold such values by pointers, and the risk of exceptions
-is ever present.
+@ Now we derive the first ``primitive'' value types. The type for rational
+numbers is in fact implemented in the atlas library, so we must include a
+header file into ours.
+
+@<Include... @>=
+#include "arithmetic.h"
+
+@ For each type we define a corresponding auto-pointer type (whose name ends
+with \&{\_ptr}), since we shall often need to hold such values by pointers,
+and the risk of exceptions is ever present.
 
 @< Type definitions @>=
 
@@ -934,6 +949,24 @@ private:
 typedef std::auto_ptr<int_value> int_ptr;
 typedef std::tr1::shared_ptr<int_value> shared_int;
 @)
+struct rat_value : public value_base
+{ arithmetic::Rational val;
+@)
+  explicit rat_value(arithmetic::Rational v) : val(v) @+ {}
+  ~rat_value()@+ {}
+  void print(std::ostream& out) const @+{@; out << val; }
+  rat_value* clone() const @+{@; return new rat_value(*this); }
+  static const char* name() @+{@; return "integer"; }
+private:
+  rat_value(const rat_value& v) : val(v.val) @+{}
+};
+@)
+typedef std::auto_ptr<rat_value> rat_ptr;
+typedef std::tr1::shared_ptr<rat_value> shared_rat;
+
+@ Here are two more; this is quite repetitive
+
+@< Type definitions @>=
 
 struct string_value : public value_base
 { std::string val;
@@ -1053,21 +1086,21 @@ class context;
 typedef std::tr1::shared_ptr<context> context_ptr;
 class context
 { const context_ptr next;
-  const std::vector<shared_value> frame;
+  std::vector<shared_value> frame;
   context(const context&); // contexts should not be copied, just shared
 public:
   context(const context_ptr& n,
           const std::vector<shared_value>& f) : next(n), frame(f) @+{}
-  shared_value elem(size_t i,size_t j) const;
+  shared_value& elem(size_t i,size_t j);
 };
 
 @ The method |context::elem| descends the stack and then selects a value from
 the proper frame.
 
 @< Function def... @>=
-shared_value context::elem(size_t i, size_t j) const
+shared_value& context::elem(size_t i, size_t j)
 {
-  const context* p=this;
+  context* p=this;
   while (i-->0)
   @/{@; assert(p->next.use_count()>0 and p->next.get()!=NULL);
     p=p->next.get();
@@ -1381,47 +1414,75 @@ expression convert_expr(const expr& e, type_declarator& type)
   throw(std::bad_alloc,program_error);
 
 @ In the function |convert_expr| we shall need a type for storing bindings
-between identifiers and types. It will be a vector, and since vectors cannot
-hold auto-pointers, we need to define a descructor to clean up the types.
-Although we shall in fact need to stack different such binding vectors for
-nested scopes, we prefer not to use any STL container to implement the stack,
-since that would necessitate defining a copy constructor, which would a painful
-operation given that (1)~it must call |copy| on the types held in the
-bindings, in order to avoid double destruction, (2)~these calls to|copy|
+between identifiers and types. We use a vector, and since these cannot hold
+auto-pointers, we need to define a descructor to clean up the types. Different
+such binding vectors will be stacked, for nested scopes, but using an STL
+container for that would necessitate defining a copy constructor, which would
+be a painful operation: (1)~it must call |copy| on the types held in the
+bindings, in order to avoid double destruction, (2)~these calls to |copy|
 could throw an exception, and (3)~the constructor won't be complete, and the
 destructor therefore not activated, until the final entry is copied, so we
 would need a |try|\dots|catch| in the constructor to avoid a memory leak.
 
 So instead we chain the different bindings into a linked list, and forbid any
-copy or assignement. In fact the nesting of the various bindings will embed in
+copy or assignment. In fact the nesting of the various bindings will embed in
 the nested calls of |convert_expr|, so we can afford to allocate each
 |bindings| as local variable to (some instace of) |convert_expr|, and there is
 no ownership of them down the linked list. We do provide methods |push| and
-|pop| to prepend and detach a |bindings| from a list, arrive at the following
-type definition.
+|pop| to prepend and detach a |bindings| from a list.
 
 @< Type def... @>=
-struct bindings
+class bindings
 : public std::vector<std::pair<Hash_table::id_type,type_declarator*> >
-{ bindings* next; // non-owned pointer
-
-  typedef std::vector<std::pair<Hash_table::id_type,type_declarator*> >
+{ typedef std::vector<std::pair<Hash_table::id_type,type_declarator*> >
     base;
+  bindings* next; // non-owned pointer
+@)bindings(const bindings&); // copy constructor
+  void operator= (const bindings&); // assignment operator
+public:
   bindings(size_t n=0) : @[ base() @], next(NULL) @+{@; base::reserve(n); }
+    // predict size |n|, informative
   ~bindings () @+
-  {@; for (size_t i=0; i<base::size(); ++i)
-      delete operator[](i).second;
+  {@; for (base::iterator it=begin(); it!=end(); ++it)
+      delete it->second;
   }
-  void add(Hash_table::id_type id,type_ptr t)
-  {@; push_back(std::make_pair(id,(type_declarator*)NULL));
-      back().second=t.release();
-  }
+  void add(Hash_table::id_type id,type_ptr t);
+  type_declarator* lookup
+    (Hash_table::id_type id, size_t& depth, size_t& offset) const;
   void push (bindings*& sp) @+{@; next=sp; sp=this; }
   void pop (bindings*& sp) const @+{@; sp=next; }
-private:
-  bindings(const bindings&); // copy constructor
-  void operator= (const bindings&); // assignement operator
 };
+
+@ The method |add| adds a pair to the vector of bindings, taking care not to
+release the type pointer until the pair is successfully allocated. This is
+also a good place to check for the presence of identical identifiers.
+
+@< Function def... @>=
+void bindings::add(Hash_table::id_type id,type_ptr t)
+{ for (base::const_iterator it=begin(); it!=end(); ++it)
+    if (it->first==id)
+      throw program_error(std::string("Multiple binding of ")
+                          +main_hash_table->name_of(id)
+                          +" in same scope");
+  push_back(std::make_pair(id,(type_declarator*)NULL));
+  back().second=t.release();
+}
+
+@ The method |lookup| runs through the linked list of bindings and returns a
+pointer to the type if a match was found, also assigning the coordinates to
+output arguments. If no match is found a null pointer is returned and the
+output parameters are unchanged.
+
+@< Function def... @>=
+type_declarator* bindings::lookup
+  (Hash_table::id_type id, size_t& depth, size_t& offset) const
+{ size_t i=0;
+  for (const bindings* p=this; p!=NULL; p=p->next,++i)
+    for (size_t j=0; j<p->size(); ++j)
+      if ((*p)[j].first==id)
+      {@; depth=i; offset=j; return (*p)[j].second; }
+  return NULL;
+}
 
 @ During conversion of expressions, we keep a stack |id_context| of identifier
 bindings in order to detemine their (lexical) bindind and type. We could have
@@ -1848,36 +1909,78 @@ Calling functions, whether built-in or user-defined, requires using
 identifiers, but they occur in other contexts as well, and their treatment is
 no different between these cases. They come in two kinds, local and global
 identifiers, which are treated in fairly different way, and during type
-analysis the two are converted into different kinds of |expression|. Global
-identifiers values will be stored in the same global identifier table used for
-built-in functions, which also stores the types of those values. The values of
-local identifiers will be stored at runtime in a stack of variable bindings,
-but not their types (these have already served during type analysis).
+analysis the two are converted into different kinds of |expression|. The most
+fundamental difference is that for global identifiers a value is already known
+at the time the identifier expression is type-checked, and the type of this
+value can be used; for local identifiers only a type is associated to the
+identifier at that time, and indeed during different evaluations the same
+local identifier may find itself bound to different values.
+
+Global identifiers values will be stored in a global identifier table holding
+values and their types (initially it does so for the built-in functions). The
+values of local identifiers will be stored at runtime in a stack of variable
+bindings, but not their types (these are held elsewhere during type analysis,
+and have disappeared at evaluation time).
+
+In spite of these differences there is some common ground for global and local
+identifiers: they have a name that can be printed. For this reason we derive
+an intermediate structure from |expression_base| that will serve as base for
+both kinds of applied identifier expressions.
+
+@< Type definitions @>=
+struct identifier : public expression_base
+{ Hash_table::id_type code;
+@)
+  explicit identifier(Hash_table::id_type id) : code(id) @+{}
+  virtual ~identifier() @+ {}
+  virtual void print(std::ostream& out) const;
+};
+
+@ To print an identifier, we get its name from the main hash table.
+
+@< Function definitions @>=
+void identifier::print(std::ostream& out) const
+{@; out<< main_hash_table->name_of(code); }
 
 @*2 The global identifier table.
 %
-We need an identifier table to record the types of known functions (and later
-other types of identifiers). The global (permanently stored) ones form a
-single flat table, which also holds their types. Each such pair form an
-|id_data| structure; it is intended only to reside inside a table. The entry
-has shared ownership of the value, and the containing table will have strict
-ownership of the type. Giving ownership of the type directly to |id_data|
-would complicate its duplication, and therefore insertion into the table. As a
-consequence we only allow construction of |id_data| objects in an empty state;
-the pointers should be set only after insertion into the table, which then
-assumes ownership of the type.
+We need an identifier table to record the values of globally bound identifiers
+(such as those for built-in functions) and their types. The values are held in
+shared pointers, so that we can evaluate a global identifier without
+duplicating the value in the table itself. Modifying the value of such an
+identifier will produce a new pointer, so that ``shareholders'' of the value
+will not see a change. There is another level of sharing, which affects
+applied occurrences of the identifier as converted during type analysis. The
+value accessed by such identifiers (which could be contained in user-defined
+function bodies and therefore have long lifetime) are expected to undergo
+change when a new value is assigned to the global variable; they will
+therefore access the location of the shared value pointer rather than the
+value pointed to. However, if the new value assigned to the identifier should
+change its, we are forced to detach new value pointer (storing it in a
+different place) so that existing applied occurrences of the identifier will
+not access a value of unexpected type (they will stick to the last value of
+the original type held by the identifier). In such a circumstance, the shared
+pointer location itself is no longer owned by the identifier table, so we
+should arrange for shared ownership of that location. This explains that the
+|id_data| structure used for entries in the table has a shared pointer to a
+shared pointer. For the type component the identifier table will assume strict
+ownership. Giving ownership of the type directly to |id_data| would complicate
+its duplication, and therefore insertion into the table. As a consequence we
+only allow construction of |id_data| objects in an empty state; the pointers
+should be set only after insertion into the table, which then assumes
+ownership of the type.
 
 @< Type definitions @>=
 
+typedef std::tr1::shared_ptr<shared_value> shared_share;
 struct id_data
-{ shared_value val; @+ type_declarator* type;
+{ shared_share val; @+ type_declarator* type;
   id_data() : val(),type(NULL)@+ {}
 };
 
 @ We cannot store auto pointers in a table, so upon entering into the table we
-will convert to ordinary pointers, transferring ownership to the table; this
-holds for the values stored as well as for their types. The pointers returned
-from a table lookup are also ordinary; destruction of the type declarators
+convert type pointers to ordinary pointers, and this is what |type_of| lookup
+will return (the table retains ownership); destruction of the type declarators
 referred to only takes place when the table itself is destructed.
 
 @< Includes... @>=
@@ -1900,6 +2003,7 @@ public:
   void add(Hash_table::id_type id, shared_value v, type_ptr t); // insertion
   type_declarator* type_of(Hash_table::id_type id) const; // lookup
   shared_value value_of(Hash_table::id_type id) const; // lookup
+  shared_share address_of(Hash_table::id_type id); // locate
 @)
   size_t size() const @+{@; return table.size(); }
   void print(std::ostream&) const;
@@ -1915,33 +2019,42 @@ Id_table::~Id_table()
 }
 
 @ The method |add| tries to insert the new mapping from the key |id| to a new
-value-type pair. Doing so, it must distinguish the case that the key |id| is
-already present. In that case the |insert| method will not overwrite the old
-value, making no change instead, which is fortunate since it gives us the
-occasion to clean up the old values; it then does return both a pointer
-(iterator) to the obstructing (key,data) pair, and a boolean failure status.
-When detecting that status, we perform the clean-up, and finally (in both
-cases) we overwrite pointers to |val| and |type| into the node in the table. A
-problem that still needs to be solved occurs when the new value has a
-different type from the old one: although the new type will be stored, the new
-value could be accessed from user-defined functions that have already been
-type-checked using the old type of the global identifier; currently this will
-give rise to an internal error when such a function is used.
+value-type pair. Doing so, it must distinguish various cases. We first
+tentatively insert a new empty entry for the identifier into the table; this
+returns a pair with a second boolean component telling wither a new entry was
+added (the identifier was unknown as global identifier). If this is the case,
+we continue to fill the slot with a newly allocated shared pointer and the
+provided type. If the identifier was new, we test the old and the new types,
+and in case of equality we overwrite the shared value pointer with the
+provided pointer to a new value; in this case the provided type which was
+already present will be cleaned up since no |release| is called. Finally if
+the types are found to be different, we abandon the old shared pointer
+location (leaving it to whoever else shares is) and allocate a fresh one,
+and also replace the type, explicitly destroying the old one.
 
 @< Function def... @>=
 void Id_table::add(Hash_table::id_type id, shared_value val, type_ptr type)
-{ std::pair<map_type::iterator,bool> trial
-     =table.insert(std::make_pair(id,id_data()));
-  if (not trial.second) // then key was present; destroy associated type
-  {@; delete trial.first->second.type; }
-
-  trial.first->second.val= shared_value(val);
-  trial.first->second.type=type.release();
+{ std::pair<map_type::iterator,bool> trial=
+    table.insert(std::make_pair(id,id_data()));
+  id_data& slot=trial.first->second;
+  if (trial.second) // a fresh global identifier
+  { slot.val.reset(new shared_value(val));
+    slot.type=type.release();
+  }
+  else if (*slot.type==*type) // overwrite by value of same type
+    *slot.val=val;
+  else // reallocate for a value of different type
+  {@; slot.val.reset(new shared_value(val));
+    delete slot.type;
+    slot.type=type.release();
+  }
 }
 
 @ In order to have |const| lookup methods, we must refrain from inserting into
 the table if the key is not found; we return a null pointer in that case. The
-pointer returned by |type_of| remains owned by the table.
+pointer returned by |type_of| remains owned by the table. Although it does not
+immediately modify the table, |address_of| is classified as a manipulator,
+since the pointer returned may be used to modify a stored value.
 
 @< Function def... @>=
 type_declarator* Id_table::type_of(Hash_table::id_type id) const
@@ -1949,9 +2062,18 @@ type_declarator* Id_table::type_of(Hash_table::id_type id) const
   return p==table.end() ? NULL : p->second.type;
 }
 shared_value Id_table::value_of(Hash_table::id_type id) const
-{@; map_type::const_iterator p=table.find(id);
-  return p==table.end() ? shared_value(value(NULL)) : p->second.val;
+{ map_type::const_iterator p=table.find(id);
+  return p==table.end() ? shared_value(value(NULL)) : *p->second.val;
 }
+shared_share Id_table::address_of(Hash_table::id_type id)
+{ map_type::iterator p=table.find(id);
+  if (p==table.end())
+    throw std::logic_error @|
+    (std::string("Identifier without value:")+main_hash_table->name_of(id));
+@.Identifier without value@>
+  return p->second.val;
+}
+
 
 @ We provide a |print| member that shows the contents of the entire table.
 @< Function def... @>=
@@ -1959,7 +2081,7 @@ shared_value Id_table::value_of(Hash_table::id_type id) const
 void Id_table::print(std::ostream& out) const
 { for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
     out << main_hash_table->name_of(p->first) << ": " @|
-        << *p->second.type << ": " << *p->second.val << std::endl;
+        << *p->second.type << ": " << **p->second.val << std::endl;
 }
 
 std::ostream& operator<< (std::ostream& out, const Id_table& p)
@@ -1981,41 +2103,41 @@ create the table.
 @< Global variable definitions @>=
 Id_table* global_id_table=NULL;
 
-@ When during type checking an identifiers binds to a value in the global
+@*2 Global identifiers.
+%
+When during type checking an identifiers binds to a value in the global
 identifier table, it will be converted into a |global_identifier| object.
+Since a value is already available at this time, we can record the location of
+the (pointer to the shared) value in the |global_identifier| object. Apart
+from avoiding look-up at evaluation time, this measure also allows detaching
+an applied global identifier from a newly assigned value if the latter should
+have a different type, as was done in the |add| method of the identifier
+table. This precaution ensures that evaluation will always result in a value
+of the expected type.
 
 @< Type definitions @>=
-struct global_identifier : public expression_base
-{ Hash_table::id_type code;
-@)
-  explicit global_identifier(Hash_table::id_type id) : code(id) @+{}
+class global_identifier : public identifier
+{ const shared_share address;
+public:
+  explicit global_identifier(Hash_table::id_type id);
   virtual ~global_identifier() @+ {}
   virtual void evaluate() const;
-  virtual void print(std::ostream& out) const;
 };
 
-@ To print a global identifier, we get its name from the main hash table.
+@ The constructor for |global_identifier::evaluate| locates the value
+associated to the identifier in the global identifier table.
 
 @< Function definitions @>=
-void global_identifier::print(std::ostream& out) const
-{@; out<< main_hash_table->name_of(code); }
+global_identifier::global_identifier(Hash_table::id_type id)
+: identifier(id), address(global_id_table->address_of(id))
+@+{}
 
-@ The method |global_identifier::evaluate| just picks the value from the
-identifier table, which creates a pointer sharing the value which remains in
-the table. Sharing avoids calling the |clone| method here, which was used in a
-first implementation (and was introduced for that purpose), but we retain that
-method for future use elsewhere. The error thrown here is a |logic_error|,
-since a missing identifier should have been caught during the type check.
+@ Evaluating a global identifier returns the value stored in the location
+|address|.
 
 @< Function definitions @>=
-void global_identifier::evaluate() const
-{ shared_value p=global_id_table->value_of(code);
-  if (p==NULL) throw std::logic_error
-  @|   (std::string("Identifier without value:")
-        +main_hash_table->name_of(code));
-@.Identifier without value@>
-  push_value(p);
-}
+void global_identifier::evaluate() const @+
+{@; push_value(*address); }
 
 @*2 Local identifiers.
 %
@@ -2045,11 +2167,11 @@ execution_context.reset();
 takes care of its |print| method.
 
 @< Type definitions @>=
-class local_identifier : public global_identifier
+class local_identifier : public identifier
 { size_t depth, offset;
 public:
   explicit local_identifier(Hash_table::id_type id, size_t i, size_t j)
-     : global_identifier(id), depth(i), offset(j) @+{}
+     : identifier(id), depth(i), offset(j) @+{}
   virtual void evaluate() const; // only this method is redefined
 };
 
@@ -2067,23 +2189,15 @@ equal the expected type (if any), or be convertible to it using |coerce|.
 
 @< Other cases for type-checking and converting... @>=
 case applied_identifier:
-{ type_declarator* it=NULL; expression_ptr id; size_t i=0;
-  for (bindings* p=id_context; p!=NULL; p=p->next,++i)
-    for (size_t j=0; j<p->size(); ++j)
-      if ((*p)[j].first==e.e.identifier_variant)
-      { it=(*p)[j].second;
-        id.reset(new local_identifier(e.e.identifier_variant,i,j));
-        goto common_ending;
-      }
-
-  it = global_id_table->type_of(e.e.identifier_variant);
-  if (it==NULL) throw program_error
-  @|   (std::string("Undefined identifier ")
+{ const type_declarator* it; expression_ptr id; size_t i,j;
+  if ((it=id_context->lookup(e.e.identifier_variant,i,j))!=NULL)
+    id.reset(new local_identifier(e.e.identifier_variant,i,j));
+  else if ((it=global_id_table->type_of(e.e.identifier_variant))!=NULL)
+    id.reset(new global_identifier(e.e.identifier_variant));
+  else throw program_error  @|
+       (std::string("Undefined identifier ")
 	+main_hash_table->name_of(e.e.identifier_variant));
 @.Undefined identifier@>
-  id.reset(new global_identifier(e.e.identifier_variant));
-
-common_ending:
   if (type.specialise(*it) or coerce(*it,type,id))
     return id.release();
   else throw type_error(e,copy(*it),copy(type));
@@ -2184,7 +2298,9 @@ as they are not explicitly stored after type analysis.
 
 @< Function definitions @>=
 void lambda_expression::print(std::ostream& out) const
-{ if ((param->kind&0x1)!=0)
+{ if (param.get()==NULL)
+    out << "()";
+  else if ((param->kind&0x1)!=0)
     out << '(' << *param << ')';
   else out << *param;
   out << ": " << *body;
@@ -2306,7 +2422,9 @@ relevant (because referenced) identifiers could be printed.
 
 @< Function def... @>=
 void closure_value::print(std::ostream& out) const
-{ if ((param->kind&0x1)!=0)
+{ if (param.get()==NULL)
+    out << "()";
+  else if ((param->kind&0x1)!=0)
     out << '(' << *param << ')';
   else out << *param;
   out << ": " << *body;
@@ -2401,7 +2519,7 @@ in~\.{structure/latticetypes\_fwd.h}, while the template class
 
 
 @< Includes... @>=
-#include "latticetypes_fwd.h"
+#include "latticetypes.h"
 #include "matrix.h" // this makes |latticetypes::LatticeMatrix| a complete type
 
 @*2 Inserting conversion functions.
@@ -2650,7 +2768,7 @@ When packed into a a type derived from |value_base| (defined later), these
 types will be considered as primitive at the level of the evaluator.
 
 @< Other primitive type tags @>=
-vector_type, matrix_type, @[@]
+vector_type, matrix_type, rational_vector_type, @[@]
 
 @~In choosing the short names below, we choose to hide the specific
 mathematical meaning that was implied in the names (like |Weight|) these types
@@ -2661,7 +2779,7 @@ well as for weights, and matrices could denote either a basis or an
 automorphism of a lattice.
 
 @< Other primitive type names @>=
-"vec", "mat", @[@]
+"vec", "mat", "ratvec", @[@]
 
 @ Here are the corresponding types derived from |value_base|. In the
 constructor for |vector_value|, the argument is a reference to
@@ -2705,13 +2823,33 @@ private:
 typedef std::auto_ptr<matrix_value> matrix_ptr;
 typedef std::tr1::shared_ptr<matrix_value> shared_matrix;
 @)
+struct rational_vector_value : public value_base
+{ latticetypes::RatWeight val;
+@)
+  explicit rational_vector_value(const latticetypes::RatWeight& v):val(v)@+{}
+  rational_vector_value
+    (const latticetypes::LatticeElt& v,latticetypes::LatticeCoeff d)
+   : val(v,d) @+ {}
+  ~rational_vector_value()@+ {}
+  virtual void print(std::ostream& out) const;
+  rational_vector_value* clone() const
+   @+{@; return new rational_vector_value(*this); }
+  static const char* name() @+{@; return "rational vector"; }
+private:
+  rational_vector_value(const rational_vector_value& v) : val(v.val) @+{}
+};
+@)
+typedef std::auto_ptr<rational_vector_value> rational_vector_ptr;
+typedef std::tr1::shared_ptr<rational_vector_value> shared_rational_vector;
+@)
 
 @ To make a small but visible difference in printing between vectors and lists
 of integers, weights will be printed in equal width fields one longer than the
-minimum necessary.
+minimum necessary. Rational vector are a small veriation.
 
 @h<sstream>
 @h<iomanip>
+
 @< Function def... @>=
 void vector_value::print(std::ostream& out) const
 { size_t l=val.size(),w=0; std::vector<std::string> tmp(l);
@@ -2725,6 +2863,21 @@ void vector_value::print(std::ostream& out) const
     for (size_t i=0; i<l; ++i)
       out << std::setw(w) << tmp[i] << (i<l-1 ? "," : " ]");
   }
+}
+@)
+void rational_vector_value::print(std::ostream& out) const
+{ size_t l=val.size(),w=0; std::vector<std::string> tmp(l);
+  for (size_t i=0; i<l; ++i)
+  { std::ostringstream s; s<<val.numerator()[i]; tmp[i]=s.str();
+    if (tmp[i].length()>w) w=tmp[i].length();
+  }
+  if (l==0) out << "[ ]";
+  else
+  { w+=1; out << std::right << '[';
+    for (size_t i=0; i<l; ++i)
+      out << std::setw(w) << tmp[i] << (i<l-1 ? "," : " ]");
+  }
+  out << '/' << val.denominator();
 }
 
 @ For matrices we align columns, and print vertical bars along the sides.
@@ -2873,6 +3026,177 @@ void int_list_list_conversion::evaluate() const
   push_value(result);
 }
 
+@*1 Casts.
+%
+Casts are very simple to process; they do not need any |expression| type to
+represent them.
+
+@< Other cases for type-checking and converting... @>=
+case cast_expr:
+{ cast c=e.e.cast_variant;
+  type_declarator& ctype=*static_cast<type_declarator*>(c->type);
+  expression_ptr p(convert_expr(c->exp,ctype));
+  if (type.specialise(ctype) or coerce(ctype,type,p))
+    return p.release();
+  else throw type_error(e,copy(ctype),copy(type));
+}
+break;
+
+
+@*1 Assignments.
+%
+Syntactically there is hardly anything simpler than simple assignment
+statements. However, semantically we distinguish assignments to local and to
+global variables; the two kinds will be converted into objects of classes
+derived from |assignment_expr|.
+
+@< Type definitions @>=
+struct assignment_expr : public expression_base
+{ Hash_table::id_type lhs;
+  expression rhs;
+@)
+  assignment_expr(Hash_table::id_type l,expression_ptr r)
+   : lhs(l),rhs(r.release()) @+{}
+  virtual ~assignment_expr() @+{@; delete rhs; }
+  virtual void print(std::ostream& out) const;
+};
+
+@ Printing proceeds as usual for identifiers and converted expressions.
+@< Function def... @>=
+void assignment_expr::print(std::ostream& out) const
+{@; out << main_hash_table->name_of(lhs) << ":=" << *rhs; }
+
+@ For global assignments we need to access the location where the identifier
+is stored, as in the case of applied identifiers, but we need a non-|const|
+access to it.
+
+@< Type definitions @>=
+class global_assignment : public assignment_expr
+{ shared_share address;
+public:
+  global_assignment(Hash_table::id_type l,expression_ptr r);
+  virtual ~global_assignment() @+{}
+  virtual void evaluate() const;
+};
+
+@ The constructor for |global_assignment| is rather similar to that for
+|global_identifier|.
+
+@< Function def... @>=
+global_assignment::global_assignment(Hash_table::id_type l,expression_ptr r)
+: assignment_expr(l,r), address(global_id_table->address_of(l)) @+{}
+
+@ Evaluating a global assignment evaluates the left hand side, and replaces
+the old value stored at |*address| by the new (shared pointer) value.
+
+@< Function def... @>=
+void global_assignment::evaluate() const
+{ rhs->evaluate();
+  *address = execution_stack.back(); // and leave value on stack
+}
+
+@ For local assignments we also need to access the location where the
+identifier is stored, but as in the case of applied identifiers this location
+cannot be known when the statement is type-checked and converted (and in fact
+it may vary between evaluations of the same assignment) so we need to store
+coordinates of the identifier in the evaluation context
+
+@< Type definitions @>=
+class local_assignment : public assignment_expr
+{ size_t depth, offset;
+public:
+  local_assignment(Hash_table::id_type l, size_t i,size_t j, expression_ptr r);
+  virtual ~local_assignment() @+{}
+  virtual void evaluate() const;
+};
+
+@ The constructor for |local_assignment| is straightforward.
+
+@< Function def... @>=
+local_assignment::local_assignment
+ (Hash_table::id_type l, size_t i,size_t j, expression_ptr r)
+: assignment_expr(l,r), depth(i), offset(j) @+{}
+
+@ Evaluating a local assignment evaluates the left hand side, and replaces
+the old value stored at |*address| by the new (shared pointer) value.
+
+@< Function def... @>=
+void local_assignment::evaluate() const
+{ rhs->evaluate();
+  execution_context->elem(depth,offset)= execution_stack.back();
+     // and leave value on stack
+}
+
+
+@ Type-checking and converting assignment statements follows the same lines as
+that of applied identifiers as far as discriminating between local and global
+is concerned. We first look in |id_context| for a local binding of the
+identifier, and if not found we look in |global_id_table|. If found in either
+way,
+
+@< Other cases for type-checking and converting... @>=
+case ass_stat:
+{ Hash_table::id_type lhs=e.e.assign_variant->lhs;
+  const expr& rhs=e.e.assign_variant->rhs;
+  type_declarator* it; expression_ptr assign; size_t i,j;
+  if ((it=id_context->lookup(lhs,i,j))!=NULL)
+  { expression_ptr r(convert_expr(rhs,*it));
+    assign.reset(new local_assignment(lhs,i,j,r));
+  }
+  else if ((it=global_id_table->type_of(lhs))!=NULL)
+  { expression_ptr r(convert_expr(rhs,*it));
+    assign.reset(new global_assignment(lhs,r));
+  }
+  else throw program_error @|
+    (std::string("Undefined identifier in assignment: ")
+     +main_hash_table->name_of(lhs));
+@.Undefined identifier in assignment@>
+  if (type.specialise(*it) or coerce(*it,type,assign))
+    return assign.release();
+  else throw type_error(e,copy(*it),copy(type));
+}
+break;
+
+@*1 Sequence expressions.
+%
+Since sequences are probably short on average, we use a chained
+representation after type analysis, just like before.
+
+@< Type def... @>=
+struct seq_expression : public expression_base
+{ expression first,last;
+@)
+  seq_expression(expression_ptr f,expression_ptr l)
+   : first(f.release()),last(l.release()) @+{}
+  virtual ~seq_expression() @+ {@; delete first; delete last; }
+  virtual void evaluate() const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ To print a sequence, we print the two expressions separated by a semicolon.
+
+@< Function definitions @>=
+void seq_expression::print(std::ostream& out) const
+{@; out << *first << ';' << *last; }
+
+@ Evaluating a sequence expression evaluates the |first| expression, throws
+away its result, and then evaluates the |last| expression.
+
+@< Function def... @>=
+void seq_expression::evaluate() const
+{@; first->evaluate(); pop_value(); last->evaluate(); }
+
+@ It remains to type-check and convert sequence expressions, which is easy.
+
+@< Other cases for type-checking and converting... @>=
+case seq_expr:
+{ sequence seq=e.e.sequence_variant;
+  type_declarator voided;
+  expression_ptr first(convert_expr(seq->first,voided));
+  expression_ptr last(convert_expr(seq->last,type));
+  return new seq_expression(first,last);
+}
+break;
 
 @*1 Array subscription.
 %
@@ -2885,7 +3209,7 @@ classes derived from |expression_base|. These types differ mostly by their
 |evaluate| method, so after the first one we derive the others from it.
 
 @< Type definitions @>=
-struct row_subscription : expression_base
+struct row_subscription : public expression_base
 { expression array, index;
 @)
   row_subscription(expression_ptr a, expression_ptr i)
@@ -2894,14 +3218,15 @@ struct row_subscription : expression_base
   virtual void evaluate() const;
   virtual void print(std::ostream& out) const;
 };
+
 @)
-struct vector_subscription : row_subscription
+struct vector_subscription : public row_subscription
 { vector_subscription(expression_ptr a, expression_ptr i)
   : row_subscription(a,i) @+{}
   virtual void evaluate() const;
 };
 @)
-struct matrix_subscription : row_subscription
+struct matrix_subscription : public row_subscription
 { matrix_subscription(expression_ptr a, expression_ptr ij)
   : row_subscription(a,ij) @+{}
   virtual void evaluate() const;
@@ -3060,17 +3385,13 @@ type_ptr analyse_types(const expr& e,expression_ptr& p)
 @*1 Wrapper functions.
 %
 We have not defined any wrapper functions yet, and therefore have nothing in
-the |global_id_table|. Our first wrapper function is a trivial one, but which
-will be put into the |global_id_table| under different names and signatures,
-each forcing a particular argument type.
+the |global_id_table|. We shall do so presently.
 
 @< Function definitions @>=
 
-void id_wrapper () @+{} // nothing to do, value stays on the stack
+@< Definitions of wrapper functions @>@;
 
-@< Definition of other wrapper functions @>@;
-
-@ All that remains to do for the moment is to install these functions into the
+@ Once defined, |initialise_evaluator| will install these functions into the
 |global_id_table|.
 
 @< Declarations of exported functions @>=
@@ -3093,19 +3414,16 @@ signatures.
 void initialise_evaluator()
 { execution_stack.reserve(16); // avoid some early reallocations
 @)
-  install_function(id_wrapper,"vec","(vec->vec)");
-  install_function(id_wrapper,"mat","(mat->mat)");
-@/@< Installation of other built-in functions @>
+@/@< Install built-in functions @>
 }
 
-@ We shall now introduce some real built-in functions, starting with integer
-arithmetic. Arithmetic operators are implemented by wrapper functions with two
-integer arguments (or one in the case of unary minus). Note that the values
-are pulled from the stack in reverse order, which is important for the
-non-commutative operations like `|-|', `|/|' and~`|%|'. Since values are
-shared, we must allocate new value objects for the results.
+@ Our first built-in functions implement with integer arithmetic. Arithmetic
+operators are implemented by wrapper functions with two integer arguments.
+Note that the values are pulled from the stack in reverse order, which is
+important for the non-commutative operations like `|-|' and `|/|'. Since
+values are shared, we must allocate new value objects for the results.
 
-@< Definition of other wrapper functions @>=
+@< Definitions of wrapper functions @>=
 void plus_wrapper ()
 { push_tuple_components();
   shared_int j(get<int_value>()); shared_int i(get<int_value>());
@@ -3130,16 +3448,18 @@ void divide_wrapper ()
   if (j->val==0) throw std::runtime_error("Division by zero");
   push_value(new int_value(i->val/j->val));
 }
-@)
+
+@ We also define a remainder operation |modulo|, a combined
+quotient-and-remainder operation |divmod|, and unary subtraction. Finally we
+define an exact devision operator that constructs a rational number.
+
+@< Definitions of wrapper functions @>=
 void modulo_wrapper ()
 { push_tuple_components();
   shared_int  j(get<int_value>()); shared_int i(get<int_value>());
   if (j->val==0) throw std::runtime_error("Modulo zero");
   push_value(new int_value(i->val%j->val));
 }
-@)
-void unary_minus_wrapper ()
-{@; shared_int i=get<int_value>();  push_value(new int_value(-i->val)); }
 @)
 void divmod_wrapper ()
 { push_tuple_components();
@@ -3149,6 +3469,17 @@ void divmod_wrapper ()
   push_value(new int_value(i->val/j->val));
   wrap_tuple(2);
 }
+@)
+void unary_minus_wrapper ()
+{@; shared_int i=get<int_value>();  push_value(new int_value(-i->val)); }
+@)
+void fraction_wrapper ()
+{ push_tuple_components();
+  shared_int d(get<int_value>()); shared_int n(get<int_value>());
+  if (d->val==0) throw std::runtime_error("fraction with zero denominator");
+  push_value(new rat_value(arithmetic::Rational(n->val,d->val)));
+}
+
 
 @ Here is a simple function that outputs a string without its quotes, but with
 a terminating newline. This is the first place in this file where we produce
@@ -3159,7 +3490,7 @@ implemented. Since this is a wrapper function (hence without arguments) there
 is no other way to convey the output stream to be used than via a dedicated
 global variable.
 
-@< Definition of other wrapper functions @>=
+@< Definitions of wrapper functions @>=
 void print_wrapper ()
 { shared_string s(get<string_value>());
   *output_stream << s->val << std::endl;
@@ -3176,12 +3507,23 @@ calling function from the library, whence these functions. First of all the
 identity matrix and matrix transposition.
 
 @< Declarations of exported functions @>=
+void vector_div_wrapper();
 void id_mat_wrapper ();
 void transpose_mat_wrapper ();
 
-@ Since in general built-in functions may throw exceptions (even |transpose|!)
-we hold the pointers to the values created to hold their results in
-auto-pointers. The reason that in |id_mat_wrapper| we create a |matrix_value|
+@ Since in general built-in functions may throw exceptions (even for such
+simple operations as |transpose|) we hold the pointers to the values created
+in smart pointers.
+
+@< Definitions of wrapper functions @>=
+void vector_div_wrapper()
+{ push_tuple_components();
+  shared_int n(get<int_value>());
+  shared_vector v(get<vector_value>());
+  push_value(new rational_vector_value(v->val,n->val));
+}
+
+@ The reason that in |id_mat_wrapper| we create a |matrix_value|
 around an empty |LatticeMatrix| rather than build a filled matrix object
 first, is that the constructor for |matrix_value| would than have to copy that
 matrix object (which implies copying its contents). Actually this is a case
@@ -3192,7 +3534,7 @@ an identity matrix as result. We also define |diagonal_wrapper|, a slight
 generalisation of |id_mat_wrapper| that produces a diagonal matrix from a
 vector.
 
-@< Definition of other wrapper functions @>=
+@< Definitions of wrapper functions @>=
 void id_mat_wrapper ()
 { shared_int i(get<int_value>());
   matrix_ptr m
@@ -3234,7 +3576,7 @@ For wrapper functions with multiple arguments, we must always remember that
 they are to be popped from the stack in reverse order, but in the case of
 |mm_prod_wrapper| this is particularly important.
 
-@< Definition of other wrapper functions @>=
+@< Definitions of wrapper functions @>=
 void mv_prod_wrapper ()
 { push_tuple_components();
   shared_vector v(get<vector_value>());
@@ -3265,7 +3607,7 @@ the two combined into a single function.
 
 @h "smithnormal.h"
 
-@< Definition of other wrapper functions @>=
+@< Definitions of wrapper functions @>=
 void invfact_wrapper ()
 { shared_matrix m(get<matrix_value>());
   size_t nr=m->val.numRows();
@@ -3302,7 +3644,7 @@ void Smith_wrapper ()
 but behind the scenes, namely to invert a matrix. Since this cannot be done in
 general over the integers, we return an integral matrix and a common
 denominator to be applied to all coefficients.
-@< Definition of other wrapper functions @>=
+@< Definitions of wrapper functions @>=
 void invert_wrapper ()
 { shared_matrix m(get<matrix_value>());
   if (m->val.numRows()!=m->val.numColumns())
@@ -3321,15 +3663,17 @@ void invert_wrapper ()
 arithmetic operators correspond to the ones used in the parser definition
 file \.{parser.y}.
 
-@< Installation of other built-in functions @>=
+@< Install built-in functions @>=
 install_function(plus_wrapper,"+","(int,int->int)");
 install_function(minus_wrapper,"-","(int,int->int)");
 install_function(times_wrapper,"*","(int,int->int)");
-install_function(divide_wrapper,"/","(int,int->int)");
+install_function(divide_wrapper,"div","(int,int->int)");
 install_function(modulo_wrapper,"%","(int,int->int)");
-install_function(unary_minus_wrapper,"-u","(int->int)");
 install_function(divmod_wrapper,"/%","(int,int->int,int)");
+install_function(unary_minus_wrapper,"-u","(int->int)");
+install_function(fraction_wrapper,"/","(int,int->rat)");
 install_function(print_wrapper,"print","(string->)");
+install_function(vector_div_wrapper,"vec_div","(vec,int->ratvec)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
 install_function(transpose_mat_wrapper,"transpose_mat","(mat->mat)");
 install_function(diagonal_wrapper,"diagonal_mat","(vec->mat)");

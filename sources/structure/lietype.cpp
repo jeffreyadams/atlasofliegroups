@@ -41,6 +41,7 @@
 */
 
 #include "lietype.h"
+#include "layout.h"
 
 #include <cassert>
 
@@ -52,6 +53,7 @@
   This file contains the definitions for the type of a real or complex
   reductive Lie algebra.
 
+  [Original comment by Fokko, more about the design than the actual code.]
   A complex reductive Lie algebra is simply the product of a number of simple
   complex Lie algebras, and a torus; the simple factors can be of types A-G,
   with ranks >=1 in type A, >=2 in type B, >=3 in type C, >=4 in type D, 6,7 or
@@ -70,30 +72,38 @@
   the distinction is necessary at the group level, so we keep it here as well.
 
   The classification of real forms of simple complex Lie algebras is
-  well-known;  we will follow the notation from Helgason, Differential
+  well-known; we will follow the notation from Helgason, Differential
   Geometry, Lie Groups, and Symmetric Spaces, Academic Press, New York, 1978,
-  Table VI in Chapter X, page 532, where the Satake diagrams of all non-compact
-  and non-complex simple real reductive Lie algebras appear. Accordingly, we
-  represent a real form of our complex Lie algebra by a string of symbols
-  which may be of the form Split, Compact, Complex or I-IX, depending on the
-  type; a symbol of type Complex really consumes two consecutive isomorphic
-  complex factors. This representation is only for input/output purposes;
-  internally, we work only with the Cartan matrix and the Cartan involution.
+  Table VI in Chapter X, page 532, where the Satake diagrams of all
+  non-compact and non-complex simple real reductive Lie algebras appear.
+  Accordingly, we represent a real form of our complex Lie algebra by a string
+  of symbols which may be of the form Split, Compact, Complex or I-IX,
+  depending on the type. [The types I-IX are not used; they do not seem to
+  have survived more that the initial design of this module. MvL] A symbol of
+  type Complex really consumes two consecutive isomorphic complex factors.
+  This representation is only for input/output purposes; internally, we work
+  only with the Cartan matrix and the Cartan involution.
 
 ******************************************************************************/
+
+/* In fact almost all that happens below is computing involution matrices */
 
 namespace atlas {
 
 namespace lietype {
 
-  void addCompactInvolution(latticetypes::LatticeMatrix&, size_t, size_t);
+  void addCompactInvolution(latticetypes::LatticeMatrix&, size_t, size_t,
+			    const setutils::Permutation& pi);
 
-  void addDInvolution(latticetypes::LatticeMatrix&, size_t, size_t);
+  void addDInvolution(latticetypes::LatticeMatrix&, size_t, size_t,
+		      const setutils::Permutation& pi);
 
-  void addMinusIdentity(latticetypes::LatticeMatrix&, size_t, size_t);
+  void addMinusIdentity(latticetypes::LatticeMatrix&, size_t, size_t,
+			const setutils::Permutation& pi);
 
   void addSimpleInvolution(latticetypes::LatticeMatrix&, size_t,
-			   const SimpleLieType&, TypeLetter);
+			   const SimpleLieType&, TypeLetter,
+			   const setutils::Permutation& pi);
 }
 
 /*****************************************************************************
@@ -105,8 +115,8 @@ namespace lietype {
 namespace lietype {
 
 
-/*!
-  Synopsis: puts in dlt the dual Lie type of lt.
+/*! brief Returns the dual Lie type of lt. In fact this applies to ordered
+  Dynkin diagrams, whence the distinction between (B2,C2), (F4,f4) and (G2,g2)
 */
 LieType dual_type(LieType lt)
 {
@@ -137,7 +147,7 @@ LieType dual_type(LieType lt)
 
 
 /*!
-  Synopsis: puts in dict the dual inner class type of ict.
+  \brief Returns dual inner class type of ict.
 */
 InnerClassType dual_type(InnerClassType ict, const LieType& lt)
 {
@@ -246,28 +256,83 @@ bool checkRank(const TypeLetter& x, size_t l)
 */
 latticetypes::LatticeMatrix involution(const lietype::LieType& lt,
 				       const lietype::InnerClassType& ic)
+{ layout::Layout lo(lt,ic); // make |Layout| structure with trivial permutation
+  return involution(lo);
+}
+
+/* The layout structure provides arguments; |d_basis| currently ignored */
+latticetypes::LatticeMatrix involution(const layout::Layout& lo)
 {
-  size_t n = rank(lt);
-  latticetypes::LatticeMatrix result(n,n,0);
+  const lietype::LieType& lt = lo.d_type;
+  const lietype::InnerClassType& ic = lo.d_inner;
+  const setutils::Permutation& pi = lo.d_perm;
 
-  size_t r = 0;
-  size_t pos = 0;
+  latticetypes::LatticeMatrix result(rank(lt),rank(lt),0);
 
-  for (size_t j = 0; j < ic.size(); ++j)
+  size_t r = 0;   // position in flattened Dynkin diagram; index to |pi|
+  size_t pos = 0; // position in |lt|
+
+  for (size_t j=0; j<ic.size(); ++j) // |r|,|pos| are also advanced, near end
   {
     SimpleLieType slt = lt[pos];
-    addSimpleInvolution(result,r,slt,ic[j]);
-    if (ic[j] == 'C')
-    { // consume an extra Lie type
-      pos += 2;
-      r += 2*rank(slt);
-    }
-    else
+    size_t rs = rank(slt);
+
+    switch (ic[j])
     {
-      ++pos;
-      r += rank(slt);
+    case 'c': // add the identity
+      addCompactInvolution(result,r,rs,pi);
+      break;
+    case 's': // add split involution
+      switch (type(slt))
+      {
+      case 'A': // antidiagonal matrix
+	for (size_t i=0; i<rs; ++i)
+	  result(pi[r+i],pi[r+rs-1-i]) = 1;
+	break;
+      case 'D':
+	if (rank(slt)%2 != 0)
+	  addDInvolution(result,r,rs,pi);
+	else
+	  addCompactInvolution(result,r,rs,pi);
+	break;
+      case 'E':
+	if (rs == 6)
+	{
+	  result(pi[r+1],pi[r+1]) = 1;
+	  result(pi[r+3],pi[r+3]) = 1;
+	  result(pi[r],pi[r+5]) = 1;
+	  result(pi[r+5],pi[r]) = 1;
+	  result(pi[r+2],pi[r+4]) = 1;
+	  result(pi[r+4],pi[r+2]) = 1;
+	}
+	else
+	  addCompactInvolution(result,r,rs,pi);
+	break;
+      case 'T':
+	addMinusIdentity(result,r,rs,pi);
+	break;
+      default: // identity involution for types B,C,E7,E8,F,f,G,g
+	addCompactInvolution(result,r,rs,pi);
+	break;
+      } // |switch (type(slt))|
+      break;
+    case 'C': // Compact: parallel interchange of |rs| vertices with next |rs|
+      for (size_t i=0; i<rs; ++i)
+      {
+	result(pi[r+i],pi[r+rs+i]) = 1;
+	result(pi[r+rs+i],pi[r+i]) = 1;
+      }
+      ++pos; r += rs; // account for consumption of extra simple factor
+      break;
+    case 'u': // flip the last two vectors
+      addDInvolution(result,r,rs,pi);
+      break;
+    default: // this should not happen!
+      assert(false and "wrong inner class letter");
+      break;
     }
-  }
+    ++pos; r += rs; // consume simple factor
+  } // |for (j)|
 
   return result;
 }
@@ -318,10 +383,11 @@ namespace lietype {
   Precondition: the block is set to zero.
 */
 void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
-			  size_t rs)
+			  size_t rs,
+			  const setutils::Permutation& pi)
 {
   for (size_t i=0; i<rs; ++i)
-    m(r+i,r+i) = 1;
+    m(pi[r+i],pi[r+i]) = 1;
 }
 
 
@@ -331,13 +397,14 @@ void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
 
   Precondition: the block is set to zero.
 */
-void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
+void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs,
+		    const setutils::Permutation& pi)
 {
   for (size_t i=0; i<rs-2; ++i)
-    m(r+i,r+i) = 1;
+    m(pi[r+i],pi[r+i]) = 1;
 
-  m(r+rs-2,r+rs-1) = 1;
-  m(r+rs-1,r+rs-2) = 1;
+  m(pi[r+rs-2],pi[r+rs-1]) = 1;
+  m(pi[r+rs-1],pi[r+rs-2]) = 1;
 }
 
 
@@ -347,10 +414,11 @@ void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
 
   Precondition: the block is set to zero.
 */
-void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
+void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs,
+		      const setutils::Permutation& pi)
 {
   for (size_t i=0; i<rs; ++i)
-    m(r+i,r+i) = -1;
+    m(pi[r+i],pi[r+i]) = -1;
 }
 
 
@@ -359,55 +427,56 @@ void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs)
   corresponding to x in size rs.
 */
 void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
-			 const SimpleLieType& slt, TypeLetter x)
+			 const SimpleLieType& slt, TypeLetter x,
+			 const setutils::Permutation& pi)
 {
   size_t rs = rank(slt);
 
   switch (x) {
   case 'c': // add the identity
-    addCompactInvolution(m,r,rs);
+    addCompactInvolution(m,r,rs,pi);
     break;
   case 's': // add split involution
     switch (type(slt)) {
     case 'A': // antidiagonal matrix
       for (size_t i=0; i<rs; ++i)
-	m(r+i,r+rs-1-i) = 1;
+	m(pi[r+i],pi[r+rs-1-i]) = 1;
       break;
     case 'D':
       if (rank(slt)%2 != 0)
-	addDInvolution(m,r,rs);
+	addDInvolution(m,r,rs,pi);
       else
-	addCompactInvolution(m,r,rs);
+	addCompactInvolution(m,r,rs,pi);
       break;
     case 'E':
       if (rank(slt) == 6) {
-	m(r+1,r+1) = 1;
-	m(r+3,r+3) = 1;
-	m(r,r+5) = 1;
-	m(r+5,r) = 1;
-	m(r+2,r+4) = 1;
-	m(r+4,r+2) = 1;
+	m(pi[r+1],pi[r+1]) = 1;
+	m(pi[r+3],pi[r+3]) = 1;
+	m(pi[r],pi[r+5]) = 1;
+	m(pi[r+5],pi[r]) = 1;
+	m(pi[r+2],pi[r+4]) = 1;
+	m(pi[r+4],pi[r+2]) = 1;
       }
       else
-	addCompactInvolution(m,r,rs);
+	addCompactInvolution(m,r,rs,pi);
       break;
     case 'T':
-      addMinusIdentity(m,r,rs);
+      addMinusIdentity(m,r,rs,pi);
       break;
     default: // identity involution for types B,C,E7,E8,F,f,G,g
-      addCompactInvolution(m,r,rs);
+      addCompactInvolution(m,r,rs,pi);
       break;
     }
     break;
   case 'C': // rs-dimensional flip
     for (size_t i=0; i<rs; ++i)
     {
-      m(r+i,r+rs+i) = 1;
-      m(r+rs+i,r+i) = 1;
+      m(pi[r+i],pi[r+rs+i]) = 1;
+      m(pi[r+rs+i],pi[r+i]) = 1;
     }
     break;
   case 'u': // flip the last two vectors
-    addDInvolution(m,r,rs);
+    addDInvolution(m,r,rs,pi);
     break;
   default: // this should not happen!
     assert(false && "wrong inner class letter in addSimpleInvolution");

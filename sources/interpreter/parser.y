@@ -50,10 +50,10 @@
 %token <expression> STRING
 %token <id_code> IDENT
 %token TOFILE ADDTOFILE FROMFILE
-%type  <expression> exp quaternary lettail formula primary
-%destructor { destroy_expr ($$); } exp quaternary lettail formula primary
-%type  <expression_list> commalist commalistopt commabarlist idlist
-%destructor { destroy_exprlist($$); } commalist commalistopt commabarlist idlist
+%type  <expression> exp quaternary tertiary lettail formula primary
+%destructor { destroy_expr ($$); } exp quaternary tertiary lettail formula primary
+%type  <expression_list> commalist commalist_opt commabarlist idlist
+%destructor { destroy_exprlist($$); } commalist commalist_opt commabarlist idlist
 %type <decls> declarations
 %destructor { destroy_letlist($$); } declarations
 %nonassoc DIVMOD
@@ -66,13 +66,13 @@
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
 %token <type_code> TYPE
-%type <gen_ptr> type types
+%type <gen_ptr> type types types_opt
 %destructor { destroy_type($$); } type
-%destructor { destroy_type_list($$); } types
+%destructor { destroy_type_list($$); } types types_opt
 %type <id_sp> id_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); } id_specs
 
-%token ARROW
+%token ARROW BECOMES
 
 %{
   int yylex (YYSTYPE *, YYLTYPE *);
@@ -81,7 +81,7 @@
 %%
 
 input:  '\n'			{ YYABORT } /* null input, skip evaluator */
-        | exp    '\n'		{ *parsed_expr=$1; }
+        | exp    '\n'	        { *parsed_expr=$1; }
         | idlist '=' exp '\n'
 		{ global_set_identifier(reverse_expr_list($1),$3); YYABORT }
         | QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
@@ -94,56 +94,25 @@ input:  '\n'			{ YYABORT } /* null input, skip evaluator */
         | SHOWALL '\n'          { show_ids(); YYABORT } /* print id table */
 ;
 
-exp     : quaternary ;
+exp     : type ':' exp      { $$ = make_cast($1,$3); }
+        | quaternary
+;
 
 
 quaternary: LET lettail { $$=$2; }
+        | '(' ')' ':' quaternary { $$=make_lambda_node(NULL,NULL,$4); }
         | '(' id_specs ')' ':' quaternary
-        { $$=make_lambda_node($2.patl,$2.typel,$5); }
+          { $$=make_lambda_node($2.patl,$2.typel,$5); }
+        | '(' ')' type ':' quaternary
+          { $$=make_lambda_node(NULL,NULL,make_cast($3,$5)); }
+        | '(' id_specs ')' type ':' quaternary
+          { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
+        | tertiary ';' quaternary { $$=make_sequence($1,$3); }
+        | tertiary
+;
+
+tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3); }
         | formula
-;
-
-lettail : declarations IN quaternary { $$ = make_let_expr_node($1,$3); }
-        | declarations ';' lettail  { $$ = make_let_expr_node($1,$3); }
-;
-
-declarations: declarations ',' pattern '=' exp { $$ = add_let_node($1,$3,$5); }
-        | pattern '=' exp { $$ = add_let_node(NULL,$1,$3); }
-;
-
-pattern : IDENT             { $$.kind=0x1; $$.name=$1; }
-        | '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
-        | IDENT ':' '(' pat_list ')'
-            { $$.kind=0x3; $$.name=$1; $$.sublist=reverse_patlist($4);}
-;
-
-pattern_opt : pattern
-        | /* empty */ { $$.kind=0x0; }
-;
-
-pat_list: pattern_opt ',' pattern_opt
-          { $$=make_pattern_node(make_pattern_node(NULL,&$1),&$3); }
-        | pat_list ',' pattern_opt { $$=make_pattern_node($1,&$3); }
-;
-
-id_specs: type pattern
-        { $$.typel=mk_type_singleton($1);
-          $$.patl=make_pattern_node(NULL,&$2);
-        }
-        | type pattern ',' id_specs
-        { $$.typel=mk_type_list($1,$4.typel);
-          $$.patl=make_pattern_node($4.patl,&$2);
-        }
-;
-
-type    : TYPE                    { $$=mk_prim_type($1); }
-        | '(' type ARROW type ')' { $$=mk_function_type($2,$4); }
-        | '[' type ']'            { $$=mk_row_type($2); }
-        | '(' types ')'           { $$=mk_tuple_type($2); }
-;
-
-types   : type ',' type  { $$=mk_type_list($1,mk_type_singleton($3)); }
-        | type ',' types { $$=mk_type_list($1,$3); }
 ;
 
 formula : formula '+' formula
@@ -188,6 +157,8 @@ formula : formula '+' formula
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
+	| '(' ')' /* don't allow this as first part in subscription or call */
+          { $$=wrap_tuple_display(NULL); }
         | primary
 ;
 
@@ -198,7 +169,7 @@ primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }
                     (reverse_expr_list(make_exprlist_node($5,$3)))
                ) ;
 	  }
-	| primary '(' commalist ')'
+	| primary '(' commalist_opt ')'
 		{ $$=make_application_node($1,reverse_expr_list($3)); }
         | INT { $$ = make_int_denotation($1); }
         | TRUE { $$ = make_bool_denotation(1); }
@@ -206,7 +177,8 @@ primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }
 	| STRING
         | IDENT { $$=make_applied_identifier($1); }
         | '(' exp ')'          { $$=$2; }
-        | '[' commalistopt ']' { $$=wrap_list_display(reverse_expr_list($2)); }
+        | '[' commalist_opt ']'
+                { $$=wrap_list_display(reverse_expr_list($2)); }
 	| '[' commabarlist ']'
           { $$=make_application_node
 	        (make_applied_identifier(lookup_identifier("transpose_mat"))
@@ -214,26 +186,79 @@ primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }
 				   ,null_expr_list)
                 );
 	  }
-	| '(' ')' 		{ $$=wrap_tuple_display(NULL); }
         | '(' commalist ',' exp ')'
 	{ $$=wrap_tuple_display(reverse_expr_list(make_exprlist_node($4,$2)));
         }
 ;
 
-commalistopt: commalist
-        | /* empty */       { $$=null_expr_list; }
+lettail : declarations IN quaternary { $$ = make_let_expr_node($1,$3); }
+        | declarations ';' lettail  { $$ = make_let_expr_node($1,$3); }
+;
+
+declarations: declarations ',' pattern '=' formula
+          { $$ = add_let_node($1,$3,$5); }
+        | pattern '=' formula { $$ = add_let_node(NULL,$1,$3); }
+;
+
+pattern : IDENT             { $$.kind=0x1; $$.name=$1; }
+        | '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
+        | IDENT ':' '(' pat_list ')'
+            { $$.kind=0x3; $$.name=$1; $$.sublist=reverse_patlist($4);}
+;
+
+pattern_opt :/* empty */ { $$.kind=0x0; }
+        | pattern
+;
+
+pat_list: pattern_opt ',' pattern_opt
+          { $$=make_pattern_node(make_pattern_node(NULL,&$1),&$3); }
+        | pat_list ',' pattern_opt { $$=make_pattern_node($1,&$3); }
+;
+
+id_specs: type pattern
+        { $$.typel=mk_type_singleton($1);
+          $$.patl=make_pattern_node(NULL,&$2);
+        }
+        | type pattern ',' id_specs
+        { $$.typel=mk_type_list($1,$4.typel);
+          $$.patl=make_pattern_node($4.patl,&$2);
+        }
+;
+
+type    : TYPE                    { $$=mk_prim_type($1); }
+        | '(' type ARROW type ')' { $$=mk_function_type($2,$4); }
+        | '(' types_opt ARROW type ')'
+                          { $$=mk_function_type(mk_tuple_type($2),$4); }
+        | '(' type ARROW types_opt ')'
+                          { $$=mk_function_type($2,mk_tuple_type($4)); }
+        | '(' types_opt ARROW types_opt ')'
+           { $$=mk_function_type(mk_tuple_type($2),mk_tuple_type($4)); }
+        | '[' type ']'            { $$=mk_row_type($2); }
+        | '(' types ')'           { $$=mk_tuple_type($2); }
+;
+
+types   : type ',' type  { $$=mk_type_list($1,mk_type_singleton($3)); }
+        | type ',' types { $$=mk_type_list($1,$3); }
+;
+
+types_opt : /* empty */ { $$=NULL; }
+        | types
+;
+
+commalist_opt: /* empty */       { $$=null_expr_list; }
+        | commalist
 ;
 
 commalist: exp              { $$=make_exprlist_node($1,null_expr_list); }
 	| commalist ',' exp { $$=make_exprlist_node($3,$1); }
 ;
 
-commabarlist: commalistopt '|' commalistopt
+commabarlist: commalist_opt '|' commalist_opt
         { $$ = make_exprlist_node(wrap_list_display(reverse_expr_list($3))
 		 ,make_exprlist_node(wrap_list_display(reverse_expr_list($1))
 		   ,null_expr_list));
         }
-	| commabarlist '|' commalistopt
+	| commabarlist '|' commalist_opt
         { $$=make_exprlist_node(wrap_list_display(reverse_expr_list($3)),$1); }
 ;
 

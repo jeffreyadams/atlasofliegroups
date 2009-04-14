@@ -33,6 +33,11 @@ are for the most part independent of that library.
 
 @h "built-in-types.h"
 
+@f lambda NULL
+@f pi NULL
+@f alpha NULL
+@f beta NULL
+
 @c
 namespace atlas { namespace interpreter {
 namespace {@; @< Local function definitions @>@; }@;
@@ -260,7 +265,7 @@ void type_of_Cartan_matrix_wrapper ()
 @< Install wrapper functions @>=
 install_function(Cartan_matrix_wrapper,"Cartan_matrix","(LieType->mat)");
 install_function(type_of_Cartan_matrix_wrapper
-		,"type_of_Cartan_matrix","(mat->LieType)");
+		,@|"type_of_Cartan_matrix","(mat->LieType)");
 
 @*2 Finding lattices for a given Lie type.
 %
@@ -407,8 +412,6 @@ $b^*_j$ applied to any column of~$M$ lies in $\lambda_j\Z$ (where we take
 $\lambda_j=0$ for $j\notin[r]$), and our result is obtained by multiplying
 each column~$j\in[r]$ of the matrix giving the dual basis by
 $\lcm(d,\lambda_j)/\lambda_j=d/\gcd(d,\lambda_j)$.
-
-@f lambda NULL
 
 @h "arithmetic.h"
 @h "lattice.h"
@@ -597,12 +600,14 @@ the Lie type takes a matrix specifying a sub-lattice as argument. These two
 ingredients will also be used below to construct a root datum; it would be
 nice to use the resulting root datum as argument here, but unfortunately the
 Lie type and sub-lattice cannot be recovered from it with certainty, and they
-are needed separately in the construction of an inner class. Note however that
-when constructing inner classes below, we shall nevertheless provide a
-function $set\_inner\_class$ that operates on a root datum and a string
-specifying an inner class; it will deduce candidates for the Lie type and the
-sub-lattice from the root datum and then call the function $based\_involution$
-defined here.
+are needed separately in the construction of an inner class. However, when
+constructing inner classes below, we shall provide a function
+$set\_inner\_class$ that operates on a root datum and a string specifying an
+inner class. It will deduce candidates for the Lie type and the sub-lattice
+from the root datum; however since it also finds a permutation of the simple
+roots with respect to the standard way of laying out the diagram, it cannot
+call the function $based\_involution$ defined here, but will redo some of its
+work.
 
 
 @< Local function def... @>=
@@ -615,7 +620,7 @@ void based_involution_wrapper()
   size_t r=type->rank();
   if (basis->val.numRows()!=r or basis->val.numRows()!=r)
     throw std::runtime_error @|
-    ("lattice matrix should be "+num(r)+'x'+num(r)+ " for this type");
+    ("based_involution: basis should be given by "+num(r)+'x'+num(r)+" matrix");
   shared_matrix m
      (new matrix_value @| (lietype::involution
            (type->val,transform_inner_class_type(str->val.c_str(),type->val))));
@@ -721,8 +726,8 @@ void root_datum_wrapper()
   @< Test whether the columns of |lattice->val| span the root lattice; if
      not |throw| a |std::runtime_error| @>
   latticetypes::WeightList columns; columnVectors(columns,lattice->val);
-  prerootdata::PreRootDatum pre_datum(type->val,columns);
-  push_value(new root_datum_value(rootdata::RootDatum(pre_datum)));
+  push_value(new root_datum_value @|
+   (rootdata::RootDatum(prerootdata::PreRootDatum::build(type->val,columns))));
 }
 
 @ Since the construction of the (simple) roots in a |PreRootDatum| uses
@@ -982,30 +987,74 @@ void dual_datum_wrapper()
       (rootdata::RootDatum(rd->val,tags::DualTag())));
 }
 
+@ This function is more recent; it allows constructing a new root (sub-)datum
+by selecting coroots taking integral values on a given rational weight vector.
+
+@< Local function definitions @>=
+void integrality_datum_wrapper()
+{ push_tuple_components();
+  shared_rational_vector lambda = get<rational_vector_value>();
+  shared_root_datum rd(get<root_datum_value>());
+  if (lambda->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "integrality datum: length " << lambda->val.size()
+      << " differs from rank " << rd->val.rank();
+    throw std::runtime_error(o.str());
+  }
+  push_value(new root_datum_value @| (integrality_datum(rd->val,lambda->val)));
+}
+
+@ A related function computes a list of fractions of a line segment where the
+set of roots with integrality is non-empty.
+
+@< Local function definitions @>=
+void integrality_points_wrapper()
+{ push_tuple_components();
+  shared_rational_vector lambda = get<rational_vector_value>();
+  shared_root_datum rd(get<root_datum_value>());
+  if (lambda->val.size()!=rd->val.rank())
+  { std::ostringstream o;
+    o << "integrality points: length " << lambda->val.size()
+      << " differs from rank " << rd->val.rank();
+    throw std::runtime_error(o.str());
+  }
+
+  arithmetic::RationalList l = integrality_points(rd->val,lambda->val);
+  row_ptr result (new row_value(l.size()));
+  for (size_t i=0; i<l.size(); ++i)
+    result->val[i]=shared_value(new rat_value(l[i]));
+  push_value(result);
+}
+
 @ Let us install the above wrapper functions.
 
 @< Install wrapper functions @>=
-install_function(type_of_root_datum_wrapper,"type_of_root_datum"
+install_function(type_of_root_datum_wrapper,@|"type_of_root_datum"
                 ,"(RootDatum->LieType)");
-install_function(root_datum_wrapper,"root_datum","(LieType,mat->RootDatum)");
+install_function(root_datum_wrapper,@|"root_datum","(LieType,mat->RootDatum)");
 install_function(quotient_basis_wrapper
-		,"quotient_basis","(LieType,mat->mat)");
+		,@|"quotient_basis","(LieType,mat->mat)");
 install_function(quotient_datum_wrapper
-		,"quotient_datum","(LieType,mat->RootDatum)");
+		,@|"quotient_datum","(LieType,mat->RootDatum)");
 install_function(simply_connected_datum_wrapper
-		,"simply_connected_datum","(LieType->RootDatum)");
-install_function(adjoint_datum_wrapper,"adjoint_datum","(LieType->RootDatum)");
-install_function(SL_wrapper,"SL","(int->RootDatum)");
-install_function(GL_wrapper,"GL","(int->RootDatum)");
-install_function(simple_roots_wrapper,"simple_roots","(RootDatum->mat)");
-install_function(simple_coroots_wrapper,"simple_coroots","(RootDatum->mat)");
-install_function(datum_Cartan_wrapper,"Cartan_matrix_of_datum"
+		,@|"simply_connected_datum","(LieType->RootDatum)");
+install_function(adjoint_datum_wrapper,@|
+                 "adjoint_datum","(LieType->RootDatum)");
+install_function(SL_wrapper,@|"SL","(int->RootDatum)");
+install_function(GL_wrapper,@|"GL","(int->RootDatum)");
+install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
+install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
+install_function(datum_Cartan_wrapper,@|"Cartan_matrix_of_datum"
 		,"(RootDatum->mat)");
-install_function(roots_wrapper,"roots","(RootDatum->mat)");
-install_function(coroots_wrapper,"coroots","(RootDatum->mat)");
-install_function(root_coradical_wrapper,"root_coradical","(RootDatum->mat)");
-install_function(coroot_radical_wrapper,"coroot_radical","(RootDatum->mat)");
-install_function(dual_datum_wrapper,"dual_datum","(RootDatum->RootDatum)");
+install_function(roots_wrapper,@|"roots","(RootDatum->mat)");
+install_function(coroots_wrapper,@|"coroots","(RootDatum->mat)");
+install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
+install_function(coroot_radical_wrapper,@|"coroot_radical","(RootDatum->mat)");
+install_function(dual_datum_wrapper,@|"dual_datum","(RootDatum->RootDatum)");
+install_function(integrality_datum_wrapper
+                ,@|"integrality_datum","(RootDatum,ratvec->RootDatum)");
+install_function(integrality_points_wrapper
+                ,@|"integrality_points","(RootDatum,ratvec->[rat])");
 
 @*1 A type for complex reductive groups equipped with an involution.
 We shall now go ahead to define a primitive type holding a
@@ -1112,10 +1161,10 @@ matrix describing a (purported) involution of the weight lattice, although we
 shall use it below for a matrix defined for the central torus part; we can
 however reuse the module that tests for being an involution here.
 
-@h "setutils.h"
+@h "layout.h"
 
 @< Local function def...@>=
-std::pair<lietype::LieType,lietype::InnerClassType> check_involution
+layout::Layout check_involution
  (const latticetypes::LatticeMatrix& M, const rootdata::RootDatum& rd)
  throw (std::bad_alloc, std::runtime_error)
 { size_t r=rd.rank(),s=rd.semisimpleRank();
@@ -1123,10 +1172,15 @@ std::pair<lietype::LieType,lietype::InnerClassType> check_involution
 @/setutils::Permutation p(s);
   @< Set |p| to the permutation of the simple roots induced by |M|, or throw
      a |runtime_error| if |M| is not an automorphism of |rd| @>
-@/std::pair<lietype::LieType,lietype::InnerClassType> result;
-@/lietype::LieType& type=result.first;
-  lietype::InnerClassType& inner_class=result.second;
-  @< Compute the Lie type |type| and the inner class |inner_class| @>
+@/layout::Layout result;
+@/lietype::LieType& type=result.d_type;
+  lietype::InnerClassType& inner_class=result.d_inner;
+  setutils::Permutation& pi=result.d_perm;
+  @< Compute the Lie type |type|, the inner class |inner_class|, and the
+     permutation |pi| of the simple roots with respect to standard order for
+     |type| @>
+  if (r>s)
+    @< Add type letters and inner class symbols for the central torus @>
   return result;
 }
 
@@ -1158,64 +1212,98 @@ lies in another component of the diagram we have a Complex inner class.
 
 @h "dynkin.h"
 
-@< Compute the Lie type |type| and the inner class |inner_class| @>=
+@< Compute the Lie type |type|, the inner class... @>=
 { latticetypes::LatticeMatrix C = rd.cartanMatrix();
-@/dynkin::DynkinDiagram diagr(C);
-@/lietype::LieType type0 = dynkin::Lie_type(C); // type before rearranging
-@/bitset::RankFlagsList component = dynkin::components(diagr);
-    // list of connected components of diagram
-  std::vector<char> letter(component.size());
-  size_t nr_Complex_letters=0;
-  for (size_t i=0; i<component.size(); ++i)
+  bitset::RankFlagsList comp = dynkin::components(dynkin::DynkinDiagram(C));
+
+  type.reserve(comp.size()+r-s);
+  inner_class.reserve(comp.size()+r-s); // certainly enough
+  type = dynkin::Lie_type(C,true,pi);
+  assert(type.size()==comp.size());
+  size_t offset=0; // accumulated rank of simple factors seen
+
+  for (size_t i=0; i<type.size(); ++i)
   { bool equal_rank=true;
-    for (bitset::RankFlags::iterator j=component[i].begin(); j(); ++j)
-     // traverse component
-      if (p[*j]!=*j) {@; equal_rank=false; break; }
-    if (equal_rank) letter[i]='c';
+    size_t comp_rank = type[i].second;
+    assert (comp_rank==comp[i].count());
+       // and |pi[j]| runs through |comp[i]| in following loop
+    for (size_t j=offset; j<offset+comp_rank; ++j) // traverse component
+      if (p[pi[j]]!=pi[j]) {@; equal_rank=false; break; }
+@)  if (equal_rank) inner_class.push_back('c');
       // identity on this component: compact component
-    else if(!component[i][p[component[i].firstBit()]])
-      // then component not globally fixed
-      {@; ++nr_Complex_letters; letter[i]='C'; } // record Complex component
-    else letter[i]= type0[i].first=='D' and type0[i].second%2==0 ? 'u' : 's';
-    // unequal rank
-  }
-  @< Make adaptations for any Complex inner classes, and store the final value
-  in |type| and |inner_class| @>
+    else if(comp[i][p[pi[offset]]]) // component globally fixed; unequal rank
+      inner_class.push_back(type[i].first=='D' and comp_rank%2==0 ? 'u' : 's');
+    else
+    { inner_class.push_back('C'); // record Complex component
+      @< Gather elements of Complex inner class component, adapting the values
+         of |type|, |comp| and |pi| @>
+      offset += comp_rank;
+      ++i; // skip over component |i|, loop will skip component |i+1|
+    }
+
+    offset += comp_rank;
+  } // |for (i)|
 }
 
-@ The complex inner classes pose the additional problem of identifying the
-corresponding pairs. We build small tables holding for each Complex inner
-class symbol the index of its factor in the Lie type, and the index of the
-first root of the corresponding component in the Dynkin diagram, and the
-number of the matching factor in the Lie type.
+@ Complex factors of the inner class involve two simple factors, which
+requires some additional care. The corresponding components of the Dynkin
+diagram might not be consecutive, in which case we must permute the factors of
+|type| to make that true, permute the |comp| subsets to match, and update |pi|
+as well. Moreover we wish that, as seen through |pi|, the permutation |p|
+interchanges the roots of the two now consecutive factors by a fixed shift in
+the index by |comp_rank| (even though this ``straightening'' is not currently
+used anywhere).
 
-@< Make adaptations for any Complex inner classes... @>=
-{ std::vector<size_t> pos(nr_Complex_letters);
-  std::vector<size_t> first(nr_Complex_letters);
-  for (size_t l=0,i=0; l<component.size(); ++l)
-    if (letter[l]=='C')
-    {@; pos[i]=l; first[i]=component[l].firstBit(); ++i; }
-  std::vector<size_t> buddy(nr_Complex_letters,nr_Complex_letters);
-   // initialise with sentinels
-  for (size_t i=0; i<nr_Complex_letters; ++i)
-    if (buddy[i]==nr_Complex_letters) // then value was not yet set by a buddy
-    { size_t b=diagr.component(p[component[pos[i]].firstBit()]).firstBit();
-        // first bit of companion
-      for (size_t j=i+1; j<nr_Complex_letters; ++j)
-        if (first[j]==b) {@; buddy[i]=j; buddy[j]=i; break; }
+@< Gather elements of Complex inner class...@>=
+{ size_t beta = p[pi[offset]];
+  @< Find the component~|k| after |i| that contains |beta|, move |comp[k]| to
+     |comp[i+1]| while shifting any intermediate components correspondingly
+     upwards in |pi|, |type| and |comp| @>
+@)
+  type[i+1]=type[i]; // duplicate factor |i|
+  for (size_t j=offset; j<offset+comp_rank; ++j)
+    pi[j+comp_rank]=p[pi[j]]; // reconstruct matching component in order
+}
+
+
+@ When the inner class permutation |p| interchanges a component with another,
+we search for that component, and place it just after the current component,
+in such a way that |p[pi[offset+i]]=pi[offset+s+i]| for $0\leq{i}<s$ where $s$
+is the size of the component.
+
+@< Find the component~|k| after |i| that contains |beta|...@>=
+{ size_t j, k;
+  for (j=offset+comp_rank,k=i+1; k<type.size(); ++k)
+    if (comp[k][beta])
+      break;
+    else
+      j+=type[k].second;
+
+
+  if (k==type.size())
+    throw std::logic_error("non matching Complex factor");
+#ifndef NDEBUG
+  assert(type[k]==type[i]); // paired simple types for complex factor
+  for (size_t l=1; l<comp_rank; ++l)
+    assert(comp[k][p[pi[offset+l]]]);
+        // image by |p| of remainder of |comp[i]| matches |comp[k]|
+#endif
+
+  if (k>i+1) // then we need to move component |k| down to |i+1|
+  {
+    while (j-->offset+comp_rank)
+      pi[j+comp_rank]=pi[j]; // shift up intermediate components in |pi|
+
+    bitset::RankFlags match_comp=comp[k];
+      // component matching |comp[i]| under |p|
+    while(k-->i+1)
+    {
+      type[k+1]=type[k]; // shift intermediate simple factors
+      comp[k+1]=comp[k];
     }
-  type.resize(component.size()+(r-s)); // allocate size for type letters
-  for (size_t l=0,k=0,i=0; l<component.size(); ++l)
-    if (letter[l]!='C')
-    {@; type[k++]=type0[l]; inner_class.push_back(letter[l]); }
-    else if (buddy[i]<i) ++i; // skip second member of Complex pair
-    else // first member of Complex pair
-    { type[k++]=type0[l]; type[k++]=type0[pos[buddy[i]]];
-       // add equal types for Complex class
-      inner_class.push_back('C'); ++i;
-    }
-  if (r>s)
-  @< Add type letters and inner class symbols for the central torus @>
+    comp[i+1]=match_comp; // set of roots is those previously at component |k|
+  }
+
 }
 
 @ Finally we have to give inner class symbols for the central torus. While it
@@ -1234,8 +1322,8 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
 @< Add type letters and inner class symbols for the central torus @>=
 { using latticetypes::WeightList; using latticetypes::LatticeMatrix;
-  for (size_t k=component.size(); k<component.size()+(r-s); ++k)
-    type[k]=lietype::SimpleLieType('T',1);
+  for (size_t k=0; k<r-s; ++k)
+    type.push_back(lietype::SimpleLieType('T',1));
   WeightList b; matrix::initBasis(b,r);
   WeightList simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
 @/latticetypes::CoeffList ivf;
@@ -1395,26 +1483,20 @@ void inner_class_value::print(std::ostream& out) const
       << (val.numDualRealForms()==1 ? "form" : "forms");
 }
 
-@ So here is our wrapper function for building a complex reductive group with
-involution. Apart from the test performed, we have to deal with the question
-of giving the complex group ownership of the root datum. Currently the
-constructor of the |ComplexReductiveGroup| does not assume ownership
-of the root datum until it completes, but this should be corrected in the
-constructor, not here; therefore we shall pass a pointer to a copy of the root
-datum.
+@ Our wrapper function builds a complex reductive group with an involution,
+testing its validity.
 
 @< Local function def...@>=
 void fix_involution_wrapper()
 { push_tuple_components();
   shared_matrix M(get<matrix_value>());
   shared_root_datum rd(get<root_datum_value>());
-  std::pair<lietype::LieType,lietype::InnerClassType> cl
-    =check_involution(M->val,rd->val);
+  layout::Layout lo = check_involution(M->val,rd->val);
   if (verbosity>0) @< Report the type and inner class found @>
 
   std::auto_ptr<complexredgp::ComplexReductiveGroup>@|
     G(new complexredgp::ComplexReductiveGroup(rd->val,M->val));
-  push_value(new inner_class_value(G,cl.first,cl.second));
+  push_value(new inner_class_value(G,lo.d_type,lo.d_inner));
 }
 
 @ For understanding what is going on, the user may find it useful to look at
@@ -1422,10 +1504,10 @@ the Lie type and inner class that were determined from the root datum and the
 involution given.
 
 @< Report the type and inner class found @>=
-{ Lie_type_value t(cl.first);
+{ Lie_type_value t(lo.d_type);
   *output_stream << "Found " << t << ", and inner class '";
-  for (size_t i=0; i<cl.second.size(); ++i)
-    *output_stream << cl.second[i];
+  for (size_t i=0; i<lo.d_inner.size(); ++i)
+    *output_stream << lo.d_inner[i];
   *output_stream << "'.\n";
 }
 
@@ -1481,19 +1563,37 @@ of the expression ${\it fix\_involution(rd,based\_involution(t,basis,ict))}$.
 void set_inner_class_wrapper()
 { push_tuple_components();
   shared_string ict(get<string_value>());
-  shared_root_datum rd(get<root_datum_value>());
+  shared_root_datum rdv(get<root_datum_value>());
+  const rootdata::RootDatum& rd=rdv->val;
 @)
-  push_value(rd); type_of_root_datum_wrapper();
-  shared_Lie_type t(get<Lie_type_value>());
+  latticetypes::LatticeMatrix Cartan = rd.cartanMatrix();
+  layout::Layout lo;
+  lo.d_type = dynkin::Lie_type(Cartan,true,lo.d_perm);
+   // get type, permutation w.r.t. Bourbaki
+  if (!rd.isSemisimple())
+    for (size_t i=rd.semisimpleRank(); i<rd.rank(); ++i)
+    { lo.d_type.push_back(lietype::SimpleLieType('T',1)); // add a torus factor
+      lo.d_perm.push_back(i);
+      // and a fixed point of permutation, needed by |lietype::involution|
+    }
+  lo.d_inner=transform_inner_class_type(ict->val.c_str(),lo.d_type);
 @)
-  push_value(rd);
+  push_value(rdv);
   coroot_radical_wrapper(); transpose_mat_wrapper();
   shared_matrix basis(get<matrix_value>());
 @)
-  push_value(rd);
-@/push_value(t); push_value(basis);
-  push_value(ict);
-  wrap_tuple(3); based_involution_wrapper();
+  push_value(rdv); // first argument for |fix_involution_wrapper|
+@)
+  shared_matrix m (new matrix_value(lietype::involution(lo)));
+
+  size_t r=lietype::rank(lo.d_type);
+  assert(basis->val.numRows()==r and basis->val.numRows()==r);
+  latticetypes::LatticeCoeff d;
+  m->val = basis->val.inverse(d) * m->val * basis->val;
+  if (d==0 or !m->val.divisible(d)) throw std::runtime_error
+    ("inner class is not compatible with root datum lattice");
+  m->val/=d; push_value(m);
+
 @/wrap_tuple(2); fix_involution_wrapper();
 }
 
@@ -1604,29 +1704,29 @@ void dual_occurrence_matrix_wrapper()
 
 @ Finally we install everything.
 @< Install wrapper functions @>=
-install_function(classify_wrapper,"classify_involution"
+install_function(classify_wrapper,@|"classify_involution"
                 ,"(mat->int,int,int)");
-install_function(fix_involution_wrapper,"fix_involution"
+install_function(fix_involution_wrapper,@|"fix_involution"
                 ,"(RootDatum,mat->InnerClass)");
-install_function(set_type_wrapper,"set_type"
+install_function(set_type_wrapper,@|"set_type"
                 ,"(string,mat,string->InnerClass)");
-install_function(set_inner_class_wrapper,"set_inner_class"
+install_function(set_inner_class_wrapper,@|"set_inner_class"
                 ,"(RootDatum,string->InnerClass)");
-install_function(distinguished_involution_wrapper,"distinguished_involution"
+install_function(distinguished_involution_wrapper,@|"distinguished_involution"
                 ,"(InnerClass->mat)");
-install_function(root_datum_of_inner_class_wrapper,"root_datum_of_inner_class"
+install_function(root_datum_of_inner_class_wrapper,@|"root_datum_of_inner_class"
                 ,"(InnerClass->RootDatum)");
-install_function(dual_inner_class_wrapper,"dual_inner_class"
+install_function(dual_inner_class_wrapper,@|"dual_inner_class"
                 ,"(InnerClass->InnerClass)");
-install_function(form_names_wrapper,"form_names"
+install_function(form_names_wrapper,@|"form_names"
                 ,"(InnerClass->[string])");
-install_function(dual_form_names_wrapper,"dual_form_names"
+install_function(dual_form_names_wrapper,@|"dual_form_names"
                 ,"(InnerClass->[string])");
-install_function(block_sizes_wrapper,"block_sizes"
+install_function(block_sizes_wrapper,@|"block_sizes"
                 ,"(InnerClass->mat)");
-install_function(occurrence_matrix_wrapper,"occurrence_matrix"
+install_function(occurrence_matrix_wrapper,@|"occurrence_matrix"
                 ,"(InnerClass->mat)");
-install_function(dual_occurrence_matrix_wrapper,"dual_occurrence_matrix"
+install_function(dual_occurrence_matrix_wrapper,@|"dual_occurrence_matrix"
                 ,"(InnerClass->mat)");
 
 @*1 A type for real reductive groups.
@@ -2061,8 +2161,6 @@ Cartan class does not exist for the given real form, then it will not occur in
 that |realFormLabels| list, and the part returned here will be empty. The part
 of the partition is returned as a list of integral values.
 
-@f pi NULL
-
 @< Local function def...@>=
 void fiber_part_wrapper()
 { push_tuple_components();
@@ -2080,9 +2178,9 @@ void fiber_part_wrapper()
   const realform::RealFormList rf_nr=
      cc->parent.val.realFormLabels(cc->number);
      // translate part number of |pi| to real form
-  row_ptr result (new row_value(0));
+  row_ptr result (new row_value(0)); // cannot predict exact size here
   for (size_t i=0; i<pi.size(); ++i)
-    if ( rf_nr[pi(i)] == rf->val.realForm())
+    if (rf_nr[pi(i)] == rf->val.realForm())
       result->val.push_back(shared_value(new int_value(i)));
   push_value(result);
 }
@@ -2522,13 +2620,13 @@ void print_W_graph_wrapper()
 @ Finally we install everything (where did we hear that being said before?)
 
 @< Install wrapper functions @>=
-install_function(real_form_wrapper,"real_form","(InnerClass,int->RealForm)");
-install_function(quasisplit_form_wrapper,"quasisplit_form"
+install_function(real_form_wrapper,@|"real_form","(InnerClass,int->RealForm)");
+install_function(quasisplit_form_wrapper,@|"quasisplit_form"
 		,"(InnerClass->RealForm)");
-install_function(components_rank_wrapper,"components_rank","(RealForm->int)");
-install_function(count_Cartans_wrapper,"count_Cartans","(RealForm->int)");
-install_function(KGB_size_wrapper,"KGB_size","(RealForm->int)");
-install_function(Cartan_order_matrix_wrapper,"Cartan_order_matrix"
+install_function(components_rank_wrapper,@|"components_rank","(RealForm->int)");
+install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
+install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
+install_function(Cartan_order_matrix_wrapper,@|"Cartan_order_matrix"
 					    ,"(RealForm->mat)");
 install_function(dual_real_form_wrapper,@|"dual_real_form"
 				       ,"(InnerClass,int->DualRealForm)");
@@ -2536,43 +2634,43 @@ install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 		,"(InnerClass->DualRealForm)");
 install_function(real_form_from_dual_wrapper,@|"real_form_from_dual"
 				  ,"(DualRealForm->RealForm)");
-install_function(Cartan_class_wrapper,"Cartan_class"
+install_function(Cartan_class_wrapper,@|"Cartan_class"
 		,"(RealForm,int->CartanClass)");
-install_function(most_split_Cartan_wrapper,"most_split_Cartan"
+install_function(most_split_Cartan_wrapper,@|"most_split_Cartan"
 		,"(RealForm->CartanClass)");
-install_function(print_Cartan_info_wrapper,"print_Cartan_info"
+install_function(print_Cartan_info_wrapper,@|"print_Cartan_info"
 		,"(CartanClass->)");
-install_function(real_forms_of_Cartan_wrapper,"real_forms_of_Cartan"
+install_function(real_forms_of_Cartan_wrapper,@|"real_forms_of_Cartan"
 		,"(CartanClass->[RealForm])");
-install_function(dual_real_forms_of_Cartan_wrapper,"dual_real_forms_of_Cartan"
+install_function(dual_real_forms_of_Cartan_wrapper,@|"dual_real_forms_of_Cartan"
 		,"(CartanClass->[DualRealForm])");
-install_function(fiber_part_wrapper,"fiber_part"
+install_function(fiber_part_wrapper,@|"fiber_part"
 		,"(CartanClass,RealForm->[int])");
-install_function(print_gradings_wrapper,"print_gradings"
+install_function(print_gradings_wrapper,@|"print_gradings"
 		,"(CartanClass,RealForm->)");
-install_function(print_realweyl_wrapper,"print_real_Weyl"
+install_function(print_realweyl_wrapper,@|"print_real_Weyl"
 		,"(RealForm,CartanClass->)");
-install_function(print_strongreal_wrapper,"print_strong_real"
+install_function(print_strongreal_wrapper,@|"print_strong_real"
 		,"(RealForm,CartanClass->)");
-install_function(print_block_wrapper,"print_block"
+install_function(print_block_wrapper,@|"print_block"
 		,"(RealForm,DualRealForm->)");
-install_function(print_blocku_wrapper,"print_blocku"
+install_function(print_blocku_wrapper,@|"print_blocku"
 		,"(RealForm,DualRealForm->)");
-install_function(print_blockd_wrapper,"print_blockd"
+install_function(print_blockd_wrapper,@|"print_blockd"
 		,"(RealForm,DualRealForm->)");
 install_function(print_blockstabilizer_wrapper,@|"print_blockstabilizer"
 		,"(RealForm,DualRealForm,CartanClass->)");
-install_function(print_KGB_wrapper,"print_KGB"
+install_function(print_KGB_wrapper,@|"print_KGB"
 		,"(RealForm->)");
-install_function(print_KL_basis_wrapper,"print_KL_basis"
+install_function(print_KL_basis_wrapper,@|"print_KL_basis"
 		,"(RealForm,DualRealForm->)");
-install_function(print_prim_KL_wrapper,"print_prim_KL"
+install_function(print_prim_KL_wrapper,@|"print_prim_KL"
 		,"(RealForm,DualRealForm->)");
-install_function(print_KL_list_wrapper,"print_KL_list"
+install_function(print_KL_list_wrapper,@|"print_KL_list"
 		,"(RealForm,DualRealForm->)");
-install_function(print_W_cells_wrapper,"print_W_cells"
+install_function(print_W_cells_wrapper,@|"print_W_cells"
 		,"(RealForm,DualRealForm->)");
-install_function(print_W_graph_wrapper,"print_W_graph"
+install_function(print_W_graph_wrapper,@|"print_W_graph"
 		,"(RealForm,DualRealForm->)");
 
 

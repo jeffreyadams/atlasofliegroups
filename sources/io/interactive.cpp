@@ -395,7 +395,7 @@ void getInteractive(prerootdata::PreRootDatum& d_prd,
 
   // make new PreRootDatum
 
-  prerootdata::PreRootDatum prd(lt,d_b);
+  prerootdata::PreRootDatum prd=prerootdata::PreRootDatum::build(lt,d_b);
 
   // swap prd and d_prd; the old PreRootDatum will be destroyed on exit
 

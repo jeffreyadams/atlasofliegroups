@@ -694,9 +694,10 @@ then we prepare for output redirection.
          case '*':
          case '%':
          case '^':
-         case ':': prevent_termination=c; code=c;
+         case ':': prevent_termination=c;
+    code = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
   break; case '-': prevent_termination=c;
-    code = input.shift()=='>' ? ARROW : (input.unshift(),'-');
+    code = input.shift()=='>' ? ARROW : (input.unshift(),c);
   break; case '/': prevent_termination=c;
     code= input.shift()=='%' ? DIVMOD : (input.unshift(),'/');
   break; case '\n': state=ended; // and {\bf fall through}.

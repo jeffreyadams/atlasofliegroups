@@ -15,6 +15,8 @@
 #define LIETYPE_H
 
 #include "lietype_fwd.h"
+#include "setutils.h"
+#include "layout_fwd.h"  // not "layout.h", which must include us
 
 #include "latticetypes_fwd.h"
 
@@ -80,6 +82,8 @@ namespace lietype {
 
   latticetypes::LatticeMatrix involution(const lietype::LieType&,
 					 const lietype::InnerClassType&);
+
+  latticetypes::LatticeMatrix involution(const layout::Layout& lo);
 
   size_t rank(const LieType&);
 
