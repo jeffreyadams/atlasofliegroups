@@ -194,8 +194,10 @@ suppress printing if the uninteresting value.
     destroy_expr(parse_tree);
   }
   catch (runtime_error& err)
-  { if (type_OK) cerr << "Runtime error: ";
-    cerr << err.what() << ", evaluation aborted.\n";
+  { if (type_OK)
+      cerr << "Runtime error:\n  " << err.what() << "\nEvaluation aborted.";
+    else cerr << err.what();
+    cerr << std::endl;
     reset_evaluator(); main_input_buffer->close_includes();
   }
   catch (logic_error& err)

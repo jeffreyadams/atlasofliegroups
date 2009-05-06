@@ -897,7 +897,7 @@ expr make_cast(ptr type, expr exp)
    return result;
 }
 
-@ What is made must eventually be unmade (even assignments).
+@ Eventually we want to rid ourselves from the cast.
 
 @< Cases for destr... @>=
 case cast_expr:
@@ -925,7 +925,7 @@ ass_stat, @[@]
 @< Variants of ... @>=
 assignment assign_variant;
 
-@ Printing assignments statements is absolutely straightforward.
+@ Printing assignment statements is absolutely straightforward.
 
 @< Cases for printing... @>=
 case ass_stat:
@@ -954,6 +954,68 @@ expr make_assignment(id_type lhs, expr rhs)
 @< Cases for destr... @>=
 case ass_stat:
   destroy_expr(e.e.assign_variant->rhs); delete e.e.assign_variant;
+break;
+
+@*2 Component assignments.
+%
+We have special expressions for assignments to a component.
+
+@< Typedefs... @>=
+typedef struct comp_assignment_node* comp_assignment;
+
+@~In a component assignment has for the left hand side an identifier and an
+index.
+
+@< Structure and typedef declarations for types built upon |expr| @>=
+struct comp_assignment_node {@; id_type aggr; expr index; expr rhs; };
+
+@ The tag used for assignment statements is |comp_ass_stat|.
+
+@< Enumeration tags for |expr_kind| @>=
+comp_ass_stat, @[@]
+
+@ And there is of course a variant of |expr_union| for assignments.
+@< Variants of ... @>=
+comp_assignment comp_assign_variant;
+
+@ Printing component assignment statements follow the input syntax.
+
+@< Cases for printing... @>=
+case comp_ass_stat:
+{@; comp_assignment ass = e.e.comp_assign_variant;
+  out << main_hash_table->name_of(ass->aggr) << '[' << ass->index << "]:="
+      << ass->rhs ;
+}
+break;
+
+@ Assignment statements are built by |make_assignment|, which for once does
+not simply combine the expression components, because for reason of parser
+generation the array and index will have already been combined before this
+function can be called.
+
+@< Declarations of functions in \Cee... @>=
+expr make_comp_ass(expr lhs, expr rhs);
+
+@~Here we have to take the left hand side apart a bit, and clean up its node.
+
+@< Definitions of functions in \Cee...@>=
+expr make_comp_ass(expr lhs, expr rhs)
+{ comp_assignment a=new comp_assignment_node;
+@/a->aggr=lhs.e.subscription_variant->array.e.identifier_variant;
+  a->index=lhs.e.subscription_variant->index;
+  delete lhs.e.subscription_variant;
+  a->rhs=rhs;
+@/expr result; result.kind=comp_ass_stat; result.e.comp_assign_variant=a;
+  return result;
+}
+
+@~Destruction one the other hand is as straightforward as usual.
+
+@< Cases for destr... @>=
+case comp_ass_stat:
+  destroy_expr(e.e.comp_assign_variant->index);
+  destroy_expr(e.e.comp_assign_variant->rhs);
+  delete e.e.comp_assign_variant;
 break;
 
 @*1 Sequence statements.

@@ -50,8 +50,8 @@
 %token <expression> STRING
 %token <id_code> IDENT
 %token TOFILE ADDTOFILE FROMFILE
-%type  <expression> exp quaternary tertiary lettail formula primary
-%destructor { destroy_expr ($$); } exp quaternary tertiary lettail formula primary
+%type  <expression> exp quaternary tertiary lettail formula primary comprim subscription
+%destructor { destroy_expr ($$); } exp quaternary tertiary lettail formula primary comprim subscription
 %type  <expression_list> commalist commalist_opt commabarlist idlist
 %destructor { destroy_exprlist($$); } commalist commalist_opt commabarlist idlist
 %type <decls> declarations
@@ -99,20 +99,30 @@ exp     : type ':' exp      { $$ = make_cast($1,$3); }
 ;
 
 
-quaternary: LET lettail { $$=$2; }
-        | '(' ')' ':' quaternary { $$=make_lambda_node(NULL,NULL,$4); }
-        | '(' id_specs ')' ':' quaternary
-          { $$=make_lambda_node($2.patl,$2.typel,$5); }
-        | '(' ')' type ':' quaternary
-          { $$=make_lambda_node(NULL,NULL,make_cast($3,$5)); }
-        | '(' id_specs ')' type ':' quaternary
-          { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
-        | tertiary ';' quaternary { $$=make_sequence($1,$3); }
+quaternary: tertiary ';' quaternary { $$=make_sequence($1,$3); }
         | tertiary
 ;
 
-tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3); }
+tertiary: LET lettail { $$=$2; }
+        | '(' ')' ':' tertiary { $$=make_lambda_node(NULL,NULL,$4); }
+        | '(' id_specs ')' ':' tertiary
+          { $$=make_lambda_node($2.patl,$2.typel,$5); }
+        | '(' ')' type ':' tertiary
+          { $$=make_lambda_node(NULL,NULL,make_cast($3,$5)); }
+        | '(' id_specs ')' type ':' tertiary
+          { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
+        | IDENT BECOMES tertiary { $$ = make_assignment($1,$3); }
+        | subscription BECOMES tertiary { $$ = make_comp_ass($1,$3); }
         | formula
+;
+
+lettail : declarations IN tertiary { $$ = make_let_expr_node($1,$3); }
+        | declarations ';' lettail  { $$ = make_let_expr_node($1,$3); }
+;
+
+declarations: declarations ',' pattern '=' tertiary
+          { $$ = add_let_node($1,$3,$5); }
+        | pattern '=' tertiary { $$ = add_let_node(NULL,$1,$3); }
 ;
 
 formula : formula '+' formula
@@ -162,8 +172,12 @@ formula : formula '+' formula
         | primary
 ;
 
-primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }
-        | primary'[' commalist ',' exp ']'
+primary: comprim
+        | IDENT { $$=make_applied_identifier($1); }
+;
+comprim: subscription
+	| comprim '[' exp ']' { $$ = make_subscription_node($1,$3); }
+        | comprim '[' commalist ',' exp ']'
           { $$=make_subscription_node
                ($1,wrap_tuple_display
                     (reverse_expr_list(make_exprlist_node($5,$3)))
@@ -175,7 +189,6 @@ primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }
         | TRUE { $$ = make_bool_denotation(1); }
         | FALSE { $$ = make_bool_denotation(0); }
 	| STRING
-        | IDENT { $$=make_applied_identifier($1); }
         | '(' exp ')'          { $$=$2; }
         | '[' commalist_opt ']'
                 { $$=wrap_list_display(reverse_expr_list($2)); }
@@ -191,13 +204,15 @@ primary:  primary '[' exp ']' { $$ = make_subscription_node($1,$3); }
         }
 ;
 
-lettail : declarations IN quaternary { $$ = make_let_expr_node($1,$3); }
-        | declarations ';' lettail  { $$ = make_let_expr_node($1,$3); }
-;
-
-declarations: declarations ',' pattern '=' formula
-          { $$ = add_let_node($1,$3,$5); }
-        | pattern '=' formula { $$ = add_let_node(NULL,$1,$3); }
+subscription: IDENT '[' exp ']'
+          { $$ = make_subscription_node(make_applied_identifier($1),$3); }
+        | IDENT '[' commalist ',' exp ']'
+          { $$=make_subscription_node
+               (make_applied_identifier($1),
+                wrap_tuple_display
+                    (reverse_expr_list(make_exprlist_node($5,$3)))
+               ) ;
+	  }
 ;
 
 pattern : IDENT             { $$.kind=0x1; $$.name=$1; }

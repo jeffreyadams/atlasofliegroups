@@ -1321,26 +1321,45 @@ generated one would lack the |throw()| specifier.
 class program_error : public std::exception
 { std::string message;
 public:
-  explicit program_error(std::string s) : message(s) @+{}
-  ~program_error() throw() @+{@;} // obligatory definition
+  explicit program_error(const std::string& s) : message(s) @+{}
+  virtual ~program_error() throw() @+{@;} // obligatory definition
   const char* what() const throw() @+{@; return message.c_str(); }
 };
 
-@ We derive from |program_error| a more specific exception type |type_error|
-that we shall throw when an expression fails to have the right type. It stores
-the offending subexpression and pointers to the types that failed to match.
-For the latter, the error value owns the types pointed to, so the caller
-should relinquish ownership of, or copy (in case it did not own), the types
-passed when throwing the exception.
+@ We derive from |program_error| an exception type |expr_error| that stores in
+addition to the error message an expression to which the message applies. It
+is declared a |struct|, as we leave it up to the |catch| code to incorporate
+the offending expression in a message in addition to the one produced by
+|what()|. For this type no virtual methods are defined at all, in particular
+we do not need a virtual destructor: the (automatically generated) destruction
+code that takes care of destructing |offender| is not called through a vtable
+(which in fact is absent). It is not quite clear whether this explains that
+the compiler does not complain here that the undeclared destructor has a too
+loose (because absent) |throw| specification, while it would for
+|program_error|.
 
 @< Type definitions @>=
-struct type_error : public program_error
-{ expr offender; // the subexpression with a wrong type
-  const type_declarator* actual; @+
+struct expr_error : public program_error
+{ expr offender; // the subexpression causing a problem
+@)
+  expr_error (const expr& e,const std::string& s) throw()
+    : program_error(s),offender(e) @+{}
+};
+
+@ We derive from |expr_error| an even more specific exception type
+|type_error| that we shall throw when an expression fails to have the right
+type. In addition to the offending subexpression it stores pointers to the
+types that failed to match. For the latter, the error value owns the types
+pointed to, so the caller should relinquish ownership of, or copy (in case it
+did not own), the types passed when throwing the exception.
+
+@< Type definitions @>=
+struct type_error : public expr_error
+{ const type_declarator* actual; @+
   const type_declarator* required; // the types that conflicted
 @)
   type_error (const expr& e, type_ptr a, type_ptr r) throw() @/
-    : program_error("Type error"),offender(e) @|
+    : expr_error(e,"Type error") @|
       ,actual(a.release()),required(r.release()) @+{}
   type_error(const type_error& e);
   ~type_error() throw() @+{@; delete actual; delete required; }
@@ -1369,7 +1388,7 @@ call of |copy|, at the price of some loss of symmetry and readability.
 
 @< Function definitions @>=
 type_error::type_error(const type_error& e)
- : program_error(e), offender(e.offender)
+ : expr_error(e)
 {@; type_ptr p=copy(*e.required);
   actual=copy(*e.actual).release(); required=p.release();
 }
@@ -1794,115 +1813,6 @@ void tuple_expression::evaluate() const
   wrap_tuple(component.size());
 }
 
-@*1 Function calls.
-%
-One of the most basic tasks of the evaluator is to allow function calls, which
-may involve either buit-in or user-defined functions. We start with
-introducing a type for representing function calls after type checking.
-
-@< Type def... @>=
-struct call_expression : public expression_base
-{ expression function, argument;
-@)
-  call_expression(expression_ptr f,expression_ptr a)
-   : function(f.release()),argument(a.release()) @+{}
-  virtual ~call_expression() @+ {@; delete function; delete argument; }
-  virtual void evaluate() const;
-  virtual void print(std::ostream& out) const;
-};
-
-@ To print a function call we print the function expression in parentheses,
-and the argument, latter enclosed in parentheses unless it is a tuple
-expression (which already has parentheses), which condition is tested by a
-dynamic cast.
-
-@< Function definitions @>=
-void call_expression::print(std::ostream& out) const
-{ if (dynamic_cast<global_identifier*>(function)!=NULL @| or
-      dynamic_cast<local_identifier*>(function)!=NULL) out << *function;
-  else out << '(' << *function << ')';
-  if (dynamic_cast<tuple_expression*>(argument)!=NULL) out << *argument;
-  else out << '(' << *argument << ')';
-}
-
-@*2 Type-checking function calls.
-%
-The function in a call, whether bound to an identifier or given by some other
-type of expression, determines its own type; once this is known, its argument
-and result types can be used to help converting the argument expression and
-the call expression itself. Therefore when encountering a call in
-|convert_expr|, we first get the type of the expression in the function
-position, requiring only that it be a function type, then type-check and
-convert the argument expression using the obtained result type, and build a
-converted function call~|call|. Finally we test if the required type matches
-the return type (in which case we simply return~|call|), or if the return type
-can be coerced to it (in which case we return |call| as transformed by
-|coerce|); if neither is possible we throw a~|type_error|.
-
-@< Other cases for type-checking and converting... @>=
-case function_call:
-{ type_ptr f_type=copy(gen_func_type); // start with generic function type
-  expression_ptr fun(convert_expr(e.e.call_variant->fun,*f_type));
-  expression_ptr arg
-    (convert_expr(e.e.call_variant->arg,f_type->func->arg_type));
-  expression_ptr call (new call_expression(fun,arg));
-  if (type.specialise(f_type->func->result_type) or
-      coerce(f_type->func->result_type,type,call))
-    return call.release();
-  else throw type_error(e,copy(f_type->func->result_type),copy(type));
-}
-
-@*2 Evaluating function calls.
-%
-The evaluation of the call of a built-in function executes is a ``wrapper
-function'', that usually consists of a call to a library function sandwiched
-between unpacking and repacking statements; in some simple cases a wrapper
-function may decide to do the entire job itself.
-
-The arguments and results of wrapper functions will be transferred from and to
-stack as a |value|, so a wrapper function has neither arguments nor a result
-type. Thus variables that refer to a wrapper function have the type
-|wrapper_function| defined below. We shall need to bind values of this type to
-identifiers representing built-in functions, so we derive an associated
-``primitive type'' from |value_base|.
-
-@< Type definitions @>=
-typedef void (* wrapper_function)();
-@)
-struct builtin_value : public value_base
-{ wrapper_function val;
-@)
-  std::string print_name;
-  builtin_value(wrapper_function v,const char* n)
-  : val(v), print_name(n) @+ {}
-  virtual void print(std::ostream& out) const
-  @+{@; out << ':' << print_name << ':'; }
-  builtin_value* clone() const @+{@; return new builtin_value(*this); }
-  static const char* name() @+{@; return "built-in function"; }
-private:
-  builtin_value(const builtin_value& v)
-  : val(v.val), print_name(v.print_name)
-  @+{}
-};
-@)
-typedef std::auto_ptr<builtin_value> builtin_ptr;
-typedef std::tr1::shared_ptr<builtin_value> shared_builtin;
-
-@ To evaluate a |call_expression| object we evaluate function and argument,
-leaving the latter on the stack. Then we try to get the built-in function,
-and call it. If the function did not evaluate to a built-in function, then it
-was a user-defined function, whose execution will be detailed later.
-
-@< Function definitions @>=
-void call_expression::evaluate() const
-{ function->evaluate(); @+ shared_value fun=pop_value();
-@/argument->evaluate(); // push evaluated argument on stack
-  builtin_value* f=dynamic_cast<builtin_value*>(fun.get());
-  if (f==NULL)
-    @< Call user-defined function |fun| with argument on |execution_stack| @>
-  else f->val(); // call the wrapper function, leaving result on the stack
-}
-
 @*1 Identifiers.
 %
 Calling functions, whether built-in or user-defined, requires using
@@ -1933,14 +1843,17 @@ struct identifier : public expression_base
 @)
   explicit identifier(Hash_table::id_type id) : code(id) @+{}
   virtual ~identifier() @+ {}
+  const char* name() const;
   virtual void print(std::ostream& out) const;
 };
 
 @ To print an identifier, we get its name from the main hash table.
 
 @< Function definitions @>=
+const char* identifier::name() const
+@+{@; return main_hash_table->name_of(code); }
 void identifier::print(std::ostream& out) const
-{@; out<< main_hash_table->name_of(code); }
+@+{@; out<< name(); }
 
 @*2 The global identifier table.
 %
@@ -1956,7 +1869,7 @@ function bodies and therefore have long lifetime) are expected to undergo
 change when a new value is assigned to the global variable; they will
 therefore access the location of the shared value pointer rather than the
 value pointed to. However, if the new value assigned to the identifier should
-change its, we are forced to detach new value pointer (storing it in a
+change its type, we are forced to detach new value pointer (storing it in a
 different place) so that existing applied occurrences of the identifier will
 not access a value of unexpected type (they will stick to the last value of
 the original type held by the identifier). In such a circumstance, the shared
@@ -2201,6 +2114,123 @@ case applied_identifier:
   if (type.specialise(*it) or coerce(*it,type,id))
     return id.release();
   else throw type_error(e,copy(*it),copy(type));
+}
+
+@*1 Function calls.
+%
+One of the most basic tasks of the evaluator is to allow function calls, which
+may involve either buit-in or user-defined functions. We start with
+introducing a type for representing function calls after type checking.
+
+@< Type def... @>=
+struct call_expression : public expression_base
+{ expression function, argument;
+@)
+  call_expression(expression_ptr f,expression_ptr a)
+   : function(f.release()),argument(a.release()) @+{}
+  virtual ~call_expression() @+ {@; delete function; delete argument; }
+  virtual void evaluate() const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ To print a function call we print the function expression in parentheses,
+and the argument, latter enclosed in parentheses unless it is a tuple
+expression (which already has parentheses), which condition is tested by a
+dynamic cast.
+
+@< Function definitions @>=
+void call_expression::print(std::ostream& out) const
+{ if (dynamic_cast<identifier*>(function)!=NULL) out << *function;
+  else out << '(' << *function << ')';
+  if (dynamic_cast<tuple_expression*>(argument)!=NULL) out << *argument;
+  else out << '(' << *argument << ')';
+}
+
+@*2 Type-checking function calls.
+%
+The function in a call, whether bound to an identifier or given by some other
+type of expression, determines its own type; once this is known, its argument
+and result types can be used to help converting the argument expression and
+the call expression itself. Therefore when encountering a call in
+|convert_expr|, we first get the type of the expression in the function
+position, requiring only that it be a function type, then type-check and
+convert the argument expression using the obtained result type, and build a
+converted function call~|call|. Finally we test if the required type matches
+the return type (in which case we simply return~|call|), or if the return type
+can be coerced to it (in which case we return |call| as transformed by
+|coerce|); if neither is possible we throw a~|type_error|.
+
+@< Other cases for type-checking and converting... @>=
+case function_call:
+{ type_ptr f_type=copy(gen_func_type); // start with generic function type
+  expression_ptr fun(convert_expr(e.e.call_variant->fun,*f_type));
+  expression_ptr arg
+    (convert_expr(e.e.call_variant->arg,f_type->func->arg_type));
+  expression_ptr call (new call_expression(fun,arg));
+  if (type.specialise(f_type->func->result_type) or
+      coerce(f_type->func->result_type,type,call))
+    return call.release();
+  else throw type_error(e,copy(f_type->func->result_type),copy(type));
+}
+
+@*2 Evaluating function calls.
+%
+The evaluation of the call of a built-in function executes is a ``wrapper
+function'', that usually consists of a call to a library function sandwiched
+between unpacking and repacking statements; in some simple cases a wrapper
+function may decide to do the entire job itself.
+
+The arguments and results of wrapper functions will be transferred from and to
+stack as a |value|, so a wrapper function has neither arguments nor a result
+type. Thus variables that refer to a wrapper function have the type
+|wrapper_function| defined below. We shall need to bind values of this type to
+identifiers representing built-in functions, so we derive an associated
+``primitive type'' from |value_base|.
+
+@< Type definitions @>=
+typedef void (* wrapper_function)();
+@)
+struct builtin_value : public value_base
+{ wrapper_function val;
+@)
+  std::string print_name;
+  builtin_value(wrapper_function v,const char* n)
+  : val(v), print_name(n) @+ {}
+  virtual void print(std::ostream& out) const
+  @+{@; out << ':' << print_name << ':'; }
+  builtin_value* clone() const @+{@; return new builtin_value(*this); }
+  static const char* name() @+{@; return "built-in function"; }
+private:
+  builtin_value(const builtin_value& v)
+  : val(v.val), print_name(v.print_name)
+  @+{}
+};
+@)
+typedef std::auto_ptr<builtin_value> builtin_ptr;
+typedef std::tr1::shared_ptr<builtin_value> shared_builtin;
+
+@ To evaluate a |call_expression| object we evaluate function and argument,
+leaving the latter on the stack. Then we try to get the built-in function,
+and call it. If the function did not evaluate to a built-in function, then it
+was a user-defined function, whose execution will be detailed later.
+
+@< Function definitions @>=
+void call_expression::evaluate() const
+{ function->evaluate(); @+ shared_value fun=pop_value();
+@/argument->evaluate(); // push evaluated argument on stack
+  builtin_value* f=dynamic_cast<builtin_value*>(fun.get());
+  try
+  { if (f==NULL)
+      @< Call user-defined function |fun| with argument on |execution_stack| @>
+    else f->val(); // call the wrapper function, leaving result on the stack
+  }
+  catch (const std::runtime_error& e)
+  { identifier* p=dynamic_cast<identifier*>(function);
+    if (p!=NULL)
+      throw std::runtime_error
+        (std::string(e.what())+"\n(in call of "+p->name()+')');
+    throw;
+  }
 }
 
 @*1 Let-expressions.
@@ -2829,7 +2859,7 @@ struct rational_vector_value : public value_base
   explicit rational_vector_value(const latticetypes::RatWeight& v):val(v)@+{}
   rational_vector_value
     (const latticetypes::LatticeElt& v,latticetypes::LatticeCoeff d)
-   : val(v,d) @+ {}
+   : val(v,d) @+ { val.normalize(); }
   ~rational_vector_value()@+ {}
   virtual void print(std::ostream& out) const;
   rational_vector_value* clone() const
@@ -3043,6 +3073,208 @@ case cast_expr:
 break;
 
 
+@*1 Array subscription.
+%
+While we have seen expressions to build list, and vectors and matrices out of
+them, we so far are not able to access their components once they are
+constructed. To that end we shall now introduce operations to index such
+values. We allow subscription of rows, but also of vectors and matrices. Since
+after type analysis we know which of the cases applies, we define several
+classes. These differ mostly by their |evaluate| method, so we first derive an
+intermediate class from |expression_base|, and derive the others from it. This
+class also serves to host an enumeration type that will serve later.
+
+@< Type definitions @>=
+struct subscr_base : public expression_base
+{ enum sub_type @+{ row_entry, vector_entry, matrix_entry, matrix_column };
+  expression array, index;
+@)
+  subscr_base(expression_ptr a, expression_ptr i)
+  : array(a.release()),index(i.release()) @+{}
+  ~subscr_base() @+ {@; delete array; delete index; }
+  void print(std::ostream& out) const;
+  static bool indexable
+  (const type_declarator& aggr,
+   const type_declarator& index,
+         type_declarator& subscr,
+         sub_type& kind);
+};
+
+@)
+struct row_subscription : public subscr_base
+{ row_subscription(expression_ptr a, expression_ptr i)
+  : subscr_base(a,i) @+{}
+  virtual void evaluate() const;
+};
+
+@)
+struct vector_subscription : public subscr_base
+{ vector_subscription(expression_ptr a, expression_ptr i)
+  : subscr_base(a,i) @+{}
+  virtual void evaluate() const;
+};
+@)
+struct matrix_subscription : public subscr_base
+{ matrix_subscription(expression_ptr a, expression_ptr ij)
+  : subscr_base(a,ij) @+{}
+  virtual void evaluate() const;
+  virtual void print(std::ostream& out) const;
+};
+@)
+struct matrix_slice : public subscr_base
+{ matrix_slice(expression_ptr a, expression_ptr j)
+  : subscr_base(a,j) @+{}
+  virtual void evaluate() const;
+};
+
+@ These subscriptions are printed in the usual subscription syntax. For matrix
+subscriptions, where the index type is \.{(int,int)}, the index expression is
+quite likely to be a tuple display, in which case we suppress parentheses.
+Since we have passed the type check here, we know that any tuple display is
+necessarily a pair.
+
+@< Function definitions @>=
+void subscr_base::print(std::ostream& out) const
+{@; out << *array << '[' << *index << ']';
+}
+@)
+void matrix_subscription::print(std::ostream& out) const
+{ tuple_expression* p=dynamic_cast<tuple_expression*>(index);
+  if (p==NULL) out << *array << '[' << *index << ']';
+  else
+    out << *array << '[' << *p->component[0] << ',' << *p->component[1] << ']';
+}
+
+@ It shall be useful to have a function recognising valid aggregate-index
+combinations.
+
+@< Function def... @>=
+bool subscr_base::indexable
+  (const type_declarator& aggr,
+   const type_declarator& index,
+         type_declarator& subscr,
+         sub_type& kind)
+{ if (aggr.kind==row_type and index==int_type)
+  @/{@; kind=row_entry;
+        return subscr.specialise(*aggr.component_type);
+  }
+  if (aggr==vec_type and index==int_type)
+  @/{@; kind=vector_entry;
+        return subscr.specialise(int_type);
+  }
+  if (aggr!=mat_type)
+    return false;
+  if (index==int_int_type)
+  @/{@; kind=matrix_entry;
+        return subscr.specialise(int_type);
+  }
+  kind=matrix_column;
+  return index==int_type and subscr.specialise(vec_type);
+}
+
+@ When encountering a subscription in |convert_expr|, we determine the types
+of array and of the indexing expression separately, ignoring so far any type
+required by the context. Then we look if the types agree with any of the four
+types of subscription expressions that we can convert to, throwing an error if
+it does not. Finally we check is the a priori type |subscr_type| of the
+subscripted expression equals or specialises to the required |type|, or can be
+converted to it by |coerce|, again throwing an error if nothing works. For the
+indexing expression only equality of types is admitted, since nothing can be
+coerced to \.{int} or to \.{(int,int)} anyway, and there is little point in
+catering for (indexing) expressions having completely undetermined type (which
+can only happen for expressions that cannot be evaluated without error).
+
+@< Other cases for type-checking and converting... @>=
+case subscription:
+{ type_declarator array_type, index_type, subscr_type;
+    // initialised to |undetermined_type|
+  expression_ptr array
+    (convert_expr(e.e.subscription_variant->array,array_type));
+  expression_ptr index
+    (convert_expr(e.e.subscription_variant->index,index_type));
+  subscr_base::sub_type kind;
+  expression_ptr subscr;
+  if (subscr_base::indexable(array_type,index_type,subscr_type,kind))
+    switch (kind)
+    { case subscr_base::row_entry:
+      subscr.reset(new row_subscription(array,index));
+    break;
+    case subscr_base::vector_entry:
+      subscr.reset(new vector_subscription(array,index));
+    break;
+    case subscr_base::matrix_entry:
+      subscr.reset(new matrix_subscription(array,index));
+    break;
+    case subscr_base::matrix_column:
+      subscr.reset(new matrix_slice(array,index));
+    break;
+    }
+  else
+  { std::ostringstream o;
+    o << "Cannot subscript " << array_type << " value with index of type "
+      << index_type;
+    throw expr_error(e,o.str());
+  }
+@)
+  if (type.specialise(subscr_type) or coerce(subscr_type,type,subscr))
+    return subscr.release(); // and convert (derived|->|base) to |expression|
+  else throw type_error(e,copy(subscr_type),copy(type));
+}
+
+
+@ Here are the |evaluate| methods for the various subscription expressions.
+For |matrix_subscription|, note that |push_tuple_components()| takes care of
+giving access to the individual index values without ownership conflict (by
+the time |j| and |i| are accessed, the tuple is already destroyed, but its
+components survive).
+
+@< Function definitions @>=
+inline std::string range_mess(int i,size_t n,const expression_base* e)
+{ std::ostringstream o;
+  e->print(o << "index " << i << " out of range (<" << n
+             << ") in subscription ");
+  return o.str();
+}
+@)
+void row_subscription::evaluate() const
+{ shared_int i((index->evaluate(),get<int_value>()));
+  shared_row r((array->evaluate(),get<row_value>()));
+  if (static_cast<unsigned int>(i->val)>=r->val.size())
+    throw std::runtime_error(range_mess(i->val,r->val.size(),this));
+  push_value(r->val[i->val]);
+}
+@)
+void vector_subscription::evaluate() const
+{ shared_int i((index->evaluate(),get<int_value>()));
+  shared_vector v((array->evaluate(),get<vector_value>()));
+  if (static_cast<unsigned int>(i->val)>=v->val.size())
+    throw std::runtime_error(range_mess(i->val,v->val.size(),this));
+  push_value(new int_value(v->val[i->val]));
+}
+@)
+void matrix_subscription::evaluate() const
+{ index->evaluate(); push_tuple_components();
+  shared_int j(get<int_value>());
+  shared_int i(get<int_value>());
+  shared_matrix m((array->evaluate(),get<matrix_value>()));
+  if (static_cast<unsigned int>(i->val)>=m->val.numRows())
+    throw std::runtime_error
+     ("initial "+range_mess(i->val,m->val.numRows(),this));
+  if (static_cast<unsigned int>(j->val)>=m->val.numColumns())
+    throw std::runtime_error
+     ("final "+range_mess(j->val,m->val.numColumns(),this));
+  push_value(new int_value(m->val(i->val,j->val)));
+}
+@)
+void matrix_slice::evaluate() const
+{ shared_int j((index->evaluate(),get<int_value>()));
+  shared_matrix m((array->evaluate(),get<matrix_value>()));
+  if (static_cast<unsigned int>(j->val)>=m->val.numColumns())
+    throw std::runtime_error(range_mess(j->val,m->val.numColumns(),this));
+  push_value(new vector_value(m->val.column(j->val)));
+}
+
+
 @*1 Assignments.
 %
 Syntactically there is hardly anything simpler than simple assignment
@@ -3099,7 +3331,7 @@ void global_assignment::evaluate() const
 identifier is stored, but as in the case of applied identifiers this location
 cannot be known when the statement is type-checked and converted (and in fact
 it may vary between evaluations of the same assignment) so we need to store
-coordinates of the identifier in the evaluation context
+coordinates of the identifier in the evaluation context.
 
 @< Type definitions @>=
 class local_assignment : public assignment_expr
@@ -3117,8 +3349,9 @@ local_assignment::local_assignment
  (Hash_table::id_type l, size_t i,size_t j, expression_ptr r)
 : assignment_expr(l,r), depth(i), offset(j) @+{}
 
-@ Evaluating a local assignment evaluates the left hand side, and replaces
-the old value stored at |*address| by the new (shared pointer) value.
+@ Evaluating a local assignment evaluates the left hand side, and replaces the
+old value stored at |execution_context->elem(depth,offset)| by the new (shared
+pointer) value.
 
 @< Function def... @>=
 void local_assignment::evaluate() const
@@ -3140,11 +3373,11 @@ case ass_stat:
   const expr& rhs=e.e.assign_variant->rhs;
   type_declarator* it; expression_ptr assign; size_t i,j;
   if ((it=id_context->lookup(lhs,i,j))!=NULL)
-  { expression_ptr r(convert_expr(rhs,*it));
+  @/{@; expression_ptr r(convert_expr(rhs,*it));
     assign.reset(new local_assignment(lhs,i,j,r));
   }
   else if ((it=global_id_table->type_of(lhs))!=NULL)
-  { expression_ptr r(convert_expr(rhs,*it));
+  @/{@; expression_ptr r(convert_expr(rhs,*it));
     assign.reset(new global_assignment(lhs,r));
   }
   else throw program_error @|
@@ -3154,6 +3387,260 @@ case ass_stat:
   if (type.specialise(*it) or coerce(*it,type,assign))
     return assign.release();
   else throw type_error(e,copy(*it),copy(type));
+}
+break;
+
+@*2 Component assignments.
+%
+The language we are implementing does not employ the notion of sub-object; in
+other words if one sets $b=a[i]$ for some list, vector or matrix $a$, then $s$
+will behave as a copy of the entry $a[i]$ rather than as an alias, so
+subsequent assignment to $b$ will not affect~$a$ or vice versa. (This does no
+prevent us to share storage between $b$ and $a$ initially, it just means the
+sharing should be broken if $b$ or $a$ are modified.) This simplifies the
+semantic model considerably, but if we want to allow creating composite values
+by subsequently setting their components, we need to allow assignments of the
+form $a[i]:=c$. The meaning of this is the same as assigning a new value to
+all of $a$ that differs from the original value only at index~$i$; it may
+however be expected to be implemented more efficiently if the storage of $a$
+is not currently shared, as would usually be the case at least from the second
+such assignment to~$a$ on. The interpreter will have to treat such component
+assignments as a whole (with three components $a,i,c$), which also means that
+it will not be able to handle something like $a[i][j]:=c$ even when that would
+seem to make sense (however $m[i,j]:=c$ for matrix values $m$ will be
+supported).
+
+In fact we need to implement a whole range of component assignments: there are
+assignments to general row-value components, to vector and matrix components
+and to matrix columns, and all this for local variables as well as for global
+ones. Like for general assignments we can start with a base class that
+implements common methods, and derive the specialised versions from it later.
+In fact by deriving from |assignment_expr| we only need to add the index as
+data member. We also provide a method |assign| that will do the real work for
+the |evaluate| methods of the derived classes, after those have located
+address of the aggregate to be modified and the type of component assignment
+to apply.
+
+@< Type definitions @>=
+struct component_assignment : public assignment_expr
+{ expression index;
+  component_assignment
+   (Hash_table::id_type a,expression_ptr i,expression_ptr r)
+   : assignment_expr(a,r), index(i.release()) @+{}
+
+  virtual ~component_assignment() @+{@; delete index; }
+  virtual void print (std::ostream& out) const;
+@)
+  void assign(shared_value& aggregate,subscr_base::sub_type kind) const;
+};
+
+@ Printing reassembles the subexpressions according to the input syntax.
+@< Function def...@>=
+void component_assignment::print(std::ostream& out) const
+{@; out << main_hash_table->name_of(lhs) << '[' << *index << "]:=" << *rhs; }
+
+@ For global assignments we need to non-|const| access the location where the
+identifier is stored.
+
+@< Type definitions @>=
+class global_component_assignment : public component_assignment
+{ subscr_base::sub_type kind;
+  shared_share address;
+public:
+  global_component_assignment
+    (Hash_table::id_type a,expression_ptr i,expression_ptr r,
+     subscr_base::sub_type k);
+  virtual void evaluate() const;
+};
+
+@ The constructor for |global_component_assignment| stores the address of the
+aggregate object and the component kind.
+
+@< Function def... @>=
+global_component_assignment::global_component_assignment @|
+  (Hash_table::id_type a,expression_ptr i,expression_ptr r,
+   subscr_base::sub_type k)
+: component_assignment(a,i,r)
+, kind(k),address(global_id_table->address_of(a)) @+{}
+
+@ It is in evaluation that component assignments differ most from ordinary
+ones. The work is delegated to the |assign| method of the base class, which is
+given a reference to the |shared_value| pointer holding the current value of
+the aggregate; it is this pointer that is in principle modified.
+
+@< Function def... @>=
+void global_component_assignment::evaluate() const
+{@; assign(*address,kind); }
+
+@ In order to implement component assignments efficiently, we will want to get
+unique access to the aggregate object, duplicating it if necessary. The
+following function achieves this for arbitrary objects.
+
+@< Function def... @>=
+inline void uniquify(shared_value& v)
+{@; if (not v.unique()) v=shared_value(v->clone()); }
+
+@ The |assign| method, which will also be called for local component
+assignments, starts by the common work of evaluating the index and the value
+to be assigned, and of making sure the aggregate variable is made to point to
+a unique copy of its current value, which copy can then be modified in place.
+For actually changing the aggregate, we must distinguish cases according to
+the kind o component assignment at hand.
+
+@< Function def... @>=
+void component_assignment::assign
+  (shared_value& aggregate, subscr_base::sub_type kind) const
+{ index->evaluate(); @+ shared_value ind=pop_value();
+@/rhs->evaluate();
+  uniquify(aggregate);
+  value loc=&*aggregate; // simple reference from shared pointer
+  switch (kind)
+  { case subscr_base::row_entry:
+    @< Replace component |ind| in row |loc| by value on stack @>
+  @+break;
+    case subscr_base::vector_entry:
+    @< Replace entry |ind| in vector |loc| by value on stack @>
+  @+break;
+    case subscr_base::matrix_entry:
+    @< Replace entry |ind| in matrix |loc| by value on stack @>
+  @+break;
+    case subscr_base::matrix_column:
+    @< Replace columns |ind| in matrix |loc| by value on stack @>
+  @+break;
+  }
+}
+
+@ A |row_value| component assignment is the simplest kind. The variables |ind|
+and |loc| hold generic pointers (and shared in the case of |ind|), known to
+refer to an |int_value| respectively a |row_value|. Since we need their value,
+but not for incorporation into a result, we use |force| to get ordinary
+pointers of the right kind. Then we do a bound check, and on success replace a
+component of the value held in |a| by the stack-top value, which remains in
+place as result value of the component assignment.
+
+@< Replace component |ind| in row |loc|... @>=
+{ unsigned int i=force<int_value>(&*ind)->val;
+  row_value& a=*force<row_value>(loc);
+  if (i>=a.val.size())
+    throw std::runtime_error(range_mess(i,a.val.size(),this));
+  a.val[i]= execution_stack.back(); // and leave value on stack
+}
+
+@ For |vec_value| entry assignments just the type of the aggregate object
+is different.
+
+@< Replace entry |ind| in vector |loc|... @>=
+{ unsigned int i=force<int_value>(&*ind)->val;
+  vector_value& v=*force<vector_value>(loc);
+  if (i>=v.val.size())
+    throw std::runtime_error(range_mess(i,v.val.size(),this));
+  v.val[i]= force<int_value>(&*execution_stack.back())->val;
+  // and leave value on stack
+}
+
+@ For |mat_value| entry assignments |ind| must be split into a pair of
+indices, and there are two bound checks.
+
+@< Replace entry |ind| in matrix |loc|... @>=
+{ push_value(ind); push_tuple_components();
+  unsigned int j=get<int_value>()->val;
+  unsigned int i=get<int_value>()->val;
+  matrix_value& m=*force<matrix_value>(loc);
+  if (i>=m.val.numRows())
+    throw std::runtime_error(range_mess(i,m.val.numRows(),this));
+  if (j>=m.val.numColumns())
+    throw std::runtime_error(range_mess(j,m.val.numColumns(),this));
+  m.val(i,j)= force<int_value>(&*execution_stack.back())->val;
+  // and leave value on stack
+}
+
+@ A |matrix_value| column assignment is like that of a vector entry, but we
+add a test for matching column length.
+
+@< Replace columns |ind| in matrix |loc|... @>=
+{ unsigned int j=force<int_value>(&*ind)->val;
+  matrix_value& m=*force<matrix_value>(loc);
+  const vector_value& v=*force<vector_value>(&*execution_stack.back());
+  if (j>=m.val.numColumns())
+    throw std::runtime_error(range_mess(j,m.val.numColumns(),this));
+  if (v.val.size()!=m.val.numRows())
+    throw std::runtime_error
+      (std::string("Cannot replace column of size ")+num(m.val.numRows())+
+       " by one of size "+num(v.val.size()));
+  m.val.copyColumn(v.val,j);
+  // and leave value on stack
+}
+
+@ For local assignments we also need to access the location where the
+identifier is stored, which as before is done by storing coordinates of the
+identifier in the evaluation context.
+
+@< Type definitions @>=
+class local_component_assignment : public component_assignment
+{ subscr_base::sub_type kind;
+  size_t depth, offset;
+public:
+  local_component_assignment @|
+   (Hash_table::id_type l, expression_ptr i,size_t d, size_t o,
+    expression_ptr r, subscr_base::sub_type k);
+  virtual void evaluate() const;
+};
+
+@ The constructor for |local_component_assignment| is straightforward, in
+spite of the number of arguments.
+
+@< Function def... @>=
+local_component_assignment::local_component_assignment
+ (Hash_table::id_type l, expression_ptr i,size_t d, size_t o, expression_ptr r,
+  subscr_base::sub_type k)
+: component_assignment(l,i,r), kind(k), depth(d), offset(o) @+{}
+
+@ The |evaluate| method locates the |shared_value| pointer of the aggregate,
+calls |assign| to do the work.
+
+@< Function def... @>=
+void local_component_assignment::evaluate() const
+{@; assign(execution_context->elem(depth,offset),kind); }
+
+@ Type-checking and converting component assignment statements follows the
+same lines as that of ordinary assignment statements, but must also
+distinguish different aggregate types.
+
+@< Other cases for type-checking and converting... @>=
+case comp_ass_stat:
+{ Hash_table::id_type aggr=e.e.comp_assign_variant->aggr;
+  const expr& index=e.e.comp_assign_variant->index;
+  const expr& rhs=e.e.comp_assign_variant->rhs;
+@/type_declarator* aggr_t; type_declarator ind_t; type_declarator comp_t;
+  expression_ptr assign; size_t d,o; bool is_local;
+  if ((aggr_t=id_context->lookup(aggr,d,o))!=NULL)
+    is_local=true;
+  else if ((aggr_t=global_id_table->type_of(aggr))!=NULL)
+    is_local=false;
+  else throw program_error @|
+    (std::string("Undefined identifier in component assignment: ")
+     +main_hash_table->name_of(aggr));
+@.Undefined identifier in assignment@>
+@)
+  expression_ptr i(convert_expr(index,ind_t));
+  subscr_base::sub_type kind;
+  if (subscr_base::indexable(*aggr_t,ind_t,comp_t,kind))
+  { expression_ptr r(convert_expr(rhs,comp_t));
+    if (is_local)
+      assign.reset(new local_component_assignment(aggr,i,d,o,r,kind));
+    else
+      assign.reset(new global_component_assignment(aggr,i,r,kind));
+  }
+  else
+  { std::ostringstream o;
+    o << "Cannot subscript " << aggr_t << @| " value with index of type "
+      << ind_t << " in assignment";
+    throw expr_error(e,o.str());
+  }
+
+  if (type.specialise(*aggr_t) or coerce(*aggr_t,type,assign))
+    return assign.release();
+  else throw type_error(e,copy(*aggr_t),copy(type));
 }
 break;
 
@@ -3198,146 +3685,6 @@ case seq_expr:
 }
 break;
 
-@*1 Array subscription.
-%
-While we have seen expressions to build list, and vectors and matrices out of
-them, we so far are not able to access their components once they are
-constructed. To that end we shall now introduce operations to index such
-values. We allow subscription of rows, but also of vectors and matrices. Since
-after type analysis we know which of the cases applies, we define several
-classes derived from |expression_base|. These types differ mostly by their
-|evaluate| method, so after the first one we derive the others from it.
-
-@< Type definitions @>=
-struct row_subscription : public expression_base
-{ expression array, index;
-@)
-  row_subscription(expression_ptr a, expression_ptr i)
-  : array(a.release()),index(i.release()) @+{}
-  virtual ~row_subscription() @+ {@; delete array; delete index; }
-  virtual void evaluate() const;
-  virtual void print(std::ostream& out) const;
-};
-
-@)
-struct vector_subscription : public row_subscription
-{ vector_subscription(expression_ptr a, expression_ptr i)
-  : row_subscription(a,i) @+{}
-  virtual void evaluate() const;
-};
-@)
-struct matrix_subscription : public row_subscription
-{ matrix_subscription(expression_ptr a, expression_ptr ij)
-  : row_subscription(a,ij) @+{}
-  virtual void evaluate() const;
-  virtual void print(std::ostream& out) const;
-};
-
-@ These subscriptions are printed in the usual subscription syntax. For matrix
-subscriptions, where the index type is \.{(int,int)}, the index expression is
-quite likely to be a tuple display, in which case we suppress parentheses.
-Since we have passed the type check here, we know that any tuple display is
-necessarily a pair.
-
-@< Function definitions @>=
-void row_subscription::print(std::ostream& out) const
-{@; out << *array << '[' << *index << ']';
-}
-@)
-void matrix_subscription::print(std::ostream& out) const
-{ tuple_expression* p=dynamic_cast<tuple_expression*>(index);
-  if (p==NULL) out << *array << '[' << *index << ']';
-  else
-    out << *array << '[' << *p->component[0] << ',' << *p->component[1] << ']';
-}
-
-@ When encountering a subscription in |convert_expr|, we determine the types
-of array and of the indexing expression separately, ignoring so far any type
-required by the context. Then we look if the types agree with any of the three
-types of subscription expressions that we can convert to, throwing an error if
-none does. Finally we check is the a priori type |subscr_type| of the
-subscripted expression equals of specialises the required |type|, or can be
-converted to it by |coerce|, again throwing an error if nothing works. For the
-indexing expression only equality of types is admitted, since nothing can be
-coerced to \.{int} or to \.{(int,int)} anyway, and there is little point in
-catering for (indexing) expressions having completely undetermined type (which
-can only happen for expressions that cannot be evaluated without error).
-
-@< Other cases for type-checking and converting... @>=
-case subscription:
-{ type_declarator array_type, index_type, subscr_type;
-    // initialised to |undetermined_type|
-  expression_ptr array
-    (convert_expr(e.e.subscription_variant->array,array_type));
-  expression_ptr index
-    (convert_expr(e.e.subscription_variant->index,index_type));
-  expression_ptr subscr;
-  if (array_type.kind==row_type) // a row subscription
-    if (index_type!=int_type) throw type_error
-      (e.e.subscription_variant->index,copy(index_type),copy(int_type));
-    else
-    { subscr_type.specialise(*array_type.component_type); // type after indexing
-      subscr.reset(new row_subscription(array,index));
-    }
-  else if (array_type==vec_type)
-    if (index_type!=int_type) throw type_error
-      (e.e.subscription_variant->index,copy(index_type),copy(int_type));
-    else
-    @/{@; subscr_type.specialise(int_type);
-      subscr.reset(new vector_subscription(array,index));
-    }
-  else if (array_type==mat_type)
-    if (index_type!=int_int_type) throw type_error
-      (e.e.subscription_variant->index,copy(index_type),copy(int_int_type));
-    else
-    @/{@; subscr_type.specialise(int_type);
-      subscr.reset(new matrix_subscription(array,index));
-    }
-  else throw type_error // array expression is not of any aggregate type
-      (e.e.subscription_variant->array,copy(array_type),copy(row_of_type));
-@)
-  if (type.specialise(subscr_type) or coerce(subscr_type,type,subscr))
-    return subscr.release(); // and convert (derived|->|base) to |expression|
-  else throw type_error(e,copy(subscr_type),copy(type));
-}
-
-
-@ Here are the |evaluate| methods for the various subscription expressions.
-For |matrix_subscription|, note that |push_tuple_components()| takes care of
-giving access to the individual index values without ownership conflict (by
-the time |j| and |i| are accessed, the tuple is already destroyed, but its
-components survive).
-
-@< Function definitions @>=
-void row_subscription::evaluate() const
-{ shared_int i((index->evaluate(),get<int_value>()));
-  shared_row r((array->evaluate(),get<row_value>()));
-  if (static_cast<unsigned int>(i->val)>=r->val.size())
-    throw std::runtime_error("index "+num(i->val)+" out of range");
-  push_value(r->val[i->val]);
-}
-@)
-void vector_subscription::evaluate() const
-{ shared_int i((index->evaluate(),get<int_value>()));
-  shared_vector v((array->evaluate(),get<vector_value>()));
-  if (static_cast<unsigned int>(i->val)>=v->val.size())
-    throw std::runtime_error("index "+num(i->val)+" out of range");
-  push_value(new int_value(v->val[i->val]));
-}
-@)
-void matrix_subscription::evaluate() const
-{ index->evaluate(); push_tuple_components();
-  shared_int j(get<int_value>());
-  shared_int i(get<int_value>());
-  shared_matrix m((array->evaluate(),get<matrix_value>()));
-  if (static_cast<unsigned int>(i->val)>=m->val.numRows())
-    throw std::runtime_error("initial index "+num(i->val)+" out of range");
-  if (static_cast<unsigned int>(j->val)>=m->val.numColumns())
-    throw std::runtime_error("final index "+num(j->val)+" out of range");
-  push_value(new int_value(m->val(i->val,j->val)));
-}
-
-
 @*1 Invoking the type checker.
 %
 Let us recapitulate what will happen. The parser will read what the user
@@ -3368,15 +3715,18 @@ type_ptr analyse_types(const expr& e,expression_ptr& p)
     return type;
   }
   catch (type_error& err)
-  { std::cerr << err.what() << std::endl <<
-    "Subexpression " << err.offender << @|
+  { std::cerr << err.what() << ":\n  Subexpression " << err.offender << @|
     " has wrong type: found " << *err.actual << @|
     " while " << *err.required << " was needed.\n";
 @.Subexpression has wrong type@>
   }
+  catch (expr_error& err)
+  { std::cerr << "Error in expression " << err.offender << "\n  "
+              << err.what() << std::endl;
+  }
   catch (program_error& err)
-  {@; std::cerr << err.what() <<
-          " in expression '" << e << "'\n";
+  {@; std::cerr << "Error during analysis of expression " << e << "\n  "
+                << err.what() << std::endl;
   }
   throw std::runtime_error("Type check failed");
 @.Type check failed@>
