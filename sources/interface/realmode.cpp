@@ -260,10 +260,6 @@ void realform_f()
   catch (error::InputError& e) {
     e("real form not changed");
   }
-  catch (error::InnerClassError& e) {
-    e("that real form is not in the current inner class\n"
-      "real form not changed");
-  }
 }
 
 // Show the structure of the real weyl group.
