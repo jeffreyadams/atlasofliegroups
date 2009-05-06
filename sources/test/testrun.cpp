@@ -32,7 +32,7 @@ namespace testrun {
 
 namespace {
 
-  void firstType(lietype::LieType&, const Shape&);
+  lietype::LieType firstType(const Shape&);
   bool firstType(lietype::LieType&, Category, size_t);
   bool isLast(const lietype::SimpleLieType&);
   bool isLast(const Shape&);
@@ -249,9 +249,7 @@ CoveringIterator::CoveringIterator(const lietype::LieType& lt)
   , d_smithBasis()
   , d_preRootDatum()
 {
-  latticetypes::LatticeMatrix c;
-  prerootdata::cartanMatrix(c,lt);
-  c.transpose();
+  latticetypes::LatticeMatrix c=lt.transpose_Cartan_matrix();
   latticetypes::CoeffList invf;
 
   matrix::initBasis(d_smithBasis,c.numColumns());
@@ -273,7 +271,7 @@ CoveringIterator::CoveringIterator(const lietype::LieType& lt)
   latticetypes::WeightList lb;
   makeBasis(lb);
 
-  d_preRootDatum = prerootdata::PreRootDatum::build(d_lieType,lb);
+  d_preRootDatum = prerootdata::PreRootDatum(d_lieType,lb);
 }
 
 
@@ -377,7 +375,7 @@ finish: // update d_preRootDatum
   latticetypes::WeightList lb;
   makeBasis(lb);
 
-  d_preRootDatum = prerootdata::PreRootDatum::build(d_lieType,lb);
+  d_preRootDatum = prerootdata::PreRootDatum(d_lieType,lb);
 
   return *this;
 }
@@ -622,17 +620,17 @@ namespace {
 
 
 /*
-  Sets lt to the first type in its shape.
+  Returns the first type in its shape.
 */
-void firstType(lietype::LieType& lt, const Shape& s)
+lietype::LieType firstType(const Shape& s)
 {
-  lt.resize(s.size());
+  lietype::LieType lt;
 
   for (unsigned long j = 0; j < lt.size(); ++j) {
-    lt[j] = lietype::SimpleLieType('A',s[j]);
+    lt.push_back(lietype::SimpleLieType('A',s[j]));
   }
 
-  return;
+  return lt;
 }
 
 
@@ -647,7 +645,7 @@ bool firstType(lietype::LieType& lt, Category c, size_t l)
   if (l==0 or l>constants::RANK_MAX)
     return true;
 
-  lt.resize(0);
+  lt.clear();
 
   switch (c)
   {
@@ -785,7 +783,7 @@ bool nextSemisimpleType(lietype::LieType& lt)
     Shape s;
     shape(s,lt);
     nextShape(s);
-    firstType(lt,s);
+    lt=firstType(s);
   }
   else // we increment within the same shape
     nextInShape(lt);
