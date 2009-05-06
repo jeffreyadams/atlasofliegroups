@@ -615,7 +615,7 @@ If j itself is set, this is the position of bit j among the set bits.
     return *this;
   }
 
-  BitSetBase<2>& permute(const setutils::Permutation& a);
+  BitSetBase<2>& permute(const setutils::Permutation& a); // not yet implemented
 
   BitSetBase<2>& reset() {
     d_bits[0] = 0ul;
