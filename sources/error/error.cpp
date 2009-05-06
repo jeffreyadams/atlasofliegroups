@@ -63,19 +63,6 @@ void OutputError::operator() (const char* mess)
   return;
 }
 
-void InnerClassError::operator() (const char* mess)
-
-/*
-  Synopsis: executes the InnerClassError.
-
-  This prints a short message and returns.
-*/
-
-{
-  std::cerr << mess << std::endl;
-  return;;
-}
-
 void MemoryOverflow::operator() (const char* mess)
 
 /*

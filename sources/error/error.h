@@ -21,9 +21,6 @@ namespace error {
   // i-o errors
   struct InputError;
 
-  // error for interactive constructors
-  struct InnerClassError;
-
   // overflow errors
   struct MemoryOverflow;
   struct NumericOverflow;
