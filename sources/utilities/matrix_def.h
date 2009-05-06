@@ -84,15 +84,18 @@ Vector<C>& Vector<C>::operator*= (C c)
 
 /*! \brief Scalar divides by |c|
 
-  It is the callers responsibility to check divisibility; remainder is lost.
- */
+  All entries must allow exact division, if not a std::runtime_error is thrown
+*/
 template<typename C>
-Vector<C>& Vector<C>::operator/= (C c)
+Vector<C>& Vector<C>::operator/= (C c) throw (std::runtime_error)
 {
-  for (size_t i=0; i<base::size(); ++i)
-    (*this)[i] /= c;
+  for (typename Vector<C>::iterator it=base::begin(); it!=base::end(); ++it)
+    if (*it%c==0)
+      *it/=c;
+    else throw std::runtime_error("Inexact integer division");
   return *this;
 }
+
 template<typename C>
 Vector<C>& Vector<C>::negate ()
 {
@@ -467,7 +470,7 @@ Matrix<C>& Matrix<C>::operator*= (const Matrix<C>&  m)
 
 
 template<typename C>
-Matrix<C>& Matrix<C>::operator/= (const C& c)
+Matrix<C>& Matrix<C>::operator/= (const C& c) throw (std::runtime_error)
 {
   if (c != 1)
     d_data /= c;
@@ -525,26 +528,28 @@ void Matrix<C>::copy(const Matrix<C>& source, size_t r, size_t c)
 
 
 /*!
-  Copies the column c_s of the matrix m to the column c_d of the current
+  Copies the vector |v| to the column |j| of the current
   matrix. It is assumed that the two columns have the same size.
 */
 template<typename C>
-void Matrix<C>::copyColumn(const Matrix<C>& m, size_t c_d, size_t c_s)
+void Matrix<C>::copyColumn(const Vector<C>& v, size_t j)
 {
+  assert(v.size()==d_rows);
   for (size_t i = 0; i<d_rows; ++i)
-    (*this)(i,c_d) = m(i,c_s);
+    (*this)(i,j) = v[i];
 }
 
 
 /*!
-  Copies the column r_s of the matrix m to the column r_d of the current
-  matrix. It is assumed that the two columns have the same size.
+  Copies the vector |v| to the row |i| of the current
+  matrix. It is assumed that the sizes match.
 */
 template<typename C>
-void Matrix<C>::copyRow(const Matrix<C>& m, size_t r_d, size_t r_s)
+void Matrix<C>::copyRow(const Vector<C>& v, size_t i)
 {
+  assert(v.size()==d_columns);
   for (size_t j = 0; j<d_columns; ++j)
-    (*this)(r_d,j) = m(r_s,j);
+    (*this)(i,j) = v[j];
 }
 
 
@@ -993,12 +998,19 @@ template<typename C>
   p is invertible (over the quotient field of the coefficients), and that
   denominators cancel out.
 */
+template<typename C>
+Matrix<C> inv_conjugated(const Matrix<C>& M, const Matrix<C>& g)
+{
+  C d;
+  Matrix<C> result(g.inverse(d)*M*g);
+  return result /= d;
+}
+
 template<typename C> Matrix<C>& invConjugate(Matrix<C>& m, const Matrix<C>& p)
 {
   C d;
   Matrix<C> tmp(p.inverse(d)*m*p);
-  tmp /= d;
-  m.swap(tmp);
+  m.swap(tmp/=d);
 
   return m;
 }

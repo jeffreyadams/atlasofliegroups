@@ -13,6 +13,7 @@
 #define MATRIX_H
 
 #include <vector>
+#include <stdexcept>
 
 #include "matrix_fwd.h"
 
@@ -54,6 +55,9 @@ template<typename C>
  { v=standard_basis<C>(n); }
 
 template<typename C>
+Matrix<C> inv_conjugated(const Matrix<C>& M, const Matrix<C>& g);
+
+template<typename C>
 Matrix<C>& invConjugate(Matrix<C>&, const Matrix<C>&);
 
 }
@@ -77,7 +81,7 @@ template<typename C>
     Vector<C>& operator+= (const Vector<C>&);
     Vector<C>& operator-= (const Vector<C>&);
     Vector<C>& operator*= (C);
-    Vector<C>& operator/= (C);
+    Vector<C>& operator/= (C) throw (std::runtime_error);
     Vector<C>& negate (); // negates argument in place
 
     C scalarProduct (const Vector<C>&) const;
@@ -216,8 +220,6 @@ template<typename C> class Matrix {
   bool isZero(size_t i_min = 0, size_t j_min = 0) const;
 
 
-
-
   Matrix<C> transposed() const
   {
     Matrix<C> result(*this); result.transpose(); return result;
@@ -227,6 +229,11 @@ template<typename C> class Matrix {
   {
     Matrix<C> result(*this); result.negate(); result.transpose();
     return result;
+  }
+
+  Matrix<C> on_basis(const std::vector<Vector<C> >& basis) const
+  {
+    return Matrix<C>(*this,basis);
   }
 
 // manipulators
@@ -244,7 +251,7 @@ template<typename C> class Matrix {
 
   Matrix<C>& leftMult (const Matrix<C>& p) { return *this=p * *this; }
 
-  Matrix<C>& operator/= (const C& c);
+  Matrix<C>& operator/= (const C& c) throw (std::runtime_error);
 
   void changeColumnSign(size_t);
 
@@ -254,9 +261,9 @@ template<typename C> class Matrix {
 
   void copy(const Matrix<C>&, size_t r = 0, size_t c = 0);
 
-  void copyColumn(const Matrix<C>&, size_t, size_t);
+  void copyColumn(const Vector<C>&, size_t);
 
-  void copyRow(const Matrix<C>&, size_t, size_t);
+  void copyRow(const Vector<C>&, size_t);
 
   void eraseColumn(size_t);
 

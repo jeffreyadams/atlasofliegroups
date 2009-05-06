@@ -193,7 +193,7 @@ KhatContext::KhatContext
     ci.freeProjector.resize(n-l,n);
 
     for (size_t i =l; i<n; ++i) // copy final rows from inverse
-      ci.freeProjector.copyRow(inv_basis,i-l,i); // row |i| to |i-l|
+      ci.freeProjector.copyRow(inv_basis.row(i),i-l); // row |i| to |i-l|
 
     ci.fiber_modulus=latticetypes::SmallSubspace
       (latticetypes::SmallBitVectorList(tori::minusBasis(theta.transposed())),
