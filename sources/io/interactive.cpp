@@ -13,8 +13,6 @@
 #include <sstream>
 #include <fstream>
 
-#include <map>
-
 #include "basic_io.h"
 #include "bitmap.h"
 #include "prerootdata.h"
@@ -33,7 +31,7 @@
 #include "interactive_lietype.h"
 
 #ifndef NREADLINE
-#include <readline/readline.h>
+#include <readline/readline.h> // prepare for completion function manipulation
 #endif
 
 #include "input.h"
@@ -227,12 +225,10 @@ size_t get_Cartan_class(const bitmap::BitMap& cs) throw(error::InputError)
 
 
 /*
-  Synopsis: puts in |d| a distinguished involution for root datum of |lo|.
+  Precondition: |lo| already contains the Lie type and lattice basis resulting
+  from the interactive construction of the group.
 
-  Precondition: |lo| contains the Lie type and lattice basis resulting from
-  the interactive construction of the group.
-
-  Writes the inner class in |lo|.
+  Writes an inner class in |lo.d_inner| and distinguished involution in |d|.
 
   An inner class is described by a sequence of typeletters, one of:
 
@@ -263,7 +259,8 @@ void getInnerClass(latticetypes::LatticeMatrix& d,
 
   latticetypes::LatticeMatrix i = lietype::involution(lt,ict);
 
-  while (not checkInvolution(i,lo)) { // reget the inner class
+  while (not checkInvolution(i,lo)) // then complain and reget the inner class
+  {
     std::cerr
       << "sorry, that inner class is not compatible with the weight lattice"
       << std::endl;
@@ -272,12 +269,7 @@ void getInnerClass(latticetypes::LatticeMatrix& d,
   }
 
   lo.d_inner = ict;
-
-  // construct the matrix
-  latticetypes::LatticeMatrix p(lo.d_basis);
-
-  d = i;
-  matrix::invConjugate(d,p);
+  d = i.on_basis(lo.d_basis);
 }
 
 
@@ -358,10 +350,8 @@ void getInteractive(prerootdata::PreRootDatum& d_prd,
 {
   // get lattice basis
 
-  latticetypes::WeightList b;
   latticetypes::CoeffList invf;
-
-  interactive_lattice::smithBasis(invf,b,lt);
+  latticetypes::WeightList b = lt.Smith_basis(invf);
   switch (interactive_lattice::getLattice(invf,b)) // may throw an InputError
   {
   case 1: // simply connected
@@ -371,21 +361,20 @@ void getInteractive(prerootdata::PreRootDatum& d_prd,
   case 2: // adjoint
     { // Take root basis for simple factors, standard basis for torus factors
 
-      matrix::initBasis(d_b,lietype::rank(lt)); // initially standard basis
+      matrix::initBasis(d_b,lt.rank()); // initially standard basis
       latticetypes::WeightList::iterator bp = d_b.begin();
 
-      for (size_t i=0; i<lt.size(); ++i)
+      for (lietype::LieType::const_iterator it=lt.begin(); it!=lt.end(); ++it)
       {
-	size_t r = lietype::rank(lt[i]);
-	if (lietype::type(lt[i]) == 'T') // torus type T_r
+	size_t r = it->rank();
+	if (it->type() == 'T') // torus type T_r
 	  bp += r; // leave |r| standard basis vectors
 	else
 	{
 	  size_t d=bp-d_b.begin();
-	  latticetypes::LatticeMatrix ms; prerootdata::cartanMatrix(ms,lt[i]);
-	  for (size_t j=0; j<r; ++j,++bp)
+	  for (size_t j=0; j<r; ++j,++bp) // row |j|: simple root |j| in |*it|
 	    for (size_t k=0; k<r; ++k)
-	      (*bp)[d+k]=ms(j,k); // row |j|: simple root |j| in simple factor
+	      (*bp)[d+k]=it->Cartan_entry(j,k);
 	}
       }
     } break;
@@ -395,11 +384,8 @@ void getInteractive(prerootdata::PreRootDatum& d_prd,
 
   // make new PreRootDatum
 
-  prerootdata::PreRootDatum prd=prerootdata::PreRootDatum::build(lt,d_b);
-
-  // swap prd and d_prd; the old PreRootDatum will be destroyed on exit
-
-  d_prd.swap(prd);
+  prerootdata::PreRootDatum(lt,d_b).swap(d_prd);
+  // swap with d_prd; the old PreRootDatum will be destroyed
 }
 
 

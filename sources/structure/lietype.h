@@ -17,6 +17,7 @@
 #include "lietype_fwd.h"
 #include "setutils.h"
 #include "layout_fwd.h"  // not "layout.h", which must include us
+#include <stdexcept>
 
 #include "latticetypes_fwd.h"
 
@@ -70,6 +71,32 @@ namespace lietype {
 
 }
 
+namespace lietype {
+
+struct SimpleLieType : public std::pair<TypeLetter,size_t>
+{ typedef std::pair<TypeLetter,size_t> base;
+  SimpleLieType(TypeLetter t,size_t rank) : base(t,rank) {}
+  TypeLetter type() const { return base::first; }
+  size_t rank() const { return base::second; }
+  size_t semisimple_rank() const { return type()=='T' ? 0 : rank(); }
+  int Cartan_entry(size_t i,size_t j) const;
+  latticetypes::LatticeMatrix Cartan_matrix() const;
+  latticetypes::LatticeMatrix transpose_Cartan_matrix() const;
+};
+
+struct LieType : public std::vector<SimpleLieType>
+{ typedef std::vector<SimpleLieType> base;
+  LieType() : std::vector<SimpleLieType>() {}
+
+  size_t rank() const;
+  size_t semisimple_rank() const;
+  int Cartan_entry(size_t i,size_t j) const;
+  latticetypes::LatticeMatrix Cartan_matrix() const;
+  latticetypes::LatticeMatrix transpose_Cartan_matrix() const;
+  latticetypes::WeightList Smith_basis(latticetypes::CoeffList& invf) const;
+};
+
+}
 /******** function declarations **********************************************/
 
 namespace lietype {
@@ -80,21 +107,23 @@ namespace lietype {
 
   InnerClassType dual_type(InnerClassType, const LieType& lt);
 
-  latticetypes::LatticeMatrix involution(const lietype::LieType&,
-					 const lietype::InnerClassType&);
+  // permutation matrix for |ict| in simply connected |lt|, Bourbaki order
+  latticetypes::LatticeMatrix involution(const lietype::LieType& lt,
+					 const lietype::InnerClassType& ict);
 
-  latticetypes::LatticeMatrix involution(const layout::Layout& lo);
+  // involution matrix, full generality (uses root permutation and sublattice)
+  latticetypes::LatticeMatrix involution(const layout::Layout& lo)
+    throw (std::runtime_error,std::bad_alloc);
 
-  size_t rank(const LieType&);
+  inline size_t rank(const LieType& lt) { return lt.rank(); } // altern. syntax
+  inline size_t rank(const SimpleLieType& slt) { return slt.rank(); }
 
-  inline size_t rank(const SimpleLieType& slt) { return slt.second; }
-
-  size_t semisimpleRank(const LieType&);
-
+  inline size_t semisimpleRank(const LieType& lt)
+  { return lt.semisimple_rank(); }
   inline size_t semisimpleRank(const SimpleLieType& slt)
-  { return slt.first == 'T' ? 0UL : slt.second; }
+  { return slt.semisimple_rank(); }
 
-  inline TypeLetter type(const SimpleLieType& slt) { return slt.first; }
+  inline TypeLetter type(const SimpleLieType& slt) { return slt.type(); }
 
 }
 

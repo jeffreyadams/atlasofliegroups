@@ -40,13 +40,14 @@
   For license information see the LICENSE file
 */
 
-#include "lietype.h"
-#include "layout.h"
-
 #include <cassert>
+
+#include "lietype.h"
 
 #include "constants.h"
 #include "latticetypes.h"
+#include "layout.h"
+#include "smithnormal.h"
 
 /*****************************************************************************
 
@@ -114,6 +115,152 @@ namespace lietype {
 
 namespace lietype {
 
+// Cartan matrix info, simple type |tp|, distance $d\leq2$ off diagonal
+inline int dispatch(TypeLetter tp, size_t r,size_t min,size_t d, bool lower)
+{
+  if (d==0) return 2;
+  if (tp=='D') return (min<r-3 ? d==1 : min==r-3) ? -1 : 0;
+  if (tp=='E') return d==(min<2 ? 2 : 1) ? -1 : 0;
+  // now diagram is linear
+  if (d==2) return 0;
+  if (tp<'D') return tp=='A' or min<r-2 or lower==(tp=='C') ? -1 : -2 ;
+  if (tp=='F' or tp=='f') return min!=1 or lower==(tp=='f') ? -1 : -2 ;
+  return lower==(tp=='G') ? -1 : -3;
+}
+
+int SimpleLieType::Cartan_entry(size_t i,size_t j) const
+{
+  if (type()=='T') return 0;
+
+  size_t min,d;
+  if (i<j) min=i,d=j-i;
+  else     min=j,d=i-j;
+
+  return d>2 ? 0 : dispatch(type(),rank(),min,d,i<j);
+}
+
+// implicitly define the Cartan matrix corresponding to the type
+int LieType::Cartan_entry(size_t i,size_t j) const
+{ size_t min,d;
+  if (i<j)
+    min=i,d=j-i;
+  else
+    min=j,d=i-j;
+
+  if (d>2) return 0;
+
+  for (base::const_iterator it=begin(); it!=end(); ++it)
+  {
+    size_t r=it->rank();
+    if (r<=min)
+      min-=r; // the only case that continues the loop
+    else
+    { TypeLetter tp=it->type();
+      if (r<=min+d or tp=='T') // distinct simple factors or torus
+	return 0;
+      else return dispatch(tp,r,min,d,i<j);
+    }
+  }
+  assert(false); // indices out of bounds
+  return 0;
+}
+
+latticetypes::LatticeMatrix SimpleLieType::Cartan_matrix() const
+{ size_t r=rank();
+  latticetypes::LatticeMatrix result(r,r);
+  for (size_t i=0; i<r; ++i)
+    for (size_t j=0; j<r; ++j)
+      result(i,j)=Cartan_entry(i,j);
+
+  return result;
+}
+
+latticetypes::LatticeMatrix SimpleLieType::transpose_Cartan_matrix() const
+{ size_t r=rank();
+  latticetypes::LatticeMatrix result(r,r);
+  for (size_t i=0; i<r; ++i)
+    for (size_t j=0; j<r; ++j)
+      result(i,j)=Cartan_entry(j,i);
+
+  return result;
+}
+
+latticetypes::LatticeMatrix LieType::Cartan_matrix() const
+{ size_t r=rank();
+  latticetypes::LatticeMatrix result(r,r);
+  for (size_t i=0; i<r; ++i)
+    for (size_t j=0; j<r; ++j)
+      result(i,j)=Cartan_entry(i,j);
+
+  return result;
+}
+
+latticetypes::LatticeMatrix LieType::transpose_Cartan_matrix() const
+{ size_t r=rank();
+  latticetypes::LatticeMatrix result(r,r);
+  for (size_t i=0; i<r; ++i)
+    for (size_t j=0; j<r; ++j)
+      result(i,j)=Cartan_entry(j,i);
+
+  return result;
+}
+
+size_t LieType::rank() const
+{
+  size_t r = 0;
+  for (base::const_iterator it=begin(); it!=end(); ++it)
+    r += it->rank();
+  return r;
+}
+
+
+size_t LieType::semisimple_rank() const
+{
+  size_t r = 0;
+  for (base::const_iterator it=begin(); it!=end(); ++it)
+    r += it->semisimple_rank();
+  return r;
+}
+
+/*
+  This function constructs a "blockwise Smith normal" basis for the root
+  lattice inside the weight lattice (i.e., it does just that for each
+  simple factor, and returns the canonical basis for the torus factors.)
+
+  The purpose of doing this blockwise instead of globally is to permit a
+  better reading of the quotient group: this will be presented as a sequence
+  of factors, corresponding to each simple block.
+*/
+latticetypes::WeightList
+LieType::Smith_basis(latticetypes::CoeffList& invf) const
+{
+
+  // Smith-normalize for each simple factor
+  latticetypes::WeightList result;
+  matrix::initBasis(result,rank());
+  latticetypes::WeightList::iterator rp = result.begin();
+
+  for (const_iterator it=begin(); it!=end(); ++it)
+  {
+    size_t r =it->rank();
+
+    if (it->type() == 'T') // torus type T_r
+      invf.insert(invf.end(),r,0); // add |r| factors 0
+    else
+    {
+      latticetypes::LatticeMatrix tC=it->transpose_Cartan_matrix();
+      smithnormal::smithNormal(invf,rp,tC); // adapt next |r| vectors to lattice
+
+      //make a small adjustment for types $D_{2n}$
+      if (it->type() == 'D' and it->rank()%2 == 0)
+	rp[r-2] += rp[r-1];
+
+    }
+    rp += r;
+
+  }
+  return result;
+}
 
 /*! brief Returns the dual Lie type of lt. In fact this applies to ordered
   Dynkin diagrams, whence the distinction between (B2,C2), (F4,f4) and (G2,g2)
@@ -256,12 +403,14 @@ bool checkRank(const TypeLetter& x, size_t l)
 */
 latticetypes::LatticeMatrix involution(const lietype::LieType& lt,
 				       const lietype::InnerClassType& ic)
-{ layout::Layout lo(lt,ic); // make |Layout| structure with trivial permutation
-  return involution(lo);
+{ // make |Layout| structure with empty basis and trivial permutation
+  layout::Layout lo(lt,ic);
+  return involution(lo); // and call the more general procedure
 }
 
-/* The layout structure provides arguments; |d_basis| currently ignored */
+/* The layout structure provides arguments; |d_basis| ignored if empty */
 latticetypes::LatticeMatrix involution(const layout::Layout& lo)
+  throw (std::runtime_error,std::bad_alloc)
 {
   const lietype::LieType& lt = lo.d_type;
   const lietype::InnerClassType& ic = lo.d_inner;
@@ -334,35 +483,10 @@ latticetypes::LatticeMatrix involution(const layout::Layout& lo)
     ++pos; r += rs; // consume simple factor
   } // |for (j)|
 
+  if (lo.d_basis.size()!=0)
+    invConjugate(result,latticetypes::LatticeMatrix(lo.d_basis));
+
   return result;
-}
-
-
-/*!
-  Synopsis: returns the rank of the group.
-*/
-size_t rank(const LieType& lt)
-{
-  size_t r = 0;
-
-  for (size_t i=0; i<lt.size(); ++i)
-    r += rank(lt[i]);
-
-  return r;
-}
-
-
-/*!
-  Synopsis: returns the semisimple rank of the group.
-*/
-size_t semisimpleRank(const LieType& lt)
-{
-  size_t r = 0;
-
-  for (size_t i=0; i<lt.size(); ++i)
-    r += semisimpleRank(lt[i]);
-
-  return r;
 }
 
 } // |namespace lietype|

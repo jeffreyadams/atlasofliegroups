@@ -71,6 +71,7 @@ DynkinDiagram::DynkinDiagram(const latticetypes::LatticeMatrix& c)
   : d_star(c.numColumns())
   , d_downedge()
 {
+  assert(c.numRows()==c.numColumns());
   for (size_t j = 0; j < c.numColumns(); ++j)
     for (size_t i = 0; i < c.numRows(); ++i)
       if (c(i,j)!=0 and (i != j))
@@ -170,11 +171,14 @@ bitset::RankFlags DynkinDiagram::extremities() const
 
 
 /*!
-  \brief returns the labelled edge in the graph, assumed to be unique.
+  \brief returns the labelled edge in the graph, assumed to be present.
+
+  In fact it should be unique for valid uses, but the |assert| below should
+  not prevent a relevant error to be thrown in erroneous cases
 */
 Edge DynkinDiagram::labelEdge() const
 {
-  assert(d_downedge.size()==1);
+  assert(d_downedge.size()>=1);
   return d_downedge[0].first;
 }
 
@@ -229,6 +233,9 @@ namespace dynkin {
 
 /*! \brief
   Returns the decomposition of |d| into connected components, a list of subsets
+
+  We assure every vertex is in exactly one component, even if the (unlabelled)
+  Dynkin graph should fail to be symmetric
 */
 bitset::RankFlagsList components(const DynkinDiagram& d)
 {
@@ -241,6 +248,7 @@ bitset::RankFlagsList components(const DynkinDiagram& d)
   {
     size_t i = v.firstBit();
     bitset::RankFlags c = d.component(i);
+    c &= v; // assure no vertex is claimed by two components
     cl.push_back(c);
     v.andnot(c);
   }
@@ -279,21 +287,41 @@ lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm)
   for (size_t i = 0; i < cl.size(); ++i)
   {
     DynkinDiagram cd(cl[i],d);
-    result.push_back(std::make_pair(irreducibleType(cd),cd.rank()));
+    result.push_back(lietype::SimpleLieType(irreducibleType(cd),cd.rank()));
   }
 
   return result;
 }
 
+
+/*! \brief
+  Returns the (semisimple) Lie type of the Cartan matrix cm, also sets |pi|
+  to the permutation from the standard ordering of simple roots for that type.
+
+  Standard ordering is taken as Bourbaki ordering if |Bourbaki| holds,
+  internal Weyl group implementation ordering otherwise. If |check| holds, a
+  complete test is made of all entries in |cm|, throwing a |runtime_error| if
+  it fails to be a valid Cartan matrix.
+*/
 lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm,
-			  bool Bourbaki, setutils::Permutation& pi)
+			  bool Bourbaki, bool check,
+			  setutils::Permutation& pi)
 {
   DynkinDiagram d(cm);
   bitset::RankFlagsList cl = components(d);
 
   // do the normalization as in normalize
   pi = componentOrder(cl,d.rank());
-  return componentNormalize(pi,cl,d,Bourbaki);
+  lietype::LieType result = componentNormalize(pi,cl,d,Bourbaki);
+  if (check)
+  {
+    for (size_t i=0; i<d.rank(); ++i)
+      for (size_t j=0; j<d.rank(); ++j)
+	if (cm(pi[i],pi[j])!=result.Cartan_entry(i,j))
+	  throw std::runtime_error("Lie type of non-Cartan matrix requested");
+  }
+  return result;
+
 }
 /*!
   Synopsis: Returns some permutation that will take |d| to Bourbaki form
@@ -352,8 +380,8 @@ setutils::Permutation componentOrder(const bitset::RankFlagsList& cl, size_t r)
   component list.
 
   Postcondition : |a| is modified so that the new permutation gives a
-  normalized ordering on each component: it gives Bourbaki ordering unless the
-  type is BCD and |Bourbaki| is false: then the order is reversed.
+  normalized ordering on each component: it gives Bourbaki ordering unless
+  |Bourbaki| is false and the type is BCD: then the order is reversed.
 
   The detected semisimple Lie type is returned.
 */

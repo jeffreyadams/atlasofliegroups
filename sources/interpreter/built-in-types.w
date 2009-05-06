@@ -22,6 +22,7 @@
 \def\Z{{\bf Z}}
 \def\lcm{\mathop{\rm lcm}}
 \let\eps=\varepsilon
+\def\rk{\mathop{\rm rk}}
 
 @* Built-in types.
 %
@@ -74,32 +75,34 @@ void initialise_builtin_types()
 @+{@; @< Install wrapper functions @>
 }
 
-@ Before we can define any types we must make sure the types like |value_base|
-defined in \.{evaluator.w}, and like |lietype::LieType| defined
-in~\.{lietype\_fwd.h}, are known in our header file.
+@ Before we can define any types we must make sure the types
+defined in \.{evaluator.w} are known. Including this as first file from our
+header file ensures the types are known wherever they are needed.
 
 @< Includes needed in the header file @>=
 #include "evaluator.h"
-#include "lietype_fwd.h"
 
 @*1 Lie types.
 Our first chapter concerns Lie types, as indicated by strings like
-|"D4.A3.E8.T1"|.
+|"D4.A3.E8.T1"|. We base ourselves on the related types defined in the Atlas
+library.
+
+@< Includes needed in the header file @>=
+#include "lietype_fwd.h"
 
 @*2 The primitive type.
 %
 A first new type corresponds to the type |lietype::LieType| in the Atlas
-software. We provide a constructor that incorporates a complete
+library. We provide a constructor that incorporates a complete
 |lietype::LieType| value, but often one will use the default constructor and
-the |add| method. Otherwise most methods are obligatory, except the final two
-which are provided for convenience.
+the |add| method. The remaining methods are obligatory for a primitive type.
 
 @h <stdexcept>
 @< Type definitions @>=
 struct Lie_type_value : public value_base
 { lietype::LieType val;
 @)
-  Lie_type_value() : val(0) @+ {}
+  Lie_type_value() : val() @+ {}
     // default constructor, produces empty type
   Lie_type_value(lietype::LieType t) : val(t) @+{}
     // constructor from already validated Lie type
@@ -113,9 +116,6 @@ struct Lie_type_value : public value_base
 private:
   Lie_type_value(const Lie_type_value& v) : val(v.val) @+{}
     // copy constructor, used by |clone|
-public:
-  size_t rank() const;
-  size_t semisimple_rank() const;
 };
 @)
 typedef std::auto_ptr<Lie_type_value> Lie_type_ptr;
@@ -140,23 +140,22 @@ latter on input, so we do that here.
 @< Function definitions @>=
 void Lie_type_value::add_simple_factor (char c,size_t rank)
    throw(std::bad_alloc,std::runtime_error)
-{ using std::runtime_error;
-  static const std::string types=atlas::lietype::typeLetters; // |"ABCDEFGT"|
+{ static const std::string types=atlas::lietype::typeLetters; // |"ABCDEFGT"|
   size_t t=types.find(c);
   if (t==std::string::npos)
-    throw runtime_error(std::string("Invalid type letter '")+c+'\'');
+    throw std::runtime_error(std::string("Invalid type letter '")+c+'\'');
   static const size_t lwb[]={1,2,2,4,6,4,2,0};
   static const size_t r=constants::RANK_MAX;
   static const size_t upb[]={r,r,r,r,8,4,2,r};
   if (rank<lwb[t])
-    throw runtime_error("Too small rank "+num(rank)+" for Lie type "+c);
+    throw std::runtime_error("Too small rank "+num(rank)+" for Lie type "+c);
 @.Too small rank@>
   if (rank>upb[t])
     if (upb[t]!=r)
-      throw runtime_error("Too large rank "+num(rank)+" for Lie type "+c);
+      throw std::runtime_error("Too large rank "+num(rank)+" for Lie type "+c);
 @.Too large rank@>
     else
-      throw runtime_error
+      throw std::runtime_error @|
       ("Rank "+num(rank)+" exceeds implementation limit "+num(r));
 @.Rank exceeds implementation limit@>
   if (c=='T')
@@ -221,132 +220,63 @@ void Lie_type_value::print(std::ostream& out) const
 }
 
 @*2 Auxiliary functions for Lie types.
-As a service for testing routines we provide members that compute the rank
-and the semisimple rank.
-
-@< Function definitions @>=
-size_t Lie_type_value::rank() const
-{ size_t r=0;
-  for (size_t i=0; i<val.size(); ++i) r+=val[i].second;
-  return r;
-}
-@)
-size_t Lie_type_value::semisimple_rank() const
-{ size_t r=0;
-  for (size_t i=0; i<val.size(); ++i)
-    if (val[i].first!='T') r+=val[i].second;
-  return r;
-}
-
-@ Here is a function that computes the Cartan matrix for a given Lie type.
+Here is a function that computes the Cartan matrix for a given Lie type.
 
 @h "prerootdata.h"
 @< Local function definitions @>=
 void Cartan_matrix_wrapper()
 { shared_Lie_type t=get<Lie_type_value>();
-  matrix_ptr result(new matrix_value(latticetypes::LatticeMatrix()));
-  prerootdata::cartanMatrix(result->val,t->val);
+  matrix_ptr result(new matrix_value(t->val.Cartan_matrix()));
   push_value(result);
 }
 
 
-@ And here is a function that tries to do the inverse. We do no tests, so one
-can play around and see what |dynkin::lieType| does with fairly random
-matrices. For instance any null columns in the matrix will be mistaken for
-factors of type $A_1$.
+@ And here is a function that tries to do the inverse. We call
+|dynkin::lieType| in its version that also produces a permutation |pi| needed
+to map the standard ordering for the type to the actual ordering, and |true|
+as third argument to request a check that the input was indeed the Cartan
+matrix for that situation (if not a runtime error will be thrown). Without
+this test invalid Lie types could have been formed, for which root datum
+construction would most likely crash.
 
 @h "dynkin.h"
 @< Local function definitions @>=
 void type_of_Cartan_matrix_wrapper ()
 { shared_matrix m=get<matrix_value>();
-  push_value(new Lie_type_value(dynkin::Lie_type(m->val)));
+  if (m->val.numRows()!=m->val.numColumns())
+    throw std::runtime_error("Non square (Cartan) matrix");
+  setutils::Permutation pi;
+  push_value(new Lie_type_value(dynkin::Lie_type(m->val,true,true,pi)));
+  push_value(new vector_value(latticetypes::CoeffList(pi.begin(),pi.end())));
+  wrap_tuple(2);
 }
 @~Again we install our wrapper functions.
 @< Install wrapper functions @>=
 install_function(Cartan_matrix_wrapper,"Cartan_matrix","(LieType->mat)");
 install_function(type_of_Cartan_matrix_wrapper
-		,@|"type_of_Cartan_matrix","(mat->LieType)");
+		,@|"type_of_Cartan_matrix","(mat->LieType,vec)");
 
 @*2 Finding lattices for a given Lie type.
 %
 When a Lie type is fixed, there is still a nontrivial choice to determine the
-root datum for a connected Complex reductive group of that type: one has to
+root datum for a connected complex reductive group of that type: one has to
 choose a sublattice of the weight lattice of the ``simply connected'' group of
 that type to become the weight lattice of the chosen Complex reductive group
 (a finite quotient of the simply connected group); that sublattice should have
 full rank and contain the weight lattice. We shall start with considering some
 auxiliary functions to help facilitate this choice.
 
-The function |Smith_basis| below is copied from the Atlas software sources,
-where the function is originally defined in the file
-\.{io/interactive\_lattice.cpp}. We chose not to link to the corresponding
-object file, since that would require including as well a major part of the
-Atlas library, some of which we don't need at all, and other parts that at
-least are not needed at this point. In fact |Smith_basis| itself requires
-nothing but access to the Smith normal form algorithm, which being a template
-can be done without linking against any particular object file. Might we
-suggest that this function that performs no interaction would have been better
-placed elsewhere than in the \.{io} sub-directory?
-
-The purpose of |Smith_basis| is to prepare a basis of the weight lattice of
-the simply connected group in terms of which the choice for a sublattice can
-be clearly presented; the important property is that there is a subset of
-basis vectors (of size the semisimple rank) such that the root lattice is
-spanned by pure multiples of these vectors. We quote the remainder of this
-comment from its original documentation.
-
-The Lie type is defined as a sequence of simple and torus factors inside |lt|.
-This function constructs a ``blockwise Smith normal'' basis for the root
-lattice inside the weight lattice (i.e., it does just that for each semisimple
-block, and returns the canonical basis for the torus blocks).
-
-The purpose of doing this blockwise instead of globally is to permit a
-better reading of the quotient group: this will be presented as a sequence
-of factors, corresponding to each simple block.
-
-@h "smithnormal.h"
-
-@< Local function definitions @>=
-void smithBasis(latticetypes::CoeffList& invf, latticetypes::WeightList& b,
-		const lietype::LieType& lt)
-
-{ matrix::initBasis(b,lietype::rank(lt));
-  latticetypes::WeightList::iterator bp = b.begin();
-
-  for (size_t j = 0; j < lt.size(); ++j)
-  // Smith-normalize for each simple factor
-  { size_t r = lietype::rank(lt[j]);
-
-    if (lietype::type(lt[j]) == 'T')
-    // torus type: insert $r$ null ``invariant factors''
-      invf.insert(invf.end(),r,latticetypes::ZeroCoeff);
-    else {
-    latticetypes::LatticeMatrix ms;
-    prerootdata::cartanMatrix(ms,lt[j]);
-    ms.transpose();
-    smithnormal::smithNormal(invf,bp,ms);
-
-    if (lietype::type(lt[j]) == 'D' and r%2 == 0)
-      // adjust generators back to canonical basis
-      bp[r-2]+=bp[r-1];
-    }
-    bp += r;
-  }
-}
-
-@ And here is a wrapper function that applies the previous function, and
-returns a block-wise Smith basis for the transposed Cartan matrix for a given
-Lie type, and the corresponding invariant factors. In case of torus factors
-this description should be interpreted in the sense that the Smith basis for
-the corresponding block is the standard basis and the invariant factors are
-null.
+Here is a wrapper function around the |LieType::Smith_normal| method, which
+computes a block-wise Smith basis for the transposed Cartan matrix, and the
+corresponding invariant factors. In case of torus factors this description
+should be interpreted in the sense that the Smith basis for those factors is
+the standard basis and the invariant factors are null.
 
 @< Local function definitions @>=
 void Smith_Cartan_wrapper()
 { shared_Lie_type t=get<Lie_type_value>();
-  vector_ptr inv_factors (new vector_value(latticetypes::CoeffList(0)));
-  latticetypes::WeightList b; @+
-  smithBasis(inv_factors->val,b,t->val);
+  vector_ptr inv_factors (new vector_value(latticetypes::CoeffList()));
+  latticetypes::WeightList b = t->val.Smith_basis(inv_factors->val);
   push_value(new matrix_value(latticetypes::LatticeMatrix(b)));
   push_value(inv_factors); wrap_tuple(2);
 }
@@ -360,23 +290,14 @@ Therefore the following wrapper function, which may operate directly on the
 result of the previous one, filters out the invariant factors~$1$ and the
 corresponding columns.
 
-This function is particular in that it returns exactly the kind of arguments
-that it requires. Therefore rather than calling |push_tuple_components| which
-would pop and destroy the tuple, we just extract its fields while leaving it
-on the stack; its fields are modified in place, so there is no |push_value| to
-return the value either. Therefore we do not own the arguments during the
-call, and auto-pointers should not be used; incidentally |erase| and
-|eraseColumn| should have no reason whatsoever to throw an exception.
-
 @< Local function definitions @>=
 void filter_units_wrapper ()
 { push_tuple_components();
   vector_ptr inv_f=get_own<vector_value>();
   matrix_ptr basis=get_own<matrix_value>();
   if (inv_f->val.size()!=basis->val.numColumns())
-    throw std::runtime_error("Size mismatch "+
-      num(inv_f->val.size())+':'+num(basis->val.numColumns())+
-      " in filter_units");
+    throw std::runtime_error @|("Size mismatch "+
+      num(inv_f->val.size())+':'+num(basis->val.numColumns()));
 @)
   size_t i=0;
   while (i<inv_f->val.size())
@@ -389,34 +310,34 @@ void filter_units_wrapper ()
   wrap_tuple(2);
 }
 
-@ Here is another function, copied from |makeOrthogonal| in
-\.{io/interactive\_lattice.cpp} for essentially the same reasons as
-|smithBasis| above was. We take the occasion however to change its name and
-interface a bit, avoiding the need to introduce rational
-vectors and matrices as primitive type, and we also adapt the commentary. In
-fact we completely changed this function beyond recognition.
+@ Here is another function, adapted from the functions |makeOrthogonal| and
+|getLattice|, defined locally in the file \.{io/interactive\_lattice.cpp}. We
+have taken the occasion to change the name and interface and everything else,
+which also avoids the need to introduce rational vectors and matrices as
+primitive types.
 
 The function |annihilator_modulo| takes as argument an $m\times{n}$
-matrix~$M$, and an integer |d|. It returns a $m\times{m}$ matrix~|A|
-whose columns span the sub-lattice of $\Z^m$ of vectors $v$ such that
-$v^t\cdot{M}\in d\,\Z^n$. The fact that $d$ is called |denominator| below comes
-from the alternative interpretation that the transposes of the columns of~$A$
-applied to the rational matrix $M/d$ give integral vectors.
+matrix~$M$, and an integer |d|. It returns a $m\times{m}$ matrix~|A| whose
+columns span the full rank sub-lattice of $\Z^m$ of vectors $v$ such that
+$v^t\cdot{M}\in d\,\Z^n$. The fact that $d$ is called |denominator| below
+comes from the alternative interpretation that the transposes of the columns
+of~$A$ applied to the rational matrix $M/d$ give integral vectors.
 
 The algorithm is quite simple. After finding a matrix~|A| describing the Smith
 basis~$(b_j)_{j\in[m]}$ for the lattice spanned by the columns of~|M|, and
-invariant factors~$(\lambda_j)_{j\in[r]}$ (where $r$ is its rank, and $[r]$
+invariant factors~$(\lambda_j)_{j\in[r]}$ (where $r=\rk{M}$ , and $[r]$
 abbreviates $\{0,\ldots,r-1\}$), we compute the dual basis $(b^*_j)_{j\in[m]}$
 as the columns of the transpose inverse matrix of~|A|. Then we know that
-$b^*_j$ applied to any column of~$M$ lies in $\lambda_j\Z$ (where we take
-$\lambda_j=0$ for $j\notin[r]$), and our result is obtained by multiplying
-each column~$j\in[r]$ of the matrix giving the dual basis by
-$\lcm(d,\lambda_j)/\lambda_j=d/\gcd(d,\lambda_j)$.
+$b^*_j$ applied to any column of~$M$ lies in $\lambda_j\Z$ (with $\lambda_j=0$
+for $j\geq{r}$; these coordinate functions vanish on the sublattice), and our
+result is obtained by multiplying $b^*_j$ with~$j\in[r]$ by the complementary
+factor $\lcm(d,\lambda_j)/\lambda_j=d/\gcd(d,\lambda_j)$.
 
 @h "arithmetic.h"
 @h "lattice.h"
 @h "latticetypes.h"
 @h "matrix.h"
+@h "smithnormal.h"
 
 @< Local function definitions @>=
 latticetypes::LatticeMatrix @|
@@ -439,16 +360,12 @@ annihilator_modulo
   for (size_t j = 0; j < lambda.size(); ++j)
   { unsigned long f=(lambda[j]);
     unsigned long c=denominator/arithmetic::gcd(denominator,f);
-    for (size_t i=0; i<m; ++i) A(i,j)*=c; // multiply column by |c|
+    for (size_t i=0; i<m; ++i) A(i,j)*=c; // multiply column |j| by |c|
   }
   return A;
 }
 
-@ The wrapper function is particularly simple. In fact using auto-pointers
-seems overly prudent, but in fact |annihilator_modulo| could cause an
-exception during matrix inversion or transposition. We need to put the result
-from |annihilator_modulo| into a named variable since |swap| requires a
-modifiable reference.
+@ The wrapper function is particularly simple.
 
 @< Local function definitions @>=
 void ann_mod_wrapper()
@@ -617,7 +534,7 @@ void based_involution_wrapper()
 @/shared_matrix basis(get<matrix_value>());
 @/shared_Lie_type type(get<Lie_type_value>());
 @)
-  size_t r=type->rank();
+  size_t r=type->val.rank();
   if (basis->val.numRows()!=r or basis->val.numRows()!=r)
     throw std::runtime_error @|
     ("based_involution: basis should be given by "+num(r)+'x'+num(r)+" matrix");
@@ -719,15 +636,15 @@ void root_datum_wrapper()
   shared_matrix lattice(get<matrix_value>());
   shared_Lie_type type(get<Lie_type_value>());
   if (lattice->val.numRows()!=lattice->val.numColumns() @| or
-      lattice->val.numRows()!=type->rank())
+      lattice->val.numRows()!=type->val.rank())
     throw std::runtime_error
-    ("lattice matrix should be " @| +num(type->rank())+'x'+num(type->rank())+
-     " for this type");
+    ("lattice matrix should be " @|
+      +num(type->val.rank())+'x'+num(type->val.rank())+ " for this type");
   @< Test whether the columns of |lattice->val| span the root lattice; if
      not |throw| a |std::runtime_error| @>
   latticetypes::WeightList columns; columnVectors(columns,lattice->val);
   push_value(new root_datum_value @|
-   (rootdata::RootDatum(prerootdata::PreRootDatum::build(type->val,columns))));
+   (rootdata::RootDatum(prerootdata::PreRootDatum(type->val,columns))));
 }
 
 @ Since the construction of the (simple) roots in a |PreRootDatum| uses
@@ -754,13 +671,11 @@ safely be constructed and will be correct in all respects.
   latticetypes::LatticeMatrix M=lattice->val.inverse(d);
   if (d==0) throw std::runtime_error
     ("Lattice matrix has dependent columns; in root_datum");
-@/latticetypes::LatticeMatrix tC;
-  prerootdata::cartanMatrix(tC,type->val); tC.transpose();
-  M *= tC;
-  // now columns of |M| hold |d| times the simple roots, expressed on the given basis
-  if (!M.divisible(d))
+@/M *= type->val.transpose_Cartan_matrix();
+@/// now columns of |M| hold |d| times the simple roots, in the given basis
+  if (not M.divisible(d))
     throw std::runtime_error@|
-      ("Given lattice does not contain the root lattice; in root_datum");
+      ("Given lattice does not contain the root lattice");
 }
 
 @ To emulate what is done in the Atlas software, we write a function that
@@ -850,7 +765,7 @@ that all null diagonal entries are replaced by ones.
 @< Local function definitions @>=
 void simply_connected_datum_wrapper()
 { shared_Lie_type type=get<Lie_type_value>(); push_value(type);
-  push_value(new int_value(type->rank()));
+  push_value(new int_value(type->val.rank()));
   id_mat_wrapper();
 @/wrap_tuple(2); root_datum_wrapper();
 }
@@ -860,7 +775,7 @@ void adjoint_datum_wrapper()
   push_value(type);
   Cartan_matrix_wrapper(); transpose_mat_wrapper();
   matrix_ptr M=get_own<matrix_value>();
-  for (size_t i=0; i<type->rank(); ++i)
+  for (size_t i=0; i<type->val.rank(); ++i)
     if (M->val(i,i)==0) M->val(i,i)=1;
   push_value(M);
 @/wrap_tuple(2); root_datum_wrapper();
@@ -1218,7 +1133,7 @@ lies in another component of the diagram we have a Complex inner class.
 
   type.reserve(comp.size()+r-s);
   inner_class.reserve(comp.size()+r-s); // certainly enough
-  type = dynkin::Lie_type(C,true,pi);
+  type = dynkin::Lie_type(C,true,false,pi);
   assert(type.size()==comp.size());
   size_t offset=0; // accumulated rank of simple factors seen
 
@@ -1546,18 +1461,42 @@ void set_type_wrapper()
 
 @ It can be awkward to use $set\_type$ which wants to construct the root datum
 in its own way, for instance if one already has a root datum as produced by
-special functions like $GL$. Unfortunately the precise sub-lattice used to
-construct a root datum cannot be recovered from the root datum in all cases,
-nor indeed the Lie type, and these are needed to find the proper involution,
-as in |based_involution_wrapper|. The problems are only caused by possible
-torus factors however, and in most cases one can reconstruct the values with
-sufficient accuracy. In fact the function below will always deduce a Lie type
-and a lattice basis that \emph{could have} been used to obtain the root datum.
+special functions like $GL$. Unfortunately a root datum does not come equipped
+with a basis of a sub-lattice of the corresponding simply connected datum that
+corresponds to it, nor even does it determine a unique Lie type. This is only
+due to possible torus factors: having no roots, one cannot know where those
+factors were placed among the simple factors, and variation of the sub-lattice
+basis along them has no effect on the root datum. We can however recover a Lie
+type and a sub-lattice that \emph{could have} been used to obtain the root
+datum: we place any torus factors at the end, and the a sub-lattice can be
+deduced from the coordinates of coroots and radical. (Indeed the basis of
+coroots is dual to that of the simple weights for the non-torus factors, so
+such a simple weight coordinate $i$ in lattice basis vector $j$ is recorded as
+coordinate $j$ in the dual lattice basis of simple coroot~$i$; the radical is
+annihilated by the roots, so its basis coordinates transposed gives a basis of
+a sub-lattice of the ``simply connected'' weight lattice annihilated by the
+coroots, and the latter is saturated because the former is.)
 
-The function call ${\it set\_inner\_class(rd,ict)}$ will deduce the type as
-$t={\it type\_of\_root\_datum(rd)}$ and the basis of the sub-lattice as ${\it
-basis}= {\it transpose\_mat(coroot\_radical(rd))}$, and then return the value
-of the expression ${\it fix\_involution(rd,based\_involution(t,basis,ict))}$.
+The \.{atlas} program records in a |layout::Layout| structure which type,
+sub-lattice and inner class string the user entered, and uses this information
+for instance in giving names to real forms. Here we deduce type and
+sub-lattice from the root datum only, which gives the advantage that it can be
+used even when the root datum did not result directly from user interaction.
+Since the type is deduced from the Cartan matrix, a possible non-standard
+order of the simple roots is catered for by a new |d_perm| field in the
+|Layout|, which |dynkin::Lie_type| can set while analysing a Cartan matrix.
+
+The function call ${\it set\_inner\_class(rd,ict)}$ will deduce the type ${\it
+type\_of\_root\_datum(rd)}$, but also records the permutation with respect to
+the Bourbaki numbering for this type; it records this and the given inner
+class string in a |Layout| structure, and as basis of the sub-lattice it uses
+${\it transpose\_mat(coroot\_radical(rd))}$. It calls |lietype::involution|
+which takes into account all elements of this |Layout| to produce an
+involution {\it inv} of a kind more general than {\it based\_involution} can
+produce, and calls ${\it fix\_involution(rd,inv)}$ to produce the final
+result. The call to |lietype::involution| may throw a |std::runtime_error|
+(only) when the involution does not stabilise the sub-lattice; we catch this
+error and re-throw with a more explicit error indication.
 
 @< Local function def...@>=
 void set_inner_class_wrapper()
@@ -1568,7 +1507,7 @@ void set_inner_class_wrapper()
 @)
   latticetypes::LatticeMatrix Cartan = rd.cartanMatrix();
   layout::Layout lo;
-  lo.d_type = dynkin::Lie_type(Cartan,true,lo.d_perm);
+  lo.d_type = dynkin::Lie_type(Cartan,true,false,lo.d_perm);
    // get type, permutation w.r.t. Bourbaki
   if (!rd.isSemisimple())
     for (size_t i=rd.semisimpleRank(); i<rd.rank(); ++i)
@@ -1581,20 +1520,19 @@ void set_inner_class_wrapper()
   push_value(rdv);
   coroot_radical_wrapper(); transpose_mat_wrapper();
   shared_matrix basis(get<matrix_value>());
-@)
-  push_value(rdv); // first argument for |fix_involution_wrapper|
-@)
-  shared_matrix m (new matrix_value(lietype::involution(lo)));
-
   size_t r=lietype::rank(lo.d_type);
   assert(basis->val.numRows()==r and basis->val.numRows()==r);
-  latticetypes::LatticeCoeff d;
-  m->val = basis->val.inverse(d) * m->val * basis->val;
-  if (d==0 or !m->val.divisible(d)) throw std::runtime_error
-    ("inner class is not compatible with root datum lattice");
-  m->val/=d; push_value(m);
-
-@/wrap_tuple(2); fix_involution_wrapper();
+@)
+  lo.d_basis = basis->val.columns();
+  try
+  { push_value(rdv);
+    push_value(new matrix_value(lietype::involution(lo)));
+    wrap_tuple(2); fix_involution_wrapper(); // and leave involution on stack
+  }
+  catch (std::runtime_error&) // relabel inexact division error
+  { throw std::runtime_error @|
+    ("set_inner_class: inner class is not compatible with root datum lattice");
+  }
 }
 
 @*2 Functions operating on complex reductive groups.

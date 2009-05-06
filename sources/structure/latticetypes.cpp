@@ -14,6 +14,7 @@
 
 #include "latticetypes.h"
 #include "arithmetic.h"
+#include <stdexcept>
 
 /*****************************************************************************
 
@@ -29,6 +30,10 @@ namespace latticetypes {
   RatLatticeElt& RatLatticeElt::normalize()
   {
     unsigned long d=std::abs(d_denom);
+
+    if (d==0)
+      throw std::runtime_error("Denominator 0 in rational vector");
+
     for (size_t i=0; i<d_num.size(); ++i)
     {
       if (d_num[i]!=0)

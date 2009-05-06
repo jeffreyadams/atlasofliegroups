@@ -6,7 +6,7 @@
   This is lietype_fwd.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -23,9 +23,9 @@ namespace atlas {
 namespace lietype {
 
   typedef char TypeLetter;
-  typedef std::pair<TypeLetter,size_t> SimpleLieType;
-  typedef std::vector<SimpleLieType> LieType;
   typedef std::vector<TypeLetter> InnerClassType;
+  class SimpleLieType;
+  class LieType;
 
 }
 

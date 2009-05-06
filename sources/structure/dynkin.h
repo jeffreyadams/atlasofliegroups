@@ -53,7 +53,8 @@ namespace dynkin {
 
   // same, also set |pi| to permutation "straightening" each diagram component
   lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm,
-			    bool Bourbaki, setutils::Permutation& pi);
+			    bool Bourbaki, bool check,
+			    setutils::Permutation& pi);
 
   bitset::RankFlagsList components(const DynkinDiagram& d);
 

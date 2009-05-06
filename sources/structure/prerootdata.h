@@ -27,24 +27,6 @@
 
 namespace atlas {
 
-/******** type declarations *************************************************/
-
-namespace prerootdata {
-
-  class PreRootDatum;
-}
-
-/******** function declarations **********************************************/
-
-
-namespace prerootdata {
-
-  void cartanMatrix(latticetypes::LatticeMatrix&, const lietype::LieType&);
-  void cartanMatrix(latticetypes::LatticeMatrix&,
-		    const lietype::SimpleLieType&);
-
-}
-
 /******** type definitions **************************************************/
 
 namespace prerootdata {
@@ -93,8 +75,7 @@ class PreRootDatum{
 	       size_t rank)
     : d_roots(roots),d_coroots(coroots), d_rank(rank) {}
 
-  static PreRootDatum build // pseudo constructor
-    (const lietype::LieType& lt, const latticetypes::WeightList&);
+  PreRootDatum(const lietype::LieType& lt, const latticetypes::WeightList&);
 
   ~PreRootDatum() {}
 
