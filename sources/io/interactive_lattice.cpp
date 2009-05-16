@@ -34,18 +34,18 @@ namespace {
   enum GeneratorError { NoError=0, FormatError, BadDenominator,
 			NegDenominator, TooFew };
 
-  GeneratorError checkGenerator(input::InputBuffer&, size_t&,
-				latticetypes::LatticeCoeff&,
-				const latticetypes::CoeffList&);
+  GeneratorError checkGenerator(input::InputBuffer& buf, size_t& i,
+				latticetypes::LatticeCoeff& d,
+				const latticetypes::CoeffList& u);
 
   void makeOrthogonal(latticetypes::LatticeMatrix&, latticetypes::CoeffList&,
 		      const latticetypes::RatWeightList&, size_t);
 
   std::ostream& printCenter(std::ostream&, const latticetypes::CoeffList&);
 
-  void readGenerator(latticetypes::RatWeight&,
-		     const latticetypes::CoeffList& u,
-		     input::InputBuffer&);
+  latticetypes::RatWeight readGenerator(size_t n_gen,
+					latticetypes::LatticeCoeff d,
+					input::InputBuffer& buf);
 
   input::HistoryBuffer kernelgen_input_buffer;
 }
@@ -94,7 +94,7 @@ void adjustBasis(latticetypes::WeightList& b,
   Gets the generators of X/Q, where Q is the root lattice, from the user.
 
   It throws an InputError if the interaction with the user does not conclude
-  successfully. In that case, d_gl is not modified.
+  successfully. In that case, d_rwl is not modified.
 */
 int getGenerators(latticetypes::RatWeightList& d_rwl,
 		  const latticetypes::CoeffList& u)
@@ -139,7 +139,8 @@ int getGenerators(latticetypes::RatWeightList& d_rwl,
       ib.reset();
       size_t i;
       latticetypes::LatticeCoeff d;
-      switch (checkGenerator(ib,i,d,u)) {
+      switch (checkGenerator(ib,i,d,u))
+      {
       case NoError:
 	break;
       case FormatError:
@@ -166,8 +167,7 @@ int getGenerators(latticetypes::RatWeightList& d_rwl,
 		  << "bad input line --- ignored" << std::endl;
 	continue;
       }
-      rwl.push_back(latticetypes::RatWeight(u.size(),d));
-      readGenerator(rwl.back(),u,ib);
+      rwl.push_back(readGenerator(u.size(),d,ib));
     }
   }
 
@@ -285,13 +285,13 @@ namespace {
 
   Precondition: buf should contain a comma-separated list, with one entry for
   each member of u (extra entries are ignored). The entries should be of the
-  form a/b, where b = u[i] if u[i] > 0, b > 0 arbitrary otherwise.
+  form a/b, with b = u[i] if u[i] > 0, or with arbitrary b>0 otherwise.
 
   Explanation: the element a/b (with b = u[i] if u[i] > 0) represents the
   element exp(2i.pi.a/b) in a one-dimensional torus factor.
 
-  In case of failure, the entry number where the rank occurs is put in r. In
-  case of success, the l.c.m. of the various b's and u[i]'s is put in d.
+  In case of success, the l.c.m. of the various b's and u[i]'s is put in |d|.
+  In case of failure, the entry number where the error occurs is put in |r|.
 
   NOTE: no overflow checking is done on d.
 */
@@ -381,12 +381,10 @@ void makeOrthogonal(latticetypes::LatticeMatrix& q,
 		    const latticetypes::RatWeightList& d_rwl, size_t r)
 {
   // reduce to same denominator
-  latticetypes::RatWeightList rwl;
-  lattice::toCommonDenominator(rwl,d_rwl);
+  latticetypes::RatWeightList rwl = lattice::toCommonDenominator(d_rwl);
 
   // make matrix of numerator vectors
-  latticetypes::LatticeMatrix m;
-  lattice::numeratorMatrix(m,rwl);
+  latticetypes::LatticeMatrix m = lattice::numeratorMatrix(rwl);
 
   // smith-normalize
   latticetypes::WeightList b;
@@ -433,33 +431,23 @@ std::ostream& printCenter(std::ostream& strm, const latticetypes::CoeffList& u)
 }
 
 
-/*
-  Synopsis: reads a generator from buf to v.
+/*!
+  \brief: returns generator from |buf|, with |n_gen| entries, denominator |d|
 
-  Precondition: checkGenerator returns NoError on buf; v has been initialized
-  with the correct denominator, as provided by checkGenerator;
 */
-void readGenerator(latticetypes::RatWeight& v,
-		   const latticetypes::CoeffList& u,
-		   input::InputBuffer& buf)
+latticetypes::RatWeight readGenerator(size_t n_gen,
+                                      latticetypes::LatticeCoeff d,
+				      input::InputBuffer& buf)
 {
-  latticetypes::LatticeCoeff d = v.denominator();
-
-  for (size_t i=0; i<v.size(); ++i) {
-
-    latticetypes::LatticeCoeff a = 0;
-    buf >> a;
-
-    char x;
-    buf >> x; // get rid of / sign
-
-    latticetypes::LatticeCoeff b;
-    buf >> b;
-    v.numerator()[i] = d/b;
-    v.numerator()[i] *= a;
-
-    buf >> x; // get rid of the comma-separator
+  latticetypes::LatticeElt numer(n_gen);
+  char dummy; // bit bucket for separator characters
+  latticetypes::LatticeCoeff b;
+  for (size_t i=0; i<n_gen; ++i)
+  {
+    buf >> numer[i] >> dummy >> b >> dummy;// read fraction, skipping "/", ","
+    numer[i] *= d/b; // because denominators are forced to |d|
   }
+  return latticetypes::RatWeight(numer,d);
 }
 
 } // |namespace|
