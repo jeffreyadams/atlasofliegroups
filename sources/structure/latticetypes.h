@@ -56,7 +56,7 @@ class RatLatticeElt {
   /*!
   Integer, the common denominator of the RatLatticeElt.
   */
-  LatticeCoeff d_denom;
+  unsigned int d_denom;
 
  public:
 
@@ -69,28 +69,11 @@ class RatLatticeElt {
   Builds the RatLatticeElt with numerator v and denominator d.
   */
   RatLatticeElt(const LatticeElt& v, LatticeCoeff d)
-    :d_num(v), d_denom(d)
-    {}
-
-  /*!
-  Builds a RatLatticeElt of in Z^n with denominator d and all entries zero.
-  */
-  RatLatticeElt(size_t n, LatticeCoeff d)
-    :d_num(n,0), d_denom(d)
-    {}
-
-  /*!
-  Copies the RatLatticeElt v into  a new RatLatticeElt.
-  */
-  RatLatticeElt(const RatLatticeElt& v)
-    :d_num(v.d_num), d_denom(v.d_denom)
-    {}
-
-  ~RatLatticeElt()
-    {}
+    :d_num(v), d_denom(intutils::abs(d))
+  { if (d<0) d_num*=-1; }
 
 // accessors
-  LatticeCoeff denominator() const {
+  unsigned int denominator() const {
     return d_denom;
   }
 
@@ -115,14 +98,6 @@ class RatLatticeElt {
     }
 
 //manipulators
-  LatticeCoeff& denominator() {
-    return d_denom;
-  }
-
-  LatticeElt& numerator() {
-    return d_num;
-  }
-
   RatLatticeElt& normalize();
 
 }; // class RatLatticeElt

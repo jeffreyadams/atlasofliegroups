@@ -29,7 +29,7 @@ namespace latticetypes {
 
   RatLatticeElt& RatLatticeElt::normalize()
   {
-    unsigned long d=std::abs(d_denom);
+    unsigned long d=d_denom;
 
     if (d==0)
       throw std::runtime_error("Denominator 0 in rational vector");
@@ -43,8 +43,7 @@ namespace latticetypes {
     }
 
     d_denom/=d;
-    for (size_t i=0; i<d_num.size(); ++i)
-      d_num/=d;
+    d_num/=d;
     return *this;
   }
 
