@@ -318,7 +318,8 @@ lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm,
     for (size_t i=0; i<d.rank(); ++i)
       for (size_t j=0; j<d.rank(); ++j)
 	if (cm(pi[i],pi[j])!=result.Cartan_entry(i,j))
-	  throw std::runtime_error("Lie type of non-Cartan matrix requested");
+	  throw std::runtime_error
+	    ("Not a Cartan matrix of any semisimple type");
   }
   return result;
 
