@@ -155,10 +155,8 @@ Matrix<C>::Matrix(const std::vector<Vector<C> >& b)
   d_columns = b.size();
   d_data.resize(d_rows*d_columns);
 
-  for (size_t j = 0; j<d_columns; ++j) {
-    for (size_t i = 0; i<d_rows; ++i)
-      (*this)(i,j) = b[j][i];
-  }
+  for (size_t j = 0; j<d_columns; ++j)
+    set_column(j,b[j]);
 }
 
 
@@ -351,16 +349,53 @@ Vector<C> Matrix<C>::right_apply(const Vector<C>& w) const
   return result;
 }
 
+
+/*!
+  Puts the i-th row of the matrix in v.
+*/
+template<typename C>
+void Matrix<C>::get_row(Vector<C>& v, size_t i) const
+{
+  v.resize(d_columns);
+
+  for (size_t j = 0; j<d_columns; ++j)
+    v[j] = (*this)(i,j);
+}
 /*!
   Puts the j-th column of the matrix in v.
 */
 template<typename C>
-void Matrix<C>::set_column(Vector<C>& v, size_t j) const
+void Matrix<C>::get_column(Vector<C>& v, size_t j) const
 {
   v.resize(d_rows);
 
   for (size_t i = 0; i<d_rows; ++i)
     v[i] = (*this)(i,j);
+}
+
+
+/*!
+  Puts v in the i-th row of the matrix
+*/
+template<typename C>
+  void Matrix<C>::set_row(size_t i, const Vector<C>& v)
+{
+  assert(v.size()==d_columns);
+
+  for (size_t j = 0; j<d_columns; ++j)
+    (*this)(i,j)=v[j];
+}
+
+/*!
+  Puts v in the j-th column of the matrix
+*/
+template<typename C>
+  void Matrix<C>::set_column(size_t j, const Vector<C>& v)
+{
+  assert(v.size()==d_rows);
+
+  for (size_t i = 0; i<d_rows; ++i)
+    (*this)(i,j)=v[i];
 }
 
 
@@ -377,20 +412,6 @@ bool Matrix<C>::divisible(C c) const
   return true;
 }
 
-
-/*!
-  Puts the i-th row of the matrix in v.
-*/
-template<typename C>
-void Matrix<C>::set_row(Vector<C>& v, size_t i) const
-{
-  v.resize(d_columns);
-
-  for (size_t j = 0; j<d_columns; ++j)
-    v[j] = (*this)(i,j);
-}
-
-/******** manipulators *******************************************************/
 
 /*!
   Incrementation by addition with m. It is assumed that m and *this
@@ -484,9 +505,8 @@ Matrix<C>& Matrix<C>::operator/= (const C& c) throw (std::runtime_error)
 template<typename C>
 void Matrix<C>::changeColumnSign(size_t j)
 {
-  for (size_t i = 0; i<d_rows; ++i) {
+  for (size_t i = 0; i<d_rows; ++i)
     (*this)(i,j) *= -1;
-  }
 }
 
 
@@ -496,9 +516,8 @@ void Matrix<C>::changeColumnSign(size_t j)
 template<typename C>
 void Matrix<C>::changeRowSign(size_t i)
 {
-  for (size_t j = 0; j<d_columns; ++j) {
+  for (size_t j = 0; j<d_columns; ++j)
     (*this)(i,j) *= -1;
-  }
 }
 
 
@@ -524,32 +543,6 @@ void Matrix<C>::copy(const Matrix<C>& source, size_t r, size_t c)
   for (size_t j = 0; j<source.d_columns; ++j)
     for (size_t i = 0; i<source.d_rows; ++i)
       (*this)(r+i,c+j) = source(i,j);
-}
-
-
-/*!
-  Copies the vector |v| to the column |j| of the current
-  matrix. It is assumed that the two columns have the same size.
-*/
-template<typename C>
-void Matrix<C>::copyColumn(const Vector<C>& v, size_t j)
-{
-  assert(v.size()==d_rows);
-  for (size_t i = 0; i<d_rows; ++i)
-    (*this)(i,j) = v[i];
-}
-
-
-/*!
-  Copies the vector |v| to the row |i| of the current
-  matrix. It is assumed that the sizes match.
-*/
-template<typename C>
-void Matrix<C>::copyRow(const Vector<C>& v, size_t i)
-{
-  assert(v.size()==d_columns);
-  for (size_t j = 0; j<d_columns; ++j)
-    (*this)(i,j) = v[j];
 }
 
 
@@ -813,25 +806,19 @@ void Matrix<C>::swap(Matrix<C>& m)
 template<typename C>
 void Matrix<C>::swapColumns(size_t i, size_t j)
 {
-  for (size_t k = 0; k<columnSize(); ++k) {
-    C tmp = (*this)(k,i);
-    (*this)(k,i) = (*this)(k,j);
-    (*this)(k,j) = tmp;
-  }
+  for (size_t k = 0; k<columnSize(); ++k)
+    std::swap((*this)(k,i),(*this)(k,j));
 }
 
 
 /*!
-  Interchanges columns i and j
+  Interchanges rows i and j
 */
 template<typename C>
 void Matrix<C>::swapRows(size_t i, size_t j)
 {
-  for (size_t k = 0; k<rowSize(); ++k) {
-    C tmp = (*this)(i,k);
-    (*this)(i,k) = (*this)(j,k);
-    (*this)(j,k) = tmp;
-  }
+  for (size_t k = 0; k<rowSize(); ++k)
+    std::swap((*this)(i,k),(*this)(j,k));
 }
 
 
@@ -895,7 +882,7 @@ template<typename C>
   b.resize(m.numColumns());
 
   for (size_t j = 0; j<b.size(); ++j)
-    m.set_column(b[j],j);
+    m.get_column(b[j],j);
 }
 
 template<typename C> Matrix<C> row_matrix(Vector<C> v)

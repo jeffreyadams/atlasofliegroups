@@ -175,15 +175,18 @@ template<typename C> class Matrix {
   const C& operator() (size_t i, size_t j) const
   { return d_data[i*d_columns+j]; }
 
-  Vector<C> column(size_t j) const { Vector<C> c; set_column(c,j); return c; }
+  void get_column(Vector<C>&, size_t) const;
+  void get_row(Vector<C>&, size_t) const;
+
+  Vector<C> column(size_t j) const { Vector<C> c; get_column(c,j); return c; }
   std::vector<Vector<C> > columns() const
   {std::vector<Vector<C> > result; columnVectors(result,*this); return result; }
-  Vector<C> row(size_t i) const { Vector<C> r; set_row(r,i); return r; }
+  Vector<C> row(size_t i) const { Vector<C> r; get_row(r,i); return r; }
   std::vector<Vector<C> > rows() const
   {
     std::vector<Vector<C> > result(numRows());
     for (size_t i=0; i<numRows(); ++i)
-      set_row(result[i],i);
+      get_row(result[i],i);
     return result;
   }
 
@@ -196,10 +199,6 @@ template<typename C> class Matrix {
   Vector<C> right_apply(const Vector<C>&) const;
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
-
-  void set_column(Vector<C>&, size_t) const;
-  void set_row(Vector<C>&, size_t) const;
-
 
   bool divisible(C) const;
 
@@ -253,6 +252,9 @@ template<typename C> class Matrix {
 
   Matrix<C>& operator/= (const C& c) throw (std::runtime_error);
 
+  void set_column(size_t,const Vector<C>&);
+  void set_row(size_t,const Vector<C>&);
+
   void changeColumnSign(size_t);
 
   void changeRowSign(size_t);
@@ -260,10 +262,6 @@ template<typename C> class Matrix {
   void columnOperation(size_t, size_t, const C&);
 
   void copy(const Matrix<C>&, size_t r = 0, size_t c = 0);
-
-  void copyColumn(const Vector<C>&, size_t);
-
-  void copyRow(const Vector<C>&, size_t);
 
   void eraseColumn(size_t);
 
