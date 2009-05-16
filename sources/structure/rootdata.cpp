@@ -521,8 +521,8 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   // get basis of co-radical character lattice, if any (or leave empty list)
   if (semisimpleRank()<d_rank)
   {
-    lattice::perp(d_coradicalBasis,d_coroots,d_rank);
-    lattice::perp(d_radicalBasis,d_roots,d_rank);
+    d_coradicalBasis = lattice::perp(d_coroots,d_rank);
+    d_radicalBasis   = lattice::perp(d_roots,d_rank);
   }
 
   // fill in the status
@@ -897,7 +897,7 @@ arithmetic::RationalList integrality_points
   (const RootDatum& rd, latticetypes::RatLatticeElt& nu)
 {
   nu.normalize();
-  unsigned long d = abs(nu.denominator());
+  unsigned long d = nu.denominator();
 
   std::set<long> products;
   for (size_t i=0; i<rd.numPosRoots(); ++i)
@@ -909,10 +909,9 @@ arithmetic::RationalList integrality_points
 
   std::set<arithmetic::Rational> fracs;
   for (std::set<long>::iterator it= products.begin(); it!=products.end(); ++it)
-  {
     for (long s=d; s<=*it; s+=d)
       fracs.insert(arithmetic::Rational(s,*it));
-  }
+
   return arithmetic::RationalList(fracs.begin(),fracs.end());
 }
 
