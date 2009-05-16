@@ -20,6 +20,7 @@
 #include "prerootdata.h"
 
 #include <cassert>
+#include <stdexcept>
 
 #include "lietype.h"
 #include "smithnormal.h"
@@ -123,18 +124,21 @@ latticetypes::WeightList rootBasis(const lietype::LieType& lt,
   latticetypes::LatticeCoeff d;
   latticetypes::LatticeMatrix q(lb); q.invert(d);
 
+  if (d==0)
+    throw std::runtime_error("Dependent lattice generators");
+
   // push back non-zero columns on rb
 
   latticetypes::Weight v(lt.rank()); // temporary vector
   latticetypes::WeightList result; result.reserve(lt.semisimple_rank());
   size_t r=0; // row number in Cartan matrix
   for (size_t i=0; i<lt.size(); ++i)
-    for (size_t j=0; j<lietype::rank(lt[i]); ++j,++r)
-      if (lietype::type(lt[i])!='T') // skip on torus factors
+    for (size_t j=0; j<lt[i].rank(); ++j,++r)
+      if (lt[i].type()!='T') // skip on torus factors
       {
 	for (size_t k=0; k<lt.rank(); ++k) // get Cartan entries for root
 	  v[k]=lt.Cartan_entry(r,k);
-	result.push_back((q.apply(v))/d);
+	result.push_back((q.apply(v))/d); // may |throw std::runtime_error|
       }
 
   return result;
@@ -160,8 +164,8 @@ latticetypes::WeightList corootBasis(const lietype::LieType& lt,
   latticetypes::WeightList result; result.reserve(lt.semisimple_rank());
   size_t r=0; // row number in |q|
   for (size_t i=0; i<lt.size(); ++i)
-    for (size_t j=0; j<lietype::rank(lt[i]); ++j,++r)
-      if (lietype::type(lt[i])!='T') // skip on torus factors
+    for (size_t j=0; j<lt[i].rank(); ++j,++r)
+      if (lt[i].type()!='T') // skip on torus factors
 	result.push_back(q.row(r));
 
   return result;
