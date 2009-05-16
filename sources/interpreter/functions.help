@@ -1,5 +1,3 @@
-vec: (vec->vec): identity function on vectors.
-mat: (mat->mat): identity function on matrices.
 print: (string->): print string without quotes, followed by newline
 id_mat: (int->mat): identity matrix of given size.
 transpose_mat: (mat->mat): matrix transposition.
@@ -28,9 +26,14 @@ Lie_type: (string->LieType): interpret string as Lie type.
 Cartan_matrix: (LieType->mat): Cartan matrix of Lie type (square of size rank).
   A block form Cartan matrix, with zeros in rows and columns of torus factors
 
-type_of_Cartan_matrix: (mat->LieType): semisimple type given by Cartan matrix.
-  The input should be a Cartan matrix without zero rows or columns, otherwise
-  this function gets confused
+type_of_Cartan_matrix: (mat->LieType,vec): type given by Cartan matrix.
+  The input should be a Cartan matrix for a semisimple type (no zero rows or
+  columns). The function returns the semisimple type, and the permutation of
+  mapping the standard (Bourbaki) ordering of the diagram of that type to the
+  ordering of the corresponding simple roots in matrix rows and columns.
+
+Lie_rank: (LieType->int) Rank of the weight lattice.
+semisimple_rank (LieType->int) Rank of the root lattice.
 
 Smith_Cartan: (LieType->mat,vec): compute generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
@@ -55,15 +58,13 @@ replace_gen: ((mat,vec),mat->mat): replace generators of weight lattice.
   For every entry different from '1' in the vector argument, replace a column
   from the first matrix by a column from the second matrix
 
-quotient_basis: (LieType,mat->mat): sublattice given by kernel generators.
-  Interpret the columns of the matrix as denominators of the kernel generators
-  as one would input in the Atlas software for the given type (the
-  denominators are imposed, except for torus factors, where the least common
-  multiple d of all imposed columns is taken), and return the corresponding
-  sublattice as a matrix whose column are its generators; if M' is the matrix
-  adjusted for bringing everything on a common denominator d, this amounts to
-  setting S=Smith_Cartan(type); C,v=filter_units(S) and then returning the
-  value replace_gen(S,mm_prod(C,ann_mod(M',d)))
+quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
+  Interpret the rational vectors as kernel generators for the given type, as
+  in the Atlas software, and return the corresponding sublattice as a matrix
+  whose column are its generators; if M' is the matrix whose columns are the
+  numerators of the kernel generators, brought to a common denominator d, this
+  amounts to setting S=Smith_Cartan(type); (C,v)=filter_units(S) and then
+  returning the value replace_gen(S,mm_prod(C,ann_mod(M',d)))
 
 basic_involution: (LieType,string->mat): diagram involution for inner class.
   Return an involution matrix corresponding to the diagram involution
@@ -75,7 +76,7 @@ based_involution: (LieType,mat,string->mat): basic involution on given basis.
   This is like basic_involution for the same Lie type and inner class string,
   but the involution matrix is now expressed the given basis given by the
   columns of the matrix specified as second argument; this expression must be
-  possible, so the sublattice spanned should be stable inder the involution
+  possible, so the sublattice spanned should be stable under the involution
 
 root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice.
 type_of_root_datum: (RootDatum->LieType): Lie type of a root datum.
@@ -109,6 +110,16 @@ coroot_radical: (RootDatum->mat): simple coroots and radical basis.
   With respect to simple_coroots, add columns for radical basis generators
 dual_datum: (RootDatum->RootDatum): dual of given root datum.
 
+integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
+  Forms the root datum for the coroot subsystem of coroots that take an
+  integral value on the given ration vector.
+
+integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
+  Returns the increasing list of positive fractions f<=1 so that its multiple
+  of the given rational weight lambda has increased integrality: some coroot
+  alphav with <lambda,alphav> nonzero has <f*lambda,alphav> integral.
+
+
 classify_involution: (mat->int,int,int): determine type of lattice involution
   For any linear involution of Z^n, there is a basis consisting of certain
   vectors that are eigenvectors with eigenvalues 1 or -1 for the involution,
@@ -122,13 +133,13 @@ classify_involution: (mat->int,int,int): determine type of lattice involution
 fix_involution: (RootDatum,mat->InnerClass): define G by involution matrix.
   This is the basic function for building a complex reductive group equipped
   with a distinguished involution from the root datum and that involution;
-  the involution must be on the (sub-)lattice basis of the root datum, and it
-  is checked for describing an involutive automorphism of the based root datum
+  the involution must be given on the (sub-)lattice basis of the root datum,
+  and must describe an involutive automorphism of the based root datum.
 
-set_type: (string,mat,string->InnerClass): define G as in Atlas interface.
-  The call set_type(type_string,gens,inner_class) essentially sets
-  t=Lie_type(type_string); basis=quotient_basis(t,gens), and then returns
-  fix_involution(root_datum(t,basis),inner(t,basis,inner_class))
+set_type: (Lie_type,[ratvec],string->InnerClass): get G as in Atlas interface.
+  The call set_type(lt,gens,ic_string) sets basis=quotient_basis(lt,gens),
+  rd=root_datum(lt,basis), inv=based_involution(lt,basis,ic_string), and
+  then returns fix_involution(rd,inv).
 
 set_inner_class: (RootDatum,string->InnerClass): define G by inner class.
   Build a complex reductive group directly from a root datum, but compute

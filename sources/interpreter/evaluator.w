@@ -76,6 +76,19 @@ Using string streams, the definition of~|num| is trivial.
 template <typename T>
   std::string num(T n) @+{@; std::ostringstream s; s<<n; return s.str(); }
 
+@ Before executing anything the evaluator needs some initialisation, called
+from the main program.
+
+@< Declarations of exported functions @>=
+void initialise_evaluator();
+
+@ The details of this initialisation will be given when the variables involved
+are introduced.
+
+@< Function definitions @>=
+void initialise_evaluator()
+@+{@; @< Initialise evaluator @> }
+
 @* Types used for evaluation.
 %
 The parser produces a parse tree, in the form of a value of type |expr|
@@ -155,6 +168,7 @@ auto-pointer type |type_list_ptr|.
 
 @< Type definitions @>=
 struct type_declarator;
+typedef type_declarator* type_p;
 typedef std::auto_ptr<type_declarator> type_ptr;
 typedef struct type_node* type_list;
 typedef std::auto_ptr<type_node> type_list_ptr;
@@ -351,7 +365,7 @@ struct type_declarator
 { type_tag kind;
   union
   { primitive_tag prim; // when |kind==primitive|
-    type_declarator* component_type; // when |kind==row_type|
+    type_p component_type; // when |kind==row_type|
     type_list tuple; // when |kind==tuple_type|
     func_type* func; // when |kind==function_type|
   };
@@ -649,41 +663,41 @@ these conversions, so passing bare pointers is exception-safe.
 extern "C"
 ptr mk_type_singleton(ptr t)
 {@;
-  return make_type_singleton(type_ptr(static_cast<type_declarator*>(t)))
+  return make_type_singleton(type_ptr(static_cast<type_p>(t)))
   .release();
 }
 extern "C"
 ptr mk_type_list(ptr t,ptr l)
-{ return make_type_list(type_ptr(static_cast<type_declarator*>(t)),@|
-                        type_list_ptr(static_cast<type_node*>(l))).release(); }
+{ return make_type_list(type_ptr(static_cast<type_p>(t)),@|
+                        type_list_ptr(static_cast<type_list>(l))).release(); }
 extern "C"
 ptr mk_prim_type(int p)
 {@; return make_prim_type(static_cast<primitive_tag>(p)).release(); }
 extern "C"
 ptr mk_row_type(ptr c)
-{@; return make_row_type(type_ptr(static_cast<type_declarator*>(c)))
+{@; return make_row_type(type_ptr(static_cast<type_p>(c)))
   .release(); }
 extern "C"
 ptr mk_tuple_type(ptr l)
-{@; return make_tuple_type(type_list_ptr(static_cast<type_node*>(l)))
+{@; return make_tuple_type(type_list_ptr(static_cast<type_list>(l)))
   .release(); }
 extern "C"
 ptr mk_function_type(ptr a,ptr r)
-{ return make_function_type(type_ptr(static_cast<type_declarator*>(a)),@|
-    type_ptr(static_cast<type_declarator*>(r))).release(); }
+{ return make_function_type(type_ptr(static_cast<type_p>(a)),@|
+    type_ptr(static_cast<type_p>(r))).release(); }
 @)
 extern "C"
 void destroy_type(ptr t)@+
-{@; delete static_cast<type_declarator*>(t); }
+{@; delete static_cast<type_p>(t); }
 extern "C"
 void destroy_type_list(ptr t)@+
 {@; delete static_cast<type_list>(t); }
 
 ptr first_type(ptr typel)
-{@; return &static_cast<type_node*>(typel)->t; }
+{@; return &static_cast<type_list>(typel)->t; }
 
 std::ostream& print_type(std::ostream& out, ptr type)
-{@; return out << static_cast<type_node*>(type); }
+{@; return out << *static_cast<type_p>(type); }
 
 @*2 Specifying types by strings.
 %
@@ -810,13 +824,15 @@ introduced later.
 @< Declarations of global variables @>=
 extern const type_declarator unknown_type; // \.{*}
 extern const type_declarator int_type; // \.{int}
-extern const type_declarator rat_type; // \.{int}
+extern const type_declarator rat_type; // \.{rat}
 extern const type_declarator str_type; // \.{string}
 extern const type_declarator bool_type; // \.{bool}
 extern const type_declarator vec_type; // \.{vec}
+extern const type_declarator ratvec_type; // \.{ratvec}
 extern const type_declarator mat_type; // \.{mat}
 extern const type_declarator row_of_type; // \.{[*]}
 extern const type_declarator row_of_int_type; // \.{[int]}
+extern const type_declarator row_of_rat_type; // \.{[rat]}
 extern const type_declarator row_of_vec_type; // \.{[vec]}
 extern const type_declarator row_row_of_int_type; // \.{[[int]]}
 extern const type_declarator int_int_type; // \.{(int,int)}
@@ -836,9 +852,11 @@ const type_declarator rat_type(rational_type);
 const type_declarator str_type(string_type);
 const type_declarator bool_type(boolean_type);
 const type_declarator vec_type(vector_type);
+const type_declarator ratvec_type(rational_vector_type);
 const type_declarator mat_type(matrix_type);
 const type_declarator row_of_type(copy(unknown_type));
 const type_declarator row_of_int_type(copy(int_type));
+const type_declarator row_of_rat_type(copy(rat_type));
 const type_declarator row_of_vec_type(copy(vec_type));
 const type_declarator row_row_of_int_type(copy(row_of_int_type));
 const type_declarator int_int_type(*make_type("(int,int)"));
@@ -964,7 +982,7 @@ private:
 typedef std::auto_ptr<rat_value> rat_ptr;
 typedef std::tr1::shared_ptr<rat_value> shared_rat;
 
-@ Here are two more; this is quite repetitive
+@ Here are two more; this is quite repetitive.
 
 @< Type definitions @>=
 
@@ -1169,6 +1187,12 @@ be popped from the stack in reverse order.
 @< Global variable definitions @>=
 std::vector<shared_value> execution_stack;
 
+@~Although no necessary, the following will avoid some early reallocations of
+|execution_stack|.
+
+@< Initialise... @>=
+execution_stack.reserve(16); // avoid some early reallocations
+
 @ We shall define some inline functions to facilitate manipulating the stack.
 The function |push_value| does what its name suggests. For exception safety it
 takes either an auto-pointer or a shared pointer as argument; the former is
@@ -1198,12 +1222,7 @@ pust be dynamically cast to the type they are known to have because we passed
 the type checker; should the cast fail we shall throw a |std::logic_error|.
 The template function |get| with explicitly provided type serves for this
 purpose; it is very much like the template function |force|, but returns a
-shared pointer (because the value on the stack might be shared). Finally we
-provide a variant template function |get_own| that returns a privately owned
-copy of the value from the stack, to which modifications can be made without
-danger of altering shared instances. Since there is no way to persuade a
-|shared_ptr| to release its ownership even if ith happens to be the unique
-owner, we must unconditionally call |clone| to achieve this.
+shared pointer (because the value on the stack might be shared).
 
 @< Template and inline function definitions @>=
 
@@ -1214,24 +1233,38 @@ inline shared_value pop_value()
 }
 @)
 template <typename D> // |D| is a type derived from |value_base|
- std::tr1::shared_ptr<D> get() throw(std::logic_error)
+ inline std::tr1::shared_ptr<D> get() throw(std::logic_error)
 { std::tr1::shared_ptr<D> p=std::tr1::dynamic_pointer_cast<D>(pop_value());
   if (p.get()==NULL)
     throw std::logic_error(std::string("Argument is no ")+D::name());
   return p;
 }
 @.Argument is no ...@>
+
+@ In many cases we will want to get unique access to an object, duplicating it
+if necessary. The operation |uniquify| implements this; it was originally
+introduced in order to implement component assignments efficiently (the code
+for this will be given later) but is useful much more generally. In fact if we
+just computed the value in question from a function call it is virtually
+guaranteed to be unshared, but we shall call |uniquify| anyway to make clear
+our (destructive) intentions. Here we use it right away to provide a variant
+template function |get_own| of |get|, which returns a privately owned copy of
+the value from the stack, so that modifications can be made to it without
+danger of altering shared instances. In spite of the uniqueness guarantee,
+|get_own| must be declared to return a |shared_ptr| in order to avoid having
+to call |clone|: there is no way to persuade a |shared_ptr| to release its
+ownership even if ith happens to be the unique owner.
+
+
+@< Template and inline function def... @>=
+inline void uniquify(shared_value& v)
+{@; if (not v.unique()) v=shared_value(v->clone()); }
 @)
 template <typename D> // |D| is a type derived from |value_base|
- std::auto_ptr<D> get_own() throw(std::logic_error)
-{ D* p=dynamic_cast<D*>(execution_stack.back().get());
-  if (p==NULL)
-    throw std::logic_error(std::string("Argument is no ")+D::name());
-  std::auto_ptr<D> result(p->clone());
-  execution_stack.pop_back(); // only now can we release the shared pointer
-  return result;
+ std::tr1::shared_ptr<D> get_own() throw(std::logic_error)
+{@; uniquify(execution_stack.back());
+    return get<D>();
 }
-@.Argument is no ...@>
 
 @ Now let us define classes derived from |expression_base|. The simplest is
 |denotation|, which simply stores a |value|, which it returns upon evaluation.
@@ -1355,8 +1388,8 @@ did not own), the types passed when throwing the exception.
 
 @< Type definitions @>=
 struct type_error : public expr_error
-{ const type_declarator* actual; @+
-  const type_declarator* required; // the types that conflicted
+{ type_p actual; @+
+  type_p required; // the types that conflicted
 @)
   type_error (const expr& e, type_ptr a, type_ptr r) throw() @/
     : expr_error(e,"Type error") @|
@@ -1452,8 +1485,8 @@ no ownership of them down the linked list. We do provide methods |push| and
 
 @< Type def... @>=
 class bindings
-: public std::vector<std::pair<Hash_table::id_type,type_declarator*> >
-{ typedef std::vector<std::pair<Hash_table::id_type,type_declarator*> >
+: public std::vector<std::pair<Hash_table::id_type,type_p> >
+{ typedef std::vector<std::pair<Hash_table::id_type,type_p> >
     base;
   bindings* next; // non-owned pointer
 @)bindings(const bindings&); // copy constructor
@@ -1466,7 +1499,7 @@ public:
       delete it->second;
   }
   void add(Hash_table::id_type id,type_ptr t);
-  type_declarator* lookup
+  type_p lookup
     (Hash_table::id_type id, size_t& depth, size_t& offset) const;
   void push (bindings*& sp) @+{@; next=sp; sp=this; }
   void pop (bindings*& sp) const @+{@; sp=next; }
@@ -1483,7 +1516,7 @@ void bindings::add(Hash_table::id_type id,type_ptr t)
       throw program_error(std::string("Multiple binding of ")
                           +main_hash_table->name_of(id)
                           +" in same scope");
-  push_back(std::make_pair(id,(type_declarator*)NULL));
+  push_back(std::make_pair(id,(type_p)NULL));
   back().second=t.release();
 }
 
@@ -1493,7 +1526,7 @@ output arguments. If no match is found a null pointer is returned and the
 output parameters are unchanged.
 
 @< Function def... @>=
-type_declarator* bindings::lookup
+type_p bindings::lookup
   (Hash_table::id_type id, size_t& depth, size_t& offset) const
 { size_t i=0;
   for (const bindings* p=this; p!=NULL; p=p->next,++i)
@@ -1528,8 +1561,11 @@ id_context=NULL;
 
 @ The function |convert_expr| returns a pointer to the conversion of the
 |expr| to |expression|, of which the caller should take ownership. The reason
-we don't return an |expression_ptr| is entirely pragmatic.
-
+we don't return an |expression_ptr| is entirely pragmatic. The code below
+takes into account the possibility that a denotation is converted immediately
+to some other type, for instance integer denotations can be used where a
+rational number is expected. The function |coerce|, defined later, tests for
+this possibility, and may modify its final argument correspondingly.
 
 @< Function definitions @>=
 expression convert_expr(const expr& e, type_declarator& type)
@@ -1538,20 +1574,26 @@ expression convert_expr(const expr& e, type_declarator& type)
 
   switch(e.kind)
   { case integer_denotation:
-      if(type.specialise(int_type)) // change undefined type to integral
-        return new denotation
-          (shared_value(new int_value(e.e.int_denotation_variant)));
+    { expression_ptr d@|(new denotation
+        (shared_value(new int_value(e.e.int_denotation_variant))));
+      if(type.specialise(int_type) or coerce(int_type,type,d))
+        return d.release();
       else throw type_error(e,copy(int_type),copy(type));
+    }
    case string_denotation:
-      if (type.specialise(str_type)) // change undefined type to string
-        return new denotation
-          (shared_value(new string_value(e.e.str_denotation_variant)));
+    { expression_ptr d@|(new denotation
+        (shared_value(new string_value(e.e.str_denotation_variant))));
+      if (type.specialise(str_type) or coerce(str_type,type,d))
+        return d.release();
       else throw type_error(e,copy(str_type),copy(type));
+    }
    case boolean_denotation:
-      if (type.specialise(bool_type)) // change undefined type to boolean
-        return new denotation
-          (shared_value(new bool_value(e.e.int_denotation_variant)));
+    { expression_ptr d@|(new denotation
+          (shared_value(new bool_value(e.e.int_denotation_variant))));
+      if (type.specialise(bool_type) or coerce(bool_type,type,d))
+        return d.release();
       else throw type_error(e,copy(bool_type),copy(type));
+    }
    @\@< Other cases for type-checking and converting expression~|e| against
    |type|, all of which either |return| or |throw| a |type_error| @>
  }
@@ -1887,7 +1929,7 @@ ownership of the type.
 
 typedef std::tr1::shared_ptr<shared_value> shared_share;
 struct id_data
-{ shared_share val; @+ type_declarator* type;
+{ shared_share val; @+ type_p type;
   id_data() : val(),type(NULL)@+ {}
 };
 
@@ -1914,7 +1956,7 @@ public:
   ~Id_table(); // destructor of all values referenced in the table
 @)
   void add(Hash_table::id_type id, shared_value v, type_ptr t); // insertion
-  type_declarator* type_of(Hash_table::id_type id) const; // lookup
+  type_p type_of(Hash_table::id_type id) const; // lookup
   shared_value value_of(Hash_table::id_type id) const; // lookup
   shared_share address_of(Hash_table::id_type id); // locate
 @)
@@ -1970,7 +2012,7 @@ immediately modify the table, |address_of| is classified as a manipulator,
 since the pointer returned may be used to modify a stored value.
 
 @< Function def... @>=
-type_declarator* Id_table::type_of(Hash_table::id_type id) const
+type_p Id_table::type_of(Hash_table::id_type id) const
 {@; map_type::const_iterator p=table.find(id);
   return p==table.end() ? NULL : p->second.type;
 }
@@ -2102,7 +2144,7 @@ equal the expected type (if any), or be convertible to it using |coerce|.
 
 @< Other cases for type-checking and converting... @>=
 case applied_identifier:
-{ const type_declarator* it; expression_ptr id; size_t i,j;
+{ type_p it; expression_ptr id; size_t i,j;
   if ((it=id_context->lookup(e.e.identifier_variant,i,j))!=NULL)
     id.reset(new local_identifier(e.e.identifier_variant,i,j));
   else if ((it=global_id_table->type_of(e.e.identifier_variant))!=NULL)
@@ -2516,7 +2558,7 @@ case lambda_expr:
     throw type_error(e,copy(gen_func_type),copy(type));
   lambda fun=e.e.lambda_variant;
   id_pat& pat=fun->pattern;
-  type_declarator& arg_type=*static_cast<type_declarator*>(fun->arg_type);
+  type_declarator& arg_type=*static_cast<type_p>(fun->arg_type);
   if (not type.func->arg_type.specialise(arg_type))
   @/throw type_error(e,
                      make_function_type(copy(arg_type),copy(unknown_type)),
@@ -2530,272 +2572,185 @@ case lambda_expr:
   return new lambda_expression(pat,body);
 }
 
-@*1 Conversion to rigid vectors and matrices.
+@*1 Implicit conversion of values between types.
 %
-The following sections deal particularly with interfacing to the Atlas
-library, but address a problem that would be present for other libraries as
-well: how can a user of the interpreter construct data in the internal format
-of the library, rather than that (essentially nested lists) of the
-interpreter? The answer is via conversion routines, calls of which are
-implicitly inserted when the type analysis detects their necessity. Currently
-the conversions from the type ``row of integer'' to and from the type
-``vector', as well as those from the types ``row of row of integer'' and ``row
-of vector'' to and from the type ``matrix'' are implemented. Here ``vector''
-really means |latticetypes::Weight|, which stands for |matrix::Vector<int>|,
-while ``matrix'' means |latticetypes::LatticeMatrix|, which stands for
-|matrix::Matrix<int>|. These declarations are given
-in~\.{structure/latticetypes\_fwd.h}, while the template class
-|matrix::Matrix| is defined in~\.{utilities/matrix.h}.
+When interfacing this generic interpreter with a concrete library such as that
+of the Atlas of Lie Groups and Representations, a mechanism must be provided
+to convert data in the interpreter (represented essentially as nested lists)
+into the internal format of the library. For transparency of this mechanism we
+have chosen to provide the conversion through implicit operations that are
+accompanied by type changes; thus when the user enters a list of lists of
+integers in a position where an integral matrix is required, the necessary
+conversions are automatically inserted during type analysis. In fact we shall
+put in place a general mechanism of automatic type conversions, which will for
+instance also provide the inverse conversions where appropriate, and on some
+occasions merely provides convenience to the user, for instance by allowing
+integers in positions where a rational number is required.
 
+Thus the interpreter distinguishes its own types like \.{[int]} ``row of
+integer'' from similar built-in types of the library, like \.{vec} ``vector'',
+which it will consider to be primitive types. In fact a value of type
+``vector'' represents an object of the Atlas type
+|atlas::latticetypes::Weight|, which stands for |atlas::matrix::Vector<int>|,
+and similarly other primitive types will stand for other Atlas types. By
+including the file~\.{latticetypes.h} we know about the basic vector and
+matrix types.
 
 @< Includes... @>=
 #include "latticetypes.h"
-#include "matrix.h" // this makes |latticetypes::LatticeMatrix| a complete type
 
-@*2 Inserting conversion functions.
-%
-The conversion to vector or matrix will be represented by a special kind of
-expression, which behaves like a function call of a fixed function. For each
-function a different structure derived from |expression_base| is used; they
-only differ among each other by their virtual methods |evaluate| and |print|.
+@ We shall derive a single class |conversion| from |expression_base| to
+represent any expression that is to be converted using one of the various
+conversions. Which conversion is to be applied is determined by |type|, a
+reference to a |conversion_info| structure containing a function pointer
+|convert| that provides the actual conversion routine; this is easier than
+deriving a plethora of classes differing only in their virtual method
+|evaluate|, although it is slightly less efficient. The type |conv_f| of
+conversion function pointer specifies no argument or return value, as we know
+beforehand that the |shared_value| objects serving for this are to be found
+and left on the runtime stack.
 
 @< Type definitions @>=
-struct vector_conversion : public expression_base
-{ expression exp;
+struct conversion_info
+{ typedef void (*conv_f)();
+  conv_f convert;
+  std::string name;
+  conversion_info(const char* s,conv_f c) : convert(c),name(s) @+{}
+};
 @)
-  explicit vector_conversion(expression_ptr e) : exp(e.release()) @+{}
-  virtual ~vector_conversion()@;{@; delete exp; }
+class conversion : public expression_base
+{ const conversion_info& type;
+  expression exp;
+public:
+  conversion(const conversion_info& t,expression_ptr e)
+   :type(t),exp(e.release()) @+{}
+  virtual ~conversion()@;{@; delete exp; }
   virtual void evaluate() const;
   virtual void print(std::ostream& out) const;
 };
-@)
-struct matrix_conversion : public vector_conversion
-{ explicit matrix_conversion(expression_ptr e) : vector_conversion(e) @+{}
-@)
-  virtual ~matrix_conversion() @+{}
-  virtual void evaluate() const;
-  virtual void print(std::ostream& out) const;
-};
 
-@ When printed, these expressions provide a brief indication of the
-conversion.
+@ The |evaluate| method for conversions dispatches to the |convert| member,
+after evaluating |exp|.
 
-@< Function definitions @>=
-void vector_conversion::print(std::ostream& out) const
-@+{@; out << "V:" << *exp; }
-void matrix_conversion::print(std::ostream& out) const
-@+{@; out << "M:" << *exp; }
-
-@ When in |convert_expr| we encounter a list display when a non-row is
-expected, we single out the cases that the required type is vector or matrix,
-in which case we continue to convert the component expressions with expected
-type integer respectively vector. Here the insertion of the conversion
-function just means wrapping the list display into a call to |new
-vector_conversion| of |new matrix_conversion|.
-
-@< If |type| can be converted from some row-of type... @>=
-  { bool is_vector; type_declarator component_type;
-    if (type==vec_type)
-    {@; component_type.specialise(int_type); is_vector=true; }
-    else if (type==mat_type)
-    {@; component_type.specialise(vec_type); is_vector=false; }
-    else throw type_error(e,copy(row_of_type),copy(type));
-    std::auto_ptr<list_expression> display@|
-      (new list_expression@|(length(e.e.sublist)));
-  @/size_t i=0;
-    for (expr_list l=e.e.sublist; l!=NULL; l=l->next)
-      display->component[i++]=convert_expr(l->e,component_type);
-    return
-      is_vector ? new vector_conversion(expression_ptr(display))
-		: new matrix_conversion(expression_ptr(display));
-  }
+@< Function def...@>=
+void conversion::evaluate() const
+@+{@; exp->evaluate(); (*type.convert)(); }
+void conversion::print(std::ostream& out) const
+@+{@; out << type.name << ':' << *exp; }
 
 @*2 Coercion of types.
 %
-The most important instances where conversions are inserted are the cases
-above, where a list display occurs in a context requiring a vector or a
-matrix, since they provide a way for the user to construct vectors and
-matrices. However, it seems logical to provide the same conversions also when
-the expression is not a list display, for instance an applied identifier or a
-function call. In those cases the need for a conversion will usually arise
-from a difference between the required type and an already fully determined
-type of the subexpression. Since multiple syntactic classes are involved, it
-is not attractive to handle such conversions separately for the various
-branches of the big switch on the expression~|kind| in the type analysis, so
-we put in place a general mechanism that will insert a conversion depending on
-the pair of the expression type and required type, if it exists.
+An important aspect of automatic conversions is that they can be applied in
+situations where only the result type is known, for instance when a list
+display occurs in a context requiring a vector. While this requires particular
+consideration according to the syntactic form of the expression used (list
+display), there is also a simpler form of automatic conversion that can be
+applied to a large variety of expressions (identifiers, function calls, \dots)
+whenever they are found to have a different type from what the context
+requires. The a function |coerce| will try to insert an automatic conversion
+in such situations, if this can resolve the type conflict. We present this
+mechanism first, since the table it employs can then be re-used to handle the
+more subtle cases of automatic conversions.
 
-The mechanism is realised by a function |coerce|. Its final argument~|e| is a
-reference to the previously converted expression having |from_type|, and if
-values of this type can be converted to |to_type| then the expression will be
-modified by insertion of a conversion expression; the return value indicates
-whether a conversion was found.
+The function |coerce| requires to fully determined types |from_type| and
+|to_type|, and its final argument~|e| is a reference to the previously
+converted expression. If a conversion of value of |from_type| to |to_type| is
+available, then |coerce| will modify |e| by insertion of a |conversion| around
+it; the return value of |coerce| indicates whether an applicable conversion
+was found.
 
 @< Declarations of exported functions @>=
 
-bool coerce( const type_declarator& from_type, const type_declarator& to_type
-	   , expression_ptr& e) throw(std::bad_alloc);
+bool coerce(const type_declarator& from_type, const type_declarator& to_type,
+            expression_ptr& e);
 
 @ The implementation of |coerce| will be determined by a simple table lookup.
-Our convention will be that conversion functions take an auto-pointer as
-argument, release it upon insertion of the new node, and return an ordinary
-|expression| pointer, which the caller should then assume ownership of (the
-latter is just for convenience, to avoid the necessity to convert to an
-auto-pointer in each separate conversion function).
+The records in this table contain a |conversion_info| structure (in fact they
+are derived from it) and in addition indications of the types converted from
+and to. The table entries store these types by pointer, so that table entries
+are assignable, and the table can be allowed to grow (which is a technical
+necessity in order to allow other compilation units to contribute coercions).
 
 @< Local type definitions @>=
-struct conversion_info
-{ typedef expression (*converter)(expression_ptr);
-  type_declarator from,to; converter conv;
-    // function transforming the |expression| by inserting the coercion
-  conversion_info (type_ptr from_type, type_ptr to_type, converter c)
-   : from(),to(), conv(c)
-  @/{@; from.set_from(from_type); to.set_from(to_type); }
+struct conversion_record : public conversion_info
+{ const type_declarator* from,* to; // non-owned pointers
+  conversion_record (const type_declarator& from_type,
+                     const type_declarator& to_type,
+                     const char* s, conv_f c)
+   : conversion_info(s,c), from(&from_type),to(&to_type) @+{}
 };
-@)
-typedef std::vector<conversion_info> coerce_table_type;
 
-@ Here is the lookup table.
+@ Here is the lookup table. It is defined as vector so that other compilation
+units can extend it; however it should not be extended once evaluation starts,
+since |conversion| objects will store references to table entries, which would
+become invalid in case of reallocation.
 
 @< Global variable definitions @>=
 
-conversion_info coerce_table[]= { @<Initialiser for |coerce_table| @>@;@;};
+std::vector<conversion_record> coerce_table;
 
-const size_t nr_coercions=sizeof(coerce_table)/sizeof(conversion_info);
+@ The following function simplifies filling the coercion table; it is
+externally callable.
 
-@ We need |converter| functions to instantiate |conversion_info::conv| from.
-We need to declare these functions before we come to the global variable
-definitions.
-
-@< Declarations of local functions @>=
-expression vector_converter(expression_ptr e);
-expression matrix_converter(expression_ptr e);
-
-@ The conversion-inserting functions are simple packaging routines.
-
-@< Local function definitions @>=
-expression vector_converter(expression_ptr e) @+
-{@; return new vector_conversion(e); }
-expression matrix_converter(expression_ptr e) @+
-{@; return new matrix_conversion(e); }
-
-
-@ All that remains is to initialise the |coercion table|.
-@<Initialiser for |coerce_table| @>=
-conversion_info(copy(row_of_int_type), copy(vec_type), vector_converter), @/
-conversion_info(copy(row_of_vec_type), copy(mat_type), matrix_converter), @/
-@[@]
+@< Declarations of exported functions @>=
+void coercion(const type_declarator& from,
+              const type_declarator& to,
+              const char* s, conversion_info::conv_f f);
+@~The action is simply extending |coerce_table| with a new |conversion_record|.
+@< Function def... @>=
+void coercion(const type_declarator& from,
+              const type_declarator& to,
+              const char* s, conversion_info::conv_f f)
+{@; coerce_table.push_back(conversion_record(from,to,s,f)); }
 
 @ The function |coerce| simply traverses the |coerce_table| looking for an
-appropriate entry, and applies the |converter| if it finds one. As indicated
-above, it is the task of |coerce| to keep ownership while calling the
-conversion function, and switch to owning the full expression afterwards.
+appropriate entry, and wraps |e| into a corresponding |conversion| it finds
+one. Ownership of the expression pointed to by |e| is handled implicitly: it
+is released during the construction of the |conversion|, and immediately
+afterwards |reset| reclaims ownership of the pointer to that |conversion|.
 
 @< Function definitions @>=
-bool coerce( const type_declarator& from_type, const type_declarator& to_type
-	   , expression_ptr& e) throw(std::bad_alloc)
-{ for (conversion_info*
-       it=&coerce_table[0]; it<&coerce_table[nr_coercions]; ++it)
-    if (from_type==it->from and to_type==it->to)
-    @/{@; e.reset(it->conv(e));
+bool coerce(const type_declarator& from_type, const type_declarator& to_type,
+	    expression_ptr& e)
+{ for (conversion_record*
+       it=&coerce_table[0]; it<&*coerce_table.end(); ++it)
+    if (from_type==*it->from and to_type==*it->to)
+    @/{@; e.reset(new conversion(*it,e));
       return true;
     }
   return false;
 }
 
-@ We extend our range of conversions with other possibilities. For each we
-need to define a type derived from |expression_base|; in fact we can derive
-from |vector_conversion|, like for |matrix_conversion|.
+@ When in |convert_expr| we encounter a list display when a non-row is
+expected, we single out the cases that a conversion from a row type to the
+required type is available; in that case we continue to convert the component
+expressions with as expected type the corresponding component type (if
+multiple coercions to the required type are known, the first one in the table
+gets preference; this occurs for required type \.{mat}, and means that the
+component type will then be \.{vec} rather than \.{[int]}).
 
-@<Type definitions@>=
+@< If |type| can be converted from some row-of type... @>=
+{ type_declarator component_type; conversion_record* it;
+  for (it=&coerce_table[0]; it<&*coerce_table.end(); ++it)
+    if (type==*it->to and it->from->kind==row_type)
+    @/{@; component_type.specialise(*it->from->component_type); break; }
 
-struct matrix2_conversion : public vector_conversion
-  // for \.{[[int]]}$\to$\.{mat}
-{ explicit matrix2_conversion(expression_ptr e) : vector_conversion(e) @+{}
+  if (it==&*coerce_table.end())
+    throw type_error(e,copy(row_of_type),copy(type));
 @)
-  virtual void evaluate() const;
-  virtual void print(std::ostream& out) const;
-};
-
-struct int_list_conversion : public vector_conversion
-  // for \.{vec}$\to$\.{[int]}
-{ explicit int_list_conversion(expression_ptr e) : vector_conversion(e) @+{}
-@)
-  virtual void evaluate() const;
-  virtual void print(std::ostream& out) const;
-};
-@)
-struct vec_list_conversion : public vector_conversion
-  // for \.{mat}$\to$\.{[vec]}
-{ explicit vec_list_conversion(expression_ptr e) : vector_conversion(e) @+{}
-@)
-  virtual void evaluate() const;
-  virtual void print(std::ostream& out) const;
-};
-@)
-struct int_list_list_conversion : public vector_conversion
-  // for \.{mat}$\to$\.{[[int]]}
-{ explicit int_list_list_conversion(expression_ptr e)
-   : vector_conversion(e) @+{}
-@)
-  virtual void evaluate() const;
-  virtual void print(std::ostream& out) const;
-};
-
-@ The print functions are very simple. As before, these definitions were
-nevertheless not in-lined in the structure definition, because in the header
-file type definitions come before the point where operators are declared,
-notably the instance of the operator~`|<<|' used to print the
-|expression_base| reference `|*exp|'.
-
-@< Function definitions @>=
-void matrix2_conversion::print(std::ostream& out) const
-@+{@; out << "MV:" << *exp; }
-void int_list_conversion::print(std::ostream& out) const
-@+{@; out << "[I]:" << *exp; }
-void vec_list_conversion::print(std::ostream& out) const
-@+{@; out << "[V]:" << *exp; }
-void int_list_list_conversion::print(std::ostream& out) const
-@+{@; out << "[[I]]:" << *exp; }
-
-@ Here are the declarations of their conversion-inserting functions.
-
-@< Declarations of local functions @>=
-expression matrix2_converter(expression_ptr e);
-expression int_list_converter(expression_ptr e);
-expression vec_list_converter(expression_ptr e);
-expression int_list_list_converter(expression_ptr e);
-
-@~Their definitions are hardly surprising.
-
-@< Local function definitions @>=
-expression matrix2_converter(expression_ptr e)
-@+{@; return new matrix2_conversion(e); }
-expression int_list_converter(expression_ptr e)
-@+{@; return new int_list_conversion(e); }
-expression vec_list_converter(expression_ptr e)
-@+{@; return new vec_list_conversion(e); }
-expression int_list_list_converter(expression_ptr e)
-@+{@; return new int_list_list_conversion(e); }
-
-
-@ All that remains is to initialise the |coercion table|.
-@<Initialiser for |coerce_table| @>=
-conversion_info(copy(row_row_of_int_type), copy(mat_type)
-  , matrix2_converter), @/
-conversion_info(copy(vec_type), copy(row_of_int_type)
-  , int_list_converter), @/
-conversion_info(copy(mat_type), copy(row_of_vec_type)
-  , vec_list_converter), @/
-conversion_info(copy(mat_type), copy(row_row_of_int_type)
-  , int_list_list_converter), @/
-@[@]
-
+  std::auto_ptr<list_expression> display@|
+      (new list_expression@|(length(e.e.sublist)));
+  @/size_t i=0;
+    for (expr_list l=e.e.sublist; l!=NULL; l=l->next,++i)
+      display->component[i]=convert_expr(l->e,component_type);
+    return new conversion(*it,expression_ptr(display));
+}
 
 @*2 Primitive types for vectors and matrices.
 %
-When packed into a a type derived from |value_base| (defined later), these
-types will be considered as primitive at the level of the evaluator.
+Before we can specify the conversion routines, we must specify the types into
+which lists will be packed, and which will be considered as primitive at the
+level of the evaluator.
 
 @< Other primitive type tags @>=
 vector_type, matrix_type, rational_vector_type, @[@]
@@ -2806,14 +2761,13 @@ have in the Atlas software. We believe that a more extensive name might be
 more confusing that helpful to users; besides, the interpretation of the
 values is not entirely fixed (vectors are used for coweights and (co)roots as
 well as for weights, and matrices could denote either a basis or an
-automorphism of a lattice.
+automorphism of a lattice).
 
 @< Other primitive type names @>=
 "vec", "mat", "ratvec", @[@]
 
-@ Here are the corresponding types derived from |value_base|. In the
-constructor for |vector_value|, the argument is a reference to
-|latticetypes::CoeffList|, which stands for
+@ We start with deriving |vector_value| from |value_base|. In its constructor,
+the argument is a reference to |latticetypes::CoeffList|, which stands for
 |std::vector<latticetypes::LatticeCoeff>|, from which |latticetypes::Weight|
 is derived (without adding data members), and since a constructor for the
 latter from the former is defined, we can do with just one constructor for
@@ -2835,9 +2789,11 @@ private:
 @)
 typedef std::auto_ptr<vector_value> vector_ptr;
 typedef std::tr1::shared_ptr<vector_value> shared_vector;
-@)
 
+@ Matrices and rational vectors follow the same pattern, but have constructors
+from identical types to the one stored.
 
+@< Type definitions @>=
 struct matrix_value : public value_base
 { latticetypes::LatticeMatrix val;
 @)
@@ -2875,7 +2831,7 @@ typedef std::tr1::shared_ptr<rational_vector_value> shared_rational_vector;
 
 @ To make a small but visible difference in printing between vectors and lists
 of integers, weights will be printed in equal width fields one longer than the
-minimum necessary. Rational vector are a small veriation.
+minimum necessary. Rational vectors are a small veriation.
 
 @h<sstream>
 @h<iomanip>
@@ -2947,14 +2903,7 @@ expressions instead. So we shall not hesitate to use this idiom henceforth; in
 fact, while it was exceptional when this code was first written, it is now
 being used throughout the Atlas library.
 
-For |vector_conversion|, the |evaluate| method is easy, and follows a pattern
-that we shall see a lot more: evaluate the subexpression, pop the result off
-the |execution_stack| while converting it to an appropriate shared pointer,
-then produce and push the resulting |value|. The conversion to the
-appropriate kind of pointer is safe since we type-checked the expression, and
-the shared pointer will clean up the used argument.
-
-@< Function definition... @>=
+@< Local function def... @>=
 latticetypes::Weight row_to_weight(const row_value& r)
 { latticetypes::Weight result(r.val.size());
   for(size_t i=0; i<r.val.size(); ++i)
@@ -2962,8 +2911,8 @@ latticetypes::Weight row_to_weight(const row_value& r)
   return result;
 }
 @)
-void vector_conversion::evaluate() const
-{ exp->evaluate(); @+ shared_row r(get<row_value>());
+void vector_convert()
+{@; shared_row r(get<row_value>());
   push_value(new vector_value(row_to_weight(*r)));
 }
 
@@ -2973,9 +2922,9 @@ we can safely cast the argument pointer to |(row_value*)|, and each of its
 component pointers to |(vector_value*)|. Any ragged columns are silently
 extended will null entries to make a rectangular shape for the matrix.
 
-@< Function definitions @>=
-void matrix_conversion::evaluate() const
-{ exp->evaluate(); @+ shared_row r(get<row_value>());
+@< Local function def... @>=
+void matrix_convert()
+{ shared_row r(get<row_value>());
 @/latticetypes::WeightList column_list;
   column_list.reserve(r->val.size());
   size_t depth=0; // maximal length of vectors
@@ -2993,15 +2942,53 @@ void matrix_conversion::evaluate() const
   push_value(new matrix_value(latticetypes::LatticeMatrix(column_list)));
 }
 
-@ The remaining ``internalising'' conversion function, from row of row of
-integer to matrix, is very similar. Only this times the argument was checked
-to be of type \.{[[int]]}, so we cast the raw component pointers to
-|(row_value*)|, and then use |row_to_weight| to build column vectors to be
-used by the matrix constructor.
+@ All that remains is to initialise the |coercion table|.
+@< Initialise evaluator @>=
+coercion(row_of_int_type, vec_type, "V", vector_convert); @/
+coercion(row_of_vec_type,mat_type, "M", matrix_convert);
 
-@< Function definitions @>=
-void matrix2_conversion::evaluate() const
-{ exp->evaluate(); @+ shared_row r(get<row_value>());
+@ Here are conversions involving rational numbers and vectors.
+
+@< Local function def... @>=
+void rational_convert()
+{@; shared_int i = get<int_value>();
+    push_value(new rat_value(arithmetic::Rational(i->val)));
+}
+@)
+void ratvec_convert()
+{ shared_row r = get <row_value>();
+  latticetypes::LatticeElt numer(r->val.size()),denom(r->val.size());
+  unsigned int d=1;
+  for (size_t i=0; i<r->val.size(); ++i)
+  { arithmetic::Rational frac = force<rat_value>(&*r->val[i])->val;
+    numer[i]=frac.numerator();
+    denom[i]=frac.denominator();
+    d=arithmetic::lcm(d,denom[i]);
+  }
+  for (size_t i=0; i<r->val.size(); ++i)
+    numer[i]*= d/denom[i];
+
+  push_value(new rational_vector_value(latticetypes::RatWeight(numer,d)));
+}
+@)
+void rat_list_convert()
+{ shared_rational_vector rv = get<rational_vector_value>();
+  row_ptr result(new row_value(rv->val.size()));
+  for (size_t i=0; i<rv->val.size(); ++i)
+  { arithmetic::Rational q(rv->val.numerator()[i],rv->val.denominator());
+    result->val[i] = shared_value(new rat_value(q.normalize()));
+  }
+  push_value(result);
+}
+
+
+@ There remains one ``internalising'' conversion function, from row of row of
+integer to matrix, and the ``externalising'' counterparts (towards lists) of
+the vector and matrix conversions. The former is similar to |matrix_convert|.
+
+@< Local function def... @>=
+void matrix2_convert()
+{ shared_row r(get<row_value>());
 @/latticetypes::WeightList column_list;
   column_list.reserve(r->val.size());
   size_t depth=0; // maximal length of vectors
@@ -3020,13 +3007,12 @@ void matrix2_conversion::evaluate() const
 
 }
 
-@ The other three conversion functions perform the inverse transformations of
-those given above. Again it will be handy to have a basic function
-|weight_to_row| that performs more or less the inverse transformation of
-|row_to_weight|, but rather than returning a |row_value| it returns a
+@ For the ``externalising'' conversions, it will be handy to have a basic
+function |weight_to_row| that performs more or less the inverse transformation
+of |row_to_weight|, but rather than returning a |row_value| it returns a
 |row_ptr| pointing to it.
 
-@< Function definitions @>=
+@< Local function def... @>=
 row_ptr weight_to_row(const latticetypes::Weight& v)
 { row_ptr result (new row_value(v.size()));
   for(size_t i=0; i<v.size(); ++i)
@@ -3034,27 +3020,39 @@ row_ptr weight_to_row(const latticetypes::Weight& v)
   return result;
 }
 @)
-void int_list_conversion::evaluate() const
-{ exp->evaluate(); @+ shared_vector v(get<vector_value>());
+void int_list_convert()
+{@; shared_vector v(get<vector_value>());
   push_value(weight_to_row(v->val));
 }
 @)
-void vec_list_conversion::evaluate() const
-{ exp->evaluate(); @+ shared_matrix m(get<matrix_value>());
+void vec_list_convert()
+{ shared_matrix m(get<matrix_value>());
   row_ptr result(new row_value(m->val.numColumns()));
   for(size_t i=0; i<m->val.numColumns(); ++i)
     result->val[i]=shared_value(new vector_value(m->val.column(i)));
   push_value(result);
 }
 @)
-void int_list_list_conversion::evaluate() const
-{ exp->evaluate(); @+ shared_matrix m(get<matrix_value>());
+void int_list_list_convert()
+{ shared_matrix m(get<matrix_value>());
   row_ptr result(new row_value(m->val.numColumns()));
   for(size_t i=0; i<m->val.numColumns(); ++i)
     result->val[i]=shared_value(weight_to_row(m->val.column(i)).release());
 
   push_value(result);
 }
+
+@ All that remains is to initialise the |coerce_table|.
+@< Initialise evaluator @>=
+coercion(int_type,rat_type, "Q", rational_convert); @/
+coercion(row_of_rat_type,ratvec_type, "QV", ratvec_convert); @/
+coercion(ratvec_type,row_of_rat_type, "[Q]", rat_list_convert);
+@)
+coercion(row_row_of_int_type,mat_type, "M2", matrix2_convert); @/
+coercion(vec_type,row_of_int_type, "[I]", int_list_convert); @/
+coercion(mat_type,row_of_vec_type, "[V]", vec_list_convert); @/
+coercion(mat_type,row_row_of_int_type, "[[I]]", int_list_list_convert); @/
+
 
 @*1 Casts.
 %
@@ -3064,7 +3062,7 @@ represent them.
 @< Other cases for type-checking and converting... @>=
 case cast_expr:
 { cast c=e.e.cast_variant;
-  type_declarator& ctype=*static_cast<type_declarator*>(c->type);
+  type_declarator& ctype=*static_cast<type_p>(c->type);
   expression_ptr p(convert_expr(c->exp,ctype));
   if (type.specialise(ctype) or coerce(ctype,type,p))
     return p.release();
@@ -3371,7 +3369,7 @@ way,
 case ass_stat:
 { Hash_table::id_type lhs=e.e.assign_variant->lhs;
   const expr& rhs=e.e.assign_variant->rhs;
-  type_declarator* it; expression_ptr assign; size_t i,j;
+  type_p it; expression_ptr assign; size_t i,j;
   if ((it=id_context->lookup(lhs,i,j))!=NULL)
   @/{@; expression_ptr r(convert_expr(rhs,*it));
     assign.reset(new local_assignment(lhs,i,j,r));
@@ -3472,14 +3470,6 @@ the aggregate; it is this pointer that is in principle modified.
 void global_component_assignment::evaluate() const
 {@; assign(*address,kind); }
 
-@ In order to implement component assignments efficiently, we will want to get
-unique access to the aggregate object, duplicating it if necessary. The
-following function achieves this for arbitrary objects.
-
-@< Function def... @>=
-inline void uniquify(shared_value& v)
-{@; if (not v.unique()) v=shared_value(v->clone()); }
-
 @ The |assign| method, which will also be called for local component
 assignments, starts by the common work of evaluating the index and the value
 to be assigned, and of making sure the aggregate variable is made to point to
@@ -3567,7 +3557,7 @@ add a test for matching column length.
     throw std::runtime_error
       (std::string("Cannot replace column of size ")+num(m.val.numRows())+
        " by one of size "+num(v.val.size()));
-  m.val.copyColumn(v.val,j);
+  m.val.set_column(j,v.val);
   // and leave value on stack
 }
 
@@ -3611,7 +3601,7 @@ case comp_ass_stat:
 { Hash_table::id_type aggr=e.e.comp_assign_variant->aggr;
   const expr& index=e.e.comp_assign_variant->index;
   const expr& rhs=e.e.comp_assign_variant->rhs;
-@/type_declarator* aggr_t; type_declarator ind_t; type_declarator comp_t;
+@/type_p aggr_t; type_declarator ind_t; type_declarator comp_t;
   expression_ptr assign; size_t d,o; bool is_local;
   if ((aggr_t=id_context->lookup(aggr,d,o))!=NULL)
     is_local=true;
@@ -3735,19 +3725,8 @@ type_ptr analyse_types(const expr& e,expression_ptr& p)
 @*1 Wrapper functions.
 %
 We have not defined any wrapper functions yet, and therefore have nothing in
-the |global_id_table|. We shall do so presently.
-
-@< Function definitions @>=
-
-@< Definitions of wrapper functions @>@;
-
-@ Once defined, |initialise_evaluator| will install these functions into the
-|global_id_table|.
-
-@< Declarations of exported functions @>=
-void initialise_evaluator();
-
-@ The following function greatly facilitates this repetitive task.
+the |global_id_table|. The following function will greatly facilitate the
+repetitive task of installing wrapper functions.
 
 @< Template and inline... @>=
 inline void install_function
@@ -3757,23 +3736,14 @@ inline void install_function
     (main_hash_table->match_literal(name),val,make_type(type));
 }
 
-@ Here we install the trivial wrapper function under two different identity
-signatures.
-
-@< Function definitions @>=
-void initialise_evaluator()
-{ execution_stack.reserve(16); // avoid some early reallocations
-@)
-@/@< Install built-in functions @>
-}
-
 @ Our first built-in functions implement with integer arithmetic. Arithmetic
 operators are implemented by wrapper functions with two integer arguments.
 Note that the values are pulled from the stack in reverse order, which is
 important for the non-commutative operations like `|-|' and `|/|'. Since
 values are shared, we must allocate new value objects for the results.
 
-@< Definitions of wrapper functions @>=
+@< Local function definitions @>=
+
 void plus_wrapper ()
 { push_tuple_components();
   shared_int j(get<int_value>()); shared_int i(get<int_value>());
@@ -3803,7 +3773,7 @@ void divide_wrapper ()
 quotient-and-remainder operation |divmod|, and unary subtraction. Finally we
 define an exact devision operator that constructs a rational number.
 
-@< Definitions of wrapper functions @>=
+@< Local function definitions @>=
 void modulo_wrapper ()
 { push_tuple_components();
   shared_int  j(get<int_value>()); shared_int i(get<int_value>());
@@ -3840,7 +3810,7 @@ implemented. Since this is a wrapper function (hence without arguments) there
 is no other way to convey the output stream to be used than via a dedicated
 global variable.
 
-@< Definitions of wrapper functions @>=
+@< Local function definitions @>=
 void print_wrapper ()
 { shared_string s(get<string_value>());
   *output_stream << s->val << std::endl;
@@ -3849,54 +3819,46 @@ void print_wrapper ()
 
 
 @ We now define a few functions, to really exercise something, even if it is
-modest, from the Atlas library. The remainder of this chapter is not really to
-be considered part of the interpreter, but a first step to its interface with
-the Atlas library, which is developed in much more detail in the compilation
-unit \.{built-in-types}. But it was important to have some experience with
-calling function from the library, whence these functions. First of all the
-identity matrix and matrix transposition.
+modest, from the Atlas library. These wrapper function are not really to be
+considered part of the interpreter, but a first step to its interface with the
+Atlas library, which is developed in much more detail in the compilation
+unit \.{built-in-types}. In fact we shall make some of these wrapper functions
+externally callable, so they can be directly used from that compilation unit.
+First of all we have the identity matrix and matrix transposition.
 
 @< Declarations of exported functions @>=
-void vector_div_wrapper();
 void id_mat_wrapper ();
 void transpose_mat_wrapper ();
 
-@ Since in general built-in functions may throw exceptions (even for such
-simple operations as |transpose|) we hold the pointers to the values created
-in smart pointers.
+@ In |id_mat_wrapper| we create a |matrix_value| around an empty
+|LatticeMatrix| rather than build a filled matrix object first. If a
+constructor or function producing an identity matrix were available we could
+have used that, but there is (currently) no such constructor or function; the
+main reason seems to be that |matrix::Matrix| is a class template, and
+specifying the desired entry type would be somewhat awkward.
 
-@< Definitions of wrapper functions @>=
-void vector_div_wrapper()
-{ push_tuple_components();
-  shared_int n(get<int_value>());
-  shared_vector v(get<vector_value>());
-  push_value(new rational_vector_value(v->val,n->val));
-}
+Since in general built-in functions may throw exceptions (even for such simple
+operations as |transposed|) we hold the pointers to local values in smart
+pointers; for values popped from the stack this would in fact be hard to avoid.
 
-@ The reason that in |id_mat_wrapper| we create a |matrix_value|
-around an empty |LatticeMatrix| rather than build a filled matrix object
-first, is that the constructor for |matrix_value| would than have to copy that
-matrix object (which implies copying its contents). Actually this is a case
-where the compiler might avoid such a copy if the identity matrix were
-produced directly in the argument to |new matrix_value| (rather than in a
-variable), but there is (currently) no constructor or function that produces
-an identity matrix as result. We also define |diagonal_wrapper|, a slight
-generalisation of |id_mat_wrapper| that produces a diagonal matrix from a
-vector.
-
-@< Definitions of wrapper functions @>=
+@< Function definitions @>=
 void id_mat_wrapper ()
 { shared_int i(get<int_value>());
   matrix_ptr m
      (new matrix_value(latticetypes::LatticeMatrix()));
   matrix::identityMatrix(m->val,std::abs(i->val)); push_value(m);
 }
-@)
-void transpose_mat_wrapper ()
+@) void
+transpose_mat_wrapper ()
 { shared_matrix m(get<matrix_value>());
   push_value(new matrix_value(m->val.transposed()));
 }
-@)
+
+@ We also define |diagonal_wrapper|, a slight generalisation of
+|id_mat_wrapper| that produces a diagonal matrix from a vector. The function
+|vector_div_wrapper| produces a rational vector.
+
+@< Local function def... @>=
 void diagonal_wrapper ()
 { shared_vector d(get<vector_value>());
   size_t n=d->val.size();
@@ -3904,6 +3866,13 @@ void diagonal_wrapper ()
      (new matrix_value(latticetypes::LatticeMatrix(n,n,0)));
   for (size_t i=0; i<n; ++i) m->val(i,i)=d->val[i];
   push_value(m);
+}
+
+void vector_div_wrapper()
+{ push_tuple_components();
+  shared_int n(get<int_value>());
+  shared_vector v(get<vector_value>());
+  push_value(new rational_vector_value(v->val,n->val));
 }
 
 @ Now the product of a matrix and a vector or matrix. The first of these was
@@ -3926,7 +3895,7 @@ For wrapper functions with multiple arguments, we must always remember that
 they are to be popped from the stack in reverse order, but in the case of
 |mm_prod_wrapper| this is particularly important.
 
-@< Definitions of wrapper functions @>=
+@< Function definitions @>=
 void mv_prod_wrapper ()
 { push_tuple_components();
   shared_vector v(get<vector_value>());
@@ -3957,7 +3926,7 @@ the two combined into a single function.
 
 @h "smithnormal.h"
 
-@< Definitions of wrapper functions @>=
+@< Local function definitions @>=
 void invfact_wrapper ()
 { shared_matrix m(get<matrix_value>());
   size_t nr=m->val.numRows();
@@ -3994,7 +3963,7 @@ void Smith_wrapper ()
 but behind the scenes, namely to invert a matrix. Since this cannot be done in
 general over the integers, we return an integral matrix and a common
 denominator to be applied to all coefficients.
-@< Definitions of wrapper functions @>=
+@< Local function definitions @>=
 void invert_wrapper ()
 { shared_matrix m(get<matrix_value>());
   if (m->val.numRows()!=m->val.numColumns())
@@ -4013,7 +3982,7 @@ void invert_wrapper ()
 arithmetic operators correspond to the ones used in the parser definition
 file \.{parser.y}.
 
-@< Install built-in functions @>=
+@< Initialise... @>=
 install_function(plus_wrapper,"+","(int,int->int)");
 install_function(minus_wrapper,"-","(int,int->int)");
 install_function(times_wrapper,"*","(int,int->int)");
@@ -4040,64 +4009,15 @@ program that do not consist just of evaluating expressions. What will
 presented is not particularly related to the evaluator, and is present here
 for somewhat opportunistic purposes.
 
-Several kinds of things will be defined: there will be a tiny bit of global
-state that can be set from the main program and inspected by any module that
-cares to (and that reads \.{evaluator.h}); there are the declarations of
-built-in types that are not dealt with directly by the evaluator, but which
-the evaluator must know about if only to store the type names at the
-appropriate places, and finally there are several functions that can be called
-directly by the parser (those are not declared in our header file, but in
-\Cee-style in \.{parsetree.h}, which the parser does read).
+@ Applied identifiers can be introduced (or modified) by the function
+|global_set_identifier|; it was declared in \.{parsetree.h} since it is called
+directly by the parser, and therefore it has \Cee-linkage. We define it here
+since it uses the services of the evaluator.
 
-@< Declarations of global variables @>=
-extern int verbosity;
-
-@~By raising the value of |verbosity|, some trace of internal operations can
-be activated.
-
-@< Global variable definitions @>=
-int verbosity=0;
-
-@ In order for this compilation unit to function properly, it must know of the
-existence and names for other built-in types. We could scoop up these names
-using clever \&{\#include} directives, but that is not really worth the hassle
-(when adding such types you have to recompile this unit anyway; it is not so
-much worse to actually extend the lines below as well).
-
-@< Other primitive type names @>=
-"LieType","RootDatum", "InnerClass", "RealForm", "DualRealForm",
-"CartanClass", @[@]
-
-@~The enumeration values below are never directly used, but they must be
-present so that the evaluator be aware of the number of primitive types (via
-the final enumeration value |nr_of_primitive_types|).
-
-@< Other primitive type tags @>=
-complex_lie_type_type , root_datum_type, inner_class_type, real_form_type,
-dual_real_form_type, Cartan_class_type, @[@]
-
-@ It is useful to print type information, either for a single expression or for
-all identifiers in the table. We declare the pointer that was already used in
-|print_wrapper|.
-
-@< Declarations of global variables @>=
-extern std::ostream* output_stream;
-
-@ The |output_stream| will normally point to |std::cout|.
-
-@< Global variable definitions @>=
-std::ostream* output_stream= &std::cout;
-
-@ For the moment, applied identifiers can only get their value through the
-function |global_set_identifier| that was declared in \.{parsetree.h}. We
-define it here since it uses the services of the evaluator. It will be called
-by the parser for global identifier definitions (simple or multiple);
-therefore it has \Cee-linkage.
-
-Recall that the parser guarantees that |ids| represents a list of identifiers.
-What has to be done here is straightforward. We type-check the expression~|e|,
-storing its result, then evaluate it, and store the (type,value) pair(s) into
-in |global_id_table|. To provide some feedback to the user we report the type
+The grammar guarantees that |ids| represents a list of identifiers. What has
+to be done here is straightforward. We type-check the expression~|e|, storing
+its result, then evaluate it, and store the (type,value) pair(s) into in
+|global_id_table|. To provide some feedback to the user we report the type
 assigned, but not the value since this might result in more output than is
 desirable in case of an assignment.
 
@@ -4195,6 +4115,18 @@ the tuple value. We report the type of each variable assigned separately.
   }
 }
 
+@ It is useful to print type information, either for a single expression or for
+all identifiers in the table. We declare the pointer that was already used in
+|print_wrapper|.
+
+@< Declarations of global variables @>=
+extern std::ostream* output_stream;
+
+@ The |output_stream| will normally point to |std::cout|.
+
+@< Global variable definitions @>=
+std::ostream* output_stream= &std::cout;
+
 @ The function |type_of_expr| prints the type of a single expression, without
 evaluating it; since the expression is not limited to being a single
 identifier, we must cater for the possibility that the type analysis fails, in
@@ -4221,6 +4153,35 @@ void show_ids()
 {@; *output_stream << *global_id_table;
 }
 
+@ In order for this compilation unit to function properly, it must know of the
+existence and names for other built-in types. We could scoop up these names
+using clever \&{\#include} directives, but that is not really worth the hassle
+(when adding such types you have to recompile this unit anyway; it is not so
+much worse to actually extend the lines below as well).
+
+@< Other primitive type names @>=
+"LieType","RootDatum", "InnerClass", "RealForm", "DualRealForm",
+"CartanClass", @[@]
+
+@~The enumeration values below are never directly used, but they must be
+present so that the evaluator be aware of the number of primitive types (via
+the final enumeration value |nr_of_primitive_types|).
+
+@< Other primitive type tags @>=
+complex_lie_type_type , root_datum_type, inner_class_type, real_form_type,
+dual_real_form_type, Cartan_class_type, @[@]
+
+@ Here is a tiny bit of global state that can be set from the main program and
+inspected by any module that cares to (and that reads \.{evaluator.h}).
+
+@< Declarations of global variables @>=
+extern int verbosity;
+
+@~By raising the value of |verbosity|, some trace of internal operations can
+be activated.
+
+@< Global variable definitions @>=
+int verbosity=0;
 
 @* Index.
 

@@ -72,7 +72,8 @@ avoids having to declare each wrapper function.
 
 @< Function definitions @>=
 void initialise_builtin_types()
-@+{@; @< Install wrapper functions @>
+{ @< Install wrapper functions @>
+  @< Install coercions @>
 }
 
 @ Before we can define any types we must make sure the types
@@ -121,11 +122,12 @@ private:
 typedef std::auto_ptr<Lie_type_value> Lie_type_ptr;
 typedef std::tr1::shared_ptr<Lie_type_value> shared_Lie_type;
 
-@ The type |lietype::LieType| is defined as |std::vector<SimpleLieType>| where
-|SimpleLieType| stands for |std::pair<char,size_t>|. Therefore it
-could take arbitrary values, not necessarily sensible ones. To remedy this we
-make the method |add_simple_factor|, which is the only proposed way to build
-up Lie types, check for the validity.
+@ The type |lietype::LieType| is publicly derived from
+|std::vector<SimpleLieType>|, and in its turn |SimpleLieType| is publicly
+derived from |std::pair<char,size_t>|. Therefore these types could take
+arbitrary values, not necessarily meaningful ones. To remedy this we make the
+method |add_simple_factor|, which is the only proposed way to build up Lie
+types, check for the validity.
 
 Since the tests defined in \.{io/interactive\_lietype.cpp} used in the
 current interface for the Atlas software are clumsy to use, we perform
@@ -145,7 +147,7 @@ void Lie_type_value::add_simple_factor (char c,size_t rank)
   if (t==std::string::npos)
     throw std::runtime_error(std::string("Invalid type letter '")+c+'\'');
   static const size_t lwb[]={1,2,2,4,6,4,2,0};
-  static const size_t r=constants::RANK_MAX;
+  const size_t r=constants::RANK_MAX;
   static const size_t upb[]={r,r,r,r,8,4,2,r};
   if (rank<lwb[t])
     throw std::runtime_error("Too small rank "+num(rank)+" for Lie type "+c);
@@ -166,27 +168,31 @@ void Lie_type_value::add_simple_factor (char c,size_t rank)
 
 @ Now we define a wrapper function that really builds a |Lie_type_value|. We
 scan the string looking for sequences of a letter followed by a number. We
-allow and ignore sequences of punctuation characters between the two. Since
-the correct structure of Lie type strings is so obvious to the human eye, our
-error message just cites the entire offending string, rather than trying to
-point out the error exactly.
+allow and ignore punctuation characters between simple factors, also spaces
+are allowed anywhere except inside the number, since formatted input from
+streams, even of characters, by default skips spaces. Since the correct
+structure of Lie type strings is so obvious to the human eye, our error
+message just cites the entire offending string, rather than trying to point
+out the error exactly.
 
+@h <sstream>
 @h <cctype>
 @< Local function definitions @>=
-inline void skip_punctuation(const char* &p)
-{@; while (std::ispunct(*p) || std::isspace(*p)) ++p;}
+inline std::istream& skip_punctuation(std::istream &is)
+{@; char c; do is>>c; while (is and std::ispunct(c));
+    return is.unget();
+}
 @)
 void Lie_type_wrapper() throw(std::bad_alloc,std::runtime_error)
-{ shared_string s=get<string_value>();
+{ std::istringstream is(get<string_value>()->val);
   Lie_type_ptr result(new Lie_type_value);
-  size_t total_rank=0;
-@/const char* p=s->val.c_str(); skip_punctuation(p);
-  while (std::isalpha(*p))
-  { char c=*p++;
-    if (!std::isdigit(*p)) {@; --p; break; } // and |throw| a |runtime_error|
-    size_t rank=*p++-'0'; @+
-      while (std::isdigit(*p)) rank=10*rank+(*p++-'0');
-    skip_punctuation(p);
+  size_t total_rank=0; char c;
+  while (skip_punctuation(is)>>c) // i.e., until |not is.good()|
+  { size_t rank;
+    if (not (is>>rank))
+      throw std::runtime_error
+       ("Error in type string '"+is.str()+"' for Lie type");
+
     result->add_simple_factor(c,rank);
       // this may |throw| a |runtime_error| as well
     if ((total_rank+=rank)>constants::RANK_MAX)
@@ -194,9 +200,6 @@ void Lie_type_wrapper() throw(std::bad_alloc,std::runtime_error)
       ("Total rank exceeds implementation limit "+num(constants::RANK_MAX));
 @.Total rank exceeds...@>
   }
-  if (*p!='\0')
-    throw std::runtime_error
-      ("Error in type string '"+s->val+"' for Lie type");
   push_value(result);
 }
 
@@ -204,6 +207,15 @@ void Lie_type_wrapper() throw(std::bad_alloc,std::runtime_error)
 
 @< Install wrapper functions @>=
 install_function(Lie_type_wrapper,"Lie_type","(string->LieType)");
+
+@ In fact we shall also make it available as an implicit conversion. This is
+very easy to implement.
+
+@< Install coercions @>=
+{ static type_declarator Lie_type_type(complex_lie_type_type);
+  coercion(str_type,Lie_type_type,"LT",Lie_type_wrapper);
+}
+
 
 @*2 Printing Lie types.
 Before we do anything more complicated with this primitive type, we must
@@ -250,21 +262,38 @@ void type_of_Cartan_matrix_wrapper ()
   push_value(new vector_value(latticetypes::CoeffList(pi.begin(),pi.end())));
   wrap_tuple(2);
 }
-@~Again we install our wrapper functions.
+
+@ And two small utilities for finding the (Lie) rank and semisimple rank of
+the Lie type.
+
+@< Local function definitions @>=
+void Lie_rank_wrapper()
+{ shared_Lie_type t=get<Lie_type_value>();
+  push_value(new int_value(t->val.rank()));
+}
+void semisimple_rank_wrapper()
+{ shared_Lie_type t=get<Lie_type_value>();
+  push_value(new int_value(t->val.semisimple_rank()));
+}
+
+
+@ Again we install our wrapper functions.
 @< Install wrapper functions @>=
 install_function(Cartan_matrix_wrapper,"Cartan_matrix","(LieType->mat)");
 install_function(type_of_Cartan_matrix_wrapper
 		,@|"type_of_Cartan_matrix","(mat->LieType,vec)");
+install_function(Lie_rank_wrapper,"Lie_rank","(LieType->int)");
+install_function(semisimple_rank_wrapper,"semisimple_rank","(LieType->int)");
 
 @*2 Finding lattices for a given Lie type.
 %
 When a Lie type is fixed, there is still a nontrivial choice to determine the
 root datum for a connected complex reductive group of that type: one has to
-choose a sublattice of the weight lattice of the ``simply connected'' group of
-that type to become the weight lattice of the chosen Complex reductive group
-(a finite quotient of the simply connected group); that sublattice should have
-full rank and contain the weight lattice. We shall start with considering some
-auxiliary functions to help facilitate this choice.
+choose a sub-lattice of the weight lattice of the ``simply connected'' group
+of that type to become the weight lattice of the chosen Complex reductive
+group (a finite quotient of the simply connected group); that sub-lattice
+should have full rank and contain the root lattice. We shall start with
+considering some auxiliary functions to help facilitate this choice.
 
 Here is a wrapper function around the |LieType::Smith_normal| method, which
 computes a block-wise Smith basis for the transposed Cartan matrix, and the
@@ -293,8 +322,8 @@ corresponding columns.
 @< Local function definitions @>=
 void filter_units_wrapper ()
 { push_tuple_components();
-  vector_ptr inv_f=get_own<vector_value>();
-  matrix_ptr basis=get_own<matrix_value>();
+  shared_vector inv_f=get_own<vector_value>();
+  shared_matrix basis=get_own<matrix_value>();
   if (inv_f->val.size()!=basis->val.numColumns())
     throw std::runtime_error @|("Size mismatch "+
       num(inv_f->val.size())+':'+num(basis->val.numColumns()));
@@ -313,25 +342,25 @@ void filter_units_wrapper ()
 @ Here is another function, adapted from the functions |makeOrthogonal| and
 |getLattice|, defined locally in the file \.{io/interactive\_lattice.cpp}. We
 have taken the occasion to change the name and interface and everything else,
-which also avoids the need to introduce rational vectors and matrices as
-primitive types.
+which also avoids the need to introduce rational matrices as primitive type.
 
 The function |annihilator_modulo| takes as argument an $m\times{n}$
 matrix~$M$, and an integer |d|. It returns a $m\times{m}$ matrix~|A| whose
 columns span the full rank sub-lattice of $\Z^m$ of vectors $v$ such that
 $v^t\cdot{M}\in d\,\Z^n$. The fact that $d$ is called |denominator| below
-comes from the alternative interpretation that the transposes of the columns
-of~$A$ applied to the rational matrix $M/d$ give integral vectors.
+comes from the alternative interpretation that the transpose
+of~$A$ times the rational matrix $M/d$ gives an integral matrix as result.
 
 The algorithm is quite simple. After finding a matrix~|A| describing the Smith
 basis~$(b_j)_{j\in[m]}$ for the lattice spanned by the columns of~|M|, and
-invariant factors~$(\lambda_j)_{j\in[r]}$ (where $r=\rk{M}$ , and $[r]$
+invariant factors~$(\lambda_j)_{j\in[r]}$ (where $r=\rk{M}$, and $[r]$
 abbreviates $\{0,\ldots,r-1\}$), we compute the dual basis $(b^*_j)_{j\in[m]}$
 as the columns of the transpose inverse matrix of~|A|. Then we know that
 $b^*_j$ applied to any column of~$M$ lies in $\lambda_j\Z$ (with $\lambda_j=0$
-for $j\geq{r}$; these coordinate functions vanish on the sublattice), and our
-result is obtained by multiplying $b^*_j$ with~$j\in[r]$ by the complementary
-factor $\lcm(d,\lambda_j)/\lambda_j=d/\gcd(d,\lambda_j)$.
+for $j\geq{r}$; these coordinate functions vanish on the sub-lattice spanned
+by those columns), and our result is obtained by multiplying $b^*_j$
+with~$j\in[r]$ by the complementary factor
+$\lcm(d,\lambda_j)/\lambda_j=d/\gcd(d,\lambda_j)$.
 
 @h "arithmetic.h"
 @h "lattice.h"
@@ -358,8 +387,8 @@ annihilator_modulo
     (latticetypes::LatticeMatrix(b).inverse().transposed());
 
   for (size_t j = 0; j < lambda.size(); ++j)
-  { unsigned long f=(lambda[j]);
-    unsigned long c=denominator/arithmetic::gcd(denominator,f);
+  { unsigned long c =
+      denominator/arithmetic::gcd(denominator,(unsigned long)(lambda[j]));
     for (size_t i=0; i<m; ++i) A(i,j)*=c; // multiply column |j| by |c|
   }
   return A;
@@ -380,13 +409,11 @@ void ann_mod_wrapper()
 matrices in our programming language yet. Once one has computed a new lattice
 (possibly with the help of |ann_mod|), in the form of vectors to replace those
 selected by |filter_units| from the result of |Smith_Cartan|, one needs to
-make the replacement. The following function does this, taking its first two
-arguments as the result of |Smith_Cartan|, and the third a matrix whose
-columns are to be substituted. The second argument serves only to determine,
-by the place of its non-unit entries, where the insertion has to take place.
-In fact this is so simple that we define the wrapper function directly. And in
-fact it will be more practical to take as argument a pair of a pair as
-returned by |Smith_Cartan| and a matrix.
+make the replacement. The following function does this, taking as its first
+argument the result of |Smith_Cartan|, and as second a matrix whose columns
+are to be substituted. The invariant factors in the first argument serve only
+to determine, by the place the non-unit ones, where the insertion has to take
+place. In fact this is so simple that we define the wrapper function directly.
 
 @< Local function definitions @>=
 void replace_gen_wrapper ()
@@ -394,27 +421,29 @@ void replace_gen_wrapper ()
   shared_matrix new_generators=get<matrix_value>();
   push_tuple_components(); // a pair as returned by \.{Smith\_Cartan}
   shared_vector inv_f=get<vector_value>();
-  matrix_ptr generators=get_own<matrix_value>();
-   // old generators serve as model for new
+  shared_matrix generators=get_own<matrix_value>();
+   // start with old generators
 @)
   if (new_generators->val.numRows()!=generators->val.numRows())
-    throw std::runtime_error("Column lengths do not match in replace_gen");
+    throw std::runtime_error("Column lengths do not match");
 @.Column lengths do not match@>
   if (inv_f->val.size()!=generators->val.numColumns())
-    throw std::runtime_error("Number of columns mismatch in replace_gen");
-@.Size mismatch in replace\_gen@>
+    throw std::runtime_error("Number of columns mismatch");
+@.Number of columns mismatch@>
 @)
-  for (size_t j=0,k=0; j<inv_f->val.size(); ++j)
+  size_t k=0; // index to replacement generators
+  for (size_t j=0; j<inv_f->val.size(); ++j)
     if (inv_f->val[j]!=1)
        // replace column |j| by column |k| from |new_generators|
     { if (k>=new_generators->val.numColumns())
-        throw std::runtime_error
-          ("Not enough replacement columns in replace_gen");
+        throw std::runtime_error ("Not enough replacement columns");
 @.Not enough replacement columns@>
-      for (size_t i=0; i<generators->val.numRows(); ++i)
-        generators->val(i,j)=new_generators->val(i,k);
+      generators->val.set_column(j,new_generators->val.column(k));
       ++k;
     }
+  if (k<new_generators->val.numColumns())
+        throw std::runtime_error ("Too many replacement columns");
+@.Too many replacement columns@>
   push_value(generators);
 }
 
@@ -443,10 +472,12 @@ lietype::InnerClassType transform_inner_class_type
 throw (std::bad_alloc, std::runtime_error)
 { static const std::string types=atlas::lietype::innerClassLetters;
     // |"Ccesu"|
-  lietype::InnerClassType result(0);
+  lietype::InnerClassType result; // initially empty
+  std::istringstream is(s);
+  char c;
   size_t i=0; // position in simple factors of Lie type |lt|
-  for (;skip_punctuation(s),*s!='\0'; ++s)
-    @< Test the inner class letter |*s|, and either push a corresponding type
+  while (skip_punctuation(is)>>c)
+    @< Test the inner class letter |c|, and either push a corresponding type
        letter onto |result| while advancing~|i| by the appropriate amount, or
        throw a |runtime_error| @>
   if (i< lt.size()) throw std::runtime_error("Too few inner class symbols");
@@ -459,19 +490,19 @@ one Lie type, and both types used must be equal. Types |'s'| ``split'' and
 conditions or treatment; the remaining case is relegated to the next section.
 
 @< Test the inner class letter... @>=
-{ if (types.find(*s) == std::string::npos) throw std::runtime_error@|
-    (std::string("Unknown inner class symbol `")+*s+"'");
+{ if (types.find(c) == std::string::npos) throw std::runtime_error@|
+    (std::string("Unknown inner class symbol `")+c+"'");
   if (i>= lt.size()) throw std::runtime_error("Too many inner class symbols");
-  if (*s=='C') // complex inner class, which requires two equal simple factors
+  if (c=='C') // complex inner class, which requires two equal simple factors
   { if (i+1>=lt.size() or lt[i+1]!=lt[i]) throw std::runtime_error @|
       ("Complex inner class needs two identical consecutive types");
     result.push_back('C');
     i+=2; // advance past both simple factors
   }
-  else if (*s=='s') {@; result.push_back('s'); ++i; }
-  else if (*s=='c' or *s=='e')
+  else if (c=='s') {@; result.push_back('s'); ++i; }
+  else if (c=='c' or c=='e')
   {@; result.push_back('c'); ++i; } // synonyms
-  else if (*s=='u') // unequal rank, the only remaining possibility
+  else if (c=='u') // unequal rank, the only remaining possibility
   { @< Test and possibly transform the unequal rank inner class symbol @>
     ++i;
   }
@@ -484,7 +515,7 @@ equivalent to |'s'|, and will be replaced by it. Hence any surviving type
 letter |'u'| corresponds to a type of the form~$D_{2n}$.
 
 @< Test and possibly transform... @>=
-{ lietype::TypeLetter t = lietype::type(lt[i]); size_t r=lietype::rank(lt[i]);
+{ lietype::TypeLetter t = lt[i].type(); size_t r=lt[i].rank();
   if (t=='D') result.push_back(r%2==0 ? 'u' : 's');
   else if (t=='A' and r>=2 or t=='E' and r==6) result.push_back('s');
   else throw std::runtime_error @|
@@ -494,9 +525,7 @@ letter |'u'| corresponds to a type of the form~$D_{2n}$.
 @ The wrapper function around |lietype::involution| will take a Lie type and a
 string of type letters and return a matrix describing the involution
 designated by that string, expressed on the fundamental weight basis for the
-simply connected group of that type. A variant of this function will later be
-defined giving the same matrix on the basis fundamental weights for a complex
-group given by a root datum.
+simply connected group of that type.
 
 @< Local function def... @>=
 void basic_involution_wrapper()
@@ -513,18 +542,18 @@ an adjoint group. For a general complex groups however, we need to transform
 this involution to an involution of a given sub-lattice, assuming that this is
 possible, in other words if that the sub-lattice is globally stable under the
 involution specified. Therefore we now provide a function that in addition to
-the Lie type takes a matrix specifying a sub-lattice as argument. These two
-ingredients will also be used below to construct a root datum; it would be
-nice to use the resulting root datum as argument here, but unfortunately the
-Lie type and sub-lattice cannot be recovered from it with certainty, and they
-are needed separately in the construction of an inner class. However, when
-constructing inner classes below, we shall provide a function
-$set\_inner\_class$ that operates on a root datum and a string specifying an
-inner class. It will deduce candidates for the Lie type and the sub-lattice
-from the root datum; however since it also finds a permutation of the simple
-roots with respect to the standard way of laying out the diagram, it cannot
-call the function $based\_involution$ defined here, but will redo some of its
-work.
+the Lie type takes a matrix specifying a sub-lattice as argument, and finally
+a string specifying the inner class.
+
+The fist two ingredients are also those used to construct a root datum, and
+one might imagine replacing them by a root datum. The function
+$set\_inner\_class$ defined later will do that, but it has to accept some
+ambiguity in recovering Lie type and sub-lattice from a root datum. Also it
+may find a permutation of the simple roots with respect to the standard
+ordering of the diagram, and has to deal with that additional generality. So
+unfortunately it can neither replace nor call the function $based\_involution$
+defined here; it will have to adapt some of the work done here to its
+situation.
 
 
 @< Local function def... @>=
@@ -537,10 +566,9 @@ void based_involution_wrapper()
   size_t r=type->val.rank();
   if (basis->val.numRows()!=r or basis->val.numRows()!=r)
     throw std::runtime_error @|
-    ("based_involution: basis should be given by "+num(r)+'x'+num(r)+" matrix");
-  shared_matrix m
-     (new matrix_value @| (lietype::involution
-           (type->val,transform_inner_class_type(str->val.c_str(),type->val))));
+    ("basis should be given by "+num(r)+'x'+num(r)+" matrix");
+  matrix_ptr m (new matrix_value @| (lietype::involution
+        (type->val,transform_inner_class_type(str->val.c_str(),type->val))));
   latticetypes::LatticeCoeff d;
   m->val = basis->val.inverse(d) * m->val * basis->val;
   if (d==0 or !m->val.divisible(d)) throw std::runtime_error
@@ -588,9 +616,10 @@ typedef std::tr1::shared_ptr<root_datum_value> shared_root_datum;
 @*2 Printing root data. We shall not print the complete information contained
 in the root datum. However we do exercise the routines in \.{dynkin.cpp} to
 determine the type of the root datum from its Cartan matrix, as is done in the
-function |type_of_Cartan_matrix| above. Contrary to
-|prerootdata::cartanMatrix|, the function |rootdata::cartanMatrix| produces
-nothing for torus factors, so we add any necessary torus factors at the end.
+function |type_of_Cartan_matrix| above. Contrary to |LieType::Cartan_matrix|,
+the function |RootDatum::cartanMatrix| produces nothing for torus factors (in
+fact only their number is well defined); hence we add the necessary number of
+torus factors at the end.
 
 @< Local fun... @>=
 lietype::LieType type_of_datum(const rootdata::RootDatum& rd)
@@ -628,7 +657,11 @@ matrix of the size of the rank of the root datum, which specifies generators
 of the desired weight lattice as a sub-lattice of the lattice of weights
 associated to the simply connected group of the type given. The given weights
 should be independent and span at least the root lattice associated to the
-type.
+type. Failure of either condition will cause the |PreRootDatum| constructor to
+throw a |std::runtime_error|, but in case a root should fail to be expressed
+in the sub-lattice basis this happens in a call buried fairly deeply, so we
+prefer to replace the |"Inexact integer division"| message by a somewhat more
+descriptive one.
 
 @< Local function definitions @>=
 void root_datum_wrapper()
@@ -638,113 +671,105 @@ void root_datum_wrapper()
   if (lattice->val.numRows()!=lattice->val.numColumns() @| or
       lattice->val.numRows()!=type->val.rank())
     throw std::runtime_error
-    ("lattice matrix should be " @|
-      +num(type->val.rank())+'x'+num(type->val.rank())+ " for this type");
-  @< Test whether the columns of |lattice->val| span the root lattice; if
-     not |throw| a |std::runtime_error| @>
-  latticetypes::WeightList columns; columnVectors(columns,lattice->val);
-  push_value(new root_datum_value @|
-   (rootdata::RootDatum(prerootdata::PreRootDatum(type->val,columns))));
-}
-
-@ Since the construction of the (simple) roots in a |PreRootDatum| uses
-multiplication by an inverse matrix producing an integral matrix, without
-testing whether the result was exact, we must laboriously do the same
-computation before constructing the |PreRootDatum|, just to assure that the
-construction will not fail. If the construction would succeed, even with an
-incorrect result, we could test validity more easily be multiplying back the
-given lattice basis with the roots in the |PreRootDatum|, and testing for
-equality with the transpose Cartan matrix. But this would crash on division be
-zero if the matrix were singular (this raises no exception, despite printing
-message mentioning a \.{floating point exception}, so it cannot be caught). So
-that approach would still require preliminary test for an invertible matrix,
-and would end up being as much work as the code below. We note that moreover
-in that approach (which we had initially adopted) a subtle error is possible,
-because roots that after basis transformation are rounded to zero would be
-mistaken for columns coming from torus factors, and the |PreRootDatum| could
-therefore have fewer roots than the semisimple rank of the type specified. But
-in case our lattice matrix passes the test below, the |PreRootDatum| can
-safely be constructed and will be correct in all respects.
-
-@< Test whether the columns of |lattice->val| span the root lattice... @>=
-{ latticetypes::LatticeCoeff d;
-  latticetypes::LatticeMatrix M=lattice->val.inverse(d);
-  if (d==0) throw std::runtime_error
-    ("Lattice matrix has dependent columns; in root_datum");
-@/M *= type->val.transpose_Cartan_matrix();
-@/// now columns of |M| hold |d| times the simple roots, in the given basis
-  if (not M.divisible(d))
-    throw std::runtime_error@|
-      ("Given lattice does not contain the root lattice");
+    ("Sub-lattice matrix should have size " @|
+      +num(type->val.rank())+'x'+num(type->val.rank()));
+  try
+  {
+    push_value(new root_datum_value @| (rootdata::RootDatum
+      (prerootdata::PreRootDatum (type->val,lattice->val.columns()))));
+  }
+  catch (std::runtime_error& e)
+  { if (e.what()[0]=='I') // |"Inexact integer division"|
+      throw std::runtime_error
+        ("Sub-lattice does not contain the root lattice");
+@.Sub-lattice does not contain...@>
+    throw; // |"Dependent lattice generators"|, no need to rephrase
+@.Dependent lattice generators@>
+  }
 }
 
 @ To emulate what is done in the Atlas software, we write a function that
-integrates some of the previous ones. It is called as $quotient\_basis(t,M)$
-where $t$ is a Lie type, and $M$ is a matrix whose columns represent the
-denominators of the kernel generators as would be entered in the Atlas
-software (the numerators are determined by~$t$ for non-torus factors, and for
-the torus factor we take the least common multiple of those other
-denominators, which should be large enough for practical purposes).
+integrates some of the previous ones. It is called as $quotient\_basis(lt,L)$
+where $t$ is a Lie type, and $L$ is a list of rational vectors (interpreted as
+coweights), each giving a kernel generator as would be entered in the Atlas
+software.
 
-Let $S=Smith\_Cartan(t)$ and $(C,v)=filter\_units(S)$, then we find a
-basis for the sub-lattice needed to build the root datum as follows. The
-number of rows of~$M$ should match the length of~$v$. We compute the least
-common multiple~$d$ of the nonzero values~$v_j$ (which is~$1$ if $v$ should be
-completely null). The entries of~$M$ are brought to a common denominator~$d$
-by multiplying each row~$i$ with $v_i\neq0$ by $d/v_i$. If the resulting
-matrix is~$M'$, the call $quotient\_basis(t,M)$ amounts to evaluating
-$replace\_gen(S,C*ann\_mod(M',d))$.
+Let $S=Smith\_Cartan(lt)$ and $(C,v)=filter\_units(S)$, then we find a basis
+for the sub-lattice needed to build the root datum as follows. Each vector
+in~$L$ should have the same length as~$v$, and multiplication of corresponding
+entries should always give an integer. Then a common denominator~$d$ is found
+and a matrix $M$ whose columns form the numerators of the lists of~$L$ brought
+to the denominator~$d$. The call $quotient\_basis(lt,L)$ then yields the result
+of computing $replace\_gen(S,C*ann\_mod(M,d))$.
 
-This wrapper function is particular in that it does most of its work by
-calling other wrapper functions; we essentially use the evaluator stack here
-many times. In one case we need to duplicate the top of the stack, holding the
-value~$S$ (this is somewhat of a coincidence, since the bottom copy happens to
-be in place for the call to~$replace\_gen$). We do this by pushing a cloned
-version of the stack top.
+This wrapper function does most of its work by calling other wrapper
+functions, using the evaluator stack many times. In one case we duplicate the
+top of the stack, as~$S$ serves both in the call to $filter\_units$
+(immediately) and in the to~$replace\_gen$ (at the end).
 
 @< Local function definitions @>=
 void quotient_basis_wrapper()
 { push_tuple_components();
-  matrix_ptr M(get_own<matrix_value>());
-  // leave Lie type on stack for $Smith\_Cartan$
+  shared_row L=get<row_value>();
+  // and leave Lie type on stack for $Smith\_Cartan$
   Smith_Cartan_wrapper(); // compute $S=Smith\_Cartan(t)$
   shared_value S=execution_stack.back();
-    // leave |S| on stack for call of $replace\_gen$
-  push_value(S); // push a copy for call of $filter\_units$
-  filter_units_wrapper(); // compute |(C,v)|
-  push_tuple_components();
-  vector_ptr v(get_own<vector_value>());
-  shared_matrix C(get<matrix_value>());
-@/size_t d=1;
-  for (size_t i=0; i<v->val.size(); ++i)
-    if (v->val[i]!=0) d=arithmetic::lcm(d,v->val[i]);
-  @< Test |M| against |v| and adapt its rows to the common denominator |d| @>
-  push_value(C); // for call of $mm\_prod$
-  push_value(M); // for call of $ann\_mod$
-  push_value(new int_value(d)); // for call of $ann\_mod$
-@/wrap_tuple(2); ann_mod_wrapper();
+    // and leave |S| on stack for call of $replace\_gen$
+  push_value(S);
+  filter_units_wrapper();
+  push_tuple_components(); // compute |(C,v)|
+  shared_vector v=get<vector_value>();
+  // and leave |C| for call to $mm\_prod$
+@)
+  latticetypes::LatticeMatrix M(v->val.size(),L->length());
+  size_t d=1;
+  @< Compute common denominator |d| of entries in~$L$, and place converted
+     denominators into the columns of $M$; also test validity of entries and
+     |throw| a runtime error for invalid ones @>
+  push_value(new matrix_value(annihilator_modulo(M,d)));
 @/wrap_tuple(2); mm_prod_wrapper();
 @/wrap_tuple(2); replace_gen_wrapper();
 }
 
-@ As said above, |M| must have as many rows as |v| has entries. But as a
-service to the user we adapt its size to match that requirement if it has no
-entries (either no rows or no columns).
+@ Each vector in |L| must have as many entries as |v|, and multiplying by the
+corresponding entry of~$v$ should chase the denominator of each entry. In a
+first pass we copy the numerator vectors to columns of~$M$, check divisibility
+according to |v| and compute the common denominator |d|; in a second pass the
+numerators are reduced modulo their original denominator, and then brought to
+the new denominator~|d|.
 
-@< Test |M| against |v| and adapt its rows to the common denominator |d| @>=
-{ if (M->val.isEmpty()) M->val.resize(v->val.size(),0);
-  if (M->val.numRows()!=v->val.size())
-    throw std::runtime_error @| ("Number "+num(M->val.numRows())+
-      " of rows does not match number "+num(v->val.size())+
-      " of kernel generators");
-  for (size_t i=0; i<v->val.size(); ++i)
-   if (v->val[i]!=0)
-     for (size_t j=0; j<M->val.numColumns(); ++j)
-       M->val(i,j)*=d/v->val[i];
+@< Compute common denominator |d| of entries in~$L$... @>=
+{ std::vector<unsigned long> denom(L->length());
+  for (size_t j=0; j<L->length(); ++j)
+  { const latticetypes::RatWeight& gen =
+      force<rational_vector_value>(&*L->val[j])->val;
+    denom[j] = gen.denominator();
+    d=arithmetic::lcm(d,denom[j]);
+
+    if (gen.size()!=v->val.size())
+      throw std::runtime_error@|
+        ("Length mismatch for generator "+num(j) +": "@|
+        +num(gen.size()) + ':' + num(v->val.size()));
+
+    M.set_column(j,gen.numerator());
+    for (size_t i=0; i<v->val.size(); ++i)
+      if (v->val[i]*M(i,j)%denom[j]!=0)
+	throw std::runtime_error("Improper generator entry: "
+         +num(M(i,j))+'/'+num(denom[j])+" not a multiple of 1/"
+         +num(v->val[i]));
+  }
+@)
+  for (size_t j=0; j<L->length(); ++j)
+    // convert modulo $\Z$ and to common denominator |d|
+  { size_t f=d/denom[j];
+    for (size_t i=0; i<v->val.size(); ++i)
+      M(i,j) = arithmetic::remainder(M(i,j),denom[j])*f;
+  }
 }
 
 @ The function that integrates all is $quotient\_datum$; the call
-$quotient\_datum(t,M)$ is equivalent to $root\_datum(t,quotient\_basis(t,M))$.
+$quotient\_datum(lt,L)$ is equivalent to
+$root\_datum(lt,quotient\_basis(lt,L))$.
 
 @< Local function definitions @>=
 void quotient_datum_wrapper()
@@ -758,15 +783,18 @@ void quotient_datum_wrapper()
 the simply connected and the adjoint root data. They are similar to the
 previous one in that they mostly call other wrapper functions: the matrices
 that specify the sub-lattices are produced by the wrapper functions for
-|id_mat| respectively for |Cartan_matrix| and |transpose_matrix|. The only
-thing we do ``by hand'' is to make sure, in the case of the adjoint datum,
-that all null diagonal entries are replaced by ones.
+|id_mat| respectively for |Cartan_matrix| and |transpose_mat|. In fact the
+call $simply\_connected\_datum(lt)$ is equivalent to
+$root\_datum(lt,id\_mat(Lie\_rank(lt)))$, and $adjoint\_datum(lt)$ is almost
+equivalent to $root\_datum(lt,M)$ where
+$M=transpose\_mat(Cartan\_matrix(lt)))$; the only thing we do ``by hand'' is
+to make sure that all null diagonal entries of~$M$ (which must come from torus
+factors) are replaced by ones.
 
 @< Local function definitions @>=
 void simply_connected_datum_wrapper()
-{ shared_Lie_type type=get<Lie_type_value>(); push_value(type);
-  push_value(new int_value(type->val.rank()));
-  id_mat_wrapper();
+{ size_t rank = force<Lie_type_value>(&*execution_stack.back())->val.rank();
+  push_value(new int_value(rank)); id_mat_wrapper();
 @/wrap_tuple(2); root_datum_wrapper();
 }
 @)
@@ -774,7 +802,7 @@ void adjoint_datum_wrapper()
 { shared_Lie_type type=get<Lie_type_value>(); push_value(type);
   push_value(type);
   Cartan_matrix_wrapper(); transpose_mat_wrapper();
-  matrix_ptr M=get_own<matrix_value>();
+  shared_matrix M=get_own<matrix_value>();
   for (size_t i=0; i<type->val.rank(); ++i)
     if (M->val(i,i)==0) M->val(i,i)=1;
   push_value(M);
@@ -806,7 +834,8 @@ void SL_wrapper()
   matrix_ptr lattice
      (new matrix_value(latticetypes::LatticeMatrix()));
   matrix::identityMatrix(lattice->val,r);
-  for (size_t i=0; i<r-1; ++i) lattice->val(i,i+1)=-1;
+  for (size_t i=0; i+1<r; ++i) // not |i<r-1|, since |r| unsigned and maybe 0
+    lattice->val(i,i+1)=-1;
   push_value(lattice);
 @/wrap_tuple(2); root_datum_wrapper();
 }
@@ -830,8 +859,8 @@ void GL_wrapper()
 
 @*2 Functions operating on root data.
 %
-The following functions allow us to look at the roots and co-roots stored in
-a root datum value, and the associated Cartan matrix.
+The following functions allow us to look at the simple roots and simple
+coroots stored in a root datum value, and at the associated Cartan matrix.
 
 @< Local function definitions @>=
 void simple_roots_wrapper()
@@ -854,8 +883,8 @@ void datum_Cartan_wrapper()
   push_value(new matrix_value(M));
 }
 
-@ The following functions allow us to look at the roots and co-roots stored in
-a root datum value.
+@ The following functions allow us to look at all the roots and coroots stored
+in a root datum value.
 
 @< Local function definitions @>=
 void roots_wrapper()
@@ -912,11 +941,12 @@ void integrality_datum_wrapper()
   shared_root_datum rd(get<root_datum_value>());
   if (lambda->val.size()!=rd->val.rank())
   { std::ostringstream o;
-    o << "integrality datum: length " << lambda->val.size()
-      << " differs from rank " << rd->val.rank();
+    o << "length " << lambda->val.size()
+      << " of rational vector differs from rank " << rd->val.rank();
     throw std::runtime_error(o.str());
   }
-  push_value(new root_datum_value @| (integrality_datum(rd->val,lambda->val)));
+  push_value(new root_datum_value @|
+    (rootdata::integrality_datum(rd->val,lambda->val)));
 }
 
 @ A related function computes a list of fractions of a line segment where the
@@ -929,12 +959,13 @@ void integrality_points_wrapper()
   shared_root_datum rd(get<root_datum_value>());
   if (lambda->val.size()!=rd->val.rank())
   { std::ostringstream o;
-    o << "integrality points: length " << lambda->val.size()
-      << " differs from rank " << rd->val.rank();
+    o << "length " << lambda->val.size()
+      << " of rational vector differs from rank " << rd->val.rank();
     throw std::runtime_error(o.str());
   }
 
-  arithmetic::RationalList l = integrality_points(rd->val,lambda->val);
+  arithmetic::RationalList l =
+    rootdata::integrality_points(rd->val,lambda->val);
   row_ptr result (new row_value(l.size()));
   for (size_t i=0; i<l.size(); ++i)
     result->val[i]=shared_value(new rat_value(l[i]));
@@ -948,9 +979,9 @@ install_function(type_of_root_datum_wrapper,@|"type_of_root_datum"
                 ,"(RootDatum->LieType)");
 install_function(root_datum_wrapper,@|"root_datum","(LieType,mat->RootDatum)");
 install_function(quotient_basis_wrapper
-		,@|"quotient_basis","(LieType,mat->mat)");
+		,@|"quotient_basis","(LieType,[ratvec]->mat)");
 install_function(quotient_datum_wrapper
-		,@|"quotient_datum","(LieType,mat->RootDatum)");
+		,@|"quotient_datum","(LieType,[ratvec]->RootDatum)");
 install_function(simply_connected_datum_wrapper
 		,@|"simply_connected_datum","(LieType->RootDatum)");
 install_function(adjoint_datum_wrapper,@|
@@ -1427,33 +1458,30 @@ involution given.
 }
 
 @ To simulate the functioning of the Atlas software, the function $set\_type$
-takes as argument the name of a Lie type, a matrix giving kernel generators,
-and a string describing the inner class. The evaluation of the call
-$set\_type(lt,gen,ic)$ effectively consists of setting $t={\it
-Lie\_type(lt)}$, ${\it basis}={\it quotient\_basis(t,gen)}$, and then
-returning the value of ${\it fix\_involution (root\_datum
-(t,basis),based\_involution(t,basis,ic))}$. Note that neither the Lie type nor
-the inner class type are transmitted directly to the |inner_class_type|
-constructor; we are depending on |fix_involution_wrapper()| on reconstructing
-them. This can give some surprises such as transforming type $C_2$ into $B_2$,
-or inner class letters changing to synonyms (but the latter should not have
-externally visible effects).
+takes as argument a Lie type, a list of kernel generators, and a string
+describing the inner class. The evaluation of the call ${\it
+set\_type(lt,gen,ict)}$ computes ${\it basis}={\it quotient\_basis(lt,gen)}$,
+${\it rd}={\it root\_datum (lt,basis)}$, ${\it inv}={\it
+based\_involution(lt,basis,ict)}$, and then returns the value ${\it
+fix\_involution (rd,inv)}$. Note that neither the Lie type |lt| nor the inner
+class type |ict| are transmitted directly to the |inner_class_value|
+constructor buried inside |fix_involution_wrapper()|; we are depending on that
+wrapper function to reconstruct them. This can give some surprises, like
+changing type $C_2$ to $B_2$, or inner class letters changing to synonyms (but
+the latter should not have visible effects).
 
 @< Local function def...@>=
 void set_type_wrapper()
 { push_tuple_components();
-  shared_string ict(get<string_value>());
-  shared_matrix gen(get<matrix_value>());
-  Lie_type_wrapper(); // convert string to Lie type
-  shared_Lie_type t(get<Lie_type_value>());
+  shared_value ict = pop_value(); // and leave generators |gen| and type |lt|
+  shared_value lt = *(execution_stack.end()-2);
 @)
-  push_value(t); push_value(gen);
-  wrap_tuple(2); quotient_basis_wrapper();
-  shared_matrix basis(get<matrix_value>());
+  wrap_tuple(2); quotient_basis_wrapper(); @+
+  shared_value basis = pop_value();
 @)
-  push_value(t); push_value(basis);
+  push_value(lt); push_value(basis);
   wrap_tuple(2); root_datum_wrapper();
-@/push_value(t); push_value(basis);
+@/push_value(lt); push_value(basis);
   push_value(ict);
   wrap_tuple(3); based_involution_wrapper();
 @/wrap_tuple(2); fix_involution_wrapper();
@@ -1520,7 +1548,7 @@ void set_inner_class_wrapper()
   push_value(rdv);
   coroot_radical_wrapper(); transpose_mat_wrapper();
   shared_matrix basis(get<matrix_value>());
-  size_t r=lietype::rank(lo.d_type);
+  size_t r=lo.d_type.rank();
   assert(basis->val.numRows()==r and basis->val.numRows()==r);
 @)
   lo.d_basis = basis->val.columns();
@@ -1531,7 +1559,7 @@ void set_inner_class_wrapper()
   }
   catch (std::runtime_error&) // relabel inexact division error
   { throw std::runtime_error @|
-    ("set_inner_class: inner class is not compatible with root datum lattice");
+    ("inner class is not compatible with root datum lattice");
   }
 }
 
@@ -1647,7 +1675,7 @@ install_function(classify_wrapper,@|"classify_involution"
 install_function(fix_involution_wrapper,@|"fix_involution"
                 ,"(RootDatum,mat->InnerClass)");
 install_function(set_type_wrapper,@|"set_type"
-                ,"(string,mat,string->InnerClass)");
+                ,"(LieType,[ratvec],string->InnerClass)");
 install_function(set_inner_class_wrapper,@|"set_inner_class"
                 ,"(RootDatum,string->InnerClass)");
 install_function(distinguished_involution_wrapper,@|"distinguished_involution"
@@ -2203,7 +2231,6 @@ does not exist for the given real form. Rather than printing directly to
 |std::ostringstream|, and then let |ioutils::foldLine| break the result across
 different lines after commas if necessary.
 
-@h <sstream>
 @h "ioutils.h"
 @< Print the gradings for the part of |pi|... @>=
 { bool first=true; std::ostringstream os;
