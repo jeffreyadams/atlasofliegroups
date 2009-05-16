@@ -97,9 +97,9 @@ LieTypeIterator& LieTypeIterator::operator++ ()
 
 {
   if (nextType(d_type,d_category)) {
-    if (lietype::rank(d_type) == d_lastRank)
+    if (d_type.rank() == d_lastRank)
       d_done = true;
-    else if (firstType(d_type,d_category,lietype::rank(d_type)+1))
+    else if (firstType(d_type,d_category,d_type.rank()+1))
       d_done = true;
   }
 
@@ -239,8 +239,8 @@ namespace testrun {
 CoveringIterator::CoveringIterator(const lietype::LieType& lt)
   : d_lieType(lt)
   , d_dcenter(NULL)
-  , d_rank(lietype::rank(lt))
-  , d_semisimpleRank(lietype::semisimpleRank(lt))
+  , d_rank(lt.rank())
+  , d_semisimpleRank(lt.semisimple_rank())
   , d_torusRank(d_rank-d_semisimpleRank)
   , d_quotReps()
   , d_subgroup()
@@ -667,9 +667,9 @@ bool firstType(lietype::LieType& lt, Category c, size_t l)
 */
 bool isLast(const lietype::SimpleLieType& slt)
 {
-  size_t l = lietype::rank(slt);
+  size_t l = slt.rank();
 
-  switch (lietype::type(slt)) {
+  switch (slt.type()) {
   case 'A':
     if (l == 1) // no further types
       return true;
@@ -744,11 +744,11 @@ void nextInShape(lietype::LieType& lt)
 
   unsigned long j = c+1;
 
-  for (; lietype::rank(lt[j]) == lietype::rank(lt[c]); ++j)
+  for (; lt[j].rank() == lt[c].rank(); ++j)
     lt[j] = lt[c];
 
   for(; j < lt.size(); ++j)
-    lt[j] = lietype::SimpleLieType('A',lietype::rank(lt[j]));
+    lt[j] = lietype::SimpleLieType('A',lt[j].rank());
 
   return;
 }
@@ -776,7 +776,7 @@ void nextInShape(lietype::LieType& lt)
 */
 bool nextSemisimpleType(lietype::LieType& lt)
 {
-  if (lt.size() == lietype::rank(lt))
+  if (lt.size() == lt.rank())
     return true;
 
   if (isLastInShape(lt)) { // we need to go to the next shape
@@ -871,9 +871,9 @@ void nextShape(Shape& s)
 */
 lietype::SimpleLieType nextSimpleType(const lietype::SimpleLieType& slt)
 {
-  size_t l = lietype::rank(slt);
+  size_t l = slt.rank();
 
-  switch (lietype::type(slt)) {
+  switch (slt.type()) {
   case 'A': // l is at least two, next is B
     return lietype::SimpleLieType('B',l);
   case 'B': // l is at least two; next is G if l is two, C otherwise
@@ -1032,7 +1032,7 @@ void shape(Shape& s, const lietype::LieType& lt)
   s.resize(0);
 
   for (unsigned long j = 0; j < lt.size(); ++j)
-    s.push_back(lietype::rank(lt[j]));
+    s.push_back(lt[j].rank());
 }
 
 

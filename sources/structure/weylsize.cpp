@@ -53,9 +53,9 @@ size::Size weylSize(const lietype::LieType& lt)
 */
 size::Size weylSize(const lietype::SimpleLieType& slt)
 {
-  unsigned long r = lietype::rank(slt);
+  unsigned long r = slt.rank();
 
-  switch (lietype::type(slt))
+  switch (slt.type())
   {
   case 'A':
     return size::factorial(r+1);
