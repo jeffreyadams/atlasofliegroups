@@ -1,12 +1,12 @@
 /*!
 \file
-\brief Function declarations for namespace lattice. 
+\brief Function declarations for namespace lattice.
 */
 /*
   This is lattice.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -29,23 +29,22 @@ template<typename I, typename J, typename O>
 template<typename I, typename J, typename O>
   void inverseBaseChange(const I&, const I&, O, const J&, const J&);
 
-template<size_t dim> 
+template<size_t dim>
   void mod2(bitvector::BitVector<dim>&, const latticetypes::LatticeElt&);
 
-template<size_t dim> 
-  void mod2(std::vector<bitvector::BitVector<dim> >&, 
+template<size_t dim>
+  void mod2(std::vector<bitvector::BitVector<dim> >&,
 	    const latticetypes::WeightList&);
 
-template<size_t dim> void mod2(bitvector::BitMatrix<dim>&, 
+template<size_t dim> void mod2(bitvector::BitMatrix<dim>&,
 			       const latticetypes::LatticeMatrix&);
 
-void numeratorMatrix(latticetypes::LatticeMatrix&, 
-		     const latticetypes::RatWeightList&);
+latticetypes::LatticeMatrix numeratorMatrix(const latticetypes::RatWeightList&);
 
-void perp(latticetypes::WeightList&, const latticetypes::WeightList&, size_t);
+latticetypes::WeightList perp(const latticetypes::WeightList&, size_t);
 
-void toCommonDenominator(latticetypes::RatWeightList&, 
-			 const latticetypes::RatWeightList&);
+latticetypes::RatWeightList toCommonDenominator
+(const latticetypes::RatWeightList& l);
 
 }
 
