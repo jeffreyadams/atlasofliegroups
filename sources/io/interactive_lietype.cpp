@@ -79,8 +79,8 @@ bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
 
     if (x == 'u') { // we must have an unequal-rank inner class
       lietype::SimpleLieType slt = lt[j];
-      lietype::TypeLetter t = lietype::type(slt);
-      size_t l = lietype::rank(slt);
+      lietype::TypeLetter t = slt.type();
+      size_t l = slt.rank();
       if (uer.find_first_of(t) == std::string::npos or
 	  (t == 'A' and l == 1) or
 	  (t == 'E' and l != 6)) { // bad type
@@ -274,7 +274,7 @@ void readInnerClass(lietype::InnerClassType& ict, input::InputBuffer& buf,
     if (x == 'e')
       x = 'c';
     if (x == 'u')
-      if (lietype::type(lt[j]) != 'D' or lietype::rank(lt[j])%2 != 0)
+      if (lt[j].type() != 'D' or lt[j].rank()%2 != 0)
 	x = 's';
     ict.push_back(x);
     if (x == 'C')

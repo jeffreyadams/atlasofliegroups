@@ -356,7 +356,7 @@ void getInteractive(prerootdata::PreRootDatum& d_prd,
   {
   case 1: // simply connected
     {
-      matrix::initBasis(d_b,lietype::rank(lt)); // replace with standard basis
+      matrix::initBasis(d_b,lt.rank()); // replace with standard basis
     } break;
   case 2: // adjoint
     { // Take root basis for simple factors, standard basis for torus factors

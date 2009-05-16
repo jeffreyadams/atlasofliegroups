@@ -258,8 +258,8 @@ bool operator< (const RealFormData& first, const RealFormData& second)
 std::ostream& printComplexType(std::ostream& strm,
 			       const lietype::SimpleLieType& slt)
 {
-  size_t rk = lietype::rank(slt);
-  switch (lietype::type(slt))
+  size_t rk = slt.rank();
+  switch (slt.type())
   {
   case 'A':
     strm << "sl(";
@@ -321,9 +321,9 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
 			      const lietype::TypeLetter ic)
 {
   size_t fb = gr.firstBit();
-  size_t rk = lietype::rank(slt);
+  size_t rk = slt.rank();
 
-  switch (lietype::type(slt))
+  switch (slt.type())
   {
   case 'A':
     if (rk == 1)
@@ -570,16 +570,16 @@ std::ostream& printType(std::ostream& strm,
     if (ict[j] == 'C')
     {
       printComplexType(strm,slt);
-      gr >>= lietype::semisimpleRank(slt);
+      gr >>= slt.semisimple_rank();
       ++c;
     }
     else
     {
       gradings::Grading grs = gr;
-      grs.truncate(lietype::rank(slt));
+      grs.truncate(slt.rank());
       printSimpleType(strm,grs,slt,ict[j]);
     }
-    gr >>= lietype::semisimpleRank(slt);
+    gr >>= slt.semisimple_rank();
     ++c;
     if (j < ict.size()-1)
       strm << ".";

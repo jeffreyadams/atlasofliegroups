@@ -50,8 +50,8 @@ std::ostream& operator<< (std::ostream& strm,
 std::ostream& operator<< (std::ostream& strm,
 			  const lietype::SimpleLieType& slt)
 {
-  lietype::TypeLetter x = lietype::type(slt);
-  size_t l = lietype::rank(slt);
+  lietype::TypeLetter x = slt.type();
+  size_t l = slt.rank();
 
   return strm << x << l;
 }
