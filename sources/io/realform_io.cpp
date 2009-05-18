@@ -89,13 +89,15 @@ namespace realform_io {
 */
 Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 		     const layout::Layout& lo)
+: d_in(G.numRealForms()), d_out(G.numRealForms()), d_name(G.numRealForms())
 {
+  const size_t nrf = G.numRealForms();
   const rootdata::RootSystem& rs = G.rootSystem();
   const cartanclass::Fiber& fundf = G.fundamental();
 
-  std::vector<RealFormData> rfd; rfd.reserve(G.numRealForms());
+  std::vector<RealFormData> rfd; rfd.reserve(nrf);
 
-  for (realform::RealForm rf = 0; rf < G.numRealForms(); ++rf)
+  for (realform::RealForm rf = 0; rf<nrf; ++rf)
   {
     rootdata::RootSet so = cartanclass::toMostSplit(fundf,rf,rs);
     gradings::Grading gr = cartanclass::specialGrading(fundf,rf,rs);
@@ -104,21 +106,16 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 
   std::sort(rfd.begin(),rfd.end());
 
-  // write real form correspondence
-  d_in.resize(rfd.size());
-  d_out.resize(rfd.size());
-
-  for (size_t j = 0; j < rfd.size(); ++j)
+  for (size_t j = 0; j<nrf; ++j)
   {
     d_in[j] = rfd[j].realForm();
     d_out[d_in[j]] = j;
   }
 
   // write names
-  d_name.resize(rfd.size());
   std::ostringstream os;
 
-  for (size_t j = 0; j < rfd.size(); ++j)
+  for (size_t j = 0; j<nrf; ++j)
   {
     os.str("");
     printType(os,rfd[j].grading(),lo.d_type,lo.d_inner,lo.d_perm);
@@ -132,13 +129,17 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 */
 Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 		     const layout::Layout& lo, tags::DualTag)
+: d_in(G.numDualRealForms())
+, d_out(G.numDualRealForms())
+, d_name(G.numDualRealForms())
 {
+  const size_t ndrf = G.numDualRealForms();
   const rootdata::RootSystem& rs = G.dualRootSystem();
   const cartanclass::Fiber& fundf = G.dualFundamental();
 
-  std::vector<RealFormData> rfd; rfd.reserve(G.numDualRealForms());
+  std::vector<RealFormData> rfd; rfd.reserve(ndrf);
 
-  for (realform::RealForm rf = 0; rf < G.numDualRealForms(); ++rf)
+  for (realform::RealForm rf = 0; rf<ndrf; ++rf)
   {
     rootdata::RootSet so = cartanclass::toMostSplit(fundf,rf,rs);
     gradings::Grading gr = cartanclass::specialGrading(fundf,rf,rs);
@@ -147,24 +148,19 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 
   std::sort(rfd.begin(),rfd.end());
 
-  // write real form correspondence
-  d_in.resize(rfd.size());
-  d_out.resize(rfd.size());
-
-  for (size_t j = 0; j < rfd.size(); ++j)
+  for (size_t j=0; j<ndrf; ++j)
   {
     d_in[j] = rfd[j].realForm();
     d_out[d_in[j]] = j;
   }
 
   // write names
-  d_name.resize(rfd.size());
   std::ostringstream os;
 
   lietype::LieType dual_lt = lietype::dual_type(lo.d_type);
   lietype::InnerClassType dual_ict = lietype::dual_type(lo.d_inner,lo.d_type);
 
-  for (size_t j = 0; j < rfd.size(); ++j)
+  for (size_t j=0; j<ndrf; ++j)
   {
     os.str("");
     printType(os,rfd[j].grading(),dual_lt,dual_ict,lo.d_perm);
@@ -179,12 +175,9 @@ void Interface::swap(Interface& other)
   d_in.swap(other.d_in);
   d_out.swap(other.d_out);
   d_name.swap(other.d_name);
-
-  return;
 }
 
 /******* accessors ***********************************************************/
-const char* Interface::typeName(realform::RealForm rf) const
 
 /*
   Synopsis: returns the name of the real form.
@@ -192,6 +185,7 @@ const char* Interface::typeName(realform::RealForm rf) const
   Precondition: rf is an outer real form number.
 */
 
+const char* Interface::typeName(realform::RealForm rf) const
 {
   return d_name[rf].c_str();
 }
