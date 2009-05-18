@@ -41,7 +41,6 @@ class Interface {
 
   complexredgp::ComplexReductiveGroup* d_complexGroup;
 
-  layout::Layout d_layout;
   realform_io::Interface d_realFormInterface;
   realform_io::Interface d_dualRealFormInterface;
 
@@ -67,10 +66,6 @@ class Interface {
 
   const realform_io::Interface& dualRealFormInterface() const {
     return d_dualRealFormInterface;
-  }
-
-  const layout::Layout& layout() const {
-    return d_layout;
   }
 
   const realform_io::Interface& realFormInterface() const {

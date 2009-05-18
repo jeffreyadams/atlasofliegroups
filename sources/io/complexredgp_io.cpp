@@ -45,7 +45,6 @@ namespace complexredgp_io {
 Interface::Interface(complexredgp::ComplexReductiveGroup& G,
 		     const layout::Layout& lo)
   : d_complexGroup(&G)
-  , d_layout(lo)
   , d_realFormInterface(G,lo)
   , d_dualRealFormInterface(realform_io::Interface(G,lo,tags::DualTag()))
 {}
@@ -59,7 +58,6 @@ Interface::Interface(complexredgp::ComplexReductiveGroup& G,
 void Interface::swap(Interface& other)
 {
   std::swap(d_complexGroup,other.d_complexGroup);
-  d_layout.swap(other.d_layout);
   d_realFormInterface.swap(other.d_realFormInterface);
   d_dualRealFormInterface.swap(other.d_dualRealFormInterface);
 }
@@ -80,10 +78,7 @@ std::ostream& printBlockSizes(std::ostream& strm, Interface& CI)
   const realform_io::Interface rfi = CI.realFormInterface();
   const realform_io::Interface drfi = CI.dualRealFormInterface();
 
-  size_t rf = G.numRealForms();
-  size_t drf = G.numDualRealForms();
-
-  matrix::Matrix<unsigned long> block(rf,drf);
+  matrix::Matrix<unsigned long> block(G.numRealForms(),G.numDualRealForms());
   unsigned long maxEntry = 0;
 
   for (size_t i = 0; i < block.numRows(); ++i)
