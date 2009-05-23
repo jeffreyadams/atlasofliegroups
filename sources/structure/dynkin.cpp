@@ -643,13 +643,13 @@ void typeDNormalize(setutils::Permutation& a,
       a[i]= d.star(a[i-1]).andnot(done).firstBit();
     }
     a[r-3] = fork;
-    a[r-2] = *++it;
+    a[r-2] = *it;
     a[r-1] = *++it;
   }
   else // reverse Bourbaki
   {
     a[0] = *it;
-    a[1] = *(++it);
+    a[1] = *++it;
     a[2] = fork;
 
     bitset::RankFlags done=st;
@@ -690,10 +690,10 @@ void typeENormalize(setutils::Permutation& a, const DynkinDiagram& d)
   a[1] = shortArms.firstBit();
 
   st.andnot(shortArms);
-  bitset::RankFlags::iterator i = st.begin();
+  bitset::RankFlags::iterator it = st.begin();
 
-  size_t x = *i;
-  size_t y = *(++i);
+  size_t x = *it;
+  size_t y = *++it;
 
   bitset::RankFlags st_x = d.star(x);
   bitset::RankFlags st_y = d.star(y);
