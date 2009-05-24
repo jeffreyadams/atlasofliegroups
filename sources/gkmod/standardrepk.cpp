@@ -7,10 +7,10 @@ StandardRepK and KhatContext.
   This is standardrepk.cpp
 
   Copyright (C) 2006, 2007 Alfred Noel
-  With comments (C) 2008 by Marc van Leeuwen
-  part of the Atlas of Reductive Lie Groups version 0.2.4
+  Copyright (C) 2008, 2009 Marc van Leeuwen
+  part of the Atlas of Reductive Lie Groups
 
-  See file main.cpp for full copyright notice
+  For license information see the LICENSE file
 */
 
 #include "standardrepk.h"
