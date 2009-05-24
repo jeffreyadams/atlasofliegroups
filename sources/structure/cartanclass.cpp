@@ -976,22 +976,25 @@ restrictGrading(const rootdata::RootSet& rs, const rootdata::RootList& rl)
 
   Precondition: |f| is the fundamental fiber;
 
-  Explanation: for each noncompact noncomplex irreducible real form, there is
-  at least one grading with exactly one noncompact simple root. Our choice for
-  non-simple types then will be a grading which induces one of the
-  aforementioned ones on each noncompact noncomplex simple factor, which is
-  achieved by minimising the number of noncompact simple roots. The purpose of
-  having this function this is to enable easy type recognition.
+  For each noncompact noncomplex irreducible real form, with the exception of
+  sl(n+1,R) where there is only one grading, there is at least one grading
+  with exactly one noncompact simple root. (The unequal rank inner class in
+  type $A_n$ is particular by the rareness of imaginary simple roots candidate
+  for being noncompact: there is at most one, and only if $n$ is odd; for this
+  case this still just suffices to distinguish sl(n+1,R) from sl((n+1/2,H).)
 
-  NOTE : the grading is represented in terms of simple roots for the root
-  system |rd|. This is OK; knowledge of the gradings of those roots is enough
-  to define the real form.
+  Our choice for non-simple types will be a grading which has such a grading
+  on each noncompact noncomplex simple factor, which is achieved by minimising
+  the number of noncompact simple roots. This special grading for the real
+  form will the easily allow a name to be associated to the real form.
+
+  NOTE : the grading is represented as the set of noncompact imaginary roots
+  that are also simple roots for the root system |rs|. This is OK; knowledge
+  of just that set is sufficient to characterise the real form.
 */
 gradings::Grading
 specialGrading(const cartanclass::Fiber& f,
 	       realform::RealForm rf, const rootdata::RootSystem& rs)
-
-
 {
   std::set<gradings::Grading,gradings::GradingCompare> grs;
   // |gradings::GradingCompare| first compares number of set bits
@@ -999,10 +1002,9 @@ specialGrading(const cartanclass::Fiber& f,
   unsigned long n = f.adjointFiberSize();
 
   // sort the gradings that occur in this class
-  for (unsigned long i = 0; i < n; ++i) {
+  for (unsigned long i=0; i<n; ++i)
     if (f.weakReal()(i) == rf)
       grs.insert(restrictGrading(f.noncompactRoots(i),rs.simpleRootList()));
-  }
 
   // return the first element
   return *(grs.begin());
