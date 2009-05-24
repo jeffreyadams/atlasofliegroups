@@ -127,16 +127,17 @@ latticetypes::WeightList rootBasis(const lietype::LieType& lt,
   if (d==0)
     throw std::runtime_error("Dependent lattice generators");
 
-  // push back non-zero columns on rb
+  // push back simple roots expressed on |lb|
 
-  latticetypes::Weight v(lt.rank()); // temporary vector
+  const size_t rk=lt.rank();
+  latticetypes::Weight v(rk); // temporary vector
   latticetypes::WeightList result; result.reserve(lt.semisimple_rank());
   size_t r=0; // row number in Cartan matrix
   for (size_t i=0; i<lt.size(); ++i)
     for (size_t j=0; j<lt[i].rank(); ++j,++r)
       if (lt[i].type()!='T') // skip on torus factors
       {
-	for (size_t k=0; k<lt.rank(); ++k) // get Cartan entries for root
+	for (size_t k=0; k<rk; ++k) // get Cartan entries for root
 	  v[k]=lt.Cartan_entry(r,k);
 	result.push_back((q.apply(v))/d); // may |throw std::runtime_error|
       }
@@ -149,12 +150,12 @@ latticetypes::WeightList rootBasis(const lietype::LieType& lt,
   Given the lattice basis lb, expressed in terms of the simple weight basis,
   and the Lie type |lt|, this function returns the simple coroots of the
   system. If |q| is the matrix of |lb| in the simple weight basis, its
-  transpose is the matrix of the dual basis of the simple weight basis, i.e.
-  the basis consisting of simple coroot and additional basis vectors for torus
-  factors, in the dual basis of the sublattice |lt| (which can be a basis of a
-  _larger_ lattice than that of the coweights). So all that is necessary is to
-  drop the columns representing basic vectors coming from the torus factors
-  from the transposed matrix; this is what |lt| is used for.
+  transpose is the matrix of the dual basis of the simple weight basis (a
+  basis consisting of simple coroots completed with vectors in the radical) on
+  the dual basis of the sublattice |lt| (which can be a basis of a _larger_
+  lattice than that of the coweights). So all that is necessary is to drop
+  from the transposed matrix the columns representing vectors in the radical;
+  this is what |lt| is used for. In fact we avoid transposition, copying rows.
 */
 latticetypes::WeightList corootBasis(const lietype::LieType& lt,
 				     const latticetypes::WeightList& lb)
