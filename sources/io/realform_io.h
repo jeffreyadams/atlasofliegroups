@@ -1,8 +1,8 @@
 /*
   This is realform_io.h
-  
+
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -14,7 +14,7 @@
 
 #include "complexredgp_fwd.h"
 
-#include "layout.h"
+#include "lietype.h"
 #include "realform.h"
 #include "tags.h"
 
@@ -54,9 +54,9 @@ class Interface {
 // constructors and destructors
   Interface() {};
 
-  Interface(const complexredgp::ComplexReductiveGroup&, const layout::Layout&);
+  Interface(const complexredgp::ComplexReductiveGroup&, const lietype::Layout&);
 
-  Interface(const complexredgp::ComplexReductiveGroup&, const layout::Layout&,
+  Interface(const complexredgp::ComplexReductiveGroup&, const lietype::Layout&,
 	    tags::DualTag);
 
   ~Interface() {};

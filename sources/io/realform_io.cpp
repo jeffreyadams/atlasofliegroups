@@ -19,7 +19,6 @@
 #include "complexredgp_io.h"
 #include "gradings.h"
 #include "latticetypes.h"
-#include "layout.h"
 #include "lietype.h"
 #include "rootdata.h"
 #include "setutils.h"
@@ -38,9 +37,7 @@ namespace {
 
   std::ostream& printType(std::ostream& out,
 			  const gradings::Grading& gr,
-			  const lietype::LieType& lt,
-			  const lietype::InnerClassType& ict,
-			  const setutils::Permutation& perm);
+			  const lietype::Layout& lo);
 
 // a class to temporarily group data necessary for classifying real forms
 class RealFormData
@@ -88,38 +85,38 @@ namespace realform_io {
   names are names for the corresponding Lie algebras.
 */
 Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
-		     const layout::Layout& lo)
+		     const lietype::Layout& lo)
 : d_in(G.numRealForms()), d_out(G.numRealForms()), d_name(G.numRealForms())
 {
   const size_t nrf = G.numRealForms();
   const rootdata::RootSystem& rs = G.rootSystem();
   const cartanclass::Fiber& fundf = G.fundamental();
 
-  std::vector<RealFormData> rfd; rfd.reserve(nrf);
+  std::vector<RealFormData> rf_data; rf_data.reserve(nrf);
 
   for (realform::RealForm rf = 0; rf<nrf; ++rf)
   {
     rootdata::RootSet so = cartanclass::toMostSplit(fundf,rf,rs);
     gradings::Grading gr = cartanclass::specialGrading(fundf,rf,rs);
-    rfd.push_back(RealFormData(rf,gr,so));
+    rf_data.push_back(RealFormData(rf,gr,so));
   }
 
-  std::sort(rfd.begin(),rfd.end());
+  std::sort(rf_data.begin(),rf_data.end());
 
-  for (size_t j = 0; j<nrf; ++j)
+  for (size_t i = 0; i<nrf; ++i)
   {
-    d_in[j] = rfd[j].realForm();
-    d_out[d_in[j]] = j;
+    d_in[i] = rf_data[i].realForm();
+    d_out[d_in[i]] = i;
   }
 
   // write names
   std::ostringstream os;
 
-  for (size_t j = 0; j<nrf; ++j)
+  for (size_t i = 0; i<nrf; ++i)
   {
     os.str("");
-    printType(os,rfd[j].grading(),lo.d_type,lo.d_inner,lo.d_perm);
-    d_name[j] = os.str();
+    printType(os,rf_data[i].grading(),lo);
+    d_name[i] = os.str();
   }
 }
 
@@ -128,43 +125,40 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
   Synopsis: like the previous one, but for the _dual_ real forms.
 */
 Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
-		     const layout::Layout& lo, tags::DualTag)
+		     const lietype::Layout& lo, tags::DualTag)
 : d_in(G.numDualRealForms())
 , d_out(G.numDualRealForms())
 , d_name(G.numDualRealForms())
 {
   const size_t ndrf = G.numDualRealForms();
-  const rootdata::RootSystem& rs = G.dualRootSystem();
-  const cartanclass::Fiber& fundf = G.dualFundamental();
+  const rootdata::RootSystem& drs = G.dualRootSystem();
+  const cartanclass::Fiber& dfundf = G.dualFundamental();
+  const lietype::Layout dlo = dual(lo);
 
-  std::vector<RealFormData> rfd; rfd.reserve(ndrf);
+  std::vector<RealFormData> rf_data; rf_data.reserve(ndrf);
 
-  for (realform::RealForm rf = 0; rf<ndrf; ++rf)
+  for (realform::RealForm drf = 0; drf<ndrf; ++drf)
   {
-    rootdata::RootSet so = cartanclass::toMostSplit(fundf,rf,rs);
-    gradings::Grading gr = cartanclass::specialGrading(fundf,rf,rs);
-    rfd.push_back(RealFormData(rf,gr,so));
+    rootdata::RootSet so = cartanclass::toMostSplit(dfundf,drf,drs);
+    gradings::Grading gr = cartanclass::specialGrading(dfundf,drf,drs);
+    rf_data.push_back(RealFormData(drf,gr,so));
   }
 
-  std::sort(rfd.begin(),rfd.end());
+  std::sort(rf_data.begin(),rf_data.end());
 
-  for (size_t j=0; j<ndrf; ++j)
+  for (size_t i=0; i<ndrf; ++i)
   {
-    d_in[j] = rfd[j].realForm();
-    d_out[d_in[j]] = j;
+    d_in[i] = rf_data[i].realForm();
+    d_out[d_in[i]] = i;
   }
 
   // write names
   std::ostringstream os;
-
-  lietype::LieType dual_lt = lietype::dual_type(lo.d_type);
-  lietype::InnerClassType dual_ict = lietype::dual_type(lo.d_inner,lo.d_type);
-
-  for (size_t j=0; j<ndrf; ++j)
+  for (size_t i=0; i<ndrf; ++i)
   {
     os.str("");
-    printType(os,rfd[j].grading(),dual_lt,dual_ict,lo.d_perm);
-    d_name[j] = os.str();
+    printType(os,rf_data[i].grading(),dlo);
+    d_name[i] = os.str();
   }
 }
 
@@ -206,8 +200,8 @@ namespace realform_io {
 
 std::ostream& printRealForms(std::ostream& strm, const Interface& I)
 {
-  for (size_t j = 0; j < I.numRealForms(); ++j) {
-    std::cout << j << ": " << I.typeName(j) << std::endl;
+  for (size_t i = 0; i < I.numRealForms(); ++i) {
+    std::cout << i << ": " << I.typeName(i) << std::endl;
   }
 
   return strm;
@@ -256,24 +250,19 @@ std::ostream& printComplexType(std::ostream& strm,
   switch (slt.type())
   {
   case 'A':
-    strm << "sl(";
-    strm << rk+1 << ",C)";
+    strm << "sl(" << rk+1 << ",C)";
     break;
   case 'B':
-    strm << "so(";
-    strm << 2*rk+1 << ",C)";
+    strm << "so(" << 2*rk+1 << ",C)";
     break;
   case 'C':
-    strm << "sp(";
-    strm << 2*rk << ",C)";
+    strm << "sp(" << 2*rk << ",C)";
     break;
   case 'D':
-    strm << "so(";
-    strm << 2*rk << ",C)";
+    strm << "so(" << 2*rk << ",C)";
     break;
   case 'E':
-    strm << "e";
-    strm << rk << "(C)";
+    strm << "e" << rk << "(C)";
     break;
   case 'F':
   case 'f':
@@ -285,9 +274,9 @@ std::ostream& printComplexType(std::ostream& strm,
     break;
   case 'T':
     strm << "gl(1,C)";
-    if (rk > 1) {
-      strm << "^";
-      strm << rk;
+    if (rk > 1) // this can no longer occur
+    {
+      strm << "^" << rk;
     }
     break;
   default:
@@ -298,237 +287,111 @@ std::ostream& printComplexType(std::ostream& strm,
   return strm;
 }
 
+// we often need to print either '(n)' or '(n-m,m)' in printSimpleType
+inline std::ostream& split(std::ostream& s,size_t n,size_t m)
+{
+  s << '(';
+  if (m==0)
+    s << n;
+  else
+  {
+    if (2*m>n)
+      m=n-m; // make sure larger number is listed first
+    s << n-m << ',' << m;
+  }
+  return s << ')';
+}
 
 /*
   Synopsis: prints out the real form of slt represented by gr.
 
-  Algorithm: it turns out that for each irreducible Dynkin diagram,
-  and for each non-compact equal rank real form, there is always at least
-  one grading with exactly one noncompact simple imaginary root. In that case,
-  gr is the one for which the noncompact root is smallest. In the non-equal
-  rank case, this is true for all ireducible types except A_n, where the
-  imaginary root system is not irreducible. In that case, of course, the
-  only choice is whether gr is trivial or not, so it is easy enough to decide.
+  Algorithm: it turns out that for each irreducible Dynkin diagram, and for
+  each non-compact equal rank real form, there is always at least one grading
+  with exactly one noncompact simple-imaginary root. In that case, this
+  function is called with such a grading; we cannot rely on the noncompact
+  root being the minimal one possible, as simple roots may have been in an
+  unusual order at the point of selecting |gr|, altough such a permutation has
+  been straightend out before calling this function. In the non-equal rank
+  case, such a grading still exists for all ireducible types except A_n, when
+  the imaginary root system is reducible. In that case however the only choice
+  is whether |gr| is trivial (sl(n,H)) or not, which is easy enough to decide.
 */
 std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
 			      const lietype::SimpleLieType& slt,
 			      const lietype::TypeLetter ic)
 {
-  size_t fb = gr.firstBit();
   size_t rk = slt.rank();
+  bool gr_trivial = gr.count()==0;
+  size_t m = gr_trivial ? 0 : gr.firstBit()+1; // usually relevant for printing
 
   switch (slt.type())
   {
   case 'A':
     if (rk == 1)
-      if (gr.count() == 1)
-	strm << "sl(2,R)";
-      else
-	strm << "su(2)";
+      strm << (gr_trivial ? "su(2)" : "sl(2,R)");
     else
-      switch (ic)
-      {
-      case 's':
-	if (rk & 1UL) {
-	  if (gr.count() == 1) {
-	    strm << "sl(";
-	    strm << rk+1 << ",R)";
-	  } else {
-	    strm << "sl(";
-	    strm << (rk+1)/2 << ",H)";
-	  }
-	} else {
-	    strm << "sl(";
-	    strm << rk+1 << ",R)";
-	}
-	break;
-      case 'c':
-	if (gr.count()>0) {
-	  size_t p = rk - fb;
-	  strm << "su(";
-	  strm << p << ",";
-	  strm << fb+1 << ")";
-	} else {
-	  strm << "su(";
-	  strm << rk+1 << ")";
-	}
-	break;
-      }
+    {
+      size_t n=rk+1;
+      if (ic=='c')
+	split(strm << "su",n,m);
+      else if (rk%2!=0 and gr_trivial) // both parts of this condition needed
+	strm << "sl(" << n/2 << ",H)";
+      else
+	strm << "sl(" << n << ",R)";
+    }
     break;
   case 'B':
-    if (gr.count()>0)
-    {
-      size_t mid = (rk-1)/2;
-      if (fb <= mid) {
-	strm << "so(";
-	strm << 2*rk+1-2*(fb+1) << "," << 2*(fb+1) << ")";
-      } else {
-	size_t c = rk-fb-1;
-	strm << "so(";
-	strm << 2*rk-2*c << "," <<  2*c+1 << ")";
-      }
-    }
-    else
-    {
-      strm << "so(";
-      strm << 2*rk+1 << ")";
-    }
+    split(strm << "so",2*rk+1,2*m);
     break;
   case 'C':
-    if (gr.count() == 0) {
-      strm << "sp(";
-      strm << rk << ")";
-    } else if (fb == rk-1) {
-      strm << "sp(";
-      strm << 2*rk << ",R)";
-    } else {
-      strm << "sp(";
-      strm << rk-fb-1 << "," << fb+1 << ")";
-    }
+    if (m == rk)
+      strm << "sp(" << 2*rk << ",R)";
+    else
+      split (strm << "sp",rk,m);
     break;
   case 'D':
-    if ((rk & 1UL)!=0)
-      switch (ic)
-      {
-      case 's':
-	if (gr.count() == 0) { // distinguished form
-	  strm << "so(";
-	  strm << 2*rk-1<< "," << 1 << ")";
-	} else {
-	  strm << "so(";
-	  strm << 2*rk-2*fb-3 << "," << 2*fb+3 << ")";
-	}
-	break;
-      case 'c':
-	if (gr.count() == 0) {
-	  strm << "so(";
-	  strm << 2*rk << ")";
-	} else if (fb == rk-2) {
-	  strm << "so*(";
-	  strm << 2*rk << ")";
-	} else {
-	  strm << "so(";
-	  strm << 2*rk-2*fb-2 << "," << 2*fb+2 << ")";
-	}
-	break;
-      case 'u':
-        if (gr.count() == 0) { // distinguished form
-          strm << "so(";
-          strm << 2*rk-1<< "," << 1 << ")";
-        } else {
-          strm << "so(";
-          strm << 2*rk-2*fb-3 << "," << 2*fb+3 << ")";
-        }
-      }
-    else
-      switch (ic) {
-      case 's':
-      case 'c':
-	if (gr.count() == 0) { // compact type
-	  strm << "so(";
-	  strm << 2*rk << ")";
-	} else if (fb == rk-2) { // so* type; labelling depends on rank
-	  strm << "so*(";
-	  if ((rk >> 1) & 1UL) // rank not divisible by 4
-	    strm << 2*rk << ")[1,0]";
-	  else // rank divisible by 4
-	    strm << 2*rk << ")[0,1]";
-	} else if (fb == rk-1) { // so* type; labelling depends on rank
-	  strm << "so*(";
-	  if ((rk >> 1) & 1UL) // rank not divisible by 4
-	    strm << 2*rk << ")[0,1]";
-	  else // rank divisible by 4
-	    strm << 2*rk << ")[1,0]";
-	} else { // so(p,q) type
-	  strm << "so(";
-	  strm << 2*rk-2*fb-2 << "," << 2*fb+2 << ")";
-	}
-	break;
-      case 'u':
-	if (gr.count() == 0) { // distinguished form
-	  strm << "so(";
-	  strm << 2*rk-1<< "," << 1 << ")";
-	} else {
-	  strm << "so(";
-	  strm << 2*rk-2*fb-3 << "," << 2*fb+3 << ")";
-	}
-	break;
-      }
+    {
+      size_t n=2*rk;
+      if (ic=='c' or (rk%2==0 and ic=='s')) // equal rank case
+	if (m<rk-1) // so(2p,2q) form
+	  split (strm << "so",n,2*m);
+	else if (rk%2!=0)
+	  strm << "so*(" << n << ")";
+	else // so* type with label depending on m and parity of |rk/2|
+	  strm << "so*(" << n << ((rk%4==0)==(m==rk) ? ")[1,0]" : ")[0,1]");
+      else // unequal rank case
+	split(strm << "so",n,2*m+1);
+    }
     break;
   case 'E':
-    switch (rk)
-    {
-    case 6:
-      switch (ic)
-      {
-      case 's':
-	if (gr.count() == 0)
-	  strm << "e6(f4)";
-	else
-	  strm << "e6(R)";
-	break;
-      case 'c':
-	if (gr.count() == 0)
-	  strm << "e6";
-	else if (fb == 0)
-	  strm << "e6(so(10).u(1))";
-	else if (fb == 1)
-	  strm << "e6(su(6).su(2))";
-	break;
-      }
-      break;
-    case 7:
-      if (gr.count() == 0)
-	strm << "e7";
-      else if (fb == 6)
-	strm << "e7(e6.u(1))";
-      else if (fb == 0)
-	strm << "e7(so(12).su(2))";
-      else if (fb == 1)
-	strm << "e7(R)";
-      break;
-    case 8:
-      if (gr.count() == 0)
-	strm << "e8";
-      else if (fb == 2)
-	strm << "e8(e7.su(2))";
-      else if (fb == 0)
-	strm << "e8(R)";
-      break;
-    }
+    strm << 'e' << rk; // it alway starts like this
+    if (gr_trivial and (ic=='c' or rk>6)) // for |rk>6|, |'s'| means |'c'|
+      break; // from |switch|: compact reak form
+    strm << '(';
+    if (rk==6) // E6, noncompact forms
+      if (ic=='c')
+	strm << (m==1 or m==6 ? "so(10).u(1)" : "su(6).su(2)");
+      else // unequal rank
+	strm << (gr_trivial ? "f4" : "R");
+    else if (rk==7) // E7, noncompact forms
+      strm << (m==7 ? "e6.u(1)" : m==2 or m==5 ? "R" : "so(12).su(2)");
+    else // E8, noncompact forms
+      strm <<(gr.any(bitset::RankFlags(0xCC)) ? "e7.su(2)" : "R");
+    strm << ')';
     break;
+  case 'f':
+    m=5-m; // reverse interpretation of |m| for type 'f'
   case 'F':
-    if (gr.count() == 0)
-      strm << "f4";
-    else if (fb == 2)
-      strm << "f4(so(9))";
-    else if (fb == 0)
-      strm << "f4(R)";
-    break;
-  case 'f': // the dual of F; short roots are first here
-    if (gr.count() == 0)
-      strm << "f4";
-    else if (fb == 2)
-      strm << "f4(R)";
-    else if (fb == 0)
-      strm << "f4(so(9))";
-    break;
+    strm << (gr_trivial ? "f4" : m>=3 ? "f4(so(9))" : "f4(R)");
+   break;
+  case 'g': // for type G root order is unused
   case 'G':
-  case 'g':
-    if (gr.count() == 0)
-      strm << "g2";
-    else
-      strm << "g2(R)";
+    strm << (gr_trivial ? "g2" : "g2(R)");
     break;
   case 'T':
-    if (ic == 's')
-      strm << "gl(1,R)";
-    else if (ic == 'c')
-      strm << "u(1)";
-    if (rk > 1) {
-      strm << "^";
-      strm << rk;
-    }
+    strm << (ic=='c' ? "u(1)" : "gl(1,R)");
+    if (rk > 1)
+      strm << "^" << rk;
     break;
   default: // cannot happen
     assert(false && "unexpected type in printSimpleType");
@@ -549,23 +412,23 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
 */
 std::ostream& printType(std::ostream& strm,
 			const gradings::Grading& d_gr,
-			const lietype::LieType& lt,
-			const lietype::InnerClassType& ict,
-			const setutils::Permutation& perm)
+			const lietype::Layout& lo)
 {
+  const lietype::LieType& lt=lo.d_type;
+  const lietype::InnerClassType& ict=lo.d_inner;
+
   gradings::Grading gr = d_gr;
-  gr.permute(perm); // adapt grading to standard ordering of type |lt|
+  gr.permute(lo.d_perm); // adapt grading to standard ordering of type |lt|
 
-  size_t c = 0;
+  size_t i = 0; // index of simple factor in |lt|
 
-  for (size_t j = 0; j < ict.size(); ++j)
+  for (size_t j = 0; j<ict.size(); gr>>=lt[i].semisimple_rank(),++i,++j)
   {
-    lietype::SimpleLieType slt = lt[c];
+    lietype::SimpleLieType slt = lt[i];
     if (ict[j] == 'C')
     {
       printComplexType(strm,slt);
-      gr >>= slt.semisimple_rank();
-      ++c;
+      gr >>= slt.semisimple_rank();  ++i; // skip one more simple Lie type
     }
     else
     {
@@ -573,8 +436,6 @@ std::ostream& printType(std::ostream& strm,
       grs.truncate(slt.rank());
       printSimpleType(strm,grs,slt,ict[j]);
     }
-    gr >>= slt.semisimple_rank();
-    ++c;
     if (j < ict.size()-1)
       strm << ".";
   }
@@ -582,6 +443,6 @@ std::ostream& printType(std::ostream& strm,
   return strm;
 }
 
-}
+} // |namespace|
 
-}
+} // |namespace atlas|
