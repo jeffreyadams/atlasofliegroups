@@ -37,9 +37,10 @@ namespace weyl {
 generators of W).
   */
   typedef unsigned char Generator;
-
-
-  typedef std::vector<Generator> WeylWord;
+  // make WeylWord genuine member of our namespace
+  struct WeylWord : public std::vector<Generator>
+  {
+  };
 
 
 }
