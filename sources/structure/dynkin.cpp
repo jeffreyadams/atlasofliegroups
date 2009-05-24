@@ -173,8 +173,10 @@ bitset::RankFlags DynkinDiagram::extremities() const
 /*!
   \brief returns the labelled edge in the graph, assumed to be present.
 
-  In fact it should be unique for valid uses, but the |assert| below should
-  not prevent a relevant error to be thrown in erroneous cases
+  The edge |e| is downwards: |e.first| is longer than |e.second|
+
+  In fact the labelled edge should be unique for valid uses, but the |assert|
+  below should not prevent a relevant error to be thrown in erroneous cases
 */
 Edge DynkinDiagram::labelEdge() const
 {
@@ -485,17 +487,18 @@ lietype::TypeLetter irreducibleType(const DynkinDiagram& d)
     case 1: // type is A
       return 'A';
 
-    case 2: { // type is B,C or F
-      if (d.rank() == 2) // type is B
-	return 'B';
-      Edge e = d.labelEdge();
-      if (extr.test(e.first)) // type is C
-	return 'C';
-      else if (extr.test(e.second)) // type is B
-	return 'B';
-      else // type is F
-	return 'F';
-    }
+    case 2: // type is B,C or F
+      {
+	Edge e = d.labelEdge();
+	if (d.rank() == 2) // type is B2 or C2, following ordering diagram
+	  return e.first==0 ? 'B' : 'C';
+	if (extr.test(e.first)) // long root extremal: type is C
+	  return 'C';
+	else if (extr.test(e.second)) // short root extremal: type is B
+	  return 'B';
+	else // neither of labelled edge vertices extremal: type is F
+	  return 'F';
+      }
 
     case 3: // type is G
       return 'G';
