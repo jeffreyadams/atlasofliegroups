@@ -25,27 +25,35 @@
 
 namespace atlas {
 
-// Non-member operators are directly in atlas namespace, to facilitate use
+/* Non-member operators are defined in namespace of an operand, then
+   argument-dependent lookup will find the operator if it's known at all.
 
-// types from bitset
+   However, for |typedef| types, we need the namespace of the definiens
+*/
+
+namespace bitset {
 template<size_t d>
-  std::ostream& operator<< (std::ostream&, const bitset::BitSet<d>&);
+  std::ostream& operator<< (std::ostream&, const BitSet<d>&);
+}
 
-// types from bitvector
+namespace bitvector {
 template<size_t dim>
-  std::ostream& operator<< (std::ostream&, const bitvector::BitVector<dim>&);
+  std::ostream& operator<< (std::ostream&, const BitVector<dim>&);
+}
 
-// types from latticetypes
-std::ostream& operator<< (std::ostream&, const latticetypes::LatticeElt&);
+namespace matrix { // since |latticetypes::LatticeElt| = |matrix::Vector<int>|
+  std::ostream& operator<< (std::ostream&, const latticetypes::LatticeElt&);
+}
 
-// types from lietype
-std::ostream& operator<< (std::ostream& strm,
-			  const lietype::SimpleLieType& slt);
+namespace lietype {
+  std::ostream& operator<< (std::ostream& strm, const SimpleLieType& slt);
+  std::ostream& operator<< (std::ostream&, const LieType&);
+  std::ostream& operator<< (std::ostream&, const InnerClassType&);
+}
 
-std::ostream& operator<< (std::ostream&, const lietype::LieType&);
-
-// types from weyl
-std::ostream& operator<< (std::ostream&, const weyl::WeylWord&);
+namespace weyl {
+  std::ostream& operator<< (std::ostream&, const WeylWord&);
+}
 
 namespace basic_io {
 
