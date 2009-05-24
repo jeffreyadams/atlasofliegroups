@@ -43,7 +43,7 @@ namespace atlas {
 namespace complexredgp_io {
 
 Interface::Interface(complexredgp::ComplexReductiveGroup& G,
-		     const layout::Layout& lo)
+		     const lietype::Layout& lo)
   : d_complexGroup(&G)
   , d_realFormInterface(G,lo)
   , d_dualRealFormInterface(realform_io::Interface(G,lo,tags::DualTag()))

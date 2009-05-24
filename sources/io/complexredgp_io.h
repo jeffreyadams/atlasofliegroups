@@ -14,7 +14,6 @@
 
 #include "complexredgp_fwd.h"
 #include "latticetypes_fwd.h"
-#include "layout.h"
 #include "lietype_fwd.h"
 
 #include "realform_io.h"
@@ -52,7 +51,7 @@ class Interface {
   explicit Interface(complexredgp::ComplexReductiveGroup& G)
     :d_complexGroup(&G) {}
 
-  Interface(complexredgp::ComplexReductiveGroup&, const layout::Layout&);
+  Interface(complexredgp::ComplexReductiveGroup&, const lietype::Layout&);
 
   ~Interface() {}
 

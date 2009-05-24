@@ -22,7 +22,6 @@
 #include "error.h"
 #include "input.h"
 #include "latticetypes.h"
-#include "layout.h"
 #include "lietype.h"
 #include "realform.h"
 #include "standardrepk.h"
@@ -52,9 +51,6 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
  void bitMapPrompt(std::string&, const char*, const bitmap::BitMap&);
 
  size_t get_Cartan_class(const bitmap::BitMap& cs) throw(error::InputError);
-
-  void getInnerClass(latticetypes::LatticeMatrix&, layout::Layout&)
-    throw(error::InputError);
 
   void getInteractive(lietype::LieType&) throw(error::InputError);
 
