@@ -32,40 +32,38 @@ namespace atlas {
   Uses the template seqPrint. It is output as a bracket-enclosed,
   comma-separated list.
 */
-std::ostream& operator<< (std::ostream& strm,
-			  const latticetypes::LatticeElt& v)
-{
-  latticetypes::LatticeElt::const_iterator first = v.begin();
-  latticetypes::LatticeElt::const_iterator last = v.end();
 
-  return basic_io::seqPrint(strm, first, last, ",", "[", "]");
+
+namespace matrix { // since |latticetypes::LatticeElt| = |matrix::Vector<int>|
+
+std::ostream& operator<< (std::ostream& strm, const latticetypes::LatticeElt& v)
+{
+  return basic_io::seqPrint(strm, v.begin(), v.end(), ",", "[", "]");
 }
 
-/******** from lietype *******************************************************/
+} // |namespace latticetypes|
 
+namespace lietype {
 
-/*
-  Synopsis: outputs a simple Lie type.
-*/
-std::ostream& operator<< (std::ostream& strm,
-			  const lietype::SimpleLieType& slt)
+std::ostream& operator<< (std::ostream& strm, const SimpleLieType& slt)
 {
-  lietype::TypeLetter x = slt.type();
-  size_t l = slt.rank();
-
-  return strm << x << l;
+  return strm << slt.type() << slt.rank();
 }
 
-std::ostream& operator<< (std::ostream& strm, const lietype::LieType& lt)
+std::ostream& operator<< (std::ostream& strm, const LieType& lt)
 {
-  lietype::LieType::const_iterator first = lt.begin();
-  lietype::LieType::const_iterator last = lt.end();
-
-  return basic_io::seqPrint(strm,first,last,".");
+  return basic_io::seqPrint(strm,lt.begin(),lt.end(),".");
 }
 
-/******** from weyl **********************************************************/
+std::ostream& operator<< (std::ostream& strm, const InnerClassType& ict)
+{
+  return basic_io::seqPrint(strm,ict.begin(),ict.end(),"");
+}
 
+} // |namespace lietype|
+
+
+namespace weyl {
 
 /*
   Synopsis: outputs w as a string of digits
@@ -78,7 +76,7 @@ std::ostream& operator<< (std::ostream& strm, const lietype::LieType& lt)
   functions, so there is no place to insert that distinction into the code.
   Therefore we have inserted commas here. MvL
 */
-std::ostream& operator<< (std::ostream& strm, const weyl::WeylWord& w)
+  std::ostream& operator<< (std::ostream& strm, const WeylWord& w)
 {
   if (w.size()==0)
     return strm << 'e';
@@ -91,6 +89,9 @@ std::ostream& operator<< (std::ostream& strm, const weyl::WeylWord& w)
 
   return strm;
 }
+
+} // |namespace weyl|
+
 
 namespace basic_io {
 

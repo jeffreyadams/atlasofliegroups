@@ -17,34 +17,37 @@
 
 namespace atlas {
 
-template<size_t dim>
-  std::ostream& operator<< (std::ostream& strm,
-			    const bitvector::BitVector<dim>& v)
+namespace bitvector {
 
 /*
   Prints the bits of v on strm left-to-right
 */
-
+template<size_t dim>
+  std::ostream& operator<< (std::ostream& strm,  const BitVector<dim>& v)
 {
-  for (size_t j = 0; j < v.size(); ++j)
-    strm << (v[j]?'1':'0');
+  for (size_t i=0; i<v.size(); ++i)
+    strm << (v[i]?'1':'0');
 
   return strm;
 }
 
-template<size_t d>
-  std::ostream& operator<< (std::ostream& strm, const bitset::BitSet<d>& b)
+} // |namespace bitvector|
+
+namespace bitset {
 
 /*
   Prints the bits of b on strm left-to-right
 */
-
+template<size_t d>
+  std::ostream& operator<< (std::ostream& strm, const BitSet<d>& b)
 {
-  for (size_t j = 0; j < d; ++j)
-    strm << (b[j]?'1':'0');
+  for (size_t i = 0; i < d; ++i)
+    strm << (b[i]?'1':'0');
 
   return strm;
 }
+
+} // |namespace bitset|
 
 namespace basic_io {
 
