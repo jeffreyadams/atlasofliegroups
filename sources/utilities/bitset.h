@@ -160,11 +160,6 @@ template<> class BitSetBase<1> {
     return d_bits < b.d_bits;
   }
   /*!
-\brief Returns the value of bit j in the BitSet.
-  */
-  bool operator[] (size_t j) const
-  { return (d_bits & constants::bitMask[j])!=0; }
-  /*!
 \brief  Returns 1 if any bit of the BitSet is 1, and 0 otherwise.
   */
   bool any() const { return d_bits!=0; }
@@ -206,7 +201,7 @@ If j is itself set, this is the position of bit j among the SET bit
 
   bool scalarProduct(const BitSetBase<1>& b) const;
 
-  // an other name for |operator[]|
+  //! \brief Returns the value of bit j in the BitSet.
   bool test(size_t j) const { return (d_bits & constants::bitMask[j])!=0; }
 
   unsigned long to_ulong() const { return d_bits; }
@@ -373,7 +368,7 @@ class BitSetBase<1>::iterator {
     return tmp;
   }
 
-};
+}; // |class BitSetBase<1>::iterator|
 
   /*!
   \brief Base for a non-empty BitSet that fits in two words but not one.
@@ -462,8 +457,6 @@ template<> class BitSetBase<2> {
       ? d_bits[0] < b.d_bits[0]
       : d_bits[1] < b.d_bits[1];
   }
-
-  bool operator[] (size_t j) const { return test(j); }
 
   bool any() const {
     return d_bits[0]!=0 or d_bits[1]!=0;
@@ -854,7 +847,7 @@ template<size_t n> class BitSet
 
   bool operator< (const BitSet& b) const { return Base::operator< (b); }
 
-  bool operator[] (size_t j) const { return Base::operator[] (j); }
+  bool operator[] (size_t j) const { return Base::test(j); }
 
   // non-assignment logical operators added by MvL
   BitSet operator& (const BitSet& b) const // logical AND
