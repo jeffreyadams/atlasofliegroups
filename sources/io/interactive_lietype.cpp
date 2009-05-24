@@ -21,7 +21,7 @@ namespace atlas {
 namespace {
 
   void ignoreSimpleLieType(input::InputBuffer&);
-  const char* UnequalRankTypes = "ADE";
+  const char* UnequalRankTypes = "ADET";
 
 }
 
@@ -86,7 +86,7 @@ bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
 	  (t == 'E' and l != 6)) { // bad type
 	if (output)
 	  std::cerr << "sorry, bad inner class symbol u" << std::endl
-		    << "(allowed only for types A_n, n > 1, D_n, and E6)"
+		    << "(allowed only for types A_n (n>1), D_n, E6, and T_n)"
 		    << std::endl;
 	buf.reset(pos);
 	return false;
@@ -214,44 +214,39 @@ bool checkTotalRank(input::InputBuffer& buf)
 */
 std::ostream& printRankMessage(std::ostream& strm, lietype::TypeLetter x)
 {
-  using constants::RANK_MAX;
+  const unsigned r=constants::RANK_MAX;
   switch (x) {
   case 'A':
-    std::cerr << "sorry, in type A the rank must be between 1 and "
-	      << RANK_MAX << std::endl;
+    strm << "sorry, in type A the rank must be between 1 and " << r;
     break;
   case 'B':
-    std::cerr << "sorry, in type B the rank must be between 2 and "
-	      << RANK_MAX << std::endl;
+    strm << "sorry, in type B the rank must be between 2 and " << r;
     break;
   case 'C':
-    std::cerr << "sorry, in type C the rank must be between 2 and "
-	      << RANK_MAX << std::endl;
+    strm << "sorry, in type C the rank must be between 2 and " << r;
     break;
   case 'D':
-    std::cerr << "sorry, in type D the rank must be between 4 and "
-	      << RANK_MAX << std::endl;
+    strm << "sorry, in type D the rank must be between 4 and " << r;
     break;
   case 'E':
-    std::cerr << "sorry, in type E the rank must be 6, 7 or 8" << std::endl;
+    strm << "sorry, in type E the rank must be 6, 7 or 8";
     break;
   case 'F':
   case 'f':
-    std::cerr << "sorry, in type " << x << " the rank must be 4" << std::endl;
+    strm << "sorry, in type " << x << " the rank must be 4";
     break;
   case 'G':
   case 'g':
-    std::cerr << "sorry, in type " << x << " the rank must be 2" << std::endl;
+    strm << "sorry, in type " << x << " the rank must be 2";
     break;
   case 'T':
-    std::cerr << "sorry, in type T the rank must be between 1 and "
-	      << RANK_MAX << std::endl;
+    strm << "sorry, in type T the rank must be between 1 and " << r;
     break;
   default: // cannot happen
     assert(false && "unexpected type in printRankMessage");
   }
 
-  return strm;
+  return strm << std::endl;
 }
 
 
