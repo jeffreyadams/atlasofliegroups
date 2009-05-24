@@ -16,16 +16,19 @@
 
 #include "lietype_fwd.h"
 #include "setutils.h"
-#include "layout_fwd.h"  // not "layout.h", which must include us
 #include <stdexcept>
 
-#include "latticetypes_fwd.h"
+#include "latticetypes.h"
 
 namespace atlas {
 
-/******** constant declarations **********************************************/
-
 namespace lietype {
+
+// type declaration
+struct Layout;
+
+
+/******** constant declarations **********************************************/
   /*!
   Used by the interaction in interactive_lietype.cpp to tell the user
   what input is expected for a Lie type.
@@ -77,7 +80,9 @@ struct SimpleLieType : public std::pair<TypeLetter,size_t>
 { typedef std::pair<TypeLetter,size_t> base;
   SimpleLieType(TypeLetter t,size_t rank) : base(t,rank) {}
   TypeLetter type() const { return base::first; }
+  TypeLetter& type() { return base::first; }
   size_t rank() const { return base::second; }
+  size_t& rank() { return base::second; }
   size_t semisimple_rank() const { return type()=='T' ? 0 : rank(); }
   int Cartan_entry(size_t i,size_t j) const;
   latticetypes::LatticeMatrix Cartan_matrix() const;
@@ -86,7 +91,7 @@ struct SimpleLieType : public std::pair<TypeLetter,size_t>
 
 struct LieType : public std::vector<SimpleLieType>
 { typedef std::vector<SimpleLieType> base;
-  LieType() : std::vector<SimpleLieType>() {}
+  LieType() : base() {}
 
   size_t rank() const;
   size_t semisimple_rank() const;
@@ -96,34 +101,59 @@ struct LieType : public std::vector<SimpleLieType>
   latticetypes::WeightList Smith_basis(latticetypes::CoeffList& invf) const;
 };
 
-}
+// the follwing rather empty definition serves mainly to make |InnerClassType|
+// a genuine member of |namespace lietype| for argument-dependent lookup
+struct InnerClassType : public std::vector<TypeLetter>
+{ typedef std::vector<TypeLetter> base;
+  InnerClassType() : base() {}
+};
+
+struct Layout {
+
+  lietype::LieType d_type;
+  lietype::InnerClassType d_inner;
+  setutils::Permutation d_perm;
+
+// constructors and destructors
+  Layout() {} // default constructor needed, to set via |dynkin::Lie_type|
+
+  /* In the old atlas interface, the Lie type is first provided,
+     and the inner class type is later added; defaults identity permutation */
+  Layout(const lietype::LieType& lt)
+    :d_type(lt),d_inner(),d_perm(lt.rank(),1) {}
+
+  /* The inner class can also be added right away, permutation defaults id */
+  Layout(const lietype::LieType& lt, const lietype::InnerClassType ict)
+    :d_type(lt),d_inner(ict),d_perm(lt.rank(),1) {}
+
+
+}; // |struct Layout|
+
+} // |namespace lietype|
+
+
 /******** function declarations **********************************************/
 
 namespace lietype {
 
   bool checkRank(const TypeLetter&, size_t);
 
+  // involution (permutation) matrix for possibly renumbered Dynkin diagram
+  latticetypes::LatticeMatrix involution(const Layout& lo)
+    throw (std::runtime_error,std::bad_alloc);
+
+  // permutation matrix for |ict| in simply connected |lt|, Bourbaki order
+  inline
+  latticetypes::LatticeMatrix involution(const lietype::LieType& lt,
+					 const lietype::InnerClassType& ict)
+  { return involution(Layout(lt,ict)); // default to identity permutation
+  }
+
   LieType dual_type(LieType lt);
 
   InnerClassType dual_type(InnerClassType, const LieType& lt);
 
-  // permutation matrix for |ict| in simply connected |lt|, Bourbaki order
-  latticetypes::LatticeMatrix involution(const lietype::LieType& lt,
-					 const lietype::InnerClassType& ict);
-
-  // involution matrix, full generality (uses root permutation and sublattice)
-  latticetypes::LatticeMatrix involution(const layout::Layout& lo)
-    throw (std::runtime_error,std::bad_alloc);
-
-  inline size_t rank(const LieType& lt) { return lt.rank(); } // altern. syntax
-  inline size_t rank(const SimpleLieType& slt) { return slt.rank(); }
-
-  inline size_t semisimpleRank(const LieType& lt)
-  { return lt.semisimple_rank(); }
-  inline size_t semisimpleRank(const SimpleLieType& slt)
-  { return slt.semisimple_rank(); }
-
-  inline TypeLetter type(const SimpleLieType& slt) { return slt.type(); }
+  Layout dual(const Layout& lo);
 
 }
 

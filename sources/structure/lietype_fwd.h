@@ -23,9 +23,9 @@ namespace atlas {
 namespace lietype {
 
   typedef char TypeLetter;
-  typedef std::vector<TypeLetter> InnerClassType;
   class SimpleLieType;
   class LieType;
+  class InnerClassType;
 
 }
 

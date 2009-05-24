@@ -46,7 +46,6 @@
 
 #include "constants.h"
 #include "latticetypes.h"
-#include "layout.h"
 #include "smithnormal.h"
 
 /*****************************************************************************
@@ -294,7 +293,9 @@ LieType dual_type(LieType lt)
 
 
 /*!
-  \brief Returns dual inner class type of ict.
+  \brief Returns dual inner class type of |ict| with respect to |lt|
+
+  The result is independent of whether |lt| is the original or dual type
 */
 InnerClassType dual_type(InnerClassType ict, const LieType& lt)
 {
@@ -309,7 +310,7 @@ InnerClassType dual_type(InnerClassType ict, const LieType& lt)
       continue;
     }
     SimpleLieType slt = lt[ltj];
-    switch(slt.first)
+    switch(slt.type())
     {
     case 'B':
     case 'C':
@@ -328,8 +329,8 @@ InnerClassType dual_type(InnerClassType ict, const LieType& lt)
 	ict[i] = 's';
       break;
     case 'D':
-      if (slt.second%2 !=0) {
-	// interchange split and compact inner classes for D_{2n+1}
+      if (slt.rank()%2 !=0)// for D_{2n+1}
+      { //  interchange split and compact inner classes
 	if (ict[i] == 's' or ict[i] == 'u')
 	  ict[i] = 'c';
 	else
@@ -343,54 +344,90 @@ InnerClassType dual_type(InnerClassType ict, const LieType& lt)
   return ict;
 }
 
+/* compute dual of Lie type (including diagram numbering) and inner class.
+   For the dual of types $F_4$ end $G_2$ we reverse the numbering of the
+   nodes, thus avoiding the introduction of the variant types $f_4$ and $g_2$.
+   We just interchange types $B_n$ and $C_n$, even for $n=2$ where we could
+   have instead interchanged the numbering of the two roots as for $G_2$. This
+   is because users like the (fictive) distinction between $B_2$ and $C_2$.
+
+   The dual inner class contains (as non-based root datum involution) the
+   negated transpose of the distinguished involution of the inner class. This
+   amounts to interchanging inner class types 'c' and 's'; for complex ('C')
+   inner classes we currently do nothing, although the Lie type is XX where -1
+   is not in the Weyl group of X (i.e., such that 's' is not 'c' for X), the
+   negated transpose distinguished involution is not in the "same" inner
+   class, but rather in "another" complex class of Lie type XX; the limited
+   use currently made of the dual Layout (in realform_io) justifies this.
+ */
+Layout dual(const Layout& lo)
+{
+  Layout result=lo;
+  for (size_t i=0,k=0; i<lo.d_type.size(); k+=lo.d_type[i].rank(),++i)
+    switch(lo.d_type[i].type())
+    {
+    case 'B': result.d_type[i].type()='C'; break;
+    case 'C': result.d_type[i].type()='B'; break;
+    case 'F': // reverse order of simple factor in permutation
+      std::swap(result.d_perm[k],result.d_perm[k+3]);
+      std::swap(result.d_perm[k+1],result.d_perm[k+2]); break;
+    case 'G': // reverse order of simple factor in permutation
+      std::swap(result.d_perm[k],result.d_perm[k+1]); break;
+    default: break;
+    }
+
+  size_t i=0; // index into |lo.d_type|
+  for (size_t j=0; j<lo.d_inner.size(); ++i,++j)
+  {
+
+    if (lo.d_inner[j]=='C') // dual type remains complex
+      ++i; // skip additional simple factor, 'C' remains unchanged
+    else
+    { bool swap_sc;
+      switch(lo.d_type[i].type())
+      {
+      case 'A': swap_sc = lo.d_type[i].rank()>1; break;
+      case 'D': swap_sc = lo.d_type[i].rank()%2!=0; break;
+      case 'E': swap_sc = lo.d_type[i].rank()==6; break;
+      case 'T': swap_sc = true;
+      default: swap_sc=false; break;
+      }
+      if (swap_sc) // then interchange 'c' and 's'; note that 'u'->'s' here
+      {
+	if (lo.d_inner[j]=='c')
+	  result.d_inner[j]='s';
+	else if (lo.d_inner[j]=='s')
+	  result.d_inner[j]='c';
+      }
+    } // |if(lo.d_inner[j]...)|
+  } // |for(j)|
+
+  return result;
+}
+
 
 /*!
   Synopsis: checks if the rank l is in the valid range for x.
 */
 bool checkRank(const TypeLetter& x, size_t l)
 {
+  if (l>constants::RANK_MAX) return false;
   switch (x)
   {
-  case 'A': // rank must be >= 1
-    if ((l < 1) or (l > constants::RANK_MAX))
-      return false;
-    break;
-  case 'B': // rank must be >= 2
-    if ((l < 2) or (l > constants::RANK_MAX))
-      return false;
-    break;
-  case 'C': // rank must be >= 2
-    if ((l < 2) or (l > constants::RANK_MAX))
-      return false;
-    break;
-  case 'D': // rank must be >= 4
-    if ((l < 4) or (l > constants::RANK_MAX))
-      return false;
-    break;
-  case 'E': // rank must be 6, 7 or 8
-    if ((l < 6) or (l > 8))
-      return false;
-    break;
+  case 'A': return l>=1;
+  case 'B': return l>=2;
+  case 'C': return l>=2;
+  case 'D': return l>=4;
+  case 'E': return l>=6 and l<=8;
   case 'F':
-  case 'f': // rank must be 4
-    if (l != 4)
-      return false;
-    break;
+  case 'f': return l==4;
   case 'G':
-  case 'g': // rank must be 2
-    if (l != 2)
-      return false;
-    break;
-  case 'T': // rank must be >= 1
-    if ((l < 1) or (l > constants::RANK_MAX))
-      return false;
-    break;
+  case 'g': return l==2;
+  case 'T': return l>=1;
   default: // this cannot happen!
     assert(false && "unexpected type in checkRank");
-    break;
+    return false;
   }
-
-  return true;
 }
 
 
@@ -398,25 +435,16 @@ bool checkRank(const TypeLetter& x, size_t l)
   Synopsis: constructs the fundamental involution for the Lie type lt and the
   inner class ic, in the weight basis for the simply connected group.
 
-  Precondition: it has already been checked that ic holds a valid inner class
-  type for lt.
+  Precondition: validity if |lo.d_inner| has been checked
 */
-latticetypes::LatticeMatrix involution(const lietype::LieType& lt,
-				       const lietype::InnerClassType& ic)
-{ // make |Layout| structure with empty basis and trivial permutation
-  layout::Layout lo(lt,ic);
-  return involution(lo); // and call the more general procedure
-}
-
-/* The layout structure provides arguments; |d_basis| ignored if empty */
-latticetypes::LatticeMatrix involution(const layout::Layout& lo)
+latticetypes::LatticeMatrix involution(const Layout& lo)
   throw (std::runtime_error,std::bad_alloc)
 {
   const lietype::LieType& lt = lo.d_type;
   const lietype::InnerClassType& ic = lo.d_inner;
   const setutils::Permutation& pi = lo.d_perm;
 
-  latticetypes::LatticeMatrix result(rank(lt),rank(lt),0);
+  latticetypes::LatticeMatrix result(lt.rank(),lt.rank(),0);
 
   size_t r = 0;   // position in flattened Dynkin diagram; index to |pi|
   size_t pos = 0; // position in |lt|
@@ -424,7 +452,7 @@ latticetypes::LatticeMatrix involution(const layout::Layout& lo)
   for (size_t j=0; j<ic.size(); ++j) // |r|,|pos| are also advanced, near end
   {
     SimpleLieType slt = lt[pos];
-    size_t rs = rank(slt);
+    size_t rs = slt.rank();
 
     switch (ic[j])
     {
@@ -432,14 +460,14 @@ latticetypes::LatticeMatrix involution(const layout::Layout& lo)
       addCompactInvolution(result,r,rs,pi);
       break;
     case 's': // add split involution
-      switch (type(slt))
+      switch (slt.type())
       {
       case 'A': // antidiagonal matrix
 	for (size_t i=0; i<rs; ++i)
 	  result(pi[r+i],pi[r+rs-1-i]) = 1;
 	break;
       case 'D':
-	if (rank(slt)%2 != 0)
+	if (slt.rank()%2 != 0)
 	  addDInvolution(result,r,rs,pi);
 	else
 	  addCompactInvolution(result,r,rs,pi);
@@ -482,9 +510,6 @@ latticetypes::LatticeMatrix involution(const layout::Layout& lo)
     }
     ++pos; r += rs; // consume simple factor
   } // |for (j)|
-
-  if (lo.d_basis.size()!=0)
-    invConjugate(result,latticetypes::LatticeMatrix(lo.d_basis));
 
   return result;
 }
@@ -554,26 +579,26 @@ void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
 			 const SimpleLieType& slt, TypeLetter x,
 			 const setutils::Permutation& pi)
 {
-  size_t rs = rank(slt);
+  size_t rs = slt.rank();
 
   switch (x) {
   case 'c': // add the identity
     addCompactInvolution(m,r,rs,pi);
     break;
   case 's': // add split involution
-    switch (type(slt)) {
+    switch (slt.type()) {
     case 'A': // antidiagonal matrix
       for (size_t i=0; i<rs; ++i)
 	m(pi[r+i],pi[r+rs-1-i]) = 1;
       break;
     case 'D':
-      if (rank(slt)%2 != 0)
+      if (slt.rank()%2 != 0)
 	addDInvolution(m,r,rs,pi);
       else
 	addCompactInvolution(m,r,rs,pi);
       break;
     case 'E':
-      if (rank(slt) == 6) {
+      if (slt.rank() == 6) {
 	m(pi[r+1],pi[r+1]) = 1;
 	m(pi[r+3],pi[r+3]) = 1;
 	m(pi[r],pi[r+5]) = 1;
