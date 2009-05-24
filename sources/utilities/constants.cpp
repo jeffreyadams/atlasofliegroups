@@ -2,6 +2,7 @@
   This is constants.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2008,2009 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
@@ -23,23 +24,23 @@
 
 namespace atlas {
 
-namespace constants {
+  // definition of static arrays
+  unsigned long constants::bitMask[longBits];
+  unsigned long constants::twoBitMask[longBits/2];
+  unsigned char constants::firstbit[1 << charBits];
+  unsigned char constants::lastbit[1 << charBits];
+  unsigned long constants::leqMask[longBits];
+  unsigned long constants::lMask[longBits+1];
 
-unsigned long bitMask[longBits];
-unsigned long twoBitMask[longBits/2];
-unsigned char firstbit[1 << charBits];
-unsigned char lastbit[1 << charBits];
-unsigned long leqMask[longBits];
-unsigned long lMask[longBits+1];
 
+/******** static member function *******************************************/
 
-/******** auxiliary function ***********************************************/
-
-namespace {
-
-void init()
 
 /*
+  Since we cannot initialize the above static member arrays by initialzer
+  lists (we do not even know how long they should be), we provide a static
+  member initialisation function, and ensure that it is called (exaclty) once
+
   This function initializes the following constants :
 
     - bitMask : bitMask[j] flags bit j            : bitMask[j]==1ul<<j
@@ -56,10 +57,12 @@ void init()
 
 */
 
+constants constants::init()
 {
   lMask[0] = 0; // probably unused, but not written in the following loop
 
-  for (unsigned long j = 0; j < longBits; ++j) {
+  for (unsigned long j = 0; j < longBits; ++j)
+  {
     bitMask[j] = 1ul << j;                    // bit j set
     leqMask[j] = (bitMask[j]-1) | bitMask[j]; // bits 0..j set
     lMask[j+1] = leqMask[j];                  // lMask[j+1] has bits 0..j set
@@ -87,22 +90,14 @@ void init()
     lastbit[2*j]   = lastbit[j]+1; // for even numbers use recursion
     lastbit[2*j+1] = lastbit[j]+1; // for odd numbers use recursion as well
   }
+
+  return constants(); // return an (empty) instance of our own class
 }
 
 /* Code that makes sure that |init| is called whenever this module is linked
    into a program
 */
 
-class Kick
-{
-  struct Empty {};
-  static Empty member;
-};
-
-Kick::Empty Kick::member=(init(),Empty());
-
-} // namespace
-
-} // namespace constants
+  const constants constants::dummy = constants::init(); // ensure call |init|
 
 } // namespace atlas
