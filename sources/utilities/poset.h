@@ -162,9 +162,12 @@ Poset::Poset(const std::vector<C>& hasse)
 : d_below(hasse.size())
 {
   for (size_t i=0; i<hasse.size(); ++i)
+  {
+    d_below[i].set_capacity(i);
     for (typename C::const_iterator
 	   it=hasse[i].begin(); it!=hasse[i].end(); ++it)
       new_cover(*it,i);
+  }
 }
 
 
