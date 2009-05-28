@@ -208,20 +208,20 @@ template<> void addTestHelp<mainmode::MainmodeTag>
 
   // add additional command tags here:
 
-  mode.add("rootdatum",helpmode::nohelp_h);
-  mode.add("roots_rootbasis",helpmode::nohelp_h);
-  mode.add("posroots_rootbasis",helpmode::nohelp_h);
-  mode.add("coroots_rootbasis",helpmode::nohelp_h);
-  mode.add("poscoroots_rootbasis",helpmode::nohelp_h);
+//  mode.add("rootdatum",helpmode::nohelp_h);
+//  mode.add("roots_rootbasis",helpmode::nohelp_h);
+//  mode.add("posroots_rootbasis",helpmode::nohelp_h);
+//  mode.add("coroots_rootbasis",helpmode::nohelp_h);
+//  mode.add("poscoroots_rootbasis",helpmode::nohelp_h);
 
 
   // add additional command tags here :
 
-  insertTag(t,"coroots_rootbasis",test_tag);
-  insertTag(t,"poscoroots_rootbasis",test_tag);
-  insertTag(t,"posroots_rootbasis",test_tag);
-  insertTag(t,"roots_rootbasis",test_tag);
-  insertTag(t,"rootdatum",test_tag);
+//  insertTag(t,"coroots_rootbasis",test_tag);
+//  insertTag(t,"poscoroots_rootbasis",test_tag);
+//  insertTag(t,"posroots_rootbasis",test_tag);
+//  insertTag(t,"roots_rootbasis",test_tag);
+//  insertTag(t,"rootdatum",test_tag);
 
 }
 
@@ -239,24 +239,24 @@ template<> void addTestHelp<realmode::RealmodeTag>
     insertTag(t,"test",test_tag);
   }
 
-  mode.add("KGB",helpmode::nohelp_h);
+//  mode.add("KGB",helpmode::nohelp_h);
   mode.add("sub_KGB",helpmode::nohelp_h);
   mode.add("trivial",helpmode::nohelp_h);
-  mode.add("Ktypeform",helpmode::nohelp_h);
-  mode.add("Ktypemat",helpmode::nohelp_h);
-  mode.add("mod_lattice",helpmode::nohelp_h);
-  mode.add("branch",helpmode::nohelp_h);
+//  mode.add("Ktypeform",helpmode::nohelp_h);
+//  mode.add("Ktypemat",helpmode::nohelp_h);
+//  mode.add("mod_lattice",helpmode::nohelp_h);
+//  mode.add("branch",helpmode::nohelp_h);
 
 
   // add additional command tags here :
 
-  insertTag(t,"KGB",test_tag);
+//  insertTag(t,"KGB",test_tag);
   insertTag(t,"sub_KGB",test_tag);
   insertTag(t,"trivial",test_tag);
-  insertTag(t,"Ktypeform",test_tag);
-  insertTag(t,"Ktypemat",test_tag);
-  insertTag(t,"mod_lattice",test_tag);
-  insertTag(t,"branch",test_tag);
+//  insertTag(t,"Ktypeform",test_tag);
+//  insertTag(t,"Ktypemat",test_tag);
+//  insertTag(t,"mod_lattice",test_tag);
+//  insertTag(t,"branch",test_tag);
 
 }
 
