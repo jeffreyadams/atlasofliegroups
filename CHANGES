@@ -4,6 +4,11 @@ A detailed history of the early development is found in the file
 workinglog. Newer changes are documented in the CVS repository.
 This file contains a summary of major changes to the software.
 
+Version 0.4
+* New commands related to K: Ktypeform, Ktypemat, branch, KGB,
+trivial, test, sub_KGB, mod_lattice
+* Many new help files
+
 Version 0.3.1
 * Updated INSTALL file with new readline instructions for the mac
 Version 0.3
@@ -23,6 +28,7 @@ Version 0.3
   - addition of inverse Cayley transforms to block output
   - distinction between cross and Cayley in involution-reduced expressions
   - K-L output now makes reference to the Bruhat order
+
 Version 0.2.6.2
 * Fixed bug in wcells command
 Version 0.2.6.1
