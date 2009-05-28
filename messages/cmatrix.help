@@ -1,5 +1,0 @@
-
-The "cmatrix command prints the Cartan matrix of the root system.  The
-entries of row i are the pairings of the ith simple root with the
-successive simple coroots.  Numbering of simple roots follows Bourbaki
-(with the root of a different length last for B and C).
