@@ -187,7 +187,7 @@ suppress printing if the uninteresting value.
     if (verbosity>0)
       *output_stream << "Type found: " << *type << endl @|
 	<< "Converted expression: " << *e << endl;
-    e->evaluate();
+    e->evaluate(expression_base::single_value);
     shared_value v=pop_value();
     static type_declarator empty(type_list_ptr(NULL));
     if (*type!=empty) *output_stream << "Value: " << *v << endl;

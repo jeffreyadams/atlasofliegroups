@@ -50,12 +50,26 @@
 %token <expression> STRING
 %token <id_code> IDENT
 %token TOFILE ADDTOFILE FROMFILE
+
+%token <type_code> TYPE
+%token ARROW "->"
+%token BECOMES ":="
+%token LEQ "<="
+%token GEQ ">="
+%token NEQ "!="
+%token PLUSAB "+="
+%token MINUSAB "-="
+%token TIMESAB "*="
+%token DIVAB "/="
+%token MODAB "%="
+
 %type  <expression> exp quaternary tertiary lettail formula primary comprim subscription
 %destructor { destroy_expr ($$); } exp quaternary tertiary lettail formula primary comprim subscription
 %type  <expression_list> commalist commalist_opt commabarlist idlist
 %destructor { destroy_exprlist($$); } commalist commalist_opt commabarlist idlist
 %type <decls> declarations
 %destructor { destroy_letlist($$); } declarations
+%nonassoc '<' LEQ '>' GEQ '=' NEQ
 %nonassoc DIVMOD
 %left '-' '+'
 %left '*' '/' '%'
@@ -65,14 +79,11 @@
 %destructor { destroy_id_pat(&$$); } pattern pattern_opt
 %type <pl> pat_list
 %destructor { destroy_pattern($$); } pat_list
-%token <type_code> TYPE
 %type <gen_ptr> type types types_opt
 %destructor { destroy_type($$); } type
 %destructor { destroy_type_list($$); } types types_opt
 %type <id_sp> id_specs
 %destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); } id_specs
-
-%token ARROW BECOMES
 
 %{
   int yylex (YYSTYPE *, YYLTYPE *);
@@ -125,7 +136,31 @@ declarations: declarations ',' pattern '=' tertiary
         | pattern '=' tertiary { $$ = add_let_node(NULL,$1,$3); }
 ;
 
-formula : formula '+' formula
+formula : formula '<' formula
+        { $$ = make_application_node
+	       (make_applied_identifier(lookup_identifier("<"))
+	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
+	       );
+        }
+        | formula LEQ formula
+        { $$ = make_application_node
+	       (make_applied_identifier(lookup_identifier("<="))
+	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
+	       );
+        }
+        | formula '>' formula
+        { $$ = make_application_node
+	       (make_applied_identifier(lookup_identifier(">"))
+	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
+	       );
+        }
+        | formula GEQ formula
+        { $$ = make_application_node
+	       (make_applied_identifier(lookup_identifier(">="))
+	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
+	       );
+        }
+        | formula '+' formula
         { $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("+"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))

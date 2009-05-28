@@ -443,7 +443,7 @@ Lexical_analyser::Lexical_analyser
 
 @ Keywords are identified by sequence number in the order by which they are
 entered into |id_table|; therefore the order in the list |keyword| passed to
-the constructor should match the numeric \.{\%token} values define in
+the constructor should match the numeric \.{\%token} values defined in
 \.{parser.y}. The actual code transmitted for keywords will be obtained by
 adding the constant |QUIT| to the value returned from the hash table look-up.
 Type names are next in |id_table|, but they all will return the token |TYPE|,
@@ -688,18 +688,26 @@ then we prepare for output redirection.
                  (input.unshift(),TOFILE) ;
 	   @< Read in |file_name| @> break;
          }
-    @/// |else| {\bf fall through}
-         case '=':
-         case '+':
-         case '*':
-         case '%':
-         case '^':
-         case ':': prevent_termination=c;
+         prevent_termination=c;
+         if (input.shift()!='=')
+           {@; input.unshift(); code=c; break; }
+         code = c== '<' ? LEQ : GEQ;
+  break; case ':': prevent_termination=c;
     code = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
+  break; case '^':
+  break; case '=': prevent_termination=code=c;
+  break; case '+': prevent_termination=code=c;
+         code = input.shift()=='=' ? PLUSAB : (input.unshift(),c);
+  break; case '*': prevent_termination=c;
+         code = input.shift()=='=' ? TIMESAB  : (input.unshift(),c);
+  break; case '%': prevent_termination=c;
+         code = input.shift()=='=' ? MODAB  : (input.unshift(),c);
   break; case '-': prevent_termination=c;
-    code = input.shift()=='>' ? ARROW : (input.unshift(),c);
+    code = (c=input.shift())=='>' ? ARROW :
+            c=='=' ? MINUSAB : (input.unshift(),'-');
   break; case '/': prevent_termination=c;
-    code= input.shift()=='%' ? DIVMOD : (input.unshift(),'/');
+    code= (c=input.shift())=='%' ? DIVMOD :
+           c=='=' ? DIVAB : (input.unshift(),'/');
   break; case '\n': state=ended; // and {\bf fall through}.
          default: code=c;
   }

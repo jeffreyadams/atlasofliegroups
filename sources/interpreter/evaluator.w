@@ -288,7 +288,7 @@ its variants and the possibilities for primitive types. Some of them will be
 introduced later.
 
 @< Type definitions @>=
-enum type_tag
+enum type_tag @+
 { undetermined_type, primitive_type, row_type, tuple_type, function_type };
 
 enum primitive_tag
@@ -304,11 +304,14 @@ primitive ones.
 extern const char* prim_names[];
 
 @~Here is the list of names of the primitive types (some are given later),
-terminated by a null pointer.
+terminated by a null pointer. The last name |"void"| is not a primitive name,
+corresponds to |nr_of_primitive_types|, and will be treated exceptionally in
+|make_prim_type| to make an empty tuple type instead.
 
 @< Global variable definitions @>=
-const char* prim_names[]=
-{"int","rat","string","bool",@< Other primitive type names@>@;@; NULL };
+const char* prim_names[]=@/
+{"int","rat","string","bool",@< Other primitive type names@>@;@;@+
+ "void", NULL };
 
 @*2 Type declarators.
 %
@@ -629,14 +632,19 @@ bool operator== (const type_declarator& x,const type_declarator& y)
 @ Instead of using the constructors directly, we usually use the constructing
 functions below, which take and return |type_ptr| or |type_list_ptr| values,
 which are auto-pointers. The reasons for, and the way of, using them are the
-same as explained above for |make_type_list|.
+same as explained above for |make_type_list|. Note that |make_prim_type|
+contrary to what its name suggests returns and empty tuple type for the type
+name |"void"|.
 
 @< Local function definitions @>=
 type_ptr make_undetermined_type()
 @+{@; return type_ptr(new type_declarator); }
 @)
 type_ptr make_prim_type(primitive_tag p)
-@+{@; return type_ptr(new type_declarator(p)); }
+{ return p<nr_of_primitive_types ?
+    type_ptr(new type_declarator(p)) :
+    type_ptr(new type_declarator(type_list_ptr(NULL)));
+}
 @)
 type_ptr make_row_type(type_ptr c)
 {@; return type_ptr(new type_declarator(c)); }
@@ -1142,14 +1150,23 @@ A fundamental choice is whether to make the result type of the |evaluate| type
 equal to |value|. Although this would seem the natural choice, we prefer
 to make its result |void|, and to handle all value-passing via an execution
 stack; thus we hope to be able to avoid packing and unpacking of tuple values
-in most cases when calling functions.
+in most cases when calling functions. In order to do that effectively, we
+dynamically pass a parameter to the |evaluate| method telling whether the
+result is expected to be ``expanded'' on the runtime stack in case it is of a
+tuple type.
 
 @< Type definitions @>=
 struct expression_base
-{ expression_base() @+ {}
+{ enum level @+{ no_value, single_value, multi_value };
+@)
+  expression_base() @+ {}
   virtual ~expression_base() @+ {}
-  virtual void evaluate() const =0;
+  virtual void evaluate(level l) const =0;
   virtual void print(std::ostream& out) const =0;
+@)
+  void void_eval() const @+{@; evaluate(no_value); }
+  void eval() const @+{@; evaluate(single_value); }
+  void multi_eval() const @+{@; evaluate(multi_value); }
 };
 @)
 typedef expression_base* expression;
@@ -1281,7 +1298,7 @@ struct denotation : public expression_base
 { shared_value denoted_value;
 @)
   explicit denotation(shared_value v) : denoted_value(v) @+{}
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const
   @+{@; denoted_value->print(out); }
 };
@@ -1289,11 +1306,13 @@ struct denotation : public expression_base
 @ The following function is not defined inside the class definition, because
 that definition precedes the one of the |inline| function |push_value| in the
 header file. It is not even made |inline| itself, since there is little point
-in doing so for virtual methods (calls via the vtable cannot be inlined).
+in doing so for virtual methods (calls via the vtable cannot be inlined). For
+the first time we see the |level| argument in action; whenever |l==no_value|
+we should avoid producing a result value.
 
 @< Function def... @>=
-void denotation::evaluate() const
-@+{@; push_value(denoted_value); }
+void denotation::evaluate(level l) const
+@+{@; if (l!=no_value) push_value(denoted_value); }
 
 
 @ Let us finish with some functions related to the execution stack. The stack
@@ -1615,7 +1634,7 @@ struct list_expression : public expression_base
   explicit list_expression(size_t n) : component(n,NULL) @+{}
    // always start out with null pointers
   virtual ~list_expression();
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
@@ -1681,18 +1700,25 @@ case list_display:
      to the converted expression; otherwise |throw| a |type_error| @>
 
 @ The evaluation of a |list_expression| evaluates the components in a simple
-loop and wraps the result in a |row_value|. Since evaluation pushes the
-resulting value onto the execution stack, we pop it off into the result
-afterwards. We take care to hold the partial result via an auto-pointer
-|result|, so that in case of a runtime error during the evaluation of one of
-the component expressions the values already computed are cleaned up.
+loop. If |l==no_value|, we only evaluate for side effects, otherwise we wrap
+the result in a single |row_value|. Since evaluation of component expressions
+pushes the resulting value onto the execution stack, we pop each one off
+immediately t integrate it into the result. We take care to hold the partial
+result via an auto-pointer |result|, so that in case of a runtime error during
+the evaluation of one of the component expressions the values already computed
+are cleaned up.
 
 @< Function def... @>=
-void list_expression::evaluate() const
-{ row_ptr result(new row_value(component.size()));
-  for (size_t i=0; i<component.size(); ++i)
-    component[i]->evaluate(),result->val[i]=pop_value();
-  push_value(result); // result will be shared from here on
+void list_expression::evaluate(level l) const
+{ if (l==no_value)
+    for (size_t i=0; i<component.size(); ++i)
+      component[i]->void_eval();
+  else
+  { row_ptr result(new row_value(component.size()));
+    for (size_t i=0; i<component.size(); ++i)
+      component[i]->eval(),result->val[i]=pop_value();
+    push_value(result); // result will be shared from here on
+  }
 }
 
 @*1 Tuples.
@@ -1717,7 +1743,7 @@ name |tuple_display| was already taken); we derive this from
 @< Type definitions @>=
 struct tuple_expression : public list_expression
 { explicit tuple_expression(size_t n) : list_expression(n)@+{}
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
@@ -1808,12 +1834,13 @@ void tuple_value::print(std::ostream& out) const
   }
 }
 
-@ Here are two functions that pack and unpack tuples from values on the stack;
+@ Here are functions that pack and unpack tuples from values on the stack;
 they will be used by wrapper functions around functions from the Atlas
 library, and in the case of |wrap_tuple| for the evaluation of tuple
 expressions. The function |push_tuple_components| will be called by wrapper
 functions that need the tuple components on the stack; the function call
 |wrap_tuple(n)| inversely builds a tuple from $n$ components on the stack.
+
 
 @< Declarations of exported functions @>=
 void push_tuple_components();
@@ -1845,14 +1872,23 @@ void wrap_tuple(size_t n)
   push_value(result);
 }
 
-@ The evaluation of a tuple display evaluates the components in a simple loop
-and wraps the result in a |tuple_value|, which is accomplished by
-|wrap_tuple|.
+@ The evaluation of a tuple display evaluates the components in a simple loop.
+If |l==no_value| this is done for side effects only, otherwise each component
+produces (via the |eval| method) a single value on the stack. Afterwards the
+result needs to be grouped into a single value only if |l==single_value|,
+which is accomplished by |wrap_tuple|.
 
 @< Function def... @>=
-void tuple_expression::evaluate() const
-{ for (size_t i=0; i<component.size(); ++i) component[i]->evaluate();
-  wrap_tuple(component.size());
+void tuple_expression::evaluate(level l) const
+{ if (l==no_value)
+    for (size_t i=0; i<component.size(); ++i)
+      component[i]->void_eval();
+  else
+  { for (size_t i=0; i<component.size(); ++i)
+      component[i]->eval();
+    if (l==single_value)
+      wrap_tuple(component.size());
+  }
 }
 
 @*1 Identifiers.
@@ -1993,7 +2029,7 @@ void Id_table::add(Hash_table::id_type id, shared_value val, type_ptr type)
     table.insert(std::make_pair(id,id_data()));
   id_data& slot=trial.first->second;
   if (trial.second) // a fresh global identifier
-  { slot.val.reset(new shared_value(val));
+  {@; slot.val.reset(new shared_value(val));
     slot.type=type.release();
   }
   else if (*slot.type==*type) // overwrite by value of same type
@@ -2076,7 +2112,7 @@ class global_identifier : public identifier
 public:
   explicit global_identifier(Hash_table::id_type id);
   virtual ~global_identifier() @+ {}
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
 };
 
 @ The constructor for |global_identifier::evaluate| locates the value
@@ -2087,12 +2123,33 @@ global_identifier::global_identifier(Hash_table::id_type id)
 : identifier(id), address(global_id_table->address_of(id))
 @+{}
 
-@ Evaluating a global identifier returns the value stored in the location
-|address|.
+
+@ The function |push_expanded| will be called when a stored value is retrieved
+in a context where a tuple value might need expansion, depending on the |level
+l@;|, but the value is not known to be of tuple type (since type information
+is not retained in compiled expression values).
 
 @< Function definitions @>=
-void global_identifier::evaluate() const @+
-{@; push_value(*address); }
+void push_expanded(expression_base::level l, const shared_value& v)
+{ if(l==expression_base::single_value)
+    push_value(v);
+  else if (l==expression_base::multi_value)
+  { shared_tuple p = std::tr1::dynamic_pointer_cast<tuple_value>(v);
+    if (p==NULL)
+      push_value(v);
+    else
+      for (size_t i=0; i<p->length(); ++i)
+        push_value(p->val[i]); // push components
+  }
+}
+
+@ Evaluating a global identifier returns the value stored in the location
+|address|, possibly expanded if |l==multi_value|, or nothing at all if
+|l==no_value|.
+
+@< Function definitions @>=
+void global_identifier::evaluate(level l) const
+@+{@; push_expanded(l,*address); }
 
 @*2 Local identifiers.
 %
@@ -2127,15 +2184,15 @@ class local_identifier : public identifier
 public:
   explicit local_identifier(Hash_table::id_type id, size_t i, size_t j)
      : identifier(id), depth(i), offset(j) @+{}
-  virtual void evaluate() const; // only this method is redefined
+  virtual void evaluate(level l) const; // only this method is redefined
 };
 
-@ The overridden method |local_identifier::evaluate| just looks up a value in
-the |execution_context|.
+@ The method |local_identifier::evaluate| looks up a value in the
+|execution_context|.
 
 @< Function definitions @>=
-void local_identifier::evaluate() const @+
-{@; push_value(execution_context->elem(depth,offset));}
+void local_identifier::evaluate(level l) const
+{@; push_expanded(l,execution_context->elem(depth,offset)); }
 
 @ For an applied identifier, we first look in |id_context| for a binding of
 the identifier, and if found it will be a local identifier, and otherwise we
@@ -2171,7 +2228,7 @@ struct call_expression : public expression_base
   call_expression(expression_ptr f,expression_ptr a)
    : function(f.release()),argument(a.release()) @+{}
   virtual ~call_expression() @+ {@; delete function; delete argument; }
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
@@ -2230,7 +2287,7 @@ identifiers representing built-in functions, so we derive an associated
 ``primitive type'' from |value_base|.
 
 @< Type definitions @>=
-typedef void (* wrapper_function)();
+typedef void (* wrapper_function)(expression_base::level);
 @)
 struct builtin_value : public value_base
 { wrapper_function val;
@@ -2251,41 +2308,52 @@ private:
 typedef std::auto_ptr<builtin_value> builtin_ptr;
 typedef std::tr1::shared_ptr<builtin_value> shared_builtin;
 
-@ To evaluate a |call_expression| object we evaluate function and argument,
-leaving the latter on the stack. Then we try to get the built-in function,
-and call it. If the function did not evaluate to a built-in function, then it
-was a user-defined function, whose execution will be detailed later.
+@ To evaluate a |call_expression| object we evaluate the function, and then
+test whether it is a built-in function. In the former case we evaluate the
+arguments expanded on th stack and call the built-in function, passing the
+|level| parameter so that if necessary the call can in its turn return and
+expanded result (or no result at all). If not a built-in function, it must be
+a user-defined function, whose execution will be detailed later, but in this
+case it will be more useful to have the argument as a single value.
+
+As a general mechanism to aid locating errors, we signal if an error was
+produced during the evaluation of a function call in case the function was
+referred to by an identifier, by catching the error, printing the function
+name, and re-throwing the error. This will result in a traceback, inner to
+outer, of interrupted (non anonymous) function calls. We make sure the
+evaluation of the arguments(s) is done outside this |try| block, since
+reporting functions that have not yet started executing would be confusing.
 
 @< Function definitions @>=
-void call_expression::evaluate() const
-{ function->evaluate(); @+ shared_value fun=pop_value();
-@/argument->evaluate(); // push evaluated argument on stack
-  builtin_value* f=dynamic_cast<builtin_value*>(fun.get());
+void call_expression::evaluate(level l) const
+{ function->eval(); @+ shared_value fun=pop_value();
+@/builtin_value* f=dynamic_cast<builtin_value*>(fun.get());
+  argument->evaluate(f==0 ? single_value : multi_value);
   try
   { if (f==NULL)
       @< Call user-defined function |fun| with argument on |execution_stack| @>
-    else f->val(); // call the wrapper function, leaving result on the stack
+    else // built-in functions
+      f->val(l); // call the wrapper function, leaving result on the stack
   }
-  catch (const std::runtime_error& e)
+  catch (const std::exception& e)
   { identifier* p=dynamic_cast<identifier*>(function);
-    if (p!=NULL)
+    if (p!=NULL) // named function
       throw std::runtime_error
         (std::string(e.what())+"\n(in call of "+p->name()+')');
-    throw;
+    throw; // for anonymous function calls, just rethrow the error unchanged
   }
 }
 
 @*1 Let-expressions.
 %
 We shall now consider a simple type of expression in which local variables
-occur, the let-expression. A let expression is equivalent to an anonymous
-function ($\lambda$-expression) applied to the expression(s) in the
-let-declarations. There is however a simplification, in that no types have to
-be declared for the function parameters, since the types of the corresponding
-expressions can be used for this. Nevertheless, we shall in converting
-expressions to internal form forget the syntactic origin of the expression,
-and translate to an application of an anonymous function, giving us an
-occasion to introduce such functions as new form of |expression|.
+occur, the let-expression. It is equivalent to an anonymous function
+($\lambda$-expression) applied to the expression(s) in the let-declarations,
+but no types need to be declared for the function parameters, since the types
+of the corresponding expressions can be used for this. Nevertheless, we shall
+in converting expressions to internal form forget the syntactic origin of the
+expression, and translate to an application of an anonymous function, giving
+us an occasion to introduce such functions as a new form of~|expression|.
 
 @ We prepare the definition of $\lambda$-expression with the introduction of
 auxiliary types, needed to deal with the general patterns by which formal
@@ -2307,18 +2375,19 @@ without runtime storage, we wrap it into a zero-size structure.
 struct id_pat_deleter
 {@; void operator()(id_pat* p) @+{@; destroy_id_pat(p); }};
 typedef std::tr1::shared_ptr<id_pat> shared_pattern;
+  // deleter type does not enter into this
 
-@ We must also treat the question of obtaining ownership of a |id_pat|
+@ We must also treat the question of obtaining ownership of an |id_pat|
 structure. An initial node to be shared must certainly be allocated (the
 parser never excutes |new idpat|), but we might steal a possible |sublist|
-field, replacing it by a null pointer to avoid double destruction. However
-doing a deep copy is a cleaner solution, which avoids modifying the parsed
-expression and isolates us from the allocation policy used in the parser,
-which might change. To provide exception safety during the copy, it seems for
-once easier to explicitly catch and clean up than to introduce an intermediate
-class only for exception safety. Note that the argument to |destroy_id_pat|
-is properly |NULL|-terminated at each point where an exception might be
-thrown.
+field, replacing it in the original by a null pointer to avoid double
+destruction. However doing a deep copy is a cleaner solution, which avoids
+modifying the parsed expression and isolates us from the allocation policy
+used in the parser, which might change. To provide exception safety during the
+copy, it seems for once easier to explicitly catch and clean up than to
+introduce an intermediate class only for exception safety. At each point where
+an exception might be thrown the argument to |destroy_id_pat| is properly
+|NULL|-terminated.
 
 @< Local function def... @>=
 id_pat copy_id_pat(const id_pat& p)
@@ -2348,12 +2417,12 @@ struct lambda_expression : public expression_base
 @)
   lambda_expression(const id_pat& p, expression_ptr b);
   virtual ~lambda_expression() @+{} // subobjects do all the work
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
 @ The main constructor cannot be inside the class definition, as it requires
-the local function |copy_id_pat|. It creates a new node at the dead of
+the local function |copy_id_pat|. It creates a new node at the head of
 |param|, which will henceforth be shared, and fills it with a deep copy. For
 the body we create sharing as well, which is simpler since the passed
 auto-pointer already gives us ownership.
@@ -2506,9 +2575,11 @@ void closure_value::print(std::ostream& out) const
 evaluator.
 
 @< Function def... @>=
-void lambda_expression::evaluate() const
-{@; closure_ptr result(new closure_value(execution_context,param,body));
-  push_value(result);
+void lambda_expression::evaluate(level l) const
+{ if (l!=no_value)
+  @/{@;closure_ptr result(new closure_value(execution_context,param,body));
+     push_value(result);
+  }
 }
 
 @ A call of a user-defined function passes through the same code as that of a
@@ -2528,7 +2599,7 @@ function body.
 @)
   context_ptr saved_context(execution_context);
   execution_context.reset(new context(f->cont,new_frame));
-  f->body->evaluate();
+  f->body->evaluate(l); // pass evaluation level |l| to function body
   execution_context = saved_context;
 }
 
@@ -2625,16 +2696,24 @@ public:
   conversion(const conversion_info& t,expression_ptr e)
    :type(t),exp(e.release()) @+{}
   virtual ~conversion()@;{@; delete exp; }
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
 @ The |evaluate| method for conversions dispatches to the |convert| member,
-after evaluating |exp|.
+after evaluating |exp|. Although automatic conversions are only inserted when
+the type analysis requires a non-empty result type, it is still in principle
+possible that at run time this method is called with |l==no_value|, so we
+cater for that.
 
 @< Function def...@>=
-void conversion::evaluate() const
-@+{@; exp->evaluate(); (*type.convert)(); }
+void conversion::evaluate(level l) const
+{@; exp->eval();
+  if (l!=no_value)
+    (*type.convert)();
+  else execution_stack.pop_back();
+}
+@)
 void conversion::print(std::ostream& out) const
 @+{@; out << type.name << ':' << *exp; }
 
@@ -2867,9 +2946,13 @@ void rational_vector_value::print(std::ostream& out) const
 }
 
 @ For matrices we align columns, and print vertical bars along the sides.
+However if there are no entries, we print the dimensions of the matrix.
+
 @< Function def... @>=
 void matrix_value::print(std::ostream& out) const
 { size_t k=val.numRows(),l=val.numColumns();
+  if (k==0 or l==0)
+  {@;  out << "The unique " << k << 'x' << l << " matrix"; return; }
   std::vector<size_t> w(l,0);
   for (size_t i=0; i<k; ++i)
     for (size_t j=0; j<l; ++j)
@@ -2960,7 +3043,7 @@ void ratvec_convert()
   latticetypes::LatticeElt numer(r->val.size()),denom(r->val.size());
   unsigned int d=1;
   for (size_t i=0; i<r->val.size(); ++i)
-  { arithmetic::Rational frac = force<rat_value>(&*r->val[i])->val;
+  { arithmetic::Rational frac = force<rat_value>(r->val[i].get())->val;
     numer[i]=frac.numerator();
     denom[i]=frac.denominator();
     d=arithmetic::lcm(d,denom[i]);
@@ -3102,27 +3185,27 @@ struct subscr_base : public expression_base
 struct row_subscription : public subscr_base
 { row_subscription(expression_ptr a, expression_ptr i)
   : subscr_base(a,i) @+{}
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
 };
 
 @)
 struct vector_subscription : public subscr_base
 { vector_subscription(expression_ptr a, expression_ptr i)
   : subscr_base(a,i) @+{}
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
 };
 @)
 struct matrix_subscription : public subscr_base
 { matrix_subscription(expression_ptr a, expression_ptr ij)
   : subscr_base(a,ij) @+{}
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 @)
 struct matrix_slice : public subscr_base
 { matrix_slice(expression_ptr a, expression_ptr j)
   : subscr_base(a,j) @+{}
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
 };
 
 @ These subscriptions are printed in the usual subscription syntax. For matrix
@@ -3234,42 +3317,45 @@ inline std::string range_mess(int i,size_t n,const expression_base* e)
   return o.str();
 }
 @)
-void row_subscription::evaluate() const
-{ shared_int i((index->evaluate(),get<int_value>()));
-  shared_row r((array->evaluate(),get<row_value>()));
+void row_subscription::evaluate(level l) const
+{ shared_int i=((index->eval(),get<int_value>()));
+  shared_row r=((array->eval(),get<row_value>()));
   if (static_cast<unsigned int>(i->val)>=r->val.size())
     throw std::runtime_error(range_mess(i->val,r->val.size(),this));
-  push_value(r->val[i->val]);
+  push_expanded(l,r->val[i->val]);
 }
 @)
-void vector_subscription::evaluate() const
-{ shared_int i((index->evaluate(),get<int_value>()));
-  shared_vector v((array->evaluate(),get<vector_value>()));
+void vector_subscription::evaluate(level l) const
+{ shared_int i=((index->eval(),get<int_value>()));
+  shared_vector v=((array->eval(),get<vector_value>()));
   if (static_cast<unsigned int>(i->val)>=v->val.size())
     throw std::runtime_error(range_mess(i->val,v->val.size(),this));
-  push_value(new int_value(v->val[i->val]));
+  if (l!=no_value)
+    push_value(new int_value(v->val[i->val]));
 }
 @)
-void matrix_subscription::evaluate() const
-{ index->evaluate(); push_tuple_components();
-  shared_int j(get<int_value>());
-  shared_int i(get<int_value>());
-  shared_matrix m((array->evaluate(),get<matrix_value>()));
+void matrix_subscription::evaluate(level l) const
+{ index->multi_eval(); @+
+  shared_int j=get<int_value>();
+  shared_int i=get<int_value>();
+  shared_matrix m=((array->eval(),get<matrix_value>()));
   if (static_cast<unsigned int>(i->val)>=m->val.numRows())
     throw std::runtime_error
      ("initial "+range_mess(i->val,m->val.numRows(),this));
   if (static_cast<unsigned int>(j->val)>=m->val.numColumns())
     throw std::runtime_error
      ("final "+range_mess(j->val,m->val.numColumns(),this));
-  push_value(new int_value(m->val(i->val,j->val)));
+  if (l!=no_value)
+    push_value(new int_value(m->val(i->val,j->val)));
 }
 @)
-void matrix_slice::evaluate() const
-{ shared_int j((index->evaluate(),get<int_value>()));
-  shared_matrix m((array->evaluate(),get<matrix_value>()));
+void matrix_slice::evaluate(level l) const
+{ shared_int j=((index->eval(),get<int_value>()));
+  shared_matrix m=((array->eval(),get<matrix_value>()));
   if (static_cast<unsigned int>(j->val)>=m->val.numColumns())
     throw std::runtime_error(range_mess(j->val,m->val.numColumns(),this));
-  push_value(new vector_value(m->val.column(j->val)));
+  if (l!=no_value)
+    push_value(new vector_value(m->val.column(j->val)));
 }
 
 
@@ -3306,7 +3392,7 @@ class global_assignment : public assignment_expr
 public:
   global_assignment(Hash_table::id_type l,expression_ptr r);
   virtual ~global_assignment() @+{}
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
 };
 
 @ The constructor for |global_assignment| is rather similar to that for
@@ -3320,9 +3406,10 @@ global_assignment::global_assignment(Hash_table::id_type l,expression_ptr r)
 the old value stored at |*address| by the new (shared pointer) value.
 
 @< Function def... @>=
-void global_assignment::evaluate() const
-{ rhs->evaluate();
-  *address = execution_stack.back(); // and leave value on stack
+void global_assignment::evaluate(level l) const
+{@; rhs->eval();
+  *address = pop_value();
+  push_expanded(l,*address);
 }
 
 @ For local assignments we also need to access the location where the
@@ -3337,7 +3424,7 @@ class local_assignment : public assignment_expr
 public:
   local_assignment(Hash_table::id_type l, size_t i,size_t j, expression_ptr r);
   virtual ~local_assignment() @+{}
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
 };
 
 @ The constructor for |local_assignment| is straightforward.
@@ -3352,10 +3439,11 @@ old value stored at |execution_context->elem(depth,offset)| by the new (shared
 pointer) value.
 
 @< Function def... @>=
-void local_assignment::evaluate() const
-{ rhs->evaluate();
-  execution_context->elem(depth,offset)= execution_stack.back();
-     // and leave value on stack
+void local_assignment::evaluate(level l) const
+{ rhs->eval();
+  shared_value& dest =  execution_context->elem(depth,offset);
+  dest= pop_value();
+  push_expanded(l,dest);
 }
 
 
@@ -3429,7 +3517,7 @@ struct component_assignment : public assignment_expr
   virtual ~component_assignment() @+{@; delete index; }
   virtual void print (std::ostream& out) const;
 @)
-  void assign(shared_value& aggregate,subscr_base::sub_type kind) const;
+  void assign(level l,shared_value& aggregate,subscr_base::sub_type kind) const;
 };
 
 @ Printing reassembles the subexpressions according to the input syntax.
@@ -3448,7 +3536,7 @@ public:
   global_component_assignment
     (Hash_table::id_type a,expression_ptr i,expression_ptr r,
      subscr_base::sub_type k);
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
 };
 
 @ The constructor for |global_component_assignment| stores the address of the
@@ -3467,8 +3555,8 @@ given a reference to the |shared_value| pointer holding the current value of
 the aggregate; it is this pointer that is in principle modified.
 
 @< Function def... @>=
-void global_component_assignment::evaluate() const
-{@; assign(*address,kind); }
+void global_component_assignment::evaluate(level l) const
+{@; assign(l,*address,kind); }
 
 @ The |assign| method, which will also be called for local component
 assignments, starts by the common work of evaluating the index and the value
@@ -3479,78 +3567,83 @@ the kind o component assignment at hand.
 
 @< Function def... @>=
 void component_assignment::assign
-  (shared_value& aggregate, subscr_base::sub_type kind) const
-{ index->evaluate(); @+ shared_value ind=pop_value();
-@/rhs->evaluate();
+  (level l,shared_value& aggregate, subscr_base::sub_type kind) const
+{ rhs->eval();
   uniquify(aggregate);
-  value loc=&*aggregate; // simple reference from shared pointer
+  value loc=aggregate.get(); // simple reference from shared pointer
   switch (kind)
   { case subscr_base::row_entry:
-    @< Replace component |ind| in row |loc| by value on stack @>
+  @/@< Replace component at |index| in row |loc| by value on stack @>
   @+break;
     case subscr_base::vector_entry:
-    @< Replace entry |ind| in vector |loc| by value on stack @>
+  @/@< Replace entry at |index| in vector |loc| by value on stack @>
   @+break;
     case subscr_base::matrix_entry:
-    @< Replace entry |ind| in matrix |loc| by value on stack @>
+  @/@< Replace entry at |index| in matrix |loc| by value on stack @>
   @+break;
     case subscr_base::matrix_column:
-    @< Replace columns |ind| in matrix |loc| by value on stack @>
+  @/@< Replace columns at |index| in matrix |loc| by value on stack @>
   @+break;
   }
 }
 
-@ A |row_value| component assignment is the simplest kind. The variables |ind|
-and |loc| hold generic pointers (and shared in the case of |ind|), known to
-refer to an |int_value| respectively a |row_value|. Since we need their value,
-but not for incorporation into a result, we use |force| to get ordinary
+@ A |row_value| component assignment is the simplest kind. The variable |loc|
+holds a generic pointer, known to refer to a |row_value|. Since we need their
+value, but not for incorporation into a result, we use |force| to get ordinary
 pointers of the right kind. Then we do a bound check, and on success replace a
-component of the value held in |a| by the stack-top value, which remains in
-place as result value of the component assignment.
+component of the value held in |a| by the stack-top value. Afterwards,
+depending on |l|, we may put back the stack-top value as result of the
+component assignment, possibly expanding a tuple in the process.
 
-@< Replace component |ind| in row |loc|... @>=
-{ unsigned int i=force<int_value>(&*ind)->val;
+@< Replace component at |index| in row |loc|... @>=
+{ unsigned int i=(index->eval(),get<int_value>()->val);
   row_value& a=*force<row_value>(loc);
   if (i>=a.val.size())
     throw std::runtime_error(range_mess(i,a.val.size(),this));
-  a.val[i]= execution_stack.back(); // and leave value on stack
+  a.val[i]= pop_value();
+  push_expanded(l,a.val[i]);
 }
 
-@ For |vec_value| entry assignments just the type of the aggregate object
-is different.
+@ For |vec_value| entry assignments the type of the aggregate object is
+vector, and the value assigned always an integer. The latter certainly needs
+no expansion, so we either leave it on the stack, or remove it if the value of
+the component assignment expression is not used.
 
-@< Replace entry |ind| in vector |loc|... @>=
-{ unsigned int i=force<int_value>(&*ind)->val;
+@< Replace entry at |index| in vector |loc|... @>=
+{ unsigned int i=(index->eval(),get<int_value>()->val);
   vector_value& v=*force<vector_value>(loc);
   if (i>=v.val.size())
     throw std::runtime_error(range_mess(i,v.val.size(),this));
-  v.val[i]= force<int_value>(&*execution_stack.back())->val;
-  // and leave value on stack
+  v.val[i]= force<int_value>(execution_stack.back().get())->val;
+  if (l==no_value)
+    execution_stack.pop_back();
 }
 
-@ For |mat_value| entry assignments |ind| must be split into a pair of
+@ For |mat_value| entry assignments at |index| must be split into a pair of
 indices, and there are two bound checks.
 
-@< Replace entry |ind| in matrix |loc|... @>=
-{ push_value(ind); push_tuple_components();
+@< Replace entry at |index| in matrix |loc|... @>=
+{ index->multi_eval();
   unsigned int j=get<int_value>()->val;
   unsigned int i=get<int_value>()->val;
+@/
   matrix_value& m=*force<matrix_value>(loc);
   if (i>=m.val.numRows())
     throw std::runtime_error(range_mess(i,m.val.numRows(),this));
   if (j>=m.val.numColumns())
     throw std::runtime_error(range_mess(j,m.val.numColumns(),this));
-  m.val(i,j)= force<int_value>(&*execution_stack.back())->val;
-  // and leave value on stack
+  m.val(i,j)= force<int_value>(execution_stack.back().get())->val;
+  if (l==no_value)
+    execution_stack.pop_back();
 }
 
 @ A |matrix_value| column assignment is like that of a vector entry, but we
 add a test for matching column length.
 
-@< Replace columns |ind| in matrix |loc|... @>=
-{ unsigned int j=force<int_value>(&*ind)->val;
+@< Replace columns at |index| in matrix |loc|... @>=
+{ unsigned int j=(index->eval(),get<int_value>()->val);
   matrix_value& m=*force<matrix_value>(loc);
-  const vector_value& v=*force<vector_value>(&*execution_stack.back());
+  const vector_value& v=*force<vector_value>(execution_stack.back().get());
   if (j>=m.val.numColumns())
     throw std::runtime_error(range_mess(j,m.val.numColumns(),this));
   if (v.val.size()!=m.val.numRows())
@@ -3558,7 +3651,8 @@ add a test for matching column length.
       (std::string("Cannot replace column of size ")+num(m.val.numRows())+
        " by one of size "+num(v.val.size()));
   m.val.set_column(j,v.val);
-  // and leave value on stack
+  if (l==no_value)
+    execution_stack.pop_back();
 }
 
 @ For local assignments we also need to access the location where the
@@ -3573,7 +3667,7 @@ public:
   local_component_assignment @|
    (Hash_table::id_type l, expression_ptr i,size_t d, size_t o,
     expression_ptr r, subscr_base::sub_type k);
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
 };
 
 @ The constructor for |local_component_assignment| is straightforward, in
@@ -3589,8 +3683,8 @@ local_component_assignment::local_component_assignment
 calls |assign| to do the work.
 
 @< Function def... @>=
-void local_component_assignment::evaluate() const
-{@; assign(execution_context->elem(depth,offset),kind); }
+void local_component_assignment::evaluate(level l) const
+{@; assign(l,execution_context->elem(depth,offset),kind); }
 
 @ Type-checking and converting component assignment statements follows the
 same lines as that of ordinary assignment statements, but must also
@@ -3646,7 +3740,7 @@ struct seq_expression : public expression_base
   seq_expression(expression_ptr f,expression_ptr l)
    : first(f.release()),last(l.release()) @+{}
   virtual ~seq_expression() @+ {@; delete first; delete last; }
-  virtual void evaluate() const;
+  virtual void evaluate(level l) const;
   virtual void print(std::ostream& out) const;
 };
 
@@ -3656,12 +3750,12 @@ struct seq_expression : public expression_base
 void seq_expression::print(std::ostream& out) const
 {@; out << *first << ';' << *last; }
 
-@ Evaluating a sequence expression evaluates the |first| expression, throws
-away its result, and then evaluates the |last| expression.
+@ Evaluating a sequence expression evaluates the |first| for side effects
+only, and then the |last| expression.
 
 @< Function def... @>=
-void seq_expression::evaluate() const
-{@; first->evaluate(); pop_value(); last->evaluate(); }
+void seq_expression::evaluate(level l) const
+{@; first->void_eval(); last->evaluate(l); }
 
 @ It remains to type-check and convert sequence expressions, which is easy.
 
@@ -3738,35 +3832,37 @@ inline void install_function
 
 @ Our first built-in functions implement with integer arithmetic. Arithmetic
 operators are implemented by wrapper functions with two integer arguments.
-Note that the values are pulled from the stack in reverse order, which is
-important for the non-commutative operations like `|-|' and `|/|'. Since
-values are shared, we must allocate new value objects for the results.
+Since arguments top built-in functions are evaluated with |level| parameter
+|multi_value|, two separate value will be produced on the stack. Note that
+these are pulled from the stack in reverse order, which is important for the
+non-commutative operations like `|-|' and `|/|'. Since values are shared, we
+must allocate new value objects for the results.
 
 @< Local function definitions @>=
 
-void plus_wrapper ()
-{ push_tuple_components();
-  shared_int j(get<int_value>()); shared_int i(get<int_value>());
-  push_value(new int_value(i->val+j->val));
+void plus_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+  if (l!=expression_base::no_value)
+    push_value(new int_value(i->val+j->val));
 }
 @)
-void minus_wrapper ()
-{ push_tuple_components();
-  shared_int j(get<int_value>()); shared_int i(get<int_value>());
-  push_value(new int_value(i->val-j->val));
+void minus_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+  if (l!=expression_base::no_value)
+    push_value(new int_value(i->val-j->val));
 }
 @)
-void times_wrapper ()
-{ push_tuple_components();
-  shared_int j(get<int_value>()); shared_int i(get<int_value>());
-  push_value(new int_value(i->val*j->val));
+void times_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+  if (l!=expression_base::no_value)
+    push_value(new int_value(i->val*j->val));
 }
 @)
-void divide_wrapper ()
-{ push_tuple_components();
-  shared_int j(get<int_value>()); shared_int i(get<int_value>());
+void divide_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
   if (j->val==0) throw std::runtime_error("Division by zero");
-  push_value(new int_value(i->val/j->val));
+  if (l!=expression_base::no_value)
+    push_value(new int_value(i->val/j->val));
 }
 
 @ We also define a remainder operation |modulo|, a combined
@@ -3774,30 +3870,62 @@ quotient-and-remainder operation |divmod|, and unary subtraction. Finally we
 define an exact devision operator that constructs a rational number.
 
 @< Local function definitions @>=
-void modulo_wrapper ()
-{ push_tuple_components();
-  shared_int  j(get<int_value>()); shared_int i(get<int_value>());
+void modulo_wrapper(expression_base::level l)
+{ shared_int  j=get<int_value>(); shared_int i=get<int_value>();
   if (j->val==0) throw std::runtime_error("Modulo zero");
-  push_value(new int_value(i->val%j->val));
+  if (l!=expression_base::no_value)
+    push_value(new int_value(i->val%j->val));
 }
 @)
-void divmod_wrapper ()
-{ push_tuple_components();
-  shared_int j(get<int_value>()); shared_int i(get<int_value>());
+void divmod_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
   if (j->val==0) throw std::runtime_error("DivMod by zero");
-  push_value(new int_value(i->val%j->val));
-  push_value(new int_value(i->val/j->val));
-  wrap_tuple(2);
+  if (l!=expression_base::no_value)
+  { push_value(new int_value(i->val%j->val));
+    push_value(new int_value(i->val/j->val));
+    if (l==expression_base::single_value)
+      wrap_tuple(2);
+  }
 }
 @)
-void unary_minus_wrapper ()
-{@; shared_int i=get<int_value>();  push_value(new int_value(-i->val)); }
+void unary_minus_wrapper(expression_base::level l)
+{@; shared_int i=get<int_value>();
+  if (l!=expression_base::no_value)
+    push_value(new int_value(-i->val)); }
 @)
-void fraction_wrapper ()
-{ push_tuple_components();
-  shared_int d(get<int_value>()); shared_int n(get<int_value>());
+void fraction_wrapper(expression_base::level l)
+{ shared_int d=get<int_value>(); shared_int n=get<int_value>();
   if (d->val==0) throw std::runtime_error("fraction with zero denominator");
-  push_value(new rat_value(arithmetic::Rational(n->val,d->val)));
+  if (l!=expression_base::no_value)
+    push_value(new rat_value(arithmetic::Rational(n->val,d->val)));
+}
+
+@ Relational operators are of the same flavour.
+@< Local function definitions @>=
+
+void less_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val<j->val));
+}
+@)
+void lesseq_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val<=j->val));
+}
+@)
+void greater_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val>j->val));
+}
+@)
+void greatereq_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+  if (j->val==0) throw std::runtime_error("Division by zero");
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val>=j->val));
 }
 
 
@@ -3811,10 +3939,11 @@ is no other way to convey the output stream to be used than via a dedicated
 global variable.
 
 @< Local function definitions @>=
-void print_wrapper ()
-{ shared_string s(get<string_value>());
+void print_wrapper(expression_base::level l)
+{ shared_string s=get<string_value>();
   *output_stream << s->val << std::endl;
-  wrap_tuple(0); // don't forget to return a value
+  if (l==expression_base::single_value)
+    wrap_tuple(0); // don't forget to return a value if asked for
 }
 
 
@@ -3827,8 +3956,8 @@ externally callable, so they can be directly used from that compilation unit.
 First of all we have the identity matrix and matrix transposition.
 
 @< Declarations of exported functions @>=
-void id_mat_wrapper ();
-void transpose_mat_wrapper ();
+void id_mat_wrapper (expression_base::level);
+void transpose_mat_wrapper (expression_base::level);
 
 @ In |id_mat_wrapper| we create a |matrix_value| around an empty
 |LatticeMatrix| rather than build a filled matrix object first. If a
@@ -3842,16 +3971,18 @@ operations as |transposed|) we hold the pointers to local values in smart
 pointers; for values popped from the stack this would in fact be hard to avoid.
 
 @< Function definitions @>=
-void id_mat_wrapper ()
-{ shared_int i(get<int_value>());
-  matrix_ptr m
-     (new matrix_value(latticetypes::LatticeMatrix()));
-  matrix::identityMatrix(m->val,std::abs(i->val)); push_value(m);
+void id_mat_wrapper(expression_base::level l)
+{ shared_int i=get<int_value>();
+  if (l!=expression_base::no_value)
+  { matrix_ptr m (new matrix_value(latticetypes::LatticeMatrix()));
+    matrix::identityMatrix(m->val,std::abs(i->val)); push_value(m);
+  }
 }
 @) void
-transpose_mat_wrapper ()
-{ shared_matrix m(get<matrix_value>());
-  push_value(new matrix_value(m->val.transposed()));
+transpose_mat_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l!=expression_base::no_value)
+    push_value(new matrix_value(m->val.transposed()));
 }
 
 @ We also define |diagonal_wrapper|, a slight generalisation of
@@ -3859,20 +3990,22 @@ transpose_mat_wrapper ()
 |vector_div_wrapper| produces a rational vector.
 
 @< Local function def... @>=
-void diagonal_wrapper ()
-{ shared_vector d(get<vector_value>());
+void diagonal_wrapper(expression_base::level l)
+{ shared_vector d=get<vector_value>();
+  if (l==expression_base::no_value)
+    return;
   size_t n=d->val.size();
-  matrix_ptr m
-     (new matrix_value(latticetypes::LatticeMatrix(n,n,0)));
-  for (size_t i=0; i<n; ++i) m->val(i,i)=d->val[i];
+  matrix_ptr m (new matrix_value(latticetypes::LatticeMatrix(n,n,0)));
+  for (size_t i=0; i<n; ++i)
+    m->val(i,i)=d->val[i];
   push_value(m);
 }
 
-void vector_div_wrapper()
-{ push_tuple_components();
-  shared_int n(get<int_value>());
-  shared_vector v(get<vector_value>());
-  push_value(new rational_vector_value(v->val,n->val));
+void vector_div_wrapper(expression_base::level l)
+{ shared_int n=get<int_value>();
+  shared_vector v=get<vector_value>();
+  if (l!=expression_base::no_value)
+    push_value(new rational_vector_value(v->val,n->val));
 }
 
 @ Now the product of a matrix and a vector or matrix. The first of these was
@@ -3881,8 +4014,8 @@ constants was done inside the parser at that time). We make them callable from
 other compilation units.
 
 @< Declarations of exported functions @>=
-void mv_prod_wrapper ();
-void mm_prod_wrapper ();
+void mv_prod_wrapper (expression_base::level);
+void mm_prod_wrapper (expression_base::level);
 
 @ In |mv_prod_wrapper| we use the matrix method |apply| which requires its
 output vector to be already of the proper size, but which nevertheless could
@@ -3896,27 +4029,27 @@ they are to be popped from the stack in reverse order, but in the case of
 |mm_prod_wrapper| this is particularly important.
 
 @< Function definitions @>=
-void mv_prod_wrapper ()
-{ push_tuple_components();
-  shared_vector v(get<vector_value>());
-  shared_matrix m(get<matrix_value>());
+void mv_prod_wrapper(expression_base::level l)
+{ shared_vector v=get<vector_value>();
+  shared_matrix m=get<matrix_value>();
   if (m->val.numColumns()!=v->val.size())
     throw std::runtime_error(std::string("Size mismatch ")@|
      + num(m->val.numColumns()) + ":" + num(v->val.size()) + " in mv_prod");
-  push_value(new vector_value(m->val.apply(v->val)));
+  if (l!=expression_base::no_value)
+    push_value(new vector_value(m->val.apply(v->val)));
 }
 @)
-void mm_prod_wrapper ()
-{ push_tuple_components();
-  shared_matrix r(get<matrix_value>()); // right factor
-  shared_matrix l(get<matrix_value>()); // left factor
-  if (l->val.numColumns()!=r->val.numRows())
+void mm_prod_wrapper(expression_base::level l)
+{ shared_matrix rf=get<matrix_value>(); // right factor
+  shared_matrix lf=get<matrix_value>(); // left factor
+  if (lf->val.numColumns()!=rf->val.numRows())
   { std::ostringstream s;
-    s<< "Size mismatch " << l->val.numColumns() << ":" << r->val.numRows()
+    s<< "Size mismatch " << lf->val.numColumns() << ":" << rf->val.numRows()
     @| << " in mm_prod";
     throw std::runtime_error(s.str());
   }
-  push_value(new matrix_value(l->val*r->val));
+  if (l!=expression_base::no_value)
+    push_value(new matrix_value(lf->val*rf->val));
 }
 
 @ As a last example, here is the Smith normal form algorithm. We provide both
@@ -3927,18 +4060,21 @@ the two combined into a single function.
 @h "smithnormal.h"
 
 @< Local function definitions @>=
-void invfact_wrapper ()
-{ shared_matrix m(get<matrix_value>());
+void invfact_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
   size_t nr=m->val.numRows();
   latticetypes::WeightList b; @+ matrix::initBasis(b,nr);
-  vector_ptr inv_factors
-     @| (new vector_value(latticetypes::Weight(0)));
+  vector_ptr inv_factors (new vector_value(latticetypes::Weight(0)));
   smithnormal::smithNormal(inv_factors->val,b.begin(),m->val);
   push_value(inv_factors);
 }
 @)
-void Smith_basis_wrapper ()
-{ shared_matrix m(get<matrix_value>());
+void Smith_basis_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
   size_t nr=m->val.numRows();
   latticetypes::WeightList b; @+ matrix::initBasis(b,nr);
   latticetypes::Weight inv_factors(0);
@@ -3947,16 +4083,18 @@ void Smith_basis_wrapper ()
 }
 @)
 
-void Smith_wrapper ()
-{ shared_matrix m(get<matrix_value>());
+void Smith_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
   size_t nr=m->val.numRows();
   latticetypes::WeightList b; @+ matrix::initBasis(b,nr);
-  vector_ptr inv_factors
-     @| (new vector_value(latticetypes::Weight(0)));
+  vector_ptr inv_factors (new vector_value(latticetypes::Weight(0)));
   smithnormal::smithNormal(inv_factors->val,b.begin(),m->val);
 @/push_value(new matrix_value(latticetypes::LatticeMatrix(b)));
   push_value(inv_factors);
-  wrap_tuple(2);
+  if (l==expression_base::single_value)
+    wrap_tuple(2);
 }
 
 @ Here is one more wrapper function that uses the Smith normal form algorithm,
@@ -3964,18 +4102,21 @@ but behind the scenes, namely to invert a matrix. Since this cannot be done in
 general over the integers, we return an integral matrix and a common
 denominator to be applied to all coefficients.
 @< Local function definitions @>=
-void invert_wrapper ()
-{ shared_matrix m(get<matrix_value>());
+void invert_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
   if (m->val.numRows()!=m->val.numColumns())
   { std::ostringstream s;
     s<< "Cannot invert a " @|
      << m->val.numRows() << "x" << m->val.numColumns() << " matrix";
     throw std::runtime_error(s.str());
   }
+  if (l==expression_base::no_value)
+    return;
   int_ptr denom(new int_value(0));
 @/push_value(new matrix_value(m->val.inverse(denom->val)));
   push_value(denom);
-  wrap_tuple(2);
+  if (l==expression_base::single_value)
+    wrap_tuple(2);
 }
 
 @ We must not forget to install what we have defined. The names of the
@@ -3991,6 +4132,10 @@ install_function(modulo_wrapper,"%","(int,int->int)");
 install_function(divmod_wrapper,"/%","(int,int->int,int)");
 install_function(unary_minus_wrapper,"-u","(int->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
+install_function(less_wrapper,"<","(int,int->bool)");
+install_function(lesseq_wrapper,"<=","(int,int->bool)");
+install_function(greater_wrapper,">","(int,int->bool)");
+install_function(greatereq_wrapper,">=","(int,int->bool)");
 install_function(print_wrapper,"print","(string->)");
 install_function(vector_div_wrapper,"vec_div","(vec,int->ratvec)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
@@ -4040,8 +4185,7 @@ void global_set_identifier(expr_list ids, expr rhs)
     if (ids->next!=NULL)
       @< Check that identifiers are distinct and that |t| is an appropriate
          tuple type; if not, |throw| a |runtime_error| @>
-    e->evaluate();
-    shared_value v=pop_value();
+    e->eval(); shared_value v=pop_value();
     if (ids->next==NULL)
     { cout << "Identifier " << ids->e << ": " << *t << std::endl;
       global_id_table->add(ids->e.e.identifier_variant,v,t);
@@ -4163,7 +4307,7 @@ much worse to actually extend the lines below as well).
 "LieType","RootDatum", "InnerClass", "RealForm", "DualRealForm",
 "CartanClass", @[@]
 
-@~The enumeration values below are never directly used, but they must be
+@~Most enumeration values below are never directly used, but they must be
 present so that the evaluator be aware of the number of primitive types (via
 the final enumeration value |nr_of_primitive_types|).
 
