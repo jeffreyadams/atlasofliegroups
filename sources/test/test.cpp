@@ -53,10 +53,10 @@ namespace {
 
   // functions for the test commands
 
-  void coroots_rootbasis_f();
-  void poscoroots_rootbasis_f();
-  void posroots_rootbasis_f();
   void roots_rootbasis_f();
+  void coroots_rootbasis_f();
+  void posroots_rootbasis_f();
+  void poscoroots_rootbasis_f();
   void KGB_f();
   void sub_KGB_f();
   void trivial_f();
@@ -70,11 +70,45 @@ namespace {
 
 
   // help functions
-
+  void roots_rootbasis_h();
+  void coroots_rootbasis_h();
+  void posroots_rootbasis_h();
+  void poscoroots_rootbasis_h();
+  void mod_lattice_h();
+  void KGB_h();
+  void sub_KGB_h();
+  void trivial_h();
+  void Ktypeform_h();
+  void Ktypemat_h();
+  void branch_h();
+  void test_h();
+  void testrun_h();
+  void exam_h();
 
   // tags
 
-  const char* test_tag = "(test command)";
+  const char* roots_rootbasis_tag = "outputs the roots in the simple rootbasis";
+  const char* coroots_rootbasis_tag =
+    "outputs the coroots in the simple coroot basis";
+  const char* posroots_rootbasis_tag =
+     "outputs the positive roots in the simple root basis";
+  const char* poscoroots_rootbasis_tag =
+      "outputs the positive coroots in the simple coroot basis";
+  const char* KGB_tag =
+    "computes KGB data (more information than the kgb command)";
+  const char* sub_KGB_tag =
+    "computes subset of KGB data used in Ktypeform";
+  const char* trivial_tag =
+    "tries to compute Ktypeform for trivial representation";
+  const char* Ktypeform_tag = "computes formula for a K-type";
+  const char* Ktypemat_tag =
+     "computes matrix relating K-types and standard modules";
+  const char* mod_lattice_tag =
+    "gives a basis of quotient of character lattice";
+  const char* branch_tag = "computes restriction of representation to K";
+  const char* test_tag = "gives information about a representation";
+  const char* testrun_tag = "tries to iterate over groups and crashes atlas";
+  const char* examine_tag = "individual command iterated over in testrun";
 
 /*
   For convenience, the "test" command is added to the mode that is flagged by
@@ -83,7 +117,7 @@ namespace {
   Set this constant according to the requirements of the |test_f| function.
 */
   enum TestMode {EmptyMode, MainMode, RealMode, BlockMode, numTestMode};
-  const TestMode testMode = RealMode; // currently does a KL matrix test
+  const TestMode testMode = RealMode; // currently does representation test
 
   // utilities
   const rootdata::RootDatum& currentRootDatum();
@@ -181,14 +215,16 @@ template<> void addTestHelp<emptymode::EmptymodeTag>
   using namespace helpmode;
 
   if (testMode == EmptyMode) {
-    mode.add("test",helpmode::nohelp_h);
+    mode.add("test",test_h);
     commands::insertTag(t,"test",test_tag);
   }
 
 
   // add additional help commands here:
+  mode.add("testrun",helpmode::nohelp_h);
 
   // add additional command tags here:
+  commands::insertTag(t,"testrun",testrun_tag);
 
 }
 
@@ -201,96 +237,26 @@ template<> void addTestHelp<mainmode::MainmodeTag>
   using namespace commands;
   using namespace helpmode;
 
-  // add additional help commands here:
-
-  // add additional command tags here:
-
-//  mode.add("rootdatum",helpmode::nohelp_h);
-//  mode.add("roots_rootbasis",helpmode::nohelp_h);
-//  mode.add("posroots_rootbasis",helpmode::nohelp_h);
-//  mode.add("coroots_rootbasis",helpmode::nohelp_h);
-//  mode.add("poscoroots_rootbasis",helpmode::nohelp_h);
-
-
-  // add additional command tags here :
-
-//  insertTag(t,"coroots_rootbasis",test_tag);
-//  insertTag(t,"poscoroots_rootbasis",test_tag);
-//  insertTag(t,"posroots_rootbasis",test_tag);
-//  insertTag(t,"roots_rootbasis",test_tag);
-//  insertTag(t,"rootdatum",test_tag);
-
-
-
   if (testMode == MainMode) {
-    mode.add("test",helpmode::nohelp_h);
+    mode.add("test",test_h);
     insertTag(t,"test",test_tag);
   }
 
   // add additional help commands here:
 
-  void roots_rootbasis_h();
-  void coroots_rootbasis_h();
-  void posroots_rootbasis_h();
-  void poscoroots_rootbasis_h();
-  void rootdatum_h();
-  void dualblock_h();
-  void dualkgb_h();
-  void dualmap_h();
-  void mod_lattice_h();
-  void branch_h();
-  void Ktypemat_h();
-  void Ktypeform_h();
-  void KGB_h();
-
-
-  // add additional command tags here:
-
-  const char* roots_rootbasis_tag = "outputs the roots in the simple rootbasis";
-  const char* coroots_rootbasis_tag = "outputs the coroots in the simple coroot basis";
-  const char* posroots_rootbasis_tag = "outputs the positive roots in the simple root basis";
-  const char* poscoroots_rootbasis_tag = "outputs the positive coroots in the simple coroot basis";
-  const char* rootdatum_tag = "outputs the root datum";
-  const char* dualblock_tag = "shows the dual block";
-  const char* dualkgb_tag = "shows the dual kgb data";
-  const char* dualmap_tag = "shows the bijection between a block and its dual";
-  const char* mod_lattice_tag = "gives a basis of quotient of character lattice";
-  const char* branch_tag = "computes restriction of representation to K";
-  const char* Ktypemat_tag = "computes matrix relating K-types and standard modules";
-  const char* Ktypeform_tag = "computes formula for a K-type";
-  const char* KGB_tag = "computes KGB data (more information than the kgb command)";
-
-
   mode.add("roots_rootbasis",roots_rootbasis_h);
-  mode.add("coroots_rootbasis",coroots_rootbasis_h);
   mode.add("posroots_rootbasis",posroots_rootbasis_h);
+  mode.add("coroots_rootbasis",coroots_rootbasis_h);
   mode.add("poscoroots_rootbasis",poscoroots_rootbasis_h);
-  mode.add("rootdatum",rootdatum_h);
-  mode.add("dualblock",dualblock_h);
-  mode.add("dualkgb",dualkgb_h);
-  mode.add("dualmap",dualmap_h);
-  mode.add("mod_lattice",mod_lattice_h);
-  mode.add("branch",branch_h);
-  mode.add("Ktypemat",Ktypemat_h);
-  mode.add("Ktypeform",Ktypeform_h);
-  mode.add("KGB",KGB_h);
+  mode.add("examine",helpmode::nohelp_h);
 
   // add additional command tags here :
 
   insertTag(t,"roots_rootbasis",roots_rootbasis_tag);
-  insertTag(t,"coroots_rootbasis",coroots_rootbasis_tag);
   insertTag(t,"posroots_rootbasis",posroots_rootbasis_tag);
+  insertTag(t,"coroots_rootbasis",coroots_rootbasis_tag);
   insertTag(t,"poscoroots_rootbasis",poscoroots_rootbasis_tag);
-  insertTag(t,"rootdatum",rootdatum_tag);
-  insertTag(t,"dualblock",dualblock_tag);
-  insertTag(t,"dualkgb",dualkgb_tag);
-  insertTag(t,"dualmap",dualmap_tag);
-  insertTag(t,"mod_lattice",mod_lattice_tag);
-  insertTag(t,"branch",branch_tag);
-  insertTag(t,"Ktypemat",Ktypemat_tag);
-  insertTag(t,"Ktypeform",Ktypeform_tag);
-  insertTag(t,"KGB",KGB_tag);
-
+  insertTag(t,"examine",examine_tag);
 
 }
 
@@ -304,28 +270,29 @@ template<> void addTestHelp<realmode::RealmodeTag>
   using namespace helpmode;
 
   if (testMode == RealMode) {
-    mode.add("test",helpmode::nohelp_h);
+    mode.add("test",test_h);
     insertTag(t,"test",test_tag);
   }
 
-//  mode.add("KGB",helpmode::nohelp_h);
+  // add additional help commands here:
+
+  mode.add("KGB",KGB_h);
   mode.add("sub_KGB",helpmode::nohelp_h);
   mode.add("trivial",helpmode::nohelp_h);
-//  mode.add("Ktypeform",helpmode::nohelp_h);
-//  mode.add("Ktypemat",helpmode::nohelp_h);
-//  mode.add("mod_lattice",helpmode::nohelp_h);
-//  mode.add("branch",helpmode::nohelp_h);
-
+  mode.add("Ktypeform",Ktypeform_h);
+  mode.add("Ktypemat",Ktypemat_h);
+  mode.add("mod_lattice",mod_lattice_h);
+  mode.add("branch",branch_h);
 
   // add additional command tags here :
 
-//  insertTag(t,"KGB",test_tag);
-  insertTag(t,"sub_KGB",test_tag);
-  insertTag(t,"trivial",test_tag);
-//  insertTag(t,"Ktypeform",test_tag);
-//  insertTag(t,"Ktypemat",test_tag);
-//  insertTag(t,"mod_lattice",test_tag);
-//  insertTag(t,"branch",test_tag);
+  insertTag(t,"sub_KGB",sub_KGB_tag);
+  insertTag(t,"KGB",KGB_tag);
+  insertTag(t,"trivial",trivial_tag);
+  insertTag(t,"Ktypeform",Ktypeform_tag);
+  insertTag(t,"Ktypemat",Ktypemat_tag);
+  insertTag(t,"mod_lattice",mod_lattice_tag);
+  insertTag(t,"branch",branch_tag);
 
 }
 
@@ -338,7 +305,7 @@ template<> void addTestHelp<blockmode::BlockmodeTag>
   using namespace helpmode;
 
   if (testMode == BlockMode) {
-    mode.add("test",helpmode::nohelp_h);
+    mode.add("test",test_h);
     insertTag(t,"test",test_tag);
   }
 
@@ -350,83 +317,7 @@ template<> void addTestHelp<blockmode::BlockmodeTag>
 
 }
 
-
-
-
-
-
-//Help commands
-
-void roots_rootbasis_h()
-{
-  io::printFile(std::cerr,"roots_rootbasis.help",io::MESSAGE_DIR);
-}
-
-void coroots_rootbasis_h()
-{
-  io::printFile(std::cerr,"coroots_rootbasis.help",io::MESSAGE_DIR);
-}
-
-void posroots_rootbasis_h()
-{
-  io::printFile(std::cerr,"posroots_rootbasis.help",io::MESSAGE_DIR);
-}
-
-void poscoroots_rootbasis_h()
-{
-  io::printFile(std::cerr,"poscoroots_rootbasis.help",io::MESSAGE_DIR);
-}
-
-void rootdatum_h()
-{
-  io::printFile(std::cerr,"rootdatum.help",io::MESSAGE_DIR);
-}
-
-void dualblock_h()
-{
-  io::printFile(std::cerr,"dualblock.help",io::MESSAGE_DIR);
-}
-
-void dualkgb_h()
-{
-  io::printFile(std::cerr,"dualkgb.help",io::MESSAGE_DIR);
-}
-
-void dualmap_h()
-{
-  io::printFile(std::cerr,"dualmap.help",io::MESSAGE_DIR);
-}
-
-void mod_lattice_h()
-{
-  io::printFile(std::cerr,"mod_lattice.help",io::MESSAGE_DIR);
-}
-
-void branch_h()
-{
-  io::printFile(std::cerr,"branch.help",io::MESSAGE_DIR);
-}
-
-void Ktypemat_h()
-{
-  io::printFile(std::cerr,"Ktypemat.help",io::MESSAGE_DIR);
-}
-
-void Ktypeform_h()
-{
-  io::printFile(std::cerr,"Ktypeform.help",io::MESSAGE_DIR);
-}
-
-void KGB_h()
-{
-  io::printFile(std::cerr,"KGB_.help",io::MESSAGE_DIR);
-}
-
 } // namespace test
-
-namespace {
-
-}
 
 
 /*****************************************************************************
@@ -929,6 +820,68 @@ void exam_f()
   examine(rootdata::RootDatum(rd,tags::DualTag()),
 	  rootdata::RootSystem(rs,tags::DualTag()));
   std::cout << "dual root system OK" << std::endl;
+}
+
+//Help commands
+
+void roots_rootbasis_h()
+{
+  io::printFile(std::cerr,"roots_rootbasis.help",io::MESSAGE_DIR);
+}
+
+void coroots_rootbasis_h()
+{
+  io::printFile(std::cerr,"coroots_rootbasis.help",io::MESSAGE_DIR);
+}
+
+void posroots_rootbasis_h()
+{
+  io::printFile(std::cerr,"posroots_rootbasis.help",io::MESSAGE_DIR);
+}
+
+void poscoroots_rootbasis_h()
+{
+  io::printFile(std::cerr,"poscoroots_rootbasis.help",io::MESSAGE_DIR);
+}
+
+void KGB_h()
+{
+  io::printFile(std::cerr,"KGB_.help",io::MESSAGE_DIR);
+}
+
+void sub_KGB_h()
+{
+  io::printFile(std::cerr,"sub_KGB.help",io::MESSAGE_DIR);
+}
+
+void trivial_h()
+{
+  io::printFile(std::cerr,"trivial.help",io::MESSAGE_DIR);
+}
+
+void Ktypemat_h()
+{
+  io::printFile(std::cerr,"Ktypemat.help",io::MESSAGE_DIR);
+}
+
+void Ktypeform_h()
+{
+  io::printFile(std::cerr,"Ktypeform.help",io::MESSAGE_DIR);
+}
+
+void mod_lattice_h()
+{
+  io::printFile(std::cerr,"mod_lattice.help",io::MESSAGE_DIR);
+}
+
+void branch_h()
+{
+  io::printFile(std::cerr,"branch.help",io::MESSAGE_DIR);
+}
+
+void test_h()
+{
+  io::printFile(std::cerr,"test.help",io::MESSAGE_DIR);
 }
 
 } // namespace
