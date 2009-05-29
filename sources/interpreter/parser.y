@@ -93,7 +93,7 @@
 
 input:  '\n'			{ YYABORT } /* null input, skip evaluator */
         | exp    '\n'	        { *parsed_expr=$1; }
-        | idlist '=' exp '\n'
+        | idlist ':' exp '\n'
 		{ global_set_identifier(reverse_expr_list($1),$3); YYABORT }
         | QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
         | QUIET	'\n'		{ *verbosity =0; YYABORT } /* quiet mode */
@@ -157,6 +157,18 @@ formula : formula '<' formula
         | formula GEQ formula
         { $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier(">="))
+	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
+	       );
+        }
+         | formula '=' formula
+        { $$ = make_application_node
+	       (make_applied_identifier(lookup_identifier("="))
+	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
+	       );
+        }
+        | formula NEQ formula
+        { $$ = make_application_node
+	       (make_applied_identifier(lookup_identifier("!="))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }

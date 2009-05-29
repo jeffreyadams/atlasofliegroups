@@ -3903,6 +3903,18 @@ void fraction_wrapper(expression_base::level l)
 @ Relational operators are of the same flavour.
 @< Local function definitions @>=
 
+void eq_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val==j->val));
+}
+@)
+void neq_wrapper(expression_base::level l)
+{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val!=j->val));
+}
+@)
 void less_wrapper(expression_base::level l)
 { shared_int j=get<int_value>(); shared_int i=get<int_value>();
   if (l!=expression_base::no_value)
@@ -4132,6 +4144,8 @@ install_function(modulo_wrapper,"%","(int,int->int)");
 install_function(divmod_wrapper,"/%","(int,int->int,int)");
 install_function(unary_minus_wrapper,"-u","(int->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
+install_function(eq_wrapper,"=","(int,int->bool)");
+install_function(neq_wrapper,"!=","(int,int->bool)");
 install_function(less_wrapper,"<","(int,int->bool)");
 install_function(lesseq_wrapper,"<=","(int,int->bool)");
 install_function(greater_wrapper,">","(int,int->bool)");
