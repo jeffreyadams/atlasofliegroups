@@ -50,12 +50,13 @@ namespace {
   void cartan_f();
   void corder_f();
   void gradings_f();
-  void realform_f();
   void realweyl_f();
   void strongreal_f();
   void kgb_f();
   void kgborder_f();
+
   void type_f();
+  void realform_f();
 
 
   // local variables

@@ -52,8 +52,6 @@ namespace {
 
   // functions for the predefined commands
 
-  void type_f();
-  void realform_f();
   void small_kgb_f();
   void small_dual_kgb_f();
 template<bool small>
@@ -62,8 +60,8 @@ template<bool small>
   void dual_block_f();
   void dual_map_f();
   void blockd_f();
-  void blockorder_f();
   void blocku_f();
+  void blockorder_f();
   void blockwrite_f();
   void blockstabilizer_f();
   void klbasis_f();
@@ -73,6 +71,8 @@ template<bool small>
   void wgraph_f();
   void wcells_f();
 
+  void type_f();
+  void realform_f();
 
   // local variables
 
@@ -542,9 +542,18 @@ void wcells_f()
 
 namespace {
 
+  const char* small_kgb_tag =
+    "prints part of the KGB data pertinent to one block";
+  const char* small_dual_kgb_tag =
+    "prints part of the dual KGB data pertinent to one block";
   const char* block_tag = "prints all the representations in a block";
+  const char* small_block_tag =
+    "generates block using partial KGB and dual KGB data";
   const char* dual_block_tag = "prints a block for the dual group";
-  const char* dual_map_tag = "prints a map from block to its dual block";
+  const char* small_dual_block_tag =
+    "generates dual block using partial KGB and dual KGB data";
+  const char* dual_map_tag =
+    "prints the bijection from block to its dual block";
   const char* blockd_tag =
    "prints all representations in the block, alternative format";
   const char* blocku_tag =
@@ -560,9 +569,39 @@ namespace {
   const char* wgraph_tag = "prints the W-graph for the block";
   const char* wcells_tag = "prints the Kazhdan-Lusztig cells for the block";
 
+void small_kgb_h()
+{
+  io::printFile(std::cerr,"smallkgb.help",io::MESSAGE_DIR);
+}
+
+void small_dual_kgb_h()
+{
+  io::printFile(std::cerr,"smalldualkgb.help",io::MESSAGE_DIR);
+}
+
 void block_h()
 {
   io::printFile(std::cerr,"block.help",io::MESSAGE_DIR);
+}
+
+void small_block_h()
+{
+  io::printFile(std::cerr,"smallblock.help",io::MESSAGE_DIR);
+}
+
+void dualblock_h()
+{
+  io::printFile(std::cerr,"dualblock.help",io::MESSAGE_DIR);
+}
+
+void small_dual_block_h()
+{
+  io::printFile(std::cerr,"smalldualblock.help",io::MESSAGE_DIR);
+}
+
+void dualmap_h()
+{
+  io::printFile(std::cerr,"dualmap.help",io::MESSAGE_DIR);
 }
 
 void blockd_h()
@@ -584,6 +623,12 @@ void blockwrite_h()
 {
   io::printFile(std::cerr,"blockwrite.help",io::MESSAGE_DIR);
 }
+
+void block_stabilizer_h()
+{
+  io::printFile(std::cerr,"blockstabilizer.help",io::MESSAGE_DIR);
+}
+
 void klbasis_h()
 {
   io::printFile(std::cerr,"klbasis.help",io::MESSAGE_DIR);
@@ -624,12 +669,18 @@ void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   using commands::insertTag;
 
   //  mode.add("components",helpmode::nohelp_h);
+  mode.add("smallkgb",helpmode::nohelp_h); // small_kgb_h);
+  mode.add("smalldualkgb",helpmode::nohelp_h); // small_dual_kgb_h);
   mode.add("block",block_h);
+  mode.add("smallblock",helpmode::nohelp_h); // small_block_h);
+  mode.add("dualblock",dualblock_h);
+  mode.add("smalldualblock",helpmode::nohelp_h); // small_dual_block_h);
+  mode.add("dualmap",dualmap_h);
   mode.add("blockd",blockd_h);
   mode.add("blocku",blocku_h);
   mode.add("blockorder",blockorder_h);
   mode.add("blockwrite",blockwrite_h);
-  mode.add("blockstabilizer",helpmode::nohelp_h);
+  mode.add("blockstabilizer",helpmode::nohelp_h); // block_stabilizer_h);
   mode.add("klwrite",klwrite_h);
   mode.add("kllist",kllist_h);
   mode.add("primkl",primkl_h);
@@ -638,7 +689,12 @@ void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("wgraph",wgraph_h);
 
   // insertTag(tagDict,"components",components_tag);
+  insertTag(tagDict,"smallkgb",small_kgb_tag);
+  insertTag(tagDict,"smalldualkgb",small_dual_kgb_tag);
   insertTag(tagDict,"block",block_tag);
+  insertTag(tagDict,"smallblock",small_block_tag);
+  insertTag(tagDict,"dualblock",dual_block_tag);
+  insertTag(tagDict,"smalldualblock",small_dual_block_tag);
   insertTag(tagDict,"blockd",blockd_tag);
   insertTag(tagDict,"blocku",blocku_tag);
   insertTag(tagDict,"blockorder",blockorder_tag);

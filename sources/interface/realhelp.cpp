@@ -32,7 +32,6 @@ namespace {
   void cartan_h();
   void corder_h();
   void gradings_h();
-  void realform_h();
   void realweyl_h();
   void strongreal_h();
   void kgb_h();
@@ -43,7 +42,6 @@ namespace {
   const char* cartan_tag = "prints the conjugacy classes of Cartan subgroups";
   const char* corder_tag = "shows Hasse diagram of ordering of Cartan classes";
   const char* gradings_tag="prints gradings of imaginary roots for real forms";
-  const char* realform_tag = "sets the real form for the group";
   const char* realweyl_tag = "outputs the structure of the real Weyl group";
   const char* strongreal_tag = "outputs information about strong real forms";
   const char* kgb_tag = "prints the orbits of K on G/B";
@@ -64,11 +62,10 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
 {
   using commands::insertTag;
 
-  mode.add("components",helpmode::nohelp_h);
+  mode.add("components",components_h);
   mode.add("cartan",cartan_h);
   mode.add("corder",corder_h);
   mode.add("gradings",gradings_h);
-  mode.add("realform",realform_h);
   mode.add("realweyl",realweyl_h);
   mode.add("strongreal",strongreal_h);
   mode.add("kgb",kgb_h);
@@ -78,7 +75,6 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   insertTag(tagDict,"cartan",cartan_tag);
   insertTag(tagDict,"corder",corder_tag);
   insertTag(tagDict,"gradings",gradings_tag);
-  insertTag(tagDict,"realform",realform_tag);
   insertTag(tagDict,"realweyl",realweyl_tag);
   insertTag(tagDict,"strongreal",strongreal_tag);
   insertTag(tagDict,"kgb",kgb_tag);
@@ -98,6 +94,11 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
 
 namespace {
 
+void components_h()
+{
+  io::printFile(std::cerr,"components.help",io::MESSAGE_DIR);
+}
+
 void cartan_h()
 {
   io::printFile(std::cerr,"cartan.help",io::MESSAGE_DIR);
@@ -113,16 +114,10 @@ void gradings_h()
   io::printFile(std::cerr,"gradings.help",io::MESSAGE_DIR);
 }
 
-void realform_h()
-{
-  io::printFile(std::cerr,"realform.help",io::MESSAGE_DIR);
-}
-
 void realweyl_h()
 {
   io::printFile(std::cerr,"realweyl.help",io::MESSAGE_DIR);
 }
-
 
 void strongreal_h()
 {

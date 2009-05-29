@@ -69,8 +69,8 @@ namespace {
   void posroots_f();
   void poscoroots_f();
   void realform_f();
-  void showdualforms_f();
   void showrealforms_f();
+  void showdualforms_f();
   void blocksizes_f();
   void dual_kgb_f();
   void help_f();
@@ -177,8 +177,8 @@ commands::CommandMode& mainMode()
     main_mode.add("posroots",posroots_f);
     main_mode.add("poscoroots",poscoroots_f);
     main_mode.add("realform",realform_f);
-    main_mode.add("showdualforms",showdualforms_f);
     main_mode.add("showrealforms",showrealforms_f);
+    main_mode.add("showdualforms",showdualforms_f);
     main_mode.add("blocksizes",blocksizes_f);
     main_mode.add("dualkgb",dual_kgb_f); // here, since no real form needed
     main_mode.add("help",help_f); // override
