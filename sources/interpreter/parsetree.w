@@ -776,6 +776,67 @@ expr make_lambda_node(patlist patl, ptr typel, expr body)
   return result;
 }
 
+@*1 Control structures.
+
+@*2 Conditional expressions.
+Of course we need if-then-else expressions.
+
+@< Typedefs... @>=
+typedef struct conditional_node* cond;
+
+@~The parser handles \&{elif} constructions, so we only need to handle the
+basic two-branch case.
+
+@< Structure and typedef declarations for types built upon |expr| @>=
+struct conditional_node
+ {@; expr condition; expr then_branch; expr else_branch; };
+
+@ The tag used for these expressions is |conditional_expr|.
+
+@< Enumeration tags for |expr_kind| @>= conditional_expr, @[@]
+
+@~The variant of |expr| values with an |cond| as parsing value is tagged
+|if_variant|.
+
+@< Variants... @>=
+cond if_variant;
+
+@ To print a conditional expression at parser level, we shall not
+reconstruct \&{elif} constructions.
+
+@< Cases for printing... @>=
+case conditional_expr:
+{ cond c=e.e.if_variant; out << " if " << c->condition
+  << " then " << c->then_branch << " else " << c->else_branch << " fi ";
+}
+break;
+
+@~Here we clean up constituent expressions and then the node for the conditional
+call itself.
+
+@< Cases for destroying... @>=
+case conditional_expr:
+  destroy_expr(e.e.if_variant->condition);
+  destroy_expr(e.e.if_variant->then_branch);
+  destroy_expr(e.e.if_variant->else_branch);
+  delete e.e.if_variant;
+break;
+
+
+@ To build an |conditional_node|, we define a function as usual.
+@< Declarations of functions in \Cee-style for the parser @>=
+expr make_conditional_node(expr c, expr t, expr e);
+
+@~It is entirely straightforward.
+
+@< Definitions of functions in \Cee... @>=
+expr make_conditional_node(expr c, expr t, expr e)
+{ cond n=new conditional_node; n->condition=c;
+  n->then_branch=t; n->else_branch=e;
+@/expr result; result.kind=conditional_expr; result.e.if_variant=n;
+  return result;
+}
+
 @*1 Array subscriptions.
 %
 We want to be able to select components from array structures (lists, vectors,

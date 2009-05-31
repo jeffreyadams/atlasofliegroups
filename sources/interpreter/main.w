@@ -67,6 +67,7 @@ in the same order as in the \.{\%token} declaration in \.{parser.y}.
 const char* keywords[] =
  {"quit"
  ,"let","in"
+ ,"if","then","else","elif","fi"
  ,"true","false"
  ,"quiet","verbose"
  ,"whattype","showall"

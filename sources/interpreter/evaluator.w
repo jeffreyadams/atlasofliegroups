@@ -2571,8 +2571,7 @@ void closure_value::print(std::ostream& out) const
   out << ": " << *body;
 }
 
-@ The following code defines in essence a call-by-value $\lambda$-calculus
-evaluator.
+@ Evaluating a $\lambda$-expression just forms a closure and returns that.
 
 @< Function def... @>=
 void lambda_expression::evaluate(level l) const
@@ -2586,7 +2585,8 @@ void lambda_expression::evaluate(level l) const
 builtin function; after all, the type check does not make a difference between
 the two kinds, so the distinction can only be made by a dynamic test during
 evaluation (which test was already presented). After the test we come to the
-code below; we must now have a closure as function value, and its evaluation
+code below, which in essence a call-by-value $\lambda$-calculus
+evaluator. We must now have a closure as function value, and its evaluation
 just temporarily replaces the current execution context from the one stored in
 the closure, pushes a new frame defined by the argument and the evaluates the
 function body.
@@ -2641,6 +2641,71 @@ case lambda_expr:
   expression_ptr body(convert_expr(fun->body,type.func->result_type));
   new_bindings.pop(id_context);
   return new lambda_expression(pat,body);
+}
+
+@*1 Control structures.
+%
+We shall now introduce conventional control structures, which must of course
+be part of any serious programming language; yet they were implemented only
+after plenty of other language elements were in place, such as
+let-expressions, functions, rows and selection form them, implicit
+conversions. A first control structure it the conditional expression.
+
+@< Type def... @>=
+struct conditional_expression : public expression_base
+{ expression condition, then_branch, else_branch;
+@)
+  conditional_expression(expression_ptr c,expression_ptr t, expression_ptr e)
+   : condition(c.release()),then_branch(t.release()), else_branch(e.release())
+  @+{}
+  virtual ~conditional_expression()
+  {@; delete condition; delete then_branch; delete else_branch; }
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ To print a conditional expression, we reconstruct \&{elif} constructions
+that were eliminated in the parser (and even those that the user did not
+employ, but could have).
+
+@< Function definitions @>=
+void conditional_expression::print(std::ostream& out) const
+{ out << " if "; const conditional_expression* cur=this;
+  do
+  { out << *cur->condition << " then " << *cur->then_branch;
+    conditional_expression* p =
+      dynamic_cast<conditional_expression*>(cur->else_branch);
+    if (p==NULL)
+      break;
+    out << " elif "; cur=p;
+  }
+  while(true); // \Cpp\ does not allow using |p| in final condition
+  out << " else " << *cur->else_branch << " fi ";
+}
+
+@ For type-checking conditional expressions we are in a somewhat similar
+situation as for list displays: both branches need to be of the same type, but
+we might not know which. We first
+
+@< Other cases for type-checking and converting... @>=
+case conditional_expr:
+  { static type_ptr bt=copy(bool_type); // we need a non-|const| copy
+    expression_ptr c (convert_expr(e.e.if_variant->condition,*bt));
+    expression_ptr th (convert_expr(e.e.if_variant->then_branch,type));
+    expression_ptr el (convert_expr(e.e.if_variant->else_branch,type));
+    return new conditional_expression(c,th,el);
+  }
+break;
+
+@ Evaluating a conditional expression ends up evaluating either the
+then-branch or the else-branch.
+
+@< Function definitions @>=
+void conditional_expression::evaluate(level l) const
+{ condition->eval();
+  if (get<bool_value>()->val)
+   then_branch->evaluate(l);
+  else else_branch->evaluate(l);
 }
 
 @*1 Implicit conversion of values between types.

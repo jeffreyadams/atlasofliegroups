@@ -44,7 +44,8 @@
 %pure-parser
 %error-verbose
 
-%token QUIT LET IN TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
+%token QUIT LET IN IF THEN ELSE ELIF FI
+%token TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
 %token DIVMOD "/%"
 %token <val> INT
 %token <expression> STRING
@@ -63,8 +64,10 @@
 %token DIVAB "/="
 %token MODAB "%="
 
-%type  <expression> exp quaternary tertiary lettail formula primary comprim subscription
-%destructor { destroy_expr ($$); } exp quaternary tertiary lettail formula primary comprim subscription
+%type  <expression> exp quaternary tertiary lettail iftail
+%type <expression> formula primary comprim subscription
+%destructor { destroy_expr ($$); } exp quaternary tertiary lettail iftail
+%destructor { destroy_expr ($$); } formula primary comprim subscription
 %type  <expression_list> commalist commalist_opt commabarlist idlist
 %destructor { destroy_exprlist($$); } commalist commalist_opt commabarlist idlist
 %type <decls> declarations
@@ -236,6 +239,7 @@ comprim: subscription
         | TRUE { $$ = make_bool_denotation(1); }
         | FALSE { $$ = make_bool_denotation(0); }
 	| STRING
+        | IF iftail { $$=$2; }
         | '(' exp ')'          { $$=$2; }
         | '[' commalist_opt ']'
                 { $$=wrap_list_display(reverse_expr_list($2)); }
@@ -260,6 +264,10 @@ subscription: IDENT '[' exp ']'
                     (reverse_expr_list(make_exprlist_node($5,$3)))
                ) ;
 	  }
+;
+
+iftail	: exp THEN exp ELSE exp FI { $$=make_conditional_node($1,$3,$5); }
+        | exp THEN exp ELIF iftail { $$=make_conditional_node($1,$3,$5); }
 ;
 
 pattern : IDENT             { $$.kind=0x1; $$.name=$1; }
