@@ -153,7 +153,7 @@ cleanall: clean
 	rm -f $(dependencies)
 
 realex:
-	cd sources/interpreter && $(MAKE)
+	cd sources/interpreter && $(MAKE) headers realex
 
 # The following two rules are static pattern rules: they are like implicit
 # rules, but only apply to the files listed in $(objects) and $(dependencies).
