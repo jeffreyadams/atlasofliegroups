@@ -706,8 +706,9 @@ then we prepare for output redirection.
     code = (c=input.shift())=='>' ? ARROW :
             c=='=' ? MINUSAB : (input.unshift(),'-');
   break; case '/': prevent_termination=c;
-    code= (c=input.shift())=='%' ? DIVMOD :
-           c=='=' ? DIVAB : (input.unshift(),'/');
+    code= (c=input.shift())=='=' ? DIVAB : (input.unshift(),'/');
+  break; case '\\': // no |prevent_termination|, cannot be at end of line!
+    code= (c=input.shift())=='%' ? DIVMOD : (input.unshift(),'\\');
   break; case '\n': state=ended; // and {\bf fall through}.
          default: code=c;
   }
