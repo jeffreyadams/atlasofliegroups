@@ -806,7 +806,7 @@ reconstruct \&{elif} constructions.
 
 @< Cases for printing... @>=
 case conditional_expr:
-{ cond c=e.e.if_variant; out << " if " << c->condition
+{ cond c=e.e.if_variant; out << " if " << c->condition @|
   << " then " << c->then_branch << " else " << c->else_branch << " fi ";
 }
 break;
@@ -1172,7 +1172,7 @@ identifiers (this is guaranteed by the parser), which are only represented as
 an |expr_list| because this avoids defining a separate type.
 
 @< Declarations of functions in \Cee-style for the parser @>=
-void global_set_identifier(expr_list ids, expr e);
+void global_set_identifier(struct id_pat id, expr e);
 void show_ids();
 void type_of_expr(expr e);
 
