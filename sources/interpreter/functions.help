@@ -1,3 +1,11 @@
+operators +, -, * : (int,int->int): usual integer arithmetic operations
+operator - : (int->int): unary minus
+operators \, % : (int,int->int): integer (Euclidian) division and remainder
+operator \% :(int,int->int,int): Euclidian division with remainder
+operators >, >=, <, <=, =, != : (int,int->bool) usual relational operators
+
+vec_div: (vec,int)->ratvec): vector division giving rational vector
+
 print: (string->): print string without quotes, followed by newline
 id_mat: (int->mat): identity matrix of given size.
 transpose_mat: (mat->mat): matrix transposition.
@@ -58,14 +66,6 @@ replace_gen: ((mat,vec),mat->mat): replace generators of weight lattice.
   For every entry different from '1' in the vector argument, replace a column
   from the first matrix by a column from the second matrix
 
-quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
-  Interpret the rational vectors as kernel generators for the given type, as
-  in the Atlas software, and return the corresponding sublattice as a matrix
-  whose column are its generators; if M' is the matrix whose columns are the
-  numerators of the kernel generators, brought to a common denominator d, this
-  amounts to setting S=Smith_Cartan(type); (C,v)=filter_units(S) and then
-  returning the value replace_gen(S,mm_prod(C,ann_mod(M',d)))
-
 basic_involution: (LieType,string->mat): diagram involution for inner class.
   Return an involution matrix corresponding to the diagram involution
   described by the string, which is interpreted as the inner class string is
@@ -82,6 +82,14 @@ root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice.
 type_of_root_datum: (RootDatum->LieType): Lie type of a root datum.
   This may differ from original type, by torus factors being moved to the end,
   and factors entered as "C2" will be returned as 'B2'.
+
+quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
+  Interpret the rational vectors as kernel generators for the given type, as
+  in the Atlas software, and return the corresponding sublattice as a matrix
+  whose column are its generators; if M' is the matrix whose columns are the
+  numerators of the kernel generators, brought to a common denominator d, this
+  amounts to setting S=Smith_Cartan(type); (C,v)=filter_units(S) and then
+  returning the value replace_gen(S,mm_prod(C,ann_mod(M',d)))
 
 quotient_datum: (LieType,mat->RootDatum): root datum as entrered in Atlas.
   quotient_datum(type,gens)=root_datum(type,quotient_basis(type,gens))
@@ -164,6 +172,13 @@ form_names: (InnerClass->[string]): list of names of real forms.
 dual_form_names: (InnerClass->[string]): ist of names of dual real forms.
   These are the names for the real forms of the dual InnerClass value
 
+occurrence_matrix: (InnerClass->mat): real form-Cartan class incidence matrix
+  For the given inner class, construct a matrix whose rows are parametrized by
+  the real forms, and whose columns are parametrized by the Cartan classes,
+  showing whether (1) or not (0) the Cartan class occurs for the real form
+dual_occurrence_matrix: (InnerClass->mat): dual real form-Cartan class matrix
+  This is like occurrence_matrix, but with rows representing dual real forms
+
 real_form: (InnerClass,int->RealForm): select a real form from inner class.
   The result of form_names describes the valid range and names of real forms;
   this function actually constructs a real form from the list, selected by its
@@ -183,6 +198,10 @@ count_Cartans: (RealForm->int): number of Cartan classes for this real form
   whence its first execution for some real form may take some time
 
 KGB_size: (RealForm->int): size of the set K\G/B for this real form
+
+Cartan_order_matrix: (RealForm->mat): matrix for ordering of Cartan classes
+  The Cartan classes for a given real form form a partially ordered set; this
+  function returns this partial ordering in the form of a square 0-1 matrix
 
 dual_real_form: (InnerClass,int->DualRealForm): select a dual real form
   This is like real_form, but selects a dual real form for the inner class
@@ -207,17 +226,6 @@ most_split_Cartan: (RealForm->CartanClass): most split Cartan class for form
   The most split Cartan class of a given real form is the last one in the list
   of its Cartan classes (so it is Cartan_class(rf,count_Cartans(rf)-1)
 
-occurrence_matrix: (InnerClass->mat): real form-Cartan class incidence matrix
-  For the given inner class, construct a matrix whose rows are parametrized by
-  the real forms, and whose columns are parametrized by the Cartan classes,
-  showing whether (1) or not (0) the Cartan class occurs for the real form
-dual_occurrence_matrix: (InnerClass->mat): dual real form-Cartan class matrix
-  This is like occurrence_matrix, but with rows representing dual real forms
-
-Cartan_order_matrix: (RealForm->mat): matrix for ordering of Cartan classes
-  The Cartan classes for a given real form form a partially ordered set; this
-  function returns this partial ordering in the form of a square 0-1 matrix
-
 print_Cartan_info: (CartanClass->): print information about the Cartan class
   This produces essentially the output of 'cartan' in the Atlas, except for
   the final partition corresponding to the real forms for this Cartan class.
@@ -225,6 +233,11 @@ print_Cartan_info: (CartanClass->): print information about the Cartan class
   (GL(1,C)) factors of the real torus defined by this Cartan class, the number
   of distinct twisted involutions defining this same Cartan class, and the
   types of the imaginary, real, and complex root subsystems
+
+real_forms_of_Cartan: (CartanClass->[RealForm]): list of real forms
+  Returns a list of the real forms for which this Cartan class occurs
+dual_real_forms_of_Cartan: (CartanClass->[DualRealForm]): list dual real forms
+  Returns a list of the dual real forms for which this Cartan class occurs
 
 fiber_part: (CartanClass,RealForm->[int]): part of fiber group for real form
   This produces an increasing sequence of integers that characterizes the real
