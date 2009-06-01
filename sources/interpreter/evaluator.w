@@ -831,6 +831,7 @@ introduced later.
 
 @< Declarations of global variables @>=
 extern const type_declarator unknown_type; // \.{*}
+extern const type_declarator void_type; // \.{()}
 extern const type_declarator int_type; // \.{int}
 extern const type_declarator rat_type; // \.{rat}
 extern const type_declarator str_type; // \.{string}
@@ -855,6 +856,7 @@ produce by |copy| applied to a previous |type_declarator|.
 @< Global variable definitions @>=
 
 const type_declarator unknown_type; // uses default constructor
+const type_declarator void_type(type_list_ptr(NULL));
 const type_declarator int_type(integral_type);
 const type_declarator rat_type(rational_type);
 const type_declarator str_type(string_type);
@@ -1355,15 +1357,17 @@ can cause runtime errors. The evaluator may throw exceptions due to
 inconsistency of our (rather than the user's) program, which are classified as
 |std::logic_error|. It may also throw exceptions due to errors not caught by
 the type checker in the user input, such as size mismatch in matrix
-operations; in such cases it will throw |std::runtime_error|.
+operations; in such cases it will throw |std::runtime_error|. These standard
+exception types will be used without any type derivation.
 
 @< Include... @>=
 #include "parsetree.h"
 #include <stdexcept>
 
-@ We first define a general exception class |program_error| derived from
-|exception|, which represents any kind of error of the user input determined
-by static analysis (for instance use of undefined variables).
+@ For errors detected before execution starts, we first derive a general
+exception class |program_error| from |std::exception|; it represents any kind
+of error of the user input determined by static analysis (for instance use of
+undefined variables).
 
 Although it does nothing explicitly (the string will be destructed anyway), we
 must explicitly define a destructor for |program_error|: the automatically
@@ -1939,27 +1943,29 @@ We need an identifier table to record the values of globally bound identifiers
 (such as those for built-in functions) and their types. The values are held in
 shared pointers, so that we can evaluate a global identifier without
 duplicating the value in the table itself. Modifying the value of such an
-identifier will produce a new pointer, so that ``shareholders'' of the value
-will not see a change. There is another level of sharing, which affects
-applied occurrences of the identifier as converted during type analysis. The
-value accessed by such identifiers (which could be contained in user-defined
-function bodies and therefore have long lifetime) are expected to undergo
-change when a new value is assigned to the global variable; they will
-therefore access the location of the shared value pointer rather than the
-value pointed to. However, if the new value assigned to the identifier should
-change its type, we are forced to detach new value pointer (storing it in a
-different place) so that existing applied occurrences of the identifier will
-not access a value of unexpected type (they will stick to the last value of
-the original type held by the identifier). In such a circumstance, the shared
-pointer location itself is no longer owned by the identifier table, so we
-should arrange for shared ownership of that location. This explains that the
+identifier by an assignment will produce a new pointer, so that
+``shareholders'' of the old value will not see any change. There is another
+level of sharing, which affects applied occurrences of the identifier as
+converted during type analysis. The value accessed by such identifiers (which
+could be contained in user-defined function bodies and therefore have long
+lifetime) are expected to undergo change when a new value is assigned to the
+global variable; they will therefore access the location of the shared value
+pointer rather than the value pointed to. However, if a new identifier of the
+same name should be introduced, a new value pointer stored in a different
+location will be created, while existing applied occurrences of the identifier
+will continue to access the old value, avoiding the possibility of accessing a
+value of unexpected type. In such a circumstance, the old shared pointer
+location itself will no longer be owned by the identifier table, so we should
+arrange for shared ownership of that location. This explains that the
 |id_data| structure used for entries in the table has a shared pointer to a
-shared pointer. For the type component the identifier table will assume strict
-ownership. Giving ownership of the type directly to |id_data| would complicate
-its duplication, and therefore insertion into the table. As a consequence we
-only allow construction of |id_data| objects in an empty state; the pointers
-should be set only after insertion into the table, which then assumes
-ownership of the type.
+shared pointer.
+
+For the type component on the other hand, the identifier table will assume
+strict ownership. Giving ownership of the type directly to |id_data| would
+complicate its duplication, and therefore its insertion into the table. We
+then only allow construction of |id_data| objects in an empty state; the
+pointers should be set only after insertion of the |id_data| into the table,
+which then assumes ownership of the type.
 
 @< Type definitions @>=
 
@@ -2010,18 +2016,16 @@ Id_table::~Id_table()
 }
 
 @ The method |add| tries to insert the new mapping from the key |id| to a new
-value-type pair. Doing so, it must distinguish various cases. We first
-tentatively insert a new empty entry for the identifier into the table; this
-returns a pair with a second boolean component telling wither a new entry was
-added (the identifier was unknown as global identifier). If this is the case,
-we continue to fill the slot with a newly allocated shared pointer and the
-provided type. If the identifier was new, we test the old and the new types,
-and in case of equality we overwrite the shared value pointer with the
-provided pointer to a new value; in this case the provided type which was
-already present will be cleaned up since no |release| is called. Finally if
-the types are found to be different, we abandon the old shared pointer
-location (leaving it to whoever else shares is) and allocate a fresh one,
-and also replace the type, explicitly destroying the old one.
+value-type pair. Doing so, it must distinguish two cases. It tentatively
+inserts a new empty entry for the identifier into the table; this returns a
+pair with a second boolean component telling whether a new entry was added
+(the identifier was unknown as global identifier). If this is the case, we
+continue to fill the slot with a newly allocated shared pointer and the
+provided type. If the identifier was already present, we abandon the old
+shared pointer location, resetting the pointer to it to point to a newly
+allocated one, destroy the old type and insert the new type. All in all, the
+only difference in the code of the two branches is the deletion of the old
+type.
 
 @< Function def... @>=
 void Id_table::add(Hash_table::id_type id, shared_value val, type_ptr type)
@@ -2032,9 +2036,7 @@ void Id_table::add(Hash_table::id_type id, shared_value val, type_ptr type)
   {@; slot.val.reset(new shared_value(val));
     slot.type=type.release();
   }
-  else if (*slot.type==*type) // overwrite by value of same type
-    *slot.val=val;
-  else // reallocate for a value of different type
+  else
   {@; slot.val.reset(new shared_value(val));
     delete slot.type;
     slot.type=type.release();
@@ -2274,25 +2276,28 @@ case function_call:
 
 @*2 Evaluating function calls.
 %
-The evaluation of the call of a built-in function executes is a ``wrapper
+The evaluation of the call of a built-in function executes a ``wrapper
 function'', that usually consists of a call to a library function sandwiched
 between unpacking and repacking statements; in some simple cases a wrapper
 function may decide to do the entire job itself.
 
 The arguments and results of wrapper functions will be transferred from and to
-stack as a |value|, so a wrapper function has neither arguments nor a result
-type. Thus variables that refer to a wrapper function have the type
-|wrapper_function| defined below. We shall need to bind values of this type to
-identifiers representing built-in functions, so we derive an associated
-``primitive type'' from |value_base|.
+stack as a |shared_value|, so a wrapper function has neither arguments nor a
+result type. Thus variables that refer to a wrapper function have the type
+|wrapper_function| defined below; the |level| parameter serves the same
+function as for |evaluate| methods, to inform whether a result value should be
+produced at all, and if so whether it should be expanded on the
+|execution_stack| in case it is a tuple. We shall need to bind values of this
+type to identifiers representing built-in functions, so we derive an
+associated ``primitive type'' from |value_base|.
 
 @< Type definitions @>=
 typedef void (* wrapper_function)(expression_base::level);
 @)
 struct builtin_value : public value_base
 { wrapper_function val;
-@)
   std::string print_name;
+@)
   builtin_value(wrapper_function v,const char* n)
   : val(v), print_name(n) @+ {}
   virtual void print(std::ostream& out) const
@@ -2314,15 +2319,11 @@ arguments expanded on th stack and call the built-in function, passing the
 |level| parameter so that if necessary the call can in its turn return and
 expanded result (or no result at all). If not a built-in function, it must be
 a user-defined function, whose execution will be detailed later, but in this
-case it will be more useful to have the argument as a single value.
-
-As a general mechanism to aid locating errors, we signal if an error was
-produced during the evaluation of a function call in case the function was
-referred to by an identifier, by catching the error, printing the function
-name, and re-throwing the error. This will result in a traceback, inner to
-outer, of interrupted (non anonymous) function calls. We make sure the
-evaluation of the arguments(s) is done outside this |try| block, since
-reporting functions that have not yet started executing would be confusing.
+case it will be more useful to have the argument as a single value. As a
+general mechanism to aid locating errors, we signal if an error was produced
+during the evaluation of a function call, but we make sure the evaluation of
+the arguments(s) is done outside this |try| block, since reporting functions
+that have not yet started executing would be confusing.
 
 @< Function definitions @>=
 void call_expression::evaluate(level l) const
@@ -2335,13 +2336,37 @@ void call_expression::evaluate(level l) const
     else // built-in functions
       f->val(l); // call the wrapper function, leaving result on the stack
   }
-  catch (const std::exception& e)
-  { identifier* p=dynamic_cast<identifier*>(function);
-    if (p!=NULL) // named function
-      throw std::runtime_error
+  @< Catch-block for exceptions thrown withing function calls @>
+}
+
+@ Although we catch all |std::exception| errors thrown during the execution of
+a function call, we only report it if the function was referred to by an
+identifier, for otherwise the message would become too messy. In the mentioned
+case we tack a line with the function name to the error string, and re-throw
+the error. This will result in a traceback, inner to outer, of interrupted
+(non anonymous) function calls. Different types of error could be concerned:
+|std::runtime_error| thrown in some |evaluate| method or built-in function is
+the most common case, but there could be some |std::logic_error| as well, and
+|std::bad_alloc| is also always a possibility. Since the base class
+|std::exception| provides no means to influence the message produced by the
+|what| method, nor does |std::bad_alloc|, we necessarily have to relabel the
+latter as |std::runtime_error| in order to extend the error message. However
+we can maintain the distinction between a |logic_error| and a |runtime_error|
+using a dynamic cast.
+
+@< Catch-block for exceptions thrown withing function calls @>=
+catch (const std::exception& e)
+{ identifier* p=dynamic_cast<identifier*>(function);
+  if (p!=NULL) // named function
+  {
+    const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
+    if (l_err!=NULL)
+      throw std::logic_error
         (std::string(e.what())+"\n(in call of "+p->name()+')');
-    throw; // for anonymous function calls, just rethrow the error unchanged
+    throw std::runtime_error
+      (std::string(e.what())+"\n(in call of "+p->name()+')');
   }
+  throw; // for anonymous function calls, just rethrow the error unchanged
 }
 
 @*1 Let-expressions.
@@ -2465,7 +2490,8 @@ type_list_ptr pattern_list(const patlist p)
 }
 
 @ We shall need some other functions to deal with patterns, all with a
-similar structure. Here we count the number of identifiers in a pattern.
+similar structure. Here we count the number or list the identifiers in a
+pattern.
 
 @< Local function def... @>=
 size_t count_identifiers(const id_pat& pat)
@@ -2474,6 +2500,14 @@ size_t count_identifiers(const id_pat& pat)
     for (patlist p=pat.sublist; p!=NULL; p=p->next)
       result+=count_identifiers(p->body);
   return result;
+}
+
+void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d)
+{ if ((pat.kind & 0x1)!=0)
+    d.push_back(pat.name);
+  if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
+    for (patlist p=pat.sublist; p!=NULL; p=p->next)
+      list_identifiers(p->body,d);
 }
 
 @ Here we do a similar traversal, using a type of the proper structure,
@@ -2485,9 +2519,9 @@ void thread_bindings
 { if ((pat.kind & 0x1)!=0) dst.add(pat.name,copy(type));
   if ((pat.kind & 0x2)!=0)
   { assert(type.kind==tuple_type);
-    type_list t=type.tuple;
-    for (patlist p=pat.sublist; p!=NULL; p=p->next,t=t->next)
-      thread_bindings(p->body,t->t,dst);
+    type_list l=type.tuple;
+    for (patlist p=pat.sublist; p!=NULL; p=p->next,l=l->next)
+      thread_bindings(p->body,l->t,dst);
   }
 }
 
@@ -2557,7 +2591,7 @@ typedef std::auto_ptr<closure_value> closure_ptr;
 typedef std::tr1::shared_ptr<closure_value> shared_closure;
 
 @ For now a closure prints just like the |lambda_expression| from which it was
-obatined. One could imagine printing after this body ``where'' followed by the
+obtained. One could imagine printing after this body ``where'' followed by the
 bindings held in the |context| field. Even better only the bindings for
 relevant (because referenced) identifiers could be printed.
 
@@ -2685,14 +2719,21 @@ void conditional_expression::print(std::ostream& out) const
 
 @ For type-checking conditional expressions we are in a somewhat similar
 situation as for list displays: both branches need to be of the same type, but
-we might not know which. We first
+we might not know which. After checking that the |condition| yields a Boolean
+value, we first convert the else-branch and then the then-branch. This unusual
+order is explained by the possibility of an absent else-branch, which the
+parser will replace by an empty tuple. If this happens in a context that does
+not impose a result type, testing the else-branch first will set |type| to
+|void_type|, after which the voiding coercion is available when type-checking
+the then-branch; the opposite order might result in an error in converting the
+void else-branch to the type of the then-branch.
 
 @< Other cases for type-checking and converting... @>=
 case conditional_expr:
   { static type_ptr bt=copy(bool_type); // we need a non-|const| copy
     expression_ptr c (convert_expr(e.e.if_variant->condition,*bt));
-    expression_ptr th (convert_expr(e.e.if_variant->then_branch,type));
     expression_ptr el (convert_expr(e.e.if_variant->else_branch,type));
+    expression_ptr th (convert_expr(e.e.if_variant->then_branch,type));
     return new conditional_expression(c,th,el);
   }
 break;
@@ -2769,14 +2810,16 @@ public:
 after evaluating |exp|. Although automatic conversions are only inserted when
 the type analysis requires a non-empty result type, it is still in principle
 possible that at run time this method is called with |l==no_value|, so we
-cater for that.
+cater for that. The case is so rare that we don't mind the inefficiency of
+performing the conversion and then discarding the result; this will allow a
+failing conversion to be signalled in such cases.
 
 @< Function def...@>=
 void conversion::evaluate(level l) const
 {@; exp->eval();
-  if (l!=no_value)
-    (*type.convert)();
-  else execution_stack.pop_back();
+  (*type.convert)();
+  if (l==no_value)
+    execution_stack.pop_back();
 }
 @)
 void conversion::print(std::ostream& out) const
@@ -2847,6 +2890,46 @@ void coercion(const type_declarator& from,
               const char* s, conversion_info::conv_f f)
 {@; coerce_table.push_back(conversion_record(from,to,s,f)); }
 
+@ There is once coercion that is not stored in the lookup table, since it can
+operate on any input type: the voiding coercion. It is necessary for instance
+to allow a conditional expression that is intended for its side effects only
+to have branches that evaluate to different types (including the possibility
+of absent branches which will be taken to deliver an empty tuple): the
+conditional expression will get \.{void} type to which the result of each of
+its branches can be coerced.
+
+In fact voiding is not dealt with using a |conversion| expression, since as we
+have seen its |evaluate| method evaluates its argument using the |eval|
+method, so with |level| parameter set to |single_value|. However for a voiding
+coercion this level should be |no_value|. So we introduce a type derived from
+|expression| whose main virtue is that its |evaluate| method sets the level to
+|no_value| by calling |void_eval|.
+
+@< Type definitions @>=
+class voiding : public expression_base
+{ expression exp;
+public:
+  voiding(expression_ptr e) : exp(e.release()) @+{}
+  virtual ~voiding()@;{@; delete exp; }
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ The |evaluate| method should not ignore its |level| argument completely:
+when |l==single_value| an actual empty tuple should be produced, which
+|wrap_tuple(0)| does.
+
+@< Function def...@>=
+void voiding::evaluate(level l) const
+{@; exp->void_eval();
+  if (l==single_value)
+    wrap_tuple(0);
+}
+@)
+void voiding::print(std::ostream& out) const
+@+{@; out << "voided:" << *exp; }
+
+
 @ The function |coerce| simply traverses the |coerce_table| looking for an
 appropriate entry, and wraps |e| into a corresponding |conversion| it finds
 one. Ownership of the expression pointed to by |e| is handled implicitly: it
@@ -2862,6 +2945,7 @@ bool coerce(const type_declarator& from_type, const type_declarator& to_type,
     @/{@; e.reset(new conversion(*it,e));
       return true;
     }
+  if (to_type==void_type)    {@; e.reset(new voiding(e));  return true; }
   return false;
 }
 
@@ -3090,7 +3174,7 @@ void matrix_convert()
   push_value(new matrix_value(latticetypes::LatticeMatrix(column_list)));
 }
 
-@ All that remains is to initialise the |coercion table|.
+@ All that remains is to initialise the |coerce_table|.
 @< Initialise evaluator @>=
 coercion(row_of_int_type, vec_type, "V", vector_convert); @/
 coercion(row_of_vec_type,mat_type, "M", matrix_convert);
@@ -3946,8 +4030,8 @@ void divmod_wrapper(expression_base::level l)
 { shared_int j=get<int_value>(); shared_int i=get<int_value>();
   if (j->val==0) throw std::runtime_error("DivMod by zero");
   if (l!=expression_base::no_value)
-  { push_value(new int_value(i->val%j->val));
-    push_value(new int_value(i->val/j->val));
+  { push_value(new int_value(i->val/j->val));
+    push_value(new int_value(i->val%j->val));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -4204,9 +4288,9 @@ file \.{parser.y}.
 install_function(plus_wrapper,"+","(int,int->int)");
 install_function(minus_wrapper,"-","(int,int->int)");
 install_function(times_wrapper,"*","(int,int->int)");
-install_function(divide_wrapper,"div","(int,int->int)");
+install_function(divide_wrapper,"\\","(int,int->int)");
 install_function(modulo_wrapper,"%","(int,int->int)");
-install_function(divmod_wrapper,"/%","(int,int->int,int)");
+install_function(divmod_wrapper,"\\%","(int,int->int,int)");
 install_function(unary_minus_wrapper,"-u","(int->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
 install_function(eq_wrapper,"=","(int,int->bool)");
@@ -4238,104 +4322,85 @@ for somewhat opportunistic purposes.
 directly by the parser, and therefore it has \Cee-linkage. We define it here
 since it uses the services of the evaluator.
 
-The grammar guarantees that |ids| represents a list of identifiers. What has
-to be done here is straightforward. We type-check the expression~|e|, storing
-its result, then evaluate it, and store the (type,value) pair(s) into in
-|global_id_table|. To provide some feedback to the user we report the type
-assigned, but not the value since this might result in more output than is
-desirable in case of an assignment.
-
-A |std::runtime_error| may be thrown either during the initial analysis of
-the assignment statement or during type check or evaluation, and we catch all
-those cases here. Note however that no exception can be thrown between the
-successful return from |evaluate| and a non-multiple assignment, so we can use
-an ordinary pointer to hold the pointer returned. Whether or not an error is
-caught, the identifier list |ids| and the expression |rhs| should not be
-destroyed here, since the parser which aborts after calling this function
-should do that while clearing its parsing stack.
+We allow the same possibilities in a global identifier definition as in a
+local one, so we take an |id_pat| as argument, and follow the logic for
+type-analysis of a let-expression, and for evaluation that of binding
+identifiers in a user-define function. However we use |analyse_types| (which
+reports errors) rather than calling |convert_expr| directly. To provide some
+feedback to the user we report any types assigned, but not the values.
 
 @< Function definitions @>=
 extern "C"
-void global_set_identifier(expr_list ids, expr rhs)
-{ using namespace atlas::interpreter; using namespace std;
+void global_set_identifier(id_pat pat, expr rhs)
+{ using namespace atlas::interpreter;
+  size_t n_id=count_identifiers(pat);
   try
   { expression_ptr e;
     type_ptr t=analyse_types(rhs,e);
-    if (ids->next!=NULL)
-      @< Check that identifiers are distinct and that |t| is an appropriate
-         tuple type; if not, |throw| a |runtime_error| @>
-    e->eval(); shared_value v=pop_value();
-    if (ids->next==NULL)
-    { cout << "Identifier " << ids->e << ": " << *t << std::endl;
-      global_id_table->add(ids->e.e.identifier_variant,v,t);
+    if (not pattern_type(pat)->specialise(*t))
+      @< Report that type of |rhs| does not have required structure,
+         and |throw| @>
+
+    bindings b(n_id);
+    thread_bindings(pat,*t,b); // match identifiers and their future types
+
+    std::vector<shared_value> v;
+    v.reserve(n_id);
+@/  e->eval();
+    thread_components(pat,pop_value(),v);
+
+    if (n_id>0)
+      std::cout << "Identifier";
+    for (size_t i=0; i<n_id; ++i)
+    { std::cout << (i==0 ? n_id==1 ? " " : "s " : ", ") @|
+                << main_hash_table->name_of(b[i].first) << ": "
+                << *b[i].second;
+      global_id_table->add(b[i].first,v[i],copy(*b[i].second));
     }
-    else @< Perform a multiple assignment @>
+    std::cout << std::endl;
   }
-  catch (runtime_error& err)
-  { cerr << err.what() << ", identifier" << (ids->next!=NULL ? "s " :" ");
-    for (expr_list l=ids; l!=NULL; l=l->next)
-      cerr << main_hash_table->name_of(l->e.e.identifier_variant)
-           << (l->next!=NULL?",":"");
-    cerr << " not assigned to.\n";
-    reset_evaluator(); main_input_buffer->close_includes();
-  }
-  catch (logic_error& err)
-  { cerr << "Unexpected error: " << err.what() << ", evaluation aborted.\n";
-    reset_evaluator(); main_input_buffer->close_includes();
-  }
-  catch (exception& err)
-  { cerr << err.what() << ", evaluation aborted.\n";
-    reset_evaluator(); main_input_buffer->close_includes();
-  }
+  @< Catch block for errors thrown during a global identifier definition @>
 }
 
-@ Whenever we have an assignment to an expression list, the identifiers must
-be distinct and the right hand side must have a tuple type with the proper
-number of components; otherwise there are no restrictions. To test whether
-identifiers are distinct, we put them into a |set| and check membership.
+@ When the right hand side type does not match the requested pattern, we throw
+a |runtime_error| signalling this fact; we have to re-generate the required
+pattern using |pattern_type| to do this.
 
-@h <set>
-@< Check that identifiers are distinct and that |t| is an appropriate tuple
-   type... @>=
-{ if (t->kind!=tuple_type)
-    throw runtime_error ("Multiple assignment requires tuple value");
-@.Multiple assignment requires tuple@>
-  set<Hash_table::id_type> seen;
-  type_list tl=t->tuple;
-  for (expr_list l=ids; l!=NULL||tl!=NULL; l=l->next,tl=tl->next)
-  { if (l==NULL || tl==NULL)
-      throw runtime_error
-        ("Right hand side has too "+string(l==NULL ? "many":"few")
-        +" components");
-@.Right hand side has too many...@>
-@.Right hand side has too few...@>
-    if (!seen.insert(l->e.e.identifier_variant).second)
-        // then identifier was already present
-      throw runtime_error
-        (std::string("Repeated identifier ")
-        +main_hash_table->name_of(l->e.e.identifier_variant)
-        +" in multiple assignment");
-  }
+@< Report that type of |rhs| does not have required structure, and |throw| @>=
+{ std::ostringstream o;
+  o << "Type " << *t @|
+    << " of right hand side does not match required pattern "
+    << *pattern_type(pat);
+  throw std::runtime_error(o.str());
 }
 
-@ In the multiple assignment case, the type check above should guarantee that
-the result of evaluation is an appropriate tuple value. The multiple
-assignment is performed by simultaneously traversing the components of the
-identifier list, the tuple value and the tuple type; after each value is
-stored into |global_id_table| the pointer to it is removed from the tuple
-value immediately to ensure that it will not be deleted upon destruction of
-the tuple value. We report the type of each variable assigned separately.
+@ A |std::runtime_error| may be thrown either during type check, matching with
+the identifier pattern, or evaluation; we catch all those cases here. Whether
+or not an error is caught, the pattern |pat| and the expression |rhs| should
+not be destroyed here, since the parser which aborts after calling this
+function should do that while clearing its parsing stack.
 
-
-@< Perform a multiple assignment @>=
-{ tuple_value* tv = force<tuple_value>(v.get());
-  cout << "Identifiers ";
-  size_t i=0; type_list tl=t->tuple;
-  for (expr_list l=ids; l!=NULL; l=l->next,++i,tl=tl->next)
-  { cout << l->e << ": " << tl->t << ( l->next!=NULL ? ", " : ".\n");
-    shared_value val = tv->val[i];
-    global_id_table->add(l->e.e.identifier_variant,val,copy(tl->t));
+@< Catch block for errors thrown during a global identifier definition @>=
+catch (std::runtime_error& err)
+{ std::cerr << err.what() << '\n';
+  if (n_id>0)
+  { std::vector<Hash_table::id_type> names; names.reserve(n_id);
+    list_identifiers(pat,names);
+    std::cerr << "  Identifier" << (n_id==1 ? "" : "s");
+    for (size_t i=0; i<n_id; ++i)
+      std::cerr << (i==0 ? " " : ", ") << main_hash_table->name_of(names[i]);
+    std::cerr << " not created." << std::endl;
   }
+  reset_evaluator(); main_input_buffer->close_includes();
+}
+catch (std::logic_error& err)
+{ std::cerr << "Unexpected error: " << err.what()
+            << ", evaluation aborted.\n";
+  reset_evaluator(); main_input_buffer->close_includes();
+}
+catch (std::exception& err)
+{ std::cerr << err.what() << ", evaluation aborted.\n";
+  reset_evaluator(); main_input_buffer->close_includes();
 }
 
 @ It is useful to print type information, either for a single expression or for
@@ -4351,11 +4416,10 @@ extern std::ostream* output_stream;
 std::ostream* output_stream= &std::cout;
 
 @ The function |type_of_expr| prints the type of a single expression, without
-evaluating it; since the expression is not limited to being a single
-identifier, we must cater for the possibility that the type analysis fails, in
-which case |analyse types| after catching it re-throws a |std::runtime_error|
-(however neither a |std::logic_error| nor any more general |exception| can
-be thrown while merely type checking).
+evaluating it. Since we allows arbitrary expressions, we must cater for the
+possibility of failing type analysis, in which case |analyse types| after
+catching it re-throws a |std::runtime_error|. By catching and |std::exception|
+we ensure ourselves against unlikely events like |bad_alloc|.
 
 @< Function definitions @>=
 extern "C"
@@ -4364,7 +4428,7 @@ void type_of_expr(expr e)
   {@; expression_ptr p;
     *output_stream << "type: " << *analyse_types(e,p) << std::endl;
   }
-  catch (std::runtime_error& err) {@; std::cerr<<err.what()<<std::endl; }
+  catch (std::exception& err) {@; std::cerr<<err.what()<<std::endl; }
 }
 
 @ The function |show_ids| prints a table of all known identifiers and their
@@ -4373,8 +4437,7 @@ types.
 @< Function definitions @>=
 extern "C"
 void show_ids()
-{@; *output_stream << *global_id_table;
-}
+@+{@; *output_stream << *global_id_table; }
 
 @ In order for this compilation unit to function properly, it must know of the
 existence and names for other built-in types. We could scoop up these names
