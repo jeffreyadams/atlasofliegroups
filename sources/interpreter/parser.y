@@ -44,9 +44,9 @@
 %pure-parser
 %error-verbose
 
-%token QUIT LET IN IF THEN ELSE ELIF FI
+%token QUIT SET LET IN IF THEN ELSE ELIF FI
 %token TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
-%token DIVMOD "/%"
+%token DIVMOD "\\%"
 %token <val> INT
 %token <expression> STRING
 %token <id_code> IDENT
@@ -68,14 +68,14 @@
 %type <expression> formula primary comprim subscription
 %destructor { destroy_expr ($$); } exp quaternary tertiary lettail iftail
 %destructor { destroy_expr ($$); } formula primary comprim subscription
-%type  <expression_list> commalist commalist_opt commabarlist idlist
-%destructor { destroy_exprlist($$); } commalist commalist_opt commabarlist idlist
+%type  <expression_list> commalist commalist_opt commabarlist
+%destructor { destroy_exprlist($$); } commalist commalist_opt commabarlist
 %type <decls> declarations
 %destructor { destroy_letlist($$); } declarations
 %nonassoc '<' LEQ '>' GEQ '=' NEQ
 %nonassoc DIVMOD
 %left '-' '+'
-%left '*' '/' '%'
+%left '*' '/' '\\' '%'
 %left NEG     /* negation--unary minus */
 
 %type <ip> pattern pattern_opt
@@ -96,8 +96,10 @@
 
 input:  '\n'			{ YYABORT } /* null input, skip evaluator */
         | exp    '\n'	        { *parsed_expr=$1; }
-        | idlist ':' exp '\n'
-		{ global_set_identifier(reverse_expr_list($1),$3); YYABORT }
+        | SET pattern '=' exp '\n' { global_set_identifier($2,$4); YYABORT }
+        | IDENT ':' exp '\n'
+		{ struct id_pat p; p.kind=0x1; p.name=$1;
+                  global_set_identifier(p,$3); YYABORT }
         | QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
         | QUIET	'\n'		{ *verbosity =0; YYABORT } /* quiet mode */
         | VERBOSE '\n'		{ *verbosity =1; YYABORT } /* verbose mode */
@@ -199,6 +201,12 @@ formula : formula '<' formula
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
+        | formula '\\' formula
+        { $$ = make_application_node
+	       (make_applied_identifier(lookup_identifier("\\"))
+	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
+	       );
+        }
         | formula '%' formula
         { $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("%"))
@@ -213,7 +221,7 @@ formula : formula '<' formula
         }
 	| formula DIVMOD formula
         { $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("/%"))
+	       (make_applied_identifier(lookup_identifier("\\%"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
@@ -268,6 +276,8 @@ subscription: IDENT '[' exp ']'
 
 iftail	: exp THEN exp ELSE exp FI { $$=make_conditional_node($1,$3,$5); }
         | exp THEN exp ELIF iftail { $$=make_conditional_node($1,$3,$5); }
+        | exp THEN exp FI
+          { $$=make_conditional_node($1,$3,wrap_tuple_display(NULL)); }
 ;
 
 pattern : IDENT             { $$.kind=0x1; $$.name=$1; }
@@ -331,12 +341,6 @@ commabarlist: commalist_opt '|' commalist_opt
 	| commabarlist '|' commalist_opt
         { $$=make_exprlist_node(wrap_list_display(reverse_expr_list($3)),$1); }
 ;
-
-idlist	: IDENT
-        { $$=make_exprlist_node(make_applied_identifier($1),null_expr_list); }
-	| idlist ',' IDENT
-	{ $$=make_exprlist_node(make_applied_identifier($3),$1); }
-	;
 
 
 %%
