@@ -2147,11 +2147,19 @@ void push_expanded(expression_base::level l, const shared_value& v)
 
 @ Evaluating a global identifier returns the value stored in the location
 |address|, possibly expanded if |l==multi_value|, or nothing at all if
-|l==no_value|.
+|l==no_value|. However, since initially undefined global variables were added
+to the language, we have to watch out for a (shared) null pointer at
+|*address|.
 
 @< Function definitions @>=
 void global_identifier::evaluate(level l) const
-@+{@; push_expanded(l,*address); }
+{ if (address->get()==NULL)
+  { std::ostringstream o;
+    o << "Taking value of uninitialized variable " << name();
+    throw std::runtime_error(o.str());
+  }
+  push_expanded(l,*address);
+}
 
 @*2 Local identifiers.
 %
@@ -3701,11 +3709,20 @@ global_component_assignment::global_component_assignment @|
 @ It is in evaluation that component assignments differ most from ordinary
 ones. The work is delegated to the |assign| method of the base class, which is
 given a reference to the |shared_value| pointer holding the current value of
-the aggregate; it is this pointer that is in principle modified.
+the aggregate; it is this pointer that is in principle modified. Like when
+fetching the value of a global variable, we must be aware of a possible
+undefined value in the variable.
 
 @< Function def... @>=
 void global_component_assignment::evaluate(level l) const
-{@; assign(l,*address,kind); }
+{ if (address->get()==NULL)
+  { std::ostringstream o;
+    o << "Assigning to component of uninitialized variable "
+      << main_hash_table->name_of(lhs);
+    throw std::runtime_error(o.str());
+  }
+  assign(l,*address,kind);
+}
 
 @ The |assign| method, which will also be called for local component
 assignments, starts by the common work of evaluating the index and the value
@@ -3866,7 +3883,7 @@ case comp_ass_stat:
   }
   else
   { std::ostringstream o;
-    o << "Cannot subscript " << aggr_t << @| " value with index of type "
+    o << "Cannot subscript " << *aggr_t << @| " value with index of type "
       << ind_t << " in assignment";
     throw expr_error(e,o.str());
   }
@@ -4403,13 +4420,22 @@ catch (std::exception& err)
   reset_evaluator(); main_input_buffer->close_includes();
 }
 
+@ The following function is called when an identifier is declared with type
+but undefined value.
+
+@< Function definitions @>=
+extern "C"
+void global_declare_identifier(Hash_table::id_type id, ptr t)
+{@; value undef=NULL;
+   global_id_table->add(id,shared_value(undef),copy(*static_cast<type_p>(t)));
+}
+
 @ It is useful to print type information, either for a single expression or for
 all identifiers in the table. We declare the pointer that was already used in
 |print_wrapper|.
 
 @< Declarations of global variables @>=
 extern std::ostream* output_stream;
-
 @ The |output_stream| will normally point to |std::cout|.
 
 @< Global variable definitions @>=

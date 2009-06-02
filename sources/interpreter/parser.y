@@ -100,6 +100,7 @@ input:  '\n'			{ YYABORT } /* null input, skip evaluator */
         | IDENT ':' exp '\n'
 		{ struct id_pat p; p.kind=0x1; p.name=$1;
                   global_set_identifier(p,$3); YYABORT }
+        | IDENT ':' type '\n'   { global_declare_identifier($1,$3);; YYABORT }
         | QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
         | QUIET	'\n'		{ *verbosity =0; YYABORT } /* quiet mode */
         | VERBOSE '\n'		{ *verbosity =1; YYABORT } /* verbose mode */

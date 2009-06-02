@@ -1173,6 +1173,7 @@ an |expr_list| because this avoids defining a separate type.
 
 @< Declarations of functions in \Cee-style for the parser @>=
 void global_set_identifier(struct id_pat id, expr e);
+void global_declare_identifier(short id, ptr type);
 void show_ids();
 void type_of_expr(expr e);
 
