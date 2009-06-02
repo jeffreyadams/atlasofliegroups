@@ -9,8 +9,12 @@ functions in an expression-oriented fashion. Whereas 'atlas' will enter a
 dialogue whenever it needs some parameter to be set (inner class, real form,
 Cartan class,...) these parameters can be defined by expressions in 'realex'
 
-To compile realex, you need the latest release of the 'cwebx' system. Get it
-by clicking on the indicated link at
+To compile realex, you need the latest release of the 'cwebx' system, unless
+the output files produced by 'cwebx' were already included in your copy of the
+atlas sources; check the presence in atlas/sources/interpreter of the files
+{buffer,built-in-types,evaluator,lexer,main,parsetree} with extensions .cpp
+and (except for main) .h to see if this is the case. If these files do not
+exist, get 'cwebx' by clicking on the indicated link at
 
 http://www-math.univ-poitiers.fr/~maavl/CWEBx/
 
@@ -19,17 +23,21 @@ programs 'ctanglex' and 'cweavex' are in your $PATH (possibly by making
 symbolic links to them from you ~/bin directory, if you use one), and that the
 macro file cwebxmac.tex is in some place where TeX will find it (check your
 $TEXINPUTS environment variable; a quick solution is to copy the file to this
-atlas/sources/interpreter directory). Otherwise you need tools like (GNU)
-'make', 'g++' that you also need to compile the atlas (but contrary to atlas,
-you need at least version 4.0 of gcc/g++ to compile realex, since realex uses
-the TR1 library extension whose support was introduced in gcc $.0). Once you
-are set, type 'make' in this directory (or 'make realex' in the atlas
-directory) to build realex. Again you can install a symbolic link from
-somewhere in your $PATH to atlas/sources/interpreter/realex to ensure that it
-will be executed by the command 'realex'. If the atlas is compiled before you
-build realex, the latter compilation will use the existing object files. If
-not it will do the necessary compilations itself (this involves nearly all
-atlas modules, but not all), and take quite a bit longer.
+atlas/sources/interpreter directory). Once these tools are in place, the
+'make' facility will automatically invoke them to created all the files
+mentioned above when they are needed.
+
+Apart from that, you need tools like (GNU) 'make', 'bison', and 'g++' which
+you already need to compile the atlas program (but contrary to atlas, you need
+at least version 4.0 of gcc/g++ to compile realex, since realex uses the TR1
+library extension whose support was introduced in gcc 4.0). Once you are set,
+type 'make headers realex' in the atlas/sources/interpreter directory (or
+'make realex' in the atlas directory) to build realex. Again you can install a
+symbolic link from somewhere in your $PATH to atlas/sources/interpreter/realex
+to ensure that it will be executed by the command 'realex'. If atlas was
+compiled before you build realex, the latter compilation will use the existing
+object files; iff not it will do the necessary compilations itself (this
+involves nearly all atlas modules, but not all), and take quite a bit longer.
 
 
 2 Comparison with atlas
@@ -233,7 +241,7 @@ taking a 2-tuple as argument can be called as f(x,y). But the variable 'z'
 holds a 2-tuple, say after 'z:(3,4)', the function 'f' can also be called as
 f(z). To decompose a tuple, a multiple assignment is possible: after
 
-  expr> set x,y=z
+  expr> set (x,y)=z
 
 the variable 'x' will be made to hold the first component of the pair 'z', and
 'y' will be made to hold its second component (and more usefully, 'z' may be
