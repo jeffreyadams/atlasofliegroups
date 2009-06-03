@@ -666,9 +666,6 @@ namespace blockmode {
 void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
 
 {
-  using commands::insertTag;
-
-  //  mode.add("components",helpmode::nohelp_h);
   mode.add("smallkgb",helpmode::nohelp_h); // small_kgb_h);
   mode.add("smalldualkgb",helpmode::nohelp_h); // small_dual_kgb_h);
   mode.add("block",block_h);
@@ -680,13 +677,15 @@ void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("blocku",blocku_h);
   mode.add("blockorder",blockorder_h);
   mode.add("blockwrite",blockwrite_h);
-  mode.add("blockstabilizer",helpmode::nohelp_h); // block_stabilizer_h);
+  mode.add("blockstabilizer",block_stabilizer_h);
   mode.add("klwrite",klwrite_h);
   mode.add("kllist",kllist_h);
   mode.add("primkl",primkl_h);
   mode.add("klbasis",klbasis_h);
   mode.add("wcells",wcells_h);
   mode.add("wgraph",wgraph_h);
+
+  // using commands::insertTag; // argument-dependent lookup will find it
 
   // insertTag(tagDict,"components",components_tag);
   insertTag(tagDict,"smallkgb",small_kgb_tag);
