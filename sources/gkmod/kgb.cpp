@@ -172,8 +172,7 @@ class KGBHelp
 		       std::vector<KGBEltList>& cayley,
 		       tits::TitsEltList& tits,
 		       std::vector<KGBInfo>& info,
-		       tits::BasedTitsGroup*& base,
-		       bool traditional) const;
+		       tits::BasedTitsGroup*& base) const;
 
   // though used only from within |export_tables|, this method must be public
   bool comp(KGBElt x,KGBElt y) const
@@ -301,7 +300,7 @@ KGB::KGB(realredgp::RealReductiveGroup& GR,
   size_t size =
     (traditional ? KGBHelp(GR) : refined_helper(GR,Cartan_classes))
     .fill()
-    .export_tables(d_cross,d_cayley,d_tits,d_info,d_base,traditional);
+    .export_tables(d_cross,d_cayley,d_tits,d_info,d_base);
 
   // check that the size is right
   assert(size == (traditional ? GR.KGB_size()
@@ -685,18 +684,14 @@ size_t KGBHelp::export_tables(std::vector<KGBEltList>& cross,
 			      std::vector<KGBEltList>& cayley,
 			      tits::TitsEltList& tits,
 			      std::vector<KGBInfo>& info,
-			      tits::BasedTitsGroup*& base,
-			      bool traditional) const
+			      tits::BasedTitsGroup*& base) const
 {
   size_t size=d_info.size();
 
   // sort (partially)
   setutils::Permutation a(size,1);
   IndexCompare comp(*this);
-  if (traditional)
-    std::sort(a.begin(),a.end(),comp);
-  else
-    std::stable_sort(a.begin(),a.end(),comp); // better, faster, more reliable
+  std::stable_sort(a.begin(),a.end(),comp); // better and faster than |sort|
 
   // export the cross and cayley maps, permuting each constituent list
   cross.clear(); cayley.clear();
