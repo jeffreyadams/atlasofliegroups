@@ -471,6 +471,7 @@ and pop them off.
 
 @< Other methods of |BufferedInput| @>=
 void push_prompt(char c);
+char top_prompt() const;
 void pop_prompt();
 void reset();
 
@@ -482,6 +483,10 @@ by calling the |reset| method.
 @h <stdexcept>
 @< Definitions of class members @>=
 void BufferedInput::push_prompt(char c) @+{@; temp_prompt.push_back(c); }
+char BufferedInput::top_prompt() const
+{ size_t l=temp_prompt.length();
+  return l==0 ? '\0' : temp_prompt[l-1];
+}
 void BufferedInput::pop_prompt()
 { size_t l=temp_prompt.length();
   if (l>0) temp_prompt.erase(l-1);
