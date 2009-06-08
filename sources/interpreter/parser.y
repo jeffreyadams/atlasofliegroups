@@ -45,6 +45,7 @@
 %error-verbose
 
 %token QUIT SET LET IN IF THEN ELSE ELIF FI
+%token WHILE DO OD NEXT FOR
 %token TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
 %token DIVMOD "\\%"
 %token <val> INT
@@ -249,6 +250,19 @@ comprim: subscription
         | FALSE { $$ = make_bool_denotation(0); }
 	| STRING
         | IF iftail { $$=$2; }
+        | WHILE exp DO exp NEXT exp OD { $$=make_while_node($2,$4,$6); }
+        | WHILE exp DO exp OD
+	  { $$=make_while_node($2,$4,wrap_tuple_display(NULL)); }
+        | FOR pattern IN exp DO exp OD
+	  { struct id_pat p,x; p.kind=0x2; x.kind=0x0;
+            p.sublist=make_pattern_node(make_pattern_node(NULL,&$2),&x);
+	    $$=make_for_node(p,$4,$6);
+          }
+        | FOR pattern '@' IDENT IN exp DO exp OD
+	  { struct id_pat p,i; p.kind=0x2; i.kind=0x1; i.name=$4;
+            p.sublist=make_pattern_node(make_pattern_node(NULL,&$2),&i);
+	    $$=make_for_node(p,$6,$8);
+          }
         | '(' exp ')'          { $$=$2; }
         | '[' commalist_opt ']'
                 { $$=wrap_list_display(reverse_expr_list($2)); }

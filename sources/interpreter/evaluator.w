@@ -827,15 +827,19 @@ character follows, so that a longer type name will not match a prefix of it.
 We shall often need to refer to certain types for comparison. Instead of
 generating them on the fly each time using |make_type|, we define constant
 values that can be used everywhere. We include a few types that will be
-introduced later.
+introduced later. Two of these types, for \.{bool} and \.{void}, need to be
+non-|const|, since they will be used as arguments to a function
+(|convert_expr|) that potentially specialises this argument; since \.{bool}
+and \.{void} cannot possibly be specialised, they will nevertheless remain
+constant throughout.
 
 @< Declarations of global variables @>=
 extern const type_declarator unknown_type; // \.{*}
-extern const type_declarator void_type; // \.{()}
+extern type_declarator void_type; // \.{()}
 extern const type_declarator int_type; // \.{int}
 extern const type_declarator rat_type; // \.{rat}
 extern const type_declarator str_type; // \.{string}
-extern const type_declarator bool_type; // \.{bool}
+extern type_declarator bool_type; // \.{bool}
 extern const type_declarator vec_type; // \.{vec}
 extern const type_declarator ratvec_type; // \.{ratvec}
 extern const type_declarator mat_type; // \.{mat}
@@ -856,11 +860,11 @@ produce by |copy| applied to a previous |type_declarator|.
 @< Global variable definitions @>=
 
 const type_declarator unknown_type; // uses default constructor
-const type_declarator void_type(type_list_ptr(NULL));
+ type_declarator void_type(type_list_ptr(NULL));
 const type_declarator int_type(integral_type);
 const type_declarator rat_type(rational_type);
 const type_declarator str_type(string_type);
-const type_declarator bool_type(boolean_type);
+ type_declarator bool_type(boolean_type);
 const type_declarator vec_type(vector_type);
 const type_declarator ratvec_type(rational_vector_type);
 const type_declarator mat_type(matrix_type);
@@ -1215,7 +1219,7 @@ execution_stack.reserve(16); // avoid some early reallocations
 @ We shall define some inline functions to facilitate manipulating the stack.
 The function |push_value| does what its name suggests. For exception safety it
 takes either an auto-pointer or a shared pointer as argument; the former is
-converted into the latter, in which case the |use_count| will becme~$1$. For
+converted into the latter, in which case the |use_count| will become~$1$. For
 convenience we make these template functions that accept a smart pointer to
 any type derived from |value_base| (since a conversion of such pointers from
 derived to base is not possible without a cast in a function argument
@@ -1223,7 +1227,7 @@ position). For even more convenience we also provide a variant taking an
 ordinary pointer, so that expressions using |new| can be written without cast
 in the argument of |push_value|. Since |push_value| has only one argument,
 such use of does not compromise exception safety: nothing can throw between
-the return of |new| and the conversions of its result into an auto-pointer.
+the return of |new| and the conversion of its result into an auto-pointer.
 
 @< Template and inline function definitions @>=
 template<typename D> // |D| is a type derived from |value_base|
@@ -1260,19 +1264,38 @@ template <typename D> // |D| is a type derived from |value_base|
 }
 @.Argument is no ...@>
 
+@ The function |push_expanded| will be called when a stored value is retrieved
+in a context where a tuple value might need expansion, depending on the |level
+l@;|, but the value is not known to be of tuple type (since type information
+is not retained in compiled expression values).
+
+@< Function definitions @>=
+void push_expanded(expression_base::level l, const shared_value& v)
+{ if(l==expression_base::single_value)
+    push_value(v);
+  else if (l==expression_base::multi_value)
+  { shared_tuple p = std::tr1::dynamic_pointer_cast<tuple_value>(v);
+    if (p==NULL)
+      push_value(v);
+    else
+      for (size_t i=0; i<p->length(); ++i)
+        push_value(p->val[i]); // push components
+  }
+}
+
 @ In many cases we will want to get unique access to an object, duplicating it
 if necessary. The operation |uniquify| implements this; it was originally
 introduced in order to implement component assignments efficiently (the code
 for this will be given later) but is useful much more generally. In fact if we
 just computed the value in question from a function call it is virtually
 guaranteed to be unshared, but we shall call |uniquify| anyway to make clear
-our (destructive) intentions. Here we use it right away to provide a variant
-template function |get_own| of |get|, which returns a privately owned copy of
-the value from the stack, so that modifications can be made to it without
-danger of altering shared instances. In spite of the uniqueness guarantee,
-|get_own| must be declared to return a |shared_ptr| in order to avoid having
-to call |clone|: there is no way to persuade a |shared_ptr| to release its
-ownership even if ith happens to be the unique owner.
+our (destructive) intentions. Here we also use it right away to provide a
+variant template function |get_own| of |get|, which returns a privately owned
+copy of the value from the stack, so that modifications can be made to it
+without danger of altering shared instances. In spite of the uniqueness
+guarantee, |get_own| must be declared to return a |shared_ptr| in order to
+avoid having to call |clone|: there is no way to persuade a |shared_ptr| to
+release its ownership, even if it happens to be the unique owner.
 
 
 @< Template and inline function def... @>=
@@ -1895,868 +1918,6 @@ void tuple_expression::evaluate(level l) const
   }
 }
 
-@*1 Identifiers.
-%
-Calling functions, whether built-in or user-defined, requires using
-identifiers, but they occur in other contexts as well, and their treatment is
-no different between these cases. They come in two kinds, local and global
-identifiers, which are treated in fairly different way, and during type
-analysis the two are converted into different kinds of |expression|. The most
-fundamental difference is that for global identifiers a value is already known
-at the time the identifier expression is type-checked, and the type of this
-value can be used; for local identifiers only a type is associated to the
-identifier at that time, and indeed during different evaluations the same
-local identifier may find itself bound to different values.
-
-Global identifiers values will be stored in a global identifier table holding
-values and their types (initially it does so for the built-in functions). The
-values of local identifiers will be stored at runtime in a stack of variable
-bindings, but not their types (these are held elsewhere during type analysis,
-and have disappeared at evaluation time).
-
-In spite of these differences there is some common ground for global and local
-identifiers: they have a name that can be printed. For this reason we derive
-an intermediate structure from |expression_base| that will serve as base for
-both kinds of applied identifier expressions.
-
-@< Type definitions @>=
-struct identifier : public expression_base
-{ Hash_table::id_type code;
-@)
-  explicit identifier(Hash_table::id_type id) : code(id) @+{}
-  virtual ~identifier() @+ {}
-  const char* name() const;
-  virtual void print(std::ostream& out) const;
-};
-
-@ To print an identifier, we get its name from the main hash table.
-
-@< Function definitions @>=
-const char* identifier::name() const
-@+{@; return main_hash_table->name_of(code); }
-void identifier::print(std::ostream& out) const
-@+{@; out<< name(); }
-
-@*2 The global identifier table.
-%
-We need an identifier table to record the values of globally bound identifiers
-(such as those for built-in functions) and their types. The values are held in
-shared pointers, so that we can evaluate a global identifier without
-duplicating the value in the table itself. Modifying the value of such an
-identifier by an assignment will produce a new pointer, so that
-``shareholders'' of the old value will not see any change. There is another
-level of sharing, which affects applied occurrences of the identifier as
-converted during type analysis. The value accessed by such identifiers (which
-could be contained in user-defined function bodies and therefore have long
-lifetime) are expected to undergo change when a new value is assigned to the
-global variable; they will therefore access the location of the shared value
-pointer rather than the value pointed to. However, if a new identifier of the
-same name should be introduced, a new value pointer stored in a different
-location will be created, while existing applied occurrences of the identifier
-will continue to access the old value, avoiding the possibility of accessing a
-value of unexpected type. In such a circumstance, the old shared pointer
-location itself will no longer be owned by the identifier table, so we should
-arrange for shared ownership of that location. This explains that the
-|id_data| structure used for entries in the table has a shared pointer to a
-shared pointer.
-
-For the type component on the other hand, the identifier table will assume
-strict ownership. Giving ownership of the type directly to |id_data| would
-complicate its duplication, and therefore its insertion into the table. We
-then only allow construction of |id_data| objects in an empty state; the
-pointers should be set only after insertion of the |id_data| into the table,
-which then assumes ownership of the type.
-
-@< Type definitions @>=
-
-typedef std::tr1::shared_ptr<shared_value> shared_share;
-struct id_data
-{ shared_share val; @+ type_p type;
-  id_data() : val(),type(NULL)@+ {}
-};
-
-@ We cannot store auto pointers in a table, so upon entering into the table we
-convert type pointers to ordinary pointers, and this is what |type_of| lookup
-will return (the table retains ownership); destruction of the type declarators
-referred to only takes place when the table itself is destructed.
-
-@< Includes... @>=
-#include <map>
-#include "lexer.h" // for the identifier hash table
-
-@~We currently do not do overloading, so a simple associative table with the
-identifier as key is used.
-
-@< Type definitions @>=
-class Id_table
-{ typedef std::map<Hash_table::id_type,id_data> map_type;
-  map_type table;
-  Id_table(const Id_table&); // copying forbidden
-  Id_table& operator=(const Id_table&); // assignment forbidden
-public:
-  Id_table() : table() @+{} // the default and only accessible constructor
-  ~Id_table(); // destructor of all values referenced in the table
-@)
-  void add(Hash_table::id_type id, shared_value v, type_ptr t); // insertion
-  type_p type_of(Hash_table::id_type id) const; // lookup
-  shared_value value_of(Hash_table::id_type id) const; // lookup
-  shared_share address_of(Hash_table::id_type id); // locate
-@)
-  size_t size() const @+{@; return table.size(); }
-  void print(std::ostream&) const;
-};
-
-@ As the table has strict ownership of the contained types, the destructor
-must explicitly delete them.
-
-@< Function def... @>=
-Id_table::~Id_table()
-{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
-  @/{@; delete p->second.type; }
-}
-
-@ The method |add| tries to insert the new mapping from the key |id| to a new
-value-type pair. Doing so, it must distinguish two cases. It tentatively
-inserts a new empty entry for the identifier into the table; this returns a
-pair with a second boolean component telling whether a new entry was added
-(the identifier was unknown as global identifier). If this is the case, we
-continue to fill the slot with a newly allocated shared pointer and the
-provided type. If the identifier was already present, we abandon the old
-shared pointer location, resetting the pointer to it to point to a newly
-allocated one, destroy the old type and insert the new type. All in all, the
-only difference in the code of the two branches is the deletion of the old
-type.
-
-@< Function def... @>=
-void Id_table::add(Hash_table::id_type id, shared_value val, type_ptr type)
-{ std::pair<map_type::iterator,bool> trial=
-    table.insert(std::make_pair(id,id_data()));
-  id_data& slot=trial.first->second;
-  if (trial.second) // a fresh global identifier
-  {@; slot.val.reset(new shared_value(val));
-    slot.type=type.release();
-  }
-  else
-  {@; slot.val.reset(new shared_value(val));
-    delete slot.type;
-    slot.type=type.release();
-  }
-}
-
-@ In order to have |const| lookup methods, we must refrain from inserting into
-the table if the key is not found; we return a null pointer in that case. The
-pointer returned by |type_of| remains owned by the table. Although it does not
-immediately modify the table, |address_of| is classified as a manipulator,
-since the pointer returned may be used to modify a stored value.
-
-@< Function def... @>=
-type_p Id_table::type_of(Hash_table::id_type id) const
-{@; map_type::const_iterator p=table.find(id);
-  return p==table.end() ? NULL : p->second.type;
-}
-shared_value Id_table::value_of(Hash_table::id_type id) const
-{ map_type::const_iterator p=table.find(id);
-  return p==table.end() ? shared_value(value(NULL)) : *p->second.val;
-}
-shared_share Id_table::address_of(Hash_table::id_type id)
-{ map_type::iterator p=table.find(id);
-  if (p==table.end())
-    throw std::logic_error @|
-    (std::string("Identifier without value:")+main_hash_table->name_of(id));
-@.Identifier without value@>
-  return p->second.val;
-}
-
-
-@ We provide a |print| member that shows the contents of the entire table.
-@< Function def... @>=
-
-void Id_table::print(std::ostream& out) const
-{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
-    out << main_hash_table->name_of(p->first) << ": " @|
-        << *p->second.type << ": " << **p->second.val << std::endl;
-}
-
-std::ostream& operator<< (std::ostream& out, const Id_table& p)
-@+{@; p.print(out); return out; }
-
-@~We shouldn't forget to declare that operator, or it won't be found, giving
-kilometres of error message.
-
-@< Declarations of exported functions @>=
-std::ostream& operator<< (std::ostream& out, const Id_table& p);
-
-@ We declare just a pointer to the global identifier table here.
-@< Declarations of global variables @>=
-extern Id_table* global_id_table;
-
-@~Here we set the pointer to a null value; the main program will actually
-create the table.
-
-@< Global variable definitions @>=
-Id_table* global_id_table=NULL;
-
-@*2 Global identifiers.
-%
-When during type checking an identifiers binds to a value in the global
-identifier table, it will be converted into a |global_identifier| object.
-Since a value is already available at this time, we can record the location of
-the (pointer to the shared) value in the |global_identifier| object. Apart
-from avoiding look-up at evaluation time, this measure also allows detaching
-an applied global identifier from a newly assigned value if the latter should
-have a different type, as was done in the |add| method of the identifier
-table. This precaution ensures that evaluation will always result in a value
-of the expected type.
-
-@< Type definitions @>=
-class global_identifier : public identifier
-{ const shared_share address;
-public:
-  explicit global_identifier(Hash_table::id_type id);
-  virtual ~global_identifier() @+ {}
-  virtual void evaluate(level l) const;
-};
-
-@ The constructor for |global_identifier::evaluate| locates the value
-associated to the identifier in the global identifier table.
-
-@< Function definitions @>=
-global_identifier::global_identifier(Hash_table::id_type id)
-: identifier(id), address(global_id_table->address_of(id))
-@+{}
-
-
-@ The function |push_expanded| will be called when a stored value is retrieved
-in a context where a tuple value might need expansion, depending on the |level
-l@;|, but the value is not known to be of tuple type (since type information
-is not retained in compiled expression values).
-
-@< Function definitions @>=
-void push_expanded(expression_base::level l, const shared_value& v)
-{ if(l==expression_base::single_value)
-    push_value(v);
-  else if (l==expression_base::multi_value)
-  { shared_tuple p = std::tr1::dynamic_pointer_cast<tuple_value>(v);
-    if (p==NULL)
-      push_value(v);
-    else
-      for (size_t i=0; i<p->length(); ++i)
-        push_value(p->val[i]); // push components
-  }
-}
-
-@ Evaluating a global identifier returns the value stored in the location
-|address|, possibly expanded if |l==multi_value|, or nothing at all if
-|l==no_value|. However, since initially undefined global variables were added
-to the language, we have to watch out for a (shared) null pointer at
-|*address|.
-
-@< Function definitions @>=
-void global_identifier::evaluate(level l) const
-{ if (address->get()==NULL)
-  { std::ostringstream o;
-    o << "Taking value of uninitialized variable " << name();
-    throw std::runtime_error(o.str());
-  }
-  push_expanded(l,*address);
-}
-
-@*2 Local identifiers.
-%
-Local identifiers will be accessed from the current execution context, which
-is a stack of variable bindings independent of the |execution_stack| (the
-latter bieng used for anonymous components of expressions being evaluated).
-This stack is implemented as a singly linked list, and accessed through a
-(smart) pointer. That pointer is declared local to the evaluator; compared
-with making it a parameter to the |evaluate| methods, this has the advantage
-of not encumbering the numerous such methods that neither use nor modify the
-context in any way (those not involving identifiers or user defined
-functions).
-
-@< Local var... @>=
-context_ptr execution_context;
-
-@ A disadvantege of using a static variable is that in case of exceptions it
-retains the value current before throwing. Therefore we need to explicitly
-reset the execution in such cases. Since it is a smart pointer, resetting
-automatically takes care of adjusting reference counts and maybe deleting
-values that are part of the discarded context.
-
-@< Actions... @>=
-execution_context.reset();
-
-@ We derive the class of local identifiers from that of global ones, which
-takes care of its |print| method.
-
-@< Type definitions @>=
-class local_identifier : public identifier
-{ size_t depth, offset;
-public:
-  explicit local_identifier(Hash_table::id_type id, size_t i, size_t j)
-     : identifier(id), depth(i), offset(j) @+{}
-  virtual void evaluate(level l) const; // only this method is redefined
-};
-
-@ The method |local_identifier::evaluate| looks up a value in the
-|execution_context|.
-
-@< Function definitions @>=
-void local_identifier::evaluate(level l) const
-{@; push_expanded(l,execution_context->elem(depth,offset)); }
-
-@ For an applied identifier, we first look in |id_context| for a binding of
-the identifier, and if found it will be a local identifier, and otherwise we
-look in |global_id_table|. If found in either way, the associated type must
-equal the expected type (if any), or be convertible to it using |coerce|.
-
-@< Other cases for type-checking and converting... @>=
-case applied_identifier:
-{ type_p it; expression_ptr id; size_t i,j;
-  if ((it=id_context->lookup(e.e.identifier_variant,i,j))!=NULL)
-    id.reset(new local_identifier(e.e.identifier_variant,i,j));
-  else if ((it=global_id_table->type_of(e.e.identifier_variant))!=NULL)
-    id.reset(new global_identifier(e.e.identifier_variant));
-  else throw program_error  @|
-       (std::string("Undefined identifier ")
-	+main_hash_table->name_of(e.e.identifier_variant));
-@.Undefined identifier@>
-  if (type.specialise(*it) or coerce(*it,type,id))
-    return id.release();
-  else throw type_error(e,copy(*it),copy(type));
-}
-
-@*1 Function calls.
-%
-One of the most basic tasks of the evaluator is to allow function calls, which
-may involve either buit-in or user-defined functions. We start with
-introducing a type for representing function calls after type checking.
-
-@< Type def... @>=
-struct call_expression : public expression_base
-{ expression function, argument;
-@)
-  call_expression(expression_ptr f,expression_ptr a)
-   : function(f.release()),argument(a.release()) @+{}
-  virtual ~call_expression() @+ {@; delete function; delete argument; }
-  virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-};
-
-@ To print a function call we print the function expression in parentheses,
-and the argument, latter enclosed in parentheses unless it is a tuple
-expression (which already has parentheses), which condition is tested by a
-dynamic cast.
-
-@< Function definitions @>=
-void call_expression::print(std::ostream& out) const
-{ if (dynamic_cast<identifier*>(function)!=NULL) out << *function;
-  else out << '(' << *function << ')';
-  if (dynamic_cast<tuple_expression*>(argument)!=NULL) out << *argument;
-  else out << '(' << *argument << ')';
-}
-
-@*2 Type-checking function calls.
-%
-The function in a call, whether bound to an identifier or given by some other
-type of expression, determines its own type; once this is known, its argument
-and result types can be used to help converting the argument expression and
-the call expression itself. Therefore when encountering a call in
-|convert_expr|, we first get the type of the expression in the function
-position, requiring only that it be a function type, then type-check and
-convert the argument expression using the obtained result type, and build a
-converted function call~|call|. Finally we test if the required type matches
-the return type (in which case we simply return~|call|), or if the return type
-can be coerced to it (in which case we return |call| as transformed by
-|coerce|); if neither is possible we throw a~|type_error|.
-
-@< Other cases for type-checking and converting... @>=
-case function_call:
-{ type_ptr f_type=copy(gen_func_type); // start with generic function type
-  expression_ptr fun(convert_expr(e.e.call_variant->fun,*f_type));
-  expression_ptr arg
-    (convert_expr(e.e.call_variant->arg,f_type->func->arg_type));
-  expression_ptr call (new call_expression(fun,arg));
-  if (type.specialise(f_type->func->result_type) or
-      coerce(f_type->func->result_type,type,call))
-    return call.release();
-  else throw type_error(e,copy(f_type->func->result_type),copy(type));
-}
-
-@*2 Evaluating function calls.
-%
-The evaluation of the call of a built-in function executes a ``wrapper
-function'', that usually consists of a call to a library function sandwiched
-between unpacking and repacking statements; in some simple cases a wrapper
-function may decide to do the entire job itself.
-
-The arguments and results of wrapper functions will be transferred from and to
-stack as a |shared_value|, so a wrapper function has neither arguments nor a
-result type. Thus variables that refer to a wrapper function have the type
-|wrapper_function| defined below; the |level| parameter serves the same
-function as for |evaluate| methods, to inform whether a result value should be
-produced at all, and if so whether it should be expanded on the
-|execution_stack| in case it is a tuple. We shall need to bind values of this
-type to identifiers representing built-in functions, so we derive an
-associated ``primitive type'' from |value_base|.
-
-@< Type definitions @>=
-typedef void (* wrapper_function)(expression_base::level);
-@)
-struct builtin_value : public value_base
-{ wrapper_function val;
-  std::string print_name;
-@)
-  builtin_value(wrapper_function v,const char* n)
-  : val(v), print_name(n) @+ {}
-  virtual void print(std::ostream& out) const
-  @+{@; out << ':' << print_name << ':'; }
-  builtin_value* clone() const @+{@; return new builtin_value(*this); }
-  static const char* name() @+{@; return "built-in function"; }
-private:
-  builtin_value(const builtin_value& v)
-  : val(v.val), print_name(v.print_name)
-  @+{}
-};
-@)
-typedef std::auto_ptr<builtin_value> builtin_ptr;
-typedef std::tr1::shared_ptr<builtin_value> shared_builtin;
-
-@ To evaluate a |call_expression| object we evaluate the function, and then
-test whether it is a built-in function. In the former case we evaluate the
-arguments expanded on th stack and call the built-in function, passing the
-|level| parameter so that if necessary the call can in its turn return and
-expanded result (or no result at all). If not a built-in function, it must be
-a user-defined function, whose execution will be detailed later, but in this
-case it will be more useful to have the argument as a single value. As a
-general mechanism to aid locating errors, we signal if an error was produced
-during the evaluation of a function call, but we make sure the evaluation of
-the arguments(s) is done outside this |try| block, since reporting functions
-that have not yet started executing would be confusing.
-
-@< Function definitions @>=
-void call_expression::evaluate(level l) const
-{ function->eval(); @+ shared_value fun=pop_value();
-@/builtin_value* f=dynamic_cast<builtin_value*>(fun.get());
-  argument->evaluate(f==0 ? single_value : multi_value);
-  try
-  { if (f==NULL)
-      @< Call user-defined function |fun| with argument on |execution_stack| @>
-    else // built-in functions
-      f->val(l); // call the wrapper function, leaving result on the stack
-  }
-  @< Catch-block for exceptions thrown withing function calls @>
-}
-
-@ Although we catch all |std::exception| errors thrown during the execution of
-a function call, we only report it if the function was referred to by an
-identifier, for otherwise the message would become too messy. In the mentioned
-case we tack a line with the function name to the error string, and re-throw
-the error. This will result in a traceback, inner to outer, of interrupted
-(non anonymous) function calls. Different types of error could be concerned:
-|std::runtime_error| thrown in some |evaluate| method or built-in function is
-the most common case, but there could be some |std::logic_error| as well, and
-|std::bad_alloc| is also always a possibility. Since the base class
-|std::exception| provides no means to influence the message produced by the
-|what| method, nor does |std::bad_alloc|, we necessarily have to relabel the
-latter as |std::runtime_error| in order to extend the error message. However
-we can maintain the distinction between a |logic_error| and a |runtime_error|
-using a dynamic cast.
-
-@< Catch-block for exceptions thrown withing function calls @>=
-catch (const std::exception& e)
-{ identifier* p=dynamic_cast<identifier*>(function);
-  if (p!=NULL) // named function
-  {
-    const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
-    if (l_err!=NULL)
-      throw std::logic_error
-        (std::string(e.what())+"\n(in call of "+p->name()+')');
-    throw std::runtime_error
-      (std::string(e.what())+"\n(in call of "+p->name()+')');
-  }
-  throw; // for anonymous function calls, just rethrow the error unchanged
-}
-
-@*1 Let-expressions.
-%
-We shall now consider a simple type of expression in which local variables
-occur, the let-expression. It is equivalent to an anonymous function
-($\lambda$-expression) applied to the expression(s) in the let-declarations,
-but no types need to be declared for the function parameters, since the types
-of the corresponding expressions can be used for this. Nevertheless, we shall
-in converting expressions to internal form forget the syntactic origin of the
-expression, and translate to an application of an anonymous function, giving
-us an occasion to introduce such functions as a new form of~|expression|.
-
-@ We prepare the definition of $\lambda$-expression with the introduction of
-auxiliary types, needed to deal with the general patterns by which formal
-function parameters can be given. The parser produces values accessed by
-pointers to |struct id_pat@;| to describe such patterns. The structure can be
-used directly in a $\lambda$-expression, but we must handle some questions of
-ownership. The value produced by the parser will be destroyed after the
-command is processed, at which time the $\lambda$-expression could still
-exist, so we cannot simply use a non-owned pointer. Moreover a
-$\lambda$-expression can be evaluated one or more times, yielding ``closure''
-values the might outlive the $\lambda$-expression, so appropriate duplication
-or sharing must be organised. We opt for sharing, which will be done by a
-|shared_ptr| supplied with a specialised deleter, since the sharing is done at
-the outermost level only, but complete destruction requires calling
-|destroy_id_pat| (defined in the file \.{parsetree.w}). To get this deleter
-without runtime storage, we wrap it into a zero-size structure.
-
-@< Type def... @>=
-struct id_pat_deleter
-{@; void operator()(id_pat* p) @+{@; destroy_id_pat(p); }};
-typedef std::tr1::shared_ptr<id_pat> shared_pattern;
-  // deleter type does not enter into this
-
-@ We must also treat the question of obtaining ownership of an |id_pat|
-structure. An initial node to be shared must certainly be allocated (the
-parser never excutes |new idpat|), but we might steal a possible |sublist|
-field, replacing it in the original by a null pointer to avoid double
-destruction. However doing a deep copy is a cleaner solution, which avoids
-modifying the parsed expression and isolates us from the allocation policy
-used in the parser, which might change. To provide exception safety during the
-copy, it seems for once easier to explicitly catch and clean up than to
-introduce an intermediate class only for exception safety. At each point where
-an exception might be thrown the argument to |destroy_id_pat| is properly
-|NULL|-terminated.
-
-@< Local function def... @>=
-id_pat copy_id_pat(const id_pat& p)
-{
-  id_pat result=p; // shallow copy
-  try
-  { if ((p.kind&0x2)!=0)
-    { result.sublist=NULL;
-      for (patlist s=p.sublist,*d=&result.sublist;
-           s!=NULL; s=s->next,d=&(*d)->next)
-      @/{@;
-        *d=new pattern_node; (*d)->next=NULL; (*d)->body=copy_id_pat(s->body);
-      }
-    }
-  }
-  catch (...) @+{@; destroy_id_pat(&result); throw; }
-  return result;
-}
-
-@ Now we can define our $\lambda$-expression to use a |shared_pattern|; the
-body is also shared.
-
-@< Type def... @>=
-struct lambda_expression : public expression_base
-{ const shared_pattern param;
-  shared_expression body;
-@)
-  lambda_expression(const id_pat& p, expression_ptr b);
-  virtual ~lambda_expression() @+{} // subobjects do all the work
-  virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-};
-
-@ The main constructor cannot be inside the class definition, as it requires
-the local function |copy_id_pat|. It creates a new node at the head of
-|param|, which will henceforth be shared, and fills it with a deep copy. For
-the body we create sharing as well, which is simpler since the passed
-auto-pointer already gives us ownership.
-
-@< Function def... @>=
-lambda_expression::lambda_expression(const id_pat& p, expression_ptr b)
-: param(new id_pat(copy_id_pat(p)),id_pat_deleter()) , body(b.release())
-@+{}
-
-@ To print an anonymous function, we print the parameter, enclosed in
-parentheses if the full parameter is named, followed by a colon and by the
-function body. The parameter list cannot include types with the current setup,
-as they are not explicitly stored after type analysis.
-
-@< Function definitions @>=
-void lambda_expression::print(std::ostream& out) const
-{ if (param.get()==NULL)
-    out << "()";
-  else if ((param->kind&0x1)!=0)
-    out << '(' << *param << ')';
-  else out << *param;
-  out << ": " << *body;
-}
-
-@ For handling declarations with patterns as left hand side, we need a
-corresponding type pattern; for instance \\{whole}:$(x,,z:(f,))$ requires the
-type \.{(*,*,(*,*))}. These recursive functions construct such types.
-
-@< Local function def... @>=
-type_list_ptr pattern_list(const patlist p);
-type_ptr pattern_type(const id_pat& pat)
-{@; return (pat.kind&0x2)==0
-  ? copy(unknown_type)
-  : make_tuple_type(pattern_list(pat.sublist));
-}
-@)
-type_list_ptr pattern_list(const patlist p)
-{@; return p==NULL ? type_list_ptr(NULL)
-  : make_type_list(pattern_type(p->body),pattern_list(p->next));
-}
-
-@ We shall need some other functions to deal with patterns, all with a
-similar structure. Here we count the number or list the identifiers in a
-pattern.
-
-@< Local function def... @>=
-size_t count_identifiers(const id_pat& pat)
-{ size_t result= pat.kind & 0x1; // 1 if |pat.name| is defined, 0 otherwise
-  if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
-    for (patlist p=pat.sublist; p!=NULL; p=p->next)
-      result+=count_identifiers(p->body);
-  return result;
-}
-
-void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d)
-{ if ((pat.kind & 0x1)!=0)
-    d.push_back(pat.name);
-  if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
-    for (patlist p=pat.sublist; p!=NULL; p=p->next)
-      list_identifiers(p->body,d);
-}
-
-@ Here we do a similar traversal, using a type of the proper structure,
-pushing pairs onto a |bindings|.
-
-@< Local function def... @>=
-void thread_bindings
-(const id_pat& pat,const type_declarator& type, bindings& dst)
-{ if ((pat.kind & 0x1)!=0) dst.add(pat.name,copy(type));
-  if ((pat.kind & 0x2)!=0)
-  { assert(type.kind==tuple_type);
-    type_list l=type.tuple;
-    for (patlist p=pat.sublist; p!=NULL; p=p->next,l=l->next)
-      thread_bindings(p->body,l->t,dst);
-  }
-}
-
-@ Finally, at runtime we shall perform a similar manipulation with an
-appropriate |shared_value|.
-
-@< Local function def... @>=
-void thread_components
-(const id_pat& pat,const shared_value& val, std::vector<shared_value>& dst)
-{ if ((pat.kind & 0x1)!=0) dst.push_back(val);
-  if ((pat.kind & 0x2)!=0)
-  { tuple_value* t=force<tuple_value>(val.get());
-    size_t i=0;
-    for (patlist p=pat.sublist; p!=NULL; p=p->next,++i)
-      thread_components(p->body,t->val[i],dst);
-  }
-}
-
-@ To convert a let-expression, we first deduce the type of the declared
-identifiers from the right hand side of its declaration, then set up new
-bindings for those identifiers with the type found, and finally convert the
-body to the required type in the extended context. Note that the constructed
-|bindings| remains a local variable, but it is temporarily preprended to the
-context by calling |push| and |pop| with the pointer variable |id_context|.
-The |expression| obtained from converting the body is first turned into a
-|lambda_expression|, and then an application of that expression to the
-argument is produced and returned.
-
-@< Other cases for type-checking and converting... @>=
-case let_expr:
-{ let lexp=e.e.let_variant;
-  id_pat& pat=lexp->pattern;
-  type_ptr decl_type=pattern_type(pat);
-  expression_ptr arg(convert_expr(lexp->val,*decl_type));
-  size_t n_id=count_identifiers(pat);
-@/bindings new_bindings(n_id);
-  thread_bindings(pat,*decl_type,new_bindings);
-  new_bindings.push(id_context);
-  expression_ptr body(convert_expr(lexp->body,type));
-  new_bindings.pop(id_context);
-  expression_ptr func(new lambda_expression(pat,body));
-  return new call_expression(func,arg);
-}
-
-@ Before we can dicuss the evaluation of user-defined functions, we need to
-introduce a type for the intermediate value produced by the anonymous
-function, before it is actually called. Such a value is traditionally called a
-closure, and it contains (a reference to) the expression body, as well as the
-evaluation context current at the point the anonymous function is produced.
-
-@< Type def... @>=
-struct closure_value : public value_base
-{ context_ptr cont;
-  shared_pattern param;
-   // used in evaluation only to count arguments
-  shared_expression body;
-@)
-  closure_value@|(context_ptr c,
-                  const shared_pattern& p,
-                  const shared_expression& b) : cont(c), param(p), body(b) @+{}
-  void print(std::ostream& out) const;
-  closure_value* clone() const @+
-  {@; return new closure_value(cont,param,body); }
-  static const char* name() @+{@; return "closure"; }
-};
-typedef std::auto_ptr<closure_value> closure_ptr;
-typedef std::tr1::shared_ptr<closure_value> shared_closure;
-
-@ For now a closure prints just like the |lambda_expression| from which it was
-obtained. One could imagine printing after this body ``where'' followed by the
-bindings held in the |context| field. Even better only the bindings for
-relevant (because referenced) identifiers could be printed.
-
-@< Function def... @>=
-void closure_value::print(std::ostream& out) const
-{ if (param.get()==NULL)
-    out << "()";
-  else if ((param->kind&0x1)!=0)
-    out << '(' << *param << ')';
-  else out << *param;
-  out << ": " << *body;
-}
-
-@ Evaluating a $\lambda$-expression just forms a closure and returns that.
-
-@< Function def... @>=
-void lambda_expression::evaluate(level l) const
-{ if (l!=no_value)
-  @/{@;closure_ptr result(new closure_value(execution_context,param,body));
-     push_value(result);
-  }
-}
-
-@ A call of a user-defined function passes through the same code as that of a
-builtin function; after all, the type check does not make a difference between
-the two kinds, so the distinction can only be made by a dynamic test during
-evaluation (which test was already presented). After the test we come to the
-code below, which in essence a call-by-value $\lambda$-calculus
-evaluator. We must now have a closure as function value, and its evaluation
-just temporarily replaces the current execution context from the one stored in
-the closure, pushes a new frame defined by the argument and the evaluates the
-function body.
-
-@< Call user-defined function |fun| with argument on |execution_stack| @>=
-{ closure_value* f=force<closure_value>(fun.get());
-@)std::vector<shared_value> new_frame;
-  new_frame.reserve(count_identifiers(*f->param));
-  thread_components(*f->param,pop_value(),new_frame);
-@)
-  context_ptr saved_context(execution_context);
-  execution_context.reset(new context(f->cont,new_frame));
-  f->body->evaluate(l); // pass evaluation level |l| to function body
-  execution_context = saved_context;
-}
-
-@*1 User-defined functions.
-%
-Now we shall consider the general case of a user-defined function. In fact all
-that needs to be done is type-check and convert the case |lambda_expr| of an
-|expr| constructed by the parser; the necessary types derived from
-|expression| that provide their implementation were already introduced.
-
-We first test if the required |type| specialises to a function type, i.e.,
-either it was some function type or undefined. Then we get the argument type
-|arg_type| from the function expression the parser provided; we need to
-statically cast from a void pointer that was used to hide from the parser the
-class |type_declarator| that a \Cee-compiler does not understand. We further
-specialise the argument type of |type| to the argument type of the function
-(signalling a type error in the rare cases that a different type was
-expected). Then a call to |thread_bindings| extracts from the specified
-pattern |id_pat| the identifiers it contains, and couples them to the
-associated types extracted from |arg_type|, storing the result in
-|new_bindings|. These bindings are activated during the type-check and
-conversion of the function body, and if all this went well, we check that the
-
-@< Other cases for type-checking and converting... @>=
-case lambda_expr:
-{ if (not type.specialise(gen_func_type))
-    throw type_error(e,copy(gen_func_type),copy(type));
-  lambda fun=e.e.lambda_variant;
-  id_pat& pat=fun->pattern;
-  type_declarator& arg_type=*static_cast<type_p>(fun->arg_type);
-  if (not type.func->arg_type.specialise(arg_type))
-  @/throw type_error(e,
-                     make_function_type(copy(arg_type),copy(unknown_type)),
-                     copy(type));
-  size_t n_id=count_identifiers(pat);
-@/bindings new_bindings(n_id);
-  thread_bindings(pat,arg_type,new_bindings);
-  new_bindings.push(id_context);
-  expression_ptr body(convert_expr(fun->body,type.func->result_type));
-  new_bindings.pop(id_context);
-  return new lambda_expression(pat,body);
-}
-
-@*1 Control structures.
-%
-We shall now introduce conventional control structures, which must of course
-be part of any serious programming language; yet they were implemented only
-after plenty of other language elements were in place, such as
-let-expressions, functions, rows and selection form them, implicit
-conversions. A first control structure it the conditional expression.
-
-@< Type def... @>=
-struct conditional_expression : public expression_base
-{ expression condition, then_branch, else_branch;
-@)
-  conditional_expression(expression_ptr c,expression_ptr t, expression_ptr e)
-   : condition(c.release()),then_branch(t.release()), else_branch(e.release())
-  @+{}
-  virtual ~conditional_expression()
-  {@; delete condition; delete then_branch; delete else_branch; }
-  virtual void evaluate(level l) const;
-  virtual void print(std::ostream& out) const;
-};
-
-@ To print a conditional expression, we reconstruct \&{elif} constructions
-that were eliminated in the parser (and even those that the user did not
-employ, but could have).
-
-@< Function definitions @>=
-void conditional_expression::print(std::ostream& out) const
-{ out << " if "; const conditional_expression* cur=this;
-  do
-  { out << *cur->condition << " then " << *cur->then_branch;
-    conditional_expression* p =
-      dynamic_cast<conditional_expression*>(cur->else_branch);
-    if (p==NULL)
-      break;
-    out << " elif "; cur=p;
-  }
-  while(true); // \Cpp\ does not allow using |p| in final condition
-  out << " else " << *cur->else_branch << " fi ";
-}
-
-@ For type-checking conditional expressions we are in a somewhat similar
-situation as for list displays: both branches need to be of the same type, but
-we might not know which. After checking that the |condition| yields a Boolean
-value, we first convert the else-branch and then the then-branch. This unusual
-order is explained by the possibility of an absent else-branch, which the
-parser will replace by an empty tuple. If this happens in a context that does
-not impose a result type, testing the else-branch first will set |type| to
-|void_type|, after which the voiding coercion is available when type-checking
-the then-branch; the opposite order might result in an error in converting the
-void else-branch to the type of the then-branch.
-
-@< Other cases for type-checking and converting... @>=
-case conditional_expr:
-  { static type_ptr bt=copy(bool_type); // we need a non-|const| copy
-    expression_ptr c (convert_expr(e.e.if_variant->condition,*bt));
-    expression_ptr el (convert_expr(e.e.if_variant->else_branch,type));
-    expression_ptr th (convert_expr(e.e.if_variant->then_branch,type));
-    return new conditional_expression(c,th,el);
-  }
-break;
-
-@ Evaluating a conditional expression ends up evaluating either the
-then-branch or the else-branch.
-
-@< Function definitions @>=
-void conditional_expression::evaluate(level l) const
-{ condition->eval();
-  if (get<bool_value>()->val)
-   then_branch->evaluate(l);
-  else else_branch->evaluate(l);
-}
-
 @*1 Implicit conversion of values between types.
 %
 When interfacing this generic interpreter with a concrete library such as that
@@ -2957,6 +2118,22 @@ bool coerce(const type_declarator& from_type, const type_declarator& to_type,
   return false;
 }
 
+@ List displays and loops produce a row of values of arbitrary (but identical)
+type; when they occur in a context requiring a non-row type, we may be able to
+find a coercion that reconciles the requirements. The following function find
+whether this is possible, and sets |components_type| to the type required for
+the components; by using this mechanism the components themselves obtain a
+context that may generate further conversions to obtain this type.
+
+@< Local function def... @>=
+conversion_record* row_coercion(const type_declarator& final_type,
+                                      type_declarator& component_type)
+{ for (conversion_record* it=&coerce_table[0]; it<&*coerce_table.end(); ++it)
+    if (final_type==*it->to and it->from->kind==row_type)
+    @/{@; component_type.specialise(*it->from->component_type); return it; }
+  return NULL;
+}
+
 @ When in |convert_expr| we encounter a list display when a non-row is
 expected, we single out the cases that a conversion from a row type to the
 required type is available; in that case we continue to convert the component
@@ -2965,21 +2142,19 @@ multiple coercions to the required type are known, the first one in the table
 gets preference; this occurs for required type \.{mat}, and means that the
 component type will then be \.{vec} rather than \.{[int]}).
 
-@< If |type| can be converted from some row-of type... @>=
-{ type_declarator component_type; conversion_record* it;
-  for (it=&coerce_table[0]; it<&*coerce_table.end(); ++it)
-    if (type==*it->to and it->from->kind==row_type)
-    @/{@; component_type.specialise(*it->from->component_type); break; }
-
-  if (it==&*coerce_table.end())
+@< If |type| can be converted from some row-of type, check the components of
+   |e.e.sublist|... @>=
+{ type_declarator comp_type;
+  conversion_record* conv = row_coercion(type,comp_type);
+  if (conv==NULL)
     throw type_error(e,copy(row_of_type),copy(type));
 @)
   std::auto_ptr<list_expression> display@|
       (new list_expression@|(length(e.e.sublist)));
   @/size_t i=0;
     for (expr_list l=e.e.sublist; l!=NULL; l=l->next,++i)
-      display->component[i]=convert_expr(l->e,component_type);
-    return new conversion(*it,expression_ptr(display));
+      display->component[i]=convert_expr(l->e,comp_type);
+    return new conversion(*conv,expression_ptr(display));
 }
 
 @*2 Primitive types for vectors and matrices.
@@ -3293,24 +2468,6 @@ coercion(vec_type,row_of_int_type, "[I]", int_list_convert); @/
 coercion(mat_type,row_of_vec_type, "[V]", vec_list_convert); @/
 coercion(mat_type,row_row_of_int_type, "[[I]]", int_list_list_convert); @/
 
-
-@*1 Casts.
-%
-Casts are very simple to process; they do not need any |expression| type to
-represent them.
-
-@< Other cases for type-checking and converting... @>=
-case cast_expr:
-{ cast c=e.e.cast_variant;
-  type_declarator& ctype=*static_cast<type_p>(c->type);
-  expression_ptr p(convert_expr(c->exp,ctype));
-  if (type.specialise(ctype) or coerce(ctype,type,p))
-    return p.release();
-  else throw type_error(e,copy(ctype),copy(type));
-}
-break;
-
-
 @*1 Array subscription.
 %
 While we have seen expressions to build list, and vectors and matrices out of
@@ -3514,6 +2671,1140 @@ void matrix_slice::evaluate(level l) const
   if (l!=no_value)
     push_value(new vector_value(m->val.column(j->val)));
 }
+
+
+@*1 Identifiers.
+%
+Calling functions, whether built-in or user-defined, requires using
+identifiers, but they occur in other contexts as well, and their treatment is
+no different between these cases. They come in two kinds, local and global
+identifiers, which are treated in fairly different way, and during type
+analysis the two are converted into different kinds of |expression|. The most
+fundamental difference is that for global identifiers a value is already known
+at the time the identifier expression is type-checked, and the type of this
+value can be used; for local identifiers only a type is associated to the
+identifier at that time, and indeed during different evaluations the same
+local identifier may find itself bound to different values.
+
+Global identifiers values will be stored in a global identifier table holding
+values and their types (initially it does so for the built-in functions). The
+values of local identifiers will be stored at runtime in a stack of variable
+bindings, but not their types (these are held elsewhere during type analysis,
+and have disappeared at evaluation time).
+
+In spite of these differences there is some common ground for global and local
+identifiers: they have a name that can be printed. For this reason we derive
+an intermediate structure from |expression_base| that will serve as base for
+both kinds of applied identifier expressions.
+
+@< Type definitions @>=
+struct identifier : public expression_base
+{ Hash_table::id_type code;
+@)
+  explicit identifier(Hash_table::id_type id) : code(id) @+{}
+  virtual ~identifier() @+ {}
+  const char* name() const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ To print an identifier, we get its name from the main hash table.
+
+@< Function definitions @>=
+const char* identifier::name() const
+@+{@; return main_hash_table->name_of(code); }
+void identifier::print(std::ostream& out) const
+@+{@; out<< name(); }
+
+@*2 The global identifier table.
+%
+We need an identifier table to record the values of globally bound identifiers
+(such as those for built-in functions) and their types. The values are held in
+shared pointers, so that we can evaluate a global identifier without
+duplicating the value in the table itself. Modifying the value of such an
+identifier by an assignment will produce a new pointer, so that
+``shareholders'' of the old value will not see any change. There is another
+level of sharing, which affects applied occurrences of the identifier as
+converted during type analysis. The value accessed by such identifiers (which
+could be contained in user-defined function bodies and therefore have long
+lifetime) are expected to undergo change when a new value is assigned to the
+global variable; they will therefore access the location of the shared value
+pointer rather than the value pointed to. However, if a new identifier of the
+same name should be introduced, a new value pointer stored in a different
+location will be created, while existing applied occurrences of the identifier
+will continue to access the old value, avoiding the possibility of accessing a
+value of unexpected type. In such a circumstance, the old shared pointer
+location itself will no longer be owned by the identifier table, so we should
+arrange for shared ownership of that location. This explains that the
+|id_data| structure used for entries in the table has a shared pointer to a
+shared pointer.
+
+For the type component on the other hand, the identifier table will assume
+strict ownership. Giving ownership of the type directly to |id_data| would
+complicate its duplication, and therefore its insertion into the table. We
+then only allow construction of |id_data| objects in an empty state; the
+pointers should be set only after insertion of the |id_data| into the table,
+which then assumes ownership of the type.
+
+@< Type definitions @>=
+
+typedef std::tr1::shared_ptr<shared_value> shared_share;
+struct id_data
+{ shared_share val; @+ type_p type;
+  id_data() : val(),type(NULL)@+ {}
+};
+
+@ We cannot store auto pointers in a table, so upon entering into the table we
+convert type pointers to ordinary pointers, and this is what |type_of| lookup
+will return (the table retains ownership); destruction of the type declarators
+referred to only takes place when the table itself is destructed.
+
+@< Includes... @>=
+#include <map>
+#include "lexer.h" // for the identifier hash table
+
+@~We currently do not do overloading, so a simple associative table with the
+identifier as key is used.
+
+@< Type definitions @>=
+class Id_table
+{ typedef std::map<Hash_table::id_type,id_data> map_type;
+  map_type table;
+  Id_table(const Id_table&); // copying forbidden
+  Id_table& operator=(const Id_table&); // assignment forbidden
+public:
+  Id_table() : table() @+{} // the default and only accessible constructor
+  ~Id_table(); // destructor of all values referenced in the table
+@)
+  void add(Hash_table::id_type id, shared_value v, type_ptr t); // insertion
+  type_p type_of(Hash_table::id_type id) const; // lookup
+  shared_value value_of(Hash_table::id_type id) const; // lookup
+  shared_share address_of(Hash_table::id_type id); // locate
+@)
+  size_t size() const @+{@; return table.size(); }
+  void print(std::ostream&) const;
+};
+
+@ As the table has strict ownership of the contained types, the destructor
+must explicitly delete them.
+
+@< Function def... @>=
+Id_table::~Id_table()
+{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
+  @/{@; delete p->second.type; }
+}
+
+@ The method |add| tries to insert the new mapping from the key |id| to a new
+value-type pair. Doing so, it must distinguish two cases. It tentatively
+inserts a new empty entry for the identifier into the table; this returns a
+pair with a second boolean component telling whether a new entry was added
+(the identifier was unknown as global identifier). If this is the case, we
+continue to fill the slot with a newly allocated shared pointer and the
+provided type. If the identifier was already present, we abandon the old
+shared pointer location, resetting the pointer to it to point to a newly
+allocated one, destroy the old type and insert the new type. All in all, the
+only difference in the code of the two branches is the deletion of the old
+type.
+
+@< Function def... @>=
+void Id_table::add(Hash_table::id_type id, shared_value val, type_ptr type)
+{ std::pair<map_type::iterator,bool> trial=
+    table.insert(std::make_pair(id,id_data()));
+  id_data& slot=trial.first->second;
+  if (trial.second) // a fresh global identifier
+  {@; slot.val.reset(new shared_value(val));
+    slot.type=type.release();
+  }
+  else
+  {@; slot.val.reset(new shared_value(val));
+    delete slot.type;
+    slot.type=type.release();
+  }
+}
+
+@ In order to have |const| lookup methods, we must refrain from inserting into
+the table if the key is not found; we return a null pointer in that case. The
+pointer returned by |type_of| remains owned by the table. Although it does not
+immediately modify the table, |address_of| is classified as a manipulator,
+since the pointer returned may be used to modify a stored value.
+
+@< Function def... @>=
+type_p Id_table::type_of(Hash_table::id_type id) const
+{@; map_type::const_iterator p=table.find(id);
+  return p==table.end() ? NULL : p->second.type;
+}
+shared_value Id_table::value_of(Hash_table::id_type id) const
+{ map_type::const_iterator p=table.find(id);
+  return p==table.end() ? shared_value(value(NULL)) : *p->second.val;
+}
+shared_share Id_table::address_of(Hash_table::id_type id)
+{ map_type::iterator p=table.find(id);
+  if (p==table.end())
+    throw std::logic_error @|
+    (std::string("Identifier without value:")+main_hash_table->name_of(id));
+@.Identifier without value@>
+  return p->second.val;
+}
+
+
+@ We provide a |print| member that shows the contents of the entire table.
+@< Function def... @>=
+
+void Id_table::print(std::ostream& out) const
+{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
+    out << main_hash_table->name_of(p->first) << ": " @|
+        << *p->second.type << ": " << **p->second.val << std::endl;
+}
+
+std::ostream& operator<< (std::ostream& out, const Id_table& p)
+@+{@; p.print(out); return out; }
+
+@~We shouldn't forget to declare that operator, or it won't be found, giving
+kilometres of error message.
+
+@< Declarations of exported functions @>=
+std::ostream& operator<< (std::ostream& out, const Id_table& p);
+
+@ We declare just a pointer to the global identifier table here.
+@< Declarations of global variables @>=
+extern Id_table* global_id_table;
+
+@~Here we set the pointer to a null value; the main program will actually
+create the table.
+
+@< Global variable definitions @>=
+Id_table* global_id_table=NULL;
+
+@*2 Global identifiers.
+%
+When during type checking an identifiers binds to a value in the global
+identifier table, it will be converted into a |global_identifier| object.
+Since a value is already available at this time, we can record the location of
+the (pointer to the shared) value in the |global_identifier| object. Apart
+from avoiding look-up at evaluation time, this measure also allows detaching
+an applied global identifier from a newly assigned value if the latter should
+have a different type, as was done in the |add| method of the identifier
+table. This precaution ensures that evaluation will always result in a value
+of the expected type.
+
+@< Type definitions @>=
+class global_identifier : public identifier
+{ const shared_share address;
+public:
+  explicit global_identifier(Hash_table::id_type id);
+  virtual ~global_identifier() @+ {}
+  virtual void evaluate(level l) const;
+};
+
+@ The constructor for |global_identifier::evaluate| locates the value
+associated to the identifier in the global identifier table.
+
+@< Function definitions @>=
+global_identifier::global_identifier(Hash_table::id_type id)
+: identifier(id), address(global_id_table->address_of(id))
+@+{}
+
+
+@ Evaluating a global identifier returns the value stored in the location
+|address|, possibly expanded if |l==multi_value|, or nothing at all if
+|l==no_value|. However, since initially undefined global variables were added
+to the language, we have to watch out for a (shared) null pointer at
+|*address|.
+
+@< Function definitions @>=
+void global_identifier::evaluate(level l) const
+{ if (address->get()==NULL)
+  { std::ostringstream o;
+    o << "Taking value of uninitialized variable " << name();
+    throw std::runtime_error(o.str());
+  }
+  push_expanded(l,*address);
+}
+
+@*2 Local identifiers.
+%
+Local identifiers will be accessed from the current execution context, which
+is a stack of variable bindings independent of the |execution_stack| (the
+latter bieng used for anonymous components of expressions being evaluated).
+This stack is implemented as a singly linked list, and accessed through a
+(smart) pointer. That pointer is declared local to the evaluator; compared
+with making it a parameter to the |evaluate| methods, this has the advantage
+of not encumbering the numerous such methods that neither use nor modify the
+context in any way (those not involving identifiers or user defined
+functions).
+
+@< Local var... @>=
+context_ptr execution_context;
+
+@ A disadvantege of using a static variable is that in case of exceptions it
+retains the value current before throwing. Therefore we need to explicitly
+reset the execution in such cases. Since it is a smart pointer, resetting
+automatically takes care of adjusting reference counts and maybe deleting
+values that are part of the discarded context.
+
+@< Actions... @>=
+execution_context.reset();
+
+@ We derive the class of local identifiers from that of global ones, which
+takes care of its |print| method.
+
+@< Type definitions @>=
+class local_identifier : public identifier
+{ size_t depth, offset;
+public:
+  explicit local_identifier(Hash_table::id_type id, size_t i, size_t j)
+     : identifier(id), depth(i), offset(j) @+{}
+  virtual void evaluate(level l) const; // only this method is redefined
+};
+
+@ The method |local_identifier::evaluate| looks up a value in the
+|execution_context|.
+
+@< Function definitions @>=
+void local_identifier::evaluate(level l) const
+{@; push_expanded(l,execution_context->elem(depth,offset)); }
+
+@ For an applied identifier, we first look in |id_context| for a binding of
+the identifier, and if found it will be a local identifier, and otherwise we
+look in |global_id_table|. If found in either way, the associated type must
+equal the expected type (if any), or be convertible to it using |coerce|.
+
+@< Other cases for type-checking and converting... @>=
+case applied_identifier:
+{ type_p it; expression_ptr id; size_t i,j;
+  if ((it=id_context->lookup(e.e.identifier_variant,i,j))!=NULL)
+    id.reset(new local_identifier(e.e.identifier_variant,i,j));
+  else if ((it=global_id_table->type_of(e.e.identifier_variant))!=NULL)
+    id.reset(new global_identifier(e.e.identifier_variant));
+  else throw program_error  @|
+       (std::string("Undefined identifier ")
+	+main_hash_table->name_of(e.e.identifier_variant));
+@.Undefined identifier@>
+  if (type.specialise(*it) or coerce(*it,type,id))
+    return id.release();
+  else throw type_error(e,copy(*it),copy(type));
+}
+
+@*1 Function calls.
+%
+One of the most basic tasks of the evaluator is to allow function calls, which
+may involve either buit-in or user-defined functions. We start with
+introducing a type for representing function calls after type checking.
+
+@< Type def... @>=
+struct call_expression : public expression_base
+{ expression function, argument;
+@)
+  call_expression(expression_ptr f,expression_ptr a)
+   : function(f.release()),argument(a.release()) @+{}
+  virtual ~call_expression() @+ {@; delete function; delete argument; }
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ To print a function call we print the function expression in parentheses,
+and the argument, latter enclosed in parentheses unless it is a tuple
+expression (which already has parentheses), which condition is tested by a
+dynamic cast.
+
+@< Function definitions @>=
+void call_expression::print(std::ostream& out) const
+{ if (dynamic_cast<identifier*>(function)!=NULL) out << *function;
+  else out << '(' << *function << ')';
+  if (dynamic_cast<tuple_expression*>(argument)!=NULL) out << *argument;
+  else out << '(' << *argument << ')';
+}
+
+@*2 Type-checking function calls.
+%
+The function in a call, whether bound to an identifier or given by some other
+type of expression, determines its own type; once this is known, its argument
+and result types can be used to help converting the argument expression and
+the call expression itself. Therefore when encountering a call in
+|convert_expr|, we first get the type of the expression in the function
+position, requiring only that it be a function type, then type-check and
+convert the argument expression using the obtained result type, and build a
+converted function call~|call|. Finally we test if the required type matches
+the return type (in which case we simply return~|call|), or if the return type
+can be coerced to it (in which case we return |call| as transformed by
+|coerce|); if neither is possible we throw a~|type_error|.
+
+@< Other cases for type-checking and converting... @>=
+case function_call:
+{ type_ptr f_type=copy(gen_func_type); // start with generic function type
+  expression_ptr fun(convert_expr(e.e.call_variant->fun,*f_type));
+  expression_ptr arg
+    (convert_expr(e.e.call_variant->arg,f_type->func->arg_type));
+  expression_ptr call (new call_expression(fun,arg));
+  if (type.specialise(f_type->func->result_type) or
+      coerce(f_type->func->result_type,type,call))
+    return call.release();
+  else throw type_error(e,copy(f_type->func->result_type),copy(type));
+}
+
+@*2 Evaluating function calls.
+%
+The evaluation of the call of a built-in function executes a ``wrapper
+function'', that usually consists of a call to a library function sandwiched
+between unpacking and repacking statements; in some simple cases a wrapper
+function may decide to do the entire job itself.
+
+The arguments and results of wrapper functions will be transferred from and to
+stack as a |shared_value|, so a wrapper function has neither arguments nor a
+result type. Thus variables that refer to a wrapper function have the type
+|wrapper_function| defined below; the |level| parameter serves the same
+function as for |evaluate| methods, to inform whether a result value should be
+produced at all, and if so whether it should be expanded on the
+|execution_stack| in case it is a tuple. We shall need to bind values of this
+type to identifiers representing built-in functions, so we derive an
+associated ``primitive type'' from |value_base|.
+
+@< Type definitions @>=
+typedef void (* wrapper_function)(expression_base::level);
+@)
+struct builtin_value : public value_base
+{ wrapper_function val;
+  std::string print_name;
+@)
+  builtin_value(wrapper_function v,const char* n)
+  : val(v), print_name(n) @+ {}
+  virtual void print(std::ostream& out) const
+  @+{@; out << ':' << print_name << ':'; }
+  builtin_value* clone() const @+{@; return new builtin_value(*this); }
+  static const char* name() @+{@; return "built-in function"; }
+private:
+  builtin_value(const builtin_value& v)
+  : val(v.val), print_name(v.print_name)
+  @+{}
+};
+@)
+typedef std::auto_ptr<builtin_value> builtin_ptr;
+typedef std::tr1::shared_ptr<builtin_value> shared_builtin;
+
+@ To evaluate a |call_expression| object we evaluate the function, and then
+test whether it is a built-in function. In the former case we evaluate the
+arguments expanded on th stack and call the built-in function, passing the
+|level| parameter so that if necessary the call can in its turn return and
+expanded result (or no result at all). If not a built-in function, it must be
+a user-defined function, whose execution will be detailed later, but in this
+case it will be more useful to have the argument as a single value. As a
+general mechanism to aid locating errors, we signal if an error was produced
+during the evaluation of a function call, but we make sure the evaluation of
+the arguments(s) is done outside this |try| block, since reporting functions
+that have not yet started executing would be confusing.
+
+@< Function definitions @>=
+void call_expression::evaluate(level l) const
+{ function->eval(); @+ shared_value fun=pop_value();
+@/builtin_value* f=dynamic_cast<builtin_value*>(fun.get());
+  argument->evaluate(f==0 ? single_value : multi_value);
+  try
+  { if (f==NULL)
+      @< Call user-defined function |fun| with argument on |execution_stack| @>
+    else // built-in functions
+      f->val(l); // call the wrapper function, leaving result on the stack
+  }
+  @< Catch-block for exceptions thrown withing function calls @>
+}
+
+@ Although we catch all |std::exception| errors thrown during the execution of
+a function call, we only report it if the function was referred to by an
+identifier, for otherwise the message would become too messy. In the mentioned
+case we tack a line with the function name to the error string, and re-throw
+the error. This will result in a traceback, inner to outer, of interrupted
+(non anonymous) function calls. Different types of error could be concerned:
+|std::runtime_error| thrown in some |evaluate| method or built-in function is
+the most common case, but there could be some |std::logic_error| as well, and
+|std::bad_alloc| is also always a possibility. Since the base class
+|std::exception| provides no means to influence the message produced by the
+|what| method, nor does |std::bad_alloc|, we necessarily have to relabel the
+latter as |std::runtime_error| in order to extend the error message. However
+we can maintain the distinction between a |logic_error| and a |runtime_error|
+using a dynamic cast.
+
+@< Catch-block for exceptions thrown withing function calls @>=
+catch (const std::exception& e)
+{ identifier* p=dynamic_cast<identifier*>(function);
+  if (p!=NULL) // named function
+  {
+    const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
+    if (l_err!=NULL)
+      throw std::logic_error
+        (std::string(e.what())+"\n(in call of "+p->name()+')');
+    throw std::runtime_error
+      (std::string(e.what())+"\n(in call of "+p->name()+')');
+  }
+  throw; // for anonymous function calls, just rethrow the error unchanged
+}
+
+@*1 Let-expressions.
+%
+We shall now consider a simple type of expression in which local variables
+occur, the let-expression. It is equivalent to an anonymous function
+($\lambda$-expression) applied to the expression(s) in the let-declarations,
+but no types need to be declared for the function parameters, since the types
+of the corresponding expressions can be used for this. Nevertheless, we shall
+in converting expressions to internal form forget the syntactic origin of the
+expression, and translate to an application of an anonymous function, giving
+us an occasion to introduce such functions as a new form of~|expression|.
+
+@ We prepare the definition of $\lambda$-expression with the introduction of
+auxiliary types, needed to deal with the general patterns by which formal
+function parameters can be given. The parser produces values accessed by
+pointers to |struct id_pat@;| to describe such patterns. The structure can be
+used directly in a $\lambda$-expression, but we must handle some questions of
+ownership. The value produced by the parser will be destroyed after the
+command is processed, at which time the $\lambda$-expression could still
+exist, so we cannot simply use a non-owned pointer. Moreover a
+$\lambda$-expression can be evaluated one or more times, yielding ``closure''
+values the might outlive the $\lambda$-expression, so appropriate duplication
+or sharing must be organised. We opt for sharing, which will be done by a
+|shared_ptr| supplied with a specialised deleter, since the sharing is done at
+the outermost level only, but complete destruction requires calling
+|destroy_id_pat| (defined in the file \.{parsetree.w}). To get this deleter
+without runtime storage, we wrap it into a zero-size structure.
+
+@< Type def... @>=
+struct id_pat_deleter
+{@; void operator()(id_pat* p) @+{@; destroy_id_pat(p); delete p; }};
+typedef std::tr1::shared_ptr<id_pat> shared_pattern;
+  // deleter type does not enter into this
+
+@ We must also treat the question of obtaining ownership of an |id_pat|
+structure. An initial node to be shared must certainly be allocated (the
+parser never excutes |new idpat|), but we might steal a possible |sublist|
+field, replacing it in the original by a null pointer to avoid double
+destruction. However doing a deep copy is a cleaner solution, which avoids
+modifying the parsed expression and isolates us from the allocation policy
+used in the parser, which might change. To provide exception safety during the
+copy, it seems for once easier to explicitly catch and clean up than to
+introduce an intermediate class only for exception safety. At each point where
+an exception might be thrown the argument to |destroy_id_pat| is properly
+|NULL|-terminated.
+
+@< Local function def... @>=
+id_pat copy_id_pat(const id_pat& p)
+{
+  id_pat result=p; // shallow copy
+  try
+  { if ((p.kind&0x2)!=0)
+    { result.sublist=NULL;
+      for (patlist s=p.sublist,*d=&result.sublist;
+           s!=NULL; s=s->next,d=&(*d)->next)
+      @/{@;
+        *d=new pattern_node; (*d)->next=NULL; (*d)->body=copy_id_pat(s->body);
+      }
+    }
+  }
+  catch (...) @+{@; destroy_id_pat(&result); throw; }
+  return result;
+}
+
+@ Now we can define our $\lambda$-expression to use a |shared_pattern|; the
+body is also shared.
+
+@< Type def... @>=
+struct lambda_expression : public expression_base
+{ const shared_pattern param;
+  shared_expression body;
+@)
+  lambda_expression(const id_pat& p, expression_ptr b);
+  virtual ~lambda_expression() @+{} // subobjects do all the work
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ The main constructor cannot be inside the class definition, as it requires
+the local function |copy_id_pat|. It creates a new node at the head of
+|param|, which will henceforth be shared, and fills it with a deep copy. For
+the body we create sharing as well, which is simpler since the passed
+auto-pointer already gives us ownership.
+
+@< Function def... @>=
+inline
+lambda_expression::lambda_expression(const id_pat& p, expression_ptr b)
+: param(new id_pat(copy_id_pat(p)),id_pat_deleter()) , body(b.release())
+@+{}
+
+@ To print an anonymous function, we print the parameter, enclosed in
+parentheses if the full parameter is named, followed by a colon and by the
+function body. The parameter list cannot include types with the current setup,
+as they are not explicitly stored after type analysis.
+
+@< Function definitions @>=
+void lambda_expression::print(std::ostream& out) const
+{ if (param.get()==NULL)
+    out << "()";
+  else if ((param->kind&0x1)!=0)
+    out << '(' << *param << ')';
+  else out << *param;
+  out << ": " << *body;
+}
+
+@ For handling declarations with patterns as left hand side, we need a
+corresponding type pattern; for instance \\{whole}:$(x,,z:(f,))$ requires the
+type \.{(*,*,(*,*))}. These recursive functions construct such types.
+
+@< Local function def... @>=
+type_list_ptr pattern_list(const patlist p);
+type_ptr pattern_type(const id_pat& pat)
+{@; return (pat.kind&0x2)==0
+  ? copy(unknown_type)
+  : make_tuple_type(pattern_list(pat.sublist));
+}
+@)
+type_list_ptr pattern_list(const patlist p)
+{@; return p==NULL ? type_list_ptr(NULL)
+  : make_type_list(pattern_type(p->body),pattern_list(p->next));
+}
+
+@ We shall need some other functions to deal with patterns, all with a
+similar structure. Here we count the number or list the identifiers in a
+pattern.
+
+@< Local function def... @>=
+size_t count_identifiers(const id_pat& pat)
+{ size_t result= pat.kind & 0x1; // 1 if |pat.name| is defined, 0 otherwise
+  if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
+    for (patlist p=pat.sublist; p!=NULL; p=p->next)
+      result+=count_identifiers(p->body);
+  return result;
+}
+
+void list_identifiers(const id_pat& pat, std::vector<Hash_table::id_type>& d)
+{ if ((pat.kind & 0x1)!=0)
+    d.push_back(pat.name);
+  if ((pat.kind & 0x2)!=0) // then a list of subpatterns is present
+    for (patlist p=pat.sublist; p!=NULL; p=p->next)
+      list_identifiers(p->body,d);
+}
+
+@ Here we do a similar traversal, using a type of the proper structure,
+pushing pairs onto a |bindings|.
+
+@< Local function def... @>=
+void thread_bindings
+(const id_pat& pat,const type_declarator& type, bindings& dst)
+{ if ((pat.kind & 0x1)!=0) dst.add(pat.name,copy(type));
+  if ((pat.kind & 0x2)!=0)
+  { assert(type.kind==tuple_type);
+    type_list l=type.tuple;
+    for (patlist p=pat.sublist; p!=NULL; p=p->next,l=l->next)
+      thread_bindings(p->body,l->t,dst);
+  }
+}
+
+@ Finally, at runtime we shall perform a similar manipulation with an
+appropriate |shared_value|.
+
+@< Local function def... @>=
+void thread_components
+(const id_pat& pat,const shared_value& val, std::vector<shared_value>& dst)
+{ if ((pat.kind & 0x1)!=0) dst.push_back(val);
+  if ((pat.kind & 0x2)!=0)
+  { tuple_value* t=force<tuple_value>(val.get());
+    size_t i=0;
+    for (patlist p=pat.sublist; p!=NULL; p=p->next,++i)
+      thread_components(p->body,t->val[i],dst);
+  }
+}
+
+@ To convert a let-expression, we first deduce the type of the declared
+identifiers from the right hand side of its declaration, then set up new
+bindings for those identifiers with the type found, and finally convert the
+body to the required type in the extended context. Note that the constructed
+|bindings| remains a local variable, but it is temporarily preprended to the
+context by calling |push| and |pop| with the pointer variable |id_context|.
+The |expression| obtained from converting the body is first turned into a
+|lambda_expression|, and then an application of that expression to the
+argument is produced and returned.
+
+@< Other cases for type-checking and converting... @>=
+case let_expr:
+{ let lexp=e.e.let_variant;
+  id_pat& pat=lexp->pattern;
+  type_ptr decl_type=pattern_type(pat);
+  expression_ptr arg(convert_expr(lexp->val,*decl_type));
+  size_t n_id=count_identifiers(pat);
+@/bindings new_bindings(n_id);
+  thread_bindings(pat,*decl_type,new_bindings);
+  new_bindings.push(id_context);
+  expression_ptr body(convert_expr(lexp->body,type));
+  new_bindings.pop(id_context);
+  expression_ptr func(new lambda_expression(pat,body));
+  return new call_expression(func,arg);
+}
+
+@ Before we can dicuss the evaluation of user-defined functions, we need to
+introduce a type for the intermediate value produced by the anonymous
+function, before it is actually called. Such a value is traditionally called a
+closure, and it contains (a reference to) the expression body, as well as the
+evaluation context current at the point the anonymous function is produced.
+
+@< Type def... @>=
+struct closure_value : public value_base
+{ context_ptr cont;
+  shared_pattern param;
+   // used in evaluation only to count arguments
+  shared_expression body;
+@)
+  closure_value@|(context_ptr c,
+                  const shared_pattern& p,
+                  const shared_expression& b) : cont(c), param(p), body(b) @+{}
+  void print(std::ostream& out) const;
+  closure_value* clone() const @+
+  {@; return new closure_value(cont,param,body); }
+  static const char* name() @+{@; return "closure"; }
+};
+typedef std::auto_ptr<closure_value> closure_ptr;
+typedef std::tr1::shared_ptr<closure_value> shared_closure;
+
+@ For now a closure prints just like the |lambda_expression| from which it was
+obtained. One could imagine printing after this body ``where'' followed by the
+bindings held in the |context| field. Even better only the bindings for
+relevant (because referenced) identifiers could be printed.
+
+@< Function def... @>=
+void closure_value::print(std::ostream& out) const
+{ if (param.get()==NULL)
+    out << "()";
+  else if ((param->kind&0x1)!=0)
+    out << '(' << *param << ')';
+  else out << *param;
+  out << ": " << *body;
+}
+
+@ Evaluating a $\lambda$-expression just forms a closure and returns that.
+
+@< Function def... @>=
+void lambda_expression::evaluate(level l) const
+{ if (l!=no_value)
+  @/{@;closure_ptr result(new closure_value(execution_context,param,body));
+     push_value(result);
+  }
+}
+
+@ A call of a user-defined function passes through the same code as that of a
+builtin function; after all, the type check does not make a difference between
+the two kinds, so the distinction can only be made by a dynamic test during
+evaluation (which test was already presented). After the test we come to the
+code below, which in essence a call-by-value $\lambda$-calculus
+evaluator. We must now have a closure as function value, and its evaluation
+just temporarily replaces the current execution context from the one stored in
+the closure, pushes a new frame defined by the argument and the evaluates the
+function body.
+
+@< Call user-defined function |fun| with argument on |execution_stack| @>=
+{ closure_value* f=force<closure_value>(fun.get());
+@)std::vector<shared_value> new_frame;
+  new_frame.reserve(count_identifiers(*f->param));
+  thread_components(*f->param,pop_value(),new_frame);
+@)
+  context_ptr saved_context(execution_context);
+  execution_context.reset(new context(f->cont,new_frame));
+  f->body->evaluate(l); // pass evaluation level |l| to function body
+  execution_context = saved_context;
+}
+
+@*1 User-defined functions.
+%
+Now we shall consider the general case of a user-defined function. In fact all
+that needs to be done is type-check and convert the case |lambda_expr| of an
+|expr| constructed by the parser; the necessary types derived from
+|expression| that provide their implementation were already introduced.
+
+We first test if the required |type| specialises to a function type, i.e.,
+either it was some function type or undefined. Then we get the argument type
+|arg_type| from the function expression the parser provided; we need to
+statically cast from a void pointer that was used to hide from the parser the
+class |type_declarator| that a \Cee-compiler does not understand. We further
+specialise the argument type of |type| to the argument type of the function
+(signalling a type error in the rare cases that a different type was
+expected). Then a call to |thread_bindings| extracts from the specified
+pattern |id_pat| the identifiers it contains, and couples them to the
+associated types extracted from |arg_type|, storing the result in
+|new_bindings|. These bindings are activated during the type-check and
+conversion of the function body, and if all this went well, we check that the
+
+@< Other cases for type-checking and converting... @>=
+case lambda_expr:
+{ if (not type.specialise(gen_func_type))
+    throw type_error(e,copy(gen_func_type),copy(type));
+  lambda fun=e.e.lambda_variant;
+  id_pat& pat=fun->pattern;
+  type_declarator& arg_type=*static_cast<type_p>(fun->arg_type);
+  if (not type.func->arg_type.specialise(arg_type))
+  @/throw type_error(e,
+                     make_function_type(copy(arg_type),copy(unknown_type)),
+                     copy(type));
+  size_t n_id=count_identifiers(pat);
+@/bindings new_bindings(n_id);
+  thread_bindings(pat,arg_type,new_bindings);
+  new_bindings.push(id_context);
+  expression_ptr body(convert_expr(fun->body,type.func->result_type));
+  new_bindings.pop(id_context);
+  return new lambda_expression(pat,body);
+}
+
+@*1 Control structures.
+%
+We shall now introduce conventional control structures, which must of course
+be part of any serious programming language; yet they were implemented only
+after plenty of other language elements were in place, such as
+let-expressions, functions, rows and selection form them, implicit
+conversions.
+
+@*2 Conditional expressions.
+%
+A first control structure it the conditional expression.
+
+@< Type def... @>=
+struct conditional_expression : public expression_base
+{ expression condition, then_branch, else_branch;
+@)
+  conditional_expression(expression_ptr c,expression_ptr t, expression_ptr e)
+   : condition(c.release()),then_branch(t.release()), else_branch(e.release())
+  @+{}
+  virtual ~conditional_expression()
+  {@; delete condition; delete then_branch; delete else_branch; }
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ To print a conditional expression, we reconstruct \&{elif} constructions
+that were eliminated in the parser (and even those that the user did not
+employ, but could have).
+
+@< Function definitions @>=
+void conditional_expression::print(std::ostream& out) const
+{ out << " if "; const conditional_expression* cur=this;
+  do
+  { out << *cur->condition << " then " << *cur->then_branch;
+    conditional_expression* p =
+      dynamic_cast<conditional_expression*>(cur->else_branch);
+    if (p==NULL)
+      break;
+    out << " elif "; cur=p;
+  }
+  while(true); // \Cpp\ does not allow using |p| in final condition
+  out << " else " << *cur->else_branch << " fi ";
+}
+
+@ For type-checking conditional expressions we are in a somewhat similar
+situation as for list displays: both branches need to be of the same type, but
+we might not know which. After checking that the |condition| yields a Boolean
+value, we first convert the else-branch and then the then-branch. This unusual
+order is explained by the possibility of an absent else-branch, which the
+parser will replace by an empty tuple. If this happens in a context that does
+not impose a result type, testing the else-branch first will set |type| to
+|void_type|, after which the voiding coercion is available when type-checking
+the then-branch; the opposite order might result in an error in converting the
+void else-branch to the type of the then-branch.
+
+This is the first place where we use that |bool_type| in not |const|; if it
+had been, a possible solution would be to take a copy of it, or to start with
+an undefined type and test afterwards that it has become equal to |bool_type|.
+The latter option would exclude any coercions to \&{bool} in the condition; at
+the time of writing no such coercions exist
+
+@< Other cases for type-checking and converting... @>=
+case conditional_expr:
+  { expression_ptr c (convert_expr(e.e.if_variant->condition,bool_type));
+    expression_ptr el (convert_expr(e.e.if_variant->else_branch,type));
+    expression_ptr th (convert_expr(e.e.if_variant->then_branch,type));
+    return new conditional_expression(c,th,el);
+  }
+break;
+
+@ Evaluating a conditional expression ends up evaluating either the
+then-branch or the else-branch.
+
+@< Function definitions @>=
+void conditional_expression::evaluate(level l) const
+{ condition->eval();
+  if (get<bool_value>()->val)
+   then_branch->evaluate(l);
+  else else_branch->evaluate(l);
+}
+
+@*2 While loops.
+%
+Next we consider |while| loops, which have three parts (the final one is
+optional; if absent it will be a null pointer).
+
+@< Type def... @>=
+struct while_expression : public expression_base
+{ expression condition, body, next_part;
+@)
+  while_expression(expression_ptr c,expression_ptr b, expression_ptr n)
+   : condition(c.release()),body(b.release()), next_part(n.release())
+  @+{}
+  virtual ~while_expression() @+
+  {@; delete condition; delete body; delete next_part; }
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ Printing a |while| expression is straightforward, taking care that
+|next_part| could be null.
+
+@< Function definitions @>=
+void while_expression::print(std::ostream& out) const
+{ out << " while " <<  *condition << " do " << *body;
+  if (next_part!=NULL)
+    out << " next " << *next_part;
+  out << " od ";
+}
+
+@ Type checking is a bit more complicated for |while| loops that for
+conditional expressions, because a row result must be produced. If the context
+requires void type, we shall require the same for the body, knowing that
+generation of a row value will be unconditionally suppressed in these cases
+anyway. In all other cases we proceed for the body expression as for the
+components of a row display (except that there is only one expression in this
+case). The next-part, if present, is always converted requiring void type.
+
+@< Other cases for type-checking and converting... @>=
+case while_expr:
+  { w_loop w=e.e.while_variant;
+    expression_ptr c (convert_expr(w->condition,bool_type));
+    expression_ptr n
+     (w->next_part.kind==tuple_display and w->next_part.e.sublist==NULL
+     ? NULL @|
+     : convert_expr(e.e.while_variant->next_part,void_type));
+    if (type==void_type or type.specialise(row_of_type))
+    { expression_ptr b
+       (convert_expr(w->body, @|
+                     type==void_type ? void_type :*type.component_type));
+      @/return new while_expression(c,b,n);
+    }
+    else
+    @< If |type| can be converted from some row-of type, check |w->body|
+       against its component type, construct the |while_expression|, and apply
+       the appropriate conversion function to it; otherwise |throw| a
+       |type_error| @>
+  }
+break;
+
+@ For for loops we follow the same logic for finding an appropriate
+component type as for list displays.
+
+@< If |type| can be converted from some row-of type, check |w->body| against
+   its component type, construct the |while_expression|, and apply the
+   appropriate conversion function to it; otherwise |throw| a |type_error| @>=
+{ type_declarator comp_type;
+  conversion_record* conv = row_coercion(type,comp_type);
+  if (conv==NULL)
+    throw type_error(e,copy(row_of_type),copy(type));
+@)
+  expression_ptr b(convert_expr(w->body,comp_type));
+  expression_ptr loop(new while_expression(c,b,n));
+  return new conversion(*conv,loop);
+}
+
+
+@ Of course evaluating is what most distinguishes loops from conditionals.
+
+@< Function definitions @>=
+void while_expression::evaluate(level l) const
+{ if (l==no_value)
+    while (condition->eval(),get<bool_value>()->val)
+    { body->void_eval();
+      if (next_part!=NULL)
+        next_part->void_eval();
+    }
+  else
+  { row_ptr result (new row_value(0));
+    while (condition->eval(),get<bool_value>()->val)
+    { body->eval(); result->val.push_back(pop_value());
+      if (next_part!=NULL)
+        next_part->void_eval();
+    }
+    push_value(result);
+  }
+}
+
+@*2 For loops.
+%
+Next we consider |for| loops, which also have three parts, an identifier
+pattern defining the loop variable(s), an in-part giving the object whose
+components are iterated over, and a body that may produce a new value for each
+component of the in-part. We allow iteration over vectors and matrices,
+non-row types which are indexable by integers (so in the matrix case iteration
+is over its columns), in which case the implicit subscription of the in-part
+must be handled appropriately; therefore
+
+@< Type def... @>=
+struct for_expression : public expression_base
+{ id_pat pattern; expression in_part, body; subscr_base::sub_type kind;
+@)
+  for_expression
+   (id_pat p, expression_ptr i, expression_ptr b, subscr_base::sub_type k);
+  virtual ~for_expression() @+
+  {@; destroy_id_pat(&pattern); delete in_part; delete body; }
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ We needed to lift this out of the header file so that the local function
+|copy_id_pat| could be used.
+@< Function definitions @>=
+inline
+for_expression::for_expression@|
+ (id_pat p, expression_ptr i, expression_ptr b,subscr_base::sub_type k)
+   : pattern(copy_id_pat(p)), in_part(i.release()), body(b.release()), kind(k)
+  @+{}
+
+
+@ Printing a |for| expression is straightforward, taking care that
+|next_part| could be null.
+
+@< Function definitions @>=
+void for_expression::print(std::ostream& out) const
+{ out << " for " << pattern.sublist->next->body;
+    if (pattern.sublist->body.kind==0x1)
+      out << '@@' << pattern.sublist->body;
+    out << " in " << *in_part << " do " << *body << " od ";
+}
+
+@ Type checking is more complicated for |for| loops than for |while| loops,
+since more types and potential coercions are involved. we start by processing
+the in-part in a neutral type context, which will on success set |in_type| to
+its a priori type. This type must be indexable by integers (so it is either a
+row-type or vector or matrix), and the call to |subscr_base::indexable| will
+set |comp_type| to the component type resulting from integer subscription.
+
+@< Other cases for type-checking and converting... @>=
+case for_expr:
+  { f_loop f=e.e.for_variant; type_declarator in_type;
+    expression_ptr in_expr(convert_expr(f->in_part,in_type));
+@/  type_declarator comp_type; subscr_base::sub_type which;
+    if (not subscr_base::indexable(in_type,int_type,comp_type,which))
+    { std::ostringstream o;
+      o << "Cannot iterate over value of type " << in_type;
+      throw expr_error(e,o.str());
+    }
+    type_ptr pt = pattern_type(f->id);
+    type_ptr act=make_tuple_type(make_type_list@|
+      (copy(int_type),make_type_singleton(copy(comp_type))));
+    if (not pt->specialise(*act))
+      throw expr_error(e,"Improper structure of loop variable pattern");
+    size_t n_id = count_identifiers(f->id);
+    bindings bind(n_id); thread_bindings(f->id,*act,bind);
+    type_declarator body_type, *btp; conversion_record* conv=NULL;
+    if (type==void_type)
+      btp=&void_type;
+    else if (type.specialise(row_of_type))
+      btp=type.component_type;
+    else if ((conv=row_coercion(type,body_type))!=NULL)
+      btp=&body_type;
+    else throw type_error(e,copy(row_of_type),copy(type));
+    bind.push(id_context);
+    expression_ptr body(convert_expr (f->body,*btp));
+    bind.pop(id_context);
+    expression_ptr loop(new for_expression(f->id,in_expr,body,which));
+    return conv==NULL ? loop.release() : new conversion(*conv,loop);
+  }
+break;
+
+@ For evaluating |for| loops we must take care to interpret the |kind| field
+when selecting a component from the in-part. Because of differences in the thy
+of |in_val|, some code must be duplicated, which we do as mush as possible by
+sharing a module between the various loop bodies.
+
+We can start evaluating the |in_part| regardless of |kind|, but for deducing
+the number of iterations we must already distinguish on |kind| to predict the
+type of the in-part. A |loop_frame| is constructed for the new variable(s),
+but the shared pointers it contains must be different for each iteration,
+because the body might get hold, through a closure that incorporates the
+|context| constructed below, of a copy of those pointers, and this closure
+should not get to see subsequent values of variables. On the other hand, the
+syntax does not allow users to name the entire tuple |loop_var| formed of the
+loop index and the in-part component, so this pointer cannot end up in the
+|loop_frame| and it may remain the same between iterations.
+
+@< Function definitions @>=
+void for_expression::evaluate(level l) const
+{ size_t n_id = count_identifiers(pattern);
+  context_ptr saved_context=execution_context;
+  in_part->eval();
+  shared_tuple loop_var(new tuple_value(2));
+       // this is safe to re-use between iterations
+  std::vector<shared_value> loop_frame; loop_frame.reserve(n_id);
+
+  row_ptr result(NULL);
+  if (kind==subscr_base::row_entry)
+  { shared_row in_val = get<row_value>();
+    size_t n=in_val->val.size();
+    if (l!=no_value)
+      result = row_ptr(new row_value(n));
+    for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
+    { loop_var->val[1]=in_val->val[i];
+      @< Set |loop_var->val[0]| to |i|, fill |loop_frame| according to
+      |pattern| with values from |loop_var|, create a new |context| and
+      evaluate the |loop_body| in it, and maybe assign |result->val[i]|
+      from it @>
+    }
+  }
+  else if (kind==subscr_base::vector_entry)
+  { shared_vector in_val = get<vector_value>();
+    size_t n=in_val->val.size();
+    if (l!=no_value)
+      result = row_ptr(new row_value(n));
+    for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
+    { loop_var->val[1].reset(new int_value(in_val->val[i]));
+      @< Set |loop_var->val[0]| to |i|,... @>
+    }
+  }
+  else if (kind==subscr_base::matrix_column)
+  { shared_matrix in_val = get<matrix_value>();
+    size_t n=in_val->val.numColumns();
+    if (l!=no_value)
+      result = row_ptr(new row_value(n));
+    for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
+    { loop_var->val[1].reset(new vector_value(in_val->val.column(i)));
+      @< Set |loop_var->val[0]| to |i|,... @>
+    }
+  }
+  execution_context = saved_context;
+  if (l!=no_value)
+    push_value(result);
+}
+
+@ Since the module below exists only for the sake of source-code sharing, we
+don't bother to put braces around its expansion, as they are not needed in the
+uses above.
+
+We set the in-part component stored in |loop_var->val[1]| separately for the
+various values of |kind|, but |loop_var->val[0]| is always the (integral) loop
+index. Once initialised, |loop_var| is passed through the function
+|thread_components| to set up |loop_frame|, whose pointers are copied into a
+new |context| that extends the initial |saved_context| to form the new
+|execution_context|; the evaluation of the loop body is then standard.
+
+@< Set |loop_var->val[0]| to |i|,... @>=
+loop_var->val[0].reset(new int_value(i)); // must be newly created each time
+thread_components(pattern,loop_var,loop_frame);
+execution_context.reset(new context(saved_context,loop_frame));
+if (l==no_value)
+  body->void_eval();
+else
+{@; body->eval(); result->val[i]=pop_value(); }
+
+@*1 Casts.
+%
+Casts are very simple to process; they do not need any |expression| type to
+represent them.
+
+@< Other cases for type-checking and converting... @>=
+case cast_expr:
+{ cast c=e.e.cast_variant;
+  type_declarator& ctype=*static_cast<type_p>(c->type);
+  expression_ptr p(convert_expr(c->exp,ctype));
+  if (type.specialise(ctype) or coerce(ctype,type,p))
+    return p.release();
+  else throw type_error(e,copy(ctype),copy(type));
+}
+break;
 
 
 @*1 Assignments.

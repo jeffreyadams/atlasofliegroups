@@ -540,11 +540,13 @@ function, these type being determined by the values provided.
 @< Typedefs... @>=
 typedef struct let_expr_node* let;
 
-@~After parsing, let-expression will have a single let-bindings followed by a
-body giving the value to be returned. During parsing however, we may form a
-list of let-bindings that will be converted into one with a tuple as left hand
-side. We therefore define a node for the list of bindings, and a structure for
-the whole let-expression that contains one binding and a body.
+@~After parsing, let-expression will have a single let-binding followed by a
+body giving the value to be returned. During parsing however, we may form
+intermediate values containing list of let-bindings, that will later be
+converted into a single one with a tuple as left hand side. We therefore
+define a node type |let_node| for a list of bindings, and a structure
+|let_expr_node| for a complete let-expression, containing only one binding,
+but in addition a body.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 typedef struct let_node* let_list;
@@ -834,6 +836,102 @@ expr make_conditional_node(expr c, expr t, expr e)
 { cond n=new conditional_node; n->condition=c;
   n->then_branch=t; n->else_branch=e;
 @/expr result; result.kind=conditional_expr; result.e.if_variant=n;
+  return result;
+}
+
+@*2 Loops.
+%
+Loops are a cornerstone of any form of non-recursive programming. The two main
+flavours provided are traditional: |while| and |for| loops; the former provide
+open-ended iteration, while the latter fix the range of iteration at entry.
+However we provide a relative innovation by having both types deliver a value:
+this will be a row value with one entry for each iteration performed.
+
+@< Typedefs... @>=
+typedef struct while_node* w_loop;
+typedef struct for_node* f_loop;
+
+@~A |while| loop has three elements: a condition (which determines whether an
+iteration will be undertaken), a body (which contributes an entry to the
+result), and an optional next-part (an void expression serving to advance any
+variables for the next iteration). A |for| loop also has three parts, a
+pattern introducing variables, an expression iterated over (the in-part) and
+the loop body.
+
+@< Structure and typedef declarations for types built upon |expr| @>=
+struct while_node
+ {@; expr condition; expr body; expr next_part; };
+struct for_node
+ {@; struct id_pat id; expr in_part; expr body; };
+
+@ The tags used for these expressions are |while_expr| and |for_expr|.
+
+@< Enumeration tags for |expr_kind| @>= while_expr, for_expr, @[@]
+
+@~The variant of |expr| values with an |w_loop| as parsing value is tagged
+|while_variant|.
+
+@< Variants... @>=
+w_loop while_variant;
+f_loop for_variant;
+
+@ To print a |while| or |for| expression at parser level, we reproduce the
+input syntax. An absent next-part will be represented as an empty tuple
+display, and output will be suppressed for this case.
+
+@< Cases for printing... @>=
+case while_expr:
+{ w_loop w=e.e.while_variant;
+  out << " while " << w->condition << " do " << w->body;
+  if (w->next_part.kind!=tuple_display or w->next_part.e.sublist!=NULL)
+    out << " next " << w->next_part;
+  out << " od ";
+}
+break;
+case for_expr:
+{ f_loop f=e.e.for_variant;
+  out << " for " << f->id.sublist->next->body;
+    if (f->id.sublist->body.kind==0x1)
+      out << '@@' << f->id.sublist->body;
+  out << " in " << f->in_part << " do " << f->body << " od ";
+}
+break;
+
+@~Cleaning up is exactly like that for conditional expressions.
+
+@< Cases for destroying... @>=
+case while_expr:
+  destroy_expr(e.e.while_variant->condition);
+  destroy_expr(e.e.while_variant->body);
+  destroy_expr(e.e.while_variant->next_part);
+  delete e.e.while_variant;
+break;
+case for_expr:
+  destroy_id_pat(&e.e.for_variant->id);
+  destroy_expr(e.e.for_variant->in_part);
+  destroy_expr(e.e.for_variant->body);
+  delete e.e.for_variant;
+break;
+
+
+@ To build a |while_node| or |for_node|, here are yet two
+more \\{make}-functions.
+
+@< Declarations of functions in \Cee-style for the parser @>=
+expr make_while_node(expr c, expr b, expr n);
+expr make_for_node(struct id_pat id, expr ip, expr b);
+
+@~They are quite straightforward, as usual.
+
+@< Definitions of functions in \Cee... @>=
+expr make_while_node(expr c, expr b, expr n)
+{ w_loop w=new while_node; w->condition=c; w->body=b; w->next_part=n;
+@/expr result; result.kind=while_expr; result.e.while_variant=w;
+  return result;
+}
+expr make_for_node(struct id_pat id, expr ip, expr b)
+{ f_loop f=new for_node; f->id=id; f->in_part=ip; f->body=b;
+@/expr result; result.kind=for_expr; result.e.for_variant=f;
   return result;
 }
 
