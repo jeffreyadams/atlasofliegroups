@@ -269,7 +269,7 @@ void type_of_Cartan_matrix_wrapper (expression_base::level l)
   lietype::LieType lt=dynkin::Lie_type(m->val,true,true,pi);
   if (l==expression_base::no_value)
     return;
-  push_value(new Lie_type_value());
+  push_value(new Lie_type_value(lt));
   push_value(new vector_value(latticetypes::CoeffList(pi.begin(),pi.end())));
   if (l==expression_base::single_value)
     wrap_tuple(2);
