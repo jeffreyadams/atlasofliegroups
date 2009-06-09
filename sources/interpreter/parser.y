@@ -98,7 +98,7 @@
 input:  '\n'			{ YYABORT } /* null input, skip evaluator */
         | exp    '\n'	        { *parsed_expr=$1; }
         | SET pattern '=' exp '\n' { global_set_identifier($2,$4); YYABORT }
-        | SET IDENT '(' id_specs ')' '=' exp
+        | SET IDENT '(' id_specs ')' '=' exp '\n'
 	  { struct id_pat id; id.kind=0x1; id.name=$2;
 	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7));
             YYABORT
