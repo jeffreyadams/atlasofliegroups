@@ -701,8 +701,9 @@ then we prepare for output redirection.
          code = c== '<' ? LEQ : GEQ;
   break; case ':': prevent_termination=c;
     code = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
-  break; case '^':
   break; case '=': prevent_termination=code=c;
+  break; case '!': code = input.shift()=='=' ? NEQ : (input.unshift(),c);
+         prevent_termination='=';
   break; case '+': prevent_termination=code=c;
          code = input.shift()=='=' ? PLUSAB : (input.unshift(),c);
   break; case '*': prevent_termination=c;
