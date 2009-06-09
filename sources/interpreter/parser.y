@@ -98,9 +98,14 @@
 input:  '\n'			{ YYABORT } /* null input, skip evaluator */
         | exp    '\n'	        { *parsed_expr=$1; }
         | SET pattern '=' exp '\n' { global_set_identifier($2,$4); YYABORT }
+        | SET IDENT '(' id_specs ')' '=' exp
+	  { struct id_pat id; id.kind=0x1; id.name=$2;
+	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7));
+            YYABORT
+	  }
         | IDENT ':' exp '\n'
-		{ struct id_pat p; p.kind=0x1; p.name=$1;
-                  global_set_identifier(p,$3); YYABORT }
+		{ struct id_pat id; id.kind=0x1; id.name=$1;
+                  global_set_identifier(id,$3); YYABORT }
         | IDENT ':' type '\n'   { global_declare_identifier($1,$3);; YYABORT }
         | QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
         | QUIET	'\n'		{ *verbosity =0; YYABORT } /* quiet mode */
