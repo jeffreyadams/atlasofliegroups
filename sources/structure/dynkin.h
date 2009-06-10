@@ -119,7 +119,8 @@ class DynkinDiagram {
 
   bool isString() const;
 
-  Edge labelEdge() const;
+  size_t num_labels() const { return d_downedge.size(); }
+  Edge labelEdge(size_t i=0) const ;
 
   Multiplicity maxMultiplicity() const;
 

@@ -178,10 +178,10 @@ bitset::RankFlags DynkinDiagram::extremities() const
   In fact the labelled edge should be unique for valid uses, but the |assert|
   below should not prevent a relevant error to be thrown in erroneous cases
 */
-Edge DynkinDiagram::labelEdge() const
+Edge DynkinDiagram::labelEdge(size_t i) const
 {
-  assert(d_downedge.size()>=1);
-  return d_downedge[0].first;
+  assert(d_downedge.size()>i);
+  return d_downedge[i].first;
 }
 
 
@@ -309,20 +309,38 @@ lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm,
 			  bool Bourbaki, bool check,
 			  setutils::Permutation& pi)
 {
+  if (check)
+  {
+    if (cm.numRows()!=cm.numColumns())
+      throw std::runtime_error("Non square (Cartan) matrix");
+    if (cm.numRows()>constants::RANK_MAX)
+      throw std::runtime_error ("Rank of matrix exceeds implementation limit");
+  }
+
   DynkinDiagram d(cm);
   bitset::RankFlagsList cl = components(d);
 
   // do the normalization as in normalize
   pi = componentOrder(cl,d.rank());
   lietype::LieType result = componentNormalize(pi,cl,d,Bourbaki);
+
   if (check)
   {
+   for (size_t i=0; i<result.size(); ++i)
+    {
+      lietype::SimpleLieType slt=result[i];
+      if ((slt.type()=='E' and slt.rank()>8) or
+	  (slt.type()=='F' and slt.rank()>4) or
+	  (slt.type()=='G' and slt.rank()>2))
+	  throw std::runtime_error
+	    ("Not a Cartan matrix of any semisimple type");
+    }
     for (size_t i=0; i<d.rank(); ++i)
       for (size_t j=0; j<d.rank(); ++j)
 	if (cm(pi[i],pi[j])!=result.Cartan_entry(i,j))
 	  throw std::runtime_error
 	    ("Not a Cartan matrix of any semisimple type");
-  }
+   }
   return result;
 
 }
