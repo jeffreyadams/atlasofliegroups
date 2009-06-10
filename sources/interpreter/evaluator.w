@@ -1003,7 +1003,7 @@ typedef std::tr1::shared_ptr<rat_value> shared_rat;
 struct string_value : public value_base
 { std::string val;
 @)
-  explicit string_value(const char* t) : val(t) @+ {}
+  explicit string_value(const std::string& s) : val(s) @+ {}
   ~string_value()@+ {}
   void print(std::ostream& out) const @+{@; out << '"' << val << '"'; }
   string_value* clone() const @+{@; return new string_value(*this); }
@@ -2159,9 +2159,9 @@ component type will then be \.{vec} rather than \.{[int]}).
 
 @*2 Primitive types for vectors and matrices.
 %
-Before we can specify the conversion routines, we must specify the types into
-which lists will be packed, and which will be considered as primitive at the
-level of the evaluator.
+Before we can specify our main conversion routines, we must specify the types
+into which lists will be packed, and which will be considered as primitive at
+the level of the evaluator.
 
 @< Other primitive type tags @>=
 vector_type, matrix_type, rational_vector_type, @[@]
@@ -2300,7 +2300,7 @@ void matrix_value::print(std::ostream& out) const
   }
 }
 
-@*2 Implementing the conversion functions.
+@*2 Implementing some conversion functions.
 %
 The conversions into vectors or matrices these use an auxiliary function
 |row_to_weight|, which constructs a new |Weight| from a row of integers,
@@ -4230,11 +4230,12 @@ break;
 %
 Let us recapitulate what will happen. The parser will read what the user
 types, and returns an |expr| value. Then we shall call |convert_expr| for this
-value, and if this does not throw any exceptions, we are ready to call
-|evaluate| (for the |expr| value that may have been modified by the insertion
-of conversion functions) of the |evaluate| method of the |expression| value
-returned by |convert_expr|; after this main program will print the result. The
-call to |convert_expr| is done via |analyse_types|.
+value, which will either produce (a pointer to) an executable object of a type
+derived from |expression_base|, or throw an exception in case a type error or
+other problem is detected. In the former case we are ready to call the
+|evaluate| method of the value returned by |convert_expr|; after this main
+program will print the result. The call to |convert_expr| is done via
+|analyse_types|, takes care of printing error messages for exceptions thrown.
 
 @< Declarations of exported functions @>=
 type_ptr analyse_types(const expr& e,expression_ptr& p)
@@ -4392,11 +4393,25 @@ void greater_wrapper(expression_base::level l)
 @)
 void greatereq_wrapper(expression_base::level l)
 { shared_int j=get<int_value>(); shared_int i=get<int_value>();
-  if (j->val==0) throw std::runtime_error("Division by zero");
   if (l!=expression_base::no_value)
     push_value(new bool_value(i->val>=j->val));
 }
 
+@ To have some operations on strings, we define a function for concatenating
+them, and one for converting integers to their string representation (of
+course this remains a very limited repertoire).
+@< Local function definitions @>=
+void concatenate_wrapper(expression_base::level l)
+{ shared_string b=get<string_value>(); shared_string a=get<string_value>();
+  if (l!=expression_base::no_value)
+    push_value(new string_value(a->val+b->val));
+}
+void int_format_wrapper(expression_base::level l)
+{ shared_int n=get<int_value>();
+  std::ostringstream o; o<<n->val;
+  if (l!=expression_base::no_value)
+    push_value(new string_value(o.str()));
+}
 
 @ Here is a simple function that outputs a string without its quotes, but with
 a terminating newline. This is the first place in this file where we produce
@@ -4607,6 +4622,8 @@ install_function(less_wrapper,"<","(int,int->bool)");
 install_function(lesseq_wrapper,"<=","(int,int->bool)");
 install_function(greater_wrapper,">","(int,int->bool)");
 install_function(greatereq_wrapper,">=","(int,int->bool)");
+install_function(concatenate_wrapper,"concatenate","(string,string->string)");
+install_function(int_format_wrapper,"int_format","(int->string)");
 install_function(print_wrapper,"print","(string->)");
 install_function(vector_div_wrapper,"vec_div","(vec,int->ratvec)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");

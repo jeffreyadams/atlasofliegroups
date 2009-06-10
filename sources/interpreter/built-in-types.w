@@ -223,7 +223,7 @@ very easy to implement.
 }
 
 
-@*2 Printing Lie types.
+@*2 Auxiliary functions for Lie types.
 Before we do anything more complicated with this primitive type, we must
 ensure that we can print its values. We can use an operator defined in
 \.{basic\_io.cpp}.
@@ -236,8 +236,7 @@ void Lie_type_value::print(std::ostream& out) const
     out << "Lie type '" << val << '\'';
 }
 
-@*2 Auxiliary functions for Lie types.
-Here is a function that computes the Cartan matrix for a given Lie type.
+@ Here is a function that computes the Cartan matrix for a given Lie type.
 
 @h "prerootdata.h"
 @< Local function definitions @>=
@@ -262,9 +261,6 @@ construction would most likely crash.
 @< Local function definitions @>=
 void type_of_Cartan_matrix_wrapper (expression_base::level l)
 { shared_matrix m=get<matrix_value>();
-  if (m->val.numRows()!=m->val.numColumns())
-    throw std::runtime_error("Non square (Cartan) matrix");
-@.Non square matrix@>
   setutils::Permutation pi;
   lietype::LieType lt=dynkin::Lie_type(m->val,true,true,pi);
   if (l==expression_base::no_value)
@@ -290,6 +286,19 @@ void semisimple_rank_wrapper(expression_base::level l)
     push_value(new int_value(t->val.semisimple_rank()));
 }
 
+@ For programming it is important to know the number of factors in a
+Lie type, so that for instance the correct number of inner class letters can
+be prepared (for this purpose type $T_n$ counts as $n$ factors). Since we
+expanded any $T_n$ into factors $T_1$, we can simply call the |size| method of
+the stored |lietype::LieType| value.
+
+@< Local function definitions @>=
+void nr_factors_wrapper(expression_base::level l)
+{ shared_Lie_type t=get<Lie_type_value>();
+  if (l!=expression_base::no_value)
+    push_value(new int_value(t->val.size()));
+}
+
 
 @ Again we install our wrapper functions.
 @< Install wrapper functions @>=
@@ -298,6 +307,7 @@ install_function(type_of_Cartan_matrix_wrapper
 		,@|"type_of_Cartan_matrix","(mat->LieType,vec)");
 install_function(Lie_rank_wrapper,"Lie_rank","(LieType->int)");
 install_function(semisimple_rank_wrapper,"semisimple_rank","(LieType->int)");
+install_function(nr_factors_wrapper,"nr_factors","(LieType->int)");
 
 @*2 Finding lattices for a given Lie type.
 %
@@ -699,7 +709,7 @@ void type_of_root_datum_wrapper(expression_base::level l)
 
 @*2 Building a root datum.
 %
-To create a root datum value, the user must specify a Lie type and a square
+To create a root datum value, the user may specify a Lie type and a square
 matrix of the size of the rank of the root datum, which specifies generators
 of the desired weight lattice as a sub-lattice of the lattice of weights
 associated to the simply connected group of the type given. The given weights
@@ -734,6 +744,50 @@ void root_datum_wrapper(expression_base::level l)
     throw; // |"Dependent lattice generators"|, no need to rephrase
 @.Dependent lattice generators@>
   }
+}
+
+@ Alternatively, a user may just specify lists of simple roots and coroots,
+which implicitly define a Lie type and weight lattice. To make sure the root
+datum construction will succeed, we must test the ``Cartan'' matrix computed
+from these data to be a valid one.
+
+@< Local function definitions @>=
+void raw_root_datum_wrapper(expression_base::level l)
+{ size_t rank = get<int_value>()->val;
+  shared_row simple_coroots=get<row_value>();
+  shared_row simple_roots=get<row_value>();
+
+  if (simple_roots->val.size()!=simple_coroots->val.size())
+    throw std::runtime_error
+    ("Numbers "+num(simple_roots->val.size())+","
+      +num(simple_coroots->val.size())+  " of simple (co)roots mismatch");
+@.Numbers of simple roots...@>
+
+  latticetypes::WeightList s,c;
+  s.reserve(simple_roots->val.size());
+  c.reserve(simple_roots->val.size());
+
+  for (size_t i=0; i<simple_roots->val.size(); ++i)
+  { const latticetypes::Weight& sr
+      =force<vector_value>(simple_roots->val[i].get())->val;
+    const latticetypes::Weight& scr
+      =force<vector_value>(simple_coroots->val[i].get())->val;
+
+    if (sr.size()!=rank or scr.size()!=rank)
+    throw std::runtime_error
+      ("Simple (co)roots not all of size "+num(rank));
+    s.push_back(sr);
+    c.push_back(scr);
+  }
+
+  prerootdata::PreRootDatum prd(s,c,rank);
+  try @/{@; setutils::Permutation dummy;
+    dynkin::Lie_type(prd.Cartan_matrix(),true,true,dummy);
+  }
+  catch (std::runtime_error& e)
+  {@; throw std::runtime_error("Invalid simple (co)roots"); }
+  if (l!=expression_base::no_value)
+    push_value(new root_datum_value @| (rootdata::RootDatum(prd)));
 }
 
 @ To emulate what is done in the Atlas software, we write a function that
@@ -1063,6 +1117,8 @@ void integrality_points_wrapper(expression_base::level l)
 install_function(type_of_root_datum_wrapper,@|"type_of_root_datum"
                 ,"(RootDatum->LieType)");
 install_function(root_datum_wrapper,@|"root_datum","(LieType,mat->RootDatum)");
+install_function(raw_root_datum_wrapper,
+                 @|"raw_root_datum","([vec],[vec],int->RootDatum)");
 install_function(quotient_basis_wrapper
 		,@|"quotient_basis","(LieType,[ratvec]->mat)");
 install_function(quotient_datum_wrapper
@@ -1257,7 +1313,7 @@ lies in another component of the diagram we have a Complex inner class.
 
   type.reserve(comp.size()+r-s);
   inner_class.reserve(comp.size()+r-s); // certainly enough
-  type = dynkin::Lie_type(C,true,false,pi);
+  type = dynkin::Lie_type(C,true,false,pi); // no need to check validity of |C|
   assert(type.size()==comp.size());
   size_t offset=0; // accumulated rank of simple factors seen
 
