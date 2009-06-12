@@ -56,6 +56,7 @@ control to the file active at the point they were opened.
 namespace atlas
 { namespace interpreter
  {
+@< Preliminary type definitions @>@;
 @< Class declaration @>@;
 @< Inline function definitions @>@;
 @< Declarations of static variables @>@;
@@ -132,7 +133,7 @@ define a static variable with a pointer to this input buffer.
 extern BufferedInput* main_input_buffer;
 
 @~We initialise this variable to the null pointer; the main program will make
-it point to the main hash table once it is allocated.
+it point to the main input buffer once it is allocated.
 
 @< Definitions of static variables @>=
 BufferedInput* main_input_buffer=NULL;
@@ -179,9 +180,22 @@ const rl_type readline; // readline function
 const add_hist_type add_hist; // history function
 unsigned long line_no; // current line number
 int cur_lines,prompt_length; // local variables
-std::stack<std::pair<std::ifstream*,std::string> > input_stack;
-  // active input streams
+std::stack<input_record> input_stack; // active input streams
 std::istream* stream; // points to the current input stream
+
+@ For every currently open auxiliary input stream (necessarily a file stream),
+we store a pointer to the |ifstream| object, the file name (for error
+reporting) and the line number of \emph{the stream that was interrupted} by
+opening this auxiliary file (the line number in the file itself will be held
+in the input buffer, as long as it is not interrupted).
+
+@< Preliminary type definitions @>=
+struct input_record
+{ std::ifstream* stream; // pointer owned by parent object
+  std::string name;
+  unsigned long line_no;
+  input_record(const char* file_name, unsigned long line);
+};
 
 @ There are two constructors, one for associating an input buffer to some
 (raw) |istream| object (which may represent a disk file or pipe), another for
@@ -193,60 +207,106 @@ request no input editing). Constructing the class does not yet fetch a line.
 BufferedInput::BufferedInput (std::istream& s)
 @/:
 base_stream(s),line_buffer(),p(NULL),prompt(""),prompt2(""),temp_prompt(""),@|
-readline(NULL),add_hist(NULL),line_no(1),cur_lines(0),input_stack()
-{@; stream=&base_stream; }
+readline(NULL),add_hist(NULL),line_no(1),cur_lines(0),input_stack(),
+stream(&base_stream)
+@+{}
 
 BufferedInput::BufferedInput
 (const char* pr, rl_type rl, add_hist_type ah,const char* pr2)
 @/:
 base_stream(std::cin),line_buffer(),p(NULL),
 prompt(pr),prompt2(pr2),temp_prompt(""),@|
-readline(rl),add_hist(ah),line_no(1),cur_lines(0),input_stack()
-{@; stream=&base_stream; }
+readline(rl),add_hist(ah),line_no(1),cur_lines(0),input_stack(),
+stream(&base_stream)
+@+{}
 
-@ The destructor for a buffer must remove any |std::istream| objects currently
-pointed to by elements of the |input_stack|. As a consequence these input
-files will be closed. The |base_stream| however, which existed before the
-construction of the buffer, is not closed.
+@ It would have been convenient if each stack record owned its own
+|std::ifstream| pointer, so that its destructor could take care of deleting
+it, which would also close the associated file. This would however pose a
+problem for the copy constructor (obligatory for objects in a |std::stack|),
+since as it would have to duplicate the |std::ifstream| object pointed to, so
+as to avoid double destruction of the same instance, while no copy constructor
+for |std::ifstream| is accessible. The only viable solution would then be
+using a reference-counted shared pointer which is unnecessarily heavy measure.
+So we give the ownership of the mentioned pointer to the |BufferedInput|
+object whose |input_stack| holds the stack record.
+
+Thus the destructor for |BufferedInput| takes care of deleting the |stream|
+pointers before popping the containing record; this still closes the
+associated file automatically.
 
 @< Definitions of class members @>=
 BufferedInput::~BufferedInput()
-{ while (not input_stack.empty())
-  {@; delete input_stack.top().first; input_stack.pop(); }
+{@; while (not input_stack.empty())
+  {@; delete input_stack.top().stream;
+    input_stack.pop();
+  }
 }
 
-@ When an input file is exhausted it is closed and popped from the stack, and
-|stream| is set to the previous input stream. When |close_includes| is called
-all auxiliary input files are closed. Although its the initial loop of that
-method coincides with the action of the destructor function, it would seem
-inappropriate to call that function explicitly, since the object continues to
-exist.
+@ When an input file is exhausted, the stored line number is restored, the
+|stream| pointer deleted (which also closes the file) and the record popped
+from the stack; then  the |stream| is set to the previous input stream.
+When |close_includes| is called all auxiliary input files are closed. Although
+its the initial loop of that method coincides with the action of the
+destructor function, it would seem inappropriate to call that function
+explicitly, since the object continues to exist.
 
 @< Definitions of class members @>=
 void BufferedInput::pop_file()
-{ delete input_stack.top().first; input_stack.pop();
-  stream= input_stack.empty() ? &base_stream : input_stack.top().first;
+{ line_no = input_stack.top().line_no;
+  delete input_stack.top().stream;
+  input_stack.pop();
+  stream= input_stack.empty() ? &base_stream : input_stack.top().stream;
 }
 @)
 void BufferedInput::close_includes()
 { while (not input_stack.empty())
-  {@; delete input_stack.top().first; input_stack.pop(); }
+  {@; delete input_stack.top().stream;
+    input_stack.pop();
+  }
   stream= &base_stream;
 }
 
+@ Pushing a new input file requires constructing the new |input_record| on the
+stack. Opening the file will be done by the constructor of that record. If
+opening the file fails the constructor still succeeds; we leave it to the
+calling function to detect this condition and destroy the created record.
 
-@ Pushing a new input file requires constructing the new |std::istream| object
-in dynamic memory, opening it at the same time, and if successful pushing it
-on the input stack and pointing |stream| to it;
+@< Definitions of class members @>=
+input_record::input_record(const char* file_name, unsigned long line) :
+stream (new std::ifstream(file_name)), name(file_name), line_no(line)
+@+{}
+
+@ The above constructor is called with |line| equal to the line number at
+which we shall resume reading the interrupted file, since switching back to
+that file will happen after a future failing attempt to read from the file
+opened here; at that point advancing the line number has already taken place,
+and will not be repeated after popping the |input_stack|.
+
+Only if the new file stream is in |good| state after opening do we set to
+buffer |stream| member to it, and reset the line number to~1. In the contrary
+case we print an error message and destroy the stack record, but do not report
+trouble to our caller in any way; the idea is that this function will only be
+called at fairly top level, and that continuing to read the current file is
+still possible. Nevertheless it might be better to close any open
+input files if this happens, since failure to open a nested input file does
+not bode well for the interpretation of the file that wanted to include it.
 
 @< Definitions of class members @>=
 void BufferedInput::push_file(const char* name)
-{ std::ifstream* new_file = new std::ifstream(name);
-  if (new_file->good())
-  @/{@; input_stack.push(std::make_pair(new_file,std::string(name)));
-    stream=new_file;
+{ input_stack.push(input_record(name,line_no+cur_lines));
+  // reading will resume there
+  if (input_stack.top().stream->good())
+  { stream= input_stack.top().stream;
+    line_no=1; cur_lines=0;
+    // don't advance |line_no| when getting first line of new file
   }
-  else std::cerr << "failed to open input file '" << name << "'.\n";
+  else
+  { std::cerr << "failed to open input file '" << name << "'.\n";
+    delete input_stack.top().stream;
+    input_stack.pop();
+// no need to call |pop_file|: |stream|, |line_no| and |cur_lines| are unchanged
+  }
 }
 
 @ A line is ended if |p| is either null (indicating an absence of any line
@@ -447,7 +507,7 @@ void BufferedInput::show_range
   { int pl=prompt_length; // offset of last line on the screen
     if (stream!=&std::cin or cur_lines>1)
     { if (not input_stack.empty())
-        out << "In input file '" << input_stack.top().second << "', ";
+        out << "In input file '" << input_stack.top().name << "', ";
       if (stream!=&std::cin) out << "line " << l0 << ":\n";
       out<<line_buffer; pl=0; // echo line in these cases
     }
