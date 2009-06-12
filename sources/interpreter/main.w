@@ -159,10 +159,11 @@ int main(int argc, char** argv)
 }
 
 @ Here are several calls necessary to get various parts of this program off to
-a good start, starting with the history and readline libraries. Initialising
-the constants in the Atlas library is no longer necessary, as it is done
-automatically before main is called. Our own compilation units do require
-explicit calling of their initialisation functions.
+a good start, starting with the history and readline libraries, and setting a
+comment convention. Initialising the constants in the Atlas library is no
+longer necessary, as it is done automatically before |main| is called. Our own
+compilation units do require explicit calling of their initialisation
+functions.
 
 @h "built-in-types.h"
 @h "constants.h"
@@ -170,6 +171,7 @@ explicit calling of their initialisation functions.
   using_history();
   rl_completion_entry_function = id_completion_func; // set up input completion
 
+@)ana.set_comment_delims('#','\n');
 @)initialise_evaluator(); initialise_builtin_types();
 
 @ If a type error is detected by |analyse_types|, then it will have signalled
