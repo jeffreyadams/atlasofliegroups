@@ -310,8 +310,8 @@ inline std::ostream& split(std::ostream& s,size_t n,size_t m)
   with exactly one noncompact simple-imaginary root. In that case, this
   function is called with such a grading; we cannot rely on the noncompact
   root being the minimal one possible, as simple roots may have been in an
-  unusual order at the point of selecting |gr|, altough such a permutation has
-  been straightend out before calling this function. In the non-equal rank
+  unusual order at the point of selecting |gr|, even though such a permutation
+  has been straightend out before calling this function. In the non-equal rank
   case, such a grading still exists for all ireducible types except A_n, when
   the imaginary root system is reducible. In that case however the only choice
   is whether |gr| is trivial (sl(n,H)) or not, which is easy enough to decide.
