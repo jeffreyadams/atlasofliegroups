@@ -1977,7 +1977,15 @@ void quasisplit_form_wrapper(expression_base::level l)
 
 @*2 Functions operating on real reductive groups.
 %
-Here is a function that gives information about the dual component group
+From a real reductive group we can go back to its inner class
+@< Local function def...@>=
+void class_of_real_group_wrapper(expression_base::level l)
+{ shared_real_form rf(get<real_form_value>());
+  if (l!=expression_base::no_value)
+    push_value(new inner_class_value(rf->parent));
+}
+
+@ Here is a function that gives information about the dual component group
 of a real reductive group: it returns the rank~$r$ such that the component
 group is isomorphic to $(\Z/2\Z)^r$.
 
@@ -2817,6 +2825,8 @@ void print_W_graph_wrapper(expression_base::level l)
 install_function(real_form_wrapper,@|"real_form","(InnerClass,int->RealForm)");
 install_function(quasisplit_form_wrapper,@|"quasisplit_form"
 		,"(InnerClass->RealForm)");
+install_function(class_of_real_group_wrapper
+                ,@|"class_of_real_group","(RealForm->InnerClass)");
 install_function(components_rank_wrapper,@|"components_rank","(RealForm->int)");
 install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
 install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
