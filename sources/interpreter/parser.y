@@ -44,7 +44,7 @@
 %pure-parser
 %error-verbose
 
-%token QUIT SET LET IN IF THEN ELSE ELIF FI
+%token QUIT SET LET IN IF THEN ELSE ELIF FI AND OR NOT
 %token WHILE DO OD NEXT FOR
 %token TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
 %token DIVMOD "\\%"
@@ -73,11 +73,15 @@
 %destructor { destroy_exprlist($$); } commalist commalist_opt commabarlist
 %type <decls> declarations
 %destructor { destroy_letlist($$); } declarations
+
+%right OR
+%right AND
+%right NOT
 %nonassoc '<' LEQ '>' GEQ '=' NEQ
 %nonassoc DIVMOD
 %left '-' '+'
 %left '*' '/' '\\' '%'
-%left NEG     /* negation--unary minus */
+%right NEG     /* negation--unary minus */
 
 %type <ip> pattern pattern_opt
 %destructor { destroy_id_pat(&$$); } pattern pattern_opt
@@ -232,6 +236,13 @@ formula : formula '<' formula
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
         }
+	| formula AND formula
+        { $$ = make_conditional_node($1,$3,make_bool_denotation(0)); }
+	| formula OR formula
+        { $$ = make_conditional_node($1,make_bool_denotation(1),$3); }
+	| NOT formula
+        { $$ = make_conditional_node($2,make_bool_denotation(0),
+				        make_bool_denotation(1)); }
 	| '(' ')' /* don't allow this as first part in subscription or call */
           { $$=wrap_tuple_display(NULL); }
         | primary

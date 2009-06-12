@@ -68,6 +68,7 @@ const char* keywords[] =
  {"quit"
  ,"set","let","in"
  ,"if","then","else","elif","fi"
+ ,"and","or","not"
  ,"while","do","od","next","for"
  ,"true","false"
  ,"quiet","verbose"
