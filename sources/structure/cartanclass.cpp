@@ -1012,7 +1012,7 @@ specialGrading(const cartanclass::Fiber& f,
 
 /*!
   \brief Returns a set of strongly orthogonal roots, leading from
-  the fundamental Cartan to the most split one for the strong real form |rf|
+  the fundamental Cartan to the most split one for the real form |rf|
 
   Algorithm: a greedy one: as long as there are noncompact imaginary
   roots, use one of them to get to a less compact Cartan.
