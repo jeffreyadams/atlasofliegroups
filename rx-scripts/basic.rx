@@ -1,7 +1,7 @@
-set first (int n)= let i=0 in while i<n do i next i:=i+1 od
+set first (int n)= for i = n do i od  # [0,1,...,n-1]
 
 set string_rep(string s, int n)=
-let r="" in (while (n:=n-1)>=0 do r:=concatenate(r,s) od; r)
+let r="" in (for i = n do r:=concatenate(r,s) od; r)
 
 set sm_prod(int c,mat m) = mat: for col in m do for e in col do c*e od od
 
@@ -26,8 +26,8 @@ else let (min,d) = if i<j then (i,j-i) else (j,i-j) fi
 fi
 
 set simple_Cartan_matrix(int type, int r)= mat:
-for j in first(r)
-do for i in first(r)
+for j = r
+do for i = r
    do simple_Cartan_entry(type,r,i,j)
    od
 od
@@ -36,15 +36,14 @@ set simple_Lie_type((int,int) p) =
   let (type,) = type_of_Cartan_matrix(simple_Cartan_matrix(p)) in type
 
 set GL_roots (int n) = [vec]:
-for i in first(n-1)
-do for j in first(n)
+for i = n-1
+do for j = n
    do if j=i then 1 elif j=i+1 then -1 else 0 fi od
 od
 
 set SL_coroots (int n) = [vec]:
-let fnm=first(n-1) in
-for i in fnm
-do for j in fnm
+for i = n-1
+do for j = n-1
    do if j=i then 1 elif j=i+1 then -1 else 0 fi od
 od
 
@@ -59,34 +58,31 @@ set GL_datum(int n)= let r=GL_roots(n) in raw_root_datum(r,r,n)
 set SL_datum(int n)= raw_root_datum(SL_roots(n),SL_coroots(n),n-1)
 
 set type_B_roots (int n) = [vec]:
-let fn=first(n) in
-for i in fn
+for i = n
 do if i<n-1
-   then for j in fn
+   then for j = n
         do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-   else for j in fn do if j<n-1 then 0 else 1 fi od
+   else for j = n do if j<n-1 then 0 else 1 fi od
    fi
 od
 
 set type_C_roots (int n) = [vec]:
-let fn=first(n) in
-for i in fn
+for i = n
 do if i<n-1
-   then for j in fn
+   then for j = n
         do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-   else for j in fn do if j<n-1 then 0 else 2 fi od
+   else for j = n do if j<n-1 then 0 else 2 fi od
    fi
 od
 
 set type_D_roots (int n) = [vec]:
 if n<2 then [] # SO(2) is pure torus
 else
-  let fn=first(n) in
-  for i in fn
+  for i = n
   do if i<n-1
-     then for j in fn
+     then for j = n
           do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-     else for j in fn do if j<n-2 then 0 else 1 fi od
+     else for j = n do if j<n-2 then 0 else 1 fi od
      fi
   od
 fi
@@ -108,12 +104,10 @@ let n=p+q, q = if p<q then p else q fi
 in real_form(ic,q)
 
 set so(int p,int q)=
-let n=p+q, q = if p<q then p else q fi
+let n=p+q, (p,q) = if p<q then (q,p) else (p,q) fi # make q the smallest one
 ; rd = SO_datum(n)
-, ics = if n=4 then if q%2=0 then "ee" else "C" fi
-        elif n<=1 then  ""
-        elif n%2=1 or q%2=0 then "e" else "u"
-        fi
+, inv = let M=id_mat(n\2)
+        in (if p%2=1 and q%2=1 then M[n\2-1,n\2-1]:=-1 fi; M)
 , i = if n<=2 then 0        # inner classes without noncompact form, SO(2)=T1
       elif n%2=1 then q     # type B_{n\2}
       elif q%2=1 then q\2   # type D_{n\2}, unequal rank
@@ -121,4 +115,4 @@ let n=p+q, q = if p<q then p else q fi
       elif n%4=2 then q\2+1 # type D_{n\2}odd, equal rank, more split forms
       else q\2+2            # type D_{n\2}even, equal rank, more split forms
       fi
-in real_form(set_inner_class(rd,ics),i)
+in real_form(fix_involution(rd,inv),i)
