@@ -109,7 +109,8 @@ class BufferedInput
         // associate line buffer to raw input stream
     BufferedInput (const char* prompt
                   , rl_type rl=NULL, add_hist_type=NULL @|
-		  , const char* prompt2="> ");
+		  , const char* prompt2="> "
+                  , const char* def_ext=".rx");
         // use |stdin|, maybe with readline
     ~BufferedInput();
 @)
@@ -175,6 +176,7 @@ std::istream& base_stream;
 std::string line_buffer; // current line
 const char* p; // buffer pointer
 const char *const prompt, *const prompt2; // primary and secondary prompt
+const char* def_ext; // default file extension
 std::string temp_prompt; // varying addition to secondary prompt
 const rl_type readline; // readline function
 const add_hist_type add_hist; // history function
@@ -194,7 +196,7 @@ struct input_record
 { std::ifstream* stream; // pointer owned by parent object
   std::string name;
   unsigned long line_no;
-  input_record(const char* file_name, unsigned long line);
+  input_record(const char* file_name, const char* def_ext, unsigned long line);
 };
 
 @ There are two constructors, one for associating an input buffer to some
@@ -206,16 +208,17 @@ request no input editing). Constructing the class does not yet fetch a line.
 @< Definitions of class members @>=
 BufferedInput::BufferedInput (std::istream& s)
 @/:
-base_stream(s),line_buffer(),p(NULL),prompt(""),prompt2(""),temp_prompt(""),@|
+base_stream(s),line_buffer(),p(NULL),prompt(""),prompt2(""),def_ext(NULL),
+temp_prompt(""),@|
 readline(NULL),add_hist(NULL),line_no(1),cur_lines(0),input_stack(),
 stream(&base_stream)
 @+{}
 
 BufferedInput::BufferedInput
-(const char* pr, rl_type rl, add_hist_type ah,const char* pr2)
+(const char* pr, rl_type rl, add_hist_type ah,const char* pr2,const char* de)
 @/:
 base_stream(std::cin),line_buffer(),p(NULL),
-prompt(pr),prompt2(pr2),temp_prompt(""),@|
+prompt(pr),prompt2(pr2),def_ext(de),temp_prompt(""),@|
 readline(rl),add_hist(ah),line_no(1),cur_lines(0),input_stack(),
 stream(&base_stream)
 @+{}
@@ -273,9 +276,12 @@ opening the file fails the constructor still succeeds; we leave it to the
 calling function to detect this condition and destroy the created record.
 
 @< Definitions of class members @>=
-input_record::input_record(const char* file_name, unsigned long line) :
+input_record::input_record
+(const char* file_name, const char* def_ext,unsigned long line) :
 stream (new std::ifstream(file_name)), name(file_name), line_no(line)
-@+{}
+{@; if (def_ext!=NULL and not stream->is_open())
+   stream->open((std::string(file_name)+def_ext).c_str());
+}
 
 @ The above constructor is called with |line| equal to the line number at
 which we shall resume reading the interrupted file, since switching back to
@@ -294,7 +300,7 @@ not bode well for the interpretation of the file that wanted to include it.
 
 @< Definitions of class members @>=
 void BufferedInput::push_file(const char* name)
-{ input_stack.push(input_record(name,line_no+cur_lines));
+{ input_stack.push(input_record(name,def_ext,line_no+cur_lines));
   // reading will resume there
   if (input_stack.top().stream->good())
   { stream= input_stack.top().stream;
