@@ -193,8 +193,8 @@ in the input buffer, as long as it is not interrupted).
 
 @< Preliminary type definitions @>=
 struct input_record
-{ std::ifstream* stream; // pointer owned by parent object
-  std::string name;
+{ std::string name;
+  std::ifstream* stream; // pointer owned by parent object
   unsigned long line_no;
   input_record(const char* file_name, const char* def_ext, unsigned long line);
 };
@@ -275,12 +275,26 @@ stack. Opening the file will be done by the constructor of that record. If
 opening the file fails the constructor still succeeds; we leave it to the
 calling function to detect this condition and destroy the created record.
 
+However, in case the file is not open after constructing the |fstream|,
+presumably because the file was not found, we do a second attempt after
+extending the file name with |def_ext| (provided it was non-null). Since
+extending the string could throw an exception, we arrange for deleting the
+|ifstream| object in this case (since |stream| follows |name|, the same
+problem cannot occur during initialisation of data members).
+
 @< Definitions of class members @>=
 input_record::input_record
 (const char* file_name, const char* def_ext,unsigned long line) :
-stream (new std::ifstream(file_name)), name(file_name), line_no(line)
-{@; if (def_ext!=NULL and not stream->is_open())
-   stream->open((std::string(file_name)+def_ext).c_str());
+ name(file_name), stream (new std::ifstream(file_name)), line_no(line)
+{ try
+  {
+    if (def_ext!=NULL and not stream->is_open())
+    @/{@; name += def_ext;
+      stream->open(name.c_str());
+    }
+  }
+  catch (...)
+  {@; delete stream; throw; }
 }
 
 @ The above constructor is called with |line| equal to the line number at
@@ -308,7 +322,8 @@ void BufferedInput::push_file(const char* name)
     // don't advance |line_no| when getting first line of new file
   }
   else
-  { std::cerr << "failed to open input file '" << name << "'.\n";
+  { std::cerr << "failed to open input file '" << input_stack.top().name
+              << "'." << std::endl;
     delete input_stack.top().stream;
     input_stack.pop();
 // no need to call |pop_file|: |stream|, |line_no| and |cur_lines| are unchanged
