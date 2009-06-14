@@ -45,7 +45,7 @@
 %error-verbose
 
 %token QUIT SET LET IN IF THEN ELSE ELIF FI AND OR NOT
-%token WHILE DO OD NEXT FOR
+%token WHILE DO OD NEXT FOR FROM DOWNTO
 %token TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
 %token DIVMOD "\\%"
 %token <val> INT
@@ -279,6 +279,12 @@ comprim: subscription
             p.sublist=make_pattern_node(make_pattern_node(NULL,&$2),&i);
 	    $$=make_for_node(p,$6,$8);
           }
+        | FOR IDENT '=' exp FROM exp DO exp OD
+	  { $$=make_cfor_node($2,$4,$6,1,$8); }
+        | FOR IDENT '=' exp DOWNTO exp DO exp OD
+	  { $$=make_cfor_node($2,$4,$6,0,$8); }
+        | FOR IDENT '=' exp DO exp OD
+	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL),1,$6); }
         | '(' exp ')'          { $$=$2; }
         | '[' commalist_opt ']'
                 { $$=wrap_list_display(reverse_expr_list($2)); }

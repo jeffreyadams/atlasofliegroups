@@ -850,23 +850,29 @@ this will be a row value with one entry for each iteration performed.
 @< Typedefs... @>=
 typedef struct while_node* w_loop;
 typedef struct for_node* f_loop;
+typedef struct cfor_node* c_loop;
 
 @~A |while| loop has three elements: a condition (which determines whether an
 iteration will be undertaken), a body (which contributes an entry to the
 result), and an optional next-part (an void expression serving to advance any
 variables for the next iteration). A |for| loop also has three parts, a
 pattern introducing variables, an expression iterated over (the in-part) and
-the loop body.
+the loop body. A counted |for| loop (the simple version of |for| loop) has
+four parts (an identifier, a count, a lower bound and a body) and two variants
+(increasing and decreasing) which can be distinguished by a boolean.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct while_node
  {@; expr condition; expr body; expr next_part; };
 struct for_node
  {@; struct id_pat id; expr in_part; expr body; };
+struct cfor_node
+ {@; id_type id; expr count; expr bound; short up; expr body; };
 
-@ The tags used for these expressions are |while_expr| and |for_expr|.
+@ The tags used for these expressions are |while_expr|, |for_expr| and
+|cfor_expr|.
 
-@< Enumeration tags for |expr_kind| @>= while_expr, for_expr, @[@]
+@< Enumeration tags for |expr_kind| @>= while_expr, for_expr, cfor_expr, @[@]
 
 @~The variant of |expr| values with an |w_loop| as parsing value is tagged
 |while_variant|.
@@ -874,6 +880,7 @@ struct for_node
 @< Variants... @>=
 w_loop while_variant;
 f_loop for_variant;
+c_loop cfor_variant;
 
 @ To print a |while| or |for| expression at parser level, we reproduce the
 input syntax. An absent next-part will be represented as an empty tuple
@@ -891,9 +898,17 @@ break;
 case for_expr:
 { f_loop f=e.e.for_variant;
   out << " for " << f->id.sublist->next->body;
-    if (f->id.sublist->body.kind==0x1)
-      out << '@@' << f->id.sublist->body;
+  if (f->id.sublist->body.kind==0x1)
+    out << '@@' << f->id.sublist->body;
   out << " in " << f->in_part << " do " << f->body << " od ";
+}
+break;
+case cfor_expr:
+{ c_loop c=e.e.cfor_variant;
+  out << " for " << main_hash_table->name_of(c->id) << " = " << c->count;
+  if (c->bound.kind!=tuple_display or c->bound.e.sublist!=NULL)
+    out << (c->up!=0 ? " from " : " downto ") << c->bound;
+  out << " do " << c->body << " od ";
 }
 break;
 
@@ -912,14 +927,21 @@ case for_expr:
   destroy_expr(e.e.for_variant->body);
   delete e.e.for_variant;
 break;
+case cfor_expr:
+  destroy_expr(e.e.cfor_variant->count);
+  destroy_expr(e.e.cfor_variant->bound);
+  destroy_expr(e.e.cfor_variant->body);
+  delete e.e.cfor_variant;
+break;
 
 
-@ To build a |while_node| or |for_node|, here are yet two
+@ To build a |while_node|, |for_node| or |cfor_node|, here are yet three
 more \\{make}-functions.
 
 @< Declarations of functions in \Cee-style for the parser @>=
 expr make_while_node(expr c, expr b, expr n);
 expr make_for_node(struct id_pat id, expr ip, expr b);
+expr make_cfor_node(id_type id, expr count, expr bound, short up, expr b);
 
 @~They are quite straightforward, as usual.
 
@@ -932,6 +954,12 @@ expr make_while_node(expr c, expr b, expr n)
 expr make_for_node(struct id_pat id, expr ip, expr b)
 { f_loop f=new for_node; f->id=id; f->in_part=ip; f->body=b;
 @/expr result; result.kind=for_expr; result.e.for_variant=f;
+  return result;
+}
+expr make_cfor_node(id_type id, expr count, expr bound, bool up, expr b)
+{ c_loop c=new cfor_node; c->id=id; c->count=count; c->bound=bound;
+  c->up=up; c->body=b;
+@/expr result; result.kind=cfor_expr; result.e.cfor_variant=c;
   return result;
 }
 
