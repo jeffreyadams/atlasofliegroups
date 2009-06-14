@@ -827,16 +827,16 @@ character follows, so that a longer type name will not match a prefix of it.
 We shall often need to refer to certain types for comparison. Instead of
 generating them on the fly each time using |make_type|, we define constant
 values that can be used everywhere. We include a few types that will be
-introduced later. Two of these types, for \.{bool} and \.{void}, need to be
-non-|const|, since they will be used as arguments to a function
-(|convert_expr|) that potentially specialises this argument; since \.{bool}
-and \.{void} cannot possibly be specialised, they will nevertheless remain
-constant throughout.
+introduced later. Three of these types, for \.{int}, \.{bool} and \.{void},
+need to be non-|const|, since they will be used as arguments to a function
+(|convert_expr|) that potentially specialises this argument; since these types
+cannot possibly be specialised, they will nevertheless remain constant
+throughout.
 
 @< Declarations of global variables @>=
 extern const type_declarator unknown_type; // \.{*}
 extern type_declarator void_type; // \.{()}
-extern const type_declarator int_type; // \.{int}
+extern type_declarator int_type; // \.{int}
 extern const type_declarator rat_type; // \.{rat}
 extern const type_declarator str_type; // \.{string}
 extern type_declarator bool_type; // \.{bool}
@@ -861,7 +861,7 @@ produce by |copy| applied to a previous |type_declarator|.
 
 const type_declarator unknown_type; // uses default constructor
  type_declarator void_type(type_list_ptr(NULL));
-const type_declarator int_type(integral_type);
+ type_declarator int_type(integral_type);
 const type_declarator rat_type(rational_type);
 const type_declarator str_type(string_type);
  type_declarator bool_type(boolean_type);
@@ -3585,7 +3585,7 @@ case while_expr:
   }
 break;
 
-@ For for loops we follow the same logic for finding an appropriate
+@ For |while| loops we follow the same logic for finding an appropriate
 component type as for list displays.
 
 @< If |type| can be converted from some row-of type, check |w->body| against
@@ -3675,35 +3675,35 @@ set |comp_type| to the component type resulting from integer subscription.
 
 @< Other cases for type-checking and converting... @>=
 case for_expr:
-  { f_loop f=e.e.for_variant; type_declarator in_type;
-    expression_ptr in_expr(convert_expr(f->in_part,in_type));
-@/  type_declarator comp_type; subscr_base::sub_type which;
-    if (not subscr_base::indexable(in_type,int_type,comp_type,which))
-    { std::ostringstream o;
-      o << "Cannot iterate over value of type " << in_type;
-      throw expr_error(e,o.str());
-    }
-    type_ptr pt = pattern_type(f->id);
-    type_ptr act=make_tuple_type(make_type_list@|
-      (copy(int_type),make_type_singleton(copy(comp_type))));
-    if (not pt->specialise(*act))
-      throw expr_error(e,"Improper structure of loop variable pattern");
-    size_t n_id = count_identifiers(f->id);
-    bindings bind(n_id); thread_bindings(f->id,*act,bind);
-    type_declarator body_type, *btp; conversion_record* conv=NULL;
-    if (type==void_type)
-      btp=&void_type;
-    else if (type.specialise(row_of_type))
-      btp=type.component_type;
-    else if ((conv=row_coercion(type,body_type))!=NULL)
-      btp=&body_type;
-    else throw type_error(e,copy(row_of_type),copy(type));
-    bind.push(id_context);
-    expression_ptr body(convert_expr (f->body,*btp));
-    bind.pop(id_context);
-    expression_ptr loop(new for_expression(f->id,in_expr,body,which));
-    return conv==NULL ? loop.release() : new conversion(*conv,loop);
+{ f_loop f=e.e.for_variant; type_declarator in_type;
+  expression_ptr in_expr(convert_expr(f->in_part,in_type));
+@/type_declarator comp_type; subscr_base::sub_type which;
+  if (not subscr_base::indexable(in_type,int_type,comp_type,which))
+  { std::ostringstream o;
+    o << "Cannot iterate over value of type " << in_type;
+    throw expr_error(e,o.str());
   }
+  type_ptr pt = pattern_type(f->id);
+  type_ptr it_type=make_tuple_type(make_type_list@|
+    (copy(int_type),make_type_singleton(copy(comp_type))));
+  if (not pt->specialise(*it_type))
+    throw expr_error(e,"Improper structure of loop variable pattern");
+  size_t n_id = count_identifiers(f->id);
+  bindings bind(n_id); thread_bindings(f->id,*it_type,bind);
+  type_declarator body_type, *btp; conversion_record* conv=NULL;
+  if (type==void_type)
+    btp=&void_type;
+  else if (type.specialise(row_of_type))
+    btp=type.component_type;
+  else if ((conv=row_coercion(type,body_type))!=NULL)
+    btp=&body_type;
+  else throw type_error(e,copy(row_of_type),copy(type));
+  bind.push(id_context);
+  expression_ptr body(convert_expr (f->body,*btp));
+  bind.pop(id_context);
+  expression_ptr loop(new for_expression(f->id,in_expr,body,which));
+  return conv==NULL ? loop.release() : new conversion(*conv,loop);
+}
 break;
 
 @ For evaluating |for| loops we must take care to interpret the |kind| field
@@ -3779,16 +3779,172 @@ various values of |kind|, but |loop_var->val[0]| is always the (integral) loop
 index. Once initialised, |loop_var| is passed through the function
 |thread_components| to set up |loop_frame|, whose pointers are copied into a
 new |context| that extends the initial |saved_context| to form the new
-|execution_context|; the evaluation of the loop body is then standard.
+|execution_context|. Like for |loop_var->val[0]|, it is important that
+|execution_context| be set to point to a newly created node at each iteration,
+since any closure values in the loop body will incorporate its current value;
+there would be no point in supplying fresh pointers in |loop_var| if they were
+subsequently copied to overwrite the pointers in the same |context| object
+each time. Once these things have been handled, the evaluation of the loop
+body is standard.
 
 @< Set |loop_var->val[0]| to |i|,... @>=
 loop_var->val[0].reset(new int_value(i)); // must be newly created each time
 thread_components(pattern,loop_var,loop_frame);
 execution_context.reset(new context(saved_context,loop_frame));
+  // this one too
 if (l==no_value)
   body->void_eval();
 else
 {@; body->eval(); result->val[i]=pop_value(); }
+
+@*2 Counted loops.
+%
+Next we consider counted |for| loops. Increasing and decreasing loops give
+distinct types.
+
+@< Type def... @>=
+struct inc_for_expression : public expression_base
+{ expression count, bound, body; Hash_table::id_type id;
+@)
+  inc_for_expression@/
+   (Hash_table::id_type i, expression_ptr cnt, expression_ptr bnd,
+    expression_ptr b)
+  : count(cnt.release()),bound(bnd.release()),body(b.release()),id(i)
+  @+{}
+  virtual ~inc_for_expression() @+
+  {@; delete count; delete bound; delete body; }
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+struct dec_for_expression : public expression_base
+{ expression count, bound, body; Hash_table::id_type id;
+@)
+  dec_for_expression@/
+   (Hash_table::id_type i, expression_ptr cnt, expression_ptr bnd,
+    expression_ptr b)
+  : count(cnt.release()),bound(bnd.release()),body(b.release()),id(i)
+  @+{}
+  virtual ~dec_for_expression() @+
+  {@; delete count; delete bound; delete body; }
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ Printing a counted |for| expression is straightforward; we don't bother to
+suppress ``\&{from}~0''.
+
+@< Function definitions @>=
+void inc_for_expression::print(std::ostream& out) const
+{ out << " for " << main_hash_table->name_of(id)  << " = " << *count @|
+      << " from " << *bound << " do " << *body << " od ";
+}
+void dec_for_expression::print(std::ostream& out) const
+{ out << " for " << main_hash_table->name_of(id)  << " = " << *count @|
+      << " downto " << *bound << " do " << *body << " od ";
+}
+
+@ Type-checking counted |for| loops is rather like that of |while| loops, but
+we must extend the context with the loop variable while processing the loop
+body.
+
+@< Other cases for type-checking and converting... @>=
+case cfor_expr:
+{ c_loop c=e.e.cfor_variant;
+  expression_ptr count_expr(convert_expr(c->count,int_type));
+  static shared_value zero=shared_value(new int_value(0));
+    // avoid repeated allocation
+  expression_ptr bound_expr
+    (c->bound.kind!=tuple_display or c->bound.e.sublist!=NULL
+    ? convert_expr(c->bound,int_type)
+    : new denotation(zero)
+    );
+@)
+  bindings bind(1); bind.add(c->id,copy(int_type));
+  type_declarator body_type, *btp; conversion_record* conv=NULL;
+  if (type==void_type)
+    btp=&void_type;
+  else if (type.specialise(row_of_type))
+    btp=type.component_type;
+  else if ((conv=row_coercion(type,body_type))!=NULL)
+    btp=&body_type;
+  else throw type_error(e,copy(row_of_type),copy(type));
+  bind.push(id_context);
+  expression_ptr body(convert_expr (c->body,*btp));
+  bind.pop(id_context);
+  expression e;
+  if (c->up!=0)
+    e=new inc_for_expression(c->id,count_expr,bound_expr,body);
+  else
+    e=new dec_for_expression(c->id,count_expr,bound_expr,body);
+  expression_ptr loop(e);
+  return conv==NULL ? loop.release() : new conversion(*conv,loop);
+
+}
+break;
+
+@ Executing a loop is a simple variation of what we have seen before for
+|while| and |for| loops.
+
+@< Function definitions @>=
+void inc_for_expression::evaluate(level l) const
+{ int b=(bound->eval(),get<int_value>()->val);
+  int c=(count->eval(),get<int_value>()->val);
+
+  context_ptr saved_context=execution_context;
+  std::vector<shared_value>loop_frame(1);
+  shared_value& loop_var=loop_frame[0];
+  if (l==no_value)
+  { c+=b;
+    for (int i=b; i<c; ++i)
+    { loop_var.reset(new int_value(i));
+      execution_context.reset(new context(saved_context,loop_frame));
+      body->void_eval();
+    }
+  }
+  else
+  { row_ptr result (new row_value(0)); result->val.reserve(c);
+    c+=b;
+    for (int i=b; i<c; ++i)
+    { loop_var.reset(new int_value(i));
+      execution_context.reset(new context(saved_context,loop_frame));
+      body->eval(); result->val.push_back(pop_value());
+    }
+    push_value(result);
+  }
+  execution_context=saved_context;
+}
+
+@ Downward loops are not much different, but they actually use a |while| loop.
+
+@< Function definitions @>=
+void dec_for_expression::evaluate(level l) const
+{ int b=(bound->eval(),get<int_value>()->val);
+  int i=(count->eval(),get<int_value>()->val);
+
+  context_ptr saved_context=execution_context;
+  std::vector<shared_value>loop_frame(1);
+  shared_value& loop_var=loop_frame[0];
+  if (l==no_value)
+  { i+=b;
+    while (i-->b)
+    { loop_var.reset(new int_value(i));
+      execution_context.reset(new context(saved_context,loop_frame));
+      body->void_eval();
+    }
+  }
+  else
+  { row_ptr result (new row_value(0)); result->val.reserve(i);
+    i+=b;
+    while (i-->b)
+    { loop_var.reset(new int_value(i));
+      execution_context.reset(new context(saved_context,loop_frame));
+      body->eval(); result->val.push_back(pop_value());
+    }
+    push_value(result);
+  }
+  execution_context=saved_context;
+}
 
 @*1 Casts.
 %

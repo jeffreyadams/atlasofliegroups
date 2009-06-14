@@ -69,7 +69,7 @@ const char* keywords[] =
  ,"set","let","in"
  ,"if","then","else","elif","fi"
  ,"and","or","not"
- ,"while","do","od","next","for"
+ ,"while","do","od","next","for","from","downto"
  ,"true","false"
  ,"quiet","verbose"
  ,"whattype","showall"
