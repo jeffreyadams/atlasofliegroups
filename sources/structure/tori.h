@@ -149,64 +149,35 @@ namespace tori {
     {}
 
 // accessors
-  size_t compactRank() const {
-    return d_plus.size()-d_complexRank;
-  }
 
-  size_t complexRank() const {
-    return d_complexRank;
-  }
+  const LT::LatticeMatrix& involution() const { return d_involution; }
+
+  size_t rank() const { return d_rank; }
+  size_t complexRank() const { return d_complexRank; }
+  size_t compactRank() const { return d_plus.size()-d_complexRank; }
+  size_t splitRank() const { return d_minus.size()-d_complexRank; }
+  size_t plusRank() const { return d_plus.size(); }
+  size_t minusRank() const { return d_minus.size(); }
+  size_t twoRank() const { return d_rank-d_complexRank; }
+
+  bool isCompact() const { return d_plus.size() == d_rank; }
+  bool isSplit() const { return d_minus.size() == d_rank; }
 
   void componentMap(LT::BinaryMap&, const LT::LatticeMatrix&,
 		    const RealTorus&) const;
 
-  const LT::LatticeMatrix& involution() const {
-    return d_involution;
-  }
+  const LT::WeightList& plusLattice() const { return d_plus; }
+  const LT::WeightList& minusLattice() const { return d_minus; }
 
-  bool isSplit() const {
-    return d_minus.size() == d_rank;
-  }
-
-  const LT::WeightList& minusLattice() const {
-    return d_minus;
-  }
-
-  size_t minusRank() const {
-    return d_minus.size();
-  }
-
-  const LT::WeightList& plusLattice() const {
-    return d_plus;
-  }
-
-  size_t plusRank() const {
-    return d_plus.size();
-  }
-
-  size_t rank() const {
-    return d_rank;
-  }
-
-  size_t splitRank() const {
-    return d_minus.size()-d_complexRank;
+  void toPlus(LT::Weight& dest, const LT::Weight& source) const {
+    d_toPlus.apply(dest,source);
   }
 
   void toMinus(LT::Weight& dest, const LT::Weight& source) const {
     d_toMinus.apply(dest,source);
   }
 
-  void toPlus(LT::Weight& dest, const LT::Weight& source) const {
-    d_toPlus.apply(dest,source);
-  }
-
-  const LT::SmallSubquotient& topology() const {
-    return d_topology;
-  }
-
-  size_t twoRank() const {
-    return d_rank-d_complexRank;
-  }
+  const LT::SmallSubquotient& topology() const { return d_topology; }
 };
 
 }

@@ -627,12 +627,11 @@ void based_involution_wrapper(expression_base::level l)
   try
   {@; push_value(new matrix_value(inv.on_basis(basis->val.columns()))); }
   catch (std::runtime_error&) // relabel |"Inexact integer division"|
-  { throw std::runtime_error
+  {@; throw std::runtime_error
       ("Inner class is not compatible with given lattice");
 @.Inner class not compatible...@>
   }
 }
-
 
 @ All that remains is installing the wrapper functions.
 
@@ -856,7 +855,7 @@ the new denominator~|d|.
 
     M.set_column(j,gen.numerator());
     for (size_t i=0; i<v->val.size(); ++i)
-      if (v->val[i]*M(i,j)%denom[j]!=0)
+      if (v->val[i]*M(i,j)%long(denom[j])!=0) // must use signed arithmetic!!
 	throw std::runtime_error("Improper generator entry: "
 @.Improper generator entry@>
          +num(M(i,j))+'/'+num(denom[j])+" not a multiple of 1/"
@@ -877,8 +876,8 @@ $root\_datum(lt,quotient\_basis(lt,L))$.
 
 @< Local function definitions @>=
 void quotient_datum_wrapper(expression_base::level l)
-{ shared_matrix L = get<matrix_value>();
-  shared_Lie_type lt= get<Lie_type_value>();
+{ shared_value L = pop_value();
+  shared_value lt= pop_value();
   push_value(lt); // the Lie type, for call of $root\_datum$
 @/push_value(lt);
   push_value(L); quotient_basis_wrapper(expression_base::single_value);
@@ -1730,8 +1729,8 @@ void set_inner_class_wrapper(expression_base::level l)
        (lietype::involution(lo).on_basis(M->val.columns())));
   }
   catch (std::runtime_error&) // relabel inexact division error
-  { throw std::runtime_error @|
-    ("Inner class is not compatible with root datum lattice");
+  {@; throw std::runtime_error @|
+    ("Inner class is not compatible with root datum");
 @.Inner class is not compatible...@>
   }
   fix_involution_wrapper(l);
@@ -1944,12 +1943,13 @@ laboriously make the conversion here.
 
 @< Function def...@>=
 void real_form_value::print(std::ostream& out) const
-{ out << (val.isQuasisplit() ? "quasisplit " : "")
-  << "real form '" @|
+{ if (val.isCompact()) out << "compact ";
+  if (val.isQuasisplit())
+    out << (val.isSplit() ? "" : "quasi") << "split ";
+  out << "real form '" @|
   << parent.interface.typeName(parent.interface.out(val.realForm())) @|
   << "', defining a"
-  << (val.isConnected() ? " connected" : "" ) @|
-  << (val.isSplit() ? " split" : "") @|
+  << (val.isConnected() ? " connected" : " disconnected" ) @|
   << " real group" ;
 }
 

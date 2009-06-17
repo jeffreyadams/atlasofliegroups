@@ -46,8 +46,9 @@ namespace realredgp {
 */
 class RealReductiveGroup
 {
-  enum StatusFlagNames { IsConnected, IsQuasisplit, IsSemisimple, IsSplit,
-			 NumStatusFlags };
+  enum StatusFlagNames
+  { IsConnected, IsCompact,IsQuasisplit,IsSplit, IsSemisimple,
+    NumStatusFlags };
 
   typedef bitset::BitSet<NumStatusFlags> Status;
 
@@ -95,11 +96,11 @@ class RealReductiveGroup
 
   bool isConnected() const { return d_status[IsConnected]; }
 
+  bool isCompact() const { return d_status[IsCompact]; }
   bool isQuasisplit() const { return d_status[IsQuasisplit]; }
+  bool isSplit() const { return d_status[IsSplit]; }
 
   bool isSemisimple() const { return d_status[IsSemisimple]; }
-
-  bool isSplit() const { return d_status[IsSplit]; }
 
   size_t numCartan() const { return Cartan_set().size(); }
 

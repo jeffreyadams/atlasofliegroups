@@ -19,12 +19,6 @@
 
 #include <cassert>
 
-/*****************************************************************************
-
-  The function pause just serves as a convenient debugging break point
-
-******************************************************************************/
-
 namespace atlas {
 
 /*****************************************************************************
@@ -47,13 +41,15 @@ RealReductiveGroup::RealReductiveGroup
   , d_connectivity() // wait for most split torus to be constructed below
   , d_status()
 {
-  tori::RealTorus T = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
-  d_connectivity = topology::Connectivity(T,G_C.rootDatum());
+  tori::RealTorus msT = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
+  d_connectivity = topology::Connectivity(msT,G_C.rootDatum());
 
-  d_status.set(IsSemisimple,G_C.rank() == G_C.semisimpleRank());
-  d_status.set(IsQuasisplit,rf == G_C.quasisplit());
   d_status.set(IsConnected,d_connectivity.component_rank() == 0);
-  d_status.set(IsSplit,T.isSplit());
+  d_status.set(IsCompact,msT.isCompact());
+
+  d_status.set(IsQuasisplit,rf == G_C.quasisplit());
+  d_status.set(IsSplit,msT.isSplit());
+  d_status.set(IsSemisimple,G_C.rank() == G_C.semisimpleRank());
 
 #ifndef NDEBUG
   // construct the torus for the most split Cartan
