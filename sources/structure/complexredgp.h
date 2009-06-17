@@ -269,7 +269,7 @@ class ComplexReductiveGroup
   bitmap::BitMap dual_Cartan_set(realform::RealForm drf) const;
 
 
-//!\brief Returns the partial ordering of (currently generated) Cartan classes
+//!\brief Returns the partial ordering of Cartan classes
   const poset::Poset& Cartan_ordering() const
     { return Cartan_poset; }
 
@@ -335,13 +335,9 @@ class ComplexReductiveGroup
 
 /*!
   \brief Entry \#|rf| gives the most split Cartan for real form \#|rf|.
-
-  Precondition: |fillCartan()| has been called, or at least |fillCartan(rf)|
 */
   size_t mostSplit(realform::RealForm rf) const
     { return d_mostSplit[rf]; }
-
-
 
   const setutils::Permutation& root_involution() const { return root_twist; }
 
@@ -446,8 +442,7 @@ class ComplexReductiveGroup
   the imaginary Weyl group, that correspond to rf in the classification of
   strong real forms (they all have the same size.)
 
-  Precondition: Real form \#rf is defined for cartan \#cn, and the latter has
-  been generated (obviously, otherwise it's number would not be known)
+  Precondition: Real form \#rf is defined for cartan \#cn
 */
   unsigned long fiberSize(realform::RealForm rf, size_t cn);
 
@@ -468,8 +463,6 @@ class ComplexReductiveGroup
 /*!
   \brief returns the number of elements in K\\G/B for real form \#rf.
 
-  Precondition: the Cartan classes for this real form have been generated
-
   Explanation: this is exactly the number of elements in the one-sided
   parameter set corresponding to any strong real form of G lying over rf.
 */
@@ -482,7 +475,7 @@ class ComplexReductiveGroup
 
 /*!
   \brief the size of the block defined by the weak real form rf
-  and the weak dual real form drf. Requires Cartan for |rf| to be generated
+  and the weak dual real form drf.
 */
   unsigned long block_size(realform::RealForm, realform::RealForm,
 			   const bitmap::BitMap& Cartan_classes);
@@ -498,7 +491,7 @@ class ComplexReductiveGroup
 */
   const realform::RealFormList& realFormLabels(size_t cn)
   {
-    cartan(cn); // make sure that |correlateForms| has generated labels
+    cartan(cn); // make sure that labels for Cartan |cn| are generated
     return Cartan[cn].real_labels;
   }
 
@@ -507,7 +500,7 @@ class ComplexReductiveGroup
 */
   const realform::RealFormList& dualRealFormLabels(size_t cn)
   {
-    cartan(cn);// make sure that |correlateDualForms| has generated labels
+    cartan(cn);// make sure that dual labels for Cartan |cn| are generated
     return Cartan[cn].dual_real_labels;
   }
 
@@ -542,8 +535,8 @@ void add_Cartan(size_t cn);
 void map_real_forms(size_t cn);      // set |Cartan[cn].real_labels|
 void map_dual_real_forms(size_t cn); // set |Cartan[cn].dual_real_labels|
 
- void correlateForms(size_t cn);     // the old way to do the same things
-void correlateDualForms(size_t cn);
+void correlateForms(size_t cn);      // the old way to do the same things
+void correlateDualForms(size_t cn);  // now obsolete
 
 }; // |class ComplexReductiveGroup|
 

@@ -958,8 +958,6 @@ size_t ComplexReductiveGroup::class_number(weyl::TwistedInvolution sigma) const
 /*!
   \brief Returns the cardinality of the subset of \f$K\backslash G/B\f$
    associated to |rf| whose twisted involutions belong to |Cartan_classes|.
-
-  Precondition: the Cartan classes for this real form have been generated
 */
 unsigned long
 ComplexReductiveGroup::KGB_size(realform::RealForm rf,
