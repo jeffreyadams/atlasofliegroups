@@ -78,11 +78,11 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
 
 cwebx_sources := $(wildcard *.w)
 
-c++files      := $(cwebx_sources:%.w=%.cpp)
-c++objects    := $(cwebx_sources:%.w=%.o)
+c++files      := $(cwebx_sources:%.w=%.cpp) types.cpp
+c++objects    := $(c++files:%.cpp=%.o)
 webtexfiles   := $(cwebx_sources:%.w=%.tex)
 
-headers := $(filter-out main.h,$(cwebx_sources:%.w=%.h)) parser.tab.h
+headers := $(filter-out main.h,$(c++files:%.cpp=%.h)) parser.tab.h
 
 dvifiles := $(cwebx_sources:%.w=%.dvi)
 
@@ -92,7 +92,7 @@ objects := $(c++objects) parser.tab.o $(atlas_objects)
 # definition below. For me (on Debian or Ubuntu Linux) just "-lreadline"
 # suffices, but on some systems adding "-lcurses" seems to be necessary.
 # The author (Marc van Leeuwen) offers EUR 40.96 to the first person who can
-# provide a decent reason why one should have to add "-lcurses" here
+# provide a decent reason why the "-lcurses" should be needed here
 
 rlincludes ?= -lreadline -lcurses
 
@@ -140,7 +140,9 @@ $(c++objects) $(atlas_objects): %.o: %.cpp
            fi done
 	@rm -r old_targets
 
-# prevent remaking files that are under CVS
+types.h types.cpp: evaluator.w
+
+# prevent remaking files that are under CVS, unless .w file changed recently
 ../utilities/filekl.h ../utilities/filekl.cpp ../utilities/filekl_in.h ../utilities/filekl_in.cpp : ../utilities/filekl.w ;
 
 # TeX files are also made from CWEBx files (.w) with the ++ switch, by cweavex

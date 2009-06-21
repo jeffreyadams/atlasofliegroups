@@ -194,7 +194,7 @@ suppress printing if the uninteresting value.
 	<< "Converted expression: " << *e << endl;
     e->evaluate(expression_base::single_value);
     shared_value v=pop_value();
-    static type_declarator empty(type_list_ptr(NULL));
+    static type_expr empty(type_list_ptr(NULL));
     if (*type!=empty) *output_stream << "Value: " << *v << endl;
     destroy_expr(parse_tree);
   }

@@ -151,15 +151,15 @@ void Lie_type_value::add_simple_factor (char c,size_t rank)
   const size_t r=constants::RANK_MAX;
   static const size_t upb[]={r,r,r,r,8,4,2,r};
   if (rank<lwb[t])
-    throw std::runtime_error("Too small rank "+num(rank)+" for Lie type "+c);
+    throw std::runtime_error("Too small rank "+str(rank)+" for Lie type "+c);
 @.Too small rank@>
   if (rank>upb[t])
     if (upb[t]!=r)
-      throw std::runtime_error("Too large rank "+num(rank)+" for Lie type "+c);
+      throw std::runtime_error("Too large rank "+str(rank)+" for Lie type "+c);
 @.Too large rank@>
     else
       throw std::runtime_error @|
-      ("Rank "+num(rank)+" exceeds implementation limit "+num(r));
+      ("Rank "+str(rank)+" exceeds implementation limit "+str(r));
 @.Rank exceeds implementation limit@>
   if (c=='T')
     while (rank-->0) val.push_back(lietype::SimpleLieType('T',1));
@@ -199,7 +199,7 @@ void Lie_type_wrapper(expression_base::level l)
       // this may |throw| a |runtime_error| as well
     if ((total_rank+=rank)>constants::RANK_MAX)
       throw std::runtime_error
-      ("Total rank exceeds implementation limit "+num(constants::RANK_MAX));
+      ("Total rank exceeds implementation limit "+str(constants::RANK_MAX));
 @.Total rank exceeds...@>
   }
   if (l!=expression_base::no_value)
@@ -218,7 +218,7 @@ install_function(Lie_type_wrapper,"Lie_type","(string->LieType)");
 very easy to implement.
 
 @< Install coercions @>=
-{ static type_declarator Lie_type_type(complex_lie_type_type);
+{ static type_expr Lie_type_type(complex_lie_type_type);
   coercion(str_type,Lie_type_type,"LT",Lie_type_coercion);
 }
 
@@ -354,7 +354,7 @@ void filter_units_wrapper (expression_base::level l)
   if (inv_f->val.size()!=basis->val.numColumns())
     throw std::runtime_error @|("Size mismatch "+
 @.Size mismatch@>
-      num(inv_f->val.size())+':'+num(basis->val.numColumns()));
+      str(inv_f->val.size())+':'+str(basis->val.numColumns()));
   if (l==expression_base::no_value)
     return;
 @)
@@ -572,7 +572,7 @@ letter |'u'| corresponds to a type of the form~$D_{2n}$.
 { if (t=='D') result.push_back(r%2==0 ? 'u' : 's');
   else if (t=='A' and r>=2 or t=='E' and r==6 or t=='T') result.push_back('s');
   else throw std::runtime_error @|
-    (std::string("Unequal rank class is meaningless for type ")+t+num(r));
+    (std::string("Unequal rank class is meaningless for type ")+t+str(r));
 @.Unequal rank class is meaningless...@>
 }
 
@@ -612,18 +612,18 @@ situation.
 
 @< Local function def... @>=
 void based_involution_wrapper(expression_base::level l)
-{ shared_string str = get<string_value>();
+{ shared_string s = get<string_value>();
 @/shared_matrix basis = get<matrix_value>();
 @/shared_Lie_type type = get<Lie_type_value>();
 @)
   size_t r=type->val.rank();
   if (basis->val.numRows()!=r or basis->val.numRows()!=r)
     throw std::runtime_error @|
-    ("Basis should be given by "+num(r)+'x'+num(r)+" matrix");
+    ("Basis should be given by "+str(r)+'x'+str(r)+" matrix");
 @.Basis should be given...@>
 @)
   latticetypes::LatticeMatrix inv=lietype::involution
-        (type->val,transform_inner_class_type(str->val.c_str(),type->val));
+        (type->val,transform_inner_class_type(s->val.c_str(),type->val));
   try
   {@; push_value(new matrix_value(inv.on_basis(basis->val.columns()))); }
   catch (std::runtime_error&) // relabel |"Inexact integer division"|
@@ -728,7 +728,7 @@ void root_datum_wrapper(expression_base::level l)
     throw std::runtime_error
     ("Sub-lattice matrix should have size " @|
 @.Sub-lattice matrix should...@>
-      +num(type->val.rank())+'x'+num(type->val.rank()));
+      +str(type->val.rank())+'x'+str(type->val.rank()));
   try
   {
     prerootdata::PreRootDatum prd(type->val,lattice->val.columns());
@@ -758,8 +758,8 @@ void raw_root_datum_wrapper(expression_base::level l)
 
   if (simple_roots->val.size()!=simple_coroots->val.size())
     throw std::runtime_error
-    ("Numbers "+num(simple_roots->val.size())+","
-      +num(simple_coroots->val.size())+  " of simple (co)roots mismatch");
+    ("Numbers "+str(simple_roots->val.size())+","
+      +str(simple_coroots->val.size())+  " of simple (co)roots mismatch");
 @.Numbers of simple roots...@>
 
   latticetypes::WeightList s,c;
@@ -774,7 +774,7 @@ void raw_root_datum_wrapper(expression_base::level l)
 
     if (sr.size()!=rank or scr.size()!=rank)
     throw std::runtime_error
-      ("Simple (co)roots not all of size "+num(rank));
+      ("Simple (co)roots not all of size "+str(rank));
     s.push_back(sr);
     c.push_back(scr);
   }
@@ -849,17 +849,17 @@ the new denominator~|d|.
 
     if (gen.size()!=v->val.size())
       throw std::runtime_error@|
-        ("Length mismatch for generator "+num(j) +": "@|
+        ("Length mismatch for generator "+str(j) +": "@|
 @.Length mismatch...@>
-        +num(gen.size()) + ':' + num(v->val.size()));
+        +str(gen.size()) + ':' + str(v->val.size()));
 
     M.set_column(j,gen.numerator());
     for (size_t i=0; i<v->val.size(); ++i)
       if (v->val[i]*M(i,j)%long(denom[j])!=0) // must use signed arithmetic!!
 	throw std::runtime_error("Improper generator entry: "
 @.Improper generator entry@>
-         +num(M(i,j))+'/'+num(denom[j])+" not a multiple of 1/"
-         +num(v->val[i]));
+         +str(M(i,j))+'/'+str(denom[j])+" not a multiple of 1/"
+         +str(v->val[i]));
   }
 @)
   for (size_t j=0; j<L->length(); ++j)
@@ -1193,25 +1193,25 @@ std::pair<size_t,size_t> classify_involution
 throw (std::bad_alloc, std::runtime_error)
 { size_t r=M.numRows();
   @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
-  tori::RealTorus T(M);
-  return std::make_pair(T.compactRank(),T.splitRank());
+  tori::RealTorus Tor(M);
+  return std::make_pair(Tor.compactRank(),Tor.splitRank());
 }
 
-@ The test below that |M| is an involution ($M^2=I$) is certainly necessary
-when |classify_involution| is called independently. If the code below is
-executed in the context of checking the involution for an inner class, it may
-seem redundant given the fact that we shall also check that |M| induces an
-involutive permutation of the roots; however even there it is not redundant in
-the presence of a torus part.
+@ The test below that |M| is an involution ($M^2=\\{Id}$) is certainly
+necessary when |classify_involution| is called independently. If the code
+below is executed in the context of checking the involution for an inner
+class, it may seem redundant given the fact that we shall also check that |M|
+induces an involutive permutation of the roots; however even there it is not
+redundant in the presence of a torus part.
 
 @< Check that |M| is an $r\times{r}$ matrix defining an involution @>=
 { if (M.numRows()!=r or M.numColumns()!=r) throw std::runtime_error
-    ("Involution should be a "+num(r)+"x"+num(r)+" matrix, got a "
+    ("Involution should be a "+str(r)+"x"+str(r)+" matrix, got a "
 @.Involution should be...@>
-     +num(M.numRows())+"x"+num(M.numColumns())+" matrix");
-  latticetypes::LatticeMatrix I,Q(M);
-  matrix::identityMatrix(I,r); Q*=M; // $Q=M^2$
-  if (!(Q==I)) throw std::runtime_error
+     +str(M.numRows())+"x"+str(M.numColumns())+" matrix");
+  latticetypes::LatticeMatrix Id,Q(M);
+  matrix::identityMatrix(Id,r); Q*=M; // $Q=M^2$
+  if (!(Q==Id)) throw std::runtime_error
       ("Given transformation is not an involution");
 @.Given transformation...@>
 }
@@ -1307,12 +1307,14 @@ lies in another component of the diagram we have a Complex inner class.
 @h "dynkin.h"
 
 @< Compute the Lie type |type|, the inner class... @>=
-{ latticetypes::LatticeMatrix C = rd.cartanMatrix();
-  bitset::RankFlagsList comp = dynkin::components(dynkin::DynkinDiagram(C));
+{ latticetypes::LatticeMatrix Cartan = rd.cartanMatrix();
+  bitset::RankFlagsList comp =
+    dynkin::components(dynkin::DynkinDiagram(Cartan));
 
   type.reserve(comp.size()+r-s);
   inner_class.reserve(comp.size()+r-s); // certainly enough
-  type = dynkin::Lie_type(C,true,false,pi); // no need to check validity of |C|
+  type = dynkin::Lie_type(Cartan,true,false,pi);
+    // no need to check validity of |Cartan|
   assert(type.size()==comp.size());
   size_t offset=0; // accumulated rank of simple factors seen
 
@@ -1963,7 +1965,7 @@ void real_form_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
   shared_inner_class G(get<inner_class_value>());
   if (size_t(i->val)>=G->val.numRealForms())
-    throw std::runtime_error ("Illegal real form number: "+num(i->val));
+    throw std::runtime_error ("Illegal real form number: "+str(i->val));
 @.Illegal real form number@>
   if (l!=expression_base::no_value)
     push_value(new real_form_value(*G,G->interface.in(i->val)));
@@ -2098,7 +2100,7 @@ void dual_real_form_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
   shared_inner_class G(get<inner_class_value>());
   if (size_t(i->val)>=G->val.numDualRealForms())
-    throw std::runtime_error ("Illegal dual real form number: "+num(i->val));
+    throw std::runtime_error ("Illegal dual real form number: "+str(i->val));
 @.Illegal dual real form number@>
   if (l!=expression_base::no_value)
     push_value(new dual_real_form_value(*G,G->dual_interface.in(i->val)));
@@ -2179,7 +2181,7 @@ constructed, the Cartan class does actually exist.
 Cartan_class_value::Cartan_class_value(const inner_class_value& p,size_t cn)
 : parent(p),number(cn),val(p.val.cartan(cn))
 { if (cn>=p.val.numCartanClasses()) throw std::runtime_error
-  (std::string("Cartan class number ")+num(cn)+" does not (currently) exist");
+  (std::string("Cartan class number ")+str(cn)+" does not (currently) exist");
 }
 
 @ When printing a Cartan class, we show its number, and for how many real
@@ -2203,9 +2205,9 @@ void Cartan_class_wrapper(expression_base::level l)
   shared_real_form rf(get<real_form_value>());
   if (size_t(i->val)>=rf->val.numCartan())
     throw std::runtime_error
-    ("Illegal Cartan class number: "+num(i->val)
+    ("Illegal Cartan class number: "+str(i->val)
 @.Illegal Cartan class number@>
-    +", this real form only has "+num(rf->val.numCartan())+" of them");
+    +", this real form only has "+str(rf->val.numCartan())+" of them");
   bitmap::BitMap cs=rf->val.Cartan_set();
   if (l!=expression_base::no_value)
     push_value(new Cartan_class_value(rf->parent,cs.n_th(i->val)));
