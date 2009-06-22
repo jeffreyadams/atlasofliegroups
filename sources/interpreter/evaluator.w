@@ -543,7 +543,12 @@ void type_expr::set_from(type_ptr p)
 undetermined type to a given pattern or to test if it already matches it;
 however, we do not exclude the possibility that a partly determined type is
 modified by specialisation of one of its descendants to match the given
-pattern.
+pattern. Matching a pattern means being at least as specific, and specialising
+means replacing by something more specific, so we are (upon success) replacing
+the type for which the method is called by the most general unifier (i.e.,
+common specialisation) of its previous value and |pattern|. Therefore the name
+of this method is somewhat misleading, in that the specialisation is not
+necessarily to |pattern|, but to something matching |pattern|.
 
 In the case of an |undetermined_type|, |specialise| calls the copy constructor
 of the specified type via a placement-|new| into the undetermined type
@@ -559,7 +564,8 @@ type appearing in an error message (but even this is not easy to produce).
 
 @< Initial function definitions @>=
 bool type_expr::specialise(const type_expr& pattern)
-{ if (pattern.kind==undetermined_type) return true; // no need to refine
+{ if (pattern.kind==undetermined_type)
+    return true; // specialisation to \.* trivially succeeds.
   if (kind==undetermined_type)
     {@;new(this) type_expr(pattern); return true; }
   if (pattern.kind!=kind) return false; // impossible to refine
@@ -2300,8 +2306,8 @@ void tuple_expression::print(std::ostream& out) const
 }
 
 
-@ When converting a tuple expression, we first try to specialise an unknown
-type to a tuple with the right number of components; unless the type was
+@ When converting a tuple expression, we first try to specialise |type| to a
+tuple type with the right number of unknown components; unless |type| was
 completely undetermined, this just amounts to a test that it is a tuple type
 with the right number of components. We report a wrong number of components
 via a type pattern, which is probably as clear as mentioning too few or too
@@ -2842,6 +2848,13 @@ void local_identifier::evaluate(level l) const
 the identifier, and if found it will be a local identifier, and otherwise we
 look in |global_id_table|. If found in either way, the associated type must
 equal the expected type (if any), or be convertible to it using |coerce|.
+There is a subtlety in that the identifier may have a more general type than
+|type| required by the context (for instance if it was \&{let} equal to an
+empty list, and a concrete type of list is required). In this case
+|specialise| succeeds without modifying |type| and we specialise the
+identifier to |type| instead, so that it cannot be subsequently used with an
+incompatible specialisation (notably any further assignments to the variable
+must respect the more specific type).
 
 @< Other cases for type-checking and converting... @>=
 case applied_identifier:
@@ -2854,7 +2867,9 @@ case applied_identifier:
        (std::string("Undefined identifier ")
 	+main_hash_table->name_of(e.e.identifier_variant));
 @.Undefined identifier@>
-  if (type.specialise(*it) or coerce(*it,type,id))
+  if (type.specialise(*it))
+    {@; it->specialise(type); return id.release(); }
+  else if (coerce(*it,type,id))
     return id.release();
   else throw type_error(e,copy(*it),copy(type));
 }
