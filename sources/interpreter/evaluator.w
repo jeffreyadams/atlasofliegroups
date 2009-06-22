@@ -36,6 +36,13 @@ This compilation unit is called \.{types}, which refers both to user types as
 to meta-types of the interpreter used to represent user types and other
 fundamental notions.
 
+For the global organisation of these compilation unit we need many similar
+modules. In order to distinguish the units, we have systematically used module
+names starting with ``Initial'' for the outer level modules of the \.{types}
+compilation unit; by choosing otherwise similar names it is easy to move code
+between the compilation units if necessary, by changing a module name in the
+defining section for the code.
+
 @( types.h @>=
 
 #ifndef TYPES_H
@@ -79,7 +86,10 @@ namespace atlas { namespace interpreter {
 }@; }@;
 #endif
 
-@ Each compilation unit follows a similar global pattern.
+@ Each compilation unit follows a similar global pattern. While some modules
+are absent in each case, the order in the implementation files is local type
+definitions, global variables, local variables, local functions, global
+functions (the last point being is the main goal of the implementation unit).
 
 @( types.cpp @>=
 
@@ -92,7 +102,7 @@ namespace {
 }@; // |namespace|
 @< Initial global variable definitions @>@;
 namespace {
-@< Initial local variable definitions @>@;
+@< Initial local function definitions @>@;
 }@; // |namespace|
 @< Initial function definitions @>@;
 }@; }@;
@@ -104,9 +114,6 @@ in module names.
 @h <cstdlib>
 @c
 namespace atlas { namespace interpreter {
-namespace {
-@< Local type definitions @>@;
-}@; // |namespace|
 @< Global variable definitions @>@;
 namespace {
 @< Local variable definitions @>@;
@@ -115,9 +122,6 @@ namespace {
 @< Function definitions @>@;
 }@; }@;
 
-
-@ @< Local type definitions @>=
-@ @< Initial local variable definitions @>=
 
 @* Types used throughout the evaluator.
 %
@@ -1392,7 +1396,7 @@ the type analysis requires a non-empty result type, it is still in principle
 possible that at run time this method is called with |l==no_value|, so we
 cater for that. The case is so rare that we don't mind the inefficiency of
 performing the conversion and then discarding the result; this will allow a
-failing conversion to be signalled in such cases.
+failing conversion to be signalled as an error in such cases.
 
 @< Initial function def...@>=
 void conversion::evaluate(level l) const
@@ -1471,7 +1475,7 @@ void coercion(const type_expr& from,
               const char* s, conversion_info::conv_f f)
 {@; coerce_table.push_back(conversion_record(from,to,s,f)); }
 
-@ There is once coercion that is not stored in the lookup table, since it can
+@ There is one coercion that is not stored in the lookup table, since it can
 operate on any input type: the voiding coercion. It is necessary for instance
 to allow a conditional expression that is intended for its side effects only
 to have branches that evaluate to different types (including the possibility
@@ -1500,7 +1504,7 @@ public:
 when |l==single_value| an actual empty tuple should be produced, which
 |wrap_tuple(0)| does.
 
-@< Initial function def...@>=
+@< Initial local function definitions @>=
 void voiding::evaluate(level l) const
 {@; exp->void_eval();
   if (l==single_value)
@@ -1540,7 +1544,9 @@ context that may generate further conversions to obtain this type.
 @< Initial declarations of exported functions @>=
 conversion_record* row_coercion(const type_expr& final_type,
                                       type_expr& component_type);
-@~
+@~The implementation is simply to look in |coerce_table| for conversions from
+some row type.
+
 @< Initial function def... @>=
 conversion_record* row_coercion(const type_expr& final_type,
                                       type_expr& component_type)
@@ -1548,6 +1554,70 @@ conversion_record* row_coercion(const type_expr& final_type,
     if (final_type==*it->to and it->from->kind==row_type)
     @/{@; component_type.specialise(*it->from->component_type); return it; }
   return NULL;
+}
+
+@*2 Proximity of types.
+%
+The above implicit conversions of types pose a limitation to the possibilities
+of overloading operator symbols and function identifiers. If a symbol should
+be overloaded for too closely related operand types, situations could occur in
+which given operand expressions can be converted to either of the operand
+types. This would either produce unpredictable behaviour, or necessitate a
+complicated set of rules to determine which of the definitions of the symbol
+is to be used (overloading resolution in \Cpp\ is a good example of such
+complications). There are two ways to avoid the occurrence of difficulties by
+restricting the rules of the language: either forbid type conversions in
+arguments of overloaded symbols, or forbidding simultaneous definitions of
+such symbols for too closely related types. (A mixture of both is also
+conceivable, allowing only certain conversions and forbidding overloading
+between types related by them; the language Algol~68 is a good example of an
+approach along these lines). Forbidding all automatic type conversions in case
+of overloading would defeat to a large extent the purpose of overloading,
+namely as a convenience to the user; therefore we choose the latter solution
+of forbidding overloading in certain cases.
+
+Two types are too closely related to allow overloading between them if any
+conceivable expression could be converted to either of them if the context so
+specified (this implies that \.{void} should be forbidden as operand type,
+which is not a great limitation for overloading). The relation we shall
+implement is intended to be an equivalence relation not finer than the one
+just described, which will actually be the case under the assumption of some
+decency on the set of conversions in |coerce_table|; notably if some type can
+be directly converted to two different types, then one of those two types
+can also be converted (possibly indirectly) to the other. In practice we have
+for instance that \.{mat} can be converted to either \.{[vec]} or
+to \.{[[int]]}, which is all right since each \.{vec} entry of a  \.{[vec]}
+value can be converted into a \.{[int]} (and vice versa).
+
+@< Initial declarations of exported functions @>=
+bool is_close (const type_expr& x, const type_expr& y);
+
+@ So here is the (recursive) definition of the relation |is_close|. A
+primitive type is in the relation |is_close| to another type only is it is
+identical or if there is a direct conversion between the types. Two distinct
+primitive types are in the relation |is_close| if and only if they are either
+both row types or both tuple types with the same number of component types,
+and if each pair of corresponding component types is in the relation
+|is_close|.
+
+The expression |dummy| may be prepended to by |coerce|, but is then abandoned
+(and cleaned up).
+
+@< Initial function definitions @>=
+bool is_close (const type_expr& x, const type_expr& y)
+{ expression_ptr dummy(NULL);
+  if (x.kind==primitive_type or y.kind==primitive_type)
+    return x.prim==y.prim or coerce(x,y,dummy) or coerce(y,x,dummy);
+  if (x.kind!=y.kind)
+    return false;
+  if (x.kind==row_type)
+    return is_close(*x.component_type,*y.component_type);
+  if (x.kind!=tuple_type)
+    return x==y; // non-aggregate types are only close if equal
+  type_list l0=x.tuple, l1=y.tuple; // recurse for tuples, as in |operator==|
+  while (l0!=NULL and l1!=NULL and is_close(l0->t,l1->t))
+    {@; l0=l0->next; l1=l1->next; }
+  return l0==NULL and l1==NULL; // lists must end simultaneously for success
 }
 
 @*1 Error values.
