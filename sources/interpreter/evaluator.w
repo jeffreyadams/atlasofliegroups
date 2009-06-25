@@ -469,7 +469,8 @@ struct func_type
   func_type(const func_type& f)
    : arg_type(f.arg_type),result_type(f.result_type) @+{}
 };
-
+typedef func_type* func_type_p;
+typedef std::auto_ptr<func_type> func_type_ptr;
 
 @ As we remarked above, the copy constructor for a |type_expr|
 recursively copies the descendant types; this is necessary because these
@@ -1595,35 +1596,61 @@ for instance that \.{mat} can be converted to either \.{[vec]} or
 to \.{[[int]]}, which is all right since each \.{vec} entry of a  \.{[vec]}
 value can be converted into a \.{[int]} (and vice versa).
 
+In fact we shall need to compromise our strict interdiction of overloading at
+for arguments for which this relation holds, lest automatic conversion of for
+instance integers to rational make it impossible to define arithmetic
+operators separately for both types. So in case the above equivalence relation
+holds, we shall further distinguish whether the first type can be converted
+into the second and/or the second can be converted into the first (the purpose
+being to be more permissive in the one-directional case). Therefore we make
+the relation |is_close| return and integer rather than a boolean value.
+
 @< Initial declarations of exported functions @>=
-bool is_close (const type_expr& x, const type_expr& y);
+unsigned int is_close (const type_expr& x, const type_expr& y);
 
 @ So here is the (recursive) definition of the relation |is_close|. A
-primitive type is in the relation |is_close| to another type only is it is
+primitive type is in the relation |is_close| to another type only if it is
 identical or if there is a direct conversion between the types. Two distinct
-primitive types are in the relation |is_close| if and only if they are either
-both row types or both tuple types with the same number of component types,
-and if each pair of corresponding component types is in the relation
+non-primitive types are in the relation |is_close| if and only if they are
+either both row types or both tuple types with the same number of component
+types, and if each pair of corresponding component types is in the relation
 |is_close|.
+
+This relation is represented in the most significant of the three bits used in
+the result of the function |is_close|. The two other bits indicate whether an
+expression naturally of type |x|, formed using tuple displays and non-empty
+row displays as deep down as the type allows, would be accepted in a context
+requiring type~|y| (for the least significant bit) and vice verse (for the
+middle bit). If the |is_close| relation is false all bits will be zero, but in
+the contrary case the remaining bits could have all 4 possible combinations.
 
 The expression |dummy| may be prepended to by |coerce|, but is then abandoned
 (and cleaned up).
 
 @< Initial function definitions @>=
-bool is_close (const type_expr& x, const type_expr& y)
+unsigned int is_close (const type_expr& x, const type_expr& y)
 { expression_ptr dummy(NULL);
   if (x.kind==primitive_type or y.kind==primitive_type)
-    return x.prim==y.prim or coerce(x,y,dummy) or coerce(y,x,dummy);
+    if (x.prim==y.prim)
+      return 0x7;
+    else
+    { unsigned int flags=0x0;
+      if (coerce(x,y,dummy)) flags |= 0x1;
+      if (coerce(y,x,dummy)) flags |= 0x2;
+      return flags==0 ? flags : flags|0x4;
+    }
   if (x.kind!=y.kind)
-    return false;
+    return 0x0;
   if (x.kind==row_type)
     return is_close(*x.component_type,*y.component_type);
   if (x.kind!=tuple_type)
-    return x==y; // non-aggregate types are only close if equal
+    return x==y ? 0x7 : 0x0; // non-aggregate types are only close if equal
   type_list l0=x.tuple, l1=y.tuple; // recurse for tuples, as in |operator==|
-  while (l0!=NULL and l1!=NULL and is_close(l0->t,l1->t))
-    {@; l0=l0->next; l1=l1->next; }
-  return l0==NULL and l1==NULL; // lists must end simultaneously for success
+  unsigned int flags=0x7;
+  while (l0!=NULL and l1!=NULL and (flags&=is_close(l0->t,l1->t))!=0)
+    @/{@; l0=l0->next; l1=l1->next; }
+  return l0==NULL and l1==NULL ? flags : 0x0;
+    // lists must end simultaneously for success
 }
 
 @*1 Error values.
@@ -2872,6 +2899,181 @@ case applied_identifier:
   else if (coerce(*it,type,id))
     return id.release();
   else throw type_error(e,copy(*it),copy(type));
+}
+
+@*2 Operator and function overloading.
+%
+While the simple mechanism of identifier identification given above suffices
+for many purposes, it would be very restrictive in case of operators (since it
+allows only one function, with fixes argument types, to be bound globally to
+an operator symbol identifier), and to a somewhat lesser measure (since one
+could vary the identifier name according to the argument types) for functions.
+So we definitely want to allow operator overloading (defining the same
+operator for different combinations of argument types), and with such a
+mechanism in place, it is easy to allow function overloading as well, which
+will for instance allow the intuitive convention of simply naming built-in
+functions after the mathematical meaning of the result they compute, even if
+such a result can be computed from different sets of input data.
+
+To implement overloading we use a similar structure as the ordinary global
+identifier table. However the basic table entry for an overloading needs a
+level of sharing less, since the function bound for given argument types
+cannot be changed by assignment, so the call will refer directly to the value
+stored rather than to its location. We also take into account that the stored
+types are always function types. Remarks about ownership of the type apply
+without change however.
+
+@< Type definitions @>=
+
+struct overload_data
+{ shared_value val; @+ func_type_p type;
+  overload_data() : val(),type(NULL)@+ {}
+};
+
+@ Looking up an overloaded identifier leads to a vector of value-type pairs.
+This is preferable to using a |std::multimap| multi-mapping identifiers to
+individual value-type pairs, as that would give us no control over the order
+in which the pairs for the same identifier are ordered. This is important
+since we want to try matching more specific (harder to convert to) argument
+types before trying less specific ones. We envisage as only method for making
+an identifier overloaded actually giving an overloaded definition, so the
+table will never associate an empty vector to an identifier. Therefore the
+|variants| method can signal absence of an identifier by returning an empty
+list of variants, and there is no need for a separate method for testing
+whether an identifier is overloaded in the table at all.
+
+@< Type definitions @>=
+
+class overload_table
+{ typedef std::vector<overload_data> variant_list;
+  typedef std::map<Hash_table::id_type,variant_list> map_type;
+  map_type table;
+  overload_table(const Id_table&); // copying forbidden
+  overload_table& operator=(const Id_table&); // assignment forbidden
+public:
+  overload_table() : table() @+{} // the default and only accessible constructor
+  ~overload_table(); // destructor of all values referenced in the table
+@) // accessors
+  const variant_list& variants(Hash_table::id_type id) const;
+@) // manipulators
+  void add(Hash_table::id_type id, shared_value v, func_type_ptr t);
+   // insertion
+  bool remove(Hash_table::id_type id, const type_expr& arg_t); //deletion
+@)
+  size_t size() const @+{@; return table.size(); }
+  void print(std::ostream&) const;
+};
+
+@ As for the ordinary identifier table, the table owns the types, so the
+destructor must clean then up.
+
+@< Function definitions @>=
+
+overload_table::~overload_table()
+{ for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
+    for (size_t i=0; i<p->second.size(); ++i)
+    {@; delete p->second[i].type; }
+}
+
+@ The |variants| method just returns a reference to the stored vector of
+overload instances, or to a static empty vector if nothing is found.
+
+@< Function definitions @>=
+const overload_table::variant_list& overload_table::variants
+  (Hash_table::id_type id) const
+{ static const variant_list empty;
+  map_type::const_iterator p=table.find(id);
+  return p==table.end() ? empty : p->second;
+}
+
+@ The |add| method is what introduces and controls overloading. We first try
+to associate an singleton vector with the identifier, and upon success insert
+the given value-type pair. In the contrary case (the identifier already had a
+vector associate to it), we must test the new pair against existing elements,
+reject it is there is a conflicting entry present, and otherwise make sure it
+is inserted before any strictly less specific overloaded instances.
+
+@< Function def... @>=
+void overload_table::add
+  (Hash_table::id_type id, shared_value val, func_type_ptr type)
+{ std::pair<map_type::iterator,bool> trial=
+    table.insert(std::make_pair(id,variant_list(1,overload_data())));
+  variant_list& slot=trial.first->second;
+  if (trial.second) // a fresh overloaded identifier
+  {@; slot[1].val=val;
+    slot[1].type=type.release();
+  }
+  else
+  @< Compare |type| against entries of |slot|, if none are close then add
+  |val| and |type| at the end, if any is close without being one-way
+  convertible to or from it throw an error, and in the remaining case make
+  sure |type| is added after any types that convert to it and before any types
+  it converts to @>
+}
+
+@ We call |is_close| for each existing argument type; is any returns a nonzero
+value it must be either |0x6|, in which case insertion must be after that
+entry, or |0x5|, in which case insertion must be no later than at this
+position, so that the entry in question (after shifting forward) stays ahead.
+The last of the former cases and the first of the latter are recorded, and
+their requirements should be compatible.
+
+@< Compare |type| against entries of |slot|... @>=
+{ size_t lwb=0; size_t upb=slot.size();
+  for (size_t i=0; i<slot.size(); ++i)
+  { unsigned int cmp= is_close(type->arg_type,slot[i].type->arg_type);
+    switch (cmp)
+    {
+      case 0x6: lwb=i+1; break; // existent type |i| converts to |type|
+      case 0x5: @+ if (upb>i) upb=i; @+ break; // |type| converts to type |i|
+      case 0x4: case 0x7: // conflicting cases
+        { std::ostringstream o;
+          o << "Cannot overload `" << main_hash_table->name_of(id) << "', ";
+          o << "existing type " << slot[i].type->arg_type << "\n close to "@|
+            << type->arg_type << ", "
+            << (cmp==0x4 ? "but neither" :"and both") @|
+            << " converts to the other.";
+          throw program_error(o.str());
+        }
+      default: @+{} // nothing for unrelated argument types
+    }
+    if(lwb>upb)
+      throw std::logic_error("Conflicting order related types");
+    @< Insert |val| and |type| at entry |upb| after shifting remainder up @>
+  }
+}
+
+@ Shifting entries during a call of |insert| will probably create duplicated
+type pointers at some points; however these do not risk double deletion since
+no errors can be thrown at such points. Indeed, the only point where throwing
+may occur is when extending the vector which happens at the beginning, and in
+case of successful reallocation entries are copied (and temporarily
+duplicated) anyway; the |insert| method involves nothing more dangerous than
+this.
+
+@< Insert |val| and |type| at entry |upb| after shifting remainder up @>=
+{ slot.insert(slot.begin()+upb,overload_data());
+@/slot[upb].val=val; slot[upb].type=type.release();
+}
+
+
+@ The user may want to remove a binding from the overload table in order to
+make place for another one; this will be realised by the |remove| method
+called with the (precise) argument type to remove. The methods returns a
+boolean telling whether any such binding was found (and removed).
+
+@< Function def... @>=
+bool overload_table::remove(Hash_table::id_type id, const type_expr& arg_t)
+{ map_type::iterator p=table.find(id);
+  if (p==table.end()) return false;
+  variant_list& variants=p->second;
+  for (size_t i=0; i<variants.size(); ++i)
+    if (variants[i].type->arg_type==arg_t)
+    @/{@; delete variants[i].type;
+      variants.erase(variants.begin()+i);
+      return true;
+    }
+  return false;
 }
 
 @*1 Function calls.
