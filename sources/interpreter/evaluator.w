@@ -1631,7 +1631,7 @@ The expression |dummy| may be prepended to by |coerce|, but is then abandoned
 unsigned int is_close (const type_expr& x, const type_expr& y)
 { expression_ptr dummy(NULL);
   if (x.kind==primitive_type or y.kind==primitive_type)
-    if (x.prim==y.prim)
+    if (x==y)
       return 0x7;
     else
     { unsigned int flags=0x0;
@@ -2753,7 +2753,6 @@ shared_share Id_table::address_of(Hash_table::id_type id)
   return p->second.val;
 }
 
-
 @ We provide a |print| member that shows the contents of the entire table.
 @< Function def... @>=
 
@@ -2945,8 +2944,11 @@ whether an identifier is overloaded in the table at all.
 @< Type definitions @>=
 
 class overload_table
-{ typedef std::vector<overload_data> variant_list;
+{
+public:
+  typedef std::vector<overload_data> variant_list;
   typedef std::map<Hash_table::id_type,variant_list> map_type;
+private:
   map_type table;
   overload_table(const Id_table&); // copying forbidden
   overload_table& operator=(const Id_table&); // assignment forbidden
@@ -2955,13 +2957,12 @@ public:
   ~overload_table(); // destructor of all values referenced in the table
 @) // accessors
   const variant_list& variants(Hash_table::id_type id) const;
-@) // manipulators
-  void add(Hash_table::id_type id, shared_value v, func_type_ptr t);
-   // insertion
-  bool remove(Hash_table::id_type id, const type_expr& arg_t); //deletion
-@)
   size_t size() const @+{@; return table.size(); }
   void print(std::ostream&) const;
+@) // manipulators
+  void add(Hash_table::id_type id, shared_value v, type_ptr t);
+   // insertion
+  bool remove(Hash_table::id_type id, const type_expr& arg_t); //deletion
 };
 
 @ As for the ordinary identifier table, the table owns the types, so the
@@ -2995,13 +2996,19 @@ is inserted before any strictly less specific overloaded instances.
 
 @< Function def... @>=
 void overload_table::add
-  (Hash_table::id_type id, shared_value val, func_type_ptr type)
-{ std::pair<map_type::iterator,bool> trial=
+  (Hash_table::id_type id, shared_value val, type_ptr tp)
+{ if (tp->kind!=function_type)
+    throw std::logic_error("Wrapper function has non-function type");
+  func_type_ptr type(tp->func);
+  tp->kind=undetermined_type; // release
+  if (type->arg_type==void_type)
+    throw program_error("Cannot define function overload without arguments");
+  std::pair<map_type::iterator,bool> trial=
     table.insert(std::make_pair(id,variant_list(1,overload_data())));
   variant_list& slot=trial.first->second;
   if (trial.second) // a fresh overloaded identifier
-  {@; slot[1].val=val;
-    slot[1].type=type.release();
+  {@; slot[0].val=val;
+    slot[0].type=type.release();
   }
   else
   @< Compare |type| against entries of |slot|, if none are close then add
@@ -3026,21 +3033,29 @@ their requirements should be compatible.
     {
       case 0x6: lwb=i+1; break; // existent type |i| converts to |type|
       case 0x5: @+ if (upb>i) upb=i; @+ break; // |type| converts to type |i|
-      case 0x4: case 0x7: // conflicting cases
+      case 0x7:
+        if (slot[i].type->arg_type==type->arg_type)
+        @/{@; slot[i].val=val;
+            delete slot[i].type;
+            slot[i].type=type.release();
+            return;
+          }
+      @/// |else| {\bf fall through}
+      case 0x4: // conflicting cases
         { std::ostringstream o;
-          o << "Cannot overload `" << main_hash_table->name_of(id) << "', ";
-          o << "existing type " << slot[i].type->arg_type << "\n close to "@|
-            << type->arg_type << ", "
-            << (cmp==0x4 ? "but neither" :"and both") @|
-            << " converts to the other.";
+          o << "Cannot overload `" << main_hash_table->name_of(id) << "', " @|
+            << "existing type " << slot[i].type->arg_type
+            << " is close to"@| << type->arg_type << ",\n"
+            << (cmp==0x4 ? "but neither" :"and either") @|
+            << " converts to the other";
           throw program_error(o.str());
         }
       default: @+{} // nothing for unrelated argument types
     }
-    if(lwb>upb)
-      throw std::logic_error("Conflicting order related types");
-    @< Insert |val| and |type| at entry |upb| after shifting remainder up @>
   }
+  if(lwb>upb)
+    throw std::logic_error("Conflicting order related types");
+  @< Insert |val| and |type| at entry |upb| after shifting remainder up @>
 }
 
 @ Shifting entries during a call of |insert| will probably create duplicated
@@ -3076,11 +3091,123 @@ bool overload_table::remove(Hash_table::id_type id, const type_expr& arg_t)
   return false;
 }
 
+@ When resolving operator overloading, we have at hand an expression~|e| known
+to be a function call with as function part an identifier, and a type pattern
+for the expected result type. In fact we have checked that the identifier is
+an overloaded one by calling |overload_table::variants|, which has given us a
+non-empty |variant_list|, so we pass that as well to the function
+|resolve_overload| that implements overload resolution.
+
+@< Declarations of exported functions @>=
+expression resolve_overload
+  (const expr& e,
+   type_expr& type,
+   const overload_table::variant_list& variants);
+
+@ For overloading resolution we take a fairly radical approach of not trying
+to match given operand types among the variants proposed, but simply plunging
+into the variants one by one; each variant imposes its argument types on the
+argument expressions and matches only if the they can be successfully analysed
+with this requirement. This implies that in the contrary case we have to catch
+and ignore the type (or other compile-time) error produced, and silently pass
+to the next variant. This approach simplifies the logic of overloading
+resolution significantly, and allows any automatic conversions in arguments
+(or operands) to be performed just like in a non-overloaded call (otherwise
+arguments would have to be analysed without any presumed result type). However
+it also means that if we fail to find any match, we do not know whether this
+is because the argument contains an error independent of the type required, or
+whether this is because the argument is in itself correct but fails to match
+any variant; some additional code is needed to present a meaningful error
+message. In fact an intrinsic error in a deeply nested argument might require
+time exponential in the nesting depth to be detected; we shall see if this
+poses real problems in practice.
+
+@< Function definitions @>=
+expression resolve_overload
+  (const expr& e,
+   type_expr& type,
+   const overload_table::variant_list& variants)
+{ const expr& args = e.e.call_variant->arg;
+  Hash_table::id_type id =  e.e.call_variant->fun.e.identifier_variant;
+  for (size_t i=0; i<variants.size(); ++i)
+  { const overload_data& v=variants[i];
+    try
+    { expression_ptr arg(convert_expr(args,v.type->arg_type));
+      @< Build and return a call of overload variant |v| with argument |arg|
+         and result type |type| @>
+    }
+    catch (program_error&) {@; continue; } // if it fails, try next binding
+    throw type_error(e,copy(v.type->result_type),copy(type));
+  }
+  @< Complain either about failing overload resolution, or about an error
+     within |args| @>
+}
+
+@ Only when we could not correctly convert the argument in the context of any
+overloaded call do we try to convert it in an undefined type context. If this
+fails then an error will be thrown, and nothing remains to be done here
+because we are outside the |try|-block used during overload resolution. If no
+error is produced however, the conversion results in an argument type that
+apparently did not match any overloaded instance of the identifier, and we
+produce a type error using that information; the converted argument expression
+itself is abandoned.
+
+@< Complain either about failing overload resolution... @>=
+{ type_expr arg_type;
+  expression_ptr arg(convert_expr(args,arg_type));
+  std::ostringstream o;
+  o << "Failed invocation of overloaded `"
+    << main_hash_table->name_of(id) @|
+    << "' with argument type "
+    << arg_type;
+  throw program_error(o.str());
+}
+
+@ We provide a |print| member that shows the contents of the entire table,
+just like for identifier tables. Only this one prints multiple entries per
+identifier.
+
+@< Function def... @>=
+
+void overload_table::print(std::ostream& out) const
+{ type_expr type; type.kind=function_type;
+  for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
+    for (size_t i=0; i<p->second.size(); ++i)
+    { type.func = p->second[i].type;
+      out << main_hash_table->name_of(p->first) << ": " @|
+        << type << ": " << *p->second[i].val << std::endl;
+    }
+  type.kind=undetermined_type; // avoid destruction of |type.func|
+}
+
+std::ostream& operator<< (std::ostream& out, const overload_table& p)
+@+{@; p.print(out); return out; }
+
+@~We shouldn't forget to declare that operator, if we want to use it.
+
+@< Declarations of exported functions @>=
+std::ostream& operator<< (std::ostream& out, const overload_table& p);
+
+@ We introduce a single overload table in the same way as the global
+identifier table.
+
+@< Declarations of global variables @>=
+extern overload_table* global_overload_table;
+
+@~Here we set the pointer to a null value; the main program will actually
+create the table.
+
+@< Global variable definitions @>=
+overload_table* global_overload_table=NULL;
+
 @*1 Function calls.
 %
 One of the most basic tasks of the evaluator is to allow function calls, which
 may involve either buit-in or user-defined functions. We start with
-introducing a type for representing function calls after type checking.
+introducing a type for representing general function calls after type
+checking; the function is not assumes to be given by an identifier, and if it
+should anyway, it is a non-overloaded call that dynamically takes the value
+bound to the (possibly local) identifier.
 
 @< Type def... @>=
 struct call_expression : public expression_base
@@ -3106,36 +3233,7 @@ void call_expression::print(std::ostream& out) const
   else out << '(' << *argument << ')';
 }
 
-@*2 Type-checking function calls.
-%
-The function in a call, whether bound to an identifier or given by some other
-type of expression, determines its own type; once this is known, its argument
-and result types can be used to help converting the argument expression and
-the call expression itself. Therefore when encountering a call in
-|convert_expr|, we first get the type of the expression in the function
-position, requiring only that it be a function type, then type-check and
-convert the argument expression using the obtained result type, and build a
-converted function call~|call|. Finally we test if the required type matches
-the return type (in which case we simply return~|call|), or if the return type
-can be coerced to it (in which case we return |call| as transformed by
-|coerce|); if neither is possible we throw a~|type_error|.
-
-@< Other cases for type-checking and converting... @>=
-case function_call:
-{ type_ptr f_type=copy(gen_func_type); // start with generic function type
-  expression_ptr fun(convert_expr(e.e.call_variant->fun,*f_type));
-  expression_ptr arg
-    (convert_expr(e.e.call_variant->arg,f_type->func->arg_type));
-  expression_ptr call (new call_expression(fun,arg));
-  if (type.specialise(f_type->func->result_type) or
-      coerce(f_type->func->result_type,type,call))
-    return call.release();
-  else throw type_error(e,copy(f_type->func->result_type),copy(type));
-}
-
-@*2 Evaluating function calls.
-%
-The evaluation of the call of a built-in function executes a ``wrapper
+@ The evaluation of the call of a built-in function executes a ``wrapper
 function'', that usually consists of a call to a library function sandwiched
 between unpacking and repacking statements; in some simple cases a wrapper
 function may decide to do the entire job itself.
@@ -3168,11 +3266,120 @@ private:
   : val(v.val), print_name(v.print_name)
   @+{}
 };
-@)
-typedef std::auto_ptr<builtin_value> builtin_ptr;
-typedef std::tr1::shared_ptr<builtin_value> shared_builtin;
 
-@ To evaluate a |call_expression| object we evaluate the function, and then
+@ While syntactically more complicated than ordinary function calls, the call
+of overloaded functions is actually simpler at run time, because the function
+is necessarily referred to by an identifier instead of by an arbitrary
+expression, and overloading resolution results in a function \emph{value}
+rather than in the description of a location where the function can be found
+at run time. If that value happens to be a built-in function, the call will be
+translated into an |overloaded_builtin_call| rather than into a
+|call_expression|.
+
+@< Type definitions @>=
+struct overloaded_builtin_call : public expression_base
+{ wrapper_function f;
+  std::string print_name;
+  expression argument;
+@)
+  overloaded_builtin_call(wrapper_function v,const char* n,expression_ptr a)
+  : f(v), print_name(n), argument(a.release())@+ {}
+  virtual ~overloaded_builtin_call() @+ {@; delete argument; }
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ When printing, we ignore the stored wrapper function (which does not record
+its name) and use the overloaded function name; otherwise we proceed as for
+general function calls with an identifier as function.
+
+@< Function definitions @>=
+void overloaded_builtin_call::print(std::ostream& out) const
+{ out << print_name;
+  if (dynamic_cast<tuple_expression*>(argument)!=NULL) out << *argument;
+  else out << '(' << *argument << ')';
+}
+
+@*2 Type-checking function calls.
+%
+The function in a call can be any type of expression; in case of a non-local
+identifier for which overloads are defined we attempt overload resolution (and
+ignore any value possibly present in the global identifier table). Otherwise
+the function expression determines its own type, and once this is known, its
+argument and result types can be used to help converting the argument
+expression and the call expression itself. Thus we first get the type of the
+expression in the function position, requiring only that it be a function
+type, then type-check and convert the argument expression using the obtained
+result type, and build a converted function call~|call|. Finally we test if
+the required type matches the return type (in which case we simply
+return~|call|), or if the return type can be coerced to it (in which case we
+return |call| as transformed by |coerce|); if neither is possible we throw
+a~|type_error|.
+
+@< Other cases for type-checking and converting... @>=
+case function_call:
+{ if (e.e.call_variant->fun.kind==applied_identifier)
+    @< Convert and |return| an overloaded function call if
+    |e.e.call_variant->fun| is not a local identifier and is known in
+    |global_overload_table| @>
+  type_ptr f_type=copy(gen_func_type); // start with generic function type
+  expression_ptr fun(convert_expr(e.e.call_variant->fun,*f_type));
+  expression_ptr arg
+    (convert_expr(e.e.call_variant->arg,f_type->func->arg_type));
+  expression_ptr call (new call_expression(fun,arg));
+  if (type.specialise(f_type->func->result_type) or
+      coerce(f_type->func->result_type,type,call))
+    return call.release();
+  else throw type_error(e,copy(f_type->func->result_type),copy(type));
+}
+
+@ The main work here has been relegated to |resolve_overload|, so we just need
+to take care of the things mentioned in the module name. In fact there is one
+more case where overload resolution is not invoked than that name mentions,
+namely when the argument expression is an empty tuple display, since
+overloading with void argument type is forbidden. But this special treatment
+of empty arguments makes a global value with type function-without-arguments
+almost behave like an overloaded instance; the user should just avoid
+providing a nonempty argument of void type, which is bad practice anyway.
+
+@< Convert and |return| an overloaded function call... @>=
+{ const Hash_table::id_type id =e.e.call_variant->fun.e.identifier_variant;
+  const expr arg=e.e.call_variant->arg;
+  size_t i,j;
+  if (not (arg.kind==tuple_display and arg.e.sublist==NULL)
+      and id_context->lookup(id,i,j)==NULL)
+  { const overload_table::variant_list& variants
+      = global_overload_table->variants(id);
+    if (variants.size()>0)
+      return resolve_overload(e,type,variants);
+  }
+}
+
+@ For overloaded function calls, once the overloading is resolved, we proceed
+in a similar fashion to non-overloaded calls, except that there is no function
+expression to convert (the overload table contains an already evaluated
+function value, either built-in or user-defined). we deal with the built-in
+case here, and will give the user-define case later when we have discussed the
+necessary value types.
+
+@< Build and return a call of overload variant |v| with argument |arg| and
+   result type |type| @>=
+{ expression_ptr call;
+  builtin_value* f = dynamic_cast<builtin_value*>(v.val.get());
+  if (f!=NULL)
+    call = expression_ptr
+      (new overloaded_builtin_call(f->val,f->print_name.c_str(),arg));
+  else @< Set |call| to the call of the user-defined function |v| @>
+  if (type.specialise(v.type->result_type) or
+        coerce(v.type->result_type,type,call))
+    return call.release();
+}
+
+
+
+@*2 Evaluating built-in function calls.
+%
+To evaluate a |call_expression| object we evaluate the function, and then
 test whether it is a built-in function. In the former case we evaluate the
 arguments expanded on th stack and call the built-in function, passing the
 |level| parameter so that if necessary the call can in its turn return and
@@ -3188,14 +3395,14 @@ that have not yet started executing would be confusing.
 void call_expression::evaluate(level l) const
 { function->eval(); @+ shared_value fun=pop_value();
 @/builtin_value* f=dynamic_cast<builtin_value*>(fun.get());
-  argument->evaluate(f==0 ? single_value : multi_value);
+  argument->evaluate(f==NULL ? single_value : multi_value);
   try
   { if (f==NULL)
       @< Call user-defined function |fun| with argument on |execution_stack| @>
     else // built-in functions
-      f->val(l); // call the wrapper function, leaving result on the stack
+      (*f->val)(l); // call the wrapper function, handling |l| appropriately
   }
-  @< Catch-block for exceptions thrown withing function calls @>
+  @< Catch-block for exceptions thrown within function calls @>
 }
 
 @ Although we catch all |std::exception| errors thrown during the execution of
@@ -3213,7 +3420,7 @@ latter as |std::runtime_error| in order to extend the error message. However
 we can maintain the distinction between a |logic_error| and a |runtime_error|
 using a dynamic cast.
 
-@< Catch-block for exceptions thrown withing function calls @>=
+@< Catch-block for exceptions thrown within function calls @>=
 catch (const std::exception& e)
 { identifier* p=dynamic_cast<identifier*>(function);
   if (p!=NULL) // named function
@@ -3227,6 +3434,29 @@ catch (const std::exception& e)
   }
   throw; // for anonymous function calls, just rethrow the error unchanged
 }
+
+@*2 Evaluating overloaded function calls.
+%
+Calling an overloaded built-in function calls the wrapper function after
+evaluating the argument(s). We provide the same trace of interrupted functions
+by temporarily catching errors as in the case of non-overloaded function
+calls, but here we need not test that the call was one of a named function.
+
+@< Function definitions @>=
+void overloaded_builtin_call::evaluate(level l) const
+{ argument->multi_eval();
+  try
+  {@; (*f)(l); }
+  catch (const std::exception& e)
+  { const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
+    if (l_err!=NULL)
+      throw std::logic_error
+        (std::string(e.what())+"\n(in call of "+print_name+')');
+    throw std::runtime_error
+      (std::string(e.what())+"\n(in call of "+print_name+')');
+  }
+}
+
 
 @*1 Let-expressions.
 %
@@ -3495,6 +3725,79 @@ function body.
   execution_context.reset(new context(f->cont,new_frame));
   f->body->evaluate(l); // pass evaluation level |l| to function body
   execution_context = saved_context;
+}
+
+@ For function overloads given by a user-defined function, we need a new
+expression type which is capable of storing a closure value.
+
+@< Type definitions @>=
+struct overloaded_closure_call : public expression_base
+{ shared_closure fun;
+  std::string print_name;
+  expression argument;
+@)
+  overloaded_closure_call(shared_closure f,const char* n,expression_ptr a)
+  : fun(f), print_name(n), argument(a.release())@+ {}
+  virtual ~overloaded_closure_call() @+ {@; delete argument; }
+  virtual void evaluate(level l) const;
+  virtual void print(std::ostream& out) const;
+};
+
+@ When printing it, we ignore the closure and use the overloaded function
+name.
+
+@< Function definitions @>=
+void overloaded_closure_call::print(std::ostream& out) const
+{ out << print_name;
+  if (dynamic_cast<tuple_expression*>(argument)!=NULL) out << *argument;
+  else out << '(' << *argument << ')';
+}
+
+@ The identification of this case is done inside |resolve_overload|, after
+testing that the value bound is not a built-in function. Since an |overload|
+table should hold only values of function type, we must have a |closure_value|
+if it was not a |builtin_value|.
+
+@< Set |call| to the call of the user-defined function |v| @>=
+{ shared_closure fun =
+   std::tr1::dynamic_pointer_cast<closure_value>(v.val);
+  if (fun!=NULL)
+    call = expression_ptr @|
+      (new overloaded_closure_call(fun,main_hash_table->name_of(id),arg));
+  else
+    throw std::logic_error("Overloaded value is not a function");
+}
+
+@ Evaluation of an overloaded function call bound to a closure is a simplified
+version the part of |call_expression::evaluate| dedicated to a closures,
+including the temporary catching of errors in order to produce a trace of
+interrupted function calls in the error message. The simplification consists
+of the fact that the closure is already evaluated and stored, and that in
+particular we don't have to distinguish dynamically between built-in functions
+and closures, nor between calls of anonymous or named functions (we are always
+in the latter case) for producing the error trace.
+
+@< Function definitions @>=
+void overloaded_closure_call::evaluate(level l) const
+{ argument->eval();
+  try
+  { std::vector<shared_value> new_frame;
+    new_frame.reserve(count_identifiers(*fun->param));
+    thread_components(*fun->param,pop_value(),new_frame);
+@)
+    context_ptr saved_context(execution_context);
+    execution_context.reset(new context(fun->cont,new_frame));
+    fun->body->evaluate(l); // pass evaluation level |l| to function body
+    execution_context = saved_context;
+  }
+  catch (const std::exception& e)
+  { const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
+    if (l_err!=NULL)
+      throw std::logic_error
+        (std::string(e.what())+"\n(in call of "+print_name+')');
+    throw std::runtime_error
+      (std::string(e.what())+"\n(in call of "+print_name+')');
+  }
 }
 
 @*1 User-defined functions.
@@ -4837,15 +5140,18 @@ coercion(mat_type,row_row_of_int_type, "[[I]]", int_list_list_convert); @/
 @*1 Wrapper functions.
 %
 We have not defined any wrapper functions yet, and therefore have nothing in
-the |global_id_table|. The following function will greatly facilitate the
-repetitive task of installing wrapper functions.
+the |global_id_table|. Actually, since all predefined objects are functions
+there is no reason not to define everything using function overloading, so
+things will in fact go into the |global_overload_table|. The following
+function will greatly facilitate the repetitive task of installing wrapper
+functions.
 
 @< Template and inline... @>=
 inline void install_function
- (wrapper_function f,const char*name, const char* type)
+ (wrapper_function f,const char*name, const char* type_string)
 { shared_value val(new builtin_value(f,name));
-  global_id_table->add
-    (main_hash_table->match_literal(name),val,make_type(type));
+  global_overload_table->add
+    (main_hash_table->match_literal(name),val,make_type(type_string));
 }
 
 @ Our first built-in functions implement with integer arithmetic. Arithmetic
@@ -4917,6 +5223,42 @@ void fraction_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new rat_value(arithmetic::Rational(n->val,d->val)));
 }
+
+@ We defined similar operations for rational numbers, made possible thanks to
+operator overloading.
+
+@< Local function definitions @>=
+
+void rat_plus_wrapper(expression_base::level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=expression_base::no_value)
+    push_value(new rat_value(i->val+j->val));
+}
+@)
+void rat_minus_wrapper(expression_base::level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=expression_base::no_value)
+    push_value(new rat_value(i->val-j->val));
+}
+@)
+void rat_times_wrapper(expression_base::level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=expression_base::no_value)
+    push_value(new rat_value(i->val*j->val));
+}
+@)
+void rat_divide_wrapper(expression_base::level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (j->val.numerator()==0)
+    throw std::runtime_error("Rational division by zero");
+  if (l!=expression_base::no_value)
+    push_value(new rat_value(i->val/j->val));
+}
+@)
+void rat_unary_minus_wrapper(expression_base::level l)
+{@; shared_rat i=get<rat_value>();
+  if (l!=expression_base::no_value)
+    push_value(new rat_value(arithmetic::Rational(0)-i->val)); }
 
 @ Relational operators are of the same flavour.
 @< Local function definitions @>=
@@ -5176,21 +5518,26 @@ install_function(modulo_wrapper,"%","(int,int->int)");
 install_function(divmod_wrapper,"\\%","(int,int->int,int)");
 install_function(unary_minus_wrapper,"-u","(int->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
+install_function(rat_plus_wrapper,"+","(rat,rat->rat)");
+install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
+install_function(rat_times_wrapper,"*","(rat,rat->rat)");
+install_function(rat_divide_wrapper,"/","(rat,rat->rat)");
+install_function(rat_unary_minus_wrapper,"-u","(rat->rat)");
 install_function(eq_wrapper,"=","(int,int->bool)");
 install_function(neq_wrapper,"!=","(int,int->bool)");
 install_function(less_wrapper,"<","(int,int->bool)");
 install_function(lesseq_wrapper,"<=","(int,int->bool)");
 install_function(greater_wrapper,">","(int,int->bool)");
 install_function(greatereq_wrapper,">=","(int,int->bool)");
-install_function(concatenate_wrapper,"concatenate","(string,string->string)");
+install_function(concatenate_wrapper,"+","(string,string->string)");
 install_function(int_format_wrapper,"int_format","(int->string)");
 install_function(print_wrapper,"print","(string->)");
-install_function(vector_div_wrapper,"vec_div","(vec,int->ratvec)");
+install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
 install_function(transpose_mat_wrapper,"transpose_mat","(mat->mat)");
 install_function(diagonal_wrapper,"diagonal_mat","(vec->mat)");
-install_function(mv_prod_wrapper,"mv_prod","(mat,vec->vec)");
-install_function(mm_prod_wrapper,"mm_prod","(mat,mat->mat)");
+install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
+install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
 install_function(invfact_wrapper,"inv_fact","(mat->vec)");
 install_function(Smith_basis_wrapper,"Smith_basis","(mat->mat)");
 install_function(Smith_wrapper,"Smith","(mat->mat,vec)");
@@ -5208,24 +5555,29 @@ directly by the parser, and therefore it has \Cee-linkage. We define it here
 since it uses the services of the evaluator.
 
 We allow the same possibilities in a global identifier definition as in a
-local one, so we take an |id_pat| as argument, and follow the logic for
-type-analysis of a let-expression, and for evaluation that of binding
-identifiers in a user-define function. However we use |analyse_types| (which
-reports errors) rather than calling |convert_expr| directly. To provide some
-feedback to the user we report any types assigned, but not the values.
+local one, so we take an |id_pat| as argument. In addition we handle
+definitions of overloaded function instances if |overload| is true (nonzero).
+We follow the logic for type-analysis of a let-expression, and that of binding
+identifiers in a user-defined function for evaluation. However we use
+|analyse_types| (which reports errors) rather than calling |convert_expr|
+directly. To provide some feedback to the user we report any types assigned,
+but not the values.
 
 @< Function definitions @>=
 extern "C"
-void global_set_identifier(id_pat pat, expr rhs)
+void global_set_identifier(id_pat pat, expr rhs, int overload)
 { using namespace atlas::interpreter;
   size_t n_id=count_identifiers(pat);
+  int phase=0;
+  static const char* phase_name[3] = {"type_check","evaluation","definition"};
   try
   { expression_ptr e;
     type_ptr t=analyse_types(rhs,e);
     if (not pattern_type(pat)->specialise(*t))
       @< Report that type of |rhs| does not have required structure,
          and |throw| @>
-
+@)
+    phase=1;
     bindings b(n_id);
     thread_bindings(pat,*t,b); // match identifiers and their future types
 
@@ -5233,18 +5585,59 @@ void global_set_identifier(id_pat pat, expr rhs)
     v.reserve(n_id);
 @/  e->eval();
     thread_components(pat,pop_value(),v);
+@)
+    phase=2;
+    if (overload==0)
+      @< Add instance of identifiers in |b| with values in |v| to
+         |global_id_table| @>
+    else
+      @< Add instance of identifiers in |b| with values in |v| to
+         |global_overload_table| @>
 
-    if (n_id>0)
-      std::cout << "Identifier";
-    for (size_t i=0; i<n_id; ++i)
-    { std::cout << (i==0 ? n_id==1 ? " " : "s " : ", ") @|
-                << main_hash_table->name_of(b[i].first) << ": "
-                << *b[i].second;
-      global_id_table->add(b[i].first,v[i],copy(*b[i].second));
-    }
     std::cout << std::endl;
   }
   @< Catch block for errors thrown during a global identifier definition @>
+}
+
+@ For identifier definitions we print their names and types (paying attention
+to the very common singular case), before calling |global_id_table->add|.
+@< Add instance of identifiers in |b| with values in |v| to
+   |global_id_table| @>=
+{ if (n_id>0)
+    std::cout << "Identifier";
+  for (size_t i=0; i<n_id; ++i)
+  { std::cout << (i==0 ? n_id==1 ? " " : "s " : ", ") @|
+              << main_hash_table->name_of(b[i].first) << ": "
+              << *b[i].second;
+    global_id_table->add(b[i].first,v[i],copy(*b[i].second));
+  }
+}
+
+@ For overloaded definitions the main difference is calling the |add| method
+of |global_overload_table| instead of that of |global_id_table|. However
+another difference is that overloaded definitions may be rejected because of a
+conflict with an existing one, so we do not print anything before the |add|
+method has successfully completed. Multiple overloaded definitions in a
+single \&{set} statement are non currently allowed syntactically, which the
+|assert| below tests. If such multiple definitions should be made possible
+syntactically, one could introduce a loop below as in the ordinary definition
+case; then however error handling would also need adaptation since a failed
+definition need no be the first one, and the previous ones would need to be
+either undone or not reported as failed.
+
+@< Add instance of identifiers in |b| with values in |v| to
+   |global_overload_table| @>=
+{ assert(n_id=1);
+  size_t old_n=global_overload_table->variants(b[0].first).size();
+  global_overload_table->add(b[0].first,v[0],copy(*b[0].second));
+  size_t n=global_overload_table->variants(b[0].first).size();
+  if (n==old_n)
+    std::cout << "Redefined ";
+  else if (n==1)
+    std::cout << "Defined ";
+  else
+    std::cout << "Added definition [" << n << "] of ";
+  std::cout << main_hash_table->name_of(b[0].first) << ": " << *b[0].second;
 }
 
 @ When the right hand side type does not match the requested pattern, we throw
@@ -5274,18 +5667,22 @@ catch (std::runtime_error& err)
     std::cerr << "  Identifier" << (n_id==1 ? "" : "s");
     for (size_t i=0; i<n_id; ++i)
       std::cerr << (i==0 ? " " : ", ") << main_hash_table->name_of(names[i]);
-    std::cerr << " not created." << std::endl;
+    std::cerr << " not " << (overload==0 ? "created." : "overloaded.")
+              << std::endl;
   }
   reset_evaluator(); main_input_buffer->close_includes();
 }
 catch (std::logic_error& err)
-{ std::cerr << "Unexpected error: " << err.what()
-            << ", evaluation aborted.\n";
-  reset_evaluator(); main_input_buffer->close_includes();
+{ std::cerr << "Unexpected error: " << err.what() << ", " @|
+            << phase_name[phase]
+            << " aborted.\n";
+@/reset_evaluator(); main_input_buffer->close_includes();
 }
 catch (std::exception& err)
-{ std::cerr << err.what() << ", evaluation aborted.\n";
-  reset_evaluator(); main_input_buffer->close_includes();
+{ std::cerr << err.what() << ", "
+            << phase_name[phase]
+            << " aborted.\n";
+@/reset_evaluator(); main_input_buffer->close_includes();
 }
 
 @ The following function is called when an identifier is declared with type
@@ -5294,8 +5691,8 @@ but undefined value.
 @< Function definitions @>=
 extern "C"
 void global_declare_identifier(Hash_table::id_type id, ptr t)
-{@; value undef=NULL;
-   global_id_table->add(id,shared_value(undef),copy(*static_cast<type_p>(t)));
+{ value undef=NULL;
+  global_id_table->add(id,shared_value(undef),copy(*static_cast<type_p>(t)));
 }
 
 @ It is useful to print type information, either for a single expression or for
@@ -5331,7 +5728,10 @@ types.
 @< Function definitions @>=
 extern "C"
 void show_ids()
-@+{@; *output_stream << *global_id_table; }
+{ *output_stream << "Overloaded operators and functions:\n"
+                 << *global_overload_table @|
+                 << "Global values:\n" << *global_id_table;
+}
 
 @ Here is a tiny bit of global state that can be set from the main program and
 inspected by any module that cares to (and that reads \.{evaluator.h}).

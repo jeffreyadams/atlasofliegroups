@@ -304,7 +304,7 @@ void nr_factors_wrapper(expression_base::level l)
 @< Install wrapper functions @>=
 install_function(Cartan_matrix_wrapper,"Cartan_matrix","(LieType->mat)");
 install_function(type_of_Cartan_matrix_wrapper
-		,@|"type_of_Cartan_matrix","(mat->LieType,vec)");
+		,@|"Cartan_matrix_type","(mat->LieType,vec)");
 install_function(Lie_rank_wrapper,"Lie_rank","(LieType->int)");
 install_function(semisimple_rank_wrapper,"semisimple_rank","(LieType->int)");
 install_function(nr_factors_wrapper,"nr_factors","(LieType->int)");
@@ -641,9 +641,9 @@ install_function(filter_units_wrapper,"filter_units","(mat,vec->mat,vec)");
 install_function(ann_mod_wrapper,"ann_mod","(mat,int->mat)");
 install_function(replace_gen_wrapper,"replace_gen",
 		"((mat,vec),mat->mat)");
-install_function(basic_involution_wrapper,"basic_involution",
+install_function(basic_involution_wrapper,"involution",
 		"(LieType,string->mat)");
-install_function(based_involution_wrapper,"based_involution",
+install_function(based_involution_wrapper,"involution",
 		"(LieType,mat,string->mat)");
 
 @*1 Root data.
@@ -1113,11 +1113,11 @@ void integrality_points_wrapper(expression_base::level l)
 @ Let us install the above wrapper functions.
 
 @< Install wrapper functions @>=
-install_function(type_of_root_datum_wrapper,@|"type_of_root_datum"
+install_function(type_of_root_datum_wrapper,@|"type"
                 ,"(RootDatum->LieType)");
 install_function(root_datum_wrapper,@|"root_datum","(LieType,mat->RootDatum)");
 install_function(raw_root_datum_wrapper,
-                 @|"raw_root_datum","([vec],[vec],int->RootDatum)");
+                 @|"root_datum","([vec],[vec],int->RootDatum)");
 install_function(quotient_basis_wrapper
 		,@|"quotient_basis","(LieType,[ratvec]->mat)");
 install_function(quotient_datum_wrapper
@@ -1130,13 +1130,13 @@ install_function(SL_wrapper,@|"SL","(int->RootDatum)");
 install_function(GL_wrapper,@|"GL","(int->RootDatum)");
 install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
 install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
-install_function(datum_Cartan_wrapper,@|"Cartan_matrix_of_datum"
+install_function(datum_Cartan_wrapper,@|"Cartan_matrix"
 		,"(RootDatum->mat)");
 install_function(roots_wrapper,@|"roots","(RootDatum->mat)");
 install_function(coroots_wrapper,@|"coroots","(RootDatum->mat)");
 install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
 install_function(coroot_radical_wrapper,@|"coroot_radical","(RootDatum->mat)");
-install_function(dual_datum_wrapper,@|"dual_datum","(RootDatum->RootDatum)");
+install_function(dual_datum_wrapper,@|"dual","(RootDatum->RootDatum)");
 install_function(integrality_datum_wrapper
                 ,@|"integrality_datum","(RootDatum,ratvec->RootDatum)");
 install_function(integrality_points_wrapper
@@ -1858,17 +1858,17 @@ void dual_occurrence_matrix_wrapper(expression_base::level l)
 @< Install wrapper functions @>=
 install_function(classify_wrapper,@|"classify_involution"
                 ,"(mat->int,int,int)");
-install_function(fix_involution_wrapper,@|"fix_involution"
+install_function(fix_involution_wrapper,@|"inner_class"
                 ,"(RootDatum,mat->InnerClass)");
-install_function(set_type_wrapper,@|"set_type"
+install_function(set_type_wrapper,@|"inner_class"
                 ,"(LieType,[ratvec],string->InnerClass)");
-install_function(set_inner_class_wrapper,@|"set_inner_class"
+install_function(set_inner_class_wrapper,@|"inner_class"
                 ,"(RootDatum,string->InnerClass)");
 install_function(distinguished_involution_wrapper,@|"distinguished_involution"
                 ,"(InnerClass->mat)");
-install_function(root_datum_of_inner_class_wrapper,@|"root_datum_of_inner_class"
+install_function(root_datum_of_inner_class_wrapper,@|"root_datum"
                 ,"(InnerClass->RootDatum)");
-install_function(dual_inner_class_wrapper,@|"dual_inner_class"
+install_function(dual_inner_class_wrapper,@|"dual"
                 ,"(InnerClass->InnerClass)");
 install_function(form_names_wrapper,@|"form_names"
                 ,"(InnerClass->[string])");
@@ -2828,17 +2828,17 @@ install_function(real_form_wrapper,@|"real_form","(InnerClass,int->RealForm)");
 install_function(quasisplit_form_wrapper,@|"quasisplit_form"
 		,"(InnerClass->RealForm)");
 install_function(class_of_real_group_wrapper
-                ,@|"class_of_real_group","(RealForm->InnerClass)");
+                ,@|"inner_class","(RealForm->InnerClass)");
 install_function(components_rank_wrapper,@|"components_rank","(RealForm->int)");
 install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
 install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
 install_function(Cartan_order_matrix_wrapper,@|"Cartan_order_matrix"
 					    ,"(RealForm->mat)");
-install_function(dual_real_form_wrapper,@|"dual_real_form"
+install_function(dual_real_form_wrapper,@|"dual"
 				       ,"(InnerClass,int->DualRealForm)");
 install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 		,"(InnerClass->DualRealForm)");
-install_function(real_form_from_dual_wrapper,@|"real_form_from_dual"
+install_function(real_form_from_dual_wrapper,@|"real_form"
 				  ,"(DualRealForm->RealForm)");
 install_function(Cartan_class_wrapper,@|"Cartan_class"
 		,"(RealForm,int->CartanClass)");
@@ -2846,9 +2846,9 @@ install_function(most_split_Cartan_wrapper,@|"most_split_Cartan"
 		,"(RealForm->CartanClass)");
 install_function(print_Cartan_info_wrapper,@|"print_Cartan_info"
 		,"(CartanClass->)");
-install_function(real_forms_of_Cartan_wrapper,@|"real_forms_of_Cartan"
+install_function(real_forms_of_Cartan_wrapper,@|"real_forms"
 		,"(CartanClass->[RealForm])");
-install_function(dual_real_forms_of_Cartan_wrapper,@|"dual_real_forms_of_Cartan"
+install_function(dual_real_forms_of_Cartan_wrapper,@|"dual_real_forms"
 		,"(CartanClass->[DualRealForm])");
 install_function(fiber_part_wrapper,@|"fiber_part"
 		,"(CartanClass,RealForm->[int])");

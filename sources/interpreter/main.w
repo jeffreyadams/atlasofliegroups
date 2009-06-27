@@ -129,6 +129,8 @@ int main(int argc, char** argv)
 @/Hash_table hash; main_hash_table= &hash;
 @/Lexical_analyser ana(input_buffer,hash,keywords,prim_names); lex=&ana;
 @/Id_table main_table; @+ global_id_table=&main_table;
+@/overload_table main_overload_table;
+ @+ global_overload_table=&main_overload_table;
 @)
   @< Initialise various parts of the program @>
 @)

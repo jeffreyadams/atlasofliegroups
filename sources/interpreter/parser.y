@@ -13,7 +13,7 @@
 
    The Atlas is distributed in the hope that it will be useful,
    but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.	 See the
    GNU General Public License for more details.
 
    You should have received a copy of the GNU General Public License
@@ -26,7 +26,7 @@
   #include "parsetree.h"  /* types and functions used to construct nodes */
 %}
 %union {
-  int   val;        /* For integral constants.  */
+  int	val;	    /* For integral constants.	*/
   short id_code;    /* For identifier codes  */
   unsigned short type_code; /* For type names */
   expr	expression; /* For generic expressions */
@@ -99,284 +99,289 @@
 %}
 %%
 
-input:  '\n'			{ YYABORT } /* null input, skip evaluator */
-        | exp    '\n'	        { *parsed_expr=$1; }
-        | SET pattern '=' exp '\n' { global_set_identifier($2,$4); YYABORT }
-        | SET IDENT '(' id_specs ')' '=' exp '\n'
+input:	'\n'			{ YYABORT } /* null input, skip evaluator */
+	| exp	 '\n'		{ *parsed_expr=$1; }
+	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,0); YYABORT }
+	| SET IDENT '(' id_specs ')' '=' exp '\n'
 	  { struct id_pat id; id.kind=0x1; id.name=$2;
-	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7));
-            YYABORT
+	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),1);
+	    YYABORT
 	  }
-        | IDENT ':' exp '\n'
+	| SET IDENT '(' ')' '=' exp '\n'
+	  { struct id_pat id; id.kind=0x1; id.name=$2;
+	    global_set_identifier(id,make_lambda_node(NULL,NULL,$6),0);
+	    YYABORT
+	  }
+	| IDENT ':' exp '\n'
 		{ struct id_pat id; id.kind=0x1; id.name=$1;
-                  global_set_identifier(id,$3); YYABORT }
-        | IDENT ':' type '\n'   { global_declare_identifier($1,$3);; YYABORT }
-        | QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
-        | QUIET	'\n'		{ *verbosity =0; YYABORT } /* quiet mode */
-        | VERBOSE '\n'		{ *verbosity =1; YYABORT } /* verbose mode */
+		  global_set_identifier(id,$3,0); YYABORT }
+	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3);; YYABORT }
+	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
+	| QUIET '\n'		{ *verbosity =0; YYABORT } /* quiet mode */
+	| VERBOSE '\n'		{ *verbosity =1; YYABORT } /* verbose mode */
 	| TOFILE exp '\n'	{ *parsed_expr=$2; *verbosity=2; }
 	| ADDTOFILE exp '\n'	{ *parsed_expr=$2; *verbosity=3; }
-        | FROMFILE '\n'		{ include_file(); YYABORT } /* include file */
-	| WHATTYPE exp '\n'     { type_of_expr($2); YYABORT } /* print type */
-        | SHOWALL '\n'          { show_ids(); YYABORT } /* print id table */
+	| FROMFILE '\n'		{ include_file(); YYABORT } /* include file */
+	| WHATTYPE exp '\n'	{ type_of_expr($2); YYABORT } /* print type */
+	| SHOWALL '\n'		{ show_ids(); YYABORT } /* print id table */
 ;
 
-exp     : type ':' exp      { $$ = make_cast($1,$3); }
-        | quaternary
+exp	: type ':' exp	    { $$ = make_cast($1,$3); }
+	| quaternary
 ;
 
 
 quaternary: tertiary ';' quaternary { $$=make_sequence($1,$3); }
-        | tertiary
+	| tertiary
 ;
 
 tertiary: LET lettail { $$=$2; }
-        | '(' ')' ':' tertiary { $$=make_lambda_node(NULL,NULL,$4); }
-        | '(' id_specs ')' ':' tertiary
-          { $$=make_lambda_node($2.patl,$2.typel,$5); }
-        | '(' ')' type ':' tertiary
-          { $$=make_lambda_node(NULL,NULL,make_cast($3,$5)); }
-        | '(' id_specs ')' type ':' tertiary
-          { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
-        | IDENT BECOMES tertiary { $$ = make_assignment($1,$3); }
-        | subscription BECOMES tertiary { $$ = make_comp_ass($1,$3); }
-        | formula
+	| '(' ')' ':' tertiary { $$=make_lambda_node(NULL,NULL,$4); }
+	| '(' id_specs ')' ':' tertiary
+	  { $$=make_lambda_node($2.patl,$2.typel,$5); }
+	| '(' ')' type ':' tertiary
+	  { $$=make_lambda_node(NULL,NULL,make_cast($3,$5)); }
+	| '(' id_specs ')' type ':' tertiary
+	  { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
+	| IDENT BECOMES tertiary { $$ = make_assignment($1,$3); }
+	| subscription BECOMES tertiary { $$ = make_comp_ass($1,$3); }
+	| formula
 ;
 
 lettail : declarations IN tertiary { $$ = make_let_expr_node($1,$3); }
-        | declarations ';' lettail  { $$ = make_let_expr_node($1,$3); }
+	| declarations ';' lettail  { $$ = make_let_expr_node($1,$3); }
 ;
 
 declarations: declarations ',' pattern '=' tertiary
-          { $$ = add_let_node($1,$3,$5); }
-        | pattern '=' tertiary { $$ = add_let_node(NULL,$1,$3); }
+	  { $$ = add_let_node($1,$3,$5); }
+	| pattern '=' tertiary { $$ = add_let_node(NULL,$1,$3); }
 ;
 
 formula : formula '<' formula
-        { $$ = make_application_node
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("<"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-        | formula LEQ formula
-        { $$ = make_application_node
+	}
+	| formula LEQ formula
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("<="))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-        | formula '>' formula
-        { $$ = make_application_node
+	}
+	| formula '>' formula
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier(">"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-        | formula GEQ formula
-        { $$ = make_application_node
+	}
+	| formula GEQ formula
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier(">="))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-         | formula '=' formula
-        { $$ = make_application_node
+	}
+	 | formula '=' formula
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("="))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-        | formula NEQ formula
-        { $$ = make_application_node
+	}
+	| formula NEQ formula
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("!="))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-        | formula '+' formula
-        { $$ = make_application_node
+	}
+	| formula '+' formula
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("+"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-        | formula '-' formula
-        { $$ = make_application_node
+	}
+	| formula '-' formula
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("-"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-        | formula '*' formula
-        { $$ = make_application_node
+	}
+	| formula '*' formula
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("*"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-        | formula '/' formula
-        { $$ = make_application_node
+	}
+	| formula '/' formula
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("/"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-        | formula '\\' formula
-        { $$ = make_application_node
+	}
+	| formula '\\' formula
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("\\"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-        | formula '%' formula
-        { $$ = make_application_node
+	}
+	| formula '%' formula
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("%"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
-        | '-' formula  %prec NEG
-        { $$ = make_application_node
+	}
+	| '-' formula  %prec NEG
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("-u"))
 	       ,make_exprlist_node($2,null_expr_list)
 	       );
-        }
+	}
 	| formula DIVMOD formula
-        { $$ = make_application_node
+	{ $$ = make_application_node
 	       (make_applied_identifier(lookup_identifier("\\%"))
 	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
 	       );
-        }
+	}
 	| formula AND formula
-        { $$ = make_conditional_node($1,$3,make_bool_denotation(0)); }
+	{ $$ = make_conditional_node($1,$3,make_bool_denotation(0)); }
 	| formula OR formula
-        { $$ = make_conditional_node($1,make_bool_denotation(1),$3); }
+	{ $$ = make_conditional_node($1,make_bool_denotation(1),$3); }
 	| NOT formula
-        { $$ = make_conditional_node($2,make_bool_denotation(0),
-				        make_bool_denotation(1)); }
+	{ $$ = make_conditional_node($2,make_bool_denotation(0),
+					make_bool_denotation(1)); }
 	| '(' ')' /* don't allow this as first part in subscription or call */
-          { $$=wrap_tuple_display(NULL); }
-        | primary
+	  { $$=wrap_tuple_display(NULL); }
+	| primary
 ;
 
 primary: comprim
-        | IDENT { $$=make_applied_identifier($1); }
+	| IDENT { $$=make_applied_identifier($1); }
 ;
 comprim: subscription
 	| comprim '[' exp ']' { $$ = make_subscription_node($1,$3); }
-        | comprim '[' commalist ',' exp ']'
-          { $$=make_subscription_node
-               ($1,wrap_tuple_display
-                    (reverse_expr_list(make_exprlist_node($5,$3)))
-               ) ;
+	| comprim '[' commalist ',' exp ']'
+	  { $$=make_subscription_node
+	       ($1,wrap_tuple_display
+		    (reverse_expr_list(make_exprlist_node($5,$3)))
+	       ) ;
 	  }
 	| primary '(' commalist_opt ')'
 		{ $$=make_application_node($1,reverse_expr_list($3)); }
-        | INT { $$ = make_int_denotation($1); }
-        | TRUE { $$ = make_bool_denotation(1); }
-        | FALSE { $$ = make_bool_denotation(0); }
+	| INT { $$ = make_int_denotation($1); }
+	| TRUE { $$ = make_bool_denotation(1); }
+	| FALSE { $$ = make_bool_denotation(0); }
 	| STRING
-        | IF iftail { $$=$2; }
-        | WHILE exp DO exp NEXT exp OD { $$=make_while_node($2,$4,$6); }
-        | WHILE exp DO exp OD
+	| IF iftail { $$=$2; }
+	| WHILE exp DO exp NEXT exp OD { $$=make_while_node($2,$4,$6); }
+	| WHILE exp DO exp OD
 	  { $$=make_while_node($2,$4,wrap_tuple_display(NULL)); }
-        | FOR pattern IN exp DO exp OD
+	| FOR pattern IN exp DO exp OD
 	  { struct id_pat p,x; p.kind=0x2; x.kind=0x0;
-            p.sublist=make_pattern_node(make_pattern_node(NULL,&$2),&x);
+	    p.sublist=make_pattern_node(make_pattern_node(NULL,&$2),&x);
 	    $$=make_for_node(p,$4,$6);
-          }
-        | FOR pattern '@' IDENT IN exp DO exp OD
-	  { struct id_pat p,i; p.kind=0x2; i.kind=0x1; i.name=$4;
-            p.sublist=make_pattern_node(make_pattern_node(NULL,&$2),&i);
-	    $$=make_for_node(p,$6,$8);
-          }
-        | FOR IDENT '=' exp FROM exp DO exp OD
-	  { $$=make_cfor_node($2,$4,$6,1,$8); }
-        | FOR IDENT '=' exp DOWNTO exp DO exp OD
-	  { $$=make_cfor_node($2,$4,$6,0,$8); }
-        | FOR IDENT '=' exp DO exp OD
-	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL),1,$6); }
-        | '(' exp ')'          { $$=$2; }
-        | '[' commalist_opt ']'
-                { $$=wrap_list_display(reverse_expr_list($2)); }
-	| '[' commabarlist ']'
-          { $$=make_application_node
-	        (make_applied_identifier(lookup_identifier("transpose_mat"))
-                ,make_exprlist_node(wrap_list_display(reverse_expr_list($2))
-				   ,null_expr_list)
-                );
 	  }
-        | '(' commalist ',' exp ')'
+	| FOR pattern '@' IDENT IN exp DO exp OD
+	  { struct id_pat p,i; p.kind=0x2; i.kind=0x1; i.name=$4;
+	    p.sublist=make_pattern_node(make_pattern_node(NULL,&$2),&i);
+	    $$=make_for_node(p,$6,$8);
+	  }
+	| FOR IDENT '=' exp FROM exp DO exp OD
+	  { $$=make_cfor_node($2,$4,$6,1,$8); }
+	| FOR IDENT '=' exp DOWNTO exp DO exp OD
+	  { $$=make_cfor_node($2,$4,$6,0,$8); }
+	| FOR IDENT '=' exp DO exp OD
+	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL),1,$6); }
+	| '(' exp ')'	       { $$=$2; }
+	| '[' commalist_opt ']'
+		{ $$=wrap_list_display(reverse_expr_list($2)); }
+	| '[' commabarlist ']'
+	  { $$=make_application_node
+		(make_applied_identifier(lookup_identifier("transpose_mat"))
+		,make_exprlist_node(wrap_list_display(reverse_expr_list($2))
+				   ,null_expr_list)
+		);
+	  }
+	| '(' commalist ',' exp ')'
 	{ $$=wrap_tuple_display(reverse_expr_list(make_exprlist_node($4,$2)));
-        }
+	}
 ;
 
 subscription: IDENT '[' exp ']'
-          { $$ = make_subscription_node(make_applied_identifier($1),$3); }
-        | IDENT '[' commalist ',' exp ']'
-          { $$=make_subscription_node
-               (make_applied_identifier($1),
-                wrap_tuple_display
-                    (reverse_expr_list(make_exprlist_node($5,$3)))
-               ) ;
+	  { $$ = make_subscription_node(make_applied_identifier($1),$3); }
+	| IDENT '[' commalist ',' exp ']'
+	  { $$=make_subscription_node
+	       (make_applied_identifier($1),
+		wrap_tuple_display
+		    (reverse_expr_list(make_exprlist_node($5,$3)))
+	       ) ;
 	  }
 ;
 
 iftail	: exp THEN exp ELSE exp FI { $$=make_conditional_node($1,$3,$5); }
-        | exp THEN exp ELIF iftail { $$=make_conditional_node($1,$3,$5); }
-        | exp THEN exp FI
-          { $$=make_conditional_node($1,$3,wrap_tuple_display(NULL)); }
+	| exp THEN exp ELIF iftail { $$=make_conditional_node($1,$3,$5); }
+	| exp THEN exp FI
+	  { $$=make_conditional_node($1,$3,wrap_tuple_display(NULL)); }
 ;
 
-pattern : IDENT             { $$.kind=0x1; $$.name=$1; }
-        | '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
-        | IDENT ':' '(' pat_list ')'
-            { $$.kind=0x3; $$.name=$1; $$.sublist=reverse_patlist($4);}
+pattern : IDENT		    { $$.kind=0x1; $$.name=$1; }
+	| '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
+	| IDENT ':' '(' pat_list ')'
+	    { $$.kind=0x3; $$.name=$1; $$.sublist=reverse_patlist($4);}
 ;
 
 pattern_opt :/* empty */ { $$.kind=0x0; }
-        | pattern
+	| pattern
 ;
 
 pat_list: pattern_opt ',' pattern_opt
-          { $$=make_pattern_node(make_pattern_node(NULL,&$1),&$3); }
-        | pat_list ',' pattern_opt { $$=make_pattern_node($1,&$3); }
+	  { $$=make_pattern_node(make_pattern_node(NULL,&$1),&$3); }
+	| pat_list ',' pattern_opt { $$=make_pattern_node($1,&$3); }
 ;
 
 id_specs: type pattern
-        { $$.typel=mk_type_singleton($1);
-          $$.patl=make_pattern_node(NULL,&$2);
-        }
-        | type pattern ',' id_specs
-        { $$.typel=mk_type_list($1,$4.typel);
-          $$.patl=make_pattern_node($4.patl,&$2);
-        }
+	{ $$.typel=mk_type_singleton($1);
+	  $$.patl=make_pattern_node(NULL,&$2);
+	}
+	| type pattern ',' id_specs
+	{ $$.typel=mk_type_list($1,$4.typel);
+	  $$.patl=make_pattern_node($4.patl,&$2);
+	}
 ;
 
-type    : TYPE                    { $$=mk_prim_type($1); }
-        | '(' type ARROW type ')' { $$=mk_function_type($2,$4); }
-        | '(' types_opt ARROW type ')'
-                          { $$=mk_function_type(mk_tuple_type($2),$4); }
-        | '(' type ARROW types_opt ')'
-                          { $$=mk_function_type($2,mk_tuple_type($4)); }
-        | '(' types_opt ARROW types_opt ')'
-           { $$=mk_function_type(mk_tuple_type($2),mk_tuple_type($4)); }
-        | '[' type ']'            { $$=mk_row_type($2); }
-        | '(' types ')'           { $$=mk_tuple_type($2); }
+type	: TYPE			  { $$=mk_prim_type($1); }
+	| '(' type ARROW type ')' { $$=mk_function_type($2,$4); }
+	| '(' types_opt ARROW type ')'
+			  { $$=mk_function_type(mk_tuple_type($2),$4); }
+	| '(' type ARROW types_opt ')'
+			  { $$=mk_function_type($2,mk_tuple_type($4)); }
+	| '(' types_opt ARROW types_opt ')'
+	   { $$=mk_function_type(mk_tuple_type($2),mk_tuple_type($4)); }
+	| '[' type ']'		  { $$=mk_row_type($2); }
+	| '(' types ')'		  { $$=mk_tuple_type($2); }
 ;
 
-types   : type ',' type  { $$=mk_type_list($1,mk_type_singleton($3)); }
-        | type ',' types { $$=mk_type_list($1,$3); }
+types	: type ',' type	 { $$=mk_type_list($1,mk_type_singleton($3)); }
+	| type ',' types { $$=mk_type_list($1,$3); }
 ;
 
 types_opt : /* empty */ { $$=NULL; }
-        | types
+	| types
 ;
 
-commalist_opt: /* empty */       { $$=null_expr_list; }
-        | commalist
+commalist_opt: /* empty */	 { $$=null_expr_list; }
+	| commalist
 ;
 
-commalist: exp              { $$=make_exprlist_node($1,null_expr_list); }
+commalist: exp		    { $$=make_exprlist_node($1,null_expr_list); }
 	| commalist ',' exp { $$=make_exprlist_node($3,$1); }
 ;
 
 commabarlist: commalist_opt '|' commalist_opt
-        { $$ = make_exprlist_node(wrap_list_display(reverse_expr_list($3))
+	{ $$ = make_exprlist_node(wrap_list_display(reverse_expr_list($3))
 		 ,make_exprlist_node(wrap_list_display(reverse_expr_list($1))
 		   ,null_expr_list));
-        }
+	}
 	| commabarlist '|' commalist_opt
-        { $$=make_exprlist_node(wrap_list_display(reverse_expr_list($3)),$1); }
+	{ $$=make_exprlist_node(wrap_list_display(reverse_expr_list($3)),$1); }
 ;
 
 

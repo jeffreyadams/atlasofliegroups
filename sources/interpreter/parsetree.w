@@ -1290,15 +1290,17 @@ declarations in \Cee-style, but they are defined in in the file
 \.{evaluator.w}, since that is where the functionality is available, and we do
 not want to make the current compilation unit depend on \.{evaluator.h}.
 
-The function |global_set_identifier| is a temporary feature to handle defining
-identifiers while there is not yet a general structure for identifier
-definitions within expressions (so that this cannot yet be handled as a part
-of evaluation expressions). The left hand side~|ids| refers to a list of
-identifiers (this is guaranteed by the parser), which are only represented as
-an |expr_list| because this avoids defining a separate type.
+The function |global_set_identifier| handles introducing identifiers, either
+normal ones or overloaded instances of functions, using the \&{set} syntax.
+The left hand side~|id| is a pattern of identifiers defined, |e| their
+defining expression, and |overload| indicates whether additions are to be made
+to the overload table rather than to the global identifier table. If
+|overload| is true, all defining values should be functions; in practice this
+is guaranteed by |id| being a single identifier and |e| a
+$\lambda$-expression.
 
 @< Declarations of functions in \Cee-style for the parser @>=
-void global_set_identifier(struct id_pat id, expr e);
+void global_set_identifier(struct id_pat id, expr e, int overload);
 void global_declare_identifier(short id, ptr type);
 void show_ids();
 void type_of_expr(expr e);
