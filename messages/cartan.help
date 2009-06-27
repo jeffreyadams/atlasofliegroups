@@ -46,19 +46,60 @@ Cartan subgroups, so that one can see which real form involves which Cartan,
 and is also the numbering used by the "showrealforms" command, and everywhere
 else in the program where real forms occur.
 
-Here is a sample output for one of the Cartan classes of the real form sp(12,R)
+Example: Here are the two Cartan subgroups of SL(2,R):
 
-Cartan #5:
+real: type
+Lie type: A1 sc s
+main: cartan
+(weak) real forms are:
+0: su(2)
+1: sl(2,R)
+enter your choice: 1
+Name an output file (return for stdout, ? to abandon):
+
+Cartan #0:
+split: 0; compact: 1; complex: 0
+canonical twisted involution: e
+twisted involution orbit size: 1; fiber size: 2; strong inv: 2
+imaginary root system: A1
+real root system is empty
+complex factor is empty
+real form #1: [0] (1)
+real form #0: [1] (1)
+
+
+Cartan #1:
+split: 1; compact: 0; complex: 0
+canonical twisted involution: 1
+twisted involution orbit size: 1; fiber size: 1; strong inv: 1
+imaginary root system is empty
+real root system: A1
+complex factor is empty
+real form #1: [0] (1)
+
+
+Example: E_6 has a real form with K of type F_4. This group has only
+one conjugacy class of Cartan subgroups:
+
+real:  type
+Lie type: E6 sc s
+main: cartan
+(weak) real forms are:
+0: e6(f4)
+1: e6(R)
+enter your choice: 0
+Name an output file (return for stdout, ? to abandon):
+
+Cartan #0:
 split: 0; compact: 2; complex: 2
-canonical twisted involution: 4,5,6,5,4,3,4,5,6,5,4,2,3,4,5,6,5,4,1,2,3,4,5,6,5,4
-twisted involution orbit size: 180;  fiber rank: 2;  #X_r: 720
-imaginary root system: A1.B2.A1
-real root system: A1.A1
-complex factor: A1
-real form #4: [0,2] (2)
-real form #3: [1] (1)
-real form #2: [3] (1)
-
+canonical twisted involution: e
+twisted involution orbit size: 45; fiber size: 4; strong inv: 180
+imaginary root system: D4
+real root system is empty
+complex factor: A2
+real form #1: [0,1,2] (3)
+real form #0: [3] (1)
 
 [IC4] David A. Vogan, Jr, Irreducible characters of semisimple Lie groups IV:
-Character-multiplicity duality. Duke Math. J. 49 (1982), no. 4, pp. 943--1073.
+Character-multiplicity duality. Duke Math. J. 49 (1982), no. 4,
+pp. 943--1073.

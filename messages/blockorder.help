@@ -21,22 +21,18 @@ column is the representation number followed by a colon.
 Following the representation number i is a comma-separated list of the
 immediate predecessors of representation #i in the Bruhat order.  
 
-The very last line of output records the total number of pairs (x,y) of
-representations for which x \le y.  This number is an upper bound for
-the number of non-vanishing KL polynomials P_{x,y}; equality holds if
-all the K orbits on G/B are simply connected (for example in U(p,q) or
-in complex groups).
+The very last line of output records the total number of pairs (x,y)
+of representations for which x \le y.  This number is an upper bound
+for the number of non-vanishing KL polynomials P_{x,y}; equality holds
+if all the K orbits on G/B have connected stabilizer (for example in
+U(p,q) or in complex groups).
 
-For example (case of PGL(2,R):
+For example here is the block of the trivial representation of
+PGL(2,R)=SO(2,1): 
 
-empty: blockorder
-Lie type: A1
-elements of finite order in the center of the simply connected group:
-Z/2
-enter kernel generators, one per line
-(ad for adjoint, ? to abort):
-ad 
-enter inner class(es): s
+block: type
+Lie type: A1 ad s
+main: blockorder
 (weak) real forms are:
 0: su(2)
 1: sl(2,R)
@@ -45,18 +41,15 @@ possible (weak) dual real forms are:
 0: su(2)
 1: sl(2,R)
 enter your choice: 1
-entering block construction ...
-1
-done
 block size: 3
-Name an output file (return for stdout, ? to abandon): 
+Name an output file (return for stdout, ? to abandon):
 0:
 1: 0
 2: 0
 Number of comparable pairs = 5
 
 The last four lines are the output.  First line says that block
-element 0 (the discrete series for PGL(2,R) has no predecessors: the
+element 0 (the discrete series for PGL(2,R)) has no predecessors: the
 character formula for this irreducible standard representation
 involves no other standard representations.  The next two lines say
 that the discrete series character is involved in the character

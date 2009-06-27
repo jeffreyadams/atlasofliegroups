@@ -1,8 +1,39 @@
 
-The "roots" command prints out the list of all the roots for the group, 
-in the current lattice basis. They are often going to be ugly, but it is
-sometimes useful to be able to look at the real objects, particularly
-when one wants to define an operation on roots in terms of matrices.
+The software chooses a basis of the lattice X^*(T). The "roots"
+command prints out the list of all the positive roots for the group,
+in this basis. 
 
-To get the expression in the root basis, say "roots_rootbasis"
+The software picks a basis of the character lattice X^*(T). If G is
+defined using the "sc" (respectively "ad") option to be simply
+connected (resp. adjoint) this basis is the basis of fundamental
+weights (resp. simple roots), plus a copy of Z^n if G is not
+semisimple. In general this basis may be fairly arbitrary, and the
+information from the roots command is useful in understanding this
+basis.
 
+The "roots_rootbasis" command gives all roots in the basis of simple
+roots.  See also coroots, coroots_rootbasis, posroots,
+posroots_rootbasis, poscoroots, poscoroots_rootbasis and rootdatum.
+
+Example: all roots of Sp(4):
+
+main: roots
+Name an output file (return for stdout, ? to abandon):
+[-2,0]
+[0,-1]
+[2,-2]
+[-2,1]
+[2,-1]
+[-2,2]
+[0,1]
+[2,0]
+main: roots_rootbasis
+Name an output file (return for stdout, ? to abandon):
+[-2,-1]
+[-1,-1]
+[0,-1]
+[-1,0]
+[1,0]
+[0,1]
+[1,1]
+[2,1]

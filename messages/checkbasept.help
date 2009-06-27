@@ -1,3 +1,4 @@
+
 The "checkbasept" command checks a conjecture. We work in the context
 of a fixed real form, and its KGB space X. 
 
@@ -50,3 +51,4 @@ Here is the output of checkbasept for this block:
 (121,12,9)
 (1212,121,10)
 true
+

@@ -1,8 +1,15 @@
 
-The "coroots" command prints out the list of all the coroots for the group, 
-in the current lattice basis. They are often going to be ugly, but it is
-sometimes useful to be able to look at the real objects, particularly
-when one wants to define an operation on roots in terms of matrices.
+The software chooses a basis of the lattice X_*(T). The "coroots"
+command prints out the list of all the coroots for the group,
+in this basis. See the help file for the roots command.
 
-To get the expression in the root basis, say "coroots_rootbasis"
+If G is defined using the "sc" (respectively "ad") option to be simply
+connected (resp. adjoint) this basis is the basis of simple coroots
+(resp. simple fundamental coweights), plus a copy of Z^n if G is not
+semisimple. In general this basis may be fairly arbitrary and
+difficult to understand. This command is useful in understanding this
+basis for use with other commands.
 
+The "coroots_rootbasis" command gives all coroots in the basis of
+simple coroots.  See also roots, roots_rootbasis, posroots,
+posroots_rootbasis, poscoroots, poscoroots_rootbasis and rootdatum.

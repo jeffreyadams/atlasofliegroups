@@ -1,13 +1,124 @@
 
-******** temporary **********************************************************
+The "klbasis" command prints out the list of all the non-zero
+Kazhdan-Lusztig polynomials in the block. These are polynomials
+P_{\gamma,\nu} with \gamma,\nu in the block. Necessarily
+length(\gamma)<=length(\nu) (in fact gamma<=\nu in the Bruhat order). 
+Here \gamma,\nu are represented by numbers 0,...,n-1 from the output
+of the block command. 
 
-The "klbasis" command prints out the list of all the non-zero P_{\gamma,\nu}
-for all pairs (\gamma,\nu) in the block (where necessarily length(\gamma) 
-<= length(\nu).) This is exactly the information required to write down the 
-Kazhdan-Lusztig-Vogan basis elements c_\nu.
+The polynomials have the following meaning. Associated to each block B
+is a family of regular integral infinitesimal characters. For any such
+infinitesimal character lambda the block corresponds to a set of
+irreducible representations with infinitesimal character lambda. See
+the help file for the block command.
 
-For now, we use the numbering of the elements in the block to represent \gamma
-and \nu. To give more meaning to these numbers, use the "block" command, that
-will relate the various \nu to fundamental representations, say, in terms of
-Cayley transforms and cross-actions.
+Fix a block B and a a regular infinitesimal character for B.  Then
+associated to each block element 0<=x<=n is a standard module I(x),
+with unique irreducible quotient J(x). The Grothendieck group of B
+consists of formal sums \sum_x a_x J(x) with each a_x an integer. This
+Z-module is also spanned by the standard modules I(x). In other words
+there is an identity in the Grothendieck group
 
+J(y)=sum_s M(x,y)I(x) 
+
+where the sum is over the block (only x<=y in the Bruhat order
+contribute), and the M(x,y) are integers. These are given by the
+Kazhdan-Lusztig polynomials P_{x,y} evaluated at q=1:
+
+M(x,y)=(-1)^{length(x)-length(y)}P_{x,y}(1).
+
+See [The Kazhdan-Lusztig Conjecture for Real Reductive Groups, David
+Vogan, Proceedings of the Park City Conference, Progr. Math., 40,
+Birkhauser, 1983] 
+
+The output of klbasis is of the form:
+
+ y:   x1: P_{x1,y}
+      x2: P_{x2,y}
+      x3: P_{x3,y}
+      ...
+
+For example
+
+ 8:  0: 1
+     1: 1
+     2: 1
+     4: 1
+     6: 1
+     8: 1
+
+means 
+
+P_{0,8}=P_{1,8}=P_{2,8}=P_{4,8}=P_{6,8}=P_{8,8}=1
+
+and all other P_{x,8}=0.
+
+The final information is the number of non-zero polynomials, the
+number of polynomials P_{x,y}=0 even though where x<=y in the Bruhat
+order, and the number of pairs (x,y) with x<=y in the Bruhat order.
+
+Example: the block of the trivial representation of SL(2,R):
+
+block:
+0(0,1):  0  0  [i1]  1   (2,*)
+1(1,1):  0  0  [i1]  0   (2,*)
+2(2,0):  1  1  [r1]  2   (0,1)   1
+
+I(0)=J(0)=pi_+=holomorphic discrete series, length=0
+I(1)=J(1)=pi_-=anti-holomorphic discrete series, length=0
+I(0)=spherical principal series, J(0)=C=trivial representation, length=1
+
+klbasis:
+Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:
+
+0: 0: 1
+
+1: 1: 1
+
+2: 0: 1
+   1: 1
+   2: 1
+
+The last three lines tell us:
+
+P_{0,2)=P_{1,2}=P_{2,2}=1
+
+which with the length information gives:
+
+M(0,2)=-1
+M(1,2)=-1
+M(2,2)=1
+
+i.e.
+
+J(2)=-I(0)-I(1)+I(2)
+
+or in more familiar terms an identity in the Grothendieck group:
+
+C= (spherical principal series) - pi_+ - pi_-
+
+This is an inversion of the familiar decomposition of the spherical
+principal series into irreducible Jordan Holder factors:
+
+spherical principal series = pi_+ + pi_- + C
+
+Example: Sp(4,R)
+
+Here is part of the output of klbasis for the block of the trivial
+representation of Sp(4,R):
+
+10:  0: 1
+     1: 1
+     2: 1
+     3: 1
+     4: 1
+     5: 1
+     6: 1
+     7: 1
+     8: 1
+     9: 1
+    10: 1
+
+J(10) is the trivial representation C, and we conclude
+
+C=I(10)-I(9)-I(8)-I(7)+I(6)+I(5)+I(4)-I(3)-I(2)-I(1)-I(0)

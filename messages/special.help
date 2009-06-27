@@ -2,4 +2,3 @@
 The "special" command executes the function special_f(), defined in 
 special.cpp. Currently, this just prints a short message. You may redefine
 it at will, so that (after recompilation) it will do whatever you like.
-

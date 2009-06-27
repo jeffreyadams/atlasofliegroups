@@ -1,3 +1,4 @@
+
 The "gradings" command prints information about the gradings of the imaginary
 root system of a given Cartan subgroup associated to the weak real forms for
 which this Cartan subgroup is defined.
@@ -30,4 +31,4 @@ associated to that real form; the gradings on a single line form a $W$-orbit.
 Each grading is represented by a string of $k$ bits where $k$ is the rank of
 the imaginary root system; each bit specifies the value at the elements of a
 basis of simple roots for the subsystem (with position $i$ corresponding to
-row $i$ os that Cartan matrix), which values determine the grading entirely.
+row $i$ of that Cartan matrix), which values determine the grading entirely.

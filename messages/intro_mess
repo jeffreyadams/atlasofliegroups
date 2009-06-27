@@ -5,7 +5,7 @@ are defined to be the groups of real points of connected complex reductive
 groups defined over the real numbers.
 
 At this point, the classification and structure theory of these groups is
-availble, as well as the computation of blocks of (translation families of)
+available, as well as the computation of blocks of (translation families of)
 representations, and the computation of Kazhdan-Lusztig polynomials for them.
 
 The program works with a command interface. Input is done through the GNU
@@ -22,7 +22,7 @@ form in the inner class, and the associated Cartan classes; finally the
 representations is determined, which block, and when computed the associated
 matrix of Kazhdan-Lusztig polynomials, are recorded in this mode. All these
 modes make the same set of commands available; when a command for a more
-specialized mode is invoked, the program automiatically enters the mode(s)
+specialized mode is invoked, the program automatically enters the mode(s)
 required for it, asking the user to select the associated data. One other mode
 provides a completely different behavior: the in "help" mode, which can be
 entered from any other mode by using the command 'help', each command name
