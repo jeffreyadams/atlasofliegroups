@@ -5,6 +5,10 @@ workinglog. Newer changes are documented in the CVS repository.
 This file contains a summary of major changes to the software.
 
 Version 0.4
+* Small bug fixes
+* Improved compilability of realex
+
+Version 0.4
 * New commands related to K: Ktypeform, Ktypemat, branch, KGB,
 trivial, test, sub_KGB, mod_lattice
 * Many new help files
