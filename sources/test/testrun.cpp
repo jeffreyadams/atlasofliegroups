@@ -626,7 +626,7 @@ lietype::LieType firstType(const Shape& s)
 {
   lietype::LieType lt;
 
-  for (unsigned long j = 0; j < lt.size(); ++j) {
+  for (unsigned long j = 0; j < s.size(); ++j) {
     lt.push_back(lietype::SimpleLieType('A',s[j]));
   }
 
