@@ -121,15 +121,13 @@ the complex group H^{-tau} of fixed points of -tau. The fiber group is a
 $Z/2Z$ vector space that can be realized as a subquotient of the group H(2) of
 elements of order 2 (or 1) in H.
 
-Equivalence classes of strong real forms (still with a fixed value
-of z) give a partition of the fiber group (depending on z).  These
-partitions are stored in d_strongReal, and accessed by the function
-strongReal.
+Equivalence classes of strong real forms (still with a fixed value of z) give
+a partition of the fiber group (depending on z). These partitions are stored
+in d_strongReal, and accessed by the function strongReal.
 
-An equivalence class of strong real forms may be labelled by a pair
-of integers: the second labelling the element z (or rather its coset
-modulo [(1+delta)Z]), and the first the equivalence class in the
-fiber group.
+An equivalence class of strong real forms may be labelled by a pair of
+integers: the second labelling the element z (or rather its coset modulo
+[(1+delta)Z]), and the first the equivalence class in the fiber group.
 */
 class Fiber {
 
@@ -189,42 +187,39 @@ class Fiber {
   /*!
   \brief Fiber group for the adjoint group of G.
 
-  Writing H_ad for the complex torus in G_ad, and still writing tau
-  for the Cartan involution, this is F_ad=H_ad^{-tau}/(1-tau)H_ad. The
-  adjoint covering G-->G_ad defines a natural map F-->F_ad, but this
-  map may be neither injective nor surjective.
+  Writing H_ad for the complex torus in G_ad, and still writing tau for the
+  Cartan involution, this is F_ad=H_ad^{-tau}/(1-tau)H_ad. The adjoint
+  covering G-->G_ad defines a natural map F-->F_ad, but this map may be
+  neither injective nor surjective.
 
-  The adjoint fiber is computed from the action of tau on the adjoint
-  lattice of one-parameter subgroups Y_ad just as the fiber group is
-  computed. The lattice Y_ad has as basis the fundamental coweights.
+  The adjoint fiber is computed from the action of tau on the adjoint lattice
+  of one-parameter subgroups Y_ad just as the fiber group is computed. The
+  lattice Y_ad has as basis the fundamental coweights.
   */
   latticetypes::SmallSubquotient d_adjointFiberGroup;
 
-  /*!
-  \brief Flags the noncompact imaginary roots for the base grading
-  among all the roots.
+  /*! \brief Flags the noncompact imaginary roots for the base grading among
+  all the roots.
   */
   rootdata::RootSet d_baseNoncompact;
 
   /*!
   \brief Grading with all simple imaginary roots noncompact.
 
-  The grading is a RankFlags; that is, a BitSet<RANK_MAX>.  It flags
-  the noncompact imaginary roots among the simple imaginary roots; so
-  all the bits up to imaginaryRank are 1.
+  The grading is a RankFlags; that is, a BitSet<RANK_MAX>. It flags the
+  noncompact imaginary roots among the simple imaginary roots; so all the bits
+  up to imaginaryRank are 1.
   */
   gradings::Grading d_baseGrading;
 
   /*!
-  \brief RootSet \#j flags the imaginary roots whose grading is
-  changed by canonical basis vector \#j of the adjoint fiber group.
+  \brief RootSet \#j flags the imaginary roots whose grading is changed by
+  canonical basis vector \#j of the adjoint fiber group.
   */
   rootdata::RootSetList d_noncompactShift; // |size()==adjointFiberRank()|
 
-  /*!
-  \brief Grading \#j flags the simple imaginary roots whose
-  grading is changed by canonical basis vector \#j in the adjoint
-  fiber group.
+  /*! \brief Grading \#j flags the simple imaginary roots whose grading is
+  changed by canonical basis vector \#j in the adjoint fiber group.
   */
   gradings::GradingList d_gradingShift; // |size()==adjointFiberRank()|
 
@@ -236,27 +231,24 @@ class Fiber {
   reduction mod 2 of the matrix of Y-->Y_ad, that is _not_ the matrix in
   d_toAdjoint, which must take into account the subquotients at both sides.
   Each subquotient F and F_ad is equipped (by the row reduction algorithms in
-  Subquotient) with a distinguished basis, and what is recorded in
-  d_toAdjoint is the (dim F_ad) x (dim F) matrix with respect to those bases.
+  Subquotient) with a distinguished basis, and what is recorded in d_toAdjoint
+  is the (dim F_ad) x (dim F) matrix with respect to those bases.
   */
   latticetypes::BinaryMap d_toAdjoint;
 
   /*!
-  \brief Partition of the adjoint fiber group according to weak real
-  forms.
+  \brief Partition of the adjoint fiber group according to weak real forms.
 
-  The imaginary Weyl group acts on the adjoint fiber group; the
-  partition is by orbits of this action.
+  The imaginary Weyl group acts on the adjoint fiber group; the partition is
+  by orbits of this action.
   */
   partition::Partition d_weakReal;
 
-  /*!
-  \brief Partition of the weak real forms according to the
-  corresponding classes in Z(G)^delta/[(1+delta)Z(G)].
+  /*! \brief Partition of the weak real forms according to the corresponding
+  classes in Z(G)^delta/[(1+delta)Z(G)].
 
-  Constructed by the function realFormPartition in the Helper
-  class of the unnamed namespace of cartanclass.cpp; details in that
-  documentation.
+  Constructed by the function realFormPartition in the Helper class of the
+  unnamed namespace of cartanclass.cpp; details in that documentation.
   */
   partition::Partition d_realFormPartition;
 
@@ -265,22 +257,21 @@ class Fiber {
   possible square classes in Z^delta/[(1+delta)Z].
 
   The Fiber group acts in a simply transitive way on strong real forms
-  (inducing tau on H) with a fixed square in Z^delta.  The number of
-  squares that occur (modulo (1+delta)Z) is equal to the number c of
-  classes in the partition d_weakReal.  The collection of strong real
-  forms is therefore a collection of c cosets of the fiber group F.
-  Each of these c cosets is partitioned into W_i-orbits; these partitions
-  into orbits are described by the c partitions in d_strongReal.
+  (inducing tau on H) with a fixed square in Z^delta. The number of squares
+  that occur (modulo (1+delta)Z) is equal to the number c of classes in the
+  partition d_weakReal. The collection of strong real forms is therefore a
+  collection of c cosets of the fiber group F. Each of these c cosets is
+  partitioned into W_i-orbits; these partitions into orbits are described by
+  the c partitions in d_strongReal.
   */
   std::vector<partition::Partition> d_strongReal;
 
   /*!
   \brief Representative strong real form for each weak real form.
 
-  A StrongRealFormRep is a pair of numbers.  The second indexes
-  the value of the square of the strong real form in
-  Z^delta/[(1+delta)Z].  The first indexes a W_im orbit on the
-  corresponding coset of the fiber group.
+  A StrongRealFormRep is a pair of numbers. The second indexes the value of
+  the square of the strong real form in Z^delta/[(1+delta)Z]. The first
+  indexes a W_im orbit on the corresponding coset of the fiber group.
   */
   std::vector<StrongRealFormRep> d_strongRealFormReps;
 
@@ -328,9 +319,9 @@ class Fiber {
 /*!
   \brief RootSet flagging the imaginary roots.
 
-  That is, a bitmap whose set bits are those corresponding to the
-  numbers (within the list of roots in RootDatum) of the imaginary
-  roots (those roots alpha with tau(alpha)=alpha).
+  That is, a bitmap whose set bits are those corresponding to the numbers
+  (within the list of roots in RootDatum) of the imaginary roots (those roots
+  alpha with tau(alpha)=alpha).
 */
   const rootdata::RootSet& imaginaryRootSet() const
   { return d_involutionData.imaginary_roots(); }
@@ -338,9 +329,9 @@ class Fiber {
 /*!
   \brief RootSet flagging the real roots.
 
-  That is, a bitmap whose set bits are those corresponding to the
-  numbers (within the list of roots in RootDatum) of the real roots
-  (those roots alpha with tau(alpha)=-alpha).
+  That is, a bitmap whose set bits are those corresponding to the numbers
+  (within the list of roots in RootDatum) of the real roots (those roots alpha
+  with tau(alpha)=-alpha).
 */
   const rootdata::RootSet& realRootSet() const
   { return d_involutionData.real_roots(); }
@@ -348,9 +339,8 @@ class Fiber {
 /*!
   \brief RootList holding the numbers of the simple imaginary roots.
 
-  These are simple for the positive imaginary roots given by the
-  (based) RootDatum.  They need not be simple in the entire root
-  system.
+  These are simple for the positive imaginary roots given by the (based)
+  RootDatum. They need not be simple in the entire root system.
 */
   const rootdata::RootList& simpleImaginary() const
   { return d_involutionData.imaginary_basis(); }
@@ -380,14 +370,14 @@ class Fiber {
 /*!
   \brief Fiber group for the adjoint group of G.
 
-  Writing H_ad for the complex torus in G_ad, and still writing tau
-  for the Cartan involution, this is F_ad=H_ad^{-tau}/(1-tau)H_ad. The
-  adjoint covering G-->G_ad defines a natural map F-->F_ad, but this
-  map may be neither injective nor surjective.
+  Writing H_ad for the complex torus in G_ad, and still writing tau for the
+  Cartan involution, this is F_ad=H_ad^{-tau}/(1-tau)H_ad. The adjoint
+  covering G-->G_ad defines a natural map F-->F_ad, but this map may be
+  neither injective nor surjective.
 
-  The adjoint fiber is computed from the action of tau on the adjoint
-  lattice of one-parameter subgroups Y_ad just as the fiber group is
-  computed. The lattice Y_ad has as basis the fundamental coweights.
+  The adjoint fiber is computed from the action of tau on the adjoint lattice
+  of one-parameter subgroups Y_ad just as the fiber group is computed. The
+  lattice Y_ad has as basis the fundamental coweights.
 */
   const latticetypes::SmallSubquotient& adjointFiberGroup() const
   { return d_adjointFiberGroup; }
@@ -449,19 +439,18 @@ class Fiber {
 /*!
   \brief Number of weak real forms containing this Cartan.
 
-  This is the number of orbits of the imaginary Weyl group on the
-  adjoint fiber group.
+  This is the number of orbits of the imaginary Weyl group on the adjoint
+  fiber group.
 */
   size_t numRealForms() const {
     return d_weakReal.classCount();
   }
 
-/*!
-  \brief Partition of the weak real forms according to the
-  corresponding central square classes in Z(G)/[(1+delta)Z(G)].
+/*! \brief Partition of the weak real forms according to the corresponding
+  central square classes in Z(G)/[(1+delta)Z(G)].
 
-  A weak real form (always containing our fixed real torus) is an
-  orbit of W_i on the adjoint fiber group.
+  A weak real form (always containing our fixed real torus) is an orbit of W_i
+  on the adjoint fiber group.
 */
   const partition::Partition& realFormPartition() const {
     return d_realFormPartition;
@@ -483,9 +472,9 @@ class Fiber {
     return d_weakReal.classRep(d_realFormPartition.classRep(c));
   }
 
-/*!
- \brief Partitions of Fiber group cosets corresponding to the
-  possible square classes in Z^delta/[(1+delta)Z].
+/*! \brief
+  Partitions of Fiber group cosets corresponding to the possible square
+  classes in Z^delta/[(1+delta)Z].
 
   The Fiber group acts in a simply transitive way on strong real forms
   (inducing tau on H) with a fixed square in Z^delta. The number of squares
@@ -525,9 +514,9 @@ class Fiber {
   adjoint_fiber_orbit toWeakReal(fiber_orbit c, square_class csc) const;
 
 
-/*!
-  \brief Partition of the weak real forms according to the
-  corresponding classes in Z(G)^delta/[(1+delta)Z(G)].
+/*! \brief
+  Partition of the weak real forms according to the corresponding classes in
+  Z(G)^delta/[(1+delta)Z(G)].
 */
   const partition::Partition& weakReal() const {
     return d_weakReal;
