@@ -107,8 +107,10 @@ namespace {
     "gives a basis of quotient of character lattice";
   const char* branch_tag = "computes restriction of representation to K";
   const char* test_tag = "gives information about a representation";
-  const char* testrun_tag = "tries to iterate over groups and crashes atlas";
-  const char* examine_tag = "individual command iterated over in testrun";
+  const char* testrun_tag =
+                "iterates over root data of given rank, calling examine";
+  const char* examine_tag =
+    "tests if kgb and KGB commands generate identical numberings";
 
 /*
   For convenience, the "test" command is added to the mode that is flagged by
@@ -170,8 +172,6 @@ void addTestCommands<mainmode::MainmodeTag>
   mode.add("posroots_rootbasis",posroots_rootbasis_f);
   mode.add("coroots_rootbasis",coroots_rootbasis_f);
   mode.add("poscoroots_rootbasis",poscoroots_rootbasis_f);
-
-  mode.add("examine",exam_f);
 }
 
 
@@ -193,6 +193,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("mod_lattice",mod_lattice_f);
   mode.add("branch",branch_f);
 
+  mode.add("examine",exam_f);
 }
 
 // Add to the block mode the test commands that require that mode.
@@ -248,7 +249,6 @@ template<> void addTestHelp<mainmode::MainmodeTag>
   mode.add("posroots_rootbasis",posroots_rootbasis_h);
   mode.add("coroots_rootbasis",coroots_rootbasis_h);
   mode.add("poscoroots_rootbasis",poscoroots_rootbasis_h);
-  mode.add("examine",helpmode::nohelp_h);
 
   // add additional command tags here :
 
@@ -256,7 +256,6 @@ template<> void addTestHelp<mainmode::MainmodeTag>
   insertTag(t,"posroots_rootbasis",posroots_rootbasis_tag);
   insertTag(t,"coroots_rootbasis",coroots_rootbasis_tag);
   insertTag(t,"poscoroots_rootbasis",poscoroots_rootbasis_tag);
-  insertTag(t,"examine",examine_tag);
 
 }
 
@@ -283,6 +282,8 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("Ktypemat",Ktypemat_h);
   mode.add("mod_lattice",mod_lattice_h);
   mode.add("branch",branch_h);
+  mode.add("examine",helpmode::nohelp_h);
+
 
   // add additional command tags here :
 
@@ -293,6 +294,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"Ktypemat",Ktypemat_tag);
   insertTag(t,"mod_lattice",mod_lattice_tag);
   insertTag(t,"branch",branch_tag);
+  insertTag(t,"examine",examine_tag);
 
 }
 
@@ -764,62 +766,51 @@ void test_f()
   }
 }
 
-void examine(const rootdata::RootDatum& rd,
-	     const rootdata::RootSystem& rs)
+void examine(realredgp::RealReductiveGroup& G_R)
 {
-  latticetypes::LatticeMatrix C=rs.cartanMatrix();
-  assert(rd.cartanMatrix()==C);
-  assert (rd.numRoots()==rs.numRoots());
-
-  const weyl::WeylGroup W(C);
-  for (rootdata::RootNbr alpha=0; alpha<rs.numRoots(); ++alpha)
+  kgb::KGB kgb1(G_R);
+  kgb::KGB kgb2(G_R,G_R.Cartan_set());
+  assert (kgb1.size()==kgb2.size());
+  for (size_t i=0; i<kgb1.size(); ++i)
   {
-    latticetypes::Weight v=rd.inSimpleRoots(alpha);
-    latticetypes::Weight w=rs.root_expr(alpha);
-    assert(v==w);
-    assert(rd.root_permutation(alpha)==rs.root_permutation(alpha));
-    assert(weyl::WeylElt(rd.reflectionWord(alpha),W)==
-	   weyl::WeylElt(rs.reflectionWord(alpha),W));
-    assert(rd.descent_set(alpha)==rs.descent_set(alpha));
-    rootdata::RootSet orth(rs.numRoots());
-    for (rootdata::RootNbr beta=0; beta<rs.numRoots(); ++beta)
+    for (size_t s=0; s<G_R.semisimpleRank(); ++s)
     {
-      assert(rd.root(alpha).dot(rd.coroot(beta))==rs.bracket(alpha,beta));
-      assert(rd.sumIsRoot(alpha,beta)==rs.sumIsRoot(alpha,beta));
-      orth.set_to(beta,rd.isOrthogonal(alpha,beta));
-      assert(orth.isMember(beta)==rs.isOrthogonal(alpha,beta));
+      assert(kgb1.cross(s,i)==kgb2.cross(s,i));
+      assert(kgb1.cayley(s,i)==kgb2.cayley(s,i));
     }
-    assert(rd.simpleBasis(orth)==rs.simpleBasis(orth));
+    assert(kgb1.status(i)==kgb2.status(i));
   }
 }
 
 void testrun_f()
 {
-  unsigned long rank = interactive::get_bounded_int
+  unsigned long rank=interactive::get_bounded_int
     (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
-  latticetypes::LatticeMatrix id; matrix::identityMatrix(id,rank);
   for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
   {
     std::cout<< *it << std::endl;
-    const rootdata::RootDatum rd
-      (prerootdata::PreRootDatum(*it,id.columns())); // simply connected
-    const rootdata::RootSystem rs(rd.cartanMatrix());
-    examine(rd,rs);
-    examine(rootdata::RootDatum(rd,tags::DualTag()),
-	    rootdata::RootSystem(rs,tags::DualTag()));
+    size_t count=0;
+    for (testrun::CoveringIterator cit(*it); cit(); ++cit)
+    {
+      if (count>0) std::cout << ',' << std::flush;
+      rootdata::RootDatum rd(*cit);
+      latticetypes::LatticeMatrix id; matrix::identityMatrix(id,rd.rank());
+      complexredgp::ComplexReductiveGroup G(rd,id);
+      for (realform::RealForm rf=0; rf<G.numRealForms(); ++rf)
+      {
+	realredgp::RealReductiveGroup G_R(G,rf);
+	examine(G_R);
+      }
+      std::cout << ++count;
+    }
+    std::cout << '.' << std::endl;
   }
 
 }
 
 void exam_f()
 {
-  const rootdata::RootDatum rd = mainmode::currentComplexGroup().rootDatum();
-  const rootdata::RootSystem rs(rd.cartanMatrix());
-  examine(rd,rs);
-  std::cout << "root system OK" << std::endl;
-  examine(rootdata::RootDatum(rd,tags::DualTag()),
-	  rootdata::RootSystem(rs,tags::DualTag()));
-  std::cout << "dual root system OK" << std::endl;
+  examine(realmode::currentRealGroup());
 }
 
 //Help commands
