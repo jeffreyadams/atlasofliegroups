@@ -766,26 +766,28 @@ void test_f()
   }
 }
 
-void examine(realredgp::RealReductiveGroup& G_R)
+bool examine(realredgp::RealReductiveGroup& G_R)
 {
   kgb::KGB kgb1(G_R);
   kgb::KGB kgb2(G_R,G_R.Cartan_set());
-  assert (kgb1.size()==kgb2.size());
+  if (kgb1.size()!=kgb2.size()) return false;
   for (size_t i=0; i<kgb1.size(); ++i)
   {
     for (size_t s=0; s<G_R.semisimpleRank(); ++s)
     {
-      assert(kgb1.cross(s,i)==kgb2.cross(s,i));
-      assert(kgb1.cayley(s,i)==kgb2.cayley(s,i));
+      if (kgb1.cross(s,i)!=kgb2.cross(s,i)) return false;
+      if (kgb1.cayley(s,i)!=kgb2.cayley(s,i)) return false;
     }
-    assert(kgb1.status(i)==kgb2.status(i));
+    if(kgb1.status(i)!=kgb2.status(i)) return false;
   }
+  return true;
 }
 
 void testrun_f()
 {
   unsigned long rank=interactive::get_bounded_int
     (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
+  std::cout << "Testing agreement of kgb and KGB:\n";
   for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
   {
     std::cout<< *it << std::endl;
@@ -799,7 +801,8 @@ void testrun_f()
       for (realform::RealForm rf=0; rf<G.numRealForms(); ++rf)
       {
 	realredgp::RealReductiveGroup G_R(G,rf);
-	examine(G_R);
+	if (not examine(G_R))
+	  std::cout << "Failure at real form " << rf << std::endl;
       }
       std::cout << ++count;
     }
@@ -810,7 +813,9 @@ void testrun_f()
 
 void exam_f()
 {
-  examine(realmode::currentRealGroup());
+  std::cout << "kgb and KGB "
+            << (examine(realmode::currentRealGroup()) ? "agree" : "differ")
+	    << std::endl;
 }
 
 //Help commands
