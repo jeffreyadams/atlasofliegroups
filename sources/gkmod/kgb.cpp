@@ -555,7 +555,7 @@ KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
 
 /* The following constructor serves the quasi-constructor |refined_helper|.
    Its main purpose is to allow precomputation of the |basePoint| field as
-   the base object of a |EnrichedTitsGroup| object, and a set of |seeds|, one
+   the base object of an |EnrichedTitsGroup| object, and a set of |seeds|, one
    for each minimal Cartan class. The other arguments serve mainly to transmit
    values that are computed in |refined_helper| anyway, allowing them to be
    used in the construction without recompuation.
