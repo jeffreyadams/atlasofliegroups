@@ -102,6 +102,9 @@ class Status {
     return d_flags[j];
   }
 
+  bool operator==(const Status& other) const { return d_flags==other.d_flags; }
+  bool operator!=(const Status& other) const { return d_flags!=other.d_flags; }
+
 // manipulators
 
   void set(size_t j, Value v) {
