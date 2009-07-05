@@ -5,14 +5,14 @@
   This module contains code for the construction of a block in the
   one-sided parameter set (in other words, the subset of the one-sided
   parameter set corresponding to a single real form.) As explained in
-  my Palo Alto III notes, this is equivalent to parametrizing the set
+  my Palo Alto III notes, this is equivalent to parameterizing the set
   K\\G/B of (K,B)-orbits in G; hence the provocative title.
 */
 /*
   This is kgb.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2007 Marc van Leeuwen
+  Copyright (C) 2007-2009 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
@@ -46,7 +46,7 @@
   This module contains code for the construction of a block in the
   one-sided parameter set (in other words, the subset of the one-sided
   parameter set corresponding to a single real form.) As explained in
-  my Palo Alto III notes, this is equivalent to parametrizing the set
+  my Palo Alto III notes, this is equivalent to parameterizing the set
   K\\G/B of (K,B)-orbits in G; hence the provocative title.
 
 */
@@ -138,7 +138,7 @@ class KGBHelp
 
   // other data
 
-  /*!\brief List of Tits elements parametrizing KGB orbits.
+  /*!\brief List of Tits elements parameterizing KGB orbits.
 
   Accessed usually via the hash table |d_tits| (and |d_tits[i]| is |d_pool[i]|)
   */
@@ -213,7 +213,7 @@ KGBHelp refined_helper(realredgp::RealReductiveGroup& GR,
    but in fact it is so expensive for repeated use (since |W.involutionLength|
    has to recompute its result each time) that its use has been discontinued.
    In Fokko's code it was used by |tauPacket|, and formed the main bottleneck
-   for the block construction; now the hash table |d_tau| togther with the
+   for the block construction; now the hash table |d_tau| together with the
    table |first_of_tau| provide a much faster way to implement |tauPacket|.
 */
 class InvolutionCompare {
@@ -275,11 +275,11 @@ namespace kgb {
   \brief Construct the KGB data structure for the given real form,
   but if any Cartan classes are specified, only for those classes
 
-  This really handles two cases (the standard construction and a specialised
+  This really handles two cases (the standard construction and a specialized
   one for a small set of Cartan classes) in one. The reason that they are
   combined into a single constructor is that this allows a single constructor
   of a containing class to choose between the two methods (a constructor
-  method must use a fixed constructor for each of its subobjects, so having
+  method must use a fixed constructor for each of its sub-objects, so having
   multiple constructors here would force the same for every containing class).
 */
 KGB::KGB(realredgp::RealReductiveGroup& GR,
@@ -313,7 +313,7 @@ KGB::KGB(realredgp::RealReductiveGroup& GR,
 			)+1);
 
   /* Since elements are sorted by twisted involution, collecting those is easy.
-     By using the hash table |d_tau|, it gets initialised in the proper order
+     By using the hash table |d_tau|, it gets initialized in the proper order
   */
   { // insert twisted involutions in order into hash table |d_tau|
     for (KGBElt x=0; x<size; ++x)
@@ -417,7 +417,7 @@ namespace { // |FiberData| and |KGBHelp| are in anonymous namespace
   $-1$ eigenspace $X^\vee_-$ of $q^t$. When a Tits group element of the form
   $x.\sigma_w$ occurs in the KGB construction, only the coset of the left torus
   part $x$ modulo $I$ matters, and it will after computation be systematically
-  normalised by reducing the left torus part $x$ modulo $I$.
+  normalized by reducing the left torus part $x$ modulo $I$.
 
   The image $I$ is what one divides by to get the fiber group of the real
   Cartan associated to $H$ and $\tau$, in which case the "numerator" is the
@@ -497,12 +497,12 @@ void FiberData::reduce(tits::TitsElt& a) const
 /*    II b. The main helper class |KGBHelp|  */
 
 /*
-   The actual KGB contruction takes place below. During the construction, the
+   The actual KGB construction takes place below. During the construction, the
    elements are represented as Tits group elements. The links in the KGB
-   structure are realised by |BasedTitsGroup::basedTwistedConjugate| for the
+   structure are realized by |BasedTitsGroup::basedTwistedConjugate| for the
    cross actions and by |basedTitsGroup::Cayley_transform| for Cayley
    transforms. After each of these, the result is subject to
-   |d_fiberdata.reduce| to normalise the representation of a KGB element.
+   |d_fiberdata.reduce| to normalize the representation of a KGB element.
 */
 
 /*! \brief
@@ -539,7 +539,7 @@ KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
   d_pool.reserve(size);
   d_info.reserve(size);
 
-  // set up cross and cayley tables with undefined values
+  // set up cross and Cayley tables with undefined values
   for (size_t j = 0; j < d_rank; ++j)
   {
     d_cross[j].resize(size,UndefKGB);
@@ -554,11 +554,11 @@ KGBHelp::KGBHelp(realredgp::RealReductiveGroup& GR)
 }
 
 /* The following constructor serves the quasi-constructor |refined_helper|.
-   Its main purpose is to allow precomputation of the |basePoint| field as
+   Its main purpose is to allow pre-computation of the |basePoint| field as
    the base object of an |EnrichedTitsGroup| object, and a set of |seeds|, one
    for each minimal Cartan class. The other arguments serve mainly to transmit
    values that are computed in |refined_helper| anyway, allowing them to be
-   used in the construction without recompuation.
+   used in the construction without recomputation.
 */
 KGBHelp::KGBHelp(complexredgp::ComplexReductiveGroup& G,
 		 const bitmap::BitMap& Cartan_classes,
@@ -581,7 +581,7 @@ KGBHelp::KGBHelp(complexredgp::ComplexReductiveGroup& G,
   d_pool.reserve(size);
   d_info.reserve(size);
 
-  // set up cross and cayley tables with undefined values
+  // set up cross and Cayley tables with undefined values
   for (size_t j = 0; j < d_rank; ++j)
   {
     d_cross[j].resize(size,UndefKGB);
@@ -604,7 +604,7 @@ KGBHelp::KGBHelp(complexredgp::ComplexReductiveGroup& G,
     d_tits.match(a); // enter new KGB element into the tables
 #endif
 
-    // add additional infomation (length,Cartan class) for this KGB element
+    // add additional information (length,Cartan class) for this KGB element
     d_info.push_back(KGBInfo(G.twistedWeylGroup().involutionLength(a.tw()),
 			     m[i]));
   }
@@ -693,7 +693,7 @@ size_t KGBHelp::export_tables(std::vector<KGBEltList>& cross,
   IndexCompare comp(*this);
   std::stable_sort(a.begin(),a.end(),comp); // better and faster than |sort|
 
-  // export the cross and cayley maps, permuting each constituent list
+  // export the cross and Cayley maps, permuting each constituent list
   cross.clear(); cayley.clear();
   cross.reserve(d_rank); cayley.reserve(d_rank);
   setutils::Permutation ai(a,-1); // compute inverse of |a|
@@ -712,7 +712,7 @@ size_t KGBHelp::export_tables(std::vector<KGBEltList>& cross,
   // but here there is no difficulty
   a.pull_back(d_info).swap(info); // pull back |d_info| through |a|, and export
 
-  base=new tits::BasedTitsGroup(basePoint); // export base point infomation
+  base=new tits::BasedTitsGroup(basePoint); // export base point information
 
   return size;
 }
@@ -845,19 +845,19 @@ void KGBHelp::cayleyExtend(KGBElt parent)
       continue;
     }
 
-    // cayley-transform |current| by $\sigma_s$
+    // Cayley-transform |current| by $\sigma_s$
     tits::TitsElt a = current; basePoint.Cayley_transform(a,s);
     assert(titsGroup().length(a)>titsGroup().length(current)); // should go up
 
 
     // now look up the correspondingly reduced Tits element
-    d_fiberData.reduce(a); // subspace has grown, so mod out new supspace
+    d_fiberData.reduce(a); // subspace has grown, so mod out new subspace
     KGBElt x = d_tits.match(a);
     if (x==d_info.size()) // add a new Tits element
       d_info.push_back(KGBInfo(d_info[parent].length+1, // length goes up
 			       d_fiberData.cartanClass(a.tw())
 			       ));
-    // add new cayley link
+    // add new Cayley link
     d_cayley[s][parent] = x;
   }
 }
