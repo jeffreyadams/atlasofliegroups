@@ -29,6 +29,8 @@ namespace arithmetic {
 
   unsigned long lcm (unsigned long, unsigned long, unsigned long& = dummy);
 
+  unsigned long power(unsigned long base, unsigned int exponent);
+
   // inlined; first two arguments are supposed already reduced modulo third
   unsigned long& modAdd(unsigned long&, unsigned long, unsigned long);
 
@@ -74,6 +76,7 @@ public:
   bool operator>=(Rational q) const { return num*q.denom>=denom*q.num; }
 
   inline Rational& normalize();
+  Rational& power(int n); // raise to power |n| and return |*this|
 
 }; // |class Rational|
 

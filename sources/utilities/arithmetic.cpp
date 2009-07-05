@@ -16,6 +16,8 @@
 #include <stdexcept>
 
 #include "constants.h"
+#include "intutils.h"
+#include "bits.h"
 #include "error.h"
 
 /*****************************************************************************
@@ -94,6 +96,21 @@ unsigned long& modProd(unsigned long& a, unsigned long b, unsigned long n)
   return a;
 }
 
+unsigned long power(unsigned long x, unsigned int n)
+{ if (n==0)
+    return 1;
+  if (x<=1)
+    return x;
+  unsigned int l=bits::lastBit(n); // now $n<2^l$
+  unsigned long result=1;
+  while (l-->0)
+  { result *= result;
+    if ((n>>l & 1)!=0)
+      result*=x;
+  }
+  return result;
+}
+
 Rational Rational::operator+(Rational q) const
 {
   unsigned long sum_denom=lcm(denom,q.denom);
@@ -115,6 +132,20 @@ Rational Rational::operator/(Rational q) const
   if (q.num==0)
     throw std::domain_error("Rational division by 0");
   return Rational(num*q.denom,denom*q.num).normalize();
+}
+
+Rational& Rational::power(int n)
+{
+  normalize();
+  unsigned long numer=intutils::abs(num);
+  if (n<0)
+  { if (num==0)
+      throw std::domain_error("Negative power of rational zero");
+    std::swap(numer,denom); n=-n;
+  }
+  numer = arithmetic::power(numer,n); denom = arithmetic::power(denom,n);
+  num = (num>0 ? numer : - long(numer));
+  return *this;
 }
 
 std::ostream& operator<< (std::ostream& out, const Rational& frac)
