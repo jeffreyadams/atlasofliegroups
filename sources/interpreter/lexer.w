@@ -680,7 +680,7 @@ then we prepare for output redirection.
 
 @< Scan a token... @>=
 { switch(c)
-  {      case '"': @< Scan a string denotation @>
+  {      case '"': @< Scan a string denotation @> @+
   break; case '(':
          case '{':
          case '[': ++nesting; input.push_prompt(c); code=c;
@@ -693,34 +693,75 @@ then we prepare for output redirection.
          { code= c=='<' ? FROMFILE :
                  input.shift()=='>' ? ADDTOFILE :
                  (input.unshift(),TOFILE) ;
-	   @< Read in |file_name| @> break;
+	   @< Read in |file_name| @> @+ break;
          }
          prevent_termination=c;
-         if (input.shift()!='=')
-           {@; input.unshift(); code=c; break; }
-         code = c== '<' ? LEQ : GEQ;
+         code = OPERATOR; valp->oper.priority=4;
+         if (input.shift()=='=')
+           valp->oper.id=id_table.match_literal(c=='<' ? "<=" : ">=");
+         else
+           {@; input.unshift();
+               valp->oper.id=id_table.match_literal(c=='<' ? "<" : ">");
+           }
   break; case ':': prevent_termination=c;
     code = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
-  break; case '=': prevent_termination=code=c;
-  break; case '!': code = input.shift()=='=' ? NEQ : (input.unshift(),c);
-         prevent_termination='=';
-  break; case '+': prevent_termination=code=c;
-         code = input.shift()=='=' ? PLUSAB : (input.unshift(),c);
-  break; case '*': prevent_termination=c;
-         code = input.shift()=='=' ? TIMESAB  : (input.unshift(),c);
-  break; case '%': prevent_termination=c;
-         code = input.shift()=='=' ? MODAB  : (input.unshift(),c);
-  break; case '-': prevent_termination=c;
-    code = (c=input.shift())=='>' ? ARROW :
-            c=='=' ? MINUSAB : (input.unshift(),'-');
-  break; case '/': prevent_termination=c;
-    code= (c=input.shift())=='=' ? DIVAB : (input.unshift(),'/');
-  break; case '\\': // no |prevent_termination|, cannot be at end of line!
-    code= (c=input.shift())=='%' ? DIVMOD : (input.unshift(),'\\');
-  break; case '\n': state=ended; // and {\bf fall through}.
+  break; case '=':
+         valp->oper.id = id_table.match_literal("=");
+         valp->oper.priority = 4; // in case
+	 prevent_termination=code=c;
+  break; case '!':
+         if (input.shift()=='=')
+         { code = OPERATOR;
+           valp->oper.id = id_table.match_literal("!=");
+           valp->oper.priority = 4;
+           prevent_termination='=';
+         }
+         else
+           code= (input.unshift(),c);
+         // currently unused; might some day be factorial operator
+  break; @/@< Cases of arithmetic operators, ending with |break| @>
+         case '\n': state=ended; // and {\bf fall through}.
          default: code=c;
   }
 }
+
+@ Here are some cases split off to avoid the previous module getting too long.
+
+@< Cases of arithmetic operators... @>=
+    case '+': prevent_termination=code=c;
+       code = OPERATOR;
+       valp->oper.id = id_table.match_literal("+");
+       valp->oper.priority = 6;
+break; case '-': prevent_termination=c;
+       if (input.shift()=='>')
+          code= ARROW;
+       else
+       { input.unshift();
+         code = OPERATOR;
+         valp->oper.id = id_table.match_literal("-");
+         valp->oper.priority = 6;
+       }
+break; case '*': case '%': case '/': prevent_termination=c;
+       code = OPERATOR;
+       valp->oper.id =
+          id_table.match_literal(c=='*' ? "*" : c=='%' ? "%" : "/");
+       valp->oper.priority = 8;
+break; case '\\':
+       code = OPERATOR;
+       valp->oper.priority = 8;
+       if (input.shift()=='%')
+       @/{@; prevent_termination='%';
+         valp->oper.id = id_table.match_literal("\\%");
+       }
+       else
+       {@; input.unshift();
+         valp->oper.id = id_table.match_literal("\\");
+       }
+break; case '^': prevent_termination=c;
+       code = OPERATOR;
+       valp->oper.id = id_table.match_literal("^");
+       valp->oper.priority = 9; // exponentiation is right-associative
+break;
 
 @ We hand to the parser a string denotation expression in |valp|, rather than
 the |(char *)| value returned by |scan_quoted_string()|, thus performing some

@@ -1,4 +1,5 @@
 \def\emph#1{{\it#1\/}}
+\chardef\pow = `\^
 
 @* Building the parse tree.
 This is the program unit \.{parsetree} which produces the implementation file
@@ -436,6 +437,243 @@ expr make_application_node(expr f, expr_list args)
   return result;
 }
 
+@ We shall frequently need to form a function application where the function
+is accessed by an applied identifier and the argument is either a single
+expression or a tuple of two expressions. We provide two functions to
+facilitate those constructions.
+
+@< Declarations of functions in \Cee-style for the parser @>=
+expr make_unary_call(id_type name, expr arg);
+expr make_binary_call(id_type name, expr x, expr y);
+
+@~In the unary case we avoid calling |make_application| with a singleton
+list that will be immediately destroyed,
+
+@< Definitions of functions in \Cee... @>=
+expr make_unary_call(id_type name, expr arg)
+{ app a=new application_node; a->fun=make_applied_identifier(name); a->arg=arg;
+  expr result; result.kind=function_call; result.e.call_variant=a;
+  return result;
+}
+@)
+expr make_binary_call(id_type name, expr x, expr y)
+{ expr_list args=make_exprlist_node(x,make_exprlist_node(y,NULL));
+  return make_application_node(make_applied_identifier(name),args);
+}
+
+@*1 Operators and priority.
+%
+Applications of operators are transformed during parsing in function calls,
+and the priorities of operators, which only serve to define the structure of
+the resulting call tree, are a matter of grammar only. Nevertheless, handling
+operator priorities purely in the syntax description has certain
+disadvantages. It means that, unlike for identifiers which form just one token
+category, the parser must distinguish separate tokens for each operator, or at
+least for those of each priority level. Consequently it must also specify
+separate syntax rules for each operator. Thus both the amount of tokens and
+the amount of rules increase linearly with then number of operator symbols (or
+priority levels) distinguished.
+%; this might well imply a quadratic growth of the size of the parser tables
+
+Moreover, although operator priority can perfectly well be described by syntax
+rules alone, the repetitive nature of such a specification makes that parser
+generators like \.{bison} propose as convenience the possibility of
+supplementing an ambiguous set of syntax rules with a priority-based
+disambiguation system. Since disambiguation is done at parser generation time,
+the effect on the size of the parser tables is probably about the same as that
+of specifying priorities explicitly in syntax rules (although that
+necessitates additional non-terminal symbols for formulae at each priority
+level, these do not directly enlarge the tables), while understanding that the
+resulting parser always produces the desired parse trees requires analysing
+the way disambiguation affects the given grammar.
+
+We shall therefore opt for a solution in which handling of operator priorities
+is performed neither via syntax rules nor via the disambiguation mechanism of
+the parser generator, but rather via an explicit algorithm in the parser
+actions. In other words we shall present a grammar whose reductions do not
+follow the precise structure of parse tree that we want to construct, but
+instead define parsing actions that restructure the tree dynamically to the
+desired structure. Thus the grammar describes the language in a simplified way
+(with all operators of equal priority and left associative), thus reducing the
+amount of terminal symbols and parser states, while the parsing actions
+explicitly perform the priority comparisons that would otherwise be encoded
+implicitly in the transition tables of the parsing automaton.
+
+Let us consider first the case of infix operators only. During lexical
+analysis we shall associate an integral priority level to each operator
+symbol; we encode in this level also the desired associativity of the operator
+by the convention that associativity is to the left at even levels, and to the
+right at odd levels. Thus there is never a conflict of different directions of
+associativity at the same priority level.
+
+In the absence of unary operators, a formula is an alternation of operands
+and operators, where the former comprises any expression bound more tightly
+than any formula, for instance one enclosed in parentheses. For every operator
+that comes along we can already determine its left subtree by comparing
+priorities with any previous ones. For some operators~$\omega$, the right
+subtree may also be completed, if~$\omega$ turned out to bind more strongly to
+it than a subsequent operator; the whole subtree of such~$\omega$ is
+constructed, and becomes (part of) a single operand for further
+considerations. Therefore at any point just after seeing an operator, there
+will be a list of pending operators, each with a complete left subtree and an
+uncompleted right subtree (if the formula would terminate after one more
+operand, that operand would become part of the mentioned right subtree). In
+the list, the operators are of increasing priority from left to right, where
+increase is weak in case of right-associative operators and strict otherwise:
+otherwise their right subtree would have been complete. Therefore once a new
+operand and operator~$\omega$ comes along, the pending operators are
+considered from right to left, each one that has higher priority than~$\omega$
+(or in case of left-associativity possibly equal priority) incorporates the
+new operand as its right subtree, with the whole tree for the operator
+replaces the operand. Once an operator is encountered whose priority is too
+low to capture the operand, the operand becomes the left subtree of~$\omega$,
+and it becomes the leftmost pending operator.
+
+Unary operators complicate the picture. Any priority one would like to
+associate to a prefix operator can only be relevant with respect to operators
+that follow, not those that precede. For instance one might want unary `\.-'
+to have lower priority than `\.\pow' in order to parse \.{-x\pow2+y\pow2} as
+$-(x^2)+(y^2)$, but \.{x\pow-2} can still only parse as $x^{(-2)}$. Giving
+unary `\.-' a lower priority than `\.*' gives a real problem, since then
+\.{-2*y} parses as $-(2*y)$, while certainly \.{x\pow2*y} parses as $(x^2)*y$,
+so should \.{x\pow-2*y} parse as $(x^{-2})*y$ or as $x^{-(2*y)}$?
+
+Two reasonable solutions exists for defining a general mechanism: the simple
+solution is to give unary operators maximum priority (so that they can be
+handled immediately), the other is to give that priority whenever they are
+immediately preceded by another operator. We choose the latter option, since
+it allows interpreting \.{-x\pow2} less surprisingly as $-(x^2)$; somewhat
+more surprisingly the parentheses in $x+(-1)^n*y$ become superfluous. The
+example \.{x\pow-2*y} will then parse as $(x^{-2})*y$, which also seems
+reasonable.
+
+@ The data type necessary to store these intermediate data during priority
+resolutions is a dynamic list of triples subtree-operator-priority. We use a
+linked list, which can be used without difficulty from the parser; the link
+points to an operator further to the left in the formula, whence it is called
+|prev| rather than the more usual~|next|. To implement the above solution for
+unary operators, we allow for the very first pending operator to not have any
+left subtree; since it is last in the list, we can indicate such absence
+without adding data fields or a dummy case for |expr|, by replacing the final
+null pointer by another exceptional value. Thus this possibility is not
+evident in the type declaration.
+
+Postfix operators are quite rare in mathematics (the factorial exclamation
+mark is the clearest example, though certain exponential notations like the
+derivative prime could be considered as postfix operators as well) and more
+importantly seem to invariably have infinite priority, so the can be handled
+in the parser without dynamic priority comparisons. And even if such
+comparisons were needed, they could be handled by a new function operating in
+the list of partial formulae, and need not be taken into account in the data
+structure of that list itself. So here is that structure:
+
+
+@< Structure and typedef declarations... @>=
+typedef struct partial_formula* form_stack;
+struct partial_formula
+{@; expr left_subtree; id_type op; int prio;
+  form_stack prev;
+};
+
+@ As mentioned above, we need an exceptional value of type |form_stack| to
+indicate a pending initial unary operator. For this we use the address of a
+dummy static variable.
+
+@< Declarations in \Cee-style... @>=
+
+extern struct partial_formula dummy_formula;
+const form_stack unary_marker=&dummy_formula;
+
+@~The |dummy_formula| needs to be allocated, even if it is never accessed.
+@< Definitions of constants... @>=
+struct partial_formula dummy_formula;
+
+@ We define the following functions operating on partial formulae: two to
+start them out with a binary or unary operator, the principal one to extend
+with a new operand and binary operator, one to finish off the formula with
+a final operand, and of course one to clean up.
+
+@< Declarations in \Cee-style... @>=
+form_stack start_formula (expr e, id_type op, int prio);
+form_stack start_unary_formula (id_type op, int prio);
+form_stack extend_formula (form_stack pre, expr e,id_type op, int prio);
+expr end_formula (form_stack pre, expr e);
+void destroy_formula(form_stack s);
+
+@ Starting a binary formula simply creates an initial node.
+@< Definitions of functions in \Cee-style... @>=
+form_stack start_formula (expr e, Hash_table::id_type op, int prio)
+{ form_stack result = new partial_formula;
+  result->left_subtree=e; result->op=op; result->prio=prio;
+  result->prev=NULL;
+  return result;
+}
+@)
+form_stack start_unary_formula (id_type op, int prio)
+{ form_stack result = new partial_formula;
+  result->op=op; result->prio=prio;
+  result->prev=unary_marker;
+  return result;
+}
+
+@ Extending a formula involves the priority comparisons and manipulations
+indicated above. It turns out |start_formula| could be replaced by a call to
+|extend_formula| with |pre==NULL|.
+
+@< Definitions of functions in \Cee-style... @>=
+form_stack extend_formula (form_stack pre, expr e,id_type op, int prio)
+{ form_stack result=NULL;
+  while (pre!=NULL and (pre->prio>prio or pre->prio==prio and prio%2==0))
+  { delete result; result=pre; // clean up, but holding on to one node
+    @< Put |e| as right subtree into rightmost element of |pre|, and replace
+    |e| by the result, popping it from |pre| @>
+  }
+
+  if (result==NULL)
+    result=new partial_formula; // allocate if no nodes were combined
+  result->left_subtree=e; result->op=op; result->prio=prio;
+  result->prev=pre; return result;
+}
+
+@ In case of an initial unary operator we ignore the unset |left_subtree|
+field. The other difference is that we advance by setting |pre=NULL| so that
+the loop will terminate correctly (alternative one could say |break|, but that
+would break the reuse we intend to make of this module in the following
+section).
+
+@< Put |e| as right subtree into rightmost element of |pre|...@>=
+if (pre->prev!=unary_marker)
+@/{@; e = make_binary_call(pre->op,pre->left_subtree,e);
+  pre=pre->prev;
+}
+else
+{@; e = make_unary_call(pre->op,e);
+  pre=NULL;
+} // apply initial unary operator
+
+@ Wrapping up a formula is similar to the initial part of |extend_formula|,
+but with an infinitely low value for the ``current priority'' |prio|. So we
+can reuse the main part of the loop of |extend_formula|, with just a minor
+modification to make sure all nodes get cleaned up after use.
+
+@< Definitions of functions in \Cee-style... @>=
+expr end_formula (form_stack pre, expr e)
+{ while (pre!=NULL)
+  { form_stack t=pre;
+    @< Put |e| as right subtree into rightmost element of |pre|...@>
+    delete t;
+  }
+  return e;
+}
+
+@ Destroying a formula stack is straightforward.
+@< Definitions of functions in \Cee-style... @>=
+void destroy_formula(form_stack s)
+{@; while (s!=NULL and s!=unary_marker)
+  {@; form_stack t=s; s=s->prev; delete t;
+  }
+}
+
 @*1 Identifier patterns.
 %
 For each case where local identifiers will be introduced (like let-expressions
@@ -569,7 +807,7 @@ parentheses; this should be fixed (for all printing routines).
 @< Cases for printing... @>=
 case let_expr:
 { let lexp=e.e.let_variant;
-  out << "let " << lexp->pattern << '=' << lexp->val <<  " in " << lexp->body;
+  out << "let " << lexp->pattern << '=' << lexp->val <<	 " in " << lexp->body;
 }
 break;
 
@@ -648,9 +886,9 @@ expr make_let_expr_node(let_list decls, expr body)
       l->val=wrap_tuple_display(null_expr_list);
       while (decls!=NULL)
       { l->pattern.sublist =
-          make_pattern_node(l->pattern.sublist,&decls->pattern);
-        l->val.e.sublist=make_exprlist_node(decls->val,l->val.e.sublist);
-        let_list p=decls; decls=p->next; delete p;
+	  make_pattern_node(l->pattern.sublist,&decls->pattern);
+	l->val.e.sublist=make_exprlist_node(decls->val,l->val.e.sublist);
+	let_list p=decls; decls=p->next; delete p;
       }
     }
     return result;

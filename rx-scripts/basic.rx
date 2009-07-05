@@ -1,7 +1,7 @@
 set first (int n)= for i = n do i od  # [0,1,...,n-1]
 
 set string_rep(string s, int n)=
-let r="" in (for i = n do r:=r+s od; r)
+let r="" in (for i = n do r+:=s od; r)
 
 set sm_prod(int c,mat m) = mat: for col in m do for e in col do c*e od od
 

@@ -3025,6 +3025,15 @@ position, so that the entry in question (after shifting forward) stays ahead.
 The last of the former cases and the first of the latter are recorded, and
 their requirements should be compatible.
 
+Although the module name does not mention it, we allow one case of close and
+mutually convertible types, namely identical types; in this case we simple
+replace the old definition for this type by the new one. This could still
+change the result type, but that does not matter because if any calls that
+were type-checked against the old definition should survive (in a closure),
+they have been also bound to the (function) \emph{value} that was previously
+accessed by that definition, and will continue to use it; their operation is
+in no way altered by the replacement of the definition.
+
 @< Compare |type| against entries of |slot|... @>=
 { size_t lwb=0; size_t upb=slot.size();
   for (size_t i=0; i<slot.size(); ++i)
@@ -3044,8 +3053,8 @@ their requirements should be compatible.
       case 0x4: // conflicting cases
         { std::ostringstream o;
           o << "Cannot overload `" << main_hash_table->name_of(id) << "', " @|
-            << "existing type " << slot[i].type->arg_type
-            << " is close to"@| << type->arg_type << ",\n"
+            << "existing type\n" << slot[i].type->arg_type
+            << " is close to "@| << type->arg_type << ",\n"
             << (cmp==0x4 ? "but neither" :"and either") @|
             << " converts to the other";
           throw program_error(o.str());
@@ -4285,6 +4294,8 @@ break;
 void inc_for_expression::evaluate(level l) const
 { int b=(bound->eval(),get<int_value>()->val);
   int c=(count->eval(),get<int_value>()->val);
+  if (c<0)
+    c=0; // no negative size result
 
   context_ptr saved_context=execution_context;
   std::vector<shared_value>loop_frame(1);
@@ -4316,6 +4327,8 @@ void inc_for_expression::evaluate(level l) const
 void dec_for_expression::evaluate(level l) const
 { int b=(bound->eval(),get<int_value>()->val);
   int i=(count->eval(),get<int_value>()->val);
+  if (i<0)
+    i=0; // no negative size result
 
   context_ptr saved_context=execution_context;
   std::vector<shared_value>loop_frame(1);
@@ -4830,35 +4843,34 @@ type_ptr analyse_types(const expr& e,expression_ptr& p)
 The interpreter distinguishes its own types like \.{[int]} ``row of integer''
 from similar built-in types of the library, like \.{vec} ``vector'', which it
 will consider to be primitive types. In fact a value of type ``vector''
-represents an object of the Atlas type |atlas::latticetypes::Weight|, which
-stands for |atlas::matrix::Vector<int>|, and similarly other primitive types
-will stand for other Atlas types. In choosing the short names, we choose to
-hide the specific mathematical meaning that was implied in the names (like
-|Weight|) these types have in the Atlas software. We believe that a more
-extensive name might be more confusing that helpful to users; besides, the
-interpretation of the values is not entirely fixed (vectors are used for
-coweights and (co)roots as well as for weights, and matrices could denote
-either a basis or an automorphism of a lattice).
+represents an object of the Atlas type |atlas::matrix::Vector<int>|, and
+similarly other primitive types will stand for other Atlas types. We prefer
+using a basic type name rather than something resembling the more
+mathematically charged equivalents like |latticetypes::Weight| for
+|atlas::matrix::Vector<int>|, as that might be more confusing that helpful to
+users. In any case, the interpretation of the values is not at all fixed
+(vectors are used for coweights and (co)roots as well as for weights, and
+matrices could denote either a basis or an automorphism of a lattice).
 
-By including the file~\.{latticetypes.h} we know about the basic vector and
-matrix types.
+There is one type that is genuinely defined in the \.{latticetypes} unit,
+namely |latticetypes::RatWeight|, and we shall use that, but call the
+resulting type just rational vector (\.{ratvec} for the user).
 
 @< Includes needed in the header file @>=
 #include "latticetypes.h"
 
 @ We start with deriving |vector_value| from |value_base|. In its constructor,
-the argument is a reference to |latticetypes::CoeffList|, which stands for
-|std::vector<latticetypes::LatticeCoeff>|, from which |latticetypes::Weight|
-is derived (without adding data members), and since a constructor for the
-latter from the former is defined, we can do with just one constructor for
-|vector_value|.
+the argument is a reference to |std::vector<int>|, from which
+|matrix::Vector<int>| is derived (without adding data members); since a
+constructor for the latter from the former is defined, we can do with just one
+constructor for |vector_value|.
 
 @< Type definitions @>=
 
 struct vector_value : public value_base
-{ latticetypes::Weight val;
+{ matrix::Vector<int> val;
 @)
-  explicit vector_value(const latticetypes::CoeffList& v) : val(v) @+ {}
+  explicit vector_value(const std::vector<int>& v) : val(v) @+ {}
   ~vector_value()@+ {}
   virtual void print(std::ostream& out) const;
   vector_value* clone() const @+{@; return new vector_value(*this); }
@@ -4875,9 +4887,9 @@ from identical types to the one stored.
 
 @< Type definitions @>=
 struct matrix_value : public value_base
-{ latticetypes::LatticeMatrix val;
+{ matrix::Matrix<int> val;
 @)
-  explicit matrix_value(const latticetypes::LatticeMatrix& v) : val(v) @+ {}
+  explicit matrix_value(const matrix::Matrix<int>& v) : val(v) @+ {}
   ~matrix_value()@+ {}
   virtual void print(std::ostream& out) const;
   matrix_value* clone() const @+{@; return new matrix_value(*this); }
@@ -4893,8 +4905,7 @@ struct rational_vector_value : public value_base
 { latticetypes::RatWeight val;
 @)
   explicit rational_vector_value(const latticetypes::RatWeight& v):val(v)@+{}
-  rational_vector_value
-    (const latticetypes::LatticeElt& v,latticetypes::LatticeCoeff d)
+  rational_vector_value(const matrix::Vector<int>& v,int d)
    : val(v,d) @+ { val.normalize(); }
   ~rational_vector_value()@+ {}
   virtual void print(std::ostream& out) const;
@@ -4988,8 +4999,8 @@ fact, while it was exceptional when this code was first written, it is now
 being used throughout the Atlas library.
 
 @< Local function def... @>=
-latticetypes::Weight row_to_weight(const row_value& r)
-{ latticetypes::Weight result(r.val.size());
+matrix::Vector<int> row_to_weight(const row_value& r)
+{ matrix::Vector<int> result(r.val.size());
   for(size_t i=0; i<r.val.size(); ++i)
     result[i]=force<int_value>(r.val[i].get())->val;
   return result;
@@ -5009,7 +5020,7 @@ extended will null entries to make a rectangular shape for the matrix.
 @< Local function def... @>=
 void matrix_convert()
 { shared_row r(get<row_value>());
-@/latticetypes::WeightList column_list;
+@/std::vector<matrix::Vector<int> > column_list;
   column_list.reserve(r->val.size());
   size_t depth=0; // maximal length of vectors
   for(size_t i=0; i<r->val.size(); ++i)
@@ -5023,7 +5034,7 @@ void matrix_convert()
       column_list[i].resize(depth);
       for (;j<depth; ++j) column_list[i][j]=0;
     }
-  push_value(new matrix_value(latticetypes::LatticeMatrix(column_list)));
+  push_value(new matrix_value(matrix::Matrix<int>(column_list)));
 }
 
 @ All that remains is to initialise the |coerce_table|.
@@ -5041,7 +5052,7 @@ void rational_convert()
 @)
 void ratvec_convert()
 { shared_row r = get <row_value>();
-  latticetypes::LatticeElt numer(r->val.size()),denom(r->val.size());
+  matrix::Vector<int> numer(r->val.size()),denom(r->val.size());
   unsigned int d=1;
   for (size_t i=0; i<r->val.size(); ++i)
   { arithmetic::Rational frac = force<rat_value>(r->val[i].get())->val;
@@ -5073,7 +5084,7 @@ the vector and matrix conversions. The former is similar to |matrix_convert|.
 @< Local function def... @>=
 void matrix2_convert()
 { shared_row r(get<row_value>());
-@/latticetypes::WeightList column_list;
+@/std::vector<matrix::Vector<int> > column_list;
   column_list.reserve(r->val.size());
   size_t depth=0; // maximal length of vectors
   for(size_t i=0; i<r->val.size(); ++i)
@@ -5087,7 +5098,7 @@ void matrix2_convert()
       column_list[i].resize(depth);
       for (;j<depth; ++j) column_list[i][j]=0;
     }
-  push_value(new matrix_value(latticetypes::LatticeMatrix(column_list)));
+  push_value(new matrix_value(matrix::Matrix<int>(column_list)));
 
 }
 
@@ -5097,7 +5108,7 @@ of |row_to_weight|, but rather than returning a |row_value| it returns a
 |row_ptr| pointing to it.
 
 @< Local function def... @>=
-row_ptr weight_to_row(const latticetypes::Weight& v)
+row_ptr weight_to_row(const matrix::Vector<int>& v)
 { row_ptr result (new row_value(v.size()));
   for(size_t i=0; i<v.size(); ++i)
     result->val[i]=shared_value(new int_value(v[i]));
@@ -5110,18 +5121,18 @@ void int_list_convert()
 }
 @)
 void vec_list_convert()
-{ shared_matrix m(get<matrix_value>());
-  row_ptr result(new row_value(m->val.numColumns()));
-  for(size_t i=0; i<m->val.numColumns(); ++i)
-    result->val[i]=shared_value(new vector_value(m->val.column(i)));
+{ matrix::Matrix<int> m = get<matrix_value>()->val;
+  row_ptr result(new row_value(m.numColumns()));
+  for(size_t i=0; i<m.numColumns(); ++i)
+    result->val[i]=shared_value(new vector_value(m.column(i)));
   push_value(result);
 }
 @)
 void int_list_list_convert()
-{ shared_matrix m(get<matrix_value>());
-  row_ptr result(new row_value(m->val.numColumns()));
-  for(size_t i=0; i<m->val.numColumns(); ++i)
-    result->val[i]=shared_value(weight_to_row(m->val.column(i)).release());
+{ matrix::Matrix<int> m = get<matrix_value>()->val;
+  row_ptr result(new row_value(m.numColumns()));
+  for(size_t i=0; i<m.numColumns(); ++i)
+    result->val[i]=shared_value(weight_to_row(m.column(i)).release());
 
   push_value(result);
 }
@@ -5162,31 +5173,53 @@ these are pulled from the stack in reverse order, which is important for the
 non-commutative operations like `|-|' and `|/|'. Since values are shared, we
 must allocate new value objects for the results.
 
+@h "intutils.h"
+
 @< Local function definitions @>=
 
 void plus_wrapper(expression_base::level l)
-{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+{ int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new int_value(i->val+j->val));
+    push_value(new int_value(i+j));
 }
 @)
 void minus_wrapper(expression_base::level l)
-{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+{ int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new int_value(i->val-j->val));
+    push_value(new int_value(i-j));
 }
 @)
 void times_wrapper(expression_base::level l)
-{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
+{ int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new int_value(i->val*j->val));
+    push_value(new int_value(i*j));
 }
 @)
 void divide_wrapper(expression_base::level l)
-{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
-  if (j->val==0) throw std::runtime_error("Division by zero");
+{ int j=get<int_value>()->val; int i=get<int_value>()->val;
+  if (j==0) throw std::runtime_error("Division by zero");
   if (l!=expression_base::no_value)
-    push_value(new int_value(i->val/j->val));
+    push_value(new int_value(i/j));
+}
+@)
+void power_wrapper(expression_base::level l)
+{ static shared_int one(new int_value(1));
+@/int n=get<int_value>()->val; shared_int i=get<int_value>();
+  if (intutils::abs(i->val)!=1 and n<0)
+    throw std::runtime_error("Negative power of integer");
+  if (l==expression_base::no_value)
+    return;
+@)
+  if (i->val==1)
+  {@; push_value(one);
+      return;
+  }
+  if (i->val==-1)
+  {@; push_value(n%2==0 ? one : i);
+      return;
+  }
+@)
+  push_value(new int_value(arithmetic::power(i->val,n)));
 }
 
 @ We also define a remainder operation |modulo|, a combined
@@ -5195,33 +5228,33 @@ define an exact devision operator that constructs a rational number.
 
 @< Local function definitions @>=
 void modulo_wrapper(expression_base::level l)
-{ shared_int  j=get<int_value>(); shared_int i=get<int_value>();
-  if (j->val==0) throw std::runtime_error("Modulo zero");
+{ int  j=get<int_value>()->val; int i=get<int_value>()->val;
+  if (j==0) throw std::runtime_error("Modulo zero");
   if (l!=expression_base::no_value)
-    push_value(new int_value(i->val%j->val));
+    push_value(new int_value(i%j));
 }
 @)
 void divmod_wrapper(expression_base::level l)
-{ shared_int j=get<int_value>(); shared_int i=get<int_value>();
-  if (j->val==0) throw std::runtime_error("DivMod by zero");
+{ int j=get<int_value>()->val; int i=get<int_value>()->val;
+  if (j==0) throw std::runtime_error("DivMod by zero");
   if (l!=expression_base::no_value)
-  { push_value(new int_value(i->val/j->val));
-    push_value(new int_value(i->val%j->val));
+  { push_value(new int_value(i/j));
+    push_value(new int_value(i%j));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
 }
 @)
 void unary_minus_wrapper(expression_base::level l)
-{@; shared_int i=get<int_value>();
+{@; int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new int_value(-i->val)); }
+    push_value(new int_value(-i)); }
 @)
 void fraction_wrapper(expression_base::level l)
-{ shared_int d=get<int_value>(); shared_int n=get<int_value>();
-  if (d->val==0) throw std::runtime_error("fraction with zero denominator");
+{ int d=get<int_value>()->val; int n=get<int_value>()->val;
+  if (d==0) throw std::runtime_error("fraction with zero denominator");
   if (l!=expression_base::no_value)
-    push_value(new rat_value(arithmetic::Rational(n->val,d->val)));
+    push_value(new rat_value(arithmetic::Rational(n,d)));
 }
 
 @ We defined similar operations for rational numbers, made possible thanks to
@@ -5230,35 +5263,47 @@ operator overloading.
 @< Local function definitions @>=
 
 void rat_plus_wrapper(expression_base::level l)
-{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+{ arithmetic::Rational j=get<rat_value>()->val;
+  arithmetic::Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new rat_value(i->val+j->val));
+    push_value(new rat_value(i+j));
 }
 @)
 void rat_minus_wrapper(expression_base::level l)
-{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+{ arithmetic::Rational j=get<rat_value>()->val;
+  arithmetic::Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new rat_value(i->val-j->val));
+    push_value(new rat_value(i-j));
 }
 @)
 void rat_times_wrapper(expression_base::level l)
-{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+{ arithmetic::Rational j=get<rat_value>()->val;
+  arithmetic::Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new rat_value(i->val*j->val));
+    push_value(new rat_value(i*j));
 }
 @)
 void rat_divide_wrapper(expression_base::level l)
-{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
-  if (j->val.numerator()==0)
+{ arithmetic::Rational j=get<rat_value>()->val;
+  arithmetic::Rational i=get<rat_value>()->val;
+  if (j.numerator()==0)
     throw std::runtime_error("Rational division by zero");
   if (l!=expression_base::no_value)
-    push_value(new rat_value(i->val/j->val));
+    push_value(new rat_value(i/j));
 }
 @)
 void rat_unary_minus_wrapper(expression_base::level l)
-{@; shared_rat i=get<rat_value>();
+{@; arithmetic::Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new rat_value(arithmetic::Rational(0)-i->val)); }
+    push_value(new rat_value(arithmetic::Rational(0)-i)); }
+@)
+void rat_power_wrapper(expression_base::level l)
+{ int n=get<int_value>()->val; arithmetic::Rational b=get<rat_value>()->val;
+  if (b.numerator()==0 and n<0)
+    throw std::runtime_error("Negative power of zero");
+  if (l!=expression_base::no_value)
+    push_value(new rat_value(b.power(n)));
+}
 
 @ Relational operators are of the same flavour.
 @< Local function definitions @>=
@@ -5298,6 +5343,18 @@ void greatereq_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new bool_value(i->val>=j->val));
 }
+@)
+void equiv_wrapper(expression_base::level l)
+{ bool a=get<bool_value>()->val; bool b=get<bool_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(a==b));
+}
+@)
+void inequiv_wrapper(expression_base::level l)
+{ bool a=get<bool_value>()->val; bool b=get<bool_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(a!=b));
+}
 
 @ To have some operations on strings, we define a function for concatenating
 them, and one for converting integers to their string representation (of
@@ -5326,8 +5383,8 @@ global variable.
 
 @< Local function definitions @>=
 void print_wrapper(expression_base::level l)
-{ shared_string s=get<string_value>();
-  *output_stream << s->val << std::endl;
+{ std::string s=get<string_value>()->val;
+  *output_stream << s << std::endl;
   if (l==expression_base::single_value)
     wrap_tuple(0); // don't forget to return a value if asked for
 }
@@ -5344,6 +5401,7 @@ First of all we have the identity matrix and matrix transposition.
 @< Declarations of exported functions @>=
 void id_mat_wrapper (expression_base::level);
 void transpose_mat_wrapper (expression_base::level);
+void transpose_vec_wrapper (expression_base::level);
 
 @ In |id_mat_wrapper| we create a |matrix_value| around an empty
 |LatticeMatrix| rather than build a filled matrix object first. If a
@@ -5358,17 +5416,25 @@ pointers; for values popped from the stack this would in fact be hard to avoid.
 
 @< Function definitions @>=
 void id_mat_wrapper(expression_base::level l)
-{ shared_int i=get<int_value>();
+{ int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-  { matrix_ptr m (new matrix_value(latticetypes::LatticeMatrix()));
-    matrix::identityMatrix(m->val,std::abs(i->val)); push_value(m);
+  { matrix_ptr m (new matrix_value(matrix::Matrix<int>()));
+    matrix::identityMatrix(m->val,std::abs(i)); push_value(m);
   }
 }
-@) void
-transpose_mat_wrapper(expression_base::level l)
-{ shared_matrix m=get<matrix_value>();
+@) void transpose_mat_wrapper(expression_base::level l)
+{ matrix::Matrix<int> m=get<matrix_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new matrix_value(m->val.transposed()));
+    push_value(new matrix_value(m.transposed()));
+}
+@) void transpose_vec_wrapper(expression_base::level l)
+{ matrix::Vector<int> v=get<vector_value>()->val;
+  if (l!=expression_base::no_value)
+  { matrix_ptr m (new matrix_value(matrix::Matrix<int>(1,v.size())));
+    for (size_t j=0; j<v.size(); ++j)
+      m->val(0,j)=v[j];
+    push_value(m);
+  }
 }
 
 @ We also define |diagonal_wrapper|, a slight generalisation of
@@ -5377,65 +5443,86 @@ transpose_mat_wrapper(expression_base::level l)
 
 @< Local function def... @>=
 void diagonal_wrapper(expression_base::level l)
-{ shared_vector d=get<vector_value>();
+{ matrix::Vector<int> d=get<vector_value>()->val;
   if (l==expression_base::no_value)
     return;
-  size_t n=d->val.size();
-  matrix_ptr m (new matrix_value(latticetypes::LatticeMatrix(n,n,0)));
+  size_t n=d.size();
+  matrix_ptr m (new matrix_value(matrix::Matrix<int>(n,n,0)));
   for (size_t i=0; i<n; ++i)
-    m->val(i,i)=d->val[i];
+    m->val(i,i)=d[i];
   push_value(m);
 }
 
 void vector_div_wrapper(expression_base::level l)
-{ shared_int n=get<int_value>();
-  shared_vector v=get<vector_value>();
+{ int n=get<int_value>()->val;
+  matrix::Vector<int> v=get<vector_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value(v->val,n->val));
+    push_value(new rational_vector_value(v,n));
 }
 
-@ Now the product of a matrix and a vector or matrix. The first of these was
+@ Now the products between vector and/or matrices. The function |mv_prod| was
 in fact our first function with more than one argument (arithmetic on integer
 constants was done inside the parser at that time). We make them callable from
 other compilation units.
 
 @< Declarations of exported functions @>=
+void vv_prod_wrapper (expression_base::level);
 void mv_prod_wrapper (expression_base::level);
 void mm_prod_wrapper (expression_base::level);
+void vm_prod_wrapper(expression_base::level l);
 
-@ In |mv_prod_wrapper| we use the matrix method |apply| which requires its
-output vector to be already of the proper size, but which nevertheless could
-throw an exception (since it copies its input argument, for in case the output
-argument should coincide with it). Therefore we use an auto-pointer for the
-output vector~|w|. In |mm_prod_wrapper|, the method |operator*=| does its own
-resizing (and may also throw an exception).
+@ For wrapper functions with multiple arguments, we must always remember that
+they are to be popped from the stack in reverse order; here in fact this only
+matters for error reporting.
 
-For wrapper functions with multiple arguments, we must always remember that
-they are to be popped from the stack in reverse order, but in the case of
-|mm_prod_wrapper| this is particularly important.
+@< Function definitions @>=
+void vv_prod_wrapper(expression_base::level l)
+{ matrix::Vector<int> w=get<vector_value>()->val;
+  matrix::Vector<int> v=get<vector_value>()->val;
+  if (v.size()!=w.size())
+    throw std::runtime_error(std::string("Size mismatch ")@|
+     + str(v.size()) + ":" + str(w.size()) + " in scalar product");
+  if (l!=expression_base::no_value)
+    push_value(new int_value(v.dot(w)));
+}
+
+@ The other product operations are very similar.
 
 @< Function definitions @>=
 void mv_prod_wrapper(expression_base::level l)
-{ shared_vector v=get<vector_value>();
-  shared_matrix m=get<matrix_value>();
-  if (m->val.numColumns()!=v->val.size())
+{ matrix::Vector<int> v=get<vector_value>()->val;
+  matrix::Matrix<int> m=get<matrix_value>()->val;
+  if (m.numColumns()!=v.size())
     throw std::runtime_error(std::string("Size mismatch ")@|
-     + str(m->val.numColumns()) + ":" + str(v->val.size()) + " in mv_prod");
+     + str(m.numColumns()) + ":" + str(v.size()) + " in mat*vec");
   if (l!=expression_base::no_value)
-    push_value(new vector_value(m->val.apply(v->val)));
+    push_value(new vector_value(m.apply(v)));
 }
 @)
 void mm_prod_wrapper(expression_base::level l)
-{ shared_matrix rf=get<matrix_value>(); // right factor
-  shared_matrix lf=get<matrix_value>(); // left factor
-  if (lf->val.numColumns()!=rf->val.numRows())
+{ matrix::Matrix<int> rf=get<matrix_value>()->val; // right factor
+  matrix::Matrix<int> lf=get<matrix_value>()->val; // left factor
+  if (lf.numColumns()!=rf.numRows())
   { std::ostringstream s;
-    s<< "Size mismatch " << lf->val.numColumns() << ":" << rf->val.numRows()
-    @| << " in mm_prod";
+    s<< "Size mismatch " << lf.numColumns() << ":" << rf.numRows()
+    @| << " in mat*mat";
     throw std::runtime_error(s.str());
   }
   if (l!=expression_base::no_value)
-    push_value(new matrix_value(lf->val*rf->val));
+    push_value(new matrix_value(lf*rf));
+}
+@)
+void vm_prod_wrapper(expression_base::level l)
+{ matrix::Matrix<int> m=get<matrix_value>()->val; // right factor
+  matrix::Vector<int> v=get<vector_value>()->val; // left factor
+  if (v.size()!=m.numRows())
+  { std::ostringstream s;
+    s<< "Size mismatch " << v.size() << ":" << m.numRows()
+    @| << " in vec*mat";
+    throw std::runtime_error(s.str());
+  }
+  if (l!=expression_base::no_value)
+    push_value(new vector_value(m.right_apply(v)));
 }
 
 @ As a last example, here is the Smith normal form algorithm. We provide both
@@ -5447,37 +5534,37 @@ the two combined into a single function.
 
 @< Local function definitions @>=
 void invfact_wrapper(expression_base::level l)
-{ shared_matrix m=get<matrix_value>();
+{ matrix::Matrix<int> m=get<matrix_value>()->val;
   if (l==expression_base::no_value)
     return;
-  size_t nr=m->val.numRows();
-  latticetypes::WeightList b; @+ matrix::initBasis(b,nr);
-  vector_ptr inv_factors (new vector_value(latticetypes::Weight(0)));
-  smithnormal::smithNormal(inv_factors->val,b.begin(),m->val);
+  size_t nr=m.numRows();
+  std::vector<matrix::Vector<int> > b; @+ matrix::initBasis(b,nr);
+  vector_ptr inv_factors (new vector_value(matrix::Vector<int>(0)));
+  smithnormal::smithNormal(inv_factors->val,b.begin(),m);
   push_value(inv_factors);
 }
 @)
 void Smith_basis_wrapper(expression_base::level l)
-{ shared_matrix m=get<matrix_value>();
+{ matrix::Matrix<int> m=get<matrix_value>()->val;
   if (l==expression_base::no_value)
     return;
-  size_t nr=m->val.numRows();
-  latticetypes::WeightList b; @+ matrix::initBasis(b,nr);
-  latticetypes::Weight inv_factors(0);
-  smithnormal::smithNormal(inv_factors,b.begin(),m->val);
-  push_value(new matrix_value(latticetypes::LatticeMatrix(b)));
+  size_t nr=m.numRows();
+  std::vector<matrix::Vector<int> > b; @+ matrix::initBasis(b,nr);
+  matrix::Vector<int> inv_factors(0);
+  smithnormal::smithNormal(inv_factors,b.begin(),m);
+  push_value(new matrix_value(matrix::Matrix<int>(b)));
 }
 @)
 
 void Smith_wrapper(expression_base::level l)
-{ shared_matrix m=get<matrix_value>();
+{ matrix::Matrix<int> m=get<matrix_value>()->val;
   if (l==expression_base::no_value)
     return;
-  size_t nr=m->val.numRows();
-  latticetypes::WeightList b; @+ matrix::initBasis(b,nr);
-  vector_ptr inv_factors (new vector_value(latticetypes::Weight(0)));
-  smithnormal::smithNormal(inv_factors->val,b.begin(),m->val);
-@/push_value(new matrix_value(latticetypes::LatticeMatrix(b)));
+  size_t nr=m.numRows();
+  std::vector<matrix::Vector<int> > b; @+ matrix::initBasis(b,nr);
+  vector_ptr inv_factors (new vector_value(matrix::Vector<int>(0)));
+  smithnormal::smithNormal(inv_factors->val,b.begin(),m);
+@/push_value(new matrix_value(matrix::Matrix<int>(b)));
   push_value(inv_factors);
   if (l==expression_base::single_value)
     wrap_tuple(2);
@@ -5489,17 +5576,17 @@ general over the integers, we return an integral matrix and a common
 denominator to be applied to all coefficients.
 @< Local function definitions @>=
 void invert_wrapper(expression_base::level l)
-{ shared_matrix m=get<matrix_value>();
-  if (m->val.numRows()!=m->val.numColumns())
+{ matrix::Matrix<int> m=get<matrix_value>()->val;
+  if (m.numRows()!=m.numColumns())
   { std::ostringstream s;
     s<< "Cannot invert a " @|
-     << m->val.numRows() << "x" << m->val.numColumns() << " matrix";
+     << m.numRows() << "x" << m.numColumns() << " matrix";
     throw std::runtime_error(s.str());
   }
   if (l==expression_base::no_value)
     return;
   int_ptr denom(new int_value(0));
-@/push_value(new matrix_value(m->val.inverse(denom->val)));
+@/push_value(new matrix_value(m.inverse(denom->val)));
   push_value(denom);
   if (l==expression_base::single_value)
     wrap_tuple(2);
@@ -5514,30 +5601,37 @@ install_function(plus_wrapper,"+","(int,int->int)");
 install_function(minus_wrapper,"-","(int,int->int)");
 install_function(times_wrapper,"*","(int,int->int)");
 install_function(divide_wrapper,"\\","(int,int->int)");
+install_function(power_wrapper,"^","(int,int->int)");
 install_function(modulo_wrapper,"%","(int,int->int)");
 install_function(divmod_wrapper,"\\%","(int,int->int,int)");
-install_function(unary_minus_wrapper,"-u","(int->int)");
+install_function(unary_minus_wrapper,"-","(int->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
 install_function(rat_plus_wrapper,"+","(rat,rat->rat)");
 install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
 install_function(rat_times_wrapper,"*","(rat,rat->rat)");
 install_function(rat_divide_wrapper,"/","(rat,rat->rat)");
-install_function(rat_unary_minus_wrapper,"-u","(rat->rat)");
+install_function(rat_unary_minus_wrapper,"-","(rat->rat)");
+install_function(rat_power_wrapper,"^","(rat,int->rat)");
 install_function(eq_wrapper,"=","(int,int->bool)");
 install_function(neq_wrapper,"!=","(int,int->bool)");
 install_function(less_wrapper,"<","(int,int->bool)");
 install_function(lesseq_wrapper,"<=","(int,int->bool)");
 install_function(greater_wrapper,">","(int,int->bool)");
 install_function(greatereq_wrapper,">=","(int,int->bool)");
+install_function(equiv_wrapper,"=","(bool,bool->bool)");
+install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
 install_function(concatenate_wrapper,"+","(string,string->string)");
 install_function(int_format_wrapper,"int_format","(int->string)");
 install_function(print_wrapper,"print","(string->)");
 install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
-install_function(transpose_mat_wrapper,"transpose_mat","(mat->mat)");
+install_function(transpose_mat_wrapper,"^","(mat->mat)");
+install_function(transpose_vec_wrapper,"^","(vec->mat)");
 install_function(diagonal_wrapper,"diagonal_mat","(vec->mat)");
+install_function(vv_prod_wrapper,"*","(vec,vec->int)");
 install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
 install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
+install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
 install_function(invfact_wrapper,"inv_fact","(mat->vec)");
 install_function(Smith_basis_wrapper,"Smith_basis","(mat->mat)");
 install_function(Smith_wrapper,"Smith","(mat->mat,vec)");

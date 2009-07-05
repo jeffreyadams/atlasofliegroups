@@ -28,6 +28,8 @@
 %union {
   int	val;	    /* For integral constants.	*/
   short id_code;    /* For identifier codes  */
+  struct { short id, priority; } oper; /* for operator symbols */
+  form_stack ini_form;
   unsigned short type_code; /* For type names */
   expr	expression; /* For generic expressions */
   expr_list expression_list; /* For any list of expressions */
@@ -47,7 +49,7 @@
 %token QUIT SET LET IN IF THEN ELSE ELIF FI AND OR NOT
 %token WHILE DO OD NEXT FOR FROM DOWNTO
 %token TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
-%token DIVMOD "\\%"
+%token <oper> OPERATOR '='
 %token <val> INT
 %token <expression> STRING
 %token <id_code> IDENT
@@ -56,32 +58,23 @@
 %token <type_code> TYPE
 %token ARROW "->"
 %token BECOMES ":="
-%token LEQ "<="
-%token GEQ ">="
-%token NEQ "!="
-%token PLUSAB "+="
-%token MINUSAB "-="
-%token TIMESAB "*="
-%token DIVAB "/="
-%token MODAB "%="
 
-%type  <expression> exp quaternary tertiary lettail iftail
-%type <expression> formula primary comprim subscription
-%destructor { destroy_expr ($$); } exp quaternary tertiary lettail iftail
-%destructor { destroy_expr ($$); } formula primary comprim subscription
+%type <expression> exp quaternary tertiary lettail or_expr and_expr not_expr
+%type <expression>  formula operand secondary primary iftail
+%type <expression> comprim subscription
+%type <ini_form> formula_start
+%type <oper> operator
+%destructor { destroy_expr ($$); } exp quaternary tertiary lettail or_expr
+%destructor { destroy_expr ($$); } and_expr not_expr formula operand
+%destructor { destroy_expr ($$); } iftail secondary primary
+%destructor { destroy_expr ($$); } comprim subscription
+%destructor { destroy_formula($$); } formula_start
 %type  <expression_list> commalist commalist_opt commabarlist
 %destructor { destroy_exprlist($$); } commalist commalist_opt commabarlist
 %type <decls> declarations
 %destructor { destroy_letlist($$); } declarations
 
-%right OR
-%right AND
-%right NOT
-%nonassoc '<' LEQ '>' GEQ '=' NEQ
-%nonassoc DIVMOD
-%left '-' '+'
-%left '*' '/' '\\' '%'
-%right NEG     /* negation--unary minus */
+%left OPERATOR
 
 %type <ip> pattern pattern_opt
 %destructor { destroy_id_pat(&$$); } pattern pattern_opt
@@ -110,6 +103,11 @@ input:	'\n'			{ YYABORT } /* null input, skip evaluator */
 	| SET IDENT '(' ')' '=' exp '\n'
 	  { struct id_pat id; id.kind=0x1; id.name=$2;
 	    global_set_identifier(id,make_lambda_node(NULL,NULL,$6),0);
+	    YYABORT
+	  }
+	| SET operator '(' id_specs ')' '=' exp '\n'
+	  { struct id_pat id; id.kind=0x1; id.name=$2.id;
+	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),1);
 	    YYABORT
 	  }
 	| IDENT ':' exp '\n'
@@ -145,7 +143,10 @@ tertiary: LET lettail { $$=$2; }
 	  { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
 	| IDENT BECOMES tertiary { $$ = make_assignment($1,$3); }
 	| subscription BECOMES tertiary { $$ = make_comp_ass($1,$3); }
-	| formula
+	| IDENT operator BECOMES tertiary
+	{ $$ = make_assignment($1,
+  	        make_binary_call($2.id,make_applied_identifier($1),$4)); }
+        | or_expr
 ;
 
 lettail : declarations IN tertiary { $$ = make_let_expr_node($1,$3); }
@@ -157,101 +158,45 @@ declarations: declarations ',' pattern '=' tertiary
 	| pattern '=' tertiary { $$ = add_let_node(NULL,$1,$3); }
 ;
 
-formula : formula '<' formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("<"))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| formula LEQ formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("<="))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| formula '>' formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier(">"))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| formula GEQ formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier(">="))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	 | formula '=' formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("="))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| formula NEQ formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("!="))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| formula '+' formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("+"))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| formula '-' formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("-"))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| formula '*' formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("*"))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| formula '/' formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("/"))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| formula '\\' formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("\\"))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| formula '%' formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("%"))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| '-' formula  %prec NEG
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("-u"))
-	       ,make_exprlist_node($2,null_expr_list)
-	       );
-	}
-	| formula DIVMOD formula
-	{ $$ = make_application_node
-	       (make_applied_identifier(lookup_identifier("\\%"))
-	       ,make_exprlist_node($1,make_exprlist_node($3,null_expr_list))
-	       );
-	}
-	| formula AND formula
-	{ $$ = make_conditional_node($1,$3,make_bool_denotation(0)); }
-	| formula OR formula
-	{ $$ = make_conditional_node($1,make_bool_denotation(1),$3); }
-	| NOT formula
-	{ $$ = make_conditional_node($2,make_bool_denotation(0),
-					make_bool_denotation(1)); }
-	| '(' ')' /* don't allow this as first part in subscription or call */
+or_expr : and_expr OR or_expr
+	  { $$ = make_conditional_node($1,make_bool_denotation(1),$3); }
+	| and_expr
+;
+
+and_expr: not_expr AND and_expr
+	  { $$ = make_conditional_node($1,$3,make_bool_denotation(0)); }
+	| not_expr
+;
+
+not_expr: NOT formula
+	  { $$ = make_conditional_node($2,make_bool_denotation(0),
+					  make_bool_denotation(1)); }
+        | secondary
+;
+
+secondary : formula
+        | '(' ')' /* don't allow this as first part in subscription or call */
 	  { $$=wrap_tuple_display(NULL); }
 	| primary
 ;
+
+formula : formula_start operand { $$=end_formula($1,$2); }
+;
+formula_start : OPERATOR       { $$=start_unary_formula($1.id,$1.priority); }
+	| comprim operator     { $$=start_formula($1,$2.id,$2.priority); }
+	| IDENT operator
+	  { $$=start_formula(make_applied_identifier($1),$2.id,$2.priority); }
+        | formula_start operand operator
+	  { $$=extend_formula($1,$2,$3.id,$3.priority); }
+;
+
+
+operator : OPERATOR | '=';
+
+operand : OPERATOR operand { $$=make_unary_call($1.id,$2); }
+        | primary
+;
+
 
 primary: comprim
 	| IDENT { $$=make_applied_identifier($1); }
@@ -294,11 +239,9 @@ comprim: subscription
 	| '[' commalist_opt ']'
 		{ $$=wrap_list_display(reverse_expr_list($2)); }
 	| '[' commabarlist ']'
-	  { $$=make_application_node
-		(make_applied_identifier(lookup_identifier("transpose_mat"))
-		,make_exprlist_node(wrap_list_display(reverse_expr_list($2))
-				   ,null_expr_list)
-		);
+	  { $$=make_unary_call
+		(lookup_identifier("^"),
+		 wrap_list_display(reverse_expr_list($2)));
 	  }
 	| '(' commalist ',' exp ')'
 	{ $$=wrap_tuple_display(reverse_expr_list(make_exprlist_node($4,$2)));

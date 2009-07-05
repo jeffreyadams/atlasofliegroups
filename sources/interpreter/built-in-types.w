@@ -1113,7 +1113,7 @@ void integrality_points_wrapper(expression_base::level l)
 @ Let us install the above wrapper functions.
 
 @< Install wrapper functions @>=
-install_function(type_of_root_datum_wrapper,@|"type"
+install_function(type_of_root_datum_wrapper,@|"Lie_type"
                 ,"(RootDatum->LieType)");
 install_function(root_datum_wrapper,@|"root_datum","(LieType,mat->RootDatum)");
 install_function(raw_root_datum_wrapper,
@@ -2832,9 +2832,9 @@ install_function(class_of_real_group_wrapper
 install_function(components_rank_wrapper,@|"components_rank","(RealForm->int)");
 install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
 install_function(KGB_size_wrapper,@|"KGB_size","(RealForm->int)");
-install_function(Cartan_order_matrix_wrapper,@|"Cartan_order_matrix"
+install_function(Cartan_order_matrix_wrapper,@|"Cartan_order"
 					    ,"(RealForm->mat)");
-install_function(dual_real_form_wrapper,@|"dual"
+install_function(dual_real_form_wrapper,@|"dual_real_form"
 				       ,"(InnerClass,int->DualRealForm)");
 install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 		,"(InnerClass->DualRealForm)");

@@ -1,17 +1,25 @@
-operators +, -, * : (int,int->int): usual integer arithmetic operations
-operator - : (int->int): unary minus
+operators +, -, *: (int,int->int): usual integer arithmetic operations
+operator - : (int->int): integral unary minus
+operator ^ : (int,int->int): integer exponentiation (whenever result integral)
 operators \, % : (int,int->int): integer (Euclidian) division and remainder
 operator \% :(int,int->int,int): Euclidian division with remainder
+operators +, -, *, / : (rat,rat->rat): usual rational arithmetic operations
+operator - : (rat->rat): rational unary minus
+operator ^ : (rat,int->rat): rational exponentiation (whenever result defined)
+operator * : (mat,vec->vec): matrix-vector product.
+operator * : (mat,mat->mat): matrix-matrix product.
+operator * : (vec,mat->mat): vector-matrix product (vector is transposed)
+operator ^ : (mat->mat): (unary use of ^) matrix transpostion
+operator ^ : (vec->mat): (unary use of ^) (transposed) vector as 1-line matrix
+operator / : (vec,int->ratvec):  vector division giving rational vector
+operator + : (string,string->string): string concatenation
+
 operators >, >=, <, <=, =, != : (int,int->bool) usual relational operators
-
-vec_div: (vec,int)->ratvec): vector division giving rational vector
-
+operators =, != : (bool,bool->bool) Boolean equivalence, inequivalence (xor)
+int_format: (int->string): representation of integer as digit string
 print: (string->): print string without quotes, followed by newline
 id_mat: (int->mat): identity matrix of given size.
-transpose_mat: (mat->mat): matrix transposition.
 diagonal_mat: (vec->mat): square diagonal matrix with given diagonal entries.
-mv_prod: (mat,vec->vec): matrix-vector product.
-mm_prod: (mat,mat->mat): matrix-matrix product.
 
 inv_fact: (mat->vec): invariant factors in Smith normal form (no zeros).
 Smith_basis: (mat->mat): a basis on which the Smith normal form is assumed.
@@ -30,23 +38,27 @@ invert: (mat->mat,int): invert(M)=inv,d such that M*inv=d*Id, with d minimal.
 Lie_type: (string->LieType): interpret string as Lie type.
   Factors are one of "ABCDEFGT" followed by a number; several factors can be
   concatenated in a string with optional punctuation. Must have total rank<=16
+Lie_type: (RootDatum->LieType): Lie type of a root datum.
 
 Cartan_matrix: (LieType->mat): Cartan matrix of Lie type (square of size rank).
   A block form Cartan matrix, with zeros in rows and columns of torus factors
+Cartan_matrix: (RootDatum->mat): Cartan matrix of root datum.
+  This pairs roots and coroots, so it is square of size the semisimple rank
 
-type_of_Cartan_matrix: (mat->LieType,vec): type given by Cartan matrix.
+Cartan_matrix_type: (mat->LieType,vec): type given by Cartan matrix.
   The input should be a Cartan matrix for a semisimple type (no zero rows or
   columns). The function returns the semisimple type, and the permutation of
   mapping the standard (Bourbaki) ordering of the diagram of that type to the
   ordering of the corresponding simple roots in matrix rows and columns.
 
 Lie_rank: (LieType->int) Rank of the weight lattice.
-semisimple_rank (LieType->int) Rank of the root lattice.
+semisimple_rank: (LieType->int) Rank of the root lattice.
+nr_factors: (LieType->int) Number of (simple or T1) factors in the Lie type
 
 Smith_Cartan: (LieType->mat,vec): compute generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
   roots, with corresponding invariant factors; almost equivalent to
-  Smith(transpose_mat(Cartan_matrix(type))), except that (1) each simple or
+  Smith(^Cartan_matrix(type)), except that (1) each simple or
   torus factor is normalised separately, (2) for torus factors there is
   a '1' is on the diagonal and a '0' appears as invariant factor, and (3) for
   factors D_{2n} an equivalent basis is given, which has been tweaked so that
@@ -60,46 +72,73 @@ ann_mod: (mat,int->mat): find maximal matrix with product divisible by d.
   The call ann_mod(M,d) finds a square matrix A whose columns have the same
   height as those of M and span a maximal sublattice subject to the condition
   that the scalar product of every column of A with every column of M is
-  divisible by d (the matrix product transpose_mat(A)*M vanishes modulo d).
+  divisible by d (the matrix product ^A*M vanishes modulo d).
 
 replace_gen: ((mat,vec),mat->mat): replace generators of weight lattice.
   For every entry different from '1' in the vector argument, replace a column
   from the first matrix by a column from the second matrix
 
-basic_involution: (LieType,string->mat): diagram involution for inner class.
+involution: (LieType,string->mat): diagram involution for inner class.
   Return an involution matrix corresponding to the diagram involution
-  described by the string, which is interpreted as the inner class string is
-  in the Atlas; this is essentially a permutation matrix, except that for the
-  split type on torus factors there is a diagonal entry -1
-
-based_involution: (LieType,mat,string->mat): basic involution on given basis.
-  This is like basic_involution for the same Lie type and inner class string,
-  but the involution matrix is now expressed the given basis given by the
-  columns of the matrix specified as second argument; this expression must be
-  possible, so the sublattice spanned should be stable under the involution
+  described symbolically by the string, which is interpreted as the inner
+  class string is in the Atlas, where 'e' or 'c' mean compact (equal rank),
+  'u' means unequal rank (for types A_n with n>1, D_n and E_6), 's' means
+  split and 'C' means Complex. This is essentially a permutation matrix,
+  except that for the split type on torus factors there is a diagonal entry -1
+involution: (LieType,mat,string->mat): basic involution on given basis.
+  This is like previous 'involution' for the same Lie type and inner class
+  string, but the involution matrix is now expressed the given basis given by
+  the columns of the matrix specified as second argument; this expression must
+  be possible, so the sublattice spanned should be stable under the involution
 
 root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice.
-type_of_root_datum: (RootDatum->LieType): Lie type of a root datum.
-  This may differ from original type, by torus factors being moved to the end,
-  and factors entered as "C2" will be returned as 'B2'.
+  The columns of the matrix argument are interpreted as specifying a
+  sublattice of the character lattice of the "simply connected" group G of the
+  given Lie type (which is a direct product of a simply connected semisimple
+  group G' and a central torus S), expressed in the basis of fundamental
+  weights of G' and an arbitrary basis for characters of S). For this to be
+  possible, it is required that the sublattice contain the root lattice of G'.
+root_datum: ([vec],[vec],int->RootDatum): root datum from simple (co)roots.
+  In root_datum(roots,coroots,r), the list of vectors roots and coroots must
+  have the same length (the semisimple rank), and each of thier elements
+  should have size r (which argument is necessary in case the lists are
+  empty). A root datum is returned in which roots are the simple roots
+  expressed in some basis of the character lattice, and coroots are the simple
+  coroots expressed in the dual basis of the cocharacter lattice. For this to
+  be possible, it is necessary and sufficient that the matrix of scalar
+  products of the proposed simple roots with the proposed simple coroots form
+  a valid Cartan matrix (if not the function call fails)
+root_datum: (InnerClass->RootDatum): root datum of inner class.
+  Extract the root datum from the InnerClass value
 
 quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
   Interpret the rational vectors as kernel generators for the given type, as
   in the Atlas software, and return the corresponding sublattice as a matrix
-  whose column are its generators; if M' is the matrix whose columns are the
+  whose column are its generators; if M is the matrix whose columns are the
   numerators of the kernel generators, brought to a common denominator d, this
   amounts to setting S=Smith_Cartan(type); (C,v)=filter_units(S) and then
-  returning the value replace_gen(S,mm_prod(C,ann_mod(M',d)))
+  returning the value replace_gen(S,mm_prod(C,ann_mod(M,d)))
 
-quotient_datum: (LieType,mat->RootDatum): root datum as entrered in Atlas.
-  quotient_datum(type,gens)=root_datum(type,quotient_basis(type,gens))
+quotient_datum: (LieType,[ratvec]->RootDatum): root datum as entrered in Atlas.
+    set quotient_datum(LieType type,[ratvec] gens) =
+    root_datum(type,quotient_basis(type,gens))
 
 simply_connected_datum: (LieType->RootDatum): simply connected datum for type.
-  simply_connected_datum(type) = root_datum(type,id_mat(rank))
+  This gives the root datum for the "simply connected" group of the given
+  type (the direct product of a simply conneted G' with a central torus):
+    set simply_connected_datum(LieType type) = root_datum(type,id_mat(rank))
 
 adjoint_datum: (LieType->RootDatum): adjoint root datum for type.
-  adjoint_datum(type) = root_datum(type,transpose_mat(Cartan_matrix(type))),
-  except that diagonal entries '1' are inserted for torus factors
+  Here the sublattice for the semisimple factor is the root lattice, with
+  simple roots as basis; for the central torus an arbitrary basis is used.
+  Therefore the this function could be defined as
+    set adjoint_datum(LieType type) =
+    let M= for alpha@j in ^Cartan_matrix(type)
+           do for entry@i in alpha
+              do if i=j and entry=0 then 1 else entry fi
+              od
+           od
+    in root_datum(type,M)
 
 SL: (int->RootDatum): SL(n) gives root datum for SL(n,C).
   Make this root datum using the most pleasant "epsilon" basis for sub-lattice
@@ -108,25 +147,22 @@ GL: (int->RootDatum): GL(n) gives root datum for GL(n,C).
 
 simple_roots: (RootDatum->mat): matrix of simple roots in the root datum.
 simple_coroots: (RootDatum->mat): matrix of simple coroots in the root datum.
-Cartan_matrix_of_datum: (RootDatum->mat): Cartan matrix of root datum.
-  This pairs roots and coroots, so it is square of size the semisimple rank
 roots: (RootDatum->mat): set of roots in the root datum (columns of result).
 coroots: (RootDatum->mat): set of coroots in the root datum (as columns).
 root_coradical: (RootDatum->mat): simple roots and coradical basis.
   With respect to simple_roots, add columns for coradical basis generators
 coroot_radical: (RootDatum->mat): simple coroots and radical basis.
   With respect to simple_coroots, add columns for radical basis generators
-dual_datum: (RootDatum->RootDatum): dual of given root datum.
+dual: (RootDatum->RootDatum): dual of given root datum.
 
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Forms the root datum for the coroot subsystem of coroots that take an
   integral value on the given ration vector.
 
 integrality_points: (RootDatum,ratvec->[rat]): fractions with integrality
-  Returns the increasing list of positive fractions f<=1 so that its multiple
-  of the given rational weight lambda has increased integrality: some coroot
-  alphav with <lambda,alphav> nonzero has <f*lambda,alphav> integral.
-
+  The call integrality_points(rd,lambda) returns the increasing list of
+  positive fractions f<=1 so f*lambda has more integrality than generically:
+  for some coroot alphav one has integral and nonzero value <f*lambda,alphav>.
 
 classify_involution: (mat->int,int,int): determine type of lattice involution
   For any linear involution of Z^n, there is a basis consisting of certain
@@ -138,29 +174,26 @@ classify_involution: (mat->int,int,int): determine type of lattice involution
   order: eigenvectors for 1 (compact rank), pairs of interchanged vectors
   (Complex rank), eigenvectors for -1 (split rank).
 
-fix_involution: (RootDatum,mat->InnerClass): define G by involution matrix.
+inner_class: (RootDatum,mat->InnerClass): inner_class of G from involution
   This is the basic function for building a complex reductive group equipped
   with a distinguished involution from the root datum and that involution;
   the involution must be given on the (sub-)lattice basis of the root datum,
   and must describe an involutive automorphism of the based root datum.
-
-set_type: (Lie_type,[ratvec],string->InnerClass): get G as in Atlas interface.
-  The call set_type(lt,gens,ic_string) sets basis=quotient_basis(lt,gens),
-  rd=root_datum(lt,basis), inv=based_involution(lt,basis,ic_string), and
-  then returns fix_involution(rd,inv).
-
-set_inner_class: (RootDatum,string->InnerClass): define G by inner class.
+inner_class: (RootDatum,string->InnerClass): get inner class of G symbolically
   Build a complex reductive group directly from a root datum, but compute
-  the distinguished involution using an inner class string;
-  set_inner_class(rd,inner_class) is essentially computed by setting
-  t=type_of_root_datum(rd); basis=transpose_mat(coroot_radical(rd)), and then
-  returning fix_involution(rd,inner(t,basis,inner_class))
+  the distinguished involution from the string describing it symbolically.
+    set inner_class(RootDatum rd,string type)=
+    let t=Lie_type(rd); basis=transpose_mat(coroot_radical(rd))
+    in inner_class(rd,involution(t,basis,type))
+inner_class: (Lie_type,[ratvec],string->InnerClass): inner class as in Atlas
+    set inner_class(Lie_type lt,[ratvec] gens,string ic_string) =
+    let basis=quotient_basis(lt,gens)
+    ; rd=root_datum(lt,basis), inv=based_involution(lt,basis,ic_string)
+    in inner_class(rd,inv).
 
 distinguished_involution: (InnerClass->mat): involution of the inner class.
   Extract the distinguised involution from the InnerClass value
-root_datum_of_inner_class: (InnerClass->RootDatum): root datum of inner class.
-  Extract the root datum from the InnerClass value
-dual_inner_class; (InnerClass->InnerClass): dual inner class for dual group
+dual: (InnerClass->InnerClass): dual inner class for dual complex group
 
 block_sizes: (InnerClass->mat): matrix giving the block sizes.
   This is essentially the same as the output of 'blocksizes' in Atlas; the
@@ -185,6 +218,11 @@ real_form: (InnerClass,int->RealForm): select a real form from inner class.
   position (starting from 0). The list is always the same for a given inner
   class (independent of other computations), unlike the list of Cartan classes
   for a real form as discussed below
+real_form: (DualRealForm->RealForm): interpret dual real form as real form
+  This function allows a DualRealForm value to be interpreted as a real form
+  for the dual group (and dual inner class), so that functions like KGB_size
+  can be applied to the result
+
 quasisplit_form: (InnerClass->RealForm): quasisplit form for the inner class
   This is the last one in the list of real forms for the inner class
 
@@ -199,7 +237,7 @@ count_Cartans: (RealForm->int): number of Cartan classes for this real form
 
 KGB_size: (RealForm->int): size of the set K\G/B for this real form
 
-Cartan_order_matrix: (RealForm->mat): matrix for ordering of Cartan classes
+Cartan_order: (RealForm->mat): matrix describing ordering of Cartan classes
   The Cartan classes for a given real form form a partially ordered set; this
   function returns this partial ordering in the form of a square 0-1 matrix
 
@@ -210,11 +248,6 @@ dual_real_form: (InnerClass,int->DualRealForm): select a dual real form
   and a dual real form for a given inner class
 dual_quasisplit_form: (InnerClass->DualRealForm): quasisplit dual real form
 
-real_form_from_dual: (DualRealForm->RealForm): convert dual real form
-  This function allows a DualRealForm value to be interpreted as a real form
-  for the dual group (and dual inner class), so that functions like KGB_size
-  can be applied to the result
-
 Cartan_class: (RealForm,int->CartanClass): Cartan class selected by number
   This constructs all Cartan classes for this real form, and then selects the
   one with the given sequence number. The numbering of the Cartan classes for
@@ -224,7 +257,8 @@ Cartan_class: (RealForm,int->CartanClass): Cartan class selected by number
 
 most_split_Cartan: (RealForm->CartanClass): most split Cartan class for form
   The most split Cartan class of a given real form is the last one in the list
-  of its Cartan classes (so it is Cartan_class(rf,count_Cartans(rf)-1)
+  of its Cartan classes, so
+    set most_split_Cartan(RealForm rf)=Cartan_class(rf,count_Cartans(rf)-1)
 
 print_Cartan_info: (CartanClass->): print information about the Cartan class
   This produces essentially the output of 'cartan' in the Atlas, except for
@@ -234,9 +268,9 @@ print_Cartan_info: (CartanClass->): print information about the Cartan class
   of distinct twisted involutions defining this same Cartan class, and the
   types of the imaginary, real, and complex root subsystems
 
-real_forms_of_Cartan: (CartanClass->[RealForm]): list of real forms
+real_forms: (CartanClass->[RealForm]): list of real forms with given Cartan
   Returns a list of the real forms for which this Cartan class occurs
-dual_real_forms_of_Cartan: (CartanClass->[DualRealForm]): list dual real forms
+dual_real_forms: (CartanClass->[DualRealForm]): list Cartan's dual real forms
   Returns a list of the dual real forms for which this Cartan class occurs
 
 fiber_part: (CartanClass,RealForm->[int]): part of fiber group for real form
