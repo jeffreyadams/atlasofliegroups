@@ -306,13 +306,15 @@ GrpNbr FiniteAbelianGroup::prod(GrpNbr x, unsigned long n) const
 
   GrpNbr y = x; // save the original value of x
 
+  // invariant: result = 2^r*x + (n mod 2^r)*y
+  // where r=number_of_iterations_left = bits::lastBit(j)
   for (unsigned long j = n >> 1; j!=0; j >>= 1)
-    {
-      p <<= 1;
-      x = add(x,x);
-      if ((p & constants::hiBit)!=0)
-	x = add(x,y);
-    }
+  {
+    p <<= 1;
+    x = add(x,x);
+    if ((p & constants::hiBit)!=0)
+      x = add(x,y);
+  }
 
   return x;
 }
