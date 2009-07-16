@@ -1,26 +1,35 @@
-set first (int n)= for i = n do i od  # [0,1,...,n-1]
+set first (int n)= for i = n do i od  { [0,1,...,n-1] }
 
-set string_rep(string s, int n)=
-let r="" in (for i = n do r+:=s od; r)
+set *(string s, int n)= let r="" in (for i = n do r#:=s od; r)
 
-set sm_prod(int c,mat m) = mat: for col in m do for e in col do c*e od od
+set *(int c,mat m) = mat: for col in m do for e in col do c*e od od
 
-# Cartan matrix information for positions at distance d(<=2) off diagonal
+set +(string s, int i)= s # int_format(i)
+set +(int i, string s)= int_format(i) # s
+set +(string s,string t) = s # t { alias for concatenation }
+
+set +(vec v,vec w)= vec:
+  ( if #v != #w then error("Size mismatch " + #v + ":" + #w) fi
+  ; for e@i in v do e+w[i] od
+  )
+
+
+{ Cartan matrix information for positions at distance d(<=2) off diagonal }
 set Cartan_dispatch(int type, int r, int min, int d, bool lower)=
-if d=0 then 2    # diagonal entry
-elif type=4 then # Dn
+if d=0 then 2    { diagonal entry }
+elif type=4 then { Dn }
  if if min<r-3 then d=1 else min=r-3 fi then -1 else 0 fi
-elif type=5 then # En
+elif type=5 then { En }
  if d=if min<2 then 2 else 1 fi then -1 else 0 fi
-elif d=2 then 0  # nodes far apart in liear diagrams
-elif type<4 then # classical linear diagrams
+elif d=2 then 0  { nodes far apart in liear diagrams }
+elif type<4 then { classical linear diagrams }
  if type = if lower then 2 else 3 fi and min=r-2 then -2 else -1 fi
-elif type=6 then if lower and min=1 then -2 else -1 fi # F4
-elif lower then -1 else -3 # G2
+elif type=6 then if lower and min=1 then -2 else -1 fi { F4 }
+elif lower then -1 else -3 { G2 }
 fi
 
 set simple_Cartan_entry(int type, int r,int i, int j)=
-if type=0 then 0 # null Cartan entries for torus factors
+if type=0 then 0 { null Cartan entries for torus factors }
 else let (min,d) = if i<j then (i,j-i) else (j,i-j) fi
      in  if d>2 then 0 else Cartan_dispatch(type,r,min,d,i<j) fi
 fi
@@ -76,7 +85,7 @@ do if i<n-1
 od
 
 set type_D_roots (int n) = [vec]:
-if n<2 then [] # SO(2) is pure torus
+if n<2 then [] { SO(2) is pure torus }
 else
   for i = n
   do if i<n-1
@@ -104,15 +113,15 @@ let n=p+q, q = if p<q then p else q fi
 in real_form(ic,q)
 
 set so(int p,int q)=
-let n=p+q, (p,q) = if p<q then (q,p) else (p,q) fi # make q the smallest one
+let n=p+q, (p,q) = if p<q then (q,p) else (p,q) fi { make q the smallest one }
 ; rd = SO_datum(n)
 , inv = let M=id_mat(n\2)
         in (if p%2=1 and q%2=1 then M[n\2-1,n\2-1]:=-1 fi; M)
-, i = if n<=2 then 0        # inner classes without noncompact form, SO(2)=T1
-      elif n%2=1 then q     # type B_{n\2}
-      elif q%2=1 then q\2   # type D_{n\2}, unequal rank
-      elif q\2<n\4 then q\2 # type D_{n\2}, equal rank, more compact forms
-      elif n%4=2 then q\2+1 # type D_{n\2}odd, equal rank, more split forms
-      else q\2+2            # type D_{n\2}even, equal rank, more split forms
+, i = if n<=2 then 0        { inner classes without noncompact form, SO(2)=T1 }
+      elif n%2=1 then q     { type B_{n\2} }
+      elif q%2=1 then q\2   { type D_{n\2}, unequal rank }
+      elif q\2<n\4 then q\2 { type D_{n\2}, equal rank, more compact forms }
+      elif n%4=2 then q\2+1 { type D_{n\2}odd, equal rank, more split forms }
+      else q\2+2            { type D_{n\2}even, equal rank, more split forms }
       fi
 in real_form(inner_class(rd,inv),i)

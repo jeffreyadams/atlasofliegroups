@@ -246,6 +246,8 @@ comprim: subscription
 	| '(' commalist ',' exp ')'
 	{ $$=wrap_tuple_display(reverse_expr_list(make_exprlist_node($4,$2)));
 	}
+	| operator '@' type { $$=make_op_cast($1.id,$3); }
+	| IDENT '@' type    { $$=make_op_cast($1,$3); }
 ;
 
 subscription: IDENT '[' exp ']'

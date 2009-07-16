@@ -1537,7 +1537,10 @@ bool coerce(const type_expr& from_type, const type_expr& to_type,
     @/{@; e.reset(new conversion(*it,e));
       return true;
     }
-  if (to_type==void_type)    {@; e.reset(new voiding(e));  return true; }
+  if (to_type==void_type)
+  {@; e.reset(new voiding(e));
+     return true;
+  }
   return false;
 }
 
@@ -1862,6 +1865,7 @@ extern const type_expr row_of_int_type; // \.{[int]}
 extern const type_expr row_of_rat_type; // \.{[rat]}
 extern const type_expr row_of_vec_type; // \.{[vec]}
 extern const type_expr row_row_of_int_type; // \.{[[int]]}
+extern const type_expr pair_type; // \.{(*,*)}
 extern const type_expr int_int_type; // \.{(int,int)}
 
 @ The construction of type constants follows the same pattern as before,
@@ -1877,8 +1881,8 @@ const type_expr row_of_int_type(copy(int_type));
 const type_expr row_of_rat_type(copy(rat_type));
 const type_expr row_of_vec_type(copy(vec_type));
 const type_expr row_row_of_int_type(copy(row_of_int_type));
-const type_expr int_int_type(*make_type("(int,int)"));
-  // copy and destroy original
+const type_expr pair_type(*unknown_tuple(2));  // copy and destroy original
+const type_expr int_int_type(*make_type("(int,int)")); // idem
 
 
 @ Now we derive the first ``primitive'' value types. The type for rational
@@ -2919,8 +2923,10 @@ identifier table. However the basic table entry for an overloading needs a
 level of sharing less, since the function bound for given argument types
 cannot be changed by assignment, so the call will refer directly to the value
 stored rather than to its location. We also take into account that the stored
-types are always function types. Remarks about ownership of the type apply
-without change however.
+types are always function types (this saves space, while for normal use we do
+not need to access the full function type as a |type_expr|, something this
+representation makes rather difficult). Remarks about ownership of the type
+apply without change however.
 
 @< Type definitions @>=
 
@@ -2936,10 +2942,10 @@ in which the pairs for the same identifier are ordered. This is important
 since we want to try matching more specific (harder to convert to) argument
 types before trying less specific ones. We envisage as only method for making
 an identifier overloaded actually giving an overloaded definition, so the
-table will never associate an empty vector to an identifier. Therefore the
-|variants| method can signal absence of an identifier by returning an empty
-list of variants, and there is no need for a separate method for testing
-whether an identifier is overloaded in the table at all.
+table will not normally associate an empty vector to an identifier (though it
+could do so after an entry is explicitly removed). The |variants| method will
+signal absence of an identifier by returning an empty list of variants, and no
+separate test for this condition is provided.
 
 @< Type definitions @>=
 
@@ -3081,10 +3087,10 @@ this.
 }
 
 
-@ The user may want to remove a binding from the overload table in order to
-make place for another one; this will be realised by the |remove| method
-called with the (precise) argument type to remove. The methods returns a
-boolean telling whether any such binding was found (and removed).
+@ The |remove| method allows removing an entry from the overload table, for
+instance to make place for another one. It returns a boolean telling whether
+any such binding was found (and removed). The |variants| array might become
+empty, but remains present and will be reused upon future additions.
 
 @< Function def... @>=
 bool overload_table::remove(Hash_table::id_type id, const type_expr& arg_t)
@@ -3100,12 +3106,9 @@ bool overload_table::remove(Hash_table::id_type id, const type_expr& arg_t)
   return false;
 }
 
-@ When resolving operator overloading, we have at hand an expression~|e| known
-to be a function call with as function part an identifier, and a type pattern
-for the expected result type. In fact we have checked that the identifier is
-an overloaded one by calling |overload_table::variants|, which has given us a
-non-empty |variant_list|, so we pass that as well to the function
-|resolve_overload| that implements overload resolution.
+@ Overloading resolution will be called from the case in |convert_expr| for
+function applications, after testing that overloads exist, so we can transmit
+the relevant |variants| together with the other parameters.
 
 @< Declarations of exported functions @>=
 expression resolve_overload
@@ -3113,23 +3116,28 @@ expression resolve_overload
    type_expr& type,
    const overload_table::variant_list& variants);
 
-@ For overloading resolution we take a fairly radical approach of not trying
-to match given operand types among the variants proposed, but simply plunging
-into the variants one by one; each variant imposes its argument types on the
-argument expressions and matches only if the they can be successfully analysed
-with this requirement. This implies that in the contrary case we have to catch
-and ignore the type (or other compile-time) error produced, and silently pass
-to the next variant. This approach simplifies the logic of overloading
-resolution significantly, and allows any automatic conversions in arguments
-(or operands) to be performed just like in a non-overloaded call (otherwise
-arguments would have to be analysed without any presumed result type). However
-it also means that if we fail to find any match, we do not know whether this
-is because the argument contains an error independent of the type required, or
-whether this is because the argument is in itself correct but fails to match
-any variant; some additional code is needed to present a meaningful error
-message. In fact an intrinsic error in a deeply nested argument might require
-time exponential in the nesting depth to be detected; we shall see if this
-poses real problems in practice.
+@ To resolve overloading, we simply plunge into each of the variants, imposing
+its argument type on the actual argument, and match only if the analysis
+succeeds. This implies that in the contrary case we have to catch and ignore
+the type error (or other compile-time error) produced, and silently pass to
+the next variant. This approach simplifies the logic of overloading resolution
+significantly (no need to compare expected and provided types), and allows any
+automatic conversions in arguments (or operands) to be performed just like in
+a non-overloaded call (otherwise arguments would have to be analysed without
+any presumed result type). However it also means that if we fail to find any
+match, we do not know whether this is because the argument contains an error
+independent of the type required, or whether this is because the argument is
+in itself correct but fails to match any variant; some additional code is
+needed to present a meaningful error message. In fact an intrinsic error in a
+deeply nested argument might require time exponential in the nesting depth in
+order to be detected; we shall see whether this poses problems in practice.
+
+Apart from those in |variants|, we also test for certain argument types that
+will match without being in any table; for instance the size-of operator~`\#'
+can be applied to any row type to give its number of components. Being more
+generic bindings, we test for them after the more specific ones fail. The
+details of these cases, like those of the actual construction of a call for a
+matching overloaded function, will be given later.
 
 @< Function definitions @>=
 expression resolve_overload
@@ -3142,12 +3150,16 @@ expression resolve_overload
   { const overload_data& v=variants[i];
     try
     { expression_ptr arg(convert_expr(args,v.type->arg_type));
-      @< Build and return a call of overload variant |v| with argument |arg|
-         and result type |type| @>
+      @< Return a call of variant |v| with argument |arg|, if result type
+         can be made to match |type| @>
     }
-    catch (program_error&) {@; continue; } // if it fails, try next binding
+    catch (program_error&) {@; continue; } // if it throws, try next binding
     throw type_error(e,copy(v.type->result_type),copy(type));
+      // result type mismatch
   }
+  @< If a special operator like size-of matches |id|, |return| a call of it
+     with argument |args|, if not |throw| @>
+
   @< Complain either about failing overload resolution, or about an error
      within |args| @>
 }
@@ -3190,7 +3202,7 @@ void overload_table::print(std::ostream& out) const
 }
 
 std::ostream& operator<< (std::ostream& out, const overload_table& p)
-@+{@; p.print(out); return out; }
+{@; p.print(out); return out; }
 
 @~We shouldn't forget to declare that operator, if we want to use it.
 
@@ -3264,10 +3276,10 @@ struct builtin_value : public value_base
 { wrapper_function val;
   std::string print_name;
 @)
-  builtin_value(wrapper_function v,const char* n)
+  builtin_value(wrapper_function v,const std::string& n)
   : val(v), print_name(n) @+ {}
   virtual void print(std::ostream& out) const
-  @+{@; out << ':' << print_name << ':'; }
+  @+{@; out << '{' << print_name << '}'; }
   builtin_value* clone() const @+{@; return new builtin_value(*this); }
   static const char* name() @+{@; return "built-in function"; }
 private:
@@ -3342,24 +3354,27 @@ case function_call:
   else throw type_error(e,copy(f_type->func->result_type),copy(type));
 }
 
-@ The main work here has been relegated to |resolve_overload|, so we just need
-to take care of the things mentioned in the module name. In fact there is one
-more case where overload resolution is not invoked than that name mentions,
-namely when the argument expression is an empty tuple display, since
+@ The main work here has been relegated to |resolve_overload|; otherwise we
+just need to take care of the things mentioned in the module name. In fact
+there is one more case where overload resolution is not invoked than that name
+mentions, namely when the argument expression is an empty tuple display, since
 overloading with void argument type is forbidden. But this special treatment
 of empty arguments makes a global value with type function-without-arguments
 almost behave like an overloaded instance; the user should just avoid
 providing a nonempty argument of void type, which is bad practice anyway.
 
+The cases relegated to |resolve_overload| include calls of special operators
+like the size-of operator~`\#', even if such an operator should not occur in
+the overload table.
+
 @< Convert and |return| an overloaded function call... @>=
 { const Hash_table::id_type id =e.e.call_variant->fun.e.identifier_variant;
   const expr arg=e.e.call_variant->arg;
   size_t i,j;
-  if (not (arg.kind==tuple_display and arg.e.sublist==NULL)
-      and id_context->lookup(id,i,j)==NULL)
+  if (not is_empty(arg) and id_context->lookup(id,i,j)==NULL)
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
-    if (variants.size()>0)
+    if (variants.size()>0 or is_special_operator(id))
       return resolve_overload(e,type,variants);
   }
 }
@@ -3367,12 +3382,19 @@ providing a nonempty argument of void type, which is bad practice anyway.
 @ For overloaded function calls, once the overloading is resolved, we proceed
 in a similar fashion to non-overloaded calls, except that there is no function
 expression to convert (the overload table contains an already evaluated
-function value, either built-in or user-defined). we deal with the built-in
-case here, and will give the user-define case later when we have discussed the
-necessary value types.
+function value, either built-in or user-defined). We deal with the built-in
+case here, and will give the user-defined case later when we have discussed
+the necessary value types.
 
-@< Build and return a call of overload variant |v| with argument |arg| and
-   result type |type| @>=
+As the module name indicates implicitly, we should not throw an error here is
+the result type cannot be matched. This is because we are inside a block where
+errors thrown are considered to indicate argument mismatch; they are caught
+with passage to the next overloaded instance. But in case of result type
+mismatch we do not want to try other argument types, so we just fall through,
+out of the |try| block and into a |throw| expression outside that block that
+can signal the error without being caught.
+
+@< Return a call of variant |v|... @>=
 { expression_ptr call;
   builtin_value* f = dynamic_cast<builtin_value*>(v.val.get());
   if (f!=NULL)
@@ -3384,7 +3406,116 @@ necessary value types.
     return call.release();
 }
 
+@ The names of special operators need not be looked up each time they are
+needed, so we store them in  a static variable inside a local function.
 
+@< Local function definitions @>=
+Hash_table::id_type size_of_name()
+{@; static Hash_table::id_type name=main_hash_table->match_literal("#");
+  return name;
+}
+@)
+inline bool is_special_operator(Hash_table::id_type id)
+{@; return id==size_of_name(); }
+
+@ After failing to match any concrete instances of an overloaded operator, we
+try for those that satisfy |is_special_operator(id)| more generic argument
+types. This is the final matching occasion and we are no longer in a |try|
+block, so errors thrown from |convert_expr| will not be caught, and in case
+none occurs but we fail to match the result type, we must throw a
+|type_error|.
+
+@: sizeof section @>
+
+@< If a special operator like size-of... @>=
+{ if (id==size_of_name())
+  { type_expr arg_type;
+    expression_ptr arg(convert_expr(args,arg_type));
+    if (arg_type.kind==row_type)
+    { expression_ptr call(new overloaded_builtin_call(sizeof_wrapper,"#",arg));
+      if (type.specialise(int_type) or coerce(int_type,type,call))
+        return call.release();
+      throw type_error(e,copy(type),copy(int_type));
+    }
+    else if (arg_type.kind!=undetermined_type and
+             arg_type.specialise(pair_type))
+    @< Recognise and return 2-argument versions of `\#', or fall through in
+       case of failure @>
+    std::ostringstream o;
+    o << "Operator # fails to match argument type " << arg_type;
+    throw expr_error(e,o.str());
+  }
+}
+
+@ For dyadic use of the operator `\#' we have the somewhat unusual situation
+that we have already converted the entire argument expression at the point
+where we discover, based on the type found, that one of the arguments might
+need to be coerced. This means that such a coercion must be inserted into an
+already constructed expression, whereas usually it is applied on the outside
+of an expression under construction. Concretely this means that although we
+can use the |coerce| function, it wants a reference to an auto-pointer for the
+expression needing modification (so that it can manage ownership during its
+operation), but the expression here is held in an ordinary pointer inside a
+|tuple_expression|. Therefore we must copy the ordinary |expression| pointer
+temporarily to an |expression_ptr|, simulating the auto-pointer actions
+manually: after construction of the |expression_ptr| we set the |expression|
+(temporarily) to~|NULL| to avoid potential double destruction, and after the
+call to |coerce| we release the (possibly modified) |expression_ptr| back into
+the |expression|.
+
+Another complication is that we decided having a dyadic use of `\#' based
+on finding a 2-tuple type, but this is no guarantee there are actually operand
+subexpressions; we do a dynamic cast to find that out, and in the case the
+user was so contrived as to use monadic `\#' on a non-tuple expression of
+2-tuple type, we just report that no coercion of operands is done (after
+all we need a subexpression to be able to insert any conversion).
+
+@< Local function definitions @>=
+bool can_coerce_arg
+  (expression e,size_t i,const type_expr& from,const type_expr& to)
+{ tuple_expression* tup= dynamic_cast<tuple_expression*>(e);
+  if (tup==NULL) return false;
+  expression_ptr comp(tup->component[i]); tup->component[i]=NULL;
+  bool result = coerce(from,to,comp); tup->component[i]=comp.release();
+  return result;
+}
+
+@ The operator `\#' can be used also as infix operator, to join (concatenate)
+two row values of the same type or to extend one on either end by a single
+element. In the former case we require that both arguments have identical row
+type, in the latter case we allow the single element to be converted to the
+component type of the row value.
+
+@< Recognise and return 2-argument versions of `\#'... @>=
+{ type_expr& arg_tp0 = arg_type.tuple->t;
+  type_expr& arg_tp1 = arg_type.tuple->next->t;
+  if (arg_tp0.kind==row_type)
+  { if (arg_tp0==arg_tp1)
+    { expression_ptr call(new overloaded_builtin_call
+        (join_rows_wrapper,"#",arg));
+      if (type.specialise(arg_tp0) or coerce(arg_tp0,type,call))
+        return call.release();
+      throw type_error(e,copy(type),copy(arg_tp0));
+    }
+    if (arg_tp0.component_type->specialise(arg_tp1) or @|
+        can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type))
+    { expression_ptr call(new overloaded_builtin_call
+        (suffix_element_wrapper,"#",arg));
+      if (type.specialise(arg_tp0) or coerce(arg_tp0,type,call))
+        return call.release();
+      throw type_error(e,copy(type),copy(arg_tp0));
+    }
+  }
+  else if (arg_tp1.kind==row_type and @|
+           (arg_tp1.component_type->specialise(arg_tp0) or @|
+            can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type)))
+  { expression_ptr call(new overloaded_builtin_call
+      (prefix_element_wrapper,"#",arg));
+    if (type.specialise(arg_tp1) or coerce(arg_tp1,type,call))
+      return call.release();
+    throw type_error(e,copy(type),copy(arg_tp1));
+  }
+}
 
 @*2 Evaluating built-in function calls.
 %
@@ -3444,7 +3575,7 @@ catch (const std::exception& e)
   throw; // for anonymous function calls, just rethrow the error unchanged
 }
 
-@*2 Evaluating overloaded function calls.
+@*2 Evaluating overloaded built-in function calls.
 %
 Calling an overloaded built-in function calls the wrapper function after
 evaluating the argument(s). We provide the same trace of interrupted functions
@@ -3745,7 +3876,8 @@ struct overloaded_closure_call : public expression_base
   std::string print_name;
   expression argument;
 @)
-  overloaded_closure_call(shared_closure f,const char* n,expression_ptr a)
+  overloaded_closure_call
+   (shared_closure f,const std::string& n,expression_ptr a)
   : fun(f), print_name(n), argument(a.release())@+ {}
   virtual ~overloaded_closure_call() @+ {@; delete argument; }
   virtual void evaluate(level l) const;
@@ -3770,11 +3902,11 @@ if it was not a |builtin_value|.
 @< Set |call| to the call of the user-defined function |v| @>=
 { shared_closure fun =
    std::tr1::dynamic_pointer_cast<closure_value>(v.val);
-  if (fun!=NULL)
-    call = expression_ptr @|
-      (new overloaded_closure_call(fun,main_hash_table->name_of(id),arg));
-  else
+  if (fun==NULL)
     throw std::logic_error("Overloaded value is not a function");
+  std::ostringstream name;
+  name << main_hash_table->name_of(id) << '@@' << v.type->arg_type;
+  call = expression_ptr (new overloaded_closure_call(fun,name.str(),arg));
 }
 
 @ Evaluation of an overloaded function call bound to a closure is a simplified
@@ -3972,9 +4104,7 @@ case while_expr:
   { w_loop w=e.e.while_variant;
     expression_ptr c (convert_expr(w->condition,bool_type));
     expression_ptr n
-     (w->next_part.kind==tuple_display and w->next_part.e.sublist==NULL
-     ? NULL @|
-     : convert_expr(e.e.while_variant->next_part,void_type));
+     (is_empty(w->next_part) ? NULL @| : convert_expr(w->next_part,void_type));
     if (type==void_type or type.specialise(row_of_type))
     { expression_ptr b
        (convert_expr(w->body, @|
@@ -4259,9 +4389,8 @@ case cfor_expr:
   static shared_value zero=shared_value(new int_value(0));
     // avoid repeated allocation
   expression_ptr bound_expr
-    (c->bound.kind!=tuple_display or c->bound.e.sublist!=NULL
-    ? convert_expr(c->bound,int_type)
-    : new denotation(zero)
+    (is_empty(c->bound) ? new denotation(zero)
+    : convert_expr(c->bound,int_type)
     );
 @)
   bindings bind(1); bind.add(c->id,copy(int_type));
@@ -4366,7 +4495,37 @@ case cast_expr:
   expression_ptr p(convert_expr(c->exp,ctype));
   if (type.specialise(ctype) or coerce(ctype,type,p))
     return p.release();
-  else throw type_error(e,copy(ctype),copy(type));
+  throw type_error(e,copy(ctype),copy(type));
+}
+break;
+
+@ Operation casts similarly only access existing kinds of expression. We must
+however access the global overload table to find the value. Since upon success
+we find a bare function value, we must abuse the |denotation| class a bit to
+serve as wrapper that upon evaluation will return the value again.
+
+@< Other cases for type-checking and converting... @>=
+case op_cast_expr:
+{ op_cast c=e.e.op_cast_variant;
+  const overload_table::variant_list& variants =
+   global_overload_table->variants(c->oper);
+  type_expr& ctype=*static_cast<type_p>(c->type);
+  for (size_t i=0; i<variants.size(); ++i)
+    if (variants[i].type->arg_type==ctype)
+    {
+      expression_ptr p(new denotation(variants[i].val));
+      if (type.specialise(gen_func_type) and @|
+          type.func->arg_type.specialise(ctype) and @|
+          type.func->result_type.specialise(variants[i].type->result_type))
+       @/return p.release();
+      type_ptr ftype=make_function_type
+	(copy(ctype),copy(variants[i].type->result_type));
+      throw type_error(e,ftype,copy(type));
+    }
+  std::ostringstream o;
+  o << "Cannot resolve " << main_hash_table->name_of(c->oper) @|
+    << " at argument type " << ctype;
+  throw program_error(o.str());
 }
 break;
 
@@ -5150,19 +5309,38 @@ coercion(mat_type,row_row_of_int_type, "[[I]]", int_list_list_convert); @/
 
 @*1 Wrapper functions.
 %
-We have not defined any wrapper functions yet, and therefore have nothing in
-the |global_id_table|. Actually, since all predefined objects are functions
-there is no reason not to define everything using function overloading, so
-things will in fact go into the |global_overload_table|. The following
-function will greatly facilitate the repetitive task of installing wrapper
-functions.
+We now come to defining wrapper functions. The following function will greatly
+facilitate the latter repetitive task of installing them.
 
-@< Template and inline... @>=
-inline void install_function
+@< Declarations of exported functions @>=
+void install_function
+ (wrapper_function f,const char*name, const char* type_string);
+
+@ We start by determining the specified type, and building a print-name for
+the function that appends the argument type (since there will potentially be
+many instances with the same name). Then we construct a |builtin_value| object
+and finally add it to |global_overload_table|. Although currently there are no
+built-in functions with void argument type, we make a provision for them in
+case they would be needed later; notably they should not be overloaded and are
+added to |global_id_table| instead.
+
+@< Function def... @>=
+void install_function
  (wrapper_function f,const char*name, const char* type_string)
-{ shared_value val(new builtin_value(f,name));
-  global_overload_table->add
-    (main_hash_table->match_literal(name),val,make_type(type_string));
+{ type_ptr type = make_type(type_string);
+  std::ostringstream print_name; print_name<<name;
+  if (type->kind!=function_type)
+    throw std::logic_error
+     ("Built-in with non-function type: "+print_name.str());
+  if (type->func->arg_type==void_type)
+  { shared_value val(new builtin_value(f,print_name.str()));
+    global_id_table->add (main_hash_table->match_literal(name),val,type);
+  }
+  else
+  { print_name << '@@' << type->func->arg_type;
+    shared_value val(new builtin_value(f,print_name.str()));
+    global_overload_table->add(main_hash_table->match_literal(name),val,type);
+  }
 }
 
 @ Our first built-in functions implement with integer arithmetic. Arithmetic
@@ -5201,30 +5379,11 @@ void divide_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new int_value(i/j));
 }
-@)
-void power_wrapper(expression_base::level l)
-{ static shared_int one(new int_value(1));
-@/int n=get<int_value>()->val; shared_int i=get<int_value>();
-  if (intutils::abs(i->val)!=1 and n<0)
-    throw std::runtime_error("Negative power of integer");
-  if (l==expression_base::no_value)
-    return;
-@)
-  if (i->val==1)
-  {@; push_value(one);
-      return;
-  }
-  if (i->val==-1)
-  {@; push_value(n%2==0 ? one : i);
-      return;
-  }
-@)
-  push_value(new int_value(arithmetic::power(i->val,n)));
-}
 
 @ We also define a remainder operation |modulo|, a combined
-quotient-and-remainder operation |divmod|, and unary subtraction. Finally we
-define an exact devision operator that constructs a rational number.
+quotient-and-remainder operation |divmod|, unary subtraction, exact division
+of integers producing a rational number, and an integer power operation
+(defined whenever the result is integer).
 
 @< Local function definitions @>=
 void modulo_wrapper(expression_base::level l)
@@ -5255,6 +5414,26 @@ void fraction_wrapper(expression_base::level l)
   if (d==0) throw std::runtime_error("fraction with zero denominator");
   if (l!=expression_base::no_value)
     push_value(new rat_value(arithmetic::Rational(n,d)));
+}
+@)
+void power_wrapper(expression_base::level l)
+{ static shared_int one(new int_value(1));
+@/int n=get<int_value>()->val; shared_int i=get<int_value>();
+  if (intutils::abs(i->val)!=1 and n<0)
+    throw std::runtime_error("Negative power of integer");
+  if (l==expression_base::no_value)
+    return;
+@)
+  if (i->val==1)
+  {@; push_value(one);
+      return;
+  }
+  if (i->val==-1)
+  {@; push_value(n%2==0 ? one : i);
+      return;
+  }
+@)
+  push_value(new int_value(arithmetic::power(i->val,n)));
 }
 
 @ We defined similar operations for rational numbers, made possible thanks to
@@ -5389,6 +5568,118 @@ void print_wrapper(expression_base::level l)
     wrap_tuple(0); // don't forget to return a value if asked for
 }
 
+@ For the size-of operator we provide several specific bindings: for strings,
+vectors and matrices.
+
+@< Local function definitions @>=
+void sizeof_string_wrapper(expression_base::level l)
+{ size_t s=get<string_value>()->val.size();
+  if (l!=expression_base::no_value)
+    push_value(new int_value(s));
+}
+@)
+void sizeof_vector_wrapper(expression_base::level l)
+{ size_t s=get<vector_value>()->val.size();
+  if (l!=expression_base::no_value)
+    push_value(new int_value(s));
+}
+
+@)
+void matrix_bounds_wrapper(expression_base::level l)
+{ shared_matrix m=get<matrix_value>();
+  if (l==expression_base::no_value)
+    return;
+  push_value(new int_value(m->val.numRows()));
+  push_value(new int_value(m->val.numColumns()));
+  if (l==expression_base::single_value)
+    wrap_tuple(2);
+}
+
+@ The generic size-of wrapper was explicitly referenced in
+section@# sizeof section @>, it is not entered into any table.
+
+@< Local function definitions @>=
+void sizeof_wrapper(expression_base::level l)
+{ size_t s=get<row_value>()->val.size();
+  if (l!=expression_base::no_value)
+    push_value(new int_value(s));
+}
+
+@ Here are functions for extending vectors one or many elements at a time.
+
+@< Local function definitions @>=
+void vector_suffix_wrapper(expression_base::level l)
+{ int e=get<int_value>()->val;
+  shared_vector r=get_own<vector_value>();
+  if (l!=expression_base::no_value)
+  {@; r->val.push_back(e);
+    push_value(r);
+  }
+}
+@)
+void vector_prefix_wrapper(expression_base::level l)
+{ shared_vector r=get_own<vector_value>();
+  int e=get<int_value>()->val;
+  if (l!=expression_base::no_value)
+  {@; r->val.insert(r->val.begin(),e);
+    push_value(r);
+  }
+}
+@)
+void join_vectors_wrapper(expression_base::level l)
+{ shared_vector y=get<vector_value>();
+  shared_vector x=get<vector_value>();
+  if (l!=expression_base::no_value)
+  { vector_ptr result(new vector_value(std::vector<int>()));
+    result->val.reserve(x->val.size()+y->val.size());
+    result->val.insert(result->val.end(),x->val.begin(),x->val.end());
+    result->val.insert(result->val.end(),y->val.begin(),y->val.end());
+    push_value(result);
+  }
+
+}
+
+@ Here are functions for adding individual elements to a row value, and for
+joining two such values.
+
+@< Local function definitions @>=
+void suffix_element_wrapper(expression_base::level l)
+{ shared_value e=pop_value();
+  shared_row r=get_own<row_value>();
+  if (l!=expression_base::no_value)
+  {@; r->val.push_back(e);
+    push_value(r);
+  }
+}
+@)
+void prefix_element_wrapper(expression_base::level l)
+{ shared_row r=get_own<row_value>();
+  shared_value e=pop_value();
+  if (l!=expression_base::no_value)
+  {@; r->val.insert(r->val.begin(),e);
+    push_value(r);
+  }
+}
+@)
+void join_rows_wrapper(expression_base::level l)
+{ shared_row y=get<row_value>();
+  shared_row x=get<row_value>();
+  if (l!=expression_base::no_value)
+  { row_ptr result(new row_value(0));
+    result->val.reserve(x->val.size()+y->val.size());
+    result->val.insert(result->val.end(),x->val.begin(),x->val.end());
+    result->val.insert(result->val.end(),y->val.begin(),y->val.end());
+    push_value(result);
+  }
+
+}
+
+@ Finally, as last function of general utility, one that breaks off
+computation with an error message.
+
+@< Local function definitions @>=
+void error_wrapper(expression_base::level l)
+{@; throw std::runtime_error(get<string_value>()->val); }
 
 @ We now define a few functions, to really exercise something, even if it is
 modest, from the Atlas library. These wrapper function are not really to be
@@ -5601,11 +5892,11 @@ install_function(plus_wrapper,"+","(int,int->int)");
 install_function(minus_wrapper,"-","(int,int->int)");
 install_function(times_wrapper,"*","(int,int->int)");
 install_function(divide_wrapper,"\\","(int,int->int)");
-install_function(power_wrapper,"^","(int,int->int)");
 install_function(modulo_wrapper,"%","(int,int->int)");
 install_function(divmod_wrapper,"\\%","(int,int->int,int)");
 install_function(unary_minus_wrapper,"-","(int->int)");
 install_function(fraction_wrapper,"/","(int,int->rat)");
+install_function(power_wrapper,"^","(int,int->int)");
 install_function(rat_plus_wrapper,"+","(rat,rat->rat)");
 install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
 install_function(rat_times_wrapper,"*","(rat,rat->rat)");
@@ -5620,11 +5911,18 @@ install_function(greater_wrapper,">","(int,int->bool)");
 install_function(greatereq_wrapper,">=","(int,int->bool)");
 install_function(equiv_wrapper,"=","(bool,bool->bool)");
 install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
-install_function(concatenate_wrapper,"+","(string,string->string)");
+install_function(concatenate_wrapper,"#","(string,string->string)");
 install_function(int_format_wrapper,"int_format","(int->string)");
 install_function(print_wrapper,"print","(string->)");
+install_function(sizeof_string_wrapper,"#","(string->int)");
+install_function(sizeof_vector_wrapper,"#","(vec->int)");
+install_function(matrix_bounds_wrapper,"bounds","(mat->int,int)");
 install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
+install_function(error_wrapper,"error","(string->)");
+install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
+install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
+install_function(join_vectors_wrapper,"#","(vec,vec->vec)");
 install_function(transpose_mat_wrapper,"^","(mat->mat)");
 install_function(transpose_vec_wrapper,"^","(vec->mat)");
 install_function(diagonal_wrapper,"diagonal_mat","(vec->mat)");

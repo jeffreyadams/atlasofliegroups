@@ -360,6 +360,20 @@ expr wrap_tuple_display(expr_list l)
 {@; expr result; result.kind=tuple_display; result.e.sublist=l; return result;
 }
 
+@ Length 0 tuple displays are sometimes used as a substitute expression where
+nothing useful is provided, for instance for a missing else-branch. They are
+easy to build, but for recognising them later, it is useful to have a function
+at hand.
+
+@< Declarations of \Cpp\ functions @>=
+bool is_empty(const expr& e);
+
+@~The implementation is of course straightforward.
+
+@< Definitions of \Cpp\ functions @>=
+bool is_empty(const expr& e)
+@+{@; return e.kind==tuple_display and e.e.sublist==NULL; }
+
 @*1 Function applications.
 Another recursive type of expression is the function application.
 
@@ -1327,6 +1341,57 @@ expr make_cast(ptr type, expr exp)
 @< Cases for destr... @>=
 case cast_expr:
   destroy_expr(e.e.cast_variant->exp); delete e.e.cast_variant;
+break;
+
+@ A different kind of cast serves to obtain the current value of an overloaded
+operator symbol.
+
+@< Typedefs... @>=
+typedef struct op_cast_node* op_cast;
+
+@~We store an (operator) identifier and a type, as before represented by a
+void pointer.
+
+@< Structure and typedef declarations for types built upon |expr| @>=
+struct op_cast_node {@; id_type oper; ptr type; };
+
+@ The tag used for casts is |op_cast_expr|.
+
+@< Enumeration tags for |expr_kind| @>=
+op_cast_expr, @[@]
+
+@ And there is of course a variant of |expr_union| for casts.
+@< Variants of ... @>=
+op_cast op_cast_variant;
+
+@ Printing operator cast expressions follows their input syntax.
+
+@< Cases for printing... @>=
+case op_cast_expr:
+{ op_cast c = e.e.op_cast_variant;
+  print_type(out << main_hash_table->name_of(c->oper) << '@@',c->type);
+}
+break;
+
+@ Casts are built by |make_cast|.
+
+@< Declarations of functions in \Cee... @>=
+expr make_op_cast(id_type name,ptr type);
+
+@~No surprises here either.
+
+@< Definitions of functions in \Cee...@>=
+expr make_op_cast(id_type name,ptr type)
+{ op_cast c=new op_cast_node; c->oper=name; c->type=type;
+@/ expr result; result.kind=op_cast_expr; result.e.op_cast_variant=c;
+   return result;
+}
+
+@ Eventually we want to rid ourselves from the operator cast.
+
+@< Cases for destr... @>=
+case op_cast_expr:
+  delete e.e.op_cast_variant;
 break;
 
 @*1 Assignment statements.

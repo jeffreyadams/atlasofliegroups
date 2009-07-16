@@ -174,7 +174,7 @@ functions.
   using_history();
   rl_completion_entry_function = id_completion_func; // set up input completion
 
-@)ana.set_comment_delims('#','\n');
+@)ana.set_comment_delims('{','}');
 @)initialise_evaluator(); initialise_builtin_types();
 
 @ If a type error is detected by |analyse_types|, then it will have signalled

@@ -479,7 +479,7 @@ comments is also performed by |skip_space|. If |comment_start| is set and
 possibility of ending input. In the former case we change the input prompt by
 pushing the comment character to warn the user that no action has been
 performed. In case |prevent_termination| is set, that character is also pushed
-input the prompt for the duration of skipping spaces.
+into the prompt for the duration of skipping spaces.
 
 In case end of input occurs one obtains |shift()=='\0'|. If this happens in
 the main loop then we break from it like for any non-space character, and
@@ -502,11 +502,30 @@ void Lexical_analyser::skip_space(void)
       continue; // all other space is skipped
     }
     if (c==comment_start)
-    { input.push_prompt(comment_start);
-      do c=input.shift(); while (c!=comment_end && c!='\0');
-      input.pop_prompt();
-      if (c=='\n') input.unshift(); // reconsider newline character
-    }
+      if (comment_end=='\n' or comment_end==comment_start)
+      { do c=input.shift(); while (c!=comment_end && c!='\0');
+        input.unshift(); // reconsider newline character
+      }
+      else // skip comment, allowing for nested comment groups
+      { int level=1;
+        input.push_prompt(comment_start);
+        do
+        {
+          do c=input.shift();
+          while (c!= comment_start and c!=comment_end and c!='\0');
+          if (c=='\0')
+            break; // force out of comment loop
+          if (c==comment_start)
+          {@; ++level;
+            input.push_prompt(comment_start);
+          }
+          else
+          {@; --level;
+            input.pop_prompt();
+          } // |c==comment_end|
+        }
+        while (level>0);
+      }
     else break; // non-space and non-comment character
   } while(true);
   if (prevent_termination!='\0') input.pop_prompt();
@@ -728,7 +747,11 @@ then we prepare for output redirection.
 @ Here are some cases split off to avoid the previous module getting too long.
 
 @< Cases of arithmetic operators... @>=
-    case '+': prevent_termination=code=c;
+    case '#': prevent_termination=c;
+       code = OPERATOR;
+       valp->oper.id = id_table.match_literal("#");
+       valp->oper.priority = 4; // basic meaning is non-associative
+break; case '+': prevent_termination=code=c;
        code = OPERATOR;
        valp->oper.id = id_table.match_literal("+");
        valp->oper.priority = 6;
