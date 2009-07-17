@@ -98,8 +98,7 @@ ifdef compiler
     CXX = $(compiler)
 endif
 
-#LDFLAGS := $(rlincludes)
-LDFLAGS := $(rlincludes) -static 
+LDFLAGS := $(rlincludes)
 
 # RULES follow below
 
