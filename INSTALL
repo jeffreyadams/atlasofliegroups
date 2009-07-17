@@ -234,6 +234,9 @@ MAC
 The executable must be in the same directory as the messages directory
 for help system to work.
 
+If the help system doesn't work, try the following.  Open a terminal
+window, and navigate to the directory containing atlasNRL. Give the
+command "./atlasMacNRL".
 -------------------------------------------------------------------
 
 Please report any problems to Jeffrey Adams at jda@math.umd.edu
