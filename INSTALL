@@ -212,7 +212,7 @@ readline/curses/ncurses. See sources/interpreter/Makefile.
 -------------------------------------------------------------------
 WINDOWS
 
-1) Download the distribution atlasWindows.zip to your windows
+1) Download the distribution atlas4win....zip to your windows
 machine. 
 
 2) Right click on the file to extract the archive.
@@ -223,6 +223,19 @@ When you extract the file you create a folder. This contains the
 executable atlas.exe. It also contains three necessary dll files. You
 must run the executable from a folder containing these files. 
 -------------------------------------------------------------------
+MAC
+
+1) Download the distribution atlasMac....zip to your mac.
+
+2) Double click on the file to extract the archive.
+
+3) Double click on the atlas file to execute it.
+
+The executable must be in the same directory as the messages directory
+for help system to work.
+
+-------------------------------------------------------------------
+
 Please report any problems to Jeffrey Adams at jda@math.umd.edu
 For questions relating to realex contact Marc van Leeuwen at 
 Marc.van-Leeuwen@math.univ-poitiers.fr.
