@@ -121,6 +121,10 @@ input:	'\n'			{ YYABORT } /* null input, skip evaluator */
 	| ADDTOFILE exp '\n'	{ *parsed_expr=$2; *verbosity=3; }
 	| FROMFILE '\n'		{ include_file(); YYABORT } /* include file */
 	| WHATTYPE exp '\n'	{ type_of_expr($2); YYABORT } /* print type */
+	| WHATTYPE operator '?' '\n'
+			     { show_overloads($2.id); YYABORT } /* show types */
+	| WHATTYPE IDENT '?' '\n'
+				{ show_overloads($2); YYABORT } /* show types */
 	| SHOWALL '\n'		{ show_ids(); YYABORT } /* print id table */
 ;
 
@@ -145,8 +149,8 @@ tertiary: LET lettail { $$=$2; }
 	| subscription BECOMES tertiary { $$ = make_comp_ass($1,$3); }
 	| IDENT operator BECOMES tertiary
 	{ $$ = make_assignment($1,
-  	        make_binary_call($2.id,make_applied_identifier($1),$4)); }
-        | or_expr
+		make_binary_call($2.id,make_applied_identifier($1),$4)); }
+	| or_expr
 ;
 
 lettail : declarations IN tertiary { $$ = make_let_expr_node($1,$3); }
@@ -171,11 +175,11 @@ and_expr: not_expr AND and_expr
 not_expr: NOT formula
 	  { $$ = make_conditional_node($2,make_bool_denotation(0),
 					  make_bool_denotation(1)); }
-        | secondary
+	| secondary
 ;
 
 secondary : formula
-        | '(' ')' /* don't allow this as first part in subscription or call */
+	| '(' ')' /* don't allow this as first part in subscription or call */
 	  { $$=wrap_tuple_display(NULL); }
 	| primary
 ;
@@ -186,7 +190,7 @@ formula_start : OPERATOR       { $$=start_unary_formula($1.id,$1.priority); }
 	| comprim operator     { $$=start_formula($1,$2.id,$2.priority); }
 	| IDENT operator
 	  { $$=start_formula(make_applied_identifier($1),$2.id,$2.priority); }
-        | formula_start operand operator
+	| formula_start operand operator
 	  { $$=extend_formula($1,$2,$3.id,$3.priority); }
 ;
 
@@ -194,7 +198,7 @@ formula_start : OPERATOR       { $$=start_unary_formula($1.id,$1.priority); }
 operator : OPERATOR | '=';
 
 operand : OPERATOR operand { $$=make_unary_call($1.id,$2); }
-        | primary
+	| primary
 ;
 
 

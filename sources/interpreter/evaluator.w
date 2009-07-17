@@ -20,6 +20,7 @@
 
 
 \def\emph#1{{\it#1\/}}
+\def\foreign#1{{\sl#1\/}}
 
 @* Outline.
 %
@@ -3024,7 +3025,7 @@ void overload_table::add
   it converts to @>
 }
 
-@ We call |is_close| for each existing argument type; is any returns a nonzero
+@ We call |is_close| for each existing argument type; if it returns a nonzero
 value it must be either |0x6|, in which case insertion must be after that
 entry, or |0x5|, in which case insertion must be no later than at this
 position, so that the entry in question (after shifting forward) stays ahead.
@@ -3106,84 +3107,6 @@ bool overload_table::remove(Hash_table::id_type id, const type_expr& arg_t)
   return false;
 }
 
-@ Overloading resolution will be called from the case in |convert_expr| for
-function applications, after testing that overloads exist, so we can transmit
-the relevant |variants| together with the other parameters.
-
-@< Declarations of exported functions @>=
-expression resolve_overload
-  (const expr& e,
-   type_expr& type,
-   const overload_table::variant_list& variants);
-
-@ To resolve overloading, we simply plunge into each of the variants, imposing
-its argument type on the actual argument, and match only if the analysis
-succeeds. This implies that in the contrary case we have to catch and ignore
-the type error (or other compile-time error) produced, and silently pass to
-the next variant. This approach simplifies the logic of overloading resolution
-significantly (no need to compare expected and provided types), and allows any
-automatic conversions in arguments (or operands) to be performed just like in
-a non-overloaded call (otherwise arguments would have to be analysed without
-any presumed result type). However it also means that if we fail to find any
-match, we do not know whether this is because the argument contains an error
-independent of the type required, or whether this is because the argument is
-in itself correct but fails to match any variant; some additional code is
-needed to present a meaningful error message. In fact an intrinsic error in a
-deeply nested argument might require time exponential in the nesting depth in
-order to be detected; we shall see whether this poses problems in practice.
-
-Apart from those in |variants|, we also test for certain argument types that
-will match without being in any table; for instance the size-of operator~`\#'
-can be applied to any row type to give its number of components. Being more
-generic bindings, we test for them after the more specific ones fail. The
-details of these cases, like those of the actual construction of a call for a
-matching overloaded function, will be given later.
-
-@< Function definitions @>=
-expression resolve_overload
-  (const expr& e,
-   type_expr& type,
-   const overload_table::variant_list& variants)
-{ const expr& args = e.e.call_variant->arg;
-  Hash_table::id_type id =  e.e.call_variant->fun.e.identifier_variant;
-  for (size_t i=0; i<variants.size(); ++i)
-  { const overload_data& v=variants[i];
-    try
-    { expression_ptr arg(convert_expr(args,v.type->arg_type));
-      @< Return a call of variant |v| with argument |arg|, if result type
-         can be made to match |type| @>
-    }
-    catch (program_error&) {@; continue; } // if it throws, try next binding
-    throw type_error(e,copy(v.type->result_type),copy(type));
-      // result type mismatch
-  }
-  @< If a special operator like size-of matches |id|, |return| a call of it
-     with argument |args|, if not |throw| @>
-
-  @< Complain either about failing overload resolution, or about an error
-     within |args| @>
-}
-
-@ Only when we could not correctly convert the argument in the context of any
-overloaded call do we try to convert it in an undefined type context. If this
-fails then an error will be thrown, and nothing remains to be done here
-because we are outside the |try|-block used during overload resolution. If no
-error is produced however, the conversion results in an argument type that
-apparently did not match any overloaded instance of the identifier, and we
-produce a type error using that information; the converted argument expression
-itself is abandoned.
-
-@< Complain either about failing overload resolution... @>=
-{ type_expr arg_type;
-  expression_ptr arg(convert_expr(args,arg_type));
-  std::ostringstream o;
-  o << "Failed invocation of overloaded `"
-    << main_hash_table->name_of(id) @|
-    << "' with argument type "
-    << arg_type;
-  throw program_error(o.str());
-}
-
 @ We provide a |print| member that shows the contents of the entire table,
 just like for identifier tables. Only this one prints multiple entries per
 identifier.
@@ -3220,6 +3143,81 @@ create the table.
 
 @< Global variable definitions @>=
 overload_table* global_overload_table=NULL;
+
+@ Overloading resolution will be called from the case in |convert_expr| for
+function applications, after testing that overloads exist, so we can transmit
+the relevant |variants| together with the other parameters.
+
+@< Declarations of exported functions @>=
+expression resolve_overload
+  (const expr& e,
+   type_expr& type,
+   const overload_table::variant_list& variants);
+
+@~To resolve overloading, we used to plunge into each variant, catching and
+ignoring errors, until one succeeded without error. For long formulae this
+traverses a search tree of exponential size, giving unacceptably inefficient
+expression analysis. So instead we now first try to find a matching variant,
+using an \foreign{a priori} type of the operand(s). This implies that the
+operand must be correctly typed without the benefit of a known result type,
+but the type found need not be an exact match with the one specified in the
+variant. Our matching condition is that |is_close| should hold, with the bit
+set that indicates a possible conversion from |a_priori_type| to the operand
+type for which the variant is defined. Coercions may need to be inserted in
+the operand expression, and since that expression could be arbitrarily
+complex, inserting coercions explicitly after the fact would be very hard to
+program. We choose the easier approach is to cast away the converted
+expression once the matching variant is found, and redo the analysis with the
+now known result type so that coercions get inserted during conversion. But
+then we again risk exponential time (although with powers of~2 rather than
+powers of the number of variants); since probably coercions will not be needed
+at all levels, we mitigate this risk by not redoing any work in case of an
+exact match.
+
+Apart from those in |variants|, we also test for certain argument types that
+will match without being in any table; for instance the size-of operator~`\#'
+can be applied to any row type to give its number of components. Being more
+generic bindings, we test for them after the more specific ones fail. The
+details of these cases, like those of the actual construction of a call for a
+matching overloaded function, will be given later.
+
+@< Function definitions @>=
+expression resolve_overload
+  (const expr& e,
+   type_expr& type,
+   const overload_table::variant_list& variants)
+{ const expr& args = e.e.call_variant->arg;
+  type_expr a_priori_type;
+  expression_ptr arg(convert_expr(args,a_priori_type));
+  Hash_table::id_type id =  e.e.call_variant->fun.e.identifier_variant;
+  @< If a special operator like size-of matches |id|, |return| a call of it
+     with argument |args| @>
+  for (size_t i=0; i<variants.size(); ++i)
+  { const overload_data& v=variants[i];
+    if ((is_close(a_priori_type,v.type->arg_type)&0x1)!=0)
+      // could first convert to second?
+    { if (a_priori_type!=v.type->arg_type)
+        arg=expression_ptr(convert_expr(args,v.type->arg_type));
+          // redo conversion
+      @< Return a call of variant |v| with argument |arg|, or |throw| if
+         result type mismatches |type| @>
+    }
+  }
+
+  @< Complain about failing overload resolution @>
+}
+
+@ Failing overload resolution causes a |program_error| explaining the
+is matching identifier and type.
+
+@< Complain about failing overload resolution @>=
+{ std::ostringstream o;
+  o << "Failed invocation of overloaded `"
+    << main_hash_table->name_of(id) @|
+    << "' with argument type "
+    << a_priori_type;
+  throw program_error(o.str());
+}
 
 @*1 Function calls.
 %
@@ -3386,14 +3384,6 @@ function value, either built-in or user-defined). We deal with the built-in
 case here, and will give the user-defined case later when we have discussed
 the necessary value types.
 
-As the module name indicates implicitly, we should not throw an error here is
-the result type cannot be matched. This is because we are inside a block where
-errors thrown are considered to indicate argument mismatch; they are caught
-with passage to the next overloaded instance. But in case of result type
-mismatch we do not want to try other argument types, so we just fall through,
-out of the |try| block and into a |throw| expression outside that block that
-can signal the error without being caught.
-
 @< Return a call of variant |v|... @>=
 { expression_ptr call;
   builtin_value* f = dynamic_cast<builtin_value*>(v.val.get());
@@ -3404,7 +3394,9 @@ can signal the error without being caught.
   if (type.specialise(v.type->result_type) or
         coerce(v.type->result_type,type,call))
     return call.release();
-}
+  throw type_error(e,copy(v.type->result_type),copy(type));
+        // result type mismatch
+ }
 
 @ The names of special operators need not be looked up each time they are
 needed, so we store them in  a static variable inside a local function.
@@ -3418,42 +3410,39 @@ Hash_table::id_type size_of_name()
 inline bool is_special_operator(Hash_table::id_type id)
 {@; return id==size_of_name(); }
 
-@ After failing to match any concrete instances of an overloaded operator, we
-try for those that satisfy |is_special_operator(id)| more generic argument
-types. This is the final matching occasion and we are no longer in a |try|
-block, so errors thrown from |convert_expr| will not be caught, and in case
-none occurs but we fail to match the result type, we must throw a
-|type_error|.
+@ For operator symbols that satisfy |is_special_operator(id)|, we test generic
+argument type patterns before we test instances in the overload table, because
+the latter could otherwise mask some generic ones due to coercion. Therefore
+if we fail to find a match, we simply fall through; however if we match an
+argument type but fail to match the returned type, we throw a |type_error|.
+
 
 @: sizeof section @>
 
 @< If a special operator like size-of... @>=
 { if (id==size_of_name())
-  { type_expr arg_type;
-    expression_ptr arg(convert_expr(args,arg_type));
-    if (arg_type.kind==row_type)
+  { if (a_priori_type.kind==row_type)
     { expression_ptr call(new overloaded_builtin_call(sizeof_wrapper,"#",arg));
       if (type.specialise(int_type) or coerce(int_type,type,call))
         return call.release();
       throw type_error(e,copy(type),copy(int_type));
     }
-    else if (arg_type.kind!=undetermined_type and
-             arg_type.specialise(pair_type))
+    else if (a_priori_type.kind!=undetermined_type and
+             a_priori_type.specialise(pair_type))
     @< Recognise and return 2-argument versions of `\#', or fall through in
        case of failure @>
-    std::ostringstream o;
-    o << "Operator # fails to match argument type " << arg_type;
-    throw expr_error(e,o.str());
   }
 }
 
-@ For dyadic use of the operator `\#' we have the somewhat unusual situation
-that we have already converted the entire argument expression at the point
-where we discover, based on the type found, that one of the arguments might
-need to be coerced. This means that such a coercion must be inserted into an
-already constructed expression, whereas usually it is applied on the outside
-of an expression under construction. Concretely this means that although we
-can use the |coerce| function, it wants a reference to an auto-pointer for the
+@ For dyadic use of the operator `\#' we shall encounter the somewhat unusual
+situation that we have already converted the entire argument expression at the
+point where we discover, based on the type found, that one of the arguments
+might need to be coerced. This means that such a coercion must be inserted
+into an already constructed expression, whereas usually it is applied on the
+outside of an expression under construction (notably in ordinary overloading
+if coercion is needed we simply convert the operands a second time, inserting
+the coercions while doing so). Concretely this means that although we can use
+the |coerce| function, it wants a reference to an auto-pointer for the
 expression needing modification (so that it can manage ownership during its
 operation), but the expression here is held in an ordinary pointer inside a
 |tuple_expression|. Therefore we must copy the ordinary |expression| pointer
@@ -3463,12 +3452,14 @@ manually: after construction of the |expression_ptr| we set the |expression|
 call to |coerce| we release the (possibly modified) |expression_ptr| back into
 the |expression|.
 
-Another complication is that we decided having a dyadic use of `\#' based
-on finding a 2-tuple type, but this is no guarantee there are actually operand
-subexpressions; we do a dynamic cast to find that out, and in the case the
-user was so contrived as to use monadic `\#' on a non-tuple expression of
-2-tuple type, we just report that no coercion of operands is done (after
-all we need a subexpression to be able to insert any conversion).
+Another complication is that we decided having a dyadic use of `\#' based on
+finding a 2-tuple type, but this is no guarantee there are actually two
+operand subexpressions (in a |tuple_expression|); we do a dynamic cast to find
+that out, and in the case the user was so contrived as to use monadic `\#' on
+a non-tuple expression of 2-tuple type, we just report that no coercion of
+operands is done (after all we need a subexpression to be able to insert any
+conversion). These complications warrant defining a separate function to
+handle them.
 
 @< Local function definitions @>=
 bool can_coerce_arg
@@ -3487,8 +3478,8 @@ type, in the latter case we allow the single element to be converted to the
 component type of the row value.
 
 @< Recognise and return 2-argument versions of `\#'... @>=
-{ type_expr& arg_tp0 = arg_type.tuple->t;
-  type_expr& arg_tp1 = arg_type.tuple->next->t;
+{ type_expr& arg_tp0 = a_priori_type.tuple->t;
+  type_expr& arg_tp1 = a_priori_type.tuple->next->t;
   if (arg_tp0.kind==row_type)
   { if (arg_tp0==arg_tp1)
     { expression_ptr call(new overloaded_builtin_call
@@ -3506,9 +3497,9 @@ component type of the row value.
       throw type_error(e,copy(type),copy(arg_tp0));
     }
   }
-  else if (arg_tp1.kind==row_type and @|
-           (arg_tp1.component_type->specialise(arg_tp0) or @|
-            can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type)))
+  if (arg_tp1.kind==row_type and @|
+         (arg_tp1.component_type->specialise(arg_tp0) or @|
+          can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type)))
   { expression_ptr call(new overloaded_builtin_call
       (prefix_element_wrapper,"#",arg));
     if (type.specialise(arg_tp1) or coerce(arg_tp1,type,call))
@@ -4499,6 +4490,17 @@ case cast_expr:
 }
 break;
 
+@ The overload table stores type information in a |func_type| value, which
+cannot be handed directly to the |specialise| method. The following function
+simulates specialisation to a function type |from|$\to$|to|.
+
+@< Local function definitions @>=
+inline bool spec_func(type_expr& t, const type_expr& from, const type_expr& to)
+{ return t.specialise(gen_func_type) @|
+  and t.func->arg_type.specialise(from) @|
+  and t.func->result_type.specialise(to);
+}
+
 @ Operation casts similarly only access existing kinds of expression. We must
 however access the global overload table to find the value. Since upon success
 we find a bare function value, we must abuse the |denotation| class a bit to
@@ -4510,14 +4512,15 @@ case op_cast_expr:
   const overload_table::variant_list& variants =
    global_overload_table->variants(c->oper);
   type_expr& ctype=*static_cast<type_p>(c->type);
+  if (is_special_operator(c->oper))
+    @< Test special argument patterns, and on match |return| an appropriate
+       denotation @>
   for (size_t i=0; i<variants.size(); ++i)
     if (variants[i].type->arg_type==ctype)
     {
       expression_ptr p(new denotation(variants[i].val));
-      if (type.specialise(gen_func_type) and @|
-          type.func->arg_type.specialise(ctype) and @|
-          type.func->result_type.specialise(variants[i].type->result_type))
-       @/return p.release();
+      if (spec_func(type,ctype,variants[i].type->result_type))
+        return p.release();
       type_ptr ftype=make_function_type
 	(copy(ctype),copy(variants[i].type->result_type));
       throw type_error(e,ftype,copy(type));
@@ -4529,6 +4532,42 @@ case op_cast_expr:
 }
 break;
 
+@ For now size-of is the only identifier with special operand patterns.
+
+@< Test special argument patterns... @>=
+{ if (c->oper==size_of_name())
+  { if (ctype.kind==row_type)
+    { if (spec_func(type,ctype,int_type))
+      return new denotation(shared_value
+        (new builtin_value(sizeof_wrapper,"#@@[T]")));
+      throw type_error(e,copy(ctype),copy(type));
+    }
+    else if (ctype.specialise(pair_type))
+    { type_expr& arg_tp0 = ctype.tuple->t;
+      type_expr& arg_tp1 = ctype.tuple->next->t;
+      if (arg_tp0.kind==row_type)
+      { if (arg_tp0==arg_tp1)
+        { if (spec_func(type,ctype,arg_tp0))
+          return new denotation(shared_value @|
+            (new builtin_value(join_rows_wrapper,"#@@([T],[T]->[T])")));
+          throw type_error(e,copy(ctype),copy(type));
+        }
+	else if (*arg_tp0.component_type==arg_tp1)
+        { if (spec_func(type,ctype,arg_tp0))
+          return new denotation(shared_value @|
+            (new builtin_value(suffix_element_wrapper,"#@@([T],T->[T])")));
+          throw type_error(e,copy(ctype),copy(type));
+        }
+      }
+      if (arg_tp1.kind==row_type and *arg_tp1.component_type==arg_tp0)
+      { if (spec_func(type,ctype,arg_tp1))
+        return new denotation(shared_value @|
+          (new builtin_value(prefix_element_wrapper,"#@@(T,[T]->[T])")));
+        throw type_error(e,copy(ctype),copy(type));
+      }
+    }
+  }
+}
 
 @*1 Assignments.
 %
@@ -5911,15 +5950,15 @@ install_function(greater_wrapper,">","(int,int->bool)");
 install_function(greatereq_wrapper,">=","(int,int->bool)");
 install_function(equiv_wrapper,"=","(bool,bool->bool)");
 install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
-install_function(concatenate_wrapper,"#","(string,string->string)");
 install_function(int_format_wrapper,"int_format","(int->string)");
 install_function(print_wrapper,"print","(string->)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
-install_function(matrix_bounds_wrapper,"bounds","(mat->int,int)");
+install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
 install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
 install_function(error_wrapper,"error","(string->)");
+install_function(concatenate_wrapper,"#","(string,string->string)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"#","(vec,vec->vec)");
@@ -6112,6 +6151,24 @@ void type_of_expr(expr e)
     *output_stream << "type: " << *analyse_types(e,p) << std::endl;
   }
   catch (std::exception& err) {@; std::cerr<<err.what()<<std::endl; }
+}
+
+@ The function |show_overloads| has a similar purpose, namely to find out the
+types of overloaded symbols. It is however much simpler, since it just has to
+look into the overload table and extract the types stored there.
+
+@< Function definitions @>=
+extern "C"
+void show_overloads(id_type id)
+{ const overload_table::variant_list& variants =
+   global_overload_table->variants(id);
+  *output_stream
+   << (variants.empty() ? "No overloads for " : "Overloaded instances of ") @|
+   << main_hash_table->name_of(id) << std::endl;
+ for (size_t i=0; i<variants.size(); ++i)
+   *output_stream << "  "
+    << variants[i].type->arg_type << "->" << variants[i].type->result_type @|
+    << std::endl;
 }
 
 @ The function |show_ids| prints a table of all known identifiers and their

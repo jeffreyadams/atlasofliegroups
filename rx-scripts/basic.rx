@@ -13,6 +13,16 @@ set +(vec v,vec w)= vec:
   ; for e@i in v do e+w[i] od
   )
 
+set +(string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
+
+set =((int,int)(x0,y0),(int,int)(x1,y1)) = x0=x1 and y0=y1
+set !=((int,int)(x0,y0),(int,int)(x1,y1)) = x0!=x1 or y0!=y1
+
+set +(mat M,mat N)= mat:
+  ( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
+  ; for col@j in M do for e@i in col do e+N[i,j] od od
+  )
+
 
 { Cartan matrix information for positions at distance d(<=2) off diagonal }
 set Cartan_dispatch(int type, int r, int min, int d, bool lower)=
@@ -28,21 +38,21 @@ elif type=6 then if lower and min=1 then -2 else -1 fi { F4 }
 elif lower then -1 else -3 { G2 }
 fi
 
-set simple_Cartan_entry(int type, int r,int i, int j)=
+set Cartan_entry(int type, int r,int i, int j)=
 if type=0 then 0 { null Cartan entries for torus factors }
 else let (min,d) = if i<j then (i,j-i) else (j,i-j) fi
      in  if d>2 then 0 else Cartan_dispatch(type,r,min,d,i<j) fi
 fi
 
-set simple_Cartan_matrix(int type, int r)= mat:
+set Cartan_matrix(int type, int r)= mat:
 for j = r
 do for i = r
-   do simple_Cartan_entry(type,r,i,j)
+   do Cartan_entry(type,r,i,j)
    od
 od
 
-set simple_Lie_type((int,int) p) =
-  let (type,) = Cartan_matrix_type(simple_Cartan_matrix(p)) in type
+set Lie_type((int,int) p) =
+  let (type,) = Cartan_matrix_type(Cartan_matrix(p)) in type
 
 set GL_roots (int n) = [vec]:
 for i = n-1

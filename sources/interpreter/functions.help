@@ -12,15 +12,16 @@ operator * : (vec,mat->mat): vector-matrix product (vector is transposed)
 operator ^ : (mat->mat): (unary use of ^) matrix transpostion
 operator ^ : (vec->mat): (unary use of ^) (transposed) vector as 1-line matrix
 operator / : (vec,int->ratvec):  vector division giving rational vector
-operator + : (string,string->string): string concatenation
 
 operators >, >=, <, <=, =, != : (int,int->bool) usual relational operators
 operators =, != : (bool,bool->bool) Boolean equivalence, inequivalence (xor)
 
 operator # : (string->int) : length of string
 operator # : (vec->int) : number of components of vector
+operator # : (mat->int,int) : dimensions (rows*columns) of a matrix
 operator # : ([T]->int) : number of components of row (T is any type)
 
+operator # : (string,string->string): string concatenation
 operator # : (vec,vec->vec) : concatenation of vectors
 operator # : (vec,int->vec) : append element to a vector
 operator # : (int,vec->vec) : prepend element to a vector

@@ -1604,9 +1604,10 @@ $\lambda$-expression.
 
 @< Declarations of functions in \Cee-style for the parser @>=
 void global_set_identifier(struct id_pat id, expr e, int overload);
-void global_declare_identifier(short id, ptr type);
+void global_declare_identifier(id_type id, ptr type);
 void show_ids();
 void type_of_expr(expr e);
+void show_overloads(id_type id);
 
 
 @* Index.
