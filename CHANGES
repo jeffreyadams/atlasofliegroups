@@ -5,6 +5,9 @@ workinglog. Newer changes are documented in the CVS repository.
 This file contains a summary of major changes to the software.
 
 Version 0.4.2
+* Help files for small* commands
+
+Version 0.4.2
 * fixed major bug in testrun
 
 Version 0.4.1
