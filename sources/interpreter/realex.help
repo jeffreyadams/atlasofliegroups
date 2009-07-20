@@ -1,4 +1,5 @@
 Brief introduction to 'realex', the new interface to the Atlas software
+'realex' stands for Rewritten Expression-based  Atlas of Lie groups EXecutable
 
 
 1 Introduction
@@ -7,14 +8,16 @@ The program 'realex', built from the files in this directory and from a large
 part of the source files of the 'atlas' program, provides access to its
 functions in an expression-oriented fashion. Whereas 'atlas' will enter a
 dialogue whenever it needs some parameter to be set (inner class, real form,
-Cartan class,...) these parameters can be defined by expressions in 'realex'
+Cartan class,...) these parameters can be defined by expressions in 'realex'.
+As a consequence such parameters can be more flexibly handled, results of
+computations can be reused, and scripting and programming become possible.
 
 To compile realex, you need the latest release of the 'cwebx' system, unless
 the output files produced by 'cwebx' were already included in your copy of the
 atlas sources; check the presence in atlas/sources/interpreter of the files
-{buffer,built-in-types,evaluator,lexer,main,parsetree} with extensions .cpp
-and (except for main) .h to see if this is the case. If these files do not
-exist, get 'cwebx' by clicking on the indicated link at
+{buffer,built-in-types,evaluator,lexer,main,parsetree,types} with extensions
+.cpp and (except for main) .h to see if this is the case. If these files do
+not exist, get 'cwebx' by clicking on the indicated link at
 
 http://www-math.univ-poitiers.fr/~maavl/CWEBx/
 
@@ -27,17 +30,18 @@ atlas/sources/interpreter directory). Once these tools are in place, the
 'make' facility will automatically invoke them to create all the files
 mentioned above when they are needed.
 
-Apart from that, you need tools like (GNU) 'make', 'bison', and 'g++' which
-you already need to compile the atlas program (but contrary to atlas, you need
-at least version 4.0 of gcc/g++ to compile realex, since realex uses the TR1
-library extension whose support was introduced in gcc 4.0). Once you are set,
-type 'make headers realex' in the atlas/sources/interpreter directory (or
-'make realex' in the atlas directory) to build realex. Again you can install a
-symbolic link from somewhere in your $PATH to atlas/sources/interpreter/realex
-to ensure that it will be executed by the command 'realex'. If atlas was
-compiled before you build realex, the latter compilation will use the existing
-object files; if not it will do the necessary compilations itself (this
-involves nearly all atlas modules, but not all), and take quite a bit longer.
+Apart from that, you need tools like (GNU) 'make', 'bison', and a compiler
+like 'g++' which you already need to compile the atlas program (but contrary
+to atlas, you need at least version 4.0 of gcc/g++ to compile realex, since
+realex uses the TR1 library extension whose support was introduced in their
+version 4.0). Once you are set, type 'make headers realex' in the
+atlas/sources/interpreter directory (or 'make realex' in the atlas directory)
+to build realex. Again you can install a symbolic link from somewhere in your
+$PATH to atlas/sources/interpreter/realex to ensure that it will be executed
+by the command 'realex'. If atlas was compiled before you build realex, the
+latter compilation will use the existing object files; if not it will do the
+necessary compilations itself (this involves nearly all atlas modules, but not
+all), and take quite a bit longer.
 
 
 2 Comparison with atlas
@@ -77,6 +81,7 @@ Consider for instance the following session
 	0      0      0      0      0      0   2430  17010
 	3     75    390     21    525   2730   4026  28182
   main: qq
+  $
 
 Using realex, the same result can be obtained as follows
 
@@ -110,6 +115,7 @@ Using realex, the same result can be obtained as follows
 
   expr> quit
   Bye.
+  $
 
 (The 'inner_class' function does essentially the same as the dialogue from the
 line 'Lie type:' up to and including the one with 'enter inner class(es):' in
@@ -122,11 +128,11 @@ construct an inner class value first, and then invoke the block_sizes function
 with the inner class as argument. In the realex session above the variable
 'ic' was set to the computed inner class; the reply confirms (only) its type
 InnerClass. Typing 'ic' after this produces a more elaborate description of
-the inner class, reporting the type, inner class type (note the the 's' for
-the factor 'B5' was converted to 'c') and numbers of (dual) real forms.
-Then variable was used as argument to block_sizes, and it could subsequently
-be used in other function calls as well. Alternatively one could have called
-directly:
+the inner class, reporting the Lie type, inner class type (note that the 's'
+for the factor 'B5' was converted to 'c') and numbers of (dual) real forms.
+Then the variable 'ic' was used as argument to block_sizes, and it could
+subsequently be used in other function calls as well. Alternatively one could
+have called directly:
 
   block_sizes(set_type("B5.A3.T1",[[1/2,0,0],[0,1/2,1/2]],"scc"))
 
@@ -136,8 +142,8 @@ could instead have been assigned to a variable as well. One can define any
 number of variables, with values of any of the types available. This provides
 more flexibility of use than the atlas interface, which can basically remember
 just one inner class and one real form between different commands. In addition
-the realex program now provides some programming constructions, and allows you
-to define scripts and functions for later use.
+the realex program provides programming constructions, and allows you to
+define scripts and functions for later use.
 
 The set of functions provided is described in the file 'functions.help' in
 this directory; here we shall document other aspects of the realex program.
@@ -149,20 +155,67 @@ The data types currently available for values only concern those of the
 structure theory (root data, inner classes, real forms, Cartan classes) while
 many data types used internally (such as Weyl groups, polynomials) may appear
 in printed output but cannot be further manipulated. The programming language
-is still incomplete, but already has many useful constructions like variables,
-loops and conditionals. One cannot yet easily find out the size of a vector,
-matrix or list value.
+is fairly complete, with constructions like variables, loops and conditionals,
+as well as functions and operators (both built-in and user defined).
 
 
 4 Types
 
-The basic types available are:
+The realex interpreter is strongly and statically typed: it first analyses the
+expressions and definitions given by the user to verify that types can be
+attributed to all subexpressions, and all operations are defined for the types
+they are applied to; only if the expression passes this test does the system
+attempt to evaluate the expression. Thus many computations that would produce
+problems on execution are signalled. For instance realex complains about
+
+  expr> block_sizes (GL(5))
+    Type error:
+      Subexpression GL(5) has wrong type: found RootDatum while InnerClass was
+      needed.
+    Type check failed
+
+because the built-in function 'block_sizes' requires an 'InnerClass' value but
+'GL' produces a value of type 'RootDatum'. In the following example
+
+  expr> Lie_type(Cartan_matrix(GL(5)))
+  Error during analysis of expression Lie_type(Cartan_matrix(GL(5)))
+    Failed to match `Lie_type' with argument type mat
+  Type check failed
+
+the message is somewhat different, because the name `Lie_type' corresponds to
+several functions, and realex can only report that none of them applies for
+the given expression. To find out which instances are known, one can enter:
+
+  expr> whattype Lie_type ?
+  Overloaded instances of Lie_type
+    string->LieType
+    RootDatum->LieType
+
+showing that either a string or a RootDatum value would have worked instead of
+a (Cartan) matrix. For instance
+
+  expr> Lie_type(GL(5))
+  Value: Lie type 'A4.T1'
+  expr> Lie_type("E6.T1.D4")
+  Value: Lie type 'E6.T1.D4'
+
+All built-in operators and functions are defined as "overloaded" symbols, even
+if only one meaning is built-in as for 'block_sizes'; this allows the user to
+add new definitions of those symbols without overriding those built in. On the
+other hand all non-function values are stored in a different table, which
+allows only one value to be associated at any time to a given identifier.
+
+The interpreter knows about several "primitive" types, which it distinguishes
+but for which (in contrast to "composite" types discussed below) it usually
+does not provide specific language constructions (although it does know for
+instance that a Boolean value can be tested in a conditional expression).
+These basic types are:
 
 type		represents
 -----------------------------------
 bool		truth values
 int		machine integers (32 or 64 bits depending on the machine)
-rat		rational numbers
+rat		rational numbers (quotient of two machine integers)
 string		string of characters
 vec		vector of machine integers
 mat		matrix of machine integers
@@ -179,18 +232,162 @@ or 'false' (without quotes) for truth values, and a string in double-quotes
 (with any contained double-quote characters doubled) for strings. Strings
 cannot contain newline characters. Values of other basic types can only be
 obtained by using appropriate operators and functions (for instance 22/7 has
-type 'rat' and GL(5) has type 'RootDatum'), or via implicit conversions
-applied when the context demands it. Thus a list of integers like [3,1,4,1,5]
-can be converted to type vec, a list of vectors to a matrix (the vectors
-become columns of the matrix), an integer can be converted to a rational
-number, a list of rational numbers to a rational vector, and a string can be
-converted to a LieType value (provided it has the proper format).
+type 'rat' and GL(5) has type 'RootDatum'), or sometimes via implicit
+conversions (see below).
 
-  expr> 3+1/7 # conversion of int 3 to rat
+Composite types are either array (list) types, tuple types or function types.
+Array and tuple types both construct aggregates by combining a sequence of
+component values; for array types all components must have the same type and
+there could be any number of them (including none at all), while for tuple
+types the type explicitly enumerates the types of the components, so in
+particular the number of components is determined by the type. A function type
+specifies zero or more argument and result types; for either, unless exactly
+one such type is specified the argument or result type is actually a tuple
+type. Thus if t0,t1,t2,t3 are types, one has composite types like:
+
+[t0]		array of elements all of which have type t0
+[[t0]]		array of elements all of which have type [t0] (a list of lists)
+...		etc
+(t0,t1)		2-tuple formed of components of types t0 and t1 respectively
+(t0,t1,t2)	3-tuple, with components of types t0,t1,t2 respectively
+(t0,t1,t2,t3)	4-tuple, with components of types t0,t1,t2,t3 respectively
+...		etc
+void		0-tuple (irrelevant value)
+(t0->t1)	function with argument of type t0 and result of type t1
+(t0,t1->t2)	function with argument of type (t0,t1) and result of type t2
+(t0->t1,t2)	function with argument of type t0 and result of type (t1,t2)
+(t0,t1->t2,t3)	function with argument of type (t0,t1), result of type (t2,t3)
+(t0,t1->)	function with argument of type (t0,t1) and no useful result
+...		etc
+
+Often the user does not have to write any types, and the system will take care
+of deriving primitive and composite types as implicitly specified by the
+expression. However when writing user defined functions, the types of the
+arguments must be specified, so that types can be checked for the function
+body; once this check succeeds, a type is attributed to the function, and it
+will henceforth be treated just like a built-in function of that type would be
+(and one can in fact for instance form an array that contains both built-in
+and user-defined functions, provided they all have the same (function) type.
+
+Array values can be constructed by enclosing a comma-separated lists of
+component expressions (all of the same type) in brackets, as in [1,-4,3*6],
+which is called a row display. If 'v' is an identifier holding an array value,
+its individual components can be accessed by subscripting, as in 'v[i]' (in
+fact 'v' could be replaced here by any row-valued expression, although
+computing such a value just to retain one of its component seems wasteful).
+
+If instead of brackets of a row display one uses parentheses to enclose a
+sequence of expressions, then a tuple rather than an array is formed (except
+if there is exactly one expression in the sequence: then parentheses just
+imply grouping as used for instance to override operator precedence). Such a
+"tuple display" can be used as a function argument without additional
+parentheses, so for instance 'f(x,y)' applies the function 'f' to a 2-tuple
+with components 'x' and 'y'. But one is not obliged to write a tuple display
+for function arguments; for instance after 'set z=(3,4)' the variable 'z'
+holds a 2-tuple, and (the same instance of) 'f' may also be called as 'f(z)'.
+One could even for instance multiply the components of 'z' by writing '*z';
+indeed the expression '3*4' is transformed by the parser into '*(3,4)', and
+(currently) this form is also used in error messages, for instance in
+
+  expr> GL(10/2)
+  Type error:
+    Subexpression /(10,2) has wrong type: found rat while int was needed.
+  Type check failed
+
+(The operator '/' on integers produces a rational number; for integer division
+ignoring the remainder one should write 10\2 instead).
+
+To decompose tuples, a simple form of pattern matching is provided: wherever
+an identifier can be introduced, one may also specify a tuple of identifiers,
+if the type of the value is appropriate, and the components will be bound to
+the corresponding identifiers. So whereas
+
+  expr> set x=E
+
+introduces the identifier 'x' whose value (and type) are set to that of the
+expression 'E', one can alternatively say
+
+  expr> set (x,y)=E
+
+provided that E produces a pair (some value of some 2-tuple type), and the
+variable 'x' will be set to the first component of the pair, and 'y' to the
+second component. In either case, the types of the variables introduced will
+be reported, as in
+
+  expr> set (q,r) = 22 \% 7   { Euclidean division with remainder }
+  Identifiers q: int, r: int
+  expr> q    { quotient }
+  Value: 3
+  expr> r    { remainder }
+  Value: 1
+
+The same pattern-matching is also allowed when introducing parameters of
+user-defined functions, or when introducing local variables; the latter uses a
+syntax like that of 'set' used above,, but with 'let' instead of 'set', and
+followed by 'in' and the "body" if the let-expression, the expression where
+the local variable is in scope. So to interchange the components of 'z', say
+
+  let (x,y)=z in (y,x)
+
+If only the first component is needed, there is no need to give a name to the
+other one, so one can write
+
+  let (x,)=z in x
+
+Local variables get their value and type from the expression between '=' and
+'in', and are independent of any meaning that might previously be associated
+to the identifier; after evaluation of the body, the local identifiers
+introduced are forgotten (except it the body managed to capture a reference to
+some of them in a local user-defined function, as will be explained later).
+
+Using a local variable, the initial example could have been given in a form
+that does not permanently bind the identifier 'ic':
+
+  expr> let ic = inner_class("B5.A3.T1",[[1/2,0,0],[0,1/2,1/2]],"scc")
+  L > in block_sizes(ic)
+  Value:
+  | 0,  0,   0,  0,   0,    0,    0,     1 |
+  ...
+
+Note that realex recognised that the let-expression was incomplete after the
+first line, and changed the prompt in the second line to indicate this.
+
+
+5 Implicit conversions
+
+When type do not match exactly, realex will sometimes insert implicit type
+conversions that are accompanied by conversions of the corresponding values.
+For instance, although the 'vec' type, which function of the atlas library
+use, models the same values as '[int]' (pronounced "row of int"), the two
+types have different internal representations (that of 'vec' is more compact),
+and a row display will only produce '[int]'. What makes it nevertheless
+possible to provide 'vec' values to functions that need it is the fact that
+realex will convert between 'vec' and '[int]' in contexts that require this.
+
+Here is a list of all implicit type conversions
+
+  vec    <-> [int]
+  mat    <-> [vec]    (vectors are columns of the matrix)
+  mat    <-> [[int]]  (inner arrays are columns of the matrix)
+  int     -> rat      (denominator 1)
+  ratvec <-> [rat]    (ratvec has least common denominator)
+  string  -> LieType  (applies Lie_type function)
+
+The one-directional conversions int->rat and string->LieType are mainly a
+convenience to users, as these conversion could be written out explicitly:
+
+  expr> 3+1/7       { same as 3/1+1/7 }
   Value: 22/7
-
-  expr> simply_connected_datum("E8") # conversion of string "E8" to LieType
-  Value: simply connected adjoint root datum of Lie type 'E8'
+  expr> Cartan_matrix("E8")  { same as Cartan_matrix(LieType("E8")) }
+  Value:
+  |  2,  0, -1,  0,  0,  0,  0,  0 |
+  |  0,  2,  0, -1,  0,  0,  0,  0 |
+  | -1,  0,  2, -1,  0,  0,  0,  0 |
+  |  0, -1, -1,  2, -1,  0,  0,  0 |
+  |  0,  0,  0, -1,  2, -1,  0,  0 |
+  |  0,  0,  0,  0, -1,  2, -1,  0 |
+  |  0,  0,  0,  0,  0, -1,  2, -1 |
+  |  0,  0,  0,  0,  0,  0, -1,  2 |
 
 If desired, a context requiring a given type can be created by giving the type
 name followed by a colon. So while one gets an error for
@@ -210,9 +407,9 @@ Alternatively this input could be turned into a 'ratvec'
   expr> ratvec: [1,1/2,1/3,1/4]
   Value: [ 12,  6,  4,  3 ]/12
 
-This conversion can is applied whenever a list of rationals is given in place
-of a 'ratvec'; for instance inner_class takes a list of 'ratvec' values as
-second "kernel generators" argument, but they can be specified for instance as
+This conversion is applied whenever a list of rationals (or integers) is given
+in place of a 'ratvec'; for instance inner_class takes a list of 'ratvec'
+values as second "kernel generators" argument, but they can be specified as
 
   expr> inner_class ("D4.A3",[[0,1/2,1/4],[0,0,1/2]],"ss")
   Value: Complex reductive group of type D4.A3, with involution defining
@@ -256,73 +453,6 @@ values, only a summary of their properties is printed (for instance:
 "simply connected adjoint root datum of Lie type 'A6.T1'"). In many cases
 functions exists that allow more detailed information to be extracted from
 these values.
-
-5 Composite Types
-
-If t0,t1,t2,t3 are types, then one can form composite types
-
-[t0]		list of elements all of which have type t0
-[[t0]]		list of elements all of which have type [t0] (a list of lists)
-...		etc
-(t0,t1)		2-tuple formed of components of types t0 and t1 respectively
-(t0,t1,t2)	3-tuple, with components of types t0,t1,t2 respectively
-(t0,t1,t2,t3)	4-tuple, with components of types t0,t1,t2,t3 respectively
-...		etc
-void		0-tuples (irrelevant value, returned by print... functions)
-(t0->t1)	function with argument of type t0 and result of type t1
-(t0,t1->t2)	function with argument of type (t0,t1) and result of type t2
-(t0->t1,t2)	function with argument of type (t0 and result of type (t1,t2)
-(t0,t1->t2,t3)	function with argument of type (t0,t1), result of type (t2,t3)
-(t0,t1->)	function with argument of type (t0,t1) and no useful result
-...		etc
-
-List values are obtained by enclosing a comma-separated lists of the
-components (all of the same type) in brackets, as in [ 1, -4, 3*6 ]. Their
-individual components can be accessed by subscripting, as in 'v[i]'.
-
-Since an expression of the form (x,y) produces a 2-tuple, a function 'f'
-taking a 2-tuple as argument can be called as f(x,y). But the variable 'z'
-holds a 2-tuple, say after 'set z=(3,4)', the function 'f' can also be called
-as f(z). To decompose a tuple, a multiple assignment is possible: after
-
-  expr> set (x,y)=z
-
-the variable 'x' will be made to hold the first component of the pair 'z', and
-'y' will be made to hold its second component (and more usefully, 'z' may be
-replaced by a function call producing a pair). After an assignment, single or
-multiple, the type(s) of the variable(s) assigned will be reported, as in
-
-  expr> set (q,r) = 22 \% 7 # Euclidean division
-  Identifiers q: int, r: int
-  expr> q
-  Value: 3
-  expr> r
-  Value: 1
-
-Local variables also allow access to components of a tuple value, for instance
-the first component of the pair z can be extracted via
-
-  let (x,y)=z in x
-
-or, since the variable y serves no purpose in this expression, by
-
-  let (x,)=z in x
-
-In both cases no variable of the name 'x' (or 'y') exists after evaluating the
-expression (unless it did before, in which case it is untouched and ignored by
-the above expression), whence these identifiers are called local variables.
-They can also be used for duplicating an intermediate result, or for the sole
-purpose of readability; thus the initial example could have been entered as
-
-  expr> let ic = inner_class("B5.A3.T1",[[1/2,0,0],[0,1/2,1/2]],"scc")
-  L > in block_sizes(ic)
-  Value:
-  | 0,  0,   0,  0,   0,    0,    0,     1 |
-  etc.
-
-Here the prompt changed in the second line to indicate the incomplete 'let'
-construction.
-
 
 6 Defining and modifying identifiers
 

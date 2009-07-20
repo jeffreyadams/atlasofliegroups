@@ -158,7 +158,7 @@ headers: $(headers)
 dvifiles: $(dvifiles)
 
 # Our executable program is now called 'realex'. As we recently found out,
-# this stands for REwritten Atlas of Lie groups EXecutable
+# this stands for Rewritten Expression-based  Atlas of Lie groups EXecutable
 realex: $(objects)
 	$(CXX) $(rlincludes) -o realex $^
 ifeq (,$(findstring t,$(MAKEFLAGS))) # unless a flag -t was given

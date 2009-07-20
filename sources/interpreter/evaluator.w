@@ -3208,11 +3208,17 @@ expression resolve_overload
 }
 
 @ Failing overload resolution causes a |program_error| explaining the
-is matching identifier and type.
+is matching identifier and type. Since most function definitions will be in
+the overload table even when only one definition is present, we produce a
+|type_error| in that case, so that the message will mention the unique
+expected argument type.
 
 @< Complain about failing overload resolution @>=
+if (variants.size()==1)
+  throw type_error(args,copy(a_priori_type),copy(variants[0].type->arg_type));
+else
 { std::ostringstream o;
-  o << "Failed invocation of overloaded `"
+  o << "Failed to match `"
     << main_hash_table->name_of(id) @|
     << "' with argument type "
     << a_priori_type;
@@ -3477,21 +3483,33 @@ element. In the former case we require that both arguments have identical row
 type, in the latter case we allow the single element to be converted to the
 component type of the row value.
 
+There is a subtlety in the order here, due to the fact that one of the
+arguments could be the empty list, with undetermined row type. Then there is
+actual ambiguity: with `\#' interpreted as join, the result is just the other
+operand, while suffixing or prefixing to the empty list gives a singleton of
+the other operand, and to some operands the empty list itself can also be
+suffixed or prefixed. The simplest resolution of this ambiguity is to say that
+join never applies with one of the arguments of undetermined list type, and
+that suffixing is preferred over prefixing (for instance in $[\,]\#[[2]]$).
+This can be obtained by testing for suffixing before testing for join: after
+the former test we know the first argument does not have type \.{[*]}, so it
+will match the second argument type only if both are determined row types.
+
 @< Recognise and return 2-argument versions of `\#'... @>=
 { type_expr& arg_tp0 = a_priori_type.tuple->t;
   type_expr& arg_tp1 = a_priori_type.tuple->next->t;
   if (arg_tp0.kind==row_type)
-  { if (arg_tp0==arg_tp1)
+  { if (arg_tp0.component_type->specialise(arg_tp1) or @|
+        can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
     { expression_ptr call(new overloaded_builtin_call
-        (join_rows_wrapper,"#",arg));
+        (suffix_element_wrapper,"#",arg));
       if (type.specialise(arg_tp0) or coerce(arg_tp0,type,call))
         return call.release();
       throw type_error(e,copy(type),copy(arg_tp0));
     }
-    if (arg_tp0.component_type->specialise(arg_tp1) or @|
-        can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type))
+    if (arg_tp0==arg_tp1) // join
     { expression_ptr call(new overloaded_builtin_call
-        (suffix_element_wrapper,"#",arg));
+        (join_rows_wrapper,"#",arg));
       if (type.specialise(arg_tp0) or coerce(arg_tp0,type,call))
         return call.release();
       throw type_error(e,copy(type),copy(arg_tp0));
@@ -3500,6 +3518,7 @@ component type of the row value.
   if (arg_tp1.kind==row_type and @|
          (arg_tp1.component_type->specialise(arg_tp0) or @|
           can_coerce_arg(arg.get(),0,arg_tp0,*arg_tp1.component_type)))
+          // prefix
   { expression_ptr call(new overloaded_builtin_call
       (prefix_element_wrapper,"#",arg));
     if (type.specialise(arg_tp1) or coerce(arg_tp1,type,call))

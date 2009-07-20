@@ -59,15 +59,14 @@
 %token ARROW "->"
 %token BECOMES ":="
 
-%type <expression> exp quaternary tertiary lettail or_expr and_expr not_expr
+%type <expression> exp tertiary lettail or_expr and_expr not_expr
 %type <expression>  formula operand secondary primary iftail
 %type <expression> comprim subscription
 %type <ini_form> formula_start
 %type <oper> operator
-%destructor { destroy_expr ($$); } exp quaternary tertiary lettail or_expr
-%destructor { destroy_expr ($$); } and_expr not_expr formula operand
-%destructor { destroy_expr ($$); } iftail secondary primary
-%destructor { destroy_expr ($$); } comprim subscription
+%destructor { destroy_expr ($$); } exp tertiary lettail or_expr and_expr
+%destructor { destroy_expr ($$); } not_expr formula operand iftail
+%destructor { destroy_expr ($$); } secondary primary comprim subscription
 %destructor { destroy_formula($$); } formula_start
 %type  <expression_list> commalist commalist_opt commabarlist
 %destructor { destroy_exprlist($$); } commalist commalist_opt commabarlist
@@ -128,12 +127,7 @@ input:	'\n'			{ YYABORT } /* null input, skip evaluator */
 	| SHOWALL '\n'		{ show_ids(); YYABORT } /* print id table */
 ;
 
-exp	: type ':' exp	    { $$ = make_cast($1,$3); }
-	| quaternary
-;
-
-
-quaternary: tertiary ';' quaternary { $$=make_sequence($1,$3); }
+exp	: tertiary ';' exp { $$=make_sequence($1,$3); }
 	| tertiary
 ;
 
@@ -145,6 +139,7 @@ tertiary: LET lettail { $$=$2; }
 	  { $$=make_lambda_node(NULL,NULL,make_cast($3,$5)); }
 	| '(' id_specs ')' type ':' tertiary
 	  { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
+        | type ':' tertiary	 { $$ = make_cast($1,$3); }
 	| IDENT BECOMES tertiary { $$ = make_assignment($1,$3); }
 	| subscription BECOMES tertiary { $$ = make_comp_ass($1,$3); }
 	| IDENT operator BECOMES tertiary
