@@ -666,12 +666,12 @@ namespace blockmode {
 void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
 
 {
-  mode.add("smallkgb",helpmode::nohelp_h); // small_kgb_h);
-  mode.add("smalldualkgb",helpmode::nohelp_h); // small_dual_kgb_h);
+  mode.add("smallkgb",small_kgb_h);
+  mode.add("smalldualkgb",small_dual_kgb_h); 
   mode.add("block",block_h);
-  mode.add("smallblock",helpmode::nohelp_h); // small_block_h);
+  mode.add("smallblock",small_block_h);
   mode.add("dualblock",dualblock_h);
-  mode.add("smalldualblock",helpmode::nohelp_h); // small_dual_block_h);
+  mode.add("smalldualblock",small_dual_block_h);
   mode.add("dualmap",dualmap_h);
   mode.add("blockd",blockd_h);
   mode.add("blocku",blocku_h);
