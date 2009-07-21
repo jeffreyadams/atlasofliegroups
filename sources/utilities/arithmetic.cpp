@@ -119,7 +119,7 @@ Rational Rational::operator+(Rational q) const
 Rational Rational::operator-(Rational q) const
 {
   unsigned long sum_denom=lcm(denom,q.denom);
-  return Rational(num*(sum_denom/denom)/q.num*(sum_denom/q.denom),sum_denom);
+  return Rational(num*(sum_denom/denom)-q.num*(sum_denom/q.denom),sum_denom);
 }
 
 Rational Rational::operator*(Rational q) const
