@@ -1121,11 +1121,10 @@ install_function(raw_root_datum_wrapper,
 install_function(quotient_basis_wrapper
 		,@|"quotient_basis","(LieType,[ratvec]->mat)");
 install_function(quotient_datum_wrapper
-		,@|"quotient_datum","(LieType,[ratvec]->RootDatum)");
+		,@|"root_datum","(LieType,[ratvec]->RootDatum)");
 install_function(simply_connected_datum_wrapper
-		,@|"simply_connected_datum","(LieType->RootDatum)");
-install_function(adjoint_datum_wrapper,@|
-                 "adjoint_datum","(LieType->RootDatum)");
+		,@|"simply_connected","(LieType->RootDatum)");
+install_function(adjoint_datum_wrapper,@| "adjoint","(LieType->RootDatum)");
 install_function(SL_wrapper,@|"SL","(int->RootDatum)");
 install_function(GL_wrapper,@|"GL","(int->RootDatum)");
 install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");

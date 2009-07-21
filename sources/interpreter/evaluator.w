@@ -5000,8 +5000,7 @@ void seq_expression::evaluate(level l) const
 @< Other cases for type-checking and converting... @>=
 case seq_expr:
 { sequence seq=e.e.sequence_variant;
-  type_expr voided;
-  expression_ptr first(convert_expr(seq->first,voided));
+  expression_ptr first(convert_expr(seq->first,void_type));
   expression_ptr last(convert_expr(seq->last,type));
   return new seq_expression(first,last);
 }
@@ -6142,7 +6141,10 @@ but undefined value.
 extern "C"
 void global_declare_identifier(Hash_table::id_type id, ptr t)
 { value undef=NULL;
-  global_id_table->add(id,shared_value(undef),copy(*static_cast<type_p>(t)));
+  const type_expr& type=*static_cast<type_p>(t);
+  global_id_table->add(id,shared_value(undef),copy(type));
+  std::cout << "Identifier " << main_hash_table->name_of(id)
+            << " : " << type << std::endl;
 }
 
 @ It is useful to print type information, either for a single expression or for

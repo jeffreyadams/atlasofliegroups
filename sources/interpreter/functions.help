@@ -134,16 +134,16 @@ quotient_basis: (LieType,[ratvec]->mat): sublattice given by kernel generators.
   amounts to setting S=Smith_Cartan(type); (C,v)=filter_units(S) and then
   returning the value replace_gen(S,mm_prod(C,ann_mod(M,d)))
 
-quotient_datum: (LieType,[ratvec]->RootDatum): root datum as entrered in Atlas.
-    set quotient_datum(LieType type,[ratvec] gens) =
+root_datum: (LieType,[ratvec]->RootDatum): root datum as entrered in Atlas.
+    set root_datum(LieType type,[ratvec] gens) =
     root_datum(type,quotient_basis(type,gens))
 
-simply_connected_datum: (LieType->RootDatum): simply connected datum for type.
+simply_connected: (LieType->RootDatum): simply connected datum for given type.
   This gives the root datum for the "simply connected" group of the given
   type (the direct product of a simply conneted G' with a central torus):
     set simply_connected_datum(LieType type) = root_datum(type,id_mat(rank))
 
-adjoint_datum: (LieType->RootDatum): adjoint root datum for type.
+adjoint: (LieType->RootDatum): adjoint root datum for given type.
   Here the sublattice for the semisimple factor is the root lattice, with
   simple roots as basis; for the central torus an arbitrary basis is used.
   Therefore the this function could be defined as
