@@ -715,7 +715,7 @@ then we prepare for output redirection.
 	   @< Read in |file_name| @> @+ break;
          }
          prevent_termination=c;
-         code = OPERATOR; valp->oper.priority=4;
+         code = OPERATOR; valp->oper.priority=2;
          if (input.shift()=='=')
            valp->oper.id=id_table.match_literal(c=='<' ? "<=" : ">=");
          else
@@ -726,13 +726,13 @@ then we prepare for output redirection.
     code = input.shift()=='=' ? BECOMES  : (input.unshift(),c);
   break; case '=':
          valp->oper.id = id_table.match_literal("=");
-         valp->oper.priority = 4; // in case
+         valp->oper.priority = 2; // in case
 	 prevent_termination=code=c;
   break; case '!':
          if (input.shift()=='=')
          { code = OPERATOR;
            valp->oper.id = id_table.match_literal("!=");
-           valp->oper.priority = 4;
+           valp->oper.priority = 2;
            prevent_termination='=';
          }
          else
@@ -747,14 +747,10 @@ then we prepare for output redirection.
 @ Here are some cases split off to avoid the previous module getting too long.
 
 @< Cases of arithmetic operators... @>=
-    case '#': prevent_termination=c;
-       code = OPERATOR;
-       valp->oper.id = id_table.match_literal("#");
-       valp->oper.priority = 4; // basic meaning is non-associative
-break; case '+': prevent_termination=code=c;
+    case '+': prevent_termination=code=c;
        code = OPERATOR;
        valp->oper.id = id_table.match_literal("+");
-       valp->oper.priority = 6;
+       valp->oper.priority = 4;
 break; case '-': prevent_termination=c;
        if (input.shift()=='>')
           code= ARROW;
@@ -762,16 +758,16 @@ break; case '-': prevent_termination=c;
        { input.unshift();
          code = OPERATOR;
          valp->oper.id = id_table.match_literal("-");
-         valp->oper.priority = 6;
+         valp->oper.priority = 4;
        }
 break; case '*': case '%': case '/': prevent_termination=c;
        code = OPERATOR;
        valp->oper.id =
           id_table.match_literal(c=='*' ? "*" : c=='%' ? "%" : "/");
-       valp->oper.priority = 8;
+       valp->oper.priority = 6;
 break; case '\\':
        code = OPERATOR;
-       valp->oper.priority = 8;
+       valp->oper.priority = 6;
        if (input.shift()=='%')
        @/{@; prevent_termination='%';
          valp->oper.id = id_table.match_literal("\\%");
@@ -783,7 +779,11 @@ break; case '\\':
 break; case '^': prevent_termination=c;
        code = OPERATOR;
        valp->oper.id = id_table.match_literal("^");
-       valp->oper.priority = 9; // exponentiation is right-associative
+       valp->oper.priority = 7; // exponentiation is right-associative
+break; case '#': prevent_termination=c;
+       code = OPERATOR;
+       valp->oper.id = id_table.match_literal("#");
+       valp->oper.priority = 8; // basic meaning is non-associative
 break;
 
 @ We hand to the parser a string denotation expression in |valp|, rather than

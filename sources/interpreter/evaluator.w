@@ -1,4 +1,4 @@
-% Copyright (C) 2006 Marc van Leeuwen
+% Copyright (C) 2006-2009 Marc van Leeuwen
 % This file is part of the Atlas of Reductive Lie Groups software (the Atlas)
 
 % This program is made available under the terms stated in the GNU
@@ -3222,7 +3222,7 @@ else
     << main_hash_table->name_of(id) @|
     << "' with argument type "
     << a_priori_type;
-  throw program_error(o.str());
+  throw expr_error(e,o.str());
 }
 
 @*1 Function calls.
@@ -3325,6 +3325,24 @@ void overloaded_builtin_call::print(std::ostream& out) const
   else out << '(' << *argument << ')';
 }
 
+@ Some built-in functions like |print| accept arguments of any types, and in
+particular tuples of any length. For such functions we cannot adopt the method
+used for other built-in functions of expanding argument tuples on the stack,
+since there would then be no way to recover their number. Fortunately such
+functions are necessarily accessed through overloading, so we detect their use
+at analysis time, and record it in the type off call expression generated.
+Therefore we derive a type from |overloaded_builtin_call| that will override
+only the |evaluate| method.
+
+@< Type definitions @>=
+struct generic_builtin_call : public overloaded_builtin_call
+{ typedef overloaded_builtin_call base;
+@)
+  generic_builtin_call(wrapper_function v,const char* n,expression_ptr a)
+  : base(v,n,a)@+ {}
+  virtual void evaluate(level l) const;
+};
+
 @*2 Type-checking function calls.
 %
 The function in a call can be any type of expression; in case of a non-local
@@ -3404,17 +3422,28 @@ the necessary value types.
         // result type mismatch
  }
 
-@ The names of special operators need not be looked up each time they are
-needed, so we store them in  a static variable inside a local function.
+@ The names of special operators are tested for each time analyse an
+overloaded call; to avoid having to look them up in |main_hash_table| each
+time, we store each one in a static variable inside a local function.
 
 @< Local function definitions @>=
 Hash_table::id_type size_of_name()
 {@; static Hash_table::id_type name=main_hash_table->match_literal("#");
   return name;
 }
+Hash_table::id_type print_name()
+{@; static Hash_table::id_type name=main_hash_table->match_literal("print");
+  return name;
+}
+Hash_table::id_type prints_name()
+{@; static Hash_table::id_type name=main_hash_table->match_literal("prints");
+  return name;
+}
 @)
 inline bool is_special_operator(Hash_table::id_type id)
-{@; return id==size_of_name(); }
+{@; return id==size_of_name()
+        or id==print_name()
+        or id==prints_name(); }
 
 @ For operator symbols that satisfy |is_special_operator(id)|, we test generic
 argument type patterns before we test instances in the overload table, because
@@ -3438,6 +3467,16 @@ argument type but fail to match the returned type, we throw a |type_error|.
     @< Recognise and return 2-argument versions of `\#', or fall through in
        case of failure @>
   }
+  else if (id==print_name() or id==prints_name()) // these always match
+  { expression c = id==print_name() @|
+      ? new generic_builtin_call(print_wrapper,"print",arg) @|
+      : new generic_builtin_call(prints_wrapper,"prints",arg);
+    expression_ptr call(c); // get ownership
+    if (type.specialise(void_type))
+      return call.release();
+    throw type_error(e,copy(type),copy(void_type));
+  }
+
 }
 
 @ For dyadic use of the operator `\#' we shall encounter the somewhat unusual
@@ -3607,6 +3646,23 @@ void overloaded_builtin_call::evaluate(level l) const
   }
 }
 
+@ For generic built-in functions like |print| we only change the fact that
+arguments are evaluated using |eval| to a single value on the stack.
+
+@< Function definitions @>=
+void generic_builtin_call::evaluate(level l) const
+{ argument->eval();
+  try
+  {@; (*f)(l); }
+  catch (const std::exception& e)
+  { const std::logic_error* l_err= dynamic_cast<const std::logic_error*>(&e);
+    if (l_err!=NULL)
+      throw std::logic_error
+        (std::string(e.what())+"\n(in call of "+print_name+')');
+    throw std::runtime_error
+      (std::string(e.what())+"\n(in call of "+print_name+')');
+  }
+}
 
 @*1 Let-expressions.
 %
@@ -5533,6 +5589,13 @@ void rat_unary_minus_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new rat_value(arithmetic::Rational(0)-i)); }
 @)
+void rat_inverse_wrapper(expression_base::level l)
+{@; arithmetic::Rational i=get<rat_value>()->val;
+  if (i.numerator()==0)
+    throw std::runtime_error("Inverse of zero");
+  if (l!=expression_base::no_value)
+    push_value(new rat_value(arithmetic::Rational(1)/i)); }
+@)
 void rat_power_wrapper(expression_base::level l)
 { int n=get<int_value>()->val; arithmetic::Rational b=get<rat_value>()->val;
   if (b.numerator()==0 and n<0)
@@ -5544,42 +5607,85 @@ void rat_power_wrapper(expression_base::level l)
 @ Relational operators are of the same flavour.
 @< Local function definitions @>=
 
-void eq_wrapper(expression_base::level l)
+void int_eq_wrapper(expression_base::level l)
 { shared_int j=get<int_value>(); shared_int i=get<int_value>();
   if (l!=expression_base::no_value)
     push_value(new bool_value(i->val==j->val));
 }
 @)
-void neq_wrapper(expression_base::level l)
+void int_neq_wrapper(expression_base::level l)
 { shared_int j=get<int_value>(); shared_int i=get<int_value>();
   if (l!=expression_base::no_value)
     push_value(new bool_value(i->val!=j->val));
 }
 @)
-void less_wrapper(expression_base::level l)
+void int_less_wrapper(expression_base::level l)
 { shared_int j=get<int_value>(); shared_int i=get<int_value>();
   if (l!=expression_base::no_value)
     push_value(new bool_value(i->val<j->val));
 }
 @)
-void lesseq_wrapper(expression_base::level l)
+void int_lesseq_wrapper(expression_base::level l)
 { shared_int j=get<int_value>(); shared_int i=get<int_value>();
   if (l!=expression_base::no_value)
     push_value(new bool_value(i->val<=j->val));
 }
 @)
-void greater_wrapper(expression_base::level l)
+void int_greater_wrapper(expression_base::level l)
 { shared_int j=get<int_value>(); shared_int i=get<int_value>();
   if (l!=expression_base::no_value)
     push_value(new bool_value(i->val>j->val));
 }
 @)
-void greatereq_wrapper(expression_base::level l)
+void int_greatereq_wrapper(expression_base::level l)
 { shared_int j=get<int_value>(); shared_int i=get<int_value>();
   if (l!=expression_base::no_value)
     push_value(new bool_value(i->val>=j->val));
 }
+
+@ We do that again for rational numbers
+
+@< Local function definitions @>=
+
+void rat_eq_wrapper(expression_base::level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val==j->val));
+}
 @)
+void rat_neq_wrapper(expression_base::level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val!=j->val));
+}
+@)
+void rat_less_wrapper(expression_base::level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val<j->val));
+}
+@)
+void rat_lesseq_wrapper(expression_base::level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val<=j->val));
+}
+@)
+void rat_greater_wrapper(expression_base::level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val>j->val));
+}
+@)
+void rat_greatereq_wrapper(expression_base::level l)
+{ shared_rat j=get<rat_value>(); shared_rat i=get<rat_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val>=j->val));
+}
+
+@ For booleans we also have equality and ineqality.
+@< Local function definitions @>=
+
 void equiv_wrapper(expression_base::level l)
 { bool a=get<bool_value>()->val; bool b=get<bool_value>()->val;
   if (l!=expression_base::no_value)
@@ -5608,19 +5714,52 @@ void int_format_wrapper(expression_base::level l)
     push_value(new string_value(o.str()));
 }
 
-@ Here is a simple function that outputs a string without its quotes, but with
-a terminating newline. This is the first place in this file where we produce
+@ Here is a simple function that outputs any value, in the format used by the
+interpreter itself. This function has an argument of unknown type; we just
+pass the popped value to the |operator<<|.
+
+This is the first place in this file where we produce user
 output to a file. In general, rather than writing directly to |std::cout|, we
 shall pass via a pointer whose |output_stream| value is maintained in the main
 program, so that redirecting output to a different stream can be easily
-implemented. Since this is a wrapper function (hence without arguments) there
-is no other way to convey the output stream to be used than via a dedicated
-global variable.
+implemented. Since this is a wrapper function there is no other way to convey
+the output stream to be used than via a dedicated global variable.
 
 @< Local function definitions @>=
 void print_wrapper(expression_base::level l)
-{ std::string s=get<string_value>()->val;
-  *output_stream << s << std::endl;
+{ *output_stream << *pop_value() << std::endl;
+  if (l==expression_base::single_value)
+    wrap_tuple(0); // don't forget to return a value if asked for
+}
+
+@ Sometimes the user may want to use a stripped version of the |print| output:
+no quotes in case of a string value, or no parentheses or commas in case of a
+tuple value (so that a single statement can chain several texts on the same
+line). The |prints_wrapper| does this down to the level of omitting quotes in
+individual argument strings, using dynamic casts to determine the case that
+applies.
+
+@< Local function definitions @>=
+void prints_wrapper(expression_base::level l)
+{ shared_value v=pop_value();
+  string_value* s=dynamic_cast<string_value*>(v.get());
+  if (s!=NULL)
+    *output_stream << s->val << std::endl;
+  else
+  { tuple_value* t=dynamic_cast<tuple_value*>(v.get());
+    if (t!=NULL)
+    { for (size_t i=0; i<t->val.size(); ++i)
+      { s=dynamic_cast<string_value*>(t->val[i].get());
+        if (s!=NULL)
+	  *output_stream << s->val;
+        else
+           *output_stream << *t->val[i];
+      }
+      *output_stream << std::endl;
+    }
+    else
+      *output_stream << *v << std::endl; // just like |print| in other cases
+  }
   if (l==expression_base::single_value)
     wrap_tuple(0); // don't forget to return a value if asked for
 }
@@ -5959,17 +6098,23 @@ install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
 install_function(rat_times_wrapper,"*","(rat,rat->rat)");
 install_function(rat_divide_wrapper,"/","(rat,rat->rat)");
 install_function(rat_unary_minus_wrapper,"-","(rat->rat)");
+install_function(rat_inverse_wrapper,"/","(rat->rat)");
 install_function(rat_power_wrapper,"^","(rat,int->rat)");
-install_function(eq_wrapper,"=","(int,int->bool)");
-install_function(neq_wrapper,"!=","(int,int->bool)");
-install_function(less_wrapper,"<","(int,int->bool)");
-install_function(lesseq_wrapper,"<=","(int,int->bool)");
-install_function(greater_wrapper,">","(int,int->bool)");
-install_function(greatereq_wrapper,">=","(int,int->bool)");
+install_function(int_eq_wrapper,"=","(int,int->bool)");
+install_function(int_neq_wrapper,"!=","(int,int->bool)");
+install_function(int_less_wrapper,"<","(int,int->bool)");
+install_function(int_lesseq_wrapper,"<=","(int,int->bool)");
+install_function(int_greater_wrapper,">","(int,int->bool)");
+install_function(int_greatereq_wrapper,">=","(int,int->bool)");
+install_function(rat_eq_wrapper,"=","(rat,rat->bool)");
+install_function(rat_neq_wrapper,"!=","(rat,rat->bool)");
+install_function(rat_less_wrapper,"<","(rat,rat->bool)");
+install_function(rat_lesseq_wrapper,"<=","(rat,rat->bool)");
+install_function(rat_greater_wrapper,">","(rat,rat->bool)");
+install_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
 install_function(equiv_wrapper,"=","(bool,bool->bool)");
 install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
 install_function(int_format_wrapper,"int_format","(int->string)");
-install_function(print_wrapper,"print","(string->)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
