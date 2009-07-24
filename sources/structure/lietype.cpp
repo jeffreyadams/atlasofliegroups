@@ -389,7 +389,7 @@ Layout dual(const Layout& lo)
       case 'A': swap_sc = lo.d_type[i].rank()>1; break;
       case 'D': swap_sc = lo.d_type[i].rank()%2!=0; break;
       case 'E': swap_sc = lo.d_type[i].rank()==6; break;
-      case 'T': swap_sc = true;
+      case 'T': swap_sc = true; break;
       default: swap_sc=false; break;
       }
       if (swap_sc) // then interchange 'c' and 's'; note that 'u'->'s' here
