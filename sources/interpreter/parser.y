@@ -46,9 +46,9 @@
 %pure-parser
 %error-verbose
 
-%token QUIT SET LET IN IF THEN ELSE ELIF FI AND OR NOT
+%token QUIT SET LET IN BEGIN END IF THEN ELSE ELIF FI AND OR NOT
 %token WHILE DO OD NEXT FOR FROM DOWNTO
-%token TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL
+%token TRUE FALSE QUIET VERBOSE WHATTYPE SHOWALL FORGET
 %token <oper> OPERATOR '='
 %token <val> INT
 %token <expression> STRING
@@ -59,13 +59,13 @@
 %token ARROW "->"
 %token BECOMES ":="
 
-%type <expression> exp tertiary lettail or_expr and_expr not_expr
+%type <expression> exp quaternary tertiary lettail or_expr and_expr not_expr
 %type <expression>  formula operand secondary primary iftail
 %type <expression> comprim subscription
 %type <ini_form> formula_start
 %type <oper> operator
-%destructor { destroy_expr ($$); } exp tertiary lettail or_expr and_expr
-%destructor { destroy_expr ($$); } not_expr formula operand iftail
+%destructor { destroy_expr ($$); } exp quaternary tertiary lettail or_expr
+%destructor { destroy_expr ($$); } and_expr not_expr formula operand iftail
 %destructor { destroy_expr ($$); } secondary primary comprim subscription
 %destructor { destroy_formula($$); } formula_start
 %type  <expression_list> commalist commalist_opt commabarlist
@@ -104,15 +104,20 @@ input:	'\n'			{ YYABORT } /* null input, skip evaluator */
 	    global_set_identifier(id,make_lambda_node(NULL,NULL,$6),0);
 	    YYABORT
 	  }
+	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT }
 	| SET operator '(' id_specs ')' '=' exp '\n'
 	  { struct id_pat id; id.kind=0x1; id.name=$2.id;
 	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),1);
 	    YYABORT
 	  }
+	| FORGET IDENT '@' type '\n'
+	  { global_forget_overload($2,$4); YYABORT  }
+	| FORGET operator '@' type '\n'
+	  { global_forget_overload($2.id,$4); YYABORT }
 	| IDENT ':' exp '\n'
 		{ struct id_pat id; id.kind=0x1; id.name=$1;
 		  global_set_identifier(id,$3,0); YYABORT }
-	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3);; YYABORT }
+	| IDENT ':' type '\n'	{ global_declare_identifier($1,$3); YYABORT }
 	| QUIT	'\n'		{ *verbosity =-1; } /* causes immediate exit */
 	| QUIET '\n'		{ *verbosity =0; YYABORT } /* quiet mode */
 	| VERBOSE '\n'		{ *verbosity =1; YYABORT } /* verbose mode */
@@ -127,34 +132,38 @@ input:	'\n'			{ YYABORT } /* null input, skip evaluator */
 	| SHOWALL '\n'		{ show_ids(); YYABORT } /* print id table */
 ;
 
-exp	: tertiary ';' exp { $$=make_sequence($1,$3); }
+exp: LET lettail { $$=$2; }
+	| '(' ')' ':' exp { $$=make_lambda_node(NULL,NULL,$4); }
+	| '(' id_specs ')' ':' exp
+	  { $$=make_lambda_node($2.patl,$2.typel,$5); }
+	| '(' ')' type ':' exp
+	  { $$=make_lambda_node(NULL,NULL,make_cast($3,$5)); }
+	| '(' id_specs ')' type ':' exp
+	  { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
+        | type ':' exp	 { $$ = make_cast($1,$3); }
+	| quaternary NEXT exp { $$=make_sequence($1,$3,0); }
+        | quaternary
+;
+
+lettail : declarations IN exp { $$ = make_let_expr_node($1,$3); }
+	| declarations THEN lettail  { $$ = make_let_expr_node($1,$3); }
+;
+
+declarations: declarations ',' pattern '=' exp
+	  { $$ = add_let_node($1,$3,$5); }
+	| pattern '=' exp { $$ = add_let_node(NULL,$1,$3); }
+;
+
+quaternary: tertiary ';' quaternary { $$=make_sequence($1,$3,1); }
 	| tertiary
 ;
 
-tertiary: LET lettail { $$=$2; }
-	| '(' ')' ':' tertiary { $$=make_lambda_node(NULL,NULL,$4); }
-	| '(' id_specs ')' ':' tertiary
-	  { $$=make_lambda_node($2.patl,$2.typel,$5); }
-	| '(' ')' type ':' tertiary
-	  { $$=make_lambda_node(NULL,NULL,make_cast($3,$5)); }
-	| '(' id_specs ')' type ':' tertiary
-	  { $$=make_lambda_node($2.patl,$2.typel,make_cast($4,$6)); }
-        | type ':' tertiary	 { $$ = make_cast($1,$3); }
-	| IDENT BECOMES tertiary { $$ = make_assignment($1,$3); }
+tertiary: IDENT BECOMES tertiary { $$ = make_assignment($1,$3); }
 	| subscription BECOMES tertiary { $$ = make_comp_ass($1,$3); }
 	| IDENT operator BECOMES tertiary
 	{ $$ = make_assignment($1,
 		make_binary_call($2.id,make_applied_identifier($1),$4)); }
 	| or_expr
-;
-
-lettail : declarations IN tertiary { $$ = make_let_expr_node($1,$3); }
-	| declarations ';' lettail  { $$ = make_let_expr_node($1,$3); }
-;
-
-declarations: declarations ',' pattern '=' tertiary
-	  { $$ = add_let_node($1,$3,$5); }
-	| pattern '=' tertiary { $$ = add_let_node(NULL,$1,$3); }
 ;
 
 or_expr : and_expr OR or_expr
@@ -215,9 +224,7 @@ comprim: subscription
 	| FALSE { $$ = make_bool_denotation(0); }
 	| STRING
 	| IF iftail { $$=$2; }
-	| WHILE exp DO exp NEXT exp OD { $$=make_while_node($2,$4,$6); }
-	| WHILE exp DO exp OD
-	  { $$=make_while_node($2,$4,wrap_tuple_display(NULL)); }
+	| WHILE exp DO exp OD { $$=make_while_node($2,$4); }
 	| FOR pattern IN exp DO exp OD
 	  { struct id_pat p,x; p.kind=0x2; x.kind=0x0;
 	    p.sublist=make_pattern_node(make_pattern_node(NULL,&$2),&x);
@@ -235,12 +242,15 @@ comprim: subscription
 	| FOR IDENT '=' exp DO exp OD
 	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL),1,$6); }
 	| '(' exp ')'	       { $$=$2; }
+	| BEGIN exp END	       { $$=$2; }
 	| '[' commalist_opt ']'
 		{ $$=wrap_list_display(reverse_expr_list($2)); }
 	| '[' commabarlist ']'
 	  { $$=make_unary_call
 		(lookup_identifier("^"),
-		 wrap_list_display(reverse_expr_list($2)));
+                 make_cast
+                 (mk_prim_type(5) /* |matrix_type| */
+		 ,wrap_list_display(reverse_expr_list($2))));
 	  }
 	| '(' commalist ',' exp ')'
 	{ $$=wrap_tuple_display(reverse_expr_list(make_exprlist_node($4,$2)));

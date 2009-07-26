@@ -1104,18 +1104,17 @@ typedef struct while_node* w_loop;
 typedef struct for_node* f_loop;
 typedef struct cfor_node* c_loop;
 
-@~A |while| loop has three elements: a condition (which determines whether an
-iteration will be undertaken), a body (which contributes an entry to the
-result), and an optional next-part (an void expression serving to advance any
-variables for the next iteration). A |for| loop also has three parts, a
-pattern introducing variables, an expression iterated over (the in-part) and
-the loop body. A counted |for| loop (the simple version of |for| loop) has
-four parts (an identifier, a count, a lower bound and a body) and two variants
-(increasing and decreasing) which can be distinguished by a boolean.
+@~A |while| loop has two elements: a condition (which determines whether an
+iteration will be undertaken), and a body (which contributes an entry to the
+result). A |for| loop has three parts, a pattern introducing variables, an
+expression iterated over (the in-part) and the loop body. A counted |for| loop
+(the simple version of |for| loop) has four parts (an identifier, a count, a
+lower bound and a body) and two variants (increasing and decreasing) which can
+be distinguished by a boolean.
 
 @< Structure and typedef declarations for types built upon |expr| @>=
 struct while_node
- {@; expr condition; expr body; expr next_part; };
+ {@; expr condition; expr body; };
 struct for_node
  {@; struct id_pat id; expr in_part; expr body; };
 struct cfor_node
@@ -1135,16 +1134,12 @@ f_loop for_variant;
 c_loop cfor_variant;
 
 @ To print a |while| or |for| expression at parser level, we reproduce the
-input syntax. An absent next-part will be represented as an empty tuple
-display, and output will be suppressed for this case.
+input syntax.
 
 @< Cases for printing... @>=
 case while_expr:
 { w_loop w=e.e.while_variant;
-  out << " while " << w->condition << " do " << w->body;
-  if (w->next_part.kind!=tuple_display or w->next_part.e.sublist!=NULL)
-    out << " next " << w->next_part;
-  out << " od ";
+  out << " while " << w->condition << " do " << w->body << " od ";
 }
 break;
 case for_expr:
@@ -1170,7 +1165,6 @@ break;
 case while_expr:
   destroy_expr(e.e.while_variant->condition);
   destroy_expr(e.e.while_variant->body);
-  destroy_expr(e.e.while_variant->next_part);
   delete e.e.while_variant;
 break;
 case for_expr:
@@ -1191,15 +1185,15 @@ break;
 more \\{make}-functions.
 
 @< Declarations of functions in \Cee-style for the parser @>=
-expr make_while_node(expr c, expr b, expr n);
+expr make_while_node(expr c, expr b);
 expr make_for_node(struct id_pat id, expr ip, expr b);
 expr make_cfor_node(id_type id, expr count, expr bound, short up, expr b);
 
 @~They are quite straightforward, as usual.
 
 @< Definitions of functions in \Cee... @>=
-expr make_while_node(expr c, expr b, expr n)
-{ w_loop w=new while_node; w->condition=c; w->body=b; w->next_part=n;
+expr make_while_node(expr c, expr b)
+{ w_loop w=new while_node; w->condition=c; w->body=b;
 @/expr result; result.kind=while_expr; result.e.while_variant=w;
   return result;
 }
@@ -1522,8 +1516,13 @@ sequences by chaining pairs, instead of storing a vector of expressions: at
 three pointers overhead per vector, a chained representation is more compact
 as long as the average length of a sequence is less than~$5$ expressions.
 
+In fact we used this expression also for a variant of sequence expressions, in
+which the value of the \emph{first} expression is retained as final value,
+while the second expression is then evaluated without using its value; the
+|forward| field indicates whether the first form was used.
+
 @< Structure and typedef declarations for types built upon |expr| @>=
-struct sequence_node {@; expr first; expr last; };
+struct sequence_node {@; expr first; expr last; int forward; };
 
 @ The tag used for sequence statements is |seq_expr|.
 
@@ -1539,20 +1538,22 @@ sequence sequence_variant;
 @< Cases for printing... @>=
 case seq_expr:
 {@; sequence seq = e.e.sequence_variant;
-  out << seq->first << ";" << seq->last ;
+  out << seq->first << (seq->forward ? ";" : " next ") << seq->last ;
 }
 break;
 
 @ Sequences are built by |make_sequence|.
 
 @< Declarations of functions in \Cee... @>=
-expr make_sequence(expr first, expr last);
+expr make_sequence(expr first, expr last, int forward);
+expr make_reverse_sequence(expr first, expr last);
 
 @~It does what one would expect it to.
 
 @< Definitions of functions in \Cee...@>=
-expr make_sequence(expr first, expr last)
+expr make_sequence(expr first, expr last, int forward)
 { sequence s=new sequence_node; s->first=first; s->last=last;
+  s->forward=forward;
 @/ expr result; result.kind=seq_expr; result.e.sequence_variant=s;
    return result;
 }
@@ -1605,6 +1606,8 @@ $\lambda$-expression.
 @< Declarations of functions in \Cee-style for the parser @>=
 void global_set_identifier(struct id_pat id, expr e, int overload);
 void global_declare_identifier(id_type id, ptr type);
+void global_forget_identifier(id_type id);
+void global_forget_overload(id_type id, ptr type);
 void show_ids();
 void type_of_expr(expr e);
 void show_overloads(id_type id);

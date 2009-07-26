@@ -271,8 +271,8 @@ void type_of_Cartan_matrix_wrapper (expression_base::level l)
     wrap_tuple(2);
 }
 
-@ And two small utilities for finding the (Lie) rank and semisimple rank of
-the Lie type.
+@ And some small utilities for finding the (Lie) rank and semisimple rank of
+the Lie type, and the naked type string.
 
 @< Local function definitions @>=
 void Lie_rank_wrapper(expression_base::level l)
@@ -284,6 +284,11 @@ void semisimple_rank_wrapper(expression_base::level l)
 { shared_Lie_type t=get<Lie_type_value>();
   if (l!=expression_base::no_value)
     push_value(new int_value(t->val.semisimple_rank()));
+}
+void Lie_type_string_wrapper(expression_base::level l)
+{ std::ostringstream s; s << get<Lie_type_value>()->val;
+  if (l!=expression_base::no_value)
+    push_value(new string_value(s.str()));
 }
 
 @ For programming it is important to know the number of factors in a
@@ -305,8 +310,9 @@ void nr_factors_wrapper(expression_base::level l)
 install_function(Cartan_matrix_wrapper,"Cartan_matrix","(LieType->mat)");
 install_function(type_of_Cartan_matrix_wrapper
 		,@|"Cartan_matrix_type","(mat->LieType,vec)");
-install_function(Lie_rank_wrapper,"Lie_rank","(LieType->int)");
+install_function(Lie_rank_wrapper,"rank","(LieType->int)");
 install_function(semisimple_rank_wrapper,"semisimple_rank","(LieType->int)");
+install_function(Lie_type_string_wrapper,"str","(LieType->string)");
 install_function(nr_factors_wrapper,"nr_factors","(LieType->int)");
 
 @*2 Finding lattices for a given Lie type.
@@ -1031,6 +1037,20 @@ void coroots_wrapper(expression_base::level l)
   push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(crl)));
 }
 
+@ Here are two utility functions.
+@< Local function definitions @>=
+void rd_rank_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  if (l!=expression_base::no_value)
+    push_value(new int_value(rd->val.rank()));
+}
+@)
+void rd_semisimple_rank_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  if (l!=expression_base::no_value)
+    push_value(new int_value(rd->val.semisimpleRank()));
+}
+
 @ It is useful to have bases for the sum of the root lattice and the
 coradical, and for the sum of the coroot lattice and the radical.
 
@@ -1136,6 +1156,9 @@ install_function(coroots_wrapper,@|"coroots","(RootDatum->mat)");
 install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
 install_function(coroot_radical_wrapper,@|"coroot_radical","(RootDatum->mat)");
 install_function(dual_datum_wrapper,@|"dual","(RootDatum->RootDatum)");
+install_function(rd_rank_wrapper,@|"rank","(RootDatum->int)");
+install_function(rd_semisimple_rank_wrapper@|
+		,"semisimple_rank","(RootDatum->int)");
 install_function(integrality_datum_wrapper
                 ,@|"integrality_datum","(RootDatum,ratvec->RootDatum)");
 install_function(integrality_points_wrapper
@@ -1737,11 +1760,11 @@ void set_inner_class_wrapper(expression_base::level l)
   fix_involution_wrapper(l);
 }
 
-@*2 Functions operating on complex reductive groups.
+@*2 Functions operating on inner classes.
 %
-Here are our first functions that access a |inner_class_value|; they
-recover the ingredients that were used in the construction, and construct the
-dual inner class.
+Here are our first functions that access a operate on values of type
+|inner_class_value|; they recover the ingredients that were used in the
+construction, and the final one constructs the dual inner class.
 
 @< Local function def...@>=
 void distinguished_involution_wrapper(expression_base::level l)
@@ -1775,17 +1798,40 @@ void push_name_list(const realform_io::Interface& interface)
       (shared_value(new string_value(interface.typeName(i))));
   push_value(result);
 }
-
+@)
 void form_names_wrapper(expression_base::level l)
 { shared_inner_class G(get<inner_class_value>());
   if (l!=expression_base::no_value)
     push_name_list(G->interface);
 }
-
+@)
 void dual_form_names_wrapper(expression_base::level l)
 { shared_inner_class G(get<inner_class_value>());
   if (l!=expression_base::no_value)
     push_name_list(G->dual_interface);
+}
+
+@ We provide functions for counting (dual) real forms and Cartan classes,
+although the former two could be computed as the lengths of the list of (dual)
+form names.
+
+@< Local function def...@>=
+void n_real_forms_wrapper(expression_base::level l)
+{ shared_inner_class G(get<inner_class_value>());
+  if (l!=expression_base::no_value)
+    push_value(new int_value(G->val.numRealForms()));
+}
+@)
+void n_dual_real_forms_wrapper(expression_base::level l)
+{ shared_inner_class G(get<inner_class_value>());
+  if (l!=expression_base::no_value)
+    push_value(new int_value(G->val.numDualRealForms()));
+}
+@)
+void n_Cartan_classes_wrapper(expression_base::level l)
+{ shared_inner_class G(get<inner_class_value>());
+  if (l!=expression_base::no_value)
+    push_value(new int_value(G->val.numCartanClasses()));
 }
 
 @ And now, our first function that really simulates something that can be done
@@ -1873,6 +1919,12 @@ install_function(form_names_wrapper,@|"form_names"
                 ,"(InnerClass->[string])");
 install_function(dual_form_names_wrapper,@|"dual_form_names"
                 ,"(InnerClass->[string])");
+install_function(n_real_forms_wrapper,@|"nr_of_real_forms"
+                ,"(InnerClass->int)");
+install_function(n_dual_real_forms_wrapper,@|"nr_of_dual_real_forms"
+                ,"(InnerClass->int)");
+install_function(n_Cartan_classes_wrapper,@|"nr_of_Cartan_classes"
+                ,"(InnerClass->int)");
 install_function(block_sizes_wrapper,@|"block_sizes"
                 ,"(InnerClass->mat)");
 install_function(occurrence_matrix_wrapper,@|"occurrence_matrix"
@@ -2009,7 +2061,8 @@ void count_Cartans_wrapper(expression_base::level l)
 }
 
 @ The size of the finite set $K\backslash G/B$ can be determined from the real
-form, once the corresponding Cartan classes have been generated.
+form, (the necessary |CartanClass| objects will be automatically generated
+when doing so).
 
 @< Local function def...@>=
 void KGB_size_wrapper(expression_base::level l)
@@ -2018,10 +2071,10 @@ void KGB_size_wrapper(expression_base::level l)
     push_value(new int_value(rf->val.KGB_size()));
 }
 
-@ Once the Cartan classes for a real form are constructed, we have a partial
-ordering on them. The function |Cartan_order_matrix| displays a matrix for
-this partial ordering. This function more or less replaces the \.{corder}
-command in atlas.
+@ There is a partial ordering on the Cartan classes defined for a real form. A
+matrix for this partial ordering is displayed by the function
+|Cartan_order_matrix|, which more or less replaces the \.{corder} command in
+\.{atlas}.
 
 @h "poset.h"
 @< Local function def...@>=
@@ -2125,25 +2178,24 @@ void real_form_from_dual_wrapper(expression_base::level l)
 }
 
 @*1 A type for Cartan classes.
+%
 Another type of value associated to inner classes are Cartan classes, which
 describe equivalence classes (for ``stable conjugacy'') of Cartan subgroups of
 real reductive groups in an inner class. The Atlas software associates a fixed
 set of Cartan classes to each inner class, and records for each real form the
-subset of those Cartan classes that occur for the real form. Since
-versions 0.3.5 of the software from, the Cartan classes are identified and
-numbered upon construction of a |ComplexReductiveGroup| object, but
-|CartanClass| objects are constructed on demand.
+subset of those Cartan classes that occur for the real form. Since versions
+0.3.5 of the software, the Cartan classes are identified and numbered upon
+construction of a |ComplexReductiveGroup| object, but |CartanClass| objects
+are constructed on demand.
 
 @< Includes... @>=
 #include "cartanclass.h"
 
 @*2 Class definition.
+%
 The Cartan class is identified by a number within the inner class. This number
-is actually its sequence number in the order in which Cartan classes are
-generated in this inner class, so it may vary from one run to another;
-nevertheless the number is important to record, since some information about
-the Cartan class is only stored at the level of the inner class, and the
-number is required to obtain this information.
+is its sequence number in the order in which Cartan classes are generated in
+this inner class.
 
 @< Type definitions @>=
 struct Cartan_class_value : public value_base
@@ -2166,22 +2218,14 @@ private:
 typedef std::auto_ptr<Cartan_class_value> Cartan_class_ptr;
 typedef std::tr1::shared_ptr<Cartan_class_value> shared_Cartan_class;
 
-@ In the constructor we check that the Cartan class with the given number
-currently exists. This check \emph{follows} the selection of the pointer to
-the |CartanClass| object that initialises the |val| field because we have no
-choice (a reference field cannot be set later); the danger in doing this is
-limited since the selection itself will probably not crash the program, and
-the nonsensical pointer so obtained will probably be stored away without
-inspection and then be forgotten when an error is thrown. Moreover, the
-function we shall provide to access Cartan classes will ensure that when
-constructed, the Cartan class does actually exist.
+@ In the constructor we used to check that the Cartan class with the given
+number currently exists, but now the |ComplexReductiveGroup::cartan| method
+assures that a one is generated if this should not have been done before.
 
 @< Function def...@>=
 Cartan_class_value::Cartan_class_value(const inner_class_value& p,size_t cn)
 : parent(p),number(cn),val(p.val.cartan(cn))
-{ if (cn>=p.val.numCartanClasses()) throw std::runtime_error
-  (std::string("Cartan class number ")+str(cn)+" does not (currently) exist");
-}
+@+{}
 
 @ When printing a Cartan class, we show its number, and for how many real
 forms and dual real forms it is valid.
@@ -2189,17 +2233,36 @@ forms and dual real forms it is valid.
 @< Function def...@>=
 void Cartan_class_value::print(std::ostream& out) const
 { out << "Cartan class #" << number << ", occurring for " @|
-  << val.numRealForms() << " real "
+  << val.numRealForms() << " real " @|
   << (val.numRealForms()==1 ? "form" : "forms") << " and for "@|
-  << val.numDualRealForms() << " dual real "
+  << val.numDualRealForms() << " dual real "  @|
   << (val.numDualRealForms()==1 ? "form" : "forms");
 }
 
-@ To make a Cartan class, one must provide a |real_form_value| together with a
-valid index into its list of Cartan classes.
+@ To make a Cartan class, one can provide a |inner_class_value| together with
+a valid index into its list of Cartan classes.
 
 @< Local function def...@>=
-void Cartan_class_wrapper(expression_base::level l)
+void ic_Cartan_class_wrapper(expression_base::level l)
+{ shared_int i(get<int_value>());
+  shared_inner_class ic(get<inner_class_value>());
+  if (size_t(i->val)>=ic->val.numCartanClasses())
+    throw std::runtime_error
+    ("Illegal Cartan class number: "+str(i->val)
+@.Illegal Cartan class number@>
+    +", this inner class only has "+str(ic->val.numCartanClasses())
+    +" of them");
+  if (l!=expression_base::no_value)
+    push_value(new Cartan_class_value(*ic,i->val));
+}
+
+@ Alternatively (and this used to be the only way) one can provide a
+|real_form_value| together with a valid index into its list of Cartan classes.
+We translate this number into an index into the list for its containing inner
+class, and then get the Cartan class from there.
+
+@< Local function def...@>=
+void rf_Cartan_class_wrapper(expression_base::level l)
 { shared_int i(get<int_value>());
   shared_real_form rf(get<real_form_value>());
   if (size_t(i->val)>=rf->val.numCartan())
@@ -2229,61 +2292,52 @@ void most_split_Cartan_wrapper(expression_base::level l)
 
 @*2 Functions operating on Cartan classes.
 %
-This function and the following provide the functionality of the Atlas
-command \.{cartan}. They are based on |complexredgp_io::printCartanClass|, but
-rewritten to take into account the fact that we have no |Interface| objects
-for complex groups. We omit in our first function {\it Cartan\_info} the final
-call to |cartan_io::printFiber| that would list all the real forms for which
+This function and the following provide the functionality of the \.{atlas}
+command \.{cartan}. They are based on |cartan_io::printCartanClass|, but
+rewritten to take into account the fact that we do not know about |Interface|
+objects for complex groups, and such that a usable value is returned. We omit
+in our function {\it Cartan\_info} the data printed in |printCartanClass| in
+the final call to |cartan_io::printFiber| (namely all the real forms for which
 this Cartan class exists with the corresponding part of the adjoint fiber
-group, relegating it instead to a second function {\it fiber\_part} that
+group), relegating it instead to a second function {\it fiber\_part} that
 operates on a per-real-form basis. This separation seems more natural in a
 setup where real forms and Cartan classes are presented as more or less
-independent objects, and it also avoids having to include parts of the Atlas
-software that we don't really need, like input handling, just because the
-compilation unit \.{cartan\_io} uses them.
+independent objects.
 
 @h "prettyprint.h"
 
 @< Local function def...@>=
-void print_Cartan_info_wrapper(expression_base::level l)
+void Cartan_info_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
+  if (l==expression_base::no_value)
+    return;
 
-  prettyprint::printTorusType(*output_stream,cc->val.fiber().torus())
-  << std::endl;
+  push_value(new int_value(cc->val.fiber().torus().compactRank()));
+  push_value(new int_value(cc->val.fiber().torus().complexRank()));
+  push_value(new int_value(cc->val.fiber().torus().splitRank()));
+  wrap_tuple(3);
 
-  *output_stream << "twisted involution orbit size: " << cc->val.orbitSize()
-   << std::endl;
+  const weyl::TwistedInvolution& tw =
+    cc->parent.val.twistedInvolution(cc->number);
+  weyl::WeylWord ww = cc->parent.val.weylGroup().word(tw);
+
+  std::vector<int> v(ww.begin(),ww.end());
+  push_value(new vector_value(v));
+
+  push_value(new int_value(cc->val.orbitSize()));
+  push_value(new int_value(cc->val.fiber().fiberSize()));
+  wrap_tuple(2);
 
   const rootdata::RootSystem& rs=cc->parent.val.rootDatum();
 
-@)// print type of imaginary root system
-  lietype::LieType ilt = rs.Lie_type(cc->val.simpleImaginary());
-
-  if (ilt.size() == 0)
-    *output_stream << "imaginary root system is empty" << std::endl;
-  else
-    *output_stream << "imaginary root system: " << ilt << std::endl;
-
-@)// print type of real root system
-
-  lietype::LieType rlt = rs.Lie_type(cc->val.simpleReal());
-
-  if (rlt.size() == 0)
-    *output_stream << "real root system is empty" << std::endl;
-  else
-    *output_stream << "real root system: " << rlt << std::endl;
-
-@)// print type of complex root system
-
-  lietype::LieType clt = rs.Lie_type(cc->val.simpleComplex());
-
-  if (clt.size() == 0)
-    *output_stream << "complex factor is empty" << std::endl;
-  else
-    *output_stream << "complex factor: " << clt << std::endl;
+@)// print types of imaginary and real root systems and of Complex factor
+  push_value(new Lie_type_value(rs.Lie_type(cc->val.simpleImaginary())));
+  push_value(new Lie_type_value(rs.Lie_type(cc->val.simpleReal())));
+  push_value(new Lie_type_value(rs.Lie_type(cc->val.simpleComplex())));
+  wrap_tuple(3);
 @)
   if (l==expression_base::single_value)
-    wrap_tuple(0);
+    wrap_tuple(4);
 }
 
 @ A functionality that is implicit in the Atlas command \.{cartan} is the
@@ -2839,12 +2893,15 @@ install_function(dual_quasisplit_form_wrapper,@|"dual_quasisplit_form"
 		,"(InnerClass->DualRealForm)");
 install_function(real_form_from_dual_wrapper,@|"real_form"
 				  ,"(DualRealForm->RealForm)");
-install_function(Cartan_class_wrapper,@|"Cartan_class"
+install_function(ic_Cartan_class_wrapper,@|"Cartan_class"
+		,"(InnerClass,int->CartanClass)");
+install_function(rf_Cartan_class_wrapper,@|"Cartan_class"
 		,"(RealForm,int->CartanClass)");
 install_function(most_split_Cartan_wrapper,@|"most_split_Cartan"
 		,"(RealForm->CartanClass)");
-install_function(print_Cartan_info_wrapper,@|"print_Cartan_info"
-		,"(CartanClass->)");
+install_function(Cartan_info_wrapper,@|"Cartan_info"
+		,"(CartanClass->(int,int,int),"
+                 "vec,(int,int),(LieType,LieType,LieType))");
 install_function(real_forms_of_Cartan_wrapper,@|"real_forms"
 		,"(CartanClass->[RealForm])");
 install_function(dual_real_forms_of_Cartan_wrapper,@|"dual_real_forms"

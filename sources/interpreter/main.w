@@ -66,13 +66,13 @@ in the same order as in the \.{\%token} declaration in \.{parser.y}.
 
 const char* keywords[] =
  {"quit"
- ,"set","let","in"
+ ,"set","let","in","begin","end"
  ,"if","then","else","elif","fi"
  ,"and","or","not"
  ,"while","do","od","next","for","from","downto"
  ,"true","false"
  ,"quiet","verbose"
- ,"whattype","showall"
+ ,"whattype","showall","forget"
  ,NULL};
 
 @ Here are the wrapper function for the lexical analyser and the error

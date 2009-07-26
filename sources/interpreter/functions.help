@@ -66,9 +66,9 @@ Cartan_matrix_type: (mat->LieType,vec): type given by Cartan matrix.
   mapping the standard (Bourbaki) ordering of the diagram of that type to the
   ordering of the corresponding simple roots in matrix rows and columns.
 
-Lie_rank: (LieType->int) Rank of the weight lattice.
-semisimple_rank: (LieType->int) Rank of the root lattice.
-nr_factors: (LieType->int) Number of (simple or T1) factors in the Lie type
+rank: (LieType->int) Rank of the weight lattice for this Lie type.
+semisimple_rank: (LieType->int) Rank of the root lattice of  this Lie type.
+nr_factors: (LieType->int) Number of (simple or T1) factors in this Lie type
 
 Smith_Cartan: (LieType->mat,vec): compute generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of
@@ -169,6 +169,8 @@ root_coradical: (RootDatum->mat): simple roots and coradical basis.
 coroot_radical: (RootDatum->mat): simple coroots and radical basis.
   With respect to simple_coroots, add columns for radical basis generators
 dual: (RootDatum->RootDatum): dual of given root datum.
+rank: (RootDatum->int) Rank of the weight lattice for this Lie type.
+semisimple_rank: (RootDatum->int) Rank of the root lattice of  this Lie type.
 
 integrality_datum: (RootDatum,ratvec->RootDatum): integral coroots subdatum
   Forms the root datum for the coroot subsystem of coroots that take an
@@ -209,6 +211,10 @@ inner_class: (Lie_type,[ratvec],string->InnerClass): inner class as in Atlas
 distinguished_involution: (InnerClass->mat): involution of the inner class.
   Extract the distinguised involution from the InnerClass value
 dual: (InnerClass->InnerClass): dual inner class for dual complex group
+
+nr_of_real_forms: (InnerClass->int): number of real forms in inner class
+nr_of_dual_real_forms: (InnerClass->int): number of dual forms in inner class
+nr_of_Cartan_classes: (InnerClass->int): total number of Cartans in inner class
 
 block_sizes: (InnerClass->mat): matrix giving the block sizes.
   This is essentially the same as the output of 'blocksizes' in Atlas; the
@@ -263,12 +269,15 @@ dual_real_form: (InnerClass,int->DualRealForm): select a dual real form
   and a dual real form for a given inner class
 dual_quasisplit_form: (InnerClass->DualRealForm): quasisplit dual real form
 
+Cartan_class: (InnerClass,int->CartanClass): Cartan class selected by number
+  This selects a Cartan class by number in the list of all Cartan classes for
+  this inner class. The numbering is fixed, and compatible with  the partial
+  ordering on Cartan classes where more split ones are considered greater
+
 Cartan_class: (RealForm,int->CartanClass): Cartan class selected by number
-  This constructs all Cartan classes for this real form, and then selects the
-  one with the given sequence number. The numbering of the Cartan classes for
-  a given real form may depend on computation of Cartan classes for other real
-  forms in the same inner class: those Cartan classes that have already been
-  constructed for other real form come first in the sequence
+  This selects a Cartan class by number in the list of Cartan classes defined
+  for this real form. The numbering is not the same as when selecting a Cartan
+  class directly from an inner class, unless the real form is quasisplit.
 
 most_split_Cartan: (RealForm->CartanClass): most split Cartan class for form
   The most split Cartan class of a given real form is the last one in the list

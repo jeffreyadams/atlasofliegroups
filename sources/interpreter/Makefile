@@ -78,7 +78,7 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
 
 cwebx_sources := $(wildcard *.w)
 
-c++files      := $(cwebx_sources:%.w=%.cpp) types.cpp
+c++files      := $(cwebx_sources:%.w=%.cpp)
 c++objects    := $(c++files:%.cpp=%.o)
 webtexfiles   := $(cwebx_sources:%.w=%.tex)
 
