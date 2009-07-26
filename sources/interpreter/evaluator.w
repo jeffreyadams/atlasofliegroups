@@ -411,8 +411,8 @@ id_context=NULL;
 we don't return an |expression_ptr| is entirely pragmatic. The code below
 takes into account the possibility that a denotation is converted immediately
 to some other type, for instance integer denotations can be used where a
-rational number is expected. The function |coerce|, defined later, tests for
-this possibility, and may modify its final argument correspondingly.
+rational number is expected. The function |coerce| tests for this possibility,
+and may modify its final argument correspondingly.
 
 Altogether this is a quite extensive function, with as many cases in the
 switch as there are variants of |expr_union|, and for many of those branches a
@@ -428,23 +428,17 @@ expression convert_expr(const expr& e, type_expr& type)
   { case integer_denotation:
     { expression_ptr d@|(new denotation
         (shared_value(new int_value(e.e.int_denotation_variant))));
-      if(type.specialise(int_type) or coerce(int_type,type,d))
-        return d.release();
-      else throw type_error(e,copy(int_type),copy(type));
+      return conform_types(int_type,type,d,e);
     }
    case string_denotation:
     { expression_ptr d@|(new denotation
         (shared_value(new string_value(e.e.str_denotation_variant))));
-      if (type.specialise(str_type) or coerce(str_type,type,d))
-        return d.release();
-      else throw type_error(e,copy(str_type),copy(type));
+      return conform_types(str_type,type,d,e);
     }
    case boolean_denotation:
     { expression_ptr d@|(new denotation
           (shared_value(new bool_value(e.e.int_denotation_variant))));
-      if (type.specialise(bool_type) or coerce(bool_type,type,d))
-        return d.release();
-      else throw type_error(e,copy(bool_type),copy(type));
+      return conform_types(bool_type,type,d,e);
     }
    @\@< Other cases for type-checking and converting expression~|e| against
    |type|, all of which either |return| or |throw| a |type_error| @>
@@ -803,9 +797,7 @@ case subscription:
     throw expr_error(e,o.str());
   }
 @)
-  if (type.specialise(subscr_type) or coerce(subscr_type,type,subscr))
-    return subscr.release(); // and convert (derived|->|base) to |expression|
-  else throw type_error(e,copy(subscr_type),copy(type));
+  return conform_types(subscr_type,type,subscr,e);
 }
 
 
@@ -1665,10 +1657,7 @@ case function_call:
   expression_ptr arg
     (convert_expr(e.e.call_variant->arg,f_type->func->arg_type));
   expression_ptr call (new call_expression(fun,arg));
-  if (type.specialise(f_type->func->result_type) or
-      coerce(f_type->func->result_type,type,call))
-    return call.release();
-  else throw type_error(e,copy(f_type->func->result_type),copy(type));
+  return conform_types(f_type->func->result_type,type,call,e);
 }
 
 @ The main work here has been relegated to |resolve_overload|; otherwise we
@@ -1710,12 +1699,8 @@ the necessary value types.
     call = expression_ptr
       (new overloaded_builtin_call(f->val,f->print_name.c_str(),arg));
   else @< Set |call| to the call of the user-defined function |v| @>
-  if (type.specialise(v.type->result_type) or
-        coerce(v.type->result_type,type,call))
-    return call.release();
-  throw type_error(e,copy(v.type->result_type),copy(type));
-        // result type mismatch
- }
+  return conform_types(v.type->result_type,type,call,e);
+}
 
 @ The names of special operators are tested for each time analyse an
 overloaded call; to avoid having to look them up in |main_hash_table| each
@@ -1753,9 +1738,7 @@ argument type but fail to match the returned type, we throw a |type_error|.
 { if (id==size_of_name())
   { if (a_priori_type.kind==row_type)
     { expression_ptr call(new overloaded_builtin_call(sizeof_wrapper,"#",arg));
-      if (type.specialise(int_type) or coerce(int_type,type,call))
-        return call.release();
-      throw type_error(e,copy(type),copy(int_type));
+      return conform_types(int_type,type,call,e);
     }
     else if (a_priori_type.kind!=undetermined_type and
              a_priori_type.specialise(pair_type))
@@ -1837,16 +1820,12 @@ will match the second argument type only if both are determined row types.
         can_coerce_arg(arg.get(),1,arg_tp1,*arg_tp0.component_type)) // suffix
     { expression_ptr call(new overloaded_builtin_call
         (suffix_element_wrapper,"#",arg));
-      if (type.specialise(arg_tp0) or coerce(arg_tp0,type,call))
-        return call.release();
-      throw type_error(e,copy(type),copy(arg_tp0));
+      return conform_types(arg_tp0,type,call,e);
     }
     if (arg_tp0==arg_tp1) // join
     { expression_ptr call(new overloaded_builtin_call
         (join_rows_wrapper,"#",arg));
-      if (type.specialise(arg_tp0) or coerce(arg_tp0,type,call))
-        return call.release();
-      throw type_error(e,copy(type),copy(arg_tp0));
+      return conform_types(arg_tp0,type,call,e);
     }
   }
   if (arg_tp1.kind==row_type and @|
@@ -1855,9 +1834,7 @@ will match the second argument type only if both are determined row types.
           // prefix
   { expression_ptr call(new overloaded_builtin_call
       (prefix_element_wrapper,"#",arg));
-    if (type.specialise(arg_tp1) or coerce(arg_tp1,type,call))
-      return call.release();
-    throw type_error(e,copy(type),copy(arg_tp1));
+    return conform_types(arg_tp1,type,call,e);
   }
 }
 
@@ -2843,9 +2820,7 @@ case cast_expr:
 { cast c=e.e.cast_variant;
   type_expr& ctype=*static_cast<type_p>(c->type);
   expression_ptr p(convert_expr(c->exp,ctype));
-  if (type.specialise(ctype) or coerce(ctype,type,p))
-    return p.release();
-  throw type_error(e,copy(ctype),copy(type));
+  return conform_types(ctype,type,p,e);
 }
 break;
 
@@ -3039,9 +3014,7 @@ case ass_stat:
     (std::string("Undefined identifier in assignment: ")
      +main_hash_table->name_of(lhs));
 @.Undefined identifier in assignment@>
-  if (type.specialise(*it) or coerce(*it,type,assign))
-    return assign.release();
-  else throw type_error(e,copy(*it),copy(type));
+  return conform_types(*it,type,assign,e);
 }
 break;
 
@@ -3300,9 +3273,7 @@ case comp_ass_stat:
     throw expr_error(e,o.str());
   }
 
-  if (type.specialise(*aggr_t) or coerce(*aggr_t,type,assign))
-    return assign.release();
-  else throw type_error(e,copy(*aggr_t),copy(type));
+  return conform_types(*aggr_t,type,assign,e);
 }
 break;
 

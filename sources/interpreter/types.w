@@ -60,7 +60,7 @@ namespace atlas { namespace interpreter {
 namespace {
 @< Local type definitions @>@;
 }@; // |namespace|
-@< Initial global variable definitions @>@;
+@< Global variable definitions @>@;
 namespace {
 @< Local function definitions @>@;
 }@; // |namespace|
@@ -289,7 +289,7 @@ terminated by a null pointer. The last name |"void"| is not a primitive name,
 corresponds to |nr_of_primitive_types|, and will be treated exceptionally in
 |make_prim_type| to make an empty tuple type instead.
 
-@< Initial global variable definitions @>=
+@< Global variable definitions @>=
 const char* prim_names[]=@/
 {"int","rat","string","bool",@< Other primitive type names@>@;@;@+
  "void", NULL };
@@ -514,11 +514,15 @@ of the specified type via a placement-|new| into the undetermined type
 indication. This overwrites the old value, which is harmless since no
 destruction is necessary for the |undetermined_type| case. In the other cases
 we only continue if the top levels of both type declarers match, in which case
-we try to recursively specialise all descendants.
-
-We guarantee commit-or-roll-back: if |specialise| returns |false| then our
-type will be unchanged; this affects the way we match type kinds with multiple
-components (function and tuple types).
+we try to recursively specialise all descendants. We do not guarantee
+commit-or-roll-back, in other words, when the specialisation fails, some
+modifications to our type may still have been made. This is no problem in most
+situations, since failure to specialise $t_1$ to $t_2$ will usually be
+followed by an attempt to coerce $t_2$ to $t_1$, or by throwing of an error;
+here any specialisation that brings $t_1$ closer to $t_2$ cannot be harmful
+(it probably makes no difference at all). And we provide an accessor method
+|can_specialise| that could be tested before calling |specialise| in cases
+where having commit-or-roll-back is important.
 
 @< Function definitions @>=
 bool type_expr::specialise(const type_expr& pattern)
@@ -531,8 +535,8 @@ bool type_expr::specialise(const type_expr& pattern)
   { case primitive_type: return prim==pattern.prim;
     case row_type: return component_type->specialise(*pattern.component_type);
     case function_type:
-     @< Try to specialise types in |fun| to those in |pattern.func|,
-        and |return| whether this succeeded @>
+      return func->arg_type.specialise(pattern.func->arg_type) @|
+         and func->result_type.specialise(pattern.func->result_type);
     case tuple_type:
      @< Try to specialise types in |tuple| to those in |pattern.tuple|,
         and |return| whether this succeeded @>
@@ -544,37 +548,16 @@ bool type_expr::specialise(const type_expr& pattern)
 beforehand that the lengths of the lists match, so we must be prepared for
 either one of the lists running out before the other does.
 
-The code for matching tuple types would be simpler without the need to
-guarantee commit-or-roll-back, as we could then just specialise component per
-component. That however became problematic when function overloading was
-introduced: the matching criterion is that the \foreign{a priori} argument
-types can be specialised to the required types (so for instance an empty list
-matches any row type), but such a specialisation of one argument type may be
-followed by a rejection due to a next argument type, in which case the
-specialisation should not have effect for further matching attempts.
-
 @< Try to specialise types in |tuple| to those in |pattern.tuple|... @>=
 { type_list l0=tuple, l1=pattern.tuple;
-  while (l0!=NULL and l1!=NULL and l0->t.can_specialise(l1->t))
-    {@; l0=l0->next; l1=l1->next; }
-  if (l0!=NULL or l1!=NULL)
-    return false; // we succeeded only if both lists terminate simultaneously
-  for (l0=tuple, l1=pattern.tuple; l0!=NULL; l0=l0->next, l1=l1->next)
-    l0->t.specialise(l1->t);
-  return true;
+  while (l0!=NULL and l1!=NULL and l0->t.specialise(l1->t))
+  {@; l0=l0->next; l1=l1->next; }
+  return l0==NULL and l1==NULL;
+  // we succeeded only if both lists terminate simultaneously
 }
 
-@ For function types the approach is similar, but coded without a loop.
-@< Try to specialise types in |fun| to those in |pattern.func|... @>=
-{ if (not func->arg_type.can_specialise(pattern.func->arg_type) @|
-       or not func->result_type.can_specialise(pattern.func->result_type))
-    return false;
-  func->arg_type.specialise(pattern.func->arg_type);
-  func->result_type.specialise(pattern.func->result_type);
-  return true;
-}
 
-@ Of course we have to implement the accessor |can_specialise|, which is quite
+@ Here is the definition of the accessor |can_specialise|, which is quite
 similar.
 
 @< Function definitions @>=
@@ -913,7 +896,7 @@ and function types we construct the |type_expr| from auto-pointers (of which
 the constructor takes possession) pointing to other |type_expr|s produced by
 calling |copy| for previous type constants.
 
-@< Initial global variable definitions @>=
+@< Global variable definitions @>=
 
 const type_expr unknown_type; // uses default constructor
  type_expr void_type(type_list_ptr(NULL));
@@ -1263,7 +1246,7 @@ wrapper function that takes it values from the stack and places its results
 there again. Parameters are placed on the stack in order, and should therefore
 be popped from the stack in reverse order.
 
-@< Initial global variable definitions @>=
+@< Global variable definitions @>=
 std::vector<shared_value> execution_stack;
 
 @ We shall define some inline functions to facilitate manipulating the stack.
@@ -1476,7 +1459,7 @@ units can extend it; however it should not be extended once evaluation starts,
 since |conversion| objects will store references to table entries, which would
 become invalid in case of reallocation.
 
-@< Initial global variable definitions @>=
+@< Global variable definitions @>=
 
 std::vector<conversion_record> coerce_table;
 
@@ -1555,6 +1538,36 @@ bool coerce(const type_expr& from_type, const type_expr& to_type,
   }
   return false;
 }
+
+@ Often we first try to specialise a required type, and then (if the first
+fails) to coerce the type found to the one required. The function
+|conform_types| will facilitate this. The argument |d| is an already converted
+expression that should be wrapped in a conversion call if appropriate, while
+|e| is the original expression that should be mentioned in an error message if
+both attempts fail. A call to |conform_types| will be invariably followed
+(upon success) by returning the expression~|d| (possibly modified) from the
+calling function; we can save some work by returning the required value
+already from |conform_types|. Given that we do, we might as well take
+ownership of~|d| (by having it passed by value) so that the caller knows it
+should afterwards use our return value, rather than~|d|.
+
+@< Declarations of exported functions @>=
+expression conform_types
+(const type_expr& found, type_expr& required, expression_ptr d, expr e);
+
+@~The copied auto-pointer |d| provides the modifiable reference that |coerce|
+needs. If both attempts to conform the types fail, we must take a copy of both
+type expressions, since the originals are not owned by us, and will probably
+be destructed before the error is caught.
+
+@< Function def... @>=
+expression conform_types
+(const type_expr& found, type_expr& required, expression_ptr d, expr e)
+{ if (not required.specialise(found) and not coerce(found,required,d))
+    throw type_error(e,copy(found),copy(required));
+  return d.release();
+}
+
 
 @ List displays and loops produce a row of values of arbitrary (but identical)
 type; when they occur in a context requiring a non-row type, we may be able to
