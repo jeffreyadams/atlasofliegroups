@@ -1,0 +1,7 @@
+
+The "coroots_rootbasis" prints the coroots in the basis of simple
+coroots.
+
+The "coroots" command prints the coroots in the chosen basis of
+X_*(T). See also roots, roots_rootbasis, posroots, posroots_rootbasis,
+poscoroots, poscoroots_rootbasis and rootdatum.

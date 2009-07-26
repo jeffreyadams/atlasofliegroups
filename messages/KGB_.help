@@ -1,0 +1,59 @@
+
+The "KGB" command is an enhanced version of the "kgb" command (see the
+help file for kgb). KGB gives the following information, in addition
+to that provided by kgb.
+
+Each row of the output of kgb or KGB corresponds to an orbit of K on
+G/B. This corresponds to an element x of the extended group.
+
+In the output of kgb the third column gives the number of the
+corresponding Cartan subgroup. In the output of KGB this is moved to
+the second to last column.
+
+Every kgb element maps to a twisted involution in the Weyl group.
+This is an element of w satisfying w\delta(w)=1 where \delta is the basic
+distinguished involution for the inner class. The element w is given
+by the last entry in the row. The Cartan subgroups are parametrized by
+conjugacy classes of such involutions. Each conjugacy class contains a
+unique "canonical" involution. The elements of kgb for which the
+corresponding involution is canonical are denoted by a "#" preceding
+the Cartan class number.
+
+The elements x lying over the same twisted involution are parametrized
+by a product of m copies of Z/2Z for some m (see the strongreal
+command). This information is given by a vector of 0s and 1s of size
+the rank of G.
+
+Example: KGB for Sp(4,R)
+
+Base grading: [11].
+ 0:  0  [n,n]    1   2     6   4  (0,0)#0  e
+ 1:  0  [n,n]    0   3     6   5  (1,0)#0  e
+ 2:  0  [c,n]    2   0     *   4  (0,1)#0  e
+ 3:  0  [c,n]    3   1     *   5  (1,1)#0  e
+ 4:  1  [C,r]    8   4     *   *  (0,0) 2  2
+ 5:  1  [C,r]    9   5     *   *  (1,0) 2  2
+ 6:  1  [r,C]    6   7     *   *  (0,0) 1  1
+ 7:  2  [n,C]    7   6    10   *  (0,0)#1  2,1,2
+ 8:  2  [C,n]    4   9     *  10  (0,0)#2  1,2,1
+ 9:  2  [C,n]    5   8     *  10  (0,1)#2  1,2,1
+10:  3  [r,r]   10  10     *   *  (0,0)#3  1,2,1,2
+
+Since Sp(4,R) contains a compact Cartan subgroup \delta acts trivially
+on G and W, and twisted involutions are ordinary involutions.
+
+Elements 0-3 all correspond to the compact Cartan subgroup (number 0),
+with trivial involution. This involution is the only one for the
+Cartan and is therefore canonical. These elements are parametrized by
+Z/2Z^2.
+
+Elements 6,7 correspond to Cartan number 1; the two involutions 1 and
+2,1,2 occur, the latter is canonical. The fiber parts are (1,0) and
+(0,0).  
+
+Elements 4,5,8,9 correspond to Cartan number 2. The twisted
+involutions are 2 and 1,2,1 (canonical), and there are four fiber
+elements.  
+
+Finally there is only one element x=10 on the split Cartan number 3. 
+

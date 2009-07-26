@@ -1,0 +1,150 @@
+
+The "rootdatum" command prints out the root datum defining the complex
+reductive group G.
+
+The software picks a basis of the character lattice X^*(T). If G is
+defined using the "sc" (respectively "ad") option to be simply
+connected (resp. adjoint) this basis is the basis of fundamental
+weights (resp. simple roots), plus a copy of Z^n if G is not
+semisimple. In general this basis may be fairly arbitrary and
+difficult to understand.
+
+Similarly the software picks a basis of the co-character lattice
+X_*(T), given by coroots (in the of "sc") and fundamental coweights
+(in the case of "ad"), plus a copy of Z^n if G is not semisimple.
+
+
+The output consists of:
+
+1) cartan matrix
+
+See the help file for the cmatrix command
+
+2) root basis
+
+The columnns give the simple roots in the given basis, as in the
+output of the roots and posroots commands.
+
+3) coroot basis
+
+The columnns give the simple coroots in the given basis, as in the
+output of the coroots and poscoroots commands.
+
+4) radical basis
+
+The columns gives a basis of X^*(S) in the given basis (S is the
+maximal central torus).
+
+5) coradical basis
+
+The columns gives a basis of X_*(S) in the given basis (S as in 4)
+
+6) positive roots
+
+A matrix with m rows and n columns where m is the rank and n is the
+semisimple rank. The rows give the positive roots in the given
+basis. See the posroots command.
+
+7) positive roots
+
+A matrix with m rows and n columns where m is the rank and n is the
+semisimple rank. The rows give the positive coroots in the given
+basis. See the poscoroots command.
+
+These matrices satisfy the following identity. Let R be the "root
+basis" matrix, C the "coroot basis" matrix, and M the Cartan
+matrix. Then 
+
+R^t*C=M
+
+An abstract root datum can be defined to be a pair of m by n integral
+matrices (R,C) satisfying R^t*C=M where M is a Cartan
+matrix. Equivalence is by the action (R,C) -> (gR,transpose(g^{-1})C)
+for g in GL(m,Z). Such a root datum is the root datum of a reductive
+algebraic group, where the Cartan matrix of the derived group is M.
+
+Example: root datum of Sp(4)
+
+Since G is simply connected the basis of X^*(T) is the fundamental
+weights, and the basis of X_*(T) is the simple coroots.
+
+main: type
+Lie type: C2 sc s
+main: rootdatum
+Name an output file (return for stdout, ? to abandon):
+cartan matrix :
+   2  -1
+  -2   2
+
+root basis :
+   2  -2
+  -1   2
+
+coroot basis :
+   1   0
+   0   1
+
+positive roots :
+[2,-1]
+[-2,2]
+[0,1]
+[2,0]
+
+positive coroots :
+[1,0]
+[0,1]
+[1,2]
+[1,1]
+
+
+Example: root datum of GL(3)
+
+Since G is neither simply connected nor adjoint the bases of X^*(T)
+and X_*(T) are not partcularly nice. Both the root and coroot basis
+matrices have 3 rows (rank 3) and 2 columns (semisimple rank 2).
+
+main: type
+Lie type: A2.T1
+elements of finite order in the center of the simply connected group:
+Z/3.Q/Z
+enter kernel generators, one per line
+(ad for adjoint, ? to abort):
+1/3,1/3
+
+enter inner class(es): ss
+main: rootdatum
+Name an output file (return for stdout, ? to abandon):
+cartan matrix :
+   2  -1
+  -1   2
+
+root basis :
+   2  -1
+   1   0
+   0   0
+
+coroot basis :
+   1  -2
+   0   3
+   0  -1
+
+radical basis :
+   0
+   0
+   1
+
+coradical basis :
+   0
+   1
+   3
+
+positive roots :
+[2,1,0]
+[-1,0,0]
+[1,1,0]
+
+positive coroots :
+[1,0,0]
+[-2,3,-1]
+[-1,3,-1]
+

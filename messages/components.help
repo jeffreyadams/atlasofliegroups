@@ -1,0 +1,91 @@
+
+The "components" command gives a description of the connected
+components of a real reductive group. This group is of the form
+(Z/2Z)^n for n less than or equal to the rank.
+
+If G is semisimple and simply connected then the real points of G is
+connected. If G is a torus the component group is (Z/2Z)^n where n is
+the number of R^x factors.
+
+Example 1: The number of R^* factors of a torus is the number of "s"
+terms if the torus is defined without taking a quotient, but not
+otherwise.
+
+The real form S^1xR^* of C^*xC^* has component group Z/2Z:
+
+
+real: type
+Lie type: T1.T1
+elements of finite order in the center of the simply connected group:
+Q/Z.Q/Z
+enter kernel generators, one per line
+(ad for adjoint, ? to abort):
+
+enter inner class(es): cs
+main: components
+there is a unique real form: u(1).gl(1,R)
+component group is (Z/2)^1
+
+The cartan command exhibits the structure of this real torus:
+
+real: cartan
+Name an output file (return for stdout, ? to abandon):
+
+Cartan #0:
+split: 1; compact: 1; complex: 0
+[other output deleted]
+
+On the other hand a finite quotient of the same complex torus gives a
+different result.
+
+empty: type
+Lie type: T1.T1
+elements of finite order in the center of the simply connected group:
+Q/Z.Q/Z
+enter kernel generators, one per line
+(ad for adjoint, ? to abort):
+1/2,1/2
+
+enter inner class(es): sc
+main: components
+there is a unique real form: gl(1,R).u(1)
+real group is connected
+real: cartan
+Name an output file (return for stdout, ? to abandon):
+
+Cartan #0:
+split: 0; compact: 0; complex: 1
+[other output deleted]
+
+
+Example 2: Components of real forms of A1.A1 in the complex inner class
+
+The simply connected complex group SL(2,C)xSL(2,C) has a real form
+SL(2,C), which is connected. The corresponding real form of the
+adjoint group PSL(2,C)xPSL(2,C) is PSL(2,C), which is also
+connected. However the intermediate real form of
+SL(2,C)xSL(2,C)/<(-I,-I)> is isomorphic to SO(3,1) (of type D2=A1.A1),
+and is disconnected.
+
+real: type
+Lie type: A1.A1 sc C
+main: components
+there is a unique real form: sl(2,C)
+real group is connected
+real: type
+Lie type: A1.A1 ad C
+main: components
+there is a unique real form: sl(2,C)
+real group is connected
+real: type
+Lie type: A1.A1
+elements of finite order in the center of the simply connected group:
+Z/2.Z/2
+enter kernel generators, one per line
+(ad for adjoint, ? to abort):
+1/2,1/2
+
+enter inner class(es): C
+main: components
+there is a unique real form: sl(2,C)
+component group is (Z/2)^1

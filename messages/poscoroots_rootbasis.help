@@ -1,0 +1,7 @@
+
+The "poscoroots_rootbasis" prints the positive coroots in the basis of
+simple coroots.
+
+The command "posroots" prints the positive roots in the given basis of
+X^*(T). See also roots, roots_rootbasis, coroots, coroots_rootbasis,
+poscoroots, poscoroots_rootbasis and rootdatum.

@@ -1,0 +1,206 @@
+
+The Ktypemat command is part of the K-type suite of commands:
+KTypeform, Ktypemat, test and branch. It describes the irreducible
+representations of K "K-types". See [David Vogan, Branching to a
+Maximal Compact Subgroup, in proceedings of the conference for Roger
+Howe, Singapore 2007].
+
+Ktypemat computes the K-types of a given final standard module, up to
+a given height. Each such K-type is the lowest K-type of a final
+standard module, and the K-types of these are computed also, giving a
+square matrix. 
+
+See the help file for Ktypeform for an overview of K-types and normal
+final standard modules.  
+
+In response to the Ktypemat command the user enters a standard module,
+as in the Ktypeform command. The software test if this is both
+"standard" and "final" (for Ktypeform it is only required to be
+final); if not it prints a message and quits. If so, the user is told
+the height of this representation, and asked for a height bound.
+
+The software first converts the paramter into normal final standard
+form. It then computes all K-types of this representation up to the
+given height. Each of these K-types is parametrized by a normal final
+standard module, and each of the K-types of these are also computed,
+up to the given height. This gives a matrix, with rows corresponding
+to standard modules (restricted to K) and columns to K-types. Both
+rows and columns are parametrized by the same set of normal final
+standard modules. An entry m (an integer) in a row corresponding to
+I_K and K-type mu means
+
+I_K occurs with multiplicity m in the formula for mu
+
+(see the help file for the Ktypeform command). Thus each column of the
+matrix gives a formula for a K-type as a formal linear combination of
+standard modules restricted to K (truncated at the given height). In
+particular the first column of the matrix gives the same information
+as the Ktypeform command for this K-type (truncated by height). 
+
+The inverse of this matrix gives the matrix of K-multiplicities in the
+given normal standard representations. Now each column of the matrix
+correpsponds to a standard module, and each row a K-type. The entries
+in the column (positive integers) corresponding to standard module I_K
+gives the multiplicities of K-types in this stanard module, up to the
+given height. 
+
+*** Input and output ***
+
+The user is prompted for a kgb element and sequence of integers a1
+... an just as in the Ktypeform command. If the given parameter is
+standard and final, the user also gives a height, a nonnegative
+integer which should be at least as big as the height of the given
+standard module. 
+
+The software then converts this parameter to normal final standard
+(form, and computes an "Initial Formula" for its lowest K-type, as a
+sum of normal final standard modules. This is the information computed
+by the Ktypeform command. 
+
+It then computes all K-types of the given representation up to the
+given height, and lists them. Denote the I_K(0), ..., I_K(n). Each
+I_K(n) has a lowest K-type mu(n). 
+
+The software then prints a matrix labelled "triangular system". This
+is a lower triangular matrix, with possibly negative entries and 1s on
+the diagonal. This is the first matrix discussed above; and entry m in
+row i and column j means 
+
+I_K(i) occurs with multiplicity m in the formula for mu(j). 
+
+Thus if the matrix is a(i,j):
+
+mu(j) = sum_i a(i,j)I_K(i)
+
+(possibly plus other terms of greater height). 
+
+The software then prints the "Matrix of K-type multiplicities". An
+entry m in row i and column j means
+
+mu(i) has multipicity m in I_K(j)
+
+i.e. if the matrix is b(i,j):
+
+I_K(j)= sum_i b(i,j)mu(i) 
+
+(plus other K-types of greater height). 
+
+*** Examples ***
+
+Example 1: K-types of the holomorphic discrete series of SL(2,R):
+
+real: Ktypemat
+Choose KGB element: 0
+2rho = [ 2 ]
+Give lambda-rho: 0
+Height of representation [ 2 ]@(0)#0 is 2.
+Give height bound: 20
+Name an output file (return for stdout, ? to abandon):
+Initial formula: mu([ 2 ]@(0)#0) =
+ + [ 2 ]@(0)#0 - [ 6 ]@(0)#0
+Ordering of representations/K-types:
+[ 2 ]@(0)#0, height 2
+[ 6 ]@(0)#0, height 6
+[10 ]@(0)#0, height 10
+[14 ]@(0)#0, height 14
+[18 ]@(0)#0, height 18
+Triangular system:
+  1  0  0  0  0
+ -1  1  0  0  0
+  0 -1  1  0  0
+  0  0 -1  1  0
+  0  0  0 -1  1
+Matrix of K-type multiplicites:
+  1  0  0  0  0
+  1  1  0  0  0
+  1  1  1  0  0
+  1  1  1  1  0
+  1  1  1  1  1
+
+Write pi_k for the holomorphic discrete series representation with
+infinitesimal character k*rho. The given standard module is pi_1. The
+first column of the first matrix says that  
+
+(lowest K-types of pi_1) = pi_1 - pi_3 (restricted to K). 
+
+See Example 1 in the help file for Ktypeform.
+
+The first column of the second matrix says that pi_1 restricted to K
+contains the given K-types (the lowest K-types of pi_1, pi_3, ...,
+pi_9) with multiplicity 1. 
+
+Example 2: K-types of the spherical principal series of SL(2,R)
+
+real: Ktypemat
+Choose KGB element: 2
+2rho = [ 2 ]
+Give lambda-rho: 0
+Height of representation [ 2 ]@(0)#1 is 0.
+Give height bound: 10
+Name an output file (return for stdout, ? to abandon):
+Initial formula: mu([ 2 ]@(0)#1) =
+ + [ 2 ]@(0)#1 - [ 2 ]@(0)#0 - [ 2 ]@(1)#0
+Ordering of representations/K-types:
+[ 2 ]@(0)#1, height 0
+[ 2 ]@(0)#0, height 2
+[ 2 ]@(1)#0, height 2
+[ 6 ]@(0)#0, height 6
+[ 6 ]@(1)#0, height 6
+[10 ]@(0)#0, height 10
+[10 ]@(1)#0, height 10
+Triangular system:
+  1  0  0  0  0  0  0
+ -1  1  0  0  0  0  0
+ -1  0  1  0  0  0  0
+  0 -1  0  1  0  0  0
+  0  0 -1  0  1  0  0
+  0  0  0 -1  0  1  0
+  0  0  0  0 -1  0  1
+Matrix of K-type multiplicites:
+  1  0  0  0  0  0  0
+  1  1  0  0  0  0  0
+  1  0  1  0  0  0  0
+  1  1  0  1  0  0  0
+  1  0  1  0  1  0  0
+  1  1  0  1  0  1  0
+  1  0  1  0  1  0  1
+
+The first column of the second matrix says that the K-types of the
+spherical principal series are the following with multiplicity one:
+the trivial representation, and the lowest K-types of the two discrete
+series representations with infinitesimal character 1, 3, 5, ...
+
+Example 3: Spherical principal series of Sp(4,R):
+
+real: Ktypemat
+Choose KGB element: 10
+2rho = [ 2, 2 ]
+Give lambda-rho: 0 0
+Height of representation [ 2, 2 ]@(0,0)#3 is 0.
+Give height bound: 10
+Name an output file (return for stdout, ? to abandon):
+Initial formula: mu([ 2, 2 ]@(0,0)#3) =
+ + [ 2, 2 ]@(0,0)#3 - [ 2, 2 ]@(0,0)#1 - [ 2, 0 ]@(0,0)#0 - [ 2, 0 ]@(0,1)#0
+ - [ 2, 0 ]@(1,0)#0 - [ 2, 0 ]@(1,1)#0
+Ordering of representations/K-types:
+[ 2, 2 ]@(0,0)#3, height 0
+[ 2, 2 ]@(0,0)#1, height 4
+[ 2, 0 ]@(0,0)#0, height 6
+[ 2, 0 ]@(0,1)#0, height 6
+[ 2, 0 ]@(1,0)#0, height 6
+[ 2, 0 ]@(1,1)#0, height 6
+Triangular system:
+  1  0  0  0  0  0
+ -1  1  0  0  0  0
+ -1 -1  1  0  0  0
+ -1  0  0  1  0  0
+ -1 -1  0  0  1  0
+ -1  0  0  0  0  1
+Matrix of K-type multiplicites:
+  1  0  0  0  0  0
+  1  1  0  0  0  0
+  2  1  1  0  0  0
+  1  0  0  1  0  0
+  2  1  0  0  1  0
+  1  0  0  0  0  1
+

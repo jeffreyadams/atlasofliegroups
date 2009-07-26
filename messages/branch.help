@@ -1,0 +1,38 @@
+
+The "branch" command is part of the K-type suite of commands:
+KTypeform, Ktypemat, test and branch. It describes the irreducible
+representations of K "K-types". See [David Vogan, Branching to a
+Maximal Compact Subgroup, in proceedings of the conference for Roger
+Howe, Singapore 2007].
+
+branch computes the K-types of a given final standard module, up to
+a given height. Each such K-type is the lowest K-type of a final
+standard module.
+
+This information is precisely the first column of the second matrix in
+the output of the Ktypemat command. See the help file for Ktypemat for
+more information.
+
+See the help file for Ktypeform for an overview of K-types and normal
+final standard modules.  
+
+Example 1: K-types of the holomorphic discrete series of SL(2,R):
+
+real: branch
+Choose KGB element: 0
+2rho = [ 2 ]
+Give lambda-rho: 0
+Height of representation [ 2 ]@(0)#0 is 2.
+Give height bound: 20
+Name an output file (return for stdout, ? to abandon):
+ + [ 2 ]@(0)#0 + [ 6 ]@(0)#0 + [10 ]@(0)#0 + [14 ]@(0)#0 + [18 ]@(0)#0
+
+
+The given standard module is the holomorphic discrete series
+representation of SL(2,R) with infinitesimal character rho. The
+formula says the K-types up to height 20 are (the lowest K-types of
+the given standard modules with multipicity one, in this case
+holomorphic discrete series with infinitesimal character 1,3,5,7,9.
+
+See Example 1 in the help file for Ktypemat.
+
