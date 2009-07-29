@@ -9,6 +9,7 @@
 
 #include <iomanip>
 #include <iterator>
+#include <sstream>
 
 #include "basic_io.h"
 #include "lattice.h"
@@ -196,10 +197,23 @@ template<typename C>
 std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix<C>& m,
 			  unsigned long width)
 {
-  for (size_t i = 0; i < m.columnSize(); ++i)
+  std::vector<unsigned long> widths(m.numColumns(),width);
+
+  { std::ostringstream o;
+    for (size_t j=0; j<m.numColumns(); ++j)
+      for (size_t i=0; i<m.numRows(); ++i)
+      {
+        o.str(""); o << m(i,j);
+	size_t w=o.str().length()+1;
+        if (w>widths[j])
+	  widths[j]=w;
+      }
+  }
+
+  for (size_t i = 0; i < m.numRows(); ++i)
   {
-    for (size_t j = 0; j < m.rowSize(); ++j)
-      strm << std::setw(width) << m(i,j);
+    for (size_t j = 0; j < m.numColumns(); ++j)
+      strm << std::setw(widths[j]) << m(i,j);
 
     strm << std::endl;
   }
