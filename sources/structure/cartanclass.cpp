@@ -493,7 +493,8 @@ gradings::GradingList Fiber::makeGradingShifts
   \brief Constructs the \f$m_\alpha\f$s (images of coroots) in the fiber group,
   for \f$\alpha\f$ simple imaginary.
 
-  The effective number of bits of each \f$m_\alpha\f$ is |d_fiberGroup.dimension()|
+  The effective number of bits of each \f$m_\alpha\f$ is
+  |d_fiberGroup.dimension()|
 
   We take the coroots corresponding to the imaginary simple roots, which in
   the root datum are already expressed in the basis of the coweight lattice
@@ -513,10 +514,11 @@ bitset::RankFlagsList Fiber::mAlphas (const rootdata::RootDatum& rd) const
 }
 
 /*!
-  \brief Constructs the \f$m_\alpha\f$s (images of coroots) in the adjoint fiber
-  group, for \f$\alpha\f$ simple imaginary.
+  \brief Constructs the \f$m_\alpha\f$s (images of coroots) in the adjoint
+  fiber group, for \f$\alpha\f$ simple imaginary.
 
-  The number of bits of each \f$m_\alpha\f$ is |d_adjointFiberGroup.dimension()|
+  The number of bits of each \f$m_\alpha\f$ is
+  |d_adjointFiberGroup.dimension()|
 
   Algorithm: the cocharacter lattice for the adjoint group is spanned by the
   simple coweights. To get the coordinates of an element in that basis (which
@@ -604,7 +606,7 @@ Fiber::makeFiberMap(const rootdata::RootDatum& rd) const
   of the imaginary Weyl group on the adjoint fiber, and then call |makeOrbits|
   to make the partition. For the fiber action we can use the base grading and
   the grading shifts "as is", while the fiber group elements \f$m_\alpha\f$
-  are computed by |adjointMAlpha|.
+  are computed by |adjointMAlphas|.
 */
 partition::Partition Fiber::makeWeakReal(const rootdata::RootSystem& rs) const
 {
