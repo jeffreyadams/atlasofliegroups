@@ -346,23 +346,36 @@ bool BasedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr alpha) const
   return simple_grading(a,i);
 }
 
-/* The method |naive_seed| attempts to get an initial Tits group element by
+/* The method |naive_seed| attempts to get an initial Tits group element, for
+   a KGB construction for the real form |rf| starting at Cartan class |cn|, by
    extracting the necessary information fom the |Fiber| object associated to
    the Cartan class |cn|, and lifting that information from the level of the
    fiber group back to the level of torus parts. But as the name indicates,
-   the result is not always good; the main case where it works reliably is for
-   the fundamental Cartan (|cn==0|). The circumstance that makes it useless in
-   other fibers is that it fails to account for the different grading choices
-   involved in identifying the (weak) real form in the fiber and in the KGB
-   construction, so that there is no guarantee that the lifted element will
-   appear to belong to the correct real form. In fact the computed Tits
-   element |a| might not even give a strong involution $a.x_0.\delta$ at all.
+   the result is not always good, as it fails to account for the different
+   grading choices involved in identifying the (weak) real form in the fiber
+   and in the KGB construction. In the fiber construction, the action used to
+   partition the fiber group according to real forms uses a grading of the
+   imaginary roots for the twisted involution that makes all simple-imaginary
+   ones noncompact. In the KGB construction (i.e., in our |BasedTitsGroup|) a
+   grading is chosen only at the distinguished involution, and only of the
+   simple roots that are imaginary for that involution; it depends on the
+   square class of the real form. The bitvector |v| below is zero for some
+   strong involution |si| in same square class as |rf| at Cartan class |cn|;
+   the result will be correct if and only if the null torus part |x| defines
+   (by |BasedTitsGroup::grading|) the same grading of the (simple) imaginary
+   roots for Cartan class |cn| as |si| does (through |Fiber::class_base|).
+
+   The only case where one can rely on that to be true is for the fundamental
+   Cartan (|cn==0|), if our |BasedTitsGroup| was extracted as base object from
+   an |EnrichedTitsGroup| (the latter being necessarily constructed through
+   |EnrichedTitsGroup::for_square_class|), because in that case the
+   |BasedTitsGroup::grading_offset| field was actually computed from de
+   grading defined by an element |si| in the fundamental fiber. In the general
+   case all bets are off: the real form of |si| need not even be the same one
+   as the one corresponding to |BasedTitsGroup::grading_offset|.
 
    The main reason for leaving this (unused) method in the code is that it
-   provides an alternative method (if it were called from the second |KGBHelp|
-   constructor) to choosing the identity Tits element as starting point in the
-   fundamental fiber, and that it illustrates at least how lifting of
-   information from the fiber group should be done.
+   illustrates how to get the group morphism from the fiber group to T(2).
  */
 tits::TitsElt BasedTitsGroup::naive_seed
  (complexredgp::ComplexReductiveGroup& G,
@@ -390,30 +403,39 @@ tits::TitsElt BasedTitsGroup::naive_seed
    corresponds to the real form |rf|. Thus no element is actually recovered
    from any fiber group, but rather a set of equations for the torus part is
    set up and solved. The equations come in two parts: a first section for
-   establishing the correct coset of T(2) with respect to the "numerator"
+   establishing the correct coset in T(2) with respect to the "numerator"
    subgroup of the subquotient that defines th fiber group, and a second
    section for requiring the correct grading of the imaginary roots for the
-   real form that is intended.
+   real form that is intended. Both parts are inhomogeneous linear equations,
+   of which the left hand side (linear part) expresses a linear dependence on
+   the torus part, and the right hand side (inhomogeneous part) describes the
+   failure of the null torus part to satisfy the conditions (since these are
+   equations over Z/2Z, there is no need to put in a minus sign).
 
    The equations of the first section are derived from our test of being in
-   the proper coset for this square class, namely that the Tits element |a|
-   with this left torus part and canonical twisted involution for the Cartan
-   satisfies a*twisted(a)=e in our based twisted Tits group. This leads to
-   linear equations for the torus part of |a|, of which the inhomogeneous part
-   is found by applying the test with a null torus part. The linear part of
-   the equations is just the action of the involution on torus parts, as
-   provided by |Tg.involutionMatrix| for the twisted involution.
+   the proper coset for this square class (mentioned in kgb.cpp), namely that
+   the Tits element |a| with this left torus part and canonical twisted
+   involution for the Cartan satisfies $a*twisted(a)=e$ in our based twisted
+   Tits group. The left hand side describes the action of the involution on
+   torus parts, as provided by |Tg.involutionMatrix|. The right hand side is
+   equal to $a*twisted(a)$ where |a| is the canonical lift of the twisted
+   involution to the Tits group (i.e;, its torus part is null).
 
-   It is not obvious that the equations of this first section actually have a
-   solution, but since the KGB construction will find elements, we assert that
-   there are solutions, and also that the proper grading can be achieved by
-   some element of the coset. The solution is only meaningful modulo the
-   "denominator" subgroup of the subquotient that defines th fiber group, so
-   the result returned should be reduced modulo that subgroup by the caller.
+   The equations of the second section have as left hand sides the reductions
+   modulo 2 of the simple-imaginary roots for the twisted involution,
+   interpreted as Z/2Z-linear forms on torus parts, and as corresponding right
+   hand side the difference between the desired grading of that root and the
+   gradings of it defined by the element |a| above, with null torus part.
+
+   It is not obvious that these equations actually have a solution, but since
+   the traditional KGB construction in fact produces such elements, we assert
+   that one exists. The solution is only meaningful modulo the "denominator"
+   subgroup of the subquotient that defines th fiber group, so the result
+   returned should be reduced modulo that subgroup by the caller.
 
    If grading seeds are determined for different Cartan classes, there is no
-   guarantee that the will belong to the same strong real form. Therefore this
-   method should only be called in cases where only one seed is needed.
+   guarantee that chosen solutions will belong to the same strong real form.
+   Therefore this method should only be called when only one seed is needed.
  */
 tits::TitsElt BasedTitsGroup::grading_seed
   (complexredgp::ComplexReductiveGroup& G,
@@ -425,7 +447,7 @@ tits::TitsElt BasedTitsGroup::grading_seed
   const weyl::TwistedInvolution& tw = G.twistedInvolution(cn);
 
   // get an element lying over the canonical twisted involution for |cn|
-  tits::TitsElt a(Tg,tw); // trial element
+  tits::TitsElt a(Tg,tw); // trial element with null torus part
 
   // get the grading of the imaginary root system given by the element |a|
   gradings::Grading base_grading;
@@ -434,9 +456,11 @@ tits::TitsElt BasedTitsGroup::grading_seed
 
   // get the grading of the same system given by chosen representative of |wrf|
   gradings::Grading form_grading = f.grading(f.weakReal().classRep(wrf));
+  /* the difference between |base_grading| and |form_grading| will have to be
+     compensated by setting an appropriate torus part for |a| */
 
   // now prepare equations for coset for "fiber numerator" group of torus part
-  Tg.mult(a,twisted(a)); // now |a.t()| gives inhomogenous part
+  Tg.mult(a,twisted(a)); // now |a.t()| gives inhomogenous part for equations
 
   latticetypes::BinaryEquationList eqns;  // equations for our seed
   eqns.reserve(G.rank()+f.imaginaryRank()); // for coset + grading

@@ -425,7 +425,7 @@ namespace { // |FiberData| and |KGBHelp| are in anonymous namespace
   such that there are as much values modulo $I$ as there are in the fiber
   group, but they are not naturally in bijection, and $0$ need no be a valid
   value for $x$: the possible values are such that the Tits group element $a$
-  given by $(x,w)$ satisfies $a.twisted(a)=id$, where the twisting is done
+  given by $(x,w)$ satisfies $a*twisted(a)=e$, where the twisting is done
   with respect to the based Tits group (determined by the base grading).
 
   This constructor depends on the real form only via the set |Cartan_classes|
