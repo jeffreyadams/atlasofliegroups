@@ -58,6 +58,7 @@ namespace {
   void posroots_rootbasis_f();
   void poscoroots_rootbasis_f();
   void KGB_f();
+  void checkbasept_f();
   void sub_KGB_f();
   void trivial_f();
   void Ktypeform_f();
@@ -76,6 +77,7 @@ namespace {
   void poscoroots_rootbasis_h();
   void mod_lattice_h();
   void KGB_h();
+  void checkbasept_h();
   void sub_KGB_h();
   void trivial_h();
   void Ktypeform_h();
@@ -186,6 +188,7 @@ void addTestCommands<realmode::RealmodeTag>
   // add additional commands here :
 
   mode.add("KGB",KGB_f);
+  mode.add("checkbasept",checkbasept_f);
   mode.add("sub_KGB",sub_KGB_f);
   mode.add("trivial",trivial_f);
   mode.add("Ktypeform",Ktypeform_f);
@@ -276,6 +279,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   // add additional help commands here:
 
   mode.add("KGB",KGB_h);
+  mode.add("checkbasept",checkbasept_h);
   mode.add("sub_KGB",helpmode::nohelp_h);
   mode.add("trivial",helpmode::nohelp_h);
   mode.add("Ktypeform",Ktypeform_h);
@@ -413,6 +417,14 @@ void KGB_f()
 
   kgb::KGB kgb(G_R,G_R.Cartan_set());
   kgb_io::var_print_KGB(f,mainmode::currentComplexGroup(),kgb);
+}
+
+void checkbasept_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
+  kgb::KGB kgb(G_R,G_R.Cartan_set());
+  kltest::checkBasePoint(kgb);
 }
 
 void sub_KGB_f()
@@ -569,7 +581,8 @@ void Ktypemat_f()
     return;
   }
 
-  assert(c.size()==1 and khc.rep_no(c.begin()->first)==sr);
+  assert(c.size()==1);
+  assert(khc.rep_no(c.begin()->first)==sr);
 
   khc.print(std::cout << "Height of representation ",sr) << " is "
     << khc.height(c.begin()->first) << ".\n";
@@ -843,6 +856,11 @@ void poscoroots_rootbasis_h()
 void KGB_h()
 {
   io::printFile(std::cerr,"KGB_.help",io::MESSAGE_DIR);
+}
+
+void checkbasept_h()
+{
+  io::printFile(std::cerr,"checkbasept.help",io::MESSAGE_DIR);
 }
 
 void sub_KGB_h()
