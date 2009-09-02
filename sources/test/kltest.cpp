@@ -82,9 +82,10 @@ namespace kltest {
   transform for a commuting multiplication, is independent of the choice of
   the reduced expression.
 
-  Algorithm: denote x_w the conjectural element defined for w. Then the
-  conjecture amounts to saying that for any descent s for w, s.x_{sw} is
-  independent of the choice of s.
+  Algorithm: traverse involutions w in increasing order, so descents of w are
+  visited before w. Denoting for v<w by x_v the base point for v, we may check
+  at w that for all descents sw of w, the KGB element s.x_{sw} is the same; it
+  will then define the element x_w.
 */
 bool checkBasePoint(const kgb::KGB& kgb)
 {
@@ -99,61 +100,64 @@ bool checkBasePoint(const kgb::KGB& kgb)
 
   kgb::KGBEltList basepts;
 
-  for (size_t x0 = 0; x0 < kgb.size() and kgb.length(x0) == 0; ++x0) {
-    // check if x0 is large
-    for (size_t s = 0; s < kgb.rank(); ++s) {
-      gradings::Status::Value v = kgb.status(s,x0);
-      if (v == gradings::Status::ImaginaryCompact)
-	goto nextx0;
+  for (size_t x0 = 0; x0 < kgb.size() and kgb.length(x0) == 0; ++x0)
+  { { size_t s; // check if x0 is large
+      for (s=0; s<kgb.rank(); ++s) // check simple roots
+      {
+	gradings::Status::Value v = kgb.status(s,x0);
+	if (v == gradings::Status::ImaginaryCompact) // none should be compact
+	  break;
+      }
+      if (s<kgb.rank()) // previous loop was broken out of
+	continue;
     }
+
     // if we get here, x0 is large
     // check that basepoint is well-defined
     basepts.assign(wl.size(),kgb::UndefKGB);
     basepts[0] = x0;
-    for (size_t w_pos = 1; w_pos < wl.size(); ++w_pos) {
+    for (size_t w_pos = 1; w_pos < wl.size(); ++w_pos)
+    {
 #ifdef VERBOSE
-    std::cerr << w_pos << "\r";
+      std::cerr << w_pos << "\r";
 #endif
       const weyl::TwistedInvolution& tw = wl[w_pos];
 
-      for (size_t s = 0; s < kgb.rank(); ++s)
-	if (W.weylGroup().hasDescent(s,tw.w()))
+      for (size_t s=0; s<kgb.rank(); ++s)
+	if (W.weylGroup().hasDescent(s,tw.w()))  // try all descents
 	{
-	  weyl::TwistedInvolution sw = tw;
-	  kgb::KGBElt sx_sw;
-	  if (W.hasTwistedCommutation(s,tw))
+	  kgb::KGBElt sx_sw; // will hold candidate basepoint at w
+	  if (W.hasTwistedCommutation(s,tw)) // descent is inverse Cayley
 	  {
-	    W.leftMult(sw,s);
-	    size_t sw_pos = std::lower_bound(wl.begin(),wl.end(),sw,comp) -
-	      wl.begin();
+	    weyl::TwistedInvolution sw = W.prod(s,tw);
+	    size_t sw_pos = // locate index of |sw| using binary search
+              std::lower_bound(wl.begin(),wl.end(),sw,comp) -  wl.begin();
 	    sx_sw = kgb.cayley(s,basepts[sw_pos]);
-	    if (sx_sw == kgb::UndefKGB)
+	    if (sx_sw == kgb::UndefKGB) // Cayley undefined; should not happen
 	      return false;
 	  }
 	  else
 	  {
-	    W.twistedConjugate(sw,s);
-	    size_t sw_pos = std::lower_bound(wl.begin(),wl.end(),sw,comp) -
-	      wl.begin();
+	    weyl::TwistedInvolution sw = W.twistedConjugated(tw,s);
+	    size_t sw_pos = // locate index of |sw| using binary search
+              std::lower_bound(wl.begin(),wl.end(),sw,comp) -  wl.begin();
 	    sx_sw = kgb.cross(s,basepts[sw_pos]);
 	  }
 
 	  if (basepts[w_pos] == kgb::UndefKGB) // x_w is new
 	  {
 	    basepts[w_pos] = sx_sw;
-	    // check if basepoint is large
+	    // check if basepoint is large (all simple-imaginaries noncompact)
 	    // this is automatic according to David
-	    // ... not done yet, need to think a little ...
+	    // ... not done yet, need to think a little ... [Fokko]
 	  }
-	  else if (sx_sw != basepts[w_pos])
+	  else if (sx_sw != basepts[w_pos]) // inconsistent base point
 	    return false;
 	}
     }
 #ifdef VERBOSE
     std::cerr << std::endl;
 #endif
- nextx0:
-    continue;
   }
 
 #ifdef VERBOSE
