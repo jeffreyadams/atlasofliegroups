@@ -191,6 +191,7 @@ template<typename C> class Matrix {
   }
 
   bool operator== (const Matrix<C>&) const;
+  bool operator!= (const Matrix<C>& m) const {return not(operator==(m)); }
 
   index_pair absMinPos(size_t i_min = 0, size_t j_min = 0) const;
 
