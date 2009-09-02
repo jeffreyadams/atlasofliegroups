@@ -4,7 +4,7 @@
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -20,6 +20,7 @@ namespace intutils {
 
   template<typename I> I abs(I);
   template<typename I> I divide(I, I);
+  template<typename I> I remainder(I, I);
   template<typename I> I factorial(I);
 
 }

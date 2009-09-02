@@ -24,15 +24,12 @@ namespace atlas {
 
 namespace intutils {
 
-template<typename I> I abs(I a)
 
 /*!
   Synopsis: returns the absolute value of a
 */
-
-{
-  return a >= 0 ? a : -a;
-}
+template<typename I>
+  inline I abs(I a) { return a >= 0 ? a : -a; }
 
 /*!
   The result of divide(a,b) is the unique element q such that a = q.b + r,
@@ -45,18 +42,18 @@ template<typename I> I abs(I a)
   in C or C++. Amazingly Fokko's incorrect original expresion |-(-a/b -1)|
   never did any harm. MvL]
 */
-template<typename I> I divide(I a, I b)
-{
-  return a >= 0 ? a/b : ~(~a/b);
-}
+template<typename I>
+  inline I divide(I a, I b) { return a >= 0 ? a/b : ~(~a/b); }
 
-template<typename I> I factorial(I a)
+template<typename I>
+  inline I remainder(I a, I b) { return a >= 0 ? a%b : b+~(~a%b); }
+
 
 /*!
   Synopsis: returns the factorial of a. It is assumed that a >= 0; we do
   not worry about overflow.
 */
-
+template<typename I> I factorial(I a)
 {
   I f = 1;
 
