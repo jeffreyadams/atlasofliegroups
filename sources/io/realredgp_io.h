@@ -42,7 +42,7 @@ std::ostream& printRealWeyl(std::ostream& strm,
 			    size_t cn);
 
 std::ostream& printStrongReal(std::ostream& strm,
-			      realredgp::RealReductiveGroup& G_R,
+			      complexredgp::ComplexReductiveGroup& G_C,
 			      const realform_io::Interface& rfi,
 			      size_t cn);
 

@@ -197,11 +197,10 @@ std::ostream& printRealWeyl(std::ostream& strm,
   real forms; we label them with the corresponding weak real form.
 */
 std::ostream& printStrongReal(std::ostream& strm,
-			      realredgp::RealReductiveGroup& G_R,
+			      complexredgp::ComplexReductiveGroup& G_C,
 			      const realform_io::Interface& rfi,
 			      size_t cn)
 {
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
   const cartanclass::CartanClass& cc = G_C.cartan(cn);
 
   size_t n = cc.numRealFormClasses();
