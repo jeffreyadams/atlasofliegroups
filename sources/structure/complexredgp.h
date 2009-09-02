@@ -297,12 +297,7 @@ class ComplexReductiveGroup
   const cartanclass::Fiber& dualFundamental() const
     { return d_dualFundamental; }
 
-/*!
-  \brief returns the number of conjugacy classes of Cartan subgroups
-  currently constructed for G. Only after fillCartan() has been called is it
-  ensured that this gives the total number of Cartan subgroups for this inner
-  class.
-*/
+//! \brief returns the number of conjugacy classes of Cartan subgroups.
   size_t numCartanClasses() const
     { return Cartan.size(); }
 
