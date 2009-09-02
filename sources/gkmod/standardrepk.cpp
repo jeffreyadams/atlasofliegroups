@@ -56,12 +56,32 @@ orth_projection(const rootdata::RootDatum& rd, bitset::RankFlags gens,
 
 /*****************************************************************************
 
-        Chapter I -- The StandardRepK class
+        Chapter I -- The HechtSchmid and StandardRepK classes
 
 ******************************************************************************/
 
-  namespace standardrepk {
+namespace standardrepk {
 
+Char HechtSchmid::rhs () const
+{
+  if (rh1==NULL)
+    return Char();
+
+  Char result(*rh1);
+  if (rh2!=NULL)
+    result+= Char(*rh2);
+
+  return result;
+}
+
+Char HechtSchmid::equivalent () const
+{
+  Char result=rhs();
+  if (lh2!=NULL)
+    result -= Char(*lh2);
+
+  return result;
+}
 
 // accessors
 
@@ -135,6 +155,7 @@ KhatContext::KhatContext
   , nonfinal_pool(),final_pool()
   , nonfinals(nonfinal_pool), finals(final_pool)
   , height_of()
+  , height_graded(height_of)
   , d_rules()
   , proj_pool(), proj_sets(proj_pool), proj_data()
 {
@@ -149,8 +170,7 @@ KhatContext::KhatContext
   // the following loop should be restricted to the Cartan classes for |GR|
   for (size_t r=0; r<d_data.size(); ++r)
   {
-    // d_G->cartan[r] is rth CartanClass
-    // which by now records the canonical involution for this class
+    // d_G->cartan[r] is (canonical involution for) rth CartanClass
     Cartan_info& ci=d_data[r];
 
     const latticetypes::LatticeMatrix& theta = d_G->cartan(r).involution();
@@ -285,7 +305,7 @@ RawRep KhatContext::Levi_rep
   return RawRep (lambda,a);
 } // |Levi_rep|
 
-bool KhatContext::isStandard(const StandardRepK& sr, size_t& witness)
+bool KhatContext::isStandard(const StandardRepK& sr, size_t& witness) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight lambda=lift(sr);
@@ -300,7 +320,7 @@ bool KhatContext::isStandard(const StandardRepK& sr, size_t& witness)
   return true;
 }
 
-bool KhatContext::isZero(const StandardRepK& sr, size_t& witness)
+bool KhatContext::isZero(const StandardRepK& sr, size_t& witness) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight lambda=lift(sr);
@@ -317,7 +337,7 @@ bool KhatContext::isZero(const StandardRepK& sr, size_t& witness)
   return false;
 }
 
-bool KhatContext::isFinal(const StandardRepK& sr, size_t& witness)
+bool KhatContext::isFinal(const StandardRepK& sr, size_t& witness) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight lambda=lift(sr);
@@ -380,7 +400,7 @@ std::ostream& KhatContext::print(std::ostream& strm,
 // this version ensures the basic one is recursively called first
 combination KhatContext::standardize(const Char& chi)
 {
-  combination result(height_order());
+  combination result(height_graded);
 
   for (Char::const_iterator i=chi.begin(); i!=chi.end(); ++i)
     result.add_multiple(standardize(i->first),i->second);
@@ -388,11 +408,9 @@ combination KhatContext::standardize(const Char& chi)
   return result;
 }
 
-// the basic case
-combination KhatContext::standardize(StandardRepK sr)
+// the basic case, |sr| is assumed normalized here
+combination KhatContext::standardize(const StandardRepK& sr)
 {
-  normalize(sr);
-
   { // first check if we've already done |sr|
     seq_no n=nonfinals.find(sr);
     if (n!=Hash::empty)
@@ -405,12 +423,12 @@ combination KhatContext::standardize(StandardRepK sr)
     { // now check if we already know |sr| to be Final
       seq_no n=finals.find(sr);
       if (n!=Hash::empty)
-	return combination(n,height_order()); // single term known to be final
+	return combination(n,height_graded); // single term known to be final
     }
 
     if (isZero(sr,witness))
     {
-      combination zero(height_order());
+      combination zero(height_graded);
       d_rules.equate(nonfinals.match(sr),zero);
       return zero;
     }
@@ -419,41 +437,26 @@ combination KhatContext::standardize(StandardRepK sr)
     {
       assert(height_of.size()==final_pool.size());
       height_of.push_back(height(sr));
-      return combination(finals.match(sr),height_order()); // single term
+      return combination(finals.match(sr),height_graded); // single term
     }
+
+    // now |sr| is known to be Standard, but neither Zero nor Final
 
     HechtSchmid equation= back_HS_id(sr,fiber(sr).simpleReal(witness));
-    assert(equation.lh2==NULL); // |back_HS_id| never produces a second member
-    assert(equation.rh1!=NULL);
-
-    Char rhs(*equation.rh1); // rhs starts as second member
-    if (equation.rh2!=NULL)
-    {
-      rhs+= Char(*equation.rh2);
-    }
+    assert(equation.n_lhs()==1); // |back_HS_id| gives 1-term left hand side
+    assert(equation.n_rhs()!=0); // and never a null right hand side
 
     // now recursively standardize all terms, storing rules
-    combination result= standardize(rhs);
+    combination result= standardize(equation.rhs());
     d_rules.equate(nonfinals.match(sr),result); // and add rule for |sr|
     return result;
   } // if (isStandard(sr,witness))
 
   HechtSchmid equation= HS_id(sr,fiber(sr).simpleImaginary(witness));
-  assert(equation.lh2!=NULL); // all cases of |HS_id| produce a second member
+  assert(equation.n_lhs()==2); // all cases of |HS_id| produce 2-term lhs
 
-  Char rhs(*equation.lh2,-1); // rhs starts as second member negated
-
-  if (equation.rh1!=NULL)
-  {
-    rhs+= Char(*equation.rh1);
-    if (equation.rh2!=NULL)
-    {
-      rhs+= Char(*equation.rh2);
-    }
-  }
-
-  // now recursively standardize all terms, storing rules
-  combination result= standardize(rhs);
+  // recursively standardize all terms of |equation.equivalent()|, storing rules
+  combination result= standardize(equation.equivalent());
   d_rules.equate(nonfinals.match(sr),result); // and add rule for |sr|
   return result;
 } // standardize
@@ -461,7 +464,7 @@ combination KhatContext::standardize(StandardRepK sr)
 void KhatContext::normalize(StandardRepK& sr) const
 {
   const rootdata::RootDatum& rd = rootDatum();
-  const cartanclass::Fiber& f=d_G->cartan(sr.d_cartan).fiber();
+  const cartanclass::Fiber& f=fiber(sr);
 
   latticetypes::Weight lambda=lift(sr);
 
@@ -514,7 +517,7 @@ void KhatContext::normalize(StandardRepK& sr) const
 HechtSchmid
 KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 {
-  HechtSchmid id(sr);
+  HechtSchmid id(sr,*this);
   const rootdata::RootDatum& rd=rootDatum();
   tits::TitsElt a=titsElt(sr);
   latticetypes::Weight lambda=lift(sr);
@@ -544,12 +547,13 @@ KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
   if (d_Tg.simple_grading(a,i))
   { // |alpha| is a non-compact root
     d_Tg.basedTwistedConjugate(a,i); // adds $m_i$ to torus part
-    id.add_lh(std_rep(mu, a));
-    assert(sr.d_cartan==id.lh2->d_cartan);
+    StandardRepK sr0= std_rep(mu, a);
+    assert(sr.d_cartan==sr0.d_cartan);
+    id.add_lh(sr0,*this);
     // the change to |d_lambda| may involve both components
 
     /* Now are equivalent:
-       = |id.lh2->d_fiberElt==sr.d_fiberElt|
+       = |sr0.d_fiberElt==sr.d_fiberElt|
        = $m_i$ absorbed into quotient (i.e., $m_i\in(X_*^- mod 2)$)
        = $\alpha^\vee( (X^*)^\theta ) = 2\Z$
        = $\alpha\notin(1-\theta_\alpha)X^*$  ($\theta_\alpha=\theta.s_\alpha$)
@@ -557,18 +561,20 @@ KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
     */
 
     d_Tg.Cayley_transform(a,i);
-    id.add_rh(std_rep(lambda, a));
-    if (id.lh2->d_fiberElt==sr.d_fiberElt) // type II
+    StandardRepK sr1= std_rep(lambda, a);
+    id.add_rh(sr1,*this);
+    if (sr0.d_fiberElt==sr.d_fiberElt) // type II
     {
       lambda += rootDatum().simpleRoot(i); // other possibility
       lambda += rootDatum().simpleRoot(i); // add twice: doubled coordinates
-      id.add_rh(std_rep(lambda, a));
-      assert(id.rh1->d_lambda != id.rh2->d_lambda);
+      StandardRepK sr2= std_rep(lambda, a);
+      assert(sr1.d_lambda != sr2.d_lambda);
+      id.add_rh(sr2,*this);
     }
   }
   else // $\alpha_i$ is a compact root; "easy" Hecht-Schmid identity
     // based twisted conjugation fixed the Tits element; just reflect weight
-    id.add_lh(std_rep(mu, a)); // and no RHS
+    id.add_lh(std_rep(mu,a),*this); // and no RHS
 
   return id;
 } // HS_id
@@ -606,7 +612,7 @@ KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 HechtSchmid
 KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 {
-  HechtSchmid id(sr);
+  HechtSchmid id(sr,*this);
   const rootdata::RootDatum& rd=rootDatum();
   tits::TitsElt a=titsElt(sr);
   latticetypes::Weight lambda=lift(sr);
@@ -617,8 +623,9 @@ KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 
   {
     latticetypes::Weight mu=rd.root(alpha);
-    mu *= rd.scalarProduct(lambda,alpha)/2; // an integer multiple of $\alpha$
-    lambda -= mu; // this makes lambda invariant under $s_\alpha$
+    mu *= rd.scalarProduct(lambda,alpha)/2; // an even multiple of $\alpha$
+    lambda -= mu; // this makes |lambda| invariant under $s_\alpha$
+    // due to basis used, |lambda| effectively modified by multiple of $\alpha$
     /* in type I, $\alpha$ is in $(1-\theta)X^*$ and correction is neutral
        in type II, correction need not be in $(1-\theta)X^*$, but adding
        $\alpha$ gives HC parameter designating the same representation
@@ -654,15 +661,16 @@ KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
   // one right term is obtained by undoing Cayley for |a|, with lifted |lambda|
   d_Tg.inverse_Cayley_transform(a,i,mod_space);
 
-  id.add_rh(std_rep(lambda,a));
+  StandardRepK sr1 = std_rep(lambda,a);
+  id.add_rh(sr1,*this);
 
   // there will be another term in case of a type I HechtSchmid identity
   // it differs only in the fiber part, by $m_i$; if this vanishes into the
   // quotient, the HechtSchmid identity is type II and nothing is added
   d_Tg.basedTwistedConjugate(a,i);
-  StandardRepK other=std_rep(lambda,a);
-  if (other.d_fiberElt!=id.rh1->d_fiberElt) // type I
-    id.add_rh(other);
+  StandardRepK sr2=std_rep(lambda,a);
+  if (sr1.d_fiberElt!=sr2.d_fiberElt) // type I
+    id.add_rh(sr2,*this);
 
   return id;
 } // |back_HS_id|
@@ -898,7 +906,7 @@ RawChar KhatContext::KGB_sum(const PSalgebra& q,
 
 combination KhatContext::truncate(const combination& c, level bound) const
 {
-  combination result(height_order());
+  combination result(height_graded);
   for (combination::const_iterator it=c.begin(); it!=c.end(); ++it)
     if (height(it->first)<=bound)
       result.insert(result.end(),*it);
@@ -991,7 +999,7 @@ equation KhatContext::mu_equation(seq_no n, level bound)
 {
   CharForm kf= K_type_formula(rep_no(n),bound);
 
-  equation result(n,combination(height_order()));
+  equation result(n,combination(height_graded));
   combination& sum=result.second;
 
   for (Char::const_iterator it=kf.second.begin(); it!=kf.second.end(); ++it)
@@ -1030,20 +1038,20 @@ matrix::Matrix<CharCoeff> KhatContext::K_type_matrix
 
 combination KhatContext::branch(seq_no s, level bound)
 {
-  combination result(height_order()); // a linear combination of $K$-types
+  combination result(height_graded); // a linear combination of $K$-types
 
   if (height(s)>bound)
     return result;
 
   // a linear combination of Final representations
-  combination remainder(s,height_order()); // terms will have |height<=bound|
+  combination remainder(s,height_graded); // terms will have |height<=bound|
   do
   {
     combination::iterator head=remainder.begin(); // leading term
 
     equation eq=mu_equation(head->first,bound);
 
-    result += combination(eq.first,head->second,height_order());
+    result += combination(eq.first,head->second,height_graded);
     remainder.add_multiple(eq.second,-head->second);
   }
   while (not remainder.empty());
@@ -1090,7 +1098,7 @@ KhatContext::saturate(const std::set<equation>& system, level bound)
     const equation& cf=queue.front(); // an unprocessed formula
     assert(height(cf.first) <= bound);
 
-    result.push_back(equation(cf.first,combination(height_order())));
+    result.push_back(equation(cf.first,combination(height_graded)));
     combination& rhs=result.back().second;
 
     for (combination::const_iterator

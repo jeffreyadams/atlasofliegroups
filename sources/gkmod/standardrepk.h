@@ -66,7 +66,7 @@ typedef unsigned int level; // unsigned latticetypes::LatticeCoeff
 // a comparison object that first takes into account a grading (height)
 class graded_compare
 {
-  const std::vector<level>* h; // pointer, so assignable
+  const std::vector<level>* h; // pointer, so |graded_compare| can be assignable
 
 public:
   graded_compare (const std::vector<level>& a) : h(&a) {}
@@ -84,6 +84,7 @@ typedef std::pair<seq_no,combination> equation;
 
 // class handling rewriting of StandardRepK values by directed equations
 // all left hand sides are assumed distinct, so just repeated substitutions
+// in fact due to ordering, it now functions as a trivial lookup table
 class SR_rewrites
 {
 public:
@@ -136,9 +137,9 @@ class StandardRepK {
   standard Harish-Chandra module.
 
   This is a parameter type like Tits elements; the important operations are
-  modifying and comparing values, not storing additional data that
-  facilitate methods. For that auxiliary classes similar to |WeylGroup| with
-  respect to |WeylElt| will be used; here mainly |KhatContext|.
+  modifying and comparing values, not storing additional data that facilitate
+  methods. For that, an auxiliary class |KhatContext|, which has a role
+  similar to |WeylGroup| with respect to |WeylElt|, will be used
 
   For us a standard Harish-Chandra module is attached to
   1) a real Cartan subgroup $H(R)=H(R)_c H(R)_s$, with $H(R)_c = H(R)\cap K$
@@ -168,7 +169,7 @@ class StandardRepK {
   means that except for intermediate computational values, the Weyl group
   part of the Tits element can be replaced by an indication of the number
   |d_cartan| of the real Cartan we are considering (the Weyl group part is
-  the twisted involution for the distinguished involution in that class).
+  then the twisted involution for the distinguished involution in that class).
   The (left) torus part must is explicitly represented as |d_fiberElt|; it
   implicitly determines the real form as in the Cartan class module,
   provided the central square class (which is stored elsewhere) is known.
@@ -188,10 +189,9 @@ class StandardRepK {
   This is the information held in |d_lambda|. (The name lambda refers to the
   restriction of $\gamma$ to $\tilde H(R)_c$.) This is of type |HCParam|,
   consisting of an integer vector and an integer respesenting a bit vector;
-  the integer vector gives the non-torsion part of
-  $(X^*+\rho)/(1-\theta)X^*$ on a basis of $(1/2)X^*$ held in
-  |KhatContext|, and the bitvector gives the torsion part, via a basis
-  also given there.
+  the integer vector gives the non-torsion part of $(X^*+\rho)/(1-\theta)X^*$
+  on a basis of $(1/2)X^*$ held in |KhatContext|, and the bitvector gives the
+  torsion part, via a basis also given there.
 
 */
 
@@ -205,7 +205,7 @@ class StandardRepK {
 */
   size_t d_cartan;
 
-// no real form or base grading recorded in elements; in |KhatContext|
+// no real form or base grading recorded in elements; they're in |KhatContext|
 /*!
   \brief Element of the fiber group; left torus part of the strong involution
 */
@@ -267,17 +267,14 @@ struct Cartan_info
 
 }; // |struct Cartan_info|
 
-// This class serves to store tables of previously computed mappings from
-// "bad" standard representations to good ones. Also the information
-// necessary to interpret the d_lambda field in StandardRepK are stored here
-// (in d_realForm .. d_minusQuotient)
-
 struct proj_info
 {
   latticetypes::LatticeMatrix projection;
   latticetypes::LatticeCoeff denom;
 }; // |struct proj_info|
 
+
+// a wrapper around |bitset::RankFlags| to allow a hash table indexed by them
 struct bitset_entry : public bitset::RankFlags
 {
   typedef bitset::RankFlags base;
@@ -286,6 +283,11 @@ struct bitset_entry : public bitset::RankFlags
   size_t hashCode(size_t modulus) const { return to_ulong()&(modulus-1); }
 }; // |struct bitset_entry|
 
+
+
+// This class serves to store tables of previously computed mappings from
+// "bad" standard representations to good ones. Also the information
+// necessary to interpret the d_lambda field in StandardRepK are stored here
 class KhatContext
 {
   complexredgp::ComplexReductiveGroup* d_G;
@@ -306,10 +308,12 @@ class KhatContext
   Hash nonfinals,finals;
 
   std::vector<level> height_of; // alongside |final_pool|
+  graded_compare height_graded; // ordering object that will use |height_of|
 
   // a set of equations rewriting to Standard, Normal, Final, NonZero elements
-  SR_rewrites d_rules;
+  SR_rewrites d_rules; // maps from |seq_no| of |nonfinals| to |combination|
 
+  // we cache a number of |proj_info| values, indexed by sets of generators
   bitset_entry::Pooltype proj_pool;
   hashtable::HashTable<bitset_entry,unsigned long> proj_sets;
 
@@ -325,7 +329,7 @@ class KhatContext
 
   void swap(KhatContext&);
 
-// accessors and manipulators
+// accessors and manipulators (manipulation only as side effect for efficiency)
 
   const complexredgp::ComplexReductiveGroup&
     complexGroup() const { return *d_G; }
@@ -335,11 +339,9 @@ class KhatContext
   const weyl::TwistedWeylGroup& twistedWeylGroup() const
     { return d_G->twistedWeylGroup(); }
   const tits::TitsGroup& titsGroup() const { return d_Tg.titsGroup(); }
-  const cartanclass::Fiber& fiber(const StandardRepK& sr)
+  const cartanclass::Fiber& fiber(const StandardRepK& sr) const
     { return d_G->cartan(sr.Cartan()).fiber(); }
   const kgb::KGB& kgb() const { return d_KGB; }
-
-  graded_compare height_order() const { return graded_compare(height_of); }
 
   StandardRepK std_rep
     (const latticetypes::Weight& two_lambda, tits::TitsElt a) const;
@@ -355,13 +357,14 @@ class KhatContext
     (latticetypes::Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
     const;
 
+  // RepK from KGB number only, with |lambda=rho|; method is currently unused
   StandardRepK KGB_elt_rep(kgb::KGBElt z) const
     {
       return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z));
     }
 
 /*
-  The conditions below (and Normal which is not used in tests) are define by
+  The conditions below (and Normal which is not used in tests) are defined by
    Standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ imaginary
    Normal: $\<\lambda,\alpha\vee+\theta\alpha\vee>\geq0$ when $\alpha$ simple,
      complex, and orthogonal to sums of positive imaginary resp. real roots.
@@ -374,12 +377,12 @@ class KhatContext
   The |witness| parameter is set to an index of a root that witnesses
   the failure to be Standard, non-Zero, or Final in case of such verdicts.
   This index is into |f.simpleImaginary| for |isStandard| and |isZero|, and
-  it is int |f.simpleReal| for |isFinal|, where |f| is the |Fiber| at the
-  canonical twisted involution for the cartan class of |sr|.
+  it is into |f.simpleReal| for |isFinal|, where |f| is the |Fiber| at the
+  canonical twisted involution for the Cartan class of |sr|.
 */
-  bool isStandard(const StandardRepK& sr, size_t& witness);
-  bool isZero(const StandardRepK& sr, size_t& witness);
-  bool isFinal(const StandardRepK& sr, size_t& witness);
+  bool isStandard(const StandardRepK& sr, size_t& witness) const;
+  bool isZero(const StandardRepK& sr, size_t& witness) const;
+  bool isFinal(const StandardRepK& sr, size_t& witness) const;
 
   tits::TitsElt titsElt(const StandardRepK& s) const
   {
@@ -429,18 +432,26 @@ class KhatContext
     return height_of[i]; // which will equal |height(rep_no(i))|
   }
 
+  const graded_compare& height_order() const { return height_graded; }
+
   //! Lower bound for height of representation after adding positive roots
-  level height_bound(const latticetypes::Weight& lambda);
+  level height_bound(const latticetypes::Weight& lambda); // non |const|
 
-
-  // apply symmetry for root $\alpha_s$ to |a|
-  void reflect(tits::TitsElt a, size_t s);
 
   //!\brief Projection |Weight| to |HCParam|
   HCParam project(size_t cn, latticetypes::Weight lambda) const; // by value
 
-
   void normalize(StandardRepK&) const;
+
+  combination standardize(const StandardRepK& sr); // non |const|: |d_rules++|
+  combination standardize(StandardRepK& sr) // non |const|, normalizes |sr|
+  { normalize(sr); return standardize(static_cast<const StandardRepK&>(sr)); }
+  combination standardize(const Char& chi); // non |const|
+
+  combination truncate(const combination& c, level bound) const;
+
+
+  kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
 
   // Hecht-Schmid identity for simple-imaginary root $\alpha$
   HechtSchmid HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
@@ -448,15 +459,8 @@ class KhatContext
   // Hecht-Schmid identity for simple-real root $\alpha$
   HechtSchmid back_HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
 
-  combination standardize(StandardRepK sr); // call by value
-
-  combination standardize(const Char& chi);
-
-  kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
-
-  combination truncate(const combination& c, level bound) const;
-
-  CharForm K_type_formula(const StandardRepK& sr, level bound=~0u);
+  CharForm K_type_formula
+    (const StandardRepK& sr, level bound=~0u);// non |const|
   equation mu_equation(seq_no, level bound=~0u); // adds equations
 
   std::vector<equation> saturate
@@ -469,14 +473,13 @@ class KhatContext
   matrix::Matrix<CharCoeff>
     K_type_matrix(std::set<equation>& system,
 		  level bound,
-		  std::vector<seq_no>& reps);
+		  std::vector<seq_no>& reps); // non |const|
 
-  combination branch(seq_no s, level bound);
+  combination branch(seq_no s, level bound); // non |const|
 
+  void go(const StandardRepK& sr);  // used by "test" command
 
 // manipulators
-
-  void go(const StandardRepK& sr);
 
 // private methods
 
@@ -486,29 +489,38 @@ private:
 
   const proj_info& get_projection(bitset::RankFlags gens);
 
-}; // class KHatComputatons
+}; // class KhatContext
 
 /* HechtSchmid identities are represented as equation with a main left hand
    member |lh|, and optional second left member |lh2|, and two optional
-   right hand members |rh1| and |rh2|
+   right hand members |rh1| and |rh2|. Standardreps are all normalized.
 */
-struct HechtSchmid {
-
+class HechtSchmid
+{
   StandardRepK lh;
   StandardRepK* lh2; // owned pointers
   StandardRepK* rh1;
   StandardRepK* rh2;
 
-  HechtSchmid(const StandardRepK& s)
-    : lh(s), lh2(NULL), rh1(NULL), rh2(NULL) {}
+ public:
+ HechtSchmid(const StandardRepK& s, const KhatContext& khc)
+    : lh(s), lh2(NULL), rh1(NULL), rh2(NULL) { khc.normalize(lh); }
   ~HechtSchmid() { delete lh2; delete rh1; delete rh2; }
 
-  void add_lh(const StandardRepK& s) { lh2=new StandardRepK(s); }
-  void add_rh(const StandardRepK& s)
+  void add_lh(const StandardRepK& s, const KhatContext& khc)
+   { lh2=new StandardRepK(s); khc.normalize(*lh2); }
+  void add_rh(const StandardRepK& s, const KhatContext& khc)
   {
-    if (rh1==NULL) rh1=new StandardRepK(s); else rh2=new StandardRepK(s);
+    if (rh1==NULL) { rh1=new StandardRepK(s); khc.normalize(*rh1); }
+    else { rh2=new StandardRepK(s); khc.normalize(*rh2); }
   }
-}; // struct HechtSchmid
+
+  int n_lhs() const { return lh2==NULL ? 1 : 2; }
+  int n_rhs() const { return rh1==NULL ? 0 : rh2==NULL ? 1 : 2; }
+  Char rhs () const; // stored right hand side: |*rh1 + *rh2|
+  Char equivalent () const; // expression for initial term |lh|: |rhs() - *lh1|
+
+}; // class HechtSchmid
 
 class PSalgebra // Parabolic subalgebra
 {
