@@ -441,7 +441,7 @@ class BasedTitsGroup
 
   /*! \brief
     Flags the noncompact imaginary roots for the basic strong involution,
-    among the simple roots for G.
+    among the simple roots for G (only).
 
     This is an important parameter in the KGB generation. It depends on an
     implicitly chosen "basic strong involution" in the fundamental fiber,
@@ -456,6 +456,8 @@ class BasedTitsGroup
     convention, we are able to compute, using |grading_offset|, gradings at
     simple roots that are imaginary in the fiber given by \emph{any} twisted
     involution, even if those roots were complex in the fundamental fiber.
+    (Although by continuity, the same gradings would remain valid if we would
+    replace \f$x_0\delta\f$ by any $H$-conjugate.)
   */
   gradings::Grading grading_offset;
 
@@ -561,10 +563,10 @@ class EnrichedTitsGroup : public BasedTitsGroup
    $\sigma_w$ sends $\sigma_t$ to $\sigma_s$ (rather than its inverse).
    Therefore in $G$, the action of $Ad(\sigma_w.\delta)$ is the identity on
    the $SL(2)$ or $PSL(2)$ subgroup containing $\sigma_s$ whose Lie algebra
-   contains $X_\alpha$ and $X_alpha$, and so those roots are fixed under the
-   adjoint action of $\sigma_w.\delta$. Then the adjoint action of the strong
-   involution $x.\sigma_w.x_0.\delta$ (which |a| represents) on the root
-   vector $X_\alpha$ gives $(Ad(x).Ad(\sigma_w).Ad(x_0))(X_\beta)
+   contains $X_\alpha$ and $X_{-\alpha}$, and so those root spaces are fixed
+   under the adjoint action of $\sigma_w.\delta$. Then the adjoint action of
+   the strong involution $x.\sigma_w.x_0.\delta$ (which |a| represents) on the
+   root vector $X_\alpha$ gives $(Ad(x).Ad(\sigma_w).Ad(x_0))(X_\beta)
    =\alpha(x)\beta(x_0)X_\alpha$. So the grading $g$ to be computed here
    should satisfy $(-1)^g=\alpha(x)\beta(x_0)$, or $g=\<\alpha,x>+\<beta,x_0>$
    in $\Z/2\Z$. The first term is computed by |scalarProduct|, while the
