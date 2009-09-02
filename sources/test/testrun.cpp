@@ -32,19 +32,12 @@ namespace testrun {
 
 namespace {
 
-  lietype::LieType firstType(const Shape&);
-  bool firstType(lietype::LieType&, Category, size_t);
-  bool isLast(const lietype::SimpleLieType&);
-  bool isLast(const Shape&);
-  bool isLastInShape(const lietype::LieType& lt);
-  bool nextType(lietype::LieType&, Category);
-  bool nextSemisimpleType(lietype::LieType&);
-  void nextShape(Shape&);
-  void nextInShape(lietype::LieType&);
-  lietype::SimpleLieType nextSimpleType(const lietype::SimpleLieType&);
-  unsigned long prodNbr(const latticetypes::Weight&,
-			unsigned long,
-			const Shape&);
+  lietype::LieType first_type(Category, size_t, bool& done);
+  bool is_last(const lietype::SimpleLieType& slt, Category c);
+  bool is_last_of_rank(const lietype::SimpleLieType&);
+  bool advance_type(lietype::LieType&, Category);
+  void advance_type(lietype::SimpleLieType&, Category);
+
   abelian::GrpNbr quotGenerator(const abelian::FiniteAbelianGroup&,
 				const bitmap::BitMap&,
 				const bitmap::BitMap&);
@@ -52,7 +45,6 @@ namespace {
 		       const std::set<bitmap::BitMap>&,
 		       std::vector<bitmap::BitMap>::const_iterator&,
 		       abelian::FiniteAbelianGroup&);
-  void shape(Shape&, const lietype::LieType&);
   void updateCycGenerator(bitmap::BitMap&, const abelian::FiniteAbelianGroup&,
 			  const bitmap::BitMap&, abelian::GrpNbr);
 
@@ -74,38 +66,157 @@ namespace testrun {
         Chapter II -- The LieTypeIterator class
 
   A LieTypeIterator runs through a set of Lie types (for example, all
-  semisimple Lie types of a given rank, say up to isomorphism). This will
-  provide the foundation for more complicated iterators.
+  semisimple Lie types of a given rank), up to equivalence (permutation of
+  factors). This will provide the foundation for more complicated iterators.
 
 ******************************************************************************/
 
 namespace testrun {
 
-LieTypeIterator::LieTypeIterator(Category c, size_t l)
-  :d_firstRank(l), d_lastRank(l), d_category(c)
-
 /*
   Constructs an iterator that will run through all types of category c in
-  rank l.
+  rank r.
 */
-
-{
-  d_done = firstType(d_type,c,l);
-}
+LieTypeIterator::LieTypeIterator(Category c, size_t r)
+  : d_done(false), d_category(c), d_type(first_type(c,r,d_done))
+  , d_firstRank(r), d_lastRank(r)
+{}
 
 LieTypeIterator& LieTypeIterator::operator++ ()
-
 {
-  if (nextType(d_type,d_category)) {
-    if (d_type.rank() == d_lastRank)
-      d_done = true;
-    else if (firstType(d_type,d_category,d_type.rank()+1))
+  if (not advance_type(d_type,d_category)) // then we must increase the rank
+  {
+    if (d_type.rank() < d_lastRank)
+      d_type = first_type(d_category,d_type.rank()+1,d_done);
+    else
       d_done = true;
   }
 
   return *this;
 }
 
+namespace {
+
+/*
+  This function puts in lt the first type of rank c in category c. If there
+  is no valid type of rank |r|, sets |done=true| and irrelevant return value.
+*/
+lietype::LieType first_type(Category c, size_t r, bool& done)
+{
+  lietype::LieType result;
+  if (r>constants::RANK_MAX)
+    done = true;
+  else
+    switch (c)
+    {
+    case Simple: // first type is A;
+    case Semisimple: // order by the number of factors, I guess
+      if (r==0)
+	done=true;
+      else
+	result.push_back(lietype::SimpleLieType('A',r));
+    break;
+    case Complex:
+      if (r%2!=0)
+        done=true; // no Complex types in odd rank
+      else if (r>0)
+      {
+	result.push_back(lietype::SimpleLieType('A',r/2));
+	result.push_back(lietype::SimpleLieType('A',r/2));
+      }
+      // else empty type will do fine
+      break;
+    default: // reductive types, isogeny and inner class ignored here
+      if (r>0)
+	result.push_back(lietype::SimpleLieType('A',r)); // comes before tori
+      // else return empty type
+      break;
+    }
+  return result;
+}
+
+/*
+  Advance |lt| to the next Lie type of the same rank in category |c| is
+  possible, return whether the construction succeeds.
+
+  The types, viewed as sequences of simple factors, are ordered by
+  lexicographic order of weakly increasing sequences, where ordering of
+  "simple" factors is first by opposite rank comparison (higher rank comes
+  first), then alphabetically. The importance of choosing this ordering is
+  that the highest letters are of rank 1, so that any valid initial sequence
+  can be extended to one of any higher rank. This ordering disregards the
+  number of factors as such, but nonetheless short sequences tend to come
+  first; for instance semisimple types of rank 4 are ordered A4, B4, C4, D4,
+  F4, A3A1, B3A1, C3A1, A2A2, A2B2, A2G2, A2A1A1, B2B2, B2G2, B2A1A1, G2G2,
+  G2A1A1, A1A1A1A1
+
+  Note that in this ordering the last shape will have r factors of rank 1
+*/
+bool advance_type(lietype::LieType& s, Category c)
+{
+  if (s.rank()==0 or is_last(s[0],c))
+    return false; // detect and exclude terminating cases immediately
+
+  size_t sum=0;
+  while (is_last(s.back(),c)) // |s| cannot become empty
+  {
+    sum+= s.back().rank();
+    s.pop_back();
+  }
+  sum += s.back().rank();
+  advance_type(s.back(),c);
+  sum -= s.back().rank(); // now |sum>=0|
+
+  while (sum>=s.back().rank()) // repeat final factor as often as possible
+  {
+    s.push_back(s.back());
+    sum -= s.back().rank();
+  }
+
+  if (sum>0)
+    s.push_back(lietype::SimpleLieType('A',sum));
+
+  return true;
+}
+
+
+
+// last "simple" type in ordering used: 'A1', or 'T1' if valid for |c|
+bool is_last(const lietype::SimpleLieType& slt,Category c)
+{
+  switch(c)
+  {
+  case Simple:
+  case Semisimple:
+    return slt.rank()==1; // and |slt.type()=='A'| since 'T' is not allowed
+    break;
+  default:
+    return slt.rank()==1 and slt.type()=='T';
+  }
+}
+
+lietype::TypeLetter last_simple(size_t r)
+{
+  return r>8 ? 'D' : "TAGCFDEEE"[r];
+}
+
+// advance simple type; precondition: |not is_last(slt,c)|
+void advance_type(lietype::SimpleLieType& slt,Category c)
+{
+  size_t r = slt.rank();
+  if (slt.type()=='T')
+    slt = lietype::SimpleLieType('A',r-1);
+  else if (slt.type()==last_simple(r))
+    if (c<=Semisimple)
+      slt = lietype::SimpleLieType('A',r-1);
+    else slt.type() = 'T';
+  else if (unsigned(slt.type())<'A'-1+r)
+    slt.type()++;
+  else // only B2 and D4 remain
+    slt.type()= r==2 ? 'G' : 'F';
+}
+
+} // |namespace|
 } // |namespace testrun|
 
 /*****************************************************************************
@@ -618,329 +729,6 @@ namespace testrun {
 
 namespace {
 
-
-/*
-  Returns the first type in its shape.
-*/
-lietype::LieType firstType(const Shape& s)
-{
-  lietype::LieType lt;
-
-  for (unsigned long j = 0; j < s.size(); ++j) {
-    lt.push_back(lietype::SimpleLieType('A',s[j]));
-  }
-
-  return lt;
-}
-
-
-/*
-  This function puts in lt the first type of rank l in category c. It is
-  assumed that the rank is between 1 and RANK_MAX.
-
-  Returns false if the construction succeeds, true otherwise.
-*/
-bool firstType(lietype::LieType& lt, Category c, size_t l)
-{
-  if (l==0 or l>constants::RANK_MAX)
-    return true;
-
-  lt.clear();
-
-  switch (c)
-  {
-  case Simple: // first type is A;
-    lt.push_back(lietype::SimpleLieType('A',l));
-    return false;
-  case Semisimple: // order by the number of factors, I guess
-  case Reductive:
-    lt.push_back(lietype::SimpleLieType('A',l));
-    return false;
-  default:
-    return true;
-  }
-}
-
-
-/*
-  Returns true if slt is the last type in its rank, false otherwise.
-*/
-bool isLast(const lietype::SimpleLieType& slt)
-{
-  size_t l = slt.rank();
-
-  switch (slt.type()) {
-  case 'A':
-    if (l == 1) // no further types
-      return true;
-    else
-      return false;
-  case 'B': // l is at least two; next type is G if l is two, C otherwise
-    return false;
-  case 'C': // l is at least three
-    if (l == 3) // no further types
-      return true;
-    else
-      return false;
-  case 'D': // l is at least four; next type is E if l is 6,7,8, F if l is 4
-    switch (l) {
-    case 4:
-    case 6:
-    case 7:
-    case 8:
-      return false;
-    default:
-      return true;
-    }
-  case 'E':
-  case 'F':
-  case 'G': // no further types
-  default:
-    return true;
-  };
-}
-
-
-/*
-  Tells if the shape is the last one for its number of parts. This means
-  that there are only two part sizes, differring by one. So it is trivial!
-*/
-bool isLast(const Shape& s)
-{
-  return (s.back()-s.front()) <= 1;
-}
-
-
-/*
-  Returns true if lt is the last Lie type in its shape. This means simply
-  that each of the simple types is maximal for its rank.
-*/
-bool isLastInShape(const lietype::LieType& lt)
-{
-  for (unsigned long j = 0; j < lt.size(); ++j)
-    if (!isLast(lt[j]))
-      return false;
-
-  return true;
-}
-
-
-/*
-  Advances lt to the next Lie type of the same shape. It is assumed that
-  isLastInShape(lt) returns false.
-
-  We increment the largest simple type in lt which is not maximal; then
-  we set the next ones of the same rank to be equal, and the next ones of
-  larger ranks to their minimal values.
-*/
-void nextInShape(lietype::LieType& lt)
-{
-  unsigned long c = lt.size()-1;
-
-  while (isLast(lt[c]))
-    --c;
-
-  lt[c] = nextSimpleType(lt[c]);
-
-  unsigned long j = c+1;
-
-  for (; lt[j].rank() == lt[c].rank(); ++j)
-    lt[j] = lt[c];
-
-  for(; j < lt.size(); ++j)
-    lt[j] = lietype::SimpleLieType('A',lt[j].rank());
-
-  return;
-}
-
-
-/*
-  Assuming that lt holds a valid semisimple type, this function advances
-  it to the next semisimple type, if that is possible. The types are ordered
-  by number of factors first, then lexicographically (in other words, in
-  ShortLex order.)
-
-  Note that in this ordering the last type will have l factors of rank 1,
-  hence all equal to A1; so we reach the last type when lt.size() is l.
-
-  Note also that this traversal is pretty complicated! In our rank-first
-  ordering of types, the simple types in lt will always have non-decreasing
-  ranks. This gives a partition of l. For a fixed partition, we must run
-  through all combinations of simple types lexicographically : set
-  t_0, ..., t_{k-1} to their smallest possible values to start with
-  then advance t_{k-1} if possible; if t_{k-1} is maximal, advance t_{k-2}
-  if possible and set t_{k-1} to its min value is the ranks are different,
-  to t_{k-2} if the ranks are equal; and so on until we reach the configuration
-  where everyone is maximal. The we need to move to the next partition of
-  l and start over again.
-*/
-bool nextSemisimpleType(lietype::LieType& lt)
-{
-  if (lt.size() == lt.rank())
-    return true;
-
-  if (isLastInShape(lt)) { // we need to go to the next shape
-    Shape s;
-    shape(s,lt);
-    nextShape(s);
-    lt=firstType(s);
-  }
-  else // we increment within the same shape
-    nextInShape(lt);
-
-  return false;
-}
-
-
-/*
-  Advance shape to the next partition of the same integer. Keep the
-  same number of parts if possible, otherwise add one more part.
-
-  NOTE : this is a classic in computer science, but I haven't the time
-  to study up on it! Described in Knuth's Stanford GraphBase book. So
-  I'll just hack something together.
-
-  The idea is to reason recursively : if the first part is one, we
-  advance the rest if possible; otherwise we move the first part
-  to two and subtract one from each part.
-
-  Note also that the condition for the last shape is all ones; we assume
-  that that has already been checked not to be the case.
-*/
-void nextShape(Shape& s)
-{
-    if (isLast(s)) { // we have to increase the number of parts
-
-      unsigned long n = 0;
-
-      for (unsigned long j = 0; j < s.size(); ++j) {
-	n += s[j];
-	s[j] = 1;
-      }
-
-      n -= s.size();
-      s.push_back(n);
-
-      return;
-    }
-
-  if (s[0] == 1) {
-    Shape s1(s.begin()+1,s.end());
-
-    if (!isLast(s1)) { // we may advance s1 in the same number of parts
-      nextShape(s1);
-      std::copy(s1.begin(),s1.end(),s.begin()+1);
-      return;
-    }
-
-    else { // advance to the shape with all twos and a stack at the end
-
-      unsigned long n = 0;
-
-      for (unsigned long j = 0; j < s.size(); ++j) {
-	n += s[j];
-	s[j] = 2;
-      }
-
-      n -= 2*(s.size()-1);
-      s.back() = n;
-      return;
-    }
-  }
-
-  else {
-    Shape s1(s.begin(),s.end());
-
-    for (unsigned long j = 0; j < s1.size(); ++j)
-      --s1[j];
-
-    nextShape(s1);
-
-    for (unsigned long j = 0; j < s1.size(); ++j)
-      s[j] = s1[j]+1;
-
-    return;
-  }
-}
-
-
-/*
-  Assuming that slt holds a simple Lie type of rank l, this function returns
-  the next one of the same rank. It is assumed that isLast has been called on
-  slt and has returned false.
-*/
-lietype::SimpleLieType nextSimpleType(const lietype::SimpleLieType& slt)
-{
-  size_t l = slt.rank();
-
-  switch (slt.type()) {
-  case 'A': // l is at least two, next is B
-    return lietype::SimpleLieType('B',l);
-  case 'B': // l is at least two; next is G if l is two, C otherwise
-    if (l == 2)
-      return lietype::SimpleLieType('G',l);
-    else
-      return lietype::SimpleLieType('C',l);
-  case 'C': // l is at least four; next is D
-      return lietype::SimpleLieType('D',l);
-  case 'D': // l is four, six, seven or eight
-    if (l == 4)
-      return lietype::SimpleLieType('F',l);
-    else
-      return lietype::SimpleLieType('E',l);
-  default: // can't happen if isLast(slt) is false
-    return slt;
-  };
-}
-
-
-/*
-  This function dispatches the determination of the next type according
-  to the category.
-
-  It returns false if the construction succeeds, true otherwise.
-  Currently only the |Somple| and |Semiseimple| categories are handled
-*/
-bool nextType(lietype::LieType& lt, Category c)
-{
-  switch (c) {
-  case Simple:
-    if (isLast(lt[0]))
-      return true;
-    else {
-      lt[0] = nextSimpleType(lt[0]);
-      return false;
-    }
-  case Semisimple:
-    return nextSemisimpleType(lt);
-  default:
-    return true;
-  }
-}
-
-
-/*
-  Returns the number corresponding to the element n*v.
-
-  NOTE : this is a very bad implementation. We are careless about overflow
-  issues.
-*/
-unsigned long prodNbr(const latticetypes::Weight& v,
-		      unsigned long n,
-		      const Shape& cl)
-{
-  unsigned long x = 0;
-
-  for (size_t j = cl.size(); j-->0;)
-  {
-    x *= cl[j];
-    unsigned long n_red = n % cl[j];
-    x += (v[j]*n_red) % cl[j];
-  }
-
-  return x;
-}
-
 /*
   Returns a generator for the quotient group B/C. It is assumed that B and
   C are subgroups of A, that C is included in B, and that the quotient is
@@ -1021,18 +809,6 @@ void setCycGenerator(bitmap::BitMap& cyc,
   cyc.insert(0); // sentinel value
 
   return;
-}
-
-
-/*
-  Puts the shape of lt in s.
-*/
-void shape(Shape& s, const lietype::LieType& lt)
-{
-  s.resize(0);
-
-  for (unsigned long j = 0; j < lt.size(); ++j)
-    s.push_back(lt[j].rank());
 }
 
 

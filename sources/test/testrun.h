@@ -24,8 +24,6 @@ namespace testrun {
   enum Category {Simple, Semisimple, Reductive, Adjoint, SimplyConnected,
   Split, Complex};
 
-  typedef std::vector<unsigned long> Shape;
-
   class GroupIterator;
 
   class LieTypeIterator;
@@ -86,11 +84,11 @@ class LieTypeIterator {
 
  private:
 
+  bool d_done;
+  Category d_category;
   lietype::LieType d_type;
   size_t d_firstRank;
   size_t d_lastRank;
-  Category d_category;
-  bool d_done;
 
  public:
 
@@ -101,8 +99,6 @@ class LieTypeIterator {
   typedef const value_type& reference;
 
 // constructors and destructors
-  LieTypeIterator() {}
-
   LieTypeIterator(Category cat, size_t rank);
 
   virtual ~LieTypeIterator() {}
