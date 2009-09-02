@@ -289,9 +289,9 @@ void realform_f()
   try
   { // we can call the swap method for rvalues, but not with and rvalue arg
     interactive::getRealGroup(mainmode::currentComplexInterface()).swap
-      (realmode::currentRawRealGroup());
+      (realmode::currentRealGroup());
 
-    realredgp_io::Interface(realmode::currentRawRealGroup(),
+    realredgp_io::Interface(realmode::currentRealGroup(),
 			    mainmode::currentComplexInterface()).swap
       (realmode::currentRealInterface());
 
@@ -667,7 +667,7 @@ void addBlockHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
 
 {
   mode.add("smallkgb",small_kgb_h);
-  mode.add("smalldualkgb",small_dual_kgb_h); 
+  mode.add("smalldualkgb",small_dual_kgb_h);
   mode.add("block",block_h);
   mode.add("smallblock",small_block_h);
   mode.add("dualblock",dualblock_h);

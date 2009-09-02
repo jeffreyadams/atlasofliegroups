@@ -107,19 +107,9 @@ commands::CommandMode& realMode()
   return real_mode;
 }
 
-realredgp::RealReductiveGroup& currentRawRealGroup()
-{
-  return *G_R_pointer;
-}
-
 realredgp::RealReductiveGroup& currentRealGroup()
 {
   return *G_R_pointer;
-}
-
-realform::RealForm currentRawRealForm()
-{
-  return G_R_pointer->realForm();
 }
 
 realform::RealForm currentRealForm()
@@ -158,7 +148,7 @@ void real_mode_entry() throw(commands::EntryError)
       (interactive::getRealGroup(mainmode::currentComplexInterface()));
 
     RI_pointer=new realredgp_io::Interface
-      (currentRawRealGroup(),mainmode::currentComplexInterface());
+      (currentRealGroup(),mainmode::currentComplexInterface());
   }
   catch(error::InputError& e) {
     real_mode_exit(); // clean up, even if unnecessary for |RI_pointer|
@@ -196,7 +186,7 @@ namespace {
 */
 void components_f()
 {
-  const realredgp::RealReductiveGroup& G = currentRawRealGroup();
+  const realredgp::RealReductiveGroup& G = currentRealGroup();
   size_t r = G.component_rank();
 
   if (r>0)
@@ -252,9 +242,9 @@ void realform_f()
   try
   { // we can call the swap method for rvalues, but not with and rvalue arg
     interactive::getRealGroup(mainmode::currentComplexInterface()).swap
-      (realmode::currentRawRealGroup());
+      (realmode::currentRealGroup());
 
-    realredgp_io::Interface(realmode::currentRawRealGroup(),
+    realredgp_io::Interface(realmode::currentRealGroup(),
 			    mainmode::currentComplexInterface()).swap
       (realmode::currentRealInterface());
   }
@@ -273,7 +263,7 @@ void realweyl_f()
 
   ioutils::OutputFile file;
   file << "\n";
-  realredgp_io::printRealWeyl(file,currentRawRealGroup(),cn);
+  realredgp_io::printRealWeyl(file,currentRealGroup(),cn);
 }
 
 
@@ -288,7 +278,7 @@ void strongreal_f()
   ioutils::OutputFile file;
   file << "\n";
   realredgp_io::printStrongReal(file,
-				currentRawRealGroup(),
+				mainmode::currentComplexGroup(),
 				currentRealInterface().realFormInterface(),
 				cn);
 }
