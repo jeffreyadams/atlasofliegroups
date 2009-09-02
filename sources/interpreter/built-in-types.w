@@ -1015,10 +1015,27 @@ void datum_Cartan_wrapper(expression_base::level l)
   push_value(new matrix_value(M));
 }
 
-@ The following functions allow us to look at all the roots and coroots stored
-in a root datum value.
+@ We also allow access to all positive (co)roots, or all of them (positive or
+negative).
 
 @< Local function definitions @>=
+void positive_roots_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  if (l==expression_base::no_value)
+    return;
+  latticetypes::WeightList rl
+    (rd->val.beginPosRoot(),rd->val.endPosRoot());
+  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(rl)));
+}
+@)
+void positive_coroots_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  if (l==expression_base::no_value)
+    return;
+  latticetypes::WeightList crl
+    (rd->val.beginPosCoroot(),rd->val.endPosCoroot());
+  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(crl)));
+}
 void roots_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
@@ -1149,6 +1166,10 @@ install_function(SL_wrapper,@|"SL","(int->RootDatum)");
 install_function(GL_wrapper,@|"GL","(int->RootDatum)");
 install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
 install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
+install_function(positive_roots_wrapper,@|
+		 "positive_roots","(RootDatum->mat)");
+install_function(positive_coroots_wrapper,@|
+		 "positive_coroots","(RootDatum->mat)");
 install_function(datum_Cartan_wrapper,@|"Cartan_matrix"
 		,"(RootDatum->mat)");
 install_function(roots_wrapper,@|"roots","(RootDatum->mat)");
@@ -2292,7 +2313,19 @@ void most_split_Cartan_wrapper(expression_base::level l)
 
 @*2 Functions operating on Cartan classes.
 %
-This function and the following provide the functionality of the \.{atlas}
+We start with a fundamental attribute of Cartan classes: the associated
+(distinguished) involution, in the form of a matrix.
+
+@< Local function def...@>=
+void Cartan_involution_wrapper(expression_base::level l)
+{ shared_Cartan_class cc(get<Cartan_class_value>());
+  if (l==expression_base::no_value)
+    return;
+  push_value(new matrix_value(cc->val.involution()));
+}
+
+
+@ This function and the following provide the functionality of the \.{atlas}
 command \.{cartan}. They are based on |cartan_io::printCartanClass|, but
 rewritten to take into account the fact that we do not know about |Interface|
 objects for complex groups, and such that a usable value is returned. We omit
@@ -2552,20 +2585,9 @@ void print_realweyl_wrapper(expression_base::level l)
 @)
 void print_strongreal_wrapper(expression_base::level l)
 { shared_Cartan_class cc(get<Cartan_class_value>());
-  shared_real_form rf(get<real_form_value>());
 @)
-  if (&rf->parent.val!=&cc->parent.val)
-    throw std::runtime_error @|
-    ("Inner class mismatch between arguments");
-@.Inner class mismatch...@>
-  bitmap::BitMap b(rf->parent.val.Cartan_set(rf->val.realForm()));
-  if (not b.isMember(cc->number))
-    throw std::runtime_error @|
-    ("Cartan class not defined for real form");
-@.Cartan class not defined...@>
-@)
-  realredgp_io::printStrongReal
-    (*output_stream,rf->val,rf->parent.interface,cc->number);
+ realredgp_io::printStrongReal
+    (*output_stream,cc->parent.val,cc->parent.interface,cc->number);
 @)
   if (l==expression_base::single_value)
     wrap_tuple(0);
@@ -2899,6 +2921,7 @@ install_function(rf_Cartan_class_wrapper,@|"Cartan_class"
 		,"(RealForm,int->CartanClass)");
 install_function(most_split_Cartan_wrapper,@|"most_split_Cartan"
 		,"(RealForm->CartanClass)");
+install_function(Cartan_involution_wrapper,@|"involution","(CartanClass->mat)");
 install_function(Cartan_info_wrapper,@|"Cartan_info"
 		,"(CartanClass->(int,int,int),"
                  "vec,(int,int),(LieType,LieType,LieType))");
@@ -2913,7 +2936,7 @@ install_function(print_gradings_wrapper,@|"print_gradings"
 install_function(print_realweyl_wrapper,@|"print_real_Weyl"
 		,"(RealForm,CartanClass->)");
 install_function(print_strongreal_wrapper,@|"print_strong_real"
-		,"(RealForm,CartanClass->)");
+		,"(CartanClass->)");
 install_function(print_block_wrapper,@|"print_block"
 		,"(RealForm,DualRealForm->)");
 install_function(print_blocku_wrapper,@|"print_blocku"

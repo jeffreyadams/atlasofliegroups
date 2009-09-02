@@ -317,7 +317,7 @@ print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   extended to the whole imaginary root subsystem as a Z/2Z grading.
 
 print_real_Weyl: (RealForm,CartanClass->)
-print_strong_real: (RealForm,CartanClass->)
+print_strong_real: (CartanClass->)
 
 print_block: (RealForm,DualRealForm->):
 print_blocku: (RealForm,DualRealForm->):

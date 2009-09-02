@@ -631,7 +631,6 @@ case tuple_display:
   }
   else throw type_error(e,tup,copy(type));
 }
-break;
 
 @*1 Evaluating tuple displays.
 %
@@ -659,15 +658,17 @@ void tuple_expression::evaluate(level l) const
 While we have seen expressions to build list, and vectors and matrices out of
 them, we so far are not able to access their components once they are
 constructed. To that end we shall now introduce operations to index such
-values. We allow subscription of rows, but also of vectors and matrices. Since
-after type analysis we know which of the cases applies, we define several
-classes. These differ mostly by their |evaluate| method, so we first derive an
-intermediate class from |expression_base|, and derive the others from it. This
-class also serves to host an enumeration type that will serve later.
+values. We allow subscription of rows, but also of vectors, rational vectors
+and matrices. Since after type analysis we know which of the cases applies, we
+define several classes. These differ mostly by their |evaluate| method, so we
+first derive an intermediate class from |expression_base|, and derive the
+others from it. This class also serves to host an enumeration type that will
+serve later.
 
 @< Type definitions @>=
 struct subscr_base : public expression_base
-{ enum sub_type @+{ row_entry, vector_entry, matrix_entry, matrix_column };
+{ enum sub_type @+
+  { row_entry, vector_entry, ratvec_entry, matrix_entry, matrix_column };
   expression array, index;
 @)
   subscr_base(expression_ptr a, expression_ptr i)
@@ -691,6 +692,12 @@ struct row_subscription : public subscr_base
 @)
 struct vector_subscription : public subscr_base
 { vector_subscription(expression_ptr a, expression_ptr i)
+  : subscr_base(a,i) @+{}
+  virtual void evaluate(level l) const;
+};
+@)
+struct ratvec_subscription : public subscr_base
+{ ratvec_subscription(expression_ptr a, expression_ptr i)
   : subscr_base(a,i) @+{}
   virtual void evaluate(level l) const;
 };
@@ -743,6 +750,10 @@ bool subscr_base::indexable
   @/{@; kind=vector_entry;
         return subscr.specialise(int_type);
   }
+  if (aggr==ratvec_type and index==int_type)
+  @/{@; kind=ratvec_entry;
+        return subscr.specialise(rat_type);
+  }
   if (aggr!=mat_type)
     return false;
   if (index==int_int_type)
@@ -782,6 +793,9 @@ case subscription:
     break;
     case subscr_base::vector_entry:
       subscr.reset(new vector_subscription(array,index));
+    break;
+    case subscr_base::ratvec_entry:
+      subscr.reset(new ratvec_subscription(array,index));
     break;
     case subscr_base::matrix_entry:
       subscr.reset(new matrix_subscription(array,index));
@@ -830,6 +844,16 @@ void vector_subscription::evaluate(level l) const
     throw std::runtime_error(range_mess(i->val,v->val.size(),this));
   if (l!=no_value)
     push_value(new int_value(v->val[i->val]));
+}
+@)
+void ratvec_subscription::evaluate(level l) const
+{ shared_int i=((index->eval(),get<int_value>()));
+  shared_rational_vector v=((array->eval(),get<rational_vector_value>()));
+  if (static_cast<unsigned int>(i->val)>=v->val.size())
+    throw std::runtime_error(range_mess(i->val,v->val.size(),this));
+  if (l!=no_value)
+    push_value(new rat_value(arithmetic::Rational @|
+       (v->val.numerator()[i->val],v->val.denominator())));
 }
 @)
 void matrix_subscription::evaluate(level l) const
@@ -2382,12 +2406,11 @@ the time of writing no such coercions exist
 
 @< Other cases for type-checking and converting... @>=
 case conditional_expr:
-  { expression_ptr c (convert_expr(e.e.if_variant->condition,bool_type));
-    expression_ptr el (convert_expr(e.e.if_variant->else_branch,type));
-    expression_ptr th (convert_expr(e.e.if_variant->then_branch,type));
-    return new conditional_expression(c,th,el);
-  }
-break;
+{ expression_ptr c (convert_expr(e.e.if_variant->condition,bool_type));
+  expression_ptr el (convert_expr(e.e.if_variant->else_branch,type));
+  expression_ptr th (convert_expr(e.e.if_variant->then_branch,type));
+  return new conditional_expression(c,th,el);
+}
 
 @ Evaluating a conditional expression ends up evaluating either the
 then-branch or the else-branch.
@@ -2434,21 +2457,20 @@ case).
 
 @< Other cases for type-checking and converting... @>=
 case while_expr:
-  { w_loop w=e.e.while_variant;
-    expression_ptr c (convert_expr(w->condition,bool_type));
-    if (type==void_type or type.specialise(row_of_type))
-    { expression_ptr b
-       (convert_expr(w->body, @|
-                     type==void_type ? void_type :*type.component_type));
-      @/return new while_expression(c,b);
-    }
-    else
-    @< If |type| can be converted from some row-of type, check |w->body|
-       against its component type, construct the |while_expression|, and apply
-       the appropriate conversion function to it; otherwise |throw| a
-       |type_error| @>
+{ w_loop w=e.e.while_variant;
+  expression_ptr c (convert_expr(w->condition,bool_type));
+  if (type==void_type or type.specialise(row_of_type))
+  { expression_ptr b
+     (convert_expr(w->body, @|
+                   type==void_type ? void_type :*type.component_type));
+    @/return new while_expression(c,b);
   }
-break;
+  else
+  @< If |type| can be converted from some row-of type, check |w->body|
+     against its component type, construct the |while_expression|, and apply
+     the appropriate conversion function to it; otherwise |throw| a
+     |type_error| @>
+}
 
 @ For |while| loops we follow the same logic for finding an appropriate
 component type as for list displays.
@@ -2565,14 +2587,8 @@ case for_expr:
   expression_ptr loop(new for_expression(f->id,in_expr,body,which));
   return conv==NULL ? loop.release() : new conversion(*conv,loop);
 }
-break;
 
-@ For evaluating |for| loops we must take care to interpret the |kind| field
-when selecting a component from the in-part. Because of differences in the thy
-of |in_val|, some code must be duplicated, which we do as mush as possible by
-sharing a module between the various loop bodies.
-
-We can start evaluating the |in_part| regardless of |kind|, but for deducing
+@ We can start evaluating the |in_part| regardless of |kind|, but for deducing
 the number of iterations we must already distinguish on |kind| to predict the
 type of the in-part. A |loop_frame| is constructed for the new variable(s),
 but the shared pointers it contains must be different for each iteration,
@@ -2593,7 +2609,22 @@ void for_expression::evaluate(level l) const
   std::vector<shared_value> loop_frame; loop_frame.reserve(n_id);
 
   row_ptr result(NULL);
-  if (kind==subscr_base::row_entry)
+  @< Evaluate the loop, dispatching the various possibilities for |kind|, and
+  setting |result| @>
+
+  execution_context = saved_context;
+  if (l!=no_value)
+    push_value(result);
+}
+
+@ For evaluating |for| loops we must take care to interpret the |kind| field
+when selecting a component from the in-part. Because of differences in the
+type of |in_val|, some code must be duplicated, which we do as much as
+possible by sharing a module between the various loop bodies.
+
+@< Evaluate the loop, dispatching the various possibilities for |kind|... @>=
+switch (kind)
+{ case subscr_base::row_entry:
   { shared_row in_val = get<row_value>();
     size_t n=in_val->val.size();
     if (l!=no_value)
@@ -2606,7 +2637,8 @@ void for_expression::evaluate(level l) const
       from it @>
     }
   }
-  else if (kind==subscr_base::vector_entry)
+  break;
+  case subscr_base::vector_entry:
   { shared_vector in_val = get<vector_value>();
     size_t n=in_val->val.size();
     if (l!=no_value)
@@ -2616,7 +2648,20 @@ void for_expression::evaluate(level l) const
       @< Set |loop_var->val[0]| to |i|,... @>
     }
   }
-  else if (kind==subscr_base::matrix_column)
+  break;
+  case subscr_base::ratvec_entry:
+  { shared_rational_vector in_val = get<rational_vector_value>();
+    size_t n=in_val->val.size();
+    if (l!=no_value)
+      result = row_ptr(new row_value(n));
+    for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
+    { loop_var->val[1].reset(new rat_value(arithmetic::Rational @|
+        (in_val->val.numerator()[i],in_val->val.denominator())));
+      @< Set |loop_var->val[0]| to |i|,... @>
+    }
+  }
+  break;
+  case subscr_base::matrix_column:
   { shared_matrix in_val = get<matrix_value>();
     size_t n=in_val->val.numColumns();
     if (l!=no_value)
@@ -2626,10 +2671,10 @@ void for_expression::evaluate(level l) const
       @< Set |loop_var->val[0]| to |i|,... @>
     }
   }
-  execution_context = saved_context;
-  if (l!=no_value)
-    push_value(result);
+  break;
+  case subscr_base::matrix_entry: break; // excluded in type analysis
 }
+
 
 @ Since the module below exists only for the sake of source-code sharing, we
 don't bother to put braces around its expansion, as they are not needed in the
@@ -2741,7 +2786,6 @@ case cfor_expr:
   return conv==NULL ? loop.release() : new conversion(*conv,loop);
 
 }
-break;
 
 @ Executing a loop is a simple variation of what we have seen before for
 |while| and |for| loops.
@@ -2822,7 +2866,6 @@ case cast_expr:
   expression_ptr p(convert_expr(c->exp,ctype));
   return conform_types(ctype,type,p,e);
 }
-break;
 
 @ The overload table stores type information in a |func_type| value, which
 cannot be handed directly to the |specialise| method. The following function
@@ -3016,7 +3059,6 @@ case ass_stat:
 @.Undefined identifier in assignment@>
   return conform_types(*it,type,assign,e);
 }
-break;
 
 @*1 Component assignments.
 %
@@ -3135,6 +3177,7 @@ void component_assignment::assign
     case subscr_base::matrix_column:
   @/@< Replace columns at |index| in matrix |loc| by value on stack @>
   @+break;
+  case subscr_base::ratvec_entry: {} // case is eliminated in type analysis
   }
 }
 
@@ -3259,23 +3302,21 @@ case comp_ass_stat:
 @)
   expression_ptr i(convert_expr(index,ind_t));
   subscr_base::sub_type kind;
-  if (subscr_base::indexable(*aggr_t,ind_t,comp_t,kind))
-  { expression_ptr r(convert_expr(rhs,comp_t));
-    if (is_local)
-      assign.reset(new local_component_assignment(aggr,i,d,o,r,kind));
-    else
-      assign.reset(new global_component_assignment(aggr,i,r,kind));
-  }
-  else
+  if (not subscr_base::indexable(*aggr_t,ind_t,comp_t,kind)
+      or kind==subscr_base::ratvec_entry)
   { std::ostringstream o;
     o << "Cannot subscript " << *aggr_t << @| " value with index of type "
       << ind_t << " in assignment";
     throw expr_error(e,o.str());
   }
+  expression_ptr r(convert_expr(rhs,comp_t));
+  if (is_local)
+    assign.reset(new local_component_assignment(aggr,i,d,o,r,kind));
+  else
+    assign.reset(new global_component_assignment(aggr,i,r,kind));
 
-  return conform_types(*aggr_t,type,assign,e);
+  return conform_types(comp_t,type,assign,e);
 }
-break;
 
 @* Sequence expressions.
 %
@@ -3344,7 +3385,6 @@ case seq_expr:
     return new next_expression(first,last);
   }
 }
-break;
 
 @* Invoking the type checker.
 %
@@ -3520,7 +3560,7 @@ However if there are no entries, we print the dimensions of the matrix.
 void matrix_value::print(std::ostream& out) const
 { size_t k=val.numRows(),l=val.numColumns();
   if (k==0 or l==0)
-  {@;  out << "The unique " << k << 'x' << l << " matrix"; return; }
+  {@;  out << "The " << k << 'x' << l << " matrix"; return; }
   std::vector<size_t> w(l,0);
   for (size_t i=0; i<k; ++i)
     for (size_t j=0; j<l; ++j)
@@ -3769,12 +3809,16 @@ void times_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new int_value(i*j));
 }
-@)
+
+@ We take the occasion to repair the integer division operation for negative
+arguments, by using |intutils::divide| rather than |operator/|.
+
+@< Local function definitions @>=
 void divide_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (j==0) throw std::runtime_error("Division by zero");
   if (l!=expression_base::no_value)
-    push_value(new int_value(i/j));
+    push_value(new int_value(intutils::divide(i,j)));
 }
 
 @ We also define a remainder operation |modulo|, a combined
@@ -3786,16 +3830,17 @@ of integers producing a rational number, and an integer power operation
 void modulo_wrapper(expression_base::level l)
 { int  j=get<int_value>()->val; int i=get<int_value>()->val;
   if (j==0) throw std::runtime_error("Modulo zero");
+  j=intutils::abs(j);
   if (l!=expression_base::no_value)
-    push_value(new int_value(i%j));
+    push_value(new int_value(intutils::remainder(i,j)));
 }
 @)
 void divmod_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (j==0) throw std::runtime_error("DivMod by zero");
   if (l!=expression_base::no_value)
-  { push_value(new int_value(i/j));
-    push_value(new int_value(i%j));
+  { push_value(new int_value(intutils::divide(i,j)));
+    push_value(new int_value(intutils::remainder(i,j)));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -4181,7 +4226,42 @@ considered part of the interpreter, but a first step to its interface with the
 Atlas library, which is developed in much more detail in the compilation
 unit \.{built-in-types}. In fact we shall make some of these wrapper functions
 externally callable, so they can be directly used from that compilation unit.
-First of all we have the identity matrix and matrix transposition.
+
+We start with vector and matrix equality comparisons.
+@< Declarations of exported functions @>=
+void vec_eq_wrapper (expression_base::level);
+void vec_neq_wrapper (expression_base::level);
+void mat_eq_wrapper (expression_base::level);
+void mat_neq_wrapper (expression_base::level);
+
+@ This is of course quite similar to what we saw for rationals, for instance.
+
+@< Function definitions @>=
+void vec_eq_wrapper(expression_base::level l)
+{ shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val==j->val));
+}
+@)
+void vec_neq_wrapper(expression_base::level l)
+{ shared_vector j=get<vector_value>(); shared_vector i=get<vector_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val!=j->val));
+}
+@)
+void mat_eq_wrapper(expression_base::level l)
+{ shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val==j->val));
+}
+@)
+void mat_neq_wrapper(expression_base::level l)
+{ shared_matrix j=get<matrix_value>(); shared_matrix i=get<matrix_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(i->val!=j->val));
+}
+
+@ Next we have the identity matrix and matrix transposition.
 
 @< Declarations of exported functions @>=
 void id_mat_wrapper (expression_base::level);
@@ -4425,6 +4505,10 @@ install_function(concatenate_wrapper,"#","(string,string->string)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"#","(vec,vec->vec)");
+install_function(vec_eq_wrapper,"=","(vec,vec->bool)");
+install_function(vec_neq_wrapper,"!=","(vec,vec->bool)");
+install_function(mat_eq_wrapper,"=","(mat,mat->bool)");
+install_function(mat_neq_wrapper,"!=","(mat,mat->bool)");
 install_function(transpose_mat_wrapper,"^","(mat->mat)");
 install_function(transpose_vec_wrapper,"^","(vec->mat)");
 install_function(diagonal_wrapper,"diagonal_mat","(vec->mat)");
