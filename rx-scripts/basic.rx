@@ -10,10 +10,24 @@ set +(string s, int i)= s # int_format(i)
 set +(int i, string s)= int_format(i) # s
 set +(string s,string t) = s # t { alias for concatenation }
 
+set -(vec w)= vec: for e in w do -e od
+set -(mat m)= mat: for c in m do for e in c do -e od od
+
 set +(vec v,vec w)= vec:
   ( if #v != #w then error("Size mismatch " + #v + ":" + #w) fi
   ; for e@i in v do e+w[i] od
   )
+
+set -(vec v,vec w)= vec:
+  ( if #v != #w then error("Size mismatch " + #v + ":" + #w) fi
+  ; for e@i in v do e-w[i] od
+  )
+
+set sum (mat m)= { sum of columns of m }
+  let (r,c)=#m in
+  if c=0 then vec: for i=r do 0 od
+  else let sum=m[0] in for j=c-1 from 1 do sum+:=m[j] od; sum
+  fi
 
 set +(string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
 
@@ -25,163 +39,10 @@ set +(mat M,mat N)= mat:
   ; for col@j in M do for e@i in col do e+N[i,j] od od
   )
 
+set -(mat M,mat N)= mat:
+  ( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
+  ; for col@j in M do for e@i in col do e-N[i,j] od od
+  )
+
 set min (int k, int l) = if k<l then k else l fi
 set max (int k, int l) = if k<l then l else k fi
-
-set show (string s) = if s="" then "empty" else s fi
-
-set print_Cartan_info (CartanClass cc)=
-let ((cr,Cr,sr),ww,(orbit_size,fiber_size),(i_tp,r_tp,C_tp))=Cartan_info(cc) in
-begin
-  prints("compact: ",cr,", complex: ",Cr,", split: ",sr)
-; (let str="canonical twisted involution: " in
-     if #ww=0 then str #:= "e"
-     else str +:= ww[0]; for i = #ww-1 from 1 do str #:= ","+ww[i] od
-     fi
-   ; prints(str)
-  )
-; prints("twisted involution orbit size: ",orbit_size,
-         "; fiber size: ",fiber_size,"; strong inv: ",orbit_size*fiber_size)
-; prints("imaginary root system: ",show(str(i_tp)))
-; prints("real root system: ",show(str(r_tp)))
-; prints("complex factor: ",show(str(C_tp)))
-end
-
-{ Cartan matrix information for positions at distance d(<=2) off diagonal }
-set Cartan_dispatch(int type, int r, int min, int d, bool lower)=
-if d=0 then 2    { diagonal entry }
-elif type=4 then { Dn }
- if if min<r-3 then d=1 else min=r-3 fi then -1 else 0 fi
-elif type=5 then { En }
- if d=if min<2 then 2 else 1 fi then -1 else 0 fi
-elif d=2 then 0  { nodes far apart in liear diagrams }
-elif type<4 then { classical linear diagrams }
- if type = if lower then 2 else 3 fi and min=r-2 then -2 else -1 fi
-elif type=6 then if lower and min=1 then -2 else -1 fi { F4 }
-elif lower then -1 else -3 { G2 }
-fi
-
-set Cartan_entry(int type, int r,int i, int j)=
-if type=0 then 0 { null Cartan entries for torus factors }
-else let (min,d) = if i<j then (i,j-i) else (j,i-j) fi
-     in  if d>2 then 0 else Cartan_dispatch(type,r,min,d,i<j) fi
-fi
-
-set Cartan_matrix(int type, int r)= mat:
-for j = r
-do for i = r
-   do Cartan_entry(type,r,i,j)
-   od
-od
-
-set Lie_type((int,int) p) =
-  let (type,) = Cartan_matrix_type(Cartan_matrix(p)) in type
-
-set GL_roots (int n) = [vec]:
-for i = n-1
-do for j = n
-   do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-od
-
-set SL_coroots (int n) = [vec]:
-for i = n-1
-do for j = n-1
-   do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-od
-
-set SL_roots (int n) = [vec]:
-for col@j in SL_coroots(n)
-do if j<n-2 then col
-   else for e in col do e+1 od
-   fi
-od
-
-set GL_datum(int n)= let r=GL_roots(n) in root_datum(r,r,n)
-set SL_datum(int n)= root_datum(SL_roots(n),SL_coroots(n),n-1)
-
-set type_B_roots (int n) = [vec]:
-for i = n
-do if i<n-1
-   then for j = n
-        do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-   else for j = n do if j<n-1 then 0 else 1 fi od
-   fi
-od
-
-set type_C_roots (int n) = [vec]:
-for i = n
-do if i<n-1
-   then for j = n
-        do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-   else for j = n do if j<n-1 then 0 else 2 fi od
-   fi
-od
-
-set type_D_roots (int n) = [vec]:
-if n<2 then [] { SO(2) is pure torus }
-else
-  for i = n
-  do if i<n-1
-     then for j = n
-          do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-     else for j = n do if j<n-2 then 0 else 1 fi od
-     fi
-  od
-fi
-
-set SO_datum(int n)=
-let m=n\2 in
-if n%2=1
-then root_datum(type_B_roots(m),type_C_roots(m),m)
-else let r=type_D_roots(m) in root_datum(r,r,m)
-fi
-
-set Sp_datum(int n)=
-let (m,r)=n\%2 in
-( if r=1 then error("Odd symplectic datum") fi
-; root_datum(type_C_roots(m),type_B_roots(m),m)
-)
-
-set su(int p,int q)=
-let n=p+q, q = if p<q then p else q fi
-then rd = SL(n)
-then ic = inner_class(rd,if n>1 then "c" else "" fi)
-in real_form(ic,q)
-
-set su(int n) = su(n,0)
-
-set so(int p,int q)=
-let n=p+q, (p,q) = if p<q then (q,p) else (p,q) fi { make q the smallest one }
-then rd = SO_datum(n)
-, inv = let M=id_mat(n\2)
-        in (if p%2=1 and q%2=1 then M[n\2-1,n\2-1]:=-1 fi; M)
-, i = if n<=2 then 0        { inner classes without noncompact form, SO(2)=T1 }
-      elif n%2=1 then q     { type B_{n\2} }
-      elif q%2=1 then q\2   { type D_{n\2}, unequal rank }
-      elif q\2<n\4 then q\2 { type D_{n\2}, equal rank, more compact forms }
-      elif n%4=2 then q\2+1 { type D_{n\2}odd, equal rank, more split forms }
-      else q\2+2            { type D_{n\2}even, equal rank, more split forms }
-      fi
-in real_form(inner_class(rd,inv),i)
-
-set so(int n) = so(n,0)
-
-set sp(int p,int q)=
-real_form(inner_class(Sp_datum(2*(p+q)),"e"),min(p,q))
-
-set sp(int p) = sp(p,0)
-
-set sp_R(int n)=
-let (q,r)= n\%2 in
-( if r=1 then error("Odd symplectic group") fi
-; real_form(inner_class(Sp_datum(n),"e"),q\2+1)
-)
-
-set E8_ic = let ic=inner_class("T0",[],""), first=true in ():
-  if first then ic:=inner_class(simply_connected("E8"),"e") next first:=false
-  else ic
-  fi
-
-set E8_c() = real_form(E8_ic(),0)
-set E8_q() = real_form(E8_ic(),1)
-set E8_s() = real_form(E8_ic(),2)
