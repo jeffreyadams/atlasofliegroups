@@ -645,6 +645,14 @@ public:
   void leftMult(WeylElt& w, const WeylWord& ww) const { W.leftMult(w,ww); }
   WeylWord word(const WeylElt& w) const { return W.word(w); }
 
+  WeylElt prod(const WeylElt& w, Generator s) const { return W.prod(w,s); }
+  WeylElt prod(Generator s, const WeylElt& w) const { return W.prod(s,w); }
+  WeylElt prod(const WeylElt& w, const WeylElt& v) const { return W.prod(w,v); }
+  WeylElt prod(const WeylElt& w, const WeylWord& ww) const
+   { return W.prod(w,ww); }
+  WeylElt prod(const WeylWord& ww,const WeylElt& w) const
+   { return W.prod(ww,w); }
+
   Generator twisted(Generator s) const { return d_twist[s]; }
   WeylElt twisted(const WeylElt& w) const { return W.translation(w,d_twist); }
 
