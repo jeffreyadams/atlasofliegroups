@@ -32,7 +32,8 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 				   realform::RealForm rf);
 
 std::ostream& printCartanClasses(std::ostream&,
-				 realredgp_io::Interface&);
+				 realform::RealForm rf,
+				 complexredgp_io::Interface&);
 
 std::ostream& printCartanOrder(std::ostream&,
 			       const realredgp::RealReductiveGroup&);
@@ -46,58 +47,9 @@ std::ostream& printStrongReal(std::ostream& strm,
 			      const realform_io::Interface& rfi,
 			      size_t cn);
 
-}
+} // |namespace realredgp_io|
 
-/******** type definitions ***************************************************/
+} // |namespace atlas|
 
-namespace realredgp_io {
-
-class Interface {
-
- private:
-
-  realredgp::RealReductiveGroup* d_realGroup;
-  complexredgp_io::Interface* d_complexInterface;
-
- public:
-
-// constructors and destructors
-  Interface():d_realGroup(0),d_complexInterface(0) {}
-
-  Interface(realredgp::RealReductiveGroup& G_R)
-    :d_realGroup(&G_R),d_complexInterface(0) {}
-
-  Interface(realredgp::RealReductiveGroup& G_R, complexredgp_io::Interface& CI)
-    :d_realGroup(&G_R),d_complexInterface(&CI) {}
-
-// copy, assignment and swap
-  void swap(Interface&);
-
-// accessors
-  const complexredgp_io::Interface& complexInterface() const {
-    return *d_complexInterface;
-  }
-
-  const complexredgp::ComplexReductiveGroup& complexGroup() const;
-
-  const realform_io::Interface& realFormInterface() const;
-
-  const realredgp::RealReductiveGroup& realGroup() const {
-    return *d_realGroup;
-  }
-
-// manipulators
-  complexredgp_io::Interface& complexInterface() {
-    return *d_complexInterface;
-  }
-
-  realredgp::RealReductiveGroup& realGroup() {
-    return *d_realGroup;
-  }
-};
-
-}
-
-}
 
 #endif

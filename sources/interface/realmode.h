@@ -32,7 +32,6 @@ namespace realmode {
   commands::CommandMode& realMode();
   realredgp::RealReductiveGroup& currentRealGroup();
   realform::RealForm currentRealForm();
-  realredgp_io::Interface& currentRealInterface();
 
 }
 

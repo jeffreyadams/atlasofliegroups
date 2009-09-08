@@ -31,38 +31,10 @@
 
 namespace atlas {
 
-/*****************************************************************************
-
-        Chapter I -- The Interface class
-
-******************************************************************************/
-
-namespace realredgp_io {
-
-void Interface::swap(Interface& other)
-
-{
-  std::swap(d_realGroup,other.d_realGroup);
-  std::swap(d_complexInterface,other.d_complexInterface);
-}
-
-/******** accessors **********************************************************/
-
-const complexredgp::ComplexReductiveGroup& Interface::complexGroup() const
-{
-  return d_realGroup->complexGroup();
-}
-
-const realform_io::Interface& Interface::realFormInterface() const
-{
-  return d_complexInterface->realFormInterface();
-}
-
-}
 
 /*****************************************************************************
 
-        Chapter II -- Functions declared in realredgp_io.h
+        Chapter I -- Functions declared in realredgp_io.h
 
 ******************************************************************************/
 
@@ -101,15 +73,14 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 
 // Print information about all the Cartan classes for |G_RI.realGroup()|.
 std::ostream& printCartanClasses(std::ostream& strm,
-				 realredgp_io::Interface& G_RI)
+				 realform::RealForm rf,
+				 complexredgp_io::Interface& G_CI)
 {
-  const realredgp::RealReductiveGroup& G_R = G_RI.realGroup();
-  complexredgp_io::Interface& G_CI = G_RI.complexInterface();
-
-  const bitmap::BitMap& b = G_R.Cartan_set();
+  const bitmap::BitMap& b = G_CI.complexGroup().Cartan_set(rf);
   bool first = true;
 
-  for (bitmap::BitMap::iterator i = b.begin(); i(); ++i) {
+  for (bitmap::BitMap::iterator i = b.begin(); i(); ++i)
+  {
     if (first)
       first = false;
     else
