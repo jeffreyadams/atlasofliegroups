@@ -41,6 +41,8 @@ namespace {
   void showdualforms_h();
   void showrealforms_h();
   void blocksizes_h();
+  void gradings_h();
+  void strongreal_h();
   void dualkgb_h();
 
   // command tags for the help facility
@@ -62,6 +64,8 @@ namespace {
   const char* showrealforms_tag =
     "outputs the weak real forms for this complex group";
   const char* blocksizes_tag = "outputs the matrix of blocksizes";
+  const char* gradings_tag="prints gradings of imaginary roots for real forms";
+  const char* strongreal_tag = "outputs information about strong real forms";
   const char* dual_kgb_tag = "prints the KGB data for a dual real form";
 }
 
@@ -91,6 +95,8 @@ void addMainHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("showrealforms",showrealforms_h);
   mode.add("showdualforms",showdualforms_h);
   mode.add("blocksizes",blocksizes_h);
+  mode.add("gradings",gradings_h);
+  mode.add("strongreal",strongreal_h);
   mode.add("dualkgb",dualkgb_h);
 
   insertTag(tagDict,"type",type_tag);
@@ -106,6 +112,8 @@ void addMainHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   insertTag(tagDict,"showdualforms",showdualforms_tag);
   insertTag(tagDict,"showrealforms",showrealforms_tag);
   insertTag(tagDict,"blocksizes",blocksizes_tag);
+  insertTag(tagDict,"gradings",gradings_tag);
+  insertTag(tagDict,"strongreal",strongreal_tag);
   insertTag(tagDict,"dualkgb",dual_kgb_tag);
 }
 
@@ -186,6 +194,16 @@ void showdualforms_h()
 void blocksizes_h()
 {
   io::printFile(std::cerr,"blocksizes.help",io::MESSAGE_DIR);
+}
+
+void gradings_h()
+{
+  io::printFile(std::cerr,"gradings.help",io::MESSAGE_DIR);
+}
+
+void strongreal_h()
+{
+  io::printFile(std::cerr,"strongreal.help",io::MESSAGE_DIR);
 }
 
 void dualkgb_h()

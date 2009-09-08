@@ -13,6 +13,7 @@
 #include "complexredgp.h"
 #include "complexredgp_io.h"
 #include "realredgp.h"
+#include "realredgp_io.h"
 #include "emptymode.h"
 #include "error.h"
 #include "helpmode.h"
@@ -72,6 +73,8 @@ namespace {
   void showrealforms_f();
   void showdualforms_f();
   void blocksizes_f();
+  void gradings_f();
+  void strongreal_f();
   void dual_kgb_f();
   void help_f();
 
@@ -180,6 +183,8 @@ commands::CommandMode& mainMode()
     main_mode.add("showrealforms",showrealforms_f);
     main_mode.add("showdualforms",showdualforms_f);
     main_mode.add("blocksizes",blocksizes_f);
+    main_mode.add("gradings",gradings_f);
+    main_mode.add("strongreal",strongreal_f);
     main_mode.add("dualkgb",dual_kgb_f); // here, since no real form needed
     main_mode.add("help",help_f); // override
     main_mode.add("q",commands::exitMode);
@@ -330,6 +335,39 @@ void showdualforms_f()
   realform_io::printRealForms(std::cout,rfi);
 }
 
+
+// Print the gradings associated to the weak real forms.
+void gradings_f()
+{
+  complexredgp::ComplexReductiveGroup& G_C = currentComplexGroup();
+
+  // get Cartan class; abort if unvalid
+  size_t cn=interactive::get_Cartan_class(G_C.Cartan_set(G_C.quasisplit()));
+
+  ioutils::OutputFile file;
+
+  static_cast<std::ostream&>(file) << std::endl;
+  complexredgp_io::printGradings(file,cn,currentComplexInterface())
+      << std::endl;
+
+}
+
+// Print information about strong real forms.
+void strongreal_f()
+{
+  complexredgp::ComplexReductiveGroup& G_C = currentComplexGroup();
+
+  // get Cartan class; abort if unvalid
+  size_t cn=interactive::get_Cartan_class(G_C.Cartan_set(G_C.quasisplit()));
+
+  ioutils::OutputFile file;
+  file << "\n";
+  realredgp_io::printStrongReal
+    (file,
+     mainmode::currentComplexGroup(),
+     mainmode::currentComplexInterface().realFormInterface(),
+     cn);
+}
 
 // Print a kgb table for a dual real form.
 void dual_kgb_f()

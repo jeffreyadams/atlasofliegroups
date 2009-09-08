@@ -209,8 +209,7 @@ void block_mode_entry() throw(commands::EntryError)
     realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
     complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-    const realredgp_io::Interface& G_RI = realmode::currentRealInterface();
-    const complexredgp_io::Interface& G_I = G_RI.complexInterface();
+    const complexredgp_io::Interface& G_I = mainmode::currentComplexInterface();
 
     // get dual real form
     realform::RealForm drf;
@@ -290,10 +289,6 @@ void realform_f()
   { // we can call the swap method for rvalues, but not with and rvalue arg
     interactive::getRealGroup(mainmode::currentComplexInterface()).swap
       (realmode::currentRealGroup());
-
-    realredgp_io::Interface(realmode::currentRealGroup(),
-			    mainmode::currentComplexInterface()).swap
-      (realmode::currentRealInterface());
 
     commands::exitMode(); // upon success pop block mode, destroying dual group
   }

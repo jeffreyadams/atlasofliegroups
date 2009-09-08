@@ -111,7 +111,7 @@ namespace arithmetic {
   {
     unsigned long d = gcd(num,denom);
     if (d>1)
-      num/=d,denom/=d;
+      num/=long(d),denom/=d;
     return *this;
   }
 

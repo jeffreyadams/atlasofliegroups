@@ -31,9 +31,7 @@ namespace {
   void components_h();
   void cartan_h();
   void corder_h();
-  void gradings_h();
   void realweyl_h();
-  void strongreal_h();
   void kgb_h();
   void kgborder_h();
 
@@ -41,9 +39,7 @@ namespace {
   const char* components_tag = "describes component group of the real group";
   const char* cartan_tag = "prints the conjugacy classes of Cartan subgroups";
   const char* corder_tag = "shows Hasse diagram of ordering of Cartan classes";
-  const char* gradings_tag="prints gradings of imaginary roots for real forms";
   const char* realweyl_tag = "outputs the structure of the real Weyl group";
-  const char* strongreal_tag = "outputs information about strong real forms";
   const char* kgb_tag = "prints the orbits of K on G/B";
   const char* kgborder_tag = "prints the Bruhat ordering on K\\G/B";
 
@@ -65,18 +61,14 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("components",components_h);
   mode.add("cartan",cartan_h);
   mode.add("corder",corder_h);
-  mode.add("gradings",gradings_h);
   mode.add("realweyl",realweyl_h);
-  mode.add("strongreal",strongreal_h);
   mode.add("kgb",kgb_h);
   mode.add("kgborder",kgborder_h);
 
   insertTag(tagDict,"components",components_tag);
   insertTag(tagDict,"cartan",cartan_tag);
   insertTag(tagDict,"corder",corder_tag);
-  insertTag(tagDict,"gradings",gradings_tag);
   insertTag(tagDict,"realweyl",realweyl_tag);
-  insertTag(tagDict,"strongreal",strongreal_tag);
   insertTag(tagDict,"kgb",kgb_tag);
   insertTag(tagDict,"kgborder",kgborder_tag);
 }
@@ -109,19 +101,9 @@ void corder_h()
   io::printFile(std::cerr,"corder.help",io::MESSAGE_DIR);
 }
 
-void gradings_h()
-{
-  io::printFile(std::cerr,"gradings.help",io::MESSAGE_DIR);
-}
-
 void realweyl_h()
 {
   io::printFile(std::cerr,"realweyl.help",io::MESSAGE_DIR);
-}
-
-void strongreal_h()
-{
-  io::printFile(std::cerr,"strongreal.help",io::MESSAGE_DIR);
 }
 
 void kgb_h()
