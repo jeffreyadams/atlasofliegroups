@@ -13,6 +13,7 @@
 
 #include "arithmetic.h"
 #include "bitmap.h"
+#include "intutils.h"
 #include "latticetypes.h"
 #include "matrix.h"
 #include "smithnormal.h"
@@ -531,7 +532,7 @@ void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
 
   // write matrix corresponding to gl
 
-  latticetypes::LatticeMatrix m(gl);
+  latticetypes::LatticeMatrix m(gl,A.rank());
   latticetypes::CoeffList invf;
 
   // get smith normal basis
@@ -711,7 +712,7 @@ void to_array(GrpArr& a, GrpNbr x, const GroupType& t)
 void to_array(GrpArr& a, const latticetypes::Weight& v, const GroupType& t)
 {
   for (size_t j = 0; j < v.size(); ++j)
-    a[j] = arithmetic::remainder(v[j],t[j]);
+    a[j] = intutils::remainder(v[j],t[j]);
 }
 
 
@@ -728,7 +729,7 @@ void toEndomorphism(Endomorphism& e, const latticetypes::LatticeMatrix& q,
 
   for (size_t j = 0; j < q.numColumns(); ++j)
     for (size_t i = 0; i < q.numRows(); ++i)
-      e(i,j) = arithmetic::remainder(q(i,j),A.type()[i]);
+      e(i,j) = intutils::remainder(q(i,j),A.type()[i]);
 }
 
 
