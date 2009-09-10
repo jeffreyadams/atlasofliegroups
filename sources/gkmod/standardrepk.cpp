@@ -185,7 +185,7 @@ KhatContext::KhatContext
     latticetypes::WeightList bs; matrix::initBasis(bs,n);
     latticetypes::CoeffList invf; smithnormal::smithNormal(invf,bs.begin(),q);
 
-    latticetypes::LatticeMatrix basis(bs);
+    latticetypes::LatticeMatrix basis(bs,n); // only used in next line
     latticetypes::LatticeMatrix inv_basis=basis.inverse();
 
     size_t l = invf.size();
@@ -204,11 +204,8 @@ KhatContext::KhatContext
 	ci.torsionProjector.set_mod2(i-f,j,inv_basis(i,j));
     }
 
-    if (l==n) // avoid construction from empty list
-      ci.freeLift.resize(n,0); // so set matrix to empty rectangle
-    else
-      ci.freeLift= // or take the final |n-l| basis vectors as columns
-	latticetypes::LatticeMatrix(&bs[l],&bs[n],tags::IteratorTag());
+    ci.freeLift= // take the final |n-l| basis vectors as columns
+      latticetypes::LatticeMatrix(&bs[l],&bs[n],n,tags::IteratorTag());
 
     ci.freeProjector.resize(n-l,n);
 
@@ -396,8 +393,9 @@ std::ostream& KhatContext::print(std::ostream& strm,
   return strm;
 }
 
-// map a character to one containing only Standard terms
-// this version ensures the basic one is recursively called first
+/* map a character (with terms assumed to be normalized) to one containing
+   only Standard terms
+   this version ensures the basic |standardize| is recursively called first */
 combination KhatContext::standardize(const Char& chi)
 {
   combination result(height_graded);
@@ -521,7 +519,7 @@ KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
   const rootdata::RootDatum& rd=rootDatum();
   tits::TitsElt a=titsElt(sr);
   latticetypes::Weight lambda=lift(sr);
-  assert(rd.isPosRoot(alpha)); // in fact it must be |a.tw()| simple-imaginary
+  assert(rd.isPosRoot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
 
   size_t i=0; // simple root index (value will be set in following loop)
   while (true) // we shall exit halfway when $\alpha=\alpha_i$
@@ -545,7 +543,7 @@ KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 
   latticetypes::Weight mu=rd.simpleReflection(lambda,i);
   if (d_Tg.simple_grading(a,i))
-  { // |alpha| is a non-compact root
+  { // $\alpha_i$ is a non-compact imaginary simple root
     d_Tg.basedTwistedConjugate(a,i); // adds $m_i$ to torus part
     StandardRepK sr0= std_rep(mu, a);
     assert(sr.d_cartan==sr0.d_cartan);
@@ -554,7 +552,7 @@ KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 
     /* Now are equivalent:
        = |sr0.d_fiberElt==sr.d_fiberElt|
-       = $m_i$ absorbed into quotient (i.e., $m_i\in(X_*^- mod 2)$)
+       = $m_i$ absorbed into quotient ($\alpha_i^vee \in 2X_*+X_*^{-\theta}$)
        = $\alpha^\vee( (X^*)^\theta ) = 2\Z$
        = $\alpha\notin(1-\theta_\alpha)X^*$  ($\theta_\alpha=\theta.s_\alpha$)
        = Cayley transform is type II

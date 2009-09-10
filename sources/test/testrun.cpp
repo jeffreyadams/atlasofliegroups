@@ -391,8 +391,9 @@ CoveringIterator::CoveringIterator(const lietype::LieType& lt)
   *(i.d_dcenter). Also needs to reset the d_torusPart!
 */
 CoveringIterator::CoveringIterator(const CoveringIterator& i)
-  :d_lieType(i.d_lieType)
-  , d_dcenter(i.d_dcenter)
+  : d_lieType(i.d_lieType)
+  , d_dcenter(i.d_dcenter==NULL ? NULL
+              : new abelian::FiniteAbelianGroup(*i.d_dcenter))
   , d_rank(i.d_rank)
   , d_semisimpleRank(i.d_semisimpleRank)
   , d_torusRank(i.d_torusRank)
@@ -402,9 +403,6 @@ CoveringIterator::CoveringIterator(const CoveringIterator& i)
   , d_smithBasis(i.d_smithBasis)
   , d_preRootDatum(i.d_preRootDatum)
 {
-  if (d_dcenter) // get own copy
-    d_dcenter = new abelian::FiniteAbelianGroup(*d_dcenter);
-
   // d_torusPart is essentially a vector of pointers into d_quotReps;
   // all these pointers will be invalidated by the copying and need to
   // be reset!
@@ -496,15 +494,15 @@ finish: // update d_preRootDatum
   Puts in b the basis corresponding to d_group and d_torusPart.
 
   The algorithm is as follows. We look at the lattice spanned by the vectors
-  of our smith basis starting from where the invariant factor is > 1. Then
-  in terms of these coordinates, we get our sublattice as follows : the
+  of our Smith basis starting from where the invariant factor becomes > 1.
+  Then in terms of these coordinates, we get our sublattice as follows : the
   columns where the invariant factor is non-zero are gotten from *d_dcenter.
   basis; the other ones are directly read off from d_torusPart (there is a
   lower identity block, and the upper block is given by writing the elements
-  of d_torusPart as weights.) Then we need to carry out a matrix multiplication
-  to express these vectors in our original basis, and replace the smith vectors
-  by these combinations. That will yield a basis for our lattice (not a
-  smith basis in general, but we don't mind.)
+  of d_torusPart as weights.) Then we need to carry out a matrix
+  multiplication to express these vectors in our original basis, and replace
+  the Smith vectors by these combinations. That will yield a basis for our
+  lattice (not a Smith basis in general, but we don't mind.)
 */
 void CoveringIterator::makeBasis(latticetypes::WeightList& b)
 {
@@ -532,11 +530,12 @@ void CoveringIterator::makeBasis(latticetypes::WeightList& b)
     cb.push_back(v);
   }
 
-  // modify the relevant part of the smith basis
+  // modify the relevant part of the Smith basis
 
-  latticetypes::LatticeMatrix m_cb(cb);
+  latticetypes::LatticeMatrix m_cb(cb,c_rank+t_rank);
   latticetypes::LatticeMatrix m_sb
-    (d_smithBasis.begin() + s_rank,d_smithBasis.end(), tags::IteratorTag());
+    (d_smithBasis.begin() + s_rank,d_smithBasis.end(), d_semisimpleRank,
+     tags::IteratorTag());
 
   m_sb *= m_cb;
 

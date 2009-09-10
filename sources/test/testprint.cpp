@@ -71,7 +71,7 @@ namespace testprint {
 std::ostream& print(std::ostream& strm, const rootdata::RootDatum& rd)
 {
   strm << "cartan matrix :" << std::endl;
-  latticetypes::LatticeMatrix q(rd.semisimpleRank());
+  latticetypes::LatticeMatrix q(rd.semisimpleRank(),rd.semisimpleRank());
   for (size_t j = 0; j < rd.semisimpleRank(); ++j)
     for (size_t i = 0; i < rd.semisimpleRank(); ++i)
       q(i,j) = rd.cartan(i,j);
