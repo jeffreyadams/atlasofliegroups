@@ -57,17 +57,17 @@ template <typename I, typename O>
 }
 
 /*!
-  In this template we assume that |I| is an |Input_iterator| with |value_type|
-  |RootNbr|, and that |O| is an |OutputIterator| with |value_type| |Weight|.
-  We assume that |rb| contains a basis of some _sub_ rootsystem of |rd|, and
-  that |I| inputs |RootNbr|s corresponding to roots in that subsystem. Then we
-  write to |out| the expression of the root in the basis |rb|.
+  In this template, |I| is an Input_iterator with |value_type| |RootNbr|, and
+  |O| is an OutputIterator with |value_type| |Weight|. We assume that |rb|
+  contains a basis of some _sub_ rootsystem of |rd|, and that |I| inputs
+  |RootNbr|s corresponding to roots in that subsystem. Then we write to |out|
+  the expression of the root in the basis |rb|.
 
   The idea is to use the coroots of the vectors in |rb| to get the expression
   of both the input roots and those from |rb| in the simple weight basis for
   |rb| (this is done by |toSimpleWeights| below); the latter matrix (the
   Cartan matrix of |rb|) being square, we can then apply |baseChange|, which
-  amounts to left-multiplication bythe inverse of that Cartan matrix.
+  amounts to left-multiplication by the inverse of that Cartan matrix.
 */
 template <typename I, typename O>
   void RootSystem::toRootBasis(const I& first, const I& last, O out,
