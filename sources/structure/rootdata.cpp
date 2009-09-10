@@ -45,6 +45,7 @@
 #include "partition.h"
 #include "prerootdata.h"
 #include "smithnormal.h"
+#include "tags.h"
 
 /*****************************************************************************
 
@@ -485,6 +486,10 @@ RootList RootSystem::high_roots() const
 
 
 
+/*     The |RootDatum| class implementation     */
+
+
+
 RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   : RootSystem(prd.Cartan_matrix())
   , d_rank(prd.rank())
@@ -497,8 +502,8 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   , Cartan_denom()
   , d_status()
 {
-  latticetypes::LatticeMatrix root_mat(prd.roots());
-  latticetypes::LatticeMatrix coroot_mat(prd.coroots());
+  latticetypes::LatticeMatrix root_mat(prd.roots(),d_rank);
+  latticetypes::LatticeMatrix coroot_mat(prd.coroots(),d_rank);
   for (RootNbr alpha=numPosRoots(); alpha<numRoots(); ++alpha)
   {
     d_roots[alpha]= root_mat.apply(root_expr(alpha));
@@ -510,12 +515,12 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   }
 
 
-  // the simple weights are given by the matrix Q.tC^{-1}, where Q is the
-  // matrix of the simple roots, tC the transpose Cartan matrix
+  // the fundamental weights are given by the matrix Q.tC^{-1}, where Q is
+  // the matrix of the simple roots, tC the transpose Cartan matrix
   latticetypes::LatticeMatrix iC = cartanMatrix().inverse(Cartan_denom);
   weight_numer = (root_mat*iC.transposed()).columns();
 
-  // for the simple simple coweights, use coroots and (plain) Cartan matrix
+  // for the fundamental coweights, use coroots and (untransposed) Cartan matrix
   coweight_numer = (coroot_mat*iC).columns();
 
   // get basis of co-radical character lattice, if any (or leave empty list)
@@ -562,9 +567,52 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
   assert(d_status[IsSimplyConnected] == rd.d_status[IsAdjoint]);
 }
 
-RootDatum::~RootDatum()
+/* Construct the derived root datum, and put weight mapping into |projector| */
 
-{}
+RootDatum::RootDatum(latticetypes::LatticeMatrix& projector,
+		     const RootDatum& rd,
+		     tags::DerivedTag)
+  : RootSystem(rd)
+  , d_rank(rd.semisimpleRank())
+  , d_roots(rd.numRoots())
+  , d_coroots(rd.numRoots())
+  , weight_numer(d_rank)
+  , coweight_numer(d_rank)
+  , d_radicalBasis(), d_coradicalBasis() // these remain empty
+  , d_2rho()
+  , d_dual_2rho()
+  , Cartan_denom(rd.Cartan_denom)
+  , d_status()
+{
+  size_t r=rd.rank(), d=r-d_rank;
+  latticetypes::LatticeMatrix kernel // of projector map
+    (rd.beginCoradical(),rd.endCoradical(),r,tags::IteratorTag());
+
+  assert(kernel.numColumns()==d);
+
+  latticetypes::WeightList b; matrix::initBasis(b,r);
+  latticetypes::CoeffList invf;
+  smithnormal::smithNormal(invf,b.begin(),kernel);
+
+  assert(invf.size()==d);
+
+  latticetypes::LatticeMatrix
+    new_basis(b.begin()+d,b.end(),r,tags::IteratorTag());
+  projector = latticetypes::LatticeMatrix(b,r).inverse().block(d,0,r,r);
+
+  for (RootNbr i=0; i<rd.numRoots(); ++i)
+  {
+    d_roots[i] = projector.apply(rd.d_roots[i]);
+    d_coroots[i] = new_basis.right_apply(rd.d_coroots[i]);
+  }
+
+  d_2rho = projector.apply(rd.d_2rho);
+  d_dual_2rho = new_basis.right_apply(rd.d_dual_2rho);
+
+  fillStatus();
+}
+
+
 
 /******** accessors **********************************************************/
 
@@ -699,7 +747,7 @@ void RootDatum::swap(RootDatum& other)
 void RootDatum::fillStatus()
 {
   latticetypes::LatticeMatrix
-    q(beginSimpleRoot(),endSimpleRoot(),tags::IteratorTag());
+    q(beginSimpleRoot(),endSimpleRoot(),rank(),tags::IteratorTag());
 
   latticetypes::WeightList b;
   latticetypes::CoeffList invf;
@@ -717,7 +765,7 @@ void RootDatum::fillStatus()
     }
 
   latticetypes::LatticeMatrix
-    qd(beginSimpleCoroot(),endSimpleCoroot(),tags::IteratorTag());
+    qd(beginSimpleCoroot(),endSimpleCoroot(),rank(),tags::IteratorTag());
 
   matrix::initBasis(b,d_rank);
   invf.clear();
