@@ -66,11 +66,6 @@ template<typename C>
 		   const matrix::Matrix<C>&);
 
 template<typename C>
-  void smithNormal(std::vector<C>&,
-		   typename std::vector<matrix::Vector<C> >::iterator,
-		   const std::vector<matrix::Vector<C> >&);
-
-template<typename C>
   void smithStep(typename std::vector<matrix::Vector<C> >::iterator,
 		 matrix::Matrix<C>&);
 

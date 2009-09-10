@@ -117,27 +117,7 @@ template<typename C>
 }
 
 
-/*!
-  Does the reduction in the case of a row operation. The reduction consists
-  in subtracting from row i the multiple of row 0 which will leave in
-  m(i,0) the remainder of the Euclidian division of m(i,0) by m(0,0), and
-  then swapping the two rows. One also has to update the basis b accordingly.
-*/
-template<typename C>
-  void columnReduce(matrix::Matrix<C>& m, size_t j)
-{
-  C a = intutils::divide(m(0,j),m(0,0));
-  m.columnOperation(j,0,-a);
-  m.swapColumns(0,j);
-}
 
-
-/*!
-  Does the reduction in the case of a row operation. The reduction consists
-  in subtracting from row i the multiple of row 0 which will leave in
-  m(i,0) the remainder of the Euclidian division of m(i,0) by m(0,0), and
-  then swapping the two rows. One also has to update the basis b accordingly.
-*/
 template <typename C>
   typename matrix::Matrix<C>::index_pair
 findBlockReduction(const matrix::Matrix<C>& m)
@@ -151,12 +131,6 @@ findBlockReduction(const matrix::Matrix<C>& m)
 }
 
 
-/*!
-  Does the reduction in the case of a row operation. The reduction consists
-  in subtracting from row i the multiple of row 0 which will leave in
-  m(i,0) the remainder of the Euclidian division of m(i,0) by m(0,0), and
-  then swapping the two rows. One also has to update the basis b accordingly.
-*/
 template <typename C>
   typename matrix::Matrix<C>::index_pair
 findReduction(const matrix::Matrix<C>& m)
@@ -173,12 +147,6 @@ findReduction(const matrix::Matrix<C>& m)
 }
 
 
-/*!
-  Does the reduction in the case of a row operation. The reduction consists
-  in subtracting from row i the multiple of row 0 which will leave in
-  m(i,0) the remainder of the Euclidian division of m(i,0) by m(0,0), and
-  then swapping the two rows. One also has to update the basis b accordingly.
-*/
 template<typename C>
 bool hasBlockReduction(const matrix::Matrix<C>& m)
 {
@@ -194,12 +162,6 @@ bool hasBlockReduction(const matrix::Matrix<C>& m)
 }
 
 
-/*!
-  Does the reduction in the case of a row operation. The reduction consists
-  in subtracting from row i the multiple of row 0 which will leave in
-  m(i,0) the remainder of the Euclidian division of m(i,0) by m(0,0), and
-  then swapping the two rows. One also has to update the basis b accordingly.
-*/
 template<typename C>
 bool hasReduction(const matrix::Matrix<C>& m)
 {
@@ -219,10 +181,9 @@ bool hasReduction(const matrix::Matrix<C>& m)
 
 
 /*!
-  Does the reduction in the case of a row operation. The reduction consists
-  in subtracting from row i the multiple of row 0 which will leave in
-  m(i,0) the remainder of the Euclidian division of m(i,0) by m(0,0), and
-  then swapping the two rows. One also has to update the basis b accordingly.
+  Finds and does the reduction, by row or column operations.
+
+  It is assumed that |m(0,0)>0| (which |prepareMatrix| below will ensure)
 */
 template<typename C>
   void reduce(typename std::vector<matrix::Vector<C> >::iterator b,
@@ -241,12 +202,6 @@ template<typename C>
 }
 
 
-/*!
-  Does the reduction in the case of a row operation. The reduction consists
-  in subtracting from row i the multiple of row 0 which will leave in
-  m(i,0) the remainder of the Euclidian division of m(i,0) by m(0,0), and
-  then swapping the two rows. One also has to update the basis b accordingly.
-*/
 template<typename C>
   void prepareMatrix(typename std::vector<matrix::Vector<C> >::iterator b,
 		     matrix::Matrix<C>& m)
@@ -280,7 +235,7 @@ template<typename C>
   void rowReduce(typename std::vector<matrix::Vector<C> >::iterator b,
 		 matrix::Matrix<C>& m, size_t i)
 {
-  C a = intutils::divide(m(i,0),m(0,0));
+  C a = intutils::divide(m(i,0),m(0,0)); // we have |m(0,0)>0|
   m.rowOperation(i,0,-a);
   addMultiple(b[0],b[i],a);
   m.swapRows(0,i);
@@ -288,16 +243,40 @@ template<typename C>
 }
 
 /*!
+  Does the reduction in the case of a column operation. The reduction consists
+  in subtracting from column i the multiple of column 0 which will leave in
+  m(i,0) the remainder of the Euclidian division of m(i,0) by m(0,0), and
+  then swapping the two columns.
+*/
+template<typename C>
+  void columnReduce(matrix::Matrix<C>& m, size_t j)
+{
+  C a = intutils::divide(m(0,j),m(0,0)); // we have |m(0,0)>0|
+  m.columnOperation(j,0,-a);
+  m.swapColumns(0,j);
+}
+
+/*!
   This is a simple implementation of the Smith normal form algorithm, intended
   for use on small matrices such as Cartan matrices.
 
-  It is assumed that the matrix m is given, whose columns express the
-  coordinates of a set of vectors relative to the basis b. This relation
-  between m and b is preserved throughout the algorithm; the group generated
-  by the column combinations does not change. The basis b and the matrix m
-  change, until m reaches a diagonal form.
+  The columns of |m| express the coordinates of a set of vectors relative to
+  the basis |b| (so |b| is assumed to give access to a sequence of vectors of
+  length |m.numRows()|); the relevant information of these vectors is the
+  lattice they span. This relation between |m| and |b| (under the names |ml|
+  and |bp|) is preserved throughout the algorithm: whenever |m| is modified by
+  row operations, the corresponding (inverse) operation is performed on |b|,
+  leaving the product |B*m| unchanged, where |B| is the matrix with columns
+  given by the vectors of |b|. When column operations are performed on |m|, no
+  change is made to |b|, so in the end what remains invariant is the image of
+  |B*m| (the span of the vectors expressed by the columns of |m| in the basis
+  |b|), which remains the originally specified lattice. In the end all that is
+  left of |m| is its Smith normal form, which can be compactly encoded by the
+  list |invf| of invariant factors on the diagonal; the main result of the
+  algorithm is the modified basis |b|, which is such that its multiples by the
+  corresponding invariant factors (when non-zero) form a basis of our lattice.
 
-  The invariant factors are appended to invf.
+  The invariant factors (non-zero by definition) are appended to invf.
 */
 template<typename C>
 void smithNormal(std::vector<C>& invf,
@@ -325,21 +304,6 @@ void smithNormal(std::vector<C>& invf,
     invf.push_back(a);
     ++bp;
   }
-}
-
-template<typename C>
-
-/*!
-  Another interface to the smithNormal procedure, where we are given the
-  sublattice through a generating family f, expressed by its coordinates
-  in b.
-*/
-void smithNormal(std::vector<C>& invf,
-		 typename std::vector<matrix::Vector<C> >::iterator b,
-		 const std::vector<matrix::Vector<C> >& f)
-{
-  matrix::Matrix<C> m(f);
-  smithNormal(invf,b,m);
 }
 
 
