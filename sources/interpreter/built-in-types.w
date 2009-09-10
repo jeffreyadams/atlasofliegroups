@@ -142,7 +142,7 @@ latter on input, so we do that here.
 @< Function definitions @>=
 void Lie_type_value::add_simple_factor (char c,size_t rank)
    throw(std::bad_alloc,std::runtime_error)
-{ static const std::string types=atlas::lietype::typeLetters; // |"ABCDEFGT"|
+{ static const std::string types=lietype::typeLetters; // |"ABCDEFGT"|
   size_t t=types.find(c);
   if (t==std::string::npos)
     throw std::runtime_error(std::string("Invalid type letter '")+c+'\'');
@@ -325,7 +325,7 @@ group (a finite quotient of the simply connected group); that sub-lattice
 should have full rank and contain the root lattice. We shall start with
 considering some auxiliary functions to help facilitate this choice.
 
-Here is a wrapper function around the |LieType::Smith_normal| method, which
+Here is a wrapper function around the |LieType::Smith_basis| method, which
 computes a block-wise Smith basis for the transposed Cartan matrix, and the
 corresponding invariant factors. In case of torus factors this description
 should be interpreted in the sense that the Smith basis for those factors is
@@ -338,7 +338,7 @@ void Smith_Cartan_wrapper(expression_base::level l)
     return;
   vector_ptr inv_factors (new vector_value(latticetypes::CoeffList()));
   latticetypes::WeightList b = t->val.Smith_basis(inv_factors->val);
-  push_value(new matrix_value(latticetypes::LatticeMatrix(b)));
+  push_value(new matrix_value(latticetypes::LatticeMatrix(b,b.size())));
   push_value(inv_factors);
   if (l==expression_base::single_value)
      wrap_tuple(2);
@@ -421,7 +421,7 @@ annihilator_modulo
     // find Smith basis
 
   latticetypes::LatticeMatrix A
-    (latticetypes::LatticeMatrix(b).inverse().transposed());
+    (latticetypes::LatticeMatrix(b,m).inverse().transposed());
 
   for (size_t j = 0; j < lambda.size(); ++j)
   { unsigned long c =
@@ -507,7 +507,7 @@ case of problems.
 lietype::InnerClassType transform_inner_class_type
   (const char* s, const lietype::LieType& lt)
 throw (std::bad_alloc, std::runtime_error)
-{ static const std::string types(atlas::lietype::innerClassLetters);
+{ static const std::string types(lietype::innerClassLetters);
     // |"Ccesu"|
   lietype::InnerClassType result; // initially empty
   std::istringstream is(s);
@@ -872,7 +872,7 @@ the new denominator~|d|.
     // convert modulo $\Z$ and to common denominator |d|
   { size_t f=d/denom[j];
     for (size_t i=0; i<v->val.size(); ++i)
-      M(i,j) = arithmetic::remainder(M(i,j),denom[j])*f;
+      M(i,j) = intutils::remainder(M(i,j),denom[j])*f;
   }
 }
 
@@ -995,7 +995,8 @@ void simple_roots_wrapper(expression_base::level l)
     return;
   latticetypes::WeightList srl
     (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
-  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(srl)));
+  push_value(new matrix_value
+    (latticetypes::LatticeMatrix(srl,rd->val.rank())));
 }
 @)
 void simple_coroots_wrapper(expression_base::level l)
@@ -1004,7 +1005,8 @@ void simple_coroots_wrapper(expression_base::level l)
     return;
   latticetypes::WeightList scl
     (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
-  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(scl)));
+  push_value(new matrix_value
+    (latticetypes::LatticeMatrix(scl,rd->val.rank())));
 }
 @)
 void datum_Cartan_wrapper(expression_base::level l)
@@ -1025,7 +1027,8 @@ void positive_roots_wrapper(expression_base::level l)
     return;
   latticetypes::WeightList rl
     (rd->val.beginPosRoot(),rd->val.endPosRoot());
-  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(rl)));
+  push_value(new matrix_value
+    (latticetypes::LatticeMatrix(rl,rd->val.rank())));
 }
 @)
 void positive_coroots_wrapper(expression_base::level l)
@@ -1034,7 +1037,8 @@ void positive_coroots_wrapper(expression_base::level l)
     return;
   latticetypes::WeightList crl
     (rd->val.beginPosCoroot(),rd->val.endPosCoroot());
-  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(crl)));
+  push_value(new matrix_value
+    (latticetypes::LatticeMatrix(crl,rd->val.rank())));
 }
 void roots_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
@@ -1042,7 +1046,7 @@ void roots_wrapper(expression_base::level l)
     return;
   latticetypes::WeightList rl
     (rd->val.beginRoot(),rd->val.endRoot());
-  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(rl)));
+  push_value(new matrix_value(latticetypes::LatticeMatrix(rl,rd->val.rank())));
 }
 @)
 void coroots_wrapper(expression_base::level l)
@@ -1051,7 +1055,7 @@ void coroots_wrapper(expression_base::level l)
     return;
   latticetypes::WeightList crl
     (rd->val.beginCoroot(),rd->val.endCoroot());
-  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(crl)));
+  push_value(new matrix_value(latticetypes::LatticeMatrix(crl,rd->val.rank())));
 }
 
 @ Here are two utility functions.
@@ -1069,7 +1073,8 @@ void rd_semisimple_rank_wrapper(expression_base::level l)
 }
 
 @ It is useful to have bases for the sum of the root lattice and the
-coradical, and for the sum of the coroot lattice and the radical.
+coradical, and for the sum of the coroot lattice and the radical; the latter
+will in fact be used later in a function to built inner classes.
 
 @< Local function definitions @>=
 void root_coradical_wrapper(expression_base::level l)
@@ -1079,7 +1084,7 @@ void root_coradical_wrapper(expression_base::level l)
   latticetypes::WeightList srl
     (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
   srl.insert(srl.end(),rd->val.beginCoradical(),rd->val.endCoradical());
-  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(srl)));
+  push_value(new matrix_value(latticetypes::LatticeMatrix(srl,rd->val.rank())));
 }
 @)
 void coroot_radical_wrapper(expression_base::level l)
@@ -1089,10 +1094,33 @@ void coroot_radical_wrapper(expression_base::level l)
   latticetypes::WeightList scl
     (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
   scl.insert(scl.end(),rd->val.beginRadical(),rd->val.endRadical());
-  push_value(new matrix_value(atlas::latticetypes::LatticeMatrix(scl)));
+  push_value(new matrix_value(latticetypes::LatticeMatrix(scl,rd->val.rank())));
 }
 
-@ And here is a simple function to dualise a root datum.
+@ We give access to the fundamental weights and coweights on an individual
+basis, which is easier since they are rational vectors.
+
+@< Local function definitions @>=
+void fundamental_weight_wrapper(expression_base::level l)
+{ int i= get<int_value>()->val;
+  shared_root_datum rd(get<root_datum_value>());
+  if (unsigned(i)>=rd->val.semisimpleRank())
+    throw std::runtime_error("Invalid index "+str(i));
+  if (l!=expression_base::no_value)
+    push_value(new rational_vector_value(rd->val.fundamental_weight(i)));
+}
+@)
+void fundamental_coweight_wrapper(expression_base::level l)
+{ int i= get<int_value>()->val;
+  shared_root_datum rd(get<root_datum_value>());
+  if (unsigned(i)>=rd->val.semisimpleRank())
+    throw std::runtime_error("Invalid index "+str(i));
+  if (l!=expression_base::no_value)
+    push_value(new rational_vector_value(rd->val.fundamental_coweight(i)));
+}
+
+
+@ And here are functions for the dual and derived root data.
 
 @h "tags.h"
 @< Local function definitions @>=
@@ -1101,6 +1129,18 @@ void dual_datum_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new root_datum_value@|
       (rootdata::RootDatum(rd->val,tags::DualTag())));
+}
+@)
+void derived_datum_wrapper(expression_base::level l)
+{ shared_root_datum rd(get<root_datum_value>());
+  if (l!=expression_base::no_value)
+  { latticetypes::LatticeMatrix projector;
+    push_value(new root_datum_value@|
+      (rootdata::RootDatum(projector,rd->val,tags::DerivedTag())));
+    push_value(new matrix_value(projector));
+    if (l==expression_base::single_value)
+      wrap_tuple(2);
+  }
 }
 
 @ This function is more recent; it allows constructing a new root (sub-)datum
@@ -1176,7 +1216,13 @@ install_function(roots_wrapper,@|"roots","(RootDatum->mat)");
 install_function(coroots_wrapper,@|"coroots","(RootDatum->mat)");
 install_function(root_coradical_wrapper,@|"root_coradical","(RootDatum->mat)");
 install_function(coroot_radical_wrapper,@|"coroot_radical","(RootDatum->mat)");
+install_function(fundamental_weight_wrapper,@|
+		 "fundamental_weight","(RootDatum,int->ratvec)");
+install_function(fundamental_coweight_wrapper,@|
+		 "fundamental_coweight","(RootDatum,int->ratvec)");
 install_function(dual_datum_wrapper,@|"dual","(RootDatum->RootDatum)");
+install_function(derived_datum_wrapper,@|
+		 "derived","(RootDatum->RootDatum,mat)");
 install_function(rd_rank_wrapper,@|"rank","(RootDatum->int)");
 install_function(rd_semisimple_rank_wrapper@|
 		,"semisimple_rank","(RootDatum->int)");
@@ -1472,12 +1518,12 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 { for (size_t k=0; k<r-s; ++k)
     type.push_back(lietype::SimpleLieType('T',1));
   latticetypes::WeightList b; matrix::initBasis(b,r);
-  latticetypes::WeightList simple_roots
-   (rd.beginSimpleRoot(),rd.endSimpleRoot());
+  latticetypes::LatticeMatrix simple_roots
+    (rd.beginSimpleRoot(),rd.endSimpleRoot(),r,tags::IteratorTag());
 @/latticetypes::CoeffList ivf;
   smithnormal::smithNormal(ivf,b.begin(),simple_roots);
-@/latticetypes::LatticeMatrix M_Smith(M,b); // express |M| on basis |b|
-  latticetypes::LatticeMatrix inv(M_Smith,s,s,r,r);
+@/latticetypes::LatticeMatrix M_Smith = M.on_basis(b);
+  latticetypes::LatticeMatrix inv = M_Smith.block(s,s,r,r);
     // involution on quotient by root lattice
   std::pair<size_t,size_t> cl=classify_involution(inv);
 @/size_t& compact_rank=cl.first;

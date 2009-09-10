@@ -3630,7 +3630,7 @@ void matrix_convert()
       column_list[i].resize(depth);
       for (;j<depth; ++j) column_list[i][j]=0;
     }
-  push_value(new matrix_value(matrix::Matrix<int>(column_list)));
+  push_value(new matrix_value(matrix::Matrix<int>(column_list,depth)));
 }
 
 @ All that remains is to initialise the |coerce_table|.
@@ -3641,12 +3641,12 @@ coercion(row_of_vec_type,mat_type, "M", matrix_convert);
 @ Here are conversions involving rational numbers and vectors.
 
 @< Local function def... @>=
-void rational_convert()
+void rational_convert() // convert integer to rational (with denominator~1)
 {@; shared_int i = get<int_value>();
     push_value(new rat_value(arithmetic::Rational(i->val)));
 }
 @)
-void ratvec_convert()
+void ratvec_convert() // convert list of rationals to rational vector
 { shared_row r = get <row_value>();
   matrix::Vector<int> numer(r->val.size()),denom(r->val.size());
   unsigned int d=1;
@@ -3657,12 +3657,12 @@ void ratvec_convert()
     d=arithmetic::lcm(d,denom[i]);
   }
   for (size_t i=0; i<r->val.size(); ++i)
-    numer[i]*= d/denom[i];
+    numer[i]*= d/denom[i]; // adjust numerators to common denominator
 
   push_value(new rational_vector_value(latticetypes::RatWeight(numer,d)));
 }
 @)
-void rat_list_convert()
+void rat_list_convert() // convert rational vector to list of rationals
 { shared_rational_vector rv = get<rational_vector_value>();
   row_ptr result(new row_value(rv->val.size()));
   for (size_t i=0; i<rv->val.size(); ++i)
@@ -3694,7 +3694,7 @@ void matrix2_convert()
       column_list[i].resize(depth);
       for (;j<depth; ++j) column_list[i][j]=0;
     }
-  push_value(new matrix_value(matrix::Matrix<int>(column_list)));
+  push_value(new matrix_value(matrix::Matrix<int>(column_list,depth)));
 
 }
 
@@ -3811,14 +3811,16 @@ void times_wrapper(expression_base::level l)
 }
 
 @ We take the occasion to repair the integer division operation for negative
-arguments, by using |intutils::divide| rather than |operator/|.
+arguments, by using |intutils::divide| rather than |operator/|. Since that
+takes an unsigned second argument, we handle the case |j<0| ourselves.
 
 @< Local function definitions @>=
 void divide_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (j==0) throw std::runtime_error("Division by zero");
   if (l!=expression_base::no_value)
-    push_value(new int_value(intutils::divide(i,j)));
+    push_value(new int_value
+     (j>0 ? intutils::divide(i,j) : -intutils::divide(i,-j)));
 }
 
 @ We also define a remainder operation |modulo|, a combined
@@ -3830,17 +3832,17 @@ of integers producing a rational number, and an integer power operation
 void modulo_wrapper(expression_base::level l)
 { int  j=get<int_value>()->val; int i=get<int_value>()->val;
   if (j==0) throw std::runtime_error("Modulo zero");
-  j=intutils::abs(j);
   if (l!=expression_base::no_value)
-    push_value(new int_value(intutils::remainder(i,j)));
+    push_value(new int_value(intutils::remainder(i,intutils::abs(j))));
 }
 @)
 void divmod_wrapper(expression_base::level l)
 { int j=get<int_value>()->val; int i=get<int_value>()->val;
   if (j==0) throw std::runtime_error("DivMod by zero");
   if (l!=expression_base::no_value)
-  { push_value(new int_value(intutils::divide(i,j)));
-    push_value(new int_value(intutils::remainder(i,j)));
+  { push_value(new int_value
+     (j>0 ? intutils::divide(i,j) : -intutils::divide(i,-j)));
+    push_value(new int_value(intutils::remainder(i,intutils::abs(j))));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -4415,9 +4417,9 @@ void Smith_basis_wrapper(expression_base::level l)
     return;
   size_t nr=m.numRows();
   std::vector<matrix::Vector<int> > b; @+ matrix::initBasis(b,nr);
-  matrix::Vector<int> inv_factors(0);
+  matrix::Vector<int> inv_factors;
   smithnormal::smithNormal(inv_factors,b.begin(),m);
-  push_value(new matrix_value(matrix::Matrix<int>(b)));
+  push_value(new matrix_value(matrix::Matrix<int>(b,nr)));
 }
 @)
 
@@ -4429,7 +4431,7 @@ void Smith_wrapper(expression_base::level l)
   std::vector<matrix::Vector<int> > b; @+ matrix::initBasis(b,nr);
   vector_ptr inv_factors (new vector_value(matrix::Vector<int>(0)));
   smithnormal::smithNormal(inv_factors->val,b.begin(),m);
-@/push_value(new matrix_value(matrix::Matrix<int>(b)));
+@/push_value(new matrix_value(matrix::Matrix<int>(b,nr)));
   push_value(inv_factors);
   if (l==expression_base::single_value)
     wrap_tuple(2);
