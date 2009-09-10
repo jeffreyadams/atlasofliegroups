@@ -19,8 +19,8 @@ namespace atlas {
 namespace intutils {
 
   template<typename I> I abs(I);
-  template<typename I> I divide(I, I);
-  template<typename I> I remainder(I, I);
+  template<typename I> I divide(I, unsigned long);
+  template<typename I> unsigned long remainder(I, unsigned long);
   template<typename I> I factorial(I);
 
 }
