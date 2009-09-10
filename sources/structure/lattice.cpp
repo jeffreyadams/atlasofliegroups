@@ -73,16 +73,16 @@ numeratorMatrix(const latticetypes::RatWeightList& rwl)
 */
 latticetypes::WeightList perp(const latticetypes::WeightList& b, size_t r)
 {
-  assert(b.size()==0 or b[0].size()==r);
+  latticetypes::LatticeMatrix M(b,r); // this is what we really needed
 
   latticetypes::WeightList basis; matrix::initBasis(basis,r);
 
   latticetypes::CoeffList inv_factor;
-  smithnormal::smithNormal(inv_factor,basis.begin(),b);
+  smithnormal::smithNormal(inv_factor,basis.begin(),M);
 
   // inverse transpose to get dual base change
   latticetypes::LatticeMatrix sq =
-    latticetypes::LatticeMatrix(basis).inverse().transposed();
+    latticetypes::LatticeMatrix(basis,r).inverse().transposed();
 
   // take last vectors
   latticetypes::WeightList result;

@@ -70,11 +70,13 @@ template<size_t dim> void mod2(bitvector::BitMatrix<dim>& m2,
 
 
 /*!
-  In this template, we assume that |I|, |J| and |O| are respectively input and
-  output iterators for type |Weight|, and that |[firstb, lastb[| holds a new
-  $\Q$-basis for the current lattice, expressed in terms of the current basis.
-  As we range from begin to end, we write the vectors in the new basis and
-  output them to |O|.
+  In this template, we assume that |I|, |J| and |O| are respectively random
+  access input and output iterators for type |Weight|, and that
+  |[firstb,lastb[| holds a new $\Q$-basis for the lattice, in particular that
+  |lastb-firstb| is equal to the size of the |Weight|s.
+
+  As we iterate from |first| to |last|, we write the vectors in the
+  new basis (this is supposed to be possible) and output the result to |O|.
 
   Doing the base change amounts to multiplying with the inverse matrix of
   |b|'s matrix.
@@ -91,14 +93,11 @@ template<typename I, typename J, typename O>
 {
   latticetypes::LatticeCoeff d;
   latticetypes::LatticeMatrix q =
-    latticetypes::LatticeMatrix(firstb,lastb,tags::IteratorTag()).inverse(d);
+    latticetypes::LatticeMatrix(firstb,lastb,lastb-firstb,tags::IteratorTag())
+    .inverse(d);
 
   for (I i = first; i != last; ++i)
-  {
-    latticetypes::Weight v = q.apply(*i);
-    v/=d;
-    *out++ = v;
-  }
+    *out++ = (q.apply(*i)/=d);
 }
 
 

@@ -319,7 +319,7 @@ adjoint_involution(const rootdata::RootSystem& rs, const InvolutionData& id)
   for (size_t s=0; s<b.size(); ++s)
     b[s] = rs.root_expr(id.root_involution(rs.simpleRootNbr(s)));
 
-  return latticetypes::LatticeMatrix(b).negative_transposed();
+  return latticetypes::LatticeMatrix(b,rs.rank()).negative_transposed();
 }
 
 /*!
