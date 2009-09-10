@@ -779,7 +779,7 @@ latticetypes::LatticeMatrix TwistedWeylGroup::involution_matrix
   for (size_t i=0; i<rank(); ++i)
     b[i] = rs.root_expr(simple_image[i]);
 
-  return latticetypes::LatticeMatrix(b);
+  return latticetypes::LatticeMatrix(b,b.size());
 }
 
 } // namespace weyl
@@ -1069,29 +1069,17 @@ void fillCoxMatrix(latticetypes::LatticeMatrix& cox,
 		   const latticetypes::LatticeMatrix& cart,
 		   const setutils::Permutation& a)
 {
-  cox.resize(cart.numColumns(),cart.numColumns(),2);
+  assert (cart.numRows()==cart.numColumns());
+  cox.resize(cart.numRows(),cart.numRows());
 
-  // fill in the appropriate values
-
-  for (size_t j = 0; j < cox.numColumns(); ++j)
-    cox(j,j) = 1;
-
-  for (size_t j = 0; j < cart.numColumns(); ++j)
-    for (size_t i = j+1; i < cart.numRows(); ++i)
-      if (cart(i,j)!=0) {
-	if (cart(i,j)*cart(j,i) == 1) {
-	  cox(i,j) = 3;
-	  cox(j,i) = 3;
-	}
-	else if (cart(i,j)*cart(j,i) == 2) {
-	  cox(i,j) = 4;
-	  cox(j,i) = 4;
-	}
-	else if (cart(i,j)*cart(j,i) == 3) {
-	  cox(i,j) = 6;
-	  cox(j,i) = 6;
-	}
-      }
+  static const int translate[] // from product of cart entries -> cox entry
+    = { 2, 3, 4, 6 }; // N.B.  |0<=cart(i,j)*cart(j,i)<=3| always for |i!=j|
+  for (size_t i=0; i<cart.numRows(); ++i)
+  {
+    cox(i,i) = 1;
+    for (size_t j=i+1; j<cart.numRows(); ++j)
+      cox(i,j) = cox(j,i) = translate[cart(i,j)*cart(j,i)];
+  }
 
   // permute
 
