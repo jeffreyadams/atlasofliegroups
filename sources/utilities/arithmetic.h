@@ -36,8 +36,6 @@ namespace arithmetic {
 
   unsigned long& modProd(unsigned long&, unsigned long, unsigned long);
 
-  template<typename C> unsigned long remainder(C, unsigned long);
-
 } // |namespace arithmetic|
 
 /*        Class definitions        */
@@ -118,7 +116,5 @@ namespace arithmetic {
 } // |namespace arithmetic|
 
 } // |namespace atlas|
-
-#include "arithmetic_def.h"
 
 #endif
