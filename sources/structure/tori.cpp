@@ -135,9 +135,6 @@ RealTorus::RealTorus(const latticetypes::LatticeMatrix& i)
   d_complexRank -= d_topology.space().dimension();
 }
 
-RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
-  :d_rank(T.d_rank),
-   d_involution(d_rank)
 
 /*!
   Synopsis: constructs the torus "dual" to T.
@@ -146,7 +143,14 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
   the involution -tau^t, where tau is the involution for T. The minus sign is
   there because it is the way we wish to dualize our real forms.
 */
-
+RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
+  : d_rank(T.d_rank)
+  , d_complexRank(d_rank) // this value is too large; it is modified below
+  , d_involution(d_rank,d_rank)
+  , d_plus()
+  , d_minus()
+  , d_toPlus()
+  , d_topology(d_rank) // set dimension of ambient space for subquotient
 {
   // set the involution matrix
 
@@ -162,7 +166,7 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
   // find component group data
 
   makeTopology(d_topology,*this);
-  d_complexRank = d_rank - d_topology.space().dimension();
+  d_complexRank -= d_topology.space().dimension();
 }
 
 /******** accessors *********************************************************/
@@ -447,7 +451,7 @@ void fullMinusBasis(latticetypes::WeightList& mb,
   // rows of projection matrix are the first rows of the inverse of the
   // matrix of bs
 
-  latticetypes::LatticeMatrix p=latticetypes::LatticeMatrix(bs).inverse();
+  latticetypes::LatticeMatrix p=latticetypes::LatticeMatrix(bs,n).inverse();
 
 
   tm.resize(invf.size(),n);
@@ -455,8 +459,6 @@ void fullMinusBasis(latticetypes::WeightList& mb,
   for (size_t i = 0; i < invf.size(); ++i)
     for (size_t j = 0; j < n; ++j)
       tm(i,j) = p(i,j);
-
-  return;
 }
 
 
@@ -505,10 +507,10 @@ void fullPlusBasis(latticetypes::WeightList& pb,
     pb.push_back(bs[j]);
 
   // make coordinate transformation matrix
-  latticetypes::LatticeMatrix p = latticetypes::LatticeMatrix(bs).inverse();
+  latticetypes::LatticeMatrix p = latticetypes::LatticeMatrix(bs,n).inverse();
 
   // extract first |invf.size()| rows
-  tp=latticetypes::LatticeMatrix(p,0,0,invf.size(),n);
+  tp=p.block(0,0,invf.size(),n);
 }
 
 } // |namespace|

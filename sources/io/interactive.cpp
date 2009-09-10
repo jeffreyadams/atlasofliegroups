@@ -727,7 +727,7 @@ namespace {
 bool checkInvolution(const latticetypes::LatticeMatrix& i,
 		     const latticetypes::WeightList& basis)
 {
-  latticetypes::LatticeMatrix p(basis);
+  latticetypes::LatticeMatrix p(basis,basis.size());
 
   // write d.p^{-1}.i.p
 

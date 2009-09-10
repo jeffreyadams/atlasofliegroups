@@ -110,7 +110,7 @@ namespace {
  \brief Writes down the simple roots in the lattice basis.
 
   Given the lattice basis |lb|, expressed in terms of the simple weight basis,
-  and a Lie type |lt| the Cartan matrix of |lt| may be interpreted as giving
+  and a Lie type |lt|, the Cartan matrix of |lt| may be interpreted as giving
   in its _rows_ the coordinates of the simple roots in the simple weight basis
   (this interpretation depends on our definition of the Cartan matrix to
   include in the non-semisimple case null columns at torus factor positions;
@@ -121,13 +121,14 @@ namespace {
 latticetypes::WeightList rootBasis(const lietype::LieType& lt,
 				   const latticetypes::WeightList& lb)
 {
+  assert(lb.size()==lt.rank());
   latticetypes::LatticeCoeff d;
-  latticetypes::LatticeMatrix q(lb); q.invert(d);
+  latticetypes::LatticeMatrix q(lb,lb.size()); q.invert(d);
 
   if (d==0)
     throw std::runtime_error("Dependent lattice generators");
 
-  // push back simple roots expressed on |lb|
+  // push back simple roots expressed in |lb|
 
   const size_t rk=lt.rank();
   latticetypes::Weight v(rk); // temporary vector
@@ -139,7 +140,7 @@ latticetypes::WeightList rootBasis(const lietype::LieType& lt,
       {
 	for (size_t k=0; k<rk; ++k) // get Cartan entries for root
 	  v[k]=lt.Cartan_entry(r,k);
-	result.push_back((q.apply(v))/d); // may |throw std::runtime_error|
+	result.push_back((q.apply(v))/=d); // may |throw std::runtime_error|
       }
 
   return result;
@@ -147,7 +148,7 @@ latticetypes::WeightList rootBasis(const lietype::LieType& lt,
 
 /*! \brief Writes down the simple coroots in the dual lattice basis.
 
-  Given the lattice basis lb, expressed in terms of the simple weight basis,
+  Given the lattice basis |lb|, expressed in terms of the simple weight basis,
   and the Lie type |lt|, this function returns the simple coroots of the
   system. If |q| is the matrix of |lb| in the simple weight basis, its
   transpose is the matrix of the dual basis of the simple weight basis (a
@@ -160,7 +161,8 @@ latticetypes::WeightList rootBasis(const lietype::LieType& lt,
 latticetypes::WeightList corootBasis(const lietype::LieType& lt,
 				     const latticetypes::WeightList& lb)
 {
-  latticetypes::LatticeMatrix q(lb);
+  assert(lb.size()==lt.rank());
+  latticetypes::LatticeMatrix q(lb,lb.size()); // square matrix
 
   latticetypes::WeightList result; result.reserve(lt.semisimple_rank());
   size_t r=0; // row number in |q|

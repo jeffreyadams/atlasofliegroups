@@ -131,7 +131,7 @@ Connectivity::Connectivity(const tori::RealTorus& t,
   latticetypes::WeightList b(rd.beginSimpleCoroot(),rd.endSimpleCoroot());
   std::copy(rd.beginRadical(),rd.endRadical(),
 	    std::back_inserter(b)); // coroots+radical
-  latticetypes::LatticeMatrix i_sw(i,b); // matrix of |i| in this basis
+  latticetypes::LatticeMatrix i_sw=i.on_basis(b); // matrix of |i| in this basis
 
   /* [certainly |i_sw| respects the decomposition into coroot and radical
      subspaces, in other words it is in block form. MvL]  */
@@ -152,7 +152,7 @@ Connectivity::Connectivity(const tori::RealTorus& t,
   for (size_t j = rd.semisimpleRank(); j < rd.rank(); ++j)
     b[j] = latticetypes::Weight(rd.rank(),0); // clear radical part of basis |b|
 
-  latticetypes::LatticeMatrix m(b); m.transpose();
+  latticetypes::LatticeMatrix m(b,rd.rank()); m.transpose();
 
   latticetypes::BinaryMap m2;
   t.componentMap(m2,m,t_sc);

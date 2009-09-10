@@ -231,7 +231,8 @@ int getLattice(const latticetypes::CoeffList& root_invf,
   localBasis(lb,root_lattice_basis,root_invf);
 
   // convert |lb| according to |q|
-  latticetypes::LatticeMatrix m(lb); m *= q;
+  // N.B. elements of |lb| are among |root_lattice_basis|, which is "square"
+  latticetypes::LatticeMatrix m(lb,root_lattice_basis.size()); m *= q;
   matrix::columnVectors(lb,m); // redefine |lb| as converted columns
 
   // make actual basis
@@ -394,7 +395,7 @@ void makeOrthogonal(latticetypes::LatticeMatrix& q,
   smithnormal::smithNormal(linvf,b.begin(),m);
 
   // write matrix
-  q = latticetypes::LatticeMatrix(b).inverse().transposed();
+  q = latticetypes::LatticeMatrix(b,r).inverse().transposed();
 
   // write invariant factors of orthogonal lattice
   invf.resize(b.size(),1UL);
