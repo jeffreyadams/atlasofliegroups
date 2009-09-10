@@ -138,23 +138,32 @@ namespace matrix {
 
 /******** constructors *******************************************************/
 
+/*!
+  Here I is a random access iterator type whose value type should be Vector<C>
+  or some other type that can be subscripted giving a value of type C.
+  We read the columns of the matrix from the iterator.
+
+  All the vectors obtained from the iterators should have size |n_rows|
+*/
+template<typename C>
+  template<typename I> Matrix<C>::Matrix
+    (const I& first, const I& last, size_t n_rows, tags::IteratorTag)
+  : d_rows(n_rows), d_columns(last-first), d_data(d_rows*d_columns)
+{
+  I p=first;
+  for (size_t j=0; j<d_columns; ++j,++p)
+    for (size_t i=0; i<d_rows; ++i)
+      (*this)(i,j) = (*p)[i];
+}
+
 /*! \brief
   This constructor constructs a matrix from a bunch of vectors, columnwise.
   It is assumed that all elements of b have the same size.
 */
 template<typename C>
-Matrix<C>::Matrix(const std::vector<Vector<C> >& b)
+Matrix<C>::Matrix(const std::vector<Vector<C> >& b, size_t n_rows)
+  : d_rows(n_rows), d_columns(b.size()), d_data(d_rows*d_columns)
 {
-  if (b.empty()) { // empty matrix
-    d_rows = 0;
-    d_columns = 0;
-    return;
-  }
-
-  d_rows = b[0].size();
-  d_columns = b.size();
-  d_data.resize(d_rows*d_columns);
-
   for (size_t j = 0; j<d_columns; ++j)
     set_column(j,b[j]);
 }
@@ -166,11 +175,12 @@ Matrix<C>::Matrix(const std::vector<Vector<C> >& b)
   the basis b.
 */
 template<typename C>
-Matrix<C>::Matrix(const Matrix<C>& m, const std::vector<Vector<C> >& b)
-  :d_data(m.d_data), d_rows(m.d_rows), d_columns(m.d_columns)
+  Matrix<C> Matrix<C>::on_basis(const std::vector<Vector<C> >& b) const
 {
-  Matrix<C> p(b);
-  invConjugate(*this,p);
+  assert (numRows()==numColumns());
+  assert (b.size()==numRows());
+  Matrix<C> p(b,b.size()); // square matrix
+  return inv_conjugated(*this,p);
 }
 
 
@@ -179,64 +189,15 @@ Matrix<C>::Matrix(const Matrix<C>& m, const std::vector<Vector<C> >& b)
   x [c_first,c_last[ of source.
 */
 template<typename C>
-Matrix<C>::Matrix(const Matrix<C>& source, size_t r_first, size_t c_first,
-		  size_t r_last, size_t c_last)
-  :d_data((r_last-r_first)*(c_last-c_first)),
-   d_rows(r_last-r_first),
-   d_columns(c_last-c_first)
+  Matrix<C> Matrix<C>::block(size_t i0, size_t j0, size_t i1, size_t j1) const
 {
-  for (size_t j = 0; j<d_columns; ++j)
-    for (size_t i = 0; i<d_rows; ++i)
-      (*this)(i,j) = source(r_first+i,c_first+j);
+  Matrix<C> result(i1-i0,j1-j0);
+  for (size_t j=j0; j<j1; ++j)
+    for (size_t i=i0; i<i1; ++i)
+      result(i-i0,j-j0) = (*this)(i,j);
+  return result;
 }
 
-
-/*!
-  Here I is an iterator whose value type is Weight.
-
-  This constructor constructs a square matrix, which is the matrix
-  representing the operator defined by m in the canonical basis, in
-  the basis supposed to be contained in [first,last[.
-*/
-template<typename C> template<typename I>
-Matrix<C>::Matrix(const Matrix<C>& m, const I& first, const I& last)
-  :d_data(m.d_data), d_rows(m.d_rows), d_columns(m.d_columns)
-{
-  Matrix<C> p(first,last,tags::IteratorTag());
-  invConjugate(*this,p);
-}
-
-
-/*!
-  Here I is an iterator type whose value type should be Vector<C>.
-  The idea is that we read the columns of the matrix from the iterator.
-  However, in order to be able to determine the allocation size,
-  and since unfortunately we decided to read the matrix in rows, we
-  need to catch the vectors first.
-
-  Of course it is assumed that all the vectors in the range have the
-  same size.
-*/
-template<typename C>
-  template<typename I>
-Matrix<C>::Matrix(const I& first, const I& last, tags::IteratorTag)
-{
-  std::vector<Vector<C> > b(first,last);
-
-  if (b.empty()) {
-    d_rows = 0;
-    d_columns = 0;
-    return;
-  }
-
-  d_rows = b[0].size();
-  d_columns = b.size();
-  d_data.resize(d_rows*d_columns);
-
-  for (size_t i = 0; i<d_rows; ++i)
-    for (size_t j = 0; j<d_columns; ++j)
-      (*this)(i,j) = b[j][i];
-}
 
 /******** accessors **********************************************************/
 
@@ -522,14 +483,14 @@ void Matrix<C>::changeRowSign(size_t i)
 
 
 /*!
-  Carries out the column operation consisting of adding c times column j
-  to column i.
+  Carries out the column operation consisting of adding c times column k
+  to column j.
 */
 template<typename C>
-void Matrix<C>::columnOperation(size_t i, size_t j, const C& c)
+void Matrix<C>::columnOperation(size_t j, size_t k, const C& c)
 {
-  for (size_t k = 0; k<columnSize(); ++k)
-    (*this)(k,i) += c*(*this)(k,j);
+  for (size_t i = 0; i<columnSize(); ++i)
+    (*this)(i,j) += c*(*this)(i,k);
 }
 
 
@@ -547,15 +508,17 @@ void Matrix<C>::copy(const Matrix<C>& source, size_t r, size_t c)
 
 
 /*!
-  Copies the column r_s of the matrix m to the column r_d of the current
-  matrix. It is assumed that the two columns have the same size.
+  Removes column |j| altogether, shifting remaining entries to proper place
 */
 template<typename C>
 void Matrix<C>::eraseColumn(size_t j)
 {
-  iterator pos = begin() + j;
-  --d_columns;
+  typename Vector<C>::iterator pos =
+     d_data.begin() + j; // position of entry |M(0,j)|
+  --d_columns; // already adjust number of columns
 
+  // kill individual entries from left to right, with shifts of new |d_colums|
+  // (this is clever but not particularly efficient)
   for (size_t k = 0; k<d_rows; ++k, pos += d_columns)
     d_data.erase(pos);
 }
@@ -567,7 +530,7 @@ void Matrix<C>::eraseColumn(size_t j)
 template<typename C>
 void Matrix<C>::eraseRow(size_t i)
 {
-  iterator first = begin() + i*d_columns;
+  typename Vector<C>::iterator first = d_data.begin() + i*d_columns;
   d_data.erase(first,first+d_columns);
   --d_rows;
 }
@@ -727,14 +690,13 @@ void Matrix<C>::negate()
 template<typename C>
 void Matrix<C>::permute(const setutils::Permutation& a)
 {
-  Matrix<C> q(d_columns);
+  assert (a.size()==d_rows);
+  assert (a.size()==d_columns);
+  Matrix<C> q(d_rows,d_columns);
 
   for (size_t j = 0; j<d_columns; ++j)
-    for (size_t i = 0; i<d_rows; ++i) {
-      size_t a_i = a[i];
-      size_t a_j = a[j];
-      q(i,j) = (*this)(a_i,a_j);
-    }
+    for (size_t i = 0; i<d_rows; ++i)
+      q(i,j) = (*this)(a[i],a[j]);
 
   swap(q);
 }
@@ -1077,21 +1039,20 @@ void blockShape(Matrix<C>& m, size_t d, Matrix<C>& r,Matrix<C>& c)
 
 
 /*!
-  Does the column reduction for m at place j, and does the same operation
-  on r. The reduction consists in subtracting from column j the multiple
-  of column d which leaves at (d,j) the remainder of the Euclidian division
-  of m(d,j) by m(d,d), and then swapping columns j and d.
+  Does the column reduction for M at place j, and does the same operation
+  on parallel matrix |rec|. The reduction consists in subtracting from column
+  j the multiple of column k which leaves at (k,j) the remainder of the
+  Euclidian division of M(k,j) by M(k,k), and then swapping columns j and k.
 */
 template<typename C>
-void columnReduce(Matrix<C>& m, size_t j,  size_t d, Matrix<C>& c)
+void columnReduce(Matrix<C>& M, size_t j,  size_t k, Matrix<C>& rec)
 {
-  C a = m(d,d);
-  C q = intutils::divide(m(d,j),a);
-  q = -q;
-  m.columnOperation(j,d,q);
-  c.columnOperation(j,d,q);
-  m.swapColumns(d,j);
-  c.swapColumns(d,j);
+  C a = M(k,k);
+  C q = a>0 ? -intutils::divide(M(k,j),a) : intutils::divide(M(k,j),-a);
+  M.columnOperation(j,k,q);
+  rec.columnOperation(j,k,q);
+  M.swapColumns(k,j);
+  rec.swapColumns(k,j);
 }
 
 
@@ -1166,8 +1127,8 @@ bool hasBlockReduction(const Matrix<C>& m, size_t r)
 
 
 /*!
-  Tells if there is an element in the first row or column not divisible by
-  m(r,r).
+  Tells if there is an element in the rest of its row or column that is not
+  divisible by m(r,r).
 */
 template<typename C>
 bool hasReduction(const Matrix<C>& m, size_t r)
@@ -1192,20 +1153,19 @@ bool hasReduction(const Matrix<C>& m, size_t r)
 
 /*!
   Does the row reduction for m at place j, and does the same operation
-  on r. The reduction consists in subtracting from row i the multiple
-  of row d which leaves at (i,d) the remainder of the Euclidian division
-  of m(d,j) by m(d,d), and then swapping rows i and d.
+  on |rec|. The reduction consists in subtracting from row i the multiple
+  of row k which leaves at (i,k) the remainder of the Euclidian division
+  of m(k,j) by m(k,k), and then swapping rows i and k.
 */
 template<typename C>
-void rowReduce(Matrix<C>& m, size_t i, size_t d, Matrix<C>& r)
+void rowReduce(Matrix<C>& m, size_t i, size_t k, Matrix<C>& rec)
 {
-  C a = m(d,d);
-  C q = intutils::divide(m(i,d),a);
-  q = -q;
-  m.rowOperation(i,d,q);
-  r.rowOperation(i,d,q);
-  m.swapRows(d,i);
-  r.swapRows(d,i);
+  C a = m(k,k);
+  C q = a>0 ? -intutils::divide(m(i,k),a) : intutils::divide(m(i,k),-a);
+  m.rowOperation(i,k,q);
+  rec.rowOperation(i,k,q);
+  m.swapRows(k,i);
+  rec.swapRows(k,i);
 }
 
 } // namespace

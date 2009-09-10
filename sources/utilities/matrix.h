@@ -114,57 +114,23 @@ template<typename C> class Matrix {
 
  private:
 
-  Vector<C> d_data;
   size_t d_rows;
   size_t d_columns;
+  Vector<C> d_data;
 
  public:
 
-// iterators
-  typedef typename Vector<C>::iterator iterator;
-  typedef typename Vector<C>::const_iterator const_iterator;
-
-  iterator begin() {
-    return d_data.begin();
-  }
-
-  iterator end() {
-    return d_data.end();
-  }
-
-  const_iterator begin() const {
-    return d_data.begin();
-  }
-
-  const_iterator end() const {
-    return d_data.end();
-  }
-
 // constructors and destructors
-  Matrix()
-    {}
+ Matrix(): d_rows(0),d_columns(0),d_data() {}
 
-  Matrix(size_t m, size_t n)
-    :d_data(m*n),d_rows(m),d_columns(n)
-    {}
+  Matrix(size_t m, size_t n) : d_rows(m),d_columns(n),d_data(m*n) {}
 
-  Matrix(size_t m, size_t n, const C& c)
-    :d_data(m*n,c),d_rows(m),d_columns(n)
-    {}
+  Matrix(size_t m, size_t n, const C& c):d_rows(m),d_columns(n),d_data(m*n,c) {}
 
-  explicit Matrix(size_t n)
-    :d_data(n*n),d_rows(n),d_columns(n)
-    {}
+  Matrix(const std::vector<Vector<C> >&, size_t n_rows); // with explicit #rows
 
-  explicit Matrix(const std::vector<Vector<C> >&); // ctor from column vectors
-
-  Matrix(const Matrix<C> &, const std::vector<Vector<C> >&); // on other basis
-
-  Matrix(const Matrix<C> &, size_t, size_t, size_t, size_t);
-
-  template<typename I> Matrix(const Matrix<C>&, const I&, const I&);
-
-  template<typename I> Matrix(const I&, const I&, tags::IteratorTag);
+  template<typename I> // from sequence of columns obtained via iterator
+    Matrix(const I&, const I&, size_t n_rows, tags::IteratorTag);
 
   // accessors
   size_t numRows() const { return d_rows; }
@@ -231,10 +197,9 @@ template<typename C> class Matrix {
     return result;
   }
 
-  Matrix<C> on_basis(const std::vector<Vector<C> >& basis) const
-  {
-    return Matrix<C>(*this,basis);
-  }
+  Matrix<C> on_basis(const std::vector<Vector<C> >& basis) const;
+
+  Matrix<C> block(size_t i0, size_t j0, size_t i1, size_t j1) const;
 
 // manipulators
   C& operator() (size_t i, size_t j) {
@@ -260,7 +225,7 @@ template<typename C> class Matrix {
 
   void changeRowSign(size_t);
 
-  void columnOperation(size_t, size_t, const C&);
+  void columnOperation(size_t j, size_t k, const C& c); // |col(j) += c*col(k)|
 
   void copy(const Matrix<C>&, size_t r = 0, size_t c = 0);
 
@@ -276,9 +241,7 @@ template<typename C> class Matrix {
 
   void negate();
 
-  void reset() {
-    d_data.assign(d_data.size(),0);
-  }
+  void reset() { d_data.assign(d_data.size(),0); }
 
   void resize(size_t, size_t);
 
