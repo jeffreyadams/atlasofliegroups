@@ -86,7 +86,7 @@ class RootSystem
 
   size_t rk; // rank of root system
 
-  Byte_vector Cmat;
+  Byte_vector Cmat; // Cartan matrix in compressed format
 
   std::vector<root_info> ri; //!< List of information about positive roots
 
@@ -265,7 +265,7 @@ class RootSystem
 \brief Based root datum for a complex reductive group.
 
 What we call a root datum in this program is what is usually called a based
-root datum, in other words a fixed choiceof positive roots is always assumed.
+root datum, in other words a fixed choice of positive roots is always assumed.
 
 The root datum defines the complex reductive group entirely. It consists of a
 |RootSystem| that describes the roots and coroots in the lattices they span
@@ -274,10 +274,10 @@ lattices into mutually dual free abelian groups (weight and coweight lattices).
 
 The rank |d_rank| is that of the weight and coweight lattices, the root system
 itself has rank |semisimpleRank()| which may be smaller. The roots and coroots
-are stored in compact form in the |RootSystem|, and again as represented
-ointhe weight and coweight lattices, for efficiency of retrieval under this
-form. Also constructed are various useful auxiliary things, like d_twoRho (the
-sum of the positive roots).
+are stored in compact form in the |RootSystem|, and again as represented in
+the weight and coweight lattices, for efficiency of retrieval under this form.
+Also constructed are various useful auxiliary things, like d_twoRho (the sum
+of the positive roots).
 
 The code is designed to make it preferable always to refer to a root by its
 number (index in the root system), for which we use the type name |RootNbr|.
@@ -307,8 +307,8 @@ use by accessors.
 
   LT::WeightList d_roots; //!< Full list of roots.
   LT::WeightList d_coroots; //!< Full list of coroots.
-  LT::WeightList weight_numer; //!< Simple weight numerators.
-  LT::WeightList coweight_numer; //!< Simple coweight numerators.
+  LT::WeightList weight_numer; //!< Fundamental weight numerators.
+  LT::WeightList coweight_numer; //!< Fundamental coweight numerators.
   LT::WeightList d_radicalBasis; //!< Basis for orthogonal to coroots.
   LT::WeightList d_coradicalBasis; //!< Basis for orthogonal to roots.
 
@@ -347,8 +347,6 @@ use by accessors.
 
   RootDatum(LT::LatticeMatrix&, const RootDatum&, tags::SimplyConnectedTag);
 
-  ~RootDatum();
-
 // accessors
 
   const RootSystem& root_system() const { return *this; } // base object ref
@@ -381,6 +379,7 @@ use by accessors.
   LT::WeightList::const_iterator endCoradical() const
     { return d_coradicalBasis.end(); }
 
+  // below |WRootIterator| is legacy; it equals |LT::WeightList::const_iterator|
   WRootIterator beginSimpleRoot() const // simple roots start halfway
     { return beginRoot()+numPosRoots(); }
 
@@ -411,27 +410,33 @@ use by accessors.
 
   bool isSemisimple() const { return d_rank == semisimpleRank(); }
 
-  const LT::Weight& root(RootNbr j) const
-    { assert(j<numRoots()); return d_roots[j]; }
+  const LT::Weight& root(RootNbr i) const
+    { assert(i<numRoots()); return d_roots[i]; }
 
-  const LT::Weight& simpleRoot(size_t j) const
-    { assert(j<semisimpleRank()); return *(beginSimpleRoot()+j); }
+  const LT::Weight& simpleRoot(size_t i) const
+    { assert(i<semisimpleRank()); return *(beginSimpleRoot()+i); }
 
-  const LT::Weight& posRoot(size_t j) const
-    { assert(j<numPosRoots()); return *(beginPosRoot()+j); }
+  const LT::Weight& posRoot(size_t i) const
+    { assert(i<numPosRoots()); return *(beginPosRoot()+i); }
 
   RootNbr rootNbr(const Root& r) const
     { return setutils::find_index(d_roots,r); }
 
 
-  const LT::Weight& coroot(RootNbr j) const
-    { assert(j<numRoots()); return d_coroots[j]; }
+  const LT::Weight& coroot(RootNbr i) const
+    { assert(i<numRoots()); return d_coroots[i]; }
 
-  const LT::Weight& simpleCoroot(size_t j) const
-    { assert(j<semisimpleRank()); return *(beginSimpleCoroot()+j); }
+  const LT::Weight& simpleCoroot(size_t i) const
+    { assert(i<semisimpleRank()); return *(beginSimpleCoroot()+i); }
 
-  const LT::Weight& posCoroot(size_t j) const
-    { assert(j<numPosRoots()); return  *(beginPosCoroot()+j); }
+  const LT::Weight& posCoroot(size_t i) const
+    { assert(i<numPosRoots()); return  *(beginPosCoroot()+i); }
+
+  LT::RatWeight fundamental_weight(size_t i)
+    { return LT::RatWeight(weight_numer[i],Cartan_denom); }
+
+  LT::RatWeight fundamental_coweight(size_t i)
+    { return LT::RatWeight(coweight_numer[i],Cartan_denom); }
 
 // other accessors
 
