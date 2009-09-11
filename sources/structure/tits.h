@@ -46,6 +46,10 @@ namespace tits {
     return latticetypes::SmallSubspace(b,inv.numRows());
   }
 
+  gradings::Grading
+  square_class_grading_offset(const cartanclass::Fiber& f,
+			      cartanclass::square_class csc,
+			      const rootdata::RootSystem& rs);
 
 
 /******** type definitions **************************************************/
