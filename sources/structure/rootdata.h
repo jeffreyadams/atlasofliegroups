@@ -432,10 +432,10 @@ use by accessors.
   const LT::Weight& posCoroot(size_t i) const
     { assert(i<numPosRoots()); return  *(beginPosCoroot()+i); }
 
-  LT::RatWeight fundamental_weight(size_t i)
+  LT::RatWeight fundamental_weight(size_t i) const
     { return LT::RatWeight(weight_numer[i],Cartan_denom); }
 
-  LT::RatWeight fundamental_coweight(size_t i)
+  LT::RatWeight fundamental_coweight(size_t i) const
     { return LT::RatWeight(coweight_numer[i],Cartan_denom); }
 
 // other accessors
