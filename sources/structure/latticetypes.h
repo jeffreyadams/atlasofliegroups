@@ -61,9 +61,7 @@ class RatLatticeElt {
  public:
 
 // constructors and destructors
-  RatLatticeElt()
-    :d_num(), d_denom(1)
-    {}
+  explicit RatLatticeElt(size_t r): d_num(r,0), d_denom(1){} // zero vector
 
   /*!
   Builds the RatLatticeElt with numerator v and denominator d.
@@ -73,17 +71,15 @@ class RatLatticeElt {
   { if (d<0) d_num*=-1; }
 
 // accessors
-  unsigned int denominator() const {
-    return d_denom;
-  }
+  unsigned int denominator() const { return d_denom; }
+  const LatticeElt& numerator() const { return d_num; }
+  size_t size() const { return d_num.size(); }
 
-  const LatticeElt& numerator() const {
-    return d_num;
-  }
-
-  size_t size() const {
-    return d_num.size();
-  }
+  RatLatticeElt operator+(const RatLatticeElt& v) const;
+  RatLatticeElt& operator+=(const RatLatticeElt& v) { return *this=*this+v; }
+  RatLatticeElt operator-() const { return RatLatticeElt(-d_num,d_denom); }
+  RatLatticeElt operator-(const RatLatticeElt& v) const { return *this+-v; }
+  RatLatticeElt& operator-=(const RatLatticeElt& v) { return *this=*this-v; }
 
 /*
   Returns the scalar product of |*this| and |w|, which are assumed to be of

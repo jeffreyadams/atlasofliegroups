@@ -27,25 +27,35 @@ namespace atlas {
 
 namespace latticetypes {
 
-  RatLatticeElt& RatLatticeElt::normalize()
+RatLatticeElt RatLatticeElt::operator+(const RatLatticeElt& v) const
+{
+  unsigned long gcd, m = arithmetic::lcm(d_denom,v.d_denom,gcd);
+  unsigned long f = v.d_denom/gcd;
+  assert (f==m/d_denom); // if this fails, then there was overflow on m
+  RatLatticeElt result(d_num*f,m);
+  result.d_num += v.d_num*(d_denom/gcd);
+  return result.normalize();
+}
+
+RatLatticeElt& RatLatticeElt::normalize()
+{
+  unsigned long d=d_denom;
+
+  if (d==0)
+    throw std::runtime_error("Denominator 0 in rational vector");
+
+  for (size_t i=0; i<d_num.size(); ++i)
   {
-    unsigned long d=d_denom;
-
-    if (d==0)
-      throw std::runtime_error("Denominator 0 in rational vector");
-
-    for (size_t i=0; i<d_num.size(); ++i)
-    {
-      if (d_num[i]!=0)
-	d=arithmetic::gcd(d,abs(d_num[i]));
-      if (d==1)
-	return *this;
-    }
-
-    d_denom/=d;
-    d_num/=d;
-    return *this;
+    if (d_num[i]!=0)
+      d=arithmetic::gcd(d,abs(d_num[i]));
+    if (d==1)
+      return *this;
   }
+
+  d_denom/=d;
+  d_num/=d;
+  return *this;
+}
 
 } // namespace latticetypes
 
