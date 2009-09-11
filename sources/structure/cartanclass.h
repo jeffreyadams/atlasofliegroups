@@ -244,8 +244,8 @@ class Fiber {
   */
   partition::Partition d_weakReal;
 
-  /*! \brief Partition of the weak real forms according to the corresponding
-  classes in Z(G)^delta/[(1+delta)Z(G)].
+  /*! \brief Partition of the set [0,numRealForms()[ indexing weak real forms
+  according to the corresponding classes in Z(G)^delta/[(1+delta)Z(G)].
 
   Constructed by the function realFormPartition in the Helper class of the
   unnamed namespace of cartanclass.cpp; details in that documentation.
@@ -314,7 +314,7 @@ class Fiber {
   -alpha).
 */
   const rootdata::RootSet& complexRootSet() const
-  { return d_involutionData.complex_roots(); }
+    { return d_involutionData.complex_roots(); }
 
 /*!
   \brief RootSet flagging the imaginary roots.
@@ -324,7 +324,7 @@ class Fiber {
   alpha with tau(alpha)=alpha).
 */
   const rootdata::RootSet& imaginaryRootSet() const
-  { return d_involutionData.imaginary_roots(); }
+    { return d_involutionData.imaginary_roots(); }
 
 /*!
   \brief RootSet flagging the real roots.
@@ -334,7 +334,7 @@ class Fiber {
   with tau(alpha)=-alpha).
 */
   const rootdata::RootSet& realRootSet() const
-  { return d_involutionData.real_roots(); }
+    { return d_involutionData.real_roots(); }
 
 /*!
   \brief RootList holding the numbers of the simple imaginary roots.
@@ -343,9 +343,9 @@ class Fiber {
   RootDatum. They need not be simple in the entire root system.
 */
   const rootdata::RootList& simpleImaginary() const
-  { return d_involutionData.imaginary_basis(); }
+    { return d_involutionData.imaginary_basis(); }
   const rootdata::RootNbr simpleImaginary(size_t i) const
-  { return d_involutionData.imaginary_basis(i); }
+    { return d_involutionData.imaginary_basis(i); }
   size_t imaginaryRank() const { return d_involutionData.imaginary_rank(); }
 
 /*!
@@ -356,16 +356,16 @@ class Fiber {
   system.
 */
   const rootdata::RootList& simpleReal() const
-  { return d_involutionData.real_basis(); }
+    { return d_involutionData.real_basis(); }
   const rootdata::RootNbr simpleReal(size_t i) const
-  { return d_involutionData.real_basis()[i]; }
+    { return d_involutionData.real_basis()[i]; }
   size_t realRank() const { return d_involutionData.real_rank(); }
 
 /*!
 \brief Action of the Cartan involution on root \#j.
 */
   rootdata::RootNbr involution_image_of_root(rootdata::RootNbr j) const
-  { return d_involutionData.root_involution()[j]; }
+    { return d_involutionData.root_involution()[j]; }
 
 /*!
   \brief Fiber group for the adjoint group of G.
@@ -380,7 +380,7 @@ class Fiber {
   lattice Y_ad has as basis the fundamental coweights.
 */
   const latticetypes::SmallSubquotient& adjointFiberGroup() const
-  { return d_adjointFiberGroup; }
+    { return d_adjointFiberGroup; }
 
 /*!
 \brief Dimension of the adjoint fiber group as a Z/2Z vector space.
@@ -396,23 +396,18 @@ class Fiber {
 /*!
   \brief Fiber group.
 */
-  const latticetypes::SmallSubquotient& fiberGroup() const {
-    return d_fiberGroup;
-  }
+  const latticetypes::SmallSubquotient& fiberGroup() const
+    { return d_fiberGroup; }
 
   /*!
   \brief Dimension of the fiber group as a Z/2Z vector space.
   */
-  size_t fiberRank() const {
-    return d_fiberGroup.dimension();
-  }
+  size_t fiberRank() const { return d_fiberGroup.dimension(); }
 
   /*!
   \brief Cardinality of the fiber group: 2^dimension.
   */
-  size_t fiberSize() const {
-    return d_fiberGroup.size();
-  }
+  size_t fiberSize() const { return d_fiberGroup.size(); }
 
 
   rootdata::RootSet compactRoots(AdjointFiberElt x) const;
@@ -442,9 +437,7 @@ class Fiber {
   This is the number of orbits of the imaginary Weyl group on the adjoint
   fiber group.
 */
-  size_t numRealForms() const {
-    return d_weakReal.classCount();
-  }
+  size_t numRealForms() const { return d_weakReal.classCount(); }
 
 /*! \brief Partition of the weak real forms according to the corresponding
   central square classes in Z(G)/[(1+delta)Z(G)].
@@ -452,41 +445,37 @@ class Fiber {
   A weak real form (always containing our fixed real torus) is an orbit of W_i
   on the adjoint fiber group.
 */
-  const partition::Partition& realFormPartition() const {
-    return d_realFormPartition;
-  }
+  const partition::Partition& realFormPartition() const
+    { return d_realFormPartition; }
 
 /*!
   \brief Returns the central square class to which a weak real form belongs.
 */
   square_class central_square_class (adjoint_fiber_orbit wrf) const
   {
-    return square_class(d_realFormPartition(wrf));
+    return d_realFormPartition(wrf); // map weak real form to square class number
   }
 
 /*!
   \brief Returns the base element for a central square class
 */
   AdjointFiberElt class_base(square_class c) const
-  {
-    return d_weakReal.classRep(d_realFormPartition.classRep(c));
-  }
+    { return d_weakReal.classRep(d_realFormPartition.classRep(c)); }
 
 /*! \brief
   Partitions of Fiber group cosets corresponding to the possible square
   classes in Z^delta/[(1+delta)Z].
 
-  The Fiber group acts in a simply transitive way on strong real forms
+  The Fiber group acts in a simply transitive way on strong involutions
   (inducing tau on H) with a fixed square in Z^delta. The number of squares
   that occur (modulo (1+delta)Z) is equal to the number c of classes in the
-  partition d_realFormPartition. The collection of strong real forms is
-  therefore a collection of c cosets of the fiber group F. Each of these c
-  cosets is partitioned into W_i orbits; these orbits are described by the c
-  partitions in d_strongReal.
+  partition d_realFormPartition. The collection of strong real involutions is
+  therefore a union of c copies of the fiber group F, each an affine
+  $Z/2Z$-space with W_i acting in a different way. Thus each of these c spaces
+  is partitioned into W_i orbits; these partitions are stored in d_strongReal.
 */
-  const partition::Partition& strongReal(square_class j) const {
-    return d_strongReal[j];
-  }
+  const partition::Partition& strongReal(square_class j) const
+    { return d_strongReal[j]; }
 
 /*!
   \brief Representative strong real form for real form \#rf.
@@ -497,9 +486,7 @@ class Fiber {
   corresponding coset of the fiber group.
 */
   const StrongRealFormRep& strongRepresentative(adjoint_fiber_orbit wrf) const
-  {
-    return d_strongRealFormReps[wrf];
-  }
+    { return d_strongRealFormReps[wrf]; }
 
 /*!\brief Natural linear map from fiber group to adjoint fiber group
 
@@ -518,9 +505,7 @@ class Fiber {
   Partition of the weak real forms according to the corresponding classes in
   Z(G)^delta/[(1+delta)Z(G)].
 */
-  const partition::Partition& weakReal() const {
-    return d_weakReal;
-  }
+  const partition::Partition& weakReal() const { return d_weakReal; }
 
 // private accessors only needed during construction
 
@@ -658,16 +643,14 @@ public:
   \brief Returns the matrix of the involution on the weight lattice of
   the Cartan subgroup.
   */
-  const latticetypes::LatticeMatrix& involution() const {
-    return d_fiber.involution();
-  }
+  const latticetypes::LatticeMatrix& involution() const
+    { return d_fiber.involution(); }
 
   /*!
   \brief Action of the Cartan involution on root \#j.
   */
-  rootdata::RootNbr involution_image_of_root(rootdata::RootNbr j) const {
-    return d_fiber.involution_image_of_root(j);
-  }
+  rootdata::RootNbr involution_image_of_root(rootdata::RootNbr j) const
+    { return d_fiber.involution_image_of_root(j); }
 
   /*!
   \brief RootSet flagging the imaginary roots.
@@ -676,9 +659,8 @@ public:
   numbers (within the list of roots in RootDatum) of the imaginary
   roots (those roots \f$\alpha\f$ with \f$\tau(\alpha)=\alpha\f$).
   */
-  const rootdata::RootSet& imaginaryRootSet() const {
-    return d_fiber.imaginaryRootSet();
-  }
+  const rootdata::RootSet& imaginaryRootSet() const
+    { return d_fiber.imaginaryRootSet(); }
   /*!
   \brief RootSet flagging the real roots.
 
@@ -686,9 +668,7 @@ public:
   numbers (within the list of roots in RootDatum) of the real roots
   (those roots \f$\alpha\f$ with \f$\tau(\alpha)=-\alpha\f$).
   */
-  const rootdata::RootSet& realRootSet() const {
-    return d_fiber.realRootSet();
-  }
+  const rootdata::RootSet& realRootSet() const { return d_fiber.realRootSet(); }
 
   /*!
   \brief RootList holding the numbers of the simple imaginary roots.
@@ -696,9 +676,8 @@ public:
   These are simple for the subsystem of imaginary roots. They need not be
   simple in the entire root system.
   */
-  const rootdata::RootList& simpleImaginary() const {
-    return d_fiber.simpleImaginary();
-  }
+  const rootdata::RootList& simpleImaginary() const
+    { return d_fiber.simpleImaginary(); }
 
   /*!
   \brief RootList holding the numbers of the simple real roots.
@@ -706,9 +685,7 @@ public:
   These are simple for subsystem of real roots. They need not be simple in the
   entire root system.
   */
-  const rootdata::RootList& simpleReal() const {
-    return d_fiber.simpleReal();
-  }
+  const rootdata::RootList& simpleReal() const { return d_fiber.simpleReal(); }
 /* Since only the _numbers_ of simple-real roots are returned, this used to be
    obtained as |d_dualFiber.simpleImaginary()|, before the |InvolutionData|
    contained the basis for the real root system as well. That is indeed the
@@ -728,9 +705,7 @@ public:
   Elements (very roughly) correspond to possible extensions
   of the real form tau from H to G.
   */
-  const Fiber& fiber() const {
-    return d_fiber;
-  }
+  const Fiber& fiber() const { return d_fiber; }
 
   /*!
   \brief Class of the fiber group for the dual Cartan.
@@ -738,9 +713,7 @@ public:
   Elements of the dual fiber group are characters of the group of
   connected components of the real points of H.
   */
-  const Fiber& dualFiber() const {
-    return d_dualFiber;
-  }
+  const Fiber& dualFiber() const { return d_dualFiber; }
 
 
   bool isMostSplit(adjoint_fiber_orbit wrf) const;
@@ -749,18 +722,14 @@ public:
   \brief Number of weak real forms for the dual group containing the
   dual Cartan.
   */
-  size_t numDualRealForms() const {
-    return d_dualFiber.numRealForms();
-  }
+  size_t numDualRealForms() const { return d_dualFiber.numRealForms(); }
   /*!
   \brief Number of weak real forms containing this Cartan.
 
   This is the number of orbits of the imaginary Weyl group on the
   adjoint fiber group.
   */
-  size_t numRealForms() const {
-    return d_fiber.numRealForms();
-  }
+  size_t numRealForms() const { return d_fiber.numRealForms(); }
 
   /*!
   \brief Number of possible squares of strong real forms mod
@@ -769,9 +738,8 @@ public:
   This is the number of classes in the partition of weak real forms
   according to Z^delta/[(1+delta)Z].
   */
-  size_t numRealFormClasses() const {
-    return d_fiber.realFormPartition().classCount();
-  }
+  size_t numRealFormClasses() const
+    { return d_fiber.realFormPartition().classCount(); }
 
   /*!
   \brief Size of the W-conjugacy class of tau.
@@ -779,9 +747,7 @@ public:
   The number of distinct involutions defining the same stable conjugacy
   class of Cartan subgroups.
    */
-   size_t orbitSize() const {
-    return d_orbitSize.toUlong();
-  }
+   size_t orbitSize() const { return d_orbitSize.toUlong(); }
 
   /*!
   \brief Roots simple for the "complex factor" of W^tau.
@@ -805,9 +771,7 @@ public:
   Weyl group generated by the reflections corresponding to the numbers
   in d_simpleComplex.
    */
-  const rootdata::RootList& simpleComplex() const {
-    return d_simpleComplex;
-  }
+  const rootdata::RootList& simpleComplex() const { return d_simpleComplex; }
 
   /*!
   \brief Partitions of Fiber group cosets corresponding to the
@@ -821,18 +785,15 @@ public:
   F. Each of these c cosets is partitioned into W_i orbits; these
   orbits are described by the c partitions in d_strongReal.
   */
-  const partition::Partition& strongReal(square_class j) const {
-    return d_fiber.strongReal(j);
-  }
+  const partition::Partition& strongReal(square_class j) const
+    { return d_fiber.strongReal(j); }
 
   /*!
   \brief Returns the image of x in the adjoint fiber group.
 
   Precondition: x is a valid element in the fiber group.
   */
-  AdjointFiberElt toAdjoint(FiberElt x) const {
-    return d_fiber.toAdjoint(x);
-  }
+  AdjointFiberElt toAdjoint(FiberElt x) const { return d_fiber.toAdjoint(x); }
 
   /*!
   \brief Returns the class number in the weak real form partition of
@@ -846,17 +807,14 @@ public:
   rfc. The integer c labels an orbit of W_i on this fiber group coset;
   this orbit is the equivalence class of strong real forms.
   */
-  adjoint_fiber_orbit toWeakReal(fiber_orbit c, square_class j) const {
-    return d_fiber.toWeakReal(c,j);
-  }
+  adjoint_fiber_orbit toWeakReal(fiber_orbit c, square_class j) const
+    { return d_fiber.toWeakReal(c,j); }
 
   /*!
   \brief Partition of the weak real forms according to the
   corresponding classes in Z(G)^delta/[(1+delta)Z(G)].
   */
-  const partition::Partition& weakReal() const {
-    return d_fiber.weakReal();
-  }
+  const partition::Partition& weakReal() const { return d_fiber.weakReal(); }
 
 
 // private accessors only needed during construction
@@ -868,8 +826,8 @@ private:
 
 }; // class CartanClass
 
-}
+} // |namespace cartanclass|
 
-}
+} // |namespace atlas|
 
 #endif
