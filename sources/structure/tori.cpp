@@ -47,29 +47,29 @@ void fullMinusBasis(latticetypes::WeightList&,
   The real torus class represents the datum of a torus $H$ defined over $R$.
   This is equivalent to the datum of a (character) lattice equipped with an
   involution. To be consistent with the rest of the program, we use the Cartan
-  involution \f$\tau\f$ which is the negative of the Galois involution on the
-  character lattice. A fundamental fact is the the component group of $H(R)$
+  involution $\tau$ which is the negative of the Galois involution on the
+  character lattice. A fundamental fact is that the component group of $H(R)$
   (the fixed points of the Galois involution) is canonically isomorphic to the
-  component group of the complex group \f$H(C)^\tau\f$ fixed under the Cartan
-  involution (even if these groups can be of quite different dimensions), the
-  latter of which is easy to determine in terms of the action of \f$\tau\f$ on
-  the character lattice.
+  component group of the complex group $H(C)^\tau$ fixed under the Cartan
+  involution (even thought the initial groups can be of quite different
+  dimensions), the latter of which component groups is easy to determine in
+  terms of the action of $\tau$ on the character lattice.
 
   The fundamental data are the rank stored in |d_rank| (allowing us to
   represent the character lattice $X$ as $Z^n$ for $n=d_rank)$, and the
   integran $n* n$ involution matrix |d_involution| giving the action of
-  \f$\tau\f$ on $X$. It determines two sublattices $X_+$ and $X_-$, cut out by
+  $\tau$ on $X$. It determines two sublattices $X_+$ and $X_-$, cut out by
   its eigenspaces for $+1$ and $-1$ respectively. Both are sublattices are
   saturated, and therefore supplementable in $X$, but in general $X$ is not
   equal to the direct sum $X_+ + X_-$, since that sum need not be saturated
-  (for instance in $Z^2$ when \f$\tau\f$ interchanges the vectors of a basis).
+  (for instance in $Z^2$ when $\tau$ interchanges the vectors of a basis).
 
   The most delicate invariant we shall have to deal with is the component
   group of the real torus $H(R)$. This is an elementary abelian 2-group; we
   shall rather consider its dual group $dpi0(H)$. To describe its rank is
   fairly easy. Indeed, $H$ may be decomposed as a product of compact, split
   and complex factors; this corresponds to a decomposition of $Z^n$ into a
-  direct sum of sublattices on which \f$\tau\f$ acts respectively as $1$
+  direct sum of sublattices on which $\tau$ acts respectively as $1$
   (identity), $-1$, and by a permutation of some basis with only 2-cycles.
   While such a decomposition is not canonical, the number of factors of each
   type is uniquely determined; denote them by $r_u$, $r_s$ and $r_c$ (they
@@ -85,20 +85,20 @@ void fullMinusBasis(latticetypes::WeightList&,
   subspaces to $V_+$ and $V_-$, respectively, while a factor $r_c$ contributes
   the _same_ one-dimensional subspace both to $V_+$ and to $V_-$ (since after
   reduction modulo $2$ the is no distinction between the diagonal and
-  anti-diagonal subpaces). Therefore on has \f$r_c = \dim(V_ +\cap V_-)\f$,
-  and it follows that \f$r_s = rk(X_-) - r_c=\dim(V_-/(V_ \cap V_-))\f$. It
-  can be seen that \f$V_+ \cap V_-\f$ is the image of the endomorphism of $V$
-  induced by \f$\tau-1\f$ (or by \f$\tau+1\f$), while $V_+ + V_-$ is the
+  anti-diagonal subpaces). Therefore on has $r_c = \dim(V_ +\cap V_-)$,
+  and it follows that $r_s = rk(X_-) - r_c=\dim(V_-/(V_ \cap V_-))$. It
+  can be seen that $V_+ \cap V_-$ is the image of the endomorphism of $V$
+  induced by $\tau-1$ (or by $\tau+1$), while $V_+ + V_-$ is the
   kernel of that endomorphism.
 
   Having used only $X_+$ and $X_-$ we almost have a functorial description of
   the component group of $H(R)$, which is an elementary 2-group isomorphic to
-  \f$V_-/(V_ \cap V_-)\f$, or equivalently to $(V_+ + V_-)/V_+$. However,
+  $V_-/(V_ \cap V_-)$, or equivalently to $(V_+ + V_-)/V_+$. However,
   having started with the weight lattice $X$, the latter groups are actually
   dual objects: $X/2X$ can be interpreted as $Hom(H(2),C^*)$ where $H(2)$
   denotes the set of elements of order 2 (or 1) in $H$. Therefore each of the
   mentioned subquotients naturally models the dual group $dpi0(H)$ of the
-  component group of $H(R)$ (or of \f$H(C)^\tau\f$). In practice we shall work
+  component group of $H(R)$ (or of $H(C)^\tau$). In practice we shall work
   only with these dual groups, and use the subquotient $(V_+ + V_-)/V_+$ to
   represent it (the latter precision is relevant, because even if the two
   subquotients are canonically isomorphic, they cannot be used interchangeably
