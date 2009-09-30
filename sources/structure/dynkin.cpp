@@ -243,8 +243,7 @@ bitset::RankFlagsList components(const DynkinDiagram& d)
 {
   bitset::RankFlagsList cl;
 
-  bitset::RankFlags v;
-  bitset::set(v,d.rank());
+  bitset::RankFlags v; v.fill(d.rank());
 
   while(v.any())
   {
