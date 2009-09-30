@@ -85,8 +85,6 @@ template<size_t dim> class Subspace {
 
   Subspace(const bitvector::BitVectorList<dim>&, size_t);
 
-  ~Subspace() {}
-
 // copy, assignment: the implicitly generated versions will do fine
 
 // accessors
@@ -240,8 +238,6 @@ bitset::BitSet<dim> d_rel_support;
   Subquotient(const bitvector::BitVectorList<dim>& bsp,
 	      const bitvector::BitVectorList<dim>& bsub, size_t n);
 
-  ~Subquotient() {}
-
 // copy, assignment: the implicitly generated versions will do fine
 
 // accessors
@@ -300,7 +296,7 @@ bitset::BitSet<dim> d_rel_support;
 
   bitset::BitSet<dim> significantBits() const {
   // for testing purposes; these are the bits that determine the subquotient
-    return d_space.support() & ~d_subspace.support();
+    return d_space.support() - d_subspace.support();
   }
 
   /*!

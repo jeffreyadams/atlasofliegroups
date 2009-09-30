@@ -142,12 +142,11 @@ Subquotient(const bitvector::BitVectorList<dim>& bsp,
 
 {
   assert(d_space.contains(bsub)); // check containment of subspaces
+  assert(d_space.support().contains(d_subspace.support()));
 
-  d_rel_support = d_space.support();      // flag all leading bits
-  d_rel_support &= ~d_subspace.support(); // clear bits at subspace
+  d_rel_support = d_space.support() - d_subspace.support(); // difference set
   d_rel_support.slice(d_space.support()); // only keep bits originally set
 
-  assert(d_space.support().contains(d_subspace.support()));
 }
 
 /******** manipulators *******************************************************/
