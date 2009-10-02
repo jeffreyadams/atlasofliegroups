@@ -40,7 +40,7 @@ BitSetBase<1>::iterator BitSetBase<1>::begin() const
   \brief replaces the bitset by the "defragmented" intersection with |c|
   (i.e. those bits are packed consecutively, the rest disappear.)
 */
-void BitSetBase<1>:: slice(const BitSetBase<1>& c)
+void BitSetBase<1>::slice(const BitSetBase<1>& c)
 {
   unsigned long result=0, mask=1;
 
@@ -49,6 +49,21 @@ void BitSetBase<1>:: slice(const BitSetBase<1>& c)
       result |= mask;
 
   d_bits=result; // overwrite with compacted bits
+}
+
+/*!
+  \brief expands bits to positions of set bits in |c|, with zeros between.
+  Thus |x.slice(c)| followed by |x.unslice(c)| amounts to |x&=c|
+*/
+void BitSetBase<1>::unslice(const BitSetBase<1>& c)
+{
+  unsigned long result=0, mask=1;
+
+  for (iterator it = c.begin(); it(); ++it,mask<<=1)
+    if ((d_bits&mask)!=0)
+      result |= constants::bitMask[*it];
+
+  d_bits=result; // overwrite with expanded bits
 }
 
 size_t BitSetBase<2>::firstBit() const
@@ -179,6 +194,7 @@ void BitSetBase<2>::set(size_t j)
 }
 
 // void BitSetBase<2>::slice(const BitSetBase<1>& c);
+// void BitSetBase<2>::unslice(const BitSetBase<1>& c);
 
 void BitSetBase<2>::swap(BitSetBase<2>& source)
 {

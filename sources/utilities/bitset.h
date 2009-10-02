@@ -177,7 +177,8 @@ template<> class BitSetBase<1>
   void truncate(size_t limit)
     { if (limit<constants::longBits) d_bits &= constants::lMask[limit]; }
 
-  void slice(const BitSetBase<1>& c); // extract bits set in |c|
+  void slice(const BitSetBase<1>& c); // extract bits set in |c|, compacting
+  void unslice(const BitSetBase<1>& c); // expand bits to positions set in |c|
   void swap(BitSetBase<1>& source) { std::swap(d_bits,source.d_bits); }
 
 };
@@ -278,7 +279,8 @@ template<> class BitSetBase<2>
   void complement(size_t limit);
   void truncate(size_t limit);
 
-  void slice(const BitSetBase<1>& c);
+  void slice(const BitSetBase<2>& c); // extract bits set in |c|, compacting
+  void unslice(const BitSetBase<1>& c); // expand bits to positions set in |c|
   void swap(BitSetBase<2>& source);
  }; // |class BitSetBase<2>|
 
@@ -400,6 +402,7 @@ template<size_t n> class BitSet
   BitSet& truncate(size_t m) { Base::truncate(m); return *this; }
 
   BitSet& slice(const BitSet& c) { Base::slice(c); return *this; }
+  BitSet& unslice(const BitSet& c) { Base::unslice(c); return *this; }
 
   void swap(BitSet& source) { Base::swap(source); }
 
