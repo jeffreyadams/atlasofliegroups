@@ -34,10 +34,8 @@ namespace tori {
 
   void dualPi0(LT::SmallSubquotient&, const LT::LatticeMatrix&);
 
-  void minusBasis(LT::WeightList&, const LT::LatticeMatrix&);
-
-  LT::WeightList minusBasis(const LT::LatticeMatrix&);
-
+  void plusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&,
+		  const RealTorus&);
   void minusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&,
 		   const RealTorus&);
 
@@ -45,8 +43,10 @@ namespace tori {
 
   LT::WeightList plusBasis(const LT::LatticeMatrix&);
 
-  void plusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&,
-		  const RealTorus&);
+  void minusBasis(LT::WeightList&, const LT::LatticeMatrix&);
+
+  LT::WeightList minusBasis(const LT::LatticeMatrix&);
+
 }
 
 /******** type definitions **************************************************/
@@ -170,11 +170,11 @@ namespace tori {
   const LT::WeightList& minusLattice() const { return d_minus; }
 
   void toPlus(LT::Weight& dest, const LT::Weight& source) const {
-    d_toPlus.apply(dest,source);
+    dest=d_toPlus.apply(source);
   }
 
   void toMinus(LT::Weight& dest, const LT::Weight& source) const {
-    d_toMinus.apply(dest,source);
+    dest=d_toMinus.apply(source);
   }
 
   const LT::SmallSubquotient& topology() const { return d_topology; }

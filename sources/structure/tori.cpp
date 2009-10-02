@@ -202,24 +202,25 @@ void RealTorus::componentMap(latticetypes::BinaryMap& cm,
 
 namespace tori {
 
-void dualPi0(LT::SmallSubquotient& dpi0, const LT::LatticeMatrix& q)
 
 /*!
-  Synopsis: puts in dpi0 what would have been the topology field for the
-  corresponding torus.
+  Compute $(V_+ + V_-) / V_+$ where $V_+$ is the image mod 2 of the $q$-fixed
+  sublattice ($+1$-eigenspace) and $V_-$ of the $-q$-fixed sublattice.
 
-  Precondition: q is an involution matrix; its size doesn't exceed RankMax;
+  When $q$ describes a real torus, this is the dual of the component group of
+  the torus, whence the curious name.
 
-  Explanation: this is canonically the dual of the component group; see
-  makeTopology.
+  Actually the numerator subgroup is computed as the kernel of $q \mod 2$.
+
+  In practice we also want this at the dual side with $V_-$ in the denominator
+  (to compute fiber groups): to that end call with |q.negative_transposed()|
 */
-
+void dualPi0(LT::SmallSubquotient& dpi0, const LT::LatticeMatrix& q)
 {
   assert(q.numRows()==q.numColumns());
 
   latticetypes::WeightList plus; plusBasis(plus,q);
-
-  latticetypes::SmallBitVectorList plus2(plus); // reduce modulo 2
+  latticetypes::SmallBitVectorList plus2(plus); // mod 2: denominator subgroup
 
   latticetypes::BinaryMap i2(q);  // reduce modulo 2
   latticetypes::BinaryMap id; identityMatrix(id,q.numRows());
@@ -228,7 +229,7 @@ void dualPi0(LT::SmallSubquotient& dpi0, const LT::LatticeMatrix& q)
   // now |i2| is modulo 2 image of $\tau-id$ (and also of $\tau+id$)
 
   latticetypes::SmallBitVectorList b; i2.kernel(b);
-  // the kernel of |i2| is the sum $V_+ + V_-$
+  // the kernel of |i2| is the sum $V_+ + V_-$: numerator subgroup
 
   latticetypes::SmallSubquotient cs(b,plus2,q.numRows());
   assert(cs.rank()==q.numRows());
@@ -280,7 +281,7 @@ void plusBasis(latticetypes::WeightList& pb,
     pb.push_back(bs[j]);
 }
 
-latticetypes::WeightList plsuBasis(const latticetypes::LatticeMatrix& i)
+latticetypes::WeightList plusBasis(const latticetypes::LatticeMatrix& i)
 {
   latticetypes::WeightList result; plusBasis(result,i); return result;
 }
@@ -339,8 +340,7 @@ void minusMatrix(latticetypes::LatticeMatrix& qm,
 
   for (size_t j = 0; j < bm.size(); ++j)
   {
-    latticetypes::Weight v(t.rank());
-    q.apply(v,bm[j]);
+    latticetypes::Weight v= q.apply(bm[j]);
     latticetypes::Weight vm(bm.size());
     t.toMinus(vm,v);
     for (size_t i = 0; i < bm.size(); ++i)
@@ -362,8 +362,7 @@ void plusMatrix(latticetypes::LatticeMatrix& qp,
 
   for (size_t j = 0; j < bp.size(); ++j)
   {
-    latticetypes::Weight v(t.rank());
-    q.apply(v,bp[j]);
+    latticetypes::Weight v= q.apply(bp[j]);
     latticetypes::Weight vp(bp.size());
     t.toPlus(vp,v);
     for (size_t i = 0; i < bp.size(); ++i)
