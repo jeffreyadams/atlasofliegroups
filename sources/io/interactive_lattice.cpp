@@ -233,7 +233,7 @@ int getLattice(const latticetypes::CoeffList& root_invf,
   // convert |lb| according to |q|
   // N.B. elements of |lb| are among |root_lattice_basis|, which is "square"
   latticetypes::LatticeMatrix m(lb,root_lattice_basis.size()); m *= q;
-  matrix::columnVectors(lb,m); // redefine |lb| as converted columns
+  lb=m.columns(); // redefine |lb| as converted columns
 
   // make actual basis
 
