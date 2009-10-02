@@ -809,7 +809,7 @@ void testrun_f()
     {
       if (count>0) std::cout << ',' << std::flush;
       rootdata::RootDatum rd(*cit);
-      latticetypes::LatticeMatrix id; matrix::identityMatrix(id,rd.rank());
+      latticetypes::LatticeMatrix id(rd.rank()); // identity
       complexredgp::ComplexReductiveGroup G(rd,id);
       for (realform::RealForm rf=0; rf<G.numRealForms(); ++rf)
       {

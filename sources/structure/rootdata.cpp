@@ -646,13 +646,9 @@ setutils::Permutation
 */
 latticetypes::LatticeMatrix RootDatum::root_reflection(RootNbr alpha) const
 {
-  latticetypes:: LatticeMatrix result;
-  matrix::identityMatrix(result,d_rank);
+  latticetypes:: LatticeMatrix result(d_rank); // identity
 
-/*
-  result -=
-    matrix::column_matrix(root(alpha)) * matrix::row_matrix(coroot(alpha));
-*/
+  // do |result -= root(alpha).column_matrix() * coroot(alpha).row_matrix();|
   const Root& root = d_roots[alpha];
   const Root& coroot = d_coroots[alpha];
 
@@ -868,7 +864,7 @@ void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
 */
 latticetypes::LatticeMatrix RootDatum::matrix(const weyl::WeylWord& ww) const
 {
-  latticetypes::LatticeMatrix q; matrix::identityMatrix(q,rank());
+  latticetypes::LatticeMatrix q(rank());
 
   for (size_t i=0; i<ww.size(); ++i)
     q *= simple_reflection(ww[i]);
@@ -883,7 +879,7 @@ The roots must be mutiually orthogonal so that the order doesn't matter.
 */
 latticetypes::LatticeMatrix refl_prod(const RootSet& rset, const RootDatum& rd)
 {
-  latticetypes::LatticeMatrix q; identityMatrix(q,rd.rank());
+  latticetypes::LatticeMatrix q(rd.rank()); // identity
   for (RootSet::iterator it=rset.begin(); it(); ++it)
     q *= rd.root_reflection(*it);
   return q;
