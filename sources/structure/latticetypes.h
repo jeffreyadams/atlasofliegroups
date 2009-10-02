@@ -16,6 +16,7 @@
 
 #include "latticetypes_fwd.h"
 #include "matrix.h" // to make |LatticeElt| a complete type
+#include "intutils.h"
 
 /* The following include is not required by this file but we put it here
    so that the types predeclared in "latticetypes_fwd.h" will be complete for
@@ -75,6 +76,10 @@ class RatLatticeElt {
   const LatticeElt& numerator() const { return d_num; }
   size_t size() const { return d_num.size(); }
 
+  bool operator== (const RatLatticeElt& a) const;
+  bool operator!= (const RatLatticeElt& a) const { return not operator==(a); }
+  bool operator< (const RatLatticeElt& a) const; // comparison, for STL use
+
   RatLatticeElt operator+(const RatLatticeElt& v) const;
   RatLatticeElt& operator+=(const RatLatticeElt& v) { return *this=*this+v; }
   RatLatticeElt operator-() const { return RatLatticeElt(-d_num,d_denom); }
@@ -95,6 +100,7 @@ class RatLatticeElt {
 
 //manipulators
   RatLatticeElt& normalize();
+  LatticeElt& numerator() { return d_num; } // allow direct manipulation
 
 }; // class RatLatticeElt
 

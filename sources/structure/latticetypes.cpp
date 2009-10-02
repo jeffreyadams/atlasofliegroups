@@ -27,6 +27,20 @@ namespace atlas {
 
 namespace latticetypes {
 
+bool RatLatticeElt::operator==(const RatLatticeElt& v) const
+{ return d_num*v.d_denom == v.d_num*d_denom; } // cross multiply and compare
+
+bool RatLatticeElt::operator<(const RatLatticeElt& v) const
+{ // cross multiply component-wise, and compare
+  for (size_t i=0; i<d_num.size(); ++i)
+  {
+    LatticeCoeff d= d_num[i]*v.d_denom - v.d_num[i]*d_denom;
+    if (d!=0)
+      return d<0;
+  }
+  return false; // equality if we get here
+}
+
 RatLatticeElt RatLatticeElt::operator+(const RatLatticeElt& v) const
 {
   unsigned long gcd, m = arithmetic::lcm(d_denom,v.d_denom,gcd);
