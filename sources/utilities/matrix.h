@@ -27,38 +27,11 @@ namespace atlas {
 namespace matrix {
 
 template<typename C>
-  void columnVectors(std::vector<Vector<C> >& b,
-		     const Matrix<C>& m);
-
-template<typename C> Matrix<C> row_matrix(Vector<C> v);
-template<typename C> Matrix<C> column_matrix(Vector<C> v);
-
-template<typename C>
-Matrix<C>& conjugate(Matrix<C>&, const Matrix<C>&);
-
-template<typename C>
-void extractBlock(Matrix<C>&, const Matrix<C>&, size_t, size_t, size_t,
-		  size_t);
-
-template<typename C>
-void extractMatrix(Matrix<C>&, const Matrix<C>&,
-		   const std::vector<size_t>&, const std::vector<size_t>&);
-
-template<typename C>
-  void identityMatrix(Matrix<C>&, size_t);
-
-template<typename C>
   std::vector<Vector<C> > standard_basis(size_t n);
 
 template<typename C>
   void initBasis(std::vector<Vector<C> >& v, size_t n)
- { v=standard_basis<C>(n); }
-
-template<typename C>
-Matrix<C> inv_conjugated(const Matrix<C>& M, const Matrix<C>& g);
-
-template<typename C>
-Matrix<C>& invConjugate(Matrix<C>&, const Matrix<C>&);
+  { v=standard_basis<C>(n); }
 
 }
 
@@ -66,71 +39,71 @@ Matrix<C>& invConjugate(Matrix<C>&, const Matrix<C>&);
 
 namespace matrix {
 
+template <typename C> class Matrix;
+
 template<typename C>
   class Vector : public std::vector<C>
-  {
-    typedef std::vector<C> base;
-  public:
-    Vector () : base() {}
-    explicit Vector (size_t n) : base(n) {} // entries remain undefined!
-    explicit Vector (const base& b) : base(b) {} // std::vector -> Vector
-    Vector (size_t n,C c) : base(n,c) {}
-    template<typename I>
-      Vector (I b, I e) : base(b,e) {} // construction from iterators
+{
+  typedef std::vector<C> base;
+public:
+  Vector () : base() {}
+  explicit Vector (size_t n) : base(n) {} // entries remain undefined!
+  explicit Vector (const base& b) : base(b) {} // std::vector -> Vector
+  Vector (size_t n,C c) : base(n,c) {}
+  template<typename I>
+    Vector (I b, I e) : base(b,e) {} // construction from iterators
 
-    Vector<C>& operator+= (const Vector<C>&);
-    Vector<C>& operator-= (const Vector<C>&);
-    Vector<C>& operator*= (C);
-    Vector<C>& operator/= (C) throw (std::runtime_error);
-    Vector<C>& negate (); // negates argument in place
+  Vector<C>& operator+= (const Vector<C>&);
+  Vector<C>& operator-= (const Vector<C>&);
+  Vector<C>& operator*= (C);
+  Vector<C>& operator/= (C) throw (std::runtime_error);
+  Vector<C>& negate (); // negates argument in place
 
-    C scalarProduct (const Vector<C>&) const;
-    C dot(const Vector<C>& v) const { return scalarProduct(v); } // alias
-    bool isZero() const;
+  C scalarProduct (const Vector<C>&) const;
+  C dot(const Vector<C>& v) const { return scalarProduct(v); } // alias
+  bool isZero() const;
 
-    Vector<C> operator+ (const Vector<C>& v) const
-      { Vector<C> result(*this); return result +=v; }
-    Vector<C> operator- (const Vector<C>&v) const
-      { Vector<C> result(*this); return result -=v; }
-    Vector<C> operator* (C c) const
-      { Vector<C> result(*this); return result *=c; }
-    Vector<C> operator/ (C c) const
-      { Vector<C> result(*this); return result /=c; }
-    Vector<C> operator- () const
-      { Vector<C> result(*this); return result.negate(); }
+  Vector<C> operator+ (const Vector<C>& v) const
+    { Vector<C> result(*this); return result +=v; }
+  Vector<C> operator- (const Vector<C>&v) const
+    { Vector<C> result(*this); return result -=v; }
+  Vector<C> operator* (C c) const
+    { Vector<C> result(*this); return result *=c; }
+  Vector<C> operator/ (C c) const // throws |std::runtime_error| if not exact
+    { Vector<C> result(*this); return result /=c; }
+  Vector<C> operator- () const
+    { Vector<C> result(*this); return result.negate(); }
 
 
+  Matrix<C> row_matrix() const;    // vector as 1-row matrix
+  Matrix<C> column_matrix() const; // vector as 1-column matrix
 }; // Vector
 
 
-template<typename C> class Matrix {
-  /*!
-  We implement a matrix simply as a vector of elements, concatenating the
-  rows.
-  */
+template<typename C> class Matrix
+{
+
+  size_t d_rows;
+  size_t d_columns;
+  Vector<C> d_data;   // vector of elements, concatenated by rows
+
  public:
 
   typedef std::pair<size_t,size_t> index_pair;
 
- private:
-
-  size_t d_rows;
-  size_t d_columns;
-  Vector<C> d_data;
-
- public:
-
 // constructors and destructors
- Matrix(): d_rows(0),d_columns(0),d_data() {}
+  Matrix(): d_rows(0),d_columns(0),d_data() {}
 
   Matrix(size_t m, size_t n) : d_rows(m),d_columns(n),d_data(m*n) {}
-
   Matrix(size_t m, size_t n, const C& c):d_rows(m),d_columns(n),d_data(m*n,c) {}
 
+  explicit Matrix(size_t n); // square identity matrix
   Matrix(const std::vector<Vector<C> >&, size_t n_rows); // with explicit #rows
 
   template<typename I> // from sequence of columns obtained via iterator
-    Matrix(const I&, const I&, size_t n_rows, tags::IteratorTag);
+    Matrix(I begin, I end, size_t n_rows, tags::IteratorTag);
+
+  void swap(Matrix&);
 
   // accessors
   size_t numRows() const { return d_rows; }
@@ -138,130 +111,94 @@ template<typename C> class Matrix {
   size_t rowSize() const { return d_columns;  }
   size_t columnSize() const { return d_rows; }
 
-  const C& operator() (size_t i, size_t j) const
-  { return d_data[i*d_columns+j]; }
+  const C& operator() (size_t i,size_t j) const{ return d_data[i*d_columns+j]; }
 
-  void get_column(Vector<C>&, size_t) const;
   void get_row(Vector<C>&, size_t) const;
+  void get_column(Vector<C>&, size_t) const;
 
-  Vector<C> column(size_t j) const { Vector<C> c; get_column(c,j); return c; }
-  std::vector<Vector<C> > columns() const
-  {std::vector<Vector<C> > result; columnVectors(result,*this); return result; }
   Vector<C> row(size_t i) const { Vector<C> r; get_row(r,i); return r; }
-  std::vector<Vector<C> > rows() const
-  {
-    std::vector<Vector<C> > result(numRows());
-    for (size_t i=0; i<numRows(); ++i)
-      get_row(result[i],i);
-    return result;
-  }
+  std::vector<Vector<C> > rows() const;
+  Vector<C> column(size_t j) const { Vector<C> c; get_column(c,j); return c; }
+  std::vector<Vector<C> > columns() const;
 
   bool operator== (const Matrix<C>&) const;
   bool operator!= (const Matrix<C>& m) const {return not(operator==(m)); }
 
-  index_pair absMinPos(size_t i_min = 0, size_t j_min = 0) const;
-
-  void apply(Vector<C>&, const Vector<C>&) const;
-  Vector<C> apply(const Vector<C>&) const; //functional version
-  Vector<C> right_apply(const Vector<C>&) const;
-
-  template<typename I, typename O> void apply(const I&, const I&, O) const;
-
-  bool divisible(C) const;
-
-  Matrix<C> inverse() const
-  {
-    Matrix<C> result(*this); result.invert(); return result;
-  }
-
-  Matrix<C> inverse(C& d) const
-  {
-    Matrix<C> result(*this); result.invert(d); return result;
-  }
-
-  bool isEmpty() const {
-    return d_data.size() == 0;
-  }
-
-  bool isZero(size_t i_min = 0, size_t j_min = 0) const;
-
+  bool isEmpty() const { return d_data.size() == 0; }
 
   Matrix<C> transposed() const
-  {
-    Matrix<C> result(*this); result.transpose(); return result;
-  }
-
+    { Matrix<C> result(*this); result.transpose(); return result; }
   Matrix<C> negative_transposed() const
-  {
-    Matrix<C> result(*this); result.negate(); result.transpose();
-    return result;
-  }
+    { Matrix<C> result(*this); result.negate(); result.transpose();
+      return result; }
 
-  Matrix<C> on_basis(const std::vector<Vector<C> >& basis) const;
-
-  Matrix<C> block(size_t i0, size_t j0, size_t i1, size_t j1) const;
-
-// manipulators
-  C& operator() (size_t i, size_t j) {
-    return d_data[i*d_columns+j];
-  }
-
-  Matrix<C>& operator+= (const Matrix<C>&);
-
-  Matrix<C>& operator-= (const Matrix<C>&);
-
-  Matrix<C>& operator*= (const Matrix<C>&);
+  Vector<C> apply(const Vector<C>&) const;
+  Vector<C> right_apply(const Vector<C>&) const;
 
   Matrix<C> operator* (const Matrix<C>&) const;
 
-  Matrix<C>& leftMult (const Matrix<C>& p) { return *this=p * *this; }
+  Matrix<C> inverse() const
+    { Matrix<C> result(*this); result.invert(); return result; }
+  Matrix<C> inverse(C& d) const
+    { Matrix<C> result(*this); result.invert(d); return result; }
 
+  Matrix<C> on_basis(const std::vector<Vector<C> >& basis) const;
+
+
+// manipulators
+  C& operator() (size_t i, size_t j) { return d_data[i*d_columns+j]; }
+
+  void set_row(size_t,const Vector<C>&);
+  void set_column(size_t,const Vector<C>&);
+  void add_row(const Vector<C>&);
+  void add_column(const Vector<C>&);
+
+
+  void resize(size_t, size_t);
+  void resize(size_t, size_t, const C&);
+
+  Matrix<C>& operator+= (const Matrix<C>&);
+  Matrix<C>& operator-= (const Matrix<C>&);
+  Matrix<C>& operator*= (const Matrix<C>&);
+  Matrix<C>& leftMult (const Matrix<C>& p) { return *this=p * *this; }
   Matrix<C>& operator/= (const C& c) throw (std::runtime_error);
 
-  void set_column(size_t,const Vector<C>&);
-  void set_row(size_t,const Vector<C>&);
+  void reset() { d_data.assign(d_data.size(),0); }
+  void negate(){ d_data.negate(); }
+  void transpose();
 
-  void changeColumnSign(size_t);
+  void permute(const setutils::Permutation& a);
+  void invert();
+  void invert(C& d);
+
+  // secondary accessors (mainly for Smith and inversion algorithms)
+
+  bool isZero(size_t i_min = 0, size_t j_min = 0) const;
+  index_pair absMinPos(size_t i_min = 0, size_t j_min = 0) const;
+  bool divisible(C) const;
+
+  Matrix<C> block(size_t i0, size_t j0, size_t i1, size_t j1) const;
+
+  // secondary manipulators
+
+  void rowOperation(size_t, size_t, const C&);
+  void columnOperation(size_t j, size_t k, const C& c); // |col(j) += c*col(k)|
 
   void changeRowSign(size_t);
+  void changeColumnSign(size_t);
 
-  void columnOperation(size_t j, size_t k, const C& c); // |col(j) += c*col(k)|
+  void swapColumns(size_t, size_t);
+  void swapRows(size_t, size_t);
+
+  void eraseColumn(size_t);
+  void eraseRow(size_t);
 
   void copy(const Matrix<C>&, size_t r = 0, size_t c = 0);
 
-  void eraseColumn(size_t);
+}; // |template<typename C> class Matrix|
 
-  void eraseRow(size_t);
+} // |namespace matrix|
 
-  void invert();
-
-  void invert(C& d);
-
-  void permute(const setutils::Permutation& a);
-
-  void negate();
-
-  void reset() { d_data.assign(d_data.size(),0); }
-
-  void resize(size_t, size_t);
-
-  void resize(size_t, size_t, const C&);
-
-  void rowOperation(size_t, size_t, const C&);
-
-  void swap(Matrix&);
-
-  void swapColumns(size_t, size_t);
-
-  void swapRows(size_t, size_t);
-
-  void transpose();
-};
-
-}
-
-}
-
-#include "matrix_def.h"
+} // |namespace atlas|
 
 #endif
