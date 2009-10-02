@@ -54,12 +54,11 @@ Subspace(const bitvector::BitVectorList<dim>& b, size_t n)
   divided out; this could be the whole space $(Z/2Z)^n$ (in any case |r| is
   expressed in its canonical basis) or some subspace containing our subspace.
 
-  The algorithm projects v onto pv in the subspace expressed in the
-  canonical basis of the subspace.  The coordinates of pv are the
-  entries of v in the coordinates flagged by d_support.
-
-  Then w is the BitVector in (Z/2Z)^n given by combining the canonical
-  basis with coefficients pv.  Finally r is equal to v-w.
+  The algorithm projects v onto the subspace, the result |pv| being expressed
+  in the canonical basis of the subspace: the coordinates of pv are just the
+  entries of |v| in the coordinates flagged by |d_support|. Then |w| is
+  computed as the corresponding |BitVector| in $(Z/2Z)^n$, given by combining
+  the canonical basis with coefficients from |pv|.  Finally we set |r=v-w|.
 */
 template<size_t dim>
 void Subspace<dim>::representative
@@ -85,16 +84,15 @@ void Subspace<dim>::representative
 
 /******** manipulators *******************************************************/
 
-template<size_t dim>
-void Subspace<dim>::apply(const bitvector::BitMatrix<dim>& r)
 
 /*!
   Synopsis: applies |r| to our subspace, normalizing the resulting subspace.
 
-  Precondition: r is a matrix of the appropriate size (it could go to a
+  Precondition: r is a matrix of the appropriate column size (it could go to a
   space of another dimension, even.)
 */
-
+template<size_t dim>
+void Subspace<dim>::apply(const bitvector::BitMatrix<dim>& r)
 {
   assert(r.numColumns()==d_rank);
 
