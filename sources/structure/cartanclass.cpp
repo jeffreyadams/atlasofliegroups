@@ -327,7 +327,7 @@ adjoint_involution(const rootdata::RootSystem& rs, const InvolutionData& id)
 
   Algorithm: this is the subquotient $V_+ + V_-/V_+$ for the negative
   transpose of the involution induced by \f$\tau\f$ on the root lattice (which
-  is computed by |adjoint_involution|).
+  negative transpose is computed by |adjoint_involution|).
 */
 latticetypes::SmallSubquotient
 Fiber::makeAdjointFiberGroup(const rootdata::RootSystem& rs) const
@@ -336,7 +336,7 @@ Fiber::makeAdjointFiberGroup(const rootdata::RootSystem& rs) const
   latticetypes::SmallSubquotient result;
   tori::dualPi0(result,adjoint_involution(rs,d_involutionData));
 
-  assert(result.rank()==rs.rank());
+  assert(result.rank()==rs.rank()); // (rank is that of ambient vector space)
 
   return result;
 }
