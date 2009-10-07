@@ -30,10 +30,10 @@ namespace atlas {
 namespace subquotient {
 
 template<size_t dim>
-  void subquotientMap(bitvector::BitMatrix<dim>&,
-		      const Subquotient<dim>&,
-		      const Subquotient<dim>&,
-		      const bitvector::BitMatrix<dim>&);
+  bitvector::BitMatrix<dim> subquotientMap
+   (const Subquotient<dim>&,
+    const Subquotient<dim>&,
+    const bitvector::BitMatrix<dim>&);
 
 }
 
@@ -55,24 +55,11 @@ namespace subquotient {
   (of capacity |d_rank|); the number of set bits in |d_support| is equal to
   the dimension |d_basis.size()| of the |Subspace|.
   */
-template<size_t dim> class Subspace {
-
- private:
-
-  /*!
-  \brief Dimension of the ambient vector space.
-  */
-  size_t d_rank;
-
-  /*!
-  \brief Basis of our |Subspace| in reduced form.
-  */
-  bitvector::BitVectorList<dim> d_basis;
-
-  /*! \brief |BitSet| flagging the positions of the leading nonzero bits in
-  the basis of our |Subspace|.
-  */
-  bitset::BitSet<dim> d_support;
+template<size_t dim> class Subspace
+{
+  size_t d_rank; ///< Dimension of the ambient vector space.
+  bitvector::BitVectorList<dim> d_basis; ///< reduced echelon basis
+  bitset::BitSet<dim> d_support; ///< pivot (leading nonzero bit) positions
 
  public:
 
@@ -88,30 +75,18 @@ template<size_t dim> class Subspace {
 // copy, assignment: the implicitly generated versions will do fine
 
 // accessors
-  const bitvector::BitVector<dim>& basis(size_t j) const {
+  const bitvector::BitVector<dim>& basis(size_t j) const
+  {
     assert(j<d_rank);
     return d_basis[j];
   }
 
-  const bitvector::BitVectorList<dim>& basis() const {
-    return d_basis;
-  }
+  const bitvector::BitVectorList<dim>& basis() const { return d_basis; }
+  size_t dimension() const { return d_basis.size(); }
+  const size_t rank() const { return d_rank; }
+  const bitset::BitSet<dim>& support() const { return d_support; }
 
-  size_t dimension() const {
-    return d_basis.size();
-  }
-
-  const size_t rank() const {
-    return d_rank;
-  }
-
-  const bitset::BitSet<dim>& support() const {
-    return d_support;
-  }
-
-  /*!
-  \brief Expresses |v| in the subspace basis.
-  */
+  //! \brief Expresses |v| in the subspace basis.
   bitvector::BitVector<dim> toBasis(bitvector::BitVector<dim> v) const
   {
     assert(contains(v)); // implies |assert(v.size()==rank())|
@@ -129,37 +104,23 @@ template<size_t dim> class Subspace {
     assert(v.size()==dimension());
 
     // expand linear combination of basis given by |v|
-    bitvector::BitVector<dim> result(rank());
-    bitvector::combination(result,d_basis,v.data());
-
-    return result;
+    return bitvector::combination(d_basis,rank(),v.data());
   }
 
-  bool contains(const bitvector::BitVector<dim>& v) const
-    { return mod_image(v).isZero(); }
-
-  bool contains(const bitvector::BitVectorList<dim>& m) const
-    {
-      for (size_t i=0; i<m.size(); ++i)
-	if (not contains(m[i])) return false;
-      return true;
-    }
+  bool contains(const bitvector::BitVector<dim>& v) const;
+  bool contains(const bitvector::BitVectorList<dim>& m) const;
 
   // the following methods reduce (finding representative) MODULO the subspace
+  bitvector::BitVector<dim>
+    representative(const bitvector::BitVector<dim>&) const;
 
-  void representative(bitvector::BitVector<dim>&,
-		      const bitvector::BitVector<dim>&) const;
-
-  // destructive version
-  void mod_reduce(bitvector::BitVector<dim>& w) const { representative(w,w); }
-
-  // functional version
   bitvector::BitVector<dim> mod_image(const bitvector::BitVector<dim>& w)
     const
   {
-    bitvector::BitVector<dim> result; representative(result,w);
-    return result;
+    return representative(w);
   }
+  // destructive version
+  void mod_reduce(bitvector::BitVector<dim>& w) const { w=mod_image(w); }
 
 // manipulators
   void apply (const bitvector::BitMatrix<dim>&);
@@ -184,7 +145,8 @@ template<size_t dim> class Subspace {
   sets is flagged by the BitSet d_support.  The number of set bets in
   d_support is therefore the dimension of the subquotient.
   */
-template<size_t dim> class Subquotient {
+template<size_t dim> class Subquotient
+{
 
  private:
 
@@ -245,33 +207,26 @@ bitset::BitSet<dim> d_rel_support;
   /*!
   \brief Dimension of the subquotient.
   */
-  size_t dimension() const {
-    return d_space.dimension() - d_subspace.dimension();
-  }
+  size_t dimension() const
+    { return d_space.dimension() - d_subspace.dimension(); }
 
   /*!
   \brief Dimension of the ambient vector space in which the larger and smaller
   subspaces live.
   */
-  size_t rank() const {
-    return d_space.rank();
-  }
+  size_t rank() const { return d_space.rank(); }
 
   const Subspace<dim>& space() const { return d_space; }       // numerator
   const Subspace<dim>& subspace() const { return d_subspace; } // denominator
 
   /* we call this |support| to the outside world, since it flags basis
     representatives for the quotient among the basis for |d_space| */
-  const bitset::BitSet<dim>& support() const {
-    return d_rel_support;
-  }
+  const bitset::BitSet<dim>& support() const { return d_rel_support; }
 
   /*!
   \brief Cardinality of the subquotient: 2^dimension.
   */
-  unsigned long size() const {
-    return 1ul << dimension();
-  }
+  unsigned long size() const { return 1ul << dimension(); }
 
   /*!
     \brief Puts in |r| the canonical representative of |w| modulo |d_subspace|.
@@ -281,9 +236,8 @@ bitset::BitSet<dim> d_rel_support;
     The value remains in $(Z/2Z)^n$; see |toBasis| to express in subquotient.
   */
   void representative(bitvector::BitVector<dim>& r,
-		      const bitvector::BitVector<dim>& w) const {
-    d_subspace.representative(r,w);
-  }
+		      const bitvector::BitVector<dim>& w) const
+    { r=d_subspace.mod_image(w); }
 
   // destructive version
   void mod_reduce(bitvector::BitVector<dim>& w) const
@@ -342,12 +296,10 @@ bitset::BitSet<dim> d_rel_support;
 
   void swap(Subquotient&);
 
-};
+ }; // |template <size_t dim> class Subquotient|
 
 }
 
 }
-
-#include "subquotient_def.h"
 
 #endif

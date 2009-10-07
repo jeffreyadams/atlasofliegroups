@@ -141,42 +141,25 @@ template<typename C> class SizeType
 
  public:
 // constructors and destructors
-  SizeType() {
-    std::memset(d_exp,0,PRIMES_MAX*sizeof(C));
-  }
+  SizeType() { std::memset(d_exp,0,PRIMES_MAX*sizeof(C)); }
 
   explicit SizeType(unsigned long);
 
-  ~SizeType()
-    {}
-
-// copy and assignment
-
-// (defaults suffice)
+// copy and assignment (defaults suffice)
 
 // accessors
   C operator[] (size_t j) const { return d_exp[j]; }
 
-  bool operator== (const SizeType& c) const {
-    return std::memcmp(d_exp,c.d_exp,PRIMES_MAX*sizeof(C))==0;
-  }
+  bool operator== (const SizeType& c) const
+    { return std::memcmp(d_exp,c.d_exp,PRIMES_MAX*sizeof(C))==0; }
+  bool operator!= (const SizeType& c) const
+    { return std::memcmp(d_exp,c.d_exp,PRIMES_MAX*sizeof(C))!=0; }
 
-  bool operator!= (const SizeType& c) const {
-    return std::memcmp(d_exp,c.d_exp,PRIMES_MAX*sizeof(C))!=0;
-  }
-
-  bool hasOverflow() const;
-
-  bool hasOverflow(size_t) const;
-
-  unsigned long piece(size_t) const;
-
-  unsigned long toUlong() const;
+  unsigned long piece(size_t) const; // return $prime(i)^{d_exp[i]}$
+  unsigned long toUlong() const;     // try to represent as unsigned long
 
 // manipulators
-  C& operator[] (size_t j) {
-    return d_exp[j];
-  }
+  C& operator[] (size_t j) { return d_exp[j]; }
 
   SizeType& operator*= (const SizeType&);
 
@@ -184,19 +167,14 @@ template<typename C> class SizeType
 
   SizeType& operator/= (const SizeType&);
 
-  void reset() {
-    std::memset(d_exp,0,PRIMES_MAX*sizeof(C));
-  }
+  void reset() { std::memset(d_exp,0,PRIMES_MAX*sizeof(C)); }
 
-  void twoShift(C n) { // multiplication by 2^n; prime #0 is 2
-    d_exp[0] += n;
-  }
+  void twoShift(C n) // multiplication by 2^n; prime #0 is 2
+    { d_exp[0] += n; }
 };  // |template<typename C> class SizeType|
 
 }  // |namespace size|
 
 }  // |namespace atlas|
-
-#include "size_def.h"
 
 #endif

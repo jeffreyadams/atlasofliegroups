@@ -23,33 +23,16 @@ namespace atlas {
 
 namespace lattice {
 
-template<typename I, typename J, typename O>
-  void baseChange(const I&, const I&, O, const J&, const J&);
+template<typename I, typename O>
+  void baseChange(I, I, O, I, I);
 
-template<typename I, typename J, typename O>
-  void inverseBaseChange(const I&, const I&, O, const J&, const J&);
-
-template<size_t dim>
-  void mod2(bitvector::BitVector<dim>&, const latticetypes::LatticeElt&);
-
-template<size_t dim>
-  void mod2(std::vector<bitvector::BitVector<dim> >&,
-	    const latticetypes::WeightList&);
-
-template<size_t dim> void mod2(bitvector::BitMatrix<dim>&,
-			       const latticetypes::LatticeMatrix&);
-
-latticetypes::LatticeMatrix numeratorMatrix(const latticetypes::RatWeightList&);
+template<typename I, typename O>
+  void inverseBaseChange(I, I, O, I, I);
 
 latticetypes::WeightList perp(const latticetypes::WeightList&, size_t);
 
-latticetypes::RatWeightList toCommonDenominator
-(const latticetypes::RatWeightList& l);
+} // |namespace lattice|
 
-}
-
-}
-
-#include "lattice_def.h"
+} // |namespace atlas|
 
 #endif

@@ -31,24 +31,18 @@ namespace bitvector {
 
 /*!
   \brief Puts in |v| the $Z/2Z$-linear combination of the |BitVector|s of |b|
-  given by the bits of |e|. NOTE: |v| should already have the correct size.
+  (each of size |n|) given by the bits of |e|.
 */
 template<size_t dim>
-  void combination(BitVector<dim>& v,
-		   const std::vector<BitVector<dim> >& b,
-		   const bitset::BitSet<dim>& e);
+  BitVector<dim> combination
+  (const std::vector<BitVector<dim> >& b,
+   size_t n,
+   const bitset::BitSet<dim>& e);
 
 // version with |BitSet|s instead of |BitVector|s; functional (size no issue)
 template<size_t dim>
   bitset::BitSet<dim> combination(const std::vector<bitset::BitSet<dim> >&,
 				  const bitset::BitSet<dim>&);
-
-// same, imperative
-template<size_t dim>
-  void combination(bitset::BitSet<dim>& v,
-		   const std::vector<bitset::BitSet<dim> >& b,
-		   const bitset::BitSet<dim>& coef)
-  { v=combination(b,coef); }
 
 
 /*!
@@ -147,10 +141,11 @@ namespace bitvector {
   software. DV]
   */
 
-template<size_t dim> class BitVector{
+template<size_t dim> class BitVector
+{
 
   friend
-    void BitMatrix<dim>::apply(BitVector<dim>&, BitVector<dim>) const;
+    BitVector<dim> BitMatrix<dim>::apply(const BitVector<dim>& v) const;
 
  private:
 
@@ -197,22 +192,26 @@ template<size_t dim> class BitVector{
 
 // accessors
 
-  bool operator< (const BitVector& v) const {
+  bool operator< (const BitVector& v) const
+  {
     assert(d_size==v.d_size);
-    return d_data < v.d_data;
+    return d_data<v.d_data;
   }
 
-  bool operator== (const BitVector& v) const {
+  bool operator== (const BitVector& v) const
+  {
     assert(d_size==v.d_size);
     return d_data == v.d_data;
   }
 
-  bool operator!= (const BitVector& v) const {
+  bool operator!= (const BitVector& v) const
+  {
     assert(d_size==v.d_size);
     return d_data != v.d_data;
   }
 
-  bool operator[] (size_t i) const {
+  bool operator[] (size_t i) const
+  {
     assert(i<d_size);
     return d_data[i];
   }
@@ -233,37 +232,37 @@ template<size_t dim> class BitVector{
   bool dot(const BitVector& v) const
   { return ((d_data & v.d_data).count()&1u)!=0; }
 
+  BitVector operator+ (const BitVector& v) const
+  { BitVector<dim> result(*this); result+=v; return result; }
+
 // manipulators
 
-  BitVector& operator+= (const BitVector& v) {
+  BitVector& operator+= (const BitVector& v)
+  {
     assert(d_size==v.d_size);
     d_data ^= v.d_data;
     return *this;
   }
 
-  BitVector& operator-= (const BitVector& v) { // same thing as +=
+  BitVector& operator-= (const BitVector& v) // same thing as +=
+  {
     assert(d_size==v.d_size);
     d_data ^= v.d_data;
     return *this;
   }
 
-  BitVector& operator&= (const BitVector& v) {
+  BitVector& operator&= (const BitVector& v) // bitwise multiply
+  {
     assert(d_size==v.d_size);
     d_data &= v.d_data;
     return *this;
   }
 
-  BitVector& operator>>= (size_t pos) {
-    d_data >>= pos;
-    return *this;
-  }
+  BitVector& operator>>= (size_t pos) { d_data >>= pos; return *this; }
+  BitVector& operator<<= (size_t pos) { d_data <<= pos; return *this; }
 
-  BitVector& operator<<= (size_t pos) {
-    d_data <<= pos;
-    return *this;
-  }
-
-  BitVector& flip(size_t i) {
+  BitVector& flip(size_t i)
+  {
     assert(i<d_size);
     d_data.flip(i);
     return *this;
@@ -271,36 +270,27 @@ template<size_t dim> class BitVector{
 
   BitVector& pushBack(bool);
 
-  BitVector& set(size_t i) {
+  BitVector& set(size_t i)
+  {
     assert(i<d_size);
     d_data.set(i);
     return *this;
   }
 
-  void set(size_t i, bool b) {
-    assert(i<d_size);
-    d_data.set(i,b);
-  }
+  void set(size_t i, bool b) { assert(i<d_size); d_data.set(i,b); }
 
-  void set_mod2(size_t i, unsigned long v) {
-    set(i,(v&1)!=0);
-  }
+  void set_mod2(size_t i, unsigned long v) { set(i,(v&1)!=0); }
 
-  BitVector& reset() {
-    d_data.reset();
-    return *this;
-  }
+  BitVector& reset() { d_data.reset(); return *this; }
 
-  BitVector& reset(size_t i) {
+  BitVector& reset(size_t i)
+  {
     assert(i<d_size);
     d_data.reset(i);
     return *this;
   }
 
-  void resize(size_t n) {
-    assert(n<=dim);
-    d_size = n;
-  }
+  void resize(size_t n) { assert(n<=dim); d_size = n; }
 
   void slice(const bitset::BitSet<dim>& mask);
   void unslice(bitset::BitSet<dim> mask, size_t new_size);
@@ -426,25 +416,7 @@ template<size_t dim> class BitMatrix {
 	  d_data[j].set(i, (m(i,j)&1)!=0 );
     }
 
-
-  ~BitMatrix()
-    {}
-
-// copy and assignment
-  BitMatrix(const BitMatrix& m)
-    : d_data(m.d_data)
-    , d_rows(m.d_rows)
-    , d_columns(m.d_columns)
-    {}
-
-  BitMatrix& operator=(const BitMatrix& m) {
-    d_data = m.d_data;
-    d_rows = m.d_rows;
-    d_columns = m.d_columns;
-
-    return *this;
-  }
-
+// copy and assignment (implicitly generated ones will do)
 
 // accessors
 
@@ -455,9 +427,6 @@ template<size_t dim> class BitMatrix {
     assert(j<d_columns);
     return d_data[j].test(i);
   }
-
-  // second argument is by value, the implicit copy avoids aliasing problems
-  void apply(BitVector<dim>& dst, BitVector<dim> src) const;
 
   BitVector<dim> apply(const BitVector<dim>& src) const; // functional version
 
@@ -577,9 +546,9 @@ template<size_t dim> class BitMatrix {
   /*!
   Puts the BitSet data in column j of the BitMatrix.
   */
-  void setColumn(size_t j, const bitset::BitSet<dim>& data) {
+  void setColumn(size_t j, const bitset::BitSet<dim>& data)
+  {
     assert(j<d_columns);
-    assert(data.size()==d_rows);
     d_data[j] = data;
   }
 
@@ -594,10 +563,9 @@ template<size_t dim> class BitMatrix {
   BitMatrix& transpose();
 };
 
-}
+} // |namespace bitvector|
 
-}
+} // |namespace  atlas|
 
-#include "bitvector_def.h"
 
 #endif

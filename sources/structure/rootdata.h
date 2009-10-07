@@ -139,13 +139,13 @@ class RootSystem
 
   // convert sequence of root numbers to expressions in the simple roots
   template <typename I, typename O>
-    void toRootBasis(const I&, const I&, O) const;
-  // convert sequence of root numbers to expressions in subsystem simple weights
-  template <typename I, typename O>
-    void toSimpleWeights(const I&, const I&, O, const RootList&) const;
+    void toRootBasis(I, I, O) const;
   // convert sequence of root numbers to expressions in subsystem simple roots
   template <typename I, typename O>
-    void toRootBasis(const I&, const I&, O, const RootList&) const;
+    void toRootBasis(I, I, O, const RootList&) const;
+  // convert sequence of root numbers to expressions in subsystem simple weights
+  template <typename I, typename O>
+    void toSimpleWeights(I, I, O, const RootList&) const;
 
   bool isSimpleRoot(RootNbr alpha) const
   { return alpha-numPosRoots()<rk; } // this uses that |RootNbr| is unsigned
@@ -662,7 +662,5 @@ inline RootIterator<I> operator+ (typename RootIterator<I>::difference_type n,
 } // |namespace rootdata|
 
 } // |namespace atlas|
-
-#include "rootdata_def.h"
 
 #endif
