@@ -243,34 +243,29 @@ namespace testrun {
   and set |d_done=false| initially
 */
 TorusPartIterator::
-TorusPartIterator(size_t r, const bitmap::BitMap& B)
+TorusPartIterator(size_t r, const bitmap::BitMap& b)
   : d_rank(r)
-  , d_first(B.begin())
-  , d_last(B.end())
+  , d_first(b.begin())
+  , d_last(b.end())
   , d_data(r,d_first)
   , d_returnValue(r,*d_first)
   , d_done(false)
 {}
 
-
-/*
-  Here the starting position is given by |d|, and the bitmap by initial and
-  post-final iterators |first| and |last|.
-*/
+  // copy, but then change iterators to point into |b|
 TorusPartIterator::
-TorusPartIterator(size_t r, const std::vector<bitmap::BitMap::iterator>& d,
-		  const bitmap::BitMap::iterator& first,
-		  const bitmap::BitMap::iterator& last)
-  : d_rank(r)
-  , d_first(first)
-  , d_last(last)
-  , d_data(d)
-  , d_returnValue(r) // dimensioned only here
-  , d_done(false)
+TorusPartIterator(const TorusPartIterator& src, const bitmap::BitMap& b)
+  : d_rank(src.d_rank)
+  , d_first(b.begin())
+  , d_last(b.end())
+  , d_data(src.d_data)
+  , d_returnValue(src.d_returnValue)
+  , d_done(src.d_done)
 {
-  for (size_t j = 0; j < r; ++j)
-    d_returnValue[j] = *d_data[j];
+  for (size_t i=0; i<d_data.size(); ++i)
+    d_data[i].change_owner(b);
 }
+
 
 /*
   We increment d-tuples starting from the end.
@@ -388,7 +383,7 @@ CoveringIterator::CoveringIterator(const lietype::LieType& lt)
 
 /*
   Copy constructor. Needs to make sure that it gets a new copy of the
-  *(i.d_dcenter). Also needs to reset the d_torusPart!
+  *(i.d_dcenter). Also needs to construct the |d_torusPart| carefully
 */
 CoveringIterator::CoveringIterator(const CoveringIterator& i)
   : d_lieType(i.d_lieType)
@@ -399,22 +394,11 @@ CoveringIterator::CoveringIterator(const CoveringIterator& i)
   , d_torusRank(i.d_torusRank)
   , d_quotReps(i.d_quotReps)
   , d_subgroup(i.d_subgroup)
+  , d_torusPart(i.d_torusPart,d_quotReps)
   , d_done(i.d_done)
   , d_smithBasis(i.d_smithBasis)
   , d_preRootDatum(i.d_preRootDatum)
-{
-  // d_torusPart is essentially a vector of pointers into d_quotReps;
-  // all these pointers will be invalidated by the copying and need to
-  // be reset!
-
-  std::vector<bitmap::BitMap::iterator> tpi(d_torusRank);
-
-  for (size_t j = 0; j < d_torusRank; ++j)
-    tpi[j] = d_quotReps.pos((*i.d_torusPart)[j]);
-
-  d_torusPart = TorusPartIterator(d_torusRank,tpi,d_quotReps.begin(),
-				  d_quotReps.end());
-}
+{}
 
 
 /*
@@ -593,6 +577,8 @@ SubgroupIterator::SubgroupIterator(abelian::FiniteAbelianGroup& A)
   d_done = false;
 }
 
+
+  // copy constructor
 SubgroupIterator::SubgroupIterator(const SubgroupIterator& i)
   :d_group(i.d_group), // this is not owned by the iterator
    d_prevRank(i.d_prevRank),
@@ -601,15 +587,12 @@ SubgroupIterator::SubgroupIterator(const SubgroupIterator& i)
    d_prev(d_prevRank.begin()+(i.d_prev-i.d_prevRank.begin())),
    d_subgroup(i.d_subgroup),
    d_cycGenerators(i.d_cycGenerators),
-   d_generator(d_cycGenerators.pos(*(i.d_generator))),
+   d_generator(i.d_generator),
    d_rank(i.d_rank),
    d_done(i.d_done)
-
-/*
-  Synopsis: copy constructor.
-*/
-
-{}
+{
+  d_generator.change_owner(d_cycGenerators);
+}
 
 /******** assignment *********************************************************/
 
@@ -625,7 +608,7 @@ SubgroupIterator& SubgroupIterator::operator= (const SubgroupIterator& i)
   d_prev = d_prevRank.begin() + (i.d_prev - i.d_prevRank.begin());
   d_subgroup = i.d_subgroup;
   d_cycGenerators = i.d_cycGenerators;
-  d_generator = d_cycGenerators.pos(*(i.d_generator));
+  (d_generator = i.d_generator).change_owner(d_cycGenerators);
   d_rank = i.d_rank;
   d_done = i.d_done;
 

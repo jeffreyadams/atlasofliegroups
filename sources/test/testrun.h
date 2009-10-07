@@ -1,3 +1,4 @@
+
 /*
   This is testrun.h
 
@@ -158,9 +159,8 @@ class TorusPartIterator {
 
   TorusPartIterator(size_t, const bitmap::BitMap&);
 
-  TorusPartIterator(size_t, const std::vector<bitmap::BitMap::iterator>& pos,
-		    const bitmap::BitMap::iterator& begin,
-		    const bitmap::BitMap::iterator& end);
+  // copy-like constructor, but move iterators to point to new (copied) bitmap
+  TorusPartIterator(const TorusPartIterator&, const bitmap::BitMap&);
 
   ~TorusPartIterator() {}
 
