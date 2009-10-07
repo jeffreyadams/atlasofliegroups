@@ -405,20 +405,22 @@ gradings::Grading Fiber::makeBaseGrading
 
 {
   // express all imaginary roots in simple imaginary basis
-  rootdata::RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
   latticetypes::WeightList ir;
-  rs.toRootBasis(irl.begin(),irl.end(),back_inserter(ir),simpleImaginary());
+  rs.toRootBasis(imaginaryRootSet().begin(),
+		 imaginaryRootSet().end(),
+		 back_inserter(ir),simpleImaginary());
 
-  // now flag all roots with noncompact grading
+  // now flag, among all roots, those imaginary roots with noncompact grading
   flagged_roots.set_capacity(rs.numRoots());
 
-  for (size_t j = 0; j < irl.size(); ++j)
+  for (size_t j = 0; j < ir.size(); ++j)
   {
     latticetypes::Weight v=ir[j];
     int count=0;
     for (size_t i=0; i<v.size(); ++i)
-      count+=v[i];                           // add coefficients
-    flagged_roots.set_mod2(irl[j],count);    // and take result mod 2
+      count+=v[i];			  // add coefficients (for parity)
+    flagged_roots.set_mod2
+      (imaginaryRootSet().n_th(j),count); // and flag imaginary root
   }
   return gradings::Grading(constants::lMask[imaginaryRank()]); // all ones
 }
@@ -449,7 +451,8 @@ gradings::GradingList Fiber::makeGradingShifts
   (rootdata::RootSetList& all_shifts,const rootdata::RootSystem& rs) const
 {
   // express imaginary roots in (full) simple root basis
-  rootdata::RootList irl(imaginaryRootSet().begin(),imaginaryRootSet().end());
+  const rootdata::RootList irl
+    (imaginaryRootSet().begin(),imaginaryRootSet().end());
 
   latticetypes::WeightList ir;
   rs.toRootBasis(irl.begin(),irl.end(),back_inserter(ir));
@@ -892,8 +895,7 @@ AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
   bitset::RankFlags xf(x);
   latticetypes::SmallBitVector v(xf,fiberRank());
 
-  latticetypes::SmallBitVector w(adjointFiberRank());
-  d_toAdjoint.apply(w,v);
+  latticetypes::SmallBitVector w = d_toAdjoint.apply(v);
 
   return AdjointFiberElt(w.data().to_ulong());
 }
