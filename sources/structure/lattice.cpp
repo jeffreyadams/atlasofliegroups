@@ -44,22 +44,53 @@ namespace atlas {
 
 namespace lattice {
 
+/*!
+  In this template, we assume that |I|, and |O| are respectively random
+  access input and output iterator types for type |Weight|, and that
+  |[firstb,lastb[| holds a new $\Q$-basis for the lattice, in particular that
+  |lastb-firstb| is equal to the size of the |Weight|s.
+
+  As we iterate from |first| to |last|, we write the vectors in the
+  new basis (this is supposed to be possible) and output the result to |O|.
+
+  Doing the base change amounts to applying the inverse of |b|'s matrix.
+
+  NOTE: we don't assume that |[firstb, lastb[| is necessarily a $\Z$-basis of
+  the current lattice, only that it is a basis of a full rank sublattice
+  containing the vectors in the input range; the new coordinates will then be
+  integers. Users should be aware of the "full rank" condition; without it the
+  specification still makes sense, but the implementation will fail.
+*/
+template<typename I, typename O>
+  void baseChange(I first, I last, O out, I firstb, I lastb)
+{
+  latticetypes::LatticeCoeff d;
+  latticetypes::LatticeMatrix q =
+    latticetypes::LatticeMatrix(firstb,lastb,lastb-firstb,tags::IteratorTag())
+    .inverse(d);
+
+  while (first!=last)
+  {
+    *out = (q.apply(*first)/=d);
+    ++out, ++first;
+  }
+}
 
 /*!
-  \brief Returns the matrix whose columns are the numerator vectors of |rwl|.
-
-  Precondition: the vectors in rwl all have the same dimension.
+  This (unsused) template function is like |baseChange|, but goes from weights
+  expressed in terms of |[firstb, lastb[| to ones expressed in terms of the
+  original basis. This is easier, as we don't have to invert the matrix!
 */
-latticetypes::LatticeMatrix
-numeratorMatrix(const latticetypes::RatWeightList& rwl)
+template<typename I, typename O>
+  void inverseBaseChange(I first, I last, O out, I firstb, I lastb)
 {
-  latticetypes::LatticeMatrix result
-    (rwl.size()==0 ? 0 : rwl[0].size(),rwl.size());
+  latticetypes::LatticeMatrix q(firstb,lastb,lastb-firstb,tags::IteratorTag());
 
-  for (size_t j = 0; j<rwl.size(); ++j)
-    result.set_column(j,rwl[j].numerator());
-
-  return result;
+  while (first!= last)
+  {
+    *out = q.apply(*first);
+    ++out, ++first;
+  }
 }
 
 
@@ -93,28 +124,14 @@ latticetypes::WeightList perp(const latticetypes::WeightList& b, size_t r)
 }
 
 
-/*! \brief Returns the vectors equivalent to those in |l|, but written with
-  the smallest common denominator (assuming the |l[i]| were reduced).
+template
+void baseChange
+  (latticetypes::WeightList::iterator,
+   latticetypes::WeightList::iterator,
+   std::back_insert_iterator<latticetypes::WeightList>,
+   latticetypes::WeightList::iterator,
+   latticetypes::WeightList::iterator);
 
-  More precisely, we use as denominator the l.c.m. of the denominators in |l|.
-*/
-latticetypes::RatWeightList toCommonDenominator
-(const latticetypes::RatWeightList& l)
-{
-  // find denominator
-  unsigned long d = 1;
-
-  for (size_t j = 0; j<l.size(); ++j)
-    d = arithmetic::lcm(d,l[j].denominator());
-
-  latticetypes::RatWeightList result; result.reserve(l.size());
-
-  for (size_t j = 0; j < l.size(); ++j)
-    result.push_back(latticetypes::RatWeight
-      (l[j].numerator()*(d/l[j].denominator()),d));
-
-  return result;
-}
 
 } // |namespace lattice|
 
