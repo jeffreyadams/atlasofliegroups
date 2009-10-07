@@ -13,7 +13,7 @@
   relations and to \f$\sigma_\alpha^2= m_\alpha\f$; to get our group we just
   add a basis of elements of $H(2)$ as additional generators, and express the
   \f$m_\alpha\f$ in this basis. This makes for a simpler implementation, where
-  totus parts are just elements of the $\Z/2\Z$-vector space $H(2)$.
+  torus parts are just elements of the $Z/2Z$-vector space $H(2)$.
 
   On a practical level, because the \f$\sigma_\alpha\f$ satisfy the braid
   relations, any element of the Weyl group has a canonical lifting in the Tits
@@ -42,10 +42,136 @@
 
 #include "complexredgp.h"
 #include "realredgp.h"
+#include "subquotient.h"
 
 #include <cassert>
 
 namespace atlas {
+
+namespace tits {
+
+namespace {
+
+std::vector<gradings::Grading> compute_square_classes
+  (const rootdata::RootDatum& rd,
+   const latticetypes::LatticeMatrix& delta,
+   const weyl::Twist& twist);
+
+} // |namespace|
+
+/****************************************************************************
+
+        Chapter I -- The |TorusElement| and |GlobalTitsGroup| classes
+
+*****************************************************************************/
+
+// make $\exp(2\pi i r)$, doing affectively *2, then reducing modulo $2X_*$
+TorusElement::TorusElement(const latticetypes::RatWeight r)
+  : repr(r.numerator()*2,r.denominator())
+{ repr.normalize(); // maybe cancels the factor 2 in numerator from denominator
+  unsigned int d=2*repr.denominator(); // we reduce modulo 2\Z^rank
+  latticetypes::LatticeElt& num=repr.numerator();
+  for (size_t i=0; i<repr.size(); ++i)
+    num[i] = intutils::remainder(num[i],d);
+}
+
+TorusElement& TorusElement::operator+=(TorusPart v)
+{
+  for (size_t i=0; i<v.size(); ++i)
+    if (v[i])
+    {
+      if ((unsigned long)repr.numerator()[i]<repr.denominator())
+	repr.numerator()[i]+=repr.denominator(); // add 1/2 to coordinate
+      else
+	repr.numerator()[i]-=repr.denominator(); // subtract 1/2
+    }
+  return *this;
+}
+
+GlobalTitsGroup::GlobalTitsGroup
+  (const rootdata::RootDatum& rd,
+   const weyl::WeylGroup& W,
+   const latticetypes::LatticeMatrix& d,
+   const weyl::Twist& twist)
+    : weyl::TwistedWeylGroup(W,twist)
+    , root_datum(rd)
+    , alpha_v(rd.semisimpleRank()) // elements of size |rd.rank()| set below
+    , square_class_gen(compute_square_classes(rd,d,twist))
+    , theta_v(d.transposed())
+{
+  for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
+    alpha_v[i]=latticetypes::SmallBitVector(rd.simpleCoroot(i));
+}
+
+namespace {
+
+/*
+ The |square_class_gen| field of a |GlobalTitsGroup| contains a list of
+ generators of gradings of the simple roots that generate the square classes,
+ if translated into central |TorusElement| values by taking the combination
+ $c$ of simple coweights selected by the grading, and then applying the map
+ $c\mapsto\exp(2\pi i c)$; the function |compute_square_classes| computes it.
+ As representative torus element for the class one can take $t=\exp(\pi i c)$.
+
+ Actually what is graded is the set of $\delta$-fixed root vectors, and the
+ grading is that for the strong involution $t.\delta$ relative to the grading
+ of $\delta$, which is just $v(t)=(-1)^{\<v,c>}$ at root vector $v$. But since
+ $c$ must be $\delta$-stable to define a valid square of a strong involution,
+ we certainly have $\<(1+\delta)v,c>\in2\Z$ for all root vectors $v$ and the
+ grading is trivial on the $1+\delta$-image of the root lattice, and it
+ suffices to record the grading on the $\delta$-fixed simple roots.
+
+ The list is formed of generators of the quotient of all possible gradings of
+ those simple roots by the subgroup of gradings coming from $\delta$-fixed
+ elements of $X_*$ (since gradings in the same coset for that subgroup define
+ the same square class). We get a basis of the subgroup from |tori::plusBasis|
+ and get gradings from it by taking scalar products with simple roots.
+
+ The generators can all be taken to be canonical basis elements (gradings with
+ exactly one bit set) at $\delta$-fixed simple roots. Once the subgroup to
+ quotient by is constructed, we can simply take those canonical basis vectors
+ not in the "support" of the subgroup (so that reduction would be trivial).
+ */
+std::vector<gradings::Grading> compute_square_classes
+  (const rootdata::RootDatum& rd,
+   const latticetypes::LatticeMatrix& delta,
+   const weyl::Twist& twist)
+{
+  size_t r= rd.rank();
+  assert(delta.numRows()==r);
+  assert(delta.numColumns()==r);
+
+  latticetypes::SmallBitVectorList l(tori::plusBasis(delta.transposed()));
+  latticetypes::SmallSubspace m(l,r); // mod subgroup, in $X_*$ coordinates
+
+  latticetypes::LatticeMatrix roots(0,r);
+  bitset::RankFlags fixed;
+  for (size_t i=0; i<rd.semisimpleRank(); ++i)
+    if (twist[i]==i)
+    {
+      fixed.set(i);
+      roots.add_row(rd.simpleRoot(i));
+    }
+
+  latticetypes::BinaryMap to_grading(roots.transposed());
+  m.apply(to_grading); // convert to grading coordinates
+
+  bitset::RankFlags supp = m.support(); // pivot positions
+  supp.complement(roots.numRows()); // non-pivot positions among fixed ones
+  supp.unslice(fixed);  // bring bits back to the simple-root positions
+
+  std::vector<gradings::Grading> result; result.reserve(supp.count());
+
+  for (bitset::RankFlags::iterator it=supp.begin(); it(); ++it)
+  {
+    result.push_back(gradings::Grading());
+    result.back().set(*it);
+  }
+
+  return result;
+}
+
+} // |namespace|
 
 
 /****************************************************************************
@@ -53,8 +179,6 @@ namespace atlas {
         Chapter II -- The TitsGroup class
 
 *****************************************************************************/
-
-namespace tits {
 
 /*!
   Constructs the Tits group corresponding to the root datum |rd|, and
@@ -95,8 +219,8 @@ TitsGroup::TitsGroup(const latticetypes::LatticeMatrix& Cartan_matrix,
   for (size_t i=0; i<d_rank; ++i)
   {
     d_simpleRoot.push_back(latticetypes::SmallBitVector(d_rank,i)); // $e_i$
-    d_simpleCoroot.push_back
-      (latticetypes::SmallBitVector(Cartan_matrix.column(i))); // adjoint coroot
+    d_simpleCoroot.push_back(latticetypes::SmallBitVector
+			     (Cartan_matrix.column(i))); // adjoint coroot
     d_involution.set(i,twist[i]); // (transpose of) |twist| permutation matrix
   }
 }
@@ -305,7 +429,7 @@ void BasedTitsGroup::inverse_Cayley_transform
   {
     // we must find a vector in |mod_space| affecting grading at $\alpha_i$
     for (size_t j=0; j<mod_space.dimension(); ++j) // a basis vector will do
-      if (Tg.simpleRoot(i).dot(mod_space.basis(j)))
+      if (Tg.dual_m_alpha(i).dot(mod_space.basis(j)))
       { // scalar product true means grading is affected: we found it
 	Tg.left_add(mod_space.basis(j),a); // adjust |a|'s torus part
 	break;
@@ -325,7 +449,7 @@ tits::TitsElt BasedTitsGroup::twisted(const tits::TitsElt& a) const
     weyl::Generator s=Tg.twisted(ww[i]);
     Tg.mult_sigma(result,s);
     if (grading_offset[s]) // $s$ noncompact imaginary: add $m_\alpha$
-      Tg.right_add(result,Tg.simpleCoroot(s));
+      Tg.right_add(result,Tg.m_alpha(s));
   }
   return result;
 }
@@ -516,8 +640,10 @@ square_class_grading_offset(const cartanclass::Fiber& f,
 			    cartanclass::square_class csc,
 			    const rootdata::RootSystem& rs)
 {
-  rootdata::RootSet rset = f.noncompactRoots(f.class_base(csc));
-  return cartanclass::restrictGrading(rset,rs.simpleRootList());
+  rootdata::RootSet rset = f.compactRoots(f.class_base(csc));
+  return // restrict to simple roots, complement, and clear spurious bits
+    cartanclass::restrictGrading(rset,rs.simpleRootList()).complement(rs.rank());
+
 }
 
 EnrichedTitsGroup::EnrichedTitsGroup(const realredgp::RealReductiveGroup& GR,

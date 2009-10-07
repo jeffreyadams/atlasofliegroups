@@ -54,15 +54,173 @@ namespace tits {
 
 /******** type definitions **************************************************/
 
+
   /*!
-\brief Element of (Z/2Z)^rank, representing an element of T(2).
+\brief Element of (Z/2Z)^rank, representing an element of H(2).
 
   The cocharacter lattice X_*(T) of T is always represented by Z^rank; the map
   X_*(T)-> T given by lambda^vee \mapsto exp(pi i lambda^vee) has 2X_*(T) as
-  kernel, and induces a bijection of X_*(T)/2X_*(T) with the group T(2) of
-  elements of order 2; hence T(2) is represented by (Z/2Z)^rank
+  kernel, and induces a bijection of X_*(T)/2X_*(T) with the group H(2) of
+  elements of order 2; hence H(2) is represented by (Z/2Z)^rank
   */
   typedef latticetypes::SmallBitVector TorusPart;
+
+
+
+/* The following classes are newer than |TitsElement|, |TitsGroup| and
+   |BasedTitsGroup| below, and less efficient, but provide a framework in
+   which te sets modelled by the latter classes can be fitted.
+*/
+
+/* An element of finite order in $H$. Externally this is like a ratinal vector
+   modulo integers in the coordinates. Internally we store twice the numerator
+   of the rational vector, which facilitates adding halves to its coordinates.
+*/
+class TorusElement
+{
+  latticetypes::RatWeight repr; // represents $\exp(\pi i rep)$, no factor 2!
+
+ public:
+  TorusElement(size_t rank) : repr(rank) {}
+  TorusElement(const latticetypes::RatWeight r); // make $\exp(2\pi i r)$
+
+  // accessors
+
+  bool operator== (const TorusElement& a) const { return repr==a.repr; }
+  bool operator!= (const TorusElement& a) const { return repr!=a.repr; }
+  bool operator<  (const TorusElement& a) const { return repr<a.repr; }
+
+  // provide access to value, but convert to "mod Z^rank" not "mod 2Z^rank"
+  latticetypes::RatWeight as_rational() const
+  { return latticetypes::RatWeight
+      (repr.numerator(),2*repr.denominator()).normalize();
+  }
+
+  // this method is to be used only at weights taking value +1 or -1
+  bool negative_at(const latticetypes::LatticeElt& w) const
+    { return repr.scalarProduct(w)%2!=0; }
+
+
+  // manipulators
+
+  TorusElement& operator+=(TorusPart v);
+}; // |class TorusElement|
+
+class GlobalTitsElement
+{
+  friend class GlobalTitsGroup;
+
+  TorusElement t;
+  weyl::TI_Entry w;
+
+ public:
+
+/*!\brief Constructs the identity element in the group */
+  explicit GlobalTitsElement(size_t rank) : t(rank),w() {}
+
+  /*!\brief The canonical representative $\sigma_w$ of |w| in |Tits|. */
+  GlobalTitsElement(const weyl::WeylElt& we,size_t rank) : t(rank),w(we) {}
+
+  explicit GlobalTitsElement(const TorusElement& te) : t(te),w() {}
+
+  GlobalTitsElement(const TorusElement& te, const weyl::WeylElt& we)
+  : t(te),w(we) {}
+
+  // we compute modulo $t.\sigma_w\delta\equiv\sigma_w\delta.t$
+  // therefore no constructr to form $\sigma_w\delta.t$ is needed
+
+// copy and assignment can be left to their defaults
+
+// accessors
+
+// only the Weyl group component is exposed as constant reference.
+
+/*!\brief twisted involution whose fiber we are in (return value copied) */
+  weyl::TwistedInvolution tw() const { return weyl::TwistedInvolution(w); }
+  const TorusElement& torus_part() const { return t; }
+
+  bool operator== (const GlobalTitsElement& a) const
+  { return w == a.w and t == a.t; }
+
+  bool operator!= (const GlobalTitsElement& a) const
+  { return w != a.w or t != a.t; }
+
+  bool operator< (const GlobalTitsElement& a) const // comparison, for STL use
+  { return w!=a.w ? w<a.w : t<a.t ; }
+
+}; // |class GlobalTitsElement|
+
+
+class GlobalTitsGroup : public weyl::TwistedWeylGroup
+{
+  const rootdata::RootDatum& root_datum; // needed to access simple roots
+  std::vector<TorusPart> alpha_v; // coroots reduced modulo 2
+
+  // a list of gradings of the imaginary simple roots generating square classes
+  std::vector<gradings::Grading> square_class_gen;
+  latticetypes::LatticeMatrix theta_v; // involution matrix on TorusElement
+
+// forbid copy and assignment
+  GlobalTitsGroup(const GlobalTitsGroup&);
+  GlobalTitsGroup& operator= (const GlobalTitsGroup&);
+
+ public:
+  //!\brief constructor for inner class (with precomputed twist)
+  GlobalTitsGroup(const rootdata::RootDatum& rd,
+		  const weyl::WeylGroup& W,
+		  const latticetypes::LatticeMatrix& d,
+		  const weyl::Twist& twist);
+
+  // accessors
+
+  size_t semisimple_rank() const { return alpha_v.size(); }
+  size_t rank() const { return theta_v.numRows(); }
+
+  //!\brief Element m_\alpha of H(2) for simple coroot \#j.
+  TorusPart m_alpha(size_t j) const { return alpha_v[j]; }
+
+  //!\brief Reflection of |TorusElement|s defined by a twisted involution
+  latticetypes::LatticeMatrix involutionMatrix(const weyl::WeylWord& tw) const;
+
+  using TwistedWeylGroup::twisted; // overloaded in this class
+  using TwistedWeylGroup::twist;   // idem
+
+  TorusElement twisted(const TorusElement& x) const;
+  void twist(TorusElement& x) const; // in-place imperative version
+
+// methods that only access some |GlobalTitsElement|
+
+  const std::vector<gradings::Grading>& square_class_generators() const
+  { return square_class_gen; }
+
+  /*!\brief Length of the underlying Weyl group element. */
+  unsigned long length(const GlobalTitsElement& a) const
+    { return weylGroup().length(a.w); }
+
+// methods that manipulate a |GlobalTitsElement|
+
+// left and right multiplication by $\sigma_s$ and by its inverse
+  void sigma_mult(weyl::Generator s,GlobalTitsElement& a) const;
+  void sigma_inv_mult(weyl::Generator s,GlobalTitsElement& a) const;
+  void mult_sigma(GlobalTitsElement&, weyl::Generator) const;
+  void mult_sigma_inv(GlobalTitsElement&, weyl::Generator) const;
+
+  void add (TorusPart tp,GlobalTitsElement& a) const { a.t += tp; }
+
+  /*!\brief
+  Twisted conjugates |a| by |sigma_alpha| where |alpha| is simple root \#s.
+
+  This is implemented only modulo conjugation by torus elements, so there is
+  no effective difference with conjugation by the inverse of |sigma_alpha|
+  */
+  void cross_act(weyl::Generator s, GlobalTitsElement& a) const
+  { sigma_mult(s,a); mult_sigma_inv(a,twisted(s)); }
+
+}; //|class GlobalTitsGroup|
+
+
+
+
 
 
 /* We define two main classes, |TitsElt| and |TitsGroup|, as for Weyl groups.
@@ -104,8 +262,8 @@ namespace tits {
   /*!
 \brief Represents an element of a Tits group.
 
-An element is always written $w.t$, with $w$ the canonical representative
-in the Tits group of a Weyl group element $w$ and \f$t \in T(2)\f$.
+An element is always written $t.\sigma_w$, with $\sigma_w$ the canonical lift
+to the Tits group of a Weyl group element $w$, and \f$t \in H(2)\f$.
   */
 class TitsElt {
 
@@ -113,7 +271,7 @@ class TitsElt {
 
  private:
   /*!
-\brief Factor in T(2) of the Tits group element.
+\brief Factor in H(2) of the Tits group element.
   */
   TorusPart d_t; // in fact thought of as to the left of |d_w|
 
@@ -138,7 +296,7 @@ reduced decomposition.
 /*!\brief Constructs the identity element in the group */
   explicit TitsElt(const TitsGroup& Tits);
 
-  /*!\brief The canonical representative of |w| in |Tits|. */
+  /*!\brief The canonical representative $\sigma_w$ of |w| in |Tits|. */
   TitsElt(const TitsGroup& Tits,const weyl::WeylElt& w); // group defines rank
 
   TitsElt(const TitsGroup&, TorusPart t) // pure torus part
@@ -161,8 +319,8 @@ reduced decomposition.
   const weyl::WeylElt& w() const { return d_w; }
 
 /* the same componenent under another name (to make it smell sweeter); note
-   however that this returns a value, not a reference (we would have none if
-   |weyl::TwistedInvolutio| were a distinct type from |weyl::WeylElt|)
+   however that this returns a value, not a reference (since we would have any
+   if |weyl::TwistedInvolution| were a distinct type from |weyl::WeylElt|)
 */
 /*!\brief twisted involution represented by canonical Weyl part */
   const weyl::TwistedInvolution tw() const
@@ -170,15 +328,13 @@ reduced decomposition.
 
 
 // for the rest, only equality tests can bypass any use of the |TitsGroup|
-  bool operator== (const TitsElt& a) const {
-    return d_w == a.d_w and d_t == a.d_t;
-  }
+  bool operator== (const TitsElt& a) const
+  { return d_w == a.d_w and d_t == a.d_t; }
 
-  bool operator!= (const TitsElt& a) const {
-    return d_w != a.d_w or d_t != a.d_t;
-  }
+  bool operator!= (const TitsElt& a) const
+  { return d_w != a.d_w or d_t != a.d_t; }
 
-  bool operator< (const TitsElt& a) const // comparison for STL use
+  bool operator< (const TitsElt& a) const // comparison, for STL use
   { // test torus part first, which is easier
     return d_t != a.d_t ? d_t < a.d_t : d_w < a.d_w;
   }
@@ -194,7 +350,7 @@ reduced decomposition.
  public:
 /* no public manipulators: any operation defined without using the Tits group
    object would expose the implementation in an inacceptable way */
-}; // class TitsElt
+}; // |class TitsElt|
 
 
 
@@ -216,9 +372,9 @@ reduced decomposition.
   We have not tried to be optimally efficient here, as it is not expected that
   Tits computations will be significant computationally (dixit Fokko).
 
-  Note on independence of choices: given a root \f$\alpha\f$ f $T$ in $G$,
+  Note on independence of choices: given a root \f$\alpha\f$ for $H$ in $G$,
   the corresponding homomorphism \f$\phi_\alpha\f$ from $SL(2)$ to $G$ is
-  defined only up to conjugation by $T$. This means that the generator
+  defined only up to conjugation by $H$. This means that the generator
   \f$\sigma_\alpha\f$ of the Tits group appears to be defined only up to
   multiplication by the image of the coroot \f$\alpha^\vee\f$. But we are
   fixing a pinning, which means in particular that the maps \f$\phi_\alpha\f$
@@ -230,7 +386,7 @@ reduced decomposition.
 class TitsGroup : public weyl::TwistedWeylGroup
 {
   /*!
-\brief Dimension of the Cartan T. This is the size of torus parts of elements.
+\brief Dimension of the Cartan H. This is the size of torus parts of elements.
   */
   size_t d_rank;
 
@@ -244,7 +400,7 @@ the elements \f$m_\alpha^\vee\f$.
 std::vector<TorusPart> d_simpleRoot;
 
   /*!
-\brief List of the elements \f$m_\alpha\f$ (for \f$\alpha\f$ simple) in $T(2)$.
+\brief List of the elements \f$m_\alpha\f$ (for \f$\alpha\f$ simple) in $H(2)$.
   */
   std::vector<TorusPart> d_simpleCoroot;
 
@@ -252,7 +408,7 @@ std::vector<TorusPart> d_simpleRoot;
 \brief Transpose of the reduction mod 2 of the matrix of the defining
 involution of the inner class.
 
-Gives the action of the involution \f$\delta\f$ on $T(2)$, for computing in
+Gives the action of the involution \f$\delta\f$ on $H(2)$, for computing in
 the \f$\delta\f$ coset of the Tits group.
   */
   latticetypes::BinaryMap d_involution;
@@ -294,11 +450,11 @@ the \f$\delta\f$ coset of the Tits group.
   /*!\brief Rank of the torus. */
   const size_t rank() const { return d_rank; }
 
-  //!\brief Element m_\alpha of T(2) for simple coroot \#j.
-  TorusPart simpleCoroot(size_t j) const { return d_simpleCoroot[j]; }
+  //!\brief Element m_\alpha of H(2) for simple coroot \#j.
+  TorusPart m_alpha(size_t j) const { return d_simpleCoroot[j]; }
 
   //!\brief Image in the character lattice mod 2 of simple root \#j.
-  TorusPart simpleRoot(size_t j) const { return d_simpleRoot[j]; }
+  TorusPart dual_m_alpha(size_t j) const { return d_simpleRoot[j]; }
 
 // methods only involving a |TorusPart|
 
@@ -316,7 +472,7 @@ the \f$\delta\f$ coset of the Tits group.
   latticetypes::BinaryMap involutionMatrix(const weyl::WeylWord& tw) const;
 
   //!\brief In-place imperative version of |twisted(TorusPart x)|
-  void twist(TorusPart& x) const { d_involution.apply(x,x); }
+  void twist(TorusPart& x) const { x=d_involution.apply(x); }
 
 // methods that only access some |TitsElt|
 
@@ -390,7 +546,7 @@ is done in the KGB construction, it induces an involution on the quotient set.
 // private methods
 
   /*!
-\brief Applies to the element x of T(2) simple reflection s.
+\brief Applies to the element x of H(2) simple reflection s.
 
 This is the same thing as conjugating |x|, viewed as embedded in the Tits
 group, by \f$\sigma_s\f$, or equivalently by its inverse (as \f$\sigma_s^2\f$
@@ -434,9 +590,22 @@ struct TE_Entry // To allow hash tables of TitsElt values
 
 
 /*! \brief
-Augments the |TitsGroup| class with the choice of a base point, which makes
-possible the additional methods |simple_grading|, |basedTwistedConjugate| and
-|Cayley_transform| (but the last does not actually use the base point choice).
+The class |BasedTitsGroup| augments the |TitsGroup| class with the choice of a
+basic strong involution $\delta$, which is needed to define the additional
+methods |simple_grading|, |basedTwistedConjugate| and |Cayley_transform|
+(although the latter happens do have an implementation independent of \delta).
+All |TitsElement| values $t.\sigma_w$ get reinterpreted as $t.\sigma_w.\delta$
+We are no longer in a group, but in a coset of the group, the name TitsCoset
+might have been more appropriate. Also the images of the operations
+|basedTwistedConjugate| and |Cayley_transform| are only well defined modulo an
+equivalence relation on thus coset: if conjugation by $w.\delta$ acts as
+$\theta$ on the Lie algebra $h$ of $H$, then the equivalence class of
+$t.\sigma_w.\delta$ is obtained by modifying $t$ by any value in the direction
+of the image of $\theta-1$ (the $-1$ eigenspace of $\theta$; in the concrete
+representation |TorusPart|, by any reduction modulo 2 of a $-\theta$ fixed
+vector). In practice this means most of all that any torus element $x$ and
+$\theta(x)$ are equivalent relative to $a=t.\sigma_w.\delta$, and that the
+product $a.x=\theta(x).a$ can therefore be computed alternatively as $x.a$.
 */
 class BasedTitsGroup
 {
@@ -444,24 +613,15 @@ class BasedTitsGroup
   const tits::TitsGroup& Tg;
 
   /*! \brief
-    Flags the noncompact imaginary roots for the basic strong involution,
-    among the simple roots for G (only).
+    Defines conjugation action of $\delta$ on root vectors $X_\alpha$ which
+    must be an element of the root space for $\beta=twist(\alpha)$. In fact we
+    insist that $X_\alpha$ is set to plus or minus $X_\beta$, the sign being
+    given by |grading_offset[s]| where $\alpha=\alpha_s$. The fact that
+    $\delta$ is a strong involution implies that the grading offset must always
+    the same for $\alpha$ as for $twist(\alpha)$.
 
-    This is an important parameter in the KGB generation. It depends on an
-    implicitly chosen "basic strong involution" in the fundamental fiber,
-    i.e., one of the form \f$x_0\delta\f$ with \f$x_0\in H\f$. The element
-    $x_0$ is determined, up a factor in $Z(G)$, by the evaluations of simple
-    roots at it; these are given by \f$\alpha_i(x_0)=(-1)^{g_i}\f$ for all
-    $i$, where $g_i$ denotes |gradingOffset[i]|. When \f$\alpha_i\f$ is
-    imaginary for \f$\delta\f$, the value $g_i$ is fixed by the choice of a
-    $W_{im}$ orbit representative in the real form; otherwise (\f$\alpha_i\f$
-    is complex for \f$\delta\f$) we choose $g_i=0$, which choice can be
-    accommodated by $H$-conjugation of \f$x_0\delta\f$. Thanks to the latter
-    convention, we are able to compute, using |grading_offset|, gradings at
-    simple roots that are imaginary in the fiber given by \emph{any} twisted
-    involution, even if those roots were complex in the fundamental fiber.
-    (Although by continuity, the same gradings would remain valid if we would
-    replace \f$x_0\delta\f$ by any $H$-conjugate.)
+    In term of |TitsElement|s, this relation implies the "commutation relation"
+    $\sigma_\alpha.\delta=m_\alpha^grading_offset[s].\delta.\sigma_\beta$
   */
   gradings::Grading grading_offset;
 
@@ -556,67 +716,61 @@ class EnrichedTitsGroup : public BasedTitsGroup
 // inline definitions
 
 /* The amazingly simple way to compute the grading at simple roots, for any
-   twisted involution for which they are imaginary. Let $w$ be the twisted
-   involution associated to the Tits element |a| (i.e., its Weyl group part)
-   and let $\alpha=\alpha_s$ be a simple root, with image $\beta=\alpha_t$
-   under the distinguished involution $\delta$ (so $t=twisted(s)$, and $s=t$
-   if $\alpha$ is imaginary for $\delta$). The precondition is that $s$ is
-   imaginary for $w$ which means that $s.w.t=w$ in $W$ and $l(s.w)>l(w)$, so
-   that $s.w=w.t$ are both reduced. This means that this equation lifts to
-   canonical Weyl elements in the Tits group, so in that group conjugation by
-   $\sigma_w$ sends $\sigma_t$ to $\sigma_s$ (rather than its inverse).
-   Therefore in $G$, the action of $Ad(\sigma_w.\delta)$ is the identity on
-   the $SL(2)$ or $PSL(2)$ subgroup containing $\sigma_s$ whose Lie algebra
-   contains $X_\alpha$ and $X_{-\alpha}$, and so those root spaces are fixed
-   under the adjoint action of $\sigma_w.\delta$. Then the adjoint action of
-   the strong involution $x.\sigma_w.x_0.\delta$ (which |a| represents) on the
-   root vector $X_\alpha$ gives $(Ad(x).Ad(\sigma_w).Ad(x_0))(X_\beta)
-   =\alpha(x)\beta(x_0)X_\alpha$. So the grading $g$ to be computed here
-   should satisfy $(-1)^g=\alpha(x)\beta(x_0)$, or $g=\<\alpha,x>+\<beta,x_0>$
-   in $\Z/2\Z$. The first term is computed by |scalarProduct|, while the
-   second term is the grading of $x_0.\delta$ on the root $X_\beta=X_\alpha$
-   if it is imaginary for $\delta$ (i.e., $s=t$), or $0$ if $X_\alpha$ and
-   $X_beta$ are complex (thanks to the choice of $x_0$); either way,
-   $\<beta,x_0>$ equals |grading_offset[s]|.
+   twisted involution for which they are imaginary. In short, the grading of
+   an element $\sigma_w.\delta$ with trivial torus part at any imaginary
+   simple root $\alpha=alpha_s$ is given by $grading_offset[s]$, regardless of
+   $w$ (provided it makes $\alpha$ imaginary); the case of a nontrivial torus
+   part follows easily from this basic case.
+
+   Let $w$ be the twisted involution associated to the Tits element |a| (i.e.,
+   its Weyl group part) and let $\alpha=\alpha_s$ be a simple root, with image
+   $\beta=\alpha_t$ under the twist associated to $\delta$ (so $t=twisted(s)$,
+   and $s=t$ if $\alpha$ is imaginary for $\delta$). The precondition is that
+   $s$ is imaginary for $\sigma_w.\delta$ which means that $s.w.t=w$ in $W$
+   and $l(s.w)>l(w)$, so that both members of $s.w=w.t$ are reduced. Therefore
+   $\sigma_s\sigma_w=\sigma_w\sigma_t$ in the Tits group, and
+   $\sigma_s\sigma_w\delta=m_s^{grading_offset[s]}.\sigma_w\delta.\sigma_s$.
+   Then $X_\alpha$ has eigenvalue $(-1)^grading_offset[s]$ for conjugation by
+   $\sigma_w.\delta$, in other words $grading_offset[s]$ is also the grading
+   of $\sigma_w.\delta$ at $\alpha$. Left multiplication of $\sigma_w.\delta$
+   by a torus element $x$ will modify this grading to the opposite parity if
+   and only if $\alpha(t)=-1$; since this torus part $x$ is represented as a
+   bitvector, we can take the scalar product of the reduction mod 2 of
+   $\alpha$ with $x$ to compute this correction. The xor-operation |^|, which
+   could have been written as |!=| on |bool| values, combines the values.
 
    Note that by using the a left torus factor |x| rather than a right factor,
-   we need not refer to $\beta$, i.e., |simpleRoot(twisted(s))| below.
+   we need not refer to $\beta$, i.e., |(twisted(s))|, in the dot product.
 */
 bool BasedTitsGroup::simple_grading(const tits::TitsElt& a, size_t s) const
 {
-  return grading_offset[s] ^ Tg.simpleRoot(s).dot(Tg.left_torus_part(a));
+  return grading_offset[s] ^ Tg.dual_m_alpha(s).dot(Tg.left_torus_part(a));
 }
 
 /* Apart from the grading methods, this is another place where we use
    |grading_offset|. The task is to compute the conjugate of the strong
    involution $a.x_0.\delta$ by $\sigma_s$ or by $\sigma_s^{-1}=\sigma_s^3$.
-   Note that since conjugation by $\sigma_s^2=m_s$ is not a trivial
-   operation at the Tits group level, there is a difference between these
-   operations, and they do not define an involution, but the difference can
-   be seen to disappear into the modular reduction that is systematically
-   applied to torus parts of Tits group elements; therefore this operation
-   will define an involution at the level of the KGB structure. In fact we
-   shall prefer to implement conjugation by $\sigma_s^{-1}$.
+   These differ by conjugation by the torus element $\sigma_s^2=m_s$, which is
+   not a trivial operation at the Tits group level, but as mentioned stays
+   withing the equivalence relation of our interpretation of Tits elements.
+   Therefore only one operation is implemented, and it defines an involution
+   at the level of the KGB structure, generating for varying $s$ a $W$ action.
 
-   For the twisted involution (the Weyl group part of |a|) this operation is
-   just twisted conjugation by $s^{-1}=s$. For the entire Tits group part |a|,
-   twisted conjugation by $\sigma_s^{-1}$ gives an element $a'$ such that
-   $\sigma_s^{-1}a=a'\sigma_t^{-1}$ where $t=twisted(s)$, but this is not yet
-   the whole story; in addition there is a contribution from interchanging
-   $x_0$ and $\sigma_t$. Since $\sigma_t$ represents $t$ in the Weyl group,
-   one has $Ad(\sigma_t)(x_0)=t(x_0)$, so we should add $\<\alpha_t,x_0>m_t$
-   at the right to the torus part of |a|. By our choice of $x_0$, this scalar
-   product can be nonzero only if $s=t$, and is equal to |grading_offset[s]|;
-   moreover the value of $m_s$ in the coordinates of the torus part is
-   available as |Tg.simpleCoroot(s)|. By the remark above about conjugating by
-   $m_s$, the contribution may be added into the left torus part instead of
-   the right torus part, which is what is done in the code below.
+   For the twisted involution $w$ this operation is just twisted conjugation,
+   giving $w'=s.w.t$ where $t=twisted(s)$. For the entire Tits group part
+   $a=x.\sigma_w$ twisted conjugation by $\sigma_s$ in the Tits group |Tg|
+   gives an element $a'=x'.\sigma_{w'}$ such that $\sigma_s.a=a'.\sigma_t$.
+   Finally $\sigma_s.x.\sigma_w.\delta=x'.\sigma_{w'}.\sigma_t.\delta
+   =x'.\sigma_{w'}.\delta.\sigma_s.m_s^{grading_offset[s]}$. Because of the
+   equivalence in interpreting |TitsElement| values, we may replace
+   multiplication on the right by the torus element $m_t^{grading_offset[s]}$
+   by multiplication on the left leading to the formula implemented below.
 */
 void BasedTitsGroup::basedTwistedConjugate(tits::TitsElt& a, size_t s) const
 {
-  Tg.inverseTwistedConjugate(a,s);
-  if (grading_offset[s]) // this implies |Tg.twisted(s)==s|
-    Tg.left_add(Tg.simpleCoroot(s),a);
+  Tg.twistedConjugate(a,s);
+  if (grading_offset[s])
+    Tg.left_add(Tg.m_alpha(s),a);
 }
 
 
