@@ -32,8 +32,6 @@ namespace partition {
   class Partition;
   class PartitionIterator;
 
-  struct End{};
-
 }
 
 /******** function declarations **********************************************/
@@ -64,7 +62,7 @@ namespace partition {
   Main application is to the Fiber class: in that case n=2^m, with m at most
   RANK_MAX; then elements of [0,n[ are interpreted as elements of a vector
   space (Z/2Z)^m. Typical partitions are into the orbits of a Weyl group
-  acting on this vector space (such partitions are computed by makeOrbits).
+  acting on this vector space (such partitions are computed by |orbits|).
   */
 class Partition : public std::unary_function<unsigned long,unsigned long>
 {
@@ -242,13 +240,6 @@ class PartitionIterator {
 // constructors and destructors
   explicit PartitionIterator(const Partition&);
 
-  PartitionIterator(const PartitionIterator& i,End) {
-    d_range.first = i.d_data.end();
-    d_range.second = i.d_data.end();
-  }
-
-  ~PartitionIterator() {}
-
 // accessors
   bool operator== (const PartitionIterator& i) const {
     return d_range.first == i.d_range.first;
@@ -287,9 +278,9 @@ class PartitionIterator {
 
 };
 
-}
+} // namespace partition
 
-}
+} // namespace atlas
 
 /******** template definitions ***********************************************/
 

@@ -2,14 +2,10 @@
 \file
   \brief Template definitions for the class Partition.
 
-  This file contains the definitions of the
-  templates declared in partition.h:
-    - makeOrbits(Partition&, F a, unsigned long, unsigned long) : constructs
-      the orbit partition defined by the "action function" a;
+  This file contains the definition of the template declared in partition.h:
 
-The purpose of the class Partition is to compute the partition of a
-finite set given by a group action.  A typical example is a Weyl group
-acting on elements of order 2 in a torus.
+    - orbits(Partition&, F a, unsigned long, unsigned long) : constructs
+      the orbit partition defined by the "action function" a;
 */
 /*
   This is partition_def.h.
@@ -26,7 +22,7 @@ acting on elements of order 2 in a torus.
 
 /*****************************************************************************
 
-  This file contains the definitions of the templates declared in partition.h:
+  This file contains the definition of the template declared in partition.h:
 
     - Partition orbits(F a, unsigned long n, unsigned long limit) : constructs
       the orbit partition defined by the "action function" a;
@@ -35,15 +31,14 @@ acting on elements of order 2 in a torus.
 
 namespace atlas {
 
-  /*!
-  \brief Functions for working with a partition of a finite set into
-  classes.
-
-  Typically classes are orbits of a finite group (like a Weyl group)
-  on a vector space over Z/2Z (like elements of order 2 in a torus).
-  */
 namespace partition {
 
+/* Although the function |orbits| currently needs only one instantiation (from
+   cartanclass.cpp), it has to be defined as a template, and has to be
+   dynamically instantiated: explicit instantiation here is impossible because
+   the template argument |F| needs to be specialised to a class local to the
+   instantiating code (in the anonymous namespace of the file cartanclass.cpp)
+*/
 
 /*! Constructs the orbit partition defined by the "action function" |a|. The
   type |F| is that of some function object that can be given a pair of

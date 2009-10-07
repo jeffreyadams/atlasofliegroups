@@ -140,7 +140,7 @@ unsigned long Partition::classSize(unsigned long c) const
 
 /*****************************************************************************
 
-        Chapter I -- The PartitionIterator class.
+        Chapter II -- The PartitionIterator class.
 
   The idea is that a PartitionIterator gives a convenient way of traversing
   the classes of a partition. It is intended that PartitionIterators are
@@ -200,6 +200,7 @@ PartitionIterator& PartitionIterator::operator++ ()
   return *this;
 }
 
-}
 
-}
+} // |namespace partition|
+
+} // |namespace atlas|
