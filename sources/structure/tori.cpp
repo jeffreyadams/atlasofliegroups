@@ -181,13 +181,13 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
   them onto dpi0, and then restrict to our dual component representatives.
   But in fact this is hidden inside |subquotient::subquotientMap|.
 */
-void RealTorus::componentMap(latticetypes::BinaryMap& cm,
-			     const latticetypes::LatticeMatrix& m,
-			     const RealTorus& T_dest) const
+latticetypes::BinaryMap RealTorus::componentMap
+  (const latticetypes::LatticeMatrix& m,
+   const RealTorus& T_dest) const
 {
   latticetypes::BinaryMap m2(m); // reduce mod2
 
-  subquotient::subquotientMap(cm,d_topology,T_dest.topology(),m2);
+  return subquotient::subquotientMap(d_topology,T_dest.topology(),m2);
 }
 
 /******** manipulators ******************************************************/

@@ -163,8 +163,8 @@ namespace tori {
   bool isCompact() const { return d_plus.size() == d_rank; }
   bool isSplit() const { return d_minus.size() == d_rank; }
 
-  void componentMap(LT::BinaryMap&, const LT::LatticeMatrix&,
-		    const RealTorus&) const;
+  LT::BinaryMap componentMap(const LT::LatticeMatrix&,
+			     const RealTorus&) const;
 
   const LT::WeightList& plusLattice() const { return d_plus; }
   const LT::WeightList& minusLattice() const { return d_minus; }
