@@ -359,33 +359,37 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
 
 /*
   Synopsis: puts in q the matrix of a Smith basis for the lattice orthogonal
-  to d_rwl, and in invf the corresponding invariant factors.
+  to rwl, and in invf the corresponding invariant factors.
 
-  Precondition: each of the elements of d_rwl has size r.
+  Precondition: each of the elements of |rwl| has size |r|, |invf| is empty.
 
-  Explanation: here the elements of d_rwl are interpreted as elements of finite
-  order in the torus (more precisely, the order divides the denominator.) So
-  "orthogonal" means sending the rational vector to an integer.
+  Explanation: the elements of rwl are interpreted as elements of finite
+  order in the torus (more precisely, their order divides their denominator.)
+  So "orthogonal" means having integral pairing with the rational vector.
 
-  Algorithm: reduce all the vectors to a common denominator d; then we have
-  the problem of finding a basis for the lattice that takes a given bunch
-  of vectors into d.Z. Find a Smith normal basis for the bunch; this reduces
-  to the case where the given vectors are multiples of some of the basis
-  vectors, so the condition is a congruence condition on the corresponding
-  coordinates. Example: if we reduce to 2e_1, 3e_2, and d = 6, we get that
-  lambda_1 must be multiple of 3, lambda_2 multiple of 2.
+  Algorithm: bring all the vectors to a common denominator d; then we have
+  the problem of finding a basis for the lattice that under pairing takes all
+  the denominator vectors into $d.\Z$. Find a Smith normal basis for the span
+  of those vectors; then we are looking for the lattice that under pairing
+  sends each Smith basis vector into $(d/gcd(d,invf)).\Z$ where $invf$ is the
+  invariant factor corresponding to the basis vector. This is easily computed
+  from the dual basis of the given Smith normal basis.
 
   NOTE: this is a sloppy implementation; we don't worry about overflow.
 */
 void makeOrthogonal(latticetypes::LatticeMatrix& q,
 		    latticetypes::CoeffList& invf,
-		    const latticetypes::RatWeightList& d_rwl, size_t r)
+		    const latticetypes::RatWeightList& rwl, size_t r)
 {
-  // reduce to same denominator
-  latticetypes::RatWeightList rwl = lattice::toCommonDenominator(d_rwl);
+  // find common denominator
+  unsigned long d = 1;
+  for (size_t i=0; i<rwl.size(); ++i)
+    d = arithmetic::lcm(d,rwl[i].denominator());
 
-  // make matrix of numerator vectors
-  latticetypes::LatticeMatrix m = lattice::numeratorMatrix(rwl);
+  latticetypes::LatticeMatrix m(r,rwl.size()); // matrix of numerators
+
+  for (size_t j=0; j<m.numColumns(); ++j)
+    m.set_column(j,rwl[j].numerator()*(d/rwl[j].denominator()));
 
   // smith-normalize
   latticetypes::WeightList b;
@@ -394,18 +398,14 @@ void makeOrthogonal(latticetypes::LatticeMatrix& q,
   latticetypes::CoeffList linvf;
   smithnormal::smithNormal(linvf,b.begin(),m);
 
-  // write matrix
-  q = latticetypes::LatticeMatrix(b,r).inverse().transposed();
+  // write matrix: its coumns are the dual basis of the Smith basis
+  q = latticetypes::LatticeMatrix(b,r).inverse().transposed(); //
 
   // write invariant factors of orthogonal lattice
-  invf.resize(b.size(),1UL);
+  invf.resize(b.size(),1UL); // default to 1 on the true orthogonal of |rwl|
 
-  if (rwl.size()>0)
-  {
-    unsigned long d = rwl[0].denominator();
-    for (size_t i=0; i<linvf.size(); ++i)
-      invf[i] = d/arithmetic::gcd(linvf[i],d);
-  }
+  for (size_t i=0; i<linvf.size(); ++i)
+    invf[i] = d/arithmetic::gcd(linvf[i],d);
 }
 
 
