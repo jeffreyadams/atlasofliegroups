@@ -15,6 +15,8 @@ Subquotient.
 #ifndef SUBQUOTIENT_FWD_H  /* guard against multiple inclusions */
 #define SUBQUOTIENT_FWD_H
 
+#include <cstddef> // for |size_t|
+
 /******** forward type declarations ******************************************/
 
 namespace atlas {
