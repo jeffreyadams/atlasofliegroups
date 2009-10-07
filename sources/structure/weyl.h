@@ -731,6 +731,7 @@ struct TI_Entry
   : public weyl::TwistedInvolution
 {
   TI_Entry(const weyl::TwistedInvolution& tw): weyl::TwistedInvolution(tw) {}
+  TI_Entry(): weyl::TwistedInvolution() {}
 
   // members required for an Entry parameter to the HashTable template
   typedef std::vector<TI_Entry> Pooltype; // associated storage type
