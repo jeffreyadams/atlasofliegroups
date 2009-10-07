@@ -281,6 +281,73 @@ latticetypes::LatticeElt RootSystem::coroot_expr(RootNbr alpha) const
   return expr;
 }
 
+/*!
+  In this template we assume that |I| is an |InputIterator| with |value_type|
+  |RootNbr|, and that |O| is an |OutputIterator| with |value_type| |Weight|.
+  We output via |out| the expressions of the roots numbered in |[first,last[|
+  in the simple root basis.
+*/
+template <typename I, typename O>
+  void RootSystem::toRootBasis(I first, I last, O out) const
+{
+  while (first!=last)
+  {
+    *out = root_expr(*first);
+    ++out, ++first; // might be cheaper that post-increment for some iterators
+  }
+}
+
+/*!
+  In this template, |I| is an Input_iterator with |value_type| |RootNbr|, and
+  |O| is an OutputIterator with |value_type| |Weight|. We assume that |rb|
+  contains a basis of some _sub_ rootsystem of |rd|, and that |I| inputs
+  |RootNbr|s corresponding to roots in that subsystem. Then we write to |out|
+  the expression of the root in the basis |rb|.
+
+  The idea is to use the coroots of the vectors in |rb| to get the expression
+  of both the input roots and those from |rb| itself in the simple weight
+  basis for |rb| (this is done by |toSimpleWeights| below); the latter matrix
+  (the Cartan matrix of |rb|) is square, so we can then apply |baseChange|,
+  which amounts to left-multiplication by the inverse of that Cartan matrix.
+*/
+template <typename I, typename O>
+  void RootSystem::toRootBasis(I first, I last, O out, const RootList& rb) const
+{
+  latticetypes::WeightList wl; // roots |[first,last[| in weight basis of |rb|
+  latticetypes::WeightList wb; // (square) Cartan matrix of |rb|
+
+  toSimpleWeights(first,last,back_inserter(wl),rb);
+  toSimpleWeights(rb.begin(),rb.end(),back_inserter(wb),rb);
+
+  lattice::baseChange(wl.begin(),wl.end(),out,wb.begin(),wb.end());
+}
+
+/*!
+  In this template we assume that |I| is an InputIterator with value type
+  |RootNbr|, that |O| is an OutputIterator with |value_type| |Weight|, and
+  that |rb| flags a basis for some _sub_ rootsystem of our |RootSystem|. The
+  range $[first,last)$ should access root numbers of roots in the subsystem.
+  Then for each |v| in this range we output to |out| the expression of |v| in
+  the simple weight basis of the root subsystem |rb|; this is obtained simply
+  by taking scalar products with the coroots of the roots in |rb|.
+*/
+template <typename I, typename O>
+  void RootSystem::toSimpleWeights
+    (I first, I last, O out, const RootList& rb) const
+{
+  latticetypes::Weight v(rb.size()); // temporary storage for vector
+
+  while (first!=last)
+  {
+    for (unsigned long j=0; j<rb.size(); ++j)
+      v[j] = bracket(*first,rb[j]); // $\<\alpha_{*first},\alpha_{rb[j]}^\vee>$
+    *out = v;
+    ++out, ++first;
+  }
+}
+
+
+
 latticetypes::LatticeMatrix RootSystem::cartanMatrix() const
 {
   latticetypes::LatticeMatrix result(rk,rk);
@@ -996,8 +1063,19 @@ public:
   }
 }; // |class weight_compare|
 
+template
+void RootSystem::toRootBasis
+  (RootList::const_iterator,
+   RootList::const_iterator,
+   std::back_insert_iterator<latticetypes::WeightList>) const;
 
-
+template
+void RootSystem::toRootBasis
+  (RootSet::const_iterator,
+   RootSet::const_iterator,
+   std::back_insert_iterator<latticetypes::WeightList>,
+   const RootList&) const;
+// this also  implicitly instantiates |RootSystem::toWeightBasis| twice
 
 } // |namespace rootdata|
 

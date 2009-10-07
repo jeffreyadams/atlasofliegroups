@@ -79,6 +79,25 @@ namespace bitmap {
 
 /******** constructors and destructors ***************************************/
 
+/*!
+  In this constructor template we assume that I and J are iterator types with
+  the same value_type. The idea is that [first,last[ is an ordered range,
+  for which we can call lower_bound. Then we construct the bitmap which
+  flags the elements from [fsub,lsub[ (not necessarily assumed ordered or
+  in range; I should be random-access, but J can basically be any input
+  iterator.) It is assumed of course that the elements from [fsub,lsub[
+  will be found in [first,last[.
+*/
+template <typename I, typename J>
+  BitMap::BitMap(const I& first, const I& last, const J& fsub, const J& lsub)
+{
+  resize(last-first);
+
+  for (J j = fsub; j != lsub; ++j)
+    insert(lower_bound(first,last,*j)-first);
+}
+
+
 
 /******** assignment *********************************************************/
 
@@ -100,11 +119,17 @@ BitMap& BitMap::operator= (const BitMap& a)
 */
 BitMap::iterator BitMap::begin() const
 {
-  return pos(front());
+  unsigned long n=front();
+  return iterator(d_map.begin()+(n>>baseShift),n,d_capacity);
 }
 
 /*!
   \brief returns the past-the-end iterator for the bitmap.
+
+  This is only needed to allow using these iterators in genereric algorithms
+  which typically do |for (iterator it=x.begin(), it!=x.end(); ++it)|. In code
+  that knows which kind of iterator this is, using |it()| as second clause is
+  to be preferred.
 
   Note that only the middle argument |d_capacity| is of any importance, since
   the only thing one can meaningfully do with end() is test for (in)equality.
@@ -113,15 +138,6 @@ BitMap::iterator BitMap::begin() const
 BitMap::iterator BitMap::end() const
 {
   return iterator(d_map.end(),d_capacity,d_capacity);
-}
-
-/*!
-  Synopsis: returns an iterator with bit-address n.
-*/
-BitMap::iterator BitMap::pos(unsigned long n) const
-{
-  unsigned long base = n >> baseShift;
-  return iterator(d_map.begin()+base,n,d_capacity);
 }
 
 /******** accessors **********************************************************/
@@ -193,7 +209,7 @@ unsigned long BitMap::front() const
   if (b==d_map.size()) // then all bits were clear
     return d_capacity;
   else
-    return b*constants::longBits + bits::firstBit(d_map[b]);
+    return (b<<baseShift) + bits::firstBit(d_map[b]);
 }
 
 /*!
@@ -449,11 +465,17 @@ void BitMap::clear(size_t start, size_t stop)
   }
 }
 
-BitMap::iterator BitMap::insert(iterator, unsigned long n)
-
+/*!
+  Here we assume that I is an iterator whose value_type is unsigned long,
+  and we do the sequence of insertions from the range [first,last[.
+*/
+template<typename I> void BitMap::insert(I first, I last)
 {
-  d_map[n >> baseShift] |= constants::bitMask[n & posBits];
-  return iterator(d_map.begin()+(n >> baseShift),n,d_capacity);
+  while (first!=last)
+  {
+    insert(*first);
+    ++first;
+  }
 }
 
 
@@ -549,7 +571,7 @@ BitMap::iterator& BitMap::iterator::operator++ ()
 
   //  here |(f&1)!=0|, unless we just did |remove(*it)| for our iterator |it|
 
-  // separating the followin shift from the previous one avoids an undefined
+  // separating the following shift from the previous one avoids an undefined
   // shift over longBits=posBits+1 when iterator steps into the next chunk
   f >>= 1; // discard the bit we were placed at; we move on!
 
@@ -589,6 +611,16 @@ BitMap::iterator BitMap::iterator::operator++ (int)
   return tmp;
 }
 
+void BitMap::iterator::change_owner(const BitMap& b)
+{
+  assert (b.capacity()==d_capacity);
+  d_chunk = b.d_map.begin()+(d_bitAddress>>baseShift);
 }
 
-}
+template void BitMap::insert
+ (std::vector<unsigned long>::iterator,
+  std::vector<unsigned long>::iterator);
+
+} // |namespace bitmap|
+
+} // |namespace atlas|
