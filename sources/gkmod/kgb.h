@@ -56,7 +56,7 @@ struct KGBInfo
 /*!
 \brief Represents the orbits of K on G/B for a particular real form.
 
-Each orbit x defines an involution \f$\theta_x\f$ of H, represented by a
+Each orbit x defines an involution \f$\theta_x\f$ of $H$, represented by a
 twisted involution in the Weyl group. In fact each orbit is characterized by
 an element of the extended Weyl group lying over that twisted involution; thus
 collection of orbits defining the same involution is parametrized using (the
@@ -84,7 +84,8 @@ is that class that works with actual elements of the Tits group (which encode
 both a twisted involution and an element of the associlated fiber group).
 */
 
-class KGB {
+class KGB
+{
 
   enum State { BruhatConstructed, NumStates };
 
@@ -117,10 +118,6 @@ those for which simple root \#j is not real, both components will be
 */
   std::vector<KGBInfo> d_info;
 
-/*!
-\brief Twisted Weyl group element defining Cartan involution for KGB
-element \#j.
-*/
   tits::TitsEltList d_tits; // of size size()
 
   //!\brief to help find range of elements with fixed twisted involution
@@ -168,38 +165,12 @@ and in addition the Hasse diagram (set of all covering relations).
 /*! \brief Takes the Cayley transform of KGB element \#x in the direction of
 simple root \#s; returns |UndefKGB| unless that root was noncompact imaginary.
 */
-  KGBElt cayley(size_t s, KGBElt x) const {
-    return d_cayley[s][x];
-  }
-
-/*!
-  \brief Method that used to return whether involution(x) < involution(y).
-
-  Explanation: the ordering is involution-length first, then weyl-length, then
-  order by representative Weyl elements (weyl::TwistedInvolution::operator<).
-  This is only a partial ordering, that does not distinguish elements of a
-  fiber over one same twisted involution.
-
-  A similar function is used to sort the elements of |KGB| upon construction,
-  so this method should hold whenever |x<y| and |involution(x)!=involution(y)|
-  and it turns out the method is never used, so I have commented it out. MvL.
-
-  bool compare(KGBElt x, KGBElt y) const {
-  if      (length(x) != length(y))
-    return length(x) < length(y);
-  else if (weylLength(x) != weylLength(y))
-    return weylLength(x) < weylLength(y);
-  else
-    return involution(x) < involution(y);
-}
-*/
+  KGBElt cayley(size_t s, KGBElt x) const { return d_cayley[s][x]; }
 
 /*!
  \brief Applies the cross action of simple root \#s to KGB element \#x.
 */
-  KGBElt cross(size_t s, KGBElt x) const {
-    return d_cross[s][x];
-  }
+  KGBElt cross(size_t s, KGBElt x) const { return d_cross[s][x]; }
 
 /*!
 \brief Applies the inverse Cayley transform in simple root \#s to
@@ -327,6 +298,28 @@ bool isAscent(size_t s, KGBElt x) const
   size_t weylLength(KGBElt x) const {
     return weylGroup().length(involution(x).w());
   }
+
+/*!
+  \brief Method that used to return whether involution(x) < involution(y).
+
+  Explanation: the ordering is involution-length first, then weyl-length, then
+  order by representative Weyl elements (weyl::TwistedInvolution::operator<).
+  This is only a partial ordering, that does not distinguish elements of a
+  fiber over one same twisted involution.
+
+  A similar function is used to sort the elements of |KGB| upon construction,
+  so this method should hold whenever |x<y| and |involution(x)!=involution(y)|
+  and it turns out the method is never used, so I have commented it out. MvL.
+
+  bool compare(KGBElt x, KGBElt y) const {
+  if      (length(x) != length(y))
+    return length(x) < length(y);
+  else if (weylLength(x) != weylLength(y))
+    return weylLength(x) < weylLength(y);
+  else
+    return involution(x) < involution(y);
+}
+*/
 
 // manipulators
 
