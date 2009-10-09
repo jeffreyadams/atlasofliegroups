@@ -19,17 +19,21 @@ namespace atlas {
 namespace intutils {
 
   template<typename I> I abs(I);
+  template<typename I> I min(I,I);
+  template<typename I> I max(I,I);
   template<typename I> I divide(I, unsigned long);
   template<typename I> unsigned long remainder(I, unsigned long);
   template<typename I> I factorial(I);
 
   // inline definitions
 
-/*!
-  Synopsis: returns the absolute value of a, without changing the size
-*/
+// Return the absolute value/min/max, without changing the size
 template<typename I>
   inline I abs(I a) { return a >= 0 ? a : -a; }
+template<typename I>
+  inline I min(I a,I b) { return a<b ? a : b; }
+template<typename I>
+  inline I max(I a,I b) { return a<b ? b : a; }
 
 /*!
   The result of divide(a,b) is the unique element q such that a = q.b + r,
