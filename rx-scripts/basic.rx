@@ -46,3 +46,5 @@ set -(mat M,mat N)= mat:
 
 set min (int k, int l) = if k<l then k else l fi
 set max (int k, int l) = if k<l then l else k fi
+
+set KGB(RealForm rf) = for i=KGB_size(rf) do KGB(rf,i) od
