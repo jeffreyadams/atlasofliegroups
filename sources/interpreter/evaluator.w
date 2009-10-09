@@ -4285,9 +4285,7 @@ pointers; for values popped from the stack this would in fact be hard to avoid.
 void id_mat_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
-  { matrix_ptr m (new matrix_value(matrix::Matrix<int>()));
-    matrix::identityMatrix(m->val,std::abs(i)); push_value(m);
-  }
+    push_value(new matrix_value(matrix::Matrix<int>(std::abs(i)))); // identity
 }
 @) void transpose_mat_wrapper(expression_base::level l)
 { matrix::Matrix<int> m=get<matrix_value>()->val;
@@ -4306,7 +4304,8 @@ void id_mat_wrapper(expression_base::level l)
 
 @ We also define |diagonal_wrapper|, a slight generalisation of
 |id_mat_wrapper| that produces a diagonal matrix from a vector. The function
-|vector_div_wrapper| produces a rational vector.
+|vector_div_wrapper| produces a rational vector, for which we also provide
+addition and subtraction.
 
 @< Local function def... @>=
 void diagonal_wrapper(expression_base::level l)
@@ -4314,18 +4313,33 @@ void diagonal_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   size_t n=d.size();
-  matrix_ptr m (new matrix_value(matrix::Matrix<int>(n,n,0)));
+  matrix_ptr m (new matrix_value(matrix::Matrix<int>(n)));
   for (size_t i=0; i<n; ++i)
     m->val(i,i)=d[i];
   push_value(m);
 }
-
+@)
 void vector_div_wrapper(expression_base::level l)
 { int n=get<int_value>()->val;
   matrix::Vector<int> v=get<vector_value>()->val;
   if (l!=expression_base::no_value)
     push_value(new rational_vector_value(v,n));
 }
+@)
+void ratvec_plus_wrapper(expression_base::level l)
+{ shared_rational_vector v1= get<rational_vector_value>();
+  shared_rational_vector v0= get<rational_vector_value>();
+  if (l!=expression_base::no_value)
+    push_value(new rational_vector_value(v0->val+v1->val));
+}
+@)
+void ratvec_minus_wrapper(expression_base::level l)
+{ shared_rational_vector v1= get<rational_vector_value>();
+  shared_rational_vector v0= get<rational_vector_value>();
+  if (l!=expression_base::no_value)
+    push_value(new rational_vector_value(v0->val-v1->val));
+}
+
 
 @ Now the products between vector and/or matrices. The function |mv_prod| was
 in fact our first function with more than one argument (arithmetic on integer
@@ -4390,6 +4404,44 @@ void vm_prod_wrapper(expression_base::level l)
   }
   if (l!=expression_base::no_value)
     push_value(new vector_value(m.right_apply(v)));
+}
+
+@ Here is the column echelon function.
+@h "matreduc.h"
+@h "bitmap.h"
+
+@<Local function definitions @>=
+void echelon_wrapper(expression_base::level l)
+{ shared_matrix M=get_own<matrix_value>();
+  if (l!=expression_base::no_value)
+  { bitmap::BitMap pivots=matreduc::column_echelon(M->val);
+    push_value(M);
+    row_ptr p_list (new row_value(0)); p_list->val.reserve(pivots.size());
+    for (bitmap::BitMap::iterator it=pivots.begin(); it(); ++it)
+      p_list->val.push_back(shared_value(new int_value(*it)));
+    push_value(p_list);
+    if (l==expression_base::single_value)
+      wrap_tuple(2);
+  }
+}
+
+@ And here is a general ``diagonalise'' function, rather similar to Smith
+normal form, but without divisibility guarantee on diagonal entries.
+
+@<Local function definitions @>=
+void diagonalise_wrapper(expression_base::level l)
+{ shared_matrix M=get<matrix_value>();
+  matrix_ptr row(new matrix_value(matrix::Matrix<int>())),
+             column(new matrix_value(matrix::Matrix<int>()));
+  if (l!=expression_base::no_value)
+  { vector_ptr diagonal(
+       new vector_value(matreduc::diagonalise(M->val,row->val,column->val)));
+    push_value(diagonal);
+    push_value(row);
+    push_value(column);
+    if (l==expression_base::single_value)
+      wrap_tuple(3);
+  }
 }
 
 @ As a last example, here is the Smith normal form algorithm. We provide both
@@ -4499,6 +4551,8 @@ install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
 install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
+install_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)");
+install_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
 install_function(error_wrapper,"error","(string->)");
 install_function(string_eq_wrapper,"=","(string,string->bool)");
@@ -4513,11 +4567,13 @@ install_function(mat_eq_wrapper,"=","(mat,mat->bool)");
 install_function(mat_neq_wrapper,"!=","(mat,mat->bool)");
 install_function(transpose_mat_wrapper,"^","(mat->mat)");
 install_function(transpose_vec_wrapper,"^","(vec->mat)");
-install_function(diagonal_wrapper,"diagonal_mat","(vec->mat)");
+install_function(diagonal_wrapper,"diagonal","(vec->mat)");
 install_function(vv_prod_wrapper,"*","(vec,vec->int)");
 install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
 install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
 install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
+install_function(echelon_wrapper,"echelon","(mat->mat,[int])");
+install_function(diagonalise_wrapper,"diagonalise","(mat->vec,mat,mat)");
 install_function(invfact_wrapper,"inv_fact","(mat->vec)");
 install_function(Smith_basis_wrapper,"Smith_basis","(mat->mat)");
 install_function(Smith_wrapper,"Smith","(mat->mat,vec)");
