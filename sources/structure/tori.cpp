@@ -336,7 +336,7 @@ void minusMatrix(latticetypes::LatticeMatrix& qm,
 		 const latticetypes::LatticeMatrix& q, const RealTorus& t)
 {
   const latticetypes::WeightList& bm = t.minusLattice();
-  qm.resize(bm.size(),bm.size());
+  latticetypes::LatticeMatrix(bm.size(),bm.size()).swap(qm);
 
   for (size_t j = 0; j < bm.size(); ++j)
   {
@@ -358,7 +358,7 @@ void plusMatrix(latticetypes::LatticeMatrix& qp,
 		const latticetypes::LatticeMatrix& q, const RealTorus& t)
 {
   const latticetypes::WeightList& bp = t.plusLattice();
-  qp.resize(bp.size(),bp.size());
+  latticetypes::LatticeMatrix(bp.size(),bp.size()).swap(qp);
 
   for (size_t j = 0; j < bp.size(); ++j)
   {
@@ -449,15 +449,7 @@ void fullMinusBasis(latticetypes::WeightList& mb,
   // make projection matrix
   // rows of projection matrix are the first rows of the inverse of the
   // matrix of bs
-
-  latticetypes::LatticeMatrix p=latticetypes::LatticeMatrix(bs,n).inverse();
-
-
-  tm.resize(invf.size(),n);
-
-  for (size_t i = 0; i < invf.size(); ++i)
-    for (size_t j = 0; j < n; ++j)
-      tm(i,j) = p(i,j);
+  tm = latticetypes::LatticeMatrix(bs,n).inverse().block(0,0,invf.size(),n);
 }
 
 

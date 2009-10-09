@@ -725,7 +725,7 @@ void to_array(GrpArr& a, const latticetypes::Weight& v, const GroupType& t)
 void toEndomorphism(Endomorphism& e, const latticetypes::LatticeMatrix& q,
 		    const FiniteAbelianGroup& A)
 {
-  e.resize(q.numRows(),q.numColumns());
+  Endomorphism(q.numRows(),q.numColumns()).swap(e);
 
   for (size_t j = 0; j < q.numColumns(); ++j)
     for (size_t i = 0; i < q.numRows(); ++i)
@@ -764,18 +764,19 @@ GrpNbr to_GrpNbr(const GrpArr& a, const GroupType& t)
 void transpose(Endomorphism& e, const FiniteAbelianGroup& A)
 {
   const GroupType& type = A.type(); // vector of |unsigned long|
-  Endomorphism tmp = e;
-  e.resize(tmp.numColumns(),tmp.numRows());
+  Endomorphism tr(e.numColumns(),e.numRows());
 
-  for (size_t j = 0; j < e.numColumns(); ++j)
-    for (size_t i = 0; i < e.numRows(); ++i)
+  for (size_t i=0; i<e.numRows(); ++i)
+    for (size_t j=0; j<e.numColumns(); ++j)
     {
       unsigned long d = arithmetic::unsigned_gcd(type[i],type[j]);
-      // tmp(i,j) has to be divisible by type[i]/d
+      // e(i,j) has to be divisible by type[i]/d
       unsigned long ni = type[i]/d;
       unsigned long nj = type[j]/d;
-      e(j,i) = nj*(tmp(i,j)/ni);
+      tr(j,i) = nj*(e(i,j)/ni);
     }
+
+  e.swap(tr);
 }
 
 } // |namespace abelian|
