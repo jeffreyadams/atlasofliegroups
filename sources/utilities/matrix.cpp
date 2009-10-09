@@ -14,7 +14,9 @@
 #include <cassert>
 #include <limits>
 #include <algorithm>
+#include "matreduc.h"
 #include "intutils.h"
+#include "arithmetic.h"
 
 
 /*****************************************************************************
@@ -28,25 +30,6 @@ namespace atlas {
 
 namespace matrix {
 
-namespace {
-
-template<typename C> void blockReduce(Matrix<C>&, size_t, Matrix<C>&,
-				      Matrix<C>&);
-template<typename C> void blockShape(Matrix<C>&, size_t, Matrix<C>&,
-				     Matrix<C>&);
-template<typename C> void columnReduce(Matrix<C>&, size_t, size_t, Matrix<C>&);
-template<typename C> bool hasBlockReduction(const Matrix<C>&, size_t);
-template<typename C> bool hasReduction(const Matrix<C>&, size_t);
-template<typename C> typename Matrix<C>::index_pair
-  findBlockReduction(const Matrix<C>&, size_t);
-template<typename C> typename Matrix<C>::index_pair
-  findReduction(const Matrix<C>&, size_t);
-template<typename C> void rowReduce(Matrix<C>&, size_t, size_t, Matrix<C>&);
-
-} // namespace
-
-} // namespace matrix
-
 /*****************************************************************************
 
         Chapter II -- The Vector class
@@ -54,8 +37,6 @@ template<typename C> void rowReduce(Matrix<C>&, size_t, size_t, Matrix<C>&);
   This class template adds some arithmetic operations to |std::vector|
 
 ******************************************************************************/
-
-namespace matrix {
 
 //! \brief Adds |v|.
 template<typename C>
@@ -400,36 +381,6 @@ template<typename C>
 }
 
 /*!
-  Synopsis: changes the size of the matrix to m x n.
-
-  NOTE: this is a bad name as the contents of the resized matrix are garbage.
-  To be used exclusively on initially empty matrices
-*/
-template<typename C>
-void Matrix<C>::resize(size_t m, size_t n)
-{
-  d_data.resize(m*n);
-  d_rows = m;
-  d_columns = n;
-}
-
-
-/*!
-  Synopsis: changes the size of the matrix to m x n, and resets _all_ elements
-  to c.
-
-  NOTE: this is a bad name, because it does not behave like resize for vectors.
-*/
-template<typename C>
-void Matrix<C>::resize(size_t m, size_t n, const C& c)
-{
-  d_data.assign(m*n,c);
-  d_rows = m;
-  d_columns = n;
-}
-
-
-/*!
   Incrementation by addition with m. It is assumed that m and *this
   have the same size.
 */
@@ -452,37 +403,6 @@ Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
   assert(numRows()==m.numRows());
   assert(numColumns()==m.numColumns());
   d_data -= m.d_data;
-  return *this;
-}
-
-
-/*!
-  \brief right multiplication by |m|.
-
-  It is of course required that the number of rows of |m| is equal to the
-  number of columns of |*this|.
-*/
-template<typename C>
-Matrix<C>& Matrix<C>::operator*= (const Matrix<C>&  m)
-
-{
-  // I dont think the code below is faster than just |*this= *this * m|, MvL
-  assert(d_columns==m.d_rows);
-
-  C zero = 0; // conversion from int
-  Matrix<C> prod(d_rows,m.d_columns,zero);
-
-  for (size_t i = 0; i<d_rows; ++i)
-    for (size_t j = 0; j<m.d_columns; ++j)
-      for (size_t k = 0; k<d_columns; ++k)
-      {
-	C t_ik = (*this)(i,k);
-	C m_kj = m(k,j);
-	prod(i,j) += t_ik * m_kj;
-      }
-
-  swap(prod); // replace contents of |*this| by newly computed matrix
-
   return *this;
 }
 
@@ -597,86 +517,34 @@ template<typename C>
 void Matrix<C>::invert(C& d)
 {
   assert(d_rows==d_columns);
-  if (d_rows == 0) // do nothing to matrix, but set |d=1|
+  size_t n=d_rows;
+  if (n==0) // do nothing to matrix, but set |d=1|
   { d=1; return; }
 
-  C zero = 0; // conversion from int should work!
-  Matrix<C> row(d_rows,d_rows,zero);
+  Matrix<C> row,col;    // for recording column operations
+  matrix::Vector<C> diagonal = matreduc::diagonalise(*this,row,col);
 
-  // set res to identity
+  if (diagonal[n-1] == C(0)) // zero entries if any come at end
+  { d=0; return; }
 
-  for (size_t j = 0; j<d_rows; ++j)
-    row(j,j) = 1;
+  d=1;
+  for (size_t i=0; i<n; ++i)
+    d=arithmetic::lcm(d,diagonal[i]);
 
-  Matrix<C> col(row);
-
-  // take *this to triangular form
-
-  for (size_t r = 0; r<d_rows; ++r) {
-
-    if (isZero(r,r)) { // null matrix left; matrix is not invertible
-      d = 0;
-      return;
-    }
-
-    index_pair k = absMinPos(r,r);
-
-    if (k.first > r) {
-      swapRows(r,k.first);
-      row.swapRows(r,k.first);
-    }
-
-    if(k.second > r) {
-      swapColumns(r,k.second);
-      col.swapColumns(r,k.second);
-    }
-
-    if ((*this)(r,r)<0) {
-      changeRowSign(r);
-      row.changeRowSign(r);
-    }
-
-    // ensure m(0,0) divides row and column
-
-    while (hasReduction(*this,r)) {
-      k = findReduction(*this,r);
-      if (k.first > r) { // row reduction
-	rowReduce(*this,k.first,r,row);
-      }
-      else { // column reduction
-	columnReduce(*this,k.second,r,col);
-      }
-    }
-
-    // clean up row and column
-
-    blockShape(*this,r,row,col);
-    blockReduce(*this,r,row,col);
-
-  } // next |r|
-
-  // now multiply out diagonal
-
-  for (size_t j = 1; j<d_rows; ++j) {
-    (*this)(j,j) *= (*this)(j-1,j-1);
+  // finally for |D| "inverse" diagonal matrix w.r.t. |d|, compute |col*D*row|
+  for (size_t j=0; j<n; ++j)
+  {
+    C f = d/diagonal[j];
+    for (size_t i=0; i<n; ++i)
+      (*this)(i,j)=f*col(i,j);
   }
 
-  // and write result to |d| and to |*this|
-
-  d = (*this)(d_rows-1,d_rows-1); // minimal denominator
-
-  for (size_t j = 0; j<d_rows; ++j) {
-    (*this)(j,j) = d/(*this)(j,j);
-  }
-
-  col *= *this;
-  col *= row;
-  swap(col);
+  *this *= (row);
 }
 
 /*
  *
- Auxiliaries for |invert|
+ Auxiliaries for |smithnormal|
  *
  */
 
@@ -748,15 +616,18 @@ bool Matrix<C>::divisible(C c) const
 
 /*!
   Synopsis: constructs the matrix corresponding to the block [r_first,r_last[
-  x [c_first,c_last[ of source.
+  x [c_first,c_last[ of source. This uses that storage is by rows.
 */
 template<typename C>
   Matrix<C> Matrix<C>::block(size_t i0, size_t j0, size_t i1, size_t j1) const
 {
   Matrix<C> result(i1-i0,j1-j0);
-  for (size_t j=j0; j<j1; ++j)
-    for (size_t i=i0; i<i1; ++i)
-      result(i-i0,j-j0) = (*this)(i,j);
+  C* p = &result.d_data[0]; // writing pointer
+  for (size_t i=i0; i<i1; ++i)
+  {
+    const C* q = &(*this)(i,j0);
+    p = std::copy(q,q+result.numColumns(),p); // copy a row
+  }
   return result;
 }
 
@@ -893,211 +764,6 @@ template<typename C>
   return result;
 }
 
-} // namespace matrix
-
-/*****************************************************************************
-
-        Chapter IV --- Auxiliary functions
-
-******************************************************************************/
-
-namespace matrix {
-
-namespace {
-
-/*!
-  Ensures that m(d,d) divides the block from (d+1,d+1) down.
-*/
-template<typename C>
-void blockReduce(Matrix<C>& m, size_t d, Matrix<C>& r, Matrix<C>& c)
-{
-  if (m(d,d) == 1) // no reduction
-    return;
-
-  while(hasBlockReduction(m,d)) {
-    typename Matrix<C>::index_pair k = findBlockReduction(m,d);
-    C one = 1; // conversion from int
-    m.rowOperation(d,k.first,one);
-    r.rowOperation(d,k.first,one);
-    while (hasReduction(m,d)) {
-      k = findReduction(m,d);
-      if (k.first > d) { // row reduction
-	rowReduce(m,k.first,d,r);
-      }
-      else { // column reduction
-	columnReduce(m,k.second,d,c);
-      }
-    }
-    blockShape(m,d,r,c);
-  }
-
-  if (m(d,d) > 1) // divide
-    for (size_t j = d+1; j<m.rowSize(); ++j)
-      for (size_t i = d+1; i<m.columnSize(); ++i)
-	m(i,j) /= m(d,d);
-}
-
-
-/*!
-  Does the final reduction of m to block shape, recording row reductions in
-  r and column reductions in c.
-*/
-template<typename C>
-void blockShape(Matrix<C>& m, size_t d, Matrix<C>& r,Matrix<C>& c)
-{
-  C a = m(d,d);
-
-  for (size_t j = d+1; j<m.rowSize(); ++j) {
-    if (m(d,j) == 0)
-      continue;
-    C q = m(d,j)/a;
-    q = -q;
-    m.columnOperation(j,d,q);
-    c.columnOperation(j,d,q);
-  }
-
-  for (size_t i = d+1; i<m.columnSize(); ++i) {
-    if (m(i,d) == 0)
-      continue;
-    C q = m(i,d)/a;
-    q = -q;
-    m.rowOperation(i,d,q);
-    r.rowOperation(i,d,q);
-  }
-}
-
-
-/*!
-  Does the column reduction for M at place j, and does the same operation
-  on parallel matrix |rec|. The reduction consists in subtracting from column
-  j the multiple of column k which leaves at (k,j) the remainder of the
-  Euclidian division of M(k,j) by M(k,k), and then swapping columns j and k.
-*/
-template<typename C>
-void columnReduce(Matrix<C>& M, size_t j,  size_t k, Matrix<C>& rec)
-{
-  C a = M(k,k);
-  C q = a>0 ? -intutils::divide(M(k,j),a) : intutils::divide(M(k,j),-a);
-  M.columnOperation(j,k,q);
-  rec.columnOperation(j,k,q);
-  M.swapColumns(k,j);
-  rec.swapColumns(k,j);
-}
-
-
-/*!
-  Returns the reduction point of m. Assumes that hasBlockReduction(m,r) has
-  returned true.
-*/
-template<typename C>
-typename Matrix<C>::index_pair findBlockReduction(const Matrix<C>& m,
-					     size_t r)
-{
-  C a = m(r,r);
-
-  for (size_t j = r+1; j<m.rowSize(); ++j) {
-    for (size_t i = r+1; i<m.columnSize(); ++i) {
-      if (m(i,j)%a)
-	return std::make_pair(i,j);
-    }
-  }
-
-  // this should never be reached
-  return std::make_pair(static_cast<size_t>(0ul),static_cast<size_t>(0ul));
-}
-
-
-/*!
-  Returns the reduction point of m. Assumes that hasReduction(m,r) has
-  returned true.
-*/
-template<typename C>
-typename Matrix<C>::index_pair findReduction(const Matrix<C>& m,
-					     size_t r)
-{
-  C a = m(r,r);
-
-  for (size_t j = r+1; j<m.rowSize(); ++j) {
-    if (m(r,j)%a)
-      return std::make_pair(r,j);
-  }
-
-  for (size_t i = r+1; i<m.columnSize(); ++i) {
-    if (m(i,r)%a)
-      return std::make_pair(i,r);
-  }
-
-  // this should never be reached
-  return std::make_pair(static_cast<size_t>(0ul),static_cast<size_t>(0ul));
-}
-
-
-/*!
-  Tells if there is an element in the block under (r,r) which is not divisible
-  bu m(r,r)
-*/
-template<typename C>
-bool hasBlockReduction(const Matrix<C>& m, size_t r)
-{
-  C a = m(r,r);
-
-  if (a == 1)
-    return false;
-
-  for (size_t j = r+1; j<m.rowSize(); ++j) {
-    for (size_t i = r+1; i<m.columnSize(); ++i) {
-      if (m(i,j)%a)
-	return true;
-    }
-  }
-
-  return false;
-}
-
-
-/*!
-  Tells if there is an element in the rest of its row or column that is not
-  divisible by m(r,r).
-*/
-template<typename C>
-bool hasReduction(const Matrix<C>& m, size_t r)
-{
-  C a = m(r,r);
-
-  if (a == 1)
-    return false;
-
-  for (size_t j = r+1; j<m.rowSize(); ++j) {
-    if (m(r,j)%a)
-      return true;
-  }
-
-  for (size_t i = r+1; i<m.columnSize(); ++i) {
-    if (m(i,r)%a)
-      return true;
-  }
-
-  return false;
-}
-
-/*!
-  Does the row reduction for m at place j, and does the same operation
-  on |rec|. The reduction consists in subtracting from row i the multiple
-  of row k which leaves at (i,k) the remainder of the Euclidian division
-  of m(k,j) by m(k,k), and then swapping rows i and k.
-*/
-template<typename C>
-void rowReduce(Matrix<C>& m, size_t i, size_t k, Matrix<C>& rec)
-{
-  C a = m(k,k);
-  C q = a>0 ? -intutils::divide(m(i,k),a) : intutils::divide(m(i,k),-a);
-  m.rowOperation(i,k,q);
-  rec.rowOperation(i,k,q);
-  m.swapRows(k,i);
-  rec.swapRows(k,i);
-}
-
-} // |namespace|
 
   /*
 
@@ -1109,6 +775,7 @@ template std::vector<Vector<int> > standard_basis<int>(size_t n);
 
 template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data
+template class Vector<unsigned long>; // for |abelian::Homomorphism|
 template class Matrix<int>;           // the main instance used
 template class Matrix<unsigned long>; // for |abelian::Endomorphism|
 

@@ -153,14 +153,14 @@ template<typename C> class Matrix
   void add_row(const Vector<C>&);
   void add_column(const Vector<C>&);
 
-
-  void resize(size_t, size_t);
-  void resize(size_t, size_t, const C&);
+  // resize undefined; use |Matrix<C>(m,n).swap(M)| instead of |M.resize(m,n)|
 
   Matrix<C>& operator+= (const Matrix<C>&);
   Matrix<C>& operator-= (const Matrix<C>&);
-  Matrix<C>& operator*= (const Matrix<C>&);
-  Matrix<C>& leftMult (const Matrix<C>& p) { return *this=p * *this; }
+  Matrix<C>& operator*= (const Matrix<C>& Q)
+    { (*this*Q).swap(*this); return *this; }
+  Matrix<C>& leftMult (const Matrix<C>& P)
+    { (P**this).swap(*this); return *this; }
   Matrix<C>& operator/= (const C& c) throw (std::runtime_error);
 
   void reset() { d_data.assign(d_data.size(),0); }
