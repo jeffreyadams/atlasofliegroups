@@ -956,8 +956,7 @@ void SL_wrapper(expression_base::level l)
   if (r>0) type->add_simple_factor('A',r);
   push_value(type);
   matrix_ptr lattice
-     (new matrix_value(latticetypes::LatticeMatrix()));
-  matrix::identityMatrix(lattice->val,r);
+     (new matrix_value(latticetypes::LatticeMatrix(r))); // identity matrix
   for (size_t i=0; i+1<r; ++i) // not |i<r-1|, since |r| unsigned and maybe 0
     lattice->val(i,i+1)=-1;
   push_value(lattice);
@@ -975,8 +974,7 @@ void GL_wrapper(expression_base::level l)
   type->add_simple_factor('T',1);
   push_value(type);
   matrix_ptr lattice
-     (new matrix_value(latticetypes::LatticeMatrix()));
-  matrix::identityMatrix(lattice->val,r+1);
+     (new matrix_value(latticetypes::LatticeMatrix(r+1))); // identity matrix
   for (size_t i=0; i<r; ++i)
   @/{@; lattice->val(n->val-1,i)=1; lattice->val(i,i+1)=-1; }
   push_value(lattice);
@@ -1298,8 +1296,7 @@ redundant in the presence of a torus part.
     ("Involution should be a "+str(r)+"x"+str(r)+" matrix, got a "
 @.Involution should be...@>
      +str(M.numRows())+"x"+str(M.numColumns())+" matrix");
-  latticetypes::LatticeMatrix Id,Q(M);
-  matrix::identityMatrix(Id,r); Q*=M; // $Q=M^2$
+  latticetypes::LatticeMatrix Id(r),Q(M*M);
   if (!(Q==Id)) throw std::runtime_error
       ("Given transformation is not an involution");
 @.Given transformation...@>
@@ -2008,6 +2005,7 @@ connected complex reductive group; the corresponding Atlas class is called
 
 @< Includes... @>=
 #include "realredgp.h"
+#include "kgb.h"
 
 @*2 Class definition.
 The layout of this type of value is different from what we have seen before.
@@ -2025,6 +2023,13 @@ access its |interface| and |dual_interface| fields. To remind us that the
 referred to may in fact undergo internal change however, via manipulators of
 the |val| field.
 
+Another particularity is that a combinatorial set $K\backslash G/B$ is
+associated to each real reductive group. We wish to store it in association
+with the |real_form_value| but do not wish to generate it unless it is
+actually needed; this is achieved by storing an initially null pointer that
+will be set to point to a |kgb::KGB| object once one has been requested (and
+therefore constructed) a first time.
+
 We shall later derive from this structure, without adding data members, a
 structure to record dual real forms, which are constructed in the context of
 the same inner class, but where the |val| field is constructed for the dual
@@ -2036,15 +2041,18 @@ explains why the copy constructor is protected rather than private.
 struct real_form_value : public value_base
 { const inner_class_value parent;
   realredgp::RealReductiveGroup val;
+  kgb::KGB* KGB_pointer;
 @)
   real_form_value(inner_class_value p,realform::RealForm f)
-  : parent(p), val(p.val,f) @+{}
-  ~real_form_value() @+{} // everything is handled by destructor of |parent|
+  : parent(p), val(p.val,f), KGB_pointer(NULL) @+{}
+  ~real_form_value() @+{@; delete KGB_pointer; }
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
     {@; return new real_form_value(*this); }
   static const char* name() @+{@; return "real form"; }
+  const kgb::KGB& kgb ();
+   // generate, store and return $K\backslash G/B$ set
 protected:
   real_form_value(inner_class_value,realform::RealForm,tags::DualTag);
      // for dual forms
@@ -2071,6 +2079,16 @@ void real_form_value::print(std::ostream& out) const
   << "', defining a"
   << (val.isConnected() ? " connected" : " disconnected" ) @|
   << " real group" ;
+}
+
+@ By calling the |kgb| method we ensure the |kgb::KGB| object for the group is
+generated, and return it.
+
+@< Function def...@>=
+const kgb::KGB& real_form_value::kgb ()
+{ if (KGB_pointer==NULL)
+    KGB_pointer = new kgb::KGB(val,val.Cartan_set());
+  return *KGB_pointer;
 }
 
 @ To make a real form is easy, one provides an |inner_class_value| and a valid
@@ -2113,9 +2131,7 @@ group is isomorphic to $(\Z/2\Z)^r$.
 void components_rank_wrapper(expression_base::level l)
 { shared_real_form R(get<real_form_value>());
   if (l!=expression_base::no_value)
-  { const latticetypes::ComponentList c=R->val.dualComponentReps();
-    push_value(new int_value(c.size()));
-  }
+    push_value(new int_value(R->val.dualComponentReps().size()));
 }
 
 @ And here is one that counts the number of Cartan classes for the real form.
@@ -2174,7 +2190,7 @@ correct.
 
 real_form_value::real_form_value(inner_class_value p,realform::RealForm f
 				,tags::DualTag)
-: parent(p), val(p.dual,f)
+: parent(p), val(p.dual,f), KGB_pointer(NULL)
 {}
 
 @ In order to be able to use the same layout for dual real forms but to
@@ -2593,6 +2609,74 @@ different lines after commas if necessary.
   ioutils::foldLine(*output_stream,os.str(),"",",");
 }
 
+@*1 Elements of some $K\backslash G/B$ set.
+%
+Associated to each real form is a set $K\backslash G/B$, and we wish to make
+available a number of functions that operate on (among other data) such
+elements; for instance each element determines an involution, corresponding
+imaginary and real subsystems of the root system, and a $\Z/2\Z$-grading of
+the imaginary root subsystem. It does not seem necessary to introduce a type
+for the set $K\backslash G/B$ (any function that needs it can take the
+corresponding real form as argument), but we do provide one for elements of
+that set. These elements contain a pointer |rf | to the |real_form_value| they
+were generated from, and thereby to their containing set $K\backslash G/B$,
+which allows operations relevant to the KGB element to be defined. Since this
+is a shared pointer, the |real_form_value| pointed to is guaranteed to exist
+as long as this |KGB_elt_value| does.
+
+@< Type definitions @>=
+struct KGB_elt_value : public value_base
+{ shared_real_form rf;
+  kgb::KGBElt val;
+@)
+  KGB_elt_value(shared_real_form form, kgb::KGBElt x) : rf(form), val(x) @+{}
+  ~KGB_elt_value() @+{}
+@)
+  virtual void print(std::ostream& out) const;
+  KGB_elt_value* clone() const @+ {@; return new KGB_elt_value(*this); }
+  static const char* name() @+{@; return "KGB element"; }
+private:
+  KGB_elt_value(const KGB_elt_value& v)
+  : rf(v.rf), val(v.val) @+{} // copy constructor
+};
+@)
+typedef std::auto_ptr<KGB_elt_value> KGB_elt_ptr;
+typedef std::tr1::shared_ptr<KGB_elt_value> shared_KGB_elt;
+
+@ When printing a KGB element, we print the number. It would be useful to add
+some symbolic information, like ``discrete series'', when applicable, but this
+is currently not implemented.
+
+@< Function def...@>=
+void KGB_elt_value::print(std::ostream& out) const
+{ out << "KGB element #" << val;
+}
+
+@ To make a KGB element, one provides a |real_form_value| and a valid number.
+
+@< Local function def...@>=
+void KGB_elt_wrapper(expression_base::level l)
+{ int i = get<int_value>()->val;
+  shared_real_form rf(get<real_form_value>());
+  if (size_t(i)>=rf->val.KGB_size())
+    throw std::runtime_error ("Inexistent KGB element: "+str(i));
+@.Inexistent KGB element@>
+  if (l!=expression_base::no_value)
+    push_value(new KGB_elt_value(rf,i));
+}
+
+@ One important attribute of KGB elements is the associated root datum
+involution.
+
+@< Local function def...@>=
+void KGB_involution_wrapper(expression_base::level l)
+{ shared_KGB_elt x(get<KGB_elt_value>());
+  const kgb::KGB& kgb=x->rf->kgb();
+  const complexredgp::ComplexReductiveGroup& G=x->rf->val.complexGroup();
+  if (l!=expression_base::no_value)
+    push_value(new matrix_value(G.involutionMatrix(kgb.involution(x->val))));
+}
+
 @* Test functions.
 %
 Now we shall make available some commands without actually creating new data
@@ -2770,7 +2854,7 @@ void print_KGB_wrapper(expression_base::level l)
 @)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
-  kgb::KGB kgb(rf->val);
+  const kgb::KGB& kgb=rf->kgb();
   kgb_io::var_print_KGB(*output_stream,rf->val.complexGroup(),kgb);
 @)
   if (l==expression_base::single_value)
@@ -2977,6 +3061,8 @@ install_function(dual_real_forms_of_Cartan_wrapper,@|"dual_real_forms"
 		,"(CartanClass->[DualRealForm])");
 install_function(fiber_part_wrapper,@|"fiber_part"
 		,"(CartanClass,RealForm->[int])");
+install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
+install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
 install_function(print_gradings_wrapper,@|"print_gradings"
 		,"(CartanClass,RealForm->)");
 install_function(print_realweyl_wrapper,@|"print_real_Weyl"

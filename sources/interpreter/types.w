@@ -1826,7 +1826,7 @@ enumeration value |nr_of_primitive_types|).
 @< Other primitive type tags @>=
 vector_type, matrix_type, rational_vector_type,
 complex_lie_type_type , root_datum_type, inner_class_type, real_form_type,
-dual_real_form_type, Cartan_class_type, @[@]
+dual_real_form_type, Cartan_class_type, KGB_element_type, @[@]
 
 
 @~The following list must match that of the previous module, for proper
@@ -1835,7 +1835,7 @@ functioning of I/O.
 @< Other primitive type names @>=
 "vec", "mat", "ratvec",
 "LieType","RootDatum", "InnerClass", "RealForm", "DualRealForm",
-"CartanClass", @[@]
+"CartanClass", "KGBElt", @[@]
 
 @* Index.
 
