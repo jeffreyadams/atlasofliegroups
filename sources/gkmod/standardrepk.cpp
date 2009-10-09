@@ -207,7 +207,7 @@ KhatContext::KhatContext
     ci.freeLift= // take the final |n-l| basis vectors as columns
       latticetypes::LatticeMatrix(&bs[l],&bs[n],n,tags::IteratorTag());
 
-    ci.freeProjector.resize(n-l,n);
+    latticetypes::LatticeMatrix(n-l,n).swap(ci.freeProjector);
 
     for (size_t i =l; i<n; ++i) // copy final rows from inverse
       ci.freeProjector.set_row(i-l,inv_basis.row(i));
