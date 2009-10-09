@@ -1070,7 +1070,7 @@ void fillCoxMatrix(latticetypes::LatticeMatrix& cox,
 		   const setutils::Permutation& a)
 {
   assert (cart.numRows()==cart.numColumns());
-  cox.resize(cart.numRows(),cart.numRows());
+  latticetypes::LatticeMatrix(cart.numRows(),cart.numRows()).swap(cox);
 
   static const int translate[] // from product of cart entries -> cox entry
     = { 2, 3, 4, 6 }; // N.B.  |0<=cart(i,j)*cart(j,i)<=3| always for |i!=j|
