@@ -21,22 +21,12 @@ namespace atlas {
 
 namespace interactive_lattice {
 
-  void adjustBasis(latticetypes::WeightList& root_Smith_basis,
-		   const latticetypes::CoeffList& root_invf,
-		   const latticetypes::WeightList& replacement,
-		   const latticetypes::CoeffList& repl_factors);
-
   int getGenerators(latticetypes::RatWeightList&,
 		    const latticetypes::CoeffList&)
     throw(error::InputError);
 
   int getLattice(const latticetypes::CoeffList&, latticetypes::WeightList&)
     throw(error::InputError);
-
-  void getUniversal(latticetypes::CoeffList&, const latticetypes::CoeffList&);
-
-  void localBasis(latticetypes::WeightList&, const latticetypes::WeightList&,
-		  const latticetypes::CoeffList&);
 
 }
 
