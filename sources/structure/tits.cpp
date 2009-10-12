@@ -348,6 +348,16 @@ TitsGroup::involutionMatrix(const weyl::WeylWord& ww) const
 }
 
 
+
+
+
+
+/*
+ *
+ *				BasedTitsGroup
+ *
+ */
+
 BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
 			       gradings::Grading base_grading)
   : my_Tits_group(NULL) // no ownership in this case
