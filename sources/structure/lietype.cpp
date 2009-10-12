@@ -46,7 +46,7 @@
 
 #include "constants.h"
 #include "latticetypes.h"
-#include "smithnormal.h"
+#include "matreduc.h"
 
 /*****************************************************************************
 
@@ -229,35 +229,54 @@ size_t LieType::semisimple_rank() const
   The purpose of doing this blockwise instead of globally is to permit a
   better reading of the quotient group: this will be presented as a sequence
   of factors, corresponding to each simple block.
+
+  In fact, |matreduc::Smith_basis| applied to a block matrix like the full
+  Cartan matrix would return a similar block result, since it does not try to
+  get to the true Smith normal form (which might involve combining invariant
+  factors). It is clearer and more efficient though to do this blockwise.
 */
 latticetypes::WeightList
 LieType::Smith_basis(latticetypes::CoeffList& invf) const
 {
 
-  // Smith-normalize for each simple factor
-  latticetypes::WeightList result;
-  matrix::initBasis(result,rank());
-  latticetypes::WeightList::iterator rp = result.begin();
+  size_t R=rank();
+  latticetypes::WeightList result(R,latticetypes::Weight(R,0));
 
+  // Smith-normalize for each simple factor
+  size_t s=0; //offset
   for (const_iterator it=begin(); it!=end(); ++it)
   {
     size_t r =it->rank();
 
     if (it->type() == 'T') // torus type T_r
+    {
+      for (size_t i=s; i<s+r; ++i)
+	result[i][i]=1;
       invf.insert(invf.end(),r,0); // add |r| factors 0
+    }
     else
     {
       latticetypes::LatticeMatrix tC=it->transpose_Cartan_matrix();
-      smithnormal::smithNormal(invf,rp,tC); // adapt next |r| vectors to lattice
+      latticetypes::CoeffList new_invf;
+      latticetypes::LatticeMatrix Sb = matreduc::Smith_basis(tC,new_invf);
 
       //make a small adjustment for types $D_{2n}$
       if (it->type() == 'D' and it->rank()%2 == 0)
-	rp[r-2] += rp[r-1];
+      {
+	assert(new_invf[r-2]==2 and new_invf[r-1]==2);
+	Sb.columnOperation(r-2,r-1,1); // this makes Sb[r-2] a unit vector
+      }
 
+      // copy matrix |Sb| into block of result
+      for (size_t j=0; j<r; ++j) // fill |result[s+j]| from column |j| of |Sb|
+	for (size_t i=0; i<r; ++i)
+	  result[s+j][s+i]=Sb(i,j);
+
+      invf.insert(invf.end(),new_invf.begin(),new_invf.end()); // append |invf|
     }
-    rp += r;
+    s += r;
+  } // |for it|
 
-  }
   return result;
 }
 
