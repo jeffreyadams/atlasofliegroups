@@ -12,6 +12,7 @@ operator * : (vec,mat->mat): vector-matrix product (vector is transposed)
 operator ^ : (mat->mat): (unary use of ^) matrix transpostion
 operator ^ : (vec->mat): (unary use of ^) (transposed) vector as 1-line matrix
 operator / : (vec,int->ratvec):  vector division giving rational vector
+operators +, -: (ratvec,ratvec->ratvec): additive rational vector arithmetic
 
 operators >, >=, <, <=, =, != : (int,int->bool) usual relational operators
 operators =, != : (bool,bool->bool) Boolean equivalence, inequivalence (xor)
@@ -34,17 +35,20 @@ error: (string->) : abort computation, reporting a runtime error
 int_format: (int->string): representation of integer as digit string
 print: (string->): print string without quotes, followed by newline
 id_mat: (int->mat): identity matrix of given size.
-diagonal_mat: (vec->mat): square diagonal matrix with given diagonal entries.
+diagonal: (vec->mat): square diagonal matrix with given diagonal entries.
 
 inv_fact: (mat->vec): invariant factors in Smith normal form (no zeros).
 Smith_basis: (mat->mat): a basis on which the Smith normal form is assumed.
-Smith: (mat->mat,vec): Smith(M)= ( Smith_basis(M), inv_fact(M) ).
+Smith: (mat->mat,vec): Smith(M)= ( Smith_basis(M), inv_fact(M) ) (almost).
   Smith(M) describes explicitly the sublattice spanned by the columns of M.
-  inv_fact(M) is the list of invariant factors, each one dividing the next,
-  and Smith_basis(M) a square matrix of height equal to that of M and
-  determinant 1, such that multiplying each column corresponding to an
-  invariant factor by that factor, and the remaining ones by 0, gives a matrix
-  whose columns span the same lattice as the columns of M.
+  The first component is an invertible matrix, whose columns, multiplied by
+  the corresponding entries of the second component, span that sublattice.
+  inv_fact(M) is the list of the invariant factors of M, which are like the
+  second component of Smith but with additional requirement that each one
+  divides the next; this may involve using a different basis. Smith_basis(M)
+  is that basis corresponding to inv_fact(M), an invertible (over Z) square
+  matrix of height equal to that of M, with the same property as the first
+  component of Smith but relative to the true invariant factors inv_fact(M).
 
 invert: (mat->mat,int): invert(M)=inv,d such that M*inv=d*Id, with d minimal.
   The inverse matrix, represented as an integral numerator matrix and a
@@ -200,7 +204,7 @@ inner_class: (RootDatum,string->InnerClass): get inner class of G symbolically
   Build a complex reductive group directly from a root datum, but compute
   the distinguished involution from the string describing it symbolically.
     set inner_class(RootDatum rd,string type)=
-    let t=Lie_type(rd); basis=transpose_mat(coroot_radical(rd))
+    let t=Lie_type(rd); basis = ^coroot_radical(rd)
     in inner_class(rd,involution(t,basis,type))
 inner_class: (Lie_type,[ratvec],string->InnerClass): inner class as in Atlas
     set inner_class(Lie_type lt,[ratvec] gens,string ic_string) =
