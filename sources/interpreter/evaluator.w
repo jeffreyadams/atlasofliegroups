@@ -3717,18 +3717,18 @@ void int_list_convert()
 }
 @)
 void vec_list_convert()
-{ matrix::Matrix<int> m = get<matrix_value>()->val;
-  row_ptr result(new row_value(m.numColumns()));
-  for(size_t i=0; i<m.numColumns(); ++i)
-    result->val[i]=shared_value(new vector_value(m.column(i)));
+{ shared_matrix m=get<matrix_value>();
+  row_ptr result(new row_value(m->val.numColumns()));
+  for(size_t i=0; i<m->val.numColumns(); ++i)
+    result->val[i]=shared_value(new vector_value(m->val.column(i)));
   push_value(result);
 }
 @)
 void int_list_list_convert()
-{ matrix::Matrix<int> m = get<matrix_value>()->val;
-  row_ptr result(new row_value(m.numColumns()));
-  for(size_t i=0; i<m.numColumns(); ++i)
-    result->val[i]=shared_value(weight_to_row(m.column(i)).release());
+{ shared_matrix m=get<matrix_value>();
+  row_ptr result(new row_value(m->val.numColumns()));
+  for(size_t i=0; i<m->val.numColumns(); ++i)
+    result->val[i]=shared_value(weight_to_row(m->val.column(i)).release());
 
   push_value(result);
 }
@@ -4288,16 +4288,16 @@ void id_mat_wrapper(expression_base::level l)
     push_value(new matrix_value(matrix::Matrix<int>(std::abs(i)))); // identity
 }
 @) void transpose_mat_wrapper(expression_base::level l)
-{ matrix::Matrix<int> m=get<matrix_value>()->val;
+{ shared_matrix m=get<matrix_value>();
   if (l!=expression_base::no_value)
-    push_value(new matrix_value(m.transposed()));
+    push_value(new matrix_value(m->val.transposed()));
 }
 @) void transpose_vec_wrapper(expression_base::level l)
-{ matrix::Vector<int> v=get<vector_value>()->val;
+{ shared_vector v=get<vector_value>();
   if (l!=expression_base::no_value)
-  { matrix_ptr m (new matrix_value(matrix::Matrix<int>(1,v.size())));
-    for (size_t j=0; j<v.size(); ++j)
-      m->val(0,j)=v[j];
+  { matrix_ptr m (new matrix_value(matrix::Matrix<int>(1,v->val.size())));
+    for (size_t j=0; j<v->val.size(); ++j)
+      m->val(0,j)=v->val[j];
     push_value(m);
   }
 }
@@ -4309,21 +4309,21 @@ addition and subtraction.
 
 @< Local function def... @>=
 void diagonal_wrapper(expression_base::level l)
-{ matrix::Vector<int> d=get<vector_value>()->val;
+{ shared_vector d=get<vector_value>();
   if (l==expression_base::no_value)
     return;
-  size_t n=d.size();
+  size_t n=d->val.size();
   matrix_ptr m (new matrix_value(matrix::Matrix<int>(n)));
   for (size_t i=0; i<n; ++i)
-    m->val(i,i)=d[i];
+    m->val(i,i)=d->val[i];
   push_value(m);
 }
 @)
 void vector_div_wrapper(expression_base::level l)
 { int n=get<int_value>()->val;
-  matrix::Vector<int> v=get<vector_value>()->val;
+  shared_vector v=get<vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value(v,n));
+    push_value(new rational_vector_value(v->val,n));
 }
 @)
 void ratvec_plus_wrapper(expression_base::level l)
@@ -4358,52 +4358,50 @@ matters for error reporting.
 
 @< Function definitions @>=
 void vv_prod_wrapper(expression_base::level l)
-{ matrix::Vector<int> w=get<vector_value>()->val;
-  matrix::Vector<int> v=get<vector_value>()->val;
-  if (v.size()!=w.size())
+{ shared_vector w=get<vector_value>();
+  shared_vector v=get<vector_value>();
+  if (v->val.size()!=w->val.size())
     throw std::runtime_error(std::string("Size mismatch ")@|
-     + str(v.size()) + ":" + str(w.size()) + " in scalar product");
+     + str(v->val.size()) + ":" + str(w->val.size()));
   if (l!=expression_base::no_value)
-    push_value(new int_value(v.dot(w)));
+    push_value(new int_value(v->val.dot(w->val)));
 }
 
 @ The other product operations are very similar.
 
 @< Function definitions @>=
 void mv_prod_wrapper(expression_base::level l)
-{ matrix::Vector<int> v=get<vector_value>()->val;
-  matrix::Matrix<int> m=get<matrix_value>()->val;
-  if (m.numColumns()!=v.size())
+{ shared_vector v=get<vector_value>();
+  shared_matrix m=get<matrix_value>();
+  if (m->val.numColumns()!=v->val.size())
     throw std::runtime_error(std::string("Size mismatch ")@|
-     + str(m.numColumns()) + ":" + str(v.size()) + " in mat*vec");
+     + str(m->val.numColumns()) + ":" + str(v->val.size()));
   if (l!=expression_base::no_value)
-    push_value(new vector_value(m.apply(v)));
+    push_value(new vector_value(m->val.apply(v->val)));
 }
 @)
 void mm_prod_wrapper(expression_base::level l)
-{ matrix::Matrix<int> rf=get<matrix_value>()->val; // right factor
-  matrix::Matrix<int> lf=get<matrix_value>()->val; // left factor
-  if (lf.numColumns()!=rf.numRows())
+{ shared_matrix rf=get<matrix_value>(); // right factor
+  shared_matrix lf=get<matrix_value>(); // left factor
+  if (lf->val.numColumns()!=rf->val.numRows())
   { std::ostringstream s;
-    s<< "Size mismatch " << lf.numColumns() << ":" << rf.numRows()
-    @| << " in mat*mat";
+    s<< "Size mismatch " << lf->val.numColumns() << ":" << rf->val.numRows();
     throw std::runtime_error(s.str());
   }
   if (l!=expression_base::no_value)
-    push_value(new matrix_value(lf*rf));
+    push_value(new matrix_value(lf->val*rf->val));
 }
 @)
 void vm_prod_wrapper(expression_base::level l)
-{ matrix::Matrix<int> m=get<matrix_value>()->val; // right factor
-  matrix::Vector<int> v=get<vector_value>()->val; // left factor
-  if (v.size()!=m.numRows())
+{ shared_matrix m=get<matrix_value>(); // right factor
+  shared_vector v=get<vector_value>(); // left factor
+  if (v->val.size()!=m->val.numRows())
   { std::ostringstream s;
-    s<< "Size mismatch " << v.size() << ":" << m.numRows()
-    @| << " in vec*mat";
+    s<< "Size mismatch " << v->val.size() << ":" << m->val.numRows();
     throw std::runtime_error(s.str());
   }
   if (l!=expression_base::no_value)
-    push_value(new vector_value(m.right_apply(v)));
+    push_value(new vector_value(m->val.right_apply(v->val)));
 }
 
 @ Here is the column echelon function.
@@ -4453,37 +4451,34 @@ the two combined into a single function.
 
 @< Local function definitions @>=
 void invfact_wrapper(expression_base::level l)
-{ matrix::Matrix<int> m=get<matrix_value>()->val;
+{ shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  size_t nr=m.numRows();
+  size_t nr=m->val.numRows();
   std::vector<matrix::Vector<int> > b; @+ matrix::initBasis(b,nr);
   vector_ptr inv_factors (new vector_value(matrix::Vector<int>(0)));
-  smithnormal::smithNormal(inv_factors->val,b.begin(),m);
+  smithnormal::smithNormal(inv_factors->val,b.begin(),m->val);
   push_value(inv_factors);
 }
 @)
 void Smith_basis_wrapper(expression_base::level l)
-{ matrix::Matrix<int> m=get<matrix_value>()->val;
+{ shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  size_t nr=m.numRows();
+  size_t nr=m->val.numRows();
   std::vector<matrix::Vector<int> > b; @+ matrix::initBasis(b,nr);
   matrix::Vector<int> inv_factors;
-  smithnormal::smithNormal(inv_factors,b.begin(),m);
+  smithnormal::smithNormal(inv_factors,b.begin(),m->val);
   push_value(new matrix_value(matrix::Matrix<int>(b,nr)));
 }
 @)
 
 void Smith_wrapper(expression_base::level l)
-{ matrix::Matrix<int> m=get<matrix_value>()->val;
+{ shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  size_t nr=m.numRows();
-  std::vector<matrix::Vector<int> > b; @+ matrix::initBasis(b,nr);
-  vector_ptr inv_factors (new vector_value(matrix::Vector<int>(0)));
-  smithnormal::smithNormal(inv_factors->val,b.begin(),m);
-@/push_value(new matrix_value(matrix::Matrix<int>(b,nr)));
+  vector_ptr inv_factors (new vector_value(matrix::Vector<int>()));
+@/push_value(new matrix_value(matreduc::Smith_basis(m->val,inv_factors->val)));
   push_value(inv_factors);
   if (l==expression_base::single_value)
     wrap_tuple(2);
@@ -4495,17 +4490,17 @@ general over the integers, we return an integral matrix and a common
 denominator to be applied to all coefficients.
 @< Local function definitions @>=
 void invert_wrapper(expression_base::level l)
-{ matrix::Matrix<int> m=get<matrix_value>()->val;
-  if (m.numRows()!=m.numColumns())
+{ shared_matrix m=get<matrix_value>();
+  if (m->val.numRows()!=m->val.numColumns())
   { std::ostringstream s;
     s<< "Cannot invert a " @|
-     << m.numRows() << "x" << m.numColumns() << " matrix";
+     << m->val.numRows() << "x" << m->val.numColumns() << " matrix";
     throw std::runtime_error(s.str());
   }
   if (l==expression_base::no_value)
     return;
   int_ptr denom(new int_value(0));
-@/push_value(new matrix_value(m.inverse(denom->val)));
+@/push_value(new matrix_value(m->val.inverse(denom->val)));
   push_value(denom);
   if (l==expression_base::single_value)
     wrap_tuple(2);
