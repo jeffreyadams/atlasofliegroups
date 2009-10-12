@@ -522,7 +522,7 @@ void Matrix<C>::invert(C& d)
   { d=1; return; }
 
   Matrix<C> row,col;    // for recording column operations
-  matrix::Vector<C> diagonal = matreduc::diagonalise(*this,row,col);
+  std::vector<C> diagonal = matreduc::diagonalise(*this,row,col);
 
   if (diagonal[n-1] == C(0)) // zero entries if any come at end
   { d=0; return; }
@@ -662,20 +662,20 @@ void Matrix<C>::columnOperation(size_t j, size_t k, const C& c)
   Changes the sign of all the entries in row i.
 */
 template<typename C>
-void Matrix<C>::changeRowSign(size_t i)
+void Matrix<C>::rowMultiply(size_t i, C f)
 {
-  for (size_t j = 0; j<d_columns; ++j)
-    (*this)(i,j) *= -1;
+  for (size_t j=0; j<d_columns; ++j)
+    (*this)(i,j) *= f;
 }
 
 /*!
   Changes the sign of all the entries in column j.
 */
 template<typename C>
-void Matrix<C>::changeColumnSign(size_t j)
+void Matrix<C>::columnMultiply(size_t j, C f)
 {
   for (size_t i = 0; i<d_rows; ++i)
-    (*this)(i,j) *= -1;
+    (*this)(i,j) *= f;
 }
 
 /*!

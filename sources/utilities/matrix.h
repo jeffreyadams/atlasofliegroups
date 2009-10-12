@@ -184,8 +184,8 @@ template<typename C> class Matrix
   void rowOperation(size_t, size_t, const C&);
   void columnOperation(size_t j, size_t k, const C& c); // |col(j) += c*col(k)|
 
-  void changeRowSign(size_t);
-  void changeColumnSign(size_t);
+  void rowMultiply(size_t i, C f);
+  void columnMultiply(size_t j,C f);
 
   void swapColumns(size_t, size_t);
   void swapRows(size_t, size_t);
