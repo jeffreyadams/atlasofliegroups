@@ -10,6 +10,7 @@
 #ifndef   	MATREDUC_H
 # define   	MATREDUC_H
 
+#include <vector>
 #include "matrix_fwd.h"
 #include "bitmap_fwd.h"
 
@@ -21,9 +22,12 @@ template<typename C>
   bitmap::BitMap column_echelon(matrix::Matrix<C>& vectors);
 
 template<typename C>
-matrix::Vector<C> diagonalise(matrix::Matrix<C> M, // by value
-			      matrix::Matrix<C>& row,
-			      matrix::Matrix<C>& col);
+std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
+			   matrix::Matrix<C>& row,
+			   matrix::Matrix<C>& col);
+template<typename C>
+matrix::Matrix<C> Smith_basis(matrix::Matrix<C> M, // by value
+			      std::vector<C>& diagonal);
 } // |namespace matreduc|
 } // |namespace atlas|
 
