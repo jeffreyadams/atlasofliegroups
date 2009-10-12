@@ -219,8 +219,8 @@ template<typename C>
   if (k.second) { // swap columns
     m.swapColumns(0,k.second);
   }
-  if (m(0,0) < 0) { // change sign of column
-    m.changeColumnSign(0);
+  if (m(0,0) < 0) { // negate column
+    m.columnMultiply(0,-1);
   }
 }
 
