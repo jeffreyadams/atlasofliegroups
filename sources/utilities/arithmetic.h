@@ -27,6 +27,8 @@ namespace arithmetic {
 
   unsigned long unsigned_gcd (unsigned long, unsigned long); // avoid overload
 
+  unsigned long div_gcd (unsigned long d, unsigned long a);
+
   unsigned long lcm (unsigned long, unsigned long, unsigned long& = dummy);
 
   unsigned long power(unsigned long base, unsigned int exponent);
@@ -88,7 +90,11 @@ typedef std::vector<Rational> RationalList;
 
 namespace arithmetic {
 
-  inline unsigned long gcd (long a, unsigned long b) {
+  inline unsigned long div_gcd (unsigned long d, unsigned long a)
+  { return d/gcd(a,d); }
+
+  inline unsigned long gcd (long a, unsigned long b)
+  {
     if (a < 0)
       return unsigned_gcd(static_cast<unsigned long>(-a),b);
     else
@@ -97,13 +103,13 @@ namespace arithmetic {
 
   inline unsigned long& modAdd(unsigned long& a, unsigned long b,
 			       unsigned long n)
-    {
-      if (a < n-b)
-	a += b;
-      else
-	a -= n-b;
-      return a;
-    }
+  {
+    if (a < n-b)
+      a += b;
+    else
+      a -= n-b;
+    return a;
+  }
 
   inline Rational& Rational::normalize()
   {
