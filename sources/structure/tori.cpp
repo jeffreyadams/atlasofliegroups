@@ -18,7 +18,7 @@ Implementation of the class RealTorus
 #include <cassert>
 
 #include "lattice.h"
-#include "smithnormal.h"
+#include "matreduc.h"
 
 namespace atlas {
 
@@ -264,21 +264,19 @@ void plusBasis(latticetypes::WeightList& pb,
   for (size_t j = 0; j < n; ++j)
     q(j,j) += 1;
 
-  // find smith normal form
+  latticetypes::CoeffList factor;
+  latticetypes::LatticeMatrix b = matreduc::Smith_basis(q,factor);
 
-  latticetypes::CoeffList invf;
-  latticetypes::WeightList bs;
-
-  matrix::initBasis(bs,n);
-
-  smithnormal::smithNormal(invf,bs.begin(),q);
+  size_t r=n;
+  while (r>0)
+    if (factor[r-1]==0)
+      --r;
+    else break;
 
   // copy significant part of basis in pb
-
-  pb.reserve(invf.size());
-
-  for (size_t j = 0; j < invf.size(); ++j)
-    pb.push_back(bs[j]);
+  pb.reserve(r);
+  for (size_t j=0; j<r; ++j)
+    pb.push_back(b.column(j));
 }
 
 latticetypes::WeightList plusBasis(const latticetypes::LatticeMatrix& i)
@@ -304,22 +302,19 @@ void minusBasis(latticetypes::WeightList& mb,
   for (size_t j = 0; j < n; ++j)
     q(j,j) -= 1;
 
-  // find smith normal form
+  latticetypes::CoeffList factor;
+  latticetypes::LatticeMatrix b = matreduc::Smith_basis(q,factor);
 
-  latticetypes::CoeffList invf;
-  latticetypes::WeightList bs;
-  matrix::initBasis(bs,n);
+  size_t r=n;
+  while (r>0)
+    if (factor[r-1]==0)
+      --r;
+    else break;
 
-  smithnormal::smithNormal(invf,bs.begin(),q);
-
-  // copy significant part of basis in mb
-
-  mb.reserve(invf.size());
-
-  for (size_t j = 0; j < invf.size(); ++j)
-    mb.push_back(bs[j]);
-
-  return;
+  // copy significant part of basis in pb
+  mb.reserve(r);
+  for (size_t j=0; j<r; ++j)
+    mb.push_back(b.column(j));
 }
 
 latticetypes::WeightList minusBasis(const latticetypes::LatticeMatrix& i)
@@ -431,25 +426,25 @@ void fullMinusBasis(latticetypes::WeightList& mb,
   for (size_t j = 0; j < n; ++j)
     q(j,j) -= 1;
 
-  // find smith normal form
+  latticetypes::CoeffList factor;
+  latticetypes::LatticeMatrix b = matreduc::Smith_basis(q,factor);
 
-  latticetypes::CoeffList invf;
-  latticetypes::WeightList bs;
-  matrix::initBasis(bs,n);
-
-  smithnormal::smithNormal(invf,bs.begin(),q);
+  size_t r=n;
+  while (r>0)
+    if (factor[r-1]==0)
+      --r;
+    else break;
 
   // copy significant part of basis in mb
 
-  mb.reserve(invf.size());
+  mb.reserve(r);
 
-  for (size_t j = 0; j < invf.size(); ++j)
-    mb.push_back(bs[j]);
+  for (size_t j=0; j<r; ++j)
+    mb.push_back(b.column(j));
 
   // make projection matrix
-  // rows of projection matrix are the first rows of the inverse of the
-  // matrix of bs
-  tm = latticetypes::LatticeMatrix(bs,n).inverse().block(0,0,invf.size(),n);
+  // rows of projection matrix are the first rows of the inverse of |b|
+  tm = b.inverse().block(0,0,r,n);
 }
 
 
@@ -482,26 +477,23 @@ void fullPlusBasis(latticetypes::WeightList& pb,
   for (size_t j = 0; j < n; ++j)
     q(j,j) += 1;
 
-  // find smith normal form
+  latticetypes::CoeffList factor;
+  latticetypes::LatticeMatrix b = matreduc::Smith_basis(q,factor);
 
-  latticetypes::CoeffList invf;
-  latticetypes::WeightList bs;
-  matrix::initBasis(bs,n);
-
-  smithnormal::smithNormal(invf,bs.begin(),q);
+  size_t r=n;
+  while (r>0)
+    if (factor[r-1]==0)
+      --r;
+    else break;
 
   // copy significant part of basis in pb
+  pb.reserve(r);
 
-  pb.reserve(invf.size());
-
-  for (size_t j = 0; j < invf.size(); ++j)
-    pb.push_back(bs[j]);
+  for (size_t j=0; j<r; ++j)
+    pb.push_back(b.column(j));
 
   // make coordinate transformation matrix
-  latticetypes::LatticeMatrix p = latticetypes::LatticeMatrix(bs,n).inverse();
-
-  // extract first |invf.size()| rows
-  tp=p.block(0,0,invf.size(),n);
+  tp=b.inverse().block(0,0,r,n);
 }
 
 } // |namespace|
