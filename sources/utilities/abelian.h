@@ -117,7 +117,9 @@ Cardinality of the group.
 
   unsigned long rank() const { return d_type.size(); }
   const GroupType& type() const {  return d_type; }
-  unsigned long size() const { return d_size; } // order of entire gruop
+
+  // calling the following member |size| proved to be error prone
+  unsigned long order() const { return d_size; } // order of entire group
 
 // representation conversions
   GrpArr toArray(GrpNbr x) const
@@ -217,14 +219,10 @@ class Homomorphism {
   GrpArr apply(const GrpArr&) const;
 
   GrpNbr apply(GrpNbr) const;
-
-  bool defined(const GrpArr&) const; // whether homomorphism can be applied
-
-  bool defined(GrpNbr) const;
 };
 
-}
+} // |namespace abelian|
 
-}
+} // |namespace atlas|
 
 #endif

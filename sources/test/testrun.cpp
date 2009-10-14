@@ -370,7 +370,7 @@ CoveringIterator::CoveringIterator(const lietype::LieType& lt)
   d_dcenter = new abelian::FiniteAbelianGroup(gt);
   d_subgroup = SubgroupIterator(*d_dcenter);
 
-  d_quotReps.set_capacity(d_dcenter->size());
+  d_quotReps.set_capacity(d_dcenter->order());
   quotReps(d_quotReps,*d_subgroup,*d_dcenter);
   d_torusPart = TorusPartIterator(d_torusRank,d_quotReps);
 
@@ -562,7 +562,7 @@ SubgroupIterator::SubgroupIterator(abelian::FiniteAbelianGroup& A)
 {
   // make data for the trivial subgroup
 
-  d_subgroup.set_capacity(d_group->size());
+  d_subgroup.set_capacity(d_group->order());
   d_subgroup.insert(0);
 
   d_thisRank.insert(d_subgroup);
@@ -815,7 +815,7 @@ void updateCycGenerator(bitmap::BitMap& cyc,
     if (arithmetic::unsigned_gcd(n,j) != 1)
       continue;
     abelian::GrpNbr xj = A.prod(x,j);
-    bitmap::BitMap c(A.size());
+    bitmap::BitMap c(A.order());
     coset(c,B,xj,A);
     cyc.andnot(c);
   }
