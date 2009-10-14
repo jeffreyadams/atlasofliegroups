@@ -12,6 +12,7 @@
 #include "bitmap.h"
 #include "matrix.h"
 #include "intutils.h"
+#include "arithmetic.h"
 
 namespace atlas {
 
@@ -172,9 +173,9 @@ std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
   size_t m=M.numRows();
   size_t n=M.numColumns(); // in fact start of known null columns
 
-  matrix::Matrix<C>(m).swap(row); // intialise |row| to identity matrix
+  matrix::Matrix<C>(m).swap(row); // initialise |row| to identity matrix
   matrix::Matrix<C>(n).swap(col);
-  std::vector<C> diagonal(intutils::min(m,n),C(0));
+  std::vector<C> diagonal; diagonal.reserve(intutils::min(m,n));
 
   for (size_t d=0; d<m and d<n; ++d)
   {
@@ -230,7 +231,7 @@ std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
     }
     while(j<n); // we did |break|, apparently some |row_clear| changed row |d|
 
-    diagonal[d] = M(d,d);
+    diagonal.push_back(M(d,d));
   } // |for d|
 
   return diagonal;
@@ -240,8 +241,9 @@ std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
    are mostly interested in the matrix |B=row.inverse()| and possibly also the
    vector |diagonal|, because they give a transparent expression for the image
    (column span) of |M|: that image is the same as that of $B*D$ where $D$ is
-   the diaganal matrix corresponding to |diagonal|, in other words it is
-   spanned by the multiples of the columns of $B$ by their |diagonal| factors.
+   the diagonal matrix corresponding to |diagonal| (extended with null rows to
+   match the height of |M| = size of |B|), in other words it is spanned by the
+   multiples of the columns of $B$ by their |diagonal| factors.
 
    The procedure follws the mostly the same steps, but the difference in
    handling |row|, where we apply instead of row operations the inverse column
@@ -255,14 +257,14 @@ std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
    by divisibility. For most applications this will not be needed anyway.
  */
 template<typename C>
-matrix::Matrix<C> Smith_basis(matrix::Matrix<C> M, // by value
-			      std::vector<C>& diagonal)
+matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
+				std::vector<C>& diagonal)
 {
   size_t m=M.numRows();
   size_t n=M.numColumns(); // in fact start of known null columns
 
-  matrix::Matrix<C> result (m); // intialise |result| to identity matrix
-  matrix::Vector<C>(m,C(0)).swap(diagonal);
+  matrix::Matrix<C> result (m); // initialise |result| to identity matrix
+  diagonal.clear(); diagonal.reserve(n); // maximum, maybe not needed
 
   for (size_t d=0; d<m and d<n; ++d)
   {
@@ -315,13 +317,58 @@ matrix::Matrix<C> Smith_basis(matrix::Matrix<C> M, // by value
     }
     while(i<m); // then apparently some |column_clear| changed row |d|
 
-    diagonal[d] = M(d,d);
+    diagonal.push_back(M(d,d));
   } // |for d|
 
   return result;
 }
 
+/*
+  For a true Smith basis, we must assure divisibility of successive elements
+  in |diagonal|. Since small factors tend to be extracted first, there remains
+  probably little work to do, and there is not much against assuring
+  divisibilty for adjacent pairs, and repeating this in a bubble-sort like
+  manner. Rather than iterating matrix operations for a given pair, we use the
+  following formula valid whenever gcd(a,b)=d=pa+qb:
 
+  [   1     1   ]   [ a  0 ]   [ p  -b/d ]   [ d   0   ]
+  [             ] * [      ] * [         ] = [         ],
+  [ pa/d-1 pa/d ]   [ 0  b ]   [ q   a/d ]   [ 0  ab/d ]
+
+  where the outermost matrices are invertible with the inverse of the first
+
+  [  pa/d  -1 ]    [ 1  -1 ]   [  1     0 ]
+  [           ] =  [       ] * [          ]
+  [ 1-pa/d  1 ]	   [ 0   1 ]   [ 1-pa/d 1 ]
+
+  The numbers |lcm=ab/d|, |d| and |pa| are obtained from |arithmetic::lcm|
+*/
+template<typename C>
+matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
+			      std::vector<C>& diagonal)
+{
+  matrix::Matrix<C> result = adapted_basis(M,diagonal);
+  size_t start=0, stop=diagonal.size()-1, new_stop=stop;
+  while (start<stop)
+  {
+    size_t new_start=new_stop; // if unchanged, this will be last of |while|
+    for (size_t i=start; i<stop; ++i)
+      if (diagonal[i+1]%diagonal[i]!=0) // failure of divisibility condition
+      {
+	unsigned long d, pa;
+        diagonal[i+1]=arithmetic::lcm(diagonal[i],diagonal[i+1],d,pa);
+	result.columnOperation(i+1,i,-1);
+	result.columnOperation(i,i+1,1-pa/d);
+	diagonal[i]=d;
+
+	if (new_start==stop) // only change |new_start| on first swap
+	  new_start = i>0 ? i-1 : 0; // need to back up one place next time
+        new_stop=i; // if this is last switch, diagonal[i+1],... are final
+      }
+    start=new_start; stop=new_stop;
+  }
+  return result;
+}
  // instantiations
 typedef latticetypes::LatticeCoeff T;
 
@@ -334,12 +381,12 @@ template
 bitmap::BitMap column_echelon<T>(matrix::Matrix<T>& M);
 
 template
-std::vector<T> diagonalise(matrix::Matrix<T> M, // by value
+std::vector<T> diagonalise(matrix::Matrix<T> M,
 			   matrix::Matrix<T>& row,
 			   matrix::Matrix<T>& col);
 
 template
-matrix::Matrix<T> Smith_basis(matrix::Matrix<T> M, // by value
+matrix::Matrix<T> Smith_basis(const matrix::Matrix<T>& M,
 			      std::vector<T>& diagonal);
 
 template // an abomination due to |abelian::Endomorphism|

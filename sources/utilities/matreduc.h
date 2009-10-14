@@ -26,7 +26,10 @@ std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
 			   matrix::Matrix<C>& row,
 			   matrix::Matrix<C>& col);
 template<typename C>
-matrix::Matrix<C> Smith_basis(matrix::Matrix<C> M, // by value
+matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
+				std::vector<C>& diagonal);
+template<typename C>
+matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
 			      std::vector<C>& diagonal);
 } // |namespace matreduc|
 } // |namespace atlas|
