@@ -218,15 +218,20 @@ namespace bitmap {
   element at a given position because the position is determined by the value
   (values are always increasing; in fact a small value-change could be
   realised by swapping a set bit with neighboring unset bits, but that is of
-  course not what a non-constant iterator should allow doing). The most
-  delicate operation is the increment, which has to find the position of the
-  next set bit, while avoiding falling off the bitmap if there is no such.
-  Therefore we included the data for the end of the bitmap in the iterator.
+  course not what a non-constant iterator should allow doing). However, these
+  iterators do allow changing the underlying bitmap during traversal, even
+  though such changes cannot be performed using only the iterator itself (this
+  is unlike iterators over a |bitset::BitSet|, which copy the set of bits into
+  their own value and therefore will traverse the bits that were set at the
+  time of their construction, usually by the |bitset::BitSet::begin| method).
+
+  The most delicate operation here is the increment, which has to find the
+  position of the next set bit, while avoiding falling off the bitmap if there
+  is no such. Therefore we included the data for the end of the bitmap in the
+  iterator. This also allows the |operator()| internal test for exhaustion.
   */
-class BitMap::iterator { // is really a const_iterator
-
- private:
-
+class BitMap::iterator // is really a const_iterator
+{
   std::vector<unsigned long>::const_iterator d_chunk; // point to current chunk
   unsigned long d_bitAddress; // value returned if dereferenced
   unsigned long d_capacity; // beyond-the-end bit-address, normally constant
@@ -268,7 +273,7 @@ class BitMap::iterator { // is really a const_iterator
   iterator operator++ (int);
 
   void change_owner(const BitMap& b); // adapt |d_chunk| to point into |b|
- }; // |class BitMap::iterator|
+}; // |class BitMap::iterator|
 
 } // |namespace bitmap|
 

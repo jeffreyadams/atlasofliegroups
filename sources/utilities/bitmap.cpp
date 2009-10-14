@@ -253,12 +253,13 @@ unsigned long BitMap::n_th(unsigned long i) const
 	 iter = d_map.begin(); iter != d_map.end(); ++iter)
   {
     unsigned long chunkSize = bits::bitCount(*iter);
-    if (chunkSize > i)
+    if (chunkSize>i)
     {
       f = *iter;
       goto found;
     }
-    else {
+    else
+    {
       i -= chunkSize;
       pos += constants::longBits;
     }
@@ -270,12 +271,10 @@ unsigned long BitMap::n_th(unsigned long i) const
  found:
   // at this point the required bit is going to be in the current chunk
 
-  for (size_t j = 0; j < i; ++j)
+  for (size_t j=0; j<i; ++j) // clear |i| initial bits in |f|
     f &= (f-1);
 
-  pos += bits::firstBit(f);
-
-  return pos;
+  return pos + bits::firstBit(f); // some bit i
 }
 
 /*!
@@ -325,12 +324,10 @@ unsigned long BitMap::range(unsigned long n, unsigned long r) const
 */
 unsigned long BitMap::size() const
 {
-  typedef std::vector<unsigned long>::const_iterator I;
-
   unsigned long c = 0;
-  I map_end = d_map.end();
 
-  for (I i = d_map.begin(); i != map_end; ++i)
+  for (std::vector<unsigned long>::const_iterator i = d_map.begin();
+       i != d_map.end(); ++i)
     c += bits::bitCount(*i);
 
   return c;
