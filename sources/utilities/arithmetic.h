@@ -91,7 +91,7 @@ typedef std::vector<Rational> RationalList;
 namespace arithmetic {
 
   inline unsigned long div_gcd (unsigned long d, unsigned long a)
-  { return d/gcd(a,d); }
+  { return d/unsigned_gcd(a,d); }
 
   inline unsigned long gcd (long a, unsigned long b)
   {
