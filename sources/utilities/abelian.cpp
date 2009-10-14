@@ -16,7 +16,7 @@
 #include "intutils.h"
 #include "latticetypes.h"
 #include "matrix.h"
-#include "smithnormal.h"
+#include "matreduc.h"
 
 /*!****************************************************************************
 \file
@@ -432,44 +432,32 @@ namespace abelian {
 void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
 	   const FiniteAbelianGroup& A)
 {
-  latticetypes::WeightList gl;
+  GrpNbrList gen;
+  generators(gen,B,A); // transform bitset to list
+
+  latticetypes::LatticeMatrix M(A.rank(),A.rank()+gen.size(),0);
 
   // put in the kernel basis
 
   for (size_t i=0; i<A.rank(); ++i)
-  {
-    gl.push_back(latticetypes::Weight(A.rank(),0));
-    gl.back()[i] = A.type()[i];
-  }
+    M(i,i) = A.type()[i];
 
   // add generators of the subgroup
-
-  GrpNbrList gen;
-  generators(gen,B,A); // transform bitset to list
-
   for (size_t i=0; i<gen.size(); ++i)
   {
     latticetypes::Weight v(A.rank());
     A.toWeight(v,gen[i]);
-    gl.push_back(v);
+    M.set_column(A.rank()+i,v);
   }
 
-  // write matrix corresponding to gl
+  // get Smith normal basis for columns span of |M|, and invariant factors
 
-  latticetypes::LatticeMatrix m(gl,A.rank());
-  latticetypes::CoeffList invf;
+  latticetypes::CoeffList inv_factors;
+  latticetypes::LatticeMatrix basis = matreduc::Smith_basis(M,inv_factors);
 
-  // get smith normal basis
-
-  matrix::initBasis(b,A.rank());
-  smithnormal::smithNormal(invf,b.begin(),m);
-
-  // scale
-
-  for (size_t i=0; i<invf.size(); ++i)
-    b[i] *= invf[i];
-
-  return;
+  // export scaled columns
+  for (size_t j=0; j<inv_factors.size(); ++j)
+    b[j] = basis.column(j)*inv_factors[j];
 }
 
 
