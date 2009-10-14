@@ -51,28 +51,30 @@ unsigned long unsigned_gcd(unsigned long a, unsigned long b)
 }
 
 
-unsigned long dummy; // for default |gcd| argument to |lcm|
+unsigned long dummy_gcd, dummy_Bezout; // for default arguments to |lcm|
 
 /*!
-  Synopsis: returns the least common multiple of |a| and |b|,
-  while storing their greatest common divisor in |gcd|.
+  \brief Returns the least common multiple of |a| and |b|, storing their
+   greatest common divisor in |gcd| and making |Bezout%a==0|, |Bezout%b==gcd|
 
-  Precondition: b > 0;
+  Precondition: a > 0;
 */
-unsigned long lcm (unsigned long a, unsigned long b, unsigned long& gcd)
+unsigned long lcm (unsigned long a, unsigned long b,
+		   unsigned long& gcd, unsigned long& Bezout)
 {
   unsigned long c=a, d=b; // local variables for the sake of readability
-  unsigned long m_c=0, m_d=b; // multiples of |b|, cong. to  |-c|,|d| mod |a|
+  unsigned long m_c=a, m_d=0; // multiples of |a|, cong. to  |c|,|-d| mod |b|
 
-  do // invariant: |c*m_d+d*m_c==ab|
+  do // invariants: |c*m_d+d*m_c==ab|; $m_c\cong c$, $m_d\cong-d$ modulo $b$
   {
-    m_c += (c/d)*m_d; c%=d;
-    if (c==0)
-    { gcd = d; return m_c; }
     m_d += (d/c)*m_c; d%=c;
-  } while (d>0);
+    if (d==0)
+    { gcd = c; Bezout=m_c; return m_d; }
+    m_c += (c/d)*m_d; c%=d;
+  } while (c>0);
 
-  gcd = c; return m_d;
+  gcd = d; Bezout= m_d==0 ? 0 : m_c-m_d; // |m_d<m_c| as we just had |c/d>=1|
+  return m_c;
 }
 
 

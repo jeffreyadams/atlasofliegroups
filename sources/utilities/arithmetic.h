@@ -21,7 +21,7 @@ namespace atlas {
 
 namespace arithmetic {
 
-  extern unsigned long dummy;
+  extern unsigned long dummy_gcd, dummy_Bezout;
 
   unsigned long gcd (long, unsigned long); // signed first argument only!
 
@@ -29,7 +29,9 @@ namespace arithmetic {
 
   unsigned long div_gcd (unsigned long d, unsigned long a);
 
-  unsigned long lcm (unsigned long, unsigned long, unsigned long& = dummy);
+  unsigned long lcm (unsigned long, unsigned long,
+		     unsigned long& =dummy_gcd, unsigned long& =dummy_Bezout);
+  // after |lcm(a,b,d,p)| one has |d=gcd(a,b)| and |p%a==0|, |p%b==d|, |p<lcm|
 
   unsigned long power(unsigned long base, unsigned int exponent);
 
