@@ -256,22 +256,18 @@ void plusBasis(latticetypes::WeightList& pb,
 */
 
 {
-  size_t n = i.numColumns();
+  size_t n = i.numRows();
 
   // put in q the matrix of vectors i(e)+e in the basis b
 
   latticetypes::LatticeMatrix q(i);
-  for (size_t j = 0; j < n; ++j)
-    q(j,j) += 1;
+  for (size_t i=0; i<n; ++i)
+    q(i,i) += 1;
 
   latticetypes::CoeffList factor;
-  latticetypes::LatticeMatrix b = matreduc::Smith_basis(q,factor);
+  latticetypes::LatticeMatrix b = matreduc::adapted_basis(q,factor);
 
-  size_t r=n;
-  while (r>0)
-    if (factor[r-1]==0)
-      --r;
-    else break;
+  size_t r=factor.size();
 
   // copy significant part of basis in pb
   pb.reserve(r);
@@ -288,28 +284,23 @@ latticetypes::WeightList plusBasis(const latticetypes::LatticeMatrix& i)
   Synopsis: puts in mb a basis for the -1 eigenspace of the involution.
 
   Algorithm: the vectors e-i(e), when e runs through b, generate a lattice
-  commensurate with the eigenspace. Thus a smith basis for this lattice will
-  do the trick.
+  commensurate with the eigenspace.
 */
 void minusBasis(latticetypes::WeightList& mb,
 		const latticetypes::LatticeMatrix& i)
 {
-  size_t n = i.numColumns();
+  size_t n = i.numRows();
 
   // put in q the matrix of vectors i(e)-e in the basis b
 
   latticetypes::LatticeMatrix q(i);
-  for (size_t j = 0; j < n; ++j)
-    q(j,j) -= 1;
+  for (size_t i=0; i<n; ++i)
+    q(i,i) -= 1;
 
   latticetypes::CoeffList factor;
-  latticetypes::LatticeMatrix b = matreduc::Smith_basis(q,factor);
+  latticetypes::LatticeMatrix b = matreduc::adapted_basis(q,factor);
 
-  size_t r=n;
-  while (r>0)
-    if (factor[r-1]==0)
-      --r;
-    else break;
+  size_t r=factor.size();
 
   // copy significant part of basis in pb
   mb.reserve(r);
@@ -411,34 +402,28 @@ void makeTopology(latticetypes::SmallSubquotient& cs, const RealTorus& T)
   that it should be used only for vectors already in X_-.
 
   Algorithm: the vectors e-i(e), when e runs through b, generate a lattice
-  commensurate with the eigenspace. Thus a smith basis for this lattice will
-  do the trick. Such a basis also yields the projection matrix.
+  commensurate with the eigenspace. The basis adapted to this sublattice also
+  yields the projection matrix, after inversion.
 */
 void fullMinusBasis(latticetypes::WeightList& mb,
 		    latticetypes::LatticeMatrix& tm,
 		    const latticetypes::LatticeMatrix& i)
 {
-  size_t n = i.numColumns();
+  size_t n = i.numRows();
 
   // put in q the matrix of vectors i(e)-e in the basis b
 
   latticetypes::LatticeMatrix q(i);
-  for (size_t j = 0; j < n; ++j)
-    q(j,j) -= 1;
+  for (size_t i=0; i<n; ++i)
+    q(i,i) -= 1;
 
   latticetypes::CoeffList factor;
-  latticetypes::LatticeMatrix b = matreduc::Smith_basis(q,factor);
+  latticetypes::LatticeMatrix b = matreduc::adapted_basis(q,factor);
 
-  size_t r=n;
-  while (r>0)
-    if (factor[r-1]==0)
-      --r;
-    else break;
+  size_t r=factor.size();
 
   // copy significant part of basis in mb
-
   mb.reserve(r);
-
   for (size_t j=0; j<r; ++j)
     mb.push_back(b.column(j));
 
@@ -469,26 +454,21 @@ void fullPlusBasis(latticetypes::WeightList& pb,
 		   latticetypes::LatticeMatrix& tp,
 		   const latticetypes::LatticeMatrix& tau)
 {
-  size_t n = tau.numColumns();
+  size_t n = tau.numRows();
 
   // put in q the matrix of vectors tau(e)+e in the basis b
 
   latticetypes::LatticeMatrix q(tau);
-  for (size_t j = 0; j < n; ++j)
-    q(j,j) += 1;
+  for (size_t i=0; i<n; ++i)
+    q(i,i) += 1;
 
   latticetypes::CoeffList factor;
-  latticetypes::LatticeMatrix b = matreduc::Smith_basis(q,factor);
+  latticetypes::LatticeMatrix b = matreduc::adapted_basis(q,factor);
 
-  size_t r=n;
-  while (r>0)
-    if (factor[r-1]==0)
-      --r;
-    else break;
+  size_t r=factor.size();
 
   // copy significant part of basis in pb
   pb.reserve(r);
-
   for (size_t j=0; j<r; ++j)
     pb.push_back(b.column(j));
 
