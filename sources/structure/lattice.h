@@ -29,7 +29,15 @@ template<typename I, typename O>
 template<typename I, typename O>
   void inverseBaseChange(I, I, O, I, I);
 
+// find basis in dual lattice of perpendicular to given vectors
 latticetypes::WeightList perp(const latticetypes::WeightList&, size_t);
+
+// find matrix whose image is the sublattice annihilated by |M|
+latticetypes::LatticeMatrix kernel(const latticetypes::LatticeMatrix& M);
+
+latticetypes::LatticeMatrix eigen_lattice
+  (latticetypes::LatticeMatrix M, // by value
+   latticetypes::LatticeCoeff lambda);
 
 } // |namespace lattice|
 
