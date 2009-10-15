@@ -348,7 +348,7 @@ matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
 			      std::vector<C>& diagonal)
 {
   matrix::Matrix<C> result = adapted_basis(M,diagonal);
-  size_t start=0, stop=diagonal.size()-1, new_stop=stop;
+  size_t start=0, stop=diagonal.size()>0 ? diagonal.size()-1 : 0, new_stop=stop;
   while (start<stop)
   {
     size_t new_start=new_stop; // if unchanged, this will be last of |while|
