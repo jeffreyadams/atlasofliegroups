@@ -23,8 +23,6 @@
 #include <stdexcept>
 
 #include "lietype.h"
-#include "smithnormal.h"
-
 
 namespace atlas {
 
