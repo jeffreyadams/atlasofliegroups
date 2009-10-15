@@ -222,15 +222,15 @@ size_t LieType::semisimple_rank() const
 }
 
 /*
-  This function constructs a "blockwise Smith normal" basis for the root
+  This function constructs a "blockwise adapted" basis for the root
   lattice inside the weight lattice (i.e., it does just that for each
   simple factor, and returns the canonical basis for the torus factors.)
 
-  The purpose of doing this blockwise instead of globally is to permit a
-  better reading of the quotient group: this will be presented as a sequence
-  of factors, corresponding to each simple block.
+  The purpose of doing this blockwise instead of finding a global Smuth normal
+  basis is to permit a better reading of the quotient group: this will be
+  presented as a sequence of factors, corresponding to each simple block.
 
-  In fact, |matreduc::Smith_basis| applied to a block matrix like the full
+  In fact, |matreduc::adapted_basis| applied to a block matrix like the full
   Cartan matrix would return a similar block result, since it does not try to
   get to the true Smith normal form (which might involve combining invariant
   factors). It is clearer and more efficient though to do this blockwise.
@@ -242,7 +242,7 @@ LieType::Smith_basis(latticetypes::CoeffList& invf) const
   size_t R=rank();
   latticetypes::WeightList result(R,latticetypes::Weight(R,0));
 
-  // Smith-normalize for each simple factor
+  // get adapted basis for each simple factor
   size_t s=0; //offset
   for (const_iterator it=begin(); it!=end(); ++it)
   {
@@ -258,7 +258,7 @@ LieType::Smith_basis(latticetypes::CoeffList& invf) const
     {
       latticetypes::LatticeMatrix tC=it->transpose_Cartan_matrix();
       latticetypes::CoeffList new_invf;
-      latticetypes::LatticeMatrix Sb = matreduc::Smith_basis(tC,new_invf);
+      latticetypes::LatticeMatrix Sb = matreduc::adapted_basis(tC,new_invf);
 
       //make a small adjustment for types $D_{2n}$
       if (it->type() == 'D' and it->rank()%2 == 0)
