@@ -4423,16 +4423,21 @@ void echelon_wrapper(expression_base::level l)
   }
 }
 
-@ And here is a general ``diagonalise'' function, rather similar to Smith
-normal form, but without divisibility guarantee on diagonal entries.
+@ And here are general functions |diagonalise| and |adapted_basis|, rather
+similar to Smith normal form, but without divisibility guarantee on diagonal
+entries. While |diagonalise| provides the matrices applied on the left and
+right to obtain diagonal form, |adapted_basis| gives only the left factor (row
+operations applied) and gives it inverted, so that this matrix
+right-multiplied by the diagonal matrix has the same image as the original
+matrix.
 
 @<Local function definitions @>=
 void diagonalise_wrapper(expression_base::level l)
 { shared_matrix M=get<matrix_value>();
-  matrix_ptr row(new matrix_value(matrix::Matrix<int>())),
-             column(new matrix_value(matrix::Matrix<int>()));
   if (l!=expression_base::no_value)
-  { vector_ptr diagonal(
+  { matrix_ptr row(new matrix_value(matrix::Matrix<int>())),
+            column(new matrix_value(matrix::Matrix<int>()));
+    vector_ptr diagonal(
        new vector_value(matreduc::diagonalise(M->val,row->val,column->val)));
     push_value(diagonal);
     push_value(row);
@@ -4441,23 +4446,31 @@ void diagonalise_wrapper(expression_base::level l)
       wrap_tuple(3);
   }
 }
+@)
+void adapted_basis_wrapper(expression_base::level l)
+{ shared_matrix M=get<matrix_value>();
+  if (l!=expression_base::no_value)
+  { vector_ptr diagonal(new vector_value(std::vector<int>()));
+    matrix_ptr basis
+      (new matrix_value(matreduc::adapted_basis(M->val,diagonal->val)));
+    push_value(basis);
+    push_value(diagonal);
+    if (l==expression_base::single_value)
+      wrap_tuple(2);
+  }
+}
 
 @ As a last example, here is the Smith normal form algorithm. We provide both
 the invariant factors and the rewritten basis on which the normal for is
-assumed, as separate functions, and to illustrate the possibilities of tuples,
-the two combined into a single function.
-
-@h "smithnormal.h"
+assumed, as separate functions, and the two combined into a single function.
 
 @< Local function definitions @>=
 void invfact_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  size_t nr=m->val.numRows();
-  std::vector<matrix::Vector<int> > b; @+ matrix::initBasis(b,nr);
-  vector_ptr inv_factors (new vector_value(matrix::Vector<int>(0)));
-  smithnormal::smithNormal(inv_factors->val,b.begin(),m->val);
+  vector_ptr inv_factors (new vector_value(std::vector<int>()));
+@/matreduc::Smith_basis(m->val,inv_factors->val);
   push_value(inv_factors);
 }
 @)
@@ -4465,19 +4478,15 @@ void Smith_basis_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  size_t nr=m->val.numRows();
-  std::vector<matrix::Vector<int> > b; @+ matrix::initBasis(b,nr);
-  matrix::Vector<int> inv_factors;
-  smithnormal::smithNormal(inv_factors,b.begin(),m->val);
-  push_value(new matrix_value(matrix::Matrix<int>(b,nr)));
+  vector_ptr inv_factors (new vector_value(std::vector<int>()));
+@/push_value(new matrix_value(matreduc::Smith_basis(m->val,inv_factors->val)));
 }
 @)
-
 void Smith_wrapper(expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   if (l==expression_base::no_value)
     return;
-  vector_ptr inv_factors (new vector_value(matrix::Vector<int>()));
+  vector_ptr inv_factors (new vector_value(std::vector<int>()));
 @/push_value(new matrix_value(matreduc::Smith_basis(m->val,inv_factors->val)));
   push_value(inv_factors);
   if (l==expression_base::single_value)
@@ -4569,6 +4578,7 @@ install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
 install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
 install_function(echelon_wrapper,"echelon","(mat->mat,[int])");
 install_function(diagonalise_wrapper,"diagonalise","(mat->vec,mat,mat)");
+install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
 install_function(invfact_wrapper,"inv_fact","(mat->vec)");
 install_function(Smith_basis_wrapper,"Smith_basis","(mat->mat)");
 install_function(Smith_wrapper,"Smith","(mat->mat,vec)");
