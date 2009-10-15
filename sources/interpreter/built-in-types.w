@@ -385,25 +385,22 @@ The function |annihilator_modulo| takes as argument an $m\times{n}$
 matrix~$M$, and an integer |d|. It returns a $m\times{m}$ matrix~|A| whose
 columns span the full rank sub-lattice of $\Z^m$ of vectors $v$ such that
 $v^t\cdot{M}\in d\,\Z^n$. The fact that $d$ is called |denominator| below
-comes from the alternative interpretation that the transpose
-of~$A$ times the rational matrix $M/d$ gives an integral matrix as result.
+comes from the alternative interpretation that the transpose of~$A$ times the
+rational matrix $M/d$ gives an integral matrix as result.
 
-The algorithm is quite simple. After finding a matrix~|A| describing the Smith
-basis~$(b_j)_{j\in[m]}$ for the lattice spanned by the columns of~|M|, and
-invariant factors~$(\lambda_j)_{j\in[r]}$ (where $r=\rk{M}$, and $[r]$
-abbreviates $\{0,\ldots,r-1\}$), we compute the dual basis $(b^*_j)_{j\in[m]}$
-as the columns of the transpose inverse matrix of~|A|. Then we know that
-$b^*_j$ applied to any column of~$M$ lies in $\lambda_j\Z$ (with $\lambda_j=0$
-for $j\geq{r}$; these coordinate functions vanish on the sub-lattice spanned
-by those columns), and our result is obtained by multiplying $b^*_j$
-with~$j\in[r]$ by the complementary factor
-$\lcm(d,\lambda_j)/\lambda_j=d/\gcd(d,\lambda_j)$.
+The algorithm is quite simple. After finding invertible matrices |row|, |col|
+such that $row*M*col$ is diagonal with non-zero diagonal entries given in
+$\lambda$ (and any zero diagonal entries trailing those), we know that any row
+of |row| with factor $\lambda_i$ is a linear form sending the image of $M$ to
+$\lambda_i\Z$, while any remaining row of |row| annihilates the image
+altogether. Then all that is needed it to multiply rows of~|row| of the first
+kind by $d/\gcd(d,\lambda_i)$ and transpose the result.
 
 @h "arithmetic.h"
 @h "lattice.h"
 @h "latticetypes.h"
 @h "matrix.h"
-@h "smithnormal.h"
+@h "matreduc.h"
 
 @< Local function definitions @>=
 latticetypes::LatticeMatrix @|
@@ -411,24 +408,14 @@ annihilator_modulo
 (const latticetypes::LatticeMatrix& M,
  latticetypes::LatticeCoeff denominator)
 
-{ const size_t m=M.numRows(); // determines dimension of output
+{ latticetypes::LatticeMatrix row,col;
+  latticetypes::CoeffList lambda = matreduc::diagonalise(M,row,col);
 
-  latticetypes::WeightList b; matrix::initBasis(b,m);
-    // standard basis of rank $m$
-
-  latticetypes::CoeffList lambda; // invariant factors; in fact non-negative
-  smithnormal::smithNormal(lambda,b.begin(),M);
-    // find Smith basis
-
-  latticetypes::LatticeMatrix A
-    (latticetypes::LatticeMatrix(b,m).inverse().transposed());
-
-  for (size_t j = 0; j < lambda.size(); ++j)
-  { unsigned long c =
-      denominator/arithmetic::gcd(denominator,(unsigned long)(lambda[j]));
-    for (size_t i=0; i<m; ++i) A(i,j)*=c; // multiply column |j| by |c|
+  for (size_t i=0; i<lambda.size(); ++i)
+  @/{@; unsigned long c = arithmetic::div_gcd(denominator,lambda[i]);
+    row.rowMultiply(i,c);
   }
-  return A;
+  return row.transposed();
 }
 
 @ The wrapper function is particularly simple.
@@ -1514,13 +1501,13 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 @< Add type letters and inner class symbols for the central torus @>=
 { for (size_t k=0; k<r-s; ++k)
     type.push_back(lietype::SimpleLieType('T',1));
-  latticetypes::WeightList b; matrix::initBasis(b,r);
-  latticetypes::LatticeMatrix simple_roots
+  latticetypes::LatticeMatrix root_lattice
     (rd.beginSimpleRoot(),rd.endSimpleRoot(),r,tags::IteratorTag());
-@/latticetypes::CoeffList ivf;
-  smithnormal::smithNormal(ivf,b.begin(),simple_roots);
-@/latticetypes::LatticeMatrix M_Smith = M.on_basis(b);
-  latticetypes::LatticeMatrix inv = M_Smith.block(s,s,r,r);
+@/latticetypes::CoeffList factor; // values will be unused
+  latticetypes::LatticeMatrix basis =
+     matreduc::adapted_basis(root_lattice,factor);
+@/latticetypes::LatticeMatrix inv =
+     basis.inverse().block(s,0,r,r)*M*basis.block(0,s,r,r);
     // involution on quotient by root lattice
   std::pair<size_t,size_t> cl=classify_involution(inv);
 @/size_t& compact_rank=cl.first;
