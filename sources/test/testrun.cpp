@@ -10,7 +10,7 @@
 #include "testrun.h"
 
 #include "arithmetic.h"
-#include "smithnormal.h"
+#include "matreduc.h"
 #include "tags.h"
 
 /*****************************************************************************
@@ -352,20 +352,23 @@ CoveringIterator::CoveringIterator(const lietype::LieType& lt)
   , d_subgroup()
   , d_torusPart()
   , d_done(false)
-  , d_smithBasis()
+  , d_smithBasis(d_semisimpleRank)
   , d_preRootDatum()
 {
-  latticetypes::LatticeMatrix c=lt.transpose_Cartan_matrix();
-  latticetypes::CoeffList invf;
+  latticetypes::CoeffList factor;
+  latticetypes::LatticeMatrix Smith = // true Smith form needed here
+    matreduc::Smith_basis(lt.transpose_Cartan_matrix(),factor);
 
-  matrix::initBasis(d_smithBasis,c.numColumns());
-  smithnormal::smithNormal(invf,d_smithBasis.begin(),c);
+  assert(factor.size()==d_semisimpleRank); // no zero factors to be dropped
 
   abelian::GroupType gt;
 
-  for (size_t j = 0; j < invf.size(); ++j)
-    if (invf[j] > 1)
-      gt.push_back(invf[j]);
+  for (size_t j=0; j<factor.size(); ++j)
+  {
+    d_smithBasis[j] = Smith.column(j);
+    if (factor[j]>1)
+      gt.push_back(factor[j]);
+  }
 
   d_dcenter = new abelian::FiniteAbelianGroup(gt);
   d_subgroup = SubgroupIterator(*d_dcenter);
