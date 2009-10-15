@@ -44,7 +44,7 @@
 #include "lattice.h"
 #include "partition.h"
 #include "prerootdata.h"
-#include "smithnormal.h"
+#include "matreduc.h"
 #include "tags.h"
 
 /*****************************************************************************
@@ -569,8 +569,8 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   , Cartan_denom()
   , d_status()
 {
-  latticetypes::LatticeMatrix root_mat(prd.roots(),d_rank);
-  latticetypes::LatticeMatrix coroot_mat(prd.coroots(),d_rank);
+  latticetypes::LatticeMatrix root_mat(prd.roots(),d_rank); // simple roots
+  latticetypes::LatticeMatrix coroot_mat(prd.coroots(),d_rank); // simple too
   for (RootNbr alpha=numPosRoots(); alpha<numRoots(); ++alpha)
   {
     d_roots[alpha]= root_mat.apply(root_expr(alpha));
@@ -593,8 +593,8 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   // get basis of co-radical character lattice, if any (or leave empty list)
   if (semisimpleRank()<d_rank)
   {
-    d_coradicalBasis = lattice::perp(d_coroots,d_rank);
-    d_radicalBasis   = lattice::perp(d_roots,d_rank);
+    d_coradicalBasis = lattice::perp(prd.coroots(),d_rank);
+    d_radicalBasis   = lattice::perp(prd.roots(),d_rank);
   }
 
   // fill in the status
@@ -657,24 +657,21 @@ RootDatum::RootDatum(latticetypes::LatticeMatrix& projector,
 
   assert(kernel.numColumns()==d);
 
-  latticetypes::WeightList b; matrix::initBasis(b,r);
-  latticetypes::CoeffList invf;
-  smithnormal::smithNormal(invf,b.begin(),kernel);
+  latticetypes::LatticeMatrix row,col;
+  matreduc::diagonalise(kernel,row,col); // factors (|d| times 1) not needed
 
-  assert(invf.size()==d);
-
-  latticetypes::LatticeMatrix
-    new_basis(b.begin()+d,b.end(),r,tags::IteratorTag());
-  projector = latticetypes::LatticeMatrix(b,r).inverse().block(d,0,r,r);
+  projector = row.block(d,0,r,r); // annihilator of |kernel|, projects weights
+  latticetypes::LatticeMatrix section // will satisfy $projector*section=Id_d$;
+    = row.inverse().block(0,d,r,r); // transforms cocharacters by right-action
 
   for (RootNbr i=0; i<rd.numRoots(); ++i)
   {
     d_roots[i] = projector.apply(rd.d_roots[i]);
-    d_coroots[i] = new_basis.right_apply(rd.d_coroots[i]);
+    d_coroots[i] = section.right_apply(rd.d_coroots[i]);
   }
 
   d_2rho = projector.apply(rd.d_2rho);
-  d_dual_2rho = new_basis.right_apply(rd.d_dual_2rho);
+  d_dual_2rho = section.right_apply(rd.d_dual_2rho);
 
   fillStatus();
 }
@@ -806,42 +803,37 @@ void RootDatum::swap(RootDatum& other)
 
 /*!
 \brief Fills in the status of the rootdatum.
+
+  "IsAdjoint" indicates whether the center of the complex group determined by
+  the root datum is connected. This means that the root lattice is a saturated
+  sublattice of the weight lattice *X^*$. Dually "IsSimplyConnected" indicates
+  whether the derived group is simply connected, which means that the coroots
+  span a saturated sublattice of the cocharacter lattice $X_*$.
 */
 void RootDatum::fillStatus()
 {
   latticetypes::LatticeMatrix
     q(beginSimpleRoot(),endSimpleRoot(),rank(),tags::IteratorTag());
 
-  latticetypes::WeightList b;
-  latticetypes::CoeffList invf;
+  latticetypes::LatticeMatrix row,col; // their values remain unused
+  latticetypes::CoeffList factor = matreduc::diagonalise(q,row,col);
 
-  matrix::initBasis(b,d_rank);
-  smithnormal::smithNormal(invf,b.begin(),q);
+  d_status.set(IsAdjoint); // remains set only of all |factor|s are 1
 
-  d_status.set(IsAdjoint);
-
-  for (size_t i = 0; i < invf.size(); ++i)
-    if (invf[i] != 1)
-    {
+  for (size_t i=0; i<factor.size(); ++i)
+    if (factor[i] != 1)
       d_status.reset(IsAdjoint);
-      break;
-    }
 
-  latticetypes::LatticeMatrix
-    qd(beginSimpleCoroot(),endSimpleCoroot(),rank(),tags::IteratorTag());
+  q = latticetypes::LatticeMatrix
+     (beginSimpleCoroot(),endSimpleCoroot(),rank(),tags::IteratorTag());
 
-  matrix::initBasis(b,d_rank);
-  invf.clear();
-  smithnormal::smithNormal(invf,b.begin(),qd);
+  factor = matreduc::diagonalise(q,row,col);
 
-  d_status.set(IsSimplyConnected);
+  d_status.set(IsSimplyConnected); // remains set only of all |factor|s are 1
 
-  for (size_t i = 0; i < invf.size(); ++i)
-    if (invf[i] != 1)
-    {
+  for (size_t i=0; i<factor.size(); ++i)
+    if (factor[i] != 1)
       d_status.reset(IsSimplyConnected);
-      break;
-    }
 }
 
 } // namespace rootdata
