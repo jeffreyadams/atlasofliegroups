@@ -37,7 +37,7 @@
 #include "kltest.h"
 #include "standardrepk.h"
 #include "free_abelian.h"
-#include "smithnormal.h"
+#include "matreduc.h"
 #include "testrun.h"
 
 /*****************************************************************************
@@ -639,29 +639,37 @@ void mod_lattice_f()
   for (size_t j = 0; j<q.numRows(); ++j)
     q(j,j) -= 1;
 
-  latticetypes::WeightList bs; matrix::initBasis(bs,q.numRows());
-  latticetypes::CoeffList invf; smithnormal::smithNormal(invf,bs.begin(),q);
+  latticetypes::CoeffList factor;
+  latticetypes::LatticeMatrix b = matreduc::adapted_basis(q,factor);
 
-   size_t l = invf.size();
-   size_t f=0; while (f<l and invf[f]==1) ++f; // skip invariant factors 1
+  bitset::RankFlags units, doubles;
+  unsigned n1=0,n2=0;
+
+  for (size_t i=0; i<factor.size(); ++i)
+    if (factor[i]==1)
+      units.set(i),++n1;
+    else if (factor[i]==2)
+      doubles.set(i),++n2;
 
    std::cout << "At Cartan class " << cn;
-   if (l==0)
+   if (n1+n2==0)
      std::cout << " weights are used unchanged";
    else
    {
      std::cout << " weights are modulo";
-     if (f>0)
+     if (n1>0)
      {
        std::cout << " multiples of ";
-       basic_io::seqPrint(std::cout,&bs[0],&bs[f],", ", "", "");
-       if (f<l)
+       for (bitset::RankFlags::iterator it=units.begin(); it(); ++it,--n1)
+	 std::cout << b.column(*it) << (n1>2 ? ", " : n1>1 ? ", and " : "");
+       if (n2>0)
 	 std::cout << " and";
      }
-     if (f<l)
+     if (n2>0)
      {
        std::cout << " even multiples of ";
-       basic_io::seqPrint(std::cout,&bs[f],&bs[l],", ", "", "");
+       for (bitset::RankFlags::iterator it=doubles.begin(); it(); ++it,--n2)
+	 std::cout << b.column(*it) << (n2>2 ? ", " : n2>1 ? ", and " : "");
      }
    }
    std::cout << ".\n";
