@@ -24,7 +24,7 @@ StandardRepK and KhatContext.
 #include "descents.h"
 #include "lattice.h"
 #include "rootdata.h"
-#include "smithnormal.h"
+#include "matreduc.h"
 #include "intutils.h"
 #include "tori.h"
 #include "basic_io.h"
@@ -178,39 +178,41 @@ KhatContext::KhatContext
 
     // put in $q$ the matrix of $\theta-1$
     latticetypes::LatticeMatrix q=theta;
-    for (size_t j = 0; j < n; ++j)
-      q(j,j) -= 1;
+    for (size_t i=0; i<n; ++i)
+      q(i,i) -= 1;
 
-    // find Smith basis relative to $q$
-    latticetypes::WeightList bs; matrix::initBasis(bs,n);
-    latticetypes::CoeffList invf; smithnormal::smithNormal(invf,bs.begin(),q);
-
-    latticetypes::LatticeMatrix basis(bs,n); // only used in next line
+    // find basis adapted to image of $\theta-1$
+    latticetypes::CoeffList factor;
+    latticetypes::LatticeMatrix basis = matreduc::adapted_basis(q,factor);
     latticetypes::LatticeMatrix inv_basis=basis.inverse();
 
-    size_t l = invf.size();
-    size_t f=0; while (f<l and invf[f]==1) ++f; // ignore invariant factors 1
+    size_t twos=0,l=factor.size();
+    bitset::RankFlags torsion;
 
-    // get columns [f,l) of |basis| to |torsionLift|
-    // and corresponding columns of |inv_basis| to |torsionProjector|, mod 2
-    ci.torsionProjector.resize(l-f,n);
-    for (size_t i=f; i<l; ++i)
+    for (size_t i=0; i<l; ++i)
+      if (factor[i]>1)
+      {
+	assert(factor[i]==2);
+	torsion.set(i);
+	++twos;
+      }
+
+    // get torsion columns of |basis| to |torsionLift|
+    // and rows of |inv_basis| to |torsionProjector|, mod 2
+    ci.torsionLift.reserve(twos);
+    ci.torsionProjector.resize(twos,n);
+    size_t i=0;
+    for (bitset::RankFlags::iterator it=torsion.begin(); it(); ++it,++i)
     {
-      assert(invf[i]==2); // other invariant factors must be 2
-
-      ci.torsionLift.push_back(bs[i]);
+      ci.torsionLift.push_back(basis.column(*it));
 
       for (size_t j=0; j<n; ++j)
-	ci.torsionProjector.set_mod2(i-f,j,inv_basis(i,j));
+	ci.torsionProjector.set_mod2(i,j,inv_basis(*it,j));
     }
 
-    ci.freeLift= // take the final |n-l| basis vectors as columns
-      latticetypes::LatticeMatrix(&bs[l],&bs[n],n,tags::IteratorTag());
-
-    latticetypes::LatticeMatrix(n-l,n).swap(ci.freeProjector);
-
-    for (size_t i =l; i<n; ++i) // copy final rows from inverse
-      ci.freeProjector.set_row(i-l,inv_basis.row(i));
+    ci.freeLift= basis.block(0,l,n,n); // final |n-l| basis vectors
+    latticetypes::LatticeMatrix(inv_basis.block(l,0,n,n)) // final |n-l| rows
+      .swap(ci.freeProjector);
 
     ci.fiber_modulus=latticetypes::SmallSubspace
       (latticetypes::SmallBitVectorList(tori::minusBasis(theta.transposed())),
