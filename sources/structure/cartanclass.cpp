@@ -22,7 +22,6 @@
 #include "dynkin.h"
 #include "lietype.h"
 #include "rootdata.h"
-#include "smithnormal.h"
 #include "tori.h"
 #include "weyl.h"
 #include "weylsize.h"
