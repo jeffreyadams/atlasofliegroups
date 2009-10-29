@@ -618,16 +618,30 @@ public:
 /*
   We have split off in the following class functionality that involves an
   involutive diagram automorphism |delta|. While WeylElt values are assumed to
-  live just in the Weyl group W, this derived class implements operations that
+  live just in the Weyl group W, this class implements operations that
   are more naturally interprests them in $W semidirect Z/2Z$ (the second
   factor acting on the first via |delta|), namely in the non-identity coset
-  for $W$. This derived class is totally ignorant of the internal numbering
+  for $W$.
+
+  This class is not derived from |WeylGroup|, although many methods are just
+  handed over to an underlying |WeylGroup|. We assume the latter to be
+  constructed beforehand, and store a reference to it. For one thing, this
+  makes it possible for two |TwistedWeylGroup|s with different twists to share
+  the same |WeylGroup|; this is useful because the Weyl groups of a root datum
+  and its dual can be identified, but not their twists.
+
+  Having no privilege with respect to |WeylGroup|, we are totally ignorant of
+  its internal numbering.
 */
 class TwistedWeylGroup
 {
   const WeylGroup& W;  // non-owned reference
   const Twist d_twist; // cannot be reference, if dual is to be constructible
 
+  void operator=(const TwistedWeylGroup&); // forbid assignment
+ protected:
+ TwistedWeylGroup(const TwistedWeylGroup& g) // only derived classes may copy
+   : W(g.W), d_twist(g.d_twist) {}
 public:
   TwistedWeylGroup(const WeylGroup&, const Twist&);
 
@@ -653,6 +667,9 @@ public:
   WeylElt prod(const WeylWord& ww,const WeylElt& w) const
    { return W.prod(ww,w); }
 
+  bool hasDescent(Generator s, const WeylElt& w) const
+    { return W.hasDescent(s,w); }
+
   Generator twisted(Generator s) const { return d_twist[s]; }
   WeylElt twisted(const WeylElt& w) const { return W.translation(w,d_twist); }
 
@@ -663,30 +680,31 @@ public:
 
   /*!
      \brief Twisted conjugates element |tw| by the generator |s|:
-     \f$tw:=s.tw.\delta(s)\f$.
+     \f$tw:=s.tw.\delta(s)\f$. Returns length change in $\{-2,0,2\}$
    */
-  void twistedConjugate(TwistedInvolution& tw, Generator s) const
+  int twistedConjugate(TwistedInvolution& tw, Generator s) const
   {
     WeylElt& w=tw.contents();
-    W.leftMult(w,s);
-    W.mult(w,d_twist[s]);
+    int d = W.leftMult(w,s);
+    return d+W.mult(w,d_twist[s]);
   }
-  void twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
+  int twistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
   {
+    int d=0;
     for (size_t i=ww.size(); i-->0; )
-      twistedConjugate(tw,ww[i]);
+      d+=twistedConjugate(tw,ww[i]);
+    return d;
   }
-  void inverseTwistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
+  int inverseTwistedConjugate(TwistedInvolution& tw, const WeylWord& ww) const
   {
+    int d=0;
     for (size_t i=0; i<ww.size(); ++i )
-      twistedConjugate(tw,ww[i]);
+      d+=twistedConjugate(tw,ww[i]);
+    return d;
   }
 
-  TwistedInvolution twistedConjugated(const TwistedInvolution& tw, Generator s)
-    const
-  {
-    TwistedInvolution result=tw; twistedConjugate(result,s); return result;
-  }
+  TwistedInvolution twistedConjugated(TwistedInvolution tw, Generator s) const
+    { twistedConjugate(tw,s); return tw; }
 
   void twistedConjugacyClass(TwistedInvolutionList&, const TwistedInvolution&)
     const;
