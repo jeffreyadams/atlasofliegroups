@@ -53,9 +53,7 @@ namespace tits {
 namespace {
 
 std::vector<gradings::Grading> compute_square_classes
-  (const rootdata::RootDatum& rd,
-   const latticetypes::LatticeMatrix& delta,
-   const weyl::Twist& twist);
+  (const complexredgp::ComplexReductiveGroup& G);
 
 } // |namespace|
 
@@ -69,10 +67,32 @@ std::vector<gradings::Grading> compute_square_classes
 TorusElement::TorusElement(const latticetypes::RatWeight r)
   : repr(r.numerator()*2,r.denominator())
 { repr.normalize(); // maybe cancels the factor 2 in numerator from denominator
-  unsigned int d=2*repr.denominator(); // we reduce modulo 2\Z^rank
+  unsigned int d=2*repr.denominator(); // we reduce modulo $2\Z^rank$
   latticetypes::LatticeElt& num=repr.numerator();
-  for (size_t i=0; i<repr.size(); ++i)
+  for (size_t i=0; i<num.size(); ++i)
     num[i] = intutils::remainder(num[i],d);
+}
+
+TorusElement TorusElement::operator +(const TorusElement& t) const
+{
+  TorusElement result(repr + t.repr,0); // raw constructor
+  int d=2*result.repr.denominator(); // we shall reduce modulo $2\Z^rank$
+  latticetypes::LatticeElt& num=result.repr.numerator();
+  for (size_t i=0; i<num.size(); ++i)
+    if (num[i] >= d) // correct if |result.repr| in interval $[2,4)$
+      num[i] -=d;
+  return result;
+}
+
+TorusElement TorusElement::operator -(const TorusElement& t) const
+{
+  TorusElement result(repr - t.repr,0); // raw constructor
+  int d=2*result.repr.denominator(); // we shall  reduce modulo $2\Z^rank$
+  latticetypes::LatticeElt& num=result.repr.numerator();
+  for (size_t i=0; i<num.size(); ++i)
+    if (num[i]<0) // correct if |result.repr| in interval $(-2,0)$
+      num[i] +=d;
+  return result;
 }
 
 TorusElement& TorusElement::operator+=(TorusPart v)
@@ -88,19 +108,31 @@ TorusElement& TorusElement::operator+=(TorusPart v)
   return *this;
 }
 
-GlobalTitsGroup::GlobalTitsGroup
-  (const rootdata::RootDatum& rd,
-   const weyl::WeylGroup& W,
-   const latticetypes::LatticeMatrix& d,
-   const weyl::Twist& twist)
-    : weyl::TwistedWeylGroup(W,twist)
-    , root_datum(rd)
-    , alpha_v(rd.semisimpleRank()) // elements of size |rd.rank()| set below
-    , square_class_gen(compute_square_classes(rd,d,twist))
-    , theta_v(d.transposed())
+GlobalTitsGroup::GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G)
+  : weyl::TwistedWeylGroup(G.twistedWeylGroup())
+  , root_datum(G.rootDatum())
+  , alpha_v(G.semisimpleRank())
+  , square_class_gen(compute_square_classes(G))
+  , theta_v(G.distinguished().transposed())
 {
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
-    alpha_v[i]=latticetypes::SmallBitVector(rd.simpleCoroot(i));
+    alpha_v[i]=latticetypes::SmallBitVector(root_datum.simpleCoroot(i));
+}
+
+int // length change in $\{-1,0,+1\}$, half that of change for |x.tw()|
+GlobalTitsGroup::cross(weyl::Generator s, GlobalTitsElement& x) const
+{
+  bool c = x.t.negative_at(simple_root(s)); // compact xor ($\alpha_s$ complex)
+  int d=twistedConjugate(x.w,s); // $d$ is length change in $W$ of |tw|
+  if (c != (d==0)) // length change iff $\alpha_s$ complex; true <=> compact
+    add(alpha_v[s],x);
+  return d/2;
+}
+
+GlobalTitsElement GlobalTitsGroup::Cayley
+  (weyl::Generator s, GlobalTitsElement x) const
+{
+  leftMult(x.w,s); return x;
 }
 
 namespace {
@@ -109,7 +141,7 @@ namespace {
  The |square_class_gen| field of a |GlobalTitsGroup| contains a list of
  generators of gradings of the simple roots that generate the square classes,
  if translated into central |TorusElement| values by taking the combination
- $c$ of simple coweights selected by the grading, and then applying the map
+ $c$ of fund. coweights selected by the grading, and then applying the map
  $c\mapsto\exp(2\pi i c)$; the function |compute_square_classes| computes it.
  As representative torus element for the class one can take $t=\exp(\pi i c)$.
 
@@ -117,7 +149,7 @@ namespace {
  grading is that for the strong involution $t.\delta$ relative to the grading
  of $\delta$, which is just $v(t)=(-1)^{\<v,c>}$ at root vector $v$. But since
  $c$ must be $\delta$-stable to define a valid square of a strong involution,
- we certainly have $\<(1+\delta)v,c>\in2\Z$ for all root vectors $v$ and the
+ we certainly have $\<(1+\delta)v,c>\in2\Z$ for all root vectors $v$; thus the
  grading is trivial on the $1+\delta$-image of the root lattice, and it
  suffices to record the grading on the $\delta$-fixed simple roots.
 
@@ -133,16 +165,15 @@ namespace {
  not in the "support" of the subgroup (so that reduction would be trivial).
  */
 std::vector<gradings::Grading> compute_square_classes
-  (const rootdata::RootDatum& rd,
-   const latticetypes::LatticeMatrix& delta,
-   const weyl::Twist& twist)
+  (const complexredgp::ComplexReductiveGroup& G)
 {
+  const rootdata::RootDatum& rd = G.rootDatum();
+  const latticetypes::LatticeMatrix& delta = G.distinguished();
+  const weyl::Twist& twist = G.twistedWeylGroup().twist();
+
   size_t r= rd.rank();
   assert(delta.numRows()==r);
   assert(delta.numColumns()==r);
-
-  latticetypes::SmallBitVectorList l(tori::plusBasis(delta.transposed()));
-  latticetypes::SmallSubspace m(l,r); // mod subgroup, in $X_*$ coordinates
 
   latticetypes::LatticeMatrix roots(0,r);
   bitset::RankFlags fixed;
@@ -153,10 +184,12 @@ std::vector<gradings::Grading> compute_square_classes
       roots.add_row(rd.simpleRoot(i));
     }
 
-  latticetypes::BinaryMap to_grading(roots.transposed());
-  m.apply(to_grading); // convert to grading coordinates
+  latticetypes::BinaryMap A(lattice::eigen_lattice(delta.transposed(),1));
+  latticetypes::SmallSubspace Vplus(A); // mod subgroup, in $X_*$ coordinates
+  latticetypes::BinaryMap to_grading(roots);
+  Vplus.apply(to_grading); // convert to grading coordinates
 
-  bitset::RankFlags supp = m.support(); // pivot positions
+  bitset::RankFlags supp = Vplus.support(); // pivot positions
   supp.complement(roots.numRows()); // non-pivot positions among fixed ones
   supp.unslice(fixed);  // bring bits back to the simple-root positions
 
@@ -641,35 +674,30 @@ tits::TitsElt BasedTitsGroup::grading_seed
   return seed;  // result should be reduced immediatly by caller
 }
 
-/*!
- \brief Returns the grading offset for the base real form of the square class
- (coset in adjoint fiber group) |csc|; |f| and |rs| are corresponding values
+/*! \brief Returns the grading offset for the base real form of the square
+ class (coset in adjoint fiber group) |csc|; |fund| and |rs| are corresponding
+ values. |fund| must be a fundamental fiber, in order that restricting grading
+ to simple roots suffice to determine the real form, or even the square class
  */
 gradings::Grading
-square_class_grading_offset(const cartanclass::Fiber& f,
+square_class_grading_offset(const cartanclass::Fiber& fund,
 			    cartanclass::square_class csc,
 			    const rootdata::RootSystem& rs)
 {
-  rootdata::RootSet rset = f.compactRoots(f.class_base(csc));
-  return // restrict to simple roots, complement, and clear spurious bits
-    cartanclass::restrictGrading(rset,rs.simpleRootList()).complement(rs.rank());
+  rootdata::RootSet rset = fund.compactRoots(fund.class_base(csc));
+  return cartanclass::restrictGrading(rset,rs.simpleRootList())// restrict
+    .complement(rs.rank());// and complement with respec to to simple roots
 
 }
 
-EnrichedTitsGroup::EnrichedTitsGroup(const realredgp::RealReductiveGroup& GR,
-				     const cartanclass::Fiber& fund)
+EnrichedTitsGroup::EnrichedTitsGroup(const realredgp::RealReductiveGroup& GR)
   : BasedTitsGroup(GR.complexGroup(),
-		   square_class_grading_offset(fund,
+		   square_class_grading_offset(GR.complexGroup().fundamental(),
 					       GR.square_class(),
 					       GR.rootDatum()))
-  , srf(fund.strongRepresentative(GR.realForm()))
+  , srf(GR.complexGroup().fundamental().strongRepresentative(GR.realForm()))
 {}
 
-EnrichedTitsGroup EnrichedTitsGroup::for_square_class // quasi-constructor
-  (const realredgp::RealReductiveGroup& GR)
-{
-  return EnrichedTitsGroup(GR,GR.complexGroup().fundamental());
-}
 
 /* In this final and most elaborate seeding function, which is also the most
    reliable one, we stoop down to simulating the KGB construction back from
