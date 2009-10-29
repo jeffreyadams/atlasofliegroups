@@ -13,6 +13,7 @@
 #include <iosfwd>
 
 #include "kgb_fwd.h"
+#include "kgb.h"
 #include "bruhat_fwd.h"
 #include "complexredgp_fwd.h"
 
@@ -30,6 +31,8 @@ namespace kgb_io {
   std::ostream& print_sub_KGB(std::ostream& strm,
 			      const kgb::KGB& kgb,
 			      const kgb::KGBEltList& which);
+  std::ostream& print_X(std::ostream&, const kgb::global_KGB&);
+
   std::ostream& printBruhatOrder(std::ostream&, const bruhat::BruhatOrder&);
 
 }

@@ -93,7 +93,7 @@ std::ostream& print(std::ostream& strm,
     }
     strm << std::setw(pad) << "";
 
-    // print cayley transforms
+    // print Cayley transforms
     for (size_t s = 0; s < kgb.rank(); ++s) {
       kgb::KGBElt z = kgb.cayley(s,j);
       if (z != kgb::UndefKGB)
@@ -144,6 +144,65 @@ std::ostream& var_print_KGB(std::ostream& strm,
   return print(strm,kgb,&G,NULL);
 }
 
+
+std::ostream& print_X(std::ostream& strm, const kgb::global_KGB& kgb)
+{
+  {
+    tits::TorusElement
+      yrho(latticetypes::RatWeight(kgb.rootDatum().dual_twoRho(),4));
+
+    strm << "\\exp(i\\pi\\check\\rho) = \\exp(2i\\pi(" << yrho.as_rational()
+	 << "))" << std::endl;
+  }
+
+  size_t size = kgb.size();
+  // compute maximal width of entry
+  int width = ioutils::digits(size-1,10ul);
+  int cwidth = ioutils::digits(kgb.Cartan_class(size-1),10ul);
+  int lwidth = ioutils::digits(kgb.length(size-1),10ul);
+  const int pad = 2;
+
+  for (size_t i = 0; i<size; ++i)
+  {
+    strm << std::setw(width) << i << ":  ";
+
+    // print length
+    strm << std::setw(lwidth) << kgb.length(i);
+    strm << std::setw(pad) << "";
+
+    // print status
+    prettyprint::printStatus(strm,kgb.status(i),kgb.rank());
+    strm << ' ';
+
+    // print cross actions
+    for (size_t s = 0; s < kgb.rank(); ++s)
+      strm << std::setw(width+pad) << kgb.cross(s,i);
+    strm << std::setw(pad) << "";
+
+    // print Cayley transforms
+    for (size_t s = 0; s < kgb.rank(); ++s)
+    {
+      kgb::KGBElt C = kgb.cayley(s,i), iC1=kgb.inverseCayley(s,i).first;
+      strm << std::setw(width+pad);
+      if (C != kgb::UndefKGB) strm << C;
+      else if (iC1 != kgb::UndefKGB) strm << iC1;
+      else strm << '*';
+    }
+    strm << std::setw(pad) << "";
+
+    // print torus part
+    tits::TorusElement a=kgb.torus_part(i);
+    strm << a.as_rational() << ' ' <<
+      std::setw(cwidth) << kgb.Cartan_class(i) << std::setw(pad) << "";
+
+    // print root datum involution
+    prettyprint::printWeylElt(strm,kgb.involution(i),kgb.weylGroup());
+
+    strm << std::endl;
+  }
+
+  return strm;
+}
 
 
 // Print the Hasse diagram of the Bruhat ordering |bruhat| to |strm|.
