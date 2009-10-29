@@ -57,8 +57,11 @@ class RealReductiveGroup
   // the dependent RealReductiveGroup objects are invalidated
   complexredgp::ComplexReductiveGroup& d_complexGroup;
 
-  realform::RealForm d_realForm;
-  topology::Connectivity d_connectivity;
+  realform::RealForm d_realForm; // our identification number
+  topology::Connectivity d_connectivity; // characterss of componentn group
+
+  const tits::BasedTitsGroup d_Tg;
+
   Status d_status;
 
  public:
@@ -75,8 +78,8 @@ class RealReductiveGroup
   const rootdata::RootDatum& rootDatum() const
     { return d_complexGroup.rootDatum(); }
 
-  const tits::TitsGroup& titsGroup() const
-    { return d_complexGroup.titsGroup(); }
+  const tits::BasedTitsGroup& basedTitsGroup() const { return d_Tg; }
+  const tits::TitsGroup& titsGroup() const  { return d_Tg.titsGroup(); }
 
   const weyl::WeylGroup& weylGroup() const
     { return d_complexGroup.weylGroup(); }
