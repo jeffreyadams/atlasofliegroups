@@ -354,7 +354,7 @@ template<typename C>
   assert(v.size()==d_columns);
 
   ++d_rows;
-  d_data.resize(d_rows,d_columns);
+  d_data.resize(d_rows*d_columns,C(0));
 
   std::copy(v.begin(),v.end(),&d_data[(d_rows-1)*d_columns]);
 }
@@ -369,7 +369,7 @@ template<typename C>
 
   size_t old_col=d_columns;
   ++d_columns;
-  d_data.resize(d_rows,d_columns);
+  d_data.resize(d_rows*d_columns,C(0));
 
   typename Vector<C>::iterator dst=d_data.end(),src=dst-d_rows;
   for (size_t i=d_rows; i-->0;)
