@@ -31,20 +31,6 @@ namespace atlas {
    However, for |typedef| types, we need the namespace of the definiens
 */
 
-namespace bitset {
-template<size_t d>
-  std::ostream& operator<< (std::ostream&, const BitSet<d>&);
-}
-
-namespace bitvector {
-template<size_t dim>
-  std::ostream& operator<< (std::ostream&, const BitVector<dim>&);
-}
-
-namespace matrix { // since |latticetypes::LatticeElt| = |matrix::Vector<int>|
-  std::ostream& operator<< (std::ostream&, const latticetypes::LatticeElt&);
-}
-
 namespace lietype {
   std::ostream& operator<< (std::ostream& strm, const SimpleLieType& slt);
   std::ostream& operator<< (std::ostream&, const LieType&);
@@ -53,6 +39,24 @@ namespace lietype {
 
 namespace weyl {
   std::ostream& operator<< (std::ostream&, const WeylWord&);
+}
+
+namespace matrix { // since |latticetypes::LatticeElt| = |matrix::Vector<int>|
+  std::ostream& operator<< (std::ostream&, const latticetypes::LatticeElt&);
+}
+
+namespace latticetypes {
+  std::ostream& operator<< (std::ostream&, const latticetypes::RatLatticeElt&);
+}
+
+namespace bitset {
+template<size_t d>
+  std::ostream& operator<< (std::ostream&, const BitSet<d>&);
+}
+
+namespace bitvector {
+template<size_t dim>
+  std::ostream& operator<< (std::ostream&, const BitVector<dim>&);
 }
 
 namespace basic_io {

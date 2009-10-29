@@ -26,22 +26,6 @@
 namespace atlas {
 
 
-/*
-  Synopsis: output of a lattice element.
-
-  Uses the template seqPrint. It is output as a bracket-enclosed,
-  comma-separated list.
-*/
-
-
-namespace matrix { // since |latticetypes::LatticeElt| = |matrix::Vector<int>|
-
-std::ostream& operator<< (std::ostream& strm, const latticetypes::LatticeElt& v)
-{
-  return basic_io::seqPrint(strm, v.begin(), v.end(), ",", "[", "]");
-}
-
-} // |namespace latticetypes|
 
 namespace lietype {
 
@@ -91,6 +75,31 @@ namespace weyl {
 }
 
 } // |namespace weyl|
+
+
+namespace matrix { // since |latticetypes::LatticeElt| = |matrix::Vector<int>|
+
+/*
+  Synopsis: output of a lattice element.
+
+  Using |seqPrint| it is output as a bracket-enclosed, comma-separated list.
+*/
+
+std::ostream& operator<< (std::ostream& strm, const latticetypes::LatticeElt& v)
+{
+  return basic_io::seqPrint(strm, v.begin(), v.end(), ",", "[", "]");
+}
+
+} // |namespace matrix|
+
+namespace latticetypes {
+
+  std::ostream& operator<< (std::ostream& strm,
+			    const latticetypes::RatLatticeElt& w)
+  { return strm << w.numerator() << '/' << w.denominator(); }
+
+} // |namespace latticetypes|
+
 
 
 namespace basic_io {
