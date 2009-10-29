@@ -290,7 +290,11 @@ Fiber& Fiber::operator= (const Fiber& other)
 
   Explanation: the value returned is the subquotient $V_+ + V_-/V_+$ as
   constructed by |tori::dualPi0|, but for the negative transpose of our
-  involution. Note that only the involution is used, not the root datum.
+  involution. So the group is actually isomorphic to the +1 eigenspace of the
+  transpose involution $\tau$, modulo the image of $(1+\tau)$, and also to the
+  component group of the $-\tau$ fixed points subgroup of the Cartan $H$
+
+  Note that only the involution is used, not the root datum.
 */
 latticetypes::SmallSubquotient Fiber::makeFiberGroup() const
 {

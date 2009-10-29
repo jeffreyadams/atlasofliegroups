@@ -761,7 +761,7 @@ public:
   describe W^C.
 
   Write RC (standing for "complex roots") for the roots orthogonal to
-  (a) the sum of positive real roots, and also (b) the sum of positive
+  (a) the sum of positive real roots, and also to (b) the sum of positive
   imaginary roots. It turns out that RC as a root system is the direct
   sum of two isomorphic root systems RC_0 and RC_1 interchanged by
   tau. (There is no canonical choice of this decomposition.) The group
@@ -822,6 +822,7 @@ public:
 private:
   rootdata::RootList makeSimpleComplex(const rootdata::RootDatum&) const;
 
+  // number of conjugate twisted involutions (|rs| is our root system)
   size::Size orbit_size(const rootdata::RootSystem& rs) const;
 
 }; // class CartanClass
