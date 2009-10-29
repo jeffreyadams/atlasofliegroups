@@ -142,38 +142,29 @@ void SR_rewrites::equate (seq_no n, const combination& rhs)
 
 namespace standardrepk {
 
-  // for now we only construct a KhatContext from a KGB structure
-
-KhatContext::KhatContext
-  (realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
-  : d_G(&GR.complexGroup())
-  , d_KGB(kgb)
-  , d_realForm(GR.realForm())
-  , d_Tg(tits::EnrichedTitsGroup::for_square_class(GR))
-  , d_data(d_G->numCartanClasses())
+SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
+  : G(GR.complexGroup())
+  , Tg(GR.basedTitsGroup())
+  , Cartan_set(GR.Cartan_set())
+  , C_info(G.numCartanClasses())
   , simple_reflection_mod_2()
-  , nonfinal_pool(),final_pool()
-  , nonfinals(nonfinal_pool), finals(final_pool)
-  , height_of()
-  , height_graded(height_of)
-  , d_rules()
-  , proj_pool(), proj_sets(proj_pool), proj_data()
 {
   const rootdata::RootDatum& rd=rootDatum();
-  simple_reflection_mod_2.reserve(d_G->semisimpleRank());
-  for (size_t i=0; i<d_G->semisimpleRank(); ++i)
+  simple_reflection_mod_2.reserve(G.semisimpleRank());
+  for (size_t i=0; i<G.semisimpleRank(); ++i)
     simple_reflection_mod_2.push_back
       (latticetypes::BinaryMap(rd.simple_reflection(i).transposed()));
 
   size_t n = rootDatum().rank();
 
-  // the following loop should be restricted to the Cartan classes for |GR|
-  for (size_t r=0; r<d_data.size(); ++r)
+  size_t nr=0;
+  for (bitmap::BitMap::iterator it=Cartan_set.begin(); it(); ++it,++nr)
   {
-    // d_G->cartan[r] is (canonical involution for) rth CartanClass
-    Cartan_info& ci=d_data[r];
 
-    const latticetypes::LatticeMatrix& theta = d_G->cartan(r).involution();
+    // d_G.cartan[i] is (canonical involution for) (*it)th CartanClass
+    Cartan_info& ci=C_info[nr];
+
+    const latticetypes::LatticeMatrix& theta = G.cartan(*it).involution();
 
 
     // put in $q$ the matrix of $\theta-1$
@@ -217,15 +208,14 @@ KhatContext::KhatContext
     ci.fiber_modulus=latticetypes::SmallSubspace
       (latticetypes::SmallBitVectorList(tori::minusBasis(theta.transposed())),
        n);
-  }
+  } // |for (it)|
 }
 
-/******** accessors *******************************************************/
 
-HCParam KhatContext::project
+HCParam SRK_context::project
   (size_t cn, latticetypes::Weight lambda) const
 {
-  const Cartan_info& ci=d_data[cn];
+  const Cartan_info& ci=info(cn);
 
   (lambda -= rootDatum().twoRho()) /= 2; // final division is exact
 
@@ -235,9 +225,9 @@ HCParam KhatContext::project
      );
 }
 
-latticetypes::Weight KhatContext::lift(size_t cn, HCParam p) const
+latticetypes::Weight SRK_context::lift(size_t cn, HCParam p) const
 {
-  const Cartan_info& ci=d_data[cn];
+  const Cartan_info& ci=info(cn);
   latticetypes::Weight result=ci.freeLift.apply(p.first); // lift free part
 
   latticetypes::WeightList torsion_lift=ci.torsionLift;
@@ -249,26 +239,26 @@ latticetypes::Weight KhatContext::lift(size_t cn, HCParam p) const
   return result;
 }
 
-StandardRepK KhatContext::std_rep
+StandardRepK SRK_context::std_rep
   (const latticetypes::Weight& two_lambda, tits::TitsElt a) const
 {
   weyl::TwistedInvolution sigma=a.tw();
-  weyl::WeylElt w = d_G->canonicalize(sigma);
+  weyl::WeylElt w = complexGroup().canonicalize(sigma);
   // now |sigma| is canonical and |w| conjugates |sigma| to |a.tw()|
 
-  const weyl::WeylGroup& W=d_G->weylGroup();
+  const weyl::WeylGroup& W=weylGroup();
 
-  // conjugate towards canonical element
-  d_Tg.basedTwistedConjugate(a,W.word(w)); // left-to-right, inverse conjugation
+  // conjugate towards canonical element (left-right, for inverse conjugation)
+  basedTitsGroup().basedTwistedConjugate(a,W.word(w));
 
   assert(a.tw()==sigma); // we should now be at canonical twisted involution
 
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight mu=W.imageByInverse(rd,w,two_lambda);
 
-  size_t cn = d_G->class_number(sigma);
+  size_t cn = complexGroup().class_number(sigma);
   StandardRepK result(cn,
-		      d_data[cn].fiber_modulus.mod_image
+		      info(cn).fiber_modulus.mod_image
 		        (titsGroup().left_torus_part(a)),
 		      project(cn,mu));
 
@@ -278,23 +268,23 @@ StandardRepK KhatContext::std_rep
 // the following is a variant of |std_rep_rho_plus| intended for |KGB_sum|
 // it should only transform the parameters for the Levi factor given by |gens|
 // since |lambda| is $\rho$-centered, care should be taken in transforming it
-RawRep KhatContext::Levi_rep
+RawRep SRK_context::Levi_rep
     (latticetypes::Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
   const
 {
   weyl::TwistedInvolution sigma=a.tw();
-  weyl::WeylElt w = d_G->canonicalize(sigma,gens);
+  weyl::WeylElt w = complexGroup().canonicalize(sigma,gens);
   // now |sigma| is canonical for |gens|, and |w| conjugates it to |a.tw()|
 
   const rootdata::RootDatum& rd=rootDatum();
 
   // conjugate towards canonical element
   {
-    weyl::WeylWord ww=d_G->weylGroup().word(w);
+    weyl::WeylWord ww=weylGroup().word(w);
     for (size_t i=0; i<ww.size(); ++i) // left-to-right for inverse conjugation
     {
       assert(gens.test(ww[i])); // check that we only used elements in $W(L)$
-      d_Tg.basedTwistedConjugate(a,ww[i]);
+      basedTitsGroup().basedTwistedConjugate(a,ww[i]);
       rd.simpleReflect(lambda,ww[i]);
       lambda-=rd.simpleRoot(ww[i]); // make affine reflection fixing $-\rho$
     }
@@ -304,7 +294,7 @@ RawRep KhatContext::Levi_rep
   return RawRep (lambda,a);
 } // |Levi_rep|
 
-bool KhatContext::isStandard(const StandardRepK& sr, size_t& witness) const
+bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight lambda=lift(sr);
@@ -319,7 +309,7 @@ bool KhatContext::isStandard(const StandardRepK& sr, size_t& witness) const
   return true;
 }
 
-bool KhatContext::isZero(const StandardRepK& sr, size_t& witness) const
+bool SRK_context::isZero(const StandardRepK& sr, size_t& witness) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight lambda=lift(sr);
@@ -327,7 +317,7 @@ bool KhatContext::isZero(const StandardRepK& sr, size_t& witness) const
   tits::TitsElt a=titsElt(sr);
 
   for (size_t i=0; i<f.imaginaryRank(); ++i)
-    if (not d_Tg.grading(a,f.simpleImaginary(i)) // i.e., compact
+    if (not basedTitsGroup().grading(a,f.simpleImaginary(i)) // i.e., compact
 	and lambda.scalarProduct(rd.coroot(f.simpleImaginary(i)))==0)
     {
       witness=i; return true;
@@ -336,7 +326,7 @@ bool KhatContext::isZero(const StandardRepK& sr, size_t& witness) const
   return false;
 }
 
-bool KhatContext::isFinal(const StandardRepK& sr, size_t& witness) const
+bool SRK_context::isFinal(const StandardRepK& sr, size_t& witness) const
 {
   const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight lambda=lift(sr);
@@ -353,7 +343,7 @@ bool KhatContext::isFinal(const StandardRepK& sr, size_t& witness) const
 }
 
 
-std::ostream& KhatContext::print(std::ostream& strm,const StandardRepK& sr)
+std::ostream& SRK_context::print(std::ostream& strm,const StandardRepK& sr)
   const
 {
   prettyprint::printVector(strm,lift(sr)) << '@';
@@ -361,7 +351,7 @@ std::ostream& KhatContext::print(std::ostream& strm,const StandardRepK& sr)
   return strm;
 }
 
-std::ostream& KhatContext::print(std::ostream& strm,const Char& ch) const
+std::ostream& SRK_context::print(std::ostream& strm,const Char& ch) const
 {
   if (ch.empty())
     return strm << '0';
@@ -375,6 +365,42 @@ std::ostream& KhatContext::print(std::ostream& strm,const Char& ch) const
   }
   return strm;
 }
+
+level
+SRK_context::height(const StandardRepK& sr) const
+{
+  const rootdata::RootDatum& rd=rootDatum();
+  const latticetypes::Weight mu=theta_lift(sr);
+
+  level sum=0;
+  for (rootdata::WRootIterator
+	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
+    sum +=intutils::abs(mu.scalarProduct(*it));
+
+  return sum/2; // each |scalarProduct| above is even (in doubled coordinates)
+}
+
+
+/*
+ *
+ *
+ *           |KhatContext|
+ */
+
+KhatContext::KhatContext
+  (realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
+    : SRK_context(GR)
+    , d_KGB(kgb)
+    , nonfinal_pool(),final_pool()
+    , nonfinals(nonfinal_pool), finals(final_pool)
+    , height_of()
+    , height_graded(height_of)
+    , d_rules()
+    , proj_pool(), proj_sets(proj_pool), proj_data()
+{}
+
+/******** accessors *******************************************************/
+
 
 std::ostream& KhatContext::print(std::ostream& strm,
 				 const combination& ch,
@@ -539,14 +565,14 @@ KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
     // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
     rd.simple_reflect_root(alpha,i);
     rd.simpleReflect(lambda,i);
-    d_Tg.basedTwistedConjugate(a,i);
+    basedTitsGroup().basedTwistedConjugate(a,i);
     i=0; // and start over
   }
 
   latticetypes::Weight mu=rd.simpleReflection(lambda,i);
-  if (d_Tg.simple_grading(a,i))
+  if (basedTitsGroup().simple_grading(a,i))
   { // $\alpha_i$ is a non-compact imaginary simple root
-    d_Tg.basedTwistedConjugate(a,i); // adds $m_i$ to torus part
+    basedTitsGroup().basedTwistedConjugate(a,i); // adds $m_i$ to torus part
     StandardRepK sr0= std_rep(mu, a);
     assert(sr.d_cartan==sr0.d_cartan);
     id.add_lh(sr0,*this);
@@ -560,7 +586,7 @@ KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
        = Cayley transform is type II
     */
 
-    d_Tg.Cayley_transform(a,i);
+    basedTitsGroup().Cayley_transform(a,i);
     StandardRepK sr1= std_rep(lambda, a);
     id.add_rh(sr1,*this);
     if (sr0.d_fiberElt==sr.d_fiberElt) // type II
@@ -633,7 +659,7 @@ KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
   }
 
   latticetypes::SmallSubspace mod_space=
-    d_data[sr.d_cartan].fiber_modulus; // make a copy to be modified
+    info(sr.d_cartan).fiber_modulus; // make a copy to be modified
 
   // again, move to situation where $\alpha$ is simple: $\alpha=\alpha_i$
   size_t i=0; // simple root index (value will be set in following loop)
@@ -653,13 +679,13 @@ KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
     // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
     rd.simple_reflect_root(alpha,i);
     rd.simpleReflect(lambda,i);
-    d_Tg.basedTwistedConjugate(a,i);
-    mod_space.apply(simple_reflection_mod_2[i]);
+    basedTitsGroup().basedTwistedConjugate(a,i);
+    mod_space.apply(dual_reflection(i));
     i=0; // and start over
   }
 
   // one right term is obtained by undoing Cayley for |a|, with lifted |lambda|
-  d_Tg.inverse_Cayley_transform(a,i,mod_space);
+  basedTitsGroup().inverse_Cayley_transform(a,i,mod_space);
 
   StandardRepK sr1 = std_rep(lambda,a);
   id.add_rh(sr1,*this);
@@ -667,7 +693,7 @@ KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
   // there will be another term in case of a type I HechtSchmid identity
   // it differs only in the fiber part, by $m_i$; if this vanishes into the
   // quotient, the HechtSchmid identity is type II and nothing is added
-  d_Tg.basedTwistedConjugate(a,i);
+  basedTitsGroup().basedTwistedConjugate(a,i);
   StandardRepK sr2=std_rep(lambda,a);
   if (sr1.d_fiberElt!=sr2.d_fiberElt) // type I
     id.add_rh(sr2,*this);
@@ -676,22 +702,20 @@ KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 } // |back_HS_id|
 
 
-level
-KhatContext::height(const StandardRepK& sr) const
+const proj_info& KhatContext::get_projection(bitset::RankFlags gens)
 {
-  const rootdata::RootDatum& rd=rootDatum();
-  const latticetypes::Weight mu=theta_lift(sr);
+  size_t old_size=proj_data.size();
+  size_t h=proj_sets.match(bitset_entry(gens));
+  if (h<old_size)
+    return proj_data[h];
 
-  level sum=0;
-  for (rootdata::WRootIterator
-	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
-    sum +=intutils::abs(mu.scalarProduct(*it));
-
-  return sum/2; // each |scalarProduct| above is even (in doubled coordinates)
+  proj_data.push_back(proj_info());
+  proj_data.back().projection=
+    orth_projection(rootDatum(),gens,proj_data.back().denom);
+  return proj_data.back();
 }
 
-level
-KhatContext::height_bound(const latticetypes::Weight& lambda)
+level KhatContext::height_bound(const latticetypes::Weight& lambda)
 {
   const rootdata::RootDatum& rd=rootDatum();
 
@@ -768,7 +792,7 @@ KhatContext::theta_stable_parabolic
 
     if (i<rd.semisimpleRank()) // then we found a reflection |i| to apply
     {
-      d_Tg.basedTwistedConjugate(strong,i);
+      basedTitsGroup().basedTwistedConjugate(strong,i);
       rd.simpleReflect(dom,i);
       conjugator.push_back(i);
     }
@@ -791,11 +815,11 @@ KhatContext::theta_stable_parabolic
 
   { // first ensure |strong| is in reduced
     const latticetypes::LatticeMatrix theta =
-      d_G->involutionMatrix(strong.tw());
+      complexGroup().involutionMatrix(strong.tw());
     titsGroup().left_torus_reduce(strong,tits::fiber_denom(theta));
   }
 
-  return PSalgebra(strong,d_KGB,*d_G,d_Tg);
+  return PSalgebra(strong,d_KGB,complexGroup());
 
 } // theta_stable_parabolic
 
@@ -948,7 +972,7 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
       rootdata::RootNbr alpha=*rt;
       assert(not id.real_roots().isMember(alpha));
       if (id.imaginary_roots().isMember(alpha))
-	A.set_to(alpha,d_Tg.grading(strong,alpha)); // add if noncompact
+	A.set_to(alpha,basedTitsGroup().grading(strong,alpha)); // add if nc
       else // complex root
       {
 	rootdata::RootNbr beta=id.root_involution(alpha);
@@ -960,7 +984,8 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
 //     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
 
     typedef free_abelian::Monoid_Ring<latticetypes::Weight> polynomial;
-    const latticetypes::LatticeMatrix theta=d_G->involutionMatrix(strong.tw());
+    const latticetypes::LatticeMatrix theta =
+      complexGroup().involutionMatrix(strong.tw());
 
     // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
     polynomial pol(mu);
@@ -1119,19 +1144,6 @@ KhatContext::saturate(const std::set<equation>& system, level bound)
   return result;
 } // saturate
 
-const proj_info& KhatContext::get_projection(bitset::RankFlags gens)
-{
-  size_t old_size=proj_data.size();
-  size_t h=proj_sets.match(bitset_entry(gens));
-  if (h<old_size)
-    return proj_data[h];
-
-  proj_data.push_back(proj_info());
-  proj_data.back().projection=
-    orth_projection(rootDatum(),gens,proj_data.back().denom);
-  return proj_data.back();
-}
-
 // **************   manipulators **********************
 
 void KhatContext::go(const StandardRepK& initial)
@@ -1189,8 +1201,7 @@ void KhatContext::go(const StandardRepK& initial)
 
 PSalgebra::PSalgebra (tits::TitsElt base,
 		      const kgb::KGB& kgb,
-		      const complexredgp::ComplexReductiveGroup& G,
-		      const tits::EnrichedTitsGroup& Tg)
+		      const complexredgp::ComplexReductiveGroup& G)
     : strong_inv(base)
     , cn(G.class_number(base.tw()))
     , sub_diagram() // class |RankFlags| needs no dimensioning

@@ -6,7 +6,8 @@ StandardRepK and KhatContext.
 /*
   This is standardrepk.h
 
-  Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2004, 2005 Fokko du Cloux
+  Copyright (C) 2008, 2009 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups version 0.2.4
 
   See file main.cpp for full copyright notice
@@ -39,7 +40,6 @@ namespace atlas {
 namespace standardrepk {
 
 class StandardRepK;
-class KhatContext;
 class HechtSchmid;
 class PSalgebra;
 
@@ -103,14 +103,12 @@ public:
   // manipulators
   void equate(seq_no n, const combination& rhs);
 
-}; // SR_rewrites
+}; // |SR_rewrites|
 
 
-} // namespace standardrepk
 
 /******** function declarations *********************************************/
 
-namespace standardrepk {
 
   matrix::Matrix<CharCoeff> triangularize
     (const std::vector<equation>& system,
@@ -119,18 +117,9 @@ namespace standardrepk {
   matrix::Matrix<CharCoeff> inverse_lower_triangular
     (const matrix::Matrix<CharCoeff>& U);
 
-} // namespace standardrepk
 
 /******** type definitions **************************************************/
 
-namespace standardrepk {
-
-  /*!
-\brief Setting for studying the restrictions to K of standard
-Harish-Chandra modules.
-*/
-
-class StandardRepK {
 
 /*!
   \brief Represents the restriction to $K$ of a (coherently) continued
@@ -138,8 +127,8 @@ class StandardRepK {
 
   This is a parameter type like Tits elements; the important operations are
   modifying and comparing values, not storing additional data that facilitate
-  methods. For that, an auxiliary class |KhatContext|, which has a role
-  similar to |WeylGroup| with respect to |WeylElt|, will be used
+  methods. For that, auxiliary classes |SRK_context| and |KhatContext|, which
+  has a role similar to |WeylGroup| with respect to |WeylElt|, will be used
 
   For us a standard Harish-Chandra module is attached to
   1) a real Cartan subgroup $H(R)=H(R)_c H(R)_s$, with $H(R)_c = H(R)\cap K$
@@ -195,10 +184,11 @@ class StandardRepK {
 
 */
 
+class StandardRepK
+{
 
-  friend class KhatContext; // which is like |WeylGroup| is for |WeylElt|
-
- private:
+  friend class SRK_context; // which is like |WeylGroup| is for |WeylElt|
+  friend class KhatContext;
 
 /*!
   \brief Number of the Cartan to which the HC module is associated.
@@ -267,6 +257,7 @@ struct Cartan_info
 
 }; // |struct Cartan_info|
 
+// a data type used for storing projections to facets of fundamental chamber
 struct proj_info
 {
   latticetypes::LatticeMatrix projection;
@@ -284,64 +275,58 @@ struct bitset_entry : public bitset::RankFlags
 }; // |struct bitset_entry|
 
 
-
-// This class serves to store tables of previously computed mappings from
-// "bad" standard representations to good ones. Also the information
-// necessary to interpret the d_lambda field in StandardRepK are stored here
-class KhatContext
+// This class stores the information necessary to interpret a |StandardRepK|
+class SRK_context
 {
-  complexredgp::ComplexReductiveGroup* d_G;
-  const kgb::KGB& d_KGB;
-
-// these data members allow interpretation of |StandardRepK| objects
-  realform::RealForm d_realForm;
-  const tits::EnrichedTitsGroup d_Tg;
-
-  std::vector<Cartan_info> d_data;
+  complexredgp::ComplexReductiveGroup& G;
+  const tits::BasedTitsGroup& Tg;  // for getting around in KGB (unused here)
+  bitmap::BitMap Cartan_set;       // marks recorded Cartan class numbers
+  std::vector<Cartan_info> C_info; // indexed by number of Cartan for |GR|
 
 // this member is precopumputed to increase efficiency of certain operations
-  std::vector<latticetypes::BinaryMap> simple_reflection_mod_2;
-
-  typedef hashtable::HashTable<StandardRepK,seq_no> Hash;
-
-  StandardRepK::Pooltype nonfinal_pool,final_pool;
-  Hash nonfinals,finals;
-
-  std::vector<level> height_of; // alongside |final_pool|
-  graded_compare height_graded; // ordering object that will use |height_of|
-
-  // a set of equations rewriting to Standard, Normal, Final, NonZero elements
-  SR_rewrites d_rules; // maps from |seq_no| of |nonfinals| to |combination|
-
-  // we cache a number of |proj_info| values, indexed by sets of generators
-  bitset_entry::Pooltype proj_pool;
-  hashtable::HashTable<bitset_entry,unsigned long> proj_sets;
-
-  std::vector<proj_info> proj_data;
+  std::vector<latticetypes::BinaryMap> simple_reflection_mod_2; // dual side
 
  public:
+  SRK_context(realredgp::RealReductiveGroup &G);
 
-// constructors, destructors, and swap
-
-  KhatContext(realredgp::RealReductiveGroup &G,const kgb::KGB& kgb);
-
-  ~KhatContext() {}
-
-  void swap(KhatContext&);
-
-// accessors and manipulators (manipulation only as side effect for efficiency)
-
-  const complexredgp::ComplexReductiveGroup&
-    complexGroup() const { return *d_G; }
-
-  const rootdata::RootDatum& rootDatum() const { return d_G->rootDatum(); }
-  const weyl::WeylGroup& weylGroup() const { return d_G->weylGroup(); }
+  // accessors
+  complexredgp::ComplexReductiveGroup& complexGroup() const { return G; }
+  const rootdata::RootDatum& rootDatum() const { return G.rootDatum(); }
+  const weyl::WeylGroup& weylGroup() const { return G.weylGroup(); }
   const weyl::TwistedWeylGroup& twistedWeylGroup() const
-    { return d_G->twistedWeylGroup(); }
-  const tits::TitsGroup& titsGroup() const { return d_Tg.titsGroup(); }
+    { return G.twistedWeylGroup(); }
+  const tits::TitsGroup& titsGroup() const { return Tg.titsGroup(); }
+  const tits::BasedTitsGroup& basedTitsGroup() const { return Tg; }
+
+  const weyl::TwistedInvolution twistedInvolution(size_t cn) const
+    { return G.twistedInvolution(cn); }
   const cartanclass::Fiber& fiber(const StandardRepK& sr) const
-    { return d_G->cartan(sr.Cartan()).fiber(); }
-  const kgb::KGB& kgb() const { return d_KGB; }
+    { return G.cartan(sr.Cartan()).fiber(); }
+
+  const Cartan_info& info(size_t cn) const
+    { return C_info[Cartan_set.position(cn)]; }
+  const latticetypes::BinaryMap& dual_reflection(weyl::Generator i) const
+  { return simple_reflection_mod_2[i]; }
+
+  //!\brief Projection |Weight| to |HCParam|
+  HCParam project(size_t cn, latticetypes::Weight lambda) const; // by value
+
+  //!\brief A section of |project|
+  latticetypes::Weight lift(size_t cn, HCParam p) const;
+
+  //!\brief (1+theta)* lifted value; this is independent of choice of lift
+  latticetypes::Weight theta_lift(size_t cn, HCParam p) const
+  {
+    latticetypes::Weight result=lift(cn,p);
+    result += complexGroup().cartan(cn).involution().apply(result);
+    return result;
+  }
+
+  latticetypes::Weight lift(const StandardRepK& s) const
+  { return lift(s.d_cartan,s.d_lambda); }
+
+  latticetypes::Weight theta_lift(const StandardRepK& s) const
+  { return theta_lift(s.d_cartan,s.d_lambda); }
 
   StandardRepK std_rep
     (const latticetypes::Weight& two_lambda, tits::TitsElt a) const;
@@ -356,12 +341,6 @@ class KhatContext
   RawRep Levi_rep
     (latticetypes::Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
     const;
-
-  // RepK from KGB number only, with |lambda=rho|; method is currently unused
-  StandardRepK KGB_elt_rep(kgb::KGBElt z) const
-    {
-      return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z));
-    }
 
 /*
   The conditions below (and Normal which is not used in tests) are defined by
@@ -387,38 +366,12 @@ class KhatContext
   tits::TitsElt titsElt(const StandardRepK& s) const
   {
     return tits::TitsElt(titsGroup(),
-			 d_G->twistedInvolution(s.d_cartan),
+			 twistedInvolution(s.d_cartan),
 			 s.d_fiberElt);
   }
 
-  seq_no nr_reps() const { return final_pool.size(); }
-
-  StandardRepK rep_no(seq_no i) const
-    {
-      return final_pool[i];
-    }
-
   std::ostream& print(std::ostream& strm, const StandardRepK& sr) const;
   std::ostream& print(std::ostream& strm, const Char& ch) const;
-  std::ostream& print(std::ostream& strm, const combination& ch,
-		      bool brief=false) const;
-
-  //!\brief A section of |project|
-  latticetypes::Weight lift(size_t cn, HCParam p) const;
-
-  //!\brief (1+theta)* lifted value; this is independent of choice of lift
-  latticetypes::Weight theta_lift(size_t cn, HCParam p) const
-  {
-    latticetypes::Weight result=lift(cn,p);
-    result += d_G->cartan(cn).involution().apply(result);
-    return result;
-  }
-
-  latticetypes::Weight lift(const StandardRepK& s) const
-  { return lift(s.d_cartan,s.d_lambda); }
-
-  latticetypes::Weight theta_lift(const StandardRepK& s) const
-  { return theta_lift(s.d_cartan,s.d_lambda); }
 
   /*!
     Returns the sum of absolute values of the scalar products of lambda
@@ -426,6 +379,59 @@ class KhatContext
     group invariant limit on the size of the weights that will be needed.
   */
   level height(const StandardRepK& s) const;
+
+}; // |SRK_context|
+
+// This class serves to store tables of previously computed mappings from
+// "bad" standard representations to good ones. Also the information
+// necessary to interpret the d_lambda field in StandardRepK are stored here
+class KhatContext : public SRK_context
+{
+  const kgb::KGB& d_KGB;
+
+  typedef hashtable::HashTable<StandardRepK,seq_no> Hash;
+
+  StandardRepK::Pooltype nonfinal_pool,final_pool;
+  Hash nonfinals,finals;
+
+  std::vector<level> height_of; // alongside |final_pool|
+  graded_compare height_graded; // ordering object that will use |height_of|
+
+  // a set of equations rewriting to Standard, Normal, Final, NonZero elements
+  SR_rewrites d_rules; // maps from |seq_no| of |nonfinals| to |combination|
+
+  // we cache a number of |proj_info| values, indexed by sets of generators
+  bitset_entry::Pooltype proj_pool;
+  hashtable::HashTable<bitset_entry,unsigned long> proj_sets;
+
+  std::vector<proj_info> proj_data;
+
+ public:
+
+// constructors, destructors, and swap
+
+  KhatContext(realredgp::RealReductiveGroup &G,const kgb::KGB& kgb);
+
+// accessors and manipulators (manipulation only as side effect for efficiency)
+
+  const kgb::KGB& kgb() const { return d_KGB; }
+
+  // RepK from KGB number only, with |lambda=rho|; method is currently unused
+  StandardRepK KGB_elt_rep(kgb::KGBElt z) const
+    {
+      return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z));
+    }
+
+
+  seq_no nr_reps() const { return final_pool.size(); }
+
+  StandardRepK rep_no(seq_no i) const { return final_pool[i]; }
+
+  using SRK_context::print;
+  std::ostream& print(std::ostream& strm, const combination& ch,
+		      bool brief=false) const;
+
+  using SRK_context::height;
   level height(seq_no i) const
   {
     assert(i<height_of.size());
@@ -437,9 +443,6 @@ class KhatContext
   //! Lower bound for height of representation after adding positive roots
   level height_bound(const latticetypes::Weight& lambda); // non |const|
 
-
-  //!\brief Projection |Weight| to |HCParam|
-  HCParam project(size_t cn, latticetypes::Weight lambda) const; // by value
 
   void normalize(StandardRepK&) const;
 
@@ -487,7 +490,7 @@ private:
   RawChar KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda)
     const;
 
-  const proj_info& get_projection(bitset::RankFlags gens);
+  const proj_info& get_projection(bitset::RankFlags gens); // non |const|
 
 }; // class KhatContext
 
@@ -520,7 +523,7 @@ class HechtSchmid
   Char rhs () const; // stored right hand side: |*rh1 + *rh2|
   Char equivalent () const; // expression for initial term |lh|: |rhs() - *lh1|
 
-}; // class HechtSchmid
+}; // |class HechtSchmid|
 
 class PSalgebra // Parabolic subalgebra
 {
@@ -531,19 +534,18 @@ class PSalgebra // Parabolic subalgebra
  public:
   PSalgebra (tits::TitsElt base,
 	     const kgb::KGB& kgb,
-	     const complexredgp::ComplexReductiveGroup& G,
-	     const tits::EnrichedTitsGroup& Tg);
+	     const complexredgp::ComplexReductiveGroup& G);
 
   const tits::TitsElt& strong_involution() const { return strong_inv; }
   weyl::TwistedInvolution involution() const { return strong_inv.tw(); }
   size_t Cartan_no() const { return cn; }
   bitset::RankFlags Levi_gens() const { return sub_diagram; }
   const rootdata::RootSet& radical() const { return nilpotents; }
-}; // class PSalgebra
+}; // |class PSalgebra|
 
 
-} // namespace standardrepk
+} // |namespace standardrepk|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif
