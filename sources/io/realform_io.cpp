@@ -312,7 +312,7 @@ inline std::ostream& split(std::ostream& s,size_t n,size_t m)
   root being the minimal one possible, as simple roots may have been in an
   unusual order at the point of selecting |gr|, even though such a permutation
   has been straightend out before calling this function. In the non-equal rank
-  case, such a grading still exists for all ireducible types except A_n, when
+  case, such a grading still exists for all irreducible types except A_n, when
   the imaginary root system is reducible. In that case however the only choice
   is whether |gr| is trivial (sl(n,H)) or not, which is easy enough to decide.
 */
@@ -364,7 +364,7 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
     }
     break;
   case 'E':
-    strm << 'e' << rk; // it alway starts like this
+    strm << 'e' << rk; // it always starts like this
     if (gr_trivial and (ic=='c' or rk>6)) // for |rk>6|, |'s'| means |'c'|
       break; // from |switch|: compact reak form
     strm << '(';
