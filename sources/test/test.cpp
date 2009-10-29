@@ -39,6 +39,7 @@
 #include "free_abelian.h"
 #include "matreduc.h"
 #include "testrun.h"
+#include "basic_io.h"
 
 /*****************************************************************************
 
@@ -68,6 +69,8 @@ namespace {
   void test_f();
   void testrun_f();
   void exam_f();
+
+  void X_f();
 
 
   // help functions
@@ -174,6 +177,8 @@ void addTestCommands<mainmode::MainmodeTag>
   mode.add("posroots_rootbasis",posroots_rootbasis_f);
   mode.add("coroots_rootbasis",coroots_rootbasis_f);
   mode.add("poscoroots_rootbasis",poscoroots_rootbasis_f);
+
+  mode.add("X",X_f);
 }
 
 
@@ -837,6 +842,15 @@ void exam_f()
   std::cout << "kgb and KGB "
             << (examine(realmode::currentRealGroup()) ? "agree" : "differ")
 	    << std::endl;
+}
+
+void X_f()
+{
+  complexredgp::ComplexReductiveGroup& G=mainmode::currentComplexGroup();
+  tits::GlobalTitsGroup Tg(G);
+  kgb::global_KGB kgb(G,Tg);
+  ioutils::OutputFile f;
+  kgb_io::print_X(f,kgb);
 }
 
 //Help commands
