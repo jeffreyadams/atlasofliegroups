@@ -77,10 +77,10 @@ namespace kltest {
 
   Explanation: let w be a twisted involution, written as an involution-reduced
   expression w = s_1 ... s_p (here s_j means either conjugation or commuting
-  multiplication). Then the conjecture is that if x is fundamental, the element
-  s_1 ... s_p.x, where the action is cross-action for a conjugation, cayley
-  transform for a commuting multiplication, is independent of the choice of
-  the reduced expression.
+  multiplication). Then the conjecture is that if x is large in the
+  fundamental fiber, the element s_1 ... s_p.x, where the action is
+  cross-action for a conjugation, cayley transform for a commuting
+  multiplication, is independent of the choice of the reduced expression.
 
   Algorithm: traverse involutions w in increasing order, so descents of w are
   visited before w. Denoting for v<w by x_v the base point for v, we may check
