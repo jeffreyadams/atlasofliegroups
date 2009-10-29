@@ -57,27 +57,24 @@
   effort from the data available here.) It appears that the data
   recorded here is what's most relevant to representation theory.
 
-  The classification of real forms amounts to the classification of
-  W^\delta- orbits in the fundamental fiber of the one-sided parameter
-  space for the adjoint group (see the "combinatorics" paper on the
-  Atlas website, or the forthcoming "algorithms" paper by Jeff Adams
-  and Fokko du Cloux.); this is a very small computation, depending
-  only on the Lie algebra.
+  The enumeration of real forms amounts to that of W^\delta- orbits in the
+  fundamental fiber of the one-sided parameter space for the adjoint group
+  (see the "combinatorics" paper on the Atlas website, or the forthcoming
+  "algorithms" paper by Jeff Adams and Fokko du Cloux); this is a very small
+  computation, depending only on the Lie algebra (|RootSystem| only).
 
-  The classifications of conjugacy classes of Cartan subgroups, for the
-  various real forms, all embed into the classification of conjugacy classes
-  of root data involutions for the given inner class, equivalent to the
-  classification of twisted involutions in the Weyl group, which is a purely
-  combinatorial Weyl group computation. Fokko's original code proceeded more
-  or less by listing each of these conjugacy classes, checking each new
-  twisted involution for membership of each class of previously generated
-  ones. Here we find for each conjugacy class of twisted involutions a
-  canonical representative, which is relatively easy to compute. In this way
-  we avoid enumeration of each conjugacy class.
+  The enumeration of conjugacy classes of Cartan subgroups, for the various
+  real forms, is part of the enumeration of conjugacy classes of root data
+  involutions for the given inner class, or equivalently that of twisted
+  involutions in the Weyl group, which is a pure Weyl group computation.
+  Fokko's original code proceeded more or less by listing each of these
+  conjugacy classes, checking each new twisted involution for membership of
+  each class of previously generated ones. Now we find for each conjugacy
+  class of twisted involutions a canonical representative, which is relatively
+  easy to compute. In this way we avoid enumeration of each conjugacy class.
 
-  The classification of real forms can be recovered in this picture as
-  well, by looking at the unique most split Cartan class for each real
-  form.
+  The identification of real forms can be done using the list of Cartan
+  classes as well, via the unique most split Cartan class for each real form.
 
   The most delicate part is the "correlation" part: for each Cartan, tell
   which orbit in the corresponding fiber corresponds to which real form, the
@@ -122,7 +119,7 @@ namespace complexredgp{
 
 namespace complexredgp {
 
-  ComplexReductiveGroup::C_info::C_info
+ComplexReductiveGroup::C_info::C_info
   (const ComplexReductiveGroup& G,const weyl::TwistedInvolution twi, size_t i)
   : tw(twi)
   , real_forms(G.numRealForms()), dual_real_forms(G.numDualRealForms())
@@ -134,16 +131,10 @@ namespace complexredgp {
 
 
 /*!
-  \brief main constructor
+  \brief Main constructor
 
-  constructs a ComplexReductiveGroup from its root datum and a distinguished
-  involution.
-
-  Precondition: d is a based root datum involution: it globally fixes the set
-  of positive roots
-
-  NOTE: the ComplexReductiveGroup assumes ownership of the RootDatum pointed
-  to by rd; users beware of this.
+  Constructs a |ComplexReductiveGroup| from its root datum |rd| and a
+  distinguished involution |d|, which stabilises the set of simple roots
 */
 ComplexReductiveGroup::ComplexReductiveGroup
  (const rootdata::RootDatum& rd, const latticetypes::LatticeMatrix& d)
@@ -967,6 +958,26 @@ ComplexReductiveGroup::KGB_size(realform::RealForm rf,
   for (bitmap::BitMap::iterator it = Cartan_classes.begin(); it(); ++it)
     result +=  cartan(*it).orbitSize() * fiberSize(rf,*it);
 
+  return result;
+
+}
+
+/*! \brief
+  Returns the cardinality of the union of sets \f$K\backslash G/B\f$ for this
+  inner class.
+
+  (Here each real form appears as often as there are strong real forms for it
+  in its square class)
+*/
+unsigned long
+ComplexReductiveGroup::global_KGB_size()
+{
+  unsigned long result=0;
+  for (size_t cn=0; cn<numCartanClasses(); ++cn)
+  {
+    const cartanclass::CartanClass& cc = cartan(cn);
+    result += cc.orbitSize() * cc.numRealFormClasses() * cc.fiber().fiberSize();
+  }
   return result;
 
 }

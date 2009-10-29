@@ -467,7 +467,11 @@ class ComplexReductiveGroup
   unsigned long KGB_size(realform::RealForm rf)
     { return KGB_size(rf,Cartan_set(rf)); }
 
-
+/*!
+  \brief returns the cardinality of the union of sets \f$K\backslash G/B\f$
+  for this inner class.
+*/
+  unsigned long global_KGB_size();
 /*!
   \brief the size of the block defined by the weak real form rf
   and the weak dual real form drf.
