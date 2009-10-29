@@ -64,14 +64,11 @@ template<typename C>
 void column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
 		  matrix::Matrix<C>& rec)
 {
-  if (M(i,j)<0)
-  {
-    M.columnMultiply(j,-1);
-    rec.columnMultiply(j,-1);
-  }
+  // Rather than forcing the sign of |M(i,j)|, we shall use |intutils::divide|
+  // This is done to avoid gratuitous negative entries in |lattice::kernel|
   do
   {
-    C q = -(M(i,j)/M(i,k));
+    C q = -intutils::divide(M(i,j),M(i,k));
     M.columnOperation(j,k,q); // now |M(i,j)>=0|
     rec.columnOperation(j,k,q);
     if (M(i,j)==C(0))
