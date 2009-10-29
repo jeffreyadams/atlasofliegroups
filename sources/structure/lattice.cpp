@@ -145,6 +145,20 @@ latticetypes::LatticeMatrix eigen_lattice
   return kernel(M);
 }
 
+latticetypes::LatticeMatrix row_saturate(const latticetypes::LatticeMatrix& M)
+{
+  size_t n= M.numColumns(); // dimension of space to which |M| can be applied
+  latticetypes::CoeffList factor;
+  latticetypes::LatticeMatrix b =
+    matreduc::adapted_basis(M.transposed(),factor);
+
+  size_t c=factor.size(); // rank of M (codimension of kernel)
+
+  latticetypes::LatticeMatrix result(c,n); // initial rows of |b.treansposed()|
+  for (size_t i=0; i<c; ++i)
+    result.set_row(i,b.column(i));
+  return result;
+}
 
 template
 void baseChange
