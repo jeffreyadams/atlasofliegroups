@@ -21,6 +21,7 @@
 
 \def\emph#1{{\it#1\/}}
 \def\foreign#1{{\sl#1\/}}
+\def\id{\mathop{\rm id}}
 
 @* Outline.
 %
@@ -4460,6 +4461,34 @@ void adapted_basis_wrapper(expression_base::level l)
   }
 }
 
+@ There are two particular applications of the |diagonalise| function defined
+in the Atlas library: |kernel| which for any matrix~$M$ will find another
+whose image is precisely the kernel of~$M$, and |eigen_lattice| which is a
+special case for square matrices~$A$, where the kernel of $A-\lambda\id$ is
+computed. We include them here to enable testing these functions.
+
+@h "lattice.h"
+
+@<Local function definitions @>=
+void kernel_wrapper(expression_base::level l)
+{ shared_matrix M=get<matrix_value>();
+  if (l!=expression_base::no_value)
+    push_value(new matrix_value(lattice::kernel(M->val)));
+}
+@)
+void eigen_lattice_wrapper(expression_base::level l)
+{ int eigen_value = get<int_value>()->val;
+  shared_matrix M=get<matrix_value>();
+  if (l!=expression_base::no_value)
+    push_value (new matrix_value(lattice::eigen_lattice(M->val,eigen_value)));
+}
+@)
+void row_saturate_wrapper(expression_base::level l)
+{ shared_matrix M=get<matrix_value>();
+  if (l!=expression_base::no_value)
+    push_value(new matrix_value(lattice::row_saturate(M->val)));
+}
+
 @ As a last example, here is the Smith normal form algorithm. We provide both
 the invariant factors and the rewritten basis on which the normal for is
 assumed, as separate functions, and the two combined into a single function.
@@ -4579,6 +4608,9 @@ install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
 install_function(echelon_wrapper,"echelon","(mat->mat,[int])");
 install_function(diagonalise_wrapper,"diagonalise","(mat->vec,mat,mat)");
 install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
+install_function(kernel_wrapper,"kernel","(mat->mat)");
+install_function(eigen_lattice_wrapper,"eigen_lattice","(mat,int->mat)");
+install_function(row_saturate_wrapper,"row_saturate","(mat->mat)");
 install_function(invfact_wrapper,"inv_fact","(mat->vec)");
 install_function(Smith_basis_wrapper,"Smith_basis","(mat->mat)");
 install_function(Smith_wrapper,"Smith","(mat->mat,vec)");
