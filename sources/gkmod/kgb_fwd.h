@@ -18,13 +18,14 @@
 
 namespace atlas {
 
-/******** type declarations *************************************************/
-
 namespace kgb {
+
+
+/******** type declarations *************************************************/
 
   class KGB;
 
-  typedef size_t KGBElt;
+  typedef unsigned int KGBElt;
   typedef std::vector<KGBElt> KGBEltList;
 
   typedef std::pair<KGBElt,KGBElt> KGBEltPair;
@@ -32,8 +33,12 @@ namespace kgb {
 
   typedef bitset::RankFlags Descent;
 
-}
+/******** constant declarations *********************************************/
 
-}
+static const KGBElt UndefKGB = ~0u;
+
+} // |namespace kgb|
+
+} // |namespace atlas|
 
 #endif
