@@ -172,33 +172,50 @@ std::ostream& printStrongReal(std::ostream& strm,
 			      const realform_io::Interface& rfi,
 			      size_t cn)
 {
+  cartanclass::Fiber fund = G_C.fundamental();
   const cartanclass::CartanClass& cc = G_C.cartan(cn);
+  const realform::RealFormList& rfl = G_C.realFormLabels(cn);
 
   size_t n = cc.numRealFormClasses();
 
   if (n>1)
     strm << "there are " << n << " real form classes:\n" << std::endl;
 
-  for (size_t j = 0; j < n; ++j)
+  for (size_t csc=0; csc<n; ++csc)
   {
-    if (n>1)
-      strm << "class #" << j << ":" << std::endl;
+    // print information about the square of real forms, in center
+    {
+      realform::RealForm wrf=cc.fiber().realFormPartition().classRep(csc);
+      realform::RealForm fund_wrf= rfl[wrf]; // lift weak real form to |fund|
+      cartanclass::square_class f_csc=fund.central_square_class(fund_wrf);
+      // having the square class number of the fundamental fiber, get grading
+      gradings::Grading base_grading =
+	tits::square_class_grading_offset(fund,f_csc,G_C.rootSystem());
 
-    const partition::Partition& pi = cc.strongReal(j);
-    const realform::RealFormList& rfl = G_C.realFormLabels(cn);
+      latticetypes::RatWeight z (G_C.rank());
+      for (gradings::Grading::iterator it=base_grading.begin(); it(); ++it)
+	z += G_C.rootDatum().fundamental_coweight(*it);
+
+      latticetypes::LatticeElt& zn = z.numerator();
+      for (size_t i=0; i<z.size(); ++i)
+        zn[i]=intutils::remainder(zn[i],z.denominator());
+      strm << "class #" << f_csc
+	   << ", possible square: exp(2i\\pi(" << z << "))" << std::endl;
+    }
+
+    const partition::Partition& pi = cc.strongReal(csc);
 
     unsigned long c = 0;
 
-    for (partition::PartitionIterator i(pi); i(); ++i,++c) {
+    for (partition::PartitionIterator i(pi); i(); ++i,++c)
+    {
       std::ostringstream os;
-      realform::RealForm rf = rfl[cc.toWeakReal(c,j)];
+      realform::RealForm rf = rfl[cc.toWeakReal(c,csc)];
       os << "real form #" << rfi.out(rf) << ": ";
       basic_io::seqPrint(os,i->first,i->second,",","[","]")
 	<< " (" << i->second - i->first << ")" << std::endl;
       ioutils::foldLine(strm,os.str(),"",",");
     }
-
-    // print information about the center (not implemented)
 
     if (n>1)
       strm << std::endl;
@@ -207,6 +224,6 @@ std::ostream& printStrongReal(std::ostream& strm,
   return strm;
 }
 
-}
+} // |namespace realredgp_io|
 
-}
+} // |namespace atlas|
