@@ -71,6 +71,7 @@ template<size_t dim> class Subspace
   explicit Subspace(size_t n) : d_rank(n), d_basis(), d_support() {}
 
   Subspace(const bitvector::BitVectorList<dim>&, size_t);
+  Subspace(const bitvector::BitMatrix<dim>&); // column span
 
 // copy, assignment: the implicitly generated versions will do fine
 
