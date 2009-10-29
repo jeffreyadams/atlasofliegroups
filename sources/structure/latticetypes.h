@@ -85,6 +85,8 @@ class RatLatticeElt {
   RatLatticeElt operator-() const { return RatLatticeElt(-d_num,d_denom); }
   RatLatticeElt operator-(const RatLatticeElt& v) const { return *this+-v; }
   RatLatticeElt& operator-=(const RatLatticeElt& v) { return *this=*this-v; }
+  RatLatticeElt& operator*=(int n) { d_num*=n; return *this; }
+  RatLatticeElt& operator/=(unsigned int n) { d_denom*=n; return *this; }
 
 /*
   Returns the scalar product of |*this| and |w|, which are assumed to be of
@@ -101,6 +103,7 @@ class RatLatticeElt {
 //manipulators
   RatLatticeElt& normalize();
   LatticeElt& numerator() { return d_num; } // allow direct manipulation
+  unsigned int& denominator() { return d_denom; }
 
 }; // class RatLatticeElt
 
