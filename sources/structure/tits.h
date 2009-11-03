@@ -1,3 +1,4 @@
+
 /*!
 \file
 \brief Class definitions and function declarations for the classes
@@ -192,10 +193,10 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   TorusElement twisted(const TorusElement& x) const;
   void twist(TorusElement& x) const; // in-place imperative version
 
-// methods that only access some |GlobalTitsElement|
-
   const std::vector<gradings::Grading>& square_class_generators() const
   { return square_class_gen; }
+
+// methods that only access some |GlobalTitsElement|
 
 // methods that manipulate a |GlobalTitsElement|
 
