@@ -342,7 +342,7 @@ latticetypes::LatticeMatrix makeOrthogonal
   latticetypes::CoeffList factor = matreduc::diagonalise(m,row,col);
   // now |row.row(i)*(m*col).col(j)| is $\delta_{i,j}factor[i]$ (for all $i,j$)
 
-  // initialise |result| to dual basis to |Smith_basis(m)|
+  // initialise |result| to dual basis to |adapted_basis(m)|
   latticetypes::LatticeMatrix result = row.transposed();
 
   // integrality requires multiple $d/\gcd(d,factor[j])$ of |result.col(j)|
