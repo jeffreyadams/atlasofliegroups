@@ -288,8 +288,8 @@ public:
 
 KGBEltPair KGB_base::tauPacket(const weyl::TwistedInvolution& w) const
 {
-  unsigned int i=hash.find(w);
-  if (i==hash.empty)
+  unsigned int i=inv_hash.find(w);
+  if (i==inv_hash.empty)
     return KGBEltPair(0,0);
   return KGBEltPair(first_of_tau[i],first_of_tau[i+1]);
 }
@@ -317,24 +317,6 @@ void KGB_base::add_element
     data[s].push_back(KGBfields());
 }
 
-// during construction of the |KGB_base| we precompute and hash all involutions
-void KGB_base::generate_involutions(size_t n)
-{
-  pool.reserve(n);  // filled below
-  first_of_tau.reserve(n+1); // to be filled by constructor of derived object
-
-  hash.match(weyl::TwistedInvolution()); // set initial element
-  for (size_t i=0; i<pool.size(); ++i) // pool grows from 1 to |n|
-  {
-    const weyl::TI_Entry& parent=pool[i];
-    for (weyl::Generator s=0; s<W.rank(); ++s)
-      if (W.hasTwistedCommutation(s,parent))
-	hash.match(W.prod(s,parent));
-      else
-        hash.match(W.twistedConjugated(parent,s));
-  }
-  assert(pool.size()==n);
-}
 
 /*
 
@@ -344,10 +326,10 @@ void KGB_base::generate_involutions(size_t n)
 
 global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
 		       const tits::GlobalTitsGroup& Tits_group)
-  : KGB_base(G_C.twistedWeylGroup(),G_C.numInvolutions())
+  : KGB_base(G_C.twistedWeylGroup())
   , G(G_C)
   , Tg(Tits_group)
-  , fiber_data(G,hash) //
+  , fiber_data(G,(generate_involutions(G_C.numInvolutions()),inv_hash))
   , elt()
 {
   size_t size = G.global_KGB_size();
@@ -400,6 +382,26 @@ bool global_KGB::compact(rootdata::RootNbr n, // assumed imaginary at |a|
 
 */
 
+// after construction of the |KGB_base| we precompute and hash all involutions
+void global_KGB::generate_involutions(size_t n)
+{
+  inv_pool.reserve(n);  // filled below
+  first_of_tau.reserve(n+1); // to be filled by constructor of derived object
+  const weyl::TwistedWeylGroup& W=twistedWeylGroup();
+
+  inv_hash.match(weyl::TwistedInvolution()); // set initial element
+  for (size_t i=0; i<inv_pool.size(); ++i) // pool grows from 1 to |n|
+  {
+    const weyl::TI_Entry& parent=inv_pool[i];
+    for (weyl::Generator s=0; s<W.rank(); ++s)
+      if (W.hasTwistedCommutation(s,parent))
+	inv_hash.match(W.prod(s,parent));
+      else
+        inv_hash.match(W.twistedConjugated(parent,s));
+  }
+  assert(inv_pool.size()==n);
+}
+
 void global_KGB::generate_elements(size_t n_elts)
 {
   const weyl::TwistedWeylGroup& W = Tg;
@@ -418,13 +420,13 @@ void global_KGB::generate_elements(size_t n_elts)
     assert(elt_hash.size()==elt.size()); // all distinct; in fact an invariant
   }
 
-  for (size_t inv_nr=0; inv_nr<pool.size(); ++inv_nr)
+  for (size_t inv_nr=0; inv_nr<inv_pool.size(); ++inv_nr)
   {
-    const weyl::TwistedInvolution& tw = pool[inv_nr]; // that's |KGB_base::pool|
+    const weyl::TwistedInvolution& tw = inv_pool[inv_nr];
     for (weyl::Generator s=0; s<W.rank(); ++s)
     {
       weyl::TwistedInvolution new_tw =W.twistedConjugated(tw,s);
-      size_t new_nr = hash.find(new_tw);
+      size_t new_nr = inv_hash.find(new_tw);
       bool is_new = new_nr+1 >= first_of_tau.size();
       if (is_new)
 	assert(new_nr+1==first_of_tau.size()); // since we mimick generation
@@ -470,7 +472,7 @@ void global_KGB::generate_elements(size_t n_elts)
       if (imaginary)
       {
 	new_tw = W.prod(s,tw);
-	new_nr = hash.find(new_tw);
+	new_nr = inv_hash.find(new_tw);
 	is_new = new_nr+1 >= first_of_tau.size();
 	if (is_new)
 	  assert(new_nr+1==first_of_tau.size()); // since we mimick generation

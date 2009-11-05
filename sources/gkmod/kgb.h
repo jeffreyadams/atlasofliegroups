@@ -86,8 +86,8 @@ class KGB_base
   std::vector<KGBEltInfo> info; // per element information
 
   //!\brief tables to map twisted involutions to their sequence number
-  weyl::TI_Entry::Pooltype pool;
-  hashtable::HashTable<weyl::TI_Entry,unsigned int> hash;
+  weyl::TI_Entry::Pooltype inv_pool;
+  hashtable::HashTable<weyl::TI_Entry,unsigned int> inv_hash;
 
   //!\brief to help find range of elements with fixed twisted involution
   std::vector<KGBElt> first_of_tau; // size: |numInvolutions()+1|
@@ -95,9 +95,13 @@ class KGB_base
 
 
  protected: // constructor is only meant for use from derived classes
-  explicit KGB_base(const weyl::TwistedWeylGroup& Wg, size_t nr_invol)
-    : W(Wg), data(W.rank()), info(), pool(), hash(pool), first_of_tau()
-  { generate_involutions(nr_invol); }
+  explicit KGB_base(const weyl::TwistedWeylGroup& Wg)
+    : W(Wg)
+    , data(W.rank())
+    , info()
+    , inv_pool(), inv_hash(inv_pool)
+    , first_of_tau()
+  {}
 
  public:
 // accessors
@@ -135,13 +139,10 @@ class KGB_base
   // range of KGB elements with given twisted involution, needed for block
   KGBEltPair tauPacket(const weyl::TwistedInvolution&) const;
 
- private:
-  void generate_involutions(size_t n);
  protected:
   void reserve (size_t n); // prepare for generating |n| elements
   void add_element
    (unsigned int length, unsigned int Cartan_class, weyl::TwistedInvolution tw);
-  void record(const weyl::TI_Entry& tw) { hash.match(tw); }
 
 
 }; // |class KGB_base|
@@ -202,6 +203,7 @@ class global_KGB : public KGB_base
   bool compact(rootdata::RootNbr alpha, const tits::GlobalTitsElement& a) const;
 
  private:
+  void generate_involutions(size_t n);
   void generate_elements(size_t n);
 
 }; // |class global_KGB|
