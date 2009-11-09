@@ -424,10 +424,8 @@ is out(x,s).x = x.s.
   precompute in |d_min_star| for each generator the smallest other generator
   with which it does not commute (or the generator itself if there are none).
 */
-class WeylGroup {
-
- private:
-
+class WeylGroup
+{
   size_t d_rank;
   size::Size d_order;
   unsigned long d_maxlength;
@@ -437,6 +435,8 @@ class WeylGroup {
   WeylInterface d_in;
   WeylInterface d_out;
   std::vector<Generator> d_min_star;
+
+  WeylGroup(const WeylGroup&); // forbid copying; Weyl groups should be shared
 
 // private member functions
 // these interpret Generators and WeylWords internally, so not for public use!
