@@ -48,6 +48,7 @@ namespace atlas {
 
 namespace {
 
+// an auxiliary function for height computations
 latticetypes::LatticeMatrix
 orth_projection(const rootdata::RootDatum& rd, bitset::RankFlags gens,
 		latticetypes::LatticeCoeff& denom);
@@ -189,7 +190,7 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
       }
 
     // get torsion columns of |basis| to |torsionLift|
-    // and rows of |inv_basis| to |torsionProjector|, mod 2
+    // and rows of |inv_basis|, modulo 2, to |torsionProjector|
     ci.torsionLift.reserve(twos);
     ci.torsionProjector.resize(twos,n);
     size_t i=0;
@@ -201,13 +202,12 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
 	ci.torsionProjector.set_mod2(i,j,inv_basis(*it,j));
     }
 
-    ci.freeLift= basis.block(0,l,n,n); // final |n-l| basis vectors
-    latticetypes::LatticeMatrix(inv_basis.block(l,0,n,n)) // final |n-l| rows
-      .swap(ci.freeProjector);
+    basis.block(0,l,n,n).swap(ci.freeLift); // final |n-l| basis vectors
+    inv_basis.block(l,0,n,n).swap(ci.freeProjector); // final |n-l| rows
 
-    ci.fiber_modulus=latticetypes::SmallSubspace
-      (latticetypes::SmallBitVectorList(tori::minusBasis(theta.transposed())),
-       n);
+    latticetypes::SmallSubspace
+      (latticetypes::BinaryMap(lattice::eigen_lattice(theta.transposed(),-1)))
+      .swap(ci.fiber_modulus);
   } // |for (it)|
 }
 
@@ -219,6 +219,7 @@ HCParam SRK_context::project
 
   (lambda -= rootDatum().twoRho()) /= 2; // final division is exact
 
+  // now |lambda| actually represents $\lambda-\rho$ in plain coordinates
   return std::make_pair
     (ci.freeProjector.apply(lambda),
      ci.torsionProjector.apply(latticetypes::SmallBitVector(lambda)).data()
@@ -234,7 +235,7 @@ latticetypes::Weight SRK_context::lift(size_t cn, HCParam p) const
   for (size_t i=0; i<torsion_lift.size(); ++i)
     if (p.second[i])
       result += torsion_lift[i]; // add even vectors representing torsion part
-  (result *= 2) += rootDatum().twoRho();
+  (result*=2) += rootDatum().twoRho(); // convert $\lambda-\rho$ to $2\lambda$
 
   return result;
 }
@@ -242,18 +243,19 @@ latticetypes::Weight SRK_context::lift(size_t cn, HCParam p) const
 StandardRepK SRK_context::std_rep
   (const latticetypes::Weight& two_lambda, tits::TitsElt a) const
 {
+  const weyl::WeylGroup& W=weylGroup();
+  const rootdata::RootDatum& rd=rootDatum();
+
   weyl::TwistedInvolution sigma=a.tw();
   weyl::WeylElt w = complexGroup().canonicalize(sigma);
   // now |sigma| is canonical and |w| conjugates |sigma| to |a.tw()|
 
-  const weyl::WeylGroup& W=weylGroup();
 
   // conjugate towards canonical element (left-right, for inverse conjugation)
   basedTitsGroup().basedTwistedConjugate(a,W.word(w));
 
   assert(a.tw()==sigma); // we should now be at canonical twisted involution
 
-  const rootdata::RootDatum& rd=rootDatum();
   latticetypes::Weight mu=W.imageByInverse(rd,w,two_lambda);
 
   size_t cn = complexGroup().class_number(sigma);

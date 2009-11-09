@@ -283,7 +283,7 @@ class SRK_context
   bitmap::BitMap Cartan_set;       // marks recorded Cartan class numbers
   std::vector<Cartan_info> C_info; // indexed by number of Cartan for |GR|
 
-// this member is precopumputed to increase efficiency of certain operations
+// this member is precomputed to increase efficiency of certain operations
   std::vector<latticetypes::BinaryMap> simple_reflection_mod_2; // dual side
 
  public:
@@ -308,7 +308,7 @@ class SRK_context
   const latticetypes::BinaryMap& dual_reflection(weyl::Generator i) const
   { return simple_reflection_mod_2[i]; }
 
-  //!\brief Projection |Weight| to |HCParam|
+  //!\brief Projection |Weight| (in doubled coordinates) to |HCParam|
   HCParam project(size_t cn, latticetypes::Weight lambda) const; // by value
 
   //!\brief A section of |project|
@@ -422,7 +422,6 @@ class KhatContext : public SRK_context
       return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z));
     }
 
-
   seq_no nr_reps() const { return final_pool.size(); }
 
   StandardRepK rep_no(seq_no i) const { return final_pool[i]; }
@@ -493,6 +492,10 @@ private:
   const proj_info& get_projection(bitset::RankFlags gens); // non |const|
 
 }; // class KhatContext
+
+
+
+
 
 /* HechtSchmid identities are represented as equation with a main left hand
    member |lh|, and optional second left member |lh2|, and two optional
