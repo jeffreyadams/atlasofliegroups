@@ -28,8 +28,6 @@ namespace klsupport {
 class KLSupport;
 class KLSupport_new;
 
-typedef std::vector<blocks::BlockElt> PrimitiveRow;
-
 }
 
 }

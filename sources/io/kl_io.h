@@ -13,6 +13,7 @@
 #include <iosfwd>
 
 #include "kl_fwd.h"
+#include "blocks.h"
 
 namespace atlas {
 
@@ -20,9 +21,10 @@ namespace atlas {
 
 namespace kl_io {
 
-  std::ostream& printAllKL(std::ostream&, kl::KLContext&);
-
-  std::ostream& printPrimitiveKL(std::ostream&, kl::KLContext&);
+  std::ostream& printAllKL
+    (std::ostream&, const kl::KLContext&, blocks::Block&);
+  std::ostream& printPrimitiveKL
+    (std::ostream&, const kl::KLContext&, blocks::Block&);
 
   std::ostream& printKLList(std::ostream&, const kl::KLContext&);
 

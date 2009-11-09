@@ -23,9 +23,9 @@ namespace atlas {
 
 namespace block_io {
 
-  std::ostream& printBlock(std::ostream&, const blocks::Block&);
+  std::ostream& printBlock(std::ostream&, const blocks::Block_base&);
 
-  std::ostream& printBlockD(std::ostream&, const blocks::Block&);
+  std::ostream& printBlockD(std::ostream&, const blocks::Block_base&);
 
   std::ostream& printBlockU(std::ostream&, const blocks::Block&);
 

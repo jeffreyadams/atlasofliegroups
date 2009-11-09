@@ -46,7 +46,8 @@ namespace kl_io {
 
 
 // Print the non-zero Kazhdan-Lusztig-Vogan polynomials from klc to strm.
-std::ostream& printAllKL(std::ostream& strm, kl::KLContext& klc)
+std::ostream& printAllKL
+  (std::ostream& strm, const kl::KLContext& klc, blocks::Block& block)
 {
   size_t count = 0;
 
@@ -84,7 +85,7 @@ std::ostream& printAllKL(std::ostream& strm, kl::KLContext& klc)
   strm << count << " nonzero polynomial" << (count==1 ? "" : "s")
        << std::flush;
 
-  bruhat::BruhatOrder& Bruhat=klc.block().bruhatOrder(); // non-const!
+  bruhat::BruhatOrder& Bruhat=block.bruhatOrder(); // non-const!
   size_t comp = Bruhat.n_comparable();
   strm << ", and " << comp-count << " zero polynomial"
        << (comp-count==1 ? "" : "s")
@@ -96,7 +97,8 @@ std::ostream& printAllKL(std::ostream& strm, kl::KLContext& klc)
 
 
 // Print the primitive kl polynomials from klc to strm.
-std::ostream& printPrimitiveKL(std::ostream& strm, kl::KLContext& klc)
+std::ostream& printPrimitiveKL
+  (std::ostream& strm, const kl::KLContext& klc, blocks::Block& block)
 {
   size_t count = 0;
   size_t zero_count = 0;
@@ -105,12 +107,12 @@ std::ostream& printPrimitiveKL(std::ostream& strm, kl::KLContext& klc)
   int width = ioutils::digits(klc.size()-1,10ul);
   int tab = 2;
 
-  bruhat::BruhatOrder& b=klc.block().bruhatOrder(); // non-const!
-  const poset::Poset& Bruhat=b.poset(); // full poset is generated here
+  bruhat::BruhatOrder& bo=block.bruhatOrder(); // non-const!
+  const poset::Poset& Bruhat=bo.poset(); // full poset is generated here
 
   for (size_t y = 0; y < klc.size(); ++y) {
 
-    klsupport::PrimitiveRow e;
+    kl::PrimitiveRow e;
     klc.makePrimitiveRow(e,y); // list of ALL primitive x's
 
     strm << std::setw(width) << y << ": ";

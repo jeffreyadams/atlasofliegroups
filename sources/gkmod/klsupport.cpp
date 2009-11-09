@@ -19,6 +19,7 @@
 
 #include "blocks.h"
 #include "descents.h"
+#include "weyl_fwd.h"
 
 /*
   After some hesitation, I think I _am_ going to assume that the block has
@@ -32,7 +33,8 @@ namespace atlas {
 
 namespace {
 
-  void fillLengthLess(std::vector<blocks::BlockElt>&, const blocks::Block&);
+  void fillLengthLess
+    (std::vector<blocks::BlockElt>&, const blocks::Block_base&);
 
 } // namespace
 
@@ -44,11 +46,14 @@ namespace {
 
 namespace klsupport {
 
-KLSupport::KLSupport(blocks::Block& b)
-  :d_block(&b),
-   d_rank(b.rank()),
-   d_size(b.size())
-
+KLSupport::KLSupport(blocks::Block_base& b)
+  : d_state()
+  , d_block(b)
+  , d_descent()
+  , d_goodAscent()
+  , d_downset()
+  , d_primset()
+  , d_lengthLess()
 {}
 
 /******** copy, assignment and swap ******************************************/
@@ -57,9 +62,7 @@ void KLSupport::swap(KLSupport& other)
 {
   d_state.swap(other.d_state);
 
-  std::swap(d_block,other.d_block);
-  std::swap(d_rank,other.d_rank);
-  std::swap(d_size,other.d_size);
+  assert(&d_block==&other.d_block);
 
   d_descent.swap(other.d_descent);
   d_goodAscent.swap(other.d_goodAscent);
@@ -75,18 +78,18 @@ void KLSupport::swap(KLSupport& other)
   \brief: Flags in b those block elements which are extremal w.r.t. the
   simple reflections in d.
 
-  Preconditions: the capacity of b is the size(); d contains d_rank flags;
+  Preconditions: the capacity of b is the size(); d contains rank() flags;
 
   Explanation: an element z in the block is extremal w.r.t. d, if all the
-  descents in d are also descents for z. Since d_downset[s] flags the
-  elements for which s is a descent, this amounts to requesting that z
+  simple generators flagged in d are descents for z. Since d_downset[s] flags
+  the elements for which s is a descent, this amounts to requesting that z
   belong to the intersection of the downsets for the various descents in d.
 */
 
 void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
   const
 {
-  for (size_t s = 0; s < d_rank; ++s)
+  for (weyl::Generator s=0; s<rank(); ++s)
     if (d.test(s))
       b &= d_downset[s];
 }
@@ -96,18 +99,18 @@ void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
   \brief Primitivizes b w.r.t. the values whose descent set is d, i.e.,
   throws out from b the non-primitive elements with respect to d
 
-  Preconditions: the capacity of b is the size(); d contains d_rank flags;
+  Preconditions: the capacity of b is the size(); d contains rank() flags;
 
   Explanation: an element z in the block is primitive w.r.t. d, if all the
-  descents in d are either descents, or imaginary type II ascents for z. Since
-  d_primset[s] flags the elements for which s is a descent or imaginary type
-  II, this amounts to requesting that z belong to the intersection of the
-  primsets for the various descents in d.
+  simple generators flagged in d are either descents, or imaginary type II
+  ascents for z. Since d_primset[s] flags the elements for which s is a
+  descent or imaginary type II, this amounts to requesting that z belong to
+  the intersection of the primsets for the various descents in d.
 */
 void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
   const
 {
-  for (size_t s = 0; s < d_rank; ++s)
+  for (weyl::Generator s=0; s<rank(); ++s)
     if (d.test(s))
       b &= d_primset[s];
 }
@@ -127,8 +130,8 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
   |UndefBlock| is conveniently larger than any valid BlockElt |y|, so this
   case will be handled effortlessly together with triangularity).
 */
- blocks::BlockElt
- KLSupport::primitivize(blocks::BlockElt x, const bitset::RankFlags& d) const
+blocks::BlockElt
+  KLSupport::primitivize(blocks::BlockElt x, const bitset::RankFlags& d) const
 {
   bitset::RankFlags a; // good ascents for x that are descents for y
 
@@ -139,8 +142,8 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
     if (v == descents::DescentStatus::RealNonparity)
       return blocks::UndefBlock; // cop out
     x = v == descents::DescentStatus::ComplexAscent // complex or imag type I ?
-	? d_block->cross(s,x)
-	: d_block->cayley(s,x).first;
+	? d_block.cross(s,x)
+	: d_block.cayley(s,x).first;
   }
   return x;
 }
@@ -170,39 +173,44 @@ void KLSupport::fill()
 }
 
 
-/*
-  \brief Fills in the downset, primset, descents and goodAscent bitmap/set
-  vectors. Here downset and primset are vectors indexed by a simple reflection
-  s, and giving a bitmap over all block elements, while descents and
-  goodAscent are vectors indexed by a block element z and giving a bitset over
-  all simple reflections.
+/*!\brief
+  Fills in the |downset|, |primset|, |descents| and |goodAscent| bitmap/set
+  vectors. Here |downset| and |primset| are vectors indexed by a simple
+  reflection |s|, and giving a bitmap over all block elements, while
+  |descents| and |goodAscent| are vectors indexed by a block element |z| and
+  giving a bitset over all simple reflections. This difference is motivated by
+  their use: |downset| and |primset| are used to filter bitmaps over the
+  entire block according to som set of simple generators, which is easier if
+  the data is grouped by generator. In fact the data computed is stored twice:
+  one always has |downset[s].isMember(z) == descents[z].test(s)| and
+  |primset[s].isMember(z) != good_ascent[z].test(s)|
 
-  Explanation: here the predicate that s is a descent for z is taken in the
-  weak sense that s belongs to the "tau-invariant" of z in b, in other
-  words, it is a complex descent, real noncompact (type I or type II), or
-  imaginary compact. The goodAscent bitset for z holds the ascents for z that
-  are not imaginary type II. The primset bitmap for s records the block
-  elements z for which s is not a goodAscent, in other words it is either
-  a descent, or an imaginary type II ascent.
-
-  Sets the DownsetsFilled bit in d_state if successful. Commit-or-rollback
-  is guaranteed.
+  The predicate that |s| is a |descent| for |z| is taken in the weak sense
+  that |s| belongs to the "tau-invariant" of |z|, in other words, it is a
+  complex descent, real parity (type I or type II), or imaginary compact (the
+  final case does not actually allow going down). The |goodAscent| bitset for
+  |z| holds the non-decents for |z| that are not imaginary type II, so they
+  are either complex ascent, imaginary type I or real nonparity. The |primset|
+  bitmap for |s| records the block elements |z| for which |s| is not a
+  |goodAscent|, in other words it is either a |descent| or imaginary type II.
 */
 void KLSupport::fillDownsets()
 {
   if (d_state.test(DownsetsFilled))
     return;
 
-  size_t size = d_block->size();
-  std::vector<bitmap::BitMap> downset(d_rank);
-  std::vector<bitmap::BitMap> primset(d_rank);
+  size_t size = d_block.size();
+  std::vector<bitmap::BitMap> downset(rank());
+  std::vector<bitmap::BitMap> primset(rank());
   std::vector<bitset::RankFlags> descents(size);
   std::vector<bitset::RankFlags> good_ascent(size);
 
-  for (size_t s = 0; s < downset.size(); ++s) {
+  for (weyl::Generator s=0; s<rank(); ++s)
+  {
     downset[s].set_capacity(size);
     primset[s].set_capacity(size);
-    for (blocks::BlockElt z = 0; z < size; ++z) {
+    for (blocks::BlockElt z = 0; z < size; ++z)
+    {
       descents::DescentStatus::Value v = descentValue(s,z);
       if (descents::DescentStatus::isDescent(v))
       {
@@ -245,7 +253,8 @@ namespace {
 
   Precondition: b is sorted by length;
 */
-void fillLengthLess(std::vector<blocks::BlockElt>& ll, const blocks::Block& b)
+void fillLengthLess
+  (std::vector<blocks::BlockElt>& ll, const blocks::Block_base& b)
 {
   ll.clear(); ll.resize(b.length(b.size()-1)+2);
 

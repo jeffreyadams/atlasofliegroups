@@ -23,6 +23,8 @@ namespace kgb {
 
 /******** type declarations *************************************************/
 
+  class KGB_base;
+  class global_KGB;
   class KGB;
 
   typedef unsigned int KGBElt;

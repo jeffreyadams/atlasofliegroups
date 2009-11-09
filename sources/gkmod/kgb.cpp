@@ -294,6 +294,14 @@ KGBEltPair KGB_base::tauPacket(const weyl::TwistedInvolution& w) const
   return KGBEltPair(first_of_tau[i],first_of_tau[i+1]);
 }
 
+size_t KGB_base::packet_size(const weyl::TwistedInvolution& w) const
+{
+  unsigned int i=inv_hash.find(w);
+  if (i==inv_hash.empty)
+    return 0;
+  return first_of_tau[i+1]-first_of_tau[i];
+}
+
 /*
 
         The |KGB_base| class implementation, protected methods
@@ -529,19 +537,18 @@ void global_KGB::generate_elements(size_t n_elts)
 */
 KGB::KGB(realredgp::RealReductiveGroup& GR,
 	 const bitmap::BitMap& Cartan_classes)
-  : d_rank(GR.semisimpleRank())
-  , d_torus_rank(GR.rank())
-  , d_cross()
-  , d_cayley()
-  , d_inverseCayley()
-  , d_info()
+  : KGB_base(GR.twistedWeylGroup())
   , d_tits()
-  , first_of_tau()
-  , d_pool(), d_tau(d_pool)
+  , d_state()
   , d_bruhat(NULL)
   , d_base(NULL)
 {
   bool traditional= Cartan_classes.size()==0; // whether traditional generation
+
+  std::vector<KGBEltList> d_cross;
+  std::vector<KGBEltList> d_cayley;
+  std::vector<KGBInfo> d_info;
+
   size_t size =
     (traditional ? KGBHelp(GR) : refined_helper(GR,Cartan_classes))
     .fill()
@@ -552,37 +559,39 @@ KGB::KGB(realredgp::RealReductiveGroup& GR,
 		  : GR.complexGroup().KGB_size(GR.realForm(),Cartan_classes)
 		  ));
 
-  // reserve one more than the number of twisted involutions present
-  first_of_tau.reserve((traditional ? GR.numInvolutions()
-			:GR.complexGroup().numInvolutions(Cartan_classes)
-			)+1);
-
-  /* Since elements are sorted by twisted involution, collecting those is easy.
-     By using the hash table |d_tau|, it gets initialized in the proper order
-  */
-  { // insert twisted involutions in order into hash table |d_tau|
-    for (KGBElt x=0; x<size; ++x)
-    {
-      unsigned int old = d_tau.size();
-      if (d_tau.match(involution(x))==old) // a new twisted involution
-	first_of_tau.push_back(x); // record first |x| for each |tau|
-    }
-    first_of_tau.push_back(size); // put final sentinel
-  }
-
-  // Finally compute inverse Cayley tables
-
-  d_inverseCayley.resize
-    (d_rank,KGBEltPairList(size,std::make_pair(UndefKGB,UndefKGB)));
+  KGB_base::reserve(size);
+  first_of_tau.reserve(traditional
+		       ? GR.numInvolutions()+1
+		       : GR.complexGroup().numInvolutions(Cartan_classes)+1);
 
   for (KGBElt x=0; x<size; ++x)
-    for (weyl::Generator s=0; s < d_rank; ++s)
-      if (cayley(s,x)!=UndefKGB)
+  {
+    KGB_base::add_element(d_info[x].length,d_info[x].cartan,d_tits[x].tw());
+    info[x].status=d_info[x].status; info[x].desc=d_info[x].desc;
+    unsigned int h=inv_hash.match(d_tits[x].tw());
+    if (h==first_of_tau.size()) // then twisted involution was not seen before
+      first_of_tau.push_back(x); // push KGB element as first for involution
+    else // check that all non-new involutions are equal to most recent one
+      assert(h==first_of_tau.size()-1);
+    for (weyl::Generator s=0; s<rank(); ++s)
+    {
+      data[s][x].cross_image=d_cross[s][x];
+      data[s][x].Cayley_image = d_cayley[s][x];
+    }
+  }
+  first_of_tau.push_back(size); // push terminating number
+
+  for (KGBElt x=0; x<size; ++x)
+    for (weyl::Generator s=0; s<rank(); ++s)
+    {
+      KGBElt c=data[s][x].Cayley_image;
+      if (c!=UndefKGB)
       {
-	KGBEltPair& target=d_inverseCayley[s][cayley(s,x)];
+	KGBEltPair& target=data[s][c].inverse_Cayley_image;
 	if (target.first==UndefKGB) target.first=x;
 	else target.second=x;
       }
+    }
 }
 
 /******** copy, assignment and swap ******************************************/
@@ -591,23 +600,17 @@ KGB::KGB(realredgp::RealReductiveGroup& GR,
 /******** accessors **********************************************************/
 
 
-/*!
-  \brief Returns the range of |KGBElt| values |x| with |involution(x)==w|.
-
-  It is possible to return a range of |KGBElt|, since these elements have
-  been sorted by considering the associated twisted involution first.
-
-  The fields |d_tau| and |first_of_tau| were added to |KGB| in order to make
-  this method, central to the block construction, as fast as possible.
-*/
-KGBEltPair KGB::tauPacket(const weyl::TwistedInvolution& w) const
+// Looks up a |tits::TitsElt| value and returns its KGB number, or |size()|
+// Since KGB does not have mod space handy, must assume |a| already reduced
+KGBElt KGB::lookup(const tits::TitsElt& a, const tits::TitsGroup& Tg) const
 {
-  unsigned int i=d_tau.find(w);
-  if (i==d_tau.empty)
-    return KGBEltPair(0,0);
-  return KGBEltPair(first_of_tau[i],first_of_tau[i+1]);
+  KGBEltPair p = tauPacket(a.tw());
+  tits::TorusPart t = Tg.left_torus_part(a);
+  for (KGBElt x=p.first; x<p.second; ++x)
+    if (Tg.left_torus_part(titsElt(x))==t)
+      return x;
+  return size(); // report failure
 }
-
 
 /******** manipulators *******************************************************/
 

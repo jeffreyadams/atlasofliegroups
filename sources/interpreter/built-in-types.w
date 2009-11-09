@@ -2871,13 +2871,11 @@ void print_KL_basis_wrapper(expression_base::level l)
 @)
   blocks::Block block(rf->parent.val
                      ,rf->val.realForm(),drf->val.realForm());
-  klsupport::KLSupport kls(block); kls.fill();
-
-  kl::KLContext klc(kls); klc.fill();
+  kl::KLContext klc(block); klc.fill();
 @)
   *output_stream
     << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:\n\n";
-  kl_io::printAllKL(*output_stream,klc);
+  kl_io::printAllKL(*output_stream,klc,block);
 @)
   if (l==expression_base::single_value)
     wrap_tuple(0);
@@ -2902,13 +2900,11 @@ void print_prim_KL_wrapper(expression_base::level l)
 @)
   blocks::Block block(rf->parent.val
                      ,rf->val.realForm(),drf->val.realForm());
-  klsupport::KLSupport kls(block); kls.fill();
-
-  kl::KLContext klc(kls); klc.fill();
+  kl::KLContext klc(block); klc.fill();
 @)
   *output_stream
     << "Non-zero Kazhdan-Lusztig-Vogan polynomials for primitive pairs:\n\n";
-  kl_io::printPrimitiveKL(*output_stream,klc);
+  kl_io::printPrimitiveKL(*output_stream,klc,block);
 @)
   if (l==expression_base::single_value)
     wrap_tuple(0);
@@ -2934,9 +2930,7 @@ void print_KL_list_wrapper(expression_base::level l)
 @)
   blocks::Block block(rf->parent.val
                      ,rf->val.realForm(),drf->val.realForm());
-  klsupport::KLSupport kls(block); kls.fill();
-
-  kl::KLContext klc(kls); klc.fill();
+  kl::KLContext klc(block); klc.fill();
 @)
   kl_io::printKLList(*output_stream,klc);
 @)
@@ -2968,9 +2962,7 @@ void print_W_cells_wrapper(expression_base::level l)
 @)
   blocks::Block block(rf->parent.val
                      ,rf->val.realForm(),drf->val.realForm());
-  klsupport::KLSupport kls(block); kls.fill();
-
-  kl::KLContext klc(kls); klc.fill();
+  kl::KLContext klc(block); klc.fill();
 
   wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
   wgraph::DecomposedWGraph dg(wg);
@@ -3001,9 +2993,7 @@ void print_W_graph_wrapper(expression_base::level l)
 @)
   blocks::Block block(rf->parent.val
                      ,rf->val.realForm(),drf->val.realForm());
-  klsupport::KLSupport kls(block); kls.fill();
-
-  kl::KLContext klc(kls); klc.fill();
+  kl::KLContext klc(block); klc.fill();
 
   wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
 @)

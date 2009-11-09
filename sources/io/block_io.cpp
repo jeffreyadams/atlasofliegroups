@@ -52,7 +52,7 @@ namespace block_io {
   not too large (up to rank 4 or so). We haven't tried to go over to more
   sophisticated formatting for larger groups.
 */
-std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
+std::ostream& printBlock(std::ostream& strm, const blocks::Block_base& block)
 {
   // compute maximal width of entry
   int width = ioutils::digits(block.size()-1,10ul);
@@ -134,7 +134,7 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
 
   NOTE: this version outputs involutions in reduced-involution form.
 */
-std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
+std::ostream& printBlockD(std::ostream& strm, const blocks::Block_base& block)
 {
   // compute maximal width of entry
   int width = ioutils::digits(block.size()-1,10ul);
@@ -226,13 +226,12 @@ std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
   int cwidth = ioutils::digits(block.Cartan_class(block.size()-1),10ul);
   const int pad = 2;
 
-  for (size_t j = 0; j < block.size(); ++j) {
-    for (size_t s = 0; s < block.rank(); ++s) {
-      if (not block.involutionSupport(j).test(s)) // s is not in the support
-	continue; // try next |s|
-      if (not block.isWeakDescent(s,j)) // representation is not unitary
-	goto nextj;
-    }
+  for (size_t j = 0; j < block.size(); ++j)
+  {
+    for (size_t s = 0; s < block.rank(); ++s)
+      if (block.involutionSupport(j)[s] and not block.isWeakDescent(s,j))
+	goto nextj; // representation is not unitary, continue outer loop
+
     // print entry number and corresponding orbit pair
     strm << std::setw(width) << j;
     strm << '(' << std::setw(xwidth) << block.x(j);
@@ -294,7 +293,7 @@ std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
 
   nextj:
     continue;
-  }
+  } // |for(j)|
 
   return strm;
 }

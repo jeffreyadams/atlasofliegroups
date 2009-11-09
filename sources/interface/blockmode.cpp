@@ -79,7 +79,6 @@ template<bool small>
   complexredgp::ComplexReductiveGroup* dual_G_C_pointer=NULL;
   realredgp::RealReductiveGroup* dual_G_R_pointer=NULL;
   blocks::Block* block_pointer=NULL;
-  klsupport::KLSupport* kls_pointer=NULL;
   kl::KLContext* klc_pointer=NULL;
   wgraph::WGraph* WGr_pointer=NULL;
 }
@@ -166,9 +165,7 @@ kl::KLContext& currentKL()
 {
   if (klc_pointer==NULL)
   {
-    kls_pointer=new klsupport::KLSupport(currentBlock());
-    kls_pointer->fill();
-    klc_pointer=new kl::KLContext(*kls_pointer);
+    klc_pointer=new kl::KLContext(currentBlock());
     klc_pointer->fill();
   }
   return *klc_pointer;
@@ -238,7 +235,6 @@ void block_mode_exit()
   delete dual_G_C_pointer; dual_G_C_pointer=NULL;
   delete dual_G_R_pointer; dual_G_R_pointer=NULL;
   delete block_pointer; block_pointer=NULL;
-  delete kls_pointer; kls_pointer=NULL;
   delete klc_pointer; klc_pointer=NULL;
   delete WGr_pointer; WGr_pointer=NULL;
 }
@@ -446,12 +442,12 @@ void blockstabilizer_f()
 */
 void klbasis_f()
 {
-  kl::KLContext& klc = currentKL();
+  const kl::KLContext& klc = currentKL();
 
   ioutils::OutputFile file;
   file << "Full list of non-zero Kazhdan-Lusztig-Vogan polynomials:"
        << std::endl << std::endl;
-  kl_io::printAllKL(file,klc);
+  kl_io::printAllKL(file,klc,currentBlock());
 }
 
 
@@ -474,12 +470,12 @@ void kllist_f()
 
 void primkl_f()
 {
-  kl::KLContext& klc = currentKL();
+  const kl::KLContext& klc = currentKL();
 
   ioutils::OutputFile file;
   file << "Kazhdan-Lusztig-Vogan polynomials for primitive pairs:"
        << std::endl << std::endl;
-  kl_io::printPrimitiveKL(file,klc);
+  kl_io::printPrimitiveKL(file,klc,currentBlock());
 }
 
 // Write the results of the KL computations to a pair of binary files

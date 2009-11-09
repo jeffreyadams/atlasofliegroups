@@ -56,12 +56,12 @@ struct KGBEltInfo
    abstract base class in the sense that it has no virtual methods (and
    therefore a fortiori no purely virtual ones), yet it is not intended to
    have any independent instances. The point is that the base class provides
-   all methods needed for basic _use_ in for instance the block construction,
-   but it does not provide sufficient methods for constructing the KGB set.
-   Indeed the basic constructor is made |protected| to emphasise that it is up
-   to derived classes to actually fill the tables in the structure, using
-   concrete representations for the KGB elements (for instance using
-   |tits::TitsElt|) that are mainy relevant during construction. Once
+   all methods needed for basic \emph{use}, in for instance the block
+   construction, but it does not provide sufficient methods for constructing
+   the KGB set. Indeed the basic constructor is made |protected| to emphasise
+   that it is up to derived classes to actually fill the tables in the
+   structure, using concrete representations for the KGB elements (possibly
+   using |tits::TitsElt|) that are mainy relevant during construction. Once
    constructed there is no need to slice off the base object (although it
    could be done) and the full derived object can be used for instance to
    print more information about block elements than available in |KGB_base|.
@@ -77,9 +77,10 @@ class KGB_base
     KGBElt Cayley_image;
     KGBEltPair inverse_Cayley_image;
 
-  KGBfields() : cross_image(),
-      Cayley_image(UndefKGB),
-      inverse_Cayley_image(std::make_pair(UndefKGB,UndefKGB)) {}
+    KGBfields()
+    : cross_image()
+    , Cayley_image(UndefKGB)
+      , inverse_Cayley_image(std::make_pair(UndefKGB,UndefKGB)) {}
   }; // | KGBfields|
 
   std::vector<std::vector<KGBfields> > data; // first index: simple reflection
@@ -104,10 +105,19 @@ class KGB_base
   {}
 
  public:
+  KGB_base (const KGB_base& org) // copy contructor
+    : W(org.W) // share
+    , data(org.data)
+    , info(org.info)
+    , inv_pool(org.inv_pool) // copy
+    , inv_hash(inv_pool) // reconstruct, using our own |pool|
+    , first_of_tau(org.first_of_tau)
+  {}
 // accessors
 
   size_t rank() const { return data.size(); } // number of simple reflections
   size_t size() const { return info.size(); } // number of KGB elements
+  unsigned int nr_involutions() const { return inv_pool.size(); }
 
   const weyl::TwistedWeylGroup& twistedWeylGroup() const { return W; }
   const weyl::WeylGroup& weylGroup() const { return W.weylGroup(); }
@@ -136,8 +146,12 @@ class KGB_base
   size_t weylLength(KGBElt x) const // needed in sorting, in equal |length| case
     { return weylGroup().length(involution(x).w()); }
 
+  weyl::TwistedInvolution nth_involution(unsigned int n) const
+    { return inv_pool[n]; }
+
   // range of KGB elements with given twisted involution, needed for block
   KGBEltPair tauPacket(const weyl::TwistedInvolution&) const;
+  size_t packet_size(const weyl::TwistedInvolution&) const;
 
  protected:
   void reserve (size_t n); // prepare for generating |n| elements
@@ -163,6 +177,13 @@ class GlobalFiberData
 public:
   GlobalFiberData(complexredgp::ComplexReductiveGroup& G,
 		  const hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
+
+  GlobalFiberData(const GlobalFiberData& org) // copy contructor, handle ref
+    : hash_table(org.hash_table) // share
+    , Cartans(org.Cartans)
+    , proj(org.proj)
+    , check_2rho_imag(org.check_2rho_imag)
+  {}
 
   size_t Cartan_class(const weyl::TwistedInvolution& tw) const
   {
@@ -191,6 +212,14 @@ class global_KGB : public KGB_base
  public:
   global_KGB(complexredgp::ComplexReductiveGroup& G,
 	     const tits::GlobalTitsGroup& Tg);
+
+  global_KGB(const global_KGB& org) // copy contructor, handle references
+    : KGB_base(org)
+    , G(org.G) // share
+    , Tg(org.Tg) // share
+    , fiber_data(org.fiber_data)
+    , elt(org.elt)
+  {}
 
 // accessors
   const tits::GlobalTitsGroup& globalTitsGroup() const { return Tg; }
@@ -254,53 +283,12 @@ is that class that works with actual elements of the Tits group (which encode
 both a twisted involution and an element of the associlated fiber group).
 */
 
-class KGB
+class KGB : public KGB_base
 {
 
   enum State { BruhatConstructed, NumStates };
 
-  size_t d_rank; //!< semisimple rank
-  size_t d_torus_rank; //!< full rank used in torus parts
-
-/*!
- \brief The list d_cross[j] lists the images of the cross action
-of simple root \#j on the KGB elements.
-*/
-  std::vector<KGBEltList> d_cross;
-
-/*!
-\brief The list |d_cayley[j]| lists the images of the Cayley transform
-action of the simple root |\#j| on KGB elements, or |UndefKGB| if not defined
-*/
-  std::vector<KGBEltList> d_cayley;
-
-/*! \brief The list d_inverseCayley[j] lists the images of the inverse Cayley
-transform of simple root \#j on KGB elements.
-
-For fixed |j| each KGB element can have up to two inverse Cayley images. For
-those for which simple root \#j is not real, both components will be
-|UndefKGB|, and otherwise the second component might still be |UndefKGB|.
-*/
-  std::vector<KGBEltPairList> d_inverseCayley;
-
-/*!
-\brief Information about individual KGB elements
-*/
-  std::vector<KGBInfo> d_info;
-
   tits::TitsEltList d_tits; // of size size()
-
-  //!\brief to help find range of elements with fixed twisted involution
-  std::vector<KGBElt> first_of_tau; // size: #distinct twisted involutions +1
-
-  //!\brief tables to map twisted involutions to their sequence number
-  weyl::TI_Entry::Pooltype d_pool;
-  hashtable::HashTable<weyl::TI_Entry,unsigned int> d_tau;
-
-/*!
-\brief Bit 0 flags whether or not the Bruhat order on KGB has already
-been constructed.
-*/
   bitset::BitSet<NumStates> d_state;
 
 /*! \brief Owned pointer to the Bruhat order on KGB (or NULL).
@@ -329,145 +317,23 @@ and in addition the Hasse diagram (set of all covering relations).
   KGB& operator=(const KGB&);
  public:
 
-
 // accessors
-
-/*! \brief Takes the Cayley transform of KGB element \#x in the direction of
-simple root \#s; returns |UndefKGB| unless that root was noncompact imaginary.
-*/
-  KGBElt cayley(size_t s, KGBElt x) const { return d_cayley[s][x]; }
-
-/*!
- \brief Applies the cross action of simple root \#s to KGB element \#x.
-*/
-  KGBElt cross(size_t s, KGBElt x) const { return d_cross[s][x]; }
-
-/*!
-\brief Applies the inverse Cayley transform in simple root \#s to
-KGB element \#x.
-
-If simple root \#s is not real, returns a pair of UndefKGB.
-*/
-  KGBEltPair inverseCayley(size_t s, KGBElt x) const {
-    return d_inverseCayley[s][x];
-  }
-
-/*!
-\brief Semisimple rank of the underlying group.
-*/
-  size_t rank() const {
-    return d_rank;
-  }
-
-
-/*!
-\brief Number of K orbits on G/B.
-*/
-  size_t size() const {
-    return d_info.size();
-  }
-
-
-/*! \brief Returns a Bitset flagging the simple roots which are descents for
-KGB element \#x.
-*/
-  const Descent& descent(KGBElt x) const {
-    return d_info[x].desc;
-  }
-/*!
-\brief Length (dimension of the K orbit on G/B, minus minimal orbit dimension)
-for KGB element \#x.
-*/
-  size_t length(KGBElt x) const {
-    return d_info[x].length;
-  }
-
-/*!
-\brief Cartan class associated to KGB element \#x.
-*/
-  size_t Cartan_class(KGBElt x) const {
-    return d_info[x].cartan;
-  }
-
-
-
-/*!
-\brief Flag telling whether each simple root is real, complex, imaginary
-compact, or imaginary noncompact for KGB element \#x.
- */
-  const gradings::Status& status(KGBElt x) const {
-    return d_info[x].status;
-  }
-
-
-/*!
-\brief Tells whether simple root \#s is real, complex, imaginary compact,
-or imaginary noncompact for KGB element \#x.
- */
-  gradings::Status::Value status(size_t s, KGBElt x) const {
-    return status(x)[s];
-  }
-
-/*!
-  \brief Tells whether simple root \# s is a descent generator for KGB
-  element \#x.
-
-  This only depends on the twisted involution \f$\tau\f$ associated to |x|: it
-  holds whenever the simple reflection for |s| either makes \f$\tau\f$ shorter
-  by twisted conjugation (|s| is a complex descent for |tau|), or if it
-  twisted commutes by left multiplication (|s| is real for |tau|).
-*/
-bool isDescent(size_t s, KGBElt x) const
-{
-  return d_info[x].desc.test(s);
-}
-
-/*!
-  \brief Tells whether simple root \#s is an ascent generator for KGB
-  element \#x.
-
-  This does not depend only on the twisted involution: it holds for all
-  complex roots that are not descents, but for imaginary roots only if they
-  noncompact.
-*/
-bool isAscent(size_t s, KGBElt x) const
-{
-  return not isDescent(s,x)
-     and not (status(s,x) == gradings::Status::ImaginaryCompact);
-}
 
 //! \brief The based Tits group.
   const tits::BasedTitsGroup& basedTitsGroup() const { return *d_base; }
 //! \brief The Tits group.
   const tits::TitsGroup& titsGroup() const { return d_base->titsGroup(); }
 //! \brief The Weyl group.
-  const weyl::WeylGroup& weylGroup() const
-    { return d_base->titsGroup().weylGroup(); }
-//! \brief The twisted Weyl group.
-  const weyl::TwistedWeylGroup& twistedWeylGroup() const
-    { return d_base->titsGroup(); } // in fact its base object
 
-/*!
-  \brief Returns the root datum involution corresponding to x.
-
-  In fact, returns the twisted involution $w$ with \f$w.\delta = \tau\f$.
-*/
-  weyl::TwistedInvolution involution(KGBElt x) const { return d_tits[x].tw(); }
   tits::TorusPart torus_part(KGBElt x) const
    { return d_base->titsGroup().left_torus_part(d_tits[x]); }
   tits::TitsElt titsElt(KGBElt x) const { return d_tits[x]; }
 //! \brief The (non-semisimple) rank of torus parts.
-  size_t torus_rank() const { return d_torus_rank; }
-
-
-  KGBEltPair tauPacket(const weyl::TwistedInvolution&) const;
-
+  size_t torus_rank() const { return titsGroup().rank(); }
 
   gradings::Grading base_grading() const { return d_base->base_grading(); }
 
-  size_t weylLength(KGBElt x) const {
-    return weylGroup().length(involution(x).w());
-  }
+  kgb::KGBElt lookup(const tits::TitsElt& a, const tits::TitsGroup& Tg) const;
 
 /*!
   \brief Method that used to return whether involution(x) < involution(y).

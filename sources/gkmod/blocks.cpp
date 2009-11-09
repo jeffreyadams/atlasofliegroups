@@ -74,8 +74,8 @@
   above relation, and every block element $z=(x,y)$ occurs, for each generator
   |s|, in one of the following five configurations. At the left we depict the
   coordinate |x| in the kgb set, to the right of it the coordinte |y| in the
-  dual kgb set; at the former case going down increases the length, in the
-  latter it increases the length. At the right we describe the local block
+  dual kgb set; in the former case going down increases the length, in the
+  latter it decreases the length. At the right we describe the local block
   structure; the terminology used there refers mostly to what happend in kgb,
   and in particular going down is considered to be an ascent in the block.
 
@@ -96,22 +96,22 @@
       ( x      x'    , s^y   )    Imaginary Type I (twice)    z     z'
 	 \    /         |                                      \   /
 	  \  /          |                                       \ /
-      (  s^x=s^x'    ,  y    )        Real Type I               s^z
+      (  s^x=s^x'    ,  y    )         Real Type I              s^z
 
 
 
-      (    x    ,   s^y=s^y' )    Imaginary Type II              z
+      (    x    ,   s^y=s^y' )       Imaginary Type II           z
            |          / \                                       / \
 	   |         /   \                                     /   \
       (   s^x   ,   y     y' )     Real Type II (twice)     s^z_1  s^z_2
 
   If |s| is imaginary compact for the involution, it will be real and not in
-  the image of the Cayley transfor for the dual involution. No Cayley transorm
-  will be defined for the |x| coordinate, and no inverse Cayley transform for
-  the |y| coordinate, and both are fixed by the cross action; the situation is
-  called ImaginaryCompact.
+  the image of the Cayley transform for the dual involution. No Cayley
+  transorm will be defined for the |x| coordinate, and no inverse Cayley
+  transform for the |y| coordinate, and both are fixed by the cross action;
+  the situation is called ImaginaryCompact.
 
-      (    x    ,     y     )     ImaginaryNoncompact            z
+      (    x    ,     y     )       ImaginaryCompact             z
 
   Finally that situation with x and y interchanged is called RealNonparity
 
@@ -120,11 +120,11 @@
   Although the last two cases have no cross action links for |s| to other
   block elements, nor any Cayley or inverse Cayley links for |s|, we consider
   (more in particular |descents::DescentStatus::isDescent| considers) |s| to
-  be in the descent set in the ImaginaryNoncompact case, and not in the
-  descent set for the RealNonparity case (note that this is opposite to the
-  status of imaginary and real generators in the other (parity) cases). These
-  cases do not count as strict descent/ascent however, as is indicated in the
-  predicates |isStrrictDescent| and |isStrictAscent| below.
+  be in the descent set in the ImaginaryCompact case, and not in the descent
+  set for the RealNonparity case (note that this is opposite to the status of
+  imaginary and real generators in the other (parity) cases). These cases do
+  not count as strict descent/ascent however, as is indicated in the
+  predicates |isStrictDescent| and |isStrictAscent| below.
 */
 
 namespace atlas {
@@ -137,8 +137,8 @@ correlation(const weyl::WeylGroup& W,const weyl::WeylGroup& dW);
 
 descents::DescentStatus descents(kgb::KGBElt x,
 				 kgb::KGBElt y,
-				 const kgb::KGB& kgb,
-				 const kgb::KGB& dual_kgb);
+				 const kgb::KGB_base& kgb,
+				 const kgb::KGB_base& dual_kgb);
 
 void insertAscents(std::set<BlockElt>&, const set::SetEltList&, size_t,
 		   const Block&);
@@ -157,89 +157,97 @@ void makeHasse(std::vector<set::SetEltList>&, const Block&);
 
 namespace blocks {
 
-/*!
-  \brief Constructor for the block class.
-
-  Constructs a block from the datum of a real form rf for G and a real
-  form df for G^vee (_not_ strong real forms: up to isomorphism, the
-  result depends only on the underlying real forms!).
-*/
-Block::Block(complexredgp::ComplexReductiveGroup& G,
-	     realform::RealForm rf, realform::RealForm df,
-	     bool select_Cartans)
-  : d_realForm(rf)
-  , d_dualForm(df)
-  , d_rank(G.semisimpleRank())
-  , d_weylGroup(G.twistedWeylGroup())
-  , d_xrange(0), d_yrange(0) // set by |generate|
-  , d_x(), d_y(), d_first_z_of_x() // filled by |generate|
-  , d_cross(d_rank), d_cayley(d_rank) // each entry filled by |generate|
+Block_base::Block_base(const kgb::KGB_base& kgb,const kgb::KGB_base& dual_kgb)
+  : W(kgb.twistedWeylGroup())
+  , xrange(kgb.size()), yrange(dual_kgb.size())
+  , d_x(), d_y(), d_first_z_of_x() // filled below
+  , d_cross(rank()), d_cayley(rank()) // each entry filled below
   , d_descent(), d_length(), d_Cartan(), d_involution() // filled by |generate|
-  , d_involutionSupport() // filled below
-  , d_state()
-  , d_bruhat(NULL)
 {
-  realredgp::RealReductiveGroup G_R(G,rf);
-  complexredgp::ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
-  realredgp::RealReductiveGroup dG_R(dG,df);
+  const weyl::TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();
 
-#ifdef VERBOSE
-  std::cerr << "entering block construction... " << std::flush;
-#endif
-
-  generate(G_R,dG_R,select_Cartans); // does most of the construction work
-
-  // all that remains is computing the supports in $S$ of twisted involutions
-  d_involutionSupport.reserve(size()); // its eventual size
-  for (BlockElt z=0; z<size() and d_length[z]==d_length[0]; ++z) // minl length
+  std::vector<weyl::TwistedInvolution> dual_w;
+  dual_w.reserve(kgb.nr_involutions());
+  size_t size=0;
+  for (unsigned int i=0; i<kgb.nr_involutions(); ++i)
   {
-    if (z==0 or d_involution[z]!=d_involution[z-1])
-    { // compute involution support directly from definition
-      bitset::RankFlags support;
-      weyl::WeylWord ww=weylGroup().word(d_involution[z]);
-      for (size_t j=0; j<ww.size(); ++j)
-	support.set(ww[j]);
-      d_involutionSupport.push_back(support);
-    }
-    else // unchanged involution
-      d_involutionSupport.push_back(d_involutionSupport.back()); // duplicate
+    const weyl::TwistedInvolution w = kgb.nth_involution(i);
+    dual_w.push_back(dual_involution(w,W,dual_W));
+    size += kgb.packet_size(w)*dual_kgb.packet_size(dual_w.back());
   }
 
-  // complete by propagating involution supports
-  for (BlockElt z=d_involutionSupport.size(); z<size(); ++z)
+  d_first_z_of_x.reserve(xrange+1);
+
+  d_x.reserve(size);
+  d_y.reserve(size);
+  d_involution.reserve(size);
+  d_length.reserve(size);
+  d_Cartan.reserve(size);
+  d_descent.reserve(size);
+
+  BlockElt base_z = 0; // block element |z| where generation for |x| starts
+
+  for (unsigned int i=0; i<kgb.nr_involutions(); ++i)
   {
-    size_t s = firstStrictDescent(z);
-    assert (s<d_rank); // must find one, as we are no longer at minimal length
-    descents::DescentStatus::Value v = descentValue(s,z);
-    if (v == descents::DescentStatus::ComplexDescent) // cross link
-    { // use value from shorter cross neighbour, setting |s| and |twist(s)|
-      d_involutionSupport[z] = d_involutionSupport[cross(s,z)];
-      d_involutionSupport[z].set(s);
-      d_involutionSupport[z].set(twistedWeylGroup().twisted(s));
-    }
-    else // Real Type I or II
-    { // use (some) inverse Cayley transform and set |s|
-      d_involutionSupport[z] = d_involutionSupport[inverseCayley(s,z).first];
-      d_involutionSupport[z].set(s);
-    }
-  } // |for(z)|
+    const weyl::TwistedInvolution w = kgb.nth_involution(i);
 
+    kgb::KGBEltPair x_step = kgb.tauPacket(w);
+    kgb::KGBEltPair y_step = dual_kgb.tauPacket(dual_w[i]);
 
-#ifdef VERBOSE
-  std::cerr << "done" << std::endl;
-#endif
+    for (kgb::KGBElt x=x_step.first; x<x_step.second; ++x)
+    {
+      d_first_z_of_x.push_back(base_z); // set even for |x| without any |y|
+      for (size_t y=y_step.first; y<y_step.second; ++y)
+      {
+	d_x.push_back(x);
+	d_y.push_back(y);
+	d_descent.push_back(descents(x,y,kgb,dual_kgb));
+	d_length.push_back(kgb.length(x));
+	d_Cartan.push_back(kgb.Cartan_class(x));
+	d_involution.push_back(w);
+      } // |for(y)|
+      base_z += y_step.second - y_step.first; // skip to next |x|
+    } // |for(x)|
+  } // |for (i)|
+  d_first_z_of_x.push_back(base_z);// make |d_first_z_of_x[d_xrange]==d_size|
+
+  assert(d_first_z_of_x.size()==xrange+1); // all |x|'s have been seen
+
+  // Now |element| can be safely called; install cross and Cayley tables
+
+  for (weyl::Generator s = 0; s<rank(); ++s)
+  { // the generation below is completely independent for each |s|
+    d_cross[s].resize(size);
+    d_cayley[s].resize(size,std::make_pair(UndefBlock,UndefBlock));
+    for (BlockElt z=0; z<size; ++z)
+    {
+     d_cross[s][z] = element(kgb.cross(s,x(z)),dual_kgb.cross(s,y(z)));
+     switch (d_descent[z][s])
+     {
+     default: break; // leave |d_cayley[s][z]|
+     case descents::DescentStatus::ImaginaryTypeII:
+       {
+	 BlockElt z1=element(kgb.cayley(s,x(z)),
+			     dual_kgb.inverseCayley(s,y(z)).second);
+	 d_cayley[s][z].second = z1; // double-valued direct Cayley
+	 d_cayley[s][z1].first = z; // single-valued inverse Cayley
+       }
+       // FALL THROUGH
+     case descents::DescentStatus::ImaginaryTypeI:
+       {
+	 BlockElt z0=element(kgb.cayley(s,x(z)),
+			     dual_kgb.inverseCayley(s,y(z)).first);
+	 d_cayley[s][z].first = z0; // |.second| remains |UndefBlock| in TypeI
+	 BlockEltPair& ic = d_cayley[s][z0]; // location for inverse Cayley
+	 if (ic.first==UndefBlock) // it may be single or double valued
+	   ic.first = z;
+	 else
+	   ic.second = z;
+       }
+     } // switch
+    } // |for (z)|
+  } // |for(s)|
 }
-
-
-Block::~Block()
-
-{
-  delete d_bruhat;
-}
-
-/******** copy, assignment and swap ******************************************/
-
-/******** accessors **********************************************************/
 
 /*!\brief Look up element by |x|, |y| coordinates
 
@@ -250,7 +258,7 @@ Block::~Block()
   one present for |x| (there must be at least one) we can predict the value
   directly, since for each fixed |x| value the values of |y| are consecutive.
 */
-BlockElt Block::element(kgb::KGBElt x,kgb::KGBElt y) const
+BlockElt Block_base::element(kgb::KGBElt x,kgb::KGBElt y) const
 {
   BlockElt first=d_first_z_of_x[x];
   BlockElt z = first +(y-d_y[first]);
@@ -264,7 +272,7 @@ BlockElt Block::element(kgb::KGBElt x,kgb::KGBElt y) const
   Explanation: this means that d_descent[z][s] is one of ComplexAscent,
   ImaginaryTypeI or ImaginaryTypeII.
 */
-bool Block::isStrictAscent(size_t s, BlockElt z) const
+bool Block_base::isStrictAscent(size_t s, BlockElt z) const
 {
   descents::DescentStatus::Value v = descentValue(s,z);
   return not descents::DescentStatus::isDescent(v)
@@ -277,7 +285,7 @@ bool Block::isStrictAscent(size_t s, BlockElt z) const
   Explanation: this means that d_descent[z][s] is one of ComplexDescent,
   RealTypeI or RealTypeII.
 */
-bool Block::isStrictDescent(size_t s, BlockElt z) const
+bool Block_base::isStrictDescent(size_t s, BlockElt z) const
 {
   descents::DescentStatus::Value v = descentValue(s,z);
   return descents::DescentStatus::isDescent(v)
@@ -288,7 +296,7 @@ bool Block::isStrictDescent(size_t s, BlockElt z) const
   \brief Returns the first descent for z (the number of a simple root) that is
 not imaginary compact, or rank() if there is no such descent.
 */
-size_t Block::firstStrictDescent(BlockElt z) const
+size_t Block_base::firstStrictDescent(BlockElt z) const
 {
   for (size_t s = 0; s < rank(); ++s)
     if (isStrictDescent(s,z))
@@ -301,7 +309,7 @@ size_t Block::firstStrictDescent(BlockElt z) const
   \brief Returns the first descent for z (the number of a simple root) that is
 either complex or real type I; if there is no such descent returns |rank()|
 */
-size_t Block::firstStrictGoodDescent(BlockElt z) const
+size_t Block_base::firstStrictGoodDescent(BlockElt z) const
 {
   for (size_t s = 0; s < rank(); ++s)
     if (isStrictDescent(s,z) and
@@ -320,7 +328,7 @@ size_t Block::firstStrictGoodDescent(BlockElt z) const
   In fact if this is not satisfied, we return a pair of UndefBlock elements
 */
 
-BlockEltPair Block::link(size_t alpha,size_t beta,BlockElt y) const
+BlockEltPair Block_base::link(size_t alpha,size_t beta,BlockElt y) const
 {
   const descents::DescentStatus& desc=descent(y);
 
@@ -375,113 +383,105 @@ BlockEltPair Block::link(size_t alpha,size_t beta,BlockElt y) const
 }
 
 
-/******** manipulators *******************************************************/
 
-// to be called by the constructor
-void Block::generate(realredgp::RealReductiveGroup& G,
-		     realredgp::RealReductiveGroup& dG,
-		     bool select_Cartans)
+/*!
+  \brief Constructor for the |Block| class.
+
+  Constructs a block from the datum of a real form rf for G and a real
+  form df for G^vee (_not_ strong real forms: up to isomorphism, the
+  result depends only on the underlying real forms!).
+*/
+Block::Block(complexredgp::ComplexReductiveGroup& G,
+	     realform::RealForm rf, realform::RealForm df,
+	     bool select_Cartans)
+  : Block_base(base_for(G,rf,df,select_Cartans))
+  , d_involutionSupport() // filled below
+  , d_state()
+  , d_bruhat(NULL)
+{ compute_supports(); }
+
+Block::Block(const kgb::KGB_base& kgb,const kgb::KGB_base& dual_kgb)
+  : Block_base(kgb,dual_kgb)
+  , d_involutionSupport() // filled below
+  , d_state()
+  , d_bruhat(NULL)
+{ compute_supports(); }
+
+Block_base // helper function for main contructor, same arguments
+  Block::base_for(complexredgp::ComplexReductiveGroup& G, realform::RealForm rf,
+		  realform::RealForm drf, bool select_Cartans)
 {
-  kgb::KGB kgb(G,select_Cartans ? common_Cartans(G,dG) : bitmap::BitMap(0));
+  realredgp::RealReductiveGroup G_R(G,rf);
+  complexredgp::ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
+  realredgp::RealReductiveGroup dG_R(dG,drf);
+
+  kgb::KGB kgb
+    ( G_R,select_Cartans ? common_Cartans(G_R,dG_R) : bitmap::BitMap(0));
   kgb::KGB dual_kgb
-    (dG,select_Cartans ? common_Cartans(dG,G) : bitmap::BitMap(0));
+    (dG_R,select_Cartans ? common_Cartans(dG_R,G_R) : bitmap::BitMap(0));
 
 #ifdef VERBOSE
   std::cerr << "K\\G/B and dual generated... " << std::flush;
 #endif
 
-  const weyl::WeylGroup& dual_Weyl_group(dual_kgb.weylGroup());
-  weyl::WeylInterface to_dual_Weyl=correlation(d_weylGroup.weylGroup(),
-					       dual_Weyl_group);
+  return Block_base(kgb,dual_kgb);
+}
 
-  // set |d_xrange| and |d_yrange|
-  d_xrange = kgb.size();
-  d_yrange = dual_kgb.size();
+// compute the supports in $S$ of twisted involutions
+void Block::compute_supports()
+{
+  d_involutionSupport.reserve(size()); // its eventual size
+  for (BlockElt z=0; z<size() and length(z)==length(0); ++z) // minl length
+  {
+    if (z==0 or involution(z)!=involution(z-1))
+    { // compute involution support directly from definition
+      bitset::RankFlags support;
+      weyl::WeylWord ww=weylGroup().word(involution(z));
+      for (size_t j=0; j<ww.size(); ++j)
+	support.set(ww[j]);
+      d_involutionSupport.push_back(support);
+    }
+    else // unchanged involution
+      d_involutionSupport.push_back(d_involutionSupport.back()); // duplicate
+  }
 
-  complexredgp::ComplexReductiveGroup& G_C = G.complexGroup();
-  size_t size=G_C.block_size(d_realForm,d_dualForm); // not stored in |Block| !
-
-  d_x.reserve(size);
-  d_y.reserve(size);
-  d_first_z_of_x.reserve(d_xrange+1);
-
-  d_involution.reserve(size);
-  d_length.reserve(size);
-  d_Cartan.reserve(size);
-  d_descent.reserve(size);
-
-  { // generate the six tables we just dimensioned
-    kgb::KGBElt x = 0;
-    BlockElt base_z = 0; // block element |z| where generation for |x| starts
-
-    while (x<kgb.size()) // loop over twisted involutions $\tau$
-    {
-      const weyl::TwistedInvolution& w = kgb.involution(x);
-
-      kgb::KGBEltPair xRange = kgb.tauPacket(w);
-      kgb::KGBEltPair yRange =
-	dual_kgb.tauPacket(dualInvolution(w,to_dual_Weyl));
-
-      for (assert(x==xRange.first); x < xRange.second; ++x)
-      {
-	d_first_z_of_x.push_back(base_z); // set even for |x| without any |y|
-	for (size_t y = yRange.first; y < yRange.second; ++y)
-	{
-	  d_x.push_back(x);
-	  d_y.push_back(y);
-	  d_involution.push_back(w);
-	  d_length.push_back(kgb.length(x));
-	  d_Cartan.push_back(kgb.Cartan_class(x));
-	  d_descent.push_back(descents(x,y,kgb,dual_kgb));
-	} // |for(y)|
-	base_z += yRange.second - yRange.first; // skip to next |x|
-      } // |for(x)|
-    } // "for(tau)"
-
-    assert(base_z == size); // check that number of pairs is as expected
-    d_first_z_of_x.push_back(base_z);// make |d_first_z_of_x[d_xrange]==d_size|
-
-    assert(d_first_z_of_x.size()==d_xrange+1);
-    assert(d_x.size()==size); // similarly for |d_y|, ..., |d_descent|
-  } // end of generation of |(x,y)| tables
-
-  // Now |element| can be safely called; install cross and Cayley tables
-
-  for (size_t s = 0; s < d_rank; ++s)
-  { // the generation below is completely independent for each |s|
-    d_cross[s].resize(size);
-    d_cayley[s].resize(size,std::make_pair(UndefBlock,UndefBlock));
-    for (BlockElt z = 0; z<size; ++z)
-    {
-     d_cross[s][z] = element(kgb.cross(s,x(z)),dual_kgb.cross(s,y(z)));
-     switch (d_descent[z][s])
-     {
-     default: break; // leave |d_cayley[s][z]|
-     case descents::DescentStatus::ImaginaryTypeII:
-       {
-	 BlockElt z1=element(kgb.cayley(s,x(z)),
-			     dual_kgb.inverseCayley(s,y(z)).second);
-	 d_cayley[s][z].second = z1; // double-valued direct Cayley
-	 d_cayley[s][z1].first = z; // single-valued inverse Cayley
-       }
-       // FALL THROUGH
-     case descents::DescentStatus::ImaginaryTypeI:
-       {
-	 BlockElt z0=element(kgb.cayley(s,x(z)),
-			     dual_kgb.inverseCayley(s,y(z)).first);
-	 d_cayley[s][z].first = z0; // |.second| remains |UndefBlock| in TypeI
-	 BlockEltPair& ic = d_cayley[s][z0]; // location for inverse Cayley
-	 if (ic.first==UndefBlock) // it may be single or double valued
-	   ic.first = z;
-	 else
-	   ic.second = z;
-       }
-     } // switch
-    } // |for (z)|
-  } // |for(s)|
+  // complete by propagating involution supports
+  for (BlockElt z=d_involutionSupport.size(); z<size(); ++z)
+  {
+    size_t s = firstStrictDescent(z);
+    assert (s<rank()); // must find one, as we are no longer at minimal length
+    descents::DescentStatus::Value v = descentValue(s,z);
+    if (v == descents::DescentStatus::ComplexDescent) // cross link
+    { // use value from shorter cross neighbour, setting |s| and |twist(s)|
+      d_involutionSupport[z] = d_involutionSupport[cross(s,z)];
+      d_involutionSupport[z].set(s);
+      d_involutionSupport[z].set(twistedWeylGroup().twisted(s));
+    }
+    else // Real Type I or II
+    { // use (some) inverse Cayley transform and set |s|
+      d_involutionSupport[z] = d_involutionSupport[inverseCayley(s,z).first];
+      d_involutionSupport[z].set(s);
+    }
+  } // |for(z)|
 
 
-} // generate
+#ifdef VERBOSE
+  std::cerr << "done" << std::endl;
+#endif
+}
+
+Block::~Block()
+
+{
+  delete d_bruhat;
+}
+
+/******** copy, assignment and swap ******************************************/
+
+/******** accessors **********************************************************/
+
+
+/******** manipulators *******************************************************/
 
 /*!
   \brief Constructs the BruhatOrder.
@@ -508,57 +508,6 @@ void Block::fillBruhat()
 }
 
 
-/******** private accessor *************************************************/
-
-
-//!\brief Returns the twisted involution dual to tw.
-
-/*
-  Explanation: we have $\tau = tw.\delta$, with $tw$ in the Weyl group $W$,
-  and $\delta$ the fundamental involution of the character lattice. We seek
-  the twisted involution $v$ in the dual Weyl group $W^\vee$ such that
-  $-\tau^t = v.\delta^\vee$; here $\delta^\vee$ is the fundamental involution
-  for $W^\vee$, which acts on the cocharacter lattice and can be expressed as
-  $-w_0^t\delta^t$ where $w_0$ is the longest element of $W$. So we have:
-
-        $(-\delta^t). tw^t = v.w_0^t.(-\delta^t)$
-
-  which leads to $v = (w_0.\delta.tw.\delta)^t$. Conjugation by $\delta$ in
-  the extended Weyl group defines the automorphism $\theta$ of $W$ coming from
-  the Dynkin diagram involution that defines the inner class, so we van write
-  $v=(w_0.\theta(tw))^t$. This equation of endomorphisms of the cocharacter
-  lattice must be translated into one on the level of abstract Weyl groups.
-
-  Passing from a Weyl group element $w$ acting on the character lattice to the
-  induced operation $w^t$ on the cocharacter lattice is an anti-isomorphism
-  $D:W\to W^\vee$ that maps each generator of $W$ to the corresponding
-  generator of $W^\vee$, so we want to determine $v=D(w_0.\theta(tw))$.
-  Computing some $D(w)$ amounts to interpreting $w^{-1}$ in $W^\vee$. This
-  reinterpretation is the identity on the level of Weyl words (the same
-  numbering of generators is used in the external representation), but since
-  we are using the internal representation |WeylElt| here, and the respective
-  Weyl groups may use different internal numberings of generators, a call to
-  |WeylGroup::translation| is necessary to do the conversion; the |to_daul|
-  map should define an automorphism of the Weyl group so that one has
-
-       |dual_W.word(W.translation(weyl::WeylElt(ww,W),to_dual)) == ww|
-
-  for each Weyl word |ww|. Note that this difference of internal numbering
-  could have been avoided if the |WeylGroup| constructor had used the Coxeter
-  matrix to determine the internal numbering, since this is guaranteed to be
-  the same for $W$ and $W^\vee$; however since the Cartan matrix and normal
-  renumbering of the corresponding Dynkin diagram is used instead, $W$ and
-  $W^\vee$ will differ internally in the cases $B_2$, $G_2$ and $F_4$.
-*/
-weyl::TwistedInvolution Block::dualInvolution
-  (const weyl::TwistedInvolution& tw,weyl::WeylInterface to_dual) const
-{
-  const weyl::TwistedWeylGroup& tW = twistedWeylGroup();
-  const weyl::WeylGroup& W = tW.weylGroup();
-  return weyl::TwistedInvolution
-    (W.translation(W.inverse(W.prod(W.longest(),tW.twisted(tw.w()))),
-		   to_dual));
-}
 
 } // namespace blocks
 
@@ -577,7 +526,7 @@ namespace blocks {
 
   Explanation: this is a fairly annoying twist. Because of the normalizations
   that we do for Weyl groups based on the Cartan matrix rather than the
-  Coxeter matrix, the dual Weyl group may uses a different internal numbering
+  Coxeter matrix, the dual Weyl group may use a different internal numbering
   than the Weyl group in the (irreducible) cases $B_2$, $G_2$ ad $F_4$. This
   means we cannot reinterpret |WeylElt| values for $W$ as values for $dW$
   without a conversion. The conversion will be performed by
@@ -590,14 +539,22 @@ namespace blocks {
         |  d_toDualWeyl[s] = W.d_out[dW.d_in[s]] |
 
   so that the reinterpretation will preserve the outer representation. We do
-  not having direct access to those arrays, but we can pass into internal
+  not have direct access to those arrays, but we can pass into internal
   representation and back out for another group without acessing them
   explicitly. Note this could not possibly be made to work (in all cases) if
   |WeylGroup::translate| were to use internal numbering, as it originally did.
+
+  This function is left for historical reasons, but is doubly useless, since
+  we now share the (untwisted) Weyl group between an inner class and its dual,
+  (see the |assert| below), and because we now avoid any reinterpretation of
+  elements from the twisted Weylgroup to its dual without passing through the
+  external |WeylWord| representation (see |dual_involution| below).
 */
 weyl::WeylInterface
 correlation(const weyl::WeylGroup& W,const weyl::WeylGroup& dW)
 {
+  assert(&W==&dW); // so groups are identical, making this function useless!
+
   size_t rank=W.rank();
   weyl::WeylInterface result;
   for (size_t s = 0; s < rank; ++s)
@@ -610,14 +567,15 @@ correlation(const weyl::WeylGroup& W,const weyl::WeylGroup& dW)
        |W| gives the element that in |dW| will represent |s|
     */
     result[s] = ww[0];
+
   }
   return result;
 }
 
 descents::DescentStatus descents(kgb::KGBElt x,
 				 kgb::KGBElt y,
-				 const kgb::KGB& kgb,
-				 const kgb::KGB& dual_kgb)
+				 const kgb::KGB_base& kgb,
+				 const kgb::KGB_base& dual_kgb)
 {
   descents::DescentStatus result;
   for (size_t s = 0; s < kgb.rank(); ++s)
@@ -731,9 +689,55 @@ void makeHasse(std::vector<set::SetEltList>& Hasse, const Block& block)
 
 ******************************************************************************/
 
-std::vector<BlockElt> dual_map(const Block& b, const Block& dual_b)
-{
 
+//!\brief Returns the twisted involution dual to |w|.
+
+/*
+  We have $\tau = w.\delta$, with $tw$ in the Weyl group $W$, and $\delta$ the
+  fundamental involution of $X^*$. We seek the twisted involution $v$ in the
+  dual twisted Weyl group |dual_W| such that $-\tau^t = v.\delta^\vee$. Here
+  $\delta^\vee$ is the dual fundamental involution, which acts on $X_*$ as
+  minus the transpose of the longest involution $w_0\delta$, where $w_0$ is
+  the longest element of $W$. This relation relation can be defined
+  independently of being a twisted involution, and leads to a bijection $f$:
+  $W \to W$ that is characterised by $f(e)=w_0$ and $f(s.w)=f(w)dwist(s)$ for
+  any simple generator $e$ and $w\in W$, where $dwist$ is the twist of the
+  dual twisted Weyl group (one also has $f(w.twist(s))=s.f(w)$ so that $f$ is
+  intertwines twisted conjugation: $f(s.w.twist(s))=s.f(w).dwist(s)$).
+
+  The implementation below is based directly on the above characterisation, by
+  converting |w| into a WeylWord|, and then starting from $w_0$
+  right-multiplying successively by the $dwist$ image of the letters of the
+  word taken right-to-left. The only thing assumed common to |W| and |W_dual|
+  is the external numbering of generators (letters in |ww|), without which the
+  notion of dual twisted involution would make no sense; notably the result
+  will be correct (when interpreted for |dual_W|) even if the underlying
+  (untwisted) Weyl groups of |W| and |dual_W| should differ in their
+  external-to-internal mappings. If one assumes that |W| and |dual_W| share
+  the same underlying Weyl group (as is currently the case for an inner class
+  and its dual) then one could alternatively say simply
+
+    |return W.prod(W.weylGroup().longest(),dual_W.twisted(W.inverse(w)))|
+
+  or
+
+    |return W.prod(W.inverse(W.twisted(w)),W.weylGroup().longest())|
+*/
+weyl::TwistedInvolution
+dual_involution(const weyl::TwistedInvolution& w,
+		const weyl::TwistedWeylGroup& W,
+		const weyl::TwistedWeylGroup& dual_W)
+{
+  weyl::WeylWord ww= W.word(w);
+  weyl::TwistedInvolution result = dual_W.weylGroup().longest();
+  for (size_t i=ww.size(); i-->0; )
+    dual_W.mult(result,dual_W.twisted(ww[i]));
+  return result;
+}
+
+
+std::vector<BlockElt> dual_map(const Block_base& b, const Block_base& dual_b)
+{
   assert(b.size()==dual_b.size());
 
   std::vector<BlockElt> result(b.size());

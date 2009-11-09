@@ -24,6 +24,7 @@ namespace atlas {
 
 namespace blocks {
 
+  class Block_base;
   class Block;
 
   typedef unsigned int BlockElt;
