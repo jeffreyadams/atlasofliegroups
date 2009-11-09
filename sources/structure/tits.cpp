@@ -52,6 +52,9 @@ namespace tits {
 
 namespace {
 
+weyl::Twist make_twist(const rootdata::RootDatum& rd,
+		       const latticetypes::LatticeMatrix& d);
+
 std::vector<gradings::Grading> compute_square_classes
   (const complexredgp::ComplexReductiveGroup& G);
 
@@ -219,9 +222,8 @@ std::vector<gradings::Grading> compute_square_classes
 */
 TitsGroup::TitsGroup(const rootdata::RootDatum& rd,
 		     const weyl::WeylGroup& W,
-		     const latticetypes::LatticeMatrix& d,
-		     const weyl::Twist& twist)
-  : weyl::TwistedWeylGroup(W,twist)
+		     const latticetypes::LatticeMatrix& d)
+  : weyl::TwistedWeylGroup(W,make_twist(rd,d))
   , d_rank(rd.rank())
   , d_simpleRoot(rd.semisimpleRank())   // set number of vectors, but not yet
   , d_simpleCoroot(rd.semisimpleRank()) // their size (which will be |d_rank|)
@@ -233,6 +235,31 @@ TitsGroup::TitsGroup(const rootdata::RootDatum& rd,
     d_simpleCoroot[i]=latticetypes::SmallBitVector(rd.simpleCoroot(i));
   }
 }
+
+namespace {
+
+/*!\brief Returns the twist defined by |d| relative to |rd|.
+
+  Precondition: |d| is an involution of the \emph{based} root datum |rd|.
+*/
+weyl::Twist make_twist(const rootdata::RootDatum& rd,
+		       const latticetypes::LatticeMatrix& d)
+{
+  latticetypes::WeightList
+    simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
+
+  weyl::Twist result;
+
+  for (size_t i = 0; i<simple_roots.size(); ++i)
+  {
+    result[i] = setutils::find_index(simple_roots,d.apply(simple_roots[i]));
+    assert (result[i]<simple_roots.size());
+  }
+
+  return result;
+}
+
+} // |namespace|
 
 
 /*!
@@ -604,9 +631,9 @@ tits::TitsElt BasedTitsGroup::naive_seed
    guarantee that chosen solutions will belong to the same strong real form.
    Therefore this method should only be called when only one seed is needed.
  */
-tits::TitsElt BasedTitsGroup::grading_seed
-  (complexredgp::ComplexReductiveGroup& G,
-   realform::RealForm rf, size_t cn) const
+tits::TitsElt
+BasedTitsGroup::grading_seed(complexredgp::ComplexReductiveGroup& G,
+			     realform::RealForm rf, size_t cn) const
 {
   // locate fiber and weak real form
   const cartanclass::Fiber& f=G.cartan(cn).fiber();
