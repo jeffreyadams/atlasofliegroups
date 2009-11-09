@@ -41,9 +41,9 @@ representation.
     parameter w.r.t. a simple reflection, so this information could be packed
     in three bits. However, this would lead to having some packets lie across
     word boundaries, with the ensuing complications. Four bits is a good
-    choice; here we take the lazy way of using even eight bits, as this
-    makes the reading even a bit easier. We might come back to  four at
-    some later change---this should not require a change in user interface.
+    choice; here we take the lazy way of using even eight bits, as this makes
+    the reading even a bit easier. We might come back to four at some later
+    change---this should not require a change in user interface.
   */
 class DescentStatus {
 
