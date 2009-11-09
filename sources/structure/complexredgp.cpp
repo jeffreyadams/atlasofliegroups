@@ -89,10 +89,7 @@
 
 namespace atlas {
 
-namespace complexredgp{
-
-  weyl::Twist make_twist(const rootdata::RootDatum& rd,
-			 const latticetypes::LatticeMatrix& d);
+namespace complexredgp {
 
   void crossTransform(rootdata::RootList&,
 		      const weyl::WeylWord&,
@@ -144,10 +141,11 @@ ComplexReductiveGroup::ComplexReductiveGroup
   , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(d,rd))
     // dual fundamental fiber is dual fiber of most split Cartan
 
-  , W(rd.cartanMatrix())
-  , d_titsGroup(rd,W,d,make_twist(rd,d))
-  , d_dualTitsGroup(d_dualRootDatum,W,dualDistinguished(),
-		    make_twist(d_dualRootDatum,dualDistinguished()))
+  , my_W(new weyl::WeylGroup(rd.cartanMatrix()))
+  , W(*my_W) // owned when this constructor is used
+
+  , d_titsGroup(rd,W,d)
+  , d_dualTitsGroup(d_dualRootDatum,W,dualDistinguished())
   , root_twist(rd.root_permutation(simple_twist()))
 
   , Cartan(1,C_info(*this,weyl::TwistedInvolution(),0))
@@ -346,7 +344,8 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
   , d_fundamental(G.d_dualFundamental)
   , d_dualFundamental(G.d_fundamental)
 
-  , W(G.W)
+  , my_W(NULL), W(G.W) // not owned here, we depend on existence of |G|
+
   , d_titsGroup(G.d_dualTitsGroup,W)
   , d_dualTitsGroup(G.d_titsGroup,W)
 
@@ -408,13 +407,13 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
 
 
 /*!
-  The only data explicitly allocated by the ComplexReductiveGroup is that
-  for any non-NULL |CartanClass| pointers.
+  Free Weyl group is owned, and any non-NULL |CartanClass| pointers.
 */
 ComplexReductiveGroup::~ComplexReductiveGroup()
 {
   for (size_t i = 0; i<numCartanClasses(); ++i)
     delete Cartan[i].class_pt;
+  delete my_W;
 }
 
 /********* copy, assignment and swap *****************************************/
@@ -1090,27 +1089,6 @@ void Cayley_and_cross_part(rootdata::RootSet& Cayley,
 ******************************************************************************/
 
 namespace complexredgp {
-
-/*!\brief Returns the twist defined by |d| relative to |rd|.
-
-  Precondition: |d| is an involution of the \emph{based} root datum |rd|.
-*/
-weyl::Twist make_twist(const rootdata::RootDatum& rd,
-		       const latticetypes::LatticeMatrix& d)
-{
-  latticetypes::WeightList
-    simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
-
-  weyl::Twist result;
-
-  for (size_t i = 0; i<simple_roots.size(); ++i)
-  {
-    result[i] = setutils::find_index(simple_roots,d.apply(simple_roots[i]));
-    assert (result[i]<simple_roots.size());
-  }
-
-  return result;
-}
 
 /*!
   \brief Cross-transforms the roots in |rl| according to |ww|.

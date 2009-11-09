@@ -147,7 +147,8 @@ class ComplexReductiveGroup
   */
   cartanclass::Fiber d_dualFundamental;
 
-  const weyl::WeylGroup W;
+  const weyl::WeylGroup* my_W; // pointer to |W| in case we own |W|, or |NULL|
+  const weyl::WeylGroup& W;    // possibly owned (via |my_W|) reference
 
   /*!
   \brief The Tits group of the based root datum, extended by an
