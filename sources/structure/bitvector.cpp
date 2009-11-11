@@ -272,15 +272,14 @@ void BitMatrix<dim>::kernel(std::vector<BitVector<dim> >& b) const
 
 /******** manipulators *******************************************************/
 
-template<size_t dim>
-BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
 
 /*!
   \brief Increment *this by adding m.
 
   Precondition: m has the same size as the current matrix.
 */
-
+template<size_t dim>
+BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
 {
   assert(d_rows==m.d_rows);
   assert(d_columns==m.d_columns);
@@ -290,8 +289,6 @@ BitMatrix<dim>& BitMatrix<dim>::operator+= (const BitMatrix<dim>& m)
   return *this;
 }
 
-template<size_t dim>
-BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
 
 /*!
   \brief Right multiply our BitMatrix by |m|.
@@ -301,7 +298,8 @@ BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
 
   NOTE : of course |m.d_rows| must be equal to |d_columns|.
 */
-
+template<size_t dim>
+BitMatrix<dim>& BitMatrix<dim>::operator*= (const BitMatrix<dim>& m)
 {
   assert(d_columns==m.d_rows);
   BitMatrix<dim> res(d_rows,m.d_columns);
@@ -375,23 +373,16 @@ template<size_t dim> BitMatrix<dim>& BitMatrix<dim>::invert()
   return *this;
 }
 
+
+//! \brief Resets the matrix to zero.
 template<size_t dim> void BitMatrix<dim>::reset()
-
-/*!
-  \brief Resets the matrix to zero.
-*/
-
 {
   for (unsigned long j = 0; j < d_data.size(); ++j)
     d_data[j].reset();
 }
 
+//! \brief Resizes the matrix to |m| rows, |n| columns, leaving data around
 template<size_t dim> void BitMatrix<dim>::resize(size_t m, size_t n)
-
-/*!
-  \brief Resizes the matrix to |m| rows, |n| columns, leaving data around
-*/
-
 {
   assert(m<=dim);
   d_data.resize(n);
@@ -401,26 +392,14 @@ template<size_t dim> void BitMatrix<dim>::resize(size_t m, size_t n)
 }
 
 template<size_t dim> void BitMatrix<dim>::swap(BitMatrix<dim>& m)
-
-/*!
-  \brief Swaps contents with m.
-*/
 {
   d_data.swap(m.d_data);
   std::swap(d_rows,m.d_rows);
   std::swap(d_columns,m.d_columns);
 }
 
+//! \brief Transposes the matrix.
 template<size_t dim> BitMatrix<dim>& BitMatrix<dim>::transpose()
-
-/*!
-  \brief Transposes the matrix.
-
-  This could have a very simple implementation for square matrices,
-  but is quite a bit trickier for rectangular ones!  So we don't try
-  to be smart and do the safe thing, which is to make a copy.
-*/
-
 {
   BitMatrix<dim> result(d_columns,d_rows);
 
@@ -610,14 +589,13 @@ bool firstSolution(BitVector<dimsol>& sol,
   return true;
 }
 
-template<size_t dim> void identityMatrix(BitMatrix<dim>& m, size_t n)
 
 /*!
   \brief Puts in m the identity matrix in rank n.
 
   Precondition: n <= dim;
 */
-
+template<size_t dim> void identityMatrix(BitMatrix<dim>& m, size_t n)
 {
   m.resize(n,n);
   m.reset();
@@ -626,12 +604,11 @@ template<size_t dim> void identityMatrix(BitMatrix<dim>& m, size_t n)
     m.set(j,j);
 }
 
-template<size_t dim> void initBasis(std::vector<BitVector<dim> >& b, size_t n)
 
 /*!
   \brief Initializes b to the canonical basis in dimension n.
 */
-
+template<size_t dim> void initBasis(std::vector<BitVector<dim> >& b, size_t n)
 {
   assert(n<=dim);
   b.assign(n,BitVector<dim>(n)); // set to |n| null vectors of size |n|
@@ -640,21 +617,16 @@ template<size_t dim> void initBasis(std::vector<BitVector<dim> >& b, size_t n)
     b[j].set(j);
 }
 
-
-
-/* this auxiliary class is used as compare object to partially sort bit
-   vectors by the position of their leading bit
+/*
+   This auxiliary unary function class is used as comparison object, to
+   partially sort bit vectors by the position of their leading bit
 */
-template<size_t dim> class FirstBit {
-
- public:
-
+template<size_t dim> struct FirstBit
+{
   typedef const BitVector<dim>& argument_type;
   typedef size_t result_type;
 
-  result_type operator() (argument_type v) const {
-    return v.firstBit();
-  }
+  result_type operator() (argument_type v) const { return v.firstBit(); }
 };
 
 /*!
@@ -705,21 +677,22 @@ template<size_t dim>
   |a[i][f[j]]==(i==j?1:0)| for all $i,j<l$.
 
   For each subvectorspace $V$ of $k^d$, let $I$ be a subset of
-  \f$\{0,\ldots,d-1\}\f$ such that the standard basis vectors $e_i$ for \f$i\in I\f$
-  generate a complementary subspace $e_I$ to $V$ (one can find such an $I$ by
-  repeatedly throwing in $e_i$s linearly independent to $V$ and previously
-  chosen ones). The normal basis of $V$ corresponding to $I$ is obtained by
-  projecting the $e_j$ for $j$ in the complement $J$ of $I$ onto $V$ along
-  $e_I$ (i.e., according to the direct sum decompostion \f$k^d=V\oplus e_I\f$).
-  This can be visualised by viewing $V$ as the function-graph of a linear map
-  from $k^J$ to $k^I$; then the normal basis is the lift to $V$ of the
-  standard basis of $k^J$. We define the canonical basis of $V$ be the normal
-  basis for the complement $I$ of the lexicographically minimal possible set
-  $J$ (lexicographic for the increasing sequences representing the subsets; in
-  fact $I$ is lexicographically maximal since complementation reverses this
-  ordering one fixed-size subsets). One can find this $J$ by repeatedly
-  choosing the smallest index such that the projection from $V$ defined by
-  extracting the coordinates at the selected indices remains surjective.
+  \f$\{0,\ldots,d-1\}\f$ such that the standard basis vectors $e_i$ for
+  \f$i\in I\f$ generate a complementary subspace $e_I$ to $V$ (one can find
+  such an $I$ by repeatedly throwing in $e_i$s linearly independent to $V$ and
+  previously chosen ones). The normal basis of $V$ corresponding to $I$ is
+  obtained by projecting the $e_j$ for $j$ in the complement $J$ of $I$ onto
+  $V$ along $e_I$ (i.e., according to the direct sum decompostion
+  \f$k^d=V\oplus e_I\f$). This can be visualised by viewing $V$ as the
+  function-graph of a linear map from $k^J$ to $k^I$; then the normal basis is
+  the lift to $V$ of the standard basis of $k^J$. We define the canonical
+  basis of $V$ be the normal basis for the complement $I$ of the
+  lexicographically minimal possible set $J$ (lexicographic for the increasing
+  sequences representing the subsets; in fact $I$ is lexicographically maximal
+  since complementation reverses this ordering one fixed-size subsets). One
+  can find this $J$ by repeatedly choosing the smallest index such that the
+  projection from $V$ defined by extracting the coordinates at the selected
+  indices remains surjective.
 
   This function assumes that $a$ already contains the canonical basis of some
   subspace, and that the elements of |f| describe the corresponding set $J$.
@@ -765,9 +738,6 @@ template<size_t dim>
   a.push_back(w);
 }
 
-template<size_t dim> void spanAdd(std::vector<BitVector<dim> >& a,
-				  std::vector<size_t>& f,
-				  const BitVector<dim>& v)
 
 /*!
   \brief Enlarges the basis a to span v.
@@ -788,7 +758,9 @@ template<size_t dim> void spanAdd(std::vector<BitVector<dim> >& a,
   condition for calling |spanAdd| again; this is the (only) difference with
   |normalSpanAdd|.
 */
-
+template<size_t dim> void spanAdd(std::vector<BitVector<dim> >& a,
+				  std::vector<size_t>& f,
+				  const BitVector<dim>& v)
 {
   assert(a.size()==0 or a[0].size()==v.size());
   assert(a.size()==f.size());
@@ -997,6 +969,11 @@ template
    (const std::vector<BitVector<constants::RANK_MAX> >& b,
     size_t n,
     const bitset::BitSet<constants::RANK_MAX>& e);
+
+template
+  bitset::BitSet<constants::RANK_MAX> combination
+  (const std::vector<bitset::BitSet<constants::RANK_MAX> >&,
+   const bitset::BitSet<constants::RANK_MAX>&);
 
 template
   bool firstSolution(bitset::BitSet<constants::RANK_MAX>& c,
