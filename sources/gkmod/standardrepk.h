@@ -344,7 +344,7 @@ class SRK_context
 
 /*
   The conditions below (and Normal which is not used in tests) are defined by
-   Standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ imaginary
+   Standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ positive imaginary
    Normal: $\<\lambda,\alpha\vee+\theta\alpha\vee>\geq0$ when $\alpha$ simple,
      complex, and orthogonal to sums of positive imaginary resp. real roots.
    Zero: $\<\lambda,\alpha\vee>=0$ for some simple-imaginary compact $\alpha$
@@ -362,6 +362,10 @@ class SRK_context
   bool isStandard(const StandardRepK& sr, size_t& witness) const;
   bool isZero(const StandardRepK& sr, size_t& witness) const;
   bool isFinal(const StandardRepK& sr, size_t& witness) const;
+
+  latticetypes::Weight normalize(latticetypes::Weight lambda, size_t cn) const;
+  void normalize(StandardRepK& sr) const
+    { sr.d_lambda=project(sr.d_cartan,normalize(lift(sr),sr.d_cartan)); }
 
   tits::TitsElt titsElt(const StandardRepK& s) const
   {
@@ -443,8 +447,6 @@ class KhatContext : public SRK_context
   level height_bound(const latticetypes::Weight& lambda); // non |const|
 
 
-  void normalize(StandardRepK&) const;
-
   combination standardize(const StandardRepK& sr); // non |const|: |d_rules++|
   combination standardize(StandardRepK& sr) // non |const|, normalizes |sr|
   { normalize(sr); return standardize(static_cast<const StandardRepK&>(sr)); }
@@ -462,7 +464,7 @@ class KhatContext : public SRK_context
   HechtSchmid back_HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
 
   CharForm K_type_formula
-    (const StandardRepK& sr, level bound=~0u);// non |const|
+    (const StandardRepK& sr, level bound=~0u);
   equation mu_equation(seq_no, level bound=~0u); // adds equations
 
   std::vector<equation> saturate
@@ -510,16 +512,13 @@ class HechtSchmid
 
  public:
  HechtSchmid(const StandardRepK& s, const KhatContext& khc)
-    : lh(s), lh2(NULL), rh1(NULL), rh2(NULL) { khc.normalize(lh); }
+    : lh(s), lh2(NULL), rh1(NULL), rh2(NULL) {}
   ~HechtSchmid() { delete lh2; delete rh1; delete rh2; }
 
   void add_lh(const StandardRepK& s, const KhatContext& khc)
-   { lh2=new StandardRepK(s); khc.normalize(*lh2); }
+    { lh2=new StandardRepK(s); }
   void add_rh(const StandardRepK& s, const KhatContext& khc)
-  {
-    if (rh1==NULL) { rh1=new StandardRepK(s); khc.normalize(*rh1); }
-    else { rh2=new StandardRepK(s); khc.normalize(*rh2); }
-  }
+    { *(rh1==NULL ? &rh1 : &rh2) = new StandardRepK(s); }
 
   int n_lhs() const { return lh2==NULL ? 1 : 2; }
   int n_rhs() const { return rh1==NULL ? 0 : rh2==NULL ? 1 : 2; }

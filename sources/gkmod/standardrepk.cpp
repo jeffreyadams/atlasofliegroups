@@ -262,7 +262,7 @@ StandardRepK SRK_context::std_rep
   StandardRepK result(cn,
 		      info(cn).fiber_modulus.mod_image
 		        (titsGroup().left_torus_part(a)),
-		      project(cn,mu));
+		      project(cn,normalize(mu,cn)));
 
   return result;
 } // |std_rep|
@@ -310,6 +310,53 @@ bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
 
   return true;
 }
+
+latticetypes::Weight SRK_context::normalize
+  (latticetypes::Weight lambda, size_t cn) const
+{
+  const rootdata::RootDatum& rd = rootDatum();
+  const cartanclass::Fiber& f=G.cartan(cn).fiber();
+
+  bitset::RankFlags bi_ortho_simples;
+  { // find simple roots orthogonal to |real2rho| and |imaginary2rho|
+    latticetypes::Weight real2rho=rd.twoRho(f.realRootSet());
+    latticetypes::Weight imaginary2rho=rd.twoRho(f.imaginaryRootSet());
+    for (size_t i=0; i<rd.semisimpleRank(); ++i)
+      if (rd.isOrthogonal(real2rho,rd.simpleRootNbr(i)) and
+	  rd.isOrthogonal(imaginary2rho,rd.simpleRootNbr(i)))
+	bi_ortho_simples.set(i);
+  }
+
+  const latticetypes::LatticeMatrix& theta = f.involution();
+  rootdata::RootSet cplx = f.complexRootSet();
+
+  //  go through the orthogonal list
+  //  select the complex roots in the list
+
+  bitset::RankFlags::iterator i;
+  do
+  {
+    latticetypes::Weight mu=theta.apply(lambda);
+    mu +=lambda; // $\mu=(1+\theta)\alpha$, simplifies scalar product below
+
+    for (i= bi_ortho_simples.begin(); i(); ++i )
+    {
+      rootdata::RootNbr alpha = rd.simpleRootNbr(*i);
+
+      if (cplx.isMember(alpha) and rd.scalarProduct(mu,alpha)<0)
+      {
+	rootdata::RootNbr beta= f.involution_image_of_root(alpha);
+	assert (rd.isOrthogonal(alpha,beta));
+	rd.reflect(lambda,alpha);
+	rd.reflect(lambda,beta);
+	break; // and continue do-while loop
+      }
+    } // for
+  }
+  while (i()); // while |for|-loop was exited through |break|
+
+  return lambda;
+} // normalize
 
 bool SRK_context::isZero(const StandardRepK& sr, size_t& witness) const
 {
@@ -489,57 +536,6 @@ combination KhatContext::standardize(const StandardRepK& sr)
   return result;
 } // standardize
 
-void KhatContext::normalize(StandardRepK& sr) const
-{
-  const rootdata::RootDatum& rd = rootDatum();
-  const cartanclass::Fiber& f=fiber(sr);
-
-  latticetypes::Weight lambda=lift(sr);
-
-  bitset::RankFlags bi_ortho_simples;
-  { // find simple roots orthogonal to |real2rho| and |imaginary2rho|
-    latticetypes::Weight real2rho=rd.twoRho(f.realRootSet());
-    latticetypes::Weight imaginary2rho=rd.twoRho(f.imaginaryRootSet());
-    for (size_t i=0; i<rd.semisimpleRank(); ++i)
-      if (rd.isOrthogonal(real2rho,rd.simpleRootNbr(i)) and
-	  rd.isOrthogonal(imaginary2rho,rd.simpleRootNbr(i)))
-	bi_ortho_simples.set(i);
-  }
-
-  const latticetypes::LatticeMatrix& theta = f.involution();
-  rootdata::RootSet cplx = f.complexRootSet();
-
-  //  go through the orthogonal list
-  //  select the complex roots in the list
-
-  bitset::RankFlags::iterator i;
-  do
-  {
-    latticetypes::Weight mu=theta.apply(lambda);
-    mu +=lambda; // $\mu=(1+\theta)\alpha$, simplifies scalar product below
-
-    for (i= bi_ortho_simples.begin(); i(); ++i )
-    {
-      rootdata::RootNbr alpha = rd.simpleRootNbr(*i);
-
-      if (cplx.isMember(alpha) and rd.scalarProduct(mu,alpha)<0)
-      {
-	rootdata::RootNbr beta= f.involution_image_of_root(alpha);
-	assert (rd.isOrthogonal(alpha,beta));
-	rd.reflect(lambda,alpha);
-	rd.reflect(lambda,beta);
-	break; // and continue do-while loop
-      }
-    } // for
-  }
-  while (i()); // while |for|-loop was exited through |break|
-
-
-// put the new weakly dominant lambda back in sr
-
-  sr.d_lambda=project(sr.d_cartan,lambda);
-
-} // normalize
 
 
 HechtSchmid
@@ -1010,7 +1006,7 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
     }
 //     std::cout << pol.size() << " terms." << std::endl;
 
-    // iterate over terms in formal sum, taking weights += |mu|, coef *= |c|
+    // iterate over terms in formal sum, taking coef *= |c|
     for (polynomial::const_iterator term=pol.begin(); term!=pol.end(); ++term)
     {
       latticetypes::Weight lambda=term->first;
