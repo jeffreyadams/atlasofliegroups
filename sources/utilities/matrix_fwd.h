@@ -19,6 +19,7 @@ namespace atlas {
 namespace matrix {
 
   template<typename C> class Vector;
+  template<typename C> class Matrix_base;
   template<typename C> class Matrix;
 
 }
