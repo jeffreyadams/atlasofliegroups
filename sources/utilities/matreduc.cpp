@@ -386,11 +386,5 @@ template
 matrix::Matrix<T> Smith_basis(const matrix::Matrix<T>& M,
 			      std::vector<T>& diagonal);
 
-template // an abomination due to |abelian::Endomorphism|
-std::vector<unsigned long>
-  diagonalise(matrix::Matrix<unsigned long> M, // by value
-	      matrix::Matrix<unsigned long>& row,
-	      matrix::Matrix<unsigned long>& col);
-
 } // |namespace matreduc|
 } // |namespace atlas|

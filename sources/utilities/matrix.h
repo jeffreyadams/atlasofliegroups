@@ -80,30 +80,29 @@ public:
 }; // Vector
 
 
-template<typename C> class Matrix
+template<typename C> class Matrix_base
 {
-
   size_t d_rows;
   size_t d_columns;
+ protected: // derived classes may sometimes need to acces this
   Vector<C> d_data;   // vector of elements, concatenated by rows
 
  public:
 
-  typedef std::pair<size_t,size_t> index_pair;
+// constructors
+  Matrix_base(): d_rows(0),d_columns(0),d_data() {}
 
-// constructors and destructors
-  Matrix(): d_rows(0),d_columns(0),d_data() {}
+  Matrix_base(size_t m, size_t n) : d_rows(m),d_columns(n),d_data(m*n) {}
+  Matrix_base(size_t m, size_t n, const C& c)
+    : d_rows(m), d_columns(n), d_data(m*n,c) {}
 
-  Matrix(size_t m, size_t n) : d_rows(m),d_columns(n),d_data(m*n) {}
-  Matrix(size_t m, size_t n, const C& c):d_rows(m),d_columns(n),d_data(m*n,c) {}
-
-  explicit Matrix(size_t n); // square identity matrix
-  Matrix(const std::vector<Vector<C> >&, size_t n_rows); // with explicit #rows
+  Matrix_base
+    (const std::vector<Vector<C> >&, size_t n_rows); // with explicit #rows
 
   template<typename I> // from sequence of columns obtained via iterator
-    Matrix(I begin, I end, size_t n_rows, tags::IteratorTag);
+    Matrix_base(I begin, I end, size_t n_rows, tags::IteratorTag);
 
-  void swap(Matrix&);
+  void swap(Matrix_base&);
 
   // accessors
   size_t numRows() const { return d_rows; }
@@ -121,11 +120,45 @@ template<typename C> class Matrix
   Vector<C> column(size_t j) const { Vector<C> c; get_column(c,j); return c; }
   std::vector<Vector<C> > columns() const;
 
-  bool operator== (const Matrix<C>&) const;
-  bool operator!= (const Matrix<C>& m) const {return not(operator==(m)); }
+  bool operator== (const Matrix_base<C>&) const;
+  bool operator!= (const Matrix_base<C>& m) const {return not(operator==(m)); }
 
   bool isEmpty() const { return d_data.size() == 0; }
+// manipulators
+  C& operator() (size_t i, size_t j) { return d_data[i*d_columns+j]; }
 
+  void set_row(size_t,const Vector<C>&);
+  void set_column(size_t,const Vector<C>&);
+  void add_row(const Vector<C>&);
+  void add_column(const Vector<C>&);
+
+// resize undefined; use |Matrix<C>(m,n).swap(M)| instead of |M.resize(m,n)|
+
+  void eraseColumn(size_t);
+  void eraseRow(size_t);
+  void reset() { d_data.assign(d_data.size(),0); }
+}; // |template<typename C> class Matrix_base|
+
+template<typename C> class Matrix : public Matrix_base<C>
+{
+  typedef Matrix_base<C> base;
+
+ public:
+// constructors
+  Matrix() : base() {}
+
+  Matrix(size_t m, size_t n) : base(m,n) {}
+  Matrix(size_t m, size_t n, const C& c) : base(m,n,c) {}
+
+  explicit Matrix(size_t n); // square identity matrix
+  Matrix(const std::vector<Vector<C> >&cols, size_t n_rows)
+    : base(cols,n_rows) {}
+
+  template<typename I> // from sequence of columns obtained via iterator
+    Matrix(I begin, I end, size_t n_rows, tags::IteratorTag)
+    : base(begin,end,n_rows,tags::IteratorTag()) {}
+
+// accessors
   Matrix<C> transposed() const
     { Matrix<C> result(*this); result.transpose(); return result; }
   Matrix<C> negative_transposed() const
@@ -144,16 +177,7 @@ template<typename C> class Matrix
 
   Matrix<C> on_basis(const std::vector<Vector<C> >& basis) const;
 
-
 // manipulators
-  C& operator() (size_t i, size_t j) { return d_data[i*d_columns+j]; }
-
-  void set_row(size_t,const Vector<C>&);
-  void set_column(size_t,const Vector<C>&);
-  void add_row(const Vector<C>&);
-  void add_column(const Vector<C>&);
-
-  // resize undefined; use |Matrix<C>(m,n).swap(M)| instead of |M.resize(m,n)|
 
   Matrix<C>& operator+= (const Matrix<C>&);
   Matrix<C>& operator-= (const Matrix<C>&);
@@ -163,20 +187,16 @@ template<typename C> class Matrix
     { (P**this).swap(*this); return *this; }
   Matrix<C>& operator/= (const C& c) throw (std::runtime_error);
 
-  void reset() { d_data.assign(d_data.size(),0); }
-  void negate(){ d_data.negate(); }
+  void negate(){ base::d_data.negate(); }
   void transpose();
 
   void permute(const setutils::Permutation& a);
   void invert();
   void invert(C& d);
 
-  // secondary accessors (mainly for Smith and inversion algorithms)
+  // secondary accessors (mainly for inversion algorithms)
 
-  bool isZero(size_t i_min = 0, size_t j_min = 0) const;
-  index_pair absMinPos(size_t i_min = 0, size_t j_min = 0) const;
   bool divisible(C) const;
-
   Matrix<C> block(size_t i0, size_t j0, size_t i1, size_t j1) const;
 
   // secondary manipulators
@@ -189,11 +209,6 @@ template<typename C> class Matrix
 
   void swapColumns(size_t, size_t);
   void swapRows(size_t, size_t);
-
-  void eraseColumn(size_t);
-  void eraseRow(size_t);
-
-  void copy(const Matrix<C>&, size_t r = 0, size_t c = 0);
 
 }; // |template<typename C> class Matrix|
 

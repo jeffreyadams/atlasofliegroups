@@ -142,11 +142,10 @@ namespace matrix {
 /******** constructors *******************************************************/
 
 //! \brief: Construct the identity matrix of size n.
-template<typename C> Matrix<C>::Matrix(size_t n)
-  : d_rows(n),d_columns(n),d_data(n*n,C(0))
+template<typename C> Matrix<C>::Matrix(size_t n) : base(n,n,C(0))
 {
-  for (size_t i = 0; i<n; ++i)
-    operator()(i,i) = C(1);
+  for (size_t i=0; i<n; ++i)
+    base::operator()(i,i) = C(1);
 }
 
 /*! \brief
@@ -154,7 +153,7 @@ template<typename C> Matrix<C>::Matrix(size_t n)
   It is assumed that all elements of |b| (possibly none) have size |n_rows|.
 */
 template<typename C>
-Matrix<C>::Matrix(const std::vector<Vector<C> >& b, size_t n_rows)
+Matrix_base<C>::Matrix_base(const std::vector<Vector<C> >& b, size_t n_rows)
   : d_rows(n_rows), d_columns(b.size()), d_data(d_rows*d_columns)
 {
   for (size_t j = 0; j<d_columns; ++j)
@@ -169,7 +168,7 @@ Matrix<C>::Matrix(const std::vector<Vector<C> >& b, size_t n_rows)
   All the vectors obtained from the iterators should have size |n_rows|
 */
 template<typename C>
-  template<typename I> Matrix<C>::Matrix
+  template<typename I> Matrix_base<C>::Matrix_base
     (I first, I last, size_t n_rows, tags::IteratorTag)
   : d_rows(n_rows), d_columns(last-first), d_data(d_rows*d_columns)
 {
@@ -183,7 +182,7 @@ template<typename C>
   Swaps m with the current matrix.
 */
 template<typename C>
-void Matrix<C>::swap(Matrix<C>& m)
+void Matrix_base<C>::swap(Matrix_base<C>& m)
 {
   std::swap(d_rows,m.d_rows);
   std::swap(d_columns,m.d_columns);
@@ -196,7 +195,7 @@ void Matrix<C>::swap(Matrix<C>& m)
   Puts the i-th row of the matrix in v.
 */
 template<typename C>
-void Matrix<C>::get_row(Vector<C>& v, size_t i) const
+void Matrix_base<C>::get_row(Vector<C>& v, size_t i) const
 {
   v.resize(d_columns);
 
@@ -207,7 +206,7 @@ void Matrix<C>::get_row(Vector<C>& v, size_t i) const
   Puts the j-th column of the matrix in v.
 */
 template<typename C>
-void Matrix<C>::get_column(Vector<C>& v, size_t j) const
+void Matrix_base<C>::get_column(Vector<C>& v, size_t j) const
 {
   v.resize(d_rows);
 
@@ -219,7 +218,7 @@ void Matrix<C>::get_column(Vector<C>& v, size_t j) const
   Returns the list of row vectors of m.
 */
 template<typename C>
-  std::vector<Vector<C> > Matrix<C>::rows() const
+  std::vector<Vector<C> > Matrix_base<C>::rows() const
 {
   std::vector<Vector<C> > result(numRows());
   for (size_t i=0; i<numRows(); ++i)
@@ -231,7 +230,7 @@ template<typename C>
   Returns the list of column vectors of m.
 */
 template<typename C>
-  std::vector<Vector<C> > Matrix<C>::columns() const
+  std::vector<Vector<C> > Matrix_base<C>::columns() const
 {
   std::vector<Vector<C> > result(numColumns());
 
@@ -242,7 +241,7 @@ template<typename C>
 }
 
 template<typename C>
-bool Matrix<C>::operator== (const Matrix<C>& m) const
+bool Matrix_base<C>::operator== (const Matrix_base<C>& m) const
 {
   return d_rows==m.d_rows and d_columns==m.d_columns and d_data==m.d_data;
 }
@@ -254,12 +253,12 @@ the size of w is the number of columns; result size is the number of rows.
 template<typename C>
 Vector<C> Matrix<C>::apply(const Vector<C>& w) const
 {
-  Vector<C> result(d_rows);
+  Vector<C> result(base::numRows());
 
-  for (size_t i = 0; i<d_rows; ++i)
+  for (size_t i = 0; i<base::numRows(); ++i)
   {
     C c = 0;
-    for (size_t j = 0; j<d_columns; ++j)
+    for (size_t j = 0; j<base::numColumns(); ++j)
       c += (*this)(i,j) * w[j];
     result[i] = c;
   }
@@ -275,12 +274,12 @@ number of columns. This is the proper sense of application for dual space.
 template<typename C>
 Vector<C> Matrix<C>::right_apply(const Vector<C>& w) const
 {
-  Vector<C> result(d_columns);
+  Vector<C> result(base::numColumns());
 
-    for (size_t j = 0; j<d_columns; ++j)
+    for (size_t j = 0; j<base::numColumns(); ++j)
   {
     C c = 0;
-    for (size_t i = 0; i<d_rows; ++i)
+    for (size_t i = 0; i<base::numRows(); ++i)
       c += w[i] * (*this)(i,j);
     result[j] = c;
   }
@@ -291,14 +290,14 @@ Vector<C> Matrix<C>::right_apply(const Vector<C>& w) const
 template<typename C>
 Matrix<C> Matrix<C>::operator* (const Matrix<C>&  m) const
 {
-  assert(d_columns==m.d_rows);
-  Matrix<C> result(d_rows,m.d_columns);
+  assert(base::numColumns()==m.numRows());
+  Matrix<C> result(base::numRows(),m.numColumns());
 
-  for (size_t i = 0; i<d_rows; ++i)
-    for (size_t k = 0; k<m.d_columns; ++k)
+  for (size_t i = 0; i<base::numRows(); ++i)
+    for (size_t k = 0; k<m.base::numColumns(); ++k)
     {
       C c=0;
-      for (size_t j = 0; j<d_columns; ++j)
+      for (size_t j = 0; j<base::numColumns(); ++j)
 	c += (*this)(i,j) * m(j,k);
 
       result(i,k)=c;
@@ -313,8 +312,8 @@ Matrix<C> Matrix<C>::operator* (const Matrix<C>&  m) const
 template<typename C>
   Matrix<C> Matrix<C>::on_basis(const std::vector<Vector<C> >& b) const
 {
-  assert (numRows()==numColumns());
-  assert (b.size()==numRows());
+  assert (base::numRows()==base::numColumns());
+  assert (b.size()==base::numRows());
 
   Matrix<C> p(b,b.size()); // square matrix
   C d;
@@ -327,7 +326,7 @@ template<typename C>
 
 //! Puts v in the i-th row of the matrix
 template<typename C>
-  void Matrix<C>::set_row(size_t i, const Vector<C>& v)
+  void Matrix_base<C>::set_row(size_t i, const Vector<C>& v)
 {
   assert(v.size()==d_columns);
 
@@ -337,7 +336,7 @@ template<typename C>
 
 //! Puts v in the j-th column of the matrix
 template<typename C>
-  void Matrix<C>::set_column(size_t j, const Vector<C>& v)
+  void Matrix_base<C>::set_column(size_t j, const Vector<C>& v)
 {
   assert(v.size()==d_rows);
 
@@ -349,7 +348,7 @@ template<typename C>
   Adds |v| as new row to the matrix. Entries being stored by row, this is easy
 */
 template<typename C>
-  void Matrix<C>::add_row(const Vector<C>& v)
+  void Matrix_base<C>::add_row(const Vector<C>& v)
 {
   assert(v.size()==d_columns);
 
@@ -363,7 +362,7 @@ template<typename C>
   Adds |v| as new column to the matrix. This is harder than adding a row
 */
 template<typename C>
-  void Matrix<C>::add_column(const Vector<C>& v)
+  void Matrix_base<C>::add_column(const Vector<C>& v)
 {
   assert(v.size()==d_rows);
 
@@ -385,11 +384,11 @@ template<typename C>
   have the same size.
 */
 template<typename C>
-Matrix<C>& Matrix<C>::operator+= (const Matrix<C>&  m)
+Matrix<C>& Matrix<C>::operator+= (const Matrix<C>& m)
 {
-  assert(numRows()==m.numRows());
-  assert(numColumns()==m.numColumns());
-  d_data += m.d_data;
+  assert(base::numRows()==m.numRows());
+  assert(base::numColumns()==m.numColumns());
+  base::d_data += m.d_data;
   return *this;
 }
 
@@ -400,9 +399,9 @@ Matrix<C>& Matrix<C>::operator+= (const Matrix<C>&  m)
 template<typename C>
 Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
 {
-  assert(numRows()==m.numRows());
-  assert(numColumns()==m.numColumns());
-  d_data -= m.d_data;
+  assert(base::numRows()==m.numRows());
+  assert(base::numColumns()==m.numColumns());
+  base::d_data -= m.d_data;
   return *this;
 }
 
@@ -411,7 +410,7 @@ template<typename C>
 Matrix<C>& Matrix<C>::operator/= (const C& c) throw (std::runtime_error)
 {
   if (c != 1)
-    d_data /= c;
+    base::d_data /= c;
   return *this;
 }
 
@@ -422,37 +421,22 @@ Matrix<C>& Matrix<C>::operator/= (const C& c) throw (std::runtime_error)
 */
 template<typename C> void Matrix<C>::transpose()
 {
-  if (d_rows == d_columns) {// matrix is square
-    for (size_t j = 0; j<d_columns; ++j)
-      for (size_t i = j+1; i<d_rows; ++i) {
-	C t = (*this)(i,j);
-	(*this)(i,j) = (*this)(j,i);
-	(*this)(j,i) = t;
-      }
+  if (base::numRows() == base::numColumns()) // matrix is square
+  {
+    for (size_t j = 0; j<base::numColumns(); ++j)
+      for (size_t i = j+1; i<base::numRows(); ++i)
+	std::swap((*this)(i,j),(*this)(j,i));
     return;
   }
 
-  // now assume matrix is not square
+  // now matrix is not square; create a transposed copy
+  Matrix_base<C> result(base::numColumns(),base::numRows());
 
-  C zero = 0; // conversion from int
-  Vector<C> v(d_data.size(),zero);
-  size_t k = 0;
+  for (size_t i = 0; i<base::numRows(); ++i)
+    for (size_t j = 0; j<base::numColumns(); ++j)
+      result(j,i) = (*this)(i,j);
 
-  // write data for transpose matrix in v
-
-  for (size_t j = 0; j<d_columns; ++j)
-    for (size_t i = 0; i<d_rows; ++i) {
-      v[k] = (*this)(i,j);
-      k++;
-    }
-
-  // swap data and row- and column- size
-
-  d_data.swap(v);
-
-  size_t t = d_rows;
-  d_rows = d_columns;
-  d_columns = t;
+  swap(result);
 }
 
 
@@ -463,8 +447,8 @@ template<typename C> void Matrix<C>::transpose()
   matrix (delta_{i,a[i]})_{i,j} that transforms from coordinates on the
   standard basis to those on the basis e_{a[0]}, ... , e_{a[n-1]}.
 
-  Precondition : m is a square matrix of order n; a holds a permutation
-  of the matrix n;
+  Precondition: |m| is a square matrix of order |n|, and |a| a permutation of
+  |n|;
 
   Method: the new entry at (i,j) is set to the old entry at (a[i],a[j]), in a
   separate copy (without trying to do the permutation of entries in place)
@@ -472,12 +456,12 @@ template<typename C> void Matrix<C>::transpose()
 template<typename C>
 void Matrix<C>::permute(const setutils::Permutation& a)
 {
-  assert (a.size()==d_rows);
-  assert (a.size()==d_columns);
-  Matrix<C> q(d_rows,d_columns);
+  assert (a.size()==base::numRows());
+  assert (a.size()==base::numColumns());
+  Matrix<C> q(base::numRows(),base::numColumns());
 
-  for (size_t j = 0; j<d_columns; ++j)
-    for (size_t i = 0; i<d_rows; ++i)
+  for (size_t i=0; i<base::numRows(); ++i)
+    for (size_t j=0; j<base::numColumns(); ++j)
       q(i,j) = (*this)(a[i],a[j]);
 
   swap(q);
@@ -516,8 +500,8 @@ template<typename C> void Matrix<C>::invert()
 template<typename C>
 void Matrix<C>::invert(C& d)
 {
-  assert(d_rows==d_columns);
-  size_t n=d_rows;
+  assert(base::numRows()==base::numColumns());
+  size_t n=base::numRows();
   if (n==0) // do nothing to matrix, but set |d=1|
   { d=1; return; }
 
@@ -542,72 +526,14 @@ void Matrix<C>::invert(C& d)
   *this *= (row);
 }
 
-/*
- *
- Auxiliaries for |smithnormal|
- *
- */
-
-
-/*!
-  Whether all the entries in rectangle starting at |(i_min,i_max)| are zero.
-*/
-template<typename C>
-bool Matrix<C>::isZero(size_t i_min, size_t j_min) const
-{
-  if (d_data.size() == 0) // empty matrix
-    return true;
-
-  for (size_t i = i_min; i<d_rows; ++i)
-    for (size_t j = j_min; j<d_columns; ++j)
-      if ((*this)(i,j))
-	return false;
-
-  return true;
-}
-
-
-/*!
-  Returns the position of the smallest non-zero entry in absolute value,
-  in the region i >= i_min, j >= j_min
-*/
-template<typename C>
-typename Matrix<C>::index_pair Matrix<C>::absMinPos(size_t i_min,
-						    size_t j_min) const
-{
-  C minCoeff = std::numeric_limits<C>::max();
-  size_t i_m = d_rows;
-  size_t j_m = d_columns;
-
-  for (size_t i = i_min; i<d_rows; ++i)
-    for (size_t j = j_min; j<d_columns; ++j)
-    {
-      C c = (*this)(i,j);
-      if (c == 0)
-	continue;
-      if (intutils::abs(c)<minCoeff) // new smallest value
-      {
-	minCoeff = intutils::abs(c);
-	i_m = i;
-	j_m = j;
-	if (minCoeff == 1)
-	  break;
-      }
-    }
-
-  return std::make_pair(i_m,j_m);
-}
-
-
-
 /*!
   Tells if all coefficients of the matrix are divisible by c.
 */
 template<typename C>
 bool Matrix<C>::divisible(C c) const
 {
-  for (size_t j = 0; j<d_data.size(); ++j)
-    if (d_data[j]%c)
+  for (size_t j = 0; j<base::d_data.size(); ++j)
+    if (base::d_data[j]%c!=0)
       return false;
 
   return true;
@@ -640,7 +566,7 @@ template<typename C>
 template<typename C>
 void Matrix<C>::rowOperation(size_t i, size_t j, const C& c)
 {
-  for (size_t k = 0; k<rowSize(); ++k)
+  for (size_t k = 0; k<base::numColumns(); ++k)
     (*this)(i,k) += c*(*this)(j,k);
 }
 
@@ -652,7 +578,7 @@ void Matrix<C>::rowOperation(size_t i, size_t j, const C& c)
 template<typename C>
 void Matrix<C>::columnOperation(size_t j, size_t k, const C& c)
 {
-  for (size_t i = 0; i<columnSize(); ++i)
+  for (size_t i = 0; i<base::numRows(); ++i)
     (*this)(i,j) += c*(*this)(i,k);
 }
 
@@ -664,7 +590,7 @@ void Matrix<C>::columnOperation(size_t j, size_t k, const C& c)
 template<typename C>
 void Matrix<C>::rowMultiply(size_t i, C f)
 {
-  for (size_t j=0; j<d_columns; ++j)
+  for (size_t j=0; j<base::numColumns(); ++j)
     (*this)(i,j) *= f;
 }
 
@@ -674,30 +600,16 @@ void Matrix<C>::rowMultiply(size_t i, C f)
 template<typename C>
 void Matrix<C>::columnMultiply(size_t j, C f)
 {
-  for (size_t i = 0; i<d_rows; ++i)
+  for (size_t i = 0; i<base::numRows(); ++i)
     (*this)(i,j) *= f;
 }
-
-/*!
-  Copies source to the rectangle of the current matrix with upper left corner
-  at (r,c) and the appropriate size.
-*/
-template<typename C>
-void Matrix<C>::copy(const Matrix<C>& source, size_t r, size_t c)
-{
-  for (size_t j = 0; j<source.d_columns; ++j)
-    for (size_t i = 0; i<source.d_rows; ++i)
-      (*this)(r+i,c+j) = source(i,j);
-}
-
-
 
 
 //! Interchanges rows i and j
 template<typename C>
 void Matrix<C>::swapRows(size_t i, size_t j)
 {
-  for (size_t k = 0; k<rowSize(); ++k)
+  for (size_t k = 0; k<base::numColumns(); ++k)
     std::swap((*this)(i,k),(*this)(j,k));
 }
 
@@ -705,7 +617,7 @@ void Matrix<C>::swapRows(size_t i, size_t j)
 template<typename C>
 void Matrix<C>::swapColumns(size_t i, size_t j)
 {
-  for (size_t k = 0; k<columnSize(); ++k)
+  for (size_t k = 0; k<base::numRows(); ++k)
     std::swap((*this)(k,i),(*this)(k,j));
 }
 
@@ -713,7 +625,7 @@ void Matrix<C>::swapColumns(size_t i, size_t j)
   Erases row i from the matrix.
 */
 template<typename C>
-void Matrix<C>::eraseRow(size_t i)
+void Matrix_base<C>::eraseRow(size_t i)
 {
   typename Vector<C>::iterator first = d_data.begin() + i*d_columns;
   d_data.erase(first,first+d_columns);
@@ -724,7 +636,7 @@ void Matrix<C>::eraseRow(size_t i)
   Removes column |j| altogether, shifting remaining entries to proper place
 */
 template<typename C>
-void Matrix<C>::eraseColumn(size_t j)
+void Matrix_base<C>::eraseColumn(size_t j)
 {
   typename Vector<C>::iterator pos =
      d_data.begin() + j; // position of entry |M(0,j)|
@@ -776,22 +688,23 @@ template std::vector<Vector<int> > standard_basis<int>(size_t n);
 template class Vector<int>;           // the main instance used
 template class Vector<signed char>;   // used inside root data
 template class Vector<unsigned long>; // for |abelian::Homomorphism|
+template class Matrix_base<int>;
 template class Matrix<int>;           // the main instance used
-template class Matrix<unsigned long>; // for |abelian::Endomorphism|
+template class Matrix_base<unsigned long>; // for |abelian::Endomorphism|
 
-template Matrix<int>::Matrix
+template Matrix_base<int>::Matrix_base
   (std::vector<Vector<int> >::const_iterator,
    std::vector<Vector<int> >::const_iterator,
    size_t,
    tags::IteratorTag);
 
-template Matrix<int>::Matrix
+template Matrix_base<int>::Matrix_base
   (std::vector<Vector<int> >::iterator,
    std::vector<Vector<int> >::iterator,
    size_t,
    tags::IteratorTag);
 
-template Matrix<int>::Matrix
+template Matrix_base<int>::Matrix_base
   (Vector<int>*,
    Vector<int>*,
    size_t,

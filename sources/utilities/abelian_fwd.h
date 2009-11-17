@@ -29,7 +29,7 @@ typedef std::vector<GrpNbr> GrpNbrList;
 typedef std::vector<unsigned long> GrpArr; //!< group element, array repr.
 typedef std::vector<GrpArr> GrpArrList;
 typedef std::vector<unsigned long> GroupType;
-typedef matrix::Matrix<unsigned long> Endomorphism;
+typedef matrix::Matrix_base<unsigned long> Endomorphism;
 
 class Homomorphism;
 
