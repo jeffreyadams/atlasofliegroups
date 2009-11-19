@@ -72,7 +72,7 @@
 
 namespace atlas {
 
-  namespace kl {
+namespace kl {
 
   /*!
 \brief Polynomial 0, which is stored as a vector of size 0.
@@ -80,7 +80,7 @@ namespace atlas {
   const KLPol Zero;
 
   /*! \brief Polynomial 1.q^0. */
-  const KLPol One(0); // Polynomial(d) gives 1.q^d.
+  const KLPol One(0,KLCoeff(1)); // Polynomial(d,1) gives 1.q^d.
 
 // we wrap |KLPol| into a class |KLPolEntry| that can be used in a |HashTable|
 
@@ -673,7 +673,7 @@ bitmap::BitMap KLContext::primMap (blocks::BlockElt y) const
 
 */
 inline size_t KLPolEntry::hashCode(size_t modulus) const
-{ const polynomials::Polynomial<KLCoeff>& P=*this;
+{ const KLPol& P=*this;
   if (P.isZero()) return 0;
   polynomials::Degree i=P.degree();
   size_t h=P[i]; // start with leading coefficient

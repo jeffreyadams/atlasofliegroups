@@ -63,6 +63,7 @@ namespace {
   void sub_KGB_f();
   void trivial_f();
   void Ktypeform_f();
+  void qKtypeform_f();
   void Ktypemat_f();
   void mod_lattice_f();
   void branch_f();
@@ -197,6 +198,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("sub_KGB",sub_KGB_f);
   mode.add("trivial",trivial_f);
   mode.add("Ktypeform",Ktypeform_f);
+  mode.add("qKtypeform",qKtypeform_f);
   mode.add("Ktypemat",Ktypemat_f);
   mode.add("mod_lattice",mod_lattice_f);
   mode.add("branch",branch_f);
@@ -549,6 +551,71 @@ void Ktypeform_f()
     ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
   }
 } // |Kypeform_f|
+
+void qKtypeform_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
+  kgb::KGB kgb(G_R,G_R.Cartan_set());
+  standardrepk::KhatContext khc(G_R,kgb);
+
+  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+
+  {
+    size_t witness;
+    if (not khc.isFinal(sr,witness))
+    {
+      khc.print(std::cout << "Representation ",sr)
+        << " is not final, as witnessed by coroot "
+	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+      return;
+    }
+  }
+
+  ioutils::OutputFile f;
+
+  standardrepk::q_CharForm kf= khc.q_K_type_formula(sr);
+
+  khc.print(f << "q-K-type formula for mu(",kf.first) << "):\n";
+  {
+    std::ostringstream s; khc.print(s,kf.second);
+    ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
+  }
+
+  for (size_t i=0; i<khc.nr_reps(); ++i)
+    khc.print(f << 'R' << i << ": ",khc.rep_no(i))
+      << ", height: " << khc.height(i) << std::endl;
+
+
+  standardrepk::q_combin sum(khc.height_order());
+
+  for (standardrepk::q_Char::const_iterator
+	 it=kf.second.begin(); it!=kf.second.end(); ++it)
+  {
+#ifdef VERBOSE
+    khc.print(f,it->first) << " has height " << khc.height(it->first)
+				   << std::endl;
+    size_t old_size=khc.nr_reps();
+#endif
+    standardrepk::combination st=khc.standardize(it->first);
+#ifdef VERBOSE
+    for (size_t i=old_size; i<khc.nr_reps(); ++i)
+      khc.print(f << 'R' << i << ": ",khc.rep_no(i))
+        << ", height: " << khc.height(i) << std::endl;
+
+    std::ostringstream s; khc.print(s,it->first) << " = ";
+    khc.print(s,st,true);
+    ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
+#endif
+    sum.add_multiple(to_q(st),it->second);
+  }
+
+  f << "Converted to Standard normal final limit form:\n";
+  {
+    std::ostringstream s; khc.print(s,sum);
+    ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
+  }
+} // |qKypeform_f|
 
 void Ktypemat_f()
 {

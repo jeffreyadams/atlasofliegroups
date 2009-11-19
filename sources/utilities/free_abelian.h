@@ -30,11 +30,12 @@ namespace free_abelian {
 
 namespace free_abelian {
 
-// A class that represent an element of the free abelian group on the set T
-template<typename T, typename Compare=std::less<T> >
-struct Free_Abelian : public std::map<T,long int,Compare>
+// A class that represents an element of the free abelian group on the set T
+// in fact, taking |C=polynomials::polynomial<int>| gives $q$-multiplicities
+template<typename T, typename C=long int, typename Compare=std::less<T> >
+struct Free_Abelian : public std::map<T,C,Compare>
 {
-  typedef long int coef_t;
+  typedef C coef_t;
   typedef std::map<T,coef_t,Compare> base;
   typedef typename base::iterator iterator;
   typedef typename base::const_iterator const_iterator;
@@ -48,25 +49,25 @@ struct Free_Abelian : public std::map<T,long int,Compare>
   explicit Free_Abelian(T p, Compare c=Compare()) : base(c)
   { base::insert(std::make_pair(p,1L)); }
 
-  Free_Abelian(T p,coef_t m, Compare c=Compare()) : base(c)
+  Free_Abelian(T p,C m, Compare c=Compare()) : base(c)
   { base::insert(std::make_pair(p,m)); }
 
   template<typename InputIterator>
   Free_Abelian(InputIterator first, InputIterator last, Compare c=Compare())
     : base(first,last,c) {}
 
-  Free_Abelian& add_multiple(const Free_Abelian& p, coef_t m);
+  Free_Abelian& add_multiple(const Free_Abelian& p, C m);
 
   Free_Abelian& operator+=(const Free_Abelian& p)
-  { return add_multiple(p,1); }
+  { return add_multiple(p,C(1)); }
 
   Free_Abelian& operator-=(const Free_Abelian& p)
-  { return add_multiple(p,-1); }
+  { return add_multiple(p,C(-1)); }
 
-  coef_t operator[] (const T& t) const // find coefficient of |t| in |*this|
+  C operator[] (const T& t) const // find coefficient of |t| in |*this|
   {
     typename base::const_iterator p=base::find(t);
-    return p==base::end() ? coef_t(0) : p->second;
+    return p==base::end() ? C(0) : p->second;
   }
 
 }; // |class Free_Abelian|
@@ -74,11 +75,11 @@ struct Free_Abelian : public std::map<T,long int,Compare>
 /* When we also want a multiplication, |T| must have operator+=. Rather than
    defining operator*= in Free_Abelian (possibly unused), we prefer to derive.
 */
-template<typename T, typename Compare=std::less<T> >
-struct Monoid_Ring : public Free_Abelian<T,Compare>
+template<typename T, typename C=long int, typename Compare=std::less<T> >
+  struct Monoid_Ring : public Free_Abelian<T,C,Compare>
 {
-  typedef Free_Abelian<T,Compare> base;
-  typedef typename base::coef_t coef_t;
+  typedef C coef_t;
+  typedef Free_Abelian<T,C,Compare> base;
   typedef typename base::iterator iterator;
   typedef typename base::const_iterator const_iterator;
 
@@ -87,7 +88,7 @@ struct Monoid_Ring : public Free_Abelian<T,Compare>
 
   explicit Monoid_Ring(const typename base::base& m) : base(m) {}
   explicit Monoid_Ring(T p, Compare c=Compare()) : base(p,c) {}
-  Monoid_Ring(T p,coef_t m, Compare c=Compare()) : base(p,m,c) {}
+  Monoid_Ring(T p,C m, Compare c=Compare()) : base(p,m,c) {}
 
   template<typename InputIterator>
   Monoid_Ring(InputIterator first, InputIterator last, Compare c=Compare())
@@ -95,7 +96,7 @@ struct Monoid_Ring : public Free_Abelian<T,Compare>
 
   Monoid_Ring operator*(const Monoid_Ring& p);
 
-  Monoid_Ring& add_multiple(const Monoid_Ring& p, coef_t m,const T& expon);
+  Monoid_Ring& add_multiple(const Monoid_Ring& p, C m,const T& expon);
 
 }; // |class Monoid_Ring|
 
