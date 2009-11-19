@@ -26,19 +26,14 @@ StandardRepK and KhatContext.
 #include "rootdata.h"
 #include "matreduc.h"
 #include "intutils.h"
-#include "tori.h"
-#include "basic_io.h"
 #include "ioutils.h"
-#include "intutils.h"
 #include "tags.h"
 #include "graph.h"
 #include "prettyprint.h"
 #include <cassert>
 #include <iostream>
 #include <sstream>
-#include <stdexcept>
 #include <deque>
-#include <algorithm>
 
 namespace atlas {
 
@@ -415,6 +410,26 @@ std::ostream& SRK_context::print(std::ostream& strm,const Char& ch) const
   return strm;
 }
 
+std::ostream& SRK_context::print(std::ostream& strm,const q_Char& ch) const
+{
+  if (ch.empty())
+    return strm << '0';
+  for (q_Char::const_iterator it=ch.begin(); it!=ch.end(); ++it)
+  {
+    if (it->second.degree()==0)
+    {
+      strm << (it->second[0]>0 ? " + " : " - ");
+      long int ac=intutils::abs(it->second[0]);
+      if (ac!=1)
+	strm << ac << '*';
+    }
+    else
+      prettyprint::printPol(strm<<" + (",it->second,"q")<<")*";
+    print(strm,it->first);
+  }
+  return strm;
+}
+
 level
 SRK_context::height(const StandardRepK& sr) const
 {
@@ -463,6 +478,29 @@ std::ostream& KhatContext::print(std::ostream& strm,
     long int ac=intutils::abs<long int>(it->second);
     if (ac!=1)
       strm << ac << '*';
+    if (brief)
+      strm << 'R' << it->first;
+    else print(strm,rep_no(it->first));
+  }
+  return strm;
+}
+
+std::ostream& KhatContext::print
+  (std::ostream& strm, const q_combin& ch, bool brief)  const
+{
+  if (ch.empty())
+    return strm << '0';
+  for (q_combin::const_iterator it=ch.begin(); it!=ch.end(); ++it)
+  {
+    if (it->second.degree()==0)
+    {
+      strm << (it->second[0]>0 ? " + " : " - ");
+      long int ac=intutils::abs(it->second[0]);
+      if (ac!=1)
+	strm << ac << '*';
+    }
+    else
+      prettyprint::printPol(strm<<" + (",it->second,"q")<<")*";
     if (brief)
       strm << 'R' << it->first;
     else print(strm,rep_no(it->first));
@@ -1031,7 +1069,153 @@ equation KhatContext::mu_equation(seq_no n, level bound)
   return result;
 }
 
+Raw_q_Char KhatContext::q_KGB_sum(const PSalgebra& p,
+				  const latticetypes::Weight& lambda) const
+{
+  const rootdata::RootDatum& rd=rootDatum();
+  kgb::KGBEltList sub=sub_KGB(p); std::reverse(sub.begin(),sub.end());
 
+  std::vector<size_t> sub_inv(d_KGB.size(),~0);
+
+  for (size_t i=0; i<sub.size(); ++i)
+    sub_inv[sub[i]]=i; // partially fill array with inverse index
+
+  std::vector<latticetypes::Weight> mu; // list of $\rho$-centered weights,
+  mu.reserve(sub.size());               // associated to the elements of |sub|
+
+  mu.push_back(lambda); (mu[0]-=rd.twoRho())/=2; // make $\rho$-centered
+
+  for (size_t i=1; i<sub.size(); ++i)
+  {
+    kgb::KGBElt x=sub[i];
+    bitset::RankFlags::iterator it;
+    for (it=p.Levi_gens().begin(); it(); ++it)
+    {
+      if (d_KGB.cross(*it,x)>x) // then we can use ascending cross action
+      {
+	size_t k=sub_inv[d_KGB.cross(*it,x)];
+	assert(k!=~0ul); // we ought to land in the subset
+	mu.push_back(rd.simpleReflection(mu[k],*it)); // $\rho$-centered
+	break;
+      }
+    }
+    if (it()) continue; // if we could use a cross action, we're done for |i|
+
+    // now similarly try Cayley transforms
+    for (it=p.Levi_gens().begin(); it(); ++it)
+    {
+      if (d_KGB.cayley(*it,x)!=kgb::UndefKGB) // then we can use this Cayley
+      {
+	size_t k=sub_inv[d_KGB.cayley(*it,x)];
+	assert(k!=~0ul); // we ought to land in the subset
+	latticetypes::Weight nu=mu[k]; // $\rho-\lambda$ at split side
+	assert(nu.scalarProduct(rd.simpleCoroot(*it))%2 == 0); // finality
+	latticetypes::Weight alpha=rd.simpleRoot(*it);
+	nu -= (alpha *= nu.scalarProduct(rd.simpleCoroot(*it))/2); // project
+	mu.push_back(nu); // use projected weight at compact side of transform
+	break;
+      }
+    }
+    assert(it()); // if no cross action worked, some Cayley transform must have
+  }
+  assert(mu.size()==sub.size());
+
+  size_t max_l=d_KGB.length(sub[0]);
+
+  Raw_q_Char result;
+  for (size_t i=0; i<sub.size(); ++i)
+  {
+    kgb::KGBElt x=sub[i];
+    RawRep r(mu[i],d_KGB.titsElt(x));
+    size_t codim=max_l-d_KGB.length(x);
+    result += Raw_q_Char(r,q_CharCoeff(codim,codim%2==0 ? 1 : -1)); // $(-q)^c$
+  }
+
+  return result;
+} // |q_KGB_sum|
+
+// Express irreducible K-module as a finite virtual sum of standard ones
+q_CharForm
+KhatContext::q_K_type_formula(const StandardRepK& sr, level bound)
+{
+  const weyl::WeylGroup& W=weylGroup();
+  const rootdata::RootDatum& rd=rootDatum();
+
+  // Get theta stable parabolic subalgebra
+
+  weyl::WeylWord conjugator;
+  PSalgebra p = theta_stable_parabolic(sr,conjugator);
+
+  latticetypes::Weight lambda=
+    W.imageByInverse(rd,W.element(conjugator),lift(sr));
+
+  Raw_q_Char q_KGB_sum_p= q_KGB_sum(p,lambda);
+
+  // type of formal linear combination of weights, associated to Tits element
+
+  q_Char result;
+  for (Raw_q_Char::const_iterator
+	 it=q_KGB_sum_p.begin(); it!=q_KGB_sum_p.end(); ++it)
+  {
+    q_CharCoeff c=it->second; // coefficient from |q_KGB_sum|
+    const latticetypes::Weight& mu=it->first.first; // weight from |q_KGB_sum|
+    const tits::TitsElt& strong=it->first.second; // Tits elt from |q_KGB_sum|
+    cartanclass::InvolutionData id(complexGroup(),strong.tw());
+
+    rootdata::RootSet A(rd.numRoots());
+    for (bitmap::BitMap::iterator
+	   rt=p.radical().begin(); rt!=p.radical().end(); ++rt)
+    {
+      rootdata::RootNbr alpha=*rt;
+      assert(not id.real_roots().isMember(alpha));
+      if (id.imaginary_roots().isMember(alpha))
+	A.set_to(alpha,basedTitsGroup().grading(strong,alpha)); // add if nc
+      else // complex root
+      {
+	rootdata::RootNbr beta=id.root_involution(alpha);
+	assert(rd.isPosRoot(beta));
+	A.set_to(alpha,beta>alpha); // add first of two complex roots
+      }
+    }
+
+//     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
+
+    typedef free_abelian::Monoid_Ring<latticetypes::Weight,q_CharCoeff>
+      polynomial; // with weight exponents and $q$-polynomials as coefficients
+    const latticetypes::LatticeMatrix theta =
+      complexGroup().involutionMatrix(strong.tw());
+
+    // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
+    polynomial pol(mu);
+    for (rootdata::RootSet::iterator it=A.begin(); it!=A.end(); ++it)
+    {
+      polynomial copy=pol; // since |add_multiple| assumes no aliasing
+      pol.add_multiple(copy,q_CharCoeff(1,-1),rd.root(*it)); // $*(1-qX^\alpha)$
+
+      // filter out terms that cannot affect anything below |bound|
+      for (polynomial::iterator term=pol.begin(); term!=pol.end();)
+      {
+	latticetypes::Weight lambda=term->first;
+	(lambda*=2) += rd.twoRho();
+	lambda += theta.apply(lambda);
+	if (height_bound(lambda)>bound)
+	  pol.erase(term++);
+	else
+	  term++;
+      }
+    }
+//     std::cout << pol.size() << " terms." << std::endl;
+
+    // iterate over terms in formal sum, taking coef *= |c|
+    for (polynomial::const_iterator term=pol.begin(); term!=pol.end(); ++term)
+    {
+      latticetypes::Weight lambda=term->first;
+      polynomial::coef_t coef=term->second;
+      result += q_Char(std_rep_rho_plus(lambda,strong),c*coef); // contribute
+    }
+  } // for sum over KGB for L
+  return std::make_pair(sr, result);
+} // q_K_type_formula
 
 matrix::Matrix<CharCoeff> KhatContext::K_type_matrix
  (std::set<equation>& eq_set,
@@ -1226,6 +1410,15 @@ PSalgebra::PSalgebra (tits::TitsElt base,
 
 
 // ****************** Chapter V -- functions ************************
+
+
+q_combin to_q(const combination& c)
+{
+  q_combin result(c.key_comp()); // use same comparison object
+  for (combination::const_iterator it=c.begin(); it!=c.end(); ++it)
+    result += q_combin(it->first,q_CharCoeff(it->second),c.key_comp());
+  return result;
+}
 
 matrix::Matrix<CharCoeff>
 triangularize (const std::vector<equation>& system,

@@ -6,7 +6,7 @@
   This is polynomials_fwd.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups 
+  part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
@@ -18,11 +18,12 @@ namespace atlas {
 
 namespace polynomials {
 
-template<typename C> class Polynomial;
+template<typename C> class Polynomial; // |C| can be any arithmetic type
+template<typename C> class Safe_Poly;  // here |C| must be unsigned integral
 
-template<typename C> class LaurentPolynomial;
+// template<typename C> class LaurentPolynomial;
 
-typedef size_t Degree;
+typedef size_t Degree; // exponent range; not stored, so no need making it short
 
 }
 

@@ -136,7 +136,7 @@ template<typename C> class Matrix_base
 
   void eraseColumn(size_t);
   void eraseRow(size_t);
-  void reset() { d_data.assign(d_data.size(),0); }
+  void reset() { d_data.assign(d_data.size(),C(0)); }
 }; // |template<typename C> class Matrix_base|
 
 template<typename C> class Matrix : public Matrix_base<C>

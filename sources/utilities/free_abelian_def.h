@@ -17,12 +17,12 @@ namespace atlas {
 
   namespace free_abelian {
 
-template<typename T, typename Compare>
-Free_Abelian<T,Compare>&
-  Free_Abelian<T,Compare>::add_multiple(const Free_Abelian<T,Compare>& p,
-					long int m)
+template<typename T, typename C, typename Compare>
+Free_Abelian<T,C,Compare>&
+  Free_Abelian<T,C,Compare>::add_multiple(const Free_Abelian<T,C,Compare>& p,
+					  C m)
 {
-  if (m==0)
+  if (m==C(0))
     return *this; // avoid useless work that might introduce null entries
 
   /* We want to be efficient both in the common case that |p| has few terms,
@@ -34,15 +34,15 @@ Free_Abelian<T,Compare>&
      with the same key was already present, so hinted-inserting a term from
      |p| would irrevocably lose information. We use the workaround of instead
      inserting a term with null coefficient; then afterwards we can add to the
-     coefficient poited to by the result of |insert|, irrespective of whether
+     coefficient pointed to by the result of |insert|, irrespective of whether
      that is a pre-existing coefficient or the null coefficient just inserted.
    */
   typename base::iterator last=base::begin();
   for (typename base::const_iterator src=p.begin(); src!=p.end(); ++src)
   {
-    last=insert(last,std::make_pair(src->first,coef_t(0))); // hinted insert
+    last=insert(last,std::make_pair(src->first,C(0))); // hinted insert
     last->second += m*src->second; // add multiplicity
-    if (last->second==0)
+    if (last->second==C(0))
       erase(last++); // remove null entry
     // else we could do |++last| to improve hint, but risk negative pay-off
   }
@@ -50,34 +50,34 @@ Free_Abelian<T,Compare>&
   return *this;
 }
 
-template<typename T, typename Compare>
-Monoid_Ring<T,Compare>&
-  Monoid_Ring<T,Compare>::add_multiple(const Monoid_Ring<T,Compare>& p,
-				       coef_t m,
-				       const T& expon)
+template<typename T, typename C, typename Compare>
+Monoid_Ring<T,C,Compare>&
+  Monoid_Ring<T,C,Compare>::add_multiple(const Monoid_Ring<T,C,Compare>& p,
+					 C m,
+					 const T& expon)
 {
-  if (m==0)
+  if (m==C(0))
     return *this; // avoid useless work that might introduce null entries
 
   typename base::base::iterator last=base::begin();
   for (typename base::base::const_iterator src=p.begin(); src!=p.end(); ++src)
   {
-    std::pair<T,coef_t> term(src->first,coef_t(0));
+    std::pair<T,coef_t> term(src->first,C(0));
     term.first += expon;
     last=insert(last,term); // hinted insert
     last->second += m*src->second; // add multiplicity
-    if (last->second==0)
+    if (last->second==C(0))
       erase(last++); // remove null entry
   }
 
   return *this;
 }
 
-template<typename T, typename Compare>
-Monoid_Ring<T,Compare>
-  Monoid_Ring<T,Compare>::operator*(const Monoid_Ring<T,Compare>& p)
+template<typename T, typename C, typename Compare>
+Monoid_Ring<T,C,Compare>
+  Monoid_Ring<T,C,Compare>::operator*(const Monoid_Ring<T,C,Compare>& p)
 {
-  Monoid_Ring<T,Compare> result(base::base::key_compare);
+  Monoid_Ring<T,C,Compare> result(base::base::key_compare);
   for (typename base::base::const_iterator src=p.begin(); src!=p.end(); ++src)
     result.add_mutiple(*this,src->second,src->first);
 

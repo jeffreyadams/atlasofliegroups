@@ -30,6 +30,7 @@ StandardRepK and KhatContext.
 #include "kgb.h"
 #include "hashtable.h"
 #include "free_abelian.h"
+#include "polynomials.h"
 
 namespace atlas {
 
@@ -52,12 +53,21 @@ typedef std::pair
 // a linear combination of |StandardRepK|s
 typedef free_abelian::Free_Abelian<StandardRepK> Char;
 typedef Char::coef_t CharCoeff;
-
 // a $K$-type formula; first component stands for its lowest $K$-type
 typedef std::pair<StandardRepK,Char> CharForm;
 
 typedef std::pair<latticetypes::LatticeElt,tits::TitsElt> RawRep;
 typedef free_abelian::Free_Abelian<RawRep> RawChar;
+
+typedef free_abelian::Free_Abelian<StandardRepK,polynomials::Polynomial<int> >
+  q_Char;
+ typedef q_Char::coef_t q_CharCoeff; // i.e., |polynomials::Polynomial<int>|
+// a $q$-$K$-type formula; first component stands for its lowest $K$-type
+typedef std::pair<StandardRepK,q_Char> q_CharForm;
+
+typedef free_abelian::Free_Abelian<RawRep,polynomials::Polynomial<int> >
+  Raw_q_Char;
+
 
 
 typedef unsigned int seq_no;
@@ -78,7 +88,10 @@ public:
   }
 }; // |class graded_compare|
 
-typedef free_abelian::Free_Abelian<seq_no,graded_compare> combination;
+typedef free_abelian::Free_Abelian<seq_no,long int,graded_compare> combination;
+typedef std::pair<seq_no,combination> equation;
+
+typedef free_abelian::Free_Abelian<seq_no,q_CharCoeff,graded_compare> q_combin;
 typedef std::pair<seq_no,combination> equation;
 
 
@@ -116,6 +129,8 @@ public:
 
   matrix::Matrix<CharCoeff> inverse_lower_triangular
     (const matrix::Matrix<CharCoeff>& U);
+
+  q_combin to_q(const combination& c);
 
 
 /******** type definitions **************************************************/
@@ -376,6 +391,7 @@ class SRK_context
 
   std::ostream& print(std::ostream& strm, const StandardRepK& sr) const;
   std::ostream& print(std::ostream& strm, const Char& ch) const;
+  std::ostream& print(std::ostream& strm, const q_Char& ch) const;
 
   /*!
     Returns the sum of absolute values of the scalar products of lambda
@@ -433,6 +449,8 @@ class KhatContext : public SRK_context
   using SRK_context::print;
   std::ostream& print(std::ostream& strm, const combination& ch,
 		      bool brief=false) const;
+  std::ostream& print(std::ostream& strm, const q_combin& ch, bool brief=false)
+    const;
 
   using SRK_context::height;
   level height(seq_no i) const
@@ -467,6 +485,9 @@ class KhatContext : public SRK_context
     (const StandardRepK& sr, level bound=~0u);
   equation mu_equation(seq_no, level bound=~0u); // adds equations
 
+  q_CharForm q_K_type_formula
+    (const StandardRepK& sr, level bound=~0u);
+
   std::vector<equation> saturate
     (const std::set<equation>& system, level bound);
 
@@ -489,6 +510,9 @@ class KhatContext : public SRK_context
 
 private:
   RawChar KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda)
+    const;
+
+  Raw_q_Char q_KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda)
     const;
 
   const proj_info& get_projection(bitset::RankFlags gens); // non |const|

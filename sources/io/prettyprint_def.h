@@ -104,9 +104,6 @@ std::ostream& printBasis(std::ostream& strm, const std::vector<V>& b)
   return strm;
 }
 
-template<typename C>
-std::ostream& printMonomial(std::ostream& strm, C c, polynomials::Degree d,
-			    const char* x)
 
 /*
   Synopsis: prints out the monomial c.x^d.
@@ -116,12 +113,17 @@ std::ostream& printMonomial(std::ostream& strm, C c, polynomials::Degree d,
   Explanation: c and d are printed only if non-one, except in degree zero where
   c is always printed; x is the name of the indeterminate.
 */
-
+template<typename C>
+std::ostream& printMonomial(std::ostream& strm, C c, polynomials::Degree d,
+			    const char* x)
 {
-  if (d == 0) // output c
+  if (d == 0) // output c regardless
     strm << c;
-  else {
-    if (c != C(1))
+  else
+  {
+    if (c<C(0) and c == C(-1)) // condition always false for unsigned types
+      strm << '-';
+    else if (c != C(1))
       strm << c;
     strm << x;
     if (d > 1)
@@ -131,12 +133,9 @@ std::ostream& printMonomial(std::ostream& strm, C c, polynomials::Degree d,
   return strm;
 }
 
-template<typename C>
-std::ostream& printPol(std::ostream& strm, const polynomials::Polynomial<C>& p,
-		       const char* x)
 
 /*
-  Synopsis: outputs the polynomial p on strm.
+  Synopsis: outputs the polynomial  |p| on |strm|.
 
   It is assumed that operator<< exists for the coefficient type. The string
   x is the name of the indeterminate. It is assumed that C is an unsigned
@@ -145,25 +144,16 @@ std::ostream& printPol(std::ostream& strm, const polynomials::Polynomial<C>& p,
   The output format is tex-like. Terms are printed only if non-zero,
   coefficients and exponents are printed only if non-one.
 */
-
+template<typename C>
+std::ostream& printPol(std::ostream& strm, const polynomials::Polynomial<C>& p,
+		       const char* x)
 {
-  if (p.isZero()) {
-    strm << "0";
-    return strm;
-  }
+  if (p.isZero())
+    return strm << "0";
 
-  bool firstterm = true;
-
-  for (size_t j = p.degree()+1; j;) {
-    --j;
-    if (p[j]) {
-      if (firstterm)
-	firstterm = false;
-      else
-	strm << "+";
-      printMonomial(strm,p[j],j,x);
-    }
-  }
+  for (size_t i = p.size(); i-->0; )
+    if (p[i]!=C(0)) // guaranteed true the first time
+      printMonomial(i<p.degree() and p[i]>C(0) ? strm<<'+' : strm,p[i],i,x);
 
   return strm;
 }

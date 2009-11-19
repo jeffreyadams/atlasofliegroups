@@ -3,48 +3,34 @@
 \brief
   Template definitions for the class Polynomial.
 
-  This module contains the implementation of the few things we need
-  about polynomials in this program. Apart from some basic elementary
-  operations, the most notable things are the "safe" versions, that
-  carefully check for overflow conditions. It is assumed that the
-  coefficient type is an _unsigned_ type.
+  This module contains the implementation of the few things we need about
+  polynomials in this program. The elementary operations are implemented in
+  the |Polynomial| class template, while the |Safe_Poly| template adds "safe"
+  arithmetic operations, that carefully check for overflow conditions,
+  assuming that the coefficient type is an _unsigned_ type.
 
-  Our philsophy is that the degree of the polynomial is always deduced from
-  the size of the coefficient vector: it is d_data.size()-1. As a corollary,
-  the degree of the zero polynomial is -1 (for the unsigned Degree type);
-  this is designated as UndefDegree. A consequence of this is that the
-  subtraction operations have to watch out for drop in degree (not the addition
-  operators, because coefficients are unsigned.) The main advantage of this
-  is that the degree operator, which is used a lot, is trivial.
+  As a class invariant, the leading coefficient stored is nonzero, so that the
+  degree of the polynomial is simply deduced from the size of the coefficient
+  vector: it is |size()-1|. As a corollary, the degree of the zero polynomial
+  is -1 (for the unsigned |Degree| type); this is designated as |UndefDegree|.
+  A consequence of this is that the subtraction operations have to watch out
+  for drop in degree (not the addition operators, because coefficients are
+  unsigned.)
 */
 /*
   This is polynomials_def.h.
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2009 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
 
 #include <limits>
+#include <cassert>
 
 #include "error.h"
-
-/*
-  This module contains the implementation of the few things we need about
-  polynomials in this program. Apart from some basic elementary operations,
-  the most notable things are the "safe" versions, that carefully check for
-  overflow conditions. It is assumed that the coefficient type is an
-  _unsigned_ type.
-
-  Our philsophy is that the degree of the polynomial is always deduced from
-  the size of the coefficient vector: it is d_data.size()-1. As a corollary,
-  the degree of the zero polynomial is -1 (for the unsigned Degree type);
-  this is designated as UndefDegree. A consequence of this is that the
-  subtraction operations have to watch out for drop in degree (not the addition
-  operators, because coefficients are unsigned.) The main advantage of this
-  is that the degree operator, which is used a lot, is trivial.
-*/
 
 namespace atlas {
 
@@ -56,18 +42,25 @@ namespace atlas {
 
 namespace polynomials {
 
+// this contructor assures mostly that |Polynomial<C>(C(0))| is null polynomial
+template<typename C>
+  Polynomial<C>::Polynomial(C c): d_data()
+{
+  if (c!=C(0))
+    d_data.push_back(c);
+}
 
 /*!
-  \brief Constructs x^d.
+  \brief Constructs cX^d.
 
-  We construct x^d, and not the zero polynomial, so that our basic assumption
-  about the degree is satisfied.
+  We construct cX^d, and not the zero polynomial, so that our basic assumption
+  about the degree (leading coefficient is nonzero) is satisfied.
 */
 template<typename C>
-Polynomial<C>::Polynomial(Degree d)
-  :d_data(d+1,0ul)
+  Polynomial<C>::Polynomial(Degree d, C c): d_data(d+1,C(0))
 {
-  d_data[d] = 1;
+  assert(c!=C(0));
+  d_data[d] = c;
 }
 
 /******** accessors **********************************************************/
@@ -77,33 +70,29 @@ Polynomial<C>::Polynomial(Degree d)
 /*!
   \brief Adjusts the size of d_data so that it corresponds to the degree + 1.
 
-  Steps down through the coefficients of the polynomial, beginning
-  with the top coefficient, until it finds a non-zero coefficient (or
-  reaches zero).  Then resizes d_data so that this non-zero
-  coefficient is the top one (or to have size zero if the polynomial is zero).
+  Just casts away any leading zero coefficients, possibly all of them
 */
 
 template<typename C>
 void Polynomial<C>::adjustSize()
 {
-  size_t j = d_data.size();
-
-  while (j-->0 and d_data[j]==C(0)) { }
-
-  d_data.resize(j+1);
+  size_t j = size();
+  while (j-->0 and d_data[j]==C(0))
+    d_data.pop_back(); // this is rare, so less expensive than always |resize|
 }
 
 template<typename C>
 Polynomial<C>& Polynomial<C>::operator+= (const Polynomial& q)
 {
-  if (q.isZero()) return *this; // do nothing (not really necessary to check)
+  if (q.isZero())
+    return *this; // avoid comparison of |&*q.d_data.end()| and |&q.d_data[0]|
 
-  // make sure d_data has all the coefficients to be modified
-  if (q.d_data.size() > d_data.size())
-    d_data.resize(q.d_data.size(),C(0));
+  // make sure our polynomial has all the coefficients to be modified
+  if (q.size() > size())
+    resize(q.size());
 
   const C* src=&*q.d_data.end();
-  C* dst=&d_data[q.d_data.size()];
+  C* dst=&d_data[q.size()];
 
   while (src>&q.d_data[0]) *--dst += *--src;
   // set degree
@@ -113,10 +102,14 @@ Polynomial<C>& Polynomial<C>::operator+= (const Polynomial& q)
 template<typename C>
 Polynomial<C>& Polynomial<C>::operator-= (const Polynomial& q)
 {
-  if (q.isZero()) return *this;
-  if (q.d_data.size() > d_data.size()) d_data.resize(q.d_data.size(),C(0));
+  if (q.isZero())
+    return *this;
+  if (q.size() > size())
+    resize(q.size());
 
-  const C* src=&*q.d_data.end(); C* dst=&d_data[q.d_data.size()];
+  const C* src=&*q.d_data.end();
+  C* dst=&d_data[q.size()];
+
   while (src>&q.d_data[0]) *--dst -= *--src;
 
   adjustSize(); return *this;
@@ -125,13 +118,14 @@ Polynomial<C>& Polynomial<C>::operator-= (const Polynomial& q)
 template<typename C>
 Polynomial<C>& Polynomial<C>::subtract_from (const Polynomial& p)
 {
-  if (p.d_data.size() > d_data.size()) d_data.resize(p.d_data.size(),C(0));
+  if (p.size() > size())
+    resize(p.size());
 
   C* dst=&*d_data.end();
-  while (dst>&d_data[p.d_data.size()])
+  while (dst>&d_data[p.size()])
   { --dst; *dst= -*dst; } // negate high coefficients
 
-  // now |dst==&d_data[p.d_data.size()]|
+  // now |dst==&d_data[p.size()]|
   const C* src=&*p.d_data.end();
   while (dst-->&d_data[0]) { *dst= *--src - *dst; }
 
@@ -143,7 +137,7 @@ Polynomial<C>& Polynomial<C>::operator*= (C c)
 {
   if (c==C(0)) *this=Polynomial();
   else
-    for (const C* p=&*d_data.end(); p>&d_data[0]; ) *--p *= c;
+    for (C* p=&*d_data.end(); p>&d_data[0]; ) *--p *= c;
 
   return *this;
 }
@@ -153,14 +147,16 @@ Polynomial<C> Polynomial<C>::operator* (const Polynomial& q) const
 {
   if (isZero() or q.isZero()) // we must avoid negative degrees!
     return Polynomial();
-  Polynomial<C> result(degree()+q.degree());
+  Polynomial<C> result(degree()+q.degree(),C(1));
+  // we have |result.size()==size()+q.size()-1|
+
   result.d_data[result.degree()]=C(0); // clear leading coefficient
 
-  for (size_t j=d_data.size(); j-->0; )
+  for (size_t j=size(); j-->0; )
   {
     C c=d_data[j];
     const C* src=&*q.d_data.end();
-    C* dst=&result.d_data[q.d_data.size()+j];
+    C* dst=&result.d_data[q.size()+j]; // beyond end pointer on first iteration
     while (src>&q.d_data[0]) *--dst += c * *--src;
   }
   return result;
@@ -168,124 +164,7 @@ Polynomial<C> Polynomial<C>::operator* (const Polynomial& q) const
 
 
 /*!
-  \brief Adds x^d.c.q, to *this, watching for overflow.
-
-  NOTE: may forward a NumericOverflow exception.
-
-  NOTE: we need to be careful in the case where q = *this, but we can
-  avoid making a copy, by doing the addition top-to-bottom.
-*/
-template<typename C>
-void Polynomial<C>::safeAdd(const Polynomial& q, Degree d, C c)
-{
-  if (q.isZero()) // do nothing
-    return;
-
-  // save the degree of q
-  Degree dq = q.degree();
-
-  // find degree
-  if (q.d_data.size()+d > d_data.size())
-    d_data.resize(q.d_data.size()+d,0ul);
-
-  for (size_t j = dq+1; j;) {
-    --j;
-    C a = q[j];
-    polynomials::safeProd(a,c);          // this may throw
-    polynomials::safeAdd(d_data[j+d],a); // this may throw
-  }
-}
-
-/* A simplified version avoiding multiplication in the common case |c==1| */
-
-template<typename C>
-void Polynomial<C>::safeAdd(const Polynomial& q, Degree d)
-{
-  if (q.isZero()) // do nothing
-    return;
-
-  // save the degree of q
-  Degree dq = q.degree();
-
-  // find degree
-  if (q.d_data.size()+d > d_data.size())
-    d_data.resize(q.d_data.size()+d,0ul);
-
-  for (size_t j = dq+1; j;) {
-    --j;
-    polynomials::safeAdd(d_data[j+d],q[j]); // this may throw
-  }
-}
-
-
-/*!
-  \brief Subtracts x^d.c.q from *this, watching for underflow.
-
-  NOTE: may forward a NumericUnderflow exception.
-
-  NOTE: q = *this is possible only for d = 0; still, we do the prudent thing
-  and subtract backwards.
-*/
-template<typename C>
-void Polynomial<C>::safeSubtract(const Polynomial& q, Degree d, C c)
-{
-  if (q.isZero()) // do nothing
-    return;
-
-  // save the degree of q
-  Degree dq = q.degree();
-
-  if (dq+d > degree()) // underflow
-    throw error::NumericUnderflow();
-
-  for (size_t j = dq+1; j;) {
-    --j;
-    C a = q[j];
-    polynomials::safeProd(a,c);               // this may throw
-    polynomials::safeSubtract(d_data[j+d],a); // this may throw
-  }
-
-  // set degree
-  adjustSize();
-}
-
-/* Again a simplified version deals with the common case |c==1| */
-
-template<typename C>
-void Polynomial<C>::safeSubtract(const Polynomial& q, Degree d)
-
-{
-  if (q.isZero()) // do nothing
-    return;
-
-  // save the degree of q
-  Degree dq = q.degree();
-
-  if (dq+d > degree()) // underflow
-    throw error::NumericUnderflow();
-
-  for (size_t j = dq+1; j;) {
-    --j;
-    polynomials::safeSubtract(d_data[j+d],q[j]); // this may throw
-  }
-
-  // set degree
-  adjustSize();
-}
-
-}
-
-/*****************************************************************************
-
-        Chapter II -- Functions declared in polynomials.h
-
- *****************************************************************************/
-
-namespace polynomials {
-
-
-/*!
-  \brief Polynomial comparison.
+  \brief Polynomial comparison: whether p < q
 
   Explanation: p < q if deg(p) < deg(q), or if degrees are equal, and the
   comparison holds for coefficients, in lex-order starting from the top.
@@ -293,31 +172,25 @@ namespace polynomials {
 template<typename C>
 bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
 {
-  if (q.isZero())
-    return false;
-
-  // now q is nonzero
-  if (p.isZero())
-    return true;
-
-  // now both p and q are nonzero
-  if (p.degree() < q.degree())
-    return true;
-  if (q.degree() < p.degree())
-    return false;
+  if (p.size() != q.size())
+    return p.size() < q.size();
 
   // now p and q have same degree
-  for (size_t j = p.degree()+1; j;) {
-    --j;
-    if (p[j] < q[j])
-      return true;
-    if (q[j] < p[j])
-      return false;
-  }
+  for (size_t j = p.size(); j-->0; )
+    if (p[j] != q[j])
+      return p[j]<q[j];
 
   // now p and q are equal
   return false;
 }
+
+
+
+/*****************************************************************************
+
+        Chapter II -- Safe polynomial arithmetic
+
+ *****************************************************************************/
 
 
 /*!
@@ -362,6 +235,106 @@ template<typename C> void safeSubtract(C& a, C b)
     throw error::NumericUnderflow();
   else
     a -= b;
+}
+
+
+/*!
+  \brief Adds x^d.c.q, to *this, watching for overflow, assuming |c>0|.
+
+  NOTE: may forward a NumericOverflow exception.
+
+  NOTE: we need to be careful in the case where q = *this, but we can
+  avoid making a copy, by doing the addition top-to-bottom.
+*/
+template<typename C>
+void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d, C c)
+{
+  if (q.isZero()) // do nothing
+    return;
+
+  size_t qs = q.size();   // save the original size of q, it might change
+
+  // find degree of result
+  if (q.size()+d > base::size())
+    base::resize(q.size()+d);
+
+  for (size_t j = qs; j-->0;)
+  {
+    C a = q[j];
+    polynomials::safeProd(a,c);           // this may throw
+    polynomials::safeAdd((*this)[j+d],a); // this may throw
+  }
+}
+
+/* A simplified version avoiding multiplication in the common case |c==1| */
+
+template<typename C>
+void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d)
+{
+  if (q.isZero()) // do nothing
+    return;
+
+  size_t qs = q.size();   // save the original size of q, it might change
+
+  // find degree
+  if (q.size()+d > base::size())
+    base::resize(q.size()+d);
+
+  for (size_t j = qs; j-->0; )
+    polynomials::safeAdd((*this)[j+d],q[j]); // this may throw
+}
+
+
+/*!
+  \brief Subtracts x^d.c.q from *this, watching for underflow, assuming |c>0|
+
+  NOTE: may forward a NumericUnderflow exception.
+
+  NOTE: q = *this is possible only for d = 0; still, we do the prudent thing
+  and subtract backwards.
+*/
+template<typename C>
+void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d, C c)
+{
+  if (q.isZero()) // do nothing
+    return;
+
+  size_t qs = q.size();   // save the original size of q, it might change
+
+  if (q.size()+d > base::size()) // underflow, leading coef becomes negative
+    throw error::NumericUnderflow();
+
+  for (size_t j = qs; j-->0; )
+  {
+    C a = q[j];
+    polynomials::safeProd(a,c);                // this may throw
+    polynomials::safeSubtract((*this)[j+d],a); // this may throw
+  }
+
+  // set degree
+  base::adjustSize();
+}
+
+/* Again a simplified version deals with the common case |c==1| */
+
+template<typename C>
+void Safe_Poly<C>::safeSubtract(const Safe_Poly& q, Degree d)
+
+{
+  if (q.isZero()) // do nothing
+    return;
+
+  // save the degree of q
+  Degree qs = q.size();
+
+  if (qs+d > base::size()) // underflow
+    throw error::NumericUnderflow();
+
+  for (size_t j = qs; j-->0;)
+    polynomials::safeSubtract((*this)[j+d],q[j]); // this may throw
+
+  // set degree
+  base::adjustSize();
 }
 
 } // namespace polynomials

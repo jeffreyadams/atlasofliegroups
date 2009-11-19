@@ -17,6 +17,7 @@
 #include "matreduc.h"
 #include "intutils.h"
 #include "arithmetic.h"
+#include "polynomials.h" // and most importantly polynomials_def.h
 
 
 /*****************************************************************************
@@ -73,7 +74,7 @@ template<typename C>
 Vector<C>& Vector<C>::operator/= (C c) throw (std::runtime_error)
 {
   for (typename Vector<C>::iterator it=base::begin(); it!=base::end(); ++it)
-    if (*it%c==0)
+    if (*it%c==C(0))
       *it/=c;
     else throw std::runtime_error("Inexact integer division");
   return *this;
@@ -257,7 +258,7 @@ Vector<C> Matrix<C>::apply(const Vector<C>& w) const
 
   for (size_t i = 0; i<base::numRows(); ++i)
   {
-    C c = 0;
+    C c(0);
     for (size_t j = 0; j<base::numColumns(); ++j)
       c += (*this)(i,j) * w[j];
     result[i] = c;
@@ -278,7 +279,7 @@ Vector<C> Matrix<C>::right_apply(const Vector<C>& w) const
 
     for (size_t j = 0; j<base::numColumns(); ++j)
   {
-    C c = 0;
+    C c(0);
     for (size_t i = 0; i<base::numRows(); ++i)
       c += w[i] * (*this)(i,j);
     result[j] = c;
@@ -296,7 +297,7 @@ Matrix<C> Matrix<C>::operator* (const Matrix<C>&  m) const
   for (size_t i = 0; i<base::numRows(); ++i)
     for (size_t k = 0; k<m.base::numColumns(); ++k)
     {
-      C c=0;
+      C c(0);
       for (size_t j = 0; j<base::numColumns(); ++j)
 	c += (*this)(i,j) * m(j,k);
 
@@ -409,7 +410,7 @@ Matrix<C>& Matrix<C>::operator-= (const Matrix<C>&  m)
 template<typename C>
 Matrix<C>& Matrix<C>::operator/= (const C& c) throw (std::runtime_error)
 {
-  if (c != 1)
+  if (c != C(1))
     base::d_data /= c;
   return *this;
 }
@@ -475,7 +476,7 @@ void Matrix<C>::permute(const setutils::Permutation& a)
 template<typename C> void Matrix<C>::invert()
 {
   C d; invert(d);
-  assert(d==1);
+  assert(d==C(1));
 }
 
 /*!
@@ -503,15 +504,15 @@ void Matrix<C>::invert(C& d)
   assert(base::numRows()==base::numColumns());
   size_t n=base::numRows();
   if (n==0) // do nothing to matrix, but set |d=1|
-  { d=1; return; }
+  { d=C(1); return; }
 
   Matrix<C> row,col;    // for recording column operations
   std::vector<C> diagonal = matreduc::diagonalise(*this,row,col);
 
   if (diagonal[n-1] == C(0)) // zero entries if any come at end
-  { d=0; return; }
+  { d=C(0); return; }
 
-  d=1;
+  d=C(1);
   for (size_t i=0; i<n; ++i)
     d=arithmetic::lcm(d,diagonal[i]);
 
@@ -710,6 +711,11 @@ template Matrix_base<int>::Matrix_base
    size_t,
    tags::IteratorTag);
 
+
+template class Matrix_base<polynomials::Polynomial<int> >;
+
+  // the following fails: insufficient polynomial arithmetic operations
+  // template class Matrix<polynomials::Polynomial<int> >;
 
 
 } // |namespace matrix|
