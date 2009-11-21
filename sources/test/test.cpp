@@ -65,8 +65,10 @@ namespace {
   void Ktypeform_f();
   void qKtypeform_f();
   void Ktypemat_f();
+  void qKtypemat_f();
   void mod_lattice_f();
   void branch_f();
+  void qbranch_f();
   void test_f();
   void testrun_f();
   void exam_f();
@@ -200,8 +202,10 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("Ktypeform",Ktypeform_f);
   mode.add("qKtypeform",qKtypeform_f);
   mode.add("Ktypemat",Ktypemat_f);
+  mode.add("qKtypemat",qKtypemat_f);
   mode.add("mod_lattice",mod_lattice_f);
   mode.add("branch",branch_f);
+  mode.add("qbranch",qbranch_f);
 
   mode.add("examine",exam_f);
 }
@@ -557,7 +561,7 @@ void qKtypeform_f()
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
 
   kgb::KGB kgb(G_R,G_R.Cartan_set());
-  standardrepk::KhatContext khc(G_R,kgb);
+  standardrepk::qKhatContext khc(G_R,kgb);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
@@ -597,7 +601,7 @@ void qKtypeform_f()
 				   << std::endl;
     size_t old_size=khc.nr_reps();
 #endif
-    standardrepk::combination st=khc.standardize(it->first);
+    standardrepk::q_combin st=khc.standardize(it->first);
 #ifdef VERBOSE
     for (size_t i=old_size; i<khc.nr_reps(); ++i)
       khc.print(f << 'R' << i << ": ",khc.rep_no(i))
@@ -607,7 +611,7 @@ void qKtypeform_f()
     khc.print(s,st,true);
     ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
 #endif
-    sum.add_multiple(to_q(st),it->second);
+    sum.add_multiple(st,it->second);
   }
 
   f << "Converted to Standard normal final limit form:\n";
@@ -682,7 +686,7 @@ void Ktypemat_f()
     khc.saturate(singleton,bound);
 
   std::vector<standardrepk::seq_no> new_order;
-  matrix::Matrix<standardrepk::CharCoeff> m =
+  matrix::Matrix_base<standardrepk::CharCoeff> m =
     standardrepk::triangularize(system,new_order);
 
   f << "Ordering of representations/K-types:\n";
@@ -700,6 +704,90 @@ void Ktypemat_f()
 			   3);
 
 } // |Ktypemat_f|
+
+void qKtypemat_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
+  kgb::KGB kgb(G_R,G_R.Cartan_set());
+  standardrepk::qKhatContext khc(G_R,kgb);
+
+  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+
+  {
+    size_t witness;
+    if (not khc.isStandard(sr,witness))
+    {
+      khc.print(std::cout << "Representation ",sr)
+        << " is not standard, as witnessed by coroot "
+	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< ".\n";
+      return;
+    }
+    if (not khc.isFinal(sr,witness))
+    {
+      khc.print(std::cout << "Representation ",sr)
+        << " is not final, as witnessed by coroot "
+	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+      return;
+    }
+  }
+
+  standardrepk::q_combin c=khc.standardize(sr);
+
+  if (c.empty())
+  {
+    khc.print(std::cout << "Representation ",sr) << " is zero.\n";
+    return;
+  }
+
+  assert(c.size()==1);
+  assert(khc.rep_no(c.begin()->first)==sr);
+
+  khc.print(std::cout << "Height of representation ",sr) << " is "
+    << khc.height(c.begin()->first) << ".\n";
+  unsigned long bound=
+    interactive::get_bounded_int(interactive::common_input(),
+				 "Give height bound: ",
+				 9999);
+
+  ioutils::OutputFile f;
+
+  std::set<standardrepk::q_equation> singleton;
+  singleton.insert(khc.mu_equation(c.begin()->first,bound));
+
+  {
+    standardrepk::q_equation init=*singleton.begin();
+    khc.print(f << "Initial formula: mu(",khc.rep_no(init.first))
+      << ") =\n";
+    {
+      std::ostringstream s; khc.print(s,init.second);
+      ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
+    }
+  }
+
+  std::vector<standardrepk::q_equation> system =
+    khc.saturate(singleton,bound);
+
+  std::vector<standardrepk::seq_no> new_order;
+  matrix::Matrix_base<standardrepk::q_CharCoeff> m =
+    standardrepk::triangularize(system,new_order);
+
+  f << "Ordering of representations/K-types:\n";
+  for (std::vector<standardrepk::seq_no>::const_iterator
+	 it=new_order.begin(); it!=new_order.end(); ++it)
+    khc.print(f,khc.rep_no(*it)) << ", height " << khc.height(*it)
+      << std::endl;
+
+#ifdef VERBOSE
+  prettyprint::printMatrix(f<<"Triangular system:\n",m,3);
+#endif
+
+  prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",
+			   standardrepk::inverse_lower_triangular(m),
+			   3);
+
+} // |qKtypemat_f|
 
 void mod_lattice_f()
 {
@@ -803,6 +891,63 @@ void branch_f()
   }
 
 } // |branch_f|
+
+void qbranch_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
+  kgb::KGB kgb(G_R,G_R.Cartan_set());
+  standardrepk::qKhatContext khc(G_R,kgb);
+
+  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+
+  {
+    size_t witness;
+    if (not khc.isStandard(sr,witness))
+    {
+      khc.print(std::cout << "Representation ",sr)
+        << " is not standard, as witnessed by coroot "
+	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< ".\n";
+      return;
+    }
+    if (not khc.isFinal(sr,witness))
+    {
+      khc.print(std::cout << "Representation ",sr)
+        << " is not final, as witnessed by coroot "
+	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+      return;
+    }
+  }
+
+  standardrepk::q_combin c=khc.standardize(sr);
+
+  if (c.empty())
+  {
+    khc.print(std::cout << "Representation ",sr) << " is zero.\n";
+    return;
+  }
+
+  assert(c.size()==1 and khc.rep_no(c.begin()->first)==sr);
+
+  khc.print(std::cout << "Height of representation ",sr) << " is "
+    << khc.height(c.begin()->first) << ".\n";
+  unsigned long bound=
+    interactive::get_bounded_int(interactive::common_input(),
+				 "Give height bound: ",
+				 9999);
+
+  ioutils::OutputFile f;
+
+  standardrepk::q_combin result=khc.branch(c.begin()->first,bound);
+
+  {
+    std::ostringstream s; khc.print(s,result);
+    ioutils::foldLine(f,s.str(),"+","",1) << std::endl;
+  }
+
+} // |qbranch_f|
+
 
 // Block mode functions
 

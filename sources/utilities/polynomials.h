@@ -15,9 +15,11 @@
 #define POLYNOMIALS_H
 
 #include "polynomials_fwd.h"
+#include "prettyprint.h"
 
 #include <limits>
 #include <vector>
+#include <iostream>
 
 namespace atlas {
 
@@ -108,12 +110,17 @@ template<typename C> class Polynomial
     { return Polynomial(*this)+=q; }
   Polynomial operator- (const Polynomial& q) const
     { return Polynomial(*this)-=q; }
+  Polynomial operator- () const { return Polynomial(*this)*= C(-1); }
 
 protected:
   void resize (Degree d) { d_data.resize(d,C(0)); }
   void adjustSize(); // shrink |d_data| to make leading coefficient nonzero
 
  }; // |template<typename C> class Polynomial|
+
+template <typename C>
+  std::ostream& operator<< (std::ostream& strm, const Polynomial<C>& P)
+ { return prettyprint::printPol(strm,P,"q"); }
 
 /*
   The following class template assumes |C| is an _unsigned_ integer type,

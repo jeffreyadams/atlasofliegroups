@@ -95,7 +95,7 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
     throw(error::InputError);
 
   standardrepk::StandardRepK get_standardrep
-    (const standardrepk::KhatContext& khc)
+    (const standardrepk::SRK_context& c)
     throw(error::InputError);
 
   input::InputBuffer& common_input();

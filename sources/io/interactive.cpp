@@ -676,18 +676,18 @@ latticetypes::Weight get_weight(input::InputBuffer& ib,
 }
 
 standardrepk::StandardRepK
-get_standardrep(const standardrepk::KhatContext& khc)
+get_standardrep(const standardrepk::SRK_context& c)
   throw(error::InputError)
 {
   unsigned long x=get_bounded_int
-    (sr_input_buffer,"Choose KGB element: ",khc.kgb().size());
+    (sr_input_buffer,"Choose KGB element: ",c.kgb().size());
 
-  prettyprint::printVector(std::cout<<"2rho = ",khc.rootDatum().twoRho())
+  prettyprint::printVector(std::cout<<"2rho = ",c.rootDatum().twoRho())
     << std::endl;
   latticetypes::Weight lambda=
-  get_weight(sr_input_buffer,"Give lambda-rho: ",khc.complexGroup().rank());
+  get_weight(sr_input_buffer,"Give lambda-rho: ",c.complexGroup().rank());
 
-  return khc.std_rep_rho_plus(lambda,khc.kgb().titsElt(x));
+  return c.std_rep_rho_plus(lambda,c.kgb().titsElt(x));
 }
 
 /*

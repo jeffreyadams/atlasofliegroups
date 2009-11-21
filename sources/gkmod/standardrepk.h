@@ -92,45 +92,30 @@ typedef free_abelian::Free_Abelian<seq_no,long int,graded_compare> combination;
 typedef std::pair<seq_no,combination> equation;
 
 typedef free_abelian::Free_Abelian<seq_no,q_CharCoeff,graded_compare> q_combin;
-typedef std::pair<seq_no,combination> equation;
+typedef std::pair<seq_no,q_combin> q_equation;
 
-
-// class handling rewriting of StandardRepK values by directed equations
-// all left hand sides are assumed distinct, so just repeated substitutions
-// in fact due to ordering, it now functions as a trivial lookup table
-class SR_rewrites
-{
-public:
-
-  typedef std::vector<combination> sys_t;
-
-private:
-
-  sys_t system;
-
-public:
-  SR_rewrites() : system() {}
-
-  const combination& lookup(seq_no n) const; // an equation must exist!
-
-  // manipulators
-  void equate(seq_no n, const combination& rhs);
-
-}; // |SR_rewrites|
 
 
 
 /******** function declarations *********************************************/
 
-
-  matrix::Matrix<CharCoeff> triangularize
-    (const std::vector<equation>& system,
+template <typename C>
+  matrix::Matrix_base<C> triangularize
+    (const std::vector<
+       std::pair<seq_no,
+                 free_abelian::Free_Abelian<seq_no,C,graded_compare>
+                > >& system,
      std::vector<seq_no>& new_order);
 
-  matrix::Matrix<CharCoeff> inverse_lower_triangular
-    (const matrix::Matrix<CharCoeff>& U);
+template <typename C>
+  matrix::Matrix_base<C> inverse_lower_triangular
+    (const matrix::Matrix_base<C>& U);
 
   q_combin to_q(const combination& c);
+  combination q_is_1(const q_combin& c);
+
+  q_Char to_q(const Char& chi);
+  Char q_is_1(const q_Char& chi);
 
 
 /******** type definitions **************************************************/
@@ -290,10 +275,20 @@ struct bitset_entry : public bitset::RankFlags
 }; // |struct bitset_entry|
 
 
-// This class stores the information necessary to interpret a |StandardRepK|
+/* This class stores the information necessary to interpret a |StandardRepK|,
+   but it does not store extensive tables concerning them, which is relegated
+   to the derived class |KHatContext| defined below.
+
+   Just one dynamic table is held, for projection matrices correponding to
+   different subsets of simple roots; they serve to speed up the height
+   computation. That computation is not a necessary part for the other
+   functionality of this class, but it allows height-trunction to be built
+   into for instance |K_type_formula|, which speeds up simple cases a lot.
+ */
 class SRK_context
 {
   complexredgp::ComplexReductiveGroup& G;
+  const kgb::KGB& d_KGB;
   const tits::BasedTitsGroup& Tg;  // for getting around in KGB (unused here)
   bitmap::BitMap Cartan_set;       // marks recorded Cartan class numbers
   std::vector<Cartan_info> C_info; // indexed by number of Cartan for |GR|
@@ -301,8 +296,13 @@ class SRK_context
 // this member is precomputed to increase efficiency of certain operations
   std::vector<latticetypes::BinaryMap> simple_reflection_mod_2; // dual side
 
+// we cache a number of |proj_info| values, indexed by sets of generators
+  bitset_entry::Pooltype proj_pool;
+  hashtable::HashTable<bitset_entry,unsigned int> proj_sets;
+  std::vector<proj_info> proj_data;
+
  public:
-  SRK_context(realredgp::RealReductiveGroup &G);
+  SRK_context(realredgp::RealReductiveGroup &G, const kgb::KGB& kgb);
 
   // accessors
   complexredgp::ComplexReductiveGroup& complexGroup() const { return G; }
@@ -317,6 +317,8 @@ class SRK_context
     { return G.twistedInvolution(cn); }
   const cartanclass::Fiber& fiber(const StandardRepK& sr) const
     { return G.cartan(sr.Cartan()).fiber(); }
+
+  const kgb::KGB& kgb() const { return d_KGB; }
 
   const Cartan_info& info(size_t cn) const
     { return C_info[Cartan_set.position(cn)]; }
@@ -357,6 +359,11 @@ class SRK_context
     (latticetypes::Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
     const;
 
+
+  // RepK from KGB number only, with |lambda=rho|; method is currently unused
+  StandardRepK KGB_elt_rep(kgb::KGBElt z) const
+    { return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z)); }
+
 /*
   The conditions below (and Normal which is not used in tests) are defined by
    Standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ positive imaginary
@@ -389,9 +396,21 @@ class SRK_context
 			 s.d_fiberElt);
   }
 
-  std::ostream& print(std::ostream& strm, const StandardRepK& sr) const;
-  std::ostream& print(std::ostream& strm, const Char& ch) const;
-  std::ostream& print(std::ostream& strm, const q_Char& ch) const;
+  kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
+
+  PSalgebra theta_stable_parabolic
+    (const StandardRepK& sr, weyl::WeylWord& conjugator) const;
+
+  CharForm K_type_formula
+    (const StandardRepK& sr, level bound=~0u);
+  q_CharForm q_K_type_formula
+    (const StandardRepK& sr, level bound=~0u);
+
+  // Hecht-Schmid identity for simple-imaginary root $\alpha$
+  HechtSchmid HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
+
+  // Hecht-Schmid identity for simple-real root $\alpha$
+  HechtSchmid back_HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
 
   /*!
     Returns the sum of absolute values of the scalar products of lambda
@@ -400,6 +419,23 @@ class SRK_context
   */
   level height(const StandardRepK& s) const;
 
+  //! Lower bound for height of representation after adding positive roots
+  level height_bound(const latticetypes::Weight& lambda); // non |const|
+
+  std::ostream& print(std::ostream& strm, const StandardRepK& sr) const;
+  std::ostream& print(std::ostream& strm, const Char& ch) const;
+  std::ostream& print(std::ostream& strm, const q_Char& ch) const;
+
+// private methods
+ private:
+  RawChar KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda)
+    const;
+
+  Raw_q_Char q_KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda)
+    const;
+
+  const proj_info& get_projection(bitset::RankFlags gens); // non |const|
+
 }; // |SRK_context|
 
 // This class serves to store tables of previously computed mappings from
@@ -407,8 +443,6 @@ class SRK_context
 // necessary to interpret the d_lambda field in StandardRepK are stored here
 class KhatContext : public SRK_context
 {
-  const kgb::KGB& d_KGB;
-
   typedef hashtable::HashTable<StandardRepK,seq_no> Hash;
 
   StandardRepK::Pooltype nonfinal_pool,final_pool;
@@ -418,13 +452,7 @@ class KhatContext : public SRK_context
   graded_compare height_graded; // ordering object that will use |height_of|
 
   // a set of equations rewriting to Standard, Normal, Final, NonZero elements
-  SR_rewrites d_rules; // maps from |seq_no| of |nonfinals| to |combination|
-
-  // we cache a number of |proj_info| values, indexed by sets of generators
-  bitset_entry::Pooltype proj_pool;
-  hashtable::HashTable<bitset_entry,unsigned long> proj_sets;
-
-  std::vector<proj_info> proj_data;
+  std::vector<combination> expanded; // equivalents for |nonfinal| elements
 
  public:
 
@@ -434,23 +462,10 @@ class KhatContext : public SRK_context
 
 // accessors and manipulators (manipulation only as side effect for efficiency)
 
-  const kgb::KGB& kgb() const { return d_KGB; }
-
-  // RepK from KGB number only, with |lambda=rho|; method is currently unused
-  StandardRepK KGB_elt_rep(kgb::KGBElt z) const
-    {
-      return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z));
-    }
-
   seq_no nr_reps() const { return final_pool.size(); }
 
   StandardRepK rep_no(seq_no i) const { return final_pool[i]; }
 
-  using SRK_context::print;
-  std::ostream& print(std::ostream& strm, const combination& ch,
-		      bool brief=false) const;
-  std::ostream& print(std::ostream& strm, const q_combin& ch, bool brief=false)
-    const;
 
   using SRK_context::height;
   level height(seq_no i) const
@@ -461,11 +476,7 @@ class KhatContext : public SRK_context
 
   const graded_compare& height_order() const { return height_graded; }
 
-  //! Lower bound for height of representation after adding positive roots
-  level height_bound(const latticetypes::Weight& lambda); // non |const|
-
-
-  combination standardize(const StandardRepK& sr); // non |const|: |d_rules++|
+  combination standardize(const StandardRepK& sr); // non |const|: |expanded++|
   combination standardize(StandardRepK& sr) // non |const|, normalizes |sr|
   { normalize(sr); return standardize(static_cast<const StandardRepK&>(sr)); }
   combination standardize(const Char& chi); // non |const|
@@ -473,29 +484,13 @@ class KhatContext : public SRK_context
   combination truncate(const combination& c, level bound) const;
 
 
-  kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
-
-  // Hecht-Schmid identity for simple-imaginary root $\alpha$
-  HechtSchmid HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
-
-  // Hecht-Schmid identity for simple-real root $\alpha$
-  HechtSchmid back_HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
-
-  CharForm K_type_formula
-    (const StandardRepK& sr, level bound=~0u);
   equation mu_equation(seq_no, level bound=~0u); // adds equations
-
-  q_CharForm q_K_type_formula
-    (const StandardRepK& sr, level bound=~0u);
 
   std::vector<equation> saturate
     (const std::set<equation>& system, level bound);
 
-  PSalgebra theta_stable_parabolic
-    (const StandardRepK& sr, weyl::WeylWord& conjugator) const;
-
-  // saturate and invert |system| up to |bound|, writing list into |reps|
-  matrix::Matrix<CharCoeff>
+ // saturate and invert |system| up to |bound|, writing list into |reps|
+  matrix::Matrix_base<CharCoeff>
     K_type_matrix(std::set<equation>& system,
 		  level bound,
 		  std::vector<seq_no>& reps); // non |const|
@@ -504,23 +499,83 @@ class KhatContext : public SRK_context
 
   void go(const StandardRepK& sr);  // used by "test" command
 
+  using SRK_context::print;
+  std::ostream& print(std::ostream& strm, const combination& ch,
+		      bool brief=false) const;
 // manipulators
+ private:
+  const combination& equate(seq_no n, const combination& rhs); // nonfinal #n
 
-// private methods
+}; // |class KhatContext|
 
-private:
-  RawChar KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda)
+// This class serves to store tables of previously computed mappings from
+// "bad" standard representations to good ones. Also the information
+// necessary to interpret the d_lambda field in StandardRepK are stored here
+class qKhatContext : public SRK_context
+{
+  typedef hashtable::HashTable<StandardRepK,seq_no> Hash;
+
+  StandardRepK::Pooltype nonfinal_pool,final_pool;
+  Hash nonfinals,finals;
+
+  std::vector<level> height_of; // alongside |final_pool|
+  graded_compare height_graded; // ordering object that will use |height_of|
+
+  // a set of equations rewriting to Standard, Normal, Final, NonZero elements
+  std::vector<q_combin> expanded; // equivalents for |nonfinal| elements
+
+ public:
+
+// constructors, destructors, and swap
+
+  qKhatContext(realredgp::RealReductiveGroup &G,const kgb::KGB& kgb);
+
+// accessors and manipulators (manipulation only as side effect for efficiency)
+
+  seq_no nr_reps() const { return final_pool.size(); }
+
+  StandardRepK rep_no(seq_no i) const { return final_pool[i]; }
+
+
+  using SRK_context::height;
+  level height(seq_no i) const
+  {
+    assert(i<height_of.size());
+    return height_of[i]; // which will equal |height(rep_no(i))|
+  }
+
+  const graded_compare& height_order() const { return height_graded; }
+
+  q_combin standardize(const StandardRepK& sr); // non |const|: |expanded++|
+  q_combin standardize(StandardRepK& sr) // non |const|, normalizes |sr|
+  { normalize(sr); return standardize(static_cast<const StandardRepK&>(sr)); }
+  q_combin standardize(const q_Char& chi); // non |const|
+
+  q_combin truncate(const q_combin& c, level bound) const;
+
+  q_equation mu_equation(seq_no, level bound=~0u); // adds equations
+
+  std::vector<q_equation> saturate
+    (const std::set<q_equation>& system, level bound);
+
+  matrix::Matrix_base<q_CharCoeff>
+    K_type_matrix(std::set<q_equation>& system,
+		  level bound,
+		  std::vector<seq_no>& reps); // non |const|
+
+  q_combin branch(seq_no s, level bound); // non |const|
+
+  void go(const StandardRepK& sr);  // used by "test" command
+
+  using SRK_context::print;
+  std::ostream& print(std::ostream& strm, const q_combin& ch, bool brief=false)
     const;
 
-  Raw_q_Char q_KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda)
-    const;
+// manipulators
+ private:
+  const q_combin& equate(seq_no n, const q_combin& rhs); // nonfinal #n
 
-  const proj_info& get_projection(bitset::RankFlags gens); // non |const|
-
-}; // class KhatContext
-
-
-
+}; // |class qKhatContext|
 
 
 /* HechtSchmid identities are represented as equation with a main left hand
@@ -535,13 +590,12 @@ class HechtSchmid
   StandardRepK* rh2;
 
  public:
- HechtSchmid(const StandardRepK& s, const KhatContext& khc)
+ HechtSchmid(const StandardRepK& s)
     : lh(s), lh2(NULL), rh1(NULL), rh2(NULL) {}
   ~HechtSchmid() { delete lh2; delete rh1; delete rh2; }
 
-  void add_lh(const StandardRepK& s, const KhatContext& khc)
-    { lh2=new StandardRepK(s); }
-  void add_rh(const StandardRepK& s, const KhatContext& khc)
+  void add_lh(const StandardRepK& s) { lh2=new StandardRepK(s); }
+  void add_rh(const StandardRepK& s)
     { *(rh1==NULL ? &rh1 : &rh2) = new StandardRepK(s); }
 
   int n_lhs() const { return lh2==NULL ? 1 : 2; }
@@ -559,7 +613,6 @@ class PSalgebra // Parabolic subalgebra
   rootdata::RootSet nilpotents; // (positive) roots in nilpotent radical
  public:
   PSalgebra (tits::TitsElt base,
-	     const kgb::KGB& kgb,
 	     const complexredgp::ComplexReductiveGroup& G);
 
   const tits::TitsElt& strong_involution() const { return strong_inv; }

@@ -104,46 +104,21 @@ size_t StandardRepK::hashCode(size_t modulus) const
   return (hash+(hash<<5)+d_lambda.second.to_ulong())&(modulus-1);
 }
 
-} // namespace standardrepk
 
 /*****************************************************************************
 
-        Chapter II -- The SR_rewrites class
+        Chapter II -- The SRK_context class
 
 ******************************************************************************/
 
-namespace standardrepk {
-
-const combination& SR_rewrites::lookup(seq_no n) const
-{
-  assert(n<system.size());
-  return system[n];
-}
-
-void SR_rewrites::equate (seq_no n, const combination& rhs)
-{
-  assert(n==system.size()); // left hand side should be a new |StandardRepK|
-  system.push_back(rhs);
-}
-
-} // namespace standardrepk
-
-
-
-/*****************************************************************************
-
-        Chapter III -- The KhatContext class
-
-******************************************************************************/
-
-namespace standardrepk {
-
-SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
+SRK_context::SRK_context(realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
   : G(GR.complexGroup())
+  , d_KGB(kgb)
   , Tg(GR.basedTitsGroup())
   , Cartan_set(GR.Cartan_set())
   , C_info(G.numCartanClasses())
   , simple_reflection_mod_2()
+  , proj_pool(), proj_sets(proj_pool), proj_data()
 {
   const rootdata::RootDatum& rd=rootDatum();
   simple_reflection_mod_2.reserve(G.semisimpleRank());
@@ -441,304 +416,11 @@ SRK_context::height(const StandardRepK& sr) const
 	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
     sum +=intutils::abs(mu.scalarProduct(*it));
 
-  return sum/2; // each |scalarProduct| above is even (in doubled coordinates)
+  return sum/2; // each |scalarProduct| above is even
 }
 
 
-/*
- *
- *
- *           |KhatContext|
- */
-
-KhatContext::KhatContext
-  (realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
-    : SRK_context(GR)
-    , d_KGB(kgb)
-    , nonfinal_pool(),final_pool()
-    , nonfinals(nonfinal_pool), finals(final_pool)
-    , height_of()
-    , height_graded(height_of)
-    , d_rules()
-    , proj_pool(), proj_sets(proj_pool), proj_data()
-{}
-
-/******** accessors *******************************************************/
-
-
-std::ostream& KhatContext::print(std::ostream& strm,
-				 const combination& ch,
-				 bool brief) const
-{
-  if (ch.empty())
-    return strm << '0';
-  for (combination::const_iterator it=ch.begin(); it!=ch.end(); ++it)
-  {
-    strm << (it->second>0 ? " + " : " - ");
-    long int ac=intutils::abs<long int>(it->second);
-    if (ac!=1)
-      strm << ac << '*';
-    if (brief)
-      strm << 'R' << it->first;
-    else print(strm,rep_no(it->first));
-  }
-  return strm;
-}
-
-std::ostream& KhatContext::print
-  (std::ostream& strm, const q_combin& ch, bool brief)  const
-{
-  if (ch.empty())
-    return strm << '0';
-  for (q_combin::const_iterator it=ch.begin(); it!=ch.end(); ++it)
-  {
-    if (it->second.degree()==0)
-    {
-      strm << (it->second[0]>0 ? " + " : " - ");
-      long int ac=intutils::abs(it->second[0]);
-      if (ac!=1)
-	strm << ac << '*';
-    }
-    else
-      prettyprint::printPol(strm<<" + (",it->second,"q")<<")*";
-    if (brief)
-      strm << 'R' << it->first;
-    else print(strm,rep_no(it->first));
-  }
-  return strm;
-}
-
-/* map a character (with terms assumed to be normalized) to one containing
-   only Standard terms
-   this version ensures the basic |standardize| is recursively called first */
-combination KhatContext::standardize(const Char& chi)
-{
-  combination result(height_graded);
-
-  for (Char::const_iterator i=chi.begin(); i!=chi.end(); ++i)
-    result.add_multiple(standardize(i->first),i->second);
-
-  return result;
-}
-
-// the basic case, |sr| is assumed normalized here
-combination KhatContext::standardize(const StandardRepK& sr)
-{
-  { // first check if we've already done |sr|
-    seq_no n=nonfinals.find(sr);
-    if (n!=Hash::empty)
-      return d_rules.lookup(n); // in this case an equation should be known
-  }
-
-  size_t witness;
-  if (isStandard(sr,witness))
-  {
-    { // now check if we already know |sr| to be Final
-      seq_no n=finals.find(sr);
-      if (n!=Hash::empty)
-	return combination(n,height_graded); // single term known to be final
-    }
-
-    if (isZero(sr,witness))
-    {
-      combination zero(height_graded);
-      d_rules.equate(nonfinals.match(sr),zero);
-      return zero;
-    }
-
-    if (isFinal(sr,witness))
-    {
-      assert(height_of.size()==final_pool.size());
-      height_of.push_back(height(sr));
-      return combination(finals.match(sr),height_graded); // single term
-    }
-
-    // now |sr| is known to be Standard, but neither Zero nor Final
-
-    HechtSchmid equation= back_HS_id(sr,fiber(sr).simpleReal(witness));
-    assert(equation.n_lhs()==1); // |back_HS_id| gives 1-term left hand side
-    assert(equation.n_rhs()!=0); // and never a null right hand side
-
-    // now recursively standardize all terms, storing rules
-    combination result= standardize(equation.rhs());
-    d_rules.equate(nonfinals.match(sr),result); // and add rule for |sr|
-    return result;
-  } // if (isStandard(sr,witness))
-
-  HechtSchmid equation= HS_id(sr,fiber(sr).simpleImaginary(witness));
-  assert(equation.n_lhs()==2); // all cases of |HS_id| produce 2-term lhs
-
-  // recursively standardize all terms of |equation.equivalent()|, storing rules
-  combination result= standardize(equation.equivalent());
-  d_rules.equate(nonfinals.match(sr),result); // and add rule for |sr|
-  return result;
-} // standardize
-
-
-
-HechtSchmid
-KhatContext::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
-{
-  HechtSchmid id(sr,*this);
-  const rootdata::RootDatum& rd=rootDatum();
-  tits::TitsElt a=titsElt(sr);
-  latticetypes::Weight lambda=lift(sr);
-  assert(rd.isPosRoot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
-
-  size_t i=0; // simple root index (value will be set in following loop)
-  while (true) // we shall exit halfway when $\alpha=\alpha_i$
-  {
-    while (not rd.is_descent(i,alpha))
-    {
-      ++i;
-      assert(i<rd.semisimpleRank());
-    }
-    // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-imaginary
-    // and \alpha_i$ is complex for the involution |a.tw()|
-
-    if (alpha==rd.simpleRootNbr(i)) break; // found it
-
-    // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
-    rd.simple_reflect_root(alpha,i);
-    rd.simpleReflect(lambda,i);
-    basedTitsGroup().basedTwistedConjugate(a,i);
-    i=0; // and start over
-  }
-
-  latticetypes::Weight mu=rd.simpleReflection(lambda,i);
-  if (basedTitsGroup().simple_grading(a,i))
-  { // $\alpha_i$ is a non-compact imaginary simple root
-    basedTitsGroup().basedTwistedConjugate(a,i); // adds $m_i$ to torus part
-    StandardRepK sr0= std_rep(mu, a);
-    assert(sr.d_cartan==sr0.d_cartan);
-    id.add_lh(sr0,*this);
-    // the change to |d_lambda| may involve both components
-
-    /* Now are equivalent:
-       = |sr0.d_fiberElt==sr.d_fiberElt|
-       = $m_i$ absorbed into quotient ($\alpha_i^vee \in 2X_*+X_*^{-\theta}$)
-       = $\alpha^\vee( (X^*)^\theta ) = 2\Z$
-       = $\alpha\notin(1-\theta_\alpha)X^*$  ($\theta_\alpha=\theta.s_\alpha$)
-       = Cayley transform is type II
-    */
-
-    basedTitsGroup().Cayley_transform(a,i);
-    StandardRepK sr1= std_rep(lambda, a);
-    id.add_rh(sr1,*this);
-    if (sr0.d_fiberElt==sr.d_fiberElt) // type II
-    {
-      lambda += rootDatum().simpleRoot(i); // other possibility
-      lambda += rootDatum().simpleRoot(i); // add twice: doubled coordinates
-      StandardRepK sr2= std_rep(lambda, a);
-      assert(sr1.d_lambda != sr2.d_lambda);
-      id.add_rh(sr2,*this);
-    }
-  }
-  else // $\alpha_i$ is a compact root; "easy" Hecht-Schmid identity
-    // based twisted conjugation fixed the Tits element; just reflect weight
-    id.add_lh(std_rep(mu,a),*this); // and no RHS
-
-  return id;
-} // HS_id
-
-/*
-  The method |HS_id| is only called when |lambda| is non-dominant for |alpha|
-  and therefore gives a second term with a strictly more dominant weight.
-
-  For those simple-imaginary $\alpha$ with $\<\lambda,\alpha^\vee>=0$ the
-  corresponding Hecht-Schmid identity has equal weights in the left hand
-  terms, and is never generated from |HS_id|, but it is nevertheless valid,
-  and (for Standard representations) useful. Its use is as follows:
-
-  - if $\alpha$ is compact, the easy HS identity makes (twice) the
-    Standard representation equal to 0.
-
-  - if $\alpha$ is non-compact, the left hand terms are either distinct
-    because of their fiber part (type I) or identical (type II).
-
-    - in the type I case the right hand side is a single term whose (modularly
-      reduced) weight takes an even value on the (now real) root alpha, and is
-      therefore non-final. The identity can be used to express that
-      representation as the sum of the (Standard) left hand terms.
-
-    - in the type II case the left hand terms are equal and the two right hand
-      terms have distinct non-final parameters (differing in the weight by
-      $\alpha$), but designate the same representation (due to a shifted
-      action of the real Weyl group). One may therefore equate them and divide
-      by 2, so that either of the right hand terms is equated to the original
-      representation.
-
-   The purpose of |back_HS_id| is generating the equations for the type I and
-   type II cases, for a non-final parameter |sr| and witnessing root |alpha|
- */
-HechtSchmid
-KhatContext::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
-{
-  HechtSchmid id(sr,*this);
-  const rootdata::RootDatum& rd=rootDatum();
-  tits::TitsElt a=titsElt(sr);
-  latticetypes::Weight lambda=lift(sr);
-  assert(rd.isPosRoot(alpha)); // in fact it must be simple-real for |a.tw()|
-
-  // basis used is of $(1/2)X^*$, so scalar product with coroot always even
-  assert(rd.scalarProduct(lambda,alpha)%4 == 0); // the non-final condition
-
-  {
-    latticetypes::Weight mu=rd.root(alpha);
-    mu *= rd.scalarProduct(lambda,alpha)/2; // an even multiple of $\alpha$
-    lambda -= mu; // this makes |lambda| invariant under $s_\alpha$
-    // due to basis used, |lambda| effectively modified by multiple of $\alpha$
-    /* in type I, $\alpha$ is in $(1-\theta)X^*$ and correction is neutral
-       in type II, correction need not be in $(1-\theta)X^*$, but adding
-       $\alpha$ gives HC parameter designating the same representation
-    */
-  }
-
-  latticetypes::SmallSubspace mod_space=
-    info(sr.d_cartan).fiber_modulus; // make a copy to be modified
-
-  // again, move to situation where $\alpha$ is simple: $\alpha=\alpha_i$
-  size_t i=0; // simple root index (value will be set in following loop)
-
-  while (true) // we shall exit halfway when $\alpha=\alpha_i$
-  {
-    while (not rd.is_descent(i,alpha))
-    {
-      ++i;
-      assert(i<rd.semisimpleRank());
-    }
-    // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-real
-    // and \alpha_i$ is complex for the involution |a.tw()|
-
-    if (alpha==rd.simpleRootNbr(i)) break; // found it
-
-    // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
-    rd.simple_reflect_root(alpha,i);
-    rd.simpleReflect(lambda,i);
-    basedTitsGroup().basedTwistedConjugate(a,i);
-    mod_space.apply(dual_reflection(i));
-    i=0; // and start over
-  }
-
-  // one right term is obtained by undoing Cayley for |a|, with lifted |lambda|
-  basedTitsGroup().inverse_Cayley_transform(a,i,mod_space);
-
-  StandardRepK sr1 = std_rep(lambda,a);
-  id.add_rh(sr1,*this);
-
-  // there will be another term in case of a type I HechtSchmid identity
-  // it differs only in the fiber part, by $m_i$; if this vanishes into the
-  // quotient, the HechtSchmid identity is type II and nothing is added
-  basedTitsGroup().basedTwistedConjugate(a,i);
-  StandardRepK sr2=std_rep(lambda,a);
-  if (sr1.d_fiberElt!=sr2.d_fiberElt) // type I
-    id.add_rh(sr2,*this);
-
-  return id;
-} // |back_HS_id|
-
-
-const proj_info& KhatContext::get_projection(bitset::RankFlags gens)
+const proj_info& SRK_context::get_projection(bitset::RankFlags gens)
 {
   size_t old_size=proj_data.size();
   size_t h=proj_sets.match(bitset_entry(gens));
@@ -751,7 +433,7 @@ const proj_info& KhatContext::get_projection(bitset::RankFlags gens)
   return proj_data.back();
 }
 
-level KhatContext::height_bound(const latticetypes::Weight& lambda)
+level SRK_context::height_bound(const latticetypes::Weight& lambda)
 {
   const rootdata::RootDatum& rd=rootDatum();
 
@@ -788,7 +470,7 @@ level KhatContext::height_bound(const latticetypes::Weight& lambda)
   our goal, so conjugetion is in fact |basedTwistedConjugate| on |strong|.
  */
 PSalgebra
-KhatContext::theta_stable_parabolic
+SRK_context::theta_stable_parabolic
   (const StandardRepK& sr, weyl::WeylWord& conjugator) const
 {
   const rootdata::RootDatum& rd=rootDatum();
@@ -849,31 +531,31 @@ KhatContext::theta_stable_parabolic
 
   // Build the parabolic subalgebra:
 
-  { // first ensure |strong| is in reduced
+  { // first ensure |strong| is reduced
     const latticetypes::LatticeMatrix theta =
       complexGroup().involutionMatrix(strong.tw());
     titsGroup().left_torus_reduce(strong,tits::fiber_denom(theta));
   }
 
-  return PSalgebra(strong,d_KGB,complexGroup());
+  return PSalgebra(strong,complexGroup());
 
-} // theta_stable_parabolic
+} // |theta_stable_parabolic|
 
-kgb::KGBEltList KhatContext::sub_KGB(const PSalgebra& q) const
+kgb::KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
 {
-  bitmap::BitMap flagged(d_KGB.size());
+  bitmap::BitMap flagged(kgb().size());
   tits::TitsElt strong=q.strong_involution();
 
   kgb::KGBElt root;
   {
-    kgb::KGBEltPair p=d_KGB.tauPacket(q.involution());
+    kgb::KGBEltPair packet=kgb().tauPacket(q.involution());
     kgb::KGBElt x;
-    for (x=p.first; x<p.second; ++x)
-      if (d_KGB.titsElt(x)==q.strong_involution())
+    for (x=packet.first; x<packet.second; ++x)
+      if (kgb().titsElt(x)==q.strong_involution())
       {
 	root=x; break;
       }
-    assert(x<p.second); // search should succeed
+    assert(x<packet.second); // search should succeed
   }
 
   flagged.insert(root);
@@ -883,12 +565,12 @@ kgb::KGBEltList KhatContext::sub_KGB(const PSalgebra& q) const
     kgb::KGBElt x=queue.front(); queue.pop_front();
     for (bitset::RankFlags::iterator it=q.Levi_gens().begin(); it(); ++it)
     {
-      kgb::KGBElt y=d_KGB.cross(*it,x);
+      kgb::KGBElt y=kgb().cross(*it,x);
       if (not flagged.isMember(y))
       {
 	flagged.insert(y); queue.push_back(y);
       }
-      y=d_KGB.inverseCayley(*it,x).first; // second will follow if present
+      y=kgb().inverseCayley(*it,x).first; // second will follow if present
       if (y!=kgb::UndefKGB and not flagged.isMember(y))
       {
 	flagged.insert(y); queue.push_back(y);
@@ -900,7 +582,7 @@ kgb::KGBEltList KhatContext::sub_KGB(const PSalgebra& q) const
   return kgb::KGBEltList(flagged.begin(),flagged.end());
 } // sub_KGB
 
-RawChar KhatContext::KGB_sum(const PSalgebra& q,
+RawChar SRK_context::KGB_sum(const PSalgebra& q,
 			     const latticetypes::Weight& lambda) const
 {
   const rootdata::RootDatum& rd=rootDatum();
@@ -962,21 +644,11 @@ RawChar KhatContext::KGB_sum(const PSalgebra& q,
   }
 
   return result;
-} // KGB_sum
-
-combination KhatContext::truncate(const combination& c, level bound) const
-{
-  combination result(height_graded);
-  for (combination::const_iterator it=c.begin(); it!=c.end(); ++it)
-    if (height(it->first)<=bound)
-      result.insert(result.end(),*it);
-
-  return result;
-}
+} // |KGB_sum|
 
 // Express irreducible K-module as a finite virtual sum of standard ones
 CharForm
-KhatContext::K_type_formula(const StandardRepK& sr, level bound)
+SRK_context::K_type_formula(const StandardRepK& sr, level bound)
 {
   const weyl::WeylGroup& W=weylGroup();
   const rootdata::RootDatum& rd=rootDatum();
@@ -1053,23 +725,9 @@ KhatContext::K_type_formula(const StandardRepK& sr, level bound)
     }
   } // for sum over KGB for L
   return std::make_pair(sr, result);
-} // K_type_formula
+} // |K_type_formula|
 
-// Apply |K_type_formula| for known Final representation, and |standardize|
-equation KhatContext::mu_equation(seq_no n, level bound)
-{
-  CharForm kf= K_type_formula(rep_no(n),bound);
-
-  equation result(n,combination(height_graded));
-  combination& sum=result.second;
-
-  for (Char::const_iterator it=kf.second.begin(); it!=kf.second.end(); ++it)
-    sum.add_multiple(truncate(standardize(it->first),bound),it->second);
-
-  return result;
-}
-
-Raw_q_Char KhatContext::q_KGB_sum(const PSalgebra& p,
+Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
 				  const latticetypes::Weight& lambda) const
 {
   const rootdata::RootDatum& rd=rootDatum();
@@ -1136,7 +794,7 @@ Raw_q_Char KhatContext::q_KGB_sum(const PSalgebra& p,
 
 // Express irreducible K-module as a finite virtual sum of standard ones
 q_CharForm
-KhatContext::q_K_type_formula(const StandardRepK& sr, level bound)
+SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 {
   const weyl::WeylGroup& W=weylGroup();
   const rootdata::RootDatum& rd=rootDatum();
@@ -1215,57 +873,377 @@ KhatContext::q_K_type_formula(const StandardRepK& sr, level bound)
     }
   } // for sum over KGB for L
   return std::make_pair(sr, result);
-} // q_K_type_formula
+} // |q_K_type_formula|
 
-matrix::Matrix<CharCoeff> KhatContext::K_type_matrix
- (std::set<equation>& eq_set,
-  level bound,
-  std::vector<seq_no>& new_order)
+
+HechtSchmid
+SRK_context::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 {
-  std::vector<equation> system=saturate(eq_set,bound);
+  HechtSchmid id(sr);
+  const rootdata::RootDatum& rd=rootDatum();
+  tits::TitsElt a=titsElt(sr);
+  latticetypes::Weight lambda=lift(sr);
+  assert(rd.isPosRoot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
 
-  matrix::Matrix<CharCoeff>  m=triangularize(system,new_order);
-
-#ifdef VERBOSE
-  std::cout << "Ordering of representations/K-types:\n";
-  for (std::vector<seq_no>::const_iterator
-	 it=new_order.begin(); it!=new_order.end(); ++it)
-    print(std::cout,rep_no(*it)) << ", height " << height(*it)
-       << std::endl;
-
-  prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
-#endif
-
-  matrix::Matrix<CharCoeff>m_inv=inverse_lower_triangular(m);
-
-  return m_inv;
-
-} // K_type_matrix
-
-
-combination KhatContext::branch(seq_no s, level bound)
-{
-  combination result(height_graded); // a linear combination of $K$-types
-
-  if (height(s)>bound)
-    return result;
-
-  // a linear combination of Final representations
-  combination remainder(s,height_graded); // terms will have |height<=bound|
-  do
+  size_t i=0; // simple root index (value will be set in following loop)
+  while (true) // we shall exit halfway when $\alpha=\alpha_i$
   {
-    combination::iterator head=remainder.begin(); // leading term
+    while (not rd.is_descent(i,alpha))
+    {
+      ++i;
+      assert(i<rd.semisimpleRank());
+    }
+    // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-imaginary
+    // and \alpha_i$ is complex for the involution |a.tw()|
 
-    equation eq=mu_equation(head->first,bound);
+    if (alpha==rd.simpleRootNbr(i)) break; // found it
 
-    result += combination(eq.first,head->second,height_graded);
-    remainder.add_multiple(eq.second,-head->second);
+    // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
+    rd.simple_reflect_root(alpha,i);
+    rd.simpleReflect(lambda,i);
+    basedTitsGroup().basedTwistedConjugate(a,i);
+    i=0; // and start over
   }
-  while (not remainder.empty());
+
+  latticetypes::Weight mu=rd.simpleReflection(lambda,i);
+  if (basedTitsGroup().simple_grading(a,i))
+  { // $\alpha_i$ is a non-compact imaginary simple root
+    basedTitsGroup().basedTwistedConjugate(a,i); // adds $m_i$ to torus part
+    StandardRepK sr0= std_rep(mu, a);
+    assert(sr.d_cartan==sr0.d_cartan);
+    id.add_lh(sr0);
+    // the change to |d_lambda| may involve both components
+
+    /* Now are equivalent:
+       = |sr0.d_fiberElt==sr.d_fiberElt|
+       = $m_i$ absorbed into quotient ($\alpha_i^vee \in 2X_*+X_*^{-\theta}$)
+       = $\alpha^\vee( (X^*)^\theta ) = 2\Z$
+       = $\alpha\notin(1-\theta_\alpha)X^*$  ($\theta_\alpha=\theta.s_\alpha$)
+       = Cayley transform is type II
+    */
+
+    basedTitsGroup().Cayley_transform(a,i);
+    StandardRepK sr1= std_rep(lambda, a);
+    id.add_rh(sr1);
+    if (sr0.d_fiberElt==sr.d_fiberElt) // type II
+    {
+      lambda += rootDatum().simpleRoot(i); // other possibility
+      lambda += rootDatum().simpleRoot(i); // add twice: doubled coordinates
+      StandardRepK sr2= std_rep(lambda, a);
+      assert(sr1.d_lambda != sr2.d_lambda);
+      id.add_rh(sr2);
+    }
+  }
+  else // $\alpha_i$ is a compact root; "easy" Hecht-Schmid identity
+    // based twisted conjugation fixed the Tits element; just reflect weight
+    id.add_lh(std_rep(mu,a)); // and no RHS
+
+  return id;
+} // |HS_id|
+
+/*
+  The method |HS_id| is only called when |lambda| is non-dominant for |alpha|
+  and therefore gives a second term with a strictly more dominant weight.
+
+  For those simple-imaginary $\alpha$ with $\<\lambda,\alpha^\vee>=0$ the
+  corresponding Hecht-Schmid identity has equal weights in the left hand
+  terms, and is never generated from |HS_id|, but it is nevertheless valid,
+  and (for Standard representations) useful. Its use is as follows:
+
+  - if $\alpha$ is compact, the easy HS identity makes (twice) the
+    Standard representation equal to 0.
+
+  - if $\alpha$ is non-compact, the left hand terms are either distinct
+    because of their fiber part (type I) or identical (type II).
+
+    - in the type I case the right hand side is a single term whose (modularly
+      reduced) weight takes an even value on the (now real) root alpha, and is
+      therefore non-final. The identity can be used to express that
+      representation as the sum of the (Standard) left hand terms.
+
+    - in the type II case the left hand terms are equal and the two right hand
+      terms have distinct non-final parameters (differing in the weight by
+      $\alpha$), but designate the same representation (due to a shifted
+      action of the real Weyl group). One may therefore equate them and divide
+      by 2, so that either of the right hand terms is equated to the original
+      representation.
+
+   The purpose of |back_HS_id| is generating the equations for the type I and
+   type II cases, for a non-final parameter |sr| and witnessing root |alpha|
+ */
+HechtSchmid
+SRK_context::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
+{
+  HechtSchmid id(sr);
+  const rootdata::RootDatum& rd=rootDatum();
+  tits::TitsElt a=titsElt(sr);
+  latticetypes::Weight lambda=lift(sr);
+  assert(rd.isPosRoot(alpha)); // in fact it must be simple-real for |a.tw()|
+
+  // basis used is of $(1/2)X^*$, so scalar product with coroot always even
+  assert(rd.scalarProduct(lambda,alpha)%4 == 0); // the non-final condition
+
+  {
+    latticetypes::Weight mu=rd.root(alpha);
+    mu *= rd.scalarProduct(lambda,alpha)/2; // an even multiple of $\alpha$
+    lambda -= mu; // this makes |lambda| invariant under $s_\alpha$
+    // due to basis used, |lambda| effectively modified by multiple of $\alpha$
+    /* in type I, $\alpha$ is in $(1-\theta)X^*$ and correction is neutral
+       in type II, correction need not be in $(1-\theta)X^*$, but adding
+       $\alpha$ gives HC parameter designating the same representation
+    */
+  }
+
+  latticetypes::SmallSubspace mod_space=
+    info(sr.d_cartan).fiber_modulus; // make a copy to be modified
+
+  // again, move to situation where $\alpha$ is simple: $\alpha=\alpha_i$
+  size_t i=0; // simple root index (value will be set in following loop)
+
+  while (true) // we shall exit halfway when $\alpha=\alpha_i$
+  {
+    while (not rd.is_descent(i,alpha))
+    {
+      ++i;
+      assert(i<rd.semisimpleRank());
+    }
+    // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-real
+    // and \alpha_i$ is complex for the involution |a.tw()|
+
+    if (alpha==rd.simpleRootNbr(i)) break; // found it
+
+    // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
+    rd.simple_reflect_root(alpha,i);
+    rd.simpleReflect(lambda,i);
+    basedTitsGroup().basedTwistedConjugate(a,i);
+    mod_space.apply(dual_reflection(i));
+    i=0; // and start over
+  }
+
+  // one right term is obtained by undoing Cayley for |a|, with lifted |lambda|
+  basedTitsGroup().inverse_Cayley_transform(a,i,mod_space);
+
+  StandardRepK sr1 = std_rep(lambda,a);
+  id.add_rh(sr1);
+
+  // there will be another term in case of a type I HechtSchmid identity
+  // it differs only in the fiber part, by $m_i$; if this vanishes into the
+  // quotient, the HechtSchmid identity is type II and nothing is added
+  basedTitsGroup().basedTwistedConjugate(a,i);
+  StandardRepK sr2=std_rep(lambda,a);
+  if (sr1.d_fiberElt!=sr2.d_fiberElt) // type I
+    id.add_rh(sr2);
+
+  return id;
+} // |back_HS_id|
+
+
+/*****************************************************************************
+
+        Chapter III -- The |KhatContext| and |qKhetContext| classes
+
+******************************************************************************/
+
+KhatContext::KhatContext
+  (realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
+    : SRK_context(GR,kgb)
+    , nonfinal_pool(),final_pool()
+    , nonfinals(nonfinal_pool), finals(final_pool)
+    , height_of()
+    , height_graded(height_of)
+    , expanded()
+{}
+
+qKhatContext::qKhatContext
+  (realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
+    : SRK_context(GR,kgb)
+    , nonfinal_pool(),final_pool()
+    , nonfinals(nonfinal_pool), finals(final_pool)
+    , height_of()
+    , height_graded(height_of)
+    , expanded()
+{}
+
+/******** accessors *******************************************************/
+
+
+/* map a character (with terms assumed to be normalized) to one containing
+   only Standard terms
+   this version ensures the basic |standardize| is recursively called first */
+combination KhatContext::standardize(const Char& chi)
+{
+  combination result(height_graded);
+
+  for (Char::const_iterator i=chi.begin(); i!=chi.end(); ++i)
+    result.add_multiple(standardize(i->first),i->second);
 
   return result;
 }
 
+// the basic case, |sr| is assumed normalized here
+combination KhatContext::standardize(const StandardRepK& sr)
+{
+  { // first check if we've already done |sr|
+    seq_no n=nonfinals.find(sr);
+    if (n!=Hash::empty)
+      return expanded[n]; // in this case an equation is known
+  }
+
+  size_t witness;
+  if (isStandard(sr,witness))
+  {
+    { // now check if we already know |sr| to be Final
+      seq_no n=finals.find(sr);
+      if (n!=Hash::empty)
+	return combination(n,height_graded); // single term known to be final
+    }
+
+    if (isZero(sr,witness))
+    {
+      combination zero(height_graded);
+      return equate(nonfinals.match(sr),zero); // add at end of |expanded|
+    }
+
+    if (isFinal(sr,witness))
+    {
+      assert(height_of.size()==final_pool.size());
+      height_of.push_back(height(sr));
+      return combination(finals.match(sr),height_graded); // single term
+    }
+
+    // now |sr| is known to be Standard, but neither Zero nor Final
+
+    HechtSchmid equation= back_HS_id(sr,fiber(sr).simpleReal(witness));
+    assert(equation.n_lhs()==1); // |back_HS_id| gives 1-term left hand side
+    assert(equation.n_rhs()!=0); // and never a null right hand side
+
+    // now recursively standardize all terms, storing rules
+    combination result= standardize(equation.rhs());
+    return equate(nonfinals.match(sr),result); // and add rule for |sr|
+  } // if (isStandard(sr,witness))
+
+  HechtSchmid equation= HS_id(sr,fiber(sr).simpleImaginary(witness));
+  assert(equation.n_lhs()==2); // all cases of |HS_id| produce 2-term lhs
+
+  // recursively standardize all terms of |equation.equivalent()|, storing rules
+  combination result= standardize(equation.equivalent());
+  return equate(nonfinals.match(sr),result); // and add rule for |sr|
+} // |KhatContext::standardize|
+
+/* map a character (with terms assumed to be normalized) to one containing
+   only Standard terms
+   this version ensures the basic |standardize| is recursively called first */
+q_combin qKhatContext::standardize(const q_Char& chi)
+{
+  q_combin result(height_graded);
+
+  for (q_Char::const_iterator i=chi.begin(); i!=chi.end(); ++i)
+    result.add_multiple(standardize(i->first),i->second);
+
+  return result;
+}
+
+// the basic case, |sr| is assumed normalized here
+q_combin qKhatContext::standardize(const StandardRepK& sr)
+{
+  { // first check if we've already done |sr|
+    seq_no n=nonfinals.find(sr);
+    if (n!=Hash::empty) // then seen before
+      return expanded[n];
+  }
+
+  size_t witness;
+  if (isStandard(sr,witness))
+  {
+    { // now check if we already know |sr| to be Final
+      seq_no n=finals.find(sr);
+      if (n!=Hash::empty)
+	return q_combin(n,height_graded); // single term known to be final
+    }
+
+    if (isZero(sr,witness))
+    {
+      q_combin zero(height_graded);
+      return equate(nonfinals.match(sr),zero);
+    }
+
+    if (isFinal(sr,witness))
+    {
+      assert(height_of.size()==final_pool.size());
+      height_of.push_back(height(sr));
+      return q_combin(finals.match(sr),height_graded); // single term
+    }
+
+    // now |sr| is known to be Standard, but neither Zero nor Final
+
+    HechtSchmid equation= back_HS_id(sr,fiber(sr).simpleReal(witness));
+    assert(equation.n_lhs()==1); // |back_HS_id| gives 1-term left hand side
+    assert(equation.n_rhs()!=0); // and never a null right hand side
+
+    // now recursively standardize all terms, storing rules
+    q_combin result= standardize(to_q(equation.rhs()));
+    return equate(nonfinals.match(sr),result); // and add rule for |sr|
+  } // if (isStandard(sr,witness))
+
+  HechtSchmid equation= HS_id(sr,fiber(sr).simpleImaginary(witness));
+  assert(equation.n_lhs()==2); // all cases of |HS_id| produce 2-term lhs
+
+  // recursively standardize all terms of |equation.equivalent()|, storing rules
+  q_combin result= standardize(to_q(equation.equivalent()));
+  return equate(nonfinals.match(sr),result); // and add rule for |sr|
+} // |qKhatContext::standardize|
+
+
+
+combination KhatContext::truncate(const combination& c, level bound) const
+{
+  combination result(height_graded);
+  for (combination::const_iterator it=c.begin(); it!=c.end(); ++it)
+    if (height(it->first)<=bound)
+      result.insert(result.end(),*it);
+
+  return result;
+}
+
+
+q_combin qKhatContext::truncate(const q_combin& c, level bound) const
+{
+  q_combin result(height_graded);
+  for (q_combin::const_iterator it=c.begin(); it!=c.end(); ++it)
+    if (height(it->first)<=bound)
+      result.insert(result.end(),*it);
+
+  return result;
+}
+
+
+// Apply |K_type_formula| for known Final representation, and |standardize|
+equation KhatContext::mu_equation(seq_no n, level bound)
+{
+  CharForm kf= K_type_formula(rep_no(n),bound);
+
+  equation result(n,combination(height_graded));
+  combination& sum=result.second;
+
+  for (Char::const_iterator it=kf.second.begin(); it!=kf.second.end(); ++it)
+    sum.add_multiple(truncate(standardize(it->first),bound),it->second);
+
+  return result;
+}
+
+// Apply |K_type_formula| for known Final representation, and |standardize|
+q_equation qKhatContext::mu_equation(seq_no n, level bound)
+{
+  q_CharForm kf= q_K_type_formula(rep_no(n),bound);
+
+  q_equation result(n,q_combin(height_graded));
+  q_combin& sum=result.second;
+
+  for (q_Char::const_iterator it=kf.second.begin(); it!=kf.second.end(); ++it)
+    sum.add_multiple(truncate(standardize(it->first),bound),it->second);
+
+  return result;
+}
 
 
 /* convert a system of equations into a list, adding equations for all terms
@@ -1324,9 +1302,223 @@ KhatContext::saturate(const std::set<equation>& system, level bound)
   }
 
   return result;
-} // saturate
+} // |KhatContext::saturate|
 
-// **************   manipulators **********************
+
+/* convert a system of equations into a list, adding equations for all terms
+   recursively (they are generated by |mu_equation|), up to the given
+   bound (everything with |height(...)> bound| is pruned away).
+   It is assumed that |mu_equation| will ensure all |seq_no|s in
+   left and right hand sides are normalized, so that there is no risk of
+   trying to add a formula for one term but getting one for another.
+
+   Precondition: the right hand sides contain no terms with |height>bound|; if
+   they are obtained from |mu_equation| with the same |bound|, this is assured.
+ */
+std::vector<q_equation>
+qKhatContext::saturate(const std::set<q_equation>& system, level bound)
+{
+  bitmap::BitMap lhs(nr_reps()); // left hand sides of all equations seen
+
+  std::deque<q_equation> queue;
+
+  for (std::set<q_equation>::iterator
+	 it=system.begin(); it!=system.end(); ++it)
+    if (height(it->first)<=bound)
+    {
+      queue.push_back(*it);
+      lhs.insert(it->first); // include left hand sides from original system
+    }
+
+  std::vector<q_equation> result;
+
+  while (not queue.empty())
+  {
+    // ensure bitmap provides space for all current terms
+    if (nr_reps()>lhs.capacity())
+      lhs.set_capacity( (nr_reps()+constants::posBits)
+			& ~constants::posBits); // round up to wordsize
+
+    const q_equation& cf=queue.front(); // an unprocessed formula
+    assert(height(cf.first) <= bound);
+
+    result.push_back(q_equation(cf.first,q_combin(height_graded)));
+    q_combin& rhs=result.back().second;
+
+    for (q_combin::const_iterator
+	   term=cf.second.begin(); term!=cf.second.end(); ++term)
+    {
+      assert(height(term->first) <= bound); // guaranteed by |mu_equation|
+      rhs.insert(*term);
+      if (not lhs.isMember(term->first)) // no formula for this term seen yet
+      {
+	lhs.insert(term->first);
+	queue.push_back(mu_equation(term->first,bound));
+      }
+    }
+
+    queue.pop_front(); // we are done with this formula
+  }
+
+  return result;
+} // |qKhatContext::saturate|
+
+
+matrix::Matrix_base<CharCoeff> KhatContext::K_type_matrix
+ (std::set<equation>& eq_set,
+  level bound,
+  std::vector<seq_no>& new_order)
+{
+  std::vector<equation> system=saturate(eq_set,bound);
+
+  matrix::Matrix_base<CharCoeff> m=triangularize(system,new_order);
+
+#ifdef VERBOSE
+  std::cout << "Ordering of representations/K-types:\n";
+  for (std::vector<seq_no>::const_iterator
+	 it=new_order.begin(); it!=new_order.end(); ++it)
+    print(std::cout,rep_no(*it)) << ", height " << height(*it)
+       << std::endl;
+
+  prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
+#endif
+
+  matrix::Matrix_base<CharCoeff>m_inv=inverse_lower_triangular(m);
+
+  return m_inv;
+
+} // |KhatContext::K_type_matrix|
+
+matrix::Matrix_base<q_CharCoeff> qKhatContext::K_type_matrix
+ (std::set<q_equation>& eq_set,
+  level bound,
+  std::vector<seq_no>& new_order)
+{
+  std::vector<q_equation> system=saturate(eq_set,bound);
+
+  matrix::Matrix_base<q_CharCoeff> m=triangularize(system,new_order);
+
+#ifdef VERBOSE
+  std::cout << "Ordering of representations/K-types:\n";
+  for (std::vector<seq_no>::const_iterator
+	 it=new_order.begin(); it!=new_order.end(); ++it)
+    print(std::cout,rep_no(*it)) << ", height " << height(*it)
+       << std::endl;
+
+  prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
+#endif
+
+  matrix::Matrix_base<q_CharCoeff>m_inv=inverse_lower_triangular(m);
+
+  return m_inv;
+
+} // |qKhatContext::K_type_matrix|
+
+
+const combination& KhatContext::equate (seq_no n, const combination& rhs)
+{
+  assert(n==expanded.size()); // left hand side should be a new |StandardRepK|
+  expanded.push_back(rhs);
+  return rhs;
+}
+
+const q_combin& qKhatContext::equate (seq_no n, const q_combin& rhs)
+{
+  assert(n==expanded.size()); // left hand side should be a new |StandardRepK|
+  expanded.push_back(rhs);
+  return rhs;
+}
+
+combination KhatContext::branch(seq_no s, level bound)
+{
+  combination result(height_graded); // a linear combination of $K$-types
+
+  if (height(s)>bound)
+    return result;
+
+  // a linear combination of Final representations
+  combination remainder(s,height_graded); // terms will have |height<=bound|
+  do
+  {
+    combination::iterator head=remainder.begin(); // leading term
+
+    equation eq=mu_equation(head->first,bound);
+
+    result += combination(eq.first,head->second,height_graded);
+    remainder.add_multiple(eq.second,-head->second);
+  }
+  while (not remainder.empty());
+
+  return result;
+} // |KhatContext::branch|
+
+
+q_combin qKhatContext::branch(seq_no s, level bound)
+{
+  q_combin result(height_graded); // a linear q_combin of $K$-types
+
+  if (height(s)>bound)
+    return result;
+
+  // a linear q_combin of Final representations
+  q_combin remainder(s,height_graded); // terms will have |height<=bound|
+  do
+  {
+    q_combin::iterator head=remainder.begin(); // leading term
+
+    q_equation eq=mu_equation(head->first,bound);
+
+    result += q_combin(eq.first,head->second,height_graded);
+    remainder.add_multiple(eq.second,-head->second);
+  }
+  while (not remainder.empty());
+
+  return result;
+} // |qKhatContext::branch|
+
+
+
+std::ostream& KhatContext::print(std::ostream& strm,
+				 const combination& ch,
+				 bool brief) const
+{
+  if (ch.empty())
+    return strm << '0';
+  for (combination::const_iterator it=ch.begin(); it!=ch.end(); ++it)
+  {
+    strm << (it->second>0 ? " + " : " - ");
+    long int ac=intutils::abs<long int>(it->second);
+    if (ac!=1)
+      strm << ac << '*';
+    if (brief)
+      strm << 'R' << it->first;
+    else print(strm,rep_no(it->first));
+  }
+  return strm;
+}
+
+std::ostream& qKhatContext::print
+  (std::ostream& strm, const q_combin& ch, bool brief)  const
+{
+  if (ch.empty())
+    return strm << '0';
+  for (q_combin::const_iterator it=ch.begin(); it!=ch.end(); ++it)
+  {
+    if (it->second.degree()==0)
+    {
+      strm << (it->second[0]>0 ? " + " : " - ");
+      long int ac=intutils::abs(it->second[0]);
+      if (ac!=1)
+	strm << ac << '*';
+    }
+    else
+      prettyprint::printPol(strm<<" + (",it->second,"q")<<")*";
+    if (brief)
+      strm << 'R' << it->first;
+    else print(strm,rep_no(it->first));
+  }
+  return strm;
+}
 
 void KhatContext::go(const StandardRepK& initial)
 {
@@ -1373,7 +1565,55 @@ void KhatContext::go(const StandardRepK& initial)
   }
 
 
-} // go
+} // |KhatContext::go|
+
+void qKhatContext::go(const StandardRepK& initial)
+{
+  q_combin chi=standardize(initial);
+
+#ifdef VERBOSE
+  if (nonfinal_pool.size()>0)
+  {
+    const rootdata::RootDatum& rd=rootDatum();
+    std::cout << "Intermediate representations:\n";
+    for (size_t i=0; i<nonfinal_pool.size(); ++i)
+    {
+      const StandardRepK& sr=nonfinal_pool[i];
+      size_t witness;
+      const cartanclass::Fiber& f=fiber(sr);
+      print(std::cout << 'N' << i << ": ",sr) << " [" << height(sr) << ']';
+
+      if (not isStandard(sr,witness))
+	std::cout << ", non Standard, witness "
+		  << rd.coroot(f.simpleImaginary(witness));
+      if (isZero(sr,witness))
+	std::cout << ", Zero, witness "
+		  << rd.coroot(f.simpleImaginary(witness));
+      if (not isFinal(sr,witness))
+	std::cout << ", non Final, witness "
+		  << rd.coroot(f.simpleReal(witness));
+      std::cout << std::endl;
+    }
+  }
+#endif
+
+  std::cout << "Standard normal final limit representations:\n";
+  for (seq_no i=0; i<nr_reps(); ++i)
+  {
+    const StandardRepK& sr=rep_no(i);
+    print(std::cout << 'R' << i << ": ",sr) << " [" << height(i) << ']'
+      << std::endl;
+  }
+
+  print(std::cout << "Standardized expression for ",initial) << ":\n";
+  {
+    std::ostringstream s; print(s,chi,true);
+    ioutils::foldLine(std::cout,s.str(),"+\n- ","",1) << std::endl;
+  }
+
+
+} // |qKhatContext::go|
+
 
 /*****************************************************************************
 
@@ -1381,9 +1621,8 @@ void KhatContext::go(const StandardRepK& initial)
 
 ******************************************************************************/
 
-PSalgebra::PSalgebra (tits::TitsElt base,
-		      const kgb::KGB& kgb,
-		      const complexredgp::ComplexReductiveGroup& G)
+PSalgebra::PSalgebra(tits::TitsElt base,
+		     const complexredgp::ComplexReductiveGroup& G)
     : strong_inv(base)
     , cn(G.class_number(base.tw()))
     , sub_diagram() // class |RankFlags| needs no dimensioning
@@ -1420,28 +1659,39 @@ q_combin to_q(const combination& c)
   return result;
 }
 
-matrix::Matrix<CharCoeff>
-triangularize (const std::vector<equation>& system,
+
+q_Char to_q(const Char& chi)
+{
+  q_Char result(chi.key_comp()); // use same comparison object
+  for (Char::const_iterator it=chi.begin(); it!=chi.end(); ++it)
+    result += q_Char(it->first,q_CharCoeff(it->second),chi.key_comp());
+  return result;
+}
+
+template <typename C>
+  matrix::Matrix_base<C> triangularize
+   (const std::vector<
+      std::pair<seq_no,
+                free_abelian::Free_Abelian<seq_no,C,graded_compare>
+               > >& eq,
 	       std::vector<seq_no>& new_order)
 {
-  // order set of equations
-  std::vector<equation> equation(system.begin(),system.end());
-  size_t n=equation.size();
+ size_t n=eq.size();
 
-  matrix::Matrix<CharCoeff> M(n,n,0);
+ matrix::Matrix_base<C> M(n,n,C(0));
   graph::OrientedGraph incidence(n);
 
   for (size_t j=0; j<n; ++j) // loop over equations
   {
     size_t n_terms=0;
     for (size_t i=0; i<n; ++i) // loop over left hand sides
-      if ((M(i,j)=equation[j].second[equation[i].first])!=0)
+      if ((M(i,j)=eq[j].second[eq[i].first])!=C(0))
       { // |OrientedGraph::cells| puts sinks in front, so record edge $i\to j$.
 	incidence.edgeList(i).push_back(j);
 	++n_terms;
       }
 
-    if (equation[j].second.size()!=n_terms)
+    if (eq[j].second.size()!=n_terms)
       throw std::runtime_error ("triangularize: system not saturated");
   }
 
@@ -1452,36 +1702,37 @@ triangularize (const std::vector<equation>& system,
   {
     if (order.classSize(i)>1)
       throw std::runtime_error ("triangularize: system has cycles");
-    new_order[order(i)]=equation[i].first;
+    new_order[order(i)]=eq[i].first;
   }
 
-  matrix::Matrix<CharCoeff> result(n,n,0);
+  matrix::Matrix_base<C> result(n,n,C(0));
   for (size_t i=0; i<n; ++i)
     for (graph::EdgeList::const_iterator p=incidence.edgeList(i).begin();
 	 p!=incidence.edgeList(i).end(); ++p) // there is an edge |i| to |*p|
       result(order(i),order(*p))=M(i,*p);     // so |order(i)>=order(*p)|
 
   return result;
-} // triangularize
+} // |triangularize|
 
-matrix::Matrix<CharCoeff> inverse_lower_triangular
-  (const matrix::Matrix<CharCoeff>& L)
+template <typename C>
+  matrix::Matrix_base<C> inverse_lower_triangular
+    (const matrix::Matrix_base<C>& L)
 {
   size_t n=L.numColumns();
   if (L.numRows()!=n)
     throw std::runtime_error ("invert triangular: matrix is not square");
 
-  matrix::Matrix<CharCoeff> result(n,n,0);
+  matrix::Matrix_base<C> result(n,n,C(0));
 
   for (size_t i=0; i<n; ++i)
   {
-    if (L(i,i)!=1)
+    if (L(i,i)!=C(1))
       throw std::runtime_error ("invert triangular: not unitriangular");
-    result(i,i)=1;
+    result(i,i)=C(1);
 
     for (size_t j=i; j-->0; )
     {
-      CharCoeff sum=0;
+      C sum= C(0);
       for (size_t k=i; k>j; --k) // $j<k\leq i$
 	sum += result(i,k)*L(k,j);
       result(i,j) = -sum;
@@ -1490,7 +1741,15 @@ matrix::Matrix<CharCoeff> inverse_lower_triangular
   return result;
 }
 
-} // namespace standardrepk
+template
+  matrix::Matrix_base<polynomials::Polynomial<int> > triangularize
+    (const std::vector<q_equation>& eq, std::vector<seq_no>& new_order);
+
+template
+  matrix::Matrix_base<polynomials::Polynomial<int> > inverse_lower_triangular
+    (const matrix::Matrix_base<polynomials::Polynomial<int> >& L);
+
+} // |namespace standardrepk|
 
 // ****************** Chapter VI -- local functions ************************
 

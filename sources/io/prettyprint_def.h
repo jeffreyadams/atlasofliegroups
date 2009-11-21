@@ -184,7 +184,7 @@ std::ostream& printVector(std::ostream& strm, const std::vector<C>& v,
   for C, and that C is "small" (in particular, has no newlines in its output.)
 */
 template<typename C>
-std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix<C>& m,
+std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix_base<C>& m,
 			  unsigned long width)
 {
   std::vector<unsigned long> widths(m.numColumns(),width);
