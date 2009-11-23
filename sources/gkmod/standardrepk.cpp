@@ -29,6 +29,7 @@ StandardRepK and KhatContext.
 #include "ioutils.h"
 #include "tags.h"
 #include "graph.h"
+#include "basic_io.h"
 #include "prettyprint.h"
 #include <cassert>
 #include <iostream>

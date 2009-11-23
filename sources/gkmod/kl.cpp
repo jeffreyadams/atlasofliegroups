@@ -30,6 +30,7 @@
 #ifdef VERBOSE
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 #include <ctime>
 #include <sstream>
 #include <string>

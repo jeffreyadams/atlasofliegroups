@@ -14,6 +14,7 @@
 #include "kgb_io.h"
 
 #include "ioutils.h"
+#include "basic_io.h"
 #include "complexredgp.h"
 #include "kgb.h"
 #include "prettyprint.h"

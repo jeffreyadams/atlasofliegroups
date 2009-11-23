@@ -9,16 +9,19 @@
 
 #include "prettyprint.h"
 
-#include <fstream>
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 
 #include "basic_io.h"
 #include "bitmap.h"
+#include "constants.h"
 #include "gradings.h"
+#include "latticetypes.h"
 #include "lattice.h"
 #include "lietype.h"
 #include "rootdata.h"
+#include "polynomials.h"
 #include "tits.h"
 #include "tori.h"
 #include "weyl.h"
@@ -54,6 +57,70 @@ std::ostream& prettyPrint(std::ostream& strm, const bitmap::BitMap& b,
 }
 
 
+// Prints the n first bits of v on strm left-to-right.
+template<size_t d>
+std::ostream& prettyPrint(std::ostream& strm, const bitset::BitSet<d>& b,
+			  size_t n)
+{
+  for (size_t j = 0; j < n; ++j)
+    if (b.test(j))
+      strm << "1";
+    else
+      strm << "0";
+
+  return strm;
+}
+
+
+// Prints the n first bits of v on strm in a "vector-like" format.
+template<size_t dim>
+std::ostream& prettyPrint(std::ostream& strm,
+			  const bitvector::BitVector<dim>& v)
+{
+  std::vector<int> vi;
+
+  for (size_t i = 0; i < v.size(); ++i)
+    vi.push_back(v[i]?1:0);
+
+  basic_io::seqPrint(strm,vi.begin(),vi.end(),",","(",")");
+
+  return strm;
+}
+
+
+// Pretty-prints a list of bitvectors, one per line.
+template<size_t dim>
+std::ostream& prettyPrint(std::ostream& strm,
+			  const std::vector<bitvector::BitVector<dim> >& a)
+{
+  for (size_t i = 0; i<a.size(); ++i)
+  {
+    prettyPrint(strm,a[i]);
+    strm << std::endl;
+  }
+
+  return strm;
+}
+
+// This is a function to output a basis as columns in denuded matrix form.
+// The component type |V| is indexable, and elements of |b| have same size.
+template<typename V>
+std::ostream& printBasis(std::ostream& strm, const std::vector<V>& b)
+{
+  if (b.size() == 0) // do nothing, needed because |b[0].size()| inexistent
+    return strm;
+
+  size_t dim = b[0].size();
+
+  for (size_t i = 0; i < dim; ++i) // row index is index into each |b[j]|
+  {
+    for (size_t j = 0; j < b.size(); ++j)
+      strm << std::setw(4) << b[j][i];
+    strm << std::endl;
+  }
+
+  return strm;
+}
 
 
 /*
@@ -168,6 +235,102 @@ std::ostream& printInvolution(std::ostream& strm,
   return strm;
 }
 
+template<typename C>
+std::ostream& printVector(std::ostream& strm, const std::vector<C>& v,
+			  unsigned long width)
+{
+  for (size_t i = 0; i < v.size(); ++i)
+    strm << (i==0 ? '[' : ',') << std::setw(width) << v[i];
+
+  strm << " ]";
+  return strm;
+}
+
+/*
+  Outputs the matrix to a stream. It is assumed that operator << is defined
+  for C, and that C is "small" (in particular, has no newlines in its output.)
+*/
+template<typename C>
+std::ostream& printMatrix(std::ostream& strm, const matrix::Matrix_base<C>& m,
+			  unsigned long width)
+{
+  std::vector<unsigned long> widths(m.numColumns(),width);
+
+  { std::ostringstream o;
+    for (size_t j=0; j<m.numColumns(); ++j)
+      for (size_t i=0; i<m.numRows(); ++i)
+      {
+        o.str(""); o << m(i,j);
+	size_t w=o.str().length()+1;
+        if (w>widths[j])
+	  widths[j]=w;
+      }
+  }
+
+  for (size_t i = 0; i < m.numRows(); ++i)
+  {
+    for (size_t j = 0; j < m.numColumns(); ++j)
+      strm << std::setw(widths[j]) << m(i,j);
+
+    strm << std::endl;
+  }
+
+  return strm;
+}
+
+
+/*
+  Synopsis: prints out the monomial c.x^d.
+
+  Preconditions: c is non-zero;
+
+  Explanation: c and d are printed only if non-one, except in degree zero
+  where c is always printed; x is the name of the indeterminate.
+
+  The output format for the exponents is tex-like, but "q^13", not "q^{13}".
+*/
+template<typename C>
+std::ostream& printMonomial(std::ostream& strm, C c, polynomials::Degree d,
+			    const char* x)
+{
+  if (d == 0) // output c regardless
+    strm << c;
+  else
+  {
+    if (c<C(0) and c == C(-1)) // condition always false for unsigned types
+      strm << '-';
+    else if (c != C(1))
+      strm << c;
+    strm << x;
+    if (d > 1)
+      strm << "^" << d;
+  }
+
+  return strm;
+}
+
+
+/*
+  Synopsis: outputs the polynomial  |p| on |strm|.
+
+  It is assumed that operator<< exists for the coefficient type. The string
+  |x| is the printed name of the indeterminate. Zero term are suppressed.
+
+*/
+template<typename C>
+std::ostream& printPol(std::ostream& strm, const polynomials::Polynomial<C>& p,
+		       const char* x)
+{
+  std::ostringstream o; // accumulate in string for interpretation of width
+  if (p.isZero())
+    o << "0";
+  else
+    for (size_t i = p.size(); i-->0; )
+      if (p[i]!=C(0)) // guaranteed true the first time
+	printMonomial(i<p.degree() and p[i]>C(0) ? o<<'+' : o,p[i],i,x);
+
+  return strm << o.str(); // now |strm.width()| is applied to whole polynomial
+}
 
 
 
@@ -267,6 +430,47 @@ std::ostream& printWeylList(std::ostream& strm, const weyl::WeylEltList& wl,
 
   return strm;
 }
+
+
+
+template std::ostream& prettyPrint
+  (std::ostream&, const bitset::RankFlags&, size_t);
+
+template std::ostream& prettyPrint
+  (std::ostream&, const bitvector::BitVector<constants::RANK_MAX>&);
+
+template std::ostream& prettyPrint
+  (std::ostream&,
+   const std::vector<bitvector::BitVector<constants::RANK_MAX> >&);
+
+template std::ostream& printBasis
+  (std::ostream&, const std::vector<latticetypes::Weight>&);
+
+template std::ostream& printVector
+  (std::ostream&, const std::vector<int>&, unsigned long);
+
+template std::ostream& printMatrix
+  (std::ostream&, const matrix::Matrix_base<int>&, unsigned long);
+
+template std::ostream& printMatrix // in standardreprk coefficients are |long|
+  (std::ostream&, const matrix::Matrix_base<long int>&, unsigned long);
+
+template std::ostream& printMatrix // in |printBlockSizes|: |unsigned long|
+  (std::ostream&, const matrix::Matrix_base<unsigned long>&, unsigned long);
+
+template std::ostream& printMatrix
+  (std::ostream&,
+   const matrix::Matrix_base<polynomials::Polynomial<int> >&,
+   unsigned long);
+
+template std::ostream& printMonomial
+  (std::ostream&, int, polynomials::Degree, const char*);
+
+template std::ostream& printPol
+  (std::ostream&, const polynomials::Polynomial<unsigned int>&, const char*);
+
+template std::ostream& printPol
+  (std::ostream&, const polynomials::Polynomial<int>&, const char*);
 
 } // namespace prettyprint
 
