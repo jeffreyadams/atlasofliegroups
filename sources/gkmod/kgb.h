@@ -78,7 +78,7 @@ class KGB_base
     KGBEltPair inverse_Cayley_image;
 
     KGBfields()
-    : cross_image()
+    : cross_image(UndefKGB)
     , Cayley_image(UndefKGB)
       , inverse_Cayley_image(std::make_pair(UndefKGB,UndefKGB)) {}
   }; // | KGBfields|
@@ -255,32 +255,12 @@ struct KGBInfo
 /*!
 \brief Represents the orbits of K on G/B for a particular real form.
 
-Each orbit x defines an involution \f$\theta_x\f$ of $H$, represented by a
-twisted involution in the Weyl group. In fact each orbit is characterized by
-an element of the extended Weyl group lying over that twisted involution; thus
-collection of orbits defining the same involution is parametrized using (the
-equivalent of) elements of the fiber group. The elements occuring in the full
-KGB structure for one involution form an orbit of the imaginary Weyl group.
-
-These orbits are needed first of all for the parametrization of
-irreducible representations of the real form (see the class Block).
-
-In this class, an orbit is represented by KGBElt, which is a number specifying
-the position of the orbit on a list. For each number, the involution
-\f$\theta_x\f$ is retained (as |d_involution[KGBElt]|), but not the fiber
-information distinguishing different orbits with the same involution. Instead,
-the class retains the cross action of (each simple reflection in) W on orbits,
-and the Cayley transform. Each of these is stored as a vector (indexed by
-orbit numbers) of lists of KGBElt's, one for each simple reflection (often the
-KGBElt UndefKGB = ~0 in the case of the Cayley transform). The twisted
-involution and |KGBInfo| record associated to each element are stored as well,
-as are the inverse Cayley transforms deduced from the forward ones. This
-information is all that is used by the Kazhdan-Lusztig algorithm.
-
-The actual construction of the orbit is carried out by the (no longer
-derived!) class |KGBHelper| defined in the implementation module kgb.cpp. It
-is that class that works with actual elements of the Tits group (which encode
-both a twisted involution and an element of the associlated fiber group).
+This class adds some information with respect to that kept in |KGB_base|, and
+most importantly carries out the actual filling of the bas object. As
+additional data that are held in this derived class there is the
+|BasedTitsGroup| used during construction, and the torus parts (relative to
+the base point) that distinguish elements in the same fiber. This class also
+provides the possibility to generate and store the Bruhat order on the set.
 */
 
 class KGB : public KGB_base
@@ -288,7 +268,7 @@ class KGB : public KGB_base
 
   enum State { BruhatConstructed, NumStates };
 
-  tits::TitsEltList d_tits; // of size size()
+  std::vector<tits::TorusPart> left_torus_part; // of size |size()|
   bitset::BitSet<NumStates> d_state;
 
 /*! \brief Owned pointer to the Bruhat order on KGB (or NULL).
@@ -325,9 +305,9 @@ and in addition the Hasse diagram (set of all covering relations).
   const tits::TitsGroup& titsGroup() const { return d_base->titsGroup(); }
 //! \brief The Weyl group.
 
-  tits::TorusPart torus_part(KGBElt x) const
-   { return d_base->titsGroup().left_torus_part(d_tits[x]); }
-  tits::TitsElt titsElt(KGBElt x) const { return d_tits[x]; }
+  tits::TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
+  tits::TitsElt titsElt(KGBElt x) const
+    { return tits::TitsElt(titsGroup(),left_torus_part[x],involution(x)); }
 //! \brief The (non-semisimple) rank of torus parts.
   size_t torus_rank() const { return titsGroup().rank(); }
 
@@ -368,6 +348,9 @@ and in addition the Hasse diagram (set of all covering relations).
 
 // private methods
 private:
+  size_t generate
+    (realredgp::RealReductiveGroup& GR,const bitmap::BitMap& Cartan_classes);
+
   void fillBruhat();
 
 }; // |class KGB|
