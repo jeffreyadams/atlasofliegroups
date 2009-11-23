@@ -342,7 +342,6 @@ reduced decomposition.
 // to use |hashCode| method, we also give access to |d_w| as a |TI_Entry|
   const weyl::TI_Entry& ti() const { return d_w; }
 
- public:
 /* no public manipulators: any operation defined without using the Tits group
    object would expose the implementation in an inacceptable way */
 }; // |class TitsElt|
