@@ -39,7 +39,7 @@ std::ostream& prettyPrint(std::ostream&, const bitset::BitSet<d>&, size_t);
 
 template<size_t dim>
 std::ostream& prettyPrint(std::ostream&,
-			  const bitvector::BitVector<dim>&, size_t);
+			  const bitvector::BitVector<dim>&);
 
 template<size_t dim>
 std::ostream& prettyPrint(std::ostream&,
@@ -104,7 +104,5 @@ std::ostream& printWeylList(std::ostream&, const weyl::WeylEltList&,
 }
 
 }
-
-#include "prettyprint_def.h"
 
 #endif
