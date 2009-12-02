@@ -39,7 +39,6 @@ struct constants
   static const unsigned long baseShift = aux::BaseShift<longBits>::value;
 
   static unsigned long bitMask[longBits];
-  static unsigned long twoBitMask[longBits/2];
   static unsigned char firstbit[1ul << charBits];
   static unsigned char lastbit[1ul << charBits]; // last bit PLUS ONE
   static unsigned long leqMask[longBits];

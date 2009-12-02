@@ -26,7 +26,6 @@ namespace atlas {
 
   // definition of static arrays
   unsigned long constants::bitMask[longBits];
-  unsigned long constants::twoBitMask[longBits/2];
   unsigned char constants::firstbit[1 << charBits];
   unsigned char constants::lastbit[1 << charBits];
   unsigned long constants::leqMask[longBits];
@@ -67,9 +66,6 @@ constants constants::init()
     leqMask[j] = (bitMask[j]-1) | bitMask[j]; // bits 0..j set
     lMask[j+1] = leqMask[j];                  // lMask[j+1] has bits 0..j set
   }
-
-  for (unsigned long j = 0; j < longBits/2; ++j)
-    twoBitMask[j] = 3ul << 2*j;  // bits 2*j,2*j+1 set
 
   firstbit[0] = charBits; // out-of-bounds indication
   firstbit[1] = 0;
