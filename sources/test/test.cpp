@@ -629,6 +629,7 @@ void Ktypemat_f()
   standardrepk::KhatContext khc(G_R,kgb);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+  khc.normalize(sr);
 
   {
     size_t witness;
@@ -713,6 +714,7 @@ void qKtypemat_f()
   standardrepk::qKhatContext khc(G_R,kgb);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+  khc.normalize(sr);
 
   {
     size_t witness;
@@ -996,10 +998,12 @@ void test_f()
 
     khc.go(sr);
   }
-  catch (error::MemoryOverflow& e) {
+  catch (error::MemoryOverflow& e)
+  {
     e("error: memory overflow");
   }
-  catch (error::InputError& e) {
+  catch (error::InputError& e)
+  {
     e("aborted");
   }
 }

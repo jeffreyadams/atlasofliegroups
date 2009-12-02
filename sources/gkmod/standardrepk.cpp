@@ -136,8 +136,8 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
     // d_G.cartan[i] is (canonical involution for) (*it)th CartanClass
     Cartan_info& ci=C_info[nr];
 
-    const latticetypes::LatticeMatrix& theta = G.cartan(*it).involution();
-
+    const cartanclass::Fiber& f=G.cartan(*it).fiber();
+    const latticetypes::LatticeMatrix& theta = f.involution();
 
     // put in $q$ the matrix of $\theta-1$
     latticetypes::LatticeMatrix q=theta;
@@ -179,6 +179,16 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
     latticetypes::SmallSubspace
       (latticetypes::BinaryMap(lattice::eigen_lattice(theta.transposed(),-1)))
       .swap(ci.fiber_modulus);
+
+    { // find simple roots orthogonal to |real2rho| and |imaginary2rho|
+      latticetypes::Weight real2rho=rd.twoRho(f.realRootSet());
+      latticetypes::Weight imaginary2rho=rd.twoRho(f.imaginaryRootSet());
+      for (size_t i=0; i<rd.semisimpleRank(); ++i)
+	if (rd.isOrthogonal(real2rho,rd.simpleRootNbr(i)) and
+	    rd.isOrthogonal(imaginary2rho,rd.simpleRootNbr(i)))
+	  ci.bi_ortho.set(i);
+    }
+
   } // |for (it)|
 }
 
@@ -233,7 +243,7 @@ StandardRepK SRK_context::std_rep
   StandardRepK result(cn,
 		      info(cn).fiber_modulus.mod_image
 		        (titsGroup().left_torus_part(a)),
-		      project(cn,normalize(mu,cn)));
+		      project(cn,mu));
 
   return result;
 } // |std_rep|
@@ -282,52 +292,83 @@ bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
   return true;
 }
 
-latticetypes::Weight SRK_context::normalize
-  (latticetypes::Weight lambda, size_t cn) const
+bool SRK_context::isNormal(latticetypes::Weight lambda, size_t cn,
+			   size_t& witness) const
+{
+  const rootdata::RootDatum& rd=rootDatum();
+  lambda += G.cartan(cn).involution().apply(lambda); // avoids 2 calls to |dot|
+
+  for (bitset::RankFlags::iterator it= info(cn).bi_ortho.begin(); it(); ++it)
+    if (lambda.dot(rd.simpleCoroot(*it))<0)
+    {
+      witness=*it; return false; // |witness| indicates a complex simple root
+    }
+
+  return true;
+}
+
+void SRK_context::normalize(StandardRepK& sr) const
 {
   const rootdata::RootDatum& rd = rootDatum();
-  const cartanclass::Fiber& f=G.cartan(cn).fiber();
+  const cartanclass::Fiber& f=fiber(sr);
+  size_t cn = sr.Cartan();
+  latticetypes::Weight lambda = lift(sr);
 
-  bitset::RankFlags bi_ortho_simples;
-  { // find simple roots orthogonal to |real2rho| and |imaginary2rho|
-    latticetypes::Weight real2rho=rd.twoRho(f.realRootSet());
-    latticetypes::Weight imaginary2rho=rd.twoRho(f.imaginaryRootSet());
-    for (size_t i=0; i<rd.semisimpleRank(); ++i)
-      if (rd.isOrthogonal(real2rho,rd.simpleRootNbr(i)) and
-	  rd.isOrthogonal(imaginary2rho,rd.simpleRootNbr(i)))
-	bi_ortho_simples.set(i);
-  }
-
-  const latticetypes::LatticeMatrix& theta = f.involution();
-  rootdata::RootSet cplx = f.complexRootSet();
-
-  //  go through the orthogonal list
-  //  select the complex roots in the list
-
-  bitset::RankFlags::iterator i;
-  do
+  size_t witness; // number of a complex simple root
+  while (not isNormal(lambda,cn,witness))
   {
-    latticetypes::Weight mu=theta.apply(lambda);
-    mu +=lambda; // $\mu=(1+\theta)\alpha$, simplifies scalar product below
-
-    for (i= bi_ortho_simples.begin(); i(); ++i )
-    {
-      rootdata::RootNbr alpha = rd.simpleRootNbr(*i);
-
-      if (cplx.isMember(alpha) and rd.scalarProduct(mu,alpha)<0)
-      {
-	rootdata::RootNbr beta= f.involution_image_of_root(alpha);
-	assert (rd.isOrthogonal(alpha,beta));
-	rd.reflect(lambda,alpha);
-	rd.reflect(lambda,beta);
-	break; // and continue do-while loop
-      }
-    } // for
+    rootdata::RootNbr alpha = rd.simpleRootNbr(witness);
+    rootdata::RootNbr beta= f.involution_image_of_root(alpha);
+    assert (rd.isSimpleRoot(beta));
+    assert (rd.isOrthogonal(alpha,beta));
+    rd.reflect(lambda,alpha);
+    rd.reflect(lambda,beta);
   }
-  while (i()); // while |for|-loop was exited through |break|
+  sr.d_lambda = project(cn,lambda);
+} // |normalize|
 
-  return lambda;
-} // normalize
+q_Char SRK_context::q_normalize_eq
+  (const StandardRepK& sr,size_t witness) const
+{
+  const rootdata::RootDatum& rd = rootDatum();
+  size_t cn = sr.Cartan();
+  const tits::TorusPart& x = sr.d_fiberElt;
+  const cartanclass::Fiber& f=fiber(sr);
+  rootdata::RootNbr alpha = rd.simpleRootNbr(witness);
+  rootdata::RootNbr beta= f.involution_image_of_root(alpha);
+
+  latticetypes::Weight coab = rd.coroot(alpha)+rd.coroot(beta);
+
+  latticetypes::Weight lambda = lift(sr);
+  latticetypes::Weight a2 = rd.root(alpha)*2; // because of doubled coordinates
+
+  int n = -lambda.dot(coab);
+  assert (n>0);
+  assert (n%2==0);  // because of doubled coordinates
+  n/=2;
+
+  lambda += a2*n; // $\lambda_0 = s_\alpha(\lambda)$
+
+  q_Char result(StandardRepK(cn,x,project(cn,lambda)),
+		q_CharCoeff(1,1)); // start with $q srep(\lambda_0)$
+  int i;
+  for (i=1; 2*i<n; ++i)
+  {
+    q_CharCoeff coef(i+1,1); // $q^{i+1}$
+    coef -= q_CharCoeff(i-1,1); // $q^{i-1}$
+    lambda -= a2; // $\lambda_0 - i*alpha$
+    result+=(q_Char(StandardRepK(cn,x,project(cn,lambda)),coef));
+  }
+  if (2*i==n) // final term for even length ladders
+  {
+    q_CharCoeff coef(i,1); // $q^{n/2}$
+    coef -= q_CharCoeff(i-1,1); // $q^{n/2-1}$
+    lambda -= a2; // $\lambda_0 - n/2*alpha$
+    assert (lambda.dot(coab)==0);
+    result+=(q_Char(StandardRepK(cn,x,project(cn,lambda)),coef));
+  }
+  return result;
+}
 
 bool SRK_context::isZero(const StandardRepK& sr, size_t& witness) const
 {
@@ -400,7 +441,10 @@ std::ostream& SRK_context::print(std::ostream& strm,const q_Char& ch) const
 	strm << ac << '*';
     }
     else
-      prettyprint::printPol(strm<<" + (",it->second,"q")<<")*";
+    {
+      bool parens = it->second.multi_term();
+      strm<<(parens ? " + (" : " + ") << it->second << (parens ? ")*":"*");
+    }
     print(strm,it->first);
   }
   return strm;
@@ -1068,15 +1112,18 @@ qKhatContext::qKhatContext
 /******** accessors *******************************************************/
 
 
-/* map a character (with terms assumed to be normalized) to one containing
-   only Standard terms
+/* map a character to one containing only Normal Standard terms
    this version ensures the basic |standardize| is recursively called first */
 combination KhatContext::standardize(const Char& chi)
 {
   combination result(height_graded);
 
-  for (Char::const_iterator i=chi.begin(); i!=chi.end(); ++i)
-    result.add_multiple(standardize(i->first),i->second);
+  for (Char::const_iterator it=chi.begin(); it!=chi.end(); ++it)
+  {
+    StandardRepK sr=it->first; // must have non-|const| value for |normalize|
+    normalize(sr);
+    result.add_multiple(standardize(sr),it->second);
+  }
 
   return result;
 }
@@ -1131,20 +1178,19 @@ combination KhatContext::standardize(const StandardRepK& sr)
   return equate(nonfinals.match(sr),result); // and add rule for |sr|
 } // |KhatContext::standardize|
 
-/* map a character (with terms assumed to be normalized) to one containing
-   only Standard terms
+/* map a character to one containing only Normal Standard terms
    this version ensures the basic |standardize| is recursively called first */
 q_combin qKhatContext::standardize(const q_Char& chi)
 {
   q_combin result(height_graded);
 
-  for (q_Char::const_iterator i=chi.begin(); i!=chi.end(); ++i)
-    result.add_multiple(standardize(i->first),i->second);
+  for (q_Char::const_iterator it=chi.begin(); it!=chi.end(); ++it)
+    result.add_multiple(standardize(it->first),it->second);
 
   return result;
 }
 
-// the basic case, |sr| is assumed normalized here
+// the basic case, includes $q$-normalisation as well
 q_combin qKhatContext::standardize(const StandardRepK& sr)
 {
   { // first check if we've already done |sr|
@@ -1154,6 +1200,13 @@ q_combin qKhatContext::standardize(const StandardRepK& sr)
   }
 
   size_t witness;
+  if (not isNormal(sr,witness))
+  {
+    q_Char rhs = q_normalize_eq(sr,witness); // expression to replace |sr| by
+    q_combin result= standardize(rhs);         // convert recursively
+    return equate(nonfinals.match(sr),result); // and add rule for |sr|
+  }
+
   if (isStandard(sr,witness))
   {
     { // now check if we already know |sr| to be Final
@@ -1227,7 +1280,11 @@ equation KhatContext::mu_equation(seq_no n, level bound)
   combination& sum=result.second;
 
   for (Char::const_iterator it=kf.second.begin(); it!=kf.second.end(); ++it)
-    sum.add_multiple(truncate(standardize(it->first),bound),it->second);
+  {
+    StandardRepK sr=it->first; // must have non-|const| value for |normalize|
+    normalize(sr);
+    sum.add_multiple(truncate(standardize(sr),bound),it->second);
+  }
 
   return result;
 }
@@ -1241,7 +1298,11 @@ q_equation qKhatContext::mu_equation(seq_no n, level bound)
   q_combin& sum=result.second;
 
   for (q_Char::const_iterator it=kf.second.begin(); it!=kf.second.end(); ++it)
-    sum.add_multiple(truncate(standardize(it->first),bound),it->second);
+  {
+    StandardRepK sr=it->first; // must have non-|const| value for |normalize|
+    normalize(sr);
+    sum.add_multiple(truncate(standardize(sr),bound),it->second);
+  }
 
   return result;
 }
@@ -1513,7 +1574,10 @@ std::ostream& qKhatContext::print
 	strm << ac << '*';
     }
     else
-      prettyprint::printPol(strm<<" + (",it->second,"q")<<")*";
+    {
+      bool parens = it->second.multi_term();
+      strm<<(parens ? " + (" : " + ") << it->second << (parens ? ")*":"*");
+    }
     if (brief)
       strm << 'R' << it->first;
     else print(strm,rep_no(it->first));
@@ -1523,7 +1587,9 @@ std::ostream& qKhatContext::print
 
 void KhatContext::go(const StandardRepK& initial)
 {
-  combination chi=standardize(initial);
+  StandardRepK sr = initial;
+  normalize(sr);
+  combination chi=standardize(sr);
 
 #ifdef VERBOSE
   if (nonfinal_pool.size()>0)
@@ -1567,53 +1633,6 @@ void KhatContext::go(const StandardRepK& initial)
 
 
 } // |KhatContext::go|
-
-void qKhatContext::go(const StandardRepK& initial)
-{
-  q_combin chi=standardize(initial);
-
-#ifdef VERBOSE
-  if (nonfinal_pool.size()>0)
-  {
-    const rootdata::RootDatum& rd=rootDatum();
-    std::cout << "Intermediate representations:\n";
-    for (size_t i=0; i<nonfinal_pool.size(); ++i)
-    {
-      const StandardRepK& sr=nonfinal_pool[i];
-      size_t witness;
-      const cartanclass::Fiber& f=fiber(sr);
-      print(std::cout << 'N' << i << ": ",sr) << " [" << height(sr) << ']';
-
-      if (not isStandard(sr,witness))
-	std::cout << ", non Standard, witness "
-		  << rd.coroot(f.simpleImaginary(witness));
-      if (isZero(sr,witness))
-	std::cout << ", Zero, witness "
-		  << rd.coroot(f.simpleImaginary(witness));
-      if (not isFinal(sr,witness))
-	std::cout << ", non Final, witness "
-		  << rd.coroot(f.simpleReal(witness));
-      std::cout << std::endl;
-    }
-  }
-#endif
-
-  std::cout << "Standard normal final limit representations:\n";
-  for (seq_no i=0; i<nr_reps(); ++i)
-  {
-    const StandardRepK& sr=rep_no(i);
-    print(std::cout << 'R' << i << ": ",sr) << " [" << height(i) << ']'
-      << std::endl;
-  }
-
-  print(std::cout << "Standardized expression for ",initial) << ":\n";
-  {
-    std::ostringstream s; print(s,chi,true);
-    ioutils::foldLine(std::cout,s.str(),"+\n- ","",1) << std::endl;
-  }
-
-
-} // |qKhatContext::go|
 
 
 /*****************************************************************************

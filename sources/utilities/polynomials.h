@@ -92,6 +92,7 @@ template<typename C> class Polynomial
   Degree size() const { return d_data.size(); }
 
   bool isZero() const { return size() == 0; } // because of reduction
+  bool multi_term () const; // whether more than one term is nonzero (printing)
 
 // manipulators
   C& operator[] (Degree j) { return d_data[j]; } // non-const version of above

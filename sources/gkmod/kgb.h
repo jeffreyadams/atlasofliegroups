@@ -155,7 +155,7 @@ class KGB_base
 
  protected:
   void reserve (size_t n); // prepare for generating |n| elements
-  void add_element
+  void add_element // create entry in |data| and |info| structures
    (unsigned int length, unsigned int Cartan_class, weyl::TwistedInvolution tw);
 
 
@@ -213,6 +213,11 @@ class global_KGB : public KGB_base
   global_KGB(complexredgp::ComplexReductiveGroup& G,
 	     const tits::GlobalTitsGroup& Tg);
 
+  global_KGB(complexredgp::ComplexReductiveGroup& G,
+	     const tits::GlobalTitsGroup& Tg,
+	     tits::GlobalTitsElement root,
+	     size_t l); // generate upwards from |root|, of length |l|
+
   global_KGB(const global_KGB& org) // copy contructor, handle references
     : KGB_base(org)
     , G(org.G) // share
@@ -233,7 +238,7 @@ class global_KGB : public KGB_base
 
  private:
   void generate_involutions(size_t n);
-  void generate_elements(size_t n);
+  void upwards_close(size_t predicted_size);
 
 }; // |class global_KGB|
 

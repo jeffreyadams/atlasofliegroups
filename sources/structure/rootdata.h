@@ -465,29 +465,23 @@ use by accessors.
 
 
   LT::LatticeCoeff scalarProduct(const LT::Weight& v, RootNbr j) const
-  {
-    return v.scalarProduct(coroot(j));
-  }
+    { return v.dot(coroot(j)); }
 
-  bool isOrthogonal(const latticetypes::Weight& v, RootNbr j) const {
-    return v.scalarProduct(coroot(j))==0;
-  }
+  bool isOrthogonal(const latticetypes::Weight& v, RootNbr j) const
+    { return v.dot(coroot(j))==0; }
 
   bool isOrthogonal(RootNbr alpha, RootNbr j) const
-  {
-    return isOrthogonal(root(alpha),j);
-  }
+    { return isOrthogonal(root(alpha),j); }
 
-  LT::LatticeCoeff cartan(size_t i, size_t j) const {
-    return simpleRoot(i).scalarProduct(simpleCoroot(j));
-  }
+  LT::LatticeCoeff cartan(size_t i, size_t j) const
+    { return simpleRoot(i).dot(simpleCoroot(j)); }
 
   //!\brief  Applies to v the reflection about root alpha.
   void reflect(LT::Weight& lambda, RootNbr alpha) const
-    { lambda -= d_roots[alpha]*lambda.scalarProduct(d_coroots[alpha]); }
+    { lambda -= root(alpha)*lambda.dot(coroot(alpha)); }
   //!\brief  Applies reflection about coroot |alpha| to a coweight
   void coreflect(LT::Weight& co_lambda, RootNbr alpha) const
-    { co_lambda -= d_coroots[alpha]*co_lambda.scalarProduct(d_roots[alpha]); }
+    { co_lambda -= coroot(alpha)*co_lambda.dot(root(alpha)); }
 
   LT::Weight reflection(LT::Weight lambda, RootNbr alpha) const
     { reflect(lambda,alpha); return lambda; }

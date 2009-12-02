@@ -188,7 +188,6 @@ class StandardRepK
 {
 
   friend class SRK_context; // which is like |WeylGroup| is for |WeylElt|
-  friend class KhatContext;
 
 /*!
   \brief Number of the Cartan to which the HC module is associated.
@@ -208,8 +207,8 @@ class StandardRepK
 
 // constructors, destructors, and swap
 
-  // main constructor is private, used by |KhatContext| methods
-  // fundamental bare-bones constructor; no status is set here
+  // main constructor is private, used by |SRK_context| methods
+  // fundamental bare-bones constructor
   StandardRepK(size_t cn, const tits::TorusPart& x, const HCParam& lambda)
     : d_cartan(cn), d_fiberElt(x), d_lambda(lambda) {}
 
@@ -254,6 +253,9 @@ struct Cartan_info
 
   // space that fiber parts are reduced modulo
   latticetypes::SmallSubspace fiber_modulus;
+
+  // simple roots orthogonal to sums of positive imaginary and real roots
+  bitset::RankFlags bi_ortho; // simple roots, and necessarily complex ones
 
 }; // |struct Cartan_info|
 
@@ -335,7 +337,7 @@ class SRK_context
   latticetypes::Weight theta_lift(size_t cn, HCParam p) const
   {
     latticetypes::Weight result=lift(cn,p);
-    result += complexGroup().cartan(cn).involution().apply(result);
+    result += G.cartan(cn).involution().apply(result);
     return result;
   }
 
@@ -365,7 +367,7 @@ class SRK_context
     { return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z)); }
 
 /*
-  The conditions below (and Normal which is not used in tests) are defined by
+  The conditions below are defined by
    Standard: $\<\lambda,\alpha\vee>\geq0$ when $\alpha$ positive imaginary
    Normal: $\<\lambda,\alpha\vee+\theta\alpha\vee>\geq0$ when $\alpha$ simple,
      complex, and orthogonal to sums of positive imaginary resp. real roots.
@@ -382,12 +384,15 @@ class SRK_context
   canonical twisted involution for the Cartan class of |sr|.
 */
   bool isStandard(const StandardRepK& sr, size_t& witness) const;
+  bool isNormal(latticetypes::Weight lambda, size_t cn, size_t& witness) const;
+  bool isNormal(const StandardRepK& sr, size_t& witness) const
+    { return isNormal(lift(sr),sr.Cartan(),witness); }
   bool isZero(const StandardRepK& sr, size_t& witness) const;
   bool isFinal(const StandardRepK& sr, size_t& witness) const;
 
-  latticetypes::Weight normalize(latticetypes::Weight lambda, size_t cn) const;
-  void normalize(StandardRepK& sr) const
-    { sr.d_lambda=project(sr.d_cartan,normalize(lift(sr),sr.d_cartan)); }
+  void normalize(StandardRepK& sr) const;
+
+  q_Char q_normalize_eq (const StandardRepK& sr,size_t witness) const;
 
   tits::TitsElt titsElt(const StandardRepK& s) const
   {
@@ -402,9 +407,9 @@ class SRK_context
     (const StandardRepK& sr, weyl::WeylWord& conjugator) const;
 
   CharForm K_type_formula
-    (const StandardRepK& sr, level bound=~0u);
+    (const StandardRepK& sr, level bound=~0u); // non-|const| (|height_bound|)
   q_CharForm q_K_type_formula
-    (const StandardRepK& sr, level bound=~0u);
+    (const StandardRepK& sr, level bound=~0u); // non-|const| (|height_bound|)
 
   // Hecht-Schmid identity for simple-imaginary root $\alpha$
   HechtSchmid HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
@@ -477,8 +482,6 @@ class KhatContext : public SRK_context
   const graded_compare& height_order() const { return height_graded; }
 
   combination standardize(const StandardRepK& sr); // non |const|: |expanded++|
-  combination standardize(StandardRepK& sr) // non |const|, normalizes |sr|
-  { normalize(sr); return standardize(static_cast<const StandardRepK&>(sr)); }
   combination standardize(const Char& chi); // non |const|
 
   combination truncate(const combination& c, level bound) const;
@@ -547,8 +550,6 @@ class qKhatContext : public SRK_context
   const graded_compare& height_order() const { return height_graded; }
 
   q_combin standardize(const StandardRepK& sr); // non |const|: |expanded++|
-  q_combin standardize(StandardRepK& sr) // non |const|, normalizes |sr|
-  { normalize(sr); return standardize(static_cast<const StandardRepK&>(sr)); }
   q_combin standardize(const q_Char& chi); // non |const|
 
   q_combin truncate(const q_combin& c, level bound) const;
@@ -564,8 +565,6 @@ class qKhatContext : public SRK_context
 		  std::vector<seq_no>& reps); // non |const|
 
   q_combin branch(seq_no s, level bound); // non |const|
-
-  void go(const StandardRepK& sr);  // used by "test" command
 
   using SRK_context::print;
   std::ostream& print(std::ostream& strm, const q_combin& ch, bool brief=false)

@@ -165,12 +165,12 @@ class ComplexReductiveGroup
   //!\brief the permutation of the roots given by the based automorphism
   const setutils::Permutation root_twist;
 
-  typedef std::vector<bitset::RankFlags> form_reps;
+  typedef std::vector<bitset::RankFlags> form_reps; // gradings for real forms
 
   struct C_info
   { weyl::TwistedInvolution tw;
-    bitmap::BitMap real_forms,dual_real_forms;
-    form_reps rep,dual_rep;
+    bitmap::BitMap real_forms,dual_real_forms; // mark present (dual) real forms
+    form_reps rep,dual_rep; // gradings representing those (dual) real forms
     bitmap::BitMap below;
     cartanclass::CartanClass* class_pt; //!< owned pointer, might be NULL
     // remaining fields are set only once |class_pt| has been made non-NULL

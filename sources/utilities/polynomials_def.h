@@ -162,6 +162,16 @@ Polynomial<C> Polynomial<C>::operator* (const Polynomial& q) const
   return result;
 }
 
+template<typename C>
+bool Polynomial<C>::multi_term () const
+{
+  if (isZero())
+    return false;
+  for (Degree i=degree(); i-->0; ) // skip leading term, which is nonzero
+    if ((*this)[i]!=C(0))
+      return true;
+  return false;
+}
 
 /*!
   \brief Polynomial comparison: whether p < q

@@ -38,6 +38,7 @@
 #include "latticetypes.h"
 #include "realredgp.h"
 #include "rootdata.h"
+#include "set.h"
 #include "tits.h"
 #include "tori.h"
 #include "weyl.h"
@@ -60,7 +61,7 @@ namespace kgb {
 
 namespace {
 
-void makeHasse(std::vector<set::SetEltList>&, const KGB&);
+void makeHasse(std::vector<set::SetEltList>&, const KGB_base&);
 
 } // |namespace|
 
@@ -178,21 +179,39 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
 
       tits::TorusElement t(rw/=2); // halve: image of $x\mapsto\exp(\pi\ii x)$
 
+      weyl::TwistedInvolution e; // identity
       for (unsigned long i=0; i<fg.size(); ++i)
       {
 	tits::TorusElement s=t;
 	s += fg.fromBasis // add |TorusPart| from fiber group, use bits from |i|
 	  (latticetypes::SmallBitVector(bitset::RankFlags(i),fg.dimension()));
 	elt.push_back(tits::GlobalTitsElement(s));
+	add_element(0,0,e); // create in base; Cartan, length, tw all trivial
       } // |for (i)|
     } // |for (c)|
     first_of_tau.push_back(elt.size()); // end of fundamental fiber
   }
 
-  generate_elements(size);
+  upwards_close(size);
 
 }
 
+global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
+		       const tits::GlobalTitsGroup& Tits_group,
+		       tits::GlobalTitsElement root,
+		       size_t l)
+  : KGB_base(G_C.twistedWeylGroup())
+  , G(G_C)
+  , Tg(Tits_group)
+  , fiber_data(G,(generate_involutions(G_C.numInvolutions()),inv_hash))
+  , elt(1,root)
+{
+  first_of_tau.push_back(0); // start of initial fiber
+  const weyl::TwistedInvolution& tw= root.tw();
+  add_element(l,fiber_data.Cartan_class(tw),tw); // create in base
+  // first_of_tau.push_back(elt.size()); // end of fiber?? don't know!
+  upwards_close(0);
+}
 
 bool global_KGB::compact(rootdata::RootNbr n, // assumed imaginary at |a|
 			 const tits::GlobalTitsElement& a) const
@@ -229,21 +248,19 @@ void global_KGB::generate_involutions(size_t n)
   assert(inv_pool.size()==n);
 }
 
-void global_KGB::generate_elements(size_t n_elts)
+void global_KGB::upwards_close(size_t predicted_size)
 {
   const weyl::TwistedWeylGroup& W = Tg;
   const rootdata::RootDatum& rd = G.rootDatum();
 
-  KGB_elt_entry::Pooltype elt_pool; elt_pool.reserve(n_elts);
+  KGB_elt_entry::Pooltype elt_pool; elt_pool.reserve(predicted_size);
   hashtable::HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
 
   {
     weyl::TwistedInvolution e; // identity
     for (size_t i=0; i<elt.size(); ++i)
-    {
-      add_element(0,0,e); // blank Cartan, length, involution fields
       elt_hash.match(KGB_elt_entry(fiber_data.fingerprint(elt[i]),e));
-    }
+
     assert(elt_hash.size()==elt.size()); // all distinct; in fact an invariant
   }
 
@@ -332,8 +349,8 @@ void global_KGB::generate_elements(size_t n_elts)
     } // |for(s)|
   } // |for(inv_nr)|
 
-  assert(elt.size()==n_elts);
-} // |global_KGB::generate_elements|
+  assert(elt.size()==predicted_size or predicted_size==0);
+} // |global_KGB::upwards_close|
 
 /*!
 \brief A |FiberData| object associates to each twisted involution a subspace
@@ -849,7 +866,7 @@ namespace {
   Explanation: this is the closure ordering of orbits. We use the algorithm
   from Richardson and Springer.
 */
-void makeHasse(std::vector<set::SetEltList>& Hasse, const KGB& kgb)
+void makeHasse(std::vector<set::SetEltList>& Hasse, const KGB_base& kgb)
 {
   Hasse.resize(kgb.size());
 
@@ -874,17 +891,24 @@ void makeHasse(std::vector<set::SetEltList>& Hasse, const KGB& kgb)
     }
     h_x.insert(sx);
 
-    for (size_t j = 0; j < Hasse[sx].size(); ++j) {
-      KGBElt z = Hasse[sx][j];
-      if (kgb.isAscent(s,z)) {
-	if (kgb.status(s,z) == gradings::Status::ImaginaryNoncompact)
-	  h_x.insert(kgb.cayley(s,z));
-	else // s is complex for z
-	  h_x.insert(kgb.cross(s,z));
+    for (set::SetEltList::const_iterator
+	   it=Hasse[sx].begin(); it!= Hasse[sx].end(); ++it)
+    {
+      KGBElt z = *it; // element below |sx| in Bruhat order
+      switch (kgb.status(s,z))
+      {
+      case gradings::Status::ImaginaryNoncompact:
+	h_x.insert(kgb.cayley(s,z));
+	break;
+      case gradings::Status::Complex:
+	if (not kgb.isDescent(s,z))
+	  h_x.insert(kgb.cross(s,z)); // complex ascent
+	break;
+      default: break;
       }
     }
 
-    std::copy(h_x.begin(),h_x.end(),std::back_inserter(Hasse[x]));
+    Hasse[x].assign(h_x.begin(),h_x.end());
   } // for |x|
 
 }
