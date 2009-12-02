@@ -54,10 +54,8 @@ namespace gradings {
   rank is 32 bits big.)
   */
 
-class Status {
-
- private:
-
+class Status
+{
   bitset::TwoRankFlags d_flags;
 
  public:
@@ -70,36 +68,42 @@ class Status {
   ~Status() {}
 
 // accessors
-  Value operator[] (size_t j) const {
-    unsigned long f = d_flags.to_ulong();
-    f &= constants::twoBitMask[j];
-    f >>= 2*j;
-    return static_cast<Value>(f);
+  Value operator[] (size_t j) const
+  {
+    j *= 2;
+    unsigned u = d_flags[j] ? 1 : 0;
+    if (d_flags[j+1])
+      u+=2;
+    return static_cast<Value>(u);
   }
 
-  bool isComplex(size_t j) const {
-    j <<= 1;
+  bool isComplex(size_t j) const
+  {
+    j *= 2;
     return not d_flags[j] and not d_flags[j+1];
   }
 
-  bool isImaginaryCompact(size_t j) const {
-    j <<= 1;
+  bool isImaginaryCompact(size_t j) const
+  {
+    j *= 2;
     return d_flags[j] and not d_flags[j+1];
   }
 
-  bool isReal(size_t j) const {
-    j <<= 1;
+  bool isReal(size_t j) const
+  {
+    j *= 2;
     return not d_flags[j] and d_flags[j+1];
   }
 
-  bool isImaginaryNoncompact(size_t j) const {
-    j <<= 1;
+  bool isImaginaryNoncompact(size_t j) const
+  {
+    j *= 2;
     return d_flags[j] and d_flags[j+1];
   }
 
-  bool isImaginary(size_t j) const {
-    j <<= 1;
-    return d_flags[j];
+  bool isImaginary(size_t j) const
+  {
+    return d_flags[2*j];
   }
 
   bool operator==(const Status& other) const { return d_flags==other.d_flags; }
@@ -107,7 +111,8 @@ class Status {
 
 // manipulators
 
-  void set(size_t j, Value v) {
+  void set(size_t j, Value v)
+  {
     unsigned long a = v;
     bitset::TwoRankFlags b(a);
     b <<= 2*j;
@@ -129,8 +134,8 @@ struct GradingCompare
   bool operator() (const Grading&, const Grading&);
 };
 
-}
+} // |namespace gradings|
 
-}
+} // |namespace atlas|
 
 #endif
