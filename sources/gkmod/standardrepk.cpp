@@ -186,7 +186,16 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
       for (size_t i=0; i<rd.semisimpleRank(); ++i)
 	if (rd.isOrthogonal(real2rho,rd.simpleRootNbr(i)) and
 	    rd.isOrthogonal(imaginary2rho,rd.simpleRootNbr(i)))
-	  ci.bi_ortho.set(i);
+	{
+	  rootdata::RootNbr alpha = rd.simpleRootNbr(i);
+	  rootdata::RootNbr beta= f.involution_image_of_root(alpha);
+	  assert (rd.isSimpleRoot(beta));
+	  if (not ci.bi_ortho[rd.simpleRootIndex(beta)]) // skip second of pair
+	  {
+	    ci.bi_ortho.set(i);
+	    ci.sum_coroots.push_back(rd.coroot(alpha)+rd.coroot(beta));
+	  }
+	}
     }
 
   } // |for (it)|
@@ -295,11 +304,10 @@ bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
 bool SRK_context::isNormal(latticetypes::Weight lambda, size_t cn,
 			   size_t& witness) const
 {
-  const rootdata::RootDatum& rd=rootDatum();
-  lambda += G.cartan(cn).involution().apply(lambda); // avoids 2 calls to |dot|
-
-  for (bitset::RankFlags::iterator it= info(cn).bi_ortho.begin(); it(); ++it)
-    if (lambda.dot(rd.simpleCoroot(*it))<0)
+  size_t i=0; // position of |*it| below in |info(cn).bi_ortho|
+  for (bitset::RankFlags::iterator
+	 it=info(cn).bi_ortho.begin(); it(); ++it,++i)
+    if (lambda.dot(info(cn).sum_coroots[i])<0)
     {
       witness=*it; return false; // |witness| indicates a complex simple root
     }
@@ -310,20 +318,14 @@ bool SRK_context::isNormal(latticetypes::Weight lambda, size_t cn,
 void SRK_context::normalize(StandardRepK& sr) const
 {
   const rootdata::RootDatum& rd = rootDatum();
-  const cartanclass::Fiber& f=fiber(sr);
   size_t cn = sr.Cartan();
+  const Cartan_info& ci = info(cn);
   latticetypes::Weight lambda = lift(sr);
 
-  size_t witness; // number of a complex simple root
-  while (not isNormal(lambda,cn,witness))
-  {
-    rootdata::RootNbr alpha = rd.simpleRootNbr(witness);
-    rootdata::RootNbr beta= f.involution_image_of_root(alpha);
-    assert (rd.isSimpleRoot(beta));
-    assert (rd.isOrthogonal(alpha,beta));
-    rd.reflect(lambda,alpha);
-    rd.reflect(lambda,beta);
-  }
+  size_t i; // number of a complex simple root
+  while (not isNormal(lambda,cn,i))
+    lambda -= rd.simpleRoot(i)*lambda.dot(ci.coroot_sum(i));
+
   sr.d_lambda = project(cn,lambda);
 } // |normalize|
 
@@ -332,15 +334,14 @@ q_Char SRK_context::q_normalize_eq
 {
   const rootdata::RootDatum& rd = rootDatum();
   size_t cn = sr.Cartan();
-  const tits::TorusPart& x = sr.d_fiberElt;
-  const cartanclass::Fiber& f=fiber(sr);
-  rootdata::RootNbr alpha = rd.simpleRootNbr(witness);
-  rootdata::RootNbr beta= f.involution_image_of_root(alpha);
+  const Cartan_info& ci = info(cn);
 
-  latticetypes::Weight coab = rd.coroot(alpha)+rd.coroot(beta);
+  const tits::TorusPart& x = sr.d_fiberElt;
+
+  latticetypes::Weight coab = ci.coroot_sum(witness);
 
   latticetypes::Weight lambda = lift(sr);
-  latticetypes::Weight a2 = rd.root(alpha)*2; // because of doubled coordinates
+  latticetypes::Weight a2 = rd.simpleRoot(witness)*2; // doubled coordinates
 
   int n = -lambda.dot(coab);
   assert (n>0);
@@ -350,7 +351,7 @@ q_Char SRK_context::q_normalize_eq
   lambda += a2*n; // $\lambda_0 = s_\alpha(\lambda)$
 
   q_Char result(StandardRepK(cn,x,project(cn,lambda)),
-		q_CharCoeff(1,1)); // start with $q srep(\lambda_0)$
+		q_CharCoeff(1,1)); // start with $q*srep(\lambda_0)$
   int i;
   for (i=1; 2*i<n; ++i)
   {
@@ -359,6 +360,7 @@ q_Char SRK_context::q_normalize_eq
     lambda -= a2; // $\lambda_0 - i*alpha$
     result+=(q_Char(StandardRepK(cn,x,project(cn,lambda)),coef));
   }
+
   if (2*i==n) // final term for even length ladders
   {
     q_CharCoeff coef(i,1); // $q^{n/2}$
@@ -367,6 +369,9 @@ q_Char SRK_context::q_normalize_eq
     assert (lambda.dot(coab)==0);
     result+=(q_Char(StandardRepK(cn,x,project(cn,lambda)),coef));
   }
+  else
+    assert (lambda.dot(coab)==2); // dot product went from $2n$, steps of $-4$
+
   return result;
 }
 
@@ -524,7 +529,7 @@ SRK_context::theta_stable_parabolic
   latticetypes::Weight dom=theta_lift(sr);
   tits::TitsElt strong=titsElt(sr);
 
-  conjugator.resize(0); // clear this output parameter
+  weyl::WeylWord ww; // conjugating element
 
   /* the following loop terminates because we either increase the number of
      positive coroots with strictly positive evaluation on |dom|, or we keep
@@ -533,14 +538,14 @@ SRK_context::theta_stable_parabolic
   */
   while (true) // loop will terminate if inner loop runs to completion
   {
-    size_t i;
+    weyl::Generator i;
     for (i=0; i<rd.semisimpleRank(); ++i)
     {
       rootdata::RootNbr alpha=rd.simpleRootNbr(i);
-      latticetypes::LatticeCoeff v=dom.scalarProduct(rd.simpleCoroot(i));
+      latticetypes::LatticeCoeff v=dom.dot(rd.simpleCoroot(i));
 
       if (v<0) // first priority: |dom| should be made dominant
-	break; // found value of |i| to used in conjugation/reflection
+	break; // found value of |i| to use in conjugation/reflection
       else if (v>0) continue; // don't touch |alpha| in this case
 
       // now |dom| is on reflection hyperplan for |alpha|
@@ -557,7 +562,7 @@ SRK_context::theta_stable_parabolic
     {
       basedTitsGroup().basedTwistedConjugate(strong,i);
       rd.simpleReflect(dom,i);
-      conjugator.push_back(i);
+      ww.push_back(i);
     }
     else break; // no simple roots give any improvement any more, so stop
   } // |while(true)|
@@ -570,7 +575,7 @@ SRK_context::theta_stable_parabolic
    or imaginary; the $\theta$-images of such simple roots are all positive,
    but their sum is $-\alpha$ which is negative, a contradiction.
 
-   Also |conjugator| is such that |W.twistedConjugate(strong.tw(),conjugator)|
+   Also |ww| is such that |W.twistedConjugate(strong.tw(),ww)|
    would make |strong.tw()| equal to its original value again.
 */
 
@@ -582,6 +587,7 @@ SRK_context::theta_stable_parabolic
     titsGroup().left_torus_reduce(strong,tits::fiber_denom(theta));
   }
 
+  ww.swap(conjugator); // report the conjugating element we found
   return PSalgebra(strong,complexGroup());
 
 } // |theta_stable_parabolic|
@@ -591,7 +597,7 @@ kgb::KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
   bitmap::BitMap flagged(kgb().size());
   tits::TitsElt strong=q.strong_involution();
 
-  kgb::KGBElt root;
+  kgb::KGBElt root=kgb::UndefKGB;
   {
     kgb::KGBEltPair packet=kgb().tauPacket(q.involution());
     kgb::KGBElt x;
@@ -837,7 +843,7 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
   return result;
 } // |q_KGB_sum|
 
-// Express irreducible K-module as a finite virtual sum of standard ones
+// Express irreducible K-module as a finite $q$-virtual sum of "standard" ones
 q_CharForm
 SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 {
@@ -1298,11 +1304,7 @@ q_equation qKhatContext::mu_equation(seq_no n, level bound)
   q_combin& sum=result.second;
 
   for (q_Char::const_iterator it=kf.second.begin(); it!=kf.second.end(); ++it)
-  {
-    StandardRepK sr=it->first; // must have non-|const| value for |normalize|
-    normalize(sr);
-    sum.add_multiple(truncate(standardize(sr),bound),it->second);
-  }
+    sum.add_multiple(truncate(standardize(it->first),bound),it->second);
 
   return result;
 }
