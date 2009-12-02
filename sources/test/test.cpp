@@ -714,10 +714,17 @@ void qKtypemat_f()
   standardrepk::qKhatContext khc(G_R,kgb);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
-  khc.normalize(sr);
 
   {
     size_t witness;
+    if (not khc.isNormal(sr,witness))
+    {
+      khc.print(std::cout << "Representation ",sr)
+        << " is not normal, as witnessed by coroot sum "
+	<< khc.info(sr.Cartan()).coroot_sum(witness)
+	<< ".\n";
+      return;
+    }
     if (not khc.isStandard(sr,witness))
     {
       khc.print(std::cout << "Representation ",sr)

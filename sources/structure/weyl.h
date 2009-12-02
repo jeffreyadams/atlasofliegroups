@@ -59,6 +59,8 @@ namespace weyl {
   {
     Generator d[constants::RANK_MAX];
   public:
+    WeylInterface () // assures definite values are always set
+      { std::memset(d,~0,sizeof(d)); }
     Generator& operator[] (size_t i) { return d[i]; }
     const Generator& operator[] (size_t i) const { return d[i]; }
   };

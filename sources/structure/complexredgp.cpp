@@ -175,7 +175,9 @@ ComplexReductiveGroup::ComplexReductiveGroup
     {
       Cartan_poset.new_max(Cartan[i].below); // include now completed level
 
+#ifndef NDEBUG
       size_t entry_level=Cartan.size();
+#endif
       cartanclass::InvolutionData id(*this,Cartan[i].tw);
       rootdata::RootSet pos_im = id.imaginary_roots() & rd.posRootSet();
       for (rootdata::RootSet::iterator it=pos_im.begin(); it(); ++it)

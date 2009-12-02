@@ -159,6 +159,12 @@ class RootSystem
   RootNbr posRootNbr(size_t alpha) const
   { assert(alpha<numPosRoots()); return numPosRoots()+alpha; }
 
+  RootNbr simpleRootIndex(size_t alpha) const
+  { assert(isSimpleRoot(alpha));  return alpha-numPosRoots(); }
+
+  RootNbr posRootIndex(size_t alpha) const
+    { assert(isPosRoot(alpha)); return alpha-numPosRoots(); }
+
   RootNbr rootMinus(RootNbr alpha) const // roots are ordered symmetrically
   { return numRoots()-1-alpha; }
 

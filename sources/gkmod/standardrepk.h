@@ -255,7 +255,12 @@ struct Cartan_info
   latticetypes::SmallSubspace fiber_modulus;
 
   // simple roots orthogonal to sums of positive imaginary and real roots
+  // in fact one of every pair of $theta$-conjugate such simple roots
   bitset::RankFlags bi_ortho; // simple roots, and necessarily complex ones
+  latticetypes::WeightList sum_coroots; // associated sums of 2 coroots
+
+  const latticetypes::Weight& coroot_sum(size_t i) const
+    { assert (bi_ortho[i]); return sum_coroots[bi_ortho.position(i)]; }
 
 }; // |struct Cartan_info|
 
