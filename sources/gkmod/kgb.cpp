@@ -192,25 +192,19 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
     first_of_tau.push_back(elt.size()); // end of fundamental fiber
   }
 
-  upwards_close(size);
+  generate(size);
 
 }
 
 global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
 		       const tits::GlobalTitsGroup& Tits_group,
-		       tits::GlobalTitsElement root,
-		       size_t l)
+		       tits::GlobalTitsElement x)
   : KGB_base(G_C.twistedWeylGroup())
   , G(G_C)
   , Tg(Tits_group)
   , fiber_data(G,(generate_involutions(G_C.numInvolutions()),inv_hash))
-  , elt(1,root)
+  , elt(1,x)
 {
-  first_of_tau.push_back(0); // start of initial fiber
-  const weyl::TwistedInvolution& tw= root.tw();
-  add_element(l,fiber_data.Cartan_class(tw),tw); // create in base
-  // first_of_tau.push_back(elt.size()); // end of fiber?? don't know!
-  upwards_close(0);
 }
 
 bool global_KGB::compact(rootdata::RootNbr n, // assumed imaginary at |a|
@@ -248,7 +242,7 @@ void global_KGB::generate_involutions(size_t n)
   assert(inv_pool.size()==n);
 }
 
-void global_KGB::upwards_close(size_t predicted_size)
+void global_KGB::generate(size_t predicted_size)
 {
   const weyl::TwistedWeylGroup& W = Tg;
   const rootdata::RootDatum& rd = G.rootDatum();
@@ -350,7 +344,7 @@ void global_KGB::upwards_close(size_t predicted_size)
   } // |for(inv_nr)|
 
   assert(elt.size()==predicted_size or predicted_size==0);
-} // |global_KGB::upwards_close|
+} // |global_KGB::generate|
 
 /*!
 \brief A |FiberData| object associates to each twisted involution a subspace
@@ -536,21 +530,21 @@ GlobalFiberData::GlobalFiberData
       latticetypes::LatticeMatrix A =cc.involution().transposed();
       for (size_t i=0; i<G.rank(); ++i)
 	A(i,i) += 1;
-      // now $A=\theta_x^t+1$ is a matrix whose kernel is $(X_*)^{-\theta_x^t}$
-      proj[first]=lattice::row_saturate(A);
+      // now $A=\theta_x^t+1$, a matrix whose kernel is $(X_*)^{-\theta_x^t}$
+      proj[first]=lattice::row_saturate(A); // now we can test torus elements
 
       check_2rho_imag[first]=rd.twoRho(cc.dualFiber().imaginaryRootSet());
     }
 
     to_do.assign(1,first);
-    seen.insert(first);
+    seen.insert(first); // we don't bother to remove old memebers from |seen|
 
     for (size_t i=0; i<to_do.size(); ++i) // |to_do| grows during the loop
       for (size_t s=0; s<G.semisimpleRank(); ++s)
       {
 	weyl::TwistedInvolution tw = W.twistedConjugated(h[to_do[i]],s);
 	size_t k = h.find(tw);
-	assert (k!=h.empty);
+	assert (k!=h.empty); // |h| must hold set closed for twisted conjugation
 	if (seen.isMember(k))
 	  continue;
 	seen.insert(k);
@@ -561,8 +555,7 @@ GlobalFiberData::GlobalFiberData
       }
 
   } // |for(cn)|
-  // check that the number of generated elements is as predicted
-}
+} // |GlobalFiberData::GlobalFiberData|
 
 //  this demonstrates what the |proj matrices can be used for
 bool GlobalFiberData::equivalent(const tits::GlobalTitsElement& x,

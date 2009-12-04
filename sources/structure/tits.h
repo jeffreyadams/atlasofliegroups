@@ -111,6 +111,7 @@ class TorusElement
   TorusElement& operator+=(TorusPart v);
 }; // |class TorusElement|
 
+// element stored as $(t,w)$ is interpreted as $t * \sigma_w * \delta_1$
 class GlobalTitsElement
 {
   friend class GlobalTitsGroup;

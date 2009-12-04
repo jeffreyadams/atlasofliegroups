@@ -122,14 +122,18 @@ GlobalTitsGroup::GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G)
     alpha_v[i]=latticetypes::SmallBitVector(root_datum.simpleCoroot(i));
 }
 
+/* The code below uses Tits element representation as $t*\sigma_w*\delta_1$
+   and $\delta_1*\sigma_\alpha^{-1} = \sigma_\alpha*\delta_1$, simple $\alpha$
+   so conjugation by $\sigma_\alpha$ gives $\sigma_\alpha*(t,w)*\sigma_\alpha$
+*/
 int // length change in $\{-1,0,+1\}$, half that of change for |x.tw()|
 GlobalTitsGroup::cross(weyl::Generator s, GlobalTitsElement& x) const
 {
-  bool c = x.t.negative_at(simple_root(s)); // compact xor ($\alpha_s$ complex)
-  int d=twistedConjugate(x.w,s); // $d$ is length change in $W$ of |tw|
-  if (c != (d==0)) // length change iff $\alpha_s$ complex; true <=> compact
+  bool c = x.t.negative_at(simple_root(s)); // whether $s_\alpha(t)=t+m_\alpha$
+  int d=twistedConjugate(x.w,s); // Tits group must add $m_\alpha$ iff $d=0$
+  if (c != (d==0)) // reasons could cancel out, if not add $m_\alpha$ to |x.t|
     add(alpha_v[s],x);
-  return d/2;
+  return d/2; // report half of length change in Weyl group
 }
 
 GlobalTitsElement GlobalTitsGroup::Cayley

@@ -193,7 +193,7 @@ public:
   bool equivalent(const tits::GlobalTitsElement& x,
 		  const tits::GlobalTitsElement& y) const;
 
-  latticetypes::RatLatticeElt
+  latticetypes::RatLatticeElt // a value characterizing the equivalence class
     fingerprint(const tits::GlobalTitsElement& x) const;
 
   int at_rho_imaginary(const latticetypes::Weight& alpha, // imaginary root
@@ -215,8 +215,7 @@ class global_KGB : public KGB_base
 
   global_KGB(complexredgp::ComplexReductiveGroup& G,
 	     const tits::GlobalTitsGroup& Tg,
-	     tits::GlobalTitsElement root,
-	     size_t l); // generate upwards from |root|, of length |l|
+	     tits::GlobalTitsElement x); // generate KGB set containing |x|
 
   global_KGB(const global_KGB& org) // copy contructor, handle references
     : KGB_base(org)
@@ -238,22 +237,9 @@ class global_KGB : public KGB_base
 
  private:
   void generate_involutions(size_t n);
-  void upwards_close(size_t predicted_size);
+  void generate(size_t predicted_size);
 
 }; // |class global_KGB|
-
-
-//! \brief per KGB element information
-struct KGBInfo
-{
-  gradings::Status status; ///< status of each simple root for this element
-  unsigned int length; ///< dimension of the K orbit on G/B, minus minimal one
-  unsigned int cartan; ///< records to which Cartan class this element belongs
-  Descent desc; ///< flags which simple reflections give a descent
-
-  KGBInfo(unsigned int l, unsigned int c) : status(),length(l),cartan(c),desc()
-  {} // set length explicitly, both other fields set to their default value
-}; // |struct KGBInfo|
 
 
 
@@ -320,6 +306,7 @@ and in addition the Hasse diagram (set of all covering relations).
 
   kgb::KGBElt lookup(const tits::TitsElt& a, const tits::TitsGroup& Tg) const;
 
+#if 0
 /*!
   \brief Method that used to return whether involution(x) < involution(y).
 
@@ -330,18 +317,18 @@ and in addition the Hasse diagram (set of all covering relations).
 
   A similar function is used to sort the elements of |KGB| upon construction,
   so this method should hold whenever |x<y| and |involution(x)!=involution(y)|
-  and it turns out the method is never used, so I have commented it out. MvL.
-
-  bool compare(KGBElt x, KGBElt y) const {
-  if      (length(x) != length(y))
-    return length(x) < length(y);
-  else if (weylLength(x) != weylLength(y))
-    return weylLength(x) < weylLength(y);
-  else
-    return involution(x) < involution(y);
-}
+  and it turns out the method is never used, so I have excluded the code. MvL.
 */
-
+  bool compare(KGBElt x, KGBElt y) const
+  {
+    if      (length(x) != length(y))
+      return length(x) < length(y);
+    else if (weylLength(x) != weylLength(y))
+      return weylLength(x) < weylLength(y);
+    else
+      return involution(x) < involution(y);
+  }
+#endif
 // manipulators
 
 // Creates Hasse diagram for Bruhat order on KGB and returns reference to it
