@@ -142,6 +142,29 @@ GlobalTitsElement GlobalTitsGroup::Cayley
   leftMult(x.w,s); return x;
 }
 
+/*
+  When trying to invert a Cayley transform, apart from modifying the
+  involution, we must change the torus element so that its scalar product with
+  $\alpha$ becomes integer (half-integer means we have a potentially valid
+  Tits element, but the requirement that the simple root |alpha| become a
+  noncompact root means the value should in fact be integer. We may modify by
+  a rational multiple of $m_\alpha = \exp(\pi i \alpha^\vee)$ to achieve this.
+ */
+  void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
+{
+  const latticetypes::Weight& alpha=root_datum.simpleRoot(s);
+  latticetypes::RatWeight t=a.t.as_rational();
+  int num = alpha.dot(t.numerator()); // should become multiple of denominator
+
+  const latticetypes::Weight& alpha_vee=root_datum.simpleCoroot(s);
+  // |alpha.dot(alpha_vee)==2|
+
+  t -= latticetypes::RatWeight(alpha_vee,2*num);
+
+  leftMult(a.w,s); a.t=TorusElement(t);
+}
+
+
 namespace {
 
 /*
