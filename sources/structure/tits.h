@@ -72,7 +72,7 @@ namespace tits {
    which te sets modelled by the latter classes can be fitted.
 */
 
-/* An element of finite order in $H$. Externally this is like a ratinal vector
+/* An element of finite order in $H$. Externally this is like a rational vector
    modulo integers in the coordinates. Internally we store twice the numerator
    of the rational vector, which facilitates adding halves to its coordinates.
 */
@@ -101,10 +101,9 @@ class TorusElement
       (repr.numerator(),2*repr.denominator()).normalize();
   }
 
-  // this method is to be used only at weights taking value +1 or -1
-  bool negative_at(const latticetypes::LatticeElt& w) const
-    { return repr.scalarProduct(w)%2!=0; }
-
+  // this method is to be used only at weights |alpha| taking value +1 or -1
+  bool negative_at(const latticetypes::LatticeElt& alpha) const
+    { return repr.scalarProduct(alpha)%2!=0; }
 
   // manipulators
 
@@ -140,11 +139,11 @@ class GlobalTitsElement
 // accessors
 
 // both components are exposed as constant references
-
 /*!\brief twisted involution whose fiber we are in (return value copied) */
   const TorusElement& torus_part() const { return t; }
   const weyl::TwistedInvolution& tw() const { return w; }
 
+// STL obligatories
   bool operator== (const GlobalTitsElement& a) const
   { return w == a.w and t == a.t; }
 
@@ -198,9 +197,9 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
 
 // methods that only access some |GlobalTitsElement|
 
-// methods that manipulate a |GlobalTitsElement|
+GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const;
 
-  void add (TorusPart tp,GlobalTitsElement& a) const { a.t += tp; }
+// methods that manipulate a |GlobalTitsElement|
 
   /*!\brief
   Twisted conjugates |a| by |sigma_alpha| where |alpha| is simple root \#s,
@@ -210,7 +209,11 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   no effective difference with conjugation by the inverse of |sigma_alpha|
   */
   int cross(weyl::Generator s, GlobalTitsElement& a) const;
-  GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const;
+
+  void add (TorusPart tp,GlobalTitsElement& a) const { a.t += tp; }
+
+  // modify |a| to an inverse Cayley image by (real simple root) $\alpha_s$
+  void inverse_Cayley(weyl::Generator s,GlobalTitsElement& a);
 
 }; //|class GlobalTitsGroup|
 
