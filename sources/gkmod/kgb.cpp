@@ -198,13 +198,43 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
 
 global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
 		       const tits::GlobalTitsGroup& Tits_group,
-		       tits::GlobalTitsElement x)
+		       const tits::GlobalTitsElement& x)
   : KGB_base(G_C.twistedWeylGroup())
   , G(G_C)
   , Tg(Tits_group)
   , fiber_data(G,(generate_involutions(G_C.numInvolutions()),inv_hash))
-  , elt(1,x)
+  , elt()
 {
+  tits::GlobalTitsElement root=x; // start at an element that we certainly want
+  bitset::RankFlags desc;
+  while ((desc=Tg.descents(root)).any())
+  {
+    weyl::Generator s=desc.firstBit();
+    if (Tg.hasTwistedCommutation(s,root.tw()))
+      Tg.inverse_Cayley(s,root);
+    else
+      Tg.cross(s,root);
+  }
+  assert (root.tw()==weyl::TwistedInvolution()); // we are at fundamental fiber
+  { // get elements at the fundamental fiber
+    first_of_tau.push_back(0); // start of fundamental fiber
+    KGB_elt_entry::Pooltype elt_pool;
+    hashtable::HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
+    elt.push_back(root);
+    elt_hash.match(KGB_elt_entry(fiber_data.fingerprint(root),root.tw()));
+    for (size_t i=0; i<elt.size(); ++i)
+      for (weyl::Generator s=0; s<rank(); ++s)
+	if (not elt[i].torus_part().negative_at(Tg.simple_root(s)))
+	{
+	  tits::GlobalTitsElement a=elt[i]; // make a copy
+	  Tg.cross(s,a);
+	  if (elt_hash.match(KGB_elt_entry(fiber_data.fingerprint(a),a.tw()))
+	      ==elt.size()) // then its new
+	    elt.push_back(a);
+	}
+    first_of_tau.push_back(elt.size()); // end of fundamental fiber
+  }
+  generate(0); // complete generation of elements, without preducted size
 }
 
 bool global_KGB::compact(rootdata::RootNbr n, // assumed imaginary at |a|

@@ -215,7 +215,7 @@ class global_KGB : public KGB_base
 
   global_KGB(complexredgp::ComplexReductiveGroup& G,
 	     const tits::GlobalTitsGroup& Tg,
-	     tits::GlobalTitsElement x); // generate KGB set containing |x|
+	     const tits::GlobalTitsElement& x); // generate KGB containing |x|
 
   global_KGB(const global_KGB& org) // copy contructor, handle references
     : KGB_base(org)
