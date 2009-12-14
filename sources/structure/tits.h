@@ -212,10 +212,13 @@ GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const;
 
   void add (TorusPart tp,GlobalTitsElement& a) const { a.t += tp; }
 
-  // modify |a| to an inverse Cayley image by (real simple root) $\alpha_s$
-  void inverse_Cayley(weyl::Generator s,GlobalTitsElement& a);
+  // flag length-decreasing complex cross actions and inverse Cayley transforms
+  bitset::RankFlags descents(const GlobalTitsElement& a) const;
 
-}; //|class GlobalTitsGroup|
+  // modify |a| to an inverse Cayley image by (real simple root) $\alpha_s$
+  void inverse_Cayley(weyl::Generator s,GlobalTitsElement& a) const;
+
+}; // |class GlobalTitsGroup|
 
 
 
@@ -556,7 +559,7 @@ relations between Weyl group and torus parts of a Tits element.
   }
 
 
-}; // class TitsGroup
+}; // |class TitsGroup|
 
 // postponed inlines of |TitsElt|
 inline TitsElt::TitsElt(const TitsGroup& Tits)
@@ -583,7 +586,7 @@ struct TE_Entry // To allow hash tables of TitsElt values
     {
       return (ti().hashCode(modulus)+t().data().to_ulong()) & (modulus-1);
     }
-}; // class TE_Entry
+}; // |class TE_Entry|
 
 
 /*!
@@ -681,7 +684,7 @@ class BasedTitsGroup
   tits::TitsElt grading_seed (complexredgp::ComplexReductiveGroup& G,
 			      realform::RealForm rf, size_t cn) const;
 
-}; // BasedTitsGroup
+}; // |class BasedTitsGroup|
 
 // A richer version of |BasedTitsGroup|, with more methods
 class EnrichedTitsGroup : public BasedTitsGroup
@@ -702,7 +705,7 @@ class EnrichedTitsGroup : public BasedTitsGroup
   tits::TitsElt backtrack_seed (const complexredgp::ComplexReductiveGroup& G,
 				realform::RealForm rf, size_t cn) const;
 
-}; // EnrichedTitsGroup
+}; // |class EnrichedTitsGroup|
 
 // inline definitions
 
@@ -765,8 +768,8 @@ void BasedTitsGroup::basedTwistedConjugate(tits::TitsElt& a, size_t s) const
 }
 
 
-} // namespace tits
+} // |namespace tits|
 
-} // namespace atlas
+} // |namespace atlas|
 
 #endif
