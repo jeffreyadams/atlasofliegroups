@@ -142,6 +142,15 @@ GlobalTitsElement GlobalTitsGroup::Cayley
   leftMult(x.w,s); return x;
 }
 
+// find simple roots giving upward links
+bitset::RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
+{
+  bitset::RankFlags result;
+  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
+    result.set(hasDescent(s,a.tw())); // this covers all cases precisely!
+  return result;
+}
+
 /*
   When trying to invert a Cayley transform, apart from modifying the
   involution, we must change the torus element so that its scalar product with
@@ -150,7 +159,8 @@ GlobalTitsElement GlobalTitsGroup::Cayley
   noncompact root means the value should in fact be integer. We may modify by
   a rational multiple of $m_\alpha = \exp(\pi i \alpha^\vee)$ to achieve this.
  */
-  void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
+void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
+  const
 {
   const latticetypes::Weight& alpha=root_datum.simpleRoot(s);
   latticetypes::RatWeight t=a.t.as_rational();
@@ -163,7 +173,6 @@ GlobalTitsElement GlobalTitsGroup::Cayley
 
   leftMult(a.w,s); a.t=TorusElement(t);
 }
-
 
 namespace {
 
