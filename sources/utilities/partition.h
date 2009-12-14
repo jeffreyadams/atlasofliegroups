@@ -103,9 +103,9 @@ class Partition : public std::unary_function<unsigned long,unsigned long>
   Partition() {}
 
   /*!
-  \brief The trivial partition of [0,n[ into a single class
+  \brief Undefined partition of [0,n[ with no classes yet (use |add_class|)
   */
-  explicit Partition(unsigned long n):d_class(n),d_classRep(0) {}
+  explicit Partition(unsigned long n):d_class(n),d_classRep() {}
 
   explicit Partition(std::vector<unsigned long>&);
 
@@ -128,25 +128,19 @@ class Partition : public std::unary_function<unsigned long,unsigned long>
   /*!
 \brief Returns the number of classes in the partition.
   */
-  unsigned long classCount() const {
-    return d_classRep.size();
-  }
+  unsigned long classCount() const { return d_classRep.size(); }
 
   /*!
   \brief Returns the number of an element belong to class \# c.
   */
-  unsigned long classRep(unsigned long c) const {
-    return d_classRep[c];
-  }
+  unsigned long classRep(unsigned long c) const { return d_classRep[c]; }
 
   unsigned long classSize(unsigned long) const;
 
   /*!
   \brief Number of elements of the underlying set of the partition.
    */
-  unsigned long size() const {
-    return d_class.size();
-  }
+  unsigned long size() const { return d_class.size(); }
 
 // manipulators
 

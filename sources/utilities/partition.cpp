@@ -42,12 +42,6 @@ namespace partition {
 
 /******** constructors and destructors ***************************************/
 
-/*!
-  \brief Counts the number of elements in class \#c.
-
-  NOTE: Straightforward implementation. Successively computing |classSize| for
-  all classes would cost more time then necessary.
-*/
 Partition::Partition(std::vector<unsigned long>& f)
   : d_class(f.size())
   , d_classRep()
@@ -123,7 +117,7 @@ unsigned long Partition::new_class(unsigned long j)
   \brief Counts the number of elements in class \#c.
 
   NOTE: Straightforward implementation. Successively computing |classSize| for
-  all classes would cost more time then necessary.
+  all classes with this method would cost more time then necessary.
 */
 unsigned long Partition::classSize(unsigned long c) const
 {

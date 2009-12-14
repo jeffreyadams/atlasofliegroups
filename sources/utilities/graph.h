@@ -34,11 +34,10 @@ namespace graph {
 
 namespace graph {
 
-class OrientedGraph {
+class OrientedGraph
+{
 
- private:
-
-  std::vector<EdgeList> d_edges;
+  std::vector<EdgeList> d_edges; // list of edges, outgoing from each vertex
 
  public:
 
@@ -47,48 +46,29 @@ class OrientedGraph {
 
   explicit OrientedGraph(size_t n):d_edges(n) {}
 
-  ~OrientedGraph() {}
-
 // copy, construction and swap
-  void swap(OrientedGraph& other) {
-    d_edges.swap(other.d_edges);
-  }
+  void swap(OrientedGraph& other) { d_edges.swap(other.d_edges); }
 
 // accessors
   void cells(partition::Partition&, OrientedGraph* p = 0) const;
 
-  Vertex edge(Vertex x, size_t j) const {
-    return d_edges[x][j];
-  }
+  Vertex edge(Vertex x, size_t j) const { return d_edges[x][j]; } // edge #j
 
-  const EdgeList& edgeList(const Vertex& x) const {
-    return d_edges[x];
-  }
+  const EdgeList& edgeList(const Vertex& x) const { return d_edges[x]; }
 
-  size_t size() const {
-    return d_edges.size();
-  }
+  size_t size() const { return d_edges.size(); } // number of vertices
 
 // manipulators
-  Vertex& edge(Vertex x, size_t j) {
-    return d_edges[x][j];
-  }
+  Vertex& edge(Vertex x, size_t j) { return d_edges[x][j]; } // allow clobbering
 
-  EdgeList& edgeList(const Vertex& x) {
-    return d_edges[x];
-  }
+  EdgeList& edgeList(const Vertex& x) { return d_edges[x]; } // even globally
 
-  Vertex newVertex() {
-    Vertex v=size(); d_edges.push_back(EdgeList()); return v;
-  }
+  Vertex newVertex()
+    { Vertex v=size(); d_edges.push_back(EdgeList()); return v; }
 
-  void reset() {
-    d_edges.assign(d_edges.size(),EdgeList());
-  }
+  void reset() { d_edges.assign(d_edges.size(),EdgeList()); } // clear edges
 
-  void resize(size_t n) {
-    d_edges.resize(n);
-  }
+  void resize(size_t n) { d_edges.resize(n); } // change number of vertices
 
   void reverseEdges ();      // make opposite oriented graph
   void reverseNumbering ();  // same graph, but reverse numbering of vertices
