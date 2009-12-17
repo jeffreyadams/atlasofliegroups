@@ -59,9 +59,8 @@ namespace atlas {
   "transposition" of the information is done by the constructor below.
   */
 
-  class FiberAction {
-
-  private:
+  class FiberAction
+  {
     gradings::Grading d_baseGrading; // indexed by |s|
     bitset::RankFlagsList d_alpha;   // indexed by |s| first
     bitset::RankFlagsList d_mAlpha;  // indexed by |s| first
@@ -81,9 +80,8 @@ namespace atlas {
     }
 
   // accessors
-    bool grading(bitset::RankFlags x, unsigned long s) const {
-      return d_baseGrading[s] ^ x.scalarProduct(d_alpha[s]);
-    }
+    bool grading(bitset::RankFlags x, unsigned long s) const
+      { return d_baseGrading[s] != x.scalarProduct(d_alpha[s]); }
     unsigned long operator() (unsigned long s, unsigned long x) const
     {
       bitset::RankFlags b(x); if (grading(b,s))  b ^= d_mAlpha[s];
@@ -608,7 +606,7 @@ Fiber::makeFiberMap(const rootdata::RootDatum& rd) const
   \brief Computes the partition of the adjoint fiber, whose parts correspond
   to the weak real forms.
 
-  Algorithm: we construct the FiberAction object corresponding to the action
+  Algorithm: we construct the |FiberAction| object corresponding to the action
   of the imaginary Weyl group on the adjoint fiber, and then call |makeOrbits|
   to make the partition. For the fiber action we can use the base grading and
   the grading shifts "as is", while the fiber group elements \f$m_\alpha\f$
