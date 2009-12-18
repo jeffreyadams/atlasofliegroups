@@ -147,7 +147,7 @@ bitset::RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
 {
   bitset::RankFlags result;
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    result.set(hasDescent(s,a.tw())); // this covers all cases precisely!
+    result.set(s,hasDescent(s,a.tw())); // this covers all cases precisely!
   return result;
 }
 
@@ -156,7 +156,7 @@ bitset::RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
   involution, we must change the torus element so that its scalar product with
   $\alpha$ becomes integer (half-integer means we have a potentially valid
   Tits element, but the requirement that the simple root |alpha| become a
-  noncompact root means the value should in fact be integer. We may modify by
+  noncompact root means the value should in fact be integer). We may modify by
   a rational multiple of $m_\alpha = \exp(\pi i \alpha^\vee)$ to achieve this.
  */
 void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
@@ -169,7 +169,7 @@ void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   const latticetypes::Weight& alpha_vee=root_datum.simpleCoroot(s);
   // |alpha.dot(alpha_vee)==2|
 
-  t -= latticetypes::RatWeight(alpha_vee,2*num);
+  t -= latticetypes::RatWeight(alpha_vee*num,2*t.denominator());
 
   leftMult(a.w,s); a.t=TorusElement(t);
 }

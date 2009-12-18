@@ -22,7 +22,6 @@
 #include "realredgp_io.h"
 #include "kgb.h"
 #include "kgb_io.h"
-#include "special.h"
 #include "test.h"
 
 /****************************************************************************
@@ -51,6 +50,7 @@ namespace {
   void corder_f();
   void realweyl_f();
   void kgb_f();
+  void KGB_f();
   void kgborder_f();
 
   void type_f();
@@ -88,13 +88,11 @@ commands::CommandMode& realMode()
     real_mode.add("realform",realform_f);
     real_mode.add("realweyl",realweyl_f);
     real_mode.add("kgb",kgb_f);
+    real_mode.add("KGB",KGB_f);
     real_mode.add("kgborder",kgborder_f);
     // the "type" command should be redefined here because it needs to exit
     // the real mode
     real_mode.add("type",type_f); // override
-
-    // add special commands
-    special::addSpecialCommands(real_mode,RealmodeTag());
 
     // add test commands
     test::addTestCommands(real_mode,RealmodeTag());
@@ -133,11 +131,13 @@ namespace {
 */
 void real_mode_entry() throw(commands::EntryError)
 {
-  try {
+  try
+  {
     G_R_pointer=new realredgp::RealReductiveGroup
       (interactive::getRealGroup(mainmode::currentComplexInterface()));
   }
-  catch(error::InputError& e) {
+  catch(error::InputError& e)
+  {
     real_mode_exit(); // clean up
     e("no real form set");
     throw commands::EntryError();
@@ -216,7 +216,8 @@ void realform_f()
     interactive::getRealGroup(mainmode::currentComplexInterface()).swap
       (realmode::currentRealGroup());
   }
-  catch (error::InputError& e) {
+  catch (error::InputError& e)
+  {
     e("real form not changed");
   }
 }
@@ -241,8 +242,17 @@ void kgb_f()
   realredgp::RealReductiveGroup& G_R = currentRealGroup();
   std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
   ioutils::OutputFile file;
-  kgb::KGB kgb(G_R);
-  kgb_io::printKGB(file,kgb);
+  kgb_io::printKGB(file,kgb::KGB(G_R)); // generate traditionally, and forget
+}
+
+// Same, but with more info and non-traditional generation
+void KGB_f()
+{
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+
+  ioutils::OutputFile f;
+
+  kgb_io::var_print_KGB(f,mainmode::currentComplexGroup(),G_R.kgb());
 }
 
 // Print the Hasse diagram of the ordering of K orbits on G/B.
@@ -253,8 +263,7 @@ void kgborder_f()
   std::cout << "kgbsize: " << G.KGB_size() << std::endl;
   ioutils::OutputFile file;
 
-  kgb::KGB kgb(G);
-  kgb_io::printBruhatOrder(file,kgb.bruhatOrder());
+  kgb_io::printBruhatOrder(file,G.Bruhat_KGB());
 }
 
 /* Reset the type of the complex group.

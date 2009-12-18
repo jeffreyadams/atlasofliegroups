@@ -43,14 +43,14 @@ namespace ioutils {
 
 namespace interactive {
 
-std::string getFileName(const std::string& prompt)
+  std::string getFileName(const std::string& prompt)
     throw(error::InputError);
 
-bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
+  bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
 
- void bitMapPrompt(std::string&, const char*, const bitmap::BitMap&);
+  void bitMapPrompt(std::string&, const char*, const bitmap::BitMap&);
 
- size_t get_Cartan_class(const bitmap::BitMap& cs) throw(error::InputError);
+  size_t get_Cartan_class(const bitmap::BitMap& cs) throw(error::InputError);
 
   void getInteractive(lietype::LieType&) throw(error::InputError);
 
@@ -92,6 +92,11 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
   latticetypes::Weight get_weight(input::InputBuffer& ib,
 				  const char* prompt,
 				  size_t rank)
+    throw(error::InputError);
+
+  latticetypes::RatWeight get_ratweight(input::InputBuffer& ib,
+					const char* prompt,
+					size_t rank)
     throw(error::InputError);
 
   standardrepk::StandardRepK get_standardrep
