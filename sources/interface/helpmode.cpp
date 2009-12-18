@@ -20,7 +20,6 @@
 #include "realhelp.h"
 #include "realmode.h"
 #include "blockmode.h"
-#include "special.h"
 #include "test.h"
 
 /****************************************************************************
@@ -149,25 +148,21 @@ const commands::CommandMode& helpMode()
     // add help functions for the empty mode
     emptyhelp::addEmptyHelp(help_mode,tagDict);
 
-    special::addSpecialHelp(help_mode,tagDict,emptymode::EmptymodeTag());
     test::addTestHelp(help_mode,tagDict,emptymode::EmptymodeTag());
 
   // add help functions for the main mode
     mainhelp::addMainHelp(help_mode,tagDict);
 
-    special::addSpecialHelp(help_mode,tagDict,mainmode::MainmodeTag());
     test::addTestHelp(help_mode,tagDict,mainmode::MainmodeTag());
 
   // add help functions for the real mode
     realhelp::addRealHelp(help_mode,tagDict);
 
-    special::addSpecialHelp(help_mode,tagDict,realmode::RealmodeTag());
     test::addTestHelp(help_mode,tagDict,realmode::RealmodeTag());
 
   // add help functions for the block mode
     blockmode::addBlockHelp(help_mode,tagDict);
 
-    special::addSpecialHelp(help_mode,tagDict,blockmode::BlockmodeTag());
     test::addTestHelp(help_mode,tagDict,blockmode::BlockmodeTag());
 
   }

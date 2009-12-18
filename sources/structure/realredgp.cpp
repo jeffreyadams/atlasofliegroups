@@ -16,6 +16,8 @@
 #include "complexredgp.h"
 #include "rootdata.h"
 #include "tori.h"
+#include "kgb.h"
+#include "bruhat.h"
 
 #include <cassert>
 
@@ -41,6 +43,7 @@ RealReductiveGroup::RealReductiveGroup
   , d_connectivity() // wait for most split torus to be constructed below
   , d_Tg(tits::BasedTitsGroup(G_C,tits::square_class_grading_offset
 			(G_C.fundamental(),square_class(),G_C.rootDatum())))
+  , kgb_ptr(NULL)
   , d_status()
 {
   tori::RealTorus msT = G_C.cartan(G_C.mostSplit(rf)).fiber().torus();
@@ -68,6 +71,7 @@ RealReductiveGroup::RealReductiveGroup
 #endif
 }
 
+RealReductiveGroup::~RealReductiveGroup() { delete kgb_ptr; }
 
 /******** accessors *********************************************************/
 
@@ -84,6 +88,21 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
   std::swap(d_status,other.d_status);
 }
 
-} // namespace realredgp
+// return stored KGB structure, after generating it if necessary
+const kgb::KGB& RealReductiveGroup::kgb()
+{
+  if (kgb_ptr==NULL)
+    kgb_ptr = new kgb::KGB(*this,Cartan_set()); // non-traditional is stored
+  return *kgb_ptr;
+}
 
-} // namespace atlas
+// return stored Bruhat order of KGB, after generating it if necessary
+const bruhat::BruhatOrder RealReductiveGroup::Bruhat_KGB()
+{
+  kgb(); // ensure |kgb_ptr!=NULL|, but we cannot use (|const|) result here
+  return kgb_ptr->bruhatOrder(); // get Bruhat order (generate if necessary)
+}
+
+} // |namespace realredgp|
+
+} // |namespace atlas|

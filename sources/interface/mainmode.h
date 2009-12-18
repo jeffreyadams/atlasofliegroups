@@ -30,6 +30,7 @@ namespace mainmode {
 
   commands::CommandMode& mainMode();
   complexredgp::ComplexReductiveGroup& currentComplexGroup();
+  complexredgp::ComplexReductiveGroup& current_dual_group();
   complexredgp_io::Interface& currentComplexInterface();
   void replaceComplexGroup(complexredgp::ComplexReductiveGroup*
 			   ,complexredgp_io::Interface*);

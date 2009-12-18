@@ -11,6 +11,8 @@
 #include <fstream>
 
 #include "blockmode.h"
+#include "realmode.h"
+#include "mainmode.h"
 
 #include "complexredgp.h"
 #include "complexredgp_io.h"
@@ -31,7 +33,6 @@
 #include "kl_io.h"
 #include "wgraph.h"
 #include "wgraph_io.h"
-#include "special.h"
 #include "test.h"
 
 /****************************************************************************
@@ -124,9 +125,6 @@ commands::CommandMode& blockMode()
     block_mode.add("klwrite",klwrite_f);
     block_mode.add("wcells",wcells_f);
     block_mode.add("wgraph",wgraph_f);
-
-    // add special commands
-    special::addSpecialCommands(block_mode,BlockmodeTag());
 
     // add test commands
     test::addTestCommands(block_mode,BlockmodeTag());

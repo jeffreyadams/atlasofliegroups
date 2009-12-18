@@ -183,7 +183,7 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
       for (unsigned long i=0; i<fg.size(); ++i)
       {
 	tits::TorusElement s=t;
-	s += fg.fromBasis // add |TorusPart| from fiber group, use bits from |i|
+	s += fg.fromBasis // add |TorusPart| from fiber group; bits from |i|
 	  (latticetypes::SmallBitVector(bitset::RankFlags(i),fg.dimension()));
 	elt.push_back(tits::GlobalTitsElement(s));
 	add_element(0,0,e); // create in base; Cartan, length, tw all trivial
@@ -206,31 +206,35 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
   , elt()
 {
   tits::GlobalTitsElement root=x; // start at an element that we certainly want
-  bitset::RankFlags desc;
-  while ((desc=Tg.descents(root)).any())
-  {
-    weyl::Generator s=desc.firstBit();
+  weyl::Generator s;
+  while ((s=Tg.weylGroup().leftDescent(root.tw()))<rank())
     if (Tg.hasTwistedCommutation(s,root.tw()))
       Tg.inverse_Cayley(s,root);
     else
       Tg.cross(s,root);
-  }
+
   assert (root.tw()==weyl::TwistedInvolution()); // we are at fundamental fiber
   { // get elements at the fundamental fiber
     first_of_tau.push_back(0); // start of fundamental fiber
     KGB_elt_entry::Pooltype elt_pool;
     hashtable::HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
     elt.push_back(root);
+    add_element(0,0,root.tw()); // create in base; Cartan, length, tw
     elt_hash.match(KGB_elt_entry(fiber_data.fingerprint(root),root.tw()));
     for (size_t i=0; i<elt.size(); ++i)
       for (weyl::Generator s=0; s<rank(); ++s)
-	if (not elt[i].torus_part().negative_at(Tg.simple_root(s)))
+	if (Tg.twisted(s)==s and
+	    not elt[i].torus_part().negative_at(Tg.simple_root(s)))
 	{
 	  tits::GlobalTitsElement a=elt[i]; // make a copy
 	  Tg.cross(s,a);
+	  assert(a.tw()==root.tw()); // we stay in fundamental fiber
 	  if (elt_hash.match(KGB_elt_entry(fiber_data.fingerprint(a),a.tw()))
-	      ==elt.size()) // then its new
+	      ==elt.size()) // then it's new
+	  {
 	    elt.push_back(a);
+	    add_element(0,0,a.tw()); // create in base; Cartan, length, tw
+	  }
 	}
     first_of_tau.push_back(elt.size()); // end of fundamental fiber
   }
@@ -243,6 +247,15 @@ bool global_KGB::compact(rootdata::RootNbr n, // assumed imaginary at |a|
   const latticetypes::Weight& alpha= G.rootDatum().root(n);
   return a.torus_part().negative_at(alpha) == // question was: whether compact
     fiber_data.at_rho_imaginary(alpha,a.tw());
+}
+
+kgb::KGBElt global_KGB::lookup(const tits::GlobalTitsElement& a) const
+{
+  KGBEltPair p = tauPacket(a.tw());
+  for (KGBElt x=p.first; x<p.second; ++x)
+    if (fiber_data.equivalent(element(x),a))
+      return x;
+  return size(); // report failure
 }
 
 
@@ -270,7 +283,7 @@ void global_KGB::generate_involutions(size_t n)
         inv_hash.match(W.twistedConjugated(parent,s));
   }
   assert(inv_pool.size()==n);
-}
+} // |global_KGB::generate_involutions|
 
 void global_KGB::generate(size_t predicted_size)
 {

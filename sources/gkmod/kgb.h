@@ -232,8 +232,10 @@ class global_KGB : public KGB_base
     { return G; }
 
   tits::TorusElement torus_part(KGBElt x) const { return elt[x].torus_part(); }
+  const tits::GlobalTitsElement& element(KGBElt x) const { return elt[x]; }
 
   bool compact(rootdata::RootNbr alpha, const tits::GlobalTitsElement& a) const;
+  kgb::KGBElt lookup(const tits::GlobalTitsElement& x) const;
 
  private:
   void generate_involutions(size_t n);

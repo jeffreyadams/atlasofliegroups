@@ -23,7 +23,7 @@ StandardRepK and KhatContext.
 
 #include "bitset.h"
 #include "bitvector_fwd.h"
-#include "realredgp_fwd.h"
+#include "realredgp.h"
 #include "latticetypes.h"
 #include "realform.h"
 #include "tits.h"
@@ -36,10 +36,11 @@ namespace atlas {
 
 
 
-/******** type declarations **************************************************/
+/******** type declarations  and typedefs ************************************/
 
 namespace standardrepk {
 
+class graded_compare;
 class StandardRepK;
 class HechtSchmid;
 class PSalgebra;
@@ -53,15 +54,18 @@ typedef std::pair
 // a linear combination of |StandardRepK|s
 typedef free_abelian::Free_Abelian<StandardRepK> Char;
 typedef Char::coef_t CharCoeff;
+
 // a $K$-type formula; first component stands for its lowest $K$-type
 typedef std::pair<StandardRepK,Char> CharForm;
 
 typedef std::pair<latticetypes::LatticeElt,tits::TitsElt> RawRep;
 typedef free_abelian::Free_Abelian<RawRep> RawChar;
 
+
 typedef free_abelian::Free_Abelian<StandardRepK,polynomials::Polynomial<int> >
   q_Char;
- typedef q_Char::coef_t q_CharCoeff; // i.e., |polynomials::Polynomial<int>|
+typedef q_Char::coef_t q_CharCoeff; // i.e., |polynomials::Polynomial<int>|
+
 // a $q$-$K$-type formula; first component stands for its lowest $K$-type
 typedef std::pair<StandardRepK,q_Char> q_CharForm;
 
@@ -69,24 +73,9 @@ typedef free_abelian::Free_Abelian<RawRep,polynomials::Polynomial<int> >
   Raw_q_Char;
 
 
-
 typedef unsigned int seq_no;
 typedef unsigned int level; // unsigned latticetypes::LatticeCoeff
 
-// a comparison object that first takes into account a grading (height)
-class graded_compare
-{
-  const std::vector<level>* h; // pointer, so |graded_compare| can be assignable
-
-public:
-  graded_compare (const std::vector<level>& a) : h(&a) {}
-
-  bool operator()(seq_no x, seq_no y) const
-  {
-    level hx=(*h)[x], hy=(*h)[y];
-    return hx!=hy ? hx<hy : x<y;
-  }
-}; // |class graded_compare|
 
 typedef free_abelian::Free_Abelian<seq_no,long int,graded_compare> combination;
 typedef std::pair<seq_no,combination> equation;
@@ -234,7 +223,7 @@ public:
     { return not operator==(another); }
   size_t hashCode(size_t modulus) const;
 
-}; // class StandardRepK
+}; // |class StandardRepK|
 
 
 //! \brief per Cartan class information for handling |StandardRepK| values
@@ -294,9 +283,7 @@ struct bitset_entry : public bitset::RankFlags
  */
 class SRK_context
 {
-  complexredgp::ComplexReductiveGroup& G;
-  const kgb::KGB& d_KGB;
-  const tits::BasedTitsGroup& Tg;  // for getting around in KGB (unused here)
+  realredgp::RealReductiveGroup& G;
   bitmap::BitMap Cartan_set;       // marks recorded Cartan class numbers
   std::vector<Cartan_info> C_info; // indexed by number of Cartan for |GR|
 
@@ -309,23 +296,25 @@ class SRK_context
   std::vector<proj_info> proj_data;
 
  public:
-  SRK_context(realredgp::RealReductiveGroup &G, const kgb::KGB& kgb);
+  SRK_context(realredgp::RealReductiveGroup &G);
 
   // accessors
-  complexredgp::ComplexReductiveGroup& complexGroup() const { return G; }
+  complexredgp::ComplexReductiveGroup& complexGroup() const
+    { return G.complexGroup(); }
   const rootdata::RootDatum& rootDatum() const { return G.rootDatum(); }
   const weyl::WeylGroup& weylGroup() const { return G.weylGroup(); }
   const weyl::TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
-  const tits::TitsGroup& titsGroup() const { return Tg.titsGroup(); }
-  const tits::BasedTitsGroup& basedTitsGroup() const { return Tg; }
+  const tits::TitsGroup& titsGroup() const { return G.titsGroup(); }
+  const tits::BasedTitsGroup& basedTitsGroup() const
+    { return G.basedTitsGroup(); }
 
   const weyl::TwistedInvolution twistedInvolution(size_t cn) const
-    { return G.twistedInvolution(cn); }
+    { return complexGroup().twistedInvolution(cn); }
   const cartanclass::Fiber& fiber(const StandardRepK& sr) const
     { return G.cartan(sr.Cartan()).fiber(); }
 
-  const kgb::KGB& kgb() const { return d_KGB; }
+  const kgb::KGB& kgb() const { return G.kgb(); }
 
   const Cartan_info& info(size_t cn) const
     { return C_info[Cartan_set.position(cn)]; }
@@ -369,7 +358,7 @@ class SRK_context
 
   // RepK from KGB number only, with |lambda=rho|; method is currently unused
   StandardRepK KGB_elt_rep(kgb::KGBElt z) const
-    { return std_rep(rootDatum().twoRho(),d_KGB.titsElt(z)); }
+  { return std_rep(rootDatum().twoRho(),kgb().titsElt(z)); }
 
 /*
   The conditions below are defined by
@@ -398,6 +387,9 @@ class SRK_context
   void normalize(StandardRepK& sr) const;
 
   q_Char q_normalize_eq (const StandardRepK& sr,size_t witness) const;
+  q_Char q_reflect_eq (const StandardRepK& sr,size_t i,
+		       latticetypes::Weight lambda,
+		       const latticetypes::Weight& cowt) const;
 
   tits::TitsElt titsElt(const StandardRepK& s) const
   {
@@ -422,10 +414,14 @@ class SRK_context
   // Hecht-Schmid identity for simple-real root $\alpha$
   HechtSchmid back_HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
 
-  /*!
-    Returns the sum of absolute values of the scalar products of lambda
-    expressed in the full basis and the positive coroots. This gives a Weyl
-    group invariant limit on the size of the weights that will be needed.
+  // equivalent by $q$-Hecht-Schmid identity for simple-imaginary root $\alpha$
+  q_Char q_HS_id_eq(const StandardRepK& s, rootdata::RootNbr alpha) const;
+
+  // no need for |q_back_HS_id_eq|, it would not ivolve $q$; use |back_HS_id|
+
+  /*! Returns the sum of absolute values of the scalar products of
+    $(1+theta)\lambda$ and the positive coroots. This gives a Weyl group
+    invariant limit on the size of the weights that will be needed.
   */
   level height(const StandardRepK& s) const;
 
@@ -448,6 +444,21 @@ class SRK_context
 
 }; // |SRK_context|
 
+// a comparison object that first takes into account a grading (height)
+class graded_compare
+{
+  const std::vector<level>* h; // pointer, so |graded_compare| can be assignable
+
+public:
+  graded_compare (const std::vector<level>& a) : h(&a) {}
+
+  bool operator()(seq_no x, seq_no y) const
+  {
+    level hx=(*h)[x], hy=(*h)[y];
+    return hx!=hy ? hx<hy : x<y;
+  }
+}; // |class graded_compare|
+
 // This class serves to store tables of previously computed mappings from
 // "bad" standard representations to good ones. Also the information
 // necessary to interpret the d_lambda field in StandardRepK are stored here
@@ -468,7 +479,7 @@ class KhatContext : public SRK_context
 
 // constructors, destructors, and swap
 
-  KhatContext(realredgp::RealReductiveGroup &G,const kgb::KGB& kgb);
+  KhatContext(realredgp::RealReductiveGroup &G);
 
 // accessors and manipulators (manipulation only as side effect for efficiency)
 
@@ -501,7 +512,8 @@ class KhatContext : public SRK_context
   matrix::Matrix_base<CharCoeff>
     K_type_matrix(std::set<equation>& system,
 		  level bound,
-		  std::vector<seq_no>& reps); // non |const|
+		  std::vector<seq_no>& reps,
+		  matrix::Matrix_base<CharCoeff>* direct_p); // non |const|
 
   combination branch(seq_no s, level bound); // non |const|
 
@@ -536,7 +548,7 @@ class qKhatContext : public SRK_context
 
 // constructors, destructors, and swap
 
-  qKhatContext(realredgp::RealReductiveGroup &G,const kgb::KGB& kgb);
+  qKhatContext(realredgp::RealReductiveGroup &G);
 
 // accessors and manipulators (manipulation only as side effect for efficiency)
 
@@ -567,7 +579,8 @@ class qKhatContext : public SRK_context
   matrix::Matrix_base<q_CharCoeff>
     K_type_matrix(std::set<q_equation>& system,
 		  level bound,
-		  std::vector<seq_no>& reps); // non |const|
+		  std::vector<seq_no>& reps,
+		  matrix::Matrix_base<q_CharCoeff>* direct_p); // non |const|
 
   q_combin branch(seq_no s, level bound); // non |const|
 

@@ -14,7 +14,6 @@
 #include "io.h"
 #include "helpmode.h"
 #include "realmode.h"
-#include "special.h"
 #include "test.h"
 
 /****************************************************************************
@@ -33,6 +32,7 @@ namespace {
   void corder_h();
   void realweyl_h();
   void kgb_h();
+  void KGB_h();
   void kgborder_h();
 
   // command tags for the help facility
@@ -41,6 +41,8 @@ namespace {
   const char* corder_tag = "shows Hasse diagram of ordering of Cartan classes";
   const char* realweyl_tag = "outputs the structure of the real Weyl group";
   const char* kgb_tag = "prints the orbits of K on G/B";
+  const char* KGB_tag =
+    "computes KGB data (more information than the kgb command)";
   const char* kgborder_tag = "prints the Bruhat ordering on K\\G/B";
 
 }
@@ -63,6 +65,7 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("corder",corder_h);
   mode.add("realweyl",realweyl_h);
   mode.add("kgb",kgb_h);
+  mode.add("KGB",KGB_h);
   mode.add("kgborder",kgborder_h);
 
   insertTag(tagDict,"components",components_tag);
@@ -70,6 +73,7 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   insertTag(tagDict,"corder",corder_tag);
   insertTag(tagDict,"realweyl",realweyl_tag);
   insertTag(tagDict,"kgb",kgb_tag);
+  insertTag(tagDict,"KGB",KGB_tag);
   insertTag(tagDict,"kgborder",kgborder_tag);
 }
 
@@ -109,6 +113,11 @@ void realweyl_h()
 void kgb_h()
 {
   io::printFile(std::cerr,"kgb.help",io::MESSAGE_DIR);
+}
+
+void KGB_h()
+{
+  io::printFile(std::cerr,"KGB_.help",io::MESSAGE_DIR);
 }
 
 void kgborder_h()

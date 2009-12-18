@@ -36,6 +36,7 @@
 #include "kl.h"
 #include "kltest.h"
 #include "standardrepk.h"
+#include "repr.h"
 #include "free_abelian.h"
 #include "matreduc.h"
 #include "testrun.h"
@@ -54,11 +55,12 @@ namespace {
 
   // functions for the test commands
 
+  void test_f();
+
   void roots_rootbasis_f();
   void coroots_rootbasis_f();
   void posroots_rootbasis_f();
   void poscoroots_rootbasis_f();
-  void KGB_f();
   void checkbasept_f();
   void sub_KGB_f();
   void trivial_f();
@@ -69,7 +71,7 @@ namespace {
   void mod_lattice_f();
   void branch_f();
   void qbranch_f();
-  void test_f();
+  void srtest_f();
   void testrun_f();
   void exam_f();
 
@@ -77,23 +79,26 @@ namespace {
 
 
   // help functions
+
+  // no |test_h|, test command remains development-reserved; uses |nohelp_h|
+
   void roots_rootbasis_h();
   void coroots_rootbasis_h();
   void posroots_rootbasis_h();
   void poscoroots_rootbasis_h();
   void mod_lattice_h();
-  void KGB_h();
   void checkbasept_h();
   void sub_KGB_h();
   void trivial_h();
   void Ktypeform_h();
   void Ktypemat_h();
   void branch_h();
-  void test_h();
+  void srtest_h();
   void testrun_h();
   void exam_h();
 
   // tags
+  const char* test_tag = "test command (for development only)";
 
   const char* roots_rootbasis_tag = "outputs the roots in the simple rootbasis";
   const char* coroots_rootbasis_tag =
@@ -102,8 +107,6 @@ namespace {
      "outputs the positive roots in the simple root basis";
   const char* poscoroots_rootbasis_tag =
       "outputs the positive coroots in the simple coroot basis";
-  const char* KGB_tag =
-    "computes KGB data (more information than the kgb command)";
   const char* sub_KGB_tag =
     "computes subset of KGB data used in Ktypeform";
   const char* trivial_tag =
@@ -114,7 +117,7 @@ namespace {
   const char* mod_lattice_tag =
     "gives a basis of quotient of character lattice";
   const char* branch_tag = "computes restriction of representation to K";
-  const char* test_tag = "gives information about a representation";
+  const char* srtest_tag = "gives information about a representation";
   const char* testrun_tag =
                 "iterates over root data of given rank, calling examine";
   const char* examine_tag =
@@ -195,7 +198,6 @@ void addTestCommands<realmode::RealmodeTag>
 
   // add additional commands here :
 
-  mode.add("KGB",KGB_f);
   mode.add("checkbasept",checkbasept_f);
   mode.add("sub_KGB",sub_KGB_f);
   mode.add("trivial",trivial_f);
@@ -206,6 +208,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("mod_lattice",mod_lattice_f);
   mode.add("branch",branch_f);
   mode.add("qbranch",qbranch_f);
+  mode.add("srtest",srtest_f);
 
   mode.add("examine",exam_f);
 }
@@ -230,7 +233,7 @@ template<> void addTestHelp<emptymode::EmptymodeTag>
   using namespace helpmode;
 
   if (testMode == EmptyMode) {
-    mode.add("test",test_h);
+    mode.add("test",nohelp_h);
     commands::insertTag(t,"test",test_tag);
   }
 
@@ -253,7 +256,7 @@ template<> void addTestHelp<mainmode::MainmodeTag>
   using namespace helpmode;
 
   if (testMode == MainMode) {
-    mode.add("test",test_h);
+    mode.add("test",nohelp_h);
     insertTag(t,"test",test_tag);
   }
 
@@ -283,13 +286,12 @@ template<> void addTestHelp<realmode::RealmodeTag>
   using namespace helpmode;
 
   if (testMode == RealMode) {
-    mode.add("test",test_h);
+    mode.add("test",nohelp_h);
     insertTag(t,"test",test_tag);
   }
 
   // add additional help commands here:
 
-  mode.add("KGB",KGB_h);
   mode.add("checkbasept",checkbasept_h);
   mode.add("sub_KGB",helpmode::nohelp_h);
   mode.add("trivial",helpmode::nohelp_h);
@@ -297,18 +299,19 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("Ktypemat",Ktypemat_h);
   mode.add("mod_lattice",mod_lattice_h);
   mode.add("branch",branch_h);
+  mode.add("srtest",srtest_h);
   mode.add("examine",helpmode::nohelp_h);
 
 
   // add additional command tags here :
 
   insertTag(t,"sub_KGB",sub_KGB_tag);
-  insertTag(t,"KGB",KGB_tag);
   insertTag(t,"trivial",trivial_tag);
   insertTag(t,"Ktypeform",Ktypeform_tag);
   insertTag(t,"Ktypemat",Ktypemat_tag);
   insertTag(t,"mod_lattice",mod_lattice_tag);
   insertTag(t,"branch",branch_tag);
+  insertTag(t,"srtest",srtest_tag);
   insertTag(t,"examine",examine_tag);
 
 }
@@ -322,7 +325,7 @@ template<> void addTestHelp<blockmode::BlockmodeTag>
   using namespace helpmode;
 
   if (testMode == BlockMode) {
-    mode.add("test",test_h);
+    mode.add("test",nohelp_h);
     insertTag(t,"test",test_tag);
   }
 
@@ -420,16 +423,6 @@ void poscoroots_rootbasis_f()
 
 // Real mode functions
 
-void KGB_f()
-{
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-
-  ioutils::OutputFile f;
-
-  kgb::KGB kgb(G_R,G_R.Cartan_set());
-  kgb_io::var_print_KGB(f,mainmode::currentComplexGroup(),kgb);
-}
-
 void checkbasept_f()
 {
   realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
@@ -440,27 +433,26 @@ void checkbasept_f()
 
 void sub_KGB_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  kgb::KGB kgb(G_R,G_R.Cartan_set());
-  standardrepk::KhatContext khc(G_R,kgb);
+  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  standardrepk::KhatContext khc(G);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
   weyl::WeylWord ww;
-  standardrepk::PSalgebra q= khc.theta_stable_parabolic(sr,ww);
-  kgb::KGBEltList sub=khc.sub_KGB(q);
+  standardrepk::PSalgebra p= khc.theta_stable_parabolic(sr,ww);
+  kgb::KGBEltList sub=khc.sub_KGB(p);
 
   std::cout << "Conjugating word [" << ww << "]\n";
-  kgb_io::print_sub_KGB(std::cout,kgb,sub);
+  kgb_io::print_sub_KGB(std::cout,G.kgb(),sub);
 }
 
 void trivial_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  const rootdata::RootDatum& rd=G_R.rootDatum();
+  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  const rootdata::RootDatum& rd=G.rootDatum();
+  const kgb::KGB& kgb = G.kgb();
 
-  kgb::KGB kgb(G_R,G_R.Cartan_set());
-  standardrepk::KhatContext khc(G_R,kgb);
+  standardrepk::KhatContext khc(G);
 
   kgb::KGBElt last=kgb.size()-1;
 
@@ -493,10 +485,9 @@ void trivial_f()
 
 void Ktypeform_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
 
-  kgb::KGB kgb(G_R,G_R.Cartan_set());
-  standardrepk::KhatContext khc(G_R,kgb);
+  standardrepk::KhatContext khc(G);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
@@ -506,7 +497,7 @@ void Ktypeform_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
       return;
     }
   }
@@ -558,10 +549,9 @@ void Ktypeform_f()
 
 void qKtypeform_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
 
-  kgb::KGB kgb(G_R,G_R.Cartan_set());
-  standardrepk::qKhatContext khc(G_R,kgb);
+  standardrepk::qKhatContext khc(G);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
@@ -571,7 +561,7 @@ void qKtypeform_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
       return;
     }
   }
@@ -585,11 +575,6 @@ void qKtypeform_f()
     std::ostringstream s; khc.print(s,kf.second);
     ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
   }
-
-  for (size_t i=0; i<khc.nr_reps(); ++i)
-    khc.print(f << 'R' << i << ": ",khc.rep_no(i))
-      << ", height: " << khc.height(i) << std::endl;
-
 
   standardrepk::q_combin sum(khc.height_order());
 
@@ -623,10 +608,9 @@ void qKtypeform_f()
 
 void Ktypemat_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
 
-  kgb::KGB kgb(G_R,G_R.Cartan_set());
-  standardrepk::KhatContext khc(G_R,kgb);
+  standardrepk::KhatContext khc(G);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
   khc.normalize(sr);
@@ -637,7 +621,7 @@ void Ktypemat_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
 	<< ".\n";
       return;
     }
@@ -645,7 +629,7 @@ void Ktypemat_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
       return;
     }
   }
@@ -682,36 +666,36 @@ void Ktypemat_f()
       ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
     }
   }
-
-  std::vector<standardrepk::equation> system =
-    khc.saturate(singleton,bound);
-
   std::vector<standardrepk::seq_no> new_order;
-  matrix::Matrix_base<standardrepk::CharCoeff> m =
-    standardrepk::triangularize(system,new_order);
-
-  f << "Ordering of representations/K-types:\n";
-  for (std::vector<standardrepk::seq_no>::const_iterator
-	 it=new_order.begin(); it!=new_order.end(); ++it)
-    khc.print(f,khc.rep_no(*it)) << ", height " << khc.height(*it)
-      << std::endl;
 
 #ifdef VERBOSE
-  prettyprint::printMatrix(f<<"Triangular system:\n",m,3);
+  matrix::Matrix_base<standardrepk::CharCoeff> m;
+  matrix::Matrix_base<standardrepk::CharCoeff> ktypemat =
+    khc.K_type_matrix(singleton,bound,new_order,&m);
+#else
+  matrix::Matrix_base<standardrepk::CharCoeff> ktypemat =
+    khc.K_type_matrix(singleton,bound,new_order,NULL);
 #endif
 
-  prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",
-			   standardrepk::inverse_lower_triangular(m),
-			   3);
+  std::cout << "Ordering of representations/K-types:\n";
+  for (std::vector<standardrepk::seq_no>::const_iterator
+	 it=new_order.begin(); it!=new_order.end(); ++it)
+    khc.print(std::cout,khc.rep_no(*it)) << ", height " << khc.height(*it)
+       << std::endl;
+
+#ifdef VERBOSE
+  prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
+#endif
+
+  prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",ktypemat,3);
 
 } // |Ktypemat_f|
 
 void qKtypemat_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
 
-  kgb::KGB kgb(G_R,G_R.Cartan_set());
-  standardrepk::qKhatContext khc(G_R,kgb);
+  standardrepk::qKhatContext khc(G);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
@@ -729,7 +713,7 @@ void qKtypemat_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
 	<< ".\n";
       return;
     }
@@ -737,7 +721,7 @@ void qKtypemat_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
       return;
     }
   }
@@ -775,12 +759,33 @@ void qKtypemat_f()
     }
   }
 
+#ifdef VERBOSE
+
   std::vector<standardrepk::q_equation> system =
     khc.saturate(singleton,bound);
+  std::cout << "System of equations:\n";
+  for (size_t i=0; i<system.size(); ++i)
+  {
+    const standardrepk::q_equation& si=system[i];
+    khc.print(std::cout<< si.first << ' ',khc.rep_no(si.first))
+      << " [" << khc.height(si.first) << "]\n     ";
+    for (standardrepk::q_combin::const_iterator
+	   it=si.second.begin(); it!=si.second.end(); ++it)
+      std::cout << '+' << it->second << "*I(" << it->first << ')';
+    std::cout << std::endl;
+  }
+#endif
 
   std::vector<standardrepk::seq_no> new_order;
-  matrix::Matrix_base<standardrepk::q_CharCoeff> m =
-    standardrepk::triangularize(system,new_order);
+
+#ifdef VERBOSE
+  matrix::Matrix_base<standardrepk::q_CharCoeff> m;
+  matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
+    khc.K_type_matrix(singleton,bound,new_order,&m);
+#else
+  matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
+    khc.K_type_matrix(singleton,bound,new_order,NULL);
+#endif
 
   f << "Ordering of representations/K-types:\n";
   for (std::vector<standardrepk::seq_no>::const_iterator
@@ -789,7 +794,7 @@ void qKtypemat_f()
       << std::endl;
 
 #ifdef VERBOSE
-  prettyprint::printMatrix(f<<"Triangular system:\n",m,3);
+  prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
 #endif
 
   prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",
@@ -800,11 +805,11 @@ void qKtypemat_f()
 
 void mod_lattice_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
 
-  unsigned long cn=interactive::get_Cartan_class(G_R.Cartan_set());
+  unsigned long cn=interactive::get_Cartan_class(G.Cartan_set());
 
-  latticetypes::LatticeMatrix q = G_R.cartan(cn).involution();
+  latticetypes::LatticeMatrix q = G.cartan(cn).involution();
   for (size_t j = 0; j<q.numRows(); ++j)
     q(j,j) -= 1;
 
@@ -847,10 +852,9 @@ void mod_lattice_f()
 
 void branch_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
 
-  kgb::KGB kgb(G_R,G_R.Cartan_set());
-  standardrepk::KhatContext khc(G_R,kgb);
+  standardrepk::KhatContext khc(G);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
@@ -860,7 +864,7 @@ void branch_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
 	<< ".\n";
       return;
     }
@@ -868,7 +872,7 @@ void branch_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
       return;
     }
   }
@@ -903,10 +907,9 @@ void branch_f()
 
 void qbranch_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
 
-  kgb::KGB kgb(G_R,G_R.Cartan_set());
-  standardrepk::qKhatContext khc(G_R,kgb);
+  standardrepk::qKhatContext khc(G);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
@@ -916,7 +919,7 @@ void qbranch_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not standard, as witnessed by coroot "
-	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
+	<< G.rootDatum().coroot(khc.fiber(sr).simpleImaginary(witness))
 	<< ".\n";
       return;
     }
@@ -924,7 +927,7 @@ void qbranch_f()
     {
       khc.print(std::cout << "Representation ",sr)
         << " is not final, as witnessed by coroot "
-	<< G_R.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
+	<< G.rootDatum().coroot(khc.fiber(sr).simpleReal(witness)) << ".\n";
       return;
     }
   }
@@ -966,30 +969,28 @@ void qbranch_f()
 
 
 /*
-  Function invoked by the "test" command.
+  Function invoked by the "srtest" command.
 */
-void test_f()
+void srtest_f()
 {
   // put your code here, and define testMode at top of file appropriately
 
   try
   {
-    realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-    const complexredgp::ComplexReductiveGroup& G=G_R.complexGroup();
-
-    kgb::KGB kgb(G_R,G_R.Cartan_set());
+    realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+    const kgb::KGB& kgb = G.kgb();
 
     unsigned long x=interactive::get_bounded_int
-      (interactive::sr_input(),"Choose KGB element: ",kgb.size());
+      (interactive::sr_input(),"Choose KGB element: ",G.kgb().size());
 
-    prettyprint::printVector(std::cout<<"2rho = ",G_R.rootDatum().twoRho())
+    prettyprint::printVector(std::cout<<"2rho = ",G.rootDatum().twoRho())
       << std::endl;
 
     latticetypes::Weight lambda=
       interactive::get_weight(interactive::sr_input(),
 			      "Give lambda-rho: ",
-			      G_R.rank());
-    standardrepk::KhatContext khc(G_R,kgb);
+			      G.rank());
+    standardrepk::KhatContext khc(G);
 
     standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
 
@@ -997,7 +998,8 @@ void test_f()
     prettyprint::printVector(std::cout << "Weight (1/2)",lambda);
     prettyprint::printVector(std::cout << " converted to (1/2)",khc.lift(sr));
 
-    const weyl::TwistedInvolution& canonical=G.twistedInvolution(sr.Cartan());
+    const weyl::TwistedInvolution& canonical =
+      G.complexGroup().twistedInvolution(sr.Cartan());
     if (kgb.involution(x)!=canonical)
       prettyprint::printWeylElt(std::cout << " at involution ",
 				canonical, G.weylGroup());
@@ -1015,14 +1017,14 @@ void test_f()
   }
 }
 
-bool examine(realredgp::RealReductiveGroup& G_R)
+bool examine(realredgp::RealReductiveGroup& G)
 {
-  kgb::KGB kgb1(G_R);
-  kgb::KGB kgb2(G_R,G_R.Cartan_set());
+  kgb::KGB kgb1(G);
+  kgb::KGB kgb2(G,G.Cartan_set());
   if (kgb1.size()!=kgb2.size()) return false;
   for (size_t i=0; i<kgb1.size(); ++i)
   {
-    for (size_t s=0; s<G_R.semisimpleRank(); ++s)
+    for (size_t s=0; s<G.semisimpleRank(); ++s)
     {
       if (kgb1.cross(s,i)!=kgb2.cross(s,i)) return false;
       if (kgb1.cayley(s,i)!=kgb2.cayley(s,i)) return false;
@@ -1076,6 +1078,37 @@ void X_f()
   kgb_io::print_X(f,kgb);
 }
 
+void test_f()
+{
+  try
+  {
+    realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+
+    standardrepk::KhatContext khc(G);
+    standardrepk::StandardRepK srk=interactive::get_standardrep(khc);
+
+    latticetypes::RatWeight nu =
+      interactive::get_ratweight(interactive::sr_input(),"nu: ",G.rank());
+
+    repr::Rep_context rc(G);
+    repr::StandardRepr sr = rc.sr(srk,khc,nu);
+    tits::GlobalTitsElement y=rc.y(sr);
+    complexredgp::ComplexReductiveGroup& dual_G=mainmode::current_dual_group();
+    kgb::global_KGB dual_KGB (dual_G,tits::GlobalTitsGroup(dual_G),y);
+    ioutils::OutputFile f;
+    f << "y is element " << dual_KGB.lookup(y) << " in dual KGB set:\n";
+    kgb_io::print_X(f,dual_KGB);
+  }
+  catch (error::MemoryOverflow& e)
+  {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e)
+  {
+    e("aborted");
+  }
+}
+
 //Help commands
 
 void roots_rootbasis_h()
@@ -1096,11 +1129,6 @@ void posroots_rootbasis_h()
 void poscoroots_rootbasis_h()
 {
   io::printFile(std::cerr,"poscoroots_rootbasis.help",io::MESSAGE_DIR);
-}
-
-void KGB_h()
-{
-  io::printFile(std::cerr,"KGB_.help",io::MESSAGE_DIR);
 }
 
 void checkbasept_h()
@@ -1138,11 +1166,11 @@ void branch_h()
   io::printFile(std::cerr,"branch.help",io::MESSAGE_DIR);
 }
 
-void test_h()
+void srtest_h()
 {
-  io::printFile(std::cerr,"test.help",io::MESSAGE_DIR);
+  io::printFile(std::cerr,"srtest.help",io::MESSAGE_DIR);
 }
 
-} // namespace
+} // |namespace|
 
-} // namespace atlas
+} // |namespace atlas|

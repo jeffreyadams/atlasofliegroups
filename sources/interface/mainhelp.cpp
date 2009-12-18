@@ -13,7 +13,6 @@
 
 #include "io.h"
 #include "mainmode.h"
-#include "special.h"
 #include "test.h"
 
 /****************************************************************************

@@ -8,6 +8,8 @@
 */
 
 #include "mainmode.h"
+#include "commands.h"
+#include "test.h"     // to absorb test commands
 
 #include "basic_io.h"
 #include "complexredgp.h"
@@ -27,8 +29,7 @@
 #include "kgb_io.h"
 #include "testprint.h"
 #include "prettyprint.h"
-#include "special.h"
-#include "test.h"
+#include "tags.h"
 
 namespace atlas {
 
@@ -82,6 +83,7 @@ namespace {
   // these have been changed to pointers to avoid swapping of G_C
 
   complexredgp::ComplexReductiveGroup* G_C_pointer=NULL;
+  complexredgp::ComplexReductiveGroup* dual_G_C_pointer=NULL;
   complexredgp_io::Interface* G_I_pointer=NULL;
 
  }
@@ -101,6 +103,14 @@ complexredgp::ComplexReductiveGroup& currentComplexGroup()
   return *G_C_pointer;
 }
 
+complexredgp::ComplexReductiveGroup& current_dual_group()
+{
+  if (dual_G_C_pointer==NULL)
+    dual_G_C_pointer = new complexredgp::ComplexReductiveGroup
+      (currentComplexGroup(), tags::DualTag());
+  return *dual_G_C_pointer;
+}
+
 complexredgp_io::Interface& currentComplexInterface()
 {
   return *G_I_pointer;
@@ -110,8 +120,10 @@ void replaceComplexGroup(complexredgp::ComplexReductiveGroup* G
 			,complexredgp_io::Interface* I)
 {
   delete G_C_pointer;
+  delete dual_G_C_pointer;
   delete G_I_pointer;
   G_C_pointer=G;
+  dual_G_C_pointer=NULL;
   G_I_pointer=I;
 
 }
@@ -188,10 +200,6 @@ commands::CommandMode& mainMode()
     main_mode.add("dualkgb",dual_kgb_f); // here, since no real form needed
     main_mode.add("help",help_f); // override
     main_mode.add("q",commands::exitMode);
-
-    // add special commands
-
-    special::addSpecialCommands(main_mode,MainmodeTag());
 
     // add test commands
 

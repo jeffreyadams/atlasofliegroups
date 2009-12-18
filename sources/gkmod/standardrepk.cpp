@@ -112,12 +112,10 @@ size_t StandardRepK::hashCode(size_t modulus) const
 
 ******************************************************************************/
 
-SRK_context::SRK_context(realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
-  : G(GR.complexGroup())
-  , d_KGB(kgb)
-  , Tg(GR.basedTitsGroup())
+SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
+  : G(GR)
   , Cartan_set(GR.Cartan_set())
-  , C_info(G.numCartanClasses())
+  , C_info(GR.numCartan())
   , simple_reflection_mod_2()
   , proj_pool(), proj_sets(proj_pool), proj_data()
 {
@@ -129,6 +127,7 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
 
   size_t n = rootDatum().rank();
 
+  // what remains is filling |C_info|, which is quite a bit of code
   size_t nr=0;
   for (bitmap::BitMap::iterator it=Cartan_set.begin(); it(); ++it,++nr)
   {
@@ -196,10 +195,10 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
 	    ci.sum_coroots.push_back(rd.coroot(alpha)+rd.coroot(beta));
 	  }
 	}
-    }
+    } // filling |bi_orth| and |sum_coroots| fields
 
   } // |for (it)|
-}
+} // |SRK_context::SRK_context|
 
 
 HCParam SRK_context::project
@@ -286,6 +285,60 @@ RawRep SRK_context::Levi_rep
   return RawRep (lambda,a);
 } // |Levi_rep|
 
+
+
+level
+SRK_context::height(const StandardRepK& sr) const
+{
+  const rootdata::RootDatum& rd=rootDatum();
+  const latticetypes::Weight mu=theta_lift(sr);
+
+  level sum=0;
+  for (rootdata::WRootIterator
+	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
+    sum +=intutils::abs(mu.scalarProduct(*it));
+
+  return sum/2; // each |scalarProduct| above is even
+} // |SRK_context::height|
+
+
+const proj_info& SRK_context::get_projection(bitset::RankFlags gens)
+{
+  size_t old_size=proj_data.size();
+  size_t h=proj_sets.match(bitset_entry(gens));
+  if (h<old_size)
+    return proj_data[h];
+
+  proj_data.push_back(proj_info());
+  proj_data.back().projection=
+    orth_projection(rootDatum(),gens,proj_data.back().denom);
+  return proj_data.back();
+} // |SRK_context::get_projection|
+
+level SRK_context::height_bound(const latticetypes::Weight& lambda)
+{
+  const rootdata::RootDatum& rd=rootDatum();
+
+  bitset::RankFlags negatives,new_negatives;
+  latticetypes::Weight mu;
+
+  do
+  {
+    new_negatives.reset();
+    mu=get_projection(negatives).projection.apply(lambda);
+    for (size_t i=0; i<rd.semisimpleRank(); ++i)
+      if (not negatives[i] and mu.scalarProduct(rd.simpleCoroot(i))<0)
+	new_negatives.set(i);
+    negatives |= new_negatives;
+  }
+  while (new_negatives.any());
+
+  level sp=mu.scalarProduct(rd.dual_twoRho());
+  level d=2*get_projection(negatives).denom; // double to match |sum/2| above
+  return (sp+d-1)/d; // round upwards, since height is always integer
+} // |SRK_context::height_bound|
+
+
 bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
 {
   const rootdata::RootDatum& rd=rootDatum();
@@ -313,66 +366,6 @@ bool SRK_context::isNormal(latticetypes::Weight lambda, size_t cn,
     }
 
   return true;
-}
-
-void SRK_context::normalize(StandardRepK& sr) const
-{
-  const rootdata::RootDatum& rd = rootDatum();
-  size_t cn = sr.Cartan();
-  const Cartan_info& ci = info(cn);
-  latticetypes::Weight lambda = lift(sr);
-
-  size_t i; // number of a complex simple root
-  while (not isNormal(lambda,cn,i))
-    lambda -= rd.simpleRoot(i)*lambda.dot(ci.coroot_sum(i));
-
-  sr.d_lambda = project(cn,lambda);
-} // |normalize|
-
-q_Char SRK_context::q_normalize_eq
-  (const StandardRepK& sr,size_t witness) const
-{
-  const rootdata::RootDatum& rd = rootDatum();
-  size_t cn = sr.Cartan();
-  const Cartan_info& ci = info(cn);
-
-  const tits::TorusPart& x = sr.d_fiberElt;
-
-  latticetypes::Weight coab = ci.coroot_sum(witness);
-
-  latticetypes::Weight lambda = lift(sr);
-  latticetypes::Weight a2 = rd.simpleRoot(witness)*2; // doubled coordinates
-
-  int n = -lambda.dot(coab);
-  assert (n>0);
-  assert (n%2==0);  // because of doubled coordinates
-  n/=2;
-
-  lambda += a2*n; // $\lambda_0 = s_\alpha(\lambda)$
-
-  q_Char result(StandardRepK(cn,x,project(cn,lambda)),
-		q_CharCoeff(1,1)); // start with $q*srep(\lambda_0)$
-  int i;
-  for (i=1; 2*i<n; ++i)
-  {
-    q_CharCoeff coef(i+1,1); // $q^{i+1}$
-    coef -= q_CharCoeff(i-1,1); // $q^{i-1}$
-    lambda -= a2; // $\lambda_0 - i*alpha$
-    result+=(q_Char(StandardRepK(cn,x,project(cn,lambda)),coef));
-  }
-
-  if (2*i==n) // final term for even length ladders
-  {
-    q_CharCoeff coef(i,1); // $q^{n/2}$
-    coef -= q_CharCoeff(i-1,1); // $q^{n/2-1}$
-    lambda -= a2; // $\lambda_0 - n/2*alpha$
-    assert (lambda.dot(coab)==0);
-    result+=(q_Char(StandardRepK(cn,x,project(cn,lambda)),coef));
-  }
-  else
-    assert (lambda.dot(coab)==2); // dot product went from $2n$, steps of $-4$
-
-  return result;
 }
 
 bool SRK_context::isZero(const StandardRepK& sr, size_t& witness) const
@@ -408,103 +401,70 @@ bool SRK_context::isFinal(const StandardRepK& sr, size_t& witness) const
   return true;
 }
 
-
-std::ostream& SRK_context::print(std::ostream& strm,const StandardRepK& sr)
-  const
+void SRK_context::normalize(StandardRepK& sr) const
 {
-  prettyprint::printVector(strm,lift(sr)) << '@';
-  prettyprint::prettyPrint(strm,sr.d_fiberElt) << '#' << sr.d_cartan;
-  return strm;
-}
+  const rootdata::RootDatum& rd = rootDatum();
+  size_t cn = sr.Cartan();
+  const Cartan_info& ci = info(cn);
+  latticetypes::Weight lambda = lift(sr);
 
-std::ostream& SRK_context::print(std::ostream& strm,const Char& ch) const
+  size_t i; // number of a complex simple root
+  while (not isNormal(lambda,cn,i))
+    lambda -= rd.simpleRoot(i)*lambda.dot(ci.coroot_sum(i));
+
+  sr.d_lambda = project(cn,lambda);
+} // |normalize|
+
+
+q_Char SRK_context::q_normalize_eq (const StandardRepK& sr,size_t i) const
 {
-  if (ch.empty())
-    return strm << '0';
-  for (Char::const_iterator it=ch.begin(); it!=ch.end(); ++it)
+  return q_reflect_eq(sr,i,lift(sr),info(sr.Cartan()).coroot_sum(i));
+} // |SRK_context::q_normalize_eq|
+
+
+q_Char SRK_context::q_reflect_eq(const StandardRepK& sr,size_t i,
+				 latticetypes::Weight lambda, // doubled
+				 const latticetypes::Weight& cowt) const
+{
+  const rootdata::RootDatum& rd = rootDatum();
+  const tits::TorusPart& x = sr.d_fiberElt;
+  size_t cn = sr.Cartan();
+
+  int n = -lambda.dot(cowt);
+
+  assert (n>0);
+  assert (n%2==0);  // because of doubled coordinates
+  n/=2;
+
+  latticetypes::Weight a2 = rd.simpleRoot(i)*2; // doubled coordinates
+
+  lambda += a2*n; // $\lambda_0 = s_\alpha(\lambda)$
+
+  q_Char result(StandardRepK(cn,x,project(cn,lambda)),
+		q_CharCoeff(1,1)); // start with $q*srep(\lambda_0)$
+  int j;
+  for (j=1; 2*j<n; ++j)
   {
-    strm << (it->second>0 ? " + " : " - ");
-    long int ac=intutils::abs<long int>(it->second);
-    if (ac!=1)
-      strm << ac << '*';
-    print(strm,it->first);
+    q_CharCoeff coef(j+1,1); // $q^{j+1}$
+    coef -= q_CharCoeff(j-1,1); // $q^{j-1}$
+    lambda -= a2; // $\lambda_0 - j*alpha$
+    result+=(q_Char(StandardRepK(cn,x,project(cn,lambda)),coef));
   }
-  return strm;
-}
 
-std::ostream& SRK_context::print(std::ostream& strm,const q_Char& ch) const
-{
-  if (ch.empty())
-    return strm << '0';
-  for (q_Char::const_iterator it=ch.begin(); it!=ch.end(); ++it)
+  if (2*j==n) // final term for even length ladders
   {
-    if (it->second.degree()==0)
-    {
-      strm << (it->second[0]>0 ? " + " : " - ");
-      long int ac=intutils::abs(it->second[0]);
-      if (ac!=1)
-	strm << ac << '*';
-    }
-    else
-    {
-      bool parens = it->second.multi_term();
-      strm<<(parens ? " + (" : " + ") << it->second << (parens ? ")*":"*");
-    }
-    print(strm,it->first);
+    q_CharCoeff coef(j,1); // $q^{n/2}$
+    coef -= q_CharCoeff(j-1,1); // $q^{n/2-1}$
+    lambda -= a2; // $\lambda_0 - n/2*alpha$
+    assert (lambda.dot(cowt)==0);
+    result+=(q_Char(StandardRepK(cn,x,project(cn,lambda)),coef));
   }
-  return strm;
-}
+  else
+    assert (lambda.dot(cowt)==2); // dot product went from $2n$, steps of $-4$
 
-level
-SRK_context::height(const StandardRepK& sr) const
-{
-  const rootdata::RootDatum& rd=rootDatum();
-  const latticetypes::Weight mu=theta_lift(sr);
+  return result;
+} // |SRK_context::q_reflect_eq|
 
-  level sum=0;
-  for (rootdata::WRootIterator
-	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
-    sum +=intutils::abs(mu.scalarProduct(*it));
-
-  return sum/2; // each |scalarProduct| above is even
-}
-
-
-const proj_info& SRK_context::get_projection(bitset::RankFlags gens)
-{
-  size_t old_size=proj_data.size();
-  size_t h=proj_sets.match(bitset_entry(gens));
-  if (h<old_size)
-    return proj_data[h];
-
-  proj_data.push_back(proj_info());
-  proj_data.back().projection=
-    orth_projection(rootDatum(),gens,proj_data.back().denom);
-  return proj_data.back();
-}
-
-level SRK_context::height_bound(const latticetypes::Weight& lambda)
-{
-  const rootdata::RootDatum& rd=rootDatum();
-
-  bitset::RankFlags negatives,new_negatives;
-  latticetypes::Weight mu;
-
-  do
-  {
-    new_negatives.reset();
-    mu=get_projection(negatives).projection.apply(lambda);
-    for (size_t i=0; i<rd.semisimpleRank(); ++i)
-      if (not negatives[i] and mu.scalarProduct(rd.simpleCoroot(i))<0)
-	new_negatives.set(i);
-    negatives |= new_negatives;
-  }
-  while (new_negatives.any());
-
-  level sp=mu.scalarProduct(rd.dual_twoRho());
-  level d=2*get_projection(negatives).denom; // double to match |sum/2| above
-  return (sp+d-1)/d; // round upwards, since height is always integer
-}
 
 /*!
   The purpose of |theta_stable_parabolic| is to move to a situation in which
@@ -548,7 +508,7 @@ SRK_context::theta_stable_parabolic
 	break; // found value of |i| to use in conjugation/reflection
       else if (v>0) continue; // don't touch |alpha| in this case
 
-      // now |dom| is on reflection hyperplan for |alpha|
+      // now |dom| is on reflection hyperplane for |alpha|
 
       // second priority give |alpha| and its $\theta$ image the same sign
       rootdata::RootNbr beta= // image of |alpha| by $\theta$
@@ -639,7 +599,7 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
   const rootdata::RootDatum& rd=rootDatum();
   kgb::KGBEltList sub=sub_KGB(q); std::reverse(sub.begin(),sub.end());
 
-  std::vector<size_t> sub_inv(d_KGB.size(),~0);
+  std::vector<size_t> sub_inv(kgb().size(),~0);
 
   for (size_t i=0; i<sub.size(); ++i)
     sub_inv[sub[i]]=i; // partially fill array with inverse index
@@ -655,9 +615,9 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
     bitset::RankFlags::iterator it;
     for (it=q.Levi_gens().begin(); it(); ++it)
     {
-      if (d_KGB.cross(*it,x)>x) // then we can use ascending cross action
+      if (kgb().cross(*it,x)>x) // then we can use ascending cross action
       {
-	size_t k=sub_inv[d_KGB.cross(*it,x)];
+	size_t k=sub_inv[kgb().cross(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
 	mu.push_back(rd.simpleReflection(mu[k],*it)); // $\rho$-centered
 	break;
@@ -668,9 +628,9 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
     // now similarly try Cayley transforms
     for (it=q.Levi_gens().begin(); it(); ++it)
     {
-      if (d_KGB.cayley(*it,x)!=kgb::UndefKGB) // then we can use this Cayley
+      if (kgb().cayley(*it,x)!=kgb::UndefKGB) // then we can use this Cayley
       {
-	size_t k=sub_inv[d_KGB.cayley(*it,x)];
+	size_t k=sub_inv[kgb().cayley(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
 	latticetypes::Weight nu=mu[k]; // $\rho-\lambda$ at split side
 	assert(nu.scalarProduct(rd.simpleCoroot(*it))%2 == 0); // finality
@@ -684,14 +644,14 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
   }
   assert(mu.size()==sub.size());
 
-  size_t max_l=d_KGB.length(sub[0]);
+  size_t max_l=kgb().length(sub[0]);
 
   RawChar result;
   for (size_t i=0; i<sub.size(); ++i)
   {
     kgb::KGBElt x=sub[i];
-    RawRep r(mu[i],d_KGB.titsElt(x));
-    result += RawChar(r, ((max_l-d_KGB.length(x))%2 == 0 ? 1 : -1));
+    RawRep r(mu[i],kgb().titsElt(x));
+    result += RawChar(r, ((max_l-kgb().length(x))%2 == 0 ? 1 : -1));
   }
 
   return result;
@@ -784,7 +744,7 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
   const rootdata::RootDatum& rd=rootDatum();
   kgb::KGBEltList sub=sub_KGB(p); std::reverse(sub.begin(),sub.end());
 
-  std::vector<size_t> sub_inv(d_KGB.size(),~0);
+  std::vector<size_t> sub_inv(kgb().size(),~0);
 
   for (size_t i=0; i<sub.size(); ++i)
     sub_inv[sub[i]]=i; // partially fill array with inverse index
@@ -800,9 +760,9 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
     bitset::RankFlags::iterator it;
     for (it=p.Levi_gens().begin(); it(); ++it)
     {
-      if (d_KGB.cross(*it,x)>x) // then we can use ascending cross action
+      if (kgb().cross(*it,x)>x) // then we can use ascending cross action
       {
-	size_t k=sub_inv[d_KGB.cross(*it,x)];
+	size_t k=sub_inv[kgb().cross(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
 	mu.push_back(rd.simpleReflection(mu[k],*it)); // $\rho$-centered
 	break;
@@ -813,9 +773,9 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
     // now similarly try Cayley transforms
     for (it=p.Levi_gens().begin(); it(); ++it)
     {
-      if (d_KGB.cayley(*it,x)!=kgb::UndefKGB) // then we can use this Cayley
+      if (kgb().cayley(*it,x)!=kgb::UndefKGB) // then we can use this Cayley
       {
-	size_t k=sub_inv[d_KGB.cayley(*it,x)];
+	size_t k=sub_inv[kgb().cayley(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
 	latticetypes::Weight nu=mu[k]; // $\rho-\lambda$ at split side
 	assert(nu.scalarProduct(rd.simpleCoroot(*it))%2 == 0); // finality
@@ -829,14 +789,14 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
   }
   assert(mu.size()==sub.size());
 
-  size_t max_l=d_KGB.length(sub[0]);
+  size_t max_l=kgb().length(sub[0]);
 
   Raw_q_Char result;
   for (size_t i=0; i<sub.size(); ++i)
   {
     kgb::KGBElt x=sub[i];
-    RawRep r(mu[i],d_KGB.titsElt(x));
-    size_t codim=max_l-d_KGB.length(x);
+    RawRep r(mu[i],kgb().titsElt(x));
+    size_t codim=max_l-kgb().length(x);
     result += Raw_q_Char(r,q_CharCoeff(codim,codim%2==0 ? 1 : -1)); // $(-q)^c$
   }
 
@@ -986,7 +946,7 @@ SRK_context::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
     }
   }
   else // $\alpha_i$ is a compact root; "easy" Hecht-Schmid identity
-    // based twisted conjugation fixed the Tits element; just reflect weight
+    // based twisted conjugation fixes the Tits element; just reflect weight
     id.add_lh(std_rep(mu,a)); // and no RHS
 
   return id;
@@ -1088,6 +1048,115 @@ SRK_context::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
   return id;
 } // |back_HS_id|
 
+q_Char
+SRK_context::q_HS_id_eq(const StandardRepK& sr, rootdata::RootNbr alpha) const
+{
+  const rootdata::RootDatum& rd=rootDatum();
+  tits::TitsElt a=titsElt(sr);
+  latticetypes::Weight lambda=lift(sr);
+  assert(rd.isPosRoot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
+
+  // the following test is easiest before we move to |alpha| simple situation
+  bool type_II = info(sr.Cartan()).fiber_modulus.contains
+    (latticetypes::SmallBitVector(rd.coroot(alpha))); // reduced modulo 2
+
+  size_t i=0; // simple root index (value will be set in following loop)
+  while (true) // we shall exit halfway when $\alpha=\alpha_i$
+  {
+    while (not rd.is_descent(i,alpha))
+    {
+      ++i;
+      assert(i<rd.semisimpleRank());
+    }
+    // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-imaginary
+    // and \alpha_i$ is complex for the involution |a.tw()|
+
+    if (alpha==rd.simpleRootNbr(i)) break; // found it
+
+    // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
+    rd.simple_reflect_root(alpha,i);
+    rd.simpleReflect(lambda,i);
+    basedTitsGroup().basedTwistedConjugate(a,i);
+    i=0; // and start over
+  }
+
+  latticetypes::Weight alpha_vee = rd.simpleCoroot(i);
+  q_Char result;
+  if (basedTitsGroup().simple_grading(a,i))
+  { // $\alpha_i$ is a non-compact imaginary simple root
+    if (not type_II) // no point doing this if difference is absorbed anyway
+      basedTitsGroup().basedTwistedConjugate(a,i); // adds $m_i$ to torus part
+
+    result -= q_reflect_eq(std_rep(lambda,a),i,lambda,alpha_vee);
+
+    basedTitsGroup().Cayley_transform(a,i);
+    result += q_Char(std_rep(lambda,a), // $*q^{floor(n/2)}$, with $n=-\< , >$:
+		     q_CharCoeff(-lambda.dot(alpha_vee)/4,1));
+    if (type_II)
+    {
+      lambda += rootDatum().simpleRoot(i)*2; // (doubled coordinates)
+      result += q_Char(std_rep(lambda,a), // $*q^{same exponent as above}$
+		       q_CharCoeff(-lambda.dot(alpha_vee)/4,1));
+    }
+  }
+  else // $\alpha_i$ is a compact root; "easy" Hecht-Schmid identity
+    // based twisted conjugation fixes the Tits element; just reflect weight
+    result -= q_Char(std_rep(rd.simpleReflection(lambda,i),a),
+		     q_CharCoeff(0,1)); // $q^0$
+
+  print(std::cout << "Hecht-Schmid ",sr);
+  print(std::cout << " rewrites to\n  ",result) << std::endl;
+
+  return result;
+} // |q_HS_id_eq|
+
+std::ostream& SRK_context::print(std::ostream& strm,const StandardRepK& sr)
+  const
+{
+  prettyprint::printVector(strm,lift(sr)) << '@';
+  prettyprint::prettyPrint(strm,sr.d_fiberElt) << '#' << sr.d_cartan;
+  return strm;
+}
+
+std::ostream& SRK_context::print(std::ostream& strm,const Char& ch) const
+{
+  if (ch.empty())
+    return strm << '0';
+  for (Char::const_iterator it=ch.begin(); it!=ch.end(); ++it)
+  {
+    strm << (it->second>0 ? " + " : " - ");
+    long int ac=intutils::abs<long int>(it->second);
+    if (ac!=1)
+      strm << ac << '*';
+    print(strm,it->first);
+  }
+  return strm;
+}
+
+std::ostream& SRK_context::print(std::ostream& strm,const q_Char& ch) const
+{
+  if (ch.empty())
+    return strm << '0';
+  for (q_Char::const_iterator it=ch.begin(); it!=ch.end(); ++it)
+  {
+    if (it->second.degree()==0)
+    {
+      strm << (it->second[0]>0 ? " + " : " - ");
+      long int ac=intutils::abs(it->second[0]);
+      if (ac!=1)
+	strm << ac << '*';
+    }
+    else
+    {
+      bool parens = it->second.multi_term();
+      strm<<(parens ? " + (" : " + ") << it->second << (parens ? ")*":"*");
+    }
+    print(strm,it->first);
+  }
+  return strm;
+}
+
+
 
 /*****************************************************************************
 
@@ -1095,9 +1164,10 @@ SRK_context::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 
 ******************************************************************************/
 
+
 KhatContext::KhatContext
-  (realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
-    : SRK_context(GR,kgb)
+  (realredgp::RealReductiveGroup &GR)
+    : SRK_context(GR)
     , nonfinal_pool(),final_pool()
     , nonfinals(nonfinal_pool), finals(final_pool)
     , height_of()
@@ -1106,8 +1176,8 @@ KhatContext::KhatContext
 {}
 
 qKhatContext::qKhatContext
-  (realredgp::RealReductiveGroup &GR, const kgb::KGB& kgb)
-    : SRK_context(GR,kgb)
+  (realredgp::RealReductiveGroup &GR)
+    : SRK_context(GR)
     , nonfinal_pool(),final_pool()
     , nonfinals(nonfinal_pool), finals(final_pool)
     , height_of()
@@ -1240,16 +1310,18 @@ q_combin qKhatContext::standardize(const StandardRepK& sr)
     assert(equation.n_lhs()==1); // |back_HS_id| gives 1-term left hand side
     assert(equation.n_rhs()!=0); // and never a null right hand side
 
+    print(std::cout << "reverse Hecht-Schmid ",sr);
+    print(std::cout << " rewrites to\n  ",equation.rhs()) << std::endl;
+
     // now recursively standardize all terms, storing rules
     q_combin result= standardize(to_q(equation.rhs()));
     return equate(nonfinals.match(sr),result); // and add rule for |sr|
   } // if (isStandard(sr,witness))
 
-  HechtSchmid equation= HS_id(sr,fiber(sr).simpleImaginary(witness));
-  assert(equation.n_lhs()==2); // all cases of |HS_id| produce 2-term lhs
+  q_Char equiv = q_HS_id_eq(sr,fiber(sr).simpleImaginary(witness));
 
-  // recursively standardize all terms of |equation.equivalent()|, storing rules
-  q_combin result= standardize(to_q(equation.equivalent()));
+  // recursively standardize all terms of |equiv|, storing rules
+  q_combin result= standardize(equiv);
   return equate(nonfinals.match(sr),result); // and add rule for |sr|
 } // |qKhatContext::standardize|
 
@@ -1431,50 +1503,36 @@ qKhatContext::saturate(const std::set<q_equation>& system, level bound)
 matrix::Matrix_base<CharCoeff> KhatContext::K_type_matrix
  (std::set<equation>& eq_set,
   level bound,
-  std::vector<seq_no>& new_order)
+  std::vector<seq_no>& new_order,
+  matrix::Matrix_base<CharCoeff>* direct_p
+  )
 {
   std::vector<equation> system=saturate(eq_set,bound);
 
-  matrix::Matrix_base<CharCoeff> m=triangularize(system,new_order);
+  matrix::Matrix_base<CharCoeff> loc; // local matrix, maybe unused
+  matrix::Matrix_base<CharCoeff>& m = direct_p==NULL ? loc : *direct_p;
 
-#ifdef VERBOSE
-  std::cout << "Ordering of representations/K-types:\n";
-  for (std::vector<seq_no>::const_iterator
-	 it=new_order.begin(); it!=new_order.end(); ++it)
-    print(std::cout,rep_no(*it)) << ", height " << height(*it)
-       << std::endl;
+  m=triangularize(system,new_order);
 
-  prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
-#endif
-
-  matrix::Matrix_base<CharCoeff>m_inv=inverse_lower_triangular(m);
-
-  return m_inv;
+  return inverse_lower_triangular(m);
 
 } // |KhatContext::K_type_matrix|
 
 matrix::Matrix_base<q_CharCoeff> qKhatContext::K_type_matrix
  (std::set<q_equation>& eq_set,
   level bound,
-  std::vector<seq_no>& new_order)
+  std::vector<seq_no>& new_order,
+  matrix::Matrix_base<q_CharCoeff>* direct_p
+  )
 {
   std::vector<q_equation> system=saturate(eq_set,bound);
 
-  matrix::Matrix_base<q_CharCoeff> m=triangularize(system,new_order);
+  matrix::Matrix_base<q_CharCoeff> loc; // local matrix, maybe unused
+  matrix::Matrix_base<q_CharCoeff>& m = direct_p==NULL ? loc : *direct_p;
 
-#ifdef VERBOSE
-  std::cout << "Ordering of representations/K-types:\n";
-  for (std::vector<seq_no>::const_iterator
-	 it=new_order.begin(); it!=new_order.end(); ++it)
-    print(std::cout,rep_no(*it)) << ", height " << height(*it)
-       << std::endl;
+  m=triangularize(system,new_order);
 
-  prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
-#endif
-
-  matrix::Matrix_base<q_CharCoeff>m_inv=inverse_lower_triangular(m);
-
-  return m_inv;
+  return inverse_lower_triangular(m);
 
 } // |qKhatContext::K_type_matrix|
 
@@ -1720,11 +1778,22 @@ template <typename C>
   partition::Partition order; incidence.cells(order,NULL);
 
   new_order.resize(n);
-  for (size_t i=0; i<n; ++i)
+  for (size_t i=0; i<n; ++i) // we abuse |i| as either a class or element
   {
-    if (order.classSize(i)>1)
+    if (order.classSize(i)>1) // all that matters is that all |i| pass here
+    {
+      incidence.reverseEdges(); // this facilitates reporting structure
+      for (size_t j=0; j<n; ++j)
+	if (order(j)==i)
+	{
+	  std::cerr << eq[j].first;
+	  for (size_t k=0; k<incidence.edgeList(j).size(); ++k)
+	    std::cerr << (k==0?"->":", ") << eq[incidence.edge(j,k)].first;
+	  std::cerr << std::endl;
+	}
       throw std::runtime_error ("triangularize: system has cycles");
-    new_order[order(i)]=eq[i].first;
+    }
+    new_order[order(i)]=eq[i].first; // this puts equation |i| in its place
   }
 
   matrix::Matrix_base<C> result(n,n,C(0));

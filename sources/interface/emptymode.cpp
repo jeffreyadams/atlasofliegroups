@@ -18,7 +18,6 @@
 #include "wgraph_io.h"
 
 #include "mainmode.h"
-#include "special.h"
 #include "test.h"
 #include "version.h"
 
@@ -81,7 +80,6 @@ commands::CommandMode& emptyMode()
     empty_mode.add("extract-graph",extract_graph_f);
     empty_mode.add("extract-cells",extract_cells_f);
 
-    special::addSpecialCommands(empty_mode,EmptymodeTag());
     test::addTestCommands(empty_mode,EmptymodeTag());
   }
   return empty_mode;

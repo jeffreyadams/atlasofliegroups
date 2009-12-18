@@ -1284,7 +1284,7 @@ redundant in the presence of a torus part.
 @.Involution should be...@>
      +str(M.numRows())+"x"+str(M.numColumns())+" matrix");
   latticetypes::LatticeMatrix Id(r),Q(M*M);
-  if (!(Q==Id)) throw std::runtime_error
+  if (Q!=Id) throw std::runtime_error
       ("Given transformation is not an involution");
 @.Given transformation...@>
 }
@@ -2010,13 +2010,6 @@ access its |interface| and |dual_interface| fields. To remind us that the
 referred to may in fact undergo internal change however, via manipulators of
 the |val| field.
 
-Another particularity is that a combinatorial set $K\backslash G/B$ is
-associated to each real reductive group. We wish to store it in association
-with the |real_form_value| but do not wish to generate it unless it is
-actually needed; this is achieved by storing an initially null pointer that
-will be set to point to a |kgb::KGB| object once one has been requested (and
-therefore constructed) a first time.
-
 We shall later derive from this structure, without adding data members, a
 structure to record dual real forms, which are constructed in the context of
 the same inner class, but where the |val| field is constructed for the dual
@@ -2028,18 +2021,16 @@ explains why the copy constructor is protected rather than private.
 struct real_form_value : public value_base
 { const inner_class_value parent;
   realredgp::RealReductiveGroup val;
-  kgb::KGB* KGB_pointer;
 @)
   real_form_value(inner_class_value p,realform::RealForm f)
-  : parent(p), val(p.val,f), KGB_pointer(NULL) @+{}
-  ~real_form_value() @+{@; delete KGB_pointer; }
+  : parent(p), val(p.val,f) @+{}
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
     {@; return new real_form_value(*this); }
   static const char* name() @+{@; return "real form"; }
-  const kgb::KGB& kgb ();
-   // generate, store and return $K\backslash G/B$ set
+  const kgb::KGB& kgb () @+{@; return val.kgb(); }
+   // generate and return $K\backslash G/B$ set
 protected:
   real_form_value(inner_class_value,realform::RealForm,tags::DualTag);
      // for dual forms
@@ -2066,16 +2057,6 @@ void real_form_value::print(std::ostream& out) const
   << "', defining a"
   << (val.isConnected() ? " connected" : " disconnected" ) @|
   << " real group" ;
-}
-
-@ By calling the |kgb| method we ensure the |kgb::KGB| object for the group is
-generated, and return it.
-
-@< Function def...@>=
-const kgb::KGB& real_form_value::kgb ()
-{ if (KGB_pointer==NULL)
-    KGB_pointer = new kgb::KGB(val,val.Cartan_set());
-  return *KGB_pointer;
 }
 
 @ To make a real form is easy, one provides an |inner_class_value| and a valid
@@ -2177,7 +2158,7 @@ correct.
 
 real_form_value::real_form_value(inner_class_value p,realform::RealForm f
 				,tags::DualTag)
-: parent(p), val(p.dual,f), KGB_pointer(NULL)
+: parent(p), val(p.dual,f)
 {}
 
 @ In order to be able to use the same layout for dual real forms but to

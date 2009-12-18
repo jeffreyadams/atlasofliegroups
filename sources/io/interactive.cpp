@@ -675,6 +675,21 @@ latticetypes::Weight get_weight(input::InputBuffer& ib,
   return result;
 }
 
+// Get a rational weight, consisting of |rank| integers, into |lambda|
+latticetypes::RatWeight get_ratweight(input::InputBuffer& ib,
+				      const char* prompt,
+				      size_t rank)
+    throw(error::InputError)
+{
+  std::string pr = "denominator for ";
+  pr += prompt;
+  unsigned long denom = get_bounded_int(ib,pr.c_str(),~0);
+  pr = "numerator for ";
+  pr += prompt;
+  latticetypes::Weight num = get_weight(ib,pr.c_str(),rank);
+  return latticetypes::RatWeight(num,denom);
+}
+
 standardrepk::StandardRepK
 get_standardrep(const standardrepk::SRK_context& c)
   throw(error::InputError)

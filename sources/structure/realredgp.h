@@ -26,6 +26,8 @@
 #include "complexredgp.h"
 #include "realform.h"
 #include "topology.h"
+#include "kgb_fwd.h"
+#include "bruhat_fwd.h"
 
 /******** type definitions **************************************************/
 
@@ -60,7 +62,8 @@ class RealReductiveGroup
   realform::RealForm d_realForm; // our identification number
   topology::Connectivity d_connectivity; // characterss of componentn group
 
-  const tits::BasedTitsGroup d_Tg;
+  const tits::BasedTitsGroup d_Tg; // no reference; the group is stored here
+  kgb::KGB* kgb_ptr; // owned pointer, but initially |NULL|
 
   Status d_status;
 
@@ -68,6 +71,7 @@ class RealReductiveGroup
 
 // constructors and destructors
   RealReductiveGroup(complexredgp::ComplexReductiveGroup&, realform::RealForm);
+  ~RealReductiveGroup(); // { delete kgb_ptr; } // not inline: type incomplete
 
 // accessors
   const complexredgp::ComplexReductiveGroup& complexGroup() const
@@ -157,14 +161,18 @@ formed by extracting only the information concerning the presence of the
     { return d_complexGroup.noncompactRoots(d_realForm); }
 
 // manipulators
+  void swap(RealReductiveGroup&);
+
   complexredgp::ComplexReductiveGroup& complexGroup()
     { return d_complexGroup; }
 
-  void swap(RealReductiveGroup&);
-};
+  const kgb::KGB& kgb();
+  const bruhat::BruhatOrder Bruhat_KGB();
 
-}
+}; // |class RealReductiveGroup|
 
-}
+} // |namespace realredgp|
+
+} // |namespace atlas|
 
 #endif
