@@ -746,60 +746,71 @@ void qKtypemat_f()
 
   ioutils::OutputFile f;
 
-  std::set<standardrepk::q_equation> singleton;
-  singleton.insert(khc.mu_equation(c.begin()->first,bound));
-
+  try
   {
-    standardrepk::q_equation init=*singleton.begin();
-    khc.print(f << "Initial formula: mu(",khc.rep_no(init.first))
-      << ") =\n";
+    std::set<standardrepk::q_equation> singleton;
+    singleton.insert(khc.mu_equation(c.begin()->first,bound));
+
     {
-      std::ostringstream s; khc.print(s,init.second);
-      ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
+      standardrepk::q_equation init=*singleton.begin();
+      khc.print(f << "Initial formula: mu(",khc.rep_no(init.first))
+	<< ") =\n";
+      {
+	std::ostringstream s; khc.print(s,init.second);
+	ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
+      }
     }
-  }
 
 #ifdef VERBOSE
 
-  std::vector<standardrepk::q_equation> system =
-    khc.saturate(singleton,bound);
-  std::cout << "System of equations:\n";
-  for (size_t i=0; i<system.size(); ++i)
-  {
-    const standardrepk::q_equation& si=system[i];
-    khc.print(std::cout<< si.first << ' ',khc.rep_no(si.first))
-      << " [" << khc.height(si.first) << "]\n     ";
-    for (standardrepk::q_combin::const_iterator
-	   it=si.second.begin(); it!=si.second.end(); ++it)
-      std::cout << '+' << it->second << "*I(" << it->first << ')';
-    std::cout << std::endl;
-  }
+    std::vector<standardrepk::q_equation> system =
+      khc.saturate(singleton,bound);
+    std::cout << "System of equations:\n";
+    for (size_t i=0; i<system.size(); ++i)
+    {
+      const standardrepk::q_equation& si=system[i];
+      khc.print(std::cout<< si.first << ' ',khc.rep_no(si.first))
+	<< " [" << khc.height(si.first) << "]\n     ";
+      for (standardrepk::q_combin::const_iterator
+	     it=si.second.begin(); it!=si.second.end(); ++it)
+	std::cout << '+' << it->second << "*I(" << it->first << ')';
+      std::cout << std::endl;
+    }
 #endif
 
-  std::vector<standardrepk::seq_no> new_order;
+    std::vector<standardrepk::seq_no> new_order;
 
 #ifdef VERBOSE
-  matrix::Matrix_base<standardrepk::q_CharCoeff> m;
-  matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
-    khc.K_type_matrix(singleton,bound,new_order,&m);
+    matrix::Matrix_base<standardrepk::q_CharCoeff> m;
+    matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
+      khc.K_type_matrix(singleton,bound,new_order,&m);
 #else
-  matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
-    khc.K_type_matrix(singleton,bound,new_order,NULL);
+    matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
+      khc.K_type_matrix(singleton,bound,new_order,NULL);
 #endif
 
-  f << "Ordering of representations/K-types:\n";
-  for (std::vector<standardrepk::seq_no>::const_iterator
-	 it=new_order.begin(); it!=new_order.end(); ++it)
-    khc.print(f,khc.rep_no(*it)) << ", height " << khc.height(*it)
-      << std::endl;
+    f << "Ordering of representations/K-types:\n";
+    for (std::vector<standardrepk::seq_no>::const_iterator
+	   it=new_order.begin(); it!=new_order.end(); ++it)
+      khc.print(f,khc.rep_no(*it)) << ", height " << khc.height(*it)
+				   << std::endl;
 
 #ifdef VERBOSE
-  prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
+    prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
 #endif
 
-  prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",
-			   standardrepk::inverse_lower_triangular(m),
-			   3);
+    prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",
+			     standardrepk::inverse_lower_triangular(m),
+			     3);
+  } // |try()|
+  catch (std::exception& e)
+  {
+    std::cerr << "error occurred: " << e.what() << std::endl;
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << "unidentified error occurred" << std::endl;
+  }
 
 } // |qKtypemat_f|
 
@@ -1092,6 +1103,9 @@ void test_f()
 
     repr::Rep_context rc(G);
     repr::StandardRepr sr = rc.sr(srk,khc,nu);
+
+    std::cout << "infinitesimal character: " << sr.gamma() << std::endl;
+
     tits::GlobalTitsElement y=rc.y(sr);
     complexredgp::ComplexReductiveGroup& dual_G=mainmode::current_dual_group();
     kgb::global_KGB dual_KGB (dual_G,tits::GlobalTitsGroup(dual_G),y);
@@ -1106,6 +1120,14 @@ void test_f()
   catch (error::InputError& e)
   {
     e("aborted");
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << "error occurrend: " << e.what() << std::endl;
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << "unidentified error occurred" << std::endl;
   }
 }
 

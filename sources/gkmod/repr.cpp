@@ -35,7 +35,7 @@ StandardRepr
   latticetypes::RatWeight theta_diff(theta.apply(diff.numerator()),
 				     diff.denominator()); // theta(lambda-nu)
   latticetypes::Weight lambda_rho = (lambda2-khc.rootDatum().twoRho())/=2;
-  return StandardRepr(x,lambda_rho,(lambda+nu+theta_diff)/=2);
+  return StandardRepr(x,lambda_rho,((lambda+nu+theta_diff)/=2).normalize());
 }
 
 // return $\lambda \in \rho+X^*$ as half-integer rational vector

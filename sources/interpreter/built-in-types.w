@@ -2579,18 +2579,19 @@ different lines after commas if necessary.
 
 @*1 Elements of some $K\backslash G/B$ set.
 %
-Associated to each real form is a set $K\backslash G/B$, and we wish to make
-available a number of functions that operate on (among other data) such
-elements; for instance each element determines an involution, corresponding
-imaginary and real subsystems of the root system, and a $\Z/2\Z$-grading of
-the imaginary root subsystem. It does not seem necessary to introduce a type
-for the set $K\backslash G/B$ (any function that needs it can take the
-corresponding real form as argument), but we do provide one for elements of
-that set. These elements contain a pointer |rf | to the |real_form_value| they
-were generated from, and thereby to their containing set $K\backslash G/B$,
-which allows operations relevant to the KGB element to be defined. Since this
-is a shared pointer, the |real_form_value| pointed to is guaranteed to exist
-as long as this |KGB_elt_value| does.
+Associated to each real form is a set $K\backslash G/B$, which was made
+available internally through the |real_form_value::kgb| method. We wish to
+make available externally a number of functions that operate on (among other
+data) elements of this set; for instance each element determines an
+involution, corresponding imaginary and real subsystems of the root system,
+and a $\Z/2\Z$-grading of the imaginary root subsystem. It does not seem
+necessary to introduce a type for the set $K\backslash G/B$ (any function that
+needs it can take the corresponding real form as argument), but we do provide
+one for elements of that set. These elements contain a pointer |rf | to the
+|real_form_value| they were generated from, and thereby to the associated set
+$K\backslash G/B$, which allows operations relevant to the KGB element to be
+defined. Since this is a shared pointer, the |real_form_value| pointed to is
+guaranteed to exist as long as this |KGB_elt_value| does.
 
 @< Type definitions @>=
 struct KGB_elt_value : public value_base
@@ -2617,7 +2618,7 @@ is currently not implemented.
 
 @< Function def...@>=
 void KGB_elt_value::print(std::ostream& out) const
-{ out << "KGB element #" << val;
+@+{@; out << "KGB element #" << val;
 }
 
 @ To make a KGB element, one provides a |real_form_value| and a valid number.
@@ -2638,7 +2639,7 @@ involution.
 
 @< Local function def...@>=
 void KGB_involution_wrapper(expression_base::level l)
-{ shared_KGB_elt x(get<KGB_elt_value>());
+{ shared_KGB_elt x = get<KGB_elt_value>();
   const kgb::KGB& kgb=x->rf->kgb();
   const complexredgp::ComplexReductiveGroup& G=x->rf->val.complexGroup();
   if (l!=expression_base::no_value)
@@ -2954,8 +2955,8 @@ void print_W_cells_wrapper(expression_base::level l)
     wrap_tuple(0);
 }
 
-@ And as last function for the moment, |print_W_graph| just gives a variation
-of the output routine of |print_W_cells|.
+@ And here is |print_W_graph|, which just gives a variation on the output
+routine of |print_W_cells|.
 
 @< Local function def...@>=
 void print_W_graph_wrapper(expression_base::level l)
@@ -2979,6 +2980,39 @@ void print_W_graph_wrapper(expression_base::level l)
   wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
 @)
   wgraph_io::printWGraph(*output_stream,wg);
+@)
+  if (l==expression_base::single_value)
+    wrap_tuple(0);
+}
+
+@ The function |test_representation| serves to experiment with the input of
+general representation parameters and they computation of the corresponding
+pair $(x,y)$.
+
+@h "standardrepk.h"
+@h "repr.h"
+
+@< Local function def...@>=
+void test_rep_wrapper(expression_base::level l)
+{
+  shared_rational_vector nu =get<rational_vector_value>();
+  shared_vector lambda_rho = get<vector_value>();
+  shared_KGB_elt x = get<KGB_elt_value>();
+
+  realredgp::RealReductiveGroup& G = x->rf->val;
+  standardrepk::KhatContext khc(G);
+  standardrepk::StandardRepK srk=
+    khc.std_rep_rho_plus(lambda_rho->val,x->rf->kgb().titsElt(x->val));
+@)
+  repr::Rep_context rc(G);
+  repr::StandardRepr sr = rc.sr(srk,khc,nu->val);
+  std::cout << "infinitesimal character: " << sr.gamma() << std::endl;
+  tits::GlobalTitsElement y=rc.y(sr);
+  complexredgp::ComplexReductiveGroup dual_G(G.complexGroup(),tags::DualTag());
+  kgb::global_KGB dual_KGB (dual_G,tits::GlobalTitsGroup(dual_G),y);
+  *output_stream << "y is element " << dual_KGB.lookup(y)
+                 << " in dual KGB set:\n";
+  kgb_io::print_X(*output_stream,dual_KGB);
 @)
   if (l==expression_base::single_value)
     wrap_tuple(0);
@@ -3047,7 +3081,7 @@ install_function(print_W_cells_wrapper,@|"print_W_cells"
 		,"(RealForm,DualRealForm->)");
 install_function(print_W_graph_wrapper,@|"print_W_graph"
 		,"(RealForm,DualRealForm->)");
-
+install_function(test_rep_wrapper,@|"test_rep","(KGBElt,vec,ratvec->)");
 
 
 
