@@ -242,7 +242,8 @@ void kgb_f()
   realredgp::RealReductiveGroup& G_R = currentRealGroup();
   std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
   ioutils::OutputFile file;
-  kgb_io::printKGB(file,kgb::KGB(G_R)); // generate traditionally, and forget
+  kgb::KGB kgb(G_R);
+  kgb_io::printKGB(file,kgb); // generate traditionally, and forget
 }
 
 // Same, but with more info and non-traditional generation
