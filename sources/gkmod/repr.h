@@ -88,6 +88,7 @@ class Rep_context
   const tits::TitsGroup& titsGroup() const { return G.titsGroup(); }
   const tits::BasedTitsGroup& basedTitsGroup() const
     { return G.basedTitsGroup(); }
+  const kgb::KGB_base& kgb() const { return KGB_set; }
 
   const weyl::TwistedInvolution twistedInvolution(size_t cn) const
     { return complexGroup().twistedInvolution(cn); }
@@ -95,6 +96,11 @@ class Rep_context
   StandardRepr
     sr(const standardrepk::StandardRepK& srk,
        const standardrepk::KhatContext& khc,
+       const latticetypes::RatWeight& nu) const;
+
+  StandardRepr
+    sr(kgb::KGBElt x,
+       const latticetypes::Weight lambda_rho,
        const latticetypes::RatWeight& nu) const;
 
   latticetypes::RatWeight lambda(const StandardRepr& rep) const; // half-integer

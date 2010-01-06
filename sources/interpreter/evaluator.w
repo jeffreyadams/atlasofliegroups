@@ -1,3 +1,12 @@
+                             * * * WARNING * * *
+
+   Unauthorized access to this computer is in violation of Article 27,
+   Sections 45A and 146 of the Annotated Code of MD.  The University may
+   monitor use of this system as permitted by state and federal law,
+   including the Electronic Communication Privacy Act, 18 U.S.C. sections
+   2510 et seq.  Anyone using this system acknowledges that all use is
+   subject to University of Maryland "Guidelines for the Acceptable Use
+   of Computing Resources" available at http://www.inform.umd.edu/aug.
 % Copyright (C) 2006-2009 Marc van Leeuwen
 % This file is part of the Atlas of Reductive Lie Groups software (the Atlas)
 

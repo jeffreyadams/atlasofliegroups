@@ -2989,7 +2989,6 @@ void print_W_graph_wrapper(expression_base::level l)
 general representation parameters and they computation of the corresponding
 pair $(x,y)$.
 
-@h "standardrepk.h"
 @h "repr.h"
 
 @< Local function def...@>=
@@ -3000,12 +2999,9 @@ void test_rep_wrapper(expression_base::level l)
   shared_KGB_elt x = get<KGB_elt_value>();
 
   realredgp::RealReductiveGroup& G = x->rf->val;
-  standardrepk::KhatContext khc(G);
-  standardrepk::StandardRepK srk=
-    khc.std_rep_rho_plus(lambda_rho->val,x->rf->kgb().titsElt(x->val));
-@)
   repr::Rep_context rc(G);
-  repr::StandardRepr sr = rc.sr(srk,khc,nu->val);
+@)
+  repr::StandardRepr sr = rc.sr(x->val,lambda_rho->val,nu->val);
   std::cout << "infinitesimal character: " << sr.gamma() << std::endl;
   tits::GlobalTitsElement y=rc.y(sr);
   complexredgp::ComplexReductiveGroup dual_G(G.complexGroup(),tags::DualTag());

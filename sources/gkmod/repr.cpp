@@ -38,6 +38,21 @@ StandardRepr
   return StandardRepr(x,lambda_rho,((lambda+nu+theta_diff)/=2).normalize());
 }
 
+StandardRepr
+  Rep_context::sr
+  (kgb::KGBElt x,
+   const latticetypes::Weight lambda_rho,
+   const latticetypes::RatWeight& nu) const
+{
+  latticetypes::RatWeight lambda(lambda_rho*2+rootDatum().twoRho(),2);
+  latticetypes::LatticeMatrix theta =
+    complexGroup().involutionMatrix(kgb().involution(x));
+  latticetypes::RatWeight diff = lambda - nu;
+  latticetypes::RatWeight theta_diff(theta.apply(diff.numerator()),
+				     diff.denominator()); // theta(lambda-nu)
+  return StandardRepr(x,lambda_rho,((lambda+nu+theta_diff)/=2).normalize());
+}
+
 // return $\lambda \in \rho+X^*$ as half-integer rational vector
 latticetypes::RatWeight Rep_context::lambda(const StandardRepr& rep) const
 {

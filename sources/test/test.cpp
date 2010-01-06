@@ -1095,14 +1095,8 @@ void test_f()
   {
     realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
 
-    standardrepk::KhatContext khc(G);
-    standardrepk::StandardRepK srk=interactive::get_standardrep(khc);
-
-    latticetypes::RatWeight nu =
-      interactive::get_ratweight(interactive::sr_input(),"nu: ",G.rank());
-
     repr::Rep_context rc(G);
-    repr::StandardRepr sr = rc.sr(srk,khc,nu);
+    repr::StandardRepr sr = interactive::get_repr(rc);
 
     std::cout << "infinitesimal character: " << sr.gamma() << std::endl;
 

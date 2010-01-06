@@ -705,6 +705,22 @@ get_standardrep(const standardrepk::SRK_context& c)
   return c.std_rep_rho_plus(lambda,c.kgb().titsElt(x));
 }
 
+repr::StandardRepr get_repr(const repr::Rep_context& c)
+  throw(error::InputError)
+{
+  unsigned long x=get_bounded_int
+    (sr_input_buffer,"Choose KGB element: ",c.kgb().size());
+
+  prettyprint::printVector(std::cout<<"2rho = ",c.rootDatum().twoRho())
+    << std::endl;
+  latticetypes::Weight lambda_rho=
+    get_weight(sr_input_buffer,"Give lambda-rho: ",c.complexGroup().rank());
+  latticetypes::RatWeight nu =
+    get_ratweight(sr_input_buffer,"nu:",c.rootDatum().rank());
+  return c.sr(x,lambda_rho,nu);
+}
+
+
 /*
   Synopsis: returns inputBuf.
 
