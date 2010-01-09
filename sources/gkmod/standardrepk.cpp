@@ -985,19 +985,39 @@ SRK_context::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 HechtSchmid
 SRK_context::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 {
-  HechtSchmid id(sr);
   const rootdata::RootDatum& rd=rootDatum();
-  tits::TitsElt a=titsElt(sr);
-  latticetypes::Weight lambda=lift(sr);
   assert(rd.isPosRoot(alpha)); // in fact it must be simple-real for |a.tw()|
 
-  // basis used is of $(1/2)X^*$, so scalar product with coroot always even
-  assert(rd.scalarProduct(lambda,alpha)%4 == 0); // the non-final condition
+  tits::TitsElt a=titsElt(sr);
 
-  {
+  latticetypes::Weight lambda = lift(sr);
+  latticetypes::SmallSubspace mod_space=
+    info(sr.d_cartan).fiber_modulus; // make a copy to be modified
+  bitset::RankFlags orth; // becomes system orthogonal to |tl| below
+  { // first assure the theta-lift of sr is dominant
+    latticetypes::Weight tl=theta_lift(sr);
+    weyl::WeylWord ww= rd.to_dominant(tl);
+    rd.act(ww,tl); // now it is dominant
+    alpha = rd.permuted_root(ww,alpha);
+    assert(tl.dot(rd.coroot(alpha))==0); // because $\alpha$ is real
+    basedTitsGroup().basedTwistedConjugate(ww,a);
+    rd.act(ww,lambda);
+    for (size_t i=ww.size(); i-->0; )
+      mod_space.apply(dual_reflection(ww[i]));
+    for (weyl::Generator i=0; i<rd.semisimpleRank(); ++i)
+      orth.set(i,tl.dot(rd.simpleCoroot(i))==0);
+  }
+  assert(rd.isPosRoot(alpha)); // no real reflections; should still be positive
+  assert(orth.any()); // since root $\alpha$ is in span
+
+  // basis used is of $(1/2)X^*$, so scalar product with coroot always even
+  assert(lambda.dot(rd.coroot(alpha))%4 == 0); // the non-final condition
+
+  { // adapt lift $\lambda$ to be orthogonal to $\alpha$
     latticetypes::Weight mu=rd.root(alpha);
-    mu *= rd.scalarProduct(lambda,alpha)/2; // an even multiple of $\alpha$
+    mu *= lambda.dot(rd.coroot(alpha))/2; // an even multiple of $\alpha$
     lambda -= mu; // this makes |lambda| invariant under $s_\alpha$
+    assert(lambda.dot(rd.coroot(alpha)) == 0); // check projection
     // due to basis used, |lambda| effectively modified by multiple of $\alpha$
     /* in type I, $\alpha$ is in $(1-\theta)X^*$ and correction is neutral
        in type II, correction need not be in $(1-\theta)X^*$, but adding
@@ -1005,35 +1025,28 @@ SRK_context::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
     */
   }
 
-  latticetypes::SmallSubspace mod_space=
-    info(sr.d_cartan).fiber_modulus; // make a copy to be modified
-
-  // again, move to situation where $\alpha$ is simple: $\alpha=\alpha_i$
-  size_t i=0; // simple root index (value will be set in following loop)
-
-  while (true) // we shall exit halfway when $\alpha=\alpha_i$
+  // the following loop terminates because $\alpha$ is in span of |orth|
+  weyl::Generator i; // become simple root index of $\alpha$
+  do
   {
-    while (not rd.is_descent(i,alpha))
-    {
-      ++i;
-      assert(i<rd.semisimpleRank());
-    }
-    // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-real
-    // and \alpha_i$ is complex for the involution |a.tw()|
-
-    if (alpha==rd.simpleRootNbr(i)) break; // found it
-
-    // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
-    rd.simple_reflect_root(alpha,i);
-    rd.simpleReflect(lambda,i);
-    basedTitsGroup().basedTwistedConjugate(a,i);
-    mod_space.apply(dual_reflection(i));
-    i=0; // and start over
+    for (bitset::RankFlags::iterator it=orth.begin(); it(); ++it)
+      if (rd.is_descent(i=*it,alpha))
+      {
+	if (alpha!=rd.simpleRootNbr(i))
+	{ // reflect all data by $s_i$, decreases level of $\alpha$
+	  rd.simple_reflect_root(alpha,i);
+	  basedTitsGroup().basedTwistedConjugate(a,i);
+	  mod_space.apply(dual_reflection(i));
+	}
+	break; // either terminate outer loop or restart iterator
+      }
   }
+  while (alpha!=rd.simpleRootNbr(i));
 
   // one right term is obtained by undoing Cayley for |a|, with lifted |lambda|
   basedTitsGroup().inverse_Cayley_transform(a,i,mod_space);
 
+  HechtSchmid id(sr); // left hand side is |sr|
   StandardRepK sr1 = std_rep(lambda,a);
   id.add_rh(sr1);
 
@@ -1283,45 +1296,45 @@ q_combin qKhatContext::standardize(const StandardRepK& sr)
     return equate(nonfinals.match(sr),result); // and add rule for |sr|
   }
 
-  if (isStandard(sr,witness))
+  if (not isStandard(sr,witness))
   {
-    { // now check if we already know |sr| to be Final
-      seq_no n=finals.find(sr);
-      if (n!=Hash::empty)
-	return q_combin(n,height_graded); // single term known to be final
-    }
+    q_Char equiv = q_HS_id_eq(sr,fiber(sr).simpleImaginary(witness));
 
-    if (isZero(sr,witness))
-    {
-      q_combin zero(height_graded);
-      return equate(nonfinals.match(sr),zero);
-    }
-
-    if (isFinal(sr,witness))
-    {
-      assert(height_of.size()==final_pool.size());
-      height_of.push_back(height(sr));
-      return q_combin(finals.match(sr),height_graded); // single term
-    }
-
-    // now |sr| is known to be Standard, but neither Zero nor Final
-
-    HechtSchmid equation= back_HS_id(sr,fiber(sr).simpleReal(witness));
-    assert(equation.n_lhs()==1); // |back_HS_id| gives 1-term left hand side
-    assert(equation.n_rhs()!=0); // and never a null right hand side
-
-    print(std::cout << "reverse Hecht-Schmid ",sr);
-    print(std::cout << " rewrites to\n  ",equation.rhs()) << std::endl;
-
-    // now recursively standardize all terms, storing rules
-    q_combin result= standardize(to_q(equation.rhs()));
+    // recursively standardize all terms of |equiv|, storing rules
+    q_combin result= standardize(equiv);
     return equate(nonfinals.match(sr),result); // and add rule for |sr|
-  } // if (isStandard(sr,witness))
+  } // if (not isStandard(sr,witness))
 
-  q_Char equiv = q_HS_id_eq(sr,fiber(sr).simpleImaginary(witness));
+  { // now check if we already know |sr| to be Final
+    seq_no n=finals.find(sr);
+    if (n!=Hash::empty)
+      return q_combin(n,height_graded); // single term known to be final
+  }
 
-  // recursively standardize all terms of |equiv|, storing rules
-  q_combin result= standardize(equiv);
+  if (isZero(sr,witness))
+  {
+    q_combin zero(height_graded);
+    return equate(nonfinals.match(sr),zero);
+  }
+
+  if (isFinal(sr,witness))
+  {
+    assert(height_of.size()==final_pool.size());
+    height_of.push_back(height(sr));
+    return q_combin(finals.match(sr),height_graded); // single term
+  }
+
+  // now |sr| is known to be Standard, but neither Zero nor Final
+
+  HechtSchmid equation= back_HS_id(sr,fiber(sr).simpleReal(witness));
+  assert(equation.n_lhs()==1); // |back_HS_id| gives 1-term left hand side
+  assert(equation.n_rhs()!=0); // and never a null right hand side
+
+  print(std::cout << "reverse Hecht-Schmid ",sr);
+  print(std::cout << " rewrites to\n  ",equation.rhs()) << std::endl;
+
+  // now recursively standardize all terms, storing rules
+  q_combin result= standardize(to_q(equation.rhs()));
   return equate(nonfinals.match(sr),result); // and add rule for |sr|
 } // |qKhatContext::standardize|
 
