@@ -211,7 +211,7 @@ void RootSystem::cons(const latticetypes::LatticeMatrix& Cartan_matrix)
     RootNbr beta = link[alpha][i];
     assert(beta<alpha); // so |coroot(beta)| is already defined
     coroot(alpha)=coroot(beta); // take a copy
-    coroot(alpha)[i]-=coroot(beta).scalarProduct(simple_root[i]); // and modify
+    coroot(alpha)[i]-=coroot(beta).dot(simple_root[i]); // and modify
   }
 
   root_perm.resize(npos,setutils::Permutation(2*npos));
@@ -339,8 +339,8 @@ template <typename I, typename O>
 
   while (first!=last)
   {
-    for (unsigned long j=0; j<rb.size(); ++j)
-      v[j] = bracket(*first,rb[j]); // $\<\alpha_{*first},\alpha_{rb[j]}^\vee>$
+    for (unsigned long i=0; i<rb.size(); ++i)
+      v[i] = bracket(*first,rb[i]); // $\<\alpha_{*first},\alpha_{rb[i]}^\vee>$
     *out = v;
     ++out, ++first;
   }
@@ -725,7 +725,7 @@ latticetypes::LatticeMatrix RootDatum::root_reflection(RootNbr alpha) const
 
 weyl::WeylWord RootDatum::reflectionWord(RootNbr alpha) const
 {
-  return toPositive(reflection(twoRho(),alpha),*this);
+  return to_dominant(reflection(twoRho(),alpha));
 }
 
 
@@ -742,7 +742,7 @@ weyl::WeylWord RootDatum::reflectionWord(RootNbr alpha) const
 weyl::WeylWord RootDatum::word_of_inverse_matrix
   (const latticetypes::LatticeMatrix& q) const
 {
-  return toPositive(q.apply(twoRho()),*this);
+  return to_dominant(q.apply(twoRho()));
 }
 
 /*!
@@ -780,6 +780,50 @@ latticetypes::Weight RootDatum::twoRho(const RootSet& rs) const
 }
 
 
+/*!\brief
+  Returns a reduced expression of the shortest |w| making |w.v| dominant
+
+  Algorithm: the greedy algorithm -- if v is not positive, there is a
+  simple coroot alpha^v such that <v,alpha^v> is < 0; then s_alpha.v takes
+  v closer to the dominant chamber.
+*/
+weyl::WeylWord RootDatum::to_dominant(latticetypes::Weight v) const
+{
+  weyl::WeylWord result;
+
+  weyl::Generator i;
+  do
+    for (i=0; i<semisimpleRank(); ++i)
+      if (v.dot(simpleCoroot(i)) < 0)
+      {
+	result.push_back(i);
+	simpleReflect(v,i);
+	break;
+      }
+  while (i<semisimpleRank());
+
+  // reverse result (action is from right to left)
+  std::reverse(result.begin(),result.end());
+  return result;
+}
+
+/*!
+\brief Writes in q the matrix represented by ww.
+
+  NOTE: not intended for heavy use. If that were the case, it would be better
+  to use the decomposition of ww into pieces, and multiply those together.
+  However, that would be for the ComplexGroup to do, as it is it that has
+  access to both the Weyl group and the root datum.
+*/
+latticetypes::LatticeMatrix RootDatum::matrix(const weyl::WeylWord& ww) const
+{
+  latticetypes::LatticeMatrix q(rank());
+
+  for (size_t i=0; i<ww.size(); ++i)
+    q *= simple_reflection(ww[i]);
+
+  return q;
+}
 
 /******** manipulators *******************************************************/
 
@@ -865,7 +909,7 @@ namespace rootdata {
 LT::LatticeMatrix dualBasedInvolution
   (const LT::LatticeMatrix& q, const RootDatum& rd)
 {
-  weyl::WeylWord ww = toPositive(-rd.twoRho(),rd);
+  weyl::WeylWord ww = rd.to_dominant(-rd.twoRho());
   return (q*rd.matrix(ww)).negative_transposed();
 }
 
@@ -909,27 +953,9 @@ void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
 {
   latticetypes::Weight v = q.apply(rd.twoRho());
 
-  q.leftMult(rd.matrix(toPositive(v,rd)));
+  q.leftMult(rd.matrix(rd.to_dominant(v)));
 }
 
-
-/*!
-\brief Writes in q the matrix represented by ww.
-
-  NOTE: not intended for heavy use. If that were the case, it would be better
-  to use the decomposition of ww into pieces, and multiply those together.
-  However, that would be for the ComplexGroup to do, as it is it that has
-  access to both the Weyl group and the root datum.
-*/
-latticetypes::LatticeMatrix RootDatum::matrix(const weyl::WeylWord& ww) const
-{
-  latticetypes::LatticeMatrix q(rank());
-
-  for (size_t i=0; i<ww.size(); ++i)
-    q *= simple_reflection(ww[i]);
-
-  return q;
-}
 
 /*! \brief Writes in q the matrix represented by the product of the
 reflections for the set of roots |rset|.
@@ -944,33 +970,6 @@ latticetypes::LatticeMatrix refl_prod(const RootSet& rset, const RootDatum& rd)
   return q;
 }
 
-
-/*!\brief
-  Returns a reduced expression of the shortest |w| making |w.v| dominant
-
-  Algorithm: the greedy algorithm -- if v is not positive, there is a
-  simple coroot alpha^v such that <v,alpha^v> is < 0; then s_alpha.v takes
-  v closer to the dominant chamber.
-*/
-weyl::WeylWord toPositive(latticetypes::Weight v, const RootDatum& rd)
-{
-  weyl::WeylWord result;
-
-  size_t j;
-  do
-    for (j=0; j<rd.semisimpleRank(); ++j)
-      if (v.scalarProduct(rd.simpleCoroot(j)) < 0)
-      {
-	result.push_back(j);
-	rd.simpleReflect(v,j);
-	break;
-      }
-  while (j<rd.semisimpleRank());
-
-  // reverse result (action is from right to left)
-  std::reverse(result.begin(),result.end());
-  return result;
-}
 
 RootDatum integrality_datum(const RootDatum& rd,
 			    const latticetypes::RatWeight& lambda)
@@ -1047,8 +1046,7 @@ public:
   {
     latticetypes::LatticeCoeff x,y;
     for (size_t k=phi.size(); k-->0; )
-      if ((x=phi[k].scalarProduct(alpha[i]))!=
-	  (y=phi[k].scalarProduct(alpha[j])))
+      if ((x=phi[k].dot(alpha[i])) != (y=phi[k].dot(alpha[j])))
 	return x<y;
 
     return false; // weights compare equal under all coweights

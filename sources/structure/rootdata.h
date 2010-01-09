@@ -55,8 +55,6 @@ void toDistinguished(LT::LatticeMatrix&, const RootDatum&);
 
 LT::LatticeMatrix refl_prod(const RootSet&, const RootDatum&);
 
-weyl::WeylWord toPositive(LT::Weight, const RootDatum&);
-
 RootDatum integrality_datum(const RootDatum& rd,
 			    const LT::RatLatticeElt& lambda);
 
@@ -94,14 +92,16 @@ class RootSystem
   std::vector<setutils::Permutation> root_perm;
 
   // internal access methods
-  byte& Cartan_entry(size_t i, size_t j) { return Cmat[i*rk+j]; }
-  const byte& Cartan_entry(size_t i, size_t j) const { return Cmat[i*rk+j]; }
-  Byte_vector& root(size_t i) { return ri[i].root;}
-  Byte_vector& coroot(size_t i) { return ri[i].dual;}
-  const Byte_vector& root(size_t i) const { return ri[i].root;}
-  const Byte_vector& coroot(size_t i) const { return ri[i].dual;}
+  byte& Cartan_entry(weyl::Generator i, weyl::Generator j)
+    { return Cmat[i*rk+j]; }
+  const byte& Cartan_entry(weyl::Generator i, weyl::Generator j) const
+    { return Cmat[i*rk+j]; }
+  Byte_vector& root(weyl::Generator i) { return ri[i].root;}
+  Byte_vector& coroot(weyl::Generator i) { return ri[i].dual;}
+  const Byte_vector& root(weyl::Generator i) const { return ri[i].root;}
+  const Byte_vector& coroot(weyl::Generator i) const { return ri[i].dual;}
   RootNbr abs(RootNbr alpha) const // offset of corresponding positive root
-  { return isPosRoot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha; }
+    { return isPosRoot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha; }
 
   void cons(const latticetypes::LatticeMatrix& Cartan_matrix); // panse bete
  public:
@@ -119,7 +119,7 @@ class RootSystem
   unsigned long numRoots() const { return 2*numPosRoots(); }
 
   // Cartan matrix by entry and as a whole
-  latticetypes::LatticeCoeff cartan(size_t i, size_t j) const
+  latticetypes::LatticeCoeff cartan(weyl::Generator i, weyl::Generator j) const
   { return Cartan_entry(i,j); };
   latticetypes::LatticeMatrix cartanMatrix() const;
   lietype::LieType Lie_type() const
@@ -153,7 +153,7 @@ class RootSystem
   bool isPosRoot(RootNbr alpha) const
   { return alpha>=numPosRoots(); } // second half
 
-  RootNbr simpleRootNbr(size_t i) const
+  RootNbr simpleRootNbr(weyl::Generator i) const
   { assert(i<rk);  return numPosRoots()+i; }
 
   RootNbr posRootNbr(size_t alpha) const
@@ -179,7 +179,7 @@ class RootSystem
   RootList simpleRootList() const // NOT for iteration over it
   {
     RootList simple_roots(rk);
-    for (size_t i=0; i<rk; ++i)
+    for (weyl::Generator i=0; i<rk; ++i)
       simple_roots[i]=simpleRootNbr(i);
     return simple_roots;
   }
@@ -194,7 +194,7 @@ class RootSystem
 // other accessors
 
   // the next method only works for _simple_ roots! (whence no RootNbr for |i|)
-  const setutils::Permutation& simple_root_permutation(size_t i) const
+  const setutils::Permutation& simple_root_permutation(weyl::Generator i) const
     { return root_perm[i]; }
 
   bitset::RankFlags descent_set(RootNbr alpha) const
@@ -211,21 +211,21 @@ class RootSystem
   size_t find_descent(RootNbr alpha) const
   { return descent_set(alpha).firstBit(); }
 
-  bool is_descent(size_t i, RootNbr alpha) const
+  bool is_descent(weyl::Generator i, RootNbr alpha) const
   { return root_perm[i][alpha]<alpha; } // easier than using |descent_set|
 
-  bool is_ascent(size_t i, RootNbr alpha) const
+  bool is_ascent(weyl::Generator i, RootNbr alpha) const
   { return root_perm[i][alpha]>alpha; }
 
-  RootNbr simple_reflected_root(RootNbr r, size_t i) const
+  RootNbr simple_reflected_root(RootNbr r, weyl::Generator i) const
   { return simple_root_permutation(i)[r]; }
 
-  void simple_reflect_root(RootNbr& r, size_t i) const
+  void simple_reflect_root(RootNbr& r, weyl::Generator i) const
   { r=simple_root_permutation(i)[r]; }
 
   RootNbr permuted_root(const weyl::WeylWord& ww, RootNbr r) const
   {
-    for (size_t i=ww.size(); i-->0; )
+    for (weyl::Generator i=ww.size(); i-->0; )
       simple_reflect_root(r,ww[i]);
     return r;
   }
@@ -419,7 +419,7 @@ use by accessors.
   const LT::Weight& root(RootNbr i) const
     { assert(i<numRoots()); return d_roots[i]; }
 
-  const LT::Weight& simpleRoot(size_t i) const
+  const LT::Weight& simpleRoot(weyl::Generator i) const
     { assert(i<semisimpleRank()); return *(beginSimpleRoot()+i); }
 
   const LT::Weight& posRoot(size_t i) const
@@ -432,16 +432,16 @@ use by accessors.
   const LT::Weight& coroot(RootNbr i) const
     { assert(i<numRoots()); return d_coroots[i]; }
 
-  const LT::Weight& simpleCoroot(size_t i) const
+  const LT::Weight& simpleCoroot(weyl::Generator i) const
     { assert(i<semisimpleRank()); return *(beginSimpleCoroot()+i); }
 
   const LT::Weight& posCoroot(size_t i) const
     { assert(i<numPosRoots()); return  *(beginPosCoroot()+i); }
 
-  LT::RatWeight fundamental_weight(size_t i) const
+  LT::RatWeight fundamental_weight(weyl::Generator i) const
     { return LT::RatWeight(weight_numer[i],Cartan_denom); }
 
-  LT::RatWeight fundamental_coweight(size_t i) const
+  LT::RatWeight fundamental_coweight(weyl::Generator i) const
     { return LT::RatWeight(coweight_numer[i],Cartan_denom); }
 
 // other accessors
@@ -479,7 +479,7 @@ use by accessors.
   bool isOrthogonal(RootNbr alpha, RootNbr j) const
     { return isOrthogonal(root(alpha),j); }
 
-  LT::LatticeCoeff cartan(size_t i, size_t j) const
+  LT::LatticeCoeff cartan(weyl::Generator i, weyl::Generator j) const
     { return simpleRoot(i).dot(simpleCoroot(j)); }
 
   //!\brief  Applies to v the reflection about root alpha.
@@ -494,23 +494,31 @@ use by accessors.
   LT::Weight coreflection(LT::Weight co_lambda, RootNbr alpha) const
     { coreflect(co_lambda,alpha); return co_lambda; }
 
-  void simpleReflect(LT::Weight& v, size_t i) const
+  void simpleReflect(LT::Weight& v, weyl::Generator i) const
     { reflect(v,simpleRootNbr(i)); }
-  void simpleCoreflect(LT::Weight& v, size_t i) const
+  void simpleCoreflect(LT::Weight& v, weyl::Generator i) const
     { coreflect(v,simpleRootNbr(i)); }
 
-  LT::Weight simpleReflection(LT::Weight lambda, size_t i) const
+  LT::Weight simpleReflection(LT::Weight lambda, weyl::Generator i) const
     { simpleReflect(lambda,i); return lambda; }
-  LT::Weight simpleCoreflection(LT::Weight co_lambda, size_t i) const
+  LT::Weight simpleCoreflection(LT::Weight co_lambda, weyl::Generator i) const
     { simpleCoreflect(co_lambda,i); return co_lambda; }
 
+  weyl::WeylWord to_dominant(LT::Weight lambda) const; // call by value
+  void act(const weyl::WeylWord& ww,LT::Weight& lambda) const
+    {
+      for (weyl::Generator i=ww.size(); i-->0; )
+	simpleReflect(lambda,ww[i]);
+    }
+  LT::Weight image_by(const weyl::WeylWord& ww,LT::Weight lambda) const
+    { act(ww,lambda); return lambda; }
 
   // here any matrix permuting the roots is allowed, e.g., root_reflection(r)
   setutils::Permutation rootPermutation(const LT::LatticeMatrix& q) const;
   // extend diagram automorphism to permutation of all roots
 
   LT::LatticeMatrix root_reflection(RootNbr r) const;
-  LT::LatticeMatrix simple_reflection(size_t i) const
+  LT::LatticeMatrix simple_reflection(weyl::Generator i) const
     { return root_reflection(simpleRootNbr(i)); }
 
   LT::LatticeMatrix matrix(const weyl::WeylWord& ww) const;
