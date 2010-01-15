@@ -408,7 +408,7 @@ void SRK_context::normalize(StandardRepK& sr) const
   const Cartan_info& ci = info(cn);
   latticetypes::Weight lambda = lift(sr);
 
-  size_t i; // number of a complex simple root
+  size_t i=~0; // number of a complex simple root
   while (not isNormal(lambda,cn,i))
     lambda -= rd.simpleRoot(i)*lambda.dot(ci.coroot_sum(i));
 
@@ -1026,7 +1026,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
   }
 
   // the following loop terminates because $\alpha$ is in span of |orth|
-  weyl::Generator i; // become simple root index of $\alpha$
+  weyl::Generator i=~0; // becomes simple root index of $\alpha$
   do
   {
     for (bitset::RankFlags::iterator it=orth.begin(); it(); ++it)
