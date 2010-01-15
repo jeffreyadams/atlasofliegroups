@@ -3005,7 +3005,7 @@ void test_rep_wrapper(expression_base::level l)
   std::cout << "infinitesimal character: " << sr.gamma() << std::endl;
   tits::GlobalTitsElement y=rc.y(sr);
   complexredgp::ComplexReductiveGroup dual_G(G.complexGroup(),tags::DualTag());
-  kgb::global_KGB dual_KGB (dual_G,tits::GlobalTitsGroup(dual_G),y);
+  kgb::global_KGB dual_KGB (dual_G,y);
   *output_stream << "y is element " << dual_KGB.lookup(y)
                  << " in dual KGB set:\n";
   kgb_io::print_X(*output_stream,dual_KGB);
