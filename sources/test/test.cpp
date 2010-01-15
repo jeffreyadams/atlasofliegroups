@@ -1102,8 +1102,7 @@ void test_f()
 
     tits::GlobalTitsElement y=rc.y(sr);
     complexredgp::ComplexReductiveGroup& dual_G=mainmode::current_dual_group();
-    tits::GlobalTitsGroup dtg(dual_G);
-    kgb::global_KGB dual_KGB (dual_G,dtg,y);
+    kgb::global_KGB dual_KGB (dual_G,y);
     ioutils::OutputFile f;
     f << "y is element " << dual_KGB.lookup(y) << " in dual KGB set:\n";
     kgb_io::print_X(f,dual_KGB);

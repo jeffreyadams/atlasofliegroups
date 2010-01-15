@@ -197,11 +197,10 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
 }
 
 global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
-		       const tits::GlobalTitsGroup& Tits_group,
 		       const tits::GlobalTitsElement& x)
   : KGB_base(G_C.twistedWeylGroup())
   , G(G_C)
-  , Tg(Tits_group)
+  , Tg(G)
   , fiber_data(G,(generate_involutions(G_C.numInvolutions()),inv_hash))
   , elt()
 {
