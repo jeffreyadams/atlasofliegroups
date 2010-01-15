@@ -45,7 +45,7 @@ namespace partition {
   |unsigned long| argument to produce an |unsigned long| result. The parameter
   |a| is such a function object; its first argument is the index $i$ of a
   generator in the range $[0,c[$, its second argument is the value acted upon,
-  which is an integer in the range $[0,n[$; the result is again a vlaue in the
+  which is an integer in the range $[0,n[$; the result is again a value in the
   range $[0,n[$. It is assumed that for any fixed $i$, the function
   $a(i,\cdot)$ defines a permutation of $[0,n[$; thus the action parameter |a|
   defines $c$ generators of a permutation subgroup of $Sym([0,n[)$. The orbits
@@ -55,8 +55,7 @@ namespace partition {
   elements that have not yet joined any orbit, and a collection $S$ of
   elements that are in the current orbit but whose acted-upon images have yet
   to be generated. The set $B$ is represented as a bitmap on $[0,n[$,
-  initially full, while $S$ is realized as a stack (but it could equally well
-  have been a queue), initially empty.
+  initially full, while $S$ is realized as a queue, initially empty.
 
   While $B$ is not empty :
 

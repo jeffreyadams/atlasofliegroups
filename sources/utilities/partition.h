@@ -23,30 +23,21 @@ acting on elements of order 2 in a torus.
 
 #include "tags.h"
 
-/******** type declarations **************************************************/
-
 namespace atlas {
 
 namespace partition {
 
+/******** type declarations **************************************************/
+
   class Partition;
   class PartitionIterator;
 
-}
-
 /******** function declarations **********************************************/
-
-namespace partition {
-
 
 template<typename F>  // F is the type of a binary function object
   Partition orbits(const F&, unsigned long, unsigned long);
 
-}
-
 /******** type definitions ***************************************************/
-
-namespace partition {
 
   /*!
  \brief Partition of some set [0,n[ into classes.
@@ -170,9 +161,10 @@ class Partition : public std::unary_function<unsigned long,unsigned long>
   void resize(unsigned long n) {
     d_class.resize(n);
   }
-};
+}; // |class Partition|
 
-class PartitionIterator {
+class PartitionIterator
+{
 /*!
   The idea is that a PartitionIterator gives a convenient way of traversing
   the classes of a partition. It is intended that PartitionIterators are
@@ -270,7 +262,7 @@ class PartitionIterator {
     d_currentEnd = d_stop.begin()+1;
   }
 
-};
+}; // |class PartitionIterator|
 
 } // namespace partition
 

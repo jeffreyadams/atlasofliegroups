@@ -110,7 +110,8 @@ template<typename C> class Matrix_base
   size_t rowSize() const { return d_columns;  }
   size_t columnSize() const { return d_rows; }
 
-  const C& operator() (size_t i,size_t j) const{ return d_data[i*d_columns+j]; }
+  const C& operator() (size_t i,size_t j)
+    const { return d_data[i*d_columns+j]; }
 
   void get_row(Vector<C>&, size_t) const;
   void get_column(Vector<C>&, size_t) const;
