@@ -799,9 +799,7 @@ void qKtypemat_f()
     prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
 #endif
 
-    prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",
-			     standardrepk::inverse_lower_triangular(m),
-			     3);
+    prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",ktypemat,3);
   } // |try()|
   catch (std::exception& e)
   {
