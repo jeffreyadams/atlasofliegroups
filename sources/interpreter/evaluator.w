@@ -1,12 +1,3 @@
-                             * * * WARNING * * *
-
-   Unauthorized access to this computer is in violation of Article 27,
-   Sections 45A and 146 of the Annotated Code of MD.  The University may
-   monitor use of this system as permitted by state and federal law,
-   including the Electronic Communication Privacy Act, 18 U.S.C. sections
-   2510 et seq.  Anyone using this system acknowledges that all use is
-   subject to University of Maryland "Guidelines for the Acceptable Use
-   of Computing Resources" available at http://www.inform.umd.edu/aug.
 % Copyright (C) 2006-2009 Marc van Leeuwen
 % This file is part of the Atlas of Reductive Lie Groups software (the Atlas)
 
@@ -3621,7 +3612,7 @@ void vector_convert()
 straightforward. Since the type of the argument was checked to be \.{[vec]},
 we can safely cast the argument pointer to |(row_value*)|, and each of its
 component pointers to |(vector_value*)|. Any ragged columns are silently
-extended will null entries to make a rectangular shape for the matrix.
+extended with null entries to make a rectangular shape for the matrix.
 
 @< Local function def... @>=
 void matrix_convert()
@@ -3863,13 +3854,6 @@ void unary_minus_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new int_value(-i)); }
 @)
-void fraction_wrapper(expression_base::level l)
-{ int d=get<int_value>()->val; int n=get<int_value>()->val;
-  if (d==0) throw std::runtime_error("fraction with zero denominator");
-  if (l!=expression_base::no_value)
-    push_value(new rat_value(arithmetic::Rational(n,d)));
-}
-@)
 void power_wrapper(expression_base::level l)
 { static shared_int one(new int_value(1));
 @/int n=get<int_value>()->val; shared_int i=get<int_value>();
@@ -3890,7 +3874,32 @@ void power_wrapper(expression_base::level l)
   push_value(new int_value(arithmetic::power(i->val,n)));
 }
 
-@ We defined similar operations for rational numbers, made possible thanks to
+@ The operator `/' will not denote integer division, but rather formation of
+fractions (rational numbers). The opposite operation of separating a rational
+number into numerator and denominator is also provided; it is essential in
+order to be able to get from rationals back into the world of integers.
+
+@< Local function definitions @>=
+
+void fraction_wrapper(expression_base::level l)
+{ int d=get<int_value>()->val; int n=get<int_value>()->val;
+  if (d==0) throw std::runtime_error("fraction with zero denominator");
+  if (l!=expression_base::no_value)
+    push_value(new rat_value(arithmetic::Rational(n,d)));
+}
+@)
+
+void unfraction_wrapper(expression_base::level l)
+{ arithmetic::Rational q=get<rat_value>()->val;
+  if (l!=expression_base::no_value)
+  { push_value(new int_value(q.numerator()));
+    push_value(new int_value(q.denominator()));
+    if (l==expression_base::single_value)
+      wrap_tuple(2);
+  }
+}
+
+@ We define arithmetic operations for rational numbers, made possible thanks to
 operator overloading.
 
 @< Local function definitions @>=
@@ -4565,8 +4574,10 @@ install_function(divide_wrapper,"\\","(int,int->int)");
 install_function(modulo_wrapper,"%","(int,int->int)");
 install_function(divmod_wrapper,"\\%","(int,int->int,int)");
 install_function(unary_minus_wrapper,"-","(int->int)");
-install_function(fraction_wrapper,"/","(int,int->rat)");
 install_function(power_wrapper,"^","(int,int->int)");
+install_function(fraction_wrapper,"/","(int,int->rat)");
+install_function(unfraction_wrapper,"%","(rat->int,int)");
+   // unary \% means ``break open''
 install_function(rat_plus_wrapper,"+","(rat,rat->rat)");
 install_function(rat_minus_wrapper,"-","(rat,rat->rat)");
 install_function(rat_times_wrapper,"*","(rat,rat->rat)");
