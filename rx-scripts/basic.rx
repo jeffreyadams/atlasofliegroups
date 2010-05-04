@@ -31,6 +31,15 @@ set sum (mat m)= { sum of columns of m }
 
 set +(string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
 
+set floor (rat a) = \ %a
+set ceil  (rat a) = -\ %-a
+
+set numer (rat a) = let (n,)=%a in n
+set denom (rat a) = let (,d)=%a in d
+
+set floor ([rat] v) = for a in v do floor(a) od
+set ceil  ([rat] v) = for a in v do  ceil(a) od
+
 set =((int,int)(x0,y0),(int,int)(x1,y1)) = x0=x1 and y0=y1
 set !=((int,int)(x0,y0),(int,int)(x1,y1)) = x0!=x1 or y0!=y1
 
