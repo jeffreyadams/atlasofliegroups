@@ -535,7 +535,7 @@ realredgp::RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
   // first get the Lie type
   lietype::LieType lt; getInteractive(lt);  // may throw an InputError
 
-  // then ket kernel generators to define the (pre-) root datum
+  // then get kernel generators to define the (pre-) root datum
   latticetypes::WeightList b; prerootdata::PreRootDatum prd;
   getInteractive(prd,b,lt); // may throw an InputError
 

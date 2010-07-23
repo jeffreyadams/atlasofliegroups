@@ -265,7 +265,7 @@ RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
 
 latticetypes::LatticeElt RootSystem::root_expr(RootNbr alpha) const
 {
-  RootNbr a=abs(alpha);
+  RootNbr a=rt_abs(alpha);
   latticetypes::LatticeElt expr(root(a).begin(),root(a).end());
   if (not isPosRoot(alpha))
     expr *= -1;
@@ -274,7 +274,7 @@ latticetypes::LatticeElt RootSystem::root_expr(RootNbr alpha) const
 
 latticetypes::LatticeElt RootSystem::coroot_expr(RootNbr alpha) const
 {
-  RootNbr a=abs(alpha);
+  RootNbr a=rt_abs(alpha);
   latticetypes::LatticeElt expr(ri[a].dual.begin(),ri[a].dual.end());
   if (not isPosRoot(alpha))
     expr *= -1;
@@ -381,15 +381,15 @@ RootSystem::bracket(RootNbr alpha, RootNbr beta) const // $\<\alpha,\beta^\vee>$
   if (isOrthogonal(alpha,beta)) // this is quick
     return 0;
 
-  const Byte_vector& row = root(abs(alpha));
-  const Byte_vector& col = coroot(abs(beta));
+  const Byte_vector& row = root(rt_abs(alpha));
+  const Byte_vector& col = coroot(rt_abs(beta));
 
   latticetypes::LatticeCoeff c=0;
   for (size_t i=0; i<rk; ++i)
     for (size_t j=0; j<rk; ++j)
       c += row[i]*Cartan_entry(i,j)*col[j];
 
-  return isPosRoot(alpha)^isPosRoot(beta) ? -c : c;
+  return isPosRoot(alpha)!=isPosRoot(beta) ? -c : c;
 }
 
 setutils::Permutation
@@ -400,9 +400,9 @@ RootSystem::extend_to_roots(const RootList& simple_image) const
 
   RootList image_reflection(rk);
 
-  // prepare roots for reflections for roots in |simple_image|
+  // prepare indexes of reflections for roots in |simple_image|
   for (size_t i=0; i<rk; ++i)
-    image_reflection[i] = abs(simple_image[i]);
+    image_reflection[i] = rt_abs(simple_image[i]);
 
   // copy images of simple roots
   for (size_t i=0; i<rk; ++i)
@@ -460,12 +460,12 @@ weyl::WeylWord RootSystem::reflectionWord(RootNbr r) const
 RootList RootSystem::simpleBasis(RootSet rs) const
 {
   rs.clear(0,numPosRoots()); // clear negative roots
-  RootSet candidates = rs; // candidates for being simple
+  RootSet candidates = rs; // make a copy that will be pruned
 
   for (RootSet::iterator it=candidates.begin(); it(); ++it)
   {
     RootNbr alpha=*it;
-    for (RootSet::iterator jt=rs.begin(); jt(); ++jt)
+    for (RootSet::iterator jt=rs.begin(); jt(); ++jt) // full positive subsystem
     {
       RootNbr beta=*jt;
       if (alpha==beta) continue; // avoid reflecting root itself
@@ -491,8 +491,8 @@ RootList RootSystem::simpleBasis(RootSet rs) const
 
 bool RootSystem::sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const
 {
-  RootNbr a = abs(alpha);
-  RootNbr b = abs(beta);
+  RootNbr a = rt_abs(alpha);
+  RootNbr b = rt_abs(beta);
 
   bool alpha_less = root_compare()(root(a),root(b));
   if (alpha_less) // compare actual levels
@@ -676,7 +676,16 @@ RootDatum::RootDatum(latticetypes::LatticeMatrix& projector,
   fillStatus();
 }
 
+RootDatum RootDatum::sub_datum(const RootList& generators) const
+{
+  typedef RootIterator<RootList::const_iterator> RI;
+  latticetypes::WeightList roots(RI(d_roots,generators.begin()),
+				 RI(d_roots,generators.end()));
+  latticetypes::WeightList coroots(RI(d_coroots,generators.begin()),
+				   RI(d_coroots,generators.end()));
 
+  return RootDatum(prerootdata::PreRootDatum(roots,coroots,rank()));
+}
 
 /******** accessors **********************************************************/
 
@@ -981,18 +990,7 @@ RootDatum integrality_datum(const RootDatum& rd,
     if (v.dot(rd.posCoroot(i))%n == 0)
       int_roots.insert(rd.posRootNbr(i));
 
-  RootList simple = rd.simpleBasis(int_roots);
-
-  latticetypes::WeightList roots;   roots.reserve(simple.size());
-  latticetypes::WeightList coroots; coroots.reserve(simple.size());
-
-  for (size_t i=0; i<simple.size(); ++i)
-  {
-    roots.push_back(rd.root(simple[i]));
-    coroots.push_back(rd.coroot(simple[i]));
-  }
-
-  return RootDatum(prerootdata::PreRootDatum(roots,coroots,rd.rank()));
+  return rd.sub_datum(rd.simpleBasis(int_roots));
 }
 
 arithmetic::RationalList integrality_points

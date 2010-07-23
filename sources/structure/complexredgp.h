@@ -37,6 +37,12 @@ namespace atlas {
 
 namespace complexredgp {
 
+  weyl::WeylElt canonicalize // return value is conjugating element
+    (weyl::TwistedInvolution& sigma,
+     const rootdata::RootDatum& rd,
+     const weyl::TwistedWeylGroup& W,
+     bitset::RankFlags gens);
+
 /* this function should NOT be made into a method, suppressing the |rd| and |W|
    parameters, as these can be be dual to those in the |ComplexReductiveGroup|!
 */
@@ -352,11 +358,11 @@ class ComplexReductiveGroup
       involution corresponding to twisted involution fixes (globally) the
       dominant chamber of the subsystem (it permutes its simple roots).
 */
-  const weyl::WeylElt
+  weyl::WeylElt
     canonicalize(weyl::TwistedInvolution& sigma, bitset::RankFlags gens) const;
 
   inline
-  const weyl::WeylElt canonicalize(weyl::TwistedInvolution& sigma) const
+  weyl::WeylElt canonicalize(weyl::TwistedInvolution& sigma) const
     { return canonicalize
 	(sigma,bitset::RankFlags(constants::lMask[semisimpleRank()]));
     }

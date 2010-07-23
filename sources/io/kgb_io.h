@@ -23,6 +23,10 @@ namespace atlas {
 
 namespace kgb_io {
 
+  std::ostream& print(std::ostream& strm,
+		      const kgb::KGB_base& kgb,
+		      const kgb::KGBEltList* which = NULL);
+
   std::ostream& printKGB(std::ostream&, const kgb::KGB&);
   std::ostream& var_print_KGB(std::ostream&,
 			      const complexredgp::ComplexReductiveGroup&,

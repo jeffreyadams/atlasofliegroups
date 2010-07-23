@@ -85,7 +85,7 @@ int getGenerators(latticetypes::RatWeightList& d_rwl,
   printCenter(std::cout,u) << std::endl;
 
   std::cout << "enter kernel generators, one per line" << std::endl;
-  std::cout << "(ad for adjoint, ? to abort):"
+  std::cout << "(ad for adjoint, sc for simply connected, ? to abort):"
 	    << std::endl;
 
   {

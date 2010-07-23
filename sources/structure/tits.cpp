@@ -566,14 +566,14 @@ bool BasedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr alpha) const
     alpha=rs.rootMinus(alpha);
 
   assert(rs.isPosRoot(alpha));
-  size_t i; // declare outside loop to allow inspection of final value
-  while (alpha!=rs.simpleRootNbr(i=rs.find_descent(alpha)))
+  weyl::Generator s; // declare outside loop, allow inspection of final value
+  while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
   {
-    basedTwistedConjugate(a,i);
-    rs.simple_reflect_root(alpha,i);
+    basedTwistedConjugate(a,s);
+    rs.simple_reflect_root(alpha,s);
   }
 
-  return simple_grading(a,i);
+  return simple_grading(a,s);
 }
 
 /* The method |naive_seed| attempts to get an initial Tits group element, for

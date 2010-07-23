@@ -38,6 +38,7 @@
 #include "standardrepk.h"
 #include "repr.h"
 #include "free_abelian.h"
+#include "setutils.h"
 #include "matreduc.h"
 #include "testrun.h"
 #include "basic_io.h"
@@ -130,7 +131,7 @@ namespace {
   Set this constant according to the requirements of the |test_f| function.
 */
   enum TestMode {EmptyMode, MainMode, RealMode, BlockMode, numTestMode};
-  const TestMode testMode = RealMode; // currently does representation test
+  const TestMode testMode = RealMode; // currently does subsystem KGB test
 
   // utilities
   const rootdata::RootDatum& currentRootDatum();
@@ -1091,19 +1092,50 @@ void test_f()
 {
   try
   {
-    realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+    realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
+    complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
+    const rootdata::RootDatum& rd = G.rootDatum();
 
-    repr::Rep_context rc(G);
-    repr::StandardRepr sr = interactive::get_repr(rc);
+    latticetypes::RatWeight lambda=
+      interactive::get_ratweight
+      (interactive::sr_input(),"lambda: ",rd.rank());
 
-    std::cout << "infinitesimal character: " << sr.gamma() << std::endl;
+    const kgb::KGB& kgb = GR.kgb();
+    unsigned long x=interactive::get_bounded_int
+      (interactive::common_input(),"KGB element: ",kgb.size());
 
-    tits::GlobalTitsElement y=rc.y(sr);
-    complexredgp::ComplexReductiveGroup& dual_G=mainmode::current_dual_group();
-    kgb::global_KGB dual_KGB (dual_G,y);
-    ioutils::OutputFile f;
-    f << "y is element " << dual_KGB.lookup(y) << " in dual KGB set:\n";
-    kgb_io::print_X(f,dual_KGB);
+    lambda = latticetypes::RatWeight
+      (lambda.numerator() +
+       G.involutionMatrix(kgb.involution(x)).apply(lambda.numerator()),
+       2*lambda.denominator());
+
+    const rootdata::RootDatum& sub_rd = rootdata::integrality_datum(rd,lambda);
+    const size_t sub_rank=sub_rd.semisimpleRank();
+    rootdata::RootList sub_simple(sub_rank); weyl::Twist twist;
+    for (size_t i=0; i<sub_rank; ++i)
+      sub_simple[i] = rd.rootNbr(sub_rd.simpleRoot(i));
+    const latticetypes::LatticeMatrix& delta = GR.distinguished();
+    for (size_t i=0; i<sub_rank; ++i)
+    {
+      twist[i] = setutils::find_index
+	(sub_simple,rd.rootNbr(delta.apply(sub_rd.simpleRoot(i))));
+      if (twist[i]==sub_rank)
+	throw std::runtime_error("Integrality subdatum not theta-stable");
+    }
+
+    std::cout << "Subsystem is of type "
+	      << dynkin::Lie_type(sub_rd.cartanMatrix())
+	      << ", with roots ";
+    basic_io::seqPrint(std::cout,sub_simple.begin(),sub_simple.end()) << ".\n";
+
+
+    const weyl::WeylGroup sub_W(sub_rd.cartanMatrix());
+    const weyl::TwistedWeylGroup sub_tW(sub_W,twist);
+
+    kgb::subsys_KGB sub (kgb,rd,sub_simple,sub_rd,sub_tW,x);
+
+    kgb_io::print(std::cout,sub);
+
   }
   catch (error::MemoryOverflow& e)
   {

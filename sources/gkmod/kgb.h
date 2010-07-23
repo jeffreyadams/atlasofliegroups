@@ -61,16 +61,17 @@ struct KGBEltInfo
    the KGB set. Indeed the basic constructor is made |protected| to emphasise
    that it is up to derived classes to actually fill the tables in the
    structure, using concrete representations for the KGB elements (possibly
-   using |tits::TitsElt|) that are mainy relevant during construction. Once
+   using |tits::TitsElt|) that are mainly relevant during construction. Once
    constructed there is no need to slice off the base object (although it
    could be done) and the full derived object can be used for instance to
    print more information about block elements than available in |KGB_base|.
  */
 class KGB_base
 {
+ protected: // available during construction from derived classes
+  const rootdata::RootDatum& rd; // needed to handle non-simple roots
   const weyl::TwistedWeylGroup& W; // hold a reference for convenience
 
- protected: // available during construction from derived classes
   struct KGBfields // data parametrized by simple reflection and KGB element
   {
     KGBElt cross_image; // cross action image
@@ -96,8 +97,10 @@ class KGB_base
 
 
  protected: // constructor is only meant for use from derived classes
-  explicit KGB_base(const weyl::TwistedWeylGroup& Wg)
-    : W(Wg)
+  explicit KGB_base(const weyl::TwistedWeylGroup& Wg,
+		    const rootdata::RootDatum& datum)
+    : rd(datum)
+    , W(Wg)
     , data(W.rank())
     , info()
     , inv_pool(), inv_hash(inv_pool)
@@ -106,7 +109,8 @@ class KGB_base
 
  public:
   KGB_base (const KGB_base& org) // copy contructor
-    : W(org.W) // share
+    : rd(org.rd)  // share
+    , W(org.W) // share
     , data(org.data)
     , info(org.info)
     , inv_pool(org.inv_pool) // copy
@@ -138,12 +142,16 @@ class KGB_base
   const gradings::Status& status(KGBElt x) const { return info[x].status; }
   gradings::Status::Value status(weyl::Generator s, KGBElt x) const
    { return status(x)[s]; }
+
+  bool root_is_descent(rootdata::RootNbr alpha, KGBElt x) const;
+  gradings::Status::Value root_status(rootdata::RootNbr alpha, KGBElt x) const;
+
   bool isAscent(weyl::Generator s, KGBElt x) const // not true for imag cpct!
     { return not isDescent(s,x)
       and not (status(s,x) == gradings::Status::ImaginaryCompact);
     }
 
-  size_t weylLength(KGBElt x) const // needed in sorting, in equal |length| case
+  size_t weylLength(KGBElt x) const // needed in sorting, in case |length| ties
     { return weylGroup().length(involution(x).w()); }
 
   weyl::TwistedInvolution nth_involution(unsigned int n) const
@@ -348,8 +356,38 @@ private:
 
 }; // |class KGB|
 
+// extract the KGB for a root subsystem
+struct subsys_KGB : public KGB_base
+{
+  subsys_KGB(const KGB_base& kgb,
+	     const rootdata::RootDatum& rd,
+	     const rootdata::RootList& subsys,
+	     const rootdata::RootDatum& sub_datum, // must be constructed before
+	     const weyl::TwistedWeylGroup& sub_W,  // call for lifetime reasons
+	     kgb::KGBElt x);
+}; // |struct subsys_KGB|
+
+/* ****************** function definitions **************************** */
+
+// general cross action in (non simple) root
+// root is given as simple root + conjugating Weyl word to simple root
+KGBElt cross(const KGB_base& kgb, KGBElt x,
+	     weyl::Generator s, weyl::WeylWord ww);
+
+// general Cayley transform in (non simple) non-compact imaginary root
+// root is given as simple root + conjugating Weyl word to simple root
+KGBElt Cayley (const KGB_base& kgb, KGBElt x,
+	       weyl::Generator s, weyl::WeylWord ww);
+
+// general inverse Cayley transform (choice) in (non simple) real root
+// root is given as simple root + conjugating Weyl word to simple root
+KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
+		       weyl::Generator s, weyl::WeylWord ww);
+
+
 } // |namespace kgb|
 
 } // |namespace atlas|
+
 
 #endif

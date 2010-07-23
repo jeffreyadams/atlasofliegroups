@@ -39,6 +39,70 @@ namespace kgb_io {
 
 
 /*
+  Basic  print of |kgb::KGB_base| object |kgb| to |strm|.
+
+  Explanation: for each parameter, we output the length, the Cartan class,
+  root types, cross-actions and Cayley transforms for each generator, and the
+  underlying root datum involution (or rather, the corresponding Weyl group
+  element). We use a '*' for undefined Cayley transforms.
+
+  NOTE: this will print reasonably on 80 columns only for groups that are
+  not too large (up to rank 4 or so). We haven't tried to go over to more
+  sophisticated formatting for larger groups.
+*/
+std::ostream& print(std::ostream& strm,
+		    const kgb::KGB_base& kgb,
+		    const kgb::KGBEltList* which)
+{
+  bool subset= which!=NULL;
+
+  // compute maximal width of entry
+  int width = ioutils::digits(kgb.size()-1,10ul);
+  int cwidth = ioutils::digits(kgb.Cartan_class(kgb.size()-1),10ul);
+  int lwidth = ioutils::digits(kgb.length(kgb.size()-1),10ul);
+  const int pad = 2;
+
+  size_t size= subset ? which->size() : kgb.size();
+  for (size_t i = 0; i<size; ++i)
+  {
+    size_t j = subset ? (*which)[i] : i;
+    strm << std::setw(width) << j << ":  ";
+
+    // print length
+    strm << std::setw(lwidth) << kgb.length(j) << std::setw(pad) << "";
+
+    // print status
+    prettyprint::printStatus(strm,kgb.status(j),kgb.rank()) << ' ';
+
+    // print cross actions
+    for (size_t s = 0; s < kgb.rank(); ++s) {
+      strm << std::setw(width+pad) << kgb.cross(s,j);
+    }
+    strm << std::setw(pad) << "";
+
+    // print Cayley transforms
+    for (size_t s = 0; s < kgb.rank(); ++s) {
+      kgb::KGBElt z = kgb.cayley(s,j);
+      if (z != kgb::UndefKGB)
+	strm << std::setw(width+pad) << z;
+      else
+	strm << std::setw(width+pad) << '*';
+    }
+    strm << std::setw(pad) << "";
+
+
+    strm << std::setw(cwidth) << kgb.Cartan_class(j) << std::setw(pad) << "";
+
+   // print root datum involution
+    prettyprint::printWeylElt(strm,kgb.involution(j),kgb.weylGroup())
+      << std::endl;
+  }
+
+  return strm;
+}
+
+
+/*
   Print the data from |kgb| to |strm|.
 
   Explanation: for each parameter, we output the length, the Cartan class,

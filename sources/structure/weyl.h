@@ -218,7 +218,7 @@ class RowBase {
 
 /*!
 \brief Right multiplication action of simple reflections on a Weyl
-group modulo a maximal parabolic subgroup.
+group modulo (to the left) a maximal parabolic subgroup.
 
 In the notation from the description of the class WeylGroup, there
 will be one Transducer object for each parabolic subquotient
@@ -683,6 +683,7 @@ public:
   /*!
      \brief Twisted conjugates element |tw| by the generator |s|:
      \f$tw:=s.tw.\delta(s)\f$. Returns length change in $\{-2,0,2\}$
+     these functions ought to have |s|,|ww| as first argument, for consistency
    */
   int twistedConjugate(TwistedInvolution& tw, Generator s) const
   {
