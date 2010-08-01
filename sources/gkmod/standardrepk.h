@@ -148,12 +148,12 @@ template <typename C>
   part of the Tits element can be replaced by an indication of the number
   |d_cartan| of the real Cartan we are considering (the Weyl group part is
   then the twisted involution for the distinguished involution in that class).
-  The (left) torus part must is explicitly represented as |d_fiberElt|; it
+  The (left) torus part is explicitly represented as |d_fiberElt|; it
   implicitly determines the real form as in the Cartan class module,
   provided the central square class (which is stored elsewhere) is known.
 
   Since we are interested only in HC modules restricted to $K$, we are
-  interested only in the character gamma restricted to $\tilde H(R)_c$.
+  interested only in the character $\gamma$ restricted to $\tilde H(R)_c$.
   Characters of the compact group $H(R)_c$ are the same as algebraic
   characters of the complexification; that is
 
@@ -164,8 +164,8 @@ template <typename C>
   ($\gamma$ restricted to $K$) is identified with an element of the
   coset-quotient $(X^* + \rho)/(1-\theta) X^*$.
 
-  This is the information held in |d_lambda|. (The name lambda refers to the
-  restriction of $\gamma$ to $\tilde H(R)_c$.) This is of type |HCParam|,
+  This is the information held in |d_lambda|. (The name $\lambda$ refers to
+  the restriction of $\gamma$ to $\tilde H(R)_c$.) This is of type |HCParam|,
   consisting of an integer vector and an integer respesenting a bit vector;
   the integer vector gives the non-torsion part of $(X^*+\rho)/(1-\theta)X^*$
   on a basis of $(1/2)X^*$ held in |KhatContext|, and the bitvector gives the

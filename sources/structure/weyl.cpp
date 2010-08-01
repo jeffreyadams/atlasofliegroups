@@ -465,6 +465,33 @@ WeylWord WeylGroup::word(const WeylElt& w) const
 }
 
 /*!
+  \brief Returns the list of all reflections (conjugates of generators).
+
+  NOTE: the ordering of the reflections is the ordering induced by our
+  operator<, which is not very significative mathematically, but has the
+  advantage that the STL search tools may be used.
+*/
+WeylEltList WeylGroup::reflections() const
+{
+  WeylEltList simple; simple.reserve(rank());
+
+  // put in simple the set of simple reflections, along internal numbering
+  for (size_t j = 0; j < rank(); ++j)
+    simple.push_back(genIn(j));
+
+  std::set<WeylElt> found;
+
+  for (size_t j = 0; j < simple.size(); ++j)
+    if (found.insert(simple[j]).second) // then generator itself still absent
+    { // generate conjugacy class of generator and insert its elements
+      WeylEltList c; conjugacyClass(c,simple[j]);
+      found.insert(c.begin(),c.end()); // add new class to result set
+    }
+
+  return WeylEltList(found.begin(),found.end()); // convert set to vector
+}
+
+/*!
   \brief Return the packed form of w. This will work only if the order of
   the group fits into an |unsigned long|, and should therefore not be used.
 
@@ -965,35 +992,27 @@ size_t TI_Entry::hashCode(size_t modulus) const
 
 namespace weyl {
 
+/*!\brief Returns the twist defined by |d| relative to |rd|.
 
-/*!
-  \brief Returns |refl| the list of all reflections (conjugates of generators).
-
-  NOTE: the ordering of the reflections is the ordering induced by our
-  operator<, which is not very significative mathematically, but has the
-  advantage that the STL search tools may be used.
+  Precondition: |d| is an involution of the \emph{based} root datum |rd|.
 */
-WeylEltList WeylGroup::reflections() const
+Twist make_twist(const rootdata::RootDatum& rd,
+		 const latticetypes::LatticeMatrix& d)
 {
-  WeylEltList simple; simple.reserve(rank());
+  latticetypes::WeightList
+    simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
 
-  // put in simple the set of simple reflections, along internal numbering
-  for (size_t j = 0; j < rank(); ++j)
-    simple.push_back(genIn(j));
+  Twist result;
 
-  std::set<WeylElt> found;
+  for (size_t i = 0; i<simple_roots.size(); ++i)
+  {
+    result[i] = setutils::find_index(simple_roots,d.apply(simple_roots[i]));
+    assert (result[i]<simple_roots.size());
+  }
 
-  for (size_t j = 0; j < simple.size(); ++j)
-    if (found.insert(simple[j]).second) // then generator still absent
-    { // generate conjugacy class of generator and insert its elements
-      WeylEltList c;
-      conjugacyClass(c,simple[j]);
-      for (size_t i = 0; i < c.size(); ++i)
-	found.insert(c[i]);
-    }
-
-  return WeylEltList(found.begin(),found.end()); // convert set to vector
+  return result;
 }
+
 
 } // |namespace weyl|
 

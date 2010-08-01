@@ -28,13 +28,17 @@ namespace repr {
 We represent the parameter of a standard representation as a triplet
 $(x,\lambda,gamma)$, where |x| is an element of the set $K\\backslash G/B$ for
 our fixed real form, $\lambda$ is a character $\lambda$ of (the $\rho$-cover
-of) $H^{\theta_x}$, and $\gamma$ is a character of the complex Lie algebra $h$.
-The latter two values are interrelated by $(1+\theta)\gamma=(1+\theta)\lambda$;
-the projection of $\gamma$ on the $+1$-eigenspace of $\theta_x$ is determined
-by this relation and is called the discrete part of $\gamma$. The difference
-with the discrete part, i.e., the projection of $\gamma$ on the
-$-1$-eigenspace, is called $\nu$, this is what we are adding with respect to
-the values encoded in |standardrepk::StandarRepK| values.
+of) $H^{\theta_x}$, and $\gamma$ is a character of the complex Lie algebra
+$h$. The latter two values are interrelated by
+$(1+\theta)\gamma=(1+\theta)\lambda$; the projection of $\gamma$ on the
+$+1$-eigenspace of $\theta_x$ is determined by this relation and is called the
+discrete part of $\gamma$. The difference with the discrete part, i.e., the
+projection of $\gamma$ on the $-1$-eigenspace, is called $\nu$, this is what
+we are adding with respect to the values encoded in
+|standardrepk::StandarRepK| values. The part of $\lambda$ that is independent
+of the discrete part of $\gamma$ is its "torsion part" (disconnected
+$H(R)_c$), which would be represented in the |blocks::Block| structure by the
+|TorusPart| component of the |TitsElt| of the dual KGB-element ($y$).
 
 Although $\gamma$ could in principle take any complex values compatible with
 $\lambda$, we shall only be interested in real values, and in fact record a

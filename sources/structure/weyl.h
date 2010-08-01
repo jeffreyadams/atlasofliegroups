@@ -37,20 +37,14 @@ namespace weyl {
 
   class Transducer;
 
-}
 
 /******** constant declarations *********************************************/
-
-namespace weyl {
 
   const unsigned char UndefValue = constants::ucharMax;
   const unsigned long UndefOrder = 0; // is never a valid value
 
-}
 
 /******** type definitions **************************************************/
-
-namespace weyl {
 
   /*!
 \brief A mapping between one interpretation of Generators and another
@@ -70,6 +64,12 @@ namespace weyl {
   */
   typedef WeylInterface Twist; // use the same implementation
 
+/******** function declaration *********************************************/
+
+Twist make_twist(const rootdata::RootDatum& rd,
+		 const latticetypes::LatticeMatrix& d);
+
+/******** main class definitions *******************************************/
 
   /*!
 \brief Element of a Weyl group.

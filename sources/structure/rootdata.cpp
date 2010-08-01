@@ -951,17 +951,15 @@ RootSet makeOrthogonal(const RootSet& o, const RootSet& subsys,
 }
 
 
-/*!
-\brief Transforms q into w.q, where w is the unique element such that
-  w.q fixes the positive Weyl chamber.
+/*! \brief Transforms q, assumed a root datum involution, into a based root
+   datum involution w.q, which fixes the positive Weyl chamber.
 
-  Note that wq is then automatically an involution, permuting the simple roots
+  Note that wq is then automatically an involution permuting the simple roots
 */
 
 void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
-{
+{ // easy implementation; using |simple_root_permutation| is more efficient
   latticetypes::Weight v = q.apply(rd.twoRho());
-
   q.leftMult(rd.matrix(rd.to_dominant(v)));
 }
 

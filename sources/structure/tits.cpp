@@ -52,9 +52,6 @@ namespace tits {
 
 namespace {
 
-weyl::Twist make_twist(const rootdata::RootDatum& rd,
-		       const latticetypes::LatticeMatrix& d);
-
 std::vector<gradings::Grading> compute_square_classes
   (const complexredgp::ComplexReductiveGroup& G);
 
@@ -120,6 +117,19 @@ GlobalTitsGroup::GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G)
 {
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
     alpha_v[i]=latticetypes::SmallBitVector(root_datum.simpleCoroot(i));
+}
+
+GlobalTitsGroup::GlobalTitsGroup(const rootdata::RootDatum& rd,
+				 const weyl::WeylGroup& W,
+				 const latticetypes::LatticeMatrix& delta)
+  : weyl::TwistedWeylGroup(W,weyl::make_twist(rd,delta))
+  , root_datum(rd)
+  , alpha_v(W.rank())
+  , square_class_gen()
+  , theta_v(delta.transposed())
+{
+  for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
+    alpha_v[i]=latticetypes::SmallBitVector(rd.simpleCoroot(i));
 }
 
 /* The code below uses Tits element representation as $t*\sigma_w*\delta_1$
@@ -190,7 +200,7 @@ namespace {
  $c$ must be $\delta$-stable to define a valid square of a strong involution,
  we certainly have $\<(1+\delta)v,c>\in2\Z$ for all root vectors $v$; thus the
  grading is trivial on the $1+\delta$-image of the root lattice, and it
- suffices to record the grading on the $\delta$-fixed simple roots.
+ suffices to record the grading on the $\delta$-fixed \emph{simple} roots.
 
  The list is formed of generators of the quotient of all possible gradings of
  those simple roots by the subgroup of gradings coming from $\delta$-fixed
@@ -259,7 +269,7 @@ std::vector<gradings::Grading> compute_square_classes
 TitsGroup::TitsGroup(const rootdata::RootDatum& rd,
 		     const weyl::WeylGroup& W,
 		     const latticetypes::LatticeMatrix& d)
-  : weyl::TwistedWeylGroup(W,make_twist(rd,d))
+  : weyl::TwistedWeylGroup(W,weyl::make_twist(rd,d))
   , d_rank(rd.rank())
   , d_simpleRoot(rd.semisimpleRank())   // set number of vectors, but not yet
   , d_simpleCoroot(rd.semisimpleRank()) // their size (which will be |d_rank|)
@@ -274,26 +284,6 @@ TitsGroup::TitsGroup(const rootdata::RootDatum& rd,
 
 namespace {
 
-/*!\brief Returns the twist defined by |d| relative to |rd|.
-
-  Precondition: |d| is an involution of the \emph{based} root datum |rd|.
-*/
-weyl::Twist make_twist(const rootdata::RootDatum& rd,
-		       const latticetypes::LatticeMatrix& d)
-{
-  latticetypes::WeightList
-    simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
-
-  weyl::Twist result;
-
-  for (size_t i = 0; i<simple_roots.size(); ++i)
-  {
-    result[i] = setutils::find_index(simple_roots,d.apply(simple_roots[i]));
-    assert (result[i]<simple_roots.size());
-  }
-
-  return result;
-}
 
 } // |namespace|
 

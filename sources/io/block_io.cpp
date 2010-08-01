@@ -117,7 +117,7 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block_base& block)
   }
 
   return strm;
-}
+} // |printBlock|
 
 
 /*

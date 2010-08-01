@@ -1082,8 +1082,8 @@ void exam_f()
 void X_f()
 {
   complexredgp::ComplexReductiveGroup& G=mainmode::currentComplexGroup();
-  tits::GlobalTitsGroup Tg(G);
-  kgb::global_KGB kgb(G,Tg);
+  tits::GlobalTitsGroup Tg(G); // this implicitly chooses base point $\delta_1$
+  kgb::global_KGB kgb(G,Tg); // build global Tits group, "all" square classes
   ioutils::OutputFile f;
   kgb_io::print_X(f,kgb);
 }
@@ -1104,24 +1104,21 @@ void test_f()
     unsigned long x=interactive::get_bounded_int
       (interactive::common_input(),"KGB element: ",kgb.size());
 
+    latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
+
     lambda = latticetypes::RatWeight
-      (lambda.numerator() +
-       G.involutionMatrix(kgb.involution(x)).apply(lambda.numerator()),
+      (lambda.numerator() + theta.apply(lambda.numerator()),
        2*lambda.denominator());
 
     const rootdata::RootDatum& sub_rd = rootdata::integrality_datum(rd,lambda);
     const size_t sub_rank=sub_rd.semisimpleRank();
-    rootdata::RootList sub_simple(sub_rank); weyl::Twist twist;
+    rootdata::RootList sub_simple(sub_rank);
     for (size_t i=0; i<sub_rank; ++i)
       sub_simple[i] = rd.rootNbr(sub_rd.simpleRoot(i));
-    const latticetypes::LatticeMatrix& delta = GR.distinguished();
-    for (size_t i=0; i<sub_rank; ++i)
-    {
-      twist[i] = setutils::find_index
-	(sub_simple,rd.rootNbr(delta.apply(sub_rd.simpleRoot(i))));
-      if (twist[i]==sub_rank)
-	throw std::runtime_error("Integrality subdatum not theta-stable");
-    }
+
+    latticetypes::LatticeMatrix delta = theta;
+    rootdata::toDistinguished(delta,sub_rd);
+    weyl::Twist twist = weyl::make_twist(sub_rd,delta);
 
     std::cout << "Subsystem is of type "
 	      << dynkin::Lie_type(sub_rd.cartanMatrix())

@@ -175,6 +175,7 @@ void KGB_base::add_element
 
 */
 
+// create structure incorporating all KGB structures for a given inner class
 global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
 		       const tits::GlobalTitsGroup& Tits_group)
   : KGB_base(G_C.twistedWeylGroup(),G_C.rootDatum())
@@ -198,7 +199,8 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
       gradings::Grading gr=bitvector::combination
 	(Tg.square_class_generators(),bitset::RankFlags(c));
       latticetypes::RatWeight rw (G.rank());
-      for (gradings::Grading::iterator it=gr.begin(); it(); ++it)
+      for (gradings::Grading::iterator // for flagged (imaginary) simple roots
+	     it=gr.begin(); it(); ++it)
 	rw += G.rootDatum().fundamental_coweight(*it); // a sum of f. coweights
 
       tits::TorusElement t(rw/=2); // halve: image of $x\mapsto\exp(\pi\ii x)$
@@ -312,7 +314,7 @@ void global_KGB::generate_involutions(size_t n)
 
 void global_KGB::generate(size_t predicted_size)
 {
-  const weyl::TwistedWeylGroup& W = Tg;
+  const weyl::TwistedWeylGroup& W = Tg; // for when |GlobalTitsGroup| not used
 
   KGB_elt_entry::Pooltype elt_pool; elt_pool.reserve(predicted_size);
   hashtable::HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
@@ -816,7 +818,7 @@ subsys_KGB::subsys_KGB(const KGB_base& kgb,
  	if (sub_W.twisted(s)==s) // imaginary
  	{
 	  KGBElt y=kgb::cross(kgb,x,simple_of[s],to_simple[s]);
- 	  assert(kgb.involution(y)==triv); // stay in fundamental fiber
+ 	  assert(kgb.involution(y)==kgb.involution(x)); // stay in fiber
 	  if (not seen.isMember(y))
 	  {
 	    seen.insert(y);
@@ -948,7 +950,7 @@ GlobalFiberData::GlobalFiberData
     }
 
     to_do.assign(1,first);
-    seen.insert(first); // we don't bother to remove old memebers from |seen|
+    seen.insert(first); // we don't bother to remove old members from |seen|
 
     for (size_t i=0; i<to_do.size(); ++i) // |to_do| grows during the loop
       for (size_t s=0; s<G.semisimpleRank(); ++s)

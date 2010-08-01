@@ -256,7 +256,7 @@ class global_KGB : public KGB_base
 \brief Represents the orbits of K on G/B for a particular real form.
 
 This class adds some information with respect to that kept in |KGB_base|, and
-most importantly carries out the actual filling of the bas object. As
+most importantly carries out the actual filling of the base object. As
 additional data that are held in this derived class there is the
 |BasedTitsGroup| used during construction, and the torus parts (relative to
 the base point) that distinguish elements in the same fiber. This class also

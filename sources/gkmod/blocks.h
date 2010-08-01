@@ -221,8 +221,6 @@ non-vanishing KL polynomial.
 // copy, assignment and swap
 
 // accessors
-
-
   //! \brief the simple roots occurring in reduced expression |involution(z)|
   const bitset::RankFlags& involutionSupport(size_t z) const
   {

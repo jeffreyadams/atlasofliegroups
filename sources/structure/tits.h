@@ -155,7 +155,25 @@ class GlobalTitsElement
 
 }; // |class GlobalTitsElement|
 
+/*
+  |GlobalTitsGroup| is a support class for working with |GlobalTitsElement|
+   values. The main purpose is to allow defining cross actions and (inverse)
+   Cayley transforms of such elements, producing new ones. The modular
+   reduction of the |TorusElement| component that could be applied after
+   Cayley transforms (and should be for deciding equality) is not implemented
+   here, since it depends on the twisted involution in a way that is more
+   efficiently handled by tabulation than by on-the-fly computation (cf.
+   |kgb::GlobalFiberData|).
 
+   This class has two applications: the main one is to be able to manipulate a
+   given |GlobalTitsElement| (assumed to be valid), but for testing purposes
+   an initial application was to build a |GlobalTitsGroup| first (from an
+   inner class), and then to generate "all" valid elements for it. For the
+   latter purpose the |square_class_gen| and associated method are included,
+   which permits listing a set of initial elements from which others can be
+   deduced. For the main application however this field can be left an empty
+   list, so as not to waste any time computing it during construction.
+ */
 class GlobalTitsGroup : public weyl::TwistedWeylGroup
 {
   const rootdata::RootDatum& root_datum; // needed to access simple roots
@@ -172,6 +190,11 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
  public:
   //!\brief constructor for inner class (use after latter is fully constructed)
   GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G);
+
+  //!\brief constructor from abstract root datum
+  GlobalTitsGroup(const rootdata::RootDatum& rd,
+		  const weyl::WeylGroup& W,
+		  const latticetypes::LatticeMatrix& delta);
 
   // accessors
 
@@ -593,7 +616,7 @@ struct TE_Entry // To allow hash tables of TitsElt values
 The class |BasedTitsGroup| augments the |TitsGroup| class with the choice of a
 basic strong involution $\delta$, which is needed to define the additional
 methods |simple_grading|, |basedTwistedConjugate| and |Cayley_transform|
-(although the latter happens do have an implementation independent of \delta).
+(although the latter happens to have an implementation independent of \delta).
 
 All |TitsElement| values $t.\sigma_w$ get reinterpreted as $t.\sigma_w.\delta$
 We are no longer in a group, but in a coset of the group, the name TitsCoset
