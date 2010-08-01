@@ -2830,6 +2830,21 @@ void print_KGB_wrapper(expression_base::level l)
     wrap_tuple(0);
 }
 
+@ The function |print_X| even takes only an inner class as argument.
+
+@< Local function def...@>=
+void print_X_wrapper(expression_base::level l)
+{ shared_inner_class ic(get<inner_class_value>());
+@)
+  complexredgp::ComplexReductiveGroup& G=ic->val;
+  tits::GlobalTitsGroup Tg(G); // this implicitly chooses base point $\delta_1$
+  kgb::global_KGB kgb(G,Tg); // build global Tits group, "all" square classes
+  kgb_io::print_X(*output_stream,kgb);
+@)
+  if (l==expression_base::single_value)
+    wrap_tuple(0);
+}
+
 @ The function |print_KL_basis| behaves much like |print_block| as far as
 parametrisation is concerned.
 
@@ -3065,8 +3080,8 @@ install_function(print_blockd_wrapper,@|"print_blockd"
 		,"(RealForm,DualRealForm->)");
 install_function(print_blockstabilizer_wrapper,@|"print_blockstabilizer"
 		,"(RealForm,DualRealForm,CartanClass->)");
-install_function(print_KGB_wrapper,@|"print_KGB"
-		,"(RealForm->)");
+install_function(print_KGB_wrapper,@|"print_KGB","(RealForm->)");
+install_function(print_X_wrapper,@|"print_X","(InnerClass->)");
 install_function(print_KL_basis_wrapper,@|"print_KL_basis"
 		,"(RealForm,DualRealForm->)");
 install_function(print_prim_KL_wrapper,@|"print_prim_KL"
