@@ -53,6 +53,8 @@ RootSet makeOrthogonal(const RootSet& o, const RootSet& subsys,
 
 void toDistinguished(LT::LatticeMatrix&, const RootDatum&);
 
+weyl::WeylWord to_simple(const RootSystem& rs, RootList& Delta);
+
 LT::LatticeMatrix refl_prod(const RootSet&, const RootDatum&);
 
 RootDatum integrality_datum(const RootDatum& rd,
@@ -88,6 +90,8 @@ class RootSystem
 
   std::vector<root_info> ri; //!< List of information about positive roots
 
+  matrix::Vector<int> two_rho_in_simple_roots;
+
 //!\brief Root permutations induced by reflections in positive roots.
   std::vector<setutils::Permutation> root_perm;
 
@@ -96,10 +100,10 @@ class RootSystem
     { return Cmat[i*rk+j]; }
   const byte& Cartan_entry(weyl::Generator i, weyl::Generator j) const
     { return Cmat[i*rk+j]; }
-  Byte_vector& root(weyl::Generator i) { return ri[i].root;}
-  Byte_vector& coroot(weyl::Generator i) { return ri[i].dual;}
-  const Byte_vector& root(weyl::Generator i) const { return ri[i].root;}
-  const Byte_vector& coroot(weyl::Generator i) const { return ri[i].dual;}
+  Byte_vector& root(RootNbr i) { return ri[i].root;}
+  Byte_vector& coroot(RootNbr i) { return ri[i].dual;}
+  const Byte_vector& root(RootNbr i) const { return ri[i].root;}
+  const Byte_vector& coroot(RootNbr i) const { return ri[i].dual;}
   RootNbr rt_abs(RootNbr alpha) const // offset of corresponding positive root
     { return isPosRoot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha; }
 
@@ -134,8 +138,9 @@ class RootSystem
 
 // root list access
 
-  latticetypes::LatticeElt root_expr(RootNbr alpha) const;  // in simple roots
-  latticetypes::LatticeElt coroot_expr(RootNbr alpha) const;// in simple coroots
+  // express root in simple root basis, or coroot in simple coroot basis
+  latticetypes::LatticeElt root_expr(RootNbr alpha) const;
+  latticetypes::LatticeElt coroot_expr(RootNbr alpha) const;
 
   // convert sequence of root numbers to expressions in the simple roots
   template <typename I, typename O>
@@ -230,6 +235,12 @@ class RootSystem
     return r;
   }
 
+  RootNbr permuted_root(RootNbr r,const weyl::WeylWord& ww) const
+  {
+    for (weyl::Generator i=0; i<ww.size(); ++i)
+      simple_reflect_root(r,ww[i]);
+    return r;
+  }
 
   // for arbitrary roots, reduce root number to positive root offset first
   const setutils::Permutation& root_permutation(RootNbr alpha) const
@@ -251,6 +262,9 @@ class RootSystem
 
 
   weyl::WeylWord reflectionWord(RootNbr r) const;
+
+  // express sum of roots positive for |Delta| in fundamental weights
+  matrix::Vector<int> pos_system_vec(const RootList& Delta) const;
 
   RootList simpleBasis(RootSet rs) const; // find simple basis for subsystem
 

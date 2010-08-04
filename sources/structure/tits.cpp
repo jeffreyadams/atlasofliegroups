@@ -125,7 +125,7 @@ GlobalTitsGroup::GlobalTitsGroup(const rootdata::RootDatum& rd,
   : weyl::TwistedWeylGroup(W,weyl::make_twist(rd,delta))
   , root_datum(rd)
   , alpha_v(W.rank())
-  , square_class_gen()
+  , square_class_gen() // remains empty when this constructor is used
   , theta_v(delta.transposed())
 {
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2

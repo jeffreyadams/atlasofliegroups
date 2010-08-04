@@ -26,8 +26,6 @@
 #include <set>
 #include <stdexcept>
 
-#include <iostream>
-
 #include "bitmap.h"
 #include "bruhat.h"
 #include "cartanclass.h"
@@ -42,6 +40,12 @@
 #include "tits.h"
 #include "tori.h"
 #include "weyl.h"
+
+#include <iostream>
+#include <iomanip>
+#include "basic_io.h"
+#include "prettyprint.h"
+#include "ioutils.h"
 
 /*
   This module contains code for the construction of a block in the
@@ -286,6 +290,10 @@ kgb::KGBElt global_KGB::lookup(const tits::GlobalTitsElement& a) const
   return size(); // report failure
 }
 
+std::ostream& global_KGB::print(std::ostream& strm, KGBElt x) const
+{
+  return strm << torus_part(x).as_rational();
+}
 
 /*
 
@@ -529,6 +537,11 @@ KGBElt KGB::lookup(const tits::TitsElt& a, const tits::TitsGroup& Tg) const
   return size(); // report failure
 }
 
+std::ostream& KGB::print(std::ostream& strm, KGBElt x) const
+{
+  return prettyprint::prettyPrint(strm,torus_part(x));
+}
+
 /*
 
      The KGB class, private manipulators
@@ -748,13 +761,15 @@ subsys_KGB::subsys_KGB(const KGB_base& kgb,
 		       const weyl::TwistedWeylGroup& sub_W,
 		       kgb::KGBElt x)
 : KGB_base(sub_W,sub_datum)
+, to_simple(sub_W.rank())
+, simple_of(sub_W.rank())
+, in_parent()
+, in_child(kgb.size(),UndefKGB)
 {
   assert(rd.rank()==sub_datum.rank());
   assert(sub_W.rank()==subsys.size());
 
   size_t sub_rank = subsys.size();
-  std::vector<weyl::WeylWord> to_simple(sub_rank);
-  std::vector<weyl::Generator> simple_of(sub_rank);
   const bitset::RankFlags full(constants::lMask[sub_rank]);
 
   for (size_t i=0; i<subsys.size(); ++i) // conjugate pos->simple, record path
@@ -790,11 +805,8 @@ subsys_KGB::subsys_KGB(const KGB_base& kgb,
   }
 
   // set up mapping tables in two directions
-  bitmap::BitMap seen(kgb.size());
-  seen.insert(x);
-  std::vector<KGBElt> in_parent (1,x); // map element 0 to |x|
-  std::vector<KGBElt> in_child (kgb.size(),UndefKGB);
-  in_child[x]=0;
+  bitmap::BitMap seen(kgb.size()); seen.insert(x);
+  in_parent.push_back(x); in_child[x]=0; // map element 0 to |x|
 
   weyl::TI_Entry::Pooltype canonical_pool;
   hashtable::HashTable<weyl::TI_Entry,unsigned int>
@@ -865,7 +877,7 @@ subsys_KGB::subsys_KGB(const KGB_base& kgb,
 	info[cur].status.set(s,kgb.root_status(subsys[s],x));
 	info[cur].desc.set(s,kgb.root_is_descent(subsys[s],x));
 
-	if (status(s,cur) == gradings::Status::ImaginaryNoncompact) // do Cayley
+	if (status(s,cur)==gradings::Status::ImaginaryNoncompact) // do Cayley
 	{
 	  k=inv_hash.match(sub_W.prod(s,source));
 	  assert(k<first_of_tau.size()); // at most one new twisted involution
@@ -901,6 +913,13 @@ subsys_KGB::subsys_KGB(const KGB_base& kgb,
 
 
 }
+
+std::ostream& subsys_KGB::print(std::ostream& strm, KGBElt x) const
+{
+  int width = ioutils::digits(in_child.size()-1,10ul);
+  return strm << "(=" << std::setw(width)<< in_parent[x] << ')';
+}
+
 
 /*****************************************************************************
 

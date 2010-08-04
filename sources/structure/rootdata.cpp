@@ -123,6 +123,7 @@ RootSystem::RootSystem(const latticetypes::LatticeMatrix& Cartan_matrix)
   : rk(Cartan_matrix.numRows())
   , Cmat(rk*rk) // filled below
   , ri()
+  , two_rho_in_simple_roots(rk,0)
   , root_perm()
 {
   if (rk>0)
@@ -157,6 +158,8 @@ void RootSystem::cons(const latticetypes::LatticeMatrix& Cartan_matrix)
 	   it=roots_of_length[l].begin(); it!=roots_of_length[l].end(); ++it)
     {
       const Byte_vector& alpha = *it;
+      for (size_t i=0; i<rk; ++i)
+	two_rho_in_simple_roots[i]+=alpha[i]; // sum positive root expressions
 
       const RootNbr cur = ri.size();
       ri.push_back(root_info(alpha)); // add new positive root to the list
@@ -250,6 +253,7 @@ RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
   : rk(rs.rk)
   , Cmat(rs.Cmat) // transposed below
   , ri(rs.ri)     // entries modified internally in non simply laced case
+  , two_rho_in_simple_roots(rs.two_rho_in_simple_roots) // similar
   , root_perm(rs.root_perm) // unchanged
 {
   bool simply_laced = true;
@@ -259,8 +263,16 @@ RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
 	simply_laced = false , std::swap(Cartan_entry(i,j),Cartan_entry(j,i));
 
   if (not simply_laced)
+  {
+    two_rho_in_simple_roots.assign(rk,0); // clear before recomputation
     for (RootNbr alpha=0; alpha<numPosRoots(); ++alpha)
+    {
       root(alpha).swap(coroot(alpha)); // |descent|, |ascent| are OK
+      const Byte_vector& a=root(alpha);
+      for (size_t i=0; i<rk; ++i)
+	two_rho_in_simple_roots[i]+=a[i]; // sum positive root expressions
+    }
+  }
 }
 
 latticetypes::LatticeElt RootSystem::root_expr(RootNbr alpha) const
@@ -456,6 +468,15 @@ weyl::WeylWord RootSystem::reflectionWord(RootNbr r) const
   return result;
 }
 
+matrix::Vector<int> RootSystem::pos_system_vec(const RootList& Delta) const
+{
+  assert(Delta.size()==rk); // must be an image of $\Delta^+$
+  matrix::Vector<int> coef(rk,0); // coefficients of simple roots in result
+  for (weyl::Generator s=0; s<rk; ++s)
+    coef += root_expr(Delta[s])*=two_rho_in_simple_roots[s];
+
+  return cartanMatrix().right_apply(coef); // transform to fundamental weights
+}
 
 RootList RootSystem::simpleBasis(RootSet rs) const
 {
@@ -962,6 +983,38 @@ void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
   latticetypes::Weight v = q.apply(rd.twoRho());
   q.leftMult(rd.matrix(rd.to_dominant(v)));
 }
+
+/*
+   Transform, using the Weyl group, the image |Delta| of simple system back to
+   that system as a set, possibly permuted by a twist. At return |Delta|
+   represents that twist, and return value transforms it to original |Delta|
+ */
+weyl::WeylWord to_simple(const RootSystem& rs, RootList& Delta)
+{
+  weyl::WeylWord result;
+  const size_t rank=rs.rank();
+  matrix::Vector<int> v = rs.pos_system_vec(Delta);
+  weyl::Generator s;
+  do
+    for (s=0; s<rank; ++s)
+      if (v[s]<0)
+      {
+	result.push_back(s);
+	int c=-v[s]; // save scalar factor which is modified halfway in loop
+	for (size_t j=0; j<rank; ++j) // apply reflection |s| to |v|
+	  v[j]+=c*rs.cartan(s,j);
+	break;
+      }
+  while (s<rank);
+
+  for (size_t i=0; i<rank; ++i)
+  {
+    Delta[i]=rs.permuted_root(Delta[i],result);
+    assert(rs.isSimpleRoot(Delta[i])); // should have made every root simple
+  }
+  return result;
+}
+
 
 
 /*! \brief Writes in q the matrix represented by the product of the

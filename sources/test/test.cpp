@@ -1116,15 +1116,21 @@ void test_f()
     for (size_t i=0; i<sub_rank; ++i)
       sub_simple[i] = rd.rootNbr(sub_rd.simpleRoot(i));
 
-    latticetypes::LatticeMatrix delta = theta;
-    rootdata::toDistinguished(delta,sub_rd);
-    weyl::Twist twist = weyl::make_twist(sub_rd,delta);
+    rootdata::RootList Delta(sub_rank);
+    for (size_t i=0; i<sub_rank; ++i)
+      Delta[i]=sub_rd.rootNbr(theta.apply(sub_rd.simpleRoot(i)));
+    weyl::WeylWord ww = rootdata::to_simple(sub_rd,Delta); // modifies |Delta|
+
+    weyl::Twist twist;
+    for (size_t i=0; i<sub_rank; ++i)
+      twist[i] = sub_rd.simpleRootIndex(Delta[i]);
 
     std::cout << "Subsystem is of type "
 	      << dynkin::Lie_type(sub_rd.cartanMatrix())
 	      << ", with roots ";
     basic_io::seqPrint(std::cout,sub_simple.begin(),sub_simple.end()) << ".\n";
 
+    std::cout << "Twisted involution in subsystem: " << ww << std::endl;
 
     const weyl::WeylGroup sub_W(sub_rd.cartanMatrix());
     const weyl::TwistedWeylGroup sub_tW(sub_W,twist);

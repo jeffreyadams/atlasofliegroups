@@ -29,6 +29,8 @@ representing orbits of K on G/B.
 #include "gradings.h"
 #include "hashtable.h"
 
+#include <iostream> // for virtual print method
+
 namespace atlas {
 
 namespace kgb {
@@ -117,6 +119,8 @@ class KGB_base
     , inv_hash(inv_pool) // reconstruct, using our own |pool|
     , first_of_tau(org.first_of_tau)
   {}
+
+  virtual ~KGB_base(){} // maybe overly cautious; no |KGB_base*| is intended
 // accessors
 
   size_t rank() const { return data.size(); } // number of simple reflections
@@ -160,6 +164,10 @@ class KGB_base
   // range of KGB elements with given twisted involution, needed for block
   KGBEltPair tauPacket(const weyl::TwistedInvolution&) const;
   size_t packet_size(const weyl::TwistedInvolution&) const;
+
+// virtual method
+  virtual std::ostream& print(std::ostream& strm, KGBElt x) const
+  { return strm; }
 
  protected:
   void reserve (size_t n); // prepare for generating |n| elements
@@ -243,6 +251,9 @@ class global_KGB : public KGB_base
 
   bool compact(rootdata::RootNbr alpha, const tits::GlobalTitsElement& a) const;
   kgb::KGBElt lookup(const tits::GlobalTitsElement& x) const;
+
+// virtual method
+  virtual std::ostream& print(std::ostream& strm, KGBElt x) const;
 
  private:
   void generate_involutions(size_t n);
@@ -347,6 +358,9 @@ and in addition the Hasse diagram (set of all covering relations).
   const poset::Poset& bruhatPoset() // this creates full poset on demand
   { return bruhatOrder().poset(); }
 
+// virtual method
+  virtual std::ostream& print(std::ostream& strm, KGBElt x) const;
+
 // private methods
 private:
   size_t generate
@@ -359,12 +373,21 @@ private:
 // extract the KGB for a root subsystem
 struct subsys_KGB : public KGB_base
 {
+  std::vector<weyl::WeylWord> to_simple;
+  std::vector<weyl::Generator> simple_of;
+  std::vector<KGBElt> in_parent; // map elements back to parent
+  std::vector<KGBElt> in_child; // partial map back
+
   subsys_KGB(const KGB_base& kgb,
 	     const rootdata::RootDatum& rd,
 	     const rootdata::RootList& subsys,
 	     const rootdata::RootDatum& sub_datum, // must be constructed before
 	     const weyl::TwistedWeylGroup& sub_W,  // call for lifetime reasons
 	     kgb::KGBElt x);
+
+// virtual method
+  virtual std::ostream& print(std::ostream& strm, KGBElt x) const;
+
 }; // |struct subsys_KGB|
 
 /* ****************** function definitions **************************** */

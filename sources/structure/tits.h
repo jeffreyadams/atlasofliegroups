@@ -197,7 +197,7 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
 		  const latticetypes::LatticeMatrix& delta);
 
   // accessors
-
+  const rootdata::RootDatum& rootDatum() const { return root_datum; }
   size_t semisimple_rank() const { return alpha_v.size(); }
   size_t rank() const { return theta_v.numRows(); }
 

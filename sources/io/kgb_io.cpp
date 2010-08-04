@@ -52,6 +52,8 @@ namespace kgb_io {
 */
 std::ostream& print(std::ostream& strm,
 		    const kgb::KGB_base& kgb,
+		    bool traditional,
+		    const complexredgp::ComplexReductiveGroup* G,
 		    const kgb::KGBEltList* which)
 {
   bool subset= which!=NULL;
@@ -71,6 +73,12 @@ std::ostream& print(std::ostream& strm,
     // print length
     strm << std::setw(lwidth) << kgb.length(j) << std::setw(pad) << "";
 
+    if (traditional)  // print Cartan class here in traditional mode
+    {
+      strm << std::setw(cwidth) << kgb.Cartan_class(j)
+	   << std::setw(pad) << "";
+    }
+
     // print status
     prettyprint::printStatus(strm,kgb.status(j),kgb.rank()) << ' ';
 
@@ -81,17 +89,24 @@ std::ostream& print(std::ostream& strm,
     strm << std::setw(pad) << "";
 
     // print Cayley transforms
-    for (size_t s = 0; s < kgb.rank(); ++s) {
+    for (size_t s = 0; s < kgb.rank(); ++s)
+    {
       kgb::KGBElt z = kgb.cayley(s,j);
       if (z != kgb::UndefKGB)
 	strm << std::setw(width+pad) << z;
       else
 	strm << std::setw(width+pad) << '*';
     }
+
     strm << std::setw(pad) << "";
-
-
-    strm << std::setw(cwidth) << kgb.Cartan_class(j) << std::setw(pad) << "";
+    if (not traditional)
+    {
+      kgb.print(strm,j); // virtual print method
+      strm << (G!=NULL and
+	       kgb.involution(j)==G->twistedInvolution(kgb.Cartan_class(j))
+	       ? '#' : ' ')
+	   << std::setw(cwidth) << kgb.Cartan_class(j) << ' ';
+    }
 
    // print root datum involution
     prettyprint::printWeylElt(strm,kgb.involution(j),kgb.weylGroup())
@@ -102,111 +117,27 @@ std::ostream& print(std::ostream& strm,
 }
 
 
-/*
-  Print the data from |kgb| to |strm|.
-
-  Explanation: for each parameter, we output the length, the Cartan class,
-  root types, cross-actions and Cayley transforms for each generator, and the
-  underlying root datum involution (or rather, the corresponding Weyl group
-  element). We use a '*' for undefined Cayley transforms.
-
-  NOTE: this will print reasonably on 80 columns only for groups that are
-  not too large (up to rank 4 or so). We haven't tried to go over to more
-  sophisticated formatting for larger groups.
-*/
-std::ostream& print(std::ostream& strm,
-		    const kgb::KGB& kgb,
-		    const complexredgp::ComplexReductiveGroup* G,
-		    const kgb::KGBEltList* which)
-{
-  bool extra= G!=NULL;
-  bool subset= which!=NULL;
-  bool traditional = not (extra or subset);
-
-  if (not traditional)
-    prettyprint::prettyPrint(strm << "Base grading: [",
-			     kgb.base_grading(),kgb.rank()) << "].\n";
-  // compute maximal width of entry
-  int width = ioutils::digits(kgb.size()-1,10ul);
-  int cwidth = ioutils::digits(kgb.Cartan_class(kgb.size()-1),10ul);
-  int lwidth = ioutils::digits(kgb.length(kgb.size()-1),10ul);
-  const int pad = 2;
-
-  size_t size= subset ? which->size() : kgb.size();
-  for (size_t i = 0; i<size; ++i)
-  {
-    size_t j = subset ? (*which)[i] : i;
-    strm << std::setw(width) << j << ":  ";
-
-    // print length
-    strm << std::setw(lwidth) << kgb.length(j);
-    strm << std::setw(pad) << "";
-
-    if (traditional)  // print Cartan class (in traditional mode)
-    {
-      strm << std::setw(cwidth) << kgb.Cartan_class(j);
-      strm << std::setw(pad) << "";
-    }
-
-    // print status
-    prettyprint::printStatus(strm,kgb.status(j),kgb.rank());
-    strm << ' ';
-
-    // print cross actions
-    for (size_t s = 0; s < kgb.rank(); ++s) {
-      strm << std::setw(width+pad) << kgb.cross(s,j);
-    }
-    strm << std::setw(pad) << "";
-
-    // print Cayley transforms
-    for (size_t s = 0; s < kgb.rank(); ++s) {
-      kgb::KGBElt z = kgb.cayley(s,j);
-      if (z != kgb::UndefKGB)
-	strm << std::setw(width+pad) << z;
-      else
-	strm << std::setw(width+pad) << '*';
-    }
-    strm << std::setw(pad) << "";
-
-    if (not traditional)
-    {
-      tits::TitsElt a=kgb.titsElt(j);
-      const tits::TitsGroup& Tg=kgb.titsGroup();
-      Tg.mult(a,kgb.basedTitsGroup().twisted(a));
-      assert(a==tits::TitsElt(Tg));
-
-    // print torus part
-      prettyprint::prettyPrint(strm,kgb.torus_part(j)) <<
-	(extra and kgb.involution(j)==G->twistedInvolution(kgb.Cartan_class(j))
-	? '#' : ' ') <<
-	std::setw(cwidth) << kgb.Cartan_class(j) << std::setw(pad) << "";
-    }
-    // print root datum involution
-    prettyprint::printWeylElt(strm,kgb.involution(j),kgb.weylGroup());
-
-    strm << std::endl;
-  }
-
-  return strm;
-}
-
 std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
 {
-  return print(strm,kgb,NULL,NULL);
+  return print(strm,kgb,true,NULL,NULL);
 }
 
 std::ostream& print_sub_KGB(std::ostream& strm,
 			    const kgb::KGB& kgb,
 			    const kgb::KGBEltList& which)
 {
-  return print(strm,kgb,NULL,&which);
+  prettyprint::prettyPrint(strm << "Base grading: [",
+			   kgb.base_grading(),kgb.rank()) << "].\n";
+  return print(strm,kgb,false,NULL,&which);
 }
 
 std::ostream& var_print_KGB(std::ostream& strm,
 			    const complexredgp::ComplexReductiveGroup& G,
 			    const kgb::KGB& kgb)
 {
-  return print(strm,kgb,&G,NULL);
+  prettyprint::prettyPrint(strm << "Base grading: [",
+			   kgb.base_grading(),kgb.rank()) << "].\n";
+  return print(strm,kgb,false,&G,NULL);
 }
 
 
@@ -219,54 +150,7 @@ std::ostream& print_X(std::ostream& strm, const kgb::global_KGB& kgb)
     strm << "\\exp(i\\pi\\check\\rho) = \\exp(2i\\pi(" << yrho.as_rational()
 	 << "))" << std::endl;
   }
-
-  size_t size = kgb.size();
-  // compute maximal width of entry
-  int width = ioutils::digits(size-1,10ul);
-  int cwidth = ioutils::digits(kgb.Cartan_class(size-1),10ul);
-  int lwidth = ioutils::digits(kgb.length(size-1),10ul);
-  const int pad = 2;
-
-  for (size_t i = 0; i<size; ++i)
-  {
-    strm << std::setw(width) << i << ":  ";
-
-    // print length
-    strm << std::setw(lwidth) << kgb.length(i);
-    strm << std::setw(pad) << "";
-
-    // print status
-    prettyprint::printStatus(strm,kgb.status(i),kgb.rank());
-    strm << ' ';
-
-    // print cross actions
-    for (size_t s = 0; s < kgb.rank(); ++s)
-      strm << std::setw(width+pad) << kgb.cross(s,i);
-    strm << std::setw(pad) << "";
-
-    // print Cayley transforms
-    for (size_t s = 0; s < kgb.rank(); ++s)
-    {
-      kgb::KGBElt C = kgb.cayley(s,i), iC1=kgb.inverseCayley(s,i).first;
-      strm << std::setw(width+pad);
-      if (C != kgb::UndefKGB) strm << C;
-      else if (iC1 != kgb::UndefKGB) strm << iC1;
-      else strm << '*';
-    }
-    strm << std::setw(pad) << "";
-
-    // print torus part
-    tits::TorusElement a=kgb.torus_part(i);
-    strm << a.as_rational() << ' ' <<
-      std::setw(cwidth) << kgb.Cartan_class(i) << std::setw(pad) << "";
-
-    // print root datum involution
-    prettyprint::printWeylElt(strm,kgb.involution(i),kgb.weylGroup());
-
-    strm << std::endl;
-  }
-
-  return strm;
+  return print(strm,kgb,false,NULL,NULL);
 }
 
 
