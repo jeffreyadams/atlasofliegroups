@@ -4,26 +4,64 @@ on a block of irreducible representations.  The representations in a
 block are listed by the "block" command, which numbers them from 0 to
 N-1.
 
-The Bruhat order for a block has never been properly defined in the
-literature.  (The "Bruhat G-order" defined by Vogan has many
-additional relations.)  The simplest way to describe the Bruhat order
-is as the transitive closure of the relation "x \le y whenever the
-Kazhdan-Lusztig polynomial P_{x,y} is not zero." Of course this
-description is not a reasonable way to compute the relation.  It turns
-out that the Bruhat order is graded, in the strong sense that every
-immediate predecessor of y has length l(x) = l(y) - 1. (The length of
-a representation is printed in the next to last column of the output of
-the "block" command.)
+Here are three equivalent definitions of the Bruhat order on a block.
+
+FIRST DEFINITION: the Bruhat order is the transitive closure of the
+relation "a' \le a whenever the Kazhdan-Lusztig polynomial P_{a',a} is
+not zero."
+
+(In the classical case of the Bruhat order on the Weyl group, this
+relation is already transitive.) The first definition is short, but
+neither transparent nor easy to compute.
+
+SECOND DEFINITION: the Bruhat order is the transitive closure of the
+relation "a' \le a whenever the irreducible representation J(a') appears
+as a composition factor of the standard representation I(a)."
+
+(In the classical case of the Bruhat order on the Weyl group, this
+relation is also transitive.) The second definition is more
+transparent, but still not so easy to compute.
+
+THIRD DEFINITION: Identify each block element a with a pair (x,y)
+consisting of an orbit x of $K$ on the flag manifold $G/B$, and an
+orbit $y$ of $K^\vee$ on the flag manifold $G^\vee/B^\vee$ for the
+dual group (see the help file for "block").  Then 
+
+a' = (x',y') \le a = (x,y)  IF AND ONLY IF   x' \le x   AND   y' \ge y
+
+Notice that the last inequality goes in the opposite direction from
+the next to last. The order relation on orbits is containment of
+closures:
+
+x' \le x' IF AND ONLY IF (closure of x') \subset (closure of x)
+
+The third definition is again not so transparent, but it turns out to
+be very easy to compute, using the algorithm of Richardson and
+Springer for containment of closures (implemented in the command
+kgborder). The equivalence of the three definitions is left as an
+exercise for the reader; in the context of the proof of the
+Kazhdan-Lusztig conjectures, it is not a very difficult matter.
+
+[This Bruhat order for a block has never been properly defined in the
+literature.  The original papers on the Kazhdan-Lusztig conjecture
+made use of a "Bruhat G-order" defined by Vogan, which has many
+additional relations.  The software makes no use of the Bruhat
+G-order.]
+
+It turns out that the Bruhat order is graded, in the strong sense that
+every immediate predecessor a' of a has length l(a') = l(a) - 1. (The
+length of a representation is printed in the next to last column of
+the output of the "block" command.)
 
 Each row of the output corresponds to a single representation, and the first
 column is the representation number followed by a colon.
 
-Following the representation number i is a comma-separated list of the
-immediate predecessors of representation #i in the Bruhat order.  
+Following the representation number a is a comma-separated list of the
+immediate predecessors of representation #a in the Bruhat order.  
 
-The very last line of output records the total number of pairs (x,y)
-of representations for which x \le y.  This number is an upper bound
-for the number of non-vanishing KL polynomials P_{x,y}; equality holds
+The very last line of output records the total number of pairs (a',a)
+of representations for which a' \le a.  This number is an upper bound
+for the number of non-vanishing KL polynomials P_{a',a}; equality holds
 if all the K orbits on G/B have connected stabilizer (for example in
 U(p,q) or in complex groups).
 
