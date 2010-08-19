@@ -104,8 +104,10 @@ std::ostream& print(std::ostream& strm,
       kgb.print(strm,j); // virtual print method
       strm << (G!=NULL and
 	       kgb.involution(j)==G->twistedInvolution(kgb.Cartan_class(j))
-	       ? '#' : ' ')
-	   << std::setw(cwidth) << kgb.Cartan_class(j) << ' ';
+	       ? '#' : ' ');
+      unsigned cc= kgb.Cartan_class(j);
+      if (cc!=~0u)
+	strm << std::setw(cwidth) << cc << ' ';
     }
 
    // print root datum involution
@@ -144,11 +146,10 @@ std::ostream& var_print_KGB(std::ostream& strm,
 std::ostream& print_X(std::ostream& strm, const kgb::global_KGB& kgb)
 {
   {
-    tits::TorusElement
-      yrho(latticetypes::RatWeight(kgb.rootDatum().dual_twoRho(),4));
+    tits::TorusElement yrho(kgb.globalTitsGroup().torus_part_offset());
 
-    strm << "\\exp(i\\pi\\check\\rho) = \\exp(2i\\pi(" << yrho.as_rational()
-	 << "))" << std::endl;
+    strm << "\\exp(i\\pi\\check\\rho) = \\exp(2i\\pi("
+	 << yrho.as_rational() << "))" << std::endl;
   }
   return print(strm,kgb,false,NULL,NULL);
 }

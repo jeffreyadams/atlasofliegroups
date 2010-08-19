@@ -163,7 +163,7 @@ void RootSystem::cons(const latticetypes::LatticeMatrix& Cartan_matrix)
 
       const RootNbr cur = ri.size();
       ri.push_back(root_info(alpha)); // add new positive root to the list
-      link.push_back(RootList(rk,~0u)); // initially all links are undefined
+      link.push_back(RootList(rk,~0ul)); // initially all links are undefined
 
       byte c;
       for (size_t i=0; i<rk; ++i)
@@ -189,7 +189,7 @@ void RootSystem::cons(const latticetypes::LatticeMatrix& Cartan_matrix)
 		  link[j][i]=cur; // and install reciprocal link at |j|
 		  break;
 		}
-	    assert(link[cur][i]!=~0u); // some value must have been set
+	    assert(link[cur][i]!=~0ul); // some value must have been set
 	  }
 	  else // |c<0| so, reflection adding |-c| times $\alpha_j$, goes up
 	  {
@@ -809,6 +809,28 @@ latticetypes::Weight RootDatum::twoRho(const RootSet& rs) const
   return result;
 }
 
+// and their dual relatives
+latticetypes::Weight RootDatum::dual_twoRho(const RootList& rl) const
+{
+  latticetypes::Weight result(rank(),0);
+
+  for (size_t i = 0; i < rl.size(); ++i)
+    if (isPosRoot(rl[i]))
+      result += coroot(rl[i]);
+
+  return result;
+}
+
+latticetypes::Weight RootDatum::dual_twoRho(const RootSet& rs) const
+{
+  latticetypes::Weight result(rank(),0);
+
+  for (RootSet::iterator i = rs.begin(); i(); ++i)
+    if (isPosRoot(*i))
+      result += coroot(*i);
+
+  return result;
+}
 
 /*!\brief
   Returns a reduced expression of the shortest |w| making |w.v| dominant
@@ -989,7 +1011,7 @@ void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
    that system as a set, possibly permuted by a twist. At return |Delta|
    represents that twist, and return value transforms it to original |Delta|
  */
-weyl::WeylWord to_simple(const RootSystem& rs, RootList& Delta)
+weyl::WeylWord wrt_distinguished(const RootSystem& rs, RootList& Delta)
 {
   weyl::WeylWord result;
   const size_t rank=rs.rank();

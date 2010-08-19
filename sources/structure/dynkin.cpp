@@ -219,7 +219,7 @@ size_t DynkinDiagram::node() const
     if (d_star[i].count() > 2)
       return i;
 
-  return ~0;
+  return ~0ul;
 }
 
 }  // |namespace dynkin|

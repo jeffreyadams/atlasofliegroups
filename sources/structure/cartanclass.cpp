@@ -34,30 +34,29 @@ namespace atlas {
 
     namespace {
 
-  /*!
-  \brief Constructs a function object defining the action of the simple
-  imaginary reflections on a fiber.
+/*!\brief Constructs a function object defining the action of the
+  simple-imaginary reflections on a fiber.
 
   The function object this class provides, and that can be used by
-  |partition::makeOrbits| takes the index |s| of an imaginary root and a
-  number |x| encoding an element of the fiber; it return a number |y|
+  |partition::makeOrbits|, takes the index |s| of a simple-imaginary root and
+  a number |x| encoding an element of the fiber; it return a number |y|
   similarly encoding the image of that element under the action of |s|.
 
   In fact the number |x| describes (in binary form) the element of the fiber
   group that translates the base point to fiber element in question, and the
   interpretation of |y| is the same. The action is determined by (1) the
-  grading of the simple imaginary roots associated to the chosen base point of
+  grading of the simple-imaginary roots associated to the chosen base point of
   the fiber, (2) the grading shifts associated with the generators of the
   fiber group, and (3) the vectors |d_mAlpha[s]| by which each of the simple
-  imaginary roots \f$\alpha_s\f$ translates if it acts act non-trivially (this
+  imaginary roots \f$\alpha_s\f$ translates if it acts non-trivially (this
   is the image in the fiber group of the coroot of \f$\alpha_s\f$). The action
   of \f$\alpha_s\f$ will translate |x| by |d_mAlpha[s]| if the grading at
   \f$\alpha_s\f$ associated to |x| is odd (noncompact). To facilitate the
   determination of that grading, the grading shift information is stored as
-  bitsets |d_alpha[s]| for each simple imaginary root. Since in |Fiber|, the
+  bitsets |d_alpha[s]| for each simple-imaginary root. Since in |Fiber|, the
   grading shifts are organised by generator of the fiber group, the neceesary
   "transposition" of the information is done by the constructor below.
-  */
+*/
 
   class FiberAction
   {
@@ -68,8 +67,8 @@ namespace atlas {
   public:
   // constructors and destructors
     FiberAction(const gradings::Grading& gr,
-		const gradings::GradingList& gs,
-		const bitset::RankFlagsList& ma)
+		const gradings::GradingList& gs, // size: fiber rank
+		const bitset::RankFlagsList& ma) // size: imaginary rank
       : d_baseGrading(gr)
       , d_alpha(ma.size()) // initialise size only here
       , d_mAlpha(ma)
@@ -121,7 +120,7 @@ void InvolutionData::classify_roots(const rootdata::RootSystem& rs)
     else
       d_complex.insert(alpha);
 
-  // find simple imaginary roots
+  // find simple-imaginary roots
   d_simpleImaginary=rs.simpleBasis(imaginary_roots());
   d_simpleReal=rs.simpleBasis(real_roots());
 }
@@ -136,23 +135,16 @@ InvolutionData::InvolutionData(const rootdata::RootSystem& rs,
   , d_simpleReal()
 { classify_roots(rs); }
 
-InvolutionData::InvolutionData(const complexredgp::ComplexReductiveGroup& G,
-			       const weyl::TwistedInvolution& tw)
-  : d_rootInvolution()
-  , d_imaginary(G.rootDatum().numRoots())
-  , d_real(G.rootDatum().numRoots())
-  , d_complex(G.rootDatum().numRoots())
-  , d_simpleImaginary()
-  , d_simpleReal()
-{
-  const rootdata::RootSystem& rs=G.rootSystem();
+InvolutionData InvolutionData::build
+  (const rootdata::RootSystem& rs,
+   const weyl::TwistedWeylGroup& W,
+   const weyl::TwistedInvolution& tw)
+{ return InvolutionData(rs,W.simple_images(rs,tw)); }
 
-  // follow the inner class twist by the action of |tw| on roots
-  d_rootInvolution =
-    rs.extend_to_roots(G.twistedWeylGroup().simple_images(rs,tw));
-
-  classify_roots(rs);
-}
+InvolutionData InvolutionData::build
+ (const complexredgp::ComplexReductiveGroup& G,
+  const weyl::TwistedInvolution& tw)
+{ return build(G.rootSystem(),G.twistedWeylGroup(),tw); }
 
 void InvolutionData::swap(InvolutionData& other)
 {
@@ -346,7 +338,7 @@ Fiber::makeAdjointFiberGroup(const rootdata::RootSystem& rs) const
   \brief Makes the stabilizer of the grading in the adjoint fiber group.
 
   Explanation: each real form parameter defines a grading of the imaginary
-  root system, obtained by pairing with the simple imaginary roots. It should
+  root system, obtained by pairing with the simple-imaginary roots. It should
   be the case that the grading entirely defines the real form, i.e., the
   corresponding W_i-orbit. However, this doesn't mean that the map from real
   form parameters to gradings has to be injective. It could a priori be the
@@ -364,7 +356,7 @@ Fiber::gradingGroup (const rootdata::RootSystem& rs) const
   const latticetypes::SmallBitVectorList& baf =
     d_adjointFiberGroup.space().basis();
 
-  // express simple imaginary roots on (full) simple roots
+  // express simple-imaginary roots on (full) simple roots
   latticetypes::WeightList bsi;
   rs.toRootBasis(simpleImaginary().begin(),simpleImaginary().end(),
 		 back_inserter(bsi));
@@ -395,7 +387,7 @@ Fiber::gradingGroup (const rootdata::RootSystem& rs) const
 
 
 /*!
-  \brief Returns the base grading (all ones) on simple imaginary roots, while
+  \brief Returns the base grading (all ones) on simple-imaginary roots, while
   flagging all noncompact imaginary roots in |flagged_roots|
 
   Algorithm: for the noncompact roots, express imaginary roots in terms of
@@ -405,7 +397,7 @@ gradings::Grading Fiber::makeBaseGrading
   (rootdata::RootSet& flagged_roots,const rootdata::RootSystem& rs) const
 
 {
-  // express all imaginary roots in simple imaginary basis
+  // express all imaginary roots in simple-imaginary basis
   latticetypes::WeightList ir;
   rs.toRootBasis(imaginaryRootSet().begin(),
 		 imaginaryRootSet().end(),
@@ -428,11 +420,11 @@ gradings::Grading Fiber::makeBaseGrading
 
 /*!
   \brief Computes, for each basis vector of the adjoint fiber group, the
-  grading shifts for simple imaginary roots, and also sets |all_shifts| to
+  grading shifts for simple-imaginary roots, and also sets |all_shifts| to
   flag the grading of the full set of imaginary roots.
 
   Explanation: component |j| of the result contains the grading on the set of
-  simple imaginary roots given by the canonical basis vector |j| of the
+  simple-imaginary roots given by the canonical basis vector |j| of the
   adjoint fiber group. This is not the grading of a real form, but the amount
   by which the grading changes by the action of that basis vector, whence the
   name grading shift. Similarly, |all_shifts[j]| is set to contain the action
@@ -446,7 +438,7 @@ gradings::Grading Fiber::makeBaseGrading
   apply to a root, it is enough to express that root in the simple root basis,
   and do the scalar product mod 2. Note that in contrast to |makeBaseGrading|
   above, and in spite of the reuse of the same names, we express in the (full)
-  simple root basis here, not on the simple imaginary root basis.
+  simple root basis here, not on the simple-imaginary root basis.
 */
 gradings::GradingList Fiber::makeGradingShifts
   (rootdata::RootSetList& all_shifts,const rootdata::RootSystem& rs) const
@@ -460,7 +452,7 @@ gradings::GradingList Fiber::makeGradingShifts
   latticetypes::SmallBitVectorList ir2(ir); // |ir2.size()==irl.size()|
 
 
-  // also express simple imaginary roots in (full) simple root basis
+  // also express simple-imaginary roots in (full) simple root basis
   const rootdata::RootList& sil = simpleImaginary();
   latticetypes::WeightList si;
   rs.toRootBasis(sil.begin(),sil.end(),back_inserter(si));
@@ -481,7 +473,7 @@ gradings::GradingList Fiber::makeGradingShifts
       rset.set_to(irl[j],ir2[j].dot(b[*it]));
     all_shifts.push_back(rset);
 
-    // simple imaginary roots part
+    // simple-imaginary roots part
     gradings::Grading gr;
     for (size_t j = 0; j < si2.size(); ++j)
       gr.set(j,si2[j].dot(b[*it]));
@@ -495,7 +487,7 @@ gradings::GradingList Fiber::makeGradingShifts
 
 /*!
   \brief Constructs the \f$m_\alpha\f$s (images of coroots) in the fiber group,
-  for \f$\alpha\f$ simple imaginary.
+  for \f$\alpha\f$ simple-imaginary.
 
   The effective number of bits of each \f$m_\alpha\f$ is
   |d_fiberGroup.dimension()|
@@ -519,7 +511,7 @@ bitset::RankFlagsList Fiber::mAlphas (const rootdata::RootDatum& rd) const
 
 /*!
   \brief Constructs the \f$m_\alpha\f$s (images of coroots) in the adjoint
-  fiber group, for \f$\alpha\f$ simple imaginary.
+  fiber group, for \f$\alpha\f$ simple-imaginary.
 
   The number of bits of each \f$m_\alpha\f$ is
   |d_adjointFiberGroup.dimension()|
@@ -527,7 +519,7 @@ bitset::RankFlagsList Fiber::mAlphas (const rootdata::RootDatum& rd) const
   Algorithm: the cocharacter lattice for the adjoint group is spanned by the
   simple coweights. To get the coordinates of an element in that basis (which
   is dual to that of the simple roots), it is enough to pair it with the
-  simple roots. The resulting element for the coroot of a simple imaginary
+  simple roots. The resulting element for the coroot of a simple-imaginary
   \f$\alpha\f$ is automatically \f$\tau\f$-invariant, since \f$\alpha\f$ is,
   so its reduction modulo 2 lies in $V_+$ (for the cocharacter lattice). Then
   what is left to do is to convert to the basis of the adjoint fiber group,
@@ -834,7 +826,7 @@ rootdata::RootSet Fiber::compactRoots(AdjointFiberElt x) const
 }
 
 /*!
-  \brief Flags in gr the noncompact simple imaginary roots for element \#x
+  \brief Flags in gr the noncompact simple-imaginary roots for element \#x
   in the adjoint fiber.
 
   Precondition: |x| represents an element of the subquotient in

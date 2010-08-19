@@ -69,8 +69,11 @@ class InvolutionData
 		 const latticetypes::LatticeMatrix&);
   InvolutionData(const rootdata::RootSystem& rs,
 		 const rootdata::RootList& s_image);
-  InvolutionData(const complexredgp::ComplexReductiveGroup&,
-		 const weyl::TwistedInvolution&);
+  static InvolutionData build(const rootdata::RootSystem& rs,
+			      const weyl::TwistedWeylGroup& W,
+			      const weyl::TwistedInvolution& tw);
+  static InvolutionData build(const complexredgp::ComplexReductiveGroup& G,
+			      const weyl::TwistedInvolution& tw);
   void swap(InvolutionData&);
   //accessors
   const setutils::Permutation& root_involution() const

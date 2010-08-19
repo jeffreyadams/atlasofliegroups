@@ -168,7 +168,7 @@ namespace bitmap {
 
     BitMap& operator^= (const BitMap&);
 
-    bool andnot(const BitMap&);
+    bool andnot(const BitMap& b); // remove bits of |b|, return whether any left
 
     /*!
     Set the bit at position n (that is, inserts the value |n| into the set);

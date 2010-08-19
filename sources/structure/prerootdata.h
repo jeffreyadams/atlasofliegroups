@@ -24,6 +24,7 @@
 
 #include "latticetypes.h"
 #include "lietype.h"
+#include "weyl_fwd.h"
 
 namespace atlas {
 
@@ -47,9 +48,8 @@ namespace prerootdata {
   roots) are handled by the RootDatum class, to which PreRootDatum can
   pass its contents.
   */
-class PreRootDatum{
-
- private:
+class PreRootDatum
+{
   /*!
   \brief List of the simple roots as elements of Z^d_rank, expressed in the
   basis specified by the argument b of the constructor.
@@ -102,16 +102,9 @@ in the dual of the basis specified by argument b of the constructor.
   const latticetypes::WeightList& coroots() const { return d_coroots; }
 
 
-  latticetypes::LatticeMatrix Cartan_matrix() const
-  {
-    latticetypes::LatticeMatrix Cartan(d_roots.size(),d_coroots.size());
+  latticetypes::LatticeMatrix Cartan_matrix() const;
 
-    for (size_t i = 0; i < d_roots.size(); ++i)
-      for (size_t j = 0; j < d_coroots.size(); ++j)
-	Cartan(i,j) = d_roots[i].dot(d_coroots[j]);
-
-    return Cartan;
-  }
+  void simpleReflect(latticetypes::Weight& v, weyl::Generator i) const;
 
 // manipulators
   void swap(PreRootDatum&);

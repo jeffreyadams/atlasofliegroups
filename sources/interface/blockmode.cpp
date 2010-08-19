@@ -151,10 +151,11 @@ blocks::Block& currentBlock()
 {
   if (block_pointer==NULL)
   {
-    block_pointer=new
-      blocks::Block(mainmode::currentComplexGroup(),
-		    realmode::currentRealForm(),
-		    dual_G_R_pointer->realForm());
+    block_pointer =
+      new blocks::Block(blocks::Block::build
+			 (mainmode::currentComplexGroup(),
+			  realmode::currentRealForm(),
+			  dual_G_R_pointer->realForm()));
   }
   return *block_pointer;
 }
@@ -340,10 +341,10 @@ void block_f()
   if (small) // must unfortunatly regenerate the block here
   {
     block_io::printBlock
-      (file,blocks::Block(mainmode::currentComplexGroup(),
-			  realmode::currentRealForm(),
-			  currentDualRealForm(),
-			  true));
+      (file,blocks::Block::build(mainmode::currentComplexGroup(),
+				 realmode::currentRealForm(),
+				 currentDualRealForm(),
+				 true));
   }
   else
     block_io::printBlock(file,currentBlock());
@@ -355,8 +356,9 @@ void dual_block_f()
 {
   complexredgp::ComplexReductiveGroup& dG = currentDualComplexGroup();
 
-  blocks::Block block(dG,currentDualRealForm(),realmode::currentRealForm(),
-		      small);
+  blocks::Block block =
+    blocks::Block::build(dG,currentDualRealForm(),realmode::currentRealForm(),
+			 small);
 
   ioutils::OutputFile file;
   block_io::printBlock(file,block);
@@ -366,9 +368,10 @@ void dual_block_f()
 void dual_map_f()
 {
   const blocks::Block& block = currentBlock();
-  blocks::Block dual_block(currentDualComplexGroup(),
-			   currentDualRealForm(),
-			   realmode::currentRealForm());
+  blocks::Block dual_block =
+    blocks::Block::build(currentDualComplexGroup(),
+			 currentDualRealForm(),
+			 realmode::currentRealForm());
 
   std::vector<blocks::BlockElt> v=blocks::dual_map(block,dual_block);
 

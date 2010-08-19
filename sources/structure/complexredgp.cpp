@@ -178,7 +178,8 @@ ComplexReductiveGroup::ComplexReductiveGroup
 #ifndef NDEBUG
       size_t entry_level=Cartan.size();
 #endif
-      cartanclass::InvolutionData id(*this,Cartan[i].tw);
+      cartanclass::InvolutionData id =
+	cartanclass::InvolutionData::build(rd,d_titsGroup,Cartan[i].tw);
       rootdata::RootSet pos_im = id.imaginary_roots() & rd.posRootSet();
       for (rootdata::RootSet::iterator it=pos_im.begin(); it(); ++it)
       {
@@ -270,7 +271,8 @@ ComplexReductiveGroup::ComplexReductiveGroup
 
     for (size_t i=Cartan.size(); i-->0; )
     {
-      cartanclass::InvolutionData id(*this,Cartan[i].tw);
+      cartanclass::InvolutionData id =
+	cartanclass::InvolutionData::build(rd,d_titsGroup,Cartan[i].tw);
       rootdata::RootSet pos_re = id.real_roots() & rd.posRootSet();
       for (rootdata::RootSet::iterator it=pos_re.begin(); it(); ++it)
       {
@@ -823,8 +825,10 @@ latticetypes::LatticeElt
   ComplexReductiveGroup::posRealRootSum(const weyl::TwistedInvolution& tw)
   const
 {
-  cartanclass::InvolutionData d(*this,tw);
-  return rootDatum().twoRho(d.real_roots());
+  const rootdata::RootDatum& rd=rootDatum();
+  cartanclass::InvolutionData d =
+    cartanclass::InvolutionData::build(*this,tw);
+  return rd.twoRho(d.real_roots());
 }
 
   /*!
@@ -834,8 +838,10 @@ latticetypes::LatticeElt
   ComplexReductiveGroup::posImaginaryRootSum(const weyl::TwistedInvolution& tw)
   const
 {
-  cartanclass::InvolutionData d(*this,tw);
-  return rootDatum().twoRho(d.imaginary_roots());
+  const rootdata::RootDatum& rd=rootDatum();
+  cartanclass::InvolutionData d =
+    cartanclass::InvolutionData::build(*this,tw);
+  return rd.twoRho(d.imaginary_roots());
 }
 
 /*! \brief Make |sigma| canonical and return Weyl group |w| element that
@@ -862,7 +868,7 @@ size_t ComplexReductiveGroup::class_number(weyl::TwistedInvolution sigma) const
       return i;
 
   assert(false); // all canonical twisted involutions should occur in |Cartan|
-  return ~0;
+  return ~0ul;
 }
 
 

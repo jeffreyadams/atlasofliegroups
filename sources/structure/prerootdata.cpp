@@ -48,7 +48,7 @@ namespace {
 
 namespace prerootdata {
 
-/******** constructors and destructors ***************************************/
+  // constructor
 
 
 /*!
@@ -75,7 +75,28 @@ PreRootDatum::PreRootDatum(const lietype::LieType& lt,
 : d_roots(rootBasis(lt,b)), d_coroots(corootBasis(lt,b)), d_rank(lt.rank())
 {}
 
-/******** manipulators *******************************************************/
+
+  // accessors
+
+latticetypes::LatticeMatrix PreRootDatum::Cartan_matrix() const
+{
+  latticetypes::LatticeMatrix Cartan(d_roots.size(),d_coroots.size());
+
+  for (weyl::Generator i = 0; i < d_roots.size(); ++i)
+    for (weyl::Generator j = 0; j < d_coroots.size(); ++j)
+      Cartan(i,j) = d_roots[i].dot(d_coroots[j]);
+
+  return Cartan;
+}
+
+void PreRootDatum::simpleReflect(latticetypes::Weight& v, weyl::Generator s)
+  const
+{
+  v -= d_roots[s]*v.dot(d_coroots[s]);
+}
+
+
+  // manipulator
 
 void PreRootDatum::swap(PreRootDatum& other)
 

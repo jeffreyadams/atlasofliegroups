@@ -32,8 +32,9 @@
 #endif
 
 #include <cassert>
-#include <memory>
-#include <set>
+#include <vector>
+#include <deque>
+#include <set> // for |insertAscents|
 
 #include "basic_io.h"
 #include "bruhat.h"
@@ -157,12 +158,12 @@ void makeHasse(std::vector<set::SetEltList>&, const Block&);
 
 namespace blocks {
 
-Block_base::Block_base(const kgb::KGB_base& kgb,const kgb::KGB_base& dual_kgb)
+Block_base::Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
   : W(kgb.twistedWeylGroup())
   , xrange(kgb.size()), yrange(dual_kgb.size())
   , d_x(), d_y(), d_first_z_of_x() // filled below
   , d_cross(rank()), d_cayley(rank()) // each entry filled below
-  , d_descent(), d_length(), d_Cartan(), d_involution() // filled by |generate|
+  , d_descent(), d_length() // filled below
 {
   const weyl::TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();
 
@@ -180,9 +181,7 @@ Block_base::Block_base(const kgb::KGB_base& kgb,const kgb::KGB_base& dual_kgb)
 
   d_x.reserve(size);
   d_y.reserve(size);
-  d_involution.reserve(size);
   d_length.reserve(size);
-  d_Cartan.reserve(size);
   d_descent.reserve(size);
 
   BlockElt base_z = 0; // block element |z| where generation for |x| starts
@@ -203,8 +202,6 @@ Block_base::Block_base(const kgb::KGB_base& kgb,const kgb::KGB_base& dual_kgb)
 	d_y.push_back(y);
 	d_descent.push_back(descents(x,y,kgb,dual_kgb));
 	d_length.push_back(kgb.length(x));
-	d_Cartan.push_back(kgb.Cartan_class(x));
-	d_involution.push_back(w);
       } // |for(y)|
       base_z += y_step.second - y_step.first; // skip to next |x|
     } // |for(x)|
@@ -247,7 +244,200 @@ Block_base::Block_base(const kgb::KGB_base& kgb,const kgb::KGB_base& dual_kgb)
      } // switch
     } // |for (z)|
   } // |for(s)|
+} // |Block_base::Block_base|
+
+
+Block_base::Block_base
+  (realredgp::RealReductiveGroup& GR,
+   const subdatum::SubSystem& sub, // at the dual side
+   kgb::KGBElt x,
+   const latticetypes::Weight& lambda, // discrete part of parameter
+   const latticetypes::RatWeight gamma) // infinitesimal character
+: W(GR.twistedWeylGroup())
+, xrange(0), yrange(0),d_x(),d_y()
+,d_first_z_of_x(),d_cross(sub.rank()),d_cayley(sub.rank())
+,d_descent(),d_length()
+{
+  const kgb::KGB& kgb = GR.kgb();
+  const complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
+  size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
+  weyl::WeylWord dual_involution;
+
+  const tits::GlobalTitsGroup Tg
+    (sub,G.involutionMatrix(kgb.involution(x)),dual_involution);
+
+  weyl::TwistedInvolution tw = Tg.weylGroup().element(dual_involution);
+
+  // step 1: get the correct value |y|
+  tits::TorusElement t
+    (gamma-latticetypes::RatWeight(lambda,1)/=2); // for original group $G$
+  tits::GlobalTitsElement y=tits::GlobalTitsElement(t,tw);
+  Tg.add(y, kgb.half_rho() - Tg.torus_part_offset () ); // for $G(\gamma)$
+
+  // step 2: move to the minimal fiber
+  { // modify |x| and |y|, descending to minimal element for |subsys|
+    weyl::Generator s;
+    do
+    {
+      for(s=0; s<our_rank; ++s)
+      {
+	kgb::KGBElt xx=kgb.cross_act(sub.to_simple(s),x);
+	if (kgb.isDescent(sub.simple(s),xx))
+	{
+	  if (kgb.status(sub.simple(s),xx)==gradings::Status::Complex)
+	  {
+	    x = kgb.cross_act(kgb.cross(sub.simple(s),xx),sub.to_simple(s));
+	    Tg.cross(s,y);
+	    break;
+	  }
+	  else // imaginary
+	    if (not Tg.compact(s,y))
+	    {
+	      xx=kgb.inverseCayley(sub.simple(s),xx).first; // choose one
+	      x = kgb.cross_act(xx,sub.to_simple(s));
+	      y = Tg.Cayley(s,y);
+	      break;
+	    }
+	} // |if(isDescent)|
+      } // |for(s)|
+    } while(s<our_rank); // loop until no descents found in |subsys|
+
+    // one might reduce the torus part of |y| here
+  } // end of step 2
+
+  weyl::TI_Entry::Pooltype pool;
+  hashtable::HashTable<weyl::TI_Entry,unsigned int> hash(pool);
+  kgb::GlobalFiberData gfd(sub,hash);
+  gfd.add_class(sub,Tg,y.tw());
+
+  std::vector<tits::GlobalTitsElement> y_rep(1,y);
+  kgb::KGB_elt_entry::Pooltype y_pool // parallel array with fingerprints
+    (1,kgb::KGB_elt_entry(gfd.fingerprint(y),y.tw()));
+  hashtable::HashTable<kgb::KGB_elt_entry,kgb::KGBElt> y_hash(y_pool);
+
+  // step 3: generate imaginary fiber-orbit of |x|'s (|y|'s are unaffected)
+  std::vector<unsigned int> x_of(kgb.size(),~0);
+  std::vector<kgb::KGBElt> kgb_nr_of; // indexed by newly assigned |x| numbers
+  kgb_nr_of.reserve(kgb.size()); // maybe wasteful, this avoids reallocation
+  {
+    cartanclass::InvolutionData id =
+      cartanclass::InvolutionData::build(sub,Tg,y.tw());
+    // generating reflections are for \emph{real} roots for involution |y.tw()|
+    const rootdata::RootList gen_root = id.real_basis();
+    const subdatum::SubSystem imaginary(kgb.rootDatum(),gen_root);
+
+    kgb::KGBEltPair p = kgb.packet(x);
+    bitmap::BitMap seen(p.second-p.first);
+    bitmap::BitMap news = seen;
+    news.insert(x-p.first);
+    while (news.andnot(seen)) // condition modifies |news| as side effect
+    {
+      unsigned i=news.front();
+      seen.insert(i); // so |i| will be removed from |news| at end of loop
+      kgb::KGBElt xx=i+p.first;
+      for (weyl::Generator s=0; s<imaginary.rank(); ++s)
+	news.insert(kgb.cross_act(imaginary.reflection(s),xx)-p.first);
+    }
+
+    // now insert elements from |seen| as first $x$-fiber of block
+    size_t fs = seen.size(); // this is lower bound for final size, so reserve
+    d_x.reserve(fs); d_y.reserve(fs); d_first_z_of_x.reserve(fs+1);
+    d_length.reserve(fs); d_descent.reserve(fs);
+    for (weyl::Generator s=0; s<our_rank; ++s)
+      { d_cross[s].reserve(fs); d_cayley[s].reserve(fs); }
+
+    for (bitmap::BitMap::iterator it=seen.begin(); it(); ++it)
+    {
+      kgb::KGBElt kgb_nr = *it+p.first;
+      x_of[kgb_nr]=kgb_nr_of.size();
+      kgb_nr_of.push_back(kgb_nr);
+      d_first_z_of_x.push_back(d_x.size());
+      d_x.push_back(x_of[kgb_nr]);
+      assert(y_hash.find(kgb::KGB_elt_entry(gfd.fingerprint(y),y.tw()))==0);
+      d_y.push_back(0);
+      d_descent.push_back(descents::DescentStatus());
+      d_length.push_back(0); // we don't know the length of |x| in the sub-KGB
+    }
+
+    d_first_z_of_x.push_back(d_x.size()); // ensure one more entry is defined
+  } // end of step 3
+
+  // step 4: generate packets for successive involutions
+
+  {
+    std::deque<BlockElt> queue(1,d_x.size()); // queue of packet boundaries
+    BlockElt next=0;
+    while (next<queue.front())
+    { // process involution packet of elements from |next| to |queue.front()|
+      std::vector<kgb::KGBElt> ys; ys.reserve(0x100);
+      for (BlockElt z=next; z<d_x.size() and d_x[z]==d_x[next]; ++z)
+	ys.push_back(d_y[z]);
+      assert((queue.front()-next)%ys.size()==0);
+      unsigned int nr_x= (queue.front()-next)/ys.size();
+
+      for (weyl::Generator s=0; s<our_rank; ++s)
+      {
+	tits::GlobalTitsElement sample = y_rep[ys[next]];
+	int d = Tg.cross(s,sample);
+	int l = d_length[next]+d;
+	assert(l>=0); // if fails, then starting point not minimal for length
+
+	std::vector<BlockElt>& cross_link = d_cross[s]; // a safe reference
+
+	bool is_new; // whether cross action gives a new twisted involution
+	std::vector<kgb::KGBElt> cross_ys(ys.size());
+	{
+	  size_t old_size =  y_hash.size();
+	  for (unsigned int i=0; i<ys.size(); ++i)
+	  {
+	    tits::GlobalTitsElement y = y_rep[ys[i]];
+	    int dd = Tg.cross(s,y);
+	    assert(dd==d); // all length changes should be equal
+	    cross_ys[i] =
+	      y_hash.match(kgb::KGB_elt_entry(gfd.fingerprint(y),y.tw()));
+	    if (y_hash.size()>y_rep.size())
+	      y_rep.push_back(y);
+	    assert(y_hash.size()==y_rep.size());
+	  }
+	  is_new = y_hash.size()>old_size;
+	  assert(not is_new or y_hash.size()==old_size+ys.size()); // all same
+	}
+	for (unsigned int i=0; i<nr_x; ++i)
+	{
+	  BlockElt base_z = next+i*ys.size(); // first element of R-packet
+	  kgb::KGBElt n = kgb_nr_of[d_x[base_z]];
+	  kgb::KGBElt s_x_n = kgb.cross_act(sub.reflection(s),n);
+	  assert (is_new == (x_of[s_x_n]==(unsigned int)~0));
+	  if (is_new) // add a new R-packet
+	  {
+	    x_of[s_x_n] = kgb_nr_of.size();
+	    kgb_nr_of.push_back(s_x_n);
+	    for (unsigned int j=0; j<ys.size(); ++j)
+	    {
+	      // install link the required this element
+	      assert(d_x.size()==d_y.size()); // number of new block element
+	      cross_link[base_z+j] = d_x.size();
+
+	      d_x.push_back(x_of[s_x_n]);
+	      d_y.push_back(cross_ys[j]);
+	      d_descent.push_back(descents::DescentStatus()); // set later
+	      d_length.push_back(l);
+
+	    } // |for(j)|
+	    d_first_z_of_x.push_back(d_x.size()); // mark end of R-packet
+	  }
+	  else // install cross links to previously existing element
+	    for (unsigned int j=0; j<ys.size(); ++j)
+	      cross_link[base_z+j] = element(x_of[s_x_n],cross_ys[j]);
+	  // |if(is_new)|
+	} // |for(i)|
+      } // |for(s)|
+      next=queue.front();
+      queue.pop_front();
+    }
+  }
 }
+
 
 /*!\brief Look up element by |x|, |y| coordinates
 
@@ -384,32 +574,35 @@ BlockEltPair Block_base::link(size_t alpha,size_t beta,BlockElt y) const
 
 
 
+Block::Block(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
+  : Block_base(kgb,dual_kgb)
+  , d_Cartan(), d_involution(), d_involutionSupport() // filled below
+  , d_state()
+  , d_bruhat(NULL)
+{
+  d_Cartan.reserve(size());
+  d_involution.reserve(size());
+  for (BlockElt z=0; z<size(); ++z)
+  {
+    kgb::KGBElt xx=x(z);
+    d_Cartan.push_back(kgb.Cartan_class(xx));
+    d_involution.push_back(kgb.involution(xx));
+  }
+
+  compute_supports();
+}
+
 /*!
-  \brief Constructor for the |Block| class.
+  \brief Construction function for the |Block| class.
 
   Constructs a block from the datum of a real form rf for G and a real
   form df for G^vee (_not_ strong real forms: up to isomorphism, the
   result depends only on the underlying real forms!).
 */
-Block::Block(complexredgp::ComplexReductiveGroup& G,
-	     realform::RealForm rf, realform::RealForm df,
-	     bool select_Cartans)
-  : Block_base(base_for(G,rf,df,select_Cartans))
-  , d_involutionSupport() // filled below
-  , d_state()
-  , d_bruhat(NULL)
-{ compute_supports(); }
-
-Block::Block(const kgb::KGB_base& kgb,const kgb::KGB_base& dual_kgb)
-  : Block_base(kgb,dual_kgb)
-  , d_involutionSupport() // filled below
-  , d_state()
-  , d_bruhat(NULL)
-{ compute_supports(); }
-
-Block_base // helper function for main contructor, same arguments
-  Block::base_for(complexredgp::ComplexReductiveGroup& G, realform::RealForm rf,
-		  realform::RealForm drf, bool select_Cartans)
+Block // pseudo constructor that ends calling main contructor
+  Block::build(complexredgp::ComplexReductiveGroup& G,
+	       realform::RealForm rf, realform::RealForm drf,
+	       bool select_Cartans)
 {
   realredgp::RealReductiveGroup G_R(G,rf);
   complexredgp::ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
@@ -424,7 +617,7 @@ Block_base // helper function for main contructor, same arguments
   std::cerr << "K\\G/B and dual generated... " << std::flush;
 #endif
 
-  return Block_base(kgb,dual_kgb);
+  return Block(kgb,dual_kgb); // |kgb| and |dual_kgb| disappear afterwards!
 }
 
 // compute the supports in $S$ of twisted involutions
@@ -470,11 +663,23 @@ void Block::compute_supports()
 #endif
 }
 
-Block::~Block()
-
+Block::~Block() { delete d_bruhat; } // type of |d_bruhat| is complete here
+Block::Block(const Block& b)
+  : Block_base(b) // copy
+  , d_Cartan(b.d_Cartan)
+  , d_involution(b.d_involution)
+  , d_involutionSupport(b.d_involutionSupport)
+  , d_state(b.d_state)
+  , d_bruhat(NULL) // possibly filled below
 {
-  delete d_bruhat;
+#ifdef VERBOSE // then show that we're called (does not actually happen)
+  std::cerr << "copying a block" << std::endl;
+#endif
+
+  if (b.d_bruhat!=NULL) // this does not happen when called from |Block::build|
+    d_bruhat = new bruhat::BruhatOrder(*b.d_bruhat);
 }
+
 
 /******** copy, assignment and swap ******************************************/
 
@@ -609,7 +814,9 @@ descents::DescentStatus descents(kgb::KGBElt x,
   Explanation: technical function for the Hasse construction, that makes the
   part of the coatom list for a given element arising from a given descent.
 */
-void insertAscents(std::set<BlockElt>& hs, const set::SetEltList& hr, size_t s,
+void insertAscents(std::set<BlockElt>& hs,
+		   const set::SetEltList& hr,
+		   size_t s,
 		   const Block& block)
 {
   for (size_t j = 0; j < hr.size(); ++j)

@@ -683,7 +683,7 @@ latticetypes::RatWeight get_ratweight(input::InputBuffer& ib,
 {
   std::string pr = "denominator for ";
   pr += prompt;
-  unsigned long denom = get_bounded_int(ib,pr.c_str(),~0);
+  unsigned long denom = get_bounded_int(ib,pr.c_str(),~0ul);
   pr = "numerator for ";
   pr += prompt;
   latticetypes::Weight num = get_weight(ib,pr.c_str(),rank);

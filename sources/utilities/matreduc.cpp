@@ -152,7 +152,7 @@ template<typename C>
 	  break; // from |while| loop; done with decreasing |i|
 	}
       } // |if (M(i,j)!=0)| and |while (i-->0)|
-    if (i==size_t(~0)) // no pivot found for column |j|; forget about it
+    if (i==size_t(~0ul)) // no pivot found for column |j|; forget about it
       M.eraseColumn(j); // and no bit is set in |result| for |j| now
   }
 

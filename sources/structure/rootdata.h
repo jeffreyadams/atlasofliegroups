@@ -53,7 +53,8 @@ RootSet makeOrthogonal(const RootSet& o, const RootSet& subsys,
 
 void toDistinguished(LT::LatticeMatrix&, const RootDatum&);
 
-weyl::WeylWord to_simple(const RootSystem& rs, RootList& Delta);
+// make |Delta| simple by composing with Weyl group action; return as Weyl word
+weyl::WeylWord wrt_distinguished(const RootSystem& rs, RootList& Delta);
 
 LT::LatticeMatrix refl_prod(const RootSet&, const RootDatum&);
 
@@ -548,6 +549,8 @@ use by accessors.
 
   LT::Weight twoRho(const RootList&) const;
   LT::Weight twoRho(const RootSet&) const;
+  LT::Weight dual_twoRho(const RootList&) const;
+  LT::Weight dual_twoRho(const RootSet&) const;
 
 
   weyl::WeylWord word_of_inverse_matrix(const latticetypes::LatticeMatrix&)

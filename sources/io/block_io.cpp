@@ -52,7 +52,7 @@ namespace block_io {
   not too large (up to rank 4 or so). We haven't tried to go over to more
   sophisticated formatting for larger groups.
 */
-std::ostream& printBlock(std::ostream& strm, const blocks::Block_base& block)
+std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
 {
   // compute maximal width of entry
   int width = ioutils::digits(block.size()-1,10ul);
@@ -134,7 +134,7 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block_base& block)
 
   NOTE: this version outputs involutions in reduced-involution form.
 */
-std::ostream& printBlockD(std::ostream& strm, const blocks::Block_base& block)
+std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
 {
   // compute maximal width of entry
   int width = ioutils::digits(block.size()-1,10ul);

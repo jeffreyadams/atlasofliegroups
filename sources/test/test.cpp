@@ -1115,11 +1115,13 @@ void test_f()
     rootdata::RootList sub_simple(sub_rank);
     for (size_t i=0; i<sub_rank; ++i)
       sub_simple[i] = rd.rootNbr(sub_rd.simpleRoot(i));
+    subdatum::SubSystem sub(rd,sub_simple);
 
     rootdata::RootList Delta(sub_rank);
     for (size_t i=0; i<sub_rank; ++i)
       Delta[i]=sub_rd.rootNbr(theta.apply(sub_rd.simpleRoot(i)));
-    weyl::WeylWord ww = rootdata::to_simple(sub_rd,Delta); // modifies |Delta|
+    weyl::WeylWord ww =
+      rootdata::wrt_distinguished(sub_rd,Delta); // makes |Delta| dstinguished
 
     weyl::Twist twist;
     for (size_t i=0; i<sub_rank; ++i)
@@ -1135,9 +1137,9 @@ void test_f()
     const weyl::WeylGroup sub_W(sub_rd.cartanMatrix());
     const weyl::TwistedWeylGroup sub_tW(sub_W,twist);
 
-    kgb::subsys_KGB sub (kgb,rd,sub_simple,sub_rd,sub_tW,x);
+    kgb::subsys_KGB sub_KGB(kgb,sub,sub_tW,x);
 
-    kgb_io::print(std::cout,sub);
+    kgb_io::print(std::cout,sub_KGB);
 
   }
   catch (error::MemoryOverflow& e)

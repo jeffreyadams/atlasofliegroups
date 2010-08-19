@@ -17,12 +17,15 @@
 #include "blocks_fwd.h"
 #include <cassert>
 
+#include "rootdata.h"
+#include "subdatum.h"
 #include "bruhat_fwd.h"
 #include "descents.h"
 #include "kgb_fwd.h"
 #include "complexredgp_fwd.h"
 #include "realredgp_fwd.h"
 #include "weyl_fwd.h"
+#include "tits_fwd.h"
 
 #include "bitset.h"
 #include "bitmap.h"
@@ -78,13 +81,17 @@ class Block_base {
   std::vector<BlockEltPairList> d_cayley; // of size |d_rank| * |size()|
   descents::DescentStatusList d_descent; // of size |size()|
   std::vector<size_t> d_length; // of size |size()|
-  std::vector<size_t> d_Cartan; // of size |size()|
-  weyl::TwistedInvolutionList d_involution; // of size |size()|
 
  public:
 
 // constructors and destructors
-  Block_base(const kgb::KGB_base& kgb,const kgb::KGB_base& dual_kgb);
+  Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb);
+  Block_base(realredgp::RealReductiveGroup& GR,
+	     const subdatum::SubSystem& sub,
+	     kgb::KGBElt x,
+	     const latticetypes::Weight& lambda, // discrete part of parameter
+	     const latticetypes::RatWeight gamma // infinitesimal character
+	     );
 
 // copy, assignment and swap
 
@@ -93,7 +100,7 @@ class Block_base {
   const weyl::TwistedWeylGroup& twistedWeylGroup() const { return W; }
 
   size_t rank() const { return W.rank(); }
-  size_t size() const { return d_involution.size(); }
+  size_t size() const { return d_x.size(); }
 
   size_t xsize() const { return xrange; }
   size_t ysize() const { return yrange; }
@@ -105,11 +112,6 @@ class Block_base {
   BlockElt element(kgb::KGBElt x,kgb::KGBElt y) const;
 
   size_t length(BlockElt z) const { return d_length[z]; }
-  size_t Cartan_class(BlockElt z) const
-    { assert(z<size()); return d_Cartan[z]; }
-
-  const weyl::TwistedInvolution& involution(BlockElt z) const
-    { assert(z<size()); return d_involution[z]; }
 
   BlockElt cross(size_t s, BlockElt z) const //!< cross action
   { assert(z<size()); assert(s<rank()); return d_cross[s][z]; }
@@ -189,6 +191,9 @@ class Block : public Block_base
 
   enum State { BruhatConstructed, NumStates };
 
+  std::vector<size_t> d_Cartan; // of size |size()|
+  weyl::TwistedInvolutionList d_involution; // of size |size()|
+
   /*!
 \brief Flags the generators occurring in reduced expression for |d_involution|.
   */
@@ -211,16 +216,27 @@ non-vanishing KL polynomial.
  public:
 
 // constructors and destructors
-  Block(complexredgp::ComplexReductiveGroup&, realform::RealForm rf,
-	realform::RealForm drf, bool select_Cartans=false);
+  Block(const kgb::KGB& kgb,const kgb::KGB& dual_kgb);
 
-  Block(const kgb::KGB_base& kgb,const kgb::KGB_base& dual_kgb);
+  static Block build // pseudo contructor
+    (complexredgp::ComplexReductiveGroup&,
+     realform::RealForm rf, realform::RealForm drf, bool select_Cartans=false);
 
-  ~Block();
+  ~Block(); // |delete d_bruhat;| but that does not compile here
 
 // copy, assignment and swap
+  Block(const Block& b); // copy contructor must handle |d_bruhat|
+ private:
+  Block& operator=(const Block& b); // we don't however need to assign
+ public:
 
 // accessors
+  size_t Cartan_class(BlockElt z) const
+    { assert(z<size()); return d_Cartan[z]; }
+
+  const weyl::TwistedInvolution& involution(BlockElt z) const
+    { assert(z<size()); return d_involution[z]; }
+
   //! \brief the simple roots occurring in reduced expression |involution(z)|
   const bitset::RankFlags& involutionSupport(size_t z) const
   {
@@ -236,10 +252,6 @@ non-vanishing KL polynomial.
 
   // private accessor and manipulators
 private:
-  static Block_base // helper function for main contructor, same arguments
-    base_for(complexredgp::ComplexReductiveGroup& G, realform::RealForm rf,
-	     realform::RealForm drf, bool select_Cartans);
-
   void compute_supports(); // used during construction
 
   void fillBruhat();

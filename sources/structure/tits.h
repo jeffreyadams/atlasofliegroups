@@ -22,7 +22,9 @@ TitsGroup and TitsElt.
 #include "realredgp_fwd.h"
 #include "tags.h"
 
+#include "prerootdata.h"
 #include "rootdata.h"
+#include "subdatum.h"
 #include "bitvector.h"
 #include "constants.h"
 #include "latticetypes.h"
@@ -139,7 +141,7 @@ class GlobalTitsElement
 // accessors
 
 // both components are exposed as constant references
-/*!\brief twisted involution whose fiber we are in (return value copied) */
+/*!\brief twisted involution whose fiber we are in */
   const TorusElement& torus_part() const { return t; }
   const weyl::TwistedInvolution& tw() const { return w; }
 
@@ -172,16 +174,18 @@ class GlobalTitsElement
    latter purpose the |square_class_gen| and associated method are included,
    which permits listing a set of initial elements from which others can be
    deduced. For the main application however this field can be left an empty
-   list, so as not to waste any time computing it during construction.
+   list, so as not to waste any time computing it during construction. This
+   dichotomy should of course be reimplemented through a derived class.
  */
 class GlobalTitsGroup : public weyl::TwistedWeylGroup
 {
-  const rootdata::RootDatum& root_datum; // needed to access simple roots
+  const prerootdata::PreRootDatum& simple; // simple (co)roots for W-action
+  latticetypes::LatticeMatrix delta_v; // dual distinguished involution
   std::vector<TorusPart> alpha_v; // coroots reduced modulo 2
+  const latticetypes::RatWeight half_rho_v;
 
   // a list of gradings of the imaginary simple roots generating square classes
   std::vector<gradings::Grading> square_class_gen;
-  latticetypes::LatticeMatrix theta_v; // involution matrix on TorusElement
 
 // forbid copy and assignment
   GlobalTitsGroup(const GlobalTitsGroup&);
@@ -191,23 +195,25 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   //!\brief constructor for inner class (use after latter is fully constructed)
   GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G);
 
-  //!\brief constructor from abstract root datum
-  GlobalTitsGroup(const rootdata::RootDatum& rd,
-		  const weyl::WeylGroup& W,
-		  const latticetypes::LatticeMatrix& delta);
+  //!\brief constructor from abstract root datum + involution information
+  GlobalTitsGroup(const subdatum::SubSystem& sub,
+  		  const latticetypes::LatticeMatrix& theta,
+		  weyl::WeylWord& ww); // output: twisted inv |theta| for |sub|
 
   // accessors
-  const rootdata::RootDatum& rootDatum() const { return root_datum; }
   size_t semisimple_rank() const { return alpha_v.size(); }
-  size_t rank() const { return theta_v.numRows(); }
+  size_t rank() const { return delta_v.numRows(); }
+  const latticetypes::RatWeight& torus_part_offset () const
+  { return half_rho_v; }
+  //  { return latticetypes::RatWeight(root_datum.dual_twoRho(),4); }
 
   //!\brief Element m_\alpha of H(2) for simple coroot \#j.
   TorusPart m_alpha(size_t j) const { return alpha_v[j]; }
   latticetypes::Weight simple_root(weyl::Generator s) const
-    { return root_datum.simpleRoot(s); }
+  { return simple.roots()[s]; }
 
   //!\brief Reflection of |TorusElement|s defined by a twisted involution
-  latticetypes::LatticeMatrix involutionMatrix(const weyl::WeylWord& tw) const;
+  latticetypes::LatticeMatrix involution_matrix(const weyl::WeylElt& tw) const;
 
   using TwistedWeylGroup::twisted; // overloaded in this class
   using TwistedWeylGroup::twist;   // idem
@@ -220,7 +226,14 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
 
 // methods that only access some |GlobalTitsElement|
 
-GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const;
+  // determine status of simple root, assumed imaginary
+  bool compact(weyl::Generator s, const GlobalTitsElement& a) const
+  { return a.torus_part().negative_at(simple.roots()[s]); }
+  // compute Cayley transform
+  GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const;
+  // flag length-decreasing complex cross actions and inverse Cayley transforms
+  bitset::RankFlags descents(const GlobalTitsElement& a) const;
+
 
 // methods that manipulate a |GlobalTitsElement|
 
@@ -233,10 +246,10 @@ GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const;
   */
   int cross(weyl::Generator s, GlobalTitsElement& a) const;
 
-  void add (TorusPart tp,GlobalTitsElement& a) const { a.t += tp; }
+  void add(TorusPart tp,GlobalTitsElement& a) const { a.t += tp; }
 
-  // flag length-decreasing complex cross actions and inverse Cayley transforms
-  bitset::RankFlags descents(const GlobalTitsElement& a) const;
+  // add |t| from right
+  void add(GlobalTitsElement& a,latticetypes::RatWeight rw) const; // by value
 
   // modify |a| to an inverse Cayley image by (real simple root) $\alpha_s$
   void inverse_Cayley(weyl::Generator s,GlobalTitsElement& a) const;
@@ -344,9 +357,9 @@ reduced decomposition.
   const weyl::WeylElt& w() const { return d_w; }
 
 /* the same componenent under another name (to make it smell sweeter); note
-   however that this returns a value, not a reference (since we would have any
-   if |weyl::TwistedInvolution| were a distinct type from |weyl::WeylElt|)
-*/
+   however that this returns a value, not a reference (as we would not have
+   any if |weyl::TwistedInvolution| were a distinct type from |weyl::WeylElt|)
+   */
 /*!\brief twisted involution represented by canonical Weyl part */
   const weyl::TwistedInvolution tw() const
     { return weyl::TwistedInvolution(d_w); }

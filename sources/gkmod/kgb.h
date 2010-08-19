@@ -21,6 +21,8 @@ representing orbits of K on G/B.
 #include "bitmap_fwd.h"
 #include "realredgp_fwd.h"
 
+#include "subdatum.h"
+
 #include "weyl.h"
 #include "tits.h"
 #include "cartanclass.h"
@@ -29,6 +31,7 @@ representing orbits of K on G/B.
 #include "gradings.h"
 #include "hashtable.h"
 
+#include <algorithm>
 #include <iostream> // for virtual print method
 
 namespace atlas {
@@ -43,13 +46,12 @@ struct KGBEltInfo
 {
   gradings::Status status; ///< status of each simple root for this element
   unsigned int length; ///< dimension of the K orbit on G/B, minus minimal one
-  unsigned int cartan; ///< records to which Cartan class this element belongs
   Descent desc; ///< flags which simple reflections give a descent
 
   weyl::TwistedInvolution inv;
 
-  KGBEltInfo(unsigned int l, unsigned int c, weyl::TwistedInvolution tw)
-  : status(), length(l), cartan(c), desc(), inv(tw) {}
+  KGBEltInfo(unsigned int l, weyl::TwistedInvolution tw)
+  : status(), length(l), desc(), inv(tw) {}
 
 }; // |struct KGBEltInfo|
 
@@ -71,7 +73,6 @@ struct KGBEltInfo
 class KGB_base
 {
  protected: // available during construction from derived classes
-  const rootdata::RootDatum& rd; // needed to handle non-simple roots
   const weyl::TwistedWeylGroup& W; // hold a reference for convenience
 
   struct KGBfields // data parametrized by simple reflection and KGB element
@@ -99,10 +100,8 @@ class KGB_base
 
 
  protected: // constructor is only meant for use from derived classes
-  explicit KGB_base(const weyl::TwistedWeylGroup& Wg,
-		    const rootdata::RootDatum& datum)
-    : rd(datum)
-    , W(Wg)
+  explicit KGB_base(const weyl::TwistedWeylGroup& Wg)
+    : W(Wg)
     , data(W.rank())
     , info()
     , inv_pool(), inv_hash(inv_pool)
@@ -111,8 +110,7 @@ class KGB_base
 
  public:
   KGB_base (const KGB_base& org) // copy contructor
-    : rd(org.rd)  // share
-    , W(org.W) // share
+    : W(org.W) // share
     , data(org.data)
     , info(org.info)
     , inv_pool(org.inv_pool) // copy
@@ -137,8 +135,10 @@ class KGB_base
   KGBEltPair inverseCayley(weyl::Generator s, KGBElt x) const
     { return data[s][x].inverse_Cayley_image; }
 
+  KGBElt cross_act(const weyl::WeylWord ww, KGBElt x) const;
+  KGBElt cross_act(KGBElt x, const weyl::WeylWord ww) const;
+
   size_t length(KGBElt x) const { return info[x].length; }
-  size_t Cartan_class(KGBElt x) const { return info[x].cartan; }
   weyl::TwistedInvolution involution(KGBElt x) const { return info[x].inv; }
   const Descent& descent(KGBElt x) const { return info[x].desc; }
   bool isDescent(weyl::Generator s, KGBElt x) const
@@ -146,9 +146,6 @@ class KGB_base
   const gradings::Status& status(KGBElt x) const { return info[x].status; }
   gradings::Status::Value status(weyl::Generator s, KGBElt x) const
    { return status(x)[s]; }
-
-  bool root_is_descent(rootdata::RootNbr alpha, KGBElt x) const;
-  gradings::Status::Value root_status(rootdata::RootNbr alpha, KGBElt x) const;
 
   bool isAscent(weyl::Generator s, KGBElt x) const // not true for imag cpct!
     { return not isDescent(s,x)
@@ -161,18 +158,28 @@ class KGB_base
   weyl::TwistedInvolution nth_involution(unsigned int n) const
     { return inv_pool[n]; }
 
+  size_t involution_index(KGBElt x) const
+  { return std::upper_bound(first_of_tau.begin(),first_of_tau.end(),x)
+      -first_of_tau.begin() -1;
+  }
+  KGBEltPair packet (KGBElt x) const
+  { size_t i = involution_index(x);
+    return KGBEltPair(first_of_tau[i],first_of_tau[i+1]);
+  }
+
   // range of KGB elements with given twisted involution, needed for block
   KGBEltPair tauPacket(const weyl::TwistedInvolution&) const;
   size_t packet_size(const weyl::TwistedInvolution&) const;
 
-// virtual method
+// virtual methods
+  virtual size_t Cartan_class(KGBElt x) const { return ~0ul; }
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const
   { return strm; }
 
  protected:
   void reserve (size_t n); // prepare for generating |n| elements
   void add_element // create entry in |data| and |info| structures
-   (unsigned int length, unsigned int Cartan_class, weyl::TwistedInvolution tw);
+   (unsigned int length, weyl::TwistedInvolution tw);
 
 
 }; // |class KGB_base|
@@ -183,24 +190,37 @@ A |GlobalFiberData| object associates to each twisted involution a reduced
 description of its -1 eigenspace, which allows a quick test for equivalence of
 |GlobalTitsElement| values at this twised involution. The object also records
 the halfsum of the positive imaginary coroots, and the Cartan class.
-*/
+
+Originally conceived for global use within an inner class (the constructor
+uses its list of Catan classes to generate all involutions), functionality now
+also includes dynamically adding Cartan classes of involutions, by specifying
+a new twisted involution with its invlution matrix, from which a whole
+conjugacy class will be added to the tables.
+ */
 class GlobalFiberData
 {
-  const hashtable::HashTable<weyl::TI_Entry,unsigned int>& hash_table;
+  hashtable::HashTable<weyl::TI_Entry,unsigned int>& hash_table;
   std::vector<unsigned int> Cartans;
   std::vector<latticetypes::LatticeMatrix> proj; // projectors for equivalence
   std::vector<latticetypes::LatticeElt> check_2rho_imag;
+  std::vector<latticetypes::LatticeMatrix> refl; // dual simple reflections
 public:
   GlobalFiberData(complexredgp::ComplexReductiveGroup& G,
-		  const hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
+		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
+
+  // contructor that does not install eny Cartan classes yet
+  GlobalFiberData(const subdatum::SubSystem& sub,
+		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
 
   GlobalFiberData(const GlobalFiberData& org) // copy contructor, handle ref
     : hash_table(org.hash_table) // share
     , Cartans(org.Cartans)
     , proj(org.proj)
     , check_2rho_imag(org.check_2rho_imag)
+    , refl(org.refl)
   {}
 
+  //accessors
   size_t Cartan_class(const weyl::TwistedInvolution& tw) const
   {
     return Cartans[hash_table.find(tw)];
@@ -215,6 +235,12 @@ public:
   int at_rho_imaginary(const latticetypes::Weight& alpha, // imaginary root
 		       const weyl::TwistedInvolution& tw) const
     { return alpha.dot(check_2rho_imag[hash_table.find(tw)])/2; }
+
+  // manipulators
+  void add_class(const subdatum::SubSystem& sub,
+		 const tits::GlobalTitsGroup& Tg,
+		 const weyl::TwistedInvolution& tw);
+
 }; // |class GlobalFiberData|
 
 
@@ -252,7 +278,9 @@ class global_KGB : public KGB_base
   bool compact(rootdata::RootNbr alpha, const tits::GlobalTitsElement& a) const;
   kgb::KGBElt lookup(const tits::GlobalTitsElement& x) const;
 
-// virtual method
+// virtual methods
+  virtual size_t Cartan_class(KGBElt x) const
+  { return fiber_data.Cartan_class(involution(x)); }
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const;
 
  private:
@@ -262,6 +290,22 @@ class global_KGB : public KGB_base
 }; // |class global_KGB|
 
 
+// a |GlobalTitsElement| can be hashed as (fingerprint,twisted_inv) pair
+struct KGB_elt_entry
+{
+  latticetypes::RatLatticeElt fingerprint;
+  weyl::TI_Entry ti;
+
+  // obligatory fields for hashable entry
+  typedef std::vector<KGB_elt_entry> Pooltype;
+  size_t hashCode(size_t modulus) const; // hash function
+  bool operator !=(const KGB_elt_entry& x) const
+    { return ti!=x.ti or fingerprint!=x.fingerprint; }
+
+  KGB_elt_entry (const latticetypes::RatLatticeElt f,
+		 const weyl::TwistedInvolution& tw)
+    : fingerprint(f), ti(tw) {}
+}; //  |struct KGB_elt_entry|
 
 /*!
 \brief Represents the orbits of K on G/B for a particular real form.
@@ -279,6 +323,9 @@ class KGB : public KGB_base
 
   enum State { BruhatConstructed, NumStates };
 
+  const rootdata::RootDatum& rd; // needed for |half_rho| only
+  std::vector<unsigned int> Cartan; ///< records Cartan classes of elements
+
   std::vector<tits::TorusPart> left_torus_part; // of size |size()|
   bitset::BitSet<NumStates> d_state;
 
@@ -290,7 +337,7 @@ and in addition the Hasse diagram (set of all covering relations).
   bruhat::BruhatOrder* d_bruhat;
 
   //! \brief Owned pointer to the based Tits group.
-  tits::BasedTitsGroup* d_base; // pointer, because constructed in helper class
+  tits::BasedTitsGroup* d_base; // pointer, because allocator contructs it late
 
  public:
 
@@ -310,11 +357,17 @@ and in addition the Hasse diagram (set of all covering relations).
 
 // accessors
 
+  const rootdata::RootDatum& rootDatum() const { return rd; }
 //! \brief The based Tits group.
   const tits::BasedTitsGroup& basedTitsGroup() const { return *d_base; }
 //! \brief The Tits group.
   const tits::TitsGroup& titsGroup() const { return d_base->titsGroup(); }
 //! \brief The Weyl group.
+
+  latticetypes::RatWeight half_rho() const
+  { return latticetypes::RatWeight(rd.twoRho(),4); }
+
+  virtual size_t Cartan_class(KGBElt x) const;
 
   tits::TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
   tits::TitsElt titsElt(KGBElt x) const
@@ -373,16 +426,12 @@ private:
 // extract the KGB for a root subsystem
 struct subsys_KGB : public KGB_base
 {
-  std::vector<weyl::WeylWord> to_simple;
-  std::vector<weyl::Generator> simple_of;
   std::vector<KGBElt> in_parent; // map elements back to parent
   std::vector<KGBElt> in_child; // partial map back
 
   subsys_KGB(const KGB_base& kgb,
-	     const rootdata::RootDatum& rd,
-	     const rootdata::RootList& subsys,
-	     const rootdata::RootDatum& sub_datum, // must be constructed before
-	     const weyl::TwistedWeylGroup& sub_W,  // call for lifetime reasons
+	     const subdatum::SubSystem& sub,      // must be constructed before
+	     const weyl::TwistedWeylGroup& sub_W, // call for lifetime reasons
 	     kgb::KGBElt x);
 
 // virtual method

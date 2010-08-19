@@ -408,7 +408,7 @@ void SRK_context::normalize(StandardRepK& sr) const
   const Cartan_info& ci = info(cn);
   latticetypes::Weight lambda = lift(sr);
 
-  size_t i=~0; // number of a complex simple root
+  size_t i=~0ul; // number of a complex simple root
   while (not isNormal(lambda,cn,i))
     lambda -= rd.simpleRoot(i)*lambda.dot(ci.coroot_sum(i));
 
@@ -599,7 +599,7 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
   const rootdata::RootDatum& rd=rootDatum();
   kgb::KGBEltList sub=sub_KGB(q); std::reverse(sub.begin(),sub.end());
 
-  std::vector<size_t> sub_inv(kgb().size(),~0);
+  std::vector<size_t> sub_inv(kgb().size(),~0ul);
 
   for (size_t i=0; i<sub.size(); ++i)
     sub_inv[sub[i]]=i; // partially fill array with inverse index
@@ -682,7 +682,8 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
     Char::coef_t c=it->second; // coefficient from |KGB_sum_q|
     const latticetypes::Weight& mu=it->first.first; // weight from |KGB_sum_q|
     const tits::TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_q|
-    cartanclass::InvolutionData id(complexGroup(),strong.tw());
+    cartanclass::InvolutionData id =
+      cartanclass::InvolutionData::build(complexGroup(),strong.tw());
 
     rootdata::RootSet A(rd.numRoots());
     for (bitmap::BitMap::iterator
@@ -744,7 +745,7 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
   const rootdata::RootDatum& rd=rootDatum();
   kgb::KGBEltList sub=sub_KGB(p); std::reverse(sub.begin(),sub.end());
 
-  std::vector<size_t> sub_inv(kgb().size(),~0);
+  std::vector<size_t> sub_inv(kgb().size(),~0ul);
 
   for (size_t i=0; i<sub.size(); ++i)
     sub_inv[sub[i]]=i; // partially fill array with inverse index
@@ -829,7 +830,8 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
     q_CharCoeff c=it->second; // coefficient from |q_KGB_sum|
     const latticetypes::Weight& mu=it->first.first; // weight from |q_KGB_sum|
     const tits::TitsElt& strong=it->first.second; // Tits elt from |q_KGB_sum|
-    cartanclass::InvolutionData id(complexGroup(),strong.tw());
+    cartanclass::InvolutionData id =
+      cartanclass::InvolutionData::build(complexGroup(),strong.tw());
 
     rootdata::RootSet A(rd.numRoots());
     for (bitmap::BitMap::iterator
@@ -1722,7 +1724,8 @@ PSalgebra::PSalgebra(tits::TitsElt base,
     , nilpotents(G.rootDatum().numRoots())
 {
   const rootdata::RootDatum& rd=G.rootDatum();
-  cartanclass::InvolutionData id(G,base.tw());
+  cartanclass::InvolutionData id =
+      cartanclass::InvolutionData::build(G,base.tw());
 
   // Put real simple roots into Levi factor
   for (size_t i=0; i<rd.semisimpleRank(); ++i)

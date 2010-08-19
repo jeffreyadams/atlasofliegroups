@@ -17,6 +17,7 @@
 #include <cstring>
 
 #include "weyl_fwd.h"
+#include "prerootdata_fwd.h"
 #include "rootdata_fwd.h"
 
 #include "constants.h"
@@ -590,7 +591,19 @@ public:
   void act(const rootdata::RootDatum& rd,
 	   const WeylElt& w,
 	   latticetypes::LatticeElt& v) const;
-/*!
+  // standard reflection action of Weyl group using a root datum
+  void act(const rootdata::RootDatum& rd,
+	   const WeylElt& w,
+	   latticetypes::RatLatticeElt& v) const { act(rd,w,v.numerator()); }
+
+  // same using only lists of simple (co)roots avoiding construction root datum
+  void act(const prerootdata::PreRootDatum& prd,
+	   const WeylElt& w,
+	   latticetypes::LatticeElt& v) const;
+  void act(const prerootdata::PreRootDatum& prd,
+	   const WeylElt& w,
+	   latticetypes::RatLatticeElt& v) const { act(prd,w,v.numerator()); }
+ /*!
   \brief Nondestructive version of |act| method
 */
   latticetypes::LatticeElt
@@ -643,7 +656,7 @@ class TwistedWeylGroup
   void operator=(const TwistedWeylGroup&); // forbid assignment
  protected:
  TwistedWeylGroup(const TwistedWeylGroup& g) // only derived classes may copy
-   : W(g.W), d_twist(g.d_twist) {}
+   : W(g.W), d_twist(g.d_twist) {} // share |W|, copy |d_twist|
 public:
   TwistedWeylGroup(const WeylGroup&, const Twist&);
 

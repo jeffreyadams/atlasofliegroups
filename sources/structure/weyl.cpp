@@ -567,6 +567,18 @@ void WeylGroup::act(const rootdata::RootDatum& rd,
   }
 }
 
+void WeylGroup::act(const prerootdata::PreRootDatum& prd,
+		    const WeylElt& w,
+		    latticetypes::LatticeElt& v) const
+{
+  for (size_t i = d_rank; i-->0; )
+  {
+    const WeylWord& xw = wordPiece(w,i);
+    for (size_t j = xw.size(); j-->0; )
+      prd.simpleReflect(v,d_out[xw[j]]);
+  }
+}
+
 /*!
   \brief
   Same as |act(rd,inverse(w),v)|, but avoiding computation of |inverse(w)|.
@@ -994,21 +1006,23 @@ namespace weyl {
 
 /*!\brief Returns the twist defined by |d| relative to |rd|.
 
-  Precondition: |d| is an involution of the \emph{based} root datum |rd|.
-*/
+  Precondition: |d| is an involution of the root datum |rd|. If not an
+  involution of the based datum, an appropriate Weyl group action is applied
+ */
 Twist make_twist(const rootdata::RootDatum& rd,
 		 const latticetypes::LatticeMatrix& d)
 {
-  latticetypes::WeightList
-    simple_roots(rd.beginSimpleRoot(),rd.endSimpleRoot());
+  rootdata::RootList simple_image(rd.semisimpleRank());
+
+  for (size_t i = 0; i<simple_image.size(); ++i)
+    simple_image[i] = rd.rootNbr(d.apply(rd.simpleRoot(i)));
+
+  rootdata::wrt_distinguished(rd,simple_image); // forget the Weyl element
 
   Twist result;
 
-  for (size_t i = 0; i<simple_roots.size(); ++i)
-  {
-    result[i] = setutils::find_index(simple_roots,d.apply(simple_roots[i]));
-    assert (result[i]<simple_roots.size());
-  }
+  for (size_t i = 0; i<simple_image.size(); ++i)
+    result[i] = rd.simpleRootIndex(simple_image[i]);
 
   return result;
 }
