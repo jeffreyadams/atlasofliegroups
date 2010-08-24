@@ -67,7 +67,7 @@ namespace blocks {
 
 class Block_base {
 
-  const weyl::TwistedWeylGroup& W;
+  const weyl::WeylGroup& W;
   size_t xrange;
   size_t yrange;
 
@@ -89,15 +89,14 @@ class Block_base {
   Block_base(realredgp::RealReductiveGroup& GR,
 	     const subdatum::SubSystem& sub,
 	     kgb::KGBElt x,
-	     const latticetypes::Weight& lambda, // discrete part of parameter
-	     const latticetypes::RatWeight gamma // infinitesimal character
+	     const latticetypes::RatWeight& lambda, // discrete parameter
+	     const latticetypes::RatWeight& gamma // infinitesimal character
 	     );
 
 // copy, assignment and swap
 
 // accessors
-  const weyl::WeylGroup& weylGroup() const { return W.weylGroup(); }
-  const weyl::TwistedWeylGroup& twistedWeylGroup() const { return W; }
+  const weyl::WeylGroup& weylGroup() const { return W; }
 
   size_t rank() const { return W.rank(); }
   size_t size() const { return d_x.size(); }
@@ -191,6 +190,8 @@ class Block : public Block_base
 
   enum State { BruhatConstructed, NumStates };
 
+  const weyl::TwistedWeylGroup& tW;
+
   std::vector<size_t> d_Cartan; // of size |size()|
   weyl::TwistedInvolutionList d_involution; // of size |size()|
 
@@ -231,6 +232,7 @@ non-vanishing KL polynomial.
  public:
 
 // accessors
+  const weyl::TwistedWeylGroup& twistedWeylGroup() const { return tW; }
   size_t Cartan_class(BlockElt z) const
     { assert(z<size()); return d_Cartan[z]; }
 

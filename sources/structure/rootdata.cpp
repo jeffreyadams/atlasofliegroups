@@ -932,15 +932,13 @@ void RootDatum::fillStatus()
       d_status.reset(IsSimplyConnected);
 }
 
-} // namespace rootdata
+
 
 /*****************************************************************************
 
         Chapter II -- Functions declared in rootdata.h
 
 ******************************************************************************/
-
-namespace rootdata {
 
 
 /*!

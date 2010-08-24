@@ -227,8 +227,7 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
        non-compact, simple roots suffice, but without knowing a nice proof. */
     for (size_t i=0; i<elt.size(); ++i) // |elt.size()| increases during loop
       for (weyl::Generator s=0; s<rank(); ++s)
-	if (Tg.twisted(s)==s and // imaginary (cannot be real at fund. Cartan)
-	    not elt[i].torus_part().negative_at(Tg.simple_root(s))) // non-cpct
+	if (Tg.twisted(s)==s and not Tg.compact(s,elt[i])) // noncpct imaginary
 	{
 	  tits::GlobalTitsElement a=elt[i]; // make a copy
 	  Tg.cross(s,a);
@@ -893,7 +892,7 @@ subsys_KGB::subsys_KGB(const KGB_base& kgb,
   } // |for(i)| (loop over wisted involutions)
 
 
-}
+} // |subsys_KGB::subsys_KGB|
 
 std::ostream& subsys_KGB::print(std::ostream& strm, KGBElt x) const
 {
@@ -1000,16 +999,15 @@ void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
   std::vector<std::pair<size_t,weyl::Generator> > history; // record ancestors
   history.reserve(0x100); // avoid some initial reallocations for efficiency
 
-  latticetypes::LatticeMatrix A = Tg.involution_matrix(tw);
+  latticetypes::LatticeMatrix A = Tg.involution_matrix(tw); // parent side
   cartanclass::InvolutionData id(pd,A);
 
   for (size_t i=0; i<A.numRows(); ++i)
-    A(i,i) += 1;
-  // now $A=\theta_x^t+1$, a matrix whose kernel is $(X_*)^{-\theta_x^t}$
+    A(i,i) -= 1; // now $A=\theta-1$, a matrix whose kernel is $(X^*)^\theta$
 
   for (size_t i=prev_inv; i<hash_table.size(); ++i) // hash table grows
   {
-    size_t last = hash_table.size()-1;
+    size_t last = hash_table.size()-1; // |hash_table| contains at least |tw|
 
     for (weyl::Generator s=0; s<W.rank(); ++s)
     {
@@ -1020,29 +1018,32 @@ void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
 	history.push_back(std::make_pair(i,s));
 	last=k;
       }
-    }
+    } // |for(s)|
+  } // |for(i<hash_table.size())|
+
     // reserve table space for new Cartan class
-    Cartans.reserve(hash_table.size());
-    proj.reserve(hash_table.size());
-    check_2rho_imag.reserve(hash_table.size());
+  Cartans.reserve(hash_table.size());
+  proj.reserve(hash_table.size());
+  check_2rho_imag.reserve(hash_table.size());
 
-    proj.push_back(lattice::row_saturate(A));
-    Cartans.push_back(Cartans.empty() ? 0 : Cartans.back()+1);
-    check_2rho_imag.push_back(pd.dual_twoRho(id.imaginary_roots()));
+  // create initial element
+  proj.push_back(lattice::row_saturate(A));
+  Cartans.push_back(Cartans.empty() ? 0 : Cartans.back()+1);
+  check_2rho_imag.push_back(pd.dual_twoRho(id.imaginary_roots()));
 
-    for (size_t k=prev_inv + 1; k<hash_table.size(); ++k)
-    {
-      size_t i=history[k-(prev_inv + 1)].first;
-      assert(i<k); // this should refer to earlier element
-      weyl::Generator s=history[k-(prev_inv + 1)].second;
-      proj.push_back(proj[i]*refl[s]);    // apply $refl[s]^{-1}$ to old kernel
-      Cartans.push_back(Cartans.back()); // same Cartan class
+  // do remaining elements using history
+  for (size_t k=prev_inv + 1; k<hash_table.size(); ++k)
+  {
+    size_t i=history[k-(prev_inv + 1)].first;
+    assert(i<k); // this should refer to earlier element
+    weyl::Generator s=history[k-(prev_inv + 1)].second;
+    proj.push_back(proj[i]*refl[s]);    // apply $refl[s]^{-1}$ to old kernel
+    Cartans.push_back(Cartans.back()); // same Cartan class
       check_2rho_imag.push_back(refl[s].apply(check_2rho_imag[i]));
-    }
-    assert(proj.size()==hash_table.size());
-    assert(Cartans.size()==hash_table.size());
-    assert(check_2rho_imag.size()==hash_table.size());
   }
+  assert(proj.size()==hash_table.size());
+  assert(Cartans.size()==hash_table.size());
+  assert(check_2rho_imag.size()==hash_table.size());
 }
 
 
@@ -1067,6 +1068,7 @@ latticetypes::RatLatticeElt
   GlobalFiberData::fingerprint(const tits::GlobalTitsElement& x) const
 {
   unsigned int k = hash_table.find(x.tw());
+  assert (k!=hash_table.empty);
   latticetypes::RatLatticeElt t = x.torus_part().as_rational();
   latticetypes::LatticeElt p = proj[k].apply(t.numerator());
 

@@ -111,11 +111,11 @@ TorusElement& TorusElement::operator+=(TorusPart v)
 
 GlobalTitsGroup::GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G)
   : weyl::TwistedWeylGroup(G.twistedWeylGroup())
-  , simple(prerootdata::PreRootDatum
-	   (latticetypes::WeightList(G.rootDatum().beginSimpleRoot(),
-				     G.rootDatum().endSimpleRoot()),
-	    latticetypes::WeightList(G.rootDatum().beginSimpleCoroot(),
+  , simple(prerootdata::PreRootDatum // viewed from the dual side
+	   (latticetypes::WeightList(G.rootDatum().beginSimpleCoroot(),
 				     G.rootDatum().endSimpleCoroot()),
+	    latticetypes::WeightList(G.rootDatum().beginSimpleRoot(),
+				     G.rootDatum().endSimpleRoot()),
 	    G.rootDatum().rank()))
   , delta_v(G.dualDistinguished())
   , alpha_v(G.semisimpleRank())
@@ -123,7 +123,7 @@ GlobalTitsGroup::GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G)
   , square_class_gen(compute_square_classes(G))
 {
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
-    alpha_v[i]=latticetypes::SmallBitVector(simple.coroots()[i]);
+    alpha_v[i]=latticetypes::SmallBitVector(simple.roots()[i]);
 }
 
 GlobalTitsGroup::GlobalTitsGroup(const subdatum::SubSystem& sub,
@@ -133,15 +133,15 @@ GlobalTitsGroup::GlobalTitsGroup(const subdatum::SubSystem& sub,
   , simple(sub.pre_root_datum())
   , delta_v(theta) // will be made distinguished below using |ww|
   , alpha_v(weyl::TwistedWeylGroup::rank())
-  , half_rho_v(sub.dual_sub_2rho(),4)
+  , half_rho_v(sub.parent_sub_2rho(),4)
   , square_class_gen() // remains empty when this constructor is used
 {
   for (size_t i=0; i<ww.size(); ++i)
     delta_v.leftMult // make it distinguished by applying generators in |ww|
-      (sub.parent_datum().root_reflection // traslated into parent reflections
+      (sub.parent_datum().root_reflection // translated into parent reflections
        (sub.parent_nr_simple(ww[ww.size()-1-i]))); // and reversed for duality
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
-    alpha_v[i]=latticetypes::SmallBitVector(simple.coroots()[i]);
+    alpha_v[i]=latticetypes::SmallBitVector(simple.roots()[i]);
 }
 
 latticetypes::LatticeMatrix
@@ -158,35 +158,6 @@ latticetypes::LatticeMatrix
 }
 
 
-/* The code below uses Tits element representation as $t*\sigma_w*\delta_1$
-   and $\delta_1*\sigma_\alpha^{-1} = \sigma_\alpha*\delta_1$, simple $\alpha$
-   so conjugation by $\sigma_\alpha$ gives $\sigma_\alpha*(t,w)*\sigma_\alpha$
-*/
-int // length change in $\{-1,0,+1\}$, half that of change for |x.tw()|
-GlobalTitsGroup::cross(weyl::Generator s, GlobalTitsElement& x) const
-{
-  bool c = compact(s,x); // whether $s_\alpha(t)=t+m_\alpha$ (cpct if imagin)
-  int d=twistedConjugate(x.w,s); // Tits group must add $m_\alpha$ iff $d=0$
-  if (c != (d==0)) // reasons could cancel out, if not add $m_\alpha$ to |x.t|
-    add(alpha_v[s],x);
-  return d/2; // report half of length change in Weyl group
-}
-
-GlobalTitsElement GlobalTitsGroup::Cayley
-  (weyl::Generator s, GlobalTitsElement x) const
-{
-  leftMult(x.w,s); return x;
-}
-
-
-void GlobalTitsGroup::add(GlobalTitsElement& a, latticetypes::RatWeight rw)
-  const
-{
-  weylGroup().act(simple,a.tw(),rw); // pull |rw| across |a.tw()|
-  tits::TorusElement& tp = a.t;
-  tp = tp + tits::TorusElement(rw);
-}
-
 // find simple roots giving length-decreasing links (complex descent and real)
 bitset::RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
 {
@@ -194,6 +165,34 @@ bitset::RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
     result.set(s,hasDescent(s,a.tw())); // this covers all cases precisely!
   return result;
+}
+
+/* The code below uses Tits element representation as $t*\sigma_w*\delta_1$
+   and $\delta_1*\sigma_\alpha^{-1} = \sigma_\beta*\delta_1$, simple $\alpha$
+   so conjugation by $\sigma_\alpha$ gives $\sigma_\alpha*(t,w)*\sigma_\beta$
+*/
+int // length change in $\{-1,0,+1\}$, half that of change for |x.tw()|
+GlobalTitsGroup::cross(weyl::Generator s, GlobalTitsElement& x) const
+{
+  int d=twistedConjugate(x.w,s); // Tits group must add $m_\alpha$ iff $d=0$
+  if (d!=0) // complex cross action: reflect torus part by |s|
+  {
+    x.t.reflect(simple,s); // OK since |simple| is at dual side for |x.t|
+    return d/2; // report half of length change in Weyl group
+  }
+
+  // real or imaginary cross action
+  if (not (hasDescent(s,x.w) or compact(s,x))) // not real or compact imaginary
+    add(alpha_v[s],x); // so adjust if |s| is noncompact imaginary
+  return 0; // no length change this case
+}
+
+void GlobalTitsGroup::add(GlobalTitsElement& a, latticetypes::RatWeight rw)
+  const
+{
+  weylGroup().act(simple,a.tw(),rw); // pull |rw| across |a.tw()|
+  tits::TorusElement& tp = a.t;
+  tp = tp + tits::TorusElement(rw);
 }
 
 /*
@@ -207,14 +206,14 @@ bitset::RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
 void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   const
 {
-  const latticetypes::Weight& alpha=simple.roots()[s];
+  const latticetypes::Weight& eval_pt=simple.coroots()[s];
   latticetypes::RatWeight t=a.t.as_rational();
-  int num = alpha.dot(t.numerator()); // should become multiple of denominator
+  int num = eval_pt.dot(t.numerator()); // should become multiple of denominator
 
-  const latticetypes::Weight& alpha_vee=simple.coroots()[s];
-  // |alpha.dot(alpha_vee)==2|
+  const latticetypes::Weight& shift_vec= simple.roots()[s];
+  // |eval_pt.dot(shift_vec)==2|
 
-  t -= latticetypes::RatWeight(alpha_vee*num,2*t.denominator());
+  t -= latticetypes::RatWeight(shift_vec*num,2*t.denominator());
 
   leftMult(a.w,s); a.t=TorusElement(t);
 }

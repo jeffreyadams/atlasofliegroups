@@ -110,6 +110,10 @@ class TorusElement
   // manipulators
 
   TorusElement& operator+=(TorusPart v);
+
+  // the following method assumes |prd| is on dual side with respect to torus
+  void reflect(const prerootdata::PreRootDatum& prd, weyl::Generator s)
+  { prd.simpleReflect(repr.numerator(),s); } // numerator is weight for |prd|
 }; // |class TorusElement|
 
 // element stored as $(t,w)$ is interpreted as $t * \sigma_w * \delta_1$
@@ -179,9 +183,9 @@ class GlobalTitsElement
  */
 class GlobalTitsGroup : public weyl::TwistedWeylGroup
 {
-  const prerootdata::PreRootDatum& simple; // simple (co)roots for W-action
+  const prerootdata::PreRootDatum simple; // from DUAL side, allows W action
   latticetypes::LatticeMatrix delta_v; // dual distinguished involution
-  std::vector<TorusPart> alpha_v; // coroots reduced modulo 2
+  std::vector<TorusPart> alpha_v; // |simple.roots()| reduced modulo 2
   const latticetypes::RatWeight half_rho_v;
 
   // a list of gradings of the imaginary simple roots generating square classes
@@ -209,8 +213,6 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
 
   //!\brief Element m_\alpha of H(2) for simple coroot \#j.
   TorusPart m_alpha(size_t j) const { return alpha_v[j]; }
-  latticetypes::Weight simple_root(weyl::Generator s) const
-  { return simple.roots()[s]; }
 
   //!\brief Reflection of |TorusElement|s defined by a twisted involution
   latticetypes::LatticeMatrix involution_matrix(const weyl::WeylElt& tw) const;
@@ -226,11 +228,12 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
 
 // methods that only access some |GlobalTitsElement|
 
-  // determine status of simple root, assumed imaginary
+  // determine status of simple root, if assumed imaginary
   bool compact(weyl::Generator s, const GlobalTitsElement& a) const
-  { return a.torus_part().negative_at(simple.roots()[s]); }
+  { return a.torus_part().negative_at(simple.coroots()[s]); }
   // compute Cayley transform
-  GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const;
+  GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const
+  { leftMult(a.w,s); return a; }
   // flag length-decreasing complex cross actions and inverse Cayley transforms
   bitset::RankFlags descents(const GlobalTitsElement& a) const;
 

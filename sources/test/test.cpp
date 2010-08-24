@@ -29,9 +29,10 @@
 #include "interactive.h"
 #include "ioutils.h"
 #include "prettyprint.h"
-#include "blocks.h"
 #include "kgb.h"
 #include "kgb_io.h"
+#include "blocks.h"
+#include "block_io.h"
 #include "klsupport.h"
 #include "kl.h"
 #include "kltest.h"
@@ -77,6 +78,7 @@ namespace {
   void exam_f();
 
   void X_f();
+  void iblock_f();
 
 
   // help functions
@@ -212,6 +214,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("srtest",srtest_f);
 
   mode.add("examine",exam_f);
+  mode.add("iblock",iblock_f);
 }
 
 // Add to the block mode the test commands that require that mode.
@@ -1088,6 +1091,65 @@ void X_f()
   kgb_io::print_X(f,kgb);
 }
 
+void iblock_f()
+{
+  try
+  {
+    realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
+    complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
+    const rootdata::RootDatum& rd = G.rootDatum();
+
+    latticetypes::Weight lambda_rho =
+      interactive::get_weight(interactive::sr_input(),
+			      "Give lambda-rho: ",
+			      G.rank());
+
+    latticetypes::RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+
+
+    latticetypes::RatWeight nu=
+      interactive::get_ratweight
+      (interactive::sr_input(),"rational parameter nu: ",rd.rank());
+
+    const kgb::KGB& kgb = GR.kgb();
+    unsigned long x=interactive::get_bounded_int
+      (interactive::common_input(),"KGB element: ",kgb.size());
+
+    latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
+
+    nu = latticetypes::RatWeight
+      (nu.numerator()- theta.apply(nu.numerator()),2*nu.denominator());
+
+    const rootdata::RootDatum& sub_rd = rootdata::integrality_datum(rd,nu);
+    const size_t sub_rank=sub_rd.semisimpleRank();
+    rootdata::RootList sub_simple(sub_rank);
+    for (size_t i=0; i<sub_rank; ++i) // clumsily find simple-integral roots
+      sub_simple[i] = rd.rootNbr(sub_rd.simpleRoot(i));
+    subdatum::SubSystem sub(rd,sub_simple);
+
+    blocks::Block_base block(GR,sub,x,lambda,nu);
+
+    block_io::print_block_base(std::cout,block);
+
+  }
+  catch (error::MemoryOverflow& e)
+  {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e)
+  {
+    e("aborted");
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << "error occurrend: " << e.what() << std::endl;
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << "unidentified error occurred" << std::endl;
+  }
+}
+
 void test_f()
 {
   try
@@ -1096,9 +1158,9 @@ void test_f()
     complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
     const rootdata::RootDatum& rd = G.rootDatum();
 
-    latticetypes::RatWeight lambda=
+    latticetypes::RatWeight nu=
       interactive::get_ratweight
-      (interactive::sr_input(),"lambda: ",rd.rank());
+      (interactive::sr_input(),"rational weight nu: ",rd.rank());
 
     const kgb::KGB& kgb = GR.kgb();
     unsigned long x=interactive::get_bounded_int
@@ -1106,11 +1168,10 @@ void test_f()
 
     latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
 
-    lambda = latticetypes::RatWeight
-      (lambda.numerator() + theta.apply(lambda.numerator()),
-       2*lambda.denominator());
+    nu = latticetypes::RatWeight
+      (nu.numerator() + theta.apply(nu.numerator()),2*nu.denominator());
 
-    const rootdata::RootDatum& sub_rd = rootdata::integrality_datum(rd,lambda);
+    const rootdata::RootDatum& sub_rd = rootdata::integrality_datum(rd,nu);
     const size_t sub_rank=sub_rd.semisimpleRank();
     rootdata::RootList sub_simple(sub_rank);
     for (size_t i=0; i<sub_rank; ++i)

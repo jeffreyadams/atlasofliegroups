@@ -39,6 +39,62 @@ namespace atlas {
 
 namespace block_io {
 
+// temp version without Cartan classes/involutions (may be added back later)
+std::ostream&
+print_block_base(std::ostream& strm, const blocks::Block_base& block)
+{
+  // compute maximal width of entry
+  int width = ioutils::digits(block.size()-1,10ul);
+  int xwidth = ioutils::digits(block.xsize()-1,10ul);
+  int ywidth = ioutils::digits(block.ysize()-1,10ul);
+  int lwidth = ioutils::digits(block.length(block.size()-1),10ul);
+  const int pad = 2;
+
+  for (size_t j = 0; j < block.size(); ++j) {
+    // print entry number and corresponding orbit pair
+    strm << std::setw(width) << j
+	 << '(' << std::setw(xwidth) << block.x(j)
+	 << ',' << std::setw(ywidth) << block.y(j) << "):";
+
+    // print length
+    strm << std::setw(lwidth+pad) << block.length(j) << std::setw(pad) << "";
+
+    // print descents
+    printDescent(strm,block.descent(j),block.rank());
+
+    // print cross actions
+    for (size_t s = 0; s < block.rank(); ++s) {
+      blocks::BlockElt z = block.cross(s,j);
+      if (z == blocks::UndefBlock)
+	strm << std::setw(width+pad) << '*';
+      else
+	strm << std::setw(width+pad) << z;
+    }
+    strm << std::setw(pad+1) << "";
+
+    // print Cayley transforms
+    for (size_t s = 0; s < block.rank(); ++s)
+    {
+      blocks::BlockEltPair z = block.isWeakDescent(s,j)
+	                     ? block.inverseCayley(s,j)
+	                     : block.cayley(s,j);
+      strm << '(' << std::setw(width);
+      if (z.first == blocks::UndefBlock)
+	strm << '*';
+      else
+	strm << z.first;
+      strm << ',' << std::setw(width);
+      if (z.second == blocks::UndefBlock)
+	strm << '*';
+      else
+	strm << z.second;
+      strm << ')' << std::setw(pad) << "";
+    }
+    strm << std::endl;
+  }
+
+  return strm;
+} // |print_block_base|
 
 /*
   Print the data from block to strm.
