@@ -63,6 +63,20 @@ SubSystem::SubSystem(const rootdata::RootDatum& parent,
   }
 }
 
+SubSystem SubSystem::integral // pseudo contructor for integral system
+  (const rootdata::RootDatum& parent, const latticetypes::RatWeight& gamma)
+{
+  latticetypes::LatticeCoeff n=gamma.denominator();
+  const latticetypes::Weight& v=gamma.numerator();
+  rootdata::RootSet int_roots(parent.numRoots());
+  for (size_t i=0; i<parent.numPosRoots(); ++i)
+    if (v.dot(parent.posCoroot(i))%n == 0)
+      int_roots.insert(parent.posRootNbr(i));
+
+  // it suffices that simple basis computed below live until end of constructor
+  return SubSystem(parent,parent.simpleBasis(int_roots));
+}
+
 rootdata::RootNbr SubSystem::parent_nr(rootdata::RootNbr alpha) const
 {
   return isPosRoot(alpha) ? pos_map[posRootIndex(alpha)]

@@ -16,21 +16,22 @@
 
 #include "blocks_fwd.h"
 #include <cassert>
+#include <iostream>
 
 #include "rootdata.h"
 #include "subdatum.h"
 #include "bruhat_fwd.h"
 #include "descents.h"
-#include "kgb_fwd.h"
+#include "kgb.h"
 #include "complexredgp_fwd.h"
 #include "realredgp_fwd.h"
-#include "weyl_fwd.h"
+#include "realform.h"
+#include "weyl.h"
 #include "tits_fwd.h"
 
 #include "bitset.h"
 #include "bitmap.h"
-#include "realform.h"
-#include "weyl.h"
+#include "hashtable.h"
 
 namespace atlas {
 
@@ -68,8 +69,8 @@ namespace blocks {
 class Block_base {
 
   const weyl::WeylGroup& W;
-  size_t xrange;
-  size_t yrange;
+
+ protected: // other fields may be set in derived class contructor
 
   kgb::KGBEltList d_x;  // of size |size()|
   kgb::KGBEltList d_y; // of size |size()|
@@ -86,23 +87,20 @@ class Block_base {
 
 // constructors and destructors
   Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb);
-  Block_base(realredgp::RealReductiveGroup& GR,
-	     const subdatum::SubSystem& sub,
-	     kgb::KGBElt x,
-	     const latticetypes::RatWeight& lambda, // discrete parameter
-	     const latticetypes::RatWeight& gamma // infinitesimal character
-	     );
+  Block_base(const subdatum::SubSystem& sub);
+
+  virtual ~Block_base() {}
 
 // copy, assignment and swap
 
 // accessors
   const weyl::WeylGroup& weylGroup() const { return W; }
 
-  size_t rank() const { return W.rank(); }
+  size_t rank() const { return W.rank(); } // only semisimple rank matters
   size_t size() const { return d_x.size(); }
 
-  size_t xsize() const { return xrange; }
-  size_t ysize() const { return yrange; }
+  virtual size_t xsize() const = 0;
+  virtual size_t ysize() const = 0;
 
   kgb::KGBElt x(BlockElt z) const { assert(z<size()); return d_x[z]; }
   kgb::KGBElt y(BlockElt z) const { assert(z<size()); return d_y[z]; }
@@ -111,6 +109,12 @@ class Block_base {
   BlockElt element(kgb::KGBElt x,kgb::KGBElt y) const;
 
   size_t length(BlockElt z) const { return d_length[z]; }
+
+  virtual size_t Cartan_class(BlockElt z) const = 0;
+  size_t max_Cartan() const // maximal Cartan number, for printing
+  { return Cartan_class(size()-1); } // this should be OK in all cases
+
+  virtual const weyl::TwistedInvolution& involution(BlockElt z) const = 0;
 
   BlockElt cross(size_t s, BlockElt z) const //!< cross action
   { assert(z<size()); assert(s<rank()); return d_cross[s][z]; }
@@ -161,6 +165,10 @@ root datum involution tau corresponding to z
     return std::make_pair(d_first_z_of_x[x],d_first_z_of_x[x+1]);
   }
 
+  // print derivative class specific per-element information
+  virtual std::ostream& print(std::ostream& strm, BlockElt z) const
+  { return strm; }
+
 }; // |class Block_base|
 
   /*!
@@ -191,6 +199,9 @@ class Block : public Block_base
   enum State { BruhatConstructed, NumStates };
 
   const weyl::TwistedWeylGroup& tW;
+
+  size_t xrange;
+  size_t yrange;
 
   std::vector<size_t> d_Cartan; // of size |size()|
   weyl::TwistedInvolutionList d_involution; // of size |size()|
@@ -233,6 +244,10 @@ non-vanishing KL polynomial.
 
 // accessors
   const weyl::TwistedWeylGroup& twistedWeylGroup() const { return tW; }
+
+  virtual size_t xsize() const { return xrange; }
+  virtual size_t ysize() const { return yrange; }
+
   size_t Cartan_class(BlockElt z) const
     { assert(z<size()); return d_Cartan[z]; }
 
@@ -257,9 +272,56 @@ private:
   void compute_supports(); // used during construction
 
   void fillBruhat();
-}; // class Block
+}; // |class Block|
 
-} // namespace blocks
 
-} // namespace atlas
+class nu_block : public Block_base
+{
+  const kgb::KGB& kgb;
+
+  latticetypes::RatWeight infin_char; // infinitesimal character
+
+  std::vector<kgb::KGBElt> kgb_nr_of; // indexed by child |x| numbers
+
+  struct y_fields
+  {
+    tits::GlobalTitsElement rep; //representative
+    unsigned int Cartan_class;
+
+    y_fields(tits::GlobalTitsElement y, unsigned int cc)
+    : rep(y), Cartan_class(cc) {}
+  }; // |struct y_fields|
+
+  std::vector<y_fields> y_info; // indexed by child |y| numbers
+
+ public:
+  nu_block(realredgp::RealReductiveGroup& GR,
+	   const subdatum::SubSystem& sub,
+	   kgb::KGBElt x,
+	   const latticetypes::RatWeight& lambda, // discrete parameter
+	   const latticetypes::RatWeight& gamma, // infinitesimal character
+	   BlockElt& entry_element // set to block element matching the input
+	   );
+
+  // virtual methods
+  size_t xsize() const { return kgb_nr_of.size(); }
+  size_t ysize() const { return y_info.size(); }
+
+  size_t Cartan_class(BlockElt z) const
+  { assert(z<size()); return y_info[d_y[z]].Cartan_class; }
+
+  const weyl::TwistedInvolution& involution(BlockElt z) const
+  { assert(z<size()); return y_info[d_y[z]].rep.tw(); }
+
+  std::ostream& print(std::ostream& strm, BlockElt z) const;
+
+  // new methods
+  latticetypes::RatWeight local_system(BlockElt z) const
+  { assert(z<size()); return y_info[d_y[z]].rep.torus_part().as_rational(); }
+
+}; // |class nu_block|
+
+} // |namespace blocks|
+
+} // |namespace atlas|
 #endif

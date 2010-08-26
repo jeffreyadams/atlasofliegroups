@@ -27,9 +27,8 @@
 
 #include "blocks.h"
 
-#ifdef VERBOSE
 #include <iostream>
-#endif
+#include <iomanip>
 
 #include <cassert>
 #include <vector>
@@ -37,6 +36,7 @@
 #include <set> // for |insertAscents|
 
 #include "basic_io.h"
+#include "ioutils.h"
 #include "bruhat.h"
 #include "complexredgp.h"
 #include "descents.h"
@@ -156,7 +156,6 @@ namespace blocks {
 
 Block_base::Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
   : W(kgb.weylGroup())
-  , xrange(kgb.size()), yrange(dual_kgb.size())
   , d_x(), d_y(), d_first_z_of_x() // filled below
   , d_cross(rank()), d_cayley(rank()) // each entry filled below
   , d_descent(), d_length() // filled below
@@ -173,7 +172,7 @@ Block_base::Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
     size += kgb.packet_size(w)*dual_kgb.packet_size(dual_w.back());
   }
 
-  d_first_z_of_x.reserve(xrange+1);
+  d_first_z_of_x.reserve(kgb.size()+1);
 
   d_x.reserve(size);
   d_y.reserve(size);
@@ -204,7 +203,7 @@ Block_base::Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
   } // |for (i)|
   d_first_z_of_x.push_back(base_z);// make |d_first_z_of_x[d_xrange]==d_size|
 
-  assert(d_first_z_of_x.size()==xrange+1); // all |x|'s have been seen
+  assert(d_first_z_of_x.size()==kgb.size()+1); // all |x|'s have been seen
 
   // Now |element| can be safely called; install cross and Cayley tables
 
@@ -243,24 +242,36 @@ Block_base::Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
 } // |Block_base::Block_base|
 
 
-Block_base::Block_base
-  (realredgp::RealReductiveGroup& GR,
-   const subdatum::SubSystem& sub, // at the dual side
-   kgb::KGBElt x,
-   const latticetypes::RatWeight& lambda, // discrete part of parameter
-   const latticetypes::RatWeight& gamma) // infinitesimal character
-: W(sub.Weyl_group())
-, xrange(0), yrange(0),d_x(),d_y()
-,d_first_z_of_x(),d_cross(sub.rank()),d_cayley(sub.rank())
-,d_descent(),d_length()
+Block_base::Block_base(const subdatum::SubSystem& sub)
+  : W(sub.Weyl_group())
+  , d_x(), d_y()
+  , d_first_z_of_x(), d_cross(sub.rank()), d_cayley(sub.rank())
+  , d_descent(), d_length()
+{}
+
+nu_block::nu_block(realredgp::RealReductiveGroup& GR,
+		   const subdatum::SubSystem& sub, // at the dual side
+		   kgb::KGBElt x,
+		   const latticetypes::RatWeight& lambda, // discrete parameter
+		   const latticetypes::RatWeight& gamma, // infinitesimal char
+		   BlockElt& entry_element) // output parameter
+  : Block_base(sub)
+  , kgb(GR.kgb())
+  , infin_char(gamma)
+  , kgb_nr_of()
+  , y_info()
 {
-  const kgb::KGB& kgb = GR.kgb();
-  const complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
+  weyl::TI_Entry::Pooltype inv_pool;
+  hashtable::HashTable<weyl::TI_Entry,unsigned int> inv_hash(inv_pool);
+  kgb::GlobalFiberData gfd(sub,inv_hash);
+
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   weyl::WeylWord dual_involution;
 
   const tits::GlobalTitsGroup Tg
-    (sub,G.involutionMatrix(kgb.involution(x)),dual_involution);
+    (sub,
+     GR.complexGroup().involutionMatrix(kgb.involution(x)),
+     dual_involution);
 
   weyl::TwistedInvolution tw = Tg.weylGroup().element(dual_involution);
 
@@ -268,6 +279,9 @@ Block_base::Block_base
   tits::TorusElement t((gamma-lambda)/=2); // for original group $G$
   tits::GlobalTitsElement y=tits::GlobalTitsElement(t,tw);
   Tg.add(y, kgb.half_rho() - Tg.torus_part_offset () ); // for $G(\gamma)$
+
+  const kgb::KGBElt x_org = x;
+  const tits::GlobalTitsElement y_org = y; // save values for |entry_element|
 
   // step 2: move to the minimal fiber
   { // modify |x| and |y|, descending to minimal element for |subsys|
@@ -300,20 +314,13 @@ Block_base::Block_base
     // one might reduce the torus part of |y| here
   } // end of step 2
 
-  weyl::TI_Entry::Pooltype involution_pool;
-  hashtable::HashTable<weyl::TI_Entry,unsigned int> hash(involution_pool);
-  kgb::GlobalFiberData gfd(sub,hash);
   gfd.add_class(sub,Tg,y.tw());
 
-  std::vector<tits::GlobalTitsElement> y_rep(1,y);
-  kgb::KGB_elt_entry::Pooltype y_pool // parallel array with fingerprints
-    (1,kgb::KGB_elt_entry(gfd.fingerprint(y),y.tw()));
+  kgb::KGB_elt_entry::Pooltype y_pool(1,gfd.pack(y));
   hashtable::HashTable<kgb::KGB_elt_entry,kgb::KGBElt> y_hash(y_pool);
 
   // step 3: generate imaginary fiber-orbit of |x|'s (|y|'s are unaffected)
   std::vector<unsigned int> x_of(kgb.size(),~0);
-  std::vector<kgb::KGBElt> kgb_nr_of; // indexed by newly assigned |x| numbers
-  kgb_nr_of.reserve(kgb.size()); // maybe wasteful, this avoids reallocation
   {
     cartanclass::InvolutionData id =
       cartanclass::InvolutionData::build(sub,Tg,y.tw());
@@ -350,7 +357,7 @@ Block_base::Block_base
       kgb_nr_of.push_back(kgb_nr);
       d_first_z_of_x.push_back(d_x.size());
       d_x.push_back(x_of[kgb_nr]);
-      assert(y_hash.find(kgb::KGB_elt_entry(gfd.fingerprint(y),y.tw()))==0);
+      assert(y_hash.find(gfd.pack(y))==0);
       d_y.push_back(0);
       d_descent.push_back(descents::DescentStatus());
       d_length.push_back(0); // we don't know the length of |x| in the sub-KGB
@@ -381,7 +388,7 @@ Block_base::Block_base
       cross_link.resize(d_x.size(),UndefBlock); // ensure enough slots for now
       Cayley_link.resize(d_x.size(),std::make_pair(UndefBlock,UndefBlock));
 
-      tits::GlobalTitsElement sample = y_rep[ys[0]];
+      tits::GlobalTitsElement sample = y_hash[ys[0]].repr();
       int d = Tg.cross(s,sample);
       int l = d_length[next]-d; // length change on dual involution is opposite
       assert(l>=0); // if fails, then starting point not minimal for length
@@ -394,14 +401,10 @@ Block_base::Block_base
 	size_t old_size =  y_hash.size();
 	for (unsigned int j=0; j<ys.size(); ++j)
 	{
-	  tits::GlobalTitsElement y = y_rep[ys[j]];
+	  tits::GlobalTitsElement y = y_hash[ys[j]].repr();
 	  int dd = Tg.cross(s,y);
 	  assert(dd==d); // all length changes should be equal
-	  cross_ys.push_back
-	    (y_hash.match(kgb::KGB_elt_entry(gfd.fingerprint(y),y.tw())));
-	  if (y_hash.size()>y_rep.size())
-	    y_rep.push_back(y);
-	  assert(y_hash.size()==y_rep.size());
+	  cross_ys.push_back(y_hash.match(gfd.pack(y)));
 	}
 	new_cross = y_hash.size()>old_size;
 	assert(not new_cross or y_hash.size()==old_size+ys.size()); // all same
@@ -467,7 +470,7 @@ Block_base::Block_base
 	      d_descent[base_z+j].set
 		(s, descents::DescentStatus::RealTypeII);
 	    else
-	      if (y_rep[d_y[base_z+j]].torus_part().negative_at
+	      if (y_hash[d_y[base_z+j]].repr().torus_part().negative_at
 		  (sub.parent_datum().coroot(sub.parent_nr_simple(s))))
 		d_descent[base_z+j].set
 		  (s, descents::DescentStatus::RealNonparity);
@@ -496,25 +499,16 @@ Block_base::Block_base
 	    Cayley_ys.clear();
 	    for (unsigned int j=0; j<ys.size(); ++j)
 	    {
-	      tits::GlobalTitsElement y = y_rep[ys[j]];
+	      tits::GlobalTitsElement y = y_hash[ys[j]].repr();
 	      Tg.inverse_Cayley(s,y);
 	      if (j==0) // needed only the first time
 		gfd.add_class(sub,Tg,y.tw());
-	      Cayley_ys.push_back
-		(y_hash.match(kgb::KGB_elt_entry(gfd.fingerprint(y),y.tw())));
-	      assert (new_Cayley == (y_hash.size()>y_rep.size()));
-	      if (new_Cayley)
-		y_rep.push_back(y);
+	      Cayley_ys.push_back(y_hash.match(gfd.pack(y)));
 
 	      if (type2)
 	      {
 		Tg.cross(s,y);
-		Cayley_ys.push_back
-		  (y_hash.match(kgb::KGB_elt_entry(gfd.fingerprint(y),y.tw())));
-		assert (new_Cayley == (y_hash.size()>y_rep.size()));
-		if (new_Cayley)
-		  y_rep.push_back(y);
-		assert(y_hash.size()==y_rep.size());
+		Cayley_ys.push_back(y_hash.match(gfd.pack(y)));
 	      }
 	    } // |for (j)|
 	    assert(not new_Cayley or
@@ -566,10 +560,9 @@ Block_base::Block_base
 	  for (unsigned int j=0; j<ys.size(); ++j)
 	    if (d_descent[base_z+j][s]!=descents::DescentStatus::RealNonparity)
 	    {
-	      tits::GlobalTitsElement y = y_rep[ys[j]];
+	      tits::GlobalTitsElement y = y_hash[ys[j]].repr();
 	      y = Tg.Cayley(s,y);
-	      kgb::KGBElt cty =
-		y_hash.match(kgb::KGB_elt_entry(gfd.fingerprint(y),y.tw()));
+	      kgb::KGBElt cty =	y_hash.match(gfd.pack(y));
 	      BlockElt mother = element(x_of[ctx],cty);
 	      assert(Cayley_link[mother].first ==base_z+j or
 		     Cayley_link[mother].second==base_z+j); // should link here
@@ -592,9 +585,20 @@ Block_base::Block_base
     } // |for(s)|
   } // |for (next<queue.front())|
 
-  xrange = kgb_nr_of.size();
-  yrange = y_hash.size();
-}
+  // now store values into constructed object
+
+  std::vector<kgb::KGBElt>(kgb_nr_of).swap(kgb_nr_of); // consolidate size
+  y_info.reserve(y_hash.size());
+  for (unsigned int y=0; y<y_hash.size(); ++y)
+  {
+    tits::GlobalTitsElement yr = y_hash[y].repr();
+    y_info.push_back(y_fields(yr,gfd.Cartan_class(yr.tw())));
+  }
+
+  // and look up which element matches the original input
+  entry_element = element(x_of[x_org],y_hash.find(gfd.pack(y_org)));
+
+} // |nu_block::nu_block|
 
 
 /*!\brief Look up element by |x|, |y| coordinates
@@ -735,6 +739,7 @@ BlockEltPair Block_base::link(size_t alpha,size_t beta,BlockElt y) const
 Block::Block(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
   : Block_base(kgb,dual_kgb)
   , tW(kgb.twistedWeylGroup())
+  , xrange(kgb.size()), yrange(dual_kgb.size())
   , d_Cartan(), d_involution(), d_involutionSupport() // filled below
   , d_state()
   , d_bruhat(NULL)
@@ -873,6 +878,13 @@ void Block::fillBruhat()
 }
 
 
+std::ostream& nu_block::print(std::ostream& strm, BlockElt z) const
+{
+  int xwidth = ioutils::digits(kgb.size()-1,10ul);
+  return strm << "(=" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
+	      << ',' << std::setw(9) << local_system(z)
+	      << ") ";
+}
 
 } // namespace blocks
 

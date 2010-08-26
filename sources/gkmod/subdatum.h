@@ -35,7 +35,7 @@ namespace subdatum {
 class SubSystem : public rootdata::RootSystem // new system, subsytem of dual
 {
   const rootdata::RootDatum& rd; // parent root datum
-  const weyl::WeylGroup sub_W;
+  const weyl::WeylGroup sub_W; // Weyl group no reference: built in contructor
   rootdata::RootList pos_map; // map positive roots to root number in parent
   rootdata::RootList inv_map; // partial map back from all parent roots
 
@@ -51,6 +51,18 @@ class SubSystem : public rootdata::RootSystem // new system, subsytem of dual
  public:
   SubSystem(const rootdata::RootDatum& parent,
 	    const rootdata::RootList& sub_sys);
+
+  static SubSystem integral // pseudo contructor for integral system
+  (const rootdata::RootDatum& parent, const latticetypes::RatWeight& gamma);
+
+  SubSystem(const SubSystem& s) // copy contructor (used by pseudo contructor)
+  : rootdata::RootSystem(s) // copy base object
+  , rd(s.rd) // share this one
+  , sub_W(s.cartanMatrix()) // reconstruct (Weyl group cannot be copied)
+  , pos_map(s.pos_map), inv_map(s.inv_map), sub_root(s.sub_root) // copy those
+  {
+    assert(false); // should never be actually called, but exist nonetheless
+  }
 
   const rootdata::RootDatum& parent_datum() const { return rd; }
   const weyl::WeylGroup& Weyl_group() const { return sub_W; }

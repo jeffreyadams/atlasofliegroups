@@ -1085,8 +1085,7 @@ void exam_f()
 void X_f()
 {
   complexredgp::ComplexReductiveGroup& G=mainmode::currentComplexGroup();
-  tits::GlobalTitsGroup Tg(G); // this implicitly chooses base point $\delta_1$
-  kgb::global_KGB kgb(G,Tg); // build global Tits group, "all" square classes
+  kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   ioutils::OutputFile f;
   kgb_io::print_X(f,kgb);
 }
@@ -1117,19 +1116,23 @@ void iblock_f()
 
     latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
 
-    nu = latticetypes::RatWeight
+    nu = latticetypes::RatWeight // make |nu| fixed by $-\theta$
       (nu.numerator()- theta.apply(nu.numerator()),2*nu.denominator());
 
-    const rootdata::RootDatum& sub_rd = rootdata::integrality_datum(rd,nu);
-    const size_t sub_rank=sub_rd.semisimpleRank();
-    rootdata::RootList sub_simple(sub_rank);
-    for (size_t i=0; i<sub_rank; ++i) // clumsily find simple-integral roots
-      sub_simple[i] = rd.rootNbr(sub_rd.simpleRoot(i));
-    subdatum::SubSystem sub(rd,sub_simple);
+    latticetypes::RatWeight gamma = nu + latticetypes::RatWeight
+    (lambda.numerator()+theta.apply(lambda.numerator()),2*lambda.denominator());
 
-    blocks::Block_base block(GR,sub,x,lambda,nu);
+    std::cout << "Infinitesimal character is " << gamma << std::endl;
 
-    block_io::print_block_base(std::cout,block);
+    subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,gamma);
+
+    blocks::BlockElt z;
+    blocks::nu_block block(GR,sub,x,lambda,gamma,z);
+
+    std::cout << "Given parameters define elememt " << z
+	      << " of the following block:" << std::endl;
+
+    block_io::print_block(std::cout,block);
 
   }
   catch (error::MemoryOverflow& e)
@@ -1169,33 +1172,28 @@ void test_f()
     latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
 
     nu = latticetypes::RatWeight
-      (nu.numerator() + theta.apply(nu.numerator()),2*nu.denominator());
+      (nu.numerator() - theta.apply(nu.numerator()),2*nu.denominator());
 
-    const rootdata::RootDatum& sub_rd = rootdata::integrality_datum(rd,nu);
-    const size_t sub_rank=sub_rd.semisimpleRank();
-    rootdata::RootList sub_simple(sub_rank);
-    for (size_t i=0; i<sub_rank; ++i)
-      sub_simple[i] = rd.rootNbr(sub_rd.simpleRoot(i));
-    subdatum::SubSystem sub(rd,sub_simple);
+    std::cout << "Made -theta fixed, nu = " << nu << std::endl;
 
-    rootdata::RootList Delta(sub_rank);
-    for (size_t i=0; i<sub_rank; ++i)
-      Delta[i]=sub_rd.rootNbr(theta.apply(sub_rd.simpleRoot(i)));
-    weyl::WeylWord ww =
-      rootdata::wrt_distinguished(sub_rd,Delta); // makes |Delta| dstinguished
+    subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,nu);
+    const weyl::WeylGroup& sub_W = sub.Weyl_group();
 
-    weyl::Twist twist;
-    for (size_t i=0; i<sub_rank; ++i)
-      twist[i] = sub_rd.simpleRootIndex(Delta[i]);
+    weyl::WeylWord ww;
+    weyl::Twist twist = sub.twist(theta,ww);
 
-    std::cout << "Subsystem is of type "
-	      << dynkin::Lie_type(sub_rd.cartanMatrix())
+    std::cout << "Subsystem on dual side is of type "
+	      << dynkin::Lie_type(sub.cartanMatrix())
 	      << ", with roots ";
-    basic_io::seqPrint(std::cout,sub_simple.begin(),sub_simple.end()) << ".\n";
+    for (weyl::Generator s=0; s<sub.rank(); ++s)
+      std::cout << sub.parent_nr_simple(s) << (s<sub.rank()-1 ? "," : ".\n");
 
-    std::cout << "Twisted involution in subsystem: " << ww << std::endl;
+    std::cout << "Twisted involution in subsystem: " << ww ;
+    weyl::WeylElt w = sub_W.element(ww);
+    sub_W.mult(w,sub_W.longest());
+    prettyprint::printWeylElt(std::cout << " (reversed to ",w,sub_W)
+			      << " in list below).\n";
 
-    const weyl::WeylGroup sub_W(sub_rd.cartanMatrix());
     const weyl::TwistedWeylGroup sub_tW(sub_W,twist);
 
     kgb::subsys_KGB sub_KGB(kgb,sub,sub_tW,x);

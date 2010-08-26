@@ -173,6 +173,7 @@ class KGB_base
 
 // virtual methods
   virtual size_t Cartan_class(KGBElt x) const { return ~0ul; }
+  // print derivative class specific per-element information
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const
   { return strm; }
 
@@ -183,6 +184,27 @@ class KGB_base
 
 
 }; // |class KGB_base|
+
+// a |GlobalTitsElement| can be hashed as (fingerprint,twisted_inv) pair
+struct KGB_elt_entry
+{
+  tits::TorusElement t_rep; // a representative torus element, ignored in test
+  weyl::TI_Entry tw;
+  latticetypes::RatLatticeElt fingerprint; // charcterizes the torus element
+
+  // obligatory fields for hashable entry
+  typedef std::vector<KGB_elt_entry> Pooltype;
+  size_t hashCode(size_t modulus) const; // hash function
+  bool operator !=(const KGB_elt_entry& x) const
+  { return tw!=x.tw or fingerprint!=x.fingerprint; } // ignore repr
+
+  KGB_elt_entry (const latticetypes::RatLatticeElt f,
+		 const tits::GlobalTitsElement& y)
+  : t_rep(y.torus_part()), tw(y.tw()), fingerprint(f) {}
+
+  tits::GlobalTitsElement repr() const
+  { return tits::GlobalTitsElement(t_rep,tw); }
+}; //  |struct KGB_elt_entry|
 
 /*!
 
@@ -236,6 +258,9 @@ public:
 		       const weyl::TwistedInvolution& tw) const
     { return alpha.dot(check_2rho_imag[hash_table.find(tw)])/2; }
 
+  KGB_elt_entry pack(const tits::GlobalTitsElement& y) const
+  { return KGB_elt_entry(fingerprint(y),y); }
+
   // manipulators
   void add_class(const subdatum::SubSystem& sub,
 		 const tits::GlobalTitsGroup& Tg,
@@ -247,13 +272,12 @@ public:
 class global_KGB : public KGB_base
 {
   complexredgp::ComplexReductiveGroup& G;
-  const tits::GlobalTitsGroup& Tg;
+  const tits::GlobalTitsGroup Tg;
   GlobalFiberData fiber_data;
   std::vector<tits::GlobalTitsElement> elt;
 
  public:
-  global_KGB(complexredgp::ComplexReductiveGroup& G,
-	     const tits::GlobalTitsGroup& Tg);
+  global_KGB(complexredgp::ComplexReductiveGroup& G);
 
   global_KGB(complexredgp::ComplexReductiveGroup& G,
 	     const tits::GlobalTitsElement& x); // generate KGB containing |x|
@@ -261,7 +285,7 @@ class global_KGB : public KGB_base
   global_KGB(const global_KGB& org) // copy contructor, handle references
     : KGB_base(org)
     , G(org.G) // share
-    , Tg(org.Tg) // share
+    , Tg(G) // reconstruct
     , fiber_data(org.fiber_data)
     , elt(org.elt)
   {}
@@ -290,22 +314,6 @@ class global_KGB : public KGB_base
 }; // |class global_KGB|
 
 
-// a |GlobalTitsElement| can be hashed as (fingerprint,twisted_inv) pair
-struct KGB_elt_entry
-{
-  latticetypes::RatLatticeElt fingerprint;
-  weyl::TI_Entry ti;
-
-  // obligatory fields for hashable entry
-  typedef std::vector<KGB_elt_entry> Pooltype;
-  size_t hashCode(size_t modulus) const; // hash function
-  bool operator !=(const KGB_elt_entry& x) const
-    { return ti!=x.ti or fingerprint!=x.fingerprint; }
-
-  KGB_elt_entry (const latticetypes::RatLatticeElt f,
-		 const weyl::TwistedInvolution& tw)
-    : fingerprint(f), ti(tw) {}
-}; //  |struct KGB_elt_entry|
 
 /*!
 \brief Represents the orbits of K on G/B for a particular real form.

@@ -40,61 +40,62 @@ namespace atlas {
 namespace block_io {
 
 // temp version without Cartan classes/involutions (may be added back later)
-std::ostream&
-print_block_base(std::ostream& strm, const blocks::Block_base& block)
+std::ostream& print_block(std::ostream& strm, const blocks::Block_base& b)
 {
   // compute maximal width of entry
-  int width = ioutils::digits(block.size()-1,10ul);
-  int xwidth = ioutils::digits(block.xsize()-1,10ul);
-  int ywidth = ioutils::digits(block.ysize()-1,10ul);
-  int lwidth = ioutils::digits(block.length(block.size()-1),10ul);
+  int width = ioutils::digits(b.size()-1,10ul);
+  int xwidth = ioutils::digits(b.xsize()-1,10ul);
+  int ywidth = ioutils::digits(b.ysize()-1,10ul);
+  int lwidth = ioutils::digits(b.length(b.size()-1),10ul);
+  int cwidth = ioutils::digits(b.max_Cartan(),10ul);
+
   const int pad = 2;
 
-  for (size_t j = 0; j < block.size(); ++j) {
+  for (size_t z=0; z<b.size(); ++z) {
     // print entry number and corresponding orbit pair
-    strm << std::setw(width) << j
-	 << '(' << std::setw(xwidth) << block.x(j)
-	 << ',' << std::setw(ywidth) << block.y(j) << "):";
+    strm << std::setw(width) << z
+	 << '(' << std::setw(xwidth) << b.x(z)
+	 << ',' << std::setw(ywidth) << b.y(z) << "):";
 
     // print length
-    strm << std::setw(lwidth+pad) << block.length(j) << std::setw(pad) << "";
+    strm << std::setw(lwidth+pad) << b.length(z) << std::setw(pad) << "";
 
     // print descents
-    printDescent(strm,block.descent(j),block.rank());
+    printDescent(strm,b.descent(z),b.rank());
 
     // print cross actions
-    for (size_t s = 0; s < block.rank(); ++s) {
-      blocks::BlockElt z = block.cross(s,j);
-      if (z == blocks::UndefBlock)
-	strm << std::setw(width+pad) << '*';
-      else
-	strm << std::setw(width+pad) << z;
-    }
+    for (weyl::Generator s = 0; s < b.rank(); ++s)
+	strm << std::setw(width+pad) << b.cross(s,z);
+
     strm << std::setw(pad+1) << "";
 
     // print Cayley transforms
-    for (size_t s = 0; s < block.rank(); ++s)
+    for (size_t s = 0; s < b.rank(); ++s)
     {
-      blocks::BlockEltPair z = block.isWeakDescent(s,j)
-	                     ? block.inverseCayley(s,j)
-	                     : block.cayley(s,j);
+      blocks::BlockEltPair p =
+	b.isWeakDescent(s,z) ? b.inverseCayley(s,z) : b.cayley(s,z);
       strm << '(' << std::setw(width);
-      if (z.first == blocks::UndefBlock)
-	strm << '*';
-      else
-	strm << z.first;
+      if (p.first ==blocks::UndefBlock) strm << '*'; else strm << p.first;
       strm << ',' << std::setw(width);
-      if (z.second == blocks::UndefBlock)
-	strm << '*';
-      else
-	strm << z.second;
+      if (p.second==blocks::UndefBlock) strm << '*'; else strm << p.second;
       strm << ')' << std::setw(pad) << "";
     }
+
+    // derived class specific output
+    b.print(strm,z);
+
+    // print Cartan class
+    strm << std::setw(cwidth+pad) << b.Cartan_class(z)
+	 << std::setw(pad) << "";
+
+    // print root datum involution
+    prettyprint::printWeylElt(strm,b.involution(z),b.weylGroup());
+
     strm << std::endl;
   }
 
   return strm;
-} // |print_block_base|
+} // |print_block|
 
 /*
   Print the data from block to strm.
@@ -115,7 +116,7 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
   int xwidth = ioutils::digits(block.xsize()-1,10ul);
   int ywidth = ioutils::digits(block.ysize()-1,10ul);
   int lwidth = ioutils::digits(block.length(block.size()-1),10ul);
-  int cwidth = ioutils::digits(block.Cartan_class(block.size()-1),10ul);
+  int cwidth = ioutils::digits(block.max_Cartan(),10ul);
   const int pad = 2;
 
   for (size_t j = 0; j < block.size(); ++j) {

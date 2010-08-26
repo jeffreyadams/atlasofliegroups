@@ -76,7 +76,7 @@ size_t KGB_elt_entry::hashCode(size_t modulus) const
 {
   unsigned long d= fingerprint.denominator();
   const latticetypes::LatticeElt& num=fingerprint.numerator();
-  size_t h=ti.hashCode(modulus);
+  size_t h=tw.hashCode(modulus);
   for (size_t i=0; i<num.size(); ++i)
     h=((h*d)+num[i])&(modulus-1);
   return h;
@@ -152,11 +152,10 @@ void KGB_base::add_element
 */
 
 // create structure incorporating all KGB structures for a given inner class
-global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
-		       const tits::GlobalTitsGroup& Tits_group)
+global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C)
   : KGB_base(G_C.twistedWeylGroup())
   , G(G_C)
-  , Tg(Tits_group)
+  , Tg(G) // construct global Tits group as subobject
   , fiber_data(G,(generate_involutions(G_C.numInvolutions()),inv_hash))
   , elt()
 {
@@ -202,44 +201,43 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
 		       const tits::GlobalTitsElement& x)
   : KGB_base(G_C.twistedWeylGroup())
   , G(G_C)
-  , Tg(G)
+  , Tg(G) // construct global Tits group as subobject
   , fiber_data(G,(generate_involutions(G_C.numInvolutions()),inv_hash))
   , elt()
 {
-  tits::GlobalTitsElement root=x; // start at an element that we certainly want
+  tits::GlobalTitsElement a=x; // start at an element that we certainly want
   weyl::Generator s;
-  while ((s=Tg.weylGroup().leftDescent(root.tw()))<rank())
-    if (Tg.hasTwistedCommutation(s,root.tw()))
-      Tg.inverse_Cayley(s,root);
+  while ((s=Tg.weylGroup().leftDescent(a.tw()))<rank())
+    if (Tg.hasTwistedCommutation(s,a.tw()))
+      Tg.inverse_Cayley(s,a);
     else
-      Tg.cross(s,root);
+      Tg.cross(s,a);
 
-  assert (root.tw()==weyl::TwistedInvolution()); // we are at fundamental fiber
+  assert (a.tw()==weyl::TwistedInvolution()); // we are at fundamental fiber
   { // get elements at the fundamental fiber
     first_of_tau.push_back(0); // start of fundamental fiber
     KGB_elt_entry::Pooltype elt_pool;
     hashtable::HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
-    elt.push_back(root);
-    add_element(0,root.tw()); // create in base; length, tw
-    elt_hash.match(KGB_elt_entry(fiber_data.fingerprint(root),root.tw()));
+    add_element(0,a.tw()); // create in base; length, tw
+    elt_hash.match(fiber_data.pack(a));
 
     /* Generate fundamental fiber. We use that cross actions by imaginary,
        non-compact, simple roots suffice, but without knowing a nice proof. */
-    for (size_t i=0; i<elt.size(); ++i) // |elt.size()| increases during loop
+    for (size_t i=0; i<elt_hash.size(); ++i) // |elt_hash| grows during loop
       for (weyl::Generator s=0; s<rank(); ++s)
-	if (Tg.twisted(s)==s and not Tg.compact(s,elt[i])) // noncpct imaginary
+	if (Tg.twisted(s)==s // then imaginary, since fiber is fundamental
+	    and not Tg.compact(s,a=elt_hash[i].repr())) // noncompact
 	{
-	  tits::GlobalTitsElement a=elt[i]; // make a copy
 	  Tg.cross(s,a);
-	  assert(a.tw()==root.tw()); // we stay in fundamental fiber
-	  if (elt_hash.match(KGB_elt_entry(fiber_data.fingerprint(a),a.tw()))
-	      ==elt.size()) // then it's new
-	  {
-	    elt.push_back(a);
-	    add_element(0,a.tw()); // create in base; length, tw
-	  }
+	  size_t old_size = elt_hash.size();
+	  if (elt_hash.match(fiber_data.pack(a))==old_size) // then it's new
+ 	    add_element(0,a.tw()); // create in base; length, tw
 	}
-    first_of_tau.push_back(elt.size()); // end of fundamental fiber
+    first_of_tau.push_back(elt_hash.size()); // end of fundamental fiber
+
+    elt.reserve(elt_hash.size()); // now copy elements from hash table to |elt|
+    for (size_t i=0; i<elt_hash.size(); ++i)
+      elt.push_back(elt_hash[i].repr());
   }
   generate(0); // complete generation of elements, without predicted size
 } // |global_KGB::global_KGB|
@@ -263,7 +261,7 @@ kgb::KGBElt global_KGB::lookup(const tits::GlobalTitsElement& a) const
 
 std::ostream& global_KGB::print(std::ostream& strm, KGBElt x) const
 {
-  return strm << torus_part(x).as_rational();
+  return strm << std::setw(9)<< torus_part(x).as_rational();
 }
 
 /*
@@ -301,7 +299,7 @@ void global_KGB::generate(size_t predicted_size)
   {
     weyl::TwistedInvolution e; // identity
     for (size_t i=0; i<elt.size(); ++i)
-      elt_hash.match(KGB_elt_entry(fiber_data.fingerprint(elt[i]),e));
+      elt_hash.match(fiber_data.pack(elt[i]));
 
     assert(elt_hash.size()==elt.size()); // all distinct; in fact an invariant
   }
@@ -324,7 +322,7 @@ void global_KGB::generate(size_t predicted_size)
  	tits::GlobalTitsElement child=elt[x]; //start out with a copy
 	int d = Tg.cross(s,child); // cross act and record length difference
 	assert(child.tw()==new_tw);
-	KGB_elt_entry ee(fiber_data.fingerprint(child),new_tw);
+	KGB_elt_entry ee = fiber_data.pack(child);
 	KGBElt k = elt_hash.match(ee);
 	if (k==elt.size()) // then new
 	{
@@ -369,8 +367,7 @@ void global_KGB::generate(size_t predicted_size)
 	  {
 	    tits::GlobalTitsElement child=Tg.Cayley(s,elt[x]);
 	    assert(child.tw()==new_tw);
-	    KGBElt k=elt_hash.match
-	      (KGB_elt_entry(fiber_data.fingerprint(child),new_tw));
+	    KGBElt k=elt_hash.match(fiber_data.pack(child));
 	    if (k==elt.size()) // then new
 	    {
 	      elt.push_back(child);
@@ -572,7 +569,6 @@ size_t KGB::generate
     assert(square_class_base.square()==
 	   G.fundamental().central_square_class(rf));
 
-    size =  G.KGB_size(rf,Cartan_classes);
     set::SetEltList m=G.Cartan_ordering().minima(Cartan_classes);
 
     for (size_t i=0; i<m.size(); ++i)
@@ -692,6 +688,7 @@ size_t KGB::generate
 	data[s][x].Cayley_image = a1[data[s][x].Cayley_image];
     }
   }
+
   a.pull_back(info).swap(info); // only permute here, no data to renumber
 
   left_torus_part.reserve(size);

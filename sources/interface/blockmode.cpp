@@ -340,14 +340,14 @@ void block_f()
   ioutils::OutputFile file;
   if (small) // must unfortunatly regenerate the block here
   {
-    block_io::printBlock
+    block_io::print_block
       (file,blocks::Block::build(mainmode::currentComplexGroup(),
 				 realmode::currentRealForm(),
 				 currentDualRealForm(),
 				 true));
   }
   else
-    block_io::printBlock(file,currentBlock());
+    block_io::print_block(file,currentBlock());
 }
 
 // Print the dual block of the current block
@@ -361,7 +361,7 @@ void dual_block_f()
 			 small);
 
   ioutils::OutputFile file;
-  block_io::printBlock(file,block);
+  block_io::print_block(file,block);
 }
 
 // Print the correspondence of the current block with its dual block

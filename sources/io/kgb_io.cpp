@@ -101,10 +101,10 @@ std::ostream& print(std::ostream& strm,
     strm << std::setw(pad) << "";
     if (not traditional)
     {
-      kgb.print(strm,j); // virtual print method
-      strm << (G!=NULL and
-	       kgb.involution(j)==G->twistedInvolution(kgb.Cartan_class(j))
-	       ? '#' : ' ');
+      kgb.print(strm,j) // virtual print method
+	<< (G!=NULL and
+	    kgb.involution(j)==G->twistedInvolution(kgb.Cartan_class(j))
+	    ? '#' : ' ');
       unsigned cc= kgb.Cartan_class(j);
       if (cc!=~0u)
 	strm << std::setw(cwidth) << cc << ' ';

@@ -10,6 +10,7 @@
 #include "basic_io.h"
 
 #include <iostream>
+#include <sstream>
 #include <stdexcept>
 
 #include "lattice.h"
@@ -96,7 +97,11 @@ namespace latticetypes {
 
   std::ostream& operator<< (std::ostream& strm,
 			    const latticetypes::RatLatticeElt& w)
-  { return strm << w.numerator() << '/' << w.denominator(); }
+  {
+    std::ostringstream o; // accumulate in string for interpretation of width
+    o << w.numerator() << '/' << w.denominator();
+    return strm << o.str(); // now |strm.width()| is applied to whole fraction
+  }
 
 } // |namespace latticetypes|
 

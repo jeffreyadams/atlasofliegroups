@@ -2714,7 +2714,7 @@ void print_block_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  block_io::printBlock(*output_stream,
+  block_io::print_block(*output_stream,
     blocks::Block::build(rf->parent.val
 			,rf->val.realForm(),drf->val.realForm()));
 @)
@@ -2837,8 +2837,7 @@ void print_X_wrapper(expression_base::level l)
 { shared_inner_class ic(get<inner_class_value>());
 @)
   complexredgp::ComplexReductiveGroup& G=ic->val;
-  tits::GlobalTitsGroup Tg(G); // this implicitly chooses base point $\delta_1$
-  kgb::global_KGB kgb(G,Tg); // build global Tits group, "all" square classes
+  kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   kgb_io::print_X(*output_stream,kgb);
 @)
   if (l==expression_base::single_value)
