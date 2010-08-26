@@ -1129,7 +1129,7 @@ void iblock_f()
     blocks::BlockElt z;
     blocks::nu_block block(GR,sub,x,lambda,gamma,z);
 
-    std::cout << "Given parameters define elememt " << z
+    std::cout << "Given parameters define element " << z
 	      << " of the following block:" << std::endl;
 
     block_io::print_block(std::cout,block);
@@ -1182,11 +1182,17 @@ void test_f()
     weyl::WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
 
-    std::cout << "Subsystem on dual side is of type "
+    std::cout << "Subsystem on dual side is ";
+    if (sub.rank()==0)
+      std::cout << "empty.\n";
+    else
+    {
+      std::cout << "of type "
 	      << dynkin::Lie_type(sub.cartanMatrix())
 	      << ", with roots ";
-    for (weyl::Generator s=0; s<sub.rank(); ++s)
-      std::cout << sub.parent_nr_simple(s) << (s<sub.rank()-1 ? "," : ".\n");
+      for (weyl::Generator s=0; s<sub.rank(); ++s)
+	std::cout << sub.parent_nr_simple(s) << (s<sub.rank()-1 ? "," : ".\n");
+    }
 
     std::cout << "Twisted involution in subsystem: " << ww ;
     weyl::WeylElt w = sub_W.element(ww);
