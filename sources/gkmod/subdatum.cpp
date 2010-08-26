@@ -46,7 +46,7 @@ SubSystem::SubSystem(const rootdata::RootDatum& parent,
     {
       s=rd.find_descent(alpha);
       sub_root[i].to_simple[j]=s;
-      sub_root[i].reflection[j]=sub_root[i].reflection[2*count-j]=s;
+      sub_root[i].reflection[count+1+j]=sub_root[i].reflection[count-1-j]=s;
     }
     assert(alpha==rd.simpleRootNbr(sub_root[i].simple));
   }
