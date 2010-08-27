@@ -15,9 +15,10 @@
 #include "input.h"
 
 #include <iostream>
-
+#include <stdio.h>
 #include <cstdlib>
-#include <cstdio>
+// #include <cstdio> // didn't work for gcc 4.4
+
 #include <readline/history.h>
 #include <readline/readline.h>
 
@@ -276,12 +277,12 @@ void displayCompletions(char** matches, int num, int)
 
 {
   rl_crlf();
-  std::fprintf(rl_outstream,"completions are: ");
+  fprintf(rl_outstream,"completions are: ");
 
   for (int j = 1; j <= num; ++j) {
-    std::fprintf(rl_outstream,"%s",matches[j]);
+    fprintf(rl_outstream,"%s",matches[j]);
     if (j < num)
-      std::fprintf(rl_outstream,",");
+      fprintf(rl_outstream,",");
   }
 
   rl_crlf();
