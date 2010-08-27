@@ -159,7 +159,7 @@ HistoryBuffer::~HistoryBuffer()
   std::free(history_list()); // also free the array of history entries
 
   history_set_history_state(global_history); // restore history record
-  free(global_history);
+  std::free(global_history);
 }
 
 // redefine the virtual |getline| method to use our own history record
@@ -174,10 +174,10 @@ HistoryBuffer::getline(std::istream& is, const char* prompt, bool toHistory)
 
   HISTORY_STATE* our_history=history_get_history_state();
   state=*our_history; // copy history back
-  free (our_history);
+  std::free (our_history);
 
   history_set_history_state(global_history); // restore history record
-  free(global_history);
+  std::free(global_history);
 
   return result;
 }
@@ -260,8 +260,8 @@ char* completionGenerator(const char* text, int state)
   if (prev == e.end())
     return 0;
   else {
-    char* val = (char*)malloc(strlen(*prev)+1);
-    strcpy(val,*prev);
+    char* val = (char*)std::malloc(strlen(*prev)+1);
+    std::strcpy(val,*prev);
     ++prev;
     return val;
   }
@@ -276,12 +276,12 @@ void displayCompletions(char** matches, int num, int)
 
 {
   rl_crlf();
-  fprintf(rl_outstream,"completions are: ");
+  std::fprintf(rl_outstream,"completions are: ");
 
   for (int j = 1; j <= num; ++j) {
-    fprintf(rl_outstream,"%s",matches[j]);
+    std::fprintf(rl_outstream,"%s",matches[j]);
     if (j < num)
-      fprintf(rl_outstream,",");
+      std::fprintf(rl_outstream,",");
   }
 
   rl_crlf();
@@ -304,7 +304,7 @@ const char* readLine (const char* prompt, bool toHistory)
   static char *line_read = NULL;
 
   if (line_read!=NULL) // deallocate first on every call except the first
-    free (line_read); // no need to clear |line_read|, it is overwritten next
+    std::free(line_read); // no need to clear |line_read|, is overwritten next
 
   /* Get a line from the user. */
   line_read = readline(prompt); // this returns a freshly |malloc|ed buffer
