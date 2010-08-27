@@ -11,6 +11,7 @@
 
 #include <iostream>
 #include <sstream>
+#include <cstdio>
 
 #include "arithmetic.h"
 #include "input.h"
