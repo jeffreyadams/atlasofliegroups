@@ -218,6 +218,7 @@ void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   leftMult(a.w,s); a.t=TorusElement(t);
 }
 
+
 namespace {
 
 /*

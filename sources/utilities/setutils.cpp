@@ -12,6 +12,7 @@
 */
 
 #include "setutils.h"
+#include "bitmap.h"
 
 /*
   This file contains the non-template definitions of the functions declared
@@ -35,7 +36,6 @@ Permutation::Permutation(const Permutation& pi, int) // inverse
   for (size_t i=size(); i-->0; ) Base::operator[](pi[i])=i;
 }
 
-void compose(Permutation& a, const Permutation& b, unsigned long n)
 
 /*!
   Synopsis: a *= b;
@@ -51,7 +51,7 @@ void compose(Permutation& a, const Permutation& b, unsigned long n)
   the aid of just a bitmap, we do the lazy approach here and make a copy
   of the range involved.
 */
-
+void compose(Permutation& a, const Permutation& b, unsigned long n)
 {
   std::vector<unsigned long> c(a.begin() + n, a.begin() + n + b.size());
 
@@ -60,6 +60,15 @@ void compose(Permutation& a, const Permutation& b, unsigned long n)
   }
 }
 
+bitmap::BitMap Permutation::renumbering(const bitmap::BitMap& b) const
+{
+  bitmap::BitMap result(size());
+  for (bitmap::BitMap::iterator it=b.begin(); it(); ++it)
+    result.insert((*this)[*it]);
+
+  return result;
 }
 
-}
+} // |namespace setutils|
+
+} // |namespace atlas|

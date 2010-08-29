@@ -34,14 +34,6 @@ namespace kl {
 
 extern const KLPol Zero;
 
-typedef std::vector<KLPol> KLStore;
-
-typedef KLStore::const_reference KLPolRef;
-
-typedef std::vector<KLIndex> KLRow;
-
-typedef std::vector<blocks::BlockElt> PrimitiveRow;
-
 
 } // namespace kl
 

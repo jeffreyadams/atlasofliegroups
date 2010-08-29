@@ -46,6 +46,14 @@ typedef KLCoeff MuCoeff;
 // a pair of vectors may be much more compact that a vector of pairs
 typedef std::pair<std::vector<blocks::BlockElt>,std::vector<MuCoeff> > MuRow;
 
+typedef std::vector<KLPol> KLStore;
+
+typedef KLStore::const_reference KLPolRef;
+
+typedef std::vector<KLIndex> KLRow;
+
+typedef std::vector<blocks::BlockElt> PrimitiveRow;
+
 }
 
 }

@@ -149,6 +149,10 @@ class GlobalTitsElement
   const TorusElement& torus_part() const { return t; }
   const weyl::TwistedInvolution& tw() const { return w; }
 
+// manipulators
+  TorusElement& torus_part() { return t; } // one may modify just torus part
+
+
 // STL obligatories
   bool operator== (const GlobalTitsElement& a) const
   { return w == a.w and t == a.t; }

@@ -222,10 +222,27 @@ conjugacy class will be added to the tables.
 class GlobalFiberData
 {
   hashtable::HashTable<weyl::TI_Entry,unsigned int>& hash_table;
-  std::vector<unsigned int> Cartans;
-  std::vector<latticetypes::LatticeMatrix> proj; // projectors for equivalence
-  std::vector<latticetypes::LatticeElt> check_2rho_imag;
-  std::vector<latticetypes::LatticeMatrix> refl; // dual simple reflections
+
+  struct inv_info
+  {
+    unsigned int Cartan;
+    latticetypes::LatticeMatrix proj; // projectors for equivalence
+    latticetypes::LatticeElt check_2rho_imag;
+    rootdata::RootSet simple_imag,simple_real;
+
+  inv_info() : Cartan(~0), proj(), check_2rho_imag(), simple_imag()
+    {} // allow uninitialized
+  inv_info(unsigned int c,
+	     const latticetypes::LatticeMatrix& p,
+	     const latticetypes::LatticeElt& c2i,
+	     const rootdata::RootSet& si,
+	     const rootdata::RootSet& sr)
+  : Cartan(c),proj(p),check_2rho_imag(c2i),simple_imag(si),simple_real(sr) {}
+  };
+
+  std::vector<inv_info> info;
+  std::vector<latticetypes::LatticeMatrix> refl;
+
 public:
   GlobalFiberData(complexredgp::ComplexReductiveGroup& G,
 		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
@@ -236,17 +253,21 @@ public:
 
   GlobalFiberData(const GlobalFiberData& org) // copy contructor, handle ref
     : hash_table(org.hash_table) // share
-    , Cartans(org.Cartans)
-    , proj(org.proj)
-    , check_2rho_imag(org.check_2rho_imag)
-    , refl(org.refl)
+    , info(org.info)
   {}
 
   //accessors
   size_t Cartan_class(const weyl::TwistedInvolution& tw) const
   {
-    return Cartans[hash_table.find(tw)];
+    return info[hash_table.find(tw)].Cartan;
   }
+
+  const rootdata::RootSet& imaginary_basis(const weyl::TwistedInvolution& tw)
+    const
+  { return info[hash_table.find(tw)].simple_imag; }
+  const rootdata::RootSet& real_basis(const weyl::TwistedInvolution& tw)
+    const
+  { return info[hash_table.find(tw)].simple_real; }
 
   bool equivalent(const tits::GlobalTitsElement& x,
 		  const tits::GlobalTitsElement& y) const;
@@ -256,7 +277,13 @@ public:
 
   int at_rho_imaginary(const latticetypes::Weight& alpha, // imaginary root
 		       const weyl::TwistedInvolution& tw) const
-    { return alpha.dot(check_2rho_imag[hash_table.find(tw)])/2; }
+    { return alpha.dot(info[hash_table.find(tw)].check_2rho_imag)/2; }
+
+  tits::GlobalTitsElement
+    imaginary_cross(const rootdata::RootDatum& dual_rd, // pragmatic reason
+		    rootdata::RootNbr alpha, // any imaginary root
+		    tits::GlobalTitsElement a) const;
+
 
   KGB_elt_entry pack(const tits::GlobalTitsElement& y) const
   { return KGB_elt_entry(fingerprint(y),y); }
@@ -271,10 +298,11 @@ public:
 
 class global_KGB : public KGB_base
 {
-  complexredgp::ComplexReductiveGroup& G;
   const tits::GlobalTitsGroup Tg;
   GlobalFiberData fiber_data;
   std::vector<tits::GlobalTitsElement> elt;
+
+  global_KGB(const global_KGB& org); // forbid copying
 
  public:
   global_KGB(complexredgp::ComplexReductiveGroup& G);
@@ -282,24 +310,14 @@ class global_KGB : public KGB_base
   global_KGB(complexredgp::ComplexReductiveGroup& G,
 	     const tits::GlobalTitsElement& x); // generate KGB containing |x|
 
-  global_KGB(const global_KGB& org) // copy contructor, handle references
-    : KGB_base(org)
-    , G(org.G) // share
-    , Tg(G) // reconstruct
-    , fiber_data(org.fiber_data)
-    , elt(org.elt)
-  {}
-
 // accessors
   const tits::GlobalTitsGroup& globalTitsGroup() const { return Tg; }
-  const rootdata::RootDatum& rootDatum() const { return G.rootDatum(); }
-  const complexredgp::ComplexReductiveGroup& complexGroup() const
-    { return G; }
 
   tits::TorusElement torus_part(KGBElt x) const { return elt[x].torus_part(); }
   const tits::GlobalTitsElement& element(KGBElt x) const { return elt[x]; }
 
-  bool compact(rootdata::RootNbr alpha, const tits::GlobalTitsElement& a) const;
+  bool compact(const rootdata::RootDatum& rd, rootdata::RootNbr alpha,
+	       const tits::GlobalTitsElement& a) const;
   kgb::KGBElt lookup(const tits::GlobalTitsElement& x) const;
 
 // virtual methods
@@ -309,7 +327,7 @@ class global_KGB : public KGB_base
 
  private:
   void generate_involutions(size_t n);
-  void generate(size_t predicted_size);
+  void generate(const rootdata::RootDatum& rd, size_t predicted_size);
 
 }; // |class global_KGB|
 

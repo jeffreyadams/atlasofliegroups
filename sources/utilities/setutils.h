@@ -15,6 +15,8 @@
 #include <vector>
 #include <algorithm>
 
+#include "bitmap_fwd.h"
+
 /******** type declarations *************************************************/
 
 namespace atlas {
@@ -36,19 +38,21 @@ struct Permutation
     template<typename I> Permutation(I b,I e) : Base(b,e) {} // range copy
 
   // right-compose with |*this|
-  template<typename T>
-  std::vector<T> pull_back(const std::vector<T>& v) const;
+    template<typename T> // any assignable type
+      std::vector<T> pull_back(const std::vector<T>& v) const;
 
   // left-compose with |*this|
-  template<typename U>
-  std::vector<U> renumbering(const std::vector<U>& v) const;
+    template<typename U> // unsigned integral type
+      std::vector<U> renumbering(const std::vector<U>& v) const;
+
+    bitmap::BitMap renumbering(const bitmap::BitMap& b) const;
 
   // left-compose with |*this|, but allowing an exception value
-  template<typename U>
-  std::vector<U> renumbering(const std::vector<U>& v, U except) const;
+    template<typename U>
+      std::vector<U> renumbering(const std::vector<U>& v, U except) const;
 
   // left-multiply by |*this|; imperative version of |renumbering|
-  template<typename U> void left_mult(std::vector<U>& v) const;
+    template<typename U> void left_mult(std::vector<U>& v) const;
 
   // WARNING: has INVERSE interpretation of |*this| as |pull_back|:
   // right-compose with the inverse of the permutation (defining a left action)

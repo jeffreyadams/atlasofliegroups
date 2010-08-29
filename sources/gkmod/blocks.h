@@ -18,7 +18,7 @@
 #include <cassert>
 #include <iostream>
 
-#include "rootdata.h"
+#include "rootdata_fwd.h"
 #include "subdatum.h"
 #include "bruhat_fwd.h"
 #include "descents.h"

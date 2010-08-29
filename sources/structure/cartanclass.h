@@ -514,7 +514,6 @@ class Fiber {
 
 private:
 
-
   latticetypes::SmallSubquotient makeFiberGroup() const;
 
   latticetypes::SmallSubquotient makeAdjointFiberGroup
@@ -544,7 +543,7 @@ private:
   std::vector<StrongRealFormRep> makeStrongRepresentatives() const;
 
 
-}; // class Fiber
+}; // |class Fiber|
 
 
 

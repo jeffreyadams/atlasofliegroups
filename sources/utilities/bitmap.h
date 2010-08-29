@@ -99,6 +99,13 @@ namespace bitmap {
     template <typename I, typename J>
       BitMap(const I& first, const I& last, const J& fsub, const J& lsub);
 
+  BitMap(unsigned long n,const std::vector<unsigned long> v)
+    : d_map((n+posBits)>>baseShift), d_capacity(n)
+    {
+      for (size_t i=0; i<v.size(); ++i)
+	insert(v[i]);
+    }
+
 // assignment
     BitMap& operator= (const BitMap&);
 

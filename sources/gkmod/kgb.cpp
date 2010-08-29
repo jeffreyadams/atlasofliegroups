@@ -152,11 +152,10 @@ void KGB_base::add_element
 */
 
 // create structure incorporating all KGB structures for a given inner class
-global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C)
-  : KGB_base(G_C.twistedWeylGroup())
-  , G(G_C)
+global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G)
+  : KGB_base(G.twistedWeylGroup())
   , Tg(G) // construct global Tits group as subobject
-  , fiber_data(G,(generate_involutions(G_C.numInvolutions()),inv_hash))
+  , fiber_data(G,(generate_involutions(G.numInvolutions()),inv_hash))
   , elt()
 {
   size_t size = G.global_KGB_size();
@@ -193,16 +192,15 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C)
     first_of_tau.push_back(elt.size()); // end of fundamental fiber
   }
 
-  generate(size);
+  generate(G.rootDatum(),size);
 
 }
 
-global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
+global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G,
 		       const tits::GlobalTitsElement& x)
-  : KGB_base(G_C.twistedWeylGroup())
-  , G(G_C)
+  : KGB_base(G.twistedWeylGroup())
   , Tg(G) // construct global Tits group as subobject
-  , fiber_data(G,(generate_involutions(G_C.numInvolutions()),inv_hash))
+  , fiber_data(G,(generate_involutions(G.numInvolutions()),inv_hash))
   , elt()
 {
   tits::GlobalTitsElement a=x; // start at an element that we certainly want
@@ -239,13 +237,14 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G_C,
     for (size_t i=0; i<elt_hash.size(); ++i)
       elt.push_back(elt_hash[i].repr());
   }
-  generate(0); // complete generation of elements, without predicted size
+  generate(G.rootDatum(),0); // complete element generation, no predicted size
 } // |global_KGB::global_KGB|
 
-bool global_KGB::compact(rootdata::RootNbr n, // assumed imaginary at |a|
+bool global_KGB::compact(const rootdata::RootDatum& rd,
+			 rootdata::RootNbr n, // assumed imaginary at |a|
 			 const tits::GlobalTitsElement& a) const
 {
-  const latticetypes::Weight& alpha= G.rootDatum().root(n);
+  const latticetypes::Weight& alpha= rd.root(n);
   return a.torus_part().negative_at(alpha) == // question was: whether compact
     (fiber_data.at_rho_imaginary(alpha,a.tw())%2!=0); // CHECK ME!
 }
@@ -261,7 +260,8 @@ kgb::KGBElt global_KGB::lookup(const tits::GlobalTitsElement& a) const
 
 std::ostream& global_KGB::print(std::ostream& strm, KGBElt x) const
 {
-  return strm << std::setw(9)<< torus_part(x).as_rational();
+  latticetypes::RatWeight t = torus_part(x).as_rational();
+  return strm << std::setw(3*t.size()+3)<< t;
 }
 
 /*
@@ -289,7 +289,7 @@ void global_KGB::generate_involutions(size_t n)
   assert(inv_pool.size()==n);
 } // |global_KGB::generate_involutions|
 
-void global_KGB::generate(size_t predicted_size)
+void global_KGB::generate(const rootdata::RootDatum& rd, size_t predicted_size)
 {
   const weyl::TwistedWeylGroup& W = Tg; // for when |GlobalTitsGroup| not used
 
@@ -341,8 +341,7 @@ void global_KGB::generate(size_t predicted_size)
 	else if (imaginary)
 	{
 	  info[x].status.set_imaginary // always true (noncompact) at identity
-	    (s,not elt[x].torus_part().negative_at
-	     (G.rootDatum().simpleRoot(s)));
+	    (s,not elt[x].torus_part().negative_at(rd.simpleRoot(s)));
 	  info[x].desc.set(s,false); // imaginary roots are never descents
 	}
 	else // real
@@ -912,9 +911,7 @@ GlobalFiberData::GlobalFiberData
   (complexredgp::ComplexReductiveGroup& G,
    hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
   : hash_table(h)
-  , Cartans(h.size())
-  , proj(h.size())
-  , check_2rho_imag(h.size())
+  , info(h.size())
   , refl(G.semisimpleRank())
 {
   const rootdata::RootDatum& rd=G.rootDatum();
@@ -934,21 +931,25 @@ GlobalFiberData::GlobalFiberData
     size_t first = h.find(G.twistedInvolution(cn));
 
     { // store data for canonical twisted involution |i| of Cartan class |cn|
-      Cartans[first]=cn;
-
       latticetypes::LatticeMatrix A =cc.involution().transposed();
       for (size_t i=0; i<G.rank(); ++i)
 	A(i,i) += 1;
       // now $A=\theta_x^t+1$, a matrix whose kernel is $(X_*)^{-\theta_x^t}$
-      proj[first]=lattice::row_saturate(A); // now we can test torus elements
 
-      check_2rho_imag[first]=rd.dual_twoRho(cc.imaginaryRootSet());
+      info[first]=inv_info
+	(cn,
+	 lattice::row_saturate(A),
+	 rd.dual_twoRho(cc.imaginaryRootSet()),
+	 rootdata::RootSet(rd.numRoots(),cc.simpleImaginary()),
+	 rootdata::RootSet(rd.numRoots(),cc.simpleReal()));
     }
 
     to_do.assign(1,first); // reset list to singleton containing |first|
     seen.insert(first); // we don't bother to remove old members from |seen|
 
     for (size_t i=0; i<to_do.size(); ++i) // |to_do| grows during the loop
+    {
+      const inv_info& cur = info[to_do[i]];
       for (weyl::Generator s=0; s<G.semisimpleRank(); ++s)
       {
 	weyl::TwistedInvolution tw = W.twistedConjugated(h[to_do[i]],s);
@@ -958,10 +959,14 @@ GlobalFiberData::GlobalFiberData
 	  continue;
 	seen.insert(k);
 	to_do.push_back(k);
-	Cartans[k]=cn;                  // record number of Cartan class
-	proj[k]=proj[to_do[i]]*refl[s]; // apply $refl[s]^{-1}$ to old kernel
-	check_2rho_imag[k]=refl[s].apply(check_2rho_imag[to_do[i]]);
-      }
+	info[k]=inv_info
+	  (cn,
+	   cur.proj*refl[s], // apply $refl[s]^{-1}$ to old kernel
+	   refl[s].apply(cur.check_2rho_imag),
+	   rd.simple_root_permutation(s).renumbering(cur.simple_imag),
+	   rd.simple_root_permutation(s).renumbering(cur.simple_real));
+      } // |for (s)|
+    } // |for (i)|
 
   } // |for(cn)|
 } // |GlobalFiberData::GlobalFiberData|
@@ -970,9 +975,7 @@ GlobalFiberData::GlobalFiberData
 (const subdatum::SubSystem& sub,
    hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
   : hash_table(h)
-  , Cartans()
-  , proj()
-  , check_2rho_imag() // no twisted involutions yet, to table starts empty
+  , info()
   , refl(sub.rank())
 {
 
@@ -986,7 +989,7 @@ void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
 				const tits::GlobalTitsGroup& Tg,
 				const weyl::TwistedInvolution& tw)
 {
-  const rootdata::RootDatum pd = sub.parent_datum(); // all we need from |sub|
+  const rootdata::RootDatum pd = sub.parent_datum();
   const weyl::TwistedWeylGroup& W = Tg;
 
   const size_t prev_inv = hash_table.size();
@@ -996,12 +999,25 @@ void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
   std::vector<std::pair<size_t,weyl::Generator> > history; // record ancestors
   history.reserve(0x100); // avoid some initial reallocations for efficiency
 
-  latticetypes::LatticeMatrix A = Tg.involution_matrix(tw); // parent side
-  cartanclass::InvolutionData id(pd,A);
+  cartanclass::InvolutionData id = // involution data in subsystem, for |tw|
+    cartanclass::InvolutionData::build(sub,Tg,tw);
 
+  latticetypes::LatticeMatrix A = Tg.involution_matrix(tw); // parent side
   for (size_t i=0; i<A.numRows(); ++i)
     A(i,i) -= 1; // now $A=\theta-1$, a matrix whose kernel is $(X^*)^\theta$
 
+  rootdata::RootSet imaginary(pd.numRoots()),
+    simple_imaginary(pd.numRoots()), simple_real(pd.numRoots());
+
+  // convert from numbering of subsystem to parent numbering
+  for (rootdata::RootSet::iterator it=id.imaginary_roots().begin(); it(); ++it)
+    imaginary.insert(sub.parent_nr(*it));
+  for (size_t i=0; i<id.imaginary_rank(); ++i)
+    simple_imaginary.insert(sub.parent_nr(id.imaginary_basis(i)));
+  for (size_t i=0; i<id.real_rank(); ++i)
+    simple_real.insert(sub.parent_nr(id.real_basis(i)));
+
+  // saturate by conjugation before reserving space and filling |info|
   for (size_t i=prev_inv; i<hash_table.size(); ++i) // hash table grows
   {
     size_t last = hash_table.size()-1; // |hash_table| contains at least |tw|
@@ -1019,28 +1035,31 @@ void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
   } // |for(i<hash_table.size())|
 
     // reserve table space for new Cartan class
-  Cartans.reserve(hash_table.size());
-  proj.reserve(hash_table.size());
-  check_2rho_imag.reserve(hash_table.size());
+  info.reserve(hash_table.size());
 
   // create initial element
-  proj.push_back(lattice::row_saturate(A));
-  Cartans.push_back(Cartans.empty() ? 0 : Cartans.back()+1);
-  check_2rho_imag.push_back(pd.dual_twoRho(id.imaginary_roots()));
+  info.push_back(inv_info(info.empty() ? 0 : info.back().Cartan+1,
+			  lattice::row_saturate(A),
+			  pd.twoRho(imaginary), // |pd| is dual w.r.t. |Tg|
+			  simple_imaginary, // but |id| built for |Tg|, no dual
+			  simple_real));
 
   // do remaining elements using history
   for (size_t k=prev_inv + 1; k<hash_table.size(); ++k)
   {
     size_t i=history[k-(prev_inv + 1)].first;
     assert(i<k); // this should refer to earlier element
+    const inv_info& cur = info[i];
     weyl::Generator s=history[k-(prev_inv + 1)].second;
-    proj.push_back(proj[i]*refl[s]);    // apply $refl[s]^{-1}$ to old kernel
-    Cartans.push_back(Cartans.back()); // same Cartan class
-      check_2rho_imag.push_back(refl[s].apply(check_2rho_imag[i]));
+    info.push_back(inv_info
+		   (cur.Cartan,   // same Cartan class
+		    cur.proj*refl[s], // apply $refl[s]^{-1}$ to old kernel
+		    refl[s].apply(cur.check_2rho_imag),
+		    pd.simple_root_permutation(s).renumbering(cur.simple_imag),
+		    pd.simple_root_permutation(s).renumbering(cur.simple_real)
+		    ));
   }
-  assert(proj.size()==hash_table.size());
-  assert(Cartans.size()==hash_table.size());
-  assert(check_2rho_imag.size()==hash_table.size());
+  assert(info.size()==hash_table.size());
 }
 
 
@@ -1051,7 +1070,7 @@ bool GlobalFiberData::equivalent(const tits::GlobalTitsElement& x,
   unsigned int k = hash_table.find(x.tw());
   assert (hash_table.find(y.tw())==k);
   latticetypes::RatWeight t= (x.torus_part()-y.torus_part()).as_rational();
-  latticetypes::LatticeElt p = proj[k].apply(t.numerator());
+  latticetypes::LatticeElt p = info[k].proj.apply(t.numerator());
 
   for (size_t i=0; i<p.size(); ++i)
     if (p[i]%t.denominator()!=0)
@@ -1067,7 +1086,7 @@ latticetypes::RatLatticeElt
   unsigned int k = hash_table.find(x.tw());
   assert (k!=hash_table.empty);
   latticetypes::RatLatticeElt t = x.torus_part().as_rational();
-  latticetypes::LatticeElt p = proj[k].apply(t.numerator());
+  latticetypes::LatticeElt p = info[k].proj.apply(t.numerator());
 
   // reduce modulo integers and return
   for (size_t i=0; i<p.size(); ++i)
@@ -1075,7 +1094,16 @@ latticetypes::RatLatticeElt
   return latticetypes::RatLatticeElt(p,t.denominator()).normalize();
 }
 
-
+  tits::GlobalTitsElement GlobalFiberData::imaginary_cross
+  (const rootdata::RootDatum& dual_rd, // dual for pragmatic reasons
+     rootdata::RootNbr alpha, // any imaginary root
+     tits::GlobalTitsElement a) const
+{
+  const latticetypes::Weight& v = dual_rd.coroot(alpha); // imaginary
+  if (a.torus_part().negative_at(v) == (at_rho_imaginary(v,a.tw())%2==0))
+    a.torus_part() += tits::TorusPart(dual_rd.root(alpha));
+  return a;
+}
 /*    II b. |FiberData|  */
 
 

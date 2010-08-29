@@ -139,6 +139,7 @@ const unsigned int magic_code=0x06ABdCF0; // indication of new matrix format
 
 @ Here is how a block file is written
 
+@h "blocks.h"
 @< Declarations of exported functions @>=
 void write_block_file(const blocks::Block& block, std::ostream& out);
 
