@@ -758,10 +758,11 @@ void KGB::fillBruhat()
 */
 
 
-subsys_KGB::subsys_KGB(const KGB_base& kgb,
-		       const subdatum::SubSystem& sub,
-		       const weyl::TwistedWeylGroup& sub_W,
-		       kgb::KGBElt x)
+subsys_KGB::subsys_KGB
+  (const KGB_base& kgb,
+   const subdatum::SubSystem& sub,      // subsystem on dual side
+   const weyl::TwistedWeylGroup& sub_W, // twisted on kgb side
+   kgb::KGBElt x)
 : KGB_base(sub_W)
 , in_parent()
 , in_child(kgb.size(),UndefKGB)
@@ -809,7 +810,7 @@ subsys_KGB::subsys_KGB(const KGB_base& kgb,
     {
       x = in_parent[cur];
       for (weyl::Generator s=0; s<sub_rank; ++s)
- 	if (sub_W.twisted(s)==s) // imaginary
+ 	if (sub_W.hasTwistedCommutation(s,triv)) // imaginary
  	{
 	  KGBElt y=kgb::cross(kgb,x,sub.simple(s),sub.to_simple(s));
  	  assert(kgb.involution(y)==kgb.involution(x)); // stay in fiber
@@ -877,7 +878,7 @@ subsys_KGB::subsys_KGB(const KGB_base& kgb,
 	  else
 	    data[s][in_child[y]].inverse_Cayley_image.second=cur;
 	} // |if(ImaginaryNoncompact)|
-      } // |for(x)|
+      } // |for(cur)|
       if (k==first_of_tau.size()-1) // a new twisted involution was visited
       {
 	assert(in_parent.size()>first_of_tau.back()); // new fiber non empty
@@ -1094,7 +1095,7 @@ latticetypes::RatLatticeElt
   return latticetypes::RatLatticeElt(p,t.denominator()).normalize();
 }
 
-  tits::GlobalTitsElement GlobalFiberData::imaginary_cross
+tits::GlobalTitsElement GlobalFiberData::imaginary_cross
   (const rootdata::RootDatum& dual_rd, // dual for pragmatic reasons
      rootdata::RootNbr alpha, // any imaginary root
      tits::GlobalTitsElement a) const

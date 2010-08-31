@@ -1200,7 +1200,9 @@ void test_f()
     prettyprint::printWeylElt(std::cout << " (reversed to ",w,sub_W)
 			      << " in list below).\n";
 
-    const weyl::TwistedWeylGroup sub_tW(sub_W,twist);
+    // twist was computed one dual side; |sub_KGB| needs undual twisted group:
+    const weyl::TwistedWeylGroup dual_sub_tW(sub_W,twist);
+    const weyl::TwistedWeylGroup sub_tW(sub_W,dual_sub_tW.dual_twist());
 
     kgb::subsys_KGB sub_KGB(kgb,sub,sub_tW,x);
 
