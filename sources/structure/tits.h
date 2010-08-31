@@ -149,6 +149,12 @@ class GlobalTitsElement
   const TorusElement& torus_part() const { return t; }
   const weyl::TwistedInvolution& tw() const { return w; }
 
+// surprisingly this can be defined without help of |GlobalTitsGroup|
+  GlobalTitsElement simple_imaginary_cross
+  (const rootdata::RootDatum& dual_rd, // dual for pragmatic reasons
+   rootdata::RootNbr alpha) const; // any simple-imaginary root
+
+
 // manipulators
   TorusElement& torus_part() { return t; } // one may modify just torus part
 

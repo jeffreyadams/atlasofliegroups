@@ -218,6 +218,17 @@ void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   leftMult(a.w,s); a.t=TorusElement(t);
 }
 
+GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
+  (const rootdata::RootDatum& dual_rd, // dual for pragmatic reasons
+   rootdata::RootNbr alpha) const // any simple-imaginary root
+{
+  const latticetypes::Weight& v = dual_rd.coroot(alpha); // imaginary
+  if (t.negative_at(v)) // |alpha| is a compact root
+    return *this;
+  GlobalTitsElement a(*this);
+  a.torus_part() += tits::TorusPart(dual_rd.root(alpha));
+  return a;
+}
 
 namespace {
 

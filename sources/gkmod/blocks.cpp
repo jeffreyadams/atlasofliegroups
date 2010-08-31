@@ -511,8 +511,8 @@ nu_block::nu_block(realredgp::RealReductiveGroup& GR,
 	      rootdata::RootSet rb = gfd.imaginary_basis(y.tw());
 	      for (size_t j=y_begin; j<y_hash.size(); ++j)
 		for (rootdata::RootSet::iterator it=rb.begin(); it(); ++it)
-		  y_hash.match(gfd.pack(gfd.imaginary_cross
-				(sub.parent_datum(),*it,y_hash[j].repr())));
+		  y_hash.match(gfd.pack(y_hash[j].repr().simple_imaginary_cross
+					(sub.parent_datum(),*it)));
 	      y_end = y_hash.size();
 	    }
 
