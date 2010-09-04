@@ -1126,6 +1126,24 @@ void iblock_f()
 
     subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,gamma);
 
+    weyl::WeylWord ww;
+    weyl::Twist twist = sub.twist(theta,ww);
+
+    setutils::Permutation pi;
+
+    std::cout << "Subsystem on dual side is ";
+    if (sub.rank()==0)
+      std::cout << "empty.\n";
+    else
+    {
+      std::cout << "of type "
+		<< dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+	      << ", with roots ";
+      for (weyl::Generator s=0; s<sub.rank(); ++s)
+	std::cout << sub.parent_nr_simple(pi[s]) << (s<sub.rank()-1 ? "," : ".\n");
+    }
+    std::cout << "Twisted involution in subsystem: " << ww << ".\n";
+
     blocks::BlockElt z;
     blocks::nu_block block(GR,sub,x,lambda,gamma,z);
 

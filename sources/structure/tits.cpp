@@ -157,6 +157,52 @@ latticetypes::LatticeMatrix
   return M;
 }
 
+// perfoming multiplication from left (torus part side) is most efficient
+void GlobalTitsGroup::left_mult(const TorusElement& t,
+				const weyl::WeylWord& ww,
+				bool do_twist,
+				GlobalTitsElement& b) const
+{
+  for (size_t i=ww.size(); i-->0; ) // process from right to left
+  {
+    weyl::Generator s =  // multiply by $\sigma_i$ or $\sigma_{tw(i)}^{-1}$
+      do_twist ? twisted(ww[i]) : ww[i];
+    b.t.reflect(simple,s); // |b.t| is \emph{weight} for (dual side) |simple|
+    if ((weylGroup().leftMult(b.w,s)>0)==do_twist)
+      b.t += m_alpha(s); // adjust torus part on (do_twist | increas | decrease
+  }
+  b.t = b.t + (do_twist ? twisted(t) : t); // finally add torus part |t|
+}
+
+
+
+bool GlobalTitsGroup::is_valid(GlobalTitsElement a) const
+{
+  const TorusElement t = a.t; // copy, to avoid aliasing in |left_mult|
+  left_mult(t,word(a.w),true,a); // compute $twisted(a)*a$
+  if (a.w!=weyl::WeylElt()) // |a.w| should have been a twisted involution
+    return false;
+
+  // now check if |a.t| is central, by scalar products with |simple.coroots()|
+  latticetypes::RatWeight rw = a.t.as_rational();
+  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
+    if (rw.numerator().dot(simple.coroots()[s])%rw.denominator()!=0)
+      return false;
+
+  return true;
+}
+
+TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
+{
+  latticetypes::RatWeight rw = x.as_rational();
+  return TorusElement(latticetypes::RatWeight(delta_v.apply(rw.numerator()),
+					      rw.denominator()));
+}
+
+void GlobalTitsGroup::twist(TorusElement& x) const // in-place imperative version
+{
+  x = twisted(x);
+}
 
 // find simple roots giving length-decreasing links (complex descent and real)
 bitset::RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
@@ -206,6 +252,7 @@ void GlobalTitsGroup::add(GlobalTitsElement& a, latticetypes::RatWeight rw)
 void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   const
 {
+  assert(is_valid(a)); // if not a valid KGB element, inverse Cayley is not defined
   const latticetypes::Weight& eval_pt=simple.coroots()[s];
   latticetypes::RatWeight t=a.t.as_rational();
   int num = eval_pt.dot(t.numerator()); // should become multiple of denominator
@@ -612,6 +659,13 @@ bool BasedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr alpha) const
   return simple_grading(a,s);
 }
 
+bool BasedTitsGroup::is_valid(TitsElt a) const
+{
+  static TitsElt e(Tg);  // identity
+  Tg.mult(a,twisted(a));
+  return a==e;
+}
+
 /* The method |naive_seed| attempts to get an initial Tits group element, for
    a KGB construction for the real form |rf| starting at Cartan class |cn|, by
    extracting the necessary information fom the |Fiber| object associated to
@@ -673,10 +727,10 @@ tits::TitsElt BasedTitsGroup::naive_seed
    subgroup of the subquotient that defines th fiber group, and a second
    section for requiring the correct grading of the imaginary roots for the
    real form that is intended. Both parts are inhomogeneous linear equations,
-   of which the left hand side (linear part) expresses a linear dependence on
-   the torus part, and the right hand side (inhomogeneous part) describes the
-   failure of the null torus part to satisfy the conditions (since these are
-   equations over Z/2Z, there is no need to put in a minus sign).
+   of which the left hand side (linear part) expresses a Z/2Z-linear condition
+   on the torus part, and the right hand side (inhomogeneous part) describes
+   the failure of the null torus part to satisfy the conditions (since these
+   are equations over Z/2Z, there is no need to put in a minus sign).
 
    The equations of the first section are derived from our test of being in
    the proper coset for this square class (mentioned in kgb.cpp), namely that
@@ -696,7 +750,7 @@ tits::TitsElt BasedTitsGroup::naive_seed
    It is not obvious that these equations actually have a solution, but since
    the traditional KGB construction in fact produces such elements, we assert
    that one exists. The solution is only meaningful modulo the "denominator"
-   subgroup of the subquotient that defines th fiber group, so the result
+   subgroup of the subquotient that defines the fiber group, so the result
    returned should be reduced modulo that subgroup by the caller.
 
    If grading seeds are determined for different Cartan classes, there is no

@@ -236,7 +236,10 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   const std::vector<gradings::Grading>& square_class_generators() const
   { return square_class_gen; }
 
+
 // methods that only access some |GlobalTitsElement|
+
+  bool is_valid(GlobalTitsElement a) const; // whether element may occur
 
   // determine status of simple root, if assumed imaginary
   bool compact(weyl::Generator s, const GlobalTitsElement& a) const
@@ -267,6 +270,14 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   // modify |a| to an inverse Cayley image by (real simple root) $\alpha_s$
   void inverse_Cayley(weyl::Generator s,GlobalTitsElement& a) const;
 
+  GlobalTitsElement prod(const GlobalTitsElement& a,
+			 const GlobalTitsElement& b) const;
+
+ private: // this exists for pragmatic reasons only; no reason to export it
+  void left_mult(const TorusElement& t,
+		 const weyl::WeylWord& ww,
+		 bool do_twist, // whether $(t,ww)$ is conjugated by $\delta_1$
+		 GlobalTitsElement& b) const;
 }; // |class GlobalTitsGroup|
 
 
@@ -693,6 +704,8 @@ class BasedTitsGroup
 
   gradings::Grading base_grading() const { return grading_offset; }
 
+  bool is_valid(TitsElt a) const; // whether |a| may occur in any KGB at all
+
   // whether simple root |s| noncompact at KGB element represented by |a|
   inline bool simple_grading(const tits::TitsElt& a, size_t s) const;
 
@@ -720,7 +733,7 @@ class BasedTitsGroup
 
   // conjugate Tits group element by $\delta_1$
   tits::TitsElt twisted(const tits::TitsElt& a) const;
-  // also keep vversion for torus part only
+  // also keep a version for torus part only
   tits::TorusPart twisted(const tits::TorusPart& t) const
   { return Tg.twisted(t);}
 

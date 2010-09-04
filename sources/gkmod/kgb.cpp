@@ -203,6 +203,7 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G,
   , fiber_data(G,(generate_involutions(G.numInvolutions()),inv_hash))
   , elt()
 {
+  assert(Tg.is_valid(x)); // unless this holds, we cannot hope to succeed
   tits::GlobalTitsElement a=x; // start at an element that we certainly want
   weyl::Generator s;
   while ((s=Tg.weylGroup().leftDescent(a.tw()))<rank())
@@ -211,6 +212,7 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G,
     else
       Tg.cross(s,a);
 
+  assert(Tg.is_valid(a)); // check that we still have a valid element
   assert (a.tw()==weyl::TwistedInvolution()); // we are at fundamental fiber
   { // get elements at the fundamental fiber
     first_of_tau.push_back(0); // start of fundamental fiber
@@ -1121,7 +1123,7 @@ tits::GlobalTitsElement GlobalFiberData::imaginary_cross
   The image $I$ is what one divides by to get the fiber group of the real
   Cartan associated to $H$ and $\tau$, in which case the "numerator" is the
   image of $X^\vee_+ +X^\vee_-$. The possible values of the torus part $x$ are
-  such that there are as much values modulo $I$ as there are in the fiber
+  such that there are as many values modulo $I$ as there are in the fiber
   group, but they are not naturally in bijection, and $0$ need no be a valid
   value for $x$: the possible values are such that the Tits group element $a$
   given by $(x,w)$ satisfies $a*twisted(a)=e$, where the twisting is done
