@@ -278,8 +278,6 @@ nu_block::nu_block(realredgp::RealReductiveGroup& GR,
   // step 1: get the correct value |y|
   tits::TorusElement t((gamma-lambda)/=2); // for original group $G$
   tits::GlobalTitsElement y = tits::GlobalTitsElement(t,tw);
-  Tg.add(y, kgb.half_rho() - Tg.torus_part_offset () ); // for $G(\gamma)$
-
   assert(Tg.is_valid(y));
 
   const kgb::KGBElt x_org = x;
