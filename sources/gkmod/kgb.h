@@ -450,14 +450,18 @@ private:
 }; // |class KGB|
 
 // extract the KGB for a root subsystem
-struct subsys_KGB : public KGB_base
+class subsys_KGB : public KGB_base
 {
-  std::vector<KGBElt> in_parent; // map elements back to parent
-  std::vector<KGBElt> in_child; // partial map back
+  gradings::Grading base_grading;
 
-  subsys_KGB(const KGB_base& kgb,
-	     const subdatum::SubSystem& sub,      // must be constructed before
-	     const weyl::TwistedWeylGroup& sub_W, // call for lifetime reasons
+ public:
+  std::vector<KGBElt> in_parent; // map elements back to parent
+  std::vector<unsigned int> Cartan; ///< records Cartan classes of elements
+  std::vector<tits::TorusPart> torus_part; // of size |size()|
+  KGBElt parent_size;
+
+  subsys_KGB(const kgb::KGB& kgb,
+	     const subdatum::SubDatum& sub,      // must be constructed before
 	     kgb::KGBElt x);
 
 // virtual method

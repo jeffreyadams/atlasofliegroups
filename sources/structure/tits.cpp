@@ -44,6 +44,7 @@
 #include "complexredgp.h"
 #include "realredgp.h"
 #include "subquotient.h"
+#include "subdatum.h"
 
 #include <cassert>
 
@@ -123,7 +124,7 @@ GlobalTitsGroup::GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G)
   , square_class_gen(compute_square_classes(G))
 {
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
-    alpha_v[i]=latticetypes::SmallBitVector(simple.roots()[i]);
+    alpha_v[i]=TorusPart(simple.roots()[i]);
 }
 
 GlobalTitsGroup::GlobalTitsGroup(const subdatum::SubSystem& sub,
@@ -141,7 +142,7 @@ GlobalTitsGroup::GlobalTitsGroup(const subdatum::SubSystem& sub,
       (sub.parent_datum().root_reflection // translated into parent reflections
        (sub.parent_nr_simple(ww[ww.size()-1-i]))); // and reversed for duality
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
-    alpha_v[i]=latticetypes::SmallBitVector(simple.roots()[i]);
+    alpha_v[i]=TorusPart(simple.roots()[i]);
 }
 
 latticetypes::LatticeMatrix
@@ -243,24 +244,35 @@ void GlobalTitsGroup::add(GlobalTitsElement& a, latticetypes::RatWeight rw)
 
 /*
   When trying to invert a Cayley transform, apart from modifying the
-  involution, we must change the torus element so that its scalar product with
+  involution, we must change the torus element so that its evaluation on
   $\alpha$ becomes integer (half-integer means we have a potentially valid
   Tits element, but the requirement that the simple root |alpha| become a
   noncompact root means the value should in fact be integer). We may modify by
-  a rational multiple of $m_\alpha = \exp(\pi i \alpha^\vee)$ to achieve this.
+  a rational multiple of $\alpha^\vee$, since being $-\theta$-fixed after the
+  Cayley transform such a coweight has zero evalution on $\theta$-fixed
+  weights (so the evaluation on imaginary roots stays half-integral), and
+  modulo coweights that are $-\theta$-fixed before the Cayley transform (which
+  do not affect $\alpha$, and which we continue to not care about) multiples
+  of $\alpha^\vee$ are the only freedom we have to modify the evaluation at
+  $\alpha$. If not already integral, we simply make the evaluation at $\alpha$
+  zero, which is as good as any integer. Note that in the reduction modulo 2
+  that will be used in |TitsGroup| below, this kind of correction is no longer
+  possible, and we must perform a more tedious search for a valid correction.
  */
 void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   const
 {
-  assert(is_valid(a)); // if not a valid KGB element, inverse Cayley is not defined
+  assert(is_valid(a)); // only for valid KGB elements inverse Cayley is defined
   const latticetypes::Weight& eval_pt=simple.coroots()[s];
   latticetypes::RatWeight t=a.t.as_rational();
   int num = eval_pt.dot(t.numerator()); // should become multiple of denominator
 
-  const latticetypes::Weight& shift_vec= simple.roots()[s];
-  // |eval_pt.dot(shift_vec)==2|
-
-  t -= latticetypes::RatWeight(shift_vec*num,2*t.denominator());
+  if (num% t.denominator()!=0) // correction needed if alpha woild be compact
+  {
+    const latticetypes::Weight& shift_vec= simple.roots()[s];
+    // |eval_pt.dot(shift_vec)==2|, so correct numerator by |(num/2d)*shift_vec|
+    t -= latticetypes::RatWeight(shift_vec*num,2*t.denominator());
+  }
 
   leftMult(a.w,s); a.t=TorusElement(t);
 }
@@ -370,15 +382,10 @@ TitsGroup::TitsGroup(const rootdata::RootDatum& rd,
 {
   for (size_t i = 0; i<rd.semisimpleRank(); ++i) // reduce vectors mod 2
   {
-    d_simpleRoot[i]  =latticetypes::SmallBitVector(rd.simpleRoot(i));
-    d_simpleCoroot[i]=latticetypes::SmallBitVector(rd.simpleCoroot(i));
+    d_simpleRoot[i]  =TorusPart(rd.simpleRoot(i));
+    d_simpleCoroot[i]=TorusPart(rd.simpleCoroot(i));
   }
 }
-
-namespace {
-
-
-} // |namespace|
 
 
 /*!
@@ -397,16 +404,41 @@ TitsGroup::TitsGroup(const latticetypes::LatticeMatrix& Cartan_matrix,
   d_simpleRoot.reserve(d_rank); d_simpleCoroot.reserve(d_rank);
   for (size_t i=0; i<d_rank; ++i)
   {
-    d_simpleRoot.push_back(latticetypes::SmallBitVector(d_rank,i)); // $e_i$
-    d_simpleCoroot.push_back(latticetypes::SmallBitVector
+    d_simpleRoot.push_back(TorusPart(d_rank,i)); // $e_i$
+    d_simpleCoroot.push_back(TorusPart
 			     (Cartan_matrix.column(i))); // adjoint coroot
     d_involution.set(i,twist[i]); // (transpose of) |twist| permutation matrix
   }
 }
 
+TitsGroup::TitsGroup(const subdatum::SubSystem& sub,
+		     const latticetypes::LatticeMatrix& theta,
+		     weyl::WeylWord& ww)
+  : weyl::TwistedWeylGroup(sub.Weyl_group(),sub.parent_twist(theta,ww))
+  , d_rank(sub.parent_datum().rank()) // not |sub.rank()|
+  , d_simpleRoot(sub.rank())
+  , d_simpleCoroot(sub.rank())
+  , d_involution(theta.transposed())
+{
+  for (weyl::Generator s=0; s<sub.rank(); ++s)
+  {
+    d_simpleRoot[s] =
+      TorusPart(sub.parent_datum().root(sub.parent_nr_simple(s)));
+    d_simpleCoroot[s] =
+      TorusPart(sub.parent_datum().coroot(sub.parent_nr_simple(s)));
+  }
+
+  std::vector<latticetypes::BinaryMap> simple_tr; simple_tr.reserve(d_rank);
+  for (size_t s=0; s<sub.rank(); ++s)
+    simple_tr.push_back(latticetypes::BinaryMap
+      (sub.parent_datum().root_reflection(sub.parent_nr_simple(s))
+					 .transposed()));
+
+  for (size_t i=0; i<ww.size(); ++i) // make it distinguished by applying |ww|
+    d_involution*= simple_tr[ww[i]];
+}
 
 // Switching between left and right torus parts is a fundamental tool.
-
 /*!
   \brief find torus part $x'$ so that $x.w=w.x'$
 
@@ -573,6 +605,26 @@ BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
     grading_offset.set(i,Tg.twisted(i)==i);
 }
 
+BasedTitsGroup::BasedTitsGroup(const subdatum::SubSystem& sub,
+			       const latticetypes::LatticeMatrix& theta,
+			       gradings::Grading parent_base_grading,
+			       weyl::WeylWord& ww)
+  : my_Tits_group(new tits::TitsGroup(sub,theta,ww))
+  , Tg(*my_Tits_group)
+  , grading_offset(sub.induced(parent_base_grading))
+  , rs(sub)
+{}
+
+BasedTitsGroup::BasedTitsGroup(const subdatum::SubDatum& sub,
+			       gradings::Grading parent_base_grading)
+  : my_Tits_group(NULL)
+  , Tg(sub.Tits_group())
+  , grading_offset(sub.induced(parent_base_grading))
+  , rs(sub)
+{}
+
+
+
 void BasedTitsGroup::basedTwistedConjugate
   (tits::TitsElt& a, const weyl::WeylWord& w) const
 {
@@ -597,17 +649,18 @@ void BasedTitsGroup::basedTwistedConjugate
    defined again, but some might have changed by the reduction. It turns out
    that our reconstruction of the torus part is valid if and only if the
    evaluation of the simple root $\alpha=\alpha_i$ through which we transform
-   (and which becomes imaginary) is $-1$, so that $\alpha$ becomes noncompact.
-   Indeed, if the transformation was type I, then the value of this root is
-   already determined by the values of weights fixed by the new involution:
-   the modular reduction was by $m_\alpha$, for which $\alpha$ evaluates to
-   $+1$, and which forms the difference between the torus parts of the two
-   elements which the same value of the Cayley transform, from which we have
-   to make a choice anyway. If the transformation was type II, then the
-   sublattice of $\theta$-stable weights is the direct sum of the
-   $\theta_\alpha$-stable weights and the multiples of $\alpha$, and lifting
-   the torus part means determining the evaluation of $\alpha$ at it; since
-   there are always two possible lifts, one of them makes $\alpha$ noncompact.
+   (and which is imaginary before Cayley transform) is $-1$, so that $\alpha$
+   becomes noncompact. Indeed, if the transformation was type I, then the
+   value at this root is already determined by the values at weights fixed by
+   the new involution $\theta_\alpha$: the modular reduction was by
+   $m_\alpha$, for which $\alpha$ evaluates to $+1$, and which forms the
+   difference between the torus parts of the two elements which the same value
+   of the Cayley transform, from which we have to make a choice anyway. If the
+   transformation was type II, then the sublattice of $\theta$-stable weights
+   is the direct sum of the $\theta_\alpha$-stable weights and the multiples
+   of $\alpha$, and lifting the torus part means determining the evaluation of
+   $\alpha$ at it; since there are always two possible lifts, one of them
+   makes $\alpha$ noncompact.
  */
 void BasedTitsGroup::inverse_Cayley_transform
   (tits::TitsElt& a, size_t i,
@@ -901,7 +954,7 @@ tits::TitsElt EnrichedTitsGroup::backtrack_seed
     {
       latticetypes::SmallBitVector v
 	(static_cast<bitset::RankFlags>(x),fund.fiberRank());
-      tits::TorusPart t = fund.fiberGroup().fromBasis(v);
+      TorusPart t = fund.fiberGroup().fromBasis(v);
       for (size_t i=0; i<Cayley.size(); ++i)
 	if (is_compact(t,Cayley[i]))
 	  goto again; // none of the |Cayley[i]| should be compact

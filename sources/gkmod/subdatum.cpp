@@ -8,6 +8,9 @@
 */
 
 #include "subdatum.h"
+#include "rootdata.h"
+#include "realredgp.h"
+#include "kgb.h"
 
 #include <cassert>
 
@@ -103,7 +106,37 @@ weyl::Twist SubSystem::twist(const latticetypes::LatticeMatrix& theta,
     rootdata::RootNbr image =
       inv_map[rd.rootNbr(theta.apply(rd.root(parent_nr_simple(i))))];
     assert(image < numRoots());
-    Delta[i] = rootMinus(image); // minus transposed |theta| image |coroot(i)|
+    Delta[i] = rootMinus(image); // minus |theta| image of |root(i)|
+  }
+
+  weyl::WeylWord wrt = // this is ordered for composition on parent side
+    rootdata::wrt_distinguished(*this,Delta); // make |Delta| distinguished
+
+  // twist |Delta| gives |sub|-side fundamental, |theta=parent(wrt).-^Delta|
+
+  weyl::Twist result;
+  for (weyl::Generator i=0; i<rank(); ++i)
+    result[i] = simpleRootIndex(Delta[i]);
+
+  // we want |ww| such that |-^theta=sub(ww).Delta|; so |ww=twist(wrt^{-1})|
+  // the following inversion and twist are neutral if |ww| is twisted involution
+  ww.resize(wrt.size()); // we must reverse and twist, to express on our side
+  for (size_t i=0; i<wrt.size(); ++i)
+    ww[wrt.size()-1-i] = result[wrt[i]];
+  return result;
+}
+
+// Here we seek twist and |ww| on parent side (dual with respect to |sub|)
+weyl::Twist SubSystem::parent_twist(const latticetypes::LatticeMatrix& theta,
+				    weyl::WeylWord& ww) const
+{
+  rootdata::RootList Delta(rank());
+  for (weyl::Generator i=0; i<rank(); ++i)
+  {
+    rootdata::RootNbr image =
+      inv_map[rd.rootNbr(theta.apply(rd.root(parent_nr_simple(i))))];
+    assert(image < numRoots());
+    Delta[i] = image; // minus |theta| image of |root(i)|
   }
 
   weyl::WeylWord wrt = // this is ordered for composition on parent side
@@ -113,11 +146,73 @@ weyl::Twist SubSystem::twist(const latticetypes::LatticeMatrix& theta,
   for (weyl::Generator i=0; i<rank(); ++i)
     result[i] = simpleRootIndex(Delta[i]);
 
-  // the following inversion and twist are neutral if |ww| is twisted involution
-  ww.resize(wrt.size()); // we must reverse and twist, to express on our side
+  ww.resize(wrt.size());
   for (size_t i=0; i<wrt.size(); ++i)
-    ww[wrt.size()-1-i] = result[wrt[i]];
+    ww[i] = wrt[i];
   return result;
+}
+
+latticetypes::LatticeMatrix SubSystem::action_matrix(const weyl::WeylWord& ww)
+ const
+{
+  latticetypes::LatticeMatrix result(rd.rank());
+  for (size_t i=0; i<ww.size(); ++i)
+    result *= rd.root_reflection(parent_nr_simple(ww[i]));
+  return result;
+}
+
+
+gradings::Grading SubSystem::induced(gradings::Grading base_grading) const
+{
+  base_grading.complement(rd.semisimpleRank()); // flag compact simple roots
+  gradings::Grading result;
+  for (weyl::Generator s=0; s<rank(); ++s)
+  {
+    gradings::Grading mask (rd.root_expr(parent_nr_simple(s)));
+    result.set(s,mask.dot(base_grading));
+  }
+
+  result.complement(rank());
+  return result;
+}
+
+  /*
+
+        class |SubDatum|
+
+
+  */
+
+SubDatum::SubDatum(realredgp::RealReductiveGroup& GR,
+		   const latticetypes::RatWeight& gamma,
+		   kgb::KGBElt x)
+  : SubSystem(SubSystem::integral(GR.rootDatum(),gamma))
+  , base_ww()
+  , delta(GR.complexGroup().involutionMatrix(GR.kgb().involution(x)))
+  , Tg(static_cast<const SubSystem&>(*this),delta,base_ww)
+  , ini_tw()
+{ // we must still modify |delta| by |ww| into the distinguished involution
+  for (size_t i=0; i<base_ww.size(); ++i)
+    delta *= parent_datum().root_reflection(parent_nr_simple(base_ww[i]));
+
+  ini_tw = Tg.weylGroup().element(base_ww); // store relative word compactly
+
+  const rootdata::RootDatum& pd = parent_datum();
+  rootdata::RootList simple_image(pd.semisimpleRank());
+  for (weyl::Generator s=0; s<simple_image.size(); ++s)
+    simple_image[s] = pd.rootNbr(delta.apply(pd.simpleRoot(s)));
+
+  base_ww = rootdata::wrt_distinguished(pd,simple_image);
+}
+
+latticetypes::LatticeMatrix SubDatum::involution(weyl::TwistedInvolution tw)
+  const
+{
+  latticetypes::LatticeMatrix theta = delta;
+  weyl::WeylWord ww = Weyl_group().word(tw);
+  for (size_t i=ww.size(); i-->0; )
+    theta.leftMult(parent_datum().root_reflection(parent_nr_simple(ww[i])));
+  return theta;
 }
 
 } // |namespace subdatum|

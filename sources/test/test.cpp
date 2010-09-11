@@ -1138,9 +1138,10 @@ void iblock_f()
     {
       std::cout << "of type "
 		<< dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-	      << ", with roots ";
+		<< ", with roots ";
       for (weyl::Generator s=0; s<sub.rank(); ++s)
-	std::cout << sub.parent_nr_simple(pi[s]) << (s<sub.rank()-1 ? "," : ".\n");
+	std::cout << sub.parent_nr_simple(pi[s])
+		  << (s<sub.rank()-1 ? "," : ".\n");
     }
     std::cout << "Twisted involution in subsystem: " << ww << ".\n";
 
@@ -1169,7 +1170,7 @@ void iblock_f()
   {
     std::cerr << std::endl << "unidentified error occurred" << std::endl;
   }
-}
+} // |iblock_f|
 
 void test_f()
 {
@@ -1193,9 +1194,11 @@ void test_f()
       (nu.numerator() - theta.apply(nu.numerator()),2*nu.denominator());
 
     std::cout << "Made -theta fixed, nu = " << nu << std::endl;
+    nu = nu + latticetypes::RatWeight(rd.twoRho()+theta.apply(rd.twoRho()),4);
+    std::cout << "added discrete series contribution, nu' = " << nu
+	      << std::endl;
 
-    subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,nu);
-    const weyl::WeylGroup& sub_W = sub.Weyl_group();
+    subdatum::SubDatum sub (GR,nu,x);
 
     weyl::WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
@@ -1213,16 +1216,16 @@ void test_f()
     }
 
     std::cout << "Twisted involution in subsystem: " << ww ;
-    weyl::WeylElt w = sub_W.element(ww);
-    sub_W.mult(w,sub_W.longest());
-    prettyprint::printWeylElt(std::cout << " (reversed to ",w,sub_W)
+    weyl::WeylElt w = sub.Weyl_group().element(ww);
+    sub.Weyl_group().mult(w,sub.Weyl_group().longest());
+    prettyprint::printWeylElt(std::cout << " (reversed to ",w,sub.Weyl_group())
 			      << " in list below).\n";
 
-    // twist was computed one dual side; |sub_KGB| needs undual twisted group:
-    const weyl::TwistedWeylGroup dual_sub_tW(sub_W,twist);
-    const weyl::TwistedWeylGroup sub_tW(sub_W,dual_sub_tW.dual_twist());
+    // prettyprint::printWeylElt
+    //   (std::cout << "that's ",sub.init_twisted(),sub.Weyl_group())
+    //   << std::endl;
 
-    kgb::subsys_KGB sub_KGB(kgb,sub,sub_tW,x);
+    kgb::subsys_KGB sub_KGB(kgb,sub,x);
 
     kgb_io::print(std::cout,sub_KGB);
 
@@ -1243,7 +1246,7 @@ void test_f()
   {
     std::cerr << std::endl << "unidentified error occurred" << std::endl;
   }
-}
+} // |test_f|
 
 //Help commands
 

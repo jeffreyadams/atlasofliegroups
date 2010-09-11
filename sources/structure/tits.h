@@ -24,7 +24,7 @@ TitsGroup and TitsElt.
 
 #include "prerootdata.h"
 #include "rootdata.h"
-#include "subdatum.h"
+#include "subdatum_fwd.h" // not subdatum.h, which includes us
 #include "bitvector.h"
 #include "constants.h"
 #include "latticetypes.h"
@@ -458,7 +458,7 @@ class TitsGroup : public weyl::TwistedWeylGroup
 Regarded as elements of order two in the dual torus \f$T^\vee\f$, these are
 the elements \f$m_\alpha^\vee\f$.
   */
-std::vector<TorusPart> d_simpleRoot;
+  std::vector<TorusPart> d_simpleRoot;
 
   /*!
 \brief List of the elements \f$m_\alpha\f$ (for \f$\alpha\f$ simple) in $H(2)$.
@@ -494,6 +494,11 @@ the \f$\delta\f$ coset of the Tits group.
 	    const weyl::WeylGroup& W,
 	    const weyl::Twist& twist);
 
+  //!\brief Constructor for Tits group relative to a subsystem
+  TitsGroup(const subdatum::SubSystem& sub,
+	    const latticetypes::LatticeMatrix& theta,
+	    weyl::WeylWord& ww);
+
   //\brief Like a copy contructor, but reference |W| rather than share or copy
   TitsGroup(const TitsGroup& Tg, const weyl::WeylGroup& W)
     : TwistedWeylGroup(W,Tg.twist())
@@ -509,6 +514,8 @@ the \f$\delta\f$ coset of the Tits group.
 
   /*!\brief Rank of the torus. */
   const size_t rank() const { return d_rank; }
+  const size_t semisimple_rank() const
+    { return weyl::TwistedWeylGroup::rank(); }
 
   //!\brief Element m_\alpha of H(2) for simple coroot \#j.
   TorusPart m_alpha(size_t j) const { return d_simpleCoroot[j]; }
@@ -530,6 +537,20 @@ the \f$\delta\f$ coset of the Tits group.
 
   //!\brief Reflection of |TorusPart|s defined by a twisted involution
   latticetypes::BinaryMap involutionMatrix(const weyl::WeylWord& tw) const;
+
+  /*!\brief Applies to the element x of H(2) simple reflection s.
+
+    This is the same thing as conjugating |x|, viewed as embedded in the Tits
+    group, by \f$\sigma_s\f$, or equivalently by its inverse (as
+    \f$\sigma_s^2\f$ commutes with $x$). This is used internally to compute
+    the proper commutation relations between Weyl group and torus parts of a
+    Tits element.
+  */
+  void reflect(TorusPart& x, weyl::Generator s) const
+  { if (d_simpleRoot[s].dot(x))
+      x += d_simpleCoroot[s];
+  }
+
 
   //!\brief In-place imperative version of |twisted(TorusPart x)|
   void twist(TorusPart& x) const { x=d_involution.apply(x); }
@@ -602,22 +623,6 @@ is done in the KGB construction, it induces an involution on the quotient set.
 
 // manipulators (none)
 
- private:
-// private methods
-
-  /*!
-\brief Applies to the element x of H(2) simple reflection s.
-
-This is the same thing as conjugating |x|, viewed as embedded in the Tits
-group, by \f$\sigma_s\f$, or equivalently by its inverse (as \f$\sigma_s^2\f$
-commutes with $x$). This is used internally to compute the proper commutation
-relations between Weyl group and torus parts of a Tits element.
-  */
-  void reflect(TorusPart& x, weyl::Generator s) const
-  { if (d_simpleRoot[s].dot(x))
-      x += d_simpleCoroot[s];
-  }
-
 
 }; // |class TitsGroup|
 
@@ -685,7 +690,7 @@ class BasedTitsGroup
   */
   gradings::Grading grading_offset;
 
-  const rootdata::RootSystem& rs;
+  const rootdata::RootSystem& rs; // needed for |grading|
 
  public:
   BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
@@ -696,11 +701,24 @@ class BasedTitsGroup
   BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
 		 tags::DualTag);// dual adjoint case
 
+  BasedTitsGroup(const subdatum::SubSystem& sub,
+		 const latticetypes::LatticeMatrix& theta,
+		 gradings::Grading parent_base_grading,
+		 weyl::WeylWord& ww);
+
+  BasedTitsGroup(const subdatum::SubDatum& sub,
+		 gradings::Grading parent_base_grading);
+
   ~BasedTitsGroup() { delete(my_Tits_group); }
 
   /* accessors */
 
   const tits::TitsGroup& titsGroup() const { return Tg; }
+  const weyl::WeylGroup& weylGroup() const { return Tg.weylGroup(); }
+
+  bool hasTwistedCommutation
+    (weyl::Generator s, const weyl::TwistedInvolution& tw)  const
+    { return Tg.hasTwistedCommutation(s,tw); }
 
   gradings::Grading base_grading() const { return grading_offset; }
 
@@ -728,7 +746,8 @@ class BasedTitsGroup
   void left_torus_reduce(tits::TitsElt& a, latticetypes::SmallSubspace V) const
   { titsGroup().left_torus_reduce(a,V); }
 
-  void right_torus_reduce(tits::TitsElt& a, latticetypes::SmallSubspace V)
+  void right_torus_reduce(tits::TitsElt& a,
+			  latticetypes::SmallSubspace V) const
   { titsGroup().right_torus_reduce(a,V); }
 
   // conjugate Tits group element by $\delta_1$
@@ -769,7 +788,7 @@ class EnrichedTitsGroup : public BasedTitsGroup
 
 }; // |class EnrichedTitsGroup|
 
-// inline definitions
+// inline definitions (inlined here because of the long comments)
 
 /* The amazingly simple way to compute the grading at simple roots, for any
    twisted involution for which they are imaginary. In short, the grading of

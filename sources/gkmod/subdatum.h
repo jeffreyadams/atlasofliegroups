@@ -14,9 +14,14 @@
 #ifndef SUBDATUM_H  /* guard against multiple inclusions */
 #define SUBDATUM_H
 
-#include "rootdata.h"
+#include "rootdata.h" // derive from |rootdata::RootSystem|
 #include "prerootdata.h"
 #include "weyl.h"
+#include "tits.h"
+#include "latticetypes_fwd.h"
+#include "gradings_fwd.h"
+#include "realredgp_fwd.h"
+#include "kgb_fwd.h"
 
 namespace atlas {
 
@@ -68,7 +73,12 @@ class SubSystem : public rootdata::RootSystem // new system, subsytem of dual
   const weyl::WeylGroup& Weyl_group() const { return sub_W; }
 
   weyl::Twist twist(const latticetypes::LatticeMatrix& theta,
-		    weyl::WeylWord& ww) const; // |theta| as twisted involution
+		    weyl::WeylWord& ww) const;
+  // output value |ww| gives |-^theta| as twisted involution for |sub|
+
+  weyl::Twist parent_twist(const latticetypes::LatticeMatrix& theta,
+			   weyl::WeylWord& ww) const;
+  // now twist |delta| (result) and |ww| are on parent side, |theta=ww.delta|.
 
   prerootdata::PreRootDatum pre_root_datum() const; // viewed from parent side
 
@@ -89,7 +99,30 @@ class SubSystem : public rootdata::RootSystem // new system, subsytem of dual
   latticetypes::Weight sub_2rho() const { return rd.dual_twoRho(pos_map); }
   latticetypes::Weight parent_sub_2rho() const { return rd.twoRho(pos_map); }
 
+  latticetypes::LatticeMatrix action_matrix(const weyl::WeylWord& ww) const;
+
+  gradings::Grading induced(gradings::Grading base_grading) const;
+
 }; // |class SubSystem|
+
+class SubDatum : public SubSystem
+{
+  weyl::WeylWord base_ww;  // we need this variable mostly in the constructor!
+  latticetypes::LatticeMatrix delta; // together with twist: what was missing
+  tits::TitsGroup Tg; // twisted Weyl group, plus stuff our base class knows
+  weyl::WeylElt ini_tw;
+
+ public:
+  SubDatum(realredgp::RealReductiveGroup& GR,
+	   const latticetypes::RatWeight& gamma,
+	   kgb::KGBElt x);
+
+  const tits::TitsGroup& Tits_group() const {return Tg; }
+  weyl::TwistedInvolution init_twisted() const { return ini_tw; }
+  const weyl::WeylWord& base_twisted_in_parent() const { return base_ww; }
+
+  latticetypes::LatticeMatrix involution(weyl::TwistedInvolution tw) const;
+}; // |class SubDatum|
 
 } // |namespace subdatum|
 

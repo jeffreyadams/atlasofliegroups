@@ -255,6 +255,7 @@ BitSetBase<2>::iterator& BitSetBase<2>::iterator::operator++ ()
 
 // force instantiations
 template class BitSet<constants::RANK_MAX>;
+  template BitSet<constants::RANK_MAX>::BitSet(const std::vector<int>&);
 template class BitSet<2*constants::RANK_MAX>;
 
 } // |namespace bitset|
