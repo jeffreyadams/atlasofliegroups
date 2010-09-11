@@ -882,10 +882,7 @@ subsys_KGB::subsys_KGB
 	  tits::TitsElt x = elt_pool[cur];  // but do no modify their values
 	  Tg.Cayley_transform(x,s);
 	  if (fd.unseen(x.tw()))
-	  {
-	    latticetypes::LatticeMatrix M = sub.action_matrix(W.word(x.tw()));
 	    fd.add_class(tw,sub.involution(tw));
-	  }
 	  fd.reduce(x);
 	  child = elt_hash.match(x);
 	  if (child==info.size()) // then newborn
@@ -932,12 +929,19 @@ subsys_KGB::subsys_KGB
   }
 } // |subsys_KGB::subsys_KGB|
 
+size_t subsys_KGB::Cartan_class(KGBElt x) const
+{
+  return Cartan[x];
+}
+
 std::ostream& subsys_KGB::print(std::ostream& strm, KGBElt x) const
 {
   int width = ioutils::digits(parent_size-1,10ul);
-  return prettyprint::prettyPrint(strm << '(',torus_part[x]) << '='
-    << std::setw(width)<< in_parent[x] << ')';
+  return prettyprint::prettyPrint
+    (strm << '(' << std::setw(width)<< in_parent[x] << '=',torus_part[x])
+    << ')';
 }
+
 
 
 /*****************************************************************************

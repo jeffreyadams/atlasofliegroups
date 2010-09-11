@@ -464,7 +464,8 @@ class subsys_KGB : public KGB_base
 	     const subdatum::SubDatum& sub,      // must be constructed before
 	     kgb::KGBElt x);
 
-// virtual method
+// virtual methods
+  virtual size_t Cartan_class(KGBElt x) const;
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const;
 
 }; // |struct subsys_KGB|
