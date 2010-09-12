@@ -4282,26 +4282,41 @@ void mat_neq_wrapper(expression_base::level l)
     push_value(new bool_value(i->val!=j->val));
 }
 
-@ Next we have the identity matrix and matrix transposition.
+@ Next we have the null vector and matrices, the identity matrix and matrix
+transposition.
 
 @< Declarations of exported functions @>=
+void null_vec_wrapper (expression_base::level);
+void null_mat_wrapper (expression_base::level);
 void id_mat_wrapper (expression_base::level);
 void transpose_mat_wrapper (expression_base::level);
 void transpose_vec_wrapper (expression_base::level);
 
-@ In |id_mat_wrapper| we create a |matrix_value| around an empty
-|LatticeMatrix| rather than build a filled matrix object first. If a
-constructor or function producing an identity matrix were available we could
-have used that, but there is (currently) no such constructor or function; the
-main reason seems to be that |matrix::Matrix| is a class template, and
-specifying the desired entry type would be somewhat awkward.
+@ Null vectors and matrices are particularly useful as starting values. In
+addition, the latter can produce empty matrices without any (null) entries,
+when either the number of rows or column is zero but the other is not; such
+matrices (which are hard to obtain by other means) are good starting points
+for iterations that consist of adding a number of rows or columns of equal
+size, and they determine this size even if none turn out to be contributed.
 
 Since in general built-in functions may throw exceptions (even for such simple
 operations as |transposed|) we hold the pointers to local values in smart
 pointers; for values popped from the stack this would in fact be hard to avoid.
 
 @< Function definitions @>=
-void id_mat_wrapper(expression_base::level l)
+void null_vec_wrapper(expression_base::level lev)
+{ int l=get<int_value>()->val;
+  if (lev!=expression_base::no_value)
+    push_value(new vector_value(matrix::Vector<int>(std::abs(l),0)));
+}
+@) void null_mat_wrapper(expression_base::level lev)
+{ int l=get<int_value>()->val;
+  int k=get<int_value>()->val;
+  if (lev!=expression_base::no_value)
+    push_value(new matrix_value
+      (matrix::Matrix<int>(std::abs(k),std::abs(l),0)));
+}
+@) void id_mat_wrapper(expression_base::level l)
 { int i=get<int_value>()->val;
   if (l!=expression_base::no_value)
     push_value(new matrix_value(matrix::Matrix<int>(std::abs(i)))); // identity
@@ -4606,6 +4621,8 @@ install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
 install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
 install_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)");
 install_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)");
+install_function(null_vec_wrapper,"null","(int->vec)");
+install_function(null_mat_wrapper,"null","(int,int->mat)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
 install_function(error_wrapper,"error","(string->)");
 install_function(string_eq_wrapper,"=","(string,string->bool)");

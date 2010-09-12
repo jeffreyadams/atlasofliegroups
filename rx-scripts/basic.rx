@@ -56,4 +56,16 @@ set -(mat M,mat N)= mat:
 set min (int k, int l) = if k<l then k else l fi
 set max (int k, int l) = if k<l then l else k fi
 
+set imaginary_roots (RootDatum rd, mat theta) =
+  let ir = [vec]: []
+  in ( for alpha in roots(rd)
+       do if theta*alpha = alpha then ir #:= alpha fi od
+     ; if #ir=0 then null(rank(rd),0) else mat: ir fi )
+
+set real_roots (RootDatum rd, mat theta) =
+  let rr = [vec]: []
+  in ( for alpha in roots(rd)
+       do if theta*alpha = -alpha then rr #:= alpha fi od
+     ; if #rr=0 then null(rank(rd),0) else mat: rr fi )
+
 set KGB(RealForm rf) = for i=KGB_size(rf) do KGB(rf,i) od
