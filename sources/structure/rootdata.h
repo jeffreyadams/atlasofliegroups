@@ -94,7 +94,7 @@ class RootSystem
 
   matrix::Vector<int> two_rho_in_simple_roots;
 
-//!\brief Root permutations induced by reflections in positive roots.
+//!\brief Root permutations induced by reflections in all positive roots.
   std::vector<setutils::Permutation> root_perm;
 
   // internal access methods

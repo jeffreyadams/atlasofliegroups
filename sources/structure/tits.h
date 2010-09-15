@@ -98,10 +98,7 @@ class TorusElement
   TorusElement operator -(const TorusElement& t) const;
 
   // provide access to value, but convert to "mod Z^rank" not "mod 2Z^rank"
-  latticetypes::RatWeight as_rational() const
-  { return latticetypes::RatWeight
-      (repr.numerator(),2*repr.denominator()).normalize();
-  }
+  latticetypes::RatWeight as_rational() const;
 
   // this method is to be used only at weights |alpha| taking value +1 or -1
   bool negative_at(const latticetypes::LatticeElt& alpha) const
@@ -194,7 +191,7 @@ class GlobalTitsElement
 class GlobalTitsGroup : public weyl::TwistedWeylGroup
 {
   const prerootdata::PreRootDatum simple; // from DUAL side, allows W action
-  latticetypes::LatticeMatrix delta_v; // dual distinguished involution
+  latticetypes::LatticeMatrix delta_tr; // transposed distinguished involution
   std::vector<TorusPart> alpha_v; // |simple.roots()| reduced modulo 2
   const latticetypes::RatWeight half_rho_v;
 
@@ -216,7 +213,7 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
 
   // accessors
   size_t semisimple_rank() const { return alpha_v.size(); }
-  size_t rank() const { return delta_v.numRows(); }
+  size_t rank() const { return simple.rank(); }
   const latticetypes::RatWeight& torus_part_offset () const
   { return half_rho_v; }
   //  { return latticetypes::RatWeight(root_datum.dual_twoRho(),4); }

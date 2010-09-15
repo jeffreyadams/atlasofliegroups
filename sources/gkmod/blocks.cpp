@@ -408,6 +408,7 @@ nu_block::nu_block(realredgp::RealReductiveGroup& GR,
 	  tits::GlobalTitsElement y = y_hash[ys[j]].repr();
 	  int dd = Tg.cross(s,y);
 	  assert(dd==d); // all length changes should be equal
+	  assert(Tg.is_valid(y));
 	  cross_ys.push_back(y_hash.match(gfd.pack(y)));
 	}
 	new_cross = y_hash.size()>old_size;
@@ -510,9 +511,13 @@ nu_block::nu_block(realredgp::RealReductiveGroup& GR,
 	      // imaginary cross actions (real for parent) complete set of y's
 	      rootdata::RootSet rb = gfd.imaginary_basis(y.tw());
 	      for (size_t j=y_begin; j<y_hash.size(); ++j)
+	      {
+		y = y_hash[j].repr();
+		assert(Tg.is_valid(y));
 		for (rootdata::RootSet::iterator it=rb.begin(); it(); ++it)
-		  y_hash.match(gfd.pack(y_hash[j].repr().simple_imaginary_cross
-					(sub.parent_datum(),*it)));
+		  y_hash.match(gfd.pack
+			(y.simple_imaginary_cross(sub.parent_datum(),*it)));
+	      }
 	      y_end = y_hash.size();
 	    }
 

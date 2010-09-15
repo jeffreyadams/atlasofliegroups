@@ -1025,10 +1025,7 @@ GlobalFiberData::GlobalFiberData
   , info()
   , refl(sub.rank())
 {
-
   for (weyl::Generator s=0; s<refl.size(); ++s)
-    // get automorphism of lattice $X_*$ given by generator $s$
-    // reflection map will be used as automorphism of $X_*\tensor\Q/X_*$
     refl[s] = sub.parent_datum().root_reflection(sub.parent_nr_simple(s));
 }
 
@@ -1099,12 +1096,12 @@ void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
     const inv_info& cur = info[i];
     weyl::Generator s=history[k-(prev_inv + 1)].second;
     info.push_back(inv_info
-		   (cur.Cartan,   // same Cartan class
-		    cur.proj*refl[s], // apply $refl[s]^{-1}$ to old kernel
-		    refl[s].apply(cur.check_2rho_imag),
-		    pd.simple_root_permutation(s).renumbering(cur.simple_imag),
-		    pd.simple_root_permutation(s).renumbering(cur.simple_real)
-		    ));
+     (cur.Cartan,   // same Cartan class
+      cur.proj*refl[s], // apply $refl[s]^{-1}$ to old kernel
+      refl[s].apply(cur.check_2rho_imag),
+      pd.root_permutation(sub.parent_nr_simple(s)).renumbering(cur.simple_imag),
+      pd.root_permutation(sub.parent_nr_simple(s)).renumbering(cur.simple_real)
+      ));
   }
   assert(info.size()==hash_table.size());
 } // |GlobalFiberData::add_class|

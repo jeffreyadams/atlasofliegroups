@@ -75,6 +75,15 @@ TorusElement::TorusElement(const latticetypes::RatWeight r)
     num[i] = intutils::remainder(num[i],d);
 }
 
+latticetypes::RatWeight TorusElement::as_rational() const
+{
+  latticetypes::LatticeElt numer = repr.numerator(); // copy
+  unsigned int d = 2*repr.denominator(); // this will make result mod Z, not 2Z
+  for (size_t i=0; i<numer.size(); ++i)
+    numer[i] = intutils::remainder(numer[i],d);
+  return latticetypes::RatWeight(numer,d).normalize();
+}
+
 TorusElement TorusElement::operator +(const TorusElement& t) const
 {
   TorusElement result(repr + t.repr,0); // raw constructor
@@ -118,7 +127,7 @@ GlobalTitsGroup::GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G)
 	    latticetypes::WeightList(G.rootDatum().beginSimpleRoot(),
 				     G.rootDatum().endSimpleRoot()),
 	    G.rootDatum().rank()))
-  , delta_v(G.dualDistinguished())
+  , delta_tr(G.distinguished().transposed())
   , alpha_v(G.semisimpleRank())
   , half_rho_v(G.rootDatum().dual_twoRho(),4)
   , square_class_gen(compute_square_classes(G))
@@ -132,15 +141,17 @@ GlobalTitsGroup::GlobalTitsGroup(const subdatum::SubSystem& sub,
 				 weyl::WeylWord& ww)
   : weyl::TwistedWeylGroup(sub.Weyl_group(),sub.twist(theta,ww))
   , simple(sub.pre_root_datum())
-  , delta_v(theta) // will be made distinguished below using |ww|
+  , delta_tr(theta) // will be made distinguished below using |ww|
   , alpha_v(weyl::TwistedWeylGroup::rank())
   , half_rho_v(sub.parent_sub_2rho(),4)
   , square_class_gen() // remains empty when this constructor is used
 {
-  for (size_t i=0; i<ww.size(); ++i)
-    delta_v.leftMult // make it distinguished by applying generators in |ww|
-      (sub.parent_datum().root_reflection // translated into parent reflections
-       (sub.parent_nr_simple(ww[ww.size()-1-i]))); // and reversed for duality
+  for (size_t i=0; i<ww.size(); ++i) // apply in reverse, towards |-delta_tr|
+    delta_tr *= // right-multiply on parent side because of duality
+      (sub.parent_datum().root_reflection // translating to parent reflections
+       (sub.parent_nr_simple(ww[i])));
+  delta_tr.negate(); // change sign, so as to stabilise set of positive roots
+
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
     alpha_v[i]=TorusPart(simple.roots()[i]);
 }
@@ -148,7 +159,8 @@ GlobalTitsGroup::GlobalTitsGroup(const subdatum::SubSystem& sub,
 latticetypes::LatticeMatrix
   GlobalTitsGroup::involution_matrix(const weyl::WeylElt& tw) const
 {
-  latticetypes::LatticeMatrix M = delta_v;
+  latticetypes::LatticeMatrix M = delta_tr;
+  M.negate(); // we need the involution |-^delta| corresponding to |delta|
   for (size_t j=0; j<M.numColumns(); ++j) // apply reflections to each column
   {
     matrix::Vector<int> c=M.column(j);
@@ -170,7 +182,7 @@ void GlobalTitsGroup::left_mult(const TorusElement& t,
       do_twist ? twisted(ww[i]) : ww[i];
     b.t.reflect(simple,s); // |b.t| is \emph{weight} for (dual side) |simple|
     if ((weylGroup().leftMult(b.w,s)>0)==do_twist)
-      b.t += m_alpha(s); // adjust torus part on (do_twist | increas | decrease
+      b.t += m_alpha(s); // adjust torus part on length (do_twist|in|de)crease
   }
   b.t = b.t + (do_twist ? twisted(t) : t); // finally add torus part |t|
 }
@@ -196,7 +208,7 @@ bool GlobalTitsGroup::is_valid(GlobalTitsElement a) const
 TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
 {
   latticetypes::RatWeight rw = x.as_rational();
-  return TorusElement(latticetypes::RatWeight(delta_v.apply(rw.numerator()),
+  return TorusElement(latticetypes::RatWeight(delta_tr.apply(rw.numerator()),
 					      rw.denominator()));
 }
 
@@ -285,7 +297,7 @@ GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
   if (t.negative_at(v)) // |alpha| is a compact root
     return *this;
   GlobalTitsElement a(*this);
-  a.torus_part() += tits::TorusPart(dual_rd.root(alpha));
+  a.torus_part() += tits::TorusPart(dual_rd.root(alpha)); // effectively halves
   return a;
 }
 
