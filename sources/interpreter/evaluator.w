@@ -4360,6 +4360,16 @@ void vector_div_wrapper(expression_base::level l)
     push_value(new rational_vector_value(v->val,n));
 }
 @)
+void ratvec_unfraction_wrapper(expression_base::level l)
+{ shared_rational_vector v = get<rational_vector_value>();
+  if (l!=expression_base::no_value)
+  { push_value(new vector_value(v->val.numerator()));
+    push_value(new int_value(v->val.denominator()));
+    if (l==expression_base::single_value)
+      wrap_tuple(2);
+  }
+}
+@)
 void ratvec_plus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
@@ -4619,6 +4629,7 @@ install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
 install_function(vector_div_wrapper,"/","(vec,int->ratvec)");
+install_function(ratvec_unfraction_wrapper,"%","(ratvec->vec,int)");
 install_function(ratvec_plus_wrapper,"+","(ratvec,ratvec->ratvec)");
 install_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)");
 install_function(null_vec_wrapper,"null","(int->vec)");

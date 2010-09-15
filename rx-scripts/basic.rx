@@ -2,9 +2,8 @@ set first (int n)= for i = n do i od  { [0,1,...,n-1] }
 
 set *(string s, int n)= let r="" in (for i = n do r#:=s od; r)
 
+set *(int c,vec v) = vec: for e in v do c*e od
 set *(int c,mat m) = mat: for col in m do for e in col do c*e od od
-
-set *(int n,[rat] v) = for e in v do n*e od
 
 set +(string s, int i)= s # int_format(i)
 set +(int i, string s)= int_format(i) # s
@@ -23,6 +22,8 @@ set -(vec v,vec w)= vec:
   ; for e@i in v do e-w[i] od
   )
 
+set %(vec v,int d) = vec: for x in v do x%d od
+
 set sum (mat m)= { sum of columns of m }
   let (r,c)=#m in
   if c=0 then vec: for i=r do 0 od
@@ -36,6 +37,15 @@ set ceil  (rat a) = -\ %-a
 
 set numer (rat a) = let (n,)=%a in n
 set denom (rat a) = let (,d)=%a in d
+set numer (ratvec a) = let (n,)=%a in n
+set denom (ratvec a) = let (,d)=%a in d
+set =(ratvec v,ratvec w) = let (n,d)=%v, (m,e)=%w in e*n=d*m
+set -(ratvec v) = let (n,d)=%v in (-n)/d
+set *(int m,ratvec v) = let (n,d)=%v in m*n/d
+set *(mat m,ratvec v) = let (n,d)=%v in m*n/d
+set /(ratvec v,int m) = let (n,d)=%v in n/(m*d)
+set *(rat r,ratvec v) = let (n,d)=%r, (nv,dv)=%v in (n*nv)/(d*dv)
+set *(ratvec r, vec v) = let (n,d)=%r in n*v/d
 
 set floor ([rat] v) = for a in v do floor(a) od
 set ceil  ([rat] v) = for a in v do  ceil(a) od
@@ -67,5 +77,17 @@ set real_roots (RootDatum rd, mat theta) =
   in ( for alpha in roots(rd)
        do if theta*alpha = -alpha then rr #:= alpha fi od
      ; if #rr=0 then null(rank(rd),0) else mat: rr fi )
+
+set imaginary_coroots (RootDatum rd, mat theta) =
+  let ic = [vec]: [], theta=^theta
+  in ( for alpha in coroots(rd)
+       do if theta*alpha = alpha then ic #:= alpha fi od
+     ; if #ic=0 then null(rank(rd),0) else mat: ic fi )
+
+set real_coroots (RootDatum rd, mat theta) =
+  let rc = [vec]: [], theta=^theta
+  in ( for alpha in coroots(rd)
+       do if theta*alpha = -alpha then rc #:= alpha fi od
+     ; if #rc=0 then null(rank(rd),0) else mat: rc fi )
 
 set KGB(RealForm rf) = for i=KGB_size(rf) do KGB(rf,i) od
