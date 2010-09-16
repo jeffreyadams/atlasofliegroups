@@ -1151,7 +1151,8 @@ void iblock_f()
     std::cout << "Given parameters define element " << z
 	      << " of the following block:" << std::endl;
 
-    block_io::print_block(std::cout,block);
+    ioutils::OutputFile f;
+    block_io::print_block(f,block);
 
   }
   catch (error::MemoryOverflow& e)
