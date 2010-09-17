@@ -71,7 +71,7 @@ template<typename I, typename O>
 
   while (first!=last)
   {
-    *out = (q.apply(*first)/=d);
+    *out = (q*(*first)/=d);
     ++out, ++first;
   }
 }
@@ -88,7 +88,7 @@ template<typename I, typename O>
 
   while (first!= last)
   {
-    *out = q.apply(*first);
+    *out = q*(*first);
     ++out, ++first;
   }
 }

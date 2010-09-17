@@ -326,7 +326,7 @@ void minusMatrix(latticetypes::LatticeMatrix& qm,
 
   for (size_t j = 0; j < bm.size(); ++j)
   {
-    latticetypes::Weight v= q.apply(bm[j]);
+    latticetypes::Weight v= q*bm[j];
     latticetypes::Weight vm(bm.size());
     t.toMinus(vm,v);
     for (size_t i = 0; i < bm.size(); ++i)
@@ -348,7 +348,7 @@ void plusMatrix(latticetypes::LatticeMatrix& qp,
 
   for (size_t j = 0; j < bp.size(); ++j)
   {
-    latticetypes::Weight v= q.apply(bp[j]);
+    latticetypes::Weight v= q*bp[j];
     latticetypes::Weight vp(bp.size());
     t.toPlus(vp,v);
     for (size_t i = 0; i < bp.size(); ++i)

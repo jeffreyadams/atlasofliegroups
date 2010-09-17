@@ -104,7 +104,7 @@ weyl::Twist SubSystem::twist(const latticetypes::LatticeMatrix& theta,
   for (weyl::Generator i=0; i<rank(); ++i)
   {
     rootdata::RootNbr image =
-      inv_map[rd.rootNbr(theta.apply(rd.root(parent_nr_simple(i))))];
+      inv_map[rd.rootNbr(theta*rd.root(parent_nr_simple(i)))];
     assert(image < numRoots());
     Delta[i] = rootMinus(image); // minus |theta| image of |root(i)|
   }
@@ -134,7 +134,7 @@ weyl::Twist SubSystem::parent_twist(const latticetypes::LatticeMatrix& theta,
   for (weyl::Generator i=0; i<rank(); ++i)
   {
     rootdata::RootNbr image =
-      inv_map[rd.rootNbr(theta.apply(rd.root(parent_nr_simple(i))))];
+      inv_map[rd.rootNbr(theta*rd.root(parent_nr_simple(i)))];
     assert(image < numRoots());
     Delta[i] = image; // minus |theta| image of |root(i)|
   }
@@ -200,7 +200,7 @@ SubDatum::SubDatum(realredgp::RealReductiveGroup& GR,
   const rootdata::RootDatum& pd = parent_datum();
   rootdata::RootList simple_image(pd.semisimpleRank());
   for (weyl::Generator s=0; s<simple_image.size(); ++s)
-    simple_image[s] = pd.rootNbr(delta.apply(pd.simpleRoot(s)));
+    simple_image[s] = pd.rootNbr(delta*pd.simpleRoot(s));
 
   base_ww = rootdata::wrt_distinguished(pd,simple_image);
 }

@@ -931,7 +931,7 @@ ComplexReductiveGroup::block_size(realform::RealForm rf,
 void ComplexReductiveGroup::twisted_act
   (const weyl::TwistedInvolution& tw,latticetypes::LatticeElt& v) const
 {
-  v=distinguished().apply(v);
+  distinguished().apply_to(v);
   weylGroup().act(rootDatum(),tw.w(),v);
 }
 

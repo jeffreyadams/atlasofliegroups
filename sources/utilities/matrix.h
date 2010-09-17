@@ -166,8 +166,9 @@ template<typename C> class Matrix : public Matrix_base<C>
     { Matrix<C> result(*this); result.negate(); result.transpose();
       return result; }
 
-  Vector<C> apply(const Vector<C>&) const;
-  Vector<C> right_apply(const Vector<C>&) const;
+  Vector<C> operator* (const Vector<C>&) const;
+  Vector<C> right_mult(const Vector<C>&) const;
+  void apply_to(Vector<C>& v) const { v= operator*(v); }
 
   Matrix<C> operator* (const Matrix<C>&) const;
 

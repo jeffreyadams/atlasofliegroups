@@ -475,7 +475,7 @@ matrix::Vector<int> RootSystem::pos_system_vec(const RootList& Delta) const
   for (weyl::Generator s=0; s<rk; ++s)
     coef += root_expr(Delta[s])*=two_rho_in_simple_roots[s];
 
-  return cartanMatrix().right_apply(coef); // transform to fundamental weights
+  return cartanMatrix().right_mult(coef); // transform to fundamental weights
 }
 
 RootList RootSystem::simpleBasis(RootSet rs) const
@@ -594,8 +594,8 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   latticetypes::LatticeMatrix coroot_mat(prd.coroots(),d_rank); // simple too
   for (RootNbr alpha=numPosRoots(); alpha<numRoots(); ++alpha)
   {
-    d_roots[alpha]= root_mat.apply(root_expr(alpha));
-    d_coroots[alpha] = coroot_mat.apply(coroot_expr(alpha));
+    d_roots[alpha]= root_mat*root_expr(alpha);
+    d_coroots[alpha] = coroot_mat*coroot_expr(alpha);
     d_2rho += d_roots[alpha];
     d_dual_2rho += d_coroots[alpha];
     d_roots[rootMinus(alpha)] = -d_roots[alpha];
@@ -687,12 +687,12 @@ RootDatum::RootDatum(latticetypes::LatticeMatrix& projector,
 
   for (RootNbr i=0; i<rd.numRoots(); ++i)
   {
-    d_roots[i] = projector.apply(rd.d_roots[i]);
-    d_coroots[i] = section.right_apply(rd.d_coroots[i]);
+    d_roots[i] = projector*rd.d_roots[i];
+    d_coroots[i] = section.right_mult(rd.d_coroots[i]);
   }
 
-  d_2rho = projector.apply(rd.d_2rho);
-  d_dual_2rho = section.right_apply(rd.d_dual_2rho);
+  d_2rho = projector*rd.d_2rho;
+  d_dual_2rho = section.right_mult(rd.d_dual_2rho);
 
   fillStatus();
 }
@@ -722,7 +722,7 @@ setutils::Permutation
 
   for (RootNbr alpha=0; alpha<numRoots(); ++alpha)
   {
-    result[alpha] = rootNbr(q.apply(root(alpha)));
+    result[alpha] = rootNbr(q*root(alpha));
     assert(result[alpha]<numRoots()); // image by |q| must be some root
   }
 
@@ -772,7 +772,7 @@ weyl::WeylWord RootDatum::reflectionWord(RootNbr alpha) const
 weyl::WeylWord RootDatum::word_of_inverse_matrix
   (const latticetypes::LatticeMatrix& q) const
 {
-  return to_dominant(q.apply(twoRho()));
+  return to_dominant(q*twoRho());
 }
 
 /*!
@@ -1000,7 +1000,7 @@ RootSet makeOrthogonal(const RootSet& o, const RootSet& subsys,
 
 void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
 { // easy implementation; using |simple_root_permutation| is more efficient
-  latticetypes::Weight v = q.apply(rd.twoRho());
+  latticetypes::Weight v = q*rd.twoRho();
   q.leftMult(rd.matrix(rd.to_dominant(v)));
 }
 

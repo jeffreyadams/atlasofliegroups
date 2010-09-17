@@ -331,7 +331,7 @@ class SRK_context
   latticetypes::Weight theta_lift(size_t cn, HCParam p) const
   {
     latticetypes::Weight result=lift(cn,p);
-    result += G.cartan(cn).involution().apply(result);
+    result += G.cartan(cn).involution()*result;
     return result;
   }
 

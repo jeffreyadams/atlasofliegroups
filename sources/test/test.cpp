@@ -1117,10 +1117,10 @@ void iblock_f()
     latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
 
     nu = latticetypes::RatWeight // make |nu| fixed by $-\theta$
-      (nu.numerator()- theta.apply(nu.numerator()),2*nu.denominator());
+      (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
 
     latticetypes::RatWeight gamma = nu + latticetypes::RatWeight
-    (lambda.numerator()+theta.apply(lambda.numerator()),2*lambda.denominator());
+    (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
 
     std::cout << "Infinitesimal character is " << gamma << std::endl;
 
@@ -1192,10 +1192,10 @@ void test_f()
     latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
 
     nu = latticetypes::RatWeight
-      (nu.numerator() - theta.apply(nu.numerator()),2*nu.denominator());
+      (nu.numerator() - theta*nu.numerator(),2*nu.denominator());
 
     std::cout << "Made -theta fixed, nu = " << nu << std::endl;
-    nu = nu + latticetypes::RatWeight(rd.twoRho()+theta.apply(rd.twoRho()),4);
+    nu = nu + latticetypes::RatWeight(rd.twoRho()+theta*rd.twoRho(),4);
     std::cout << "added discrete series contribution, nu' = " << nu
 	      << std::endl;
 

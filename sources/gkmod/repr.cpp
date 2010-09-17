@@ -32,7 +32,7 @@ StandardRepr
   latticetypes::RatWeight lambda(lambda2,2);
   latticetypes::LatticeMatrix theta = G.cartan(srk.Cartan()).involution();
   latticetypes::RatWeight diff = lambda - nu;
-  latticetypes::RatWeight theta_diff(theta.apply(diff.numerator()),
+  latticetypes::RatWeight theta_diff(theta*diff.numerator(),
 				     diff.denominator()); // theta(lambda-nu)
   latticetypes::Weight lambda_rho = (lambda2-khc.rootDatum().twoRho())/=2;
   return StandardRepr(x,lambda_rho,((lambda+nu+theta_diff)/=2).normalize());
@@ -48,7 +48,7 @@ StandardRepr
   latticetypes::LatticeMatrix theta =
     complexGroup().involutionMatrix(kgb().involution(x));
   latticetypes::RatWeight diff = lambda - nu;
-  latticetypes::RatWeight theta_diff(theta.apply(diff.numerator()),
+  latticetypes::RatWeight theta_diff(theta*diff.numerator(),
 				     diff.denominator()); // theta(lambda-nu)
   return StandardRepr(x,lambda_rho,((lambda+nu+theta_diff)/=2).normalize());
 }

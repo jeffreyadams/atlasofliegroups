@@ -159,7 +159,7 @@ latticetypes::WeightList rootBasis(const lietype::LieType& lt,
       {
 	for (size_t k=0; k<rk; ++k) // get Cartan entries for root
 	  v[k]=lt.Cartan_entry(r,k);
-	result.push_back((q.apply(v))/=d); // may |throw std::runtime_error|
+	result.push_back((q*v)/=d); // may |throw std::runtime_error|
       }
 
   return result;

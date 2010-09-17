@@ -208,7 +208,7 @@ bool GlobalTitsGroup::is_valid(GlobalTitsElement a) const
 TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
 {
   latticetypes::RatWeight rw = x.as_rational();
-  return TorusElement(latticetypes::RatWeight(delta_tr.apply(rw.numerator()),
+  return TorusElement(latticetypes::RatWeight(delta_tr*rw.numerator(),
 					      rw.denominator()));
 }
 

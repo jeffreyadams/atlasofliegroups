@@ -1009,7 +1009,7 @@ GlobalFiberData::GlobalFiberData
 	info[k]=inv_info
 	  (cn,
 	   cur.proj*refl[s], // apply $refl[s]^{-1}$ to old kernel
-	   refl[s].apply(cur.check_2rho_imag),
+	   refl[s]*cur.check_2rho_imag,
 	   rd.simple_root_permutation(s).renumbering(cur.simple_imag),
 	   rd.simple_root_permutation(s).renumbering(cur.simple_real));
       } // |for (s)|
@@ -1098,7 +1098,7 @@ void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
     info.push_back(inv_info
      (cur.Cartan,   // same Cartan class
       cur.proj*refl[s], // apply $refl[s]^{-1}$ to old kernel
-      refl[s].apply(cur.check_2rho_imag),
+      refl[s]*cur.check_2rho_imag,
       pd.root_permutation(sub.parent_nr_simple(s)).renumbering(cur.simple_imag),
       pd.root_permutation(sub.parent_nr_simple(s)).renumbering(cur.simple_real)
       ));
@@ -1114,7 +1114,7 @@ bool GlobalFiberData::equivalent(const tits::GlobalTitsElement& x,
   unsigned int k = hash_table.find(x.tw());
   assert (hash_table.find(y.tw())==k);
   latticetypes::RatWeight t= (x.torus_part()-y.torus_part()).as_rational();
-  latticetypes::LatticeElt p = info[k].proj.apply(t.numerator());
+  latticetypes::LatticeElt p = info[k].proj*t.numerator();
 
   for (size_t i=0; i<p.size(); ++i)
     if (p[i]%t.denominator()!=0)
@@ -1130,7 +1130,7 @@ latticetypes::RatLatticeElt
   unsigned int k = hash_table.find(x.tw());
   assert (k!=hash_table.empty);
   latticetypes::RatLatticeElt t = x.torus_part().as_rational();
-  latticetypes::LatticeElt p = info[k].proj.apply(t.numerator());
+  latticetypes::LatticeElt p = info[k].proj*t.numerator();
 
   // reduce modulo integers and return
   for (size_t i=0; i<p.size(); ++i)

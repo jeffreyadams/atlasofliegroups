@@ -252,7 +252,7 @@ Applies the matrix to the vector w, and returns the result. It is assumed that
 the size of w is the number of columns; result size is the number of rows.
 */
 template<typename C>
-Vector<C> Matrix<C>::apply(const Vector<C>& w) const
+Vector<C> Matrix<C>::operator *(const Vector<C>& w) const
 {
   Vector<C> result(base::numRows());
 
@@ -273,7 +273,7 @@ It is assumed that the size of w is the number of rows; result size is the
 number of columns. This is the proper sense of application for dual space.
 */
 template<typename C>
-Vector<C> Matrix<C>::right_apply(const Vector<C>& w) const
+Vector<C> Matrix<C>::right_mult(const Vector<C>& w) const
 {
   Vector<C> result(base::numColumns());
 

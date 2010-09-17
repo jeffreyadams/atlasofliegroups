@@ -210,7 +210,7 @@ HCParam SRK_context::project
 
   // now |lambda| actually represents $\lambda-\rho$ in plain coordinates
   return std::make_pair
-    (ci.freeProjector.apply(lambda),
+    (ci.freeProjector*lambda,
      ci.torsionProjector.apply(latticetypes::SmallBitVector(lambda)).data()
      );
 }
@@ -218,7 +218,7 @@ HCParam SRK_context::project
 latticetypes::Weight SRK_context::lift(size_t cn, HCParam p) const
 {
   const Cartan_info& ci=info(cn);
-  latticetypes::Weight result=ci.freeLift.apply(p.first); // lift free part
+  latticetypes::Weight result=ci.freeLift*p.first; // lift free part
 
   latticetypes::WeightList torsion_lift=ci.torsionLift;
   for (size_t i=0; i<torsion_lift.size(); ++i)
@@ -325,7 +325,7 @@ level SRK_context::height_bound(const latticetypes::Weight& lambda)
   do
   {
     new_negatives.reset();
-    mu=get_projection(negatives).projection.apply(lambda);
+    mu=get_projection(negatives).projection*lambda;
     for (size_t i=0; i<rd.semisimpleRank(); ++i)
       if (not negatives[i] and mu.scalarProduct(rd.simpleCoroot(i))<0)
 	new_negatives.set(i);
@@ -719,7 +719,7 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
       {
 	latticetypes::Weight lambda=term->first;
 	(lambda*=2) += rd.twoRho();
-	lambda += theta.apply(lambda);
+	lambda += theta*lambda;
 	if (height_bound(lambda)>bound)
 	  pol.erase(term++);
 	else
@@ -868,7 +868,7 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
       {
 	latticetypes::Weight lambda=term->first;
 	(lambda*=2) += rd.twoRho();
-	lambda += theta.apply(lambda);
+	lambda += theta*lambda;
 	if (height_bound(lambda)>bound)
 	  pol.erase(term++);
 	else

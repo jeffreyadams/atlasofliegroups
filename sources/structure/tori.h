@@ -169,13 +169,11 @@ namespace tori {
   const LT::WeightList& plusLattice() const { return d_plus; }
   const LT::WeightList& minusLattice() const { return d_minus; }
 
-  void toPlus(LT::Weight& dest, const LT::Weight& source) const {
-    dest=d_toPlus.apply(source);
-  }
+  void toPlus(LT::Weight& dest, const LT::Weight& source) const
+    { dest=d_toPlus*source; }
 
-  void toMinus(LT::Weight& dest, const LT::Weight& source) const {
-    dest=d_toMinus.apply(source);
-  }
+  void toMinus(LT::Weight& dest, const LT::Weight& source) const
+    { dest=d_toMinus*source; }
 
   const LT::SmallSubquotient& topology() const { return d_topology; }
 };

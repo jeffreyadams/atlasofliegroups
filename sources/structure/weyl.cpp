@@ -1015,7 +1015,7 @@ Twist make_twist(const rootdata::RootDatum& rd,
   rootdata::RootList simple_image(rd.semisimpleRank());
 
   for (size_t i = 0; i<simple_image.size(); ++i)
-    simple_image[i] = rd.rootNbr(d.apply(rd.simpleRoot(i)));
+    simple_image[i] = rd.rootNbr(d*rd.simpleRoot(i));
 
   rootdata::wrt_distinguished(rd,simple_image); // forget the Weyl element
 
