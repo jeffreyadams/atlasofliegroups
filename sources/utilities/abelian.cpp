@@ -370,7 +370,7 @@ Homomorphism::Homomorphism(const std::vector<GrpArr>& al,
 
   Precondition: x is in the subgroup for which this makes sense.
 */
-GrpArr Homomorphism::apply(const GrpArr& a) const
+GrpArr Homomorphism::operator*(const GrpArr& a) const
 {
   GrpArr dest(d_dest.size(),0);
   for (size_t i=0; i<dest.size(); ++i)
@@ -397,10 +397,10 @@ GrpArr Homomorphism::apply(const GrpArr& a) const
 
   Forwarded to the GrpArr form.
 */
-GrpNbr Homomorphism::apply(GrpNbr x) const
+GrpNbr Homomorphism::operator*(GrpNbr x) const
 {
   GrpArr a; to_array(a,x,d_source);
-  return to_GrpNbr(apply(a),d_dest);
+  return to_GrpNbr(operator*(a),d_dest);
 }
 
 

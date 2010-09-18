@@ -143,12 +143,6 @@ namespace bitvector {
 
 template<size_t dim> class BitVector
 {
-
-  friend
-    BitVector<dim> BitMatrix<dim>::apply(const BitVector<dim>& v) const;
-
- private:
-
   bitset::BitSet<dim> d_data;
   size_t d_size;
 
@@ -360,10 +354,8 @@ BitMatrix this integer must be the same for all of the columns, so it
 is easier and safer to store it once for the whole BitMatrix, and also
 to modify it just once when the matrix is resized.
 */
-template<size_t dim> class BitMatrix {
-
- private:
-
+template<size_t dim> class BitMatrix
+{
   /*!
   A vector of d_columns BitSet's (each of size d_rows), the columns of
   the BitMatrix. Thus d_data.size()==d_columns at all times.
@@ -428,7 +420,7 @@ template<size_t dim> class BitMatrix {
     return d_data[j].test(i);
   }
 
-  BitVector<dim> apply(const BitVector<dim>& src) const; // functional version
+  BitVector<dim> operator*(const BitVector<dim>& src) const; // matrix * vector
 
 
   template<typename I, typename O> void apply(const I&, const I&, O) const;
@@ -561,7 +553,7 @@ template<size_t dim> class BitMatrix {
   not exceed dim.
   */
   BitMatrix& transpose();
-};
+}; // |class BitMatrix|
 
 } // |namespace bitvector|
 

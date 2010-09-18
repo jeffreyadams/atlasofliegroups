@@ -530,7 +530,7 @@ the \f$\delta\f$ coset of the Tits group.
   using TwistedWeylGroup::twist;   // idem
 
   //!\brief Binary matrix*vector product to compute twist on torus part
-  TorusPart twisted(const TorusPart& x) const { return d_involution.apply(x); }
+  TorusPart twisted(const TorusPart& x) const { return d_involution*x; }
 
   //!\brief Reflection of |TorusPart|s defined by a twisted involution
   latticetypes::BinaryMap involutionMatrix(const weyl::WeylWord& tw) const;
@@ -550,7 +550,7 @@ the \f$\delta\f$ coset of the Tits group.
 
 
   //!\brief In-place imperative version of |twisted(TorusPart x)|
-  void twist(TorusPart& x) const { x=d_involution.apply(x); }
+  void twist(TorusPart& x) const { x=d_involution*x; }
 
 // methods that only access some |TitsElt|
 

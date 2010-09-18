@@ -161,12 +161,11 @@ BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b)
   will be set from |d_rows|.
 */
 template<size_t dim>
-BitVector<dim> BitMatrix<dim>::apply(const BitVector<dim>& source) const
+BitVector<dim> BitMatrix<dim>::operator*(const BitVector<dim>& source) const
 {
   assert(d_columns==source.size());
 
-  BitVector<dim> result(d_rows);
-  result.d_data=combination(d_data,source.data());
+  BitVector<dim> result(combination(d_data,source.data()),d_rows);
   return result;
 }
 

@@ -888,7 +888,7 @@ AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
   bitset::RankFlags xf(x);
   latticetypes::SmallBitVector v(xf,fiberRank());
 
-  latticetypes::SmallBitVector w = d_toAdjoint.apply(v);
+  latticetypes::SmallBitVector w = d_toAdjoint*v;
 
   return AdjointFiberElt(w.data().to_ulong());
 }

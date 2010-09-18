@@ -127,7 +127,7 @@ void Subspace<dim>::apply(const bitvector::BitMatrix<dim>& r)
 
   for (size_t j = 0; j<dimension(); ++j)
   {
-    b.push_back(r.apply(d_basis[j]));
+    b.push_back(r*d_basis[j]);
     assert(b.back().size()==r.numRows());
   }
 
@@ -250,7 +250,7 @@ template<size_t dim>
   // restrict m to source.space()
   for (bitset::RankFlags::iterator it=source.support().begin(); it(); ++it)
   {
-    latticetypes::SmallBitVector v = m.apply(source.space().basis(*it));
+    latticetypes::SmallBitVector v = m*source.space().basis(*it);
     assert(v.size()==dest.rank());
 
     /*

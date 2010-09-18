@@ -211,7 +211,7 @@ HCParam SRK_context::project
   // now |lambda| actually represents $\lambda-\rho$ in plain coordinates
   return std::make_pair
     (ci.freeProjector*lambda,
-     ci.torsionProjector.apply(latticetypes::SmallBitVector(lambda)).data()
+     (ci.torsionProjector*latticetypes::SmallBitVector(lambda)).data()
      );
 }
 

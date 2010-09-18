@@ -1357,7 +1357,7 @@ its rows and columns.
 @< Set |p| to the permutation of the simple roots...@>=
 { rootdata::WRootIterator first=rd.beginSimpleRoot(), last=rd.endSimpleRoot();
   for (size_t i=0; i<s; ++i)
-  { rootdata::Root alpha=M.apply(rd.simpleRoot(i));
+  { rootdata::Root alpha=M*rd.simpleRoot(i);
     size_t p_i=std::find(first,last,alpha)-first;
     if (p_i<s) p[i]=p_i;
     else throw std::runtime_error

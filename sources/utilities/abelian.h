@@ -216,9 +216,9 @@ class Homomorphism {
 	       const FiniteAbelianGroup&);
 
 // accessors
-  GrpArr apply(const GrpArr&) const;
+  GrpArr operator*(const GrpArr&) const;
 
-  GrpNbr apply(GrpNbr) const;
+  GrpNbr operator*(GrpNbr) const;
 };
 
 } // |namespace abelian|

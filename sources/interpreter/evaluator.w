@@ -4421,7 +4421,7 @@ void mv_prod_wrapper(expression_base::level l)
     throw std::runtime_error(std::string("Size mismatch ")@|
      + str(m->val.numColumns()) + ":" + str(v->val.size()));
   if (l!=expression_base::no_value)
-    push_value(new vector_value(m->val.apply(v->val)));
+    push_value(new vector_value(m->val*v->val));
 }
 @)
 void mm_prod_wrapper(expression_base::level l)
@@ -4445,7 +4445,7 @@ void vm_prod_wrapper(expression_base::level l)
     throw std::runtime_error(s.str());
   }
   if (l!=expression_base::no_value)
-    push_value(new vector_value(m->val.right_apply(v->val)));
+    push_value(new vector_value(m->val.right_mult(v->val)));
 }
 
 @ Here is the column echelon function.
