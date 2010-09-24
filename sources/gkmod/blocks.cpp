@@ -280,6 +280,27 @@ nu_block::nu_block(realredgp::RealReductiveGroup& GR,
   tits::GlobalTitsElement y = tits::GlobalTitsElement(t,tw);
   assert(Tg.is_valid(y));
 
+  // step 1.5: correct the grading on the dual imaginary roots.
+
+  const latticetypes::LatticeMatrix& theta = Tg.involution_matrix(tw); // action on X_* of Cartan inv for G
+
+  latticetypes::Weight tworho_nonintegral_real(GR.rank(),0);
+  latticetypes::LatticeCoeff n=gamma.denominator();
+  latticetypes::Weight v=gamma.numerator();
+  size_t numpos = GR.rootDatum().root_system().numPosRoots(); 
+  for(size_t j=0; j< numpos; ++j)
+    {
+      latticetypes::Weight coroot = GR.rootDatum().coroot(j+numpos); //jth pos coroot
+     theta.apply_to(coroot);
+     if (coroot.negate() == GR.rootDatum().coroot(j+numpos)  
+	 and v.dot(coroot)%n !=0 ) // test whether coroot is nonintegral real
+       tworho_nonintegral_real = tworho_nonintegral_real 
+	 + GR.rootDatum().root(j+numpos); //if so add it
+    }
+  latticetypes::RatWeight newcorr(tworho_nonintegral_real,4);
+  Tg.add(y,newcorr); // now the grading on real roots is right
+  assert(Tg.is_valid(y));
+
   const kgb::KGBElt x_org = x;
   const tits::GlobalTitsElement y_org = y; // save values for |entry_element|
 
