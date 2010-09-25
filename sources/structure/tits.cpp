@@ -212,7 +212,7 @@ TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
 					      rw.denominator()));
 }
 
-void GlobalTitsGroup::twist(TorusElement& x) const // in-place imperative version
+void GlobalTitsGroup::twist(TorusElement& x) const // in-place, imperative
 {
   x = twisted(x);
 }
@@ -246,10 +246,11 @@ GlobalTitsGroup::cross(weyl::Generator s, GlobalTitsElement& x) const
   return 0; // no length change this case
 }
 
+// multiply strong involution by |rw|; nominally from right, but is immaterial
 void GlobalTitsGroup::add(GlobalTitsElement& a, latticetypes::RatWeight rw)
   const
-{
-  weylGroup().act(simple,a.tw(),rw); // pull |rw| across |a.tw()|
+{ // the following would be necessary to get a true right-mulitplication
+  // involution_matrix(a.tw()).apply_to(rw.numerator()); // pull |rw| across
   tits::TorusElement& tp = a.t;
   tp = tp + tits::TorusElement(rw);
 }
