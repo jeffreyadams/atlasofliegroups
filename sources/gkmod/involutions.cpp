@@ -124,7 +124,7 @@ void InvolutionSet::swap(InvolutionSet& other)
 size_t InvolutionSet::involutionNbr(const weyl::TwistedInvolution& w,
 				    const weyl::TwistedWeylGroup& W) const
 {
-  std::vector<signed char> ww=W.involution_expr(w);
+  weyl::InvolutionWord ww=W.involution_expr(w);
   size_t x = 0; // initial, distinguished, involution
 
   for (size_t i = ww.size(); i-->0; )

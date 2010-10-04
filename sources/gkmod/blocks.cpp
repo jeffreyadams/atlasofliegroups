@@ -654,6 +654,11 @@ BlockElt Block_base::element(kgb::KGBElt x,kgb::KGBElt y) const
   return z;
 }
 
+BlockElt Block_base::length_first(size_t l) const
+{
+  return std::lower_bound(d_length.begin(),d_length.end(),l)-d_length.begin();
+}
+
 /*!
   \brief Tells if s is a strict ascent generator for z.
 

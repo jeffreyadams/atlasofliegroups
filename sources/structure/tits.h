@@ -85,7 +85,7 @@ class TorusElement
  TorusElement(const latticetypes::RatWeight r, int) // second arg dummy
    : repr(r) {}
  public:
-  TorusElement(size_t rank) : repr(rank) {} // identity torus element of |rank|
+  explicit TorusElement(size_t rank) : repr(rank) {} // identity torus element
   TorusElement(const latticetypes::RatWeight r); // make $\exp(2\pi i r)$
 
   // accessors

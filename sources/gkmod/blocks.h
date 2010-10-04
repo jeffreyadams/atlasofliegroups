@@ -110,6 +110,8 @@ class Block_base {
 
   size_t length(BlockElt z) const { return d_length[z]; }
 
+  BlockElt length_first(size_t l) const; // first element of given length
+
   virtual size_t Cartan_class(BlockElt z) const = 0;
   size_t max_Cartan() const // maximal Cartan number, for printing
   { return Cartan_class(size()-1); } // this should be OK in all cases
@@ -149,14 +151,6 @@ class Block_base {
 
   /*! \brief the functor \f$T_{\alpha,\beta}\f$ */
   BlockEltPair link(size_t alpha,size_t beta,BlockElt y) const;
-
-/*!
-  \brief Returns the twisted involution corresponding to z.
-
-This is the corresponding Weyl group element w, such that w.delta is the
-root datum involution tau corresponding to z
-*/
-
 
   std::pair<BlockElt,BlockElt> R_packet(BlockElt z) const
   {
@@ -251,6 +245,12 @@ non-vanishing KL polynomial.
   size_t Cartan_class(BlockElt z) const
     { assert(z<size()); return d_Cartan[z]; }
 
+/*!
+  \brief Returns the twisted involution corresponding to z.
+
+  This is the corresponding Weyl group element w, such that w.delta is the
+  root datum involution tau corresponding to z
+*/
   const weyl::TwistedInvolution& involution(BlockElt z) const
     { assert(z<size()); return d_involution[z]; }
 

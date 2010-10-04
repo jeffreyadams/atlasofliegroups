@@ -782,7 +782,7 @@ subsys_KGB::subsys_KGB
   , parent_size(kgb.size())
 {
 
-  size_t sub_rank = sub.rank(); // semisimple rank
+  size_t sub_rank = sub.semisimple_rank();
 
   tits::BasedTitsGroup Tg(sub,kgb.base_grading()); // constructor converts
   const weyl::WeylGroup& W = Tg.weylGroup();

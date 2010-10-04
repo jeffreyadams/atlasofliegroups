@@ -24,6 +24,12 @@ namespace atlas {
 
 namespace weyl {
 
+//! \brief Represents a simple root reflection (standard generator of W).
+  typedef unsigned char Generator;
+
+ // make WeylWord genuine member of our namespace
+  struct WeylWord : public std::vector<Generator>  { };
+
   class WeylElt;
   typedef WeylElt TwistedInvolution;
   class WeylGroup;
@@ -32,15 +38,10 @@ namespace weyl {
   typedef std::vector<WeylElt> WeylEltList;
   typedef std::vector<TwistedInvolution> TwistedInvolutionList;
 
-  /*!
-\brief Represents a simple root reflection (one of the standard
-generators of W).
-  */
-  typedef unsigned char Generator;
-  // make WeylWord genuine member of our namespace
-  struct WeylWord : public std::vector<Generator>
-  {
-  };
+  typedef std::vector<signed char> InvolutionWord;
+// Positive entries correspond to generators of Cayley transforms, while cross
+// actions are indicated by taking bitwise complement of the generator
+
 
 
 }

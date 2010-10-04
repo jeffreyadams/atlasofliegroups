@@ -227,7 +227,7 @@ std::ostream& printInvolution(std::ostream& strm,
 			      const weyl::TwistedInvolution& tw,
 			      const weyl::TwistedWeylGroup& W)
 {
-  std::vector<signed char> dec=W.involution_expr(tw);
+  weyl::InvolutionWord dec=W.involution_expr(tw);
   for (size_t i=0; i<dec.size(); ++i)
     if (dec[i]>=0) strm << static_cast<char>('1'+dec[i]) << '^';
     else strm << static_cast<char>('1'+~dec[i]) << 'x';

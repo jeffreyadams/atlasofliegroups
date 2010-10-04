@@ -112,6 +112,7 @@ class SubDatum : public SubSystem
   tits::TitsGroup Tg; // twisted Weyl group, plus stuff our base class knows
   weyl::WeylElt ini_tw;
 
+  size_t rank() const; // forbid using this directly
  public:
   SubDatum(realredgp::RealReductiveGroup& GR,
 	   const latticetypes::RatWeight& gamma,
@@ -120,6 +121,8 @@ class SubDatum : public SubSystem
   const tits::TitsGroup& Tits_group() const {return Tg; }
   weyl::TwistedInvolution init_twisted() const { return ini_tw; }
   const weyl::WeylWord& base_twisted_in_parent() const { return base_ww; }
+
+  size_t semisimple_rank() const { return SubSystem::rank(); }
 
   latticetypes::LatticeMatrix involution(weyl::TwistedInvolution tw) const;
 }; // |class SubDatum|

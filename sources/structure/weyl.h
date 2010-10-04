@@ -739,12 +739,8 @@ public:
 
 /*!
   \brief Returns a reduced expression of |tw| as a twisted involution.
-
-  Positive entries correspond to generators of Cayley transforms, while cross
-  actions are indicated by making the generator negative by bitwise complement.
 */
-  std::vector<signed char>
-    involution_expr(TwistedInvolution tw) const; // call by value
+  InvolutionWord involution_expr(TwistedInvolution tw) const; // call by value
 
   //!\brief Roots that are images of the simple roots under involution of |tw|
   rootdata::RootList simple_images

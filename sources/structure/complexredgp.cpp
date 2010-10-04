@@ -1070,7 +1070,7 @@ void Cayley_and_cross_part(rootdata::RootSet& Cayley,
 			   const rootdata::RootSystem& rs,
 			   const weyl::TwistedWeylGroup& W)
 {
-  std::vector<signed char> dec=W.involution_expr(ti);
+  weyl::InvolutionWord dec=W.involution_expr(ti);
   weyl::TwistedInvolution tw; // to reconstruct |ti| as a check
 
   rootdata::RootList so; // values for Cayley; |RootList| is preferable here

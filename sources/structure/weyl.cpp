@@ -748,10 +748,9 @@ bool TwistedWeylGroup::hasTwistedCommutation
   numbering, as returned by |leftDescent|) at each step, so the reduced
   expression found is lexicographically first for the internal renumbering
 */
-std::vector<signed char>
-TwistedWeylGroup::involution_expr(TwistedInvolution tw) const
+InvolutionWord TwistedWeylGroup::involution_expr(TwistedInvolution tw) const
 {
-  std::vector<signed char> result; // result.reserve(involutionLength(tw));
+  InvolutionWord result; // result.reserve(involutionLength(tw));
 
   for (Generator s = W.leftDescent(tw.w()); s != UndefGenerator;
                  s = W.leftDescent(tw.w()))

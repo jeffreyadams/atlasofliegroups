@@ -1207,16 +1207,16 @@ void test_f()
     setutils::Permutation pi;
 
     std::cout << "Subsystem on dual side is ";
-    if (sub.rank()==0)
+    if (sub.semisimple_rank()==0)
       std::cout << "empty.\n";
     else
     {
       std::cout << "of type "
 		<< dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
 		<< ", with roots ";
-      for (weyl::Generator s=0; s<sub.rank(); ++s)
+      for (weyl::Generator s=0; s<sub.semisimple_rank(); ++s)
 	std::cout << sub.parent_nr_simple(pi[s])
-		  << (s<sub.rank()-1 ? "," : ".\n");
+		  << (s<sub.semisimple_rank()-1 ? "," : ".\n");
     }
 
     std::cout << "Twisted involution in subsystem: " << ww ;
