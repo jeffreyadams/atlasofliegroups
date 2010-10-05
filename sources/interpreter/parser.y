@@ -92,7 +92,9 @@
 %%
 
 input:	'\n'			{ YYABORT } /* null input, skip evaluator */
-	| exp	 '\n'		{ *parsed_expr=$1; }
+	| exp '\n'		{ *parsed_expr=$1; }
+	| tertiary ';' '\n'
+	  { *parsed_expr=make_sequence($1,wrap_tuple_display(NULL),1); }
 	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,0); YYABORT }
 	| SET IDENT '(' id_specs ')' '=' exp '\n'
 	  { struct id_pat id; id.kind=0x1; id.name=$2;

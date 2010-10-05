@@ -538,7 +538,7 @@ component type will then be \.{vec} rather than \.{[int]}).
 @< If |type| can be converted from some row-of type, check the components of
    |e.e.sublist|... @>=
 { type_expr comp_type;
-  conversion_record* conv = row_coercion(type,comp_type);
+  const conversion_record* conv = row_coercion(type,comp_type);
   if (conv==NULL)
     throw type_error(e,copy(row_of_type),copy(type));
 @)
@@ -1701,7 +1701,7 @@ the overload table.
 @< Convert and |return| an overloaded function call... @>=
 { const Hash_table::id_type id =e.e.call_variant->fun.e.identifier_variant;
   const expr arg=e.e.call_variant->arg;
-  size_t i,j;
+  size_t i,j; // dummies; local binding not used here
   if (not is_empty(arg) and id_context->lookup(id,i,j)==NULL)
   { const overload_table::variant_list& variants
       = global_overload_table->variants(id);
@@ -1710,28 +1710,16 @@ the overload table.
   }
 }
 
-@ For overloaded function calls, once the overloading is resolved, we proceed
-in a similar fashion to non-overloaded calls, except that there is no function
-expression to convert (the overload table contains an already evaluated
-function value, either built-in or user-defined). We deal with the built-in
-case here, and will give the user-defined case later when we have discussed
-the necessary value types.
-
-@< Return a call of variant |v|... @>=
-{ expression_ptr call;
-  builtin_value* f = dynamic_cast<builtin_value*>(v.val.get());
-  if (f!=NULL)
-    call = expression_ptr
-      (new overloaded_builtin_call(f->val,f->print_name.c_str(),arg));
-  else @< Set |call| to the call of the user-defined function |v| @>
-  return conform_types(v.type->result_type,type,call,e);
-}
-
-@ The names of special operators are tested for each time analyse an
+@ The names of some special operators are tested for each time analyse an
 overloaded call; to avoid having to look them up in |main_hash_table| each
 time, we store each one in a static variable inside a local function.
 
 @< Local function definitions @>=
+Hash_table::id_type equals_name()
+{@; static Hash_table::id_type name=main_hash_table->match_literal("=");
+  return name;
+}
+
 Hash_table::id_type size_of_name()
 {@; static Hash_table::id_type name=main_hash_table->match_literal("#");
   return name;
@@ -1750,12 +1738,47 @@ inline bool is_special_operator(Hash_table::id_type id)
         or id==print_name()
         or id==prints_name(); }
 
+@ For overloaded function calls, once the overloading is resolved, we proceed
+in a similar fashion to non-overloaded calls, except that there is no function
+expression to convert (the overload table contains an already evaluated
+function value, either built-in or user-defined). We deal with the built-in
+case here, and will give the user-defined case later when we have discussed
+the necessary value types.
+
+As a special safety measure against the easily made error of writing `\.='
+instead of an assignment operator~`\.{:=}', we forbid converting the result of
+an (always overloaded) call to the equality operator to the void type,
+treating this case as a type error instead. In the unlikely case that the user
+defines an overloaded instance of `\.=' with void result type, calls to this
+operator will still be accepted.
+
+@< Return a call of variant |v|... @>=
+{ expression_ptr call;
+  builtin_value* f = dynamic_cast<builtin_value*>(v.val.get());
+  if (f!=NULL)
+    call = expression_ptr
+      (new overloaded_builtin_call(f->val,f->print_name.c_str(),arg));
+  else @< Set |call| to the call of the user-defined function |v| @>
+
+  if (type==void_type and
+      id==equals_name() and
+      v.type->result_type!=void_type)
+    throw type_error(e,copy(v.type->result_type),copy(type));
+  return conform_types(v.type->result_type,type,call,e);
+}
+
 @ For operator symbols that satisfy |is_special_operator(id)|, we test generic
 argument type patterns before we test instances in the overload table, because
 the latter could otherwise mask some generic ones due to coercion. Therefore
 if we fail to find a match, we simply fall through; however if we match an
 argument type but fail to match the returned type, we throw a |type_error|.
 
+The function |print| (but not |prints|) will return the value printed if
+required, so it has the type of a generic identity function. This is done so
+that inserting |print| around subexpressions for debugging purposes can be
+done without other modifications of the user program. To ensure that coercions
+that would apply in the absence of |print| still get their chance, we do a
+recursive call to |coerce| after accepting without check the call to |print|.
 
 @: sizeof section @>
 
@@ -1770,60 +1793,29 @@ argument type but fail to match the returned type, we throw a |type_error|.
     @< Recognise and return 2-argument versions of `\#', or fall through in
        case of failure @>
   }
-  else if (id==print_name() or id==prints_name()) // these always match
-  { expression c = id==print_name() @|
-      ? new generic_builtin_call(print_wrapper,"print",arg) @|
-      : new generic_builtin_call(prints_wrapper,"prints",arg);
+  else if (id==print_name()) // this one always matches
+  { expression c = new generic_builtin_call(print_wrapper,"print",arg);
+    expression_ptr call(c); // get ownership
+    if (type.specialise(a_priori_type) or coerce(a_priori_type,type,call))
+      return call.release();
+    else throw type_error(e,copy(a_priori_type),copy(type));
+ }
+  else if(id==prints_name()) // this always matches as well
+  { expression c = new generic_builtin_call(prints_wrapper,"prints",arg);
     expression_ptr call(c); // get ownership
     if (type.specialise(void_type))
       return call.release();
-    throw type_error(e,copy(type),copy(void_type));
+    throw type_error(e,copy(void_type),copy(type));
   }
 
-}
 
-@ For dyadic use of the operator `\#' we shall encounter the somewhat unusual
-situation that we have already converted the entire argument expression at the
-point where we discover, based on the type found, that one of the arguments
-might need to be coerced. This means that such a coercion must be inserted
-into an already constructed expression, whereas usually it is applied on the
-outside of an expression under construction (notably in ordinary overloading
-if coercion is needed we simply convert the operands a second time, inserting
-the coercions while doing so). Concretely this means that although we can use
-the |coerce| function, it wants a reference to an auto-pointer for the
-expression needing modification (so that it can manage ownership during its
-operation), but the expression here is held in an ordinary pointer inside a
-|tuple_expression|. Therefore we must copy the ordinary |expression| pointer
-temporarily to an |expression_ptr|, simulating the auto-pointer actions
-manually: after construction of the |expression_ptr| we set the |expression|
-(temporarily) to~|NULL| to avoid potential double destruction, and after the
-call to |coerce| we release the (possibly modified) |expression_ptr| back into
-the |expression|.
-
-Another complication is that we decided having a dyadic use of `\#' based on
-finding a 2-tuple type, but this is no guarantee there are actually two
-operand subexpressions (in a |tuple_expression|); we do a dynamic cast to find
-that out, and in the case the user was so contrived as to use monadic `\#' on
-a non-tuple expression of 2-tuple type, we just report that no coercion of
-operands is done (after all we need a subexpression to be able to insert any
-conversion). These complications warrant defining a separate function to
-handle them.
-
-@< Local function definitions @>=
-bool can_coerce_arg
-  (expression e,size_t i,const type_expr& from,const type_expr& to)
-{ tuple_expression* tup= dynamic_cast<tuple_expression*>(e);
-  if (tup==NULL) return false;
-  expression_ptr comp(tup->component[i]); tup->component[i]=NULL;
-  bool result = coerce(from,to,comp); tup->component[i]=comp.release();
-  return result;
 }
 
 @ The operator `\#' can be used also as infix operator, to join (concatenate)
 two row values of the same type or to extend one on either end by a single
 element. In the former case we require that both arguments have identical row
-type, in the latter case we allow the single element to be converted to the
-component type of the row value.
+type, in the latter case we allow the single element to be, or to be converted
+to, the component type of the row value.
 
 There is a subtlety in the order here, due to the fact that one of the
 arguments could be the empty list, with undetermined row type. Then there is
@@ -1832,10 +1824,11 @@ operand, while suffixing or prefixing to the empty list gives a singleton of
 the other operand, and to some operands the empty list itself can also be
 suffixed or prefixed. The simplest resolution of this ambiguity is to say that
 join never applies with one of the arguments of undetermined list type, and
-that suffixing is preferred over prefixing (for instance in $[\,]\#[[2]]$).
-This can be obtained by testing for suffixing before testing for join: after
-the former test we know the first argument does not have type \.{[*]}, so it
-will match the second argument type only if both are determined row types.
+that suffixing is preferred over prefixing (for instance $[[2]]\#[\,]$ will
+give $[[2],[\,]]$, but $[\,]\#[[2]]$ will give $[[[2]]]$). This can be
+obtained by testing for suffixing before testing for join: after the former
+test we know the first argument does not have type \.{[*]}, so it will match
+the second argument type only if both are determined row types.
 
 @< Recognise and return 2-argument versions of `\#'... @>=
 { type_expr& arg_tp0 = a_priori_type.tuple->t;
@@ -1863,11 +1856,51 @@ will match the second argument type only if both are determined row types.
   }
 }
 
+@ We called |can_coerce_arg| when type-checking the dyadic use of the operator
+`\#', in order to see if one of its arguments can be coerced from its type
+|from| to |to|. The situation there is somewhat unusual, in that we have
+already converted the entire argument expression at the point where we
+discover, based on the type found, that one of the arguments might need to be
+coerced. This means that such a coercion must be inserted into an already
+constructed expression, whereas usually it is applied on the outside of an
+expression under construction (notably in ordinary overloading if coercion is
+needed we simply convert the operands a second time, inserting the coercions
+while doing so). Concretely this means that although we can use the |coerce|
+function, it wants a reference to an auto-pointer for the expression needing
+modification (so that it can manage ownership during its operation), but the
+expression here is held in an ordinary pointer inside a |tuple_expression|.
+Therefore we must copy the ordinary |expression| pointer temporarily to an
+|expression_ptr|, simulating the auto-pointer actions manually: after
+construction of the |expression_ptr| we set the |expression| (temporarily)
+to~|NULL| to avoid potential double destruction, and after the call to
+|coerce| we release the (possibly modified) |expression_ptr| back into the
+|expression|.
+
+Another complication is that we decided having a dyadic use of `\#' based on
+finding a 2-tuple type, but this is no guarantee there are actually two
+operand subexpressions (in a |tuple_expression|); we do a dynamic cast to find
+that out, and in the case the user was so contrived as to use monadic `\#' on
+a non-tuple expression of 2-tuple type, we just report that no coercion of
+operands is done (after all we need a subexpression to be able to insert any
+conversion). These complications warrant defining a separate function to
+handle them.
+
+@< Local function definitions @>=
+bool can_coerce_arg
+  (expression e,size_t i,const type_expr& from,const type_expr& to)
+{ tuple_expression* tup= dynamic_cast<tuple_expression*>(e);
+  if (tup==NULL) return false;
+  expression_ptr comp(tup->component[i]); tup->component[i]=NULL;
+  bool result = coerce(from,to,comp); tup->component[i]=comp.release();
+  return result;
+}
+
+
 @*1 Evaluating built-in function calls.
 %
 To evaluate a |call_expression| object we evaluate the function, and then
 test whether it is a built-in function. In the former case we evaluate the
-arguments expanded on th stack and call the built-in function, passing the
+arguments expanded on the stack and call the built-in function, passing the
 |level| parameter so that if necessary the call can in its turn return and
 expanded result (or no result at all). If not a built-in function, it must be
 a user-defined function, whose execution will be detailed later, but in this
@@ -2480,7 +2513,7 @@ component type as for list displays.
    its component type, construct the |while_expression|, and apply the
    appropriate conversion function to it; otherwise |throw| a |type_error| @>=
 { type_expr comp_type;
-  conversion_record* conv = row_coercion(type,comp_type);
+  const conversion_record* conv = row_coercion(type,comp_type);
   if (conv==NULL)
     throw type_error(e,copy(row_of_type),copy(type));
 @)
@@ -2574,7 +2607,7 @@ case for_expr:
     throw expr_error(e,"Improper structure of loop variable pattern");
   size_t n_id = count_identifiers(f->id);
   bindings bind(n_id); thread_bindings(f->id,*it_type,bind);
-  type_expr body_type, *btp; conversion_record* conv=NULL;
+  type_expr body_type, *btp; const conversion_record* conv=NULL;
   if (type==void_type)
     btp=&void_type;
   else if (type.specialise(row_of_type))
@@ -2767,7 +2800,7 @@ case cfor_expr:
     );
 @)
   bindings bind(1); bind.add(c->id,copy(int_type));
-  type_expr body_type, *btp; conversion_record* conv=NULL;
+  type_expr body_type, *btp; const conversion_record* conv=NULL;
   if (type==void_type)
     btp=&void_type;
   else if (type.specialise(row_of_type))
@@ -4080,7 +4113,8 @@ void int_format_wrapper(expression_base::level l)
 
 @ Here is a simple function that outputs any value, in the format used by the
 interpreter itself. This function has an argument of unknown type; we just
-pass the popped value to the |operator<<|.
+pass the popped value to the |operator<<|. The function returns its argument
+as result.
 
 This is the first place in this file where we produce user
 output to a file. In general, rather than writing directly to |std::cout|, we
@@ -4091,9 +4125,10 @@ the output stream to be used than via a dedicated global variable.
 
 @< Local function definitions @>=
 void print_wrapper(expression_base::level l)
-{ *output_stream << *pop_value() << std::endl;
-  if (l==expression_base::single_value)
-    wrap_tuple(0); // don't forget to return a value if asked for
+{
+  *output_stream << *execution_stack.back() << std::endl;
+  if (l!=expression_base::single_value)
+    push_expanded(l,pop_value()); // remove and possibly expand value
 }
 
 @ Sometimes the user may want to use a stripped version of the |print| output:

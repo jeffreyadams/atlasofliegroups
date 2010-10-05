@@ -1274,7 +1274,7 @@ template<typename D> // |D| is a type derived from |value_base|
 inline void push_value(value_base* p) @+{@; push_value(owned_value(p)); }
 
 @ There is a counterpart |pop_value| to |push_value|. Most often the result
-pust be dynamically cast to the type they are known to have because we passed
+must be dynamically cast to the type they are known to have because we passed
 the type checker; should the cast fail we shall throw a |std::logic_error|.
 The template function |get| with explicitly provided type serves for this
 purpose; it is very much like the template function |force|, but returns a
@@ -1416,17 +1416,17 @@ void conversion::print(std::ostream& out) const
 An important aspect of automatic conversions is that they can be applied in
 situations where the result type and only part of the source type is known:
 for instance one can be inserted when a list display occurs in a context
-requiring a vector, because no row type equal the (primitive) vector type.
+requiring a vector, because no row type equals the (primitive) vector type.
 While this use requires particular consideration according to the syntactic
 form of the expression (list display), there is also a simpler form of
 automatic conversion that can be applied to a large variety of expressions
 (identifiers, function calls, \dots) whenever they are found to have a
-different type from what the context requires. The a function |coerce| will
+different type from what the context requires. The function |coerce| will
 try to insert an automatic conversion in such situations, if this can resolve
 the type conflict. We present this mechanism first, since the table it employs
 can then be re-used to handle the more subtle cases of automatic conversions.
 
-The function |coerce| requires to fully determined types |from_type| and
+The function |coerce| requires two fully determined types |from_type| and
 |to_type|, and its final argument~|e| is a reference to the previously
 converted expression. If a conversion of value of |from_type| to |to_type| is
 available, then |coerce| will modify |e| by insertion of a |conversion| around
@@ -1463,6 +1463,13 @@ become invalid in case of reallocation.
 
 std::vector<conversion_record> coerce_table;
 
+@ We will iterate over |coerce_table| several times; the following |typedef|
+makes this easier.
+
+@< Local type def... @>=
+
+typedef std::vector<conversion_record>::const_iterator coerce_iter;
+
 @ The following function simplifies filling the coercion table; it is
 externally callable.
 
@@ -1479,7 +1486,7 @@ void coercion(const type_expr& from,
 
 @ There is one coercion that is not stored in the lookup table, since it can
 operate on any input type: the voiding coercion. It is necessary for instance
-to allow a conditional expression that is intended for its side effects only
+to allow a conditional expression that is intended for its side effects only,
 to have branches that evaluate to different types (including the possibility
 of absent branches which will be taken to deliver an empty tuple): the
 conditional expression will get \.{void} type to which the result of each of
@@ -1526,8 +1533,8 @@ afterwards |reset| reclaims ownership of the pointer to that |conversion|.
 @< Function definitions @>=
 bool coerce(const type_expr& from_type, const type_expr& to_type,
 	    expression_ptr& e)
-{ for (conversion_record*
-       it=&coerce_table[0]; it<&*coerce_table.end(); ++it)
+{ for (coerce_iter
+       it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (from_type==*it->from and to_type==*it->to)
     @/{@; e.reset(new conversion(*it,e));
       return true;
@@ -1572,22 +1579,23 @@ expression conform_types
 @ List displays and loops produce a row of values of arbitrary (but identical)
 type; when they occur in a context requiring a non-row type, we may be able to
 find a coercion that reconciles the requirements. The following function finds
-whether this is possible, and sets |components_type| to the type required for
-the components; by using this mechanism the components themselves obtain a
-context that may generate further conversions to obtain this type.
+whether this is possible, and if so sets |components_type| to the type
+required for the components; if not it will return~|NULL|. By using this
+mechanism the components themselves obtain a context that may generate further
+conversions to obtain this type.
 
 @< Declarations of exported functions @>=
-conversion_record* row_coercion(const type_expr& final_type,
-                                      type_expr& component_type);
+const conversion_record* row_coercion(const type_expr& final_type,
+                                            type_expr& component_type);
 @~The implementation is simply to look in |coerce_table| for conversions from
 some row type.
 
 @< Function def... @>=
-conversion_record* row_coercion(const type_expr& final_type,
-                                      type_expr& component_type)
-{ for (conversion_record* it=&coerce_table[0]; it<&*coerce_table.end(); ++it)
+const conversion_record* row_coercion(const type_expr& final_type,
+                                            type_expr& component_type)
+{ for (coerce_iter it=coerce_table.begin(); it!=coerce_table.end(); ++it)
     if (final_type==*it->to and it->from->kind==row_type)
-    @/{@; component_type.specialise(*it->from->component_type); return it; }
+    @/{@; component_type.specialise(*it->from->component_type); return &*it; }
   return NULL;
 }
 
@@ -1602,15 +1610,15 @@ complicated set of rules to determine which of the definitions of the symbol
 is to be used (overloading resolution in \Cpp\ is a good example of such
 complications). There are two ways to avoid the occurrence of complications by
 restricting the rules of the language: either forbid type conversions in
-arguments of overloaded symbols, or forbidding simultaneous definitions of
-such symbols for too closely related types. (A mixture of both is also
-conceivable, allowing only certain conversions and forbidding overloading
-between types related by them; the language Algol~68 is a good example of an
-approach along these lines). Forbidding all automatic type conversions in case
-of overloading would defeat to a large extent the purpose of overloading,
-namely as a convenience to the user; therefore we choose the latter solution
-of forbidding overloading in certain cases. The predicate |is_close| will be
-used to characterise pairs of argument types that are mutually exclusive for
+arguments of overloaded symbols, or forbid simultaneous definitions of such
+symbols for too closely related types. (A mixture of both is also conceivable,
+allowing only certain conversions and forbidding overloading between types
+related by them; the language Algol~68 is a good example of an approach along
+these lines). Forbidding all automatic type conversions in case of overloading
+would defeat to a large extent the purpose of overloading, namely as a
+convenience to the user; therefore we choose the latter solution of forbidding
+overloading in certain cases. The predicate |is_close| will be used to
+characterise pairs of argument types that are mutually exclusive for
 overloading purposes.
 
 @< Declarations of exported functions @>=
@@ -1643,13 +1651,13 @@ that, for efficiency reasons, overloading resolution is not done using the
 argument expression, but only its type. In fact matching will be done using
 calls to the very function |is_close| we are discussing here, testing the bit
 for conversion towards the required argument type; this provides us with an
-opportunity to adjust rules for possible type conversions of arguments a the
+opportunity to adjust rules for possible type conversions of arguments at the
 same time as defining the exclusion rules.
 
 We must forbid \.{void} altogether as operand type of overloaded functions,
 since anything can be converted to that type; this is not a great limitation.
-Apart from that, the function |coerce| provides information about basic
-conversions; however we do should not limit ourselves to these, because
+Apart from that, the function |coerce| provides us with the basic information
+about possible conversions; however we do not limit ourselves to these, because
 conversions might be possible inside row or tuple displays, and we want the
 consider for instance \.{[[rat]]} as matching a required type \.{[ratvec]}.
 Empty row displays, or more precisely arguments of type~\.{[*]}, pose a
@@ -1661,12 +1669,12 @@ that they are mutually exclusive for overloading.
 Since empty rows as arguments are probably quite common and forcing a specific
 type on them relatively tedious, we opt for the latter solution. Thus when
 comparing two row types, |is_close| will always set the bit for closeness, but
-the other two bits set according to the convertibility of the component types.
-Also, in accordance with the choice to allow~\.{[*]} as operand type, the
-(component) type \.{*} will be considered to convert to any type. On the other
-hand we disallow an empty row where a primitive type with conversion from some
-row type (like \.{vec} or \.{mat}) is required, so that these types can
-coexist with unrelated row type for overloading purposes.
+the other two bits will be set to indicate the convertibility of the component
+types. Also, in accordance with the choice to allow~\.{[*]} as operand type,
+the (component) type \.{*} will be considered to convert to any type. On the
+other hand we disallow an empty row where a primitive type with conversion
+from some row type (like \.{vec} or \.{mat}) is required, so that these types
+can coexist with unrelated row type for overloading purposes.
 
 @ So here is the (recursive) definition of the relation |is_close|. Equal
 types are always close, while undetermined types behave as convertible to any
@@ -1693,9 +1701,9 @@ unsigned int is_close (const type_expr& x, const type_expr& y)
   if (x==y)
     return 0x7;
   if (x.kind==undetermined_type)
-    return 0x5; // |x| matches is |y| is required
+    return 0x5; // |x| matches when |y| is required
   if (y.kind==undetermined_type)
-    return 0x6; // |y| matches is |x| is required
+    return 0x6; // |y| matches when |x| is required
   if (x.kind==primitive_type or y.kind==primitive_type)
   { unsigned int flags=0x0;
     if (coerce(x,y,dummy)) flags |= 0x1;

@@ -631,14 +631,14 @@ for (size_t i=0; i<n_prim; i+=32)
       if ((chunk&1)!=0) cur_strong_prims.push_back(weak_prims[i+j]);
   }
 
-@ The final element that we pushed ought to be the first element  in
+@ The final element that we pushed ought to be the first element in
 |weak_prims| of the same length as~|y|. We can locate it quickly by doing
 binary search for~|y| in the vector |max_length|, and then for the first block
 element of the length of~|y| in |weak_prims|, in both cases without expecting
 to find exactly the element specified. Since |y| might itself be the first
-element of its length, we have to look to use |upper_bound| in the first
-search, and |lower_bound| in the second one. If all is well, we replace the
-element found by~|y|.
+element of its length, we have to use |upper_bound| in the first search, and
+|lower_bound| in the second one. If all is well, we replace the element found
+by~|y|.
 
 @h <cassert>
 @< Check value of final element pushed, and replace it by~$y$ @>=
