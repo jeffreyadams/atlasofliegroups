@@ -5,17 +5,24 @@ operators \, % : (int,int->int): integer (Euclidian) division and remainder
 operator \% :(int,int->int,int): Euclidian division with remainder
 operators +, -, *, / : (rat,rat->rat): usual rational arithmetic operations
 operator - : (rat->rat): rational unary minus
+operator / : (rat->rat): rational unary divide (in other words: inverse)
 operator ^ : (rat,int->rat): rational exponentiation (whenever result defined)
+operator % : (rat->int,int): pair of numerator and denominator
 operator * : (mat,vec->vec): matrix-vector product.
 operator * : (mat,mat->mat): matrix-matrix product.
 operator * : (vec,mat->mat): vector-matrix product (vector is transposed)
 operator ^ : (mat->mat): (unary use of ^) matrix transpostion
 operator ^ : (vec->mat): (unary use of ^) (transposed) vector as 1-line matrix
-operator / : (vec,int->ratvec):  vector division giving rational vector
+operator / : (vec,int->ratvec): vector division giving rational vector
+operator % : (ratvec->vec,int): pair of numerator vector and denominator
 operators +, -: (ratvec,ratvec->ratvec): additive rational vector arithmetic
 
-operators >, >=, <, <=, =, != : (int,int->bool) usual relational operators
-operators =, != : (bool,bool->bool) Boolean equivalence, inequivalence (xor)
+operators >, >=, <, <=, =, != : (int,int->bool): usual relational operators
+operators >, >=, <, <=, =, != : (rat,rat->bool): usual relational operators
+operators =, != : (bool,bool->bool): Boolean equivalence, inequivalence (xor)
+operators =, != : (string,string->bool): string equality and inequality
+operators =, != : (vec,vec->bool): vector equality and inequality
+operators =, != : (mat,mat->bool): matrix equality and inequality
 
 operator # : (string->int) : length of string
 operator # : (vec->int) : number of components of vector
@@ -30,12 +37,39 @@ operator # : ([T],[T]->[T]) : concatenation of rows (T is any type)
 operator # : ([T],T->[T]) : append element to a row (T is any type)
 operator # : (T,[T]->[T]) : prepend element to a row (T is any type)
 
-error: (string->) : abort computation, reporting a runtime error
+
+error: (string->*) : abort computation, reporting a runtime error
 
 int_format: (int->string): representation of integer as digit string
-print: (string->): print string without quotes, followed by newline
+print: (*->*): print value, followed by newline; return same value
+prints: (*,...->): print values raw (no quotes or commas) followed by newline
+
+null: (int->vec): null vector of given length
+null: (int,int->mat): null matrix with given number of rows and columns
 id_mat: (int->mat): identity matrix of given size.
 diagonal: (vec->mat): square diagonal matrix with given diagonal entries.
+
+echelon: (mat->mat,[int]): make column echelon form, and return pivots as well
+  This applies column operations, and possibly removal of null columns; the
+  number of remaining columns is the rank. The result is a pair (M,s) with s
+  increasing sequence, and M[i,j] is nonzero for i=s[j] and zero for i>s[j]
+diagonalise: (mat->vec,mat,mat): partial Smith reduction, without divisibility
+  Applies row and column operations to the matrix to obtain diagonal form;
+  returns the list of non-zero diagonal entries (all except the first are
+  assured to be positive), and the pair of determinant 1 integral matrices
+  that have been applied to left and right respectively.
+adapted_basis: (mat->mat,vec): find basis whose integer multiples span image
+  Returns for M a pair (B,c) of a basis (as columns of B) and matching list c
+  of integers, such that the column span of M is the same as the span of the
+  multiples c_j*B_j of the columns B_j of the matrix B by the scalars c_j
+kernel: (mat->mat): find matrix whose columns span kernel of the given matrix
+eigen_lattice: (mat,int->mat): eigen-lattice of matrix (at integer eigenvalue)
+  eigen_lattice(M,lambda) = kernel(M-lambda*id_mat(n)), where #M=(n,n)
+row_saturate: (mat->mat): keep same kernel, but row-span saturated sublattice
+  Interpreting rows of the matrix as linear forms, this transforms the system
+  into an equivalent one, and whose Z-linear application is made surjective.
+  In other words, the rows are made linearly independent, and the sublattice
+  they generate saturated: if an integer multiple of v is in it, then so is v.
 
 inv_fact: (mat->vec): invariant factors in Smith normal form (no zeros).
 Smith_basis: (mat->mat): a basis on which the Smith normal form is assumed.

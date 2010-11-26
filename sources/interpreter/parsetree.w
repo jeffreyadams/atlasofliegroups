@@ -1573,7 +1573,7 @@ wrapper functions enabling the parser to call \Cpp~functions.
 
 @< Declarations of functions in \Cee-style for the parser @>=
 short lookup_identifier(const char*);
-void include_file();
+void include_file(int skip_seen);
 
 @~The parser will only call this with string constants, so we can use the
 |match_literal| method.
@@ -1586,8 +1586,8 @@ id_type lookup_identifier(const char* name)
 providing a file name that was remembered by the lexical analyser.
 
 @< Definitions of functions in \Cee-style for the parser @>=
-void include_file()
-{@; main_input_buffer->push_file(lex->scanned_file_name()); }
+void include_file(int skip_seen)
+{@; main_input_buffer->push_file(lex->scanned_file_name(),skip_seen!=0); }
 
 @ The next functions are declared here, because the parser needs to see these
 declarations in \Cee-style, but they are defined in in the file

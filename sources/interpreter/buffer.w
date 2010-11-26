@@ -22,7 +22,13 @@
 \def\emph#1{{\it #1\/}}
 
 @* The buffered input class.
-This file defines a simple class |BufferedInput|, which provides an interface
+This file defines some classes used at the input level below that of the
+lexical analyser. First it provides classes |String_pool| and |Hash_table| for
+the management of collections of identifiers, so that in the remainder of the
+program identifiers can be represented by a small identification number rather
+than by a string (with a conversion to string for output still being possible).
+
+Next it provides a simple class |BufferedInput|, which provides an interface
 to input streams that can be used by the lexical analyser. Its purpose is to
 deal with details that should not influence the lexical analysis, such as the
 question whether input comes from a file or from standard input, in the latter
@@ -39,11 +45,10 @@ buffer also contains a line counter, so that the lexical analyser need not
 worry about that (and indeed it could not, since newlines are transparently
 escaped).
 
-We have added the functionality to open a subsidiary input file upon an
+We have included functionality to open a subsidiary input file upon an
 existing buffered input object, thus creating a stack of files from which
 input will be read; exhausted files will be transparently popped, returning
 control to the file active at the point they were opened.
-
 
 @( buffer.h @>=
 
@@ -56,16 +61,15 @@ control to the file active at the point they were opened.
 namespace atlas
 { namespace interpreter
  {
-@< Preliminary type definitions @>@;
-@< Class declaration @>@;
+@< Class declarations @>@;
 @< Inline function definitions @>@;
 @< Declarations of static variables @>@;
  }@;
 }@;
 #endif
 
-@ Our main file will provide the class implementation
-@h<iostream>
+@ Our main file will provide the class implementations.
+
 @h "buffer.h"
 @c
 
@@ -78,13 +82,272 @@ namespace atlas
 }@;
 
 
-@ The class will make use of one or more |std::istream| values, which could
-correspond to a file or to a terminal input stream. However, the  copy
-constructor for that class is private, so there is no question of actually
-containing data members of that type; they will be referred to by pointers.
+
+@* Tables for storing identifiers.
+%
+All distinct tokens recognised by the scanner will be stored as
+null-terminated strings in dynamically allocated memory; these include all
+keywords, operators, and identifiers used, but not literal constants or
+strings (since there is no point in remembering those). To provide storage for
+such strings, we provide a simple class |String_pool| which basically allows
+to copy any string to a safe place and use pointers to those copies henceforth
+(we probably would have used a different approach if we had been more
+acquainted with the standard library when we wrote this code). Only when the
+string pool is destructed do the character pointers it has given out become
+invalid. A string pool will be incorporated into the |Hash_table| class, and
+their number and lifetimes will be determined by that usage; in particular the
+|String_pool| class will be adapted to manage strings in various pools with
+different lifetimes. A |String_pool| will be implemented as a list of blocks
+containing the individual strings, from newest to oldest. The blocks are
+usually of the size specified when the pool is constructed, but if in rare
+cases a string larger than the block size is requested, a single block of that
+size will be created (but |block_size| will not change). To know how much
+remains in the current block, we keep a separate record, in |chars_left|.
+
+
+@< Class declarations @>=
+
+class String_pool
+{ public:
+    static const size_t default_block_size=512;
+    String_pool(size_t b=default_block_size); // create pool and set block size
+    char* store(const char* s, size_t length); // store string of given length
+    ~String_pool();
+  private:
+    String_pool(const String_pool&); // copying forbidden
+    String_pool& operator=(const String_pool&); // assignment forbidden
+@)
+    const size_t block_size; // block size of the pool
+    char* start; // start of block in current usage
+    char* point; // first character available
+    size_t chars_left; // number of characters left in current block
+    const String_pool* prev;
+      // start of list of previous blocks, for deallocation
+};
+
+@ The constructor for a |String_pool| sets the block size, but does not yet
+allocate a block.
+
+@< Definitions of class members @>=
+String_pool::String_pool(size_t b)
+: block_size(b),start(NULL),point(NULL),chars_left(0),prev(NULL)
+{}
+
+@ Whenever a identifier |str| of length |n| has to be stored in |pool|, we
+shall call |pool.store(str,n)|. It will allocate |n+1| bytes and copy |str|
+including the terminating null byte into it, returning a pointer to the
+allocated string.
+
+@< Definitions of class members @>=
+char* String_pool::store(const char* s,size_t len)
+{ size_t n= len>=block_size ? len+1 : block_size;
+            // size of new block if needed
+  if (len>=chars_left) // then the current block cannot store |s|, so allocate
+  { if (start!=NULL) // initial block needs no backing up
+    { String_pool* p=new String_pool(block_size);
+      p->prev=prev; p->start=start; // only these fields need backing up
+      prev=p; // link to old blocks, needed for destruction
+    }
+    start=point=new char[n]; // now we can copy to where |point| points
+    chars_left=n;
+  }
+  strncpy(point,s,len); @+ char* result=point;
+  chars_left-=len+1;
+  point+=len;  *point++='\0';
+  return result;
+}
+
+@ The destructor for |String_pool| recursively frees all blocks allocated.
+This happens because |delete| calls the destructor for the |String_pool|
+object pointed to by its argument |prev| before freeing its memory.
+
+@< Definitions of class members @>=
+String_pool::~String_pool(void)
+@+{@; delete prev; delete[] start; }
+
+@*1 Hash tables.
+%
+Our hash tables will use an instance of |String_pool| for storing its keys.
+Their functionality is quite simple, and hides the actual hashing. Upon
+construction the hash table is empty, and its stores every distinct string
+that is passed to it, never removing one. It matches the string against all
+strings it has seen before, and returns a sequence number: either the number
+that was given to the same string when it was first encountered, or the next
+unused number if the string was never seen before. Methods are also provided
+for the inverse conversion, from a sequence number to the corresponding
+string, and for finding the current number of entries stored. This will
+allow working everywhere with sequence numbers to represent identifiers.
+
+@h<vector>
+@< Class declarations @>=
+
+class Hash_table
+{ public: typedef short id_type; // type of value representing identifiers
+private: // data members
+    String_pool pool;
+    id_type mod;  // hash modulus, the number of slots present
+    std::vector<id_type> hash_tab;
+    std::vector<const char*> name_tab;
+public: // interface
+    Hash_table(size_t init=initial_hash_mod
+              ,size_t block_size=String_pool::default_block_size);
+    id_type match(const char* s, size_t l) @+{@; return do_match(s,l,true); }
+    id_type match_literal(const char* s) /* literal null-terminated string */
+      {@; return do_match(s,std::strlen(s),false); }
+    const char* name_of(id_type nr) const @+{@; return name_tab[nr]; }
+    id_type nr_entries() const @+{@; return name_tab.size(); }
+private: // auxiliary functions
+    static const id_type initial_hash_mod=97;
+    id_type hash(const char* s, size_t l) const; // auxiliary hash function
+    id_type do_match(const char* s, size_t l, bool copy_string);
+    size_t max_fill() const {@; return static_cast<id_type>(mod*3L/4); }
+                    // maximum of entries in use
+};
+
+@ Since we used the |vector| template and the |strlen| function, we must make
+sure its header is included at the proper place.
+
+@< Includes needed in the header file @>=
+#include <vector>
+#include <cstring>
+
+@ Here is the constructor for a hash table. By nature |hash_tab| is larger
+than the number of entries currently stored; its size is always equal to~|mod|
+(which is stored separately to speed up hash calculations). The initialiser
+expression for |mod| takes care to ensure that |max_fill()<mod| always holds,
+by rejecting ridiculously small values. Although |name_tab| will grow
+incrementally, we prefer to reserve enough space for it to avoid reallocation
+until rehashing is necessary. Therefore the allocated size of |name_tab| will
+always have size |max_fill| which grows with (but lags behind) |mod|.
+
+@< Definitions of class members @>=
+
+Hash_table::Hash_table(size_t init,size_t block_size)
+: pool(block_size)
+, mod(init<2?2:init), hash_tab(mod), name_tab(0)
+{@; name_tab.reserve(max_fill()); for(int i=0; i<mod; ++i) hash_tab[i]=-1;
+}
+
+@ The hash code of an identifier is determined by interpreting its characters
+as digits of a number in base~256, and then taking the number modulo |mod|.
+While the final result is a short value, intermediate results may be almost as
+large as |mod<<8|, so we use a |long| value here.
+
+The code below shows a bad property of the rigid type system of \Cpp: it is
+virtually impossible to transform a pointer of type |(char*)| to one of type
+|(unsigned char*)|, short of using a |reinterpret_cast| or (even worse)
+calling the placement-|new| operator (as in |unsigned char p=new(s) unsigned
+char@;|), even though this is a fairly innocent thing to do. Here we just want
+to assure that we are doing arithmetic on non-negative values, even if some
+characters would classify as negative |char| values (failing to do this could
+cause the program the program to crash). And we cannot help having pointers to
+(possibly) signed characters in the first place, because that is for instance
+what string denotations give us (and what many standard functions require).
+The simplest solution would be to cast |s| to |(const unsigned char*)|, and
+everything would be safe. We dare not do such a conversion for fear of losing
+our job, so instead we convert every character accessed via~|s| laboriously
+into an unsigned value, which can be done by a standard conversion; this
+accounts for two of the three |static_cast|s below (the third is for
+documentation only).
+
+@< Definitions of class members @>=
+
+Hash_table::id_type Hash_table::hash
+        (const char* s, size_t l) const // |s| a string of length |l>0|
+{ long r=static_cast<unsigned char>(*s++)%mod;
+  for ( --l; l>0 ; --l) r=(static_cast<unsigned char>(*s++)+(r<<8))%mod;
+  return static_cast<id_type>(r);
+}
+
+
+@ When an identifier is passed to |match|, this method (which calls |do_match|
+with |copy_string==true|) returns its index in |name_tab|, possibly after
+adding the identifier to the tables. This small number is henceforth used to
+characterise the identifier. The private function |do_match| can also be
+called by |match_literal| in case of keywords stored at initialisation time,
+for which a null-terminated string is supplied that does not need to be copied
+to the string pool. The parameter |copy_string| distinguishes the two uses.
+
+Searching the hash table starts at the hash key and proceeds linearly through
+the table until either a match or an empty slot is found; in the latter case
+no matching entry is present, and we add one in the place of the empty slot.
+This method is valid because we never remove an entry from the hash table. We
+use here the fact that |max_fill()<mod| holds, so that there will be at least
+one empty slot present, and it is not necessary to test for complete wrap
+around the table. When a new entry would make the table too full, we extend
+the size of the table and rehash. After this we could return
+|do_match(str,l,copy_string)| recursively, but since we assume that the
+too-full condition has been resolved, and we know that |str| is new, we can
+avoid recursion and perform a simplified computation of the new hash code in
+this case.
+
+@h <cstring>
+@< Definitions of class members @>=
+Hash_table::id_type Hash_table::do_match
+	(const char* str, size_t l, bool copy_string)
+{ id_type i,h=hash(str,l);
+  while ((i=hash_tab[h])>=0)
+    if (std::strncmp(name_tab[i],str,l)==0 && name_tab[i][l]=='\0') return i;
+          /* identifier found in table */
+    else if (++h==mod) h=0; /* move past occupied slot */
+  if (name_tab.size()>=max_fill())
+  { @< Extend hash table @>
+    h=hash(str,l); @+
+    while (hash_tab[h]>=0) @+
+      if (++h==mod) h=0; /* find free slot */
+  }
+  hash_tab[h]= name_tab.size(); /* this number represents the new identifier */
+  name_tab.push_back(copy_string ? pool.store(str,l) : str);
+  return hash_tab[h];
+}
+
+@ When the hash table becomes too full, we can throw away the |hash_tab|
+because the |name_tab| contains all the information required; therefore we can
+assign a larger vector to |hash_tab| rather than using |hash_tab.resize()|
+which would copy the old entries. By performing the assignment via the |swap|
+method (necessarily taken from the newly constructed value) we can avoid any
+risk of copying of the new (empty) slots that an assignment might imply. The
+code for inserting the indices of rehashed strings from |name_tab| is simpler
+than in the basic matching loop, since we know that all those strings are
+distinct; it suffices to find for each an empty slot. The sequence number
+associated to each string does not change. We finally reserve enough space for
+|name_tab| to last until the next time rehashing is necessary.
+
+@< Extend hash table @>=
+{ std::vector<id_type>(mod=2*mod-1).swap(hash_tab); // keep it odd
+  for (int h=0; h<mod; ++h) hash_tab[h]=-1;
+  for (size_t i=0; i<name_tab.size(); ++i)
+  { int h=hash(name_tab[i],std::strlen(name_tab[i])); // rehash the string
+    while (hash_tab[h]>=0) @+ if (++h==mod) h=0; /* find empty slot */
+    hash_tab[h]=i;
+  }
+  name_tab.reserve(max_fill());
+}
+
+@ The |BufferedInput| class will make use of one or more |std::istream|
+values, which could correspond to a file or to a terminal input stream.
+However, the copy constructor for that class is private, so there is no
+question of actually containing data members of that type; they will be
+referred to by pointers.
 
 @< Includes needed in the header file @>=
 #include<iostream>
+
+@ For every currently open \emph{auxiliary} input stream (necessarily a file
+stream), we store a pointer to the |ifstream| object, the file name (for error
+reporting) and the line number of \emph{the stream that was interrupted} by
+opening this auxiliary file (the line number in the file itself will be held
+in the input buffer, as long as it is not interrupted). All this goes into an
+|input_record| structure that has a constructor as unique method.
+
+@< Class declarations @>=
+struct input_record
+{ std::string name; // the name of the file on which |stream| is opened
+  std::ifstream* stream; // pointer owned by parent object
+  unsigned long line_no; // this refers to the older input stream!
+@)
+  input_record(const char* file_name, const char* def_ext, unsigned long line);
+};
 
 @~Here is the main part of the class definition, giving the principal user
 interface. The methods |shift|, |unshift|, |eol| and |getline| give the basic
@@ -97,7 +360,7 @@ abandoned and forgotten. Another method |close_includes| is provided to allow
 aborting all includes in case of errors. The private method |pop_file| is
 called when an additional input stream is exhausted.
 
-@< Class declaration @>=
+@< Class declarations @>=
 class BufferedInput
 { typedef char* (*rl_type)(const char* );
      // |rl_type| is type of pointer to readline function
@@ -119,7 +382,7 @@ class BufferedInput
     bool eol () const; // end of line: |true| if |shift| would return a newline
     bool getline ();
          // fetch a new line to replace current one; |true| if successful
-    void push_file (const char* file_name);
+    void push_file (const char* file_name,bool skip_seen);
     void close_includes();
     @< Other methods of |BufferedInput| @>@;
 private:
@@ -133,8 +396,10 @@ define a static variable with a pointer to this input buffer.
 @< Declarations of static variables @>=
 extern BufferedInput* main_input_buffer;
 
-@~We initialise this variable to the null pointer; the main program will make
-it point to the main input buffer once it is allocated.
+@~We define |main_input_buffer| here (it must be defined somewhere, and doing
+so in \.{main.w} where it is mostly used would be awkward since there is no
+header file~\.{main.h}). We initialise this variable to the null pointer; the
+main program will make it point to the main input buffer once it is allocated.
 
 @< Definitions of static variables @>=
 BufferedInput* main_input_buffer=NULL;
@@ -147,7 +412,7 @@ BufferedInput* main_input_buffer=NULL;
 #include <stack>
 #include <fstream>
 
-@~At construction an |InputBuffer| object will fix a reference |base_stream|
+@~At construction an |BufferedInput| object will fix a reference |base_stream|
 to the input stream to be used when no additional input files are open.
 Furthermore it stores the last line read in its |line_buffer| field, and the
 pointer~|p| points to the next character to be produced by |shift()|. In case
@@ -183,21 +448,8 @@ const add_hist_type add_hist; // history function
 unsigned long line_no; // current line number
 int cur_lines,prompt_length; // local variables
 std::stack<input_record> input_stack; // active input streams
+Hash_table input_files_seen;
 std::istream* stream; // points to the current input stream
-
-@ For every currently open auxiliary input stream (necessarily a file stream),
-we store a pointer to the |ifstream| object, the file name (for error
-reporting) and the line number of \emph{the stream that was interrupted} by
-opening this auxiliary file (the line number in the file itself will be held
-in the input buffer, as long as it is not interrupted).
-
-@< Preliminary type definitions @>=
-struct input_record
-{ std::string name;
-  std::ifstream* stream; // pointer owned by parent object
-  unsigned long line_no;
-  input_record(const char* file_name, const char* def_ext, unsigned long line);
-};
 
 @ There are two constructors, one for associating an input buffer to some
 (raw) |istream| object (which may represent a disk file or pipe), another for
@@ -211,6 +463,7 @@ BufferedInput::BufferedInput (std::istream& s)
 base_stream(s),line_buffer(),p(NULL),prompt(""),prompt2(""),def_ext(NULL),
 temp_prompt(""),@|
 readline(NULL),add_hist(NULL),line_no(1),cur_lines(0),input_stack(),
+input_files_seen(),
 stream(&base_stream)
 @+{}
 
@@ -223,7 +476,7 @@ readline(rl),add_hist(ah),line_no(1),cur_lines(0),input_stack(),
 stream(&base_stream)
 @+{}
 
-@ It would have been convenient if each stack record owned its own
+@ It would have been convenient if each |input_record| owned its own
 |std::ifstream| pointer, so that its destructor could take care of deleting
 it, which would also close the associated file. This would however pose a
 problem for the copy constructor (obligatory for objects in a |std::stack|),
@@ -297,7 +550,12 @@ input_record::input_record
   {@; delete stream; throw; }
 }
 
-@ The above constructor is called with |line| equal to the line number at
+@ If |push_file| is called with |skip_seen==true|, it will not attempt to
+re-read a file that was already opened before. This is achieved by looking the
+file name up in |input_files_seen| and returning immediately if the file name
+was already present.
+
+The above constructor is called with |line| equal to the line number at
 which we shall resume reading the interrupted file, since switching back to
 that file will happen after a future failing attempt to read from the file
 opened here; at that point advancing the line number has already taken place,
@@ -313,8 +571,15 @@ input files if this happens, since failure to open a nested input file does
 not bode well for the interpretation of the file that wanted to include it.
 
 @< Definitions of class members @>=
-void BufferedInput::push_file(const char* name)
-{ input_stack.push(input_record(name,def_ext,line_no+cur_lines));
+void BufferedInput::push_file(const char* name, bool skip_seen)
+{
+  if (skip_seen)
+  { Hash_table::id_type size=input_files_seen.nr_entries();
+    if (input_files_seen.match(name,std::strlen(name))<size)
+      return; // do nothing if the file was already read previously
+  }
+
+  input_stack.push(input_record(name,def_ext,line_no+cur_lines));
   // reading will resume there
   if (input_stack.top().stream->good())
   { stream= input_stack.top().stream;
@@ -433,7 +698,6 @@ presumable stored away without copying (the history library documentation
 suggests this without stating it clearly), so calling |free| would be an
 error.
 
-@h <cstring>
 @h <cstdlib>
 
 @< Read a line... @>=

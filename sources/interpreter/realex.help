@@ -465,7 +465,7 @@ equality test (probably leading to an error due to an undefined left operand).
 For modifying an existing variable, global or local, the assignment operator
 ':=' is provided. It is mainly intended for programming use rather than for
 expression evaluation. For instance, a function computing the first n natural
-numbers 0,...,n-1 may be written as follows (while loops are explained later)
+numbers 0,...,n-1 may be written as follows (while-loops are explained later)
 
   expr> set first(int n) = let i=0 in while i<n do i next i:=i+1 od
   Defined first: (int->[int])
@@ -478,31 +478,32 @@ the same values one could write
   expr> set first_downwards(int n) = while (n:=n-1)>=0 do n od
   Defined first_downwards: (int->[int])
 
+For identifiers holding a list, vector or matrix, one can also assign to
+individual entries, as in 'v[i]:=x' or 'm[i,j]=0'. An assignment to an entry
+has the same effect as assigning a new value to the entire row, vector or
+matrix value, which differs only at the indicated entry from the old value.
+
 As a convenience one can write 'x +:= y' instead of 'x := x + y', and
 similarly for any operator in the place of '+', so in the above examples one
 could say i+:=1 and n-:=1. This is a transformation performed in the parser,
 so '+:=' is not really an operator (and is composed of separate '+' and ':=').
+It should be noted that this requires a simple variable as left operand: the
+parser will reject for instance v[i]+:=1; this should be written v[i]:=v[i]+1.
 
 Whatever the nature of the identifier assigned to, the assignment never
 changes any values other than those referred to by that identifier; for
 instance the assignment to its argument in the function 'first_downwards' does
 not have any affect for callers of this function, who do not know about the
 identifier 'n' that 'first_downwards' uses to name its argument. In general
-the only way a function call affects the caller is by the value it returns.
+the only way a function call affects the caller is by the value it returns, or
+possibly by assignments to non-local variables also in scope for the caller.
 
 The rules for assignment are quite different from the introduction of a
 variable: the variable must have been introduced beforehand, and the value
 assigned must have the same type as the previously held value. An assignment
-need not be used only for the change to its variable; it is also a
-subexpression in its own right (as is used in the definition of
+need not be used exclusively for the change to its variable it causes; it is
+also a subexpression in its own right (as is used in the definition of
 'first_downwards'), and as such it represents the value that was assigned.
-
-For identifiers holding a list, vector or matrix, one can also assign to
-individual entries, as in 'v[i]:=x' or 'm[i,j]=0'. An assignment to an entry
-effectively assigns a new value to the entire row, vector or matrix value,
-which differs only at the indicated entry from the old value. For technical
-reasons the operator-and-assignment abbreviation is not available for
-component assignments, so 'v[i]+:=1' is not valid; write 'v[i]:=v[i]+1'.
 
 7 Defining functions
 
@@ -587,7 +588,9 @@ original definitions. If they had not been built in, the user could define
   in inner_class(rd, involution(lt, basis, ict))
 
 to add two new meanings to the inner_class function; the fact that these
-definitions themselves use a more basic version of inner_class is no problem.
+definitions themselves use a more basic version of inner_class is no problem,
+because they can be distinguished by the argument types.
+
 Since the definitions above are essentially the same as the ones built in, it
 is in fact legal to give them: by a special language rule, a new definition
 for identical argument types as an existing one will replace the old
@@ -612,11 +615,36 @@ related argument type may be refused, as in the following attempt to replace
   set inner_class (LieType lt,[[rat]] gen,string ict)=
   inner_class(lt,for g in gen do ratvec: g od,ict)
 
-gives the error message
+gives the somewhat elaborate error message
 
   Cannot overload `inner_class', existing type
   (LieType,[ratvec],string) is close to (LieType,[[rat]],string),
   and either converts to the other, definition aborted.
+
+Functions can also be unnamed values, which is particularly useful if the are
+to be passed as arguments to other functions. So supposing g was defined by
+
+expr> set g ((int->int) f) = vec: [f(0),f(f(1)),f(5)]
+Defined g: ((int->int)->vec)
+
+one could call g with the increment function without naming the latter:
+
+expr> g((int n):n+1)
+Value: [ 1, 3, 6 ]
+
+One could define an identiier to have a function value using this syntax
+
+expr> set incr = (int n):n+1
+Identifier incr: (int->int)
+
+but in this case the binding is stored in the ordinary (not overloaded)
+identifier table. A new function value of the same type can now be assigned to
+the same identifier, to replace the old one, which is not possible with
+overloaded function definitions. An ordinary global identifier defined as a
+function value can coexist with one or more overloaded instances for the same
+name, but when the name is then used in function-call syntax, only the
+overloaded instances will be visible (however if any local bindings of a name
+exist, this renders all overloaded instances of the same name inaccessible).
 
 8 Control structures
 
@@ -687,42 +715,47 @@ only evaluated for its side effect (it has void type). So for instance
 produces the row [0,1,...,n-1].
 
 The remaining loops are 'for' loops, which determine the number of iterations
-at the beginning rather than dynamically. To loop over a range of integers,
+at the beginning rather than dynamically. The syntax is somewhat unusual, in
+that it does not specify the starting and ending values of the iteration, but
+rather the number of iterations and the smallest index; thus an iteration from
+0 to n-1 is specified as n iterations with lowest index 0. More specifically,
 one specifies (in this order) the number of iterations, the direction
 (increasing or decreasing) and the lower bound of the range (only unit steps
-are supported, so the upper bound is implicitly determined as one less than
-the sum of the lower bound and the number of iterations; the latter is
-replaced by 0 if negative.) The iteration count is preceded by '=' (admittedly
-not a very intuitive indication), the direction by the keyword 'from'
-(increasing) or 'downto' (decreasing), followed by the lower bound. So
+are supported; a negative iteration count is interpreted as 0). The iteration
+count is preceded by ':', the direction by the keyword 'from' (increasing) or
+'downto' (decreasing), and the lower bound follows. The direction and lower
+bound may be omitted, in which case 'from 0' is assumed. So
 
-  for i = n from 0 do i od
+  for i : n from 0 do i od
 
-is an alternative way to produce [0,1,...,n-1], while
+is an alternative way to produce [0,1,...,n-1], and it may be abbrevieted
 
-  for i = n from 1 do i od
+  for i : n do i od .
 
-produces the shifted list [1,2,...,n]. For the reverse list [n-1,...,1,0] use
+To obtain a more traditional range [1,2,...,n], one may say
 
-  for i = n downto 0 do i od
+  for i : n from 1 do i od .
+
+For the reverse list [n-1,...,1,0] use
+
+  for i : n downto 0 do i od
 
 and the shifted reversed list [n,...,1] is produced by
 
-  for i = n downto 1 do i od
+  for i : n downto 1 do i od
 
-Again the loop body may be a sequence expression with side effects, but any
-assignments to the loop variable only have effect until the end of the
-iteration; the next iteration is always begun at the next value in sequence.
-As a convenience, the most common specification 'from 0' may be omitted.
+As for the while loop, the body may be a sequence expression with side
+effects, but assignments to the loop variable only have effect until the end
+of the iteration; the next iteration is started at the next value in sequence.
 
-More powerful than counted iteration is iteration over an existing composite
-value. If V is a row value, or vector or matrix then
+Rather than counted iteration, it is often convenient to use iteration over an
+existing composite value. If V is a row value, or vector or matrix then
 
   for e in V do ... od
 
 iterates over the components of V (for a matrix these are its columns),
-setting e to such a component when evaluation the loop body. For instance, one
-can produce the scalar multiple by 3 of a vector V using
+setting e to such a component before evaluating the loop body. For instance,
+one can produce the scalar multiple by 3 of a vector V using
 
   vec: for e in V do 3*e od
 
@@ -737,55 +770,58 @@ identifier used to bind the index to, This explains the vector addition above:
 where the index i is needed to select the corresponding entry from the other
 vector. These value-returning loops are quite flexible, for instance
 
-  for j = n do for i = m do if i=j then 1 else 0 od od
+  mat: for j = n do for i = m do if i=j then 1 else 0 od od
 
-produces an m*n matrix with unit diagonal entries and zeroes elsewhere (of
-course the case m=n of the identity matrix is most common, we just allowed
-separate values to stress that the column-oriented convention forces the outer
-loop to be over the columns and the inner loop to be over the rows). Finally
-to add such a matrix to an existing matrix M it suffices to write
+produces an m*n matrix with unit diagonal entries and zeroes elsewhere. Of
+course the case m=n of the identity matrix is most common, be we allowed
+distinct values of m and n to stress that the column-oriented convention
+forces the outer loop to be over the columns and the inner loop to be over the
+rows. To add such a matrix to an existing matrix M it suffices to write
 
   for col@j in M do for entry@i in col do entry+if i=j then 1 else 0 fi od od
 
 Conditionals can be used to do rudimentary recursive functions. The language
 itself does not directly support recursion (a function expression has no means
-to refer to itself from inside), but using assignment we can nevertheless get
-recursion into place. The trick is to first introduce a dummy function
-expression with the correct type, so that the "recursive" function expression
-can pass the type check, and then by assignment replace it by a properly
-recursive expression (note that the requirement that assignments do not change
-types guarantees the type check continues to makes sense). So here is how one
-could define the factorial function
+to refer to itself from inside), but using assignment to a global function
+variable we can nevertheless get recursion into place. The trick is to first
+introduce a dummy function name with the correct type, so that the "recursive"
+function body can pass the type check, and then by assignment replace it by a
+properly recursive expression (note that the requirement that assignments do
+not change types guarantees the type check continues to makes sense). One is
+forced to assign an anonymous function to the name, as follows:
 
   expr> set fac = (int n): 0
   Identifier fac: (int->int)
-  expr> fac := (int n): if n>0 then n*fac(n-1) else 1 fi
-  Value: (n):  if >(n,0) then *(n,fac(-(n,1))) else 1 fi
+  expr> fac := ((int n): if n>0 then n*fac(n-1) else 1 fi);
   expr> fac(7)
   Value: 5040
 
-Note that the second expression for 'fac' must use the ':=' operator to
-guarantee recursion; if we would have used 'set fac =' again, we would have
-created a new function object 'fac' whose body refers to the old (and not
-otherwise accessible) function object also called 'fac', and there would be no
-recursion. The value printed after the assignment is it value, the internal
-representation of the function body (this output, as that of any command that
-returns a value, could have been suppressed by preceding the assignment by
-'void:' (a cast to void) or by following it by '; ()' (making it into a
-sequence returning a void value). Note that the initial and recursive function
-definitions do not use the usual syntax (the '=' and ':=' comes), and
-therefore do not affect the overload table but the global variable table. No
-recursion via the overload table is possible, since its entries are not
-modifiable via assignment. Indeed overload resolution results in a function
-value, not a reference to the overload table, and so it cannot be made
-recursive by later operations. On the other hand a mechanism is provided to
-avoid the dummy initial definition, which only serves to specify a type:
+The assignement is necessary to make the recursive call identify a function
+object with value defined by the function body; if we would have used the
+usual syntax 'set fac (int n)=' instead, we would have created a new function
+object 'fac' whose body refers to the old (and not otherwise accessible)
+function object also called 'fac'; there would have been no recursion and any
+execution (with argument n>0) would return 0. The semicolon after the
+assignment to 'fac' serves to suppress printing of the internal representation
+of the function object as value of the assignment. Note that the dummy initial
+definition does not use 'set fac (int n)=' either, since that would not create
+a function valued variable, but rather an entry in the overload table, which
+cannot be modified via assignment (the subsequent asignment would be refused
+because of an "undefined identifier" 'fac'). Indeed overloading is always
+resolved during expression analysis, and there is no run-time lookup of
+overloaded functions.
+
+Since the initial function value is to be never actually used (only its type
+serves) one might as well not specify it at all, by writing:
 
   expr> fac : (int->int)
 
 will give the global identifier 'fac' the indicated type but an undefined
 value, with which nothing can be done except assigning another value of the
 same type to it, which is exactly what we need for the recursive definition.
+One can use the same syntax to create undefined values of any type, but this
+does not have much practical use, since a value must be supplied anyway before
+it can be used.
 
 
 9 Splitting commands across lines
@@ -883,3 +919,187 @@ you get tired of using realex, type
 
   expr> quit
   Bye.
+
+
+12 Syntax summary
+
+A formal syntax is given in the parser generator source file "parser.y", which
+should be fairly readable for those used to BNF syntax. Here we summarize its
+contents informally.
+
+The syntax is very largely centered around a single "part of speech", the
+expression. There is no distinction between expressions and statements: every
+expression may have side effects (if it contains assignments for instance) and
+yields a value (although it might be void, or ignored). The only parts of the
+syntax not directly concerned with expressions is the part defining commands,
+which are only allowed at the outermost level, and some small categories such
+as type specifications and formal parameter lists that are used to form
+certain kinds of expressions without themselves being expressions. The command
+level will be described at the beginning, the non-expressions categories at
+the end. In between we enumerate the different kinds of expressions, in order
+from most loosely bound to most tightly bound; using a loosely bound form in
+more tightly bound context requires enclosing the expression in parentheses.
+
+(a) Command level.
+
+The most common command is an expression, possibly followed by a semicolon;
+the result of evaluation will be printed if the semicolon is absent. Also
+common is the 'set' command, which has overloading and non-overloading forms.
+In an overloading form, 'set' is followed by a single function or operator
+name, a non-empty parameter list, '=' and an expression (function body). In
+non-overloading form 'set' is followed by a an identifier pattern, an '=' and
+an expression; a single function name followed by an empty parameter list, '='
+and a function body is also taken as a non-overloading form of 'set' (since
+parameterless overloads are forbidden). To get rid of a variable altogether
+the command 'forget name' can be used. Individual instances in the overload
+table can be removed (which might be useful in case of overloading conflicts)
+using 'forget' with the function or operator name followed by '@' and the
+argument type(s) as in 'forget +@(int,int)'. A shorter alternative to the
+syntax 'set x = expr' is provided as 'x : expr'. The latter syntax with a type
+instead of expr creates a variable of the given type but undefined value.
+
+The command 'quit' terminates the interpreter, 'showall' shows all identifier
+associations. The commands 'verbose' and 'quiet' turn on or off extra
+diagnostics during expression analysis. A command starting with '>' or '>>'
+redirects output to a file (appending in the latter case); the symbol is
+followed by a file name (either delimited by whitespace or enclused in quotes)
+and then the expression to be evaluated. Input redirection is similar, using
+'<', but it should only be followed by a file name; if not found, the same
+name with ".rx" appended will also be tried. Normally input redirection is
+ignored if the same file was already read before; this is done so that a file
+that buids forth on "basis.rx" can safely start with '<basis.rx' to ensure its
+definitions are seen, without needlessly reloading it should it already have
+been read. One can override this mechanism (useful if the file has changed) by
+using '<<' instead of '<'. The command 'whattype' can either be followed by an
+expression or by an identifier or operator followed by '?'. In the former case
+the expression is only analyzed and its type printed; n the latter case the
+overload table will be searched, and all occurrences of that item listed.
+
+(b) Loose expressions: 'let', anonymous functions, casts, 'next'-expressions
+
+These are the expression types that end with another expression that never
+needs parentheses; they are themselves loosely bound, so the might require
+parentheses if used in other context (like in an assignment). Let-expressions
+introduce local definitions, starting with 'let', then a list of one or more
+definitions then 'in' and a final expression in which those definitions are
+valid, and which produces the value of the let-expression. Certain definitions
+in the list may be separated by 'then', which behaves like 'in let', so that
+the items defined before it are accessible afterwards. Between two of 'let',
+'then, and 'in', several definitions may be separated by commas, in which case
+they are handled in parallel (neither can refer to the identifiers defined by
+the others). Each basic definition consists of an identifier pattern followed
+by '=' and an expression (which never needs parentheses). Local definitions
+are never overloaded, and any locally defined name hides all overloads of that
+name. Nevertheless the special syntax of 'set' for function definitions (with
+'=' after the parameter list) is also available with 'let'.
+
+Anonymous functions consist of a pair of parentheses enclosing a parameter
+list, followed by an optional (result) type, and then ':' and the function
+body expression. A parameter list consists of zero or more pairs of a type
+followed by an identifier pattern, separated by commas. Casts consist of a
+type followed by ':' and an expression.
+
+A next-expression consists of a quaternary level expression followed by 'next'
+and an expression. The 'next' separator behaves like ';', except that it
+returns the value of its left hand expression (which is still evaluated first)
+instead of its right hand expression. When more than two expressions are
+separated by 'next', the one before the first 'next' determines the value.
+
+(c) Quaternary expressions: semicolon-separated sequences.
+
+A sequence of expressions separated by semicolons is evaluated from left to
+right, and the value of the last expression determines the value of the
+sequence (the values of the other expressions are cast away, and often not
+even assembled; this is true for the right hand expression of 'next' as well).
+Because semicolon binds more stringly than 'next', when using a mixture of
+both (without parentheses to override) the final value comes from the last
+expression before the first 'next'. Tertiary expressions and more strongly
+bound ones are considered to be quaternary expressions too, and this pattern
+continues for the remaining levels.
+
+(d) Tertiary expressions: assignments and Boolean expressions.
+
+Assignments change the values bound to (non-overloaded instances of) local or
+global identifiers (the most local binding hides any others). They consist of
+an identifier name, then ':=' and a tertiary expression. The identifier must
+have been introduced before (at least one binding must be found), and the
+assignment must be compatible with its type, which cannot change by the
+assignment (but the assigned value might be converted to match the type). An
+alternative form of the assignment allows a binary operator symbol before ':='
+as abbreviation, where an assignment like 'a % := 7' stands for 'a := a % 7'.
+Another form of assignment involves a subscripted left hand side: an
+identifier followed by '[', one or two expressions separated by ',', and
+finally ']'. This modifies a list, vector or matrix by replacing one entry or
+(in case of a matrix used with only one index expression) column by the value
+of the right hand expression. The effect is that of the assignment of a new
+value to the identifier, which differs from the old value only in the place
+specified by the index or indices.
+
+Boolean expressions involve the logical connectives 'and', 'or' and 'not'.
+They can be understood as the most loosely bound forms of expressions, but are
+actually translated into if-then-else expressions with Bollean values:
+x and y -> if x then y else false fi,  x or y -> if x then true else y fi,
+not x -> if x then false else true fi. This implies that the right hand side
+of 'and ' and 'or' connectives is only evaluated if necessary. The connective
+'or' is most loosly bound, 'and' binds stronger and 'not' stronger still, but
+all of them bind more loosly then formulas, notably comparison operations.
+
+(e) Secondary expressions: formulas.
+
+These involve operators in the following order of increasing priority:
+=,  !=,  <,  >,  <=,  >=;        +, -;      *, /, \, %, \%;     ^;        #.
+Items separated by commas have the same priority, while among operators of the
+same priority association is from left to right, except for '^' right to left.
+When used in a unary way, an operator binds with the same priority and when
+used as a binary operator: -x+y is (-x)+y, -a^b is -(a^b), and -a%p is -(a%p).
+
+(f) Primary expressions: subscriptions, function applications, units
+
+Subscriptions consist of a primary expression (usually an identfier) followed
+by a comma-separated list of (index) expressions encloded in '[' and ']'.
+Function applications are similar except that the list of (argument)
+expressions is encloded in '(' and ')', and that it may be empty. Units are
+expressions made of a single symbol: an identifier, integer number, true,
+false, or string constant (enclosed in quotes and on a single line). These are
+primary expressions, as are specialisations of overloaded names or operators,
+formed by following the name or operator by '@' and a type (as in 'forget').
+
+(g) Closed expressions: displays and groupings, conditionals, loops
+
+These compound expressions include delimiters at both ends, so they never need
+(additional) paretheses; a single parenthesized expression also forms a closed
+expression. The different forms are as follows, where '*' is any expression
+
+if * then * fi
+if * then * else * fi
+if * then * elif ... fi
+while * do * od
+for pattern in * do * od
+for pattern @ ident in * do * od
+for ident : * do * od
+for ident : * from * do * od
+for ident : * downto * do * od
+begin * end
+( * , * , ... )
+[ * , ... ]
+[ * , ... | * , ... | ... ]
+
+(h) Argument lists, Identifier patterns
+
+An identifier pattern can be a single identifier, or a parenthesized list or a
+parenthesized list followed by ':' and an identifier (naming the whole
+structure); in case of a parenthesized list the value of the expression after
+'=' should have the corresponding tuple structure. The items in the
+parenthesized list are again patterns, separated by commas, where patterns may
+also be omitted if no name is needed for the corresponding component.
+
+(i) Types
+
+Types are either 'void' (the type of the empty tuple) or recursively
+constructed using the basic types 'int', 'bool', 'string', 'vec', 'mat',
+'ratvec', or atlas-specific types like 'InnerClass', using the list
+constructor [*], the tuple constructor (*,*,...) (with at least two types:
+around a single type parentheses just provide redundant grouping) and the
+function constructor (*,*,...->*,*,...) (here parentheses around argument and
+result type lists are implicitly assumed if there are more than one; there
+could be none at all, which is equivalent to specifying 'void').

@@ -60,7 +60,7 @@ extern "C"
 recognise, terminated by a null pointer. Currently the lexical analyser adds
 the offset of the keyword in this list to |QUIT|, so the recognition depends
 on the fact that |"quit"| is the first keyword, and that they are listed below
-in the same order as in the \.{\%token} declaration in \.{parser.y}.
+in the same order as in the \.{\%token} declarations in \.{parser.y}.
 
 @< Local static data @>=
 
@@ -77,7 +77,7 @@ const char* keywords[] =
 
 @ Here are the wrapper function for the lexical analyser and the error
 reporting function, which are necessary because the parser cannot directly
-call a class method. The prototypes are inposed, in particular the second and
+call a class method. The prototypes are imposed, in particular the second and
 third arguments to |yyerror| are those passed to |yyparse|, even though they
 are not used in |yyerror|. In |yyerror| we close any open include files, as
 continuing to execute their commands is undesirable.
@@ -192,8 +192,8 @@ suppress printing if the uninteresting value.
     type_ptr type=analyse_types(parse_tree,e);
     type_OK=true;
     if (verbosity>0)
-      *output_stream << "Type found: " << *type << endl @|
-	<< "Converted expression: " << *e << endl;
+      cout << "Type found: " << *type << endl @|
+	   << "Converted expression: " << *e << endl;
     e->evaluate(expression_base::single_value);
     shared_value v=pop_value();
     static type_expr empty(type_list_ptr(NULL));

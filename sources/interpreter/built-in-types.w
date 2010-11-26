@@ -2703,6 +2703,59 @@ void raw_KL_wrapper (expression_base::level l)
     wrap_tuple(3);
 }
 
+@ For testing, it is useful to also have the dual Kazhdan-Lusztig tables.
+
+@< Local function def...@>=
+void raw_dual_KL_wrapper (expression_base::level l)
+{ shared_dual_real_form drf(get<dual_real_form_value>());
+  shared_real_form rf(get<real_form_value>());
+@)
+  if (&rf->parent.val!=&drf->parent.val)
+    throw std::runtime_error @|
+    ("Inner class mismatch between real form and dual real form");
+@.Inner class mismatch...@>
+  bitmap::BitMap b(rf->parent.val.dual_Cartan_set(drf->val.realForm()));
+  if (!b.isMember(rf->val.mostSplit()))
+    throw std::runtime_error @|
+    ("Real form and dual real form are incompatible");
+@.Real form and dual...@>
+@)
+  blocks::Block block = blocks::Block::build
+   (rf->parent.val,rf->val.realForm(),drf->val.realForm());
+  blocks::Block dual_block = blocks::Block::build
+   (rf->parent.dual,drf->val.realForm(),rf->val.realForm());
+  std::vector<blocks::BlockElt> dual=blocks::dual_map(block,dual_block);
+  kl::KLContext klc(dual_block); klc.fill();
+@)
+  if (l==expression_base::no_value)
+    return;
+  matrix_ptr M(new matrix_value(latticetypes::LatticeMatrix(klc.size())));
+  const kl::KLPol* base_pt = &klc.polStore()[0];
+  for (size_t y=1; y<klc.size(); ++y)
+    for (size_t x=0; x<y; ++x)
+    {
+      const kl::KLPol& pol = klc.klPol(dual[y],dual[x]);
+      if (not pol.isZero()) // exception needed: zero need not be from table
+        M->val(x,y)= &pol-base_pt;
+    }
+@)
+  row_ptr polys(new row_value(0)); polys->val.reserve(klc.polStore().size());
+  for (size_t i=0; i<klc.polStore().size(); ++i)
+  {
+    const kl::KLPol& pol = klc.polStore()[i];
+    std::vector<int> coeffs(pol.size());
+    for (size_t j=pol.size(); j-->0; )
+      coeffs[j]=pol[j];
+    polys->val.push_back(shared_value(new vector_value(coeffs)));
+  }
+@)
+  push_value(M);
+  push_value(polys);
+  if (l==expression_base::single_value)
+    wrap_tuple(2);
+}
+
+
 @* Test functions.
 %
 Now we shall make available some commands without actually creating new data
@@ -3124,6 +3177,8 @@ install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
 install_function(raw_KL_wrapper,@|"raw_KL"
                 ,"(RealForm,DualRealForm->mat,[vec],vec)");
+install_function(raw_dual_KL_wrapper,@|"dual_KL"
+                ,"(RealForm,DualRealForm->mat,[vec])");
 install_function(print_gradings_wrapper,@|"print_gradings"
 		,"(CartanClass,RealForm->)");
 install_function(print_realweyl_wrapper,@|"print_real_Weyl"

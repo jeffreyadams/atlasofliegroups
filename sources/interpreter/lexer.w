@@ -24,11 +24,10 @@
 @* Introduction.
 This file describes a lexical scanner that provides a layer situated between
 the class |BufferedInput| that provides lines of input, and the parser that is
-to receive a sequence of tokens. The functionality provided is the
-recognition of tokens, in particular keywords and constants, and the
-management of a table of identifiers, so that in the remainder of the program
-identifiers can be represented by a small identification number rather than by
-a string (with a conversion to string for output still being possible).
+to receive a sequence of tokens. The functionality provided is the recognition
+of tokens, in particular keywords and constants. The module \.{buffer} is used
+that provides classes for tables that store identifiers and encode them by
+small numbers, as well as the class |BufferedInput| itself.
 
 @h "buffer.h"
 
@@ -66,235 +65,6 @@ namespace atlas
 }@;
 
 
-
-@* Tables recording identifiers. All distinct tokens recognised by the scanner
-are stored as null-terminated strings in dynamically allocated memory; these
-include all keywords, operators, and identifiers used, but not literal
-constants or strings (since there is no point in remembering those). To
-provide storage for such strings, we provide a simple class |String_pool|
-which basically allows to copy any string to a safe place. When the string
-pool is destructed, all character pointers it has given out become invalid.
-Only one string pool is envisaged, and it its lifetime will only end at
-termination of the program; still the following class is adapted to manage
-strings in various pools with different lifetimes. A |String_pool| will be
-implemented as a list of blocks containing the individual strings, from newest
-to oldest. The blocks are usually of the size specified when the pool is
-constructed, but if in rare cases a string larger than the block size is
-requested, a single block of that size will be created (but |block_size| will
-not change). To know how much remains in the current block, we keep a separate
-record, in |chars_left|.
-
-
-@< Class declarations @>=
-
-class String_pool
-{ public:
-    static const size_t default_block_size=512;
-    String_pool(size_t b=default_block_size); // create pool and set block size
-    char* store(const char* s, size_t length); // store string of given length
-    ~String_pool();
-  private:
-    String_pool(const String_pool&); // copying forbidden
-    String_pool& operator=(const String_pool&); // assignment forbidden
-@)
-    size_t block_size; // block size of the pool
-    char* start; // start of block in current usage
-    char* point; // first character available
-    size_t chars_left; // number of characters left in current block
-    String_pool* prev; // start of list of previous blocks, for deallocation
-};
-
-@ The constructor for a |String_pool| sets the block size, but does not yet
-allocate a block.
-
-@< Definitions of class members @>=
-String_pool::String_pool(size_t b)
-: block_size(b),start(NULL),point(NULL),chars_left(0),prev(NULL)
-{}
-
-@ Whenever a identifier |str| of length |n| has to be stored in |pool|, we
-shall call |pool.store(str,n)|. It will allocate |n+1| bytes and copy |str|
-including the terminating null byte into it, returning a pointer to the
-allocated string.
-
-@< Definitions of class members @>=
-char* String_pool::store(const char* s,size_t len)
-{ size_t n= len>=block_size ? len+1 : block_size;
-            // size of new block if needed
-  if (len>=chars_left) // then the current block cannot store |s|, so allocate
-  { if (start!=NULL) // initial block needs no backing up
-    { String_pool* p=new String_pool(block_size);
-      p->prev=prev; p->start=start; // only these fields need backing up
-      prev=p; // link to old blocks, needed for destruction
-    }
-    start=point=new char[n]; // now we can copy to where |point| points
-    chars_left=n;
-  }
-  strncpy(point,s,len); @+ char* result=point;
-  chars_left-=len+1;
-  point+=len;  *point++='\0';
-  return result;
-}
-
-@ The destructor for |String_pool| recursively frees all blocks allocated.
-This happens because |delete| calls the destructor for the |String_pool|
-object pointed to by its argument |prev| before freeing its memory.
-
-@< Definitions of class members @>=
-String_pool::~String_pool(void)
-@+{@; delete prev; delete[] start; }
-
-@*1 The hash table. Our hash table will use an instance of |String_pool| for
-storing its keys. The functionality of the hash table is quite simple, and it
-hides the actual hashing. Upon construction the hash table is empty, and its
-stores every distinct string that is passed to it, never removing one. It
-matches the string against all strings it has seen before, and returns a
-sequence number: either the number that was given to the same string when it
-was first encountered, or the next unused number if the string was never seen
-before. Methods are also provided for the inverse conversion, from a sequence
-number to the corresponding string, and for determining the current number of
-entries stored. This will allow working everywhere with sequence numbers to
-represent identifiers.
-
-@h<vector>
-@< Class declarations @>=
-
-class Hash_table
-{ public: typedef short id_type; // type of value representing identifiers
-private: // data members
-    String_pool pool;
-    id_type mod;  // hash modulus, the number of slots present
-    std::vector<id_type> hash_tab;
-    std::vector<const char*> name_tab;
-public: // interface
-    Hash_table(size_t init=initial_hash_mod
-              ,size_t block_size=String_pool::default_block_size);
-    id_type match(const char* s, size_t l) @+{@; return do_match(s,l,true); }
-    id_type match_literal(const char* s) /* literal null-terminated string */
-      {@; return do_match(s,strlen(s),false); }
-    const char* name_of(id_type nr) const @+{@; return name_tab[nr]; }
-    id_type nr_entries() const @+{@; return name_tab.size(); }
-private: // auxiliary functions
-    static const id_type initial_hash_mod=97;
-    id_type hash(const char* s, size_t l) const; // auxiliary hash function
-    id_type do_match(const char* s, size_t l, bool copy_string);
-    size_t max_fill() const {@; return static_cast<id_type>(mod*3L/4); }
-                    // maximum of entries in use
-};
-
-@ Here is the constructor for a hash table. By nature |hash_tab| is larger
-than the number of entries currently stored; its size is always equal to~|mod|
-(which is stored separately to speed up hash calculations). The initialiser
-expression for |mod| takes care to ensure that |max_fill()<mod| always holds,
-by rejecting ridiculously small values. Although |name_tab| will grow
-incrementally, we prefer to reserve enough space for it to avoid reallocation
-until rehashing is necessary. Therefore the allocated size of |name_tab| will
-always have size |max_fill| which grows with (but lags behind) |mod|.
-
-@< Definitions of class members @>=
-
-Hash_table::Hash_table(size_t init,size_t block_size)
-: pool(block_size)
-, mod(init<2?2:init), hash_tab(mod), name_tab(0)
-{@; name_tab.reserve(max_fill()); for(int i=0; i<mod; ++i) hash_tab[i]=-1;
-}
-
-@ The hash code of an identifier is determined by interpreting its characters
-as digits of a number in base~256, and then taking the number modulo |mod|.
-While the final result is a short value, intermediate results may be almost as
-large as |mod<<8|, so we use a |long| value here.
-
-The code below shows a bad property of the rigid type system of \Cpp: it is
-virtually impossible to transform a pointer of type |(char*)| to one of type
-|(unsigned char*)|, short of using a |reinterpret_cast| or (even worse)
-calling the placement-|new| operator (as in |unsigned char p=new(s) unsigned
-char@;|), even though this is a fairly innocent thing to do. Here we just want
-to assure that we are doing arithmetic on non-negative values, even if some
-characters would classify as negative |char| values (failing to do this could
-cause the program the program to crash). And we cannot help having pointers to
-(possibly) signed characters in the first place, because that is for instance
-what string denotations give us (and what many standard functions require).
-The simplest solution would be to convert |s| to |(const unsigned char*)|, and
-everything would be safe. We dare not do such a conversion for fear of
-losing our job, so instead we convert every character accessed via~|s|
-laboriously into an unsigned value, which can be done by a standard
-conversion; this accounts for two of the three |static_cast|s below
-(the third is for documentation only).
-
-@< Definitions of class members @>=
-
-Hash_table::id_type Hash_table::hash
-        (const char* s, size_t l) const // |s| a string of length |l>0|
-{ long r=static_cast<unsigned char>(*s++)%mod;
-  for ( --l; l>0 ; --l) r=(static_cast<unsigned char>(*s++)+(r<<8))%mod;
-  return static_cast<id_type>(r);
-}
-
-
-@ When an identifier has been isolated in the input stream, a call to |match|
-returns its index in |name_tab|, possibly after adding the identifier to the
-tables. This small number is henceforth used to characterise the identifier.
-The private function |do_match| does the real work; it is also called by
-|match_literal| in case of keywords stored at initialisation time, for which a
-null-terminated string is supplied that does not need to be copied to the
-string pool. The parameter |copy_string| distinguishes the two uses.
-
-Searching the hash table starts at the hash key and proceeds linearly through
-the table until either a match or an empty slot is found; in the latter case
-no matching entry is present, and we add one in the place of the empty slot.
-This method is valid because we never remove an entry from the hash table. We
-use here the fact that |max_fill()<mod| holds, so that there will be at least
-one empty slot present, and it is not necessary to test for complete wrap
-around the table. When a new entry would make the table too full, we extend
-the size of the table and rehash. After this we could return
-|do_match(str,l,copy_string)| recursively, but since we assume that the
-too-full condition has been resolved, and we know that |str| is new, we can
-avoid recursion and perform a simplified computation of the new hash code in
-this case.
-
-@h <cstring>
-@< Definitions of class members @>=
-Hash_table::id_type Hash_table::do_match
-	(const char* str, size_t l, bool copy_string)
-{ id_type i,h=hash(str,l);
-  while ((i=hash_tab[h])>=0)
-    if (std::strncmp(name_tab[i],str,l)==0 && name_tab[i][l]=='\0') return i;
-          /* identifier found in table */
-    else if (++h==mod) h=0; /* move past occupied slot */
-  if (name_tab.size()>=max_fill())
-  { @< Extend hash table @>
-    h=hash(str,l); @+
-    while (hash_tab[h]>=0) @+
-      if (++h==mod) h=0; /* find free slot */
-  }
-  hash_tab[h]= name_tab.size(); /* this number represents the new identifier */
-  name_tab.push_back(copy_string ? pool.store(str,l) : str);
-  return hash_tab[h];
-}
-
-@ When the hash table becomes too full, we can throw away the |hash_tab|
-because the |name_tab| contains all the information required; therefore we can
-assign a larger vector to |hash_tab| rather than using |hash_tab.resize()|
-which would copy the old entries. By performing the assignment via the |swap|
-method (necessarily taken from the newly constructed value) we can avoid any
-risk of copying of the new (empty) slots that an assignment might imply. The
-code for inserting the indices of rehashed strings from |name_tab| is simpler
-than in the basic matching loop, since we know that all those strings are
-distinct; it suffices to find for each an empty slot. The sequence number
-associated to each string does not change. We finally reserve enough space for
-|name_tab| to last until the next time rehashing is necessary.
-
-@< Extend hash table @>=
-{ vector<id_type>(mod=2*mod-1).swap(hash_tab); // keep it odd
-  for (int h=0; h<mod; ++h) hash_tab[h]=-1;
-  for (size_t i=0; i<name_tab.size(); ++i)
-  { int h=hash(name_tab[i],strlen(name_tab[i])); // rehash the string
-    while (hash_tab[h]>=0) @+ if (++h==mod) h=0; /* find empty slot */
-    hash_tab[h]=i;
-  }
-  name_tab.reserve(max_fill());
-}
-
 @ Since there is one central hash table, and other parts of the program must
 have access to it, for instance to look up names of identifiers, we define a
 static variable with a pointer to this hash table.
@@ -309,6 +79,7 @@ it point to the main hash table once it is allocated.
 Hash_table* main_hash_table=NULL;
 
 @*1 Identifier completion.
+%
 We define a completion function |id_completion_func| that will be used by the
 \.{readline} library. This is done here since it deals with the hash table,
 but strictly speaking this has nothing to do with lexical analysis. The
@@ -696,8 +467,10 @@ values.
 large switch on the value of the look-ahead character~|c|. We increase and
 decrease nesting on obvious grouping characters, and for certain characters we
 store them into |prevent_termination| to prevent a newline to be interpreted
-as command termination. If in the |initial| state we find a |'>'| character,
-then we prepare for output redirection.
+as command termination. If in the |initial| state we find a |'<'| or |'>'|
+character, then we prepare for input file inclusion or output redirection;
+both tokens can be doubled to designate forced inclusion (if file was already
+included before) respectively appending output redirection.
 
 @< Scan a token... @>=
 { switch(c)
@@ -711,9 +484,9 @@ then we prepare for output redirection.
   break; case '<':
          case '>':
          if (state==initial)
-         { code= c=='<' ? FROMFILE :
-                 input.shift()=='>' ? ADDTOFILE :
-                 (input.unshift(),TOFILE) ;
+         { code= c=='<'
+           ? input.shift()=='<' ? FORCEFROMFILE:  (input.unshift(),FROMFILE)
+           : input.shift()=='>' ? ADDTOFILE : (input.unshift(),TOFILE) ;
 	   @< Read in |file_name| @> @+ break;
          }
          prevent_termination=c;

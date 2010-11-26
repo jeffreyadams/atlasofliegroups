@@ -948,11 +948,12 @@ arrange for shared ownership of that location. This explains that the
 shared pointer.
 
 For the type component on the other hand, the identifier table will assume
-strict ownership. Giving ownership of the type directly to |id_data| would
-complicate its duplication, and therefore its insertion into the table. We
-then only allow construction of |id_data| objects in an empty state; the
-pointers should be set only after insertion of the |id_data| into the table,
-which then assumes ownership of the type.
+strict ownership. If one would instead give ownership of the |type| field
+directly to individual |id_data| entries, this would greatly complicate their
+duplication, and therefore their insertion into the table. We therefore only
+allow construction of |id_data| objects in an empty state; the pointers they
+contain should be set only \emph{after} the insertion of the object into the
+table, which then immediately assumes ownership of the type.
 
 @< Type definitions @>=
 
@@ -965,14 +966,15 @@ struct id_data
 @ We cannot store auto pointers in a table, so upon entering into the table we
 convert type pointers to ordinary pointers, and this is what |type_of| lookup
 will return (the table retains ownership); destruction of the type expressions
-referred to only takes place when the table itself is destructed.
+referred to will be handled explicitly when the entry, or the table itself, is
+destructed.
 
 @< Includes needed in the header file @>=
 #include <map>
 #include "lexer.h" // for the identifier hash table
 
-@~We currently do not do overloading, so a simple associative table with the
-identifier as key is used.
+@~Overloading is not done in this table, so a simple associative table with
+the identifier as key is used.
 
 @< Type definitions @>=
 class Id_table
@@ -1063,18 +1065,30 @@ shared_share Id_table::address_of(Hash_table::id_type id)
 { map_type::iterator p=table.find(id);
   if (p==table.end())
     throw std::logic_error @|
-    (std::string("Identifier without value:")+main_hash_table->name_of(id));
+    (std::string("Identifier without table entry:")
+     +main_hash_table->name_of(id));
 @.Identifier without value@>
   return p->second.val;
 }
 
 @ We provide a |print| member that shows the contents of the entire table.
+Since identifiers might have undefined values, we must test for that condition
+and print dummy output in that case. This case is distinct from the one where
+a user explicitly asks for the value of an uninitialised variable; the latter
+will be caught by the evaluator at the point where the variable is evaluated.
+
 @< Function def... @>=
 
 void Id_table::print(std::ostream& out) const
 { for (map_type::const_iterator p=table.begin(); p!=table.end(); ++p)
-    out << main_hash_table->name_of(p->first) << ": " @|
-        << *p->second.type << ": " << **p->second.val << std::endl;
+  { out << main_hash_table->name_of(p->first) << ": " @|
+        << *p->second.type << ": ";
+    if (*p->second.val==NULL)
+      out << '*';
+    else
+      out << **p->second.val;
+    out << std::endl;
+   }
 }
 
 std::ostream& operator<< (std::ostream& out, const Id_table& p)
@@ -1094,7 +1108,7 @@ extern Id_table* global_id_table;
 create the table.
 
 @< Global variable definitions @>=
-Id_table* global_id_table=NULL;
+Id_table* global_id_table=NULL; // will never be |NULL| at run time
 
 @*1 Global identifiers.
 %
@@ -4670,7 +4684,7 @@ install_function(ratvec_minus_wrapper,"-","(ratvec,ratvec->ratvec)");
 install_function(null_vec_wrapper,"null","(int->vec)");
 install_function(null_mat_wrapper,"null","(int,int->mat)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
-install_function(error_wrapper,"error","(string->)");
+install_function(error_wrapper,"error","(string->*)");
 install_function(string_eq_wrapper,"=","(string,string->bool)");
 install_function(string_neq_wrapper,"!=","(string,string->bool)");
 install_function(concatenate_wrapper,"#","(string,string->string)");

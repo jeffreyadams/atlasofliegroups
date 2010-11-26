@@ -8,7 +8,7 @@ begin
   prints("compact: ",cr,", complex: ",Cr,", split: ",sr)
 ; (let str="canonical twisted involution: " in
      if #ww=0 then str #:= "e"
-     else str +:= ww[0]+1; for i = #ww-1 from 1 do str #:= ","+(ww[i]+1) od
+     else str +:= ww[0]+1; for i : #ww-1 from 1 do str #:= ","+(ww[i]+1) od
      fi
    ; prints(str)
   )
@@ -40,24 +40,20 @@ else let (min,d) = if i<j then (i,j-i) else (j,i-j) fi
 fi
 
 set Cartan_matrix(int type, int r)= mat:
-for j = r
-do for i = r
-   do Cartan_entry(type,r,i,j)
-   od
-od
+for j:r do for i:r do Cartan_entry(type,r,i,j) od od
 
 set Lie_type((int,int) p) =
   let (type,) = Cartan_matrix_type(Cartan_matrix(p)) in type
 
 set GL_roots (int n) = [vec]:
-for i = n-1
-do for j = n
+for i : n-1
+do for j : n
    do if j=i then 1 elif j=i+1 then -1 else 0 fi od
 od
 
 set SL_coroots (int n) = [vec]:
-for i = n-1
-do for j = n-1
+for i : n-1
+do for j : n-1
    do if j=i then 1 elif j=i+1 then -1 else 0 fi od
 od
 
@@ -72,31 +68,31 @@ set GL_datum(int n)= let r=GL_roots(n) in root_datum(r,r,n)
 set SL_datum(int n)= root_datum(SL_roots(n),SL_coroots(n),n-1)
 
 set type_B_roots (int n) = [vec]:
-for i = n
+for i : n
 do if i<n-1
-   then for j = n
+   then for j : n
         do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-   else for j = n do if j<n-1 then 0 else 1 fi od
+   else for j : n do if j<n-1 then 0 else 1 fi od
    fi
 od
 
 set type_C_roots (int n) = [vec]:
-for i = n
+for i : n
 do if i<n-1
-   then for j = n
+   then for j : n
         do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-   else for j = n do if j<n-1 then 0 else 2 fi od
+   else for j : n do if j<n-1 then 0 else 2 fi od
    fi
 od
 
 set type_D_roots (int n) = [vec]:
 if n<2 then [] { SO(2) is pure torus }
 else
-  for i = n
+  for i : n
   do if i<n-1
-     then for j = n
+     then for j : n
           do if j=i then 1 elif j=i+1 then -1 else 0 fi od
-     else for j = n do if j<n-2 then 0 else 1 fi od
+     else for j : n do if j<n-2 then 0 else 1 fi od
      fi
   od
 fi

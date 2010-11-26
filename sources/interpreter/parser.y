@@ -53,7 +53,7 @@
 %token <val> INT
 %token <expression> STRING
 %token <id_code> IDENT
-%token TOFILE ADDTOFILE FROMFILE
+%token TOFILE ADDTOFILE FROMFILE FORCEFROMFILE
 
 %token <type_code> TYPE
 %token ARROW "->"
@@ -125,7 +125,8 @@ input:	'\n'			{ YYABORT } /* null input, skip evaluator */
 	| VERBOSE '\n'		{ *verbosity =1; YYABORT } /* verbose mode */
 	| TOFILE exp '\n'	{ *parsed_expr=$2; *verbosity=2; }
 	| ADDTOFILE exp '\n'	{ *parsed_expr=$2; *verbosity=3; }
-	| FROMFILE '\n'		{ include_file(); YYABORT } /* include file */
+	| FROMFILE '\n'		{ include_file(1); YYABORT } /* include file */
+	| FORCEFROMFILE '\n'	{ include_file(0); YYABORT } /* force include */
 	| WHATTYPE exp '\n'	{ type_of_expr($2); YYABORT } /* print type */
 	| WHATTYPE operator '?' '\n'
 			     { show_overloads($2.id); YYABORT } /* show types */
@@ -154,6 +155,14 @@ lettail : declarations IN exp { $$ = make_let_expr_node($1,$3); }
 declarations: declarations ',' pattern '=' exp
 	  { $$ = add_let_node($1,$3,$5); }
 	| pattern '=' exp { $$ = add_let_node(NULL,$1,$3); }
+        | IDENT '(' id_specs ')' '=' exp
+	  { struct id_pat p; p.kind=0x1; p.name=$1;
+	    $$ = add_let_node(NULL,p,make_lambda_node($3.patl,$3.typel,$6));
+	  }
+	| IDENT '(' ')' '=' exp
+	  { struct id_pat p; p.kind=0x1; p.name=$1;
+	    $$ = add_let_node(NULL,p,make_lambda_node(NULL,NULL,$5));
+	  }
 ;
 
 quaternary: tertiary ';' quaternary { $$=make_sequence($1,$3,1); }
@@ -192,7 +201,7 @@ secondary : formula
 
 formula : formula_start operand { $$=end_formula($1,$2); }
 ;
-formula_start : OPERATOR       { $$=start_unary_formula($1.id,$1.priority); }
+formula_start : operator       { $$=start_unary_formula($1.id,$1.priority); }
 	| comprim operator     { $$=start_formula($1,$2.id,$2.priority); }
 	| IDENT operator
 	  { $$=start_formula(make_applied_identifier($1),$2.id,$2.priority); }
@@ -203,7 +212,7 @@ formula_start : OPERATOR       { $$=start_unary_formula($1.id,$1.priority); }
 
 operator : OPERATOR | '=';
 
-operand : OPERATOR operand { $$=make_unary_call($1.id,$2); }
+operand : operator operand { $$=make_unary_call($1.id,$2); }
 	| primary
 ;
 
@@ -237,11 +246,11 @@ comprim: subscription
 	    p.sublist=make_pattern_node(make_pattern_node(NULL,&$2),&i);
 	    $$=make_for_node(p,$6,$8);
 	  }
-	| FOR IDENT '=' exp FROM exp DO exp OD
+	| FOR IDENT ':' exp FROM exp DO exp OD
 	  { $$=make_cfor_node($2,$4,$6,1,$8); }
-	| FOR IDENT '=' exp DOWNTO exp DO exp OD
+	| FOR IDENT ':' exp DOWNTO exp DO exp OD
 	  { $$=make_cfor_node($2,$4,$6,0,$8); }
-	| FOR IDENT '=' exp DO exp OD
+	| FOR IDENT ':' exp DO exp OD
 	  { $$=make_cfor_node($2,$4,wrap_tuple_display(NULL),1,$6); }
 	| '(' exp ')'	       { $$=$2; }
 	| BEGIN exp END	       { $$=$2; }
@@ -280,8 +289,8 @@ iftail	: exp THEN exp ELSE exp FI { $$=make_conditional_node($1,$3,$5); }
 
 pattern : IDENT		    { $$.kind=0x1; $$.name=$1; }
 	| '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
-	| IDENT ':' '(' pat_list ')'
-	    { $$.kind=0x3; $$.name=$1; $$.sublist=reverse_patlist($4);}
+	| '(' pat_list ')' ':' IDENT
+	    { $$.kind=0x3; $$.name=$5; $$.sublist=reverse_patlist($2);}
 ;
 
 pattern_opt :/* empty */ { $$.kind=0x0; }
@@ -304,6 +313,7 @@ id_specs: type pattern
 ;
 
 type	: TYPE			  { $$=mk_prim_type($1); }
+        | '(' type ')'            { $$=$2; }
 	| '(' type ARROW type ')' { $$=mk_function_type($2,$4); }
 	| '(' types_opt ARROW type ')'
 			  { $$=mk_function_type(mk_tuple_type($2),$4); }

@@ -1,6 +1,6 @@
-set first (int n)= for i = n do i od  { [0,1,...,n-1] }
+set first (int n)= for i:n do i od  { [0,1,...,n-1] }
 
-set *(string s, int n)= let r="" in (for i = n do r#:=s od; r)
+set *(string s, int n)= let r="" in (for i:n do r#:=s od; r)
 
 set *(int c,vec v) = vec: for e in v do c*e od
 set *(int c,mat m) = mat: for col in m do for e in col do c*e od od
@@ -24,11 +24,10 @@ set -(vec v,vec w)= vec:
 
 set %(vec v,int d) = vec: for x in v do x%d od
 
+set sum (vec v)= let s=0 in for e in v do s+:=e od; s
+
 set sum (mat m)= { sum of columns of m }
-  let (r,c)=#m in
-  if c=0 then vec: for i=r do 0 od
-  else let sum=m[0] in for j=c-1 from 1 do sum+:=m[j] od; sum
-  fi
+  let (r,)=#m then sum = null(r) in for col in m do sum+:=col od; sum
 
 set +(string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
 
@@ -90,4 +89,4 @@ set real_coroots (RootDatum rd, mat theta) =
        do if theta*alpha = -alpha then rc #:= alpha fi od
      ; if #rc=0 then null(rank(rd),0) else mat: rc fi )
 
-set KGB(RealForm rf) = for i=KGB_size(rf) do KGB(rf,i) od
+set KGB(RealForm rf) = for i:KGB_size(rf) do KGB(rf,i) od
