@@ -1,4 +1,6 @@
-set first (int n)= for i:n do i od  { [0,1,...,n-1] }
+set #(int n)= for i:n do i od  { [0,1,...,n-1] }
+set #(bool b) = if b then 1 else 0 fi { Iverson symbol }
+set #(ratvec v)= let (n,)=%v in #n
 
 set *(string s, int n)= let r="" in (for i:n do r#:=s od; r)
 
