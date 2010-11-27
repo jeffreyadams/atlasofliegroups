@@ -2,7 +2,7 @@
 atlas_sources := ..
 
 # only the directories listed below of the atlas sources are actually used
-ATLAS_DIRS := utilities structure gkmod error io
+ATLAS_DIRS := utilities structure gkmod error io interface
 
 # this variable is used both by g++, and by cweavex needing the trailing slash
 INCLUDE_FLAGS := $(ATLAS_DIRS:%=-I$(atlas_sources)/%/)

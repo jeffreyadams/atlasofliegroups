@@ -33,21 +33,15 @@ namespace arithmetic {
 
 
 /*!
-  The classical Euclidian algorithm. It is assumed that
-
-  Precondition: b > 0;
+  The classical Euclidian algorithm. It is assumed that b > 0;
 */
 unsigned long unsigned_gcd(unsigned long a, unsigned long b)
 {
-  unsigned long r;
-
-  while ((r= a%b) != 0)
-  {
-    a = b;
-    b = r;
-  }
-
-  return b;
+  do
+    if ((a %= b)==0)
+      return b;
+  while ((b %= a)!=0);
+  return a;
 }
 
 
@@ -116,12 +110,14 @@ unsigned long power(unsigned long x, unsigned int n)
 Rational Rational::operator+(Rational q) const
 {
   unsigned long sum_denom=lcm(denom,q.denom);
-  return Rational(num*(sum_denom/denom)+q.num*(sum_denom/q.denom),sum_denom);
+  return Rational(num*long(sum_denom/denom)+q.num*long(sum_denom/q.denom),
+		  sum_denom);
 }
 Rational Rational::operator-(Rational q) const
 {
   unsigned long sum_denom=lcm(denom,q.denom);
-  return Rational(num*(sum_denom/denom)-q.num*(sum_denom/q.denom),sum_denom);
+  return Rational(num*long(sum_denom/denom)-q.num*long(sum_denom/q.denom),
+		  sum_denom);
 }
 
 Rational Rational::operator*(Rational q) const
@@ -131,9 +127,12 @@ Rational Rational::operator*(Rational q) const
 
 Rational Rational::operator/(Rational q) const
 {
-  if (q.num==0)
+  if (q.num>0)
+    return Rational(num*long(q.denom),denom*q.num).normalize();
+  else if (q.num==0)
     throw std::domain_error("Rational division by 0");
-  return Rational(num*q.denom,denom*q.num).normalize();
+  else
+    return Rational(-num*long(q.denom),denom*-q.num).normalize();
 }
 
 Rational& Rational::power(int n)

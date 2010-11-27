@@ -26,6 +26,8 @@ therefore written in~\Cee. Therefore we make very limited use of namespaces:
 we only use the anonymous namespace for data local to this file; any calls
 to \Cpp-code use explicit namespace resolution.
 
+@d realex_version "0.5" // version numbering from 0.5, on 27 November 2010
+
 @c
 
 @< Declaration of interface to the parser @>@;
@@ -114,6 +116,7 @@ in case none can be obtained.
 
 @h "buffer.h"
 @h "lexer.h"
+@h "version.h"
 
 @< Main program @>=
 
@@ -134,7 +137,11 @@ int main(int argc, char** argv)
 @)
   @< Initialise various parts of the program @>
 @)
-  cout << "Enter expressions:\n";
+  cout << "This is 'realex', version " realex_version " (compiled on " @|
+       << atlas::version::COMPILEDATE @| <<
+").\nIt is the programmable interpreter interface to the library (version " @|
+       << atlas::version::VERSION @| << ") of\n"
+       << atlas::version::NAME << @| ". http://www.liegroups.org/\n";
   while (ana.reset()) // get a fresh line for lexical analyser, or quit
   { expr parse_tree;
     int old_verbosity=verbosity;

@@ -3922,8 +3922,10 @@ void power_wrapper(expression_base::level l)
 }
 
 @ The operator `/' will not denote integer division, but rather formation of
-fractions (rational numbers). The opposite operation of separating a rational
-number into numerator and denominator is also provided; it is essential in
+fractions (rational numbers). Since the |arithmetic::Rational| constructor
+requires an unsigned denominator, we must make sure the integer passed to it
+is positive. The opposite operation of separating a rational number into
+numerator and denominator is also provided; this operation is essential in
 order to be able to get from rationals back into the world of integers.
 
 @< Local function definitions @>=
@@ -3931,6 +3933,7 @@ order to be able to get from rationals back into the world of integers.
 void fraction_wrapper(expression_base::level l)
 { int d=get<int_value>()->val; int n=get<int_value>()->val;
   if (d==0) throw std::runtime_error("fraction with zero denominator");
+  if (d<0) {@; d=-d; n=-n; } // ensure denominator is positive
   if (l!=expression_base::no_value)
     push_value(new rat_value(arithmetic::Rational(n,d)));
 }
