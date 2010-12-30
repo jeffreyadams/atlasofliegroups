@@ -54,6 +54,8 @@ namespace blocks {
     dual_involution(const weyl::TwistedInvolution& w,
 		    const weyl::TwistedWeylGroup& W,
 		    const weyl::TwistedWeylGroup& dual_W);
+
+  // map from numbering of |b| to that of |dual_b|, assuming latter is dual
   std::vector<BlockElt>
     dual_map(const Block_base& b, const Block_base& dual_b);
 

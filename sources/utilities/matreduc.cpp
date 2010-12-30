@@ -19,39 +19,43 @@ namespace atlas {
 namespace matreduc {
 
 // make |M(i,j)==0| and |M(i,k)>0| by operations with columns |j| and |k|
-// precondition |M(i,k)>0|
+// precondition |M(i,k)>0|. Returns whether determinant -1 operation applied.
 template<typename C>
-void column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k)
+bool column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k)
 {
-  if (M(i,j)<0) // happens often in Cartan matrices; result is more pleasant
+  bool neg=M(i,j)<0;
+  if (neg) // happens often in Cartan matrices; result is more pleasant
     M.columnMultiply(j,-1); // if we ensure non-negativity the easy way
   do
   {
     M.columnOperation(j,k,-(M(i,j)/M(i,k))); // makes |M(i,j)>=0| smaller
     if (M(i,j)==C(0))
-      return;
+      return neg;
     M.columnOperation(k,j,-(M(i,k)/M(i,j))); // makes |M(i,k)>=0| smaller
   }
   while (M(i,k)!=C(0));
   M.swapColumns(j,k); // only upon "normal" exit of loop swapping is needed
+  return not neg;
 }
 
 // make |M(i,j)==0| and |M(k,j)>0| by operations with rows |i| and |k|
-// precondition |M(k,j)>0|
+// precondition |M(k,j)>0|. Returns whether determinant -1 operation applied.
 template<typename C>
-void row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k)
+bool row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k)
 {
-  if (M(i,j)<0)
+  bool neg=M(i,j)<0;
+  if (neg)
     M.rowMultiply(i,-1);
   do
   {
     M.rowOperation(i,k,-(M(i,j)/M(k,j))); // makes |M(i,j)>=0| smaller
     if (M(i,j)==C(0))
-      return;
+      return neg;
     M.rowOperation(k,i,-(M(k,j)/M(i,j))); // makes |M(k,j)>=0| smaller
   }
   while (M(k,j)!=C(0));
   M.swapRows(i,k); // only upon "normal" exit of loop swapping is needed
+  return not neg;
 }
 
 /* Same operations with "recording" matrix |rec| on which same ops are done.
@@ -61,7 +65,7 @@ void row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k)
 // make |M(i,j)==0| and |M(i,k)>0| by operations with columns |j| and |k|
 // precondition |M(i,k)>0|
 template<typename C>
-void column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
+bool column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
 		  matrix::Matrix<C>& rec)
 {
   // Rather than forcing the sign of |M(i,j)|, we shall use |intutils::divide|
@@ -72,7 +76,7 @@ void column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
     M.columnOperation(j,k,q); // now |M(i,j)>=0|
     rec.columnOperation(j,k,q);
     if (M(i,j)==C(0))
-      return;
+      return false; // determinant $1$ here
     q=-(M(i,k)/M(i,j));
     M.columnOperation(k,j,q);
     rec.columnOperation(k,j,q);
@@ -80,15 +84,16 @@ void column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
   while (M(i,k)!=C(0));
   M.swapColumns(j,k);
   rec.swapColumns(j,k);
+  return true;  // determinant $-1$ here
 }
 
 /* make |M(i,j)==0| and |M(k,j)>0| by operations with rows |i| and |k|
    precondition |M(k,j)>0|. This function has a variant where row operations
    are recorded inversely, in other words by column operations in the opposite
-   sense; the template parameter |direct| tells whether recoring is direct
+   sense; the template parameter |direct| tells whether recording is direct
 */
 template<typename C, bool direct>
-void row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
+bool row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
 	       matrix::Matrix<C>& rec)
 {
   // Rather than forcing the sign of |M(i,j)|, we shall use |intutils::divide|
@@ -102,7 +107,7 @@ void row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
     else // do inverse column operation
       rec.columnOperation(k,i,q);
     if (M(i,j)==C(0))
-      return;
+      return false;
     q=M(k,j)/M(i,j);
     M.rowOperation(k,i,-q);
     if (direct)
@@ -116,6 +121,7 @@ void row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
     rec.swapRows(i,k);
   else
     rec.swapColumns(k,i);
+  return true;
 }
 
 /* transform |M| to column echelon form
@@ -159,8 +165,8 @@ template<typename C>
   return result;
 }
 
-/* find invertible |row|, |col| such that $row*M*col$ is diagonal, and
-   return diagonal entries. The result is not unique
+/* find |row|, |col| of determinant $1$ such that $row*M*col$ is diagonal, and
+   return diagonal entries (positive except maybe first). Result is not unique.
 */
 template<typename C>
 std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
@@ -172,64 +178,82 @@ std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
 
   matrix::Matrix<C>(m).swap(row); // initialise |row| to identity matrix
   matrix::Matrix<C>(n).swap(col);
-  std::vector<C> diagonal; diagonal.reserve(intutils::min(m,n));
+  std::vector<C> diagonal;
+  if (n==0 or m==0) return diagonal; // take out these trivial cases
+  diagonal.reserve(intutils::min(m,n));
 
-  for (size_t d=0; d<m and d<n; ++d)
+  int row_sign = 1, col_sign=1; // determinants of row/column operations
+
+  for (size_t d=0; d<m and d<n; ++d) // |n| may be diminished during loop
   {
-    while (M.column(d).isZero()) // ensure column |d| is nonzero
+  restart:
     {
-      --n;
-      if (d==n) // then remainder of matrix is zero
-	return diagonal;
-      M.swapColumns(d,n); // now matrix is zero from column |n| on
-      col.swapColumns(d,n);
-    }
-
-    { // get nonzero entry from column |d| at (d,d), and make it positive
-      size_t i=d;
-      while (M(i,d)==C(0)) // guaranteed to terminate
-	++i;
-      if (i>d)
+      size_t i=d; // index of first possibly non-zero entry in column $j$
+      do // find first nonzero entry
+	if (M(i,d)!=C(0))	break;
+      while (++i<m);
+      if (i==m) // then column is zero
       {
-	C u = M(i,d)>0 ? 1 : -1;
+	if (d == --n) // decrease column count
+	  break; // if colmn was in last non-zero position, quit outer loop
+	M.swapColumns(d,n); // now matrix is zero from column |n| on
+	col.swapColumns(d,n);
+	col_sign = -col_sign;
+	goto restart; // repeat outer loop without increasing |d| in this case
+      }
+
+      if (i>d) // non-zero entry was found below diagonal; copy it upwars
+      {
+	C u = M(i,d)>0 ? 1 : -1;  // ensure diagonal entry becomes positive
 	M.rowOperation(d,i,u);
 	row.rowOperation(d,i,u);
       }
-      else if (M(d,d)<0)
+      else if (M(d,d)<0) // negative diagonal entry, make it positive
       {
 	M.rowMultiply(d,-1);
 	row.rowMultiply(d,-1);
+	row_sign = -row_sign;
       }
-    }
+    } // end block declaring |i|
 
-    for (size_t i=d+1; i<m; ++i)
-      row_clear<C,true>(M,i,d,d,row); // makes |M(d,d)==gcd>0| and |M(i,d)==0|
+    for (size_t i=d+1; i<m; ++i) // ensure column |d| is null below diagonal
+      if (row_clear<C,true>(M,i,d,d,row)) // makes |M(d,d)==gcd>0|, |M(i,d)==0|
+	row_sign = -row_sign;
 
     // initial sweep is unlikely to be sufficient, so no termination test here
 
     size_t i,j=d+1; // these need to survive loops below (but one would suffice)
     do // sweep row and column alternatively with |M(d,d)| until both cleared
     {
-     for ( ; j<n; ++j)
-       column_clear(M,d,j,d,col); // makes |M(d,d)==gcd>0| and |M(d,j)==0|
+      for ( ; j<n; ++j) // ensure row |d| is null beyond diagonal
+	if (column_clear(M,d,j,d,col)) // makes |M(d,d)==gcd>0| and |M(d,j)==0|
+	  col_sign = -col_sign; // clearing row uses column operations!
 
-     for (i=d+1; i<m; ++i)
-       if (M(i,d)!=C(0))
-         break;
+      for (i=d+1; i<m; ++i) // check if column |d| is still null below diagonal
+	if (M(i,d)!=C(0))
+	  break; // not yet, in this case
      if (i==m) // then whole column below |M(d,d)| is zero, and done for |d|
        break; // most likely because |column_clear| left column |d| unchanged
 
-     for ( ; i<m; ++i)
-       row_clear<C,true>(M,i,d,d,row); // makes |M(d,d)==gcd>0| and |M(i,d)==0|
+     for ( ; i<m; ++i) // ensure column |d| is null below diagonal
+       if (row_clear<C,true>(M,i,d,d,row)) // makes |M(d,d)==gcd>0|, |M(i,d)==0|
+	 row_sign = -row_sign;
 
-     for (j=d+1; j<n; ++j)
+     for (j=d+1; j<n; ++j) // check if row |d| is still null beyond diagonal
        if (M(d,j)!=C(0))
-         break;
+         break; // not thse case, so force outer loop to continue
     }
     while(j<n); // we did |break|, apparently some |row_clear| changed row |d|
 
-    diagonal.push_back(M(d,d));
+    diagonal.push_back(M(d,d)); // record positive gcd that finally remains
   } // |for d|
+
+  if (diagonal.size()>0 and row_sign!=col_sign)
+    diagonal[0] = -diagonal[0];
+  if (row_sign<0)
+    row.rowMultiply(0,-1); // ensure determinant of |row| is |1|
+  if (col_sign<0)
+    col.columnMultiply(0,-1); // ensure determinant of |col| is |1|
 
   return diagonal;
 }
@@ -242,16 +266,12 @@ std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
    match the height of |M| = size of |B|), in other words it is spanned by the
    multiples of the columns of $B$ by their |diagonal| factors.
 
-   The procedure follws the mostly the same steps, but the difference in
-   handling |row|, where we apply instead of row operations the inverse column
-   operations, are sufficiently important to justify the code duplication. We
-   take advantage of this duplication to organise the algorithm for minimal
-   use of row operations, which besides being more efficient tends to give a
-   basis more closely related to the original matrix.
-
-   The name of this function is a slight misnomer, since the basis is not
-   necessarily one of a Smith normal form, as |diagonal| is not ordered by
-   by divisibility. For most applications this will not be needed anyway.
+   The procedure follws the mostly the same steps, but the differences in
+   handling the matrix |row| (where we apply instead of row operations the
+   inverse column operations) are sufficiently important to justify the code
+   duplication. We take advantage of this duplication to arrange the algorithm
+   for minimal use of row operations, which besides being more efficient tends
+   to give a basis more closely related to the original matrix.
  */
 template<typename C>
 matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
@@ -332,12 +352,13 @@ matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
   [             ] * [      ] * [         ] = [         ],
   [ pa/d-1 pa/d ]   [ 0  b ]   [ q   a/d ]   [ 0  ab/d ]
 
-  where the outermost matrices are invertible with the inverse of the first
+  where the outer matrices have deteminant $1$. The inverse of the first one:
 
   [  pa/d  -1 ]    [ 1  -1 ]   [  1     0 ]
   [           ] =  [       ] * [          ]
   [ 1-pa/d  1 ]	   [ 0   1 ]   [ 1-pa/d 1 ]
 
+  is applied to the right to the initial |adapted_basis| for correction.
   The numbers |lcm=ab/d|, |d| and |pa| are obtained from |arithmetic::lcm|
 */
 template<typename C>
@@ -354,9 +375,10 @@ matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
       {
 	unsigned long d, pa;
         diagonal[i+1]=arithmetic::lcm(diagonal[i],diagonal[i+1],d,pa);
-	result.columnOperation(i+1,i,-1);
-	result.columnOperation(i,i+1,1-pa/d);
 	diagonal[i]=d;
+
+	// correct the basis according to the row operations implicilty applied
+	result.columnOperation(i+1,i,-1); result.columnOperation(i,i+1,1-pa/d);
 
 	if (new_start==stop) // only change |new_start| on first swap
 	  new_start = i>0 ? i-1 : 0; // need to back up one place next time
@@ -370,9 +392,9 @@ matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
 typedef latticetypes::LatticeCoeff T;
 
 template
-void column_clear(matrix::Matrix<T>& M, size_t i, size_t j, size_t k);
+bool column_clear(matrix::Matrix<T>& M, size_t i, size_t j, size_t k);
 template
-void row_clear(matrix::Matrix<T>& M, size_t i, size_t j, size_t k);
+bool row_clear(matrix::Matrix<T>& M, size_t i, size_t j, size_t k);
 
 template
 bitmap::BitMap column_echelon<T>(matrix::Matrix<T>& M);

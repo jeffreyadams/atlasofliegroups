@@ -979,19 +979,21 @@ overload table will be searched, and all occurrences of that item listed.
 
 These are the expression types that end with another expression that never
 needs parentheses; they are themselves loosely bound, so the might require
-parentheses if used in other context (like in an assignment). Let-expressions
-introduce local definitions, starting with 'let', then a list of one or more
-definitions then 'in' and a final expression in which those definitions are
-valid, and which produces the value of the let-expression. Certain definitions
-in the list may be separated by 'then', which behaves like 'in let', so that
-the items defined before it are accessible afterwards. Between two of 'let',
-'then, and 'in', several definitions may be separated by commas, in which case
-they are handled in parallel (neither can refer to the identifiers defined by
-the others). Each basic definition consists of an identifier pattern followed
-by '=' and an expression (which never needs parentheses). Local definitions
-are never overloaded, and any locally defined name hides all overloads of that
-name. Nevertheless the special syntax of 'set' for function definitions (with
-'=' after the parameter list) is also available with 'let'.
+parentheses around them if used in other context (as right hand side of an
+assignment for instance, or as item in a semicolon-separated sequence).
+Let-expressions introduce local definitions: they start with 'let', then a
+list of one or more definitions, then 'in', and finally an expression in which
+those definitions are valid, and which produces the value of the construct.
+Certain definitions in the list may be separated by 'then', which behaves like
+'in let', so that the items defined before it are accessible afterwards.
+Between two of 'let', 'then, and 'in', several definitions may be separated by
+commas, in which case they are handled in parallel (neither can refer to the
+identifiers defined by the others). Each basic definition consists of an
+identifier pattern followed by '=' and an expression (which never needs
+parentheses). Local definitions are never overloaded, and any locally defined
+name hides all overloads of that name. Nevertheless the special syntax of
+'set' for function definitions (with '=' after the parameter list) is also
+available with 'let'; it defines a local name with a function as value.
 
 Anonymous functions consist of a pair of parentheses enclosing a parameter
 list, followed by an optional (result) type, and then ':' and the function
@@ -1070,19 +1072,19 @@ These compound expressions include delimiters at both ends, so they never need
 (additional) paretheses; a single parenthesized expression also forms a closed
 expression. The different forms are as follows, where '*' is any expression
 
-if * then * fi
+if * then * fi		  	which abbreviates: if * then * else () fi)
 if * then * else * fi
-if * then * elif ... fi
+if * then * elif * then ... fi
 while * do * od
 for pattern in * do * od
 for pattern @ ident in * do * od
 for ident : * do * od
 for ident : * from * do * od
 for ident : * downto * do * od
-begin * end
-( * , * , ... )
-[ * , ... ]
-[ * , ... | * , ... | ... ]
+begin * end			which is equivalent to: ( * )
+( * , * , ... )			which builds a tuple
+[ * , ... ]   			which builds a list
+[ * , ... | * , ... | ... ]     which builds a matrix by rows
 
 (h) Argument lists, Identifier patterns
 

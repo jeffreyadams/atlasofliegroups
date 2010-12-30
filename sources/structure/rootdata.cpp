@@ -917,18 +917,18 @@ void RootDatum::fillStatus()
   d_status.set(IsAdjoint); // remains set only of all |factor|s are 1
 
   for (size_t i=0; i<factor.size(); ++i)
-    if (factor[i] != 1)
+    if (intutils::abs(factor[i]) != 1)
       d_status.reset(IsAdjoint);
 
   q = latticetypes::LatticeMatrix
      (beginSimpleCoroot(),endSimpleCoroot(),rank(),tags::IteratorTag());
 
-  factor = matreduc::diagonalise(q,row,col);
+  factor = matreduc::diagonalise(q,row,col); // redo computation on dual side
 
   d_status.set(IsSimplyConnected); // remains set only of all |factor|s are 1
 
   for (size_t i=0; i<factor.size(); ++i)
-    if (factor[i] != 1)
+    if (intutils::abs(factor[i]) != 1)
       d_status.reset(IsSimplyConnected);
 }
 

@@ -39,7 +39,7 @@ latticetypes::LatticeMatrix eigen_lattice
   (latticetypes::LatticeMatrix M, // by value
    latticetypes::LatticeCoeff lambda);
 
-// find matrix whose with same kernel, but rows spanning saturated sublattice
+// find matrix with same kernel, but with rows spanning saturated sublattice
 latticetypes::LatticeMatrix row_saturate(const latticetypes::LatticeMatrix& M);
 
 } // |namespace lattice|

@@ -488,15 +488,10 @@ template<typename C> void Matrix<C>::invert()
   d is set to 0.
 
   We have chosen here to avoid divisions as much as possible. So in fact we
-  take the matrix to Smith normal form through elementary operations; from
-  there we deduce the smallest possible denominator for the inverse, and
-  the inverse matrix. The difference with SmithNormal is that we have to
-  keep track of both row and column operations.
+  take the matrix to diagonal form through elementary operations; from there
+  we deduce the smallest possible denominator for the inverse, and the inverse
+  matrix. We have to keep track of both row and column operations.
 
-  NOTE : probably the Smith normal stuff can be streamlined a bit so that
-  functions from there can be called, instead of rewriting things slightly
-  differently as we do here. In particular, the accounting of the row
-  operations seems a bit different here from there.
 */
 template<typename C>
 void Matrix<C>::invert(C& d)
@@ -509,12 +504,12 @@ void Matrix<C>::invert(C& d)
   Matrix<C> row,col;    // for recording column operations
   std::vector<C> diagonal = matreduc::diagonalise(*this,row,col);
 
-  if (diagonal[n-1] == C(0)) // zero entries if any come at end
-  { d=C(0); return; }
+  if (diagonal.size()<n) // insufficient rank for inversion
+  { d=C(0); return; } // record zero determinant, leave |*this| in diagonal
 
-  d=C(1);
-  for (size_t i=0; i<n; ++i)
-    d=arithmetic::lcm(d,diagonal[i]);
+  d=intutils::abs(diagonal[0]); // guaranteed to exist if we get here
+  for (size_t i=1; i<n; ++i)
+    d=arithmetic::lcm(d,diagonal[i]); // other diagonal entries are positive
 
   // finally for |D| "inverse" diagonal matrix w.r.t. |d|, compute |col*D*row|
   for (size_t j=0; j<n; ++j)
@@ -524,7 +519,7 @@ void Matrix<C>::invert(C& d)
       (*this)(i,j)=f*col(i,j);
   }
 
-  *this *= (row);
+  *this *= row;
 }
 
 /*!

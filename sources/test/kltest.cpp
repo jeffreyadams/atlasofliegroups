@@ -195,8 +195,7 @@ bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc)
       assert(dx<inv_dual.size());
       kl::KLPol sum=klc.klPol(x,inv_dual[dx]);
 
-      // Warning: |l| below must be \emph{signed}, so initial $l = -1$ quits!
-      for (int l=klc.length(inv_dual[dx])-1; l>signed(klc.length(x)); --l)
+      for (size_t l=klc.length(inv_dual[dx]); l-->klc.length(x)+1; )
       {
 	kl::KLPol s=kl::Zero;
 	for (blocks::BlockElt y=klc.lengthLess(l); y<klc.lengthLess(l+1); ++y)
