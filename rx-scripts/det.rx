@@ -1,0 +1,33 @@
+set det (mat M) = { determinant, up to a sign ? }
+let (diag,,)=diagonalize(M),(n,m)=#M in
+if n!=m then error("Determinant of non-square matrix"); 0
+elif #diag<n then 0
+else let p=1 in for d in diag do p*:=d od; p
+fi
+
+set test (mat M) = { compute Smith (almost) normal form in two ways }
+let model = null(#M), (diag,R,C) = diagonalize(M)
+in for v@i in diag do model[i,i]:=v od; (model, R*M*C)
+
+set Euclid (int a, int b) = { compute gcd, lcm, Bezout coefficients }
+let M = mat: [[ a,0 ],[b,b]]
+in (
+   while M[0,0]*M[0,1]!=0
+   do M *:=[[1,-M[0,0]\M[0,1]],[0,1]]
+   ; if M[0,0]!=0 then M *:=[[1,0],[-M[0,1]\M[0,0],1]] fi
+   od
+; if M[0,0]=0
+  then (M[0,1],-M[1,0],((M[0,1]-M[1,1])\a,M[1,1]\b))
+  else (M[0,0], M[1,1],((M[0,0]-M[1,0])\a,M[1,0]\b))
+  fi
+)
+
+set gcd (int a,int b) = let (d,,)=Euclid(a,b) in d
+set lcm (int a,int b) = let (,l,)=Euclid(a,b) in l
+set Bezout (int a,int b) = let (,,B)=Euclid(a,b) in B
+
+set inv (mat M) =
+let (diag,R,C) = diagonalize(M), l=1
+then model = ( for v in diag do l:=lcm(l,v) od
+             ; diagonal(for v in diag do l\v od))
+in (C*model*R,l)
