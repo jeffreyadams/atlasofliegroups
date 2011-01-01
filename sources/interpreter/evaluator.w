@@ -4519,16 +4519,16 @@ void echelon_wrapper(expression_base::level l)
   }
 }
 
-@ And here are general functions |diagonalise| and |adapted_basis|, rather
+@ And here are general functions |diagonalize| and |adapted_basis|, rather
 similar to Smith normal form, but without divisibility guarantee on diagonal
-entries. While |diagonalise| provides the matrices applied on the left and
+entries. While |diagonalize| provides the matrices applied on the left and
 right to obtain diagonal form, |adapted_basis| gives only the left factor (row
 operations applied) and gives it inverted, so that this matrix
 right-multiplied by the diagonal matrix has the same image as the original
 matrix.
 
 @<Local function definitions @>=
-void diagonalise_wrapper(expression_base::level l)
+void diagonalize_wrapper(expression_base::level l)
 { shared_matrix M=get<matrix_value>();
   if (l!=expression_base::no_value)
   { matrix_ptr row(new matrix_value(matrix::Matrix<int>())),
@@ -4706,7 +4706,7 @@ install_function(mv_prod_wrapper,"*","(mat,vec->vec)");
 install_function(mm_prod_wrapper,"*","(mat,mat->mat)");
 install_function(vm_prod_wrapper,"*","(vec,mat->vec)");
 install_function(echelon_wrapper,"echelon","(mat->mat,[int])");
-install_function(diagonalise_wrapper,"diagonalise","(mat->vec,mat,mat)");
+install_function(diagonalize_wrapper,"diagonalize","(mat->vec,mat,mat)");
 install_function(adapted_basis_wrapper,"adapted_basis","(mat->mat,vec)");
 install_function(kernel_wrapper,"kernel","(mat->mat)");
 install_function(eigen_lattice_wrapper,"eigen_lattice","(mat,int->mat)");
