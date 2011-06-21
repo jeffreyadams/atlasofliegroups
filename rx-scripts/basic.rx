@@ -1,11 +1,22 @@
 set #(int n)= for i:n do i od  { [0,1,...,n-1] }
 set #(bool b) = if b then 1 else 0 fi { Iverson symbol }
-set #(ratvec v)= let (n,)=%v in #n
+set #(ratvec v)= let (n,)=%v in #n { length }
+
+set n_rows(mat m)= let (r,)=#m in r
+set n_columns(mat m)= let (,c)=#m in c
 
 set *(string s, int n)= let r="" in (for i:n do r#:=s od; r)
 
 set *(int c,vec v) = vec: for e in v do c*e od
 set *(int c,mat m) = mat: for col in m do for e in col do c*e od od
+
+{ a necessary global auxiliary, as realex cannot handle recursive operators }
+pow : (mat,int->mat)
+pow := ((mat m,int n):
+  if n<2 then if n=1 then m else id_mat(n_rows(m)) fi
+  else let (q,r)=n\%2 then mm=pow(m,q) in mm*if r=0 then mm else mm*m fi
+  fi)
+set ^(mat m,int n) = pow(m,n)
 
 set +(string s, int i)= s # int_format(i)
 set +(int i, string s)= int_format(i) # s
@@ -66,6 +77,10 @@ set -(mat M,mat N)= mat:
 
 set min (int k, int l) = if k<l then k else l fi
 set max (int k, int l) = if k<l then l else k fi
+
+set ones(int n)= vec: for i:n do 1 od
+
+set rho (RootDatum rd) = let pr=positive_roots(rd) in pr*ones(n_columns(pr))/2
 
 set imaginary_roots (RootDatum rd, mat theta) =
   let ir = [vec]: []
