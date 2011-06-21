@@ -306,7 +306,7 @@ class SRK_context
   const weyl::TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
   const tits::TitsGroup& titsGroup() const { return G.titsGroup(); }
-  const tits::BasedTitsGroup& basedTitsGroup() const
+  const tits::TitsCoset& basedTitsGroup() const
     { return G.basedTitsGroup(); }
 
   const weyl::TwistedInvolution twistedInvolution(size_t cn) const

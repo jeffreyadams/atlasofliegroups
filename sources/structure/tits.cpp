@@ -40,6 +40,7 @@
 #include "lattice.h"
 #include "rootdata.h"
 #include "setutils.h"
+#include "arithmetic.h"
 
 #include "complexredgp.h"
 #include "realredgp.h"
@@ -84,6 +85,14 @@ latticetypes::RatWeight TorusElement::as_rational() const
   return latticetypes::RatWeight(numer,d).normalize();
 }
 
+arithmetic::Rational TorusElement::evaluate_at
+  (const latticetypes::LatticeElt& alpha) const
+{
+  unsigned int d = repr.denominator();
+  int n = repr.numerator().dot(alpha) % (d+d);
+  return arithmetic::Rational(n,d);
+}
+
 TorusElement TorusElement::operator +(const TorusElement& t) const
 {
   TorusElement result(repr + t.repr,0); // raw constructor
@@ -119,6 +128,20 @@ TorusElement& TorusElement::operator+=(TorusPart v)
   return *this;
 }
 
+GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
+  (const rootdata::RootDatum& dual_rd, // dual for pragmatic reasons
+   rootdata::RootNbr alpha) const // any simple-imaginary root
+{
+  const latticetypes::Weight& v = dual_rd.coroot(alpha); // imaginary
+  if (t.negative_at(v)) // |alpha| is a compact root
+    return *this;
+  GlobalTitsElement a(*this);
+  a.torus_part() += tits::TorusPart(dual_rd.root(alpha)); // effectively halves
+  return a;
+}
+
+
+
 GlobalTitsGroup::GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G)
   : weyl::TwistedWeylGroup(G.twistedWeylGroup())
   , simple(prerootdata::PreRootDatum // viewed from the dual side
@@ -136,21 +159,41 @@ GlobalTitsGroup::GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G)
     alpha_v[i]=TorusPart(simple.roots()[i]);
 }
 
+GlobalTitsGroup::GlobalTitsGroup
+  (const complexredgp::ComplexReductiveGroup& G,tags::DualTag)
+  : weyl::TwistedWeylGroup(G.twistedWeylGroup(),tags::DualTag())
+  , simple(prerootdata::PreRootDatum // now viewed from original side
+	   (latticetypes::WeightList(G.rootDatum().beginSimpleRoot(),
+				     G.rootDatum().endSimpleRoot()),
+	    latticetypes::WeightList(G.rootDatum().beginSimpleCoroot(),
+				     G.rootDatum().endSimpleCoroot()),
+	    G.rootDatum().rank()))
+  , delta_tr(G.dualDistinguished().transposed()) // quasi-split involution
+  , alpha_v(G.semisimpleRank())
+  , half_rho_v(G.rootDatum().twoRho(),4)
+  , square_class_gen() // don't bother how this should be done, for now
+{
+  for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
+    alpha_v[i]=TorusPart(simple.roots()[i]);
+}
+
 GlobalTitsGroup::GlobalTitsGroup(const subdatum::SubSystem& sub,
 				 const latticetypes::LatticeMatrix& theta,
 				 weyl::WeylWord& ww)
-  : weyl::TwistedWeylGroup(sub.Weyl_group(),sub.twist(theta,ww))
-  , simple(sub.pre_root_datum())
-  , delta_tr(theta) // will be made distinguished below using |ww|
+  : weyl::TwistedWeylGroup(sub.Weyl_group(),sub.twist(theta,ww)) // sets |ww|
+  , simple(sub.pre_root_datum()) // roots/coroots of sub, viewed from parent
+  , delta_tr(theta) // is made transpose-fundamental (sub side) below, by |ww|
   , alpha_v(weyl::TwistedWeylGroup::rank())
   , half_rho_v(sub.parent_sub_2rho(),4)
   , square_class_gen() // remains empty when this constructor is used
 {
+  // make |delta_tr| correspond (minus-tr) to fundamental involution for sub
   for (size_t i=0; i<ww.size(); ++i) // apply in reverse, towards |-delta_tr|
     delta_tr *= // right-multiply on parent side because of duality
       (sub.parent_datum().root_reflection // translating to parent reflections
        (sub.parent_nr_simple(ww[i])));
-  delta_tr.negate(); // change sign, so as to stabilise set of positive roots
+  // now |delta_tr| is split-Cartan involution for parent
+  delta_tr.negate(); // change sign, so as to stabilise set of positive roots
 
   for (size_t i=0; i<alpha_v.size(); ++i) // reduce vectors mod 2
     alpha_v[i]=TorusPart(simple.roots()[i]);
@@ -170,6 +213,22 @@ latticetypes::LatticeMatrix
   return M;
 }
 
+TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
+{
+  latticetypes::RatWeight rw = x.as_rational();
+  return TorusElement(latticetypes::RatWeight(delta_tr*rw.numerator(),
+					      rw.denominator()));
+}
+
+TorusElement GlobalTitsGroup::theta_times_torus(const GlobalTitsElement& a)
+  const
+{ latticetypes::RatWeight rw = a.torus_part().as_rational();
+  matrix::Vector<int> num = delta_tr*rw.numerator();
+  weylGroup().act(simple,a.tw(),num);
+  return TorusElement(latticetypes::RatWeight(num,rw.denominator()));
+}
+
+// this is currently only used by |has_central_square| (with |do_twist==true|)
 // perfoming multiplication from left (torus part side) is most efficient
 void GlobalTitsGroup::left_mult(const TorusElement& t,
 				const weyl::WeylWord& ww,
@@ -188,8 +247,8 @@ void GlobalTitsGroup::left_mult(const TorusElement& t,
 }
 
 
-
-bool GlobalTitsGroup::is_valid(GlobalTitsElement a) const
+// Elaborate condition to test whether an element is a strong involution
+bool GlobalTitsGroup::has_central_square(GlobalTitsElement a) const
 {
   const TorusElement t = a.t; // copy, to avoid aliasing in |left_mult|
   left_mult(t,word(a.w),true,a); // compute $twisted(a)*a$
@@ -205,19 +264,22 @@ bool GlobalTitsGroup::is_valid(GlobalTitsElement a) const
   return true;
 }
 
-TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
+// Simplified form of the same condition. Valid because |a.t==id| gives |true|
+bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
 {
-  latticetypes::RatWeight rw = x.as_rational();
-  return TorusElement(latticetypes::RatWeight(delta_tr*rw.numerator(),
-					      rw.denominator()));
-}
+  const TorusElement t = a.torus_part()+theta_times_torus(a);
 
-void GlobalTitsGroup::twist(TorusElement& x) const // in-place, imperative
-{
-  x = twisted(x);
+  // now check if |t| is central, by scalar products with |simple.coroots()|
+  latticetypes::RatWeight rw = t.as_rational();
+  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
+    if (rw.numerator().dot(simple.coroots()[s])%rw.denominator()!=0)
+      return false;
+
+  return true;
 }
 
 // find simple roots giving length-decreasing links (complex descent and real)
+// this could have been a method of |WeylGroup| at |weyl::TwistedInvolution|s.
 bitset::RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
 {
   bitset::RankFlags result;
@@ -231,7 +293,7 @@ bitset::RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
    so conjugation by $\sigma_\alpha$ gives $\sigma_\alpha*(t,w)*\sigma_\beta$
 */
 int // length change in $\{-1,0,+1\}$, half that of change for |x.tw()|
-GlobalTitsGroup::cross(weyl::Generator s, GlobalTitsElement& x) const
+GlobalTitsGroup::cross_act(weyl::Generator s, GlobalTitsElement& x) const
 {
   int d=twistedConjugate(x.w,s); // Tits group must add $m_\alpha$ iff $d=0$
   if (d!=0) // complex cross action: reflect torus part by |s|
@@ -240,14 +302,19 @@ GlobalTitsGroup::cross(weyl::Generator s, GlobalTitsElement& x) const
     return d/2; // report half of length change in Weyl group
   }
 
-  // real or imaginary cross action
-  if (not (hasDescent(s,x.w) or compact(s,x))) // not real or compact imaginary
-    add(alpha_v[s],x); // so adjust if |s| is noncompact imaginary
+  if (not hasDescent(s,x.w)) // imaginary cross action
+  {
+    arithmetic::Rational r =
+      x.t.evaluate_at(simple.coroots()[s]) - arithmetic::Rational(1);
+    if (r.numerator()!=0) // compact imaginary case needs no action
+      add(latticetypes::RatWeight // now reflect for |s| about compact case
+	  (simple.roots()[s]*r.numerator(),2*r.denominator()),x);
+  }
   return 0; // no length change this case
 }
 
-// multiply strong involution by |rw|; nominally from right, but is immaterial
-void GlobalTitsGroup::add(GlobalTitsElement& a, latticetypes::RatWeight rw)
+// multiply strong involution by |rw|; side should be immaterial (left used)
+void GlobalTitsGroup::add(latticetypes::RatWeight rw,GlobalTitsElement& a)
   const
 { // the following would be necessary to get a true right-mulitplication
   // involution_matrix(a.tw()).apply_to(rw.numerator()); // pull |rw| across
@@ -272,7 +339,7 @@ void GlobalTitsGroup::add(GlobalTitsElement& a, latticetypes::RatWeight rw)
   that will be used in |TitsGroup| below, this kind of correction is no longer
   possible, and we must perform a more tedious search for a valid correction.
  */
-void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
+void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   const
 {
   assert(is_valid(a)); // only for valid KGB elements inverse Cayley is defined
@@ -290,16 +357,28 @@ void GlobalTitsGroup::inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   leftMult(a.w,s); a.t=TorusElement(t);
 }
 
-GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
-  (const rootdata::RootDatum& dual_rd, // dual for pragmatic reasons
-   rootdata::RootNbr alpha) const // any simple-imaginary root
+// Sometimes we need to compute the grading at non-simple imaginary roots.
+// This could be computed using expression in simple-imaginary roots |alpha|,
+// for which grading is \emph{compact} iff  |torus_part().negative_at(alpha)|
+// however that is not easy to implement; conjugating to simple is easier.
+// Root system |rs| necessary to interpret |alpha|, dual makes no difference
+bool GlobalTitsGroup::compact(const rootdata::RootSystem& rs,
+			      rootdata::RootNbr alpha,
+			      GlobalTitsElement a)
+  const
 {
-  const latticetypes::Weight& v = dual_rd.coroot(alpha); // imaginary
-  if (t.negative_at(v)) // |alpha| is a compact root
-    return *this;
-  GlobalTitsElement a(*this);
-  a.torus_part() += tits::TorusPart(dual_rd.root(alpha)); // effectively halves
-  return a;
+  if (not rs.isPosRoot(alpha))
+    alpha=rs.rootMinus(alpha);
+
+  assert(rs.isPosRoot(alpha));
+  weyl::Generator s; // declare outside loop, allow inspection of final value
+  while (alpha!=rs.simpleRootNbr(s=rs.find_descent(alpha)))
+  {
+    cross_act(s,a);
+    rs.simple_reflect_root(alpha,s);
+  }
+
+  return compact(s,a); // since now |alpha==rs.simpleRootNbr(s)|
 }
 
 namespace {
@@ -374,6 +453,49 @@ std::vector<gradings::Grading> compute_square_classes
 } // |namespace|
 
 
+SubTitsGroup::SubTitsGroup(const complexredgp::ComplexReductiveGroup& G,
+			   const subdatum::SubSystem& sub,
+			   const latticetypes::LatticeMatrix& theta,
+			   weyl::WeylWord& ww)
+: GlobalTitsGroup(sub,theta,ww)
+, parent(G,tags::DualTag())
+, subsys(sub)
+, t(G.rank())
+{
+  assert(sub.parent_datum().rank()==G.rank());
+  const rootdata::RootDatum rd(sub.pre_root_datum()); // need to construct it
+  GlobalTitsElement a(G.rank()); // identity
+  for (weyl::Generator s=0; s<sub.rank(); ++s)
+    if (parent.compact(sub.parent_datum(),sub.parent_nr_simple(s),a))
+      t = t + TorusElement(rd.fundamental_weight(s));
+}
+
+TorusElement SubTitsGroup::base_point_offset(const weyl::TwistedInvolution tw)
+  const
+{
+  GlobalTitsElement a(t);
+  weyl::InvolutionWord iw=involution_expr(tw);
+  for (size_t i=iw.size(); i-->0;)
+    if (iw[i]>=0) // Cayley
+    {
+      const weyl::WeylWord& ww = subsys.to_simple(iw[i]);
+      for (size_t j=ww.size(); j-->0;)
+	parent.cross_act(ww[j],a);
+      a = parent.Cayley(subsys.simple(iw[i]),a);
+      for (size_t j=0; j<ww.size(); ++j)
+	parent.cross_act(ww[j],a);
+    }
+    else // cross
+    {
+      const weyl::WeylWord& ww = subsys.reflection(~iw[i]);
+      for (size_t j=0; j<ww.size(); ++j)
+	parent.cross_act(ww[j],a);
+    }
+
+  assert(parent.involution_matrix(a.tw())==involution_matrix(tw));
+  return a.torus_part();
+}
+
 /****************************************************************************
 
         Chapter II -- The TitsGroup class
@@ -382,7 +504,7 @@ std::vector<gradings::Grading> compute_square_classes
 
 /*!
   Constructs the Tits group corresponding to the root datum |rd|, and
-  the fundamental involution |d|.
+  the fundamental involution |d| (which also defines the twist).
 */
 TitsGroup::TitsGroup(const rootdata::RootDatum& rd,
 		     const weyl::WeylGroup& W,
@@ -424,6 +546,8 @@ TitsGroup::TitsGroup(const latticetypes::LatticeMatrix& Cartan_matrix,
   }
 }
 
+// build Tits group for |sub|, get sub-twist defined by |-theta^t| into |ww|
+// called from |Subdatum| constructor, and indirectly from |TitsCoset|
 TitsGroup::TitsGroup(const subdatum::SubSystem& sub,
 		     const latticetypes::LatticeMatrix& theta,
 		     weyl::WeylWord& ww)
@@ -556,6 +680,8 @@ TitsElt TitsGroup::prod(const TitsElt& a, TitsElt b) const
 }
 
 // here the we basically do Weyl group action at torus side, including twist
+// the (binary) matrix produced represents $delta.ww^{-1}$ which, being an
+// involution (and delta too), could also have been computed as $ww.delta$
 latticetypes::BinaryMap
 TitsGroup::involutionMatrix(const weyl::WeylWord& ww) const
 {
@@ -578,11 +704,11 @@ TitsGroup::involutionMatrix(const weyl::WeylWord& ww) const
 
 /*
  *
- *				BasedTitsGroup
+ *				TitsCoset
  *
  */
 
-BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
+TitsCoset::TitsCoset(const complexredgp::ComplexReductiveGroup& G,
 			       gradings::Grading base_grading)
   : my_Tits_group(NULL) // no ownership in this case
   , Tg(G.titsGroup())
@@ -592,7 +718,7 @@ BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
 }
 
 // Based Tits group for the adjoint group
-BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G)
+TitsCoset::TitsCoset(const complexredgp::ComplexReductiveGroup& G)
   : my_Tits_group(new tits::TitsGroup(G.rootDatum().cartanMatrix(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().twist()))
@@ -604,9 +730,8 @@ BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G)
     grading_offset.set(i,Tg.twisted(i)==i);
 }
 
-// Based Tits group for the adjoint group
-BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
-			       tags::DualTag)
+// Based Tits group for the adjoint dual group
+TitsCoset::TitsCoset(const complexredgp::ComplexReductiveGroup& G,tags::DualTag)
   : my_Tits_group(new tits::TitsGroup(G.rootDatum().cartanMatrix().transposed(),
 				      G.weylGroup(),
 				      G.twistedWeylGroup().dual_twist()))
@@ -618,34 +743,37 @@ BasedTitsGroup::BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
     grading_offset.set(i,Tg.twisted(i)==i);
 }
 
-BasedTitsGroup::BasedTitsGroup(const subdatum::SubSystem& sub,
-			       const latticetypes::LatticeMatrix& theta,
-			       gradings::Grading parent_base_grading,
-			       weyl::WeylWord& ww)
-  : my_Tits_group(new tits::TitsGroup(sub,theta,ww))
-  , Tg(*my_Tits_group)
-  , grading_offset(sub.induced(parent_base_grading))
-  , rs(sub)
-{}
-
-BasedTitsGroup::BasedTitsGroup(const subdatum::SubDatum& sub,
-			       gradings::Grading parent_base_grading)
+// TitsCoset for subsystem, used by |kgb::subsys_KGB| constructor
+TitsCoset::TitsCoset(const subdatum::SubDatum& sub,
+		     gradings::Grading parent_base_grading)
   : my_Tits_group(NULL)
-  , Tg(sub.Tits_group())
+  , Tg(sub.Tits_group()) // use TitsGroup that is already stored in |sub|
+  , grading_offset(sub.induced(parent_base_grading))
+  , rs(sub)
+{}
+
+// this constructor adapts to |theta| (given on parent) and sets |ww|
+// it also avoids contructing a |SubDatum| at all; it is currently unused
+TitsCoset::TitsCoset(const subdatum::SubSystem& sub,
+		     const latticetypes::LatticeMatrix& theta,
+		     gradings::Grading parent_base_grading,
+		     weyl::WeylWord& ww)
+  : my_Tits_group(new tits::TitsGroup(sub,theta,ww)) // build TitsGroup here
+  , Tg(*my_Tits_group) // and own it
   , grading_offset(sub.induced(parent_base_grading))
   , rs(sub)
 {}
 
 
 
-void BasedTitsGroup::basedTwistedConjugate
+void TitsCoset::basedTwistedConjugate
   (tits::TitsElt& a, const weyl::WeylWord& w) const
 {
   for (size_t i=0; i<w.size(); ++i)
     basedTwistedConjugate(a,w[i]);
 }
 
-void BasedTitsGroup::basedTwistedConjugate
+void TitsCoset::basedTwistedConjugate
   (const weyl::WeylWord& w, tits::TitsElt& a) const
 {
   for (size_t i=w.size(); i-->0; )
@@ -675,7 +803,7 @@ void BasedTitsGroup::basedTwistedConjugate
    $\alpha$ at it; since there are always two possible lifts, one of them
    makes $\alpha$ noncompact.
  */
-void BasedTitsGroup::inverse_Cayley_transform
+void TitsCoset::inverse_Cayley_transform
   (tits::TitsElt& a, size_t i,
    const latticetypes::SmallSubspace& mod_space) const
 {
@@ -695,7 +823,7 @@ void BasedTitsGroup::inverse_Cayley_transform
 }
 
 
-tits::TitsElt BasedTitsGroup::twisted(const tits::TitsElt& a) const
+tits::TitsElt TitsCoset::twisted(const tits::TitsElt& a) const
 {
   tits::TitsElt result(Tg,Tg.twisted(Tg.left_torus_part(a)));
   weyl::WeylWord ww=Tg.word(a.w());
@@ -709,7 +837,7 @@ tits::TitsElt BasedTitsGroup::twisted(const tits::TitsElt& a) const
   return result;
 }
 
-bool BasedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr alpha) const
+bool TitsCoset::grading(TitsElt a, rootdata::RootNbr alpha) const
 {
   if (not rs.isPosRoot(alpha))
     alpha=rs.rootMinus(alpha);
@@ -725,7 +853,7 @@ bool BasedTitsGroup::grading(tits::TitsElt a, rootdata::RootNbr alpha) const
   return simple_grading(a,s);
 }
 
-bool BasedTitsGroup::is_valid(TitsElt a) const
+bool TitsCoset::is_valid(TitsElt a) const
 {
   static TitsElt e(Tg);  // identity
   Tg.mult(a,twisted(a));
@@ -742,28 +870,28 @@ bool BasedTitsGroup::is_valid(TitsElt a) const
    and in the KGB construction. In the fiber construction, the action used to
    partition the fiber group according to real forms uses a grading of the
    imaginary roots for the twisted involution that makes all simple-imaginary
-   ones noncompact. In the KGB construction (i.e., in our |BasedTitsGroup|) a
+   ones noncompact. In the KGB construction (i.e., in our |TitsCoset|) a
    grading is chosen only at the distinguished involution, and only of the
    simple roots that are imaginary for that involution; it depends on the
    square class of the real form. The bitvector |v| below is zero for some
    strong involution |si| in same square class as |rf| at Cartan class |cn|;
    the result will be correct if and only if the null torus part |x| defines
-   (by |BasedTitsGroup::grading|) the same grading of the (simple) imaginary
+   (by |TitsCoset::grading|) the same grading of the (simple) imaginary
    roots for Cartan class |cn| as |si| does (through |Fiber::class_base|).
 
    The only case where one can rely on that to be true is for the fundamental
-   Cartan (|cn==0|), if our |BasedTitsGroup| was extracted as base object from
+   Cartan (|cn==0|), if our |TitsCoset| was extracted as base object from
    an |EnrichedTitsGroup| (the latter being necessarily constructed through
    |EnrichedTitsGroup::for_square_class|), because in that case the
-   |BasedTitsGroup::grading_offset| field was actually computed from de
+   |TitsCoset::grading_offset| field was actually computed from de
    grading defined by an element |si| in the fundamental fiber. In the general
    case all bets are off: the real form of |si| need not even be the same one
-   as the one corresponding to |BasedTitsGroup::grading_offset|.
+   as the one corresponding to |TitsCoset::grading_offset|.
 
    The main reason for leaving this (unused) method in the code is that it
    illustrates how to get the group morphism from the fiber group to T(2).
  */
-tits::TitsElt BasedTitsGroup::naive_seed
+tits::TitsElt TitsCoset::naive_seed
  (complexredgp::ComplexReductiveGroup& G,
   realform::RealForm rf, size_t cn) const
 {
@@ -772,7 +900,7 @@ tits::TitsElt BasedTitsGroup::naive_seed
   cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
   cartanclass::StrongRealFormRep srf=f.strongRepresentative(wrf);
   assert(srf.second==f.central_square_class(wrf));
-  // the |grading_offset| of our |BasedTitsGroup| gives the square class base
+  // the |grading_offset| of our |TitsCoset| gives the square class base
 
   // now lift strong real form from fiber group to a torus part in |result|
   latticetypes::SmallBitVector v(bitset::RankFlags(srf.first),f.fiberRank());
@@ -824,7 +952,7 @@ tits::TitsElt BasedTitsGroup::naive_seed
    Therefore this method should only be called when only one seed is needed.
  */
 tits::TitsElt
-BasedTitsGroup::grading_seed(complexredgp::ComplexReductiveGroup& G,
+TitsCoset::grading_seed(complexredgp::ComplexReductiveGroup& G,
 			     realform::RealForm rf, size_t cn) const
 {
   // locate fiber and weak real form
@@ -910,10 +1038,10 @@ square_class_grading_offset(const cartanclass::Fiber& fund,
 }
 
 EnrichedTitsGroup::EnrichedTitsGroup(const realredgp::RealReductiveGroup& GR)
-  : BasedTitsGroup(GR.complexGroup(),
-		   square_class_grading_offset(GR.complexGroup().fundamental(),
-					       GR.square_class(),
-					       GR.rootDatum()))
+  : TitsCoset(GR.complexGroup(),
+	      square_class_grading_offset(GR.complexGroup().fundamental(),
+					  GR.square_class(),
+					  GR.rootDatum()))
   , srf(GR.complexGroup().fundamental().strongRepresentative(GR.realForm()))
 {}
 

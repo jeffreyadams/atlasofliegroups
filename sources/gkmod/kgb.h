@@ -339,7 +339,7 @@ class global_KGB : public KGB_base
 This class adds some information with respect to that kept in |KGB_base|, and
 most importantly carries out the actual filling of the base object. As
 additional data that are held in this derived class there is the
-|BasedTitsGroup| used during construction, and the torus parts (relative to
+|TitsCoset| used during construction, and the torus parts (relative to
 the base point) that distinguish elements in the same fiber. This class also
 provides the possibility to generate and store the Bruhat order on the set.
 */
@@ -363,7 +363,7 @@ and in addition the Hasse diagram (set of all covering relations).
   bruhat::BruhatOrder* d_bruhat;
 
   //! \brief Owned pointer to the based Tits group.
-  tits::BasedTitsGroup* d_base; // pointer, because allocator contructs it late
+  tits::TitsCoset* d_base; // pointer, because contructed late by |generate|
 
  public:
 
@@ -385,7 +385,7 @@ and in addition the Hasse diagram (set of all covering relations).
 
   const rootdata::RootDatum& rootDatum() const { return rd; }
 //! \brief The based Tits group.
-  const tits::BasedTitsGroup& basedTitsGroup() const { return *d_base; }
+  const tits::TitsCoset& basedTitsGroup() const { return *d_base; }
 //! \brief The Tits group.
   const tits::TitsGroup& titsGroup() const { return d_base->titsGroup(); }
 //! \brief The Weyl group.
@@ -415,8 +415,8 @@ and in addition the Hasse diagram (set of all covering relations).
   fiber over one same twisted involution.
 
   A similar function is used to sort the elements of |KGB| upon construction,
-  so this method should hold whenever |x<y| and |involution(x)!=involution(y)|
-  and it turns out the method is never used, so I have excluded the code. MvL.
+  so this method should hold for any |x<y| unless their involutions are the
+  same. As the method is actually never used, I have excluded the code.  MvL.
 */
   bool compare(KGBElt x, KGBElt y) const
   {
@@ -449,19 +449,19 @@ private:
 
 }; // |class KGB|
 
-// extract the KGB for a root subsystem
+// extract the KGB for a root subsystem; DV says this is not always possible
 class subsys_KGB : public KGB_base
 {
   gradings::Grading base_grading;
 
  public:
-  std::vector<KGBElt> in_parent; // map elements back to parent
+  std::vector<KGBElt> in_parent; // map elements back to parent, if possible
   std::vector<unsigned int> Cartan; ///< records Cartan classes of elements
   std::vector<tits::TorusPart> torus_part; // of size |size()|
   KGBElt parent_size;
 
   subsys_KGB(const kgb::KGB& kgb,
-	     const subdatum::SubDatum& sub,      // must be constructed before
+	     const subdatum::SubDatum& sub, // must be constructed before
 	     kgb::KGBElt x);
 
 // virtual methods

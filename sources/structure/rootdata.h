@@ -54,7 +54,8 @@ RootSet makeOrthogonal(const RootSet& o, const RootSet& subsys,
 
 void toDistinguished(LT::LatticeMatrix&, const RootDatum&);
 
-// make |Delta| simple by composing with Weyl group action; return as Weyl word
+// make |Delta| simple (a twist) by Weyl group action; return Weyl word
+// whose left-multiplication transforms returned |Delta| into original one
 weyl::WeylWord wrt_distinguished(const RootSystem& rs, RootList& Delta);
 
 LT::LatticeMatrix refl_prod(const RootSet&, const RootDatum&);

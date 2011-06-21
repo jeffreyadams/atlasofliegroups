@@ -28,9 +28,9 @@ namespace atlas {
 namespace subdatum {
 
 /* The following data type is specific for representation theory. It is
-   associated so a subsystem of the dual root datum (with positive roots
+   associated to a subsystem of the dual root datum (with positive roots
    contained in the positive parent coroots), and is derived from |RootSystem|
-   at that dual side. It remains however attached to the parent root datum,
+   at that dual side. It remains however attached to the parent root _datum_,
    contains and exports a reference to that rootdatum, and has a method to
    produce a |PreRootDatum| for the subsystem of the parent defined by simple
    coroots for the subsystem (not a full root datum, for efficientcy reasons).
@@ -40,7 +40,7 @@ namespace subdatum {
 class SubSystem : public rootdata::RootSystem // new system, subsytem of dual
 {
   const rootdata::RootDatum& rd; // parent root datum
-  const weyl::WeylGroup sub_W; // Weyl group no reference: built in contructor
+  const weyl::WeylGroup sub_W; // Weyl group no reference: built by contructor
   rootdata::RootList pos_map; // map positive roots to root number in parent
   rootdata::RootList inv_map; // partial map back from all parent roots
 
@@ -55,7 +55,8 @@ class SubSystem : public rootdata::RootSystem // new system, subsytem of dual
 
  public:
   SubSystem(const rootdata::RootDatum& parent,
-	    const rootdata::RootList& sub_sys);
+	    const rootdata::RootList& sub_sys // list of simple roots in subsys
+           );
 
   static SubSystem integral // pseudo contructor for integral system
   (const rootdata::RootDatum& parent, const latticetypes::RatWeight& gamma);
@@ -78,7 +79,8 @@ class SubSystem : public rootdata::RootSystem // new system, subsytem of dual
 
   weyl::Twist parent_twist(const latticetypes::LatticeMatrix& theta,
 			   weyl::WeylWord& ww) const;
-  // now twist |delta| (result) and |ww| are on parent side, |theta=ww.delta|.
+  // similar, but |ww| is (for subsystem) on parent side, and anchored at its
+  // distinguished involution |delta|: on has |theta=parent(ww).delta|.
 
   prerootdata::PreRootDatum pre_root_datum() const; // viewed from parent side
 
@@ -88,29 +90,38 @@ class SubSystem : public rootdata::RootSystem // new system, subsytem of dual
   rootdata::RootNbr parent_nr(rootdata::RootNbr alpha) const;
 
   weyl::Generator simple(weyl::Generator s) const
-  { return sub_root[s].simple; }
+  { return sub_root[s].simple; } // parent simple root conjugated to |sub.s|
 
   const weyl::WeylWord& to_simple(weyl::Generator s) const
-  { return sub_root[s].to_simple; }
+  { return sub_root[s].to_simple; } // parent conjugating word for |simple(s)|
 
   const weyl::WeylWord& reflection(weyl::Generator s) const
-  { return sub_root[s].reflection; }
+  { return sub_root[s].reflection; } // parent reflection corresponding to |s|
 
   latticetypes::Weight sub_2rho() const { return rd.dual_twoRho(pos_map); }
   latticetypes::Weight parent_sub_2rho() const { return rd.twoRho(pos_map); }
 
+  // untwisted action of |ww|, as matrix on parent side
   latticetypes::LatticeMatrix action_matrix(const weyl::WeylWord& ww) const;
 
   gradings::Grading induced(gradings::Grading base_grading) const;
 
 }; // |class SubSystem|
 
+
+/* the class |SubDatum| is mathematically much richer than |SubSystem| (which,
+   we recall, holds a refernece to a parent root datum, so the terminology is
+   somewhat misleading): its unique constructor requires a root datum
+   involution |theta| (coded by a KGB element for a real form) and an
+   infinitesimal character. The latter defines a subsystem by integrality,
+   while |theta| defines a subsystem twist and a word that expresses it
+ */
 class SubDatum : public SubSystem
 {
   weyl::WeylWord base_ww;  // we need this variable mostly in the constructor!
   latticetypes::LatticeMatrix delta; // together with twist: what was missing
   tits::TitsGroup Tg; // twisted Weyl group, plus stuff our base class knows
-  weyl::WeylElt ini_tw;
+  weyl::WeylElt ini_tw; // records involution of initial |x| wrt |SubSystem|
 
   size_t rank() const; // forbid using this directly
  public:
@@ -125,6 +136,11 @@ class SubDatum : public SubSystem
   size_t semisimple_rank() const { return SubSystem::rank(); }
 
   latticetypes::LatticeMatrix involution(weyl::TwistedInvolution tw) const;
+
+  tits::GlobalTitsElement sub_base_point
+    (const tits::GlobalTitsGroup& parent_dual_Tg,
+     const weyl::TwistedInvolution& tw) const;
+
 }; // |class SubDatum|
 
 } // |namespace subdatum|

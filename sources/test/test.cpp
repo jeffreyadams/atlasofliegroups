@@ -24,6 +24,7 @@
 #include "commands.h"
 #include "prerootdata.h"
 #include "rootdata.h"
+#include "cartanclass.h"
 #include "complexredgp.h"
 #include "realredgp.h"
 #include "interactive.h"
@@ -79,6 +80,7 @@ namespace {
 
   void X_f();
   void iblock_f();
+  void embedding_f();
 
 
   // help functions
@@ -215,6 +217,7 @@ void addTestCommands<realmode::RealmodeTag>
 
   mode.add("examine",exam_f);
   mode.add("iblock",iblock_f);
+  mode.add("embedding",embedding_f);
 }
 
 // Add to the block mode the test commands that require that mode.
@@ -1173,6 +1176,141 @@ void iblock_f()
   }
 } // |iblock_f|
 
+
+tits::TorusElement torus_part
+  (const rootdata::RootDatum& rd,
+   const latticetypes::LatticeMatrix& theta,
+   const latticetypes::RatWeight& lambda, // discrete parameter
+   const latticetypes::RatWeight& gamma // infinitesimal char
+  )
+{
+  cartanclass::InvolutionData id(rd,theta);
+  latticetypes::Weight cumul(rd.rank(),0);
+  latticetypes::LatticeCoeff n=gamma.denominator();
+  latticetypes::Weight v=gamma.numerator();
+  const rootdata::RootSet pos_real = id.real_roots() & rd.posRootSet();
+  for (rootdata::RootSet::iterator it=pos_real.begin(); it(); ++it)
+    if (v.dot(rd.coroot(*it)) %n !=0) // nonintegral
+      cumul+=rd.root(*it);
+  // now |cumul| is $2\rho_\Re(G)-2\rho_\Re(G(\gamma))$
+
+  return tits::TorusElement((gamma-lambda+latticetypes::RatWeight(cumul,2))/=2);
+}
+
+void embedding_f()
+{
+  try
+  {
+    realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
+    complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
+    const rootdata::RootDatum& rd = G.rootDatum();
+
+    latticetypes::Weight lambda_rho =
+      interactive::get_weight(interactive::sr_input(),
+			      "Give lambda-rho: ",
+			      G.rank());
+
+    latticetypes::RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+
+
+    latticetypes::RatWeight nu=
+      interactive::get_ratweight
+      (interactive::sr_input(),"rational parameter nu: ",rd.rank());
+
+    const kgb::KGB& kgb = GR.kgb();
+    unsigned long x=interactive::get_bounded_int
+      (interactive::common_input(),"KGB element: ",kgb.size());
+
+    latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
+
+    nu = latticetypes::RatWeight // make |nu| fixed by $-\theta$
+      (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
+
+    latticetypes::RatWeight gamma = nu + latticetypes::RatWeight
+    (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
+
+    std::cout << "Infinitesimal character is " << gamma << std::endl;
+
+    subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,gamma);
+
+    weyl::WeylWord ww;
+    const tits::SubTitsGroup sub_gTg
+      (G,sub,G.involutionMatrix(kgb.involution(x)),ww);
+
+    setutils::Permutation pi;
+
+    std::cout << "Subsystem on dual side is ";
+    if (sub.rank()==0)
+      std::cout << "empty.\n";
+    else
+    {
+      std::cout << "of type "
+		<< dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+		<< ", with roots ";
+      for (weyl::Generator s=0; s<sub.rank(); ++s)
+	std::cout << sub.parent_nr_simple(pi[s])
+		  << (s<sub.rank()-1 ? "," : ".\n");
+    }
+    std::cout << "Twisted involution in subsystem: " << ww << ".\n";
+
+    weyl::TI_Entry::Pooltype pool;
+    hashtable::HashTable<weyl::TI_Entry,unsigned int> hash_table(pool);
+    std::vector<unsigned int> stops;
+    {
+      std::vector<weyl::TwistedInvolution> queue(1,weyl::TwistedInvolution());
+      size_t qi = 0; // |queue| inspected up to |qi|
+      const weyl::TwistedWeylGroup& tW = sub_gTg; // base object, subgroup
+
+      while (qi<queue.size())
+      {
+	weyl::TI_Entry tw=queue[qi++];
+	if (hash_table.find(tw)==hash_table.empty) // Cartan class not seen yet
+	{ stops.push_back(hash_table.size());
+	  // generate like kgb::FiberData::complete_class|
+	  for (unsigned int i=hash_table.match(tw); i<hash_table.size(); ++i)
+	  {
+	    tw=pool[i];
+	    for (weyl::Generator s=0; s<tW.rank(); ++s)
+	      if (tW.hasTwistedCommutation(s,tw)) // |s| real or imaginary
+	      {
+		if (not tW.hasDescent(s,tw)) // |s| imaginary
+		  queue.push_back(tW.prod(s,tw));
+	      }
+	      else // |s| complex
+		hash_table.match(tW.twistedConjugated(tw,s));
+	  } // |for(i)|
+	} // |if| new Cartan class
+      } // |while| queue not completely inspected
+    } // forget |queue|
+    stops.push_back(~0); // sentinel
+    size_t si=0; // index into |stops|
+    for (unsigned int i=0; i<pool.size(); ++i)
+    {
+      if (i==stops[si]) { std::cout << std::endl; ++si; } // separate classes
+      weyl::TwistedInvolution tw=pool[i];
+      weyl::WeylWord ww=sub_gTg.word(tw);
+      tits::TorusElement t=sub_gTg.base_point_offset(tw);
+      std::cout << t.as_rational() << "  \t@  " << ww <<std::endl;
+    }
+  }
+  catch (error::MemoryOverflow& e)
+  {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e)
+  {
+    e("aborted");
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << "error occurrend: " << e.what() << std::endl;
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << "unidentified error occurred" << std::endl;
+  }
+} // |embedding_f|
+
 void test_f()
 {
   try
@@ -1195,11 +1333,13 @@ void test_f()
       (nu.numerator() - theta*nu.numerator(),2*nu.denominator());
 
     std::cout << "Made -theta fixed, nu = " << nu << std::endl;
-    nu = nu + latticetypes::RatWeight(rd.twoRho()+theta*rd.twoRho(),4);
-    std::cout << "added discrete series contribution, nu' = " << nu
+    latticetypes::RatWeight gamma(rd.twoRho()+theta*rd.twoRho(),4);
+    // assume |lambda=rho| for a valid value
+    gamma += nu;
+    std::cout << "added discrete series contribution, gamma = " << gamma
 	      << std::endl;
 
-    subdatum::SubDatum sub (GR,nu,x);
+    subdatum::SubDatum sub (GR,gamma,x);
 
     weyl::WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
@@ -1251,6 +1391,8 @@ void test_f()
     std::cerr << std::endl << "unidentified error occurred" << std::endl;
   }
 } // |test_f|
+
+
 
 //Help commands
 

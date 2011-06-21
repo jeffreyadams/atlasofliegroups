@@ -942,16 +942,16 @@ void RootDatum::fillStatus()
 
 
 /*!
-\brief Returns matrix of dual involution of the one given by |i|
+\brief Returns matrix of dual involution of the one given by |q|
 
   Precondition: |q| is an involution of |rd| as a _based_ root datum
 
-  Postcondition: |di| is an involution of the dual based root datum
+  Postcondition: result is an involution of the based root datum dual to |rd|
 
-  Formula: $(w_0^t)(-q^t) = (-q.w_0)^t$
+  Formula: it is given by $(w_0^t)(-q^t) = (-q.w_0)^t$
 
-  In other words, to |-i| we apply the (longest) Weyl group element $w_0$
-  making the image of the dominant chamber dominant again, then transpose
+  In other words, to |-q| we apply the (longest) Weyl group element $w_0$
+  (making the image of the dominant chamber dominant again) and transpose it
 
   Since $-w_0$ is central in the group of based root datum automorphisms, it
   doesn't matter whether one multiplies by $w_0$ on the left or on the right
@@ -959,8 +959,8 @@ void RootDatum::fillStatus()
 LT::LatticeMatrix dualBasedInvolution
   (const LT::LatticeMatrix& q, const RootDatum& rd)
 {
-  weyl::WeylWord ww = rd.to_dominant(-rd.twoRho());
-  return (q*rd.matrix(ww)).negative_transposed();
+  weyl::WeylWord w0 = rd.to_dominant(-rd.twoRho());
+  return (q*rd.matrix(w0)).negative_transposed();
 }
 
 

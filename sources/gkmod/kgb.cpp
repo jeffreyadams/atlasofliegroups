@@ -208,9 +208,9 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G,
   weyl::Generator s;
   while ((s=Tg.weylGroup().leftDescent(a.tw()))<rank())
     if (Tg.hasTwistedCommutation(s,a.tw()))
-      Tg.inverse_Cayley(s,a);
+      Tg.do_inverse_Cayley(s,a);
     else
-      Tg.cross(s,a);
+      Tg.cross_act(s,a);
 
   assert(Tg.is_valid(a)); // check that we still have a valid element
   assert (a.tw()==weyl::TwistedInvolution()); // we are at fundamental fiber
@@ -228,7 +228,7 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G,
 	if (Tg.twisted(s)==s // then imaginary, since fiber is fundamental
 	    and not Tg.compact(s,a=elt_hash[i].repr())) // noncompact
 	{
-	  Tg.cross(s,a);
+	  Tg.cross_act(s,a);
 	  size_t old_size = elt_hash.size();
 	  if (elt_hash.match(fiber_data.pack(a))==old_size) // then it's new
  	    add_element(0,a.tw()); // create in base; length, tw
@@ -322,7 +322,7 @@ void global_KGB::generate(const rootdata::RootDatum& rd, size_t predicted_size)
       for (KGBElt x=first_of_tau[inv_nr]; x<first_of_tau[inv_nr+1]; ++x)
       {
  	tits::GlobalTitsElement child=elt[x]; //start out with a copy
-	int d = Tg.cross(s,child); // cross act and record length difference
+	int d = Tg.cross_act(s,child); // cross act; |d| is length difference
 	assert(child.tw()==new_tw);
 	KGB_elt_entry ee = fiber_data.pack(child);
 	KGBElt k = elt_hash.match(ee);
@@ -566,7 +566,7 @@ size_t KGB::generate
 
   if (traditional)
   {
-    d_base = new tits::BasedTitsGroup(G,GR.grading_offset());
+    d_base = new tits::TitsCoset(G,GR.grading_offset());
 
     elt_hash.match(tits::TitsElt(titsGroup())); // identity Tits element is seed
     // store its length and Cartan class (both are in fact always 0)
@@ -576,7 +576,7 @@ size_t KGB::generate
   else
   {
     tits::EnrichedTitsGroup square_class_base(GR);
-    d_base = new tits::BasedTitsGroup(square_class_base);
+    d_base = new tits::TitsCoset(square_class_base);
     realform::RealForm rf=GR.realForm();
     assert(square_class_base.square()==
 	   G.fundamental().central_square_class(rf));
@@ -770,9 +770,10 @@ void KGB::fillBruhat()
 
 */
 
-
+// initially thought of as an extracting constructor, we currently
+// do-it-ourselves, and only try to map back to the parent KGB at the end
 subsys_KGB::subsys_KGB
-(const kgb::KGB& kgb,
+  (const kgb::KGB& kgb,
    const subdatum::SubDatum& sub,       // subsystem is on dual side
    kgb::KGBElt x)
   : KGB_base(sub.Tits_group())
@@ -784,7 +785,7 @@ subsys_KGB::subsys_KGB
 
   size_t sub_rank = sub.semisimple_rank();
 
-  tits::BasedTitsGroup Tg(sub,kgb.base_grading()); // constructor converts
+  tits::TitsCoset Tg(sub,kgb.base_grading()); // constructor converts
   const weyl::WeylGroup& W = Tg.weylGroup();
 
   tits::TitsElt cur_x (Tg.titsGroup(),kgb.torus_part(x),sub.init_twisted());
@@ -913,6 +914,7 @@ subsys_KGB::subsys_KGB
     const weyl::WeylGroup& pW= kgb.weylGroup(); // now work in parent Weyl group
     const tits::TitsGroup& TG = Tg.titsGroup(); // we need this several times
     const weyl::WeylElt w_base = pW.element(sub.base_twisted_in_parent());
+
     for (KGBElt x=0; x<elt_pool.size(); ++x)
     {
       weyl::WeylElt w = w_base;

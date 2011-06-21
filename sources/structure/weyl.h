@@ -80,7 +80,8 @@ class WeylGroup.  An array of RANK_MAX unsigned char, the ith
 representing a shortest length coset representative of a parabolic
 subquotient W_{i-1}\\W_i.
   */
-class WeylElt {
+class WeylElt // a.k.a. |TwistedInvolution|
+{
 
   friend class WeylGroup; // so we can shield implementation from all others
 
@@ -761,7 +762,7 @@ struct TI_Entry
   : public weyl::TwistedInvolution
 {
   TI_Entry(const weyl::TwistedInvolution& tw): weyl::TwistedInvolution(tw) {}
-  TI_Entry(): weyl::TwistedInvolution() {}
+  TI_Entry(): weyl::TwistedInvolution() {} // identity TwistedInvolution
 
   // members required for an Entry parameter to the HashTable template
   typedef std::vector<TI_Entry> Pooltype; // associated storage type

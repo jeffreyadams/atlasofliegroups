@@ -104,6 +104,9 @@ class TorusElement
   bool negative_at(const latticetypes::LatticeElt& alpha) const
     { return repr.scalarProduct(alpha)%2!=0; }
 
+  // evaluation giving rational number modulo 2 (|negative_at| iff equals 1)
+  arithmetic::Rational evaluate_at(const latticetypes::LatticeElt& alpha) const;
+
   // manipulators
 
   TorusElement& operator+=(TorusPart v);
@@ -179,14 +182,22 @@ class GlobalTitsElement
    |kgb::GlobalFiberData|).
 
    This class has two applications: the main one is to be able to manipulate a
-   given |GlobalTitsElement| (assumed to be valid), but for testing purposes
-   an initial application was to build a |GlobalTitsGroup| first (from an
-   inner class), and then to generate "all" valid elements for it. For the
-   latter purpose the |square_class_gen| and associated method are included,
-   which permits listing a set of initial elements from which others can be
-   deduced. For the main application however this field can be left an empty
-   list, so as not to waste any time computing it during construction. This
-   dichotomy should of course be reimplemented through a derived class.
+   given |GlobalTitsElement|, but for testing purposes an initial application
+   was to build a |GlobalTitsGroup| first (from an inner class), and then to
+   generate "all" valid elements for it (cmd 'X'). For the latter purpose the
+   |square_class_gen| and associated method are included, which permits
+   listing a set of initial elements from which others can be deduced. For the
+   main application however this field can be left an empty list, so as not to
+   waste any time computing it during construction. This dichotomy should of
+   course be reimplemented through a derived class.
+
+   The main use involves manipulating |y| values for the construction of
+   possibly non-integral blocks, in which case the perspective is from that
+   side; for instance the matrix |delta_tr|, called transposed, will actually
+   be one that acts on character lattice $X^*$. However, in the secondary use
+   this class manipulates |x| values, for comparison with the results of the
+   KGB construction; the perspective is then "direct". Terminology such as
+   "dual side", "imaginary roots" is relative to the current perspective.
  */
 class GlobalTitsGroup : public weyl::TwistedWeylGroup
 {
@@ -206,10 +217,13 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   //!\brief constructor for inner class (use after latter is fully constructed)
   GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G);
 
-  //!\brief constructor from abstract root datum + involution information
+  //!\brief constructor for dual inner class (the side of following contructor)
+  GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G,tags::DualTag);
+
+  //!\brief constructor from subdatum (dual side) + involution information
   GlobalTitsGroup(const subdatum::SubSystem& sub,
   		  const latticetypes::LatticeMatrix& theta,
-		  weyl::WeylWord& ww); // output: twisted inv |theta| for |sub|
+		  weyl::WeylWord& ww); // output: expesses |-theta^t| for |sub|
 
   // accessors
   size_t semisimple_rank() const { return alpha_v.size(); }
@@ -228,7 +242,8 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   using TwistedWeylGroup::twist;   // idem
 
   TorusElement twisted(const TorusElement& x) const;
-  void twist(TorusElement& x) const; // in-place imperative version
+//void twist(TorusElement& x) const { x = twisted(x); }
+
 
   const std::vector<gradings::Grading>& square_class_generators() const
   { return square_class_gen; }
@@ -236,7 +251,8 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
 
 // methods that only access some |GlobalTitsElement|
 
-  bool is_valid(GlobalTitsElement a) const; // whether element may occur
+  bool is_valid(const GlobalTitsElement& a) const; // whether strong invovlution
+  bool has_central_square(GlobalTitsElement a) const; // equivalent condition
 
   // determine status of simple root, if assumed imaginary
   bool compact(weyl::Generator s, const GlobalTitsElement& a) const
@@ -247,6 +263,14 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   // flag length-decreasing complex cross actions and inverse Cayley transforms
   bitset::RankFlags descents(const GlobalTitsElement& a) const;
 
+  TorusElement theta_times_torus(const GlobalTitsElement& a) const;
+
+  GlobalTitsElement prod(const GlobalTitsElement& a,
+			 const GlobalTitsElement& b) const;
+
+  bool compact(const rootdata::RootSystem& rs,
+	       rootdata::RootNbr alpha,
+	       GlobalTitsElement a) const; // whether alpha non-compact
 
 // methods that manipulate a |GlobalTitsElement|
 
@@ -257,28 +281,38 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   This is implemented only modulo conjugation by torus elements, so there is
   no effective difference with conjugation by the inverse of |sigma_alpha|
   */
-  int cross(weyl::Generator s, GlobalTitsElement& a) const;
+  int cross_act(weyl::Generator s, GlobalTitsElement& a) const;
 
   void add(TorusPart tp,GlobalTitsElement& a) const { a.t += tp; }
 
-  // add |t| from right
-  void add(GlobalTitsElement& a,latticetypes::RatWeight rw) const; // by value
+  // add |rw| to |a.t|
+  void add(latticetypes::RatWeight rw,GlobalTitsElement& a) const; // by value
 
   // modify |a| to an inverse Cayley image by (real simple root) $\alpha_s$
-  void inverse_Cayley(weyl::Generator s,GlobalTitsElement& a) const;
-
-  GlobalTitsElement prod(const GlobalTitsElement& a,
-			 const GlobalTitsElement& b) const;
+  void do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a) const;
 
  private: // this exists for pragmatic reasons only; no reason to export it
+  // multiply left by either (t,sigma_ww) or delta_1(t,sigma_ww)delta_1
   void left_mult(const TorusElement& t,
 		 const weyl::WeylWord& ww,
 		 bool do_twist, // whether $(t,ww)$ is conjugated by $\delta_1$
 		 GlobalTitsElement& b) const;
 }; // |class GlobalTitsGroup|
 
-
-
+// a class that also stores a torus part induced by the parent base involution
+class SubTitsGroup : public GlobalTitsGroup
+{
+  GlobalTitsGroup parent; // a second one!
+  const subdatum::SubSystem& subsys;
+  TorusElement t;
+ public:
+  //!\brief constructor from subdatum (dual side) + involution information
+  SubTitsGroup(const complexredgp::ComplexReductiveGroup& G,
+	       const subdatum::SubSystem& sub,
+	       const latticetypes::LatticeMatrix& theta,
+	       weyl::WeylWord& ww); // output: expesses |-theta^t| for |sub|
+  TorusElement base_point_offset(const weyl::TwistedInvolution tw) const;
+};
 
 
 
@@ -466,8 +500,8 @@ the elements \f$m_\alpha^\vee\f$.
 \brief Transpose of the reduction mod 2 of the matrix of the defining
 involution of the inner class.
 
-Gives the action of the involution \f$\delta\f$ on $H(2)$, for computing in
-the \f$\delta\f$ coset of the Tits group.
+Gives the action of the (transposed fundamental) involution \f$\delta\f$ on
+$H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
   */
   latticetypes::BinaryMap d_involution;
 
@@ -522,20 +556,7 @@ the \f$\delta\f$ coset of the Tits group.
 
 // methods only involving a |TorusPart|
 
-// convert between torus parts $x$ and $y$ for which $x.w=w.y$ in Tits group
-  TorusPart push_across(TorusPart x, const weyl::WeylElt& w) const;
-  TorusPart pull_across(const weyl::WeylElt& w, TorusPart y) const;
-
-  using TwistedWeylGroup::twisted; // overloaded in this class
-  using TwistedWeylGroup::twist;   // idem
-
-  //!\brief Binary matrix*vector product to compute twist on torus part
-  TorusPart twisted(const TorusPart& x) const { return d_involution*x; }
-
-  //!\brief Reflection of |TorusPart|s defined by a twisted involution
-  latticetypes::BinaryMap involutionMatrix(const weyl::WeylWord& tw) const;
-
-  /*!\brief Applies to the element x of H(2) simple reflection s.
+ /*!\brief Applies to the element x of H(2) simple reflection s.
 
     This is the same thing as conjugating |x|, viewed as embedded in the Tits
     group, by \f$\sigma_s\f$, or equivalently by its inverse (as
@@ -548,9 +569,22 @@ the \f$\delta\f$ coset of the Tits group.
       x += d_simpleCoroot[s];
   }
 
+// convert between torus parts $x$ and $y$ for which $x.w=w.y$ in Tits group
+  TorusPart push_across(TorusPart x, const weyl::WeylElt& w) const;
+  TorusPart pull_across(const weyl::WeylElt& w, TorusPart y) const;
+
+  using TwistedWeylGroup::twisted; // overloaded in this class
+  using TwistedWeylGroup::twist;   // idem
+
+  //!\brief Binary matrix*vector product to compute twist on torus part
+  TorusPart twisted(const TorusPart& x) const { return d_involution*x; }
 
   //!\brief In-place imperative version of |twisted(TorusPart x)|
   void twist(TorusPart& x) const { x=d_involution*x; }
+
+  //!\brief Reflection of |TorusPart|s defined by a twisted involution
+  latticetypes::BinaryMap involutionMatrix(const weyl::WeylWord& tw) const;
+
 
 // methods that only access some |TitsElt|
 
@@ -652,16 +686,15 @@ struct TE_Entry // To allow hash tables of TitsElt values
 
 
 /*!
-The class |BasedTitsGroup| augments the |TitsGroup| class with the choice of a
+The class |TitsCoset| augments the |TitsGroup| class with the choice of a
 basic strong involution $\delta$, which is needed to define the additional
 methods |simple_grading|, |basedTwistedConjugate| and |Cayley_transform|
 (although the latter happens to have an implementation independent of \delta).
 
 All |TitsElement| values $t.\sigma_w$ get reinterpreted as $t.\sigma_w.\delta$
-We are no longer in a group, but in a coset of the group, the name TitsCoset
-might have been more appropriate. Also the images of the operations
-|basedTwistedConjugate| and |Cayley_transform| are only defined modulo the
-equivalence relation generated by conjugation by torus elements. If
+We are no longer in a group, but in a coset of the group. Also the images of
+the operations |basedTwistedConjugate| and |Cayley_transform| are only defined
+modulo the equivalence relation generated by conjugation by torus elements. If
 conjugation by $w.\delta$ acts as $\theta$ on the Lie algebra $h$ of $H$, then
 the equivalence class of $a=t.\sigma_w.\delta$ is obtained by modifying $t$ by
 any value in the direction of the image of $\theta-1$ (the $-1$ eigenspace of
@@ -669,7 +702,7 @@ $\theta$; in the concrete representation |TorusPart|, by any reduction modulo
 2 of a $-\theta$ fixed vector). In practice this means most of all that any
 torus element $x$ the elements $x.a$ and $\theta(x).a=a.x$ and are equivalent.
 */
-class BasedTitsGroup
+class TitsCoset
 {
   tits::TitsGroup* my_Tits_group; // pointer indicating ownership
   const tits::TitsGroup& Tg;
@@ -687,26 +720,28 @@ class BasedTitsGroup
   */
   gradings::Grading grading_offset;
 
-  const rootdata::RootSystem& rs; // needed for |grading|
+  const rootdata::RootSystem& rs; // needed (only) for the |grading| method
 
  public:
-  BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
-		 gradings::Grading base_grading);
+  TitsCoset(const complexredgp::ComplexReductiveGroup& G,
+	    gradings::Grading base_grading);
 
-  BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G);// adjoint case
+  TitsCoset(const complexredgp::ComplexReductiveGroup& G);// adjoint case
 
-  BasedTitsGroup(const complexredgp::ComplexReductiveGroup& G,
-		 tags::DualTag);// dual adjoint case
+  TitsCoset(const complexredgp::ComplexReductiveGroup& G,
+	    tags::DualTag);// dual adjoint case
 
-  BasedTitsGroup(const subdatum::SubSystem& sub,
-		 const latticetypes::LatticeMatrix& theta,
-		 gradings::Grading parent_base_grading,
-		 weyl::WeylWord& ww);
+  // build Tits coset for subdatum, incorporating adapted parent base grading
+  TitsCoset(const subdatum::SubDatum& sub,
+	    gradings::Grading parent_base_grading);
 
-  BasedTitsGroup(const subdatum::SubDatum& sub,
-		 gradings::Grading parent_base_grading);
+  // this constructor computed the inner class for |sub| defined by |theta|
+  TitsCoset(const subdatum::SubSystem& sub,
+	    const latticetypes::LatticeMatrix& theta,
+	    gradings::Grading parent_base_grading,
+	    weyl::WeylWord& ww);
 
-  ~BasedTitsGroup() { delete(my_Tits_group); }
+  ~TitsCoset() { delete(my_Tits_group); }
 
   /* accessors */
 
@@ -754,7 +789,7 @@ class BasedTitsGroup
   { return Tg.twisted(t);}
 
   // general case of grading of a KGB element at an imaginary root
-  bool grading(tits::TitsElt a, rootdata::RootNbr n) const;
+  bool grading(tits::TitsElt a, rootdata::RootNbr n) const; // whether noncomp.
 
   // various methods that provide a starting KGB element for any Cartan class
   tits::TitsElt naive_seed (complexredgp::ComplexReductiveGroup& G,
@@ -762,10 +797,10 @@ class BasedTitsGroup
   tits::TitsElt grading_seed (complexredgp::ComplexReductiveGroup& G,
 			      realform::RealForm rf, size_t cn) const;
 
-}; // |class BasedTitsGroup|
+}; // |class TitsCoset|
 
-// A richer version of |BasedTitsGroup|, with more methods
-class EnrichedTitsGroup : public BasedTitsGroup
+// A richer version of |TitsCoset|, with more methods
+class EnrichedTitsGroup : public TitsCoset
 {
   // strong real form representative
   const cartanclass::StrongRealFormRep srf;
@@ -808,13 +843,13 @@ class EnrichedTitsGroup : public BasedTitsGroup
    by a torus element $x$ will modify this grading to the opposite parity if
    and only if $\alpha(t)=-1$; since this torus part $x$ is represented as a
    bitvector, we can take the scalar product of the reduction mod 2 of
-   $\alpha$ with $x$ to compute this correction. The xor-operation |^|, which
-   could have been written as |!=| on |bool| values, combines the values.
+   $\alpha$ with $x$ to compute this correction. The |!=|-operation, which on
+   |bool| values means exclusive or, combines the values.
 
    Note that by using the a left torus factor |x| rather than a right factor,
    we need not refer to $\beta$, i.e., |(twisted(s))|, in the dot product.
 */
-bool BasedTitsGroup::simple_grading(const tits::TitsElt& a, size_t s) const
+bool TitsCoset::simple_grading(const tits::TitsElt& a, size_t s) const
 {
   return grading_offset[s] != Tg.dual_m_alpha(s).dot(Tg.left_torus_part(a));
 }
@@ -838,7 +873,7 @@ bool BasedTitsGroup::simple_grading(const tits::TitsElt& a, size_t s) const
    multiplication on the right by the torus element $m_t^{grading_offset[s]}$
    by multiplication on the left leading to the formula implemented below.
 */
-void BasedTitsGroup::basedTwistedConjugate(tits::TitsElt& a, size_t s) const
+void TitsCoset::basedTwistedConjugate(tits::TitsElt& a, size_t s) const
 {
   Tg.twistedConjugate(a,s);
   if (grading_offset[s])

@@ -41,8 +41,9 @@ RealReductiveGroup::RealReductiveGroup
   : d_complexGroup(G_C)
   , d_realForm(rf)
   , d_connectivity() // wait for most split torus to be constructed below
-  , d_Tg(tits::BasedTitsGroup(G_C,tits::square_class_grading_offset
-			(G_C.fundamental(),square_class(),G_C.rootDatum())))
+  , d_Tg(new // allocate private copy
+	 tits::TitsCoset(G_C,tits::square_class_grading_offset
+			 (G_C.fundamental(),square_class(),G_C.rootDatum())))
   , kgb_ptr(NULL)
   , d_status()
 {
@@ -71,7 +72,7 @@ RealReductiveGroup::RealReductiveGroup
 #endif
 }
 
-RealReductiveGroup::~RealReductiveGroup() { delete kgb_ptr; }
+RealReductiveGroup::~RealReductiveGroup() { delete d_Tg; delete kgb_ptr; }
 
 /******** accessors *********************************************************/
 
@@ -85,6 +86,8 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
   assert(&d_complexGroup==&other.d_complexGroup); // cannot swap references
   std::swap(d_realForm,other.d_realForm);
   d_connectivity.swap(other.d_connectivity);
+  std::swap(d_Tg,other.d_Tg);
+  std::swap(kgb_ptr,other.kgb_ptr);
   std::swap(d_status,other.d_status);
 }
 

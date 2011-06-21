@@ -153,7 +153,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 {
   { // task 1: generate Cartan classes, fill non-dual part of |Cartan|
-    const tits::BasedTitsGroup adj_Tg(*this);     // based adjoint Tits group
+    const tits::TitsCoset adj_Tg(*this);     // based adjoint Tits group
     const tits::TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting base
 
     {
@@ -243,7 +243,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
   } // task 1 (Cartan class generation)
 
   { // task 2: fill remainder of all |Cartan[i]|: |dual_real_forms|, |dual_rep|
-    const tits::BasedTitsGroup dual_adj_Tg (*this,tags::DualTag());
+    const tits::TitsCoset dual_adj_Tg (*this,tags::DualTag());
     const tits::TitsGroup& dual_Tg = dual_adj_Tg.titsGroup();
 
     { // first initialise |Cartan.back().dual_rep|
@@ -367,9 +367,9 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
     Cartan.push_back(C_info(*this,W.opposite(src.tw),Cartan.size()));
     C_info& dst = Cartan.back();
 
-    const tits::BasedTitsGroup adj_Tg(*this);     // based adjoint Tits group
+    const tits::TitsCoset adj_Tg(*this);     // based adjoint Tits group
     const tits::TitsGroup& Tg=adj_Tg.titsGroup(); // same, forgetting base
-    const tits::BasedTitsGroup dual_adj_Tg (*this,tags::DualTag());
+    const tits::TitsCoset dual_adj_Tg (*this,tags::DualTag());
     const tits::TitsGroup& dual_Tg = dual_adj_Tg.titsGroup();
 
     const weyl::TwistedInvolution tw_org = dst.tw;
@@ -474,7 +474,7 @@ void ComplexReductiveGroup::add_Cartan(size_t cn)
 
 void ComplexReductiveGroup::map_real_forms(size_t cn)
 {
-  tits::BasedTitsGroup adj_Tg(*this);
+  tits::TitsCoset adj_Tg(*this);
   const cartanclass::Fiber& f = Cartan[cn].class_pt->fiber();
   const partition::Partition& weak_real = f.weakReal();
   const weyl::TwistedInvolution& tw = Cartan[cn].tw;
@@ -510,7 +510,7 @@ void ComplexReductiveGroup::map_real_forms(size_t cn)
 
 void ComplexReductiveGroup::map_dual_real_forms(size_t cn)
 {
-  tits::BasedTitsGroup dual_adj_Tg(*this,tags::DualTag());
+  tits::TitsCoset dual_adj_Tg(*this,tags::DualTag());
   const cartanclass::Fiber& dual_f = Cartan[cn].class_pt->dualFiber();
   const partition::Partition& dual_weak_real = dual_f.weakReal();
   const weyl::TwistedInvolution dual_tw =W.opposite(Cartan[cn].tw);

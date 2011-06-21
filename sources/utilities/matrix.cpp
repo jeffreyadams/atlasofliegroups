@@ -91,6 +91,7 @@ Vector<C>& Vector<C>::negate ()
 template<typename C>
   C Vector<C>::scalarProduct (const Vector<C>& v) const
 {
+  assert(base::size()==v.size());
   C result= C(0);
   for (size_t i=0; i<base::size(); ++i)
     result += (*this)[i] * v[i];

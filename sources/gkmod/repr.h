@@ -90,7 +90,7 @@ class Rep_context
   const weyl::TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
   const tits::TitsGroup& titsGroup() const { return G.titsGroup(); }
-  const tits::BasedTitsGroup& basedTitsGroup() const
+  const tits::TitsCoset& basedTitsGroup() const
     { return G.basedTitsGroup(); }
   const kgb::KGB_base& kgb() const { return KGB_set; }
 

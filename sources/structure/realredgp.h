@@ -62,7 +62,7 @@ class RealReductiveGroup
   realform::RealForm d_realForm; // our identification number
   topology::Connectivity d_connectivity; // characterss of componentn group
 
-  const tits::BasedTitsGroup d_Tg; // no reference; the group is stored here
+  const tits::TitsCoset* d_Tg; // owned pointer; the group is stored here
   kgb::KGB* kgb_ptr; // owned pointer, but initially |NULL|
 
   Status d_status;
@@ -71,7 +71,7 @@ class RealReductiveGroup
 
 // constructors and destructors
   RealReductiveGroup(complexredgp::ComplexReductiveGroup&, realform::RealForm);
-  ~RealReductiveGroup(); // { delete kgb_ptr; } // not inline: type incomplete
+  ~RealReductiveGroup(); // not inline: type incomplete; deletes d_Tg, kgb_ptr
 
 // accessors
   const complexredgp::ComplexReductiveGroup& complexGroup() const
@@ -82,8 +82,8 @@ class RealReductiveGroup
   const rootdata::RootDatum& rootDatum() const
     { return d_complexGroup.rootDatum(); }
 
-  const tits::BasedTitsGroup& basedTitsGroup() const { return d_Tg; }
-  const tits::TitsGroup& titsGroup() const  { return d_Tg.titsGroup(); }
+  const tits::TitsCoset& basedTitsGroup() const { return *d_Tg; }
+  const tits::TitsGroup& titsGroup() const  { return d_Tg->titsGroup(); }
 
   const weyl::WeylGroup& weylGroup() const
     { return d_complexGroup.weylGroup(); }
