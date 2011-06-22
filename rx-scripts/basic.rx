@@ -106,4 +106,27 @@ set real_coroots (RootDatum rd, mat theta) =
        do if theta*alpha = -alpha then rc #:= alpha fi od
      ; if #rc=0 then null(rank(rd),0) else mat: rc fi )
 
+set simple_reflection (RootDatum rd, int s) =
+  id_mat(rank(rd))- [simple_roots(rd)[s]] * ^[simple_coroots(rd)[s]]
+
+set involution (InnerClass ic, [int] tw) =
+( let rd = root_datum(ic), theta = distinguished_involution(ic)
+  in for i : #tw downto 0 do theta := simple_reflection(rd,tw[i])*theta od
+  ; theta
+)
+
+set imaginary_roots (InnerClass ic, [int] tw) =
+  imaginary_roots(root_datum(ic),involution(ic,tw))
+set real_roots (InnerClass ic, [int] tw) =
+  real_roots(root_datum(ic),involution(ic,tw))
+set imaginary_coroots (InnerClass ic, [int] tw) =
+  imaginary_coroots(root_datum(ic),involution(ic,tw))
+set real_coroots (InnerClass ic, [int] tw) =
+  real_coroots(root_datum(ic),involution(ic,tw))
+
+{ integrality inner class (dual side) defined by inf. character and involution }
+set dual_integral(InnerClass ic, ratvec gamma) =
+  let rd = root_datum(ic) then drd = dual(integrality_datum(rd,gamma))
+  in inner_class(drd,-^distinguished_involution(ic))
+
 set KGB(RealForm rf) = for i:KGB_size(rf) do KGB(rf,i) od
