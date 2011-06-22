@@ -470,10 +470,10 @@ weyl::WeylWord RootSystem::reflectionWord(RootNbr r) const
 
 matrix::Vector<int> RootSystem::pos_system_vec(const RootList& Delta) const
 {
-  assert(Delta.size()==rk); // must be an image of $\Delta^+$
+  assert(Delta.size()==rk); // must be an image of $\Delta^+$, in correct order
   matrix::Vector<int> coef(rk,0); // coefficients of simple roots in result
-  for (weyl::Generator s=0; s<rk; ++s)
-    coef += root_expr(Delta[s])*=two_rho_in_simple_roots[s];
+  for (weyl::Generator s=0; s<rk; ++s) // compute matrix*vector for image
+    coef += root_expr(Delta[s])*=two_rho_in_simple_roots[s]; // Delta*2rho
 
   return cartanMatrix().right_mult(coef); // transform to fundamental weights
 }
@@ -1028,10 +1028,9 @@ weyl::WeylWord wrt_distinguished(const RootSystem& rs, RootList& Delta)
   while (s<rank);
 
   for (size_t i=0; i<rank; ++i)
-  {
     Delta[i]=rs.permuted_root(Delta[i],result);
-    assert(rs.isSimpleRoot(Delta[i])); // should have made every root simple
-  }
+    // should be simple, but don't assert that here, to allow a test for it
+
   return result;
 }
 

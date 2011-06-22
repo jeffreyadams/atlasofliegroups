@@ -145,12 +145,15 @@ involution: (LieType,mat,string->mat): basic involution on given basis.
   be possible, so the sublattice spanned should be stable under the involution
 
 root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice.
-  The columns of the matrix argument are interpreted as specifying a
-  sublattice of the character lattice of the "simply connected" group G of the
-  given Lie type (which is a direct product of a simply connected semisimple
-  group G' and a central torus S), expressed in the basis of fundamental
-  weights of G' and an arbitrary basis for characters of S). For this to be
-  possible, it is required that the sublattice contain the root lattice of G'.
+  The columns of the matrix argument are interpreted as specifying the basis
+  of a sublattice of the character lattice of the "simply connected" group G
+  of the given Lie type (which is a direct product of a simply connected
+  semisimple group G' and a central torus S), expressed in the basis of
+  fundamental weights of G' and an arbitrary basis for characters of S). For
+  this to be possible, it is required that the sublattice contain the root
+  lattice of G'. The sublattice becomes the standard lattice for working with
+  the root datum, and is identified with Z^n using the given basis, which thus
+  becomes the standard basis of the sublattice, henceforth called lattice.
 root_datum: ([vec],[vec],int->RootDatum): root datum from simple (co)roots.
   In root_datum(roots,coroots,r), the list of vectors roots and coroots must
   have the same length (the semisimple rank), and each of thier elements
@@ -231,9 +234,13 @@ classify_involution: (mat->int,int,int): determine type of lattice involution
 
 inner_class: (RootDatum,mat->InnerClass): inner_class of G from involution
   This is the basic function for building a complex reductive group equipped
-  with a distinguished involution from the root datum and that involution;
-  the involution must be given on the (sub-)lattice basis of the root datum,
-  and must describe an involutive automorphism of the based root datum.
+  with an involution from the root datum and that involution; the latter is
+  given on the lattice basis of the root datum, and must describe an
+  involutive automorphism of the root datum. The involution is converted to a
+  based root datum involution if necessary, using the Weyl group.
+twisted_involution (RootDatum,mat->InnerClass,vec): inner_class and Weyl word
+  Build an inner class as the above function, and also return a Weyl word
+  (twisted involution) that expresses the given involution in that inner class
 inner_class: (RootDatum,string->InnerClass): get inner class of G symbolically
   Build a complex reductive group directly from a root datum, but compute
   the distinguished involution from the string describing it symbolically.

@@ -1311,12 +1311,15 @@ void classify_wrapper(expression_base::level l)
 the matrix is already expressed on the basis of the weight lattice used by the
 root datum, the question of stabilising that lattice is settled, but we must
 check that the matrix is indeed an involution, and that it gives an
-automorphism of the based root datum. While we are doing that, we can also
-determine the Lie type of the root datum, the permutation possibly needed to
-map the standard (Bourbaki) ordering of that Dynkin diagram to the actual one,
-and the inner class letters corresponding to each of its factors. This is
-precisely the data stored in a |lietype::Layout| structure (which is later
-also used to associate real form names to internal data (gradings)).
+automorphism of the root datum. In fact we need an automorphism of the based
+root datum, but we will apply (and export thought the |ww| parameter) a Weyl
+group element to map positive roots to positive roots. While we are doing all
+this, we can also determine the Lie type of the root datum, the permutation
+possibly needed to map the standard (Bourbaki) ordering of that Dynkin diagram
+to the actual one, and the inner class letters corresponding to each of its
+factors. This is precisely the data stored in a |lietype::Layout| structure
+(which is later also used to associate real form names to internal data
+(gradings)).
 
 The Lie type will in general be identical to that of the root datum (and in
 particular any torus factors will come at the end), but in case of Complex
@@ -1329,15 +1332,20 @@ matrix describing a (purported) involution of the weight lattice, although we
 shall use it below for a matrix defined for the central torus part; we can
 however reuse the module that tests for being an involution here.
 
+@h "weyl.h"
+
 @< Local function def...@>=
 lietype::Layout check_involution
- (const latticetypes::LatticeMatrix& M, const rootdata::RootDatum& rd)
+ (const latticetypes::LatticeMatrix& M, const rootdata::RootDatum& rd,
+  weyl::WeylWord& ww)
  throw (std::bad_alloc, std::runtime_error)
 { size_t r=rd.rank(),s=rd.semisimpleRank();
   @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
 @/setutils::Permutation p(s);
-  @< Set |p| to the permutation of the simple roots induced by |M|, or throw
-     a |runtime_error| if |M| is not an automorphism of |rd| @>
+  @< Set |ww| to the Weyl group element needed to the left of |M| to map
+  positive roots to positive roots, and |p| to the permutation of the simple
+  roots so obtained, or throw a |runtime_error| if |M| is not an automorphism
+  of |rd| @>
 @/lietype::Layout result;
 @/lietype::LieType& type=result.d_type;
   lietype::InnerClassType& inner_class=result.d_inner;
@@ -1350,24 +1358,30 @@ lietype::Layout check_involution
   return result;
 }
 
-@ That |M| is an automorphism means that the simple roots are permuted among
-each other, and that the Cartan matrix is invariant under that permutation of
+@ That |M| is an automorphism means that the roots are permuted among
+each other, and that after applying the Weyl group action to map simple roots
+to the Cartan matrix is invariant under that permutation of
 its rows and columns.
 
-@< Set |p| to the permutation of the simple roots...@>=
-{ rootdata::WRootIterator first=rd.beginSimpleRoot(), last=rd.endSimpleRoot();
+@< Set |ww| to the Weyl group element...@>=
+{ rootdata::RootList Delta(s);
   for (size_t i=0; i<s; ++i)
-  { rootdata::Root alpha=M*rd.simpleRoot(i);
-    size_t p_i=std::find(first,last,alpha)-first;
-    if (p_i<s) p[i]=p_i;
-    else throw std::runtime_error
-      ("Given transformation does not permute simple roots");
-@.Given transformation...@>
+  { Delta[i]=rd.rootNbr(M*rd.simpleRoot(i));
+    if (Delta[i]==rd.numRoots()) // then image not found
+      throw std::runtime_error@|
+        ("Matrix maps simple root "+str(i)+" to non-root");
   }
+  ww = wrt_distinguished(rd,Delta);
+  for (size_t i=0; i<s; ++i)
+    if (rd.isSimpleRoot(Delta[i])) // should have made every root simple
+      p[i]=rd.simpleRootIndex(Delta[i]);
+    else throw std::runtime_error
+      ("Matrix does not define a root datum automorphism");
+@.Matrix does not define...@>
   for (size_t i=0; i<s; ++i)
     for (size_t j=0; j<s; ++j)
       if (rd.cartan(p[i],p[j])!=rd.cartan(i,j)) throw std::runtime_error@|
-      ("Given transformation is not a root datum automorphism");
+      ("Matrix does not define a root datum automorphism");
 }
 
 @ For each simple factor we look if there are any non-fixed points of the
@@ -1675,19 +1689,38 @@ void inner_class_value::print(std::ostream& out) const
 }
 
 @ Our wrapper function builds a complex reductive group with an involution,
-testing its validity.
+testing its validity. Another returns a second value that indicates the
+twisted involution whose involution matrix in the inner class is the one given
+as argument
 
 @< Local function def...@>=
 void fix_involution_wrapper(expression_base::level l)
 { shared_matrix M(get<matrix_value>());
   shared_root_datum rd(get<root_datum_value>());
-  lietype::Layout lo = check_involution(M->val,rd->val);
+  weyl::WeylWord ww;
+  lietype::Layout lo = check_involution(M->val,rd->val,ww);
   if (l==expression_base::no_value)
     return;
 @)
   std::auto_ptr<complexredgp::ComplexReductiveGroup>@|
     G(new complexredgp::ComplexReductiveGroup(rd->val,M->val));
   push_value(new inner_class_value(G,lo));
+}
+
+void twisted_involution_wrapper(expression_base::level l)
+{ shared_matrix M(get<matrix_value>());
+  shared_root_datum rd(get<root_datum_value>());
+  weyl::WeylWord ww;
+  lietype::Layout lo = check_involution(M->val,rd->val,ww);
+  if (l==expression_base::no_value)
+    return;
+@)
+  std::auto_ptr<complexredgp::ComplexReductiveGroup>@|
+    G(new complexredgp::ComplexReductiveGroup(rd->val,M->val));
+  push_value(new inner_class_value(G,lo));
+  push_value(new vector_value(std::vector<int>(ww.begin(),ww.end())));
+  if (l==expression_base::single_value)
+    wrap_tuple(2);
 }
 
 @ To simulate the functioning of the \.{atlas} program, the function
@@ -1956,6 +1989,8 @@ install_function(classify_wrapper,@|"classify_involution"
                 ,"(mat->int,int,int)");
 install_function(fix_involution_wrapper,@|"inner_class"
                 ,"(RootDatum,mat->InnerClass)");
+install_function(twisted_involution_wrapper,@|"twisted_involution"
+                ,"(RootDatum,mat->InnerClass,vec)");
 install_function(set_type_wrapper,@|"inner_class"
                 ,"(LieType,[ratvec],string->InnerClass)");
 install_function(set_inner_class_wrapper,@|"inner_class"
