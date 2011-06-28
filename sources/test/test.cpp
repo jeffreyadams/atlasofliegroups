@@ -80,6 +80,7 @@ namespace {
 
   void X_f();
   void iblock_f();
+  void nblock_f();
   void embedding_f();
 
 
@@ -217,6 +218,7 @@ void addTestCommands<realmode::RealmodeTag>
 
   mode.add("examine",exam_f);
   mode.add("iblock",iblock_f);
+  mode.add("nblock",nblock_f);
   mode.add("embedding",embedding_f);
 }
 
@@ -1149,7 +1151,90 @@ void iblock_f()
     std::cout << "Twisted involution in subsystem: " << ww << ".\n";
 
     blocks::BlockElt z;
-    blocks::nu_block block(GR,sub,x,lambda,gamma,z);
+    blocks::gamma_block block(GR,sub,x,lambda,gamma,z);
+
+    std::cout << "Given parameters define element " << z
+	      << " of the following block:" << std::endl;
+
+    ioutils::OutputFile f;
+    block_io::print_block(f,block);
+
+  }
+  catch (error::MemoryOverflow& e)
+  {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e)
+  {
+    e("aborted");
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << "error occurrend: " << e.what() << std::endl;
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << "unidentified error occurred" << std::endl;
+  }
+} // |iblock_f|
+
+void nblock_f()
+{
+  try
+  {
+    realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
+    complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
+    const rootdata::RootDatum& rd = G.rootDatum();
+
+    latticetypes::Weight lambda_rho =
+      interactive::get_weight(interactive::sr_input(),
+			      "Give lambda-rho: ",
+			      G.rank());
+
+    latticetypes::RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+
+
+    latticetypes::RatWeight nu=
+      interactive::get_ratweight
+      (interactive::sr_input(),"rational parameter nu: ",rd.rank());
+
+    const kgb::KGB& kgb = GR.kgb();
+    unsigned long x=interactive::get_bounded_int
+      (interactive::common_input(),"KGB element: ",kgb.size());
+
+    latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
+
+    nu = latticetypes::RatWeight // make |nu| fixed by $-\theta$
+      (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
+
+    latticetypes::RatWeight gamma = nu + latticetypes::RatWeight
+    (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
+
+    std::cout << "Infinitesimal character is " << gamma << std::endl;
+
+    subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,gamma);
+
+    weyl::WeylWord ww;
+    weyl::Twist twist = sub.twist(theta,ww);
+
+    setutils::Permutation pi;
+
+    std::cout << "Subsystem on dual side is ";
+    if (sub.rank()==0)
+      std::cout << "empty.\n";
+    else
+    {
+      std::cout << "of type "
+		<< dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+		<< ", with roots ";
+      for (weyl::Generator s=0; s<sub.rank(); ++s)
+	std::cout << sub.parent_nr_simple(pi[s])
+		  << (s<sub.rank()-1 ? "," : ".\n");
+    }
+    std::cout << "Twisted involution in subsystem: " << ww << ".\n";
+
+    blocks::BlockElt z;
+    blocks::non_integral_block block(GR,sub,x,lambda,gamma,z);
 
     std::cout << "Given parameters define element " << z
 	      << " of the following block:" << std::endl;

@@ -135,8 +135,8 @@ class KGB_base
   KGBEltPair inverseCayley(weyl::Generator s, KGBElt x) const
     { return data[s][x].inverse_Cayley_image; }
 
-  KGBElt cross_act(const weyl::WeylWord ww, KGBElt x) const;
-  KGBElt cross_act(KGBElt x, const weyl::WeylWord ww) const;
+  KGBElt cross(const weyl::WeylWord ww, KGBElt x) const;
+  KGBElt cross(KGBElt x, const weyl::WeylWord ww) const;
 
   size_t length(KGBElt x) const { return info[x].length; }
   weyl::TwistedInvolution involution(KGBElt x) const { return info[x].inv; }

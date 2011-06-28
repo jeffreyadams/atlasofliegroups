@@ -258,7 +258,7 @@ bool GlobalTitsGroup::has_central_square(GlobalTitsElement a) const
   // now check if |a.t| is central, by scalar products with |simple.coroots()|
   latticetypes::RatWeight rw = a.t.as_rational();
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (rw.numerator().dot(simple.coroots()[s])%rw.denominator()!=0)
+    if (simple.coroots()[s].dot(rw.numerator())%rw.denominator()!=0)
       return false;
 
   return true;
@@ -272,11 +272,28 @@ bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
   // now check if |t| is central, by scalar products with |simple.coroots()|
   latticetypes::RatWeight rw = t.as_rational();
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (rw.numerator().dot(simple.coroots()[s])%rw.denominator()!=0)
+    if (simple.coroots()[s].dot(rw.numerator())%rw.denominator()!=0)
       return false;
 
   return true;
 }
+
+ // weaker condition: square being central in subgroup
+bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,
+		const subdatum::SubSystem& sub) const
+{
+  const TorusElement t = a.torus_part()+theta_times_torus(a);
+
+  // now check if |t| is central, by scalar products with |simple.coroots()|
+  latticetypes::RatWeight rw = t.as_rational();
+  for (weyl::Generator s=0; s<sub.rank(); ++s)
+    if (sub.parent_datum().coroot(sub.parent_nr_simple(s)).dot(rw.numerator())
+	%rw.denominator()!=0)
+      return false;
+
+  return true;
+}
+
 
 // find simple roots giving length-decreasing links (complex descent and real)
 // this could have been a method of |WeylGroup| at |weyl::TwistedInvolution|s.
@@ -311,6 +328,22 @@ GlobalTitsGroup::cross_act(weyl::Generator s, GlobalTitsElement& x) const
 	  (simple.roots()[s]*r.numerator(),2*r.denominator()),x);
   }
   return 0; // no length change this case
+}
+
+int GlobalTitsGroup::cross_act(weyl::WeylWord w, GlobalTitsElement& a) const
+{
+  int d=0;
+  for (size_t i=w.size(); i-->0; )
+    d += cross_act(w[i],a);
+  return d; // total length change, in case the caller is interested
+}
+
+int GlobalTitsGroup::cross_act(GlobalTitsElement& a,weyl::WeylWord w) const
+{
+  int d=0;
+  for (size_t i=0; i<w.size(); ++i )
+    d += cross_act(w[i],a);
+  return d; // total length change, in case the caller is interested
 }
 
 // multiply strong involution by |rw|; side should be immaterial (left used)

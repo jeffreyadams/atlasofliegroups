@@ -253,6 +253,8 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
 
   bool is_valid(const GlobalTitsElement& a) const; // whether strong invovlution
   bool has_central_square(GlobalTitsElement a) const; // equivalent condition
+  bool is_valid(const GlobalTitsElement& a, // weaker condition, square being
+		const subdatum::SubSystem& sub) const; // central in subgroup
 
   // determine status of simple root, if assumed imaginary
   bool compact(weyl::Generator s, const GlobalTitsElement& a) const
@@ -282,6 +284,10 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   no effective difference with conjugation by the inverse of |sigma_alpha|
   */
   int cross_act(weyl::Generator s, GlobalTitsElement& a) const;
+  int cross_act(weyl::WeylWord w, GlobalTitsElement& a) const;
+  int cross_act(GlobalTitsElement& a,weyl::WeylWord w) const;
+  GlobalTitsElement cross(weyl::WeylWord w, GlobalTitsElement a) const
+  { cross_act(w,a); return a; }
 
   void add(TorusPart tp,GlobalTitsElement& a) const { a.t += tp; }
 

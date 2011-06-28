@@ -91,14 +91,14 @@ size_t KGB_elt_entry::hashCode(size_t modulus) const
 
 */
 
-KGBElt KGB_base::cross_act(const weyl::WeylWord ww, KGBElt x) const
+KGBElt KGB_base::cross(const weyl::WeylWord ww, KGBElt x) const
 {
   for (size_t i=ww.size(); i-->0;)
     x = cross(ww[i],x);
   return x;
 }
 
-KGBElt KGB_base::cross_act(KGBElt x, const weyl::WeylWord ww) const
+KGBElt KGB_base::cross(KGBElt x, const weyl::WeylWord ww) const
 {
   for (size_t i=0; i<ww.size(); ++i)
     x = cross(ww[i],x);
@@ -1293,7 +1293,7 @@ void FiberData::reduce(tits::TitsElt& a) const
 KGBElt cross(const KGB_base& kgb, KGBElt x,
 	     weyl::Generator s, weyl::WeylWord ww)
 {
-  return kgb.cross_act(kgb.cross(s,kgb.cross_act(ww,x)),ww);
+  return kgb.cross(kgb.cross(s,kgb.cross(ww,x)),ww);
 }
 
 // general Cayley transform in (non simple) non-compact imaginary root
@@ -1301,7 +1301,7 @@ KGBElt cross(const KGB_base& kgb, KGBElt x,
 KGBElt Cayley (const KGB_base& kgb, KGBElt x,
 	       weyl::Generator s, weyl::WeylWord ww)
 {
-  return kgb.cross_act(kgb.cayley(s,kgb.cross_act(ww,x)),ww);
+  return kgb.cross(kgb.cayley(s,kgb.cross(ww,x)),ww);
 }
 
 // general inverse Cayley transform (choice) in (non simple) real root
@@ -1309,7 +1309,7 @@ KGBElt Cayley (const KGB_base& kgb, KGBElt x,
 KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
 		       weyl::Generator s, weyl::WeylWord ww)
 {
-  return kgb.cross_act(kgb.inverseCayley(s,kgb.cross_act(ww,x)).first,ww);
+  return kgb.cross(kgb.inverseCayley(s,kgb.cross(ww,x)).first,ww);
 }
 
 

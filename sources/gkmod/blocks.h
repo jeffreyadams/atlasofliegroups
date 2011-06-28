@@ -70,7 +70,7 @@ namespace blocks {
 
 class Block_base {
 
-  const weyl::WeylGroup& W;
+  const weyl::WeylGroup& W; // used only for |compute_support| and printing
 
  protected: // other fields may be set in derived class contructor
 
@@ -89,7 +89,8 @@ class Block_base {
 
 // constructors and destructors
   Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb);
-  Block_base(const subdatum::SubSystem& sub);
+  Block_base(const subdatum::SubSystem& sub,
+	     const weyl::WeylGroup& printing_W);
 
   virtual ~Block_base() {}
 
@@ -277,7 +278,7 @@ private:
 }; // |class Block|
 
 
-class nu_block : public Block_base
+class gamma_block : public Block_base
 {
   const kgb::KGB& kgb;
 
@@ -297,13 +298,13 @@ class nu_block : public Block_base
   std::vector<y_fields> y_info; // indexed by child |y| numbers
 
  public:
-  nu_block(realredgp::RealReductiveGroup& GR,
-	   const subdatum::SubSystem& sub,
-	   kgb::KGBElt x,
-	   const latticetypes::RatWeight& lambda, // discrete parameter
-	   const latticetypes::RatWeight& gamma, // infinitesimal character
-	   BlockElt& entry_element // set to block element matching the input
-	   );
+  gamma_block(realredgp::RealReductiveGroup& GR,
+	      const subdatum::SubSystem& sub,
+	      kgb::KGBElt x,
+	      const latticetypes::RatWeight& lambda, // discrete parameter
+	      const latticetypes::RatWeight& gamma, // infinitesimal character
+	      BlockElt& entry_element // set to block element matching the input
+	      );
 
   // virtual methods
   size_t xsize() const { return kgb_nr_of.size(); }
@@ -321,7 +322,53 @@ class nu_block : public Block_base
   latticetypes::RatWeight local_system(BlockElt z) const
   { assert(z<size()); return y_info[d_y[z]].rep.torus_part().as_rational(); }
 
-}; // |class nu_block|
+}; // |class gamma_block|
+
+class non_integral_block : public Block_base
+{
+  const kgb::KGB& kgb;
+
+  latticetypes::RatWeight infin_char; // infinitesimal character
+
+  std::vector<kgb::KGBElt> kgb_nr_of; // indexed by child |x| numbers
+
+  struct y_fields
+  {
+    tits::GlobalTitsElement rep; //representative, in ^vG coordinates
+    unsigned int Cartan_class; // for ^vG(gamma)
+
+    y_fields(tits::GlobalTitsElement y, unsigned int cc)
+    : rep(y), Cartan_class(cc) {}
+  }; // |struct y_fields|
+
+  std::vector<y_fields> y_info; // indexed by child |y| numbers
+
+ public:
+  non_integral_block
+    (realredgp::RealReductiveGroup& GR,
+     const subdatum::SubSystem& sub,
+     kgb::KGBElt x,
+     const latticetypes::RatWeight& lambda, // discrete parameter
+     const latticetypes::RatWeight& gamma, // infinitesimal character
+     BlockElt& entry_element // set to block element matching the input
+    );
+
+  // virtual methods
+  size_t xsize() const { return kgb_nr_of.size(); }
+  size_t ysize() const { return y_info.size(); }
+
+  size_t Cartan_class(BlockElt z) const
+  { assert(z<size()); return y_info[d_y[z]].Cartan_class; }
+
+  const weyl::TwistedInvolution& involution(BlockElt z) const
+  { assert(z<size()); return y_info[d_y[z]].rep.tw(); }
+
+  std::ostream& print(std::ostream& strm, BlockElt z) const;
+
+  // new methods
+  latticetypes::RatWeight lambda(BlockElt z) const; // reconstruct from y value
+
+}; // |class non_integral_block|
 
 } // |namespace blocks|
 
