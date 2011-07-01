@@ -37,7 +37,7 @@ simply an implementation of the Chinese remainder theorem.
 
 The prerequisites for running this program will be to have, for some
 collection of moduli~$k$ and fixed prefixes $P$~and~$M$, files $P$\.{-mod}$k$
-of polynomials, as written by the |klwrite| commend of the modular version of
+of polynomials, as written by the |klwrite| command of the modular version of
 the Atlas software, and files $M$\.{-renumbering-mod}$k$, as produced by the
 \.{matrix-merge} program. We shall also provide an interactive mode in which
 the modular remainders can be entered manually by the user.
@@ -100,7 +100,7 @@ to $$x\cong t+qm\pmod{\lcm(a,b)}.$$
 
 To compute $d$ and $m$, and incidentally the value $\lcm(a,b)$ is done using a
 simple double-exit loop. The fact that the value written to |lcm| is indeed
-$\lcm(a,b)$ one uses the fact that, apart from the invariant mentioned in the
+$\lcm(a,b)$ one uses the fact that, apart from the invariants mentioned in the
 comments, the determinant $\left\vert {d_0\atop-m_0}~{d_1\atop m_1}\right\vert
 =d_om_1+d_1m_0$ is also an invariant of the loop, with value~|ab|.
 
@@ -109,12 +109,12 @@ comments, the determinant $\left\vert {d_0\atop-m_0}~{d_1\atop m_1}\right\vert
 ulong extended_gcd(ulong a,ulong b, ulong&lcm, ulong& m)
 { ulong d0=a, m0=0, d1=b,m1=b;
   while(d0!=0)
-  // invariant: $d_0\cong-m_0\pmod{a}$, \ and $d_1\cong+m_1\pmod{a}$
+@/ // invariants: $d_0\cong-m_0\pmod{a}$, \ and $d_1\cong+m_1\pmod{a}$
   { m1+=(d1/d0)*m0; d1%=d0; // i.e., |d1-=(d1/d0)*d0|
     if (d1==0) break;
-    // invariant holds, and |d0>d1>0|
+@/   // invariants hold, and |d0>d1>0|
     m0+=(d0/d1)*m1; d0%=d1; // i.e., |d0-=(d0/d1)*d1|
-  } // invariant holds, and |0<d0<d1|
+  } // invariants hold, and |0<d0<d1|
 @)
   if (d1==0) {@; lcm=m1; m=m1-m0; return d0; }
   else {@; lcm=m0; m=m1; return d1; } // |d0==0|
@@ -181,6 +181,7 @@ Chinese Remainder Theorem) we can then avoid two division operations in the
 above code, so we shall define a derived class |PrimeChineseBox| of
 |ChineseBox| that handles this special case more efficiently.
 
+@h <cstdlib>
 @< Type definitions @>=
 class PrimeChineseBox : public ChineseBox
 { // no additional data
@@ -188,7 +189,7 @@ public: // constructor from basic |ChineseBox|
   PrimeChineseBox(const ChineseBox& cb) : ChineseBox(cb)
   { if (gcd!=1)
     { std::cerr << "Non relatively prime numbers, gcd=" << gcd << ".\n";
-      exit(1); // we should never get here
+      std::exit(1); // we should never get here
     }
   }
   virtual ~PrimeChineseBox() @+ {}
@@ -212,7 +213,7 @@ reduction modulo the~|lcm|; this will have a serious risk over integral
 overflow if |a| and~|b| are even moderately large with respect to the capacity
 of such integers: even if both |a| and~|b|, and therefore |t-s| or |s-t|, can
 be represented with less than half the number of available bits, the product
-might overflown since |m| and |mm| represent fixed classes modulo~$\lcm(a,b)$
+might overflow, since |m| and |mm| represent fixed classes modulo~$\lcm(a,b)$
 and might require more than half the number of available bits. For this reason
 we shall now present some classes in which the multiplications by |m| and~|mm|
 modulo the |lcm| are performed via precomputed tables, which allows us to

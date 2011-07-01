@@ -5,8 +5,10 @@
 #include  <fstream>
 #include  <bitset>
 #include  <cassert>
+#include  <algorithm>
 #include  <sstream>
 #include  <cctype>
+#include  <memory>
 
 
 typedef unsigned long long int ullong; 
@@ -524,12 +526,13 @@ int main(int argc,char** argv)
                                     if (format== matrix_info::old and program_name=="KLwrite")
                                       format= matrix_info::transform;
                                     if (code==work_in_progress)
-                                      if (program_name=="KLwrite")
+                                    { if (program_name=="KLwrite")
                                         std::cout << "Reattempting conversion of matrix file.\n";
                                       else
                                       { std::cout << "Broken matrix file, retry the conversion.\n";
                                        exit(1);
                                       }
+                                    }
                                     std::cout << "Matrix file format: "
                                       << ( format== matrix_info::old ? "old"
                                          : format== matrix_info::revised ? "new"
@@ -638,7 +641,7 @@ int main(int argc,char** argv)
             throw std::runtime_error("Index too large");
           }
         }
-        if (mi.get()!=NULL and std::cin.peek()==':' or row_info.get()!=NULL)
+        if ((mi.get()!=NULL and std::cin.peek()==':') or row_info.get()!=NULL)
         { BlockElt x,y;
   	if (std::cin.peek()==':' or std::cin.peek()=='>')
           { bool once=std::cin.peek()==':';
@@ -723,8 +726,9 @@ int main(int argc,char** argv)
             if (coefficients[i]!=1 or i==0) std::cout << coefficients[i];
             std::cout << (i==0? "" : "q");
             if (i>1)
-      	if (i<10) std::cout << '^' << i;
+            {	if (i<10) std::cout << '^' << i;
       	else std::cout << "^{" << i << '}';
+            }
           }
         if (coefficients.size()==0) std::cout << 0;
           // print something for the null polynomial

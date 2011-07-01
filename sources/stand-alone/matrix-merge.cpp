@@ -6,6 +6,7 @@
 #include  <string>
 #include  <fstream>
 #include  <sstream>
+#include  <cstdlib>
 #include  "../utilities/arithmetic.h"
 #include  <iomanip>
 
@@ -136,7 +137,7 @@ void do_work
         in_stream[i]=in_file[i]; // get stream underlying file stream
       else
       { std::cerr << "Could not open file '" << name.str() << "'.\n";
-        exit(1);
+        std::exit(1);
       }
     }
   
@@ -158,7 +159,7 @@ void do_work
       std::cout << "Output to file: " << name.str() << '\n';
     else
     { std::cerr << "Could not open output file '" << name.str() << "'.\n";
-        exit(1);
+        std::exit(1);
       }
 
   std::vector<tuple_entry<n> > pool;
@@ -206,7 +207,7 @@ void do_work
       std::cout << "Renumbering output to file: " << name.str() << '\n';
     else
       { std::cerr << "Could not open file '" << name.str() << "'.\n";
-        exit(1);
+        std::exit(1);
       }
   
     for (unsigned int k=0; k<pool.size(); ++k)
@@ -226,7 +227,7 @@ int main(int argc,char** argv)
       if (not uses_out.is_open())
       {
         std::cerr << "Could not open file '" << argv[1] << "' for writing.\n";
-        exit(1);
+        std::exit(1);
       }
       argc-=2; argv+=2;
     }
@@ -256,7 +257,7 @@ int main(int argc,char** argv)
       if (m!=0) moduli.push_back(m);
       else
       { std::cout << "Illegal modulus argument: " << in.str() << "\n";
-	exit(1);
+	std::exit(1);
       }
     }
 

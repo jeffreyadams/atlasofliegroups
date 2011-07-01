@@ -287,6 +287,7 @@ const std::ios_base::openmode binary_in=
 @ Opening files is easy and a bit repetitive. For input files we need pointers
 in order to store them in a vector.
 
+@h <cstdlib>
 @< Open input and output files @>=
 std::vector<std::ifstream*>in_file(n,NULL);
   std::vector<std::istream*>in_stream(n,NULL);
@@ -298,7 +299,7 @@ std::vector<std::ifstream*>in_file(n,NULL);
       in_stream[i]=in_file[i]; // get stream underlying file stream
     else
     {@; std::cerr << "Could not open file '" << name.str() << "'.\n";
-      exit(1);
+      std::exit(1);
     }
   }
 @)
@@ -315,7 +316,7 @@ std::vector<std::ifstream*>in_file(n,NULL);
     std::cout << "Output to file: " << name.str() << '\n';
   else
   @/{@; std::cerr << "Could not open output file '" << name.str() << "'.\n";
-      exit(1);
+      std::exit(1);
     }
 
 @ Here we use the least common multiple function |lcm| from the Atlas.
@@ -389,7 +390,7 @@ for (unsigned int i=0; i<n; ++i)
     std::cout << "Renumbering output to file: " << name.str() << '\n';
   else
     {@; std::cerr << "Could not open file '" << name.str() << "'.\n";
-      exit(1);
+      std::exit(1);
     }
 @)
   for (unsigned int k=0; k<pool.size(); ++k)
@@ -410,7 +411,7 @@ int main(int argc,char** argv)
       if (not uses_out.is_open())
       @/{@;
         std::cerr << "Could not open file '" << argv[1] << "' for writing.\n";
-        exit(1);
+        std::exit(1);
       }
       argc-=2; argv+=2;
     }
@@ -440,7 +441,7 @@ int main(int argc,char** argv)
       if (m!=0) moduli.push_back(m);
       else
       {@; std::cout << "Illegal modulus argument: " << in.str() << "\n";
-	exit(1);
+	std::exit(1);
       }
     }
 

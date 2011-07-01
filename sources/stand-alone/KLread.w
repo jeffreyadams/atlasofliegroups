@@ -641,6 +641,8 @@ element of its length, we have to use |upper_bound| in the first search, and
 by~|y|.
 
 @h <cassert>
+@h <algorithm>
+
 @< Check value of final element pushed, and replace it by~$y$ @>=
 {
   const BlockElt* i= // point after first block element of length of |y|
@@ -1084,6 +1086,8 @@ void usage()
 @
 @h <sstream>
 @h <cctype>
+@h <memory>
+
 @< Main program @>=
 
 int main(int argc,char** argv)
@@ -1209,12 +1213,13 @@ files. Therefore to request the upgrade, the program itself must be renamed
   if (format== matrix_info::old and program_name=="KLwrite")
     format= matrix_info::transform;
   if (code==work_in_progress)
-    if (program_name=="KLwrite")
+  { if (program_name=="KLwrite")
       std::cout << "Reattempting conversion of matrix file.\n";
     else
     {@; std::cout << "Broken matrix file, retry the conversion.\n";
      exit(1);
     }
+  }
   std::cout << "Matrix file format: "
     << ( format== matrix_info::old ? "old"
        : format== matrix_info::revised ? "new"
@@ -1311,7 +1316,7 @@ do
     if (std::cin.peek()=='#' ? std::cin.get(), true : mi.get()==NULL )
     { @< Read index~|i| from |std::cin|; if |"quit"| is found instead do
 	 |break|, and in case of errors throw a |runtime_error| @>
-      if (mi.get()!=NULL and std::cin.peek()==':' or row_info.get()!=NULL)
+      if ((mi.get()!=NULL and std::cin.peek()==':') or row_info.get()!=NULL)
       { BlockElt x,y;
 	if (std::cin.peek()==':' or std::cin.peek()=='>')
         { bool once=std::cin.peek()==':';
@@ -1467,8 +1472,9 @@ be fed directly into the math mode of \TeX\ if desired.
       if (coefficients[i]!=1 or i==0) std::cout << coefficients[i];
       std::cout << (i==0? "" : "q");
       if (i>1)
-	if (i<10) std::cout << '^' << i;
+      {	if (i<10) std::cout << '^' << i;
 	else std::cout << "^{" << i << '}';
+      }
     }
   if (coefficients.size()==0) std::cout << 0;
     // print something for the null polynomial

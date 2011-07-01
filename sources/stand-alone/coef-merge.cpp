@@ -1,4 +1,5 @@
 #include  <iostream>
+#include  <cstdlib>
 #include  <cassert>
 #include  <vector>
 #include  <fstream>
@@ -33,7 +34,7 @@ public: // constructor from basic |ChineseBox|
   PrimeChineseBox(const ChineseBox& cb) : ChineseBox(cb)
   { if (gcd!=1)
     { std::cerr << "Non relatively prime numbers, gcd=" << gcd << ".\n";
-      exit(1); // we should never get here
+      std::exit(1); // we should never get here
     }
   }
   virtual ~PrimeChineseBox()  {}
@@ -154,12 +155,12 @@ const std::ios_base::openmode binary_in=
 ulong extended_gcd(ulong a,ulong b, ulong&lcm, ulong& m)
 { ulong d0=a, m0=0, d1=b,m1=b;
   while(d0!=0)
-  // invariant: $d_0\cong-m_0\pmod{a}$, \ and $d_1\cong+m_1\pmod{a}$
+ // invariants: $d_0\cong-m_0\pmod{a}$, \ and $d_1\cong+m_1\pmod{a}$
   { m1+=(d1/d0)*m0; d1%=d0; // i.e., |d1-=(d1/d0)*d0|
     if (d1==0) break;
-    // invariant holds, and |d0>d1>0|
+   // invariants hold, and |d0>d1>0|
     m0+=(d0/d1)*m1; d0%=d1; // i.e., |d0-=(d0/d1)*d1|
-  } // invariant holds, and |0<d0<d1|
+  } // invariants hold, and |0<d0<d1|
 
   if (d1==0) { lcm=m1; m=m1-m0; return d0; }
   else { lcm=m0; m=m1; return d1; } // |d0==0|
