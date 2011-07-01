@@ -22,6 +22,7 @@
 #include "dynkin.h"
 #include "lietype.h"
 #include "rootdata.h"
+#include "subdatum.h"
 #include "tori.h"
 #include "weyl.h"
 #include "weylsize.h"
@@ -112,7 +113,7 @@ InvolutionData::InvolutionData(const rootdata::RootDatum& rd,
 
 void InvolutionData::classify_roots(const rootdata::RootSystem& rs)
 {
-  for (size_t alpha = 0; alpha<d_rootInvolution.size(); ++alpha)
+  for (rootdata::RootNbr alpha = 0; alpha<d_rootInvolution.size(); ++alpha)
     if (d_rootInvolution[alpha] == alpha)
       d_imaginary.insert(alpha);
     else if (d_rootInvolution[alpha] == rs.rootMinus(alpha))
@@ -120,6 +121,33 @@ void InvolutionData::classify_roots(const rootdata::RootSystem& rs)
     else
       d_complex.insert(alpha);
 
+  // find simple-imaginary roots
+  d_simpleImaginary=rs.simpleBasis(imaginary_roots());
+  d_simpleReal=rs.simpleBasis(real_roots());
+}
+
+// the follwing constructor intersects all root sets with those of |sub|, but
+// uses the full parent datum for numbering roots, and in |root_involution()|
+InvolutionData::InvolutionData(const subdatum::SubSystem& sub,
+			       const latticetypes::LatticeMatrix& theta)
+: d_rootInvolution(sub.parent_datum().rootPermutation(theta))
+, d_imaginary(sub.parent_datum().numRoots())
+, d_real(d_imaginary.capacity())
+, d_complex(d_imaginary.capacity())
+, d_simpleImaginary()        // here even dimensioning is pointless
+, d_simpleReal()
+{
+  const rootdata::RootSystem& rs = sub.parent_datum();
+  for (size_t i = 0; i<sub.numPosRoots(); ++i) // do only oots for |sub|
+  {
+    rootdata::RootNbr alpha = sub.parent_nr(sub.posRootNbr(i));
+    if (d_rootInvolution[alpha] == alpha)
+      d_imaginary.insert(alpha);
+    else if (d_rootInvolution[alpha] == rs.rootMinus(alpha))
+      d_real.insert(alpha);
+    else
+      d_complex.insert(alpha);
+  }
   // find simple-imaginary roots
   d_simpleImaginary=rs.simpleBasis(imaginary_roots());
   d_simpleReal=rs.simpleBasis(real_roots());

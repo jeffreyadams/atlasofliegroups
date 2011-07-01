@@ -214,10 +214,14 @@ description of its -1 eigenspace, which allows a quick test for equivalence of
 the halfsum of the positive imaginary coroots, and the Cartan class.
 
 Originally conceived for global use within an inner class (the constructor
-uses its list of Catan classes to generate all involutions), functionality now
+uses its list of Cartan classes to generate all involutions), functionality now
 also includes dynamically adding Cartan classes of involutions, by specifying
 a new twisted involution with its invlution matrix, from which a whole
 conjugacy class will be added to the tables.
+
+The terminology remains attached to the original use, even though the use with
+dynamical addition of Cartan classes is associated to a |GlobalTitsGroup|,
+which will be employed from the dual side.
  */
 class GlobalFiberData
 {
@@ -228,27 +232,27 @@ class GlobalFiberData
     unsigned int Cartan;
     latticetypes::LatticeMatrix proj; // projectors for equivalence
     latticetypes::LatticeElt check_2rho_imag;
-    rootdata::RootSet simple_imag,simple_real;
+    rootdata::RootList simple_imag,simple_real;
 
   inv_info() : Cartan(~0), proj(), check_2rho_imag(), simple_imag()
     {} // allow uninitialized
   inv_info(unsigned int c,
 	     const latticetypes::LatticeMatrix& p,
 	     const latticetypes::LatticeElt& c2i,
-	     const rootdata::RootSet& si,
-	     const rootdata::RootSet& sr)
+	     const rootdata::RootList& si,
+	     const rootdata::RootList& sr)
   : Cartan(c),proj(p),check_2rho_imag(c2i),simple_imag(si),simple_real(sr) {}
   };
 
   std::vector<inv_info> info;
-  std::vector<latticetypes::LatticeMatrix> refl;
+  std::vector<latticetypes::LatticeMatrix> refl; // reflections at dual side
 
 public:
   GlobalFiberData(complexredgp::ComplexReductiveGroup& G,
 		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
 
   // contructor that does not install eny Cartan classes yet
-  GlobalFiberData(const subdatum::SubSystem& sub,
+  GlobalFiberData(const tits::GlobalTitsGroup& Tg,
 		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
 
   GlobalFiberData(const GlobalFiberData& org) // copy contructor, handle ref
@@ -262,10 +266,10 @@ public:
     return info[hash_table.find(tw)].Cartan;
   }
 
-  const rootdata::RootSet& imaginary_basis(const weyl::TwistedInvolution& tw)
+  const rootdata::RootList& imaginary_basis(const weyl::TwistedInvolution& tw)
     const
   { return info[hash_table.find(tw)].simple_imag; }
-  const rootdata::RootSet& real_basis(const weyl::TwistedInvolution& tw)
+  const rootdata::RootList& real_basis(const weyl::TwistedInvolution& tw)
     const
   { return info[hash_table.find(tw)].simple_real; }
 
@@ -289,9 +293,9 @@ public:
   { return KGB_elt_entry(fingerprint(y),y); }
 
   // manipulators
-  void add_class(const subdatum::SubSystem& sub,
-		 const tits::GlobalTitsGroup& Tg,
-		 const weyl::TwistedInvolution& tw);
+  void add_class(const subdatum::SubSystem& sub, // determines root system
+		 const tits::GlobalTitsGroup& Tg, // interprets |tw| and values
+		 const weyl::TwistedInvolution& tw); // derived from it
 
 }; // |class GlobalFiberData|
 

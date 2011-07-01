@@ -989,8 +989,8 @@ GlobalFiberData::GlobalFiberData
 	(cn,
 	 lattice::row_saturate(A),
 	 rd.dual_twoRho(cc.imaginaryRootSet()),
-	 rootdata::RootSet(rd.numRoots(),cc.simpleImaginary()),
-	 rootdata::RootSet(rd.numRoots(),cc.simpleReal()));
+	 cc.simpleImaginary(),
+	 cc.simpleReal());
     }
 
     to_do.assign(1,first); // reset list to singleton containing |first|
@@ -1020,23 +1020,40 @@ GlobalFiberData::GlobalFiberData
   } // |for(cn)|
 } // |GlobalFiberData::GlobalFiberData|
 
+
 GlobalFiberData::GlobalFiberData
-(const subdatum::SubSystem& sub,
-   hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
+ (const tits::GlobalTitsGroup& Tg,
+  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
   : hash_table(h)
   , info()
-  , refl(sub.rank())
+  , refl(Tg.semisimple_rank())
 {
   for (weyl::Generator s=0; s<refl.size(); ++s)
-    refl[s] = sub.parent_datum().root_reflection(sub.parent_nr_simple(s));
+  {
+    refl[s] = latticetypes:: LatticeMatrix(Tg.rank()); // identity matrix
+    const latticetypes::Weight& alpha   = Tg.parent_simple_root(s);
+    const latticetypes::Weight& alpha_v = Tg.parent_simple_coroot(s);
+    for (size_t i=0; i<Tg.rank(); ++i)
+      for (size_t j=0; j<Tg.rank(); ++j)
+	refl[s](i,j) -= alpha[i]*alpha_v[j];
+  }
 }
 
+// In this method there is a subtle distribution of roles: |sub| provides the
+// set of "simple" roots to handle, |sub.parent_datum()| is used to interpret
+// any |RootNbr| values, and |Tg| interprets any |TwistedInvolution|. It
+// should not be assumed that the generators of |Tg| are those of |sub|, nor
+// those of |sub.parent_datum()|: either (or none) could be the case.
 void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
 				const tits::GlobalTitsGroup& Tg,
 				const weyl::TwistedInvolution& tw)
 {
-  const rootdata::RootDatum pd = sub.parent_datum();
+  const rootdata::RootDatum& pd = sub.parent_datum();
   const weyl::TwistedWeylGroup& W = Tg;
+
+  rootdata::RootList W_simple(W.rank());
+  for (weyl::Generator s=0; s<W.rank(); ++s)
+    W_simple[s]=pd.rootNbr(Tg.parent_simple_root(s));
 
   const size_t prev_inv = hash_table.size();
   if (hash_table.match(tw)<prev_inv)
@@ -1045,23 +1062,15 @@ void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
   std::vector<std::pair<size_t,weyl::Generator> > history; // record ancestors
   history.reserve(0x100); // avoid some initial reallocations for efficiency
 
-  cartanclass::InvolutionData id = // involution data in subsystem, for |tw|
-    cartanclass::InvolutionData::build(sub,Tg,tw);
-
   latticetypes::LatticeMatrix A = Tg.involution_matrix(tw); // parent side
+  cartanclass::InvolutionData id (sub,A); // parent roots, intersect |sub|
+
   for (size_t i=0; i<A.numRows(); ++i)
     A(i,i) -= 1; // now $A=\theta-1$, a matrix whose kernel is $(X^*)^\theta$
 
-  rootdata::RootSet imaginary(pd.numRoots()),
-    simple_imaginary(pd.numRoots()), simple_real(pd.numRoots());
-
-  // convert from numbering of subsystem to parent numbering
-  for (rootdata::RootSet::iterator it=id.imaginary_roots().begin(); it(); ++it)
-    imaginary.insert(sub.parent_nr(*it));
-  for (size_t i=0; i<id.imaginary_rank(); ++i)
-    simple_imaginary.insert(sub.parent_nr(id.imaginary_basis(i)));
-  for (size_t i=0; i<id.real_rank(); ++i)
-    simple_real.insert(sub.parent_nr(id.real_basis(i)));
+  rootdata::RootSet imaginary=id.real_roots(); // imaginary for |Tg|
+  rootdata::RootList simple_imaginary=id.real_basis();
+  rootdata::RootList simple_real=id.imaginary_basis();
 
   // saturate by conjugation before reserving space and filling |info|
   for (size_t i=prev_inv; i<hash_table.size(); ++i) // hash table grows
@@ -1087,7 +1096,7 @@ void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
   info.push_back(inv_info(info.empty() ? 0 : info.back().Cartan+1,
 			  lattice::row_saturate(A),
 			  pd.twoRho(imaginary), // |pd| is dual w.r.t. |Tg|
-			  simple_imaginary, // but |id| built for |Tg|, no dual
+			  simple_imaginary, // and |id| nomenclature for |Tg|
 			  simple_real));
 
   // do remaining elements using history
@@ -1101,15 +1110,15 @@ void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
      (cur.Cartan,   // same Cartan class
       cur.proj*refl[s], // apply $refl[s]^{-1}$ to old kernel
       refl[s]*cur.check_2rho_imag,
-      pd.root_permutation(sub.parent_nr_simple(s)).renumbering(cur.simple_imag),
-      pd.root_permutation(sub.parent_nr_simple(s)).renumbering(cur.simple_real)
+      pd.root_permutation(W_simple[s]).renumbering(cur.simple_imag),
+      pd.root_permutation(W_simple[s]).renumbering(cur.simple_real)
       ));
   }
   assert(info.size()==hash_table.size());
 } // |GlobalFiberData::add_class|
 
 
-//  this demonstrates what the |proj matrices can be used for
+//  this demonstrates what the |proj| matrices can be used for
 bool GlobalFiberData::equivalent(const tits::GlobalTitsElement& x,
 				 const tits::GlobalTitsElement& y) const
 {

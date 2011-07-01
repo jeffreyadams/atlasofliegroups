@@ -109,12 +109,14 @@ class SubSystem : public rootdata::RootSystem // new system, subsytem of dual
 }; // |class SubSystem|
 
 
-/* the class |SubDatum| is mathematically much richer than |SubSystem| (which,
-   we recall, holds a refernece to a parent root datum, so the terminology is
-   somewhat misleading): its unique constructor requires a root datum
-   involution |theta| (coded by a KGB element for a real form) and an
-   infinitesimal character. The latter defines a subsystem by integrality,
-   while |theta| defines a subsystem twist and a word that expresses it
+/* the class |SubDatum| is mathematically much richer than |SubSystem| (also,
+   note the latter holds a reference to a parent root datum, so the
+   terminology is somewhat misleading). While |SubSystem| may be regarded as a
+   companion to |RootDatum|, the |SubSystem| class depends on gkmod stuff. Its
+   unique constructor requires a root datum involution |theta| (coded by a KGB
+   element for a real form) and an infinitesimal character. The latter defines
+   a subsystem by integrality, while |theta| defines a subsystem twist and a
+   word that expresses it.
  */
 class SubDatum : public SubSystem
 {

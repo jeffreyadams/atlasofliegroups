@@ -235,6 +235,11 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   //!\brief Element m_\alpha of H(2) for simple coroot \#j.
   TorusPart m_alpha(size_t j) const { return alpha_v[j]; }
 
+  latticetypes::Weight parent_simple_root(weyl::Generator s) const
+  { return simple.roots()[s]; }
+  latticetypes::Weight parent_simple_coroot(weyl::Generator s) const
+  { return simple.coroots()[s]; }
+
   //!\brief Reflection of |TorusElement|s defined by a twisted involution
   latticetypes::LatticeMatrix involution_matrix(const weyl::WeylElt& tw) const;
 

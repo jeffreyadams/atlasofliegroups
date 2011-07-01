@@ -371,11 +371,12 @@ void GlobalTitsGroup::add(latticetypes::RatWeight rw,GlobalTitsElement& a)
   zero, which is as good as any integer. Note that in the reduction modulo 2
   that will be used in |TitsGroup| below, this kind of correction is no longer
   possible, and we must perform a more tedious search for a valid correction.
+
+  This is Lemma 14.6 in the Algorithms paper.
  */
 void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   const
 {
-  assert(is_valid(a)); // only for valid KGB elements inverse Cayley is defined
   const latticetypes::Weight& eval_pt=simple.coroots()[s];
   latticetypes::RatWeight t=a.t.as_rational();
   int num = eval_pt.dot(t.numerator()); // should become multiple of denominator

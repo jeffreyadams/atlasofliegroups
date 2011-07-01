@@ -28,6 +28,7 @@
 #include "rootdata.h"
 #include "setutils.h"
 #include "size.h"
+#include "subdatum_fwd.h"
 #include "subquotient.h"
 #include "complexredgp_fwd.h"
 
@@ -69,6 +70,8 @@ class InvolutionData
 		 const latticetypes::LatticeMatrix&);
   InvolutionData(const rootdata::RootSystem& rs,
 		 const rootdata::RootList& s_image);
+  InvolutionData(const subdatum::SubSystem&,
+		 const latticetypes::LatticeMatrix&);
   static InvolutionData build(const rootdata::RootSystem& rs,
 			      const weyl::TwistedWeylGroup& W,
 			      const weyl::TwistedInvolution& tw);

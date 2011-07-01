@@ -562,17 +562,18 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
   , kgb_nr_of()
   , y_info()
 {
-  weyl::TI_Entry::Pooltype inv_pool;
-  hashtable::HashTable<weyl::TI_Entry,unsigned int> inv_hash(inv_pool);
-  kgb::GlobalFiberData gfd(sub,inv_hash);
-
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   weyl::WeylWord dual_involution; // set in |GlobalTitsGroup| constructor:
+  const rootdata::RootDatum& rd = GR.rootDatum();
 
   const tits::GlobalTitsGroup Tg
     (sub,
      GR.complexGroup().involutionMatrix(kgb.involution(x)),
      dual_involution);
+
+  weyl::TI_Entry::Pooltype inv_pool;
+  hashtable::HashTable<weyl::TI_Entry,unsigned int> inv_hash(inv_pool);
+  kgb::GlobalFiberData gfd(Tg,inv_hash);
 
   weyl::TwistedInvolution tw = Tg.weylGroup().element(dual_involution);
   // now |tw| describes |-kgb.involution(x)^tr| as twisted involution for |sub|
@@ -589,7 +590,6 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
   latticetypes::Weight tworho_nonintegral_real(GR.rank(),0);
   latticetypes::LatticeCoeff n=gamma.denominator();
   latticetypes::Weight v=gamma.numerator();
-  const rootdata::RootDatum& rd = GR.rootDatum();
   size_t numpos = rd.numPosRoots();
 
   for(size_t j=0; j<numpos; ++j)
@@ -647,9 +647,7 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
   std::vector<unsigned int> x_of(kgb.size(),~0);
   {
     // generating reflections are for \emph{real} roots for involution |y.tw()|
-    rootdata::RootSet rb = gfd.real_basis(y.tw());
-    rootdata::RootList gen_root(rb.begin(),rb.end()); // order is irrelevant
-    const subdatum::SubSystem imaginary(sub.parent_datum(),gen_root);
+    rootdata::RootList gen_root = gfd.real_basis(y.tw());
 
     kgb::KGBEltPair p = kgb.packet(x); // get range of |kgb| that involves |x|
     bitmap::BitMap seen(p.second-p.first);
@@ -660,8 +658,8 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
       unsigned i=news.front();
       seen.insert(i); // so |i| will be removed from |news| at end of loop
       kgb::KGBElt xx=i+p.first;
-      for (weyl::Generator s=0; s<imaginary.rank(); ++s)
-	news.insert(kgb.cross(imaginary.reflection(s),xx)-p.first);
+      for (size_t k=0; k<gen_root.size(); ++k)
+	news.insert(kgb.cross(rd.reflectionWord(gen_root[k]),xx)-p.first);
     }
 
     // now insert elements from |seen| as first $x$-fiber of block
@@ -803,7 +801,7 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
 				      descents::DescentStatus::RealTypeII);
 	    else
 	      if (y_hash[d_y[base_z+j]].repr().torus_part().negative_at
-		  (sub.parent_datum().coroot(sub.parent_nr_simple(s))))
+		  (rd.coroot(sub.parent_nr_simple(s))))
 		d_descent[base_z+j].set(s,
 					descents::DescentStatus::RealNonparity);
 	      else
@@ -836,14 +834,13 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
 	      y_hash.match(gfd.pack(y)); // create first new |y|
 
 	      // imaginary cross actions (real for parent) complete set of y's
-	      rootdata::RootSet rb = gfd.imaginary_basis(y.tw());
+	      rootdata::RootList rb = gfd.imaginary_basis(y.tw());
 	      for (size_t j=y_begin; j<y_hash.size(); ++j) // |y_hash| grows
 	      {
 		y = y_hash[j].repr();
 		assert(Tg.is_valid(y));
-		for (rootdata::RootSet::iterator it=rb.begin(); it(); ++it)
-		  y_hash.match(gfd.pack
-			(y.simple_imaginary_cross(sub.parent_datum(),*it)));
+		for (size_t k=0; k<rb.size(); ++k)
+		  y_hash.match(gfd.pack(y.simple_imaginary_cross(rd,rb[k])));
 	      }
 	      y_end = y_hash.size();
 	    } // ensure all new |y|'s are in hash table |y_hash|
@@ -957,6 +954,7 @@ non_integral_block::non_integral_block
   , y_info()
 {
   const complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
+  const rootdata::RootDatum& rd = G.rootDatum();
 
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   const tits::GlobalTitsGroup Tg (G,tags::DualTag()); // vG
@@ -974,7 +972,7 @@ non_integral_block::non_integral_block
   hashtable::HashTable<kgb::KGB_elt_entry,kgb::KGBElt> y_hash(y_pool);
   weyl::TI_Entry::Pooltype inv_pool; // twisted involutions of block, y-side
   hashtable::HashTable<weyl::TI_Entry,unsigned int> inv_hash(inv_pool);
-  kgb::GlobalFiberData gfd(sub,inv_hash);
+  kgb::GlobalFiberData gfd(Tg,inv_hash);
 
   // step 2: move up toward the most split fiber for the current real form
   { // modify |x| and |y|, ascending for |x|, descending for |y|
@@ -1008,7 +1006,7 @@ non_integral_block::non_integral_block
     } while(s<our_rank); // loop until no descents found in |subsys|
 
     // DON'T assert(x+1==kgb.size()); fails e.g. in complex groups, empty |sub|
-    gfd.add_class(sub,Tg,y.tw()); // create class at most compact dual Cartan
+    gfd.add_class(sub,Tg,y.tw()); // at most compact dual Cartan
     y_hash.match(gfd.pack(y)); // install initial element |y|
   } // end of step 2
 
@@ -1017,9 +1015,8 @@ non_integral_block::non_integral_block
   std::vector<unsigned int> x_of(kgb.size(),~0);
   {
     // generating reflections are for real roots for |involution(x)|
-    rootdata::RootSet ib = gfd.imaginary_basis(y_hash[0].tw); // imagin for y
-    rootdata::RootList gen_root(ib.begin(),ib.end()); // order is irrelevant
-    const subdatum::SubSystem real(sub.parent_datum(),gen_root);
+    rootdata::RootList gen_root = gfd.imaginary_basis(y_hash[0].tw); // for |y|
+    const subdatum::SubSystem real(rd,gen_root); // but real for |x|
 
     for (size_t i=0; i<y_hash.size(); ++i) // |y_hash| grows
       for (weyl::Generator s=0; s<real.rank(); ++s)
@@ -1157,7 +1154,7 @@ non_integral_block::non_integral_block
 	case gradings::Status::Real: // now status depends on |y|
 	  for (unsigned int j=0; j<nr_y; ++j)
 	    if (y_hash[d_y[base_z+j]].repr().torus_part().negative_at
-		  (sub.parent_datum().coroot(sub.parent_nr_simple(s))))
+		  (rd.coroot(sub.parent_nr_simple(s))))
 	      d_descent[base_z+j].set(s,
 				      descents::DescentStatus::RealNonparity);
 	    else
@@ -1206,10 +1203,9 @@ non_integral_block::non_integral_block
 	    // now create a collection of R-packets
 
 	    // complete fiber of x's over new involution using
-	    // imaginary cross actions (real for |sub| which is on dual side)
-	    rootdata::RootSet ib = gfd.real_basis(y_hash[y_start].tw);
-	    subdatum::SubSystem is(sub.parent_datum(),
-				   rootdata::RootList(ib.begin(),ib.end()));
+	    // imaginary cross actions (real for |y|)
+	    rootdata::RootList ib = gfd.real_basis(y_hash[y_start].tw);
+	    subdatum::SubSystem is(rd,ib);
 	    for (size_t k=x_start; k<kgb_nr_of.size(); ++k) // |kgb_nr_of| grows
 	    {
 	      kgb::KGBElt cur_x = kgb_nr_of[k];

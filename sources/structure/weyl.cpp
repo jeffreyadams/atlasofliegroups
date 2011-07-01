@@ -799,6 +799,7 @@ unsigned long TwistedWeylGroup::involutionLength
 rootdata::RootList TwistedWeylGroup::simple_images
 (const rootdata::RootSystem& rs, const TwistedInvolution& tw) const
 {
+  assert(rank()==rs.rank()); // compatibility of Weyl groups required
   rootdata::RootList result(rank());
   for (size_t i=0; i<rank(); ++i)
     result[i]=rs.simpleRootNbr(twisted(i));
