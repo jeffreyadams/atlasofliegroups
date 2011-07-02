@@ -327,9 +327,10 @@ class gamma_block : public Block_base
 class non_integral_block : public Block_base
 {
   const kgb::KGB& kgb;
+  const complexredgp::ComplexReductiveGroup& G;
 
-  latticetypes::RatWeight infin_char; // infinitesimal character
-  latticetypes::Weight two_rho; // recorded for reconstructing |lambda-rho|
+  const latticetypes::RatWeight infin_char; // infinitesimal character
+  const latticetypes::Weight two_rho; // needed for reconstructing |lambda-rho|
 
   std::vector<kgb::KGBElt> kgb_nr_of; // indexed by child |x| numbers
 

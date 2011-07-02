@@ -949,16 +949,16 @@ non_integral_block::non_integral_block
    BlockElt& entry_element) // output parameter
   : Block_base(sub,GR.weylGroup()) // uses ordinary W for printing
   , kgb(GR.kgb())
+  , G(GR.complexGroup())
   , infin_char(gamma)
   , two_rho(GR.rootDatum().twoRho())
   , kgb_nr_of()
   , y_info()
 {
-  const complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
   const rootdata::RootDatum& rd = G.rootDatum();
+  const tits::GlobalTitsGroup Tg (G,tags::DualTag());// for $^\vee G$
 
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
-  const tits::GlobalTitsGroup Tg (G,tags::DualTag()); // vG
 
   weyl::TwistedInvolution tw =
     dual_involution(kgb.involution(x),G.twistedWeylGroup(),Tg);
@@ -1292,11 +1292,16 @@ non_integral_block::non_integral_block
 } // |non_integral_block::non_integral_block|
 
 
-
+// reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
+// formula $\lambda = \gamma + {1+\theta\over2}.\log{{t\over\pi\ii})$
+// the projection factor $1+\theta\over2$ kills the modded-out-by part of $t$
 latticetypes::RatWeight non_integral_block::lambda(BlockElt z) const
 {
-  tits::GlobalTitsElement y =  y_info[d_y[z]].rep;
-  return infin_char - (y.torus_part().as_rational()*=2);
+  latticetypes::LatticeMatrix theta =
+    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
+  latticetypes::RatWeight t =  y_info[d_y[z]].rep.torus_part().as_rational();
+  const latticetypes::Weight& num = t.numerator();
+  return infin_char - latticetypes::RatWeight(num-theta*num,t.denominator());
 }
 
 std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
@@ -1305,10 +1310,12 @@ std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
   latticetypes::RatWeight ll=lambda(z);
   latticetypes::RatWeight lr=ll - latticetypes::RatWeight(two_rho,2);
   lr.normalize();
-  assert(lr.denominator()==1);
-  return strm << "(" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
-	      << ',' << std::setw(3*ll.size()+3) << ll
-	      << "=rho+" << std::setw(2*ll.size()) << lr.numerator() << ") ";
+  strm << "(" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
+       << ',' << std::setw(3*ll.size()+3) << ll
+       << "=rho+" << std::setw(3*ll.size()+1) << lr.numerator();
+  if (lr.denominator()!=1)
+    strm << '/' << lr.denominator();
+  return strm << ") ";
 }
 
 

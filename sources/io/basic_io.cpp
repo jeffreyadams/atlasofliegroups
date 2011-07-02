@@ -88,7 +88,9 @@ namespace matrix { // since |latticetypes::LatticeElt| = |matrix::Vector<int>|
 
 std::ostream& operator<< (std::ostream& strm, const latticetypes::LatticeElt& v)
 {
-  return basic_io::seqPrint(strm, v.begin(), v.end(), ",", "[", "]");
+  std::ostringstream o; // accumulate in string for interpretation of width
+  basic_io::seqPrint(o, v.begin(), v.end(), ",", "[", "]");
+  return strm << o.str(); // now |strm.width()| is applied to whole vector
 }
 
 } // |namespace matrix|
