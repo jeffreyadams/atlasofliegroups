@@ -99,7 +99,7 @@ class Block_base {
 // accessors
   const weyl::WeylGroup& weylGroup() const { return W; }
 
-  size_t rank() const { return W.rank(); } // only semisimple rank matters
+  size_t rank() const { return d_cross.size(); } // semisimple rank matters
   size_t size() const { return d_x.size(); }
 
   virtual size_t xsize() const = 0;
@@ -195,7 +195,7 @@ class Block : public Block_base
 
   enum State { BruhatConstructed, NumStates };
 
-  const weyl::TwistedWeylGroup& tW;
+  const weyl::TwistedWeylGroup& tW; // for interpreting twisted involutions
 
   size_t xrange;
   size_t yrange;
@@ -329,6 +329,7 @@ class non_integral_block : public Block_base
   const kgb::KGB& kgb;
 
   latticetypes::RatWeight infin_char; // infinitesimal character
+  latticetypes::Weight two_rho; // recorded for reconstructing |lambda-rho|
 
   std::vector<kgb::KGBElt> kgb_nr_of; // indexed by child |x| numbers
 

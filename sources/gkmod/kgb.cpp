@@ -1063,7 +1063,7 @@ void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
   history.reserve(0x100); // avoid some initial reallocations for efficiency
 
   latticetypes::LatticeMatrix A = Tg.involution_matrix(tw); // parent side
-  cartanclass::InvolutionData id (sub,A); // parent roots, intersect |sub|
+  cartanclass::InvolutionData id (sub,A); // parent roots, intersect with |sub|
 
   for (size_t i=0; i<A.numRows(); ++i)
     A(i,i) -= 1; // now $A=\theta-1$, a matrix whose kernel is $(X^*)^\theta$

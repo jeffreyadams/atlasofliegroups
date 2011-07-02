@@ -107,7 +107,7 @@ TorusElement TorusElement::operator +(const TorusElement& t) const
 TorusElement TorusElement::operator -(const TorusElement& t) const
 {
   TorusElement result(repr - t.repr,0); // raw constructor
-  int d=2*result.repr.denominator(); // we shall  reduce modulo $2\Z^rank$
+  int d=2*result.repr.denominator(); // we shall reduce modulo $2\Z^rank$
   latticetypes::LatticeElt& num=result.repr.numerator();
   for (size_t i=0; i<num.size(); ++i)
     if (num[i]<0) // correct if |result.repr| in interval $(-2,0)$
@@ -325,7 +325,7 @@ GlobalTitsGroup::cross_act(weyl::Generator s, GlobalTitsElement& x) const
       x.t.evaluate_at(simple.coroots()[s]) - arithmetic::Rational(1);
     if (r.numerator()!=0) // compact imaginary case needs no action
       add(latticetypes::RatWeight // now reflect for |s| about compact case
-	  (simple.roots()[s]*r.numerator(),2*r.denominator()),x);
+	  (simple.roots()[s]*-r.numerator(),2*r.denominator()),x);
   }
   return 0; // no length change this case
 }

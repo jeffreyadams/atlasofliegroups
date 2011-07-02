@@ -950,6 +950,7 @@ non_integral_block::non_integral_block
   : Block_base(sub,GR.weylGroup()) // uses ordinary W for printing
   , kgb(GR.kgb())
   , infin_char(gamma)
+  , two_rho(GR.rootDatum().twoRho())
   , kgb_nr_of()
   , y_info()
 {
@@ -997,8 +998,8 @@ non_integral_block::non_integral_block
 	    xx = kgb.cayley(sub.simple(s),xx);
 	    x = kgb.cross(xx,sub.to_simple(s));
 	    Tg.cross_act(sub.to_simple(s),y);
-	    Tg.do_inverse_Cayley(s,y);
-	    Tg.cross_act(sub.to_simple(s),y);
+	    Tg.do_inverse_Cayley(sub.simple(s),y);
+	    Tg.cross_act(y,sub.to_simple(s));
 	  }
 	  break;
 	} // |if(isDescent)|
@@ -1072,9 +1073,9 @@ non_integral_block::non_integral_block
       unsigned int y_start=y_hash.size(); // new |y|s numbered from here up
 
       tits::GlobalTitsElement sample = y_hash[ys[0]].repr();
-      int d = Tg.cross_act(sub.reflection(s),sample); // |d| is length change
-      int length = d_length[next] +
-	(d>0 ? 1 : d==0 ? 0 : -1); // direction is for dual
+      Tg.cross_act(sub.to_simple(s),sample);
+      int d = Tg.cross_act(sub.simple(s),sample); // |d| is length change
+      int length = d_length[next] + d;
       assert(length>=0); // if not, then starting point not minimal for length
 
 
@@ -1085,6 +1086,7 @@ non_integral_block::non_integral_block
 	{
 	  tits::GlobalTitsElement y = y_hash[ys[j]].repr();
 	  int dd = Tg.cross_act(sub.reflection(s),y);
+	  if (dd>1) dd=1; else if (dd<-1) dd=-1;
 	  assert(dd==d); // all length changes should be equal
 	  assert(Tg.is_valid(y,sub));
 	  cross_ys.push_back(y_hash.match(gfd.pack(y)));
@@ -1153,8 +1155,11 @@ non_integral_block::non_integral_block
 	  break;
 	case gradings::Status::Real: // now status depends on |y|
 	  for (unsigned int j=0; j<nr_y; ++j)
-	    if (y_hash[d_y[base_z+j]].repr().torus_part().negative_at
-		  (rd.coroot(sub.parent_nr_simple(s))))
+	  {
+	    tits::GlobalTitsElement y = y_hash[d_y[base_z+j]].repr();
+	    Tg.cross_act(sub.to_simple(s),y); // prepare evaluating at coroot
+
+	    if (Tg.compact(sub.simple(s),y))
 	      d_descent[base_z+j].set(s,
 				      descents::DescentStatus::RealNonparity);
 	    else
@@ -1167,6 +1172,7 @@ non_integral_block::non_integral_block
 		d_descent[base_z+j].set(s,
 					descents::DescentStatus::RealTypeI);
 	    }
+	  }
 	  break;// but this case is re-examined, below
 	} // |switch(kgb.status)|
 
@@ -1177,16 +1183,17 @@ non_integral_block::non_integral_block
 	  kgb::KGBElt ctx1 = kgb.cross(Cayleys.first,sub.to_simple(s));
 	  length = d_length[next]+1; // length always increases here
 
-	  if (i==0 and x_of[ctx1]==(unsigned int)~0)
+	  if (i==0)
 	  { // |do_Cayley| is independent of |x|, if so, do first time:
 	    assert(y_hash.size()==y_start); // nothing created by cross actions
 	    kgb::KGBElt x_start = kgb_nr_of.size();
-	    x_of[ctx1] = x_start;
-	    kgb_nr_of.push_back(ctx1);
-	    gfd.add_class(sub,Tg,
-			  dual_involution(kgb.involution(ctx1),
-					  G.twistedWeylGroup(),Tg));
 
+	    if (x_of[ctx1]==(unsigned int)~0) // then new elements to generate
+	      gfd.add_class(sub,Tg,
+			    dual_involution(kgb.involution(ctx1),
+					    G.twistedWeylGroup(),Tg));
+
+	    // independent of new creation, fill |Cayley_ys|, extend |y_hash|
 	    for (unsigned int j=0; j<nr_y; ++j)
 	      if (d_descent[base_z+j][s] !=
 		  descents::DescentStatus::RealNonparity)
@@ -1200,49 +1207,52 @@ non_integral_block::non_integral_block
 		Cayley_ys.push_back(y_hash.match(gfd.pack(y)));
 	      }
 
-	    // now create a collection of R-packets
-
-	    // complete fiber of x's over new involution using
-	    // imaginary cross actions (real for |y|)
-	    rootdata::RootList ib = gfd.real_basis(y_hash[y_start].tw);
-	    subdatum::SubSystem is(rd,ib);
-	    for (size_t k=x_start; k<kgb_nr_of.size(); ++k) // |kgb_nr_of| grows
+	    if (x_of[ctx1]==(unsigned int)~0) // need to create new R-packets
 	    {
-	      kgb::KGBElt cur_x = kgb_nr_of[k];
-	      for (weyl::Generator r=0; r<is.rank(); ++r)
+	      x_of[ctx1] = x_start;
+	      kgb_nr_of.push_back(ctx1);
+	      gfd.add_class(sub,Tg,
+			    dual_involution(kgb.involution(ctx1),
+					    G.twistedWeylGroup(),Tg));
+	      // complete fiber of x's over new involution using
+	      // imaginary cross actions (real for |y|)
+	      rootdata::RootList ib = gfd.real_basis(y_hash[y_start].tw);
+	      for (size_t k=x_start; k<kgb_nr_of.size(); ++k) // grows
 	      {
-		kgb::KGBElt new_x = kgb.cross(is.reflection(r),cur_x);
-		if (x_of[new_x] == (unsigned int)~0)
+		kgb::KGBElt cur_x = kgb_nr_of[k];
+		for (size_t r=0; r<ib.size(); ++r)
 		{
-		  x_of[new_x] = kgb_nr_of.size();
-		  kgb_nr_of.push_back(new_x);
-		}
-	      } // |for(it)|
-	    } // |for (k)|
+		  kgb::KGBElt new_x = kgb.cross(rd.reflectionWord(ib[r]),cur_x);
+		  if (x_of[new_x] == (unsigned int)~0)
+		  {
+		    x_of[new_x] = kgb_nr_of.size();
+		    kgb_nr_of.push_back(new_x);
+		  }
+		} // |for(r)|
+	      } // |for (k)|
 
-	    // then generate corrsponding part of block, combining (x,y)'s
-	    for (size_t k=x_start; k<kgb_nr_of.size(); ++k)
-	    {
-	      for (unsigned int y=y_start; y<y_hash.size(); ++y)
+	      // then generate corrsponding part of block, combining (x,y)'s
+	      for (size_t k=x_start; k<kgb_nr_of.size(); ++k)
 	      {
-		assert(d_x.size()==d_y.size()); // number of new block element
+		for (unsigned int y=y_start; y<y_hash.size(); ++y)
+		{
+		  assert(d_x.size()==d_y.size()); // number of new block element
 
-		d_x.push_back(k);
-		d_y.push_back(y); // but |y| neighbour varies
-		d_descent.push_back(descents::DescentStatus());
-		d_length.push_back(length);
-	      } // |for(y)|
-	      d_first_z_of_x.push_back(d_x.size()); // mark end of an R-packet
-	    } // |for(k)|
+		  d_x.push_back(k);
+		  d_y.push_back(y); // but |y| neighbour varies
+		  d_descent.push_back(descents::DescentStatus());
+		  d_length.push_back(length);
+		} // |for(y)|
+		d_first_z_of_x.push_back(d_x.size()); // mark end of an R-packet
+	      } // |for(k)|
+	      // finallly make sure that Cayley links slots exist for code below
+	      Cayley_link.resize(d_x.size(),
+				 std::make_pair(UndefBlock,UndefBlock));
 
-	    // finallly make sure that Cayley links slots exist for code below
-	    Cayley_link.resize(d_x.size(),
-			       std::make_pair(UndefBlock,UndefBlock));
+	    } // |if (new_Cayley)|
+	  } // |if (i==0)|
 
-
-	  } // |if (i==0 and new_Cayley)|
-
-	  // independently of new creation, make links using |element| lookup
+	  // now in all cases make links using |element| lookup
 	  for (unsigned int j=0,p=0; j<nr_y; ++j)
 	    if (d_descent[base_z+j][s]!=descents::DescentStatus::RealNonparity)
 	    {
@@ -1293,9 +1303,12 @@ std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
 {
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
   latticetypes::RatWeight ll=lambda(z);
-  return strm << "(=" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
+  latticetypes::RatWeight lr=ll - latticetypes::RatWeight(two_rho,2);
+  lr.normalize();
+  assert(lr.denominator()==1);
+  return strm << "(" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
 	      << ',' << std::setw(3*ll.size()+3) << ll
-	      << ") ";
+	      << "=rho+" << std::setw(2*ll.size()) << lr.numerator() << ") ";
 }
 
 
