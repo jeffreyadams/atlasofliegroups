@@ -19,6 +19,8 @@
 #include "complexredgp.h"
 #include "complexredgp_io.h"
 #include "ioutils.h"
+#include "kgb.h"
+#include "kgb_io.h"
 #include "realform_io.h"
 #include "realredgp.h"
 #include "realredgp_io.h"
@@ -218,8 +220,7 @@ size_t get_Cartan_class(const bitmap::BitMap& cs) throw(error::InputError)
   // get value from the user
   std::string prompt;
   bitMapPrompt(prompt,"choose Cartan class",cs);
-  unsigned long c;
-  getInteractive(c,prompt.c_str(),cs,&Cartan_input_buffer);
+  unsigned long c = get_int_in_set(prompt.c_str(),cs,&Cartan_input_buffer);
 
   return c;
 }
@@ -494,8 +495,7 @@ void getInteractive(realform::RealForm& rf,
     std::cout << *i << ": " << rfi.typeName(*i) << std::endl;
   }
 
-  unsigned long r;
-  getInteractive(r,"enter your choice: ",vals);
+  unsigned long r = get_int_in_set("enter your choice: ",vals);
 
   rf = rfi.in(r);
 }
@@ -602,28 +602,29 @@ unsigned long get_bounded_int(input::InputBuffer& ib,
   range. The value is unchanged in case of failure
 */
 
-void getInteractive(unsigned long& d_c, const char* prompt,
-		    const bitmap::BitMap& vals, input::InputBuffer* linep)
+unsigned long get_int_in_set(const char* prompt,
+			     const bitmap::BitMap& vals,
+			     input::InputBuffer* linep)
   throw(error::InputError)
 {
 
   unsigned long c;
 
-  if (linep) { // try to get value from line
-
+  if (linep!=NULL) // first try to get value from line passed
+  {
     input::InputBuffer& line = *linep;
     ioutils::skipSpaces(line);
 
-    if (isdigit(line.peek())) {
+    if (isdigit(line.peek()))
+    {
       line >> c;
-      if (vals.isMember(c)) { // we are done
-	d_c = c;
-	return;
-      }
+      if (vals.isMember(c))
+	return c; // we are done
     }
 
   }
 
+  // otherwise prompt and get test into a fresh input buffer
   input::InputBuffer ib;
   ib.getline(std::cin,prompt,false);
 
@@ -637,7 +638,8 @@ void getInteractive(unsigned long& d_c, const char* prompt,
   else
     c = vals.capacity();
 
-  while (not vals.isMember(c)) {
+  while (not vals.isMember(c)) // insist on getting correct input
+  {
     std::cout << "sorry, value must be one of ";
     basic_io::seqPrint(std::cout,vals.begin(),vals.end()) << std::endl;
     ib.getline(std::cin,"try again (? to abort): ",false);
@@ -650,8 +652,8 @@ void getInteractive(unsigned long& d_c, const char* prompt,
       c = vals.capacity();
   }
 
-  // commit
-  d_c = c;
+  // if we get here, a correct value was read in
+  return c;
 }
 
 // Get a weight, consisting of |rank| integers, into |lambda|
@@ -684,6 +686,7 @@ latticetypes::RatWeight get_ratweight(input::InputBuffer& ib,
   std::string pr = "denominator for ";
   pr += prompt;
   unsigned long denom = get_bounded_int(ib,pr.c_str(),~0ul);
+  if (denom==0) denom=1; // avoid crash
   pr = "numerator for ";
   pr += prompt;
   latticetypes::Weight num = get_weight(ib,pr.c_str(),rank);
@@ -718,6 +721,104 @@ repr::StandardRepr get_repr(const repr::Rep_context& c)
   latticetypes::RatWeight nu =
     get_ratweight(sr_input_buffer,"nu:",c.rootDatum().rank());
   return c.sr(x,lambda_rho,nu);
+}
+
+void get_parameter(realredgp::RealReductiveGroup& GR,
+		   kgb::KGBElt& x,
+		   latticetypes::Weight& lambda_rho,
+		   latticetypes::RatWeight& gamma)
+{
+  // first step: get initial x in canonical fiber
+  size_t cn=get_Cartan_class(GR.Cartan_set());
+  const complexredgp::ComplexReductiveGroup& G=GR.complexGroup();
+  const rootdata::RootDatum& rd=G.rootDatum();
+  weyl::TwistedInvolution tw=G.twistedInvolution(cn);
+  cartanclass::InvolutionData id = cartanclass::InvolutionData::build(G,tw);
+
+  const kgb::KGB& kgb=GR.kgb();
+  kgb::KGBEltList canonical_fiber;
+  bitmap::BitMap cf(kgb.size());
+  for (size_t k=0; k<kgb.size(); ++k)
+    if (kgb.Cartan_class(k)==cn and kgb.involution(k)==tw)
+      canonical_fiber.push_back(k), cf.insert(k);
+
+  if (canonical_fiber.size()==1)
+  {
+    std::cout << "Choosing the unique KGB element from the following fiber:\n";
+    kgb_io::print(std::cout,kgb,false,&G,&canonical_fiber);
+    x = canonical_fiber[0];
+  }
+  else
+  {
+    std::cout << "Choose a KGB element from the following canonical fiber:\n";
+    kgb_io::print(std::cout,kgb,false,&G,&canonical_fiber);
+    x = get_int_in_set("KGB number: ",cf);
+  }
+
+  latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
+
+  // second step: get imaginary-dominant lambda
+  latticetypes::RatWeight rho(rd.twoRho(),2);
+  std::cout << "rho = " << rho.normalize() << std::endl;
+  if (id.imaginary_rank()>0)
+  {
+    std::cout << "NEED, on following imaginary coroot"
+      << (id.imaginary_rank()>1
+	  ? "s, at least given values:" : ", at least given value:")
+      << std::endl;
+    for (size_t i=0; i<id.imaginary_rank(); ++i)
+      std::cout
+	<< rd.coroot(id.imaginary_basis(i))
+	<< " (>=" << -rho.scalarProduct(rd.coroot(id.imaginary_basis(i)))
+	<< ')' << std::endl;
+  }
+
+  { // check imaginary dominance
+    size_t i;
+    do
+    {
+      lambda_rho = get_weight(sr_input(),"Give lambda-rho: ",rd.rank());
+      latticetypes::Weight l = lambda_rho*2 + rd.twoRho();
+      for (i=0; i<id.imaginary_rank(); ++i)
+	if (l.scalarProduct(rd.coroot(id.imaginary_basis(i)))<0)
+	{
+	  std::cout
+	    << "Non-dominant for coroot " << rd.coroot(id.imaginary_basis(i))
+	    << ", try again" << std::endl;
+	  break;
+	}
+    }
+    while (i<id.imaginary_rank()); // wait until inner loop runs to completion
+  }
+
+  latticetypes::RatWeight nu = get_ratweight(sr_input(),"nu: ",rd.rank());
+  gamma = nu;
+  (gamma /= 2) += latticetypes::RatWeight(lambda_rho*2+rd.twoRho(),4);
+  {
+    latticetypes::RatWeight t = gamma - nu;
+    gamma += latticetypes::RatWeight(theta*t.numerator(),t.denominator());
+  }
+
+  latticetypes::Weight& numer = gamma.numerator(); // we change |gamma| using it
+
+  // although our goal is to make gamma dominant for theintegral system only
+  // it does not hurt to make gamma fully dominant, acting on |x|,|lambda| too
+  { weyl::Generator s;
+    do
+    {
+      for (s=0; s<rd.semisimpleRank(); ++s)
+	if (rd.simpleCoroot(s).dot(numer)<0)
+	{
+	  rd.simpleReflect(numer,s);
+	  rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
+	  x = kgb.cross(s,x);
+	  break;
+	}
+    }
+    while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
+
+  }
+
 }
 
 

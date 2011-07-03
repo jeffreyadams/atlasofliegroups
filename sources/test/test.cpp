@@ -1186,33 +1186,22 @@ void nblock_f()
     complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
     const rootdata::RootDatum& rd = G.rootDatum();
 
-    latticetypes::Weight lambda_rho =
-      interactive::get_weight(interactive::sr_input(),
-			      "Give lambda-rho: ",
-			      G.rank());
+    latticetypes::Weight lambda_rho;
+    latticetypes::RatWeight gamma(0);
+    kgb::KGBElt x;
 
+    interactive::get_parameter(GR,x,lambda_rho,gamma);
     latticetypes::RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+    lambda.normalize();
 
-
-    latticetypes::RatWeight nu=
-      interactive::get_ratweight
-      (interactive::sr_input(),"rational parameter nu: ",rd.rank());
-
-    const kgb::KGB& kgb = GR.kgb();
-    unsigned long x=interactive::get_bounded_int
-      (interactive::common_input(),"KGB element: ",kgb.size());
-
-    latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
-
-    nu = latticetypes::RatWeight // make |nu| fixed by $-\theta$
-      (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
-
-    latticetypes::RatWeight gamma = nu + latticetypes::RatWeight
-    (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
-
-    std::cout << "Infinitesimal character is " << gamma << std::endl;
+    std::cout << "x = " << x << ", gamma = " << gamma
+	      << ", lambda = " << lambda << std::endl;
 
     subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,gamma);
+
+
+    latticetypes::LatticeMatrix theta =
+      GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
 
     weyl::WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
@@ -1231,7 +1220,6 @@ void nblock_f()
 	std::cout << sub.parent_nr_simple(pi[s])
 		  << (s<sub.rank()-1 ? "," : ".\n");
     }
-    std::cout << "Twisted involution in subsystem: " << ww << ".\n";
 
     blocks::BlockElt z;
     blocks::non_integral_block block(GR,sub,x,lambda,gamma,z);

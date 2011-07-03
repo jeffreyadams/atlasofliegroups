@@ -168,7 +168,7 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
 Block_base::Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
   : W(kgb.weylGroup())
   , d_x(), d_y(), d_first_z_of_x() // filled below
-  , d_cross(rank()), d_cayley(rank()) // each entry filled below
+  , d_cross(kgb.rank()), d_cayley(kgb.rank()) // each entry filled below
   , d_descent(), d_length() // filled below
 {
   const weyl::TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();

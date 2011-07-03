@@ -25,6 +25,7 @@
 #include "lietype.h"
 #include "realform.h"
 #include "standardrepk.h"
+#include "realredgp_fwd.h"
 #include "repr.h"
 #include "tags.h"
 
@@ -85,9 +86,9 @@ namespace interactive {
 				unsigned long limit)
     throw(error::InputError);
 
-  void getInteractive(unsigned long& v, const char* prompt,
-		      const bitmap::BitMap& choices,
-		      input::InputBuffer* linep = 0)
+  unsigned long get_int_in_set(const char* prompt,
+			       const bitmap::BitMap& choices,
+			       input::InputBuffer* linep = 0)
     throw(error::InputError);
 
   latticetypes::Weight get_weight(input::InputBuffer& ib,
@@ -110,6 +111,10 @@ namespace interactive {
   input::InputBuffer& common_input();
   input::InputBuffer& sr_input();
 
+  void get_parameter(realredgp::RealReductiveGroup& GR,
+		     kgb::KGBElt& x,
+		     latticetypes::Weight& lambda_rho,
+		     latticetypes::RatWeight& gamma);
 }
 
 /******** type definitions ***************************************************/
