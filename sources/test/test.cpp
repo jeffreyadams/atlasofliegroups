@@ -14,6 +14,7 @@
 #include <cassert>
 #include <iostream>
 #include <fstream>
+#include <iomanip>
 
 #include "helpmode.h"
 #include "emptymode.h"
@@ -1229,6 +1230,19 @@ void nblock_f()
 
     ioutils::OutputFile f;
     block_io::print_block(f,block);
+    kl::KLContext klc(block);
+    klc.fill(z,false);
+    std::cout << "nonzero KL polynomials P_{x," << z << "}:\n";
+    int width = ioutils::digits(z,10ul);
+    for (size_t x = 0; x <= z; ++x)
+    {
+      const kl::KLPol& pol = klc.klPol(x,z);
+      if (not pol.isZero())
+      {
+    	std::cout << std::setw(width) << x << ": ";
+    	prettyprint::printPol(std::cout,pol,"q") << std::endl;
+      }
+    }
 
   }
   catch (error::MemoryOverflow& e)

@@ -73,6 +73,9 @@ namespace setutils {
   inline void invert(Permutation& dst, const Permutation& src)
     { Permutation(src,-1).swap(dst); }
 
+  template<typename U>
+    Permutation standardize(const std::vector<U>& a, size_t bound);
+
 }
 
 }

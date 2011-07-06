@@ -396,7 +396,56 @@ BlockEltPair Block_base::link(size_t alpha,size_t beta,BlockElt y) const
   return std::make_pair(result[0],result[1]);
 }
 
+kgb::KGBElt Block_base::renumber_x(const std::vector<kgb::KGBElt>& new_x)
+{
+  kgb::KGBElt x_lim=0;
+  for (BlockElt z=0; z<size(); ++z)
+  {
+    kgb::KGBElt x=new_x[d_x[z]];
+    if (x>=x_lim)
+      x_lim=x+1;
+    d_x[z]=x;
+  }
 
+  setutils::Permutation pi_inv =
+    setutils::standardize(d_x,x_lim); // assigns |z| to its new place
+
+  setutils::Permutation pi(pi_inv,-1); // assigns to new place its original one
+
+  pi.pull_back(d_x).swap(d_x);
+  pi.pull_back(d_y).swap(d_y);
+  for (weyl::Generator s=0; s<rank(); ++s)
+  {
+    pi.pull_back(pi_inv.renumbering(d_cross[s])).swap(d_cross[s]);
+
+    //renumbering does not work for arrays of pairs, so do it by hand
+    pi.pull_back(d_cayley[s]).swap(d_cayley[s]);
+    for (BlockElt z=0; z<size(); ++z)
+    {
+      BlockEltPair& p=d_cayley[s][z];
+      if (p.first!=UndefBlock)
+      {
+	p.first=pi_inv[p.first];
+	if (p.second!=UndefBlock)
+	  p.second=pi_inv[p.second];
+      }
+    }
+  }
+  pi.pull_back(d_descent).swap(d_descent);
+  pi.pull_back(d_length).swap(d_length);
+
+  BlockElt z=0; // reconstruct cumulation; could be exported from |standardize|
+  d_first_z_of_x.resize(x_lim+1);
+  for (kgb::KGBElt x=0; x<x_lim; ++x)
+  {
+    while (z<size() and d_x[z]<x)
+      ++z;
+    d_first_z_of_x[x]=z;
+  }
+  d_first_z_of_x[x_lim]=size();
+
+  return x_lim;
+}
 
 Block::Block(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
   : Block_base(kgb,dual_kgb)
@@ -942,23 +991,27 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
 
 non_integral_block::non_integral_block
   (realredgp::RealReductiveGroup& GR,
-   const subdatum::SubSystem& sub, // at the dual side
+   const subdatum::SubSystem& subsys, // at the dual side
    kgb::KGBElt x,
    const latticetypes::RatWeight& lambda, // discrete parameter
    const latticetypes::RatWeight& gamma, // infinitesimal char
    BlockElt& entry_element) // output parameter
-  : Block_base(sub,GR.weylGroup()) // uses ordinary W for printing
+  : Block_base(subsys,GR.weylGroup()) // uses ordinary W for printing
   , kgb(GR.kgb())
   , G(GR.complexGroup())
+  , sub(subsys)
+  , x_limit(GR.KGB_size())
+  , singular()
   , infin_char(gamma)
-  , two_rho(GR.rootDatum().twoRho())
-  , kgb_nr_of()
   , y_info()
 {
   const rootdata::RootDatum& rd = G.rootDatum();
   const tits::GlobalTitsGroup Tg (G,tags::DualTag());// for $^\vee G$
 
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
+  for (weyl::Generator s=0; s<sub.rank(); ++s)
+    singular.set(s,
+		 rd.coroot(sub.parent_nr_simple(s)).dot(gamma.numerator())==0);
 
   weyl::TwistedInvolution tw =
     dual_involution(kgb.involution(x),G.twistedWeylGroup(),Tg);
@@ -967,7 +1020,7 @@ non_integral_block::non_integral_block
   const tits::GlobalTitsElement y_org =
     tits::GlobalTitsElement((gamma-lambda)/=2,tw);
   assert(Tg.is_valid(y_org,sub));
-  const kgb::KGBElt x_org = x;
+  kgb::KGBElt x_org = x;
 
   kgb::KGB_elt_entry::Pooltype y_pool; // start with just |y|
   hashtable::HashTable<kgb::KGB_elt_entry,kgb::KGBElt> y_hash(y_pool);
@@ -1013,7 +1066,10 @@ non_integral_block::non_integral_block
 
 
   // step 3: generate imaginary fiber-orbit of |y|'s (|x| is unaffected)
-  std::vector<unsigned int> x_of(kgb.size(),~0);
+
+  std::vector<kgb::KGBElt> kgb_nr_of(1,x); // indexed by child |x| numbers
+  std::vector<unsigned int> x_of(kgb.size(),~0); // partial inverse
+  x_of[x]=0; // KGB element |x| gets renumbered 0
   {
     // generating reflections are for real roots for |involution(x)|
     rootdata::RootList gen_root = gfd.imaginary_basis(y_hash[0].tw); // for |y|
@@ -1030,7 +1086,6 @@ non_integral_block::non_integral_block
     for (weyl::Generator s=0; s<our_rank; ++s)
       { d_cross[s].reserve(fs); d_cayley[s].reserve(fs); }
 
-    x_of[x]=0; kgb_nr_of.push_back(x); // KGB element |x| gets renumbered 0
     d_first_z_of_x.push_back(0);
     for (size_t i=0; i<y_hash.size(); ++i)
     {
@@ -1276,9 +1331,15 @@ non_integral_block::non_integral_block
     } // |for(s)|
   } // |for (next<queue.front())|
 
+  // correct for reverse order construction
+  size_t max_l=d_length[size()-1];
+  for (BlockElt z=0; z<size(); ++z)
+    d_length[z]=max_l-d_length[z];
+
+  x_limit = renumber_x(kgb_nr_of);
+
   // now store values into constructed object
 
-  std::vector<kgb::KGBElt>(kgb_nr_of).swap(kgb_nr_of); // consolidate size
   y_info.reserve(y_hash.size());
   for (unsigned int y=0; y<y_hash.size(); ++y)
   {
@@ -1286,8 +1347,9 @@ non_integral_block::non_integral_block
     y_info.push_back(y_fields(yr,gfd.Cartan_class(yr.tw())));
   }
 
+
   // and look up which element matches the original input
-  entry_element = element(x_of[x_org],y_hash.find(gfd.pack(y_org)));
+  entry_element = element(x_org,y_hash.find(gfd.pack(y_org)));
 
 } // |non_integral_block::non_integral_block|
 
@@ -1298,19 +1360,34 @@ non_integral_block::non_integral_block
 latticetypes::RatWeight non_integral_block::lambda(BlockElt z) const
 {
   latticetypes::LatticeMatrix theta =
-    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
+    G.involutionMatrix(kgb.involution(d_x[z]));
   latticetypes::RatWeight t =  y_info[d_y[z]].rep.torus_part().as_rational();
   const latticetypes::Weight& num = t.numerator();
   return infin_char - latticetypes::RatWeight(num-theta*num,t.denominator());
+}
+
+// an element of a non-integral block could be zero due to singular $\gamma$
+// this depends on the simple coroots for the integral system that vanish on
+// the infinitesimal character $\gamma$, namely if they define a complex
+// descent, an imaginary compact or a real parity root.
+bool non_integral_block::is_nonzero(BlockElt z) const
+{
+  const descents::DescentStatus& desc=descent(z);
+  for (bitset::RankFlags::iterator it=singular.begin(); it(); ++it)
+    if (descents::DescentStatus::isDescent(desc[*it]))
+      return false;
+  return true;
 }
 
 std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
 {
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
   latticetypes::RatWeight ll=lambda(z);
-  latticetypes::RatWeight lr=ll - latticetypes::RatWeight(two_rho,2);
+  latticetypes::RatWeight lr =
+    ll - latticetypes::RatWeight(G.rootDatum().twoRho(),2);
   lr.normalize();
-  strm << "(" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
+  strm << (is_nonzero(z) ? '*' : ' ')
+       << "(" << std::setw(xwidth) << d_x[z]
        << ',' << std::setw(3*ll.size()+3) << ll
        << "=rho+" << std::setw(3*ll.size()+1) << lr.numerator();
   if (lr.denominator()!=1)

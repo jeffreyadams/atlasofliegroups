@@ -79,7 +79,7 @@ class Block_base {
 
 /*!\brief maps KGB element |x| to the first block element |z| with |d_x[z]>=x|.
 */
-  std::vector<BlockElt> d_first_z_of_x; // of size |xrange|
+  std::vector<BlockElt> d_first_z_of_x; // of size |xsize+1|
   std::vector<BlockEltList> d_cross; // of size |d_rank| * |size()|
   std::vector<BlockEltPairList> d_cayley; // of size |d_rank| * |size()|
   descents::DescentStatusList d_descent; // of size |size()|
@@ -165,6 +165,11 @@ class Block_base {
   // print derivative class specific per-element information
   virtual std::ostream& print(std::ostream& strm, BlockElt z) const
   { return strm; }
+
+  // a method to straighten out blocks generated in some non standard order
+  // renumber |x| through |new_x|, order by increasing |x|, set |first_z_of_x|
+ protected:
+  kgb::KGBElt renumber_x(const std::vector<kgb::KGBElt>& new_x);
 
 }; // |class Block_base|
 
@@ -328,11 +333,12 @@ class non_integral_block : public Block_base
 {
   const kgb::KGB& kgb;
   const complexredgp::ComplexReductiveGroup& G;
+  const subdatum::SubSystem& sub;
+
+  size_t x_limit;
+  bitset::RankFlags singular;
 
   const latticetypes::RatWeight infin_char; // infinitesimal character
-  const latticetypes::Weight two_rho; // needed for reconstructing |lambda-rho|
-
-  std::vector<kgb::KGBElt> kgb_nr_of; // indexed by child |x| numbers
 
   struct y_fields
   {
@@ -348,7 +354,7 @@ class non_integral_block : public Block_base
  public:
   non_integral_block
     (realredgp::RealReductiveGroup& GR,
-     const subdatum::SubSystem& sub,
+     const subdatum::SubSystem& subsys,
      kgb::KGBElt x,
      const latticetypes::RatWeight& lambda, // discrete parameter
      const latticetypes::RatWeight& gamma, // infinitesimal character
@@ -356,7 +362,7 @@ class non_integral_block : public Block_base
     );
 
   // virtual methods
-  size_t xsize() const { return kgb_nr_of.size(); }
+  size_t xsize() const { return x_limit; }
   size_t ysize() const { return y_info.size(); }
 
   size_t Cartan_class(BlockElt z) const
@@ -369,6 +375,7 @@ class non_integral_block : public Block_base
 
   // new methods
   latticetypes::RatWeight lambda(BlockElt z) const; // reconstruct from y value
+  bool is_nonzero(BlockElt z) const; // whether |z| survives singular |gamma|
 
 }; // |class non_integral_block|
 

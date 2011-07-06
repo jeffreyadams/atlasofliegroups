@@ -669,26 +669,20 @@ size_t KGB::generate
   } // |for (x)|
 
   // now sort and export to |tits|
-  setutils::Permutation a(size),a1(size); // reorderd indices, and inverse
+  setutils::Permutation a1; // will be reordering assignment
   { // sort involutions (rather than KGB elements, for efficiency)
     setutils::Permutation p(fiber_data.n_involutions(),1);
     invol_compare i_cmp(fiber_data,G.weylGroup());
     std::sort(p.begin(),p.end(),i_cmp); // all entries are distinct
     setutils::Permutation p1(p,-1); // inverse of |p|: where involutions went
 
-    // compute number of strict predecessors each |fiber_data.involution(i)|
-    std::vector<size_t> pred(p1.size()+1,0);
+    std::vector<KGBElt> involution_rank(size); // values are small numbers
     for (KGBElt x=0; x<size; ++x)
-      ++pred[1+p1[fiber_data.seq_no(elt_pool[x].w())]];
-    for (size_t s=0,i=1; i<pred.size(); ++i) // cumulate
-      s = pred[i] += s;
-
-    for (KGBElt x=0; x<size; ++x) // finally compute KGB ordering positions
-    {
-      size_t i = p1[fiber_data.seq_no(elt_pool[x].w())];
-      a[a1[x] = pred[i]++]=x;
-    }
+      involution_rank[x] = p1[fiber_data.seq_no(elt_pool[x].w())];
+    a1 = setutils::standardize(involution_rank,fiber_data.n_involutions());
   }
+
+  setutils::Permutation a(a1,-1); // |a[i]| locates what should map to |i|
 
   for (weyl::Generator s=0; s<rank; ++s)
   {

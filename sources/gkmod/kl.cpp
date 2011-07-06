@@ -126,6 +126,7 @@ class KLPolEntry : public KLPol
     friend class Thicket;
 
     KLHashStore d_hashtable;
+    bool d_verbose;
 
   // Members serving for statistics
 
@@ -139,12 +140,13 @@ class KLPolEntry : public KLPol
 
     ~Helper()
     {
-#ifdef VERBOSE
-      std::cout << "\nNumber of primitive pairs stored:     "
-		<< prim_size << ".\n";
-      std::cout << "Number of unrecorded primitive pairs: "
-		<< nr_of_prim_nulls << '.' << std::endl;
-#endif
+      if(d_verbose)
+      {
+	std::cout << "\nNumber of primitive pairs stored:     "
+		  << prim_size << ".\n";
+	std::cout << "Number of unrecorded primitive pairs: "
+		  << nr_of_prim_nulls << '.' << std::endl;
+      }
     }
 
     //accessors
@@ -194,7 +196,7 @@ of pair of integers specifying block element y.
 
     void directRecursion(blocks::BlockElt y, size_t s);
 
-    void fill();
+    void fill(blocks::BlockElt y, bool verbose);
 
     void fillKLRow(blocks::BlockElt y);
 
@@ -440,7 +442,7 @@ namespace kl {
 
 KLContext::KLContext(blocks::Block_base& b)
   : klsupport::KLSupport(b) // construct unfilled support object from block
-  , d_state()
+  , fill_limit(0)
   , d_prim()
   , d_kl()
   , d_mu()
@@ -460,7 +462,7 @@ KLContext::KLContext(blocks::Block_base& b)
 */
 KLContext::KLContext(const KLContext& other)
   : klsupport::KLSupport(other)
-  , d_state(other.d_state)
+  , fill_limit(other.fill_limit)
   , d_prim(other.d_prim)
   , d_kl(other.d_kl)
   , d_mu(other.d_mu)
@@ -474,7 +476,7 @@ KLContext::KLContext(const KLContext& other)
 void KLContext::swap(KLContext& other) // used to extract base out of Helper
 {
   klsupport::KLSupport::swap(other); // swap base (support) objects
-  d_state.swap(other.d_state);
+  std::swap(fill_limit,other.fill_limit);
 
   d_prim.swap(other.d_prim);
 
@@ -596,27 +598,29 @@ KLContext::makePrimitiveRow(PrimitiveRow& e, blocks::BlockElt y)
   Explanation: this is the main function in this module; all the work is
   deferred to the Helper class.
 */
-void KLContext::fill()
+void KLContext::fill(blocks::BlockElt y, bool verbose)
 {
-  if (d_state.test(KLFilled))
+  if (y<fill_limit)
     return;
 
-#ifdef VERBOSE
-  std::cerr << "computing Kazhdan-Lusztig polynomials ..." << std::endl;
+#ifndef VERBOSE
+  verbose=false;
 #endif
+
+  if (verbose)
+    std::cerr << "computing Kazhdan-Lusztig polynomials ..." << std::endl;
 
   try
   {
     helper::Helper help(*this); // make helper, copy-constructing empty base
 
-    help.fill(); // this takes care of filling embedded |KLSupport| as well
+    help.fill(y,verbose); // takes care of filling embedded |KLSupport| too
     swap(help); // swap base object, including the |KLSupport| and |KLStore|
 
-    d_state.set(KLFilled);
+    fill_limit = y+1;
 
-#ifdef VERBOSE
-    std::cerr << "done" << std::endl;
-#endif
+    if (verbose)
+      std::cerr << "done" << std::endl;
   }
   catch (std::bad_alloc) { // transform failed allocation into MemoryOverflow
     std::cerr << "\n memory full, KL computation abondoned." << std::endl;
@@ -708,6 +712,7 @@ namespace kl {
 Helper::Helper(const KLContext& kl)
   : KLContext(kl)  // copy-construct the bare base obejct
   , d_hashtable(d_store) // hash table refers to our base object's d_store
+  , d_verbose(false)
   , prim_size(0), nr_of_prim_nulls(0)
 {
 }
@@ -1046,7 +1051,7 @@ void Helper::directRecursion(blocks::BlockElt y, size_t s)
 /*!
   \brief Dispatches the work of filling the KL- and mu-lists.
 */
-void Helper::fill()
+    void Helper::fill(blocks::BlockElt last_y, bool verbose)
 {
   // make sure the support (base of base) is filled
   klsupport::KLSupport::fill();
@@ -1058,7 +1063,7 @@ void Helper::fill()
 
   // fill the lists
   size_t minLength = length(0);
-  size_t maxLength = length(d_kl.size() - 1);
+  size_t maxLength = length(last_y<size() ? last_y : size()-1);
 
   // do the minimal length cases; they come first in the enumeration
   for (blocks::BlockElt y = 0; y < lengthLess(minLength+1); ++y) {
@@ -1070,23 +1075,22 @@ void Helper::fill()
   }
 
   //set timers for KL computation
-#ifdef VERBOSE
+  d_verbose=verbose; // inform our destructor of |verbose| setting
   std::time_t time0;
   std::time(&time0);
   std::time_t time;
 
   std::ifstream statm("/proc/self/statm"); // open file for memory status
-#endif
 
   // do the other cases
   for (size_t l=minLength+1; l<=maxLength; ++l)
   {
-    for (blocks::BlockElt y=lengthLess(l);
-	 y<lengthLess(l+1); ++y) // |lengthLess(maxLength+1)| is OK
+    blocks::BlockElt y_limit = l<maxLength ? lengthLess(l+1) : last_y+1;
+    for (blocks::BlockElt y=lengthLess(l); y<y_limit; ++y)
     {
-#ifdef VERBOSE
-      std::cerr << y << "\r";
-#endif
+      if (verbose)
+	std::cerr << y << "\r";
+
       try
       {
 	fillKLRow(y);
@@ -1099,7 +1103,7 @@ void Helper::fill()
     }
 
     // now length |l| is completed
-#ifdef VERBOSE
+    if (verbose)
     {
       size_t p_capacity // currently used memory for polynomials storage
 	=d_hashtable.capacity()*sizeof(KLIndex)
@@ -1125,19 +1129,20 @@ void Helper::fill()
 		<< "), resident " << resident*4 << "kB, total "
 		<< size*4 << "kB.\n";
     }
-#endif
+
   } // for (l=min_length+1; l<=max_Length; ++l)
 
-#ifdef VERBOSE
-  std::time(&time);
-  double deltaTime = difftime(time, time0);
-  std::cerr << std::endl;
-  std::cerr << "Total elapsed time = " << deltaTime << "s." << std::endl;
-  std::cerr << d_store.size() << " polynomials, "
-            << prim_size << " matrix entries."<< std::endl;
+  if (verbose)
+  {
+    std::time(&time);
+    double deltaTime = difftime(time, time0);
+    std::cerr << std::endl;
+    std::cerr << "Total elapsed time = " << deltaTime << "s." << std::endl;
+    std::cerr << d_store.size() << " polynomials, "
+	      << prim_size << " matrix entries."<< std::endl;
 
-  std::cerr << std::endl;
-#endif
+    std::cerr << std::endl;
+  }
 
 }
 

@@ -63,15 +63,10 @@ class KLContext
  protected:  // permit access of our Helper class to the data members
 
   /*!
-\brief Records whether the KL polynomials for the block have all been computed.
-  */
-  enum State { KLFilled, NumStates };
-
-  /*!
 \brief Bit 0 flags whether the KL polynomials have
 all been computed.
   */
-  bitset::BitSet<NumStates> d_state;
+  blocks::BlockElt fill_limit; // all "rows" |y| with |y<fill_limit| computed
 
   /*!
 \brief Entry d_prim[y] is a list of the elements x_i that are primitive
@@ -166,10 +161,12 @@ P_{y,x}).
 
 // manipulators
 
-  // this method used to be virtual, but that seems completely silly. MvL
-  void fill();
+  // partial fill, up to and including the "row" of |y|
+  void fill(blocks::BlockElt y, bool verbose=true);
 
-};
+  void fill() { fill(size()-1); } // simulate forbidden default argument
+
+ }; //class KLContext
 
 } // |namespace kl|
 
