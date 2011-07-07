@@ -34,6 +34,7 @@
 #include <vector>
 #include <deque>
 #include <set> // for |insertAscents|
+#include <algorithm>
 
 #include "basic_io.h"
 #include "ioutils.h"
@@ -1000,9 +1001,9 @@ non_integral_block::non_integral_block
   , kgb(GR.kgb())
   , G(GR.complexGroup())
   , sub(subsys)
-  , x_limit(GR.KGB_size())
   , singular()
   , infin_char(gamma)
+  , kgb_nr_of()
   , y_info()
 {
   const rootdata::RootDatum& rd = G.rootDatum();
@@ -1020,7 +1021,7 @@ non_integral_block::non_integral_block
   const tits::GlobalTitsElement y_org =
     tits::GlobalTitsElement((gamma-lambda)/=2,tw);
   assert(Tg.is_valid(y_org,sub));
-  kgb::KGBElt x_org = x;
+  const kgb::KGBElt x_org = x;
 
   kgb::KGB_elt_entry::Pooltype y_pool; // start with just |y|
   hashtable::HashTable<kgb::KGB_elt_entry,kgb::KGBElt> y_hash(y_pool);
@@ -1067,9 +1068,8 @@ non_integral_block::non_integral_block
 
   // step 3: generate imaginary fiber-orbit of |y|'s (|x| is unaffected)
 
-  std::vector<kgb::KGBElt> kgb_nr_of(1,x); // indexed by child |x| numbers
-  std::vector<unsigned int> x_of(kgb.size(),~0); // partial inverse
-  x_of[x]=0; // KGB element |x| gets renumbered 0
+  std::vector<unsigned int> x_of(kgb.size(),~0); // partial inverse |kgb_nr_of|
+  x_of[x]=0; kgb_nr_of.push_back(x); // KGB element |x| gets renumbered 0
   {
     // generating reflections are for real roots for |involution(x)|
     rootdata::RootList gen_root = gfd.imaginary_basis(y_hash[0].tw); // for |y|
@@ -1336,7 +1336,12 @@ non_integral_block::non_integral_block
   for (BlockElt z=0; z<size(); ++z)
     d_length[z]=max_l-d_length[z];
 
-  x_limit = renumber_x(kgb_nr_of);
+  std::vector<kgb::KGBElt> rev(xsize());
+  for (kgb::KGBElt i=0; i<rev.size(); ++i)
+    rev[i]=rev.size()-i-1;
+
+  renumber_x(rev);
+  std::reverse(kgb_nr_of.begin(),kgb_nr_of.end());
 
   // now store values into constructed object
 
@@ -1347,9 +1352,8 @@ non_integral_block::non_integral_block
     y_info.push_back(y_fields(yr,gfd.Cartan_class(yr.tw())));
   }
 
-
   // and look up which element matches the original input
-  entry_element = element(x_org,y_hash.find(gfd.pack(y_org)));
+  entry_element = element(xsize()-1-x_of[x_org],y_hash.find(gfd.pack(y_org)));
 
 } // |non_integral_block::non_integral_block|
 
@@ -1360,7 +1364,7 @@ non_integral_block::non_integral_block
 latticetypes::RatWeight non_integral_block::lambda(BlockElt z) const
 {
   latticetypes::LatticeMatrix theta =
-    G.involutionMatrix(kgb.involution(d_x[z]));
+    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
   latticetypes::RatWeight t =  y_info[d_y[z]].rep.torus_part().as_rational();
   const latticetypes::Weight& num = t.numerator();
   return infin_char - latticetypes::RatWeight(num-theta*num,t.denominator());
@@ -1387,7 +1391,7 @@ std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
     ll - latticetypes::RatWeight(G.rootDatum().twoRho(),2);
   lr.normalize();
   strm << (is_nonzero(z) ? '*' : ' ')
-       << "(" << std::setw(xwidth) << d_x[z]
+       << "(" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
        << ',' << std::setw(3*ll.size()+3) << ll
        << "=rho+" << std::setw(3*ll.size()+1) << lr.numerator();
   if (lr.denominator()!=1)

@@ -1232,15 +1232,15 @@ void nblock_f()
     block_io::print_block(f,block);
     kl::KLContext klc(block);
     klc.fill(z,false);
-    std::cout << "nonzero KL polynomials P_{x," << z << "}:\n";
+    f << "nonzero KL polynomials P_{x," << z << "}:\n";
     int width = ioutils::digits(z,10ul);
     for (size_t x = 0; x <= z; ++x)
     {
       const kl::KLPol& pol = klc.klPol(x,z);
       if (not pol.isZero())
       {
-    	std::cout << std::setw(width) << x << ": ";
-    	prettyprint::printPol(std::cout,pol,"q") << std::endl;
+    	f << std::setw(width) << x << ": ";
+    	prettyprint::printPol(f,pol,"q") << std::endl;
       }
     }
 

@@ -335,10 +335,11 @@ class non_integral_block : public Block_base
   const complexredgp::ComplexReductiveGroup& G;
   const subdatum::SubSystem& sub;
 
-  size_t x_limit;
   bitset::RankFlags singular;
 
   const latticetypes::RatWeight infin_char; // infinitesimal character
+
+  std::vector<kgb::KGBElt> kgb_nr_of; // indexed by child |x| numbers
 
   struct y_fields
   {
@@ -362,7 +363,7 @@ class non_integral_block : public Block_base
     );
 
   // virtual methods
-  size_t xsize() const { return x_limit; }
+  size_t xsize() const { return kgb_nr_of.size(); }
   size_t ysize() const { return y_info.size(); }
 
   size_t Cartan_class(BlockElt z) const
