@@ -184,8 +184,8 @@ class GlobalTitsElement
    This class has two applications: the main one is to be able to manipulate a
    given |GlobalTitsElement|, but for testing purposes an initial application
    was to build a |GlobalTitsGroup| first (from an inner class), and then to
-   generate "all" valid elements for it (cmd 'X'). For the latter purpose the
-   |square_class_gen| and associated method are included, which permits
+   generate "all" valid elements for it (command 'X'). For the latter purpose
+   the |square_class_gen| and associated method are included, which permits
    listing a set of initial elements from which others can be deduced. For the
    main application however this field can be left an empty list, so as not to
    waste any time computing it during construction. This dichotomy should of
@@ -194,7 +194,7 @@ class GlobalTitsElement
    The main use involves manipulating |y| values for the construction of
    possibly non-integral blocks, in which case the perspective is from that
    side; for instance the matrix |delta_tr|, called transposed, will actually
-   be one that acts on character lattice $X^*$. However, in the secondary use
+   be one that acts on character lattice $X^*$. However, in the initial use
    this class manipulates |x| values, for comparison with the results of the
    KGB construction; the perspective is then "direct". Terminology such as
    "dual side", "imaginary roots" is relative to the current perspective.
@@ -270,7 +270,7 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   // flag length-decreasing complex cross actions and inverse Cayley transforms
   bitset::RankFlags descents(const GlobalTitsElement& a) const;
 
-  TorusElement theta_times_torus(const GlobalTitsElement& a) const;
+  TorusElement theta_tr_times_torus(const GlobalTitsElement& a) const;
 
   GlobalTitsElement prod(const GlobalTitsElement& a,
 			 const GlobalTitsElement& b) const;
@@ -289,15 +289,15 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   no effective difference with conjugation by the inverse of |sigma_alpha|
   */
   int cross_act(weyl::Generator s, GlobalTitsElement& a) const;
-  int cross_act(weyl::WeylWord w, GlobalTitsElement& a) const;
-  int cross_act(GlobalTitsElement& a,weyl::WeylWord w) const;
-  GlobalTitsElement cross(weyl::WeylWord w, GlobalTitsElement a) const
+  int cross_act(const weyl::WeylWord& w, GlobalTitsElement& a) const;
+  int cross_act(GlobalTitsElement& a,const weyl::WeylWord& w) const;
+  GlobalTitsElement cross(const weyl::WeylWord& w, GlobalTitsElement a) const
   { cross_act(w,a); return a; }
 
-  void add(TorusPart tp,GlobalTitsElement& a) const { a.t += tp; }
+  void add(TorusPart tp,GlobalTitsElement& a) const { a.t += tp; } // by value
 
   // add |rw| to |a.t|
-  void add(latticetypes::RatWeight rw,GlobalTitsElement& a) const; // by value
+  void add(const latticetypes::RatWeight& rw,GlobalTitsElement& a) const;
 
   // modify |a| to an inverse Cayley image by (real simple root) $\alpha_s$
   void do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a) const;

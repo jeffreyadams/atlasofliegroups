@@ -43,7 +43,7 @@ namespace latticetypes {
   /*!
   \brief Element of lattice tensored with rational numbers.
 
-  LatticeElt d_num divided by LatticeCoeff d_denom.
+  LatticeElt d_num divided by unsigned LatticeCoeff d_denom.
   */
 class RatLatticeElt {
 
@@ -55,7 +55,7 @@ class RatLatticeElt {
   LatticeElt d_num;
 
   /*!
-  Integer, the common denominator of the RatLatticeElt.
+  Integer, a common denominator of the RatLatticeElt.
   */
   unsigned int d_denom;
 
@@ -92,12 +92,16 @@ class RatLatticeElt {
   Returns the scalar product of |*this| and |w|, which are assumed to be of
   same size and such that the scalar product is integral.
 
+  A very long standing bug was to forget to cast |d_denom| to integer before
+  the division. With that omission the scalar product is \emph{implicitly}
+  cast to |unsigned int| instead, with desastrous consequences for the result.
+
   NOTE : this implementation does not worry about overflow. It is appropriate
   only for small denominators.
 */
   LatticeCoeff  scalarProduct(const LatticeElt& w) const
     {
-      return d_num.scalarProduct(w)/d_denom;
+      return d_num.scalarProduct(w)/(int)d_denom;
     }
 
 //manipulators

@@ -28,13 +28,13 @@ namespace atlas {
 namespace latticetypes {
 
 bool RatLatticeElt::operator==(const RatLatticeElt& v) const
-{ return d_num*v.d_denom == v.d_num*d_denom; } // cross multiply and compare
+{ return d_num*(int)v.d_denom == v.d_num*(int)d_denom; } // cross multiply
 
 bool RatLatticeElt::operator<(const RatLatticeElt& v) const
 { // cross multiply component-wise, and compare
   for (size_t i=0; i<d_num.size(); ++i)
   {
-    LatticeCoeff d= d_num[i]*v.d_denom - v.d_num[i]*d_denom;
+    LatticeCoeff d= d_num[i]*(int)v.d_denom - v.d_num[i]*(int)d_denom;
     if (d!=0)
       return d<0;
   }
@@ -48,7 +48,7 @@ RatLatticeElt RatLatticeElt::operator+(const RatLatticeElt& v) const
   assert (f==m/d_denom); // if this fails, then there was overflow on m
   RatLatticeElt result(d_num*f,m);
   result.d_num += v.d_num*(d_denom/gcd);
-  return result.normalize();
+  return result; // don't normalize, better just limit denominator growth
 }
 
 RatLatticeElt& RatLatticeElt::normalize()

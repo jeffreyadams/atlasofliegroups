@@ -1071,13 +1071,21 @@ non_integral_block::non_integral_block
   std::vector<unsigned int> x_of(kgb.size(),~0); // partial inverse |kgb_nr_of|
   x_of[x]=0; kgb_nr_of.push_back(x); // KGB element |x| gets renumbered 0
   {
+
+    latticetypes::LatticeMatrix theta = Tg.involution_matrix(y_hash[0].tw);
+    assert(G.involutionMatrix(kgb.involution(x))==theta);
+
     // generating reflections are for real roots for |involution(x)|
     rootdata::RootList gen_root = gfd.imaginary_basis(y_hash[0].tw); // for |y|
     const subdatum::SubSystem real(rd,gen_root); // but real for |x|
 
     for (size_t i=0; i<y_hash.size(); ++i) // |y_hash| grows
+    {
+      tits::GlobalTitsElement y = y_hash[i].repr();
+      assert(Tg.is_valid(y,sub));
       for (weyl::Generator s=0; s<real.rank(); ++s)
-	y_hash.match(gfd.pack(Tg.cross(real.reflection(s),y_hash[i].repr())));
+	y_hash.match(gfd.pack(Tg.cross(real.reflection(s),y)));
+    }
 
     // now insert elements from |y_hash| as first R-packet of block
     size_t fs = y_hash.size(); // this is lower bound for final size, so reserve
@@ -1266,9 +1274,7 @@ non_integral_block::non_integral_block
 	    {
 	      x_of[ctx1] = x_start;
 	      kgb_nr_of.push_back(ctx1);
-	      gfd.add_class(sub,Tg,
-			    dual_involution(kgb.involution(ctx1),
-					    G.twistedWeylGroup(),Tg));
+
 	      // complete fiber of x's over new involution using
 	      // imaginary cross actions (real for |y|)
 	      rootdata::RootList ib = gfd.real_basis(y_hash[y_start].tw);

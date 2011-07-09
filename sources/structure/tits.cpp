@@ -89,7 +89,7 @@ arithmetic::Rational TorusElement::evaluate_at
   (const latticetypes::LatticeElt& alpha) const
 {
   unsigned int d = repr.denominator();
-  int n = repr.numerator().dot(alpha) % (d+d);
+  int n = intutils::remainder(repr.numerator().dot(alpha),d+d);
   return arithmetic::Rational(n,d);
 }
 
@@ -220,7 +220,7 @@ TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
 					      rw.denominator()));
 }
 
-TorusElement GlobalTitsGroup::theta_times_torus(const GlobalTitsElement& a)
+TorusElement GlobalTitsGroup::theta_tr_times_torus(const GlobalTitsElement& a)
   const
 { latticetypes::RatWeight rw = a.torus_part().as_rational();
   matrix::Vector<int> num = delta_tr*rw.numerator();
@@ -258,7 +258,8 @@ bool GlobalTitsGroup::has_central_square(GlobalTitsElement a) const
   // now check if |a.t| is central, by scalar products with |simple.coroots()|
   latticetypes::RatWeight rw = a.t.as_rational();
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (simple.coroots()[s].dot(rw.numerator())%rw.denominator()!=0)
+    if (intutils::remainder(simple.coroots()[s].dot(rw.numerator())
+			    ,rw.denominator())!=0)
       return false;
 
   return true;
@@ -267,12 +268,13 @@ bool GlobalTitsGroup::has_central_square(GlobalTitsElement a) const
 // Simplified form of the same condition. Valid because |a.t==id| gives |true|
 bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
 {
-  const TorusElement t = a.torus_part()+theta_times_torus(a);
+  const TorusElement t = a.torus_part()+theta_tr_times_torus(a);
 
   // now check if |t| is central, by scalar products with |simple.coroots()|
   latticetypes::RatWeight rw = t.as_rational();
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (simple.coroots()[s].dot(rw.numerator())%rw.denominator()!=0)
+    if (intutils::remainder(simple.coroots()[s].dot(rw.numerator())
+			    ,rw.denominator())!=0)
       return false;
 
   return true;
@@ -282,13 +284,14 @@ bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
 bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,
 		const subdatum::SubSystem& sub) const
 {
-  const TorusElement t = a.torus_part()+theta_times_torus(a);
+  const TorusElement t = a.torus_part()+theta_tr_times_torus(a);
 
   // now check if |t| is central, by scalar products with |simple.coroots()|
   latticetypes::RatWeight rw = t.as_rational();
   for (weyl::Generator s=0; s<sub.rank(); ++s)
-    if (sub.parent_datum().coroot(sub.parent_nr_simple(s)).dot(rw.numerator())
-	%rw.denominator()!=0)
+    if (intutils::remainder(sub.parent_datum().coroot(sub.parent_nr_simple(s))
+			    .dot(rw.numerator())
+			    ,rw.denominator())!=0)
       return false;
 
   return true;
@@ -330,7 +333,8 @@ GlobalTitsGroup::cross_act(weyl::Generator s, GlobalTitsElement& x) const
   return 0; // no length change this case
 }
 
-int GlobalTitsGroup::cross_act(weyl::WeylWord w, GlobalTitsElement& a) const
+int GlobalTitsGroup::cross_act(const weyl::WeylWord& w, GlobalTitsElement& a)
+  const
 {
   int d=0;
   for (size_t i=w.size(); i-->0; )
@@ -338,7 +342,8 @@ int GlobalTitsGroup::cross_act(weyl::WeylWord w, GlobalTitsElement& a) const
   return d; // total length change, in case the caller is interested
 }
 
-int GlobalTitsGroup::cross_act(GlobalTitsElement& a,weyl::WeylWord w) const
+int GlobalTitsGroup::cross_act(GlobalTitsElement& a,const  weyl::WeylWord& w)
+   const
 {
   int d=0;
   for (size_t i=0; i<w.size(); ++i )
@@ -347,7 +352,8 @@ int GlobalTitsGroup::cross_act(GlobalTitsElement& a,weyl::WeylWord w) const
 }
 
 // multiply strong involution by |rw|; side should be immaterial (left used)
-void GlobalTitsGroup::add(latticetypes::RatWeight rw,GlobalTitsElement& a)
+void GlobalTitsGroup::add
+  (const latticetypes::RatWeight& rw,GlobalTitsElement& a)
   const
 { // the following would be necessary to get a true right-mulitplication
   // involution_matrix(a.tw()).apply_to(rw.numerator()); // pull |rw| across
@@ -381,7 +387,7 @@ void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   latticetypes::RatWeight t=a.t.as_rational();
   int num = eval_pt.dot(t.numerator()); // should become multiple of denominator
 
-  if (num% t.denominator()!=0) // correction needed if alpha woild be compact
+  if (num% (int)(t.denominator())!=0) // correction needed if alpha compact
   {
     const latticetypes::Weight& shift_vec= simple.roots()[s];
     // |eval_pt.dot(shift_vec)==2|, so correct numerator by |(num/2d)*shift_vec|
