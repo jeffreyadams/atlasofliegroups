@@ -134,17 +134,15 @@ namespace bitvector {
   |d_data|, one might wonder if it would not have been better to publicly
   derive from |BitSet<dim>|, MvL.
 
-  A BitVector should be thought of as a column vector.  A Bitmatrix will
-  in general act on it on the left.  [I thought that Fokko always
-  prefers matrices acting on the right on row vectors; but if I am
-  reading this correctly, that preference didn't make it into this
-  software. DV]
+  A |BitVector| should be thought of as a column vector. A |Bitmatrix| will in
+  general act on it on the left, just like a |LatticeMatrix| on a |Weight|.
+  This does not stop |BitVector|s from being used most for coweights modulo 2.
   */
 
 template<size_t dim> class BitVector
 {
   bitset::BitSet<dim> d_data;
-  size_t d_size;
+  unsigned short int d_size; // this is more than large enough for all uses
 
  public:
 

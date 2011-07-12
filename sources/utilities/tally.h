@@ -30,7 +30,7 @@ namespace tally {
 /* The |TallyVec| class template has one type parameters that should be an
    unsigned integral type: it is the type used for the primary counters,
    determining the range of frequency that can be maintained most efficiently
-   (one a counter overflows it will be maintained in a less storage- and
+   (once a counter overflows it will be maintained in a less storage- and
    time-efficient way). Typically it will be a small type to avoid wasting
    space on the average low counter values. The type indexing the counters and
    used for the counter values when they overflow are considered to be of less

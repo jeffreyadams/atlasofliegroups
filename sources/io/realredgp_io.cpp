@@ -19,6 +19,7 @@
 #include "cartanclass.h"
 #include "complexredgp.h"
 #include "complexredgp_io.h"
+#include "graph.h"
 #include "ioutils.h"
 #include "partition.h"
 #include "poset.h"

@@ -17,7 +17,6 @@
 
 #include "matrix_fwd.h"
 
-#include "setutils.h"
 #include "tags.h"
 
 namespace atlas {
@@ -192,7 +191,6 @@ template<typename C> class Matrix : public Matrix_base<C>
   void negate(){ base::d_data.negate(); }
   void transpose();
 
-  void permute(const setutils::Permutation& a);
   void invert();
   void invert(C& d);
 

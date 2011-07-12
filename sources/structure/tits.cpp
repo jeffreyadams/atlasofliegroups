@@ -39,7 +39,7 @@
 #include "latticetypes_fwd.h"
 #include "lattice.h"
 #include "rootdata.h"
-#include "setutils.h"
+#include "permutations.h"
 #include "arithmetic.h"
 
 #include "complexredgp.h"
@@ -62,26 +62,38 @@ std::vector<gradings::Grading> compute_square_classes
 
 /****************************************************************************
 
-        Chapter I -- The |TorusElement| and |GlobalTitsGroup| classes
+  Chapter I -- Classes |TorusElement|, |GlobalTitsGroup|, |GlobalTitsGroup|
 
 *****************************************************************************/
 
+//              |TorusElement|
+
+
+// For torus elements we keep numerator entries reduced modulo |2*d_denom|.
+// Note this invariant is not enforced in the (private) raw constructor.
+
 // make $\exp(2\pi i r)$, doing affectively *2, then reducing modulo $2X_*$
-TorusElement::TorusElement(const latticetypes::RatWeight r)
-  : repr(r.numerator()*2,r.denominator())
-{ repr.normalize(); // maybe cancels the factor 2 in numerator from denominator
-  unsigned int d=2*repr.denominator(); // we reduce modulo $2\Z^rank$
+  TorusElement::TorusElement(const latticetypes::RatWeight& r, bool two)
+  : repr(r) // but multiplied by 2 below
+{ if (two)
+    repr*=2;
+  unsigned int d=2u*repr.denominator(); // we reduce modulo $2\Z^rank$
   latticetypes::LatticeElt& num=repr.numerator();
   for (size_t i=0; i<num.size(); ++i)
     num[i] = intutils::remainder(num[i],d);
 }
 
-latticetypes::RatWeight TorusElement::as_rational() const
+latticetypes::RatWeight TorusElement::log_pi(bool normalize) const
+{
+  if (normalize)
+    return latticetypes::RatWeight(repr).normalize();
+  return repr;
+}
+
+latticetypes::RatWeight TorusElement::log_2pi() const
 {
   latticetypes::LatticeElt numer = repr.numerator(); // copy
-  unsigned int d = 2*repr.denominator(); // this will make result mod Z, not 2Z
-  for (size_t i=0; i<numer.size(); ++i)
-    numer[i] = intutils::remainder(numer[i],d);
+  unsigned int d = 2u*repr.denominator(); // this will make result mod Z, not 2Z
   return latticetypes::RatWeight(numer,d).normalize();
 }
 
@@ -95,7 +107,7 @@ arithmetic::Rational TorusElement::evaluate_at
 
 TorusElement TorusElement::operator +(const TorusElement& t) const
 {
-  TorusElement result(repr + t.repr,0); // raw constructor
+  TorusElement result(repr + t.repr,tags::UnnormalizedTag()); // raw ctor
   int d=2*result.repr.denominator(); // we shall reduce modulo $2\Z^rank$
   latticetypes::LatticeElt& num=result.repr.numerator();
   for (size_t i=0; i<num.size(); ++i)
@@ -120,7 +132,7 @@ TorusElement& TorusElement::operator+=(TorusPart v)
   for (size_t i=0; i<v.size(); ++i)
     if (v[i])
     {
-      if ((unsigned long)repr.numerator()[i]<repr.denominator())
+      if (repr.numerator()[i]<repr.denominator())
 	repr.numerator()[i]+=repr.denominator(); // add 1/2 to coordinate
       else
 	repr.numerator()[i]-=repr.denominator(); // subtract 1/2
@@ -128,18 +140,22 @@ TorusElement& TorusElement::operator+=(TorusPart v)
   return *this;
 }
 
+
+
+//              |GlobalTitsElement|
+
 GlobalTitsElement GlobalTitsElement::simple_imaginary_cross
   (const rootdata::RootDatum& dual_rd, // dual for pragmatic reasons
    rootdata::RootNbr alpha) const // any simple-imaginary root
 {
-  const latticetypes::Weight& v = dual_rd.coroot(alpha); // imaginary
-  if (t.negative_at(v)) // |alpha| is a compact root
-    return *this;
-  GlobalTitsElement a(*this);
-  a.torus_part() += tits::TorusPart(dual_rd.root(alpha)); // effectively halves
+  GlobalTitsElement a(*this); // make a copy in all cases
+  if (not t.negative_at(dual_rd.coroot(alpha))) // |alpha| is a noncompact root
+    a.torus_part() += tits::TorusPart(dual_rd.root(alpha)); // so add $m_\alpha$
   return a;
 }
 
+
+//              |GlobalTitsGroup|
 
 
 GlobalTitsGroup::GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G)
@@ -215,17 +231,17 @@ latticetypes::LatticeMatrix
 
 TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
 {
-  latticetypes::RatWeight rw = x.as_rational();
-  return TorusElement(latticetypes::RatWeight(delta_tr*rw.numerator(),
-					      rw.denominator()));
+  latticetypes::RatWeight rw = x.log_pi(false);
+  return exp_pi(latticetypes::RatWeight(delta_tr*rw.numerator(),
+					rw.denominator()));
 }
 
 TorusElement GlobalTitsGroup::theta_tr_times_torus(const GlobalTitsElement& a)
   const
-{ latticetypes::RatWeight rw = a.torus_part().as_rational();
+{ latticetypes::RatWeight rw = a.torus_part().log_pi(false);
   matrix::Vector<int> num = delta_tr*rw.numerator();
   weylGroup().act(simple,a.tw(),num);
-  return TorusElement(latticetypes::RatWeight(num,rw.denominator()));
+  return exp_pi(latticetypes::RatWeight(num,rw.denominator()));
 }
 
 // this is currently only used by |has_central_square| (with |do_twist==true|)
@@ -239,7 +255,7 @@ void GlobalTitsGroup::left_mult(const TorusElement& t,
   {
     weyl::Generator s =  // multiply by $\sigma_i$ or $\sigma_{tw(i)}^{-1}$
       do_twist ? twisted(ww[i]) : ww[i];
-    b.t.reflect(simple,s); // |b.t| is \emph{weight} for (dual side) |simple|
+    b.t.simple_reflect(simple,s); // note: |b.t| is \emph{weight} for |simple|
     if ((weylGroup().leftMult(b.w,s)>0)==do_twist)
       b.t += m_alpha(s); // adjust torus part on length (do_twist|in|de)crease
   }
@@ -256,7 +272,7 @@ bool GlobalTitsGroup::has_central_square(GlobalTitsElement a) const
     return false;
 
   // now check if |a.t| is central, by scalar products with |simple.coroots()|
-  latticetypes::RatWeight rw = a.t.as_rational();
+  latticetypes::RatWeight rw = a.t.log_2pi();
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
     if (intutils::remainder(simple.coroots()[s].dot(rw.numerator())
 			    ,rw.denominator())!=0)
@@ -271,7 +287,7 @@ bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
   const TorusElement t = a.torus_part()+theta_tr_times_torus(a);
 
   // now check if |t| is central, by scalar products with |simple.coroots()|
-  latticetypes::RatWeight rw = t.as_rational();
+  latticetypes::RatWeight rw = t.log_2pi();
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
     if (intutils::remainder(simple.coroots()[s].dot(rw.numerator())
 			    ,rw.denominator())!=0)
@@ -287,7 +303,7 @@ bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,
   const TorusElement t = a.torus_part()+theta_tr_times_torus(a);
 
   // now check if |t| is central, by scalar products with |simple.coroots()|
-  latticetypes::RatWeight rw = t.as_rational();
+  latticetypes::RatWeight rw = t.log_2pi();
   for (weyl::Generator s=0; s<sub.rank(); ++s)
     if (intutils::remainder(sub.parent_datum().coroot(sub.parent_nr_simple(s))
 			    .dot(rw.numerator())
@@ -318,7 +334,7 @@ GlobalTitsGroup::cross_act(weyl::Generator s, GlobalTitsElement& x) const
   int d=twistedConjugate(x.w,s); // Tits group must add $m_\alpha$ iff $d=0$
   if (d!=0) // complex cross action: reflect torus part by |s|
   {
-    x.t.reflect(simple,s); // OK since |simple| is at dual side for |x.t|
+    x.t.simple_reflect(simple,s); // OK since |simple| on dual side for |x.t|
     return d/2; // report half of length change in Weyl group
   }
 
@@ -358,7 +374,7 @@ void GlobalTitsGroup::add
 { // the following would be necessary to get a true right-mulitplication
   // involution_matrix(a.tw()).apply_to(rw.numerator()); // pull |rw| across
   tits::TorusElement& tp = a.t;
-  tp = tp + tits::TorusElement(rw);
+  tp = tp + exp_2pi(rw);
 }
 
 /*
@@ -384,7 +400,7 @@ void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
   const
 {
   const latticetypes::Weight& eval_pt=simple.coroots()[s];
-  latticetypes::RatWeight t=a.t.as_rational();
+  latticetypes::RatWeight t=a.t.log_2pi();
   int num = eval_pt.dot(t.numerator()); // should become multiple of denominator
 
   if (num% (int)(t.denominator())!=0) // correction needed if alpha compact
@@ -392,9 +408,10 @@ void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
     const latticetypes::Weight& shift_vec= simple.roots()[s];
     // |eval_pt.dot(shift_vec)==2|, so correct numerator by |(num/2d)*shift_vec|
     t -= latticetypes::RatWeight(shift_vec*num,2*t.denominator());
+    assert(eval_pt.dot(t.numerator())==0);
   }
 
-  leftMult(a.w,s); a.t=TorusElement(t);
+  leftMult(a.w,s); a.t=exp_2pi(t);
 }
 
 // Sometimes we need to compute the grading at non-simple imaginary roots.
@@ -507,10 +524,10 @@ SubTitsGroup::SubTitsGroup(const complexredgp::ComplexReductiveGroup& G,
   GlobalTitsElement a(G.rank()); // identity
   for (weyl::Generator s=0; s<sub.rank(); ++s)
     if (parent.compact(sub.parent_datum(),sub.parent_nr_simple(s),a))
-      t = t + TorusElement(rd.fundamental_weight(s));
+      t = t + exp_2pi(rd.fundamental_weight(s));
 }
 
-TorusElement SubTitsGroup::base_point_offset(const weyl::TwistedInvolution tw)
+TorusElement SubTitsGroup::base_point_offset(const weyl::TwistedInvolution& tw)
   const
 {
   GlobalTitsElement a(t);

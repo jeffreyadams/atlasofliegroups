@@ -139,10 +139,6 @@ class SubDatum : public SubSystem
 
   latticetypes::LatticeMatrix involution(weyl::TwistedInvolution tw) const;
 
-  tits::GlobalTitsElement sub_base_point
-    (const tits::GlobalTitsGroup& parent_dual_Tg,
-     const weyl::TwistedInvolution& tw) const;
-
 }; // |class SubDatum|
 
 } // |namespace subdatum|

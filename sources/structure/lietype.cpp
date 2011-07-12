@@ -93,17 +93,17 @@ namespace atlas {
 namespace lietype {
 
   void addCompactInvolution(latticetypes::LatticeMatrix&, size_t, size_t,
-			    const setutils::Permutation& pi);
+			    const permutations::Permutation& pi);
 
   void addDInvolution(latticetypes::LatticeMatrix&, size_t, size_t,
-		      const setutils::Permutation& pi);
+		      const permutations::Permutation& pi);
 
   void addMinusIdentity(latticetypes::LatticeMatrix&, size_t, size_t,
-			const setutils::Permutation& pi);
+			const permutations::Permutation& pi);
 
   void addSimpleInvolution(latticetypes::LatticeMatrix&, size_t,
 			   const SimpleLieType&, TypeLetter,
-			   const setutils::Permutation& pi);
+			   const permutations::Permutation& pi);
 }
 
 /*****************************************************************************
@@ -461,7 +461,7 @@ latticetypes::LatticeMatrix involution(const Layout& lo)
 {
   const lietype::LieType& lt = lo.d_type;
   const lietype::InnerClassType& ic = lo.d_inner;
-  const setutils::Permutation& pi = lo.d_perm;
+  const permutations::Permutation& pi = lo.d_perm;
 
   latticetypes::LatticeMatrix result(lt.rank(),lt.rank(),0);
 
@@ -552,7 +552,7 @@ namespace lietype {
 */
 void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
 			  size_t rs,
-			  const setutils::Permutation& pi)
+			  const permutations::Permutation& pi)
 {
   for (size_t i=0; i<rs; ++i)
     m(pi[r+i],pi[r+i]) = 1;
@@ -566,7 +566,7 @@ void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
   Precondition: the block is set to zero.
 */
 void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs,
-		    const setutils::Permutation& pi)
+		    const permutations::Permutation& pi)
 {
   for (size_t i=0; i<rs-2; ++i)
     m(pi[r+i],pi[r+i]) = 1;
@@ -583,7 +583,7 @@ void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs,
   Precondition: the block is set to zero.
 */
 void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs,
-		      const setutils::Permutation& pi)
+		      const permutations::Permutation& pi)
 {
   for (size_t i=0; i<rs; ++i)
     m(pi[r+i],pi[r+i]) = -1;
@@ -596,7 +596,7 @@ void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs,
 */
 void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
 			 const SimpleLieType& slt, TypeLetter x,
-			 const setutils::Permutation& pi)
+			 const permutations::Permutation& pi)
 {
   size_t rs = slt.rank();
 

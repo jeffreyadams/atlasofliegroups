@@ -243,27 +243,6 @@ latticetypes::LatticeMatrix SubDatum::involution(weyl::TwistedInvolution tw)
   return theta;
 }
 
-tits::GlobalTitsElement SubDatum::sub_base_point
-  (const tits::GlobalTitsGroup& Tg, // dual global Tits group for parent
-   const weyl::TwistedInvolution& tw) const
-{
-  const latticetypes::RatWeight delta_0(-Tg.torus_part_offset());
-  const latticetypes::RatWeight delta_sub = // as embedded in |Tg|
-    latticetypes::RatWeight(parent_sub_2rho(),4)+=delta_0;
-  std::vector<tits::GlobalTitsElement> sub_sigma;
-  sub_sigma.reserve(semisimple_rank());
-
-  for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-  {
-    tits::GlobalTitsElement lift(delta_0);
-    sub_sigma.push_back(lift);
-  }
-
-  tits::GlobalTitsElement sbp(delta_sub);
-
-  return sbp;
-}
-
 } // |namespace subdatum|
 
 } // |namespace atlas|

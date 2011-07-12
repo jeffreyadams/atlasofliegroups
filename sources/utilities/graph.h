@@ -12,23 +12,13 @@
 #ifndef GRAPH_H  /* guard against multiple inclusions */
 #define GRAPH_H
 
+#include "graph_fwd.h"
 #include "partition.h"
 #include "set.h"
 
 /******** type definitions **************************************************/
 
 namespace atlas {
-
-namespace graph {
-
-  typedef set::SetElt Vertex;
-  typedef std::vector<Vertex> VertexList;
-  typedef Vertex Edge;
-  typedef std::vector<Edge> EdgeList;
-
-  class OrientedGraph;
-
-}
 
 /******** type declarations *************************************************/
 
@@ -78,10 +68,10 @@ class OrientedGraph
 private:
 void addLinks
   (const std::vector<const EdgeList*>& out, const partition::Partition& pi);
-};
+}; // |class OrientedGraph|
 
-}
+} // |namespace graph|
 
-}
+} // |namespace atlas|
 
 #endif

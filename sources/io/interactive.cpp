@@ -797,6 +797,7 @@ void get_parameter(realredgp::RealReductiveGroup& GR,
   {
     latticetypes::RatWeight t = gamma - nu;
     gamma += latticetypes::RatWeight(theta*t.numerator(),t.denominator());
+    gamma.normalize();
   }
 
   latticetypes::Weight& numer = gamma.numerator(); // we change |gamma| using it

@@ -15,7 +15,6 @@
 #include <vector>
 
 #include "constants.h"
-#include "setutils.h"
 
 /******** function declarations **********************************************/
 
@@ -28,8 +27,6 @@ namespace bits {
   size_t firstBit(unsigned long);
 
   size_t lastBit(unsigned long);
-
-  void permute(unsigned long&, const setutils::Permutation&);
 
 }
 

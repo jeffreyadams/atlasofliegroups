@@ -1,7 +1,7 @@
 /*!
 \file
-  This is setutils.cpp.  This file contains the non-template
-  definitions of the functions declared in setutils.h
+  This is permutations.cpp.  This file contains the non-template
+  definitions of the functions declared in permutations.h
 
 */
 /*
@@ -11,17 +11,21 @@
   For license information see the LICENSE file
 */
 
-#include "setutils.h"
+#include "permutations.h"
+
+#include "constants.h"
+#include "bitset.h"
 #include "bitmap.h"
+#include "matrix.h"
 
 /*
   This file contains the non-template definitions of the functions declared
-  in setutils.h
+  in permutations.h
 */
 
 namespace atlas {
 
-namespace setutils {
+namespace permutations {
 
 
 Permutation::Permutation(unsigned long n, int) // identity
@@ -34,6 +38,21 @@ Permutation::Permutation(const Permutation& pi, int) // inverse
   : Base(pi.size())
 {
   for (size_t i=size(); i-->0; ) Base::operator[](pi[i])=i;
+}
+
+
+
+template<size_t n>
+  bitset::BitSet<n> Permutation::pull_back(const bitset::BitSet<n>& v) const
+{
+  assert(size()<=n);
+
+  const Permutation& pi=*this;
+  bitset::BitSet<n> result;
+  for (size_t i=0; i<size(); ++i)
+    result.set(i,v[pi[i]]);
+
+  return result;
 }
 
 // Replace each index |i| in |v| by |pi[i]|, where |pi| is our permutation
@@ -105,31 +124,84 @@ void Permutation::left_mult(std::vector<U>& v) const
   Applies our permutation |pi| to the vector |v|. In other words, we send each
   entry v[i] to the new position v[pi[i]]; this means that afterwards for all
   |i|: |new_v[pi[i]]==old_v[i]|, or equivalently $new_v[i]=old_v[pi^{-1}[i]]$.
+  This notion of permuting an arbitrary sequence is a left action of $S_n$.
 
-  Note that this is \emph{not} the same notion of permutation of entries used
-  in the methods above, nor in the |permute| methods of matrices and bitsets;
-  with respect to those we use the inverse permutation
+  This is pulling back (right multiplication) through the inverse permutation.
 
   We are able to perform this permutation essentially in-place, using an
-  auxiliary vector<bool>.
+  auxiliary bitmap.
 */
 template<typename T> void Permutation::permute(std::vector<T>& v) const
 {
   assert(v.size()>=size());
   const Permutation& pi=*this;
-  std::vector<bool> b(v.size(),false);
+  bitmap::BitMap seen(v.size()); // initialized empty
 
-  for (unsigned long i = 0; i < v.size(); ++i) {
-    if (b[i])
-      continue;
-    for (unsigned long j = pi[i]; j != i; j=pi[j])
+  for (unsigned long i = 0; i < v.size(); ++i)
+    if (not seen.isMember(i))
     {
-      std::swap(v[i],v[j]);
-      b[j] = true;
+      seen.insert(i);
+      for (unsigned long j=pi[i]; j!=i; j=pi[j]) // cycle from |pi[i]| to |i|
+      {
+	std::swap(v[i],v[j]); // transpose |v[i]] with other members in order
+	seen.insert(j);
+      }
     }
-    b[i] = true;
-  }
 }
+
+/*! Permutes rows and columns of the matrix according to the permutation,
+  resulting in the matrix of the same operator, expressed in the permuted
+  basis e_{a^{-1}[0]}, ... , e_{a^{-1}[n-1]}. This amounts to conjugating by
+  the permutation matrix (delta_{a[j],j})_{i,j} that transforms from
+  coordinates on the standard basis to those on that basis $(e_{a^{-1}_i})_i$
+
+  Precondition: |m| is an |n| by |n|, and |a| a permutation of |n|
+
+  Method: the old entry at (i,j) is moved to its new location (a[i],a[j]), in
+  a separate copy (without trying to do the permutation of entries in place)
+  */
+template<typename T>
+void Permutation::conjugate(matrix::Matrix_base<T>& M) const
+{
+  size_t n=size();
+  assert (M.numRows()==n);
+  assert (M.numColumns()==n);
+  matrix::Matrix<T> result(n,n);
+  const Permutation& pi=*this;
+  for (size_t i=0; i<n; ++i)
+    for (size_t j=0; j<n; ++j)
+      result(pi[i],pi[j]) = M(i,j);
+}
+
+/*! Permutes rows and columns of the matrix according to the inverse
+  permutation, resulting in the matrix of the same operator but expressed in
+  the inverse-permuted basis e_{a[0]}, ... , e_{a[n-1]}. This amounts to
+  conjugating by the inverse permutation matrix (delta_{i,a[i]})_{i,j} that
+  transforms from coordinates on the standard basis to those on tha basis.
+
+  Precondition: |m| is an |n| by |n|, and |a| a permutation of |n|
+
+  Method: the new entry at (i,j) is set to the old entry at (a[i],a[j]), in a
+  separate copy (without trying to do the permutation of entries in place)
+*/
+template<typename T>
+void Permutation::inv_conjugate(matrix::Matrix_base<T>& M) const
+{
+  size_t n=size();
+  assert (M.numRows()==n);
+  assert (M.numColumns()==n);
+  matrix::Matrix<T> result(n,n);
+  const Permutation& pi=*this;
+  for (size_t i=0; i<n; ++i)
+    for (size_t j=0; j<n; ++j)
+      result(i,j) = M(pi[i],pi[j]);
+}
+
+
+// Standardization is a method of associating to a sequence of numbers |a| a
+// permutation |pi|, such that |a[i]<a[j]| implies |pi[i]<pi[j], and
+// |a[i]<a[j]| implies that |pi[i]<pi[j] is equivalent to |i<j|. Equivalently,
+// setteing |a=standardize(a).pull_back(a)| amounts to stable sorting of |a|.
 
 template <typename U>// unsigned type
   Permutation standardize(const std::vector<U>& a, size_t bound)
@@ -159,6 +231,10 @@ template <typename U>// unsigned type
 
 // Instantiation of templates (only these are generated)
 
+template bitset::BitSet<constants::RANK_MAX>
+Permutation::pull_back(const bitset::BitSet<constants::RANK_MAX>& v) const;
+  // cartan_io, realform_io
+
 template std::vector<unsigned int>
 Permutation::renumbering(const std::vector<unsigned int>& v) const; // blocks
 
@@ -168,9 +244,12 @@ Permutation::renumbering(const std::vector<unsigned long>& v) const; // kgb
 template void
 Permutation::left_mult(std::vector<unsigned long>& v) const; // rootdata,weyl,.
 
+template void
+Permutation::inv_conjugate(matrix::Matrix_base<int>& M) const; // weyl
+
 template Permutation
 standardize<unsigned int>(const std::vector<unsigned int>& a, size_t bound);
 
-} // |namespace setutils|
+} // |namespace permutations|
 
 } // |namespace atlas|

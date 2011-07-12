@@ -8,6 +8,7 @@
 */
 
 #include <iostream>
+#include "prettyprint.h"
 
 /*****************************************************************************
 
@@ -48,6 +49,17 @@ template<size_t d>
 }
 
 } // |namespace bitset|
+
+namespace polynomials {
+
+template <typename C>
+  std::ostream& operator<< (std::ostream& strm, const Polynomial<C>& P)
+{
+  return prettyprint::printPol(strm,P,"q");
+}
+
+} // |namespace polynomials|
+
 
 namespace basic_io {
 

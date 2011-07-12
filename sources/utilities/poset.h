@@ -14,11 +14,12 @@
 
 #include <vector>
 
-#include "poset_fwd.h"
-
 #include "bitmap.h"
-#include "graph.h"
 #include "tags.h"
+
+#include "poset_fwd.h"
+#include "graph_fwd.h"
+
 
 namespace atlas {
 

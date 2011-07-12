@@ -64,7 +64,7 @@ latticetypes::RatWeight Rep_context::lambda(const StandardRepr& rep) const
 // Formula: $\exp(i\pi(\gamma-\lambda)) \sigma_{tw} \delta_1$
 tits::GlobalTitsElement Rep_context::y(const StandardRepr& rep) const
 {
-  tits::TorusElement t((rep.gamma()-lambda(rep))/=2);
+  tits::TorusElement t = tits::exp_pi(rep.gamma()-lambda(rep));
   const weyl::TwistedWeylGroup& W = KGB_set.twistedWeylGroup();
   const weyl::TwistedWeylGroup dual_W (W,tags::DualTag());
   weyl::TwistedInvolution tw =

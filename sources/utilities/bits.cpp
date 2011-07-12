@@ -98,29 +98,6 @@ size_t lastBit(unsigned long f)
   return lb + constants::lastbit[f];
 }
 
-/*!
-  Synopsis: permutes the bits of f according to a: if the bits of f are
-  interpreted with respect to a sequence of objects x_0,...,x_{n-1}, then the
-  bits of the result are interpreted with respect to the permuted sequence
-  x_{a[0]},...,x_{a[n-1]}
+} // |namespace bits|
 
-  Precisely, we transform f = f_old into f_new, where f_new[i] = f_old[a[i]].
-
-  Note that the permutation of bits is not interpreted in the same way as the
-  permutation of vector entries in setutils::permute, given in setutils_def.h
-*/
-
-void permute(unsigned long& f, const setutils::Permutation& a)
-{
-  unsigned long f_new = 0;
-
-  for (size_t j = 0; j < a.size(); ++j)
-    if ((f & constants::bitMask[a[j]])!=0)
-      f_new |= constants::bitMask[j];
-
-  f = f_new;
-}
-
-}
-
-}
+} // |namespace atlas|

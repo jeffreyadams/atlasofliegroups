@@ -13,6 +13,7 @@
 */
 
 #include "latticetypes.h"
+#include "intutils.h"
 #include "arithmetic.h"
 #include <stdexcept>
 
@@ -51,6 +52,37 @@ RatLatticeElt RatLatticeElt::operator+(const RatLatticeElt& v) const
   return result; // don't normalize, better just limit denominator growth
 }
 
+// rational vectors are not guaranteed on lowest terms
+// however if multiplication can be by cancellation it is done that way
+RatLatticeElt& RatLatticeElt::operator*=(int n)
+{
+  if (n!=0 and (int)d_denom%n==0)
+    if (n>0)
+      d_denom/=(unsigned int)n; // unsigned arithmetic OK here
+    else
+    {
+      d_num=-d_num;
+      d_denom/=(unsigned int)(-n);
+    }
+  else d_num*=n;
+  return *this;
+}
+
+// division takes signed argument to avoid catastrophic surprises: if ever a
+// negative argument were passed, implicit conversion to unsigned would be fatal
+RatLatticeElt& RatLatticeElt::operator/=(int n)
+{
+  if (n>0)
+    d_denom*=(unsigned int)n;
+  else
+  {
+    assert(n!=0);
+    d_num=-d_num;
+    d_denom*=(unsigned int)(-n);
+  }
+  return *this;
+}
+
 RatLatticeElt& RatLatticeElt::normalize()
 {
   unsigned long d=d_denom;
@@ -61,7 +93,7 @@ RatLatticeElt& RatLatticeElt::normalize()
   for (size_t i=0; i<d_num.size(); ++i)
   {
     if (d_num[i]!=0)
-      d=arithmetic::gcd(d,abs(d_num[i]));
+      d=arithmetic::gcd(d,intutils::abs(d_num[i]));
     if (d==1)
       return *this;
   }

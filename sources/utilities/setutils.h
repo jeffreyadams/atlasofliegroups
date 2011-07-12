@@ -1,6 +1,6 @@
 /*!
 \file
-  This is setutils.h
+  This is permutations.h
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -15,13 +15,15 @@
 #include <vector>
 #include <algorithm>
 
+#include "bitset_fwd.h"
 #include "bitmap_fwd.h"
+#include "matrix_fwd.h"
 
 /******** type declarations *************************************************/
 
 namespace atlas {
 
-namespace setutils {
+namespace permutations {
 
 template<typename T>
   inline size_t find_index(const std::vector<T>& v, const T& x)
@@ -41,6 +43,9 @@ struct Permutation
     template<typename T> // any assignable type
       std::vector<T> pull_back(const std::vector<T>& v) const;
 
+    template<size_t n>
+      bitset::BitSet<n> pull_back(const bitset::BitSet<n>& v) const;
+
   // left-compose with |*this|
     template<typename U> // unsigned integral type
       std::vector<U> renumbering(const std::vector<U>& v) const;
@@ -54,9 +59,14 @@ struct Permutation
   // left-multiply by |*this|; imperative version of |renumbering|
     template<typename U> void left_mult(std::vector<U>& v) const;
 
-  // WARNING: has INVERSE interpretation of |*this| as |pull_back|:
   // right-compose with the inverse of the permutation (defining a left action)
-  template<typename T> void permute(std::vector<T>& v) const;
+    template<typename T> void permute(std::vector<T>& v) const;
+
+  // conjugate by pemutation matrix (to coordinates on permute(standard basis))
+    template<typename T> void conjugate(matrix::Matrix_base<T>& M) const;
+
+  // inverse conjugate by basis pemutation (to coordinates on (e_pi[i])_i)
+    template<typename T> void inv_conjugate(matrix::Matrix_base<T>& M) const;
 
   };
 
@@ -64,7 +74,7 @@ struct Permutation
 
 /******** function declarations **********************************************/
 
-namespace setutils {
+namespace permutations {
 
   void compose(Permutation&, const Permutation&, unsigned long n = 0);
 
@@ -82,6 +92,6 @@ namespace setutils {
 
 /******** template definitions ***********************************************/
 
-#include "setutils_def.h"
+#include "permutations_def.h"
 
 #endif

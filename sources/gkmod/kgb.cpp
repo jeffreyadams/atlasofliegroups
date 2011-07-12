@@ -91,14 +91,14 @@ size_t KGB_elt_entry::hashCode(size_t modulus) const
 
 */
 
-KGBElt KGB_base::cross(const weyl::WeylWord ww, KGBElt x) const
+KGBElt KGB_base::cross(const weyl::WeylWord& ww, KGBElt x) const
 {
   for (size_t i=ww.size(); i-->0;)
     x = cross(ww[i],x);
   return x;
 }
 
-KGBElt KGB_base::cross(KGBElt x, const weyl::WeylWord ww) const
+KGBElt KGB_base::cross(KGBElt x, const weyl::WeylWord& ww) const
 {
   for (size_t i=0; i<ww.size(); ++i)
     x = cross(ww[i],x);
@@ -177,15 +177,13 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G)
 	     it=gr.begin(); it(); ++it)
 	rw += G.rootDatum().fundamental_coweight(*it); // a sum of f. coweights
 
-      tits::TorusElement t(rw/=2); // halve: image of $x\mapsto\exp(\pi\ii x)$
-
       weyl::TwistedInvolution e; // identity
       for (unsigned long i=0; i<fg.size(); ++i)
       {
-	tits::TorusElement s=t;
-	s += fg.fromBasis // add |TorusPart| from fiber group; bits from |i|
+	tits::TorusElement t=tits::exp_pi(rw);
+	t += fg.fromBasis // add |TorusPart| from fiber group; bits from |i|
 	  (latticetypes::SmallBitVector(bitset::RankFlags(i),fg.dimension()));
-	elt.push_back(tits::GlobalTitsElement(s));
+	elt.push_back(tits::GlobalTitsElement(t));
 	add_element(0,e); // create in base; length, tw both trivial
       } // |for (i)|
     } // |for (c)|
@@ -262,7 +260,7 @@ kgb::KGBElt global_KGB::lookup(const tits::GlobalTitsElement& a) const
 
 std::ostream& global_KGB::print(std::ostream& strm, KGBElt x) const
 {
-  latticetypes::RatWeight t = torus_part(x).as_rational();
+  latticetypes::RatWeight t = torus_part(x).log_2pi();
   return strm << std::setw(3*t.size()+3)<< t;
 }
 
@@ -669,20 +667,20 @@ size_t KGB::generate
   } // |for (x)|
 
   // now sort and export to |tits|
-  setutils::Permutation a1; // will be reordering assignment
+  permutations::Permutation a1; // will be reordering assignment
   { // sort involutions (rather than KGB elements, for efficiency)
-    setutils::Permutation p(fiber_data.n_involutions(),1);
+    permutations::Permutation p(fiber_data.n_involutions(),1);
     invol_compare i_cmp(fiber_data,G.weylGroup());
     std::sort(p.begin(),p.end(),i_cmp); // all entries are distinct
-    setutils::Permutation p1(p,-1); // inverse of |p|: where involutions went
+    permutations::Permutation p1(p,-1); // inverse of |p|: where involutions went
 
     std::vector<KGBElt> involution_rank(size); // values are small numbers
     for (KGBElt x=0; x<size; ++x)
       involution_rank[x] = p1[fiber_data.seq_no(elt_pool[x].w())];
-    a1 = setutils::standardize(involution_rank,fiber_data.n_involutions());
+    a1 = permutations::standardize(involution_rank,fiber_data.n_involutions());
   }
 
-  setutils::Permutation a(a1,-1); // |a[i]| locates what should map to |i|
+  permutations::Permutation a(a1,-1); // |a[i]| locates what should map to |i|
 
   for (weyl::Generator s=0; s<rank; ++s)
   {
@@ -1117,8 +1115,10 @@ bool GlobalFiberData::equivalent(const tits::GlobalTitsElement& x,
 				 const tits::GlobalTitsElement& y) const
 {
   unsigned int k = hash_table.find(x.tw());
-  assert (hash_table.find(y.tw())==k);
-  latticetypes::RatWeight t= (x.torus_part()-y.torus_part()).as_rational();
+  if (hash_table.find(y.tw())!=k)
+    return false;
+
+  latticetypes::RatWeight t= (x.torus_part()-y.torus_part()).log_2pi();
   latticetypes::LatticeElt p = info[k].proj*t.numerator();
 
   for (size_t i=0; i<p.size(); ++i)
@@ -1134,7 +1134,7 @@ latticetypes::RatLatticeElt
 {
   unsigned int k = hash_table.find(x.tw());
   assert (k!=hash_table.empty);
-  latticetypes::RatLatticeElt t = x.torus_part().as_rational();
+  latticetypes::RatLatticeElt t = x.torus_part().log_2pi();
   latticetypes::LatticeElt p = info[k].proj*t.numerator();
 
   // reduce modulo integers and return
@@ -1294,7 +1294,7 @@ void FiberData::reduce(tits::TitsElt& a) const
 // general cross action in (non simple) root
 // root is given as simple root + conjugating Weyl word to simple root
 KGBElt cross(const KGB_base& kgb, KGBElt x,
-	     weyl::Generator s, weyl::WeylWord ww)
+	     weyl::Generator s, const weyl::WeylWord& ww)
 {
   return kgb.cross(kgb.cross(s,kgb.cross(ww,x)),ww);
 }
@@ -1302,7 +1302,7 @@ KGBElt cross(const KGB_base& kgb, KGBElt x,
 // general Cayley transform in (non simple) non-compact imaginary root
 // root is given as simple root + conjugating Weyl word to simple root
 KGBElt Cayley (const KGB_base& kgb, KGBElt x,
-	       weyl::Generator s, weyl::WeylWord ww)
+	       weyl::Generator s, const weyl::WeylWord& ww)
 {
   return kgb.cross(kgb.cayley(s,kgb.cross(ww,x)),ww);
 }
@@ -1310,7 +1310,7 @@ KGBElt Cayley (const KGB_base& kgb, KGBElt x,
 // general inverse Cayley transform (choice) in (non simple) real root
 // root is given as simple root + conjugating Weyl word to simple root
 KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
-		       weyl::Generator s, weyl::WeylWord ww)
+		       weyl::Generator s, const weyl::WeylWord& ww)
 {
   return kgb.cross(kgb.inverseCayley(s,kgb.cross(ww,x)).first,ww);
 }

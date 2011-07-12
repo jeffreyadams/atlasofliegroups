@@ -21,7 +21,7 @@
 #include "latticetypes.h"
 #include "lietype.h"
 #include "rootdata.h"
-#include "setutils.h"
+#include "permutations.h"
 #include "tori.h"
 
 namespace atlas {
@@ -417,8 +417,8 @@ std::ostream& printType(std::ostream& strm,
   const lietype::LieType& lt=lo.d_type;
   const lietype::InnerClassType& ict=lo.d_inner;
 
-  gradings::Grading gr = d_gr;
-  gr.permute(lo.d_perm); // adapt grading to standard ordering of type |lt|
+  // adapt grading to standard ordering of type |lt|
+  gradings::Grading gr = lo.d_perm.pull_back(d_gr);
 
   size_t i = 0; // index of simple factor in |lt|
 

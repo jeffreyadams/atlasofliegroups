@@ -45,19 +45,10 @@ namespace latticetypes {
 
   LatticeElt d_num divided by unsigned LatticeCoeff d_denom.
   */
-class RatLatticeElt {
-
- private:
-
-  /*!
-  Vector of integers, representing the numerators of the RatLatticeElt.
-  */
-  LatticeElt d_num;
-
-  /*!
-  Integer, a common denominator of the RatLatticeElt.
-  */
-  unsigned int d_denom;
+class RatLatticeElt
+{
+  LatticeElt d_num;  // vector of integers, representing the numerators
+  unsigned int d_denom; // a positive common denominator (LatticeCoeff is int)
 
  public:
 
@@ -72,7 +63,8 @@ class RatLatticeElt {
   { if (d<0) d_num*=-1; }
 
 // accessors
-  unsigned int denominator() const { return d_denom; }
+  // unsigned denominator requires care: plain % or / are taboo; export signed
+  LatticeCoeff denominator() const { return (int)d_denom; }
   const LatticeElt& numerator() const { return d_num; }
   size_t size() const { return d_num.size(); }
 
@@ -85,8 +77,8 @@ class RatLatticeElt {
   RatLatticeElt operator-() const { return RatLatticeElt(-d_num,d_denom); }
   RatLatticeElt operator-(const RatLatticeElt& v) const { return *this+-v; }
   RatLatticeElt& operator-=(const RatLatticeElt& v) { return *this=*this-v; }
-  RatLatticeElt& operator*=(int n) { d_num*=n; return *this; }
-  RatLatticeElt& operator/=(unsigned int n) { d_denom*=n; return *this; }
+  RatLatticeElt& operator*=(int n);
+  RatLatticeElt& operator/=(int n);
 
 /*
   Returns the scalar product of |*this| and |w|, which are assumed to be of
@@ -107,7 +99,6 @@ class RatLatticeElt {
 //manipulators
   RatLatticeElt& normalize();
   LatticeElt& numerator() { return d_num; } // allow direct manipulation
-  unsigned int& denominator() { return d_denom; }
 
 }; // class RatLatticeElt
 

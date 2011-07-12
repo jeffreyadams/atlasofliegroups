@@ -24,7 +24,7 @@ the implementation of the KL algorithm.
 #include "kgb.h"
 #include "kl.h"
 #include "prettyprint.h"
-#include "setutils.h"
+#include "permutations.h"
 #include "weyl.h"
 
 namespace atlas {
@@ -170,7 +170,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
   return true;
 }
 
-void dualityPermutation(setutils::Permutation& a, const kl::KLContext& klc)
+void dualityPermutation(permutations::Permutation& a, const kl::KLContext& klc)
 
 {}
 
@@ -179,8 +179,8 @@ bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc)
   std::vector<blocks::BlockElt> dual =
     blocks::dual_map(klc.block(),dual_klc.block());
 
-  setutils::Permutation inv_dual
-    (setutils::Permutation(dual.begin(),dual.end()),-1);
+  permutations::Permutation inv_dual
+    (permutations::Permutation(dual.begin(),dual.end()),-1);
 
   blocks::BlockElt block_size=klc.size();
 

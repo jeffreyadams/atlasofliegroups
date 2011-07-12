@@ -408,10 +408,10 @@ kgb::KGBElt Block_base::renumber_x(const std::vector<kgb::KGBElt>& new_x)
     d_x[z]=x;
   }
 
-  setutils::Permutation pi_inv =
-    setutils::standardize(d_x,x_lim); // assigns |z| to its new place
+  permutations::Permutation pi_inv =
+    permutations::standardize(d_x,x_lim); // assigns |z| to its new place
 
-  setutils::Permutation pi(pi_inv,-1); // assigns to new place its original one
+  permutations::Permutation pi(pi_inv,-1); // assigns to new place its original one
 
   pi.pull_back(d_x).swap(d_x);
   pi.pull_back(d_y).swap(d_y);
@@ -629,8 +629,8 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
   // now |tw| describes |-kgb.involution(x)^tr| as twisted involution for |sub|
 
   // step 1: get a valid value for |y|. Has $t=\exp(\pi\ii(\gamma-\lambda))$
-  tits::TorusElement t((gamma-lambda)/=2); // for original group $G$
-  tits::GlobalTitsElement y = tits::GlobalTitsElement(t,tw);
+  tits::GlobalTitsElement y = 
+    tits::GlobalTitsElement(tits::exp_pi(gamma-lambda),tw);
   assert(Tg.is_valid(y));
 
   // step 1.5: correct the grading on the dual imaginary roots.
@@ -1018,8 +1018,7 @@ non_integral_block::non_integral_block
     dual_involution(kgb.involution(x),G.twistedWeylGroup(),Tg);
 
   // step 1: get |y|, which has $t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
-  const tits::GlobalTitsElement y_org =
-    tits::GlobalTitsElement((gamma-lambda)/=2,tw);
+  const tits::GlobalTitsElement y_org (tits::exp_pi(gamma-lambda),tw);
   assert(Tg.is_valid(y_org,sub));
   const kgb::KGBElt x_org = x;
 
@@ -1077,14 +1076,12 @@ non_integral_block::non_integral_block
 
     // generating reflections are for real roots for |involution(x)|
     rootdata::RootList gen_root = gfd.imaginary_basis(y_hash[0].tw); // for |y|
-    const subdatum::SubSystem real(rd,gen_root); // but real for |x|
-
     for (size_t i=0; i<y_hash.size(); ++i) // |y_hash| grows
     {
       tits::GlobalTitsElement y = y_hash[i].repr();
       assert(Tg.is_valid(y,sub));
-      for (weyl::Generator s=0; s<real.rank(); ++s)
-	y_hash.match(gfd.pack(Tg.cross(real.reflection(s),y)));
+      for (weyl::Generator s=0; s<gen_root.size(); ++s)
+	y_hash.match(gfd.pack(Tg.cross(rd.reflectionWord(gen_root[s]),y)));
     }
 
     // now insert elements from |y_hash| as first R-packet of block
@@ -1371,7 +1368,7 @@ latticetypes::RatWeight non_integral_block::lambda(BlockElt z) const
 {
   latticetypes::LatticeMatrix theta =
     G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
-  latticetypes::RatWeight t =  y_info[d_y[z]].rep.torus_part().as_rational();
+  latticetypes::RatWeight t =  y_info[d_y[z]].rep.torus_part().log_2pi();
   const latticetypes::Weight& num = t.numerator();
   return infin_char - latticetypes::RatWeight(num-theta*num,t.denominator());
 }

@@ -12,6 +12,7 @@ bit-matrix of the order relation.
 */
 
 #include "poset.h"
+#include "graph.h"
 
 /*****************************************************************************
 

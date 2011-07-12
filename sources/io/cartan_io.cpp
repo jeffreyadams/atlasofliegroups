@@ -22,7 +22,7 @@
 #include "lietype.h"
 #include "prettyprint.h"
 #include "rootdata.h"
-#include "setutils.h"
+#include "permutations.h"
 #include "tori.h"
 
 
@@ -119,7 +119,7 @@ std::ostream& printFiber(std::ostream& strm, const cartanclass::Fiber& f,
 }
 
 /*
-  Print the gradings of the simple imaginary roots corresponding
+  Print the gradings of the simple-imaginary roots corresponding
   to the various real forms defined for |f|.
 
   Precondition: |rfl| contains the outer numbering of the real forms;
@@ -136,8 +136,8 @@ std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
   const rootdata::RootList& si = f.simpleImaginary();
   latticetypes::LatticeMatrix cm = rs.cartanMatrix(si);
   dynkin::DynkinDiagram d(cm);
-  setutils::Permutation a = dynkin::bourbaki(d);
-  cm.permute(a);
+  permutations::Permutation a = dynkin::bourbaki(d);
+  a.inv_conjugate(cm);
 
   strm << "cartan matrix of imaginary root system is:" << std::endl;
   prettyprint::printMatrix(strm,cm);
@@ -159,8 +159,7 @@ std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
     for (VI j = i->first; j != i_last; ++j) {
       if (j != i_first)
 	os << ',';
-      gradings:: Grading gr= f.grading(*j);
-      gr.permute(a);
+      gradings:: Grading gr= a.pull_back(f.grading(*j));
       prettyprint::prettyPrint(os,gr,f.simpleImaginary().size());
     }
 

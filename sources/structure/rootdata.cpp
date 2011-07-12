@@ -217,11 +217,11 @@ void RootSystem::cons(const latticetypes::LatticeMatrix& Cartan_matrix)
     coroot(alpha)[i]-=coroot(beta).dot(simple_root[i]); // and modify
   }
 
-  root_perm.resize(npos,setutils::Permutation(2*npos));
+  root_perm.resize(npos,permutations::Permutation(2*npos));
   // first fill in the simple root permutations
   for (size_t i=0; i<rk; ++i)
   {
-    setutils::Permutation& perm=root_perm[i];
+    permutations::Permutation& perm=root_perm[i];
     for (RootNbr alpha=0; alpha<npos; ++alpha)
       if (alpha==i) // simple root reflecting itself makes it negative
       {
@@ -241,7 +241,7 @@ void RootSystem::cons(const latticetypes::LatticeMatrix& Cartan_matrix)
   {
     size_t i=ri[alpha].descents.firstBit();
     assert(i<rk);
-    setutils::Permutation& alpha_perm=root_perm[alpha];
+    permutations::Permutation& alpha_perm=root_perm[alpha];
     alpha_perm=root_perm[i];
     root_perm[link[alpha][i]].left_mult(alpha_perm);
     root_perm[i].left_mult(alpha_perm);
@@ -404,11 +404,11 @@ RootSystem::bracket(RootNbr alpha, RootNbr beta) const // $\<\alpha,\beta^\vee>$
   return isPosRoot(alpha)!=isPosRoot(beta) ? -c : c;
 }
 
-setutils::Permutation
+permutations::Permutation
 RootSystem::extend_to_roots(const RootList& simple_image) const
 {
   assert(simple_image.size()==rk);
-  setutils::Permutation result(numRoots());
+  permutations::Permutation result(numRoots());
 
   RootList image_reflection(rk);
 
@@ -437,8 +437,8 @@ RootSystem::extend_to_roots(const RootList& simple_image) const
   return result;
 }
 
-setutils::Permutation
-RootSystem::root_permutation(const setutils::Permutation& twist) const
+permutations::Permutation
+RootSystem::root_permutation(const permutations::Permutation& twist) const
 {
   assert(twist.size()==rk);
   RootList simple_image(rk);
@@ -715,10 +715,10 @@ RootDatum RootDatum::sub_datum(const RootList& generators) const
 
   Precondition: |q| permutes the roots;
 */
-setutils::Permutation
+permutations::Permutation
   RootDatum::rootPermutation(const LT::LatticeMatrix& q) const
 {
-  setutils::Permutation result(numRoots());
+  permutations::Permutation result(numRoots());
 
   for (RootNbr alpha=0; alpha<numRoots(); ++alpha)
   {

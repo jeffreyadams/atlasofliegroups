@@ -16,6 +16,7 @@
 #include <algorithm>
 #include "matreduc.h"
 #include "intutils.h"
+#include "permutations.h"
 #include "arithmetic.h"
 #include "polynomials.h" // and most importantly polynomials_def.h
 
@@ -428,45 +429,18 @@ template<typename C> void Matrix<C>::transpose()
     for (size_t j = 0; j<base::numColumns(); ++j)
       for (size_t i = j+1; i<base::numRows(); ++i)
 	std::swap((*this)(i,j),(*this)(j,i));
-    return;
   }
+  else
+  {
+    // now matrix is not square; create a transposed copy
+    Matrix_base<C> result(base::numColumns(),base::numRows());
 
-  // now matrix is not square; create a transposed copy
-  Matrix_base<C> result(base::numColumns(),base::numRows());
+    for (size_t i = 0; i<base::numRows(); ++i)
+      for (size_t j = 0; j<base::numColumns(); ++j)
+	result(j,i) = (*this)(i,j);
 
-  for (size_t i = 0; i<base::numRows(); ++i)
-    for (size_t j = 0; j<base::numColumns(); ++j)
-      result(j,i) = (*this)(i,j);
-
-  swap(result);
-}
-
-
-/*!
-  Permutes rows and columns of the matrix according to the
-  permutation a, resulting in the matrix of the same operator in the basis
-  e_{a[0]}, ... , e_{a[n-1]}. This amounts to conjugating by the permutation
-  matrix (delta_{i,a[i]})_{i,j} that transforms from coordinates on the
-  standard basis to those on the basis e_{a[0]}, ... , e_{a[n-1]}.
-
-  Precondition: |m| is a square matrix of order |n|, and |a| a permutation of
-  |n|;
-
-  Method: the new entry at (i,j) is set to the old entry at (a[i],a[j]), in a
-  separate copy (without trying to do the permutation of entries in place)
-*/
-template<typename C>
-void Matrix<C>::permute(const setutils::Permutation& a)
-{
-  assert (a.size()==base::numRows());
-  assert (a.size()==base::numColumns());
-  Matrix<C> q(base::numRows(),base::numColumns());
-
-  for (size_t i=0; i<base::numRows(); ++i)
-    for (size_t j=0; j<base::numColumns(); ++j)
-      q(i,j) = (*this)(a[i],a[j]);
-
-  swap(q);
+    swap(result);
+  }
 }
 
 

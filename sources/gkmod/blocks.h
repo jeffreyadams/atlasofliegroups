@@ -325,7 +325,7 @@ class gamma_block : public Block_base
 
   // new methods
   latticetypes::RatWeight local_system(BlockElt z) const
-  { assert(z<size()); return y_info[d_y[z]].rep.torus_part().as_rational(); }
+  { assert(z<size()); return y_info[d_y[z]].rep.torus_part().log_2pi(); }
 
 }; // |class gamma_block|
 

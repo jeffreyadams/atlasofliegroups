@@ -17,7 +17,7 @@
 
 #include "bitvector.h"
 #include "lietype.h"
-#include "setutils.h"
+#include "permutations.h"
 #include "size.h"
 #include "weyl.h"
 

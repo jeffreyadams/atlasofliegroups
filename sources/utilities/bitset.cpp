@@ -179,8 +179,6 @@ void BitSetBase<2>::flip(size_t j)
     ^= constants::bitMask[j & constants::posBits];
 }
 
-// void BitSetBase<2>::permute(const setutils::Permutation& a);
-
 void BitSetBase<2>::reset(size_t j)
 {
   *(j<constants::longBits ? &d_bits0 : &d_bits1)

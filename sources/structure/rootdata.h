@@ -28,7 +28,7 @@
 #include "latticetypes.h"
 #include "lietype.h"
 #include "dynkin.h"
-#include "setutils.h"
+#include "permutations.h"
 #include "tags.h"
 
 namespace atlas {
@@ -96,7 +96,7 @@ class RootSystem
   matrix::Vector<int> two_rho_in_simple_roots;
 
 //!\brief Root permutations induced by reflections in all positive roots.
-  std::vector<setutils::Permutation> root_perm;
+  std::vector<permutations::Permutation> root_perm;
 
   // internal access methods
   byte& Cartan_entry(weyl::Generator i, weyl::Generator j)
@@ -202,7 +202,7 @@ class RootSystem
 // other accessors
 
   // the next method only works for _simple_ roots! (whence no RootNbr for |i|)
-  const setutils::Permutation& simple_root_permutation(weyl::Generator i) const
+  const permutations::Permutation& simple_root_permutation(weyl::Generator i) const
     { return root_perm[i]; }
 
   bitset::RankFlags descent_set(RootNbr alpha) const
@@ -246,7 +246,7 @@ class RootSystem
   }
 
   // for arbitrary roots, reduce root number to positive root offset first
-  const setutils::Permutation& root_permutation(RootNbr alpha) const
+  const permutations::Permutation& root_permutation(RootNbr alpha) const
   { return root_perm[rt_abs(alpha)]; }
 
   bool isOrthogonal(RootNbr alpha, RootNbr beta) const
@@ -258,10 +258,10 @@ class RootSystem
 
 
   // find permutation of roots induced by diagram automorphism
-  setutils::Permutation root_permutation(const setutils::Permutation& ) const;
+  permutations::Permutation root_permutation(const permutations::Permutation& ) const;
 
   // extend root datum automorphism given on simple roots to all roots
-  setutils::Permutation extend_to_roots(const RootList&) const;
+  permutations::Permutation extend_to_roots(const RootList&) const;
 
 
   weyl::WeylWord reflectionWord(RootNbr r) const;
@@ -431,7 +431,7 @@ use by accessors.
 
 
   bool isRoot(const LT::Weight& v) const // ask this of a weight
-    { return setutils::find_index(d_roots,v) != d_roots.size(); }
+    { return permutations::find_index(d_roots,v) != d_roots.size(); }
 
   bool isSemisimple() const { return d_rank == semisimpleRank(); }
 
@@ -445,7 +445,7 @@ use by accessors.
     { assert(i<numPosRoots()); return *(beginPosRoot()+i); }
 
   RootNbr rootNbr(const Root& r) const
-    { return setutils::find_index(d_roots,r); }
+    { return permutations::find_index(d_roots,r); }
 
 
   const LT::Weight& coroot(RootNbr i) const
@@ -533,7 +533,7 @@ use by accessors.
     { act(ww,lambda); return lambda; }
 
   // here any matrix permuting the roots is allowed, e.g., root_reflection(r)
-  setutils::Permutation rootPermutation(const LT::LatticeMatrix& q) const;
+  permutations::Permutation rootPermutation(const LT::LatticeMatrix& q) const;
   // extend diagram automorphism to permutation of all roots
 
   LT::LatticeMatrix root_reflection(RootNbr r) const;

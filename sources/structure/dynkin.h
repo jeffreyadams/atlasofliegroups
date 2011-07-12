@@ -20,7 +20,7 @@
 
 #include "bitset.h"
 #include "lietype.h"
-#include "setutils.h"
+#include "permutations.h"
 
 /******** type declarations *************************************************/
 
@@ -54,13 +54,13 @@ namespace dynkin {
   // same, also set |pi| to permutation "straightening" each diagram component
   lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm,
 			    bool Bourbaki, bool check,
-			    setutils::Permutation& pi);
+			    permutations::Permutation& pi);
 
   bitset::RankFlagsList components(const DynkinDiagram& d);
 
-  setutils::Permutation normalize(const DynkinDiagram& d);
+  permutations::Permutation normalize(const DynkinDiagram& d);
 
-  setutils::Permutation bourbaki(const DynkinDiagram& d);
+  permutations::Permutation bourbaki(const DynkinDiagram& d);
 
 }
 

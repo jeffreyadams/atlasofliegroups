@@ -261,7 +261,7 @@ construction would most likely crash.
 @< Local function definitions @>=
 void type_of_Cartan_matrix_wrapper (expression_base::level l)
 { shared_matrix m=get<matrix_value>();
-  setutils::Permutation pi;
+  permutations::Permutation pi;
   lietype::LieType lt=dynkin::Lie_type(m->val,true,true,pi);
   if (l==expression_base::no_value)
     return;
@@ -773,7 +773,7 @@ void raw_root_datum_wrapper(expression_base::level l)
   }
 
   prerootdata::PreRootDatum prd(s,c,rank);
-  try @/{@; setutils::Permutation dummy;
+  try @/{@; permutations::Permutation dummy;
     dynkin::Lie_type(prd.Cartan_matrix(),true,true,dummy);
   }
   catch (std::runtime_error& e)
@@ -1341,7 +1341,7 @@ lietype::Layout check_involution
  throw (std::bad_alloc, std::runtime_error)
 { size_t r=rd.rank(),s=rd.semisimpleRank();
   @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
-@/setutils::Permutation p(s);
+@/permutations::Permutation p(s);
   @< Set |ww| to the Weyl group element needed to the left of |M| to map
   positive roots to positive roots, and |p| to the permutation of the simple
   roots so obtained, or throw a |runtime_error| if |M| is not an automorphism
@@ -1349,7 +1349,7 @@ lietype::Layout check_involution
 @/lietype::Layout result;
 @/lietype::LieType& type=result.d_type;
   lietype::InnerClassType& inner_class=result.d_inner;
-  setutils::Permutation& pi=result.d_perm;
+  permutations::Permutation& pi=result.d_perm;
   @< Compute the Lie type |type|, the inner class |inner_class|, and the
      permutation |pi| of the simple roots with respect to standard order for
      |type| @>
@@ -2550,7 +2550,7 @@ void print_gradings_wrapper(expression_base::level l)
   // simple imaginary roots
 
   latticetypes::LatticeMatrix cm;
-  setutils::Permutation sigma;
+  permutations::Permutation sigma;
 @/@< Compute the Cartan matrix |cm| of the root subsystem |si|, and the
      permutation |sigma| giving the Bourbaki numbering of its simple roots @>
 

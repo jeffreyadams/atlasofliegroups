@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "bitset_fwd.h"
+#include "polynomials_fwd.h"
 #include "latticetypes_fwd.h"
 #include "rootdata_fwd.h"
 #include "weyl_fwd.h"
@@ -43,6 +44,11 @@ namespace weyl {
 
 namespace matrix { // since |latticetypes::LatticeElt| = |matrix::Vector<int>|
   std::ostream& operator<< (std::ostream&, const latticetypes::LatticeElt&);
+}
+
+namespace polynomials {
+template <typename C>
+  std::ostream& operator<< (std::ostream& strm, const Polynomial<C>& P);
 }
 
 namespace latticetypes {

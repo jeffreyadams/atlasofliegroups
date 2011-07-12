@@ -146,10 +146,11 @@ std::ostream& var_print_KGB(std::ostream& strm,
 std::ostream& print_X(std::ostream& strm, const kgb::global_KGB& kgb)
 {
   {
-    tits::TorusElement yrho(kgb.globalTitsGroup().torus_part_offset());
+    tits::TorusElement yrho =
+      tits::exp_2pi(kgb.globalTitsGroup().torus_part_offset());
 
     strm << "\\exp(i\\pi\\check\\rho) = \\exp(2i\\pi("
-	 << yrho.as_rational() << "))" << std::endl;
+	 << yrho.log_2pi() << "))" << std::endl;
   }
   return print(strm,kgb,false,NULL,NULL);
 }

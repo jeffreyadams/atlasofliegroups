@@ -27,7 +27,7 @@
 #include <stack>
 
 #include "dynkin.h"
-#include "setutils.h"
+#include "permutations.h"
 #include "rootdata.h"
 #include "complexredgp.h"
 
@@ -57,7 +57,7 @@ namespace {
 
   void fillCoxMatrix(latticetypes::LatticeMatrix&,
 		     const latticetypes::LatticeMatrix&,
-		     const setutils::Permutation&);
+		     const permutations::Permutation&);
 
   weyl::WeylElt::EltPiece dihedralMin(const weyl::Transducer&,
 				      weyl::WeylElt::EltPiece,
@@ -138,7 +138,7 @@ WeylGroup::WeylGroup(const latticetypes::LatticeMatrix& c)
 
   dynkin::DynkinDiagram d(c); // make diagram from Cartan matrix
   // find renumbering |a| putting labels in canonical order
-  setutils::Permutation a= dynkin::normalize(d);
+  permutations::Permutation a= dynkin::normalize(d);
 
   /* now put appropriate permutations into |d_in| and |d_out|, so that
      internal number |j| gives external number |d_out[j]|, and of course
@@ -1100,7 +1100,7 @@ weyl::WeylElt::EltPiece dihedralShift(const weyl::Transducer& qa,
 */
 void fillCoxMatrix(latticetypes::LatticeMatrix& cox,
 		   const latticetypes::LatticeMatrix& cart,
-		   const setutils::Permutation& a)
+		   const permutations::Permutation& a)
 {
   assert (cart.numRows()==cart.numColumns());
   latticetypes::LatticeMatrix(cart.numRows(),cart.numRows()).swap(cox);
@@ -1116,7 +1116,7 @@ void fillCoxMatrix(latticetypes::LatticeMatrix& cox,
 
   // permute
 
-  cox.permute(a);
+  a.inv_conjugate(cox);
 }
 
 } // namespace

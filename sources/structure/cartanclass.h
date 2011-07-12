@@ -26,7 +26,7 @@
 #include "partition.h"
 #include "realform.h"
 #include "rootdata.h"
-#include "setutils.h"
+#include "permutations.h"
 #include "size.h"
 #include "subdatum_fwd.h"
 #include "subquotient.h"
@@ -61,7 +61,7 @@ namespace cartanclass {
 // this class gathers information associated to a root datum involution
 class InvolutionData
 {
-  setutils::Permutation d_rootInvolution; // permutation of all roots
+  permutations::Permutation d_rootInvolution; // permutation of all roots
   rootdata::RootSet d_imaginary, d_real, d_complex;
   rootdata::RootList d_simpleImaginary; // imaginary roots simple wrt subsystem
   rootdata::RootList d_simpleReal; // real roots simple wrt subsystem
@@ -79,7 +79,7 @@ class InvolutionData
 			      const weyl::TwistedInvolution& tw);
   void swap(InvolutionData&);
   //accessors
-  const setutils::Permutation& root_involution() const
+  const permutations::Permutation& root_involution() const
     { return d_rootInvolution; }
   rootdata::RootNbr root_involution(rootdata::RootNbr alpha) const
     { return d_rootInvolution[alpha]; }

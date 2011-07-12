@@ -50,7 +50,7 @@ struct KGBEltInfo
 
   weyl::TwistedInvolution inv;
 
-  KGBEltInfo(unsigned int l, weyl::TwistedInvolution tw)
+  KGBEltInfo(unsigned int l, const weyl::TwistedInvolution& tw)
   : status(), length(l), desc(), inv(tw) {}
 
 }; // |struct KGBEltInfo|
@@ -135,8 +135,8 @@ class KGB_base
   KGBEltPair inverseCayley(weyl::Generator s, KGBElt x) const
     { return data[s][x].inverse_Cayley_image; }
 
-  KGBElt cross(const weyl::WeylWord ww, KGBElt x) const;
-  KGBElt cross(KGBElt x, const weyl::WeylWord ww) const;
+  KGBElt cross(const weyl::WeylWord& ww, KGBElt x) const;
+  KGBElt cross(KGBElt x, const weyl::WeylWord& ww) const;
 
   size_t length(KGBElt x) const { return info[x].length; }
   weyl::TwistedInvolution involution(KGBElt x) const { return info[x].inv; }
@@ -173,7 +173,7 @@ class KGB_base
 
 // virtual methods
   virtual size_t Cartan_class(KGBElt x) const { return ~0ul; }
-  // print derivative class specific per-element information
+  // print derived-class specific per-element information
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const
   { return strm; }
 
@@ -184,6 +184,13 @@ class KGB_base
 
 
 }; // |class KGB_base|
+
+
+
+
+//		      |global_KGB| and subsidiary types
+
+
 
 // a |GlobalTitsElement| can be hashed as (fingerprint,twisted_inv) pair
 struct KGB_elt_entry
@@ -198,7 +205,7 @@ struct KGB_elt_entry
   bool operator !=(const KGB_elt_entry& x) const
   { return tw!=x.tw or fingerprint!=x.fingerprint; } // ignore repr
 
-  KGB_elt_entry (const latticetypes::RatLatticeElt f,
+  KGB_elt_entry (const latticetypes::RatLatticeElt& f,
 		 const tits::GlobalTitsElement& y)
   : t_rep(y.torus_part()), tw(y.tw()), fingerprint(f) {}
 
@@ -214,10 +221,11 @@ description of its -1 eigenspace, which allows a quick test for equivalence of
 the halfsum of the positive imaginary coroots, and the Cartan class.
 
 Originally conceived for global use within an inner class (the constructor
-uses its list of Cartan classes to generate all involutions), functionality now
-also includes dynamically adding Cartan classes of involutions, by specifying
-a new twisted involution with its invlution matrix, from which a whole
-conjugacy class will be added to the tables.
+uses its list of Cartan classes to generate all involutions), functionality
+now also includes dynamically adding Cartan classes of involutions, by
+specifying a new twisted involution with its involution matrix, from which a
+whole conjugacy class will be added to the tables. This can even be done using
+only the Weyl group of a (co)root subsystem, giving smaller Cartan classes.
 
 The terminology remains attached to the original use, even though the use with
 dynamical addition of Cartan classes is associated to a |GlobalTitsGroup|,
@@ -286,7 +294,7 @@ public:
   tits::GlobalTitsElement
     imaginary_cross(const rootdata::RootDatum& dual_rd, // pragmatic reason
 		    rootdata::RootNbr alpha, // any imaginary root
-		    tits::GlobalTitsElement a) const;
+		    tits::GlobalTitsElement a) const; // |a| is by-value
 
 
   KGB_elt_entry pack(const tits::GlobalTitsElement& y) const
@@ -298,6 +306,8 @@ public:
 		 const weyl::TwistedInvolution& tw); // derived from it
 
 }; // |class GlobalFiberData|
+
+
 
 
 class global_KGB : public KGB_base
@@ -335,6 +345,9 @@ class global_KGB : public KGB_base
 
 }; // |class global_KGB|
 
+
+
+//			     Fokko's |class KGB|
 
 
 /*!
@@ -479,17 +492,17 @@ class subsys_KGB : public KGB_base
 // general cross action in (non simple) root
 // root is given as simple root + conjugating Weyl word to simple root
 KGBElt cross(const KGB_base& kgb, KGBElt x,
-	     weyl::Generator s, weyl::WeylWord ww);
+	     weyl::Generator s, const weyl::WeylWord& ww);
 
 // general Cayley transform in (non simple) non-compact imaginary root
 // root is given as simple root + conjugating Weyl word to simple root
 KGBElt Cayley (const KGB_base& kgb, KGBElt x,
-	       weyl::Generator s, weyl::WeylWord ww);
+	       weyl::Generator s, const weyl::WeylWord& ww);
 
 // general inverse Cayley transform (choice) in (non simple) real root
 // root is given as simple root + conjugating Weyl word to simple root
 KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
-		       weyl::Generator s, weyl::WeylWord ww);
+		       weyl::Generator s, const weyl::WeylWord& ww);
 
 
 } // |namespace kgb|

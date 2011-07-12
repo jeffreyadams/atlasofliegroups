@@ -27,25 +27,25 @@ namespace atlas {
 namespace dynkin{
 namespace {
 
-  setutils::Permutation componentOrder
+  permutations::Permutation componentOrder
     (const bitset::RankFlagsList& components, size_t rank);
   lietype::LieType componentNormalize
-    (setutils::Permutation&, const bitset::RankFlagsList&,
+    (permutations::Permutation&, const bitset::RankFlagsList&,
      const DynkinDiagram&, bool Bourbaki);
   lietype::SimpleLieType
-    irreducibleNormalize(setutils::Permutation&,
+    irreducibleNormalize(permutations::Permutation&,
 			 const DynkinDiagram& d, bool Bourbaki);
   lietype::TypeLetter irreducibleType(const DynkinDiagram&);
-  void typeANormalize(setutils::Permutation&, const DynkinDiagram&);
-  void typeBNormalize(setutils::Permutation&,
+  void typeANormalize(permutations::Permutation&, const DynkinDiagram&);
+  void typeBNormalize(permutations::Permutation&,
 		      const DynkinDiagram& d, bool Bourbaki);
-  void typeCNormalize(setutils::Permutation&,
+  void typeCNormalize(permutations::Permutation&,
 		      const DynkinDiagram& d, bool Bourbaki);
-  void typeDNormalize(setutils::Permutation&,
+  void typeDNormalize(permutations::Permutation&,
 		      const DynkinDiagram& d, bool Bourbaki);
-  void typeENormalize(setutils::Permutation&, const DynkinDiagram&);
-  void typeFNormalize(setutils::Permutation&, const DynkinDiagram&);
-  void typeGNormalize(setutils::Permutation&, const DynkinDiagram&);
+  void typeENormalize(permutations::Permutation&, const DynkinDiagram&);
+  void typeFNormalize(permutations::Permutation&, const DynkinDiagram&);
+  void typeGNormalize(permutations::Permutation&, const DynkinDiagram&);
 
 } // |namespace|
 } // |namespace dynkin|
@@ -264,11 +264,11 @@ bitset::RankFlagsList components(const DynkinDiagram& d)
 
   NOTE: the permutation result |pi| maps new index |i| to old index |pi[i]|.
 */
-setutils::Permutation normalize(const DynkinDiagram& d)
+permutations::Permutation normalize(const DynkinDiagram& d)
 {
   bitset::RankFlagsList cl = components(d);
 
-  setutils::Permutation result= componentOrder(cl,d.rank());
+  permutations::Permutation result= componentOrder(cl,d.rank());
   componentNormalize(result,cl,d,false);
 
   return result;
@@ -306,7 +306,7 @@ lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm)
 */
 lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm,
 			  bool Bourbaki, bool check,
-			  setutils::Permutation& pi)
+			  permutations::Permutation& pi)
 {
   if (check)
   {
@@ -350,12 +350,12 @@ lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm,
   traverse each of its connected components consecutively, and in the order
   prescribed by the the Bourbaki conventions for the type of that component
 */
-setutils::Permutation bourbaki(const DynkinDiagram& d)
+permutations::Permutation bourbaki(const DynkinDiagram& d)
 {
   bitset::RankFlagsList cl = components(d);
 
   // do the normalization as in normalize
-  setutils::Permutation result = componentOrder(cl,d.rank());
+  permutations::Permutation result = componentOrder(cl,d.rank());
   componentNormalize(result,cl,d,true);
 
   return result;
@@ -381,9 +381,9 @@ namespace {
   are numbered by successive indices. The result maps these indices back
   to their original positions.
 */
-setutils::Permutation componentOrder(const bitset::RankFlagsList& cl, size_t r)
+permutations::Permutation componentOrder(const bitset::RankFlagsList& cl, size_t r)
 {
-  setutils::Permutation result; result.reserve(r);
+  permutations::Permutation result; result.reserve(r);
 
   // traverse each component, write down its elements in sequence
   for (size_t i = 0; i<cl.size(); ++i)
@@ -405,7 +405,7 @@ setutils::Permutation componentOrder(const bitset::RankFlagsList& cl, size_t r)
 
   The detected semisimple Lie type is returned.
 */
-lietype::LieType componentNormalize(setutils::Permutation& a,
+lietype::LieType componentNormalize(permutations::Permutation& a,
 				    const bitset::RankFlagsList& cl,
 				    const DynkinDiagram& d,
 				    bool Bourbaki)
@@ -419,11 +419,11 @@ lietype::LieType componentNormalize(setutils::Permutation& a,
     DynkinDiagram cd(cl[i],d);
 
     // normalize it
-    setutils::Permutation b;
+    permutations::Permutation b;
     result.push_back(irreducibleNormalize(b,cd,Bourbaki));
 
     // piece together the permutation
-    setutils::compose(a,b,offset);
+    permutations::compose(a,b,offset);
 
     // update offset
     offset += cl[i].count();
@@ -442,7 +442,7 @@ lietype::LieType componentNormalize(setutils::Permutation& a,
   types.
 */
 lietype::SimpleLieType
-irreducibleNormalize(setutils::Permutation& a,
+irreducibleNormalize(permutations::Permutation& a,
 		     const DynkinDiagram& d,
 		     bool Bourbaki)
 {
@@ -550,7 +550,7 @@ lietype::TypeLetter irreducibleType(const DynkinDiagram& d)
   (which is a string in this case) --- there are exactly two such except in
   rank one;
 */
-void typeANormalize(setutils::Permutation& a, const DynkinDiagram& d)
+void typeANormalize(permutations::Permutation& a, const DynkinDiagram& d)
 {
   size_t r = d.rank();
   a.resize(r);
@@ -575,7 +575,7 @@ void typeANormalize(setutils::Permutation& a, const DynkinDiagram& d)
 
   There is a unique such ordering
 */
-void typeBNormalize(setutils::Permutation& a,
+void typeBNormalize(permutations::Permutation& a,
 		    const DynkinDiagram& d, bool Bourbaki)
 {
   size_t r = d.rank();
@@ -602,7 +602,7 @@ void typeBNormalize(setutils::Permutation& a,
 
   There is a unique such ordering
 */
-void typeCNormalize(setutils::Permutation& a,
+void typeCNormalize(permutations::Permutation& a,
 		    const DynkinDiagram& d, bool Bourbaki)
 {
   size_t r = d.rank();
@@ -628,7 +628,7 @@ void typeCNormalize(setutils::Permutation& a,
 
   Precondition : d is irreducible of type D, with rank >= 4;
 */
-void typeDNormalize(setutils::Permutation& a,
+void typeDNormalize(permutations::Permutation& a,
 		    const DynkinDiagram& d, bool Bourbaki)
 {
   size_t r = d.rank();
@@ -693,7 +693,7 @@ void typeDNormalize(setutils::Permutation& a,
   the other element of that branch, and the elements of the last branch are
   enumerated from the node. There are two solutions in type E6, one otherwise.
 */
-void typeENormalize(setutils::Permutation& a, const DynkinDiagram& d)
+void typeENormalize(permutations::Permutation& a, const DynkinDiagram& d)
 {
   size_t r = d.rank();
   a.resize(r);
@@ -756,7 +756,7 @@ void typeENormalize(setutils::Permutation& a, const DynkinDiagram& d)
   order, for which the middle edge is oriented from 1 to 2; such a permutation
   is unique.
 */
-void typeFNormalize(setutils::Permutation& a, const DynkinDiagram& d)
+void typeFNormalize(permutations::Permutation& a, const DynkinDiagram& d)
 {
   a.resize(4);
 
@@ -783,7 +783,7 @@ void typeFNormalize(setutils::Permutation& a, const DynkinDiagram& d)
   Postcondition : a holds the permutation for which the edge is oriented from
   0 to 1; this is unique.
 */
-void typeGNormalize(setutils::Permutation& a, const DynkinDiagram& d)
+void typeGNormalize(permutations::Permutation& a, const DynkinDiagram& d)
 {
   a.resize(2);
 

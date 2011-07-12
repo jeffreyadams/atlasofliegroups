@@ -41,7 +41,7 @@
 #include "standardrepk.h"
 #include "repr.h"
 #include "free_abelian.h"
-#include "setutils.h"
+#include "permutations.h"
 #include "matreduc.h"
 #include "testrun.h"
 #include "basic_io.h"
@@ -1135,7 +1135,7 @@ void iblock_f()
     weyl::WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
 
-    setutils::Permutation pi;
+    permutations::Permutation pi;
 
     std::cout << "Subsystem on dual side is ";
     if (sub.rank()==0)
@@ -1207,7 +1207,7 @@ void nblock_f()
     weyl::WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
 
-    setutils::Permutation pi;
+    permutations::Permutation pi;
 
     std::cout << "Subsystem on dual side is ";
     if (sub.rank()==0)
@@ -1281,7 +1281,7 @@ tits::TorusElement torus_part
       cumul+=rd.root(*it);
   // now |cumul| is $2\rho_\Re(G)-2\rho_\Re(G(\gamma))$
 
-  return tits::TorusElement((gamma-lambda+latticetypes::RatWeight(cumul,2))/=2);
+  return tits::exp_pi(gamma-lambda+latticetypes::RatWeight(cumul,2));
 }
 
 void embedding_f()
@@ -1324,7 +1324,7 @@ void embedding_f()
     const tits::SubTitsGroup sub_gTg
       (G,sub,G.involutionMatrix(kgb.involution(x)),ww);
 
-    setutils::Permutation pi;
+    permutations::Permutation pi;
 
     std::cout << "Subsystem on dual side is ";
     if (sub.rank()==0)
@@ -1375,9 +1375,8 @@ void embedding_f()
     {
       if (i==stops[si]) { std::cout << std::endl; ++si; } // separate classes
       weyl::TwistedInvolution tw=pool[i];
-      weyl::WeylWord ww=sub_gTg.word(tw);
-      tits::TorusElement t=sub_gTg.base_point_offset(tw);
-      std::cout << t.as_rational() << "  \t@  " << ww <<std::endl;
+      std::cout << sub_gTg.base_point_offset(tw).log_2pi()
+		<< "  \t@  " << sub_gTg.word(tw) <<std::endl;
     }
   }
   catch (error::MemoryOverflow& e)
@@ -1431,7 +1430,7 @@ void test_f()
     weyl::WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
 
-    setutils::Permutation pi;
+    permutations::Permutation pi;
 
     std::cout << "Subsystem on dual side is ";
     if (sub.semisimple_rank()==0)

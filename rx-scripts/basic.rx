@@ -109,6 +109,9 @@ set real_coroots (RootDatum rd, mat theta) =
 set simple_reflection (RootDatum rd, int s) =
   id_mat(rank(rd))- [simple_roots(rd)[s]] * ^[simple_coroots(rd)[s]]
 
+set reflection (RootDatum rd, int alpha) =
+  id_mat(rank(rd))- [roots(rd)[alpha]] * ^[coroots(rd)[alpha]]
+
 set involution (InnerClass ic, [int] tw) =
 ( let rd = root_datum(ic), theta = distinguished_involution(ic)
   in for i : #tw downto 0 do theta := simple_reflection(rd,tw[i])*theta od

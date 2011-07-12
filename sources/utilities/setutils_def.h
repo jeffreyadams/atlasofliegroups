@@ -1,7 +1,7 @@
 /*!
 \file
-  This is setutils_def.h. This file contains the definitions of the
-  template functions declared in setutils.h
+  This is permutations_def.h. This file contains the definitions of the
+  template functions declared in permutations.h
 */
 /*
   Copyright (C) 2004,2005 Fokko du Cloux
@@ -12,18 +12,20 @@
 
 /*
   This file contains the definitions of the template functions declared in
-  setutils.h
+  permutations.h
 */
 
 #include <cassert>
 
 namespace atlas {
 
-namespace setutils {
+namespace permutations {
 
-// we leave |pull_back| with implicit instantiation, as the types that need
-// substitution for |T| are complicated and hard/impossible to specify here
-
+/* we leave |pull_back| with implicit instantiation, as the types to
+   substitute for |T| (|descents::DescentStatus|, |kgb::KGB_base::KGBfields|)
+   are complicated and hard/impossible to specify at the definition of this
+   template, while permutations.cpp is unseen where those types are availeble,
+*/
 /* Permute the entries of |v| by "pulling back" through our permutation |pi|,
    so that |result[i]==v[pi[i]]| for all |i| afterwards.
 */
@@ -41,9 +43,6 @@ std::vector<T> Permutation::pull_back(const std::vector<T>& v) const
   return result;
 }
 
-
-
-
-} // namespace setutils
+} // namespace permutations
 
 } // namespace atlas

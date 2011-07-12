@@ -36,9 +36,9 @@ namespace subquotient {
 */
 template<size_t dim> Subspace<dim>::
 Subspace(const bitvector::BitVectorList<dim>& b, size_t n)
-  : d_rank(n)
-  , d_basis(b)
+  : d_basis(b)
   , d_support()
+  , d_rank(n)
 {
   assert(b.size()==0 or b[0].size()==n);
 
@@ -52,9 +52,9 @@ Subspace(const bitvector::BitVectorList<dim>& b, size_t n)
 */
 template<size_t dim> Subspace<dim>::
 Subspace(const bitvector::BitMatrix<dim>& M)
-  : d_rank(M.numRows())
-  , d_basis(M.image())
+  : d_basis(M.image())
   , d_support()
+  , d_rank(M.numRows())
 {
   bitvector::normalize(d_support,d_basis); // change |d_basis|, set |d_support|:
 }

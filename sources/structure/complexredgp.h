@@ -19,7 +19,7 @@ ComplexReductiveGroup.
 
 #include "bitmap.h"
 #include "tags.h"
-#include "setutils.h"
+#include "permutations.h"
 
 #include "cartanclass.h"
 #include "latticetypes.h"
@@ -169,7 +169,7 @@ class ComplexReductiveGroup
   const tits::TitsGroup d_dualTitsGroup;
 
   //!\brief the permutation of the roots given by the based automorphism
-  const setutils::Permutation root_twist;
+  const permutations::Permutation root_twist;
 
   typedef std::vector<bitset::RankFlags> form_reps; // gradings for real forms
 
@@ -240,8 +240,8 @@ class ComplexReductiveGroup
   const weyl::TwistedWeylGroup& dualTwistedWeylGroup() const
     { return d_dualTitsGroup; } // in fact its base object
 
-  setutils::Permutation simple_twist() const
-    { return setutils::Permutation
+  permutations::Permutation simple_twist() const
+    { return permutations::Permutation
 	(&twistedWeylGroup().twist()[0],
 	 &twistedWeylGroup().twist()[semisimpleRank()]); }
 
@@ -341,7 +341,7 @@ class ComplexReductiveGroup
   size_t mostSplit(realform::RealForm rf) const
     { return d_mostSplit[rf]; }
 
-  const setutils::Permutation& root_involution() const { return root_twist; }
+  const permutations::Permutation& root_involution() const { return root_twist; }
 
   rootdata::RootNbr twisted_root(rootdata::RootNbr alpha) const
     { return root_twist[alpha]; }
@@ -515,14 +515,14 @@ class ComplexReductiveGroup
  */
   cartanclass::adjoint_fiber_orbit
     real_form_part(realform::RealForm rf, size_t cn)
-  { return setutils::find_index(realFormLabels(cn),rf); }
+  { return permutations::find_index(realFormLabels(cn),rf); }
 
 /*! get part in the |weakReal| partition of the dual fiber in Cartan \#cn
     corresponding to dual real form |drf|
  */
   cartanclass::adjoint_fiber_orbit
     dual_real_form_part(realform::RealForm drf, size_t cn)
-  { return setutils::find_index(dualRealFormLabels(cn),drf); }
+  { return permutations::find_index(dualRealFormLabels(cn),drf); }
 
 
  private:

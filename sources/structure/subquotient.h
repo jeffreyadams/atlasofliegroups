@@ -57,18 +57,18 @@ namespace subquotient {
   */
 template<size_t dim> class Subspace
 {
-  size_t d_rank; ///< Dimension of the ambient vector space.
   bitvector::BitVectorList<dim> d_basis; ///< reduced echelon basis
   bitset::BitSet<dim> d_support; ///< pivot (leading nonzero bit) positions
+  unsigned short int d_rank; ///< Dimension of the ambient vector space.
 
  public:
 
 // constructors and destructors
 
   // dummy constructor needed for constructing |Subquotient|, |CartanClass|
-  Subspace() : d_rank(0), d_basis(), d_support() {}
+  Subspace() : d_basis(), d_support(), d_rank(0) {}
 
-  explicit Subspace(size_t n) : d_rank(n), d_basis(), d_support() {}
+  explicit Subspace(size_t n) : d_basis(), d_support(), d_rank(n) {}
 
   Subspace(const bitvector::BitVectorList<dim>&, size_t);
   Subspace(const bitvector::BitMatrix<dim>&); // column span
@@ -88,7 +88,8 @@ template<size_t dim> class Subspace
   const bitset::BitSet<dim>& support() const { return d_support; }
 
   //! \brief Expresses |v| in the subspace basis.
-  bitvector::BitVector<dim> toBasis(bitvector::BitVector<dim> v) const
+  bitvector::BitVector<dim> toBasis(bitvector::BitVector<dim> v) // by-value
+    const
   {
     assert(contains(v)); // implies |assert(v.size()==rank())|
     v.slice(support());  // express |v| in |d_basis|
@@ -100,7 +101,7 @@ template<size_t dim> class Subspace
   /*!
   \brief Interprets |v| in the subspace basis and returns external form
   */
-  bitvector::BitVector<dim> fromBasis(bitvector::BitVector<dim> v) const
+  bitvector::BitVector<dim> fromBasis(const bitvector::BitVector<dim>& v) const
   {
     assert(v.size()==dimension());
 
@@ -148,18 +149,8 @@ template<size_t dim> class Subspace
   */
 template<size_t dim> class Subquotient
 {
-
- private:
-
-  /*!
-  Larger space, expressed as a Subspace.
-  */
-  Subspace<dim> d_space;
-
-  /*!
-  Smaller space, expressed as a Subspace.
-  */
-  Subspace<dim> d_subspace;
+  Subspace<dim> d_space; // larger space, expressed as a |Subspace|.
+  Subspace<dim> d_subspace; // smaller space, expressed as a Subspace.
 
   /*!
   \brief Flags the row-reduced basis vectors for the (larger) |d_space|
@@ -284,7 +275,8 @@ bitset::BitSet<dim> d_rel_support;
   /*!
   \brief Interprets |v| in the subspace basis and returns external form
   */
-  bitvector::BitVector<dim> fromBasis(bitvector::BitVector<dim> v) const
+  bitvector::BitVector<dim> fromBasis(bitvector::BitVector<dim> v) // by-value
+    const
   {
     assert(v.size()==dimension());
 

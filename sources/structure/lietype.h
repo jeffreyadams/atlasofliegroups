@@ -15,7 +15,7 @@
 #define LIETYPE_H
 
 #include "lietype_fwd.h"
-#include "setutils.h"
+#include "permutations.h"
 #include <stdexcept>
 
 #include "latticetypes.h"
@@ -112,7 +112,7 @@ struct Layout {
 
   lietype::LieType d_type;
   lietype::InnerClassType d_inner;
-  setutils::Permutation d_perm;
+  permutations::Permutation d_perm;
 
 // constructors and destructors
   Layout() {} // default constructor needed, to set via |dynkin::Lie_type|

@@ -18,7 +18,6 @@
 
 #include "bits.h"
 #include "constants.h"
-#include "setutils.h"
 
 /******** type definitions ***************************************************/
 
@@ -33,8 +32,8 @@ namespace bitset {
   bitset doesn't seem to provide. This is a very important data type for the
   program, and it is crucial that it should be efficiently implemented. [Fokko]
 
-  An important difference with |stl::bitset| is that whereas the latter model
-  set of exactly |n| bits, where |n| is the template parameter, |BitSet| will
+  An important difference with |stl::bitset| is that whereas the latter models
+  sets of exactly |n| bits, where |n| is the template parameter, |BitSet| will
   often be used to model sets of at most |n| bits. The exact size is not
   stored in the |BitSet| for efficiency reasons, and is therefore supplied
   explicitly to various methods; the class guarantees that if the same size is
@@ -167,7 +166,6 @@ template<> class BitSetBase<1>
   }
 
   void flip(size_t j) { d_bits ^= constants::bitMask[j]; }
-  void permute(const setutils::Permutation& a) { bits::permute(d_bits,a); }
   void reset() { d_bits = 0ul; }
   void reset(size_t j)  { d_bits &= ~constants::bitMask[j]; }
   void set(size_t j) { d_bits |= constants::bitMask[j]; }
@@ -181,7 +179,7 @@ template<> class BitSetBase<1>
   void unslice(const BitSetBase<1>& c); // expand bits to positions set in |c|
   void swap(BitSetBase<1>& source) { std::swap(d_bits,source.d_bits); }
 
-};
+ }; // |class BitSetBase<1>|
 
   /*!
   \brief Base for a non-empty BitSet that fits in two words but not one.
@@ -269,7 +267,6 @@ template<> class BitSetBase<2>
   void operator>>= (size_t c);
   void andnot(const BitSetBase<2>& b);
   void flip(size_t j);
-  void permute(const setutils::Permutation& a);
 
   void reset() { d_bits0 = 0ul; d_bits1 = 0ul; }
   void reset(size_t j) ;
@@ -388,9 +385,6 @@ template<size_t n> class BitSet
 
   BitSet& andnot (const BitSet& b) { Base::andnot(b); return *this; }
   BitSet& flip(size_t j) { Base::flip(j); return *this; }
-
-  BitSet& permute(const setutils::Permutation& a)
-    { Base::permute(a); return *this; }
 
   BitSet& reset()         { Base::reset();  return *this; }
   BitSet& reset(size_t j) { Base::reset(j); return *this; }

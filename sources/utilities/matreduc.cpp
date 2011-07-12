@@ -8,11 +8,12 @@
 */
 #include "matreduc.h"
 
-#include "latticetypes_fwd.h"
 #include "bitmap.h"
 #include "matrix.h"
 #include "intutils.h"
 #include "arithmetic.h"
+
+#include "latticetypes_fwd.h" // for explicit instantiation only
 
 namespace atlas {
 

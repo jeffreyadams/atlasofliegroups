@@ -20,7 +20,7 @@ the implementation of the KL algorithm.
 #include "kgb_fwd.h"
 #include "kl_fwd.h"
 
-#include "setutils.h"
+#include "permutations.h"
 
 namespace atlas {
 
@@ -36,7 +36,7 @@ namespace kltest {
 
   bool checkBasePoint(const kgb::KGB&);
 
-  void dualityPermutation(setutils::Permutation&, const kl::KLContext&);
+  void dualityPermutation(permutations::Permutation&, const kl::KLContext&);
 
   bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc);
 }

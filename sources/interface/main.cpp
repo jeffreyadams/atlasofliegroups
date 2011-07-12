@@ -10,6 +10,7 @@
 
 #include <iostream>
 #include <stdexcept>
+#include <cstdlib> // for |exit|
 
 #include "commands.h"
 #include "emptymode.h"
@@ -38,7 +39,7 @@ int main(int argc, char* argv[])
     input::initReadLine();
     commands::run(emptymode::emptyMode());
 
-    exit(0);
+    std::exit(0);
   }
 
   catch (atlas::error::NumericOverflow& e) {
@@ -68,5 +69,5 @@ int main(int argc, char* argv[])
 
   }
 
-  exit(1);
+  std::exit(1);
 }

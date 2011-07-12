@@ -15,7 +15,6 @@
 #define POLYNOMIALS_H
 
 #include "polynomials_fwd.h"
-#include "prettyprint.h"
 
 #include <limits>
 #include <vector>
@@ -118,10 +117,6 @@ protected:
   void adjustSize(); // shrink |d_data| to make leading coefficient nonzero
 
  }; // |template<typename C> class Polynomial|
-
-template <typename C>
-  std::ostream& operator<< (std::ostream& strm, const Polynomial<C>& P)
- { return prettyprint::printPol(strm,P,"q"); }
 
 /*
   The following class template assumes |C| is an _unsigned_ integer type,
