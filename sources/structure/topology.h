@@ -50,7 +50,7 @@ class Connectivity
 {
 
  private:
-  latticetypes::SmallBitVectorList d_dpi0; // basis of dual component group
+  bitvector::SmallBitVectorList d_dpi0; // basis of dual component group
 
  public:
 // constructors and destructors
@@ -61,7 +61,7 @@ class Connectivity
   ~Connectivity() {}
 
 // accessors
-  const latticetypes::SmallBitVectorList& dualComponentReps() const
+  const bitvector::SmallBitVectorList& dualComponentReps() const
   { return d_dpi0; }
 
   const size_t component_rank() const { return d_dpi0.size(); }

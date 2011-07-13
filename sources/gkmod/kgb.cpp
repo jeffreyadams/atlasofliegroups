@@ -163,7 +163,7 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G)
   KGB_base::reserve(size);
 
   { // get elements at the fundamental fiber, for "all" square classes
-    const latticetypes::SmallSubquotient& fg = G.fundamental().fiberGroup();
+    const subquotient::SmallSubquotient& fg = G.fundamental().fiberGroup();
     first_of_tau.push_back(0); // start of fundamental fiber
 
     // get number of subsets of generators, and run through them
@@ -182,7 +182,7 @@ global_KGB::global_KGB(complexredgp::ComplexReductiveGroup& G)
       {
 	tits::TorusElement t=tits::exp_pi(rw);
 	t += fg.fromBasis // add |TorusPart| from fiber group; bits from |i|
-	  (latticetypes::SmallBitVector(bitset::RankFlags(i),fg.dimension()));
+	  (bitvector::SmallBitVector(bitset::RankFlags(i),fg.dimension()));
 	elt.push_back(tits::GlobalTitsElement(t));
 	add_element(0,e); // create in base; length, tw both trivial
       } // |for (i)|
@@ -403,8 +403,8 @@ class FiberData
   const tits::TitsGroup& Tits;
   weyl::TI_Entry::Pooltype pool;
   hashtable::HashTable<weyl::TI_Entry,unsigned int> hash_table;
-  std::vector<latticetypes::BinaryMap> refl; // transposed simple refl mod 2
-  std::vector<latticetypes::SmallSubspace> data;
+  std::vector<bitvector::BinaryMap> refl; // transposed simple refl mod 2
+  std::vector<subquotient::SmallSubspace> data;
   std::vector<unsigned int> involution_length;
   std::vector<unsigned int> Cartan_class;
 public:
@@ -434,7 +434,7 @@ public:
 		 const latticetypes::LatticeMatrix& theta);
 
 private: // the space actually stored need not be exposed
-  const latticetypes::SmallSubspace& mod_space(const tits::TitsElt& a) const
+  const subquotient::SmallSubspace& mod_space(const tits::TitsElt& a) const
   {
     size_t i=hash_table.find(a.tw());
     assert(i!=hash_table.empty);
@@ -792,7 +792,7 @@ subsys_KGB::subsys_KGB
 	{
 	  if (Tg.hasTwistedCommutation(s,cur_x.tw())) // real
 	  {
-	    latticetypes::SmallSubspace mod_space =
+	    subquotient::SmallSubspace mod_space =
 	      tits::fiber_denom(sub.involution(cur_x.tw()));
 	    Tg.inverse_Cayley_transform(cur_x,s,mod_space);
 	  }
@@ -1199,7 +1199,7 @@ FiberData::FiberData(complexredgp::ComplexReductiveGroup& G,
   for (weyl::Generator s=0; s<refl.size(); ++s)
     // get endomorphism of weight lattice $X$ given by generator $s$
     // reflection map is induced vector space endomorphism of $X_* / 2X_*$
-    refl[s] = latticetypes::BinaryMap(rd.simple_reflection(s).transposed());
+    refl[s] = bitvector::BinaryMap(rd.simple_reflection(s).transposed());
 
   for (bitmap::BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
   {
@@ -1228,7 +1228,7 @@ FiberData::FiberData(const tits::TitsGroup& Tg)
   : Tits(Tg)
   , pool()
   , hash_table(pool)
-  , refl(Tg.semisimple_rank(),latticetypes::BinaryMap(Tg.rank(),0))
+  , refl(Tg.semisimple_rank(),bitvector::BinaryMap(Tg.rank(),0))
   , data()
   , involution_length()
   , Cartan_class()
@@ -1236,7 +1236,7 @@ FiberData::FiberData(const tits::TitsGroup& Tg)
   for (weyl::Generator s=0; s<Tg.semisimple_rank(); ++s)
     for (size_t i=0; i<Tg.rank(); ++i)
     {
-      latticetypes::SmallBitVector v(Tg.rank(),i); // $X_*$ basis vector $e_i$
+      bitvector::SmallBitVector v(Tg.rank(),i); // $X_*$ basis vector $e_i$
       Tg.reflect(v,s); // apply simple reflection on this torus part
       refl[s].addColumn(v);
     }

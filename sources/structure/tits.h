@@ -45,11 +45,11 @@ namespace tits {
 
   // 2-subgroup by which each |TorusPart| at involution |inv| will be reduced
   inline
-  latticetypes::SmallSubspace
+  subquotient::SmallSubspace
     fiber_denom(const latticetypes::LatticeMatrix& inv)
   {
-    latticetypes::BinaryMap A(lattice::eigen_lattice(inv.transposed(),-1));
-    return latticetypes::SmallSubspace(A);
+    bitvector::BinaryMap A(lattice::eigen_lattice(inv.transposed(),-1));
+    return subquotient::SmallSubspace(A);
   }
 
   gradings::Grading
@@ -69,7 +69,7 @@ namespace tits {
   kernel, and induces a bijection of X_*(T)/2X_*(T) with the group H(2) of
   elements of order 2; hence H(2) is represented by (Z/2Z)^rank
   */
-  typedef latticetypes::SmallBitVector TorusPart;
+  typedef bitvector::SmallBitVector TorusPart;
 
 
 
@@ -549,7 +549,7 @@ involution of the inner class.
 Gives the action of the (transposed fundamental) involution \f$\delta\f$ on
 $H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
   */
-  latticetypes::BinaryMap d_involution;
+  bitvector::BinaryMap d_involution;
 
 
 // copy and assignment
@@ -629,7 +629,7 @@ $H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
   void twist(TorusPart x) const { x=twisted(x); }
 
   //!\brief Reflection of |TorusPart|s defined by a twisted involution
-  latticetypes::BinaryMap involutionMatrix(const weyl::WeylWord& tw) const;
+  bitvector::BinaryMap involutionMatrix(const weyl::WeylWord& tw) const;
 
 
 // methods that only access some |TitsElt|
@@ -692,11 +692,11 @@ is done in the KGB construction, it induces an involution on the quotient set.
   { sigma_inv_mult(s,a); mult_sigma(a,twisted(s)); }
 
   void left_torus_reduce
-    (tits::TitsElt& a, const latticetypes::SmallSubspace& V) const
+    (tits::TitsElt& a, const subquotient::SmallSubspace& V) const
   { a.d_t=V.mod_image(a.d_t); }
 
   void right_torus_reduce
-    (tits::TitsElt& a, const latticetypes::SmallSubspace& V) const
+    (tits::TitsElt& a, const subquotient::SmallSubspace& V) const
   { a=TitsElt(*this,a.w(),V.mod_image(right_torus_part(a))); }
 
 // manipulators (none)
@@ -819,15 +819,15 @@ class TitsCoset
   // inverse Cayley transform for real simple roots
   // this requires knowing the subspace by which torus part has been reduced
   void inverse_Cayley_transform(tits::TitsElt& a, size_t s,
-				const latticetypes::SmallSubspace& mod_space)
+				const subquotient::SmallSubspace& mod_space)
     const;
 
   void left_torus_reduce
-    (tits::TitsElt& a, const latticetypes::SmallSubspace& V) const
+    (tits::TitsElt& a, const subquotient::SmallSubspace& V) const
   { titsGroup().left_torus_reduce(a,V); }
 
   void right_torus_reduce
-    (tits::TitsElt& a, const latticetypes::SmallSubspace& V) const
+    (tits::TitsElt& a, const subquotient::SmallSubspace& V) const
   { titsGroup().right_torus_reduce(a,V); }
 
   // conjugate Tits group element by $\delta_1$

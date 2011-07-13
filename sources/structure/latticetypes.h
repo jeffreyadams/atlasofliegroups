@@ -17,6 +17,7 @@
 #include "latticetypes_fwd.h"
 #include "matrix.h" // to make |LatticeElt| a complete type
 #include "intutils.h"
+#include "bitset.h"
 
 /* The following include is not required by this file but we put it here
    so that the types predeclared in "latticetypes_fwd.h" will be complete for
@@ -24,19 +25,12 @@
    include "bitvector.h" */
 #include "bitvector.h"
 
-/******** function declarations **********************************************/
-
 namespace atlas {
 
 namespace latticetypes {
 
-  inline
-  BinaryEquation make_equation(const SmallBitVector lhs, bool rhs)
-  {
-    BinaryEquation eqn(lhs.data(),lhs.size());
-    eqn.pushBack(rhs);
-    return eqn;
-  }
+/******** function declarations **********************************************/
+
 
 /******** type definitions ***************************************************/
 

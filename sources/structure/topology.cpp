@@ -154,7 +154,7 @@ Connectivity::Connectivity(const tori::RealTorus& t,
 
   latticetypes::LatticeMatrix m(b,rd.rank()); m.transpose();
 
-  latticetypes::BinaryMap m2 = t.componentMap(m,t_sc);
+  bitvector::BinaryMap m2 = t.componentMap(m,t_sc);
 
   m2.kernel(d_dpi0);
 }

@@ -147,7 +147,7 @@ formed by extracting only the information concerning the presence of the
 
   const size_t component_rank() const
     { return d_connectivity.component_rank(); }
-  const latticetypes::SmallBitVectorList& dualComponentReps() const
+  const bitvector::SmallBitVectorList& dualComponentReps() const
     { return d_connectivity.dualComponentReps(); }
 
   const latticetypes::LatticeMatrix& distinguished() const

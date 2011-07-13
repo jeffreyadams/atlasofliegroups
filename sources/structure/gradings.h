@@ -24,7 +24,7 @@
 #include "bitset.h"
 #include "constants.h"
 
-namespace atlas {
+ namespace atlas {
 
 /******** function declarations *********************************************/
 

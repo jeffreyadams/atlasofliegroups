@@ -16,6 +16,7 @@
 
 #include "subquotient.h"
 
+#include "bitset.h"
 #include <cassert>
 
 
@@ -250,7 +251,7 @@ template<size_t dim>
   // restrict m to source.space()
   for (bitset::RankFlags::iterator it=source.support().begin(); it(); ++it)
   {
-    latticetypes::SmallBitVector v = m*source.space().basis(*it);
+    bitvector::SmallBitVector v = m*source.space().basis(*it);
     assert(v.size()==dest.rank());
 
     /*

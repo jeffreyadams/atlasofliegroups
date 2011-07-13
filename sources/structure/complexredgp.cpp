@@ -184,7 +184,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
       for (rootdata::RootSet::iterator it=pos_im.begin(); it(); ++it)
       {
 	rootdata::RootNbr alpha=*it;
-	latticetypes::SmallBitVector alpha_bin(rd.inSimpleRoots(alpha));
+	bitvector::SmallBitVector alpha_bin(rd.inSimpleRoots(alpha));
 
 	// create a test element with null torus part
 	tits::TitsElt a(Tg,Cartan[i].tw);
@@ -277,7 +277,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
       for (rootdata::RootSet::iterator it=pos_re.begin(); it(); ++it)
       {
 	rootdata::RootNbr alpha=*it;
-	latticetypes::SmallBitVector alpha_bin(rd.inSimpleCoroots(alpha));
+	bitvector::SmallBitVector alpha_bin(rd.inSimpleCoroots(alpha));
 
 	weyl::TwistedInvolution tw = Cartan[i].tw; // non-dual
 	weyl::TwistedInvolution tw_dual = W.opposite(tw);
@@ -491,7 +491,7 @@ void ComplexReductiveGroup::map_real_forms(size_t cn)
   cartanclass::AdjointFiberElt rep = f.gradingRep(ref_gr);
 
   // now lift |rep| to a torus part and subtract from |base|
-  latticetypes::SmallBitVector v(bitset::RankFlags(rep),
+  bitvector::SmallBitVector v(bitset::RankFlags(rep),
 				 f.adjointFiberRank());
   base -= f.adjointFiberGroup().fromBasis(v);
 
@@ -528,7 +528,7 @@ void ComplexReductiveGroup::map_dual_real_forms(size_t cn)
   cartanclass::AdjointFiberElt dual_rep = dual_f.gradingRep(dual_ref_gr);
 
   // now lift |rep| to a torus part and subtract from |base|
-  latticetypes::SmallBitVector v(bitset::RankFlags(dual_rep),
+  bitvector::SmallBitVector v(bitset::RankFlags(dual_rep),
 				 dual_f.adjointFiberRank());
   dual_base -= dual_f.adjointFiberGroup().fromBasis(v);
 
@@ -971,7 +971,7 @@ weyl::WeylElt canonicalize // return value is conjugating element
    $\alpha$ does not lie in $S$.
  */
 
-  weyl::WeylElt w; // this will be the result
+  weyl::WeylElt w; // initialized to identity; this will be the result
 
   { // first phase: make |rrs| dominant for all complex simple roots in |gens|
     // and make |irs| dominant for all such roots that are orthogonal to |rrs|
@@ -1141,21 +1141,21 @@ unsigned long makeRepresentative(const gradings::Grading& gr,
     fundf.noncompactRoots(0); // noncompact roots for the base grading
   gradings::Grading bgr =
     cartanclass::restrictGrading(brs,rl); // view as grading of roots of |rl|
-  latticetypes::SmallBitVector bc(bgr,rl.size()); // transform to binary vector
+  bitvector::SmallBitVector bc(bgr,rl.size()); // transform to binary vector
 
   // make right hand side
-  latticetypes::SmallBitVector
+  bitvector::SmallBitVector
                  rhs(gr,rl.size()); // view |gr| as binary vector (same length)
   rhs += bc;                        // and add the one for the base grading
 
   // make grading shifts
-  latticetypes::SmallBitVectorList cl(fundf.adjointFiberRank(),bc);
+  bitvector::SmallBitVectorList cl(fundf.adjointFiberRank(),bc);
   for (size_t i = 0; i < cl.size(); ++i)
   {
     gradings::Grading gr1 =
       cartanclass::restrictGrading(fundf.noncompactRoots(1 << i),rl);
     cl[i] += // cl[i] is shift for vector e[i]
-      latticetypes::SmallBitVector(gr1,rl.size());
+      bitvector::SmallBitVector(gr1,rl.size());
   }
 
   // set up equations

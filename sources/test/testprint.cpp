@@ -195,7 +195,7 @@ std::ostream& printComponents(std::ostream& strm,
 			      const realredgp::RealReductiveGroup& G,
 			      const char* sep)
 {
-  const latticetypes::SmallBitVectorList& cr = G.dualComponentReps();
+  const bitvector::SmallBitVectorList& cr = G.dualComponentReps();
   basic_io::seqPrint(strm,cr.begin(),cr.end(),sep);
 
   return strm;

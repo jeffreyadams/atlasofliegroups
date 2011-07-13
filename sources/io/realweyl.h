@@ -44,10 +44,10 @@ class RealWeyl {
   const weyl::WeylGroup* d_group;
   rootdata::RootList d_imaginaryCompact;
   rootdata::RootList d_imaginaryOrth;
-  latticetypes::SmallBitVectorList d_imaginaryR;
+  bitvector::SmallBitVectorList d_imaginaryR;
   rootdata::RootList d_imaginary;
   rootdata::RootList d_realCompact;
-  latticetypes::SmallBitVectorList d_realR;
+  bitvector::SmallBitVectorList d_realR;
   rootdata::RootList d_real;
   rootdata::RootList d_complex;
   lietype::LieType d_complexType;
@@ -104,7 +104,7 @@ class RealWeyl {
     return d_imaginaryOrth[j];
   }
 
-  const latticetypes::SmallBitVectorList& imaginaryR() const {
+  const bitvector::SmallBitVectorList& imaginaryR() const {
     return d_imaginaryR;
   }
 
@@ -112,7 +112,7 @@ class RealWeyl {
     return d_imaginaryType;
   }
 
-  const latticetypes::SmallBitVector& imaginaryR(size_t j) const {
+  const bitvector::SmallBitVector& imaginaryR(size_t j) const {
     return d_imaginaryR[j];
   }
 
@@ -168,11 +168,11 @@ class RealWeyl {
     return d_realOrth[j];
   }
 
-  const latticetypes::SmallBitVectorList& realR() const {
+  const bitvector::SmallBitVectorList& realR() const {
     return d_realR;
   }
 
-  const latticetypes::SmallBitVector& realR(size_t j) const {
+  const bitvector::SmallBitVector& realR(size_t j) const {
     return d_realR[j];
   }
 

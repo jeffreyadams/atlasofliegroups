@@ -1098,6 +1098,7 @@ void Helper::directRecursion(blocks::BlockElt y, size_t s)
       catch (kl_error::KLError& e)
       {
 	e("error: negative coefficient in k-l construction");
+	throw; // quick fix to stop computation; catch shoul be further out
       }
       fillMuRow(y);
     }

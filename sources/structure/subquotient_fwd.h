@@ -17,6 +17,8 @@ Subquotient.
 
 #include <cstddef> // for |size_t|
 
+#include "constants.h" // for |RANK_MAX|
+
 /******** forward type declarations ******************************************/
 
 namespace atlas {
@@ -25,6 +27,12 @@ namespace subquotient {
 
 template<size_t dim> class Subspace;
 template<size_t dim> class Subquotient;
+
+//! \brief Subgroup of (Z/2Z)^RANK_MAX.
+ typedef Subspace<constants::RANK_MAX> SmallSubspace;
+
+//! \brief Subquotient of (Z/2Z)^RANK_MAX.
+ typedef Subquotient<constants::RANK_MAX> SmallSubquotient;
 
 }
 

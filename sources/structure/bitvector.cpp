@@ -26,6 +26,9 @@ unsigned long integer).
 
 #include "comparison.h"
 #include "constants.h"
+#include "bitset.h"
+#include "matrix.h"
+
 /*****************************************************************************
 
         Chapter I -- The BitVector class
@@ -129,18 +132,17 @@ void BitVector<dim>::unslice(bitset::BitSet<dim> t,size_t new_size)
 
 namespace bitvector {
 
-template<size_t dim>
-BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b)
-  : d_data() // start out empty
-  , d_rows( b.size()==0 ? 0 : b[0].size() ) // null matrix will be $0\times0$
-  , d_columns(b.size())
-
 /*!
   Constructs the matrix whose columns are given by the vectors in |b|.
 
   NOTE : it is assumed that all the vectors in |b| have the same size.
 */
-
+template<size_t dim>
+BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b,
+			  unsigned short int num_rows)  // size of columns
+  : d_data() // start out empty
+  , d_rows(num_rows)
+  , d_columns(b.size())
 {
   assert(d_rows<=dim);
 
@@ -148,8 +150,23 @@ BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b)
 
   // this loop is necessary to reduce each column to a |bitset::BitSet<dim>|
   for (size_t j = 0; j < b.size(); ++j)
+  {
+    assert(b[j].size()==num_rows);
     d_data.push_back(b[j].data());
+  }
 
+}
+
+template<size_t dim>
+BitMatrix<dim>::BitMatrix(const latticetypes::LatticeMatrix& m) // set modulo 2
+  : d_data(m.numColumns(),bitset::BitSet<dim>())
+  , d_rows(m.numRows())
+  , d_columns(m.numColumns())
+{
+  assert(m.numRows()<=dim);
+  for (size_t i=0; i<d_rows; ++i)
+    for (size_t j=0; j<d_columns; ++j)
+      d_data[j].set(i, (m(i,j)&1)!=0 );
 }
 
 /******** accessors *********************************************************/
@@ -987,7 +1004,7 @@ template void identityMatrix(BitMatrix<constants::RANK_MAX>&, size_t);
 template void initBasis(std::vector<BitVector<constants::RANK_MAX> >&, size_t);
 
 template class BitVector<constants::RANK_MAX>;
-template class BitVector<constants::RANK_MAX+1>;//|latticetypes::BinaryEquation|
+template class BitVector<constants::RANK_MAX+1>;//|bitvector::BinaryEquation|
 template class BitMatrix<constants::RANK_MAX>;
 
 } // |namespace bitvector|

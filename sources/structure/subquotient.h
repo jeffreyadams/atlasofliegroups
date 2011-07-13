@@ -19,9 +19,9 @@
 
 #include "subquotient_fwd.h"
 #include "latticetypes_fwd.h"
+#include "bitset_fwd.h"
 
-#include "bitset.h"
-#include "bitvector.h"
+#include "bitvector.h" // anyone whose uses this header will need that too
 
 /******** function declarations **********************************************/
 
@@ -35,11 +35,10 @@ template<size_t dim>
     const Subquotient<dim>&,
     const bitvector::BitMatrix<dim>&);
 
-}
 
 /******** type definitions **************************************************/
 
-namespace subquotient {
+
 
   /*!
   \brief Subspace of (Z/2Z)^d_rank.
@@ -291,8 +290,8 @@ bitset::BitSet<dim> d_rel_support;
 
  }; // |template <size_t dim> class Subquotient|
 
-}
+} // |namespace subquotient|
 
-}
+} // |namespace atlas|
 
 #endif

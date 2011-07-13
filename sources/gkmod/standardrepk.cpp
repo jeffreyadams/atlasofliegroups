@@ -123,7 +123,7 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
   simple_reflection_mod_2.reserve(G.semisimpleRank());
   for (size_t i=0; i<G.semisimpleRank(); ++i)
     simple_reflection_mod_2.push_back
-      (latticetypes::BinaryMap(rd.simple_reflection(i).transposed()));
+      (bitvector::BinaryMap(rd.simple_reflection(i).transposed()));
 
   size_t n = rootDatum().rank();
 
@@ -175,8 +175,8 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
     basis.block(0,l,n,n).swap(ci.freeLift); // final |n-l| basis vectors
     inv_basis.block(l,0,n,n).swap(ci.freeProjector); // final |n-l| rows
 
-    latticetypes::SmallSubspace
-      (latticetypes::BinaryMap(lattice::eigen_lattice(theta.transposed(),-1)))
+    subquotient::SmallSubspace
+      (bitvector::BinaryMap(lattice::eigen_lattice(theta.transposed(),-1)))
       .swap(ci.fiber_modulus);
 
     { // find simple roots orthogonal to |real2rho| and |imaginary2rho|
@@ -211,7 +211,7 @@ HCParam SRK_context::project
   // now |lambda| actually represents $\lambda-\rho$ in plain coordinates
   return std::make_pair
     (ci.freeProjector*lambda,
-     (ci.torsionProjector*latticetypes::SmallBitVector(lambda)).data()
+     (ci.torsionProjector*bitvector::SmallBitVector(lambda)).data()
      );
 }
 
@@ -993,7 +993,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
   tits::TitsElt a=titsElt(sr);
 
   latticetypes::Weight lambda = lift(sr);
-  latticetypes::SmallSubspace mod_space=
+  subquotient::SmallSubspace mod_space=
     info(sr.d_cartan).fiber_modulus; // make a copy to be modified
   bitset::RankFlags orth; // becomes system orthogonal to |tl| below
   { // first assure the theta-lift of sr is dominant
@@ -1073,7 +1073,7 @@ SRK_context::q_HS_id_eq(const StandardRepK& sr, rootdata::RootNbr alpha) const
 
   // the following test is easiest before we move to |alpha| simple situation
   bool type_II = info(sr.Cartan()).fiber_modulus.contains
-    (latticetypes::SmallBitVector(rd.coroot(alpha))); // reduced modulo 2
+    (bitvector::SmallBitVector(rd.coroot(alpha))); // reduced modulo 2
 
   size_t i=0; // simple root index (value will be set in following loop)
   while (true) // we shall exit halfway when $\alpha=\alpha_i$

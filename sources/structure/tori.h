@@ -14,6 +14,7 @@
 #define TORI_H
 
 #include "tori_fwd.h"
+#include "bitvector_fwd.h"
 
 #include "bits.h"
 #include "latticetypes.h"
@@ -32,7 +33,7 @@ namespace tori {
 
 namespace tori {
 
-  void dualPi0(LT::SmallSubquotient&, const LT::LatticeMatrix&);
+  void dualPi0(subquotient::SmallSubquotient&, const LT::LatticeMatrix&);
 
   void plusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&,
 		  const RealTorus&);
@@ -133,7 +134,7 @@ namespace tori {
   dual component group of real torus (a vector space over $Z/2Z$), realised
   as the subquotient $(V_+ + V_-)/V_+$ of the $Z/2Z$ vector space $X/2X$
   */
-  LT::SmallSubquotient d_topology;
+  subquotient::SmallSubquotient d_topology;
 
  public:
 
@@ -163,8 +164,8 @@ namespace tori {
   bool isCompact() const { return d_plus.size() == d_rank; }
   bool isSplit() const { return d_minus.size() == d_rank; }
 
-  LT::BinaryMap componentMap(const LT::LatticeMatrix&,
-			     const RealTorus&) const;
+  bitvector::BinaryMap componentMap(const LT::LatticeMatrix&,
+				    const RealTorus&) const;
 
   const LT::WeightList& plusLattice() const { return d_plus; }
   const LT::WeightList& minusLattice() const { return d_minus; }
@@ -175,7 +176,7 @@ namespace tori {
   void toMinus(LT::Weight& dest, const LT::Weight& source) const
     { dest=d_toMinus*source; }
 
-  const LT::SmallSubquotient& topology() const { return d_topology; }
+  const subquotient::SmallSubquotient& topology() const { return d_topology; }
 };
 
 }

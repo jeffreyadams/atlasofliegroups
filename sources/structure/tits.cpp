@@ -487,9 +487,9 @@ std::vector<gradings::Grading> compute_square_classes
       roots.add_row(rd.simpleRoot(i));
     }
 
-  latticetypes::BinaryMap A(lattice::eigen_lattice(delta.transposed(),1));
-  latticetypes::SmallSubspace Vplus(A); // mod subgroup, in $X_*$ coordinates
-  latticetypes::BinaryMap to_grading(roots);
+  bitvector::BinaryMap A(lattice::eigen_lattice(delta.transposed(),1));
+  subquotient::SmallSubspace Vplus(A); // mod subgroup, in $X_*$ coordinates
+  bitvector::BinaryMap to_grading(roots);
   Vplus.apply(to_grading); // convert to grading coordinates
 
   bitset::RankFlags supp = Vplus.support(); // pivot positions
@@ -622,9 +622,9 @@ TitsGroup::TitsGroup(const subdatum::SubSystem& sub,
       TorusPart(sub.parent_datum().coroot(sub.parent_nr_simple(s)));
   }
 
-  std::vector<latticetypes::BinaryMap> simple_tr; simple_tr.reserve(d_rank);
+  std::vector<bitvector::BinaryMap> simple_tr; simple_tr.reserve(d_rank);
   for (size_t s=0; s<sub.rank(); ++s)
-    simple_tr.push_back(latticetypes::BinaryMap
+    simple_tr.push_back(bitvector::BinaryMap
       (sub.parent_datum().root_reflection(sub.parent_nr_simple(s))
 					 .transposed()));
 
@@ -739,13 +739,13 @@ TitsElt TitsGroup::prod(const TitsElt& a, TitsElt b) const
 // here the we basically do Weyl group action at torus side, including twist
 // the (binary) matrix produced represents $delta.ww^{-1}$ which, being an
 // involution (and delta too), could also have been computed as $ww.delta$
-latticetypes::BinaryMap
+bitvector::BinaryMap
 TitsGroup::involutionMatrix(const weyl::WeylWord& ww) const
 {
-  latticetypes::BinaryMap result(rank(),0);
+  bitvector::BinaryMap result(rank(),0);
   for (size_t i=0; i<rank(); ++i)
   {
-    latticetypes::SmallBitVector v(rank(),i); // basis vector $e_i$
+    bitvector::SmallBitVector v(rank(),i); // basis vector $e_i$
     // act by letters of |ww| from left to right (because transposed action)
     for (size_t j=0; j<ww.size(); ++j)
       reflect(v,ww[j]);
@@ -862,7 +862,7 @@ void TitsCoset::basedTwistedConjugate
  */
 void TitsCoset::inverse_Cayley_transform
   (tits::TitsElt& a, size_t i,
-   const latticetypes::SmallSubspace& mod_space) const
+   const subquotient::SmallSubspace& mod_space) const
 {
   Tg.sigma_inv_mult(i,a); // set |a| to $\sigma_i^{-1}.a$
   if (not simple_grading(a,i)) // $\alpha_i$ should not become compact!
@@ -960,7 +960,7 @@ tits::TitsElt TitsCoset::naive_seed
   // the |grading_offset| of our |TitsCoset| gives the square class base
 
   // now lift strong real form from fiber group to a torus part in |result|
-  latticetypes::SmallBitVector v(bitset::RankFlags(srf.first),f.fiberRank());
+  bitvector::SmallBitVector v(bitset::RankFlags(srf.first),f.fiberRank());
   tits::TorusPart x = f.fiberGroup().fromBasis(v);
 
   // right-multiply this torus part by canonical twisted involution for |cn|
@@ -1033,23 +1033,23 @@ TitsCoset::grading_seed(complexredgp::ComplexReductiveGroup& G,
   // now prepare equations for coset for "fiber numerator" group of torus part
   Tg.mult(a,twisted(a)); // now |a.t()| gives inhomogenous part for equations
 
-  latticetypes::BinaryEquationList eqns;  // equations for our seed
+  bitvector::BinaryEquationList eqns;  // equations for our seed
   eqns.reserve(G.rank()+f.imaginaryRank()); // for coset + grading
 
-  latticetypes::BinaryMap refl = Tg.involutionMatrix(G.weylGroup().word(tw));
+  bitvector::BinaryMap refl = Tg.involutionMatrix(G.weylGroup().word(tw));
 
   // coset equations
   for (size_t i=0; i<G.rank(); ++i)
   {
-    latticetypes::SmallBitVector lhs = refl.row(i);
+    bitvector::SmallBitVector lhs = refl.row(i);
     lhs.flip(i); // left hand side is row $i$ of $TorusPartInvolution-1$
-    eqns.push_back(latticetypes::make_equation(lhs,Tg.left_torus_part(a)[i]));
+    eqns.push_back(make_equation(lhs,Tg.left_torus_part(a)[i]));
   }
   // grading equations
   for (size_t i=0; i<f.imaginaryRank(); ++i)
   {
-    latticetypes::BinaryEquation equation =
-      latticetypes::BinaryEquation(G.rootDatum().root(f.simpleImaginary(i)));
+    bitvector::BinaryEquation equation =
+      bitvector::BinaryEquation(G.rootDatum().root(f.simpleImaginary(i)));
     equation.pushBack((base_grading^form_grading)[i]);
     eqns.push_back(equation);
   }
@@ -1150,7 +1150,7 @@ tits::TitsElt EnrichedTitsGroup::backtrack_seed
   for (unsigned long x=0; x<srp.size(); ++x)
     if (srp(x)==srp(f_orbit()))
     {
-      latticetypes::SmallBitVector v
+      bitvector::SmallBitVector v
 	(static_cast<bitset::RankFlags>(x),fund.fiberRank());
       TorusPart t = fund.fiberGroup().fromBasis(v);
       for (size_t i=0; i<Cayley.size(); ++i)

@@ -232,7 +232,7 @@ struct Cartan_info
   // projection matrix to torsion free part
   latticetypes::LatticeMatrix freeProjector;
   // projection matrix to torsion part, after rho-shift and reduction mod 2
-  latticetypes::BinaryMap torsionProjector;
+  bitvector::BinaryMap torsionProjector;
 
   // matrix used to lift free part of |HCParam| back to a weight
   latticetypes::LatticeMatrix freeLift;
@@ -241,7 +241,7 @@ struct Cartan_info
   latticetypes::WeightList torsionLift;
 
   // space that fiber parts are reduced modulo
-  latticetypes::SmallSubspace fiber_modulus;
+  subquotient::SmallSubspace fiber_modulus;
 
   // simple roots orthogonal to sums of positive imaginary and real roots
   // in fact one of every pair of $theta$-conjugate such simple roots
@@ -288,7 +288,7 @@ class SRK_context
   std::vector<Cartan_info> C_info; // indexed by number of Cartan for |GR|
 
 // this member is precomputed to increase efficiency of certain operations
-  std::vector<latticetypes::BinaryMap> simple_reflection_mod_2; // dual side
+  std::vector<bitvector::BinaryMap> simple_reflection_mod_2; // dual side
 
 // we cache a number of |proj_info| values, indexed by sets of generators
   bitset_entry::Pooltype proj_pool;
@@ -318,7 +318,7 @@ class SRK_context
 
   const Cartan_info& info(size_t cn) const
     { return C_info[Cartan_set.position(cn)]; }
-  const latticetypes::BinaryMap& dual_reflection(weyl::Generator i) const
+  const bitvector::BinaryMap& dual_reflection(weyl::Generator i) const
   { return simple_reflection_mod_2[i]; }
 
   //!\brief Projection |Weight| (in doubled coordinates) to |HCParam|

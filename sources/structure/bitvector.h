@@ -20,8 +20,7 @@
 #include <vector>
 #include <cassert>
 
-#include "matrix.h"
-#include "bitset.h"
+#include "bitset.h" // so users will see complete types; also needed for inline
 
 /******** function declarations **********************************************/
 
@@ -363,12 +362,12 @@ template<size_t dim> class BitMatrix
   /*!
   Number of rows of the BitMatrix. Cannot exceed template argument dim
   */
-  size_t d_rows;
+  unsigned short int d_rows;
 
   /*!
   Number of columns of the BitMatrix. This field is redundant, see d_data.
   */
-  size_t d_columns;
+  unsigned short int d_columns;
 
  public:
 
@@ -393,18 +392,9 @@ template<size_t dim> class BitMatrix
       assert(m<=dim); // having |n>dim| is not immediately fatal
     }
 
-  explicit BitMatrix(const std::vector<BitVector<dim> >&); // set by columns
-
-  explicit BitMatrix(const latticetypes::LatticeMatrix& m) // set modulo 2
-    : d_data(m.numColumns(),bitset::BitSet<dim>())
-    , d_rows(m.numRows())
-    , d_columns(m.numColumns())
-    {
-      assert(m.numRows()<=dim);
-      for (size_t i=0; i<d_rows; ++i)
-	for (size_t j=0; j<d_columns; ++j)
-	  d_data[j].set(i, (m(i,j)&1)!=0 );
-    }
+  explicit BitMatrix(const std::vector<BitVector<dim> >&,  // set by columns
+		     unsigned short int num_rows);  // all of size |num_rows|
+  explicit BitMatrix(const latticetypes::LatticeMatrix& m); // set modulo 2
 
 // copy and assignment (implicitly generated ones will do)
 
@@ -552,6 +542,17 @@ template<size_t dim> class BitMatrix
   */
   BitMatrix& transpose();
 }; // |class BitMatrix|
+
+//			  Inlined function definition
+
+inline
+  bitvector::BinaryEquation make_equation(const SmallBitVector& lhs, bool rhs)
+  {
+    BinaryEquation eqn(lhs.data(),lhs.size());
+    eqn.pushBack(rhs);
+    return eqn;
+  }
+
 
 } // |namespace bitvector|
 

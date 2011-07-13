@@ -188,7 +188,7 @@ class Fiber {
   of the $-1$ eigenlattice \f$Y^{-\tau}\f$ (the latter is the lattice of
   coweights of \f$(H^{-tau})_0\f$).
   */
-  latticetypes::SmallSubquotient d_fiberGroup;
+  subquotient::SmallSubquotient d_fiberGroup;
 
   /*!
   \brief Fiber group for the adjoint group of G.
@@ -202,7 +202,7 @@ class Fiber {
   of one-parameter subgroups Y_ad just as the fiber group is computed. The
   lattice Y_ad has as basis the fundamental coweights.
   */
-  latticetypes::SmallSubquotient d_adjointFiberGroup;
+  subquotient::SmallSubquotient d_adjointFiberGroup;
 
   /*! \brief Flags the noncompact imaginary roots for the base grading among
   all the roots.
@@ -240,7 +240,7 @@ class Fiber {
   Subquotient) with a distinguished basis, and what is recorded in d_toAdjoint
   is the (dim F_ad) x (dim F) matrix with respect to those bases.
   */
-  latticetypes::BinaryMap d_toAdjoint;
+  bitvector::BinaryMap d_toAdjoint;
 
   /*!
   \brief Partition of the adjoint fiber group according to weak real forms.
@@ -385,7 +385,7 @@ class Fiber {
   of one-parameter subgroups Y_ad just as the fiber group is computed. The
   lattice Y_ad has as basis the fundamental coweights.
 */
-  const latticetypes::SmallSubquotient& adjointFiberGroup() const
+  const subquotient::SmallSubquotient& adjointFiberGroup() const
     { return d_adjointFiberGroup; }
 
 /*!
@@ -402,7 +402,7 @@ class Fiber {
 /*!
   \brief Fiber group.
 */
-  const latticetypes::SmallSubquotient& fiberGroup() const
+  const subquotient::SmallSubquotient& fiberGroup() const
     { return d_fiberGroup; }
 
   /*!
@@ -435,7 +435,7 @@ class Fiber {
   /*!
   \brief Image of a coroot (expressed in weight basis) in the fiber group
   */
-  latticetypes::SmallBitVector mAlpha(const rootdata::Root&) const;
+  bitvector::SmallBitVector mAlpha(const rootdata::Root&) const;
 
 /*!
   \brief Number of weak real forms containing this Cartan.
@@ -517,12 +517,12 @@ class Fiber {
 
 private:
 
-  latticetypes::SmallSubquotient makeFiberGroup() const;
+  subquotient::SmallSubquotient makeFiberGroup() const;
 
-  latticetypes::SmallSubquotient makeAdjointFiberGroup
+  subquotient::SmallSubquotient makeAdjointFiberGroup
     (const rootdata::RootSystem&) const;
 
-  latticetypes::SmallSubspace gradingGroup(const rootdata::RootSystem&) const;
+  subquotient::SmallSubspace gradingGroup(const rootdata::RootSystem&) const;
 
   gradings::Grading makeBaseGrading
     (rootdata::RootSet& flagged_roots,const rootdata::RootSystem&) const;
@@ -534,7 +534,7 @@ private:
 
   bitset::RankFlagsList mAlphas(const rootdata::RootDatum&) const;
 
-  latticetypes::BinaryMap makeFiberMap(const rootdata::RootDatum&) const;
+  bitvector::BinaryMap makeFiberMap(const rootdata::RootDatum&) const;
 
   partition::Partition makeWeakReal(const rootdata::RootSystem&) const;
 

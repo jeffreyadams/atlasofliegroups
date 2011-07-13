@@ -14,6 +14,9 @@
 #define BITVECTOR_FWD_H
 
 #include <cstddef>
+#include <vector>
+
+#include "constants.h"
 
 /******** forward type declarations ******************************************/
 
@@ -24,6 +27,15 @@ namespace bitvector {
   template<size_t> class BitVector;
   template<size_t> class BitVectorList;
   template<size_t> class BitMatrix;
+
+
+  typedef BitVector<constants::RANK_MAX> SmallBitVector;
+  typedef BitVectorList<constants::RANK_MAX> SmallBitVectorList;
+
+  typedef BitVector<constants::RANK_MAX+1> BinaryEquation;
+  typedef BitVectorList<constants::RANK_MAX+1> BinaryEquationList;
+
+  typedef BitMatrix<constants::RANK_MAX> BinaryMap;
 
 }
 

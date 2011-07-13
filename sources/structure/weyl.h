@@ -244,7 +244,7 @@ but their usual meaning and the sequel makes clear that this was an error).
 
 The Transducer has tables to describe the two cases. the first table |d_shift|
 describes the transistions, namely |d_shift[i][j]==i'| in the first case; the
-cases that are tranductions can be distinguished from these by the fact that
+cases that are transductions can be distinguished from these by the fact that
 |d_shift[i][j]==i|. In these cases, the value |k| emitted by the transduction
 is stored in |d_out[i][j]|, which otherwise contains the value |UndefGenerator|
 */

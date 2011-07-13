@@ -26,7 +26,7 @@ namespace tori {
 
 namespace {
 
-void makeTopology(latticetypes::SmallSubquotient&, const RealTorus&);
+void makeTopology(subquotient::SmallSubquotient&, const RealTorus&);
 
 void fullPlusBasis(latticetypes::WeightList&,
 		   latticetypes::LatticeMatrix&,
@@ -181,11 +181,11 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
   them onto dpi0, and then restrict to our dual component representatives.
   But in fact this is hidden inside |subquotient::subquotientMap|.
 */
-latticetypes::BinaryMap RealTorus::componentMap
+bitvector::BinaryMap RealTorus::componentMap
   (const latticetypes::LatticeMatrix& m,
    const RealTorus& T_dest) const
 {
-  latticetypes::BinaryMap m2(m); // reduce mod2
+  bitvector::BinaryMap m2(m); // reduce mod2
 
   return subquotient::subquotientMap(d_topology,T_dest.topology(),m2);
 }
@@ -215,23 +215,23 @@ namespace tori {
   In practice we also want this at the dual side with $V_-$ in the denominator
   (to compute fiber groups): to that end call with |q.negative_transposed()|
 */
-void dualPi0(LT::SmallSubquotient& dpi0, const LT::LatticeMatrix& q)
+void dualPi0(subquotient::SmallSubquotient& dpi0, const LT::LatticeMatrix& q)
 {
   assert(q.numRows()==q.numColumns());
 
   latticetypes::WeightList plus; plusBasis(plus,q);
-  latticetypes::SmallBitVectorList plus2(plus); // mod 2: denominator subgroup
+  bitvector::SmallBitVectorList plus2(plus); // mod 2: denominator subgroup
 
-  latticetypes::BinaryMap i2(q);  // reduce modulo 2
-  latticetypes::BinaryMap id; identityMatrix(id,q.numRows());
+  bitvector::BinaryMap i2(q);  // reduce modulo 2
+  bitvector::BinaryMap id; identityMatrix(id,q.numRows());
 
   i2 += id;
   // now |i2| is modulo 2 image of $\tau-id$ (and also of $\tau+id$)
 
-  latticetypes::SmallBitVectorList b; i2.kernel(b);
+  bitvector::SmallBitVectorList b; i2.kernel(b);
   // the kernel of |i2| is the sum $V_+ + V_-$: numerator subgroup
 
-  latticetypes::SmallSubquotient cs(b,plus2,q.numRows());
+  subquotient::SmallSubquotient cs(b,plus2,q.numRows());
   assert(cs.rank()==q.numRows());
 
   dpi0.swap(cs);
@@ -378,18 +378,18 @@ namespace {
   isomorphic to V_-/(V_+  cap V_-), which we know is the _dual_ of the
   component group of the torus.
 */
-void makeTopology(latticetypes::SmallSubquotient& cs, const RealTorus& T)
+void makeTopology(subquotient::SmallSubquotient& cs, const RealTorus& T)
 {
-  latticetypes::SmallBitVectorList plus2(T.plusLattice()); // reduce mod 2
+  bitvector::SmallBitVectorList plus2(T.plusLattice()); // reduce mod 2
 
-  latticetypes::BinaryMap i2(T.involution()); // reduce mod 2
-  latticetypes::BinaryMap id; identityMatrix(id,T.rank());
+  bitvector::BinaryMap i2(T.involution()); // reduce mod 2
+  bitvector::BinaryMap id; identityMatrix(id,T.rank());
   i2 += id;
 
-  latticetypes::SmallBitVectorList b;
+  bitvector::SmallBitVectorList b;
   i2.kernel(b);  // kernel of map induced by tau-1 (or by tau+1), contains V_+
 
-  cs = latticetypes::SmallSubquotient(b,plus2,T.rank());
+  cs = subquotient::SmallSubquotient(b,plus2,T.rank());
 }
 
 

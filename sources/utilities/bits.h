@@ -14,8 +14,6 @@
 
 #include <vector>
 
-#include "constants.h"
-
 /******** function declarations **********************************************/
 
 namespace atlas {

@@ -24,7 +24,7 @@ void orthogonalMAlpha(rootdata::RootList&,
 		      unsigned long,
 		      const cartanclass::Fiber&,
 		      const rootdata::RootDatum&);
-void rGenerators(latticetypes::SmallBitVectorList&,
+void rGenerators(bitvector::SmallBitVectorList&,
 		 const rootdata::RootList&,
 		 const cartanclass::Fiber&,
 		 const rootdata::RootDatum&);
@@ -115,7 +115,7 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_imaginaryR.assign(nir,e);
 
   for (size_t j = 0; j < nir; ++j) {
-    const latticetypes::SmallBitVector& c = rw.imaginaryR(j);
+    const bitvector::SmallBitVector& c = rw.imaginaryR(j);
     for (size_t i = 0; i < c.size(); ++i)
       if (c[i]) {
 	W.mult(d_imaginaryR[j],rd.reflectionWord(rw.imaginaryOrth(i)));
@@ -140,7 +140,7 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_realR.assign(nrr,e);
 
   for (size_t j = 0; j < nrr; ++j) {
-    const latticetypes::SmallBitVector& c = rw.realR(j);
+    const bitvector::SmallBitVector& c = rw.realR(j);
     for (size_t i = 0; i < c.size(); ++i)
       if (c[i]) {
 	W.mult(d_realR[j],rd.reflectionWord(rw.realOrth(i)));
@@ -270,17 +270,17 @@ void orthogonalMAlpha(rootdata::RootList& rl, unsigned long x,
   products of simple reflections in rl corresponding to the combinations that
   lie in the _kernel_ of this map.
 */
-void rGenerators(latticetypes::SmallBitVectorList& cl,
+void rGenerators(bitvector::SmallBitVectorList& cl,
 		 const rootdata::RootList& rl,
 		 const cartanclass::Fiber& f,
 		 const rootdata::RootDatum& rd)
 {
   size_t rln = rl.size();
-  latticetypes::BinaryMap m(f.fiberRank(),rln);
+  bitvector::BinaryMap m(f.fiberRank(),rln);
 
   for (size_t j=0; j<rln; ++j)
   {
-    latticetypes::SmallBitVector v = // |v.size()=f.fiberRank()|
+    bitvector::SmallBitVector v = // |v.size()=f.fiberRank()|
       f.mAlpha(rd.coroot(rl[j]));
     for (size_t i = 0; i < v.size(); ++i)
       m.set(i,j,v[i]);

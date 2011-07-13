@@ -314,10 +314,10 @@ Fiber& Fiber::operator= (const Fiber& other)
 
   Note that only the involution is used, not the root datum.
 */
-latticetypes::SmallSubquotient Fiber::makeFiberGroup() const
+subquotient::SmallSubquotient Fiber::makeFiberGroup() const
 {
   // construct subquotient
-  latticetypes::SmallSubquotient result;
+  subquotient::SmallSubquotient result;
   tori::dualPi0(result,involution().negative_transposed());
 
   return result;
@@ -350,11 +350,11 @@ adjoint_involution(const rootdata::RootSystem& rs, const InvolutionData& id)
   transpose of the involution induced by \f$\tau\f$ on the root lattice (which
   negative transpose is computed by |adjoint_involution|).
 */
-latticetypes::SmallSubquotient
+subquotient::SmallSubquotient
 Fiber::makeAdjointFiberGroup(const rootdata::RootSystem& rs) const
 {
   // construct subquotient
-  latticetypes::SmallSubquotient result;
+  subquotient::SmallSubquotient result;
   tori::dualPi0(result,adjoint_involution(rs,d_involutionData));
 
   assert(result.rank()==rs.rank()); // (rank is that of ambient vector space)
@@ -377,11 +377,11 @@ Fiber::makeAdjointFiberGroup(const rootdata::RootSystem& rs) const
   whence the constructor for |Fiber| just calls this function to |assert| that
   the result is trivial.
 */
-latticetypes::SmallSubspace
+subquotient::SmallSubspace
 Fiber::gradingGroup (const rootdata::RootSystem& rs) const
 {
   // define map
-  const latticetypes::SmallBitVectorList& baf =
+  const bitvector::SmallBitVectorList& baf =
     d_adjointFiberGroup.space().basis();
 
   // express simple-imaginary roots on (full) simple roots
@@ -390,27 +390,27 @@ Fiber::gradingGroup (const rootdata::RootSystem& rs) const
 		 back_inserter(bsi));
 
 
-  latticetypes::SmallBitVectorList bsi2(bsi); // and reduce mod 2
+  bitvector::SmallBitVectorList bsi2(bsi); // and reduce mod 2
 
-  latticetypes::SmallBitVectorList b;
+  bitvector::SmallBitVectorList b;
 
   /* set b[j][i] = <e_j,bsi2[i]> where e_j=baf[j'], with |baf[j']| the
      subquotient basis representative number |j| */
   for (bitset::RankFlags::iterator
 	 jt = d_adjointFiberGroup.support().begin(); jt(); ++jt)
   {
-    latticetypes::SmallBitVector v(imaginaryRank());
+    bitvector::SmallBitVector v(imaginaryRank());
     for (size_t i = 0; i < imaginaryRank(); ++i)
       v.set(i,bsi2[i].dot(baf[*jt]));
     b.push_back(v);
   }
 
-  latticetypes::BinaryMap q(b);
+  bitvector::BinaryMap q(b,imaginaryRank());
 
   // find kernel
-  latticetypes::SmallBitVectorList ker; q.kernel(ker);
+  bitvector::SmallBitVectorList ker; q.kernel(ker);
 
-  return latticetypes::SmallSubspace(ker,adjointFiberRank());
+  return subquotient::SmallSubspace(ker,adjointFiberRank());
 }
 
 
@@ -477,18 +477,18 @@ gradings::GradingList Fiber::makeGradingShifts
 
   latticetypes::WeightList ir;
   rs.toRootBasis(irl.begin(),irl.end(),back_inserter(ir));
-  latticetypes::SmallBitVectorList ir2(ir); // |ir2.size()==irl.size()|
+  bitvector::SmallBitVectorList ir2(ir); // |ir2.size()==irl.size()|
 
 
   // also express simple-imaginary roots in (full) simple root basis
   const rootdata::RootList& sil = simpleImaginary();
   latticetypes::WeightList si;
   rs.toRootBasis(sil.begin(),sil.end(),back_inserter(si));
-  latticetypes::SmallBitVectorList si2(si); // reduce vectors mod 2
+  bitvector::SmallBitVectorList si2(si); // reduce vectors mod 2
 
   // now compute all results
   bitset::RankFlags supp = d_adjointFiberGroup.support();
-  const latticetypes::SmallBitVectorList& b
+  const bitvector::SmallBitVectorList& b
     = d_adjointFiberGroup.space().basis();
   gradings::GradingList result;
 
@@ -560,7 +560,7 @@ Fiber::adjointMAlphas (const rootdata::RootSystem& rs) const
 
   for (size_t i = 0; i<result.size(); ++i)
   {
-    latticetypes::SmallBitVector v(rs.rank());
+    bitvector::SmallBitVector v(rs.rank());
     // compute pairing with simple roots modulo 2
     for(size_t j = 0; j < v.size(); ++j)
     {
@@ -595,30 +595,31 @@ Fiber::adjointMAlphas (const rootdata::RootSystem& rs) const
   fiber group; notably, it represents an element of $V_+ + V_-$ in
   $Y^* / 2Y^*$. (without space that formula would have ended our comment!)
 */
-latticetypes::BinaryMap
+bitvector::BinaryMap
 Fiber::makeFiberMap(const rootdata::RootDatum& rd) const
 {
 
-  latticetypes::SmallBitVectorList b_sr
+  bitvector::SmallBitVectorList b_sr
     (rd.beginSimpleRoot(),rd.endSimpleRoot()); // mod 2
 
   // images of fiber group basis in adjoint fiber group
-  latticetypes::SmallBitVectorList b_ad;
+  bitvector::SmallBitVectorList b_ad;
   b_ad.reserve(d_fiberGroup.dimension());
 
-  const latticetypes::SmallBitVectorList& b = d_fiberGroup.space().basis();
+  const bitvector::SmallBitVectorList& b = d_fiberGroup.space().basis();
   const bitset::RankFlags& supp = d_fiberGroup.support();
   size_t n = rd.semisimpleRank();
   for (bitset::RankFlags::iterator it = supp.begin(); it(); ++it)
   {
-    latticetypes::SmallBitVector v(n);
+    bitvector::SmallBitVector v(n);
     for(size_t i = 0; i < n; ++i)
       v.set(i, b_sr[i].dot(b[*it]) );
 
     b_ad.push_back(d_adjointFiberGroup.toBasis(v));
   }
 
-  return latticetypes::BinaryMap(b_ad); // convert vectors to a matrix
+  return bitvector::BinaryMap // convert vectors to a matrix
+    (b_ad,d_adjointFiberGroup.dimension());
 }
 
 
@@ -676,19 +677,19 @@ partition::Partition Fiber::makeRealFormPartition() const
 {
   std::vector<unsigned long> cl(numRealForms());
 
-  latticetypes::SmallBitVectorList b_id;
+  bitvector::SmallBitVectorList b_id;
   bitvector::initBasis(b_id,d_adjointFiberGroup.dimension());
 
   /* construct |modFiberImage| as quotient of spans of |b_id| (i.e., all) and
      image of |d_toAdjoint|; it is a quotient of the adjoint fiber group! */
-  latticetypes::SmallSubquotient modFiberImage
+  subquotient::SmallSubquotient modFiberImage
     (b_id,d_toAdjoint.image(),d_adjointFiberGroup.dimension());
 
   // take representatives of weak real forms and reduce modulo fiber image
   for (size_t i = 0; i < cl.size(); ++i)
   {
     unsigned long y = d_weakReal.classRep(i);
-    latticetypes::SmallBitVector v
+    bitvector::SmallBitVector v
       (bitset::RankFlags(y),d_adjointFiberGroup.dimension());
 
     // reduce modulo image of map from fiber group to adjoint fiber group
@@ -779,7 +780,7 @@ std::vector<partition::Partition> Fiber::makeStrongReal
 */
 std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 {
-  latticetypes::SmallBitVectorList b(fiberRank());
+  bitvector::SmallBitVectorList b(fiberRank());
 
   for (size_t i = 0; i < b.size(); ++i)
     b[i]=d_toAdjoint.column(i);
@@ -797,7 +798,7 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
     yf ^= bitset::RankFlags(class_base(c));
 
     // find preimage |xf| of |yf| in the fiber
-    latticetypes::SmallBitVector v(yf,adjointFiberRank()); // the desired image
+    bitvector::SmallBitVector v(yf,adjointFiberRank()); // the desired image
 
     // solve equation |toAdjoint(xf)=v|
     bitset::RankFlags xf;
@@ -881,12 +882,12 @@ gradings::Grading Fiber::grading(AdjointFiberElt x) const
 AdjointFiberElt Fiber::gradingRep(const gradings::Grading& gr) const
 {
   const size_t ir=imaginaryRank();
-  latticetypes::SmallBitVector target(gr,ir);
-  target -= latticetypes::SmallBitVector(d_baseGrading,ir);
+  bitvector::SmallBitVector target(gr,ir);
+  target -= bitvector::SmallBitVector(d_baseGrading,ir);
 
-  latticetypes::SmallBitVectorList shifts(adjointFiberRank());
+  bitvector::SmallBitVectorList shifts(adjointFiberRank());
   for (size_t i = 0; i < shifts.size(); ++i)
-    shifts[i]=latticetypes::SmallBitVector(d_gradingShift[i],ir);
+    shifts[i]=bitvector::SmallBitVector(d_gradingShift[i],ir);
 
   bitset::RankFlags result; bool success=firstSolution(result,shifts,target);
   if (not success)
@@ -901,9 +902,9 @@ AdjointFiberElt Fiber::gradingRep(const gradings::Grading& gr) const
   Precondition: |cr| a weight vector for an imaginary coroot \f$\alpha^\vee\f$
   for this Cartan.
 */
-latticetypes::SmallBitVector Fiber::mAlpha(const rootdata::Root& cr) const
+bitvector::SmallBitVector Fiber::mAlpha(const rootdata::Root& cr) const
 {
-  return d_fiberGroup.toBasis(latticetypes::SmallBitVector(cr));
+  return d_fiberGroup.toBasis(bitvector::SmallBitVector(cr));
 }
 
 /*!
@@ -914,9 +915,9 @@ latticetypes::SmallBitVector Fiber::mAlpha(const rootdata::Root& cr) const
 AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
 {
   bitset::RankFlags xf(x);
-  latticetypes::SmallBitVector v(xf,fiberRank());
+  bitvector::SmallBitVector v(xf,fiberRank());
 
-  latticetypes::SmallBitVector w = d_toAdjoint*v;
+  bitvector::SmallBitVector w = d_toAdjoint*v;
 
   return AdjointFiberElt(w.data().to_ulong());
 }
