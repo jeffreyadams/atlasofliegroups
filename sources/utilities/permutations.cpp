@@ -171,6 +171,8 @@ void Permutation::conjugate(matrix::Matrix_base<T>& M) const
   for (size_t i=0; i<n; ++i)
     for (size_t j=0; j<n; ++j)
       result(pi[i],pi[j]) = M(i,j);
+
+  result.swap(M); // export result in |M|
 }
 
 /*! Permutes rows and columns of the matrix according to the inverse
@@ -195,6 +197,8 @@ void Permutation::inv_conjugate(matrix::Matrix_base<T>& M) const
   for (size_t i=0; i<n; ++i)
     for (size_t j=0; j<n; ++j)
       result(i,j) = M(pi[i],pi[j]);
+
+  result.swap(M); // export result in |M|
 }
 
 
