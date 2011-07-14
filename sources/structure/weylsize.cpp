@@ -19,7 +19,6 @@ factorization, to avoid overflow problems).
 
 #include <cassert>
 
-#include "intutils.h"
 #include "lietype.h"
 
 /*****************************************************************************
