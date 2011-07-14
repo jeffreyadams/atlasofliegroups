@@ -42,10 +42,9 @@
 #include "arithmetic.h"
 #include "dynkin.h"
 #include "lattice.h"
-#include "partition.h"
+#include "bitmap.h"  // for root sets
 #include "prerootdata.h"
 #include "matreduc.h"
-#include "tags.h"
 
 /*****************************************************************************
 
@@ -358,6 +357,27 @@ template <typename I, typename O>
   }
 }
 
+RootSet RootSystem::simpleRootSet() const
+{
+  RootSet simple_roots(numRoots());
+  simple_roots.fill(numPosRoots(),numPosRoots()+rk);
+  return simple_roots;
+}
+
+RootList RootSystem::simpleRootList() const
+{
+  RootList simple_roots(rk);
+  for (weyl::Generator i=0; i<rk; ++i)
+    simple_roots[i]=simpleRootNbr(i);
+  return simple_roots;
+}
+
+RootSet RootSystem::posRootSet() const
+{
+  RootSet pos_roots(numRoots());
+  pos_roots.fill(numPosRoots(),numRoots());
+  return pos_roots;
+}
 
 
 latticetypes::LatticeMatrix RootSystem::cartanMatrix() const
@@ -386,6 +406,12 @@ latticetypes::LatticeMatrix RootSystem::cartanMatrix(const RootList& rb) const
 
   return result;
 }
+
+lietype::LieType RootSystem::Lie_type() const
+{ return dynkin::Lie_type(cartanMatrix()); }
+
+lietype::LieType RootSystem::Lie_type(RootList sub) const
+{ return dynkin::Lie_type(cartanMatrix(sub)); }
 
 latticetypes::LatticeCoeff
 RootSystem::bracket(RootNbr alpha, RootNbr beta) const // $\<\alpha,\beta^\vee>$
@@ -708,6 +734,12 @@ RootDatum RootDatum::sub_datum(const RootList& generators) const
   return RootDatum(prerootdata::PreRootDatum(roots,coroots,rank()));
 }
 
+latticetypes::RatWeight RootDatum::fundamental_weight(weyl::Generator i) const
+{ return latticetypes::RatWeight(weight_numer[i],Cartan_denom); }
+
+latticetypes::RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
+{ return latticetypes::RatWeight(coweight_numer[i],Cartan_denom); }
+
 /******** accessors **********************************************************/
 
 /*!
@@ -917,7 +949,7 @@ void RootDatum::fillStatus()
   d_status.set(IsAdjoint); // remains set only of all |factor|s are 1
 
   for (size_t i=0; i<factor.size(); ++i)
-    if (intutils::abs(factor[i]) != 1)
+    if (arithmetic::abs(factor[i]) != 1)
       d_status.reset(IsAdjoint);
 
   q = latticetypes::LatticeMatrix
@@ -928,7 +960,7 @@ void RootDatum::fillStatus()
   d_status.set(IsSimplyConnected); // remains set only of all |factor|s are 1
 
   for (size_t i=0; i<factor.size(); ++i)
-    if (intutils::abs(factor[i]) != 1)
+    if (arithmetic::abs(factor[i]) != 1)
       d_status.reset(IsSimplyConnected);
 }
 

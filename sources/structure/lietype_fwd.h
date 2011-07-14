@@ -23,10 +23,11 @@ namespace atlas {
 namespace lietype {
 
   typedef char TypeLetter;
+
   class SimpleLieType;
   class LieType;
   class InnerClassType;
-
+  struct Layout;
 }
 
 }

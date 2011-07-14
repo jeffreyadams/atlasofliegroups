@@ -10,7 +10,7 @@
 
 #include "bitmap.h"
 #include "matrix.h"
-#include "intutils.h"
+#include "arithmetic.h"
 #include "arithmetic.h"
 
 #include "latticetypes_fwd.h" // for explicit instantiation only
@@ -63,17 +63,17 @@ bool row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k)
    With the number of operations needed probably quite small on average, the
    cheapest solution is probably to do recording operations immediately.
 */
-// make |M(i,j)==0| and |M(i,k)>0| by operations with columns |j| and |k|
+// make |M(i,j)==0| and keep |M(i,k)>0| by operations with columns |j| and |k|
 // precondition |M(i,k)>0|
 template<typename C>
 bool column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
 		  matrix::Matrix<C>& rec)
 {
-  // Rather than forcing the sign of |M(i,j)|, we shall use |intutils::divide|
+  // Rather than forcing the sign of |M(i,j)|, we shall use |arithmetic::divide|
   // This is done to avoid gratuitous negative entries in |lattice::kernel|
   do
   {
-    C q = -intutils::divide(M(i,j),M(i,k));
+    C q = -arithmetic::divide(M(i,j),(unsigned long)M(i,k));
     M.columnOperation(j,k,q); // now |M(i,j)>=0|
     rec.columnOperation(j,k,q);
     if (M(i,j)==C(0))
@@ -88,7 +88,7 @@ bool column_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
   return true;  // determinant $-1$ here
 }
 
-/* make |M(i,j)==0| and |M(k,j)>0| by operations with rows |i| and |k|
+/* make |M(i,j)==0| and keep |M(k,j)>0| by operations with rows |i| and |k|,
    precondition |M(k,j)>0|. This function has a variant where row operations
    are recorded inversely, in other words by column operations in the opposite
    sense; the template parameter |direct| tells whether recording is direct
@@ -97,11 +97,11 @@ template<typename C, bool direct>
 bool row_clear(matrix::Matrix<C>& M, size_t i, size_t j, size_t k,
 	       matrix::Matrix<C>& rec)
 {
-  // Rather than forcing the sign of |M(i,j)|, we shall use |intutils::divide|
+  // Rather than forcing the sign of |M(i,j)|, we shall use |arithmetic::divide|
   // For |direct==false| this often avoids touching column |i| of |rec|
   do
   {
-    C q = intutils::divide(M(i,j),M(k,j));
+    C q = arithmetic::divide(M(i,j),(unsigned long)M(k,j));
     M.rowOperation(i,k,-q); // now |M(i,j)>=0|, even if |M(i,j)| was negative
     if (direct)
       rec.rowOperation(i,k,-q);
@@ -181,7 +181,7 @@ std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
   matrix::Matrix<C>(n).swap(col);
   std::vector<C> diagonal;
   if (n==0 or m==0) return diagonal; // take out these trivial cases
-  diagonal.reserve(intutils::min(m,n));
+  diagonal.reserve(arithmetic::min(m,n));
 
   int row_sign = 1, col_sign=1; // determinants of row/column operations
 

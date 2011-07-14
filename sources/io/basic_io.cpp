@@ -13,8 +13,10 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "lattice.h"
+#include "matrix.h"  // vectors, matrices
+#include "latticetypes.h" // rational vectors
 #include "lietype.h"
+#include "weyl.h"
 
 /*****************************************************************************
 

@@ -25,6 +25,7 @@
 #include "commands.h"
 #include "prerootdata.h"
 #include "rootdata.h"
+#include "dynkin.h"
 #include "cartanclass.h"
 #include "complexredgp.h"
 #include "realredgp.h"

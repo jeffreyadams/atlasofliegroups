@@ -15,7 +15,6 @@
 #include <limits>
 #include <algorithm>
 #include "matreduc.h"
-#include "intutils.h"
 #include "permutations.h"
 #include "arithmetic.h"
 #include "polynomials.h" // and most importantly polynomials_def.h
@@ -482,7 +481,7 @@ void Matrix<C>::invert(C& d)
   if (diagonal.size()<n) // insufficient rank for inversion
   { d=C(0); return; } // record zero determinant, leave |*this| in diagonal
 
-  d=intutils::abs(diagonal[0]); // guaranteed to exist if we get here
+  d=arithmetic::abs(diagonal[0]); // guaranteed to exist if we get here
   for (size_t i=1; i<n; ++i)
     d=arithmetic::lcm(d,diagonal[i]); // other diagonal entries are positive
 

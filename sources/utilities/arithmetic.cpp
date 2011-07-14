@@ -16,7 +16,7 @@
 #include <stdexcept>
 
 #include "constants.h"
-#include "intutils.h"
+#include "arithmetic.h"
 #include "bits.h"
 #include "error.h"
 
@@ -138,7 +138,7 @@ Rational Rational::operator/(Rational q) const
 Rational& Rational::power(int n)
 {
   normalize();
-  unsigned long numer=intutils::abs(num);
+  unsigned long numer=arithmetic::abs(num);
   if (n<0)
   { if (num==0)
       throw std::domain_error("Negative power of rational zero");

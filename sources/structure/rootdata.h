@@ -19,17 +19,16 @@
 
 #include <algorithm>
 
+#include "arithmetic_fwd.h"
 #include "prerootdata_fwd.h"
 #include "weyl_fwd.h"
-
-#include "arithmetic.h"
-#include "bitset.h"
-#include "bitmap.h"
-#include "latticetypes.h"
-#include "lietype.h"
-#include "dynkin.h"
-#include "permutations.h"
 #include "tags.h"
+#include "lietype_fwd.h"
+#include "latticetypes_fwd.h"
+
+#include "bitset.h" // for ascent and descent sets
+#include "matrix.h" // for loads of subobjects
+#include "permutations.h" // for storing root permutations
 
 namespace atlas {
 
@@ -129,13 +128,11 @@ class RootSystem
   latticetypes::LatticeCoeff cartan(weyl::Generator i, weyl::Generator j) const
   { return Cartan_entry(i,j); };
   latticetypes::LatticeMatrix cartanMatrix() const;
-  lietype::LieType Lie_type() const
-  { return dynkin::Lie_type(cartanMatrix()); }
+  lietype::LieType Lie_type() const;
 
   // for subsystem
   latticetypes::LatticeMatrix cartanMatrix(const RootList& sub) const;
-  lietype::LieType Lie_type(RootList sub) const
-  { return dynkin::Lie_type(cartanMatrix(sub)); }
+  lietype::LieType Lie_type(RootList sub) const;
 
 
 
@@ -177,33 +174,16 @@ class RootSystem
   { return numRoots()-1-alpha; }
 
 
-  RootSet simpleRootSet() const // NOT for iteration over it, seems never used
-  {
-    RootSet simple_roots(numRoots());
-    simple_roots.fill(numPosRoots(),numPosRoots()+rk);
-    return simple_roots;
-  }
-
-  RootList simpleRootList() const // NOT for iteration over it
-  {
-    RootList simple_roots(rk);
-    for (weyl::Generator i=0; i<rk; ++i)
-      simple_roots[i]=simpleRootNbr(i);
-    return simple_roots;
-  }
-
-  RootSet posRootSet() const // NOT for iteration over it, may serve as mask
-  {
-    RootSet pos_roots(numRoots());
-    pos_roots.fill(numPosRoots(),numRoots());
-    return pos_roots;
-  }
+  RootSet simpleRootSet() const; // NOT for iteration over it, seems never used
+  RootList simpleRootList() const; // NOT for iteration over it
+  RootSet posRootSet() const; // NOT for iteration over it, may serve as mask
 
 // other accessors
 
   // the next method only works for _simple_ roots! (whence no RootNbr for |i|)
-  const permutations::Permutation& simple_root_permutation(weyl::Generator i) const
-    { return root_perm[i]; }
+  const permutations::Permutation& simple_root_permutation(weyl::Generator i)
+    const
+  { return root_perm[i]; }
 
   bitset::RankFlags descent_set(RootNbr alpha) const
   {
@@ -457,11 +437,9 @@ use by accessors.
   const LT::Weight& posCoroot(size_t i) const
     { assert(i<numPosRoots()); return  *(beginPosCoroot()+i); }
 
-  LT::RatWeight fundamental_weight(weyl::Generator i) const
-    { return LT::RatWeight(weight_numer[i],Cartan_denom); }
-
-  LT::RatWeight fundamental_coweight(weyl::Generator i) const
-    { return LT::RatWeight(coweight_numer[i],Cartan_denom); }
+  // avoid inlining of the following to not depend on rational vector
+  LT::RatWeight fundamental_weight(weyl::Generator i) const;
+  LT::RatWeight fundamental_coweight(weyl::Generator i) const;
 
 // other accessors
 

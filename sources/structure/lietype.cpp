@@ -533,6 +533,11 @@ latticetypes::LatticeMatrix involution(const Layout& lo)
   return result;
 }
 
+latticetypes::LatticeMatrix involution(const lietype::LieType& lt,
+				       const lietype::InnerClassType& ict)
+{ return involution(Layout(lt,ict)); // default to identity permutation
+}
+
 } // |namespace lietype|
 
 /*****************************************************************************

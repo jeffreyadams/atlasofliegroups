@@ -26,6 +26,7 @@
 #include <set>
 #include <stdexcept>
 
+#include "arithmetic.h"
 #include "bitmap.h"
 #include "bruhat.h"
 #include "cartanclass.h"
@@ -1139,7 +1140,7 @@ latticetypes::RatLatticeElt
 
   // reduce modulo integers and return
   for (size_t i=0; i<p.size(); ++i)
-    p[i]= intutils::remainder(p[i],t.denominator());
+    p[i]= arithmetic::remainder(p[i],t.denominator());
   return latticetypes::RatLatticeElt(p,t.denominator()).normalize();
 }
 

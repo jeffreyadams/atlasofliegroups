@@ -15,7 +15,16 @@ StandardRepK and KhatContext.
 
 #include "standardrepk.h"
 
+#include <cassert>
+#include <iostream>
+#include <sstream>
+#include <deque>
+
 #include "constants.h"
+#include "arithmetic.h"
+#include "matreduc.h"
+#include "tags.h"
+
 #include "cartanclass.h"
 #include "complexredgp.h"
 #include "realredgp.h"
@@ -24,17 +33,10 @@ StandardRepK and KhatContext.
 #include "descents.h"
 #include "lattice.h"
 #include "rootdata.h"
-#include "matreduc.h"
-#include "intutils.h"
 #include "ioutils.h"
-#include "tags.h"
 #include "graph.h"
 #include "basic_io.h"
 #include "prettyprint.h"
-#include <cassert>
-#include <iostream>
-#include <sstream>
-#include <deque>
 
 namespace atlas {
 
@@ -296,7 +298,7 @@ SRK_context::height(const StandardRepK& sr) const
   level sum=0;
   for (rootdata::WRootIterator
 	 it=rd.beginPosCoroot(); it!=rd.endPosCoroot(); ++it)
-    sum +=intutils::abs(mu.scalarProduct(*it));
+    sum +=arithmetic::abs(mu.scalarProduct(*it));
 
   return sum/2; // each |scalarProduct| above is even
 } // |SRK_context::height|
@@ -1140,7 +1142,7 @@ std::ostream& SRK_context::print(std::ostream& strm,const Char& ch) const
   for (Char::const_iterator it=ch.begin(); it!=ch.end(); ++it)
   {
     strm << (it->second>0 ? " + " : " - ");
-    long int ac=intutils::abs<long int>(it->second);
+    long int ac=arithmetic::abs<long int>(it->second);
     if (ac!=1)
       strm << ac << '*';
     print(strm,it->first);
@@ -1157,7 +1159,7 @@ std::ostream& SRK_context::print(std::ostream& strm,const q_Char& ch) const
     if (it->second.degree()==0)
     {
       strm << (it->second[0]>0 ? " + " : " - ");
-      long int ac=intutils::abs(it->second[0]);
+      long int ac=arithmetic::abs(it->second[0]);
       if (ac!=1)
 	strm << ac << '*';
     }
@@ -1624,7 +1626,7 @@ std::ostream& KhatContext::print(std::ostream& strm,
   for (combination::const_iterator it=ch.begin(); it!=ch.end(); ++it)
   {
     strm << (it->second>0 ? " + " : " - ");
-    long int ac=intutils::abs<long int>(it->second);
+    long int ac=arithmetic::abs<long int>(it->second);
     if (ac!=1)
       strm << ac << '*';
     if (brief)
@@ -1644,7 +1646,7 @@ std::ostream& qKhatContext::print
     if (it->second.degree()==0)
     {
       strm << (it->second[0]>0 ? " + " : " - ");
-      long int ac=intutils::abs(it->second[0]);
+      long int ac=arithmetic::abs(it->second[0]);
       if (ac!=1)
 	strm << ac << '*';
     }

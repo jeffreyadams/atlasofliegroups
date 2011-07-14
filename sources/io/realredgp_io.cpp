@@ -13,6 +13,7 @@
 
 #include "realredgp_io.h"
 
+#include "arithmetic.h"
 #include "basic_io.h"
 #include "bitmap.h"
 #include "cartan_io.h"
@@ -199,7 +200,7 @@ std::ostream& printStrongReal(std::ostream& strm,
 
       latticetypes::LatticeElt& zn = z.numerator();
       for (size_t i=0; i<z.size(); ++i)
-        zn[i]=intutils::remainder(zn[i],z.denominator());
+        zn[i]=arithmetic::remainder(zn[i],z.denominator());
       strm << "class #" << f_csc
 	   << ", possible square: exp(2i\\pi(" << z << "))" << std::endl;
     }

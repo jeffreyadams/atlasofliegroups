@@ -13,7 +13,7 @@
 
 #include "arithmetic.h"
 #include "bitmap.h"
-#include "intutils.h"
+#include "arithmetic.h"
 #include "latticetypes.h"
 #include "matrix.h"
 #include "matreduc.h"
@@ -627,7 +627,7 @@ void to_array(GrpArr& a, GrpNbr x, const GroupType& t)
 void to_array(GrpArr& a, const latticetypes::Weight& v, const GroupType& t)
 {
   for (size_t i=0; i<v.size(); ++i)
-    a[i] = intutils::remainder(v[i],t[i]);
+    a[i] = arithmetic::remainder(v[i],t[i]);
 }
 
 
@@ -644,7 +644,7 @@ void toEndomorphism(Endomorphism& e, const latticetypes::LatticeMatrix& q,
 
   for (size_t j=0; j<q.numColumns(); ++j)
     for (size_t i=0; i<q.numRows(); ++i)
-      e(i,j) = intutils::remainder(q(i,j),A.type()[i]);
+      e(i,j) = arithmetic::remainder(q(i,j),A.type()[i]);
 }
 
 

@@ -15,8 +15,9 @@
 
 #include <functional>
 
+#include "latticetypes_fwd.h"
+
 #include "comparison.h"
-#include "latticetypes.h"
 #include "partition.h"
 #include "rootdata.h"
 

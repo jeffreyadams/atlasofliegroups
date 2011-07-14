@@ -13,7 +13,6 @@
 */
 
 #include "latticetypes.h"
-#include "intutils.h"
 #include "arithmetic.h"
 #include <stdexcept>
 
@@ -93,7 +92,7 @@ RatLatticeElt& RatLatticeElt::normalize()
   for (size_t i=0; i<d_num.size(); ++i)
   {
     if (d_num[i]!=0)
-      d=arithmetic::gcd(d,intutils::abs(d_num[i]));
+      d=arithmetic::gcd(d,arithmetic::abs(d_num[i]));
     if (d==1)
       return *this;
   }

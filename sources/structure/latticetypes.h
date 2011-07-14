@@ -16,7 +16,7 @@
 
 #include "latticetypes_fwd.h"
 #include "matrix.h" // to make |LatticeElt| a complete type
-#include "intutils.h"
+#include "arithmetic.h"
 #include "bitset.h"
 
 /* The following include is not required by this file but we put it here
@@ -53,7 +53,7 @@ class RatLatticeElt
   Builds the RatLatticeElt with numerator v and denominator d.
   */
   RatLatticeElt(const LatticeElt& v, LatticeCoeff d)
-    :d_num(v), d_denom(intutils::abs(d))
+    :d_num(v), d_denom(arithmetic::abs(d))
   { if (d<0) d_num*=-1; }
 
 // accessors

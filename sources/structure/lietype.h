@@ -15,10 +15,11 @@
 #define LIETYPE_H
 
 #include "lietype_fwd.h"
-#include "permutations.h"
-#include <stdexcept>
 
-#include "latticetypes.h"
+#include <stdexcept>
+#include "latticetypes_fwd.h"
+
+#include "permutations.h" // needed in the |Layout| structure
 
 namespace atlas {
 
@@ -108,8 +109,8 @@ struct InnerClassType : public std::vector<TypeLetter>
   InnerClassType() : base() {}
 };
 
-struct Layout {
-
+struct Layout
+{
   lietype::LieType d_type;
   lietype::InnerClassType d_inner;
   permutations::Permutation d_perm;
@@ -143,11 +144,8 @@ namespace lietype {
     throw (std::runtime_error,std::bad_alloc);
 
   // permutation matrix for |ict| in simply connected |lt|, Bourbaki order
-  inline
   latticetypes::LatticeMatrix involution(const lietype::LieType& lt,
-					 const lietype::InnerClassType& ict)
-  { return involution(Layout(lt,ict)); // default to identity permutation
-  }
+					 const lietype::InnerClassType& ict);
 
   LieType dual_type(LieType lt);
 

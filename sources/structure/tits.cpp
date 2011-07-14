@@ -80,7 +80,7 @@ std::vector<gradings::Grading> compute_square_classes
   unsigned int d=2u*repr.denominator(); // we reduce modulo $2\Z^rank$
   latticetypes::LatticeElt& num=repr.numerator();
   for (size_t i=0; i<num.size(); ++i)
-    num[i] = intutils::remainder(num[i],d);
+    num[i] = arithmetic::remainder(num[i],d);
 }
 
 latticetypes::RatWeight TorusElement::log_pi(bool normalize) const
@@ -101,7 +101,7 @@ arithmetic::Rational TorusElement::evaluate_at
   (const latticetypes::LatticeElt& alpha) const
 {
   unsigned int d = repr.denominator();
-  int n = intutils::remainder(repr.numerator().dot(alpha),d+d);
+  int n = arithmetic::remainder(repr.numerator().dot(alpha),d+d);
   return arithmetic::Rational(n,d);
 }
 
@@ -274,7 +274,7 @@ bool GlobalTitsGroup::has_central_square(GlobalTitsElement a) const
   // now check if |a.t| is central, by scalar products with |simple.coroots()|
   latticetypes::RatWeight rw = a.t.log_2pi();
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (intutils::remainder(simple.coroots()[s].dot(rw.numerator())
+    if (arithmetic::remainder(simple.coroots()[s].dot(rw.numerator())
 			    ,rw.denominator())!=0)
       return false;
 
@@ -289,7 +289,7 @@ bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
   // now check if |t| is central, by scalar products with |simple.coroots()|
   latticetypes::RatWeight rw = t.log_2pi();
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
-    if (intutils::remainder(simple.coroots()[s].dot(rw.numerator())
+    if (arithmetic::remainder(simple.coroots()[s].dot(rw.numerator())
 			    ,rw.denominator())!=0)
       return false;
 
@@ -305,9 +305,9 @@ bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,
   // now check if |t| is central, by scalar products with |simple.coroots()|
   latticetypes::RatWeight rw = t.log_2pi();
   for (weyl::Generator s=0; s<sub.rank(); ++s)
-    if (intutils::remainder(sub.parent_datum().coroot(sub.parent_nr_simple(s))
-			    .dot(rw.numerator())
-			    ,rw.denominator())!=0)
+    if (arithmetic::remainder(sub.parent_datum().coroot(sub.parent_nr_simple(s))
+			      .dot(rw.numerator())
+			      ,rw.denominator())!=0)
       return false;
 
   return true;

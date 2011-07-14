@@ -28,24 +28,6 @@ namespace intutils {
 
 
 
-/*!
-  Synopsis: returns the factorial of a. It is assumed that a >= 0; we do
-  not worry about overflow.
-*/
-template<typename I> I factorial(I n)
-{
-  I f = 1;
-
-  for (I i =n; i>1; --i)
-    f *= i;
-
-  return f;
-}
-
-
-// There are no instantiations of |factorial| ! See however |size::factorial|
-
-
 } // namespace intutils
 
 } // namespace atlas
