@@ -14,8 +14,7 @@
 #ifndef LATTICE_H  /* guard against multiple inclusions */
 #define LATTICE_H
 
-#include "bitvector_fwd.h"
-#include "latticetypes_fwd.h"
+#include "atlas_types.h"
 
 /******** function declarations **********************************************/
 
@@ -30,17 +29,17 @@ template<typename I, typename O>
   void inverseBaseChange(I, I, O, I, I);
 
 // find basis in dual lattice of perpendicular to given vectors
-latticetypes::WeightList perp(const latticetypes::WeightList&, size_t);
+CoweightList perp(const WeightList&, size_t);
 
 // find matrix whose image is the sublattice annihilated by |M|
-latticetypes::LatticeMatrix kernel(const latticetypes::LatticeMatrix& M);
+LatticeMatrix kernel(const LatticeMatrix& M);
 
-latticetypes::LatticeMatrix eigen_lattice
-  (latticetypes::LatticeMatrix M, // by value
-   latticetypes::LatticeCoeff lambda);
+LatticeMatrix eigen_lattice
+  (LatticeMatrix M, // by value
+   LatticeCoeff lambda);
 
 // find matrix with same kernel, but with rows spanning saturated sublattice
-latticetypes::LatticeMatrix row_saturate(const latticetypes::LatticeMatrix& M);
+LatticeMatrix row_saturate(const LatticeMatrix& M);
 
 } // |namespace lattice|
 

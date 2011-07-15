@@ -243,10 +243,10 @@ void roots_f()
 {
   ioutils::OutputFile file;
 
-  const rootdata::RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = currentComplexGroup().rootDatum();
 
-  latticetypes::WeightList::const_iterator first = rd.beginRoot();
-  latticetypes::WeightList::const_iterator last = rd.endRoot();
+  WeightList::const_iterator first = rd.beginRoot();
+  WeightList::const_iterator last = rd.endRoot();
   basic_io::seqPrint(file,first,last,"\n") << std::endl;
 }
 
@@ -255,10 +255,10 @@ void coroots_f()
 {
   ioutils::OutputFile file;
 
-  const rootdata::RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = currentComplexGroup().rootDatum();
 
-  latticetypes::WeightList::const_iterator first = rd.beginCoroot();
-  latticetypes::WeightList::const_iterator last = rd.endCoroot();
+  CoweightList::const_iterator first = rd.beginCoroot();
+  CoweightList::const_iterator last = rd.endCoroot();
   basic_io::seqPrint(file,first,last,"\n") << std::endl;
 }
 
@@ -266,7 +266,7 @@ void coroots_f()
 // Print the simple roots in the lattice coordinates.
 void simpleroots_f()
 {
-  const rootdata::RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = currentComplexGroup().rootDatum();
 
   rootdata::WRootIterator first = rd.beginSimpleRoot();
   rootdata::WRootIterator last = rd.endSimpleRoot();
@@ -276,7 +276,7 @@ void simpleroots_f()
 // Print the simple coroots in the lattice coordinates.
 void simplecoroots_f()
 {
-  const rootdata::RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = currentComplexGroup().rootDatum();
 
   rootdata::WRootIterator first = rd.beginSimpleCoroot();
   rootdata::WRootIterator last = rd.endSimpleCoroot();
@@ -288,7 +288,7 @@ void posroots_f()
 {
   ioutils::OutputFile file;
 
-  const rootdata::RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = currentComplexGroup().rootDatum();
 
   rootdata::WRootIterator first = rd.beginPosRoot();
   rootdata::WRootIterator last = rd.endPosRoot();
@@ -300,7 +300,7 @@ void poscoroots_f()
 {
   ioutils::OutputFile file;
 
-  const rootdata::RootDatum& rd = currentComplexGroup().rootDatum();
+  const RootDatum& rd = currentComplexGroup().rootDatum();
 
   rootdata::WRootIterator first = rd.beginPosCoroot();
   rootdata::WRootIterator last = rd.endPosCoroot();

@@ -20,7 +20,6 @@ namespace atlas {
 
 namespace prerootdata {
 
-  class CartanMatrix;
   class PreRootDatum;
 
 }

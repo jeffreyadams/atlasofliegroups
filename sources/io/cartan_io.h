@@ -12,9 +12,10 @@
 
 #include <iosfwd>
 
+#include "atlas_types.h"
+
 #include "complexredgp_io_fwd.h"
 #include "cartanclass_fwd.h"
-#include "rootdata_fwd.h"
 
 #include "realform.h"
 
@@ -32,7 +33,7 @@ std::ostream& printFiber(std::ostream&, const cartanclass::Fiber&,
 
 std::ostream& printGradings(std::ostream&, const cartanclass::Fiber&,
 			    const realform::RealFormList&,
-			    const rootdata::RootSystem&);
+			    const RootSystem&);
 
 }
 

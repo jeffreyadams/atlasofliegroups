@@ -36,16 +36,16 @@ namespace {
 			NegDenominator, TooFew };
 
   GeneratorError checkGenerator(input::InputBuffer& buf, size_t& i,
-				latticetypes::LatticeCoeff& d,
-				const latticetypes::CoeffList& u);
+				LatticeCoeff& d,
+				const CoeffList& u);
 
-  latticetypes::LatticeMatrix makeOrthogonal
-    (const latticetypes::RatWeightList& rwl, size_t r);
+  int_Matrix makeOrthogonal
+    (const RatWeightList& rwl, size_t r);
 
-  std::ostream& printCenter(std::ostream&, const latticetypes::CoeffList&);
+  std::ostream& printCenter(std::ostream&, const CoeffList&);
 
-  latticetypes::RatWeight readGenerator(size_t n_gen,
-					latticetypes::LatticeCoeff d,
+  RatWeight readGenerator(size_t n_gen,
+					LatticeCoeff d,
 					input::InputBuffer& buf);
 
   input::HistoryBuffer kernelgen_input_buffer;
@@ -65,11 +65,11 @@ namespace interactive_lattice {
   It throws an InputError if the interaction with the user does not conclude
   successfully. In that case, d_rwl is not modified.
 */
-int getGenerators(latticetypes::RatWeightList& d_rwl,
-		  const latticetypes::CoeffList& u)
+int getGenerators(RatWeightList& d_rwl,
+		  const CoeffList& u)
   throw(error::InputError)
 {
-  latticetypes::RatWeightList rwl;
+  RatWeightList rwl;
 
   std::string genString;
   interactive::common_input() >> genString;
@@ -107,7 +107,7 @@ int getGenerators(latticetypes::RatWeightList& d_rwl,
 
       ib.reset();
       size_t i;
-      latticetypes::LatticeCoeff d;
+      LatticeCoeff d;
       switch (checkGenerator(ib,i,d,u))
       {
       case NoError:
@@ -175,15 +175,15 @@ int getGenerators(latticetypes::RatWeightList& d_rwl,
   prefers answering "ad" or "sc" rather than giving any generators, we pass
   this condition as a return code without modifying anything.
 */
-int getLattice(const latticetypes::CoeffList& root_invf,
-	       latticetypes::WeightList& root_lattice_basis)
+int getLattice(const CoeffList& root_invf,
+	       WeightList& root_lattice_basis)
   throw(error::InputError)
 {
   size_t r = root_lattice_basis.size(); // full rank of root datum
   assert(root_invf.size()==r);
 
-  latticetypes::Weight u; // non-unit invariant factors
-  latticetypes::WeightList lb; // "local basis" corresponding to non-units
+  CoeffList u; // non-unit invariant factors
+  WeightList lb; // "local basis" corresponding to non-units
   for (size_t i=0; i<r; ++i)
     if (root_invf[i] != 1)
     {
@@ -192,7 +192,7 @@ int getLattice(const latticetypes::CoeffList& root_invf,
     }
 
   // get generators of character group
-  latticetypes::RatWeightList rwl;  // generator list, each of size |u.size()|
+  RatWeightList rwl;  // generator list, each of size |u.size()|
   int code=getGenerators(rwl,u);    // input them; might throw an InputError
 
   if (code>0)
@@ -200,10 +200,10 @@ int getLattice(const latticetypes::CoeffList& root_invf,
 
   // make basis elements corresponding to those central elements
 
-  latticetypes::LatticeMatrix q = makeOrthogonal(rwl,u.size());
+  LatticeMatrix q = makeOrthogonal(rwl,u.size());
 
   // convert |lb| columns to linear combinations of them according to |q|
-  latticetypes::LatticeMatrix lin_comb(lb,r); // matrix with columns |lb|
+  LatticeMatrix lin_comb(lb,r); // matrix with columns |lb|
   lin_comb *= q; // replace them by linear combinations
 
   // make actual basis, inserting columns |lin_comb| into |root_lattice_basis|
@@ -242,8 +242,8 @@ namespace {
   NOTE: no overflow checking is done on d.
 */
 GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
-			      latticetypes::LatticeCoeff& d,
-			      const latticetypes::CoeffList& u)
+			      LatticeCoeff& d,
+			      const CoeffList& u)
 {
   std::streampos pos = buf.tellg();
   unsigned long lc = 1;
@@ -255,7 +255,7 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
       return TooFew;
     }
 
-    latticetypes::LatticeCoeff a;
+    LatticeCoeff a;
     buf >> a;
     char x=0;
     buf >> x;
@@ -265,7 +265,7 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
       return FormatError;
     }
 
-    latticetypes::LatticeCoeff b = 0;
+    LatticeCoeff b = 0;
     buf >> b;
 
     // check denominator
@@ -325,26 +325,26 @@ GeneratorError checkGenerator(input::InputBuffer& buf, size_t& r,
 
   NOTE: this is a sloppy implementation; we don't worry about overflow.
 */
-latticetypes::LatticeMatrix makeOrthogonal
-  (const latticetypes::RatWeightList& rwl, size_t r)
+LatticeMatrix makeOrthogonal
+  (const RatWeightList& rwl, size_t r)
 {
   // find common denominator
   unsigned long d = 1;
   for (size_t i=0; i<rwl.size(); ++i)
     d = arithmetic::lcm(d,rwl[i].denominator());
 
-  latticetypes::LatticeMatrix m(r,rwl.size()); // matrix of numerators
+  LatticeMatrix m(r,rwl.size()); // matrix of numerators
 
   for (size_t j=0; j<m.numColumns(); ++j)
     m.set_column(j,rwl[j].numerator()*(d/rwl[j].denominator()));
 
   // find "orthogonal" basis
-  latticetypes::LatticeMatrix row,col;
-  latticetypes::CoeffList factor = matreduc::diagonalise(m,row,col);
+  int_Matrix row,col;
+  CoeffList factor = matreduc::diagonalise(m,row,col);
   // now |row.row(i)*(m*col).col(j)| is $\delta_{i,j}factor[i]$ (for all $i,j$)
 
   // initialise |result| to dual basis to |adapted_basis(m)|
-  latticetypes::LatticeMatrix result = row.transposed();
+  int_Matrix result = row.transposed();
 
   // integrality requires multiple $d/\gcd(d,factor[j])$ of |result.col(j)|
   for (size_t j=0; j<factor.size(); ++j)
@@ -363,7 +363,7 @@ latticetypes::LatticeMatrix makeOrthogonal
   generators for the center of the derived group, and a zero for each torus
   factor.
 */
-std::ostream& printCenter(std::ostream& strm, const latticetypes::CoeffList& u)
+std::ostream& printCenter(std::ostream& strm, const CoeffList& u)
 {
   for (size_t i=0; i<u.size(); ++i)
   {
@@ -383,19 +383,19 @@ std::ostream& printCenter(std::ostream& strm, const latticetypes::CoeffList& u)
   \brief: returns generator from |buf|, with |n_gen| entries, denominator |d|
 
 */
-latticetypes::RatWeight readGenerator(size_t n_gen,
-                                      latticetypes::LatticeCoeff d,
+RatWeight readGenerator(size_t n_gen,
+                                      LatticeCoeff d,
 				      input::InputBuffer& buf)
 {
-  latticetypes::LatticeElt numer(n_gen);
+  int_Vector numer(n_gen);
   char dummy; // bit bucket for separator characters
-  latticetypes::LatticeCoeff b;
+  LatticeCoeff b;
   for (size_t i=0; i<n_gen; ++i)
   {
     buf >> numer[i] >> dummy >> b >> dummy;// read fraction, skipping "/", ","
     numer[i] *= d/b; // because denominators are forced to |d|
   }
-  return latticetypes::RatWeight(numer,d);
+  return RatWeight(numer,d);
 }
 
 } // |namespace|

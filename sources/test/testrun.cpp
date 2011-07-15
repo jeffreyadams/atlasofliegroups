@@ -355,8 +355,8 @@ CoveringIterator::CoveringIterator(const lietype::LieType& lt)
   , d_smithBasis(d_semisimpleRank)
   , d_preRootDatum()
 {
-  latticetypes::CoeffList factor;
-  latticetypes::LatticeMatrix Smith = // true Smith form needed here
+  CoeffList factor;
+  int_Matrix Smith = // true Smith form needed here
     matreduc::Smith_basis(lt.transpose_Cartan_matrix(),factor);
 
   assert(factor.size()==d_semisimpleRank); // no zero factors to be dropped
@@ -377,10 +377,10 @@ CoveringIterator::CoveringIterator(const lietype::LieType& lt)
   quotReps(d_quotReps,*d_subgroup,*d_dcenter);
   d_torusPart = TorusPartIterator(d_torusRank,d_quotReps);
 
-  latticetypes::WeightList lb;
+  WeightList lb;
   makeBasis(lb);
 
-  d_preRootDatum = prerootdata::PreRootDatum(d_lieType,lb);
+  d_preRootDatum = PreRootDatum(d_lieType,lb);
 }
 
 
@@ -468,10 +468,10 @@ CoveringIterator& CoveringIterator::operator++ ()
 
 finish: // update d_preRootDatum
 
-  latticetypes::WeightList lb;
+  WeightList lb;
   makeBasis(lb);
 
-  d_preRootDatum = prerootdata::PreRootDatum(d_lieType,lb);
+  d_preRootDatum = PreRootDatum(d_lieType,lb);
 
   return *this;
 }
@@ -491,7 +491,7 @@ finish: // update d_preRootDatum
   the Smith vectors by these combinations. That will yield a basis for our
   lattice (not a Smith basis in general, but we don't mind.)
 */
-void CoveringIterator::makeBasis(latticetypes::WeightList& b)
+void CoveringIterator::makeBasis(WeightList& b)
 {
   // the sizes that are involved
 
@@ -499,7 +499,7 @@ void CoveringIterator::makeBasis(latticetypes::WeightList& b)
   size_t t_rank = d_torusRank;
   size_t s_rank = d_rank - c_rank - t_rank;
 
-  latticetypes::WeightList cb;
+  WeightList cb;
   basis(cb,group(),*d_dcenter); // now cb has size c_rank
 
   // resize the vectors in cb
@@ -510,7 +510,7 @@ void CoveringIterator::makeBasis(latticetypes::WeightList& b)
   // add the vectors corresponding to the torus part
 
   for (size_t j = 0; j < t_rank; ++j) {
-    latticetypes::Weight v(c_rank);
+    Weight v(c_rank);
     d_dcenter->toWeight(v,(*d_torusPart)[j]);
     v.resize(c_rank+t_rank,0);
     v[c_rank+j] = 1;
@@ -519,8 +519,8 @@ void CoveringIterator::makeBasis(latticetypes::WeightList& b)
 
   // modify the relevant part of the Smith basis
 
-  latticetypes::LatticeMatrix m_cb(cb,c_rank+t_rank);
-  latticetypes::LatticeMatrix m_sb
+  int_Matrix m_cb(cb,c_rank+t_rank);
+  int_Matrix m_sb
     (d_smithBasis.begin() + s_rank,d_smithBasis.end(), d_semisimpleRank,
      tags::IteratorTag());
 

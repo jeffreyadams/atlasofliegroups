@@ -11,9 +11,6 @@
 #include "bitmap.h"
 #include "matrix.h"
 #include "arithmetic.h"
-#include "arithmetic.h"
-
-#include "latticetypes_fwd.h" // for explicit instantiation only
 
 namespace atlas {
 
@@ -390,24 +387,22 @@ matrix::Matrix<C> Smith_basis(const matrix::Matrix<C>& M,
   return result;
 }
  // instantiations
-typedef latticetypes::LatticeCoeff T;
+template
+bool column_clear(matrix::Matrix<int>& M, size_t i, size_t j, size_t k);
+template
+bool row_clear(matrix::Matrix<int>& M, size_t i, size_t j, size_t k);
 
 template
-bool column_clear(matrix::Matrix<T>& M, size_t i, size_t j, size_t k);
-template
-bool row_clear(matrix::Matrix<T>& M, size_t i, size_t j, size_t k);
+bitmap::BitMap column_echelon<int>(matrix::Matrix<int>& M);
 
 template
-bitmap::BitMap column_echelon<T>(matrix::Matrix<T>& M);
+std::vector<int> diagonalise(matrix::Matrix<int> M,
+			     matrix::Matrix<int>& row,
+			     matrix::Matrix<int>& col);
 
 template
-std::vector<T> diagonalise(matrix::Matrix<T> M,
-			   matrix::Matrix<T>& row,
-			   matrix::Matrix<T>& col);
-
-template
-matrix::Matrix<T> Smith_basis(const matrix::Matrix<T>& M,
-			      std::vector<T>& diagonal);
+matrix::Matrix<int> Smith_basis(const matrix::Matrix<int>& M,
+				std::vector<int>& diagonal);
 
 } // |namespace matreduc|
 } // |namespace atlas|

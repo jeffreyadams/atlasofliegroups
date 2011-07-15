@@ -55,7 +55,7 @@ void printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
     strm << z << ":";
     printDescentSet(strm,wg.descent(z),wg.rank());
     const EdgeList& el = wg.edgeList(z);
-    const CoeffList& cl = wg.coeffList(z);
+    const WCoeffList& cl = wg.coeffList(z);
     // el and cl have the same size
     strm << ":{";
     for (size_t j = 0; j < el.size(); ++j) {
@@ -125,7 +125,7 @@ void printWDecomposition(std::ostream& strm, const wgraph::DecomposedWGraph& g)
 	strm << j << '[' << mem[j] << "]: ";
 	prettyprint::printDescentSet(strm,cell.descent(j),g.rank());
 	const graph::EdgeList& el = cell.edgeList(j);
-	const wgraph::CoeffList& cl = cell.coeffList(j);
+	const wgraph::WCoeffList& cl = cell.coeffList(j);
 	for (size_t k=0; k<el.size(); ++k)
 	{
 	  strm << (k==0 ? " --> " : ",");

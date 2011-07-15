@@ -14,7 +14,6 @@
 #include "arithmetic.h"
 #include "bitmap.h"
 #include "arithmetic.h"
-#include "latticetypes.h"
 #include "matrix.h"
 #include "matreduc.h"
 
@@ -63,7 +62,7 @@ FiniteAbelianGroup::FiniteAbelianGroup(const std::vector<unsigned long>& t)
   NOTE: sloppy implementation; we don't check for overflow, which may happen
   in all cases, as the coefficients of v will be signed quantities.
 */
-void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, const GrpArr& a)
+void FiniteAbelianGroup::toWeight(matrix::Vector<int>& v, const GrpArr& a)
   const
 {
   v.assign(a.begin(),a.end()); // copy all elements; |v=a| would mismatch type
@@ -73,7 +72,7 @@ void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, const GrpArr& a)
 /*!
   Synopsis: put in |v| a representative of |x|.
 */
-void FiniteAbelianGroup::toWeight(latticetypes::Weight& v, GrpNbr x) const
+void FiniteAbelianGroup::toWeight(matrix::Vector<int>& v, GrpNbr x) const
 {
   const GroupType& t = type();
 
@@ -429,13 +428,13 @@ namespace abelian {
   trivial subgroup this might yield a basis rather different from the kernel
   basis.
 */
-void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
+  void basis(std::vector<matrix::Vector<int> >& b, const bitmap::BitMap& B,
 	   const FiniteAbelianGroup& A)
 {
   GrpNbrList gen;
   generators(gen,B,A); // transform bitset to list
 
-  latticetypes::LatticeMatrix M(A.rank(),A.rank()+gen.size(),0);
+  matrix::Matrix<int> M(A.rank(),A.rank()+gen.size(),0);
 
   // put in the kernel basis
 
@@ -445,15 +444,15 @@ void basis(latticetypes::WeightList& b, const bitmap::BitMap& B,
   // add generators of the subgroup
   for (size_t i=0; i<gen.size(); ++i)
   {
-    latticetypes::Weight v(A.rank());
+    matrix::Vector<int> v(A.rank());
     A.toWeight(v,gen[i]);
     M.set_column(A.rank()+i,v);
   }
 
   // get Smith normal basis for columns span of |M|, and invariant factors
 
-  latticetypes::CoeffList inv_factors;
-  latticetypes::LatticeMatrix basis = matreduc::Smith_basis(M,inv_factors);
+  std::vector<int> inv_factors;
+  matrix::Matrix<int> basis = matreduc::Smith_basis(M,inv_factors);
 
   // export scaled columns
   for (size_t j=0; j<inv_factors.size(); ++j)
@@ -624,7 +623,7 @@ void to_array(GrpArr& a, GrpNbr x, const GroupType& t)
 
   Precondition: a is set to v.size();
 */
-void to_array(GrpArr& a, const latticetypes::Weight& v, const GroupType& t)
+void to_array(GrpArr& a, const matrix::Vector<int>& v, const GroupType& t)
 {
   for (size_t i=0; i<v.size(); ++i)
     a[i] = arithmetic::remainder(v[i],t[i]);
@@ -637,7 +636,7 @@ void to_array(GrpArr& a, const latticetypes::Weight& v, const GroupType& t)
   This just involves rewriting the coeficients as unsigned longs modulo
   the type factors.
 */
-void toEndomorphism(Endomorphism& e, const latticetypes::LatticeMatrix& q,
+void toEndomorphism(Endomorphism& e, const matrix::Matrix<int>& q,
 		    const FiniteAbelianGroup& A)
 {
   Endomorphism(q.numRows(),q.numColumns()).swap(e);

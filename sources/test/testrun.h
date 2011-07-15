@@ -292,12 +292,12 @@ class CoveringIterator {
   bool d_done;
 
 // data for the PreRootDatum
-  latticetypes::WeightList d_smithBasis;
-  prerootdata::PreRootDatum d_preRootDatum;
+  WeightList d_smithBasis;
+  PreRootDatum d_preRootDatum;
 
 // private member functions
-  void adjustBasis(latticetypes::WeightList&, const latticetypes::WeightList&);
-  void makeBasis(latticetypes::WeightList&);
+  void adjustBasis(WeightList&, const WeightList&);
+  void makeBasis(WeightList&);
   CoveringIterator(const CoveringIterator&);
   CoveringIterator& operator= (const CoveringIterator&);
 
@@ -305,7 +305,7 @@ class CoveringIterator {
 
 // associated types
   typedef std::forward_iterator_tag iterator_category;
-  typedef prerootdata::PreRootDatum value_type;
+  typedef PreRootDatum value_type;
   typedef const value_type* pointer;
   typedef const value_type& reference;
 

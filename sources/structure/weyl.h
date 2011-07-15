@@ -14,17 +14,17 @@
 #ifndef WEYL_H  /* guard against multiple inclusions */
 #define WEYL_H
 
+#include "atlas_types.h"
+
 #include <cstring>
 
-#include "weyl_fwd.h"
-#include "prerootdata_fwd.h"
-#include "rootdata_fwd.h"
+#include "atlas_types.h"
 
 #include "constants.h"
-#include "error.h"
-#include "latticetypes.h"
-#include "size.h"
 #include "tags.h"
+
+#include "size.h" // for stored order of the Weyl group
+#include "matrix.h" // for Coxeter matrix
 
 /******** type declarations *************************************************/
 
@@ -67,8 +67,8 @@ namespace weyl {
 
 /******** function declaration *********************************************/
 
-Twist make_twist(const rootdata::RootDatum& rd,
-		 const latticetypes::LatticeMatrix& d);
+Twist make_twist(const RootDatum& rd,
+		 const WeightInvolution& d);
 
 /******** main class definitions *******************************************/
 
@@ -284,7 +284,7 @@ class Transducer {
   Transducer()
     {}
 
-  Transducer(const latticetypes::LatticeMatrix&, size_t);
+  Transducer(const int_Matrix&, size_t);
 
   ~Transducer()
     {}
@@ -434,7 +434,7 @@ class WeylGroup
   size::Size d_order;
   unsigned long d_maxlength;
   WeylElt d_longest;
-  latticetypes::LatticeMatrix d_coxeterMatrix;
+  int_Matrix d_coxeterMatrix;
   std::vector<Transducer> d_transducer;
   WeylInterface d_in;
   WeylInterface d_out;
@@ -469,7 +469,7 @@ class WeylGroup
 public:
 
 // constructors and destructors
-  WeylGroup(const latticetypes::LatticeMatrix& cartan); // from Cartan matrix
+  WeylGroup(const int_Matrix& cartan); // from Cartan matrix
 
 // accessors
 
@@ -589,41 +589,27 @@ public:
     { w=translation(w,i); }
 
   // standard reflection action of Weyl group using a root datum
-  void act(const rootdata::RootDatum& rd,
-	   const WeylElt& w,
-	   latticetypes::LatticeElt& v) const;
+  void act(const RootDatum& rd, const WeylElt& w, Weight& v) const;
   // standard reflection action of Weyl group using a root datum
-  void act(const rootdata::RootDatum& rd,
-	   const WeylElt& w,
-	   latticetypes::RatLatticeElt& v) const { act(rd,w,v.numerator()); }
+  void act(const RootDatum& rd, const WeylElt& w, RatWeight& v) const;
 
   // same using only lists of simple (co)roots avoiding construction root datum
-  void act(const prerootdata::PreRootDatum& prd,
-	   const WeylElt& w,
-	   latticetypes::LatticeElt& v) const;
-  void act(const prerootdata::PreRootDatum& prd,
-	   const WeylElt& w,
-	   latticetypes::RatLatticeElt& v) const { act(prd,w,v.numerator()); }
+  void act(const PreRootDatum& prd, const WeylElt& w, Weight& v) const;
+  void act(const PreRootDatum& prd, const WeylElt& w, RatWeight& v) const;
  /*!
   \brief Nondestructive version of |act| method
 */
-  latticetypes::LatticeElt
-    imageBy(const rootdata::RootDatum& rd,
-	    const WeylElt& w,
-	    latticetypes::LatticeElt v) const
+  Weight
+    imageBy(const RootDatum& rd, const WeylElt& w, Weight v) const
     { act(rd,w,v); return v; }
 
-  void inverseAct(const rootdata::RootDatum& rd,
-		  const WeylElt& w,
-		  latticetypes::LatticeElt& v) const;
+  void inverseAct(const RootDatum& rd, const WeylElt& w, Weight& v) const;
 
 /*!
   \brief Nondestructive version of |inverseAct| method
 */
-  latticetypes::LatticeElt
-    imageByInverse(const rootdata::RootDatum& rd,
-		   const WeylElt& w,
-		   latticetypes::LatticeElt v) const
+  Weight
+    imageByInverse(const RootDatum& rd, const WeylElt& w, Weight v) const
     { inverseAct(rd,w,v); return v; }
 
 
@@ -744,12 +730,12 @@ public:
   InvolutionWord involution_expr(TwistedInvolution tw) const; // call by value
 
   //!\brief Roots that are images of the simple roots under involution of |tw|
-  rootdata::RootList simple_images
-    (const rootdata::RootSystem& rs, const TwistedInvolution& tw) const;
+  RootNbrList simple_images
+    (const RootSystem& rs, const TwistedInvolution& tw) const;
 
 //!\brief Matrix of involution of |tw| in adjoint coordinates
-  latticetypes::LatticeMatrix
-    involution_matrix(const rootdata::RootSystem& rs,
+  WeightInvolution
+    involution_matrix(const RootSystem& rs,
 		      const TwistedInvolution& tw) const;
 
 }; // |class TwistedWeylGroup|
@@ -759,10 +745,10 @@ public:
 // (We might have put |Pooltype| and |hashCode| members in WeylElt directly)
 
 struct TI_Entry
-  : public weyl::TwistedInvolution
+  : public TwistedInvolution
 {
-  TI_Entry(const weyl::TwistedInvolution& tw): weyl::TwistedInvolution(tw) {}
-  TI_Entry(): weyl::TwistedInvolution() {} // identity TwistedInvolution
+  TI_Entry(const TwistedInvolution& tw): TwistedInvolution(tw) {}
+  TI_Entry(): TwistedInvolution() {} // identity TwistedInvolution
 
   // members required for an Entry parameter to the HashTable template
   typedef std::vector<TI_Entry> Pooltype; // associated storage type

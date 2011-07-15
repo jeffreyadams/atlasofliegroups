@@ -15,7 +15,6 @@
 
 #include <functional>
 
-#include "latticetypes_fwd.h"
 
 #include "comparison.h"
 #include "partition.h"
@@ -41,7 +40,7 @@ namespace {
     bool cartan(unsigned long i, unsigned long j) const
     { return d_cartan[j].test(i); }
   public:
-    GradingAction(const latticetypes::WeightList& wts)
+    GradingAction(const WeightList& wts)
       : d_cartan(wts.begin(),wts.end()) {}
     // apply simple generator |s| to grading encoded by |g|
     unsigned long operator()(size_t s, unsigned long g) const;
@@ -63,22 +62,22 @@ namespace gradings {
    |non_compact| as initial set of noncompact roots, each root is non-compact,
    and passing through these roots only compact roots remain in the orthogonal
  */
-rootdata::RootSet max_orth(const rootdata::RootSet& non_compact,
-			   const rootdata::RootSet& subsys,
-			   const rootdata::RootSystem& rs)
+RootNbrSet max_orth(const RootNbrSet& non_compact,
+			   const RootNbrSet& subsys,
+			   const RootSystem& rs)
 {
-  rootdata::RootSet ncr = non_compact; // working variables
-  rootdata::RootSet sub = subsys;
+  RootNbrSet ncr = non_compact; // working variables
+  RootNbrSet sub = subsys;
 
   ncr &= rs.posRootSet();    // restricting to positive roots is safe
   sub &= rs.posRootSet(); // and improves performance
 
-  rootdata::RootSet result(rs.numRoots());
+  RootNbrSet result(rs.numRoots());
   while (not ncr.empty())
   {
-    rootdata::RootNbr alpha = ncr.front();
+    RootNbr alpha = ncr.front();
     result.insert(alpha);
-    for (rootdata::RootSet::iterator it = sub.begin(); it(); ++it)
+    for (RootNbrSet::iterator it = sub.begin(); it(); ++it)
       if (not rs.isOrthogonal(alpha,*it))
 	sub.remove(*it);
       else if (rs.sumIsRoot(alpha,*it))
@@ -124,11 +123,11 @@ bool isNonCompact(const rootdata::Root& v, const Grading& g)
   |baseChange| cannot handle that. However |RootSystem::root_expr| is safe.
 */
 
-rootdata::RootSet
-noncompact_roots(const Grading& g, const rootdata::RootSystem& rs)
+RootNbrSet
+noncompact_roots(const Grading& g, const RootSystem& rs)
 {
-  rootdata::RootSet result(rs.numRoots());
-  for (rootdata::RootNbr i=0; i<rs.numRoots(); ++i)
+  RootNbrSet result(rs.numRoots());
+  for (RootNbr i=0; i<rs.numRoots(); ++i)
     result.set_to(i,isNonCompact(rs.root_expr(i),g));
   return result;
 }
@@ -144,7 +143,7 @@ noncompact_roots(const Grading& g, const rootdata::RootSystem& rs)
   We return the first representative in each class with the least possible
   number of set bits. This code appears to be nowher used.
 */
-GradingList grading_classes(const rootdata::RootSystem& rs)
+GradingList grading_classes(const RootSystem& rs)
 {
   partition::Partition pi = partition::orbits
     (GradingAction(rs.cartanMatrix().columns()),rs.rank(),1ul<<rs.rank());
@@ -167,7 +166,7 @@ GradingList grading_classes(const rootdata::RootSystem& rs)
   be noncompact (have value 1) at each element of |nc|.
 */
 bitvector::BinaryEquationList
-noncompact_eqns(const latticetypes::WeightList& nc)
+noncompact_eqns(const WeightList& nc)
 {
   bitvector::BinaryEquationList result; result.reserve(nc.size());
   for (size_t i=0; i<nc.size(); ++i)
@@ -200,12 +199,12 @@ noncompact_eqns(const latticetypes::WeightList& nc)
   of \f$\alpha\f$s.
 */
 void transform_grading(gradings::Grading& gr,
-		      const rootdata::RootList& rl,
-		      const rootdata::RootSet& so,
-		      const rootdata::RootSystem& rs)
+		      const RootNbrList& rl,
+		      const RootNbrSet& so,
+		      const RootSystem& rs)
 {
   for (size_t i = 0; i < rl.size(); ++i)
-    for (rootdata::RootSet::iterator jt=so.begin(); jt(); ++jt)
+    for (RootNbrSet::iterator jt=so.begin(); jt(); ++jt)
       if (rs.sumIsRoot(rl[i],*jt))
 	gr.flip(i);
 }
@@ -231,16 +230,16 @@ void transform_grading(gradings::Grading& gr,
   we have to add to |eqn|.
 */
   void add_compact_eqns(bitvector::BinaryEquationList& eqn,
-			const rootdata::RootSet& o,
-			const rootdata::RootSet& subsys,
-			const rootdata::RootSystem& rs)
+			const RootNbrSet& o,
+			const RootNbrSet& subsys,
+			const RootSystem& rs)
 {
   // make orthogonal root system
 
-  rootdata::RootSet o_orth = rootdata::makeOrthogonal(o,subsys,rs);
+  RootNbrSet o_orth = rootdata::makeOrthogonal(o,subsys,rs);
 
   // find a basis, since having the desired grading on a basis will suffice
-  rootdata::RootList oob = rs.simpleBasis(o_orth);
+  RootNbrList oob = rs.simpleBasis(o_orth);
 
   // find signs
 
@@ -248,9 +247,9 @@ void transform_grading(gradings::Grading& gr,
   transform_grading(g,oob,o,rs);
 
   // express oob in subsys's root basis
-  rootdata::RootList rsb = rs.simpleBasis(subsys); // (caller knew this value)
+  RootNbrList rsb = rs.simpleBasis(subsys); // (caller knew this value)
 
-  latticetypes::WeightList woob; // "weight" form of |oob|, on basis |rsb|
+  int_VectorList woob; // "weight" form of |oob|, on basis |rsb|
 
   rs.toRootBasis(oob.begin(),oob.end(),back_inserter(woob),rsb);
 
@@ -290,20 +289,20 @@ void transform_grading(gradings::Grading& gr,
   unknowns; but even then the system can be degenerate. This happens already
   in case B2, for the split Cartan.
 */
-rootdata::RootSet grading_for_orthset
-  (const rootdata::RootSet& o,
-   const rootdata::RootSet& subsys,
-   const rootdata::RootSystem& rs)
+RootNbrSet grading_for_orthset
+  (const RootNbrSet& o,
+   const RootNbrSet& subsys,
+   const RootSystem& rs)
 {
   // find basis |rb| for |subsys|
-  rootdata::RootList rb = rs.simpleBasis(subsys);
+  RootNbrList rb = rs.simpleBasis(subsys);
 
   // express roots of |o| in basis |rb| (of |subsys|) just found
-  latticetypes::WeightList wo; // will hold "weights" of length |rb.size()|
+  int_VectorList wo; // will hold "weights" of length |rb.size()|
   rs.toRootBasis(o.begin(),o.end(),back_inserter(wo),rb);
 
   // now do the same for \emph{all} roots in |subsys|
-  latticetypes::WeightList wrs; // will hold "weights" of length |rb.size()|
+  int_VectorList wrs; // will hold "weights" of length |rb.size()|
   rs.toRootBasis(subsys.begin(),subsys.end(),back_inserter(wrs),rb);
 
   // write equations for the roots in o
@@ -323,7 +322,7 @@ rootdata::RootSet grading_for_orthset
 
   // return the grading
 
-  rootdata::RootSet result;
+  RootNbrSet result;
 
   for (unsigned long i = 0; i < wrs.size(); ++i)
     if (isNonCompact(wrs[i],g))
@@ -340,10 +339,10 @@ rootdata::RootSet grading_for_orthset
   system; write down the grading on the orthogonal; and repeat. When done,
   transform the system (if it isn't already) into a strongly orthogonal one.
 */
-rootdata::RootSet grading_type(const Grading& g,
-			       const rootdata::RootSystem& rs)
+RootNbrSet grading_type(const Grading& g,
+			       const RootSystem& rs)
 { // start with set of all roots
-  rootdata::RootSet all_roots(rs.numRoots()); all_roots.fill();
+  RootNbrSet all_roots(rs.numRoots()); all_roots.fill();
 
   return max_orth(noncompact_roots(g,rs),all_roots,rs);
 }

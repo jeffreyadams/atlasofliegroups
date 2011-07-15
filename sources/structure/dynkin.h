@@ -16,10 +16,10 @@
 #include <utility> // for |std::pair|
 #include <vector>
 
-#include "latticetypes_fwd.h"
+#include "atlas_types.h"
+#include "lietype_fwd.h"
 
 #include "bitset.h"
-#include "lietype.h"
 #include "permutations.h"
 
 /******** type declarations *************************************************/
@@ -33,12 +33,12 @@ namespace dynkin {
   elements, the possible vertices 0, 1,...,RANK_MAX-1), an Edge is a
   pair of numbers (between 0 and RANK_MAX-1).
   */
-typedef std::pair<size_t, size_t> Edge;
+typedef std::pair<unsigned char, unsigned char> Edge;
 
   /*!
   The Multiplicity of an Edge should be 1, 2, or 3.
   */
-typedef unsigned Multiplicity;
+typedef unsigned char Multiplicity;
 
 class DynkinDiagram;
 
@@ -49,12 +49,12 @@ class DynkinDiagram;
 namespace dynkin {
 
   // find (semisimple) Lie type given by Cartan matrix
-  lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm);
+  LieType Lie_type(const int_Matrix& cm);
 
   // same, also set |pi| to permutation "straightening" each diagram component
-  lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm,
-			    bool Bourbaki, bool check,
-			    permutations::Permutation& pi);
+  LieType Lie_type(const int_Matrix& cm,
+		   bool Bourbaki, bool check,
+		   permutations::Permutation& pi);
 
   bitset::RankFlagsList components(const DynkinDiagram& d);
 
@@ -96,9 +96,9 @@ class DynkinDiagram {
 
   DynkinDiagram() {}
 
-  explicit DynkinDiagram(const latticetypes::LatticeMatrix&);
+  explicit DynkinDiagram(const int_Matrix& Cartan);
 
-  DynkinDiagram(const bitset::RankFlags&, const DynkinDiagram&);
+  DynkinDiagram(const bitset::RankFlags& selection, const DynkinDiagram& d);
 
   ~DynkinDiagram() {}
 

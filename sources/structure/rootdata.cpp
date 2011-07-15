@@ -45,6 +45,7 @@
 #include "bitmap.h"  // for root sets
 #include "prerootdata.h"
 #include "matreduc.h"
+#include "ratvec.h"
 
 /*****************************************************************************
 
@@ -118,7 +119,7 @@ struct RootSystem::root_compare
   }
 };
 
-RootSystem::RootSystem(const latticetypes::LatticeMatrix& Cartan_matrix)
+RootSystem::RootSystem(const int_Matrix& Cartan_matrix)
   : rk(Cartan_matrix.numRows())
   , Cmat(rk*rk) // filled below
   , ri()
@@ -129,11 +130,11 @@ RootSystem::RootSystem(const latticetypes::LatticeMatrix& Cartan_matrix)
     cons(Cartan_matrix);
 }
 
-void RootSystem::cons(const latticetypes::LatticeMatrix& Cartan_matrix)
+void RootSystem::cons(const int_Matrix& Cartan_matrix)
 {
   std::vector<Byte_vector> simple_root(rk,Byte_vector(rk));
   std::vector<Byte_vector> simple_coroot(rk,Byte_vector(rk));
-  std::vector<RootList> link;
+  std::vector<RootNbrList> link;
   std::vector<std::set<Byte_vector,root_compare> >
     roots_of_length(4*rk); // more than enough if |rk>0|; $E_8$ needs size 31
 
@@ -149,7 +150,7 @@ void RootSystem::cons(const latticetypes::LatticeMatrix& Cartan_matrix)
 
   // construct positive root list, simple reflection links, and descent sets
 
-  RootList first_l(1,0);
+  RootNbrList first_l(1,0);
   for (size_t l=1; not roots_of_length[l].empty(); ++l)// empty level means end
   {
     first_l.push_back(ri.size()); // set |first_l[l]| to next root to be added
@@ -162,7 +163,7 @@ void RootSystem::cons(const latticetypes::LatticeMatrix& Cartan_matrix)
 
       const RootNbr cur = ri.size();
       ri.push_back(root_info(alpha)); // add new positive root to the list
-      link.push_back(RootList(rk,~0ul)); // initially all links are undefined
+      link.push_back(RootNbrList(rk,~0u)); // initially all links are undefined
 
       byte c;
       for (size_t i=0; i<rk; ++i)
@@ -274,19 +275,19 @@ RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
   }
 }
 
-latticetypes::LatticeElt RootSystem::root_expr(RootNbr alpha) const
+int_Vector RootSystem::root_expr(RootNbr alpha) const
 {
   RootNbr a=rt_abs(alpha);
-  latticetypes::LatticeElt expr(root(a).begin(),root(a).end());
+  int_Vector expr(root(a).begin(),root(a).end());
   if (not isPosRoot(alpha))
     expr *= -1;
   return expr;
 }
 
-latticetypes::LatticeElt RootSystem::coroot_expr(RootNbr alpha) const
+int_Vector RootSystem::coroot_expr(RootNbr alpha) const
 {
   RootNbr a=rt_abs(alpha);
-  latticetypes::LatticeElt expr(ri[a].dual.begin(),ri[a].dual.end());
+  int_Vector expr(ri[a].dual.begin(),ri[a].dual.end());
   if (not isPosRoot(alpha))
     expr *= -1;
   return expr;
@@ -322,10 +323,10 @@ template <typename I, typename O>
   which amounts to left-multiplication by the inverse of that Cartan matrix.
 */
 template <typename I, typename O>
-  void RootSystem::toRootBasis(I first, I last, O out, const RootList& rb) const
+  void RootSystem::toRootBasis(I first, I last, O out, const RootNbrList& rb) const
 {
-  latticetypes::WeightList wl; // roots |[first,last[| in weight basis of |rb|
-  latticetypes::WeightList wb; // (square) Cartan matrix of |rb|
+  int_VectorList wl; // roots |[first,last[| in weight basis of |rb|
+  int_VectorList wb; // (square) Cartan matrix of |rb|
 
   toSimpleWeights(first,last,back_inserter(wl),rb);
   toSimpleWeights(rb.begin(),rb.end(),back_inserter(wb),rb);
@@ -344,9 +345,9 @@ template <typename I, typename O>
 */
 template <typename I, typename O>
   void RootSystem::toSimpleWeights
-    (I first, I last, O out, const RootList& rb) const
+    (I first, I last, O out, const RootNbrList& rb) const
 {
-  latticetypes::Weight v(rb.size()); // temporary storage for vector
+  int_Vector v(rb.size()); // temporary storage for vector
 
   while (first!=last)
   {
@@ -357,32 +358,32 @@ template <typename I, typename O>
   }
 }
 
-RootSet RootSystem::simpleRootSet() const
+RootNbrSet RootSystem::simpleRootSet() const
 {
-  RootSet simple_roots(numRoots());
+  RootNbrSet simple_roots(numRoots());
   simple_roots.fill(numPosRoots(),numPosRoots()+rk);
   return simple_roots;
 }
 
-RootList RootSystem::simpleRootList() const
+RootNbrList RootSystem::simpleRootList() const
 {
-  RootList simple_roots(rk);
+  RootNbrList simple_roots(rk);
   for (weyl::Generator i=0; i<rk; ++i)
     simple_roots[i]=simpleRootNbr(i);
   return simple_roots;
 }
 
-RootSet RootSystem::posRootSet() const
+RootNbrSet RootSystem::posRootSet() const
 {
-  RootSet pos_roots(numRoots());
+  RootNbrSet pos_roots(numRoots());
   pos_roots.fill(numPosRoots(),numRoots());
   return pos_roots;
 }
 
 
-latticetypes::LatticeMatrix RootSystem::cartanMatrix() const
+int_Matrix RootSystem::cartanMatrix() const
 {
-  latticetypes::LatticeMatrix result(rk,rk);
+  int_Matrix result(rk,rk);
 
   for (size_t i=0; i<rk; ++i)
     for (size_t j=0; j<rk; ++j)
@@ -394,11 +395,11 @@ latticetypes::LatticeMatrix RootSystem::cartanMatrix() const
 /*!
 \brief Returns the Cartan matrix of the root subsystem with basis |rb|.
 */
-latticetypes::LatticeMatrix RootSystem::cartanMatrix(const RootList& rb) const
+int_Matrix RootSystem::cartanMatrix(const RootNbrList& rb) const
 {
   size_t r = rb.size();
 
-  latticetypes::LatticeMatrix result(r,r);
+  int_Matrix result(r,r);
 
   for (size_t i=0; i<r; ++i)
     for (size_t j=0; j<r; ++j)
@@ -410,10 +411,10 @@ latticetypes::LatticeMatrix RootSystem::cartanMatrix(const RootList& rb) const
 lietype::LieType RootSystem::Lie_type() const
 { return dynkin::Lie_type(cartanMatrix()); }
 
-lietype::LieType RootSystem::Lie_type(RootList sub) const
+lietype::LieType RootSystem::Lie_type(RootNbrList sub) const
 { return dynkin::Lie_type(cartanMatrix(sub)); }
 
-latticetypes::LatticeCoeff
+int
 RootSystem::bracket(RootNbr alpha, RootNbr beta) const // $\<\alpha,\beta^\vee>$
 {
   if (isOrthogonal(alpha,beta)) // this is quick
@@ -422,7 +423,7 @@ RootSystem::bracket(RootNbr alpha, RootNbr beta) const // $\<\alpha,\beta^\vee>$
   const Byte_vector& row = root(rt_abs(alpha));
   const Byte_vector& col = coroot(rt_abs(beta));
 
-  latticetypes::LatticeCoeff c=0;
+  int c=0;
   for (size_t i=0; i<rk; ++i)
     for (size_t j=0; j<rk; ++j)
       c += row[i]*Cartan_entry(i,j)*col[j];
@@ -431,12 +432,12 @@ RootSystem::bracket(RootNbr alpha, RootNbr beta) const // $\<\alpha,\beta^\vee>$
 }
 
 permutations::Permutation
-RootSystem::extend_to_roots(const RootList& simple_image) const
+RootSystem::extend_to_roots(const RootNbrList& simple_image) const
 {
   assert(simple_image.size()==rk);
   permutations::Permutation result(numRoots());
 
-  RootList image_reflection(rk);
+  RootNbrList image_reflection(rk);
 
   // prepare indexes of reflections for roots in |simple_image|
   for (size_t i=0; i<rk; ++i)
@@ -467,18 +468,18 @@ permutations::Permutation
 RootSystem::root_permutation(const permutations::Permutation& twist) const
 {
   assert(twist.size()==rk);
-  RootList simple_image(rk);
+  RootNbrList simple_image(rk);
   for (size_t i=0; i<twist.size(); ++i)
     simple_image[i] = simpleRootNbr(twist[i]);
 
   return extend_to_roots(simple_image);
 }
 
-weyl::WeylWord RootSystem::reflectionWord(RootNbr r) const
+WeylWord RootSystem::reflectionWord(RootNbr r) const
 {
   RootNbr alpha = isPosRoot(r) ? r : rootMinus(r); // make |alpha| positive
 
-  weyl::WeylWord result;
+  WeylWord result;
 
   while (alpha>=rk+numPosRoots()) // alpha positive but not simple
   {
@@ -494,7 +495,7 @@ weyl::WeylWord RootSystem::reflectionWord(RootNbr r) const
   return result;
 }
 
-matrix::Vector<int> RootSystem::pos_system_vec(const RootList& Delta) const
+matrix::Vector<int> RootSystem::pos_system_vec(const RootNbrList& Delta) const
 {
   assert(Delta.size()==rk); // must be an image of $\Delta^+$, in correct order
   matrix::Vector<int> coef(rk,0); // coefficients of simple roots in result
@@ -504,15 +505,15 @@ matrix::Vector<int> RootSystem::pos_system_vec(const RootList& Delta) const
   return cartanMatrix().right_mult(coef); // transform to fundamental weights
 }
 
-RootList RootSystem::simpleBasis(RootSet rs) const
+RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
 {
   rs.clear(0,numPosRoots()); // clear negative roots
-  RootSet candidates = rs; // make a copy that will be pruned
+  RootNbrSet candidates = rs; // make a copy that will be pruned
 
-  for (RootSet::iterator it=candidates.begin(); it(); ++it)
+  for (RootNbrSet::iterator it=candidates.begin(); it(); ++it)
   {
     RootNbr alpha=*it;
-    for (RootSet::iterator jt=rs.begin(); jt(); ++jt) // full positive subsystem
+    for (RootNbrSet::iterator jt=rs.begin(); jt(); ++jt) // full positive subsystem
     {
       RootNbr beta=*jt;
       if (alpha==beta) continue; // avoid reflecting root itself
@@ -533,7 +534,7 @@ RootList RootSystem::simpleBasis(RootSet rs) const
   }
   // now every member of |candidates| permutes the other members of |rs|
 
-  return RootList(candidates.begin(), candidates.end()); // converts to vector
+  return RootNbrList(candidates.begin(), candidates.end()); // converts to vector
 }
 
 bool RootSystem::sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const
@@ -571,12 +572,12 @@ bool RootSystem::sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const
   roots in some B2 subsystem can never be short roots in another subsystem, so
   there is no need to assure newly created roots are inspected subsequently.
 */
-RootSet RootSystem::long_orthogonalize(const RootSet& rset) const
+RootNbrSet RootSystem::long_orthogonalize(const RootNbrSet& rset) const
 {
-  RootSet result = rset;
+  RootNbrSet result = rset;
   RootNbr gamma;
-  for (RootSet::iterator it=result.begin(); it(); ++it)
-    for (RootSet::iterator jt=result.begin(); jt!=it; ++jt)
+  for (RootNbrSet::iterator it=result.begin(); it(); ++it)
+    for (RootNbrSet::iterator jt=result.begin(); jt!=it; ++jt)
       if (sumIsRoot(*it,*jt,gamma))
       { // replace *it and *jt by sum and difference (short->long in B2 system)
 	result.insert(gamma);
@@ -588,9 +589,9 @@ RootSet RootSystem::long_orthogonalize(const RootSet& rset) const
 }
 
 
-RootList RootSystem::high_roots() const
+RootNbrList RootSystem::high_roots() const
 {
-  RootList h;
+  RootNbrList h;
   for (RootNbr alpha=0; alpha<numPosRoots(); ++alpha) // traverse negative roots
     if (descent_set(alpha).none())
       h.push_back(rootMinus(alpha));
@@ -604,7 +605,7 @@ RootList RootSystem::high_roots() const
 
 
 
-RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
+RootDatum::RootDatum(const PreRootDatum& prd)
   : RootSystem(prd.Cartan_matrix())
   , d_rank(prd.rank())
   , d_roots(numRoots())   // dimension only
@@ -616,8 +617,8 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
   , Cartan_denom()
   , d_status()
 {
-  latticetypes::LatticeMatrix root_mat(prd.roots(),d_rank); // simple roots
-  latticetypes::LatticeMatrix coroot_mat(prd.coroots(),d_rank); // simple too
+  int_Matrix root_mat(prd.roots(),d_rank); // simple roots
+  int_Matrix coroot_mat(prd.coroots(),d_rank); // simple too
   for (RootNbr alpha=numPosRoots(); alpha<numRoots(); ++alpha)
   {
     d_roots[alpha]= root_mat*root_expr(alpha);
@@ -631,7 +632,7 @@ RootDatum::RootDatum(const prerootdata::PreRootDatum& prd)
 
   // the fundamental weights are given by the matrix Q.tC^{-1}, where Q is
   // the matrix of the simple roots, tC the transpose Cartan matrix
-  latticetypes::LatticeMatrix iC = cartanMatrix().inverse(Cartan_denom);
+  int_Matrix iC = cartanMatrix().inverse(Cartan_denom);
   weight_numer = (root_mat*iC.transposed()).columns();
 
   // for the fundamental coweights, use coroots and (untransposed) Cartan matrix
@@ -683,7 +684,7 @@ RootDatum::RootDatum(const RootDatum& rd, tags::DualTag)
 
 /* Construct the derived root datum, and put weight mapping into |projector| */
 
-RootDatum::RootDatum(latticetypes::LatticeMatrix& projector,
+RootDatum::RootDatum(int_Matrix& projector,
 		     const RootDatum& rd,
 		     tags::DerivedTag)
   : RootSystem(rd)
@@ -699,16 +700,16 @@ RootDatum::RootDatum(latticetypes::LatticeMatrix& projector,
   , d_status()
 {
   size_t r=rd.rank(), d=r-d_rank;
-  latticetypes::LatticeMatrix kernel // of projector map
+  int_Matrix kernel // of projector map
     (rd.beginCoradical(),rd.endCoradical(),r,tags::IteratorTag());
 
   assert(kernel.numColumns()==d);
 
-  latticetypes::LatticeMatrix row,col;
+  int_Matrix row,col;
   matreduc::diagonalise(kernel,row,col); // factors (|d| times 1) not needed
 
   projector = row.block(d,0,r,r); // annihilator of |kernel|, projects weights
-  latticetypes::LatticeMatrix section // will satisfy $projector*section=Id_d$;
+  int_Matrix section // will satisfy $projector*section=Id_d$;
     = row.inverse().block(0,d,r,r); // transforms cocharacters by right-action
 
   for (RootNbr i=0; i<rd.numRoots(); ++i)
@@ -723,22 +724,26 @@ RootDatum::RootDatum(latticetypes::LatticeMatrix& projector,
   fillStatus();
 }
 
-RootDatum RootDatum::sub_datum(const RootList& generators) const
+RootDatum RootDatum::sub_datum(const RootNbrList& generators) const
 {
-  typedef RootIterator<RootList::const_iterator> RI;
-  latticetypes::WeightList roots(RI(d_roots,generators.begin()),
-				 RI(d_roots,generators.end()));
-  latticetypes::WeightList coroots(RI(d_coroots,generators.begin()),
-				   RI(d_coroots,generators.end()));
+  WeightList roots;     roots.reserve(generators.size());
+  CoweightList coroots; coroots.reserve(generators.size());
+  for (RootNbrList::const_iterator it=
+	 generators.begin(); it!=generators.end(); ++it)
+  {
+    roots.push_back(d_roots[*it]);
+    coroots.push_back(d_coroots[*it]);
+  }
 
-  return RootDatum(prerootdata::PreRootDatum(roots,coroots,rank()));
+  return RootDatum(PreRootDatum(roots,coroots,rank()));
 }
 
-latticetypes::RatWeight RootDatum::fundamental_weight(weyl::Generator i) const
-{ return latticetypes::RatWeight(weight_numer[i],Cartan_denom); }
 
-latticetypes::RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
-{ return latticetypes::RatWeight(coweight_numer[i],Cartan_denom); }
+RatWeight RootDatum::fundamental_weight(weyl::Generator i) const
+{ return RatWeight(weight_numer[i],Cartan_denom); }
+
+RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
+{ return RatWeight(coweight_numer[i],Cartan_denom); }
 
 /******** accessors **********************************************************/
 
@@ -748,7 +753,7 @@ latticetypes::RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
   Precondition: |q| permutes the roots;
 */
 permutations::Permutation
-  RootDatum::rootPermutation(const LT::LatticeMatrix& q) const
+  RootDatum::rootPermutation(const WeightInvolution& q) const
 {
   permutations::Permutation result(numRoots());
 
@@ -770,9 +775,9 @@ permutations::Permutation
   better to construct the matrices once and for all and return const
   references.
 */
-latticetypes::LatticeMatrix RootDatum::root_reflection(RootNbr alpha) const
+WeightInvolution RootDatum::root_reflection(RootNbr alpha) const
 {
-  latticetypes:: LatticeMatrix result(d_rank); // identity
+  LatticeMatrix result(d_rank); // identity
 
   // do |result -= root(alpha).column_matrix() * coroot(alpha).row_matrix();|
   const Root& root = d_roots[alpha];
@@ -785,7 +790,7 @@ latticetypes::LatticeMatrix RootDatum::root_reflection(RootNbr alpha) const
   return result;
 }
 
-weyl::WeylWord RootDatum::reflectionWord(RootNbr alpha) const
+WeylWord RootDatum::reflectionWord(RootNbr alpha) const
 {
   return to_dominant(reflection(twoRho(),alpha));
 }
@@ -801,8 +806,8 @@ weyl::WeylWord RootDatum::reflectionWord(RootNbr alpha) const
   Algorithm: apply $q$ to |twoRho|, then use |toPositive| to find a Weyl
   word making it dominant again, which by assumption expresses $q^{-1}$.
 */
-weyl::WeylWord RootDatum::word_of_inverse_matrix
-  (const latticetypes::LatticeMatrix& q) const
+WeylWord RootDatum::word_of_inverse_matrix
+  (const WeightInvolution& q) const
 {
   return to_dominant(q*twoRho());
 }
@@ -813,9 +818,9 @@ weyl::WeylWord RootDatum::word_of_inverse_matrix
   Precondition: rl holds the roots in a sub-rootsystem of the root system of
   rd;
 */
-latticetypes::Weight RootDatum::twoRho(const RootList& rl) const
+Weight RootDatum::twoRho(const RootNbrList& rl) const
 {
-  latticetypes::Weight result(rank(),0);
+  Weight result(rank(),0);
 
   for (size_t i = 0; i < rl.size(); ++i)
     if (isPosRoot(rl[i]))
@@ -830,11 +835,11 @@ latticetypes::Weight RootDatum::twoRho(const RootList& rl) const
   Precondition: rs holds the roots in a sub-rootsystem of the root system of
   rd;
 */
-latticetypes::Weight RootDatum::twoRho(const RootSet& rs) const
+Weight RootDatum::twoRho(const RootNbrSet& rs) const
 {
-  latticetypes::Weight result(rank(),0);
+  Weight result(rank(),0);
 
-  for (RootSet::iterator i = rs.begin(); i(); ++i)
+  for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
     if (isPosRoot(*i))
       result += root(*i);
 
@@ -842,9 +847,9 @@ latticetypes::Weight RootDatum::twoRho(const RootSet& rs) const
 }
 
 // and their dual relatives
-latticetypes::Weight RootDatum::dual_twoRho(const RootList& rl) const
+Coweight RootDatum::dual_twoRho(const RootNbrList& rl) const
 {
-  latticetypes::Weight result(rank(),0);
+  Coweight result(rank(),0);
 
   for (size_t i = 0; i < rl.size(); ++i)
     if (isPosRoot(rl[i]))
@@ -853,11 +858,11 @@ latticetypes::Weight RootDatum::dual_twoRho(const RootList& rl) const
   return result;
 }
 
-latticetypes::Weight RootDatum::dual_twoRho(const RootSet& rs) const
+Coweight RootDatum::dual_twoRho(const RootNbrSet& rs) const
 {
-  latticetypes::Weight result(rank(),0);
+  Coweight result(rank(),0);
 
-  for (RootSet::iterator i = rs.begin(); i(); ++i)
+  for (RootNbrSet::iterator i = rs.begin(); i(); ++i)
     if (isPosRoot(*i))
       result += coroot(*i);
 
@@ -871,9 +876,9 @@ latticetypes::Weight RootDatum::dual_twoRho(const RootSet& rs) const
   simple coroot alpha^v such that <v,alpha^v> is < 0; then s_alpha.v takes
   v closer to the dominant chamber.
 */
-weyl::WeylWord RootDatum::to_dominant(latticetypes::Weight v) const
+WeylWord RootDatum::to_dominant(Weight v) const
 {
-  weyl::WeylWord result;
+  WeylWord result;
 
   weyl::Generator i;
   do
@@ -899,9 +904,9 @@ weyl::WeylWord RootDatum::to_dominant(latticetypes::Weight v) const
   However, that would be for the ComplexGroup to do, as it is it that has
   access to both the Weyl group and the root datum.
 */
-latticetypes::LatticeMatrix RootDatum::matrix(const weyl::WeylWord& ww) const
+WeightInvolution RootDatum::matrix(const WeylWord& ww) const
 {
-  latticetypes::LatticeMatrix q(rank());
+  WeightInvolution q(rank());
 
   for (size_t i=0; i<ww.size(); ++i)
     q *= simple_reflection(ww[i]);
@@ -940,11 +945,11 @@ void RootDatum::swap(RootDatum& other)
 */
 void RootDatum::fillStatus()
 {
-  latticetypes::LatticeMatrix
+  int_Matrix
     q(beginSimpleRoot(),endSimpleRoot(),rank(),tags::IteratorTag());
 
-  latticetypes::LatticeMatrix row,col; // their values remain unused
-  latticetypes::CoeffList factor = matreduc::diagonalise(q,row,col);
+  int_Matrix row,col; // their values remain unused
+  CoeffList factor = matreduc::diagonalise(q,row,col);
 
   d_status.set(IsAdjoint); // remains set only of all |factor|s are 1
 
@@ -952,7 +957,7 @@ void RootDatum::fillStatus()
     if (arithmetic::abs(factor[i]) != 1)
       d_status.reset(IsAdjoint);
 
-  q = latticetypes::LatticeMatrix
+  q = int_Matrix
      (beginSimpleCoroot(),endSimpleCoroot(),rank(),tags::IteratorTag());
 
   factor = matreduc::diagonalise(q,row,col); // redo computation on dual side
@@ -988,10 +993,10 @@ void RootDatum::fillStatus()
   Since $-w_0$ is central in the group of based root datum automorphisms, it
   doesn't matter whether one multiplies by $w_0$ on the left or on the right
 */
-LT::LatticeMatrix dualBasedInvolution
-  (const LT::LatticeMatrix& q, const RootDatum& rd)
+CoweightInvolution dualBasedInvolution
+  (const WeightInvolution& q, const RootDatum& rd)
 {
-  weyl::WeylWord w0 = rd.to_dominant(-rd.twoRho());
+  WeylWord w0 = rd.to_dominant(-rd.twoRho());
   return (q*rd.matrix(w0)).negative_transposed();
 }
 
@@ -1000,18 +1005,18 @@ LT::LatticeMatrix dualBasedInvolution
 \brief Returns the elements of |subsys| which are orthogonal to all
   elements of |o|.
 */
-RootSet makeOrthogonal(const RootSet& o, const RootSet& subsys,
+RootNbrSet makeOrthogonal(const RootNbrSet& o, const RootNbrSet& subsys,
 		       const RootSystem& rs)
 {
-  RootSet candidates = subsys;
+  RootNbrSet candidates = subsys;
   candidates.andnot(o); // roots of |o| itself need not be considered
 
-  RootSet result = candidates;
+  RootNbrSet result = candidates;
 
-  for (RootSet::iterator it = candidates.begin(); it(); ++it)
+  for (RootNbrSet::iterator it = candidates.begin(); it(); ++it)
   {
     RootNbr alpha = *it;
-    RootSet::iterator jt;
+    RootNbrSet::iterator jt;
     for (jt = o.begin(); jt(); ++jt)
       if (not rs.isOrthogonal(alpha,*jt))
       {
@@ -1030,9 +1035,9 @@ RootSet makeOrthogonal(const RootSet& o, const RootSet& subsys,
   Note that wq is then automatically an involution permuting the simple roots
 */
 
-void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
+void toDistinguished(WeightInvolution& q, const RootDatum& rd)
 { // easy implementation; using |simple_root_permutation| is more efficient
-  latticetypes::Weight v = q*rd.twoRho();
+  Weight v = q*rd.twoRho();
   q.leftMult(rd.matrix(rd.to_dominant(v)));
 }
 
@@ -1041,9 +1046,9 @@ void toDistinguished(latticetypes::LatticeMatrix& q, const RootDatum& rd)
    that system as a set, possibly permuted by a twist. At return |Delta|
    represents that twist, and return value transforms it to original |Delta|
  */
-weyl::WeylWord wrt_distinguished(const RootSystem& rs, RootList& Delta)
+WeylWord wrt_distinguished(const RootSystem& rs, RootNbrList& Delta)
 {
-  weyl::WeylWord result;
+  WeylWord result;
   const size_t rank=rs.rank();
   matrix::Vector<int> v = rs.pos_system_vec(Delta);
   weyl::Generator s;
@@ -1073,21 +1078,20 @@ reflections for the set of roots |rset|.
 
 The roots must be mutiually orthogonal so that the order doesn't matter.
 */
-latticetypes::LatticeMatrix refl_prod(const RootSet& rset, const RootDatum& rd)
+WeightInvolution refl_prod(const RootNbrSet& rset, const RootDatum& rd)
 {
-  latticetypes::LatticeMatrix q(rd.rank()); // identity
-  for (RootSet::iterator it=rset.begin(); it(); ++it)
+  WeightInvolution q(rd.rank()); // identity
+  for (RootNbrSet::iterator it=rset.begin(); it(); ++it)
     q *= rd.root_reflection(*it);
   return q;
 }
 
 
-RootDatum integrality_datum(const RootDatum& rd,
-			    const latticetypes::RatWeight& lambda)
+RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma)
 {
-  latticetypes::LatticeCoeff n=lambda.denominator();
-  const latticetypes::Weight& v=lambda.numerator();
-  RootSet int_roots(rd.numRoots());
+  int n=gamma.denominator();
+  const Weight& v=gamma.numerator();
+  RootNbrSet int_roots(rd.numRoots());
   for (size_t i=0; i<rd.numPosRoots(); ++i)
     if (v.dot(rd.posCoroot(i))%n == 0)
       int_roots.insert(rd.posRootNbr(i));
@@ -1095,8 +1099,7 @@ RootDatum integrality_datum(const RootDatum& rd,
   return rd.sub_datum(rd.simpleBasis(int_roots));
 }
 
-arithmetic::RationalList integrality_points
-  (const RootDatum& rd, latticetypes::RatLatticeElt& nu)
+arithmetic::RationalList integrality_points(const RootDatum& rd, RatWeight& nu)
 {
   nu.normalize();
   unsigned long d = nu.denominator();
@@ -1132,19 +1135,18 @@ namespace rootdata {
 // a class for making a compare object for indices, backwards lexicographic
 class weight_compare
 {
-  const std::vector<latticetypes::Weight>& alpha; // weights being compared
-  std::vector<latticetypes::Weight> phi; // coweights by increasing priority
+  const WeightList& alpha; // weights being compared
+  CoweightList phi; // coweights by increasing priority
 
 public:
-  weight_compare(const std::vector<latticetypes::Weight>& roots,
-		 const std::vector<latticetypes::Weight>& f)
+  weight_compare(const WeightList& roots, const CoweightList& f)
     : alpha(roots), phi(f) {}
 
-  void add_coweight(const latticetypes::Weight& f) { phi.push_back(f); }
+  void add_coweight(const Coweight& f) { phi.push_back(f); }
 
   bool operator() (size_t i, size_t j)
   {
-    latticetypes::LatticeCoeff x,y;
+    int x,y;
     for (size_t k=phi.size(); k-->0; )
       if ((x=phi[k].dot(alpha[i])) != (y=phi[k].dot(alpha[j])))
 	return x<y;
@@ -1155,16 +1157,16 @@ public:
 
 template
 void RootSystem::toRootBasis
-  (RootList::const_iterator,
-   RootList::const_iterator,
-   std::back_insert_iterator<latticetypes::WeightList>) const;
+  (RootNbrList::const_iterator,
+   RootNbrList::const_iterator,
+   std::back_insert_iterator<int_VectorList>) const;
 
 template
 void RootSystem::toRootBasis
-  (RootSet::const_iterator,
-   RootSet::const_iterator,
-   std::back_insert_iterator<latticetypes::WeightList>,
-   const RootList&) const;
+  (RootNbrSet::const_iterator,
+   RootNbrSet::const_iterator,
+   std::back_insert_iterator<int_VectorList>,
+   const RootNbrList&) const;
 // this also  implicitly instantiates |RootSystem::toWeightBasis| twice
 
 } // |namespace rootdata|

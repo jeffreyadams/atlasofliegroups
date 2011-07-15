@@ -48,8 +48,8 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 
 {
   complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
-  const rootdata::RootDatum& rd = G_R.rootDatum();
-  const weyl::WeylGroup& W = G_R.weylGroup();
+  const RootDatum& rd = G_R.rootDatum();
+  const WeylGroup& W = G_R.weylGroup();
 
   realform::RealForm rf = G_R.realForm();
 
@@ -135,8 +135,8 @@ std::ostream& printRealWeyl(std::ostream& strm,
 
   realform::RealForm rf = G_R.realForm();
 
-  const rootdata::RootDatum& rd = G_C.rootDatum();
-  const weyl::WeylGroup& W = G_C.weylGroup();
+  const RootDatum& rd = G_C.rootDatum();
+  const WeylGroup& W = G_C.weylGroup();
   const cartanclass::CartanClass& cc = G_C.cartan(cn);
   cartanclass::AdjointFiberElt x = G_C.representative(rf,cn);
 
@@ -194,11 +194,11 @@ std::ostream& printStrongReal(std::ostream& strm,
       gradings::Grading base_grading =
 	tits::square_class_grading_offset(fund,f_csc,G_C.rootSystem());
 
-      latticetypes::RatWeight z (G_C.rank());
+      RatWeight z (G_C.rank());
       for (gradings::Grading::iterator it=base_grading.begin(); it(); ++it)
 	z += G_C.rootDatum().fundamental_coweight(*it);
 
-      latticetypes::LatticeElt& zn = z.numerator();
+      Weight& zn = z.numerator();
       for (size_t i=0; i<z.size(); ++i)
         zn[i]=arithmetic::remainder(zn[i],z.denominator());
       strm << "class #" << f_csc

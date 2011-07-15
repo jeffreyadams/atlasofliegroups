@@ -19,7 +19,7 @@
 
 #include "blocks.h"
 #include "descents.h"
-#include "weyl_fwd.h"
+#include "atlas_types.h"
 
 /*
   After some hesitation, I think I _am_ going to assume that the block has

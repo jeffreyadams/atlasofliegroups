@@ -22,7 +22,6 @@
 #include "dynkin.h"
 #include "ioutils.h"
 #include "lattice.h"
-#include "latticetypes.h"
 #include "lietype.h"
 #include "prettyprint.h"
 #include "realredgp.h"
@@ -68,40 +67,40 @@ namespace testprint {
     - if not semisimple : bases for radical and coradical;
     - positive roots and coroots;
 */
-std::ostream& print(std::ostream& strm, const rootdata::RootDatum& rd)
+std::ostream& print(std::ostream& strm, const RootDatum& rd)
 {
   strm << "cartan matrix :" << std::endl;
-  latticetypes::LatticeMatrix q(rd.semisimpleRank(),rd.semisimpleRank());
+  int_Matrix q(rd.semisimpleRank(),rd.semisimpleRank());
   for (size_t j = 0; j < rd.semisimpleRank(); ++j)
     for (size_t i = 0; i < rd.semisimpleRank(); ++i)
       q(i,j) = rd.cartan(i,j);
   prettyprint::printMatrix(strm,q) << std::endl;
 
   strm << "root basis :" << std::endl;
-  latticetypes::WeightList r_rb(rd.beginSimpleRoot(),rd.endSimpleRoot());
+  WeightList r_rb(rd.beginSimpleRoot(),rd.endSimpleRoot());
   prettyprint::printBasis(strm,r_rb) << std::endl;
 
   strm << "coroot basis :" << std::endl;
-  latticetypes::WeightList r_crb(rd.beginSimpleCoroot(),rd.endSimpleCoroot());
+  CoweightList r_crb(rd.beginSimpleCoroot(),rd.endSimpleCoroot());
   prettyprint::printBasis(strm,r_crb) << std::endl;
 
   if (not rd.isSemisimple()) { // print radical and coradical bases
     strm << "radical basis :" << std::endl;
-    latticetypes::WeightList r_rad(rd.beginRadical(),rd.endRadical());
+    CoweightList r_rad(rd.beginRadical(),rd.endRadical());
     prettyprint::printBasis(strm,r_rad) << std::endl;
 
     strm << "coradical basis :" << std::endl;
-    latticetypes::WeightList r_crad(rd.beginCoradical(),rd.endCoradical());
+    WeightList r_crad(rd.beginCoradical(),rd.endCoradical());
     prettyprint::printBasis(strm,r_crad) << std::endl;
   }
 
   strm << "positive roots :" << std::endl;
-  latticetypes::WeightList r_pr(rd.beginPosRoot(),rd.endPosRoot());
+  WeightList r_pr(rd.beginPosRoot(),rd.endPosRoot());
   basic_io::seqPrint(strm,r_pr.begin(),r_pr.end(),"\n","","")
     << std::endl << std::endl;
 
   strm << "positive coroots :" << std::endl;
-  latticetypes::WeightList r_pcr(rd.beginPosCoroot(),rd.endPosCoroot());
+  WeightList r_pcr(rd.beginPosCoroot(),rd.endPosCoroot());
   basic_io::seqPrint(strm,r_pcr.begin(),r_pcr.end(),"\n","","")
     << std::endl << std::endl;
 
@@ -132,7 +131,7 @@ std::ostream& printBlockData(std::ostream& strm,
 			     complexredgp_io::Interface& CI)
 {
   const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
-  const rootdata::RootDatum& rd = G.rootDatum();
+  const RootDatum& rd = G.rootDatum();
 
   lietype::LieType lt = rd.Lie_type();
 
@@ -181,8 +180,8 @@ std::ostream& printCartanClasses(std::ostream& strm,
   outputting the matrix with M(i,j)=root(rb[i]).scalarProduct(coroot(rb[j]))
 */
 std::ostream& printCartanMatrix(std::ostream& strm,
-				const rootdata::RootList& rb,
-				const rootdata::RootSystem& rs)
+				const RootNbrList& rb,
+				const RootSystem& rs)
 {
   return prettyprint::printMatrix(strm,rs.cartanMatrix(rb));
 }
@@ -195,7 +194,7 @@ std::ostream& printComponents(std::ostream& strm,
 			      const realredgp::RealReductiveGroup& G,
 			      const char* sep)
 {
-  const bitvector::SmallBitVectorList& cr = G.dualComponentReps();
+  const SmallBitVectorList& cr = G.dualComponentReps();
   basic_io::seqPrint(strm,cr.begin(),cr.end(),sep);
 
   return strm;

@@ -13,7 +13,6 @@
 #include "complexredgp_io_fwd.h"
 
 #include "complexredgp_fwd.h"
-#include "latticetypes_fwd.h"
 #include "lietype_fwd.h"
 
 #include "realform_io.h"

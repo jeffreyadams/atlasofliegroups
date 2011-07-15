@@ -14,7 +14,7 @@
 
 #include <cassert>
 
-#include "latticetypes.h"
+#include "matrix.h"
 #include "lietype.h"
 
 /*****************************************************************************
@@ -67,7 +67,7 @@ namespace dynkin {
   j when the Cartan matrix entry c(i,j) is < -1 (i.e. towards the shorter
   root.)
 */
-DynkinDiagram::DynkinDiagram(const latticetypes::LatticeMatrix& c)
+DynkinDiagram::DynkinDiagram(const int_Matrix& c)
   : d_star(c.numColumns())
   , d_downedge()
 {
@@ -277,7 +277,7 @@ permutations::Permutation normalize(const DynkinDiagram& d)
 /*!
   Returns the (semisimple) Lie type of the Cartan matrix cm.
 */
-lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm)
+lietype::LieType Lie_type(const int_Matrix& cm)
 {
 
   DynkinDiagram d(cm);
@@ -304,7 +304,7 @@ lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm)
   complete test is made of all entries in |cm|, throwing a |runtime_error| if
   it fails to be a valid Cartan matrix.
 */
-lietype::LieType Lie_type(const latticetypes::LatticeMatrix& cm,
+lietype::LieType Lie_type(const int_Matrix& cm,
 			  bool Bourbaki, bool check,
 			  permutations::Permutation& pi)
 {

@@ -242,8 +242,11 @@ Permutation::pull_back(const bitset::BitSet<constants::RANK_MAX>& v) const;
 template std::vector<unsigned int>
 Permutation::renumbering(const std::vector<unsigned int>& v) const; // blocks
 
-template std::vector<unsigned long>
-Permutation::renumbering(const std::vector<unsigned long>& v) const; // kgb
+template std::vector<unsigned short>
+Permutation::renumbering(const std::vector<unsigned short>& v) const; // kgb
+
+template void
+Permutation::left_mult(std::vector<unsigned short>& v) const; // complexredgp
 
 template void
 Permutation::left_mult(std::vector<unsigned long>& v) const; // rootdata,weyl,.

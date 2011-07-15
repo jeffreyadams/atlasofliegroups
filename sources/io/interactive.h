@@ -13,15 +13,15 @@
 #include "interactive_fwd.h"
 
 #include "bitmap_fwd.h"
+
+#include "atlas_types.h"
 #include "complexredgp_fwd.h"
 #include "complexredgp_io_fwd.h"
 #include "prerootdata_fwd.h"
 #include "realredgp_fwd.h"
-#include "rootdata_fwd.h"
 
 #include "error.h"
 #include "input.h"
-#include "latticetypes.h"
 #include "lietype.h"
 #include "realform.h"
 #include "standardrepk.h"
@@ -59,8 +59,8 @@ namespace interactive {
   void getInteractive(lietype::InnerClassType&, const lietype::LieType&)
     throw(error::InputError);
 
-  void getInteractive(prerootdata::PreRootDatum&,
-		      latticetypes::WeightList&,
+  void getInteractive(PreRootDatum&,
+		      WeightList&,
 		      const lietype::LieType&) throw(error::InputError);
 
   void getInteractive(realform::RealForm&, const complexredgp_io::Interface&)
@@ -91,12 +91,12 @@ namespace interactive {
 			       input::InputBuffer* linep = 0)
     throw(error::InputError);
 
-  latticetypes::Weight get_weight(input::InputBuffer& ib,
+  Weight get_weight(input::InputBuffer& ib,
 				  const char* prompt,
 				  size_t rank)
     throw(error::InputError);
 
-  latticetypes::RatWeight get_ratweight(input::InputBuffer& ib,
+  RatWeight get_ratweight(input::InputBuffer& ib,
 					const char* prompt,
 					size_t rank)
     throw(error::InputError);
@@ -113,8 +113,8 @@ namespace interactive {
 
   void get_parameter(realredgp::RealReductiveGroup& GR,
 		     kgb::KGBElt& x,
-		     latticetypes::Weight& lambda_rho,
-		     latticetypes::RatWeight& gamma);
+		     Weight& lambda_rho,
+		     RatWeight& gamma);
 }
 
 /******** type definitions ***************************************************/

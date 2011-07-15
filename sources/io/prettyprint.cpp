@@ -17,7 +17,6 @@
 #include "bitmap.h"
 #include "constants.h"
 #include "gradings.h"
-#include "latticetypes.h"
 #include "lattice.h"
 #include "lietype.h"
 #include "rootdata.h"
@@ -157,8 +156,8 @@ std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
 /*
   Outputs root #n to strm in the root coordinates.
 */
-std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n,
-			       const rootdata::RootSystem& rs)
+std::ostream& printInRootBasis(std::ostream& strm, RootNbr n,
+			       const RootSystem& rs)
 {
   return strm << rs.root_expr(n);
 }
@@ -167,12 +166,12 @@ std::ostream& printInRootBasis(std::ostream& strm, rootdata::RootNbr n,
   Synopsis: outputs the set of roots contained in r to strm, expressed in root
   coordinates.
 */
-std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
-			       const rootdata::RootSystem& rs)
+std::ostream& printInRootBasis(std::ostream& strm, const RootNbrSet& r,
+			       const RootSystem& rs)
 {
-  latticetypes::WeightList rl; rl.reserve(r.size());
+  WeightList rl; rl.reserve(r.size());
 
-  for (rootdata::RootSet::iterator it=r.begin(); it(); ++it)
+  for (RootNbrSet::iterator it=r.begin(); it(); ++it)
     rl.push_back(rs.root_expr(*it));
 
   basic_io::seqPrint(strm,rl.begin(),rl.end(),"\n","","\n");
@@ -184,8 +183,8 @@ std::ostream& printInRootBasis(std::ostream& strm, const rootdata::RootSet& r,
   Synopsis: prints the roots in the list in the lattice basis, by default
   as one per line.
 */
-std::ostream& printRootList(std::ostream& strm, const rootdata::RootList& r,
-			    const rootdata::RootDatum& rd, const char* sep)
+std::ostream& printRootList(std::ostream& strm, const RootNbrList& r,
+			    const RootDatum& rd, const char* sep)
 {
   for (size_t i=0; i<r.size(); ++i)
   {
@@ -201,8 +200,8 @@ std::ostream& printRootList(std::ostream& strm, const rootdata::RootList& r,
   Synopsis: prints the coroots in the list in the lattice basis, by default
   as one per line.
 */
-std::ostream& printCorootList(std::ostream& strm, const rootdata::RootList& r,
-			      const rootdata::RootDatum& rd, const char* sep)
+std::ostream& printCorootList(std::ostream& strm, const RootNbrList& r,
+			      const RootDatum& rd, const char* sep)
 {
   for (size_t j=0; j<r.size(); ++j) {
     strm << rd.coroot(r[j]);
@@ -224,8 +223,8 @@ std::ostream& printCorootList(std::ostream& strm, const rootdata::RootList& r,
   by |s|.
 */
 std::ostream& printInvolution(std::ostream& strm,
-			      const weyl::TwistedInvolution& tw,
-			      const weyl::TwistedWeylGroup& W)
+			      const TwistedInvolution& tw,
+			      const TwistedWeylGroup& W)
 {
   weyl::InvolutionWord dec=W.involution_expr(tw);
   for (size_t i=0; i<dec.size(); ++i)
@@ -406,8 +405,8 @@ std::ostream& printTorusType(std::ostream& strm, const tori::RealTorus& T)
 /*
   Synopsis: outputs w as a reduced expression.
 */
-std::ostream& printWeylElt(std::ostream& strm, const weyl::WeylElt& w,
-			   const weyl::WeylGroup& W)
+std::ostream& printWeylElt(std::ostream& strm, const WeylElt& w,
+			   const WeylGroup& W)
 {
   strm << W.word(w);
   return strm;
@@ -417,11 +416,11 @@ std::ostream& printWeylElt(std::ostream& strm, const weyl::WeylElt& w,
   Synopsis: outputs the list of WeylElts as words in the outer representation,
   with the given separator, prefix and postfix.
 */
-std::ostream& printWeylList(std::ostream& strm, const weyl::WeylEltList& wl,
-			    const weyl::WeylGroup& W, const char* sep,
+std::ostream& printWeylList(std::ostream& strm, const WeylEltList& wl,
+			    const WeylGroup& W, const char* sep,
 			    const char* pre, const char* post)
 {
-  std::vector<weyl::WeylWord> wwl(wl.size());
+  std::vector<WeylWord> wwl(wl.size());
 
   for (size_t i = 0; i < wl.size(); ++i)
     wwl[i]=W.word(wl[i]);
@@ -444,7 +443,7 @@ template std::ostream& prettyPrint
    const std::vector<bitvector::BitVector<constants::RANK_MAX> >&);
 
 template std::ostream& printBasis
-  (std::ostream&, const std::vector<latticetypes::Weight>&);
+  (std::ostream&, const std::vector<Weight>&);
 
 template std::ostream& printVector
   (std::ostream&, const std::vector<int>&, unsigned long);

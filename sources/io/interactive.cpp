@@ -55,12 +55,12 @@ namespace {
   input::HistoryBuffer sr_input_buffer; // for standardreps
   input::HistoryBuffer inputBuf; // buffer shared by all other input functions
 
-  latticetypes::LatticeMatrix
-  getInnerClass(lietype::Layout& lo, const latticetypes::WeightList& basis)
+  WeightInvolution
+  getInnerClass(lietype::Layout& lo, const WeightList& basis)
     throw(error::InputError);
 
-  bool checkInvolution(const latticetypes::LatticeMatrix& inv,
-		       const latticetypes::WeightList& basis);
+  bool checkInvolution(const WeightInvolution& inv,
+		       const WeightList& basis);
 }
 
 /*****************************************************************************
@@ -249,8 +249,8 @@ size_t get_Cartan_class(const bitmap::BitMap& cs) throw(error::InputError)
 
   Throws an InputError if the interaction is not successful.
 */
-latticetypes::LatticeMatrix
-getInnerClass(lietype::Layout& lo, const latticetypes::WeightList& basis)
+WeightInvolution
+getInnerClass(lietype::Layout& lo, const WeightList& basis)
   throw(error::InputError)
 {
   const lietype::LieType& lt = lo.d_type;
@@ -258,7 +258,7 @@ getInnerClass(lietype::Layout& lo, const latticetypes::WeightList& basis)
   lietype::InnerClassType ict;
   getInteractive(ict,lt); //< may throw an InputError
 
-  latticetypes::LatticeMatrix i = lietype::involution(lt,ict);
+  WeightInvolution i = lietype::involution(lt,ict);
 
   while (not checkInvolution(i,basis)) // complain and reget the inner class
   {
@@ -343,16 +343,16 @@ void getInteractive(lietype::InnerClassType& ict, const lietype::LieType& lt)
   Throws an InputError if the interaction with the user fails. In that case,
   d_b and d_prd are not touched.
 */
-void getInteractive(prerootdata::PreRootDatum& d_prd,
-		    latticetypes::WeightList& d_b,
+void getInteractive(PreRootDatum& d_prd,
+		    WeightList& d_b,
 		    const lietype::LieType& lt)
   throw(error::InputError)
 
 {
   // get lattice basis
 
-  latticetypes::CoeffList invf;
-  latticetypes::WeightList b = lt.Smith_basis(invf);
+  CoeffList invf;
+  WeightList b = lt.Smith_basis(invf);
   switch (interactive_lattice::getLattice(invf,b)) // may throw an InputError
   {
   case 1: // simply connected
@@ -363,7 +363,7 @@ void getInteractive(prerootdata::PreRootDatum& d_prd,
     { // Take root basis for simple factors, standard basis for torus factors
 
       matrix::initBasis(d_b,lt.rank()); // initially standard basis
-      latticetypes::WeightList::iterator bp = d_b.begin();
+      WeightList::iterator bp = d_b.begin();
 
       for (lietype::LieType::const_iterator it=lt.begin(); it!=lt.end(); ++it)
       {
@@ -385,7 +385,7 @@ void getInteractive(prerootdata::PreRootDatum& d_prd,
 
   // make new PreRootDatum
 
-  prerootdata::PreRootDatum(lt,d_b).swap(d_prd);
+  PreRootDatum(lt,d_b).swap(d_prd);
   // swap with d_prd; the old PreRootDatum will be destroyed
 }
 
@@ -536,17 +536,17 @@ realredgp::RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
   lietype::LieType lt; getInteractive(lt);  // may throw an InputError
 
   // then get kernel generators to define the (pre-) root datum
-  latticetypes::WeightList b; prerootdata::PreRootDatum prd;
+  WeightList b; PreRootDatum prd;
   getInteractive(prd,b,lt); // may throw an InputError
 
   // complete the Lie type with inner class specification, into a Layout |lo|
   // and also compute the involution matrix |inv| for this inner class
   lietype::Layout lo(lt);
   // basis |b| is used to express |inv| on, and may reject some inner classes
-  latticetypes::LatticeMatrix inv=getInnerClass(lo,b); // may throw InputError
+  WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
 
   // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
-  pG=new complexredgp::ComplexReductiveGroup(rootdata::RootDatum(prd),inv);
+  pG=new complexredgp::ComplexReductiveGroup(RootDatum(prd),inv);
   pI=new complexredgp_io::Interface(*pG,lo);
   // the latter constructor also constructs two realform interfaces in *pI
 }
@@ -657,13 +657,13 @@ unsigned long get_int_in_set(const char* prompt,
 }
 
 // Get a weight, consisting of |rank| integers, into |lambda|
-latticetypes::Weight get_weight(input::InputBuffer& ib,
+Weight get_weight(input::InputBuffer& ib,
 				const char* prompt,
 				size_t rank)
   throw(error::InputError)
 {
   ib.getline(std::cin,prompt,true);
-  latticetypes::Weight result(rank);
+  Weight result(rank);
 
   for (size_t i = 0; i<rank; ++i)
   {
@@ -678,7 +678,7 @@ latticetypes::Weight get_weight(input::InputBuffer& ib,
 }
 
 // Get a rational weight, consisting of |rank| integers, into |lambda|
-latticetypes::RatWeight get_ratweight(input::InputBuffer& ib,
+RatWeight get_ratweight(input::InputBuffer& ib,
 				      const char* prompt,
 				      size_t rank)
     throw(error::InputError)
@@ -689,8 +689,8 @@ latticetypes::RatWeight get_ratweight(input::InputBuffer& ib,
   if (denom==0) denom=1; // avoid crash
   pr = "numerator for ";
   pr += prompt;
-  latticetypes::Weight num = get_weight(ib,pr.c_str(),rank);
-  return latticetypes::RatWeight(num,denom);
+  Weight num = get_weight(ib,pr.c_str(),rank);
+  return RatWeight(num,denom);
 }
 
 standardrepk::StandardRepK
@@ -702,7 +702,7 @@ get_standardrep(const standardrepk::SRK_context& c)
 
   prettyprint::printVector(std::cout<<"2rho = ",c.rootDatum().twoRho())
     << std::endl;
-  latticetypes::Weight lambda=
+  Weight lambda=
   get_weight(sr_input_buffer,"Give lambda-rho: ",c.complexGroup().rank());
 
   return c.std_rep_rho_plus(lambda,c.kgb().titsElt(x));
@@ -716,23 +716,23 @@ repr::StandardRepr get_repr(const repr::Rep_context& c)
 
   prettyprint::printVector(std::cout<<"2rho = ",c.rootDatum().twoRho())
     << std::endl;
-  latticetypes::Weight lambda_rho=
+  Weight lambda_rho=
     get_weight(sr_input_buffer,"Give lambda-rho: ",c.complexGroup().rank());
-  latticetypes::RatWeight nu =
+  RatWeight nu =
     get_ratweight(sr_input_buffer,"nu:",c.rootDatum().rank());
   return c.sr(x,lambda_rho,nu);
 }
 
 void get_parameter(realredgp::RealReductiveGroup& GR,
 		   kgb::KGBElt& x,
-		   latticetypes::Weight& lambda_rho,
-		   latticetypes::RatWeight& gamma)
+		   Weight& lambda_rho,
+		   RatWeight& gamma)
 {
   // first step: get initial x in canonical fiber
   size_t cn=get_Cartan_class(GR.Cartan_set());
   const complexredgp::ComplexReductiveGroup& G=GR.complexGroup();
-  const rootdata::RootDatum& rd=G.rootDatum();
-  weyl::TwistedInvolution tw=G.twistedInvolution(cn);
+  const RootDatum& rd=G.rootDatum();
+  TwistedInvolution tw=G.twistedInvolution(cn);
   cartanclass::InvolutionData id = cartanclass::InvolutionData::build(G,tw);
 
   const kgb::KGB& kgb=GR.kgb();
@@ -755,10 +755,10 @@ void get_parameter(realredgp::RealReductiveGroup& GR,
     x = get_int_in_set("KGB number: ",cf);
   }
 
-  latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
+  WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
 
   // second step: get imaginary-dominant lambda
-  latticetypes::RatWeight rho(rd.twoRho(),2);
+  RatWeight rho(rd.twoRho(),2);
   std::cout << "rho = " << rho.normalize() << std::endl;
   if (id.imaginary_rank()>0)
   {
@@ -778,7 +778,7 @@ void get_parameter(realredgp::RealReductiveGroup& GR,
     do
     {
       lambda_rho = get_weight(sr_input(),"Give lambda-rho: ",rd.rank());
-      latticetypes::Weight l = lambda_rho*2 + rd.twoRho();
+      Weight l = lambda_rho*2 + rd.twoRho();
       for (i=0; i<id.imaginary_rank(); ++i)
 	if (l.scalarProduct(rd.coroot(id.imaginary_basis(i)))<0)
 	{
@@ -791,16 +791,16 @@ void get_parameter(realredgp::RealReductiveGroup& GR,
     while (i<id.imaginary_rank()); // wait until inner loop runs to completion
   }
 
-  latticetypes::RatWeight nu = get_ratweight(sr_input(),"nu: ",rd.rank());
+  RatWeight nu = get_ratweight(sr_input(),"nu: ",rd.rank());
   gamma = nu;
-  (gamma /= 2) += latticetypes::RatWeight(lambda_rho*2+rd.twoRho(),4);
+  (gamma /= 2) += RatWeight(lambda_rho*2+rd.twoRho(),4);
   {
-    latticetypes::RatWeight t = gamma - nu;
-    gamma += latticetypes::RatWeight(theta*t.numerator(),t.denominator());
+    RatWeight t = gamma - nu;
+    gamma += RatWeight(theta*t.numerator(),t.denominator());
     gamma.normalize();
   }
 
-  latticetypes::Weight& numer = gamma.numerator(); // we change |gamma| using it
+  Weight& numer = gamma.numerator(); // we change |gamma| using it
 
   // although our goal is to make gamma dominant for theintegral system only
   // it does not hurt to make gamma fully dominant, acting on |x|,|lambda| too
@@ -857,15 +857,15 @@ namespace {
 
   This means that |i| can be represented by an integral matrix on |basis|
 */
-bool checkInvolution(const latticetypes::LatticeMatrix& i,
-		     const latticetypes::WeightList& basis)
+bool checkInvolution(const WeightInvolution& i,
+		     const WeightList& basis)
 {
-  latticetypes::LatticeMatrix p(basis,basis.size());
+  LatticeMatrix p(basis,basis.size());
 
   // write d.p^{-1}.i.p
 
-  latticetypes::LatticeCoeff d;
-  latticetypes::LatticeMatrix m=p.inverse(d)*i*p;
+  LatticeCoeff d;
+  WeightInvolution m=p.inverse(d)*i*p;
 
   // now |i| stabilizes the lattice iff |d| divides |m|
 

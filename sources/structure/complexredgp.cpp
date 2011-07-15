@@ -91,19 +91,19 @@ namespace atlas {
 
 namespace complexredgp {
 
-  void crossTransform(rootdata::RootList&,
-		      const weyl::WeylWord&,
-		      const rootdata::RootSystem&);
+  void crossTransform(RootNbrList&,
+		      const WeylWord&,
+		      const RootSystem&);
 
   unsigned long makeRepresentative(const gradings::Grading&,
-				   const rootdata::RootList&,
+				   const RootNbrList&,
 				   const cartanclass::Fiber&);
 
-  bool checkDecomposition(const weyl::TwistedInvolution& ti,
-			  const weyl::WeylWord& cross,
-			  const rootdata::RootSet& Cayley,
-			  const weyl::TwistedWeylGroup& W,
-			  const rootdata::RootSystem& rs);
+  bool checkDecomposition(const TwistedInvolution& ti,
+			  const WeylWord& cross,
+			  const RootNbrSet& Cayley,
+			  const TwistedWeylGroup& W,
+			  const RootSystem& rs);
 
 } // |namespace complexredgp|
 
@@ -117,7 +117,7 @@ namespace complexredgp {
 namespace complexredgp {
 
 ComplexReductiveGroup::C_info::C_info
-  (const ComplexReductiveGroup& G,const weyl::TwistedInvolution twi, size_t i)
+  (const ComplexReductiveGroup& G,const TwistedInvolution twi, size_t i)
   : tw(twi)
   , real_forms(G.numRealForms()), dual_real_forms(G.numDualRealForms())
   , rep(G.numRealForms()),        dual_rep(G.numDualRealForms())
@@ -134,21 +134,21 @@ ComplexReductiveGroup::C_info::C_info
   distinguished involution |d|, which stabilises the set of simple roots
 */
 ComplexReductiveGroup::ComplexReductiveGroup
- (const rootdata::RootDatum& rd, const latticetypes::LatticeMatrix& d)
+ (const RootDatum& rd, const WeightInvolution& d)
   : d_rootDatum(rd)
   , d_dualRootDatum(rd,tags::DualTag())
   , d_fundamental(rd,d) // will also be fiber of cartan(0)
   , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(d,rd))
     // dual fundamental fiber is dual fiber of most split Cartan
 
-  , my_W(new weyl::WeylGroup(rd.cartanMatrix()))
+  , my_W(new WeylGroup(rd.cartanMatrix()))
   , W(*my_W) // owned when this constructor is used
 
   , d_titsGroup(rd,W,d)
   , d_dualTitsGroup(d_dualRootDatum,W,dualDistinguished())
   , root_twist(rd.root_permutation(simple_twist()))
 
-  , Cartan(1,C_info(*this,weyl::TwistedInvolution(),0))
+  , Cartan(1,C_info(*this,TwistedInvolution(),0))
   , Cartan_poset() // poset is extended and populated below
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 {
@@ -180,15 +180,15 @@ ComplexReductiveGroup::ComplexReductiveGroup
 #endif
       cartanclass::InvolutionData id =
 	cartanclass::InvolutionData::build(rd,d_titsGroup,Cartan[i].tw);
-      rootdata::RootSet pos_im = id.imaginary_roots() & rd.posRootSet();
-      for (rootdata::RootSet::iterator it=pos_im.begin(); it(); ++it)
+      RootNbrSet pos_im = id.imaginary_roots() & rd.posRootSet();
+      for (RootNbrSet::iterator it=pos_im.begin(); it(); ++it)
       {
-	rootdata::RootNbr alpha=*it;
-	bitvector::SmallBitVector alpha_bin(rd.inSimpleRoots(alpha));
+	RootNbr alpha=*it;
+	SmallBitVector alpha_bin(rd.inSimpleRoots(alpha));
 
 	// create a test element with null torus part
 	tits::TitsElt a(Tg,Cartan[i].tw);
-	weyl::WeylWord conjugator;
+	WeylWord conjugator;
 
 	size_t j; // declare outside loop to allow inspection of final value
 	while (alpha!=rd.simpleRootNbr(j=rd.find_descent(alpha)))
@@ -200,8 +200,8 @@ ComplexReductiveGroup::ComplexReductiveGroup
 
 	bool zero_grading = adj_Tg.simple_grading(a,j); // grading of test elt
 
-	weyl::TwistedInvolution sigma = W.prod(j,a.tw()); // "Cayley transform"
-	weyl::WeylWord ww = W.word(canonicalize(sigma));
+	TwistedInvolution sigma = W.prod(j,a.tw()); // "Cayley transform"
+	WeylWord ww = W.word(canonicalize(sigma));
 
 	size_t ii;
 	for (ii=0; ii<Cartan.size(); ++ii)
@@ -247,8 +247,8 @@ ComplexReductiveGroup::ComplexReductiveGroup
     const tits::TitsGroup& dual_Tg = dual_adj_Tg.titsGroup();
 
     { // first initialise |Cartan.back().dual_rep|
-      weyl::TwistedInvolution w0(W.longest()); // this is always a twisted inv.
-      weyl::WeylWord ww = W.word(canonicalize(w0)); // but not always canonical
+      TwistedInvolution w0(W.longest()); // this is always a twisted inv.
+      WeylWord ww = W.word(canonicalize(w0)); // but not always canonical
       assert(w0==Cartan.back().tw);
 
       const cartanclass::Fiber& f=dualFundamental();
@@ -273,18 +273,18 @@ ComplexReductiveGroup::ComplexReductiveGroup
     {
       cartanclass::InvolutionData id =
 	cartanclass::InvolutionData::build(rd,d_titsGroup,Cartan[i].tw);
-      rootdata::RootSet pos_re = id.real_roots() & rd.posRootSet();
-      for (rootdata::RootSet::iterator it=pos_re.begin(); it(); ++it)
+      RootNbrSet pos_re = id.real_roots() & rd.posRootSet();
+      for (RootNbrSet::iterator it=pos_re.begin(); it(); ++it)
       {
-	rootdata::RootNbr alpha=*it;
-	bitvector::SmallBitVector alpha_bin(rd.inSimpleCoroots(alpha));
+	RootNbr alpha=*it;
+	SmallBitVector alpha_bin(rd.inSimpleCoroots(alpha));
 
-	weyl::TwistedInvolution tw = Cartan[i].tw; // non-dual
-	weyl::TwistedInvolution tw_dual = W.opposite(tw);
+	TwistedInvolution tw = Cartan[i].tw; // non-dual
+	TwistedInvolution tw_dual = W.opposite(tw);
 
 	// create a test element with null torus part
 	tits::TitsElt a(dual_Tg,tw_dual);
-	weyl::WeylWord conjugator;
+	WeylWord conjugator;
 
 	size_t j; // declare outside loop to allow inspection of final value
 	while (alpha!=rd.simpleRootNbr(j=rd.find_descent(alpha)))
@@ -300,7 +300,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
 	assert(tw==W.opposite(a.tw())); // coherence with dual group
 
 	W.leftMult(tw,j); // "Cayley transform"
-	weyl::WeylWord ww=W.word(canonicalize(tw)); // in non-dual setting
+	WeylWord ww=W.word(canonicalize(tw)); // in non-dual setting
 
 	size_t ii;
 
@@ -372,10 +372,10 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
     const tits::TitsCoset dual_adj_Tg (*this,tags::DualTag());
     const tits::TitsGroup& dual_Tg = dual_adj_Tg.titsGroup();
 
-    const weyl::TwistedInvolution tw_org = dst.tw;
-    const weyl::TwistedInvolution dual_tw_org = src.tw;
+    const TwistedInvolution tw_org = dst.tw;
+    const TwistedInvolution dual_tw_org = src.tw;
 
-    weyl::WeylWord conjugator = W.word(canonicalize(dst.tw));
+    WeylWord conjugator = W.word(canonicalize(dst.tw));
 
     dst.real_forms = src.dual_real_forms;
     dst.dual_real_forms = src.real_forms;
@@ -443,15 +443,15 @@ namespace complexredgp {
   This is a twisted involution if $s_\alpha$ twisted-commutes with |tw|;
   in practice root $\alpha$ will in fact be imaginary for |tw|
 */
-weyl::TwistedInvolution
-ComplexReductiveGroup::reflection(rootdata::RootNbr alpha,
-				  const weyl::TwistedInvolution& tw) const
+TwistedInvolution
+ComplexReductiveGroup::reflection(RootNbr alpha,
+				  const TwistedInvolution& tw) const
 {
-  const weyl::WeylGroup& W = weylGroup();
+  const WeylGroup& W = weylGroup();
 
-  weyl::WeylWord rw=rootDatum().reflectionWord(alpha);
+  WeylWord rw=rootDatum().reflectionWord(alpha);
 
-  weyl::TwistedInvolution result=tw;
+  TwistedInvolution result=tw;
   for (size_t i=rw.size(); i-->0; ) // left multiply |tw| by |rw|
     W.leftMult(result,rw[i]);
 
@@ -477,8 +477,8 @@ void ComplexReductiveGroup::map_real_forms(size_t cn)
   tits::TitsCoset adj_Tg(*this);
   const cartanclass::Fiber& f = Cartan[cn].class_pt->fiber();
   const partition::Partition& weak_real = f.weakReal();
-  const weyl::TwistedInvolution& tw = Cartan[cn].tw;
-  const rootdata::RootList& sim = f.simpleImaginary();
+  const TwistedInvolution& tw = Cartan[cn].tw;
+  const RootNbrList& sim = f.simpleImaginary();
 
   Cartan[cn].real_labels.resize(weak_real.classCount());
 
@@ -491,7 +491,7 @@ void ComplexReductiveGroup::map_real_forms(size_t cn)
   cartanclass::AdjointFiberElt rep = f.gradingRep(ref_gr);
 
   // now lift |rep| to a torus part and subtract from |base|
-  bitvector::SmallBitVector v(bitset::RankFlags(rep),
+  SmallBitVector v(bitset::RankFlags(rep),
 				 f.adjointFiberRank());
   base -= f.adjointFiberGroup().fromBasis(v);
 
@@ -513,8 +513,8 @@ void ComplexReductiveGroup::map_dual_real_forms(size_t cn)
   tits::TitsCoset dual_adj_Tg(*this,tags::DualTag());
   const cartanclass::Fiber& dual_f = Cartan[cn].class_pt->dualFiber();
   const partition::Partition& dual_weak_real = dual_f.weakReal();
-  const weyl::TwistedInvolution dual_tw =W.opposite(Cartan[cn].tw);
-  const rootdata::RootList& sre = dual_f.simpleImaginary(); // simple real
+  const TwistedInvolution dual_tw =W.opposite(Cartan[cn].tw);
+  const RootNbrList& sre = dual_f.simpleImaginary(); // simple real
 
   Cartan[cn].dual_real_labels.resize(dual_weak_real.classCount());
   assert(dual_weak_real.classCount()==Cartan[cn].dual_real_forms.size());
@@ -528,7 +528,7 @@ void ComplexReductiveGroup::map_dual_real_forms(size_t cn)
   cartanclass::AdjointFiberElt dual_rep = dual_f.gradingRep(dual_ref_gr);
 
   // now lift |rep| to a torus part and subtract from |base|
-  bitvector::SmallBitVector v(bitset::RankFlags(dual_rep),
+  SmallBitVector v(bitset::RankFlags(dual_rep),
 				 dual_f.adjointFiberRank());
   dual_base -= dual_f.adjointFiberGroup().fromBasis(v);
 
@@ -564,16 +564,16 @@ void ComplexReductiveGroup::map_dual_real_forms(size_t cn)
 */
 void ComplexReductiveGroup::correlateForms(size_t cn)
 {
-  const rootdata::RootSystem& rs = rootDatum();
-  const weyl::TwistedWeylGroup& tW = twistedWeylGroup();
+  const RootSystem& rs = rootDatum();
+  const TwistedWeylGroup& tW = twistedWeylGroup();
   const cartanclass::Fiber& fundf = d_fundamental;
   const cartanclass::Fiber& f = cartan(cn).fiber(); // fiber of this Cartan
 
-  const weyl::TwistedInvolution& ti = twistedInvolution(cn);
+  const TwistedInvolution& ti = twistedInvolution(cn);
 
   // find cayley part and cross part
-  rootdata::RootSet so;
-  weyl::WeylWord ww;
+  RootNbrSet so;
+  WeylWord ww;
   Cayley_and_cross_part(so,ww,ti,rs,tW);
 
   assert(checkDecomposition(ti,ww,so,tW,rs));
@@ -586,7 +586,7 @@ void ComplexReductiveGroup::correlateForms(size_t cn)
   {
     unsigned long y = pi.classRep(j); //  orbit |j| has representative |y|
     gradings::Grading gr=f.grading(y); // and |gr| is it's grading
-    rootdata::RootList rl = f.simpleImaginary(); // of the roots in |rl|
+    RootNbrList rl = f.simpleImaginary(); // of the roots in |rl|
 
     gradings::transform_grading(gr,rl,so,rs); // grade those roots at |fundf|
     for (size_t i = 0; i < so.size(); ++i)
@@ -610,17 +610,17 @@ void ComplexReductiveGroup::correlateForms(size_t cn)
 
 void ComplexReductiveGroup::correlateDualForms(size_t cn)
 {
-  const rootdata::RootSystem& rs = dualRootDatum();
-  const weyl::TwistedWeylGroup& tW = dualTwistedWeylGroup();
+  const RootSystem& rs = dualRootDatum();
+  const TwistedWeylGroup& tW = dualTwistedWeylGroup();
   const cartanclass::Fiber& fundf = d_dualFundamental;
   const cartanclass::Fiber& f = cartan(cn).dualFiber();
 
-  weyl::TwistedInvolution ti = dualTwistedInvolution(cn);
+  TwistedInvolution ti = dualTwistedInvolution(cn);
 
 
   // find cayley part and cross part
-  rootdata::RootSet so;
-  weyl::WeylWord ww;
+  RootNbrSet so;
+  WeylWord ww;
   Cayley_and_cross_part(so,ww,ti,rs,tW); // computation is in dual setting!
 
   assert(checkDecomposition(ti,ww,so,tW,rs));
@@ -633,7 +633,7 @@ void ComplexReductiveGroup::correlateDualForms(size_t cn)
   {
     unsigned long y = pi.classRep(j);
     gradings::Grading gr=f.grading(y);
-    rootdata::RootList rl = f.simpleImaginary();
+    RootNbrList rl = f.simpleImaginary();
     gradings::transform_grading(gr,rl,so,rs);
     for (size_t i=0; i<so.size(); ++i)
       gr.set(rl.size()+i);
@@ -660,20 +660,20 @@ void ComplexReductiveGroup::correlateDualForms(size_t cn)
   Checks whether |ti| decomposes as the composition of the cross-action
   defined by |cross| followed by the Cayley transform defined by |Cayley|.
 */
-bool checkDecomposition(const weyl::TwistedInvolution& ti,
-			const weyl::WeylWord& cross,
-			const rootdata::RootSet& Cayley,
-			const weyl::TwistedWeylGroup& W,
-			const rootdata::RootSystem& rs)
+bool checkDecomposition(const TwistedInvolution& ti,
+			const WeylWord& cross,
+			const RootNbrSet& Cayley,
+			const TwistedWeylGroup& W,
+			const RootSystem& rs)
 {
-  weyl::TwistedInvolution tw;
+  TwistedInvolution tw;
 
   // cross action part
   for (size_t i=0; i<cross.size(); ++i)
     W.twistedConjugate(tw,cross[i]);
 
   // cayley transform part
-  for (rootdata::RootSet::iterator it=Cayley.begin(); it(); ++it)
+  for (RootNbrSet::iterator it=Cayley.begin(); it(); ++it)
   {
     cartanclass::InvolutionData id(rs,W.simple_images(rs,tw));
     assert(id.imaginary_roots().isMember(*it));
@@ -799,8 +799,8 @@ size_t ComplexReductiveGroup::numInvolutions
 }
 
 
-latticetypes::LatticeMatrix
-ComplexReductiveGroup::involutionMatrix(const weyl::TwistedInvolution& tw)
+WeightInvolution
+ComplexReductiveGroup::involutionMatrix(const TwistedInvolution& tw)
   const
 {
   return rootDatum().matrix(weylGroup().word(tw.w())) * distinguished();
@@ -809,7 +809,7 @@ ComplexReductiveGroup::involutionMatrix(const weyl::TwistedInvolution& tw)
 /*!
   \brief Flags in rs the set of noncompact positive roots for Cartan \#j.
 */
-rootdata::RootSet ComplexReductiveGroup::noncompactPosRootSet
+RootNbrSet ComplexReductiveGroup::noncompactPosRootSet
   (realform::RealForm rf, size_t j)
 {
   const cartanclass::Fiber& f = cartan(j).fiber();
@@ -821,11 +821,11 @@ rootdata::RootSet ComplexReductiveGroup::noncompactPosRootSet
 /*!
 \brief Sum of the real roots.
 */
-latticetypes::LatticeElt
-  ComplexReductiveGroup::posRealRootSum(const weyl::TwistedInvolution& tw)
+Weight
+  ComplexReductiveGroup::posRealRootSum(const TwistedInvolution& tw)
   const
 {
-  const rootdata::RootDatum& rd=rootDatum();
+  const RootDatum& rd=rootDatum();
   cartanclass::InvolutionData d =
     cartanclass::InvolutionData::build(*this,tw);
   return rd.twoRho(d.real_roots());
@@ -834,11 +834,11 @@ latticetypes::LatticeElt
   /*!
 \brief Sum of the imaginary roots.
   */
-latticetypes::LatticeElt
-  ComplexReductiveGroup::posImaginaryRootSum(const weyl::TwistedInvolution& tw)
+Weight
+  ComplexReductiveGroup::posImaginaryRootSum(const TwistedInvolution& tw)
   const
 {
-  const rootdata::RootDatum& rd=rootDatum();
+  const RootDatum& rd=rootDatum();
   cartanclass::InvolutionData d =
     cartanclass::InvolutionData::build(*this,tw);
   return rd.twoRho(d.imaginary_roots());
@@ -850,9 +850,9 @@ latticetypes::LatticeElt
     We find conjugating generators starting at the original `|sigma|' end, so
     these form the letters of |w| from left (last applied) to right (first).
 */
-weyl::WeylElt // return value is conjugating element
+WeylElt // return value is conjugating element
 ComplexReductiveGroup::canonicalize
-  (weyl::TwistedInvolution &sigma, // element to modify
+  (TwistedInvolution &sigma, // element to modify
    bitset::RankFlags gens) // subset of generators
   const
 {
@@ -860,7 +860,7 @@ ComplexReductiveGroup::canonicalize
 }
 
 //!\brief find number of Cartan class containing twisted involution |sigma|
-size_t ComplexReductiveGroup::class_number(weyl::TwistedInvolution sigma) const
+size_t ComplexReductiveGroup::class_number(TwistedInvolution sigma) const
 {
   canonicalize(sigma);
   for (size_t i=0; i<Cartan.size(); ++i)
@@ -929,7 +929,7 @@ ComplexReductiveGroup::block_size(realform::RealForm rf,
 \brief Modify |v| through through involution associated to |tw|
 */
 void ComplexReductiveGroup::twisted_act
-  (const weyl::TwistedInvolution& tw,latticetypes::LatticeElt& v) const
+  (const TwistedInvolution& tw,Weight& v) const
 {
   distinguished().apply_to(v);
   weylGroup().act(rootDatum(),tw.w(),v);
@@ -947,17 +947,17 @@ void ComplexReductiveGroup::twisted_act
 
 namespace complexredgp {
 
-weyl::WeylElt canonicalize // return value is conjugating element
-  (weyl::TwistedInvolution& sigma,
-   const rootdata::RootDatum& rd,
-   const weyl::TwistedWeylGroup& W,
+WeylElt canonicalize // return value is conjugating element
+  (TwistedInvolution& sigma,
+   const RootDatum& rd,
+   const TwistedWeylGroup& W,
    bitset::RankFlags gens)
 {
-  const rootdata::RootList s_image=W.simple_images(rd,sigma);
+  const RootNbrList s_image=W.simple_images(rd,sigma);
   cartanclass::InvolutionData id(rd,s_image);
 
-  latticetypes::LatticeElt rrs=rd.twoRho(id.real_roots());
-  latticetypes::LatticeElt irs=rd.twoRho(id.imaginary_roots());
+  Weight rrs=rd.twoRho(id.real_roots());
+  Weight irs=rd.twoRho(id.imaginary_roots());
 
 /* the code below uses the following fact: if $S$ is a root subsystem of |rd|,
    and $\alpha$ a simple root that does not lie in $S$, then the sum of
@@ -971,7 +971,7 @@ weyl::WeylElt canonicalize // return value is conjugating element
    $\alpha$ does not lie in $S$.
  */
 
-  weyl::WeylElt w; // initialized to identity; this will be the result
+  WeylElt w; // initialized to identity; this will be the result
 
   { // first phase: make |rrs| dominant for all complex simple roots in |gens|
     // and make |irs| dominant for all such roots that are orthogonal to |rrs|
@@ -980,7 +980,7 @@ weyl::WeylElt canonicalize // return value is conjugating element
       for (it=gens.begin(); it(); ++it)
       {
 	size_t i=*it;
-	latticetypes::LatticeCoeff c=rrs.dot(rd.simpleCoroot(i));
+	LatticeCoeff c=rrs.dot(rd.simpleCoroot(i));
 	if (c<0 or (c==0 and irs.dot(rd.simpleCoroot(i))<0))
 	{
 	  rd.reflect(rrs,rd.simpleRootNbr(i));   // apply $s_i$ to re-root sum
@@ -1026,7 +1026,7 @@ weyl::WeylElt canonicalize // return value is conjugating element
       for (it=gens.begin(); it(); ++it)
       {
 	size_t i=*it;
-	rootdata::RootNbr beta= // image of |rd.simpleRootNbr(i)| by $\theta$
+	RootNbr beta= // image of |rd.simpleRootNbr(i)| by $\theta$
 	  rd.permuted_root(W.word(sigma.w()),rd.simpleRootNbr(W.twisted(i)));
 	if (not rd.isPosRoot(beta))
 	{
@@ -1064,16 +1064,16 @@ weyl::WeylElt canonicalize // return value is conjugating element
   corresponding roots are to be reflected by the cross actions that were found
   later, but those cross actions themselves are unchanged by the interchange.
 */
-void Cayley_and_cross_part(rootdata::RootSet& Cayley,
-			   weyl::WeylWord& cross,
-			   const weyl::TwistedInvolution& ti,
-			   const rootdata::RootSystem& rs,
-			   const weyl::TwistedWeylGroup& W)
+void Cayley_and_cross_part(RootNbrSet& Cayley,
+			   WeylWord& cross,
+			   const TwistedInvolution& ti,
+			   const RootSystem& rs,
+			   const TwistedWeylGroup& W)
 {
   weyl::InvolutionWord dec=W.involution_expr(ti);
-  weyl::TwistedInvolution tw; // to reconstruct |ti| as a check
+  TwistedInvolution tw; // to reconstruct |ti| as a check
 
-  rootdata::RootList so; // values for Cayley; |RootList| is preferable here
+  RootNbrList so; // values for Cayley; |RootList| is preferable here
   cross.clear(); so.reserve(rs.rank());
 
   for (size_t j=dec.size(); j-->0; )
@@ -1116,9 +1116,9 @@ namespace complexredgp {
 
   NOTE: the cross-transformations of |ww| are done in right to left order.
 */
-void crossTransform(rootdata::RootList& rl,
-		    const weyl::WeylWord& ww,
-		    const rootdata::RootSystem& rs)
+void crossTransform(RootNbrList& rl,
+		    const WeylWord& ww,
+		    const RootSystem& rs)
 {
   for (size_t i = ww.size(); i-->0;)
     rs.simple_root_permutation(ww[i]).left_mult(rl);
@@ -1134,28 +1134,28 @@ void crossTransform(rootdata::RootList& rl,
   roots would only make the existence of a solution less likely.
 */
 unsigned long makeRepresentative(const gradings::Grading& gr,
-				 const rootdata::RootList& rl,
+				 const RootNbrList& rl,
 				 const cartanclass::Fiber& fundf)
 {
-  rootdata::RootSet brs =
+  RootNbrSet brs =
     fundf.noncompactRoots(0); // noncompact roots for the base grading
   gradings::Grading bgr =
     cartanclass::restrictGrading(brs,rl); // view as grading of roots of |rl|
-  bitvector::SmallBitVector bc(bgr,rl.size()); // transform to binary vector
+  SmallBitVector bc(bgr,rl.size()); // transform to binary vector
 
   // make right hand side
-  bitvector::SmallBitVector
+  SmallBitVector
                  rhs(gr,rl.size()); // view |gr| as binary vector (same length)
   rhs += bc;                        // and add the one for the base grading
 
   // make grading shifts
-  bitvector::SmallBitVectorList cl(fundf.adjointFiberRank(),bc);
+  SmallBitVectorList cl(fundf.adjointFiberRank(),bc);
   for (size_t i = 0; i < cl.size(); ++i)
   {
     gradings::Grading gr1 =
       cartanclass::restrictGrading(fundf.noncompactRoots(1 << i),rl);
     cl[i] += // cl[i] is shift for vector e[i]
-      bitvector::SmallBitVector(gr1,rl.size());
+      SmallBitVector(gr1,rl.size());
   }
 
   // set up equations

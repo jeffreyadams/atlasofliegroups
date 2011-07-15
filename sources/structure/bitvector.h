@@ -15,12 +15,12 @@
 #define BITVECTOR_H
 
 #include "bitvector_fwd.h"
-#include "latticetypes_fwd.h" // not "latticetypes.h", which includes us!
 
 #include <vector>
 #include <cassert>
 
 #include "bitset.h" // so users will see complete types; also needed for inline
+#include "matrix.h" // for |matrix::Vector|
 
 /******** function declarations **********************************************/
 
@@ -164,7 +164,7 @@ template<size_t dim> class BitVector
     : d_data(data), d_size(n)
     {}
 
-  BitVector(const latticetypes::LatticeElt& weight); // reduce weight mod 2
+  BitVector(const matrix::Vector<int>& weight); // reduce weight mod 2
 
   ~BitVector()
     {}
@@ -313,7 +313,7 @@ template<size_t dim> class BitVectorList
 
   /* reduction mod 2 is done via range-constructor of vector, which on its
      turn calls |BitVector<dim> (const LatticeElt&)| on the elements */
-  BitVectorList(const latticetypes::WeightList& l)
+  BitVectorList(const std::vector<matrix::Vector<int> >& l)
     : std::vector<BitVector<dim> >(l.begin(),l.end())
     {}
 
@@ -324,8 +324,7 @@ template<size_t dim> class BitVectorList
 };
 
 
-// note that the elements in d_data are the _column_ vectors of the
-// matrix
+// note that the elements in d_data are the _column_ vectors of the matrix
 
 /*!
 \brief A matrix of d_rows rows and d_columns columns, with entries in Z/2Z.
@@ -394,7 +393,7 @@ template<size_t dim> class BitMatrix
 
   explicit BitMatrix(const std::vector<BitVector<dim> >&,  // set by columns
 		     unsigned short int num_rows);  // all of size |num_rows|
-  explicit BitMatrix(const latticetypes::LatticeMatrix& m); // set modulo 2
+  explicit BitMatrix(const matrix::Matrix<int>& m); // set modulo 2
 
 // copy and assignment (implicitly generated ones will do)
 

@@ -3487,21 +3487,21 @@ type_ptr analyse_types(const expr& e,expression_ptr& p)
 The interpreter distinguishes its own types like \.{[int]} ``row of integer''
 from similar built-in types of the library, like \.{vec} ``vector'', which it
 will consider to be primitive types. In fact a value of type ``vector''
-represents an object of the Atlas type |atlas::matrix::Vector<int>|, and
-similarly other primitive types will stand for other Atlas types. We prefer
-using a basic type name rather than something resembling the more
-mathematically charged equivalents like |latticetypes::Weight| for
-|atlas::matrix::Vector<int>|, as that might be more confusing that helpful to
-users. In any case, the interpretation of the values is not at all fixed
-(vectors are used for coweights and (co)roots as well as for weights, and
-matrices could denote either a basis or an automorphism of a lattice).
-
-There is one type that is genuinely defined in the \.{latticetypes} unit,
-namely |latticetypes::RatWeight|, and we shall use that, but call the
-resulting type just rational vector (\.{ratvec} for the user).
+represents an object of the Atlas type |matrix::Vector<int>|, and similarly
+other primitive types will stand for other Atlas types. We prefer using a
+basic type name rather than something resembling the more mathematically
+charged equivalents like |Weight| for |atlas::matrix::Vector<int>|, as that
+might be more confusing that helpful to users. In any case, the interpretation
+of the values is not at all fixed (vectors are used for coweights and
+(co)roots as well as for weights, and matrices could denote either a basis or
+an automorphism of a lattice). The header \.{atlas\_types.h} makes sure all
+types are pre-declared, but we need to see the actual type definitions in
+order to incorporated these values in ours.
 
 @< Includes needed in the header file @>=
-#include "latticetypes.h"
+#include "atlas_types.h"
+#include "matrix.h"
+#include "ratvec.h"
 
 @ We start with deriving |vector_value| from |value_base|. In its constructor,
 the argument is a reference to |std::vector<int>|, from which
@@ -3546,9 +3546,9 @@ typedef std::auto_ptr<matrix_value> matrix_ptr;
 typedef std::tr1::shared_ptr<matrix_value> shared_matrix;
 @)
 struct rational_vector_value : public value_base
-{ latticetypes::RatWeight val;
+{ RatWeight val;
 @)
-  explicit rational_vector_value(const latticetypes::RatWeight& v):val(v)@+{}
+  explicit rational_vector_value(const RatWeight& v):val(v)@+{}
   rational_vector_value(const matrix::Vector<int>& v,int d)
    : val(v,d) @+ { val.normalize(); }
   ~rational_vector_value()@+ {}
@@ -3707,7 +3707,7 @@ void ratvec_convert() // convert list of rationals to rational vector
   for (size_t i=0; i<r->val.size(); ++i)
     numer[i]*= d/denom[i]; // adjust numerators to common denominator
 
-  push_value(new rational_vector_value(latticetypes::RatWeight(numer,d)));
+  push_value(new rational_vector_value(RatWeight(numer,d)));
 }
 @)
 void rat_list_convert() // convert rational vector to list of rationals
@@ -3836,8 +3836,6 @@ these are pulled from the stack in reverse order, which is important for the
 non-commutative operations like `|-|' and `|/|'. Since values are shared, we
 must allocate new value objects for the results.
 
-@h "intutils.h"
-
 @< Local function definitions @>=
 
 void plus_wrapper(expression_base::level l)
@@ -3859,7 +3857,7 @@ void times_wrapper(expression_base::level l)
 }
 
 @ We take the occasion to repair the integer division operation for negative
-arguments, by using |intutils::divide| rather than |operator/|. Since that
+arguments, by using |arithmetic::divide| rather than |operator/|. Since that
 takes an unsigned second argument, we handle the case |j<0| ourselves.
 
 @< Local function definitions @>=
@@ -3868,7 +3866,7 @@ void divide_wrapper(expression_base::level l)
   if (j==0) throw std::runtime_error("Division by zero");
   if (l!=expression_base::no_value)
     push_value(new int_value
-     (j>0 ? intutils::divide(i,j) : -intutils::divide(i,-j)));
+     (j>0 ? arithmetic::divide(i,j) : -arithmetic::divide(i,-j)));
 }
 
 @ We also define a remainder operation |modulo|, a combined
@@ -3881,7 +3879,7 @@ void modulo_wrapper(expression_base::level l)
 { int  j=get<int_value>()->val; int i=get<int_value>()->val;
   if (j==0) throw std::runtime_error("Modulo zero");
   if (l!=expression_base::no_value)
-    push_value(new int_value(intutils::remainder(i,intutils::abs(j))));
+    push_value(new int_value(arithmetic::remainder(i,arithmetic::abs(j))));
 }
 @)
 void divmod_wrapper(expression_base::level l)
@@ -3889,8 +3887,8 @@ void divmod_wrapper(expression_base::level l)
   if (j==0) throw std::runtime_error("DivMod by zero");
   if (l!=expression_base::no_value)
   { push_value(new int_value
-     (j>0 ? intutils::divide(i,j) : -intutils::divide(i,-j)));
-    push_value(new int_value(intutils::remainder(i,intutils::abs(j))));
+     (j>0 ? arithmetic::divide(i,j) : -arithmetic::divide(i,-j)));
+    push_value(new int_value(arithmetic::remainder(i,arithmetic::abs(j))));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -3904,7 +3902,7 @@ void unary_minus_wrapper(expression_base::level l)
 void power_wrapper(expression_base::level l)
 { static shared_int one(new int_value(1));
 @/int n=get<int_value>()->val; shared_int i=get<int_value>();
-  if (intutils::abs(i->val)!=1 and n<0)
+  if (arithmetic::abs(i->val)!=1 and n<0)
     throw std::runtime_error("Negative power of integer");
   if (l==expression_base::no_value)
     return;

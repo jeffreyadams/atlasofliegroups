@@ -17,10 +17,9 @@ factorization, to avoid overflow problems).
 #ifndef WEYLSIZE_H  /* guard against multiple inclusions */
 #define WEYLSIZE_H
 
-#include "weyl_fwd.h"
+#include "atlas_types.h"
 
-#include "lietype.h"
-#include "size.h"
+#include "size_fwd.h"
 
 /******** function declarations **********************************************/
 
@@ -28,7 +27,7 @@ namespace atlas {
 
 namespace weylsize {
 
-  size::Size weylSize(const lietype::LieType&);
+  size::Size weylSize(const LieType&);
   size::Size weylSize(const lietype::SimpleLieType&);
 
 }

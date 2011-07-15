@@ -22,9 +22,8 @@
 #ifndef PREROOTDATA_H  /* guard against multiple inclusions */
 #define PREROOTDATA_H
 
-#include "latticetypes.h"
 #include "lietype.h"
-#include "weyl_fwd.h"
+#include "atlas_types.h"
 
 namespace atlas {
 
@@ -54,12 +53,12 @@ class PreRootDatum
   \brief List of the simple roots as elements of Z^d_rank, expressed in the
   basis specified by the argument b of the constructor.
   */
-  latticetypes::WeightList d_roots;
+  WeightList d_roots;
   /*!
   List of the simple coroots as elements of Z^d_rank, expressed in the
   dual of the basis specified by the argument b of the constructor.
   */
-  latticetypes::WeightList d_coroots;
+  CoweightList d_coroots;
   /*!
   \brief  Rank of the root datum.
    */
@@ -70,12 +69,12 @@ class PreRootDatum
 // constructors and destructors
   PreRootDatum() {}
 
-  PreRootDatum(const latticetypes::WeightList& roots,
-               const latticetypes::WeightList& coroots,
+  PreRootDatum(const WeightList& roots,
+               const CoweightList& coroots,
 	       size_t rank)
     : d_roots(roots),d_coroots(coroots), d_rank(rank) {}
 
-  PreRootDatum(const lietype::LieType& lt, const latticetypes::WeightList&);
+  PreRootDatum(const lietype::LieType& lt, const WeightList&);
 
   ~PreRootDatum() {}
 
@@ -94,17 +93,17 @@ class PreRootDatum
 \brief  List of the SIMPLE roots as elements of Z^d_rank,
 expressed in the basis specified by argument b of the constructor.
 */
-  const latticetypes::WeightList& roots() const { return d_roots; }
+  const WeightList& roots() const { return d_roots; }
 /*!
 \brief List of the SIMPLE coroots as elements of Z^d_rank, expressed
 in the dual of the basis specified by argument b of the constructor.
 */
-  const latticetypes::WeightList& coroots() const { return d_coroots; }
+  const CoweightList& coroots() const { return d_coroots; }
 
 
-  latticetypes::LatticeMatrix Cartan_matrix() const;
+  int_Matrix Cartan_matrix() const;
 
-  void simpleReflect(latticetypes::Weight& v, weyl::Generator i) const;
+  void simpleReflect(Weight& v, weyl::Generator i) const;
 
 // manipulators
   void swap(PreRootDatum&);

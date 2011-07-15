@@ -14,10 +14,10 @@
 
 #include <vector>
 
-#include "rootdata_fwd.h"
+#include "atlas_types.h"
 #include "tori_fwd.h"
 
-#include "latticetypes.h"
+#include "bitvector.h" // contained in |Connectivity|
 
 /******** type declarations *************************************************/
 
@@ -33,7 +33,7 @@ namespace topology {
 
 namespace topology {
 
-  bool isTrivial(const latticetypes::CoeffList&);
+  bool isTrivial(const CoeffList&);
 
 }
 
@@ -50,18 +50,18 @@ class Connectivity
 {
 
  private:
-  bitvector::SmallBitVectorList d_dpi0; // basis of dual component group
+  SmallBitVectorList d_dpi0; // basis of dual component group
 
  public:
 // constructors and destructors
   Connectivity() {}
 
-  Connectivity(const tori::RealTorus& most_split, const rootdata::RootDatum&);
+  Connectivity(const tori::RealTorus& most_split, const RootDatum&);
 
   ~Connectivity() {}
 
 // accessors
-  const bitvector::SmallBitVectorList& dualComponentReps() const
+  const SmallBitVectorList& dualComponentReps() const
   { return d_dpi0; }
 
   const size_t component_rank() const { return d_dpi0.size(); }

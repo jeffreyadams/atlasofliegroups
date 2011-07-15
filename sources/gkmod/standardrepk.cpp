@@ -47,9 +47,9 @@ namespace atlas {
 namespace {
 
 // an auxiliary function for height computations
-latticetypes::LatticeMatrix
-orth_projection(const rootdata::RootDatum& rd, bitset::RankFlags gens,
-		latticetypes::LatticeCoeff& denom);
+int_Matrix
+orth_projection(const RootDatum& rd, bitset::RankFlags gens,
+		LatticeCoeff& denom);
 
 } // |namespace|
 
@@ -121,7 +121,7 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
   , simple_reflection_mod_2()
   , proj_pool(), proj_sets(proj_pool), proj_data()
 {
-  const rootdata::RootDatum& rd=rootDatum();
+  const RootDatum& rd=rootDatum();
   simple_reflection_mod_2.reserve(G.semisimpleRank());
   for (size_t i=0; i<G.semisimpleRank(); ++i)
     simple_reflection_mod_2.push_back
@@ -138,17 +138,17 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
     Cartan_info& ci=C_info[nr];
 
     const cartanclass::Fiber& f=G.cartan(*it).fiber();
-    const latticetypes::LatticeMatrix& theta = f.involution();
+    const WeightInvolution& theta = f.involution();
 
     // put in $q$ the matrix of $\theta-1$
-    latticetypes::LatticeMatrix q=theta;
+    WeightInvolution q=theta;
     for (size_t i=0; i<n; ++i)
       q(i,i) -= 1;
 
     // find basis adapted to image of $\theta-1$
-    latticetypes::CoeffList factor;
-    latticetypes::LatticeMatrix basis = matreduc::adapted_basis(q,factor);
-    latticetypes::LatticeMatrix inv_basis=basis.inverse();
+    CoeffList factor;
+    int_Matrix basis = matreduc::adapted_basis(q,factor);
+    int_Matrix inv_basis=basis.inverse();
 
     size_t twos=0,l=factor.size();
     bitset::RankFlags torsion;
@@ -182,14 +182,14 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
       .swap(ci.fiber_modulus);
 
     { // find simple roots orthogonal to |real2rho| and |imaginary2rho|
-      latticetypes::Weight real2rho=rd.twoRho(f.realRootSet());
-      latticetypes::Weight imaginary2rho=rd.twoRho(f.imaginaryRootSet());
+      Weight real2rho=rd.twoRho(f.realRootSet());
+      Weight imaginary2rho=rd.twoRho(f.imaginaryRootSet());
       for (size_t i=0; i<rd.semisimpleRank(); ++i)
 	if (rd.isOrthogonal(real2rho,rd.simpleRootNbr(i)) and
 	    rd.isOrthogonal(imaginary2rho,rd.simpleRootNbr(i)))
 	{
-	  rootdata::RootNbr alpha = rd.simpleRootNbr(i);
-	  rootdata::RootNbr beta= f.involution_image_of_root(alpha);
+	  RootNbr alpha = rd.simpleRootNbr(i);
+	  RootNbr beta= f.involution_image_of_root(alpha);
 	  assert (rd.isSimpleRoot(beta));
 	  if (not ci.bi_ortho[rd.simpleRootIndex(beta)]) // skip second of pair
 	  {
@@ -204,7 +204,7 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
 
 
 HCParam SRK_context::project
-  (size_t cn, latticetypes::Weight lambda) const
+  (size_t cn, Weight lambda) const
 {
   const Cartan_info& ci=info(cn);
 
@@ -213,16 +213,16 @@ HCParam SRK_context::project
   // now |lambda| actually represents $\lambda-\rho$ in plain coordinates
   return std::make_pair
     (ci.freeProjector*lambda,
-     (ci.torsionProjector*bitvector::SmallBitVector(lambda)).data()
+     (ci.torsionProjector*SmallBitVector(lambda)).data()
      );
 }
 
-latticetypes::Weight SRK_context::lift(size_t cn, HCParam p) const
+Weight SRK_context::lift(size_t cn, HCParam p) const
 {
   const Cartan_info& ci=info(cn);
-  latticetypes::Weight result=ci.freeLift*p.first; // lift free part
+  Weight result=ci.freeLift*p.first; // lift free part
 
-  latticetypes::WeightList torsion_lift=ci.torsionLift;
+  WeightList torsion_lift=ci.torsionLift;
   for (size_t i=0; i<torsion_lift.size(); ++i)
     if (p.second[i])
       result += torsion_lift[i]; // add even vectors representing torsion part
@@ -232,13 +232,13 @@ latticetypes::Weight SRK_context::lift(size_t cn, HCParam p) const
 }
 
 StandardRepK SRK_context::std_rep
-  (const latticetypes::Weight& two_lambda, tits::TitsElt a) const
+  (const Weight& two_lambda, tits::TitsElt a) const
 {
-  const weyl::WeylGroup& W=weylGroup();
-  const rootdata::RootDatum& rd=rootDatum();
+  const WeylGroup& W=weylGroup();
+  const RootDatum& rd=rootDatum();
 
-  weyl::TwistedInvolution sigma=a.tw();
-  weyl::WeylElt w = complexGroup().canonicalize(sigma);
+  TwistedInvolution sigma=a.tw();
+  WeylElt w = complexGroup().canonicalize(sigma);
   // now |sigma| is canonical and |w| conjugates |sigma| to |a.tw()|
 
 
@@ -247,7 +247,7 @@ StandardRepK SRK_context::std_rep
 
   assert(a.tw()==sigma); // we should now be at canonical twisted involution
 
-  latticetypes::Weight mu=W.imageByInverse(rd,w,two_lambda);
+  Weight mu=W.imageByInverse(rd,w,two_lambda);
 
   size_t cn = complexGroup().class_number(sigma);
   StandardRepK result(cn,
@@ -262,18 +262,18 @@ StandardRepK SRK_context::std_rep
 // it should only transform the parameters for the Levi factor given by |gens|
 // since |lambda| is $\rho$-centered, care should be taken in transforming it
 RawRep SRK_context::Levi_rep
-    (latticetypes::Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
+    (Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
   const
 {
-  weyl::TwistedInvolution sigma=a.tw();
-  weyl::WeylElt w = complexGroup().canonicalize(sigma,gens);
+  TwistedInvolution sigma=a.tw();
+  WeylElt w = complexGroup().canonicalize(sigma,gens);
   // now |sigma| is canonical for |gens|, and |w| conjugates it to |a.tw()|
 
-  const rootdata::RootDatum& rd=rootDatum();
+  const RootDatum& rd=rootDatum();
 
   // conjugate towards canonical element
   {
-    weyl::WeylWord ww=weylGroup().word(w);
+    WeylWord ww=weylGroup().word(w);
     for (size_t i=0; i<ww.size(); ++i) // left-to-right for inverse conjugation
     {
       assert(gens.test(ww[i])); // check that we only used elements in $W(L)$
@@ -292,8 +292,8 @@ RawRep SRK_context::Levi_rep
 level
 SRK_context::height(const StandardRepK& sr) const
 {
-  const rootdata::RootDatum& rd=rootDatum();
-  const latticetypes::Weight mu=theta_lift(sr);
+  const RootDatum& rd=rootDatum();
+  const Weight mu=theta_lift(sr);
 
   level sum=0;
   for (rootdata::WRootIterator
@@ -317,12 +317,12 @@ const proj_info& SRK_context::get_projection(bitset::RankFlags gens)
   return proj_data.back();
 } // |SRK_context::get_projection|
 
-level SRK_context::height_bound(const latticetypes::Weight& lambda)
+level SRK_context::height_bound(const Weight& lambda)
 {
-  const rootdata::RootDatum& rd=rootDatum();
+  const RootDatum& rd=rootDatum();
 
   bitset::RankFlags negatives,new_negatives;
-  latticetypes::Weight mu;
+  Weight mu;
 
   do
   {
@@ -343,8 +343,8 @@ level SRK_context::height_bound(const latticetypes::Weight& lambda)
 
 bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
 {
-  const rootdata::RootDatum& rd=rootDatum();
-  latticetypes::Weight lambda=lift(sr);
+  const RootDatum& rd=rootDatum();
+  Weight lambda=lift(sr);
   const cartanclass::Fiber& f=fiber(sr);
 
   for (size_t i=0; i<f.imaginaryRank(); ++i)
@@ -356,7 +356,7 @@ bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
   return true;
 }
 
-bool SRK_context::isNormal(latticetypes::Weight lambda, size_t cn,
+bool SRK_context::isNormal(Weight lambda, size_t cn,
 			   size_t& witness) const
 {
   size_t i=0; // position of |*it| below in |info(cn).bi_ortho|
@@ -372,8 +372,8 @@ bool SRK_context::isNormal(latticetypes::Weight lambda, size_t cn,
 
 bool SRK_context::isZero(const StandardRepK& sr, size_t& witness) const
 {
-  const rootdata::RootDatum& rd=rootDatum();
-  latticetypes::Weight lambda=lift(sr);
+  const RootDatum& rd=rootDatum();
+  Weight lambda=lift(sr);
   const cartanclass::Fiber& f=fiber(sr);
   tits::TitsElt a=titsElt(sr);
 
@@ -389,8 +389,8 @@ bool SRK_context::isZero(const StandardRepK& sr, size_t& witness) const
 
 bool SRK_context::isFinal(const StandardRepK& sr, size_t& witness) const
 {
-  const rootdata::RootDatum& rd=rootDatum();
-  latticetypes::Weight lambda=lift(sr);
+  const RootDatum& rd=rootDatum();
+  Weight lambda=lift(sr);
   const cartanclass::Fiber& f=fiber(sr);
 
   // since coordinates are doubled, the scalar product below is always even
@@ -405,10 +405,10 @@ bool SRK_context::isFinal(const StandardRepK& sr, size_t& witness) const
 
 void SRK_context::normalize(StandardRepK& sr) const
 {
-  const rootdata::RootDatum& rd = rootDatum();
+  const RootDatum& rd = rootDatum();
   size_t cn = sr.Cartan();
   const Cartan_info& ci = info(cn);
-  latticetypes::Weight lambda = lift(sr);
+  Weight lambda = lift(sr);
 
   size_t i=~0ul; // number of a complex simple root
   while (not isNormal(lambda,cn,i))
@@ -425,10 +425,10 @@ q_Char SRK_context::q_normalize_eq (const StandardRepK& sr,size_t i) const
 
 
 q_Char SRK_context::q_reflect_eq(const StandardRepK& sr,size_t i,
-				 latticetypes::Weight lambda, // doubled
-				 const latticetypes::Weight& cowt) const
+				 Weight lambda, // doubled
+				 const Weight& cowt) const
 {
-  const rootdata::RootDatum& rd = rootDatum();
+  const RootDatum& rd = rootDatum();
   const tits::TorusPart& x = sr.d_fiberElt;
   size_t cn = sr.Cartan();
 
@@ -438,7 +438,7 @@ q_Char SRK_context::q_reflect_eq(const StandardRepK& sr,size_t i,
   assert (n%2==0);  // because of doubled coordinates
   n/=2;
 
-  latticetypes::Weight a2 = rd.simpleRoot(i)*2; // doubled coordinates
+  Weight a2 = rd.simpleRoot(i)*2; // doubled coordinates
 
   lambda += a2*n; // $\lambda_0 = s_\alpha(\lambda)$
 
@@ -483,15 +483,15 @@ q_Char SRK_context::q_reflect_eq(const StandardRepK& sr,size_t i,
  */
 PSalgebra
 SRK_context::theta_stable_parabolic
-  (const StandardRepK& sr, weyl::WeylWord& conjugator) const
+  (const StandardRepK& sr, WeylWord& conjugator) const
 {
-  const rootdata::RootDatum& rd=rootDatum();
-  const weyl::TwistedWeylGroup& W=twistedWeylGroup();
+  const RootDatum& rd=rootDatum();
+  const TwistedWeylGroup& W=twistedWeylGroup();
 
-  latticetypes::Weight dom=theta_lift(sr);
+  Weight dom=theta_lift(sr);
   tits::TitsElt strong=titsElt(sr);
 
-  weyl::WeylWord ww; // conjugating element
+  WeylWord ww; // conjugating element
 
   /* the following loop terminates because we either increase the number of
      positive coroots with strictly positive evaluation on |dom|, or we keep
@@ -503,8 +503,8 @@ SRK_context::theta_stable_parabolic
     weyl::Generator i;
     for (i=0; i<rd.semisimpleRank(); ++i)
     {
-      rootdata::RootNbr alpha=rd.simpleRootNbr(i);
-      latticetypes::LatticeCoeff v=dom.dot(rd.simpleCoroot(i));
+      RootNbr alpha=rd.simpleRootNbr(i);
+      LatticeCoeff v=dom.dot(rd.simpleCoroot(i));
 
       if (v<0) // first priority: |dom| should be made dominant
 	break; // found value of |i| to use in conjugation/reflection
@@ -513,7 +513,7 @@ SRK_context::theta_stable_parabolic
       // now |dom| is on reflection hyperplane for |alpha|
 
       // second priority give |alpha| and its $\theta$ image the same sign
-      rootdata::RootNbr beta= // image of |alpha| by $\theta$
+      RootNbr beta= // image of |alpha| by $\theta$
 	rd.permuted_root(W.word(strong.w()),rd.simpleRootNbr(W.twisted(i)));
       if (not rd.isPosRoot(beta) and beta!=rd.rootMinus(alpha))
 	break; // found |i| in this case as well
@@ -544,7 +544,7 @@ SRK_context::theta_stable_parabolic
   // Build the parabolic subalgebra:
 
   { // first ensure |strong| is reduced
-    const latticetypes::LatticeMatrix theta =
+    const WeightInvolution theta =
       complexGroup().involutionMatrix(strong.tw());
     titsGroup().left_torus_reduce(strong,tits::fiber_denom(theta));
   }
@@ -596,9 +596,9 @@ kgb::KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
 } // sub_KGB
 
 RawChar SRK_context::KGB_sum(const PSalgebra& q,
-			     const latticetypes::Weight& lambda) const
+			     const Weight& lambda) const
 {
-  const rootdata::RootDatum& rd=rootDatum();
+  const RootDatum& rd=rootDatum();
   kgb::KGBEltList sub=sub_KGB(q); std::reverse(sub.begin(),sub.end());
 
   std::vector<size_t> sub_inv(kgb().size(),~0ul);
@@ -606,7 +606,7 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
   for (size_t i=0; i<sub.size(); ++i)
     sub_inv[sub[i]]=i; // partially fill array with inverse index
 
-  std::vector<latticetypes::Weight> mu; // list of $\rho$-centered weights,
+  std::vector<Weight> mu; // list of $\rho$-centered weights,
   mu.reserve(sub.size());               // associated to the elements of |sub|
 
   mu.push_back(lambda); (mu[0]-=rd.twoRho())/=2; // make $\rho$-centered
@@ -634,9 +634,9 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
       {
 	size_t k=sub_inv[kgb().cayley(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
-	latticetypes::Weight nu=mu[k]; // $\rho-\lambda$ at split side
+	Weight nu=mu[k]; // $\rho-\lambda$ at split side
 	assert(nu.scalarProduct(rd.simpleCoroot(*it))%2 == 0); // finality
-	latticetypes::Weight alpha=rd.simpleRoot(*it);
+	Weight alpha=rd.simpleRoot(*it);
 	nu -= (alpha *= nu.scalarProduct(rd.simpleCoroot(*it))/2); // project
 	mu.push_back(nu); // use projected weight at compact side of transform
 	break;
@@ -663,15 +663,15 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
 CharForm
 SRK_context::K_type_formula(const StandardRepK& sr, level bound)
 {
-  const weyl::WeylGroup& W=weylGroup();
-  const rootdata::RootDatum& rd=rootDatum();
+  const WeylGroup& W=weylGroup();
+  const RootDatum& rd=rootDatum();
 
   // Get theta stable parabolic subalgebra
 
-  weyl::WeylWord conjugator;
+  WeylWord conjugator;
   PSalgebra q = theta_stable_parabolic(sr,conjugator);
 
-  latticetypes::Weight lambda=
+  Weight lambda=
     W.imageByInverse(rd,W.element(conjugator),lift(sr));
 
   RawChar KGB_sum_q= KGB_sum(q,lambda);
@@ -682,22 +682,22 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
   for (RawChar::const_iterator it=KGB_sum_q.begin(); it!=KGB_sum_q.end(); ++it)
   {
     Char::coef_t c=it->second; // coefficient from |KGB_sum_q|
-    const latticetypes::Weight& mu=it->first.first; // weight from |KGB_sum_q|
+    const Weight& mu=it->first.first; // weight from |KGB_sum_q|
     const tits::TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_q|
     cartanclass::InvolutionData id =
       cartanclass::InvolutionData::build(complexGroup(),strong.tw());
 
-    rootdata::RootSet A(rd.numRoots());
+    RootNbrSet A(rd.numRoots());
     for (bitmap::BitMap::iterator
 	   rt=q.radical().begin(); rt!=q.radical().end(); ++rt)
     {
-      rootdata::RootNbr alpha=*rt;
+      RootNbr alpha=*rt;
       assert(not id.real_roots().isMember(alpha));
       if (id.imaginary_roots().isMember(alpha))
 	A.set_to(alpha,basedTitsGroup().grading(strong,alpha)); // add if nc
       else // complex root
       {
-	rootdata::RootNbr beta=id.root_involution(alpha);
+	RootNbr beta=id.root_involution(alpha);
 	assert(rd.isPosRoot(beta));
 	A.set_to(alpha,beta>alpha); // add first of two complex roots
       }
@@ -705,13 +705,13 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
 
 //     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
 
-    typedef free_abelian::Monoid_Ring<latticetypes::Weight> polynomial;
-    const latticetypes::LatticeMatrix theta =
+    typedef free_abelian::Monoid_Ring<Weight> polynomial;
+    const WeightInvolution theta =
       complexGroup().involutionMatrix(strong.tw());
 
     // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
     polynomial pol(mu);
-    for (rootdata::RootSet::iterator it=A.begin(); it!=A.end(); ++it)
+    for (RootNbrSet::iterator it=A.begin(); it!=A.end(); ++it)
     {
       polynomial copy=pol; // since |add_multiple| assumes no aliasing
       pol.add_multiple(copy,-1,rd.root(*it));
@@ -719,7 +719,7 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
       // filter out terms that cannot affect anything below |bound|
       for (polynomial::iterator term=pol.begin(); term!=pol.end();)
       {
-	latticetypes::Weight lambda=term->first;
+	Weight lambda=term->first;
 	(lambda*=2) += rd.twoRho();
 	lambda += theta*lambda;
 	if (height_bound(lambda)>bound)
@@ -733,7 +733,7 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
     // iterate over terms in formal sum, taking coef *= |c|
     for (polynomial::const_iterator term=pol.begin(); term!=pol.end(); ++term)
     {
-      latticetypes::Weight lambda=term->first;
+      Weight lambda=term->first;
       polynomial::coef_t coef=term->second;
       result += Char(std_rep_rho_plus(lambda,strong),c*coef); // contribute
     }
@@ -742,9 +742,9 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
 } // |K_type_formula|
 
 Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
-				  const latticetypes::Weight& lambda) const
+				  const Weight& lambda) const
 {
-  const rootdata::RootDatum& rd=rootDatum();
+  const RootDatum& rd=rootDatum();
   kgb::KGBEltList sub=sub_KGB(p); std::reverse(sub.begin(),sub.end());
 
   std::vector<size_t> sub_inv(kgb().size(),~0ul);
@@ -752,7 +752,7 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
   for (size_t i=0; i<sub.size(); ++i)
     sub_inv[sub[i]]=i; // partially fill array with inverse index
 
-  std::vector<latticetypes::Weight> mu; // list of $\rho$-centered weights,
+  std::vector<Weight> mu; // list of $\rho$-centered weights,
   mu.reserve(sub.size());               // associated to the elements of |sub|
 
   mu.push_back(lambda); (mu[0]-=rd.twoRho())/=2; // make $\rho$-centered
@@ -780,9 +780,9 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
       {
 	size_t k=sub_inv[kgb().cayley(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
-	latticetypes::Weight nu=mu[k]; // $\rho-\lambda$ at split side
+	Weight nu=mu[k]; // $\rho-\lambda$ at split side
 	assert(nu.scalarProduct(rd.simpleCoroot(*it))%2 == 0); // finality
-	latticetypes::Weight alpha=rd.simpleRoot(*it);
+	Weight alpha=rd.simpleRoot(*it);
 	nu -= (alpha *= nu.scalarProduct(rd.simpleCoroot(*it))/2); // project
 	mu.push_back(nu); // use projected weight at compact side of transform
 	break;
@@ -810,15 +810,15 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
 q_CharForm
 SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 {
-  const weyl::WeylGroup& W=weylGroup();
-  const rootdata::RootDatum& rd=rootDatum();
+  const WeylGroup& W=weylGroup();
+  const RootDatum& rd=rootDatum();
 
   // Get theta stable parabolic subalgebra
 
-  weyl::WeylWord conjugator;
+  WeylWord conjugator;
   PSalgebra p = theta_stable_parabolic(sr,conjugator);
 
-  latticetypes::Weight lambda=
+  Weight lambda=
     W.imageByInverse(rd,W.element(conjugator),lift(sr));
 
   Raw_q_Char q_KGB_sum_p= q_KGB_sum(p,lambda);
@@ -830,22 +830,22 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 	 it=q_KGB_sum_p.begin(); it!=q_KGB_sum_p.end(); ++it)
   {
     q_CharCoeff c=it->second; // coefficient from |q_KGB_sum|
-    const latticetypes::Weight& mu=it->first.first; // weight from |q_KGB_sum|
+    const Weight& mu=it->first.first; // weight from |q_KGB_sum|
     const tits::TitsElt& strong=it->first.second; // Tits elt from |q_KGB_sum|
     cartanclass::InvolutionData id =
       cartanclass::InvolutionData::build(complexGroup(),strong.tw());
 
-    rootdata::RootSet A(rd.numRoots());
+    RootNbrSet A(rd.numRoots());
     for (bitmap::BitMap::iterator
 	   rt=p.radical().begin(); rt!=p.radical().end(); ++rt)
     {
-      rootdata::RootNbr alpha=*rt;
+      RootNbr alpha=*rt;
       assert(not id.real_roots().isMember(alpha));
       if (id.imaginary_roots().isMember(alpha))
 	A.set_to(alpha,basedTitsGroup().grading(strong,alpha)); // add if nc
       else // complex root
       {
-	rootdata::RootNbr beta=id.root_involution(alpha);
+	RootNbr beta=id.root_involution(alpha);
 	assert(rd.isPosRoot(beta));
 	A.set_to(alpha,beta>alpha); // add first of two complex roots
       }
@@ -853,14 +853,14 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 
 //     std::cout << "Sum over subsets of " << A.size() << " roots, giving ";
 
-    typedef free_abelian::Monoid_Ring<latticetypes::Weight,q_CharCoeff>
+    typedef free_abelian::Monoid_Ring<Weight,q_CharCoeff>
       polynomial; // with weight exponents and $q$-polynomials as coefficients
-    const latticetypes::LatticeMatrix theta =
+    const WeightInvolution theta =
       complexGroup().involutionMatrix(strong.tw());
 
     // compute $X^\mu*\prod_{\alpha\in A}(1-X^\alpha)$ in |pol|
     polynomial pol(mu);
-    for (rootdata::RootSet::iterator it=A.begin(); it!=A.end(); ++it)
+    for (RootNbrSet::iterator it=A.begin(); it!=A.end(); ++it)
     {
       polynomial copy=pol; // since |add_multiple| assumes no aliasing
       pol.add_multiple(copy,q_CharCoeff(1,-1),rd.root(*it)); // $*(1-qX^\alpha)$
@@ -868,7 +868,7 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
       // filter out terms that cannot affect anything below |bound|
       for (polynomial::iterator term=pol.begin(); term!=pol.end();)
       {
-	latticetypes::Weight lambda=term->first;
+	Weight lambda=term->first;
 	(lambda*=2) += rd.twoRho();
 	lambda += theta*lambda;
 	if (height_bound(lambda)>bound)
@@ -882,7 +882,7 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
     // iterate over terms in formal sum, taking coef *= |c|
     for (polynomial::const_iterator term=pol.begin(); term!=pol.end(); ++term)
     {
-      latticetypes::Weight lambda=term->first;
+      Weight lambda=term->first;
       polynomial::coef_t coef=term->second;
       result += q_Char(std_rep_rho_plus(lambda,strong),c*coef); // contribute
     }
@@ -892,12 +892,12 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
 
 
 HechtSchmid
-SRK_context::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
+SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
 {
   HechtSchmid id(sr);
-  const rootdata::RootDatum& rd=rootDatum();
+  const RootDatum& rd=rootDatum();
   tits::TitsElt a=titsElt(sr);
-  latticetypes::Weight lambda=lift(sr);
+  Weight lambda=lift(sr);
   assert(rd.isPosRoot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
 
   size_t i=0; // simple root index (value will be set in following loop)
@@ -920,7 +920,7 @@ SRK_context::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
     i=0; // and start over
   }
 
-  latticetypes::Weight mu=rd.simpleReflection(lambda,i);
+  Weight mu=rd.simpleReflection(lambda,i);
   if (basedTitsGroup().simple_grading(a,i))
   { // $\alpha_i$ is a non-compact imaginary simple root
     basedTitsGroup().basedTwistedConjugate(a,i); // adds $m_i$ to torus part
@@ -987,20 +987,20 @@ SRK_context::HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
    type II cases, for a non-final parameter |sr| and witnessing root |alpha|
  */
 HechtSchmid
-SRK_context::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
+SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
 {
-  const rootdata::RootDatum& rd=rootDatum();
+  const RootDatum& rd=rootDatum();
   assert(rd.isPosRoot(alpha)); // in fact it must be simple-real for |a.tw()|
 
   tits::TitsElt a=titsElt(sr);
 
-  latticetypes::Weight lambda = lift(sr);
+  Weight lambda = lift(sr);
   subquotient::SmallSubspace mod_space=
     info(sr.d_cartan).fiber_modulus; // make a copy to be modified
   bitset::RankFlags orth; // becomes system orthogonal to |tl| below
   { // first assure the theta-lift of sr is dominant
-    latticetypes::Weight tl=theta_lift(sr);
-    weyl::WeylWord ww= rd.to_dominant(tl);
+    Weight tl=theta_lift(sr);
+    WeylWord ww= rd.to_dominant(tl);
     rd.act(ww,tl); // now it is dominant
     alpha = rd.permuted_root(ww,alpha);
     assert(tl.dot(rd.coroot(alpha))==0); // because $\alpha$ is real
@@ -1018,7 +1018,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
   assert(lambda.dot(rd.coroot(alpha))%4 == 0); // the non-final condition
 
   { // adapt lift $\lambda$ to be orthogonal to $\alpha$
-    latticetypes::Weight mu=rd.root(alpha);
+    Weight mu=rd.root(alpha);
     mu *= lambda.dot(rd.coroot(alpha))/2; // an even multiple of $\alpha$
     lambda -= mu; // this makes |lambda| invariant under $s_\alpha$
     assert(lambda.dot(rd.coroot(alpha)) == 0); // check projection
@@ -1066,16 +1066,16 @@ SRK_context::back_HS_id(const StandardRepK& sr, rootdata::RootNbr alpha) const
 } // |back_HS_id|
 
 q_Char
-SRK_context::q_HS_id_eq(const StandardRepK& sr, rootdata::RootNbr alpha) const
+SRK_context::q_HS_id_eq(const StandardRepK& sr, RootNbr alpha) const
 {
-  const rootdata::RootDatum& rd=rootDatum();
+  const RootDatum& rd=rootDatum();
   tits::TitsElt a=titsElt(sr);
-  latticetypes::Weight lambda=lift(sr);
+  Weight lambda=lift(sr);
   assert(rd.isPosRoot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
 
   // the following test is easiest before we move to |alpha| simple situation
   bool type_II = info(sr.Cartan()).fiber_modulus.contains
-    (bitvector::SmallBitVector(rd.coroot(alpha))); // reduced modulo 2
+    (SmallBitVector(rd.coroot(alpha))); // reduced modulo 2
 
   size_t i=0; // simple root index (value will be set in following loop)
   while (true) // we shall exit halfway when $\alpha=\alpha_i$
@@ -1097,7 +1097,7 @@ SRK_context::q_HS_id_eq(const StandardRepK& sr, rootdata::RootNbr alpha) const
     i=0; // and start over
   }
 
-  latticetypes::Weight alpha_vee = rd.simpleCoroot(i);
+  Weight alpha_vee = rd.simpleCoroot(i);
   q_Char result;
   if (basedTitsGroup().simple_grading(a,i))
   { // $\alpha_i$ is a non-compact imaginary simple root
@@ -1671,7 +1671,7 @@ void KhatContext::go(const StandardRepK& initial)
 #ifdef VERBOSE
   if (nonfinal_pool.size()>0)
   {
-    const rootdata::RootDatum& rd=rootDatum();
+    const RootDatum& rd=rootDatum();
     std::cout << "Intermediate representations:\n";
     for (size_t i=0; i<nonfinal_pool.size(); ++i)
     {
@@ -1725,7 +1725,7 @@ PSalgebra::PSalgebra(tits::TitsElt base,
     , sub_diagram() // class |RankFlags| needs no dimensioning
     , nilpotents(G.rootDatum().numRoots())
 {
-  const rootdata::RootDatum& rd=G.rootDatum();
+  const RootDatum& rd=G.rootDatum();
   cartanclass::InvolutionData id =
       cartanclass::InvolutionData::build(G,base.tw());
 
@@ -1738,7 +1738,7 @@ PSalgebra::PSalgebra(tits::TitsElt base,
   // put any imaginary or complex positive roots into radical
   for (size_t i=0; i<rd.numPosRoots(); ++i)
   {
-    rootdata::RootNbr alpha=rd.posRootNbr(i);
+    RootNbr alpha=rd.posRootNbr(i);
     if (not id.real_roots().isMember(alpha))
       nilpotents.insert(alpha);
   }
@@ -1866,14 +1866,14 @@ namespace {
 
 // orthogonal projection onto the intersection of kernels of coroots in |gens|
 // the projection is parallel to the span of the roots in |gens|
-latticetypes::LatticeMatrix
-orth_projection(const rootdata::RootDatum& rd, bitset::RankFlags gens,
-		latticetypes::LatticeCoeff& denom)
+int_Matrix
+orth_projection(const RootDatum& rd, bitset::RankFlags gens,
+		LatticeCoeff& denom)
 {
   size_t m=gens.count(), r=rd.rank();
-  latticetypes::LatticeMatrix root_mat(r,m);
-  latticetypes::LatticeMatrix sub_Cartan(m,m); // transposed, later inverted
-  latticetypes::LatticeMatrix coroot_mat(m,r);
+  int_Matrix root_mat(r,m);
+  int_Matrix sub_Cartan(m,m); // transposed, later inverted
+  int_Matrix coroot_mat(m,r);
   for (bitset::RankFlags::iterator i=gens.begin(); i(); ++i)
   {
     size_t ii=gens.position(*i);
@@ -1887,7 +1887,7 @@ orth_projection(const rootdata::RootDatum& rd, bitset::RankFlags gens,
   }
   sub_Cartan.invert(denom); // invert and compute necessary denominator
 
-  latticetypes::LatticeMatrix result(r,r,0); // set to identity scaled |denom|
+  int_Matrix result(r,r,0); // set to identity scaled |denom|
   for (size_t i=0; i<r; ++i)
     result(i,i)=denom;
   result -= root_mat * sub_Cartan * coroot_mat;

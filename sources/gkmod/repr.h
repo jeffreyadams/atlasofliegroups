@@ -15,7 +15,6 @@
 #define REPR_H
 
 #include "standardrepk.h"
-#include "latticetypes.h"
 #include "tits.h"
 #include "kgb.h"
 #include "realredgp.h"
@@ -49,16 +48,16 @@ class StandardRepr
   friend class Rep_context;
 
   kgb::KGBElt x;
-  latticetypes::LatticeElt lambda_rho; // $\lambda-\rho$
-  latticetypes::RatWeight infinitesimal_char; // $\gamma$
+  Weight lambda_rho; // $\lambda-\rho$
+  RatWeight infinitesimal_char; // $\gamma$
 
  public:
   StandardRepr (kgb::KGBElt xx,
-		const latticetypes::LatticeElt& lr,
-		const latticetypes::RatWeight& gamma)
+		const Weight& lr,
+		const RatWeight& gamma)
     : x(xx), lambda_rho(lr), infinitesimal_char(gamma) {}
 
-  const latticetypes::RatWeight& gamma() const { return infinitesimal_char; }
+  const RatWeight& gamma() const { return infinitesimal_char; }
 
   bool operator== (const StandardRepr&) const;
 // special members required by hashtable::HashTable
@@ -85,29 +84,29 @@ class Rep_context
   // accessors
   complexredgp::ComplexReductiveGroup& complexGroup() const
   { return G.complexGroup(); }
-  const rootdata::RootDatum& rootDatum() const { return G.rootDatum(); }
-  const weyl::WeylGroup& weylGroup() const { return G.weylGroup(); }
-  const weyl::TwistedWeylGroup& twistedWeylGroup() const
+  const RootDatum& rootDatum() const { return G.rootDatum(); }
+  const WeylGroup& weylGroup() const { return G.weylGroup(); }
+  const TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
   const tits::TitsGroup& titsGroup() const { return G.titsGroup(); }
   const tits::TitsCoset& basedTitsGroup() const
     { return G.basedTitsGroup(); }
   const kgb::KGB_base& kgb() const { return KGB_set; }
 
-  const weyl::TwistedInvolution twistedInvolution(size_t cn) const
+  const TwistedInvolution twistedInvolution(size_t cn) const
     { return complexGroup().twistedInvolution(cn); }
 
   StandardRepr
     sr(const standardrepk::StandardRepK& srk,
        const standardrepk::KhatContext& khc,
-       const latticetypes::RatWeight& nu) const;
+       const RatWeight& nu) const;
 
   StandardRepr
     sr(kgb::KGBElt x,
-       const latticetypes::Weight lambda_rho,
-       const latticetypes::RatWeight& nu) const;
+       const Weight lambda_rho,
+       const RatWeight& nu) const;
 
-  latticetypes::RatWeight lambda(const StandardRepr& rep) const; // half-integer
+  RatWeight lambda(const StandardRepr& rep) const; // half-integer
   tits::GlobalTitsElement y(const StandardRepr& rep) const;
 
   kgb::global_KGB dual_KGB(const StandardRepr& rep) const;

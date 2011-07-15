@@ -60,10 +60,10 @@ RealReductiveGroup::RealReductiveGroup
 #ifndef NDEBUG
   // construct the torus for the most split Cartan
   const cartanclass::Fiber& fundf = G_C.fundamental();
-  rootdata::RootSet so= cartanclass::toMostSplit(fundf,rf,G_C.rootSystem());
+  RootNbrSet so= cartanclass::toMostSplit(fundf,rf,G_C.rootSystem());
 
   // recompute matrix of most split Cartan
-  const rootdata::RootDatum& rd = G_C.rootDatum();
+  const RootDatum& rd = G_C.rootDatum();
   tori::RealTorus T1
     (refl_prod(so,rd) * G_C.distinguished()); // factors commute in fact
 

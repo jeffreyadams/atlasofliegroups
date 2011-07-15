@@ -79,16 +79,16 @@ class RealReductiveGroup
 
   realform::RealForm realForm() const { return d_realForm; }
 
-  const rootdata::RootDatum& rootDatum() const
+  const RootDatum& rootDatum() const
     { return d_complexGroup.rootDatum(); }
 
   const tits::TitsCoset& basedTitsGroup() const { return *d_Tg; }
   const tits::TitsGroup& titsGroup() const  { return d_Tg->titsGroup(); }
 
-  const weyl::WeylGroup& weylGroup() const
+  const WeylGroup& weylGroup() const
     { return d_complexGroup.weylGroup(); }
 
-  const weyl::TwistedWeylGroup& twistedWeylGroup() const
+  const TwistedWeylGroup& twistedWeylGroup() const
     { return d_complexGroup.twistedWeylGroup(); }
 
   bitmap::BitMap Cartan_set() const
@@ -138,7 +138,7 @@ formed by extracting only the information concerning the presence of the
 */
   gradings::Grading grading_offset()
     {
-      rootdata::RootSet rset= noncompactRoots(); // grading for real form rep
+      RootNbrSet rset= noncompactRoots(); // grading for real form rep
       return cartanclass::restrictGrading(rset,rootDatum().simpleRootList());
     }
 
@@ -147,17 +147,17 @@ formed by extracting only the information concerning the presence of the
 
   const size_t component_rank() const
     { return d_connectivity.component_rank(); }
-  const bitvector::SmallBitVectorList& dualComponentReps() const
+  const SmallBitVectorList& dualComponentReps() const
     { return d_connectivity.dualComponentReps(); }
 
-  const latticetypes::LatticeMatrix& distinguished() const
+  const WeightInvolution& distinguished() const
     { return d_complexGroup.distinguished(); }
 
 
 /*!\brief Returns the set of noncompact imaginary roots for (the
   representative of) the real form.
 */
-  rootdata::RootSet noncompactRoots() const
+  RootNbrSet noncompactRoots() const
     { return d_complexGroup.noncompactRoots(d_realForm); }
 
 // manipulators

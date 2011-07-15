@@ -17,7 +17,8 @@
 #include "lietype_fwd.h"
 
 #include <stdexcept>
-#include "latticetypes_fwd.h"
+
+#include "atlas_types.h"
 
 #include "permutations.h" // needed in the |Layout| structure
 
@@ -86,8 +87,8 @@ struct SimpleLieType : public std::pair<TypeLetter,size_t>
   size_t& rank() { return base::second; }
   size_t semisimple_rank() const { return type()=='T' ? 0 : rank(); }
   int Cartan_entry(size_t i,size_t j) const;
-  latticetypes::LatticeMatrix Cartan_matrix() const;
-  latticetypes::LatticeMatrix transpose_Cartan_matrix() const;
+  int_Matrix Cartan_matrix() const;
+  int_Matrix transpose_Cartan_matrix() const;
 };
 
 struct LieType : public std::vector<SimpleLieType>
@@ -97,9 +98,9 @@ struct LieType : public std::vector<SimpleLieType>
   size_t rank() const;
   size_t semisimple_rank() const;
   int Cartan_entry(size_t i,size_t j) const;
-  latticetypes::LatticeMatrix Cartan_matrix() const;
-  latticetypes::LatticeMatrix transpose_Cartan_matrix() const;
-  latticetypes::WeightList Smith_basis(latticetypes::CoeffList& invf) const;
+  int_Matrix Cartan_matrix() const;
+  int_Matrix transpose_Cartan_matrix() const;
+  int_VectorList Smith_basis(CoeffList& invf) const;
 };
 
 // the follwing rather empty definition serves mainly to make |InnerClassType|
@@ -140,11 +141,11 @@ namespace lietype {
   bool checkRank(const TypeLetter&, size_t);
 
   // involution (permutation) matrix for possibly renumbered Dynkin diagram
-  latticetypes::LatticeMatrix involution(const Layout& lo)
+  WeightInvolution involution(const Layout& lo)
     throw (std::runtime_error,std::bad_alloc);
 
   // permutation matrix for |ict| in simply connected |lt|, Bourbaki order
-  latticetypes::LatticeMatrix involution(const lietype::LieType& lt,
+  WeightInvolution involution(const lietype::LieType& lt,
 					 const lietype::InnerClassType& ict);
 
   LieType dual_type(LieType lt);

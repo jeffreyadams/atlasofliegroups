@@ -14,7 +14,7 @@
 #include <stdexcept>
 
 #include "matrix.h"  // vectors, matrices
-#include "latticetypes.h" // rational vectors
+#include "ratvec.h" // rational vectors
 #include "lietype.h"
 #include "weyl.h"
 
@@ -80,7 +80,7 @@ namespace weyl {
 } // |namespace weyl|
 
 
-namespace matrix { // since |latticetypes::LatticeElt| = |matrix::Vector<int>|
+namespace matrix { // since |Weight| = |matrix::Vector<int>|
 
 /*
   Synopsis: output of a lattice element.
@@ -88,7 +88,7 @@ namespace matrix { // since |latticetypes::LatticeElt| = |matrix::Vector<int>|
   Using |seqPrint| it is output as a bracket-enclosed, comma-separated list.
 */
 
-std::ostream& operator<< (std::ostream& strm, const latticetypes::LatticeElt& v)
+std::ostream& operator<< (std::ostream& strm, const Weight& v)
 {
   std::ostringstream o; // accumulate in string for interpretation of width
   basic_io::seqPrint(o, v.begin(), v.end(), ",", "[", "]");
@@ -97,10 +97,10 @@ std::ostream& operator<< (std::ostream& strm, const latticetypes::LatticeElt& v)
 
 } // |namespace matrix|
 
-namespace latticetypes {
+namespace ratvec {
 
   std::ostream& operator<< (std::ostream& strm,
-			    const latticetypes::RatLatticeElt& w)
+			    const RatWeight& w)
   {
     std::ostringstream o; // accumulate in string for interpretation of width
     o << w.numerator() << '/' << w.denominator();

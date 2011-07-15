@@ -4,17 +4,18 @@
 
   I have decided to represent elements as fixed-size arrays of
   unsigned characters. This forces expressing things in the standard
-  ordering of the generators, and hence to have a small i/o interface
+  ordering of the generators, and hence to have a small I/O interface
   for resetting the numbering to and from the numbering used by the
   outside world.
 
   It has seemed to me that this is the best compromise between size of the
   dataype, generality and efficiency.
-
+  [Fokko du Cloux]
 */
 /*
   This is weyl.cpp
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2007--2011 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
@@ -26,10 +27,11 @@
 #include <set>
 #include <stack>
 
-#include "dynkin.h"
+#include "ratvec.h" // to act upon |RatWeight|s
 #include "permutations.h"
+#include "dynkin.h"
+#include "prerootdata.h" // for defining  action using them
 #include "rootdata.h"
-#include "complexredgp.h"
 
 /*****************************************************************************
 
@@ -55,17 +57,17 @@ namespace atlas {
 namespace {
 
 
-  void fillCoxMatrix(latticetypes::LatticeMatrix&,
-		     const latticetypes::LatticeMatrix&,
+  void fillCoxMatrix(int_Matrix&,
+		     const int_Matrix&,
 		     const permutations::Permutation&);
 
-  weyl::WeylElt::EltPiece dihedralMin(const weyl::Transducer&,
-				      weyl::WeylElt::EltPiece,
+  WeylElt::EltPiece dihedralMin(const weyl::Transducer&,
+				      WeylElt::EltPiece,
 				      weyl::Generator,
 				      weyl::Generator);
 
-  weyl::WeylElt::EltPiece dihedralShift(const weyl::Transducer&,
-					weyl::WeylElt::EltPiece,
+  WeylElt::EltPiece dihedralShift(const weyl::Transducer&,
+					WeylElt::EltPiece,
 					weyl::Generator,
 					weyl::Generator,
 					unsigned long);
@@ -122,7 +124,7 @@ namespace weyl {
   NOTE : |c| and |twist| use some (consistent) labelling of simple roots,
   but we will determine an internal renumbering making the subquotients small
 */
-WeylGroup::WeylGroup(const latticetypes::LatticeMatrix& c)
+WeylGroup::WeylGroup(const int_Matrix& c)
   : d_rank(c.numColumns()) // all other fields are computed later
   , d_order() // this initialises this size::Size value to 1
   , d_maxlength(0)
@@ -555,9 +557,9 @@ WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
   Let |w| act on |v| according to reflection action in root datum |rd|
   Note that rightmost factors act first, as in a product of matrices
 */
-void WeylGroup::act(const rootdata::RootDatum& rd,
+void WeylGroup::act(const RootDatum& rd,
 		    const WeylElt& w,
-		    latticetypes::LatticeElt& v) const
+		    Weight& v) const
 {
   for (size_t i = d_rank; i-->0; )
   {
@@ -567,9 +569,11 @@ void WeylGroup::act(const rootdata::RootDatum& rd,
   }
 }
 
-void WeylGroup::act(const prerootdata::PreRootDatum& prd,
-		    const WeylElt& w,
-		    latticetypes::LatticeElt& v) const
+void WeylGroup::act(const RootDatum& rd, const WeylElt& w, RatWeight& v) const
+{ act(rd,w,v.numerator()); }
+
+
+void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, Weight& v) const
 {
   for (size_t i = d_rank; i-->0; )
   {
@@ -579,14 +583,17 @@ void WeylGroup::act(const prerootdata::PreRootDatum& prd,
   }
 }
 
+void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, RatWeight& v)
+  const
+{ act(prd,w,v.numerator()); }
+
 /*!
   \brief
   Same as |act(rd,inverse(w),v)|, but avoiding computation of |inverse(w)|.
   Here the leftmost factors act first.
 */
-void WeylGroup::inverseAct(const rootdata::RootDatum& rd,
-			   const WeylElt& w,
-			   latticetypes::LatticeElt& v) const
+void WeylGroup::inverseAct(const RootDatum& rd, const WeylElt& w, Weight& v)
+  const
 {
   for (size_t i=0; i<d_rank; ++i )
   {
@@ -780,7 +787,7 @@ InvolutionWord TwistedWeylGroup::involution_expr(TwistedInvolution tw) const
   in such circumstances; instead do with the stored length information there.
 */
 unsigned long TwistedWeylGroup::involutionLength
-  (const weyl::TwistedInvolution& tw) const
+  (const TwistedInvolution& tw) const
 {
   TwistedInvolution x = tw;
   unsigned long length = 0;
@@ -796,29 +803,29 @@ unsigned long TwistedWeylGroup::involutionLength
   return length;
 }
 
-rootdata::RootList TwistedWeylGroup::simple_images
-(const rootdata::RootSystem& rs, const TwistedInvolution& tw) const
+RootNbrList TwistedWeylGroup::simple_images
+(const RootSystem& rs, const TwistedInvolution& tw) const
 {
   assert(rank()==rs.rank()); // compatibility of Weyl groups required
-  rootdata::RootList result(rank());
+  RootNbrList result(rank());
   for (size_t i=0; i<rank(); ++i)
     result[i]=rs.simpleRootNbr(twisted(i));
-  weyl::WeylWord ww=word(tw.w());
+  WeylWord ww=word(tw.w());
   for (size_t i=ww.size(); i-->0;)
     rs.simple_root_permutation(ww[i]).left_mult(result);
 
   return result;
 }
 
-latticetypes::LatticeMatrix TwistedWeylGroup::involution_matrix
-  (const rootdata::RootSystem& rs, const TwistedInvolution& tw) const
+WeightInvolution TwistedWeylGroup::involution_matrix
+  (const RootSystem& rs, const TwistedInvolution& tw) const
 {
-  rootdata::RootList simple_image = simple_images(rs,tw);
-  latticetypes::WeightList b(rank());
+  RootNbrList simple_image = simple_images(rs,tw);
+  WeightList b(rank());
   for (size_t i=0; i<rank(); ++i)
     b[i] = rs.root_expr(simple_image[i]);
 
-  return latticetypes::LatticeMatrix(b,b.size());
+  return WeightInvolution(b,b.size());
 }
 
 } // namespace weyl
@@ -841,7 +848,7 @@ latticetypes::LatticeMatrix TwistedWeylGroup::involution_matrix
 
 namespace weyl {
 
-Transducer::Transducer(const latticetypes::LatticeMatrix& c, size_t r)
+Transducer::Transducer(const int_Matrix& c, size_t r)
   : d_shift(1), d_out(1) // start with tables of size 1
   , d_length(1,0), d_piece(1,WeylWord()) // with empty word, length 0.
 
@@ -1009,10 +1016,9 @@ namespace weyl {
   Precondition: |d| is an involution of the root datum |rd|. If not an
   involution of the based datum, an appropriate Weyl group action is applied
  */
-Twist make_twist(const rootdata::RootDatum& rd,
-		 const latticetypes::LatticeMatrix& d)
+Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
 {
-  rootdata::RootList simple_image(rd.semisimpleRank());
+  RootNbrList simple_image(rd.semisimpleRank());
 
   for (size_t i = 0; i<simple_image.size(); ++i)
     simple_image[i] = rd.rootNbr(d*rd.simpleRoot(i));
@@ -1043,15 +1049,15 @@ namespace {
 
   Precondition : s is in the descent set of x;
 */
-weyl::WeylElt::EltPiece dihedralMin(const weyl::Transducer& qa,
-				    weyl::WeylElt::EltPiece x,
+WeylElt::EltPiece dihedralMin(const weyl::Transducer& qa,
+				    WeylElt::EltPiece x,
 				    weyl::Generator s,
 				    weyl::Generator t)
 {
   weyl::Generator u = s;
   weyl::Generator v = t;
 
-  weyl::WeylElt::EltPiece y = x;
+  WeylElt::EltPiece y = x;
 
   for (;;) {
     // this is ok even if the shift is still undefined
@@ -1068,8 +1074,8 @@ weyl::WeylElt::EltPiece dihedralMin(const weyl::Transducer& qa,
   \brief Returns the result of applying s and t alternately to x, for a
   total of d times.
 */
-weyl::WeylElt::EltPiece dihedralShift(const weyl::Transducer& qa,
-				      weyl::WeylElt::EltPiece x,
+WeylElt::EltPiece dihedralShift(const weyl::Transducer& qa,
+				      WeylElt::EltPiece x,
 				      weyl::Generator s,
 				      weyl::Generator t,
 				      unsigned long d)
@@ -1077,7 +1083,7 @@ weyl::WeylElt::EltPiece dihedralShift(const weyl::Transducer& qa,
   weyl::Generator u = s;
   weyl::Generator v = t;
 
-  weyl::WeylElt::EltPiece y = x;
+  WeylElt::EltPiece y = x;
 
   for (unsigned long j = 0; j < d; ++j) {
     y = qa.shift(y,u);
@@ -1098,12 +1104,12 @@ weyl::WeylElt::EltPiece dihedralShift(const weyl::Transducer& qa,
   Postcondition : cox holds the normalized Coxeter matrix corresponding to
   cox and a;
 */
-void fillCoxMatrix(latticetypes::LatticeMatrix& cox,
-		   const latticetypes::LatticeMatrix& cart,
+void fillCoxMatrix(int_Matrix& cox,
+		   const int_Matrix& cart,
 		   const permutations::Permutation& a)
 {
   assert (cart.numRows()==cart.numColumns());
-  latticetypes::LatticeMatrix(cart.numRows(),cart.numRows()) //create matrix
+  int_Matrix(cart.numRows(),cart.numRows()) //create matrix
     .swap(cox); // and make |cox| refer to it
 
   static const int translate[] // from product of cart entries -> cox entry

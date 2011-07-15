@@ -29,7 +29,7 @@ namespace atlas {
 
 namespace abelian {
 
-  void basis(latticetypes::WeightList&, const bitmap::BitMap&,
+  void basis(std::vector<matrix::Vector<int> >&, const bitmap::BitMap&,
 	     const FiniteAbelianGroup&);
 
   void coset(bitmap::BitMap&, const bitmap::BitMap&, GrpNbr,
@@ -49,9 +49,9 @@ namespace abelian {
 
   void to_array(GrpArr&, GrpNbr, const GroupType&);
 
-  void to_array(GrpArr&, const latticetypes::Weight&, const GroupType&);
+  void to_array(GrpArr&, const matrix::Vector<int>&, const GroupType&);
 
-  void toEndomorphism(Endomorphism&, const latticetypes::LatticeMatrix&,
+  void toEndomorphism(Endomorphism&, const matrix::Matrix<int>&,
 		      const FiniteAbelianGroup&);
 
   GrpNbr to_GrpNbr(const GrpArr&, const GroupType&);
@@ -125,14 +125,14 @@ Cardinality of the group.
   GrpArr toArray(GrpNbr x) const
     { GrpArr result(rank()); to_array(result,x,d_type); return result; }
 
-  GrpArr toArray(const latticetypes::Weight& v) const
+  GrpArr toArray(const matrix::Vector<int>& v) const
     { GrpArr result(rank()); to_array(result,v,d_type); return result; }
 
   GrpNbr toGrpNbr(const GrpArr& a) const { return to_GrpNbr(a,d_type); }
 
-  void toWeight(latticetypes::Weight&, const GrpArr&) const;
+  void toWeight(matrix::Vector<int>&, const GrpArr&) const;
 
-  void toWeight(latticetypes::Weight&, GrpNbr) const;
+  void toWeight(matrix::Vector<int>&, GrpNbr) const;
 
   // arithmetic on group elements
 

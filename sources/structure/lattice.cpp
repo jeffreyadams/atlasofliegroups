@@ -2,38 +2,41 @@
 \file
 \brief Implementation for namespace lattice.
 
-  This module defines some more general lattice
-  functions, less simple than what is defined in latticetypes.cpp.
+  This module defines some more general lattice functions.
 */
 /*
   This is lattice.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2007--2011 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
 
-#include "latticetypes.h"
+#include "lattice.h"
 
-#include "arithmetic.h"
+#include <cassert>
+
+#include "tags.h"
+#include "matrix.h"
 #include "matreduc.h"
 
 /*****************************************************************************
 
-  This module defines some more general lattice functions, less simple than
-  what is defined in latticetypes.cpp.
+  This module defines some more general lattice functions.
 
 ******************************************************************************/
 
 namespace atlas {
 
+namespace lattice {
+
   /*!
   \brief Functions for working with lattices.
 
-  This namespace defines some more general lattice functions, less simple than
-  what is defined in latticetypes.cpp. It includes change of basis functions,
-  reduction modulo two, and calculating the orthogonal of a sublattice.
+  This namespace defines some general lattice functions. It includes change of
+  basis functions, and calculating the orthogonal of a sublattice.
   */
 
 /*****************************************************************************
@@ -42,7 +45,6 @@ namespace atlas {
 
 ******************************************************************************/
 
-namespace lattice {
 
 /*!
   In this template, we assume that |I|, and |O| are respectively random
@@ -64,9 +66,9 @@ namespace lattice {
 template<typename I, typename O>
   void baseChange(I first, I last, O out, I firstb, I lastb)
 {
-  latticetypes::LatticeCoeff d;
-  latticetypes::LatticeMatrix q =
-    latticetypes::LatticeMatrix(firstb,lastb,lastb-firstb,tags::IteratorTag())
+  LatticeCoeff d;
+  LatticeMatrix q =
+    LatticeMatrix(firstb,lastb,lastb-firstb,tags::IteratorTag())
     .inverse(d);
 
   while (first!=last)
@@ -84,7 +86,7 @@ template<typename I, typename O>
 template<typename I, typename O>
   void inverseBaseChange(I first, I last, O out, I firstb, I lastb)
 {
-  latticetypes::LatticeMatrix q(firstb,lastb,lastb-firstb,tags::IteratorTag());
+  LatticeMatrix q(firstb,lastb,lastb-firstb,tags::IteratorTag());
 
   while (first!= last)
   {
@@ -104,27 +106,26 @@ template<typename I, typename O>
 
   Precondition: the (possibly dependent) vectors in |b| all have the size |r|.
 */
-latticetypes::WeightList perp(const latticetypes::WeightList& b, size_t r)
+CoweightList perp(const WeightList& b, size_t r)
 {
-  latticetypes::LatticeMatrix R,C;
-  latticetypes::CoeffList factor =
-    matreduc::diagonalise(latticetypes::LatticeMatrix(b,r),R,C);
+  LatticeMatrix R,C;
+  CoeffList factor = matreduc::diagonalise(LatticeMatrix(b,r),R,C);
 
   // drop any final factors 0
   size_t codim=factor.size();
 
   // collect final rows of |R|, those that annihilate the span of |b|
-  latticetypes::WeightList result; result.reserve(r-codim);
+  CoweightList result; result.reserve(r-codim);
   for (size_t i=codim; i<r; ++i)
     result.push_back(R.row(i));
 
   return result;
 }
 
-latticetypes::LatticeMatrix kernel(const latticetypes::LatticeMatrix& M)
+LatticeMatrix kernel(const LatticeMatrix& M)
 {
   size_t n= M.numColumns(); // dimension of space to which |M| can be applied
-  latticetypes::LatticeMatrix R,C; // |R| is dummy
+  LatticeMatrix R,C; // |R| is dummy
 
   size_t c=matreduc::diagonalise(M,R,C).size(); // codimension of kernel
   // now $D=R*M*C$ is diagonal, $c$ initial entries nonzero and rest zero
@@ -133,8 +134,8 @@ latticetypes::LatticeMatrix kernel(const latticetypes::LatticeMatrix& M)
   return C.block(0,c,n,n); // last |n-c| columns, which span $C.\ker(D)$
 }
 
-latticetypes::LatticeMatrix eigen_lattice
-  (latticetypes::LatticeMatrix M, latticetypes::LatticeCoeff lambda)
+LatticeMatrix eigen_lattice
+  (LatticeMatrix M, LatticeCoeff lambda)
 {
   size_t n=M.numRows();
   assert(n==M.numColumns());
@@ -145,28 +146,31 @@ latticetypes::LatticeMatrix eigen_lattice
   return kernel(M);
 }
 
-latticetypes::LatticeMatrix row_saturate(const latticetypes::LatticeMatrix& M)
+LatticeMatrix row_saturate(const LatticeMatrix& M)
 {
   size_t n= M.numColumns(); // dimension of space to which |M| can be applied
-  latticetypes::CoeffList factor;
-  latticetypes::LatticeMatrix b =
+  CoeffList factor;
+  LatticeMatrix b =
     matreduc::adapted_basis(M.transposed(),factor);
 
   size_t c=factor.size(); // rank of M (codimension of kernel)
 
-  latticetypes::LatticeMatrix result(c,n); // initial rows of |b.transposed()|
+  LatticeMatrix result(c,n); // initial rows of |b.transposed()|
   for (size_t i=0; i<c; ++i)
     result.set_row(i,b.column(i));
   return result;
 }
 
+
+//			    Template instantiation
+
 template
 void baseChange
-  (latticetypes::WeightList::iterator,
-   latticetypes::WeightList::iterator,
-   std::back_insert_iterator<latticetypes::WeightList>,
-   latticetypes::WeightList::iterator,
-   latticetypes::WeightList::iterator);
+  (WeightList::iterator,
+   WeightList::iterator,
+   std::back_insert_iterator<WeightList>,
+   WeightList::iterator,
+   WeightList::iterator);
 
 
 } // |namespace lattice|

@@ -29,7 +29,6 @@ CXX = g++
 # only the atlas object files listed below are used
 atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/structure/lietype.o \
- $(atlas_sources)/structure/latticetypes.o \
  $(atlas_sources)/utilities/arithmetic.o \
  $(atlas_sources)/error/error.o \
  $(atlas_sources)/structure/rootdata.o \
@@ -39,7 +38,7 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/structure/lattice.o \
  $(atlas_sources)/utilities/bits.o \
  $(atlas_sources)/utilities/bitset.o \
- $(atlas_sources)/utilities/setutils.o \
+ $(atlas_sources)/utilities/permutations.o \
  $(atlas_sources)/structure/complexredgp.o \
  $(atlas_sources)/structure/tits.o \
  $(atlas_sources)/structure/cartanclass.o \
@@ -73,9 +72,10 @@ atlas_objects := $(atlas_sources)/structure/prerootdata.o \
  $(atlas_sources)/error/kl_error.o \
  $(atlas_sources)/io/kgb_io.o \
  $(atlas_sources)/io/wgraph_io.o \
- $(atlas_sources)/utilities/filekl.o \
- $(atlas_sources)/utilities/filekl_in.o \
+ $(atlas_sources)/io/filekl.o \
+ $(atlas_sources)/io/filekl_in.o \
  $(atlas_sources)/utilities/matrix.o \
+ $(atlas_sources)/utilities/ratvec.o \
  $(atlas_sources)/structure/bitvector.o \
  $(atlas_sources)/structure/subquotient.o \
  $(atlas_sources)/utilities/matreduc.o \

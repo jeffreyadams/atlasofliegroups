@@ -16,35 +16,12 @@
 #ifndef LATTICETYPES_FWD_H  /* guard against multiple inclusions */
 #define LATTICETYPES_FWD_H
 
-#include <vector>
-
-#include "bitvector_fwd.h"
-#include "matrix_fwd.h"
-#include "subquotient_fwd.h"
-
-#include "constants.h"
 
 /******** forward type declarations ******************************************/
 
 namespace atlas {
 
 namespace latticetypes {
-
-  typedef int LatticeCoeff; // the instance type of |Vector| and |Matrix|
-
-  typedef matrix::Vector<LatticeCoeff> LatticeElt;
-
-  typedef std::vector<LatticeCoeff> CoeffList; // no vector arithmetic here
-
-  typedef matrix::Matrix<LatticeCoeff> LatticeMatrix;
-
-  class RatLatticeElt;
-
-  typedef LatticeElt Weight;
-  typedef RatLatticeElt RatWeight;
-
-  typedef std::vector<Weight> WeightList;
-  typedef std::vector<RatWeight> RatWeightList;
 
 } // |namespace latticetypes|
 

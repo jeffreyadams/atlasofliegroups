@@ -16,9 +16,8 @@
 
 #include "bitset_fwd.h"
 #include "polynomials_fwd.h"
-#include "latticetypes_fwd.h"
-#include "rootdata_fwd.h"
-#include "weyl_fwd.h"
+
+#include "atlas_types.h"
 
 #include "lietype.h"
 
@@ -42,8 +41,8 @@ namespace weyl {
   std::ostream& operator<< (std::ostream&, const WeylWord&);
 }
 
-namespace matrix { // since |latticetypes::LatticeElt| = |matrix::Vector<int>|
-  std::ostream& operator<< (std::ostream&, const latticetypes::LatticeElt&);
+namespace matrix { // since |Weight| = |matrix::Vector<int>|
+  std::ostream& operator<< (std::ostream&, const Weight&);
 }
 
 namespace polynomials {
@@ -51,8 +50,8 @@ template <typename C>
   std::ostream& operator<< (std::ostream& strm, const Polynomial<C>& P);
 }
 
-namespace latticetypes {
-  std::ostream& operator<< (std::ostream&, const latticetypes::RatLatticeElt&);
+namespace ratvec {
+  std::ostream& operator<< (std::ostream&, const RatWeight&);
 }
 
 namespace bitset {

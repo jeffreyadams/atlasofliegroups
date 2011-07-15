@@ -10,7 +10,6 @@
 #ifndef INTERACTIVE_LATTICE_H  /* guard against multiple inclusions */
 #define INTERACTIVE_LATTICE_H
 
-#include "latticetypes_fwd.h"
 
 #include "error.h"
 #include "lietype.h"
@@ -21,11 +20,11 @@ namespace atlas {
 
 namespace interactive_lattice {
 
-  int getGenerators(latticetypes::RatWeightList&,
-		    const latticetypes::CoeffList&)
+  int getGenerators(RatWeightList&,
+		    const CoeffList&)
     throw(error::InputError);
 
-  int getLattice(const latticetypes::CoeffList&, latticetypes::WeightList&)
+  int getLattice(const CoeffList&, WeightList&)
     throw(error::InputError);
 
 }

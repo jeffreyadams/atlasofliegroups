@@ -614,9 +614,11 @@ void BitMap::iterator::change_owner(const BitMap& b)
   d_chunk = b.d_map.begin()+(d_bitAddress>>baseShift);
 }
 
+// Instantiations
+
 template void BitMap::insert
- (std::vector<unsigned long>::iterator,
-  std::vector<unsigned long>::iterator);
+ (std::vector<unsigned short>::iterator,
+  std::vector<unsigned short>::iterator); // root sets from RootNbrList
 
 } // |namespace bitmap|
 

@@ -42,7 +42,7 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
 			       complexredgp_io::Interface& CI)
 {
   complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
-  const rootdata::RootSystem& rs = G.rootDatum();
+  const RootSystem& rs = G.rootDatum();
 
   const cartanclass::CartanClass& cc = G.cartan(cn);
   const cartanclass::Fiber& f = cc.fiber();
@@ -129,12 +129,12 @@ std::ostream& printFiber(std::ostream& strm, const cartanclass::Fiber& f,
 */
 std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
 			    const realform::RealFormList& rfl,
-			    const rootdata::RootSystem& rs)
+			    const RootSystem& rs)
 {
   typedef std::vector<unsigned long>::const_iterator VI;
 
-  const rootdata::RootList& si = f.simpleImaginary();
-  latticetypes::LatticeMatrix cm = rs.cartanMatrix(si);
+  const RootNbrList& si = f.simpleImaginary();
+  int_Matrix cm = rs.cartanMatrix(si);
   dynkin::DynkinDiagram d(cm);
   permutations::Permutation a = dynkin::bourbaki(d);
   a.inv_conjugate(cm);

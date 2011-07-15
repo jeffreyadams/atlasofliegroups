@@ -9,8 +9,8 @@
   For license information see the LICENSE file
 */
 
-#ifndef SETUTILS_H  /* guard against multiple inclusions */
-#define SETUTILS_H
+#ifndef PERMUTATIONS_H  /* guard against multiple inclusions */
+#define PERMUTATIONS_H
 
 #include <vector>
 #include <algorithm>

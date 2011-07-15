@@ -12,6 +12,8 @@
 #ifndef SIZE_H  /* guard against multiple inclusions */
 #define SIZE_H
 
+#include "size_fwd.h"
+
 #include <cstring>
 #include "constants.h"
 
@@ -19,16 +21,6 @@
 
 namespace atlas {
 
-namespace size {
-
-  template<typename C> class SizeType;
-
-  // the following is safe for RankMax<=128 (for C128 there are 255 factors 2)
-  typedef signed char BaseType;
-  typedef unsigned char UnsignedBaseType;
-  typedef SizeType<BaseType> Size;
-
-}
 
 
 /******** constant declarations **********************************************/

@@ -17,17 +17,18 @@ TitsGroup and TitsElt.
 
 #include "tits_fwd.h"
 
+
 #include "gradings_fwd.h"
 #include "complexredgp_fwd.h"
 #include "realredgp_fwd.h"
 #include "tags.h"
 
+#include "ratvec.h"
 #include "prerootdata.h"
 #include "rootdata.h"
 #include "subdatum_fwd.h" // not subdatum.h, which includes us
 #include "bitvector.h"
 #include "constants.h"
-#include "latticetypes.h"
 #include "weyl.h"
 #include "realform.h"
 
@@ -40,13 +41,13 @@ namespace tits {
 
 /******** function declarations *********************************************/
 
-  inline TorusElement exp_pi(const latticetypes::RatWeight r);
-  inline TorusElement exp_2pi(const latticetypes::RatWeight r);
+  inline TorusElement exp_pi(const RatWeight r);
+  inline TorusElement exp_2pi(const RatWeight r);
 
   // 2-subgroup by which each |TorusPart| at involution |inv| will be reduced
   inline
   subquotient::SmallSubspace
-    fiber_denom(const latticetypes::LatticeMatrix& inv)
+    fiber_denom(const WeightInvolution& inv)
   {
     bitvector::BinaryMap A(lattice::eigen_lattice(inv.transposed(),-1));
     return subquotient::SmallSubspace(A);
@@ -55,7 +56,7 @@ namespace tits {
   gradings::Grading
   square_class_grading_offset(const cartanclass::Fiber& f,
 			      cartanclass::square_class csc,
-			      const rootdata::RootSystem& rs);
+			      const RootSystem& rs);
 
 
 /******** type definitions **************************************************/
@@ -69,7 +70,7 @@ namespace tits {
   kernel, and induces a bijection of X_*(T)/2X_*(T) with the group H(2) of
   elements of order 2; hence H(2) is represented by (Z/2Z)^rank
   */
-  typedef bitvector::SmallBitVector TorusPart;
+  typedef SmallBitVector TorusPart;
 
 
 
@@ -84,24 +85,24 @@ namespace tits {
 */
 class TorusElement
 {
-  latticetypes::RatWeight repr; // represents $\exp(\pi i repr)$, no factor 2!
+  RatWeight repr; // represents $\exp(\pi i repr)$, no factor 2!
 
-  TorusElement(const latticetypes::RatWeight r,tags::UnnormalizedTag)
+  TorusElement(const RatWeight r,tags::UnnormalizedTag)
    : repr(r) {} // raw constructor, like exp(pi i r), but no modular reduction
  public:
   explicit TorusElement(size_t rank) : repr(rank) {} // identity torus element
 
   // $\exp(\pi\ii r )$ or $\exp(2\pi\ii r )$
-  TorusElement(const latticetypes::RatWeight& r,bool two);
+  TorusElement(const RatWeight& r,bool two);
 
   // accessors
 
   // provide access to value, but convert to "mod Z^rank" not "mod 2Z^rank"
-  latticetypes::RatWeight log_pi(bool normalize) const;
-  latticetypes::RatWeight log_2pi() const;
+  RatWeight log_pi(bool normalize) const;
+  RatWeight log_2pi() const;
 
   // more often it will be practical to have acces to that "mod 2Z^rank" form
-  const latticetypes::RatWeight& as_Qmod2Z() const { return repr; }
+  const RatWeight& as_Qmod2Z() const { return repr; }
 
   bool operator== (const TorusElement& a) const { return repr==a.repr; }
   bool operator!= (const TorusElement& a) const { return repr!=a.repr; }
@@ -111,24 +112,24 @@ class TorusElement
   TorusElement operator -(const TorusElement& t) const;
 
   // this method is to be used only at weights |alpha| taking value +1 or -1
-  bool negative_at(const latticetypes::LatticeElt& alpha) const
+  bool negative_at(const Coweight& alpha) const
     { return repr.scalarProduct(alpha)%2!=0; }
 
   // evaluation giving rational number modulo 2 (|negative_at| iff equals 1)
-  arithmetic::Rational evaluate_at(const latticetypes::LatticeElt& alpha) const;
+  arithmetic::Rational evaluate_at(const Coweight& alpha) const;
 
   // manipulators
 
   TorusElement& operator+=(TorusPart v); // arg by value since it is small
 
   // the following method assumes |prd| is on dual side with respect to torus
-  void simple_reflect(const prerootdata::PreRootDatum& prd, weyl::Generator s)
+  void simple_reflect(const PreRootDatum& prd, weyl::Generator s)
   { prd.simpleReflect(repr.numerator(),s); } // numerator is weight for |prd|
 }; // |class TorusElement|
 
-inline TorusElement exp_pi(const latticetypes::RatWeight r)
+inline TorusElement exp_pi(const RatWeight r)
 { return TorusElement(r,false); }
-inline TorusElement exp_2pi(const latticetypes::RatWeight r)
+inline TorusElement exp_2pi(const RatWeight r)
 { return TorusElement(r,true); }
 
 
@@ -141,7 +142,7 @@ class GlobalTitsElement
 
   // element stored as $(t,w)$ is interpreted as $t * \sigma_w * \delta_1$
   TorusElement t;
-  weyl::TwistedInvolution w;
+  TwistedInvolution w;
 
  public:
 
@@ -149,11 +150,11 @@ class GlobalTitsElement
   explicit GlobalTitsElement(size_t rank) : t(rank),w() {}
 
   /*!\brief The canonical representative $\sigma_w$ of |w| in |Tits|. */
-  GlobalTitsElement(const weyl::WeylElt& we,size_t rank) : t(rank),w(we) {}
+  GlobalTitsElement(const WeylElt& we,size_t rank) : t(rank),w(we) {}
 
   explicit GlobalTitsElement(const TorusElement& te) : t(te),w() {}
 
-  GlobalTitsElement(const TorusElement& te, const weyl::WeylElt& we)
+  GlobalTitsElement(const TorusElement& te, const WeylElt& we)
   : t(te),w(we) {}
 
   // we compute modulo $t.\sigma_w\delta\equiv\sigma_w\delta.t$
@@ -166,12 +167,12 @@ class GlobalTitsElement
 // both components are exposed as constant references
 /*!\brief twisted involution whose fiber we are in */
   const TorusElement& torus_part() const { return t; }
-  const weyl::TwistedInvolution& tw() const { return w; }
+  const TwistedInvolution& tw() const { return w; }
 
 // a method defined without help of |GlobalTitsGroup| (and which ignores |w|)
   GlobalTitsElement simple_imaginary_cross
-  (const rootdata::RootDatum& dual_rd, // dual for pragmatic reasons
-   rootdata::RootNbr alpha) const; // any simple-imaginary root
+  (const RootDatum& dual_rd, // dual for pragmatic reasons
+   RootNbr alpha) const; // any simple-imaginary root
 
 
 // manipulators
@@ -222,12 +223,12 @@ class GlobalTitsElement
    KGB construction; the perspective is then "direct". Terminology such as
    "dual side", "imaginary roots" is relative to the current perspective.
  */
-class GlobalTitsGroup : public weyl::TwistedWeylGroup
+class GlobalTitsGroup : public TwistedWeylGroup
 {
-  const prerootdata::PreRootDatum simple; // from DUAL side, allows W action
-  latticetypes::LatticeMatrix delta_tr; // transposed distinguished involution
+  const PreRootDatum simple; // from DUAL side, allows W action
+  WeightInvolution delta_tr; // transposed distinguished involution
   std::vector<TorusPart> alpha_v; // |simple.roots()| reduced modulo 2
-  const latticetypes::RatWeight half_rho_v;
+  const RatWeight half_rho_v;
 
   // a list of gradings of the imaginary simple roots generating square classes
   std::vector<gradings::Grading> square_class_gen;
@@ -245,26 +246,26 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
 
   //!\brief constructor from subdatum (dual side) + involution information
   GlobalTitsGroup(const subdatum::SubSystem& sub,
-  		  const latticetypes::LatticeMatrix& theta,
-		  weyl::WeylWord& ww); // output: expesses |-theta^t| for |sub|
+  		  const WeightInvolution& theta,
+		  WeylWord& ww); // output: expesses |-theta^t| for |sub|
 
   // accessors
   size_t semisimple_rank() const { return alpha_v.size(); }
   size_t rank() const { return simple.rank(); }
-  const latticetypes::RatWeight& torus_part_offset () const
+  const RatWeight& torus_part_offset () const
   { return half_rho_v; }
-  //  { return latticetypes::RatWeight(root_datum.dual_twoRho(),4); }
+  //  { return RatWeight(root_datum.dual_twoRho(),4); }
 
   //!\brief Element m_\alpha of H(2) for simple coroot \#j.
   TorusPart m_alpha(size_t j) const { return alpha_v[j]; }
 
-  latticetypes::Weight parent_simple_root(weyl::Generator s) const
+  Weight parent_simple_root(weyl::Generator s) const
   { return simple.roots()[s]; }
-  latticetypes::Weight parent_simple_coroot(weyl::Generator s) const
+  Coweight parent_simple_coroot(weyl::Generator s) const
   { return simple.coroots()[s]; }
 
   //!\brief Reflection of |TorusElement|s defined by a twisted involution
-  latticetypes::LatticeMatrix involution_matrix(const weyl::WeylElt& tw) const;
+  WeightInvolution involution_matrix(const WeylElt& tw) const;
 
   using TwistedWeylGroup::twisted; // overloaded in this class
   using TwistedWeylGroup::twist;   // idem
@@ -298,8 +299,8 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   GlobalTitsElement prod(const GlobalTitsElement& a,
 			 const GlobalTitsElement& b) const;
 
-  bool compact(const rootdata::RootSystem& rs,
-	       rootdata::RootNbr alpha,
+  bool compact(const RootSystem& rs,
+	       RootNbr alpha,
 	       GlobalTitsElement a) const; // whether alpha compact
 
 // methods that manipulate a |GlobalTitsElement|
@@ -312,16 +313,16 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
   no effective difference with conjugation by the inverse of |sigma_alpha|
   */
   int cross_act(weyl::Generator s, GlobalTitsElement& a) const;
-  int cross_act(const weyl::WeylWord& w, GlobalTitsElement& a) const;
-  int cross_act(GlobalTitsElement& a,const weyl::WeylWord& w) const;
-  GlobalTitsElement cross(const weyl::WeylWord& w, GlobalTitsElement a) const
+  int cross_act(const WeylWord& w, GlobalTitsElement& a) const;
+  int cross_act(GlobalTitsElement& a,const WeylWord& w) const;
+  GlobalTitsElement cross(const WeylWord& w, GlobalTitsElement a) const
   { cross_act(w,a); return a; }
 
   void add(TorusPart tp,GlobalTitsElement& a) const // |tp| by value: small
   { a.t += tp; }
 
   // add |rw| to |a.t|
-  void add(const latticetypes::RatWeight& rw,GlobalTitsElement& a) const;
+  void add(const RatWeight& rw,GlobalTitsElement& a) const;
 
   // modify |a| to an inverse Cayley image by (real simple root) $\alpha_s$
   void do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a) const;
@@ -329,7 +330,7 @@ class GlobalTitsGroup : public weyl::TwistedWeylGroup
  private: // this exists for pragmatic reasons only; no reason to export it
   // multiply left by either (t,sigma_ww) or delta_1(t,sigma_ww)delta_1
   void left_mult(const TorusElement& t,
-		 const weyl::WeylWord& ww,
+		 const WeylWord& ww,
 		 bool do_twist, // whether $(t,ww)$ is conjugated by $\delta_1$
 		 GlobalTitsElement& b) const;
 }; // |class GlobalTitsGroup|
@@ -351,9 +352,9 @@ class SubTitsGroup : public GlobalTitsGroup
   //!\brief constructor from subdatum (dual side) + involution information
   SubTitsGroup(const complexredgp::ComplexReductiveGroup& G,
 	       const subdatum::SubSystem& sub,
-	       const latticetypes::LatticeMatrix& theta,
-	       weyl::WeylWord& ww); // output: expesses |-theta^t| for |sub|
-  TorusElement base_point_offset(const weyl::TwistedInvolution& tw) const;
+	       const WeightInvolution& theta,
+	       WeylWord& ww); // output: expesses |-theta^t| for |sub|
+  TorusElement base_point_offset(const TwistedInvolution& tw) const;
 };
 
 
@@ -362,7 +363,7 @@ class SubTitsGroup : public GlobalTitsGroup
 
 
 /* We define two main classes, |TitsElt| and |TitsGroup|, as for Weyl groups.
-   A |TitsElt| value stores both a |weyl::WeylElt| value and a |TorusPart|,
+   A |TitsElt| value stores both a |WeylElt| value and a |TorusPart|,
    which together specify the value. To compute with such elements however one
    needs additional element-independent data stored in the associated
    |TitsGroup| object, so many operations like multiplication are in fact
@@ -434,15 +435,15 @@ reduced decomposition.
   explicit TitsElt(const TitsGroup& Tits);
 
   /*!\brief The canonical representative $\sigma_w$ of |w| in |Tits|. */
-  TitsElt(const TitsGroup& Tits,const weyl::WeylElt& w); // group defines rank
+  TitsElt(const TitsGroup& Tits,const WeylElt& w); // group defines rank
 
   TitsElt(const TitsGroup&, TorusPart t) // pure torus part
-  :  d_t(t),d_w(weyl::WeylElt())
+  :  d_t(t),d_w(WeylElt())
   {}
 
-  TitsElt(const TitsGroup&, const weyl::WeylElt& w, TorusPart t);
+  TitsElt(const TitsGroup&, const WeylElt& w, TorusPart t);
 
-  TitsElt(const TitsGroup&, TorusPart t, const weyl::WeylElt& w)
+  TitsElt(const TitsGroup&, TorusPart t, const WeylElt& w)
   : d_t(t),d_w(w)
   {}
 
@@ -453,14 +454,14 @@ reduced decomposition.
 // only the Weyl group component is exposed as constant reference.
 
 /*!\brief Canonical Weyl part of the Tits group element. */
-  const weyl::WeylElt& w() const { return d_w; }
+  const WeylElt& w() const { return d_w; }
 
 /* the same componenent under another name (to make it smell sweeter); note
    however that this returns a value, not a reference (to not make the
-   assumtion that |weyl::TwistedInvolution| is identical to |weyl::WeylElt|)
+   assumtion that |TwistedInvolution| is identical to |WeylElt|)
    */
 /*!\brief twisted involution represented by canonical Weyl part */
-  weyl::TwistedInvolution tw() const { return weyl::TwistedInvolution(d_w); }
+  TwistedInvolution tw() const { return TwistedInvolution(d_w); }
 
 
 // for the rest, only equality tests can bypass any use of the |TitsGroup|
@@ -521,7 +522,7 @@ reduced decomposition.
   that the generator \f$\sigma_\alpha\f$ (still for \f$\alpha\f$ simple) is
   canonically defined.
 */
-class TitsGroup : public weyl::TwistedWeylGroup
+class TitsGroup : public TwistedWeylGroup
 {
   /*!
 \brief Dimension of the Cartan H. This is the size of torus parts of elements.
@@ -562,22 +563,22 @@ $H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
 // constructors and destructors
 
   //!\brief Ordinary constructor for inner class
-  TitsGroup(const rootdata::RootDatum&,
-	    const weyl::WeylGroup& W,
-	    const latticetypes::LatticeMatrix& d);
+  TitsGroup(const RootDatum&,
+	    const WeylGroup& W,
+	    const WeightInvolution& d);
 
   //!\brief Constructor for semisimple adjoint group
-  TitsGroup(const latticetypes::LatticeMatrix& Cartan_matrix,
-	    const weyl::WeylGroup& W,
+  TitsGroup(const int_Matrix& Cartan_matrix,
+	    const WeylGroup& W,
 	    const weyl::Twist& twist);
 
   //!\brief Constructor for Tits group relative to a subsystem
   TitsGroup(const subdatum::SubSystem& sub,
-	    const latticetypes::LatticeMatrix& theta,
-	    weyl::WeylWord& ww);
+	    const WeightInvolution& theta,
+	    WeylWord& ww);
 
   //\brief Like a copy contructor, but reference |W| rather than share or copy
-  TitsGroup(const TitsGroup& Tg, const weyl::WeylGroup& W)
+  TitsGroup(const TitsGroup& Tg, const WeylGroup& W)
     : TwistedWeylGroup(W,Tg.twist())
     , d_rank(Tg.d_rank)
     , d_simpleRoot(Tg.d_simpleRoot)
@@ -592,7 +593,7 @@ $H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
   /*!\brief Rank of the torus. */
   const size_t rank() const { return d_rank; }
   const size_t semisimple_rank() const
-    { return weyl::TwistedWeylGroup::rank(); }
+    { return TwistedWeylGroup::rank(); }
 
   //!\brief Element m_\alpha of H(2) for simple coroot \#j.
   TorusPart m_alpha(size_t j) const { return d_simpleCoroot[j]; }
@@ -616,8 +617,8 @@ $H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
   }
 
 // convert between torus parts $x$ and $y$ for which $x.w=w.y$ in Tits group
-  TorusPart push_across(TorusPart x, const weyl::WeylElt& w) const;
-  TorusPart pull_across(const weyl::WeylElt& w, TorusPart y) const;
+  TorusPart push_across(TorusPart x, const WeylElt& w) const;
+  TorusPart pull_across(const WeylElt& w, TorusPart y) const;
 
   using TwistedWeylGroup::twisted; // overloaded in this class
   using TwistedWeylGroup::twist;   // idem
@@ -629,7 +630,7 @@ $H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
   void twist(TorusPart x) const { x=twisted(x); }
 
   //!\brief Reflection of |TorusPart|s defined by a twisted involution
-  bitvector::BinaryMap involutionMatrix(const weyl::WeylWord& tw) const;
+  bitvector::BinaryMap involutionMatrix(const WeylWord& tw) const;
 
 
 // methods that only access some |TitsElt|
@@ -706,15 +707,15 @@ is done in the KGB construction, it induces an involution on the quotient set.
 
 // postponed inlines of |TitsElt|
 inline TitsElt::TitsElt(const TitsGroup& Tits)
-: d_t(Tits.rank()), d_w(weyl::WeylElt())
+: d_t(Tits.rank()), d_w(WeylElt())
 {}
 
-inline TitsElt::TitsElt(const TitsGroup& Tits,const weyl::WeylElt& w)
+inline TitsElt::TitsElt(const TitsGroup& Tits,const WeylElt& w)
 : d_t(Tits.rank()), d_w(w)
 {}
 
 inline TitsElt::TitsElt
-  (const TitsGroup& Tits, const weyl::WeylElt& w, TorusPart t)
+  (const TitsGroup& Tits, const WeylElt& w, TorusPart t)
 : d_t(Tits.pull_across(w,t)), d_w(w)
 {}
 
@@ -767,7 +768,7 @@ class TitsCoset
   */
   gradings::Grading grading_offset;
 
-  const rootdata::RootSystem& rs; // needed (only) for the |grading| method
+  const RootSystem& rs; // needed (only) for the |grading| method
 
  public:
   TitsCoset(const complexredgp::ComplexReductiveGroup& G,
@@ -784,19 +785,19 @@ class TitsCoset
 
   // this constructor computes the inner class for |sub| defined by |theta|
   TitsCoset(const subdatum::SubSystem& sub,
-	    const latticetypes::LatticeMatrix& theta,
+	    const WeightInvolution& theta,
 	    gradings::Grading parent_base_grading, // by value: small
-	    weyl::WeylWord& ww);
+	    WeylWord& ww);
 
   ~TitsCoset() { delete(my_Tits_group); }
 
   /* accessors */
 
   const tits::TitsGroup& titsGroup() const { return Tg; }
-  const weyl::WeylGroup& weylGroup() const { return Tg.weylGroup(); }
+  const WeylGroup& weylGroup() const { return Tg.weylGroup(); }
 
   bool hasTwistedCommutation
-    (weyl::Generator s, const weyl::TwistedInvolution& tw)  const
+    (weyl::Generator s, const TwistedInvolution& tw)  const
     { return Tg.hasTwistedCommutation(s,tw); }
 
   gradings::Grading base_grading() const { return grading_offset; }
@@ -809,8 +810,8 @@ class TitsCoset
   // operation defining cross action of simple roots
   inline void basedTwistedConjugate(tits::TitsElt& a, size_t s) const;
 
-  void basedTwistedConjugate(tits::TitsElt& a, const weyl::WeylWord& w) const;
-  void basedTwistedConjugate(const weyl::WeylWord& w, tits::TitsElt& a) const;
+  void basedTwistedConjugate(tits::TitsElt& a, const WeylWord& w) const;
+  void basedTwistedConjugate(const WeylWord& w, tits::TitsElt& a) const;
 
   // operation defining Cayley transform in non-compact imaginary simple roots
   void Cayley_transform(tits::TitsElt& a, size_t s) const
@@ -837,7 +838,7 @@ class TitsCoset
   { return Tg.twisted(t);}
 
   // general grading of a KGB element at an imaginary root: whether noncompact
-  bool grading(tits::TitsElt a, rootdata::RootNbr n) const; // |a| by-value
+  bool grading(tits::TitsElt a, RootNbr n) const; // |a| by-value
 
   // various methods that provide a starting KGB element for any Cartan class
   tits::TitsElt naive_seed (complexredgp::ComplexReductiveGroup& G,
@@ -860,7 +861,7 @@ class EnrichedTitsGroup : public TitsCoset
   cartanclass::square_class square() const { return srf.second; }
 
   // whether arbitrary root |n| is compact for |x| in fundamental fiber
-  bool is_compact(const tits::TorusPart& x, rootdata::RootNbr n) const
+  bool is_compact(const tits::TorusPart& x, RootNbr n) const
     { return not grading(TitsElt(titsGroup(),x),n); }
 
   tits::TitsElt backtrack_seed (const complexredgp::ComplexReductiveGroup& G,

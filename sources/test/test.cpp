@@ -141,7 +141,7 @@ namespace {
   const TestMode testMode = RealMode; // currently does subsystem KGB test
 
   // utilities
-  const rootdata::RootDatum& currentRootDatum();
+  const RootDatum& currentRootDatum();
 
 }
 
@@ -365,11 +365,11 @@ namespace {
 void roots_rootbasis_f()
 {
   try {
-    const rootdata::RootSystem& rs =
+    const RootSystem& rs =
       mainmode::currentComplexGroup().rootSystem();
     ioutils::OutputFile file;
 
-    for (rootdata::RootNbr i=0; i<rs.numRoots(); ++i)
+    for (RootNbr i=0; i<rs.numRoots(); ++i)
       prettyprint::printInRootBasis(file,i,rs) << std::endl;
   }
   catch (error::InputError& e) {
@@ -383,7 +383,7 @@ void posroots_rootbasis_f()
 
 {
   try {
-    const rootdata::RootSystem& rs =
+    const RootSystem& rs =
       mainmode::currentComplexGroup().rootSystem();
     ioutils::OutputFile file;
 
@@ -400,11 +400,11 @@ void coroots_rootbasis_f()
 {
   try
   {
-    const rootdata::RootSystem rs
+    const RootSystem rs
       (mainmode::currentComplexGroup().dualRootSystem());
     ioutils::OutputFile file;
 
-    for (rootdata::RootNbr i=0; i<rs.numRoots(); ++i)
+    for (RootNbr i=0; i<rs.numRoots(); ++i)
       prettyprint::printInRootBasis(file,i,rs) << std::endl;
   }
   catch (error::InputError& e)
@@ -419,7 +419,7 @@ void poscoroots_rootbasis_f()
 {
   try
   {
-    const rootdata::RootSystem rs
+    const RootSystem rs
       (mainmode::currentComplexGroup().dualRootSystem());
     ioutils::OutputFile file;
 
@@ -449,7 +449,7 @@ void sub_KGB_f()
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
-  weyl::WeylWord ww;
+  WeylWord ww;
   standardrepk::PSalgebra p= khc.theta_stable_parabolic(sr,ww);
   kgb::KGBEltList sub=khc.sub_KGB(p);
 
@@ -460,14 +460,14 @@ void sub_KGB_f()
 void trivial_f()
 {
   realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
-  const rootdata::RootDatum& rd=G.rootDatum();
+  const RootDatum& rd=G.rootDatum();
   const kgb::KGB& kgb = G.kgb();
 
   standardrepk::KhatContext khc(G);
 
   kgb::KGBElt last=kgb.size()-1;
 
-  weyl::WeylWord ww;
+  WeylWord ww;
   standardrepk::PSalgebra q=
     khc.theta_stable_parabolic(khc.KGB_elt_rep(last),ww);
 
@@ -829,12 +829,12 @@ void mod_lattice_f()
 
   unsigned long cn=interactive::get_Cartan_class(G.Cartan_set());
 
-  latticetypes::LatticeMatrix q = G.cartan(cn).involution();
+  WeightInvolution q = G.cartan(cn).involution();
   for (size_t j = 0; j<q.numRows(); ++j)
     q(j,j) -= 1;
 
-  latticetypes::CoeffList factor;
-  latticetypes::LatticeMatrix b = matreduc::adapted_basis(q,factor);
+  CoeffList factor;
+  int_Matrix b = matreduc::adapted_basis(q,factor);
 
   bitset::RankFlags units, doubles;
   unsigned n1=0,n2=0;
@@ -1006,7 +1006,7 @@ void srtest_f()
     prettyprint::printVector(std::cout<<"2rho = ",G.rootDatum().twoRho())
       << std::endl;
 
-    latticetypes::Weight lambda=
+    Weight lambda=
       interactive::get_weight(interactive::sr_input(),
 			      "Give lambda-rho: ",
 			      G.rank());
@@ -1018,7 +1018,7 @@ void srtest_f()
     prettyprint::printVector(std::cout << "Weight (1/2)",lambda);
     prettyprint::printVector(std::cout << " converted to (1/2)",khc.lift(sr));
 
-    const weyl::TwistedInvolution& canonical =
+    const TwistedInvolution& canonical =
       G.complexGroup().twistedInvolution(sr.Cartan());
     if (kgb.involution(x)!=canonical)
       prettyprint::printWeylElt(std::cout << " at involution ",
@@ -1066,8 +1066,8 @@ void testrun_f()
     for (testrun::CoveringIterator cit(*it); cit(); ++cit)
     {
       if (count>0) std::cout << ',' << std::flush;
-      rootdata::RootDatum rd(*cit);
-      latticetypes::LatticeMatrix id(rd.rank()); // identity
+      RootDatum rd(*cit);
+      WeightInvolution id(rd.rank()); // identity
       complexredgp::ComplexReductiveGroup G(rd,id);
       for (realform::RealForm rf=0; rf<G.numRealForms(); ++rf)
       {
@@ -1103,17 +1103,17 @@ void iblock_f()
   {
     realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
     complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
-    const rootdata::RootDatum& rd = G.rootDatum();
+    const RootDatum& rd = G.rootDatum();
 
-    latticetypes::Weight lambda_rho =
+    Weight lambda_rho =
       interactive::get_weight(interactive::sr_input(),
 			      "Give lambda-rho: ",
 			      G.rank());
 
-    latticetypes::RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+    RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
 
 
-    latticetypes::RatWeight nu=
+    RatWeight nu=
       interactive::get_ratweight
       (interactive::sr_input(),"rational parameter nu: ",rd.rank());
 
@@ -1121,19 +1121,19 @@ void iblock_f()
     unsigned long x=interactive::get_bounded_int
       (interactive::common_input(),"KGB element: ",kgb.size());
 
-    latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
+    WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
 
-    nu = latticetypes::RatWeight // make |nu| fixed by $-\theta$
+    nu = RatWeight // make |nu| fixed by $-\theta$
       (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
 
-    latticetypes::RatWeight gamma = nu + latticetypes::RatWeight
+    RatWeight gamma = nu + RatWeight
     (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
 
     std::cout << "Infinitesimal character is " << gamma << std::endl;
 
     subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,gamma);
 
-    weyl::WeylWord ww;
+    WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
 
     permutations::Permutation pi;
@@ -1186,14 +1186,14 @@ void nblock_f()
   {
     realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
     complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
-    const rootdata::RootDatum& rd = G.rootDatum();
+    const RootDatum& rd = G.rootDatum();
 
-    latticetypes::Weight lambda_rho;
-    latticetypes::RatWeight gamma(0);
+    Weight lambda_rho;
+    RatWeight gamma(0);
     kgb::KGBElt x;
 
     interactive::get_parameter(GR,x,lambda_rho,gamma);
-    latticetypes::RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+    RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
     lambda.normalize();
 
     std::cout << "x = " << x << ", gamma = " << gamma
@@ -1202,10 +1202,10 @@ void nblock_f()
     subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,gamma);
 
 
-    latticetypes::LatticeMatrix theta =
+    WeightInvolution theta =
       GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
 
-    weyl::WeylWord ww;
+    WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
 
     permutations::Permutation pi;
@@ -1266,23 +1266,23 @@ void nblock_f()
 
 
 tits::TorusElement torus_part
-  (const rootdata::RootDatum& rd,
-   const latticetypes::LatticeMatrix& theta,
-   const latticetypes::RatWeight& lambda, // discrete parameter
-   const latticetypes::RatWeight& gamma // infinitesimal char
+  (const RootDatum& rd,
+   const WeightInvolution& theta,
+   const RatWeight& lambda, // discrete parameter
+   const RatWeight& gamma // infinitesimal char
   )
 {
   cartanclass::InvolutionData id(rd,theta);
-  latticetypes::Weight cumul(rd.rank(),0);
-  latticetypes::LatticeCoeff n=gamma.denominator();
-  latticetypes::Weight v=gamma.numerator();
-  const rootdata::RootSet pos_real = id.real_roots() & rd.posRootSet();
-  for (rootdata::RootSet::iterator it=pos_real.begin(); it(); ++it)
+  Weight cumul(rd.rank(),0);
+  LatticeCoeff n=gamma.denominator();
+  Weight v=gamma.numerator();
+  const RootNbrSet pos_real = id.real_roots() & rd.posRootSet();
+  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
     if (v.dot(rd.coroot(*it)) %n !=0) // nonintegral
       cumul+=rd.root(*it);
   // now |cumul| is $2\rho_\Re(G)-2\rho_\Re(G(\gamma))$
 
-  return tits::exp_pi(gamma-lambda+latticetypes::RatWeight(cumul,2));
+  return tits::exp_pi(gamma-lambda+RatWeight(cumul,2));
 }
 
 void embedding_f()
@@ -1291,17 +1291,17 @@ void embedding_f()
   {
     realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
     complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
-    const rootdata::RootDatum& rd = G.rootDatum();
+    const RootDatum& rd = G.rootDatum();
 
-    latticetypes::Weight lambda_rho =
+    Weight lambda_rho =
       interactive::get_weight(interactive::sr_input(),
 			      "Give lambda-rho: ",
 			      G.rank());
 
-    latticetypes::RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+    RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
 
 
-    latticetypes::RatWeight nu=
+    RatWeight nu=
       interactive::get_ratweight
       (interactive::sr_input(),"rational parameter nu: ",rd.rank());
 
@@ -1309,19 +1309,19 @@ void embedding_f()
     unsigned long x=interactive::get_bounded_int
       (interactive::common_input(),"KGB element: ",kgb.size());
 
-    latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
+    WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
 
-    nu = latticetypes::RatWeight // make |nu| fixed by $-\theta$
+    nu = RatWeight // make |nu| fixed by $-\theta$
       (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
 
-    latticetypes::RatWeight gamma = nu + latticetypes::RatWeight
+    RatWeight gamma = nu + RatWeight
     (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
 
     std::cout << "Infinitesimal character is " << gamma << std::endl;
 
     subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,gamma);
 
-    weyl::WeylWord ww;
+    WeylWord ww;
     const tits::SubTitsGroup sub_gTg
       (G,sub,G.involutionMatrix(kgb.involution(x)),ww);
 
@@ -1345,9 +1345,9 @@ void embedding_f()
     hashtable::HashTable<weyl::TI_Entry,unsigned int> hash_table(pool);
     std::vector<unsigned int> stops;
     {
-      std::vector<weyl::TwistedInvolution> queue(1,weyl::TwistedInvolution());
+      std::vector<TwistedInvolution> queue(1,TwistedInvolution());
       size_t qi = 0; // |queue| inspected up to |qi|
-      const weyl::TwistedWeylGroup& tW = sub_gTg; // base object, subgroup
+      const TwistedWeylGroup& tW = sub_gTg; // base object, subgroup
 
       while (qi<queue.size())
       {
@@ -1375,7 +1375,7 @@ void embedding_f()
     for (unsigned int i=0; i<pool.size(); ++i)
     {
       if (i==stops[si]) { std::cout << std::endl; ++si; } // separate classes
-      weyl::TwistedInvolution tw=pool[i];
+      TwistedInvolution tw=pool[i];
       std::cout << sub_gTg.base_point_offset(tw).log_2pi()
 		<< "  \t@  " << sub_gTg.word(tw) <<std::endl;
     }
@@ -1404,9 +1404,9 @@ void test_f()
   {
     realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
     complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
-    const rootdata::RootDatum& rd = G.rootDatum();
+    const RootDatum& rd = G.rootDatum();
 
-    latticetypes::RatWeight nu=
+    RatWeight nu=
       interactive::get_ratweight
       (interactive::sr_input(),"rational weight nu: ",rd.rank());
 
@@ -1414,13 +1414,13 @@ void test_f()
     unsigned long x=interactive::get_bounded_int
       (interactive::common_input(),"KGB element: ",kgb.size());
 
-    latticetypes::LatticeMatrix theta = G.involutionMatrix(kgb.involution(x));
+    WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
 
-    nu = latticetypes::RatWeight
+    nu = RatWeight
       (nu.numerator() - theta*nu.numerator(),2*nu.denominator());
 
     std::cout << "Made -theta fixed, nu = " << nu << std::endl;
-    latticetypes::RatWeight gamma(rd.twoRho()+theta*rd.twoRho(),4);
+    RatWeight gamma(rd.twoRho()+theta*rd.twoRho(),4);
     // assume |lambda=rho| for a valid value
     gamma += nu;
     std::cout << "added discrete series contribution, gamma = " << gamma
@@ -1428,7 +1428,7 @@ void test_f()
 
     subdatum::SubDatum sub (GR,gamma,x);
 
-    weyl::WeylWord ww;
+    WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
 
     permutations::Permutation pi;
@@ -1447,7 +1447,7 @@ void test_f()
     }
 
     std::cout << "Twisted involution in subsystem: " << ww ;
-    weyl::WeylElt w = sub.Weyl_group().element(ww);
+    WeylElt w = sub.Weyl_group().element(ww);
     sub.Weyl_group().mult(w,sub.Weyl_group().longest());
     prettyprint::printWeylElt(std::cout << " (reversed to ",w,sub.Weyl_group())
 			      << " in list below).\n";

@@ -16,9 +16,10 @@
 
 #include "subquotient.h"
 
-#include "bitset.h"
 #include <cassert>
+#include "bitset.h"
 
+#include "atlas_types.h"
 
 namespace atlas {
 
@@ -251,7 +252,7 @@ template<size_t dim>
   // restrict m to source.space()
   for (bitset::RankFlags::iterator it=source.support().begin(); it(); ++it)
   {
-    bitvector::SmallBitVector v = m*source.space().basis(*it);
+    SmallBitVector v = m*source.space().basis(*it);
     assert(v.size()==dest.rank());
 
     /*

@@ -18,7 +18,11 @@
 #include <cassert>
 #include <iostream>
 
-#include "rootdata_fwd.h"
+#include "bitset.h"
+#include "bitmap.h"
+#include "hashtable.h"
+
+#include "atlas_types.h"
 #include "subdatum.h"
 #include "bruhat_fwd.h"
 #include "descents.h"
@@ -29,9 +33,6 @@
 #include "weyl.h"
 #include "tits_fwd.h"
 
-#include "bitset.h"
-#include "bitmap.h"
-#include "hashtable.h"
 
 namespace atlas {
 
@@ -50,10 +51,10 @@ const BlockElt UndefBlock = ~ BlockElt(0);
 
 namespace blocks {
 
-  weyl::TwistedInvolution
-    dual_involution(const weyl::TwistedInvolution& w,
-		    const weyl::TwistedWeylGroup& W,
-		    const weyl::TwistedWeylGroup& dual_W);
+  TwistedInvolution
+    dual_involution(const TwistedInvolution& w,
+		    const TwistedWeylGroup& W,
+		    const TwistedWeylGroup& dual_W);
 
   // map from numbering of |b| to that of |dual_b|, assuming latter is dual
   std::vector<BlockElt>
@@ -70,7 +71,7 @@ namespace blocks {
 
 class Block_base {
 
-  const weyl::WeylGroup& W; // used only for |compute_support| and printing
+  const WeylGroup& W; // used only for |compute_support| and printing
 
  protected: // other fields may be set in derived class contructor
 
@@ -90,14 +91,14 @@ class Block_base {
 // constructors and destructors
   Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb);
   Block_base(const subdatum::SubSystem& sub,
-	     const weyl::WeylGroup& printing_W);
+	     const WeylGroup& printing_W);
 
   virtual ~Block_base() {}
 
 // copy, assignment and swap
 
 // accessors
-  const weyl::WeylGroup& weylGroup() const { return W; }
+  const WeylGroup& weylGroup() const { return W; }
 
   size_t rank() const { return d_cross.size(); } // semisimple rank matters
   size_t size() const { return d_x.size(); }
@@ -119,7 +120,7 @@ class Block_base {
   size_t max_Cartan() const // maximal Cartan number, for printing
   { return Cartan_class(size()-1); } // this should be OK in all cases
 
-  virtual const weyl::TwistedInvolution& involution(BlockElt z) const = 0;
+  virtual const TwistedInvolution& involution(BlockElt z) const = 0;
 
   BlockElt cross(size_t s, BlockElt z) const //!< cross action
   { assert(z<size()); assert(s<rank()); return d_cross[s][z]; }
@@ -200,13 +201,13 @@ class Block : public Block_base
 
   enum State { BruhatConstructed, NumStates };
 
-  const weyl::TwistedWeylGroup& tW; // for interpreting twisted involutions
+  const TwistedWeylGroup& tW; // for interpreting twisted involutions
 
   size_t xrange;
   size_t yrange;
 
   std::vector<size_t> d_Cartan; // of size |size()|
-  weyl::TwistedInvolutionList d_involution; // of size |size()|
+  TwistedInvolutionList d_involution; // of size |size()|
 
   /*!
 \brief Flags the generators occurring in reduced expression for |d_involution|.
@@ -245,7 +246,7 @@ non-vanishing KL polynomial.
  public:
 
 // accessors
-  const weyl::TwistedWeylGroup& twistedWeylGroup() const { return tW; }
+  const TwistedWeylGroup& twistedWeylGroup() const { return tW; }
 
   virtual size_t xsize() const { return xrange; }
   virtual size_t ysize() const { return yrange; }
@@ -259,7 +260,7 @@ non-vanishing KL polynomial.
   This is the corresponding Weyl group element w, such that w.delta is the
   root datum involution tau corresponding to z
 */
-  const weyl::TwistedInvolution& involution(BlockElt z) const
+  const TwistedInvolution& involution(BlockElt z) const
     { assert(z<size()); return d_involution[z]; }
 
   //! \brief the simple roots occurring in reduced expression |involution(z)|
@@ -287,7 +288,7 @@ class gamma_block : public Block_base
 {
   const kgb::KGB& kgb;
 
-  latticetypes::RatWeight infin_char; // infinitesimal character
+  RatWeight infin_char; // infinitesimal character
 
   std::vector<kgb::KGBElt> kgb_nr_of; // indexed by child |x| numbers
 
@@ -306,8 +307,8 @@ class gamma_block : public Block_base
   gamma_block(realredgp::RealReductiveGroup& GR,
 	      const subdatum::SubSystem& sub,
 	      kgb::KGBElt x,
-	      const latticetypes::RatWeight& lambda, // discrete parameter
-	      const latticetypes::RatWeight& gamma, // infinitesimal character
+	      const RatWeight& lambda, // discrete parameter
+	      const RatWeight& gamma, // infinitesimal character
 	      BlockElt& entry_element // set to block element matching the input
 	      );
 
@@ -318,13 +319,13 @@ class gamma_block : public Block_base
   size_t Cartan_class(BlockElt z) const
   { assert(z<size()); return y_info[d_y[z]].Cartan_class; }
 
-  const weyl::TwistedInvolution& involution(BlockElt z) const
+  const TwistedInvolution& involution(BlockElt z) const
   { assert(z<size()); return y_info[d_y[z]].rep.tw(); }
 
   std::ostream& print(std::ostream& strm, BlockElt z) const;
 
   // new methods
-  latticetypes::RatWeight local_system(BlockElt z) const
+  RatWeight local_system(BlockElt z) const
   { assert(z<size()); return y_info[d_y[z]].rep.torus_part().log_2pi(); }
 
 }; // |class gamma_block|
@@ -337,7 +338,7 @@ class non_integral_block : public Block_base
 
   bitset::RankFlags singular;
 
-  const latticetypes::RatWeight infin_char; // infinitesimal character
+  const RatWeight infin_char; // infinitesimal character
 
   std::vector<kgb::KGBElt> kgb_nr_of; // indexed by child |x| numbers
 
@@ -357,8 +358,8 @@ class non_integral_block : public Block_base
     (realredgp::RealReductiveGroup& GR,
      const subdatum::SubSystem& subsys,
      kgb::KGBElt x,
-     const latticetypes::RatWeight& lambda, // discrete parameter
-     const latticetypes::RatWeight& gamma, // infinitesimal character
+     const RatWeight& lambda, // discrete parameter
+     const RatWeight& gamma, // infinitesimal character
      BlockElt& entry_element // set to block element matching the input
     );
 
@@ -369,13 +370,13 @@ class non_integral_block : public Block_base
   size_t Cartan_class(BlockElt z) const
   { assert(z<size()); return y_info[d_y[z]].Cartan_class; }
 
-  const weyl::TwistedInvolution& involution(BlockElt z) const
+  const TwistedInvolution& involution(BlockElt z) const
   { assert(z<size()); return y_info[d_y[z]].rep.tw(); }
 
   std::ostream& print(std::ostream& strm, BlockElt z) const;
 
   // new methods
-  latticetypes::RatWeight lambda(BlockElt z) const; // reconstruct from y value
+  RatWeight lambda(BlockElt z) const; // reconstruct from y value
   bool is_nonzero(BlockElt z) const; // whether |z| survives singular |gamma|
 
 }; // |class non_integral_block|

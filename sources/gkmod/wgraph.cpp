@@ -65,7 +65,7 @@ void WGraph::swap(WGraph& other)
 void WGraph::reset()
 {
   d_graph.reset();
-  d_coeff.assign(size(),CoeffList());
+  d_coeff.assign(size(),WCoeffList());
   d_descent.assign(size(),bitset::RankFlags());
 }
 
@@ -123,9 +123,9 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
     {
       size_t y = *j; size_t z=relno[y]; // |z==j-i->first|
       const graph::EdgeList& edge = wg.edgeList(y);
-      const CoeffList& coeff = wg.coeffList(y);
+      const WCoeffList& coeff = wg.coeffList(y);
       graph::EdgeList& cur_el = d_cell[n].edgeList(z);
-      CoeffList& cur_cl = d_cell[n].coeffList(z);
+      WCoeffList& cur_cl = d_cell[n].coeffList(z);
       for (size_t k = 0; k < edge.size(); ++k)
 	if (d_part[edge[k]]==n) // only look at edges within this cell
 	{
@@ -171,8 +171,8 @@ void cells(std::vector<WGraph>& wc, const WGraph& wg)
       wci.descent(z) = wg.descent(y);
       const graph::EdgeList& el = wg.edgeList(y);
       graph::EdgeList& eli = wci.edgeList(z);
-      const CoeffList& cl = wg.coeffList(y);
-      CoeffList& cli = wci.coeffList(z);
+      const WCoeffList& cl = wg.coeffList(y);
+      WCoeffList& cli = wci.coeffList(z);
       for (size_t j = 0; j < el.size(); ++j) {
 	size_t x = el[j];
 	if (pi(x) != pi(y)) // an edge leading out of the current cell

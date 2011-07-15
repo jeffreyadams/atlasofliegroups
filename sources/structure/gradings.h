@@ -14,15 +14,15 @@
 #ifndef GRADINGS_H  /* guard against multiple inclusions */
 #define GRADINGS_H
 
-#include <functional>
-
 #include "gradings_fwd.h"
 
-#include "rootdata_fwd.h"
+#include <functional>
 
 #include "bitmap.h"
 #include "bitset.h"
 #include "constants.h"
+
+#include "atlas_types.h"
 
  namespace atlas {
 
@@ -30,14 +30,14 @@
 
 namespace gradings {
 
-  rootdata::RootSet max_orth(const rootdata::RootSet& non_compact,
-			     const rootdata::RootSet& subsys,
-			     const rootdata::RootSystem& rs);
+  RootNbrSet max_orth(const RootNbrSet& non_compact,
+			     const RootNbrSet& subsys,
+			     const RootSystem& rs);
 
   void transform_grading(gradings::Grading&,
-			const rootdata::RootList&,
-			const rootdata::RootSet&,
-			const rootdata::RootSystem&);
+			const RootNbrList&,
+			const RootNbrSet&,
+			const RootSystem&);
 
 }
 

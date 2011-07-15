@@ -11,7 +11,6 @@
 
 #include "bitvector.h"
 #include "cartanclass.h"
-#include "latticetypes.h"
 #include "rootdata.h"
 #include "weyl.h"
 #include "weylsize.h"
@@ -20,14 +19,14 @@
 namespace atlas {
 
 namespace {
-void orthogonalMAlpha(rootdata::RootList&,
+void orthogonalMAlpha(RootNbrList&,
 		      unsigned long,
 		      const cartanclass::Fiber&,
-		      const rootdata::RootDatum&);
-void rGenerators(bitvector::SmallBitVectorList&,
-		 const rootdata::RootList&,
+		      const RootDatum&);
+void rGenerators(SmallBitVectorList&,
+		 const RootNbrList&,
 		 const cartanclass::Fiber&,
-		 const rootdata::RootDatum&);
+		 const RootDatum&);
 }
 
 /*****************************************************************************
@@ -40,12 +39,11 @@ namespace realweyl {
 
 RealWeyl::RealWeyl(const cartanclass::CartanClass& cc,
 		   unsigned long x, unsigned long y,
-		   const rootdata::RootDatum& rd, const weyl::WeylGroup& W)
+		   const RootDatum& rd, const WeylGroup& W)
   :d_group(&W)
 
 {
   using namespace cartanclass;
-  using namespace latticetypes;
   using namespace rootdata;
   using namespace tags;
 
@@ -89,7 +87,7 @@ namespace realweyl {
 
 RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
 				       const cartanclass::CartanClass& cc,
-				       const rootdata::RootDatum& rd)
+				       const RootDatum& rd)
   :d_group(&rw.weylGroup())
 
 
@@ -115,7 +113,7 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_imaginaryR.assign(nir,e);
 
   for (size_t j = 0; j < nir; ++j) {
-    const bitvector::SmallBitVector& c = rw.imaginaryR(j);
+    const SmallBitVector& c = rw.imaginaryR(j);
     for (size_t i = 0; i < c.size(); ++i)
       if (c[i]) {
 	W.mult(d_imaginaryR[j],rd.reflectionWord(rw.imaginaryOrth(i)));
@@ -140,7 +138,7 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_realR.assign(nrr,e);
 
   for (size_t j = 0; j < nrr; ++j) {
-    const bitvector::SmallBitVector& c = rw.realR(j);
+    const SmallBitVector& c = rw.realR(j);
     for (size_t i = 0; i < c.size(); ++i)
       if (c[i]) {
 	W.mult(d_realR[j],rd.reflectionWord(rw.realOrth(i)));
@@ -158,7 +156,7 @@ RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
   d_complex.assign(nc,e);
 
   for (size_t j = 0; j < nc; ++j) {
-    rootdata::RootNbr rn = rw.complex(j);
+    RootNbr rn = rw.complex(j);
     W.mult(d_complex[j],rd.reflectionWord(rn));
     rn = cc.involution_image_of_root(rn);
     W.mult(d_complex[j],rd.reflectionWord(rn));
@@ -240,18 +238,18 @@ namespace {
 
   NOTE: they are even super-orthogonal, see IC4, prop 3.20.
 */
-void orthogonalMAlpha(rootdata::RootList& rl, unsigned long x,
+void orthogonalMAlpha(RootNbrList& rl, unsigned long x,
 		      const cartanclass::Fiber& f,
-		      const rootdata::RootDatum& rd)
+		      const RootDatum& rd)
 {
-  latticetypes::Weight tworho_ic = compactTwoRho(x,f,rd);
+  Weight tworho_ic = compactTwoRho(x,f,rd);
 
   // put positive imaginary noncompact roots in rs
-  rootdata::RootSet rs = f.noncompactRoots(x);
+  RootNbrSet rs = f.noncompactRoots(x);
   rs &= rd.posRootSet();
 
   // keep the ones that are orthogonal to tworho_ic
-  for (rootdata::RootSet::iterator it=rs.begin(); it(); ++it)
+  for (RootNbrSet::iterator it=rs.begin(); it(); ++it)
     if (rd.isOrthogonal(tworho_ic,*it))
       rl.push_back(*it);
 }
@@ -270,17 +268,17 @@ void orthogonalMAlpha(rootdata::RootList& rl, unsigned long x,
   products of simple reflections in rl corresponding to the combinations that
   lie in the _kernel_ of this map.
 */
-void rGenerators(bitvector::SmallBitVectorList& cl,
-		 const rootdata::RootList& rl,
+void rGenerators(SmallBitVectorList& cl,
+		 const RootNbrList& rl,
 		 const cartanclass::Fiber& f,
-		 const rootdata::RootDatum& rd)
+		 const RootDatum& rd)
 {
   size_t rln = rl.size();
   bitvector::BinaryMap m(f.fiberRank(),rln);
 
   for (size_t j=0; j<rln; ++j)
   {
-    bitvector::SmallBitVector v = // |v.size()=f.fiberRank()|
+    SmallBitVector v = // |v.size()=f.fiberRank()|
       f.mAlpha(rd.coroot(rl[j]));
     for (size_t i = 0; i < v.size(); ++i)
       m.set(i,j,v[i]);

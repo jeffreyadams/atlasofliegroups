@@ -47,6 +47,8 @@
 #include "weyl.h"
 #include "hashtable.h"
 
+#include "error.h"
+
 /*
   Our task is fairly simple: given the one sided parameter sets for the real
   form and for the dual real form, as provided by the kgb module, which sets
@@ -131,7 +133,7 @@ namespace blocks {
 namespace {
 
 weyl::WeylInterface
-correlation(const weyl::WeylGroup& W,const weyl::WeylGroup& dW);
+correlation(const WeylGroup& W,const WeylGroup& dW);
 
 descents::DescentStatus descents(kgb::KGBElt x,
 				 kgb::KGBElt y,
@@ -172,14 +174,14 @@ Block_base::Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
   , d_cross(kgb.rank()), d_cayley(kgb.rank()) // each entry filled below
   , d_descent(), d_length() // filled below
 {
-  const weyl::TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();
+  const TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();
 
-  std::vector<weyl::TwistedInvolution> dual_w;
+  std::vector<TwistedInvolution> dual_w;
   dual_w.reserve(kgb.nr_involutions());
   size_t size=0;
   for (unsigned int i=0; i<kgb.nr_involutions(); ++i)
   {
-    const weyl::TwistedInvolution w = kgb.nth_involution(i);
+    const TwistedInvolution w = kgb.nth_involution(i);
     dual_w.push_back(dual_involution(w,kgb.twistedWeylGroup(),dual_W));
     size += kgb.packet_size(w)*dual_kgb.packet_size(dual_w.back());
   }
@@ -195,7 +197,7 @@ Block_base::Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
 
   for (unsigned int i=0; i<kgb.nr_involutions(); ++i)
   {
-    const weyl::TwistedInvolution w = kgb.nth_involution(i);
+    const TwistedInvolution w = kgb.nth_involution(i);
 
     kgb::KGBEltPair x_step = kgb.tauPacket(w);
     kgb::KGBEltPair y_step = dual_kgb.tauPacket(dual_w[i]);
@@ -252,7 +254,7 @@ Block_base::Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb)
 
 
 Block_base::Block_base(const subdatum::SubSystem& sub,
-		       const weyl::WeylGroup& printing_W)
+		       const WeylGroup& printing_W)
   : W(printing_W)
   , d_x(), d_y()
   , d_first_z_of_x(), d_cross(sub.rank()), d_cayley(sub.rank())
@@ -505,7 +507,7 @@ void Block::compute_supports()
     if (z==0 or involution(z)!=involution(z-1))
     { // compute involution support directly from definition
       bitset::RankFlags support;
-      weyl::WeylWord ww=weylGroup().word(involution(z));
+      WeylWord ww=weylGroup().word(involution(z));
       for (size_t j=0; j<ww.size(); ++j)
 	support.set(ww[j]);
       d_involutionSupport.push_back(support);
@@ -593,7 +595,7 @@ void Block::fillBruhat()
 std::ostream& gamma_block::print(std::ostream& strm, BlockElt z) const
 {
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
-  latticetypes::RatWeight ls = local_system(z);
+  RatWeight ls = local_system(z);
   return strm << "(=" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
 	      << ',' << std::setw(3*ls.size()+3) << ls
 	      << ") ";
@@ -603,8 +605,8 @@ std::ostream& gamma_block::print(std::ostream& strm, BlockElt z) const
 gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
 			 const subdatum::SubSystem& sub, // at the dual side
 			 kgb::KGBElt x,
-			 const latticetypes::RatWeight& lambda, // discr param
-			 const latticetypes::RatWeight& gamma, // infl char
+			 const RatWeight& lambda, // discr param
+			 const RatWeight& gamma, // infl char
 			 BlockElt& entry_element) // output parameter
   : Block_base(sub,sub.Weyl_group())
   , kgb(GR.kgb())
@@ -613,8 +615,8 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
   , y_info()
 {
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
-  weyl::WeylWord dual_involution; // set in |GlobalTitsGroup| constructor:
-  const rootdata::RootDatum& rd = GR.rootDatum();
+  WeylWord dual_involution; // set in |GlobalTitsGroup| constructor:
+  const RootDatum& rd = GR.rootDatum();
 
   const tits::GlobalTitsGroup Tg
     (sub,
@@ -625,7 +627,7 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
   hashtable::HashTable<weyl::TI_Entry,unsigned int> inv_hash(inv_pool);
   kgb::GlobalFiberData gfd(Tg,inv_hash);
 
-  weyl::TwistedInvolution tw = Tg.weylGroup().element(dual_involution);
+  TwistedInvolution tw = Tg.weylGroup().element(dual_involution);
   // now |tw| describes |-kgb.involution(x)^tr| as twisted involution for |sub|
 
   // step 1: get a valid value for |y|. Has $t=\exp(\pi\ii(\gamma-\lambda))$
@@ -635,22 +637,22 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
 
   // step 1.5: correct the grading on the dual imaginary roots.
 
-  const latticetypes::LatticeMatrix& theta = Tg.involution_matrix(tw); // on X^*
+  const WeightInvolution& theta = Tg.involution_matrix(tw); // on X^*
 
-  latticetypes::Weight tworho_nonintegral_real(GR.rank(),0);
-  latticetypes::LatticeCoeff n=gamma.denominator();
-  latticetypes::Weight v=gamma.numerator();
+  Weight tworho_nonintegral_real(GR.rank(),0);
+  LatticeCoeff n=gamma.denominator();
+  Weight v=gamma.numerator();
   size_t numpos = rd.numPosRoots();
 
   for(size_t j=0; j<numpos; ++j)
   {
-    rootdata::RootNbr alpha = rd.posRootNbr(j); // that's |j+numpos|
+    RootNbr alpha = rd.posRootNbr(j); // that's |j+numpos|
     if (theta*rd.root(alpha) == -rd.root(alpha) and
 	v.dot(rd.coroot(alpha)) %n !=0 ) // whether coroot is NONintegral real
       tworho_nonintegral_real += rd.root(alpha); //if so add it
   }
 
-  latticetypes::RatWeight newcorr(tworho_nonintegral_real,4);
+  RatWeight newcorr(tworho_nonintegral_real,4);
   Tg.add(newcorr,y); // now the grading on real roots is right
   assert(Tg.is_valid(y));
 
@@ -697,7 +699,7 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
   std::vector<unsigned int> x_of(kgb.size(),~0);
   {
     // generating reflections are for \emph{real} roots for involution |y.tw()|
-    rootdata::RootList gen_root = gfd.real_basis(y.tw());
+    RootNbrList gen_root = gfd.real_basis(y.tw());
 
     kgb::KGBEltPair p = kgb.packet(x); // get range of |kgb| that involves |x|
     bitmap::BitMap seen(p.second-p.first);
@@ -884,7 +886,7 @@ gamma_block::gamma_block(realredgp::RealReductiveGroup& GR,
 	      y_hash.match(gfd.pack(y)); // create first new |y|
 
 	      // imaginary cross actions (real for parent) complete set of y's
-	      rootdata::RootList rb = gfd.imaginary_basis(y.tw());
+	      RootNbrList rb = gfd.imaginary_basis(y.tw());
 	      for (size_t j=y_begin; j<y_hash.size(); ++j) // |y_hash| grows
 	      {
 		y = y_hash[j].repr();
@@ -994,8 +996,8 @@ non_integral_block::non_integral_block
   (realredgp::RealReductiveGroup& GR,
    const subdatum::SubSystem& subsys, // at the dual side
    kgb::KGBElt x,
-   const latticetypes::RatWeight& lambda, // discrete parameter
-   const latticetypes::RatWeight& gamma, // infinitesimal char
+   const RatWeight& lambda, // discrete parameter
+   const RatWeight& gamma, // infinitesimal char
    BlockElt& entry_element) // output parameter
   : Block_base(subsys,GR.weylGroup()) // uses ordinary W for printing
   , kgb(GR.kgb())
@@ -1006,7 +1008,7 @@ non_integral_block::non_integral_block
   , kgb_nr_of()
   , y_info()
 {
-  const rootdata::RootDatum& rd = G.rootDatum();
+  const RootDatum& rd = G.rootDatum();
   const tits::GlobalTitsGroup Tg (G,tags::DualTag());// for $^\vee G$
 
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
@@ -1014,7 +1016,7 @@ non_integral_block::non_integral_block
     singular.set(s,
 		 rd.coroot(sub.parent_nr_simple(s)).dot(gamma.numerator())==0);
 
-  weyl::TwistedInvolution tw =
+  TwistedInvolution tw =
     dual_involution(kgb.involution(x),G.twistedWeylGroup(),Tg);
 
   // step 1: get |y|, which has $t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
@@ -1071,11 +1073,11 @@ non_integral_block::non_integral_block
   x_of[x]=0; kgb_nr_of.push_back(x); // KGB element |x| gets renumbered 0
   {
 
-    latticetypes::LatticeMatrix theta = Tg.involution_matrix(y_hash[0].tw);
+    WeightInvolution theta = Tg.involution_matrix(y_hash[0].tw);
     assert(G.involutionMatrix(kgb.involution(x))==theta);
 
     // generating reflections are for real roots for |involution(x)|
-    rootdata::RootList gen_root = gfd.imaginary_basis(y_hash[0].tw); // for |y|
+    RootNbrList gen_root = gfd.imaginary_basis(y_hash[0].tw); // for |y|
     for (size_t i=0; i<y_hash.size(); ++i) // |y_hash| grows
     {
       tits::GlobalTitsElement y = y_hash[i].repr();
@@ -1274,7 +1276,7 @@ non_integral_block::non_integral_block
 
 	      // complete fiber of x's over new involution using
 	      // imaginary cross actions (real for |y|)
-	      rootdata::RootList ib = gfd.real_basis(y_hash[y_start].tw);
+	      RootNbrList ib = gfd.real_basis(y_hash[y_start].tw);
 	      for (size_t k=x_start; k<kgb_nr_of.size(); ++k) // grows
 	      {
 		kgb::KGBElt cur_x = kgb_nr_of[k];
@@ -1364,13 +1366,13 @@ non_integral_block::non_integral_block
 // reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
 // formula $\lambda = \gamma + {1+\theta\over2}.\log{{t\over\pi\ii})$
 // the projection factor $1+\theta\over2$ kills the modded-out-by part of $t$
-latticetypes::RatWeight non_integral_block::lambda(BlockElt z) const
+RatWeight non_integral_block::lambda(BlockElt z) const
 {
-  latticetypes::LatticeMatrix theta =
+  WeightInvolution theta =
     G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
-  latticetypes::RatWeight t =  y_info[d_y[z]].rep.torus_part().log_2pi();
-  const latticetypes::Weight& num = t.numerator();
-  return infin_char - latticetypes::RatWeight(num-theta*num,t.denominator());
+  RatWeight t =  y_info[d_y[z]].rep.torus_part().log_2pi();
+  const Weight& num = t.numerator();
+  return infin_char - RatWeight(num-theta*num,t.denominator());
 }
 
 // an element of a non-integral block could be zero due to singular $\gamma$
@@ -1389,9 +1391,9 @@ bool non_integral_block::is_nonzero(BlockElt z) const
 std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
 {
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
-  latticetypes::RatWeight ll=lambda(z);
-  latticetypes::RatWeight lr =
-    ll - latticetypes::RatWeight(G.rootDatum().twoRho(),2);
+  RatWeight ll=lambda(z);
+  RatWeight lr =
+    ll - RatWeight(G.rootDatum().twoRho(),2);
   lr.normalize();
   strm << (is_nonzero(z) ? '*' : ' ')
        << "(" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
@@ -1442,7 +1444,7 @@ namespace {
   external |WeylWord| representation (see |dual_involution| below).
 */
 weyl::WeylInterface
-correlation(const weyl::WeylGroup& W,const weyl::WeylGroup& dW)
+correlation(const WeylGroup& W,const WeylGroup& dW)
 {
   assert(&W==&dW); // so groups are identical, making this function useless!
 
@@ -1450,8 +1452,8 @@ correlation(const weyl::WeylGroup& W,const weyl::WeylGroup& dW)
   weyl::WeylInterface result;
   for (size_t s = 0; s < rank; ++s)
   {
-    weyl::WeylElt w=dW.generator(s); // converts |s| to inner numbering |dW|
-    weyl::WeylWord ww=W.word(w); // interpret |w| in |dW|; gives singleton
+    WeylElt w=dW.generator(s); // converts |s| to inner numbering |dW|
+    WeylWord ww=W.word(w); // interpret |w| in |dW|; gives singleton
     assert(ww.size()==1);
 
     /* We want to map |s| to |ww[0]| so that interpreting that internally in
@@ -1616,13 +1618,13 @@ void makeHasse(std::vector<set::SetEltList>& Hasse, const Block& block)
 
     |return W.prod(W.inverse(W.twisted(w)),W.weylGroup().longest())|
 */
-weyl::TwistedInvolution
-dual_involution(const weyl::TwistedInvolution& w,
-		const weyl::TwistedWeylGroup& W,
-		const weyl::TwistedWeylGroup& dual_W)
+TwistedInvolution
+dual_involution(const TwistedInvolution& w,
+		const TwistedWeylGroup& W,
+		const TwistedWeylGroup& dual_W)
 {
-  weyl::WeylWord ww= W.word(w);
-  weyl::TwistedInvolution result = dual_W.weylGroup().longest();
+  WeylWord ww= W.word(w);
+  TwistedInvolution result = dual_W.weylGroup().longest();
   for (size_t i=ww.size(); i-->0; )
     dual_W.mult(result,dual_W.twisted(ww[i]));
   return result;

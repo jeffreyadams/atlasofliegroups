@@ -15,11 +15,10 @@
 
 #include "bitmap_fwd.h"
 #include "bitset_fwd.h"
-#include "gradings_fwd.h"
-#include "latticetypes_fwd.h"
 #include "polynomials_fwd.h"
-#include "rootdata_fwd.h"
-#include "weyl_fwd.h"
+
+#include "atlas_types.h"
+#include "gradings_fwd.h"
 #include "tits_fwd.h"
 #include "tori_fwd.h"
 
@@ -56,14 +55,14 @@ std::ostream& printDescentSet(std::ostream&, const bitset::RankFlags&, size_t,
 			      const char* sep = ",", const char* pre = "{",
 			      const char* post = "}");
 
-std::ostream& printInRootBasis(std::ostream&, rootdata::RootNbr,
-			       const rootdata::RootSystem&);
+std::ostream& printInRootBasis(std::ostream&, RootNbr,
+			       const RootSystem&);
 
-std::ostream& printInRootBasis(std::ostream&, const rootdata::RootSet&,
-			       const rootdata::RootSystem&);
+std::ostream& printInRootBasis(std::ostream&, const RootNbrSet&,
+			       const RootSystem&);
 
-std::ostream& printInvolution(std::ostream&, const weyl::TwistedInvolution&,
-			      const weyl::TwistedWeylGroup&);
+std::ostream& printInvolution(std::ostream&, const TwistedInvolution&,
+			      const TwistedWeylGroup&);
 
 template<typename C>
 std::ostream& printVector(std::ostream&, const std::vector<C>&,
@@ -80,12 +79,12 @@ template<typename C>
 std::ostream& printPol(std::ostream&, const polynomials::Polynomial<C>&,
 		       const char*);
 
-std::ostream& printRootList(std::ostream&, const rootdata::RootList&,
-			    const rootdata::RootDatum&,
+std::ostream& printRootList(std::ostream&, const RootNbrList&,
+			    const RootDatum&,
 			    const char* sep = "\n");
 
-std::ostream& printCorootList(std::ostream&, const rootdata::RootList&,
-			      const rootdata::RootDatum&,
+std::ostream& printCorootList(std::ostream&, const RootNbrList&,
+			      const RootDatum&,
 			      const char* sep = "\n");
 
 std::ostream& printStatus(std::ostream&, const gradings::Status&, size_t);
@@ -95,11 +94,11 @@ std::ostream& printTitsElt(std::ostream&, const tits::TitsElt&,
 
 std::ostream& printTorusType(std::ostream&, const tori::RealTorus&);
 
-std::ostream& printWeylElt(std::ostream&, const weyl::WeylElt&,
-			   const weyl::WeylGroup&);
+std::ostream& printWeylElt(std::ostream&, const WeylElt&,
+			   const WeylGroup&);
 
-std::ostream& printWeylList(std::ostream&, const weyl::WeylEltList&,
-			    const weyl::WeylGroup&, const char* sep = ",",
+std::ostream& printWeylList(std::ostream&, const WeylEltList&,
+			    const WeylGroup&, const char* sep = ",",
 			    const char* pre = "", const char* post = "");
 }
 

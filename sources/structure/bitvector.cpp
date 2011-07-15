@@ -40,7 +40,7 @@ namespace atlas {
 namespace bitvector {
 
 template<size_t dim>
-BitVector<dim>::BitVector(const latticetypes::LatticeElt& v) // reduce mod 2
+BitVector<dim>::BitVector(const matrix::Vector<int>& v) // reduce mod 2
   : d_data()
   , d_size(v.size())
 {
@@ -158,7 +158,7 @@ BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b,
 }
 
 template<size_t dim>
-BitMatrix<dim>::BitMatrix(const latticetypes::LatticeMatrix& m) // set modulo 2
+BitMatrix<dim>::BitMatrix(const matrix::Matrix<int>& m) // set modulo 2
   : d_data(m.numColumns(),bitset::BitSet<dim>())
   , d_rows(m.numRows())
   , d_columns(m.numColumns())

@@ -1,4 +1,4 @@
-% Copyright (C) 2006 Marc van Leeuwen
+ % Copyright (C) 2006 Marc van Leeuwen
 % This file is part of the Atlas of Reductive Lie Groups software (the Atlas)
 
 % This program is made available under the terms stated in the GNU
@@ -266,7 +266,7 @@ void type_of_Cartan_matrix_wrapper (expression_base::level l)
   if (l==expression_base::no_value)
     return;
   push_value(new Lie_type_value(lt));
-  push_value(new vector_value(latticetypes::CoeffList(pi.begin(),pi.end())));
+  push_value(new vector_value(CoeffList(pi.begin(),pi.end())));
   if (l==expression_base::single_value)
     wrap_tuple(2);
 }
@@ -336,9 +336,9 @@ void Smith_Cartan_wrapper(expression_base::level l)
 { shared_Lie_type t=get<Lie_type_value>();
   if (l==expression_base::no_value)
     return;
-  vector_ptr inv_factors (new vector_value(latticetypes::CoeffList()));
-  latticetypes::WeightList b = t->val.Smith_basis(inv_factors->val);
-  push_value(new matrix_value(latticetypes::LatticeMatrix(b,b.size())));
+  vector_ptr inv_factors (new vector_value(CoeffList()));
+  WeightList b = t->val.Smith_basis(inv_factors->val);
+  push_value(new matrix_value(LatticeMatrix(b,b.size())));
   push_value(inv_factors);
   if (l==expression_base::single_value)
      wrap_tuple(2);
@@ -398,18 +398,17 @@ kind by $d/\gcd(d,\lambda_i)$ and transpose the result.
 
 @h "arithmetic.h"
 @h "lattice.h"
-@h "latticetypes.h"
 @h "matrix.h"
 @h "matreduc.h"
 
 @< Local function definitions @>=
-latticetypes::LatticeMatrix @|
+LatticeMatrix @|
 annihilator_modulo
-(const latticetypes::LatticeMatrix& M,
- latticetypes::LatticeCoeff denominator)
+(const LatticeMatrix& M,
+ LatticeCoeff denominator)
 
-{ latticetypes::LatticeMatrix row,col;
-  latticetypes::CoeffList lambda = matreduc::diagonalise(M,row,col);
+{ int_Matrix row,col;
+  CoeffList lambda = matreduc::diagonalise(M,row,col);
 
   for (size_t i=0; i<lambda.size(); ++i)
   @/{@; unsigned long c = arithmetic::div_gcd(denominator,lambda[i]);
@@ -615,7 +614,7 @@ void based_involution_wrapper(expression_base::level l)
     ("Basis should be given by "+str(r)+'x'+str(r)+" matrix");
 @.Basis should be given...@>
 @)
-  latticetypes::LatticeMatrix inv=lietype::involution
+  WeightInvolution inv=lietype::involution
         (type->val,transform_inner_class_type(s->val.c_str(),type->val));
   try
   {@; push_value(new matrix_value(inv.on_basis(basis->val.columns()))); }
@@ -649,9 +648,9 @@ Now we are ready to introduce a new primitive type for root data.
 
 @< Type definitions @>=
 struct root_datum_value : public value_base
-{ rootdata::RootDatum val;
+{ RootDatum val;
 @)
-  root_datum_value(const rootdata::RootDatum v) : val(v) @+ {}
+  root_datum_value(const RootDatum v) : val(v) @+ {}
   virtual void print(std::ostream& out) const;
   root_datum_value* clone() const @+{@; return new root_datum_value(*this); }
   static const char* name() @+{@; return "root datum"; }
@@ -671,8 +670,8 @@ fact only their number is well defined); hence we add the necessary number of
 torus factors at the end.
 
 @< Local fun... @>=
-lietype::LieType type_of_datum(const rootdata::RootDatum& rd)
-{ latticetypes::LatticeMatrix Cartan = rd.cartanMatrix();
+lietype::LieType type_of_datum(const RootDatum& rd)
+{ int_Matrix Cartan = rd.cartanMatrix();
 @/lietype::LieType t = dynkin::Lie_type(Cartan);
   if (!rd.isSemisimple())
     for (size_t i=rd.semisimpleRank(); i<rd.rank(); ++i)
@@ -724,9 +723,9 @@ void root_datum_wrapper(expression_base::level l)
       +str(type->val.rank())+'x'+str(type->val.rank()));
   try
   {
-    prerootdata::PreRootDatum prd(type->val,lattice->val.columns());
+    PreRootDatum prd(type->val,lattice->val.columns());
     if (l!=expression_base::no_value)
-      push_value(new root_datum_value @| (rootdata::RootDatum(prd)));
+      push_value(new root_datum_value @| (RootDatum(prd)));
   }
   catch (std::runtime_error& e)
   { if (e.what()[0]=='I') // |"Inexact integer division"|
@@ -755,14 +754,14 @@ void raw_root_datum_wrapper(expression_base::level l)
       +str(simple_coroots->val.size())+  " of simple (co)roots mismatch");
 @.Numbers of simple roots...@>
 
-  latticetypes::WeightList s,c;
+  WeightList s; CoweightList c;
   s.reserve(simple_roots->val.size());
   c.reserve(simple_roots->val.size());
 
   for (size_t i=0; i<simple_roots->val.size(); ++i)
-  { const latticetypes::Weight& sr
+  { const Weight& sr
       =force<vector_value>(simple_roots->val[i].get())->val;
-    const latticetypes::Weight& scr
+    const Coweight& scr
       =force<vector_value>(simple_coroots->val[i].get())->val;
 
     if (sr.size()!=rank or scr.size()!=rank)
@@ -772,14 +771,14 @@ void raw_root_datum_wrapper(expression_base::level l)
     c.push_back(scr);
   }
 
-  prerootdata::PreRootDatum prd(s,c,rank);
+  PreRootDatum prd(s,c,rank);
   try @/{@; permutations::Permutation dummy;
     dynkin::Lie_type(prd.Cartan_matrix(),true,true,dummy);
   }
   catch (std::runtime_error& e)
   {@; throw std::runtime_error("Invalid simple (co)roots"); }
   if (l!=expression_base::no_value)
-    push_value(new root_datum_value @| (rootdata::RootDatum(prd)));
+    push_value(new root_datum_value @| (RootDatum(prd)));
 }
 
 @ To emulate what is done in the Atlas software, we write a function that
@@ -815,7 +814,7 @@ void quotient_basis_wrapper(expression_base::level l)
   shared_vector v=get<vector_value>();
   // and leave |C| for call to $mm\_prod$
 @)
-  latticetypes::LatticeMatrix M(v->val.size(),L->length());
+  LatticeMatrix M(v->val.size(),L->length());
   size_t d=1;
   @< Compute common denominator |d| of entries in~$L$, and place converted
      denominators into the columns of $M$; also test validity of entries and
@@ -835,7 +834,7 @@ the new denominator~|d|.
 @< Compute common denominator |d| of entries in~$L$... @>=
 { std::vector<unsigned long> denom(L->length());
   for (size_t j=0; j<L->length(); ++j)
-  { const latticetypes::RatWeight& gen =
+  { const RatWeight& gen =
       force<rational_vector_value>(&*L->val[j])->val;
     denom[j] = gen.denominator();
     d=arithmetic::lcm(d,denom[j]);
@@ -859,7 +858,7 @@ the new denominator~|d|.
     // convert modulo $\Z$ and to common denominator |d|
   { size_t f=d/denom[j];
     for (size_t i=0; i<v->val.size(); ++i)
-      M(i,j) = intutils::remainder(M(i,j),denom[j])*f;
+      M(i,j) = arithmetic::remainder(M(i,j),denom[j])*f;
   }
 }
 
@@ -943,7 +942,7 @@ void SL_wrapper(expression_base::level l)
   if (r>0) type->add_simple_factor('A',r);
   push_value(type);
   matrix_ptr lattice
-     (new matrix_value(latticetypes::LatticeMatrix(r))); // identity matrix
+     (new matrix_value(int_Matrix(r))); // identity matrix
   for (size_t i=0; i+1<r; ++i) // not |i<r-1|, since |r| unsigned and maybe 0
     lattice->val(i,i+1)=-1;
   push_value(lattice);
@@ -961,7 +960,7 @@ void GL_wrapper(expression_base::level l)
   type->add_simple_factor('T',1);
   push_value(type);
   matrix_ptr lattice
-     (new matrix_value(latticetypes::LatticeMatrix(r+1))); // identity matrix
+     (new matrix_value(int_Matrix(r+1))); // identity matrix
   for (size_t i=0; i<r; ++i)
   @/{@; lattice->val(n->val-1,i)=1; lattice->val(i,i+1)=-1; }
   push_value(lattice);
@@ -978,27 +977,27 @@ void simple_roots_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
     return;
-  latticetypes::WeightList srl
+  WeightList srl
     (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
   push_value(new matrix_value
-    (latticetypes::LatticeMatrix(srl,rd->val.rank())));
+    (int_Matrix(srl,rd->val.rank())));
 }
 @)
 void simple_coroots_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
     return;
-  latticetypes::WeightList scl
+  WeightList scl
     (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
   push_value(new matrix_value
-    (latticetypes::LatticeMatrix(scl,rd->val.rank())));
+    (int_Matrix(scl,rd->val.rank())));
 }
 @)
 void datum_Cartan_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
     return;
-  latticetypes::LatticeMatrix M = rd->val.cartanMatrix();
+  int_Matrix M = rd->val.cartanMatrix();
   push_value(new matrix_value(M));
 }
 
@@ -1010,37 +1009,37 @@ void positive_roots_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
     return;
-  latticetypes::WeightList rl
+  WeightList rl
     (rd->val.beginPosRoot(),rd->val.endPosRoot());
   push_value(new matrix_value
-    (latticetypes::LatticeMatrix(rl,rd->val.rank())));
+    (int_Matrix(rl,rd->val.rank())));
 }
 @)
 void positive_coroots_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
     return;
-  latticetypes::WeightList crl
+  WeightList crl
     (rd->val.beginPosCoroot(),rd->val.endPosCoroot());
   push_value(new matrix_value
-    (latticetypes::LatticeMatrix(crl,rd->val.rank())));
+    (int_Matrix(crl,rd->val.rank())));
 }
 void roots_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
     return;
-  latticetypes::WeightList rl
+  WeightList rl
     (rd->val.beginRoot(),rd->val.endRoot());
-  push_value(new matrix_value(latticetypes::LatticeMatrix(rl,rd->val.rank())));
+  push_value(new matrix_value(int_Matrix(rl,rd->val.rank())));
 }
 @)
 void coroots_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
     return;
-  latticetypes::WeightList crl
+  WeightList crl
     (rd->val.beginCoroot(),rd->val.endCoroot());
-  push_value(new matrix_value(latticetypes::LatticeMatrix(crl,rd->val.rank())));
+  push_value(new matrix_value(int_Matrix(crl,rd->val.rank())));
 }
 
 @ Here are two utility functions.
@@ -1066,20 +1065,20 @@ void root_coradical_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
     return;
-  latticetypes::WeightList srl
+  WeightList srl
     (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
   srl.insert(srl.end(),rd->val.beginCoradical(),rd->val.endCoradical());
-  push_value(new matrix_value(latticetypes::LatticeMatrix(srl,rd->val.rank())));
+  push_value(new matrix_value(int_Matrix(srl,rd->val.rank())));
 }
 @)
 void coroot_radical_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l==expression_base::no_value)
     return;
-  latticetypes::WeightList scl
+  WeightList scl
     (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
   scl.insert(scl.end(),rd->val.beginRadical(),rd->val.endRadical());
-  push_value(new matrix_value(latticetypes::LatticeMatrix(scl,rd->val.rank())));
+  push_value(new matrix_value(int_Matrix(scl,rd->val.rank())));
 }
 
 @ We give access to the fundamental weights and coweights on an individual
@@ -1113,15 +1112,15 @@ void dual_datum_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l!=expression_base::no_value)
     push_value(new root_datum_value@|
-      (rootdata::RootDatum(rd->val,tags::DualTag())));
+      (RootDatum(rd->val,tags::DualTag())));
 }
 @)
 void derived_datum_wrapper(expression_base::level l)
 { shared_root_datum rd(get<root_datum_value>());
   if (l!=expression_base::no_value)
-  { latticetypes::LatticeMatrix projector;
+  { int_Matrix projector;
     push_value(new root_datum_value@|
-      (rootdata::RootDatum(projector,rd->val,tags::DerivedTag())));
+      (RootDatum(projector,rd->val,tags::DerivedTag())));
     push_value(new matrix_value(projector));
     if (l==expression_base::single_value)
       wrap_tuple(2);
@@ -1263,7 +1262,7 @@ rank).
 @h "tori.h"
 @< Local function def...@>=
 std::pair<size_t,size_t> classify_involution
-  (const latticetypes::LatticeMatrix& M)
+  (const WeightInvolution& M)
 throw (std::bad_alloc, std::runtime_error)
 { size_t r=M.numRows();
   @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
@@ -1283,7 +1282,7 @@ redundant in the presence of a torus part.
     ("Involution should be a "+str(r)+"x"+str(r)+" matrix, got a "
 @.Involution should be...@>
      +str(M.numRows())+"x"+str(M.numColumns())+" matrix");
-  latticetypes::LatticeMatrix Id(r),Q(M*M);
+  WeightInvolution Id(r),Q(M*M);
   if (Q!=Id) throw std::runtime_error
       ("Given transformation is not an involution");
 @.Given transformation...@>
@@ -1336,7 +1335,7 @@ however reuse the module that tests for being an involution here.
 
 @< Local function def...@>=
 lietype::Layout check_involution
- (const latticetypes::LatticeMatrix& M, const rootdata::RootDatum& rd,
+ (const WeightInvolution& M, const RootDatum& rd,
   weyl::WeylWord& ww)
  throw (std::bad_alloc, std::runtime_error)
 { size_t r=rd.rank(),s=rd.semisimpleRank();
@@ -1364,7 +1363,7 @@ to the Cartan matrix is invariant under that permutation of
 its rows and columns.
 
 @< Set |ww| to the Weyl group element...@>=
-{ rootdata::RootList Delta(s);
+{ RootNbrList Delta(s);
   for (size_t i=0; i<s; ++i)
   { Delta[i]=rd.rootNbr(M*rd.simpleRoot(i));
     if (Delta[i]==rd.numRoots()) // then image not found
@@ -1394,7 +1393,7 @@ lies in another component of the diagram we have a Complex inner class.
 @h "dynkin.h"
 
 @< Compute the Lie type |type|, the inner class... @>=
-{ latticetypes::LatticeMatrix Cartan = rd.cartanMatrix();
+{ int_Matrix Cartan = rd.cartanMatrix();
   bitset::RankFlagsList comp =
     dynkin::components(dynkin::DynkinDiagram(Cartan));
 
@@ -1515,12 +1514,12 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 @< Add type letters and inner class symbols for the central torus @>=
 { for (size_t k=0; k<r-s; ++k)
     type.push_back(lietype::SimpleLieType('T',1));
-  latticetypes::LatticeMatrix root_lattice
+  int_Matrix root_lattice
     (rd.beginSimpleRoot(),rd.endSimpleRoot(),r,tags::IteratorTag());
-@/latticetypes::CoeffList factor; // values will be unused
-  latticetypes::LatticeMatrix basis =
+@/CoeffList factor; // values will be unused
+  int_Matrix basis =
      matreduc::adapted_basis(root_lattice,factor);
-@/latticetypes::LatticeMatrix inv =
+@/WeightInvolution inv =
      basis.inverse().block(s,0,r,r)*M*basis.block(0,s,r,r);
     // involution on quotient by root lattice
   std::pair<size_t,size_t> cl=classify_involution(inv);
@@ -1812,7 +1811,7 @@ and re-throw with a more explicit error indication.
 void set_inner_class_wrapper(expression_base::level l)
 { shared_string ict(get<string_value>());
   shared_root_datum rdv(get<root_datum_value>());
-  const rootdata::RootDatum& rd=rdv->val;
+  const RootDatum& rd=rdv->val;
 @)
   lietype::Layout lo;
   lo.d_type = dynkin::Lie_type(rd.cartanMatrix(),true,false,lo.d_perm);
@@ -1933,7 +1932,7 @@ void block_sizes_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   matrix_ptr M(new matrix_value @|
-    (latticetypes::LatticeMatrix(G->val.numRealForms()
+    (int_Matrix(G->val.numRealForms()
                                 ,G->val.numDualRealForms())
     ));
   for (size_t i = 0; i < M->val.numRows(); ++i)
@@ -1954,7 +1953,7 @@ void occurrence_matrix_wrapper(expression_base::level l)
     return;
   size_t nr=G->val.numRealForms();
   size_t nc=G->val.numCartanClasses();
-  matrix_ptr M(new matrix_value(latticetypes::LatticeMatrix(nr,nc)));
+  matrix_ptr M(new matrix_value(int_Matrix(nr,nc)));
   for (size_t i=0; i<nr; ++i)
   { bitmap::BitMap b=G->val.Cartan_set(G->interface.in(i));
     for (size_t j=0; j<nc; ++j)
@@ -1974,7 +1973,7 @@ void dual_occurrence_matrix_wrapper(expression_base::level l)
     return;
   size_t nr=G->val.numDualRealForms();
   size_t nc=G->val.numCartanClasses();
-  matrix_ptr M(new matrix_value(latticetypes::LatticeMatrix(nr,nc)));
+  matrix_ptr M(new matrix_value(int_Matrix(nr,nc)));
   for (size_t i=0; i<nr; ++i)
   { bitmap::BitMap b=G->val.dual_Cartan_set(G->dual_interface.in(i));
     for (size_t j=0; j<nc; ++j)
@@ -2169,7 +2168,7 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
   size_t n=rf->val.numCartan();
-  matrix_ptr M(new matrix_value(latticetypes::LatticeMatrix(n,n,0)));
+  matrix_ptr M(new matrix_value(int_Matrix(n,n,0)));
   const poset::Poset& p = rf->val.complexGroup().Cartan_ordering();
   for (size_t i=0; i<n; ++i)
     for (size_t j=i; j<n; ++j)
@@ -2426,7 +2425,7 @@ void Cartan_info_wrapper(expression_base::level l)
   push_value(new int_value(cc->val.fiber().fiberSize()));
   wrap_tuple(2);
 
-  const rootdata::RootSystem& rs=cc->parent.val.rootDatum();
+  const RootSystem& rs=cc->parent.val.rootDatum();
 
 @)// print types of imaginary and real root systems and of Complex factor
   push_value(new Lie_type_value(rs.Lie_type(cc->val.simpleImaginary())));
@@ -2546,10 +2545,10 @@ void print_gradings_wrapper(expression_base::level l)
      cc->parent.val.realFormLabels(cc->number);
      // translate part number of |pi| to real form
 @)
-  const rootdata::RootList& si = cc->val.fiber().simpleImaginary();
+  const RootNbrList& si = cc->val.fiber().simpleImaginary();
   // simple imaginary roots
 
-  latticetypes::LatticeMatrix cm;
+  int_Matrix cm;
   permutations::Permutation sigma;
 @/@< Compute the Cartan matrix |cm| of the root subsystem |si|, and the
      permutation |sigma| giving the Bourbaki numbering of its simple roots @>
@@ -2605,7 +2604,7 @@ different lines after commas if necessary.
     if ( rf_nr[pi(i)] == rf->val.realForm())
     { os << ( first ? first=false,'[' : ',');
       gradings::Grading gr=cc->val.fiber().grading(i);
-      gr.permute(sigma);
+      gr=sigma.pull_back(gr);
       prettyprint::prettyPrint(os,gr,si.size());
     }
   os << "]" << std::endl;
@@ -2706,7 +2705,7 @@ void raw_KL_wrapper (expression_base::level l)
 @)
   if (l==expression_base::no_value)
     return;
-  matrix_ptr M(new matrix_value(latticetypes::LatticeMatrix(klc.size())));
+  matrix_ptr M(new matrix_value(int_Matrix(klc.size())));
   const kl::KLPol* base_pt = &klc.polStore()[0];
   for (size_t y=1; y<klc.size(); ++y)
     for (size_t x=0; x<y; ++x)
@@ -2764,7 +2763,7 @@ void raw_dual_KL_wrapper (expression_base::level l)
 @)
   if (l==expression_base::no_value)
     return;
-  matrix_ptr M(new matrix_value(latticetypes::LatticeMatrix(klc.size())));
+  matrix_ptr M(new matrix_value(int_Matrix(klc.size())));
   const kl::KLPol* base_pt = &klc.polStore()[0];
   for (size_t y=1; y<klc.size(); ++y)
     for (size_t x=0; x<y; ++x)

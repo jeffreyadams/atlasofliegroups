@@ -12,13 +12,14 @@
 
 #include "realweyl_fwd.h"
 
+#include "permutations.h"
+#include "size.h"
+
+#include "atlas_types.h"
 #include "cartanclass_fwd.h"
-#include "rootdata_fwd.h"
 
 #include "bitvector.h"
 #include "lietype.h"
-#include "permutations.h"
-#include "size.h"
 #include "weyl.h"
 
 /******** function declarations **********************************************/
@@ -41,19 +42,19 @@ class RealWeyl {
 
  private:
 
-  const weyl::WeylGroup* d_group;
-  rootdata::RootList d_imaginaryCompact;
-  rootdata::RootList d_imaginaryOrth;
-  bitvector::SmallBitVectorList d_imaginaryR;
-  rootdata::RootList d_imaginary;
-  rootdata::RootList d_realCompact;
-  bitvector::SmallBitVectorList d_realR;
-  rootdata::RootList d_real;
-  rootdata::RootList d_complex;
+  const WeylGroup* d_group;
+  RootNbrList d_imaginaryCompact;
+  RootNbrList d_imaginaryOrth;
+  SmallBitVectorList d_imaginaryR;
+  RootNbrList d_imaginary;
+  RootNbrList d_realCompact;
+  SmallBitVectorList d_realR;
+  RootNbrList d_real;
+  RootNbrList d_complex;
   lietype::LieType d_complexType;
   lietype::LieType d_imaginaryType;
   lietype::LieType d_imaginaryCompactType;
-  rootdata::RootList d_realOrth;
+  RootNbrList d_realOrth;
   lietype::LieType d_realType;
   lietype::LieType d_realCompactType;
 
@@ -63,16 +64,16 @@ class RealWeyl {
   RealWeyl():d_group(0) {}
 
   RealWeyl(const cartanclass::CartanClass&, unsigned long, unsigned long,
-	   const rootdata::RootDatum&, const weyl::WeylGroup&);
+	   const RootDatum&, const WeylGroup&);
 
   ~RealWeyl() {}
 
 // accessors
-  const rootdata::RootList& complex() const {
+  const RootNbrList& complex() const {
     return d_complex;
   }
 
-  rootdata::RootNbr complex(size_t j) const {
+  RootNbr complex(size_t j) const {
     return d_complex[j];
   }
 
@@ -80,19 +81,19 @@ class RealWeyl {
     return d_complexType;
   }
 
-  const rootdata::RootList& imaginary() const {
+  const RootNbrList& imaginary() const {
     return d_imaginary;
   }
 
-  rootdata::RootNbr imaginary(size_t j) const {
+  RootNbr imaginary(size_t j) const {
     return d_imaginary[j];
   }
 
-  const rootdata::RootList& imaginaryCompact() const {
+  const RootNbrList& imaginaryCompact() const {
     return d_imaginaryCompact;
   }
 
-  rootdata::RootNbr imaginaryCompact(size_t j) const {
+  RootNbr imaginaryCompact(size_t j) const {
     return d_imaginaryCompact[j];
   }
 
@@ -100,11 +101,11 @@ class RealWeyl {
     return d_imaginaryCompactType;
   }
 
-  rootdata::RootNbr imaginaryOrth(size_t j) const {
+  RootNbr imaginaryOrth(size_t j) const {
     return d_imaginaryOrth[j];
   }
 
-  const bitvector::SmallBitVectorList& imaginaryR() const {
+  const SmallBitVectorList& imaginaryR() const {
     return d_imaginaryR;
   }
 
@@ -112,7 +113,7 @@ class RealWeyl {
     return d_imaginaryType;
   }
 
-  const bitvector::SmallBitVector& imaginaryR(size_t j) const {
+  const SmallBitVector& imaginaryR(size_t j) const {
     return d_imaginaryR[j];
   }
 
@@ -144,19 +145,19 @@ class RealWeyl {
     return d_realR.size();
   }
 
-  const rootdata::RootList& real() const {
+  const RootNbrList& real() const {
     return d_real;
   }
 
-  rootdata::RootNbr real(size_t j) const {
+  RootNbr real(size_t j) const {
     return d_real[j];
   }
 
-  const rootdata::RootList& realCompact() const {
+  const RootNbrList& realCompact() const {
     return d_realCompact;
   }
 
-  rootdata::RootNbr realCompact(size_t j) const {
+  RootNbr realCompact(size_t j) const {
     return d_realCompact[j];
   }
 
@@ -164,15 +165,15 @@ class RealWeyl {
     return d_realCompactType;
   }
 
-  rootdata::RootNbr realOrth(size_t j) const {
+  RootNbr realOrth(size_t j) const {
     return d_realOrth[j];
   }
 
-  const bitvector::SmallBitVectorList& realR() const {
+  const SmallBitVectorList& realR() const {
     return d_realR;
   }
 
-  const bitvector::SmallBitVector& realR(size_t j) const {
+  const SmallBitVector& realR(size_t j) const {
     return d_realR[j];
   }
 
@@ -180,7 +181,7 @@ class RealWeyl {
     return d_realType;
   }
 
-  const weyl::WeylGroup& weylGroup() const {
+  const WeylGroup& weylGroup() const {
     return *d_group;
   }
 };
@@ -188,54 +189,54 @@ class RealWeyl {
 class RealWeylGenerators {
 
  private:
-  const weyl::WeylGroup* d_group;
-  weyl::WeylEltList d_imaginaryCompact;
-  weyl::WeylEltList d_imaginaryR;
-  weyl::WeylEltList d_imaginary;
-  weyl::WeylEltList d_realCompact;
-  weyl::WeylEltList d_realR;
-  weyl::WeylEltList d_real;
-  weyl::WeylEltList d_complex;
+  const WeylGroup* d_group;
+  WeylEltList d_imaginaryCompact;
+  WeylEltList d_imaginaryR;
+  WeylEltList d_imaginary;
+  WeylEltList d_realCompact;
+  WeylEltList d_realR;
+  WeylEltList d_real;
+  WeylEltList d_complex;
 
  public:
 // constructors and destructors
   RealWeylGenerators():d_group(0) {}
 
   RealWeylGenerators(const RealWeyl&, const cartanclass::CartanClass&,
-		     const rootdata::RootDatum&);
+		     const RootDatum&);
 
   ~RealWeylGenerators() {}
 
 // accessors
-  const weyl::WeylEltList& complex() const {
+  const WeylEltList& complex() const {
     return d_complex;
   }
 
-  const weyl::WeylEltList& imaginary() const {
+  const WeylEltList& imaginary() const {
     return d_imaginary;
   }
 
-  const weyl::WeylEltList& imaginaryCompact() const {
+  const WeylEltList& imaginaryCompact() const {
     return d_imaginaryCompact;
   }
 
-  const weyl::WeylEltList& imaginaryR() const {
+  const WeylEltList& imaginaryR() const {
     return d_imaginaryR;
   }
 
-  const weyl::WeylEltList& real() const {
+  const WeylEltList& real() const {
     return d_real;
   }
 
-  const weyl::WeylEltList& realCompact() const {
+  const WeylEltList& realCompact() const {
     return d_realCompact;
   }
 
-  const weyl::WeylEltList& realR() const {
+  const WeylEltList& realR() const {
     return d_realR;
   }
 
-  const weyl::WeylGroup& weylGroup() const {
+  const WeylGroup& weylGroup() const {
     return *d_group;
   }
 };

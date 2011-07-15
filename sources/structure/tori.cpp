@@ -28,13 +28,13 @@ namespace {
 
 void makeTopology(subquotient::SmallSubquotient&, const RealTorus&);
 
-void fullPlusBasis(latticetypes::WeightList&,
-		   latticetypes::LatticeMatrix&,
-		   const latticetypes::LatticeMatrix&);
+void fullPlusBasis(WeightList&,
+		   int_Matrix&,
+		   const WeightInvolution&);
 
-void fullMinusBasis(latticetypes::WeightList&,
-		    latticetypes::LatticeMatrix&,
-		    const latticetypes::LatticeMatrix&);
+void fullMinusBasis(WeightList&,
+		    int_Matrix&,
+		    const WeightInvolution&);
 
 } // |namespace|
 
@@ -112,7 +112,7 @@ namespace tori {
   \brief Constructs the torus with involution |i| (the rank is recovered
   from the size of the matrix.)
 */
-RealTorus::RealTorus(const latticetypes::LatticeMatrix& i)
+RealTorus::RealTorus(const WeightInvolution& i)
   : d_rank(i.numColumns())
   , d_complexRank(d_rank) // this value is too large; it is modified below
   , d_involution(i)
@@ -182,7 +182,7 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
   But in fact this is hidden inside |subquotient::subquotientMap|.
 */
 bitvector::BinaryMap RealTorus::componentMap
-  (const latticetypes::LatticeMatrix& m,
+  (const LatticeMatrix& m,
    const RealTorus& T_dest) const
 {
   bitvector::BinaryMap m2(m); // reduce mod2
@@ -215,12 +215,12 @@ namespace tori {
   In practice we also want this at the dual side with $V_-$ in the denominator
   (to compute fiber groups): to that end call with |q.negative_transposed()|
 */
-void dualPi0(subquotient::SmallSubquotient& dpi0, const LT::LatticeMatrix& q)
+void dualPi0(subquotient::SmallSubquotient& dpi0, const WeightInvolution& q)
 {
   assert(q.numRows()==q.numColumns());
 
-  latticetypes::WeightList plus; plusBasis(plus,q);
-  bitvector::SmallBitVectorList plus2(plus); // mod 2: denominator subgroup
+  WeightList plus; plusBasis(plus,q);
+  SmallBitVectorList plus2(plus); // mod 2: denominator subgroup
 
   bitvector::BinaryMap i2(q);  // reduce modulo 2
   bitvector::BinaryMap id; identityMatrix(id,q.numRows());
@@ -228,7 +228,7 @@ void dualPi0(subquotient::SmallSubquotient& dpi0, const LT::LatticeMatrix& q)
   i2 += id;
   // now |i2| is modulo 2 image of $\tau-id$ (and also of $\tau+id$)
 
-  bitvector::SmallBitVectorList b; i2.kernel(b);
+  SmallBitVectorList b; i2.kernel(b);
   // the kernel of |i2| is the sum $V_+ + V_-$: numerator subgroup
 
   subquotient::SmallSubquotient cs(b,plus2,q.numRows());
@@ -245,8 +245,8 @@ void dualPi0(subquotient::SmallSubquotient& dpi0, const LT::LatticeMatrix& q)
   Algorithm: the vectors e+i(e), when e runs through b, generate a lattice
   commensurate with the eigenspace.
 */
-void plusBasis(latticetypes::WeightList& pb,
-	       const latticetypes::LatticeMatrix& i)
+void plusBasis(WeightList& pb,
+	       const WeightInvolution& i)
 
 /*!
   Synopsis: puts in mb a basis for the +1 eigenspace of the involution;
@@ -260,12 +260,12 @@ void plusBasis(latticetypes::WeightList& pb,
 
   // put in q the matrix of vectors i(e)+e in the basis b
 
-  latticetypes::LatticeMatrix q(i);
+  WeightInvolution q(i);
   for (size_t i=0; i<n; ++i)
     q(i,i) += 1;
 
-  latticetypes::CoeffList factor;
-  latticetypes::LatticeMatrix b = matreduc::adapted_basis(q,factor);
+  CoeffList factor;
+  int_Matrix b = matreduc::adapted_basis(q,factor);
 
   size_t r=factor.size();
 
@@ -275,9 +275,9 @@ void plusBasis(latticetypes::WeightList& pb,
     pb.push_back(b.column(j));
 }
 
-latticetypes::WeightList plusBasis(const latticetypes::LatticeMatrix& i)
+WeightList plusBasis(const WeightInvolution& i)
 {
-  latticetypes::WeightList result; plusBasis(result,i); return result;
+  WeightList result; plusBasis(result,i); return result;
 }
 
 /*!
@@ -286,19 +286,19 @@ latticetypes::WeightList plusBasis(const latticetypes::LatticeMatrix& i)
   Algorithm: the vectors e-i(e), when e runs through b, generate a lattice
   commensurate with the eigenspace.
 */
-void minusBasis(latticetypes::WeightList& mb,
-		const latticetypes::LatticeMatrix& i)
+void minusBasis(WeightList& mb,
+		const WeightInvolution& i)
 {
   size_t n = i.numRows();
 
   // put in q the matrix of vectors i(e)-e in the basis b
 
-  latticetypes::LatticeMatrix q(i);
+  WeightInvolution q(i);
   for (size_t i=0; i<n; ++i)
     q(i,i) -= 1;
 
-  latticetypes::CoeffList factor;
-  latticetypes::LatticeMatrix b = matreduc::adapted_basis(q,factor);
+  CoeffList factor;
+  int_Matrix b = matreduc::adapted_basis(q,factor);
 
   size_t r=factor.size();
 
@@ -308,9 +308,9 @@ void minusBasis(latticetypes::WeightList& mb,
     mb.push_back(b.column(j));
 }
 
-latticetypes::WeightList minusBasis(const latticetypes::LatticeMatrix& i)
+WeightList minusBasis(const WeightInvolution& i)
 {
-  latticetypes::WeightList result; minusBasis(result,i); return result;
+  WeightList result; minusBasis(result,i); return result;
 }
 
 /*!
@@ -318,16 +318,16 @@ latticetypes::WeightList minusBasis(const latticetypes::LatticeMatrix& i)
 
   Precondition: q commutes with the involution;
 */
-void minusMatrix(latticetypes::LatticeMatrix& qm,
-		 const latticetypes::LatticeMatrix& q, const RealTorus& t)
+void minusMatrix(int_Matrix& qm,
+		 const int_Matrix& q, const RealTorus& t)
 {
-  const latticetypes::WeightList& bm = t.minusLattice();
-  latticetypes::LatticeMatrix(bm.size(),bm.size()).swap(qm);
+  const WeightList& bm = t.minusLattice();
+  int_Matrix(bm.size(),bm.size()).swap(qm);
 
   for (size_t j = 0; j < bm.size(); ++j)
   {
-    latticetypes::Weight v= q*bm[j];
-    latticetypes::Weight vm(bm.size());
+    Weight v= q*bm[j];
+    Weight vm(bm.size());
     t.toMinus(vm,v);
     for (size_t i = 0; i < bm.size(); ++i)
       qm(i,j) = vm[i];
@@ -340,16 +340,16 @@ void minusMatrix(latticetypes::LatticeMatrix& qm,
 
   Precondition: q commutes with the involution;
 */
-void plusMatrix(latticetypes::LatticeMatrix& qp,
-		const latticetypes::LatticeMatrix& q, const RealTorus& t)
+void plusMatrix(WeightInvolution& qp,
+		const WeightInvolution& q, const RealTorus& t)
 {
-  const latticetypes::WeightList& bp = t.plusLattice();
-  latticetypes::LatticeMatrix(bp.size(),bp.size()).swap(qp);
+  const WeightList& bp = t.plusLattice();
+  WeightInvolution(bp.size(),bp.size()).swap(qp); // create
 
   for (size_t j = 0; j < bp.size(); ++j)
   {
-    latticetypes::Weight v= q*bp[j];
-    latticetypes::Weight vp(bp.size());
+    Weight v= q*bp[j];
+    Weight vp(bp.size());
     t.toPlus(vp,v);
     for (size_t i = 0; i < bp.size(); ++i)
       qp(i,j) = vp[i];
@@ -380,13 +380,13 @@ namespace {
 */
 void makeTopology(subquotient::SmallSubquotient& cs, const RealTorus& T)
 {
-  bitvector::SmallBitVectorList plus2(T.plusLattice()); // reduce mod 2
+  SmallBitVectorList plus2(T.plusLattice()); // reduce mod 2
 
   bitvector::BinaryMap i2(T.involution()); // reduce mod 2
   bitvector::BinaryMap id; identityMatrix(id,T.rank());
   i2 += id;
 
-  bitvector::SmallBitVectorList b;
+  SmallBitVectorList b;
   i2.kernel(b);  // kernel of map induced by tau-1 (or by tau+1), contains V_+
 
   cs = subquotient::SmallSubquotient(b,plus2,T.rank());
@@ -405,20 +405,20 @@ void makeTopology(subquotient::SmallSubquotient& cs, const RealTorus& T)
   commensurate with the eigenspace. The basis adapted to this sublattice also
   yields the projection matrix, after inversion.
 */
-void fullMinusBasis(latticetypes::WeightList& mb,
-		    latticetypes::LatticeMatrix& tm,
-		    const latticetypes::LatticeMatrix& i)
+void fullMinusBasis(WeightList& mb,
+		    int_Matrix& tm,
+		    const WeightInvolution& i)
 {
   size_t n = i.numRows();
 
   // put in q the matrix of vectors i(e)-e in the basis b
 
-  latticetypes::LatticeMatrix q(i);
+  WeightInvolution q(i);
   for (size_t i=0; i<n; ++i)
     q(i,i) -= 1;
 
-  latticetypes::CoeffList factor;
-  latticetypes::LatticeMatrix b = matreduc::adapted_basis(q,factor);
+  CoeffList factor;
+  int_Matrix b = matreduc::adapted_basis(q,factor);
 
   size_t r=factor.size();
 
@@ -450,20 +450,20 @@ void fullMinusBasis(latticetypes::WeightList& mb,
   the standard basis to the Smith basis; retaining only the rows that give the
   initial coordinates we obtain the matrix |tp|.
 */
-void fullPlusBasis(latticetypes::WeightList& pb,
-		   latticetypes::LatticeMatrix& tp,
-		   const latticetypes::LatticeMatrix& tau)
+void fullPlusBasis(WeightList& pb,
+		   int_Matrix& tp,
+		   const WeightInvolution& tau)
 {
   size_t n = tau.numRows();
 
   // put in q the matrix of vectors tau(e)+e in the basis b
 
-  latticetypes::LatticeMatrix q(tau);
+  WeightInvolution q(tau);
   for (size_t i=0; i<n; ++i)
     q(i,i) += 1;
 
-  latticetypes::CoeffList factor;
-  latticetypes::LatticeMatrix b = matreduc::adapted_basis(q,factor);
+  CoeffList factor;
+  int_Matrix b = matreduc::adapted_basis(q,factor);
 
   size_t r=factor.size();
 

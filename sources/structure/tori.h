@@ -14,39 +14,33 @@
 #define TORI_H
 
 #include "tori_fwd.h"
-#include "bitvector_fwd.h"
 
 #include "bits.h"
-#include "latticetypes.h"
-#include "subquotient.h"
 #include "tags.h"
 
+#include "atlas_types.h"
+#include "subquotient.h"
+
 namespace atlas {
-
-namespace tori {
-
-  namespace LT = latticetypes;
-
-}
 
 /******** function declarations *********************************************/
 
 namespace tori {
 
-  void dualPi0(subquotient::SmallSubquotient&, const LT::LatticeMatrix&);
+  void dualPi0(SmallSubquotient&, const WeightInvolution&);
 
-  void plusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&,
+  void plusMatrix(WeightInvolution&, const WeightInvolution&,
 		  const RealTorus&);
-  void minusMatrix(LT::LatticeMatrix&, const LT::LatticeMatrix&,
+  void minusMatrix(WeightInvolution&, const WeightInvolution&,
 		   const RealTorus&);
 
-  void plusBasis(LT::WeightList&, const LT::LatticeMatrix&);
+  void plusBasis(WeightList&, const WeightInvolution&);
 
-  LT::WeightList plusBasis(const LT::LatticeMatrix&);
+  WeightList plusBasis(const WeightInvolution&);
 
-  void minusBasis(LT::WeightList&, const LT::LatticeMatrix&);
+  void minusBasis(WeightList&, const WeightInvolution&);
 
-  LT::WeightList minusBasis(const LT::LatticeMatrix&);
+  WeightList minusBasis(const WeightInvolution&);
 
 }
 
@@ -106,35 +100,35 @@ namespace tori {
   /*!
   matrix of the Cartan involution
   */
-  LT::LatticeMatrix d_involution;            // matrix of the involution
+  WeightInvolution d_involution;            // matrix of the involution
 
   /*!
   basis for +1 eigenlattice of the Cartan involution
   */
-  LT::WeightList d_plus;                     // basis for +1 eigenlattice
+  WeightList d_plus;                     // basis for +1 eigenlattice
 
   /*!
   basis for -1 eigenlattice of the Cartan involution
   */
-  LT::WeightList d_minus;                    // basis for -1 eigenlattice
+  WeightList d_minus;                    // basis for -1 eigenlattice
 
   /*!
   coordinate transformation from standard basis of $X$ to basis |d_plus| of
   $X_+$; should be applied only to elements of $X_+$
   */
-  LT::LatticeMatrix d_toPlus;                // transform coordinates to $X_+$
+  LatticeMatrix d_toPlus;                // transform coordinates to $X_+$
 
   /*!
   coordinate transformation from standard basis of $X$ to basis |d_minus| of
   $X_-$; should be applied only to elements of $X_-$
   */
-  LT::LatticeMatrix d_toMinus;               // transform coordinates to $X_-$
+  LatticeMatrix d_toMinus;               // transform coordinates to $X_-$
 
   /*!
   dual component group of real torus (a vector space over $Z/2Z$), realised
   as the subquotient $(V_+ + V_-)/V_+$ of the $Z/2Z$ vector space $X/2X$
   */
-  subquotient::SmallSubquotient d_topology;
+  SmallSubquotient d_topology;
 
  public:
 
@@ -142,7 +136,7 @@ namespace tori {
   RealTorus()
     {}
 
-  explicit RealTorus(const LT::LatticeMatrix&);
+  explicit RealTorus(const WeightInvolution&);
 
   RealTorus(const RealTorus&, tags::DualTag);
 
@@ -151,7 +145,7 @@ namespace tori {
 
 // accessors
 
-  const LT::LatticeMatrix& involution() const { return d_involution; }
+  const WeightInvolution& involution() const { return d_involution; }
 
   size_t rank() const { return d_rank; }
   size_t complexRank() const { return d_complexRank; }
@@ -164,19 +158,19 @@ namespace tori {
   bool isCompact() const { return d_plus.size() == d_rank; }
   bool isSplit() const { return d_minus.size() == d_rank; }
 
-  bitvector::BinaryMap componentMap(const LT::LatticeMatrix&,
+  bitvector::BinaryMap componentMap(const LatticeMatrix&,
 				    const RealTorus&) const;
 
-  const LT::WeightList& plusLattice() const { return d_plus; }
-  const LT::WeightList& minusLattice() const { return d_minus; }
+  const WeightList& plusLattice() const { return d_plus; }
+  const WeightList& minusLattice() const { return d_minus; }
 
-  void toPlus(LT::Weight& dest, const LT::Weight& source) const
+  void toPlus(Weight& dest, const Weight& source) const
     { dest=d_toPlus*source; }
 
-  void toMinus(LT::Weight& dest, const LT::Weight& source) const
+  void toMinus(Weight& dest, const Weight& source) const
     { dest=d_toMinus*source; }
 
-  const subquotient::SmallSubquotient& topology() const { return d_topology; }
+  const SmallSubquotient& topology() const { return d_topology; }
 };
 
 }

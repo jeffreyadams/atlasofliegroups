@@ -31,27 +31,27 @@ namespace atlas {
 
 namespace {
 
-  void involutionList(weyl::TwistedInvolutionList&, const kgb::KGB&);
+  void involutionList(TwistedInvolutionList&, const kgb::KGB&);
 
-  std::ostream& printBasePts(std::ostream&, const weyl::TwistedInvolutionList&,
+  std::ostream& printBasePts(std::ostream&, const TwistedInvolutionList&,
 			     const kgb::KGBEltList&, const kgb::KGB&);
 
 // the following class was copied integrally from kgb.cpp, helper namespace
 class InvolutionCompare
 {
 private:
-  const weyl::TwistedWeylGroup* d_W;
+  const TwistedWeylGroup* d_W;
 public:
-  explicit InvolutionCompare(const weyl::TwistedWeylGroup& W):d_W(&W) {}
+  explicit InvolutionCompare(const TwistedWeylGroup& W):d_W(&W) {}
 
   // one should have a < b iff
   // (a) involutionLength(a) < involutionLength(b) or
   // (b) involutionLengths are equal and length(a) < length (b) or
   // (c) both lengths are equal and a < b
   bool operator()
-   (const weyl::TwistedInvolution& a, const weyl::TwistedInvolution& b) const
+   (const TwistedInvolution& a, const TwistedInvolution& b) const
   {
-    const weyl::WeylGroup& W=d_W->weylGroup();
+    const WeylGroup& W=d_W->weylGroup();
     if      (d_W->involutionLength(a) != d_W->involutionLength(b))
       return d_W->involutionLength(a) <  d_W->involutionLength(b) ;
     else if (W.length(a.w()) != W.length(b.w()))
@@ -93,9 +93,9 @@ bool checkBasePoint(const kgb::KGB& kgb)
   std::cerr << "entering checkBasePoint ..." << std::endl;
 #endif
 
-  const weyl::TwistedWeylGroup& W = kgb.twistedWeylGroup();
+  const TwistedWeylGroup& W = kgb.twistedWeylGroup();
   InvolutionCompare comp(W);
-  weyl::TwistedInvolutionList wl;
+  TwistedInvolutionList wl;
   involutionList(wl,kgb);
 
   kgb::KGBEltList basepts;
@@ -121,7 +121,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
 #ifdef VERBOSE
       std::cerr << w_pos << "\r";
 #endif
-      const weyl::TwistedInvolution& tw = wl[w_pos];
+      const TwistedInvolution& tw = wl[w_pos];
 
       for (size_t s=0; s<kgb.rank(); ++s)
 	if (W.weylGroup().hasDescent(s,tw.w()))  // try all descents
@@ -129,7 +129,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
 	  kgb::KGBElt sx_sw; // will hold candidate basepoint at w
 	  if (W.hasTwistedCommutation(s,tw)) // descent is inverse Cayley
 	  {
-	    weyl::TwistedInvolution sw = W.prod(s,tw);
+	    TwistedInvolution sw = W.prod(s,tw);
 	    size_t sw_pos = // locate index of |sw| using binary search
               std::lower_bound(wl.begin(),wl.end(),sw,comp) -  wl.begin();
 	    sx_sw = kgb.cayley(s,basepts[sw_pos]);
@@ -138,7 +138,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
 	  }
 	  else
 	  {
-	    weyl::TwistedInvolution sw = W.twistedConjugated(tw,s);
+	    TwistedInvolution sw = W.twistedConjugated(tw,s);
 	    size_t sw_pos = // locate index of |sw| using binary search
               std::lower_bound(wl.begin(),wl.end(),sw,comp) -  wl.begin();
 	    sx_sw = kgb.cross(s,basepts[sw_pos]);
@@ -227,7 +227,7 @@ bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc)
 namespace {
 
 std::ostream&
-printBasePts(std::ostream& strm, const weyl::TwistedInvolutionList& wl,
+printBasePts(std::ostream& strm, const TwistedInvolutionList& wl,
 	     const kgb::KGBEltList& bp, const kgb::KGB& kgb)
 
 /*
@@ -258,7 +258,7 @@ printBasePts(std::ostream& strm, const weyl::TwistedInvolutionList& wl,
 
   The result is equivalent to the internal d_tau in KGB.
 */
-void involutionList(weyl::TwistedInvolutionList& wl, const kgb::KGB& kgb)
+void involutionList(TwistedInvolutionList& wl, const kgb::KGB& kgb)
 {
   wl.push_back(kgb.involution(0));
 

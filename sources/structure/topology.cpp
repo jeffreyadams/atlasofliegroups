@@ -123,15 +123,15 @@ namespace topology {
 */
 
 Connectivity::Connectivity(const tori::RealTorus& t,
-			   const rootdata::RootDatum& rd)
+			   const RootDatum& rd)
 {
   // write involution in coroot basis
 
-  latticetypes::LatticeMatrix i = t.involution().transposed(); // coroot latt.
-  latticetypes::WeightList b(rd.beginSimpleCoroot(),rd.endSimpleCoroot());
+  CoweightInvolution i = t.involution().transposed(); // coroot latt.
+  CoweightList b(rd.beginSimpleCoroot(),rd.endSimpleCoroot());
   std::copy(rd.beginRadical(),rd.endRadical(),
 	    std::back_inserter(b)); // coroots+radical
-  latticetypes::LatticeMatrix i_sw=i.on_basis(b); // matrix of |i| in this basis
+  int_Matrix i_sw=i.on_basis(b); // matrix of |i| in this basis
 
   /* [certainly |i_sw| respects the decomposition into coroot and radical
      subspaces, in other words it is in block form. MvL]  */
@@ -150,9 +150,9 @@ Connectivity::Connectivity(const tori::RealTorus& t,
   // into t_sc itself we add rows of zeroes.
 
   for (size_t j = rd.semisimpleRank(); j < rd.rank(); ++j)
-    b[j] = latticetypes::Weight(rd.rank(),0); // clear radical part of basis |b|
+    b[j] = int_Vector(rd.rank(),0); // clear radical part of basis |b|
 
-  latticetypes::LatticeMatrix m(b,rd.rank()); m.transpose();
+  int_Matrix m(b,rd.rank()); m.transpose();
 
   bitvector::BinaryMap m2 = t.componentMap(m,t_sc);
 
@@ -171,7 +171,7 @@ Connectivity::Connectivity(const tori::RealTorus& t,
 
 namespace topology {
 
-bool isTrivial(const latticetypes::CoeffList& invf)
+bool isTrivial(const CoeffList& invf)
 
 /*! Tells whether the fundamental group described by |invf| is trivial. This
   simply means that all the entries in |invf| are equal to one.

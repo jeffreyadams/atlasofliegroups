@@ -26,7 +26,7 @@ namespace wgraph {
 class WGraph;
 
  typedef unsigned short Coeff;
- typedef std::vector<Coeff> CoeffList;
+ typedef std::vector<Coeff> WCoeffList;
 
 }
 
@@ -55,7 +55,7 @@ class WGraph {
 
   size_t d_rank;
   graph::OrientedGraph d_graph;
-  std::vector<CoeffList> d_coeff;
+  std::vector<WCoeffList> d_coeff;
   std::vector<bitset::RankFlags> d_descent;
 
  public:
@@ -73,7 +73,7 @@ class WGraph {
     d_graph.cells(pi,p);
   }
 
-  const CoeffList& coeffList(graph::Vertex x) const {
+  const WCoeffList& coeffList(graph::Vertex x) const {
     return d_coeff[x];
   }
 
@@ -98,7 +98,7 @@ class WGraph {
   }
 
 // manipulators
-  CoeffList& coeffList(graph::Vertex x) {
+  WCoeffList& coeffList(graph::Vertex x) {
     return d_coeff[x];
   }
 

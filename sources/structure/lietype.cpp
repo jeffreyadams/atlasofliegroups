@@ -45,8 +45,11 @@
 #include "lietype.h"
 
 #include "constants.h"
-#include "latticetypes.h"
 #include "matreduc.h"
+#include "matrix.h"
+
+#include "atlas_types.h"
+
 
 /*****************************************************************************
 
@@ -92,16 +95,16 @@ namespace atlas {
 
 namespace lietype {
 
-  void addCompactInvolution(latticetypes::LatticeMatrix&, size_t, size_t,
+  void addCompactInvolution(WeightInvolution&, size_t, size_t,
 			    const permutations::Permutation& pi);
 
-  void addDInvolution(latticetypes::LatticeMatrix&, size_t, size_t,
+  void addDInvolution(WeightInvolution&, size_t, size_t,
 		      const permutations::Permutation& pi);
 
-  void addMinusIdentity(latticetypes::LatticeMatrix&, size_t, size_t,
+  void addMinusIdentity(WeightInvolution&, size_t, size_t,
 			const permutations::Permutation& pi);
 
-  void addSimpleInvolution(latticetypes::LatticeMatrix&, size_t,
+  void addSimpleInvolution(WeightInvolution&, size_t,
 			   const SimpleLieType&, TypeLetter,
 			   const permutations::Permutation& pi);
 }
@@ -164,9 +167,9 @@ int LieType::Cartan_entry(size_t i,size_t j) const
   return 0;
 }
 
-latticetypes::LatticeMatrix SimpleLieType::Cartan_matrix() const
+int_Matrix SimpleLieType::Cartan_matrix() const
 { size_t r=rank();
-  latticetypes::LatticeMatrix result(r,r);
+  int_Matrix result(r,r);
   for (size_t i=0; i<r; ++i)
     for (size_t j=0; j<r; ++j)
       result(i,j)=Cartan_entry(i,j);
@@ -174,9 +177,9 @@ latticetypes::LatticeMatrix SimpleLieType::Cartan_matrix() const
   return result;
 }
 
-latticetypes::LatticeMatrix SimpleLieType::transpose_Cartan_matrix() const
+int_Matrix SimpleLieType::transpose_Cartan_matrix() const
 { size_t r=rank();
-  latticetypes::LatticeMatrix result(r,r);
+  int_Matrix result(r,r);
   for (size_t i=0; i<r; ++i)
     for (size_t j=0; j<r; ++j)
       result(i,j)=Cartan_entry(j,i);
@@ -184,9 +187,9 @@ latticetypes::LatticeMatrix SimpleLieType::transpose_Cartan_matrix() const
   return result;
 }
 
-latticetypes::LatticeMatrix LieType::Cartan_matrix() const
+int_Matrix LieType::Cartan_matrix() const
 { size_t r=rank();
-  latticetypes::LatticeMatrix result(r,r);
+  int_Matrix result(r,r);
   for (size_t i=0; i<r; ++i)
     for (size_t j=0; j<r; ++j)
       result(i,j)=Cartan_entry(i,j);
@@ -194,9 +197,9 @@ latticetypes::LatticeMatrix LieType::Cartan_matrix() const
   return result;
 }
 
-latticetypes::LatticeMatrix LieType::transpose_Cartan_matrix() const
+int_Matrix LieType::transpose_Cartan_matrix() const
 { size_t r=rank();
-  latticetypes::LatticeMatrix result(r,r);
+  int_Matrix result(r,r);
   for (size_t i=0; i<r; ++i)
     for (size_t j=0; j<r; ++j)
       result(i,j)=Cartan_entry(j,i);
@@ -235,12 +238,12 @@ size_t LieType::semisimple_rank() const
   get to the true Smith normal form (which might involve combining invariant
   factors). It is clearer and more efficient though to do this blockwise.
 */
-latticetypes::WeightList
-LieType::Smith_basis(latticetypes::CoeffList& invf) const
+int_VectorList
+LieType::Smith_basis(CoeffList& invf) const
 {
 
   size_t R=rank();
-  latticetypes::WeightList result(R,latticetypes::Weight(R,0));
+  int_VectorList result(R,Weight(R,0));
 
   // get adapted basis for each simple factor
   size_t s=0; //offset
@@ -256,9 +259,9 @@ LieType::Smith_basis(latticetypes::CoeffList& invf) const
     }
     else
     {
-      latticetypes::LatticeMatrix tC=it->transpose_Cartan_matrix();
-      latticetypes::CoeffList new_invf;
-      latticetypes::LatticeMatrix Sb = matreduc::adapted_basis(tC,new_invf);
+      int_Matrix tC=it->transpose_Cartan_matrix();
+      CoeffList new_invf;
+      int_Matrix Sb = matreduc::adapted_basis(tC,new_invf);
 
       //make a small adjustment for types $D_{2n}$
       if (it->type() == 'D' and it->rank()%2 == 0)
@@ -456,14 +459,14 @@ bool checkRank(const TypeLetter& x, size_t l)
 
   Precondition: validity if |lo.d_inner| has been checked
 */
-latticetypes::LatticeMatrix involution(const Layout& lo)
+WeightInvolution involution(const Layout& lo)
   throw (std::runtime_error,std::bad_alloc)
 {
   const lietype::LieType& lt = lo.d_type;
   const lietype::InnerClassType& ic = lo.d_inner;
   const permutations::Permutation& pi = lo.d_perm;
 
-  latticetypes::LatticeMatrix result(lt.rank(),lt.rank(),0);
+  WeightInvolution result(lt.rank(),lt.rank(),0);
 
   size_t r = 0;   // position in flattened Dynkin diagram; index to |pi|
   size_t pos = 0; // position in |lt|
@@ -533,7 +536,7 @@ latticetypes::LatticeMatrix involution(const Layout& lo)
   return result;
 }
 
-latticetypes::LatticeMatrix involution(const lietype::LieType& lt,
+WeightInvolution involution(const lietype::LieType& lt,
 				       const lietype::InnerClassType& ict)
 { return involution(Layout(lt,ict)); // default to identity permutation
 }
@@ -555,7 +558,7 @@ namespace lietype {
 
   Precondition: the block is set to zero.
 */
-void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
+void addCompactInvolution(WeightInvolution& m, size_t r,
 			  size_t rs,
 			  const permutations::Permutation& pi)
 {
@@ -570,7 +573,7 @@ void addCompactInvolution(latticetypes::LatticeMatrix& m, size_t r,
 
   Precondition: the block is set to zero.
 */
-void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs,
+void addDInvolution(WeightInvolution& m, size_t r, size_t rs,
 		    const permutations::Permutation& pi)
 {
   for (size_t i=0; i<rs-2; ++i)
@@ -587,7 +590,7 @@ void addDInvolution(latticetypes::LatticeMatrix& m, size_t r, size_t rs,
 
   Precondition: the block is set to zero.
 */
-void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs,
+void addMinusIdentity(WeightInvolution& m, size_t r, size_t rs,
 		      const permutations::Permutation& pi)
 {
   for (size_t i=0; i<rs; ++i)
@@ -599,7 +602,7 @@ void addMinusIdentity(latticetypes::LatticeMatrix& m, size_t r, size_t rs,
   Synopsis: appends to m, from position (r,r), the fundamental involution
   corresponding to x in size rs.
 */
-void addSimpleInvolution(latticetypes::LatticeMatrix& m, size_t r,
+void addSimpleInvolution(WeightInvolution& m, size_t r,
 			 const SimpleLieType& slt, TypeLetter x,
 			 const permutations::Permutation& pi)
 {

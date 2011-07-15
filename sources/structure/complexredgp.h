@@ -22,7 +22,6 @@ ComplexReductiveGroup.
 #include "permutations.h"
 
 #include "cartanclass.h"
-#include "latticetypes.h"
 #include "poset.h"
 #include "rootdata.h"
 #include "tits.h"
@@ -37,20 +36,20 @@ namespace atlas {
 
 namespace complexredgp {
 
-  weyl::WeylElt canonicalize // return value is conjugating element
-    (weyl::TwistedInvolution& sigma,
-     const rootdata::RootDatum& rd,
-     const weyl::TwistedWeylGroup& W,
+  WeylElt canonicalize // return value is conjugating element
+    (TwistedInvolution& sigma,
+     const RootDatum& rd,
+     const TwistedWeylGroup& W,
      bitset::RankFlags gens);
 
 /* this function should NOT be made into a method, suppressing the |rd| and |W|
    parameters, as these can be be dual to those in the |ComplexReductiveGroup|!
 */
-  void Cayley_and_cross_part(rootdata::RootSet& Cayley,
-			     weyl::WeylWord& cross,
-			     const weyl::TwistedInvolution& tw,
-			     const rootdata::RootSystem& rs,
-			     const weyl::TwistedWeylGroup& W);
+  void Cayley_and_cross_part(RootNbrSet& Cayley,
+			     WeylWord& cross,
+			     const TwistedInvolution& tw,
+			     const RootSystem& rs,
+			     const TwistedWeylGroup& W);
 
 }
 
@@ -131,12 +130,12 @@ class ComplexReductiveGroup
   /*!
   \brief The based root datum.
   */
-  const rootdata::RootDatum d_rootDatum;
+  const RootDatum d_rootDatum;
 
   /*!
   \brief The dual based root datum.
   */
-  const rootdata::RootDatum d_dualRootDatum;
+  const RootDatum d_dualRootDatum;
 
   /*!
   \brief Fiber class for the fundamental Cartan subgroup.
@@ -153,8 +152,8 @@ class ComplexReductiveGroup
   */
   cartanclass::Fiber d_dualFundamental;
 
-  const weyl::WeylGroup* my_W; // pointer to |W| in case we own |W|, or |NULL|
-  const weyl::WeylGroup& W;    // possibly owned (via |my_W|) reference
+  const WeylGroup* my_W; // pointer to |W| in case we own |W|, or |NULL|
+  const WeylGroup& W;    // possibly owned (via |my_W|) reference
 
   /*!
   \brief The Tits group of the based root datum, extended by an
@@ -174,7 +173,7 @@ class ComplexReductiveGroup
   typedef std::vector<bitset::RankFlags> form_reps; // gradings for real forms
 
   struct C_info
-  { weyl::TwistedInvolution tw;
+  { TwistedInvolution tw;
     bitmap::BitMap real_forms,dual_real_forms; // mark present (dual) real forms
     form_reps rep,dual_rep; // gradings representing those (dual) real forms
     bitmap::BitMap below;
@@ -182,7 +181,7 @@ class ComplexReductiveGroup
     // remaining fields are set only once |class_pt| has been made non-NULL
     realform::RealFormList real_labels,dual_real_labels;
 
-    C_info(const ComplexReductiveGroup& G, const weyl::TwistedInvolution twi,
+    C_info(const ComplexReductiveGroup& G, const TwistedInvolution twi,
 	   size_t i); // |i| is index of this Cartan, used to dimension |below|
 
   };
@@ -210,8 +209,8 @@ class ComplexReductiveGroup
 
  public:
 // constructors and destructors
-  ComplexReductiveGroup(const rootdata::RootDatum&,
-			const latticetypes::LatticeMatrix&);
+  ComplexReductiveGroup(const RootDatum&,
+			const WeightInvolution&);
 
   ComplexReductiveGroup(const ComplexReductiveGroup&, tags::DualTag);
 
@@ -220,10 +219,10 @@ class ComplexReductiveGroup
 // accessors
 
 
-  const rootdata::RootDatum& rootDatum() const { return d_rootDatum; }
-  const rootdata::RootDatum& dualRootDatum() const { return d_dualRootDatum; }
-  const rootdata::RootSystem& rootSystem() const {return d_rootDatum; } // base
-  const rootdata::RootSystem& dualRootSystem() const
+  const RootDatum& rootDatum() const { return d_rootDatum; }
+  const RootDatum& dualRootDatum() const { return d_dualRootDatum; }
+  const RootSystem& rootSystem() const {return d_rootDatum; } // base
+  const RootSystem& dualRootSystem() const
   {return d_dualRootDatum; } // base object
 
 /*!
@@ -234,10 +233,10 @@ class ComplexReductiveGroup
 //!\brief returns the semisimple rank of the group.
   size_t semisimpleRank() const { return rootSystem().rank(); }
 
-  const weyl::WeylGroup& weylGroup() const { return W; }
-  const weyl::TwistedWeylGroup& twistedWeylGroup() const
+  const WeylGroup& weylGroup() const { return W; }
+  const TwistedWeylGroup& twistedWeylGroup() const
     { return d_titsGroup; } // in fact its base object
-  const weyl::TwistedWeylGroup& dualTwistedWeylGroup() const
+  const TwistedWeylGroup& dualTwistedWeylGroup() const
     { return d_dualTitsGroup; } // in fact its base object
 
   permutations::Permutation simple_twist() const
@@ -257,7 +256,7 @@ class ComplexReductiveGroup
   This is the one permuting the simple roots, the distinguished one among the
   involutions in this inner class of G.
 */
-  const latticetypes::LatticeMatrix& distinguished() const
+  const WeightInvolution& distinguished() const
     { return fundamental().involution(); }
 
 /*!\brief
@@ -265,7 +264,7 @@ class ComplexReductiveGroup
 
   This is -w_0 times the transpose of the fundamental involution.
 */
-  const latticetypes::LatticeMatrix& dualDistinguished() const
+  const CoweightInvolution& dualDistinguished() const
     { return dualFundamental().involution(); }
 
 
@@ -281,8 +280,8 @@ class ComplexReductiveGroup
     { return Cartan_poset; }
 
 //!\brief matrix giving involution action of |tw| on weight lattice
-  latticetypes::LatticeMatrix
-    involutionMatrix(const weyl::TwistedInvolution& tw) const;
+  WeightInvolution
+    involutionMatrix(const TwistedInvolution& tw) const;
 
 
 
@@ -343,7 +342,7 @@ class ComplexReductiveGroup
 
   const permutations::Permutation& root_involution() const { return root_twist; }
 
-  rootdata::RootNbr twisted_root(rootdata::RootNbr alpha) const
+  RootNbr twisted_root(RootNbr alpha) const
     { return root_twist[alpha]; }
 
 /*! \brief Make |sigma| canonical and return Weyl group |w| element that
@@ -358,11 +357,11 @@ class ComplexReductiveGroup
       involution corresponding to twisted involution fixes (globally) the
       dominant chamber of the subsystem (it permutes its simple roots).
 */
-  weyl::WeylElt
-    canonicalize(weyl::TwistedInvolution& sigma, bitset::RankFlags gens) const;
+  WeylElt
+    canonicalize(TwistedInvolution& sigma, bitset::RankFlags gens) const;
 
   inline
-  weyl::WeylElt canonicalize(weyl::TwistedInvolution& sigma) const
+  WeylElt canonicalize(TwistedInvolution& sigma) const
     { return canonicalize
 	(sigma,bitset::RankFlags(constants::lMask[semisimpleRank()]));
     }
@@ -371,32 +370,32 @@ class ComplexReductiveGroup
 /*!\brief
   (Representative) twisted involutions for each class of Cartan subgroup.
 */
-  const weyl::TwistedInvolution& twistedInvolution(size_t cn) const
+  const TwistedInvolution& twistedInvolution(size_t cn) const
     { return Cartan[cn].tw; }
-  weyl::TwistedInvolution dualTwistedInvolution(size_t cn) const
+  TwistedInvolution dualTwistedInvolution(size_t cn) const
     { return W.opposite(Cartan[cn].tw); }
 
-  size_t class_number(weyl::TwistedInvolution) const;
+  size_t class_number(TwistedInvolution) const;
 
 /*!\brief
   Returns the set of noncompact imaginary roots at the distinguished involution
   for (the representative in the adjoint fiber of) the real form \#rf.
 */
-  rootdata::RootSet noncompactRoots(realform::RealForm rf) const
+  RootNbrSet noncompactRoots(realform::RealForm rf) const
   {
     return
       fundamental().noncompactRoots(fundamental().weakReal().classRep(rf));
   }
 
-  latticetypes::LatticeElt
-    posRealRootSum(const weyl::TwistedInvolution&) const;
+  Weight
+    posRealRootSum(const TwistedInvolution&) const;
 
-  latticetypes::LatticeElt
-    posImaginaryRootSum(const weyl::TwistedInvolution&) const;
+  Weight
+    posImaginaryRootSum(const TwistedInvolution&) const;
 
 //!\brief apply involution action of |tw| on weight lattice to |v|
   void twisted_act
-    (const weyl::TwistedInvolution& tw,latticetypes::LatticeElt& v) const;
+    (const TwistedInvolution& tw,Weight& v) const;
 
   tits::TorusPart sample_torus_part(size_t cn, realform::RealForm rf) const
   { return tits::TorusPart(Cartan[cn].rep[rf],semisimpleRank()); }
@@ -460,7 +459,7 @@ class ComplexReductiveGroup
 */
   size_t numInvolutions(const bitmap::BitMap& Cartan_classes);
 
-  rootdata::RootSet noncompactPosRootSet(realform::RealForm, size_t);
+  RootNbrSet noncompactPosRootSet(realform::RealForm, size_t);
 
 /*!
   \brief returns the number of elements in K\\G/B for real form \#rf.
@@ -527,8 +526,8 @@ class ComplexReductiveGroup
 
  private:
 // auxiliary accessors
-weyl::TwistedInvolution
-  reflection(rootdata::RootNbr rn,const weyl::TwistedInvolution& tw) const;
+TwistedInvolution
+  reflection(RootNbr rn,const TwistedInvolution& tw) const;
 
 //!\brief Tells whether Cartan \#cn is defined in real form \#rf.
 bool is_defined(realform::RealForm rf, size_t cn) const

@@ -17,12 +17,12 @@
 
 #include "cartanclass_fwd.h"
 
-#include "tori.h"
-
 #include "tags.h"
 #include "bitmap.h"
+
+#include "atlas_types.h"
+
 #include "gradings.h"
-#include "latticetypes.h"
 #include "partition.h"
 #include "realform.h"
 #include "rootdata.h"
@@ -32,26 +32,28 @@
 #include "subquotient.h"
 #include "complexredgp_fwd.h"
 
+#include "tori.h"
+
 namespace atlas {
 
 /******** function declarations **********************************************/
 
 namespace cartanclass
 {
-  latticetypes::LatticeMatrix adjoint_involution
-    (const rootdata::RootSystem&, const InvolutionData&);
+  WeightInvolution adjoint_involution
+    (const RootSystem&, const InvolutionData&);
 
-  latticetypes::Weight
-    compactTwoRho(AdjointFiberElt, const Fiber&, const rootdata::RootDatum&);
-
-  gradings::Grading
-    restrictGrading(const rootdata::RootSet&, const rootdata::RootList&);
+  Weight
+    compactTwoRho(AdjointFiberElt, const Fiber&, const RootDatum&);
 
   gradings::Grading
-    specialGrading(const Fiber&,realform::RealForm,const rootdata::RootSystem&);
+    restrictGrading(const RootNbrSet&, const RootNbrList&);
 
-  rootdata::RootSet
-    toMostSplit(const Fiber&,realform::RealForm,const rootdata::RootSystem&);
+  gradings::Grading
+    specialGrading(const Fiber&,realform::RealForm,const RootSystem&);
+
+  RootNbrSet
+    toMostSplit(const Fiber&,realform::RealForm,const RootSystem&);
 }
 
 /******** type definitions ***************************************************/
@@ -62,40 +64,40 @@ namespace cartanclass {
 class InvolutionData
 {
   permutations::Permutation d_rootInvolution; // permutation of all roots
-  rootdata::RootSet d_imaginary, d_real, d_complex;
-  rootdata::RootList d_simpleImaginary; // imaginary roots simple wrt subsystem
-  rootdata::RootList d_simpleReal; // real roots simple wrt subsystem
+  RootNbrSet d_imaginary, d_real, d_complex;
+  RootNbrList d_simpleImaginary; // imaginary roots simple wrt subsystem
+  RootNbrList d_simpleReal; // real roots simple wrt subsystem
  public:
-  InvolutionData(const rootdata::RootDatum&,
-		 const latticetypes::LatticeMatrix&);
-  InvolutionData(const rootdata::RootSystem& rs,
-		 const rootdata::RootList& s_image);
+  InvolutionData(const RootDatum&,
+		 const WeightInvolution&);
+  InvolutionData(const RootSystem& rs,
+		 const RootNbrList& s_image);
   InvolutionData(const subdatum::SubSystem&,
-		 const latticetypes::LatticeMatrix&);
-  static InvolutionData build(const rootdata::RootSystem& rs,
-			      const weyl::TwistedWeylGroup& W,
-			      const weyl::TwistedInvolution& tw);
+		 const WeightInvolution&);
+  static InvolutionData build(const RootSystem& rs,
+			      const TwistedWeylGroup& W,
+			      const TwistedInvolution& tw);
   static InvolutionData build(const complexredgp::ComplexReductiveGroup& G,
-			      const weyl::TwistedInvolution& tw);
+			      const TwistedInvolution& tw);
   void swap(InvolutionData&);
   //accessors
   const permutations::Permutation& root_involution() const
     { return d_rootInvolution; }
-  rootdata::RootNbr root_involution(rootdata::RootNbr alpha) const
+  RootNbr root_involution(RootNbr alpha) const
     { return d_rootInvolution[alpha]; }
-  const rootdata::RootSet& imaginary_roots() const  { return d_imaginary; }
-  const rootdata::RootSet& real_roots() const       { return d_real; }
-  const rootdata::RootSet& complex_roots() const    { return d_complex; }
+  const RootNbrSet& imaginary_roots() const  { return d_imaginary; }
+  const RootNbrSet& real_roots() const       { return d_real; }
+  const RootNbrSet& complex_roots() const    { return d_complex; }
   size_t imaginary_rank() const { return d_simpleImaginary.size(); }
-  const rootdata::RootList& imaginary_basis() const
+  const RootNbrList& imaginary_basis() const
     { return d_simpleImaginary; }
-  rootdata::RootNbr imaginary_basis(size_t i) const
+  RootNbr imaginary_basis(size_t i) const
     { return d_simpleImaginary[i]; }
   size_t real_rank() const { return d_simpleReal.size(); }
-  const rootdata::RootList& real_basis() const { return d_simpleReal; }
-  rootdata::RootNbr real_basis(size_t i) const { return d_simpleReal[i]; }
+  const RootNbrList& real_basis() const { return d_simpleReal; }
+  RootNbr real_basis(size_t i) const { return d_simpleReal[i]; }
 private:
-  void classify_roots(const rootdata::RootSystem& rs);
+  void classify_roots(const RootSystem& rs);
 };
 
 /*!
@@ -207,7 +209,7 @@ class Fiber {
   /*! \brief Flags the noncompact imaginary roots for the base grading among
   all the roots.
   */
-  rootdata::RootSet d_baseNoncompact;
+  RootNbrSet d_baseNoncompact;
 
   /*!
   \brief Grading with all simple imaginary roots noncompact.
@@ -222,7 +224,7 @@ class Fiber {
   \brief RootSet \#j flags the imaginary roots whose grading is changed by
   canonical basis vector \#j of the adjoint fiber group.
   */
-  rootdata::RootSetList d_noncompactShift; // |size()==adjointFiberRank()|
+  std::vector<RootNbrSet> d_noncompactShift; // |size()==adjointFiberRank()|
 
   /*! \brief Grading \#j flags the simple imaginary roots whose grading is
   changed by canonical basis vector \#j in the adjoint fiber group.
@@ -286,7 +288,7 @@ class Fiber {
 // constructors and destructors
 
   // main and only constructor:
-  Fiber(const rootdata::RootDatum&, const latticetypes::LatticeMatrix&);
+  Fiber(const RootDatum&, const WeightInvolution&);
 
 // copy and assignment
 
@@ -303,7 +305,7 @@ class Fiber {
   automorphism (represented by its n x n integer matrix).
 */
   const tori::RealTorus& torus() const { return d_torus; }
-  const latticetypes::LatticeMatrix& involution() const
+  const WeightInvolution& involution() const
     { return d_torus.involution(); }
   size_t plusRank() const  { return d_torus.plusRank(); }
   size_t minusRank() const { return d_torus.minusRank(); }
@@ -319,7 +321,7 @@ class Fiber {
   (those roots alpha with tau(alpha) equal neither to alpha nor to
   -alpha).
 */
-  const rootdata::RootSet& complexRootSet() const
+  const RootNbrSet& complexRootSet() const
     { return d_involutionData.complex_roots(); }
 
 /*!
@@ -329,7 +331,7 @@ class Fiber {
   (within the list of roots in RootDatum) of the imaginary roots (those roots
   alpha with tau(alpha)=alpha).
 */
-  const rootdata::RootSet& imaginaryRootSet() const
+  const RootNbrSet& imaginaryRootSet() const
     { return d_involutionData.imaginary_roots(); }
 
 /*!
@@ -339,7 +341,7 @@ class Fiber {
   (within the list of roots in RootDatum) of the real roots (those roots alpha
   with tau(alpha)=-alpha).
 */
-  const rootdata::RootSet& realRootSet() const
+  const RootNbrSet& realRootSet() const
     { return d_involutionData.real_roots(); }
 
 /*!
@@ -348,9 +350,9 @@ class Fiber {
   These are simple for the positive imaginary roots given by the (based)
   RootDatum. They need not be simple in the entire root system.
 */
-  const rootdata::RootList& simpleImaginary() const
+  const RootNbrList& simpleImaginary() const
     { return d_involutionData.imaginary_basis(); }
-  const rootdata::RootNbr simpleImaginary(size_t i) const
+  const RootNbr simpleImaginary(size_t i) const
     { return d_involutionData.imaginary_basis(i); }
   size_t imaginaryRank() const { return d_involutionData.imaginary_rank(); }
 
@@ -361,16 +363,16 @@ class Fiber {
   (based) RootDatum.  They need not be simple in the entire root
   system.
 */
-  const rootdata::RootList& simpleReal() const
+  const RootNbrList& simpleReal() const
     { return d_involutionData.real_basis(); }
-  const rootdata::RootNbr simpleReal(size_t i) const
+  const RootNbr simpleReal(size_t i) const
     { return d_involutionData.real_basis()[i]; }
   size_t realRank() const { return d_involutionData.real_rank(); }
 
 /*!
 \brief Action of the Cartan involution on root \#j.
 */
-  rootdata::RootNbr involution_image_of_root(rootdata::RootNbr j) const
+  RootNbr involution_image_of_root(RootNbr j) const
     { return d_involutionData.root_involution()[j]; }
 
 /*!
@@ -416,9 +418,9 @@ class Fiber {
   size_t fiberSize() const { return d_fiberGroup.size(); }
 
 
-  rootdata::RootSet compactRoots(AdjointFiberElt x) const;
+  RootNbrSet compactRoots(AdjointFiberElt x) const;
 
-  rootdata::RootSet noncompactRoots(AdjointFiberElt x) const;
+  RootNbrSet noncompactRoots(AdjointFiberElt x) const;
 
   /*!
   \brief grading associated to an adjoint fiber element
@@ -435,7 +437,7 @@ class Fiber {
   /*!
   \brief Image of a coroot (expressed in weight basis) in the fiber group
   */
-  bitvector::SmallBitVector mAlpha(const rootdata::Root&) const;
+  SmallBitVector mAlpha(const rootdata::Root&) const;
 
 /*!
   \brief Number of weak real forms containing this Cartan.
@@ -520,28 +522,28 @@ private:
   subquotient::SmallSubquotient makeFiberGroup() const;
 
   subquotient::SmallSubquotient makeAdjointFiberGroup
-    (const rootdata::RootSystem&) const;
+    (const RootSystem&) const;
 
-  subquotient::SmallSubspace gradingGroup(const rootdata::RootSystem&) const;
+  subquotient::SmallSubspace gradingGroup(const RootSystem&) const;
 
   gradings::Grading makeBaseGrading
-    (rootdata::RootSet& flagged_roots,const rootdata::RootSystem&) const;
+    (RootNbrSet& flagged_roots,const RootSystem&) const;
 
   gradings::GradingList makeGradingShifts
-    (rootdata::RootSetList& all_shifts,const rootdata::RootSystem&) const;
+    (std::vector<RootNbrSet>& all_shifts,const RootSystem&) const;
 
-  bitset::RankFlagsList adjointMAlphas (const rootdata::RootSystem&) const;
+  bitset::RankFlagsList adjointMAlphas (const RootSystem&) const;
 
-  bitset::RankFlagsList mAlphas(const rootdata::RootDatum&) const;
+  bitset::RankFlagsList mAlphas(const RootDatum&) const;
 
-  bitvector::BinaryMap makeFiberMap(const rootdata::RootDatum&) const;
+  bitvector::BinaryMap makeFiberMap(const RootDatum&) const;
 
-  partition::Partition makeWeakReal(const rootdata::RootSystem&) const;
+  partition::Partition makeWeakReal(const RootSystem&) const;
 
   partition::Partition makeRealFormPartition() const;
 
   std::vector<partition::Partition> makeStrongReal
-    (const rootdata::RootDatum& rd) const;
+    (const RootDatum& rd) const;
 
   std::vector<StrongRealFormRep> makeStrongRepresentatives() const;
 
@@ -623,7 +625,7 @@ class CartanClass {
   that $W^C$ is isomorphic to the Weyl group generated by the reflections
   corresponding to the roots whose numbers are in |d_simpleComplex|.
   */
-  rootdata::RootList d_simpleComplex;
+  RootNbrList d_simpleComplex;
 
   /*!
   \brief Size of the W-conjugacy class of tau.
@@ -636,9 +638,9 @@ class CartanClass {
 public:
 
 // constructors and destructors
-  CartanClass(const rootdata::RootDatum& rd,
-	      const rootdata::RootDatum& dual_rd,
-	      const latticetypes::LatticeMatrix& involution);
+  CartanClass(const RootDatum& rd,
+	      const RootDatum& dual_rd,
+	      const WeightInvolution& involution);
 
 // copy and assignment: defaults are ok for copy and assignment
 
@@ -648,13 +650,13 @@ public:
   \brief Returns the matrix of the involution on the weight lattice of
   the Cartan subgroup.
   */
-  const latticetypes::LatticeMatrix& involution() const
+  const WeightInvolution& involution() const
     { return d_fiber.involution(); }
 
   /*!
   \brief Action of the Cartan involution on root \#j.
   */
-  rootdata::RootNbr involution_image_of_root(rootdata::RootNbr j) const
+  RootNbr involution_image_of_root(RootNbr j) const
     { return d_fiber.involution_image_of_root(j); }
 
   /*!
@@ -664,7 +666,7 @@ public:
   numbers (within the list of roots in RootDatum) of the imaginary
   roots (those roots \f$\alpha\f$ with \f$\tau(\alpha)=\alpha\f$).
   */
-  const rootdata::RootSet& imaginaryRootSet() const
+  const RootNbrSet& imaginaryRootSet() const
     { return d_fiber.imaginaryRootSet(); }
   /*!
   \brief RootSet flagging the real roots.
@@ -673,7 +675,7 @@ public:
   numbers (within the list of roots in RootDatum) of the real roots
   (those roots \f$\alpha\f$ with \f$\tau(\alpha)=-\alpha\f$).
   */
-  const rootdata::RootSet& realRootSet() const { return d_fiber.realRootSet(); }
+  const RootNbrSet& realRootSet() const { return d_fiber.realRootSet(); }
 
   /*!
   \brief RootList holding the numbers of the simple imaginary roots.
@@ -681,7 +683,7 @@ public:
   These are simple for the subsystem of imaginary roots. They need not be
   simple in the entire root system.
   */
-  const rootdata::RootList& simpleImaginary() const
+  const RootNbrList& simpleImaginary() const
     { return d_fiber.simpleImaginary(); }
 
   /*!
@@ -690,7 +692,7 @@ public:
   These are simple for subsystem of real roots. They need not be simple in the
   entire root system.
   */
-  const rootdata::RootList& simpleReal() const { return d_fiber.simpleReal(); }
+  const RootNbrList& simpleReal() const { return d_fiber.simpleReal(); }
 /* Since only the _numbers_ of simple-real roots are returned, this used to be
    obtained as |d_dualFiber.simpleImaginary()|, before the |InvolutionData|
    contained the basis for the real root system as well. That is indeed the
@@ -776,7 +778,7 @@ public:
   Weyl group generated by the reflections corresponding to the numbers
   in d_simpleComplex.
    */
-  const rootdata::RootList& simpleComplex() const { return d_simpleComplex; }
+  const RootNbrList& simpleComplex() const { return d_simpleComplex; }
 
   /*!
   \brief Partitions of Fiber group cosets corresponding to the
@@ -825,10 +827,10 @@ public:
 // private accessors only needed during construction
 
 private:
-  rootdata::RootList makeSimpleComplex(const rootdata::RootDatum&) const;
+  RootNbrList makeSimpleComplex(const RootDatum&) const;
 
   // number of conjugate twisted involutions (|rs| is our root system)
-  size::Size orbit_size(const rootdata::RootSystem& rs) const;
+  size::Size orbit_size(const RootSystem& rs) const;
 
 }; // class CartanClass
 

@@ -10,11 +10,11 @@
 #ifndef REALWEYL_IO_H  /* guard against multiple inclusions */
 #define REALWEYL_IO_H
 
-#include <iosfwd>
-
 #include "realweyl_fwd.h"
-#include "rootdata_fwd.h"
-#include "weyl_fwd.h"
+
+#include <iosfwd>
+#include "atlas_types.h"
+
 
 /******** function declarations *********************************************/
 

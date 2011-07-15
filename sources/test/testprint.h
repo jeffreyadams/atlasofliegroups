@@ -11,12 +11,13 @@
 #define TESTPRINT_H
 
 #include <iostream>
+
+#include "atlas_types.h"
+
 #include "cartanclass_fwd.h"
 #include "complexredgp_fwd.h"
 #include "complexredgp_io_fwd.h"
-#include "prerootdata_fwd.h"
 #include "realredgp_fwd.h"
-#include "rootdata_fwd.h"
 
 #include "gradings.h"
 
@@ -26,7 +27,7 @@ namespace atlas {
 
 namespace testprint {
 
-std::ostream& print(std::ostream&, const rootdata::RootDatum&);
+std::ostream& print(std::ostream&, const RootDatum&);
 
 std::ostream& print(std::ostream&, const realredgp::RealReductiveGroup&);
 
@@ -34,8 +35,8 @@ std::ostream& printBlockData(std::ostream&, complexredgp_io::Interface&);
 
 std::ostream& printCartanClasses(std::ostream&, complexredgp_io::Interface&);
 
-std::ostream& printCartanMatrix(std::ostream&, const rootdata::RootList&,
-				const rootdata::RootSystem&);
+std::ostream& printCartanMatrix(std::ostream&, const RootNbrList&,
+				const RootSystem&);
 
 std::ostream& printComponents(std::ostream&,
 			      const realredgp::RealReductiveGroup&,

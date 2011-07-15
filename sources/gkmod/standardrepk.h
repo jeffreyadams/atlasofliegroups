@@ -24,7 +24,6 @@ StandardRepK and KhatContext.
 #include "bitset.h"
 #include "bitvector_fwd.h"
 #include "realredgp.h"
-#include "latticetypes.h"
 #include "realform.h"
 #include "tits.h"
 #include "kgb.h"
@@ -47,7 +46,7 @@ class PSalgebra;
 
 // An image of a weight of the $\rho$-cover mod $(1-\theta)X^*$
 typedef std::pair
-  <latticetypes::LatticeElt, // free part, after subtraction of rho
+  <Weight, // free part, after subtraction of rho
    bitset::RankFlags         // torsion part, compact representation
   > HCParam;
 
@@ -58,7 +57,7 @@ typedef Char::coef_t CharCoeff;
 // a $K$-type formula; first component stands for its lowest $K$-type
 typedef std::pair<StandardRepK,Char> CharForm;
 
-typedef std::pair<latticetypes::LatticeElt,tits::TitsElt> RawRep;
+typedef std::pair<Weight,tits::TitsElt> RawRep;
 typedef free_abelian::Free_Abelian<RawRep> RawChar;
 
 
@@ -74,7 +73,7 @@ typedef free_abelian::Free_Abelian<RawRep,polynomials::Polynomial<int> >
 
 
 typedef unsigned int seq_no;
-typedef unsigned int level; // unsigned latticetypes::LatticeCoeff
+typedef unsigned int level; // unsigned LatticeCoeff
 
 
 typedef free_abelian::Free_Abelian<seq_no,long int,graded_compare> combination;
@@ -230,15 +229,15 @@ public:
 struct Cartan_info
 {
   // projection matrix to torsion free part
-  latticetypes::LatticeMatrix freeProjector;
+  int_Matrix freeProjector;
   // projection matrix to torsion part, after rho-shift and reduction mod 2
   bitvector::BinaryMap torsionProjector;
 
   // matrix used to lift free part of |HCParam| back to a weight
-  latticetypes::LatticeMatrix freeLift;
+  int_Matrix freeLift;
 
   // list of vectors used to lift torsion part of |HCParam| to a weight
-  latticetypes::WeightList torsionLift;
+  WeightList torsionLift;
 
   // space that fiber parts are reduced modulo
   subquotient::SmallSubspace fiber_modulus;
@@ -246,9 +245,9 @@ struct Cartan_info
   // simple roots orthogonal to sums of positive imaginary and real roots
   // in fact one of every pair of $theta$-conjugate such simple roots
   bitset::RankFlags bi_ortho; // simple roots, and necessarily complex ones
-  latticetypes::WeightList sum_coroots; // associated sums of 2 coroots
+  WeightList sum_coroots; // associated sums of 2 coroots
 
-  const latticetypes::Weight& coroot_sum(size_t i) const
+  const Weight& coroot_sum(size_t i) const
     { assert (bi_ortho[i]); return sum_coroots[bi_ortho.position(i)]; }
 
 }; // |struct Cartan_info|
@@ -256,8 +255,8 @@ struct Cartan_info
 // a data type used for storing projections to facets of fundamental chamber
 struct proj_info
 {
-  latticetypes::LatticeMatrix projection;
-  latticetypes::LatticeCoeff denom;
+  int_Matrix projection;
+  LatticeCoeff denom;
 }; // |struct proj_info|
 
 
@@ -301,15 +300,15 @@ class SRK_context
   // accessors
   complexredgp::ComplexReductiveGroup& complexGroup() const
     { return G.complexGroup(); }
-  const rootdata::RootDatum& rootDatum() const { return G.rootDatum(); }
-  const weyl::WeylGroup& weylGroup() const { return G.weylGroup(); }
-  const weyl::TwistedWeylGroup& twistedWeylGroup() const
+  const RootDatum& rootDatum() const { return G.rootDatum(); }
+  const WeylGroup& weylGroup() const { return G.weylGroup(); }
+  const TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
   const tits::TitsGroup& titsGroup() const { return G.titsGroup(); }
   const tits::TitsCoset& basedTitsGroup() const
     { return G.basedTitsGroup(); }
 
-  const weyl::TwistedInvolution twistedInvolution(size_t cn) const
+  const TwistedInvolution twistedInvolution(size_t cn) const
     { return complexGroup().twistedInvolution(cn); }
   const cartanclass::Fiber& fiber(const StandardRepK& sr) const
     { return G.cartan(sr.Cartan()).fiber(); }
@@ -322,37 +321,37 @@ class SRK_context
   { return simple_reflection_mod_2[i]; }
 
   //!\brief Projection |Weight| (in doubled coordinates) to |HCParam|
-  HCParam project(size_t cn, latticetypes::Weight lambda) const; // by value
+  HCParam project(size_t cn, Weight lambda) const; // by value
 
   //!\brief A section of |project|
-  latticetypes::Weight lift(size_t cn, HCParam p) const;
+  Weight lift(size_t cn, HCParam p) const;
 
   //!\brief (1+theta)* lifted value; this is independent of choice of lift
-  latticetypes::Weight theta_lift(size_t cn, HCParam p) const
+  Weight theta_lift(size_t cn, HCParam p) const
   {
-    latticetypes::Weight result=lift(cn,p);
+    Weight result=lift(cn,p);
     result += G.cartan(cn).involution()*result;
     return result;
   }
 
-  latticetypes::Weight lift(const StandardRepK& s) const
+  Weight lift(const StandardRepK& s) const
   { return lift(s.d_cartan,s.d_lambda); }
 
-  latticetypes::Weight theta_lift(const StandardRepK& s) const
+  Weight theta_lift(const StandardRepK& s) const
   { return theta_lift(s.d_cartan,s.d_lambda); }
 
   StandardRepK std_rep
-    (const latticetypes::Weight& two_lambda, tits::TitsElt a) const;
+    (const Weight& two_lambda, tits::TitsElt a) const;
 
   StandardRepK std_rep_rho_plus
-    (latticetypes::Weight lambda, tits::TitsElt a) const
+    (Weight lambda, tits::TitsElt a) const
     {
       (lambda *= 2) += rootDatum().twoRho();
       return std_rep(lambda,a);
     }
 
   RawRep Levi_rep
-    (latticetypes::Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
+    (Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
     const;
 
 
@@ -378,7 +377,7 @@ class SRK_context
   canonical twisted involution for the Cartan class of |sr|.
 */
   bool isStandard(const StandardRepK& sr, size_t& witness) const;
-  bool isNormal(latticetypes::Weight lambda, size_t cn, size_t& witness) const;
+  bool isNormal(Weight lambda, size_t cn, size_t& witness) const;
   bool isNormal(const StandardRepK& sr, size_t& witness) const
     { return isNormal(lift(sr),sr.Cartan(),witness); }
   bool isZero(const StandardRepK& sr, size_t& witness) const;
@@ -388,8 +387,8 @@ class SRK_context
 
   q_Char q_normalize_eq (const StandardRepK& sr,size_t witness) const;
   q_Char q_reflect_eq (const StandardRepK& sr,size_t i,
-		       latticetypes::Weight lambda,
-		       const latticetypes::Weight& cowt) const;
+		       Weight lambda,
+		       const Weight& cowt) const;
 
   tits::TitsElt titsElt(const StandardRepK& s) const
   {
@@ -401,7 +400,7 @@ class SRK_context
   kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
 
   PSalgebra theta_stable_parabolic
-    (const StandardRepK& sr, weyl::WeylWord& conjugator) const;
+    (const StandardRepK& sr, WeylWord& conjugator) const;
 
   CharForm K_type_formula
     (const StandardRepK& sr, level bound=~0u); // non-|const| (|height_bound|)
@@ -409,13 +408,13 @@ class SRK_context
     (const StandardRepK& sr, level bound=~0u); // non-|const| (|height_bound|)
 
   // Hecht-Schmid identity for simple-imaginary root $\alpha$
-  HechtSchmid HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
+  HechtSchmid HS_id(const StandardRepK& s, RootNbr alpha) const;
 
   // Hecht-Schmid identity for simple-real root $\alpha$
-  HechtSchmid back_HS_id(const StandardRepK& s, rootdata::RootNbr alpha) const;
+  HechtSchmid back_HS_id(const StandardRepK& s, RootNbr alpha) const;
 
   // equivalent by $q$-Hecht-Schmid identity for simple-imaginary root $\alpha$
-  q_Char q_HS_id_eq(const StandardRepK& s, rootdata::RootNbr alpha) const;
+  q_Char q_HS_id_eq(const StandardRepK& s, RootNbr alpha) const;
 
   // no need for |q_back_HS_id_eq|, it would not ivolve $q$; use |back_HS_id|
 
@@ -426,7 +425,7 @@ class SRK_context
   level height(const StandardRepK& s) const;
 
   //! Lower bound for height of representation after adding positive roots
-  level height_bound(const latticetypes::Weight& lambda); // non |const|
+  level height_bound(const Weight& lambda); // non |const|
 
   std::ostream& print(std::ostream& strm, const StandardRepK& sr) const;
   std::ostream& print(std::ostream& strm, const Char& ch) const;
@@ -434,10 +433,10 @@ class SRK_context
 
 // private methods
  private:
-  RawChar KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda)
+  RawChar KGB_sum(const PSalgebra& q, const Weight& lambda)
     const;
 
-  Raw_q_Char q_KGB_sum(const PSalgebra& q, const latticetypes::Weight& lambda)
+  Raw_q_Char q_KGB_sum(const PSalgebra& q, const Weight& lambda)
     const;
 
   const proj_info& get_projection(bitset::RankFlags gens); // non |const|
@@ -627,16 +626,16 @@ class PSalgebra // Parabolic subalgebra
   tits::TitsElt strong_inv; // corresponding strong involution
   size_t cn; // number of the Cartan class
   bitset::RankFlags sub_diagram; // simple roots forming basis of Levi factor
-  rootdata::RootSet nilpotents; // (positive) roots in nilpotent radical
+  RootNbrSet nilpotents; // (positive) roots in nilpotent radical
  public:
   PSalgebra (tits::TitsElt base,
 	     const complexredgp::ComplexReductiveGroup& G);
 
   const tits::TitsElt& strong_involution() const { return strong_inv; }
-  weyl::TwistedInvolution involution() const { return strong_inv.tw(); }
+  TwistedInvolution involution() const { return strong_inv.tw(); }
   size_t Cartan_no() const { return cn; }
   bitset::RankFlags Levi_gens() const { return sub_diagram; }
-  const rootdata::RootSet& radical() const { return nilpotents; }
+  const RootNbrSet& radical() const { return nilpotents; }
 }; // |class PSalgebra|
 
 

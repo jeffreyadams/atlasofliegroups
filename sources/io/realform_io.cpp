@@ -18,7 +18,6 @@
 #include "complexredgp.h"
 #include "complexredgp_io.h"
 #include "gradings.h"
-#include "latticetypes.h"
 #include "lietype.h"
 #include "rootdata.h"
 #include "permutations.h"
@@ -44,7 +43,7 @@ class RealFormData
 {
   realform::RealForm d_realForm;
   gradings::Grading d_grading;
-  rootdata::RootSet d_orth;
+  RootNbrSet d_orth;
 
 public:
 
@@ -53,13 +52,13 @@ public:
 
   RealFormData(realform::RealForm rf,
 	       const gradings::Grading& gr,
-	       const rootdata::RootSet& so)
+	       const RootNbrSet& so)
     :d_realForm(rf),d_grading(gr),d_orth(so) {}
 
 // accessors
   const gradings::Grading& grading() const { return d_grading; }
   realform::RealForm realForm() const { return d_realForm; }
-  const rootdata::RootSet& orth() const { return d_orth; }
+  const RootNbrSet& orth() const { return d_orth; }
 };
 
 // this determines the external numbering of real forms
@@ -89,14 +88,14 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 : d_in(G.numRealForms()), d_out(G.numRealForms()), d_name(G.numRealForms())
 {
   const size_t nrf = G.numRealForms();
-  const rootdata::RootSystem& rs = G.rootSystem();
+  const RootSystem& rs = G.rootSystem();
   const cartanclass::Fiber& fundf = G.fundamental();
 
   std::vector<RealFormData> rf_data; rf_data.reserve(nrf);
 
   for (realform::RealForm rf = 0; rf<nrf; ++rf)
   {
-    rootdata::RootSet so = cartanclass::toMostSplit(fundf,rf,rs);
+    RootNbrSet so = cartanclass::toMostSplit(fundf,rf,rs);
     gradings::Grading gr = cartanclass::specialGrading(fundf,rf,rs);
     rf_data.push_back(RealFormData(rf,gr,so));
   }
@@ -131,7 +130,7 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 , d_name(G.numDualRealForms())
 {
   const size_t ndrf = G.numDualRealForms();
-  const rootdata::RootSystem& drs = G.dualRootSystem();
+  const RootSystem& drs = G.dualRootSystem();
   const cartanclass::Fiber& dfundf = G.dualFundamental();
   const lietype::Layout dlo = dual(lo);
 
@@ -139,7 +138,7 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 
   for (realform::RealForm drf = 0; drf<ndrf; ++drf)
   {
-    rootdata::RootSet so = cartanclass::toMostSplit(dfundf,drf,drs);
+    RootNbrSet so = cartanclass::toMostSplit(dfundf,drf,drs);
     gradings::Grading gr = cartanclass::specialGrading(dfundf,drf,drs);
     rf_data.push_back(RealFormData(drf,gr,so));
   }

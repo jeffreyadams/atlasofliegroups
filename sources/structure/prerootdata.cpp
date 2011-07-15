@@ -22,16 +22,17 @@
 #include <cassert>
 #include <stdexcept>
 
+#include "matrix.h"
 #include "lietype.h"
 
 namespace atlas {
 
 namespace {
 
-  latticetypes::WeightList rootBasis(const lietype::LieType& lt,
-				     const latticetypes::WeightList&);
-  latticetypes::WeightList corootBasis(const lietype::LieType& lt,
-				       const latticetypes::WeightList& lb);
+  WeightList rootBasis(const lietype::LieType& lt,
+		       const WeightList&);
+  CoweightList corootBasis(const lietype::LieType& lt,
+			   const CoweightList& lb);
 
 }
 
@@ -71,16 +72,16 @@ basis |b|, and in |d_coroots| the list of simple coroots expressed in the
 dual basis.
 */
 PreRootDatum::PreRootDatum(const lietype::LieType& lt,
-			   const latticetypes::WeightList& b)
+			   const WeightList& b)
 : d_roots(rootBasis(lt,b)), d_coroots(corootBasis(lt,b)), d_rank(lt.rank())
 {}
 
 
   // accessors
 
-latticetypes::LatticeMatrix PreRootDatum::Cartan_matrix() const
+int_Matrix PreRootDatum::Cartan_matrix() const
 {
-  latticetypes::LatticeMatrix Cartan(d_roots.size(),d_coroots.size());
+  int_Matrix Cartan(d_roots.size(),d_coroots.size());
 
   for (weyl::Generator i = 0; i < d_roots.size(); ++i)
     for (weyl::Generator j = 0; j < d_coroots.size(); ++j)
@@ -89,7 +90,7 @@ latticetypes::LatticeMatrix PreRootDatum::Cartan_matrix() const
   return Cartan;
 }
 
-void PreRootDatum::simpleReflect(latticetypes::Weight& v, weyl::Generator s)
+void PreRootDatum::simpleReflect(Weight& v, weyl::Generator s)
   const
 {
   v -= d_roots[s]*v.dot(d_coroots[s]);
@@ -137,12 +138,12 @@ namespace {
   This function returns the coordinates of the simple root basis in |lb|, so
   it is simply a base change by left multiplication by the inverse of |lb|.
 */
-latticetypes::WeightList rootBasis(const lietype::LieType& lt,
-				   const latticetypes::WeightList& lb)
+WeightList rootBasis(const lietype::LieType& lt,
+				   const WeightList& lb)
 {
   assert(lb.size()==lt.rank());
-  latticetypes::LatticeCoeff d;
-  latticetypes::LatticeMatrix q(lb,lb.size()); q.invert(d);
+  LatticeCoeff d;
+  LatticeMatrix q(lb,lb.size()); q.invert(d);
 
   if (d==0)
     throw std::runtime_error("Dependent lattice generators");
@@ -150,8 +151,8 @@ latticetypes::WeightList rootBasis(const lietype::LieType& lt,
   // push back simple roots expressed in |lb|
 
   const size_t rk=lt.rank();
-  latticetypes::Weight v(rk); // temporary vector
-  latticetypes::WeightList result; result.reserve(lt.semisimple_rank());
+  Weight v(rk); // temporary vector
+  WeightList result; result.reserve(lt.semisimple_rank());
   size_t r=0; // row number in Cartan matrix
   for (size_t i=0; i<lt.size(); ++i)
     for (size_t j=0; j<lt[i].rank(); ++j,++r)
@@ -177,13 +178,13 @@ latticetypes::WeightList rootBasis(const lietype::LieType& lt,
   from the transposed matrix the columns representing vectors in the radical;
   this is what |lt| is used for. In fact we avoid transposition, copying rows.
 */
-latticetypes::WeightList corootBasis(const lietype::LieType& lt,
-				     const latticetypes::WeightList& lb)
+CoweightList corootBasis(const lietype::LieType& lt,
+			 const WeightList& lb)
 {
   assert(lb.size()==lt.rank());
-  latticetypes::LatticeMatrix q(lb,lb.size()); // square matrix
+  LatticeMatrix q(lb,lb.size()); // square matrix
 
-  latticetypes::WeightList result; result.reserve(lt.semisimple_rank());
+  CoweightList result; result.reserve(lt.semisimple_rank());
   size_t r=0; // row number in |q|
   for (size_t i=0; i<lt.size(); ++i)
     for (size_t j=0; j<lt[i].rank(); ++j,++r)

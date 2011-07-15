@@ -13,9 +13,9 @@
 #define ABELIAN_FWD_H
 
 #include <limits>
+#include <vector>
 #include <set>
 
-#include "latticetypes_fwd.h"
 #include "matrix_fwd.h"
 
 /******** type declarations **************************************************/

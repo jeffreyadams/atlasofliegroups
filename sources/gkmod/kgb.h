@@ -48,9 +48,9 @@ struct KGBEltInfo
   unsigned int length; ///< dimension of the K orbit on G/B, minus minimal one
   Descent desc; ///< flags which simple reflections give a descent
 
-  weyl::TwistedInvolution inv;
+  TwistedInvolution inv;
 
-  KGBEltInfo(unsigned int l, const weyl::TwistedInvolution& tw)
+  KGBEltInfo(unsigned int l, const TwistedInvolution& tw)
   : status(), length(l), desc(), inv(tw) {}
 
 }; // |struct KGBEltInfo|
@@ -73,7 +73,7 @@ struct KGBEltInfo
 class KGB_base
 {
  protected: // available during construction from derived classes
-  const weyl::TwistedWeylGroup& W; // hold a reference for convenience
+  const TwistedWeylGroup& W; // hold a reference for convenience
 
   struct KGBfields // data parametrized by simple reflection and KGB element
   {
@@ -100,7 +100,7 @@ class KGB_base
 
 
  protected: // constructor is only meant for use from derived classes
-  explicit KGB_base(const weyl::TwistedWeylGroup& Wg)
+  explicit KGB_base(const TwistedWeylGroup& Wg)
     : W(Wg)
     , data(W.rank())
     , info()
@@ -125,8 +125,8 @@ class KGB_base
   size_t size() const { return info.size(); } // number of KGB elements
   unsigned int nr_involutions() const { return inv_pool.size(); }
 
-  const weyl::TwistedWeylGroup& twistedWeylGroup() const { return W; }
-  const weyl::WeylGroup& weylGroup() const { return W.weylGroup(); }
+  const TwistedWeylGroup& twistedWeylGroup() const { return W; }
+  const WeylGroup& weylGroup() const { return W.weylGroup(); }
 
   KGBElt cross(weyl::Generator s, KGBElt x) const
     { return data[s][x].cross_image; }
@@ -135,11 +135,11 @@ class KGB_base
   KGBEltPair inverseCayley(weyl::Generator s, KGBElt x) const
     { return data[s][x].inverse_Cayley_image; }
 
-  KGBElt cross(const weyl::WeylWord& ww, KGBElt x) const;
-  KGBElt cross(KGBElt x, const weyl::WeylWord& ww) const;
+  KGBElt cross(const WeylWord& ww, KGBElt x) const;
+  KGBElt cross(KGBElt x, const WeylWord& ww) const;
 
   size_t length(KGBElt x) const { return info[x].length; }
-  weyl::TwistedInvolution involution(KGBElt x) const { return info[x].inv; }
+  TwistedInvolution involution(KGBElt x) const { return info[x].inv; }
   const Descent& descent(KGBElt x) const { return info[x].desc; }
   bool isDescent(weyl::Generator s, KGBElt x) const
     { return descent(x).test(s); }
@@ -155,7 +155,7 @@ class KGB_base
   size_t weylLength(KGBElt x) const // needed in sorting, in case |length| ties
     { return weylGroup().length(involution(x).w()); }
 
-  weyl::TwistedInvolution nth_involution(unsigned int n) const
+  TwistedInvolution nth_involution(unsigned int n) const
     { return inv_pool[n]; }
 
   size_t involution_index(KGBElt x) const
@@ -168,8 +168,8 @@ class KGB_base
   }
 
   // range of KGB elements with given twisted involution, needed for block
-  KGBEltPair tauPacket(const weyl::TwistedInvolution&) const;
-  size_t packet_size(const weyl::TwistedInvolution&) const;
+  KGBEltPair tauPacket(const TwistedInvolution&) const;
+  size_t packet_size(const TwistedInvolution&) const;
 
 // virtual methods
   virtual size_t Cartan_class(KGBElt x) const { return ~0ul; }
@@ -180,7 +180,7 @@ class KGB_base
  protected:
   void reserve (size_t n); // prepare for generating |n| elements
   void add_element // create entry in |data| and |info| structures
-   (unsigned int length, weyl::TwistedInvolution tw);
+   (unsigned int length, TwistedInvolution tw);
 
 
 }; // |class KGB_base|
@@ -197,7 +197,7 @@ struct KGB_elt_entry
 {
   tits::TorusElement t_rep; // a representative torus element, ignored in test
   weyl::TI_Entry tw;
-  latticetypes::RatLatticeElt fingerprint; // charcterizes the torus element
+  RatWeight fingerprint; // charcterizes the torus element
 
   // obligatory fields for hashable entry
   typedef std::vector<KGB_elt_entry> Pooltype;
@@ -205,7 +205,7 @@ struct KGB_elt_entry
   bool operator !=(const KGB_elt_entry& x) const
   { return tw!=x.tw or fingerprint!=x.fingerprint; } // ignore repr
 
-  KGB_elt_entry (const latticetypes::RatLatticeElt& f,
+  KGB_elt_entry (const RatWeight& f,
 		 const tits::GlobalTitsElement& y)
   : t_rep(y.torus_part()), tw(y.tw()), fingerprint(f) {}
 
@@ -238,22 +238,22 @@ class GlobalFiberData
   struct inv_info
   {
     unsigned int Cartan;
-    latticetypes::LatticeMatrix proj; // projectors for equivalence
-    latticetypes::LatticeElt check_2rho_imag;
-    rootdata::RootList simple_imag,simple_real;
+    int_Matrix proj; // projectors for equivalence
+    Weight check_2rho_imag;
+    RootNbrList simple_imag,simple_real;
 
   inv_info() : Cartan(~0), proj(), check_2rho_imag(), simple_imag()
     {} // allow uninitialized
   inv_info(unsigned int c,
-	     const latticetypes::LatticeMatrix& p,
-	     const latticetypes::LatticeElt& c2i,
-	     const rootdata::RootList& si,
-	     const rootdata::RootList& sr)
+	     const int_Matrix& p,
+	     const Weight& c2i,
+	     const RootNbrList& si,
+	     const RootNbrList& sr)
   : Cartan(c),proj(p),check_2rho_imag(c2i),simple_imag(si),simple_real(sr) {}
   };
 
   std::vector<inv_info> info;
-  std::vector<latticetypes::LatticeMatrix> refl; // reflections at dual side
+  std::vector<WeightInvolution> refl; // reflections at dual side
 
 public:
   GlobalFiberData(complexredgp::ComplexReductiveGroup& G,
@@ -269,31 +269,31 @@ public:
   {}
 
   //accessors
-  size_t Cartan_class(const weyl::TwistedInvolution& tw) const
+  size_t Cartan_class(const TwistedInvolution& tw) const
   {
     return info[hash_table.find(tw)].Cartan;
   }
 
-  const rootdata::RootList& imaginary_basis(const weyl::TwistedInvolution& tw)
+  const RootNbrList& imaginary_basis(const TwistedInvolution& tw)
     const
   { return info[hash_table.find(tw)].simple_imag; }
-  const rootdata::RootList& real_basis(const weyl::TwistedInvolution& tw)
+  const RootNbrList& real_basis(const TwistedInvolution& tw)
     const
   { return info[hash_table.find(tw)].simple_real; }
 
   bool equivalent(const tits::GlobalTitsElement& x,
 		  const tits::GlobalTitsElement& y) const;
 
-  latticetypes::RatLatticeElt // a value characterizing the equivalence class
+  RatWeight // a value characterizing the equivalence class
     fingerprint(const tits::GlobalTitsElement& x) const;
 
-  int at_rho_imaginary(const latticetypes::Weight& alpha, // imaginary root
-		       const weyl::TwistedInvolution& tw) const
+  int at_rho_imaginary(const rootdata::Root& alpha, // imaginary root
+		       const TwistedInvolution& tw) const
     { return alpha.dot(info[hash_table.find(tw)].check_2rho_imag)/2; }
 
   tits::GlobalTitsElement
-    imaginary_cross(const rootdata::RootDatum& dual_rd, // pragmatic reason
-		    rootdata::RootNbr alpha, // any imaginary root
+    imaginary_cross(const RootDatum& dual_rd, // pragmatic reason
+		    RootNbr alpha, // any imaginary root
 		    tits::GlobalTitsElement a) const; // |a| is by-value
 
 
@@ -303,7 +303,7 @@ public:
   // manipulators
   void add_class(const subdatum::SubSystem& sub, // determines root system
 		 const tits::GlobalTitsGroup& Tg, // interprets |tw| and values
-		 const weyl::TwistedInvolution& tw); // derived from it
+		 const TwistedInvolution& tw); // derived from it
 
 }; // |class GlobalFiberData|
 
@@ -330,7 +330,7 @@ class global_KGB : public KGB_base
   tits::TorusElement torus_part(KGBElt x) const { return elt[x].torus_part(); }
   const tits::GlobalTitsElement& element(KGBElt x) const { return elt[x]; }
 
-  bool compact(const rootdata::RootDatum& rd, rootdata::RootNbr alpha,
+  bool compact(const RootDatum& rd, RootNbr alpha,
 	       const tits::GlobalTitsElement& a) const;
   kgb::KGBElt lookup(const tits::GlobalTitsElement& x) const;
 
@@ -341,7 +341,7 @@ class global_KGB : public KGB_base
 
  private:
   void generate_involutions(size_t n);
-  void generate(const rootdata::RootDatum& rd, size_t predicted_size);
+  void generate(const RootDatum& rd, size_t predicted_size);
 
 }; // |class global_KGB|
 
@@ -366,7 +366,7 @@ class KGB : public KGB_base
 
   enum State { BruhatConstructed, NumStates };
 
-  const rootdata::RootDatum& rd; // needed for |half_rho| only
+  const RootDatum& rd; // needed for |half_rho| only
   std::vector<unsigned int> Cartan; ///< records Cartan classes of elements
 
   std::vector<tits::TorusPart> left_torus_part; // of size |size()|
@@ -400,15 +400,15 @@ and in addition the Hasse diagram (set of all covering relations).
 
 // accessors
 
-  const rootdata::RootDatum& rootDatum() const { return rd; }
+  const RootDatum& rootDatum() const { return rd; }
 //! \brief The based Tits group.
   const tits::TitsCoset& basedTitsGroup() const { return *d_base; }
 //! \brief The Tits group.
   const tits::TitsGroup& titsGroup() const { return d_base->titsGroup(); }
 //! \brief The Weyl group.
 
-  latticetypes::RatWeight half_rho() const
-  { return latticetypes::RatWeight(rd.twoRho(),4); }
+  RatWeight half_rho() const
+  { return RatWeight(rd.twoRho(),4); }
 
   virtual size_t Cartan_class(KGBElt x) const;
 
@@ -427,7 +427,7 @@ and in addition the Hasse diagram (set of all covering relations).
   \brief Method that used to return whether involution(x) < involution(y).
 
   Explanation: the ordering is involution-length first, then weyl-length, then
-  order by representative Weyl elements (weyl::TwistedInvolution::operator<).
+  order by representative Weyl elements (TwistedInvolution::operator<).
   This is only a partial ordering, that does not distinguish elements of a
   fiber over one same twisted involution.
 
@@ -492,17 +492,17 @@ class subsys_KGB : public KGB_base
 // general cross action in (non simple) root
 // root is given as simple root + conjugating Weyl word to simple root
 KGBElt cross(const KGB_base& kgb, KGBElt x,
-	     weyl::Generator s, const weyl::WeylWord& ww);
+	     weyl::Generator s, const WeylWord& ww);
 
 // general Cayley transform in (non simple) non-compact imaginary root
 // root is given as simple root + conjugating Weyl word to simple root
 KGBElt Cayley (const KGB_base& kgb, KGBElt x,
-	       weyl::Generator s, const weyl::WeylWord& ww);
+	       weyl::Generator s, const WeylWord& ww);
 
 // general inverse Cayley transform (choice) in (non simple) real root
 // root is given as simple root + conjugating Weyl word to simple root
 KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
-		       weyl::Generator s, const weyl::WeylWord& ww);
+		       weyl::Generator s, const WeylWord& ww);
 
 
 } // |namespace kgb|
