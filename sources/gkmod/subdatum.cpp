@@ -101,7 +101,7 @@ PreRootDatum SubSystem::pre_root_datum() const
 }
 
 // compute twist and subsystem twisted involution $ww$ for $-theta^t$
-// used in |tits::GlobalTitsGroup| constructor and in |iblock|, |test| cmds
+// used in |GlobalTitsGroup| constructor and in |iblock|, |test| cmds
 weyl::Twist SubSystem::twist(const WeightInvolution& theta,
 			     WeylWord& ww) const
 {
@@ -140,7 +140,7 @@ weyl::Twist SubSystem::twist(const WeightInvolution& theta,
 }
 
 // Here we seek twist and |ww| on parent side (dual with respect to |sub|)
-// used in |tits::TitsGroup| constructor for subdatum, called from |SubDatum|
+// used in |TitsGroup| constructor for subdatum, called from |SubDatum|
 weyl::Twist SubSystem::parent_twist(const WeightInvolution& theta,
 				    WeylWord& ww) const
 {
@@ -174,14 +174,20 @@ LatticeMatrix SubSystem::action_matrix(const WeylWord& ww)
   return result;
 }
 
+InvolutionData SubSystem::involution_data(const WeightInvolution& theta) const
+{
+  RootNbrSet sub_posroots(rd.numRoots(),pos_map); // subsystem positive roots
+  return InvolutionData(rd,theta,sub_posroots);
+}
+
 // grading of subsystem imaginary roots (parent perspective) induced by parent
-gradings::Grading SubSystem::induced(gradings::Grading base_grading) const
+Grading SubSystem::induced(Grading base_grading) const
 {
   base_grading.complement(rd.semisimpleRank()); // flag compact simple roots
-  gradings::Grading result;
+  Grading result;
   for (weyl::Generator s=0; s<rank(); ++s)
   { // count compact parent-simple roots oddly contributing to (subsystem) |s|
-    gradings::Grading mask (rd.root_expr(parent_nr_simple(s))); // mod 2
+    Grading mask (rd.root_expr(parent_nr_simple(s))); // mod 2
     result.set(s,mask.dot(base_grading)); // mark if odd count (=>|s| compact)
   }
 
@@ -196,9 +202,9 @@ gradings::Grading SubSystem::induced(gradings::Grading base_grading) const
 
   */
 
-SubDatum::SubDatum(realredgp::RealReductiveGroup& GR,
+SubDatum::SubDatum(RealReductiveGroup& GR,
 		   const RatWeight& gamma,
-		   kgb::KGBElt x)
+		   KGBElt x)
   : SubSystem(SubSystem::integral(GR.rootDatum(),gamma))
   , base_ww()
   , delta(GR.complexGroup().involutionMatrix(GR.kgb().involution(x)))
@@ -222,7 +228,7 @@ SubDatum::SubDatum(realredgp::RealReductiveGroup& GR,
   // set the value that will be accessible later as |base_twisted_in_parent()|
   base_ww = rootdata::wrt_distinguished(pd,simple_image);
 #ifndef NDEBUG
-  const complexredgp::ComplexReductiveGroup& GC=GR.complexGroup();
+  const ComplexReductiveGroup& GC=GR.complexGroup();
   // We test that the subdatum shares its most split involution with |GC|
   WeightInvolution M=delta;
   const WeylWord sub_w0 = Weyl_group().word(Weyl_group().longest());

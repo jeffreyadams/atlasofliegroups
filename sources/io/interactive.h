@@ -23,7 +23,6 @@
 #include "error.h"
 #include "input.h"
 #include "lietype.h"
-#include "realform.h"
 #include "standardrepk.h"
 #include "realredgp_fwd.h"
 #include "repr.h"
@@ -63,21 +62,21 @@ namespace interactive {
 		      WeightList&,
 		      const lietype::LieType&) throw(error::InputError);
 
-  void getInteractive(realform::RealForm&, const complexredgp_io::Interface&)
+  void getInteractive(RealFormNbr&, const complexredgp_io::Interface&)
     throw(error::InputError);
 
-  void getInteractive(realform::RealForm&, const complexredgp_io::Interface&,
+  void getInteractive(RealFormNbr&, const complexredgp_io::Interface&,
 		      tags::DualTag)
     throw(error::InputError);
 
-  void getInteractive(realform::RealForm&, const complexredgp_io::Interface&,
-		      const realform::RealFormList&, tags::DualTag)
+  void getInteractive(RealFormNbr&, const complexredgp_io::Interface&,
+		      const RealFormNbrList&, tags::DualTag)
     throw(error::InputError);
 
-  realredgp::RealReductiveGroup getRealGroup(complexredgp_io::Interface&)
+  RealReductiveGroup getRealGroup(complexredgp_io::Interface&)
     throw(error::InputError);
 
-  void getInteractive(complexredgp::ComplexReductiveGroup*&,
+  void getInteractive(ComplexReductiveGroup*&,
 		      complexredgp_io::Interface*&)
     throw(error::InputError);
 
@@ -111,8 +110,8 @@ namespace interactive {
   input::InputBuffer& common_input();
   input::InputBuffer& sr_input();
 
-  void get_parameter(realredgp::RealReductiveGroup& GR,
-		     kgb::KGBElt& x,
+  void get_parameter(RealReductiveGroup& GR,
+		     KGBElt& x,
 		     Weight& lambda_rho,
 		     RatWeight& gamma);
 }

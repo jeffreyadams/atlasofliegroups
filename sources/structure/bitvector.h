@@ -545,7 +545,7 @@ template<size_t dim> class BitMatrix
 //			  Inlined function definition
 
 inline
-  bitvector::BinaryEquation make_equation(const SmallBitVector& lhs, bool rhs)
+  BinaryEquation make_equation(const SmallBitVector& lhs, bool rhs)
   {
     BinaryEquation eqn(lhs.data(),lhs.size());
     eqn.pushBack(rhs);

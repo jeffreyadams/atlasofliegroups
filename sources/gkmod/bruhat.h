@@ -38,7 +38,7 @@ namespace bruhat {
   that would create BruhatOrder classes, but they seem not to be called.
   DV 7/21/06]
 
-  [In fact the kgb::KGB and blocks::Block classes do contain members of type
+  [In fact the KGB and Block classes do contain members of type
   (pointer to) BruhatOrder, and methods fillBruhat that will create instances
   of BruhatOrder accessible from those classes, but these methods are never
   called. MvL 8 Nov 2006]

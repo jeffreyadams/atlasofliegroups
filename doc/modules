@@ -43,24 +43,68 @@ Structure
   lietype	classes for holding Lie-type specifications
   dynkin	dynkin diagrams, and recognizing the classification of types
   lattice	functions for base change, orthogonal sublattice, saturation
-
   weylsize	functions for computing size of Weyl group (could be in lietype)
+
   prerootdata	class with just simple root and simple coroot information
-  rootdata	root systems and root data; all support for handling roots
+  rootdata	root systems, root data, subsystems; support for handling roots
   weyl		Weyl group class, action on weights using (pre)rootdatum
 
-
   gradings	a (bitset) type for storing gradings; orthogonal root sets
+  tori		analysing lattice involutions, defining a real torus
+  topology	connect components of real red. group (dual components group)
+
   cartanclass	involution data, fibers, and Cartan class objects
   complexredgp  data type encompassing all data stored for an inner class
   realredgp	data type augmenting an inner class with a real form
+  tits		classes for Tits groups in various forms, and their elements
 
-  realform
-  tits
-  topology
-  tori
+gKmod
+
+  subdatum	classes for handling subsystems within root datum (split/move)
+  kgb
+  bruhat
+  descents
+  blocks
+  klsupport
+  kl
+  wgraph
+  standardrepk
+  repr
 
 Io
 
+  ioutils
+  basic_io
+  prettyprint
+  interactive
+  interactive_lattice
+
+  poset_io
+  cartan_io
+  compexredgp_io
+  realform_io
+  realredgp_io
+  realweyl
+  realweyl_io
+  kgb_io
+  block_io
+  kl_io
+  wgraph_io
   filekl
 
+Interface
+
+  input
+  io
+  main
+  version
+  commands
+
+  helpmode
+  emptymode
+  mainmode
+  realmode
+  blockmode
+  emptyhelp
+  mainhelp
+  realhelp

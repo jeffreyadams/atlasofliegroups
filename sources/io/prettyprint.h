@@ -89,8 +89,8 @@ std::ostream& printCorootList(std::ostream&, const RootNbrList&,
 
 std::ostream& printStatus(std::ostream&, const gradings::Status&, size_t);
 
-std::ostream& printTitsElt(std::ostream&, const tits::TitsElt&,
-			   const tits::TitsGroup&);
+std::ostream& printTitsElt(std::ostream&, const TitsElt&,
+			   const TitsGroup&);
 
 std::ostream& printTorusType(std::ostream&, const tori::RealTorus&);
 

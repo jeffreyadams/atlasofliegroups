@@ -30,19 +30,19 @@ namespace {
   std::ostream& printComplexType(std::ostream&,
 				 const lietype::SimpleLieType&);
 
-  std::ostream& printSimpleType(std::ostream&, const gradings::Grading&,
+  std::ostream& printSimpleType(std::ostream&, const Grading&,
 				const lietype::SimpleLieType&,
 				lietype::TypeLetter);
 
   std::ostream& printType(std::ostream& out,
-			  const gradings::Grading& gr,
+			  const Grading& gr,
 			  const lietype::Layout& lo);
 
 // a class to temporarily group data necessary for classifying real forms
 class RealFormData
 {
-  realform::RealForm d_realForm;
-  gradings::Grading d_grading;
+  RealFormNbr d_realForm;
+  Grading d_grading;
   RootNbrSet d_orth;
 
 public:
@@ -50,14 +50,14 @@ public:
 // constructors and destructors
   RealFormData() {}
 
-  RealFormData(realform::RealForm rf,
-	       const gradings::Grading& gr,
+  RealFormData(RealFormNbr rf,
+	       const Grading& gr,
 	       const RootNbrSet& so)
     :d_realForm(rf),d_grading(gr),d_orth(so) {}
 
 // accessors
-  const gradings::Grading& grading() const { return d_grading; }
-  realform::RealForm realForm() const { return d_realForm; }
+  const Grading& grading() const { return d_grading; }
+  RealFormNbr realForm() const { return d_realForm; }
   const RootNbrSet& orth() const { return d_orth; }
 };
 
@@ -83,20 +83,20 @@ namespace realform_io {
   interface) of rf --- so d_in and d_out are inverses of each other. The
   names are names for the corresponding Lie algebras.
 */
-Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
+Interface::Interface(const ComplexReductiveGroup& G,
 		     const lietype::Layout& lo)
 : d_in(G.numRealForms()), d_out(G.numRealForms()), d_name(G.numRealForms())
 {
   const size_t nrf = G.numRealForms();
   const RootSystem& rs = G.rootSystem();
-  const cartanclass::Fiber& fundf = G.fundamental();
+  const Fiber& fundf = G.fundamental();
 
   std::vector<RealFormData> rf_data; rf_data.reserve(nrf);
 
-  for (realform::RealForm rf = 0; rf<nrf; ++rf)
+  for (RealFormNbr rf = 0; rf<nrf; ++rf)
   {
     RootNbrSet so = cartanclass::toMostSplit(fundf,rf,rs);
-    gradings::Grading gr = cartanclass::specialGrading(fundf,rf,rs);
+    Grading gr = cartanclass::specialGrading(fundf,rf,rs);
     rf_data.push_back(RealFormData(rf,gr,so));
   }
 
@@ -123,7 +123,7 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 /*
   Synopsis: like the previous one, but for the _dual_ real forms.
 */
-Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
+Interface::Interface(const ComplexReductiveGroup& G,
 		     const lietype::Layout& lo, tags::DualTag)
 : d_in(G.numDualRealForms())
 , d_out(G.numDualRealForms())
@@ -131,15 +131,15 @@ Interface::Interface(const complexredgp::ComplexReductiveGroup& G,
 {
   const size_t ndrf = G.numDualRealForms();
   const RootSystem& drs = G.dualRootSystem();
-  const cartanclass::Fiber& dfundf = G.dualFundamental();
+  const Fiber& dfundf = G.dualFundamental();
   const lietype::Layout dlo = dual(lo);
 
   std::vector<RealFormData> rf_data; rf_data.reserve(ndrf);
 
-  for (realform::RealForm drf = 0; drf<ndrf; ++drf)
+  for (RealFormNbr drf = 0; drf<ndrf; ++drf)
   {
     RootNbrSet so = cartanclass::toMostSplit(dfundf,drf,drs);
-    gradings::Grading gr = cartanclass::specialGrading(dfundf,drf,drs);
+    Grading gr = cartanclass::specialGrading(dfundf,drf,drs);
     rf_data.push_back(RealFormData(drf,gr,so));
   }
 
@@ -178,7 +178,7 @@ void Interface::swap(Interface& other)
   Precondition: rf is an outer real form number.
 */
 
-const char* Interface::typeName(realform::RealForm rf) const
+const char* Interface::typeName(RealFormNbr rf) const
 {
   return d_name[rf].c_str();
 }
@@ -315,7 +315,7 @@ inline std::ostream& split(std::ostream& s,size_t n,size_t m)
   the imaginary root system is reducible. In that case however the only choice
   is whether |gr| is trivial (sl(n,H)) or not, which is easy enough to decide.
 */
-std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
+std::ostream& printSimpleType(std::ostream& strm, const Grading& gr,
 			      const lietype::SimpleLieType& slt,
 			      const lietype::TypeLetter ic)
 {
@@ -410,14 +410,14 @@ std::ostream& printSimpleType(std::ostream& strm, const gradings::Grading& gr,
   each noncompact noncomplex simple factor.
 */
 std::ostream& printType(std::ostream& strm,
-			const gradings::Grading& d_gr,
+			const Grading& d_gr,
 			const lietype::Layout& lo)
 {
   const lietype::LieType& lt=lo.d_type;
   const lietype::InnerClassType& ict=lo.d_inner;
 
   // adapt grading to standard ordering of type |lt|
-  gradings::Grading gr = lo.d_perm.pull_back(d_gr);
+  Grading gr = lo.d_perm.pull_back(d_gr);
 
   size_t i = 0; // index of simple factor in |lt|
 
@@ -431,7 +431,7 @@ std::ostream& printType(std::ostream& strm,
     }
     else
     {
-      gradings::Grading grs = gr;
+      Grading grs = gr;
       grs.truncate(slt.rank());
       printSimpleType(strm,grs,slt,ict[j]);
     }

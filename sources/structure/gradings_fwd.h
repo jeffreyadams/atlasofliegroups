@@ -22,18 +22,6 @@ namespace atlas {
 
 /******** type declarations *************************************************/
 
-namespace gradings {
-
-  class Status;
-  typedef std::vector<Status> StatusList;
-
-  typedef bitset::RankFlags Grading;
-  typedef std::vector<Grading> GradingList;
-
-  class GradingCompare;
-
-}
-
 }
 
 #endif

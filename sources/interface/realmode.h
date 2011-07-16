@@ -11,8 +11,8 @@
 #define REALMODE_H
 
 #include "commands_fwd.h"
+#include "atlas_types.h"
 #include "realredgp_fwd.h"
-#include "realform.h"
 #include "realredgp_io_fwd.h"
 
 /******** type declarations *************************************************/
@@ -30,8 +30,8 @@ namespace realmode {
 namespace realmode {
 
   commands::CommandMode& realMode();
-  realredgp::RealReductiveGroup& currentRealGroup();
-  realform::RealForm currentRealForm();
+  RealReductiveGroup& currentRealGroup();
+  RealFormNbr currentRealForm();
 
 }
 

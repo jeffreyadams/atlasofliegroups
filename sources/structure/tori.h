@@ -13,8 +13,6 @@
 #ifndef TORI_H  /* guard against multiple inclusions */
 #define TORI_H
 
-#include "tori_fwd.h"
-
 #include "bits.h"
 #include "tags.h"
 
@@ -158,7 +156,7 @@ namespace tori {
   bool isCompact() const { return d_plus.size() == d_rank; }
   bool isSplit() const { return d_minus.size() == d_rank; }
 
-  bitvector::BinaryMap componentMap(const LatticeMatrix&,
+  BinaryMap componentMap(const LatticeMatrix&,
 				    const RealTorus&) const;
 
   const WeightList& plusLattice() const { return d_plus; }

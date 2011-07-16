@@ -15,7 +15,6 @@
 #include "complexredgp_fwd.h"
 
 #include "lietype.h"
-#include "realform.h"
 #include "tags.h"
 
 namespace atlas {
@@ -44,8 +43,8 @@ class Interface {
 
  private:
 
-  realform::RealFormList d_in;
-  realform::RealFormList d_out;
+  RealFormNbrList d_in;
+  RealFormNbrList d_out;
 
   std::vector<std::string> d_name;
 
@@ -54,9 +53,9 @@ class Interface {
 // constructors and destructors
   Interface() {};
 
-  Interface(const complexredgp::ComplexReductiveGroup&, const lietype::Layout&);
+  Interface(const ComplexReductiveGroup&, const lietype::Layout&);
 
-  Interface(const complexredgp::ComplexReductiveGroup&, const lietype::Layout&,
+  Interface(const ComplexReductiveGroup&, const lietype::Layout&,
 	    tags::DualTag);
 
   ~Interface() {};
@@ -65,7 +64,7 @@ class Interface {
   void swap(Interface&);
 
 // accessors
-  realform::RealForm in(realform::RealForm rf) const {
+  RealFormNbr in(RealFormNbr rf) const {
     return d_in[rf];
   }
 
@@ -73,11 +72,11 @@ class Interface {
     return d_in.size();
   }
 
-  realform::RealForm out(realform::RealForm rf) const {
+  RealFormNbr out(RealFormNbr rf) const {
     return d_out[rf];
   }
 
-  const char* typeName(realform::RealForm) const;
+  const char* typeName(RealFormNbr) const;
 
 // manipulators
 };

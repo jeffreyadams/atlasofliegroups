@@ -1004,7 +1004,7 @@ template void identityMatrix(BitMatrix<constants::RANK_MAX>&, size_t);
 template void initBasis(std::vector<BitVector<constants::RANK_MAX> >&, size_t);
 
 template class BitVector<constants::RANK_MAX>;
-template class BitVector<constants::RANK_MAX+1>;//|bitvector::BinaryEquation|
+template class BitVector<constants::RANK_MAX+1>;//|BinaryEquation|
 template class BitMatrix<constants::RANK_MAX>;
 
 } // |namespace bitvector|

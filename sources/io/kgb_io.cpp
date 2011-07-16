@@ -39,7 +39,7 @@ namespace kgb_io {
 
 
 /*
-  Basic  print of |kgb::KGB_base| object |kgb| to |strm|.
+  Basic  print of |KGB_base| object |kgb| to |strm|.
 
   Explanation: for each parameter, we output the length, the Cartan class,
   root types, cross-actions and Cayley transforms for each generator, and the
@@ -51,10 +51,10 @@ namespace kgb_io {
   sophisticated formatting for larger groups.
 */
 std::ostream& print(std::ostream& strm,
-		    const kgb::KGB_base& kgb,
+		    const KGB_base& kgb,
 		    bool traditional,
-		    const complexredgp::ComplexReductiveGroup* G,
-		    const kgb::KGBEltList* which)
+		    const ComplexReductiveGroup* G,
+		    const KGBEltList* which)
 {
   bool subset= which!=NULL;
 
@@ -91,8 +91,8 @@ std::ostream& print(std::ostream& strm,
     // print Cayley transforms
     for (size_t s = 0; s < kgb.rank(); ++s)
     {
-      kgb::KGBElt z = kgb.cayley(s,j);
-      if (z != kgb::UndefKGB)
+      KGBElt z = kgb.cayley(s,j);
+      if (z != UndefKGB)
 	strm << std::setw(width+pad) << z;
       else
 	strm << std::setw(width+pad) << '*';
@@ -119,14 +119,14 @@ std::ostream& print(std::ostream& strm,
 }
 
 
-std::ostream& printKGB(std::ostream& strm, const kgb::KGB& kgb)
+std::ostream& printKGB(std::ostream& strm, const KGB& kgb)
 {
   return print(strm,kgb,true,NULL,NULL);
 }
 
 std::ostream& print_sub_KGB(std::ostream& strm,
-			    const kgb::KGB& kgb,
-			    const kgb::KGBEltList& which)
+			    const KGB& kgb,
+			    const KGBEltList& which)
 {
   prettyprint::prettyPrint(strm << "Base grading: [",
 			   kgb.base_grading(),kgb.rank()) << "].\n";
@@ -134,8 +134,8 @@ std::ostream& print_sub_KGB(std::ostream& strm,
 }
 
 std::ostream& var_print_KGB(std::ostream& strm,
-			    const complexredgp::ComplexReductiveGroup& G,
-			    const kgb::KGB& kgb)
+			    const ComplexReductiveGroup& G,
+			    const KGB& kgb)
 {
   prettyprint::prettyPrint(strm << "Base grading: [",
 			   kgb.base_grading(),kgb.rank()) << "].\n";

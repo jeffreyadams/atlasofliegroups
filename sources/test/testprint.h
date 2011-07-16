@@ -29,7 +29,7 @@ namespace testprint {
 
 std::ostream& print(std::ostream&, const RootDatum&);
 
-std::ostream& print(std::ostream&, const realredgp::RealReductiveGroup&);
+std::ostream& print(std::ostream&, const RealReductiveGroup&);
 
 std::ostream& printBlockData(std::ostream&, complexredgp_io::Interface&);
 
@@ -39,7 +39,7 @@ std::ostream& printCartanMatrix(std::ostream&, const RootNbrList&,
 				const RootSystem&);
 
 std::ostream& printComponents(std::ostream&,
-			      const realredgp::RealReductiveGroup&,
+			      const RealReductiveGroup&,
 			      const char* sep = ",");
 }
 

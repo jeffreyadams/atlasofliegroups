@@ -11,9 +11,9 @@
 #define BLOCKMODE_H
 
 #include "commands_fwd.h"
+#include "atlas_types.h"
 #include "complexredgp_fwd.h"
 #include "realredgp_fwd.h"
-#include "realform.h"
 #include "blocks_fwd.h"
 #include "kl_fwd.h"
 #include "wgraph.h"
@@ -29,10 +29,10 @@ namespace blockmode {
 /******** function declarations ********************************************/
 
   commands::CommandMode& blockMode();
-  complexredgp::ComplexReductiveGroup& currentDualComplexGroup();
-  realredgp::RealReductiveGroup& currentDualRealGroup();
-  realform::RealForm currentDualRealForm();
-  blocks::Block& currentBlock();
+  ComplexReductiveGroup& currentDualComplexGroup();
+  RealReductiveGroup& currentDualRealGroup();
+  RealFormNbr currentDualRealForm();
+  Block& currentBlock();
   kl::KLContext& currentKL();
   wgraph::WGraph& currentWGraph();
 

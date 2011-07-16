@@ -46,7 +46,7 @@ struct KGBEltInfo
 {
   gradings::Status status; ///< status of each simple root for this element
   unsigned int length; ///< dimension of the K orbit on G/B, minus minimal one
-  Descent desc; ///< flags which simple reflections give a descent
+  DescentSet desc; ///< flags which simple reflections give a descent
 
   TwistedInvolution inv;
 
@@ -65,7 +65,7 @@ struct KGBEltInfo
    the KGB set. Indeed the basic constructor is made |protected| to emphasise
    that it is up to derived classes to actually fill the tables in the
    structure, using concrete representations for the KGB elements (possibly
-   using |tits::TitsElt|) that are mainly relevant during construction. Once
+   using |TitsElt|) that are mainly relevant during construction. Once
    constructed there is no need to slice off the base object (although it
    could be done) and the full derived object can be used for instance to
    print more information about block elements than available in |KGB_base|.
@@ -140,7 +140,7 @@ class KGB_base
 
   size_t length(KGBElt x) const { return info[x].length; }
   TwistedInvolution involution(KGBElt x) const { return info[x].inv; }
-  const Descent& descent(KGBElt x) const { return info[x].desc; }
+  const DescentSet& descent(KGBElt x) const { return info[x].desc; }
   bool isDescent(weyl::Generator s, KGBElt x) const
     { return descent(x).test(s); }
   const gradings::Status& status(KGBElt x) const { return info[x].status; }
@@ -206,11 +206,11 @@ struct KGB_elt_entry
   { return tw!=x.tw or fingerprint!=x.fingerprint; } // ignore repr
 
   KGB_elt_entry (const RatWeight& f,
-		 const tits::GlobalTitsElement& y)
+		 const GlobalTitsElement& y)
   : t_rep(y.torus_part()), tw(y.tw()), fingerprint(f) {}
 
-  tits::GlobalTitsElement repr() const
-  { return tits::GlobalTitsElement(t_rep,tw); }
+  GlobalTitsElement repr() const
+  { return GlobalTitsElement(t_rep,tw); }
 }; //  |struct KGB_elt_entry|
 
 /*!
@@ -256,11 +256,11 @@ class GlobalFiberData
   std::vector<WeightInvolution> refl; // reflections at dual side
 
 public:
-  GlobalFiberData(complexredgp::ComplexReductiveGroup& G,
+  GlobalFiberData(ComplexReductiveGroup& G,
 		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
 
   // contructor that does not install eny Cartan classes yet
-  GlobalFiberData(const tits::GlobalTitsGroup& Tg,
+  GlobalFiberData(const GlobalTitsGroup& Tg,
 		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
 
   GlobalFiberData(const GlobalFiberData& org) // copy contructor, handle ref
@@ -281,28 +281,28 @@ public:
     const
   { return info[hash_table.find(tw)].simple_real; }
 
-  bool equivalent(const tits::GlobalTitsElement& x,
-		  const tits::GlobalTitsElement& y) const;
+  bool equivalent(const GlobalTitsElement& x,
+		  const GlobalTitsElement& y) const;
 
   RatWeight // a value characterizing the equivalence class
-    fingerprint(const tits::GlobalTitsElement& x) const;
+    fingerprint(const GlobalTitsElement& x) const;
 
   int at_rho_imaginary(const rootdata::Root& alpha, // imaginary root
 		       const TwistedInvolution& tw) const
     { return alpha.dot(info[hash_table.find(tw)].check_2rho_imag)/2; }
 
-  tits::GlobalTitsElement
+  GlobalTitsElement
     imaginary_cross(const RootDatum& dual_rd, // pragmatic reason
 		    RootNbr alpha, // any imaginary root
-		    tits::GlobalTitsElement a) const; // |a| is by-value
+		    GlobalTitsElement a) const; // |a| is by-value
 
 
-  KGB_elt_entry pack(const tits::GlobalTitsElement& y) const
+  KGB_elt_entry pack(const GlobalTitsElement& y) const
   { return KGB_elt_entry(fingerprint(y),y); }
 
   // manipulators
   void add_class(const subdatum::SubSystem& sub, // determines root system
-		 const tits::GlobalTitsGroup& Tg, // interprets |tw| and values
+		 const GlobalTitsGroup& Tg, // interprets |tw| and values
 		 const TwistedInvolution& tw); // derived from it
 
 }; // |class GlobalFiberData|
@@ -312,27 +312,27 @@ public:
 
 class global_KGB : public KGB_base
 {
-  const tits::GlobalTitsGroup Tg;
+  const GlobalTitsGroup Tg;
   GlobalFiberData fiber_data;
-  std::vector<tits::GlobalTitsElement> elt;
+  std::vector<GlobalTitsElement> elt;
 
   global_KGB(const global_KGB& org); // forbid copying
 
  public:
-  global_KGB(complexredgp::ComplexReductiveGroup& G);
+  global_KGB(ComplexReductiveGroup& G);
 
-  global_KGB(complexredgp::ComplexReductiveGroup& G,
-	     const tits::GlobalTitsElement& x); // generate KGB containing |x|
+  global_KGB(ComplexReductiveGroup& G,
+	     const GlobalTitsElement& x); // generate KGB containing |x|
 
 // accessors
-  const tits::GlobalTitsGroup& globalTitsGroup() const { return Tg; }
+  const GlobalTitsGroup& globalTitsGroup() const { return Tg; }
 
   tits::TorusElement torus_part(KGBElt x) const { return elt[x].torus_part(); }
-  const tits::GlobalTitsElement& element(KGBElt x) const { return elt[x]; }
+  const GlobalTitsElement& element(KGBElt x) const { return elt[x]; }
 
   bool compact(const RootDatum& rd, RootNbr alpha,
-	       const tits::GlobalTitsElement& a) const;
-  kgb::KGBElt lookup(const tits::GlobalTitsElement& x) const;
+	       const GlobalTitsElement& a) const;
+  KGBElt lookup(const GlobalTitsElement& x) const;
 
 // virtual methods
   virtual size_t Cartan_class(KGBElt x) const
@@ -380,12 +380,12 @@ and in addition the Hasse diagram (set of all covering relations).
   bruhat::BruhatOrder* d_bruhat;
 
   //! \brief Owned pointer to the based Tits group.
-  tits::TitsCoset* d_base; // pointer, because contructed late by |generate|
+  TitsCoset* d_base; // pointer, because contructed late by |generate|
 
  public:
 
 // constructors and destructors
-  explicit KGB(realredgp::RealReductiveGroup& GR,
+  explicit KGB(RealReductiveGroup& GR,
 	       const bitmap::BitMap& Cartan_classes =  bitmap::BitMap(0));
 
   ~KGB()
@@ -402,9 +402,9 @@ and in addition the Hasse diagram (set of all covering relations).
 
   const RootDatum& rootDatum() const { return rd; }
 //! \brief The based Tits group.
-  const tits::TitsCoset& basedTitsGroup() const { return *d_base; }
+  const TitsCoset& basedTitsGroup() const { return *d_base; }
 //! \brief The Tits group.
-  const tits::TitsGroup& titsGroup() const { return d_base->titsGroup(); }
+  const TitsGroup& titsGroup() const { return d_base->titsGroup(); }
 //! \brief The Weyl group.
 
   RatWeight half_rho() const
@@ -413,14 +413,14 @@ and in addition the Hasse diagram (set of all covering relations).
   virtual size_t Cartan_class(KGBElt x) const;
 
   tits::TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
-  tits::TitsElt titsElt(KGBElt x) const
-    { return tits::TitsElt(titsGroup(),left_torus_part[x],involution(x)); }
+  TitsElt titsElt(KGBElt x) const
+    { return TitsElt(titsGroup(),left_torus_part[x],involution(x)); }
 //! \brief The (non-semisimple) rank of torus parts.
   size_t torus_rank() const { return titsGroup().rank(); }
 
-  gradings::Grading base_grading() const { return d_base->base_grading(); }
+  Grading base_grading() const { return d_base->base_grading(); }
 
-  kgb::KGBElt lookup(const tits::TitsElt& a, const tits::TitsGroup& Tg) const;
+  KGBElt lookup(const TitsElt& a, const TitsGroup& Tg) const;
 
 #if 0
 /*!
@@ -460,7 +460,7 @@ and in addition the Hasse diagram (set of all covering relations).
 // private methods
 private:
   size_t generate
-    (realredgp::RealReductiveGroup& GR,const bitmap::BitMap& Cartan_classes);
+    (RealReductiveGroup& GR,const bitmap::BitMap& Cartan_classes);
 
   void fillBruhat();
 
@@ -469,7 +469,7 @@ private:
 // extract the KGB for a root subsystem; DV says this is not always possible
 class subsys_KGB : public KGB_base
 {
-  gradings::Grading base_grading;
+  Grading base_grading;
 
  public:
   std::vector<KGBElt> in_parent; // map elements back to parent, if possible
@@ -477,9 +477,9 @@ class subsys_KGB : public KGB_base
   std::vector<tits::TorusPart> torus_part; // of size |size()|
   KGBElt parent_size;
 
-  subsys_KGB(const kgb::KGB& kgb,
+  subsys_KGB(const KGB& kgb,
 	     const subdatum::SubDatum& sub, // must be constructed before
-	     kgb::KGBElt x);
+	     KGBElt x);
 
 // virtual methods
   virtual size_t Cartan_class(KGBElt x) const;

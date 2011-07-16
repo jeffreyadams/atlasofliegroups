@@ -17,10 +17,10 @@ the implementation of the KL algorithm.
 #ifndef KLTEST_H  /* guard against multiple inclusions */
 #define KLTEST_H
 
-#include "kgb_fwd.h"
-#include "kl_fwd.h"
-
 #include "permutations.h"
+
+#include "atlas_types.h"
+#include "kl_fwd.h"
 
 namespace atlas {
 
@@ -34,7 +34,7 @@ namespace kltest {
 
 namespace kltest {
 
-  bool checkBasePoint(const kgb::KGB&);
+  bool checkBasePoint(const KGB&);
 
   void dualityPermutation(permutations::Permutation&, const kl::KLContext&);
 

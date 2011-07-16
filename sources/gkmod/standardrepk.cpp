@@ -114,7 +114,7 @@ size_t StandardRepK::hashCode(size_t modulus) const
 
 ******************************************************************************/
 
-SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
+SRK_context::SRK_context(RealReductiveGroup &GR)
   : G(GR)
   , Cartan_set(GR.Cartan_set())
   , C_info(GR.numCartan())
@@ -125,7 +125,7 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
   simple_reflection_mod_2.reserve(G.semisimpleRank());
   for (size_t i=0; i<G.semisimpleRank(); ++i)
     simple_reflection_mod_2.push_back
-      (bitvector::BinaryMap(rd.simple_reflection(i).transposed()));
+      (BinaryMap(rd.simple_reflection(i).transposed()));
 
   size_t n = rootDatum().rank();
 
@@ -137,7 +137,7 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
     // d_G.cartan[i] is (canonical involution for) (*it)th CartanClass
     Cartan_info& ci=C_info[nr];
 
-    const cartanclass::Fiber& f=G.cartan(*it).fiber();
+    const Fiber& f=G.cartan(*it).fiber();
     const WeightInvolution& theta = f.involution();
 
     // put in $q$ the matrix of $\theta-1$
@@ -178,7 +178,7 @@ SRK_context::SRK_context(realredgp::RealReductiveGroup &GR)
     inv_basis.block(l,0,n,n).swap(ci.freeProjector); // final |n-l| rows
 
     subquotient::SmallSubspace
-      (bitvector::BinaryMap(lattice::eigen_lattice(theta.transposed(),-1)))
+      (BinaryMap(lattice::eigen_lattice(theta.transposed(),-1)))
       .swap(ci.fiber_modulus);
 
     { // find simple roots orthogonal to |real2rho| and |imaginary2rho|
@@ -232,7 +232,7 @@ Weight SRK_context::lift(size_t cn, HCParam p) const
 }
 
 StandardRepK SRK_context::std_rep
-  (const Weight& two_lambda, tits::TitsElt a) const
+  (const Weight& two_lambda, TitsElt a) const
 {
   const WeylGroup& W=weylGroup();
   const RootDatum& rd=rootDatum();
@@ -262,7 +262,7 @@ StandardRepK SRK_context::std_rep
 // it should only transform the parameters for the Levi factor given by |gens|
 // since |lambda| is $\rho$-centered, care should be taken in transforming it
 RawRep SRK_context::Levi_rep
-    (Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
+    (Weight lambda, TitsElt a, bitset::RankFlags gens)
   const
 {
   TwistedInvolution sigma=a.tw();
@@ -345,7 +345,7 @@ bool SRK_context::isStandard(const StandardRepK& sr, size_t& witness) const
 {
   const RootDatum& rd=rootDatum();
   Weight lambda=lift(sr);
-  const cartanclass::Fiber& f=fiber(sr);
+  const Fiber& f=fiber(sr);
 
   for (size_t i=0; i<f.imaginaryRank(); ++i)
     if (lambda.scalarProduct(rd.coroot(f.simpleImaginary(i)))<0)
@@ -374,8 +374,8 @@ bool SRK_context::isZero(const StandardRepK& sr, size_t& witness) const
 {
   const RootDatum& rd=rootDatum();
   Weight lambda=lift(sr);
-  const cartanclass::Fiber& f=fiber(sr);
-  tits::TitsElt a=titsElt(sr);
+  const Fiber& f=fiber(sr);
+  TitsElt a=titsElt(sr);
 
   for (size_t i=0; i<f.imaginaryRank(); ++i)
     if (not basedTitsGroup().grading(a,f.simpleImaginary(i)) // i.e., compact
@@ -391,7 +391,7 @@ bool SRK_context::isFinal(const StandardRepK& sr, size_t& witness) const
 {
   const RootDatum& rd=rootDatum();
   Weight lambda=lift(sr);
-  const cartanclass::Fiber& f=fiber(sr);
+  const Fiber& f=fiber(sr);
 
   // since coordinates are doubled, the scalar product below is always even
   for (size_t i=0; i<f.realRank(); ++i)
@@ -489,7 +489,7 @@ SRK_context::theta_stable_parabolic
   const TwistedWeylGroup& W=twistedWeylGroup();
 
   Weight dom=theta_lift(sr);
-  tits::TitsElt strong=titsElt(sr);
+  TitsElt strong=titsElt(sr);
 
   WeylWord ww; // conjugating element
 
@@ -554,15 +554,15 @@ SRK_context::theta_stable_parabolic
 
 } // |theta_stable_parabolic|
 
-kgb::KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
+KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
 {
   bitmap::BitMap flagged(kgb().size());
-  tits::TitsElt strong=q.strong_involution();
+  TitsElt strong=q.strong_involution();
 
-  kgb::KGBElt root=kgb::UndefKGB;
+  KGBElt root=UndefKGB;
   {
-    kgb::KGBEltPair packet=kgb().tauPacket(q.involution());
-    kgb::KGBElt x;
+    KGBEltPair packet=kgb().tauPacket(q.involution());
+    KGBElt x;
     for (x=packet.first; x<packet.second; ++x)
       if (kgb().titsElt(x)==q.strong_involution())
       {
@@ -572,19 +572,19 @@ kgb::KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
   }
 
   flagged.insert(root);
-  std::deque<kgb::KGBElt> queue(1,root);
+  std::deque<KGBElt> queue(1,root);
   do
   {
-    kgb::KGBElt x=queue.front(); queue.pop_front();
+    KGBElt x=queue.front(); queue.pop_front();
     for (bitset::RankFlags::iterator it=q.Levi_gens().begin(); it(); ++it)
     {
-      kgb::KGBElt y=kgb().cross(*it,x);
+      KGBElt y=kgb().cross(*it,x);
       if (not flagged.isMember(y))
       {
 	flagged.insert(y); queue.push_back(y);
       }
       y=kgb().inverseCayley(*it,x).first; // second will follow if present
-      if (y!=kgb::UndefKGB and not flagged.isMember(y))
+      if (y!=UndefKGB and not flagged.isMember(y))
       {
 	flagged.insert(y); queue.push_back(y);
       }
@@ -592,14 +592,14 @@ kgb::KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
   }
   while (not queue.empty());
 
-  return kgb::KGBEltList(flagged.begin(),flagged.end());
+  return KGBEltList(flagged.begin(),flagged.end());
 } // sub_KGB
 
 RawChar SRK_context::KGB_sum(const PSalgebra& q,
 			     const Weight& lambda) const
 {
   const RootDatum& rd=rootDatum();
-  kgb::KGBEltList sub=sub_KGB(q); std::reverse(sub.begin(),sub.end());
+  KGBEltList sub=sub_KGB(q); std::reverse(sub.begin(),sub.end());
 
   std::vector<size_t> sub_inv(kgb().size(),~0ul);
 
@@ -613,7 +613,7 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
 
   for (size_t i=1; i<sub.size(); ++i)
   {
-    kgb::KGBElt x=sub[i];
+    KGBElt x=sub[i];
     bitset::RankFlags::iterator it;
     for (it=q.Levi_gens().begin(); it(); ++it)
     {
@@ -630,7 +630,7 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
     // now similarly try Cayley transforms
     for (it=q.Levi_gens().begin(); it(); ++it)
     {
-      if (kgb().cayley(*it,x)!=kgb::UndefKGB) // then we can use this Cayley
+      if (kgb().cayley(*it,x)!=UndefKGB) // then we can use this Cayley
       {
 	size_t k=sub_inv[kgb().cayley(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
@@ -651,7 +651,7 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
   RawChar result;
   for (size_t i=0; i<sub.size(); ++i)
   {
-    kgb::KGBElt x=sub[i];
+    KGBElt x=sub[i];
     RawRep r(mu[i],kgb().titsElt(x));
     result += RawChar(r, ((max_l-kgb().length(x))%2 == 0 ? 1 : -1));
   }
@@ -683,9 +683,8 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
   {
     Char::coef_t c=it->second; // coefficient from |KGB_sum_q|
     const Weight& mu=it->first.first; // weight from |KGB_sum_q|
-    const tits::TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_q|
-    cartanclass::InvolutionData id =
-      cartanclass::InvolutionData::build(complexGroup(),strong.tw());
+    const TitsElt& strong=it->first.second; // Tits elt from |KGB_sum_q|
+    InvolutionData id = complexGroup().involution_data(strong.tw());
 
     RootNbrSet A(rd.numRoots());
     for (bitmap::BitMap::iterator
@@ -745,7 +744,7 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
 				  const Weight& lambda) const
 {
   const RootDatum& rd=rootDatum();
-  kgb::KGBEltList sub=sub_KGB(p); std::reverse(sub.begin(),sub.end());
+  KGBEltList sub=sub_KGB(p); std::reverse(sub.begin(),sub.end());
 
   std::vector<size_t> sub_inv(kgb().size(),~0ul);
 
@@ -759,7 +758,7 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
 
   for (size_t i=1; i<sub.size(); ++i)
   {
-    kgb::KGBElt x=sub[i];
+    KGBElt x=sub[i];
     bitset::RankFlags::iterator it;
     for (it=p.Levi_gens().begin(); it(); ++it)
     {
@@ -776,7 +775,7 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
     // now similarly try Cayley transforms
     for (it=p.Levi_gens().begin(); it(); ++it)
     {
-      if (kgb().cayley(*it,x)!=kgb::UndefKGB) // then we can use this Cayley
+      if (kgb().cayley(*it,x)!=UndefKGB) // then we can use this Cayley
       {
 	size_t k=sub_inv[kgb().cayley(*it,x)];
 	assert(k!=~0ul); // we ought to land in the subset
@@ -797,7 +796,7 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
   Raw_q_Char result;
   for (size_t i=0; i<sub.size(); ++i)
   {
-    kgb::KGBElt x=sub[i];
+    KGBElt x=sub[i];
     RawRep r(mu[i],kgb().titsElt(x));
     size_t codim=max_l-kgb().length(x);
     result += Raw_q_Char(r,q_CharCoeff(codim,codim%2==0 ? 1 : -1)); // $(-q)^c$
@@ -831,9 +830,8 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
   {
     q_CharCoeff c=it->second; // coefficient from |q_KGB_sum|
     const Weight& mu=it->first.first; // weight from |q_KGB_sum|
-    const tits::TitsElt& strong=it->first.second; // Tits elt from |q_KGB_sum|
-    cartanclass::InvolutionData id =
-      cartanclass::InvolutionData::build(complexGroup(),strong.tw());
+    const TitsElt& strong=it->first.second; // Tits elt from |q_KGB_sum|
+    InvolutionData id = complexGroup().involution_data(strong.tw());
 
     RootNbrSet A(rd.numRoots());
     for (bitmap::BitMap::iterator
@@ -896,7 +894,7 @@ SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
 {
   HechtSchmid id(sr);
   const RootDatum& rd=rootDatum();
-  tits::TitsElt a=titsElt(sr);
+  TitsElt a=titsElt(sr);
   Weight lambda=lift(sr);
   assert(rd.isPosRoot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
 
@@ -992,7 +990,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
   const RootDatum& rd=rootDatum();
   assert(rd.isPosRoot(alpha)); // in fact it must be simple-real for |a.tw()|
 
-  tits::TitsElt a=titsElt(sr);
+  TitsElt a=titsElt(sr);
 
   Weight lambda = lift(sr);
   subquotient::SmallSubspace mod_space=
@@ -1069,7 +1067,7 @@ q_Char
 SRK_context::q_HS_id_eq(const StandardRepK& sr, RootNbr alpha) const
 {
   const RootDatum& rd=rootDatum();
-  tits::TitsElt a=titsElt(sr);
+  TitsElt a=titsElt(sr);
   Weight lambda=lift(sr);
   assert(rd.isPosRoot(alpha)); // indeed |alpha| simple-imaginary for |a.tw()|
 
@@ -1183,7 +1181,7 @@ std::ostream& SRK_context::print(std::ostream& strm,const q_Char& ch) const
 
 
 KhatContext::KhatContext
-  (realredgp::RealReductiveGroup &GR)
+  (RealReductiveGroup &GR)
     : SRK_context(GR)
     , nonfinal_pool(),final_pool()
     , nonfinals(nonfinal_pool), finals(final_pool)
@@ -1193,7 +1191,7 @@ KhatContext::KhatContext
 {}
 
 qKhatContext::qKhatContext
-  (realredgp::RealReductiveGroup &GR)
+  (RealReductiveGroup &GR)
     : SRK_context(GR)
     , nonfinal_pool(),final_pool()
     , nonfinals(nonfinal_pool), finals(final_pool)
@@ -1677,7 +1675,7 @@ void KhatContext::go(const StandardRepK& initial)
     {
       const StandardRepK& sr=nonfinal_pool[i];
       size_t witness;
-      const cartanclass::Fiber& f=fiber(sr);
+      const Fiber& f=fiber(sr);
       print(std::cout << 'N' << i << ": ",sr) << " [" << height(sr) << ']';
 
       if (not isStandard(sr,witness))
@@ -1718,16 +1716,15 @@ void KhatContext::go(const StandardRepK& initial)
 
 ******************************************************************************/
 
-PSalgebra::PSalgebra(tits::TitsElt base,
-		     const complexredgp::ComplexReductiveGroup& G)
+PSalgebra::PSalgebra(TitsElt base,
+		     const ComplexReductiveGroup& G)
     : strong_inv(base)
     , cn(G.class_number(base.tw()))
     , sub_diagram() // class |RankFlags| needs no dimensioning
     , nilpotents(G.rootDatum().numRoots())
 {
   const RootDatum& rd=G.rootDatum();
-  cartanclass::InvolutionData id =
-      cartanclass::InvolutionData::build(G,base.tw());
+  InvolutionData id = G.involution_data(base.tw());
 
   // Put real simple roots into Levi factor
   for (size_t i=0; i<rd.semisimpleRank(); ++i)

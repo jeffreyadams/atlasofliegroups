@@ -103,7 +103,9 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   // untwisted action of |ww|, as matrix on parent side
   LatticeMatrix action_matrix(const WeylWord& ww) const;
 
-  gradings::Grading induced(gradings::Grading base_grading) const;
+  InvolutionData involution_data (const WeightInvolution& theta) const;
+
+  Grading induced(Grading base_grading) const;
 
 }; // |class SubSystem|
 
@@ -121,16 +123,16 @@ class SubDatum : public SubSystem
 {
   WeylWord base_ww;  // we need this variable mostly in the constructor!
   WeightInvolution delta; // together with twist: what was missing
-  tits::TitsGroup Tg; // twisted Weyl group, plus stuff our base class knows
+  TitsGroup Tg; // twisted Weyl group, plus stuff our base class knows
   WeylElt ini_tw; // records involution of initial |x| wrt |SubSystem|
 
   size_t rank() const; // forbid using this directly
  public:
-  SubDatum(realredgp::RealReductiveGroup& GR,
+  SubDatum(RealReductiveGroup& GR,
 	   const RatWeight& gamma,
-	   kgb::KGBElt x);
+	   KGBElt x);
 
-  const tits::TitsGroup& Tits_group() const {return Tg; }
+  const TitsGroup& Tits_group() const {return Tg; }
   TwistedInvolution init_twisted() const { return ini_tw; }
   const WeylWord& base_twisted_in_parent() const { return base_ww; }
 

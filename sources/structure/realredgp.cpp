@@ -12,7 +12,7 @@
 
 #include "realredgp.h"
 
-#include "cartanclass.h"
+#include "cartanclass.h"  // using functions
 #include "complexredgp.h"
 #include "rootdata.h"
 #include "tori.h"
@@ -37,12 +37,12 @@ namespace realredgp {
   reductive group and a real form.
 */
 RealReductiveGroup::RealReductiveGroup
-  (complexredgp::ComplexReductiveGroup& G_C, realform::RealForm rf)
+  (ComplexReductiveGroup& G_C, RealFormNbr rf)
   : d_complexGroup(G_C)
   , d_realForm(rf)
   , d_connectivity() // wait for most split torus to be constructed below
   , d_Tg(new // allocate private copy
-	 tits::TitsCoset(G_C,tits::square_class_grading_offset
+	 TitsCoset(G_C,tits::square_class_grading_offset
 			 (G_C.fundamental(),square_class(),G_C.rootDatum())))
   , kgb_ptr(NULL)
   , d_status()
@@ -59,7 +59,7 @@ RealReductiveGroup::RealReductiveGroup
 
 #ifndef NDEBUG
   // construct the torus for the most split Cartan
-  const cartanclass::Fiber& fundf = G_C.fundamental();
+  const Fiber& fundf = G_C.fundamental();
   RootNbrSet so= cartanclass::toMostSplit(fundf,rf,G_C.rootSystem());
 
   // recompute matrix of most split Cartan
@@ -91,16 +91,23 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
   std::swap(d_status,other.d_status);
 }
 
+Grading RealReductiveGroup::grading_offset()
+{
+  RootNbrSet rset= noncompactRoots(); // grading for real form rep
+  return cartanclass::restrictGrading(rset,rootDatum().simpleRootList());
+}
+
+
 // return stored KGB structure, after generating it if necessary
-const kgb::KGB& RealReductiveGroup::kgb()
+const KGB& RealReductiveGroup::kgb()
 {
   if (kgb_ptr==NULL)
-    kgb_ptr = new kgb::KGB(*this,Cartan_set()); // non-traditional is stored
+    kgb_ptr = new KGB(*this,Cartan_set()); // non-traditional is stored
   return *kgb_ptr;
 }
 
 // return stored Bruhat order of KGB, after generating it if necessary
-const bruhat::BruhatOrder RealReductiveGroup::Bruhat_KGB()
+const bruhat::BruhatOrder& RealReductiveGroup::Bruhat_KGB()
 {
   kgb(); // ensure |kgb_ptr!=NULL|, but we cannot use (|const|) result here
   return kgb_ptr->bruhatOrder(); // get Bruhat order (generate if necessary)

@@ -50,8 +50,8 @@ namespace bitmap {
   */
 class BitMap
 {
+  size_t d_capacity;
   std::vector<unsigned long> d_map;
-  unsigned long d_capacity;
   static unsigned long posBits;
   static unsigned long baseBits;
   static unsigned long baseShift;
@@ -78,31 +78,38 @@ class BitMap
   iterator end() const;
 
 // constructors and destructors
- BitMap() : d_map(), d_capacity(0) {} // create a bitmap without capacity
+ BitMap() : d_capacity(0), d_map() {} // create a bitmap without capacity
 
-   /*! \brief
-       Constructs a zero-initialized bitmap with a capacity of n bits.
+  /*! \brief
+    Constructs a zero-initialized bitmap with a capacity of n bits.
 
-      Note that the size of the vector |d_map| exceeds |n >> baseShift| by
-      one, unless |longBits| exactly divides |n|.
-   */
+    Note that the size of the vector |d_map| exceeds |n >> baseShift| by
+    one, unless |longBits| exactly divides |n|.
+  */
   explicit BitMap(unsigned long n)
-    : d_map((n+posBits)>>baseShift,0), d_capacity(n)
+    : d_capacity(n), d_map((d_capacity+posBits)>>baseShift,0)
   {}
 
-    //! \brief Copy constructor
- BitMap(const BitMap& b) : d_map(b.d_map), d_capacity(b.d_capacity) {}
+  //! \brief Copy constructor
+  BitMap(const BitMap& b) : d_capacity(b.d_capacity), d_map(b.d_map) {}
 
-    //! Set of offsets into [first,last[ of values (also) found in [fsub,lsub[
- template <typename I, typename J>
-   BitMap(const I& first, const I& last, const J& fsub, const J& lsub);
+  // convert range defined by iterators into a BitMap
+  template <typename I>
+    BitMap(unsigned long n, const I& first, const I& last);
 
- BitMap(unsigned long n,const std::vector<unsigned long> v)
-   : d_map((n+posBits)>>baseShift), d_capacity(n)
- {
-   for (size_t i=0; i<v.size(); ++i)
-     insert(v[i]);
- }
+  // an easier version for a full vector
+  template <typename U> // unsigned integral type
+  BitMap(unsigned long n,const std::vector<U>& v)
+    : d_capacity(n), d_map((d_capacity+posBits)>>baseShift)
+  {
+    for (size_t i=0; i<v.size(); ++i)
+      insert(v[i]);
+  }
+
+  //! Set of offsets into [first,last[ of values (also) found in [fsub,lsub[
+  template <typename I, typename J>
+    BitMap(const I& first, const I& last, const J& fsub, const J& lsub);
+
 
 // assignment
  BitMap& operator= (const BitMap&);

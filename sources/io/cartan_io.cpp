@@ -41,11 +41,11 @@ namespace cartan_io {
 std::ostream& printCartanClass(std::ostream& strm, size_t cn,
 			       complexredgp_io::Interface& CI)
 {
-  complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
+  ComplexReductiveGroup& G = CI.complexGroup();
   const RootSystem& rs = G.rootDatum();
 
-  const cartanclass::CartanClass& cc = G.cartan(cn);
-  const cartanclass::Fiber& f = cc.fiber();
+  const CartanClass& cc = G.cartan(cn);
+  const Fiber& f = cc.fiber();
 
   prettyprint::printTorusType(strm,f.torus()) << std::endl;
 
@@ -86,7 +86,7 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
   else
     strm << "complex factor: " << clt << std::endl;
 
-  realform::RealFormList rfl(cc.numRealForms());
+  RealFormNbrList rfl(cc.numRealForms());
   const realform_io::Interface& rfi = CI.realFormInterface();
 
   for (size_t i = 0; i < rfl.size(); ++i)
@@ -99,8 +99,8 @@ std::ostream& printCartanClass(std::ostream& strm, size_t cn,
 
 
 // Print the fiber data.
-std::ostream& printFiber(std::ostream& strm, const cartanclass::Fiber& f,
-			 const realform::RealFormList& rfl)
+std::ostream& printFiber(std::ostream& strm, const Fiber& f,
+			 const RealFormNbrList& rfl)
 {
   const partition::Partition& pi = f.weakReal();
   unsigned long c = 0;
@@ -127,8 +127,8 @@ std::ostream& printFiber(std::ostream& strm, const cartanclass::Fiber& f,
   The gradings are output in the same order as the orbit corresponding to the
   real form is output in the "cartan" command.
 */
-std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
-			    const realform::RealFormList& rfl,
+std::ostream& printGradings(std::ostream& strm, const Fiber& f,
+			    const RealFormNbrList& rfl,
 			    const RootSystem& rs)
 {
   typedef std::vector<unsigned long>::const_iterator VI;
@@ -159,7 +159,7 @@ std::ostream& printGradings(std::ostream& strm, const cartanclass::Fiber& f,
     for (VI j = i->first; j != i_last; ++j) {
       if (j != i_first)
 	os << ',';
-      gradings:: Grading gr= a.pull_back(f.grading(*j));
+      Grading gr= a.pull_back(f.grading(*j));
       prettyprint::prettyPrint(os,gr,f.simpleImaginary().size());
     }
 

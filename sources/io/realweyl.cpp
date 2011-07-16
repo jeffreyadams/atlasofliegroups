@@ -21,11 +21,11 @@ namespace atlas {
 namespace {
 void orthogonalMAlpha(RootNbrList&,
 		      unsigned long,
-		      const cartanclass::Fiber&,
+		      const Fiber&,
 		      const RootDatum&);
 void rGenerators(SmallBitVectorList&,
 		 const RootNbrList&,
-		 const cartanclass::Fiber&,
+		 const Fiber&,
 		 const RootDatum&);
 }
 
@@ -37,7 +37,7 @@ void rGenerators(SmallBitVectorList&,
 
 namespace realweyl {
 
-RealWeyl::RealWeyl(const cartanclass::CartanClass& cc,
+RealWeyl::RealWeyl(const CartanClass& cc,
 		   unsigned long x, unsigned long y,
 		   const RootDatum& rd, const WeylGroup& W)
   :d_group(&W)
@@ -86,7 +86,7 @@ RealWeyl::RealWeyl(const cartanclass::CartanClass& cc,
 namespace realweyl {
 
 RealWeylGenerators::RealWeylGenerators(const RealWeyl& rw,
-				       const cartanclass::CartanClass& cc,
+				       const CartanClass& cc,
 				       const RootDatum& rd)
   :d_group(&rw.weylGroup())
 
@@ -239,7 +239,7 @@ namespace {
   NOTE: they are even super-orthogonal, see IC4, prop 3.20.
 */
 void orthogonalMAlpha(RootNbrList& rl, unsigned long x,
-		      const cartanclass::Fiber& f,
+		      const Fiber& f,
 		      const RootDatum& rd)
 {
   Weight tworho_ic = compactTwoRho(x,f,rd);
@@ -270,11 +270,11 @@ void orthogonalMAlpha(RootNbrList& rl, unsigned long x,
 */
 void rGenerators(SmallBitVectorList& cl,
 		 const RootNbrList& rl,
-		 const cartanclass::Fiber& f,
+		 const Fiber& f,
 		 const RootDatum& rd)
 {
   size_t rln = rl.size();
-  bitvector::BinaryMap m(f.fiberRank(),rln);
+  BinaryMap m(f.fiberRank(),rln);
 
   for (size_t j=0; j<rln; ++j)
   {

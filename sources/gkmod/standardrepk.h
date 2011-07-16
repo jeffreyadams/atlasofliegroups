@@ -24,7 +24,6 @@ StandardRepK and KhatContext.
 #include "bitset.h"
 #include "bitvector_fwd.h"
 #include "realredgp.h"
-#include "realform.h"
 #include "tits.h"
 #include "kgb.h"
 #include "hashtable.h"
@@ -57,7 +56,7 @@ typedef Char::coef_t CharCoeff;
 // a $K$-type formula; first component stands for its lowest $K$-type
 typedef std::pair<StandardRepK,Char> CharForm;
 
-typedef std::pair<Weight,tits::TitsElt> RawRep;
+typedef std::pair<Weight,TitsElt> RawRep;
 typedef free_abelian::Free_Abelian<RawRep> RawChar;
 
 
@@ -231,7 +230,7 @@ struct Cartan_info
   // projection matrix to torsion free part
   int_Matrix freeProjector;
   // projection matrix to torsion part, after rho-shift and reduction mod 2
-  bitvector::BinaryMap torsionProjector;
+  BinaryMap torsionProjector;
 
   // matrix used to lift free part of |HCParam| back to a weight
   int_Matrix freeLift;
@@ -282,12 +281,12 @@ struct bitset_entry : public bitset::RankFlags
  */
 class SRK_context
 {
-  realredgp::RealReductiveGroup& G;
+  RealReductiveGroup& G;
   bitmap::BitMap Cartan_set;       // marks recorded Cartan class numbers
   std::vector<Cartan_info> C_info; // indexed by number of Cartan for |GR|
 
 // this member is precomputed to increase efficiency of certain operations
-  std::vector<bitvector::BinaryMap> simple_reflection_mod_2; // dual side
+  std::vector<BinaryMap> simple_reflection_mod_2; // dual side
 
 // we cache a number of |proj_info| values, indexed by sets of generators
   bitset_entry::Pooltype proj_pool;
@@ -295,29 +294,29 @@ class SRK_context
   std::vector<proj_info> proj_data;
 
  public:
-  SRK_context(realredgp::RealReductiveGroup &G);
+  SRK_context(RealReductiveGroup &G);
 
   // accessors
-  complexredgp::ComplexReductiveGroup& complexGroup() const
+  ComplexReductiveGroup& complexGroup() const
     { return G.complexGroup(); }
   const RootDatum& rootDatum() const { return G.rootDatum(); }
   const WeylGroup& weylGroup() const { return G.weylGroup(); }
   const TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
-  const tits::TitsGroup& titsGroup() const { return G.titsGroup(); }
-  const tits::TitsCoset& basedTitsGroup() const
+  const TitsGroup& titsGroup() const { return G.titsGroup(); }
+  const TitsCoset& basedTitsGroup() const
     { return G.basedTitsGroup(); }
 
   const TwistedInvolution twistedInvolution(size_t cn) const
     { return complexGroup().twistedInvolution(cn); }
-  const cartanclass::Fiber& fiber(const StandardRepK& sr) const
+  const Fiber& fiber(const StandardRepK& sr) const
     { return G.cartan(sr.Cartan()).fiber(); }
 
-  const kgb::KGB& kgb() const { return G.kgb(); }
+  const KGB& kgb() const { return G.kgb(); }
 
   const Cartan_info& info(size_t cn) const
     { return C_info[Cartan_set.position(cn)]; }
-  const bitvector::BinaryMap& dual_reflection(weyl::Generator i) const
+  const BinaryMap& dual_reflection(weyl::Generator i) const
   { return simple_reflection_mod_2[i]; }
 
   //!\brief Projection |Weight| (in doubled coordinates) to |HCParam|
@@ -341,22 +340,22 @@ class SRK_context
   { return theta_lift(s.d_cartan,s.d_lambda); }
 
   StandardRepK std_rep
-    (const Weight& two_lambda, tits::TitsElt a) const;
+    (const Weight& two_lambda, TitsElt a) const;
 
   StandardRepK std_rep_rho_plus
-    (Weight lambda, tits::TitsElt a) const
+    (Weight lambda, TitsElt a) const
     {
       (lambda *= 2) += rootDatum().twoRho();
       return std_rep(lambda,a);
     }
 
   RawRep Levi_rep
-    (Weight lambda, tits::TitsElt a, bitset::RankFlags gens)
+    (Weight lambda, TitsElt a, bitset::RankFlags gens)
     const;
 
 
   // RepK from KGB number only, with |lambda=rho|; method is currently unused
-  StandardRepK KGB_elt_rep(kgb::KGBElt z) const
+  StandardRepK KGB_elt_rep(KGBElt z) const
   { return std_rep(rootDatum().twoRho(),kgb().titsElt(z)); }
 
 /*
@@ -390,14 +389,14 @@ class SRK_context
 		       Weight lambda,
 		       const Weight& cowt) const;
 
-  tits::TitsElt titsElt(const StandardRepK& s) const
+  TitsElt titsElt(const StandardRepK& s) const
   {
-    return tits::TitsElt(titsGroup(),
+    return TitsElt(titsGroup(),
 			 twistedInvolution(s.d_cartan),
 			 s.d_fiberElt);
   }
 
-  kgb::KGBEltList sub_KGB(const PSalgebra& q) const;
+  KGBEltList sub_KGB(const PSalgebra& q) const;
 
   PSalgebra theta_stable_parabolic
     (const StandardRepK& sr, WeylWord& conjugator) const;
@@ -478,7 +477,7 @@ class KhatContext : public SRK_context
 
 // constructors, destructors, and swap
 
-  KhatContext(realredgp::RealReductiveGroup &G);
+  KhatContext(RealReductiveGroup &G);
 
 // accessors and manipulators (manipulation only as side effect for efficiency)
 
@@ -547,7 +546,7 @@ class qKhatContext : public SRK_context
 
 // constructors, destructors, and swap
 
-  qKhatContext(realredgp::RealReductiveGroup &G);
+  qKhatContext(RealReductiveGroup &G);
 
 // accessors and manipulators (manipulation only as side effect for efficiency)
 
@@ -623,15 +622,15 @@ class HechtSchmid
 
 class PSalgebra // Parabolic subalgebra
 {
-  tits::TitsElt strong_inv; // corresponding strong involution
+  TitsElt strong_inv; // corresponding strong involution
   size_t cn; // number of the Cartan class
   bitset::RankFlags sub_diagram; // simple roots forming basis of Levi factor
   RootNbrSet nilpotents; // (positive) roots in nilpotent radical
  public:
-  PSalgebra (tits::TitsElt base,
-	     const complexredgp::ComplexReductiveGroup& G);
+  PSalgebra (TitsElt base,
+	     const ComplexReductiveGroup& G);
 
-  const tits::TitsElt& strong_involution() const { return strong_inv; }
+  const TitsElt& strong_involution() const { return strong_inv; }
   TwistedInvolution involution() const { return strong_inv.tw(); }
   size_t Cartan_no() const { return cn; }
   bitset::RankFlags Levi_gens() const { return sub_diagram; }

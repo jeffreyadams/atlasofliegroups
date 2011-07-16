@@ -59,7 +59,7 @@ namespace {
 
   // local variables
 
-  realredgp::RealReductiveGroup* G_R_pointer=NULL;
+  RealReductiveGroup* G_R_pointer=NULL;
 
 }
 
@@ -100,12 +100,12 @@ commands::CommandMode& realMode()
   return real_mode;
 }
 
-realredgp::RealReductiveGroup& currentRealGroup()
+RealReductiveGroup& currentRealGroup()
 {
   return *G_R_pointer;
 }
 
-realform::RealForm currentRealForm()
+RealFormNbr currentRealForm()
 {
   return G_R_pointer->realForm();
 }
@@ -133,7 +133,7 @@ void real_mode_entry() throw(commands::EntryError)
 {
   try
   {
-    G_R_pointer=new realredgp::RealReductiveGroup
+    G_R_pointer=new RealReductiveGroup
       (interactive::getRealGroup(mainmode::currentComplexInterface()));
   }
   catch(error::InputError& e)
@@ -173,7 +173,7 @@ namespace {
 */
 void components_f()
 {
-  const realredgp::RealReductiveGroup& G = currentRealGroup();
+  const RealReductiveGroup& G = currentRealGroup();
   size_t r = G.component_rank();
 
   if (r>0)
@@ -198,7 +198,7 @@ void cartan_f()
 // Print the Hasse diagram of the ordering of Cartan classes.
 void corder_f()
 {
-  realredgp::RealReductiveGroup& G_R = currentRealGroup();
+  RealReductiveGroup& G_R = currentRealGroup();
 
   std::cout << "Hasse diagram of Cartan class ordering:" << std::endl;
   realredgp_io::printCartanOrder(std::cout,G_R);
@@ -239,17 +239,17 @@ void realweyl_f()
 // Print the kgb table
 void kgb_f()
 {
-  realredgp::RealReductiveGroup& G_R = currentRealGroup();
+  RealReductiveGroup& G_R = currentRealGroup();
   std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
   ioutils::OutputFile file;
-  kgb::KGB kgb(G_R);
+  KGB kgb(G_R);
   kgb_io::printKGB(file,kgb); // generate traditionally, and forget
 }
 
 // Same, but with more info and non-traditional generation
 void KGB_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  RealReductiveGroup& G_R = realmode::currentRealGroup();
 
   ioutils::OutputFile f;
 
@@ -259,7 +259,7 @@ void KGB_f()
 // Print the Hasse diagram of the ordering of K orbits on G/B.
 void kgborder_f()
 {
-  realredgp::RealReductiveGroup& G = currentRealGroup();
+  RealReductiveGroup& G = currentRealGroup();
 
   std::cout << "kgbsize: " << G.KGB_size() << std::endl;
   ioutils::OutputFile file;
@@ -275,7 +275,7 @@ void kgborder_f()
 void type_f()
 {
   try {
-    complexredgp::ComplexReductiveGroup* G;
+    ComplexReductiveGroup* G;
     complexredgp_io::Interface* I;
 
     interactive::getInteractive(G,I);

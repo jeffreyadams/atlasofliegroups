@@ -24,19 +24,19 @@ namespace atlas {
 namespace kgb_io {
 
   std::ostream& print(std::ostream& strm,
-		      const kgb::KGB_base& kgb,
+		      const KGB_base& kgb,
 		      bool traditional =false,
-		      const complexredgp::ComplexReductiveGroup* G=NULL,
-		      const kgb::KGBEltList* which = NULL);
+		      const ComplexReductiveGroup* G=NULL,
+		      const KGBEltList* which = NULL);
 
-  std::ostream& printKGB(std::ostream&, const kgb::KGB&);
+  std::ostream& printKGB(std::ostream&, const KGB&);
   std::ostream& var_print_KGB(std::ostream&,
-			      const complexredgp::ComplexReductiveGroup&,
-			      const kgb::KGB&);
+			      const ComplexReductiveGroup&,
+			      const KGB&);
 
   std::ostream& print_sub_KGB(std::ostream& strm,
-			      const kgb::KGB& kgb,
-			      const kgb::KGBEltList& which);
+			      const KGB& kgb,
+			      const KGBEltList& which);
   std::ostream& print_X(std::ostream&, const kgb::global_KGB&);
 
   std::ostream& printBruhatOrder(std::ostream&, const bruhat::BruhatOrder&);

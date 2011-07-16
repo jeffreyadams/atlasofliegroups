@@ -107,7 +107,7 @@ namespace ratvec {
     return strm << o.str(); // now |strm.width()| is applied to whole fraction
   }
 
-} // |namespace latticetypes|
+} // |namespace ratvec|
 
 
 

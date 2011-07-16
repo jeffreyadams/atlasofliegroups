@@ -18,11 +18,6 @@
 
 namespace atlas {
 
-namespace realredgp {
-
-  class RealReductiveGroup;
-
-}
 
 }
 

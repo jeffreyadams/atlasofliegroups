@@ -9,6 +9,7 @@
 
 #include "bitmap.h"
 
+#include <algorithm> // for |lower_bound|
 #include "bits.h"
 
 #include <cassert>
@@ -79,6 +80,15 @@ namespace bitmap {
 
 /******** constructors and destructors ***************************************/
 
+template <typename I> // iterator type
+  BitMap::BitMap(unsigned long n, const I& first, const I& last)
+  : d_capacity(n)
+  , d_map((d_capacity+posBits)>>baseShift,0)
+{
+  for (I it = first; it!=last; ++it)
+    insert(*it);
+}
+
 /*!
   In this constructor template we assume that I and J are iterator types with
   the same value_type. The idea is that [first,last[ is an ordered range,
@@ -90,9 +100,9 @@ namespace bitmap {
 */
 template <typename I, typename J>
   BitMap::BitMap(const I& first, const I& last, const J& fsub, const J& lsub)
+  : d_capacity(last-first)
+  , d_map((d_capacity+posBits)>>baseShift,0)
 {
-  resize(last-first);
-
   for (J j = fsub; j != lsub; ++j)
     insert(lower_bound(first,last,*j)-first);
 }
@@ -619,6 +629,13 @@ void BitMap::iterator::change_owner(const BitMap& b)
 template void BitMap::insert
  (std::vector<unsigned short>::iterator,
   std::vector<unsigned short>::iterator); // root sets from RootNbrList
+
+// These instantiations are not used, but may serve to test compilation:
+
+// typedef std::vector<unsigned short>::iterator VI;
+
+// template BitMap::BitMap(unsigned long n, const VI& first, const VI& last);
+// template BitMap::BitMap(const VI& f,const VI& l, const VI& sf,const VI& sl);
 
 } // |namespace bitmap|
 

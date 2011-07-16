@@ -15,19 +15,12 @@
 #define REALREDGP_H
 
 #include "bitmap_fwd.h"
-#include "gradings_fwd.h"
 #include "poset_fwd.h"
-#include "realredgp_fwd.h"
+#include "atlas_types.h"
 
-#include "rootdata.h"
-#include "cartanclass.h"
-#include "weyl.h"
-#include "tits.h"
-#include "complexredgp.h"
-#include "realform.h"
-#include "topology.h"
-#include "kgb_fwd.h"
-#include "bruhat_fwd.h"
+#include "complexredgp.h" // inline methods
+#include "topology.h"	// containment of |Connectivity| field
+
 
 /******** type definitions **************************************************/
 
@@ -57,33 +50,33 @@ class RealReductiveGroup
   // we do not own the complex group; a RealReductiveGroup should be seen
   // as dependent on a complex group; when the complex group changes,
   // the dependent RealReductiveGroup objects are invalidated
-  complexredgp::ComplexReductiveGroup& d_complexGroup;
+  ComplexReductiveGroup& d_complexGroup;
 
-  realform::RealForm d_realForm; // our identification number
+  RealFormNbr d_realForm; // our identification number
   topology::Connectivity d_connectivity; // characterss of componentn group
 
-  const tits::TitsCoset* d_Tg; // owned pointer; the group is stored here
-  kgb::KGB* kgb_ptr; // owned pointer, but initially |NULL|
+  const TitsCoset* d_Tg; // owned pointer; the group is stored here
+  KGB* kgb_ptr; // owned pointer, but initially |NULL|
 
   Status d_status;
 
  public:
 
 // constructors and destructors
-  RealReductiveGroup(complexredgp::ComplexReductiveGroup&, realform::RealForm);
+  RealReductiveGroup(ComplexReductiveGroup&, RealFormNbr);
   ~RealReductiveGroup(); // not inline: type incomplete; deletes d_Tg, kgb_ptr
 
 // accessors
-  const complexredgp::ComplexReductiveGroup& complexGroup() const
+  const ComplexReductiveGroup& complexGroup() const
     { return d_complexGroup; }
 
-  realform::RealForm realForm() const { return d_realForm; }
+  RealFormNbr realForm() const { return d_realForm; }
 
   const RootDatum& rootDatum() const
     { return d_complexGroup.rootDatum(); }
 
-  const tits::TitsCoset& basedTitsGroup() const { return *d_Tg; }
-  const tits::TitsGroup& titsGroup() const  { return d_Tg->titsGroup(); }
+  const TitsCoset& basedTitsGroup() const { return *d_Tg; }
+  const TitsGroup& titsGroup() const  { return d_Tg->titsGroup(); }
 
   const WeylGroup& weylGroup() const
     { return d_complexGroup.weylGroup(); }
@@ -98,7 +91,7 @@ class RealReductiveGroup
 
   Precondition: cn belongs to cartanSet().
 */
-  const cartanclass::CartanClass& cartan(size_t cn) const
+  const CartanClass& cartan(size_t cn) const
     { return d_complexGroup.cartan(cn); }
 
   bool isConnected() const { return d_status[IsConnected]; }
@@ -136,11 +129,7 @@ representative (in the adjoint fiber) of the real form of |G|. The result is
 formed by extracting only the information concerning the presence of the
 \emph{simple} roots in |rset|.
 */
-  gradings::Grading grading_offset()
-    {
-      RootNbrSet rset= noncompactRoots(); // grading for real form rep
-      return cartanclass::restrictGrading(rset,rootDatum().simpleRootList());
-    }
+  Grading grading_offset();
 
   cartanclass::square_class square_class() const
     { return d_complexGroup.fundamental().central_square_class(d_realForm); }
@@ -163,11 +152,11 @@ formed by extracting only the information concerning the presence of the
 // manipulators
   void swap(RealReductiveGroup&);
 
-  complexredgp::ComplexReductiveGroup& complexGroup()
+  ComplexReductiveGroup& complexGroup()
     { return d_complexGroup; }
 
-  const kgb::KGB& kgb();
-  const bruhat::BruhatOrder Bruhat_KGB();
+  const KGB& kgb();
+  const bruhat::BruhatOrder& Bruhat_KGB();
 
 }; // |class RealReductiveGroup|
 

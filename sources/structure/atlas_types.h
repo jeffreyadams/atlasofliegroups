@@ -30,6 +30,7 @@
 
 #include "constants.h"
 
+#include "bitset_fwd.h"
 #include "bitmap_fwd.h"
 #include "matrix_fwd.h"
 #include "ratvec_fwd.h"
@@ -96,6 +97,7 @@ namespace atlas {
     class RootDatum;
     typedef int_Vector Root;
     typedef WeightList::const_iterator WRootIterator;
+    class SubSystem;
   }
   using rootdata::RootSystem;
   using rootdata::RootDatum;
@@ -104,6 +106,8 @@ namespace atlas {
   typedef bitmap::BitMap RootNbrSet;
 
   namespace weyl {
+    class WeylInterface;
+    typedef WeylInterface Twist; // use the same implementation
     typedef unsigned char Generator; // index of simple root / simple reflection
     struct WeylWord : public std::vector<Generator>  { }; // in weyl namesace
 
@@ -114,6 +118,7 @@ namespace atlas {
     typedef WeylElt TwistedInvolution;
     typedef std::vector<WeylElt> WeylEltList;
     typedef std::vector<TwistedInvolution> TwistedInvolutionList;
+    struct TI_Entry; // for |TwistedInvolution|s in hash tables
 
     typedef std::vector<signed char> InvolutionWord;
   }
@@ -124,6 +129,100 @@ namespace atlas {
   using weyl::TwistedInvolution;
   using weyl::WeylEltList;
   using weyl::TwistedInvolutionList;
+
+  namespace tits {
+    typedef SmallBitVector TorusPart;
+    class TorusElement;
+    class GlobalTitsElement;
+    class GlobalTitsGroup;
+    class SubTitsGroup;
+    class TitsElt;
+    class TitsGroup;
+    struct TE_Entry;
+    class TitsCoset;
+    class EnrichedTitsGroup;
+  }
+  using tits::TorusPart;
+  using tits::TorusElement;
+  using tits::GlobalTitsElement;
+  using tits::GlobalTitsGroup;
+  using tits::TitsElt;
+  using tits::TitsGroup;
+  using tits::TitsCoset;
+
+  namespace gradings {
+    class Status;
+    struct GradingCompare;
+  }
+  typedef bitset::RankFlags Grading;
+  typedef std::vector<Grading> GradingList;
+
+  namespace tori { class RealTorus; }
+  namespace topology { class Connectivity; }
+
+  typedef unsigned short RealFormNbr; // index used in |ComplexReductiveGrooup|
+  typedef std::vector<RealFormNbr> RealFormNbrList;
+
+  namespace cartanclass {
+    class InvolutionData;
+    class Fiber;
+    class CartanClass;
+    typedef unsigned short fiber_orbit; // # of W_imag orbit in fiber group
+    typedef unsigned short adjoint_fiber_orbit; // same for adjoint fiber group
+    typedef unsigned short square_class; // identifies a class of real forms
+    typedef std::pair<fiber_orbit,square_class> StrongRealFormRep;
+  }
+  using cartanclass::InvolutionData;
+  using cartanclass::Fiber;
+  using cartanclass::CartanClass;
+
+  namespace complexredgp { class ComplexReductiveGroup; }
+  using complexredgp::ComplexReductiveGroup;
+
+  namespace realredgp { class RealReductiveGroup; }
+  using realredgp::RealReductiveGroup;
+
+  namespace kgb {
+    class KGB_base;
+    struct KGB_elt_entry;
+    class GlobalFiberData;
+    class global_KGB;
+    class KGB;
+    class subsys_KGB;
+    typedef bitset::RankFlags DescentSet;
+  }
+  using kgb::KGB_base;
+  using kgb::KGB_elt_entry;
+  using kgb::global_KGB;
+  using kgb::KGB;
+  typedef unsigned int KGBElt;
+  typedef std::vector<KGBElt> KGBEltList;
+
+  typedef std::pair<KGBElt,KGBElt> KGBEltPair;
+  typedef std::vector<KGBEltPair> KGBEltPairList;
+
+  typedef bitset::RankFlags DescentSet;
+  static const KGBElt UndefKGB = ~0u;
+
+  namespace bruhat { class BruhatOrder; }
+  using bruhat::BruhatOrder;
+
+  namespace descents { class DescentStatus; }
+  using descents::DescentStatus;
+  typedef std::vector<DescentStatus> DescentStatusList;
+
+  namespace blocks {
+    class Block_base;
+    class Block;
+    class non_integral_block;
+  }
+  using blocks::Block_base;
+  using blocks::Block;
+  using blocks::non_integral_block;
+  typedef unsigned int BlockElt;
+  typedef std::vector<BlockElt> BlockEltList;
+  typedef std::pair<BlockElt,BlockElt> BlockEltPair;
+  typedef std::vector<BlockEltPair> BlockEltPairList;
 
 } // |namespace atlas|
 

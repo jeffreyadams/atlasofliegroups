@@ -18,11 +18,6 @@
 
 namespace atlas {
 
-namespace complexredgp {
-
-  class ComplexReductiveGroup;
-
-}
 
 }
 

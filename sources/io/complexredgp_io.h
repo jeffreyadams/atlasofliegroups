@@ -37,7 +37,7 @@ class Interface {
 
  private:
 
-  complexredgp::ComplexReductiveGroup* d_complexGroup;
+  ComplexReductiveGroup* d_complexGroup;
 
   realform_io::Interface d_realFormInterface;
   realform_io::Interface d_dualRealFormInterface;
@@ -47,10 +47,10 @@ class Interface {
 // constructors and destructors
   Interface():d_complexGroup(0) {}
 
-  explicit Interface(complexredgp::ComplexReductiveGroup& G)
+  explicit Interface(ComplexReductiveGroup& G)
     :d_complexGroup(&G) {}
 
-  Interface(complexredgp::ComplexReductiveGroup&, const lietype::Layout&);
+  Interface(ComplexReductiveGroup&, const lietype::Layout&);
 
   ~Interface() {}
 
@@ -58,7 +58,7 @@ class Interface {
   void swap(Interface&);
 
 // accessors
-  const complexredgp::ComplexReductiveGroup& complexGroup() const {
+  const ComplexReductiveGroup& complexGroup() const {
     return *d_complexGroup;
   }
 
@@ -71,7 +71,7 @@ class Interface {
   }
 
 // manipulators
-  complexredgp::ComplexReductiveGroup& complexGroup() {
+  ComplexReductiveGroup& complexGroup() {
     return *d_complexGroup;
   }
 

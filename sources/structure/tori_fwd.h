@@ -18,12 +18,6 @@
 
 namespace atlas {
 
-namespace tori {
-
-  class RealTorus;
-
-}
-
 }
 
 #endif

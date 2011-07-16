@@ -24,7 +24,6 @@
 #include "ioutils.h"
 #include "partition.h"
 #include "poset.h"
-#include "realform.h"
 #include "realredgp.h"
 #include "realweyl.h"
 #include "realweyl_io.h"
@@ -43,19 +42,19 @@ namespace atlas {
 namespace realredgp_io {
 
 std::ostream& printBlockStabilizer(std::ostream& strm,
-				   realredgp::RealReductiveGroup& G_R,
-				   size_t cn, realform::RealForm drf)
+				   RealReductiveGroup& G_R,
+				   size_t cn, RealFormNbr drf)
 
 {
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  ComplexReductiveGroup& G_C = G_R.complexGroup();
   const RootDatum& rd = G_R.rootDatum();
   const WeylGroup& W = G_R.weylGroup();
 
-  realform::RealForm rf = G_R.realForm();
+  RealFormNbr rf = G_R.realForm();
 
   unsigned long x = G_C.representative(rf,cn);
   unsigned long y = G_C.dualRepresentative(drf,cn);
-  const cartanclass::CartanClass& cc = G_C.cartan(cn);
+  const CartanClass& cc = G_C.cartan(cn);
 
   realweyl::RealWeyl rw(cc,x,y,rd,W);
   realweyl::RealWeylGenerators rwg(rw,cc,rd);
@@ -75,7 +74,7 @@ std::ostream& printBlockStabilizer(std::ostream& strm,
 
 // Print information about all the Cartan classes for |G_RI.realGroup()|.
 std::ostream& printCartanClasses(std::ostream& strm,
-				 realform::RealForm rf,
+				 RealFormNbr rf,
 				 complexredgp_io::Interface& G_CI)
 {
   const bitmap::BitMap& b = G_CI.complexGroup().Cartan_set(rf);
@@ -100,7 +99,7 @@ std::ostream& printCartanClasses(std::ostream& strm,
 
 // Print the Hasse diagram of the Cartan ordering of G_R.
 std::ostream& printCartanOrder(std::ostream& strm,
-			       const realredgp::RealReductiveGroup& G_R)
+			       const RealReductiveGroup& G_R)
 {
   const poset::Poset& p = G_R.complexGroup().Cartan_ordering();
   size_t cn = G_R.mostSplit();
@@ -128,16 +127,16 @@ std::ostream& printCartanOrder(std::ostream& strm,
   Precondition: cartan #cn is defined for this real form.
 */
 std::ostream& printRealWeyl(std::ostream& strm,
-			    realredgp::RealReductiveGroup& G_R,
+			    RealReductiveGroup& G_R,
 			    size_t cn)
 {
-  complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+  ComplexReductiveGroup& G_C = G_R.complexGroup();
 
-  realform::RealForm rf = G_R.realForm();
+  RealFormNbr rf = G_R.realForm();
 
   const RootDatum& rd = G_C.rootDatum();
   const WeylGroup& W = G_C.weylGroup();
-  const cartanclass::CartanClass& cc = G_C.cartan(cn);
+  const CartanClass& cc = G_C.cartan(cn);
   cartanclass::AdjointFiberElt x = G_C.representative(rf,cn);
 
   realweyl::RealWeyl rw(cc,x,0,rd,W);
@@ -170,13 +169,13 @@ std::ostream& printRealWeyl(std::ostream& strm,
   real forms; we label them with the corresponding weak real form.
 */
 std::ostream& printStrongReal(std::ostream& strm,
-			      complexredgp::ComplexReductiveGroup& G_C,
+			      ComplexReductiveGroup& G_C,
 			      const realform_io::Interface& rfi,
 			      size_t cn)
 {
-  cartanclass::Fiber fund = G_C.fundamental();
-  const cartanclass::CartanClass& cc = G_C.cartan(cn);
-  const realform::RealFormList& rfl = G_C.realFormLabels(cn);
+  Fiber fund = G_C.fundamental();
+  const CartanClass& cc = G_C.cartan(cn);
+  const RealFormNbrList& rfl = G_C.realFormLabels(cn);
 
   size_t n = cc.numRealFormClasses();
 
@@ -187,15 +186,15 @@ std::ostream& printStrongReal(std::ostream& strm,
   {
     // print information about the square of real forms, in center
     {
-      realform::RealForm wrf=cc.fiber().realFormPartition().classRep(csc);
-      realform::RealForm fund_wrf= rfl[wrf]; // lift weak real form to |fund|
+      RealFormNbr wrf=cc.fiber().realFormPartition().classRep(csc);
+      RealFormNbr fund_wrf= rfl[wrf]; // lift weak real form to |fund|
       cartanclass::square_class f_csc=fund.central_square_class(fund_wrf);
       // having the square class number of the fundamental fiber, get grading
-      gradings::Grading base_grading =
+      Grading base_grading =
 	tits::square_class_grading_offset(fund,f_csc,G_C.rootSystem());
 
       RatWeight z (G_C.rank());
-      for (gradings::Grading::iterator it=base_grading.begin(); it(); ++it)
+      for (Grading::iterator it=base_grading.begin(); it(); ++it)
 	z += G_C.rootDatum().fundamental_coweight(*it);
 
       Weight& zn = z.numerator();
@@ -212,7 +211,7 @@ std::ostream& printStrongReal(std::ostream& strm,
     for (partition::PartitionIterator i(pi); i(); ++i,++c)
     {
       std::ostringstream os;
-      realform::RealForm rf = rfl[cc.toWeakReal(c,csc)];
+      RealFormNbr rf = rfl[cc.toWeakReal(c,csc)];
       os << "real form #" << rfi.out(rf) << ": ";
       basic_io::seqPrint(os,i->first,i->second,",","[","]")
 	<< " (" << i->second - i->first << ")" << std::endl;

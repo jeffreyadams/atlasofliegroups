@@ -20,12 +20,6 @@ namespace atlas {
 
 /******** type declarations *************************************************/
 
-namespace descents {
-
-class DescentStatus;
-typedef std::vector<DescentStatus> DescentStatusList;
-
-}
 
 }
 

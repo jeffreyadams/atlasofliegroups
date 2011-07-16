@@ -23,11 +23,6 @@ namespace atlas {
 
 /******** type declarations *************************************************/
 
-namespace bruhat {
-
-class BruhatOrder;
-
-}
 
 }
 

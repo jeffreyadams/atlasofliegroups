@@ -29,7 +29,6 @@
 #include "kgb.h"
 #include "complexredgp_fwd.h"
 #include "realredgp_fwd.h"
-#include "realform.h"
 #include "weyl.h"
 #include "tits_fwd.h"
 
@@ -60,8 +59,8 @@ namespace blocks {
   std::vector<BlockElt>
     dual_map(const Block_base& b, const Block_base& dual_b);
 
-  bitmap::BitMap common_Cartans(realredgp::RealReductiveGroup& GR,
-				realredgp::RealReductiveGroup& dGR);
+  bitmap::BitMap common_Cartans(RealReductiveGroup& GR,
+				RealReductiveGroup& dGR);
 
 }
 
@@ -75,21 +74,21 @@ class Block_base {
 
  protected: // other fields may be set in derived class contructor
 
-  kgb::KGBEltList d_x;  // of size |size()|
-  kgb::KGBEltList d_y; // of size |size()|
+  KGBEltList d_x;  // of size |size()|
+  KGBEltList d_y; // of size |size()|
 
 /*!\brief maps KGB element |x| to the first block element |z| with |d_x[z]>=x|.
 */
   std::vector<BlockElt> d_first_z_of_x; // of size |xsize+1|
   std::vector<BlockEltList> d_cross; // of size |d_rank| * |size()|
   std::vector<BlockEltPairList> d_cayley; // of size |d_rank| * |size()|
-  descents::DescentStatusList d_descent; // of size |size()|
+  DescentStatusList d_descent; // of size |size()|
   std::vector<size_t> d_length; // of size |size()|
 
  public:
 
 // constructors and destructors
-  Block_base(const kgb::KGB& kgb,const kgb::KGB& dual_kgb);
+  Block_base(const KGB& kgb,const KGB& dual_kgb);
   Block_base(const subdatum::SubSystem& sub,
 	     const WeylGroup& printing_W);
 
@@ -106,11 +105,11 @@ class Block_base {
   virtual size_t xsize() const = 0;
   virtual size_t ysize() const = 0;
 
-  kgb::KGBElt x(BlockElt z) const { assert(z<size()); return d_x[z]; }
-  kgb::KGBElt y(BlockElt z) const { assert(z<size()); return d_y[z]; }
+  KGBElt x(BlockElt z) const { assert(z<size()); return d_x[z]; }
+  KGBElt y(BlockElt z) const { assert(z<size()); return d_y[z]; }
 
   //!\brief Look up element by |x|, |y| coordinates
-  BlockElt element(kgb::KGBElt x,kgb::KGBElt y) const;
+  BlockElt element(KGBElt x,KGBElt y) const;
 
   size_t length(BlockElt z) const { return d_length[z]; }
 
@@ -139,13 +138,13 @@ class Block_base {
     else return BlockEltPair(UndefBlock,UndefBlock);
   }
 
-  const descents::DescentStatus& descent(BlockElt z) const
+  const DescentStatus& descent(BlockElt z) const
     { assert(z<size()); return d_descent[z]; }
-  descents::DescentStatus::Value descentValue(size_t s, BlockElt z) const
+  DescentStatus::Value descentValue(size_t s, BlockElt z) const
     { assert(z<size()); assert(s<rank()); return d_descent[z][s]; }
 
   bool isWeakDescent(size_t s, BlockElt z) const
-    { return descents::DescentStatus::isDescent(descentValue(s,z)); }
+    { return DescentStatus::isDescent(descentValue(s,z)); }
 
   bool isStrictAscent(size_t, BlockElt) const;
   bool isStrictDescent(size_t, BlockElt) const;
@@ -170,7 +169,7 @@ class Block_base {
   // a method to straighten out blocks generated in some non standard order
   // renumber |x| through |new_x|, order by increasing |x|, set |first_z_of_x|
  protected:
-  kgb::KGBElt renumber_x(const std::vector<kgb::KGBElt>& new_x);
+  KGBElt renumber_x(const std::vector<KGBElt>& new_x);
 
 }; // |class Block_base|
 
@@ -231,11 +230,11 @@ non-vanishing KL polynomial.
  public:
 
 // constructors and destructors
-  Block(const kgb::KGB& kgb,const kgb::KGB& dual_kgb);
+  Block(const KGB& kgb,const KGB& dual_kgb);
 
   static Block build // pseudo contructor
-    (complexredgp::ComplexReductiveGroup&,
-     realform::RealForm rf, realform::RealForm drf, bool select_Cartans=false);
+    (ComplexReductiveGroup&,
+     RealFormNbr rf, RealFormNbr drf, bool select_Cartans=false);
 
   ~Block(); // |delete d_bruhat;| but that does not compile here
 
@@ -286,27 +285,27 @@ private:
 
 class gamma_block : public Block_base
 {
-  const kgb::KGB& kgb;
+  const KGB& kgb;
 
   RatWeight infin_char; // infinitesimal character
 
-  std::vector<kgb::KGBElt> kgb_nr_of; // indexed by child |x| numbers
+  std::vector<KGBElt> kgb_nr_of; // indexed by child |x| numbers
 
   struct y_fields
   {
-    tits::GlobalTitsElement rep; //representative
+    GlobalTitsElement rep; //representative
     unsigned int Cartan_class;
 
-    y_fields(tits::GlobalTitsElement y, unsigned int cc)
+    y_fields(GlobalTitsElement y, unsigned int cc)
     : rep(y), Cartan_class(cc) {}
   }; // |struct y_fields|
 
   std::vector<y_fields> y_info; // indexed by child |y| numbers
 
  public:
-  gamma_block(realredgp::RealReductiveGroup& GR,
+  gamma_block(RealReductiveGroup& GR,
 	      const subdatum::SubSystem& sub,
-	      kgb::KGBElt x,
+	      KGBElt x,
 	      const RatWeight& lambda, // discrete parameter
 	      const RatWeight& gamma, // infinitesimal character
 	      BlockElt& entry_element // set to block element matching the input
@@ -332,22 +331,22 @@ class gamma_block : public Block_base
 
 class non_integral_block : public Block_base
 {
-  const kgb::KGB& kgb;
-  const complexredgp::ComplexReductiveGroup& G;
+  const KGB& kgb;
+  const ComplexReductiveGroup& G;
   const subdatum::SubSystem& sub;
 
   bitset::RankFlags singular;
 
   const RatWeight infin_char; // infinitesimal character
 
-  std::vector<kgb::KGBElt> kgb_nr_of; // indexed by child |x| numbers
+  std::vector<KGBElt> kgb_nr_of; // indexed by child |x| numbers
 
   struct y_fields
   {
-    tits::GlobalTitsElement rep; //representative, in ^vG coordinates
+    GlobalTitsElement rep; //representative, in ^vG coordinates
     unsigned int Cartan_class; // for ^vG(gamma)
 
-    y_fields(tits::GlobalTitsElement y, unsigned int cc)
+    y_fields(GlobalTitsElement y, unsigned int cc)
     : rep(y), Cartan_class(cc) {}
   }; // |struct y_fields|
 
@@ -355,9 +354,9 @@ class non_integral_block : public Block_base
 
  public:
   non_integral_block
-    (realredgp::RealReductiveGroup& GR,
+    (RealReductiveGroup& GR,
      const subdatum::SubSystem& subsys,
-     kgb::KGBElt x,
+     KGBElt x,
      const RatWeight& lambda, // discrete parameter
      const RatWeight& gamma, // infinitesimal character
      BlockElt& entry_element // set to block element matching the input

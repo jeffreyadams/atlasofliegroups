@@ -66,7 +66,7 @@ class KLContext
 \brief Bit 0 flags whether the KL polynomials have
 all been computed.
   */
-  blocks::BlockElt fill_limit; // all "rows" |y| with |y<fill_limit| computed
+  BlockElt fill_limit; // all "rows" |y| with |y<fill_limit| computed
 
   /*!
 \brief Entry d_prim[y] is a list of the elements x_i that are primitive
@@ -109,19 +109,19 @@ P_{y,x_i}, numbered as in the list d_prim[y].
  public:
 
 // constructors and destructors
-  KLContext(blocks::Block_base&); // initial base object
+  KLContext(Block_base&); // initial base object
 
 // accessors
   // the following two were moved here from the Helper class
-  void makeExtremalRow(PrimitiveRow& e, blocks::BlockElt y) const;
+  void makeExtremalRow(PrimitiveRow& e, BlockElt y) const;
 
-  void makePrimitiveRow(PrimitiveRow& e, blocks::BlockElt y) const;
+  void makePrimitiveRow(PrimitiveRow& e, BlockElt y) const;
 
   /*!
 \brief List of the elements x_i that are primitive with respect to y and have
  P_{y,x_i} NOT ZERO. This method is somewhat of a misnomer
   */
-  const PrimitiveRow& primitiveRow(blocks::BlockElt y) const
+  const PrimitiveRow& primitiveRow(BlockElt y) const
     { return d_prim[y]; }
 
   bool isZero(const KLIndex p) const { return p == d_zero; }
@@ -129,23 +129,23 @@ P_{y,x_i}, numbered as in the list d_prim[y].
   /*!
 \brief The Kazhdan-Lusztig-Vogan polynomial P_{x,y}
 */
-  KLPolRef klPol(blocks::BlockElt x, blocks::BlockElt y) const;
+  KLPolRef klPol(BlockElt x, BlockElt y) const;
 
   /*!
 \brief Returns the list of pointers to the non-zero KL polynomials
 P_{y,x_i} (with x_i primitive with respect to y).
   */
-  const KLRow& klRow(blocks::BlockElt y) const {
+  const KLRow& klRow(BlockElt y) const {
     return d_kl[y];
   }
 
-  MuCoeff mu(blocks::BlockElt x, blocks::BlockElt y) const;
+  MuCoeff mu(BlockElt x, BlockElt y) const;
 
   /*!
 \brief List of MuData, which are pairs (x, top degree coefficient of
 P_{y,x}).
   */
-  const MuRow& muRow(blocks::BlockElt y) const {
+  const MuRow& muRow(BlockElt y) const {
     return d_mu[y];
   }
 
@@ -157,12 +157,12 @@ P_{y,x}).
   }
 
 // get bitmap of primitive elements for row |y| with nonzero KL polynomial
-  bitmap::BitMap primMap (blocks::BlockElt y) const;
+  bitmap::BitMap primMap (BlockElt y) const;
 
 // manipulators
 
   // partial fill, up to and including the "row" of |y|
-  void fill(blocks::BlockElt y, bool verbose=true);
+  void fill(BlockElt y, bool verbose=true);
 
   void fill() { fill(size()-1); } // simulate forbidden default argument
 

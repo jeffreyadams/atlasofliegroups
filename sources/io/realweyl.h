@@ -63,7 +63,7 @@ class RealWeyl {
 // constructors and destructors
   RealWeyl():d_group(0) {}
 
-  RealWeyl(const cartanclass::CartanClass&, unsigned long, unsigned long,
+  RealWeyl(const CartanClass&, unsigned long, unsigned long,
 	   const RootDatum&, const WeylGroup&);
 
   ~RealWeyl() {}
@@ -202,7 +202,7 @@ class RealWeylGenerators {
 // constructors and destructors
   RealWeylGenerators():d_group(0) {}
 
-  RealWeylGenerators(const RealWeyl&, const cartanclass::CartanClass&,
+  RealWeylGenerators(const RealWeyl&, const CartanClass&,
 		     const RootDatum&);
 
   ~RealWeylGenerators() {}

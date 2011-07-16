@@ -27,11 +27,11 @@
 #include <set>
 #include <stack>
 
-#include "ratvec.h" // to act upon |RatWeight|s
-#include "permutations.h"
-#include "dynkin.h"
-#include "prerootdata.h" // for defining  action using them
-#include "rootdata.h"
+#include "ratvec.h"	// to act upon |RatWeight|s
+#include "dynkin.h"	// to analyze Cartan matrices
+#include "permutations.h"// to hold the result from dynkin
+#include "prerootdata.h"// for defining action using only simple (co)roots
+#include "rootdata.h"	// also needed for defining action, and deducing twist
 
 /*****************************************************************************
 
@@ -54,6 +54,7 @@ namespace atlas {
 
 }
 
+//			     auxiliary functions
 namespace {
 
 
@@ -557,9 +558,7 @@ WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
   Let |w| act on |v| according to reflection action in root datum |rd|
   Note that rightmost factors act first, as in a product of matrices
 */
-void WeylGroup::act(const RootDatum& rd,
-		    const WeylElt& w,
-		    Weight& v) const
+void WeylGroup::act(const RootDatum& rd, const WeylElt& w, Weight& v) const
 {
   for (size_t i = d_rank; i-->0; )
   {
@@ -848,10 +847,6 @@ WeightInvolution TwistedWeylGroup::involution_matrix
 
 namespace weyl {
 
-Transducer::Transducer(const int_Matrix& c, size_t r)
-  : d_shift(1), d_out(1) // start with tables of size 1
-  , d_length(1,0), d_piece(1,WeylWord()) // with empty word, length 0.
-
 /*!
 \brief Constructs subquotient \#r for the Coxeter matrix c.
 
@@ -883,32 +878,36 @@ Transducer::Transducer(const int_Matrix& c, size_t r)
 
     - then find all other elements $x'$ already in the automaton and $t$ such
       that $xs==x't$ (so $x't$ gives a non-canonical but reduced expression
-      for $xs$). Do this by trying generators \f$t\neq s\f$: if $xst$ goes
-      down (has the same length as $x$) then $x'==xst$ gives such a case. The
-      trick for this is to look at the orbit of x under the dihedral group
-      <s,t>. In the full group, this has necessarily cardinality 2m, with m =
-      m(s,t) the coefficient in the Coxeter matrix, and $l(xst)==l(x)$ iff
-      $xs$ is the unique elt. of maximal length in the orbit, hence to have
-      this $x$ must goes down $m-1$ times when applying successively $t$, $s$,
-      $t$, ... In the parabolic quotient, the orbit of the dihedral group
-      (which is not reduced to a point) can either have cardinality $2m$ or
-      cardinality $m$, and in the latter case it is a string with $m-1$ steps
-      between the bottom and the top, with a stationary step at either extreme
-      (to see this, note that on one hand each step up in the full group gives
-      a step in the quotient that is either up or stationary, while on the
-      other hand a stationary step in the quotient causes then next step to be
-      the reverse of the previous one). So we have one of the following cases:
-      (1) $x$ goes down $m-1$ times; then the image of the orbit has $2m$
-      elements and $xs==x't$ for $x'=x.(ts)^(m-1)$. (2) $x$ goes down $m-2$
-      times to some element $a$ and is then stationary (if \f$s'\in\{s,t\}\f$
-      is the next to apply, then $a.s'=g.a$ for some generator \f$g\in
-      W_{r-1}\f$); then the orbit has $m$ elements, and if $v$ is the
-      alternating word in \f$\{s,t\}\f$ of length $m-2$ not starting with
+      for $xs$). Do this by trying generators $t\neq s$: if $xst$ goes down
+      (has the same length as $x$) then $x'==xst$ gives such a case. The trick
+      for this is to look at the orbit of x under the dihedral group $\<s,t>$.
+      In the full group, this has necessarily cardinality 2m, with m = m(s,t)
+      the coefficient in the Coxeter matrix, and $l(xst)==l(x)$ iff $xs$ is
+      the unique elt. of maximal length in the orbit, hence to have this $x$
+      must goes down $m-1$ times when applying successively $t$, $s$, $t$, ...
+      In the parabolic quotient, the orbit of the dihedral group (which is not
+      reduced to a point) can either have cardinality $2m$ or cardinality $m$,
+      and in the latter case it is a string with $m-1$ steps between the
+      bottom and the top, with a stationary step at either extreme (to see
+      this, note that on one hand each step up in the full group gives a step
+      in the quotient that is either up or stationary, while on the other hand
+      a stationary step in the quotient causes then next step to be the
+      reverse of the previous one). So we have one of the following three
+      cases: (1) $x$ goes down $m-1$ times; then the image of the orbit has
+      $2m$ elements and $xs==x't$ for $x'=x.(ts)^(m-1)$. (2) $x$ goes down
+      $m-2$ times to some element $a$ and is then stationary (if
+      $s'\in\{s,t\}$ is the next to apply, then $a.s'=g.a$ for some generator
+      $g\in W_{r-1}$). In case (2) the orbit has $m$ elements, and if $v$ is
+      the alternating word in $\{s,t\}$ of length $m-2$ not starting with
       $s'$, so that $a.v=x$, one has $v.st=s'vs$ whence
       $x.st=a.v.st=a.s'vs=g.a.vs=g.xs$ so that $xs$ has a transduction for $t$
       that outputs the generator $g$. (3) either $x$ goes down less than $m-2$
       times, or $m-2$ times followed by an upward step; then $xst$ goes up.
 */
+
+Transducer::Transducer(const int_Matrix& c, size_t r)
+  : d_shift(1), d_out(1) // start with tables of size 1
+  , d_length(1,0), d_piece(1,WeylWord()) // with empty word, length 0.
 
 {
   // first row of transition and of transduction table
@@ -1023,7 +1022,7 @@ Twist make_twist(const RootDatum& rd, const WeightInvolution& d)
   for (size_t i = 0; i<simple_image.size(); ++i)
     simple_image[i] = rd.rootNbr(d*rd.simpleRoot(i));
 
-  rootdata::wrt_distinguished(rd,simple_image); // forget the Weyl element
+  rootdata::wrt_distinguished(rd,simple_image); // and forget the Weyl element
 
   Twist result;
 

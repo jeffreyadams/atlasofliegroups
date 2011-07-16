@@ -18,21 +18,13 @@
 #include "cartanclass_fwd.h"
 
 #include "tags.h"
-#include "bitmap.h"
-
+#include "bitset.h"	// containment of |Grading|
+#include "bitset.h"	// containment of |RootNbrSet|
+#include "partition.h"	// containment of |partition::Partition|
+#include "permutations.h"// containment of |permutation::Permutation|
 #include "atlas_types.h"
 
-#include "gradings.h"
-#include "partition.h"
-#include "realform.h"
-#include "rootdata.h"
-#include "permutations.h"
-#include "size.h"
-#include "subdatum_fwd.h"
-#include "subquotient.h"
-#include "complexredgp_fwd.h"
-
-#include "tori.h"
+#include "tori.h"       // containment of |RealTorus|
 
 namespace atlas {
 
@@ -46,14 +38,14 @@ namespace cartanclass
   Weight
     compactTwoRho(AdjointFiberElt, const Fiber&, const RootDatum&);
 
-  gradings::Grading
+  Grading
     restrictGrading(const RootNbrSet&, const RootNbrList&);
 
-  gradings::Grading
-    specialGrading(const Fiber&,realform::RealForm,const RootSystem&);
+  Grading
+    specialGrading(const Fiber&,RealFormNbr,const RootSystem&);
 
   RootNbrSet
-    toMostSplit(const Fiber&,realform::RealForm,const RootSystem&);
+    toMostSplit(const Fiber&,RealFormNbr,const RootSystem&);
 }
 
 /******** type definitions ***************************************************/
@@ -68,16 +60,15 @@ class InvolutionData
   RootNbrList d_simpleImaginary; // imaginary roots simple wrt subsystem
   RootNbrList d_simpleReal; // real roots simple wrt subsystem
  public:
-  InvolutionData(const RootDatum&,
-		 const WeightInvolution&);
+  InvolutionData(const RootDatum& rd,
+		 const WeightInvolution& theta);
+  InvolutionData(const RootDatum& rd,
+		 const WeightInvolution& theta,
+		 const RootNbrSet& positive_subsystem);
   InvolutionData(const RootSystem& rs,
-		 const RootNbrList& s_image);
-  InvolutionData(const subdatum::SubSystem&,
-		 const WeightInvolution&);
+		 const RootNbrList& simple_images);
   static InvolutionData build(const RootSystem& rs,
 			      const TwistedWeylGroup& W,
-			      const TwistedInvolution& tw);
-  static InvolutionData build(const complexredgp::ComplexReductiveGroup& G,
 			      const TwistedInvolution& tw);
   void swap(InvolutionData&);
   //accessors
@@ -218,7 +209,7 @@ class Fiber {
   noncompact imaginary roots among the simple imaginary roots; so all the bits
   up to imaginaryRank are 1.
   */
-  gradings::Grading d_baseGrading;
+  Grading d_baseGrading;
 
   /*!
   \brief RootSet \#j flags the imaginary roots whose grading is changed by
@@ -229,7 +220,7 @@ class Fiber {
   /*! \brief Grading \#j flags the simple imaginary roots whose grading is
   changed by canonical basis vector \#j in the adjoint fiber group.
   */
-  gradings::GradingList d_gradingShift; // |size()==adjointFiberRank()|
+  GradingList d_gradingShift; // |size()==adjointFiberRank()|
 
   /*!
   \brief Matrix (over Z/2Z) of the map from the fiber group F for G to the
@@ -242,7 +233,7 @@ class Fiber {
   Subquotient) with a distinguished basis, and what is recorded in d_toAdjoint
   is the (dim F_ad) x (dim F) matrix with respect to those bases.
   */
-  bitvector::BinaryMap d_toAdjoint;
+  BinaryMap d_toAdjoint;
 
   /*!
   \brief Partition of the adjoint fiber group according to weak real forms.
@@ -425,12 +416,12 @@ class Fiber {
   /*!
   \brief grading associated to an adjoint fiber element
   */
-  gradings::Grading grading(AdjointFiberElt x) const;
+  Grading grading(AdjointFiberElt x) const;
 
   /*!
   \brief An inverse of |grading|, assuming |g| is valid in this fiber
   */
-  AdjointFiberElt gradingRep(const gradings::Grading& g) const;
+  AdjointFiberElt gradingRep(const Grading& g) const;
 
 
 
@@ -526,17 +517,17 @@ private:
 
   subquotient::SmallSubspace gradingGroup(const RootSystem&) const;
 
-  gradings::Grading makeBaseGrading
+  Grading makeBaseGrading
     (RootNbrSet& flagged_roots,const RootSystem&) const;
 
-  gradings::GradingList makeGradingShifts
+  GradingList makeGradingShifts
     (std::vector<RootNbrSet>& all_shifts,const RootSystem&) const;
 
   bitset::RankFlagsList adjointMAlphas (const RootSystem&) const;
 
   bitset::RankFlagsList mAlphas(const RootDatum&) const;
 
-  bitvector::BinaryMap makeFiberMap(const RootDatum&) const;
+  BinaryMap makeFiberMap(const RootDatum&) const;
 
   partition::Partition makeWeakReal(const RootSystem&) const;
 
@@ -633,7 +624,7 @@ class CartanClass {
   The number of distinct involutions defining the same stable
   conjugacy class of Cartan subgroups.
   */
-  size::Size d_orbitSize;
+  size_t d_orbitSize;
 
 public:
 
@@ -754,7 +745,7 @@ public:
   The number of distinct involutions defining the same stable conjugacy
   class of Cartan subgroups.
    */
-   size_t orbitSize() const { return d_orbitSize.toUlong(); }
+  size_t orbitSize() const { return d_orbitSize; }
 
   /*!
   \brief Roots simple for the "complex factor" of W^tau.
@@ -830,7 +821,7 @@ private:
   RootNbrList makeSimpleComplex(const RootDatum&) const;
 
   // number of conjugate twisted involutions (|rs| is our root system)
-  size::Size orbit_size(const RootSystem& rs) const;
+  size_t orbit_size(const RootSystem& rs) const;
 
 }; // class CartanClass
 

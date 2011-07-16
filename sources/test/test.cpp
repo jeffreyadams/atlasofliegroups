@@ -436,22 +436,22 @@ void poscoroots_rootbasis_f()
 
 void checkbasept_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  RealReductiveGroup& G_R = realmode::currentRealGroup();
 
-  kgb::KGB kgb(G_R,G_R.Cartan_set());
+  KGB kgb(G_R,G_R.Cartan_set());
   kltest::checkBasePoint(kgb);
 }
 
 void sub_KGB_f()
 {
-  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = realmode::currentRealGroup();
   standardrepk::KhatContext khc(G);
 
   standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
 
   WeylWord ww;
   standardrepk::PSalgebra p= khc.theta_stable_parabolic(sr,ww);
-  kgb::KGBEltList sub=khc.sub_KGB(p);
+  KGBEltList sub=khc.sub_KGB(p);
 
   std::cout << "Conjugating word [" << ww << "]\n";
   kgb_io::print_sub_KGB(std::cout,G.kgb(),sub);
@@ -459,25 +459,25 @@ void sub_KGB_f()
 
 void trivial_f()
 {
-  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = realmode::currentRealGroup();
   const RootDatum& rd=G.rootDatum();
-  const kgb::KGB& kgb = G.kgb();
+  const KGB& kgb = G.kgb();
 
   standardrepk::KhatContext khc(G);
 
-  kgb::KGBElt last=kgb.size()-1;
+  KGBElt last=kgb.size()-1;
 
   WeylWord ww;
   standardrepk::PSalgebra q=
     khc.theta_stable_parabolic(khc.KGB_elt_rep(last),ww);
 
-  kgb::KGBEltList subset=khc.sub_KGB(q);
+  KGBEltList subset=khc.sub_KGB(q);
   size_t max_l=kgb.length(subset.back());
 
   standardrepk::combination sum(khc.height_order());
   for (size_t i=0; i<subset.size(); ++i)
   {
-    kgb::KGBElt x=subset[i];
+    KGBElt x=subset[i];
     standardrepk::StandardRepK sr=khc.std_rep(rd.twoRho(),kgb.titsElt(x));
     standardrepk::combination c=khc.standardize(sr);
     if ((max_l-kgb.length(x))%2 == 0)
@@ -496,7 +496,7 @@ void trivial_f()
 
 void Ktypeform_f()
 {
-  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = realmode::currentRealGroup();
 
   standardrepk::KhatContext khc(G);
 
@@ -560,7 +560,7 @@ void Ktypeform_f()
 
 void qKtypeform_f()
 {
-  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = realmode::currentRealGroup();
 
   standardrepk::qKhatContext khc(G);
 
@@ -619,7 +619,7 @@ void qKtypeform_f()
 
 void Ktypemat_f()
 {
-  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = realmode::currentRealGroup();
 
   standardrepk::KhatContext khc(G);
 
@@ -704,7 +704,7 @@ void Ktypemat_f()
 
 void qKtypemat_f()
 {
-  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = realmode::currentRealGroup();
 
   standardrepk::qKhatContext khc(G);
 
@@ -825,7 +825,7 @@ void qKtypemat_f()
 
 void mod_lattice_f()
 {
-  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = realmode::currentRealGroup();
 
   unsigned long cn=interactive::get_Cartan_class(G.Cartan_set());
 
@@ -872,7 +872,7 @@ void mod_lattice_f()
 
 void branch_f()
 {
-  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = realmode::currentRealGroup();
 
   standardrepk::KhatContext khc(G);
 
@@ -927,7 +927,7 @@ void branch_f()
 
 void qbranch_f()
 {
-  realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
+  RealReductiveGroup& G = realmode::currentRealGroup();
 
   standardrepk::qKhatContext khc(G);
 
@@ -997,8 +997,8 @@ void srtest_f()
 
   try
   {
-    realredgp::RealReductiveGroup& G = realmode::currentRealGroup();
-    const kgb::KGB& kgb = G.kgb();
+    RealReductiveGroup& G = realmode::currentRealGroup();
+    const KGB& kgb = G.kgb();
 
     unsigned long x=interactive::get_bounded_int
       (interactive::sr_input(),"Choose KGB element: ",G.kgb().size());
@@ -1037,10 +1037,10 @@ void srtest_f()
   }
 }
 
-bool examine(realredgp::RealReductiveGroup& G)
+bool examine(RealReductiveGroup& G)
 {
-  kgb::KGB kgb1(G);
-  kgb::KGB kgb2(G,G.Cartan_set());
+  KGB kgb1(G);
+  KGB kgb2(G,G.Cartan_set());
   if (kgb1.size()!=kgb2.size()) return false;
   for (size_t i=0; i<kgb1.size(); ++i)
   {
@@ -1068,10 +1068,10 @@ void testrun_f()
       if (count>0) std::cout << ',' << std::flush;
       RootDatum rd(*cit);
       WeightInvolution id(rd.rank()); // identity
-      complexredgp::ComplexReductiveGroup G(rd,id);
-      for (realform::RealForm rf=0; rf<G.numRealForms(); ++rf)
+      ComplexReductiveGroup G(rd,id);
+      for (RealFormNbr rf=0; rf<G.numRealForms(); ++rf)
       {
-	realredgp::RealReductiveGroup G_R(G,rf);
+	RealReductiveGroup G_R(G,rf);
 	if (not examine(G_R))
 	  std::cout << "Failure at real form " << rf << std::endl;
       }
@@ -1091,7 +1091,7 @@ void exam_f()
 
 void X_f()
 {
-  complexredgp::ComplexReductiveGroup& G=mainmode::currentComplexGroup();
+  ComplexReductiveGroup& G=mainmode::currentComplexGroup();
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   ioutils::OutputFile f;
   kgb_io::print_X(f,kgb);
@@ -1101,8 +1101,8 @@ void iblock_f()
 {
   try
   {
-    realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
-    complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
+    RealReductiveGroup& GR = realmode::currentRealGroup();
+    ComplexReductiveGroup& G = GR.complexGroup();
     const RootDatum& rd = G.rootDatum();
 
     Weight lambda_rho =
@@ -1117,7 +1117,7 @@ void iblock_f()
       interactive::get_ratweight
       (interactive::sr_input(),"rational parameter nu: ",rd.rank());
 
-    const kgb::KGB& kgb = GR.kgb();
+    const KGB& kgb = GR.kgb();
     unsigned long x=interactive::get_bounded_int
       (interactive::common_input(),"KGB element: ",kgb.size());
 
@@ -1152,7 +1152,7 @@ void iblock_f()
     }
     std::cout << "Twisted involution in subsystem: " << ww << ".\n";
 
-    blocks::BlockElt z;
+    BlockElt z;
     blocks::gamma_block block(GR,sub,x,lambda,gamma,z);
 
     std::cout << "Given parameters define element " << z
@@ -1184,13 +1184,13 @@ void nblock_f()
 {
   try
   {
-    realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
-    complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
+    RealReductiveGroup& GR = realmode::currentRealGroup();
+    ComplexReductiveGroup& G = GR.complexGroup();
     const RootDatum& rd = G.rootDatum();
 
     Weight lambda_rho;
     RatWeight gamma(0);
-    kgb::KGBElt x;
+    KGBElt x;
 
     interactive::get_parameter(GR,x,lambda_rho,gamma);
     RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
@@ -1223,7 +1223,7 @@ void nblock_f()
 		  << (s<sub.rank()-1 ? "," : ".\n");
     }
 
-    blocks::BlockElt z;
+    BlockElt z;
     blocks::non_integral_block block(GR,sub,x,lambda,gamma,z);
 
     std::cout << "Given parameters define element " << z
@@ -1272,7 +1272,7 @@ tits::TorusElement torus_part
    const RatWeight& gamma // infinitesimal char
   )
 {
-  cartanclass::InvolutionData id(rd,theta);
+  InvolutionData id(rd,theta);
   Weight cumul(rd.rank(),0);
   LatticeCoeff n=gamma.denominator();
   Weight v=gamma.numerator();
@@ -1289,8 +1289,8 @@ void embedding_f()
 {
   try
   {
-    realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
-    complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
+    RealReductiveGroup& GR = realmode::currentRealGroup();
+    ComplexReductiveGroup& G = GR.complexGroup();
     const RootDatum& rd = G.rootDatum();
 
     Weight lambda_rho =
@@ -1305,7 +1305,7 @@ void embedding_f()
       interactive::get_ratweight
       (interactive::sr_input(),"rational parameter nu: ",rd.rank());
 
-    const kgb::KGB& kgb = GR.kgb();
+    const KGB& kgb = GR.kgb();
     unsigned long x=interactive::get_bounded_int
       (interactive::common_input(),"KGB element: ",kgb.size());
 
@@ -1402,15 +1402,15 @@ void test_f()
 {
   try
   {
-    realredgp::RealReductiveGroup& GR = realmode::currentRealGroup();
-    complexredgp::ComplexReductiveGroup& G = GR.complexGroup();
+    RealReductiveGroup& GR = realmode::currentRealGroup();
+    ComplexReductiveGroup& G = GR.complexGroup();
     const RootDatum& rd = G.rootDatum();
 
     RatWeight nu=
       interactive::get_ratweight
       (interactive::sr_input(),"rational weight nu: ",rd.rank());
 
-    const kgb::KGB& kgb = GR.kgb();
+    const KGB& kgb = GR.kgb();
     unsigned long x=interactive::get_bounded_int
       (interactive::common_input(),"KGB element: ",kgb.size());
 

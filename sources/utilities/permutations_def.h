@@ -22,10 +22,11 @@ namespace atlas {
 namespace permutations {
 
 /* we leave |pull_back| with implicit instantiation, as the types to
-   substitute for |T| (|descents::DescentStatus|, |kgb::KGB_base::KGBfields|)
-   are complicated and hard/impossible to specify at the definition of this
-   template, while permutations.cpp is unseen where those types are availeble,
+   substitute for |T| (|DescentStatus|, |KGB_base::KGBfields|) are complicated
+   and hard/impossible to specify at the definition of this template, while
+   permutations.cpp is unseen where those types are availeble.
 */
+
 /* Permute the entries of |v| by "pulling back" through our permutation |pi|,
    so that |result[i]==v[pi[i]]| for all |i| afterwards.
 */

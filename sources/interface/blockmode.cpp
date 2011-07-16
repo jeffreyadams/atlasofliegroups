@@ -77,9 +77,9 @@ template<bool small>
 
   // local variables
 
-  complexredgp::ComplexReductiveGroup* dual_G_C_pointer=NULL;
-  realredgp::RealReductiveGroup* dual_G_R_pointer=NULL;
-  blocks::Block* block_pointer=NULL;
+  ComplexReductiveGroup* dual_G_C_pointer=NULL;
+  RealReductiveGroup* dual_G_R_pointer=NULL;
+  Block* block_pointer=NULL;
   kl::KLContext* klc_pointer=NULL;
   wgraph::WGraph* WGr_pointer=NULL;
 }
@@ -132,27 +132,27 @@ commands::CommandMode& blockMode()
   return block_mode;
 }
 
-complexredgp::ComplexReductiveGroup& currentDualComplexGroup()
+ComplexReductiveGroup& currentDualComplexGroup()
 {
   return *dual_G_C_pointer;
 }
 
-realredgp::RealReductiveGroup& currentDualRealGroup()
+RealReductiveGroup& currentDualRealGroup()
 {
   return *dual_G_R_pointer;
 }
 
-realform::RealForm currentDualRealForm()
+RealFormNbr currentDualRealForm()
 {
   return dual_G_R_pointer->realForm();
 }
 
-blocks::Block& currentBlock()
+Block& currentBlock()
 {
   if (block_pointer==NULL)
   {
     block_pointer =
-      new blocks::Block(blocks::Block::build
+      new Block(Block::build
 			 (mainmode::currentComplexGroup(),
 			  realmode::currentRealForm(),
 			  dual_G_R_pointer->realForm()));
@@ -202,20 +202,20 @@ void block_mode_entry() throw(commands::EntryError)
 {
   try
   {
-    realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+    RealReductiveGroup& G_R = realmode::currentRealGroup();
 
-    complexredgp::ComplexReductiveGroup& G_C = G_R.complexGroup();
+    ComplexReductiveGroup& G_C = G_R.complexGroup();
     const complexredgp_io::Interface& G_I = mainmode::currentComplexInterface();
 
     // get dual real form
-    realform::RealForm drf;
+    RealFormNbr drf;
 
     interactive::getInteractive
       (drf,G_I,G_C.dualRealFormLabels(G_R.mostSplit()),tags::DualTag());
 
     dual_G_C_pointer=new
-      complexredgp::ComplexReductiveGroup(G_C,tags::DualTag());
-    dual_G_R_pointer=new realredgp::RealReductiveGroup(*dual_G_C_pointer,drf);
+      ComplexReductiveGroup(G_C,tags::DualTag());
+    dual_G_R_pointer=new RealReductiveGroup(*dual_G_C_pointer,drf);
   }
   catch(error::InputError& e)
   {
@@ -260,7 +260,7 @@ namespace {
 void type_f()
 {
   try {
-    complexredgp::ComplexReductiveGroup* G;
+    ComplexReductiveGroup* G;
     complexredgp_io::Interface* I;
 
     interactive::getInteractive(G,I);
@@ -295,8 +295,8 @@ void realform_f()
 // Print the kgb table, only the necessary part for one block
 void small_kgb_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  realredgp::RealReductiveGroup& dGR = currentDualRealGroup();
+  RealReductiveGroup& G_R = realmode::currentRealGroup();
+  RealReductiveGroup& dGR = currentDualRealGroup();
 
   bitmap::BitMap common=blocks::common_Cartans(G_R,dGR);
 
@@ -310,15 +310,15 @@ void small_kgb_f()
     << std::endl;
 
   ioutils::OutputFile file;
-  kgb::KGB kgb(G_R,common);
+  KGB kgb(G_R,common);
   kgb_io::printKGB(file,kgb);
 }
 
 void small_dual_kgb_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  realredgp::RealReductiveGroup& dGR = currentDualRealGroup();
-  complexredgp::ComplexReductiveGroup& dGC = currentDualComplexGroup();
+  RealReductiveGroup& G_R = realmode::currentRealGroup();
+  RealReductiveGroup& dGR = currentDualRealGroup();
+  ComplexReductiveGroup& dGC = currentDualComplexGroup();
 
   bitmap::BitMap common=blocks::common_Cartans(dGR,G_R);
 
@@ -329,7 +329,7 @@ void small_dual_kgb_f()
     dGC.KGB_size(currentDualRealForm(),common) << std::endl;
   ioutils::OutputFile file;
 
-  kgb::KGB kgb(dGR,common);
+  KGB kgb(dGR,common);
   kgb_io::printKGB(file,kgb);
 }
 
@@ -341,7 +341,7 @@ void block_f()
   if (small) // must unfortunatly regenerate the block here
   {
     block_io::print_block
-      (file,blocks::Block::build(mainmode::currentComplexGroup(),
+      (file,Block::build(mainmode::currentComplexGroup(),
 				 realmode::currentRealForm(),
 				 currentDualRealForm(),
 				 true));
@@ -354,10 +354,10 @@ void block_f()
 template<bool small>
 void dual_block_f()
 {
-  complexredgp::ComplexReductiveGroup& dG = currentDualComplexGroup();
+  ComplexReductiveGroup& dG = currentDualComplexGroup();
 
-  blocks::Block block =
-    blocks::Block::build(dG,currentDualRealForm(),realmode::currentRealForm(),
+  Block block =
+    Block::build(dG,currentDualRealForm(),realmode::currentRealForm(),
 			 small);
 
   ioutils::OutputFile file;
@@ -367,13 +367,13 @@ void dual_block_f()
 // Print the correspondence of the current block with its dual block
 void dual_map_f()
 {
-  const blocks::Block& block = currentBlock();
-  blocks::Block dual_block =
-    blocks::Block::build(currentDualComplexGroup(),
+  const Block& block = currentBlock();
+  Block dual_block =
+    Block::build(currentDualComplexGroup(),
 			 currentDualRealForm(),
 			 realmode::currentRealForm());
 
-  std::vector<blocks::BlockElt> v=blocks::dual_map(block,dual_block);
+  std::vector<BlockElt> v=blocks::dual_map(block,dual_block);
 
   std::ostringstream s("");
   basic_io::seqPrint(s,v.begin(),v.end(),", ","[","]\n");
@@ -399,7 +399,7 @@ void blocku_f()
 // Print the Hasse diagram for the Bruhat order on the current block
 void blockorder_f()
 {
-  blocks::Block& block = currentBlock();
+  Block& block = currentBlock();
   std::cout << "block size: " << block.size() << std::endl;
   ioutils::OutputFile file;
   kgb_io::printBruhatOrder(file,block.bruhatOrder());
@@ -425,8 +425,8 @@ void blockwrite_f()
 */
 void blockstabilizer_f()
 {
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
-  realredgp::RealReductiveGroup& dGR = currentDualRealGroup();
+  RealReductiveGroup& G_R = realmode::currentRealGroup();
+  RealReductiveGroup& dGR = currentDualRealGroup();
 
   // get Cartan class; abort if unvalid
   size_t cn=interactive::get_Cartan_class(blocks::common_Cartans(G_R,dGR));

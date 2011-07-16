@@ -31,10 +31,10 @@ namespace atlas {
 
 namespace {
 
-  void involutionList(TwistedInvolutionList&, const kgb::KGB&);
+  void involutionList(TwistedInvolutionList&, const KGB&);
 
   std::ostream& printBasePts(std::ostream&, const TwistedInvolutionList&,
-			     const kgb::KGBEltList&, const kgb::KGB&);
+			     const KGBEltList&, const KGB&);
 
 // the following class was copied integrally from kgb.cpp, helper namespace
 class InvolutionCompare
@@ -87,7 +87,7 @@ namespace kltest {
   at w that for all descents sw of w, the KGB element s.x_{sw} is the same; it
   will then define the element x_w.
 */
-bool checkBasePoint(const kgb::KGB& kgb)
+bool checkBasePoint(const KGB& kgb)
 {
 #ifdef VERBOSE
   std::cerr << "entering checkBasePoint ..." << std::endl;
@@ -98,7 +98,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
   TwistedInvolutionList wl;
   involutionList(wl,kgb);
 
-  kgb::KGBEltList basepts;
+  KGBEltList basepts;
 
   for (size_t x0 = 0; x0 < kgb.size() and kgb.length(x0) == 0; ++x0)
   { { size_t s; // check if x0 is large
@@ -114,7 +114,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
 
     // if we get here, x0 is large
     // check that basepoint is well-defined
-    basepts.assign(wl.size(),kgb::UndefKGB);
+    basepts.assign(wl.size(),UndefKGB);
     basepts[0] = x0;
     for (size_t w_pos = 1; w_pos < wl.size(); ++w_pos)
     {
@@ -126,14 +126,14 @@ bool checkBasePoint(const kgb::KGB& kgb)
       for (size_t s=0; s<kgb.rank(); ++s)
 	if (W.weylGroup().hasDescent(s,tw.w()))  // try all descents
 	{
-	  kgb::KGBElt sx_sw; // will hold candidate basepoint at w
+	  KGBElt sx_sw; // will hold candidate basepoint at w
 	  if (W.hasTwistedCommutation(s,tw)) // descent is inverse Cayley
 	  {
 	    TwistedInvolution sw = W.prod(s,tw);
 	    size_t sw_pos = // locate index of |sw| using binary search
               std::lower_bound(wl.begin(),wl.end(),sw,comp) -  wl.begin();
 	    sx_sw = kgb.cayley(s,basepts[sw_pos]);
-	    if (sx_sw == kgb::UndefKGB) // Cayley undefined; should not happen
+	    if (sx_sw == UndefKGB) // Cayley undefined; should not happen
 	      return false;
 	  }
 	  else
@@ -144,7 +144,7 @@ bool checkBasePoint(const kgb::KGB& kgb)
 	    sx_sw = kgb.cross(s,basepts[sw_pos]);
 	  }
 
-	  if (basepts[w_pos] == kgb::UndefKGB) // x_w is new
+	  if (basepts[w_pos] == UndefKGB) // x_w is new
 	  {
 	    basepts[w_pos] = sx_sw;
 	    // check if basepoint is large (all simple-imaginaries noncompact)
@@ -176,21 +176,21 @@ void dualityPermutation(permutations::Permutation& a, const kl::KLContext& klc)
 
 bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc)
 {
-  std::vector<blocks::BlockElt> dual =
+  std::vector<BlockElt> dual =
     blocks::dual_map(klc.block(),dual_klc.block());
 
   permutations::Permutation inv_dual
     (permutations::Permutation(dual.begin(),dual.end()),-1);
 
-  blocks::BlockElt block_size=klc.size();
+  BlockElt block_size=klc.size();
 
-  for (blocks::BlockElt x=0; x<block_size; ++x)
+  for (BlockElt x=0; x<block_size; ++x)
   {
 #ifdef VERBOSE
     std::cerr << x <<'\r';
 #endif
-    blocks::BlockElt limit=dual_klc.lengthLess(dual_klc.length(dual[x]));
-    for (blocks::BlockElt dx=0; dx<limit; ++dx)
+    BlockElt limit=dual_klc.lengthLess(dual_klc.length(dual[x]));
+    for (BlockElt dx=0; dx<limit; ++dx)
     {
       assert(dx<inv_dual.size());
       kl::KLPol sum=klc.klPol(x,inv_dual[dx]);
@@ -198,7 +198,7 @@ bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc)
       for (size_t l=klc.length(inv_dual[dx]); l-->klc.length(x)+1; )
       {
 	kl::KLPol s=kl::Zero;
-	for (blocks::BlockElt y=klc.lengthLess(l); y<klc.lengthLess(l+1); ++y)
+	for (BlockElt y=klc.lengthLess(l); y<klc.lengthLess(l+1); ++y)
 	  s+= klc.klPol(x,y) * dual_klc.klPol(dx,dual[y]);
 	sum.subtract_from(s);
       }
@@ -228,7 +228,7 @@ namespace {
 
 std::ostream&
 printBasePts(std::ostream& strm, const TwistedInvolutionList& wl,
-	     const kgb::KGBEltList& bp, const kgb::KGB& kgb)
+	     const KGBEltList& bp, const KGB& kgb)
 
 /*
   Synopsis: outputs the list of basepoints to strm.
@@ -258,7 +258,7 @@ printBasePts(std::ostream& strm, const TwistedInvolutionList& wl,
 
   The result is equivalent to the internal d_tau in KGB.
 */
-void involutionList(TwistedInvolutionList& wl, const kgb::KGB& kgb)
+void involutionList(TwistedInvolutionList& wl, const KGB& kgb)
 {
   wl.push_back(kgb.involution(0));
 

@@ -13,12 +13,12 @@
 namespace atlas {
   namespace filekl {
     
-    const blocks::BlockElt UndefBlock= ~blocks::BlockElt(0);
-    const blocks::BlockElt noGoodAscent= UndefBlock-1;
+    const BlockElt UndefBlock= ~BlockElt(0);
+    const BlockElt noGoodAscent= UndefBlock-1;
     
     const unsigned int magic_code=0x06ABdCF0; 
     
-    void write_block_file(const blocks::Block& block, std::ostream& out);
+    void write_block_file(const Block& block, std::ostream& out);
     
     void write_matrix_file(const kl::KLContext& klc, std::ostream& out);
     

@@ -23,8 +23,9 @@
 #include "constants.h"
 #include "tags.h"
 
-#include "size.h" // for stored order of the Weyl group
+#include "size.h"   // for stored order of the Weyl group
 #include "matrix.h" // for Coxeter matrix
+
 
 /******** type declarations *************************************************/
 
@@ -50,7 +51,7 @@ namespace weyl {
   /*!
 \brief A mapping between one interpretation of Generators and another
   */
-  class WeylInterface
+  class WeylInterface // also used by synonym Twist, for diagram involutions
   {
     Generator d[constants::RANK_MAX];
   public:
@@ -60,10 +61,6 @@ namespace weyl {
     const Generator& operator[] (size_t i) const { return d[i]; }
   };
 
-  /*!
-\brief A permutation of the set of Generators, giving a diagram automorphism
-  */
-  typedef WeylInterface Twist; // use the same implementation
 
 /******** function declaration *********************************************/
 
@@ -176,7 +173,7 @@ public:
   const WeylElt& w() const { return *this; }
   WeylElt& contents() { return *this; }
 
-}; // class WeylElt
+}; // |class WeylElt|
 
 const WeylElt Identity; // default constructor initialises to identity
 
@@ -216,7 +213,7 @@ class RowBase {
   Generator& operator[] (size_t j) {
     return d_data[j];
   }
-};
+}; // |class RowBase|
 
 /*!
 \brief Right multiplication action of simple reflections on a Weyl
@@ -253,8 +250,6 @@ class Transducer {
   // there is one such object for each $r\in\{1,2,\ldots,n\}$
   // but $r$ is not explicitly stored in the Tranducer object
 
- private:
-
   /*!
 \brief Right multiplication by $s_j$ gives transition |i -> d_shift[i][j]|
   */
@@ -281,13 +276,11 @@ class Transducer {
  public:
 
 // constructors and destructors
-  Transducer()
-    {}
+  Transducer() {}
 
   Transducer(const int_Matrix&, size_t);
 
-  ~Transducer()
-    {}
+  ~Transducer() {}
 
 // accessors
 
@@ -304,9 +297,7 @@ class Transducer {
 This is the number of positive roots for the Levi subgroup L_r, minus
 the number of positive roots for L_{r-1}.
   */
-  unsigned long maxlength() const {
-    return d_length.back();
-  }
+  unsigned long maxlength() const { return d_length.back(); }
 
 
   /*!
@@ -340,7 +331,7 @@ is out(x,s).x = x.s.
   const WeylWord& wordPiece(WeylElt::EltPiece x) const { return d_piece[x]; }
 
 // this class should have no manipulators!
-}; // class Transducer
+}; // |class Transducer|
 
 
   /*!
@@ -756,8 +747,8 @@ struct TI_Entry
 }; // class TI_Entry
 
 
-}
+} // |namespace weyl|
 
-}
+} // |namespace atlas|
 
 #endif

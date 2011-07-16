@@ -82,8 +82,8 @@ namespace {
   // local variables
   // these have been changed to pointers to avoid swapping of G_C
 
-  complexredgp::ComplexReductiveGroup* G_C_pointer=NULL;
-  complexredgp::ComplexReductiveGroup* dual_G_C_pointer=NULL;
+  ComplexReductiveGroup* G_C_pointer=NULL;
+  ComplexReductiveGroup* dual_G_C_pointer=NULL;
   complexredgp_io::Interface* G_I_pointer=NULL;
 
  }
@@ -97,16 +97,16 @@ namespace {
 
 namespace mainmode {
 
-complexredgp::ComplexReductiveGroup& currentComplexGroup()
+ComplexReductiveGroup& currentComplexGroup()
 
 {
   return *G_C_pointer;
 }
 
-complexredgp::ComplexReductiveGroup& current_dual_group()
+ComplexReductiveGroup& current_dual_group()
 {
   if (dual_G_C_pointer==NULL)
-    dual_G_C_pointer = new complexredgp::ComplexReductiveGroup
+    dual_G_C_pointer = new ComplexReductiveGroup
       (currentComplexGroup(), tags::DualTag());
   return *dual_G_C_pointer;
 }
@@ -116,7 +116,7 @@ complexredgp_io::Interface& currentComplexInterface()
   return *G_I_pointer;
 }
 
-void replaceComplexGroup(complexredgp::ComplexReductiveGroup* G
+void replaceComplexGroup(ComplexReductiveGroup* G
 			,complexredgp_io::Interface* I)
 {
   delete G_C_pointer;
@@ -347,7 +347,7 @@ void showdualforms_f()
 // Print the gradings associated to the weak real forms.
 void gradings_f()
 {
-  complexredgp::ComplexReductiveGroup& G_C = currentComplexGroup();
+  ComplexReductiveGroup& G_C = currentComplexGroup();
 
   // get Cartan class; abort if unvalid
   size_t cn=interactive::get_Cartan_class(G_C.Cartan_set(G_C.quasisplit()));
@@ -363,7 +363,7 @@ void gradings_f()
 // Print information about strong real forms.
 void strongreal_f()
 {
-  complexredgp::ComplexReductiveGroup& G_C = currentComplexGroup();
+  ComplexReductiveGroup& G_C = currentComplexGroup();
 
   // get Cartan class; abort if unvalid
   size_t cn=interactive::get_Cartan_class(G_C.Cartan_set(G_C.quasisplit()));
@@ -380,24 +380,24 @@ void strongreal_f()
 // Print a kgb table for a dual real form.
 void dual_kgb_f()
 {
-  complexredgp::ComplexReductiveGroup& G_C = currentComplexGroup();
+  ComplexReductiveGroup& G_C = currentComplexGroup();
 
   const complexredgp_io::Interface& G_I = currentComplexInterface();
-  const realform::RealFormList rfl = // get list of all dual real forms
+  const RealFormNbrList rfl = // get list of all dual real forms
     G_C.dualRealFormLabels(G_C.mostSplit(G_C.quasisplit()));
 
-  realform::RealForm drf;
+  RealFormNbr drf;
 
   interactive::getInteractive(drf,G_I,rfl,tags::DualTag());
 
   // the complex group must be in a variable: is non-const for real group
-  complexredgp::ComplexReductiveGroup dG_C(G_C,tags::DualTag());
-  realredgp::RealReductiveGroup dG(dG_C,drf);
+  ComplexReductiveGroup dG_C(G_C,tags::DualTag());
+  RealReductiveGroup dG(dG_C,drf);
 
   std::cout << "dual kgbsize: " << dG.KGB_size() << std::endl;
   ioutils::OutputFile file;
 
-  kgb::KGB kgb(dG);
+  KGB kgb(dG);
   kgb_io::printKGB(file,kgb);
 }
 
@@ -409,7 +409,7 @@ void type_f()
 {
   try
   {
-    complexredgp::ComplexReductiveGroup* G;
+    ComplexReductiveGroup* G;
     complexredgp_io::Interface* I;
     interactive::getInteractive(G,I);
     replaceComplexGroup(G,I);

@@ -17,7 +17,6 @@ Implementation of the class RealTorus
 #include <algorithm>
 #include <cassert>
 
-#include "lattice.h"
 #include "matreduc.h"
 
 namespace atlas {
@@ -181,11 +180,11 @@ RealTorus::RealTorus(const RealTorus& T, tags::DualTag)
   them onto dpi0, and then restrict to our dual component representatives.
   But in fact this is hidden inside |subquotient::subquotientMap|.
 */
-bitvector::BinaryMap RealTorus::componentMap
+BinaryMap RealTorus::componentMap
   (const LatticeMatrix& m,
    const RealTorus& T_dest) const
 {
-  bitvector::BinaryMap m2(m); // reduce mod2
+  BinaryMap m2(m); // reduce mod2
 
   return subquotient::subquotientMap(d_topology,T_dest.topology(),m2);
 }
@@ -222,8 +221,8 @@ void dualPi0(subquotient::SmallSubquotient& dpi0, const WeightInvolution& q)
   WeightList plus; plusBasis(plus,q);
   SmallBitVectorList plus2(plus); // mod 2: denominator subgroup
 
-  bitvector::BinaryMap i2(q);  // reduce modulo 2
-  bitvector::BinaryMap id; identityMatrix(id,q.numRows());
+  BinaryMap i2(q);  // reduce modulo 2
+  BinaryMap id; identityMatrix(id,q.numRows());
 
   i2 += id;
   // now |i2| is modulo 2 image of $\tau-id$ (and also of $\tau+id$)
@@ -382,8 +381,8 @@ void makeTopology(subquotient::SmallSubquotient& cs, const RealTorus& T)
 {
   SmallBitVectorList plus2(T.plusLattice()); // reduce mod 2
 
-  bitvector::BinaryMap i2(T.involution()); // reduce mod 2
-  bitvector::BinaryMap id; identityMatrix(id,T.rank());
+  BinaryMap i2(T.involution()); // reduce mod 2
+  BinaryMap id; identityMatrix(id,T.rank());
   i2 += id;
 
   SmallBitVectorList b;

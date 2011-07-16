@@ -15,7 +15,7 @@
 #include "bitset.h"
 #include "graph.h"
 #include "partition.h"
-#include "blocks_fwd.h"
+#include "atlas_types.h"
 
 namespace atlas {
 
@@ -122,7 +122,7 @@ class DecomposedWGraph {
   std::vector<WGraph> d_cell; // the strong components
 
   std::vector<cell_no> d_part;    // assigns strong component to each BlockElt
-  std::vector< std::vector<blocks::BlockElt> > d_id; // original vertex numbers
+  std::vector< std::vector<BlockElt> > d_id; // original vertex numbers
 
   graph::OrientedGraph d_induced; // induced graph on cells
 
@@ -146,7 +146,7 @@ class DecomposedWGraph {
   size_t cellCount() const { return d_cell.size(); }
   const graph::OrientedGraph& inducedGraph() const { return d_induced; }
   const wgraph::WGraph& cell (size_t c) const { return d_cell[c]; }
-  const std::vector<blocks::BlockElt>& cellMembers(size_t c) const
+  const std::vector<BlockElt>& cellMembers(size_t c) const
     { return d_id[c]; }
 
 };

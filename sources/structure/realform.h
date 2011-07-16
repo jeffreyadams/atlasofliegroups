@@ -20,15 +20,6 @@
 
 namespace atlas {
 
-namespace realform {
-/*!
-  A variable of this type indicates the position (like 0, 1, 2,...) of a 
-  real form on a list of real forms (like the one maintained by
-  the class ComplexReductiveGroup in realFormLabels).
-*/
-  typedef size_t RealForm;
-  typedef std::vector<RealForm> RealFormList;
-}
 
 }
 

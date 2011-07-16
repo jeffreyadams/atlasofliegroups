@@ -52,7 +52,7 @@ class GroupIterator {
  public:
 // associated types
   typedef std::forward_iterator_tag iterator_category;
-  typedef realredgp::RealReductiveGroup value_type;
+  typedef RealReductiveGroup value_type;
   typedef ptrdiff_t difference_type;
   typedef const value_type* pointer;
   typedef const value_type& reference;

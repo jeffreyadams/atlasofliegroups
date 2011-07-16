@@ -106,7 +106,7 @@ namespace atlas {
 
         Chapter I -- The Connectivity class
 
-  The only thing stored in
+  The only thing stored in the class is the basis of the dual component group
 
 ******************************************************************************/
 
@@ -154,7 +154,7 @@ Connectivity::Connectivity(const tori::RealTorus& t,
 
   int_Matrix m(b,rd.rank()); m.transpose();
 
-  bitvector::BinaryMap m2 = t.componentMap(m,t_sc);
+  BinaryMap m2 = t.componentMap(m,t_sc);
 
   m2.kernel(d_dpi0);
 }

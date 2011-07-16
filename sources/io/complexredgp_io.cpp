@@ -18,7 +18,6 @@
 #include "lietype.h"
 #include "matrix.h"
 #include "prettyprint.h"
-#include "realform.h"
 #include "realform_io.h"
 #include "rootdata.h"
 #include "tags.h"
@@ -42,7 +41,7 @@ namespace atlas {
 
 namespace complexredgp_io {
 
-Interface::Interface(complexredgp::ComplexReductiveGroup& G,
+Interface::Interface(ComplexReductiveGroup& G,
 		     const lietype::Layout& lo)
   : d_complexGroup(&G)
   , d_realFormInterface(G,lo)
@@ -74,7 +73,7 @@ namespace complexredgp_io {
 
 std::ostream& printBlockSizes(std::ostream& strm, Interface& CI)
 {
-  complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
+  ComplexReductiveGroup& G = CI.complexGroup();
   const realform_io::Interface rfi = CI.realFormInterface();
   const realform_io::Interface drfi = CI.dualRealFormInterface();
 
@@ -105,10 +104,10 @@ std::ostream& printBlockSizes(std::ostream& strm, Interface& CI)
 */
 std::ostream& printGradings(std::ostream& strm, size_t cn, Interface& CI)
 {
-  complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
-  const cartanclass::CartanClass& cc = G.cartan(cn);
+  ComplexReductiveGroup& G = CI.complexGroup();
+  const CartanClass& cc = G.cartan(cn);
 
-  realform::RealFormList rfl(cc.numRealForms());
+  RealFormNbrList rfl(cc.numRealForms());
   const realform_io::Interface& rfi = CI.realFormInterface();
 
   for (size_t i = 0; i < rfl.size(); ++i)

@@ -18,6 +18,8 @@
 
 #include "bitmap.h"
 #include "bitset.h"
+
+#include "atlas_types.h"
 #include "blocks.h"
 #include "descents.h"
 
@@ -35,53 +37,53 @@ class KLSupport
 
   bitset::BitSet<NumStates> d_state;
 
-  blocks::Block_base& d_block;  // non-owned reference
+  Block_base& d_block;  // non-owned reference
 
   std::vector<bitset::RankFlags> d_descent;
   std::vector<bitset::RankFlags> d_goodAscent;
   std::vector<bitmap::BitMap> d_downset;
   std::vector<bitmap::BitMap> d_primset;
-  std::vector<blocks::BlockElt> d_lengthLess;
+  std::vector<BlockElt> d_lengthLess;
 
  public:
 
 // constructors and destructors
-  KLSupport(blocks::Block_base&);
+  KLSupport(Block_base&);
 
 // copy and swap (use automatically generated copy constructor)
   void swap(KLSupport&);
 
 // accessors
 
-  const blocks::Block_base& block() const { return d_block; }
-  blocks::BlockElt cross(size_t s, blocks::BlockElt z) const
+  const Block_base& block() const { return d_block; }
+  BlockElt cross(size_t s, BlockElt z) const
     { return d_block.cross(s,z); }
-  blocks::BlockEltPair cayley(size_t s, blocks::BlockElt z) const
+  BlockEltPair cayley(size_t s, BlockElt z) const
     { return d_block.cayley(s,z); }
-  const bitset::RankFlags& descentSet(blocks::BlockElt z) const
+  const bitset::RankFlags& descentSet(BlockElt z) const
     { return d_descent[z]; }
   /*!
 \brief Descent status of simple root s for block element z. Taken directly from the block.
   */
-  descents::DescentStatus::Value descentValue(size_t s, blocks::BlockElt z)
+  DescentStatus::Value descentValue(size_t s, BlockElt z)
     const
     { return d_block.descentValue(s,z); }
-  const descents::DescentStatus& descent(blocks::BlockElt y) const // full info
+  const DescentStatus& descent(BlockElt y) const // full info
     { return d_block.descent(y); }
 
   size_t rank() const { return d_block.rank(); }
   size_t size() const { return d_block.size(); }
 
-  const bitset::RankFlags& goodAscentSet(blocks::BlockElt z) const
+  const bitset::RankFlags& goodAscentSet(BlockElt z) const
     { return d_goodAscent[z]; }
-  size_t length(blocks::BlockElt z) const { return d_block.length(z); }
+  size_t length(BlockElt z) const { return d_block.length(z); }
   /*!
 \brief Number of block elements of length strictly less than l.
   */
-  blocks::BlockElt lengthLess(size_t l) const { return d_lengthLess[l]; }
+  BlockElt lengthLess(size_t l) const { return d_lengthLess[l]; }
 
-  blocks::BlockElt primitivize
-    (blocks::BlockElt x, const bitset::RankFlags& A) const;
+  BlockElt primitivize
+    (BlockElt x, const bitset::RankFlags& A) const;
 
   // the following are filters of the bitmap
   void extremalize(bitmap::BitMap&, const bitset::RankFlags&) const;

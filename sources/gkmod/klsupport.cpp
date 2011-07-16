@@ -34,7 +34,7 @@ namespace atlas {
 namespace {
 
   void fillLengthLess
-    (std::vector<blocks::BlockElt>&, const blocks::Block_base&);
+    (std::vector<BlockElt>&, const Block_base&);
 
 } // namespace
 
@@ -46,7 +46,7 @@ namespace {
 
 namespace klsupport {
 
-KLSupport::KLSupport(blocks::Block_base& b)
+KLSupport::KLSupport(Block_base& b)
   : d_state()
   , d_block(b)
   , d_descent()
@@ -130,18 +130,18 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
   |UndefBlock| is conveniently larger than any valid BlockElt |y|, so this
   case will be handled effortlessly together with triangularity).
 */
-blocks::BlockElt
-  KLSupport::primitivize(blocks::BlockElt x, const bitset::RankFlags& d) const
+BlockElt
+  KLSupport::primitivize(BlockElt x, const bitset::RankFlags& d) const
 {
   bitset::RankFlags a; // good ascents for x that are descents for y
 
   while ((a = goodAscentSet(x)&d).any())
   {
     size_t s = a.firstBit();
-    descents::DescentStatus::Value v = descentValue(s,x);
-    if (v == descents::DescentStatus::RealNonparity)
+    DescentStatus::Value v = descentValue(s,x);
+    if (v == DescentStatus::RealNonparity)
       return blocks::UndefBlock; // cop out
-    x = v == descents::DescentStatus::ComplexAscent // complex or imag type I ?
+    x = v == DescentStatus::ComplexAscent // complex or imag type I ?
 	? d_block.cross(s,x)
 	: d_block.cayley(s,x).first;
   }
@@ -209,17 +209,17 @@ void KLSupport::fillDownsets()
   {
     downset[s].set_capacity(size);
     primset[s].set_capacity(size);
-    for (blocks::BlockElt z = 0; z < size; ++z)
+    for (BlockElt z = 0; z < size; ++z)
     {
-      descents::DescentStatus::Value v = descentValue(s,z);
-      if (descents::DescentStatus::isDescent(v))
+      DescentStatus::Value v = descentValue(s,z);
+      if (DescentStatus::isDescent(v))
       {
 	downset[s].insert(z);
 	primset[s].insert(z);
 	descents[z].set(s);
       }
       else // ascents
-	if (v == descents::DescentStatus::ImaginaryTypeII)
+	if (v == DescentStatus::ImaginaryTypeII)
 	  primset[s].insert(z);  // s is a "bad" ascent
 	else
 	  good_ascent[z].set(s); // good ascent
@@ -254,13 +254,13 @@ namespace {
   Precondition: b is sorted by length;
 */
 void fillLengthLess
-  (std::vector<blocks::BlockElt>& ll, const blocks::Block_base& b)
+  (std::vector<BlockElt>& ll, const Block_base& b)
 {
   ll.clear(); ll.resize(b.length(b.size()-1)+2);
 
   ll[0]=0; // no elements of length<0
   size_t l=0;
-  for (blocks::BlockElt z=0; z<b.size(); ++z)
+  for (BlockElt z=0; z<b.size(); ++z)
     while (b.length(z)>l)
       ll[++l]=z;  // invariant |l<=b.length(z)| after this statement
 

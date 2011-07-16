@@ -9,15 +9,15 @@ namespace atlas {
     using basic_io::read_bytes;
 
     
-    const blocks::BlockElt UndefBlock= ~blocks::BlockElt(0);
-    const blocks::BlockElt noGoodAscent= UndefBlock-1;
+    const BlockElt UndefBlock= ~BlockElt(0);
+    const BlockElt noGoodAscent= UndefBlock-1;
     
     const unsigned int magic_code=0x06ABdCF0; 
 
 
     
-    blocks::BlockElt
-    block_info::primitivize(blocks::BlockElt x, blocks::BlockElt y) const
+    BlockElt
+    block_info::primitivize(BlockElt x, BlockElt y) const
     {
       bitset::RankFlags d=descent_set[y];
     start:
@@ -30,7 +30,7 @@ namespace atlas {
     }
     
     bool
-    block_info::is_primitive(blocks::BlockElt x, const bitset::RankFlags d) const
+    block_info::is_primitive(BlockElt x, const bitset::RankFlags d) const
     {
       const ascent_vector& ax=ascents[x];
       for (size_t s=0; s<ax.size(); ++s)
@@ -40,12 +40,12 @@ namespace atlas {
       // now |d[s]| implies |ascents[s]==noGoodAscent| for all simple roots |s|
     }
     
-    const prim_list& block_info::prims_for_descents_of(blocks::BlockElt y)
+    const prim_list& block_info::prims_for_descents_of(BlockElt y)
     { bitset::RankFlags d=descent_set[y];
       unsigned long s=d.to_ulong();
       prim_list& result=primitives_list[s];
       if (result.empty())
-      { for (blocks::BlockElt x=0; x<size; ++x)
+      { for (BlockElt x=0; x<size; ++x)
           if (is_primitive(x,d))
     	result.push_back(x);
         prim_list(result).swap(result); // reallocate to fit snugly
@@ -64,18 +64,18 @@ namespace atlas {
     
       // read intervals of block elements for each length
       start_length.resize(max_length+2);
-      start_length[0]=blocks::BlockElt(0);
+      start_length[0]=BlockElt(0);
       for (size_t i=1; i<=max_length; ++i) start_length[i]=read_bytes<4>(in);
       start_length[max_length+1]=size;
     
       // read descent sets
       descent_set.reserve(size);
-      for (blocks::BlockElt y=0; y<size; ++y)
+      for (BlockElt y=0; y<size; ++y)
         descent_set.push_back(bitset::RankFlags(read_bytes<4>(in)));
     
       // read ascent table
       ascents.reserve(size);
-      for (blocks::BlockElt x=0; x<size; ++x)
+      for (BlockElt x=0; x<size; ++x)
         {
           ascents.push_back(ascent_vector());
           ascent_vector& a=ascents.back();
@@ -88,14 +88,14 @@ namespace atlas {
       primitives_list.resize(1ul<<rank); // create $2^{rank}$ empty vectors
     }
     
-    size_t matrix_info::length (blocks::BlockElt y) const
+    size_t matrix_info::length (BlockElt y) const
     { return
         std::upper_bound(block.start_length.begin(),block.start_length.end(),y)
         -block.start_length.begin() // index of first element of length |l(y)+1|
         -1; // now we have just |l(y)|
     }
     
-    void matrix_info::set_y(blocks::BlockElt y)
+    void matrix_info::set_y(BlockElt y)
     {
       if (y==cur_y) { matrix_file.seekg(cur_row_entries); return; }
       cur_y=y;
@@ -116,12 +116,12 @@ namespace atlas {
     
       {
     #ifndef NDEBUG
-        const blocks::BlockElt* i=
+        const BlockElt* i=
           // point after first block element of length of |y|
           std::upper_bound(&block.start_length[0]
       		    ,&block.start_length[block.max_length+1]
       		    ,y);
-        const blocks::BlockElt* first=
+        const BlockElt* first=
           // point to first of |weak_prims| of that length
           std::lower_bound(&weak_prims[0],&weak_prims[weak_prims.size()],*(i-1));
         if (cur_strong_prims.back()!=*first)
@@ -138,7 +138,7 @@ namespace atlas {
       cur_row_entries=matrix_file.tellg();
     }
     
-    KLIndex matrix_info::find_pol_nr(blocks::BlockElt x,blocks::BlockElt y)
+    KLIndex matrix_info::find_pol_nr(BlockElt x,BlockElt y)
     {
       set_y(y);
       x_prim=block.primitivize(x,y);
@@ -153,14 +153,14 @@ namespace atlas {
       return KLIndex(read_bytes<4>(matrix_file));
     }
     
-    blocks::BlockElt matrix_info::prim_nr(unsigned int i,blocks::BlockElt y)
+    BlockElt matrix_info::prim_nr(unsigned int i,BlockElt y)
     { const prim_list& weak_prims = block.prims_for_descents_of(y);
-      const blocks::BlockElt* it=
+      const BlockElt* it=
         // point after first block element of length of |y|
         std::upper_bound(&block.start_length[0]
     		    ,&block.start_length[block.max_length+1]
     		    ,y);
-      const blocks::BlockElt* first=
+      const BlockElt* first=
         // point to first of |weak_prims| of that length
         std::lower_bound(&weak_prims[0],&weak_prims[weak_prims.size()],*(it-1));
       size_t limit=first-&weak_prims[0]; // limiting value for |i|
@@ -181,7 +181,7 @@ namespace atlas {
       if (read_bytes<4>(matrix_file)==magic_code)
       { matrix_file.seekg(-4*std::streamoff(block_size()),std::ios_base::end);
         std::streamoff cumul=0;
-        for (blocks::BlockElt y=0; y<block_size(); ++y)
+        for (BlockElt y=0; y<block_size(); ++y)
         { cumul+= 4*std::streamoff(read_bytes<4>(matrix_file));
           row_pos[y] = cumul;
         }
@@ -191,7 +191,7 @@ namespace atlas {
       {
         size_t l=0; // length of y
         matrix_file.seekg(0,std::ios_base::beg);
-        for (blocks::BlockElt y=0; y<block.size; ++y)
+        for (BlockElt y=0; y<block.size; ++y)
         {
           while (y>=block.start_length[l+1]) ++l;
     
@@ -223,7 +223,7 @@ namespace atlas {
           { std::cerr << y << std::endl;
     	throw std::runtime_error ("Premature end of file");
           }
-        } // for (blocks::BlockElt y...)
+        } // for (BlockElt y...)
       } // |if (...==magic_code)|
     
       block_file.close(); // success, we no longer need the block file
@@ -315,17 +315,17 @@ namespace atlas {
     { file.seekg(0,std::ios_base::end); // measure |file|
       if (file.tellg()%12!=0)
         throw std::runtime_error("Row file size not a multiple of 12");
-      blocks::BlockElt size= file.tellg()/12;
+      BlockElt size= file.tellg()/12;
       first_pol.reserve(size+1); first_pol.push_back(0);
       file.seekg(0,std::ios_base::beg); // rewind
-      for (blocks::BlockElt y=0; y<size; ++y)
+      for (BlockElt y=0; y<size; ++y)
       { file.seekg(8,std::ios_base::cur); // skip ahead
         first_pol.push_back(first_pol.back()+read_bytes<4>(file));
       }
       file.close();
     }
     
-    blocks::BlockElt progress_info::first_row_for_pol(KLIndex i) const
+    BlockElt progress_info::first_row_for_pol(KLIndex i) const
     { const KLIndex* p=std::upper_bound(&first_pol[1],&*first_pol.end(),i);
       return p-&first_pol[1];
     }

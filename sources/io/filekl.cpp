@@ -5,7 +5,7 @@ namespace atlas {
   namespace filekl {
 
     
-    void write_block_file(const blocks::Block& block, std::ostream& out)
+    void write_block_file(const Block& block, std::ostream& out)
     {
       unsigned char rank=block.rank(); // certainly fits in a byte
     
@@ -16,7 +16,7 @@ namespace atlas {
         unsigned char max_length=block.length(block.size()-1);
         out.put(max_length);
     
-        blocks::BlockElt z=0;
+        BlockElt z=0;
         // |basic_io::put_int(z,out)|; obvious: no elements |z| with |length(z)<0|
         for (size_t l=0; l<max_length; ++l)
         {
@@ -31,7 +31,7 @@ namespace atlas {
       }
     
       // write descent sets
-      for (blocks::BlockElt y=0; y<block.size(); ++y)
+      for (BlockElt y=0; y<block.size(); ++y)
       {
         bitset::RankFlags d;
         for (size_t s = 0; s < rank; ++s)
@@ -40,22 +40,22 @@ namespace atlas {
       }
     
       // write table of primitivatisation successors
-      for (blocks::BlockElt x=0; x<block.size(); ++x)
+      for (BlockElt x=0; x<block.size(); ++x)
       {
     #if VERBOSE
         std::cerr << x << '\r';
     #endif
         for (size_t s = 0; s < rank; ++s)
         {
-          descents::DescentStatus::Value v = block.descentValue(s,x);
-          if (descents::DescentStatus::isDescent(v)
-    	  or v==descents::DescentStatus::ImaginaryTypeII)
+          DescentStatus::Value v = block.descentValue(s,x);
+          if (DescentStatus::isDescent(v)
+    	  or v==DescentStatus::ImaginaryTypeII)
     	basic_io::put_int(noGoodAscent,out);
-          else if (v == descents::DescentStatus::RealNonparity)
+          else if (v == DescentStatus::RealNonparity)
     	basic_io::put_int(blocks::UndefBlock,out);
-          else if (v == descents::DescentStatus::ComplexAscent)
+          else if (v == DescentStatus::ComplexAscent)
     	basic_io::put_int(block.cross(s,x),out);
-          else if (v == descents::DescentStatus::ImaginaryTypeI)
+          else if (v == DescentStatus::ImaginaryTypeI)
     	basic_io::put_int(block.cayley(s,x).first,out);
           else assert(false);
         }
@@ -63,7 +63,7 @@ namespace atlas {
     }
     
     std::streamoff
-    write_KL_row(const kl::KLContext& klc, blocks::BlockElt y, std::ostream& out)
+    write_KL_row(const kl::KLContext& klc, BlockElt y, std::ostream& out)
     {
       bitmap::BitMap prims=klc.primMap(y);
       const kl::KLRow& klr=klc.klRow(y);
@@ -96,7 +96,7 @@ namespace atlas {
     {
       std::vector<unsigned int> delta(klc.size());
       std::streamoff offset=0;
-      for (blocks::BlockElt y=0; y<klc.size(); ++y)
+      for (BlockElt y=0; y<klc.size(); ++y)
       {
         std::streamoff new_offset=write_KL_row(klc,y,out);
         delta[y]=static_cast<unsigned int>((new_offset-offset)/4);
@@ -104,7 +104,7 @@ namespace atlas {
       }
     
       // now write the values allowing rapid location of the matrix rows
-      for (blocks::BlockElt y=0; y<klc.size(); ++y)
+      for (BlockElt y=0; y<klc.size(); ++y)
         basic_io::put_int(delta[y],out);
     
       // and finally sign file as being in new format by overwriting 4 bytes

@@ -36,7 +36,7 @@ projection of $\gamma$ on the $-1$-eigenspace, is called $\nu$, this is what
 we are adding with respect to the values encoded in
 |standardrepk::StandarRepK| values. The part of $\lambda$ that is independent
 of the discrete part of $\gamma$ is its "torsion part" (disconnected
-$H(R)_c$), which would be represented in the |blocks::Block| structure by the
+$H(R)_c$), which would be represented in the |Block| structure by the
 |TorusPart| component of the |TitsElt| of the dual KGB-element ($y$).
 
 Although $\gamma$ could in principle take any complex values compatible with
@@ -47,12 +47,12 @@ class StandardRepr
 {
   friend class Rep_context;
 
-  kgb::KGBElt x;
+  KGBElt x;
   Weight lambda_rho; // $\lambda-\rho$
   RatWeight infinitesimal_char; // $\gamma$
 
  public:
-  StandardRepr (kgb::KGBElt xx,
+  StandardRepr (KGBElt xx,
 		const Weight& lr,
 		const RatWeight& gamma)
     : x(xx), lambda_rho(lr), infinitesimal_char(gamma) {}
@@ -75,23 +75,23 @@ class StandardRepr
 // This class stores the information necessary to interpret a |StandardRepr|
 class Rep_context
 {
-  realredgp::RealReductiveGroup& G;
-  const kgb::KGB_base& KGB_set;
+  RealReductiveGroup& G;
+  const KGB_base& KGB_set;
 
  public:
-  Rep_context(realredgp::RealReductiveGroup &G);
+  Rep_context(RealReductiveGroup &G);
 
   // accessors
-  complexredgp::ComplexReductiveGroup& complexGroup() const
+  ComplexReductiveGroup& complexGroup() const
   { return G.complexGroup(); }
   const RootDatum& rootDatum() const { return G.rootDatum(); }
   const WeylGroup& weylGroup() const { return G.weylGroup(); }
   const TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
-  const tits::TitsGroup& titsGroup() const { return G.titsGroup(); }
-  const tits::TitsCoset& basedTitsGroup() const
+  const TitsGroup& titsGroup() const { return G.titsGroup(); }
+  const TitsCoset& basedTitsGroup() const
     { return G.basedTitsGroup(); }
-  const kgb::KGB_base& kgb() const { return KGB_set; }
+  const KGB_base& kgb() const { return KGB_set; }
 
   const TwistedInvolution twistedInvolution(size_t cn) const
     { return complexGroup().twistedInvolution(cn); }
@@ -102,12 +102,12 @@ class Rep_context
        const RatWeight& nu) const;
 
   StandardRepr
-    sr(kgb::KGBElt x,
+    sr(KGBElt x,
        const Weight lambda_rho,
        const RatWeight& nu) const;
 
   RatWeight lambda(const StandardRepr& rep) const; // half-integer
-  tits::GlobalTitsElement y(const StandardRepr& rep) const;
+  GlobalTitsElement y(const StandardRepr& rep) const;
 
   kgb::global_KGB dual_KGB(const StandardRepr& rep) const;
 }; // |Rep_context|

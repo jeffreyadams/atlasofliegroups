@@ -15,9 +15,10 @@
 
 #include <functional>
 
-
 #include "comparison.h"
 #include "partition.h"
+
+#include "bitvector.h"
 #include "rootdata.h"
 
 /*
@@ -165,13 +166,13 @@ GradingList grading_classes(const RootSystem& rs)
   This function returns the equations saying that the grading should
   be noncompact (have value 1) at each element of |nc|.
 */
-bitvector::BinaryEquationList
+BinaryEquationList
 noncompact_eqns(const WeightList& nc)
 {
-  bitvector::BinaryEquationList result; result.reserve(nc.size());
+  BinaryEquationList result; result.reserve(nc.size());
   for (size_t i=0; i<nc.size(); ++i)
   {
-    bitvector::BinaryEquation e(nc[i]); // reduce mod 2
+    BinaryEquation e(nc[i]); // reduce mod 2
     e.pushBack(true); // add a bit 1, saying that value should be noncompact
     result.push_back(e);
   }
@@ -198,7 +199,7 @@ noncompact_eqns(const WeightList& nc)
   grading of \f$\beta\f$ changes iff this condition is met for an odd number
   of \f$\alpha\f$s.
 */
-void transform_grading(gradings::Grading& gr,
+void transform_grading(Grading& gr,
 		      const RootNbrList& rl,
 		      const RootNbrSet& so,
 		      const RootSystem& rs)
@@ -229,7 +230,7 @@ void transform_grading(gradings::Grading& gr,
   rule. This then gives us the equations, to the number of rank(o_orth), that
   we have to add to |eqn|.
 */
-  void add_compact_eqns(bitvector::BinaryEquationList& eqn,
+  void add_compact_eqns(BinaryEquationList& eqn,
 			const RootNbrSet& o,
 			const RootNbrSet& subsys,
 			const RootSystem& rs)
@@ -258,7 +259,7 @@ void transform_grading(gradings::Grading& gr,
 
   for (unsigned long i = 0; i < woob.size(); ++i)
   {
-    bitvector::BinaryEquation e(woob[i]); // reduce left hand side modulo 2
+    BinaryEquation e(woob[i]); // reduce left hand side modulo 2
     e.pushBack(g[i]); // value grading should take on root |oob[i]| (rhs)
     eqn.push_back(e);
   }
@@ -306,7 +307,7 @@ RootNbrSet grading_for_orthset
   rs.toRootBasis(subsys.begin(),subsys.end(),back_inserter(wrs),rb);
 
   // write equations for the roots in o
-  bitvector::BinaryEquationList eqn = noncompact_eqns(wo);
+  BinaryEquationList eqn = noncompact_eqns(wo);
   // now |eqn| describes gradings with value 1 on elements of |o|.
 
   // add equations for the maximality
@@ -315,7 +316,7 @@ RootNbrSet grading_for_orthset
 
   // solve system
 
-  bitvector::BinaryEquation gc(rb.size());
+  BinaryEquation gc(rb.size());
   firstSolution(gc,eqn);
 
   Grading g = gc.data();

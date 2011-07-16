@@ -22,17 +22,6 @@ namespace atlas {
 
 /******** type declarations *************************************************/
 
-namespace blocks {
-
-  class Block_base;
-  class Block;
-
-  typedef unsigned int BlockElt;
-  typedef std::vector<BlockElt> BlockEltList;
-  typedef std::pair<BlockElt,BlockElt> BlockEltPair;
-  typedef std::vector<BlockEltPair> BlockEltPairList;
-
-}
 
 }
 

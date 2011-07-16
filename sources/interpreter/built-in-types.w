@@ -1217,7 +1217,7 @@ install_function(integrality_points_wrapper
 
 @*1 A type for complex reductive groups equipped with an involution.
 We shall now go ahead to define a primitive type holding a
-|complexredgp::ComplexReductiveGroup|, which represents a complex reductive
+|ComplexReductiveGroup|, which represents a complex reductive
 group equipped with an involution, which defines an ``inner class'' of real
 forms for that group. We can construct such an object from a root datum and an
 involution. In the Atlas software such involutions are entered indirectly via
@@ -1336,7 +1336,7 @@ however reuse the module that tests for being an involution here.
 @< Local function def...@>=
 lietype::Layout check_involution
  (const WeightInvolution& M, const RootDatum& rd,
-  weyl::WeylWord& ww)
+  WeylWord& ww)
  throw (std::bad_alloc, std::runtime_error)
 { size_t r=rd.rank(),s=rd.semisimpleRank();
   @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
@@ -1533,7 +1533,7 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
 @*2 Storing the inner class values.
 Although abstractly an inner class value is described completely by an object
-of type |complexredgp::ComplexReductiveGroup|, we shall need to record
+of type |ComplexReductiveGroup|, we shall need to record
 additional information in order to be able to present meaningful names for the
 real forms and dual real forms in this inner class. The above analysis of
 involutions was necessary in order to obtain such information; it will be
@@ -1544,7 +1544,7 @@ recorded in values of type |realform_io::Interface|.
 @~The class |inner_class_value| will be the first built-in type where we
 deviate from the previously used scheme of holding an \.{atlas} object with
 the main value in a data member |val|. The reason is that the copy constructor
-for |complexredgp::ComplexReductiveGroup| is private (and nowhere defined), so
+for |ComplexReductiveGroup| is private (and nowhere defined), so
 that the straightforward definition of a copy constructor for such a built-in
 type would not work, and the copy constructor is necessary for the |clone|
 method. (In fact, now that normal manipulation of values involves duplicating
@@ -1572,7 +1572,7 @@ computed by |check_involution| above, in order to ensure its validity.
 Occasionally we shall need to refer to the dual inner class (for the dual
 group); since the construction of an instance takes some work, we do not wish
 to repeat that every time the dual is needed, so we create the dual
-|complexredgp::ComplexReductiveGroup| value upon construction of the
+|ComplexReductiveGroup| value upon construction of the
 |inner_class_value| and store it in the |dual| field where it will be
 available as needed.
 
@@ -1584,14 +1584,14 @@ containing class exists.
 
 @< Type definitions @>=
 struct inner_class_value : public value_base
-{ complexredgp::ComplexReductiveGroup& val;
-  complexredgp::ComplexReductiveGroup& dual;
+{ ComplexReductiveGroup& val;
+  ComplexReductiveGroup& dual;
   size_t& ref_count;
 @)
   lietype::Layout type_info;
   const realform_io::Interface interface,dual_interface;
 @)
-  inner_class_value(std::auto_ptr<complexredgp::ComplexReductiveGroup> G
+  inner_class_value(std::auto_ptr<ComplexReductiveGroup> G
    ,@| const lietype::Layout& lo); // main constructor
   ~inner_class_value();
 @)
@@ -1642,16 +1642,16 @@ an auto-pointer until the construction succeeds.
 
 @< Function def...@>=
 inner_class_value::inner_class_value
-  (std::auto_ptr<complexredgp::ComplexReductiveGroup> g,
+  (std::auto_ptr<ComplexReductiveGroup> g,
    const lietype::Layout& lo)
 @/: val(*g)
-, dual(*new complexredgp::ComplexReductiveGroup(*g,tags::DualTag()))
+, dual(*new ComplexReductiveGroup(*g,tags::DualTag()))
 @/, ref_count(*new size_t(1))
 @/, type_info(lo), interface(*g,lo), dual_interface(*g,lo,tags::DualTag())
  {@; g.release(); } // now that we own |g|, release the auto-pointer
 
 @ We allow construction of a dual |inner_class_value|. Since it can share the
-two fields referring to objects of type |complexredgp::ComplexReductiveGroup|
+two fields referring to objects of type |ComplexReductiveGroup|
 in the opposite order, we can consider it as a member of the same reference
 counted family, and share the |ref_count| field. This means this constructor
 is more like the copy constructor than like the main constructor, and in
@@ -1696,26 +1696,26 @@ as argument
 void fix_involution_wrapper(expression_base::level l)
 { shared_matrix M(get<matrix_value>());
   shared_root_datum rd(get<root_datum_value>());
-  weyl::WeylWord ww;
+  WeylWord ww;
   lietype::Layout lo = check_involution(M->val,rd->val,ww);
   if (l==expression_base::no_value)
     return;
 @)
-  std::auto_ptr<complexredgp::ComplexReductiveGroup>@|
-    G(new complexredgp::ComplexReductiveGroup(rd->val,M->val));
+  std::auto_ptr<ComplexReductiveGroup>@|
+    G(new ComplexReductiveGroup(rd->val,M->val));
   push_value(new inner_class_value(G,lo));
 }
 
 void twisted_involution_wrapper(expression_base::level l)
 { shared_matrix M(get<matrix_value>());
   shared_root_datum rd(get<root_datum_value>());
-  weyl::WeylWord ww;
+  WeylWord ww;
   lietype::Layout lo = check_involution(M->val,rd->val,ww);
   if (l==expression_base::no_value)
     return;
 @)
-  std::auto_ptr<complexredgp::ComplexReductiveGroup>@|
-    G(new complexredgp::ComplexReductiveGroup(rd->val,M->val));
+  std::auto_ptr<ComplexReductiveGroup>@|
+    G(new ComplexReductiveGroup(rd->val,M->val));
   push_value(new inner_class_value(G,lo));
   push_value(new vector_value(std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
@@ -1758,8 +1758,8 @@ void set_type_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return; // bow out now all possible errors are passed
 @)
-  std::auto_ptr<complexredgp::ComplexReductiveGroup>@|
-    G(new complexredgp::ComplexReductiveGroup(rd->val,M->val));
+  std::auto_ptr<ComplexReductiveGroup>@|
+    G(new ComplexReductiveGroup(rd->val,M->val));
   push_value(new inner_class_value(G,lo));
 }
 
@@ -1963,7 +1963,7 @@ void occurrence_matrix_wrapper(expression_base::level l)
 }
 
 @ We do the same for dual real forms. Note that we had to introduce the method
-|dualCartanSet| for |complexredgp::ComplexReductiveGroup| in order to be able
+|dualCartanSet| for |ComplexReductiveGroup| in order to be able
 to write this function.
 
 @< Local function def...@>=
@@ -2022,7 +2022,7 @@ A next step in specifying the computational context is choosing a real form in
 the inner class of them that was determined by a root datum and an involution.
 This determines a, not necessarily connected, real reductive group inside the
 connected complex reductive group; the corresponding Atlas class is called
-|realredgp::RealReductiveGroup|.
+|RealReductiveGroup|.
 
 @< Includes... @>=
 #include "realredgp.h"
@@ -2030,15 +2030,15 @@ connected complex reductive group; the corresponding Atlas class is called
 
 @*2 Class definition.
 The layout of this type of value is different from what we have seen before.
-An Atlas object of class |realredgp::RealReductiveGroup| is dependent upon
+An Atlas object of class |RealReductiveGroup| is dependent upon
 another Atlas object to which it stores a pointer, which is of type
-|complexredgp::ComplexReductiveGroup|, so we must make sure that the object
+|ComplexReductiveGroup|, so we must make sure that the object
 pointed to cannot disappear before it does. The easiest way to do this is to
 place a |inner_class_value| object |parent| inside the |real_form_value| class
 that we shall now define; the reference-counting scheme introduced above then
 guarantees that the data we depend upon will remain in existence sufficiently
 long. Since that data can be accessed from inside the
-|realredgp::RealReductiveGroup|, we shall mostly mention the |parent| to
+|RealReductiveGroup|, we shall mostly mention the |parent| to
 access its |interface| and |dual_interface| fields. To remind us that the
 |parent| is not there to be changed by us, we declare it |const|. The object
 referred to may in fact undergo internal change however, via manipulators of
@@ -2054,19 +2054,19 @@ explains why the copy constructor is protected rather than private.
 @< Type definitions @>=
 struct real_form_value : public value_base
 { const inner_class_value parent;
-  realredgp::RealReductiveGroup val;
+  RealReductiveGroup val;
 @)
-  real_form_value(inner_class_value p,realform::RealForm f)
+  real_form_value(inner_class_value p,RealFormNbr f)
   : parent(p), val(p.val,f) @+{}
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
     {@; return new real_form_value(*this); }
   static const char* name() @+{@; return "real form"; }
-  const kgb::KGB& kgb () @+{@; return val.kgb(); }
+  const KGB& kgb () @+{@; return val.kgb(); }
    // generate and return $K\backslash G/B$ set
 protected:
-  real_form_value(inner_class_value,realform::RealForm,tags::DualTag);
+  real_form_value(inner_class_value,RealFormNbr,tags::DualTag);
      // for dual forms
   real_form_value(const real_form_value& v)
   : parent(v.parent), val(v.val) @+{} // copy c'tor
@@ -2184,13 +2184,13 @@ the context of the |inner_class_value| itself. The resulting objects will have
 a different type than ordinary real forms, but the will use the same structure
 layout. The interpretation of the fields is as follows for dual real forms:
 the |parent| field contains a copy of the original |inner_class_value|, but
-the |val| field contains a |realredgp::RealReductiveGroup| object
+the |val| field contains a |RealReductiveGroup| object
 constructed for the dual inner class, so that its characteristics will be
 correct.
 
 @< Function def...@>=
 
-real_form_value::real_form_value(inner_class_value p,realform::RealForm f
+real_form_value::real_form_value(inner_class_value p,RealFormNbr f
 				,tags::DualTag)
 : parent(p), val(p.dual,f)
 {}
@@ -2201,7 +2201,7 @@ new type from |real_form_value|.
 
 @< Type definitions @>=
 struct dual_real_form_value : public real_form_value
-{ dual_real_form_value(inner_class_value p,realform::RealForm f)
+{ dual_real_form_value(inner_class_value p,RealFormNbr f)
   : real_form_value(p,f,tags::DualTag()) @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -2286,7 +2286,7 @@ this inner class.
 struct Cartan_class_value : public value_base
 { const inner_class_value parent;
   size_t number;
-  const cartanclass::CartanClass& val;
+  const CartanClass& val;
 @)
   Cartan_class_value(const inner_class_value& p,size_t cn);
   ~Cartan_class_value() @+{} // everything is handled by destructor of |parent|
@@ -2365,7 +2365,7 @@ Cartan class for each real form, the ``most split Cartan''; it is of
 particular importance for knowing which dual real forms can be associated to
 this real form. It is (probably) the last Cartan class in the list for the
 real form, but we have a direct access to it via the |mostSplit| method for
-|realredgp::RealReductiveGroup|.
+|RealReductiveGroup|.
 
 @< Local function def...@>=
 void most_split_Cartan_wrapper(expression_base::level l)
@@ -2416,7 +2416,7 @@ void Cartan_info_wrapper(expression_base::level l)
 
   const weyl::TwistedInvolution& tw =
     cc->parent.val.twistedInvolution(cc->number);
-  weyl::WeylWord ww = cc->parent.val.weylGroup().word(tw);
+  WeylWord ww = cc->parent.val.weylGroup().word(tw);
 
   std::vector<int> v(ww.begin(),ww.end());
   push_value(new vector_value(v));
@@ -2506,7 +2506,7 @@ void fiber_part_wrapper(expression_base::level l)
     return;
 @)
   const partition::Partition& pi = cc->val.fiber().weakReal();
-  const realform::RealFormList rf_nr=
+  const RealFormNbrList rf_nr=
      cc->parent.val.realFormLabels(cc->number);
      // translate part number of |pi| to real form
   row_ptr result (new row_value(0)); // cannot predict exact size here
@@ -2541,7 +2541,7 @@ void print_gradings_wrapper(expression_base::level l)
 @.Cartan class not defined...@>
 @)
   const partition::Partition& pi = cc->val.fiber().weakReal();
-  const realform::RealFormList rf_nr=
+  const RealFormNbrList rf_nr=
      cc->parent.val.realFormLabels(cc->number);
      // translate part number of |pi| to real form
 @)
@@ -2603,7 +2603,7 @@ different lines after commas if necessary.
   for (size_t i=0; i<pi.size(); ++i)
     if ( rf_nr[pi(i)] == rf->val.realForm())
     { os << ( first ? first=false,'[' : ',');
-      gradings::Grading gr=cc->val.fiber().grading(i);
+      Grading gr=cc->val.fiber().grading(i);
       gr=sigma.pull_back(gr);
       prettyprint::prettyPrint(os,gr,si.size());
     }
@@ -2630,9 +2630,9 @@ guaranteed to exist as long as this |KGB_elt_value| does.
 @< Type definitions @>=
 struct KGB_elt_value : public value_base
 { shared_real_form rf;
-  kgb::KGBElt val;
+  KGBElt val;
 @)
-  KGB_elt_value(shared_real_form form, kgb::KGBElt x) : rf(form), val(x) @+{}
+  KGB_elt_value(shared_real_form form, KGBElt x) : rf(form), val(x) @+{}
   ~KGB_elt_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -2674,8 +2674,8 @@ involution.
 @< Local function def...@>=
 void KGB_involution_wrapper(expression_base::level l)
 { shared_KGB_elt x = get<KGB_elt_value>();
-  const kgb::KGB& kgb=x->rf->kgb();
-  const complexredgp::ComplexReductiveGroup& G=x->rf->val.complexGroup();
+  const KGB& kgb=x->rf->kgb();
+  const ComplexReductiveGroup& G=x->rf->val.complexGroup();
   if (l!=expression_base::no_value)
     push_value(new matrix_value(G.involutionMatrix(kgb.involution(x->val))));
 }
@@ -2699,7 +2699,7 @@ void raw_KL_wrapper (expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  blocks::Block block = blocks::Block::build
+  Block block = Block::build
    (rf->parent.val,rf->val.realForm(),drf->val.realForm());
   kl::KLContext klc(block); klc.fill();
 @)
@@ -2754,11 +2754,11 @@ void raw_dual_KL_wrapper (expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  blocks::Block block = blocks::Block::build
+  Block block = Block::build
    (rf->parent.val,rf->val.realForm(),drf->val.realForm());
-  blocks::Block dual_block = blocks::Block::build
+  Block dual_block = Block::build
    (rf->parent.dual,drf->val.realForm(),rf->val.realForm());
-  std::vector<blocks::BlockElt> dual=blocks::dual_map(block,dual_block);
+  std::vector<BlockElt> dual=blocks::dual_map(block,dual_block);
   kl::KLContext klc(dual_block); klc.fill();
 @)
   if (l==expression_base::no_value)
@@ -2859,7 +2859,7 @@ void print_block_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   block_io::print_block(*output_stream,
-    blocks::Block::build(rf->parent.val
+    Block::build(rf->parent.val
 			,rf->val.realForm(),drf->val.realForm()));
 @)
   if (l==expression_base::single_value)
@@ -2885,7 +2885,7 @@ void print_blockd_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   block_io::printBlockD(*output_stream,
-    blocks::Block::build(rf->parent.val
+    Block::build(rf->parent.val
 			,rf->val.realForm(),drf->val.realForm()));
 @)
   if (l==expression_base::single_value)
@@ -2908,7 +2908,7 @@ void print_blocku_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   block_io::printBlockU(*output_stream,
-    blocks::Block::build(rf->parent.val
+    Block::build(rf->parent.val
 			,rf->val.realForm(),drf->val.realForm()));
 @)
   if (l==expression_base::single_value)
@@ -2919,7 +2919,7 @@ void print_blocku_wrapper(expression_base::level l)
 \.{block} and its friends, in that it requires a real and a dual real form,
 and a Cartan class; on the other hand it is simpler in not requiring a block
 to be constructed. The signature of |realredgp_io::printBlockStabilizer| is a
-bit strange, as it requires a |realredgp::RealReductiveGroup| argument for the
+bit strange, as it requires a |RealReductiveGroup| argument for the
 real form, but only numbers for the Cartan class and the dual real form (but
 this is understandable, as information about the inner class must be
 transmitted in some way). In fact it used to be even a bit stranger, in that
@@ -2967,7 +2967,7 @@ void print_KGB_wrapper(expression_base::level l)
 @)
   *output_stream
     << "kgbsize: " << rf->val.KGB_size() << std::endl;
-  const kgb::KGB& kgb=rf->kgb();
+  const KGB& kgb=rf->kgb();
   kgb_io::var_print_KGB(*output_stream,rf->val.complexGroup(),kgb);
 @)
   if (l==expression_base::single_value)
@@ -2980,7 +2980,7 @@ void print_KGB_wrapper(expression_base::level l)
 void print_X_wrapper(expression_base::level l)
 { shared_inner_class ic(get<inner_class_value>());
 @)
-  complexredgp::ComplexReductiveGroup& G=ic->val;
+  ComplexReductiveGroup& G=ic->val;
   kgb::global_KGB kgb(G); // build global Tits group, "all" square classes
   kgb_io::print_X(*output_stream,kgb);
 @)
@@ -3009,7 +3009,7 @@ void print_KL_basis_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  blocks::Block block = blocks::Block::build
+  Block block = Block::build
    (rf->parent.val,rf->val.realForm(),drf->val.realForm());
   kl::KLContext klc(block); klc.fill();
 @)
@@ -3038,7 +3038,7 @@ void print_prim_KL_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  blocks::Block block = blocks::Block::build
+  Block block = Block::build
    (rf->parent.val,rf->val.realForm(),drf->val.realForm());
   kl::KLContext klc(block); klc.fill();
 @)
@@ -3068,7 +3068,7 @@ void print_KL_list_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  blocks::Block block = blocks::Block::build
+  Block block = Block::build
    (rf->parent.val,rf->val.realForm(),drf->val.realForm());
   kl::KLContext klc(block); klc.fill();
 @)
@@ -3100,7 +3100,7 @@ void print_W_cells_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  blocks::Block block = blocks::Block::build
+  Block block = Block::build
    (rf->parent.val,rf->val.realForm(),drf->val.realForm());
   kl::KLContext klc(block); klc.fill();
 
@@ -3131,7 +3131,7 @@ void print_W_graph_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  blocks::Block block = blocks::Block::build
+  Block block = Block::build
    (rf->parent.val,rf->val.realForm(),drf->val.realForm());
   kl::KLContext klc(block); klc.fill();
 
@@ -3156,13 +3156,13 @@ void test_rep_wrapper(expression_base::level l)
   shared_vector lambda_rho = get<vector_value>();
   shared_KGB_elt x = get<KGB_elt_value>();
 
-  realredgp::RealReductiveGroup& G = x->rf->val;
+  RealReductiveGroup& G = x->rf->val;
   repr::Rep_context rc(G);
 @)
   repr::StandardRepr sr = rc.sr(x->val,lambda_rho->val,nu->val);
   std::cout << "infinitesimal character: " << sr.gamma() << std::endl;
-  tits::GlobalTitsElement y=rc.y(sr);
-  complexredgp::ComplexReductiveGroup dual_G(G.complexGroup(),tags::DualTag());
+  GlobalTitsElement y=rc.y(sr);
+  ComplexReductiveGroup dual_G(G.complexGroup(),tags::DualTag());
   kgb::global_KGB dual_KGB (dual_G,y);
   *output_stream << "y is element " << dual_KGB.lookup(y)
                  << " in dual KGB set:\n";

@@ -215,12 +215,12 @@ WGraph wGraph
   filekl::polynomial_info& poli=*pol_p;
 
   size_t max_mu=1;                       // maximal mu found
-  std::pair<blocks::BlockElt,blocks::BlockElt> max_pair; // corresponding (x,y)
+  std::pair<BlockElt,BlockElt> max_pair; // corresponding (x,y)
 
   WGraph result(mi.rank()); result.resize(mi.block_size());
 
   // fill in descent sets
-  for (blocks::BlockElt y = 0; y < mi.block_size(); ++y)
+  for (BlockElt y = 0; y < mi.block_size(); ++y)
   {
     bitset::RankFlags d_y = result.descent(y) = mi.descent_set(y);
     size_t ly = mi.length(y);
@@ -244,7 +244,7 @@ WGraph wGraph
 	   start<stop; ++start)
 	if (mi.descent_set(*start)!=d_y)
         {
-	  blocks::BlockElt x = *start;
+	  BlockElt x = *start;
 	  filekl::KLIndex klp = mi.find_pol_nr(x,y);
 
 	  if (poli.degree(klp)==d)
@@ -259,8 +259,8 @@ WGraph wGraph
     } // for (lx,d)
 
     // for length |ly-1| we cannot limit ourselves to strongly primitives
-    blocks::BlockElt end=mi.first_of_length(ly);
-    for (blocks::BlockElt x=mi.first_of_length(ly-1); x<end; ++x)
+    BlockElt end=mi.first_of_length(ly);
+    for (BlockElt x=mi.first_of_length(ly-1); x<end; ++x)
     {
       bitset::RankFlags d_x=mi.descent_set(x);
       if (d_x==d_y) continue; // this case would lead nowhere anyway
@@ -284,7 +284,7 @@ WGraph wGraph
   } // for (y)
 
   size_t n_edges=0;
-  for (blocks::BlockElt y = 0; y < mi.block_size(); ++y)
+  for (BlockElt y = 0; y < mi.block_size(); ++y)
     n_edges+=result.edgeList(y).size();
 
   if (max_mu==1) std::cout << "All edges found are simple.\n";

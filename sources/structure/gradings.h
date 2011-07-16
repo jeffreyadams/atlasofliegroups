@@ -18,11 +18,9 @@
 
 #include <functional>
 
-#include "bitmap.h"
-#include "bitset.h"
-#include "constants.h"
-
 #include "atlas_types.h"
+
+#include "bitset.h"
 
  namespace atlas {
 
@@ -31,13 +29,13 @@
 namespace gradings {
 
   RootNbrSet max_orth(const RootNbrSet& non_compact,
-			     const RootNbrSet& subsys,
-			     const RootSystem& rs);
+		      const RootNbrSet& subsys,
+		      const RootSystem& rs);
 
-  void transform_grading(gradings::Grading&,
-			const RootNbrList&,
-			const RootNbrSet&,
-			const RootSystem&);
+  void transform_grading(Grading&,
+			 const RootNbrList&,
+			 const RootNbrSet&,
+			 const RootSystem&);
 
 }
 

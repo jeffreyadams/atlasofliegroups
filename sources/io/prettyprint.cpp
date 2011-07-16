@@ -372,8 +372,8 @@ std::ostream& printStatus(std::ostream& strm, const gradings::Status& gs,
   return strm;
 }
 
-std::ostream& printTitsElt(std::ostream& strm, const tits::TitsElt& a,
-			   const tits::TitsGroup& Tg)
+std::ostream& printTitsElt(std::ostream& strm, const TitsElt& a,
+			   const TitsGroup& Tg)
 {
   prettyPrint(strm,Tg.left_torus_part(a));
   printWeylElt(strm,a.w(),Tg.weylGroup());

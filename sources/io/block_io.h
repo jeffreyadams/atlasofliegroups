@@ -12,8 +12,7 @@
 
 #include <iosfwd>
 
-#include "blocks_fwd.h"
-#include "descents_fwd.h"
+#include "atlas_types.h"
 
 #include "bitset.h"
 
@@ -23,13 +22,13 @@ namespace atlas {
 
 namespace block_io {
 
-  std::ostream& print_block(std::ostream&, const blocks::Block_base&);
+  std::ostream& print_block(std::ostream&, const Block_base&);
 
-  std::ostream& printBlockD(std::ostream&, const blocks::Block&);
+  std::ostream& printBlockD(std::ostream&, const Block&);
 
-  std::ostream& printBlockU(std::ostream&, const blocks::Block&);
+  std::ostream& printBlockU(std::ostream&, const Block&);
 
-  std::ostream& printDescent(std::ostream&, const descents::DescentStatus&,
+  std::ostream& printDescent(std::ostream&, const DescentStatus&,
 		     size_t, bitset::RankFlags = bitset::RankFlags(~0ul));
 
 }

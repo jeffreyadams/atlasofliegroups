@@ -17,23 +17,22 @@ TitsGroup and TitsElt.
 
 #include "tits_fwd.h"
 
+#include "tags.h"
+#include "ratvec.h"   // |RatWeight| contained in |TorusElement|
+#include "arithmetic_fwd.h"
 
-#include "gradings_fwd.h"
+#include "atlas_types.h"
+
+#include "bitvector.h" // contained in |TitsGrooup|
+#include "prerootdata.h" // contained in |GlobalTitsGrooup|
+#include "weyl.h"      // contained in |TitsElt|
+
 #include "complexredgp_fwd.h"
 #include "realredgp_fwd.h"
-#include "tags.h"
-
-#include "ratvec.h"
-#include "prerootdata.h"
-#include "rootdata.h"
-#include "subdatum_fwd.h" // not subdatum.h, which includes us
-#include "bitvector.h"
-#include "constants.h"
-#include "weyl.h"
-#include "realform.h"
 
 #include "cartanclass.h"
-#include "lattice.h"
+
+#include "subdatum_fwd.h" // not subdatum.h, which includes us
 
 namespace atlas {
 
@@ -45,16 +44,10 @@ namespace tits {
   inline TorusElement exp_2pi(const RatWeight r);
 
   // 2-subgroup by which each |TorusPart| at involution |inv| will be reduced
-  inline
-  subquotient::SmallSubspace
-    fiber_denom(const WeightInvolution& inv)
-  {
-    bitvector::BinaryMap A(lattice::eigen_lattice(inv.transposed(),-1));
-    return subquotient::SmallSubspace(A);
-  }
+  subquotient::SmallSubspace fiber_denom(const WeightInvolution& inv);
 
-  gradings::Grading
-  square_class_grading_offset(const cartanclass::Fiber& f,
+  Grading
+  square_class_grading_offset(const Fiber& f,
 			      cartanclass::square_class csc,
 			      const RootSystem& rs);
 
@@ -231,7 +224,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
   const RatWeight half_rho_v;
 
   // a list of gradings of the imaginary simple roots generating square classes
-  std::vector<gradings::Grading> square_class_gen;
+  std::vector<Grading> square_class_gen;
 
 // forbid copy and assignment
   GlobalTitsGroup(const GlobalTitsGroup&);
@@ -239,10 +232,10 @@ class GlobalTitsGroup : public TwistedWeylGroup
 
  public:
   //!\brief constructor for inner class (use after latter is fully constructed)
-  GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G);
+  GlobalTitsGroup(const ComplexReductiveGroup& G);
 
   //!\brief constructor for dual inner class (the side of following contructor)
-  GlobalTitsGroup(const complexredgp::ComplexReductiveGroup& G,tags::DualTag);
+  GlobalTitsGroup(const ComplexReductiveGroup& G,tags::DualTag);
 
   //!\brief constructor from subdatum (dual side) + involution information
   GlobalTitsGroup(const subdatum::SubSystem& sub,
@@ -274,7 +267,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
 //void twist(TorusElement& x) const { x = twisted(x); }
 
 
-  const std::vector<gradings::Grading>& square_class_generators() const
+  const std::vector<Grading>& square_class_generators() const
   { return square_class_gen; }
 
 
@@ -350,7 +343,7 @@ class SubTitsGroup : public GlobalTitsGroup
   TorusElement t;
  public:
   //!\brief constructor from subdatum (dual side) + involution information
-  SubTitsGroup(const complexredgp::ComplexReductiveGroup& G,
+  SubTitsGroup(const ComplexReductiveGroup& G,
 	       const subdatum::SubSystem& sub,
 	       const WeightInvolution& theta,
 	       WeylWord& ww); // output: expesses |-theta^t| for |sub|
@@ -550,7 +543,7 @@ involution of the inner class.
 Gives the action of the (transposed fundamental) involution \f$\delta\f$ on
 $H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
   */
-  bitvector::BinaryMap d_involution;
+  BinaryMap d_involution;
 
 
 // copy and assignment
@@ -630,7 +623,7 @@ $H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
   void twist(TorusPart x) const { x=twisted(x); }
 
   //!\brief Reflection of |TorusPart|s defined by a twisted involution
-  bitvector::BinaryMap involutionMatrix(const WeylWord& tw) const;
+  BinaryMap involutionMatrix(const WeylWord& tw) const;
 
 
 // methods that only access some |TitsElt|
@@ -693,11 +686,11 @@ is done in the KGB construction, it induces an involution on the quotient set.
   { sigma_inv_mult(s,a); mult_sigma(a,twisted(s)); }
 
   void left_torus_reduce
-    (tits::TitsElt& a, const subquotient::SmallSubspace& V) const
+    (TitsElt& a, const subquotient::SmallSubspace& V) const
   { a.d_t=V.mod_image(a.d_t); }
 
   void right_torus_reduce
-    (tits::TitsElt& a, const subquotient::SmallSubspace& V) const
+    (TitsElt& a, const subquotient::SmallSubspace& V) const
   { a=TitsElt(*this,a.w(),V.mod_image(right_torus_part(a))); }
 
 // manipulators (none)
@@ -752,8 +745,8 @@ torus element $x$ the elements $x.a$ and $\theta(x).a=a.x$ and are equivalent.
 */
 class TitsCoset
 {
-  tits::TitsGroup* my_Tits_group; // pointer indicating ownership
-  const tits::TitsGroup& Tg;
+  TitsGroup* my_Tits_group; // pointer indicating ownership
+  const TitsGroup& Tg;
 
   /*! \brief
     Defines conjugation action of $\delta$ on root vectors $X_\alpha$ which
@@ -766,85 +759,85 @@ class TitsCoset
     In term of |TitsElement|s, this relation implies the "commutation relation"
     $\sigma_\alpha.\delta=m_\alpha^grading_offset[s].\delta.\sigma_\beta$
   */
-  gradings::Grading grading_offset;
+  Grading grading_offset;
 
   const RootSystem& rs; // needed (only) for the |grading| method
 
  public:
-  TitsCoset(const complexredgp::ComplexReductiveGroup& G,
-	    gradings::Grading base_grading);
+  TitsCoset(const ComplexReductiveGroup& G,
+	    Grading base_grading);
 
-  TitsCoset(const complexredgp::ComplexReductiveGroup& G);// adjoint case
+  TitsCoset(const ComplexReductiveGroup& G);// adjoint case
 
-  TitsCoset(const complexredgp::ComplexReductiveGroup& G,
+  TitsCoset(const ComplexReductiveGroup& G,
 	    tags::DualTag);// dual adjoint case
 
   // build Tits coset for subdatum, incorporating adapted parent base grading
   TitsCoset(const subdatum::SubDatum& sub,
-	    gradings::Grading parent_base_grading);
+	    Grading parent_base_grading);
 
   // this constructor computes the inner class for |sub| defined by |theta|
   TitsCoset(const subdatum::SubSystem& sub,
 	    const WeightInvolution& theta,
-	    gradings::Grading parent_base_grading, // by value: small
+	    Grading parent_base_grading, // by value: small
 	    WeylWord& ww);
 
   ~TitsCoset() { delete(my_Tits_group); }
 
   /* accessors */
 
-  const tits::TitsGroup& titsGroup() const { return Tg; }
+  const TitsGroup& titsGroup() const { return Tg; }
   const WeylGroup& weylGroup() const { return Tg.weylGroup(); }
 
   bool hasTwistedCommutation
     (weyl::Generator s, const TwistedInvolution& tw)  const
     { return Tg.hasTwistedCommutation(s,tw); }
 
-  gradings::Grading base_grading() const { return grading_offset; }
+  Grading base_grading() const { return grading_offset; }
 
   bool is_valid(TitsElt a) const; // whether |a| may occur at all; by-value
 
   // whether simple root |s| noncompact at KGB element represented by |a|
-  inline bool simple_grading(const tits::TitsElt& a, size_t s) const;
+  inline bool simple_grading(const TitsElt& a, size_t s) const;
 
   // operation defining cross action of simple roots
-  inline void basedTwistedConjugate(tits::TitsElt& a, size_t s) const;
+  inline void basedTwistedConjugate(TitsElt& a, size_t s) const;
 
-  void basedTwistedConjugate(tits::TitsElt& a, const WeylWord& w) const;
-  void basedTwistedConjugate(const WeylWord& w, tits::TitsElt& a) const;
+  void basedTwistedConjugate(TitsElt& a, const WeylWord& w) const;
+  void basedTwistedConjugate(const WeylWord& w, TitsElt& a) const;
 
   // operation defining Cayley transform in non-compact imaginary simple roots
-  void Cayley_transform(tits::TitsElt& a, size_t s) const
+  void Cayley_transform(TitsElt& a, size_t s) const
     { Tg.sigma_mult(s,a); } // set |a| to $\sigma_s.a$
 
   // inverse Cayley transform for real simple roots
   // this requires knowing the subspace by which torus part has been reduced
-  void inverse_Cayley_transform(tits::TitsElt& a, size_t s,
+  void inverse_Cayley_transform(TitsElt& a, size_t s,
 				const subquotient::SmallSubspace& mod_space)
     const;
 
   void left_torus_reduce
-    (tits::TitsElt& a, const subquotient::SmallSubspace& V) const
+    (TitsElt& a, const subquotient::SmallSubspace& V) const
   { titsGroup().left_torus_reduce(a,V); }
 
   void right_torus_reduce
-    (tits::TitsElt& a, const subquotient::SmallSubspace& V) const
+    (TitsElt& a, const subquotient::SmallSubspace& V) const
   { titsGroup().right_torus_reduce(a,V); }
 
   // conjugate Tits group element by $\delta_1$
-  tits::TitsElt twisted(const tits::TitsElt& a) const;
+  TitsElt twisted(const TitsElt& a) const;
   // also keep a version for torus part only
   tits::TorusPart twisted(const tits::TorusPart& t) const
   { return Tg.twisted(t);}
 
   // general grading of a KGB element at an imaginary root: whether noncompact
-  bool grading(tits::TitsElt a, RootNbr n) const; // |a| by-value
+  bool grading(TitsElt a, RootNbr n) const; // |a| by-value
 
   // various methods that provide a starting KGB element for any Cartan class
-  tits::TitsElt naive_seed (complexredgp::ComplexReductiveGroup& G,
-			    realform::RealForm rf, size_t cn) const;
-  tits::TitsElt grading_seed (complexredgp::ComplexReductiveGroup& G,
-			      realform::RealForm rf, size_t cn) const;
+  TitsElt naive_seed (ComplexReductiveGroup& G,
+		      RealFormNbr rf, size_t cn) const;
+  TitsElt grading_seed (ComplexReductiveGroup& G,
+			RealFormNbr rf, size_t cn) const;
 
 }; // |class TitsCoset|
 
@@ -855,7 +848,7 @@ class EnrichedTitsGroup : public TitsCoset
   const cartanclass::StrongRealFormRep srf;
 
  public:
-  EnrichedTitsGroup(const realredgp::RealReductiveGroup&);
+  EnrichedTitsGroup(const RealReductiveGroup&);
 
   cartanclass::fiber_orbit f_orbit() const { return srf.first; }
   cartanclass::square_class square() const { return srf.second; }
@@ -864,8 +857,8 @@ class EnrichedTitsGroup : public TitsCoset
   bool is_compact(const tits::TorusPart& x, RootNbr n) const
     { return not grading(TitsElt(titsGroup(),x),n); }
 
-  tits::TitsElt backtrack_seed (const complexredgp::ComplexReductiveGroup& G,
-				realform::RealForm rf, size_t cn) const;
+  TitsElt backtrack_seed (const ComplexReductiveGroup& G,
+				RealFormNbr rf, size_t cn) const;
 
 }; // |class EnrichedTitsGroup|
 
@@ -899,7 +892,7 @@ class EnrichedTitsGroup : public TitsCoset
    we need not refer to $\beta$, i.e., |(twisted(s))|, in the dot product.
 */
 inline
-bool TitsCoset::simple_grading(const tits::TitsElt& a, size_t s) const
+bool TitsCoset::simple_grading(const TitsElt& a, size_t s) const
 {
   return grading_offset[s] != Tg.dual_m_alpha(s).dot(Tg.left_torus_part(a));
 }
@@ -924,7 +917,7 @@ bool TitsCoset::simple_grading(const tits::TitsElt& a, size_t s) const
    by multiplication on the left leading to the formula implemented below.
 */
 inline
-void TitsCoset::basedTwistedConjugate(tits::TitsElt& a, size_t s) const
+void TitsCoset::basedTwistedConjugate(TitsElt& a, size_t s) const
 {
   Tg.twistedConjugate(a,s);
   if (grading_offset[s])

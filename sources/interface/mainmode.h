@@ -10,8 +10,8 @@
 #ifndef MAINMODE_H  /* guard against multiple inclusions */
 #define MAINMODE_H
 
+#include "atlas_types.h"
 #include "commands_fwd.h"
-#include "complexredgp_fwd.h"
 #include "complexredgp_io_fwd.h"
 
 /******** type declarations ************************************************/
@@ -29,10 +29,10 @@ namespace mainmode {
 namespace mainmode {
 
   commands::CommandMode& mainMode();
-  complexredgp::ComplexReductiveGroup& currentComplexGroup();
-  complexredgp::ComplexReductiveGroup& current_dual_group();
+  ComplexReductiveGroup& currentComplexGroup();
+  ComplexReductiveGroup& current_dual_group();
   complexredgp_io::Interface& currentComplexInterface();
-  void replaceComplexGroup(complexredgp::ComplexReductiveGroup*
+  void replaceComplexGroup(ComplexReductiveGroup*
 			   ,complexredgp_io::Interface*);
 
 }

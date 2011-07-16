@@ -15,7 +15,7 @@
 namespace atlas {
   namespace repr {
 
-Rep_context::Rep_context(realredgp::RealReductiveGroup &G_R)
+Rep_context::Rep_context(RealReductiveGroup &G_R)
   : G(G_R), KGB_set(G_R.kgb())
 {}
 
@@ -25,8 +25,8 @@ StandardRepr
      const standardrepk::KhatContext& khc,
      const RatWeight& nu) const
 {
-  tits::TitsElt a = khc.titsElt(srk); // was reduced during construction |srk|
-  kgb::KGBElt x= khc.kgb().lookup(a,titsGroup());
+  TitsElt a = khc.titsElt(srk); // was reduced during construction |srk|
+  KGBElt x= khc.kgb().lookup(a,titsGroup());
   Weight lambda2 = khc.lift(srk); // doubled coordinates
   RatWeight lambda(lambda2,2);
   WeightInvolution theta = G.cartan(srk.Cartan()).involution();
@@ -39,7 +39,7 @@ StandardRepr
 
 StandardRepr
   Rep_context::sr
-  (kgb::KGBElt x,
+  (KGBElt x,
    const Weight lambda_rho,
    const RatWeight& nu) const
 {
@@ -61,14 +61,14 @@ RatWeight Rep_context::lambda(const StandardRepr& rep) const
 
 // convert |lambda| and |gamma| into $y$ value
 // Formula: $\exp(i\pi(\gamma-\lambda)) \sigma_{tw} \delta_1$
-tits::GlobalTitsElement Rep_context::y(const StandardRepr& rep) const
+GlobalTitsElement Rep_context::y(const StandardRepr& rep) const
 {
   tits::TorusElement t = tits::exp_pi(rep.gamma()-lambda(rep));
   const TwistedWeylGroup& W = KGB_set.twistedWeylGroup();
   const TwistedWeylGroup dual_W (W,tags::DualTag());
   TwistedInvolution tw =
     blocks::dual_involution(KGB_set.involution(rep.x),W,dual_W);
-  return tits::GlobalTitsElement(t,tw);
+  return GlobalTitsElement(t,tw);
 }
 
   } // |namespace repr|

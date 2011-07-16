@@ -114,7 +114,7 @@ std::ostream& print(std::ostream& strm, const RootDatum& rd)
   NOTE: to be implemented.
 
 std::ostream& print
-  (std::ostream& strm, const realredgp::RealReductiveGroup& G)
+  (std::ostream& strm, const RealReductiveGroup& G)
 {
   return strm;
 }
@@ -130,7 +130,7 @@ std::ostream& print
 std::ostream& printBlockData(std::ostream& strm,
 			     complexredgp_io::Interface& CI)
 {
-  const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
+  const ComplexReductiveGroup& G = CI.complexGroup();
   const RootDatum& rd = G.rootDatum();
 
   lietype::LieType lt = rd.Lie_type();
@@ -162,7 +162,7 @@ std::ostream& printBlockData(std::ostream& strm,
 std::ostream& printCartanClasses(std::ostream& strm,
 				 complexredgp_io::Interface& CI)
 {
-  const complexredgp::ComplexReductiveGroup& G = CI.complexGroup();
+  const ComplexReductiveGroup& G = CI.complexGroup();
 
   for (unsigned long j = 0; j < G.numCartanClasses(); ++j) {
     strm << "Cartan #" << j << ":" << std::endl;
@@ -191,7 +191,7 @@ std::ostream& printCartanMatrix(std::ostream& strm,
   Prints the dual component group of G as a sep-separated list.
 */
 std::ostream& printComponents(std::ostream& strm,
-			      const realredgp::RealReductiveGroup& G,
+			      const RealReductiveGroup& G,
 			      const char* sep)
 {
   const SmallBitVectorList& cr = G.dualComponentReps();

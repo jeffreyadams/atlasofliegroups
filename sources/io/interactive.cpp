@@ -398,7 +398,7 @@ void getInteractive(PreRootDatum& d_prd,
   rf is not modified.
 */
 
-void getInteractive(realform::RealForm& d_rf,
+void getInteractive(RealFormNbr& d_rf,
 		    const complexredgp_io::Interface& I)
   throw(error::InputError)
 {
@@ -432,7 +432,7 @@ void getInteractive(realform::RealForm& d_rf,
   Throws an InputError if the interaction with the user fails; in that case,
   rf is not modified.
 */
-void getInteractive(realform::RealForm& rf,
+void getInteractive(RealFormNbr& rf,
 		    const complexredgp_io::Interface& I,
 		    tags::DualTag)
   throw(error::InputError)
@@ -467,9 +467,9 @@ void getInteractive(realform::RealForm& rf,
   rf is not modified.
 */
 
-void getInteractive(realform::RealForm& rf,
+void getInteractive(RealFormNbr& rf,
 		    const complexredgp_io::Interface& I,
-		    const realform::RealFormList& drfl,
+		    const RealFormNbrList& drfl,
 		    tags::DualTag)
   throw(error::InputError)
 {
@@ -477,7 +477,7 @@ void getInteractive(realform::RealForm& rf,
 
   // if there is only one choice, make it
   if (drfl.size() == 1) {
-    realform::RealForm rfo = rfi.out(drfl[0]);
+    RealFormNbr rfo = rfi.out(drfl[0]);
     std::cout << "there is a unique dual real form choice: "
 	      << rfi.typeName(rfo) << std::endl;
     rf = drfl[0];
@@ -509,13 +509,13 @@ void getInteractive(realform::RealForm& rf,
   in that case, d_G is not touched.
 */
 
-realredgp::RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
+RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
   throw(error::InputError)
 {
-  realform::RealForm rf = 0;
+  RealFormNbr rf = 0;
   getInteractive(rf,CI); // may throw an InputError
 
-  return realredgp::RealReductiveGroup(CI.complexGroup(),rf);
+  return RealReductiveGroup(CI.complexGroup(),rf);
 }
 
 /*!\brief
@@ -528,7 +528,7 @@ realredgp::RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
   We pass references to pointers to both a |ComplexReductiveGroup| and to a
   |complexredgp_io::Interface|, both of which will be assigned appropriately
 */
-  void getInteractive(complexredgp::ComplexReductiveGroup*& pG,
+  void getInteractive(ComplexReductiveGroup*& pG,
 		      complexredgp_io::Interface*& pI)
     throw(error::InputError)
 {
@@ -546,7 +546,7 @@ realredgp::RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
   WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
 
   // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
-  pG=new complexredgp::ComplexReductiveGroup(RootDatum(prd),inv);
+  pG=new ComplexReductiveGroup(RootDatum(prd),inv);
   pI=new complexredgp_io::Interface(*pG,lo);
   // the latter constructor also constructs two realform interfaces in *pI
 }
@@ -723,20 +723,20 @@ repr::StandardRepr get_repr(const repr::Rep_context& c)
   return c.sr(x,lambda_rho,nu);
 }
 
-void get_parameter(realredgp::RealReductiveGroup& GR,
-		   kgb::KGBElt& x,
+void get_parameter(RealReductiveGroup& GR,
+		   KGBElt& x,
 		   Weight& lambda_rho,
 		   RatWeight& gamma)
 {
   // first step: get initial x in canonical fiber
   size_t cn=get_Cartan_class(GR.Cartan_set());
-  const complexredgp::ComplexReductiveGroup& G=GR.complexGroup();
+  const ComplexReductiveGroup& G=GR.complexGroup();
   const RootDatum& rd=G.rootDatum();
   TwistedInvolution tw=G.twistedInvolution(cn);
-  cartanclass::InvolutionData id = cartanclass::InvolutionData::build(G,tw);
+  InvolutionData id = G.involution_data(tw);
 
-  const kgb::KGB& kgb=GR.kgb();
-  kgb::KGBEltList canonical_fiber;
+  const KGB& kgb=GR.kgb();
+  KGBEltList canonical_fiber;
   bitmap::BitMap cf(kgb.size());
   for (size_t k=0; k<kgb.size(); ++k)
     if (kgb.Cartan_class(k)==cn and kgb.involution(k)==tw)

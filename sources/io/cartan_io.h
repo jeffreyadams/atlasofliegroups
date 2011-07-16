@@ -17,7 +17,6 @@
 #include "complexredgp_io_fwd.h"
 #include "cartanclass_fwd.h"
 
-#include "realform.h"
 
 /******** function declarations *********************************************/
 
@@ -28,11 +27,11 @@ namespace cartan_io {
 std::ostream&
 printCartanClass(std::ostream&, size_t, complexredgp_io::Interface&);
 
-std::ostream& printFiber(std::ostream&, const cartanclass::Fiber&,
-			 const realform::RealFormList&);
+std::ostream& printFiber(std::ostream&, const Fiber&,
+			 const RealFormNbrList&);
 
-std::ostream& printGradings(std::ostream&, const cartanclass::Fiber&,
-			    const realform::RealFormList&,
+std::ostream& printGradings(std::ostream&, const Fiber&,
+			    const RealFormNbrList&,
 			    const RootSystem&);
 
 }

@@ -15,7 +15,6 @@
 #include <vector>
 
 #include "atlas_types.h"
-#include "tori_fwd.h"
 
 #include "bitvector.h" // contained in |Connectivity|
 
@@ -23,11 +22,6 @@
 
 namespace atlas {
 
-namespace topology {
-
-  class Connectivity;
-
-}
 
 /******** function declarations *********************************************/
 

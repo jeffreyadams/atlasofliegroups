@@ -40,7 +40,7 @@ namespace atlas {
 namespace block_io {
 
 // temp version without Cartan classes/involutions (may be added back later)
-std::ostream& print_block(std::ostream& strm, const blocks::Block_base& b)
+std::ostream& print_block(std::ostream& strm, const Block_base& b)
 {
   // compute maximal width of entry
   int width = ioutils::digits(b.size()-1,10ul);
@@ -72,7 +72,7 @@ std::ostream& print_block(std::ostream& strm, const blocks::Block_base& b)
     // print Cayley transforms
     for (size_t s = 0; s < b.rank(); ++s)
     {
-      blocks::BlockEltPair p =
+      BlockEltPair p =
 	b.isWeakDescent(s,z) ? b.inverseCayley(s,z) : b.cayley(s,z);
       strm << '(' << std::setw(width);
       if (p.first ==blocks::UndefBlock) strm << '*'; else strm << p.first;
@@ -109,7 +109,7 @@ std::ostream& print_block(std::ostream& strm, const blocks::Block_base& b)
   not too large (up to rank 4 or so). We haven't tried to go over to more
   sophisticated formatting for larger groups.
 */
-std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
+std::ostream& printBlock(std::ostream& strm, const Block& block)
 {
   // compute maximal width of entry
   int width = ioutils::digits(block.size()-1,10ul);
@@ -139,7 +139,7 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
 
     // print cross actions
     for (size_t s = 0; s < block.rank(); ++s) {
-      blocks::BlockElt z = block.cross(s,j);
+      BlockElt z = block.cross(s,j);
       if (z == blocks::UndefBlock)
 	strm << std::setw(width+pad) << '*';
       else
@@ -150,7 +150,7 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
     // print Cayley transforms
     for (size_t s = 0; s < block.rank(); ++s)
     {
-      blocks::BlockEltPair z = block.isWeakDescent(s,j)
+      BlockEltPair z = block.isWeakDescent(s,j)
 	                     ? block.inverseCayley(s,j)
 	                     : block.cayley(s,j);
       strm << '(' << std::setw(width);
@@ -191,7 +191,7 @@ std::ostream& printBlock(std::ostream& strm, const blocks::Block& block)
 
   NOTE: this version outputs involutions in reduced-involution form.
 */
-std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
+std::ostream& printBlockD(std::ostream& strm, const Block& block)
 {
   // compute maximal width of entry
   int width = ioutils::digits(block.size()-1,10ul);
@@ -221,7 +221,7 @@ std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
 
     // print cross actions
     for (size_t s = 0; s < block.rank(); ++s) {
-      blocks::BlockElt z = block.cross(s,j);
+      BlockElt z = block.cross(s,j);
       if (z == blocks::UndefBlock)
 	strm << std::setw(width+pad) << '*';
       else
@@ -232,7 +232,7 @@ std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
     // print Cayley transforms
     for (size_t s = 0; s < block.rank(); ++s)
     {
-      blocks::BlockEltPair z = block.isWeakDescent(s,j)
+      BlockEltPair z = block.isWeakDescent(s,j)
 	                     ? block.inverseCayley(s,j)
 	                     : block.cayley(s,j);
       strm << '(' << std::setw(width);
@@ -268,7 +268,7 @@ std::ostream& printBlockD(std::ostream& strm, const blocks::Block& block)
   NOTE: checking that condtion is awkward here, because currently blocks
   do not have direct access to the descents as a bitset!
 */
-std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
+std::ostream& printBlockU(std::ostream& strm, const Block& block)
 {
   using namespace blocks;
   using namespace descents;
@@ -315,7 +315,7 @@ std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
 #if 0
     // print cross actions
     for (size_t s = 0; s < block.rank(); ++s) {
-      blocks::BlockElt z = block.cross(s,j);
+      BlockElt z = block.cross(s,j);
       if (z == UndefBlock)
 	strm << std::setw(width+pad) << '*';
       else
@@ -326,7 +326,7 @@ std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
     // print Cayley transforms
     for (size_t s = 0; s < block.rank(); ++s)
     {
-      blocks::BlockEltPair z = block.isWeakDescent(s,j)
+      BlockEltPair z = block.isWeakDescent(s,j)
                              ? block.inverseCayley(s,j)
 	                     : block.cayley(s,j);
       strm << '(' << std::setw(width);
@@ -360,11 +360,9 @@ std::ostream& printBlockU(std::ostream& strm, const blocks::Block& block)
   Synopsis: outputs the descent status for the various generators
 */
 std::ostream& printDescent(std::ostream& strm,
-			   const descents::DescentStatus& ds,
+			   const DescentStatus& ds,
 			   size_t rank, bitset::RankFlags supp)
 {
-  using descents::DescentStatus;
-
   strm << '[';
 
   for (size_t s = 0; s < rank; ++s) {
