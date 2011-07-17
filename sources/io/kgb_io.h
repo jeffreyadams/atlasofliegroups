@@ -12,10 +12,7 @@
 
 #include <iosfwd>
 
-#include "kgb_fwd.h"
 #include "kgb.h"
-#include "bruhat_fwd.h"
-#include "complexredgp_fwd.h"
 
 namespace atlas {
 

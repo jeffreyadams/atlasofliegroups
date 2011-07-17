@@ -13,7 +13,6 @@
 #include <iostream>
 
 #include "prettyprint.h"
-#include "blocks_fwd.h"
 
 namespace atlas {
 

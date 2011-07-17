@@ -17,7 +17,7 @@
 #include <vector>
 
 #include "polynomials_fwd.h"
-#include "blocks_fwd.h"
+#include "atlas_types.h"
 
 namespace atlas {
 

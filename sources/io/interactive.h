@@ -15,16 +15,12 @@
 #include "bitmap_fwd.h"
 
 #include "atlas_types.h"
-#include "complexredgp_fwd.h"
 #include "complexredgp_io_fwd.h"
-#include "prerootdata_fwd.h"
-#include "realredgp_fwd.h"
 
 #include "error.h"
 #include "input.h"
 #include "lietype.h"
 #include "standardrepk.h"
-#include "realredgp_fwd.h"
 #include "repr.h"
 #include "tags.h"
 

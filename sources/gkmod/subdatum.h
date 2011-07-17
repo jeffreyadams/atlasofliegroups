@@ -20,9 +20,6 @@
 #include "prerootdata.h"
 #include "weyl.h"
 #include "tits.h"
-#include "gradings_fwd.h"
-#include "realredgp_fwd.h"
-#include "kgb_fwd.h"
 #include "subsystem.h"
 
 namespace atlas {

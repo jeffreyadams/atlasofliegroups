@@ -12,9 +12,6 @@
 
 #include "commands_fwd.h"
 #include "atlas_types.h"
-#include "complexredgp_fwd.h"
-#include "realredgp_fwd.h"
-#include "blocks_fwd.h"
 #include "kl_fwd.h"
 #include "wgraph.h"
 

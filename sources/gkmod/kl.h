@@ -19,7 +19,7 @@ Class definitions and function declarations for the class KLContext.
 
 #include "kl_fwd.h"
 
-#include "blocks_fwd.h"
+#include "atlas_types.h"
 
 #include "bitset.h"
 #include "klsupport.h"

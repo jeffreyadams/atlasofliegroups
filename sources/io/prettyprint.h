@@ -18,9 +18,6 @@
 #include "polynomials_fwd.h"
 
 #include "atlas_types.h"
-#include "gradings_fwd.h"
-#include "tits_fwd.h"
-#include "tori_fwd.h"
 
 #include "lietype.h"
 

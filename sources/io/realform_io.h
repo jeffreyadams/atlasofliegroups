@@ -12,7 +12,6 @@
 
 #include <iosfwd>
 
-#include "complexredgp_fwd.h"
 
 #include "lietype.h"
 #include "tags.h"

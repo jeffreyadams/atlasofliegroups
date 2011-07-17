@@ -14,7 +14,6 @@
 #ifndef GRADINGS_H  /* guard against multiple inclusions */
 #define GRADINGS_H
 
-#include "gradings_fwd.h"
 
 #include <functional>
 

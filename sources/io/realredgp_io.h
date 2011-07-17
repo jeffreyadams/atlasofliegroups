@@ -16,7 +16,6 @@
 
 #include "complexredgp_io_fwd.h"
 #include "realform_io.h"
-#include "realredgp_fwd.h"
 
 
 namespace atlas {

@@ -27,8 +27,6 @@ TitsGroup and TitsElt.
 #include "prerootdata.h" // contained in |GlobalTitsGrooup|
 #include "weyl.h"      // contained in |TitsElt|
 
-#include "complexredgp_fwd.h"
-#include "realredgp_fwd.h"
 
 #include "cartanclass.h"
 
