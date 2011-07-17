@@ -298,7 +298,7 @@ void small_kgb_f()
   RealReductiveGroup& G_R = realmode::currentRealGroup();
   RealReductiveGroup& dGR = currentDualRealGroup();
 
-  bitmap::BitMap common=blocks::common_Cartans(G_R,dGR);
+  BitMap common=blocks::common_Cartans(G_R,dGR);
 
   std::cout << "relevant Cartan classes: ";
   basic_io::seqPrint(std::cout,common.begin(),common.end(),",","{","}\n");
@@ -320,7 +320,7 @@ void small_dual_kgb_f()
   RealReductiveGroup& dGR = currentDualRealGroup();
   ComplexReductiveGroup& dGC = currentDualComplexGroup();
 
-  bitmap::BitMap common=blocks::common_Cartans(dGR,G_R);
+  BitMap common=blocks::common_Cartans(dGR,G_R);
 
   std::cout << "relevant Cartan classes for dual group: ";
   basic_io::seqPrint(std::cout,common.begin(),common.end(),",","{","}\n");

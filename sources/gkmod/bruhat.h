@@ -15,9 +15,7 @@
 #ifndef BRUHAT_H  /* guard against multiple inclusions */
 #define BRUHAT_H
 
-#include "bruhat_fwd.h"
-
-#include "poset.h"
+#include "poset.h"	// containment
 
 namespace atlas {
 
@@ -33,28 +31,18 @@ namespace bruhat {
   Intended to represent the Bruhat order on K orbits on G/B, or
   on a block of representations.
 
-  [Not seriously used in the present code; I'm not sure whether it is
-  instantiated.  The classes KGB and Block have manipulators fillBruhat
-  that would create BruhatOrder classes, but they seem not to be called.
-  DV 7/21/06]
-
-  [In fact the KGB and Block classes do contain members of type
-  (pointer to) BruhatOrder, and methods fillBruhat that will create instances
-  of BruhatOrder accessible from those classes, but these methods are never
-  called. MvL 8 Nov 2006]
-
-  [Now instantiated by the new commands blockorder and kgborder.]
+  In fact just stores any given relation as the Hasse diagram, and is capable
+  of expanding the full poset by transitivity.
 */
-class BruhatOrder {
-
- private:
+class BruhatOrder
+{
   /*!
 \brief Hasse diagram for a Bruhat order.
 
 Entry \#j lists the numbers of the immediate predecessors of element
   \#j in the order.
   */
-  std::vector<set::SetEltList> d_hasse; // probably sparse; avoid |BitMap|s
+  std::vector<set::EltList> d_hasse; // probably sparse; avoid |BitMap|s
   /*!
 \brief Poset relation.
 
@@ -66,7 +54,7 @@ only if i < j.
  public:
 
 // constructors and destructors
-  explicit BruhatOrder(const std::vector<set::SetEltList>& Hasse_diagram)
+  explicit BruhatOrder(const std::vector<set::EltList>& Hasse_diagram)
     : d_hasse(Hasse_diagram), d_poset(0) {}
 
 
@@ -76,7 +64,7 @@ only if i < j.
 
   //!\brief Returns row |x| of the Hasse diagram for the order.
 
-  const set::SetEltList& hasse(size_t x) const {
+  const set::EltList& hasse(size_t x) const {
     return d_hasse[x];
   }
 

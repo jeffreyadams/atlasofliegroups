@@ -836,7 +836,7 @@ void mod_lattice_f()
   CoeffList factor;
   int_Matrix b = matreduc::adapted_basis(q,factor);
 
-  bitset::RankFlags units, doubles;
+  RankFlags units, doubles;
   unsigned n1=0,n2=0;
 
   for (size_t i=0; i<factor.size(); ++i)
@@ -854,7 +854,7 @@ void mod_lattice_f()
      if (n1>0)
      {
        std::cout << " multiples of ";
-       for (bitset::RankFlags::iterator it=units.begin(); it(); ++it,--n1)
+       for (RankFlags::iterator it=units.begin(); it(); ++it,--n1)
 	 std::cout << b.column(*it) << (n1>2 ? ", " : n1>1 ? ", and " : "");
        if (n2>0)
 	 std::cout << " and";
@@ -862,7 +862,7 @@ void mod_lattice_f()
      if (n2>0)
      {
        std::cout << " even multiples of ";
-       for (bitset::RankFlags::iterator it=doubles.begin(); it(); ++it,--n2)
+       for (RankFlags::iterator it=doubles.begin(); it(); ++it,--n2)
 	 std::cout << b.column(*it) << (n2>2 ? ", " : n2>1 ? ", and " : "");
      }
    }
@@ -1131,7 +1131,7 @@ void iblock_f()
 
     std::cout << "Infinitesimal character is " << gamma << std::endl;
 
-    subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,gamma);
+    SubSystem sub = SubSystem::integral(rd,gamma);
 
     WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
@@ -1199,7 +1199,7 @@ void nblock_f()
     std::cout << "x = " << x << ", gamma = " << gamma
 	      << ", lambda = " << lambda << std::endl;
 
-    subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,gamma);
+    SubSystem sub = SubSystem::integral(rd,gamma);
 
 
     WeightInvolution theta =
@@ -1319,7 +1319,7 @@ void embedding_f()
 
     std::cout << "Infinitesimal character is " << gamma << std::endl;
 
-    subdatum::SubSystem sub = subdatum::SubSystem::integral(rd,gamma);
+    SubSystem sub = SubSystem::integral(rd,gamma);
 
     WeylWord ww;
     const tits::SubTitsGroup sub_gTg

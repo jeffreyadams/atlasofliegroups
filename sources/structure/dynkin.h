@@ -56,7 +56,7 @@ namespace dynkin {
 		   bool Bourbaki, bool check,
 		   permutations::Permutation& pi);
 
-  bitset::RankFlagsList components(const DynkinDiagram& d);
+  RankFlagsList components(const DynkinDiagram& d);
 
   permutations::Permutation normalize(const DynkinDiagram& d);
 
@@ -83,7 +83,7 @@ class DynkinDiagram {
   /*!
   Adjacency relations: d_star[i].test(j) tells whether i and j are neighbors
   */
-  std::vector<bitset::RankFlags> d_star;
+  std::vector<RankFlags> d_star;
 
   /*!
   \brief List of edges from longer to shorter node, with edge label (2 or 3)
@@ -98,7 +98,7 @@ class DynkinDiagram {
 
   explicit DynkinDiagram(const int_Matrix& Cartan);
 
-  DynkinDiagram(const bitset::RankFlags& selection, const DynkinDiagram& d);
+  DynkinDiagram(const RankFlags& selection, const DynkinDiagram& d);
 
   ~DynkinDiagram() {}
 
@@ -106,12 +106,12 @@ class DynkinDiagram {
 
   int cartanEntry(size_t i,size_t j) const;
 
-  bitset::RankFlags component(size_t) const;
+  RankFlags component(size_t) const;
 
   Multiplicity edgeMultiplicity(size_t i,size_t j) const
     { return cartanEntry(i,j)*cartanEntry(j,i); }
 
-  bitset::RankFlags extremities() const;
+  RankFlags extremities() const;
 
   bool isConnected() const;
 
@@ -130,9 +130,9 @@ class DynkinDiagram {
     return d_star.size();
   }
 
-  const bitset::RankFlagsList& star() const { return d_star; }
+  const RankFlagsList& star() const { return d_star; }
 
-  bitset::RankFlags star(size_t j) const { return d_star[j]; }
+  RankFlags star(size_t j) const { return d_star[j]; }
 
 // manipulators
 };

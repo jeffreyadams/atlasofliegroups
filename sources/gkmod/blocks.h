@@ -14,23 +14,14 @@
 #ifndef BLOCKS_H  /* guard against multiple inclusions */
 #define BLOCKS_H
 
-#include "blocks_fwd.h"
 #include <cassert>
 #include <iostream>
 
-#include "bitset.h"
-#include "bitmap.h"
-#include "hashtable.h"
+#include "ratvec.h"	// containment infinitesimal character
 
 #include "atlas_types.h"
-#include "subdatum.h"
-#include "bruhat_fwd.h"
-#include "descents.h"
-#include "kgb.h"
-#include "complexredgp_fwd.h"
-#include "realredgp_fwd.h"
-#include "weyl.h"
-#include "tits_fwd.h"
+#include "tits.h"	// representative of $y$ in |non_integeral_block|
+#include "descents.h"	// inline methods
 
 
 namespace atlas {
@@ -59,7 +50,7 @@ namespace blocks {
   std::vector<BlockElt>
     dual_map(const Block_base& b, const Block_base& dual_b);
 
-  bitmap::BitMap common_Cartans(RealReductiveGroup& GR,
+  BitMap common_Cartans(RealReductiveGroup& GR,
 				RealReductiveGroup& dGR);
 
 }
@@ -89,7 +80,7 @@ class Block_base {
 
 // constructors and destructors
   Block_base(const KGB& kgb,const KGB& dual_kgb);
-  Block_base(const subdatum::SubSystem& sub,
+  Block_base(const SubSystem& sub,
 	     const WeylGroup& printing_W);
 
   virtual ~Block_base() {}
@@ -211,12 +202,12 @@ class Block : public Block_base
   /*!
 \brief Flags the generators occurring in reduced expression for |d_involution|.
   */
-  std::vector<bitset::RankFlags> d_involutionSupport; // of size |size()|
+  std::vector<RankFlags> d_involutionSupport; // of size |size()|
 
   /*!
 \brief Records state bits (in fact one: whether the Bruhat order is computed).
   */
-  bitset::BitSet<NumStates> d_state;
+  BitSet<NumStates> d_state;
 
   /*!
 \brief Bruhat order on the block.
@@ -225,7 +216,7 @@ Definition now corrected mathematically from the bad definition of
 Vogan's Park City notes to one equivalent to the transitive closure of
 non-vanishing KL polynomial.
   */
-  bruhat::BruhatOrder* d_bruhat;
+  BruhatOrder* d_bruhat;
 
  public:
 
@@ -263,14 +254,14 @@ non-vanishing KL polynomial.
     { assert(z<size()); return d_involution[z]; }
 
   //! \brief the simple roots occurring in reduced expression |involution(z)|
-  const bitset::RankFlags& involutionSupport(size_t z) const
+  const RankFlags& involutionSupport(size_t z) const
   {
     assert(z<size());
     return d_involutionSupport[z];
   }
 
   // manipulators
-  bruhat::BruhatOrder& bruhatOrder()
+  BruhatOrder& bruhatOrder()
   {
     fillBruhat(); return *d_bruhat;
   }
@@ -304,7 +295,7 @@ class gamma_block : public Block_base
 
  public:
   gamma_block(RealReductiveGroup& GR,
-	      const subdatum::SubSystem& sub,
+	      const SubSystem& sub,
 	      KGBElt x,
 	      const RatWeight& lambda, // discrete parameter
 	      const RatWeight& gamma, // infinitesimal character
@@ -333,9 +324,9 @@ class non_integral_block : public Block_base
 {
   const KGB& kgb;
   const ComplexReductiveGroup& G;
-  const subdatum::SubSystem& sub;
+  const SubSystem& sub;
 
-  bitset::RankFlags singular;
+  RankFlags singular;
 
   const RatWeight infin_char; // infinitesimal character
 
@@ -355,7 +346,7 @@ class non_integral_block : public Block_base
  public:
   non_integral_block
     (RealReductiveGroup& GR,
-     const subdatum::SubSystem& subsys,
+     const SubSystem& subsys,
      KGBElt x,
      const RatWeight& lambda, // discrete parameter
      const RatWeight& gamma, // infinitesimal character

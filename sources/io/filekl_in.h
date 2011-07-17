@@ -18,7 +18,7 @@ namespace atlas {
     typedef ullong KLIndex;
 
     
-    typedef std::vector<bitset::RankFlags>
+    typedef std::vector<RankFlags>
       descent_set_vector; // indexed by block element
     
     typedef std::vector<BlockElt> ascent_vector; // indexed by simple root
@@ -48,7 +48,7 @@ namespace atlas {
       BlockElt primitivize(BlockElt x, BlockElt y) const;
       const prim_list& prims_for_descents_of(BlockElt y);
     private:
-      bool is_primitive(BlockElt x, const bitset::RankFlags d) const;
+      bool is_primitive(BlockElt x, const RankFlags d) const;
     };
     
     typedef prim_list strong_prim_list;
@@ -84,7 +84,7 @@ namespace atlas {
       size_t length (BlockElt y) const; // length in block
       BlockElt first_of_length (size_t l) const
         { return block.start_length[l]; }
-      bitset::RankFlags descent_set (BlockElt y) const
+      RankFlags descent_set (BlockElt y) const
         { return block.descent_set[y]; }
       std::streamoff row_offset(BlockElt y) const { return row_pos[y]; }
       BlockElt primitivize (BlockElt x,BlockElt y) const

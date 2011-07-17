@@ -14,7 +14,7 @@
 #ifndef BITVECTOR_H  /* guard against multiple inclusions */
 #define BITVECTOR_H
 
-#include "bitvector_fwd.h"
+#include "atlas_types.h"
 
 #include <vector>
 #include <cassert>
@@ -36,12 +36,12 @@ template<size_t dim>
   BitVector<dim> combination
   (const std::vector<BitVector<dim> >& b,
    size_t n,
-   const bitset::BitSet<dim>& e);
+   const BitSet<dim>& e);
 
 // version with |BitSet|s instead of |BitVector|s; functional (size no issue)
 template<size_t dim>
-  bitset::BitSet<dim> combination(const std::vector<bitset::BitSet<dim> >&,
-				  const bitset::BitSet<dim>&);
+  BitSet<dim> combination(const std::vector<BitSet<dim> >&,
+				  const BitSet<dim>&);
 
 
 /*!
@@ -50,7 +50,7 @@ template<size_t dim>
   bits of |rhs|, and return |true|; if no solution exists just return |false|.
 */
 template<size_t dim>
-  bool firstSolution(bitset::BitSet<dim>& c,
+  bool firstSolution(BitSet<dim>& c,
 		     const std::vector<BitVector<dim> >& b,
 		     const BitVector<dim>& rhs);
 
@@ -74,14 +74,14 @@ template<size_t dim> void identityMatrix(BitMatrix<dim>&, size_t);
 template<size_t dim> void initBasis(std::vector<BitVector<dim> >&, size_t);
 
 template<size_t dim>
-  void normalize(bitset::BitSet<dim>&, std::vector<BitVector<dim> >&);
+  void normalize(BitSet<dim>&, std::vector<BitVector<dim> >&);
 
 template<size_t dim>
   void normalSpanAdd(std::vector<BitVector<dim> >&, std::vector<size_t>&,
 		     const BitVector<dim>&);
 /* unused functions
 template<size_t dim>
-  void complement(bitset::BitSet<dim>&, const std::vector<BitVector<dim> >&,
+  void complement(BitSet<dim>&, const std::vector<BitVector<dim> >&,
 		  size_t);
 
 template<size_t dim> bool isIndependent(const std::vector<BitVector<dim> >&);
@@ -140,7 +140,7 @@ namespace bitvector {
 
 template<size_t dim> class BitVector
 {
-  bitset::BitSet<dim> d_data;
+  BitSet<dim> d_data;
   unsigned short int d_size; // this is more than large enough for all uses
 
  public:
@@ -160,14 +160,11 @@ template<size_t dim> class BitVector
       set(j);
     }
 
-  BitVector(bitset::BitSet<dim> data, size_t n) // view |data| as |BitVector|
+  BitVector(BitSet<dim> data, size_t n) // view |data| as |BitVector|
     : d_data(data), d_size(n)
     {}
 
   BitVector(const matrix::Vector<int>& weight); // reduce weight mod 2
-
-  ~BitVector()
-    {}
 
 // copy and assignment
   BitVector(const BitVector& v)
@@ -209,7 +206,7 @@ template<size_t dim> class BitVector
 
   size_t size() const { return d_size; }
 
-  const bitset::BitSet<dim>& data() const { return d_data; }
+  const BitSet<dim>& data() const { return d_data; }
 
   size_t firstBit() const { return d_data.firstBit(); }
 
@@ -283,8 +280,8 @@ template<size_t dim> class BitVector
 
   void resize(size_t n) { assert(n<=dim); d_size = n; }
 
-  void slice(const bitset::BitSet<dim>& mask);
-  void unslice(bitset::BitSet<dim> mask, size_t new_size);
+  void slice(const BitSet<dim>& mask);
+  void unslice(BitSet<dim> mask, size_t new_size);
 }; // class BitVector
 
 /* the following template inherits everything from |std::vector| but after
@@ -356,7 +353,7 @@ template<size_t dim> class BitMatrix
   A vector of d_columns BitSet's (each of size d_rows), the columns of
   the BitMatrix. Thus d_data.size()==d_columns at all times.
   */
-  std::vector<bitset::BitSet<dim> > d_data;
+  std::vector<BitSet<dim> > d_data;
 
   /*!
   Number of rows of the BitMatrix. Cannot exceed template argument dim
@@ -462,7 +459,7 @@ template<size_t dim> class BitMatrix
   /*!
  Adds the BitSet f as a new column at the end to the BitMatrix.
   */
-  void addColumn(const bitset::BitSet<dim>& f) {
+  void addColumn(const BitSet<dim>& f) {
     d_data.push_back(f);
     d_columns++;
   }
@@ -525,7 +522,7 @@ template<size_t dim> class BitMatrix
   /*!
   Puts the BitSet data in column j of the BitMatrix.
   */
-  void setColumn(size_t j, const bitset::BitSet<dim>& data)
+  void setColumn(size_t j, const BitSet<dim>& data)
   {
     assert(j<d_columns);
     d_data[j] = data;

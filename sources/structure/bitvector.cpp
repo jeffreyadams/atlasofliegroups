@@ -83,7 +83,7 @@ template<size_t dim> BitVector<dim>& BitVector<dim>::pushBack(bool b)
   Note that |slice| changes (weakly decreases) the size of its |BitVector|.
 */
 template<size_t dim>
-void BitVector<dim>::slice(const bitset::BitSet<dim>& t)
+void BitVector<dim>::slice(const BitSet<dim>& t)
 
 {
   size_t c = 0;
@@ -97,7 +97,7 @@ void BitVector<dim>::slice(const bitset::BitSet<dim>& t)
     }
   /* actually we could have used a bitset iterator over |t| */
 
-  d_data&=bitset::BitSet<dim>(constants::lMask[c]); // clear remainder
+  d_data&=BitSet<dim>(constants::lMask[c]); // clear remainder
 
   d_size = c; // new size equals (counted) number of sliced out bits
 }
@@ -112,10 +112,10 @@ void BitVector<dim>::slice(const bitset::BitSet<dim>& t)
   Note that |unslice| changes (weakly increases) the size of its |BitVector|.
 */
 template<size_t dim>
-void BitVector<dim>::unslice(bitset::BitSet<dim> t,size_t new_size)
+void BitVector<dim>::unslice(BitSet<dim> t,size_t new_size)
 {
-  bitset::BitSet<dim> result;
-  for (typename bitset::BitSet<dim>::iterator it=t.begin(); it();
+  BitSet<dim> result;
+  for (typename BitSet<dim>::iterator it=t.begin(); it();
        d_data>>=1,++it)
     result.set(*it,d_data[0]);
   d_data=result;
@@ -148,7 +148,7 @@ BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b,
 
   d_data.reserve(b.size());
 
-  // this loop is necessary to reduce each column to a |bitset::BitSet<dim>|
+  // this loop is necessary to reduce each column to a |BitSet<dim>|
   for (size_t j = 0; j < b.size(); ++j)
   {
     assert(b[j].size()==num_rows);
@@ -159,7 +159,7 @@ BitMatrix<dim>::BitMatrix(const std::vector<BitVector<dim> >& b,
 
 template<size_t dim>
 BitMatrix<dim>::BitMatrix(const matrix::Matrix<int>& m) // set modulo 2
-  : d_data(m.numColumns(),bitset::BitSet<dim>())
+  : d_data(m.numColumns(),BitSet<dim>())
   , d_rows(m.numRows())
   , d_columns(m.numColumns())
 {
@@ -259,7 +259,7 @@ void BitMatrix<dim>::kernel(std::vector<BitVector<dim> >& b) const
 
   // normalize |eqn|
 
-  bitset::BitSet<dim> t; // will flag a subset of [0,d_columns[
+  BitSet<dim> t; // will flag a subset of [0,d_columns[
 
   normalize(t,eqn);
 
@@ -280,7 +280,7 @@ void BitMatrix<dim>::kernel(std::vector<BitVector<dim> >& b) const
     if (not t[j]) {
       BitVector<dim> v(d_columns,j); // start with unit vector $e_j$
       size_t c = 0;
-      for (typename bitset::BitSet<dim>::iterator it=t.begin(); it(); ++it,++c)
+      for (typename BitSet<dim>::iterator it=t.begin(); it(); ++it,++c)
 	v.set(*it,eqn[c][j]); // use |eqn[c]| to find |v[*it]|
       b.push_back(v);
     }
@@ -448,7 +448,7 @@ template<size_t dim>
   BitVector<dim> combination
    (const std::vector<BitVector<dim> >& b,
     size_t n,
-    const bitset::BitSet<dim>& e)
+    const BitSet<dim>& e)
 {
   BitVector<dim> result(n);
 
@@ -466,10 +466,10 @@ template<size_t dim>
   there is no need for any particular preparation.
 */
 template<size_t dim>
-  bitset::BitSet<dim> combination(const std::vector<bitset::BitSet<dim> >& b,
-				  const bitset::BitSet<dim>& coef)
+  BitSet<dim> combination(const std::vector<BitSet<dim> >& b,
+				  const BitSet<dim>& coef)
   {
-    bitset::BitSet<dim> result(0);
+    BitSet<dim> result(0);
     for (size_t i = 0; i < b.size(); ++i)
       if (coef[i])
 	result ^= b[i]; // not |+| here, these are |BitSet|s.
@@ -482,7 +482,7 @@ template<size_t dim>
   bits of |rhs|, and return |true|; if no solution exists just return |false|.
 */
 template<size_t dim>
-  bool firstSolution(bitset::BitSet<dim>& c,
+  bool firstSolution(BitSet<dim>& c,
 		     const std::vector<BitVector<dim> >& b,
 		     const BitVector<dim>& rhs)
 
@@ -501,12 +501,12 @@ template<size_t dim>
   size_t n = b[0].size();
   assert(n==rhs.size());
 
-  std::vector<bitset::BitSet<dim> > a; // list of normalised eqns, lhs part
-  bitset::BitSet<dim> rh;      // corresponding right hand sides
+  std::vector<BitSet<dim> > a; // list of normalised eqns, lhs part
+  BitSet<dim> rh;      // corresponding right hand sides
   std::vector<size_t> f;       // list indicating "pivot" positions in |a|
 
   for (size_t i = 0; i < n; ++i) {
-    bitset::BitSet<dim> r;
+    BitSet<dim> r;
     // set r to i-th row of matrix whose columns are the |b[j]|
     for (size_t j = 0; j < b.size(); ++j)
       r.set(j,b[j][i]);
@@ -572,7 +572,7 @@ bool firstSolution(BitVector<dimsol>& sol,
 
 {
   std::vector<BitVector<dimeq> > eqn(eqns); // local copy
-  bitset::BitSet<dimeq> t;
+  BitSet<dimeq> t;
 
   normalize(t,eqn); // normalize matrix, treating the last bit like all others
 
@@ -663,7 +663,7 @@ template<size_t dim> struct FirstBit
   with $l=f.size()=a.size()$.
 */
 template<size_t dim>
-  void normalize(bitset::BitSet<dim>& t, std::vector<BitVector<dim> >& b)
+  void normalize(BitSet<dim>& t, std::vector<BitVector<dim> >& b)
 
 {
   std::vector<BitVector<dim> > a;
@@ -801,7 +801,7 @@ template<size_t dim> void spanAdd(std::vector<BitVector<dim> >& a,
 /* functions never called have been grouped here, MvL */
 #if 0
 template<size_t dim>
-  void complement(bitset::BitSet<dim>& c,
+  void complement(BitSet<dim>& c,
 		  const std::vector<BitVector<dim> >& b,
 		  size_t d)
 
@@ -870,7 +870,7 @@ template<size_t dim>
 {
   // flag the indices for the canonical complement
 
-  bitset::BitSet<dim> c;
+  BitSet<dim> c;
   std::vector<size_t> f;
 
   bitset::set(c,d);
@@ -898,7 +898,7 @@ template<size_t dim>
   for (size_t j = 0; j < b.size(); ++j) {
     BitVector<dim> v = b[j];
     v.slice(c);
-    const bitset::BitSet<dim>& vd = v.data();
+    const BitSet<dim>& vd = v.data();
     p.setColumn(f[j],vd);
   }
 }
@@ -958,7 +958,7 @@ template<size_t dim>
 
   // normalize e
 
-  bitset::BitSet<dim> t; // will flag a subset of [0,r[
+  BitSet<dim> t; // will flag a subset of [0,r[
   normalize(t,eqn);
 
   // now we get a relation for each j in [0,d[ not flagged by t
@@ -984,15 +984,15 @@ template
   BitVector<constants::RANK_MAX> combination
    (const std::vector<BitVector<constants::RANK_MAX> >& b,
     size_t n,
-    const bitset::BitSet<constants::RANK_MAX>& e);
+    const BitSet<constants::RANK_MAX>& e);
 
 template
-  bitset::BitSet<constants::RANK_MAX> combination
-  (const std::vector<bitset::BitSet<constants::RANK_MAX> >&,
-   const bitset::BitSet<constants::RANK_MAX>&);
+  BitSet<constants::RANK_MAX> combination
+  (const std::vector<BitSet<constants::RANK_MAX> >&,
+   const BitSet<constants::RANK_MAX>&);
 
 template
-  bool firstSolution(bitset::BitSet<constants::RANK_MAX>& c,
+  bool firstSolution(BitSet<constants::RANK_MAX>& c,
 		     const std::vector<BitVector<constants::RANK_MAX> >& b,
 		     const BitVector<constants::RANK_MAX>& rhs);
 template

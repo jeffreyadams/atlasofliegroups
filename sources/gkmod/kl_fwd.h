@@ -24,38 +24,6 @@ namespace atlas {
 
 /******** type declarations *************************************************/
 
-namespace kl {
-
-class KLContext;
-
-/*!
-\brief Coefficient of a KL polynomial.
-*/
-typedef unsigned int KLCoeff;
-
-/*!
-\brief Polynomial with coefficients of type KLCoeff.
-*/
-typedef polynomials::Safe_Poly<KLCoeff> KLPol;
-
-typedef unsigned int KLIndex; // less than 2^32 distinct polynomials for E8 !
-
-
-typedef KLCoeff MuCoeff;
-
-// a pair of vectors may be much more compact that a vector of pairs
-typedef std::pair<std::vector<BlockElt>,std::vector<MuCoeff> > MuRow;
-
-typedef std::vector<KLPol> KLStore;
-
-typedef KLStore::const_reference KLPolRef;
-
-typedef std::vector<KLIndex> KLRow;
-
-typedef std::vector<BlockElt> PrimitiveRow;
-
-}
-
 }
 
 #endif

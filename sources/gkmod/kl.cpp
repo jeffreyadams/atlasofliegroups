@@ -396,7 +396,7 @@ class ThicketIterator {
     typedef Thicket::EdgeList EdgeList;
 
     std::stack<size_t> d_stack;
-    bitmap::BitMap d_done;
+    BitMap d_done;
     EdgeList::const_iterator d_current;
     EdgeList::const_iterator d_currentEnd;
     size_t d_pos;
@@ -552,7 +552,7 @@ void
 KLContext::makeExtremalRow(PrimitiveRow& e, BlockElt y)
   const
 {
-  bitmap::BitMap b(size());
+  BitMap b(size());
   b.fill(0,lengthLess(length(y))); // start with all elements < y in length
   b.insert(y);                     // and y itself
 
@@ -577,7 +577,7 @@ void
 KLContext::makePrimitiveRow(PrimitiveRow& e, BlockElt y)
   const
 {
-  bitmap::BitMap b(size());
+  BitMap b(size());
   b.fill(0,lengthLess(length(y))); // start with all elements < y in length
   b.insert(y);                     // and y itself
 
@@ -629,9 +629,9 @@ void KLContext::fill(BlockElt y, bool verbose)
 
 }
 
-bitmap::BitMap KLContext::primMap (BlockElt y) const
+BitMap KLContext::primMap (BlockElt y) const
 {
-  bitmap::BitMap b(size()); // block-size bitmap
+  BitMap b(size()); // block-size bitmap
 
   // start with all elements < y in length
   b.fill(0,lengthLess(length(y)));
@@ -643,7 +643,7 @@ bitmap::BitMap KLContext::primMap (BlockElt y) const
   // now b holds a bitmap indicating primitive elements for y
 
   // our result will be a bitmap of that size
-  bitmap::BitMap result (b.size()); // initiallly all bits are cleared
+  BitMap result (b.size()); // initiallly all bits are cleared
 
  // the list of primitive elements with nonzero polynomials at y
   const PrimitiveRow& row=d_prim[y];
@@ -652,7 +652,7 @@ bitmap::BitMap KLContext::primMap (BlockElt y) const
 
   size_t position=0; // position among set bits in b (avoids using b.position)
   size_t j=0; // index into row;
-  for (bitmap::BitMap::iterator it=b.begin(); it(); ++position,++it)
+  for (BitMap::iterator it=b.begin(); it(); ++position,++it)
     if (*it==row[j]) // look if |it| points to current element of row
     {
       result.insert(position); ++j; // record position and advance in row
@@ -858,7 +858,7 @@ Helper::goodDescentMu(BlockElt x, BlockElt y, size_t s) const
 MuCoeff Helper::lengthOneMu(BlockElt x, BlockElt y) const
 {
   // look if x has any ascents that are descents for y
-  bitset::RankFlags ascents=descentSet(y); ascents.andnot(descentSet(x));
+  RankFlags ascents=descentSet(y); ascents.andnot(descentSet(x));
   if (ascents.any())
     return ascentMu(x,y,ascents.firstBit()) ? MuCoeff(1) : MuCoeff(0);
 
@@ -1952,11 +1952,11 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
 
   // fill in edges and coefficients
   for (BlockElt y = 0; y < klc.size(); ++y) {
-    const bitset::RankFlags& d_y = wg.descent(y);
+    const RankFlags& d_y = wg.descent(y);
     const MuRow& mrow = klc.muRow(y);
     for (size_t j = 0; j < mrow.first.size(); ++j) {
       BlockElt x = mrow.first[j];
-      const bitset::RankFlags& d_x = wg.descent(x);
+      const RankFlags& d_x = wg.descent(x);
       if (d_x == d_y)
 	continue;
       MuCoeff mu = mrow.second[j];

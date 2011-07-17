@@ -173,7 +173,7 @@ void write_block_file(const Block& block, std::ostream& out)
   // write descent sets
   for (BlockElt y=0; y<block.size(); ++y)
   {
-    bitset::RankFlags d;
+    RankFlags d;
     for (size_t s = 0; s < rank; ++s)
       d.set(s,block.isWeakDescent(s,y));
     basic_io::put_int(d.to_ulong(),out); // write d as 32-bits value
@@ -206,7 +206,7 @@ void write_block_file(const Block& block, std::ostream& out)
 
 @< Input class declarations @>=
 
-typedef std::vector<bitset::RankFlags>
+typedef std::vector<RankFlags>
   descent_set_vector; // indexed by block element
 
 typedef std::vector<BlockElt> ascent_vector; // indexed by simple root
@@ -236,7 +236,7 @@ public:
   BlockElt primitivize(BlockElt x, BlockElt y) const;
   const prim_list& prims_for_descents_of(BlockElt y);
 private:
-  bool is_primitive(BlockElt x, const bitset::RankFlags d) const;
+  bool is_primitive(BlockElt x, const RankFlags d) const;
 };
 
 
@@ -247,7 +247,7 @@ private:
 BlockElt
 block_info::primitivize(BlockElt x, BlockElt y) const
 {
-  bitset::RankFlags d=descent_set[y];
+  RankFlags d=descent_set[y];
 start:
   if (x>=y) return x; // possibly with |x==UndefBlock|
   const ascent_vector& ax=ascents[x];
@@ -261,7 +261,7 @@ start:
 @< Methods for reading binary files @>=
 
 bool
-block_info::is_primitive(BlockElt x, const bitset::RankFlags d) const
+block_info::is_primitive(BlockElt x, const RankFlags d) const
 {
   const ascent_vector& ax=ascents[x];
   for (size_t s=0; s<ax.size(); ++s)
@@ -275,7 +275,7 @@ block_info::is_primitive(BlockElt x, const bitset::RankFlags d) const
 @< Methods for reading binary files @>=
 
 const prim_list& block_info::prims_for_descents_of(BlockElt y)
-{ bitset::RankFlags d=descent_set[y];
+{ RankFlags d=descent_set[y];
   unsigned long s=d.to_ulong();
   prim_list& result=primitives_list[s];
   if (result.empty())
@@ -308,7 +308,7 @@ block_info::block_info(std::ifstream& in)
   // read descent sets
   descent_set.reserve(size);
   for (BlockElt y=0; y<size; ++y)
-    descent_set.push_back(bitset::RankFlags(read_bytes<4>(in)));
+    descent_set.push_back(RankFlags(read_bytes<4>(in)));
 
   // read ascent table
   ascents.reserve(size);
@@ -334,7 +334,7 @@ block_info::block_info(std::ifstream& in)
 std::streamoff
 write_KL_row(const kl::KLContext& klc, BlockElt y, std::ostream& out)
 {
-  bitmap::BitMap prims=klc.primMap(y);
+  BitMap prims=klc.primMap(y);
   const kl::KLRow& klr=klc.klRow(y);
 
   assert(klr.size()==prims.size()); // check the number of KL polynomials
@@ -423,7 +423,7 @@ public:
   size_t length (BlockElt y) const; // length in block
   BlockElt first_of_length (size_t l) const
     { return block.start_length[l]; }
-  bitset::RankFlags descent_set (BlockElt y) const
+  RankFlags descent_set (BlockElt y) const
     { return block.descent_set[y]; }
   std::streamoff row_offset(BlockElt y) const { return row_pos[y]; }
   BlockElt primitivize (BlockElt x,BlockElt y) const

@@ -35,14 +35,14 @@ class KLSupport
 {
   enum State { DownsetsFilled, LengthLessFilled, Filled, NumStates};
 
-  bitset::BitSet<NumStates> d_state;
+  BitSet<NumStates> d_state;
 
   Block_base& d_block;  // non-owned reference
 
-  std::vector<bitset::RankFlags> d_descent;
-  std::vector<bitset::RankFlags> d_goodAscent;
-  std::vector<bitmap::BitMap> d_downset;
-  std::vector<bitmap::BitMap> d_primset;
+  std::vector<RankFlags> d_descent;
+  std::vector<RankFlags> d_goodAscent;
+  std::vector<BitMap> d_downset;
+  std::vector<BitMap> d_primset;
   std::vector<BlockElt> d_lengthLess;
 
  public:
@@ -60,7 +60,7 @@ class KLSupport
     { return d_block.cross(s,z); }
   BlockEltPair cayley(size_t s, BlockElt z) const
     { return d_block.cayley(s,z); }
-  const bitset::RankFlags& descentSet(BlockElt z) const
+  const RankFlags& descentSet(BlockElt z) const
     { return d_descent[z]; }
   /*!
 \brief Descent status of simple root s for block element z. Taken directly from the block.
@@ -74,7 +74,7 @@ class KLSupport
   size_t rank() const { return d_block.rank(); }
   size_t size() const { return d_block.size(); }
 
-  const bitset::RankFlags& goodAscentSet(BlockElt z) const
+  const RankFlags& goodAscentSet(BlockElt z) const
     { return d_goodAscent[z]; }
   size_t length(BlockElt z) const { return d_block.length(z); }
   /*!
@@ -83,11 +83,11 @@ class KLSupport
   BlockElt lengthLess(size_t l) const { return d_lengthLess[l]; }
 
   BlockElt primitivize
-    (BlockElt x, const bitset::RankFlags& A) const;
+    (BlockElt x, const RankFlags& A) const;
 
   // the following are filters of the bitmap
-  void extremalize(bitmap::BitMap&, const bitset::RankFlags&) const;
-  void primitivize(bitmap::BitMap&, const bitset::RankFlags&) const;
+  void extremalize(BitMap&, const RankFlags&) const;
+  void primitivize(BitMap&, const RankFlags&) const;
 
 // manipulators
   void fill();

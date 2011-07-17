@@ -36,18 +36,17 @@
 #include <set> // for |insertAscents|
 #include <algorithm>
 
-#include "basic_io.h"
-#include "ioutils.h"
-#include "bruhat.h"
-#include "complexredgp.h"
-#include "descents.h"
-#include "kgb.h"
-#include "realredgp.h"
 #include "tags.h"
-#include "weyl.h"
 #include "hashtable.h"
 
-#include "error.h"
+#include "basic_io.h"	// operator |<<|
+#include "ioutils.h"
+#include "bruhat.h"	// construction
+#include "complexredgp.h"
+#include "realredgp.h"
+#include "subsystem.h"
+#include "kgb.h"
+#include "weyl.h"
 
 /*
   Our task is fairly simple: given the one sided parameter sets for the real
@@ -135,14 +134,12 @@ namespace {
 weyl::WeylInterface
 correlation(const WeylGroup& W,const WeylGroup& dW);
 
-DescentStatus descents(KGBElt x,
-				 KGBElt y,
-				 const KGB_base& kgb,
-				 const KGB_base& dual_kgb);
+DescentStatus descents(KGBElt x, KGBElt y,
+		       const KGB_base& kgb, const KGB_base& dual_kgb);
 
-void insertAscents(std::set<BlockElt>&, const set::SetEltList&, size_t,
+void insertAscents(std::set<BlockElt>&, const set::EltList&, size_t,
 		   const Block&);
-void makeHasse(std::vector<set::SetEltList>&, const Block&);
+void makeHasse(std::vector<set::EltList>&, const Block&);
 
 
 } // namespace
@@ -253,7 +250,7 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
 } // |Block_base::Block_base|
 
 
-Block_base::Block_base(const subdatum::SubSystem& sub,
+Block_base::Block_base(const SubSystem& sub,
 		       const WeylGroup& printing_W)
   : W(printing_W)
   , d_x(), d_y()
@@ -487,9 +484,9 @@ Block // pseudo constructor that ends calling main contructor
   RealReductiveGroup dG_R(dG,drf);
 
   KGB kgb
-    ( G_R,select_Cartans ? common_Cartans(G_R,dG_R) : bitmap::BitMap(0));
+    ( G_R,select_Cartans ? common_Cartans(G_R,dG_R) : BitMap(0));
   KGB dual_kgb
-    (dG_R,select_Cartans ? common_Cartans(dG_R,G_R) : bitmap::BitMap(0));
+    (dG_R,select_Cartans ? common_Cartans(dG_R,G_R) : BitMap(0));
 
 #ifdef VERBOSE
   std::cerr << "K\\G/B and dual generated... " << std::flush;
@@ -506,7 +503,7 @@ void Block::compute_supports()
   {
     if (z==0 or involution(z)!=involution(z-1))
     { // compute involution support directly from definition
-      bitset::RankFlags support;
+      RankFlags support;
       WeylWord ww=weylGroup().word(involution(z));
       for (size_t j=0; j<ww.size(); ++j)
 	support.set(ww[j]);
@@ -556,7 +553,7 @@ Block::Block(const Block& b)
 #endif
 
   if (b.d_bruhat!=NULL) // this does not happen when called from |Block::build|
-    d_bruhat = new bruhat::BruhatOrder(*b.d_bruhat);
+    d_bruhat = new BruhatOrder(*b.d_bruhat);
 }
 
 
@@ -577,18 +574,13 @@ void Block::fillBruhat()
   if (d_state.test(BruhatConstructed)) // work was already done
     return;
 
-  try {
-    std::vector<set::SetEltList> hd; makeHasse(hd,*this);
-    bruhat::BruhatOrder* bp = new bruhat::BruhatOrder(hd); // may throw here
+  std::vector<set::EltList> hd; makeHasse(hd,*this);
+  BruhatOrder* bp = new BruhatOrder(hd); // may throw here
 
-    // commit
-    delete d_bruhat; // this is overly careful: it must be NULL
-    d_bruhat = bp;
-    d_state.set(BruhatConstructed);
-  }
-  catch (std::bad_alloc) { // transform failed allocation into MemoryOverflow
-    throw error::MemoryOverflow();
-  }
+  // commit
+  delete d_bruhat; // this is overly careful: it must be NULL
+  d_bruhat = bp;
+  d_state.set(BruhatConstructed);
 }
 
 
@@ -603,7 +595,7 @@ std::ostream& gamma_block::print(std::ostream& strm, BlockElt z) const
 
 
 gamma_block::gamma_block(RealReductiveGroup& GR,
-			 const subdatum::SubSystem& sub, // at the dual side
+			 const SubSystem& sub, // at the dual side
 			 KGBElt x,
 			 const RatWeight& lambda, // discr param
 			 const RatWeight& gamma, // infl char
@@ -702,8 +694,8 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
     RootNbrList gen_root = gfd.real_basis(y.tw());
 
     KGBEltPair p = kgb.packet(x); // get range of |kgb| that involves |x|
-    bitmap::BitMap seen(p.second-p.first);
-    bitmap::BitMap news = seen;
+    BitMap seen(p.second-p.first);
+    BitMap news = seen;
     news.insert(x-p.first);
     while (news.andnot(seen)) // condition modifies |news| as side effect
     {
@@ -721,7 +713,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
     for (weyl::Generator s=0; s<our_rank; ++s)
       { d_cross[s].reserve(fs); d_cayley[s].reserve(fs); }
 
-    for (bitmap::BitMap::iterator it=seen.begin(); it(); ++it)
+    for (BitMap::iterator it=seen.begin(); it(); ++it)
     {
       KGBElt kgb_nr = *it+p.first;
       x_of[kgb_nr]=kgb_nr_of.size();
@@ -994,7 +986,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 
 non_integral_block::non_integral_block
   (RealReductiveGroup& GR,
-   const subdatum::SubSystem& subsys, // at the dual side
+   const SubSystem& subsys, // at the dual side
    KGBElt x,
    const RatWeight& lambda, // discrete parameter
    const RatWeight& gamma, // infinitesimal char
@@ -1382,7 +1374,7 @@ RatWeight non_integral_block::lambda(BlockElt z) const
 bool non_integral_block::is_nonzero(BlockElt z) const
 {
   const DescentStatus& desc=descent(z);
-  for (bitset::RankFlags::iterator it=singular.begin(); it(); ++it)
+  for (RankFlags::iterator it=singular.begin(); it(); ++it)
     if (DescentStatus::isDescent(desc[*it]))
       return false;
   return true;
@@ -1503,7 +1495,7 @@ DescentStatus descents(KGBElt x,
   part of the coatom list for a given element arising from a given descent.
 */
 void insertAscents(std::set<BlockElt>& hs,
-		   const set::SetEltList& hr,
+		   const set::EltList& hr,
 		   size_t s,
 		   const Block& block)
 {
@@ -1539,7 +1531,7 @@ void insertAscents(std::set<BlockElt>& hs,
   kgb. If it doesn't then we're essentially at a split principal series. The
   immediate predecessors of z are just the inverse Cayley transforms.
 */
-void makeHasse(std::vector<set::SetEltList>& Hasse, const Block& block)
+void makeHasse(std::vector<set::EltList>& Hasse, const Block& block)
 {
   Hasse.resize(block.size());
 
@@ -1642,7 +1634,7 @@ std::vector<BlockElt> dual_map(const Block_base& b, const Block_base& dual_b)
   return result;
 }
 
-bitmap::BitMap common_Cartans(RealReductiveGroup& GR,
+BitMap common_Cartans(RealReductiveGroup& GR,
 			      RealReductiveGroup& dGR)
   { return GR.Cartan_set()
       & GR.complexGroup().dual_Cartan_set(dGR.realForm());

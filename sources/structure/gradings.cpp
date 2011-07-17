@@ -139,7 +139,7 @@ noncompact_roots(const Grading& g, const RootSystem& rs)
   of $Z/2Z$-gradings on the root system |rs|, which arise from a $Z$-grading.
 
   Such a grading is determined freely by its value at each simple root;
-  therefore a grading is represented by bitset::RankFlags (=BitSet<RANK_MAX>).
+  therefore a grading is represented by RankFlags (=BitSet<RANK_MAX>).
 
   We return the first representative in each class with the least possible
   number of set bits. This code appears to be nowher used.

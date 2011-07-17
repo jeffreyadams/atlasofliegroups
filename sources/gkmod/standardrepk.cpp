@@ -48,7 +48,7 @@ namespace {
 
 // an auxiliary function for height computations
 int_Matrix
-orth_projection(const RootDatum& rd, bitset::RankFlags gens,
+orth_projection(const RootDatum& rd, RankFlags gens,
 		LatticeCoeff& denom);
 
 } // |namespace|
@@ -131,7 +131,7 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
 
   // what remains is filling |C_info|, which is quite a bit of code
   size_t nr=0;
-  for (bitmap::BitMap::iterator it=Cartan_set.begin(); it(); ++it,++nr)
+  for (BitMap::iterator it=Cartan_set.begin(); it(); ++it,++nr)
   {
 
     // d_G.cartan[i] is (canonical involution for) (*it)th CartanClass
@@ -151,7 +151,7 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
     int_Matrix inv_basis=basis.inverse();
 
     size_t twos=0,l=factor.size();
-    bitset::RankFlags torsion;
+    RankFlags torsion;
 
     for (size_t i=0; i<l; ++i)
       if (factor[i]>1)
@@ -166,7 +166,7 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
     ci.torsionLift.reserve(twos);
     ci.torsionProjector.resize(twos,n);
     size_t i=0;
-    for (bitset::RankFlags::iterator it=torsion.begin(); it(); ++it,++i)
+    for (RankFlags::iterator it=torsion.begin(); it(); ++it,++i)
     {
       ci.torsionLift.push_back(basis.column(*it));
 
@@ -262,7 +262,7 @@ StandardRepK SRK_context::std_rep
 // it should only transform the parameters for the Levi factor given by |gens|
 // since |lambda| is $\rho$-centered, care should be taken in transforming it
 RawRep SRK_context::Levi_rep
-    (Weight lambda, TitsElt a, bitset::RankFlags gens)
+    (Weight lambda, TitsElt a, RankFlags gens)
   const
 {
   TwistedInvolution sigma=a.tw();
@@ -304,7 +304,7 @@ SRK_context::height(const StandardRepK& sr) const
 } // |SRK_context::height|
 
 
-const proj_info& SRK_context::get_projection(bitset::RankFlags gens)
+const proj_info& SRK_context::get_projection(RankFlags gens)
 {
   size_t old_size=proj_data.size();
   size_t h=proj_sets.match(bitset_entry(gens));
@@ -321,7 +321,7 @@ level SRK_context::height_bound(const Weight& lambda)
 {
   const RootDatum& rd=rootDatum();
 
-  bitset::RankFlags negatives,new_negatives;
+  RankFlags negatives,new_negatives;
   Weight mu;
 
   do
@@ -360,7 +360,7 @@ bool SRK_context::isNormal(Weight lambda, size_t cn,
 			   size_t& witness) const
 {
   size_t i=0; // position of |*it| below in |info(cn).bi_ortho|
-  for (bitset::RankFlags::iterator
+  for (RankFlags::iterator
 	 it=info(cn).bi_ortho.begin(); it(); ++it,++i)
     if (lambda.dot(info(cn).sum_coroots[i])<0)
     {
@@ -556,7 +556,7 @@ SRK_context::theta_stable_parabolic
 
 KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
 {
-  bitmap::BitMap flagged(kgb().size());
+  BitMap flagged(kgb().size());
   TitsElt strong=q.strong_involution();
 
   KGBElt root=UndefKGB;
@@ -576,7 +576,7 @@ KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
   do
   {
     KGBElt x=queue.front(); queue.pop_front();
-    for (bitset::RankFlags::iterator it=q.Levi_gens().begin(); it(); ++it)
+    for (RankFlags::iterator it=q.Levi_gens().begin(); it(); ++it)
     {
       KGBElt y=kgb().cross(*it,x);
       if (not flagged.isMember(y))
@@ -614,7 +614,7 @@ RawChar SRK_context::KGB_sum(const PSalgebra& q,
   for (size_t i=1; i<sub.size(); ++i)
   {
     KGBElt x=sub[i];
-    bitset::RankFlags::iterator it;
+    RankFlags::iterator it;
     for (it=q.Levi_gens().begin(); it(); ++it)
     {
       if (kgb().cross(*it,x)>x) // then we can use ascending cross action
@@ -687,7 +687,7 @@ SRK_context::K_type_formula(const StandardRepK& sr, level bound)
     InvolutionData id = complexGroup().involution_data(strong.tw());
 
     RootNbrSet A(rd.numRoots());
-    for (bitmap::BitMap::iterator
+    for (BitMap::iterator
 	   rt=q.radical().begin(); rt!=q.radical().end(); ++rt)
     {
       RootNbr alpha=*rt;
@@ -759,7 +759,7 @@ Raw_q_Char SRK_context::q_KGB_sum(const PSalgebra& p,
   for (size_t i=1; i<sub.size(); ++i)
   {
     KGBElt x=sub[i];
-    bitset::RankFlags::iterator it;
+    RankFlags::iterator it;
     for (it=p.Levi_gens().begin(); it(); ++it)
     {
       if (kgb().cross(*it,x)>x) // then we can use ascending cross action
@@ -834,7 +834,7 @@ SRK_context::q_K_type_formula(const StandardRepK& sr, level bound)
     InvolutionData id = complexGroup().involution_data(strong.tw());
 
     RootNbrSet A(rd.numRoots());
-    for (bitmap::BitMap::iterator
+    for (BitMap::iterator
 	   rt=p.radical().begin(); rt!=p.radical().end(); ++rt)
     {
       RootNbr alpha=*rt;
@@ -995,7 +995,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
   Weight lambda = lift(sr);
   subquotient::SmallSubspace mod_space=
     info(sr.d_cartan).fiber_modulus; // make a copy to be modified
-  bitset::RankFlags orth; // becomes system orthogonal to |tl| below
+  RankFlags orth; // becomes system orthogonal to |tl| below
   { // first assure the theta-lift of sr is dominant
     Weight tl=theta_lift(sr);
     WeylWord ww= rd.to_dominant(tl);
@@ -1031,7 +1031,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
   weyl::Generator i=~0; // becomes simple root index of $\alpha$
   do
   {
-    for (bitset::RankFlags::iterator it=orth.begin(); it(); ++it)
+    for (RankFlags::iterator it=orth.begin(); it(); ++it)
       if (rd.is_descent(i=*it,alpha))
       {
 	if (alpha!=rd.simpleRootNbr(i))
@@ -1410,7 +1410,7 @@ q_equation qKhatContext::mu_equation(seq_no n, level bound)
 std::vector<equation>
 KhatContext::saturate(const std::set<equation>& system, level bound)
 {
-  bitmap::BitMap lhs(nr_reps()); // left hand sides of all equations seen
+  BitMap lhs(nr_reps()); // left hand sides of all equations seen
 
   std::deque<equation> queue;
 
@@ -1469,7 +1469,7 @@ KhatContext::saturate(const std::set<equation>& system, level bound)
 std::vector<q_equation>
 qKhatContext::saturate(const std::set<q_equation>& system, level bound)
 {
-  bitmap::BitMap lhs(nr_reps()); // left hand sides of all equations seen
+  BitMap lhs(nr_reps()); // left hand sides of all equations seen
 
   std::deque<q_equation> queue;
 
@@ -1864,17 +1864,17 @@ namespace {
 // orthogonal projection onto the intersection of kernels of coroots in |gens|
 // the projection is parallel to the span of the roots in |gens|
 int_Matrix
-orth_projection(const RootDatum& rd, bitset::RankFlags gens,
+orth_projection(const RootDatum& rd, RankFlags gens,
 		LatticeCoeff& denom)
 {
   size_t m=gens.count(), r=rd.rank();
   int_Matrix root_mat(r,m);
   int_Matrix sub_Cartan(m,m); // transposed, later inverted
   int_Matrix coroot_mat(m,r);
-  for (bitset::RankFlags::iterator i=gens.begin(); i(); ++i)
+  for (RankFlags::iterator i=gens.begin(); i(); ++i)
   {
     size_t ii=gens.position(*i);
-    for (bitset::RankFlags::iterator j=gens.begin(); j(); ++j)
+    for (RankFlags::iterator j=gens.begin(); j(); ++j)
       sub_Cartan(ii,gens.position(*j))=rd.cartan(*j,*i);
     for (size_t j=0; j<r; ++j)
     {

@@ -523,9 +523,9 @@ private:
   GradingList makeGradingShifts
     (std::vector<RootNbrSet>& all_shifts,const RootSystem&) const;
 
-  bitset::RankFlagsList adjointMAlphas (const RootSystem&) const;
+  RankFlagsList adjointMAlphas (const RootSystem&) const;
 
-  bitset::RankFlagsList mAlphas(const RootDatum&) const;
+  RankFlagsList mAlphas(const RootDatum&) const;
 
   BinaryMap makeFiberMap(const RootDatum&) const;
 

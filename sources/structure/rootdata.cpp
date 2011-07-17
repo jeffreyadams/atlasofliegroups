@@ -1099,7 +1099,7 @@ RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma)
   return rd.sub_datum(rd.simpleBasis(int_roots));
 }
 
-arithmetic::RationalList integrality_points(const RootDatum& rd, RatWeight& nu)
+RationalList integrality_points(const RootDatum& rd, RatWeight& nu)
 {
   nu.normalize();
   unsigned long d = nu.denominator();
@@ -1112,12 +1112,12 @@ arithmetic::RationalList integrality_points(const RootDatum& rd, RatWeight& nu)
       products.insert(p);
   }
 
-  std::set<arithmetic::Rational> fracs;
+  std::set<Rational> fracs;
   for (std::set<long>::iterator it= products.begin(); it!=products.end(); ++it)
     for (long s=d; s<=*it; s+=d)
-      fracs.insert(arithmetic::Rational(s,*it));
+      fracs.insert(Rational(s,*it));
 
-  return arithmetic::RationalList(fracs.begin(),fracs.end());
+  return RationalList(fracs.begin(),fracs.end());
 }
 
 } // namespace rootdata

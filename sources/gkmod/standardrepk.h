@@ -29,6 +29,7 @@ StandardRepK and KhatContext.
 #include "hashtable.h"
 #include "free_abelian.h"
 #include "polynomials.h"
+#include "complexredgp.h"	// inlines
 
 namespace atlas {
 
@@ -46,7 +47,7 @@ class PSalgebra;
 // An image of a weight of the $\rho$-cover mod $(1-\theta)X^*$
 typedef std::pair
   <Weight, // free part, after subtraction of rho
-   bitset::RankFlags         // torsion part, compact representation
+   RankFlags         // torsion part, compact representation
   > HCParam;
 
 // a linear combination of |StandardRepK|s
@@ -243,7 +244,7 @@ struct Cartan_info
 
   // simple roots orthogonal to sums of positive imaginary and real roots
   // in fact one of every pair of $theta$-conjugate such simple roots
-  bitset::RankFlags bi_ortho; // simple roots, and necessarily complex ones
+  RankFlags bi_ortho; // simple roots, and necessarily complex ones
   WeightList sum_coroots; // associated sums of 2 coroots
 
   const Weight& coroot_sum(size_t i) const
@@ -259,10 +260,10 @@ struct proj_info
 }; // |struct proj_info|
 
 
-// a wrapper around |bitset::RankFlags| to allow a hash table indexed by them
-struct bitset_entry : public bitset::RankFlags
+// a wrapper around |RankFlags| to allow a hash table indexed by them
+struct bitset_entry : public RankFlags
 {
-  typedef bitset::RankFlags base;
+  typedef RankFlags base;
   typedef std::vector<bitset_entry> Pooltype;
   bitset_entry(base b) : base(b) {}
   size_t hashCode(size_t modulus) const { return to_ulong()&(modulus-1); }
@@ -282,7 +283,7 @@ struct bitset_entry : public bitset::RankFlags
 class SRK_context
 {
   RealReductiveGroup& G;
-  bitmap::BitMap Cartan_set;       // marks recorded Cartan class numbers
+  BitMap Cartan_set;       // marks recorded Cartan class numbers
   std::vector<Cartan_info> C_info; // indexed by number of Cartan for |GR|
 
 // this member is precomputed to increase efficiency of certain operations
@@ -350,7 +351,7 @@ class SRK_context
     }
 
   RawRep Levi_rep
-    (Weight lambda, TitsElt a, bitset::RankFlags gens)
+    (Weight lambda, TitsElt a, RankFlags gens)
     const;
 
 
@@ -438,7 +439,7 @@ class SRK_context
   Raw_q_Char q_KGB_sum(const PSalgebra& q, const Weight& lambda)
     const;
 
-  const proj_info& get_projection(bitset::RankFlags gens); // non |const|
+  const proj_info& get_projection(RankFlags gens); // non |const|
 
 }; // |SRK_context|
 
@@ -624,7 +625,7 @@ class PSalgebra // Parabolic subalgebra
 {
   TitsElt strong_inv; // corresponding strong involution
   size_t cn; // number of the Cartan class
-  bitset::RankFlags sub_diagram; // simple roots forming basis of Levi factor
+  RankFlags sub_diagram; // simple roots forming basis of Levi factor
   RootNbrSet nilpotents; // (positive) roots in nilpotent radical
  public:
   PSalgebra (TitsElt base,
@@ -633,7 +634,7 @@ class PSalgebra // Parabolic subalgebra
   const TitsElt& strong_involution() const { return strong_inv; }
   TwistedInvolution involution() const { return strong_inv.tw(); }
   size_t Cartan_no() const { return cn; }
-  bitset::RankFlags Levi_gens() const { return sub_diagram; }
+  RankFlags Levi_gens() const { return sub_diagram; }
   const RootNbrSet& radical() const { return nilpotents; }
 }; // |class PSalgebra|
 

@@ -20,8 +20,8 @@ namespace atlas {
 
 namespace set {
 
-  typedef size_t SetElt;
-  typedef std::vector<SetElt> SetEltList;
+  typedef size_t Elt;
+  typedef std::vector<Elt> EltList;
 
 }
 

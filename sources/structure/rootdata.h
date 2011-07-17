@@ -56,7 +56,7 @@ WeightInvolution refl_prod(const RootNbrSet&, const RootDatum&);
 RootDatum integrality_datum(const RootDatum& rd,
 			    const RatWeight& lambda);
 
-arithmetic::RationalList integrality_points(const RootDatum& rd,
+RationalList integrality_points(const RootDatum& rd,
 					    RatWeight& nu);
 
 } // namespace rootdata
@@ -73,7 +73,7 @@ class RootSystem
   struct root_info
   {
     Byte_vector root, dual; // root in root basis, coroot in coroot basis
-    bitset::RankFlags descents,ascents; // for reflections by simple roots
+    RankFlags descents,ascents; // for reflections by simple roots
 
     root_info(const Byte_vector& v)
     : root(v), dual(), descents(), ascents() {}
@@ -179,12 +179,12 @@ class RootSystem
     const
   { return root_perm[i]; }
 
-  bitset::RankFlags descent_set(RootNbr alpha) const
+  RankFlags descent_set(RootNbr alpha) const
   {
     RootNbr a = rt_abs(alpha);
     return isPosRoot(alpha) ? ri[a].descents : ri[a].ascents;
   }
-  bitset::RankFlags ascent_set(RootNbr alpha) const
+  RankFlags ascent_set(RootNbr alpha) const
   {
     RootNbr a = rt_abs(alpha);
     return isPosRoot(alpha) ? ri[a].ascents : ri[a].descents;
@@ -295,7 +295,7 @@ use by accessors.
   enum StatusFlagNames { IsAdjoint, IsSimplyConnected, numFlags };
 
 
-  typedef bitset::BitSet<numFlags> Status;
+  typedef BitSet<numFlags> Status;
 
 /*!
 \brief  Rank of the root datum.

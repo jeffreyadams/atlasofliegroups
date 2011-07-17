@@ -27,20 +27,6 @@ namespace atlas {
 namespace wgraph {
 
 /******** constructors and destructors ***************************************/
-WGraph::WGraph(size_t r)
-  :d_rank(r)
-
-/*
-  Synopsis: constructor
-
-  Makes an empty W-graph with rank r.
-*/
-
-{}
-
-WGraph::~WGraph()
-
-{}
 
 /******** copy, assignment and swap ******************************************/
 void WGraph::swap(WGraph& other)
@@ -66,7 +52,7 @@ void WGraph::reset()
 {
   d_graph.reset();
   d_coeff.assign(size(),WCoeffList());
-  d_descent.assign(size(),bitset::RankFlags());
+  d_descent.assign(size(),RankFlags());
 }
 
 
@@ -222,7 +208,7 @@ WGraph wGraph
   // fill in descent sets
   for (BlockElt y = 0; y < mi.block_size(); ++y)
   {
-    bitset::RankFlags d_y = result.descent(y) = mi.descent_set(y);
+    RankFlags d_y = result.descent(y) = mi.descent_set(y);
     size_t ly = mi.length(y);
     if (ly==0) continue; // nothing more to do; avoid negative |d| below
 
@@ -262,7 +248,7 @@ WGraph wGraph
     BlockElt end=mi.first_of_length(ly);
     for (BlockElt x=mi.first_of_length(ly-1); x<end; ++x)
     {
-      bitset::RankFlags d_x=mi.descent_set(x);
+      RankFlags d_x=mi.descent_set(x);
       if (d_x==d_y) continue; // this case would lead nowhere anyway
       filekl::KLIndex klp = mi.find_pol_nr(x,y);
       if (klp!=filekl::KLIndex(0)) // then some edge between |x| and |y| exists

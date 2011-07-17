@@ -65,7 +65,7 @@ only be |j|.
   explicit Poset(size_t n); // poset without any (nontrivial) comparabilities
 
   //! \brief Build Poset from its Hasse diagram
-  template<typename C> // |C| is some container of |set::SetElt|
+  template<typename C> // |C| is some container of |set::Elt|
   explicit Poset(const std::vector<C>& hasse);
 
   //! \brief Build Poset from arbitrary list of links
@@ -86,14 +86,14 @@ only be |j|.
 \brief The order relation itself.
   */
 
-  bool lesseq(set::SetElt i, set::SetElt j) const
+  bool lesseq(set::Elt i, set::Elt j) const
   { return i<j ? d_below[j].isMember(i) : i==j; }
 
   //! \brief Number of comparable pairs (including those on the diagonal)
   unsigned long n_comparable() const;
 
-  void findMaximals(set::SetEltList&, const bitmap::BitMap&) const;
-  set::SetEltList minima(const bitmap::BitMap&) const;
+  void findMaximals(set::EltList&, const bitmap::BitMap&) const;
+  set::EltList minima(const bitmap::BitMap&) const;
 
   /*!
 \brief Size of the poset.
@@ -104,7 +104,7 @@ only be |j|.
 
   void hasseDiagram(graph::OrientedGraph&) const;
 
-  void hasseDiagram(graph::OrientedGraph&, set::SetElt) const;
+  void hasseDiagram(graph::OrientedGraph&, set::Elt) const;
 
 // manipulators
   void resize(unsigned long);
@@ -147,7 +147,7 @@ only be |j|.
 
 // memory-efficient version of |Poset(hasse).n_comparable()|
 unsigned long n_comparable_from_Hasse
-  (const std::vector<set::SetEltList>& hasse);
+  (const std::vector<set::EltList>& hasse);
 
 /*!
 \brief Constructs a Poset from its Hasse diagram.

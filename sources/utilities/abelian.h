@@ -96,13 +96,9 @@ Cardinality of the group.
  public:
 
 // constructors and destructors
-  FiniteAbelianGroup()
-    {}
+  FiniteAbelianGroup() {}
 
   explicit FiniteAbelianGroup(const std::vector<unsigned long>&);
-
-  ~FiniteAbelianGroup()
-    {}
 
 // copy and assignment: defaults are ok
 

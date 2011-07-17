@@ -86,7 +86,7 @@ void KLSupport::swap(KLSupport& other)
   belong to the intersection of the downsets for the various descents in d.
 */
 
-void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
+void KLSupport::extremalize(BitMap& b, const RankFlags& d)
   const
 {
   for (weyl::Generator s=0; s<rank(); ++s)
@@ -107,7 +107,7 @@ void KLSupport::extremalize(bitmap::BitMap& b, const bitset::RankFlags& d)
   descent or imaginary type II, this amounts to requesting that z belong to
   the intersection of the primsets for the various descents in d.
 */
-void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
+void KLSupport::primitivize(BitMap& b, const RankFlags& d)
   const
 {
   for (weyl::Generator s=0; s<rank(); ++s)
@@ -131,9 +131,9 @@ void KLSupport::primitivize(bitmap::BitMap& b, const bitset::RankFlags& d)
   case will be handled effortlessly together with triangularity).
 */
 BlockElt
-  KLSupport::primitivize(BlockElt x, const bitset::RankFlags& d) const
+  KLSupport::primitivize(BlockElt x, const RankFlags& d) const
 {
-  bitset::RankFlags a; // good ascents for x that are descents for y
+  RankFlags a; // good ascents for x that are descents for y
 
   while ((a = goodAscentSet(x)&d).any())
   {
@@ -200,10 +200,10 @@ void KLSupport::fillDownsets()
     return;
 
   size_t size = d_block.size();
-  std::vector<bitmap::BitMap> downset(rank());
-  std::vector<bitmap::BitMap> primset(rank());
-  std::vector<bitset::RankFlags> descents(size);
-  std::vector<bitset::RankFlags> good_ascent(size);
+  std::vector<BitMap> downset(rank());
+  std::vector<BitMap> primset(rank());
+  std::vector<RankFlags> descents(size);
+  std::vector<RankFlags> good_ascent(size);
 
   for (weyl::Generator s=0; s<rank(); ++s)
   {

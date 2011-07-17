@@ -44,6 +44,7 @@
 #include "complexredgp.h"
 #include "realredgp.h"
 #include "subquotient.h"
+#include "subsystem.h"
 #include "subdatum.h"
 
 #include <cassert>
@@ -96,12 +97,12 @@ RatWeight TorusElement::log_2pi() const
   return RatWeight(numer,d).normalize();
 }
 
-arithmetic::Rational TorusElement::evaluate_at
+Rational TorusElement::evaluate_at
   (const Coweight& alpha) const
 {
   unsigned int d = repr.denominator();
   int n = arithmetic::remainder(repr.numerator().dot(alpha),d+d);
-  return arithmetic::Rational(n,d);
+  return Rational(n,d);
 }
 
 TorusElement TorusElement::operator +(const TorusElement& t) const
@@ -192,7 +193,7 @@ GlobalTitsGroup::GlobalTitsGroup
     alpha_v[i]=TorusPart(simple.roots()[i]);
 }
 
-GlobalTitsGroup::GlobalTitsGroup(const subdatum::SubSystem& sub,
+GlobalTitsGroup::GlobalTitsGroup(const SubSystem& sub,
 				 const WeightInvolution& theta,
 				 WeylWord& ww)
   : TwistedWeylGroup(sub.Weyl_group(),sub.twist(theta,ww)) // sets |ww|
@@ -297,7 +298,7 @@ bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a) const
 
  // weaker condition: square being central in subgroup
 bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,
-		const subdatum::SubSystem& sub) const
+			       const SubSystem& sub) const
 {
   const TorusElement t = a.torus_part()+theta_tr_times_torus(a);
 
@@ -315,9 +316,9 @@ bool GlobalTitsGroup::is_valid(const GlobalTitsElement& a,
 
 // find simple roots giving length-decreasing links (complex descent and real)
 // this could have been a method of |WeylGroup| at |TwistedInvolution|s.
-bitset::RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
+RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
 {
-  bitset::RankFlags result;
+  RankFlags result;
   for (weyl::Generator s=0; s<semisimple_rank(); ++s)
     result.set(s,hasDescent(s,a.tw())); // this covers all cases precisely!
   return result;
@@ -339,8 +340,8 @@ GlobalTitsGroup::cross_act(weyl::Generator s, GlobalTitsElement& x) const
 
   if (not hasDescent(s,x.w)) // imaginary cross action
   {
-    arithmetic::Rational r =
-      x.t.evaluate_at(simple.coroots()[s]) - arithmetic::Rational(1);
+    Rational r =
+      x.t.evaluate_at(simple.coroots()[s]) - Rational(1);
     if (r.numerator()!=0) // compact imaginary case needs no action
       add(RatWeight // now reflect for |s| about compact case
 	  (simple.roots()[s]*-r.numerator(),2*r.denominator()),x);
@@ -478,7 +479,7 @@ std::vector<Grading> compute_square_classes
   assert(delta.numColumns()==r);
 
   int_Matrix roots(0,r);
-  bitset::RankFlags fixed;
+  RankFlags fixed;
   for (size_t i=0; i<rd.semisimpleRank(); ++i)
     if (twist[i]==i)
     {
@@ -491,13 +492,13 @@ std::vector<Grading> compute_square_classes
   BinaryMap to_grading(roots);
   Vplus.apply(to_grading); // convert to grading coordinates
 
-  bitset::RankFlags supp = Vplus.support(); // pivot positions
+  RankFlags supp = Vplus.support(); // pivot positions
   supp.complement(roots.numRows()); // non-pivot positions among fixed ones
   supp.unslice(fixed);  // bring bits back to the simple-root positions
 
   std::vector<Grading> result; result.reserve(supp.count());
 
-  for (bitset::RankFlags::iterator it=supp.begin(); it(); ++it)
+  for (RankFlags::iterator it=supp.begin(); it(); ++it)
   {
     result.push_back(Grading());
     result.back().set(*it);
@@ -510,7 +511,7 @@ std::vector<Grading> compute_square_classes
 
 
 SubTitsGroup::SubTitsGroup(const ComplexReductiveGroup& G,
-			   const subdatum::SubSystem& sub,
+			   const SubSystem& sub,
 			   const WeightInvolution& theta,
 			   WeylWord& ww)
 : GlobalTitsGroup(sub,theta,ww)
@@ -604,7 +605,7 @@ TitsGroup::TitsGroup(const int_Matrix& Cartan_matrix,
 
 // build Tits group for |sub|, get sub-twist defined by |-theta^t| into |ww|
 // called from |Subdatum| constructor, and indirectly from |TitsCoset|
-TitsGroup::TitsGroup(const subdatum::SubSystem& sub,
+TitsGroup::TitsGroup(const SubSystem& sub,
 		     const WeightInvolution& theta,
 		     WeylWord& ww)
   : TwistedWeylGroup(sub.Weyl_group(),sub.parent_twist(theta,ww))
@@ -810,7 +811,7 @@ TitsCoset::TitsCoset(const subdatum::SubDatum& sub,
 
 // this constructor adapts to |theta| (given on parent) and sets |ww|
 // it also avoids contructing a |SubDatum| at all; it is currently unused
-TitsCoset::TitsCoset(const subdatum::SubSystem& sub,
+TitsCoset::TitsCoset(const SubSystem& sub,
 		     const WeightInvolution& theta,
 		     Grading parent_base_grading,
 		     WeylWord& ww)
@@ -959,7 +960,7 @@ TitsElt TitsCoset::naive_seed
   // the |grading_offset| of our |TitsCoset| gives the square class base
 
   // now lift strong real form from fiber group to a torus part in |result|
-  SmallBitVector v(bitset::RankFlags(srf.first),f.fiberRank());
+  SmallBitVector v(RankFlags(srf.first),f.fiberRank());
   tits::TorusPart x = f.fiberGroup().fromBasis(v);
 
   // right-multiply this torus part by canonical twisted involution for |cn|
@@ -1156,7 +1157,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
     if (srp(x)==srp(f_orbit()))
     {
       SmallBitVector v
-	(static_cast<bitset::RankFlags>(x),fund.fiberRank());
+	(static_cast<RankFlags>(x),fund.fiberRank());
       TorusPart t = fund.fiberGroup().fromBasis(v);
       for (size_t i=0; i<Cayley.size(); ++i)
 	if (is_compact(t,Cayley[i]))

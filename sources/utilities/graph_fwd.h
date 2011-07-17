@@ -20,7 +20,7 @@ namespace atlas {
 
 namespace graph {
 
-  typedef set::SetElt Vertex;
+  typedef set::Elt Vertex;
   typedef std::vector<Vertex> VertexList;
   typedef Vertex Edge;
   typedef std::vector<Edge> EdgeList;

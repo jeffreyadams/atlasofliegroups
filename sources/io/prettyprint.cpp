@@ -40,7 +40,7 @@ namespace prettyprint {
   Synopsis: outputs the first values of the bitmap left-to-right, on a single
   line
 */
-std::ostream& prettyPrint(std::ostream& strm, const bitmap::BitMap& b,
+std::ostream& prettyPrint(std::ostream& strm, const BitMap& b,
 			  size_t n)
 {
   if (n == 0)
@@ -58,7 +58,7 @@ std::ostream& prettyPrint(std::ostream& strm, const bitmap::BitMap& b,
 
 // Prints the n first bits of v on strm left-to-right.
 template<size_t d>
-std::ostream& prettyPrint(std::ostream& strm, const bitset::BitSet<d>& b,
+std::ostream& prettyPrint(std::ostream& strm, const BitSet<d>& b,
 			  size_t n)
 {
   for (size_t j = 0; j < n; ++j)
@@ -74,7 +74,7 @@ std::ostream& prettyPrint(std::ostream& strm, const bitset::BitSet<d>& b,
 // Prints the n first bits of v on strm in a "vector-like" format.
 template<size_t dim>
 std::ostream& prettyPrint(std::ostream& strm,
-			  const bitvector::BitVector<dim>& v)
+			  const BitVector<dim>& v)
 {
   std::vector<int> vi;
 
@@ -90,7 +90,7 @@ std::ostream& prettyPrint(std::ostream& strm,
 // Pretty-prints a list of bitvectors, one per line.
 template<size_t dim>
 std::ostream& prettyPrint(std::ostream& strm,
-			  const std::vector<bitvector::BitVector<dim> >& a)
+			  const std::vector<BitVector<dim> >& a)
 {
   for (size_t i = 0; i<a.size(); ++i)
   {
@@ -129,7 +129,7 @@ std::ostream& printBasis(std::ostream& strm, const std::vector<V>& b)
   pre * sep * ... * post, where the * are the bits in d, output as their
   bitposition starting from 1.
 */
-std::ostream& printDescentSet(std::ostream& strm, const bitset::RankFlags& d,
+std::ostream& printDescentSet(std::ostream& strm, const RankFlags& d,
 			      size_t rank, const char* sep, const char* pre,
 			      const char* post)
 {
@@ -433,14 +433,14 @@ std::ostream& printWeylList(std::ostream& strm, const WeylEltList& wl,
 
 
 template std::ostream& prettyPrint
-  (std::ostream&, const bitset::RankFlags&, size_t);
+  (std::ostream&, const RankFlags&, size_t);
 
 template std::ostream& prettyPrint
-  (std::ostream&, const bitvector::BitVector<constants::RANK_MAX>&);
+  (std::ostream&, const BitVector<constants::RANK_MAX>&);
 
 template std::ostream& prettyPrint
   (std::ostream&,
-   const std::vector<bitvector::BitVector<constants::RANK_MAX> >&);
+   const std::vector<BitVector<constants::RANK_MAX> >&);
 
 template std::ostream& printBasis
   (std::ostream&, const std::vector<Weight>&);

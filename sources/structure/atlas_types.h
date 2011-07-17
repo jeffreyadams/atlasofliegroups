@@ -30,14 +30,55 @@
 
 #include "constants.h"
 
-#include "bitset_fwd.h"
-#include "bitmap_fwd.h"
-#include "matrix_fwd.h"
-#include "ratvec_fwd.h"
-
 /******** forward type declarations ******************************************/
 
 namespace atlas {
+
+  namespace set {
+    typedef size_t Elt;
+    typedef std::vector<Elt> EltList;
+  }
+
+  namespace bitset { template<size_t n> class BitSet; }
+  using bitset::BitSet;
+  typedef BitSet<constants::RANK_MAX> RankFlags;
+  typedef BitSet<2*constants::RANK_MAX> TwoRankFlags;
+  typedef std::vector<RankFlags> RankFlagsList;
+
+  namespace bitmap { class BitMap; }
+  using bitmap::BitMap;
+
+  namespace arithmetic { class Rational; }
+  using arithmetic::Rational;
+  typedef std::vector<Rational> RationalList;
+
+  namespace matrix {
+    template<typename C> class Vector;
+    template<typename C> class Matrix_base;
+    template<typename C> class Matrix;
+  }
+  namespace ratvec { template<typename C> class RationalVector; }
+
+  namespace permutations { struct Permutation; }
+  namespace partition {
+    class Partition;
+    class PartitionIterator;
+  }
+  namespace poset { class Poset; }
+  using poset::Poset;
+
+  namespace hashtable{
+    template <class Entry, typename Number> class HashTable;
+  }
+  namespace free_abelian {
+    template<typename T, typename C, typename Compare>
+      struct Free_Abelian;
+  }
+  namespace polynomials {
+    template<typename C> class Polynomial;
+    template<typename C> class Safe_Poly;
+    typedef size_t Degree; // exponent range; not stored.
+  }
 
   // interpetationless terminology
   typedef matrix::Vector<int> int_Vector;
@@ -68,11 +109,14 @@ namespace atlas {
     template<size_t> class BitVectorList;
     template<size_t> class BitMatrix;
   }
-  typedef bitvector::BitVector<constants::RANK_MAX> SmallBitVector;
-  typedef bitvector::BitVectorList<constants::RANK_MAX> SmallBitVectorList;
-  typedef bitvector::BitVector<constants::RANK_MAX+1> BinaryEquation;
-  typedef bitvector::BitVectorList<constants::RANK_MAX+1> BinaryEquationList;
-  typedef bitvector::BitMatrix<constants::RANK_MAX> BinaryMap;
+  using bitvector::BitVector;
+  using bitvector::BitVectorList;
+  using bitvector::BitMatrix;
+  typedef BitVector<constants::RANK_MAX> SmallBitVector;
+  typedef BitVectorList<constants::RANK_MAX> SmallBitVectorList;
+  typedef BitVector<constants::RANK_MAX+1> BinaryEquation;
+  typedef BitVectorList<constants::RANK_MAX+1> BinaryEquationList;
+  typedef BitMatrix<constants::RANK_MAX> BinaryMap;
 
   namespace subquotient {
     template<size_t dim> class Subspace;
@@ -154,13 +198,17 @@ namespace atlas {
     class Status;
     struct GradingCompare;
   }
-  typedef bitset::RankFlags Grading;
+  typedef RankFlags Grading;
   typedef std::vector<Grading> GradingList;
 
   namespace tori { class RealTorus; }
+
   namespace topology { class Connectivity; }
 
-  typedef unsigned short RealFormNbr; // index used in |ComplexReductiveGrooup|
+  namespace subsystem {class SubSystem; }
+  using subsystem::SubSystem;
+
+  typedef unsigned short RealFormNbr; // index used in |ComplexReductiveGroup|
   typedef std::vector<RealFormNbr> RealFormNbrList;
 
   namespace cartanclass {
@@ -182,6 +230,9 @@ namespace atlas {
   namespace realredgp { class RealReductiveGroup; }
   using realredgp::RealReductiveGroup;
 
+  namespace bruhat { class BruhatOrder; }
+  using bruhat::BruhatOrder;
+
   namespace kgb {
     class KGB_base;
     struct KGB_elt_entry;
@@ -189,7 +240,7 @@ namespace atlas {
     class global_KGB;
     class KGB;
     class subsys_KGB;
-    typedef bitset::RankFlags DescentSet;
+    typedef RankFlags DescentSet;
   }
   using kgb::KGB_base;
   using kgb::KGB_elt_entry;
@@ -201,11 +252,8 @@ namespace atlas {
   typedef std::pair<KGBElt,KGBElt> KGBEltPair;
   typedef std::vector<KGBEltPair> KGBEltPairList;
 
-  typedef bitset::RankFlags DescentSet;
+  using kgb::DescentSet;
   static const KGBElt UndefKGB = ~0u;
-
-  namespace bruhat { class BruhatOrder; }
-  using bruhat::BruhatOrder;
 
   namespace descents { class DescentStatus; }
   using descents::DescentStatus;
@@ -223,6 +271,24 @@ namespace atlas {
   typedef std::vector<BlockElt> BlockEltList;
   typedef std::pair<BlockElt,BlockElt> BlockEltPair;
   typedef std::vector<BlockEltPair> BlockEltPairList;
+
+  namespace klsupport { class KLSupport; }
+  namespace kl {
+    class KLContext;
+    typedef unsigned int KLCoeff;
+    typedef polynomials::Safe_Poly<KLCoeff> KLPol;
+    typedef unsigned int KLIndex; // $<2^{32}$ distinct polynomials for $E_8$!
+    typedef KLCoeff MuCoeff;
+    typedef std::pair<std::vector<BlockElt>,std::vector<MuCoeff> > MuRow;
+    typedef std::vector<KLPol> KLStore;
+    typedef KLStore::const_reference KLPolRef;
+    typedef std::vector<KLIndex> KLRow;
+    typedef std::vector<BlockElt> PrimitiveRow;
+  }
+  namespace wgraph {
+    class WGraph;
+    typedef std::vector<unsigned short> WCoeffList;
+  }
 
 } // |namespace atlas|
 

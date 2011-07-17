@@ -14,7 +14,6 @@ namespace atlas {
 
 namespace subdatum {
 
-  class SubSystem;
   class SubDatum;
 
 } // |namespace subdatum|

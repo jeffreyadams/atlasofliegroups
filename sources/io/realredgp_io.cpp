@@ -77,10 +77,10 @@ std::ostream& printCartanClasses(std::ostream& strm,
 				 RealFormNbr rf,
 				 complexredgp_io::Interface& G_CI)
 {
-  const bitmap::BitMap& b = G_CI.complexGroup().Cartan_set(rf);
+  const BitMap& b = G_CI.complexGroup().Cartan_set(rf);
   bool first = true;
 
-  for (bitmap::BitMap::iterator i = b.begin(); i(); ++i)
+  for (BitMap::iterator i = b.begin(); i(); ++i)
   {
     if (first)
       first = false;

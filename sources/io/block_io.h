@@ -29,7 +29,7 @@ namespace block_io {
   std::ostream& printBlockU(std::ostream&, const Block&);
 
   std::ostream& printDescent(std::ostream&, const DescentStatus&,
-		     size_t, bitset::RankFlags = bitset::RankFlags(~0ul));
+		     size_t, RankFlags = RankFlags(~0ul));
 
 }
 

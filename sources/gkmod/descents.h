@@ -16,9 +16,6 @@
 #define DESCENTS_H
 
 #include <cstring>
-#include "descents_fwd.h"
-
-#include "constants.h"
 
 namespace atlas {
 
@@ -46,8 +43,6 @@ representation.
     change---this should not require a change in user interface.
   */
 class DescentStatus {
-
- private:
 
   /*!
 \brief Value of byte \#j specifies the descent status of simple root

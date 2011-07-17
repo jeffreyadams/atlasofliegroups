@@ -21,7 +21,7 @@ namespace atlas {
 namespace poset {
 
   class Poset;
-  typedef std::pair<set::SetElt,set::SetElt> Link;
+  typedef std::pair<set::Elt,set::Elt> Link;
 
   class SymmetricPoset;
 }

@@ -12,12 +12,11 @@
 
 #include "realredgp.h"
 
-#include "cartanclass.h"  // using functions
-#include "complexredgp.h"
-#include "rootdata.h"
-#include "tori.h"
-#include "kgb.h"
-#include "bruhat.h"
+#include "cartanclass.h"  // |Fiber|, and |toMostSplit| function (assertion)
+#include "complexredgp.h" // various methods
+#include "rootdata.h"     // |refl_prod| function (assertion)
+#include "tori.h"         // |tori::RealTorus| used
+#include "kgb.h"          // |KGB| constructed
 
 #include <cassert>
 
@@ -65,7 +64,7 @@ RealReductiveGroup::RealReductiveGroup
   // recompute matrix of most split Cartan
   const RootDatum& rd = G_C.rootDatum();
   tori::RealTorus T1
-    (refl_prod(so,rd) * G_C.distinguished()); // factors commute in fact
+    (rootdata::refl_prod(so,rd) * G_C.distinguished()); // factors commute
 
   topology::Connectivity c(T1,rd);
   assert(d_connectivity.component_rank() == c.component_rank());
@@ -91,11 +90,61 @@ void RealReductiveGroup::swap(RealReductiveGroup& other)
   std::swap(d_status,other.d_status);
 }
 
+
+const RootDatum& RealReductiveGroup::rootDatum() const
+  { return d_complexGroup.rootDatum(); }
+
+const TitsGroup& RealReductiveGroup::titsGroup() const
+  { return d_Tg->titsGroup(); }
+
+const WeylGroup& RealReductiveGroup::weylGroup() const
+  { return d_complexGroup.weylGroup(); }
+
+const TwistedWeylGroup& RealReductiveGroup::twistedWeylGroup() const
+  { return d_complexGroup.twistedWeylGroup(); }
+
+BitMap RealReductiveGroup::Cartan_set() const
+  { return complexGroup().Cartan_set(d_realForm); }
+
+// Returns Cartan \#cn (assumed to belong to cartanSet()) of the group.
+const CartanClass& RealReductiveGroup::cartan(size_t cn) const
+  { return d_complexGroup.cartan(cn); }
+
+size_t RealReductiveGroup::numCartan() const { return Cartan_set().size(); }
+
+size_t RealReductiveGroup::rank() const { return rootDatum().rank(); };
+
+size_t RealReductiveGroup::semisimpleRank() const
+  { return rootDatum().semisimpleRank(); }
+
+size_t RealReductiveGroup::numInvolutions()
+  { return complexGroup().numInvolutions(Cartan_set()); }
+
+size_t RealReductiveGroup::KGB_size() const
+ { return d_complexGroup.KGB_size(d_realForm); }
+
+size_t RealReductiveGroup::mostSplit() const
+ { return d_complexGroup.mostSplit(d_realForm); }
+
 Grading RealReductiveGroup::grading_offset()
 {
   RootNbrSet rset= noncompactRoots(); // grading for real form rep
   return cartanclass::restrictGrading(rset,rootDatum().simpleRootList());
 }
+
+cartanclass::square_class RealReductiveGroup::square_class() const
+  { return d_complexGroup.fundamental().central_square_class(d_realForm); }
+
+const size_t RealReductiveGroup::component_rank() const
+  { return d_connectivity.component_rank(); }
+const SmallBitVectorList& RealReductiveGroup::dualComponentReps() const
+  { return d_connectivity.dualComponentReps(); }
+
+const WeightInvolution& RealReductiveGroup::distinguished() const
+  { return d_complexGroup.distinguished(); }
+
+RootNbrSet RealReductiveGroup::noncompactRoots() const
+  { return d_complexGroup.noncompactRoots(d_realForm); }
 
 
 // return stored KGB structure, after generating it if necessary
@@ -107,7 +156,7 @@ const KGB& RealReductiveGroup::kgb()
 }
 
 // return stored Bruhat order of KGB, after generating it if necessary
-const bruhat::BruhatOrder& RealReductiveGroup::Bruhat_KGB()
+const BruhatOrder& RealReductiveGroup::Bruhat_KGB()
 {
   kgb(); // ensure |kgb_ptr!=NULL|, but we cannot use (|const|) result here
   return kgb_ptr->bruhatOrder(); // get Bruhat order (generate if necessary)

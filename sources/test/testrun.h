@@ -140,9 +140,9 @@ class TorusPartIterator {
  private:
 
   size_t d_rank;
-  bitmap::BitMap::iterator d_first;
-  bitmap::BitMap::iterator d_last;
-  std::vector<bitmap::BitMap::iterator> d_data; // internal state
+  BitMap::iterator d_first;
+  BitMap::iterator d_last;
+  std::vector<BitMap::iterator> d_data; // internal state
   std::vector<abelian::GrpNbr> d_returnValue;   // dereferenced |d_data|
   bool d_done;
 
@@ -157,10 +157,10 @@ class TorusPartIterator {
 // constructors and destructors
   TorusPartIterator() {}
 
-  TorusPartIterator(size_t, const bitmap::BitMap&);
+  TorusPartIterator(size_t, const BitMap&);
 
   // copy-like constructor, but move iterators to point to new (copied) bitmap
-  TorusPartIterator(const TorusPartIterator&, const bitmap::BitMap&);
+  TorusPartIterator(const TorusPartIterator&, const BitMap&);
 
   ~TorusPartIterator() {}
 
@@ -198,7 +198,7 @@ class TorusPartIterator {
     return tmp;
   }
 
-  void reset(const bitmap::BitMap&);
+  void reset(const BitMap&);
 };  // |class TorusPartIterator|
 
 class SubgroupIterator {
@@ -206,12 +206,12 @@ class SubgroupIterator {
  private:
 
   abelian::FiniteAbelianGroup* d_group;
-  std::vector<bitmap::BitMap> d_prevRank;
-  std::set<bitmap::BitMap> d_thisRank;
-  std::vector<bitmap::BitMap>::const_iterator d_prev;
-  bitmap::BitMap d_subgroup;
-  bitmap::BitMap d_cycGenerators;
-  bitmap::BitMap::iterator d_generator;
+  std::vector<BitMap> d_prevRank;
+  std::set<BitMap> d_thisRank;
+  std::vector<BitMap>::const_iterator d_prev;
+  BitMap d_subgroup;
+  BitMap d_cycGenerators;
+  BitMap::iterator d_generator;
   unsigned long d_rank;
   bool d_done;
 
@@ -223,7 +223,7 @@ class SubgroupIterator {
 
 // associated types
   typedef std::forward_iterator_tag iterator_category;
-  typedef bitmap::BitMap value_type;
+  typedef BitMap value_type;
   typedef ptrdiff_t difference_type;
   typedef const value_type* pointer;
   typedef const value_type& reference;
@@ -286,7 +286,7 @@ class CoveringIterator {
   size_t d_torusRank;
 
 // iterator management
-  bitmap::BitMap d_quotReps;
+  BitMap d_quotReps;
   SubgroupIterator d_subgroup;
   TorusPartIterator d_torusPart;
   bool d_done;
@@ -341,7 +341,7 @@ class CoveringIterator {
     return *d_dcenter;
   }
 
-  const bitmap::BitMap& group() const {
+  const BitMap& group() const {
     return *d_subgroup;
   }
 

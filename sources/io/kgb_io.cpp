@@ -158,12 +158,12 @@ std::ostream& print_X(std::ostream& strm, const kgb::global_KGB& kgb)
 
 // Print the Hasse diagram of the Bruhat ordering |bruhat| to |strm|.
 std::ostream&
-printBruhatOrder(std::ostream& strm, const bruhat::BruhatOrder& bruhat)
+printBruhatOrder(std::ostream& strm, const BruhatOrder& bruhat)
 {
   size_t size = bruhat.size();
   strm << "0:" << std::endl;
   for (size_t j = 1; j < size; ++j) {
-    const set::SetEltList& e = bruhat.hasse(j);
+    const set::EltList& e = bruhat.hasse(j);
     strm << j << ": ";
     basic_io::seqPrint(strm,e.begin(),e.end()) << std::endl;
   }

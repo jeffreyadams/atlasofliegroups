@@ -195,9 +195,9 @@ typedef std::auto_ptr<int_value> int_ptr;
 typedef std::tr1::shared_ptr<int_value> shared_int;
 @)
 struct rat_value : public value_base
-{ arithmetic::Rational val;
+{ Rational val;
 @)
-  explicit rat_value(arithmetic::Rational v) : val(v) @+ {}
+  explicit rat_value(Rational v) : val(v) @+ {}
   ~rat_value()@+ {}
   void print(std::ostream& out) const @+{@; out << val; }
   rat_value* clone() const @+{@; return new rat_value(*this); }
@@ -853,7 +853,7 @@ void ratvec_subscription::evaluate(level l) const
   if (static_cast<unsigned int>(i->val)>=v->val.size())
     throw std::runtime_error(range_mess(i->val,v->val.size(),this));
   if (l!=no_value)
-    push_value(new rat_value(arithmetic::Rational @|
+    push_value(new rat_value(Rational @|
        (v->val.numerator()[i->val],v->val.denominator())));
 }
 @)
@@ -2703,7 +2703,7 @@ switch (kind)
     if (l!=no_value)
       result = row_ptr(new row_value(n));
     for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
-    { loop_var->val[1].reset(new rat_value(arithmetic::Rational @|
+    { loop_var->val[1].reset(new rat_value(Rational @|
         (in_val->val.numerator()[i],in_val->val.denominator())));
       @< Set |loop_var->val[0]| to |i|,... @>
     }
@@ -3691,7 +3691,7 @@ coercion(row_of_vec_type,mat_type, "M", matrix_convert);
 @< Local function def... @>=
 void rational_convert() // convert integer to rational (with denominator~1)
 {@; shared_int i = get<int_value>();
-    push_value(new rat_value(arithmetic::Rational(i->val)));
+    push_value(new rat_value(Rational(i->val)));
 }
 @)
 void ratvec_convert() // convert list of rationals to rational vector
@@ -3699,7 +3699,7 @@ void ratvec_convert() // convert list of rationals to rational vector
   matrix::Vector<int> numer(r->val.size()),denom(r->val.size());
   unsigned int d=1;
   for (size_t i=0; i<r->val.size(); ++i)
-  { arithmetic::Rational frac = force<rat_value>(r->val[i].get())->val;
+  { Rational frac = force<rat_value>(r->val[i].get())->val;
     numer[i]=frac.numerator();
     denom[i]=frac.denominator();
     d=arithmetic::lcm(d,denom[i]);
@@ -3714,7 +3714,7 @@ void rat_list_convert() // convert rational vector to list of rationals
 { shared_rational_vector rv = get<rational_vector_value>();
   row_ptr result(new row_value(rv->val.size()));
   for (size_t i=0; i<rv->val.size(); ++i)
-  { arithmetic::Rational q(rv->val.numerator()[i],rv->val.denominator());
+  { Rational q(rv->val.numerator()[i],rv->val.denominator());
     result->val[i] = shared_value(new rat_value(q.normalize()));
   }
   push_value(result);
@@ -3920,7 +3920,7 @@ void power_wrapper(expression_base::level l)
 }
 
 @ The operator `/' will not denote integer division, but rather formation of
-fractions (rational numbers). Since the |arithmetic::Rational| constructor
+fractions (rational numbers). Since the |Rational| constructor
 requires an unsigned denominator, we must make sure the integer passed to it
 is positive. The opposite operation of separating a rational number into
 numerator and denominator is also provided; this operation is essential in
@@ -3933,12 +3933,12 @@ void fraction_wrapper(expression_base::level l)
   if (d==0) throw std::runtime_error("fraction with zero denominator");
   if (d<0) {@; d=-d; n=-n; } // ensure denominator is positive
   if (l!=expression_base::no_value)
-    push_value(new rat_value(arithmetic::Rational(n,d)));
+    push_value(new rat_value(Rational(n,d)));
 }
 @)
 
 void unfraction_wrapper(expression_base::level l)
-{ arithmetic::Rational q=get<rat_value>()->val;
+{ Rational q=get<rat_value>()->val;
   if (l!=expression_base::no_value)
   { push_value(new int_value(q.numerator()));
     push_value(new int_value(q.denominator()));
@@ -3953,29 +3953,29 @@ operator overloading.
 @< Local function definitions @>=
 
 void rat_plus_wrapper(expression_base::level l)
-{ arithmetic::Rational j=get<rat_value>()->val;
-  arithmetic::Rational i=get<rat_value>()->val;
+{ Rational j=get<rat_value>()->val;
+  Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
     push_value(new rat_value(i+j));
 }
 @)
 void rat_minus_wrapper(expression_base::level l)
-{ arithmetic::Rational j=get<rat_value>()->val;
-  arithmetic::Rational i=get<rat_value>()->val;
+{ Rational j=get<rat_value>()->val;
+  Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
     push_value(new rat_value(i-j));
 }
 @)
 void rat_times_wrapper(expression_base::level l)
-{ arithmetic::Rational j=get<rat_value>()->val;
-  arithmetic::Rational i=get<rat_value>()->val;
+{ Rational j=get<rat_value>()->val;
+  Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
     push_value(new rat_value(i*j));
 }
 @)
 void rat_divide_wrapper(expression_base::level l)
-{ arithmetic::Rational j=get<rat_value>()->val;
-  arithmetic::Rational i=get<rat_value>()->val;
+{ Rational j=get<rat_value>()->val;
+  Rational i=get<rat_value>()->val;
   if (j.numerator()==0)
     throw std::runtime_error("Rational division by zero");
   if (l!=expression_base::no_value)
@@ -3983,19 +3983,19 @@ void rat_divide_wrapper(expression_base::level l)
 }
 @)
 void rat_unary_minus_wrapper(expression_base::level l)
-{@; arithmetic::Rational i=get<rat_value>()->val;
+{@; Rational i=get<rat_value>()->val;
   if (l!=expression_base::no_value)
-    push_value(new rat_value(arithmetic::Rational(0)-i)); }
+    push_value(new rat_value(Rational(0)-i)); }
 @)
 void rat_inverse_wrapper(expression_base::level l)
-{@; arithmetic::Rational i=get<rat_value>()->val;
+{@; Rational i=get<rat_value>()->val;
   if (i.numerator()==0)
     throw std::runtime_error("Inverse of zero");
   if (l!=expression_base::no_value)
-    push_value(new rat_value(arithmetic::Rational(1)/i)); }
+    push_value(new rat_value(Rational(1)/i)); }
 @)
 void rat_power_wrapper(expression_base::level l)
-{ int n=get<int_value>()->val; arithmetic::Rational b=get<rat_value>()->val;
+{ int n=get<int_value>()->val; Rational b=get<rat_value>()->val;
   if (b.numerator()==0 and n<0)
     throw std::runtime_error("Negative power of zero");
   if (l!=expression_base::no_value)
@@ -4506,10 +4506,10 @@ void vm_prod_wrapper(expression_base::level l)
 void echelon_wrapper(expression_base::level l)
 { shared_matrix M=get_own<matrix_value>();
   if (l!=expression_base::no_value)
-  { bitmap::BitMap pivots=matreduc::column_echelon(M->val);
+  { BitMap pivots=matreduc::column_echelon(M->val);
     push_value(M);
     row_ptr p_list (new row_value(0)); p_list->val.reserve(pivots.size());
-    for (bitmap::BitMap::iterator it=pivots.begin(); it(); ++it)
+    for (BitMap::iterator it=pivots.begin(); it(); ++it)
       p_list->val.push_back(shared_value(new int_value(*it)));
     push_value(p_list);
     if (l==expression_base::single_value)

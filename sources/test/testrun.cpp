@@ -39,14 +39,14 @@ namespace {
   void advance_type(lietype::SimpleLieType&, Category);
 
   abelian::GrpNbr quotGenerator(const abelian::FiniteAbelianGroup&,
-				const bitmap::BitMap&,
-				const bitmap::BitMap&);
-  void setCycGenerator(bitmap::BitMap&, const std::vector<bitmap::BitMap>&,
-		       const std::set<bitmap::BitMap>&,
-		       std::vector<bitmap::BitMap>::const_iterator&,
+				const BitMap&,
+				const BitMap&);
+  void setCycGenerator(BitMap&, const std::vector<BitMap>&,
+		       const std::set<BitMap>&,
+		       std::vector<BitMap>::const_iterator&,
 		       abelian::FiniteAbelianGroup&);
-  void updateCycGenerator(bitmap::BitMap&, const abelian::FiniteAbelianGroup&,
-			  const bitmap::BitMap&, abelian::GrpNbr);
+  void updateCycGenerator(BitMap&, const abelian::FiniteAbelianGroup&,
+			  const BitMap&, abelian::GrpNbr);
 
 } // |namespace|
 } // |namespace testrun|
@@ -224,7 +224,7 @@ void advance_type(lietype::SimpleLieType& slt,Category c)
         Chapter III -- The TorusPartIterator class
 
   A |TorusPartIterator| runs through all $r$-tuples in $S^r$, where $S$ is
-  some set of |unsigned long| specified by a |bitmap::BitMap|. We assume $S$
+  some set of |unsigned long| specified by a |BitMap|. We assume $S$
   is non-empty, so that at least one $r$-tuple exists; we might have $r=0$.
 
   In practice this will be used to enumerate all group morphisms from $\Z^r$
@@ -243,7 +243,7 @@ namespace testrun {
   and set |d_done=false| initially
 */
 TorusPartIterator::
-TorusPartIterator(size_t r, const bitmap::BitMap& b)
+TorusPartIterator(size_t r, const BitMap& b)
   : d_rank(r)
   , d_first(b.begin())
   , d_last(b.end())
@@ -254,7 +254,7 @@ TorusPartIterator(size_t r, const bitmap::BitMap& b)
 
   // copy, but then change iterators to point into |b|
 TorusPartIterator::
-TorusPartIterator(const TorusPartIterator& src, const bitmap::BitMap& b)
+TorusPartIterator(const TorusPartIterator& src, const BitMap& b)
   : d_rank(src.d_rank)
   , d_first(b.begin())
   , d_last(b.end())
@@ -293,7 +293,7 @@ TorusPartIterator& TorusPartIterator::operator++ ()
 /*
   Re-initializes the iterator for the subgroup B
 */
-void TorusPartIterator::reset(const bitmap::BitMap& qr)
+void TorusPartIterator::reset(const BitMap& qr)
 {
   d_first = qr.begin();
   d_last = qr.end();
@@ -721,17 +721,17 @@ namespace {
 */
 
 abelian::GrpNbr quotGenerator(const abelian::FiniteAbelianGroup& A,
-			      const bitmap::BitMap& B,
-			      const bitmap::BitMap& C)
+			      const BitMap& B,
+			      const BitMap& C)
 
 {
-  bitmap::BitMap b(B);
+  BitMap b(B);
   b.andnot(C);
 
   abelian::GrpNbr x = 0;
-  bitmap::BitMap::iterator b_end = b.end();
+  BitMap::iterator b_end = b.end();
 
-  for (bitmap::BitMap::iterator i = b.begin(); i != b_end; ++i) {
+  for (BitMap::iterator i = b.begin(); i != b_end; ++i) {
     x = *i;
     updateCycGenerator(b,A,C,x);
   }
@@ -758,10 +758,10 @@ abelian::GrpNbr quotGenerator(const abelian::FiniteAbelianGroup& A,
   to operator++ to set the generator to its actual first value, finishing
   the initialization.
 */
-void setCycGenerator(bitmap::BitMap& cyc,
-		     const std::vector<bitmap::BitMap>& prev,
-		     const std::set<bitmap::BitMap>& current,
-		     std::vector<bitmap::BitMap>::const_iterator& b,
+void setCycGenerator(BitMap& cyc,
+		     const std::vector<BitMap>& prev,
+		     const std::set<BitMap>& current,
+		     std::vector<BitMap>::const_iterator& b,
 		     abelian::FiniteAbelianGroup& A)
 
 {
@@ -777,7 +777,7 @@ void setCycGenerator(bitmap::BitMap& cyc,
       cyc.andnot(prev[j]);
 
   // eliminate generators from groups in this rank
-  for (std::set<bitmap::BitMap>::const_iterator
+  for (std::set<BitMap>::const_iterator
 	 i=current.begin(); i!=current.end(); ++i)
     if (i->contains(*b))
     {
@@ -807,9 +807,9 @@ void setCycGenerator(bitmap::BitMap& cyc,
   Algorithm: we go through the multiples of x that generate the same subgroup
   as x mod B, and eliminate the corresponding B-cosets from cyc.
 */
-void updateCycGenerator(bitmap::BitMap& cyc,
+void updateCycGenerator(BitMap& cyc,
 			const abelian::FiniteAbelianGroup& A,
-			const bitmap::BitMap& B,
+			const BitMap& B,
 			abelian::GrpNbr x)
 {
   unsigned long n = A.order(B,x);
@@ -818,7 +818,7 @@ void updateCycGenerator(bitmap::BitMap& cyc,
     if (arithmetic::unsigned_gcd(n,j) != 1)
       continue;
     abelian::GrpNbr xj = A.prod(x,j);
-    bitmap::BitMap c(A.order());
+    BitMap c(A.order());
     coset(c,B,xj,A);
     cyc.andnot(c);
   }

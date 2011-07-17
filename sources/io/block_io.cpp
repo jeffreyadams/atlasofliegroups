@@ -361,7 +361,7 @@ std::ostream& printBlockU(std::ostream& strm, const Block& block)
 */
 std::ostream& printDescent(std::ostream& strm,
 			   const DescentStatus& ds,
-			   size_t rank, bitset::RankFlags supp)
+			   size_t rank, RankFlags supp)
 {
   strm << '[';
 

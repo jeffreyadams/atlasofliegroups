@@ -33,7 +33,7 @@ namespace atlas {
       // write descent sets
       for (BlockElt y=0; y<block.size(); ++y)
       {
-        bitset::RankFlags d;
+        RankFlags d;
         for (size_t s = 0; s < rank; ++s)
           d.set(s,block.isWeakDescent(s,y));
         basic_io::put_int(d.to_ulong(),out); // write d as 32-bits value
@@ -65,7 +65,7 @@ namespace atlas {
     std::streamoff
     write_KL_row(const kl::KLContext& klc, BlockElt y, std::ostream& out)
     {
-      bitmap::BitMap prims=klc.primMap(y);
+      BitMap prims=klc.primMap(y);
       const kl::KLRow& klr=klc.klRow(y);
     
       assert(klr.size()==prims.size()); // check the number of KL polynomials

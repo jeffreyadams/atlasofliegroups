@@ -25,26 +25,20 @@
 #include <memory>
 #include <set>
 #include <stdexcept>
-
-#include "arithmetic.h"
-#include "bitmap.h"
-#include "bruhat.h"
-#include "cartanclass.h"
-#include "complexredgp.h"
-#include "error.h"
-#include "gradings.h"
-#include "hashtable.h"
-#include "lattice.h"
-#include "realredgp.h"
-#include "rootdata.h"
-#include "subdatum.h"
-#include "set.h"
-#include "tits.h"
-#include "tori.h"
-#include "weyl.h"
-
 #include <iostream>
 #include <iomanip>
+
+#include "arithmetic.h"	// functions
+#include "bruhat.h"
+#include "cartanclass.h"// |CartanClass| methods
+#include "complexredgp.h"
+#include "lattice.h"	// |row_saturate|
+#include "realredgp.h"  // |KGB| constructor
+#include "rootdata.h"
+#include "subsystem.h"
+#include "tits.h"
+#include "weyl.h"
+
 #include "basic_io.h"
 #include "prettyprint.h"
 #include "ioutils.h"
@@ -67,7 +61,7 @@ namespace kgb {
 
 namespace {
 
-void makeHasse(std::vector<set::SetEltList>&, const KGB_base&);
+void makeHasse(std::vector<set::EltList>&, const KGB_base&);
 
 } // |namespace|
 
@@ -83,6 +77,15 @@ size_t KGB_elt_entry::hashCode(size_t modulus) const
   return h;
 }
 
+bool KGB_elt_entry::operator !=(const KGB_elt_entry& x) const
+{ return tw!=x.tw or fingerprint!=x.fingerprint; } // ignore repr
+
+KGB_elt_entry::KGB_elt_entry (const RatWeight& f,
+			      const GlobalTitsElement& y)
+  : t_rep(y.torus_part()), tw(y.tw()), fingerprint(f) {}
+
+GlobalTitsElement KGB_elt_entry::repr() const
+{ return GlobalTitsElement(t_rep,tw); }
 
 
 
@@ -172,7 +175,7 @@ global_KGB::global_KGB(ComplexReductiveGroup& G)
     for (unsigned long c=0; c<n; ++c)
     {
       Grading gr=bitvector::combination
-	(Tg.square_class_generators(),bitset::RankFlags(c));
+	(Tg.square_class_generators(),RankFlags(c));
       RatWeight rw (G.rank());
       for (Grading::iterator // for flagged (imaginary) simple roots
 	     it=gr.begin(); it(); ++it)
@@ -183,7 +186,7 @@ global_KGB::global_KGB(ComplexReductiveGroup& G)
       {
 	tits::TorusElement t=tits::exp_pi(rw);
 	t += fg.fromBasis // add |TorusPart| from fiber group; bits from |i|
-	  (SmallBitVector(bitset::RankFlags(i),fg.dimension()));
+	  (SmallBitVector(RankFlags(i),fg.dimension()));
 	elt.push_back(GlobalTitsElement(t));
 	add_element(0,e); // create in base; length, tw both trivial
       } // |for (i)|
@@ -410,7 +413,7 @@ class FiberData
   std::vector<unsigned int> Cartan_class;
 public:
   FiberData(ComplexReductiveGroup& G,
-	    const bitmap::BitMap& Cartan_classes);
+	    const BitMap& Cartan_classes);
 
   FiberData(const TitsGroup& Tg); // start without any classes
 
@@ -465,7 +468,7 @@ private: // the space actually stored need not be exposed
   multiple constructors here would force the same for every containing class).
 */
 KGB::KGB(RealReductiveGroup& GR,
-	 const bitmap::BitMap& Cartan_classes)
+	 const BitMap& Cartan_classes)
   : KGB_base(GR.twistedWeylGroup())
   , rd(GR.rootDatum())
   , Cartan()
@@ -495,11 +498,17 @@ KGB::KGB(RealReductiveGroup& GR,
     }
 }
 
+KGB::~KGB() { delete d_bruhat; delete d_base; }
+
 /******** copy, assignment and swap ******************************************/
 
 
 /******** accessors **********************************************************/
 
+TitsElt KGB::titsElt(KGBElt x) const
+{ return TitsElt(titsGroup(),left_torus_part[x],involution(x)); }
+
+size_t KGB::torus_rank() const { return titsGroup().rank(); }
 
 // Looks up a |TitsElt| value and returns its KGB number, or |size()|
 // Since KGB does not have mod space handy, must assume |a| already reduced
@@ -512,6 +521,9 @@ KGBElt KGB::lookup(const TitsElt& a, const TitsGroup& Tg) const
       return x;
   return size(); // report failure
 }
+
+const poset::Poset& KGB::bruhatPoset() // this creates full poset on demand
+{ return bruhatOrder().poset(); }
 
 std::ostream& KGB::print(std::ostream& strm, KGBElt x) const
 {
@@ -545,7 +557,7 @@ public:
 
 
 size_t KGB::generate
-  (RealReductiveGroup& GR, const bitmap::BitMap& Cartan_classes)
+  (RealReductiveGroup& GR, const BitMap& Cartan_classes)
 {
   ComplexReductiveGroup& G=GR.complexGroup();
   size_t rank = G.semisimpleRank();
@@ -580,7 +592,7 @@ size_t KGB::generate
     assert(square_class_base.square()==
 	   G.fundamental().central_square_class(rf));
 
-    set::SetEltList m=G.Cartan_ordering().minima(Cartan_classes);
+    set::EltList m=G.Cartan_ordering().minima(Cartan_classes);
 
     for (size_t i=0; i<m.size(); ++i)
     {
@@ -741,18 +753,13 @@ void KGB::fillBruhat()
   if (d_state.test(BruhatConstructed)) // work was already done
     return;
 
-  try {
-    std::vector<set::SetEltList> hd; makeHasse(hd,*this);
-    bruhat::BruhatOrder* bp = new bruhat::BruhatOrder(hd); // may throw here
+  std::vector<set::EltList> hd; makeHasse(hd,*this);
+  BruhatOrder* bp = new BruhatOrder(hd);
 
-    // commit
-    delete d_bruhat; // this is overly careful: it must be NULL
-    d_bruhat = bp;
-    d_state.set(BruhatConstructed);
-  }
-  catch (std::bad_alloc) { // transform failed allocation into MemoryOverflow
-    throw error::MemoryOverflow();
-  }
+  // commit
+  delete d_bruhat; // this is overly careful: it must be NULL
+  d_bruhat = bp;
+  d_state.set(BruhatConstructed);
 }
 
 
@@ -965,7 +972,7 @@ GlobalFiberData::GlobalFiberData
     refl[s] = rd.simple_reflection(s).transposed();
 
   std::vector<size_t> to_do(h.size()); // this really only reserves the space
-  bitmap::BitMap seen(h.size()); // flags involution numbers in |to_do| array
+  BitMap seen(h.size()); // flags involution numbers in |to_do| array
 
   for (size_t cn=0; cn<G.numCartanClasses(); ++cn)
   {
@@ -1037,7 +1044,7 @@ GlobalFiberData::GlobalFiberData
 // any |RootNbr| values, and |Tg| interprets any |TwistedInvolution|. It
 // should not be assumed that the generators of |Tg| are those of |sub|, nor
 // those of |sub.parent_datum()|: either (or none) could be the case.
-void GlobalFiberData::add_class(const subdatum::SubSystem& sub,
+void GlobalFiberData::add_class(const SubSystem& sub,
 				const GlobalTitsGroup& Tg,
 				const TwistedInvolution& tw)
 {
@@ -1180,7 +1187,7 @@ GlobalTitsElement GlobalFiberData::imaginary_cross
   that determines (limits) the set of twisted involutions to be considered.
 */
 FiberData::FiberData(ComplexReductiveGroup& G,
-		     const bitmap::BitMap& Cartan_classes)
+		     const BitMap& Cartan_classes)
   : Tits(G.titsGroup())
   , pool()
   , hash_table(pool)
@@ -1202,7 +1209,7 @@ FiberData::FiberData(ComplexReductiveGroup& G,
     // reflection map is induced vector space endomorphism of $X_* / 2X_*$
     refl[s] = BinaryMap(rd.simple_reflection(s).transposed());
 
-  for (bitmap::BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
+  for (BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
   {
     size_t cn=*it;
     const TwistedInvolution& canonical = G.twistedInvolution(cn);
@@ -1331,7 +1338,7 @@ namespace {
   Explanation: this is the closure ordering of orbits. We use the algorithm
   from Richardson and Springer.
 */
-void makeHasse(std::vector<set::SetEltList>& Hasse, const KGB_base& kgb)
+void makeHasse(std::vector<set::EltList>& Hasse, const KGB_base& kgb)
 {
   Hasse.resize(kgb.size());
 
@@ -1356,7 +1363,7 @@ void makeHasse(std::vector<set::SetEltList>& Hasse, const KGB_base& kgb)
     }
     h_x.insert(sx);
 
-    for (set::SetEltList::const_iterator
+    for (set::EltList::const_iterator
 	   it=Hasse[sx].begin(); it!= Hasse[sx].end(); ++it)
     {
       KGBElt z = *it; // element below |sx| in Bruhat order

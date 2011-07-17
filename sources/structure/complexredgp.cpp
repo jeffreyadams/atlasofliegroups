@@ -206,12 +206,12 @@ ComplexReductiveGroup::ComplexReductiveGroup
 
 	Cartan[ii].below.insert(i);
 
-	for (bitmap::BitMap::iterator
+	for (BitMap::iterator
 	       rfi=Cartan[i].real_forms.begin(); rfi(); ++rfi)
 	{
 	  RealFormNbr rf = *rfi;
-	  const bitset::RankFlags in_rep = Cartan[i].rep[rf];
-	  bitset::RankFlags& out_rep = Cartan[ii].rep[rf]; // to be filled in
+	  const RankFlags in_rep = Cartan[i].rep[rf];
+	  RankFlags& out_rep = Cartan[ii].rep[rf]; // to be filled in
 	  tits::TorusPart tp(in_rep,alpha_bin.size());
 	  if (alpha_bin.dot(tp)!=zero_grading)
 	  {
@@ -252,7 +252,7 @@ ComplexReductiveGroup::ComplexReductiveGroup
 	// most split Cartan exists at all dual real forms
 	Cartan.back().dual_real_forms.insert(i);
 
-	bitset::RankFlags gr = // as above, torus part is obtained as a grading
+	RankFlags gr = // as above, torus part is obtained as a grading
 	  cartanclass::restrictGrading // values at simple roots give torus part
 	  (f.compactRoots(weak_real.classRep(i)), // compact ones need a set bit
 	   rd.simpleRootList()); // this reproduces grading at imaginary simples
@@ -302,12 +302,12 @@ ComplexReductiveGroup::ComplexReductiveGroup
 	    break; // found a previously encountered Cartan class (must happen)
 	assert(ii<Cartan.size() and Cartan[i].below.isMember(ii));
 
-	for (bitmap::BitMap::iterator
+	for (BitMap::iterator
 	       drfi=Cartan[i].dual_real_forms.begin(); drfi(); ++drfi)
 	{
 	  RealFormNbr drf = *drfi;
-	  const bitset::RankFlags in_rep = Cartan[i].dual_rep[drf];
-	  bitset::RankFlags& out_rep = Cartan[ii].dual_rep[drf];
+	  const RankFlags in_rep = Cartan[i].dual_rep[drf];
+	  RankFlags& out_rep = Cartan[ii].dual_rep[drf];
 	  tits::TorusPart tp(in_rep,alpha_bin.size());
 	  if (alpha_bin.dot(tp)!=zero_grading)
 	  {
@@ -375,7 +375,7 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
     dst.rep = src.dual_rep; // these are torus parts at |tw_org|, and this
     dst.dual_rep = src.rep; // assignment is mainly to set their size in |dst|
 
-    for (bitmap::BitMap::iterator it=dst.real_forms.begin(); it(); ++it)
+    for (BitMap::iterator it=dst.real_forms.begin(); it(); ++it)
     {
       TitsElt x(Tg,
 		      tits::TorusPart(dst.rep[*it],semisimpleRank()),
@@ -385,7 +385,7 @@ ComplexReductiveGroup::ComplexReductiveGroup(const ComplexReductiveGroup& G,
       dst.rep[*it] =Tg.left_torus_part(x).data();
       d_mostSplit[*it]=Cartan.size()-1; // last occurrence of |*it| will stick
     }
-    for (bitmap::BitMap::iterator it=dst.dual_real_forms.begin(); it(); ++it)
+    for (BitMap::iterator it=dst.dual_real_forms.begin(); it(); ++it)
     {
       TitsElt y(dual_Tg,
 		      tits::TorusPart(dst.dual_rep[*it],semisimpleRank()),
@@ -484,11 +484,11 @@ void ComplexReductiveGroup::map_real_forms(size_t cn)
   cartanclass::AdjointFiberElt rep = f.gradingRep(ref_gr);
 
   // now lift |rep| to a torus part and subtract from |base|
-  SmallBitVector v(bitset::RankFlags(rep),
+  SmallBitVector v(RankFlags(rep),
 				 f.adjointFiberRank());
   base -= f.adjointFiberGroup().fromBasis(v);
 
-  for (bitmap::BitMap::iterator
+  for (BitMap::iterator
 	 rfi=Cartan[cn].real_forms.begin(); rfi(); ++rfi)
   {
     RealFormNbr rf = *rfi;
@@ -521,11 +521,11 @@ void ComplexReductiveGroup::map_dual_real_forms(size_t cn)
   cartanclass::AdjointFiberElt dual_rep = dual_f.gradingRep(dual_ref_gr);
 
   // now lift |rep| to a torus part and subtract from |base|
-  SmallBitVector v(bitset::RankFlags(dual_rep),
+  SmallBitVector v(RankFlags(dual_rep),
 				 dual_f.adjointFiberRank());
   dual_base -= dual_f.adjointFiberGroup().fromBasis(v);
 
-  for (bitmap::BitMap::iterator
+  for (BitMap::iterator
 	 drfi=Cartan[cn].dual_real_forms.begin(); drfi(); ++drfi)
   {
     RealFormNbr drf = *drfi;
@@ -741,10 +741,10 @@ ComplexReductiveGroup::dualFiberSize(RealFormNbr rf, size_t cn)
 
 /******** accessors **********************************************************/
 
-bitmap::BitMap
+BitMap
 ComplexReductiveGroup::Cartan_set(RealFormNbr rf) const
 {
-  bitmap::BitMap support(Cartan.size());
+  BitMap support(Cartan.size());
   for (size_t i=0; i<Cartan.size(); ++i)
     if (Cartan[i].real_forms.isMember(rf))
       support.insert(i);
@@ -752,10 +752,10 @@ ComplexReductiveGroup::Cartan_set(RealFormNbr rf) const
   return support;
 }
 
-bitmap::BitMap
+BitMap
 ComplexReductiveGroup::dual_Cartan_set(RealFormNbr drf) const
 {
-  bitmap::BitMap support(Cartan.size());
+  BitMap support(Cartan.size());
   for (size_t i=0; i<Cartan.size(); ++i)
     if (Cartan[i].dual_real_forms.isMember(drf))
       support.insert(i);
@@ -781,11 +781,11 @@ size_t ComplexReductiveGroup::numInvolutions()
   indicated set of Cartans.
 */
 size_t ComplexReductiveGroup::numInvolutions
-  (const bitmap::BitMap& Cartan_classes)
+  (const BitMap& Cartan_classes)
 {
   size_t count = 0;
 
-  for (bitmap::BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
+  for (BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
     count += cartan(*it).orbitSize();
 
   return count;
@@ -840,7 +840,7 @@ Weight
 WeylElt // return value is conjugating element
 ComplexReductiveGroup::canonicalize
   (TwistedInvolution &sigma, // element to modify
-   bitset::RankFlags gens) // subset of generators
+   RankFlags gens) // subset of generators
   const
 {
   return complexredgp::canonicalize(sigma,rootDatum(),twistedWeylGroup(),gens);
@@ -865,10 +865,10 @@ size_t ComplexReductiveGroup::class_number(TwistedInvolution sigma) const
 */
 unsigned long
 ComplexReductiveGroup::KGB_size(RealFormNbr rf,
-				const bitmap::BitMap& Cartan_classes)
+				const BitMap& Cartan_classes)
 {
   unsigned long result=0;
-  for (bitmap::BitMap::iterator it = Cartan_classes.begin(); it(); ++it)
+  for (BitMap::iterator it = Cartan_classes.begin(); it(); ++it)
     result +=  cartan(*it).orbitSize() * fiberSize(rf,*it);
 
   return result;
@@ -898,10 +898,10 @@ ComplexReductiveGroup::global_KGB_size()
 unsigned long
 ComplexReductiveGroup::block_size(RealFormNbr rf,
 				  RealFormNbr drf,
-				  const bitmap::BitMap& Cartan_classes)
+				  const BitMap& Cartan_classes)
 {
   unsigned long result=0;
-  for (bitmap::BitMap::iterator it = Cartan_classes.begin(); it(); ++it)
+  for (BitMap::iterator it = Cartan_classes.begin(); it(); ++it)
   {
     unsigned long cn=*it;
     result +=
@@ -938,7 +938,7 @@ WeylElt canonicalize // return value is conjugating element
   (TwistedInvolution& sigma,
    const RootDatum& rd,
    const TwistedWeylGroup& W,
-   bitset::RankFlags gens)
+   RankFlags gens)
 {
   const RootNbrList s_image=W.simple_images(rd,sigma);
   InvolutionData id(rd,s_image);
@@ -962,7 +962,7 @@ WeylElt canonicalize // return value is conjugating element
 
   { // first phase: make |rrs| dominant for all complex simple roots in |gens|
     // and make |irs| dominant for all such roots that are orthogonal to |rrs|
-    bitset::RankFlags::iterator it; // allow inspection of final value
+    RankFlags::iterator it; // allow inspection of final value
     do
       for (it=gens.begin(); it(); ++it)
       {
@@ -990,7 +990,7 @@ WeylElt canonicalize // return value is conjugating element
  */
 
   // clear those simple roots in |gens| not orthogonal to |irs|
-  for (bitset::RankFlags::iterator it=gens.begin(); it(); ++it)
+  for (RankFlags::iterator it=gens.begin(); it(); ++it)
     if (rrs.dot(rd.simpleCoroot(*it))>0 or irs.dot(rd.simpleCoroot(*it))>0)
       gens.reset(*it);
 
@@ -1008,7 +1008,7 @@ WeylElt canonicalize // return value is conjugating element
    Eventually all positive roots in the subset will map to positive roots.
 */
   {
-    bitset::RankFlags::iterator it;
+    RankFlags::iterator it;
     do
       for (it=gens.begin(); it(); ++it)
       {
@@ -1146,7 +1146,7 @@ unsigned long makeRepresentative(const Grading& gr,
   }
 
   // set up equations
-  bitset::RankFlags x;
+  RankFlags x;
   bitvector::firstSolution(x,cl,rhs);
 
   return x.to_ulong();

@@ -39,7 +39,7 @@ namespace kgb_io {
 			      const KGBEltList& which);
   std::ostream& print_X(std::ostream&, const kgb::global_KGB&);
 
-  std::ostream& printBruhatOrder(std::ostream&, const bruhat::BruhatOrder&);
+  std::ostream& printBruhatOrder(std::ostream&, const BruhatOrder&);
 
 }
 

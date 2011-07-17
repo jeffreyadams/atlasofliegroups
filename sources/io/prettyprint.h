@@ -30,28 +30,28 @@ namespace atlas {
 
 namespace prettyprint {
 
-std::ostream& prettyPrint(std::ostream&, const bitmap::BitMap&,
+std::ostream& prettyPrint(std::ostream&, const BitMap&,
 			  size_t n = 0);
 
 template<size_t d>
-std::ostream& prettyPrint(std::ostream&, const bitset::BitSet<d>&, size_t);
+std::ostream& prettyPrint(std::ostream&, const BitSet<d>&, size_t);
 
 template<size_t dim>
 std::ostream& prettyPrint(std::ostream&,
-			  const bitvector::BitVector<dim>&);
+			  const BitVector<dim>&);
 
 template<size_t dim>
 std::ostream& prettyPrint(std::ostream&,
-			  const std::vector<bitvector::BitVector<dim> >&);
+			  const std::vector<BitVector<dim> >&);
 
 template<size_t dim>
 std::ostream& prettyPrint(std::ostream&,
-			  const bitvector::BitVector<dim>&, size_t);
+			  const BitVector<dim>&, size_t);
 
 template<typename V>
 std::ostream& printBasis(std::ostream&, const std::vector<V>&);
 
-std::ostream& printDescentSet(std::ostream&, const bitset::RankFlags&, size_t,
+std::ostream& printDescentSet(std::ostream&, const RankFlags&, size_t,
 			      const char* sep = ",", const char* pre = "{",
 			      const char* post = "}");
 

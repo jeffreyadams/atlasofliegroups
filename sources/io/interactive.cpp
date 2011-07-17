@@ -185,7 +185,7 @@ bool open_binary_file(std::ofstream& block_out,const std::string& prompt)
   for the set elements in vals.
 */
 void bitMapPrompt(std::string& prompt, const char* mess,
-		  const bitmap::BitMap& vals)
+		  const BitMap& vals)
 {
   std::ostringstream values;
   basic_io::seqPrint(values,vals.begin(),vals.end());
@@ -206,7 +206,7 @@ void bitMapPrompt(std::string& prompt, const char* mess,
 
   Throws an InputError if not successful; cn is not touched in that case.
 */
-size_t get_Cartan_class(const bitmap::BitMap& cs) throw(error::InputError)
+size_t get_Cartan_class(const BitMap& cs) throw(error::InputError)
 {
   // if there is a unique Cartan class, choose it
   if (cs.size() == 1)
@@ -485,13 +485,13 @@ void getInteractive(RealFormNbr& rf,
   }
 
   // else get choice from user
-  bitmap::BitMap vals(rfi.numRealForms());
+  BitMap vals(rfi.numRealForms());
   for (size_t j = 0; j < drfl.size(); ++j)
     vals.insert(rfi.out(drfl[j]));
 
   std::cout << "possible (weak) dual real forms are:" << std::endl;
-  bitmap::BitMap::iterator vals_end = vals.end();
-  for (bitmap::BitMap::iterator i = vals.begin(); i != vals_end; ++i) {
+  BitMap::iterator vals_end = vals.end();
+  for (BitMap::iterator i = vals.begin(); i != vals_end; ++i) {
     std::cout << *i << ": " << rfi.typeName(*i) << std::endl;
   }
 
@@ -603,7 +603,7 @@ unsigned long get_bounded_int(input::InputBuffer& ib,
 */
 
 unsigned long get_int_in_set(const char* prompt,
-			     const bitmap::BitMap& vals,
+			     const BitMap& vals,
 			     input::InputBuffer* linep)
   throw(error::InputError)
 {
@@ -737,7 +737,7 @@ void get_parameter(RealReductiveGroup& GR,
 
   const KGB& kgb=GR.kgb();
   KGBEltList canonical_fiber;
-  bitmap::BitMap cf(kgb.size());
+  BitMap cf(kgb.size());
   for (size_t k=0; k<kgb.size(); ++k)
     if (kgb.Cartan_class(k)==cn and kgb.involution(k)==tw)
       canonical_fiber.push_back(k), cf.insert(k);

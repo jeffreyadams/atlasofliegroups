@@ -56,7 +56,7 @@ void fullMinusBasis(WeightList&,
 
   The fundamental data are the rank stored in |d_rank| (allowing us to
   represent the character lattice $X$ as $Z^n$ for $n=d_rank)$, and the
-  integran $n* n$ involution matrix |d_involution| giving the action of
+  integral $n*n$ involution matrix |d_involution| giving the action of
   $\tau$ on $X$. It determines two sublattices $X_+$ and $X_-$, cut out by
   its eigenspaces for $+1$ and $-1$ respectively. Both are sublattices are
   saturated, and therefore supplementable in $X$, but in general $X$ is not

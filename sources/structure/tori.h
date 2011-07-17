@@ -131,15 +131,9 @@ namespace tori {
  public:
 
 // constructors and destructors
-  RealTorus()
-    {}
-
   explicit RealTorus(const WeightInvolution&);
 
   RealTorus(const RealTorus&, tags::DualTag);
-
-  ~RealTorus()
-    {}
 
 // accessors
 

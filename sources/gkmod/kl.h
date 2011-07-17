@@ -157,7 +157,7 @@ P_{y,x}).
   }
 
 // get bitmap of primitive elements for row |y| with nonzero KL polynomial
-  bitmap::BitMap primMap (BlockElt y) const;
+  BitMap primMap (BlockElt y) const;
 
 // manipulators
 

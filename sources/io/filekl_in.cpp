@@ -19,7 +19,7 @@ namespace atlas {
     BlockElt
     block_info::primitivize(BlockElt x, BlockElt y) const
     {
-      bitset::RankFlags d=descent_set[y];
+      RankFlags d=descent_set[y];
     start:
       if (x>=y) return x; // possibly with |x==UndefBlock|
       const ascent_vector& ax=ascents[x];
@@ -30,7 +30,7 @@ namespace atlas {
     }
     
     bool
-    block_info::is_primitive(BlockElt x, const bitset::RankFlags d) const
+    block_info::is_primitive(BlockElt x, const RankFlags d) const
     {
       const ascent_vector& ax=ascents[x];
       for (size_t s=0; s<ax.size(); ++s)
@@ -41,7 +41,7 @@ namespace atlas {
     }
     
     const prim_list& block_info::prims_for_descents_of(BlockElt y)
-    { bitset::RankFlags d=descent_set[y];
+    { RankFlags d=descent_set[y];
       unsigned long s=d.to_ulong();
       prim_list& result=primitives_list[s];
       if (result.empty())
@@ -71,7 +71,7 @@ namespace atlas {
       // read descent sets
       descent_set.reserve(size);
       for (BlockElt y=0; y<size; ++y)
-        descent_set.push_back(bitset::RankFlags(read_bytes<4>(in)));
+        descent_set.push_back(RankFlags(read_bytes<4>(in)));
     
       // read ascent table
       ascents.reserve(size);

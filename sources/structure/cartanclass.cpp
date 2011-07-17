@@ -63,14 +63,14 @@ namespace atlas {
   class FiberAction
   {
     Grading d_baseGrading; // indexed by |s|
-    bitset::RankFlagsList d_alpha;   // indexed by |s| first
-    bitset::RankFlagsList d_mAlpha;  // indexed by |s| first
+    RankFlagsList d_alpha;   // indexed by |s| first
+    RankFlagsList d_mAlpha;  // indexed by |s| first
 
   public:
   // constructors and destructors
     FiberAction(const Grading& gr,
 		const GradingList& gs, // size: fiber rank
-		const bitset::RankFlagsList& ma) // size: imaginary rank
+		const RankFlagsList& ma) // size: imaginary rank
       : d_baseGrading(gr)
       , d_alpha(ma.size()) // initialise size only here
       , d_mAlpha(ma)
@@ -81,11 +81,11 @@ namespace atlas {
     }
 
   // accessors
-    bool grading(bitset::RankFlags x, unsigned long s) const
+    bool grading(RankFlags x, unsigned long s) const
       { return d_baseGrading[s] != x.scalarProduct(d_alpha[s]); }
     unsigned long operator() (unsigned long s, unsigned long x) const
     {
-      bitset::RankFlags b(x); if (grading(b,s))  b ^= d_mAlpha[s];
+      RankFlags b(x); if (grading(b,s))  b ^= d_mAlpha[s];
       return b.to_ulong();
     }
   };
@@ -402,7 +402,7 @@ Fiber::gradingGroup (const RootSystem& rs) const
 
   /* set b[j][i] = <e_j,bsi2[i]> where e_j=baf[j'], with |baf[j']| the
      subquotient basis representative number |j| */
-  for (bitset::RankFlags::iterator
+  for (RankFlags::iterator
 	 jt = d_adjointFiberGroup.support().begin(); jt(); ++jt)
   {
     SmallBitVector v(imaginaryRank());
@@ -493,13 +493,13 @@ GradingList Fiber::makeGradingShifts
   SmallBitVectorList si2(si); // reduce vectors mod 2
 
   // now compute all results
-  bitset::RankFlags supp = d_adjointFiberGroup.support();
+  RankFlags supp = d_adjointFiberGroup.support();
   const SmallBitVectorList& b
     = d_adjointFiberGroup.space().basis();
   GradingList result;
 
   // traverse basis of the subquotient |d_adjointFiberGroup|
-  for (bitset::RankFlags::iterator it = supp.begin(); it(); ++it)
+  for (RankFlags::iterator it = supp.begin(); it(); ++it)
   {
     // all imaginary roots part
     RootNbrSet rset(rs.numRoots());
@@ -533,9 +533,9 @@ GradingList Fiber::makeGradingShifts
   |SmallBitVector| first), and interpret the result in the subquotient
   |d_fiberGroup| of $X^* / 2X^*$.
 */
-bitset::RankFlagsList Fiber::mAlphas (const RootDatum& rd) const
+RankFlagsList Fiber::mAlphas (const RootDatum& rd) const
 {
-  bitset::RankFlagsList result(imaginaryRank());
+  RankFlagsList result(imaginaryRank());
 
   for (size_t i = 0; i<result.size(); ++i)
     result[i]= d_fiberGroup.toBasis(rd.coroot(simpleImaginary(i))).data();
@@ -559,10 +559,10 @@ bitset::RankFlagsList Fiber::mAlphas (const RootDatum& rd) const
   what is left to do is to convert to the basis of the adjoint fiber group,
   which amounts to reducing modulo $V_-$.
 */
-bitset::RankFlagsList
+RankFlagsList
 Fiber::adjointMAlphas (const RootSystem& rs) const
 {
-  bitset::RankFlagsList result(imaginaryRank());
+  RankFlagsList result(imaginaryRank());
 
   for (size_t i = 0; i<result.size(); ++i)
   {
@@ -613,9 +613,9 @@ Fiber::makeFiberMap(const RootDatum& rd) const
   b_ad.reserve(d_fiberGroup.dimension());
 
   const SmallBitVectorList& b = d_fiberGroup.space().basis();
-  const bitset::RankFlags& supp = d_fiberGroup.support();
+  const RankFlags& supp = d_fiberGroup.support();
   size_t n = rd.semisimpleRank();
-  for (bitset::RankFlags::iterator it = supp.begin(); it(); ++it)
+  for (RankFlags::iterator it = supp.begin(); it(); ++it)
   {
     SmallBitVector v(n);
     for(size_t i = 0; i < n; ++i)
@@ -641,7 +641,7 @@ Fiber::makeFiberMap(const RootDatum& rd) const
 */
 partition::Partition Fiber::makeWeakReal(const RootSystem& rs) const
 {
-  bitset::RankFlagsList ma=adjointMAlphas(rs);
+  RankFlagsList ma=adjointMAlphas(rs);
 
   // make orbits
   partition::Partition result;
@@ -696,7 +696,7 @@ partition::Partition Fiber::makeRealFormPartition() const
   {
     unsigned long y = d_weakReal.classRep(i);
     SmallBitVector v
-      (bitset::RankFlags(y),d_adjointFiberGroup.dimension());
+      (RankFlags(y),d_adjointFiberGroup.dimension());
 
     // reduce modulo image of map from fiber group to adjoint fiber group
     cl[i] = modFiberImage.toBasis(v).data().to_ulong();
@@ -758,7 +758,7 @@ std::vector<partition::Partition> Fiber::makeStrongReal
     gs[i]=bitvector::combination(d_gradingShift,d_toAdjoint.column(i).data());
 
   // get the $m_\alpha$s
-  bitset::RankFlagsList ma = mAlphas(rd);
+  RankFlagsList ma = mAlphas(rd);
 
   // make the various partitions
 
@@ -798,16 +798,16 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
     size_t c = central_square_class(wrf);
 
     // find representative |yf| of |wrf| in the adjoint fiber (group)
-    bitset::RankFlags yf(d_weakReal.classRep(wrf));
+    RankFlags yf(d_weakReal.classRep(wrf));
 
     // subtract base point
-    yf ^= bitset::RankFlags(class_base(c));
+    yf ^= RankFlags(class_base(c));
 
     // find preimage |xf| of |yf| in the fiber
     SmallBitVector v(yf,adjointFiberRank()); // the desired image
 
     // solve equation |toAdjoint(xf)=v|
-    bitset::RankFlags xf;
+    RankFlags xf;
 #ifndef NDEBUG
     bool success=bitvector::firstSolution(xf,b,v);
     assert(success);  // there has to be a solution!
@@ -840,7 +840,7 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 */
 RootNbrSet Fiber::noncompactRoots(AdjointFiberElt x) const
 {
-  bitset::RankFlags bit(x);
+  RankFlags bit(x);
   RootNbrSet result = d_baseNoncompact;
 
   for (size_t i=0; i<adjointFiberRank() ; ++i)
@@ -872,7 +872,7 @@ Grading Fiber::grading(AdjointFiberElt x) const
   assert(d_gradingShift.size()==adjointFiberRank()); // length of combination
 
   Grading gr = d_baseGrading;
-  gr ^= bitvector::combination(d_gradingShift,bitset::RankFlags(x));
+  gr ^= bitvector::combination(d_gradingShift,RankFlags(x));
 
   return gr;
 }
@@ -895,7 +895,7 @@ AdjointFiberElt Fiber::gradingRep(const Grading& gr) const
   for (size_t i = 0; i < shifts.size(); ++i)
     shifts[i]=SmallBitVector(d_gradingShift[i],ir);
 
-  bitset::RankFlags result; bool success=firstSolution(result,shifts,target);
+  RankFlags result; bool success=firstSolution(result,shifts,target);
   if (not success)
     throw std::runtime_error("Representative of impossible grading requested");
 
@@ -920,7 +920,7 @@ SmallBitVector Fiber::mAlpha(const rootdata::Root& cr) const
 */
 AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
 {
-  bitset::RankFlags xf(x);
+  RankFlags xf(x);
   SmallBitVector v(xf,fiberRank());
 
   SmallBitVector w = d_toAdjoint*v;
@@ -1115,7 +1115,7 @@ CartanClass::makeSimpleComplex(const RootDatum& rd) const
 
   dynkin::DynkinDiagram dd(cm);
 
-  bitset::RankFlags b(constants::lMask[dd.rank()]); // all bits set
+  RankFlags b(constants::lMask[dd.rank()]); // all bits set
 
   RootNbrList result;
   while (b.any())
@@ -1123,9 +1123,9 @@ CartanClass::makeSimpleComplex(const RootDatum& rd) const
     size_t s = b.firstBit();
 
     // get component of chosen vertex, and flag them as done (i.e., reset)
-    bitset::RankFlags c = dd.component(s); b.andnot(c);
+    RankFlags c = dd.component(s); b.andnot(c);
 
-    for (bitset::RankFlags::iterator it = c.begin(); it(); ++it)
+    for (RankFlags::iterator it = c.begin(); it(); ++it)
     {
       // include roots corresponding to vertices in this component |c|
       result.push_back(rb[*it]);
@@ -1133,7 +1133,7 @@ CartanClass::makeSimpleComplex(const RootDatum& rd) const
       /* exclude matching componont by removing vertices of simple roots
          non-orthogonal to the (non-simple) $\tau$-image of |rb[*it]| */
       RootNbr rTau = involution_image_of_root(rb[*it]);
-      for (bitset::RankFlags::iterator jt = b.begin(); jt(); ++jt)
+      for (RankFlags::iterator jt = b.begin(); jt(); ++jt)
 	if (not rd.isOrthogonal(rb[*jt],rTau))
 	  b.reset(*jt);
     }

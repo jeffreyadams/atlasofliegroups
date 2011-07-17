@@ -19,16 +19,8 @@
 
 namespace atlas {
 
-/******** type declarations *************************************************/
+/******** type declarations  (see atlas_types.h)  ***************************/
 
-namespace wgraph {
-
-class WGraph;
-
- typedef unsigned short Coeff;
- typedef std::vector<Coeff> WCoeffList;
-
-}
 
 /******** function declarations *********************************************/
 
@@ -51,19 +43,15 @@ namespace wgraph {
 
 class WGraph {
 
- private:
-
   size_t d_rank;
   graph::OrientedGraph d_graph;
   std::vector<WCoeffList> d_coeff;
-  std::vector<bitset::RankFlags> d_descent;
+  std::vector<RankFlags> d_descent;
 
  public:
 
 // constructors and destructors
-  explicit WGraph(size_t);
-
-  ~WGraph();
+  explicit WGraph(size_t r) :d_rank(r) {}
 
 // copy, assignment and swap
   void swap(WGraph&);
@@ -77,7 +65,7 @@ class WGraph {
     return d_coeff[x];
   }
 
-  const bitset::RankFlags& descent(graph::Vertex x) const {
+  const RankFlags& descent(graph::Vertex x) const {
     return d_descent[x];
   }
 
@@ -102,7 +90,7 @@ class WGraph {
     return d_coeff[x];
   }
 
-  bitset::RankFlags& descent(graph::Vertex x) {
+  RankFlags& descent(graph::Vertex x) {
     return d_descent[x];
   }
 

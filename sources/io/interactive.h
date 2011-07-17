@@ -49,9 +49,9 @@ namespace interactive {
 
   bool open_binary_file(std::ofstream& block_out,const std::string& prompt);
 
-  void bitMapPrompt(std::string&, const char*, const bitmap::BitMap&);
+  void bitMapPrompt(std::string&, const char*, const BitMap&);
 
-  size_t get_Cartan_class(const bitmap::BitMap& cs) throw(error::InputError);
+  size_t get_Cartan_class(const BitMap& cs) throw(error::InputError);
 
   void getInteractive(lietype::LieType&) throw(error::InputError);
 
@@ -86,7 +86,7 @@ namespace interactive {
     throw(error::InputError);
 
   unsigned long get_int_in_set(const char* prompt,
-			       const bitmap::BitMap& choices,
+			       const BitMap& choices,
 			       input::InputBuffer* linep = 0)
     throw(error::InputError);
 

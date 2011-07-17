@@ -23,8 +23,8 @@ ComplexReductiveGroup.
 
 #include "cartanclass.h"// containment of |Fiber|
 #include "poset.h"	// containment of Cartan poset
-#include "rootdata.h"	// containment of root datum and it dual
-#include "tits.h"	// containment of Tits group and it dual
+#include "rootdata.h"	// containment of root datum and its dual
+#include "tits.h"	// containment of Tits group and its dual
 
 /******** function declarations **********************************************/
 
@@ -36,7 +36,7 @@ namespace complexredgp {
     (TwistedInvolution& sigma,
      const RootDatum& rd,
      const TwistedWeylGroup& W,
-     bitset::RankFlags gens);
+     RankFlags gens);
 
 /* this function should NOT be made into a method, suppressing the |rd| and |W|
    parameters, as these can be be dual to those in the |ComplexReductiveGroup|!
@@ -166,14 +166,14 @@ class ComplexReductiveGroup
   //!\brief the permutation of the roots given by the based automorphism
   const permutations::Permutation root_twist;
 
-  typedef std::vector<bitset::RankFlags> form_reps; // gradings for real forms
+  typedef std::vector<RankFlags> form_reps; // gradings for real forms
 
   struct C_info
   { TwistedInvolution tw;
-    bitmap::BitMap real_forms,dual_real_forms; // mark present (dual) real forms
+    BitMap real_forms,dual_real_forms; // mark present (dual) real forms
     form_reps rep,dual_rep; // gradings representing those (dual) real forms
-    bitmap::BitMap below;
-    CartanClass* class_pt; //!< owned pointer, might be NULL
+    BitMap below;
+    CartanClass* class_pt; //!< owned (by parent) pointer, might be NULL
     // remaining fields are set only once |class_pt| has been made non-NULL
     RealFormNbrList real_labels,dual_real_labels;
 
@@ -265,10 +265,10 @@ class ComplexReductiveGroup
 
 
 //!\brief returns the set of Cartan classes for the real form |rf|
-  bitmap::BitMap Cartan_set(RealFormNbr rf) const;
+  BitMap Cartan_set(RealFormNbr rf) const;
 
 //!\brief returns the set of Cartan classes for the dual real form |drf|
-  bitmap::BitMap dual_Cartan_set(RealFormNbr drf) const;
+  BitMap dual_Cartan_set(RealFormNbr drf) const;
 
 
 //!\brief Returns the partial ordering of Cartan classes
@@ -323,9 +323,9 @@ class ComplexReductiveGroup
   size_t numDualRealForms(size_t cn) const
   { return Cartan[cn].dual_real_forms.size(); }
 
-  const bitmap::BitMap& real_forms(size_t cn) const
+  const BitMap& real_forms(size_t cn) const
   { return Cartan[cn].real_forms; }
-  const bitmap::BitMap& dual_real_forms(size_t cn) const
+  const BitMap& dual_real_forms(size_t cn) const
   { return Cartan[cn].dual_real_forms; }
 
 //!\brief Returns the (inner) number of the quasisplit real form.
@@ -355,12 +355,12 @@ class ComplexReductiveGroup
       dominant chamber of the subsystem (it permutes its simple roots).
 */
   WeylElt
-    canonicalize(TwistedInvolution& sigma, bitset::RankFlags gens) const;
+    canonicalize(TwistedInvolution& sigma, RankFlags gens) const;
 
   inline
   WeylElt canonicalize(TwistedInvolution& sigma) const
     { return canonicalize
-	(sigma,bitset::RankFlags(constants::lMask[semisimpleRank()]));
+	(sigma,RankFlags(constants::lMask[semisimpleRank()]));
     }
 
 
@@ -454,7 +454,7 @@ class ComplexReductiveGroup
 /*!
   \brief returns the number of involutions for the indicated Cartans.
 */
-  size_t numInvolutions(const bitmap::BitMap& Cartan_classes);
+  size_t numInvolutions(const BitMap& Cartan_classes);
 
   RootNbrSet noncompactPosRootSet(RealFormNbr, size_t);
 
@@ -465,7 +465,7 @@ class ComplexReductiveGroup
   parameter set corresponding to any strong real form of G lying over rf.
 */
   unsigned long KGB_size(RealFormNbr rf,
-			 const bitmap::BitMap& Cartan_classes);
+			 const BitMap& Cartan_classes);
 
   unsigned long KGB_size(RealFormNbr rf)
     { return KGB_size(rf,Cartan_set(rf)); }
@@ -480,7 +480,7 @@ class ComplexReductiveGroup
   and the weak dual real form drf.
 */
   unsigned long block_size(RealFormNbr, RealFormNbr,
-			   const bitmap::BitMap& Cartan_classes);
+			   const BitMap& Cartan_classes);
 
   unsigned long block_size(RealFormNbr rf, RealFormNbr drf)
     { return block_size(rf,drf,Cartan_set(rf)& dual_Cartan_set(drf)); }

@@ -59,7 +59,7 @@ namespace bitset {
 
   No bit-references are implemented, and |operator[]| is defined as accessor,
   equivalent to |test()|. In other respects method naming conventions are not
-  yet coherent with those of |bitmap::BitMap|, a desirable future change.
+  yet coherent with those of |BitMap|, a desirable future change.
 
   The output operator is in io/ioutils.h.
 

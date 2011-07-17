@@ -23,12 +23,6 @@ namespace atlas {
 
 /******** type declarations *************************************************/
 
-namespace klsupport {
-
-class KLSupport;
-class KLSupport_new;
-
-}
 
 }
 

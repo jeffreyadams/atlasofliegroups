@@ -109,7 +109,7 @@ class TorusElement
     { return repr.scalarProduct(alpha)%2!=0; }
 
   // evaluation giving rational number modulo 2 (|negative_at| iff equals 1)
-  arithmetic::Rational evaluate_at(const Coweight& alpha) const;
+  Rational evaluate_at(const Coweight& alpha) const;
 
   // manipulators
 
@@ -238,7 +238,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
   GlobalTitsGroup(const ComplexReductiveGroup& G,tags::DualTag);
 
   //!\brief constructor from subdatum (dual side) + involution information
-  GlobalTitsGroup(const subdatum::SubSystem& sub,
+  GlobalTitsGroup(const SubSystem& sub,
   		  const WeightInvolution& theta,
 		  WeylWord& ww); // output: expesses |-theta^t| for |sub|
 
@@ -276,7 +276,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
   bool is_valid(const GlobalTitsElement& a) const; // whether strong invovlution
   bool has_central_square(GlobalTitsElement a) const; // idem (but by-value)
   bool is_valid(const GlobalTitsElement& a, // weaker condition: square being
-		const subdatum::SubSystem& sub) const; // central in subgroup
+		const SubSystem& sub) const; // central in subgroup
 
   // determine status of simple root, if assumed imaginary
   bool compact(weyl::Generator s, const GlobalTitsElement& a) const
@@ -285,7 +285,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
   GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const
   { leftMult(a.w,s); return a; }
   // flag length-decreasing complex cross actions and inverse Cayley transforms
-  bitset::RankFlags descents(const GlobalTitsElement& a) const;
+  RankFlags descents(const GlobalTitsElement& a) const;
 
   TorusElement theta_tr_times_torus(const GlobalTitsElement& a) const;
 
@@ -339,12 +339,12 @@ class GlobalTitsGroup : public TwistedWeylGroup
 class SubTitsGroup : public GlobalTitsGroup
 {
   GlobalTitsGroup parent; // a second one!
-  const subdatum::SubSystem& subsys;
+  const SubSystem& subsys;
   TorusElement t;
  public:
   //!\brief constructor from subdatum (dual side) + involution information
   SubTitsGroup(const ComplexReductiveGroup& G,
-	       const subdatum::SubSystem& sub,
+	       const SubSystem& sub,
 	       const WeightInvolution& theta,
 	       WeylWord& ww); // output: expesses |-theta^t| for |sub|
   TorusElement base_point_offset(const TwistedInvolution& tw) const;
@@ -566,7 +566,7 @@ $H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
 	    const weyl::Twist& twist);
 
   //!\brief Constructor for Tits group relative to a subsystem
-  TitsGroup(const subdatum::SubSystem& sub,
+  TitsGroup(const SubSystem& sub,
 	    const WeightInvolution& theta,
 	    WeylWord& ww);
 
@@ -777,7 +777,7 @@ class TitsCoset
 	    Grading parent_base_grading);
 
   // this constructor computes the inner class for |sub| defined by |theta|
-  TitsCoset(const subdatum::SubSystem& sub,
+  TitsCoset(const SubSystem& sub,
 	    const WeightInvolution& theta,
 	    Grading parent_base_grading, // by value: small
 	    WeylWord& ww);

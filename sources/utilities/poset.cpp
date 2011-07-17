@@ -105,7 +105,7 @@ unsigned long Poset::n_comparable() const
   Algorithm: the largest element x in b (if any) is maximal; add that to a,
   remove from b the intersection with the closure of x, and iterate.
 */
-void Poset::findMaximals(set::SetEltList& a, const bitmap::BitMap& b) const
+void Poset::findMaximals(set::EltList& a, const bitmap::BitMap& b) const
 {
   a.clear();
   bitmap::BitMap bl = b; // working copy of |b|
@@ -119,9 +119,9 @@ void Poset::findMaximals(set::SetEltList& a, const bitmap::BitMap& b) const
   // in fact we could return |bl| as bitset here if that were asked for
 }
 
-set::SetEltList Poset::minima(const bitmap::BitMap& b) const
+set::EltList Poset::minima(const bitmap::BitMap& b) const
 {
-  set::SetEltList result;
+  set::EltList result;
   for (bitmap::BitMap::iterator it=b.begin(); it(); ++it)
   {
     size_t n=*it;
@@ -144,7 +144,7 @@ void Poset::hasseDiagram(graph::OrientedGraph& h) const
 {
   h.resize(size());
 
-  for (set::SetElt x = 0; x < size(); ++x) {
+  for (set::Elt x = 0; x < size(); ++x) {
     const bitmap::BitMap& b = d_below[x]; // |x| is already absent from |b|
     findMaximals(h.edgeList(x),b);
   }
@@ -157,7 +157,7 @@ void Poset::hasseDiagram(graph::OrientedGraph& h) const
   the elements of the poset, with an edge from each vertex to each vertex
   immediately below it. Closure means all elements less than or equal to max.
 */
-void Poset::hasseDiagram(graph::OrientedGraph& h, set::SetElt max) const
+void Poset::hasseDiagram(graph::OrientedGraph& h, set::Elt max) const
 
 
 {
@@ -167,7 +167,7 @@ void Poset::hasseDiagram(graph::OrientedGraph& h, set::SetElt max) const
   h.resize(size());
 
   for (bitmap::BitMap::iterator i = cl.begin(); i(); ++i) {
-    set::SetElt x=*i;
+    set::Elt x=*i;
     const bitmap::BitMap& b = d_below[x]; // |x| is already absent from |b|
     findMaximals(h.edgeList(x),b);
   }
@@ -201,15 +201,15 @@ namespace poset {
 /******** constructors and destructors ***************************************/
 
 unsigned long n_comparable_from_Hasse
-  (const std::vector<set::SetEltList>& hasse)
+  (const std::vector<set::EltList>& hasse)
 {
   const size_t n=hasse.size();
-  set::SetEltList min_after(n+1);
+  set::EltList min_after(n+1);
   min_after[n]=n;
 
   for (size_t i=n; i-->0;)
   {
-    set::SetElt min=min_after[i+1];
+    set::Elt min=min_after[i+1];
     for (size_t j=0; j<hasse[i].size(); ++j)
       if (hasse[i][j]<min)
 	min=hasse[i][j];

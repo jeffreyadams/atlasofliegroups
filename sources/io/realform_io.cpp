@@ -375,7 +375,7 @@ std::ostream& printSimpleType(std::ostream& strm, const Grading& gr,
     else if (rk==7) // E7, noncompact forms
       strm << (m==7 ? "e6.u(1)" : m==2 or m==5 ? "R" : "so(12).su(2)");
     else // E8, noncompact forms
-      strm <<(gr.any(bitset::RankFlags(0xCC)) ? "e7.su(2)" : "R");
+      strm <<(gr.any(RankFlags(0xCC)) ? "e7.su(2)" : "R");
     strm << ')';
     break;
   case 'f':

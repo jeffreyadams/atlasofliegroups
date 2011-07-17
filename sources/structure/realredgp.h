@@ -18,7 +18,6 @@
 #include "poset_fwd.h"
 #include "atlas_types.h"
 
-#include "complexredgp.h" // inline methods
 #include "topology.h"	// containment of |Connectivity| field
 
 
@@ -45,7 +44,7 @@ class RealReductiveGroup
   { IsConnected, IsCompact,IsQuasisplit,IsSplit, IsSemisimple,
     NumStatusFlags };
 
-  typedef bitset::BitSet<NumStatusFlags> Status;
+  typedef BitSet<NumStatusFlags> Status;
 
   // we do not own the complex group; a RealReductiveGroup should be seen
   // as dependent on a complex group; when the complex group changes,
@@ -67,32 +66,15 @@ class RealReductiveGroup
   ~RealReductiveGroup(); // not inline: type incomplete; deletes d_Tg, kgb_ptr
 
 // accessors
-  const ComplexReductiveGroup& complexGroup() const
-    { return d_complexGroup; }
-
+  const ComplexReductiveGroup& complexGroup() const { return d_complexGroup; }
   RealFormNbr realForm() const { return d_realForm; }
-
-  const RootDatum& rootDatum() const
-    { return d_complexGroup.rootDatum(); }
-
+  const RootDatum& rootDatum() const;
   const TitsCoset& basedTitsGroup() const { return *d_Tg; }
-  const TitsGroup& titsGroup() const  { return d_Tg->titsGroup(); }
-
-  const WeylGroup& weylGroup() const
-    { return d_complexGroup.weylGroup(); }
-
-  const TwistedWeylGroup& twistedWeylGroup() const
-    { return d_complexGroup.twistedWeylGroup(); }
-
-  bitmap::BitMap Cartan_set() const
-    { return complexGroup().Cartan_set(d_realForm); }
-
-/*!\brief Returns cartan \#cn in the group.
-
-  Precondition: cn belongs to cartanSet().
-*/
-  const CartanClass& cartan(size_t cn) const
-    { return d_complexGroup.cartan(cn); }
+  const TitsGroup& titsGroup() const;
+  const WeylGroup& weylGroup() const;
+  const TwistedWeylGroup& twistedWeylGroup() const;
+  BitMap Cartan_set() const;
+  const CartanClass& cartan(size_t cn) const; // Cartan number of parent
 
   bool isConnected() const { return d_status[IsConnected]; }
 
@@ -100,24 +82,13 @@ class RealReductiveGroup
   bool isQuasisplit() const { return d_status[IsQuasisplit]; }
   bool isSplit() const { return d_status[IsSplit]; }
 
-  bool isSemisimple() const { return d_status[IsSemisimple]; }
-
-  size_t numCartan() const { return Cartan_set().size(); }
-
-  size_t rank() const { return rootDatum().rank(); };
-
-  size_t semisimpleRank() const { return rootDatum().semisimpleRank(); }
-
-  size_t numInvolutions()
-    { return complexGroup().numInvolutions(Cartan_set()); }
-
-/*!\brief Returns the cardinality of K\\G/B.
-
-  Precondition: fillCartan() has been called.
-*/
-  size_t KGB_size() const { return d_complexGroup.KGB_size(d_realForm); }
-
-  size_t mostSplit() const { return d_complexGroup.mostSplit(d_realForm); }
+  bool isSemisimple() const;
+  size_t numCartan() const;
+  size_t rank() const;
+  size_t semisimpleRank() const;
+  size_t numInvolutions(); // non-|const|, as Cartan classes get generated
+  size_t KGB_size() const; // the cardinality of |K\\G/B|.
+  size_t mostSplit() const;
 
 /*! \brief
   Returns the grading offset (on simple roots) adapted to |G|. This flags the
@@ -131,23 +102,15 @@ formed by extracting only the information concerning the presence of the
 */
   Grading grading_offset();
 
-  cartanclass::square_class square_class() const
-    { return d_complexGroup.fundamental().central_square_class(d_realForm); }
-
-  const size_t component_rank() const
-    { return d_connectivity.component_rank(); }
-  const SmallBitVectorList& dualComponentReps() const
-    { return d_connectivity.dualComponentReps(); }
-
-  const WeightInvolution& distinguished() const
-    { return d_complexGroup.distinguished(); }
-
+  cartanclass::square_class square_class() const;
+  const size_t component_rank() const;
+  const SmallBitVectorList& dualComponentReps() const;
+  const WeightInvolution& distinguished() const;
 
 /*!\brief Returns the set of noncompact imaginary roots for (the
   representative of) the real form.
 */
-  RootNbrSet noncompactRoots() const
-    { return d_complexGroup.noncompactRoots(d_realForm); }
+  RootNbrSet noncompactRoots() const;
 
 // manipulators
   void swap(RealReductiveGroup&);
@@ -156,7 +119,7 @@ formed by extracting only the information concerning the presence of the
     { return d_complexGroup; }
 
   const KGB& kgb();
-  const bruhat::BruhatOrder& Bruhat_KGB();
+  const BruhatOrder& Bruhat_KGB();
 
 }; // |class RealReductiveGroup|
 

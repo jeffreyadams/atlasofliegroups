@@ -7,7 +7,7 @@ representing orbits of K on G/B.
   This is kgb.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Copyright (C) 2006-2009 Marc van Leeuwen
+  Copyright (C) 2006-2011 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
@@ -16,20 +16,10 @@ representing orbits of K on G/B.
 #ifndef KGB_H  /* guard against multiple inclusions */
 #define KGB_H
 
-#include "kgb_fwd.h"
-
-#include "bitmap_fwd.h"
-#include "realredgp_fwd.h"
-
 #include "subdatum.h"
 
-#include "weyl.h"
-#include "tits.h"
-#include "cartanclass.h"
-#include "complexredgp.h"
-#include "bruhat.h" // class definition needed for inlined KGB destructor
-#include "gradings.h"
-#include "hashtable.h"
+#include "gradings.h"	// containment in |KGBEltInfo|
+#include "hashtable.h"	// containment in |KGB_base|
 
 #include <algorithm>
 #include <iostream> // for virtual print method
@@ -202,15 +192,12 @@ struct KGB_elt_entry
   // obligatory fields for hashable entry
   typedef std::vector<KGB_elt_entry> Pooltype;
   size_t hashCode(size_t modulus) const; // hash function
-  bool operator !=(const KGB_elt_entry& x) const
-  { return tw!=x.tw or fingerprint!=x.fingerprint; } // ignore repr
+  bool operator !=(const KGB_elt_entry& x) const; // ignores repr
 
   KGB_elt_entry (const RatWeight& f,
-		 const GlobalTitsElement& y)
-  : t_rep(y.torus_part()), tw(y.tw()), fingerprint(f) {}
+		 const GlobalTitsElement& y);
+  GlobalTitsElement repr() const;
 
-  GlobalTitsElement repr() const
-  { return GlobalTitsElement(t_rep,tw); }
 }; //  |struct KGB_elt_entry|
 
 /*!
@@ -301,7 +288,7 @@ public:
   { return KGB_elt_entry(fingerprint(y),y); }
 
   // manipulators
-  void add_class(const subdatum::SubSystem& sub, // determines root system
+  void add_class(const SubSystem& sub, // determines root system
 		 const GlobalTitsGroup& Tg, // interprets |tw| and values
 		 const TwistedInvolution& tw); // derived from it
 
@@ -370,14 +357,14 @@ class KGB : public KGB_base
   std::vector<unsigned int> Cartan; ///< records Cartan classes of elements
 
   std::vector<tits::TorusPart> left_torus_part; // of size |size()|
-  bitset::BitSet<NumStates> d_state;
+  BitSet<NumStates> d_state;
 
 /*! \brief Owned pointer to the Bruhat order on KGB (or NULL).
 
 The class BruhatOrder contains a Poset describing the full partial order,
 and in addition the Hasse diagram (set of all covering relations).
 */
-  bruhat::BruhatOrder* d_bruhat;
+  BruhatOrder* d_bruhat;
 
   //! \brief Owned pointer to the based Tits group.
   TitsCoset* d_base; // pointer, because contructed late by |generate|
@@ -386,10 +373,9 @@ and in addition the Hasse diagram (set of all covering relations).
 
 // constructors and destructors
   explicit KGB(RealReductiveGroup& GR,
-	       const bitmap::BitMap& Cartan_classes =  bitmap::BitMap(0));
+	       const BitMap& Cartan_classes =  BitMap(0));
 
-  ~KGB()
-    { delete d_bruhat; delete d_base; } // these are is owned (if non NULL)
+  ~KGB(); // { delete d_bruhat; delete d_base; } // these are owned (or NULL)
 
 // copy, assignment and swap
 // these are currently reserved; if defined, they shoud take care of |d_bruhat|
@@ -413,10 +399,9 @@ and in addition the Hasse diagram (set of all covering relations).
   virtual size_t Cartan_class(KGBElt x) const;
 
   tits::TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
-  TitsElt titsElt(KGBElt x) const
-    { return TitsElt(titsGroup(),left_torus_part[x],involution(x)); }
-//! \brief The (non-semisimple) rank of torus parts.
-  size_t torus_rank() const { return titsGroup().rank(); }
+
+  TitsElt titsElt(KGBElt x) const;
+  size_t torus_rank() const; // the (non-semisimple) rank of torus parts.
 
   Grading base_grading() const { return d_base->base_grading(); }
 
@@ -448,11 +433,10 @@ and in addition the Hasse diagram (set of all covering relations).
 // manipulators
 
 // Creates Hasse diagram for Bruhat order on KGB and returns reference to it
-  bruhat::BruhatOrder& bruhatOrder()
+  BruhatOrder& bruhatOrder()
   { fillBruhat(); return *d_bruhat; }
 
-  const poset::Poset& bruhatPoset() // this creates full poset on demand
-  { return bruhatOrder().poset(); }
+  const poset::Poset& bruhatPoset(); // this creates full poset on demand
 
 // virtual method
   virtual std::ostream& print(std::ostream& strm, KGBElt x) const;
@@ -460,7 +444,7 @@ and in addition the Hasse diagram (set of all covering relations).
 // private methods
 private:
   size_t generate
-    (RealReductiveGroup& GR,const bitmap::BitMap& Cartan_classes);
+    (RealReductiveGroup& GR,const BitMap& Cartan_classes);
 
   void fillBruhat();
 

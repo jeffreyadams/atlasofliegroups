@@ -85,7 +85,7 @@ std::ostream& printAllKL
   strm << count << " nonzero polynomial" << (count==1 ? "" : "s")
        << std::flush;
 
-  bruhat::BruhatOrder& Bruhat=block.bruhatOrder(); // non-const!
+  BruhatOrder& Bruhat=block.bruhatOrder(); // non-const!
   size_t comp = Bruhat.n_comparable();
   strm << ", and " << comp-count << " zero polynomial"
        << (comp-count==1 ? "" : "s")
@@ -107,7 +107,7 @@ std::ostream& printPrimitiveKL
   int width = ioutils::digits(klc.size()-1,10ul);
   int tab = 2;
 
-  bruhat::BruhatOrder& bo=block.bruhatOrder(); // non-const!
+  BruhatOrder& bo=block.bruhatOrder(); // non-const!
   const poset::Poset& Bruhat=bo.poset(); // full poset is generated here
 
   for (size_t y = 0; y < klc.size(); ++y) {

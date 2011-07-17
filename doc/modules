@@ -52,6 +52,7 @@ Structure
   gradings	a (bitset) type for storing gradings; orthogonal root sets
   tori		analysing lattice involutions, defining a real torus
   topology	connect components of real red. group (dual components group)
+  subsystem	root subsystems and associated Weyl subgroups
 
   cartanclass	involution data, fibers, and Cartan class objects
   complexredgp  data type encompassing all data stored for an inner class
@@ -60,11 +61,11 @@ Structure
 
 gKmod
 
-  subdatum	classes for handling subsystems within root datum (split/move)
-  kgb
-  bruhat
-  descents
-  blocks
+  subdatum	a small extension of the SubSystem class, with own Tits group
+  bruhat	a class for storing the Hasse diagram of a poset
+  kgb		classes for one-sided parameters (elements of K\G/B)
+  descents	header-only module defining |DescentStatus|
+  blocks	classes for two-sided parameters
   klsupport
   kl
   wgraph
