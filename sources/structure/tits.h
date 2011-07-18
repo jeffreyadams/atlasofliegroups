@@ -15,7 +15,6 @@ TitsGroup and TitsElt.
 #ifndef TITS_H  /* guard against multiple inclusions */
 #define TITS_H
 
-#include "tits_fwd.h"
 
 #include "tags.h"
 #include "ratvec.h"   // |RatWeight| contained in |TorusElement|
@@ -42,7 +41,7 @@ namespace tits {
   inline TorusElement exp_2pi(const RatWeight r);
 
   // 2-subgroup by which each |TorusPart| at involution |inv| will be reduced
-  subquotient::SmallSubspace fiber_denom(const WeightInvolution& inv);
+  SmallSubspace fiber_denom(const WeightInvolution& inv);
 
   Grading
   square_class_grading_offset(const Fiber& f,
@@ -684,11 +683,11 @@ is done in the KGB construction, it induces an involution on the quotient set.
   { sigma_inv_mult(s,a); mult_sigma(a,twisted(s)); }
 
   void left_torus_reduce
-    (TitsElt& a, const subquotient::SmallSubspace& V) const
+    (TitsElt& a, const SmallSubspace& V) const
   { a.d_t=V.mod_image(a.d_t); }
 
   void right_torus_reduce
-    (TitsElt& a, const subquotient::SmallSubspace& V) const
+    (TitsElt& a, const SmallSubspace& V) const
   { a=TitsElt(*this,a.w(),V.mod_image(right_torus_part(a))); }
 
 // manipulators (none)
@@ -811,15 +810,15 @@ class TitsCoset
   // inverse Cayley transform for real simple roots
   // this requires knowing the subspace by which torus part has been reduced
   void inverse_Cayley_transform(TitsElt& a, size_t s,
-				const subquotient::SmallSubspace& mod_space)
+				const SmallSubspace& mod_space)
     const;
 
   void left_torus_reduce
-    (TitsElt& a, const subquotient::SmallSubspace& V) const
+    (TitsElt& a, const SmallSubspace& V) const
   { titsGroup().left_torus_reduce(a,V); }
 
   void right_torus_reduce
-    (TitsElt& a, const subquotient::SmallSubspace& V) const
+    (TitsElt& a, const SmallSubspace& V) const
   { titsGroup().right_torus_reduce(a,V); }
 
   // conjugate Tits group element by $\delta_1$

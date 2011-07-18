@@ -15,7 +15,6 @@
 #ifndef CARTANCLASS_H  /* guard against multiple inclusions */
 #define CARTANCLASS_H
 
-#include "cartanclass_fwd.h"
 
 #include "tags.h"
 #include "bitset.h"	// containment of |Grading|
@@ -181,7 +180,7 @@ class Fiber {
   of the $-1$ eigenlattice \f$Y^{-\tau}\f$ (the latter is the lattice of
   coweights of \f$(H^{-tau})_0\f$).
   */
-  subquotient::SmallSubquotient d_fiberGroup;
+  SmallSubquotient d_fiberGroup;
 
   /*!
   \brief Fiber group for the adjoint group of G.
@@ -195,7 +194,7 @@ class Fiber {
   of one-parameter subgroups Y_ad just as the fiber group is computed. The
   lattice Y_ad has as basis the fundamental coweights.
   */
-  subquotient::SmallSubquotient d_adjointFiberGroup;
+  SmallSubquotient d_adjointFiberGroup;
 
   /*! \brief Flags the noncompact imaginary roots for the base grading among
   all the roots.
@@ -378,7 +377,7 @@ class Fiber {
   of one-parameter subgroups Y_ad just as the fiber group is computed. The
   lattice Y_ad has as basis the fundamental coweights.
 */
-  const subquotient::SmallSubquotient& adjointFiberGroup() const
+  const SmallSubquotient& adjointFiberGroup() const
     { return d_adjointFiberGroup; }
 
 /*!
@@ -395,7 +394,7 @@ class Fiber {
 /*!
   \brief Fiber group.
 */
-  const subquotient::SmallSubquotient& fiberGroup() const
+  const SmallSubquotient& fiberGroup() const
     { return d_fiberGroup; }
 
   /*!
@@ -510,12 +509,12 @@ class Fiber {
 
 private:
 
-  subquotient::SmallSubquotient makeFiberGroup() const;
+  SmallSubquotient makeFiberGroup() const;
 
-  subquotient::SmallSubquotient makeAdjointFiberGroup
+  SmallSubquotient makeAdjointFiberGroup
     (const RootSystem&) const;
 
-  subquotient::SmallSubspace gradingGroup(const RootSystem&) const;
+  SmallSubspace gradingGroup(const RootSystem&) const;
 
   Grading makeBaseGrading
     (RootNbrSet& flagged_roots,const RootSystem&) const;

@@ -17,10 +17,9 @@
 
 #include <cassert>
 
-#include "subquotient_fwd.h"
-#include "bitset_fwd.h"
+#include "atlas_types.h"
 
-#include "bitvector.h" // anyone whose uses this header will need that too
+#include "bitvector.h" // containment
 
 /******** function declarations **********************************************/
 

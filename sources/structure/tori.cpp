@@ -25,7 +25,7 @@ namespace tori {
 
 namespace {
 
-void makeTopology(subquotient::SmallSubquotient&, const RealTorus&);
+void makeTopology(SmallSubquotient&, const RealTorus&);
 
 void fullPlusBasis(WeightList&,
 		   int_Matrix&,
@@ -214,7 +214,7 @@ namespace tori {
   In practice we also want this at the dual side with $V_-$ in the denominator
   (to compute fiber groups): to that end call with |q.negative_transposed()|
 */
-void dualPi0(subquotient::SmallSubquotient& dpi0, const WeightInvolution& q)
+void dualPi0(SmallSubquotient& dpi0, const WeightInvolution& q)
 {
   assert(q.numRows()==q.numColumns());
 
@@ -230,7 +230,7 @@ void dualPi0(subquotient::SmallSubquotient& dpi0, const WeightInvolution& q)
   SmallBitVectorList b; i2.kernel(b);
   // the kernel of |i2| is the sum $V_+ + V_-$: numerator subgroup
 
-  subquotient::SmallSubquotient cs(b,plus2,q.numRows());
+  SmallSubquotient cs(b,plus2,q.numRows());
   assert(cs.rank()==q.numRows());
 
   dpi0.swap(cs);
@@ -377,7 +377,7 @@ namespace {
   isomorphic to V_-/(V_+  cap V_-), which we know is the _dual_ of the
   component group of the torus.
 */
-void makeTopology(subquotient::SmallSubquotient& cs, const RealTorus& T)
+void makeTopology(SmallSubquotient& cs, const RealTorus& T)
 {
   SmallBitVectorList plus2(T.plusLattice()); // reduce mod 2
 
@@ -388,7 +388,7 @@ void makeTopology(subquotient::SmallSubquotient& cs, const RealTorus& T)
   SmallBitVectorList b;
   i2.kernel(b);  // kernel of map induced by tau-1 (or by tau+1), contains V_+
 
-  cs = subquotient::SmallSubquotient(b,plus2,T.rank());
+  cs = SmallSubquotient(b,plus2,T.rank());
 }
 
 

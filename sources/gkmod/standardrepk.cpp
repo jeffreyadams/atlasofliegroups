@@ -177,7 +177,7 @@ SRK_context::SRK_context(RealReductiveGroup &GR)
     basis.block(0,l,n,n).swap(ci.freeLift); // final |n-l| basis vectors
     inv_basis.block(l,0,n,n).swap(ci.freeProjector); // final |n-l| rows
 
-    subquotient::SmallSubspace
+    SmallSubspace
       (BinaryMap(lattice::eigen_lattice(theta.transposed(),-1)))
       .swap(ci.fiber_modulus);
 
@@ -993,7 +993,7 @@ SRK_context::back_HS_id(const StandardRepK& sr, RootNbr alpha) const
   TitsElt a=titsElt(sr);
 
   Weight lambda = lift(sr);
-  subquotient::SmallSubspace mod_space=
+  SmallSubspace mod_space=
     info(sr.d_cartan).fiber_modulus; // make a copy to be modified
   RankFlags orth; // becomes system orthogonal to |tl| below
   { // first assure the theta-lift of sr is dominant

@@ -320,10 +320,10 @@ Fiber& Fiber::operator= (const Fiber& other)
 
   Note that only the involution is used, not the root datum.
 */
-subquotient::SmallSubquotient Fiber::makeFiberGroup() const
+SmallSubquotient Fiber::makeFiberGroup() const
 {
   // construct subquotient
-  subquotient::SmallSubquotient result;
+  SmallSubquotient result;
   tori::dualPi0(result,involution().negative_transposed());
 
   return result;
@@ -356,11 +356,11 @@ adjoint_involution(const RootSystem& rs, const InvolutionData& id)
   transpose of the involution induced by \f$\tau\f$ on the root lattice (which
   negative transpose is computed by |adjoint_involution|).
 */
-subquotient::SmallSubquotient
+SmallSubquotient
 Fiber::makeAdjointFiberGroup(const RootSystem& rs) const
 {
   // construct subquotient
-  subquotient::SmallSubquotient result;
+  SmallSubquotient result;
   tori::dualPi0(result,adjoint_involution(rs,d_involutionData));
 
   assert(result.rank()==rs.rank()); // (rank is that of ambient vector space)
@@ -383,7 +383,7 @@ Fiber::makeAdjointFiberGroup(const RootSystem& rs) const
   whence the constructor for |Fiber| just calls this function to |assert| that
   the result is trivial.
 */
-subquotient::SmallSubspace
+SmallSubspace
 Fiber::gradingGroup (const RootSystem& rs) const
 {
   // define map
@@ -416,7 +416,7 @@ Fiber::gradingGroup (const RootSystem& rs) const
   // find kernel
   SmallBitVectorList ker; q.kernel(ker);
 
-  return subquotient::SmallSubspace(ker,adjointFiberRank());
+  return SmallSubspace(ker,adjointFiberRank());
 }
 
 
@@ -688,7 +688,7 @@ partition::Partition Fiber::makeRealFormPartition() const
 
   /* construct |modFiberImage| as quotient of spans of |b_id| (i.e., all) and
      image of |d_toAdjoint|; it is a quotient of the adjoint fiber group! */
-  subquotient::SmallSubquotient modFiberImage
+  SmallSubquotient modFiberImage
     (b_id,d_toAdjoint.image(),d_adjointFiberGroup.dimension());
 
   // take representatives of weak real forms and reduce modulo fiber image

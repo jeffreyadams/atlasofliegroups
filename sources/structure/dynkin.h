@@ -17,7 +17,6 @@
 #include <vector>
 
 #include "atlas_types.h"
-#include "lietype_fwd.h"
 
 #include "bitset.h"
 #include "permutations.h"

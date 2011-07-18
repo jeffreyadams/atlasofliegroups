@@ -21,8 +21,9 @@ StandardRepK and KhatContext.
 #include <vector>
 #include <iostream>
 
+#include "atlas_types.h"
+
 #include "bitset.h"
-#include "bitvector_fwd.h"
 #include "realredgp.h"
 #include "tits.h"
 #include "kgb.h"
@@ -240,7 +241,7 @@ struct Cartan_info
   WeightList torsionLift;
 
   // space that fiber parts are reduced modulo
-  subquotient::SmallSubspace fiber_modulus;
+  SmallSubspace fiber_modulus;
 
   // simple roots orthogonal to sums of positive imaginary and real roots
   // in fact one of every pair of $theta$-conjugate such simple roots

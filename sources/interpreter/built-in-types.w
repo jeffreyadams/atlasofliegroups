@@ -89,7 +89,7 @@ Our first chapter concerns Lie types, as indicated by strings like
 library.
 
 @< Includes needed in the header file @>=
-#include "lietype_fwd.h"
+#include "atlas_types.h"
 
 @*2 The primitive type.
 %

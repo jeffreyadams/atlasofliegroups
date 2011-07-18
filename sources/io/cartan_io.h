@@ -15,7 +15,6 @@
 #include "atlas_types.h"
 
 #include "complexredgp_io_fwd.h"
-#include "cartanclass_fwd.h"
 
 
 /******** function declarations *********************************************/

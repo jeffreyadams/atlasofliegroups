@@ -167,7 +167,7 @@ global_KGB::global_KGB(ComplexReductiveGroup& G)
   KGB_base::reserve(size);
 
   { // get elements at the fundamental fiber, for "all" square classes
-    const subquotient::SmallSubquotient& fg = G.fundamental().fiberGroup();
+    const SmallSubquotient& fg = G.fundamental().fiberGroup();
     first_of_tau.push_back(0); // start of fundamental fiber
 
     // get number of subsets of generators, and run through them
@@ -408,7 +408,7 @@ class FiberData
   weyl::TI_Entry::Pooltype pool;
   hashtable::HashTable<weyl::TI_Entry,unsigned int> hash_table;
   std::vector<BinaryMap> refl; // transposed simple refl mod 2
-  std::vector<subquotient::SmallSubspace> data;
+  std::vector<SmallSubspace> data;
   std::vector<unsigned int> involution_length;
   std::vector<unsigned int> Cartan_class;
 public:
@@ -438,7 +438,7 @@ public:
 		 const WeightInvolution& theta);
 
 private: // the space actually stored need not be exposed
-  const subquotient::SmallSubspace& mod_space(const TitsElt& a) const
+  const SmallSubspace& mod_space(const TitsElt& a) const
   {
     size_t i=hash_table.find(a.tw());
     assert(i!=hash_table.empty);
@@ -800,7 +800,7 @@ subsys_KGB::subsys_KGB
 	{
 	  if (Tg.hasTwistedCommutation(s,cur_x.tw())) // real
 	  {
-	    subquotient::SmallSubspace mod_space =
+	    SmallSubspace mod_space =
 	      tits::fiber_denom(sub.involution(cur_x.tw()));
 	    Tg.inverse_Cayley_transform(cur_x,s,mod_space);
 	  }

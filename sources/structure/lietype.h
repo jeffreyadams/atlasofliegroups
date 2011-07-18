@@ -14,7 +14,6 @@
 #ifndef LIETYPE_H  /* guard against multiple inclusions */
 #define LIETYPE_H
 
-#include "lietype_fwd.h"
 
 #include <stdexcept>
 
@@ -77,6 +76,8 @@ struct Layout;
 }
 
 namespace lietype {
+
+typedef char TypeLetter;
 
 struct SimpleLieType : public std::pair<TypeLetter,size_t>
 { typedef std::pair<TypeLetter,size_t> base;

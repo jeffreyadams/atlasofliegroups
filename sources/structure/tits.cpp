@@ -488,7 +488,7 @@ std::vector<Grading> compute_square_classes
     }
 
   BinaryMap A(lattice::eigen_lattice(delta.transposed(),1));
-  subquotient::SmallSubspace Vplus(A); // mod subgroup, in $X_*$ coordinates
+  SmallSubspace Vplus(A); // mod subgroup, in $X_*$ coordinates
   BinaryMap to_grading(roots);
   Vplus.apply(to_grading); // convert to grading coordinates
 
@@ -862,7 +862,7 @@ void TitsCoset::basedTwistedConjugate
  */
 void TitsCoset::inverse_Cayley_transform
   (TitsElt& a, size_t i,
-   const subquotient::SmallSubspace& mod_space) const
+   const SmallSubspace& mod_space) const
 {
   Tg.sigma_inv_mult(i,a); // set |a| to $\sigma_i^{-1}.a$
   if (not simple_grading(a,i)) // $\alpha_i$ should not become compact!
@@ -1078,10 +1078,10 @@ TitsCoset::grading_seed(ComplexReductiveGroup& G,
   return seed;  // result should be reduced immediatly by caller
 }
 
-subquotient::SmallSubspace fiber_denom(const WeightInvolution& inv)
+SmallSubspace fiber_denom(const WeightInvolution& inv)
 {
   BinaryMap A(lattice::eigen_lattice(inv.transposed(),-1));
-  return subquotient::SmallSubspace(A);
+  return SmallSubspace(A);
 }
 
 /*! \brief Returns the grading offset for the base real form of the square

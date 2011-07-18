@@ -14,7 +14,6 @@
 
 #include "atlas_types.h"
 
-#include "cartanclass_fwd.h"
 #include "complexredgp_io_fwd.h"
 
 #include "gradings.h"

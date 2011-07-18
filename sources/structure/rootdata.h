@@ -23,7 +23,6 @@
 #include "atlas_types.h"
 #include "tags.h"
 
-#include "lietype_fwd.h"
 #include "atlas_types.h"
 
 #include "bitset.h" // for ascent and descent sets

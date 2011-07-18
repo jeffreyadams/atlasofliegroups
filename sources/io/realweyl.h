@@ -16,7 +16,6 @@
 #include "size.h"
 
 #include "atlas_types.h"
-#include "cartanclass_fwd.h"
 
 #include "bitvector.h"
 #include "lietype.h"
