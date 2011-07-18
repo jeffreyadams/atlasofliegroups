@@ -7,6 +7,7 @@ ComplexReductiveGroup.
   This is complexredgp.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006--2001 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
@@ -15,6 +16,7 @@ ComplexReductiveGroup.
 #ifndef COMPLEXREDGP_H  /* guard against multiple inclusions */
 #define COMPLEXREDGP_H
 
+#include "atlas_types.h"
 
 #include "tags.h"
 #include "bitmap.h"	// containment of bitmaps for real forms

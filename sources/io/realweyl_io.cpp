@@ -53,7 +53,7 @@ enum which_group { block_stab, real_W, dual_real_W };
 
 namespace {
 
-inline std::string Weyl_type(size_t n,const lietype::LieType& t)
+inline std::string Weyl_type(size_t n,const LieType& t)
 {
   if (n==0) return "trivial";
   std::ostringstream os;

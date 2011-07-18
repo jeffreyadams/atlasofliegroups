@@ -13,7 +13,7 @@
 #ifndef HASHTABLE_H
 #define HASHTABLE_H
 
-namespace atlas{ namespace kl { void alert(unsigned int i); }}
+#include "hashtable_fwd.h"
 
 namespace atlas {
 namespace hashtable {

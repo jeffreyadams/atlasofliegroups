@@ -15,13 +15,13 @@
 #ifndef CARTANCLASS_H  /* guard against multiple inclusions */
 #define CARTANCLASS_H
 
+#include "atlas_types.h"
 
 #include "tags.h"
 #include "bitset.h"	// containment of |Grading|
 #include "bitset.h"	// containment of |RootNbrSet|
 #include "partition.h"	// containment of |partition::Partition|
 #include "permutations.h"// containment of |permutation::Permutation|
-#include "atlas_types.h"
 
 #include "tori.h"       // containment of |RealTorus|
 

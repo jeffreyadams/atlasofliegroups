@@ -1,7 +1,4 @@
-/*!
-\file
-\brief Classes and utilities for manipulating representations
-*/
+/*! \file \brief Classes and utilities for manipulating representations */
 /*
   This is repr.h
 
@@ -14,10 +11,12 @@
 #ifndef REPR_H  /* guard against multiple inclusions */
 #define REPR_H
 
-#include "standardrepk.h"
-#include "tits.h"
-#include "kgb.h"
-#include "realredgp.h"
+#include "atlas_types.h"
+
+#include "matrix.h"	// containment
+#include "ratvec.h"	// containment
+
+#include "realredgp.h"	// inlines
 
 namespace atlas {
 
@@ -82,19 +81,16 @@ class Rep_context
   Rep_context(RealReductiveGroup &G);
 
   // accessors
-  ComplexReductiveGroup& complexGroup() const
-  { return G.complexGroup(); }
+  ComplexReductiveGroup& complexGroup() const { return G.complexGroup(); }
   const RootDatum& rootDatum() const { return G.rootDatum(); }
   const WeylGroup& weylGroup() const { return G.weylGroup(); }
   const TwistedWeylGroup& twistedWeylGroup() const
     { return G.twistedWeylGroup(); }
   const TitsGroup& titsGroup() const { return G.titsGroup(); }
-  const TitsCoset& basedTitsGroup() const
-    { return G.basedTitsGroup(); }
+  const TitsCoset& basedTitsGroup() const { return G.basedTitsGroup(); }
   const KGB_base& kgb() const { return KGB_set; }
 
-  const TwistedInvolution twistedInvolution(size_t cn) const
-    { return complexGroup().twistedInvolution(cn); }
+  const TwistedInvolution twistedInvolution(size_t cn) const;
 
   StandardRepr
     sr(const standardrepk::StandardRepK& srk,

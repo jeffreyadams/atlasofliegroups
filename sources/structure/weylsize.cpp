@@ -34,7 +34,7 @@ namespace weylsize {
 
 
 //! Returns the size of the Weyl group with Lie type lt.
-size::Size weylSize(const lietype::LieType& lt)
+size::Size weylSize(const LieType& lt)
 {
   size::Size c(1);
 
@@ -51,7 +51,7 @@ size::Size weylSize(const lietype::LieType& lt)
   NOTE: we build in knowledge about the Weyl group here, although we could
   have computed from first principles
 */
-size::Size weylSize(const lietype::SimpleLieType& slt)
+size::Size weylSize(const SimpleLieType& slt)
 {
   unsigned long r = slt.rank();
 

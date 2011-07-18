@@ -10,7 +10,7 @@
 #ifndef KL_ERROR_H  /* guard against multiple inclusions */
 #define KL_ERROR_H
 
-#include "kl_fwd.h"
+#include "atlas_types.h"
 
 /******** type declarations *************************************************/
 

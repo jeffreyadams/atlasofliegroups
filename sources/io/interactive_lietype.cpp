@@ -38,7 +38,7 @@ namespace interactive_lietype {
   Synopsis: checks if a valid inner class for lt will be read from buf.
 */
 
-bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
+bool checkInnerClass(input::InputBuffer& buf, const LieType& lt,
 		     bool output)
 {
   std::streampos pos = buf.tellg();
@@ -66,7 +66,7 @@ bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
     }
 
     if (x == 'C') { // complex case
-      lietype::SimpleLieType slt = lt[j];
+      SimpleLieType slt = lt[j];
       if (j == lt.size()-1 or lt[j+1] != slt) { // bad type
 	if (output)
 	  std::cerr << "bad inner class symbol C" << std::endl
@@ -79,7 +79,7 @@ bool checkInnerClass(input::InputBuffer& buf, const lietype::LieType& lt,
     }
 
     if (x == 'u') { // we must have an unequal-rank inner class
-      lietype::SimpleLieType slt = lt[j];
+      SimpleLieType slt = lt[j];
       lietype::TypeLetter t = slt.type();
       size_t l = slt.rank();
       if (uer.find_first_of(t) == std::string::npos or
@@ -259,8 +259,8 @@ std::ostream& printRankMessage(std::ostream& strm, lietype::TypeLetter x)
   Maps e ("equal rank") to c; maps "u" (unequal rank) to s except for type
   D_2n.
 */
-void readInnerClass(lietype::InnerClassType& ict, input::InputBuffer& buf,
-		    const lietype::LieType& lt)
+void readInnerClass(InnerClassType& ict, input::InputBuffer& buf,
+		    const LieType& lt)
 {
   ict.clear();
 
@@ -290,7 +290,7 @@ void readInnerClass(lietype::InnerClassType& ict, input::InputBuffer& buf,
   To normalize the occurrence of torus factors, this function expands Tn with
   n>1 to n copies of T1
 */
-void readLieType(lietype::LieType& lt, input::InputBuffer& buf)
+void readLieType(LieType& lt, input::InputBuffer& buf)
 {
   bool read = true;
 
@@ -300,9 +300,9 @@ void readLieType(lietype::LieType& lt, input::InputBuffer& buf)
     buf >> x;
     buf >> l;
     if (x=='T')
-      while (l-->0) lt.push_back(lietype::SimpleLieType('T',1));
+      while (l-->0) lt.push_back(SimpleLieType('T',1));
     else
-      lt.push_back(lietype::SimpleLieType(x,l));
+      lt.push_back(SimpleLieType(x,l));
     buf >> x;
     if (x != '.') {
       buf.unget(); // put character back

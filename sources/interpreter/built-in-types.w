@@ -93,19 +93,19 @@ library.
 
 @*2 The primitive type.
 %
-A first new type corresponds to the type |lietype::LieType| in the Atlas
+A first new type corresponds to the type |LieType| in the Atlas
 library. We provide a constructor that incorporates a complete
-|lietype::LieType| value, but often one will use the default constructor and
+|LieType| value, but often one will use the default constructor and
 the |add| method. The remaining methods are obligatory for a primitive type.
 
 @h <stdexcept>
 @< Type definitions @>=
 struct Lie_type_value : public value_base
-{ lietype::LieType val;
+{ LieType val;
 @)
   Lie_type_value() : val() @+ {}
     // default constructor, produces empty type
-  Lie_type_value(lietype::LieType t) : val(t) @+{}
+  Lie_type_value(LieType t) : val(t) @+{}
     // constructor from already validated Lie type
 @)
   virtual void print(std::ostream& out) const;
@@ -122,7 +122,7 @@ private:
 typedef std::auto_ptr<Lie_type_value> Lie_type_ptr;
 typedef std::tr1::shared_ptr<Lie_type_value> shared_Lie_type;
 
-@ The type |lietype::LieType| is publicly derived from
+@ The type |LieType| is publicly derived from
 |std::vector<SimpleLieType>|, and in its turn |SimpleLieType| is publicly
 derived from |std::pair<char,size_t>|. Therefore these types could take
 arbitrary values, not necessarily meaningful ones. To remedy this we make the
@@ -162,9 +162,9 @@ void Lie_type_value::add_simple_factor (char c,size_t rank)
       ("Rank "+str(rank)+" exceeds implementation limit "+str(r));
 @.Rank exceeds implementation limit@>
   if (c=='T')
-    while (rank-->0) val.push_back(lietype::SimpleLieType('T',1));
+    while (rank-->0) val.push_back(SimpleLieType('T',1));
   else
-    val.push_back(lietype::SimpleLieType(c,rank));
+    val.push_back(SimpleLieType(c,rank));
 }
 
 @ Now we define a wrapper function that really builds a |Lie_type_value|. We
@@ -262,7 +262,7 @@ construction would most likely crash.
 void type_of_Cartan_matrix_wrapper (expression_base::level l)
 { shared_matrix m=get<matrix_value>();
   permutations::Permutation pi;
-  lietype::LieType lt=dynkin::Lie_type(m->val,true,true,pi);
+  LieType lt=dynkin::Lie_type(m->val,true,true,pi);
   if (l==expression_base::no_value)
     return;
   push_value(new Lie_type_value(lt));
@@ -295,7 +295,7 @@ void Lie_type_string_wrapper(expression_base::level l)
 Lie type, so that for instance the correct number of inner class letters can
 be prepared (for this purpose type $T_n$ counts as $n$ factors). Since we
 expanded any $T_n$ into factors $T_1$, we can simply call the |size| method of
-the stored |lietype::LieType| value.
+the stored |LieType| value.
 
 @< Local function definitions @>=
 void nr_factors_wrapper(expression_base::level l)
@@ -473,7 +473,7 @@ void replace_gen_wrapper (expression_base::level l)
 @*2 Specifying inner classes. Now we move ahead a bit in the theory, from
 functions that help in building root data to functions that help defining
 (inner classes of) real forms. The first of such functions is
-|lietype::involution|, which takes a Lie type and a |lietype::InnerClassType|
+|lietype::involution|, which takes a Lie type and a |InnerClassType|
 (a vector of characters describing the kind of involution wanted) and produces
 a matrix describing the involution, defined on the weight lattice for the
 simply connected group of the given type. That function supposes its arguments
@@ -485,17 +485,17 @@ actions before calling |lietype::involution|. We prefer not to use the
 functions defined in \.{io/interactive\_lietype}, for the same reason we did
 not use |interactive_lietype::checkSimpleLieType| above. Therefore we shall
 first define a testing/transformation routine that takes a string describing
-an inner class, and transforms it into |lietype::InnerClassType| that is
+an inner class, and transforms it into |InnerClassType| that is
 guaranteed to be valid if returned; the routine throws a |runtime_error| in
 case of problems.
 
 @< Local function definitions @>=
-lietype::InnerClassType transform_inner_class_type
-  (const char* s, const lietype::LieType& lt)
+InnerClassType transform_inner_class_type
+  (const char* s, const LieType& lt)
 throw (std::bad_alloc, std::runtime_error)
 { static const std::string types(lietype::innerClassLetters);
     // |"Ccesu"|
-  lietype::InnerClassType result; // initially empty
+  InnerClassType result; // initially empty
   std::istringstream is(s);
   char c;
   size_t i=0; // position in simple factors of Lie type |lt|
@@ -670,12 +670,12 @@ fact only their number is well defined); hence we add the necessary number of
 torus factors at the end.
 
 @< Local fun... @>=
-lietype::LieType type_of_datum(const RootDatum& rd)
+LieType type_of_datum(const RootDatum& rd)
 { int_Matrix Cartan = rd.cartanMatrix();
-@/lietype::LieType t = dynkin::Lie_type(Cartan);
+@/LieType t = dynkin::Lie_type(Cartan);
   if (!rd.isSemisimple())
     for (size_t i=rd.semisimpleRank(); i<rd.rank(); ++i)
-      t.push_back(lietype::SimpleLieType('T',1));
+      t.push_back(SimpleLieType('T',1));
   return t;
 }
 
@@ -1346,8 +1346,8 @@ lietype::Layout check_involution
   roots so obtained, or throw a |runtime_error| if |M| is not an automorphism
   of |rd| @>
 @/lietype::Layout result;
-@/lietype::LieType& type=result.d_type;
-  lietype::InnerClassType& inner_class=result.d_inner;
+@/LieType& type=result.d_type;
+  InnerClassType& inner_class=result.d_inner;
   permutations::Permutation& pi=result.d_perm;
   @< Compute the Lie type |type|, the inner class |inner_class|, and the
      permutation |pi| of the simple roots with respect to standard order for
@@ -1513,7 +1513,7 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
 @< Add type letters and inner class symbols for the central torus @>=
 { for (size_t k=0; k<r-s; ++k)
-    type.push_back(lietype::SimpleLieType('T',1));
+    type.push_back(SimpleLieType('T',1));
   int_Matrix root_lattice
     (rd.beginSimpleRoot(),rd.endSimpleRoot(),r,tags::IteratorTag());
 @/CoeffList factor; // values will be unused
@@ -1741,7 +1741,7 @@ void set_type_wrapper(expression_base::level l)
 { shared_string ict = get<string_value>();
     // and leave generators |gen| and type |lt|
   shared_value lt = *(execution_stack.end()-2);
-  lietype::LieType& type=force<Lie_type_value>(lt.get())->val;
+  LieType& type=force<Lie_type_value>(lt.get())->val;
   lietype::Layout lo(type,transform_inner_class_type(ict->val.c_str(),type));
 @)
   quotient_basis_wrapper(expression_base::single_value); @+
@@ -1817,7 +1817,7 @@ void set_inner_class_wrapper(expression_base::level l)
   lo.d_type = dynkin::Lie_type(rd.cartanMatrix(),true,false,lo.d_perm);
    // get (permuted) type
   for (size_t i=rd.semisimpleRank(); i<rd.rank(); ++i) // if not semisimple
-  { lo.d_type.push_back(lietype::SimpleLieType('T',1)); // add a torus factor
+  { lo.d_type.push_back(SimpleLieType('T',1)); // add a torus factor
     lo.d_perm.push_back(i);
       // and a fixed point of permutation, needed by |lietype::involution|
   }
@@ -2576,7 +2576,7 @@ for this case.
 { *output_stream << "Imaginary root system is ";
   if (si.size()==0) *output_stream<<"empty.\n";
   else
-  { lietype::LieType t = dynkin::Lie_type(cm);
+  { LieType t = dynkin::Lie_type(cm);
 
     *output_stream << "of type " << t << ", with simple root"
               << (si.size()==1 ? " " : "s ");

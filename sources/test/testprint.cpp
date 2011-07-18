@@ -133,7 +133,7 @@ std::ostream& printBlockData(std::ostream& strm,
   const ComplexReductiveGroup& G = CI.complexGroup();
   const RootDatum& rd = G.rootDatum();
 
-  lietype::LieType lt = rd.Lie_type();
+  LieType lt = rd.Lie_type();
 
   strm << std::setw(25) << "" << "Block data"
        << std::endl;

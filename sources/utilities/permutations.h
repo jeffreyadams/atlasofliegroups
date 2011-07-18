@@ -12,6 +12,8 @@
 #ifndef PERMUTATIONS_H  /* guard against multiple inclusions */
 #define PERMUTATIONS_H
 
+#include "permutations_fwd.h"
+
 #include <vector>
 #include <algorithm>
 

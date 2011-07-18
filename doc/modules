@@ -64,12 +64,12 @@ gKmod
   subdatum	a small extension of the SubSystem class, with own Tits group
   bruhat	a class for storing the Hasse diagram of a poset
   kgb		classes for one-sided parameters (elements of K\G/B)
-  descents	header-only module defining |DescentStatus|
+  descents	header-only module defining the |DescentStatus| class
   blocks	classes for two-sided parameters
-  klsupport
-  kl
-  wgraph
-  standardrepk
+  klsupport	a base class for KL computations, streamlining block acces
+  wgraph	a class storing a W graph, and decomposition of it
+  kl		the main KL computation (class KLContext)
+  standardrepk  
   repr
 
 Io

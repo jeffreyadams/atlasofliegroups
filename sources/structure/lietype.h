@@ -113,8 +113,8 @@ struct InnerClassType : public std::vector<TypeLetter>
 
 struct Layout
 {
-  lietype::LieType d_type;
-  lietype::InnerClassType d_inner;
+  LieType d_type;
+  InnerClassType d_inner;
   permutations::Permutation d_perm;
 
 // constructors and destructors
@@ -122,11 +122,11 @@ struct Layout
 
   /* In the old atlas interface, the Lie type is first provided,
      and the inner class type is later added; defaults identity permutation */
-  Layout(const lietype::LieType& lt)
+  Layout(const LieType& lt)
     :d_type(lt),d_inner(),d_perm(lt.rank(),1) {}
 
   /* The inner class can also be added right away, permutation defaults id */
-  Layout(const lietype::LieType& lt, const lietype::InnerClassType ict)
+  Layout(const LieType& lt, const InnerClassType ict)
     :d_type(lt),d_inner(ict),d_perm(lt.rank(),1) {}
 
 
@@ -146,8 +146,8 @@ namespace lietype {
     throw (std::runtime_error,std::bad_alloc);
 
   // permutation matrix for |ict| in simply connected |lt|, Bourbaki order
-  WeightInvolution involution(const lietype::LieType& lt,
-					 const lietype::InnerClassType& ict);
+  WeightInvolution involution(const LieType& lt,
+					 const InnerClassType& ict);
 
   LieType dual_type(LieType lt);
 

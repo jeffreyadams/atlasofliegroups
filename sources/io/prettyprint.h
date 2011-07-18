@@ -73,7 +73,7 @@ std::ostream& printMonomial(std::ostream&, C, polynomials::Degree,
 			    const char*);
 
 template<typename C>
-std::ostream& printPol(std::ostream&, const polynomials::Polynomial<C>&,
+std::ostream& printPol(std::ostream&, const Polynomial<C>&,
 		       const char*);
 
 std::ostream& printRootList(std::ostream&, const RootNbrList&,

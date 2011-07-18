@@ -12,7 +12,6 @@
 
 #include <iosfwd>
 
-#include "kl_fwd.h"
 #include "blocks.h"
 
 namespace atlas {

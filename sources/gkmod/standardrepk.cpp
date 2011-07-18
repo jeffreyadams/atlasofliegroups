@@ -20,23 +20,18 @@ StandardRepK and KhatContext.
 #include <sstream>
 #include <deque>
 
-#include "constants.h"
-#include "arithmetic.h"
-#include "matreduc.h"
 #include "tags.h"
+#include "arithmetic.h" // |abs|
+#include "matreduc.h"	// |adapted_basis|
+#include "polynomials.h"// for $q$-coefficents
 
-#include "cartanclass.h"
-#include "complexredgp.h"
-#include "realredgp.h"
-#include "kgb.h"
-#include "tits.h"
-#include "descents.h"
-#include "lattice.h"
-#include "rootdata.h"
-#include "ioutils.h"
-#include "graph.h"
-#include "basic_io.h"
-#include "prettyprint.h"
+#include "lattice.h"	// |eigen_lattice|
+#include "rootdata.h"	// various methods
+#include "kgb.h"	// associate information with |KGBElt| values
+#include "graph.h"	// |OrientedGraph| used in |triangularize|
+#include "ioutils.h"	// |foldLine| in |KhatContext::go|
+#include "basic_io.h"   // |opeator<<| in |SRK_context::print|
+#include "prettyprint.h"// |printVector| in |SRK_context::print|
 
 namespace atlas {
 
@@ -287,6 +282,8 @@ RawRep SRK_context::Levi_rep
   return RawRep (lambda,a);
 } // |Levi_rep|
 
+StandardRepK SRK_context::KGB_elt_rep(KGBElt z) const
+{ return std_rep(rootDatum().twoRho(),kgb().titsElt(z)); }
 
 
 level
@@ -1848,12 +1845,12 @@ template <typename C>
 }
 
 template
-  matrix::Matrix_base<polynomials::Polynomial<int> > triangularize
+  matrix::Matrix_base<Polynomial<int> > triangularize
     (const std::vector<q_equation>& eq, std::vector<seq_no>& new_order);
 
 template
-  matrix::Matrix_base<polynomials::Polynomial<int> > inverse_lower_triangular
-    (const matrix::Matrix_base<polynomials::Polynomial<int> >& L);
+  matrix::Matrix_base<Polynomial<int> > inverse_lower_triangular
+    (const matrix::Matrix_base<Polynomial<int> >& L);
 
 } // |namespace standardrepk|
 

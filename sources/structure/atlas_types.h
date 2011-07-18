@@ -27,6 +27,7 @@
  */
 
 #include <vector>
+#include <functional> // for |std::less|
 
 #include "constants.h"
 
@@ -34,12 +35,25 @@
 
 namespace atlas {
 
+/* We begin with copying the contents of the *_fwd.h files in the utilities
+   subdirectory. We justify this abject duplication of information by the fact
+   that it avoids opening many very short files many times during
+   compitlation. Any *_fwd.h files in the structure and gkmod subirectories
+   were simply replaced by this file, avoiding duplication, but the utilities
+   modules have the ambition of being reusable independently of the rest of
+   the atlas library. In fact this file should always be included in any atlas
+   header file other than from the utilitites subdierectory, and alway before
+   any header files from that subdirectory, so the definitions here will be
+   the only ones seen when compiling the atlas library.
+ */
   namespace set {
     typedef size_t Elt;
     typedef std::vector<Elt> EltList;
   }
 
-  namespace bitset { template<size_t n> class BitSet; }
+  namespace bitset {
+    template<size_t n> class BitSet;
+  }
   using bitset::BitSet;
   typedef BitSet<constants::RANK_MAX> RankFlags;
   typedef BitSet<2*constants::RANK_MAX> TwoRankFlags;
@@ -60,18 +74,23 @@ namespace atlas {
   namespace ratvec { template<typename C> class RationalVector; }
 
   namespace permutations { struct Permutation; }
+
   namespace partition {
     class Partition;
     class PartitionIterator;
   }
-  namespace poset { class Poset; }
+
+  namespace poset {
+    class Poset;
+    typedef std::pair<set::Elt,set::Elt> Link;
+  }
   using poset::Poset;
 
   namespace hashtable{
     template <class Entry, typename Number> class HashTable;
   }
   namespace free_abelian {
-    template<typename T, typename C, typename Compare>
+    template<typename T, typename C=long int, typename Compare=std::less<T> >
       struct Free_Abelian;
   }
   namespace polynomials {
@@ -79,6 +98,20 @@ namespace atlas {
     template<typename C> class Safe_Poly;
     typedef size_t Degree; // exponent range; not stored.
   }
+  using polynomials::Polynomial;
+// we should now refrain from subsequently reading the original forward files
+#define SET_H
+#define BITSET_FWD_H
+#define BITMAP_FWD_H
+#define ARITHMETIC_FWD_H
+#define MATRIX_FWD_H
+#define RATVEC_FWD_H
+#define PERMUTATIONS_FWD_H
+#define PARTITIONS_FWD_H
+#define POSET_FWD_H
+#define HASHTABLE_FWD_H
+#define FREE_ABELIAN_FWD_H
+#define POLYNOMIALS_FWD_H
 
   // interpetationless terminology
   typedef matrix::Vector<int> int_Vector;
@@ -126,12 +159,14 @@ namespace atlas {
   typedef subquotient::Subquotient<constants::RANK_MAX> SmallSubquotient;
 
   namespace lietype {
-    class SimpleLieType;
-    class LieType;
-    class InnerClassType;
+    struct SimpleLieType;
+    struct LieType;
+    struct InnerClassType;
     struct Layout;
   }
+  using lietype::SimpleLieType;
   using lietype::LieType;
+  using lietype::InnerClassType;
 
   namespace prerootdata { class PreRootDatum; }
   using prerootdata::PreRootDatum;
@@ -275,6 +310,10 @@ namespace atlas {
   typedef std::vector<BlockEltPair> BlockEltPairList;
 
   namespace klsupport { class KLSupport; }
+  namespace wgraph {
+    class WGraph;
+    typedef std::vector<unsigned short> WCoeffList;
+  }
   namespace kl {
     class KLContext;
     typedef unsigned int KLCoeff;
@@ -287,9 +326,30 @@ namespace atlas {
     typedef std::vector<KLIndex> KLRow;
     typedef std::vector<BlockElt> PrimitiveRow;
   }
-  namespace wgraph {
-    class WGraph;
-    typedef std::vector<unsigned short> WCoeffList;
+
+  namespace standardrepk {
+    class StandardRepK;	// standard representation restricted to K
+    typedef std::pair <Weight,RankFlags> HCParam; // free part wrt rho, torsion
+    typedef free_abelian::Free_Abelian<StandardRepK> Char;// linear combination
+    typedef std::pair<StandardRepK,Char> CharForm;
+    typedef std::pair<Weight,TitsElt> RawRep;
+    typedef free_abelian::Free_Abelian<RawRep> RawChar;
+    typedef free_abelian::Free_Abelian<StandardRepK,Polynomial<int> > q_Char;
+    typedef std::pair<StandardRepK,q_Char> q_CharForm;// $q$-$K$-type formula
+    typedef free_abelian::Free_Abelian<RawRep,Polynomial<int> >Raw_q_Char;
+    typedef unsigned int seq_no; // sequence number of stored standard rep|K
+    typedef unsigned int level; // unsigned LatticeCoeff
+    struct Cartan_info;
+    struct bitset_entry;
+    class SRK_context;
+    class graded_compare;// utility class for comparing by degree first
+    class KhatContext;
+    class HechtSchmid;	// Hecht-Schmid identity
+    class PSalgebra;    // parabolic subalgebra
+  }
+  namespace repr {
+    class StandardRepr;	// triple $(x,\lambda,\gamma)$
+    class Rep_context;	// support class for interpreting |StandardRepr;|
   }
 
 } // |namespace atlas|

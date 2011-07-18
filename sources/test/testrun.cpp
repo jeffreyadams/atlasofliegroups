@@ -32,11 +32,11 @@ namespace testrun {
 
 namespace {
 
-  lietype::LieType first_type(Category, size_t, bool& done);
-  bool is_last(const lietype::SimpleLieType& slt, Category c);
-  bool is_last_of_rank(const lietype::SimpleLieType&);
-  bool advance_type(lietype::LieType&, Category);
-  void advance_type(lietype::SimpleLieType&, Category);
+  LieType first_type(Category, size_t, bool& done);
+  bool is_last(const SimpleLieType& slt, Category c);
+  bool is_last_of_rank(const SimpleLieType&);
+  bool advance_type(LieType&, Category);
+  void advance_type(SimpleLieType&, Category);
 
   abelian::GrpNbr quotGenerator(const abelian::FiniteAbelianGroup&,
 				const BitMap&,
@@ -101,9 +101,9 @@ namespace {
   This function puts in lt the first type of rank c in category c. If there
   is no valid type of rank |r|, sets |done=true| and irrelevant return value.
 */
-lietype::LieType first_type(Category c, size_t r, bool& done)
+LieType first_type(Category c, size_t r, bool& done)
 {
-  lietype::LieType result;
+  LieType result;
   if (r>constants::RANK_MAX)
     done = true;
   else
@@ -114,21 +114,21 @@ lietype::LieType first_type(Category c, size_t r, bool& done)
       if (r==0)
 	done=true;
       else
-	result.push_back(lietype::SimpleLieType('A',r));
+	result.push_back(SimpleLieType('A',r));
     break;
     case Complex:
       if (r%2!=0)
         done=true; // no Complex types in odd rank
       else if (r>0)
       {
-	result.push_back(lietype::SimpleLieType('A',r/2));
-	result.push_back(lietype::SimpleLieType('A',r/2));
+	result.push_back(SimpleLieType('A',r/2));
+	result.push_back(SimpleLieType('A',r/2));
       }
       // else empty type will do fine
       break;
     default: // reductive types, isogeny and inner class ignored here
       if (r>0)
-	result.push_back(lietype::SimpleLieType('A',r)); // comes before tori
+	result.push_back(SimpleLieType('A',r)); // comes before tori
       // else return empty type
       break;
     }
@@ -152,7 +152,7 @@ lietype::LieType first_type(Category c, size_t r, bool& done)
 
   Note that in this ordering the last shape will have r factors of rank 1
 */
-bool advance_type(lietype::LieType& s, Category c)
+bool advance_type(LieType& s, Category c)
 {
   if (s.rank()==0 or is_last(s[0],c))
     return false; // detect and exclude terminating cases immediately
@@ -174,7 +174,7 @@ bool advance_type(lietype::LieType& s, Category c)
   }
 
   if (sum>0)
-    s.push_back(lietype::SimpleLieType('A',sum));
+    s.push_back(SimpleLieType('A',sum));
 
   return true;
 }
@@ -182,7 +182,7 @@ bool advance_type(lietype::LieType& s, Category c)
 
 
 // last "simple" type in ordering used: 'A1', or 'T1' if valid for |c|
-bool is_last(const lietype::SimpleLieType& slt,Category c)
+bool is_last(const SimpleLieType& slt,Category c)
 {
   switch(c)
   {
@@ -201,14 +201,14 @@ lietype::TypeLetter last_simple(size_t r)
 }
 
 // advance simple type; precondition: |not is_last(slt,c)|
-void advance_type(lietype::SimpleLieType& slt,Category c)
+void advance_type(SimpleLieType& slt,Category c)
 {
   size_t r = slt.rank();
   if (slt.type()=='T')
-    slt = lietype::SimpleLieType('A',r-1);
+    slt = SimpleLieType('A',r-1);
   else if (slt.type()==last_simple(r))
     if (c<=Semisimple)
-      slt = lietype::SimpleLieType('A',r-1);
+      slt = SimpleLieType('A',r-1);
     else slt.type() = 'T';
   else if (unsigned(slt.type())<'A'-1+r)
     slt.type()++;
@@ -342,7 +342,7 @@ namespace testrun {
   Constructs the CoveringIterator for which the base group is the product
   of the torus and the simply connected semisimple group.
 */
-CoveringIterator::CoveringIterator(const lietype::LieType& lt)
+CoveringIterator::CoveringIterator(const LieType& lt)
   : d_lieType(lt)
   , d_dcenter(NULL)
   , d_rank(lt.rank())

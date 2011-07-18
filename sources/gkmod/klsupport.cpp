@@ -17,10 +17,6 @@
 
 #include "klsupport.h"
 
-#include "blocks.h"
-#include "descents.h"
-#include "atlas_types.h"
-
 /*
   After some hesitation, I think I _am_ going to assume that the block has
   been sorted by length and root datum involution, and then by R-packet.

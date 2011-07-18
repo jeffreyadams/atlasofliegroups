@@ -28,10 +28,10 @@ namespace atlas {
 namespace {
 
   std::ostream& printComplexType(std::ostream&,
-				 const lietype::SimpleLieType&);
+				 const SimpleLieType&);
 
   std::ostream& printSimpleType(std::ostream&, const Grading&,
-				const lietype::SimpleLieType&,
+				const SimpleLieType&,
 				lietype::TypeLetter);
 
   std::ostream& printType(std::ostream& out,
@@ -243,7 +243,7 @@ bool operator< (const RealFormData& first, const RealFormData& second)
   Synopsis: prints out the complex form of slt.
 */
 std::ostream& printComplexType(std::ostream& strm,
-			       const lietype::SimpleLieType& slt)
+			       const SimpleLieType& slt)
 {
   size_t rk = slt.rank();
   switch (slt.type())
@@ -316,7 +316,7 @@ inline std::ostream& split(std::ostream& s,size_t n,size_t m)
   is whether |gr| is trivial (sl(n,H)) or not, which is easy enough to decide.
 */
 std::ostream& printSimpleType(std::ostream& strm, const Grading& gr,
-			      const lietype::SimpleLieType& slt,
+			      const SimpleLieType& slt,
 			      const lietype::TypeLetter ic)
 {
   size_t rk = slt.rank();
@@ -413,8 +413,8 @@ std::ostream& printType(std::ostream& strm,
 			const Grading& d_gr,
 			const lietype::Layout& lo)
 {
-  const lietype::LieType& lt=lo.d_type;
-  const lietype::InnerClassType& ict=lo.d_inner;
+  const LieType& lt=lo.d_type;
+  const InnerClassType& ict=lo.d_inner;
 
   // adapt grading to standard ordering of type |lt|
   Grading gr = lo.d_perm.pull_back(d_gr);
@@ -423,7 +423,7 @@ std::ostream& printType(std::ostream& strm,
 
   for (size_t j = 0; j<ict.size(); gr>>=lt[i].semisimple_rank(),++i,++j)
   {
-    lietype::SimpleLieType slt = lt[i];
+    SimpleLieType slt = lt[i];
     if (ict[j] == 'C')
     {
       printComplexType(strm,slt);

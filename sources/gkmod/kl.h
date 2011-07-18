@@ -17,14 +17,10 @@ Class definitions and function declarations for the class KLContext.
 
 #include <limits>
 
-#include "kl_fwd.h"
-
 #include "atlas_types.h"
 
-#include "bitset.h"
-#include "klsupport.h"
-#include "polynomials.h"
-#include "wgraph.h"
+#include "klsupport.h"	// containment
+#include "polynomials.h"// containment
 
 namespace atlas {
 

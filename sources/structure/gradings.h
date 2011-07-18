@@ -15,7 +15,7 @@
 #define GRADINGS_H
 
 
-#include <functional>
+#include <functional> // base class |std::binary_function| for |GradingCompare|
 
 #include "atlas_types.h"
 
@@ -53,7 +53,7 @@ namespace gradings {
 
 class Status
 {
-  bitset::TwoRankFlags d_flags;
+  TwoRankFlags d_flags;
 
  public:
 
@@ -111,14 +111,14 @@ class Status
   void set(size_t j, Value v)
   {
     unsigned long a = v;
-    bitset::TwoRankFlags b(a);
+    TwoRankFlags b(a);
     b <<= 2*j;
     d_flags |= b;
   }
 
   void set_imaginary(size_t j, bool grading)
   {
-    bitset::TwoRankFlags b(grading ? ImaginaryNoncompact : ImaginaryCompact);
+    TwoRankFlags b(grading ? ImaginaryNoncompact : ImaginaryCompact);
     b <<= 2*j;
     d_flags |= b;
   }

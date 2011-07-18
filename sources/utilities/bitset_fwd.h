@@ -26,10 +26,6 @@ namespace bitset {
 
   template<size_t n> class BitSet;
 
-  typedef BitSet<constants::RANK_MAX> RankFlags;
-  typedef BitSet<2*constants::RANK_MAX> TwoRankFlags;
-  typedef std::vector<RankFlags> RankFlagsList;
-
 }
 
 }

@@ -49,14 +49,14 @@ namespace interactive {
 
   size_t get_Cartan_class(const BitMap& cs) throw(error::InputError);
 
-  void getInteractive(lietype::LieType&) throw(error::InputError);
+  void getInteractive(LieType&) throw(error::InputError);
 
-  void getInteractive(lietype::InnerClassType&, const lietype::LieType&)
+  void getInteractive(InnerClassType&, const LieType&)
     throw(error::InputError);
 
   void getInteractive(PreRootDatum&,
 		      WeightList&,
-		      const lietype::LieType&) throw(error::InputError);
+		      const LieType&) throw(error::InputError);
 
   void getInteractive(RealFormNbr&, const complexredgp_io::Interface&)
     throw(error::InputError);

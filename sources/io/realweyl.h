@@ -50,12 +50,12 @@ class RealWeyl {
   SmallBitVectorList d_realR;
   RootNbrList d_real;
   RootNbrList d_complex;
-  lietype::LieType d_complexType;
-  lietype::LieType d_imaginaryType;
-  lietype::LieType d_imaginaryCompactType;
+  LieType d_complexType;
+  LieType d_imaginaryType;
+  LieType d_imaginaryCompactType;
   RootNbrList d_realOrth;
-  lietype::LieType d_realType;
-  lietype::LieType d_realCompactType;
+  LieType d_realType;
+  LieType d_realCompactType;
 
  public:
 
@@ -76,7 +76,7 @@ class RealWeyl {
     return d_complex[j];
   }
 
-  const lietype::LieType& complexType() const {
+  const LieType& complexType() const {
     return d_complexType;
   }
 
@@ -96,7 +96,7 @@ class RealWeyl {
     return d_imaginaryCompact[j];
   }
 
-  const lietype::LieType& imaginaryCompactType() const {
+  const LieType& imaginaryCompactType() const {
     return d_imaginaryCompactType;
   }
 
@@ -108,7 +108,7 @@ class RealWeyl {
     return d_imaginaryR;
   }
 
-  const lietype::LieType& imaginaryType() const {
+  const LieType& imaginaryType() const {
     return d_imaginaryType;
   }
 
@@ -160,7 +160,7 @@ class RealWeyl {
     return d_realCompact[j];
   }
 
-  const lietype::LieType& realCompactType() const {
+  const LieType& realCompactType() const {
     return d_realCompactType;
   }
 
@@ -176,7 +176,7 @@ class RealWeyl {
     return d_realR[j];
   }
 
-  const lietype::LieType& realType() const {
+  const LieType& realType() const {
     return d_realType;
   }
 

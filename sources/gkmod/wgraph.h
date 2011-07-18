@@ -12,9 +12,9 @@
 
 #include <iostream>
 
-#include "bitset.h"
-#include "graph.h"
-#include "partition.h"
+#include "bitset.h"	// inlines
+#include "graph.h"	// containment
+
 #include "atlas_types.h"
 
 namespace atlas {

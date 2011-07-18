@@ -462,8 +462,8 @@ bool checkRank(const TypeLetter& x, size_t l)
 WeightInvolution involution(const Layout& lo)
   throw (std::runtime_error,std::bad_alloc)
 {
-  const lietype::LieType& lt = lo.d_type;
-  const lietype::InnerClassType& ic = lo.d_inner;
+  const LieType& lt = lo.d_type;
+  const InnerClassType& ic = lo.d_inner;
   const permutations::Permutation& pi = lo.d_perm;
 
   WeightInvolution result(lt.rank(),lt.rank(),0);
@@ -536,8 +536,8 @@ WeightInvolution involution(const Layout& lo)
   return result;
 }
 
-WeightInvolution involution(const lietype::LieType& lt,
-				       const lietype::InnerClassType& ict)
+WeightInvolution involution(const LieType& lt,
+				       const InnerClassType& ict)
 { return involution(Layout(lt,ict)); // default to identity permutation
 }
 

@@ -22,7 +22,6 @@
 #ifndef PREROOTDATA_H  /* guard against multiple inclusions */
 #define PREROOTDATA_H
 
-#include "lietype.h"
 #include "atlas_types.h"
 
 namespace atlas {
@@ -74,7 +73,7 @@ class PreRootDatum
 	       size_t rank)
     : d_roots(roots),d_coroots(coroots), d_rank(rank) {}
 
-  PreRootDatum(const lietype::LieType& lt, const WeightList&);
+  PreRootDatum(const LieType& lt, const WeightList&);
 
   ~PreRootDatum() {}
 

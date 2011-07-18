@@ -121,11 +121,11 @@ class RootSystem
   int cartan(weyl::Generator i, weyl::Generator j) const
   { return Cartan_entry(i,j); };
   int_Matrix cartanMatrix() const;
-  lietype::LieType Lie_type() const;
+  LieType Lie_type() const;
 
   // for subsystem
   int_Matrix cartanMatrix(const RootNbrList& sub) const;
-  lietype::LieType Lie_type(RootNbrList sub) const;
+  LieType Lie_type(RootNbrList sub) const;
 
 
 

@@ -40,6 +40,8 @@
 #include <set>
 
 #include "arithmetic.h"
+
+#include "lietype.h"	// value returned from |LieType| method
 #include "dynkin.h"
 #include "lattice.h"
 #include "bitmap.h"  // for root sets
@@ -408,10 +410,10 @@ int_Matrix RootSystem::cartanMatrix(const RootNbrList& rb) const
   return result;
 }
 
-lietype::LieType RootSystem::Lie_type() const
+LieType RootSystem::Lie_type() const
 { return dynkin::Lie_type(cartanMatrix()); }
 
-lietype::LieType RootSystem::Lie_type(RootNbrList sub) const
+LieType RootSystem::Lie_type(RootNbrList sub) const
 { return dynkin::Lie_type(cartanMatrix(sub)); }
 
 int

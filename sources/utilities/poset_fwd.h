@@ -23,7 +23,6 @@ namespace poset {
   class Poset;
   typedef std::pair<set::Elt,set::Elt> Link;
 
-  class SymmetricPoset;
 }
 
 }

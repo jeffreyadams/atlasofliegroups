@@ -37,17 +37,14 @@
 #endif
 
 #include <cassert>
+#include <set>
 #include <map>
 #include <stack>
 #include <stdexcept>
 
-#include "bitmap.h"
-#include "basic_io.h"
-#include "blocks.h"
-#include "error.h"
 #include "hashtable.h"
 #include "kl_error.h"
-#include "prettyprint.h"
+#include "wgraph.h"	// for the |wGraph| function
 
 /*
   [Fokko's original description, which referred to a slighly older

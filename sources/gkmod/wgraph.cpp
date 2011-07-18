@@ -8,13 +8,12 @@
 */
 
 #include "wgraph.h"
-#include "filekl_in.h"
-#include "bitset.h"
-#include "blocks.h"
 
 #include <memory>
 #include <algorithm>
 #include <iostream>
+
+#include "filekl_in.h"	// for alternative |wGraph| function
 
 namespace atlas {
 

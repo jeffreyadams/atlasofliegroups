@@ -18,6 +18,8 @@ acting on elements of order 2 in a torus.
 #ifndef PARTITION_H  /* guard against multiple inclusions */
 #define PARTITION_H
 
+#include "partition_fwd.h"
+
 #include <functional>
 #include <vector>
 

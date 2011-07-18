@@ -23,67 +23,32 @@ StandardRepK and KhatContext.
 
 #include "atlas_types.h"
 
-#include "bitset.h"
-#include "realredgp.h"
-#include "tits.h"
-#include "kgb.h"
-#include "hashtable.h"
-#include "free_abelian.h"
-#include "polynomials.h"
-#include "complexredgp.h"	// inlines
+#include "complexredgp.h"// inlines
+#include "realredgp.h"	// numerous inline methods
+#include "hashtable.h"	// containment
+#include "free_abelian.h"// containment and use via |Char|
+
 
 namespace atlas {
-
-
 
 /******** type declarations  and typedefs ************************************/
 
 namespace standardrepk {
 
-class graded_compare;
-class StandardRepK;
-class HechtSchmid;
-class PSalgebra;
 
-// An image of a weight of the $\rho$-cover mod $(1-\theta)X^*$
-typedef std::pair
-  <Weight, // free part, after subtraction of rho
-   RankFlags         // torsion part, compact representation
-  > HCParam;
+// type |HCParam|: image of a weight of the $\rho$-cover mod $(1-\theta)X^*$
 
-// a linear combination of |StandardRepK|s
-typedef free_abelian::Free_Abelian<StandardRepK> Char;
+// the following cannot be in atlas_fwd.h: they need free_abelian.h
 typedef Char::coef_t CharCoeff;
+typedef q_Char::coef_t q_CharCoeff; // i.e., |Polynomial<int>|
 
-// a $K$-type formula; first component stands for its lowest $K$-type
-typedef std::pair<StandardRepK,Char> CharForm;
-
-typedef std::pair<Weight,TitsElt> RawRep;
-typedef free_abelian::Free_Abelian<RawRep> RawChar;
-
-
-typedef free_abelian::Free_Abelian<StandardRepK,polynomials::Polynomial<int> >
-  q_Char;
-typedef q_Char::coef_t q_CharCoeff; // i.e., |polynomials::Polynomial<int>|
-
-// a $q$-$K$-type formula; first component stands for its lowest $K$-type
-typedef std::pair<StandardRepK,q_Char> q_CharForm;
-
-typedef free_abelian::Free_Abelian<RawRep,polynomials::Polynomial<int> >
-  Raw_q_Char;
-
-
-typedef unsigned int seq_no;
-typedef unsigned int level; // unsigned LatticeCoeff
-
+// remaining definitions could be in atlas_types.h, but seem module-specific
 
 typedef free_abelian::Free_Abelian<seq_no,long int,graded_compare> combination;
 typedef std::pair<seq_no,combination> equation;
 
 typedef free_abelian::Free_Abelian<seq_no,q_CharCoeff,graded_compare> q_combin;
 typedef std::pair<seq_no,q_combin> q_equation;
-
-
 
 
 /******** function declarations *********************************************/
@@ -357,8 +322,7 @@ class SRK_context
 
 
   // RepK from KGB number only, with |lambda=rho|; method is currently unused
-  StandardRepK KGB_elt_rep(KGBElt z) const
-  { return std_rep(rootDatum().twoRho(),kgb().titsElt(z)); }
+  StandardRepK KGB_elt_rep(KGBElt z) const;
 
 /*
   The conditions below are defined by

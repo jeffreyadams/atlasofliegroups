@@ -29,10 +29,10 @@ namespace {
 
   permutations::Permutation componentOrder
     (const RankFlagsList& components, size_t rank);
-  lietype::LieType componentNormalize
+  LieType componentNormalize
     (permutations::Permutation&, const RankFlagsList&,
      const DynkinDiagram&, bool Bourbaki);
-  lietype::SimpleLieType
+  SimpleLieType
     irreducibleNormalize(permutations::Permutation&,
 			 const DynkinDiagram& d, bool Bourbaki);
   lietype::TypeLetter irreducibleType(const DynkinDiagram&);
@@ -277,18 +277,18 @@ permutations::Permutation normalize(const DynkinDiagram& d)
 /*!
   Returns the (semisimple) Lie type of the Cartan matrix cm.
 */
-lietype::LieType Lie_type(const int_Matrix& cm)
+LieType Lie_type(const int_Matrix& cm)
 {
 
   DynkinDiagram d(cm);
   RankFlagsList cl = components(d);
 
-  lietype::LieType result;
+  LieType result;
   result.reserve(cl.size());
   for (size_t i = 0; i < cl.size(); ++i)
   {
     DynkinDiagram cd(cl[i],d);
-    result.push_back(lietype::SimpleLieType(irreducibleType(cd),cd.rank()));
+    result.push_back(SimpleLieType(irreducibleType(cd),cd.rank()));
   }
 
   return result;
@@ -304,7 +304,7 @@ lietype::LieType Lie_type(const int_Matrix& cm)
   complete test is made of all entries in |cm|, throwing a |runtime_error| if
   it fails to be a valid Cartan matrix.
 */
-lietype::LieType Lie_type(const int_Matrix& cm,
+LieType Lie_type(const int_Matrix& cm,
 			  bool Bourbaki, bool check,
 			  permutations::Permutation& pi)
 {
@@ -321,13 +321,13 @@ lietype::LieType Lie_type(const int_Matrix& cm,
 
   // do the normalization as in normalize
   pi = componentOrder(cl,d.rank());
-  lietype::LieType result = componentNormalize(pi,cl,d,Bourbaki);
+  LieType result = componentNormalize(pi,cl,d,Bourbaki);
 
   if (check)
   {
    for (size_t i=0; i<result.size(); ++i)
     {
-      lietype::SimpleLieType slt=result[i];
+      SimpleLieType slt=result[i];
       if ((slt.type()=='E' and slt.rank()>8) or
 	  (slt.type()=='F' and slt.rank()>4) or
 	  (slt.type()=='G' and slt.rank()>2))
@@ -405,14 +405,14 @@ permutations::Permutation componentOrder(const RankFlagsList& cl, size_t r)
 
   The detected semisimple Lie type is returned.
 */
-lietype::LieType componentNormalize(permutations::Permutation& a,
+LieType componentNormalize(permutations::Permutation& a,
 				    const RankFlagsList& cl,
 				    const DynkinDiagram& d,
 				    bool Bourbaki)
 {
   size_t offset = 0;
 
-  lietype::LieType result; result.reserve(cl.size());
+  LieType result; result.reserve(cl.size());
   for (size_t i = 0; i < cl.size(); ++i) {
 
     // make a Dynkin diagram for the component
@@ -441,7 +441,7 @@ lietype::LieType componentNormalize(permutations::Permutation& a,
   It is essentially a dispatching function for the various possible simple
   types.
 */
-lietype::SimpleLieType
+SimpleLieType
 irreducibleNormalize(permutations::Permutation& a,
 		     const DynkinDiagram& d,
 		     bool Bourbaki)
@@ -476,7 +476,7 @@ irreducibleNormalize(permutations::Permutation& a,
     assert(false && "unexpected type in irreducibleNormalize");
     break;
   }
-  return lietype::SimpleLieType(x,d.rank());
+  return SimpleLieType(x,d.rank());
 }
 
 

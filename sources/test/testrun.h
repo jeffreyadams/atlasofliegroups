@@ -87,7 +87,7 @@ class LieTypeIterator {
 
   bool d_done;
   Category d_category;
-  lietype::LieType d_type;
+  LieType d_type;
   size_t d_firstRank;
   size_t d_lastRank;
 
@@ -95,7 +95,7 @@ class LieTypeIterator {
 
 // associated types
   typedef std::forward_iterator_tag iterator_category;
-  typedef lietype::LieType value_type;
+  typedef LieType value_type;
   typedef const value_type* pointer;
   typedef const value_type& reference;
 
@@ -279,7 +279,7 @@ class CoveringIterator {
 
  private:
 
-  lietype::LieType d_lieType;
+  LieType d_lieType;
   abelian::FiniteAbelianGroup* d_dcenter;
   size_t d_rank;
   size_t d_semisimpleRank;
@@ -312,7 +312,7 @@ class CoveringIterator {
 // constructors and destructors
   CoveringIterator() {}
 
-  explicit CoveringIterator(const lietype::LieType&);
+  explicit CoveringIterator(const LieType&);
 
   virtual ~CoveringIterator();
 

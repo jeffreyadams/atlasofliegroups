@@ -28,7 +28,7 @@ namespace atlas {
 namespace weylsize {
 
   size::Size weylSize(const LieType&);
-  size::Size weylSize(const lietype::SimpleLieType&);
+  size::Size weylSize(const SimpleLieType&);
 
 }
 

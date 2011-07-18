@@ -253,9 +253,9 @@ WeightInvolution
 getInnerClass(lietype::Layout& lo, const WeightList& basis)
   throw(error::InputError)
 {
-  const lietype::LieType& lt = lo.d_type;
+  const LieType& lt = lo.d_type;
 
-  lietype::InnerClassType ict;
+  InnerClassType ict;
   getInteractive(ict,lt); //< may throw an InputError
 
   WeightInvolution i = lietype::involution(lt,ict);
@@ -280,7 +280,7 @@ getInnerClass(lietype::Layout& lo, const WeightList& basis)
   Throws an InputError is the interaction does not end in a correct assignment
   of lt. Does not touch lt unless the assignment succeeds.
 */
-void getInteractive(lietype::LieType& d_lt) throw(error::InputError)
+void getInteractive(LieType& d_lt) throw(error::InputError)
 {
   type_input_buffer.getline(std::cin,"Lie type: ");
 
@@ -298,7 +298,7 @@ void getInteractive(lietype::LieType& d_lt) throw(error::InputError)
   inputBuf.str(type_input_buffer.str());
   inputBuf.reset();
 
-  lietype::LieType lt;
+  LieType lt;
   interactive_lietype::readLieType(lt,inputBuf);
   d_lt.swap(lt);
 }
@@ -310,7 +310,7 @@ void getInteractive(lietype::LieType& d_lt) throw(error::InputError)
   Throws an InputError is the interaction does not end in a correct assignment
   of ict. Does not touch ict unless the assignment succeeds.
 */
-void getInteractive(lietype::InnerClassType& ict, const lietype::LieType& lt)
+void getInteractive(InnerClassType& ict, const LieType& lt)
   throw(error::InputError)
 {
   if (interactive_lietype::checkInnerClass(inputBuf,lt,false))
@@ -345,7 +345,7 @@ void getInteractive(lietype::InnerClassType& ict, const lietype::LieType& lt)
 */
 void getInteractive(PreRootDatum& d_prd,
 		    WeightList& d_b,
-		    const lietype::LieType& lt)
+		    const LieType& lt)
   throw(error::InputError)
 
 {
@@ -365,7 +365,7 @@ void getInteractive(PreRootDatum& d_prd,
       matrix::initBasis(d_b,lt.rank()); // initially standard basis
       WeightList::iterator bp = d_b.begin();
 
-      for (lietype::LieType::const_iterator it=lt.begin(); it!=lt.end(); ++it)
+      for (LieType::const_iterator it=lt.begin(); it!=lt.end(); ++it)
       {
 	size_t r = it->rank();
 	if (it->type() == 'T') // torus type T_r
@@ -533,7 +533,7 @@ RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
     throw(error::InputError)
 {
   // first get the Lie type
-  lietype::LieType lt; getInteractive(lt);  // may throw an InputError
+  LieType lt; getInteractive(lt);  // may throw an InputError
 
   // then get kernel generators to define the (pre-) root datum
   WeightList b; PreRootDatum prd;

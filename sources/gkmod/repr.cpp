@@ -8,9 +8,12 @@
 */
 
 #include "repr.h"
-#include "standardrepk.h"
+
 #include "tits.h"
-#include "blocks.h"
+
+#include "kgb.h"	// various methods
+#include "blocks.h"	// |dual_involution|
+#include "standardrepk.h"// |KhatContext| methods
 
 namespace atlas {
   namespace repr {
@@ -18,6 +21,9 @@ namespace atlas {
 Rep_context::Rep_context(RealReductiveGroup &G_R)
   : G(G_R), KGB_set(G_R.kgb())
 {}
+
+const TwistedInvolution Rep_context::twistedInvolution(size_t cn) const
+{ return complexGroup().twistedInvolution(cn); }
 
 StandardRepr
   Rep_context::sr

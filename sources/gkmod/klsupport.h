@@ -14,14 +14,11 @@
 #ifndef KLSUPPORT_H  /* guard against multiple inclusions */
 #define KLSUPPORT_H
 
-#include "klsupport_fwd.h"
 
-#include "bitmap.h"
-#include "bitset.h"
+#include "bitset.h"	// containment
 
 #include "atlas_types.h"
-#include "blocks.h"
-#include "descents.h"
+#include "blocks.h"	// inlining of methods like |cross| and |cayley|
 
 namespace atlas {
 

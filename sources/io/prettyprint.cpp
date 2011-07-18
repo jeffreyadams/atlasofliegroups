@@ -317,7 +317,7 @@ std::ostream& printMonomial(std::ostream& strm, C c, polynomials::Degree d,
 
 */
 template<typename C>
-std::ostream& printPol(std::ostream& strm, const polynomials::Polynomial<C>& p,
+std::ostream& printPol(std::ostream& strm, const Polynomial<C>& p,
 		       const char* x)
 {
   std::ostringstream o; // accumulate in string for interpretation of width
@@ -459,17 +459,17 @@ template std::ostream& printMatrix // in |printBlockSizes|: |unsigned long|
 
 template std::ostream& printMatrix
   (std::ostream&,
-   const matrix::Matrix_base<polynomials::Polynomial<int> >&,
+   const matrix::Matrix_base<Polynomial<int> >&,
    unsigned long);
 
 template std::ostream& printMonomial
   (std::ostream&, int, polynomials::Degree, const char*);
 
 template std::ostream& printPol
-  (std::ostream&, const polynomials::Polynomial<unsigned int>&, const char*);
+  (std::ostream&, const Polynomial<unsigned int>&, const char*);
 
 template std::ostream& printPol
-  (std::ostream&, const polynomials::Polynomial<int>&, const char*);
+  (std::ostream&, const Polynomial<int>&, const char*);
 
 } // namespace prettyprint
 

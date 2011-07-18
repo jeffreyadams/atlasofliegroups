@@ -29,9 +29,9 @@ namespace atlas {
 
 namespace {
 
-  WeightList rootBasis(const lietype::LieType& lt,
+  WeightList rootBasis(const LieType& lt,
 		       const WeightList&);
-  CoweightList corootBasis(const lietype::LieType& lt,
+  CoweightList corootBasis(const LieType& lt,
 			   const CoweightList& lb);
 
 }
@@ -71,7 +71,7 @@ The constructor puts in |d_roots| the list of simple roots expressed in the
 basis |b|, and in |d_coroots| the list of simple coroots expressed in the
 dual basis.
 */
-PreRootDatum::PreRootDatum(const lietype::LieType& lt,
+PreRootDatum::PreRootDatum(const LieType& lt,
 			   const WeightList& b)
 : d_roots(rootBasis(lt,b)), d_coroots(corootBasis(lt,b)), d_rank(lt.rank())
 {}
@@ -138,7 +138,7 @@ namespace {
   This function returns the coordinates of the simple root basis in |lb|, so
   it is simply a base change by left multiplication by the inverse of |lb|.
 */
-WeightList rootBasis(const lietype::LieType& lt,
+WeightList rootBasis(const LieType& lt,
 				   const WeightList& lb)
 {
   assert(lb.size()==lt.rank());
@@ -178,7 +178,7 @@ WeightList rootBasis(const lietype::LieType& lt,
   from the transposed matrix the columns representing vectors in the radical;
   this is what |lt| is used for. In fact we avoid transposition, copying rows.
 */
-CoweightList corootBasis(const lietype::LieType& lt,
+CoweightList corootBasis(const LieType& lt,
 			 const WeightList& lb)
 {
   assert(lb.size()==lt.rank());

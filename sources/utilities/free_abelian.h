@@ -14,7 +14,11 @@
 #ifndef FREE_ABELIAN_H  /* guard against multiple inclusions */
 #define FREE_ABELIAN_H
 
+#include "free_abelian_fwd.h"
+
 namespace atlas {
+
+namespace free_abelian {
 
 
 /******** type declarations **************************************************/
@@ -22,17 +26,11 @@ namespace atlas {
 
 /******** function declarations **********************************************/
 
-namespace free_abelian {
-
-}
-
 /******** type definitions ***************************************************/
-
-namespace free_abelian {
 
 // A class that represents an element of the free abelian group on the set T
 // in fact, taking |C=polynomials::polynomial<int>| gives $q$-multiplicities
-template<typename T, typename C=long int, typename Compare=std::less<T> >
+template<typename T, typename C, typename Compare>
 struct Free_Abelian : public std::map<T,C,Compare>
 {
   typedef C coef_t;
