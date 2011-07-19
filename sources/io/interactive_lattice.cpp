@@ -12,15 +12,15 @@
 #include <iostream>
 #include <sstream>
 #include <cstdio>
+#include <cassert>
 
-#include "arithmetic.h"
-#include "input.h"
-#include "interactive.h"
-#include "lattice.h"
-#include "ioutils.h"
-#include "matreduc.h"
-#include "prerootdata.h"
-#include "topology.h"
+#include "arithmetic.h" // |lcm|
+#include "ratvec.h"	// |RatWeight|
+#include "interactive.h" // |common_input| variable
+
+#include "matreduc.h"	// |diagonalise|
+
+#include "input.h" // input and history buffers
 
 /*****************************************************************************
 
@@ -39,14 +39,13 @@ namespace {
 				LatticeCoeff& d,
 				const CoeffList& u);
 
-  int_Matrix makeOrthogonal
-    (const RatWeightList& rwl, size_t r);
+  int_Matrix makeOrthogonal (const RatWeightList& rwl, size_t r);
 
   std::ostream& printCenter(std::ostream&, const CoeffList&);
 
   RatWeight readGenerator(size_t n_gen,
-					LatticeCoeff d,
-					input::InputBuffer& buf);
+			  LatticeCoeff d,
+			  input::InputBuffer& buf);
 
   input::HistoryBuffer kernelgen_input_buffer;
 }

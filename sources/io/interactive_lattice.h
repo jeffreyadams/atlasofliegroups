@@ -12,7 +12,7 @@
 
 
 #include "error.h"
-#include "lietype.h"
+#include "atlas_types.h"
 
 /******** function declarations **********************************************/
 

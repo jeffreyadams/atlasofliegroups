@@ -41,8 +41,8 @@ WGraph wGraph
 
 namespace wgraph {
 
-class WGraph {
-
+class WGraph
+{
   size_t d_rank;
   graph::OrientedGraph d_graph;
   std::vector<WCoeffList> d_coeff;
@@ -101,10 +101,10 @@ class WGraph {
   void reset();
 
   void resize(size_t);
-};
+}; // |class WGraph|
 
-class DecomposedWGraph {
-
+class DecomposedWGraph
+{
   typedef unsigned int cell_no;
 
   std::vector<WGraph> d_cell; // the strong components
@@ -137,7 +137,7 @@ class DecomposedWGraph {
   const std::vector<BlockElt>& cellMembers(size_t c) const
     { return d_id[c]; }
 
-};
+}; // |class DecomposedWGraph|
 
 } // namespace wgraph
 

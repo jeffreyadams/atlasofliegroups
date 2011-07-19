@@ -1533,11 +1533,12 @@ block), and extract the bottom-right $(r-s)\times(r-s)$ block.
 
 @*2 Storing the inner class values.
 Although abstractly an inner class value is described completely by an object
-of type |ComplexReductiveGroup|, we shall need to record
-additional information in order to be able to present meaningful names for the
-real forms and dual real forms in this inner class. The above analysis of
-involutions was necessary in order to obtain such information; it will be
-recorded in values of type |realform_io::Interface|.
+of type |ComplexReductiveGroup|, we shall need to record additional
+information in order to be able to present meaningful names for the real forms
+and dual real forms in this inner class. The above analysis of involutions was
+necessary in order to obtain such information; it will be recorded in values
+of type |realform_io::Interface|.
+
 @< Includes... @>=
 #include "realform_io.h"
 

@@ -13,22 +13,18 @@
 
 #include "realredgp_io.h"
 
-#include "arithmetic.h"
-#include "basic_io.h"
-#include "bitmap.h"
-#include "cartan_io.h"
-#include "cartanclass.h"
+#include "arithmetic.h"	// |remainder|
+#include "basic_io.h"	// |seqPrint|
+#include "cartan_io.h"// |printcartanClass|
 #include "complexredgp.h"
-#include "complexredgp_io.h"
-#include "graph.h"
-#include "ioutils.h"
+#include "complexredgp_io.h" // use of its |Interface| class
+#include "graph.h"	// |OrientedGraph|
+#include "ioutils.h"	// |foldLine|
 #include "partition.h"
 #include "poset.h"
 #include "realredgp.h"
-#include "realweyl.h"
-#include "realweyl_io.h"
-#include "rootdata.h"
-#include "size.h"
+#include "realweyl.h"	// |RealWeyl| class
+#include "realweyl_io.h" // |printBlockStabilizer|
 
 namespace atlas {
 

@@ -14,14 +14,9 @@
 #include <sstream>
 #include <string>
 
-#include "cartanclass.h"
-#include "complexredgp.h"
-#include "complexredgp_io.h"
-#include "gradings.h"
-#include "lietype.h"
-#include "rootdata.h"
-#include "permutations.h"
-#include "tori.h"
+#include "gradings.h"	// containment
+#include "complexredgp.h"// methods
+#include "lietype.h"	// methods
 
 namespace atlas {
 
@@ -404,7 +399,7 @@ std::ostream& printSimpleType(std::ostream& strm, const Grading& gr,
 /*
   Synopsis: outputs the real form of lt represented by gr.
 
-  Precondition: |gr| contains a grading of the simple-simaginary roots (simple
+  Precondition: |gr| contains a grading of the simple-imaginary roots (simple
   roots of the imaginary roots system for the fundamental involution), which
   represents the given real form, and which contains one noncompact root for
   each noncompact noncomplex simple factor.

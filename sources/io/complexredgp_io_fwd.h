@@ -14,11 +14,6 @@ namespace atlas {
 
 /******** type declarations **************************************************/
 
-namespace complexredgp_io {
-
-class Interface;
-
-}
 
 }
 

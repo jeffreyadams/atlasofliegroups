@@ -12,7 +12,7 @@
 
 #include <iosfwd>
 
-#include "poset_fwd.h"
+#include "atlas_types.h"
 
 namespace atlas {
 

@@ -86,6 +86,15 @@ namespace atlas {
   }
   using poset::Poset;
 
+  namespace graph {
+    typedef set::Elt Vertex;
+    typedef std::vector<Vertex> VertexList;
+    typedef Vertex Edge;
+    typedef std::vector<Edge> EdgeList;
+    class OrientedGraph;
+  }
+  using graph::OrientedGraph;
+
   namespace hashtable{
     template <class Entry, typename Number> class HashTable;
   }
@@ -99,6 +108,13 @@ namespace atlas {
     typedef size_t Degree; // exponent range; not stored.
   }
   using polynomials::Polynomial;
+  namespace size {
+    template<typename C> class SizeType;
+    typedef signed char BaseType;
+    typedef unsigned char UnsignedBaseType;
+    typedef SizeType<BaseType> Size;
+  }
+
 // we should now refrain from subsequently reading the original forward files
 #define SET_H
 #define BITSET_FWD_H
@@ -112,6 +128,7 @@ namespace atlas {
 #define HASHTABLE_FWD_H
 #define FREE_ABELIAN_FWD_H
 #define POLYNOMIALS_FWD_H
+#define SIZE_FWD_H
 
   // interpetationless terminology
   typedef matrix::Vector<int> int_Vector;
@@ -312,6 +329,7 @@ namespace atlas {
   namespace klsupport { class KLSupport; }
   namespace wgraph {
     class WGraph;
+    class DecomposedWGraph;
     typedef std::vector<unsigned short> WCoeffList;
   }
   namespace kl {
@@ -351,6 +369,24 @@ namespace atlas {
     class StandardRepr;	// triple $(x,\lambda,\gamma)$
     class Rep_context;	// support class for interpreting |StandardRepr;|
   }
+
+  namespace realform_io { class Interface; } // maps internals to names
+  namespace complexredgp_io { class Interface; } // a pair of the above
+  namespace realweyl {
+    class RealWeyl; // for computing real Weyl groups
+    class RealWeylGenerators;
+    struct PermutationGenerators;
+  }
+
+  namespace input {
+    class InputBuffer;
+#ifndef NREADLINE
+    class HistoryBuffer;
+#else
+    typedef InputBuffer HistoryBuffer;
+#endif
+  }
+
 
 } // |namespace atlas|
 

@@ -4,11 +4,9 @@
 
 
 
-#include <iostream>
-#include <fstream>
+#include <iosfwd>
 
-#include "basic_io.h"
-#include "blocks.h"
+#include "atlas_types.h"
 
 namespace atlas {
   namespace filekl {
@@ -34,7 +32,7 @@ namespace atlas {
       BlockElt size;
       unsigned int max_length; // maximal length of block elements
       std::vector<BlockElt> start_length;
-       // array has size |max_length+2|; it defines intervals for each length
+      // array has size |max_length+2|; it defines intervals for each length
     
       descent_set_vector descent_set;     // descent (bit)set listed per BlockElt
     
@@ -52,7 +50,6 @@ namespace atlas {
     };
     
     typedef prim_list strong_prim_list;
-    
     
     class matrix_info
     {
@@ -84,8 +81,7 @@ namespace atlas {
       size_t length (BlockElt y) const; // length in block
       BlockElt first_of_length (size_t l) const
         { return block.start_length[l]; }
-      RankFlags descent_set (BlockElt y) const
-        { return block.descent_set[y]; }
+      RankFlags descent_set (BlockElt y) const;
       std::streamoff row_offset(BlockElt y) const { return row_pos[y]; }
       BlockElt primitivize (BlockElt x,BlockElt y) const
         { return block.primitivize(x,y); }
@@ -109,7 +105,7 @@ namespace atlas {
     
     public:
       polynomial_info(std::ifstream& coefficient_file);
-      virtual ~polynomial_info() { file.close(); }
+      virtual ~polynomial_info();
     
       KLIndex n_polynomials() const { return n_pols; }
       unsigned int coefficient_size() const { return coef_size; }

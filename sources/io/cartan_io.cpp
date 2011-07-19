@@ -11,20 +11,15 @@
 
 #include <sstream>
 
-#include "basic_io.h"
-#include "bitset.h"
-#include "cartanclass.h"
-#include "complexredgp.h"
-#include "complexredgp_io.h"
+#include "lietype.h"
 #include "dynkin.h"
 #include "gradings.h"
-#include "ioutils.h"
-#include "lietype.h"
-#include "prettyprint.h"
-#include "rootdata.h"
-#include "permutations.h"
-#include "tori.h"
+#include "complexredgp.h"
 
+#include "basic_io.h"
+#include "complexredgp_io.h" // use of its |Interface| class
+#include "ioutils.h"
+#include "prettyprint.h"
 
 namespace atlas {
 

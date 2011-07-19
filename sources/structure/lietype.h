@@ -111,14 +111,22 @@ struct InnerClassType : public std::vector<TypeLetter>
   InnerClassType() : base() {}
 };
 
+/* the |Layout| structure collects a |LieType| and an |InnerClassType|, as
+   specified by the user. However dualizing may create Lie types with
+   non-standard node labelings (for $G_2$, $F_4$), and in such cases an
+   involution of the diagram needs to be indicated, whence the |d_perm| field.
+   This is ultimately used (only) to correctly associate a real form name
+   (recognised in standard diagram labelling) from a special representative
+   grading of the real form (only one bit set), in |realform_io::printType|;
+   |d_perm| maps standard (Bourbaki) diagram numbers to simple root indices.
+*/
 struct Layout
 {
   LieType d_type;
   InnerClassType d_inner;
-  permutations::Permutation d_perm;
+  permutations::Permutation d_perm; // of diagram wrt usual order in |d_type|
 
 // constructors and destructors
-  Layout() {} // default constructor needed, to set via |dynkin::Lie_type|
 
   /* In the old atlas interface, the Lie type is first provided,
      and the inner class type is later added; defaults identity permutation */

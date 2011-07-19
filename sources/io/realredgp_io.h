@@ -12,10 +12,7 @@
 
 #include <iosfwd>
 
-#include "realredgp_io_fwd.h"
-
-#include "complexredgp_io_fwd.h"
-#include "realform_io.h"
+#include "atlas_types.h"
 
 
 namespace atlas {

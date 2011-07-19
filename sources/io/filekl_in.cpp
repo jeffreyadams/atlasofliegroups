@@ -1,8 +1,13 @@
 
 #include "filekl_in.h"
-
 #include <stdexcept>
 
+#include "basic_io.h"
+
+#include <fstream>
+
+#include "blocks.h"
+#include "bitset.h"
 namespace atlas {
   namespace filekl {
 
@@ -25,7 +30,7 @@ namespace atlas {
       const ascent_vector& ax=ascents[x];
       for (size_t s=0; s<rank; ++s)
         if (d[s] and ax[s]!=noGoodAscent)
-        { x=ax[s]; goto start; } // this should raise x, now try another step
+        { x=ax[s]; goto start; } // this should raise $x$, now try another step
       return x; // no raising possible, stop here
     }
     
@@ -95,9 +100,13 @@ namespace atlas {
         -1; // now we have just |l(y)|
     }
     
+    RankFlags matrix_info::descent_set (BlockElt y) const
+      { return block.descent_set[y]; }
+    
     void matrix_info::set_y(BlockElt y)
     {
-      if (y==cur_y) { matrix_file.seekg(cur_row_entries); return; }
+      if (y==cur_y)
+        { matrix_file.seekg(cur_row_entries); return; }
       cur_y=y;
       const prim_list& weak_prims = block.prims_for_descents_of(y);
       cur_strong_prims.resize(0);
@@ -238,6 +247,8 @@ namespace atlas {
       n_coef=read_bytes<5>(file)/coef_size;
       coefficients_begin=file.tellg();
     }
+    
+    polynomial_info::~polynomial_info() { file.close(); }
     
     size_t polynomial_info::degree(KLIndex i) const
     { if (i<2) return i-1; // quit exit for Zero and One

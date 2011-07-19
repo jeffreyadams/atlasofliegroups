@@ -17,6 +17,8 @@
 #include <iostream>
 #include <sstream>
 
+#include "input.h"	// input buffers
+
 namespace atlas {
 
 namespace {

@@ -10,10 +10,9 @@
 #ifndef COMPLEXREDGP_IO_H  /* guard against multiple inclusions */
 #define COMPLEXREDGP_IO_H
 
-#include "complexredgp_io_fwd.h"
 
 
-#include "realform_io.h"
+#include "realform_io.h"	// containment of |Interface|s
 
 namespace atlas {
 

@@ -14,12 +14,7 @@
 #include <iostream>
 #include <vector>
 
-#include "bitset_fwd.h"
-#include "polynomials_fwd.h"
-
 #include "atlas_types.h"
-
-#include "lietype.h"
 
 /******** function declarations *********************************************/
 
@@ -73,10 +68,10 @@ std::ostream& seqPrint(std::ostream&, const I&, const I&,
 		       const char* post = "");
 
 template <unsigned int n>
-inline unsigned long long read_bytes(std::istream& in);
+unsigned long long read_bytes(std::istream& in);
 
 template <unsigned int n>
-inline void write_bytes(unsigned long long val, std::ostream& out);
+void write_bytes(unsigned long long val, std::ostream& out);
 
 unsigned long long read_var_bytes(unsigned int n,std::istream& in);
 

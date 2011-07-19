@@ -13,8 +13,8 @@
 #include <map>
 #include <string>
 
-#include "input.h"
-#include "lietype.h"
+#include "atlas_types.h"
+#include "lietype.h"	// |lietype::TypeLetter|
 
 /******** function declarations **********************************************/
 

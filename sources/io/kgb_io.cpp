@@ -7,18 +7,19 @@
   For license information see the LICENSE file
 */
 
+#include "kgb_io.h"
+
 #include <iomanip>
 #include <iostream>
 
-#include "bruhat.h"
-#include "kgb_io.h"
-
-#include "ioutils.h"
-#include "basic_io.h"
 #include "complexredgp.h"
 #include "kgb.h"
-#include "prettyprint.h"
-#include "set.h"
+
+#include "ioutils.h"	// |digits|
+#include "basic_io.h"	// |operator<<|
+#include "prettyprint.h"// |printStatus|
+
+#include "bruhat.h"	// |BruhatOrder|
 
 /*****************************************************************************
 

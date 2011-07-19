@@ -12,8 +12,7 @@
 
 #include <iosfwd>
 
-
-#include "lietype.h"
+#include "atlas_types.h"
 #include "tags.h"
 
 namespace atlas {

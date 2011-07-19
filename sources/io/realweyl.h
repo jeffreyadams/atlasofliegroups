@@ -10,16 +10,12 @@
 #ifndef REALWEYL_H  /* guard against multiple inclusions */
 #define REALWEYL_H
 
-#include "realweyl_fwd.h"
-
-#include "permutations.h"
-#include "size.h"
 
 #include "atlas_types.h"
 
-#include "bitvector.h"
-#include "lietype.h"
-#include "weyl.h"
+#include "bitvector.h"	// containment
+#include "lietype.h"	// containment
+#include "weyl.h"	// containment of (vector of) |WeylElt|
 
 /******** function declarations **********************************************/
 
@@ -38,8 +34,6 @@ namespace realweyl {
 namespace realweyl {
 
 class RealWeyl {
-
- private:
 
   const WeylGroup* d_group;
   RootNbrList d_imaginaryCompact;

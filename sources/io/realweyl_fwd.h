@@ -14,14 +14,6 @@
 
 namespace atlas {
 
-namespace realweyl {
-
-  class RealWeyl;
-  class RealWeylGenerators;
-
-  struct PermutationGenerators;
-
-}
 
 }
 

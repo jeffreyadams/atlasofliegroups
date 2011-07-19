@@ -41,7 +41,7 @@ the writing functions need to have access to many internal \.{atlas} classes,
 whereas the reading functions should not depend on linking together with those
 \.{atlas} classes, lest the utility programs become as large as \.{atlas}
 itself. This source file then will write a file \.{filekl.cpp} that compiles
-to an object module of \.{atlas}, and  another files \.{filekl-in.cpp} whose
+to an object module of \.{atlas}, and  another file \.{filekl\_in.cpp} whose
 object module is to be incorporated into utility programs.
 
 @h "filekl.h"
@@ -49,10 +49,9 @@ object module is to be incorporated into utility programs.
 @c
 namespace atlas {
   namespace filekl {
-
-    @< Functions for writing binary files @>
-  }
-}
+    @< Functions for writing binary files @>@;
+  }@;
+}@;
 
 @
 @( filekl.h @>=
@@ -63,27 +62,29 @@ namespace atlas {
 @< Includes needed in the header file @>@;
 namespace atlas {
   namespace filekl {
-    @< Constants common for writing and reading @>
+    @< Constants common for writing and reading @>@;
     @< Declarations of exported functions @>@;
   }@;
 }@;
 #endif
 
-@
-@< Includes needed in the header file @>=
-#include <iostream>
-#include <fstream>
+@ The header file \.{filekl.h} requires no include files other than the
+forward declarations contained in the \.{iosfwd} standard header
+and \.{atlas\_types.h}.
 
-#include "blocks.h"
-#include "kl.h"
-#include "basic_io.h"
+@< Includes needed in the header file @>=
+#include <iosfwd>
+
+#include "atlas_types.h"
 
 @
 @( filekl_in.cpp @>=
 
 #include "filekl_in.h"
-
 #include <stdexcept>
+
+#include "basic_io.h"
+@< Includes needed in the input implementation file @>
 
 namespace atlas {
   namespace filekl {
@@ -121,13 +122,11 @@ namespace atlas {
 }@;
 #endif
 
-@ For the moment we assume the same includes are needed in both header files
+@ The same includes are needed in both header files
 @< Includes needed in the input header file @>=
-#include <iostream>
-#include <fstream>
+#include <iosfwd>
 
-#include "basic_io.h"
-#include "blocks.h"
+#include "atlas_types.h"
 
 @
 @< Constants common for writing and reading @>=
@@ -137,13 +136,15 @@ const BlockElt noGoodAscent= UndefBlock-1;
 
 const unsigned int magic_code=0x06ABdCF0; // indication of new matrix format
 
-@ Here is how a block file is written
+@* Writing a block file.
+Here is how a block file is written
 
-@h "blocks.h"
 @< Declarations of exported functions @>=
 void write_block_file(const Block& block, std::ostream& out);
 
-@~@< Functions for writing binary files @>=
+@~@h "blocks.h"
+@h "basic_io.h"
+@< Functions for writing binary files @>=
 
 void write_block_file(const Block& block, std::ostream& out)
 {
@@ -202,7 +203,7 @@ void write_block_file(const Block& block, std::ostream& out)
   }
 }
 
-@ The |block_info| class
+@* The {\bf block\_info} class.
 
 @< Input class declarations @>=
 
@@ -222,7 +223,7 @@ struct block_info
   BlockElt size;
   unsigned int max_length; // maximal length of block elements
   std::vector<BlockElt> start_length;
-   // array has size |max_length+2|; it defines intervals for each length
+  @/// array has size |max_length+2|; it defines intervals for each length
 
   descent_set_vector descent_set;     // descent (bit)set listed per BlockElt
 
@@ -240,7 +241,7 @@ private:
 };
 
 
-@ Methods of the |block_info class|
+@*1 Methods of the {\bf block\_info} class.
 
 @< Methods for reading binary files @>=
 
@@ -253,7 +254,7 @@ start:
   const ascent_vector& ax=ascents[x];
   for (size_t s=0; s<rank; ++s)
     if (d[s] and ax[s]!=noGoodAscent)
-    { x=ax[s]; goto start; } // this should raise x, now try another step
+    @/{@; x=ax[s]; goto start; } // this should raise $x$, now try another step
   return x; // no raising possible, stop here
 }
 
@@ -288,7 +289,9 @@ const prim_list& block_info::prims_for_descents_of(BlockElt y)
 }
 
 @
-@< Methods for reading binary files @>=
+@< Includes needed in the input implementation file @>=
+#include <fstream>
+@~@< Methods for reading binary files @>=
 
 block_info::block_info(std::ifstream& in)
   : rank(), size(), max_length(), start_length()
@@ -327,7 +330,10 @@ block_info::block_info(std::ifstream& in)
 
 
 // The code below does not belong here: utilities should not depend on gkmod!
-@ Here is how a matrix file is written.
+@* Writing a matrix file.
+Here is how a matrix file is written.
+
+@h "kl.h"
 
 @< Functions for writing binary files @>=
 
@@ -388,10 +394,14 @@ void write_matrix_file(const kl::KLContext& klc, std::ostream& out)
   basic_io::put_int(magic_code,out);
 }
 
-@ The |matrix_info| class
+@*The {\bf matrix\_info} class.
+
+@< Includes needed in the input implementation file @>=
+#include "blocks.h"
+#include "bitset.h"
+@~
 @< Input class declarations @>=
 typedef prim_list strong_prim_list;
-
 
 class matrix_info
 {
@@ -418,26 +428,25 @@ public:
   ~matrix_info() {}
 
 // accessors
-  size_t rank() const { return block.rank; }
-  BlockElt block_size() const { return block.size; }
+  size_t rank() const @+{@; return block.rank; }
+  BlockElt block_size() const @+{@; return block.size; }
   size_t length (BlockElt y) const; // length in block
   BlockElt first_of_length (size_t l) const
-    { return block.start_length[l]; }
-  RankFlags descent_set (BlockElt y) const
-    { return block.descent_set[y]; }
-  std::streamoff row_offset(BlockElt y) const { return row_pos[y]; }
+    @+{@; return block.start_length[l]; }
+  RankFlags descent_set (BlockElt y) const;
+  std::streamoff row_offset(BlockElt y) const @+{@; return row_pos[y]; }
   BlockElt primitivize (BlockElt x,BlockElt y) const
-    { return block.primitivize(x,y); }
-
+    @+{@; return block.primitivize(x,y); }
+@/
 // manipulators (they are so because they set |cur_y|)
   KLIndex find_pol_nr(BlockElt x,BlockElt y);
   BlockElt prim_nr(unsigned int i,BlockElt y);
     // find primitive element
   const strong_prim_list& strongly_primitives (BlockElt y)
-    { set_y(y); return cur_strong_prims; } // changing |y| invalidates this!
+    {@; set_y(y); return cur_strong_prims; } // changing |y| invalidates this!
 };
 
-@ Methods of the |matrix_info| class
+@*1 Methods of the {\bf matrix\_info} class.
 
 
 @< Methods for reading binary files @>=
@@ -449,12 +458,19 @@ size_t matrix_info::length (BlockElt y) const
     -1; // now we have just |l(y)|
 }
 
+@ Not inlining this method avoids having to include the \.{bitset.h} header
+in \.{filekl\_in.h}.
+@< Methods for reading binary files @>=
+RankFlags matrix_info::descent_set (BlockElt y) const
+  @+{@; return block.descent_set[y]; }
+
 @
 @< Methods for reading binary files @>=
 
 void matrix_info::set_y(BlockElt y)
 {
-  if (y==cur_y) { matrix_file.seekg(cur_row_entries); return; }
+  if (y==cur_y)
+    {@; matrix_file.seekg(cur_row_entries); return; }
   cur_y=y;
   const prim_list& weak_prims = block.prims_for_descents_of(y);
   cur_strong_prims.resize(0);
@@ -597,7 +613,8 @@ matrix_info::matrix_info
 }
 
 
-@ Here is how the polynomial file is written
+@* Writing a polynomial file.
+Here is how the polynomial file is written
 
 @< Declarations of exported functions @>=
 void write_KL_store(const kl::KLStore& store, std::ostream& out);
@@ -609,8 +626,8 @@ each polynomial |i| the position of its first (degree 0) coefficient in the
 global list and as final 5-byte value (number |N|) the total number of
 coefficients. After that, starting from position |9+5*N|, the list of all
 coefficients, starting for each polynomial with the constant coefficient and
-up to the leading coefficient. The degree of polynomial i is implicit in the
-value of indices $i$ and $i+1$: their difference, divided by the coefficient
+up to the leading coefficient. The degree of polynomial~$i$ is implicit in the
+value of indices $i$~and~$i+1$: their difference, divided by the coefficient
 size, is the number of coefficients, the degree is one less.
 
 @< Functions for writing binary files @>=
@@ -648,7 +665,7 @@ void write_KL_store(const kl::KLStore& store, std::ostream& out)
   }
 }
 
-@
+@* The {\bf polynomial\_info} class.
 @< Input class declarations @>=
 class polynomial_info
 {
@@ -661,7 +678,7 @@ class polynomial_info
 
 public:
   polynomial_info(std::ifstream& coefficient_file);
-  virtual ~polynomial_info() { file.close(); }
+  virtual ~polynomial_info();
 
   KLIndex n_polynomials() const { return n_pols; }
   unsigned int coefficient_size() const { return coef_size; }
@@ -673,7 +690,7 @@ public:
   ullong coeff_start(KLIndex i) const; // number of all preceding coefficients
 };
 
-@ Methods of the |polynomial_info| class
+@*1 Methods of the {\bf polynomial\_info} class.
 
 @< Methods for reading binary files @>=
 
@@ -686,6 +703,8 @@ polynomial_info::polynomial_info (std::ifstream& coefficient_file)
   n_coef=read_bytes<5>(file)/coef_size;
   coefficients_begin=file.tellg();
 }
+
+polynomial_info::~polynomial_info() { file.close(); }
 
 @
 @< Methods for reading binary files @>=
@@ -717,7 +736,7 @@ std::vector<size_t> polynomial_info::coefficients(KLIndex i) const
   return result;
 }
 
-@ The leading coefficient is the last one stored before the next polynomial
+@ The leading coefficient is the last one stored before the next polynomial.
 
 @< Methods for reading binary files @>=
 
@@ -738,7 +757,9 @@ ullong polynomial_info::coeff_start(KLIndex i) const
   return index/coef_size;
 }
 
-@ A derived class that caches the degrees, and some leading coefficients
+@* The {\bf cached\_pol\_info} class.
+This is a derived class that caches the degrees, and some leading coefficients.
+
 @< Input class declarations @>=
 
 class cached_pol_info
@@ -754,7 +775,7 @@ public:
   virtual size_t leading_coeff(KLIndex i) const;
 };
 
-@ Methods of the |cached_pol_info| class
+@*1 Methods of the {\bf cached\_pol\_info} class.
 @< Methods for reading binary files @>=
 
 cached_pol_info::cached_pol_info(std::ifstream& coefficient_file)
@@ -796,7 +817,8 @@ size_t cached_pol_info::leading_coeff (KLIndex i) const
   return lc;
 }
 
-@ The |progress_info| class
+@* The {\bf progress\_info} class.
+
 @< Input class declarations @>=
 
 class progress_info

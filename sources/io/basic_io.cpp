@@ -15,19 +15,85 @@
 
 #include "matrix.h"  // vectors, matrices
 #include "ratvec.h" // rational vectors
-#include "lietype.h"
-#include "weyl.h"
+
+#include "partition.h" // instantions
+
+#include "bitvector.h"
+#include "lietype.h" // Lie types
+
+#include "prettyprint.h" // |printPol| (why isn't this needed?)
 
 /*****************************************************************************
 
         Chapter I -- operator<< functions
 
-  NOTE: there are more definitions, given as templates in basic_io_def.h
-
 ******************************************************************************/
 
 namespace atlas {
 
+namespace basic_io {
+/*
+  This is a function for sequential output. It is assumed that I is an
+  iterator type, pointing to a type for which the << operator is defined.
+  Then we output the elements of the range [first,last[ as a list,
+  with prefix pre, postfix post, and separator sep.
+*/
+template<typename I>
+  std::ostream& seqPrint(std::ostream& strm, const I& first, const I& last,
+			 const char* sep, const char* pre, const char* post)
+{
+  strm << pre;
+  bool firstElt = true;
+
+  for (I i = first; i != last; ++i)
+  {
+    if (firstElt)
+      firstElt = false;
+    else
+      strm << sep;
+    strm << *i;
+  }
+
+  strm << post;
+
+  return strm;
+}
+
+  } // |namespace basic_io|
+
+namespace bitset {
+
+template<size_t d>
+  std::ostream& operator<< (std::ostream& strm, const BitSet<d>& b)
+{
+  for (size_t i = 0; i < d; ++i)
+    strm << (b[i]?'1':'0');
+  return strm;
+}
+
+} // |namespace bitset|
+
+namespace polynomials {
+
+template <typename C>
+  std::ostream& operator<< (std::ostream& strm, const Polynomial<C>& P)
+{
+  return prettyprint::printPol(strm,P,"q");
+}
+
+} // |namespace polynomials|
+
+namespace bitvector {
+
+template<size_t dim>
+  std::ostream& operator<< (std::ostream& strm,  const BitVector<dim>& v)
+{
+  for (size_t i=0; i<v.size(); ++i)
+    strm << (v[i]?'1':'0');
+  return strm;
+}
+
+} // |namespace bitvector|
 
 
 namespace lietype {
@@ -109,9 +175,35 @@ namespace ratvec {
 
 } // |namespace ratvec|
 
-
+// binary input
 
 namespace basic_io {
+
+template <unsigned int n>
+inline unsigned long long read_bytes(std::istream& in)
+{
+  return static_cast<unsigned char>(in.get())+(read_bytes<n-1>(in)<<8);
+}
+
+template<>
+inline unsigned long long read_bytes<1>(std::istream& in)
+{
+  return static_cast<unsigned char>(in.get());
+}
+
+// binary output
+template <unsigned int n>
+inline void write_bytes(unsigned long long val, std::ostream& out)
+{
+  out.put(char(val&0xFF)); write_bytes<n-1>(val>>8,out);
+}
+
+template <>
+inline void write_bytes<1>(unsigned long long val, std::ostream& out)
+{
+  out.put(char(val));
+}
+
 
 unsigned long long read_var_bytes(unsigned int n,std::istream& in)
 { switch(n)
@@ -142,6 +234,55 @@ void write_bytes(unsigned int n, unsigned long long val, std::ostream& out)
   }
 }
 
+
 } // namespace basic_io
+
+// Instantiations
+
+template std::ostream& basic_io::seqPrint // cartan_io
+ (std::ostream& strm,
+  const partition::PartitionIterator::SubIterator& first,
+  const partition::PartitionIterator::SubIterator& last,
+  const char* sep, const char* pre, const char* post);
+
+template std::ostream& basic_io::seqPrint // interactive
+ (std::ostream& strm,
+  const BitMap::iterator& first,
+  const BitMap::iterator& last,
+  const char* sep, const char* pre, const char* post);
+
+template std::ostream& basic_io::seqPrint // |kgb_io::printBruhatOrder|
+ (std::ostream& strm,
+  const set::EltList::const_iterator& first,
+  const set::EltList::const_iterator& last,
+  const char* sep, const char* pre, const char* post);
+
+template std::ostream& basic_io::seqPrint // |prettyprint::printWeylList|
+ (std::ostream& strm,
+  const std::vector<WeylWord>::iterator& first,
+  const std::vector<WeylWord>::iterator& last,
+  const char* sep, const char* pre, const char* post);
+
+template std::ostream& basic_io::seqPrint // |mainmode::roots_f| and others
+ (std::ostream& strm,
+  const WeightList::const_iterator& first,
+  const WeightList::const_iterator& last,
+  const char* sep, const char* pre, const char* post);
+
+template std::ostream& basic_io::seqPrint // |testprint::printComponents|
+ (std::ostream& strm,
+  const SmallBitVectorList::const_iterator& first,
+  const SmallBitVectorList::const_iterator& last,
+  const char* sep, const char* pre, const char* post);
+
+// never instantiated
+// template std::ostream& bitset::operator<<
+//   (std::ostream& strm, const BitSet<constants::RANK_MAX>& b);
+
+template std::ostream& polynomials::operator<<
+  (std::ostream& strm, const Polynomial<int>& P);
+
+template std::ostream& bitvector::operator<<
+  (std::ostream& strm, const BitVector<constants::RANK_MAX>& b);
 
 } // namespace atlas

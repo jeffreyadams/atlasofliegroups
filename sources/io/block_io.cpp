@@ -7,20 +7,18 @@
   For license information see the LICENSE file
 */
 
+#include "block_io.h"
+
 #include <iomanip>
 #include <iostream>
 #include <sstream>
 #include <cassert>
 
-#include "bitmap.h"
-#include "block_io.h"
-#include "bruhat.h"
-#include "set.h"
-#include "ioutils.h"
 #include "blocks.h"
-#include "descents.h"
-#include "prettyprint.h"
-#include "weyl.h"
+
+#include "ioutils.h"	// |digits|
+#include "prettyprint.h" // |printWeylElt|
+
 
 /*****************************************************************************
 

@@ -3,12 +3,9 @@
 #define FILEKL_H
 
 
-#include <iostream>
-#include <fstream>
+#include <iosfwd>
 
-#include "blocks.h"
-#include "kl.h"
-#include "basic_io.h"
+#include "atlas_types.h"
 
 namespace atlas {
   namespace filekl {
@@ -17,6 +14,7 @@ namespace atlas {
     const BlockElt noGoodAscent= UndefBlock-1;
     
     const unsigned int magic_code=0x06ABdCF0; 
+
     
     void write_block_file(const Block& block, std::ostream& out);
     

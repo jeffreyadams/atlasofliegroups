@@ -12,7 +12,7 @@
 
 #include <iosfwd>
 
-#include "kgb.h"
+#include "atlas_types.h"
 
 namespace atlas {
 

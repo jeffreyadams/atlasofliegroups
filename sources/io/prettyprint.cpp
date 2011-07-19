@@ -13,17 +13,15 @@
 #include <iomanip>
 #include <sstream>
 
-#include "basic_io.h"
 #include "bitmap.h"
-#include "constants.h"
-#include "gradings.h"
-#include "lattice.h"
-#include "lietype.h"
-#include "rootdata.h"
 #include "polynomials.h"
+
+#include "gradings.h"   // |gradings::Status|
+#include "rootdata.h"	// |RootSystem|
+
 #include "tits.h"
-#include "tori.h"
-#include "weyl.h"
+
+#include "basic_io.h"	// |operator<<| for vectors, |seqPrint|
 
 /*****************************************************************************
 
@@ -71,17 +69,17 @@ std::ostream& prettyPrint(std::ostream& strm, const BitSet<d>& b,
 }
 
 
-// Prints the n first bits of v on strm in a "vector-like" format.
+// Prints the bits of |v| on |strm| in a "vector-like" format.
 template<size_t dim>
-std::ostream& prettyPrint(std::ostream& strm,
-			  const BitVector<dim>& v)
+std::ostream& prettyPrint(std::ostream& strm, const BitVector<dim>& v)
 {
-  std::vector<int> vi;
+  set::EltList vi;
 
   for (size_t i = 0; i < v.size(); ++i)
     vi.push_back(v[i]?1:0);
 
-  basic_io::seqPrint(strm,vi.begin(),vi.end(),",","(",")");
+  const set::EltList& vir=vi; // this type already used with |seqPrint|
+  basic_io::seqPrint(strm,vir.begin(),vir.end(),",","(",")");
 
   return strm;
 }
@@ -169,12 +167,13 @@ std::ostream& printInRootBasis(std::ostream& strm, RootNbr n,
 std::ostream& printInRootBasis(std::ostream& strm, const RootNbrSet& r,
 			       const RootSystem& rs)
 {
-  WeightList rl; rl.reserve(r.size());
+  int_VectorList rl; rl.reserve(r.size());
 
   for (RootNbrSet::iterator it=r.begin(); it(); ++it)
     rl.push_back(rs.root_expr(*it));
 
-  basic_io::seqPrint(strm,rl.begin(),rl.end(),"\n","","\n");
+  const int_VectorList& rlr=rl; // share instantiation with |mainmode::roots_f|
+  basic_io::seqPrint(strm,rlr.begin(),rlr.end(),"\n","","\n");
 
   return strm;
 }
@@ -430,7 +429,7 @@ std::ostream& printWeylList(std::ostream& strm, const WeylEltList& wl,
   return strm;
 }
 
-
+// Instantiations
 
 template std::ostream& prettyPrint
   (std::ostream&, const RankFlags&, size_t);

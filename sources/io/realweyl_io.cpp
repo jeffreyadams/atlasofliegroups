@@ -14,8 +14,7 @@
 
 #include "basic_io.h"
 #include "prettyprint.h"
-#include "realweyl.h"
-#include "rootdata.h"
+#include "realweyl.h"	// |RealWeyl| class
 
 /*  Chapter 0 -- string constants used for printing */
 

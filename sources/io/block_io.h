@@ -14,7 +14,7 @@
 
 #include "atlas_types.h"
 
-#include "bitset.h"
+#include "bitset.h"	// for default argument to |printDescent|
 
 namespace atlas {
 

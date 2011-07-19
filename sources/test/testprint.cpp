@@ -96,12 +96,14 @@ std::ostream& print(std::ostream& strm, const RootDatum& rd)
 
   strm << "positive roots :" << std::endl;
   WeightList r_pr(rd.beginPosRoot(),rd.endPosRoot());
-  basic_io::seqPrint(strm,r_pr.begin(),r_pr.end(),"\n","","")
+  const WeightList& r_prr=r_pr; // save instantiations of |seqPrint|
+  basic_io::seqPrint(strm,r_prr.begin(),r_prr.end(),"\n","","")
     << std::endl << std::endl;
 
   strm << "positive coroots :" << std::endl;
-  WeightList r_pcr(rd.beginPosCoroot(),rd.endPosCoroot());
-  basic_io::seqPrint(strm,r_pcr.begin(),r_pcr.end(),"\n","","")
+  CoweightList r_pcr(rd.beginPosCoroot(),rd.endPosCoroot());
+  const CoweightList& r_pcrr=r_pr; // save instantiations of |seqPrint|
+  basic_io::seqPrint(strm,r_pcrr.begin(),r_pcrr.end(),"\n","","")
     << std::endl << std::endl;
 
   return strm;

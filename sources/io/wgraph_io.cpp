@@ -11,8 +11,10 @@
 #include "wgraph_io.h"
 
 #include <iostream>
+#include <cassert>
 
-#include "prettyprint.h"
+#include "wgraph.h"	// |WGraph|
+#include "prettyprint.h" // |printDescentSet|
 
 namespace atlas {
 
@@ -46,16 +48,12 @@ void printWGraph(std::ostream& strm, const wgraph::WGraph& wg)
 */
 
 {
-  using namespace graph;
-  using namespace prettyprint;
-  using namespace wgraph;
-
   for (size_t z = 0; z < wg.size(); ++z) {
     strm << z << ":";
-    printDescentSet(strm,wg.descent(z),wg.rank());
-    const EdgeList& el = wg.edgeList(z);
-    const WCoeffList& cl = wg.coeffList(z);
-    // el and cl have the same size
+    prettyprint::printDescentSet(strm,wg.descent(z),wg.rank());
+    const graph::EdgeList& el = wg.edgeList(z);
+    const wgraph::WCoeffList& cl = wg.coeffList(z);
+    assert(el.size()==cl.size());
     strm << ":{";
     for (size_t j = 0; j < el.size(); ++j) {
       if (j)

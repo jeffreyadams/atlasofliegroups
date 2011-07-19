@@ -375,12 +375,12 @@ InnerClassType dual_type(InnerClassType ict, const LieType& lt)
 
    The dual inner class contains (as non-based root datum involution) the
    negated transpose of the distinguished involution of the inner class. This
-   amounts to interchanging inner class types 'c' and 's'; for complex ('C')
-   inner classes we currently do nothing, although the Lie type is XX where -1
-   is not in the Weyl group of X (i.e., such that 's' is not 'c' for X), the
-   negated transpose distinguished involution is not in the "same" inner
-   class, but rather in "another" complex class of Lie type XX; the limited
-   use currently made of the dual Layout (in realform_io) justifies this.
+   amounts to interchanging inner class types 'c' and 's'. for complex ('C')
+   inner classes we currently do nothing, although if the Lie type is XX where
+   -1 is not in the Weyl group of X (i.e., such that 's' is not 'c' for X),
+   then the negated transpose distinguished involution is not in the "same"
+   inner class, but rather in "another" complex class of Lie type XX; the very
+   limited use made of the dual Layout (in realform_io) justifies this choice.
  */
 Layout dual(const Layout& lo)
 {

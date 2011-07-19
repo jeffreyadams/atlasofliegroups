@@ -9,12 +9,9 @@
 
 #include "realweyl.h"
 
-#include "bitvector.h"
-#include "cartanclass.h"
 #include "rootdata.h"
-#include "weyl.h"
-#include "weylsize.h"
-
+#include "cartanclass.h"
+#include "weylsize.h"	// for |blockStabilizerSize|
 
 namespace atlas {
 

@@ -165,8 +165,6 @@ class Partition : public std::unary_function<unsigned long,unsigned long>
   }
 }; // |class Partition|
 
-class PartitionIterator
-{
 /*!
   The idea is that a PartitionIterator gives a convenient way of traversing
   the classes of a partition. It is intended that PartitionIterators are
@@ -206,6 +204,8 @@ class PartitionIterator
   copy-constructing or assigning), we provide a |rewind| method that allows
   restarting a PartitionIterator used in a previous operation.
 */
+class PartitionIterator
+{
  public:
   typedef std::vector<unsigned long>::const_iterator SubIterator;
 

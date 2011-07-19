@@ -13,13 +13,7 @@
 #include <iosfwd>
 #include <vector>
 
-#include "bitmap_fwd.h"
-#include "bitset_fwd.h"
-#include "polynomials_fwd.h"
-
 #include "atlas_types.h"
-
-#include "lietype.h"
 
 /******** function declarations *********************************************/
 
@@ -27,23 +21,16 @@ namespace atlas {
 
 namespace prettyprint {
 
-std::ostream& prettyPrint(std::ostream&, const BitMap&,
-			  size_t n = 0);
-
 template<size_t d>
 std::ostream& prettyPrint(std::ostream&, const BitSet<d>&, size_t);
 
-template<size_t dim>
-std::ostream& prettyPrint(std::ostream&,
-			  const BitVector<dim>&);
+std::ostream& prettyPrint(std::ostream&, const BitMap&, size_t n = 0);
 
 template<size_t dim>
-std::ostream& prettyPrint(std::ostream&,
-			  const std::vector<BitVector<dim> >&);
+std::ostream& prettyPrint(std::ostream&, const BitVector<dim>&);
 
 template<size_t dim>
-std::ostream& prettyPrint(std::ostream&,
-			  const BitVector<dim>&, size_t);
+std::ostream& prettyPrint(std::ostream&, const std::vector<BitVector<dim> >&);
 
 template<typename V>
 std::ostream& printBasis(std::ostream&, const std::vector<V>&);
@@ -52,13 +39,13 @@ std::ostream& printDescentSet(std::ostream&, const RankFlags&, size_t,
 			      const char* sep = ",", const char* pre = "{",
 			      const char* post = "}");
 
-std::ostream& printInRootBasis(std::ostream&, RootNbr,
-			       const RootSystem&);
+std::ostream& printInRootBasis(std::ostream&, RootNbr, const RootSystem&);
 
-std::ostream& printInRootBasis(std::ostream&, const RootNbrSet&,
-			       const RootSystem&);
+std::ostream& printInRootBasis(std::ostream&,
+			       const RootNbrSet&, const RootSystem&);
 
-std::ostream& printInvolution(std::ostream&, const TwistedInvolution&,
+std::ostream& printInvolution(std::ostream&,
+			      const TwistedInvolution&,
 			      const TwistedWeylGroup&);
 
 template<typename C>
@@ -69,30 +56,26 @@ std::ostream& printMatrix(std::ostream&, const matrix::Matrix_base<C>&,
 			  unsigned long width = 4);
 
 template<typename C>
-std::ostream& printMonomial(std::ostream&, C, polynomials::Degree,
-			    const char*);
+std::ostream& printMonomial(std::ostream&, C, polynomials::Degree, const char*);
 
 template<typename C>
-std::ostream& printPol(std::ostream&, const Polynomial<C>&,
-		       const char*);
+std::ostream& printPol(std::ostream&, const Polynomial<C>&, const char*);
 
-std::ostream& printRootList(std::ostream&, const RootNbrList&,
-			    const RootDatum&,
+std::ostream& printRootList(std::ostream&,
+			    const RootNbrList&,const RootDatum&,
 			    const char* sep = "\n");
 
-std::ostream& printCorootList(std::ostream&, const RootNbrList&,
-			      const RootDatum&,
+std::ostream& printCorootList(std::ostream&,
+			      const RootNbrList&, const RootDatum&,
 			      const char* sep = "\n");
 
 std::ostream& printStatus(std::ostream&, const gradings::Status&, size_t);
 
-std::ostream& printTitsElt(std::ostream&, const TitsElt&,
-			   const TitsGroup&);
+std::ostream& printTitsElt(std::ostream&, const TitsElt&, const TitsGroup&);
 
 std::ostream& printTorusType(std::ostream&, const tori::RealTorus&);
 
-std::ostream& printWeylElt(std::ostream&, const WeylElt&,
-			   const WeylGroup&);
+std::ostream& printWeylElt(std::ostream&, const WeylElt&, const WeylGroup&);
 
 std::ostream& printWeylList(std::ostream&, const WeylEltList&,
 			    const WeylGroup&, const char* sep = ",",

@@ -26,7 +26,8 @@ Utilities.
   bitset	integers as sets of bits (replacement for |std::bitset|)
   bitmap	vectors of integers as sets of bits
   matrix	vectors, matrices and their operations
-  graph		poset and (what's that??) symmetric poset class
+  graph		general graph data structure
+  poset		poset and (what's that??) symmetric poset class
   size		a class for factored representation of large composite numbers
 
   Level 2: constructions that relate to or use basic data types
@@ -69,29 +70,31 @@ gKmod
   klsupport	a base class for KL computations, streamlining block acces
   wgraph	a class storing a W graph, and decomposition of it
   kl		the main KL computation (class KLContext)
-  standardrepk  
+  standardrepk  standard representation restricted to K: multiple classes
   repr
 
 Io
 
-  ioutils
-  basic_io
-  prettyprint
-  interactive
-  interactive_lattice
+  ioutils	functions to compute number of digits, fold lines, skip spaces
+  basic_io	instances of operator<<, sequence printing and binary templates
+  prettyprint	output of composite values (BitMap, Matrix, Polynomial, ...)
+  interactive_lattice	special functions to set lattice values interactively
+  interactive_lietype	special functions to set Lie type values interactively
+  interactive	general functions to set values by user interaction
 
-  poset_io
-  cartan_io
-  compexredgp_io
-  realform_io
-  realredgp_io
-  realweyl
-  realweyl_io
-  kgb_io
-  block_io
-  kl_io
-  wgraph_io
-  filekl
+  poset_io	the printPoset function
+  realform_io	an Interface class, and printRealForms
+  cartan_io	printCartanClass, printFiber, printGradings functions
+  compexredgp_io another Interface class; printBlockSizes, printGradings
+  realweyl	class for determining real Weyl groups, some functions
+  realweyl_io	interface to RealWeyl class: BlockStabilizer, RealWeyl
+  realredgp_io	various printing: BlockStabilizer, Cartan*, RealWeyl, StrongR
+  kgb_io	various forms of KGB printing
+  block_io	various forms of block printing block[ ud], printDescent
+  kl_io		various forms of KL tables printing
+  wgraph_io	printWGraph, printCells, printWDecomposition
+  filekl	functions for writing KL polynomials to a binary file
+  filekl-in	a set of classes for reading KL polynomials from a binary file
 
 Interface
 
@@ -109,3 +112,10 @@ Interface
   emptyhelp
   mainhelp
   realhelp
+
+Test
+
+  testprint
+  testrun
+  kltest
+  test

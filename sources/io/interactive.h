@@ -2,6 +2,7 @@
   This is interactive.h
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006--2011 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
@@ -10,18 +11,12 @@
 #ifndef INTERACTIVE_H  /* guard against multiple inclusions */
 #define INTERACTIVE_H
 
-#include "interactive_fwd.h"
-
-#include "bitmap_fwd.h"
-
 #include "atlas_types.h"
-#include "complexredgp_io_fwd.h"
+
+#include <string>
+#include <ios>
 
 #include "error.h"
-#include "input.h"
-#include "lietype.h"
-#include "standardrepk.h"
-#include "repr.h"
 #include "tags.h"
 
 namespace atlas {
@@ -116,8 +111,8 @@ namespace interactive {
 
 namespace ioutils {
 
-class OutputFile {
- private:
+class OutputFile
+{
   std::ostream* d_stream;
   bool d_foutput;
  public:
@@ -126,7 +121,7 @@ class OutputFile {
   template<typename T> std::ostream& operator<< (const T& arg)
     {return *d_stream << arg;}
   operator std::ostream& () {return *d_stream;}
-};
+}; // |class OutputFile|
 
 
 class InputFile {

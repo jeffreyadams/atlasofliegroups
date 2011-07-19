@@ -1,9 +1,10 @@
 #include  "filekl.h"
 #include  "blocks.h"
+#include  "basic_io.h"
+#include  "kl.h"
 
 namespace atlas {
   namespace filekl {
-
     
     void write_block_file(const Block& block, std::ostream& out)
     {
@@ -144,6 +145,7 @@ namespace atlas {
     	basic_io::put_int(p[j],out);
       }
     }
+
   }
 }
 

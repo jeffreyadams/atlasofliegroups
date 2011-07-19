@@ -19,22 +19,21 @@ namespace atlas {
 
 namespace ioutils {
 
-unsigned long digits(unsigned long a, unsigned long b)
 
 /*
   Synopsis: returns the number of digits of a in base b.
 
   Precondition: b > 1;
 */
-
+unsigned long digits(unsigned long a, unsigned long b)
 {
-  size_t d = 1;
+  size_t d = 1; // starting case, so (in particular) 0 will have 1 digit
 
-  while (a >= b) {
+  while (a >= b) // multi-digit number remains, so remove last digit
+  {
     ++d;
     a /= b;
   }
-
   return d;
 }
 

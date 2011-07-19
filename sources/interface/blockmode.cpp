@@ -373,7 +373,7 @@ void dual_map_f()
 			 currentDualRealForm(),
 			 realmode::currentRealForm());
 
-  std::vector<BlockElt> v=blocks::dual_map(block,dual_block);
+  const std::vector<BlockElt> v=blocks::dual_map(block,dual_block);
 
   std::ostringstream s("");
   basic_io::seqPrint(s,v.begin(),v.end(),", ","[","]\n");

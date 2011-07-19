@@ -13,24 +13,19 @@
 #include <sstream>
 #include <fstream>
 
-#include "basic_io.h"
-#include "bitmap.h"
 #include "prerootdata.h"
-#include "complexredgp.h"
-#include "complexredgp_io.h"
-#include "ioutils.h"
-#include "kgb.h"
-#include "kgb_io.h"
-#include "realform_io.h"
-#include "realredgp.h"
-#include "realredgp_io.h"
-#include "rootdata.h"
+#include "kgb.h"	// |KGB|
 #include "standardrepk.h"
-#include "rootdata.h"
-#include "prettyprint.h"
+#include "repr.h"
 
-#include "interactive_lattice.h"
-#include "interactive_lietype.h"
+#include "interactive_lattice.h" // auxiliary functions
+#include "interactive_lietype.h" // auxiliary functions
+#include "prettyprint.h"	// |printVector|
+#include "basic_io.h"	// |seqPrint|
+#include "ioutils.h"	// |skipSpaces|
+#include "complexredgp_io.h" // its |Interface| class
+#include "kgb_io.h"	// its |print| function
+
 
 #ifndef NREADLINE
 #include <readline/readline.h> // prepare for completion function manipulation

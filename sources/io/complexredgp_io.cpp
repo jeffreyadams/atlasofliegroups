@@ -7,19 +7,16 @@
   For license information see the LICENSE file
 */
 
-#include <iostream>
-
 #include "complexredgp_io.h"
 
-#include "cartan_io.h"
+#include <iostream>
+
+#include "cartan_io.h"	// |printGradings|
 #include "cartanclass.h"
 #include "complexredgp.h"
-#include "ioutils.h"
-#include "lietype.h"
-#include "matrix.h"
-#include "prettyprint.h"
-#include "realform_io.h"
-#include "rootdata.h"
+
+#include "ioutils.h"	// |digits|
+#include "prettyprint.h" // |printMatrix|
 #include "tags.h"
 
 /*

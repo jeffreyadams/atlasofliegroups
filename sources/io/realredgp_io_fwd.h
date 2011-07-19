@@ -16,8 +16,6 @@ namespace atlas {
 
 namespace realredgp_io {
 
-class Interface;
-
 }
 
 }

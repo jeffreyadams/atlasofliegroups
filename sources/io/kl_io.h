@@ -12,7 +12,7 @@
 
 #include <iosfwd>
 
-#include "blocks.h"
+#include "atlas_types.h"
 
 namespace atlas {
 

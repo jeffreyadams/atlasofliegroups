@@ -7,18 +7,17 @@
   For license information see the LICENSE file
 */
 
+#include "kl_io.h"
+
 #include <iomanip>
 #include <iostream>
 
-#include "kl_io.h"
-
-#include "ioutils.h"
 #include "kl.h"
-#include "klsupport.h"
-#include "blocks.h"
-#include "bruhat.h"
-#include "poset.h"
-#include "prettyprint.h"
+
+#include "bruhat.h"	// |BruhatOrder|
+
+#include "ioutils.h"	// |digits|
+#include "prettyprint.h" // |printPol|
 
 /*****************************************************************************
 

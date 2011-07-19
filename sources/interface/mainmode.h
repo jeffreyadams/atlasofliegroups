@@ -12,7 +12,6 @@
 
 #include "atlas_types.h"
 #include "commands_fwd.h"
-#include "complexredgp_io_fwd.h"
 
 /******** type declarations ************************************************/
 

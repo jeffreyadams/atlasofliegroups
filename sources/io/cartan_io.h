@@ -14,9 +14,6 @@
 
 #include "atlas_types.h"
 
-#include "complexredgp_io_fwd.h"
-
-
 /******** function declarations *********************************************/
 
 namespace atlas {
