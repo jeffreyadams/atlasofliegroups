@@ -475,25 +475,19 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
   result depends only on the underlying real forms!).
 */
 Block // pseudo constructor that ends calling main contructor
-  Block::build(ComplexReductiveGroup& G,
-	       RealFormNbr rf, RealFormNbr drf,
-	       bool select_Cartans)
+Block::build(ComplexReductiveGroup& G, RealFormNbr rf, RealFormNbr drf)
 {
   RealReductiveGroup G_R(G,rf);
   ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
   RealReductiveGroup dG_R(dG,drf);
 
-  KGB kgb
-    ( G_R,select_Cartans ? common_Cartans(G_R,dG_R) : BitMap(0));
-  KGB dual_kgb
-    (dG_R,select_Cartans ? common_Cartans(dG_R,G_R) : BitMap(0));
-
-#ifdef VERBOSE
-  std::cerr << "K\\G/B and dual generated... " << std::flush;
-#endif
-
+  KGB kgb     (G_R, common_Cartans(G_R,dG_R));
+  KGB dual_kgb(dG_R,common_Cartans(dG_R,G_R));
   return Block(kgb,dual_kgb); // |kgb| and |dual_kgb| disappear afterwards!
 }
+
+Block Block::build(RealReductiveGroup& G_R, RealReductiveGroup& dG_R)
+{ return Block(G_R.kgb(),dG_R.kgb()); }
 
 // compute the supports in $S$ of twisted involutions
 void Block::compute_supports()
@@ -1378,6 +1372,45 @@ bool non_integral_block::is_nonzero(BlockElt z) const
     if (DescentStatus::isDescent(desc[*it]))
       return false;
   return true;
+}
+
+BlockEltList non_integral_block::nonzeros_below(BlockElt z) const
+{
+  BlockEltList result;
+  RankFlags::iterator it;
+  do
+  {
+    const descents::DescentStatus& desc=descent(z);
+    for (it=singular.begin(); it(); ++it)
+      if (DescentStatus::isDescent(desc[*it]))
+      {
+	switch (desc[*it])
+	{
+	case DescentStatus::ImaginaryCompact:
+	  return result; // 0
+	case DescentStatus::ComplexDescent: z = cross(*it,z);
+	  break;
+	case DescentStatus::RealTypeII:
+	  z=inverseCayley(*it,z).first; break;
+	case descents::DescentStatus::RealTypeI:
+	  {
+	    BlockEltPair iC=inverseCayley(*it,z);
+	    BlockEltList left=nonzeros_below(iC.first);
+	    if (result.empty())
+	      left.swap(result);
+	    else
+	      std::copy(left.begin(),left.end(),back_inserter(result));
+	    z = iC.second;
+	  }
+	  break;
+       	default: assert(false); // should never happen, but compiler wants it
+	}
+	break; // restart outer loop if a descent was applied
+      } // |if(descent(*it,z)|
+  }
+  while (it());
+  result.push_back(z);
+  return result;
 }
 
 std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const

@@ -32,8 +32,9 @@ namespace io {
 
 namespace io {
 
-  std::ostream& printFile(std::ostream& strm, const char* a);
-  std::ostream& printFile(std::ostream& strm, const char* a, const char* b);
+  std::ostream& printFile(std::ostream& strm, const char* text_file_name);
+  std::ostream& printFile(std::ostream& strm,
+			  const char* text_file_name, const char* dir_name);
 
 }
 

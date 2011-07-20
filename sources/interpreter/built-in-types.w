@@ -90,6 +90,8 @@ library.
 
 @< Includes needed in the header file @>=
 #include "atlas_types.h"
+#include <stdexcept>
+#include "lietype.h"
 
 @*2 The primitive type.
 %
@@ -98,7 +100,6 @@ library. We provide a constructor that incorporates a complete
 |LieType| value, but often one will use the default constructor and
 the |add| method. The remaining methods are obligatory for a primitive type.
 
-@h <stdexcept>
 @< Type definitions @>=
 struct Lie_type_value : public value_base
 { LieType val;
@@ -136,7 +137,6 @@ Torus factors of rank $r>1$ should be equivalent to $r$ torus factors of
 rank~$1$, and it simplifies the software if we rewrite the former form to the
 latter on input, so we do that here.
 
-@h "lietype.h"
 @h "constants.h"
 
 @< Function definitions @>=
@@ -2700,8 +2700,7 @@ void raw_KL_wrapper (expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  Block block = Block::build
-   (rf->parent.val,rf->val.realForm(),drf->val.realForm());
+  Block block = Block::build (rf->val,drf->val);
   kl::KLContext klc(block); klc.fill();
 @)
   if (l==expression_base::no_value)
@@ -2755,10 +2754,9 @@ void raw_dual_KL_wrapper (expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  Block block = Block::build
-   (rf->parent.val,rf->val.realForm(),drf->val.realForm());
-  Block dual_block = Block::build
-   (rf->parent.dual,drf->val.realForm(),rf->val.realForm());
+  Block block = Block::build(rf->val,drf->val);
+  Block dual_block = Block::build(drf->val,rf->val);
+
   std::vector<BlockElt> dual=blocks::dual_map(block,dual_block);
   kl::KLContext klc(dual_block); klc.fill();
 @)
@@ -2860,8 +2858,7 @@ void print_block_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   block_io::print_block(*output_stream,
-    Block::build(rf->parent.val
-			,rf->val.realForm(),drf->val.realForm()));
+    Block::build(rf->val,drf->val));
 @)
   if (l==expression_base::single_value)
     wrap_tuple(0);
@@ -2886,8 +2883,7 @@ void print_blockd_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   block_io::printBlockD(*output_stream,
-    Block::build(rf->parent.val
-			,rf->val.realForm(),drf->val.realForm()));
+    Block::build(rf->val,drf->val));
 @)
   if (l==expression_base::single_value)
     wrap_tuple(0);
@@ -2909,8 +2905,7 @@ void print_blocku_wrapper(expression_base::level l)
 @.Real form and dual...@>
 @)
   block_io::printBlockU(*output_stream,
-    Block::build(rf->parent.val
-			,rf->val.realForm(),drf->val.realForm()));
+    Block::build(rf->val,drf->val));
 @)
   if (l==expression_base::single_value)
     wrap_tuple(0);
@@ -3010,8 +3005,7 @@ void print_KL_basis_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  Block block = Block::build
-   (rf->parent.val,rf->val.realForm(),drf->val.realForm());
+  Block block = Block::build(rf->val,drf->val);
   kl::KLContext klc(block); klc.fill();
 @)
   *output_stream
@@ -3039,8 +3033,7 @@ void print_prim_KL_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  Block block = Block::build
-   (rf->parent.val,rf->val.realForm(),drf->val.realForm());
+  Block block = Block::build(rf->val,drf->val);
   kl::KLContext klc(block); klc.fill();
 @)
   *output_stream
@@ -3069,8 +3062,7 @@ void print_KL_list_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  Block block = Block::build
-   (rf->parent.val,rf->val.realForm(),drf->val.realForm());
+  Block block = Block::build(rf->val,drf->val);
   kl::KLContext klc(block); klc.fill();
 @)
   kl_io::printKLList(*output_stream,klc);
@@ -3101,8 +3093,7 @@ void print_W_cells_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  Block block = Block::build
-   (rf->parent.val,rf->val.realForm(),drf->val.realForm());
+  Block block = Block::build(rf->val,drf->val);
   kl::KLContext klc(block); klc.fill();
 
   wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);
@@ -3132,8 +3123,7 @@ void print_W_graph_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  Block block = Block::build
-   (rf->parent.val,rf->val.realForm(),drf->val.realForm());
+  Block block = Block::build(rf->val,drf->val);
   kl::KLContext klc(block); klc.fill();
 
   wgraph::WGraph wg(klc.rank()); kl::wGraph(wg,klc);

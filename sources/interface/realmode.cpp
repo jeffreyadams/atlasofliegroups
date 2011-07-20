@@ -250,6 +250,7 @@ void kgb_f()
 void KGB_f()
 {
   RealReductiveGroup& G_R = realmode::currentRealGroup();
+  std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
 
   ioutils::OutputFile f;
 

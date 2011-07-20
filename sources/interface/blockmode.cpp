@@ -55,10 +55,10 @@ namespace {
 
   void small_kgb_f();
   void small_dual_kgb_f();
-template<bool small>
   void block_f();
-template<bool small>
+  void smallblock_f();
   void dual_block_f();
+  void small_dual_block_f();
   void dual_map_f();
   void blockd_f();
   void blocku_f();
@@ -109,10 +109,10 @@ commands::CommandMode& blockMode()
     block_mode.add("realform",realform_f); // this one too
     block_mode.add("smallkgb",small_kgb_f);
     block_mode.add("smalldualkgb",small_dual_kgb_f);
-    block_mode.add("block",block_f<false>);
-    block_mode.add("smallblock",block_f<true>);
-    block_mode.add("dualblock",dual_block_f<false>);
-    block_mode.add("smalldualblock",dual_block_f<true>);
+    block_mode.add("block",block_f);
+    block_mode.add("smallblock",smallblock_f);
+    block_mode.add("dualblock",dual_block_f);
+    block_mode.add("smalldualblock",small_dual_block_f);
     block_mode.add("dualmap",dual_map_f);
     block_mode.add("blockd",blockd_f);
     block_mode.add("blocku",blocku_f);
@@ -153,9 +153,8 @@ Block& currentBlock()
   {
     block_pointer =
       new Block(Block::build
-			 (mainmode::currentComplexGroup(),
-			  realmode::currentRealForm(),
-			  dual_G_R_pointer->realForm()));
+			 (realmode::currentRealGroup(),
+			  currentDualRealGroup()));
   }
   return *block_pointer;
 }
@@ -334,31 +333,37 @@ void small_dual_kgb_f()
 }
 
 // Print the current block
-template<bool small>
 void block_f()
 {
   ioutils::OutputFile file;
-  if (small) // must unfortunatly regenerate the block here
-  {
-    block_io::print_block
-      (file,Block::build(mainmode::currentComplexGroup(),
-				 realmode::currentRealForm(),
-				 currentDualRealForm(),
-				 true));
-  }
-  else
-    block_io::print_block(file,currentBlock());
+  block_io::print_block(file,currentBlock());
+}
+
+void smallblock_f()
+{
+  ioutils::OutputFile file;
+  block_io::print_block // must unfortunatly regenerate the block here
+    (file,Block::build(mainmode::currentComplexGroup(),
+		       realmode::currentRealForm(),
+		       currentDualRealForm()));
 }
 
 // Print the dual block of the current block
-template<bool small>
 void dual_block_f()
+{
+  Block block =
+    Block::build(currentDualRealGroup(),realmode::currentRealGroup());
+
+  ioutils::OutputFile file;
+  block_io::print_block(file,block);
+}
+
+void small_dual_block_f()
 {
   ComplexReductiveGroup& dG = currentDualComplexGroup();
 
   Block block =
-    Block::build(dG,currentDualRealForm(),realmode::currentRealForm(),
-			 small);
+    Block::build(dG,currentDualRealForm(),realmode::currentRealForm());
 
   ioutils::OutputFile file;
   block_io::print_block(file,block);
@@ -369,9 +374,7 @@ void dual_map_f()
 {
   const Block& block = currentBlock();
   Block dual_block =
-    Block::build(currentDualComplexGroup(),
-			 currentDualRealForm(),
-			 realmode::currentRealForm());
+    Block::build(currentDualRealGroup(),realmode::currentRealGroup());
 
   const std::vector<BlockElt> v=blocks::dual_map(block,dual_block);
 

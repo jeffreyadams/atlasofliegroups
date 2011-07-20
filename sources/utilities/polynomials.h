@@ -69,7 +69,12 @@ template<typename C> class Polynomial
   explicit Polynomial(C c);
   Polynomial(Degree d, C c); // initialised to $cX^d$ (with |c!=0|)
 
-// copy, assignment (both defaults will do) and swap
+// copy, assignment (default will do) and swap
+
+template <typename U>
+  Polynomial(const Polynomial<U>& src)
+  : d_data(src.begin(),src.end()) { }
+
   void swap(Polynomial& other) { d_data.swap(other.d_data); }
 
 // accessors
@@ -86,6 +91,10 @@ template<typename C> class Polynomial
   Currently no such types are used in the Atlas (but initially they were).
 */
   bool operator< (const Polynomial& q) const { return d_data < q.d_data; }
+
+  typename std::vector<C>::const_iterator begin() const
+  { return d_data.begin();} 
+  typename std::vector<C>::const_iterator end() const { return d_data.end();} 
 
   Degree degree() const { return d_data.size()-1; }
   Degree size() const { return d_data.size(); }

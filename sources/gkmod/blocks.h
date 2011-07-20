@@ -223,9 +223,11 @@ non-vanishing KL polynomial.
 // constructors and destructors
   Block(const KGB& kgb,const KGB& dual_kgb);
 
-  static Block build // pseudo contructor
-    (ComplexReductiveGroup&,
-     RealFormNbr rf, RealFormNbr drf, bool select_Cartans=false);
+  static Block build // pseudo contructor with small (and forgotten) KGB sets
+    (ComplexReductiveGroup&, RealFormNbr rf, RealFormNbr drf);
+
+  static Block build // pseudo contructor with stored KGB sets
+    (RealReductiveGroup& G_R, RealReductiveGroup& dG_R);
 
   ~Block(); // |delete d_bruhat;| but that does not compile here
 
@@ -368,6 +370,7 @@ class non_integral_block : public Block_base
   // new methods
   RatWeight lambda(BlockElt z) const; // reconstruct from y value
   bool is_nonzero(BlockElt z) const; // whether |z| survives singular |gamma|
+  BlockEltList nonzeros_below(BlockElt z) const; // reachable nonzeros
 
 }; // |class non_integral_block|
 

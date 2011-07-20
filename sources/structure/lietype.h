@@ -128,6 +128,8 @@ struct Layout
 
 // constructors and destructors
 
+Layout() : d_type(), d_inner(), d_perm() {} // needed in realex
+
   /* In the old atlas interface, the Lie type is first provided,
      and the inner class type is later added; defaults identity permutation */
   Layout(const LieType& lt)

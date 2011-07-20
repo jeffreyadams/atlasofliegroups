@@ -22,12 +22,11 @@ namespace atlas {
 
 namespace io {
 
-std::ostream& printFile(std::ostream& strm, const char* a)
 
 /*
   Prints the contents of the file with name a to strm.
 */
-
+std::ostream& printFile(std::ostream& strm, const char* a)
 {
   std::ifstream file(a);
   if (file.good())
@@ -39,13 +38,12 @@ std::ostream& printFile(std::ostream& strm, const char* a)
   return strm<< std::endl; // add a newline
 }
 
-std::ostream& printFile(std::ostream& strm, const char* a, const char* b)
 
 /*
   Prints the contents of the file with name b+a to strm (b is presumably
   a directory name.)
 */
-
+std::ostream& printFile(std::ostream& strm, const char* a, const char* b)
 {
   std::string aStr = std::string(a);
   std::string bStr = std::string(b);

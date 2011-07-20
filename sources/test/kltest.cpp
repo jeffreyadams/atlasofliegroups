@@ -154,7 +154,7 @@ bool checkBasePoint(const KGB& kgb)
 	  else if (sx_sw != basepts[w_pos]) // inconsistent base point
 	    return false;
 	}
-    }
+    } // |for (w_pos)|
 #ifdef VERBOSE
     std::cerr << std::endl;
 #endif
@@ -163,10 +163,13 @@ bool checkBasePoint(const KGB& kgb)
 #ifdef VERBOSE
   std::cerr << "done" << std::endl;
 #endif
-
-  ioutils::OutputFile file;
-  printBasePts(file,wl,basepts,kgb);
-
+  if (basepts.size()==wl.size())
+  {
+    ioutils::OutputFile file;
+    printBasePts(file,wl,basepts,kgb);
+  }
+  else if (basepts.size()==0)
+    std::cout << "No basepoints found" << std::endl;
   return true;
 }
 

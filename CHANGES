@@ -4,12 +4,17 @@ A detailed history of the early development is found in the file
 workinglog. Newer changes are documented in the CVS repository.
 This file contains a summary of major changes to the software.
 
+Version 0.4.5
+* New commands (not yet documented):
+** embedding: shows the shifts between subgroup and full group basepoints
+** nblock: computes a non-integral block and KL polynomials for given parameter
+
 Version 0.4.4
 * Format of block output changed (cartan column moved to penultimate one)
 * New commands (not yet documented):
 ** X (outputs entire space X, union of kgb spaces over all strong real forms)
 ** qKtypeform, qKtypemat,qbranch: q versions of Ktypeform, Ktypemat, branch
-** iblock: construct a integral block starting with a parameter
+** iblock: construct a (integrality) block with given parameter (x,lambda,nu)
 ** srtest: gives information about a representation
 
 Version 0.4.3

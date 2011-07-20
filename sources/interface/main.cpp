@@ -21,12 +21,7 @@
 #include "input.h"
 
 int main(int argc, char* argv[])
-
-/*
-  For now, we do nothing with the arguments.
-*/
-
-{
+{ // For now, we do nothing with the arguments.
   try
 
   {

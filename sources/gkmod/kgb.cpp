@@ -685,7 +685,7 @@ size_t KGB::generate
     permutations::Permutation p(fiber_data.n_involutions(),1);
     invol_compare i_cmp(fiber_data,G.weylGroup());
     std::sort(p.begin(),p.end(),i_cmp); // all entries are distinct
-    permutations::Permutation p1(p,-1); // inverse of |p|: where involutions went
+    permutations::Permutation p1(p,-1); // inverse: where involutions went
 
     std::vector<KGBElt> involution_rank(size); // values are small numbers
     for (KGBElt x=0; x<size; ++x)
