@@ -455,6 +455,7 @@ namespace abelian {
   matrix::Matrix<int> basis = matreduc::Smith_basis(M,inv_factors);
 
   // export scaled columns
+  b.resize(inv_factors.size());
   for (size_t j=0; j<inv_factors.size(); ++j)
     b[j] = basis.column(j)*inv_factors[j];
 }
