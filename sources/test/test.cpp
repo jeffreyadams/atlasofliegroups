@@ -15,6 +15,7 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
+#include <map>
 
 #include "helpmode.h"
 #include "emptymode.h"
@@ -1233,11 +1234,37 @@ void nblock_f()
     block_io::print_block(f,block);
     kl::KLContext klc(block);
     klc.fill(z,false);
-    f << "nonzero KL polynomials P_{x," << z << "}:\n";
-    int width = ioutils::digits(z,10ul);
+
+    typedef Polynomial<int> Poly;
+    typedef std::map<BlockElt,Poly> map_type;
+    map_type acc;
+    unsigned int parity = block.length(z)%2;
     for (size_t x = 0; x <= z; ++x)
     {
       const kl::KLPol& pol = klc.klPol(x,z);
+      if (not pol.isZero())
+      {
+	Poly p(pol); // convert
+	if (block.length(x)%2!=parity)
+	  p*=-1;
+	BlockEltList nb=block.nonzeros_below(x);
+	for (size_t i=0; i<nb.size(); ++i)
+	{
+	  std::pair<map_type::iterator,bool> trial = 
+	    acc.insert(std::make_pair(nb[i],p));
+	  if (not trial.second) // failed to create a new entry
+	    trial.first->second += p;
+	} // |for (i)| in |nb|
+      } // |if(pol!=0)|
+    } // |for (x<=z)|
+
+
+    f << "comulated KL polynomials P_{x," << z << "}:\n";
+    int width = ioutils::digits(z,10ul);
+    for (map_type::const_iterator it=acc.begin(); it!=acc.end(); ++it)
+    {
+      BlockElt x = it->first;
+      const Poly& pol = it->second;
       if (not pol.isZero())
       {
     	f << std::setw(width) << x << ": ";
@@ -1262,7 +1289,7 @@ void nblock_f()
   {
     std::cerr << std::endl << "unidentified error occurred" << std::endl;
   }
-} // |iblock_f|
+} // |nblock_f|
 
 
 tits::TorusElement torus_part
