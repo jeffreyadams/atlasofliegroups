@@ -497,6 +497,8 @@ void BitMap::set_capacity(unsigned long n)
   if (n<d_capacity and (n&posBits)!=0)
     d_map[n>>baseShift] &= constants::lMask[n&posBits]; // clear partial word
   d_map.resize((n+posBits) >> baseShift,0);
+  if (d_map.size()<d_map.capacity()) // |d_map| has become too large
+    std::vector<unsigned long>(d_map).swap(d_map); // shrink-wrap vector |d_map|
   d_capacity = n;
 }
 
