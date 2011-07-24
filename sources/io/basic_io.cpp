@@ -32,32 +32,8 @@
 namespace atlas {
 
 namespace basic_io {
-/*
-  This is a function for sequential output. It is assumed that I is an
-  iterator type, pointing to a type for which the << operator is defined.
-  Then we output the elements of the range [first,last[ as a list,
-  with prefix pre, postfix post, and separator sep.
-*/
-template<typename I>
-  std::ostream& seqPrint(std::ostream& strm, const I& first, const I& last,
-			 const char* sep, const char* pre, const char* post)
-{
-  strm << pre;
-  bool firstElt = true;
 
-  for (I i = first; i != last; ++i)
-  {
-    if (firstElt)
-      firstElt = false;
-    else
-      strm << sep;
-    strm << *i;
-  }
-
-  strm << post;
-
-  return strm;
-}
+// |seqPrint| was here once, but was moved back to basic_io_def.h
 
   } // |namespace basic_io|
 
@@ -239,41 +215,44 @@ void write_bytes(unsigned int n, unsigned long long val, std::ostream& out)
 
 // Instantiations
 
-template std::ostream& basic_io::seqPrint // cartan_io
- (std::ostream& strm,
-  const partition::PartitionIterator::SubIterator& first,
-  const partition::PartitionIterator::SubIterator& last,
-  const char* sep, const char* pre, const char* post);
+// The following was an attempt to explicitly instantiate |seqPrint|, but
+// giving a complete and non-redundant list proved to be architecture-dependent
 
-template std::ostream& basic_io::seqPrint // interactive
- (std::ostream& strm,
-  const BitMap::iterator& first,
-  const BitMap::iterator& last,
-  const char* sep, const char* pre, const char* post);
+// template std::ostream& basic_io::seqPrint // cartan_io
+//  (std::ostream& strm,
+//   const partition::PartitionIterator::SubIterator& first,
+//   const partition::PartitionIterator::SubIterator& last,
+//   const char* sep, const char* pre, const char* post);
 
-template std::ostream& basic_io::seqPrint // |kgb_io::printBruhatOrder|
- (std::ostream& strm,
-  const set::EltList::const_iterator& first,
-  const set::EltList::const_iterator& last,
-  const char* sep, const char* pre, const char* post);
+// template std::ostream& basic_io::seqPrint // interactive
+//  (std::ostream& strm,
+//   const BitMap::iterator& first,
+//   const BitMap::iterator& last,
+//   const char* sep, const char* pre, const char* post);
 
-template std::ostream& basic_io::seqPrint // |prettyprint::printWeylList|
- (std::ostream& strm,
-  const std::vector<WeylWord>::iterator& first,
-  const std::vector<WeylWord>::iterator& last,
-  const char* sep, const char* pre, const char* post);
+// template std::ostream& basic_io::seqPrint // |kgb_io::printBruhatOrder|
+//  (std::ostream& strm,
+//   const set::EltList::const_iterator& first,
+//   const set::EltList::const_iterator& last,
+//   const char* sep, const char* pre, const char* post);
 
-template std::ostream& basic_io::seqPrint // |mainmode::roots_f| and others
- (std::ostream& strm,
-  const WeightList::const_iterator& first,
-  const WeightList::const_iterator& last,
-  const char* sep, const char* pre, const char* post);
+// template std::ostream& basic_io::seqPrint // |prettyprint::printWeylList|
+//  (std::ostream& strm,
+//   const std::vector<WeylWord>::iterator& first,
+//   const std::vector<WeylWord>::iterator& last,
+//   const char* sep, const char* pre, const char* post);
 
-template std::ostream& basic_io::seqPrint // |testprint::printComponents|
- (std::ostream& strm,
-  const SmallBitVectorList::const_iterator& first,
-  const SmallBitVectorList::const_iterator& last,
-  const char* sep, const char* pre, const char* post);
+// template std::ostream& basic_io::seqPrint // |mainmode::roots_f| and others
+//  (std::ostream& strm,
+//   const WeightList::const_iterator& first,
+//   const WeightList::const_iterator& last,
+//   const char* sep, const char* pre, const char* post);
+
+// template std::ostream& basic_io::seqPrint // |testprint::printComponents|
+//  (std::ostream& strm,
+//   const SmallBitVectorList::const_iterator& first,
+//   const SmallBitVectorList::const_iterator& last,
+//   const char* sep, const char* pre, const char* post);
 
 // never instantiated
 // template std::ostream& bitset::operator<<
