@@ -19,7 +19,7 @@ consists of formal sums \sum_x a_x J(x) with each a_x an integer. This
 Z-module is also spanned by the standard modules I(x). In other words
 there is an identity in the Grothendieck group
 
-J(y)=sum_s M(x,y)I(x) 
+J(y)=sum_x M(x,y)I(x) 
 
 where the sum is over the block (only x<=y in the Bruhat order
 contribute), and the M(x,y) are integers. These are given by the
