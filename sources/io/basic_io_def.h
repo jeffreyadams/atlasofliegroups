@@ -47,6 +47,31 @@ template<typename I>
   return strm;
 }
 
+template <unsigned int n>
+inline unsigned long long read_bytes(std::istream& in)
+{
+  return static_cast<unsigned char>(in.get())+(read_bytes<n-1>(in)<<8);
+}
+
+template<>
+inline unsigned long long read_bytes<1>(std::istream& in)
+{
+  return static_cast<unsigned char>(in.get());
+}
+
+// binary output
+template <unsigned int n>
+inline void write_bytes(unsigned long long val, std::ostream& out)
+{
+  out.put(char(val&0xFF)); write_bytes<n-1>(val>>8,out);
+}
+
+template <>
+inline void write_bytes<1>(unsigned long long val, std::ostream& out)
+{
+  out.put(char(val));
+}
+
 } // namespace basic_io
 
 } // namespace atlas
