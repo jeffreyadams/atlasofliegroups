@@ -1416,19 +1416,21 @@ BlockEltList non_integral_block::nonzeros_below(BlockElt z) const
 std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
 {
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
-  RatWeight ll=lambda(z);
-  RatWeight lr =
-    ll - RatWeight(G.rootDatum().twoRho(),2);
-  lr.normalize();
+  RatWeight ll=lambda(z).normalize();
+  assert(ll.denominator()<=2);
+  bool half_int = ll.denominator()==2;
+  Weight lr = half_int
+    ? (ll.numerator()-G.rootDatum().twoRho())/2
+    : ll.numerator()-G.rootDatum().twoRho()/2;
   strm << (is_nonzero(z) ? '*' : ' ')
-       << "(" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
-       << ',' << std::setw(3*ll.size()+3) << ll
-       << "=rho+" << std::setw(3*ll.size()+1) << lr.numerator();
-  if (lr.denominator()!=1)
-    strm << '/' << lr.denominator();
+       << "(" << std::setw(xwidth) << kgb_nr_of[d_x[z]] << ',' ;
+  if (half_int)
+    strm << std::setw(3*ll.size()+3) << ll;
+  else
+    strm << std::setw(3*ll.size()+1) << ll.numerator();
+  strm << "= rho+" << std::setw(4*ll.size()+1) << lr;
   return strm << ") ";
 }
-
 
 
 /*****************************************************************************
