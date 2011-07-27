@@ -1130,36 +1130,34 @@ void iblock_f()
     RatWeight gamma = nu + RatWeight
     (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
 
-    std::cout << "Infinitesimal character is " << gamma << std::endl;
+    ioutils::OutputFile f;
+    f << "Infinitesimal character is " << gamma << std::endl;
 
     SubSystem sub = SubSystem::integral(rd,gamma);
 
     WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
 
-    permutations::Permutation pi;
+    Permutation pi;
 
-    std::cout << "Subsystem on dual side is ";
+    f << "Subsystem on dual side is ";
     if (sub.rank()==0)
-      std::cout << "empty.\n";
+      f << "empty.\n";
     else
     {
-      std::cout << "of type "
-		<< dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-		<< ", with roots ";
+      f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+	<< ", with roots ";
       for (weyl::Generator s=0; s<sub.rank(); ++s)
-	std::cout << sub.parent_nr_simple(pi[s])
-		  << (s<sub.rank()-1 ? "," : ".\n");
+	f << sub.parent_nr_simple(pi[s]) << (s<sub.rank()-1 ? "," : ".\n");
     }
-    std::cout << "Twisted involution in subsystem: " << ww << ".\n";
+    f << "Twisted involution in subsystem: " << ww << ".\n";
 
     BlockElt z;
     blocks::gamma_block block(GR,sub,x,lambda,gamma,z);
 
-    std::cout << "Given parameters define element " << z
-	      << " of the following block:" << std::endl;
+    f << "Given parameters define element " << z
+      << " of the following block:" << std::endl;
 
-    ioutils::OutputFile f;
     block_io::print_block(f,block);
 
   }
@@ -1197,7 +1195,8 @@ void nblock_f()
     RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
     lambda.normalize();
 
-    std::cout << "x = " << x << ", gamma = " << gamma
+    ioutils::OutputFile f;
+    f << "x = " << x << ", gamma = " << gamma
 	      << ", lambda = " << lambda << std::endl;
 
     SubSystem sub = SubSystem::integral(rd,gamma);
@@ -1209,28 +1208,26 @@ void nblock_f()
     WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
 
-    permutations::Permutation pi;
+    Permutation pi;
 
-    std::cout << "Subsystem on dual side is ";
+    f << "Subsystem on dual side is ";
     if (sub.rank()==0)
-      std::cout << "empty.\n";
+      f << "empty.\n";
     else
     {
-      std::cout << "of type "
-		<< dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-		<< ", with roots ";
+      f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+	<< ", with roots ";
       for (weyl::Generator s=0; s<sub.rank(); ++s)
-	std::cout << sub.parent_nr_simple(pi[s])
-		  << (s<sub.rank()-1 ? "," : ".\n");
+	f << sub.parent_nr_simple(pi[s])
+	  << (s<sub.rank()-1 ? "," : ".\n");
     }
 
     BlockElt z;
     blocks::non_integral_block block(GR,sub,x,lambda,gamma,z);
 
-    std::cout << "Given parameters define element " << z
-	      << " of the following block:" << std::endl;
+    f << "Given parameters define element " << z
+      << " of the following block:" << std::endl;
 
-    ioutils::OutputFile f;
     block_io::print_block(f,block);
     kl::KLContext klc(block);
     klc.fill(z,false);
@@ -1259,7 +1256,9 @@ void nblock_f()
     } // |for (x<=z)|
 
 
-    f << "comulated KL polynomials P_{x," << z << "}:\n";
+    f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
+      << "KL polynomials "
+      << (parity==1 ? "-" : "") << "(-1)^l(x)*P_{x," << z << "}:\n";
     int width = ioutils::digits(z,10ul);
     for (map_type::const_iterator it=acc.begin(); it!=acc.end(); ++it)
     {
@@ -1321,12 +1320,10 @@ void embedding_f()
     const RootDatum& rd = G.rootDatum();
 
     Weight lambda_rho =
-      interactive::get_weight(interactive::sr_input(),
-			      "Give lambda-rho: ",
+      interactive::get_weight(interactive::sr_input(),"Give lambda-rho: ",
 			      G.rank());
 
     RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
-
 
     RatWeight nu=
       interactive::get_ratweight
@@ -1344,7 +1341,8 @@ void embedding_f()
     RatWeight gamma = nu + RatWeight
     (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
 
-    std::cout << "Infinitesimal character is " << gamma << std::endl;
+    ioutils::OutputFile f;
+    f << "Infinitesimal character is " << gamma << std::endl;
 
     SubSystem sub = SubSystem::integral(rd,gamma);
 
@@ -1352,21 +1350,19 @@ void embedding_f()
     const tits::SubTitsGroup sub_gTg
       (G,sub,G.involutionMatrix(kgb.involution(x)),ww);
 
-    permutations::Permutation pi;
+    Permutation pi;
 
-    std::cout << "Subsystem on dual side is ";
+    f << "Subsystem on dual side is ";
     if (sub.rank()==0)
-      std::cout << "empty.\n";
+      f << "empty.\n";
     else
     {
-      std::cout << "of type "
-		<< dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-		<< ", with roots ";
+      f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+	<< ", with roots ";
       for (weyl::Generator s=0; s<sub.rank(); ++s)
-	std::cout << sub.parent_nr_simple(pi[s])
-		  << (s<sub.rank()-1 ? "," : ".\n");
+	f << sub.parent_nr_simple(pi[s]) << (s<sub.rank()-1 ? "," : ".\n");
     }
-    std::cout << "Twisted involution in subsystem: " << ww << ".\n";
+    f << "Twisted involution in subsystem: " << ww << ".\n";
 
     weyl::TI_Entry::Pooltype pool;
     hashtable::HashTable<weyl::TI_Entry,unsigned int> hash_table(pool);
@@ -1401,10 +1397,11 @@ void embedding_f()
     size_t si=0; // index into |stops|
     for (unsigned int i=0; i<pool.size(); ++i)
     {
-      if (i==stops[si]) { std::cout << std::endl; ++si; } // separate classes
+      if (i==stops[si])
+      { (std::ostream&)f << std::endl; ++si; } // separate classes
       TwistedInvolution tw=pool[i];
-      std::cout << sub_gTg.base_point_offset(tw).log_2pi()
-		<< "  \t@  " << sub_gTg.word(tw) <<std::endl;
+      f << sub_gTg.base_point_offset(tw).log_2pi()
+	<< "  \t@  " << sub_gTg.word(tw) <<std::endl;
     }
   }
   catch (error::MemoryOverflow& e)
@@ -1458,7 +1455,7 @@ void test_f()
     WeylWord ww;
     weyl::Twist twist = sub.twist(theta,ww);
 
-    permutations::Permutation pi;
+    Permutation pi;
 
     std::cout << "Subsystem on dual side is ";
     if (sub.semisimple_rank()==0)
