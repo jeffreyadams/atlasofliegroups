@@ -74,6 +74,7 @@ namespace atlas {
   namespace ratvec { template<typename C> class RationalVector; }
 
   namespace permutations { struct Permutation; }
+  using permutations::Permutation;
 
   namespace partition {
     class Partition;
