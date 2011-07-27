@@ -369,6 +369,7 @@ class non_integral_block : public Block_base
 
   // new methods
   RatWeight lambda(BlockElt z) const; // reconstruct from y value
+  RankFlags singular_simple_roots() { return singular; }
   bool is_nonzero(BlockElt z) const; // whether |z| survives singular |gamma|
   BlockEltList nonzeros_below(BlockElt z) const; // reachable nonzeros
 
