@@ -1257,8 +1257,7 @@ void nblock_f()
 
 
     f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
-      << "KL polynomials "
-      << (parity==1 ? "-" : "") << "(-1)^l(x)*P_{x," << z << "}:\n";
+      << "KL polynomials (-1)^{l(" << z << ")-l(x)}*P_{x," << z << "}:\n";
     int width = ioutils::digits(z,10ul);
     for (map_type::const_iterator it=acc.begin(); it!=acc.end(); ++it)
     {

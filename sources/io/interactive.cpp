@@ -734,12 +734,16 @@ void get_parameter(RealReductiveGroup& GR,
   KGBEltList canonical_fiber;
   BitMap cf(kgb.size());
   for (size_t k=0; k<kgb.size(); ++k)
-    if (kgb.Cartan_class(k)==cn and kgb.involution(k)==tw)
-      canonical_fiber.push_back(k), cf.insert(k);
+    if (kgb.Cartan_class(k)==cn)
+    {
+      cf.insert(k);
+      if (kgb.involution(k)==tw)
+	canonical_fiber.push_back(k);
+    }
 
-  if (canonical_fiber.size()==1)
+  if (cf.size()==1)
   {
-    std::cout << "Choosing the unique KGB element from the following fiber:\n";
+    std::cout << "Choosing the unique KGB element for the Cartan class:\n";
     kgb_io::print(std::cout,kgb,false,&G,&canonical_fiber);
     x = canonical_fiber[0];
   }
@@ -797,19 +801,29 @@ void get_parameter(RealReductiveGroup& GR,
 
   Weight& numer = gamma.numerator(); // we change |gamma| using it
 
-  // although our goal is to make gamma dominant for theintegral system only
+  // although our goal is to make gamma dominant for the integral system only
   // it does not hurt to make gamma fully dominant, acting on |x|,|lambda| too
   { weyl::Generator s;
     do
     {
-      for (s=0; s<rd.semisimpleRank(); ++s)
-	if (rd.simpleCoroot(s).dot(numer)<0)
-	{
-	  rd.simpleReflect(numer,s);
-	  rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
-	  x = kgb.cross(s,x);
-	  break;
-	}
+     for (s=0; s<rd.semisimpleRank(); ++s)
+      {
+        int v=rd.simpleCoroot(s).dot(numer);
+        if (v<0)
+        {
+          rd.simpleReflect(numer,s);
+          rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
+          x = kgb.cross(s,x);
+          break;
+        }
+        else if (v==0 and
+		 kgb.status(x).isComplex(s) and kgb.isDescent(s,x))
+        {
+          rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
+          x = kgb.cross(s,x);
+          break;
+        }
+      }
     }
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
 
