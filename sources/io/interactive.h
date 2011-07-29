@@ -105,6 +105,9 @@ namespace interactive {
 		     KGBElt& x,
 		     Weight& lambda_rho,
 		     RatWeight& gamma);
+
+  void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError);
+
 }
 
 /******** type definitions ***************************************************/

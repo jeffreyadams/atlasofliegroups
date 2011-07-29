@@ -30,6 +30,11 @@
 #include "tori.h"       // |tori::dualPi0| used in |makeFiberGroup|
 #include "weyl.h"	// used in one |InvolutionData| pseudo-constructor
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include <iterator>
+#endif
+
 namespace atlas {
 
   namespace cartanclass {

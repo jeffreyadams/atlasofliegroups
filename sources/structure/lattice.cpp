@@ -22,6 +22,11 @@
 #include "matrix.h"
 #include "matreduc.h"
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include <iterator>
+#endif
+
 /*****************************************************************************
 
   This module defines some more general lattice functions.

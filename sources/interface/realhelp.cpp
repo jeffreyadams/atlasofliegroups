@@ -34,6 +34,8 @@ namespace {
   void kgb_h();
   void KGB_h();
   void kgborder_h();
+  void kgp_h();
+  void kgporder_h();
 
   // command tags for the help facility
   const char* components_tag = "describes component group of the real group";
@@ -44,6 +46,8 @@ namespace {
   const char* KGB_tag =
     "computes KGB data (more information than the kgb command)";
   const char* kgborder_tag = "prints the Bruhat ordering on K\\G/B";
+  const char* kgp_tag = "prints the orbits of K on G/P";
+  const char* kgporder_tag = "prints the Bruhat ordering on K\\G/P";
 
 }
 
@@ -67,6 +71,8 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   mode.add("kgb",kgb_h);
   mode.add("KGB",KGB_h);
   mode.add("kgborder",kgborder_h);
+  mode.add("kgp",kgp_h);
+  mode.add("kgporder",kgporder_h);
 
   insertTag(tagDict,"components",components_tag);
   insertTag(tagDict,"cartan",cartan_tag);
@@ -75,6 +81,8 @@ void addRealHelp(commands::CommandMode& mode, commands::TagDict& tagDict)
   insertTag(tagDict,"kgb",kgb_tag);
   insertTag(tagDict,"KGB",KGB_tag);
   insertTag(tagDict,"kgborder",kgborder_tag);
+  insertTag(tagDict,"kgp",kgp_tag);
+  insertTag(tagDict,"kgporder",kgporder_tag);
 }
 
 }
@@ -123,6 +131,16 @@ void KGB_h()
 void kgborder_h()
 {
   io::printFile(std::cerr,"kgborder.help",io::MESSAGE_DIR);
+}
+
+void kgp_h()
+{
+  io::printFile(std::cerr,"kgp.help",io::MESSAGE_DIR);
+}
+
+void kgporder_h()
+{
+  io::printFile(std::cerr,"kgporder.help",io::MESSAGE_DIR);
 }
 
 } // namespace

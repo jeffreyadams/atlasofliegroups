@@ -296,6 +296,7 @@ namespace atlas {
     class KGB;
     class subsys_KGB;
     typedef RankFlags DescentSet;
+    class KGP;
   }
   using kgb::KGB_base;
   using kgb::KGB_elt_entry;
@@ -309,6 +310,9 @@ namespace atlas {
 
   using kgb::DescentSet;
   static const KGBElt UndefKGB = ~0u;
+
+  typedef unsigned int Parabolic;
+  typedef unsigned int KGPElt;
 
   namespace descents { class DescentStatus; }
   using descents::DescentStatus;

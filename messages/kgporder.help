@@ -1,0 +1,55 @@
+
+The "kgporder" command prints the Hasse diagram for the closure
+relation for orbits of K on the partial flag variety G/P. Here K
+is the complexification of a maximal compact subgroup for a 
+particular (weak) real form. The software will prompt the user 
+for this if it has not already been chosen.
+
+Once a real form is specified, the user is prompted to enter a
+subset of the simple roots corresponding to the desired parabolic.
+The input should be a decimal number between 0 and 2^(rank)-1 whose
+binary representation describes this subset. In particular, A '1' 
+represents inclusion and a '0' represents exclusion in the standard 
+ordering of the simple roots.
+
+For example, to include roots 1 and 3 in P and exclude all others, 
+the user should enter the number 5. Entering 0 corresponds to the
+case B=P and reproduces K\B/G as a partially ordered set.
+
+The output is as follows:
+
+Individual orbits are listed by the "kgp" command, which numbers 
+them from 0 to n-1. Each row of the output corresponds to a single 
+orbit, and the first column is the orbit number followed by a colon.
+
+Following the orbit number i is a comma-separated list of the immediate
+predecessors of orbit #i in the closure order. Unlike the situation
+for K\G/B, immediate predecessor orbits need not have codimension one
+in the boundary.
+
+For example:
+
+empty: type
+Lie type: B2 sc s
+main: realform
+(weak) real forms are:
+0: so(5)
+1: so(4,1)
+2: so(3,2)
+enter your choice: 2
+real: kgporder
+enter root subset (in decimal, interpreted binary): 1
+kgp size: 4
+Name an output file (return for stdout, ? to abandon):
+0:
+1:
+2: 0,1
+3: 2
+real:
+
+Here the quasi-split form of type B2 is chosen, with P corresponding
+to the root subset consisting of the unique long simple root. There 
+are 4 orbits of K on G/P. Orbits 0 and 1 are closed and orbit 2 
+contains orbits 0 and 1 as immediate predecessors. Orbit 3 is the 
+open orbit and thus contains every orbit in its closure, however
+only orbit 2 is an immediate predecessor.

@@ -49,6 +49,11 @@
 #include "matreduc.h"
 #include "ratvec.h"
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include <iterator>
+#endif
+
 /*****************************************************************************
 
   This module contains the implementation of the RootDatum class. What we
@@ -156,8 +161,8 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
   for (size_t l=1; not roots_of_length[l].empty(); ++l)// empty level means end
   {
     first_l.push_back(ri.size()); // set |first_l[l]| to next root to be added
-    for (std::set<Byte_vector>::iterator
-	   it=roots_of_length[l].begin(); it!=roots_of_length[l].end(); ++it)
+    //for (std::set<Byte_vector>::iterator it=roots_of_length[l].begin(); it!=roots_of_length[l].end(); ++it)
+    for (std::set<Byte_vector, root_compare>::iterator it=roots_of_length[l].begin(); it!=roots_of_length[l].end(); ++it)
     {
       const Byte_vector& alpha = *it;
       for (size_t i=0; i<rk; ++i)

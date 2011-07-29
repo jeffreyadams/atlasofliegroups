@@ -19,6 +19,11 @@
 
 #include "tags.h"
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include "constants.h"
+#endif
+
 namespace atlas {
 
 /******** function definitions ***********************************************/

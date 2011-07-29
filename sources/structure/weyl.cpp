@@ -33,6 +33,11 @@
 #include "prerootdata.h"// for defining action using only simple (co)roots
 #include "rootdata.h"	// also needed for defining action, and deducing twist
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include <iterator>
+#endif
+
 /*****************************************************************************
 
   Implementation of Weyl groups. I have decided to represent elements as

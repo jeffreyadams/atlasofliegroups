@@ -15,6 +15,11 @@
 #include <vector>
 #include <cassert>
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include "constants.h"
+#endif
+
 namespace atlas {
 
 namespace ioutils {

@@ -18,6 +18,11 @@
 #include "bitmap.h"
 #include "tags.h"
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include <iterator>
+#endif
+
 namespace atlas {
 
 /*****************************************************************************

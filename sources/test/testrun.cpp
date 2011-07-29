@@ -13,6 +13,11 @@
 #include "matreduc.h"
 #include "tags.h"
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include <iterator>
+#endif
+
 /*****************************************************************************
 
   The purpose of this module is to provide tools for extended testing of

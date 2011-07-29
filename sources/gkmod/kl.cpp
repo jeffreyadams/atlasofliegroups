@@ -27,14 +27,12 @@
 
 #include "kl.h"
 
-#ifdef VERBOSE
 #include <iostream>
 #include <fstream>
 #include <iomanip>
 #include <ctime>
 #include <sstream>
 #include <string>
-#endif
 
 #include <cassert>
 #include <set>
@@ -45,6 +43,11 @@
 #include "hashtable.h"
 #include "kl_error.h"
 #include "wgraph.h"	// for the |wGraph| function
+
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include <iterator>
+#endif
 
 /*
   [Fokko's original description, which referred to a slighly older

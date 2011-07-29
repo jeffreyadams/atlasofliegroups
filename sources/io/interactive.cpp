@@ -454,6 +454,11 @@ void getInteractive(RealFormNbr& rf,
   rf = rfi.in(r);
 }
 
+void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
+{
+  psg=get_bounded_int(inputBuf, "enter root subset (in decimal, interpreted binary): ", 1<<rank);
+}
+
 
 /*
   Synposis: replaces rf with a new real form from the list drfl.

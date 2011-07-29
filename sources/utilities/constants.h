@@ -12,6 +12,13 @@
 #ifndef CONSTANTS_H  /* guard against multiple inclusions */
 #define CONSTANTS_H
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#define and &&
+#define or ||
+#define not !
+#endif
+
 #include <cstddef>
 #include <limits>
 

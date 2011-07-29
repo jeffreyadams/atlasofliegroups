@@ -23,6 +23,7 @@
 #include "kgb.h"
 #include "kgb_io.h"
 #include "test.h"
+#include "kgp.h"
 
 /****************************************************************************
 
@@ -52,6 +53,9 @@ namespace {
   void kgb_f();
   void KGB_f();
   void kgborder_f();
+  void kgp_f();
+  void kgporder_f();
+  void kgpgraph_f();
 
   void type_f();
   void realform_f();
@@ -90,6 +94,9 @@ commands::CommandMode& realMode()
     real_mode.add("kgb",kgb_f);
     real_mode.add("KGB",KGB_f);
     real_mode.add("kgborder",kgborder_f);
+    real_mode.add("kgp", kgp_f);
+    real_mode.add("kgporder", kgporder_f);
+    real_mode.add("kgpgraph", kgpgraph_f);
     // the "type" command should be redefined here because it needs to exit
     // the real mode
     real_mode.add("type",type_f); // override
@@ -288,6 +295,55 @@ void type_f()
   }
 }
 
+void kgp_f()
+{
+  // build KGP
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  atlas::Parabolic psg;
+  interactive::getInteractive(psg, G_R.rank());
+  kgb::KGP kgp(G_R,psg);
+  
+  // print results
+  std::cout << "kgp size: " << kgp.size() << std::endl;
+  ioutils::OutputFile file;
+  kgp.print(file);
+}
+
+void kgporder_f()
+{
+  // build KGP
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  atlas::Parabolic psg;
+  interactive::getInteractive(psg, G_R.rank());
+  kgb::KGP kgp(G_R,psg);
+
+  // compute closure
+  kgp.fillClosure();
+
+  // print results
+  std::cout << "kgp size: " << kgp.size() << std::endl;
+  ioutils::OutputFile file;
+  kgp.printClosure(file);
+}
+
+void kgpgraph_f()
+{
+  // build KGP and fill closure
+  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  atlas::Parabolic psg;
+  interactive::getInteractive(psg, G_R.rank());
+  kgb::KGP kgp(G_R,psg);
+  kgp.fillClosure();
+  std::cout << "kgp size: " << kgp.size() << std::endl;
+
+  // make sure the user enters an actual filename - 
+  // standard output makes no sense here
+  ioutils::OutputFile file;
+  if ((std::ostream&)file == std::cout) throw error::InputError();
+
+  // make the dot file
+  kgp.makeDotFile(file);
+}
 
 } // namespace
 

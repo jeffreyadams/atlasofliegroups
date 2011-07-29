@@ -26,6 +26,11 @@ memory problems.
 #include <fstream>
 #include <cassert>
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include "constants.h"
+#endif
+
 namespace atlas {
 
 /******** static member definitions ******************************************/
@@ -139,13 +144,11 @@ Pool::Pool(size_t a, size_t d)
 */
 
 {
-  using namespace constants;
-
   ++instances;
 
-  memset(d_free,0,sizeBits*sizeof(void*));
-  memset(d_used,0,sizeBits*sizeof(size_t));
-  memset(d_allocated,0,sizeBits*sizeof(size_t));
+  memset(d_free,0,constants::sizeBits*sizeof(void*));
+  memset(d_used,0,constants::sizeBits*sizeof(size_t));
+  memset(d_allocated,0,constants::sizeBits*sizeof(size_t));
 }
 
 Pool::~Pool()
@@ -233,8 +236,6 @@ void Pool::memoryReport()
 */
 
 {
-  using namespace constants;
-
   std::ofstream log(logfile);
 
   log << "total number of pool instances: " << Pool::constructions
@@ -250,9 +251,9 @@ void Pool::memoryReport()
 	     << a << " system allocation" << (a == 1ul ? "" : "s")
 	     << std::endl;
     log << "used: ";
-    for (size_t i = 0; i < sizeBits; ++i) {
+    for (size_t i = 0; i < constants::sizeBits; ++i) {
       log << pd.d_allocated[i];
-      if (i < sizeBits-1)
+      if (i < constants::sizeBits-1)
 	log << ",";
     }
     log << std::endl;
@@ -344,13 +345,11 @@ void Pool::reportDestruction()
 */
 
 {
-  using namespace constants;
-
   PoolDestruct pd;
 
   pd.d_instance = d_instance;
   pd.d_systemAllocs = d_systemAllocs.size();
-  memcpy(pd.d_allocated,d_allocated,sizeBits*sizeof(size_t));
+  memcpy(pd.d_allocated,d_allocated,constants::sizeBits*sizeof(size_t));
 
   poolDestructions.push_back(pd);
 
@@ -436,8 +435,6 @@ void SimplePool::memoryReport()
 */
 
 {
-  using namespace constants;
-
   std::ofstream log(logfile);
 
   log << "total number of pool instances: " << SimplePool::constructions
@@ -494,8 +491,6 @@ void SimplePool::reportDestruction()
 */
 
 {
-  using namespace constants;
-
   SimplePoolDestruct spd;
 
   spd.d_instance = d_instance;

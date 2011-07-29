@@ -48,6 +48,11 @@
 #include "kgb.h"
 #include "weyl.h"
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include <iterator>
+#endif
+
 /*
   Our task is fairly simple: given the one sided parameter sets for the real
   form and for the dual real form, as provided by the kgb module, which sets

@@ -68,6 +68,11 @@
 #include "rootdata.h"
 #include "tori.h"
 
+// extra defs for windows compilation -spc
+#ifdef WIN32
+#include <iterator>
+#endif
+
 /*****************************************************************************
 
   The calculation of the component group of G(R) is based on the following
