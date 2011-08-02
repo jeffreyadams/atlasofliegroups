@@ -456,7 +456,52 @@ void getInteractive(RealFormNbr& rf,
 
 void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
 {
-  psg=get_bounded_int(inputBuf, "enter root subset (in decimal, interpreted binary): ", 1<<rank);
+  // get the user input as a string
+  psg = 0;
+  std::string line;
+  std::cout << "enter simple roots (" << 1 << "-" << rank << "): ";
+  std::getline(std::cin, line);
+
+  // convert it to a stream
+  std::istringstream istream;
+  istream.str(line);
+
+  // parse it
+  while (!istream.eof()) {
+    // read the next non-whitespace character
+    char c;
+    std::streampos pos = istream.tellg();
+    istream >> c;
+
+    if (istream.fail()) {
+      // no more non-whitespace characters
+      return;
+    }
+
+    // see if its a number
+    if (c >= '0' && c <= '9') {
+      // read the number
+      int n;
+      istream.seekg(pos);
+      istream >> n;
+
+      if (istream.fail()) {
+        // couldn't read the number from the stream
+        // something is really wrong - abort
+        throw error::InputError();
+      }
+
+      // if the number is in range, add it to the subset
+      if (n >= 1 && n <= rank) {
+        psg |= (1<<(n-1));
+      }
+    }
+
+    // see if the user aborted
+    else if (c == '?') {
+      throw error::InputError();
+    }
+  }
 }
 
 

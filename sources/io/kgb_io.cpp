@@ -11,6 +11,7 @@
 
 #include <iomanip>
 #include <iostream>
+#include <set>
 
 #include "complexredgp.h"
 #include "kgb.h"
@@ -174,6 +175,94 @@ printBruhatOrder(std::ostream& strm, const BruhatOrder& bruhat)
 
   return strm;
 } //printBruhatOrder
+
+// make a '.dot' file that can be processed by the 'dot' program
+// see www.graphviz.org for more info
+void makeDotFile(std::ostream& strm, const KGB& kgb, const BruhatOrder& bruhat) {
+  // local data
+  size_t size = kgb.size();
+  size_t rank = kgb.rank();
+
+  // edge colors - feel free to change these
+  // but remember to change them in the help file as well - spc
+  std::string colorca("black"); // cross action 
+  std::string colorctI("blue"); // cayley transform type I
+  std::string colorctII("green"); // cayley transform type II
+  std::string colorcl("gray"); // additional R/S closure edge
+
+  // write header
+  strm << "digraph G {" << std::endl << "ratio=\"1.5\"" << std::endl << "size=\"7.5,10.0\"" << std::endl;
+
+  // create the vertices
+  for (size_t i=0; i<size; i++) {
+    strm << "v" << i << std::endl;    
+  }
+
+  // vector of sets to track which closure edges come from
+  // cross actions and cayley transforms
+  std::vector<std::set<size_t> > edges(size);
+
+  // build the c/a and c/t graph
+  for (size_t i=0; i<size; i++) {
+    for (size_t j=0; j<rank; j++) {
+		  // depending on the type of root, add an edge if appropriate
+      const gradings::Status& type = kgb.status(i);
+      
+      // CASE: complex cross action
+      if (type[j] == gradings::Status::Complex) {
+        // get the cross action
+        KGBElt ca = kgb.cross(j,i);
+
+        // its only a closure edge if it inceases length
+        if (ca > i) {
+          // add an edge in the graph
+          strm << "v" << ca << " -> v" << i << "[color=" << colorca << "] [arrowhead=none] [style=bold]" << std::endl;
+          edges[ca].insert(i);
+        }
+      }
+
+      // CASE: cayley transform
+      else if (type[j] == gradings::Status::ImaginaryNoncompact) {
+        // get the cross action and cayley transform
+        KGBElt ca = kgb.cross(j,i);
+        KGBElt ct = kgb.cayley(j,i);
+
+        // CASE: type I
+        if (ca != i) {
+          // add an edge in the graph
+          strm << "v" << ct << " -> v" << i << "[color=" << colorctI << "] [arrowhead=none] [style=bold]" << std::endl;
+          edges[ct].insert(i);
+        }
+
+        // CASE: type II
+        else {
+          // add an edge in the graph
+          strm << "v" << ct << " -> v" << i << "[color=" << colorctII << "] [arrowhead=none] [style=bold]" << std::endl;
+          edges[ct].insert(i);
+        }
+      }
+    }
+  }
+
+  // finally, add the closure edges
+  for (size_t i=0; i<size; i++) {
+    // get the list
+    const set::EltList& clist = bruhat.hasse(i);
+    size_t clsize = clist.size();
+
+    // add edges for the ones that arent already there
+    for (size_t j=0; j<clsize; j++) {
+      set::Elt e = clist[j];
+      if (edges[i].count(e) == 0) {
+          // add an edge in the graph
+          strm << "v" << i << " -> v" << e << "[color=" << colorcl << "] [arrowhead=none]" << std::endl;        
+      }
+    }
+  }
+
+  // write footer
+  strm << "}" << std::endl;
+}
 
 } // namespace kgb_io
 

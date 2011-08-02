@@ -7,14 +7,10 @@ prompt the user for this if it has not already been chosen.
 
 Once a real form is specified, the user is prompted to enter a
 subset of the simple roots corresponding to the desired parabolic.
-The input should be a decimal number between 0 and 2^(rank)-1 whose
-binary representation describes this subset. In particular, A '1' 
-represents inclusion and a '0' represents exclusion in the standard 
-ordering of the simple roots.
-
-For example, to include roots 1 and 3 in P and exclude all others, 
-the user should enter the number 5. Entering 0 corresponds to the
-case B=P and reproduces K\B/G as a partially ordered set.
+The input should be a list of integers in [1,rank], separated 
+by any whitespace or non-numeric character(s). Numbers outside this 
+range are ignored. An empty list corresponds to the case 
+B=P and regenerates K\B/G as a partially ordered set.
 
 The output is as follows:
 
@@ -47,8 +43,8 @@ main: realform
 2: so(3,2)
 enter your choice: 2
 real: kgp
-enter root subset (in decimal, interpreted binary): 1
-kgp size: 4
+enter simple roots (1-2): 1
+kgp size for roots {1}: 4
 Name an output file (return for stdout, ? to abandon):
 0:[ 4*] 1 3 {0,1,4}
 1:[ 5*] 1 3 {2,3,5}

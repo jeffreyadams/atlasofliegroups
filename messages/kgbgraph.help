@@ -1,0 +1,51 @@
+
+The "kgbgraph" command produces a 'dot' file containing the 
+(codimension one) cross actions, Cayley transforms, and 
+closure relations for the orbits of K on the flag variety G/B.
+This file can be processed by the free graph visualization 
+program 'dot' available from
+
+http://www.graphviz.org.
+
+Use the commands 'kgb' and 'kgborder' to view this infomation
+in plain text form.
+
+The software will prompt the user for a real form if it has not 
+already been chosen, after which the user is prompted to enter 
+an output file. Generally this should be the name of an ASCII 
+text file ending in '.dot'. If no file name is entered, the 
+command is aborted.
+
+For example:
+empty: type
+Lie type: B2 sc s
+main: realform
+(weak) real forms are:
+0: so(5)
+1: so(4,1)
+2: so(3,2)
+enter your choice: 2
+real: kgbgraph
+kgbsize: 11
+Name an output file (return for stdout, ? to abandon): spin32.dot
+
+Here the quasi-split form of type B2 is chosen with an output file
+name of 'spin32.dot'. To convert this to a visual graph (assuming
+'dot' is intsalled on the local system and in the users path) exit
+atlas and type:
+
+dot -Tps -ospin32.dot spin32.ps
+
+This will create a '.ps' file named 'spin32.ps' containing a picture
+of the closure poset. Attempting to generate pictures from extremely
+large posets is not recommended.
+
+In the graph there is one vertex for each element of K\G/B labelled 
+according to the output of the 'kgb' command. An edge appears 
+connecting vi to vj (i > j) if orbit j is an immediate predecessor
+to orbit i in the closure poset. Moreover, edges are colored as follows:
+
+Complex (i.e. codimension one) cross action: black edge
+Cayley transform of type I: blue edge
+Cayley transform of type II: green edge
+Additional closure edges not from above: light gray

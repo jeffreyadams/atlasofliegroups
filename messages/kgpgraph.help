@@ -1,0 +1,54 @@
+
+The "kgpgraph" command produces a 'dot' file containing the 
+closure relations for the orbits of K on the partial flag 
+variety G/P. This file can be processed by the free graph 
+visualization program 'dot' available from
+
+http://www.graphviz.org.
+
+Use the commands 'kgp' and 'kgporder' to view this infomation
+in plain text form.
+
+The software will prompt the user for a realform if it has not 
+already been chosen. The user is then prompted to enter a subset 
+of the simple roots corresponding to the desired parabolic. The
+input should be a list of integers in [1,rank], separated by any
+whitespace or non-numeric character(s). Numbers outside this 
+range are ignored.
+
+After the parabolic subgroup is chosen, the user is prompted to 
+enter an output file. Generally this should be the name of an 
+ASCII text file ending in '.dot'. If no file name is entered, the
+command is aborted.
+
+For example:
+empty: type
+Lie type: B2 sc s
+main: realform
+(weak) real forms are:
+0: so(5)
+1: so(4,1)
+2: so(3,2)
+enter your choice: 2
+real: kgpgraph
+enter simple roots (1-2): 1
+kgp size for roots {1}: 4
+Name an output file (return for stdout, ? to abandon): spin32_1.dot
+real:
+
+Here the quasi-split form of type B2 is chosen, with P corresponding
+to the root subset consisting of the unique long simple root, and an 
+output file name of 'spin32_1.dot'. To convert this to a visual graph
+(assuming 'dot' is intsalled on the local system and in the users path)
+exit atlas and type:
+
+dot -Tps -ospin32_1.dot spin32_1.ps
+
+This will create a '.ps' file named 'spin32_1.ps' containing a picture
+of the closure poset. Attempting to generate pictures from extremely
+large posets is not recommended.
+
+In the graph there is one vertex for each element of K\G/P labelled 
+according to the output of the 'kgp' command. A gray edge appears
+connecting vi to vj (i > j) if orbit j is an immediate predecessor
+to orbit i in the closure poset.

@@ -38,6 +38,9 @@ namespace kgb_io {
 
   std::ostream& printBruhatOrder(std::ostream&, const BruhatOrder&);
 
+  // make a '.dot' file that can be processed by the 'dot' program
+  // see www.graphviz.org for more info
+  void makeDotFile(std::ostream& strm, const KGB& kgb, const BruhatOrder& bruhat);
 }
 
 }

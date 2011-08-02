@@ -53,6 +53,7 @@ namespace {
   void kgb_f();
   void KGB_f();
   void kgborder_f();
+  void kgbgraph_f();
   void kgp_f();
   void kgporder_f();
   void kgpgraph_f();
@@ -94,6 +95,7 @@ commands::CommandMode& realMode()
     real_mode.add("kgb",kgb_f);
     real_mode.add("KGB",KGB_f);
     real_mode.add("kgborder",kgborder_f);
+    real_mode.add("kgbgraph",kgbgraph_f);
     real_mode.add("kgp", kgp_f);
     real_mode.add("kgporder", kgporder_f);
     real_mode.add("kgpgraph", kgpgraph_f);
@@ -295,16 +297,38 @@ void type_f()
   }
 }
 
+void kgbgraph_f()
+{
+  RealReductiveGroup& G_R = currentRealGroup();
+  std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
+  
+  // make sure the user enters an actual filename - 
+  // standard output makes no sense here
+  ioutils::OutputFile file;
+  if ((std::ostream&)file == std::cout) throw error::InputError();
+
+  kgb_io::makeDotFile(file,G_R.kgb(),G_R.Bruhat_KGB());
+}
+
 void kgp_f()
 {
   // build KGP
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  RealReductiveGroup& G_R = currentRealGroup();
   atlas::Parabolic psg;
   interactive::getInteractive(psg, G_R.rank());
   kgb::KGP kgp(G_R,psg);
   
-  // print results
-  std::cout << "kgp size: " << kgp.size() << std::endl;
+  // print the size and simple roots
+  std::cout << "kgp size for roots {";
+  bool first = true;
+  for (size_t i=0; i<G_R.rank(); i++) {
+    if (psg & (1<<i)) {
+      first ? first=false : std::cout << ",";
+      std::cout << i+1;
+    }
+  }  
+  std::cout << "}: " << kgp.size() << std::endl;
+
   ioutils::OutputFile file;
   kgp.print(file);
 }
@@ -312,7 +336,7 @@ void kgp_f()
 void kgporder_f()
 {
   // build KGP
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  RealReductiveGroup& G_R = currentRealGroup();
   atlas::Parabolic psg;
   interactive::getInteractive(psg, G_R.rank());
   kgb::KGP kgp(G_R,psg);
@@ -320,8 +344,17 @@ void kgporder_f()
   // compute closure
   kgp.fillClosure();
 
-  // print results
-  std::cout << "kgp size: " << kgp.size() << std::endl;
+  // print the size and simple roots
+  std::cout << "kgp size for roots {";
+  bool first = true;
+  for (size_t i=0; i<G_R.rank(); i++) {
+    if (psg & (1<<i)) {
+      first ? first=false : std::cout << ",";
+      std::cout << i+1;
+    }
+  }  
+  std::cout << "}: " << kgp.size() << std::endl;
+
   ioutils::OutputFile file;
   kgp.printClosure(file);
 }
@@ -329,12 +362,22 @@ void kgporder_f()
 void kgpgraph_f()
 {
   // build KGP and fill closure
-  realredgp::RealReductiveGroup& G_R = realmode::currentRealGroup();
+  RealReductiveGroup& G_R = currentRealGroup();
   atlas::Parabolic psg;
   interactive::getInteractive(psg, G_R.rank());
   kgb::KGP kgp(G_R,psg);
   kgp.fillClosure();
-  std::cout << "kgp size: " << kgp.size() << std::endl;
+
+  // print the size and simple roots
+  std::cout << "kgp size for roots {";
+  bool first = true;
+  for (size_t i=0; i<G_R.rank(); i++) {
+    if (psg & (1<<i)) {
+      first ? first=false : std::cout << ",";
+      std::cout << i+1;
+    }
+  }  
+  std::cout << "}: " << kgp.size() << std::endl;
 
   // make sure the user enters an actual filename - 
   // standard output makes no sense here
