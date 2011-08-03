@@ -88,7 +88,7 @@ class RootSystem
   matrix::Vector<int> two_rho_in_simple_roots;
 
 //!\brief Root permutations induced by reflections in all positive roots.
-  std::vector<permutations::Permutation> root_perm;
+  std::vector<Permutation> root_perm;
 
   // internal access methods
   byte& Cartan_entry(weyl::Generator i, weyl::Generator j)
@@ -174,7 +174,7 @@ class RootSystem
 // other accessors
 
   // the next method only works for _simple_ roots! (whence no RootNbr for |i|)
-  const permutations::Permutation& simple_root_permutation(weyl::Generator i)
+  const Permutation& simple_root_permutation(weyl::Generator i)
     const
   { return root_perm[i]; }
 
@@ -219,7 +219,7 @@ class RootSystem
   }
 
   // for arbitrary roots, reduce root number to positive root offset first
-  const permutations::Permutation& root_permutation(RootNbr alpha) const
+  const Permutation& root_permutation(RootNbr alpha) const
   { return root_perm[rt_abs(alpha)]; }
 
   bool isOrthogonal(RootNbr alpha, RootNbr beta) const
@@ -231,10 +231,10 @@ class RootSystem
 
 
   // find permutation of roots induced by diagram automorphism
-  permutations::Permutation root_permutation(const permutations::Permutation& ) const;
+  Permutation root_permutation(const Permutation& ) const;
 
   // extend root datum automorphism given on simple roots to all roots
-  permutations::Permutation extend_to_roots(const RootNbrList&) const;
+  Permutation extend_to_roots(const RootNbrList&) const;
 
 
   WeylWord reflectionWord(RootNbr r) const;
@@ -504,7 +504,7 @@ use by accessors.
     { act(ww,lambda); return lambda; }
 
   // here any matrix permuting the roots is allowed, e.g., root_reflection(r)
-  permutations::Permutation rootPermutation(const WeightInvolution& q) const;
+  Permutation rootPermutation(const WeightInvolution& q) const;
   // extend diagram automorphism to permutation of all roots
 
   WeightInvolution root_reflection(RootNbr r) const;

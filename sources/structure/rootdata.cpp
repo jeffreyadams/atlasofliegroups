@@ -142,8 +142,10 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
   std::vector<Byte_vector> simple_root(rk,Byte_vector(rk));
   std::vector<Byte_vector> simple_coroot(rk,Byte_vector(rk));
   std::vector<RootNbrList> link;
-  std::vector<std::set<Byte_vector,root_compare> >
-    roots_of_length(4*rk); // more than enough if |rk>0|; $E_8$ needs size 31
+
+  typedef std::set<Byte_vector,root_compare> RootVecSet;
+  std::vector<RootVecSet> roots_of_length
+    (4*rk); // more than enough if |rk>0|; $E_8$ needs size 31
 
   for (size_t i=0; i<rk; ++i)
   {
@@ -161,8 +163,8 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
   for (size_t l=1; not roots_of_length[l].empty(); ++l)// empty level means end
   {
     first_l.push_back(ri.size()); // set |first_l[l]| to next root to be added
-    //for (std::set<Byte_vector>::iterator it=roots_of_length[l].begin(); it!=roots_of_length[l].end(); ++it)
-    for (std::set<Byte_vector, root_compare>::iterator it=roots_of_length[l].begin(); it!=roots_of_length[l].end(); ++it)
+    for (RootVecSet::iterator
+	   it=roots_of_length[l].begin(); it!=roots_of_length[l].end(); ++it)
     {
       const Byte_vector& alpha = *it;
       for (size_t i=0; i<rk; ++i)
@@ -224,11 +226,11 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
     coroot(alpha)[i]-=coroot(beta).dot(simple_root[i]); // and modify
   }
 
-  root_perm.resize(npos,permutations::Permutation(2*npos));
+  root_perm.resize(npos,Permutation(2*npos));
   // first fill in the simple root permutations
   for (size_t i=0; i<rk; ++i)
   {
-    permutations::Permutation& perm=root_perm[i];
+    Permutation& perm=root_perm[i];
     for (RootNbr alpha=0; alpha<npos; ++alpha)
       if (alpha==i) // simple root reflecting itself makes it negative
       {
@@ -248,7 +250,7 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
   {
     size_t i=ri[alpha].descents.firstBit();
     assert(i<rk);
-    permutations::Permutation& alpha_perm=root_perm[alpha];
+    Permutation& alpha_perm=root_perm[alpha];
     alpha_perm=root_perm[i];
     root_perm[link[alpha][i]].left_mult(alpha_perm);
     root_perm[i].left_mult(alpha_perm);
@@ -438,11 +440,11 @@ RootSystem::bracket(RootNbr alpha, RootNbr beta) const // $\<\alpha,\beta^\vee>$
   return isPosRoot(alpha)!=isPosRoot(beta) ? -c : c;
 }
 
-permutations::Permutation
+Permutation
 RootSystem::extend_to_roots(const RootNbrList& simple_image) const
 {
   assert(simple_image.size()==rk);
-  permutations::Permutation result(numRoots());
+  Permutation result(numRoots());
 
   RootNbrList image_reflection(rk);
 
@@ -471,8 +473,8 @@ RootSystem::extend_to_roots(const RootNbrList& simple_image) const
   return result;
 }
 
-permutations::Permutation
-RootSystem::root_permutation(const permutations::Permutation& twist) const
+Permutation
+RootSystem::root_permutation(const Permutation& twist) const
 {
   assert(twist.size()==rk);
   RootNbrList simple_image(rk);
@@ -759,10 +761,10 @@ RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
 
   Precondition: |q| permutes the roots;
 */
-permutations::Permutation
+Permutation
   RootDatum::rootPermutation(const WeightInvolution& q) const
 {
-  permutations::Permutation result(numRoots());
+  Permutation result(numRoots());
 
   for (RootNbr alpha=0; alpha<numRoots(); ++alpha)
   {
