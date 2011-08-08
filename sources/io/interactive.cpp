@@ -481,7 +481,7 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
     // see if its a number
     if (c >= '0' && c <= '9') {
       // read the number
-      int n;
+      unsigned int n;
       istream.seekg(pos);
       istream >> n;
 
@@ -492,9 +492,9 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
       }
 
       // if the number is in range, add it to the subset
-      if (n >= 1 && n <= rank) {
+      --n; // change to 0-based convention (makes 0 huge and therefore ignored)
+      if (n < rank)
         psg |= (1<<(n-1));
-      }
     }
 
     // see if the user aborted
@@ -866,8 +866,7 @@ void get_parameter(RealReductiveGroup& GR,
           x = kgb.cross(s,x);
           break;
         }
-        else if (v==0 and
-		 kgb.status(x).isComplex(s) and kgb.isDescent(s,x))
+        else if (v==0 and kgb.isComplexDescent(s,x))
         {
           rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
           x = kgb.cross(s,x);
