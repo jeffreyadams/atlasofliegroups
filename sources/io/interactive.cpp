@@ -494,7 +494,7 @@ void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError)
       // if the number is in range, add it to the subset
       --n; // change to 0-based convention (makes 0 huge and therefore ignored)
       if (n < rank)
-        psg |= (1<<(n-1));
+        psg |= (1<<n);
     }
 
     // see if the user aborted
