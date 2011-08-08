@@ -1202,7 +1202,7 @@ expr make_for_node(struct id_pat id, expr ip, expr b)
 @/expr result; result.kind=for_expr; result.e.for_variant=f;
   return result;
 }
-expr make_cfor_node(id_type id, expr count, expr bound, bool up, expr b)
+expr make_cfor_node(id_type id, expr count, expr bound, short up, expr b)
 { c_loop c=new cfor_node; c->id=id; c->count=count; c->bound=bound;
   c->up=up; c->body=b;
 @/expr result; result.kind=cfor_expr; result.e.cfor_variant=c;
