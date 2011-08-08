@@ -106,7 +106,8 @@ namespace interactive {
 		     Weight& lambda_rho,
 		     RatWeight& gamma);
 
-  void getInteractive(atlas::Parabolic &psg, size_t rank) throw(error::InputError);
+  void getInteractive(atlas::Parabolic &psg, size_t rank)
+    throw(error::InputError);
 
 }
 
@@ -114,6 +115,7 @@ namespace interactive {
 
 namespace ioutils {
 
+// the next class emulates an (impossible) derivation from std::ostream&
 class OutputFile
 {
   std::ostream* d_stream;

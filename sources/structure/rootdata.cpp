@@ -756,6 +756,33 @@ RatWeight RootDatum::fundamental_coweight(weyl::Generator i) const
 
 /******** accessors **********************************************************/
 
+void RootDatum::reflect(RootNbr alpha, LatticeMatrix& M) const
+{
+  assert(M.numRows()==rank());
+  for (unsigned int j=0; j<M.numColumns(); ++j)
+  {
+    int s=0;
+    for (unsigned int i=0; i<rank(); ++i)
+      s+= coroot(alpha)[i]*M(i,j);
+    for (unsigned int i=0; i<rank(); ++i)
+      M(i,j) -= root(alpha)[i]*s;
+  }
+}
+
+void RootDatum::reflect(LatticeMatrix& M,RootNbr alpha) const
+{
+  assert(M.numColumns()==rank());
+  for (unsigned int i=0; i<M.numRows(); ++i)
+  {
+    int s=0;
+    for (unsigned int j=0; j<rank(); ++j)
+      s+= M(i,j)*root(alpha)[j];
+    for (unsigned int j=0; j<rank(); ++j)
+      M(i,j) -= s*coroot(alpha)[j];
+  }
+}
+
+
 /*!
 \brief Returns the permutation of the roots induced by |q|.
 

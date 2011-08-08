@@ -54,7 +54,7 @@ namespace cartanclass {
 // this class gathers information associated to a root datum involution
 class InvolutionData
 {
-  permutations::Permutation d_rootInvolution; // permutation of all roots
+  Permutation d_rootInvolution; // permutation of all roots
   RootNbrSet d_imaginary, d_real, d_complex;
   RootNbrList d_simpleImaginary; // imaginary roots simple wrt subsystem
   RootNbrList d_simpleReal; // real roots simple wrt subsystem
@@ -71,7 +71,7 @@ class InvolutionData
 			      const TwistedInvolution& tw);
   void swap(InvolutionData&);
   //accessors
-  const permutations::Permutation& root_involution() const
+  const Permutation& root_involution() const
     { return d_rootInvolution; }
   RootNbr root_involution(RootNbr alpha) const
     { return d_rootInvolution[alpha]; }

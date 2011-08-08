@@ -24,12 +24,14 @@ namespace block_io {
 
   std::ostream& print_block(std::ostream&, const Block_base&);
 
+  std::ostream& printBlock(std::ostream&, const Block&); // for 'block' command
+
   std::ostream& printBlockD(std::ostream&, const Block&);
 
   std::ostream& printBlockU(std::ostream&, const Block&);
 
-  std::ostream& printDescent(std::ostream&, const DescentStatus&,
-		     size_t, RankFlags = RankFlags(~0ul));
+  std::ostream& printDescent(std::ostream&, const DescentStatus& ds,
+			     size_t rank, RankFlags mask = RankFlags(~0ul));
 
 }
 

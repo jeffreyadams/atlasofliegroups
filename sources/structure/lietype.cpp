@@ -96,17 +96,17 @@ namespace atlas {
 namespace lietype {
 
   void addCompactInvolution(WeightInvolution&, size_t, size_t,
-			    const permutations::Permutation& pi);
+			    const Permutation& pi);
 
   void addDInvolution(WeightInvolution&, size_t, size_t,
-		      const permutations::Permutation& pi);
+		      const Permutation& pi);
 
   void addMinusIdentity(WeightInvolution&, size_t, size_t,
-			const permutations::Permutation& pi);
+			const Permutation& pi);
 
   void addSimpleInvolution(WeightInvolution&, size_t,
 			   const SimpleLieType&, TypeLetter,
-			   const permutations::Permutation& pi);
+			   const Permutation& pi);
 }
 
 /*****************************************************************************
@@ -464,7 +464,7 @@ WeightInvolution involution(const Layout& lo)
 {
   const LieType& lt = lo.d_type;
   const InnerClassType& ic = lo.d_inner;
-  const permutations::Permutation& pi = lo.d_perm;
+  const Permutation& pi = lo.d_perm;
 
   WeightInvolution result(lt.rank(),lt.rank(),0);
 
@@ -560,7 +560,7 @@ namespace lietype {
 */
 void addCompactInvolution(WeightInvolution& m, size_t r,
 			  size_t rs,
-			  const permutations::Permutation& pi)
+			  const Permutation& pi)
 {
   for (size_t i=0; i<rs; ++i)
     m(pi[r+i],pi[r+i]) = 1;
@@ -574,7 +574,7 @@ void addCompactInvolution(WeightInvolution& m, size_t r,
   Precondition: the block is set to zero.
 */
 void addDInvolution(WeightInvolution& m, size_t r, size_t rs,
-		    const permutations::Permutation& pi)
+		    const Permutation& pi)
 {
   for (size_t i=0; i<rs-2; ++i)
     m(pi[r+i],pi[r+i]) = 1;
@@ -591,7 +591,7 @@ void addDInvolution(WeightInvolution& m, size_t r, size_t rs,
   Precondition: the block is set to zero.
 */
 void addMinusIdentity(WeightInvolution& m, size_t r, size_t rs,
-		      const permutations::Permutation& pi)
+		      const Permutation& pi)
 {
   for (size_t i=0; i<rs; ++i)
     m(pi[r+i],pi[r+i]) = -1;
@@ -604,7 +604,7 @@ void addMinusIdentity(WeightInvolution& m, size_t r, size_t rs,
 */
 void addSimpleInvolution(WeightInvolution& m, size_t r,
 			 const SimpleLieType& slt, TypeLetter x,
-			 const permutations::Permutation& pi)
+			 const Permutation& pi)
 {
   size_t rs = slt.rank();
 

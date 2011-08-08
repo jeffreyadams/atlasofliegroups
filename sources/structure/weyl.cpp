@@ -65,7 +65,7 @@ namespace {
 
   void fillCoxMatrix(int_Matrix&,
 		     const int_Matrix&,
-		     const permutations::Permutation&);
+		     const Permutation&);
 
   WeylElt::EltPiece dihedralMin(const weyl::Transducer&,
 				      WeylElt::EltPiece,
@@ -146,7 +146,7 @@ WeylGroup::WeylGroup(const int_Matrix& c)
 
   dynkin::DynkinDiagram d(c); // make diagram from Cartan matrix
   // find renumbering |a| putting labels in canonical order
-  permutations::Permutation a= dynkin::normalize(d);
+  Permutation a= dynkin::normalize(d);
 
   /* now put appropriate permutations into |d_in| and |d_out|, so that
      internal number |j| gives external number |d_out[j]|, and of course
@@ -558,8 +558,7 @@ WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
   return result;
 }
 
-/*!
-  \brief
+/*
   Let |w| act on |v| according to reflection action in root datum |rd|
   Note that rightmost factors act first, as in a product of matrices
 */
@@ -576,6 +575,17 @@ void WeylGroup::act(const RootDatum& rd, const WeylElt& w, Weight& v) const
 void WeylGroup::act(const RootDatum& rd, const WeylElt& w, RatWeight& v) const
 { act(rd,w,v.numerator()); }
 
+void WeylGroup::act(const RootDatum& rd, const WeylElt& w, LatticeMatrix& M)
+  const
+{
+  for (size_t i = d_rank; i-->0; )
+  {
+    const WeylWord& xw = wordPiece(w,i);
+    for (size_t j = xw.size(); j-->0; )
+      rd.simple_reflect(d_out[xw[j]],M);
+  }
+}
+
 
 void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, Weight& v) const
 {
@@ -590,6 +600,17 @@ void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, Weight& v) const
 void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, RatWeight& v)
   const
 { act(prd,w,v.numerator()); }
+
+void WeylGroup::act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M)
+  const
+{
+  for (size_t i = d_rank; i-->0; )
+  {
+    const WeylWord& xw = wordPiece(w,i);
+    for (size_t j = xw.size(); j-->0; )
+      prd.simple_reflect(d_out[xw[j]],M);
+  }
+}
 
 /*!
   \brief
@@ -1110,7 +1131,7 @@ WeylElt::EltPiece dihedralShift(const weyl::Transducer& qa,
 */
 void fillCoxMatrix(int_Matrix& cox,
 		   const int_Matrix& cart,
-		   const permutations::Permutation& a)
+		   const Permutation& a)
 {
   assert (cart.numRows()==cart.numColumns());
   int_Matrix(cart.numRows(),cart.numRows()) //create matrix

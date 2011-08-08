@@ -483,7 +483,7 @@ public:
     for (size_t i=ww.size(); i-->0; ) // use letters from right to left
       leftMult(w,ww[i]);
   }
-  void leftMult(WeylElt& w, const WeylElt& x) const;
+  void leftMult(WeylElt& w, const WeylElt& x) const; // |w=xw|
 
   WeylElt prod(const WeylElt& w, Generator s) const
     { WeylElt result=w; mult(result,s); return result; }
@@ -583,10 +583,13 @@ public:
   void act(const RootDatum& rd, const WeylElt& w, Weight& v) const;
   // standard reflection action of Weyl group using a root datum
   void act(const RootDatum& rd, const WeylElt& w, RatWeight& v) const;
+  // standard reflection action of Weyl group using a root datum
+  void act(const RootDatum& rd, const WeylElt& w, LatticeMatrix& M) const;
 
   // same using only lists of simple (co)roots avoiding construction root datum
   void act(const PreRootDatum& prd, const WeylElt& w, Weight& v) const;
   void act(const PreRootDatum& prd, const WeylElt& w, RatWeight& v) const;
+  void act(const PreRootDatum& prd, const WeylElt& w, LatticeMatrix& M) const;
  /*!
   \brief Nondestructive version of |act| method
 */

@@ -336,13 +336,13 @@ void small_dual_kgb_f()
 void block_f()
 {
   ioutils::OutputFile file;
-  block_io::print_block(file,currentBlock());
+  block_io::printBlock(file,currentBlock());
 }
 
 void smallblock_f()
 {
   ioutils::OutputFile file;
-  block_io::print_block // must unfortunatly regenerate the block here
+  block_io::printBlock // must unfortunatly regenerate the block here
     (file,Block::build(mainmode::currentComplexGroup(),
 		       realmode::currentRealForm(),
 		       currentDualRealForm()));
@@ -355,7 +355,7 @@ void dual_block_f()
     Block::build(currentDualRealGroup(),realmode::currentRealGroup());
 
   ioutils::OutputFile file;
-  block_io::print_block(file,block);
+  block_io::printBlock(file,block);
 }
 
 void small_dual_block_f()
@@ -366,7 +366,7 @@ void small_dual_block_f()
     Block::build(dG,currentDualRealForm(),realmode::currentRealForm());
 
   ioutils::OutputFile file;
-  block_io::print_block(file,block);
+  block_io::printBlock(file,block);
 }
 
 // Print the correspondence of the current block with its dual block

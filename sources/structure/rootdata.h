@@ -479,6 +479,10 @@ use by accessors.
   void coreflect(Coweight& co_lambda, RootNbr alpha) const
     { co_lambda -= coroot(alpha)*co_lambda.dot(root(alpha)); }
 
+  // on matrices we have left and right multiplication by reflection matrices
+  void reflect(RootNbr alpha, LatticeMatrix& M) const;
+  void reflect(LatticeMatrix& M,RootNbr alpha) const;
+
   Weight reflection(Weight lambda, RootNbr alpha) const
     { reflect(lambda,alpha); return lambda; }
   Coweight coreflection(Coweight co_lambda, RootNbr alpha) const
@@ -488,6 +492,12 @@ use by accessors.
     { reflect(v,simpleRootNbr(i)); }
   void simpleCoreflect(Coweight& v, weyl::Generator i) const
     { coreflect(v,simpleRootNbr(i)); }
+
+  void simple_reflect(weyl::Generator i, LatticeMatrix& M) const
+  { reflect(simpleRootNbr(i),M); }
+  void simple_reflect(LatticeMatrix& M,weyl::Generator i) const
+  { reflect(M,simpleRootNbr(i)); }
+
 
   Weight simpleReflection(Weight lambda, weyl::Generator i) const
     { simpleReflect(lambda,i); return lambda; }

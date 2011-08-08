@@ -173,7 +173,7 @@ bool checkBasePoint(const KGB& kgb)
   return true;
 }
 
-void dualityPermutation(permutations::Permutation& a, const kl::KLContext& klc)
+void dualityPermutation(Permutation& a, const kl::KLContext& klc)
 
 {}
 
@@ -182,8 +182,8 @@ bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc)
   std::vector<BlockElt> dual =
     blocks::dual_map(klc.block(),dual_klc.block());
 
-  permutations::Permutation inv_dual
-    (permutations::Permutation(dual.begin(),dual.end()),-1);
+  Permutation inv_dual
+    (Permutation(dual.begin(),dual.end()),-1);
 
   BlockElt block_size=klc.size();
 

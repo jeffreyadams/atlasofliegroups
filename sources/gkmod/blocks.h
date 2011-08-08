@@ -106,10 +106,6 @@ class Block_base {
 
   BlockElt length_first(size_t l) const; // first element of given length
 
-  virtual size_t Cartan_class(BlockElt z) const = 0;
-  size_t max_Cartan() const // maximal Cartan number, for printing
-  { return Cartan_class(size()-1); } // this should be OK in all cases
-
   virtual const TwistedInvolution& involution(BlockElt z) const = 0;
 
   BlockElt cross(size_t s, BlockElt z) const //!< cross action
@@ -246,6 +242,8 @@ non-vanishing KL polynomial.
   size_t Cartan_class(BlockElt z) const
     { assert(z<size()); return d_Cartan[z]; }
 
+  size_t max_Cartan() const { return Cartan_class(size()-1); } // for printing
+
 /*!
   \brief Returns the twisted involution corresponding to z.
 
@@ -311,6 +309,9 @@ class gamma_block : public Block_base
   size_t Cartan_class(BlockElt z) const
   { assert(z<size()); return y_info[d_y[z]].Cartan_class; }
 
+  size_t max_Cartan() const // maximal Cartan number, for printing
+  { return Cartan_class(size()-1); } // this should be OK in all cases
+
   const TwistedInvolution& involution(BlockElt z) const
   { assert(z<size()); return y_info[d_y[z]].rep.tw(); }
 
@@ -333,17 +334,7 @@ class non_integral_block : public Block_base
   const RatWeight infin_char; // infinitesimal character
 
   std::vector<KGBElt> kgb_nr_of; // indexed by child |x| numbers
-
-  struct y_fields
-  {
-    GlobalTitsElement rep; //representative, in ^vG coordinates
-    unsigned int Cartan_class; // for ^vG(gamma)
-
-    y_fields(GlobalTitsElement y, unsigned int cc)
-    : rep(y), Cartan_class(cc) {}
-  }; // |struct y_fields|
-
-  std::vector<y_fields> y_info; // indexed by child |y| numbers
+  std::vector<GlobalTitsElement> y_info; // indexed by child |y| numbers
 
  public:
   non_integral_block
@@ -355,15 +346,20 @@ class non_integral_block : public Block_base
      BlockElt& entry_element // set to block element matching the input
     );
 
+  non_integral_block // alternative constructor, for interval below |x|
+    (RealReductiveGroup& GR,
+     const SubSystem& subsys,
+     KGBElt x,
+     const RatWeight& lambda, // discrete parameter
+     const RatWeight& gamma // infinitesimal character
+    );
+
   // virtual methods
   size_t xsize() const { return kgb_nr_of.size(); }
   size_t ysize() const { return y_info.size(); }
 
-  size_t Cartan_class(BlockElt z) const
-  { assert(z<size()); return y_info[d_y[z]].Cartan_class; }
-
   const TwistedInvolution& involution(BlockElt z) const
-  { assert(z<size()); return y_info[d_y[z]].rep.tw(); }
+  { assert(z<size()); return y_info[d_y[z]].tw(); }
 
   std::ostream& print(std::ostream& strm, BlockElt z) const;
 

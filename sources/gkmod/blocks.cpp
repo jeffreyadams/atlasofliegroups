@@ -589,10 +589,13 @@ void Block::fillBruhat()
 std::ostream& gamma_block::print(std::ostream& strm, BlockElt z) const
 {
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
+  int cwidth = ioutils::digits(max_Cartan(),10ul);
+
   RatWeight ls = local_system(z);
   return strm << "(=" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
 	      << ',' << std::setw(3*ls.size()+3) << ls
-	      << ") ";
+	      << ")  "
+	      << std::setw(cwidth) << Cartan_class(z) << " ";
 }
 
 gamma_block::gamma_block(RealReductiveGroup& GR,
@@ -1337,10 +1340,7 @@ non_integral_block::non_integral_block
 
   y_info.reserve(y_hash.size());
   for (unsigned int j=0; j<y_hash.size(); ++j)
-  {
-    const GlobalTitsElement y_rep = y_hash[j].repr();
-    y_info.push_back(y_fields(y_rep,gfd.Cartan_class(y_hash[j].tw)));
-  }
+    y_info.push_back(y_hash[j].repr());
 
   // and look up which element matches the original input
   entry_element = element(xsize()-1-x_of[x_org],y_hash.find(gfd.pack(y_org)));
@@ -1355,7 +1355,7 @@ RatWeight non_integral_block::lambda(BlockElt z) const
 {
   WeightInvolution theta =
     G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
-  RatWeight t =  y_info[d_y[z]].rep.torus_part().log_2pi();
+  RatWeight t =  y_info[d_y[z]].torus_part().log_2pi();
   const Weight& num = t.numerator();
   return infin_char - RatWeight(num-theta*num,t.denominator());
 }
@@ -1376,7 +1376,7 @@ std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
   else
     strm << std::setw(3*ll.size()+1) << ll.numerator();
   strm << "= rho+" << std::setw(4*ll.size()+1) << lr;
-  return strm << ") ";
+  return strm << ")  ";
 }
 
 
@@ -1440,7 +1440,7 @@ struct block_elt_entry
   block_elt_entry(KGBElt xx, KGBElt yy) : x(xx), y(yy) {}
   typedef std::vector<block_elt_entry> Pooltype;
   size_t hashCode(size_t modulus) const { return (13*y+21*y)&(modulus-1); }
-  bool operator != (const block_elt_entry o) const { return x!=o.x and y!=o.y; }
+  bool operator != (const block_elt_entry o) const { return x!=o.x or y!=o.y; }
 }; // |struct block_elt_entry|
 
 class nblock_context
@@ -1457,23 +1457,28 @@ public:
   KGB_hash y_hash;
   block_hash z_hash;
 
+  std::vector<BlockEltList> predecessors;
+
   nblock_context(RealReductiveGroup& GR, const SubSystem& subsys);
 
 }; // |struct nblock_context|
 
 // the following procedure extends |y_hash|, and |hash| with |z| after having
 // assured the presence of its predecessors the set of whose indices it returns
-set::EltList nblock_below (const block_elt_entry z, nblock_context& ctxt)
+BlockElt nblock_below (const block_elt_entry z, nblock_context& ctxt)
 {
+  block_hash& hash          = ctxt.z_hash;
+  { BlockElt res = hash.find(z); if (res!=hash.empty) return res; }
+
   const KGB& kgb            = ctxt.kgb;
   KGB_hash& y_hash          = ctxt.y_hash;
   kgb::InvInfo& gfd         = ctxt.gfd;
   const SubSystem& sub      = gfd.sub;
   const GlobalTitsGroup& Tg = ctxt.Tg;
-  block_hash& hash          = ctxt.z_hash;
 
-  set::EltList result;
-  set::EltList covered_sz; // will hold result of recursive call
+  BlockElt sz; // will hold number returned by recursive call
+  BlockEltList pred; // will hold list of elements covered by z
+
   weyl::Generator s; // a complex or real type I descent, if such exists
   for (s=0; s<sub.rank(); ++s)
   {
@@ -1482,12 +1487,12 @@ set::EltList nblock_below (const block_elt_entry z, nblock_context& ctxt)
     {
       GlobalTitsElement y = Tg.cross(sub.reflection(s), y_hash[z.y].repr());
       gfd.add_cross_neighbor(y.tw(),gfd.find(y_hash[z.y].tw),s);
-      block_elt_entry sz
+      block_elt_entry sz_ent
 	(kgb.cross(kgb.cross(sub.simple(s),conj_x),sub.to_simple(s)),
 	 y_hash.match(gfd.pack(y)));
-      covered_sz = nblock_below(sz,ctxt);
-      result.reserve(covered_sz.size()+1); // a rough estimate
-      result.push_back(hash.find(sz)); // recursive call ensures |sz| is there
+      sz = nblock_below(sz_ent,ctxt);
+      pred.reserve(ctxt.predecessors[sz].size()+1); // a rough estimate
+      pred.push_back(sz);
       break;
     }
     else if (kgb.isDoubleCayleyImage(sub.simple(s),conj_x))
@@ -1499,13 +1504,13 @@ set::EltList nblock_below (const block_elt_entry z, nblock_context& ctxt)
 	Tg.cross_act(new_y,sub.to_simple(s));
 	gfd.add_involution(new_y.tw(),Tg);
 	KGBElt sy = y_hash.match(gfd.pack(new_y));
-	KGBEltPair sx=kgb.inverseCayley(sub.simple(s),conj_x);
-	block_elt_entry sz1(kgb.cross(sx.first,sub.to_simple(s)),sy);
-	block_elt_entry sz2(kgb.cross(sx.second,sub.to_simple(s)),sy);
-	covered_sz = nblock_below(sz1,ctxt);
-	result.reserve(covered_sz.size()+2); // a rough estimate
-	result.push_back(hash.find(sz1));
-	result.push_back(hash.match(sz2));
+	KGBEltPair sx = kgb.inverseCayley(sub.simple(s),conj_x);
+	block_elt_entry sz_ent1(kgb.cross(sx.first,sub.to_simple(s)),sy);
+	block_elt_entry sz_ent2(kgb.cross(sx.second,sub.to_simple(s)),sy);
+ 	sz = nblock_below(sz_ent1,ctxt);
+	pred.reserve(ctxt.predecessors[sz].size()+2); // a rough estimate
+	pred.push_back(sz);
+	pred.push_back(nblock_below(sz_ent2,ctxt));
 	break;
       } // |if (noncompact)|
     } // |if (doubleCayleyImage)|
@@ -1515,7 +1520,7 @@ set::EltList nblock_below (const block_elt_entry z, nblock_context& ctxt)
   // if above loop completed, there are no complex or real type I descents
   if (s==sub.rank()) // only real type II descents, insert and return those
   {
-    result.reserve(sub.rank()); // enough, and probably more than that
+    pred.reserve(sub.rank()); // enough, and probably more than that
     while (s-->0) // we reverse the loop just because it look cute
     {
       KGBElt conj_x= kgb.cross(sub.to_simple(s),z.x);
@@ -1532,18 +1537,16 @@ set::EltList nblock_below (const block_elt_entry z, nblock_context& ctxt)
 	  gfd.add_involution(new_y.tw(),Tg);
 	  KGBElt sy = y_hash.match(gfd.pack(new_y));
 	  KGBElt sx = kgb.inverseCayley(sub.simple(s),conj_x).first;
-	  block_elt_entry sz(kgb.cross(sx,sub.to_simple(s)),sy);
-	  nblock_below(sz,ctxt); // recurr and discard result
-	  result.push_back(hash.find(sz));
+	  block_elt_entry sz_ent(kgb.cross(sx,sub.to_simple(s)),sy);
+	  pred.push_back(nblock_below(sz_ent,ctxt)); // recurr, ignore descents
 	}
       }
     } // |while (s-->0)|
   } // |if (s==sub.rank())|
-  else // add all |s|-ascents for elements of |covered_sz|
-    for (set::EltList::const_iterator
-	   it=covered_sz.begin(); it!=covered_sz.end(); ++it)
+  else // add all |s|-ascents for elements covered by |sz|
+    for (BlockElt i=0; i<ctxt.predecessors[sz].size(); ++i)
     {
-      block_elt_entry c=hash[*it];
+      const block_elt_entry& c=hash[ctxt.predecessors[sz][i]];
       KGBElt conj_x= kgb.cross(sub.to_simple(s),c.x);
       switch (kgb.status(sub.simple(s),conj_x))
       {
@@ -1557,7 +1560,7 @@ set::EltList nblock_below (const block_elt_entry z, nblock_context& ctxt)
 	  block_elt_entry sc
 	    (kgb.cross(kgb.cross(sub.simple(s),conj_x),sub.to_simple(s)),
 	     y_hash.match(gfd.pack(y)));
-	  result.push_back(hash.match(sc));
+	  pred.push_back(nblock_below(sc,ctxt));
 	} // |if(complex ascent)
 	break;
       case gradings::Status::ImaginaryNoncompact:
@@ -1573,7 +1576,7 @@ set::EltList nblock_below (const block_elt_entry z, nblock_context& ctxt)
 	  KGBElt sx =
 	    kgb.cross(kgb.cayley(sub.simple(s),conj_x),sub.to_simple(s));
 	  block_elt_entry sc(sx,sy);
-	  result.push_back(hash.match(sc));
+	  pred.push_back(nblock_below(sc,ctxt));
 
 	  if (type_II)
 	  {
@@ -1582,7 +1585,7 @@ set::EltList nblock_below (const block_elt_entry z, nblock_context& ctxt)
 	    Tg.cross_act(new_y,sub.to_simple(s));
 	    sy = y_hash.match(gfd.pack(new_y));
 	    assert(sy!=sc.y); // since we are in type II
-	    result.push_back(hash.match(block_elt_entry(sx,sy)));
+	    pred.push_back(nblock_below(block_elt_entry(sx,sy),ctxt));
 	  }
 	}
 	break;
@@ -1590,8 +1593,11 @@ set::EltList nblock_below (const block_elt_entry z, nblock_context& ctxt)
     }
 
   // finally we can add |z| to |hash|, after all its Bruhat-predecessors
-  hash.match(z);
-  return result;
+  assert(hash.size()==ctxt.predecessors.size());
+  BlockElt res = hash.match(z);
+  assert(res==ctxt.predecessors.size()); // |z| must have been added just now
+  ctxt.predecessors.push_back(pred); // store (compacted) list covered by |z|
+  return res;
 } // |nblock_below|
 
 nblock_context::nblock_context(RealReductiveGroup& GR, const SubSystem& sub)
@@ -1604,6 +1610,7 @@ nblock_context::nblock_context(RealReductiveGroup& GR, const SubSystem& sub)
   , gfd(sub,inv_hash)
   , y_hash(y_pool)
   , z_hash(z_pool)
+  , predecessors()
 {}
 
 non_integral_block::non_integral_block // interval below |x| only
@@ -1640,7 +1647,7 @@ non_integral_block::non_integral_block // interval below |x| only
   gfd.add_involution(tw,Tg);
   y_hash.match(gfd.pack(GlobalTitsElement(tits::exp_pi(gamma-lambda),tw)));
 
-  nblock_below(block_elt_entry(x,0),ctxt);
+  nblock_below(block_elt_entry(x,0),ctxt); // generate the block in |ctxt|
 
   d_x.reserve(hash.size());
   d_y.reserve(hash.size());
@@ -1651,10 +1658,13 @@ non_integral_block::non_integral_block // interval below |x| only
   d_length.resize(hash.size());
 
   KGBEltList new_x_of(kgb.size(),UndefKGB);
-  for (size_t i=0; i<hash.size(); ++i)
+  for (BlockElt i=0; i<hash.size(); ++i)
   {
     const block_elt_entry& z=hash[i];
+    DescentStatus& desc_z = d_descent[i];
     KGBElt x = z.x;
+    size_t length=0; // will be increased if there are any descents
+
     if (new_x_of[x]==UndefKGB)
     {
       new_x_of[x]=kgb_nr_of.size();
@@ -1664,8 +1674,9 @@ non_integral_block::non_integral_block // interval below |x| only
     d_y.push_back(hash[i].y);
     for (weyl::Generator s=0; s<our_rank; ++s)
     {
+      BlockEltList& cross_link=d_cross[s];
+
       KGBElt conj_x = kgb.cross(sub.to_simple(s),x);
-      size_t length=0; // increased if there are any descents
       if (kgb.isDescent(sub.simple(s),conj_x))
       {
 	if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Complex)
@@ -1673,20 +1684,81 @@ non_integral_block::non_integral_block // interval below |x| only
 	  KGBElt sx=
 	    kgb.cross(kgb.cross(sub.simple(s),conj_x),sub.to_simple(s));
 	  GlobalTitsElement sy = Tg.cross(sub.reflection(s),y_hash[z.y].repr());
-	  unsigned int sz =
+	  BlockElt sz =
 	    hash.find(block_elt_entry(sx,y_hash.find(gfd.pack(sy))));
+	  assert(sz!=hash.empty);
+	  cross_link[i] = sz; cross_link[sz] = i;
+	  assert(length==0 or length==d_length[sz]+1);
+	  length = d_length[sz]+1;
+	  desc_z.set(s,DescentStatus::ComplexDescent);
+	  assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
 	}
+	else // |s| is a real root
+	{
+	  assert(kgb.status(sub.simple(s),conj_x)==gradings::Status::Real);
+	  cross_link[i] = i;
+
+	  GlobalTitsElement conj_y =
+	    Tg.cross(sub.to_simple(s),y_hash[z.y].repr());
+	  if (Tg.compact(sub.simple(s),conj_y)) // real non-parity
+	    desc_z.set(s,DescentStatus::RealNonparity);
+	  else // |s| is real parity
+	  {
+	    std::vector<BlockEltPair>& Cayley_link = d_cayley[s];
+	    GlobalTitsElement new_y = Tg.Cayley(sub.simple(s),conj_y);
+	    Tg.cross_act(new_y,sub.to_simple(s));
+	    KGBElt sy = y_hash.find(gfd.pack(new_y));
+	    KGBEltPair sx = kgb.inverseCayley(sub.simple(s),conj_x);
+	    if (kgb.isDoubleCayleyImage(sub.simple(s),conj_x)) // type I
+	    {
+	      BlockElt sz1 = hash.find
+		(block_elt_entry(kgb.cross(sx.first,sub.to_simple(s)),sy));
+	      BlockElt sz2 = hash.find
+		(block_elt_entry(kgb.cross(sx.second,sub.to_simple(s)),sy));
+	      assert(length==0 or length==d_length[sz1]+1);
+	      assert(length==0 or length==d_length[sz2]+1);
+	      length = d_length[sz1]+1;
+	      Cayley_link[i] = std::make_pair(sz1,sz2);
+	      Cayley_link[sz1].first = i;
+	      Cayley_link[sz2].first = i;
+	      desc_z.set(s,DescentStatus::RealTypeI);
+	      assert(descentValue(s,sz1)==DescentStatus::ImaginaryTypeI);
+	      assert(descentValue(s,sz2)==DescentStatus::ImaginaryTypeI);
+	    }
+	    else // type II
+	    {
+	      BlockElt sz = hash.find
+		(block_elt_entry(kgb.cross(sx.first,sub.to_simple(s)),sy));
+	      assert(length==0 or length==d_length[sz]+1);
+	      length = d_length[sz]+1;
+	      Cayley_link[i].first = sz;
+	      first_free_slot(Cayley_link[sz]) = i;
+	      desc_z.set(s,DescentStatus::RealTypeII);
+	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeII);
+	    } // type II
+	  } // real parity
+
+	} // |s| is real
+      } // |if(isDescent)|
+      else if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Complex)
+	desc_z.set(s,DescentStatus::ComplexAscent);
+      else // imaginary
+      {
+	cross_link[i] = i;
+	if (kgb.status(sub.simple(s),conj_x)
+	    == gradings::Status::ImaginaryCompact)
+	  desc_z.set(s,DescentStatus::ImaginaryCompact);
+	else if (kgb.cross(sub.simple(s),conj_x)==conj_x)
+	  desc_z.set(s,DescentStatus::ImaginaryTypeII);
+	else desc_z.set(s,DescentStatus::ImaginaryTypeI);
       }
-    }
-  }
+    } // |for(s)|
+    d_length[i]=length; // set length only when a s
+  } // |for(i)|
 
   y_info.reserve(y_hash.size());
   for (size_t j=0; j<y_hash.size(); ++j)
-  {
-    const GlobalTitsElement rep=y_hash[j].repr();
-    y_info.push_back(y_fields(rep,gfd.Cartan_class(y_hash[j].tw)));
-  }
-
+    y_info.push_back(y_hash[j].repr());
 
 } // |non_integral_block::non_integral_block|, partial version
 

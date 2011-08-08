@@ -124,7 +124,7 @@ struct Layout
 {
   LieType d_type;
   InnerClassType d_inner;
-  permutations::Permutation d_perm; // of diagram wrt usual order in |d_type|
+  Permutation d_perm; // of diagram wrt usual order in |d_type|
 
 // constructors and destructors
 

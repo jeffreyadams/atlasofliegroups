@@ -165,7 +165,7 @@ class ComplexReductiveGroup
   const TitsGroup d_dualTitsGroup;
 
   //!\brief the permutation of the roots given by the based automorphism
-  const permutations::Permutation root_twist;
+  const Permutation root_twist;
 
   typedef std::vector<RankFlags> form_reps; // gradings for real forms
 
@@ -236,8 +236,8 @@ class ComplexReductiveGroup
   const TwistedWeylGroup& dualTwistedWeylGroup() const
     { return d_dualTitsGroup; } // in fact its base object
 
-  permutations::Permutation simple_twist() const
-    { return permutations::Permutation
+  Permutation simple_twist() const
+    { return Permutation
 	(&twistedWeylGroup().twist()[0],
 	 &twistedWeylGroup().twist()[semisimpleRank()]); }
 
@@ -338,7 +338,7 @@ class ComplexReductiveGroup
   size_t mostSplit(RealFormNbr rf) const
     { return d_mostSplit[rf]; }
 
-  const permutations::Permutation& root_involution() const { return root_twist; }
+  const Permutation& root_involution() const { return root_twist; }
 
   RootNbr twisted_root(RootNbr alpha) const
     { return root_twist[alpha]; }

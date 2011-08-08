@@ -96,6 +96,33 @@ void PreRootDatum::simpleReflect(Weight& v, weyl::Generator s)
   v -= d_roots[s]*v.dot(d_coroots[s]);
 }
 
+void PreRootDatum::simple_reflect(weyl::Generator s, LatticeMatrix& M) const
+{
+  assert(M.numRows()==rank());
+  for (unsigned int j=0; j<M.numColumns(); ++j)
+  {
+    int c=0;
+    for (unsigned int i=0; i<rank(); ++i)
+      c+= d_coroots[s][i]*M(i,j);
+    for (unsigned int i=0; i<rank(); ++i)
+      M(i,j) -= d_roots[s][i]*c;
+  }
+}
+
+void PreRootDatum::simple_reflect(LatticeMatrix& M,weyl::Generator s) const
+{
+  assert(M.numColumns()==rank());
+  for (unsigned int i=0; i<M.numRows(); ++i)
+  {
+    int c=0;
+    for (unsigned int j=0; j<rank(); ++j)
+      c+= M(i,j)*d_roots[s][j];
+    for (unsigned int j=0; j<rank(); ++j)
+      M(i,j) -= c*d_coroots[s][j];
+  }
+}
+
+
 
   // manipulator
 

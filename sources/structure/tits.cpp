@@ -220,12 +220,7 @@ WeightInvolution
 {
   WeightInvolution M = delta_tr;
   M.negate(); // we need the involution |-^delta| corresponding to |delta|
-  for (size_t j=0; j<M.numColumns(); ++j) // apply reflections to each column
-  {
-    matrix::Vector<int> c=M.column(j);
-    weylGroup().act(simple,tw,c); // twisted involution, so left action is OK
-    M.set_column(j,c);
-  }
+  weylGroup().act(simple,tw,M); // twisted involution, so left action is OK
   return M;
 }
 

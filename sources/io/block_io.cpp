@@ -37,7 +37,7 @@ namespace atlas {
 
 namespace block_io {
 
-// temp version without Cartan classes/involutions (may be added back later)
+// print a derived block object, with virtual |print| after Cayley transforms
 std::ostream& print_block(std::ostream& strm, const Block_base& b)
 {
   // compute maximal width of entry
@@ -45,11 +45,11 @@ std::ostream& print_block(std::ostream& strm, const Block_base& b)
   int xwidth = ioutils::digits(b.xsize()-1,10ul);
   int ywidth = ioutils::digits(b.ysize()-1,10ul);
   int lwidth = ioutils::digits(b.length(b.size()-1),10ul);
-  int cwidth = ioutils::digits(b.max_Cartan(),10ul);
 
   const int pad = 2;
 
-  for (size_t z=0; z<b.size(); ++z) {
+  for (BlockElt z=0; z<b.size(); ++z)
+  {
     // print entry number and corresponding orbit pair
     strm << std::setw(width) << z
 	 << '(' << std::setw(xwidth) << b.x(z)
@@ -63,8 +63,11 @@ std::ostream& print_block(std::ostream& strm, const Block_base& b)
 
     // print cross actions
     for (weyl::Generator s = 0; s < b.rank(); ++s)
-	strm << std::setw(width+pad) << b.cross(s,z);
-
+    {
+      strm << std::setw(width+pad);
+      if (b.cross(s,z)==blocks::UndefBlock) strm << '*';
+      else strm << b.cross(s,z);
+    }
     strm << std::setw(pad+1) << "";
 
     // print Cayley transforms
@@ -82,10 +85,6 @@ std::ostream& print_block(std::ostream& strm, const Block_base& b)
     // derived class specific output
     b.print(strm,z);
 
-    // print Cartan class
-    strm << std::setw(cwidth+pad) << b.Cartan_class(z)
-	 << std::setw(pad) << "";
-
     // print root datum involution
     prettyprint::printWeylElt(strm,b.involution(z),b.weylGroup());
 
@@ -102,10 +101,6 @@ std::ostream& print_block(std::ostream& strm, const Block_base& b)
   cross-actions and Cayley or inverse Cayley transform(s) for each generator,
   and the underlying root datum permutation (or rather, the corresponding Weyl
   group element). We use a '*' for absent (inverse) Cayley transforms.
-
-  NOTE: this will print reasonably on 80 columns only for groups that are
-  not too large (up to rank 4 or so). We haven't tried to go over to more
-  sophisticated formatting for larger groups.
 */
 std::ostream& printBlock(std::ostream& strm, const Block& block)
 {
@@ -117,7 +112,8 @@ std::ostream& printBlock(std::ostream& strm, const Block& block)
   int cwidth = ioutils::digits(block.max_Cartan(),10ul);
   const int pad = 2;
 
-  for (size_t j = 0; j < block.size(); ++j) {
+  for (BlockElt j = 0; j < block.size(); ++j)
+  {
     // print entry number and corresponding orbit pair
     strm << std::setw(width) << j;
     strm << '(' << std::setw(xwidth) << block.x(j);
@@ -126,11 +122,7 @@ std::ostream& printBlock(std::ostream& strm, const Block& block)
     strm << ':';
 
     // print length
-    strm << std::setw(lwidth+pad) << block.length(j);
-
-    // print Cartan class
-    strm << std::setw(cwidth+pad) << block.Cartan_class(j);
-    strm << std::setw(pad) << "";
+    strm << std::setw(lwidth+pad) << block.length(j) << std::setw(pad) << "";
 
     // print descents
     printDescent(strm,block.descent(j),block.rank());
@@ -163,7 +155,10 @@ std::ostream& printBlock(std::ostream& strm, const Block& block)
 	strm << z.second;
       strm << ')' << std::setw(pad) << "";
     }
-    strm << ' ';
+
+    // print Cartan class
+    strm << std::setw(cwidth) << block.Cartan_class(j)
+	 << std::setw(pad) << "";
 
     // print root datum involution
     prettyprint::printWeylElt(strm,block.involution(j),block.weylGroup());
@@ -359,14 +354,15 @@ std::ostream& printBlockU(std::ostream& strm, const Block& block)
 */
 std::ostream& printDescent(std::ostream& strm,
 			   const DescentStatus& ds,
-			   size_t rank, RankFlags supp)
+			   size_t rank, RankFlags mask)
 {
   strm << '[';
 
-  for (size_t s = 0; s < rank; ++s) {
+  for (size_t s = 0; s < rank; ++s) 
+  {
     if (s!=0)
       strm << ',';
-    if (not supp.test(s))
+    if (not mask.test(s))
       strm << "* ";
     else
       switch (ds[s]) {

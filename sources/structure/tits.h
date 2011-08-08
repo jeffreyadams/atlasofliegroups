@@ -160,6 +160,8 @@ class GlobalTitsElement
   const TwistedInvolution& tw() const { return w; }
 
 // a method defined without help of |GlobalTitsGroup| (and which ignores |w|)
+// requires simple-imaginary |alpha| that is integral on |t|; however unless
+// all roots are integral on |t|, these conditions might be contradictory
   GlobalTitsElement simple_imaginary_cross
   (const RootDatum& dual_rd, // dual for pragmatic reasons
    RootNbr alpha) const; // any simple-imaginary root
@@ -254,7 +256,8 @@ class GlobalTitsGroup : public TwistedWeylGroup
   Coweight parent_simple_coroot(weyl::Generator s) const
   { return simple.coroots()[s]; }
 
-  //!\brief Reflection of |TorusElement|s defined by a twisted involution
+  // Reflection of |TorusElement|s defined by a twisted involution.
+  // This matrix is negated-transposed w.r.t. |tw| (so |-delta_tr| if $tw=e$)
   WeightInvolution involution_matrix(const WeylElt& tw) const;
 
   using TwistedWeylGroup::twisted; // overloaded in this class

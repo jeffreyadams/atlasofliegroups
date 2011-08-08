@@ -131,7 +131,7 @@ std::ostream& printGradings(std::ostream& strm, const Fiber& f,
   const RootNbrList& si = f.simpleImaginary();
   int_Matrix cm = rs.cartanMatrix(si);
   dynkin::DynkinDiagram d(cm);
-  permutations::Permutation a = dynkin::bourbaki(d);
+  Permutation a = dynkin::bourbaki(d);
   a.inv_conjugate(cm);
 
   strm << "cartan matrix of imaginary root system is:" << std::endl;

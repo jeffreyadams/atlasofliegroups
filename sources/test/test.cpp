@@ -84,6 +84,7 @@ namespace {
   void X_f();
   void iblock_f();
   void nblock_f();
+  void partial_block_f();
   void embedding_f();
 
 
@@ -222,6 +223,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("examine",exam_f);
   mode.add("iblock",iblock_f);
   mode.add("nblock",nblock_f);
+  mode.add("partial_block",partial_block_f);
   mode.add("embedding",embedding_f);
 }
 
@@ -1288,6 +1290,71 @@ void nblock_f()
     std::cerr << std::endl << "unidentified error occurred" << std::endl;
   }
 } // |nblock_f|
+
+void partial_block_f()
+{
+  try
+  {
+    RealReductiveGroup& GR = realmode::currentRealGroup();
+    ComplexReductiveGroup& G = GR.complexGroup();
+    const RootDatum& rd = G.rootDatum();
+
+    Weight lambda_rho;
+    RatWeight gamma(0);
+    KGBElt x;
+
+    interactive::get_parameter(GR,x,lambda_rho,gamma);
+    RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+    lambda.normalize();
+
+    ioutils::OutputFile f;
+    f << "x = " << x << ", gamma = " << gamma
+	      << ", lambda = " << lambda << std::endl;
+
+    SubSystem sub = SubSystem::integral(rd,gamma);
+
+
+    WeightInvolution theta =
+      GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
+
+    WeylWord ww;
+    weyl::Twist twist = sub.twist(theta,ww);
+
+    Permutation pi;
+
+    f << "Subsystem on dual side is ";
+    if (sub.rank()==0)
+      f << "empty.\n";
+    else
+    {
+      f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+	<< ", with roots ";
+      for (weyl::Generator s=0; s<sub.rank(); ++s)
+	f << sub.parent_nr_simple(pi[s])
+	  << (s<sub.rank()-1 ? "," : ".\n");
+    }
+
+    blocks::non_integral_block block(GR,sub,x,lambda,gamma);
+    block_io::print_block(f,block);
+
+  }
+  catch (error::MemoryOverflow& e)
+  {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e)
+  {
+    e("aborted");
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << "error occurrend: " << e.what() << std::endl;
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << "unidentified error occurred" << std::endl;
+  }
+} // |partial_block_f|
 
 
 tits::TorusElement torus_part

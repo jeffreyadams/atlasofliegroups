@@ -53,13 +53,13 @@ namespace dynkin {
   // same, also set |pi| to permutation "straightening" each diagram component
   LieType Lie_type(const int_Matrix& cm,
 		   bool Bourbaki, bool check,
-		   permutations::Permutation& pi);
+		   Permutation& pi);
 
   RankFlagsList components(const DynkinDiagram& d);
 
-  permutations::Permutation normalize(const DynkinDiagram& d);
+  Permutation normalize(const DynkinDiagram& d);
 
-  permutations::Permutation bourbaki(const DynkinDiagram& d);
+  Permutation bourbaki(const DynkinDiagram& d);
 
 }
 
