@@ -36,7 +36,7 @@ struct KGBEltInfo
 {
   gradings::Status status; ///< status of each simple root for this element
   unsigned int length; ///< dimension of the K orbit on G/B, minus minimal one
-  DescentSet desc; ///< flags which simple reflections give a descent
+  DescentSet desc; ///<  which simple reflections are complex descent or real
 
   TwistedInvolution inv;
 
@@ -74,7 +74,7 @@ class KGB_base
     KGBfields()
     : cross_image(UndefKGB)
     , Cayley_image(UndefKGB)
-      , inverse_Cayley_image(std::make_pair(UndefKGB,UndefKGB)) {}
+    , inverse_Cayley_image(std::make_pair(UndefKGB,UndefKGB)) {}
   }; // | KGBfields|
 
   std::vector<std::vector<KGBfields> > data; // first index: simple reflection
@@ -136,6 +136,12 @@ class KGB_base
   const gradings::Status& status(KGBElt x) const { return info[x].status; }
   gradings::Status::Value status(weyl::Generator s, KGBElt x) const
    { return status(x)[s]; }
+
+  bool isComplexDescent(weyl::Generator s, KGBElt x) const
+  { return status(x).isComplex(s) and isDescent(s,x); }
+
+  bool isDoubleCayleyImage(weyl::Generator s, KGBElt x) const
+  { return inverseCayley(s,x).second!=UndefKGB; }
 
   bool isAscent(weyl::Generator s, KGBElt x) const // not true for imag cpct!
     { return not isDescent(s,x)
@@ -220,6 +226,7 @@ which will be employed from the dual side.
  */
 class GlobalFiberData
 {
+ protected: // data will also be maintained by derived class |InvInfo|
   hashtable::HashTable<weyl::TI_Entry,unsigned int>& hash_table;
 
   struct inv_info
@@ -250,23 +257,27 @@ public:
   GlobalFiberData(const GlobalTitsGroup& Tg,
 		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
 
+ protected: // this one is for use by |InvInfo||
+  GlobalFiberData(const SubSystem& sub,
+		  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
+ public:
+
   GlobalFiberData(const GlobalFiberData& org) // copy contructor, handle ref
     : hash_table(org.hash_table) // share
-    , info(org.info)
+    , info(org.info)             // copy
   {}
 
   //accessors
-  size_t Cartan_class(const TwistedInvolution& tw) const
-  {
-    return info[hash_table.find(tw)].Cartan;
-  }
+  unsigned int find(const TwistedInvolution& tw) const
+  { return hash_table.find(tw); }
 
-  const RootNbrList& imaginary_basis(const TwistedInvolution& tw)
-    const
-  { return info[hash_table.find(tw)].simple_imag; }
-  const RootNbrList& real_basis(const TwistedInvolution& tw)
-    const
-  { return info[hash_table.find(tw)].simple_real; }
+  size_t Cartan_class(const TwistedInvolution& tw) const
+  { return info[find(tw)].Cartan;}
+
+  const RootNbrList& imaginary_basis(const TwistedInvolution& tw) const
+  { return info[find(tw)].simple_imag; }
+  const RootNbrList& real_basis(const TwistedInvolution& tw) const
+  { return info[find(tw)].simple_real; }
 
   bool equivalent(const GlobalTitsElement& x,
 		  const GlobalTitsElement& y) const;
@@ -287,13 +298,26 @@ public:
   KGB_elt_entry pack(const GlobalTitsElement& y) const
   { return KGB_elt_entry(fingerprint(y),y); }
 
-  // manipulators
-  void add_class(const SubSystem& sub, // determines root system
-		 const GlobalTitsGroup& Tg, // interprets |tw| and values
-		 const TwistedInvolution& tw); // derived from it
+  // manipulators: none here, but |InvInfo| proved two of them
 
 }; // |class GlobalFiberData|
 
+struct InvInfo : public GlobalFiberData
+{
+  const SubSystem& sub;
+  unsigned int n_Cartans; // number of Cartan classes generated
+
+  InvInfo(const SubSystem& subsys,
+	  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
+
+//manipulators
+  // add involution |tw| with (parent side) matrix |M|; report whether new
+  bool add_involution(const TwistedInvolution& tw, const GlobalTitsGroup& Tg);
+
+  // add |tw|, that is neighbor of |old_inv| by cross action by |s| of |sub|
+  bool add_cross_neighbor(const TwistedInvolution& tw,
+			  unsigned int old_inv, weyl::Generator s);
+}; // |InvInfo|
 
 
 

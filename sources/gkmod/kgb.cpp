@@ -680,12 +680,12 @@ size_t KGB::generate
   } // |for (x)|
 
   // now sort and export to |tits|
-  permutations::Permutation a1; // will be reordering assignment
+  Permutation a1; // will be reordering assignment
   { // sort involutions (rather than KGB elements, for efficiency)
-    permutations::Permutation p(fiber_data.n_involutions(),1);
+    Permutation p(fiber_data.n_involutions(),1);
     invol_compare i_cmp(fiber_data,G.weylGroup());
     std::sort(p.begin(),p.end(),i_cmp); // all entries are distinct
-    permutations::Permutation p1(p,-1); // inverse: where involutions went
+    Permutation p1(p,-1); // inverse: where involutions went
 
     std::vector<KGBElt> involution_rank(size); // values are small numbers
     for (KGBElt x=0; x<size; ++x)
@@ -693,7 +693,7 @@ size_t KGB::generate
     a1 = permutations::standardize(involution_rank,fiber_data.n_involutions());
   }
 
-  permutations::Permutation a(a1,-1); // |a[i]| locates what should map to |i|
+  Permutation a(a1,-1); // |a[i]| locates what should map to |i|
 
   for (weyl::Generator s=0; s<rank; ++s)
   {
@@ -872,7 +872,8 @@ subsys_KGB::subsys_KGB
 	  info[cur].status.set(s,gradings::Status::ImaginaryNoncompact);
 	else
 	  info[cur].status.set(s,gradings::Status::ImaginaryCompact);
-	info[cur].desc.set(s,W.hasDescent(s,tw));
+
+	info[cur].desc.set(s,W.hasDescent(s,tw)); // complex descent or real
 
 	if (status(s,cur)==gradings::Status::ImaginaryNoncompact) // do Cayley
 	{
@@ -1022,8 +1023,8 @@ GlobalFiberData::GlobalFiberData
 
 
 GlobalFiberData::GlobalFiberData
- (const GlobalTitsGroup& Tg,
-  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
+  (const GlobalTitsGroup& Tg,
+   hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
   : hash_table(h)
   , info()
   , refl(Tg.semisimple_rank())
@@ -1039,83 +1040,87 @@ GlobalFiberData::GlobalFiberData
   }
 }
 
-// In this method there is a subtle distribution of roles: |sub| provides the
-// set of "simple" roots to handle, |sub.parent_datum()| is used to interpret
-// any |RootNbr| values, and |Tg| interprets any |TwistedInvolution|. It
-// should not be assumed that the generators of |Tg| are those of |sub|, nor
-// those of |sub.parent_datum()|: either (or none) could be the case.
-void GlobalFiberData::add_class(const SubSystem& sub,
-				const GlobalTitsGroup& Tg,
-				const TwistedInvolution& tw)
+GlobalFiberData::GlobalFiberData
+  (const SubSystem& sub,
+   hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
+  : hash_table(h)
+  , info()
+  , refl(sub.rank())
 {
-  const RootDatum& pd = sub.parent_datum();
-  const TwistedWeylGroup& W = Tg;
+  PreRootDatum parent = sub.pre_root_datum();
+  size_t pr = parent.rank();
+  const WeightList&   root   = parent.roots();
+  const CoweightList& coroot = parent.coroots();
+  for (weyl::Generator s=0; s<refl.size(); ++s)
+  {
+    refl[s] =  CoweightInvolution(pr); // identity matrix
+    const Weight& alpha     = root[s];
+    const Coweight& alpha_v = coroot[s];
+    for (size_t i=0; i<pr; ++i)
+      for (size_t j=0; j<pr; ++j)
+	refl[s](i,j) -= alpha[i]*alpha_v[j];
+  }
+}
 
-  RootNbrList W_simple(W.rank());
-  for (weyl::Generator s=0; s<W.rank(); ++s)
-    W_simple[s]=pd.rootNbr(Tg.parent_simple_root(s));
+InvInfo::InvInfo(const SubSystem& subsys,
+		 hashtable::HashTable<weyl::TI_Entry,unsigned int>& h)
+  : GlobalFiberData(subsys,h), sub(subsys), n_Cartans(0)
+{}
 
-  const size_t prev_inv = hash_table.size();
-  if (hash_table.match(tw)<prev_inv)
-    return; // all involutions present in hash table are fully catered for
+bool InvInfo::add_involution
+  (const TwistedInvolution& tw, const GlobalTitsGroup& Tg)
+{
+  assert(info.size()==hash_table.size());
+  if (hash_table.match(tw)<info.size())
+    return false; // involution is already tabulated;
 
-  std::vector<std::pair<size_t,weyl::Generator> > history; // record ancestors
-  history.reserve(0x100); // avoid some initial reallocations for efficiency
-
-  WeightInvolution A = Tg.involution_matrix(tw); // parent side
-  InvolutionData id = sub.involution_data(A); // roots of |sub| as parent roots
-
-  for (size_t i=0; i<A.numRows(); ++i)
-    A(i,i) -= 1; // now $A=\theta-1$, a matrix whose kernel is $(X^*)^\theta$
-
-  RootNbrSet imaginary=id.real_roots(); // imaginary for |Tg|
+  const RootDatum& pd = sub.parent_datum(); // needed for 2rho_imaginary
+  WeightInvolution A = Tg.involution_matrix(tw); // generate matrix $\theta$
+  InvolutionData id = sub.involution_data(A); // roots of |sub| only
+  RootNbrSet imaginary=id.real_roots(); // imaginary from |sub| side
   RootNbrList simple_imaginary=id.real_basis();
   RootNbrList simple_real=id.imaginary_basis();
 
-  // saturate by conjugation before reserving space and filling |info|
-  for (size_t i=prev_inv; i<hash_table.size(); ++i) // hash table grows
-  {
-    size_t last = hash_table.size()-1; // |hash_table| contains at least |tw|
+  // subtract identity from |A|, and row-saturate it
+  for (size_t i=0; i<A.numRows(); ++i)
+    A(i,i) -= 1; // now $A=\theta-1$, a matrix whose kernel is $(X^*)^\theta$
+  lattice::row_saturate(A).swap(A);
 
-    for (weyl::Generator s=0; s<W.rank(); ++s)
-    {
-      TwistedInvolution ti = W.twistedConjugated(hash_table[i],s);
-      size_t k = hash_table.match(ti);
-      if (k>last) // a new twisted involution
-      {
-	history.push_back(std::make_pair(i,s));
-	last=k;
-      }
-    } // |for(s)|
-  } // |for(i<hash_table.size())|
-
-    // reserve table space for new Cartan class
-  info.reserve(hash_table.size());
-
-  // create initial element
-  info.push_back(inv_info(info.empty() ? 0 : info.back().Cartan+1,
-			  lattice::row_saturate(A),
+  info.push_back(inv_info(n_Cartans++,
+			  A,
 			  pd.twoRho(imaginary), // |pd| is dual w.r.t. |Tg|
 			  simple_imaginary, // and |id| nomenclature for |Tg|
 			  simple_real));
 
-  // do remaining elements using history
-  for (size_t k=prev_inv + 1; k<hash_table.size(); ++k)
-  {
-    size_t i=history[k-(prev_inv + 1)].first;
-    assert(i<k); // this should refer to earlier element
-    const inv_info& cur = info[i];
-    weyl::Generator s=history[k-(prev_inv + 1)].second;
-    info.push_back(inv_info
+  assert(info.size()==hash_table.size()); // reestablished size match
+  return true;
+}
+
+bool InvInfo::add_cross_neighbor
+  (const TwistedInvolution& tw,
+   unsigned int old_inv,
+   weyl::Generator s)
+{
+  assert(info.size()==hash_table.size());
+  if (hash_table.match(tw)<info.size())
+    return false; // involution is already tabulated;
+
+  const RootDatum& pd = sub.parent_datum(); // needed for 2rho_imaginary
+  const Permutation& sigma = pd.root_permutation(sub.parent_nr_simple(s));
+
+  assert(old_inv<hash_table.size()); // should refer to known element
+  const inv_info& cur = info[old_inv];
+  info.push_back(inv_info
      (cur.Cartan,   // same Cartan class
       cur.proj*refl[s], // apply $refl[s]^{-1}$ to old kernel
       refl[s]*cur.check_2rho_imag,
-      pd.root_permutation(W_simple[s]).renumbering(cur.simple_imag),
-      pd.root_permutation(W_simple[s]).renumbering(cur.simple_real)
+      sigma.renumbering(cur.simple_imag),
+      sigma.renumbering(cur.simple_real)
       ));
-  }
+
   assert(info.size()==hash_table.size());
-} // |GlobalFiberData::add_class|
+  return true;
+}
 
 
 //  this demonstrates what the |proj| matrices can be used for
