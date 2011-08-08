@@ -261,7 +261,7 @@ construction would most likely crash.
 @< Local function definitions @>=
 void type_of_Cartan_matrix_wrapper (expression_base::level l)
 { shared_matrix m=get<matrix_value>();
-  permutations::Permutation pi;
+  Permutation pi;
   LieType lt=dynkin::Lie_type(m->val,true,true,pi);
   if (l==expression_base::no_value)
     return;
@@ -403,9 +403,7 @@ kind by $d/\gcd(d,\lambda_i)$ and transpose the result.
 
 @< Local function definitions @>=
 LatticeMatrix @|
-annihilator_modulo
-(const LatticeMatrix& M,
- LatticeCoeff denominator)
+annihilator_modulo(const LatticeMatrix& M, LatticeCoeff denominator)
 
 { int_Matrix row,col;
   CoeffList lambda = matreduc::diagonalise(M,row,col);
@@ -772,7 +770,7 @@ void raw_root_datum_wrapper(expression_base::level l)
   }
 
   PreRootDatum prd(s,c,rank);
-  try @/{@; permutations::Permutation dummy;
+  try @/{@; Permutation dummy;
     dynkin::Lie_type(prd.Cartan_matrix(),true,true,dummy);
   }
   catch (std::runtime_error& e)
@@ -1340,7 +1338,7 @@ lietype::Layout check_involution
  throw (std::bad_alloc, std::runtime_error)
 { size_t r=rd.rank(),s=rd.semisimpleRank();
   @< Check that |M| is an $r\times{r}$ matrix defining an involution @>
-@/permutations::Permutation p(s);
+@/Permutation p(s);
   @< Set |ww| to the Weyl group element needed to the left of |M| to map
   positive roots to positive roots, and |p| to the permutation of the simple
   roots so obtained, or throw a |runtime_error| if |M| is not an automorphism
@@ -1348,7 +1346,7 @@ lietype::Layout check_involution
 @/lietype::Layout result;
 @/LieType& type=result.d_type;
   InnerClassType& inner_class=result.d_inner;
-  permutations::Permutation& pi=result.d_perm;
+  Permutation& pi=result.d_perm;
   @< Compute the Lie type |type|, the inner class |inner_class|, and the
      permutation |pi| of the simple roots with respect to standard order for
      |type| @>
@@ -1695,28 +1693,30 @@ as argument
 
 @< Local function def...@>=
 void fix_involution_wrapper(expression_base::level l)
-{ shared_matrix M(get<matrix_value>());
+{ LatticeMatrix M(get<matrix_value>()->val); // safe use of temporary
   shared_root_datum rd(get<root_datum_value>());
   WeylWord ww;
-  lietype::Layout lo = check_involution(M->val,rd->val,ww);
+  lietype::Layout lo = check_involution(M,rd->val,ww);
   if (l==expression_base::no_value)
     return;
 @)
-  std::auto_ptr<ComplexReductiveGroup>@|
-    G(new ComplexReductiveGroup(rd->val,M->val));
+  for (unsigned int i=ww.size(); i-->0;)
+    rd->val.simple_reflect(ww[i],M);
+  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(rd->val,M));
   push_value(new inner_class_value(G,lo));
 }
 
 void twisted_involution_wrapper(expression_base::level l)
-{ shared_matrix M(get<matrix_value>());
+{ LatticeMatrix M(get<matrix_value>()->val);
   shared_root_datum rd(get<root_datum_value>());
   WeylWord ww;
-  lietype::Layout lo = check_involution(M->val,rd->val,ww);
+  lietype::Layout lo = check_involution(M,rd->val,ww);
   if (l==expression_base::no_value)
     return;
 @)
-  std::auto_ptr<ComplexReductiveGroup>@|
-    G(new ComplexReductiveGroup(rd->val,M->val));
+  for (unsigned int i=ww.size(); i-->0;)
+    rd->val.simple_reflect(ww[i],M);
+  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(rd->val,M));
   push_value(new inner_class_value(G,lo));
   push_value(new vector_value(std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
@@ -2550,7 +2550,7 @@ void print_gradings_wrapper(expression_base::level l)
   // simple imaginary roots
 
   int_Matrix cm;
-  permutations::Permutation sigma;
+  Permutation sigma;
 @/@< Compute the Cartan matrix |cm| of the root subsystem |si|, and the
      permutation |sigma| giving the Bourbaki numbering of its simple roots @>
 
