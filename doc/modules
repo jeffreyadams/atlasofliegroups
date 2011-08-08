@@ -70,8 +70,8 @@ gKmod
   klsupport	a base class for KL computations, streamlining block acces
   wgraph	a class storing a W graph, and decomposition of it
   kl		the main KL computation (class KLContext)
-  standardrepk  standard representation restricted to K: multiple classes
-  repr
+  standardrepk  standard representations restricted to K: multiple classes
+  repr		facilities for working with standard representations
 
 Io
 
