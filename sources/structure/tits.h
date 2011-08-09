@@ -310,6 +310,8 @@ class GlobalTitsGroup : public TwistedWeylGroup
   int cross_act(GlobalTitsElement& a,const WeylWord& w) const;
   GlobalTitsElement cross(const WeylWord& w, GlobalTitsElement a) const
   { cross_act(w,a); return a; }
+  GlobalTitsElement cross(GlobalTitsElement a, const WeylWord& w) const
+  { cross_act(a,w); return a; }
 
   void add(TorusPart tp,GlobalTitsElement& a) const // |tp| by value: small
   { a.t += tp; }

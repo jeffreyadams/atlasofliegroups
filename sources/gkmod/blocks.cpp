@@ -1566,11 +1566,10 @@ BlockElt nblock_below (const block_elt_entry z, nblock_context& ctxt)
       case gradings::Status::ImaginaryNoncompact:
 	{
 	  bool type_II = kgb.cross(sub.simple(s),conj_x)==conj_x;
-	  GlobalTitsElement conj_y =
-	    Tg.cross(sub.to_simple(s),y_hash[z.y].repr());
-	  Tg.do_inverse_Cayley(sub.simple(s),conj_y);
-	  GlobalTitsElement new_y = conj_y;
-	  Tg.cross_act(new_y,sub.to_simple(s));
+	  GlobalTitsElement inv_Cayley_y =
+	    Tg.cross(sub.to_simple(s),y_hash[c.y].repr()); // conjugate first
+	  Tg.do_inverse_Cayley(sub.simple(s),inv_Cayley_y); // then inv. Cayley
+	  GlobalTitsElement new_y = Tg.cross(inv_Cayley_y,sub.to_simple(s));
 	  gfd.add_involution(new_y.tw(),Tg);
 	  KGBElt sy = y_hash.match(gfd.pack(new_y));
 	  KGBElt sx =
@@ -1580,9 +1579,8 @@ BlockElt nblock_below (const block_elt_entry z, nblock_context& ctxt)
 
 	  if (type_II)
 	  {
-	    new_y =
-	      conj_y.simple_imaginary_cross(sub.parent_datum(),sub.simple(s));
-	    Tg.cross_act(new_y,sub.to_simple(s));
+	    Tg.cross_act(sub.simple(s),inv_Cayley_y); // get other inv. Cayley
+	    new_y = Tg.cross(inv_Cayley_y,sub.to_simple(s));
 	    sy = y_hash.match(gfd.pack(new_y));
 	    assert(sy!=sc.y); // since we are in type II
 	    pred.push_back(nblock_below(block_elt_entry(sx,sy),ctxt));
