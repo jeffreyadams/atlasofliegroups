@@ -73,9 +73,7 @@ struct Layout;
   */
   const char* const innerClassLetters = "Ccesu";
 
-}
 
-namespace lietype {
 
 typedef char TypeLetter;
 
@@ -142,12 +140,9 @@ Layout() : d_type(), d_inner(), d_perm() {} // needed in realex
 
 }; // |struct Layout|
 
-} // |namespace lietype|
 
 
 /******** function declarations **********************************************/
-
-namespace lietype {
 
   bool checkRank(const TypeLetter&, size_t);
 
