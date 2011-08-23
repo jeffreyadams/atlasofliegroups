@@ -42,11 +42,6 @@ class Interface {
  public:
 
 // constructors and destructors
-  Interface():d_complexGroup(0) {}
-
-  explicit Interface(ComplexReductiveGroup& G)
-    :d_complexGroup(&G) {}
-
   Interface(ComplexReductiveGroup&, const lietype::Layout&);
 
   ~Interface() {}
