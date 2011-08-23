@@ -172,7 +172,7 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
 
       const RootNbr cur = ri.size();
       ri.push_back(root_info(alpha)); // add new positive root to the list
-      link.push_back(RootNbrList(rk,~0u)); // initially all links are undefined
+      link.push_back(RootNbrList(rk,RootNbr(~0))); // all links start undefined
 
       byte c;
       for (size_t i=0; i<rk; ++i)
