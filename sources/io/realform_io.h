@@ -49,8 +49,6 @@ class Interface {
  public:
 
 // constructors and destructors
-  Interface() {};
-
   Interface(const ComplexReductiveGroup&, const lietype::Layout&);
 
   Interface(const ComplexReductiveGroup&, const lietype::Layout&,
