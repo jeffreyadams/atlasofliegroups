@@ -17,36 +17,43 @@
 #include <iomanip>
 #include <map>
 
+#include "atlas_types.h" // here to preempt double inclusion of _fwd files
+
+#include "free_abelian.h"
+#include "permutations.h"
+#include "matreduc.h"
+
+#include "dynkin.h"
+#include "prerootdata.h"
+#include "rootdata.h"
+#include "cartanclass.h"
+#include "complexredgp.h"
+#include "realredgp.h"
+
+#include "kgb.h"
+#include "blocks.h"
+#include "klsupport.h"
+#include "kl.h"
+#include "standardrepk.h"
+#include "repr.h"
+
+#include "ioutils.h"
+#include "basic_io.h"
+#include "prettyprint.h"
+#include "interactive.h"
+#include "realform_io.h"
+#include "kgb_io.h"
+#include "block_io.h"
+
+#include "commands.h"
 #include "helpmode.h"
 #include "emptymode.h"
 #include "mainmode.h"
 #include "realmode.h"
 #include "blockmode.h"
 
-#include "commands.h"
-#include "prerootdata.h"
-#include "rootdata.h"
-#include "dynkin.h"
-#include "cartanclass.h"
-#include "complexredgp.h"
-#include "realredgp.h"
-#include "interactive.h"
-#include "ioutils.h"
-#include "prettyprint.h"
-#include "kgb.h"
-#include "kgb_io.h"
-#include "blocks.h"
-#include "block_io.h"
-#include "klsupport.h"
-#include "kl.h"
-#include "kltest.h"
-#include "standardrepk.h"
-#include "repr.h"
-#include "free_abelian.h"
-#include "permutations.h"
-#include "matreduc.h"
 #include "testrun.h"
-#include "basic_io.h"
+#include "kltest.h"
 
 /*****************************************************************************
 
@@ -1040,7 +1047,7 @@ void srtest_f()
   }
 }
 
-bool examine(RealReductiveGroup& G)
+bool examine_KGBs(RealReductiveGroup& G)
 {
   KGB kgb1(G);
   KGB kgb2(G,G.Cartan_set());
@@ -1057,18 +1064,32 @@ bool examine(RealReductiveGroup& G)
   return true;
 }
 
+bool examine(RealReductiveGroup& G)
+{
+  const WeylGroup& W = G.weylGroup();
+  const KGB& kgb=G.kgb();
+  size_t l = W.length(kgb.involution(0)),t;
+  for (size_t i=1; i<kgb.size(); ++i)
+    if ((t=W.length(kgb.involution(i)))<l)
+      return false;
+    else
+      l=t;
+  return true;
+}
+
 void testrun_f()
 {
   unsigned long rank=interactive::get_bounded_int
     (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
-  std::cout << "Testing agreement of kgb and KGB:\n";
+  std::cout << "Testing weak increase of W-length in KGB.\n";
   for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
   {
     std::cout<< *it << std::endl;
     size_t count=0;
     for (testrun::CoveringIterator cit(*it); cit(); ++cit)
     {
-      if (count>0) std::cout << ',' << std::flush;
+      if (count>0) std::cout << ',';
+      std::cout << ++count;
       RootDatum rd(*cit);
       WeightInvolution id(rd.rank()); // identity
       ComplexReductiveGroup G(rd,id);
@@ -1076,9 +1097,16 @@ void testrun_f()
       {
 	RealReductiveGroup G_R(G,rf);
 	if (not examine(G_R))
-	  std::cout << "Failure at real form " << rf << std::endl;
+	{
+	  lietype::InnerClassType ict;
+	  for (size_t i=0; i<it->size(); ++i)
+	    ict.push_back('e');
+	  lietype::Layout lay(*it,ict);
+	  realform_io::Interface itf(G,lay);
+	  std::cout << " Failure at real form " << itf.out(rf) << std::endl;
+	}
+	std::cout << std::flush;
       }
-      std::cout << ++count;
     }
     std::cout << '.' << std::endl;
   }
@@ -1087,8 +1115,9 @@ void testrun_f()
 
 void exam_f()
 {
-  std::cout << "kgb and KGB "
-            << (examine(realmode::currentRealGroup()) ? "agree" : "differ")
+  std::cout << "W-length in KGB "
+            << (examine(realmode::currentRealGroup())
+		? "weakly increasing" : "non monotone")
 	    << std::endl;
 }
 
@@ -1249,7 +1278,7 @@ void nblock_f()
 	BlockEltList nb=block.nonzeros_below(x);
 	for (size_t i=0; i<nb.size(); ++i)
 	{
-	  std::pair<map_type::iterator,bool> trial = 
+	  std::pair<map_type::iterator,bool> trial =
 	    acc.insert(std::make_pair(nb[i],p));
 	  if (not trial.second) // failed to create a new entry
 	    trial.first->second += p;
