@@ -66,27 +66,27 @@ void BitSetBase<1>::unslice(const BitSetBase<1>& c)
   d_bits=result; // overwrite with expanded bits
 }
 
-size_t BitSetBase<2>::firstBit() const
+unsigned int BitSetBase<2>::firstBit() const
 {
   return d_bits0!=0
     ? bits::firstBit(d_bits0)
     : bits::firstBit(d_bits1) + constants::longBits;
 }
 
-size_t BitSetBase<2>::lastBit() const
+unsigned int BitSetBase<2>::lastBit() const
 {
   return d_bits1!=0
     ? bits::lastBit(d_bits1) + constants::longBits
     : bits::lastBit(d_bits0);
 }
 
-bool BitSetBase<2>::test(size_t j) const
+bool BitSetBase<2>::test(unsigned int j) const
 {
   return ((j<constants::longBits ? d_bits0 : d_bits1)
 	  & constants::bitMask[j & constants::posBits])!=0;
 }
 
-size_t BitSetBase<2>::position(size_t j) const
+unsigned int BitSetBase<2>::position(unsigned int j) const
 {
   if (j >> constants::baseShift !=0) // two terms
     return bits::bitCount(d_bits1 &
@@ -122,7 +122,7 @@ void BitSetBase<2>::operator&= (const BitSetBase<2>& b)
   d_bits1 &= b.d_bits1;
 }
 
-void BitSetBase<2>::operator<<= (size_t c)
+void BitSetBase<2>::operator<<= (unsigned int c)
 {
   if (c == 0) // do nothing
     return;
@@ -145,7 +145,7 @@ void BitSetBase<2>::operator<<= (size_t c)
   }
 }
 
-void BitSetBase<2>::operator>>= (size_t c)
+void BitSetBase<2>::operator>>= (unsigned int c)
 {
   if (c == 0) // do nothing
     return;
@@ -173,19 +173,19 @@ void BitSetBase<2>::andnot(const BitSetBase<2>& b)
   d_bits1 &= ~b.d_bits1;
 }
 
-void BitSetBase<2>::flip(size_t j)
+void BitSetBase<2>::flip(unsigned int j)
 {
   *(j<constants::longBits ? &d_bits0 : &d_bits1)
     ^= constants::bitMask[j & constants::posBits];
 }
 
-void BitSetBase<2>::reset(size_t j)
+void BitSetBase<2>::reset(unsigned int j)
 {
   *(j<constants::longBits ? &d_bits0 : &d_bits1)
     &= ~constants::bitMask[j & constants::posBits];
 }
 
-void BitSetBase<2>::set(size_t j)
+void BitSetBase<2>::set(unsigned int j)
 {
   *(j<constants::longBits ? &d_bits0 : &d_bits1)
     |= constants::bitMask[j & constants::posBits];
@@ -200,7 +200,7 @@ void BitSetBase<2>::swap(BitSetBase<2>& source)
   std::swap(d_bits1,source.d_bits1);
 }
 
-void BitSetBase<2>::complement(size_t limit)
+void BitSetBase<2>::complement(unsigned int limit)
 {
   if (limit<constants::longBits)
   {
@@ -213,7 +213,7 @@ void BitSetBase<2>::complement(size_t limit)
   }
 }
 
-void BitSetBase<2>::truncate(size_t limit)
+void BitSetBase<2>::truncate(unsigned int limit)
 {
   if (limit < constants::longBits)
   {
@@ -234,7 +234,7 @@ bool BitSetBase<2>::iterator::operator== (const iterator& i) const
 bool BitSetBase<2>::iterator::operator!= (const iterator& i) const
 { return d_bits0!=i.d_bits0 or d_bits1!=i.d_bits1; } // into same bitset
 
-size_t BitSetBase<2>::iterator::operator* () const
+unsigned int BitSetBase<2>::iterator::operator* () const
 { // this is like |BitSetBase<2>::firstbit|, but we cannot call it
   return d_bits0!=0
     ? bits::firstBit(d_bits0)

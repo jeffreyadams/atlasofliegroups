@@ -787,10 +787,10 @@ InvolutionNbr ComplexReductiveGroup::numInvolutions()
   \brief Returns the total number of involutions corresponding to the
   indicated set of Cartans.
 */
-size_t ComplexReductiveGroup::numInvolutions
+InvolutionNbr ComplexReductiveGroup::numInvolutions
   (const BitMap& Cartan_classes)
 {
-  size_t count = 0;
+  InvolutionNbr count = 0;
 
   for (BitMap::iterator it=Cartan_classes.begin(); it(); ++it)
     count += cartan(*it).orbitSize();
