@@ -80,6 +80,7 @@ namespace atlas {
     class Partition;
     class PartitionIterator;
   }
+  using partition::Partition;
 
   namespace poset {
     class Poset;
@@ -247,6 +248,18 @@ namespace atlas {
   using tits::TitsGroup;
   using tits::TitsCoset;
 
+  namespace involutions {
+    class InvolutionData;
+    class InvolutionTable;
+    class Cartan_orbit;
+    class Cartan_orbits;
+  }
+  using involutions::InvolutionData;
+  using involutions::InvolutionTable;
+  typedef unsigned int InvolutionNbr;
+  using involutions::Cartan_orbit;
+  using involutions::Cartan_orbits;
+
   namespace gradings {
     class Status;
     struct GradingCompare;
@@ -261,11 +274,12 @@ namespace atlas {
   namespace subsystem {class SubSystem; }
   using subsystem::SubSystem;
 
+
+  typedef unsigned short CartanNbr; // index of Cartan class
   typedef unsigned short RealFormNbr; // index used in |ComplexReductiveGroup|
   typedef std::vector<RealFormNbr> RealFormNbrList;
 
   namespace cartanclass {
-    class InvolutionData;
     class Fiber;
     class CartanClass;
     typedef unsigned int FiberElt;	// element of the fiber group
@@ -274,8 +288,7 @@ namespace atlas {
     typedef unsigned short adjoint_fiber_orbit; // same for adjoint fiber group
     typedef unsigned short square_class; // identifies a class of real forms
     typedef std::pair<fiber_orbit,square_class> StrongRealFormRep;
-}
-  using cartanclass::InvolutionData;
+  }
   using cartanclass::Fiber;
   using cartanclass::CartanClass;
 
