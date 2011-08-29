@@ -122,22 +122,23 @@ template<> class BitSetBase<1>
   bool contains (const BitSetBase<1>& b) const
   { return (~d_bits & b.d_bits)==0; }
 
-  size_t count() const { return bits::bitCount(d_bits); }
-  size_t firstBit() const // index of least set bit; |longBits| if |none()|
+  unsigned int count() const { return bits::bitCount(d_bits); }
+  unsigned int firstBit() const // index of least set bit; |longBits| if none
   { return bits::firstBit(d_bits); }
-  size_t lastBit() const // index of highest set bit PLUS ONE, 0 if |none()|
+  unsigned int lastBit() const // index of highest set bit PLUS ONE, 0 if none
   { return bits::lastBit(d_bits); }
 
-  bool test(size_t j) const { return (d_bits & constants::bitMask[j])!=0; }
+  bool test(unsigned int j) const
+  { return (d_bits & constants::bitMask[j])!=0; }
 
-  size_t position(size_t j) const
+  unsigned int position(unsigned int j) const // rank among set bits of bit |j|
   { return bits::bitCount(d_bits & constants::lMask[j]); }
 
   bool scalarProduct(const BitSetBase<1>& b) const
   { return bits::bitCount(d_bits&b.d_bits)%2 != 0; }
 
   unsigned long to_ulong() const { return d_bits; }
-  unsigned long to_ulong(size_t n) const { return n==0 ? d_bits : 0; }
+  unsigned long to_ulong(unsigned int n) const { return n==0 ? d_bits : 0; }
 
   iterator begin() const;
 
@@ -150,14 +151,14 @@ template<> class BitSetBase<1>
   void andnot(const BitSetBase<1>& b)      { d_bits &= ~b.d_bits; }
 
   // next two methods make sure that shift by |constants::longBits| yields 0.
-  void operator<<= (size_t c)
+  void operator<<= (unsigned int c)
   {
     if (c < constants::longBits) // bit shifts by more than this are undefined!
       d_bits <<= c;
     else
       d_bits = 0ul; // simulate shifting out of all bits
   }
-  void operator>>= (size_t c)
+  void operator>>= (unsigned int c)
   {
     if (c < constants::longBits) // bit shifts by more than this are undefined!
       d_bits >>= c;
@@ -165,14 +166,14 @@ template<> class BitSetBase<1>
       d_bits = 0ul; // simulate shifting out of all bits
   }
 
-  void flip(size_t j) { d_bits ^= constants::bitMask[j]; }
+  void flip(unsigned int j) { d_bits ^= constants::bitMask[j]; }
   void reset() { d_bits = 0ul; }
-  void reset(size_t j)  { d_bits &= ~constants::bitMask[j]; }
-  void set(size_t j) { d_bits |= constants::bitMask[j]; }
-  void fill(size_t limit) { d_bits |= constants::lMask[limit]; }
+  void reset(unsigned int j)  { d_bits &= ~constants::bitMask[j]; }
+  void set(unsigned int j) { d_bits |= constants::bitMask[j]; }
+  void fill(unsigned int limit) { d_bits |= constants::lMask[limit]; }
 
-  void complement(size_t limit) { d_bits ^= constants::lMask[limit]; }
-  void truncate(size_t limit)
+  void complement(unsigned int limit) { d_bits ^= constants::lMask[limit]; }
+  void truncate(unsigned int limit)
     { if (limit<constants::longBits) d_bits &= constants::lMask[limit]; }
 
   void slice(const BitSetBase<1>& c); // extract bits set in |c|, compacting
@@ -244,16 +245,16 @@ template<> class BitSetBase<2>
   bool contains (const BitSetBase<2>& b) const
     { return (b.d_bits0 & ~d_bits0)==0 and (b.d_bits1 & ~d_bits1)==0; }
 
-  size_t count() const
+  unsigned int count() const
     { return bits::bitCount(d_bits0) + bits::bitCount(d_bits1); }
-  size_t firstBit() const;
-  size_t lastBit() const;
-  bool test(size_t j) const;
-  size_t position(size_t j) const;
+  unsigned int firstBit() const;
+  unsigned int lastBit() const;
+  bool test(unsigned int j) const;
+  unsigned int position(unsigned int j) const;
   bool scalarProduct(const BitSetBase<2>& b) const;
 
   unsigned long to_ulong() const { return d_bits0; }
-  unsigned long to_ulong(size_t n) const
+  unsigned long to_ulong(unsigned int n) const
     { return n==0 ? d_bits0 : n==1 ? d_bits1 : 0; }
 
   iterator begin() const;
@@ -263,18 +264,18 @@ template<> class BitSetBase<2>
   void operator^= (const BitSetBase<2>& b);
   void operator|= (const BitSetBase<2>& b);
   void operator&= (const BitSetBase<2>& b);
-  void operator<<= (size_t c);
-  void operator>>= (size_t c);
+  void operator<<= (unsigned int c);
+  void operator>>= (unsigned int c);
   void andnot(const BitSetBase<2>& b);
-  void flip(size_t j);
+  void flip(unsigned int j);
 
   void reset() { d_bits0 = 0ul; d_bits1 = 0ul; }
-  void reset(size_t j) ;
-  void set(size_t j);
-  void fill(size_t limit);
+  void reset(unsigned int j) ;
+  void set(unsigned int j);
+  void fill(unsigned int limit);
 
-  void complement(size_t limit);
-  void truncate(size_t limit);
+  void complement(unsigned int limit);
+  void truncate(unsigned int limit);
 
   void slice(const BitSetBase<2>& c); // extract bits set in |c|, compacting
   void unslice(const BitSetBase<1>& c); // expand bits to positions set in |c|
@@ -327,7 +328,7 @@ template<size_t n> class BitSet
     // associated types
 
     typedef std::forward_iterator_tag iterator_category;
-    typedef size_t value_type;
+    typedef unsigned int value_type;
 
     iterator() : Base::iterator() {}
     explicit iterator(const typename Base::iterator& b) : Base::iterator(b) {}
@@ -358,18 +359,19 @@ template<size_t n> class BitSet
   bool any(const BitSet& b) const { return Base::any(b); }
   bool contains(const BitSet& b) const { return Base::contains(b); }
 
-  size_t count() const { return Base::count(); }
-  size_t firstBit() const { return Base::firstBit(); }
-  size_t lastBit() const { return Base::lastBit(); }
+  unsigned int count() const { return Base::count(); }
+  unsigned int firstBit() const { return Base::firstBit(); }
+  unsigned int lastBit() const { return Base::lastBit(); }
 
-  bool test(size_t j) const { return Base::test(j); }
+  bool test(unsigned int j) const { return Base::test(j); }
 
-  size_t position(size_t j) const { return Base::position(j); }
+  // rank among the set bits of bit number |j| (assuming it were set)
+  unsigned int position(unsigned int j) const { return Base::position(j); }
 
   bool scalarProduct(const BitSet& b) const { return Base::scalarProduct(b); }
 
   unsigned long to_ulong() const { return Base::to_ulong(); }
-  unsigned long to_ulong(size_t i) const { return Base::to_ulong(i); }
+  unsigned long to_ulong(unsigned int i) const { return Base::to_ulong(i); }
 #endif
 
   iterator begin() const { return iterator(Base::begin()); }
@@ -380,20 +382,20 @@ template<size_t n> class BitSet
   BitSet& operator|= (const BitSet& b) { Base::operator|=(b); return *this; }
   BitSet& operator&= (const BitSet& b) { Base::operator&=(b); return *this; }
 
-  BitSet& operator<<= (size_t c) { Base::operator<<=(c); return *this; }
-  BitSet& operator>>= (size_t c) { Base::operator>>=(c); return *this; }
+  BitSet& operator<<= (unsigned int c) { Base::operator<<=(c); return *this; }
+  BitSet& operator>>= (unsigned int c) { Base::operator>>=(c); return *this; }
 
   BitSet& andnot (const BitSet& b) { Base::andnot(b); return *this; }
-  BitSet& flip(size_t j) { Base::flip(j); return *this; }
+  BitSet& flip(unsigned int j) { Base::flip(j); return *this; }
 
   BitSet& reset()         { Base::reset();  return *this; }
-  BitSet& reset(size_t j) { Base::reset(j); return *this; }
-  BitSet& set(size_t j) { Base::set(j); return *this; }
-  BitSet& set(size_t j, bool b)
+  BitSet& reset(unsigned int j) { Base::reset(j); return *this; }
+  BitSet& set(unsigned int j) { Base::set(j); return *this; }
+  BitSet& set(unsigned int j, bool b)
     { if (b) Base::set(j); else Base::reset(j); return *this; }
-  BitSet& fill(size_t limit) { Base::fill(limit); return *this; }
-  BitSet& complement(size_t limit) { Base::complement(limit); return *this; }
-  BitSet& truncate(size_t m) { Base::truncate(m); return *this; }
+  BitSet& fill(unsigned int limit) { Base::fill(limit); return *this; }
+  BitSet& complement(unsigned int limit) { Base::complement(limit); return *this; }
+  BitSet& truncate(unsigned int m) { Base::truncate(m); return *this; }
 
   BitSet& slice(const BitSet& c) { Base::slice(c); return *this; }
   BitSet& unslice(const BitSet& c) { Base::unslice(c); return *this; }
@@ -402,7 +404,7 @@ template<size_t n> class BitSet
 
   // accessors (non inherited)
 
-  bool operator[] (size_t j) const { return Base::test(j); }
+  bool operator[] (unsigned int j) const { return Base::test(j); }
 
   // non-assignment logical operators added by MvL
   BitSet operator& (const BitSet& b) const // logical AND
@@ -435,7 +437,7 @@ class BitSetBase<1>::iterator
 // accessors
   bool operator== (const iterator& i) const; // rarely useful
   bool operator!= (const iterator& i) const; // rarely useful
-  size_t operator* () const { return bits::firstBit(d_bits); }
+  unsigned int operator* () const { return bits::firstBit(d_bits); }
   bool operator() () const { return d_bits!=0; }
 
 // manipulators
@@ -457,7 +459,7 @@ class BitSetBase<2>::iterator
 // accessors
   bool operator== (const iterator& i) const;
   bool operator!= (const iterator& i) const;
-  size_t operator* () const;
+  unsigned int operator* () const;
   bool operator() () const { return d_bits0!=0 or d_bits1!=0; }
 
 // manipulators
