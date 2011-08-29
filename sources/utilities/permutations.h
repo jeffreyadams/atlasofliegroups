@@ -80,13 +80,9 @@ namespace permutations {
 
   void compose(Permutation&, const Permutation&, unsigned long n = 0);
 
-  inline void identity(Permutation& p, unsigned long n) { p=Permutation(n,1); }
-
-  inline void invert(Permutation& dst, const Permutation& src)
-    { Permutation(src,-1).swap(dst); }
-
   template<typename U>
-    Permutation standardize(const std::vector<U>& a, size_t bound);
+    Permutation standardize(const std::vector<U>& a, size_t bound,
+			    std::vector<unsigned int>* stops = NULL);
 
 }
 

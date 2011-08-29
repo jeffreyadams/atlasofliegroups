@@ -208,9 +208,10 @@ void Permutation::inv_conjugate(matrix::Matrix_base<T>& M) const
 // setteing |a=standardize(a).pull_back(a)| amounts to stable sorting of |a|.
 
 template <typename U>// unsigned type
-  Permutation standardize(const std::vector<U>& a, size_t bound)
+Permutation standardize(const std::vector<U>& a, size_t bound,
+			std::vector<unsigned int>* stops)
 {
-  std::vector<size_t> count(bound,0);
+  std::vector<unsigned int> count(bound,0);
   for (size_t i=a.size(); i-->0; ) // downwards might be faster
   {
     assert(a[i]<bound);
@@ -223,6 +224,11 @@ template <typename U>// unsigned type
     size_t ci=count[i]; count[i]=sum; sum+=ci;
   }
   // now |count[v]| holds number of values less than |v| in |a|
+  if (stops!=NULL)
+  { stops->reserve(bound+1);
+    stops->assign(count.begin(),count.end());
+    stops->push_back(sum);
+  }
 
   Permutation result(a.size());
   for (size_t i=0; i<a.size(); ++i )
@@ -255,7 +261,8 @@ template void
 Permutation::inv_conjugate(matrix::Matrix_base<int>& M) const; // weyl
 
 template Permutation
-standardize<unsigned int>(const std::vector<unsigned int>& a, size_t bound);
+standardize(const std::vector<unsigned int>& a, size_t bound,
+	    std::vector<unsigned int>* stops);
 
 } // |namespace permutations|
 
