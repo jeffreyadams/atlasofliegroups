@@ -141,8 +141,11 @@ class BitMap
    return (d_map[n >> baseShift] & constants::bitMask[n&posBits])!=0;
  }
 
- //! \brief Whether all elements of |b| satisfy |isMember|
+ // Whether all elements of |b| satisfy |isMember|
  bool contains(const BitMap& b) const;
+
+ // Whether none of the elements of |b| satisfy |isMember|
+ bool disjoint(const BitMap& b) const;
 
  //! \brief Value at index |n| if viewed as list of |unsigned long| values
  unsigned long n_th(unsigned long n) const;
@@ -174,6 +177,7 @@ class BitMap
  // WARNING: the following looks like an accessor, but complements |*this|
  BitMap& operator~ ();
 
+ // these operators allow argument to have less capacity than |*this|
  bool operator&= (const BitMap&);
 
  BitMap& operator|= (const BitMap&);
