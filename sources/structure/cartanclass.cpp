@@ -55,10 +55,10 @@ namespace atlas {
   grading of the simple-imaginary roots associated to the chosen base point of
   the fiber, (2) the grading shifts associated with the generators of the
   fiber group, and (3) the vectors |d_mAlpha[s]| by which each of the simple
-  imaginary roots \f$\alpha_s\f$ translates if it acts non-trivially (this
-  is the image in the fiber group of the coroot of \f$\alpha_s\f$). The action
-  of \f$\alpha_s\f$ will translate |x| by |d_mAlpha[s]| if the grading at
-  \f$\alpha_s\f$ associated to |x| is odd (noncompact). To facilitate the
+  imaginary roots $\alpha_s$ translates if it acts non-trivially (this
+  is the image in the fiber group of the coroot of $\alpha_s$). The action
+  of $\alpha_s$ will translate |x| by |d_mAlpha[s]| if the grading at
+  $\alpha_s$ associated to |x| is odd (noncompact). To facilitate the
   determination of that grading, the grading shift information is stored as
   bitsets |d_alpha[s]| for each simple-imaginary root. Since in |Fiber|, the
   grading shifts are organised by generator of the fiber group, the neceesary
@@ -101,98 +101,11 @@ namespace atlas {
 
 /*****************************************************************************
 
-        Chapter I -- The InvolutionData and CartanClass classes
+        Chapter I -- The CartanClass class
 
 ******************************************************************************/
 
 namespace cartanclass {
-
-InvolutionData::InvolutionData(const RootDatum& rd,
-			       const WeightInvolution& theta)
-  : d_rootInvolution(rd.rootPermutation(theta))
-  , d_imaginary(rd.numRoots()) // we can only dimension root sets for now
-  , d_real(rd.numRoots())
-  , d_complex(rd.numRoots())
-  , d_simpleImaginary()        // here even dimensioning is pointless
-  , d_simpleReal()
-{ classify_roots(rd); }
-
-void InvolutionData::classify_roots(const RootSystem& rs)
-{
-  for (RootNbr alpha = 0; alpha<rs.numRoots(); ++alpha)
-    if (d_rootInvolution[alpha] == alpha)
-      d_imaginary.insert(alpha);
-    else if (d_rootInvolution[alpha] == rs.rootMinus(alpha))
-      d_real.insert(alpha);
-    else
-      d_complex.insert(alpha);
-
-  // find simple-imaginary roots
-  d_simpleImaginary=rs.simpleBasis(imaginary_roots());
-  d_simpleReal=rs.simpleBasis(real_roots());
-}
-
-// the follwing constructor intersects all root sets with those of |sub|, but
-// uses the full parent datum for numbering roots, and in |root_involution()|
-InvolutionData::InvolutionData(const RootDatum& rd,
-			       const WeightInvolution& theta,
-			       const RootNbrSet& positive_subsystem)
-: d_rootInvolution(rd.rootPermutation(theta))
-, d_imaginary(rd.numRoots())
-, d_real(d_imaginary.capacity())
-, d_complex(d_imaginary.capacity())
-, d_simpleImaginary()        // here even dimensioning is pointless
-, d_simpleReal()
-{
-  for (RootNbrSet::const_iterator it=positive_subsystem.begin(); it(); ++it)
-  {
-    RootNbr alpha = *it;
-    RootNbr minus_alpha = rd.rootMinus(alpha);
-    if (d_rootInvolution[alpha] == alpha)
-    {
-      d_imaginary.insert(alpha);
-      d_imaginary.insert(minus_alpha);
-    }
-    else if (d_rootInvolution[alpha] == minus_alpha)
-    {
-      d_real.insert(alpha);
-      d_real.insert(minus_alpha);
-    }
-    else
-    {
-      d_complex.insert(alpha);
-      d_complex.insert(minus_alpha);
-    }
-  }
-  // find simple-imaginary roots
-  d_simpleImaginary=rd.simpleBasis(imaginary_roots());
-  d_simpleReal=rd.simpleBasis(real_roots());
-}
-
-InvolutionData::InvolutionData(const RootSystem& rs,
-			       const RootNbrList& s_image)
-  : d_rootInvolution(rs.extend_to_roots(s_image))
-  , d_imaginary(rs.numRoots()) // we can only dimension root sets for now
-  , d_real(rs.numRoots())
-  , d_complex(rs.numRoots())
-  , d_simpleImaginary()
-  , d_simpleReal()
-{ classify_roots(rs); }
-
-InvolutionData InvolutionData::build
-  (const RootSystem& rs,
-   const TwistedWeylGroup& W,
-   const TwistedInvolution& tw)
-{ return InvolutionData(rs,W.simple_images(rs,tw)); }
-
-void InvolutionData::swap(InvolutionData& other)
-{
-  d_rootInvolution.swap(other.d_rootInvolution);
-  d_imaginary.swap(other.d_imaginary);
-  d_real.swap(other.d_real);
-  d_complex.swap(other.d_complex);
-  d_simpleImaginary.swap(other.d_simpleImaginary);
-}
 
 /*!
   Synopsis: constructs the Cartan class with involution theta.
@@ -250,10 +163,8 @@ bool CartanClass::isMostSplit(adjoint_fiber_orbit wrf) const
 
 namespace cartanclass {
 
-/*!
-  \brief Constructs the fiber for the Cartan class determined by the
-  involution |theta| of the root datum |rd|.
-*/
+// Fiber constructor for involution |theta| of the root datum |rd|.
+
 
 Fiber::Fiber(const RootDatum& rd,
 	     const WeightInvolution& theta)
@@ -274,7 +185,7 @@ Fiber::Fiber(const RootDatum& rd,
   assert(gradingGroup(rd).dimension()==0);
 }
 
-// copy and assignment
+// Copy and assignment
 
 Fiber::Fiber(const Fiber& other)
   : d_torus(other.d_torus)
@@ -293,12 +204,8 @@ Fiber::Fiber(const Fiber& other)
 {}
 
 
-/*!
-  Synopsis: assignment operator.
+// Assignment operator. Uses copy constructor, with check for self-assignment
 
-  Use copy constructor. This requires a check for self-assignment, or the
-  source would be destroyed!
-*/
 Fiber& Fiber::operator= (const Fiber& other)
 {
   // handle self-assignment
@@ -310,39 +217,33 @@ Fiber& Fiber::operator= (const Fiber& other)
   return *this;
 }
 
+
 /*       Private accessors of |Fiber| used during construction      */
 
 
-/*!
-  \brief returns the group that acts 1-transitively on each subset of the
-  fiber with fixed central square.
+/*
+  The group that acts 1-transitively on each central square class in the fiber.
 
-  Explanation: the value returned is the subquotient $V_+ + V_-/V_+$ as
-  constructed by |tori::dualPi0|, but for the negative transpose of our
-  involution. So the group is actually isomorphic to the +1 eigenspace of the
-  transpose involution $\tau$, modulo the image of $(1+\tau)$, and also to the
-  component group of the $-\tau$ fixed points subgroup of the Cartan $H$
+  This is the subquotient $V_+ + V_-/V_+$ as constructed by |tori::dualPi0|,
+  but for |-^theta|. So the group is isomorphic to the +1 eigenspace of the
+  transpose involution |^theta|, modulo the image of |1+^theta|, and also to
+  the component group of the set of |-theta| fixed points of the Cartan $H$.
 
-  Note that only the involution is used, not the root datum.
+  Note that only the involution |theta| is used, not the root datum.
 */
 SmallSubquotient Fiber::makeFiberGroup() const
 {
-  // construct subquotient
-  SmallSubquotient result;
-  tori::dualPi0(result,involution().negative_transposed());
-
-  return result;
+  return tori::dualPi0(involution().negative_transposed());
 }
 
-/*!
-  \brief Returns the matrix of the transformation induced by negative of
-  our involution on the cocharacter lattice for the adjoint group, expressed
-  on the simple coweight basis, which is dual to the simple root basis.
+/*
+  The matrix of the transformation induced by |-^theta| on the cocharacter
+  lattice for the adjoint group, expressed on the simple coweight basis.
 
-  So we first transform the involution to one on the root basis, and then take
-  the negative transpose.
+  As this basis is dual to the simple root basis, we first transform the
+  involution to one on the root basis, and then take the negative transpose.
 */
-WeightInvolution
+CoweightInvolution
 adjoint_involution(const RootSystem& rs, const InvolutionData& id)
 {
   // write involution in root basis
@@ -357,16 +258,14 @@ adjoint_involution(const RootSystem& rs, const InvolutionData& id)
 /*!
   \brief Makes the group that acts 1-transitively on the adjoint fiber.
 
-  Algorithm: this is the subquotient $V_+ + V_-/V_+$ for the negative
-  transpose of the involution induced by \f$\tau\f$ on the root lattice (which
-  negative transpose is computed by |adjoint_involution|).
+  Algorithm: this is the subquotient $V_+ + V_-/V_+$ for the involution
+  induced by |-^theta| on the cocharacter lattice (the |adjoint_involution|).
 */
 SmallSubquotient
 Fiber::makeAdjointFiberGroup(const RootSystem& rs) const
 {
-  // construct subquotient
-  SmallSubquotient result;
-  tori::dualPi0(result,adjoint_involution(rs,d_involutionData));
+  SmallSubquotient result =
+    tori::dualPi0(adjoint_involution(rs,d_involutionData));
 
   assert(result.rank()==rs.rank()); // (rank is that of ambient vector space)
 
@@ -418,10 +317,7 @@ Fiber::gradingGroup (const RootSystem& rs) const
 
   BinaryMap q(b,imaginaryRank());
 
-  // find kernel
-  SmallBitVectorList ker; q.kernel(ker);
-
-  return SmallSubspace(ker,adjointFiberRank());
+  return SmallSubspace(q.kernel(),adjointFiberRank());
 }
 
 
@@ -430,7 +326,7 @@ Fiber::gradingGroup (const RootSystem& rs) const
   flagging all noncompact imaginary roots in |flagged_roots|
 
   Algorithm: for the noncompact roots, express imaginary roots in terms of
-  the simple ones, and see if the sum of coordinates is even.
+  the simple-imaginary ones, and see if the sum of coordinates is even.
 */
 Grading Fiber::makeBaseGrading
   (RootNbrSet& flagged_roots,const RootSystem& rs) const
@@ -525,10 +421,10 @@ GradingList Fiber::makeGradingShifts
 }
 
 /*!
-  \brief Constructs the \f$m_\alpha\f$s (images of coroots) in the fiber group,
-  for \f$\alpha\f$ simple-imaginary.
+  \brief Constructs the $m_\alpha$s (images of coroots) in the fiber group,
+  for $\alpha$ simple-imaginary.
 
-  The effective number of bits of each \f$m_\alpha\f$ is
+  The effective number of bits of each $m_\alpha$ is
   |d_fiberGroup.dimension()|
 
   We take the coroots corresponding to the imaginary simple roots, which in
@@ -549,17 +445,17 @@ RankFlagsList Fiber::mAlphas (const RootDatum& rd) const
 }
 
 /*!
-  \brief Constructs the \f$m_\alpha\f$s (images of coroots) in the adjoint
-  fiber group, for \f$\alpha\f$ simple-imaginary.
+  \brief Constructs the $m_\alpha$s (images of coroots) in the adjoint
+  fiber group, for $\alpha$ simple-imaginary.
 
-  The number of bits of each \f$m_\alpha\f$ is
+  The number of bits of each $m_\alpha$ is
   |d_adjointFiberGroup.dimension()|
 
   Algorithm: the cocharacter lattice for the adjoint group is spanned by the
   simple coweights. To get the coordinates of an element in that basis (which
   is dual to that of the simple roots), it is enough to pair it with the
   simple roots. The resulting element for the coroot of a simple-imaginary
-  \f$\alpha\f$ is automatically \f$\tau\f$-invariant, since \f$\alpha\f$ is,
+  $\alpha$ is automatically |theta|-invariant, since $\alpha$ is,
   so its reduction modulo 2 lies in $V_+$ (for the cocharacter lattice). Then
   what is left to do is to convert to the basis of the adjoint fiber group,
   which amounts to reducing modulo $V_-$.
@@ -641,15 +537,12 @@ Fiber::makeFiberMap(const RootDatum& rd) const
   Algorithm: we construct the |FiberAction| object corresponding to the action
   of the imaginary Weyl group on the adjoint fiber, and then call |makeOrbits|
   to make the partition. For the fiber action we can use the base grading and
-  the grading shifts "as is", while the fiber group elements \f$m_\alpha\f$
+  the grading shifts "as is", while the fiber group elements $m_\alpha$
   are computed by |adjointMAlphas|.
 */
-partition::Partition Fiber::makeWeakReal(const RootSystem& rs) const
+Partition Fiber::makeWeakReal(const RootSystem& rs) const
 {
   RankFlagsList ma=adjointMAlphas(rs);
-
-  // make orbits
-  partition::Partition result;
   return partition::orbits(FiberAction(d_baseGrading,d_gradingShift,ma),
 			   imaginaryRank(),adjointFiberSize());
 }
@@ -669,10 +562,10 @@ partition::Partition Fiber::makeWeakReal(const RootSystem& rs) const
   that an orbit defining a weak real form is always contained in a single
   coset of the image of |toAdjoint|; therefore we really have a partition of
   the set of weak real forms. Its parts are called central square classes,
-  since for these weak real forms any \f$x=g.\delta\in G.\delta\f$ whose
+  since for these weak real forms any $x=g.\delta\in G.\delta$ whose
   $H$-conjugacy class defines a fiber element in a strong real form lying over
-  the weak real form gives the same value of \f$x^2\in Z(G)\f$ modulo
-  \f$(1+\delta)(Z(G))\f$. From the above it follows there are $2^m$ central
+  the weak real form gives the same value of $x^2\in Z(G)$ modulo
+  $(1+\delta)(Z(G))$. From the above it follows there are $2^m$ central
   square classes where $m=adjointFiberRank-rank(toAdjoint)$.
 
   Algorithm: we compute the quotient of the adjoint fiber group by the fiber
@@ -684,7 +577,7 @@ partition::Partition Fiber::makeWeakReal(const RootSystem& rs) const
   by smallest element), we call the constructor with a |tags::UnnormalizedTag|
   argument.
 */
-partition::Partition Fiber::makeRealFormPartition() const
+Partition Fiber::makeRealFormPartition() const
 {
   std::vector<unsigned long> cl(numRealForms());
 
@@ -710,7 +603,7 @@ partition::Partition Fiber::makeRealFormPartition() const
   /* partition the set $[0,numRealForms()[$ according to the
      |modFiberImage.size()| distinct values in the image of |cl|
    */
-  partition::Partition result(cl,tags::UnnormalizedTag());
+  Partition result(cl,tags::UnnormalizedTag());
   assert(result.classCount()==modFiberImage.size());
   return result;
 }
@@ -751,7 +644,7 @@ partition::Partition Fiber::makeRealFormPartition() const
   they correspond to another choice of a base point in the affine space.
 
 */
-std::vector<partition::Partition> Fiber::makeStrongReal
+std::vector<Partition> Fiber::makeStrongReal
   (const RootDatum& rd) const
 {
   /* get the grading shifts; these are obtained from the images of the
@@ -767,7 +660,7 @@ std::vector<partition::Partition> Fiber::makeStrongReal
 
   // make the various partitions
 
-  std::vector<partition::Partition> result;
+  std::vector<Partition> result;
   result.reserve(d_realFormPartition.classCount());
 
   size_t order = fiberSize(); // order of fiber group
@@ -783,11 +676,10 @@ std::vector<partition::Partition> Fiber::makeStrongReal
 
 /*
   For each weak real form |wrf| we can choose a fiber element |x| (in the
-  affine space corresponding to its central square class) that maps to the
+  affine space corresponding to its central square class |c|) that maps to the
   chosen adjoint fiber element representative of |wrf|. The auxiliary method
   |makeStrongRepresentatives| makes a vector of size |numRealForms())| (to be
-  stored in |d_strongRealFormReps|) whose element |wrf| is the pair
-  $(x,c)$.
+  stored in |d_strongRealFormReps|) whose element |wrf| is the pair $(x,c)$.
 */
 std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 {
@@ -800,7 +692,7 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 
   for (size_t wrf = 0; wrf<result.size(); ++wrf)
   {
-    size_t c = central_square_class(wrf);
+    square_class c = central_square_class(wrf);
 
     // find representative |yf| of |wrf| in the adjoint fiber (group)
     RankFlags yf(d_weakReal.classRep(wrf));
@@ -908,9 +800,9 @@ AdjointFiberElt Fiber::gradingRep(const Grading& gr) const
 }
 
 /*!
-  \brief Returns the fiber group element \f$m_\alpha\f$ corresponding to |cr|.
+  \brief Returns the fiber group element $m_\alpha$ corresponding to |cr|.
 
-  Precondition: |cr| a weight vector for an imaginary coroot \f$\alpha^\vee\f$
+  Precondition: |cr| a weight vector for an imaginary coroot $\alpha^\vee$
   for this Cartan.
 */
 SmallBitVector Fiber::mAlpha(const rootdata::Root& cr) const
@@ -942,7 +834,7 @@ AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
   adjoint fiber (group).
 
   The pair (c,rfc) is the software representation of an equivalence
-  class of strong real forms (always assumed to induce \f$\tau\f$ on H). The
+  class of strong real forms (always assumed to induce |theta| on H). The
   integer |csc| labels an element of Z^delta/[(1+delta)Z], thought of as
   a possible square value for strong real forms.  The fiber group acts
   simply transitively on strong real forms with square equal to |csc|.
@@ -1072,27 +964,27 @@ toMostSplit(const Fiber& fundf,
 
 namespace cartanclass {
 
-/*! \brief Computes the list of the simple roots for a complex factor in
-  \f$W^\tau\f$, where \f$\tau\f$ is the root datum involution of our Cartan
-  class.
+/*
+  The list of the simple roots for a complex factor in $W^\theta$, where
+  |theta| is the root datum involution of our Cartan class.
 
-  Explanation: \f$W^\tau\f$ is the semidirect product of $W^R x W^{iR}$ (Weyl
+  Explanation: $W^\theta$ is the semidirect product of $W^R x W^{iR}$ (Weyl
   groups of the real and imaginary root systems), with the diagonal subgroup
   of $W^C$, where $W^C$ is the Weyl group of the root system $Phi^C$
   orthogonal to both the sums of positive imaginary and real roots. That root
-  system is complex for the involution induced by \f$\tau\f$, i.e., it
-  decomposes as orthogonal sum of two subsystems interchanged by \f$\tau\f$;
+  system is complex for the involution induced by |theta|, i.e., it
+  decomposes as orthogonal sum of two subsystems interchanged by |theta|;
   we return a basis of one "half" of it.
 
   NOTE: there was a bad bug here in an earlier version, which amounted to the
   implicit assumption that the standard positive root system for the $Phi^C$
-  is \f$\tau\f$-stable; this is very false. It would be true for an involution
+  is |theta|-stable; this is very false. It would be true for an involution
   of the based root datum (the distinguished involution of the inner class),
   which would stabilise everyting mentioned here, and in fact it is also true
   for any involution that is canonical in its (twisted conjugation) class; in
-  general however although $Phi^C$ is \f$\tau\f$-stable (the sum of positive
-  imaginary roots is \f$\tau\f$-fixed, and the sum of positive real roots is
-  \f$\tau\f$-negated), its subsets of positive and simple roots is not. As a
+  general however although $Phi^C$ is |theta|-stable (the sum of positive
+  imaginary roots is |theta|-fixed, and the sum of positive real roots is
+  |-theta|-fixed), its subsets of positive and simple roots are not. As a
   consequence the root |rTau| below need not correspond to any vertex of the
   Dynkin diagram |dd|. The component of |dd| to whose root system the various
   |rTau| found for the component |c| belong (the "other half" that we want to
@@ -1136,7 +1028,7 @@ CartanClass::makeSimpleComplex(const RootDatum& rd) const
       result.push_back(rb[*it]);
 
       /* exclude matching componont by removing vertices of simple roots
-         non-orthogonal to the (non-simple) $\tau$-image of |rb[*it]| */
+         non-orthogonal to the (non-simple) |theta|-image of |rb[*it]| */
       RootNbr rTau = involution_image_of_root(rb[*it]);
       for (RankFlags::iterator jt = b.begin(); jt(); ++jt)
 	if (not rd.isOrthogonal(rb[*jt],rTau))

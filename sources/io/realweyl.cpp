@@ -16,14 +16,9 @@
 namespace atlas {
 
 namespace {
-void orthogonalMAlpha(RootNbrList&,
-		      unsigned long,
-		      const Fiber&,
-		      const RootDatum&);
-void rGenerators(SmallBitVectorList&,
-		 const RootNbrList&,
-		 const Fiber&,
-		 const RootDatum&);
+RootNbrList orthogonalMAlpha(unsigned long, const Fiber&, const RootDatum&);
+SmallBitVectorList rGenerators
+  (const RootNbrList&, const Fiber&, const RootDatum&);
 }
 
 /*****************************************************************************
@@ -62,16 +57,16 @@ RealWeyl::RealWeyl(const CartanClass& cc,
   d_imaginaryCompactType = rd.Lie_type(d_imaginaryCompact);
 
   // construct imaginary R-group
-  orthogonalMAlpha(d_imaginaryOrth,x,f,rd);
-  rGenerators(d_imaginaryR,d_imaginaryOrth,f,rd);
+  d_imaginaryOrth = orthogonalMAlpha(x,f,rd);
+  d_imaginaryR = rGenerators(d_imaginaryOrth,f,rd);
 
   // construct basis of real compact roots
   d_realCompact = drd.simpleBasis(df.compactRoots(y));
   d_realCompactType = drd.Lie_type(d_realCompact);
 
   // construct real R-group
-  orthogonalMAlpha(d_realOrth,y,df,drd);
-  rGenerators(d_realR,d_realOrth,df,drd);
+  d_realOrth = orthogonalMAlpha(y,df,drd);
+  d_realR = rGenerators(d_realOrth,df,drd);
 }
 
 }
@@ -235,9 +230,8 @@ namespace {
 
   NOTE: they are even super-orthogonal, see IC4, prop 3.20.
 */
-void orthogonalMAlpha(RootNbrList& rl, unsigned long x,
-		      const Fiber& f,
-		      const RootDatum& rd)
+RootNbrList orthogonalMAlpha
+  (unsigned long x, const Fiber& f, const RootDatum& rd)
 {
   Weight tworho_ic = compactTwoRho(x,f,rd);
 
@@ -246,9 +240,11 @@ void orthogonalMAlpha(RootNbrList& rl, unsigned long x,
   rs &= rd.posRootSet();
 
   // keep the ones that are orthogonal to tworho_ic
+  RootNbrList rl;
   for (RootNbrSet::iterator it=rs.begin(); it(); ++it)
     if (rd.isOrthogonal(tworho_ic,*it))
       rl.push_back(*it);
+  return rl;
 }
 
 /*
@@ -265,10 +261,8 @@ void orthogonalMAlpha(RootNbrList& rl, unsigned long x,
   products of simple reflections in rl corresponding to the combinations that
   lie in the _kernel_ of this map.
 */
-void rGenerators(SmallBitVectorList& cl,
-		 const RootNbrList& rl,
-		 const Fiber& f,
-		 const RootDatum& rd)
+SmallBitVectorList rGenerators
+  (const RootNbrList& rl, const Fiber& f, const RootDatum& rd)
 {
   size_t rln = rl.size();
   BinaryMap m(f.fiberRank(),rln);
@@ -281,7 +275,7 @@ void rGenerators(SmallBitVectorList& cl,
       m.set(i,j,v[i]);
   }
 
-  m.kernel(cl);
+  return m.kernel();
 }
 
 }

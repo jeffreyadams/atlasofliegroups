@@ -98,18 +98,17 @@ std::ostream& printCartanOrder(std::ostream& strm,
 			       const RealReductiveGroup& G_R)
 {
   const poset::Poset& p = G_R.complexGroup().Cartan_ordering();
-  size_t cn = G_R.mostSplit();
 
-  graph::OrientedGraph g(0);
-  p.hasseDiagram(g,cn); // everything below |cn| is for real form of |G_R|
+  // get Hasse diagram of the Cartan classes for |G_R|
+  graph::OrientedGraph g = p.hasseDiagram(G_R.mostSplit());
 
   strm << "0:" << std::endl; // this is the only minimal element
 
-  // all covering relations are grouped by lower (covered) element
+  // all covering relations in |g| are grouped by lower (covered) element
   for (size_t j = 1; j < g.size(); ++j)
   {
     const graph::VertexList& e = g.edgeList(j);
-    if (not e.empty()) // suppress non-covered elements; they are not for |G_R|
+    if (not e.empty()) // suppress other non-covered elements: not for |G_R|
       basic_io::seqPrint(strm << j << ": ",e.begin(),e.end()) << std::endl;
   }
 
@@ -200,11 +199,11 @@ std::ostream& printStrongReal(std::ostream& strm,
 	   << ", possible square: exp(2i\\pi(" << z << "))" << std::endl;
     }
 
-    const partition::Partition& pi = cc.strongReal(csc);
+    const Partition& pi = cc.strongReal(csc);
 
     unsigned long c = 0;
 
-    for (partition::PartitionIterator i(pi); i(); ++i,++c)
+    for (Partition::iterator i(pi); i(); ++i,++c)
     {
       std::ostringstream os;
       RealFormNbr rf = rfl[cc.toWeakReal(c,csc)];

@@ -1047,10 +1047,10 @@ void srtest_f()
   }
 }
 
-bool examine_KGBs(RealReductiveGroup& G)
+bool examine(RealReductiveGroup& G)
 {
   KGB kgb1(G);
-  KGB kgb2(G,G.Cartan_set());
+  KGB kgb2(G,G.Cartan_set(),tags::NewTag());
   if (kgb1.size()!=kgb2.size()) return false;
   for (size_t i=0; i<kgb1.size(); ++i)
   {
@@ -1064,7 +1064,7 @@ bool examine_KGBs(RealReductiveGroup& G)
   return true;
 }
 
-bool examine(RealReductiveGroup& G)
+bool examine_monotone(RealReductiveGroup& G)
 {
   const WeylGroup& W = G.weylGroup();
   const KGB& kgb=G.kgb();
@@ -1081,7 +1081,7 @@ void testrun_f()
 {
   unsigned long rank=interactive::get_bounded_int
     (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
-  std::cout << "Testing weak increase of W-length in KGB.\n";
+  std::cout << "Testing new KGB generation.\n";
   for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
   {
     std::cout<< *it << std::endl;
@@ -1090,9 +1090,9 @@ void testrun_f()
     {
       if (count>0) std::cout << ',';
       std::cout << ++count;
-      RootDatum rd(*cit);
-      WeightInvolution id(rd.rank()); // identity
-      ComplexReductiveGroup G(rd,id);
+      PreRootDatum prd = *cit;
+      WeightInvolution id(prd.rank()); // identity
+      ComplexReductiveGroup G(prd,id);
       for (RealFormNbr rf=0; rf<G.numRealForms(); ++rf)
       {
 	RealReductiveGroup G_R(G,rf);
@@ -1115,9 +1115,9 @@ void testrun_f()
 
 void exam_f()
 {
-  std::cout << "W-length in KGB "
+  std::cout << "New KGB generation "
             << (examine(realmode::currentRealGroup())
-		? "weakly increasing" : "non monotone")
+		? "same" : "different")
 	    << std::endl;
 }
 
@@ -1565,15 +1565,7 @@ void test_f()
 		  << (s<sub.semisimple_rank()-1 ? "," : ".\n");
     }
 
-    std::cout << "Twisted involution in subsystem: " << ww ;
-    WeylElt w = sub.Weyl_group().element(ww);
-    sub.Weyl_group().mult(w,sub.Weyl_group().longest());
-    prettyprint::printWeylElt(std::cout << " (reversed to ",w,sub.Weyl_group())
-			      << " in list below).\n";
-
-    // prettyprint::printWeylElt
-    //   (std::cout << "that's ",sub.init_twisted(),sub.Weyl_group())
-    //   << std::endl;
+    std::cout << "Twisted involution in subsystem: " << ww << std::endl;
 
     kgb::subsys_KGB sub_KGB(kgb,sub,x);
 

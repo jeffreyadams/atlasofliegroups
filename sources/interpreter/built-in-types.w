@@ -1687,9 +1687,14 @@ void inner_class_value::print(std::ostream& out) const
 }
 
 @ Our wrapper function builds a complex reductive group with an involution,
-testing its validity. Another returns a second value that indicates the
-twisted involution whose involution matrix in the inner class is the one given
-as argument
+testing its validity. It somewhat curiously needs to extract a |PreRootDatum|
+from a |RootDatum|, since the |ComplexReductiveGroup| constructor takes that
+as an argument, and (re-)constructs the root datum itself. This is obviously
+inefficient, but passing a full |RootDatum| to the constructor would mean
+having to copy that into the new object in all cases, which is not
+necessary \emph{unless} we want to keep a separate copy of the root datum as
+we do here. Another wrapper returns a second value, which is the twisted
+involution corresponding in the inner class to the given involution matrix.
 
 @< Local function def...@>=
 void fix_involution_wrapper(expression_base::level l)
@@ -1699,10 +1704,16 @@ void fix_involution_wrapper(expression_base::level l)
   lietype::Layout lo = check_involution(M,rd->val,ww);
   if (l==expression_base::no_value)
     return;
+
+  WeightList simple_roots
+    (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
+  CoweightList simple_coroots
+    (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
+  PreRootDatum prd(simple_roots,simple_coroots,rd->val.rank());
 @)
   for (unsigned int i=ww.size(); i-->0;)
     rd->val.simple_reflect(ww[i],M);
-  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(rd->val,M));
+  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(prd,M));
   push_value(new inner_class_value(G,lo));
 }
 
@@ -1713,10 +1724,16 @@ void twisted_involution_wrapper(expression_base::level l)
   lietype::Layout lo = check_involution(M,rd->val,ww);
   if (l==expression_base::no_value)
     return;
+
+  WeightList simple_roots
+    (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
+  CoweightList simple_coroots
+    (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
+  PreRootDatum prd(simple_roots,simple_coroots,rd->val.rank());
 @)
   for (unsigned int i=ww.size(); i-->0;)
     rd->val.simple_reflect(ww[i],M);
-  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(rd->val,M));
+  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(prd,M));
   push_value(new inner_class_value(G,lo));
   push_value(new vector_value(std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
@@ -1759,8 +1776,14 @@ void set_type_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return; // bow out now all possible errors are passed
 @)
+  WeightList simple_roots
+    (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
+  CoweightList simple_coroots
+    (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
+  PreRootDatum prd(simple_roots,simple_coroots,rd->val.rank());
+
   std::auto_ptr<ComplexReductiveGroup>@|
-    G(new ComplexReductiveGroup(rd->val,M->val));
+    G(new ComplexReductiveGroup(prd,M->val));
   push_value(new inner_class_value(G,lo));
 }
 
@@ -2506,7 +2529,7 @@ void fiber_part_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return;
 @)
-  const partition::Partition& pi = cc->val.fiber().weakReal();
+  const Partition& pi = cc->val.fiber().weakReal();
   const RealFormNbrList rf_nr=
      cc->parent.val.realFormLabels(cc->number);
      // translate part number of |pi| to real form
@@ -2541,7 +2564,7 @@ void print_gradings_wrapper(expression_base::level l)
     ("Cartan class not defined for this real form");
 @.Cartan class not defined...@>
 @)
-  const partition::Partition& pi = cc->val.fiber().weakReal();
+  const Partition& pi = cc->val.fiber().weakReal();
   const RealFormNbrList rf_nr=
      cc->parent.val.realFormLabels(cc->number);
      // translate part number of |pi| to real form

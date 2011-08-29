@@ -214,28 +214,24 @@ namespace tori {
   In practice we also want this at the dual side with $V_-$ in the denominator
   (to compute fiber groups): to that end call with |q.negative_transposed()|
 */
-void dualPi0(SmallSubquotient& dpi0, const WeightInvolution& q)
+SmallSubquotient dualPi0(const WeightInvolution& q)
 {
   assert(q.numRows()==q.numColumns());
 
-  WeightList plus; plusBasis(plus,q);
-  SmallBitVectorList plus2(plus); // mod 2: denominator subgroup
+  SmallBitVectorList plus2(plusBasis(q)); // mod 2: denominator subgroup
 
   BinaryMap i2(q);  // reduce modulo 2
   BinaryMap id; identityMatrix(id,q.numRows());
 
-  i2 += id;
-  // now |i2| is modulo 2 image of $\tau-id$ (and also of $\tau+id$)
+  i2 += id; // now |i2| is mod-2 image of |theta-1| (and also of |theta+1|)
 
-  SmallBitVectorList b; i2.kernel(b);
+  SmallBitVectorList b=i2.kernel();
   // the kernel of |i2| is the sum $V_+ + V_-$: numerator subgroup
 
   SmallSubquotient cs(b,plus2,q.numRows());
   assert(cs.rank()==q.numRows());
 
-  dpi0.swap(cs);
-  assert(dpi0.rank()==q.numRows());
-
+  return cs;
 }
 
 /*!
@@ -385,8 +381,7 @@ void makeTopology(SmallSubquotient& cs, const RealTorus& T)
   BinaryMap id; identityMatrix(id,T.rank());
   i2 += id;
 
-  SmallBitVectorList b;
-  i2.kernel(b);  // kernel of map induced by tau-1 (or by tau+1), contains V_+
+  SmallBitVectorList b=i2.kernel(); // kernel of |theta+1| mod 2, contains V_+
 
   cs = SmallSubquotient(b,plus2,T.rank());
 }

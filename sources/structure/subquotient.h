@@ -233,14 +233,12 @@ BitSet<dim> d_rel_support;
     { d_subspace.mod_reduce(w); }
 
   // functional version
-  BitVector<dim> mod_image(const BitVector<dim>& w)
-    const
+  BitVector<dim> mod_image(const BitVector<dim>& w) const
   { return d_subspace.mod_image(w); }
 
-  BitSet<dim> significantBits() const {
-  // for testing purposes; these are the bits that determine the subquotient
-    return d_space.support() - d_subspace.support();
-  }
+  // for testing purposes;  the bits that determine the subquotient
+  BitSet<dim> significantBits() const
+  { return d_space.support() - d_subspace.support(); }
 
   /*!
   \brief Expresses |v| in the subquotient basis.
@@ -254,8 +252,7 @@ BitSet<dim> d_rel_support;
   what the call to |mod_image| below does; this will clear the bits for the
   support of |d_subspace|, while not taking us out of |d_space|.
   */
-  BitVector<dim> toBasis(const BitVector<dim>& v)
-    const
+  BitVector<dim> toBasis(const BitVector<dim>& v) const
   {
     BitVector<dim> result=mod_image(v); // mod out subspace
 
@@ -272,8 +269,7 @@ BitSet<dim> d_rel_support;
   /*!
   \brief Interprets |v| in the subspace basis and returns external form
   */
-  BitVector<dim> fromBasis(BitVector<dim> v) // by-value
-    const
+  BitVector<dim> fromBasis(BitVector<dim> v) const // by-value
   {
     assert(v.size()==dimension());
 

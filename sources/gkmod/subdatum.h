@@ -30,7 +30,7 @@ namespace subdatum {
 /* the class |SubDatum| is mathematically much richer than |SubSystem| (also,
    note the latter holds a reference to a parent root datum, so the
    terminology is somewhat misleading). While |SubSystem| may be regarded as a
-   companion to |RootDatum|, the |SubSystem| class depends on gkmod stuff. Its
+   companion to |RootDatum|, the |SubDatum| class depends on gkmod stuff. Its
    unique constructor requires a root datum involution |theta| (coded by a KGB
    element for a real form) and an infinitesimal character. The latter defines
    a subsystem by integrality, while |theta| defines a subsystem twist and a
@@ -55,7 +55,7 @@ class SubDatum : public SubSystem
 
   size_t semisimple_rank() const { return SubSystem::rank(); }
 
-  WeightInvolution involution(TwistedInvolution tw) const;
+  WeightInvolution matrix(TwistedInvolution tw) const;
 
 }; // |class SubDatum|
 

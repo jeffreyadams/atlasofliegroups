@@ -541,9 +541,8 @@ SRK_context::theta_stable_parabolic
   // Build the parabolic subalgebra:
 
   { // first ensure |strong| is reduced
-    const WeightInvolution theta =
-      complexGroup().involutionMatrix(strong.tw());
-    titsGroup().left_torus_reduce(strong,tits::fiber_denom(theta));
+    const WeightInvolution theta = complexGroup().involutionMatrix(strong.tw());
+    strong.reduce(tits::fiber_denom(theta));
   }
 
   ww.swap(conjugator); // report the conjugating element we found
@@ -1787,7 +1786,7 @@ template <typename C>
       throw std::runtime_error ("triangularize: system not saturated");
   }
 
-  partition::Partition order; incidence.cells(order,NULL);
+  Partition order; incidence.cells(order,NULL);
 
   new_order.resize(n);
   for (size_t i=0; i<n; ++i) // we abuse |i| as either a class or element

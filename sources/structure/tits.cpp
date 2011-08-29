@@ -928,24 +928,24 @@ bool TitsCoset::is_valid(TitsElt a) const
    square class of the real form. The bitvector |v| below is zero for some
    strong involution |si| in same square class as |rf| at Cartan class |cn|;
    the result will be correct if and only if the null torus part |x| defines
-   (by |TitsCoset::grading|) the same grading of the (simple) imaginary
-   roots for Cartan class |cn| as |si| does (through |Fiber::class_base|).
+   (by |TitsCoset::grading|) the same grading of the (simple) imaginary roots
+   for the canonical involution of Cartan class |cn| as |si| does (through
+   |Fiber::class_base|).
 
    The only case where one can rely on that to be true is for the fundamental
    Cartan (|cn==0|), if our |TitsCoset| was extracted as base object from
    an |EnrichedTitsGroup| (the latter being necessarily constructed through
    |EnrichedTitsGroup::for_square_class|), because in that case the
    |TitsCoset::grading_offset| field was actually computed from de
-   grading defined by an element |si| in the fundamental fiber. In the general
+   grading defined by the element |si| in the fundamental fiber. In the general
    case all bets are off: the real form of |si| need not even be the same one
    as the one corresponding to |TitsCoset::grading_offset|.
 
    The main reason for leaving this (unused) method in the code is that it
-   illustrates how to get the group morphism from the fiber group to T(2).
+   illustrates how to apply the group morphism from the fiber group to T(2).
  */
 TitsElt TitsCoset::naive_seed
- (ComplexReductiveGroup& G,
-  RealFormNbr rf, size_t cn) const
+  (ComplexReductiveGroup& G, RealFormNbr rf, size_t cn) const
 {
   // locate fiber, weak and strong real forms, and check central square class
   const Fiber& f=G.cartan(cn).fiber();
@@ -1003,9 +1003,8 @@ TitsElt TitsCoset::naive_seed
    guarantee that chosen solutions will belong to the same strong real form.
    Therefore this method should only be called when only one seed is needed.
  */
-TitsElt
-TitsCoset::grading_seed(ComplexReductiveGroup& G,
-			     RealFormNbr rf, size_t cn) const
+TitsElt TitsCoset::grading_seed
+  (ComplexReductiveGroup& G,RealFormNbr rf, size_t cn) const
 {
   // locate fiber and weak real form
   const Fiber& f=G.cartan(cn).fiber();
@@ -1071,11 +1070,12 @@ TitsCoset::grading_seed(ComplexReductiveGroup& G,
 #endif
 
   return seed;  // result should be reduced immediatly by caller
-}
+} // |grading seed|
 
-SmallSubspace fiber_denom(const WeightInvolution& inv)
+// torus parts: modulo the mod-2 reduction of the $-\theta$-fixed sublattice
+SmallSubspace fiber_denom(const WeightInvolution& theta)
 {
-  BinaryMap A(lattice::eigen_lattice(inv.transposed(),-1));
+  BinaryMap A(lattice::eigen_lattice(theta.transposed(),-1));
   return SmallSubspace(A);
 }
 
@@ -1147,7 +1147,7 @@ TitsElt EnrichedTitsGroup::backtrack_seed
   TitsElt result(Tg);
 
   const Fiber& fund=G.fundamental();
-  const partition::Partition& srp = fund.strongReal(square());
+  const Partition& srp = fund.strongReal(square());
   for (unsigned long x=0; x<srp.size(); ++x)
     if (srp(x)==srp(f_orbit()))
     {

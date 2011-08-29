@@ -29,6 +29,7 @@
   This is rootdata.cpp.
 
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2006--2011 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
@@ -79,12 +80,6 @@
   corresponds to a sublattice of finite index in the character
   lattice, containing the root lattice. From this sublattice the
   actual root datum is constructed.
-
-  [DV: An earlier version of this class included the inner class of
-  real groups, which is to say an involutive automorphism of the based
-  root datum.  As an artifact of that, the user interaction acquires
-  the involutive automorphism before the subgroup of Z_tor, and
-  insists that the subgroup of Z_tor be preserved by this involution.]
 
 ******************************************************************************/
 
@@ -141,7 +136,7 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
 {
   std::vector<Byte_vector> simple_root(rk,Byte_vector(rk));
   std::vector<Byte_vector> simple_coroot(rk,Byte_vector(rk));
-  std::vector<RootNbrList> link;
+  std::vector<RootNbrList> link; // size |numPosRoots*rank|
 
   typedef std::set<Byte_vector,root_compare> RootVecSet;
   std::vector<RootVecSet> roots_of_length
@@ -159,7 +154,7 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
 
   // construct positive root list, simple reflection links, and descent sets
 
-  RootNbrList first_l(1,0);
+  RootNbrList first_l(1,0); // where level |l| starts; level 0 is empty
   for (size_t l=1; not roots_of_length[l].empty(); ++l)// empty level means end
   {
     first_l.push_back(ri.size()); // set |first_l[l]| to next root to be added
@@ -256,7 +251,7 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
     root_perm[i].left_mult(alpha_perm);
   }
 
-}
+} // end of basic constructor
 
 RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
   : rk(rs.rk)
@@ -282,7 +277,8 @@ RootSystem::RootSystem(const RootSystem& rs, tags::DualTag)
 	two_rho_in_simple_roots[i]+=a[i]; // sum positive root expressions
     }
   }
-}
+} // end of dual constructor
+
 
 int_Vector RootSystem::root_expr(RootNbr alpha) const
 {
@@ -459,7 +455,7 @@ RootSystem::extend_to_roots(const RootNbrList& simple_image) const
   // extend to positive roots
   for (size_t alpha=numPosRoots()+rk; alpha<numRoots(); ++alpha)
   {
-    size_t i = ri[alpha-numPosRoots()].descents.firstBit();
+    unsigned int i = ri[alpha-numPosRoots()].descents.firstBit();
     assert(i<rk);
     RootNbr beta = simple_reflected_root(alpha,i);
     assert(isPosRoot(beta) and beta<alpha);
@@ -788,18 +784,14 @@ void RootDatum::reflect(LatticeMatrix& M,RootNbr alpha) const
 
   Precondition: |q| permutes the roots;
 */
-Permutation
-  RootDatum::rootPermutation(const WeightInvolution& q) const
+Permutation RootDatum::rootPermutation(const WeightInvolution& q) const
 {
-  Permutation result(numRoots());
+  RootNbrList simple_image(semisimpleRank());
 
-  for (RootNbr alpha=0; alpha<numRoots(); ++alpha)
-  {
-    result[alpha] = rootNbr(q*root(alpha));
-    assert(result[alpha]<numRoots()); // image by |q| must be some root
-  }
+  for (weyl::Generator s=0; s<semisimpleRank(); ++s)
+    simple_image[s] = rootNbr(q*simpleRoot(s));
 
-  return result;
+  return extend_to_roots(simple_image);
 }
 
 

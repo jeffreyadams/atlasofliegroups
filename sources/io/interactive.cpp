@@ -591,7 +591,7 @@ RealReductiveGroup getRealGroup(complexredgp_io::Interface& CI)
   WeightInvolution inv=getInnerClass(lo,b); // may throw InputError
 
   // commit (unless |RootDatum(prd)| should throw: then nothing is changed)
-  pG=new ComplexReductiveGroup(RootDatum(prd),inv);
+  pG=new ComplexReductiveGroup(prd,inv);
   pI=new complexredgp_io::Interface(*pG,lo);
   // the latter constructor also constructs two realform interfaces in *pI
 }

@@ -25,12 +25,10 @@ namespace atlas {
 
 namespace tori {
 
-  void dualPi0(SmallSubquotient&, const WeightInvolution&);
+  SmallSubquotient dualPi0(const WeightInvolution&);
 
-  void plusMatrix(WeightInvolution&, const WeightInvolution&,
-		  const RealTorus&);
-  void minusMatrix(WeightInvolution&, const WeightInvolution&,
-		   const RealTorus&);
+  WeightInvolution plusMatrix(const WeightInvolution&, const RealTorus&);
+  WeightInvolution minusMatrix(const WeightInvolution&, const RealTorus&);
 
   void plusBasis(WeightList&, const WeightInvolution&);
 

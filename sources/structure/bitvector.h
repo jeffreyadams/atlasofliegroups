@@ -410,32 +410,14 @@ template<size_t dim> class BitMatrix
   template<typename I, typename O> void apply(const I&, const I&, O) const;
 
 
-  /*!
-  Tests whether the BitMatrix is empty (has zero columns).
-  */
-  bool isEmpty() const {
-    return d_data.size() == 0;
-  }
+  // whether the BitMatrix is empty (has zero columns).
+  bool isEmpty() const { return d_data.size() == 0; }
 
-  // independent vectors spanning the image of the matrix
-  BitVectorList<dim> image() const;
+  BitVectorList<dim> image() const; // free generators of image of matrix
+  BitVectorList<dim> kernel() const; // free generators of kernel of matrix
 
-  void kernel(std::vector<BitVector<dim> >&) const;
-
-  /*!
-  Returns the number of columns of the BitMatrix.
-  */
-  size_t numColumns() const {
-    return d_columns;
-  }
-
-  /*!
-  Returns the number of rows of the BitMatrix.
-  */
-  size_t numRows() const {
-    return d_rows;
-  }
-
+  size_t numColumns() const { return d_columns; } // the number of columns
+  size_t numRows() const { return d_rows; } // the number of rows
 
   void get_row(BitVector<dim>&, size_t) const;
   BitVector<dim> row(size_t i) const

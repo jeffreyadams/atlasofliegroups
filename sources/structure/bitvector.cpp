@@ -241,13 +241,12 @@ BitVectorList<dim> BitMatrix<dim>::image() const
   This is based on making the transpose matrix echelon, and then solving the
   resulting trivialised system of equations.
 */
-template<size_t dim>
-void BitMatrix<dim>::kernel(std::vector<BitVector<dim> >& b) const
+  template<size_t dim> BitVectorList<dim> BitMatrix<dim>::kernel() const
 {
-  b.clear();
+  BitVectorList<dim> result;
 
   if (isEmpty())
-    return; // no unknowns, no nontrivial solutions
+    return result; // no unknowns, no nontrivial solutions
 
   assert(d_columns<=dim);
   std::vector<BitVector<dim> > eqn(d_rows);
@@ -275,15 +274,18 @@ void BitMatrix<dim>::kernel(std::vector<BitVector<dim> >& b) const
    explained below under |normalSpanAdd|, but that complement not lex-minimal.
 */
 
-
+  result.reserve(d_columns-t.count());
   for (size_t j = 0; j < d_columns; ++j)
-    if (not t[j]) {
+    if (not t[j])
+    {
       BitVector<dim> v(d_columns,j); // start with unit vector $e_j$
       size_t c = 0;
       for (typename BitSet<dim>::iterator it=t.begin(); it(); ++it,++c)
 	v.set(*it,eqn[c][j]); // use |eqn[c]| to find |v[*it]|
-      b.push_back(v);
+      result.push_back(v);
     }
+
+  return result;
 }
 
 /******** manipulators *******************************************************/

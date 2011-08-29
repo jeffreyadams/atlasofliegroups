@@ -985,6 +985,25 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 
 } // |nu_block::nu_block|
 
+struct nblock_help
+{
+  const KGB& kgb;
+  const SubSystem& sub;
+  const RootDatum& rd;
+
+  nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
+    : kgb(GR.kgb()), sub(subsys), rd(sub.parent_datum()) {}
+};
+
+class nblock_elt
+{
+  KGBElt x;
+  TorusElement t;
+public:
+  void complex_cross(weyl::Generator s,const nblock_help& h);
+  void non_complex_cross(weyl::Generator s,const nblock_help& h);
+}; // |class nblock_elt|
+
 non_integral_block::non_integral_block
   (RealReductiveGroup& GR,
    const SubSystem& subsys, // at the dual side
@@ -1461,7 +1480,21 @@ public:
 
   nblock_context(RealReductiveGroup& GR, const SubSystem& subsys);
 
-}; // |struct nblock_context|
+  KGBElt conj_in_x(weyl::Generator s,KGBElt x) const
+  { return kgb.cross(gfd.sub.to_simple(s),x); }
+  KGBElt conj_out_x(KGBElt x,weyl::Generator s) const
+  { return kgb.cross(x,gfd.sub.to_simple(s)); }
+
+  GlobalTitsElement conj_in_y(weyl::Generator s,KGBElt y) const
+  { return Tg.cross(gfd.sub.to_simple(s), y_hash[y].repr()); }
+
+  GlobalTitsElement cross_y(weyl::Generator s,KGBElt y) const
+  { return Tg.cross(gfd.sub.reflection(s), y_hash[y].repr()); }
+
+  KGBElt wrap(GlobalTitsElement y_rep)
+  { return y_hash.match(gfd.pack(y_rep)); }
+
+}; // |class nblock_context|
 
 // the following procedure extends |y_hash|, and |hash| with |z| after having
 // assured the presence of its predecessors the set of whose indices it returns
@@ -1482,14 +1515,13 @@ BlockElt nblock_below (const block_elt_entry z, nblock_context& ctxt)
   weyl::Generator s; // a complex or real type I descent, if such exists
   for (s=0; s<sub.rank(); ++s)
   {
-    KGBElt conj_x= kgb.cross(sub.to_simple(s),z.x);
+    KGBElt conj_x= ctxt.conj_in_x(s,z.x);
     if (kgb.isComplexDescent(sub.simple(s),conj_x))
     {
-      GlobalTitsElement y = Tg.cross(sub.reflection(s), y_hash[z.y].repr());
+      GlobalTitsElement y = ctxt.cross_y(s,z.y);
       gfd.add_cross_neighbor(y.tw(),gfd.find(y_hash[z.y].tw),s);
       block_elt_entry sz_ent
-	(kgb.cross(kgb.cross(sub.simple(s),conj_x),sub.to_simple(s)),
-	 y_hash.match(gfd.pack(y)));
+	(ctxt.conj_out_x(kgb.cross(sub.simple(s),conj_x),s),ctxt.wrap(y));
       sz = nblock_below(sz_ent,ctxt);
       pred.reserve(ctxt.predecessors[sz].size()+1); // a rough estimate
       pred.push_back(sz);
@@ -1497,16 +1529,16 @@ BlockElt nblock_below (const block_elt_entry z, nblock_context& ctxt)
     }
     else if (kgb.isDoubleCayleyImage(sub.simple(s),conj_x))
     {
-      GlobalTitsElement conj_y = Tg.cross(sub.to_simple(s),y_hash[z.y].repr());
+      GlobalTitsElement conj_y = ctxt.conj_in_y(s,z.y);
       if (not Tg.compact(sub.simple(s),conj_y)) // then real type I
       {
 	GlobalTitsElement new_y = Tg.Cayley(sub.simple(s),conj_y);
 	Tg.cross_act(new_y,sub.to_simple(s));
 	gfd.add_involution(new_y.tw(),Tg);
-	KGBElt sy = y_hash.match(gfd.pack(new_y));
+	KGBElt sy = ctxt.wrap(new_y);
 	KGBEltPair sx = kgb.inverseCayley(sub.simple(s),conj_x);
-	block_elt_entry sz_ent1(kgb.cross(sx.first,sub.to_simple(s)),sy);
-	block_elt_entry sz_ent2(kgb.cross(sx.second,sub.to_simple(s)),sy);
+	block_elt_entry sz_ent1(ctxt.conj_out_x(sx.first,s),sy);
+	block_elt_entry sz_ent2(ctxt.conj_out_x(sx.second,s),sy);
  	sz = nblock_below(sz_ent1,ctxt);
 	pred.reserve(ctxt.predecessors[sz].size()+2); // a rough estimate
 	pred.push_back(sz);
@@ -1523,21 +1555,19 @@ BlockElt nblock_below (const block_elt_entry z, nblock_context& ctxt)
     pred.reserve(sub.rank()); // enough, and probably more than that
     while (s-->0) // we reverse the loop just because it look cute
     {
-      KGBElt conj_x= kgb.cross(sub.to_simple(s),z.x);
+      KGBElt conj_x= ctxt.conj_in_x(s,z.x);
       if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Real)
       {
-	GlobalTitsElement conj_y =
-	  Tg.cross(sub.to_simple(s),y_hash[z.y].repr());
+	GlobalTitsElement conj_y = ctxt.conj_in_y(s,z.y);
 	if (not Tg.compact(sub.simple(s),conj_y)) // then it was real type II
 	{
 	  assert (not kgb.isDoubleCayleyImage(sub.simple(s),conj_x));
-	  GlobalTitsElement new_y =
-	    Tg.Cayley(sub.simple(s),conj_y);
+	  GlobalTitsElement new_y = Tg.Cayley(sub.simple(s),conj_y);
 	  Tg.cross_act(new_y,sub.to_simple(s));
 	  gfd.add_involution(new_y.tw(),Tg);
-	  KGBElt sy = y_hash.match(gfd.pack(new_y));
+	  KGBElt sy = ctxt.wrap(new_y);
 	  KGBElt sx = kgb.inverseCayley(sub.simple(s),conj_x).first;
-	  block_elt_entry sz_ent(kgb.cross(sx,sub.to_simple(s)),sy);
+	  block_elt_entry sz_ent(ctxt.conj_out_x(sx,s),sy);
 	  pred.push_back(nblock_below(sz_ent,ctxt)); // recurr, ignore descents
 	}
       }
@@ -1547,7 +1577,7 @@ BlockElt nblock_below (const block_elt_entry z, nblock_context& ctxt)
     for (BlockElt i=0; i<ctxt.predecessors[sz].size(); ++i)
     {
       const block_elt_entry& c=hash[ctxt.predecessors[sz][i]];
-      KGBElt conj_x= kgb.cross(sub.to_simple(s),c.x);
+      KGBElt conj_x= ctxt.conj_in_x(s,c.x);
       switch (kgb.status(sub.simple(s),conj_x))
       {
       case gradings::Status::Real: case gradings::Status::ImaginaryCompact:
@@ -1555,33 +1585,29 @@ BlockElt nblock_below (const block_elt_entry z, nblock_context& ctxt)
       case gradings::Status::Complex:
 	if (not kgb.isDescent(sub.simple(s),conj_x)) // complex ascent
 	{
-	  GlobalTitsElement y = Tg.cross(sub.reflection(s),y_hash[c.y].repr());
+	  GlobalTitsElement y = ctxt.cross_y(s,c.y);
 	  gfd.add_cross_neighbor(y.tw(),gfd.find(y_hash[c.y].tw),s);
 	  block_elt_entry sc
-	    (kgb.cross(kgb.cross(sub.simple(s),conj_x),sub.to_simple(s)),
-	     y_hash.match(gfd.pack(y)));
+	    (ctxt.conj_out_x(kgb.cross(sub.simple(s),conj_x),s),ctxt.wrap(y));
 	  pred.push_back(nblock_below(sc,ctxt));
 	} // |if(complex ascent)
 	break;
       case gradings::Status::ImaginaryNoncompact:
 	{
 	  bool type_II = kgb.cross(sub.simple(s),conj_x)==conj_x;
-	  GlobalTitsElement inv_Cayley_y =
-	    Tg.cross(sub.to_simple(s),y_hash[c.y].repr()); // conjugate first
+	  GlobalTitsElement inv_Cayley_y = ctxt.conj_in_y(s,c.y); // conj first
 	  Tg.do_inverse_Cayley(sub.simple(s),inv_Cayley_y); // then inv. Cayley
 	  GlobalTitsElement new_y = Tg.cross(inv_Cayley_y,sub.to_simple(s));
 	  gfd.add_involution(new_y.tw(),Tg);
-	  KGBElt sy = y_hash.match(gfd.pack(new_y));
-	  KGBElt sx =
-	    kgb.cross(kgb.cayley(sub.simple(s),conj_x),sub.to_simple(s));
-	  block_elt_entry sc(sx,sy);
+	  KGBElt sx = ctxt.conj_out_x(kgb.cayley(sub.simple(s),conj_x),s);
+	  block_elt_entry sc(sx,ctxt.wrap(new_y));
 	  pred.push_back(nblock_below(sc,ctxt));
 
 	  if (type_II)
 	  {
 	    Tg.cross_act(sub.simple(s),inv_Cayley_y); // get other inv. Cayley
 	    new_y = Tg.cross(inv_Cayley_y,sub.to_simple(s));
-	    sy = y_hash.match(gfd.pack(new_y));
+	    KGBElt sy = ctxt.wrap(new_y);
 	    assert(sy!=sc.y); // since we are in type II
 	    pred.push_back(nblock_below(block_elt_entry(sx,sy),ctxt));
 	  }
@@ -1669,21 +1695,19 @@ non_integral_block::non_integral_block // interval below |x| only
       kgb_nr_of.push_back(x);
     }
     d_x.push_back(new_x_of[x]);
-    d_y.push_back(hash[i].y);
+    d_y.push_back(z.y);
     for (weyl::Generator s=0; s<our_rank; ++s)
     {
       BlockEltList& cross_link=d_cross[s];
 
-      KGBElt conj_x = kgb.cross(sub.to_simple(s),x);
+      KGBElt conj_x = ctxt.conj_in_x(s,x);
       if (kgb.isDescent(sub.simple(s),conj_x))
       {
 	if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Complex)
 	{
-	  KGBElt sx=
-	    kgb.cross(kgb.cross(sub.simple(s),conj_x),sub.to_simple(s));
-	  GlobalTitsElement sy = Tg.cross(sub.reflection(s),y_hash[z.y].repr());
+	  KGBElt sx= ctxt.conj_out_x(kgb.cross(sub.simple(s),conj_x),s);
 	  BlockElt sz =
-	    hash.find(block_elt_entry(sx,y_hash.find(gfd.pack(sy))));
+	    hash.find(block_elt_entry(sx,ctxt.wrap(ctxt.cross_y(s,z.y))));
 	  assert(sz!=hash.empty);
 	  cross_link[i] = sz; cross_link[sz] = i;
 	  assert(length==0 or length==d_length[sz]+1);
@@ -1696,8 +1720,7 @@ non_integral_block::non_integral_block // interval below |x| only
 	  assert(kgb.status(sub.simple(s),conj_x)==gradings::Status::Real);
 	  cross_link[i] = i;
 
-	  GlobalTitsElement conj_y =
-	    Tg.cross(sub.to_simple(s),y_hash[z.y].repr());
+	  GlobalTitsElement conj_y = ctxt.conj_in_y(s,z.y);
 	  if (Tg.compact(sub.simple(s),conj_y)) // real non-parity
 	    desc_z.set(s,DescentStatus::RealNonparity);
 	  else // |s| is real parity
@@ -1705,14 +1728,14 @@ non_integral_block::non_integral_block // interval below |x| only
 	    std::vector<BlockEltPair>& Cayley_link = d_cayley[s];
 	    GlobalTitsElement new_y = Tg.Cayley(sub.simple(s),conj_y);
 	    Tg.cross_act(new_y,sub.to_simple(s));
-	    KGBElt sy = y_hash.find(gfd.pack(new_y));
+	    KGBElt sy = ctxt.wrap(new_y);
 	    KGBEltPair sx = kgb.inverseCayley(sub.simple(s),conj_x);
 	    if (kgb.isDoubleCayleyImage(sub.simple(s),conj_x)) // type I
 	    {
 	      BlockElt sz1 = hash.find
-		(block_elt_entry(kgb.cross(sx.first,sub.to_simple(s)),sy));
+		(block_elt_entry(ctxt.conj_out_x(sx.first,s),sy));
 	      BlockElt sz2 = hash.find
-		(block_elt_entry(kgb.cross(sx.second,sub.to_simple(s)),sy));
+		(block_elt_entry(ctxt.conj_out_x(sx.second,s),sy));
 	      assert(length==0 or length==d_length[sz1]+1);
 	      assert(length==0 or length==d_length[sz2]+1);
 	      length = d_length[sz1]+1;
@@ -1726,7 +1749,7 @@ non_integral_block::non_integral_block // interval below |x| only
 	    else // type II
 	    {
 	      BlockElt sz = hash.find
-		(block_elt_entry(kgb.cross(sx.first,sub.to_simple(s)),sy));
+		(block_elt_entry(ctxt.conj_out_x(sx.first,s),sy));
 	      assert(length==0 or length==d_length[sz]+1);
 	      length = d_length[sz]+1;
 	      Cayley_link[i].first = sz;

@@ -19,10 +19,9 @@
 
 #include "tags.h"
 #include "bitset.h"	// containment of |Grading|
-#include "bitset.h"	// containment of |RootNbrSet|
-#include "partition.h"	// containment of |partition::Partition|
-#include "permutations.h"// containment of |permutation::Permutation|
+#include "partition.h"	// containment of |Partition|
 
+#include "involutions.h"// containment of |InvolutionData|
 #include "tori.h"       // containment of |RealTorus|
 
 namespace atlas {
@@ -50,45 +49,6 @@ namespace cartanclass
 /******** type definitions ***************************************************/
 
 namespace cartanclass {
-
-// this class gathers information associated to a root datum involution
-class InvolutionData
-{
-  Permutation d_rootInvolution; // permutation of all roots
-  RootNbrSet d_imaginary, d_real, d_complex;
-  RootNbrList d_simpleImaginary; // imaginary roots simple wrt subsystem
-  RootNbrList d_simpleReal; // real roots simple wrt subsystem
- public:
-  InvolutionData(const RootDatum& rd,
-		 const WeightInvolution& theta);
-  InvolutionData(const RootDatum& rd,
-		 const WeightInvolution& theta,
-		 const RootNbrSet& positive_subsystem);
-  InvolutionData(const RootSystem& rs,
-		 const RootNbrList& simple_images);
-  static InvolutionData build(const RootSystem& rs,
-			      const TwistedWeylGroup& W,
-			      const TwistedInvolution& tw);
-  void swap(InvolutionData&);
-  //accessors
-  const Permutation& root_involution() const
-    { return d_rootInvolution; }
-  RootNbr root_involution(RootNbr alpha) const
-    { return d_rootInvolution[alpha]; }
-  const RootNbrSet& imaginary_roots() const  { return d_imaginary; }
-  const RootNbrSet& real_roots() const       { return d_real; }
-  const RootNbrSet& complex_roots() const    { return d_complex; }
-  size_t imaginary_rank() const { return d_simpleImaginary.size(); }
-  const RootNbrList& imaginary_basis() const
-    { return d_simpleImaginary; }
-  RootNbr imaginary_basis(size_t i) const
-    { return d_simpleImaginary[i]; }
-  size_t real_rank() const { return d_simpleReal.size(); }
-  const RootNbrList& real_basis() const { return d_simpleReal; }
-  RootNbr real_basis(size_t i) const { return d_simpleReal[i]; }
-private:
-  void classify_roots(const RootSystem& rs);
-};
 
 /*!
 \brief Describes "the fiber" (over a fixed involution of a torus) in
@@ -240,15 +200,14 @@ class Fiber {
   The imaginary Weyl group acts on the adjoint fiber group; the partition is
   by orbits of this action.
   */
-  partition::Partition d_weakReal;
+  Partition d_weakReal;
 
   /*! \brief Partition of the set [0,numRealForms()[ indexing weak real forms
   according to the corresponding classes in Z(G)^delta/[(1+delta)Z(G)].
 
-  Constructed by the function realFormPartition in the Helper class of the
-  unnamed namespace of cartanclass.cpp; details in that documentation.
+  Constructed by the function realFormPartition; details in that documentation.
   */
-  partition::Partition d_realFormPartition;
+  Partition d_realFormPartition;
 
   /*!
   \brief Partitions of Fiber group cosets corresponding to the
@@ -262,14 +221,15 @@ class Fiber {
   partitioned into W_i-orbits; these partitions into orbits are described by
   the c partitions in d_strongReal.
   */
-  std::vector<partition::Partition> d_strongReal;
+  std::vector<Partition> d_strongReal;
 
   /*!
   \brief Representative strong real form for each weak real form.
 
-  A StrongRealFormRep is a pair of numbers. The second indexes the value of
-  the square of the strong real form in Z^delta/[(1+delta)Z]. The first
-  indexes a W_im orbit on the corresponding coset of the fiber group.
+  A StrongRealFormRep is a pair of numbers |(x,c)|. Here |c| indexes the value
+  of the square of the strong real form in Z^delta/[(1+delta)Z], and |x| gives
+  a part of the partition |d_strongReal[c]|, which part is a $W_{im}$-orbit in
+  the corresponding coset of the fiber group.
   */
   std::vector<StrongRealFormRep> d_strongRealFormReps;
 
@@ -443,7 +403,7 @@ class Fiber {
   A weak real form (always containing our fixed real torus) is an orbit of W_i
   on the adjoint fiber group.
 */
-  const partition::Partition& realFormPartition() const
+  const Partition& realFormPartition() const
     { return d_realFormPartition; }
 
 /*!
@@ -451,7 +411,7 @@ class Fiber {
 */
   square_class central_square_class (adjoint_fiber_orbit wrf) const
   {
-    return d_realFormPartition(wrf); // map weak real form to square class number
+    return d_realFormPartition(wrf); // square class number from weak real form
   }
 
 /*!
@@ -472,8 +432,7 @@ class Fiber {
   $Z/2Z$-space with W_i acting in a different way. Thus each of these c spaces
   is partitioned into W_i orbits; these partitions are stored in d_strongReal.
 */
-  const partition::Partition& strongReal(square_class j) const
-    { return d_strongReal[j]; }
+  const Partition& strongReal(square_class j) const { return d_strongReal[j]; }
 
 /*!
   \brief Representative strong real form for real form \#rf.
@@ -503,7 +462,7 @@ class Fiber {
   Partition of the weak real forms according to the corresponding classes in
   Z(G)^delta/[(1+delta)Z(G)].
 */
-  const partition::Partition& weakReal() const { return d_weakReal; }
+  const Partition& weakReal() const { return d_weakReal; }
 
 // private accessors only needed during construction
 
@@ -528,11 +487,11 @@ private:
 
   BinaryMap makeFiberMap(const RootDatum&) const;
 
-  partition::Partition makeWeakReal(const RootSystem&) const;
+  Partition makeWeakReal(const RootSystem&) const;
 
-  partition::Partition makeRealFormPartition() const;
+  Partition makeRealFormPartition() const;
 
-  std::vector<partition::Partition> makeStrongReal
+  std::vector<Partition> makeStrongReal
     (const RootDatum& rd) const;
 
   std::vector<StrongRealFormRep> makeStrongRepresentatives() const;
@@ -782,7 +741,7 @@ public:
   F. Each of these c cosets is partitioned into W_i orbits; these
   orbits are described by the c partitions in d_strongReal.
   */
-  const partition::Partition& strongReal(square_class j) const
+  const Partition& strongReal(square_class j) const
     { return d_fiber.strongReal(j); }
 
   /*!
@@ -811,7 +770,7 @@ public:
   \brief Partition of the weak real forms according to the
   corresponding classes in Z(G)^delta/[(1+delta)Z(G)].
   */
-  const partition::Partition& weakReal() const { return d_fiber.weakReal(); }
+  const Partition& weakReal() const { return d_fiber.weakReal(); }
 
 
 // private accessors only needed during construction

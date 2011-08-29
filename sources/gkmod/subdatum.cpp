@@ -65,7 +65,7 @@ SubDatum::SubDatum(RealReductiveGroup& GR,
 #endif
 }
 
-WeightInvolution SubDatum::involution(TwistedInvolution tw)
+WeightInvolution SubDatum::matrix(TwistedInvolution tw)
   const
 {
   WeightInvolution theta = delta;

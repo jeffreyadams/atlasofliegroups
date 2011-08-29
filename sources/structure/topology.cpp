@@ -161,7 +161,7 @@ Connectivity::Connectivity(const tori::RealTorus& t,
 
   BinaryMap m2 = t.componentMap(m,t_sc);
 
-  m2.kernel(d_dpi0);
+  d_dpi0=m2.kernel();
 }
 
 /******** manipulators *******************************************************/

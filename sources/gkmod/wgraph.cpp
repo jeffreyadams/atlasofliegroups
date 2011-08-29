@@ -70,7 +70,7 @@ void WGraph::resize(size_t n)
 DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   : d_cell(), d_part(wg.size()), d_id(), d_induced()
 {
-  partition::Partition pi;
+  Partition pi;
   wg.cells(pi,&d_induced);
 
   d_cell.reserve(pi.classCount()); // there will be this many cells
@@ -78,7 +78,7 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
 
 
   std::vector<unsigned int> relno(wg.size()); // number of element in its cell
-  partition::PartitionIterator i(pi);
+  Partition::iterator i(pi);
   for (cell_no n=0; n<d_id.size(); ++n,++i)
   {
     d_cell.push_back(WGraph(wg.rank()));
@@ -87,7 +87,7 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
     std::vector<unsigned int>& idn=d_id[n];
     idn.resize(cur_cell.size());
 
-    for (partition::PartitionIterator::SubIterator
+    for (Partition::iterator::SubIterator
 	   j=i->first; j!=i->second; ++j)
     {
       size_t y = *j; size_t z=j-i->first; // |y| gets renamed |z| in cell
@@ -103,7 +103,7 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   for (i.rewind(); i(); ++i)
   {
     cell_no n=d_part[*i->first]; // cell number, constant through next loop
-    for (partition::PartitionIterator::SubIterator
+    for (Partition::iterator::SubIterator
 	   j=i->first; j!=i->second; ++j)
     {
       size_t y = *j; size_t z=relno[y]; // |z==j-i->first|
@@ -138,10 +138,10 @@ namespace wgraph {
 */
 void cells(std::vector<WGraph>& wc, const WGraph& wg)
 {
-  partition::Partition pi;
+  Partition pi;
   wg.cells(pi); // do not collect information about induced graph here
 
-  for (partition::PartitionIterator i(pi); i(); ++i)
+  for (Partition::iterator i(pi); i(); ++i)
   {
     wc.push_back(WGraph(wg.rank()));
     WGraph& wci = wc.back();

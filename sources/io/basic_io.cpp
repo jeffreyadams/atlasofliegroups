@@ -195,8 +195,8 @@ void write_bytes(unsigned int n, unsigned long long val, std::ostream& out)
 
 // template std::ostream& basic_io::seqPrint // cartan_io
 //  (std::ostream& strm,
-//   const partition::PartitionIterator::SubIterator& first,
-//   const partition::PartitionIterator::SubIterator& last,
+//   const Partition::iterator::SubIterator& first,
+//   const Partition::iterator::SubIterator& last,
 //   const char* sep, const char* pre, const char* post);
 
 // template std::ostream& basic_io::seqPrint // interactive

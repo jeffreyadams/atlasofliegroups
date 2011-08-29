@@ -471,6 +471,13 @@ reduced decomposition.
     return d_t != a.d_t ? d_t < a.d_t : d_w < a.d_w;
   }
 
+// manipulators
+
+  // in |reduce|, |V| should be modulo 2 reduction of image of $\theta-1$; as
+  // this is $\theta$-stable, reducing  left or right torus part is the same
+  TitsElt& reduce(const SmallSubspace& V)
+  { d_t=V.mod_image(d_t); return *this; }
+
 /* exceptionally we expose the raw torus part to derived classes; this should
    only be used for non-mathematical purposes like computing a hash code */
  protected:
@@ -687,14 +694,6 @@ is done in the KGB construction, it induces an involution on the quotient set.
   void inverseTwistedConjugate(TitsElt& a, weyl::Generator s) const
   { sigma_inv_mult(s,a); mult_sigma(a,twisted(s)); }
 
-  void left_torus_reduce
-    (TitsElt& a, const SmallSubspace& V) const
-  { a.d_t=V.mod_image(a.d_t); }
-
-  void right_torus_reduce
-    (TitsElt& a, const SmallSubspace& V) const
-  { a=TitsElt(*this,a.w(),V.mod_image(right_torus_part(a))); }
-
 // manipulators (none)
 
 
@@ -815,16 +814,7 @@ class TitsCoset
   // inverse Cayley transform for real simple roots
   // this requires knowing the subspace by which torus part has been reduced
   void inverse_Cayley_transform(TitsElt& a, size_t s,
-				const SmallSubspace& mod_space)
-    const;
-
-  void left_torus_reduce
-    (TitsElt& a, const SmallSubspace& V) const
-  { titsGroup().left_torus_reduce(a,V); }
-
-  void right_torus_reduce
-    (TitsElt& a, const SmallSubspace& V) const
-  { titsGroup().right_torus_reduce(a,V); }
+				const SmallSubspace& mod_space) const;
 
   // conjugate Tits group element by $\delta_1$
   TitsElt twisted(const TitsElt& a) const;

@@ -559,9 +559,16 @@ WeylElt WeylGroup::translation(const WeylElt& w, const WeylInterface& f) const
 }
 
 /*
-  Let |w| act on |v| according to reflection action in root datum |rd|
+  Let |w| act on |alpha| according to reflection action in root datum |rd|
   Note that rightmost factors act first, as in a product of matrices
 */
+void WeylGroup::act(const RootDatum& rd, const WeylElt& w, RootNbr& alpha) const
+{
+  for (size_t i = d_rank; i-->0; )
+    alpha = rd.permuted_root(wordPiece(w,i),alpha);
+}
+
+// Let |w| act on |v| according to reflection action in root datum |rd|
 void WeylGroup::act(const RootDatum& rd, const WeylElt& w, Weight& v) const
 {
   for (size_t i = d_rank; i-->0; )
@@ -776,9 +783,9 @@ bool TwistedWeylGroup::hasTwistedCommutation
   Although not immediately obvious, all such reduced expressions do have the
   same length.
 
-  The code below choses the first possible generator (for the internal
+  The code below chooses the first possible generator (for the internal
   numbering, as returned by |leftDescent|) at each step, so the reduced
-  expression found is lexicographically first for the internal renumbering
+  expression found is lexicographically first for the internal renumbering.
 */
 InvolutionWord TwistedWeylGroup::involution_expr(TwistedInvolution tw) const
 {

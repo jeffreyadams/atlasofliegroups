@@ -85,7 +85,7 @@ class RootSystem
 
   std::vector<root_info> ri; //!< List of information about positive roots
 
-  matrix::Vector<int> two_rho_in_simple_roots;
+  int_Vector two_rho_in_simple_roots;
 
 //!\brief Root permutations induced by reflections in all positive roots.
   std::vector<Permutation> root_perm;
@@ -173,9 +173,9 @@ class RootSystem
 
 // other accessors
 
-  // the next method only works for _simple_ roots! (whence no RootNbr for |i|)
-  const Permutation& simple_root_permutation(weyl::Generator i)
-    const
+  // The next method requires a positive root index |i|. It is however used
+  // mostly with simple roots, whence the name. See |root_permutation| below.
+  const Permutation& simple_root_permutation(weyl::Generator i) const
   { return root_perm[i]; }
 
   RankFlags descent_set(RootNbr alpha) const
@@ -230,11 +230,11 @@ class RootSystem
 
 
 
-  // find permutation of roots induced by diagram automorphism
-  Permutation root_permutation(const Permutation& ) const;
+  // find (simple preserving) roots permutation induced by diagram automorphism
+  Permutation root_permutation(const Permutation& twist) const;
 
   // extend root datum automorphism given on simple roots to all roots
-  Permutation extend_to_roots(const RootNbrList&) const;
+  Permutation extend_to_roots(const RootNbrList& simple_images) const;
 
 
   WeylWord reflectionWord(RootNbr r) const;
@@ -472,7 +472,7 @@ use by accessors.
   int cartan(weyl::Generator i, weyl::Generator j) const
     { return simpleRoot(i).dot(simpleCoroot(j)); }
 
-  //!\brief  Applies to v the reflection about root alpha.
+  //!\brief  Applies to |lambda| the reflection about root |alpha|.
   void reflect(Weight& lambda, RootNbr alpha) const
     { lambda -= root(alpha)*lambda.dot(coroot(alpha)); }
   //!\brief  Applies reflection about coroot |alpha| to a coweight
@@ -515,7 +515,6 @@ use by accessors.
 
   // here any matrix permuting the roots is allowed, e.g., root_reflection(r)
   Permutation rootPermutation(const WeightInvolution& q) const;
-  // extend diagram automorphism to permutation of all roots
 
   WeightInvolution root_reflection(RootNbr r) const;
   WeightInvolution simple_reflection(weyl::Generator i) const

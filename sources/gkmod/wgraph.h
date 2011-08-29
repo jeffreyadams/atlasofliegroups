@@ -57,7 +57,7 @@ class WGraph
   void swap(WGraph&);
 
 // accessors
-  void cells(partition::Partition& pi, graph::OrientedGraph* p = 0) const {
+  void cells(Partition& pi, graph::OrientedGraph* p = 0) const {
     d_graph.cells(pi,p);
   }
 

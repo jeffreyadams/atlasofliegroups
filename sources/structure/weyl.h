@@ -579,6 +579,8 @@ public:
   void translate(WeylElt& w, const WeylInterface& i) const
     { w=translation(w,i); }
 
+  // reflection action of Weyl group on a root
+  void act(const RootDatum& rd, const WeylElt& w, RootNbr& alpha) const;
   // standard reflection action of Weyl group using a root datum
   void act(const RootDatum& rd, const WeylElt& w, Weight& v) const;
   // standard reflection action of Weyl group using a root datum

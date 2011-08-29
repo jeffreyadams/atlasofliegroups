@@ -146,12 +146,12 @@ noncompact_roots(const Grading& g, const RootSystem& rs)
 */
 GradingList grading_classes(const RootSystem& rs)
 {
-  partition::Partition pi = partition::orbits
+  Partition pi = partition::orbits
     (GradingAction(rs.cartanMatrix().columns()),rs.rank(),1ul<<rs.rank());
 
   // sort orbits
   GradingList result; result.reserve(pi.classCount());
-  for (partition::PartitionIterator i(pi); i(); ++i)
+  for (Partition::iterator i(pi); i(); ++i)
     result.push_back
       (Grading(*std::min_element
 	       (i->first,
