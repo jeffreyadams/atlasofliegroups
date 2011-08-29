@@ -37,9 +37,6 @@ namespace poset {
 
   */
 class Poset {
-
- private:
-
 /*!
 \brief Matrix of order relations.
 
@@ -89,22 +86,24 @@ only be |j|.
   bool lesseq(set::Elt i, set::Elt j) const
   { return i<j ? d_below[j].isMember(i) : i==j; }
 
-  //! \brief Number of comparable pairs (including those on the diagonal)
-  unsigned long n_comparable() const;
-
-  void findMaximals(set::EltList&, const bitmap::BitMap&) const;
-  set::EltList minima(const bitmap::BitMap&) const;
-
-  /*!
-\brief Size of the poset.
-  */
-  size_t size() const { return d_below.size(); }
-
   bool operator==(const Poset& other) const;
 
-  void hasseDiagram(graph::OrientedGraph&) const;
+  size_t size() const { return d_below.size(); }
 
-  void hasseDiagram(graph::OrientedGraph&, set::Elt) const;
+  const bitmap::BitMap& below(set::Elt y)const { return d_below[y]; }
+  bitmap::BitMap above(set::Elt x) const;
+
+  set::EltList maxima(const bitmap::BitMap&) const;
+  set::EltList minima(const bitmap::BitMap&) const;
+
+  set::EltList covered_by(set::Elt y) const { return maxima(d_below[y]); }
+  set::EltList covers_of(set::Elt x) const;
+
+  graph::OrientedGraph hasseDiagram() const; // full Hasse diagram
+  graph::OrientedGraph hasseDiagram(set::Elt max) const; // part |<=max|
+
+  //! \brief Number of comparable pairs (including those on the diagonal)
+  unsigned long n_comparable() const;
 
 // manipulators
   void resize(unsigned long);
@@ -112,9 +111,9 @@ only be |j|.
 /*!
 \brief Transforms the poset into the weakest ordering containing the relations
   it previously contained, plus the relations |first < second| for all elements
-  listed in |lk|.
+  listed in |lks|.
 
-  Precondition: |lk| is sorted in increasing lexicographical order, and is
+  Precondition: |lks| is sorted in increasing lexicographical order, and is
   compatible with relations already present in the poset. More precisely the
   following (weaker, given the compatibility of the order relation with
   integral ordering) condition is assumed: all occurrences of a value |i| as
@@ -130,6 +129,7 @@ only be |j|.
       new_cover(lks[i].first,lks[i].second);
   }
 
+  // add a new maximal element, comparable with elements in |container|
   template<typename C> void new_max(C container)
   {
     size_t y=d_below.size();

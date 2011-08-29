@@ -88,14 +88,14 @@ bool Poset::operator==(const Poset& other) const
   return true;
 }
 
-
-unsigned long Poset::n_comparable() const
+bitmap::BitMap Poset::above(set::Elt x) const
 {
-  unsigned long n=size(); // account for (absent) diagonal
-  for (size_t i=0; i<size(); ++i)
-    n+=d_below[i].size();
+  bitmap::BitMap result(size());
 
-  return n;
+  for (size_t s=x+1; s<size(); ++s)
+    if (d_below[s].isMember(x))
+      result.insert(s);
+  return result;
 }
 
 /*!
@@ -105,30 +105,43 @@ unsigned long Poset::n_comparable() const
   Algorithm: the largest element x in b (if any) is maximal; add that to a,
   remove from b the intersection with the closure of x, and iterate.
 */
-void Poset::findMaximals(set::EltList& a, const bitmap::BitMap& b) const
+set::EltList Poset::maxima(const bitmap::BitMap& b) const
 {
-  a.clear();
-  bitmap::BitMap bl = b; // working copy of |b|
-  unsigned long x=bl.capacity();
+  unsigned long x=b.capacity();
+  bitmap::BitMap result = b; // working copy; we shall remove covered elements
 
-  while (bl.back_up(x))
-  {
-    a.push_back(x);  // add currently maximal |x|
-    bl.andnot(d_below[x]); // revove below |x| (|bl[x]| may safely remain set)
-  }
-  // in fact we could return |bl| as bitset here if that were asked for
+  while (result.back_up(x))
+    result.andnot(d_below[x]); // remove below |x| (|bl[x]| remains set)
+
+  return set::EltList(result.begin(),result.end()); // convert bitmap to vector
 }
 
 set::EltList Poset::minima(const bitmap::BitMap& b) const
 {
-  set::EltList result;
+  set::EltList result; // we shall produce a list of elements directly
   for (bitmap::BitMap::iterator it=b.begin(); it(); ++it)
+    if (b.disjoint(d_below[*it])) // this certainly clears |t[n]|
+      result.push_back(*it); // if intersection was empty, |n| is minimal
+
+  return result;
+}
+
+// while dual to |covered_by|, this is harder (and untested)
+set::EltList Poset::covers_of(set::Elt x) const
+{
+  set::EltList result; // we shall produce a list of elements directly
+  bitmap::BitMap candidates = above(x);
+
+  // in the next loop |candidates| is sieved while looping; this is allowed
+  for (bitmap::BitMap::iterator it=candidates.begin(); it(); ++it)
   {
-    size_t n=*it;
-    bitmap::BitMap t=b;
-    if (not(t&=d_below[n])) // this certainly clears |t[n]|
-      result.push_back(n); // if intersection was empty, |n| is minimal
+    result.push_back(*it); // record a covering element
+    bitmap::BitMap::iterator jt=it; // copy iterator over |candidates|
+    while ((++jt)()) // check remaining candidates
+      if (d_below[*jt].isMember(*it)) // then |*jt| above |*it|, no |x|-cover
+	candidates.remove(*jt); // so remove |*jt| from |candidates|
   }
+
   return result;
 }
 
@@ -140,37 +153,45 @@ set::EltList Poset::minima(const bitmap::BitMap& b) const
   the elements of the poset, with an edge from each vertex to each vertex
   immediately below it.
 */
-void Poset::hasseDiagram(graph::OrientedGraph& h) const
+graph::OrientedGraph Poset::hasseDiagram() const
 {
-  h.resize(size());
+  graph::OrientedGraph h(size()); // empty graph of size of Poset
 
-  for (set::Elt x = 0; x < size(); ++x) {
-    const bitmap::BitMap& b = d_below[x]; // |x| is already absent from |b|
-    findMaximals(h.edgeList(x),b);
-  }
+  for (set::Elt x = 0; x < size(); ++x)
+    h.edgeList(x)=maxima(d_below[x]);// |x| is already absent from |d_below[x]|
+
+  return h;
 }
 
-/*!
-\brief Puts in |h| the Hasse diagram of the downward closure of |max|.
-
-  Explanation: the Hasse diagram is the oriented graph whose vertices are
-  the elements of the poset, with an edge from each vertex to each vertex
-  immediately below it. Closure means all elements less than or equal to max.
-*/
-void Poset::hasseDiagram(graph::OrientedGraph& h, set::Elt max) const
-
-
+/* Puts in |h| the Hasse diagram of the downward closure of |max|. Since we do
+   not want to renumber, all elements up to and including |max| will define
+   vertices of the graph, but those not comparable to |max| will be isolated
+   points. This (in particular the absence of incoming edges) is admittedly
+   hard to detect; in practice 0 will be a least element, so that for other
+   elements the absence of outgoing edges witnesses incomparability with |max|
+ */
+graph::OrientedGraph Poset::hasseDiagram(set::Elt max) const
 {
   bitmap::BitMap cl(max+1);
   cl |= d_below[max]; cl.insert(max); // we must not forget |max| iself.
 
-  h.resize(size());
+  graph::OrientedGraph h(max+1); // empty graph of size of |max+1|
 
-  for (bitmap::BitMap::iterator i = cl.begin(); i(); ++i) {
-    set::Elt x=*i;
-    const bitmap::BitMap& b = d_below[x]; // |x| is already absent from |b|
-    findMaximals(h.edgeList(x),b);
+  for (bitmap::BitMap::iterator it = cl.begin(); it(); ++it)
+  {
+    set::Elt x=*it;
+    h.edgeList(x)=maxima(d_below[x]); // contained in |cl| by transitivity
   }
+  return h;
+}
+
+unsigned long Poset::n_comparable() const
+{
+  unsigned long n=size(); // account for (absent) diagonal
+  for (size_t i=0; i<size(); ++i)
+    n+=d_below[i].size();
+
+  return n;
 }
 
 /******** manipulators *******************************************************/
