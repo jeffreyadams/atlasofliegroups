@@ -22,12 +22,12 @@ namespace tags {
 
 /******** general tags for structure theory **********************************/
 
-  /*!
-\brief Dummy argument to distinguish constructors, etc. using
-iterators to pass multiple arguments.
+  /*! Dummy argument to distinguish constructors, etc. using iterators to pass
+multiple arguments form those with non-iterator arguments that would otherwise
+match template
 
 Typical use is the Matrix constructors defined in
-sources/utilities/matrix_def.h. 
+sources/utilities/matrix.h
   */
   struct IteratorTag {};
 
@@ -38,46 +38,21 @@ sources/utilities/matrix_def.h.
 
 /******** tags for structure theory ******************************************/
 
-  /*!
-\brief Dummy argument to distinguish constructors, etc. for an adjoint
-group.
-
-[Not used 7/24/06. DV.]
-  */
+  // To distinguish constructor for an adjoint group from copy-constructor
   struct AdjointTag {};
 
-  /*!
-\brief Dummy argument to distinguish constructors, etc. for derived
-group.
-
-[Not used 7/24/06. DV.]
-  */
+  // To distinguish constructor for derived group from copy-constructor.
   struct DerivedTag {};
 
-  /*!
-\brief Dummy argument to distinguish constructors, etc. for dual group objects.
+  // To distinguish constructor for derived group from copy-constructor.
+  struct SimplyConnectedTag {};
 
-The presence of the argument DualTag says that a constructor should
-make an object for the dual group (as for example in the constructor
-RealTorus declared in the file sources/structure/tori.h).
-  */
+  // To distinguish constructor for dual object from copy-constructor
   struct DualTag {};
 
-  /*!
-\brief Dummy argument to distinguish constructors, etc. for a quasisplit
-group.
-
-[Not used 7/24/06. DV.]
-  */
-  struct QuasisplitTag {};
-
-  /*!
-\brief Dummy argument to distinguish constructors, etc. for a simply connected
-group.
-
-[Not used 7/24/06. DV.]
-  */
-  struct SimplyConnectedTag {};
+  // To distinguish an expermental function (constructor) from one it is 
+  // ultimately destined to replace.
+  struct NewTag {};
 
 }
 
