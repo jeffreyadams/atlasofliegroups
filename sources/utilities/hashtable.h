@@ -94,6 +94,8 @@ class HashTable
 
  public: // methods to make HashTable behave like a container, in some cases
 
+  void reconstruct(); // must call when |d_pool| has been changed by others
+
   typedef Number const_iterator;   // type returned by begin() and end()
   typedef const_iterator iterator; // iterators are not mutable
 

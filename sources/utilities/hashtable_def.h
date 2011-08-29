@@ -16,8 +16,7 @@ template <class Entry, typename Number>
   HashTable<Entry,Number>::HashTable(typename Entry::Pooltype& pool)
     : d_mod(256),d_hash(), d_pool(pool) // caller supplies pool reference
     {
-      while (d_pool.size()>max_fill()) d_mod=d_mod<<1; // keep it a power of 2
-      rehash();
+      reconstruct();
     }
 
 template <class Entry, typename Number>
@@ -38,6 +37,14 @@ template <class Entry, typename Number>
 	}
     }
 
+template <class Entry, typename Number>
+  void HashTable<Entry,Number>::reconstruct()
+    {
+      while (d_pool.size()>=max_fill())
+	d_mod=d_mod<<1;  // keep it a power of 2
+
+      rehash();
+    }
 /* the accessor |find| is fairly easy; it need not (and cannot) rehash */
 
 template <class Entry, typename Number>
