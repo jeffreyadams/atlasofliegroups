@@ -100,12 +100,7 @@ void Partition::swap(Partition& other)
 
 /******** manipulators *******************************************************/
 
-/*!
-  \brief Creates a fresh class for element |j|, and returns its number
-
-  NOTE: Straightforward implementation. Successively computing |classSize| for
-  all classes would cost more time then necessary.
-*/
+// Create a fresh class for element |j|, and return its number
 unsigned long Partition::new_class(unsigned long j)
 {
   d_class[j] = d_classRep.size();
