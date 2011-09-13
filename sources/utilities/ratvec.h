@@ -50,7 +50,7 @@ class RationalVector
   RationalVector(const V& v, C d);
 
 // accessors
-  // unsigned denominator requires care: plain % or / are taboo; export signed
+  // unsigned denominator requires care: plain % or / taboo; so export signed
   C denominator() const { return (C)d_denom; }
   const V& numerator() const { return d_num; }
   size_t size() const { return d_num.size(); }
