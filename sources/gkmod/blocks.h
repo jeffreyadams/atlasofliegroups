@@ -74,7 +74,7 @@ class Block_base {
   std::vector<BlockEltList> d_cross; // of size |d_rank| * |size()|
   std::vector<BlockEltPairList> d_cayley; // of size |d_rank| * |size()|
   DescentStatusList d_descent; // of size |size()|
-  std::vector<size_t> d_length; // of size |size()|
+  std::vector<unsigned short> d_length; // of size |size()|
 
  public:
 
@@ -284,11 +284,10 @@ class gamma_block : public Block_base
 
   struct y_fields
   {
-    GlobalTitsElement rep; //representative
-    unsigned int Cartan_class;
+    TorusElement rep; //representative
+    CartanNbr Cartan_class;
 
-    y_fields(GlobalTitsElement y, unsigned int cc)
-    : rep(y), Cartan_class(cc) {}
+    y_fields(TorusElement t, unsigned int cc) : rep(t), Cartan_class(cc) {}
   }; // |struct y_fields|
 
   std::vector<y_fields> y_info; // indexed by child |y| numbers
@@ -312,14 +311,13 @@ class gamma_block : public Block_base
   size_t max_Cartan() const // maximal Cartan number, for printing
   { return Cartan_class(size()-1); } // this should be OK in all cases
 
-  const TwistedInvolution& involution(BlockElt z) const
-  { assert(z<size()); return y_info[d_y[z]].rep.tw(); }
+  const TwistedInvolution& involution(BlockElt z) const;
 
   std::ostream& print(std::ostream& strm, BlockElt z) const;
 
   // new methods
   RatWeight local_system(BlockElt z) const
-  { assert(z<size()); return y_info[d_y[z]].rep.torus_part().log_2pi(); }
+  { assert(z<size()); return y_info[d_y[z]].rep.log_2pi(); }
 
 }; // |class gamma_block|
 

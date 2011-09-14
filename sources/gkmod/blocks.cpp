@@ -46,6 +46,7 @@
 #include "complexredgp.h"
 #include "realredgp.h"
 #include "subsystem.h"
+#include "y_values.h"
 #include "kgb.h"
 #include "weyl.h"
 
@@ -134,7 +135,8 @@ namespace blocks {
 struct block_elt_entry; // detailed below
 
 typedef hashtable::HashTable<weyl::TI_Entry,unsigned int> involution_hash;
-typedef hashtable::HashTable<KGB_elt_entry,KGBElt> KGB_hash;
+typedef hashtable::HashTable<KGB_elt_entry,KGBElt> KGB_hash; // to be removed
+typedef hashtable::HashTable<y_entry,KGBElt> y_part_hash;
 typedef hashtable::HashTable<block_elt_entry,BlockElt> block_hash;
 
 namespace {
@@ -287,6 +289,7 @@ BlockElt Block_base::length_first(size_t l) const
 {
   return std::lower_bound(d_length.begin(),d_length.end(),l)-d_length.begin();
 }
+
 
 /*!
   \brief Tells if s is a strict ascent generator for z.
@@ -604,7 +607,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 			 const RatWeight& lambda, // discr param
 			 const RatWeight& gamma, // infl char
 			 BlockElt& entry_element) // output parameter
-  : Block_base(sub,sub.Weyl_group())
+  : Block_base(sub,GR.weylGroup())
   , kgb(GR.kgb())
   , infin_char(gamma)
   , kgb_nr_of()
@@ -613,22 +616,20 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   WeylWord dual_involution; // set in |GlobalTitsGroup| constructor:
   const RootDatum& rd = GR.rootDatum();
+  const ComplexReductiveGroup& G = GR.complexGroup();
+  const Cartan_orbits& i_tab = G.involution_table();
 
-  const GlobalTitsGroup Tg
-    (sub,
-     GR.complexGroup().involutionMatrix(kgb.involution(x)),
-     dual_involution);
+  const GlobalTitsGroup Tg (sub, kgb.involution_matrix(x), dual_involution);
 
   weyl::TI_Entry::Pooltype inv_pool; // twisted involutions of block, y-side
   involution_hash inv_hash(inv_pool);
-  kgb::InvInfo gfd(sub,inv_hash);
 
   TwistedInvolution tw = Tg.weylGroup().element(dual_involution);
   // |tw| describes |-kgb.involution(x)^tr| as twisted involution for |sub|
 
   // step 1: get a valid value for |y|. Has $t=\exp(\pi\ii(\gamma-\lambda))$
   GlobalTitsElement y =
-    GlobalTitsElement(tits::exp_pi(gamma-lambda),tw);
+    GlobalTitsElement(y_values::exp_pi(gamma-lambda),tw);
   assert(Tg.is_valid(y));
 
   // step 1.5: correct the grading on the dual imaginary roots.
@@ -686,16 +687,20 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
     // one might reduce the torus part of |y| here
   } // end of step 2
 
-  gfd.add_involution(y.tw(),Tg);
+  InvolutionNbr inv = kgb.inv_nr(x);
 
-  KGB_elt_entry::Pooltype y_pool(1,gfd.pack(y)); // start with just |y|
-  KGB_hash y_hash(y_pool);
+  y_entry::Pooltype y_pool(1,i_tab.pack(y.torus_part(),inv));
+  y_part_hash y_hash(y_pool);
+
+  CartanNbr n_Cartan=0; // on the fly numbering of Cartans for subsystem
+  y_info.push_back(y_fields(y.torus_part(),n_Cartan++));
 
   // step 3: generate imaginary fiber-orbit of |x|'s (|y|'s are unaffected)
   std::vector<unsigned int> x_of(kgb.size(),~0);
   {
-    // generating reflections are for \emph{real} roots for |y.tw()|
-    RootNbrList gen_root = gfd.real_basis(y.tw());
+    // generating reflections are for imaginary roots for |x|
+    RootNbrList gen_root =
+      rd.simpleBasis(sub.positive_roots() & i_tab.imaginary_roots(inv));
 
     KGBEltPair p = kgb.packet(x); // get range of |kgb| that involves |x|
     BitMap seen(p.second-p.first);
@@ -743,7 +748,8 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
   for (BlockElt next=0; not queue.empty(); next=queue.front(),queue.pop_front())
   { // process involution packet of elements from |next| to |queue.front()|
 
-    const unsigned int old_inv=inv_hash.find(y_hash[d_y[next]].tw); // inv #
+    const TwistedInvolution tw = kgb.involution(kgb_nr_of[d_x[next]]);
+    const InvolutionNbr inv = i_tab.nr(tw);
 
     ys.clear();
     size_t nr_y = 0;
@@ -763,12 +769,16 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
       cross_link.resize(d_x.size(),UndefBlock); // ensure enough slots for now
       Cayley_link.resize(d_x.size(),std::make_pair(UndefBlock,UndefBlock));
 
-      GlobalTitsElement sample = y_hash[ys[0]].repr();
-      int d = Tg.cross_act(s,sample); // modify |sample|, |d| is length change
-      int l = d_length[next]-d; // length change on dual involution is opposite
+      int l = d_length[next];
+      KGBElt cross_sample = kgb.cross(sub.to_simple(s),kgb_nr_of[d_x[next]]);
+      l -= kgb.length(cross_sample); // might become negative
+      cross_sample = kgb.cross(sub.simple(s),cross_sample);
+      l += kgb.length(cross_sample);
+      cross_sample = kgb.cross(cross_sample,sub.to_simple(s));
       assert(l>=0); // if fails, then starting point not minimal for length
-      bool new_cross = // whether cross action discovers unseen involution
-	gfd.add_cross_neighbor(sample.tw(),old_inv,s); // and extend |gfd|
+
+      InvolutionNbr s_x_inv = kgb.inv_nr(cross_sample);
+      bool new_cross = x_of[cross_sample] == ~0u; // whether involution unseen
 
       bool new_Cayley=false; // whether these gave a new involution
       bool first_Cayley=true; // true until Cayley transform for an |x| is done
@@ -778,11 +788,14 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	size_t old_size =  y_hash.size();
 	for (unsigned int j=0; j<nr_y; ++j)
 	{
-	  GlobalTitsElement y = y_hash[ys[j]].repr();
-	  int dd = Tg.cross_act(s,y);
-	  assert(dd==d); // all length changes should be equal
-	  assert(Tg.is_valid(y));
-	  cross_ys.push_back(y_hash.match(gfd.pack(y)));
+	  TorusElement t = y_hash[ys[j]].t_rep;
+	  if (i_tab.complex_roots(inv).isMember(sub.parent_nr_simple(s)))
+	    t.simple_reflect(sub.pre_root_datum(),s);
+	  else if (i_tab.imaginary_roots(inv).isMember(sub.parent_nr_simple(s)))
+	    t = t.simple_imaginary_cross(rd,sub.parent_nr_simple(s));
+	  cross_ys.push_back(y_hash.match(i_tab.pack(t,s_x_inv)));
+	  if (new_cross)
+	    y_info.push_back(y_fields(t,y_info[ys[0]].Cartan_class));
 	  assert(y_hash.size()== (new_cross ? old_size+j+1 : old_size));
 	}
       } // compute values |cross_ys|
@@ -844,7 +857,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	    if (cross_ys[j] != ys[j]) // implies parity condition
 	      d_descent[base_z+j].set(s,DescentStatus::RealTypeII);
 	    else
-	      if (y_hash[d_y[base_z+j]].repr().torus_part().negative_at
+	      if (y_hash[d_y[base_z+j]].t_rep.negative_at
 		  (rd.coroot(sub.parent_nr_simple(s))))
 		d_descent[base_z+j].set(s,DescentStatus::RealNonparity);
 	      else
@@ -862,45 +875,51 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 
 	  l = d_length[next]+1; // length always increases in Cayley transform
 
-	  if (first_Cayley) // only once in loop on |i| (but possibly $i>0$)
+	  if (first_Cayley) // do only once in loop on |i| (but maybe for |i>0|)
 	  {
 	    first_Cayley = false; // by doing this at most once per involution
 	    new_Cayley = x_of[s_Cayley_n]==(unsigned int)~0; // set first time
+	    InvolutionNbr Cayley_inv = kgb.inv_nr(s_Cayley_n);
 
 	    if (new_Cayley) // Cayley transform gives an unseen involution
 	    { // first ensure all |y|'s for new involution are in hash table
-	      y_begin = y_hash.size();
-	      GlobalTitsElement y = y_hash[ys[0]].repr();
-	      Tg.do_inverse_Cayley(s,y);
-	      bool is_new =
-		gfd.add_involution(y.tw(),Tg);
-	      assert(is_new); // |y| should discover an unseen involution too
-	      y_hash.match(gfd.pack(y)); // create first new |y|
 
-	      // imaginary cross actions (real for parent) complete set of y's
-	      RootNbrList rb = gfd.imaginary_basis(y.tw());
+	      y_begin = y_hash.size();
+	      TorusElement t = y_hash[ys[0]].t_rep;
+	      Tg.do_inverse_Cayley(s,t);
+	      y_hash.match(i_tab.pack(t,Cayley_inv));
+
+	      // subsytem real (for parent) cross actions complete set of y's
+	      RootNbrList rb =
+		rd.simpleBasis(sub.positive_roots() &
+			       i_tab.real_roots(Cayley_inv));
 	      for (size_t j=y_begin; j<y_hash.size(); ++j) // |y_hash| grows
 	      {
-		y = y_hash[j].repr();
-		assert(Tg.is_valid(y));
+		TorusElement t = y_hash[j].t_rep;
+		y_info.push_back(y_fields(t,n_Cartan)); // |y| in new Cartan
+
 		for (size_t k=0; k<rb.size(); ++k)
-		  y_hash.match(gfd.pack(y.simple_imaginary_cross(rd,rb[k])));
+		{
+		  TorusElement new_t = t.simple_imaginary_cross(rd,rb[k]);
+		  y_hash.match(i_tab.pack(new_t,Cayley_inv));
+		}
 	      }
-	      y_end = y_hash.size();
+	      y_end = y_hash.size(); ++n_Cartan;
 	    } // |if (new_Cayley)|
 
 	    // now fill |Cayley_ys|, whether with elements just created or old
 	    Cayley_ys.resize(type2 ? 2*nr_y : nr_y);
 	    for (unsigned int j=0; j<nr_y; ++j)
 	    {
-	      GlobalTitsElement y = y_hash[ys[j]].repr();
-	      Tg.do_inverse_Cayley(s,y);
-	      Cayley_ys[j]=y_hash.find(gfd.pack(y)); // first Cayley
+	      TorusElement t = y_hash[ys[j]].t_rep;
+	      Tg.do_inverse_Cayley(s,t); // first Cayley
+	      Cayley_ys[j]= y_hash.find(i_tab.pack(t,Cayley_inv));
 
 	      if (type2) // make sure the two Cayley transforms are paired
-	      {
-		Tg.cross_act(s,y);
-		Cayley_ys[j+nr_y]=y_hash.find(gfd.pack(y)); // second one
+	      { // second Cayley
+		t = t.simple_imaginary_cross(rd,sub.parent_nr_simple(s));
+		Cayley_ys[j+nr_y] =
+		  y_hash.find(i_tab.pack(t,Cayley_inv));
 	      }
 	    } // |for (j)|
 	    // all |Cayley_ys| are distinct, and in pairs in case of type 2
@@ -947,9 +966,9 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	  for (unsigned int j=0; j<nr_y; ++j)
 	    if (d_descent[base_z+j][s] != DescentStatus::RealNonparity)
 	    {
-	      GlobalTitsElement y = y_hash[ys[j]].repr();
-	      y = Tg.Cayley(s,y);
-	      KGBElt cty = y_hash.find(gfd.pack(y)); // both know about |y.tw|
+	      TorusElement t = y_hash[ys[j]].t_rep;
+	      // Cayley transform leaves |t| unchanged
+	      KGBElt cty = y_hash.find(i_tab.pack(t,kgb.inv_nr(ctx)));
 	      BlockElt mother = element(x_of[ctx],cty);
 	      assert(Cayley_link[mother].first ==base_z+j or
 		     Cayley_link[mother].second==base_z+j); // should link here
@@ -973,17 +992,15 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
   // now store values into constructed object
 
   std::vector<KGBElt>(kgb_nr_of).swap(kgb_nr_of); // consolidate size
-  y_info.reserve(y_hash.size());
-  for (unsigned int j=0; j<y_hash.size(); ++j)
-  {
-    GlobalTitsElement y_rep = y_hash[j].repr();
-    y_info.push_back(y_fields(y_rep,gfd.Cartan_class(y_hash[j].tw)));
-  }
 
-  // and look up which element matches the original input
-  entry_element = element(x_of[x_org],y_hash.find(gfd.pack(y_org)));
+  // finally look up which element matches the original input
+  entry_element = element
+    (x_of[x_org],y_hash.find(i_tab.pack(y_org.torus_part(),kgb.inv_nr(x_org))));
 
-} // |nu_block::nu_block|
+} // |gamma_block::gamma_block|
+
+const TwistedInvolution& gamma_block::involution(BlockElt z) const
+{ return kgb.involution(kgb_nr_of[d_x[z]]); }
 
 struct nblock_help
 {
@@ -1024,7 +1041,7 @@ non_integral_block::non_integral_block
   const GlobalTitsGroup Tg (G,tags::DualTag());// for $^\vee G$
 
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
-  for (weyl::Generator s=0; s<sub.rank(); ++s)
+  for (weyl::Generator s=0; s<our_rank; ++s)
     singular.set(s,
 		 rd.coroot(sub.parent_nr_simple(s)).dot(gamma.numerator())==0);
 
@@ -1032,7 +1049,7 @@ non_integral_block::non_integral_block
     dual_involution(kgb.involution(x),G.twistedWeylGroup(),Tg);
 
   // step 1: get |y|, which has $t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
-  const GlobalTitsElement y_org (tits::exp_pi(gamma-lambda),tw);
+  const GlobalTitsElement y_org (y_values::exp_pi(gamma-lambda),tw);
   assert(Tg.is_valid(y_org,sub));
   const KGBElt x_org = x;
 
@@ -1669,7 +1686,7 @@ non_integral_block::non_integral_block // interval below |x| only
     dual_involution(kgb.involution(x),G.twistedWeylGroup(),Tg);
 
   gfd.add_involution(tw,Tg);
-  y_hash.match(gfd.pack(GlobalTitsElement(tits::exp_pi(gamma-lambda),tw)));
+  y_hash.match(gfd.pack(GlobalTitsElement(y_values::exp_pi(gamma-lambda),tw)));
 
   nblock_below(block_elt_entry(x,0),ctxt); // generate the block in |ctxt|
 
@@ -1710,7 +1727,7 @@ non_integral_block::non_integral_block // interval below |x| only
 	    hash.find(block_elt_entry(sx,ctxt.wrap(ctxt.cross_y(s,z.y))));
 	  assert(sz!=hash.empty);
 	  cross_link[i] = sz; cross_link[sz] = i;
-	  assert(length==0 or length==d_length[sz]+1);
+	  assert(length==0 or length==d_length[sz]+1u);
 	  length = d_length[sz]+1;
 	  desc_z.set(s,DescentStatus::ComplexDescent);
 	  assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
@@ -1736,8 +1753,8 @@ non_integral_block::non_integral_block // interval below |x| only
 		(block_elt_entry(ctxt.conj_out_x(sx.first,s),sy));
 	      BlockElt sz2 = hash.find
 		(block_elt_entry(ctxt.conj_out_x(sx.second,s),sy));
-	      assert(length==0 or length==d_length[sz1]+1);
-	      assert(length==0 or length==d_length[sz2]+1);
+	      assert(length==0u or length==d_length[sz1]+1u);
+	      assert(length==0u or length==d_length[sz2]+1u);
 	      length = d_length[sz1]+1;
 	      Cayley_link[i] = std::make_pair(sz1,sz2);
 	      Cayley_link[sz1].first = i;
@@ -1750,7 +1767,7 @@ non_integral_block::non_integral_block // interval below |x| only
 	    {
 	      BlockElt sz = hash.find
 		(block_elt_entry(ctxt.conj_out_x(sx.first,s),sy));
-	      assert(length==0 or length==d_length[sz]+1);
+	      assert(length==0 or length==d_length[sz]+1u);
 	      length = d_length[sz]+1;
 	      Cayley_link[i].first = sz;
 	      first_free_slot(Cayley_link[sz]) = i;
@@ -1973,7 +1990,7 @@ void makeHasse(std::vector<set::EltList>& Hasse, const Block& block)
   independently of being a twisted involution, and leads to a bijection $f$:
   $W \to W$ that is characterised by $f(e)=w_0$ and $f(s.w)=f(w)dwist(s)$ for
   any simple generator $e$ and $w\in W$, where $dwist$ is the twist of the
-  dual twisted Weyl group (one also has $f(w.twist(s))=s.f(w)$ so that $f$ is
+  dual twisted Weyl group (one also has $f(w.twist(s))=s.f(w)$ so that $f$
   intertwines twisted conjugation: $f(s.w.twist(s))=s.f(w).dwist(s)$).
 
   The implementation below is based directly on the above characterisation, by

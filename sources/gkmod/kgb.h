@@ -140,6 +140,9 @@ class KGB_base
   const TwistedInvolution& involution(KGBElt x) const // after construction only
   { return inv_pool[involution_index(x)]; }
 
+  const WeightInvolution & involution_matrix(KGBElt x) const;
+  InvolutionNbr inv_nr(KGBElt x) const; // external number (for inner class)
+
   const DescentSet& descent(KGBElt x) const { return info[x].desc; }
   bool isDescent(weyl::Generator s, KGBElt x) const
     { return descent(x).test(s); }
@@ -193,7 +196,7 @@ class KGB_base
 // a |GlobalTitsElement| can be hashed as (fingerprint,twisted_inv) pair
 struct KGB_elt_entry
 {
-  tits::TorusElement t_rep; // a representative torus element, ignored in test
+  TorusElement t_rep; // a representative, ignored in test
   weyl::TI_Entry tw;
   RatWeight fingerprint; // charcterizes the torus element
 
@@ -208,7 +211,7 @@ struct KGB_elt_entry
 
 }; //  |struct KGB_elt_entry|
 
-/*!
+/*
 
 A |GlobalFiberData| object associates to each twisted involution a reduced
 description of its -1 eigenspace, which allows a quick test for equivalence of
@@ -300,14 +303,14 @@ public:
   KGB_elt_entry pack(const GlobalTitsElement& y) const
   { return KGB_elt_entry(fingerprint(y),y); }
 
-  // manipulators: none here, but |InvInfo| proved two of them
+  // manipulators: none here, but |InvInfo| provides two of them
 
 }; // |class GlobalFiberData|
 
 struct InvInfo : public GlobalFiberData
 {
   const SubSystem& sub;
-  unsigned int n_Cartans; // number of Cartan classes generated
+  CartanNbr n_Cartans; // number of Cartan classes generated
 
   InvInfo(const SubSystem& subsys,
 	  hashtable::HashTable<weyl::TI_Entry,unsigned int>& h);
@@ -340,7 +343,8 @@ class global_KGB : public KGB_base
 // accessors
   const GlobalTitsGroup& globalTitsGroup() const { return Tg; }
 
-  tits::TorusElement torus_part(KGBElt x) const { return elt[x].torus_part(); }
+  TorusElement torus_part(KGBElt x) const
+  { return elt[x].torus_part(); }
   const GlobalTitsElement& element(KGBElt x) const { return elt[x]; }
 
   bool compact(RootNbr alpha, const GlobalTitsElement& a) const;
@@ -395,11 +399,7 @@ and in addition the Hasse diagram (set of all covering relations).
 
 // constructors and destructors
   explicit KGB(RealReductiveGroup& GR,
-	       const BitMap& Cartan_classes =  BitMap(0));
-
-  explicit KGB(RealReductiveGroup& GR,
-	       const BitMap& Cartan_classes,
-	       tags::NewTag);
+	       const BitMap& Cartan_classes);
 
   ~KGB(); // { delete d_bruhat; delete d_base; } // these are owned (or NULL)
 

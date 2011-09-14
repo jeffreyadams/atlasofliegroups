@@ -120,10 +120,10 @@ ComplexReductiveGroup::C_info::C_info
   {}
 
 
-/*!
-  \brief Main constructor
+/*
+  Main constructor
 
-  Constructs a |ComplexReductiveGroup| from its root datum |rd| and a
+  Constructs a |ComplexReductiveGroup| from a pre-rootdatum |rd| and a
   distinguished involution |d|, which stabilises the set of simple roots
 */
 ComplexReductiveGroup::ComplexReductiveGroup
@@ -146,6 +146,41 @@ ComplexReductiveGroup::ComplexReductiveGroup
   , d_mostSplit(numRealForms(),0) // values 0 may be increased below
 
   , C_orb(d_rootDatum,distinguished(),d_titsGroup)// don't store ref to |d|!
+{
+  construct();
+}
+
+/*
+  Variant constructor, differs only by using a constructed root datum
+
+  Constructs a |ComplexReductiveGroup| from a rootdatum |rd| and a
+  distinguished involution |d|, which stabilises the set of simple roots
+*/
+ComplexReductiveGroup::ComplexReductiveGroup
+ (const RootDatum& rd, const WeightInvolution& tmp_d)
+  : d_rootDatum(rd)
+  , d_dualRootDatum(d_rootDatum,tags::DualTag())
+  , d_fundamental(d_rootDatum,tmp_d) // will also be fiber of cartan(0)
+  , d_dualFundamental(d_dualRootDatum,dualBasedInvolution(tmp_d,d_rootDatum))
+    // dual fundamental fiber is dual fiber of most split Cartan
+
+  , my_W(new WeylGroup(d_rootDatum.cartanMatrix()))
+  , W(*my_W) // owned when this constructor is used
+
+  , d_titsGroup(d_rootDatum,W,distinguished())
+  , d_dualTitsGroup(d_dualRootDatum,W,dualDistinguished())
+  , root_twist(d_rootDatum.root_permutation(simple_twist()))
+
+  , Cartan(1,C_info(*this,TwistedInvolution(),0))
+  , Cartan_poset() // poset is extended and populated below
+  , d_mostSplit(numRealForms(),0) // values 0 may be increased below
+
+  , C_orb(d_rootDatum,distinguished(),d_titsGroup)// don't store ref to |d|!
+{
+  construct();
+}
+
+void ComplexReductiveGroup::construct()
 {
   { // task 1: generate Cartan classes, fill non-dual part of |Cartan|
     const TitsCoset adj_Tg(*this);     // based adjoint Tits group

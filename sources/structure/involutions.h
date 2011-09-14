@@ -26,7 +26,7 @@
 /* The purpose of this module is to provide a central registry of (twisted)
    invlulutions, in the form of a hash table to encode them by numbers, and
    supplementary information in the form of a table indexed by those numbers.
-   This information, which includes root classifcation and the (somewhat
+   This information, which includes root classification and the (somewhat
    voluminous) involution matrix, is generated as soon a an involution is
    registered here; user code can add parallel arrays for specific uses.
  */
@@ -89,7 +89,6 @@ class InvolutionTable
   const WeightInvolution& delta;
   const TwistedWeylGroup& tW;
 
-
  private:
   weyl::TI_Entry::Pooltype pool;
   hashtable::HashTable<weyl::TI_Entry, InvolutionNbr> hash;
@@ -97,17 +96,20 @@ class InvolutionTable
   struct record
   {
     WeightInvolution theta;
+    int_Matrix projector; // for |y|, same kernel as |row_saturate(theta-id)|
     InvolutionData id;
     unsigned int length;
     unsigned int W_length;
-    SmallSubspace mod_space;
+    SmallSubspace mod_space; // for |x|
 
   record(const WeightInvolution& inv,
 	 const InvolutionData& inv_d,
+	 const int_Matrix& proj,
 	 unsigned int l,
 	 unsigned int Wl,
 	 const SmallSubspace& ms)
-  : theta(inv), id(inv_d),length(l), W_length(Wl), mod_space(ms) {}
+  : theta(inv), projector(proj)
+  , id(inv_d),length(l), W_length(Wl), mod_space(ms) {}
   };
 
   std::vector<record> data;
@@ -131,6 +133,8 @@ class InvolutionTable
 
   const WeightInvolution& matrix(InvolutionNbr n) const
   { assert(n<size()); return data[n].theta; }
+  const WeightInvolution& matrix(const TwistedInvolution& tw) const
+  { return matrix(nr(tw)); }
 
   unsigned int length(InvolutionNbr n) const
   { assert(n<size()); return data[n].length; }
@@ -165,7 +169,16 @@ class InvolutionTable
   RootNbr real_basis(InvolutionNbr n,weyl::Generator i) const
   { assert(n<size()); return data[n].id.real_basis(i); }
 
+  bool is_complex_simple(InvolutionNbr n,weyl::Generator s) const;
+  bool is_imaginary_simple(InvolutionNbr n,weyl::Generator s) const;
+  bool is_real_simple(InvolutionNbr n,weyl::Generator s) const;
+
   void reduce(TitsElt& a) const;
+
+  bool equivalent(const TorusElement& t1, const TorusElement& t2,
+		  InvolutionNbr i) const;
+  RatWeight fingerprint(const TorusElement& t, InvolutionNbr i) const;
+  y_entry pack(const TorusElement& t, InvolutionNbr i) const;
 
   // the following produces a light-weight function object calling |involution|
   class mapper
@@ -203,6 +216,9 @@ struct Cartan_orbit
 
 }; // |struct Cartan_orbit|
 
+
+// we organize everything by Cartan classes of involutions
+
 class Cartan_orbits : public InvolutionTable
 {
   std::vector<Cartan_orbit> orbit;
@@ -221,8 +237,11 @@ public:
   void add(ComplexReductiveGroup& G, const BitMap& Cartan_classes);
 
 // accessors
+
+  // this method allows mostly finding the range of a given Cartan class
   const Cartan_orbit& operator[](CartanNbr cn) const
   { assert(Cartan_index[cn]!=CartanNbr(~0u)); return orbit[Cartan_index[cn]]; }
+
   CartanNbr Cartan_class(InvolutionNbr i) const
   { return orbit[locate(i)].Cartan_class_nbr; }
   CartanNbr Cartan_class(const TwistedInvolution& tw) const
@@ -241,6 +260,8 @@ public:
   comparer less() const { return comparer(this); }
 
 }; // |class Cartan_orbits|
+
+
 
 
 } // |namespace involutions|

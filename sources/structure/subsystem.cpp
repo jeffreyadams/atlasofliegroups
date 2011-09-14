@@ -177,11 +177,12 @@ LatticeMatrix SubSystem::action_matrix(const WeylWord& ww)
   return result;
 }
 
+// get positive roots by converting the array |pos_map| to a |BitMap|
+RootNbrSet SubSystem::positive_roots() const
+{ return RootNbrSet(rd.numRoots(),pos_map); }
+
 InvolutionData SubSystem::involution_data(const WeightInvolution& theta) const
-{
-  RootNbrSet sub_posroots(rd.numRoots(),pos_map); // subsystem positive roots
-  return InvolutionData(rd,theta,sub_posroots);
-}
+{ return InvolutionData(rd,theta,positive_roots()); }
 
 // grading of subsystem imaginary roots (parent perspective) induced by parent
 Grading SubSystem::induced(Grading base_grading) const

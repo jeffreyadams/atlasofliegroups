@@ -228,9 +228,15 @@ namespace atlas {
   using weyl::WeylEltList;
   using weyl::TwistedInvolutionList;
 
+  namespace y_values {
+    class TorusElement;
+    struct y_entry;
+  }
+  using y_values::TorusElement;
+  using y_values::y_entry;
+
   namespace tits {
     typedef SmallBitVector TorusPart;
-    class TorusElement;
     class GlobalTitsElement;
     class GlobalTitsGroup;
     class SubTitsGroup;
@@ -241,7 +247,6 @@ namespace atlas {
     class EnrichedTitsGroup;
   }
   using tits::TorusPart;
-  using tits::TorusElement;
   using tits::GlobalTitsElement;
   using tits::GlobalTitsGroup;
   using tits::TitsElt;

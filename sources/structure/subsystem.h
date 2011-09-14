@@ -99,6 +99,7 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   // untwisted action of |ww|, as matrix on parent side
   LatticeMatrix action_matrix(const WeylWord& ww) const;
 
+  RootNbrSet positive_roots() const; // for subsystem only
   InvolutionData involution_data (const WeightInvolution& theta) const;
 
   Grading induced(Grading base_grading) const;

@@ -768,10 +768,11 @@ repr::StandardRepr get_repr(const repr::Rep_context& c)
   return c.sr(x,lambda_rho,nu);
 }
 
-void get_parameter(RealReductiveGroup& GR,
-		   KGBElt& x,
-		   Weight& lambda_rho,
-		   RatWeight& gamma)
+
+SubSystem get_parameter(RealReductiveGroup& GR,
+			KGBElt& x,
+			Weight& lambda_rho,
+			RatWeight& gamma)
 {
   // first step: get initial x in canonical fiber
   size_t cn=get_Cartan_class(GR.Cartan_set());
@@ -849,6 +850,9 @@ void get_parameter(RealReductiveGroup& GR,
     gamma.normalize();
   }
 
+
+  SubSystem sub = SubSystem::integral(rd,gamma); // fix integral system now
+
   Weight& numer = gamma.numerator(); // we change |gamma| using it
 
   // although our goal is to make gamma dominant for the integral system only
@@ -856,28 +860,33 @@ void get_parameter(RealReductiveGroup& GR,
   { weyl::Generator s;
     do
     {
-     for (s=0; s<rd.semisimpleRank(); ++s)
+      for (s=0; s<sub.rank(); ++s)
       {
-        int v=rd.simpleCoroot(s).dot(numer);
+	RootNbr alpha = sub.parent_nr_simple(s);
+        int v=rd.coroot(alpha).dot(numer);
         if (v<0)
         {
-          rd.simpleReflect(numer,s);
-          rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
-          x = kgb.cross(s,x);
+          rd.reflect(numer,alpha);
+          rd.reflect(lambda_rho,alpha);
+	  lambda_rho -= rd.root(alpha)*rd.colevel(alpha);
+          x = kgb.cross(sub.reflection(s),x);
           break;
         }
-        else if (v==0 and kgb.isComplexDescent(s,x))
+        else if (v==0 and kgb.isComplexDescent(sub.simple(s),
+					       kgb.cross(sub.to_simple(s),x)))
         {
-          rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
-          x = kgb.cross(s,x);
+          rd.reflect(lambda_rho,alpha);
+	  lambda_rho -= rd.root(alpha)*rd.colevel(alpha);
+          x = kgb.cross(sub.reflection(s),x);
           break;
         }
       }
     }
-    while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
+    while (s<sub.rank()); // wait until inner loop runs to completion
 
-  }
+  } // |gamma| made integrally dominant
 
+  return sub;
 }
 
 

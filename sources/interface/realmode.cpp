@@ -52,7 +52,6 @@ namespace {
   void realweyl_f();
   void kgb_f();
   void KGB_f();
-  void KGBx_f();
   void kgborder_f();
   void kgbgraph_f();
   void kgp_f();
@@ -95,7 +94,6 @@ commands::CommandMode& realMode()
     real_mode.add("realweyl",realweyl_f);
     real_mode.add("kgb",kgb_f);
     real_mode.add("KGB",KGB_f);
-    real_mode.add("KGBx",KGBx_f);
     real_mode.add("kgborder",kgborder_f);
     real_mode.add("kgbgraph",kgbgraph_f);
     real_mode.add("kgp", kgp_f);
@@ -253,7 +251,7 @@ void kgb_f()
   RealReductiveGroup& G_R = currentRealGroup();
   std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
   ioutils::OutputFile file;
-  KGB kgb(G_R);
+  KGB kgb(G_R,G_R.Cartan_set());
   kgb_io::printKGB(file,kgb); // generate traditionally, and forget
 }
 
@@ -269,17 +267,6 @@ void KGB_f()
   kgb_io::var_print_KGB(f,G,G_R.kgb());
 }
 
-void KGBx_f()
-{
-  RealReductiveGroup& G_R = realmode::currentRealGroup();
-  std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
-
-  ioutils::OutputFile f;
-
-  KGB kgb(G_R,G_R.Cartan_set(),tags::NewTag());
-
-  kgb_io::var_print_KGB(f,G_R.complexGroup(),kgb);
-}
 
 // Print the Hasse diagram of the ordering of K orbits on G/B.
 void kgborder_f()

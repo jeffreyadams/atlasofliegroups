@@ -135,6 +135,9 @@ class RootSystem
   int_Vector root_expr(RootNbr alpha) const;
   int_Vector coroot_expr(RootNbr alpha) const;
 
+  int level(RootNbr alpha) const; // equals |root(alpha).dot(dual_twoRho())|
+  int colevel(RootNbr alpha) const; // equals |coroot(alpha).(twoRho())|
+
   // convert sequence of root numbers to expressions in the simple roots
   template <typename I, typename O>
     void toRootBasis(I, I, O) const;

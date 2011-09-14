@@ -101,10 +101,10 @@ namespace interactive {
   input::InputBuffer& common_input();
   input::InputBuffer& sr_input();
 
-  void get_parameter(RealReductiveGroup& GR,
-		     KGBElt& x,
-		     Weight& lambda_rho,
-		     RatWeight& gamma);
+  SubSystem get_parameter(RealReductiveGroup& GR,
+			  KGBElt& x,
+			  Weight& lambda_rho,
+			  RatWeight& gamma);
 
   void getInteractive(atlas::Parabolic &psg, size_t rank)
     throw(error::InputError);

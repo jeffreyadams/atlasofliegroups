@@ -66,80 +66,6 @@ std::vector<Grading> compute_square_classes
 
 *****************************************************************************/
 
-//              |TorusElement|
-
-
-// For torus elements we keep numerator entries reduced modulo |2*d_denom|.
-// Note this invariant is not enforced in the (private) raw constructor.
-
-// make $\exp(2\pi i r)$, doing affectively *2, then reducing modulo $2X_*$
-  TorusElement::TorusElement(const RatWeight& r, bool two)
-  : repr(r) // but multiplied by 2 below
-{ if (two)
-    repr*=2;
-  unsigned int d=2u*repr.denominator(); // we reduce modulo $2\Z^rank$
-  Weight& num=repr.numerator();
-  for (size_t i=0; i<num.size(); ++i)
-    num[i] = arithmetic::remainder(num[i],d);
-}
-
-RatWeight TorusElement::log_pi(bool normalize) const
-{
-  if (normalize)
-    return RatWeight(repr).normalize();
-  return repr;
-}
-
-RatWeight TorusElement::log_2pi() const
-{
-  Weight numer = repr.numerator(); // copy
-  unsigned int d = 2u*repr.denominator(); // this will make result mod Z, not 2Z
-  return RatWeight(numer,d).normalize();
-}
-
-Rational TorusElement::evaluate_at
-  (const Coweight& alpha) const
-{
-  unsigned int d = repr.denominator();
-  int n = arithmetic::remainder(repr.numerator().dot(alpha),d+d);
-  return Rational(n,d);
-}
-
-TorusElement TorusElement::operator +(const TorusElement& t) const
-{
-  TorusElement result(repr + t.repr,tags::UnnormalizedTag()); // raw ctor
-  int d=2*result.repr.denominator(); // we shall reduce modulo $2\Z^rank$
-  Weight& num=result.repr.numerator();
-  for (size_t i=0; i<num.size(); ++i)
-    if (num[i] >= d) // correct if |result.repr| in interval $[2,4)$
-      num[i] -=d;
-  return result;
-}
-
-TorusElement TorusElement::operator -(const TorusElement& t) const
-{
-  TorusElement result(repr - t.repr,0); // raw constructor
-  int d=2*result.repr.denominator(); // we shall reduce modulo $2\Z^rank$
-  Weight& num=result.repr.numerator();
-  for (size_t i=0; i<num.size(); ++i)
-    if (num[i]<0) // correct if |result.repr| in interval $(-2,0)$
-      num[i] +=d;
-  return result;
-}
-
-TorusElement& TorusElement::operator+=(TorusPart v)
-{
-  for (size_t i=0; i<v.size(); ++i)
-    if (v[i])
-    {
-      if (repr.numerator()[i]<repr.denominator())
-	repr.numerator()[i]+=repr.denominator(); // add 1/2 to coordinate
-      else
-	repr.numerator()[i]-=repr.denominator(); // subtract 1/2
-    }
-  return *this;
-}
-
 
 
 //              |GlobalTitsElement|
@@ -227,8 +153,8 @@ WeightInvolution
 TorusElement GlobalTitsGroup::twisted(const TorusElement& x) const
 {
   RatWeight rw = x.log_pi(false);
-  return exp_pi(RatWeight(delta_tr*rw.numerator(),
-					rw.denominator()));
+  return y_values::exp_pi(RatWeight(delta_tr*rw.numerator(),
+				    rw.denominator()));
 }
 
 TorusElement GlobalTitsGroup::theta_tr_times_torus(const GlobalTitsElement& a)
@@ -236,7 +162,7 @@ TorusElement GlobalTitsGroup::theta_tr_times_torus(const GlobalTitsElement& a)
 { RatWeight rw = a.torus_part().log_pi(false);
   matrix::Vector<int> num = delta_tr*rw.numerator();
   weylGroup().act(simple,a.tw(),num);
-  return exp_pi(RatWeight(num,rw.denominator()));
+  return y_values::exp_pi(RatWeight(num,rw.denominator()));
 }
 
 // this is currently only used by |has_central_square| (with |do_twist==true|)
@@ -368,45 +294,51 @@ void GlobalTitsGroup::add
   const
 { // the following would be necessary to get a true right-mulitplication
   // involution_matrix(a.tw()).apply_to(rw.numerator()); // pull |rw| across
-  tits::TorusElement& tp = a.t;
-  tp = tp + exp_2pi(rw);
+  TorusElement& tp = a.t;
+  tp = tp + y_values::exp_2pi(rw);
 }
 
 /*
-  When trying to invert a Cayley transform, apart from modifying the
-  involution, we must change the torus element so that its evaluation on
-  $\alpha$ becomes integer (half-integer means we have a potentially valid
-  Tits element, but the requirement that the simple root |alpha| become a
-  noncompact root means the value should in fact be integer). We may modify by
-  a rational multiple of $\alpha^\vee$, since being $-\theta$-fixed after the
-  Cayley transform such a coweight has zero evalution on $\theta$-fixed
-  weights (so the evaluation on imaginary roots stays half-integral), and
-  modulo coweights that are $-\theta$-fixed before the Cayley transform (which
-  do not affect $\alpha$, and which we continue to not care about) multiples
-  of $\alpha^\vee$ are the only freedom we have to modify the evaluation at
-  $\alpha$. If not already integral, we simply make the evaluation at $\alpha$
-  zero, which is as good as any integer. Note that in the reduction modulo 2
-  that will be used in |TitsGroup| below, this kind of correction is no longer
-  possible, and we must perform a more tedious search for a valid correction.
+  When trying to invert a Cayley transform, we may need to change the torus
+  element so that its evaluation on $\alpha$ becomes integer (half-integer
+  means we have a potentially valid Tits element, but the requirement that the
+  simple root |alpha| become a noncompact root means the value should in fact
+  be integer). We may modify by a rational multiple of $\alpha^\vee$, since
+  being $-\theta$-fixed after the Cayley transform such a coweight has zero
+  evalution on $\theta$-fixed weights (so the evaluation on imaginary roots
+  stays half-integral), and modulo coweights that are $-\theta$-fixed before
+  the Cayley transform (which do not affect $\alpha$, and which we continue to
+  not care about) multiples of $\alpha^\vee$ are the only freedom we have to
+  modify the evaluation at $\alpha$. If not already integral, we simply make
+  the evaluation at $\alpha$ zero, which is as good as any integer. Note that
+  in the reduction modulo 2 that will be used in |TitsGroup| below, this kind
+  of correction is no longer possible, and we must perform a more tedious
+  search for a valid correction.
 
   This is Lemma 14.6 in the Algorithms paper.
  */
-void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
-  const
+void
+GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,TorusElement& t) const
 {
   const Coweight& eval_pt=simple.coroots()[s];
-  RatWeight t=a.t.log_2pi();
-  int num = eval_pt.dot(t.numerator()); // should become multiple of denominator
+  RatWeight w=t.log_2pi();
+  int num = eval_pt.dot(w.numerator()); // should become multiple of denominator
 
-  if (num% (int)(t.denominator())!=0) // correction needed if alpha compact
+  if (num % w.denominator()!=0) // correction needed if alpha compact
   {
     const Weight& shift_vec= simple.roots()[s];
     // |eval_pt.dot(shift_vec)==2|, so correct numerator by |(num/2d)*shift_vec|
-    t -= RatWeight(shift_vec*num,2*t.denominator());
-    assert(eval_pt.dot(t.numerator())==0);
+    w -= RatWeight(shift_vec*num,2*w.denominator());
+    assert(eval_pt.dot(w.numerator())==0);
+    t=y_values::exp_2pi(w);
   }
+}
 
-  leftMult(a.w,s); a.t=exp_2pi(t);
+void GlobalTitsGroup::do_inverse_Cayley(weyl::Generator s,GlobalTitsElement& a)
+  const
+{
+  do_inverse_Cayley(s,a.t);
+  leftMult(a.w,s);
 }
 
 // Sometimes we need to compute the grading at non-simple imaginary roots.
@@ -519,7 +451,7 @@ SubTitsGroup::SubTitsGroup(const ComplexReductiveGroup& G,
   GlobalTitsElement a(G.rank()); // identity
   for (weyl::Generator s=0; s<sub.rank(); ++s)
     if (parent.compact(sub.parent_datum(),sub.parent_nr_simple(s),a))
-      t = t + exp_2pi(rd.fundamental_weight(s));
+      t = t + y_values::exp_2pi(rd.fundamental_weight(s));
 }
 
 TorusElement SubTitsGroup::base_point_offset(const TwistedInvolution& tw)

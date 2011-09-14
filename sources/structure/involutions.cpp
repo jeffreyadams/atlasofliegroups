@@ -1,7 +1,7 @@
 /*
   This is involutions.cpp.
 
-  Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright (C) 2011 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
@@ -11,10 +11,14 @@
 
 #include "involutions.h"
 
+#include "arithmetic.h"
+
 #include "rootdata.h"
 #include "weyl.h"
+#include "y_values.h"
 #include "tits.h"
 #include "complexredgp.h"
+#include "lattice.h"
 
 namespace atlas {
 
@@ -192,10 +196,15 @@ InvolutionNbr InvolutionTable::add_involution(const TwistedInvolution& tw)
   for (RootNbrList::const_iterator it=Cayleys.begin(); it!=Cayleys.end(); ++it)
     rd.reflect(*it,theta);
 
+  int_Matrix A=theta; // will contain |theta-id|, row-saturated
+  for (size_t i=0; i<A.numRows(); ++i)
+    --A(i,i);
+  A = lattice::row_saturate(A);
+
   unsigned int W_length=W.length(tw);
   unsigned int length = (W_length+Cayleys.size())/2;
-  data.push_back(record
-    (theta,InvolutionData(rd,theta),length,W_length,tits::fiber_denom(theta)));
+  data.push_back(record(theta,InvolutionData(rd,theta),A,
+			length,W_length,tits::fiber_denom(theta)));
   assert(data.size()==hash.size());
 
   return result;
@@ -214,6 +223,7 @@ InvolutionNbr InvolutionTable::add_cross(weyl::Generator s, InvolutionNbr n)
 
   rd.simple_reflect(s,me.theta);
   rd.simple_reflect(me.theta,s); // not |twisted(s)|: |delta| is incorporated
+  rd.simple_reflect(me.projector,s); // reflection by |s| of kernel
   me.id.cross_act(rd.simple_root_permutation(s));
   me.length   += d/2;
   me.W_length += d;
@@ -222,6 +232,51 @@ InvolutionNbr InvolutionTable::add_cross(weyl::Generator s, InvolutionNbr n)
   assert(data.size()==hash.size());
 
   return result;
+}
+
+bool
+InvolutionTable::is_complex_simple(InvolutionNbr n,weyl::Generator s) const
+{ return complex_roots(n).isMember(rd.simpleRootNbr(s)); }
+
+bool
+InvolutionTable::is_imaginary_simple(InvolutionNbr n,weyl::Generator s) const
+{ return imaginary_roots(n).isMember(rd.simpleRootNbr(s)); }
+
+bool
+InvolutionTable::is_real_simple(InvolutionNbr n,weyl::Generator s) const
+{ return real_roots(n).isMember(rd.simpleRootNbr(s)); }
+
+
+bool InvolutionTable::equivalent
+  (const TorusElement& t1, const TorusElement& t2, InvolutionNbr i) const
+{
+  assert(i<hash.size());
+  RatWeight wt=(t2-t1).log_2pi();
+  int_Vector p = data[i].projector * wt.numerator();
+
+  for (size_t j=0; j<p.size(); ++j)
+    if (p[j]%wt.denominator()!=0)
+      return false;
+
+  return true;
+}
+
+RatWeight InvolutionTable::fingerprint
+  (const TorusElement& t, InvolutionNbr i) const
+{
+  assert(i<hash.size());
+  RatWeight wt = t.log_2pi();
+  int_Vector p = data[i].projector * wt.numerator();
+
+  // reduce modulo integers and return
+  for (size_t j=0; j<p.size(); ++j)
+    p[j]= arithmetic::remainder(p[j],wt.denominator());
+  return RatWeight(p,wt.denominator()).normalize();
+}
+
+y_entry InvolutionTable::pack (const TorusElement& t, InvolutionNbr i) const
+{
+  return y_entry(fingerprint(t,i),i,t);
 }
 
 

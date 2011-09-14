@@ -123,12 +123,12 @@ private:
 typedef std::auto_ptr<Lie_type_value> Lie_type_ptr;
 typedef std::tr1::shared_ptr<Lie_type_value> shared_Lie_type;
 
-@ The type |LieType| is publicly derived from
-|std::vector<SimpleLieType>|, and in its turn |SimpleLieType| is publicly
-derived from |std::pair<char,size_t>|. Therefore these types could take
-arbitrary values, not necessarily meaningful ones. To remedy this we make the
-method |add_simple_factor|, which is the only proposed way to build up Lie
-types, check for the validity.
+@ The type |LieType| is publicly derived from |std::vector<SimpleLieType>|,
+and in its turn the type |SimpleLieType| is publicly derived from
+|std::pair<char,size_t>|. Therefore these types could take arbitrary values,
+not necessarily meaningful ones. To remedy this we make the method
+|add_simple_factor|, which is the only proposed way to build up Lie types,
+check for the validity.
 
 Since the tests defined in \.{io/interactive\_lietype.cpp} used in the
 current interface for the Atlas software are clumsy to use, we perform
@@ -1687,14 +1687,17 @@ void inner_class_value::print(std::ostream& out) const
 }
 
 @ Our wrapper function builds a complex reductive group with an involution,
-testing its validity. It somewhat curiously needs to extract a |PreRootDatum|
-from a |RootDatum|, since the |ComplexReductiveGroup| constructor takes that
-as an argument, and (re-)constructs the root datum itself. This is obviously
-inefficient, but passing a full |RootDatum| to the constructor would mean
-having to copy that into the new object in all cases, which is not
-necessary \emph{unless} we want to keep a separate copy of the root datum as
-we do here. Another wrapper returns a second value, which is the twisted
-involution corresponding in the inner class to the given involution matrix.
+testing its validity. The Weyl word |ww| that was needed in the test to make
+the involution into one of the based root datum must be applied to the matrix,
+since the test does not actually modify its matrix argument. Then the root
+datum is passed to a |ComplexReductiveGroup| constructor that the library
+provides specifically for this purpose, and which makes a copy of the root
+datum; the \.{atlas} program instead uses a constructor using a |PreRootDatum|
+that constructs the |RootDatum| directly into the |ComplexReductiveGroup|, but
+using that constructor here would be cumbersome and even less efficient then
+copying the existing root datum. Another wrapper |twisted_involution_wrapper|
+is similar, but also returns a second value, which is the twisted involution
+corresponding in the inner class to the given involution matrix.
 
 @< Local function def...@>=
 void fix_involution_wrapper(expression_base::level l)
@@ -1704,16 +1707,10 @@ void fix_involution_wrapper(expression_base::level l)
   lietype::Layout lo = check_involution(M,rd->val,ww);
   if (l==expression_base::no_value)
     return;
-
-  WeightList simple_roots
-    (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
-  CoweightList simple_coroots
-    (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
-  PreRootDatum prd(simple_roots,simple_coroots,rd->val.rank());
 @)
   for (unsigned int i=ww.size(); i-->0;)
     rd->val.simple_reflect(ww[i],M);
-  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(prd,M));
+  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(rd->val,M));
   push_value(new inner_class_value(G,lo));
 }
 
@@ -1724,16 +1721,10 @@ void twisted_involution_wrapper(expression_base::level l)
   lietype::Layout lo = check_involution(M,rd->val,ww);
   if (l==expression_base::no_value)
     return;
-
-  WeightList simple_roots
-    (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
-  CoweightList simple_coroots
-    (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
-  PreRootDatum prd(simple_roots,simple_coroots,rd->val.rank());
 @)
   for (unsigned int i=ww.size(); i-->0;)
     rd->val.simple_reflect(ww[i],M);
-  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(prd,M));
+  std::auto_ptr<ComplexReductiveGroup> G(new ComplexReductiveGroup(rd->val,M));
   push_value(new inner_class_value(G,lo));
   push_value(new vector_value(std::vector<int>(ww.begin(),ww.end())));
   if (l==expression_base::single_value)
@@ -1776,14 +1767,8 @@ void set_type_wrapper(expression_base::level l)
   if (l==expression_base::no_value)
     return; // bow out now all possible errors are passed
 @)
-  WeightList simple_roots
-    (rd->val.beginSimpleRoot(),rd->val.endSimpleRoot());
-  CoweightList simple_coroots
-    (rd->val.beginSimpleCoroot(),rd->val.endSimpleCoroot());
-  PreRootDatum prd(simple_roots,simple_coroots,rd->val.rank());
-
   std::auto_ptr<ComplexReductiveGroup>@|
-    G(new ComplexReductiveGroup(prd,M->val));
+    G(new ComplexReductiveGroup(rd->val,M->val));
   push_value(new inner_class_value(G,lo));
 }
 

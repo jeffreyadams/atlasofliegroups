@@ -397,7 +397,7 @@ void dual_kgb_f()
   std::cout << "dual kgbsize: " << dG.KGB_size() << std::endl;
   ioutils::OutputFile file;
 
-  KGB kgb(dG);
+  KGB kgb(dG,dG.Cartan_set());
   kgb_io::printKGB(file,kgb);
 }
 

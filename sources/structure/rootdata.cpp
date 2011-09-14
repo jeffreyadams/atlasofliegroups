@@ -292,10 +292,33 @@ int_Vector RootSystem::root_expr(RootNbr alpha) const
 int_Vector RootSystem::coroot_expr(RootNbr alpha) const
 {
   RootNbr a=rt_abs(alpha);
-  int_Vector expr(ri[a].dual.begin(),ri[a].dual.end());
+  int_Vector expr(coroot(a).begin(),coroot(a).end());
   if (not isPosRoot(alpha))
     expr *= -1;
   return expr;
+}
+
+int RootSystem::level(RootNbr alpha) const
+{
+  RootNbr a=rt_abs(alpha);
+  int result=0;
+  for (Byte_vector::const_iterator it=root(a).begin(); it!=root(a).end(); ++it)
+    result += *it;
+  if (not isPosRoot(alpha))
+    result *= -1;
+  return result;
+}
+
+int RootSystem::colevel(RootNbr alpha) const
+{
+  RootNbr a=rt_abs(alpha);
+  int result=0;
+  for (Byte_vector::const_iterator
+	 it=coroot(a).begin(); it!=coroot(a).end(); ++it)
+    result += *it;
+  if (not isPosRoot(alpha))
+    result *= -1;
+  return result;
 }
 
 /*!
@@ -512,34 +535,35 @@ matrix::Vector<int> RootSystem::pos_system_vec(const RootNbrList& Delta) const
 
 RootNbrList RootSystem::simpleBasis(RootNbrSet rs) const
 {
-  rs.clear(0,numPosRoots()); // clear negative roots
+  rs.clear(0,numPosRoots()); // clear any negative roots, not considered here
   RootNbrSet candidates = rs; // make a copy that will be pruned
 
   for (RootNbrSet::iterator it=candidates.begin(); it(); ++it)
   {
     RootNbr alpha=*it;
-    for (RootNbrSet::iterator jt=rs.begin(); jt(); ++jt) // full positive subsystem
+    for (RootNbrSet::iterator
+	   jt=rs.begin(); jt(); ++jt) // run through unpruned subsystem
     {
       RootNbr beta=*jt;
       if (alpha==beta) continue; // avoid reflecting root itself
       RootNbr gamma = root_perm[alpha-numPosRoots()][beta];
       if (gamma<beta) // positive dot product
       {
-	if (isPosRoot(gamma))
-	  candidates.remove(beta); // simple root cannot be made less positive
+	if (isPosRoot(gamma)) // beta can be made less positive, so it cannot
+	  candidates.remove(beta); // be simple; remove it if it was candidate
 	else
-	{
-	  candidates.remove(alpha); // simple root cannot make other negative
-	  break;
+	{ // reflection in alpha makes some other root (beta) negative, so
+	  candidates.remove(alpha); // alpha is not simple; remove it
+	  break; // and move on to the next candadate
 	}
       }
-    }
+    } // |for (beta)|
     if (not candidates.isMember(alpha)) // so we just removed it, |break| again
       break;
-  }
-  // now every member of |candidates| permutes the other members of |rs|
+  } // |for (alpha)|
+  // now every reflection among |candidates| permutes the other members of |rs|
 
-  return RootNbrList(candidates.begin(), candidates.end()); // converts to vector
+  return RootNbrList(candidates.begin(), candidates.end()); // convert to vector
 }
 
 bool RootSystem::sumIsRoot(RootNbr alpha, RootNbr beta, RootNbr& gamma) const

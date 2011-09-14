@@ -1049,23 +1049,6 @@ void srtest_f()
 
 bool examine(RealReductiveGroup& G)
 {
-  KGB kgb1(G);
-  KGB kgb2(G,G.Cartan_set(),tags::NewTag());
-  if (kgb1.size()!=kgb2.size()) return false;
-  for (size_t i=0; i<kgb1.size(); ++i)
-  {
-    for (size_t s=0; s<G.semisimpleRank(); ++s)
-    {
-      if (kgb1.cross(s,i)!=kgb2.cross(s,i)) return false;
-      if (kgb1.cayley(s,i)!=kgb2.cayley(s,i)) return false;
-    }
-    if(kgb1.status(i)!=kgb2.status(i)) return false;
-  }
-  return true;
-}
-
-bool examine_monotone(RealReductiveGroup& G)
-{
   const WeylGroup& W = G.weylGroup();
   const KGB& kgb=G.kgb();
   size_t l = W.length(kgb.involution(0)),t;
@@ -1081,7 +1064,7 @@ void testrun_f()
 {
   unsigned long rank=interactive::get_bounded_int
     (interactive::common_input(),"rank: ",constants::RANK_MAX+1);
-  std::cout << "Testing new KGB generation.\n";
+  std::cout << "Testing W-length monotonicity.\n";
   for (testrun::LieTypeIterator it(testrun::Semisimple,rank); it(); ++it)
   {
     std::cout<< *it << std::endl;
@@ -1115,9 +1098,9 @@ void testrun_f()
 
 void exam_f()
 {
-  std::cout << "New KGB generation "
+  std::cout << "W-length monotine in KGB? "
             << (examine(realmode::currentRealGroup())
-		? "same" : "different")
+		? "yes" : "no")
 	    << std::endl;
 }
 
@@ -1222,16 +1205,13 @@ void nblock_f()
     RatWeight gamma(0);
     KGBElt x;
 
-    interactive::get_parameter(GR,x,lambda_rho,gamma);
+    SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
     RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
     lambda.normalize();
 
     ioutils::OutputFile f;
     f << "x = " << x << ", gamma = " << gamma
 	      << ", lambda = " << lambda << std::endl;
-
-    SubSystem sub = SubSystem::integral(rd,gamma);
-
 
     WeightInvolution theta =
       GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
@@ -1332,16 +1312,13 @@ void partial_block_f()
     RatWeight gamma(0);
     KGBElt x;
 
-    interactive::get_parameter(GR,x,lambda_rho,gamma);
+    SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
     RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
     lambda.normalize();
 
     ioutils::OutputFile f;
     f << "x = " << x << ", gamma = " << gamma
 	      << ", lambda = " << lambda << std::endl;
-
-    SubSystem sub = SubSystem::integral(rd,gamma);
-
 
     WeightInvolution theta =
       GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
@@ -1386,7 +1363,7 @@ void partial_block_f()
 } // |partial_block_f|
 
 
-tits::TorusElement torus_part
+TorusElement torus_part
   (const RootDatum& rd,
    const WeightInvolution& theta,
    const RatWeight& lambda, // discrete parameter
@@ -1403,7 +1380,7 @@ tits::TorusElement torus_part
       cumul+=rd.root(*it);
   // now |cumul| is $2\rho_\Re(G)-2\rho_\Re(G(\gamma))$
 
-  return tits::exp_pi(gamma-lambda+RatWeight(cumul,2));
+  return y_values::exp_pi(gamma-lambda+RatWeight(cumul,2));
 }
 
 void embedding_f()

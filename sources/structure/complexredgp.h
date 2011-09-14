@@ -202,7 +202,10 @@ class ComplexReductiveGroup
 
  public:
 // constructors and destructors
-  ComplexReductiveGroup(const PreRootDatum&, // constructor builds root data
+  ComplexReductiveGroup(const PreRootDatum&, // constructor builds root datum
+			const WeightInvolution&);
+
+  ComplexReductiveGroup(const RootDatum&, // alternative that copies root datum
 			const WeightInvolution&);
 
   ComplexReductiveGroup(const ComplexReductiveGroup&, tags::DualTag);
@@ -520,6 +523,8 @@ class ComplexReductiveGroup
 
  private:
 // auxiliary accessors
+  void construct(); // does essential work, common to two constructors
+
 TwistedInvolution
   reflection(RootNbr rn,const TwistedInvolution& tw) const;
 
