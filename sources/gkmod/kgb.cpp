@@ -39,7 +39,7 @@
 #include "subsystem.h"
 #include "tits.h"
 #include "weyl.h"
-#include "involutions.h" // for |FiberData|
+#include "involutions.h" // for |InvolutionTable|
 
 #include "basic_io.h"
 #include "prettyprint.h"
@@ -356,13 +356,11 @@ void global_KGB::generate(size_t predicted_size)
   hashtable::HashTable<KGB_elt_entry,KGBElt> elt_hash(elt_pool);
 
   KGBElt end_length=0; // end of the length-interval under construction
-  {
-    TwistedInvolution e; // identity
-    for (size_t i=0; i<elt.size(); ++i)
-      elt_hash.match(i_tab.x_pack(elt[i]));
 
-    assert(elt_hash.size()==elt.size()); // all distinct; in fact an invariant
-  }
+  for (size_t i=0; i<elt.size(); ++i)
+    elt_hash.match(i_tab.x_pack(elt[i]));
+
+  assert(elt_hash.size()==elt.size()); // all distinct; in fact an invariant
 
   while (end_length<first_of_tau.size()-1)
   {
@@ -785,7 +783,7 @@ subsys_KGB::subsys_KGB
 
   size_t sub_rank = sub.semisimple_rank();
 
-  const TitsCoset Tc(sub,kgb.base_grading()); // constructor converts
+  const TitsCoset Tc(sub,kgb.base_grading()); // constructor converts grading
   const TitsGroup& Tg = Tc.titsGroup(); // we need this several times
   const WeylGroup& W = Tc.weylGroup();
 
@@ -794,9 +792,7 @@ subsys_KGB::subsys_KGB
   { // modify |cur_x|, descending to minimal element for |subsys|
     weyl::Generator s;
     do
-    {
       for(s=0; s<sub_rank; ++s)
-      {
 	if (W.hasDescent(s,cur_x.tw()))
 	{
 	  if (Tc.hasTwistedCommutation(s,cur_x.tw())) // real
@@ -807,9 +803,8 @@ subsys_KGB::subsys_KGB
 	  else // complex descent
 	    Tc.basedTwistedConjugate(cur_x,s);
 	  break;
-	} // |if(isDescent)|
-      } // |for(s)|
-    } while(s<sub_rank); // loop until no descents found in |sub|
+	} // |if(isDescent), |for(s)|
+    while(s<sub_rank); // loop until no descents found in |sub|
   }
 
   tits::TE_Entry::Pooltype elt_pool(1,tits::TE_Entry(cur_x));
@@ -859,7 +854,7 @@ subsys_KGB::subsys_KGB
 	fd.reduce(x);
 	KGBElt child = elt_hash.match(x);
 	if (child==info.size()) // then newborn
-	  add_element(); // create its |info| entry, setting length, tw
+	  add_element(); // create its |info| entry
 	data[s][cur].cross_image=child; // set link from |x| to child
 	if (d!=0)
 	  info[cur].status.set(s,gradings::Status::Complex);
