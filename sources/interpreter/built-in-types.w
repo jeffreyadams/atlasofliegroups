@@ -3143,8 +3143,9 @@ void print_W_graph_wrapper(expression_base::level l)
 }
 
 @ The function |test_representation| serves to experiment with the input of
-general representation parameters and they computation of the corresponding
-pair $(x,y)$.
+general representation parameters and the computation of the corresponding
+pair $(x,y)$. The code below should be modified so as to use only the integral
+system defined by the infinitesimal character~$\gamma$.
 
 @h "repr.h"
 
