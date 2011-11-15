@@ -571,7 +571,8 @@ public:
   /* inverse operation of |toUlong| */
   WeylElt toWeylElt(unsigned long) const;
 
-  bool hasDescent(Generator, const WeylElt&) const;
+  bool hasDescent(Generator, const WeylElt&) const; // on the left
+  bool hasDescent(const WeylElt&, Generator) const; // on the right
 
   // apply automorphism of $(W,S)$ given by |f| in terms of outer numbering
   WeylElt translation(const WeylElt& w, const WeylInterface& f) const;
@@ -667,6 +668,8 @@ public:
 
   bool hasDescent(Generator s, const WeylElt& w) const
     { return W.hasDescent(s,w); }
+  bool hasDescent(const WeylElt& w, Generator s) const
+    { return W.hasDescent(w,s); }
 
   Generator twisted(Generator s) const { return d_twist[s]; }
   WeylElt twisted(const WeylElt& w) const { return W.translation(w,d_twist); }
@@ -720,10 +723,11 @@ public:
 */
   unsigned long involutionLength(const TwistedInvolution& tw) const;
 
-/*!
+ /*!
   \brief Returns a reduced expression of |tw| as a twisted involution.
 */
-  InvolutionWord involution_expr(TwistedInvolution tw) const; // call by value
+   InvolutionWord involution_expr(TwistedInvolution tw) const; // call by value
+   InvolutionWord canonical_involution_expr(TwistedInvolution tw) const; // idem
 
   //!\brief Roots that are images of the simple roots under involution of |tw|
   RootNbrList simple_images

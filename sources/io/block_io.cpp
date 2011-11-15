@@ -358,7 +358,7 @@ std::ostream& printDescent(std::ostream& strm,
 {
   strm << '[';
 
-  for (size_t s = 0; s < rank; ++s) 
+  for (size_t s = 0; s < rank; ++s)
   {
     if (s!=0)
       strm << ',';

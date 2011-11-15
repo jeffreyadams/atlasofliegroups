@@ -61,7 +61,7 @@ namespace blocks {
 
 class Block_base {
 
-  const WeylGroup& W; // used only for |compute_support| and printing
+  const TwistedWeylGroup& tW; // used only for |compute_support| and printing
 
  protected: // other fields may be set in derived class contructor
 
@@ -81,14 +81,15 @@ class Block_base {
 // constructors and destructors
   Block_base(const KGB& kgb,const KGB& dual_kgb);
   Block_base(const SubSystem& sub,
-	     const WeylGroup& printing_W);
+	     const TwistedWeylGroup& printing_W);
 
   virtual ~Block_base() {}
 
 // copy, assignment and swap
 
 // accessors
-  const WeylGroup& weylGroup() const { return W; }
+  const TwistedWeylGroup& twistedWeylGroup() const { return tW; }
+  const WeylGroup& weylGroup() const { return tW.weylGroup(); }
 
   size_t rank() const { return d_cross.size(); } // semisimple rank matters
   size_t size() const { return d_x.size(); }

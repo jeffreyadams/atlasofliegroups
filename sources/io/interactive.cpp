@@ -800,7 +800,8 @@ SubSystem get_parameter(RealReductiveGroup& GR,
   }
   else
   {
-    std::cout << "Choose a KGB element from the following canonical fiber:\n";
+    std::cout << "Choose a KGB element from Cartan " << cn
+	      << ", whose canonical fiber is:\n";
     kgb_io::print(std::cout,kgb,false,&G,&canonical_fiber);
     x = get_int_in_set("KGB number: ",cf);
   }

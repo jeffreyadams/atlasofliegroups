@@ -114,6 +114,8 @@ namespace {
   void testrun_h();
   void exam_h();
 
+  void nblock_h();
+
   // tags
   const char* test_tag = "test command (for development only)";
 
@@ -137,8 +139,10 @@ namespace {
   const char* srtest_tag = "gives information about a representation";
   const char* testrun_tag =
                 "iterates over root data of given rank, calling examine";
-  const char* examine_tag =
-    "tests if kgb and KGB commands generate identical numberings";
+  const char* examine_tag = "tests whether block is ordered by Weyl length";
+
+  const char* nblock_tag = "computes a non-integral block";
+  const char* partial_block_tag = "computes part of a non-integral block";
 
 /*
   For convenience, the "test" command is added to the mode that is flagged by
@@ -322,6 +326,7 @@ template<> void addTestHelp<realmode::RealmodeTag>
   mode.add("branch",branch_h);
   mode.add("srtest",srtest_h);
   mode.add("examine",helpmode::nohelp_h);
+  mode.add("nblock",nblock_h);
 
 
   // add additional command tags here :
@@ -334,6 +339,8 @@ template<> void addTestHelp<realmode::RealmodeTag>
   insertTag(t,"branch",branch_tag);
   insertTag(t,"srtest",srtest_tag);
   insertTag(t,"examine",examine_tag);
+  insertTag(t,"nblock",nblock_tag);
+  insertTag(t,"partial_block",partial_block_tag);
 
 }
 
@@ -1629,6 +1636,11 @@ void branch_h()
 void srtest_h()
 {
   io::printFile(std::cerr,"srtest.help",io::MESSAGE_DIR);
+}
+
+void nblock_h()
+{
+  io::printFile(std::cerr,"nblock.help",io::MESSAGE_DIR);
 }
 
 } // |namespace|

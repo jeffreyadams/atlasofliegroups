@@ -191,10 +191,10 @@ void KGB_base::add_element()
 global_KGB::global_KGB(ComplexReductiveGroup& G)
   : KGB_base(G,G.semisimpleRank())
   , Tg(G) // construct global Tits group as subobject
-  , fiber_data(G,(generate_involutions(G.numInvolutions()),inv_hash))
   , elt()
 {
   G.involution_table().add(G,~ BitMap(G.numCartanClasses()));
+  generate_involutions(G.numInvolutions());
 
   size_t size = G.global_KGB_size();
   elt.reserve(size);
@@ -235,12 +235,15 @@ global_KGB::global_KGB(ComplexReductiveGroup& G,
 		       const GlobalTitsElement& x)
   : KGB_base(G,G.semisimpleRank())
   , Tg(G) // construct global Tits group as subobject
-  , fiber_data(G,(generate_involutions(G.numInvolutions()),inv_hash))
   , elt()
 {
+  generate_involutions(G.numInvolutions());
   assert(Tg.is_valid(x)); // unless this holds, we cannot hope to succeed
 
-  G.involution_table().add(G,~ BitMap(G.numCartanClasses())); // generate all
+  Cartan_orbits& i_tab = G.involution_table();
+  const RootDatum& rd = G.rootDatum();
+
+  i_tab.add(G,~ BitMap(G.numCartanClasses())); // generate all
 
   GlobalTitsElement a=x; // start at an element that we certainly want
   weyl::Generator s;
@@ -254,46 +257,50 @@ global_KGB::global_KGB(ComplexReductiveGroup& G,
   assert (a.tw()==TwistedInvolution()); // we are at fundamental fiber
 
   { // get elements at the fundamental fiber
+    InvolutionNbr inv = i_tab.nr(a.tw());
     first_of_tau.push_back(0); // start of fundamental fiber
     KGB_elt_entry::Pooltype elt_pool;
     hashtable::HashTable<KGB_elt_entry,unsigned long> elt_hash(elt_pool);
-    add_element(); // create in base
-    elt_hash.match(fiber_data.pack(a));
 
-    /* Generate fundamental fiber. We use that cross actions by imaginary,
-       non-compact, simple roots suffice, but without knowing a nice proof. */
+    elt_hash.match(i_tab.x_pack(a));
+
+    // generating reflections are for simple-imaginary roots at |inv|
+    const RootNbrList& gen_root = i_tab.imaginary_basis(inv);
     for (size_t i=0; i<elt_hash.size(); ++i) // |elt_hash| grows during loop
-      for (weyl::Generator s=0; s<rank(); ++s)
-	if (Tg.twisted(s)==s // then imaginary, since fiber is fundamental
-	    and not Tg.compact(s,a=elt_hash[i].repr())) // noncompact
-	{
-	  Tg.cross_act(s,a);
-	  size_t old_size = elt_hash.size();
-	  if (elt_hash.match(fiber_data.pack(a))==old_size) // then it's new
- 	    add_element(); // create in base
-	}
+    {
+      add_element(); // create in base
+      for (size_t k=0; k<gen_root.size(); ++k)
+	elt_hash.match(i_tab.x_pack
+	  (Tg.cross(rd.reflectionWord(gen_root[k]),elt_hash[i].repr())));
+    }
+
     first_of_tau.push_back(elt_hash.size()); // end of fundamental fiber
 
     elt.reserve(elt_hash.size()); // now copy elements from hash table to |elt|
     for (size_t i=0; i<elt_hash.size(); ++i)
       elt.push_back(elt_hash[i].repr());
-  }
+  } // got elements at the fundamental fiber
+
   generate(0); // complete element generation, no predicted size
 } // |global_KGB::global_KGB|
 
 bool global_KGB::compact(RootNbr n, // assumed imaginary at |a|
 			 const GlobalTitsElement& a) const
 {
-  const rootdata::Root& alpha= rootDatum().root(n);
-  return a.torus_part().negative_at(alpha) == // question was: whether compact
-    (fiber_data.at_rho_imaginary(alpha,a.tw())%2!=0); // CHECK ME!
+  const Cartan_orbits& i_tab = G.involution_table();
+  TorusElement t=a.torus_part();
+  t += i_tab.check_rho_imaginary(i_tab.nr(a.tw()));
+
+  return not t.negative_at(rootDatum().root(n)); //  whether compact
 }
 
 KGBElt global_KGB::lookup(const GlobalTitsElement& a) const
 {
+  const Cartan_orbits& i_tab = G.involution_table();
+
   KGBEltPair p = tauPacket(a.tw());
   for (KGBElt x=p.first; x<p.second; ++x)
-    if (fiber_data.equivalent(element(x),a))
+    if (i_tab.x_equiv(element(x),a))
       return x;
   return size(); // report failure
 }
@@ -318,117 +325,133 @@ void global_KGB::generate_involutions(size_t n)
 
   const TwistedWeylGroup& W = twistedWeylGroup();
 
+  InvolutionNbr end_length=0; // end of the length-interval under construction
   inv_hash.match(TwistedInvolution()); // set initial element
-  for (size_t i=0; i<inv_pool.size(); ++i) // pool grows from 1 to |n|
+
+  while (end_length<inv_hash.size())
   {
-    const weyl::TI_Entry& parent=inv_pool[i];
+    const InvolutionNbr start_length=end_length; // start new interval here
+    end_length = inv_pool.size(); // and run until current end
+
     for (weyl::Generator s=0; s<W.rank(); ++s)
-      if (W.hasTwistedCommutation(s,parent))
-	inv_hash.match(W.prod(s,parent));
-      else
-        inv_hash.match(W.twistedConjugated(parent,s));
-  }
+      for (InvolutionNbr i=start_length; i<end_length; ++i)
+      {
+	const weyl::TI_Entry& parent=inv_pool[i];
+	if (W.hasTwistedCommutation(s,parent))
+	  inv_hash.match(W.prod(s,parent));
+	else
+	  inv_hash.match(W.twistedConjugated(parent,s));
+      } // |for(i)|; |for(s)|;
+  } // while length interval non-empty
+
   assert(inv_pool.size()==n);
 } // |global_KGB::generate_involutions|
 
 void global_KGB::generate(size_t predicted_size)
 {
-  const TwistedWeylGroup& W = Tg; // for when |GlobalTitsGroup| not used
+  const Cartan_orbits& i_tab = G.involution_table();
+  const TwistedWeylGroup& W = Tg; // for when |GlobalTitsGroup| is not used
 
   KGB_elt_entry::Pooltype elt_pool; elt_pool.reserve(predicted_size);
   hashtable::HashTable<KGB_elt_entry,KGBElt> elt_hash(elt_pool);
 
+  KGBElt end_length=0; // end of the length-interval under construction
   {
     TwistedInvolution e; // identity
     for (size_t i=0; i<elt.size(); ++i)
-      elt_hash.match(fiber_data.pack(elt[i]));
+      elt_hash.match(i_tab.x_pack(elt[i]));
 
     assert(elt_hash.size()==elt.size()); // all distinct; in fact an invariant
   }
 
-  for (size_t inv_nr=0; inv_nr<inv_pool.size(); ++inv_nr)
+  while (end_length<first_of_tau.size()-1)
   {
-    const TwistedInvolution& tw = inv_pool[inv_nr];
+    const KGBElt start_length=end_length; // start new interval here
+    end_length = first_of_tau.size()-1; // and run until current end
+
     for (weyl::Generator s=0; s<W.rank(); ++s)
-    {
-      TwistedInvolution new_tw =W.twistedConjugated(tw,s);
-      InvolutionNbr new_nr = inv_hash.find(new_tw);
-      bool is_new = new_nr+1 >= first_of_tau.size();
-      if (is_new)
-	assert(new_nr+1==first_of_tau.size()); // since we mimick generation
-      bool imaginary = new_nr==inv_nr and not W.hasDescent(s,tw);
-
-      // generate cross links
-      for (KGBElt x=first_of_tau[inv_nr]; x<first_of_tau[inv_nr+1]; ++x)
+      for (InvolutionNbr inv_nr=start_length; inv_nr<end_length; ++inv_nr)
       {
- 	GlobalTitsElement child=elt[x]; //start out with a copy
-	int d = Tg.cross_act(s,child); // cross act; |d| is length difference
-	assert(child.tw()==new_tw);
-	KGB_elt_entry ee = fiber_data.pack(child);
-	KGBElt k = elt_hash.match(ee);
-	if (k==elt.size()) // then new
-	{
-	  assert(is_new);
-	  elt.push_back(child);
-	  assert(fiber_data.Cartan_class(new_tw)==Cartan_class(x));
-	  add_element();
-	}
-	data[s][x].cross_image=k;
-
-	if (d!=0) // just made complex cross action
-	{
-	  info[x].status.set(s,gradings::Status::Complex);
-	  info[x].desc.set(s,d<0);
-	}
-	else if (imaginary)
-	{
-	  info[x].status.set_imaginary // always true (noncompact) at identity
-	    (s,not elt[x].torus_part().negative_at(rootDatum().simpleRoot(s)));
-	  info[x].desc.set(s,false); // imaginary roots are never descents
-	}
-	else // real
-	{
-	  assert(x==k);
-	  info[x].status.set(s,gradings::Status::Real);
-	  info[x].desc.set(s,true); // real roots are always descents
-	}
-      } // |for(x)|
-
-      // generate Cayley links
-      if (imaginary)
-      {
-	new_tw = W.prod(s,tw);
-	new_nr = inv_hash.find(new_tw);
-	is_new = new_nr+1 >= first_of_tau.size();
+	const TwistedInvolution& tw = inv_pool[inv_nr];
+	TwistedInvolution new_tw =W.twistedConjugated(tw,s);
+	InvolutionNbr new_nr = inv_hash.find(new_tw);
+	bool is_new = new_nr+1 >= first_of_tau.size();
 	if (is_new)
 	  assert(new_nr+1==first_of_tau.size()); // since we mimick generation
+	bool imaginary = new_nr==inv_nr and not W.hasDescent(s,tw);
 
+	// generate cross links
 	for (KGBElt x=first_of_tau[inv_nr]; x<first_of_tau[inv_nr+1]; ++x)
-	  if (info[x].status[s]==gradings::Status::ImaginaryNoncompact)
+	{
+	  GlobalTitsElement child=elt[x]; //start out with a copy
+	  int d = Tg.cross_act(s,child); // cross act; |d| is length difference
+	  assert(child.tw()==new_tw);
+	  KGB_elt_entry ee = i_tab.x_pack(child);
+	  KGBElt k = elt_hash.match(ee);
+	  if (k==elt.size()) // then new
 	  {
-	    GlobalTitsElement child=Tg.Cayley(s,elt[x]);
-	    assert(child.tw()==new_tw);
-	    KGBElt k=elt_hash.match(fiber_data.pack(child));
-	    if (k==elt.size()) // then new
+	    assert(is_new);
+	    elt.push_back(child);
+	    assert(i_tab.Cartan_class(new_tw)==Cartan_class(x));
+	    add_element();
+	  }
+	  data[s][x].cross_image=k;
+
+	  if (d!=0) // just made complex cross action
+	  {
+	    info[x].status.set(s,gradings::Status::Complex);
+	    info[x].desc.set(s,d<0);
+	  }
+	  else if (imaginary)
+	  {
+	    info[x].status.set_imaginary // always true (noncompact) at identity
+	      (s,
+	       not elt[x].torus_part().negative_at(rootDatum().simpleRoot(s)));
+	    info[x].desc.set(s,false); // imaginary roots are never descents
+	  }
+	  else // real
+	  {
+	    assert(x==k);
+	    info[x].status.set(s,gradings::Status::Real);
+	    info[x].desc.set(s,true); // real roots are always descents
+	  }
+	} // |for(x)|
+
+	// generate Cayley links
+	if (imaginary)
+	{
+	  new_tw = W.prod(s,tw);
+	  new_nr = inv_hash.find(new_tw);
+	  is_new = new_nr+1 >= first_of_tau.size();
+	  if (is_new)
+	    assert(new_nr+1==first_of_tau.size()); // since we mimick generation
+
+	  for (KGBElt x=first_of_tau[inv_nr]; x<first_of_tau[inv_nr+1]; ++x)
+	    if (info[x].status[s]==gradings::Status::ImaginaryNoncompact)
 	    {
-	      elt.push_back(child);
-	      add_element();
-	    }
-	    data[s][x].Cayley_image = k;
-	    if (data[s][k].inverse_Cayley_image.first==UndefKGB)
-	      data[s][k].inverse_Cayley_image.first=x;
-	    else
-	      data[s][k].inverse_Cayley_image.second=x;
+	      GlobalTitsElement child=Tg.Cayley(s,elt[x]);
+	      assert(child.tw()==new_tw);
+	      KGBElt k=elt_hash.match(i_tab.x_pack(child));
+	      if (k==elt.size()) // then new
+	      {
+		elt.push_back(child);
+		add_element();
+	      }
+	      data[s][x].Cayley_image = k;
+	      if (data[s][k].inverse_Cayley_image.first==UndefKGB)
+		data[s][k].inverse_Cayley_image.first=x;
+	      else
+		data[s][k].inverse_Cayley_image.second=x;
 
-	  } // |for (x)|
-      } // |if (imaginary)|
+	    } // |for (x)|
+	} // |if (imaginary)|
 
-      if (is_new) // in upwards cross action or Cayley transform, never both
-	first_of_tau.push_back(elt.size()); // close the tau packet
+	if (is_new) // in upwards cross action or Cayley transform, never both
+	  first_of_tau.push_back(elt.size()); // close the tau packet
 
 
-    } // |for(s)|
-  } // |for(inv_nr)|
+      } // |for(inv_nr)|;  // |for(s)|
+  } // while length interval non-empty
 
   assert(elt.size()==predicted_size or predicted_size==0);
 } // |global_KGB::generate|

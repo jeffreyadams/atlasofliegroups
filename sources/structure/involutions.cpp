@@ -20,6 +20,8 @@
 #include "complexredgp.h"
 #include "lattice.h"
 
+#include "kgb.h" // for |KGB_elt_entry|
+
 namespace atlas {
 
 namespace involutions {
@@ -277,6 +279,60 @@ RatWeight InvolutionTable::fingerprint
 y_entry InvolutionTable::pack (const TorusElement& t, InvolutionNbr i) const
 {
   return y_entry(fingerprint(t,i),i,t);
+}
+
+// this method makes involution table useble in X command, even if inefficient
+KGB_elt_entry InvolutionTable::x_pack(const GlobalTitsElement& x) const
+{
+  const TwistedInvolution& tw= x.tw();
+  InvolutionNbr i = nr(tw);
+  assert(i<hash.size());
+  RatWeight wt = x.torus_part().log_2pi();
+  // we need projector modulo kernel of |theta^tr+1|, cf. constructor
+  int_Matrix A = matrix(i).transposed(); // |kgb::GlobalFiberData(G,tab)|
+  for (size_t i=0; i<A.numRows(); ++i)
+    A(i,i) += 1;
+  int_Matrix projector = lattice::row_saturate(A);
+  int_Vector p = projector * wt.numerator();
+
+  // reduce modulo integers and return
+  for (size_t j=0; j<p.size(); ++j)
+    p[j]= arithmetic::remainder(p[j],wt.denominator());
+  return KGB_elt_entry(RatWeight(p,wt.denominator()).normalize(),x);
+}
+
+bool
+InvolutionTable::x_equiv(const GlobalTitsElement& x0,
+			 const GlobalTitsElement& x1) const
+{
+  if (x0.tw()!=x1.tw())
+    return false;
+
+  InvolutionNbr i = nr(x0.tw());
+  assert(i<hash.size());
+  RatWeight wt = x0.torus_part().log_2pi()-x1.torus_part().log_2pi();
+
+  // we need projector modulo kernel of |theta^tr+1|, cf. constructor
+  int_Matrix A = matrix(i).transposed(); // |kgb::GlobalFiberData(G,tab)|
+  for (size_t i=0; i<A.numRows(); ++i)
+    A(i,i) += 1;
+  int_Matrix projector = lattice::row_saturate(A);
+  int_Vector p = projector * wt.numerator();
+
+  for (size_t i=0; i<p.size(); ++i)
+    if (p[i]%wt.denominator()!=0)
+      return false;
+
+  return true;
+}
+
+TorusPart InvolutionTable::check_rho_imaginary(InvolutionNbr i) const
+{
+  TorusPart result(rd.rank());
+  RootNbrSet pos_im=imaginary_roots(i) & rd.posRootSet();
+  for (RootNbrSet::iterator it=pos_im.begin(); it(); ++it)
+    result += TorusPart (rd.coroot(*it));
+  return result;
 }
 
 

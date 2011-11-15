@@ -391,16 +391,16 @@ void WeylGroup::conjugacyClass(WeylEltList& c, const WeylElt& w) const
 /*!
   \brief Tells whether sw < w.
 
-  Method: we multiply from $s$ to $sw$, at least on the relevant pieces (those
-  from |min_neighbor(s)| to |s| inclusive); if any decent occurs we return
-  |true|, otherwise |false|. Despite the double loop below, this question is
-  resolved in very few operations on the average.
+  Method: we multiply from $s$ to $sw$, at least by the word pieces of |w| at
+  the relevant pieces: those from |min_neighbor(s)| to |s| inclusive. If any
+  descent occurs we return |true|, otherwise |false|. Despite the double loop
+  below, this question is resolved in relatively few operations on the average.
 */
 bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
 {
   s=d_in[s]; // inner numbering is used below
 
-  WeylElt x = genIn(s); // becomes (part of) $sw$, unless early |return|
+  WeylElt x = genIn(s); // element operated upon, starts out as |s|
 
   for (size_t j = min_neighbor(s); j <= s; ++j)
   {
@@ -411,6 +411,20 @@ bool WeylGroup::hasDescent(Generator s, const WeylElt& w) const
   }
 
   return false; // since only ascents occur, we have $l(sw)>l(w)$
+}
+
+// same question, but on the right
+bool WeylGroup::hasDescent(const WeylElt& w,Generator s) const
+{
+  s=d_in[s]; // inner numbering is used below
+  unsigned int j = d_rank-1; // current transducer
+
+  // in the next loop |j| cannot pass |0| since transducer 0 only has shifts
+  for (Generator t; (t=d_transducer[j].out(w[j],s))!=UndefGenerator; s=t)
+    --j;
+
+  WeylElt::EltPiece wj=w[j];
+  return d_transducer[j].shift(wj,s)<wj;
 }
 
 
@@ -804,6 +818,35 @@ InvolutionWord TwistedWeylGroup::involution_expr(TwistedInvolution tw) const
       twistedConjugate(tw,s);
     }
 
+  return result;
+}
+
+// This one trades some efficiency for assureance of external least lex repr
+InvolutionWord TwistedWeylGroup::canonical_involution_expr(TwistedInvolution tw)
+  const
+{
+  InvolutionWord result; result.reserve(involutionLength(tw));
+
+  TwistedInvolution delta; // distinguished
+  while (tw!=delta)
+  {
+    Generator s=0;
+    while (not hasDescent(tw,twisted(s)))
+      ++s;
+    // now |s| is the first twisted right equivalently left descent
+
+    if (hasTwistedCommutation(s,tw))
+    {
+      result.push_back(s);
+      leftMult(tw,s);
+    }
+    else
+    {
+      result.push_back(~s);
+      twistedConjugate(tw,s);
+    }
+
+  } // while(tw!=delta)
   return result;
 }
 

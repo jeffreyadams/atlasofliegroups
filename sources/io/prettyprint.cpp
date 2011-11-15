@@ -217,15 +217,14 @@ std::ostream& printCorootList(std::ostream& strm, const RootNbrList& r,
 
   Symbols are to be interpreted from right to left as operations performed on
   an initially empty twisted involution; if the number |s| is followed by a
-  period it means left multiplication by a (twisted-commuting) generator |s|,
-  if it is followed by an 'x' (for cross action) it means twiseted conjugation
-  by |s|.
+  '^' it means left multiplication by a (twisted-commuting) generator |s|, if
+  followed by an 'x' (for cross action) it means twiseted conjugation by |s|.
 */
 std::ostream& printInvolution(std::ostream& strm,
 			      const TwistedInvolution& tw,
 			      const TwistedWeylGroup& W)
 {
-  weyl::InvolutionWord dec=W.involution_expr(tw);
+  weyl::InvolutionWord dec=W.canonical_involution_expr(tw);
   for (size_t i=0; i<dec.size(); ++i)
     if (dec[i]>=0) strm << static_cast<char>('1'+dec[i]) << '^';
     else strm << static_cast<char>('1'+~dec[i]) << 'x';

@@ -329,7 +329,6 @@ struct InvInfo : public GlobalFiberData
 class global_KGB : public KGB_base
 {
   const GlobalTitsGroup Tg;
-  GlobalFiberData fiber_data;
   std::vector<GlobalTitsElement> elt;
 
   global_KGB(const global_KGB& org); // forbid copying

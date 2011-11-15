@@ -113,7 +113,7 @@ std::ostream& print(std::ostream& strm,
     }
 
    // print root datum involution
-    prettyprint::printWeylElt(strm,kgb.involution(j),kgb.weylGroup())
+    prettyprint::printInvolution(strm,kgb.involution(j),kgb.twistedWeylGroup())
       << std::endl;
   }
 

@@ -1,28 +1,28 @@
 
 The "kgp" command outputs a description of the K orbits on G/P,
-where P is a parabolic subgroup containing the fixed Borel 
-subgroup B. Here K is the complexification of a maximal compact 
-subgroup for a particular (weak) real form. The software will 
-prompt the user for this if it has not already been chosen. 
+where P is a parabolic subgroup containing the fixed Borel
+subgroup B. Here K is the complexification of a maximal compact
+subgroup for a particular (weak) real form. The software will
+prompt the user for this if it has not already been chosen.
 
 Once a real form is specified, the user is prompted to enter a
 subset of the simple roots corresponding to the desired parabolic.
-The input should be a list of integers in [1,rank], separated 
-by any whitespace or non-numeric character(s). Numbers outside this 
-range are ignored. An empty list corresponds to the case 
-B=P and regenerates K\B/G as a partially ordered set.
+The input should be a list of integers in [1,rank], separated
+by any whitespace or non-numeric character(s). Numbers outside this
+range are ignored. An empty list corresponds to the case
+B=P and regenerates K\G/B as a partially ordered set.
 
 The output is as follows:
 
-Note first that each K orbit on G/P is a union of K orbits on G/B 
-and the output is therefore in terms of the latter set. See the 
+Note first that each K orbit on G/P is a union of K orbits on G/B
+and the output is therefore in terms of the latter set. See the
 command 'kgb' for more information about K orbits on G/B.
 
 Each row of the output corresponds to a single orbit, and the first
 column is a numbering of the orbits from 0 to n-1 (with n the number
 of orbits). The orbit number is immediately followed by a 'starred
 number' (in brackets) representing the unique K\G/B of maximal dimension
-it contains. 
+it contains.
 
 The next two columns represent the (normalized) dimension of the orbit
 followed by the number of K\G/B elements in the fiber of the projection
@@ -30,7 +30,7 @@ followed by the number of K\G/B elements in the fiber of the projection
 K\G/B --> K\G/P
 
 over this orbit. The final column contains a comma separated list of the
-individual K\G/B orbits contained in this fiber. As mentioned, see the 
+individual K\G/B orbits contained in this fiber. As mentioned, see the
 'kgb' command to make sense of these numbers.
 
 For example:
@@ -52,7 +52,7 @@ Name an output file (return for stdout, ? to abandon):
 3:[10*] 3 3 {8,9,10}
 
 Here the quasi-split form of type B2 is chosen, with P corresponding
-to the root subset consisting of the unique long simple root. There 
+to the root subset consisting of the unique long simple root. There
 are 4 orbits of K on G/P. Orbits 0 and 1 each have (normalized)
 dimension 1 and respectively contain K\G/B orbits 4 and 5 as dense
 subsets. Orbits 0, 1, and 3 are each a union of 3 distinct K\G/B

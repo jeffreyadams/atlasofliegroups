@@ -179,6 +179,9 @@ class InvolutionTable
 		  InvolutionNbr i) const;
   RatWeight fingerprint(const TorusElement& t, InvolutionNbr i) const;
   y_entry pack(const TorusElement& t, InvolutionNbr i) const;
+  KGB_elt_entry x_pack(const GlobalTitsElement& x) const; // for X only; slow
+  bool x_equiv(const GlobalTitsElement& x0,const GlobalTitsElement& x1) const;
+  TorusPart check_rho_imaginary(InvolutionNbr i) const;
 
   // the following produces a light-weight function object calling |involution|
   class mapper

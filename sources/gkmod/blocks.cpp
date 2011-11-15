@@ -176,7 +176,7 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
 }
 
 Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
-  : W(kgb.weylGroup())
+  : tW(kgb.twistedWeylGroup())
   , d_x(), d_y(), d_first_z_of_x() // filled below
   , d_cross(kgb.rank()), d_cayley(kgb.rank()) // each entry filled below
   , d_descent(), d_length() // filled below
@@ -261,8 +261,8 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
 
 
 Block_base::Block_base(const SubSystem& sub,
-		       const WeylGroup& printing_W)
-  : W(printing_W)
+		       const TwistedWeylGroup& printing_W)
+  : tW(printing_W)
   , d_x(), d_y()
   , d_first_z_of_x(), d_cross(sub.rank()), d_cayley(sub.rank())
   , d_descent(), d_length()
@@ -604,10 +604,10 @@ std::ostream& gamma_block::print(std::ostream& strm, BlockElt z) const
 gamma_block::gamma_block(RealReductiveGroup& GR,
 			 const SubSystem& sub, // at the dual side
 			 KGBElt x,
-			 const RatWeight& lambda, // discr param
-			 const RatWeight& gamma, // infl char
+			 const RatWeight& lambda, // discrete parameter
+			 const RatWeight& gamma, // infinitesimal character
 			 BlockElt& entry_element) // output parameter
-  : Block_base(sub,GR.weylGroup())
+  : Block_base(sub,GR.twistedWeylGroup())
   , kgb(GR.kgb())
   , infin_char(gamma)
   , kgb_nr_of()
@@ -624,7 +624,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
   weyl::TI_Entry::Pooltype inv_pool; // twisted involutions of block, y-side
   involution_hash inv_hash(inv_pool);
 
-  TwistedInvolution tw = Tg.weylGroup().element(dual_involution);
+  const TwistedInvolution tw = Tg.weylGroup().element(dual_involution);
   // |tw| describes |-kgb.involution(x)^tr| as twisted involution for |sub|
 
   // step 1: get a valid value for |y|. Has $t=\exp(\pi\ii(\gamma-\lambda))$
@@ -1028,7 +1028,7 @@ non_integral_block::non_integral_block
    const RatWeight& lambda, // discrete parameter
    const RatWeight& gamma, // infinitesimal char
    BlockElt& entry_element) // output parameter
-  : Block_base(subsys,GR.weylGroup()) // uses ordinary W for printing
+  : Block_base(subsys,GR.twistedWeylGroup()) // uses ordinary W for printing
   , kgb(GR.kgb())
   , G(GR.complexGroup())
   , sub(subsys)
@@ -1039,22 +1039,26 @@ non_integral_block::non_integral_block
 {
   const RootDatum& rd = G.rootDatum();
   const GlobalTitsGroup Tg (G,tags::DualTag());// for $^\vee G$
+  const Cartan_orbits& i_tab = G.involution_table();
 
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   for (weyl::Generator s=0; s<our_rank; ++s)
     singular.set(s,
 		 rd.coroot(sub.parent_nr_simple(s)).dot(gamma.numerator())==0);
 
-  TwistedInvolution tw =
+  const TwistedInvolution tw =
     dual_involution(kgb.involution(x),G.twistedWeylGroup(),Tg);
 
-  // step 1: get |y|, which has $t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
+  // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
   const GlobalTitsElement y_org (y_values::exp_pi(gamma-lambda),tw);
   assert(Tg.is_valid(y_org,sub));
   const KGBElt x_org = x;
 
-  KGB_elt_entry::Pooltype y_pool; // start with empty set of |y|s
-  KGB_hash y_hash(y_pool);
+  y_entry::Pooltype y_pool;
+  y_part_hash y_hash(y_pool);
+
+  KGB_elt_entry::Pooltype yy_pool; // start with empty set of |y|s
+  KGB_hash yy_hash(yy_pool);
   weyl::TI_Entry::Pooltype inv_pool; // twisted involutions of block, y-side
   involution_hash inv_hash(inv_pool);
   kgb::InvInfo gfd(sub,inv_hash); // consider roots and links for |sub|
@@ -1092,39 +1096,45 @@ non_integral_block::non_integral_block
 
     // DON'T assert(x+1==kgb.size()); fails e.g. in complex groups, empty |sub|
 
+    y_hash.match(i_tab.pack(y.torus_part(),kgb.inv_nr(x)));
+
     // prepare |gfd| for providing infomation about most compact dual Cartan
     gfd.add_involution(y.tw(),Tg);
-    y_hash.match(gfd.pack(y)); // install initial element |y|
+    yy_hash.match(gfd.pack(y)); // install initial element |y|
   } // end of step 2
-
 
   // step 3: generate imaginary fiber-orbit of |y|'s (|x| is unaffected)
 
   std::vector<unsigned int> x_of(kgb.size(),~0); // partial inverse |kgb_nr_of|
   x_of[x]=0; kgb_nr_of.push_back(x); // KGB element |x| gets renumbered 0
   {
-    WeightInvolution theta = Tg.involution_matrix(y_hash[0].tw);
+    WeightInvolution theta = Tg.involution_matrix(yy_hash[0].tw);
     assert(G.involutionMatrix(kgb.involution(x))==theta);
 
     // generating reflections are by subsystem real roots for |involution(x)|
-    RootNbrList gen_root = gfd.imaginary_basis(y_hash[0].tw); // for |y|
-    for (size_t i=0; i<y_hash.size(); ++i) // |y_hash| grows
+    RootNbrList gen_root = gfd.imaginary_basis(yy_hash[0].tw); // for |y|
+    for (size_t i=0; i<yy_hash.size(); ++i) // |yy_hash| grows
     {
-      const GlobalTitsElement y = y_hash[i].repr();
+      const GlobalTitsElement y = yy_hash[i].repr();
       assert(Tg.is_valid(y,sub)); // but cannot use |y.simple_imaginary_cross|
       for (weyl::Generator s=0; s<gen_root.size(); ++s)
-	y_hash.match(gfd.pack(Tg.cross(rd.reflectionWord(gen_root[s]),y)));
+      {
+	yy_hash.match(gfd.pack(Tg.cross(rd.reflectionWord(gen_root[s]),y)));
+	y_hash.match(i_tab.pack
+		     (Tg.cross(rd.reflectionWord(gen_root[s]),y).torus_part(),
+		      kgb.inv_nr(x)));
+      }
     }
 
-    // now insert elements from |y_hash| as first R-packet of block
-    size_t fs = y_hash.size(); // this is lower bound for final size, so reserve
+    // now insert elements from |yy_hash| as first R-packet of block
+    size_t fs = yy_hash.size(); // this is lower bound for final size; reserve
     d_x.reserve(fs); d_y.reserve(fs); d_first_z_of_x.reserve(fs+1);
     d_length.reserve(fs); d_descent.reserve(fs);
     for (weyl::Generator s=0; s<our_rank; ++s)
       { d_cross[s].reserve(fs); d_cayley[s].reserve(fs); }
 
     d_first_z_of_x.push_back(0);
-    for (size_t i=0; i<y_hash.size(); ++i)
+    for (size_t i=0; i<yy_hash.size(); ++i)
     {
       d_x.push_back(0);
       d_y.push_back(i);
@@ -1144,7 +1154,7 @@ non_integral_block::non_integral_block
   for (BlockElt next=0; not queue.empty(); next=queue.front(),queue.pop_front())
   { // process involution packet of elements from |next| to |queue.front()|
 
-    const unsigned int old_inv=inv_hash.find(y_hash[d_y[next]].tw); // inv #
+    const unsigned int old_inv=inv_hash.find(yy_hash[d_y[next]].tw); // inv #
 
     ys.clear();
     size_t nr_y = 0;
@@ -1164,9 +1174,9 @@ non_integral_block::non_integral_block
       std::vector<BlockEltPair>& Cayley_link = d_cayley[s]; // safe references
       cross_link.resize(d_x.size(),UndefBlock); // ensure enough slots for now
       Cayley_link.resize(d_x.size(),std::make_pair(UndefBlock,UndefBlock));
-      unsigned int y_start=y_hash.size(); // new |y|s numbered from here up
+      unsigned int y_start=yy_hash.size(); // new |y|s numbered from here up
 
-      GlobalTitsElement sample = y_hash[ys[0]].repr();
+      GlobalTitsElement sample = yy_hash[ys[0]].repr();
       Tg.cross_act(sub.to_simple(s),sample);
       int d = Tg.cross_act(sub.simple(s),sample); // |d| is length change
       int length = d_length[next] + d;
@@ -1177,16 +1187,16 @@ non_integral_block::non_integral_block
 
       cross_ys.clear(); Cayley_ys.clear();
       { // compute values into |cross_ys|
-	size_t old_size =  y_hash.size();
+	size_t old_size =  yy_hash.size();
 	for (unsigned int j=0; j<nr_y; ++j)
 	{
-	  GlobalTitsElement y = y_hash[ys[j]].repr();
+	  GlobalTitsElement y = yy_hash[ys[j]].repr();
 	  int dd = Tg.cross_act(sub.reflection(s),y);
 	  if (dd>1) dd=1; else if (dd<-1) dd=-1;
 	  assert(dd==d); // all length changes should be equal
 	  assert(Tg.is_valid(y,sub));
-	  cross_ys.push_back(y_hash.match(gfd.pack(y)));
-	  assert(y_hash.size()== (new_cross ? old_size+j+1 : old_size));
+	  cross_ys.push_back(yy_hash.match(gfd.pack(y)));
+	  assert(yy_hash.size()== (new_cross ? old_size+j+1 : old_size));
 	}
       } // compute values |cross_ys|
 
@@ -1247,7 +1257,7 @@ non_integral_block::non_integral_block
 	case gradings::Status::Real: // now status depends on |y|
 	  for (unsigned int j=0; j<nr_y; ++j)
 	  {
-	    GlobalTitsElement y = y_hash[d_y[base_z+j]].repr();
+	    GlobalTitsElement y = yy_hash[d_y[base_z+j]].repr();
 	    Tg.cross_act(sub.to_simple(s),y); // prepare evaluating at coroot
 
 	    if (Tg.compact(sub.simple(s),y))
@@ -1273,26 +1283,26 @@ non_integral_block::non_integral_block
 
 	  if (i==0)
 	  { // |do_Cayley| is independent of |x|, if so, do first time:
-	    assert(y_hash.size()==y_start); // nothing created by cross actions
+	    assert(yy_hash.size()==y_start); // nothing created by cross actions
 	    KGBElt x_start = kgb_nr_of.size();
 
-	    TwistedInvolution tw = y_hash[ys[0]].tw;
+	    TwistedInvolution tw = yy_hash[ys[0]].tw;
 
 	    Tg.leftMult(tw,sub.reflection(s));
 	    bool new_Cayley = gfd.add_involution(tw,Tg);
 	    assert (new_Cayley == (x_of[ctx1]==(unsigned int)~0));
 
-	    // independent of new creation, fill |Cayley_ys|, extend |y_hash|
+	    // independent of new creation, fill |Cayley_ys|, extend |yy_hash|
 	    for (unsigned int j=0; j<nr_y; ++j)
 	      if (d_descent[base_z+j][s] != DescentStatus::RealNonparity)
 	      {
 		GlobalTitsElement y =
 		  Tg.Cayley(sub.simple(s),Tg.cross(sub.to_simple(s),
-						   y_hash[ys[j]].repr()));
+						   yy_hash[ys[j]].repr()));
  		Tg.cross_act(y,sub.to_simple(s));
 		assert(y.tw()==tw);
 		assert(Tg.is_valid(y,sub));
-		Cayley_ys.push_back(y_hash.match(gfd.pack(y)));	// record link
+		Cayley_ys.push_back(yy_hash.match(gfd.pack(y))); // record link
 	      }
 
 	    if (new_Cayley) // then we need to create new R-packets
@@ -1302,7 +1312,7 @@ non_integral_block::non_integral_block
 
 	      // complete fiber of x's over new involution using
 	      // subsystem imaginary cross actions (real for |y|)
-	      RootNbrList ib = gfd.real_basis(y_hash[y_start].tw);
+	      RootNbrList ib = gfd.real_basis(yy_hash[y_start].tw);
 	      for (size_t k=x_start; k<kgb_nr_of.size(); ++k) // grows
 	      {
 		KGBElt cur_x = kgb_nr_of[k];
@@ -1320,7 +1330,7 @@ non_integral_block::non_integral_block
 	      // then generate corrsponding part of block, combining (x,y)'s
 	      for (size_t k=x_start; k<kgb_nr_of.size(); ++k)
 	      {
-		for (unsigned int y=y_start; y<y_hash.size(); ++y)
+		for (unsigned int y=y_start; y<yy_hash.size(); ++y)
 		{
 		  assert(d_x.size()==d_y.size()); // number of new block element
 		  d_x.push_back(k); d_y.push_back(y);
@@ -1355,7 +1365,7 @@ non_integral_block::non_integral_block
 
 	} // |if(do_Cayley)|
       } // |for(i)|
-      if (y_hash.size()>y_start)
+      if (yy_hash.size()>y_start)
 	queue.push_back(d_x.size()); // mark end of new involution packet
     } // |for(s)|
   } // |for (next<queue.front())|
@@ -1374,12 +1384,12 @@ non_integral_block::non_integral_block
 
   // now store values into constructed object
 
-  y_info.reserve(y_hash.size());
-  for (unsigned int j=0; j<y_hash.size(); ++j)
-    y_info.push_back(y_hash[j].repr());
+  y_info.reserve(yy_hash.size());
+  for (unsigned int j=0; j<yy_hash.size(); ++j)
+    y_info.push_back(yy_hash[j].repr());
 
   // and look up which element matches the original input
-  entry_element = element(xsize()-1-x_of[x_org],y_hash.find(gfd.pack(y_org)));
+  entry_element = element(xsize()-1-x_of[x_org],yy_hash.find(gfd.pack(y_org)));
 
 } // |non_integral_block::non_integral_block|
 
@@ -1661,7 +1671,7 @@ non_integral_block::non_integral_block // interval below |x| only
    const RatWeight& lambda, // discrete parameter
    const RatWeight& gamma // infinitesimal character
   )
-  : Block_base(subsys,GR.weylGroup()) // uses ordinary W for printing
+  : Block_base(subsys,GR.twistedWeylGroup()) // uses ordinary W for printing
   , kgb(GR.kgb())
   , G(GR.complexGroup())
   , sub(subsys)
