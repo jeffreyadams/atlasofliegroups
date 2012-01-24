@@ -176,8 +176,5 @@ corresponding K\G/B orbit is given (a line number of the 'KGB' output), while
 for $y$ a representative value of $\lambda$ is given, both as an element of
 $X^* \tensor_Z Q$ and as an offset (in $X^*$) to $\rho(G)$.
 
-The before-last colums identifies the Cartan class, with respect to
-$G^\vee(\gamma)$, that is determined by the involution of $H$.
-
 The final column gives the twisted involution of the Weyl group that specifies
 the involution of $H$ itself (see the help for the 'kgb' command).

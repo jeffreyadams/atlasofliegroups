@@ -26,7 +26,7 @@ namespace y_values {
 
 // make $\exp(2\pi i r)$, doing affectively *2, then reducing modulo $2X_*$
 TorusElement::TorusElement(const RatWeight& r, bool two)
-  : repr(r) // but multiplied by 2 below
+  : repr(r) // but possibly multiplied by 2 below
 { if (two)
     repr*=2;
   unsigned int d=2u*repr.denominator(); // we reduce modulo $2\Z^rank$

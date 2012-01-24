@@ -40,8 +40,6 @@
 #include "tags.h"
 #include "hashtable.h"
 
-#include "basic_io.h"	// operator |<<|
-#include "ioutils.h"
 #include "bruhat.h"	// construction
 #include "complexredgp.h"
 #include "realredgp.h"
@@ -353,14 +351,15 @@ size_t Block_base::firstStrictGoodDescent(BlockElt z) const
   In fact if this is not satisfied, we return a pair of UndefBlock elements
 */
 
-BlockEltPair Block_base::link(size_t alpha,size_t beta,BlockElt y) const
+BlockEltPair Block_base::link
+  (weyl::Generator alpha,weyl::Generator beta,BlockElt y) const
 {
   const DescentStatus& desc=descent(y);
 
-  std::vector<BlockElt> result(2,UndefBlock); // overwritten using iterator
-  std::vector<BlockElt>::iterator it=result.begin();
+  BlockElt result[2]; // written using iterator
+  BlockElt* it = &result[0];
 
-  BlockEltPair p=inverseCayley(alpha,y);
+  BlockEltPair p=inverseCayley(alpha,y); // used only in real parity case
   switch (desc[alpha])
   {
   case DescentStatus::ComplexDescent:
@@ -402,7 +401,8 @@ BlockEltPair Block_base::link(size_t alpha,size_t beta,BlockElt y) const
   default: {}
   } // switch(desc[beta])
 
-  assert(&*it<=&result[2]);
+  assert(it<=&result[2]);
+  while (it<&result[2]) *it++=UndefBlock;
 
   return std::make_pair(result[0],result[1]);
 }
@@ -460,7 +460,6 @@ KGBElt Block_base::renumber_x(const std::vector<KGBElt>& new_x)
 
 Block::Block(const KGB& kgb,const KGB& dual_kgb)
   : Block_base(kgb,dual_kgb)
-  , tW(kgb.twistedWeylGroup())
   , xrange(kgb.size()), yrange(dual_kgb.size())
   , d_Cartan(), d_involution(), d_involutionSupport() // filled below
   , d_state()
@@ -509,7 +508,7 @@ void Block::compute_supports()
     if (z==0 or involution(z)!=involution(z-1))
     { // compute involution support directly from definition
       RankFlags support;
-      WeylWord ww=weylGroup().word(involution(z));
+      WeylWord ww=tW.weylGroup().word(involution(z));
       for (size_t j=0; j<ww.size(); ++j)
 	support.set(ww[j]);
       d_involutionSupport.push_back(support);
@@ -528,7 +527,7 @@ void Block::compute_supports()
     { // use value from shorter cross neighbour, setting |s| and |twist(s)|
       d_involutionSupport[z] = d_involutionSupport[cross(s,z)];
       d_involutionSupport[z].set(s);
-      d_involutionSupport[z].set(twistedWeylGroup().twisted(s));
+      d_involutionSupport[z].set(tW.twisted(s));
     }
     else // Real Type I or II
     { // use (some) inverse Cayley transform and set |s|
@@ -546,7 +545,6 @@ void Block::compute_supports()
 Block::~Block() { delete d_bruhat; } // type of |d_bruhat| is complete here
 Block::Block(const Block& b)
   : Block_base(b) // copy
-  , tW(b.tW)
   , d_Cartan(b.d_Cartan)
   , d_involution(b.d_involution)
   , d_involutionSupport(b.d_involutionSupport)
@@ -565,7 +563,6 @@ Block::Block(const Block& b)
 /******** copy, assignment and swap ******************************************/
 
 /******** accessors **********************************************************/
-
 
 /******** manipulators *******************************************************/
 
@@ -589,18 +586,6 @@ void Block::fillBruhat()
 }
 
 
-std::ostream& gamma_block::print(std::ostream& strm, BlockElt z) const
-{
-  int xwidth = ioutils::digits(kgb.size()-1,10ul);
-  int cwidth = ioutils::digits(max_Cartan(),10ul);
-
-  RatWeight ls = local_system(z);
-  return strm << "(=" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
-	      << ',' << std::setw(3*ls.size()+3) << ls
-	      << ")  "
-	      << std::setw(cwidth) << Cartan_class(z) << " ";
-}
-
 gamma_block::gamma_block(RealReductiveGroup& GR,
 			 const SubSystem& sub, // at the dual side
 			 KGBElt x,
@@ -611,7 +596,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
   , kgb(GR.kgb())
   , infin_char(gamma)
   , kgb_nr_of()
-  , y_info()
+  , y_rep()
 {
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   WeylWord dual_involution; // set in |GlobalTitsGroup| constructor:
@@ -619,44 +604,43 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
   const ComplexReductiveGroup& G = GR.complexGroup();
   const Cartan_orbits& i_tab = G.involution_table();
 
-  const GlobalTitsGroup Tg (sub, kgb.involution_matrix(x), dual_involution);
-
-  weyl::TI_Entry::Pooltype inv_pool; // twisted involutions of block, y-side
-  involution_hash inv_hash(inv_pool);
+  // first construct global Tits group for |y|s, and |dual_involution|
+  const WeightInvolution& theta = kgb.involution_matrix(x);
+  const GlobalTitsGroup Tg (sub, theta, dual_involution);
 
   const TwistedInvolution tw = Tg.weylGroup().element(dual_involution);
-  // |tw| describes |-kgb.involution(x)^tr| as twisted involution for |sub|
+  // now |tw| describes |-theta^tr| as twisted involution for |sub|
 
   // step 1: get a valid value for |y|. Has $t=\exp(\pi\ii(\gamma-\lambda))$
-  GlobalTitsElement y =
-    GlobalTitsElement(y_values::exp_pi(gamma-lambda),tw);
-  assert(Tg.is_valid(y));
+  TorusElement t = y_values::exp_pi(gamma-lambda);
 
-  // step 1.5: correct the grading on the dual imaginary roots.
+  {// step 1.5: correct the grading on the dual imaginary roots.
+    assert(Tg.is_valid(GlobalTitsElement(t,tw)));
 
-  const WeightInvolution& theta = Tg.involution_matrix(tw); // on X^*
+    Weight tworho_nonintegral_real(GR.rank(),0);
+    LatticeCoeff n=gamma.denominator();
+    Weight v=gamma.numerator();
+    size_t numpos = rd.numPosRoots();
 
-  Weight tworho_nonintegral_real(GR.rank(),0);
-  LatticeCoeff n=gamma.denominator();
-  Weight v=gamma.numerator();
-  size_t numpos = rd.numPosRoots();
+    for(size_t j=0; j<numpos; ++j)
+    {
+      RootNbr alpha = rd.posRootNbr(j); // that's |j+numpos|
+      if (theta*rd.root(alpha) == -rd.root(alpha) and
+	  v.dot(rd.coroot(alpha)) %n !=0 ) // whether coroot is NONintegral real
+	tworho_nonintegral_real += rd.root(alpha); //if so add it
+    }
 
-  for(size_t j=0; j<numpos; ++j)
-  {
-    RootNbr alpha = rd.posRootNbr(j); // that's |j+numpos|
-    if (theta*rd.root(alpha) == -rd.root(alpha) and
-	v.dot(rd.coroot(alpha)) %n !=0 ) // whether coroot is NONintegral real
-      tworho_nonintegral_real += rd.root(alpha); //if so add it
+    RatWeight newcorr(tworho_nonintegral_real,4);
+    t +=  y_values::exp_2pi(newcorr); // now the grading on real roots is right
+
   }
-
-  RatWeight newcorr(tworho_nonintegral_real,4);
-  Tg.add(newcorr,y); // now the grading on real roots is right
-  assert(Tg.is_valid(y));
-
+  // save values for |entry_element|
   const KGBElt x_org = x;
-  const GlobalTitsElement y_org = y; // save values for |entry_element|
+  const GlobalTitsElement y_org = GlobalTitsElement(t,tw);
+  assert(Tg.is_valid(y_org));
 
   // step 2: move to the minimal fiber
+
   { // modify |x| and |y|, descending to minimal element for |subsys|
     weyl::Generator s;
     do
@@ -669,15 +653,17 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	  if (kgb.status(sub.simple(s),xx)==gradings::Status::Complex)
 	  {
 	    x = kgb.cross(kgb.cross(sub.simple(s),xx),sub.to_simple(s));
-	    Tg.cross_act(s,y);
+	    // Tg.cross_act(s,y);
+	    Tg.complex_cross_act(s,t);
 	    break;
 	  }
 	  else // imaginary
-	    if (not Tg.compact(s,y))
+	    if (not Tg.compact(s,t))
 	    {
 	      xx = kgb.inverseCayley(sub.simple(s),xx).first; // choose one
 	      x = kgb.cross(xx,sub.to_simple(s));
-	      y = Tg.Cayley(s,y);
+	      // Tg.Cayley(s,y);
+	      // no need to modify |t| here: forward Cayley for |y|
 	      break;
 	    }
 	} // |if(isDescent)|
@@ -689,11 +675,10 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 
   InvolutionNbr inv = kgb.inv_nr(x);
 
-  y_entry::Pooltype y_pool(1,i_tab.pack(y.torus_part(),inv));
+  y_entry::Pooltype y_pool(1,i_tab.pack(t,inv));
   y_part_hash y_hash(y_pool);
 
-  CartanNbr n_Cartan=0; // on the fly numbering of Cartans for subsystem
-  y_info.push_back(y_fields(y.torus_part(),n_Cartan++));
+  y_rep.push_back(t);
 
   // step 3: generate imaginary fiber-orbit of |x|'s (|y|'s are unaffected)
   std::vector<unsigned int> x_of(kgb.size(),~0);
@@ -728,11 +713,11 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
       x_of[kgb_nr]=kgb_nr_of.size();
       kgb_nr_of.push_back(kgb_nr);
       d_first_z_of_x.push_back(d_x.size());
-      d_x.push_back(x_of[kgb_nr]); // assigns |d_x.size()=kgb_nr_of.size()|
+      d_x.push_back(x_of[kgb_nr]); // makes |d_x.size()=kgb_nr_of.size()|
       d_y.push_back(0); // |y| number remains 0 in loop
 
       d_descent.push_back(DescentStatus());
-      d_length.push_back(0); // we don't know the length of |x| in the sub-KGB
+      d_length.push_back(0); // we don't know true offset |x| in the sub-KGB
     }
 
     d_first_z_of_x.push_back(d_x.size()); // ensure one more entry is defined
@@ -741,7 +726,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
   // step 4: generate packets for successive involutions
 
   std::deque<BlockElt> queue(1,d_x.size()); // involution packet boundaries
-  std::vector<KGBElt> ys; ys.reserve(0x100); // enough for |1<<RANK_MAX|
+  std::vector<KGBElt> ys; ys.reserve(0x100); // |y| indices in invol.packet
   std::vector<KGBElt> cross_ys(ys.size()); cross_ys.reserve(0x100);
   std::vector<KGBElt> Cayley_ys(ys.size()); Cayley_ys.reserve(0x100);
 
@@ -749,14 +734,15 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
   { // process involution packet of elements from |next| to |queue.front()|
 
     const TwistedInvolution tw = kgb.involution(kgb_nr_of[d_x[next]]);
-    const InvolutionNbr inv = i_tab.nr(tw);
+    const InvolutionNbr inv = i_tab.nr(tw); // $\theta$
 
     ys.clear();
     size_t nr_y = 0;
-    for (BlockElt z=next; z<d_x.size() and d_x[z]==d_x[next]; ++z,++nr_y)
+    size_t cur_xsize = d_x.size();
+    for (BlockElt z=next; z<cur_xsize and d_x[z]==d_x[next]; ++z,++nr_y)
     {
-      assert(d_y[z]==d_y[next]+nr_y); // consecutive
-      ys.push_back(d_y[z]);      // so |ys| could have been avoided
+      assert(d_y[z]==d_y[next]+nr_y); // consecutive, so use of array |ys|
+      ys.push_back(d_y[z]);           // could have been avoided
     }
 
     assert((queue.front()-next)%nr_y==0); // |x| values in equal-size groups
@@ -766,9 +752,10 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
     {
       std::vector<BlockElt>& cross_link = d_cross[s];       // these are
       std::vector<BlockEltPair>& Cayley_link = d_cayley[s]; // safe references
-      cross_link.resize(d_x.size(),UndefBlock); // ensure enough slots for now
-      Cayley_link.resize(d_x.size(),std::make_pair(UndefBlock,UndefBlock));
+      cross_link.resize(cur_xsize,UndefBlock); // ensure enough slots for now
+      Cayley_link.resize(cur_xsize,std::make_pair(UndefBlock,UndefBlock));
 
+      // do (non-simple) cross action on |x| size and compute new |sub|-length
       int l = d_length[next];
       KGBElt cross_sample = kgb.cross(sub.to_simple(s),kgb_nr_of[d_x[next]]);
       l -= kgb.length(cross_sample); // might become negative
@@ -777,12 +764,9 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
       cross_sample = kgb.cross(cross_sample,sub.to_simple(s));
       assert(l>=0); // if fails, then starting point not minimal for length
 
-      InvolutionNbr s_x_inv = kgb.inv_nr(cross_sample);
+      InvolutionNbr s_x_inv = kgb.inv_nr(cross_sample); // $s\times\theta$
       bool new_cross = x_of[cross_sample] == ~0u; // whether involution unseen
 
-      bool new_Cayley=false; // whether these gave a new involution
-      bool first_Cayley=true; // true until Cayley transform for an |x| is done
-      size_t y_begin, y_end; // set when |new_Cayley| becomes true
       cross_ys.clear();
       { // compute values into |cross_ys|
 	size_t old_size =  y_hash.size();
@@ -790,27 +774,37 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	{
 	  TorusElement t = y_hash[ys[j]].t_rep;
 	  if (i_tab.complex_roots(inv).isMember(sub.parent_nr_simple(s)))
-	    t.simple_reflect(sub.pre_root_datum(),s);
+	    Tg.complex_cross_act(s,t);
 	  else if (i_tab.imaginary_roots(inv).isMember(sub.parent_nr_simple(s)))
 	    t = t.simple_imaginary_cross(rd,sub.parent_nr_simple(s));
+	  /* We could use |simple_imaginary_cross| because |is_valid| has
+	     ensured that all coroots of |sub| are integral on |t|, and the
+	     root applied is simple-imaginary (and even simple) in |sub|. More
+	     prudently one could use |Tg.imaginary_cross_act(s,t);|, which
+	     does not depend on integrality, but does assume a simple root */
 	  cross_ys.push_back(y_hash.match(i_tab.pack(t,s_x_inv)));
 	  if (new_cross)
-	    y_info.push_back(y_fields(t,y_info[ys[0]].Cartan_class));
+	    y_rep.push_back(t);
 	  assert(y_hash.size()== (new_cross ? old_size+j+1 : old_size));
 	}
       } // compute values |cross_ys|
 
+      // some variables needed outside next loop, to handle Cayley transforms
+      bool new_Cayley=false; // whether Cayley by |s| gave a new involution
+      bool first_Cayley=true; // true until Cayley transform for an |x| is done
+      size_t y_begin, y_end; // set when |new_Cayley| becomes true
+
       for (unsigned int i=0; i<nr_x; ++i)
       {
 	BlockElt base_z = next+i*nr_y; // first element of R-packet
-	KGBElt n = kgb_nr_of[d_x[base_z]];
-	KGBElt s_x_n = kgb.cross(sub.reflection(s),n);
+	KGBElt n = kgb_nr_of[d_x[base_z]]; // number in |kgb| for current $x$
+	KGBElt s_x_n = kgb.cross(sub.reflection(s),n); // its |s|-cross image
 	assert (new_cross == (x_of[s_x_n]==(unsigned int)~0));
-	// cross action on |x| gives a fresh value iff it did for the |ys|
-	if (new_cross) // add a new R-packet
+	// cross action on |x| gives a fresh value iff it did so for the |ys|
+	if (new_cross) // then add a new R-packet generated by cross action
 	{
-	  x_of[s_x_n] = kgb_nr_of.size();
-	  kgb_nr_of.push_back(s_x_n);
+	  x_of[s_x_n] = kgb_nr_of.size(); // will be $x$ index for new elements
+	  kgb_nr_of.push_back(s_x_n);     // and |s_x_n| will be their kgb nr
 	  for (unsigned int j=0; j<nr_y; ++j)
 	  {
 	    assert(d_x.size()==d_y.size()); // number of new block element
@@ -820,17 +814,18 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	    d_y.push_back(cross_ys[j]); // but |y| neighbour varies
 	    d_descent.push_back(DescentStatus()); // filled in later
 	    d_length.push_back(l);
-
 	  } // |for(j)|
+
 	  d_first_z_of_x.push_back(d_x.size()); // finally mark end of R-packet
 	} // |if(new_cross)|
-	else // install cross links to previously existing elements
+
+	else // just install cross links to previously existing elements
 	  for (unsigned int j=0; j<nr_y; ++j)
 	    cross_link[base_z+j] = element(x_of[s_x_n],cross_ys[j]);
 
-	// compute component |s| of |d_descent| for this |x| and all |y|s
-	KGBElt conj_n = kgb.cross(sub.to_simple(s),n); // conjugate
-	switch(kgb.status(sub.simple(s),conj_n))
+	// now compute component |s| of |d_descent| for this |x| and all |y|s
+	KGBElt conj_n = kgb.cross(sub.to_simple(s),n); // relevant conjugate
+	switch(kgb.status(sub.simple(s),conj_n)) // which determines status
 	{
 	case gradings::Status::Complex:
 	  if (kgb.isDescent(sub.simple(s),conj_n))
@@ -869,9 +864,8 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	if (kgb.status(sub.simple(s),conj_n)
 	    ==gradings::Status::ImaginaryNoncompact)
 	{
-	  bool type2= kgb.cross(sub.simple(s),conj_n)==conj_n;
-	  KGBElt s_Cayley_n =
-	    kgb::Cayley(kgb,n,sub.simple(s),sub.to_simple(s));
+	  bool type2= d_descent[base_z][s]==DescentStatus::ImaginaryTypeII;
+	  KGBElt s_Cayley_n = kgb::Cayley(kgb,n,sub.simple(s),sub.to_simple(s));
 
 	  l = d_length[next]+1; // length always increases in Cayley transform
 
@@ -896,7 +890,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	      for (size_t j=y_begin; j<y_hash.size(); ++j) // |y_hash| grows
 	      {
 		TorusElement t = y_hash[j].t_rep;
-		y_info.push_back(y_fields(t,n_Cartan)); // |y| in new Cartan
+		y_rep.push_back(t); // |y| in new Cartan
 
 		for (size_t k=0; k<rb.size(); ++k)
 		{
@@ -904,7 +898,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 		  y_hash.match(i_tab.pack(new_t,Cayley_inv));
 		}
 	      }
-	      y_end = y_hash.size(); ++n_Cartan;
+	      y_end = y_hash.size();
 	    } // |if (new_Cayley)|
 
 	    // now fill |Cayley_ys|, whether with elements just created or old
@@ -918,8 +912,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 	      if (type2) // make sure the two Cayley transforms are paired
 	      { // second Cayley
 		t = t.simple_imaginary_cross(rd,sub.parent_nr_simple(s));
-		Cayley_ys[j+nr_y] =
-		  y_hash.find(i_tab.pack(t,Cayley_inv));
+		Cayley_ys[j+nr_y] = y_hash.find(i_tab.pack(t,Cayley_inv));
 	      }
 	    } // |for (j)|
 	    // all |Cayley_ys| are distinct, and in pairs in case of type 2
@@ -989,8 +982,7 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
     } // |for(s)|
   } // |for (next<queue.front())|
 
-  // now store values into constructed object
-
+  // finish off construction
   std::vector<KGBElt>(kgb_nr_of).swap(kgb_nr_of); // consolidate size
 
   // finally look up which element matches the original input
@@ -1404,25 +1396,6 @@ RatWeight non_integral_block::lambda(BlockElt z) const
   RatWeight t =  y_info[d_y[z]].torus_part().log_2pi();
   const Weight& num = t.numerator();
   return infin_char - RatWeight(num-theta*num,t.denominator());
-}
-
-std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
-{
-  int xwidth = ioutils::digits(kgb.size()-1,10ul);
-  RatWeight ll=lambda(z).normalize();
-  assert(ll.denominator()<=2);
-  bool half_int = ll.denominator()==2;
-  Weight lr = half_int
-    ? (ll.numerator()-G.rootDatum().twoRho())/2
-    : ll.numerator()-G.rootDatum().twoRho()/2;
-  strm << (is_nonzero(z) ? '*' : ' ')
-       << "(" << std::setw(xwidth) << kgb_nr_of[d_x[z]] << ',' ;
-  if (half_int)
-    strm << std::setw(3*ll.size()+3) << ll;
-  else
-    strm << std::setw(3*ll.size()+1) << ll.numerator();
-  strm << "= rho+" << std::setw(4*ll.size()+1) << lr;
-  return strm << ")  ";
 }
 
 

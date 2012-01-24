@@ -245,6 +245,17 @@ RankFlags GlobalTitsGroup::descents(const GlobalTitsElement& a) const
   return result;
 }
 
+
+void
+GlobalTitsGroup::imaginary_cross_act(weyl::Generator s,TorusElement& t) const
+{
+  Rational r =
+    t.evaluate_at(simple.coroots()[s]) - Rational(1); // $\rho_{im}$ shift
+  if (r.numerator()!=0) // compact imaginary case needs no action
+    add(RatWeight // now reflect for |s|, shifted to fix $\rho_{im}$
+	(simple.roots()[s]*-r.numerator(),2*r.denominator()),t);
+}
+
 /* The code below uses Tits element representation as $t*\sigma_w*\delta_1$
    and $\delta_1*\sigma_\alpha^{-1} = \sigma_\beta*\delta_1$, simple $\alpha$
    so conjugation by $\sigma_\alpha$ gives $\sigma_\alpha*(t,w)*\sigma_\beta$
@@ -255,18 +266,12 @@ GlobalTitsGroup::cross_act(weyl::Generator s, GlobalTitsElement& x) const
   int d=twistedConjugate(x.w,s); // Tits group must add $m_\alpha$ iff $d=0$
   if (d!=0) // complex cross action: reflect torus part by |s|
   {
-    x.t.simple_reflect(simple,s); // OK since |simple| on dual side for |x.t|
+    complex_cross_act(s,x.t);
     return d/2; // report half of length change in Weyl group
   }
 
   if (not hasDescent(s,x.w)) // imaginary cross action
-  {
-    Rational r =
-      x.t.evaluate_at(simple.coroots()[s]) - Rational(1);
-    if (r.numerator()!=0) // compact imaginary case needs no action
-      add(RatWeight // now reflect for |s| about compact case
-	  (simple.roots()[s]*-r.numerator(),2*r.denominator()),x);
-  }
+    imaginary_cross_act(s,x.t);
   return 0; // no length change this case
 }
 
@@ -286,16 +291,6 @@ int GlobalTitsGroup::cross_act(GlobalTitsElement& a,const  WeylWord& w)
   for (size_t i=0; i<w.size(); ++i )
     d += cross_act(w[i],a);
   return d; // total length change, in case the caller is interested
-}
-
-// multiply strong involution by |rw|; side should be immaterial (left used)
-void GlobalTitsGroup::add
-  (const RatWeight& rw,GlobalTitsElement& a)
-  const
-{ // the following would be necessary to get a true right-mulitplication
-  // involution_matrix(a.tw()).apply_to(rw.numerator()); // pull |rw| across
-  TorusElement& tp = a.t;
-  tp = tp + y_values::exp_2pi(rw);
 }
 
 /*

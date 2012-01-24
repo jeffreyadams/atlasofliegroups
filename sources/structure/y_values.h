@@ -60,6 +60,11 @@ class TorusElement
   TorusElement operator +(const TorusElement& t) const;
   TorusElement operator -(const TorusElement& t) const;
 
+  TorusElement& operator +=(const TorusElement& t)
+  { return *this= operator +(t); }
+  TorusElement& operator -=(const TorusElement& t)
+  { return *this= operator -(t); }
+
   // this method is to be used only at weights |alpha| taking value +1 or -1
   bool negative_at(const Coweight& alpha) const
     { return repr.scalarProduct(alpha)%2!=0; }

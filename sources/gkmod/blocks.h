@@ -26,51 +26,51 @@
 
 namespace atlas {
 
+namespace blocks {
+
 /******** type declarations *************************************************/
 
 /******** constant declarations *********************************************/
 
-namespace blocks {
-
 // reserve the last possible unsigned value; it is supposed unused
 const BlockElt UndefBlock = ~ BlockElt(0);
 
-}
+
 
 /******** function declarations *********************************************/
 
-namespace blocks {
-
-  TwistedInvolution
-    dual_involution(const TwistedInvolution& w,
-		    const TwistedWeylGroup& W,
-		    const TwistedWeylGroup& dual_W);
+  // compute the involution in |dual_W| corresponding to |w| in |W|
+  TwistedInvolution dual_involution
+    (const TwistedInvolution& w,
+     const TwistedWeylGroup& W,
+     const TwistedWeylGroup& dual_W);
 
   // map from numbering of |b| to that of |dual_b|, assuming latter is dual
-  std::vector<BlockElt>
-    dual_map(const Block_base& b, const Block_base& dual_b);
+  std::vector<BlockElt> dual_map(const Block_base& b, const Block_base& dual_b);
 
-  BitMap common_Cartans(RealReductiveGroup& GR,
-				RealReductiveGroup& dGR);
+  BitMap common_Cartans(RealReductiveGroup& GR,	RealReductiveGroup& dGR);
 
-}
+
 
 /******** type definitions **************************************************/
 
-namespace blocks {
 
+
+// The class |BlockBase| serves external functionality, not block construction
 class Block_base {
 
-  const TwistedWeylGroup& tW; // used only for |compute_support| and printing
+ protected: // all other fields may be set in a derived class contructor
 
- protected: // other fields may be set in derived class contructor
+  const TwistedWeylGroup& tW; // reference is used here only for printing
 
-  KGBEltList d_x;  // of size |size()|
-  KGBEltList d_y; // of size |size()|
+  // relation to |KGB| sets (which may or may not be stored explicitly)
+  KGBEltList d_x; // of size |size()|; defines an 'x-coordinate' of elements
+  KGBEltList d_y; // of size |size()|; defines an 'y-coordinate' of elements
 
-/*!\brief maps KGB element |x| to the first block element |z| with |d_x[z]>=x|.
-*/
+  // map KGB element |x| to the first block element |z| with |d_x[z]>=x|
   std::vector<BlockElt> d_first_z_of_x; // of size |xsize+1|
+
+  // structure of the block proper:
   std::vector<BlockEltList> d_cross; // of size |d_rank| * |size()|
   std::vector<BlockEltPairList> d_cayley; // of size |d_rank| * |size()|
   DescentStatusList d_descent; // of size |size()|
@@ -80,16 +80,13 @@ class Block_base {
 
 // constructors and destructors
   Block_base(const KGB& kgb,const KGB& dual_kgb);
-  Block_base(const SubSystem& sub,
-	     const TwistedWeylGroup& printing_W);
+  Block_base(const SubSystem& sub, const TwistedWeylGroup& printing_W);
 
   virtual ~Block_base() {}
 
 // copy, assignment and swap
 
 // accessors
-  const TwistedWeylGroup& twistedWeylGroup() const { return tW; }
-  const WeylGroup& weylGroup() const { return tW.weylGroup(); }
 
   size_t rank() const { return d_cross.size(); } // semisimple rank matters
   size_t size() const { return d_x.size(); }
@@ -140,8 +137,9 @@ class Block_base {
   size_t firstStrictGoodDescent(BlockElt z) const;
 
 
-  /*! \brief the functor \f$T_{\alpha,\beta}\f$ */
-  BlockEltPair link(size_t alpha,size_t beta,BlockElt y) const;
+  // The functor $T_{\alpha,\beta}$; might have been a non-method function
+  BlockEltPair link
+    (weyl::Generator alpha,weyl::Generator beta,BlockElt y) const;
 
   std::pair<BlockElt,BlockElt> R_packet(BlockElt z) const
   {
@@ -150,13 +148,16 @@ class Block_base {
     return std::make_pair(d_first_z_of_x[x],d_first_z_of_x[x+1]);
   }
 
-  // print derivative class specific per-element information
-  virtual std::ostream& print(std::ostream& strm, BlockElt z) const
-  { return strm; }
+  // print whole block to stream (name chosen to avoid masking by |print|)
+  std::ostream& print_to
+    (std::ostream& strm,bool as_invol_expr) const; // defined in |block_io|
 
-  // a method to straighten out blocks generated in some non standard order
-  // renumber |x| through |new_x|, order by increasing |x|, set |first_z_of_x|
+  // print derivated class specific information  for |z| (used in |print_on|)
+  virtual std::ostream& print(std::ostream& strm, BlockElt z) const =0;
+
  protected:
+  // a method to straighten out blocks generated in some non standard order
+  // renumber |x| through |new_x|, then order increasingly, set |first_z_of_x|
   KGBElt renumber_x(const std::vector<KGBElt>& new_x);
 
 }; // |class Block_base|
@@ -165,21 +166,21 @@ class Block_base {
 \brief Represents a block of representations of an inner form of G.
 
 For our fixed inner form, orbits of $K$ on $G/B$ are parametrized by classes
-of elements $x$ in $N_G(H).\delta$ (which is the normalizer in the second half
-$G.\delta$ of the extended group $G^Gamma=G disju G.\delta$, where $\delta$ is
-(i.e., acts on $G$ as) an involution that itself normalises $H$) modulo the
-\emph{conjugation} action of $H$. (Dangerous bend: this $H$ conjugacy class of
-$x$ is a subset, usually proper, of the coset $xH$. The collection of all $x$
-is therefore NOT a subset of the extended Weyl group $N(H)/H$, but something
-more subtle.) The requirement on $x$ is that it belong to to the $G$-conjugacy
-class of strong involutions defining the inner form.
+of elements $x$ in $N_G(H).\delta$ (the normalizer in the non-identity
+component $G.\delta$ of the extended group $G^Gamma=G disju G.\delta$, where
+$\delta$ is (i.e., acts on $G$ as) an involution that itself normalises $H$),
+modulo the \emph{conjugation} action of $H$. (Dangerous bend: this $H$
+conjugacy class of $x$ is a subset, usually proper, of the coset $xH$. The
+collection of all $x$ is therefore NOT a subset of the extended Weyl group
+$N(H)/H$, but something more subtle.) The requirement on $x$ is that it belong
+to the $G$-conjugacy class of strong involutions defining the inner form.
 
-Each $x$ therefore defines an involution $theta_x$ of $H$.  Describing the
-set of $x$ with a fixed involution is accomplished by the Fiber class.
+Each $x$ therefore defines an involution $\theta_x$ of $H$. Data pertaining to
+the subset of $x$ with a fixed $\theta_x$ is stored in the |Fiber| class.
 
 A block is characterized by specifying also an inner form of the dual
-group $G^vee$.  For this inner form, $K^vee$ orbits on $G^vee/B^vee$ are
-parametrized by elements $y$.  The basic theorem is that the block of
+group $G^vee$. For this inner form, $K^vee$ orbits on $G^vee/B^vee$ are
+parametrized by elements $y$. The basic theorem is that the block of
 representations is parametrized by pairs $(x,y)$ as above, subject to
 the requirement that $theta_y$ is the negative transpose of $theta_x$.
   */
@@ -187,8 +188,6 @@ class Block : public Block_base
 {
 
   enum State { BruhatConstructed, NumStates };
-
-  const TwistedWeylGroup& tW; // for interpreting twisted involutions
 
   size_t xrange;
   size_t yrange;
@@ -235,7 +234,9 @@ non-vanishing KL polynomial.
  public:
 
 // accessors
-  const TwistedWeylGroup& twistedWeylGroup() const { return tW; }
+
+  const TwistedWeylGroup& twistedWeylGroup() const // for |printBlockU|
+  { return tW; }
 
   virtual size_t xsize() const { return xrange; }
   virtual size_t ysize() const { return yrange; }
@@ -261,6 +262,9 @@ non-vanishing KL polynomial.
     return d_involutionSupport[z];
   }
 
+  virtual // defined in block_io.cpp
+    std::ostream& print(std::ostream& strm, BlockElt z) const;
+
   // manipulators
   BruhatOrder& bruhatOrder()
   {
@@ -275,92 +279,88 @@ private:
 }; // |class Block|
 
 
+/*
+  The class |gamma_block| class was meant to compute blocks at non-integral
+  infinitesimal character |gamma| using only the integrality subsystem on the
+  dual side. However base-point shifting when converting to and from |y|
+  values using this representation is currently not well enough understood,
+  and therefore this class does not function reliably. The alternative class
+  |nonintegeral_block| defined below avoids this problem and appears correct.
+*/
 class gamma_block : public Block_base
 {
-  const KGB& kgb;
+  const KGB& kgb; // on the |x| size we employ a pre-computed KGB structure
 
   RatWeight infin_char; // infinitesimal character
 
-  std::vector<KGBElt> kgb_nr_of; // indexed by child |x| numbers
-
-  struct y_fields
-  {
-    TorusElement rep; //representative
-    CartanNbr Cartan_class;
-
-    y_fields(TorusElement t, unsigned int cc) : rep(t), Cartan_class(cc) {}
-  }; // |struct y_fields|
-
-  std::vector<y_fields> y_info; // indexed by child |y| numbers
+  std::vector<KGBElt> kgb_nr_of; // maps child |x| numbers to parent |kgb|
+  std::vector<TorusElement> y_rep; // representatives, by child |y| numbers
 
  public:
   gamma_block(RealReductiveGroup& GR,
 	      const SubSystem& sub,
-	      KGBElt x,
-	      const RatWeight& lambda, // discrete parameter
-	      const RatWeight& gamma, // infinitesimal character
-	      BlockElt& entry_element // set to block element matching the input
+	      KGBElt x,			// starting |x| value
+	      const RatWeight& lambda,	// discrete parameter
+	      const RatWeight& gamma,	// infinitesimal character
+	      BlockElt& entry_element	// set to block element matching input
 	      );
 
   // virtual methods
-  size_t xsize() const { return kgb_nr_of.size(); }
-  size_t ysize() const { return y_info.size(); }
+  size_t xsize() const { return kgb_nr_of.size(); } // child |x| range
+  size_t ysize() const { return y_rep.size(); }    // child |y| range
 
-  size_t Cartan_class(BlockElt z) const
-  { assert(z<size()); return y_info[d_y[z]].Cartan_class; }
+  const TwistedInvolution& involution(BlockElt z) const; // obtained from |kgb|
 
-  size_t max_Cartan() const // maximal Cartan number, for printing
-  { return Cartan_class(size()-1); } // this should be OK in all cases
 
-  const TwistedInvolution& involution(BlockElt z) const;
-
-  std::ostream& print(std::ostream& strm, BlockElt z) const;
+  virtual // in block_io.cpp; prints parent |x|, |local_system()|, Cartan
+    std::ostream& print(std::ostream& strm, BlockElt z) const;
 
   // new methods
-  RatWeight local_system(BlockElt z) const
-  { assert(z<size()); return y_info[d_y[z]].rep.log_2pi(); }
+  RatWeight local_system(BlockElt z) const // reconstruct a |lambda| from |y|
+  { assert(z<size()); return y_rep[d_y[z]].log_2pi(); }
 
 }; // |class gamma_block|
 
 class non_integral_block : public Block_base
 {
-  const KGB& kgb;
-  const ComplexReductiveGroup& G;
+  const KGB& kgb; // on the |x| size we employ a pre-computed KGB structure
+  const ComplexReductiveGroup& G; // apart from |kgb|, use |GR.complexGroup()|
   const SubSystem& sub;
 
-  RankFlags singular;
+  RankFlags singular; // flags simple roots for which |infin_char| is singular
 
-  const RatWeight infin_char; // infinitesimal character
+  const RatWeight infin_char; // the infinitesimal character of the block
 
-  std::vector<KGBElt> kgb_nr_of; // indexed by child |x| numbers
+  std::vector<KGBElt> kgb_nr_of; // maps child |x| numbers to parent |kgb|
   std::vector<GlobalTitsElement> y_info; // indexed by child |y| numbers
 
  public:
   non_integral_block
     (RealReductiveGroup& GR,
      const SubSystem& subsys,
-     KGBElt x,
-     const RatWeight& lambda, // discrete parameter
-     const RatWeight& gamma, // infinitesimal character
-     BlockElt& entry_element // set to block element matching the input
+     KGBElt x,			// starting |x| value
+     const RatWeight& lambda,	// discrete parameter
+     const RatWeight& gamma,	// infinitesimal character
+     BlockElt& entry_element	// set to block element matching input
     );
 
   non_integral_block // alternative constructor, for interval below |x|
     (RealReductiveGroup& GR,
      const SubSystem& subsys,
-     KGBElt x,
-     const RatWeight& lambda, // discrete parameter
-     const RatWeight& gamma // infinitesimal character
+     KGBElt x,			// first |x| value
+     const RatWeight& lambda,	// discrete parameter
+     const RatWeight& gamma	// infinitesimal character
     );
 
   // virtual methods
-  size_t xsize() const { return kgb_nr_of.size(); }
-  size_t ysize() const { return y_info.size(); }
+  size_t xsize() const { return kgb_nr_of.size(); } // child |x| range
+  size_t ysize() const { return y_info.size(); }    // child |y| range
 
   const TwistedInvolution& involution(BlockElt z) const
-  { assert(z<size()); return y_info[d_y[z]].tw(); }
+  { assert(z<size()); return y_info[d_y[z]].tw(); } // this is still? |y|-based
 
-  std::ostream& print(std::ostream& strm, BlockElt z) const;
+  virtual // defined in block_io.cpp
+    std::ostream& print(std::ostream& strm, BlockElt z) const;
 
   // new methods
   RatWeight lambda(BlockElt z) const; // reconstruct from y value

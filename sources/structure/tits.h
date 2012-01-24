@@ -139,8 +139,8 @@ class GlobalTitsElement
    values for the construction of possibly non-integral blocks. However, for
    testing purposes an initial application was to build a |GlobalTitsGroup| as
    a substitute for the |TitsGroup| and |TitsCoset| support classes handling
-   |x| values. It is then attached to a whoole inner class rather than to a
-   specific real form (as |TitsCoset| is) and to show this it can generate
+   |x| values. It is then attached to a whole inner class rather than to a
+   specific real form (as |TitsCoset| is) and as a consequence it can generate
    "all" valid elements for it (the command 'X'). For the latter purpose the
    |square_class_gen| and associated method are included, which permits
    listing a set of initial elements from which others can be deduced. For the
@@ -184,8 +184,8 @@ class GlobalTitsGroup : public TwistedWeylGroup
 
   //!\brief constructor from subdatum (dual side) + involution information
   GlobalTitsGroup(const SubSystem& sub,
-  		  const WeightInvolution& theta,
-		  WeylWord& ww); // output: expesses |-theta^t| for |sub|
+  		  const WeightInvolution& theta, // on opposite side from |sub|
+		  WeylWord& ww); // output: expresses |-theta^t| for |sub|
 
   // accessors
   size_t semisimple_rank() const { return alpha_v.size(); }
@@ -217,6 +217,12 @@ class GlobalTitsGroup : public TwistedWeylGroup
   { return square_class_gen; }
 
 
+// methods that operate on an isolated |TorusElement|
+
+  void complex_cross_act(weyl::Generator s,TorusElement& t) const
+  { t.simple_reflect(simple,s); }  // OK since |simple| on dual side for |t|
+  void imaginary_cross_act(weyl::Generator s,TorusElement& t) const;
+
 // methods that only access some |GlobalTitsElement|
 
   bool is_valid(const GlobalTitsElement& a) const; // whether strong invovlution
@@ -225,8 +231,11 @@ class GlobalTitsGroup : public TwistedWeylGroup
 		const SubSystem& sub) const; // central in subgroup
 
   // determine status of simple root, if assumed imaginary
+  bool compact(weyl::Generator s, const TorusElement& t) const
+  { return t.negative_at(simple.coroots()[s]); }
   bool compact(weyl::Generator s, const GlobalTitsElement& a) const
-  { return a.torus_part().negative_at(simple.coroots()[s]); }
+  { return compact(s,a.torus_part()); }
+
   // compute Cayley transform
   GlobalTitsElement Cayley(weyl::Generator s, GlobalTitsElement a) const
   { leftMult(a.w,s); return a; }
@@ -262,8 +271,14 @@ class GlobalTitsGroup : public TwistedWeylGroup
   void add(TorusPart tp,GlobalTitsElement& a) const // |tp| by value: small
   { a.t += tp; }
 
-  // add |rw| to |a.t|
-  void add(const RatWeight& rw,GlobalTitsElement& a) const;
+  // add |rw| to |t|
+  void add(const RatWeight& rw,TorusElement& t) const
+  { t += y_values::exp_2pi(rw); }
+
+  void add(const RatWeight& rw,GlobalTitsElement& a) const
+  // the following would be necessary to get a true right-mulitplication
+  // involution_matrix(a.tw()).apply_to(rw.numerator()); // pull |rw| across
+  { add(rw,a.t); }
 
   // modify |t| or |a| to an inverse Cayley image by (real simple root) $s$
   void do_inverse_Cayley(weyl::Generator s,TorusElement& t) const;

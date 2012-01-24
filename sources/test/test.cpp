@@ -1179,7 +1179,7 @@ void iblock_f()
     f << "Given parameters define element " << z
       << " of the following block:" << std::endl;
 
-    block_io::print_block(f,block);
+    block.print_to(f,false);
 
   }
   catch (error::MemoryOverflow& e)
@@ -1246,7 +1246,7 @@ void nblock_f()
     f << "Given parameters define element " << z
       << " of the following block:" << std::endl;
 
-    block_io::print_block(f,block);
+    block.print_to(f,false);
     kl::KLContext klc(block);
     klc.fill(z,false);
 
@@ -1348,8 +1348,7 @@ void partial_block_f()
     }
 
     blocks::non_integral_block block(GR,sub,x,lambda,gamma);
-    block_io::print_block(f,block);
-
+    block.print_to(f,false);
   }
   catch (error::MemoryOverflow& e)
   {
