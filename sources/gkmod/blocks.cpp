@@ -27,9 +27,6 @@
 
 #include "blocks.h"
 
-#include <iostream>
-#include <iomanip>
-
 #include <cassert>
 #include <vector>
 #include <deque>
@@ -1401,17 +1398,19 @@ RatWeight non_integral_block::lambda(BlockElt z) const
 
 // an element of a non-integral block could be zero due to singular $\gamma$
 // this depends on the simple coroots for the integral system that vanish on
-// the infinitesimal character $\gamma$, namely if they define a complex
-// descent, an imaginary compact or a real parity root.
+// the infinitesimal character $\gamma$, namely they make the element zero if
+// they define a complex descent, an imaginary compact or a real parity root
 bool non_integral_block::is_nonzero(BlockElt z) const
 {
   const DescentStatus& desc=descent(z);
   for (RankFlags::iterator it=singular.begin(); it(); ++it)
     if (DescentStatus::isDescent(desc[*it]))
       return false;
-  return true;
+  return true; // there are no singular simple coroots that are descents
 }
 
+// descend through singular simple coroots and return any nonzero elements
+// that were reached. This number can be 0, 1 or more as detailed below.
 BlockEltList non_integral_block::nonzeros_below(BlockElt z) const
 {
   BlockEltList result;
@@ -1427,18 +1426,18 @@ BlockEltList non_integral_block::nonzeros_below(BlockElt z) const
 	case DescentStatus::ImaginaryCompact:
 	  return result; // 0
 	case DescentStatus::ComplexDescent: z = cross(*it,z);
-	  break;
+	  break; // follow descent, no branching
 	case DescentStatus::RealTypeII:
-	  z=inverseCayley(*it,z).first; break;
+	  z=inverseCayley(*it,z).first; break; // follow descent, no branching
 	case descents::DescentStatus::RealTypeI:
 	  {
 	    BlockEltPair iC=inverseCayley(*it,z);
 	    BlockEltList left=nonzeros_below(iC.first);
 	    if (result.empty())
-	      left.swap(result);
+	      left.swap(result); // take left result as current value
 	    else
 	      std::copy(left.begin(),left.end(),back_inserter(result));
-	    z = iC.second;
+	    z = iC.second; // continue with right branch, adding its results
 	  }
 	  break;
        	default: assert(false); // should never happen, but compiler wants it
