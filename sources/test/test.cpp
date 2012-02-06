@@ -91,6 +91,7 @@ namespace {
   void X_f();
   void iblock_f();
   void nblock_f();
+  void deform_f();
   void partial_block_f();
   void embedding_f();
 
@@ -234,6 +235,7 @@ void addTestCommands<realmode::RealmodeTag>
   mode.add("examine",exam_f);
   mode.add("iblock",iblock_f);
   mode.add("nblock",nblock_f);
+  mode.add("deform",deform_f);
   mode.add("partial_block",partial_block_f);
   mode.add("embedding",embedding_f);
 }
@@ -1248,11 +1250,11 @@ void nblock_f()
 
     block.print_to(f,false);
     kl::KLContext klc(block);
-    klc.fill(z,false);
+    klc.fill(z,false); // silent filling of the KL table
 
     typedef Polynomial<int> Poly;
     typedef std::map<BlockElt,Poly> map_type;
-    map_type acc;
+    map_type acc; // non-zero $x'\mapsto\sum_{x\downarrow x'}\eps(z/x)P_{x,z}$
     unsigned int parity = block.length(z)%2;
     for (size_t x = 0; x <= z; ++x)
     {
@@ -1306,6 +1308,181 @@ void nblock_f()
     std::cerr << std::endl << "unidentified error occurred" << std::endl;
   }
 } // |nblock_f|
+
+void deform_f()
+{
+  try
+  {
+    RealReductiveGroup& GR = realmode::currentRealGroup();
+    ComplexReductiveGroup& G = GR.complexGroup();
+    const RootDatum& rd = G.rootDatum();
+
+    Weight lambda_rho;
+    RatWeight gamma(0);
+    KGBElt x;
+
+    SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
+    RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+    lambda.normalize();
+
+    ioutils::OutputFile f;
+    f << "x = " << x << ", gamma = " << gamma
+	      << ", lambda = " << lambda << std::endl;
+
+    WeightInvolution theta =
+      GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
+
+    WeylWord ww;
+    weyl::Twist twist = sub.twist(theta,ww);
+
+    Permutation pi;
+
+    f << "Subsystem on dual side is ";
+    if (sub.rank()==0)
+      f << "empty.\n";
+    else
+    {
+      f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+	<< ", with roots ";
+      for (weyl::Generator s=0; s<sub.rank(); ++s)
+	f << sub.parent_nr_simple(pi[s])
+	  << (s<sub.rank()-1 ? "," : ".\n");
+    }
+
+    BlockElt entry_elem;
+    blocks::non_integral_block block(GR,sub,x,lambda,gamma,entry_elem);
+
+    f << "Given parameters define element " << entry_elem
+      << " of the following block:" << std::endl;
+
+    block.print_to(f,false);
+    kl::KLContext klc(block);
+    klc.fill(entry_elem,false); // silent filling of the KL table
+
+    std::vector<BlockElt> non_zeros; non_zeros.reserve(entry_elem+1);
+    for (BlockElt x=0; x<=entry_elem; ++x)
+      if (block.is_nonzero(x))
+	non_zeros.push_back(x);
+
+    BlockElt nnz = non_zeros.size(); // |BlockElt| indexes singlular "block"
+
+    typedef Polynomial<int> Poly;
+    typedef matrix::Matrix_base<Poly> PolMat;
+
+    PolMat P(nnz,nnz,Poly(0)), Q(nnz,nnz,Poly(0));
+
+    for (BlockElt z=nnz; z-->0; )
+    {
+      BlockElt zz=non_zeros[z];
+      unsigned int parity = block.length(zz)%2;
+      for (BlockElt xx=0; xx <= zz; ++xx)
+      {
+	const kl::KLPol& pol = klc.klPol(xx,zz);
+	if (not pol.isZero())
+	{
+	  Poly p(pol); // convert
+	  if (block.length(xx)%2!=parity)
+	    p*=-1;
+	  BlockEltList nb=block.nonzeros_below(xx);
+	  for (size_t i=0; i<nb.size(); ++i)
+	  {
+	    BlockElt x = std::lower_bound
+	      (non_zeros.begin(),non_zeros.end(),nb[i])-non_zeros.begin();
+	    assert(non_zeros[x]==nb[i]); // found
+	    if (P(x,z).isZero())
+	      P(x,z)=p;
+	    else
+	      P(x,z)+=p;
+	  } // |for (i)| in |nb|
+	} // |if(pol!=0)|
+      } // |for (x<=z)|
+    } // for |z|
+
+    // now compute polynomials $Q_{x,z}$, for |y<=z<=entry_elem|
+    for (BlockElt x=0; x<nnz; ++x)
+    {
+      Q(x,x)=Poly(1);
+      for (BlockElt z=x+1; z<nnz; ++z)
+      {
+	Poly sum; // initially zero; $-\sum{x\leq y<z}Q_{x,y}P^\pm_{y,z}$
+	for (BlockElt y=x; y<z; ++y)
+	  sum -= Q(x,y)*P(y,z);
+	Q(x,z)=sum;
+      }
+    }
+
+    f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
+      << "KL polynomials (-1)^{l(y)-l(x)}*P_{x,y}:\n";
+    int width = ioutils::digits(entry_elem,10ul);
+    for (BlockElt y=0; y<nnz; ++y)
+      for (BlockElt x=0; x<=y; ++x)
+	if (not P(x,y).isZero())
+	{
+	  f << std::setw(width) << non_zeros[x] << ',' << non_zeros[y] << ": ";
+	  prettyprint::printPol(f,P(x,y),"q") << std::endl;
+	}
+
+    f << "dual KL polynomials Q_{x,y}:\n";
+    for (BlockElt y=0; y<nnz; ++y)
+      for (BlockElt x=0; x<=y; ++x)
+      {
+	Poly& pol = Q(x,y);
+	if (not pol.isZero())
+	{
+	  f << std::setw(width) << non_zeros[x] << ',' << non_zeros[y] << ": ";
+	  prettyprint::printPol(f,pol,"q") << std::endl;
+	}
+      }
+
+    if (block.is_nonzero(entry_elem))
+    {
+      BlockElt z=nnz-1;
+      assert(non_zeros[z]==entry_elem);
+      unsigned odd = (block.length(entry_elem)+1)%2; // opposite to |entry_elem|
+
+      Poly s(1,1); // in fact $X$, will reduce modulo $X^2+1$ later
+      f << "Deformation terms for I(" << entry_elem << ")_c:\n";
+      for (BlockElt x=nnz-1; x-->0; ) // skip |entry_elem|
+      {
+	Poly sum;
+	for (BlockElt y=x; y<nnz-1; ++y)
+	  if (block.length(non_zeros[y])%2==odd)
+	    sum += P(x,y)*Q(y,z);
+	// if (orientation_difference(x,y)) sum*=s;
+	// now evaluate |sum| at $X=-1$ to get "real" part of $(1-s)*sum(X:=s)$
+	int eval=0;
+	for (polynomials::Degree d=sum.size(); d-->0; )
+	  eval = sum[d]-eval;
+	if (eval!=0)
+	{
+	  f << " +(" << std::resetiosflags(std::ios_base::showpos) << eval;
+	  if (eval==1 or eval==-1)
+	    f << (eval==1 ? '-' : '+'); // sign of |-eval|
+	  else
+	    f << std::setiosflags(std::ios_base::showpos) << -eval;
+	  f <<"s)I(" << non_zeros[x] << ")_c";
+	}
+      }
+      static_cast<std::ostream&>(f) << std::endl;
+    }
+  }
+  catch (error::MemoryOverflow& e)
+  {
+    e("error: memory overflow");
+  }
+  catch (error::InputError& e)
+  {
+    e("aborted");
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << "error occurrend: " << e.what() << std::endl;
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << "unidentified error occurred" << std::endl;
+  }
+} // |deform_f|
 
 void partial_block_f()
 {
