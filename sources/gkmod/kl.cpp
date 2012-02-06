@@ -33,6 +33,7 @@
 #include <ctime>
 #include <sstream>
 #include <string>
+#include <algorithm> // for |std::binary_search|
 
 #include <cassert>
 #include <set>
