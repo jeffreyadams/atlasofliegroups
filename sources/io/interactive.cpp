@@ -856,8 +856,8 @@ SubSystem get_parameter(RealReductiveGroup& GR,
 
   Weight& numer = gamma.numerator(); // we change |gamma| using it
 
-  // although our goal is to make gamma dominant for the integral system only
-  // it does not hurt to make gamma fully dominant, acting on |x|,|lambda| too
+  // make $\gamma$ dominant for the integral system, acting on |x|,|lambda| too
+  // also act by integral coroots vanishing on $\gamma$ if complex descents
   { weyl::Generator s;
     do
     {
