@@ -99,8 +99,6 @@ class RootSystem
   Byte_vector& coroot(RootNbr i) { return ri[i].dual;}
   const Byte_vector& root(RootNbr i) const { return ri[i].root;}
   const Byte_vector& coroot(RootNbr i) const { return ri[i].dual;}
-  RootNbr rt_abs(RootNbr alpha) const // offset of corresponding positive root
-    { return isPosRoot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha; }
 
   void cons(const int_Matrix& Cartan_matrix); // panse bete
  public:
@@ -168,6 +166,9 @@ class RootSystem
 
   RootNbr rootMinus(RootNbr alpha) const // roots are ordered symmetrically
   { return numRoots()-1-alpha; }
+
+  RootNbr rt_abs(RootNbr alpha) const // offset of corresponding positive root
+  { return isPosRoot(alpha) ? alpha-numPosRoots() : numPosRoots()-1-alpha; }
 
 
   RootNbrSet simpleRootSet() const; // NOT for iteration over it; never used
