@@ -81,7 +81,7 @@ namespace { // declarations private to commands.cpp
 
 /****************************************************************************
 
-        Chapter I -- The CommandMode class.
+        Chapter I -- The Command and CommandMode classes.
 
   This is the central class of the command module.
 
@@ -528,8 +528,17 @@ void execute(const char* name, const CommandMode* mode)
   catch (error::MemoryOverflow& e) {
     e("error: memory overflow");
   }
-  catch (error::InputError& e) {
-    e("aborted");
+  catch (error::InputError& e)
+  {
+    std::cerr << "input for command " << name; e(" aborted");
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << "error occurrend: " << e.what() << std::endl;
+  }
+  catch (...)
+  {
+    std::cerr << std::endl << "unidentified error occurred" << std::endl;
   }
 }
 
