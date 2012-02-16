@@ -303,8 +303,8 @@ void kgbgraph_f()
 {
   RealReductiveGroup& G_R = currentRealGroup();
   std::cout << "kgbsize: " << G_R.KGB_size() << std::endl;
-  
-  // make sure the user enters an actual filename - 
+
+  // make sure the user enters an actual filename -
   // standard output makes no sense here
   ioutils::OutputFile file;
   if ((std::ostream&)file == std::cout) throw error::InputError();
@@ -319,7 +319,7 @@ void kgp_f()
   atlas::Parabolic psg;
   interactive::getInteractive(psg, G_R.rank());
   kgb::KGP kgp(G_R,psg);
-  
+
   // print the size and simple roots
   std::cout << "kgp size for roots {";
   bool first = true;
@@ -328,7 +328,7 @@ void kgp_f()
       first ? first=false : std::cout << ",";
       std::cout << i+1;
     }
-  }  
+  }
   std::cout << "}: " << kgp.size() << std::endl;
 
   ioutils::OutputFile file;
@@ -354,7 +354,7 @@ void kgporder_f()
       first ? first=false : std::cout << ",";
       std::cout << i+1;
     }
-  }  
+  }
   std::cout << "}: " << kgp.size() << std::endl;
 
   ioutils::OutputFile file;
@@ -378,10 +378,10 @@ void kgpgraph_f()
       first ? first=false : std::cout << ",";
       std::cout << i+1;
     }
-  }  
+  }
   std::cout << "}: " << kgp.size() << std::endl;
 
-  // make sure the user enters an actual filename - 
+  // make sure the user enters an actual filename -
   // standard output makes no sense here
   ioutils::OutputFile file;
   if ((std::ostream&)file == std::cout) throw error::InputError();
