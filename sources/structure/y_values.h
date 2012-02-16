@@ -19,8 +19,8 @@ namespace atlas {
 namespace y_values {
 
 
-inline TorusElement exp_pi(const RatWeight r);
-inline TorusElement exp_2pi(const RatWeight r);
+inline TorusElement exp_pi(const RatWeight& r);
+inline TorusElement exp_2pi(const RatWeight& r);
 
 
 /* The following classes are newer than |TitsElement|, |TitsGroup| and
@@ -36,7 +36,7 @@ class TorusElement
 {
   RatWeight repr; // represents $\exp(\pi i repr)$, no factor 2!
 
-  TorusElement(const RatWeight r,tags::UnnormalizedTag)
+  TorusElement(const RatWeight& r,tags::UnnormalizedTag)
    : repr(r) {} // raw constructor, like exp(pi i r), but no modular reduction
  public:
   explicit TorusElement(size_t rank) : repr(rank) {} // identity torus element
@@ -87,8 +87,8 @@ class TorusElement
   void simple_reflect(const PreRootDatum& prd, weyl::Generator s);
 }; // |class TorusElement|
 
-inline TorusElement exp_pi(const RatWeight r) { return TorusElement(r,false); }
-inline TorusElement exp_2pi(const RatWeight r) { return TorusElement(r,true); }
+inline TorusElement exp_pi(const RatWeight& r) { return TorusElement(r,false); }
+inline TorusElement exp_2pi(const RatWeight& r) { return TorusElement(r,true); }
 
 // a |y| value can be hashed as (fingerprint,InvolutionNbr) pair
 struct y_entry
