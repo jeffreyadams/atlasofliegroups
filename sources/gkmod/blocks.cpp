@@ -1383,9 +1383,24 @@ non_integral_block::non_integral_block
 } // |non_integral_block::non_integral_block|
 
 
+// reconstruct $\lambda-\rho$ from $\gamma$ and the torus part $t$ of $y$
+// using $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
+// the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
+Weight non_integral_block::lambda_rho(BlockElt z) const
+{
+  WeightInvolution theta =
+    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
+  RatWeight t =  y_info[d_y[z]].torus_part().log_2pi();
+  const Weight& num = t.numerator();
+  RatWeight lambda = infin_char - RatWeight(num-theta*num,t.denominator());
+  (lambda -= RatWeight(G.rootDatum().twoRho(),2)).normalize();
+  assert(lambda.denominator()==1);
+  return lambda.numerator();
+}
+
 // reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the
-// formula $\lambda = \gamma + {1+\theta\over2}.\log{{t\over\pi\ii})$
-// the projection factor $1+\theta\over2$ kills the modded-out-by part of $t$
+// formula $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
+// the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
 RatWeight non_integral_block::lambda(BlockElt z) const
 {
   WeightInvolution theta =

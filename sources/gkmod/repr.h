@@ -106,6 +106,11 @@ class Rep_context
   GlobalTitsElement y(const StandardRepr& rep) const;
 
   kgb::global_KGB dual_KGB(const StandardRepr& rep) const;
+
+  bool is_final(const StandardRepr& rep);
+  bool is_oriented(const StandardRepr& rep, RootNbr alpha);
+  unsigned int orientation_number(const StandardRepr& rep);
+
 }; // |Rep_context|
 
 

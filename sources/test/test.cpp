@@ -383,72 +383,41 @@ namespace {
 // Print the roots in the simple root coordinates.
 void roots_rootbasis_f()
 {
-  try {
-    const RootSystem& rs =
-      mainmode::currentComplexGroup().rootSystem();
-    ioutils::OutputFile file;
+  const RootSystem& rs =  mainmode::currentComplexGroup().rootSystem();
+  ioutils::OutputFile file;
 
-    for (RootNbr i=0; i<rs.numRoots(); ++i)
-      prettyprint::printInRootBasis(file,i,rs) << std::endl;
-  }
-  catch (error::InputError& e) {
-    e("aborted");
-  }
-
+  for (RootNbr i=0; i<rs.numRoots(); ++i)
+    prettyprint::printInRootBasis(file,i,rs) << std::endl;
 }
 
 // Print the positive roots in the simple root coordinates.
 void posroots_rootbasis_f()
 
 {
-  try {
-    const RootSystem& rs =
-      mainmode::currentComplexGroup().rootSystem();
-    ioutils::OutputFile file;
+  const RootSystem& rs = mainmode::currentComplexGroup().rootSystem();
 
-    prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
-  }
-  catch (error::InputError& e) {
-    e("aborted");
-  }
-
+  ioutils::OutputFile file;
+  prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
 }
 
 // Print the coroots in the simple coroot coordinates.
 void coroots_rootbasis_f()
 {
-  try
-  {
-    const RootSystem rs
-      (mainmode::currentComplexGroup().dualRootSystem());
-    ioutils::OutputFile file;
+  const RootSystem rs (mainmode::currentComplexGroup().dualRootSystem());
 
-    for (RootNbr i=0; i<rs.numRoots(); ++i)
-      prettyprint::printInRootBasis(file,i,rs) << std::endl;
-  }
-  catch (error::InputError& e)
-  {
-    e("aborted");
-  }
+  ioutils::OutputFile file;
+  for (RootNbr i=0; i<rs.numRoots(); ++i)
+    prettyprint::printInRootBasis(file,i,rs) << std::endl;
 
 }
 
 // Print the positive coroots in the simple coroot coordinates.
 void poscoroots_rootbasis_f()
 {
-  try
-  {
-    const RootSystem rs
-      (mainmode::currentComplexGroup().dualRootSystem());
-    ioutils::OutputFile file;
+  const RootSystem rs (mainmode::currentComplexGroup().dualRootSystem());
 
-    prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
-  }
-  catch (error::InputError& e)
-  {
-    e("aborted");
-  }
-
+  ioutils::OutputFile file;
+  prettyprint::printInRootBasis(file,rs.posRootSet(),rs);
 }
 
 // Real mode functions
@@ -768,7 +737,7 @@ void qKtypemat_f()
   assert(khc.rep_no(c.begin()->first)==sr);
 
   khc.print(std::cout << "Height of representation ",sr) << " is "
-    << khc.height(c.begin()->first) << ".\n";
+		      << khc.height(c.begin()->first) << ".\n";
   unsigned long bound=
     interactive::get_bounded_int(interactive::common_input(),
 				 "Give height bound: ",
@@ -776,70 +745,58 @@ void qKtypemat_f()
 
   ioutils::OutputFile f;
 
-  try
-  {
-    std::set<standardrepk::q_equation> singleton;
-    singleton.insert(khc.mu_equation(c.begin()->first,bound));
+  std::set<standardrepk::q_equation> singleton;
+  singleton.insert(khc.mu_equation(c.begin()->first,bound));
 
+  {
+    standardrepk::q_equation init=*singleton.begin();
+    khc.print(f << "Initial formula: mu(",khc.rep_no(init.first))
+      << ") =\n";
     {
-      standardrepk::q_equation init=*singleton.begin();
-      khc.print(f << "Initial formula: mu(",khc.rep_no(init.first))
-	<< ") =\n";
-      {
-	std::ostringstream s; khc.print(s,init.second);
-	ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
-      }
+      std::ostringstream s; khc.print(s,init.second);
+      ioutils::foldLine(f,s.str(),"+\n- ","",1) << std::endl;
     }
+  }
 
 #ifdef VERBOSE
 
-    std::vector<standardrepk::q_equation> system =
-      khc.saturate(singleton,bound);
-    std::cout << "System of equations:\n";
-    for (size_t i=0; i<system.size(); ++i)
-    {
-      const standardrepk::q_equation& si=system[i];
-      khc.print(std::cout<< si.first << ' ',khc.rep_no(si.first))
-	<< " [" << khc.height(si.first) << "]\n     ";
-      for (standardrepk::q_combin::const_iterator
-	     it=si.second.begin(); it!=si.second.end(); ++it)
-	std::cout << '+' << it->second << "*I(" << it->first << ')';
-      std::cout << std::endl;
-    }
+  std::vector<standardrepk::q_equation> system =
+    khc.saturate(singleton,bound);
+  std::cout << "System of equations:\n";
+  for (size_t i=0; i<system.size(); ++i)
+  {
+    const standardrepk::q_equation& si=system[i];
+    khc.print(std::cout<< si.first << ' ',khc.rep_no(si.first))
+      << " [" << khc.height(si.first) << "]\n     ";
+    for (standardrepk::q_combin::const_iterator
+	   it=si.second.begin(); it!=si.second.end(); ++it)
+      std::cout << '+' << it->second << "*I(" << it->first << ')';
+    std::cout << std::endl;
+  }
 #endif
 
-    std::vector<standardrepk::seq_no> new_order;
+  std::vector<standardrepk::seq_no> new_order;
 
 #ifdef VERBOSE
-    matrix::Matrix_base<standardrepk::q_CharCoeff> m;
-    matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
-      khc.K_type_matrix(singleton,bound,new_order,&m);
+  matrix::Matrix_base<standardrepk::q_CharCoeff> m;
+  matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
+    khc.K_type_matrix(singleton,bound,new_order,&m);
 #else
-    matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
-      khc.K_type_matrix(singleton,bound,new_order,NULL);
+  matrix::Matrix_base<standardrepk::q_CharCoeff> ktypemat =
+    khc.K_type_matrix(singleton,bound,new_order,NULL);
 #endif
 
-    f << "Ordering of representations/K-types:\n";
-    for (std::vector<standardrepk::seq_no>::const_iterator
-	   it=new_order.begin(); it!=new_order.end(); ++it)
-      khc.print(f,khc.rep_no(*it)) << ", height " << khc.height(*it)
-				   << std::endl;
+  f << "Ordering of representations/K-types:\n";
+  for (std::vector<standardrepk::seq_no>::const_iterator
+	 it=new_order.begin(); it!=new_order.end(); ++it)
+    khc.print(f,khc.rep_no(*it)) << ", height " << khc.height(*it)
+				 << std::endl;
 
 #ifdef VERBOSE
-    prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
+  prettyprint::printMatrix(std::cout<<"Triangular system:\n",m,3);
 #endif
 
-    prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",ktypemat,3);
-  } // |try()|
-  catch (std::exception& e)
-  {
-    std::cerr << "error occurred: " << e.what() << std::endl;
-  }
-  catch (...)
-  {
-    std::cerr << std::endl << "unidentified error occurred" << std::endl;
-  }
-
+  prettyprint::printMatrix(f<<"Matrix of K-type multiplicites:\n",ktypemat,3);
 } // |qKtypemat_f|
 
 void mod_lattice_f()
@@ -1012,48 +969,35 @@ void qbranch_f()
 */
 void srtest_f()
 {
-  // put your code here, and define testMode at top of file appropriately
+  RealReductiveGroup& G = realmode::currentRealGroup();
+  const KGB& kgb = G.kgb();
 
-  try
-  {
-    RealReductiveGroup& G = realmode::currentRealGroup();
-    const KGB& kgb = G.kgb();
+  unsigned long x=interactive::get_bounded_int
+    (interactive::sr_input(),"Choose KGB element: ",G.kgb().size());
 
-    unsigned long x=interactive::get_bounded_int
-      (interactive::sr_input(),"Choose KGB element: ",G.kgb().size());
+  prettyprint::printVector(std::cout<<"2rho = ",G.rootDatum().twoRho())
+    << std::endl;
 
-    prettyprint::printVector(std::cout<<"2rho = ",G.rootDatum().twoRho())
-      << std::endl;
+  Weight lambda=
+    interactive::get_weight(interactive::sr_input(),
+			    "Give lambda-rho: ",
+			    G.rank());
+  standardrepk::KhatContext khc(G);
 
-    Weight lambda=
-      interactive::get_weight(interactive::sr_input(),
-			      "Give lambda-rho: ",
-			      G.rank());
-    standardrepk::KhatContext khc(G);
+  standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
 
-    standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
+  (lambda *= 2) += G.rootDatum().twoRho();
+  prettyprint::printVector(std::cout << "Weight (1/2)",lambda);
+  prettyprint::printVector(std::cout << " converted to (1/2)",khc.lift(sr));
 
-    (lambda *= 2) += G.rootDatum().twoRho();
-    prettyprint::printVector(std::cout << "Weight (1/2)",lambda);
-    prettyprint::printVector(std::cout << " converted to (1/2)",khc.lift(sr));
+  const TwistedInvolution& canonical =
+    G.complexGroup().twistedInvolution(sr.Cartan());
+  if (kgb.involution(x)!=canonical)
+    prettyprint::printWeylElt(std::cout << " at involution ",
+			      canonical, G.weylGroup());
+  std::cout << "\nHeight is " << khc.height(sr) << std::endl;
 
-    const TwistedInvolution& canonical =
-      G.complexGroup().twistedInvolution(sr.Cartan());
-    if (kgb.involution(x)!=canonical)
-      prettyprint::printWeylElt(std::cout << " at involution ",
-				canonical, G.weylGroup());
-    std::cout << "\nHeight is " << khc.height(sr) << std::endl;
-
-    khc.go(sr);
-  }
-  catch (error::MemoryOverflow& e)
-  {
-    e("error: memory overflow");
-  }
-  catch (error::InputError& e)
-  {
-    e("aborted");
-  }
+  khc.go(sr);
 }
 
 bool examine(RealReductiveGroup& G)
@@ -1123,426 +1067,362 @@ void X_f()
 
 void iblock_f()
 {
-  try
-  {
-    RealReductiveGroup& GR = realmode::currentRealGroup();
-    ComplexReductiveGroup& G = GR.complexGroup();
-    const RootDatum& rd = G.rootDatum();
+  RealReductiveGroup& GR = realmode::currentRealGroup();
+  ComplexReductiveGroup& G = GR.complexGroup();
+  const RootDatum& rd = G.rootDatum();
 
-    Weight lambda_rho =
-      interactive::get_weight(interactive::sr_input(),
-			      "Give lambda-rho: ",
-			      G.rank());
+  Weight lambda_rho =
+    interactive::get_weight(interactive::sr_input(),
+			    "Give lambda-rho: ",
+			    G.rank());
 
-    RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+  RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
 
 
-    RatWeight nu=
-      interactive::get_ratweight
-      (interactive::sr_input(),"rational parameter nu: ",rd.rank());
+  RatWeight nu=
+    interactive::get_ratweight
+    (interactive::sr_input(),"rational parameter nu: ",rd.rank());
 
-    const KGB& kgb = GR.kgb();
-    unsigned long x=interactive::get_bounded_int
-      (interactive::common_input(),"KGB element: ",kgb.size());
+  const KGB& kgb = GR.kgb();
+  unsigned long x=interactive::get_bounded_int
+    (interactive::common_input(),"KGB element: ",kgb.size());
 
-    WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
+  WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
 
-    nu = RatWeight // make |nu| fixed by $-\theta$
-      (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
+  nu = RatWeight // make |nu| fixed by $-\theta$
+    (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
 
-    RatWeight gamma = nu + RatWeight
+  RatWeight gamma = nu + RatWeight
     (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
 
-    ioutils::OutputFile f;
-    f << "Infinitesimal character is " << gamma << std::endl;
+  ioutils::OutputFile f;
+  f << "Infinitesimal character is " << gamma << std::endl;
 
-    SubSystem sub = SubSystem::integral(rd,gamma);
+  SubSystem sub = SubSystem::integral(rd,gamma);
 
-    WeylWord ww;
-    weyl::Twist twist = sub.twist(theta,ww);
+  WeylWord ww;
+  weyl::Twist twist = sub.twist(theta,ww);
 
-    Permutation pi;
+  Permutation pi;
 
-    f << "Subsystem on dual side is ";
-    if (sub.rank()==0)
-      f << "empty.\n";
-    else
-    {
-      f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-	<< ", with roots ";
-      for (weyl::Generator s=0; s<sub.rank(); ++s)
-	f << sub.parent_nr_simple(pi[s]) << (s<sub.rank()-1 ? "," : ".\n");
-    }
-    f << "Twisted involution in subsystem: " << ww << ".\n";
-
-    BlockElt z;
-    blocks::gamma_block block(GR,sub,x,lambda,gamma,z);
-
-    f << "Given parameters define element " << z
-      << " of the following block:" << std::endl;
-
-    block.print_to(f,false);
-
-  }
-  catch (error::MemoryOverflow& e)
+  f << "Subsystem on dual side is ";
+  if (sub.rank()==0)
+    f << "empty.\n";
+  else
   {
-    e("error: memory overflow");
+    f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+      << ", with roots ";
+    for (weyl::Generator s=0; s<sub.rank(); ++s)
+      f << sub.parent_nr_simple(pi[s]) << (s<sub.rank()-1 ? "," : ".\n");
   }
-  catch (error::InputError& e)
-  {
-    e("aborted");
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << "error occurrend: " << e.what() << std::endl;
-  }
-  catch (...)
-  {
-    std::cerr << std::endl << "unidentified error occurred" << std::endl;
-  }
+  f << "Twisted involution in subsystem: " << ww << ".\n";
+
+  BlockElt z;
+  blocks::gamma_block block(GR,sub,x,lambda,gamma,z);
+
+  f << "Given parameters define element " << z
+    << " of the following block:" << std::endl;
+
+  block.print_to(f,false);
+
 } // |iblock_f|
 
 void nblock_f()
 {
-  try
+  RealReductiveGroup& GR = realmode::currentRealGroup();
+  ComplexReductiveGroup& G = GR.complexGroup();
+  const RootDatum& rd = G.rootDatum();
+
+  Weight lambda_rho;
+  RatWeight gamma(0);
+  KGBElt x;
+
+  SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
+  RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+  lambda.normalize();
+
+  ioutils::OutputFile f;
+  f << "x = " << x << ", gamma = " << gamma
+    << ", lambda = " << lambda << std::endl;
+
+  WeightInvolution theta =
+    GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
+
+  WeylWord ww;
+  weyl::Twist twist = sub.twist(theta,ww);
+
+  Permutation pi;
+
+  f << "Subsystem on dual side is ";
+  if (sub.rank()==0)
+    f << "empty.\n";
+  else
   {
-    RealReductiveGroup& GR = realmode::currentRealGroup();
-    ComplexReductiveGroup& G = GR.complexGroup();
-    const RootDatum& rd = G.rootDatum();
+    f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+      << ", with roots ";
+    for (weyl::Generator s=0; s<sub.rank(); ++s)
+      f << sub.parent_nr_simple(pi[s])
+	<< (s<sub.rank()-1 ? "," : ".\n");
+  }
 
-    Weight lambda_rho;
-    RatWeight gamma(0);
-    KGBElt x;
+  BlockElt z;
+  blocks::non_integral_block block(GR,sub,x,lambda,gamma,z);
 
-    SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
-    RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
-    lambda.normalize();
+  f << "Given parameters define element " << z
+    << " of the following block:" << std::endl;
 
-    ioutils::OutputFile f;
-    f << "x = " << x << ", gamma = " << gamma
-	      << ", lambda = " << lambda << std::endl;
+  block.print_to(f,false);
+  kl::KLContext klc(block);
+  klc.fill(z,false); // silent filling of the KL table
 
-    WeightInvolution theta =
-      GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
-
-    WeylWord ww;
-    weyl::Twist twist = sub.twist(theta,ww);
-
-    Permutation pi;
-
-    f << "Subsystem on dual side is ";
-    if (sub.rank()==0)
-      f << "empty.\n";
-    else
+  typedef Polynomial<int> Poly;
+  typedef std::map<BlockElt,Poly> map_type;
+  map_type acc; // non-zero $x'\mapsto\sum_{x\downarrow x'}\eps(z/x)P_{x,z}$
+  unsigned int parity = block.length(z)%2;
+  for (size_t x = 0; x <= z; ++x)
+  {
+    const kl::KLPol& pol = klc.klPol(x,z);
+    if (not pol.isZero())
     {
-      f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-	<< ", with roots ";
-      for (weyl::Generator s=0; s<sub.rank(); ++s)
-	f << sub.parent_nr_simple(pi[s])
-	  << (s<sub.rank()-1 ? "," : ".\n");
-    }
-
-    BlockElt z;
-    blocks::non_integral_block block(GR,sub,x,lambda,gamma,z);
-
-    f << "Given parameters define element " << z
-      << " of the following block:" << std::endl;
-
-    block.print_to(f,false);
-    kl::KLContext klc(block);
-    klc.fill(z,false); // silent filling of the KL table
-
-    typedef Polynomial<int> Poly;
-    typedef std::map<BlockElt,Poly> map_type;
-    map_type acc; // non-zero $x'\mapsto\sum_{x\downarrow x'}\eps(z/x)P_{x,z}$
-    unsigned int parity = block.length(z)%2;
-    for (size_t x = 0; x <= z; ++x)
-    {
-      const kl::KLPol& pol = klc.klPol(x,z);
-      if (not pol.isZero())
+      Poly p(pol); // convert
+      if (block.length(x)%2!=parity)
+	p*=-1;
+      BlockEltList nb=block.nonzeros_below(x);
+      for (size_t i=0; i<nb.size(); ++i)
       {
-	Poly p(pol); // convert
-	if (block.length(x)%2!=parity)
-	  p*=-1;
-	BlockEltList nb=block.nonzeros_below(x);
-	for (size_t i=0; i<nb.size(); ++i)
-	{
-	  std::pair<map_type::iterator,bool> trial =
-	    acc.insert(std::make_pair(nb[i],p));
-	  if (not trial.second) // failed to create a new entry
-	    trial.first->second += p;
-	} // |for (i)| in |nb|
-      } // |if(pol!=0)|
-    } // |for (x<=z)|
+	std::pair<map_type::iterator,bool> trial =
+	  acc.insert(std::make_pair(nb[i],p));
+	if (not trial.second) // failed to create a new entry
+	  trial.first->second += p;
+      } // |for (i)| in |nb|
+    } // |if(pol!=0)|
+  } // |for (x<=z)|
 
 
-    f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
-      << "KL polynomials (-1)^{l(" << z << ")-l(x)}*P_{x," << z << "}:\n";
-    int width = ioutils::digits(z,10ul);
-    for (map_type::const_iterator it=acc.begin(); it!=acc.end(); ++it)
+  f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
+    << "KL polynomials (-1)^{l(" << z << ")-l(x)}*P_{x," << z << "}:\n";
+  int width = ioutils::digits(z,10ul);
+  for (map_type::const_iterator it=acc.begin(); it!=acc.end(); ++it)
+  {
+    BlockElt x = it->first;
+    const Poly& pol = it->second;
+    if (not pol.isZero())
     {
-      BlockElt x = it->first;
-      const Poly& pol = it->second;
-      if (not pol.isZero())
-      {
-    	f << std::setw(width) << x << ": ";
-    	prettyprint::printPol(f,pol,"q") << std::endl;
-      }
+      f << std::setw(width) << x << ": ";
+      prettyprint::printPol(f,pol,"q") << std::endl;
     }
-
-  }
-  catch (error::MemoryOverflow& e)
-  {
-    e("error: memory overflow");
-  }
-  catch (error::InputError& e)
-  {
-    e("aborted");
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << "error occurrend: " << e.what() << std::endl;
-  }
-  catch (...)
-  {
-    std::cerr << std::endl << "unidentified error occurred" << std::endl;
   }
 } // |nblock_f|
 
 void deform_f()
 {
-  try
+  RealReductiveGroup& GR = realmode::currentRealGroup();
+  ComplexReductiveGroup& G = GR.complexGroup();
+  const RootDatum& rd = G.rootDatum();
+
+  Weight lambda_rho;
+  RatWeight gamma(0);
+  KGBElt x;
+
+  SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
+  RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+  lambda.normalize();
+
+  ioutils::OutputFile f;
+  f << "x = " << x << ", gamma = " << gamma
+    << ", lambda = " << lambda << std::endl;
+
+  WeightInvolution theta =
+    GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
+
+  WeylWord ww;
+  weyl::Twist twist = sub.twist(theta,ww);
+
+  Permutation pi;
+
+  f << "Subsystem on dual side is ";
+  if (sub.rank()==0)
+    f << "empty.\n";
+  else
   {
-    RealReductiveGroup& GR = realmode::currentRealGroup();
-    ComplexReductiveGroup& G = GR.complexGroup();
-    const RootDatum& rd = G.rootDatum();
+    f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+      << ", with roots ";
+    for (weyl::Generator s=0; s<sub.rank(); ++s)
+      f << sub.parent_nr_simple(pi[s])
+	<< (s<sub.rank()-1 ? "," : ".\n");
+  }
 
-    Weight lambda_rho;
-    RatWeight gamma(0);
-    KGBElt x;
+  BlockElt entry_elem;
+  blocks::non_integral_block block(GR,sub,x,lambda,gamma,entry_elem);
 
-    SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
-    RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
-    lambda.normalize();
+  f << "Given parameters define element " << entry_elem
+    << " of the following block:" << std::endl;
 
-    ioutils::OutputFile f;
-    f << "x = " << x << ", gamma = " << gamma
-	      << ", lambda = " << lambda << std::endl;
+  block.print_to(f,false);
+  kl::KLContext klc(block);
+  klc.fill(entry_elem,false); // silent filling of the KL table
 
-    WeightInvolution theta =
-      GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
+  std::vector<BlockElt> non_zeros; non_zeros.reserve(entry_elem+1);
+  for (BlockElt x=0; x<=entry_elem; ++x)
+    if (block.is_nonzero(x))
+      non_zeros.push_back(x);
 
-    WeylWord ww;
-    weyl::Twist twist = sub.twist(theta,ww);
+  BlockElt nnz = non_zeros.size(); // |BlockElt| indexes singlular "block"
 
-    Permutation pi;
+  repr::Rep_context RC(GR);
+  std::vector<unsigned int> orient_nr(nnz);
+  for (BlockElt z=0; z<nnz; ++z)
+  {
+    BlockElt zz=non_zeros[z];
+    repr::StandardRepr r = RC.sr(block.x(zz),block.lambda_rho(zz),gamma);
+    orient_nr[z] = RC.orientation_number(r);
+  }
 
-    f << "Subsystem on dual side is ";
-    if (sub.rank()==0)
-      f << "empty.\n";
-    else
+  typedef Polynomial<int> Poly;
+  typedef matrix::Matrix_base<Poly> PolMat;
+
+  PolMat P(nnz,nnz,Poly(0)), Q(nnz,nnz,Poly(0));
+
+  for (BlockElt z=nnz; z-->0; )
+  {
+    BlockElt zz=non_zeros[z];
+    unsigned int parity = block.length(zz)%2;
+    for (BlockElt xx=0; xx <= zz; ++xx)
     {
-      f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-	<< ", with roots ";
-      for (weyl::Generator s=0; s<sub.rank(); ++s)
-	f << sub.parent_nr_simple(pi[s])
-	  << (s<sub.rank()-1 ? "," : ".\n");
-    }
-
-    BlockElt entry_elem;
-    blocks::non_integral_block block(GR,sub,x,lambda,gamma,entry_elem);
-
-    f << "Given parameters define element " << entry_elem
-      << " of the following block:" << std::endl;
-
-    block.print_to(f,false);
-    kl::KLContext klc(block);
-    klc.fill(entry_elem,false); // silent filling of the KL table
-
-    std::vector<BlockElt> non_zeros; non_zeros.reserve(entry_elem+1);
-    for (BlockElt x=0; x<=entry_elem; ++x)
-      if (block.is_nonzero(x))
-	non_zeros.push_back(x);
-
-    BlockElt nnz = non_zeros.size(); // |BlockElt| indexes singlular "block"
-
-    typedef Polynomial<int> Poly;
-    typedef matrix::Matrix_base<Poly> PolMat;
-
-    PolMat P(nnz,nnz,Poly(0)), Q(nnz,nnz,Poly(0));
-
-    for (BlockElt z=nnz; z-->0; )
-    {
-      BlockElt zz=non_zeros[z];
-      unsigned int parity = block.length(zz)%2;
-      for (BlockElt xx=0; xx <= zz; ++xx)
+      const kl::KLPol& pol = klc.klPol(xx,zz);
+      if (not pol.isZero())
       {
-	const kl::KLPol& pol = klc.klPol(xx,zz);
-	if (not pol.isZero())
+	Poly p(pol); // convert
+	if (block.length(xx)%2!=parity)
+	  p*=-1;
+	BlockEltList nb=block.nonzeros_below(xx);
+	for (size_t i=0; i<nb.size(); ++i)
 	{
-	  Poly p(pol); // convert
-	  if (block.length(xx)%2!=parity)
-	    p*=-1;
-	  BlockEltList nb=block.nonzeros_below(xx);
-	  for (size_t i=0; i<nb.size(); ++i)
-	  {
-	    BlockElt x = std::lower_bound
-	      (non_zeros.begin(),non_zeros.end(),nb[i])-non_zeros.begin();
-	    assert(non_zeros[x]==nb[i]); // found
-	    if (P(x,z).isZero())
-	      P(x,z)=p;
-	    else
-	      P(x,z)+=p;
-	  } // |for (i)| in |nb|
-	} // |if(pol!=0)|
-      } // |for (x<=z)|
-    } // for |z|
+	  BlockElt x = std::lower_bound
+	    (non_zeros.begin(),non_zeros.end(),nb[i])-non_zeros.begin();
+	  assert(non_zeros[x]==nb[i]); // found
+	  if (P(x,z).isZero())
+	    P(x,z)=p;
+	  else
+	    P(x,z)+=p;
+	} // |for (i)| in |nb|
+      } // |if(pol!=0)|
+    } // |for (x<=z)|
+  } // for |z|
 
     // now compute polynomials $Q_{x,z}$, for |y<=z<=entry_elem|
-    for (BlockElt x=0; x<nnz; ++x)
+  for (BlockElt x=0; x<nnz; ++x)
+  {
+    Q(x,x)=Poly(1);
+    for (BlockElt z=x+1; z<nnz; ++z)
     {
-      Q(x,x)=Poly(1);
-      for (BlockElt z=x+1; z<nnz; ++z)
+      Poly sum; // initially zero; $-\sum{x\leq y<z}Q_{x,y}P^\pm_{y,z}$
+      for (BlockElt y=x; y<z; ++y)
+	sum -= Q(x,y)*P(y,z);
+      Q(x,z)=sum;
+    }
+  }
+
+  f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
+    << "KL polynomials (-1)^{l(y)-l(x)}*P_{x,y}:\n";
+  int width = ioutils::digits(entry_elem,10ul);
+  for (BlockElt y=0; y<nnz; ++y)
+    for (BlockElt x=0; x<=y; ++x)
+      if (not P(x,y).isZero())
       {
-	Poly sum; // initially zero; $-\sum{x\leq y<z}Q_{x,y}P^\pm_{y,z}$
-	for (BlockElt y=x; y<z; ++y)
-	  sum -= Q(x,y)*P(y,z);
-	Q(x,z)=sum;
+	f << std::setw(width) << non_zeros[x] << ',' << non_zeros[y] << ": ";
+	prettyprint::printPol(f,P(x,y),"q") << std::endl;
+      }
+
+  f << "dual KL polynomials Q_{x,y}:\n";
+  for (BlockElt y=0; y<nnz; ++y)
+    for (BlockElt x=0; x<=y; ++x)
+    {
+      Poly& pol = Q(x,y);
+      if (not pol.isZero())
+      {
+	f << std::setw(width) << non_zeros[x] << ',' << non_zeros[y] << ": ";
+	prettyprint::printPol(f,pol,"q") << std::endl;
       }
     }
 
-    f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
-      << "KL polynomials (-1)^{l(y)-l(x)}*P_{x,y}:\n";
-    int width = ioutils::digits(entry_elem,10ul);
-    for (BlockElt y=0; y<nnz; ++y)
-      for (BlockElt x=0; x<=y; ++x)
-	if (not P(x,y).isZero())
-	{
-	  f << std::setw(width) << non_zeros[x] << ',' << non_zeros[y] << ": ";
-	  prettyprint::printPol(f,P(x,y),"q") << std::endl;
-	}
+  f << "Orientation numbers:\n";
+  for (BlockElt y=0; y<nnz; ++y)
+    f << non_zeros[y] << ": " << orient_nr[y] << (y+1<nnz ? ", " : ".\n");
 
-    f << "dual KL polynomials Q_{x,y}:\n";
-    for (BlockElt y=0; y<nnz; ++y)
-      for (BlockElt x=0; x<=y; ++x)
-      {
-	Poly& pol = Q(x,y);
-	if (not pol.isZero())
-	{
-	  f << std::setw(width) << non_zeros[x] << ',' << non_zeros[y] << ": ";
-	  prettyprint::printPol(f,pol,"q") << std::endl;
-	}
-      }
+  if (block.is_nonzero(entry_elem))
+  {
+    BlockElt z=nnz-1;
+    assert(non_zeros[z]==entry_elem);
+    unsigned odd = (block.length(entry_elem)+1)%2; // opposite to |entry_elem|
 
-    if (block.is_nonzero(entry_elem))
+    Poly s(1,1); // in fact $X$, will reduce modulo $X^2+1$ later
+    f << "Deformation terms for I(" << entry_elem << ")_c:\n";
+    for (BlockElt x=nnz-1; x-->0; ) // skip |entry_elem|
     {
-      BlockElt z=nnz-1;
-      assert(non_zeros[z]==entry_elem);
-      unsigned odd = (block.length(entry_elem)+1)%2; // opposite to |entry_elem|
-
-      Poly s(1,1); // in fact $X$, will reduce modulo $X^2+1$ later
-      f << "Deformation terms for I(" << entry_elem << ")_c:\n";
-      for (BlockElt x=nnz-1; x-->0; ) // skip |entry_elem|
+      Poly sum;
+      for (BlockElt y=x; y<nnz-1; ++y)
+	if (block.length(non_zeros[y])%2==odd)
+	  sum += P(x,y)*Q(y,z);
+      // if (orientation_difference(x,y)) sum*=s;
+      // now evaluate |sum| at $X=-1$ to get "real" part of $(1-s)*sum[X:=s]$
+      int eval=0;
+      for (polynomials::Degree d=sum.size(); d-->0; )
+	eval = sum[d]-eval;
+      if (eval!=0)
       {
-	Poly sum;
-	for (BlockElt y=x; y<nnz-1; ++y)
-	  if (block.length(non_zeros[y])%2==odd)
-	    sum += P(x,y)*Q(y,z);
-	// if (orientation_difference(x,y)) sum*=s;
-	// now evaluate |sum| at $X=-1$ to get "real" part of $(1-s)*sum(X:=s)$
-	int eval=0;
-	for (polynomials::Degree d=sum.size(); d-->0; )
-	  eval = sum[d]-eval;
-	if (eval!=0)
-	{
-	  f << " +(" << std::resetiosflags(std::ios_base::showpos) << eval;
-	  if (eval==1 or eval==-1)
-	    f << (eval==1 ? '-' : '+'); // sign of |-eval|
-	  else
-	    f << std::setiosflags(std::ios_base::showpos) << -eval;
-	  f <<"s)I(" << non_zeros[x] << ")_c";
-	}
+	f << " +(" << std::resetiosflags(std::ios_base::showpos) << eval;
+	if (eval==1 or eval==-1)
+	  f << (eval==1 ? '-' : '+'); // sign of |-eval|
+	else
+	  f << std::setiosflags(std::ios_base::showpos) << -eval;
+	f <<"s)I(" << non_zeros[x] << ")_c";
       }
-      static_cast<std::ostream&>(f) << std::endl;
     }
-  }
-  catch (error::MemoryOverflow& e)
-  {
-    e("error: memory overflow");
-  }
-  catch (error::InputError& e)
-  {
-    e("aborted");
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << "error occurrend: " << e.what() << std::endl;
-  }
-  catch (...)
-  {
-    std::cerr << std::endl << "unidentified error occurred" << std::endl;
+    static_cast<std::ostream&>(f) << std::endl;
   }
 } // |deform_f|
 
 void partial_block_f()
 {
-  try
+  RealReductiveGroup& GR = realmode::currentRealGroup();
+  ComplexReductiveGroup& G = GR.complexGroup();
+  const RootDatum& rd = G.rootDatum();
+
+  Weight lambda_rho;
+  RatWeight gamma(0);
+  KGBElt x;
+
+  SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
+  RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+  lambda.normalize();
+
+  ioutils::OutputFile f;
+  f << "x = " << x << ", gamma = " << gamma
+    << ", lambda = " << lambda << std::endl;
+
+  WeightInvolution theta =
+    GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
+
+  WeylWord ww;
+  weyl::Twist twist = sub.twist(theta,ww);
+
+  Permutation pi;
+
+  f << "Subsystem on dual side is ";
+  if (sub.rank()==0)
+    f << "empty.\n";
+  else
   {
-    RealReductiveGroup& GR = realmode::currentRealGroup();
-    ComplexReductiveGroup& G = GR.complexGroup();
-    const RootDatum& rd = G.rootDatum();
-
-    Weight lambda_rho;
-    RatWeight gamma(0);
-    KGBElt x;
-
-    SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
-    RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
-    lambda.normalize();
-
-    ioutils::OutputFile f;
-    f << "x = " << x << ", gamma = " << gamma
-	      << ", lambda = " << lambda << std::endl;
-
-    WeightInvolution theta =
-      GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
-
-    WeylWord ww;
-    weyl::Twist twist = sub.twist(theta,ww);
-
-    Permutation pi;
-
-    f << "Subsystem on dual side is ";
-    if (sub.rank()==0)
-      f << "empty.\n";
-    else
-    {
-      f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-	<< ", with roots ";
-      for (weyl::Generator s=0; s<sub.rank(); ++s)
-	f << sub.parent_nr_simple(pi[s])
-	  << (s<sub.rank()-1 ? "," : ".\n");
-    }
-
-    blocks::non_integral_block block(GR,sub,x,lambda,gamma);
-    block.print_to(f,false);
+    f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+      << ", with roots ";
+    for (weyl::Generator s=0; s<sub.rank(); ++s)
+      f << sub.parent_nr_simple(pi[s])
+	<< (s<sub.rank()-1 ? "," : ".\n");
   }
-  catch (error::MemoryOverflow& e)
-  {
-    e("error: memory overflow");
-  }
-  catch (error::InputError& e)
-  {
-    e("aborted");
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << "error occurrend: " << e.what() << std::endl;
-  }
-  catch (...)
-  {
-    std::cerr << std::endl << "unidentified error occurred" << std::endl;
-  }
+
+  blocks::non_integral_block block(GR,sub,x,lambda,gamma);
+  block.print_to(f,false);
 } // |partial_block_f|
 
 
@@ -1568,186 +1448,147 @@ TorusElement torus_part
 
 void embedding_f()
 {
-  try
-  {
-    RealReductiveGroup& GR = realmode::currentRealGroup();
-    ComplexReductiveGroup& G = GR.complexGroup();
-    const RootDatum& rd = G.rootDatum();
+  RealReductiveGroup& GR = realmode::currentRealGroup();
+  ComplexReductiveGroup& G = GR.complexGroup();
+  const RootDatum& rd = G.rootDatum();
 
-    Weight lambda_rho =
-      interactive::get_weight(interactive::sr_input(),"Give lambda-rho: ",
-			      G.rank());
+  Weight lambda_rho =
+    interactive::get_weight(interactive::sr_input(),"Give lambda-rho: ",
+			    G.rank());
 
-    RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
+  RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
 
-    RatWeight nu=
-      interactive::get_ratweight
-      (interactive::sr_input(),"rational parameter nu: ",rd.rank());
+  RatWeight nu=
+    interactive::get_ratweight
+    (interactive::sr_input(),"rational parameter nu: ",rd.rank());
 
-    const KGB& kgb = GR.kgb();
-    unsigned long x=interactive::get_bounded_int
-      (interactive::common_input(),"KGB element: ",kgb.size());
+  const KGB& kgb = GR.kgb();
+  unsigned long x=interactive::get_bounded_int
+    (interactive::common_input(),"KGB element: ",kgb.size());
 
-    WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
+  WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
 
-    nu = RatWeight // make |nu| fixed by $-\theta$
-      (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
+  nu = RatWeight // make |nu| fixed by $-\theta$
+    (nu.numerator()- theta*nu.numerator(),2*nu.denominator());
 
-    RatWeight gamma = nu + RatWeight
+  RatWeight gamma = nu + RatWeight
     (lambda.numerator()+theta*lambda.numerator(),2*lambda.denominator());
 
-    ioutils::OutputFile f;
-    f << "Infinitesimal character is " << gamma << std::endl;
+  ioutils::OutputFile f;
+  f << "Infinitesimal character is " << gamma << std::endl;
 
-    SubSystem sub = SubSystem::integral(rd,gamma);
+  SubSystem sub = SubSystem::integral(rd,gamma);
 
-    WeylWord ww;
-    const tits::SubTitsGroup sub_gTg
-      (G,sub,G.involutionMatrix(kgb.involution(x)),ww);
+  WeylWord ww;
+  const tits::SubTitsGroup sub_gTg
+    (G,sub,G.involutionMatrix(kgb.involution(x)),ww);
 
-    Permutation pi;
+  Permutation pi;
 
-    f << "Subsystem on dual side is ";
-    if (sub.rank()==0)
-      f << "empty.\n";
-    else
+  f << "Subsystem on dual side is ";
+  if (sub.rank()==0)
+    f << "empty.\n";
+  else
+  {
+    f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+      << ", with roots ";
+    for (weyl::Generator s=0; s<sub.rank(); ++s)
+      f << sub.parent_nr_simple(pi[s]) << (s<sub.rank()-1 ? "," : ".\n");
+  }
+  f << "Twisted involution in subsystem: " << ww << ".\n";
+
+  weyl::TI_Entry::Pooltype pool;
+  hashtable::HashTable<weyl::TI_Entry,unsigned int> hash_table(pool);
+  std::vector<unsigned int> stops;
+  {
+    std::vector<TwistedInvolution> queue(1,TwistedInvolution());
+    size_t qi = 0; // |queue| inspected up to |qi|
+    const TwistedWeylGroup& tW = sub_gTg; // base object, subgroup
+
+    while (qi<queue.size())
     {
-      f << "of type " << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-	<< ", with roots ";
-      for (weyl::Generator s=0; s<sub.rank(); ++s)
-	f << sub.parent_nr_simple(pi[s]) << (s<sub.rank()-1 ? "," : ".\n");
-    }
-    f << "Twisted involution in subsystem: " << ww << ".\n";
-
-    weyl::TI_Entry::Pooltype pool;
-    hashtable::HashTable<weyl::TI_Entry,unsigned int> hash_table(pool);
-    std::vector<unsigned int> stops;
-    {
-      std::vector<TwistedInvolution> queue(1,TwistedInvolution());
-      size_t qi = 0; // |queue| inspected up to |qi|
-      const TwistedWeylGroup& tW = sub_gTg; // base object, subgroup
-
-      while (qi<queue.size())
-      {
-	weyl::TI_Entry tw=queue[qi++];
-	if (hash_table.find(tw)==hash_table.empty) // Cartan class not seen yet
-	{ stops.push_back(hash_table.size());
-	  // generate like kgb::FiberData::complete_class|
-	  for (unsigned int i=hash_table.match(tw); i<hash_table.size(); ++i)
-	  {
-	    tw=pool[i];
-	    for (weyl::Generator s=0; s<tW.rank(); ++s)
-	      if (tW.hasTwistedCommutation(s,tw)) // |s| real or imaginary
-	      {
-		if (not tW.hasDescent(s,tw)) // |s| imaginary
-		  queue.push_back(tW.prod(s,tw));
-	      }
-	      else // |s| complex
-		hash_table.match(tW.twistedConjugated(tw,s));
-	  } // |for(i)|
-	} // |if| new Cartan class
-      } // |while| queue not completely inspected
-    } // forget |queue|
-    stops.push_back(~0); // sentinel
-    size_t si=0; // index into |stops|
-    for (unsigned int i=0; i<pool.size(); ++i)
-    {
-      if (i==stops[si])
-      { (std::ostream&)f << std::endl; ++si; } // separate classes
-      TwistedInvolution tw=pool[i];
-      f << sub_gTg.base_point_offset(tw).log_2pi()
-	<< "  \t@  " << sub_gTg.word(tw) <<std::endl;
-    }
-  }
-  catch (error::MemoryOverflow& e)
+      weyl::TI_Entry tw=queue[qi++];
+      if (hash_table.find(tw)==hash_table.empty) // Cartan class not seen yet
+      { stops.push_back(hash_table.size());
+	// generate like kgb::FiberData::complete_class|
+	for (unsigned int i=hash_table.match(tw); i<hash_table.size(); ++i)
+	{
+	  tw=pool[i];
+	  for (weyl::Generator s=0; s<tW.rank(); ++s)
+	    if (tW.hasTwistedCommutation(s,tw)) // |s| real or imaginary
+	    {
+	      if (not tW.hasDescent(s,tw)) // |s| imaginary
+		queue.push_back(tW.prod(s,tw));
+	    }
+	    else // |s| complex
+	      hash_table.match(tW.twistedConjugated(tw,s));
+	} // |for(i)|
+      } // |if| new Cartan class
+    } // |while| queue not completely inspected
+  } // forget |queue|
+  stops.push_back(~0); // sentinel
+  size_t si=0; // index into |stops|
+  for (unsigned int i=0; i<pool.size(); ++i)
   {
-    e("error: memory overflow");
-  }
-  catch (error::InputError& e)
-  {
-    e("aborted");
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << "error occurrend: " << e.what() << std::endl;
-  }
-  catch (...)
-  {
-    std::cerr << std::endl << "unidentified error occurred" << std::endl;
+    if (i==stops[si])
+    { (std::ostream&)f << std::endl; ++si; } // separate classes
+    TwistedInvolution tw=pool[i];
+    f << sub_gTg.base_point_offset(tw).log_2pi()
+      << "  \t@  " << sub_gTg.word(tw) <<std::endl;
   }
 } // |embedding_f|
 
 void test_f()
 {
-  try
+  RealReductiveGroup& GR = realmode::currentRealGroup();
+  ComplexReductiveGroup& G = GR.complexGroup();
+  const RootDatum& rd = G.rootDatum();
+
+  RatWeight nu=
+    interactive::get_ratweight
+    (interactive::sr_input(),"rational weight nu: ",rd.rank());
+
+  const KGB& kgb = GR.kgb();
+  unsigned long x=interactive::get_bounded_int
+    (interactive::common_input(),"KGB element: ",kgb.size());
+
+  WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
+
+  nu = RatWeight
+    (nu.numerator() - theta*nu.numerator(),2*nu.denominator());
+
+  std::cout << "Made -theta fixed, nu = " << nu << std::endl;
+  RatWeight gamma(rd.twoRho()+theta*rd.twoRho(),4);
+  // assume |lambda=rho| for a valid value
+  gamma += nu;
+  std::cout << "added discrete series contribution, gamma = " << gamma
+	    << std::endl;
+
+  subdatum::SubDatum sub (GR,gamma,x);
+
+  WeylWord ww;
+  weyl::Twist twist = sub.twist(theta,ww);
+
+  Permutation pi;
+
+  std::cout << "Subsystem on dual side is ";
+  if (sub.semisimple_rank()==0)
+    std::cout << "empty.\n";
+  else
   {
-    RealReductiveGroup& GR = realmode::currentRealGroup();
-    ComplexReductiveGroup& G = GR.complexGroup();
-    const RootDatum& rd = G.rootDatum();
-
-    RatWeight nu=
-      interactive::get_ratweight
-      (interactive::sr_input(),"rational weight nu: ",rd.rank());
-
-    const KGB& kgb = GR.kgb();
-    unsigned long x=interactive::get_bounded_int
-      (interactive::common_input(),"KGB element: ",kgb.size());
-
-    WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
-
-    nu = RatWeight
-      (nu.numerator() - theta*nu.numerator(),2*nu.denominator());
-
-    std::cout << "Made -theta fixed, nu = " << nu << std::endl;
-    RatWeight gamma(rd.twoRho()+theta*rd.twoRho(),4);
-    // assume |lambda=rho| for a valid value
-    gamma += nu;
-    std::cout << "added discrete series contribution, gamma = " << gamma
-	      << std::endl;
-
-    subdatum::SubDatum sub (GR,gamma,x);
-
-    WeylWord ww;
-    weyl::Twist twist = sub.twist(theta,ww);
-
-    Permutation pi;
-
-    std::cout << "Subsystem on dual side is ";
-    if (sub.semisimple_rank()==0)
-      std::cout << "empty.\n";
-    else
-    {
-      std::cout << "of type "
-		<< dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-		<< ", with roots ";
-      for (weyl::Generator s=0; s<sub.semisimple_rank(); ++s)
-	std::cout << sub.parent_nr_simple(pi[s])
-		  << (s<sub.semisimple_rank()-1 ? "," : ".\n");
-    }
-
-    std::cout << "Twisted involution in subsystem: " << ww << std::endl;
-
-    kgb::subsys_KGB sub_KGB(kgb,sub,x);
-
-    kgb_io::print(std::cout,sub_KGB);
-
+    std::cout << "of type "
+	      << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
+	      << ", with roots ";
+    for (weyl::Generator s=0; s<sub.semisimple_rank(); ++s)
+      std::cout << sub.parent_nr_simple(pi[s])
+		<< (s<sub.semisimple_rank()-1 ? "," : ".\n");
   }
-  catch (error::MemoryOverflow& e)
-  {
-    e("error: memory overflow");
-  }
-  catch (error::InputError& e)
-  {
-    e("aborted");
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << "error occurrend: " << e.what() << std::endl;
-  }
-  catch (...)
-  {
-    std::cerr << std::endl << "unidentified error occurred" << std::endl;
-  }
+
+  std::cout << "Twisted involution in subsystem: " << ww << std::endl;
+
+  kgb::subsys_KGB sub_KGB(kgb,sub,x);
+
+  kgb_io::print(std::cout,sub_KGB);
 } // |test_f|
 
 

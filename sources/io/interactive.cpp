@@ -844,11 +844,11 @@ SubSystem get_parameter(RealReductiveGroup& GR,
 
   RatWeight nu = get_ratweight(sr_input(),"nu: ",rd.rank());
   gamma = nu;
-  (gamma /= 2) += RatWeight(lambda_rho*2+rd.twoRho(),4);
+  (gamma /= 2) += RatWeight(lambda_rho*2+rd.twoRho(),4); // $(\lambda+\nu)/2$
   {
-    RatWeight t = gamma - nu;
+    RatWeight t = gamma - nu; // $(\lambda-\nu)/2$
     gamma += RatWeight(theta*t.numerator(),t.denominator());
-    gamma.normalize();
+    gamma.normalize(); // $\gamma=((1+\theta)\lambda+(1-\theta)\nu)/2$
   }
 
 
@@ -859,6 +859,8 @@ SubSystem get_parameter(RealReductiveGroup& GR,
   // make $\gamma$ dominant for the integral system, acting on |x|,|lambda| too
   // also act by integral coroots vanishing on $\gamma$ if complex descents
   { weyl::Generator s;
+    const RootNbrSet& real = id.real_roots();
+    Weight twoRho_real = rd.twoRho(real);
     do
     {
       for (s=0; s<sub.rank(); ++s)
@@ -870,6 +872,8 @@ SubSystem get_parameter(RealReductiveGroup& GR,
           rd.reflect(numer,alpha);
           rd.reflect(lambda_rho,alpha);
 	  lambda_rho -= rd.root(alpha)*rd.colevel(alpha);
+	  if (real.isMember(alpha))
+	    lambda_rho -= rd.root(alpha)*(twoRho_real.dot(rd.coroot(alpha))/2);
           x = kgb.cross(sub.reflection(s),x);
           break;
         }

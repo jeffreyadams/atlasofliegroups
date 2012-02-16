@@ -363,6 +363,8 @@ class non_integral_block : public Block_base
     std::ostream& print(std::ostream& strm, BlockElt z) const;
 
   // new methods
+
+  Weight lambda_rho(BlockElt z) const; // reconstruct from y value
   RatWeight lambda(BlockElt z) const; // reconstruct from y value
   RankFlags singular_simple_roots() { return singular; }
   bool is_nonzero(BlockElt z) const; // whether |z| survives singular |gamma|
