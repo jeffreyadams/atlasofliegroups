@@ -25,6 +25,8 @@ namespace atlas {
 
 namespace commands {
 
+  typedef void (*action_pointer)(); // pointer to void function, no arguments
+
   enum CheckResult { Ambiguous, Found, NotFound, numCheckResults };
 
 }
@@ -52,24 +54,19 @@ namespace commands {
 
 namespace commands {
 
-class StrCmp { // a function object for string comparison
- public:
-  bool operator() (const char* a, const char* b) const {
-    return strcmp(a,b) < 0;
-  }
+struct StrCmp // the string comparison function disguised as function object
+{ // a zero-size class with just one accessor method
+  bool operator() (const char* a, const char* b) const
+  { return strcmp(a,b) < 0; }
 };
 
-struct Command {
-  void (*action)();
-// Constructors and destructors
-  Command(void (*a)()):action(a) {
-  };
-  ~Command() {
-  };
-// accessors
-  void operator() () const {
-    action();
-  }
+struct Command // a class wrapping a function pointer into a function object
+{
+  action_pointer action; // one data field: a function pointer
+// constructor
+Command(action_pointer a) : action(a) {}; // store |a| as |action|
+// accessor
+  void operator() () const { action(); }
 };
 
 class CommandMode {
