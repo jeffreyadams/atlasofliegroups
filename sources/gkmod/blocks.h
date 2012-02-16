@@ -364,6 +364,7 @@ class non_integral_block : public Block_base
 
   // new methods
 
+  KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }
   Weight lambda_rho(BlockElt z) const; // reconstruct from y value
   RatWeight lambda(BlockElt z) const; // reconstruct from y value
   RankFlags singular_simple_roots() { return singular; }

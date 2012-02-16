@@ -1274,7 +1274,8 @@ void deform_f()
   for (BlockElt z=0; z<nnz; ++z)
   {
     BlockElt zz=non_zeros[z];
-    repr::StandardRepr r = RC.sr(block.x(zz),block.lambda_rho(zz),gamma);
+    repr::StandardRepr r =
+      RC.sr(block.parent_x(zz),block.lambda_rho(zz),gamma);
     orient_nr[z] = RC.orientation_number(r);
   }
 
@@ -1364,11 +1365,16 @@ void deform_f()
       for (BlockElt y=x; y<nnz-1; ++y)
 	if (block.length(non_zeros[y])%2==odd)
 	  sum += P(x,y)*Q(y,z);
-      // if (orientation_difference(x,y)) sum*=s;
       // now evaluate |sum| at $X=-1$ to get "real" part of $(1-s)*sum[X:=s]$
       int eval=0;
       for (polynomials::Degree d=sum.size(); d-->0; )
 	eval = sum[d]-eval;
+
+      // if (orientation_difference(x,z)) sum*=s;
+      int orient_exp = (orient_nr[nnz-1]-orient_nr[x])/2;
+      if (orient_exp%2!=0)
+	eval = -eval;
+
       if (eval!=0)
       {
 	f << " +(" << std::resetiosflags(std::ios_base::showpos) << eval;
