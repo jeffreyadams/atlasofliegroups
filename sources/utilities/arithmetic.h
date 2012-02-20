@@ -107,7 +107,7 @@ template<typename I>
 /*! The result of |divide(a,b)| is the unique ineteger $q$ with $a = q.b + r$,
   and $0 \leq r < b$. Here the sign of |a| may be arbitrary, the requirement
   for |r| assumes |b| positive, which is why it is passed as unsigned (also
-  this better matches the specifiation of |remainder| below). Callers must
+  this better matches the specification of |remainder| below). Callers must
   make sure that $b$ is positive, since implicit conversion of a negative
   signed value to unsigned would wreak havoc.
 
