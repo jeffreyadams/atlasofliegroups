@@ -404,5 +404,9 @@ template
 matrix::Matrix<int> Smith_basis(const matrix::Matrix<int>& M,
 				std::vector<int>& diagonal);
 
+template
+matrix::Matrix<int> adapted_basis(const matrix::Matrix<int> M,
+				  std::vector<int>& diagonal);
+
 } // |namespace matreduc|
 } // |namespace atlas|
