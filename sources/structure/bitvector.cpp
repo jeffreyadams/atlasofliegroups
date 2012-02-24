@@ -994,6 +994,10 @@ template
    const BitSet<constants::RANK_MAX>&);
 
 template
+  void normalize(BitSet<constants::RANK_MAX>& t,
+		 std::vector<BitVector<constants::RANK_MAX> >& b);
+
+template
   bool firstSolution(BitSet<constants::RANK_MAX>& c,
 		     const std::vector<BitVector<constants::RANK_MAX> >& b,
 		     const BitVector<constants::RANK_MAX>& rhs);
