@@ -46,9 +46,8 @@ class TorusElement
 
   // accessors
 
-  // provide access to value, but convert to "mod Z^rank" not "mod 2Z^rank"
-  RatWeight log_pi(bool normalize) const;
-  RatWeight log_2pi() const;
+  RatWeight log_pi(bool normalize) const; // return the stored rational vector
+  RatWeight log_2pi() const; // value halved: to be interpreted "mod Z^rank"
 
   // more often it will be practical to have acces to that "mod 2Z^rank" form
   const RatWeight& as_Qmod2Z() const { return repr; }
