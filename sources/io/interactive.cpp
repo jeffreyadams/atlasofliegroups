@@ -869,6 +869,11 @@ SubSystem get_parameter(RealReductiveGroup& GR,
         int v=rd.coroot(alpha).dot(numer);
         if (v<0)
         {
+#ifdef VERBOSE
+	  std::cout << "Making dominant for "
+		    << (real.isMember(alpha) ? "real" : "complex")
+		    << " coroot " << alpha << std::endl;
+#endif
           rd.reflect(numer,alpha);
           rd.reflect(lambda_rho,alpha);
 	  lambda_rho -= rd.root(alpha)*rd.colevel(alpha);
@@ -880,6 +885,10 @@ SubSystem get_parameter(RealReductiveGroup& GR,
         else if (v==0 and kgb.isComplexDescent(sub.simple(s),
 					       kgb.cross(sub.to_simple(s),x)))
         {
+#ifdef VERBOSE
+	  std::cout << "Applying complex descent for singular coroot "
+		    << alpha << std::endl;
+#endif
           rd.reflect(lambda_rho,alpha);
 	  lambda_rho -= rd.root(alpha)*rd.colevel(alpha);
           x = kgb.cross(sub.reflection(s),x);
