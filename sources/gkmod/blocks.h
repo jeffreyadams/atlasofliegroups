@@ -364,7 +364,10 @@ class non_integral_block : public Block_base
 
   // new methods
 
+  const RatWeight gamma() const { return infin_char; }
   KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }
+  RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
+  RatWeight y_part(BlockElt z) const; // raw torus part info, normalized
   Weight lambda_rho(BlockElt z) const; // reconstruct from y value
   RatWeight lambda(BlockElt z) const; // reconstruct from y value
   RankFlags singular_simple_roots() { return singular; }

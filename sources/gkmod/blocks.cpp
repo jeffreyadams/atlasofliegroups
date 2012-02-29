@@ -406,7 +406,7 @@ BlockEltPair Block_base::link
 
 KGBElt Block_base::renumber_x(const std::vector<KGBElt>& new_x)
 {
-  KGBElt x_lim=0;
+  KGBElt x_lim=0; // high-water mark for |new_x| values
   for (BlockElt z=0; z<size(); ++z)
   {
     KGBElt x=new_x[d_x[z]];
@@ -1135,13 +1135,15 @@ non_integral_block::non_integral_block
 
   // step 4: generate packets for successive involutions
 
-  std::deque<BlockElt> queue(1,d_x.size()); // involution packet boundaries
+  std::vector<BlockElt> queue(1,d_x.size()); // involution packet boundaries
   std::vector<KGBElt> ys; ys.reserve(0x100); // enough for |1<<RANK_MAX|
   std::vector<KGBElt> cross_ys(ys.size()); cross_ys.reserve(0x100);
   std::vector<KGBElt> Cayley_ys(ys.size()); Cayley_ys.reserve(0x100);
 
-  for (BlockElt next=0; not queue.empty(); next=queue.front(),queue.pop_front())
-  { // process involution packet of elements from |next| to |queue.front()|
+  size_t qi=0; // index into queue
+
+  for (BlockElt next=0; qi<queue.size(); next=queue[qi++])
+  { // process involution packet of elements from |next| to |queue[qi]|
 
     const unsigned int old_inv=inv_hash.find(yy_hash[d_y[next]].tw); // inv #
 
@@ -1154,8 +1156,8 @@ non_integral_block::non_integral_block
       ys.push_back(d_y[z]);           // so |ys| could have been avoided
     }
 
-    assert((queue.front()-next)%nr_y==0); // |x| values in equal-size R-packets
-    unsigned int nr_x= (queue.front()-next)/nr_y; // number of R-packets here
+    assert((queue[qi]-next)%nr_y==0); // |x| values in equal-size R-packets
+    unsigned int nr_x= (queue[qi]-next)/nr_y; // number of R-packets here
 
     for (weyl::Generator s=0; s<our_rank; ++s)
     {
@@ -1357,19 +1359,27 @@ non_integral_block::non_integral_block
       if (yy_hash.size()>y_start)
 	queue.push_back(d_x.size()); // mark end of new involution packet
     } // |for(s)|
-  } // |for (next<queue.front())|
+  } // |for (next<queue[qi])|
 
   // correct for reverse order construction
-  size_t max_l=d_length[size()-1];
-  for (BlockElt z=0; z<size(); ++z)
-    d_length[z]=max_l-d_length[z];
+  { size_t max_l=d_length[size()-1];
+    for (BlockElt z=0; z<size(); ++z)
+      d_length[z]=max_l-d_length[z];
+  }
 
-  std::vector<KGBElt> rev(xsize());
-  for (KGBElt i=0; i<rev.size(); ++i)
-    rev[i]=rev.size()-i-1;
+  std::vector<KGBElt> new_x;
+  { size_t lim=xsize();
+    new_x.reserve(lim);
+    for (unsigned i=0; i<queue.size(); ++i)
+    {
+      for (KGBElt j=size()-queue[i]; j<lim; ++j)
+	new_x.push_back(j);
+      lim=size()-queue[i];
+    }
+  }
 
-  renumber_x(rev);
-  std::reverse(kgb_nr_of.begin(),kgb_nr_of.end());
+  renumber_x(new_x);
+  Permutation(new_x.begin(),new_x.end()).permute(kgb_nr_of);
 
   // now store values into constructed object
 
@@ -1378,10 +1388,27 @@ non_integral_block::non_integral_block
     y_info.push_back(yy_hash[j].repr());
 
   // and look up which element matches the original input
-  entry_element = element(xsize()-1-x_of[x_org],yy_hash.find(gfd.pack(y_org)));
+  entry_element = element(new_x[x_of[x_org]],yy_hash.find(gfd.pack(y_org)));
 
 } // |non_integral_block::non_integral_block|
 
+
+RatWeight non_integral_block::nu(BlockElt z) const
+{
+  WeightInvolution theta =
+    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
+  return RatWeight (gamma().numerator()-theta*gamma().numerator()
+		    ,2*gamma().denominator()).normalize();
+}
+
+RatWeight non_integral_block::y_part(BlockElt z) const
+{
+  WeightInvolution theta =
+    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
+  RatWeight t =  y_info[d_y[z]].torus_part().log_2pi();
+  const Weight& num = t.numerator();
+  return RatWeight(num-theta*num,2*t.denominator()).normalize();
+}
 
 // reconstruct $\lambda-\rho$ from $\gamma$ and the torus part $t$ of $y$
 // using $\lambda = \gamma - {1-\theta\over2}.\log{{t\over\pi\ii})$
