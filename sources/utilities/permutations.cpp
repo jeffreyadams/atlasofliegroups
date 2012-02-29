@@ -258,6 +258,9 @@ template void
 Permutation::left_mult(std::vector<unsigned long>& v) const; // rootdata,weyl,.
 
 template void
+Permutation::permute(std::vector<unsigned int>& v) const; // blocks
+
+template void
 Permutation::inv_conjugate(matrix::Matrix_base<int>& M) const; // weyl
 
 template Permutation
