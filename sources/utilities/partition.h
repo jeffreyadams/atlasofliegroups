@@ -20,6 +20,7 @@ acting on elements of order 2 in a torus.
 
 #include "partition_fwd.h"
 
+#include <cstddef>
 #include <functional>
 #include <vector>
 

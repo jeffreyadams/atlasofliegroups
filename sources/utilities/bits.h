@@ -13,6 +13,7 @@
 #define BITS_H
 
 #include <vector>
+#include <cstddef>
 
 /******** function declarations **********************************************/
 
