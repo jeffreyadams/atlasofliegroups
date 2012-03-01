@@ -117,16 +117,13 @@ std::ostream& gamma_block::print(std::ostream& strm, BlockElt z) const
 std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
 {
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
-  RatWeight ll=lambda(z).normalize();
-  assert(ll.denominator()<=2);
+  RatWeight ll=y_part(z);
 
   strm << (is_nonzero(z) ? '*' : ' ')
-       << "(" << std::setw(xwidth) << kgb_nr_of[d_x[z]] << ',' ;
-  if (ll.denominator()==2)
-    strm << std::setw(3*ll.size()+3) << ll;
-  else
-    strm << std::setw(3*ll.size()+1) << ll.numerator();
-  strm << "= rho+" << std::setw(4*ll.size()+1) << lambda_rho(z);
+       << "(x=" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
+       << ", nu=" << std::setw(2*ll.size()+5) << nu(z) << ';';
+  strm << std::setw(2*ll.size()+5) << ll;
+  strm << ",lam=rho+" << std::setw(2*ll.size()+3) << lambda_rho(z);
   return strm << ')';
 }
 
