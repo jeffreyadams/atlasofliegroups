@@ -264,12 +264,13 @@ std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
    match the height of |M| = size of |B|), in other words it is spanned by the
    multiples of the columns of $B$ by their |diagonal| factors.
 
-   The procedure follws the mostly the same steps, but the differences in
-   handling the matrix |row| (where we apply instead of row operations the
-   inverse column operations) are sufficiently important to justify the code
-   duplication. We take advantage of this duplication to arrange the algorithm
-   for minimal use of row operations, which besides being more efficient tends
-   to give a basis more closely related to the original matrix.
+   The procedure, which returns |B|, follows mostly the same steps as
+   |diagonalise|, but the differences in handling the matrix |row| (where we
+   apply instead of row operations the inverse column operations) are
+   sufficiently important to justify the code duplication. We take advantage
+   of this duplication to arrange the algorithm for minimal use of row
+   operations, which besides being more efficient tends to give a basis more
+   closely related to the original matrix.
  */
 template<typename C>
 matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
@@ -298,7 +299,7 @@ matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
       if (i>d)
       {
 	C u = M(i,d)>0 ? 1 : -1;
-	M.rowOperation(d,i,u); // make |M(d,d)==abs(M(i,d))|
+	M.rowOperation(d,i,u); // "copy" entry, making |M(d,d)==abs(M(i,d))|
 	result.columnOperation(i,d,-u); // inverse operation on basis
       }
       else if (M(d,d)<0)
@@ -340,8 +341,8 @@ matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
 
 /*
   For a true Smith basis, we must assure divisibility of successive elements
-  in |diagonal|. Since small factors tend to be extracted first, there remains
-  probably little work to do, and there is not much against assuring
+  in |diagonal|. Since small factors tend to be extracted first, there
+  probably remains little work to do, and there is not much against assuring
   divisibilty for adjacent pairs, and repeating this in a bubble-sort like
   manner. Rather than iterating matrix operations for a given pair, we use the
   following formula valid whenever gcd(a,b)=d=pa+qb:
