@@ -12,7 +12,7 @@
 #include "involutions.h"
 
 #include "arithmetic.h"
-
+#include "matreduc.h"
 #include "rootdata.h"
 #include "weyl.h"
 #include "y_values.h"
@@ -198,14 +198,22 @@ InvolutionNbr InvolutionTable::add_involution(const TwistedInvolution& tw)
   for (RootNbrList::const_iterator it=Cayleys.begin(); it!=Cayleys.end(); ++it)
     rd.reflect(*it,theta);
 
-  int_Matrix A=theta; // will contain |theta-id|, row-saturated
+  int_Matrix A=theta; // will contain |theta-id|, later row-saturated
   for (size_t i=0; i<A.numRows(); ++i)
     --A(i,i);
+
+  int_Matrix R,C;
+  // |R| will map $\lambda-\rho$ to torus part coordinates scaled |diagonal|
+  // |C| will then lift unscaled coordinates (mod 2) back to $\lambda-\rho$
+  std::vector<int> diagonal = matreduc::diagonalise(A,R,C);
+  R.invert(); R.block(0,0,diagonal.size(),R.numColumns()).swap(R); R*=A;
+  C.invert(); C.block(0,0,C.numRows(),diagonal.size()).swap(C);
+
   A = lattice::row_saturate(A);
 
   unsigned int W_length=W.length(tw);
   unsigned int length = (W_length+Cayleys.size())/2;
-  data.push_back(record(theta,InvolutionData(rd,theta),A,
+  data.push_back(record(theta,InvolutionData(rd,theta),A,R,diagonal,C,
 			length,W_length,tits::fiber_denom(theta)));
   assert(data.size()==hash.size());
 
@@ -226,6 +234,8 @@ InvolutionNbr InvolutionTable::add_cross(weyl::Generator s, InvolutionNbr n)
   rd.simple_reflect(s,me.theta);
   rd.simple_reflect(me.theta,s); // not |twisted(s)|: |delta| is incorporated
   rd.simple_reflect(me.projector,s); // reflection by |s| of kernel
+  rd.simple_reflect(me.M_real,s); // apply $s$ before |M_real|
+  rd.simple_reflect(s,me.lift_mat); // and apply it after |lift_mat|
   me.id.cross_act(rd.simple_root_permutation(s));
   me.length   += d/2;
   me.W_length += d;
@@ -281,7 +291,7 @@ y_entry InvolutionTable::pack (const TorusElement& t, InvolutionNbr i) const
   return y_entry(fingerprint(t,i),i,t);
 }
 
-// this method makes involution table useble in X command, even if inefficient
+// this method makes involution table usable in X command, even if inefficient
 KGB_elt_entry InvolutionTable::x_pack(const GlobalTitsElement& x) const
 {
   const TwistedInvolution& tw= x.tw();
@@ -335,6 +345,16 @@ TorusPart InvolutionTable::check_rho_imaginary(InvolutionNbr i) const
   return result;
 }
 
+void InvolutionTable::real_unique(InvolutionNbr i, RatWeight& y) const
+{
+  const record& rec=data[i];
+  int_Vector v = rec.M_real * y.numerator();
+  assert(v.size()==rec.diagonal.size());
+  for (unsigned i=0; i<v.size(); ++i)
+    v[i]= arithmetic::remainder(v[i]/rec.diagonal[i],2*y.denominator());
+
+  y.numerator()= rec.lift_mat * v;
+}
 
 // ------------------------------ Cartan_orbit --------------------------------
 

@@ -1418,12 +1418,13 @@ Weight non_integral_block::lambda_rho(BlockElt z) const
 {
   WeightInvolution theta =
     G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
-  RatWeight t =  y_info[d_y[z]].torus_part().log_2pi();
-  const Weight& num = t.numerator();
-  RatWeight lambda = infin_char - RatWeight(num-theta*num,t.denominator());
-  (lambda -= RatWeight(G.rootDatum().twoRho(),2)).normalize();
-  assert(lambda.denominator()==1);
-  return lambda.numerator();
+  RatWeight t =  y_info[d_y[z]].torus_part().log_pi(false);
+  G.involution_table().real_unique(kgb.inv_nr(parent_x(z)),t);
+
+  RatWeight lr =
+    (infin_char - t - RatWeight(G.rootDatum().twoRho(),2)).normalize();
+  assert(lr.denominator()==1);
+  return lr.numerator();
 }
 
 // reconstruct $\lambda$ from $\gamma$ and the torus part $t$ of $y$ using the

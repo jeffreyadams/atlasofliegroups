@@ -323,7 +323,7 @@ class gamma_block : public Block_base
 
 class non_integral_block : public Block_base
 {
-  const KGB& kgb; // on the |x| size we employ a pre-computed KGB structure
+  const KGB& kgb; // on the |x| side we employ a pre-computed KGB structure
   const ComplexReductiveGroup& G; // apart from |kgb|, use |GR.complexGroup()|
   const SubSystem& sub;
 

@@ -97,6 +97,9 @@ class InvolutionTable
   {
     WeightInvolution theta;
     int_Matrix projector; // for |y|, same kernel as |row_saturate(theta-id)|
+    int_Matrix M_real; // $1-\theta$ followed by expression on adapted basis
+    int_Vector diagonal; // divisors for image of |M_real|
+    int_Matrix lift_mat; // section: satisfies |M_real*lift_mat==diag(diagonal)|
     InvolutionData id;
     unsigned int length;
     unsigned int W_length;
@@ -105,10 +108,11 @@ class InvolutionTable
   record(const WeightInvolution& inv,
 	 const InvolutionData& inv_d,
 	 const int_Matrix& proj,
+	 const int_Matrix& Mre, const std::vector<int>&d, const int_Matrix& lm,
 	 unsigned int l,
 	 unsigned int Wl,
 	 const SmallSubspace& ms)
-  : theta(inv), projector(proj)
+  : theta(inv), projector(proj), M_real(Mre), diagonal(d), lift_mat(lm)
   , id(inv_d),length(l), W_length(Wl), mod_space(ms) {}
   };
 
@@ -182,6 +186,9 @@ class InvolutionTable
   KGB_elt_entry x_pack(const GlobalTitsElement& x) const; // for X only; slow
   bool x_equiv(const GlobalTitsElement& x0,const GlobalTitsElement& x1) const;
   TorusPart check_rho_imaginary(InvolutionNbr i) const;
+
+  // choose unique representative for real projection of rational weight
+  void real_unique(InvolutionNbr i, RatWeight& y) const;
 
   // the following produces a light-weight function object calling |involution|
   class mapper
