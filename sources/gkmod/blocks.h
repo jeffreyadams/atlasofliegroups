@@ -91,8 +91,8 @@ class Block_base {
   size_t rank() const { return d_cross.size(); } // semisimple rank matters
   size_t size() const { return d_x.size(); }
 
-  virtual size_t xsize() const = 0;
-  virtual size_t ysize() const = 0;
+  virtual KGBElt xsize() const = 0;
+  virtual KGBElt ysize() const = 0;
 
   KGBElt x(BlockElt z) const { assert(z<size()); return d_x[z]; }
   KGBElt y(BlockElt z) const { assert(z<size()); return d_y[z]; }
@@ -238,8 +238,8 @@ non-vanishing KL polynomial.
   const TwistedWeylGroup& twistedWeylGroup() const // for |printBlockU|
   { return tW; }
 
-  virtual size_t xsize() const { return xrange; }
-  virtual size_t ysize() const { return yrange; }
+  virtual KGBElt xsize() const { return xrange; }
+  virtual KGBElt ysize() const { return yrange; }
 
   size_t Cartan_class(BlockElt z) const
     { assert(z<size()); return d_Cartan[z]; }
@@ -306,8 +306,8 @@ class gamma_block : public Block_base
 	      );
 
   // virtual methods
-  size_t xsize() const { return kgb_nr_of.size(); } // child |x| range
-  size_t ysize() const { return y_rep.size(); }    // child |y| range
+  virtual KGBElt xsize() const { return kgb_nr_of.size(); } // child |x| range
+  virtual KGBElt ysize() const { return y_rep.size(); }     // child |y| range
 
   const TwistedInvolution& involution(BlockElt z) const; // obtained from |kgb|
 
@@ -353,8 +353,8 @@ class non_integral_block : public Block_base
     );
 
   // virtual methods
-  size_t xsize() const { return kgb_nr_of.size(); } // child |x| range
-  size_t ysize() const { return y_info.size(); }    // child |y| range
+  virtual KGBElt xsize() const { return kgb_nr_of.size(); } // child |x| range
+  virtual KGBElt ysize() const { return y_info.size(); }    // child |y| range
 
   const TwistedInvolution& involution(BlockElt z) const
   { assert(z<size()); return y_info[d_y[z]].tw(); } // this is still? |y|-based

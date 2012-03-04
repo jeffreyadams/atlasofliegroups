@@ -1368,13 +1368,14 @@ non_integral_block::non_integral_block
   }
 
   std::vector<KGBElt> new_x;
-  { size_t lim=xsize();
-    new_x.reserve(lim);
+  { KGBElt stop=xsize();
+    new_x.reserve(stop);
     for (unsigned i=0; i<queue.size(); ++i)
     {
-      for (KGBElt j=size()-queue[i]; j<lim; ++j)
+      KGBElt start=queue[i]<d_x.size() ? xsize()-d_x[queue[i]] : 0;
+      for (KGBElt j=start; j<stop; ++j)
 	new_x.push_back(j);
-      lim=size()-queue[i];
+      stop=start;
     }
   }
 
