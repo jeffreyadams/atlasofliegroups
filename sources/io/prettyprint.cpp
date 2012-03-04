@@ -229,7 +229,7 @@ std::ostream& printInvolution(std::ostream& strm,
     if (dec[i]>=0) strm << static_cast<char>('1'+dec[i]) << '^';
     else strm << static_cast<char>('1'+~dec[i]) << 'x';
 
-  return strm;
+  return strm<<'e';
 }
 
 template<typename C>
