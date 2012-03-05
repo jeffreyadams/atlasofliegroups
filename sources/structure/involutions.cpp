@@ -204,10 +204,11 @@ InvolutionNbr InvolutionTable::add_involution(const TwistedInvolution& tw)
 
   int_Matrix R,C;
   // |R| will map $\lambda-\rho$ to torus part coordinates scaled |diagonal|
-  // |C| will then lift unscaled coordinates (mod 2) back to $\lambda-\rho$
+  // |C| will then lift unscaled coordinates (mod 2) to $A*(\lambda-\rho)$
   std::vector<int> diagonal = matreduc::diagonalise(A,R,C);
-  R.invert(); R.block(0,0,diagonal.size(),R.numColumns()).swap(R); R*=A;
-  C.invert(); C.block(0,0,C.numRows(),diagonal.size()).swap(C);
+  C = R.inverse(); // we don't need |C|, lifting will be by $R^{-1}$
+  R.block(0,0,diagonal.size(),R.numColumns()).swap(R); R*=A;
+  C.block(0,0,C.numRows(),diagonal.size()).swap(C);
 
   A = lattice::row_saturate(A);
 
@@ -351,9 +352,9 @@ void InvolutionTable::real_unique(InvolutionNbr i, RatWeight& y) const
   int_Vector v = rec.M_real * y.numerator();
   assert(v.size()==rec.diagonal.size());
   for (unsigned i=0; i<v.size(); ++i)
-    v[i]= arithmetic::remainder(v[i]/rec.diagonal[i],2*y.denominator());
+    v[i]= arithmetic::remainder(v[i],2*rec.diagonal[i]*y.denominator());
 
-  y.numerator()= rec.lift_mat * v;
+  y.numerator()= rec.lift_mat * v; (y/=2).normalize();
 }
 
 // ------------------------------ Cartan_orbit --------------------------------

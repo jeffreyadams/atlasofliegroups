@@ -1406,9 +1406,9 @@ RatWeight non_integral_block::y_part(BlockElt z) const
 {
   WeightInvolution theta =
     G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
-  RatWeight t =  y_info[d_y[z]].torus_part().log_2pi();
-  const Weight& num = t.numerator();
-  return RatWeight(num-theta*num,2*t.denominator()).normalize();
+  RatWeight t =  y_info[d_y[z]].torus_part().log_pi(false);
+  G.involution_table().real_unique(kgb.inv_nr(parent_x(z)),t);
+  return (t/=2).normalize();
 }
 
 // reconstruct $\lambda-\rho$ from $\gamma$ and the torus part $t$ of $y$
