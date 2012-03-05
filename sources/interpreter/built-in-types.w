@@ -2865,8 +2865,7 @@ void print_block_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  block_io::print_block(*output_stream,
-    Block::build(rf->val,drf->val));
+  Block::build(rf->val,drf->val).print_to(*output_stream,false);
 @)
   if (l==expression_base::single_value)
     wrap_tuple(0);
@@ -2890,8 +2889,7 @@ void print_blockd_wrapper(expression_base::level l)
     ("Real form and dual real form are incompatible");
 @.Real form and dual...@>
 @)
-  block_io::printBlockD(*output_stream,
-    Block::build(rf->val,drf->val));
+  Block::build(rf->val,drf->val).print_to(*output_stream,true);
 @)
   if (l==expression_base::single_value)
     wrap_tuple(0);
