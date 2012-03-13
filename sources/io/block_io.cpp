@@ -119,10 +119,10 @@ std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
   RatWeight ll=y_part(z);
 
-  strm << (is_nonzero(z) ? '*' : ' ')
+  strm << (survives(z) ? '*' : ' ')
        << "(x=" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
-       << ", nu=" << std::setw(2*ll.size()+5) << nu(z) << ';';
-  strm << std::setw(2*ll.size()+5) << ll;
+       << ", nu=" << std::setw(2*ll.size()+5) << nu(z) << ',';
+//strm << std::setw(2*ll.size()+5) << ll;
   strm << ",lam=rho+" << std::setw(2*ll.size()+3) << lambda_rho(z);
   return strm << ')';
 }

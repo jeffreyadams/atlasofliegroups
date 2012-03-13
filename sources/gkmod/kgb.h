@@ -484,6 +484,8 @@ KGBElt Cayley (const KGB_base& kgb, KGBElt x,
 KGBElt inverse_Cayley (const KGB_base& kgb, KGBElt x,
 		       weyl::Generator s, const WeylWord& ww);
 
+gradings::Status::Value status(const KGB_base& kgb, KGBElt x,
+			       const RootSystem& rs, RootNbr alpha);
 
 } // |namespace kgb|
 

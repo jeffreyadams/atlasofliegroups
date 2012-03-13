@@ -1142,11 +1142,9 @@ void nblock_f()
   lambda.normalize();
 
   ioutils::OutputFile f;
-  f << "x = " << x << ", gamma = " << gamma
-    << ", lambda = " << lambda << std::endl;
 
   WeightInvolution theta =
-    GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
+    GR.complexGroup().involution_table().matrix(GR.kgb().inv_nr(x));
 
   WeylWord ww;
   weyl::Twist twist = sub.twist(theta,ww);
@@ -1187,7 +1185,7 @@ void nblock_f()
       Poly p(pol); // convert
       if (block.length(x)%2!=parity)
 	p*=-1;
-      BlockEltList nb=block.nonzeros_below(x);
+      BlockEltList nb=block.survivors_below(x);
       for (size_t i=0; i<nb.size(); ++i)
       {
 	std::pair<map_type::iterator,bool> trial =
@@ -1229,11 +1227,9 @@ void deform_f()
   lambda.normalize();
 
   ioutils::OutputFile f;
-  f << "x = " << x << ", gamma = " << gamma
-    << ", lambda = " << lambda << std::endl;
 
   WeightInvolution theta =
-    GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
+    GR.complexGroup().involution_table().matrix(GR.kgb().inv_nr(x));
 
   WeylWord ww;
   weyl::Twist twist = sub.twist(theta,ww);
@@ -1262,18 +1258,18 @@ void deform_f()
   kl::KLContext klc(block);
   klc.fill(entry_elem,false); // silent filling of the KL table
 
-  std::vector<BlockElt> non_zeros; non_zeros.reserve(entry_elem+1);
+  std::vector<BlockElt> survivors; survivors.reserve(entry_elem+1);
   for (BlockElt x=0; x<=entry_elem; ++x)
-    if (block.is_nonzero(x))
-      non_zeros.push_back(x);
+    if (block.survives(x))
+      survivors.push_back(x);
 
-  BlockElt nnz = non_zeros.size(); // |BlockElt| indexes singlular "block"
+  BlockElt n_surv = survivors.size(); // |BlockElt| indexes singlular "block"
 
   repr::Rep_context RC(GR);
-  std::vector<unsigned int> orient_nr(nnz);
-  for (BlockElt z=0; z<nnz; ++z)
+  std::vector<unsigned int> orient_nr(n_surv);
+  for (BlockElt z=0; z<n_surv; ++z)
   {
-    BlockElt zz=non_zeros[z];
+    BlockElt zz=survivors[z];
     repr::StandardRepr r =
       RC.sr(block.parent_x(zz),block.lambda_rho(zz),gamma);
     orient_nr[z] = RC.orientation_number(r);
@@ -1282,11 +1278,11 @@ void deform_f()
   typedef Polynomial<int> Poly;
   typedef matrix::Matrix_base<Poly> PolMat;
 
-  PolMat P(nnz,nnz,Poly(0)), Q(nnz,nnz,Poly(0));
+  PolMat P(n_surv,n_surv,Poly(0)), Q(n_surv,n_surv,Poly(0));
 
-  for (BlockElt z=nnz; z-->0; )
+  for (BlockElt z=n_surv; z-->0; )
   {
-    BlockElt zz=non_zeros[z];
+    BlockElt zz=survivors[z];
     unsigned int parity = block.length(zz)%2;
     for (BlockElt xx=0; xx <= zz; ++xx)
     {
@@ -1296,12 +1292,12 @@ void deform_f()
 	Poly p(pol); // convert
 	if (block.length(xx)%2!=parity)
 	  p*=-1;
-	BlockEltList nb=block.nonzeros_below(xx);
+	BlockEltList nb=block.survivors_below(xx);
 	for (size_t i=0; i<nb.size(); ++i)
 	{
 	  BlockElt x = std::lower_bound
-	    (non_zeros.begin(),non_zeros.end(),nb[i])-non_zeros.begin();
-	  assert(non_zeros[x]==nb[i]); // found
+	    (survivors.begin(),survivors.end(),nb[i])-survivors.begin();
+	  assert(survivors[x]==nb[i]); // found
 	  if (P(x,z).isZero())
 	    P(x,z)=p;
 	  else
@@ -1312,10 +1308,10 @@ void deform_f()
   } // for |z|
 
     // now compute polynomials $Q_{x,z}$, for |y<=z<=entry_elem|
-  for (BlockElt x=0; x<nnz; ++x)
+  for (BlockElt x=0; x<n_surv; ++x)
   {
     Q(x,x)=Poly(1);
-    for (BlockElt z=x+1; z<nnz; ++z)
+    for (BlockElt z=x+1; z<n_surv; ++z)
     {
       Poly sum; // initially zero; $-\sum{x\leq y<z}Q_{x,y}P^\pm_{y,z}$
       for (BlockElt y=x; y<z; ++y)
@@ -1327,43 +1323,43 @@ void deform_f()
   f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
     << "KL polynomials (-1)^{l(y)-l(x)}*P_{x,y}:\n";
   int width = ioutils::digits(entry_elem,10ul);
-  for (BlockElt y=0; y<nnz; ++y)
+  for (BlockElt y=0; y<n_surv; ++y)
     for (BlockElt x=0; x<=y; ++x)
       if (not P(x,y).isZero())
       {
-	f << std::setw(width) << non_zeros[x] << ',' << non_zeros[y] << ": ";
+	f << std::setw(width) << survivors[x] << ',' << survivors[y] << ": ";
 	prettyprint::printPol(f,P(x,y),"q") << std::endl;
       }
 
   f << "dual KL polynomials Q_{x,y}:\n";
-  for (BlockElt y=0; y<nnz; ++y)
+  for (BlockElt y=0; y<n_surv; ++y)
     for (BlockElt x=0; x<=y; ++x)
     {
       Poly& pol = Q(x,y);
       if (not pol.isZero())
       {
-	f << std::setw(width) << non_zeros[x] << ',' << non_zeros[y] << ": ";
+	f << std::setw(width) << survivors[x] << ',' << survivors[y] << ": ";
 	prettyprint::printPol(f,pol,"q") << std::endl;
       }
     }
 
   f << "Orientation numbers:\n";
-  for (BlockElt y=0; y<nnz; ++y)
-    f << non_zeros[y] << ": " << orient_nr[y] << (y+1<nnz ? ", " : ".\n");
+  for (BlockElt y=0; y<n_surv; ++y)
+    f << survivors[y] << ": " << orient_nr[y] << (y+1<n_surv ? ", " : ".\n");
 
-  if (block.is_nonzero(entry_elem))
+  if (block.survives(entry_elem))
   {
-    BlockElt z=nnz-1;
-    assert(non_zeros[z]==entry_elem);
+    BlockElt z=n_surv-1;
+    assert(survivors[z]==entry_elem);
     unsigned odd = (block.length(entry_elem)+1)%2; // opposite to |entry_elem|
 
     Poly s(1,1); // in fact $X$, will reduce modulo $X^2+1$ later
     f << "Deformation terms for I(" << entry_elem << ")_c:\n";
-    for (BlockElt x=nnz-1; x-->0; ) // skip |entry_elem|
+    for (BlockElt x=n_surv-1; x-->0; ) // skip |entry_elem|
     {
       Poly sum;
-      for (BlockElt y=x; y<nnz-1; ++y)
-	if (block.length(non_zeros[y])%2==odd)
+      for (BlockElt y=x; y<n_surv-1; ++y)
+	if (block.length(survivors[y])%2==odd)
 	  sum += P(x,y)*Q(y,z);
       // now evaluate |sum| at $X=-1$ to get "real" part of $(1-s)*sum[X:=s]$
       int eval=0;
@@ -1371,8 +1367,8 @@ void deform_f()
 	eval = sum[d]-eval;
 
       // if (orientation_difference(x,z)) sum*=s;
-      int orient_exp = (orient_nr[nnz-1]-orient_nr[x])/2;
-      if (orient_exp%2!=0)
+      int orient_express = (orient_nr[n_surv-1]-orient_nr[x])/2;
+      if (orient_express%2!=0)
 	eval = -eval;
 
       if (eval!=0)
@@ -1382,7 +1378,7 @@ void deform_f()
 	  f << (eval==1 ? '-' : '+'); // sign of |-eval|
 	else
 	  f << std::setiosflags(std::ios_base::showpos) << -eval;
-	f <<"s)I(" << non_zeros[x] << ")_c";
+	f <<"s)I(" << survivors[x] << ")_c";
       }
     }
     static_cast<std::ostream&>(f) << std::endl;

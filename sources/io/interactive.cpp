@@ -773,13 +773,12 @@ SubSystem get_parameter(RealReductiveGroup& GR,
 			KGBElt& x,
 			Weight& lambda_rho,
 			RatWeight& gamma)
+  throw(error::InputError)
 {
   // first step: get initial x in canonical fiber
   size_t cn=get_Cartan_class(GR.Cartan_set());
   const ComplexReductiveGroup& G=GR.complexGroup();
   const RootDatum& rd=G.rootDatum();
-  TwistedInvolution tw=G.twistedInvolution(cn);
-  InvolutionData id = G.involution_data(tw);
 
   const KGB& kgb=GR.kgb();
   KGBEltList canonical_fiber;
@@ -788,7 +787,7 @@ SubSystem get_parameter(RealReductiveGroup& GR,
     if (kgb.Cartan_class(k)==cn)
     {
       cf.insert(k);
-      if (kgb.involution(k)==tw)
+      if (kgb.involution(k)==G.twistedInvolution(cn))
 	canonical_fiber.push_back(k);
     }
 
@@ -806,22 +805,28 @@ SubSystem get_parameter(RealReductiveGroup& GR,
     x = get_int_in_set("KGB number: ",cf);
   }
 
-  WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
+  const InvolutionTable& i_tab = G.involution_table();
+  // the call to |kgb()| above ensures |i_tab| has all relevant involutions
+  InvolutionNbr i_x = kgb.inv_nr(x);
+  WeightInvolution theta = i_tab.matrix(i_x);
 
   // second step: get imaginary-dominant lambda
   RatWeight rho(rd.twoRho(),2);
   std::cout << "rho = " << rho.normalize() << std::endl;
-  if (id.imaginary_rank()>0)
+  if (i_tab.imaginary_rank(i_x)>0)
   {
     std::cout << "NEED, on following imaginary coroot"
-      << (id.imaginary_rank()>1
+      << (i_tab.imaginary_rank(i_x)>1
 	  ? "s, at least given values:" : ", at least given value:")
       << std::endl;
-    for (size_t i=0; i<id.imaginary_rank(); ++i)
-      std::cout
-	<< rd.coroot(id.imaginary_basis(i))
-	<< " (>=" << -rho.scalarProduct(rd.coroot(id.imaginary_basis(i)))
-	<< ')' << std::endl;
+    for (size_t i=0; i<i_tab.imaginary_rank(i_x); ++i)
+    {
+      RootNbr alpha = i_tab.imaginary_basis(i_x,i);
+      int v=-rho.scalarProduct(rd.coroot(alpha));
+      if (kgb::status(kgb,x,rd,alpha)==gradings::Status::ImaginaryCompact)
+	++v; // imaginary compact root should not be singular
+      std::cout	<< rd.coroot(alpha) << " (>=" << v << ')' << std::endl;
+    }
   }
 
   { // check imaginary dominance
@@ -830,16 +835,23 @@ SubSystem get_parameter(RealReductiveGroup& GR,
     {
       lambda_rho = get_weight(sr_input(),"Give lambda-rho: ",rd.rank());
       Weight l = lambda_rho*2 + rd.twoRho();
-      for (i=0; i<id.imaginary_rank(); ++i)
-	if (l.scalarProduct(rd.coroot(id.imaginary_basis(i)))<0)
+      for (i=0; i<i_tab.imaginary_rank(i_x); ++i)
+      {
+	RootNbr alpha = i_tab.imaginary_basis(i_x,i);
+	int v = l.scalarProduct(rd.coroot(alpha));
+	bool compact =
+	  kgb::status(kgb,x,rd,alpha)==gradings::Status::ImaginaryCompact;
+	if (v<0 or (v==0 and compact))
 	{
-	  std::cout
-	    << "Non-dominant for coroot " << rd.coroot(id.imaginary_basis(i))
-	    << ", try again" << std::endl;
+	  std::cout << (v<0 ? "Non-dominant for"
+			    : "Zero due to singular imaginary compact")
+		    << " coroot " << rd.coroot(alpha)
+		    << ", try again" << std::endl;
 	  break;
 	}
+      }
     }
-    while (i<id.imaginary_rank()); // wait until inner loop runs to completion
+    while (i<i_tab.imaginary_rank(i_x)); // wait until inner loop completes
   }
 
   RatWeight nu = get_ratweight(sr_input(),"nu: ",rd.rank());
@@ -852,55 +864,72 @@ SubSystem get_parameter(RealReductiveGroup& GR,
   }
 
 
-  SubSystem sub = SubSystem::integral(rd,gamma); // fix integral system now
-
   Weight& numer = gamma.numerator(); // we change |gamma| using it
+  bool changed = false;
 
-  // make $\gamma$ dominant for the integral system, acting on |x|,|lambda| too
-  // also act by integral coroots vanishing on $\gamma$ if complex descents
+  // although our goal is to make gamma dominant for the integral system only
+  // it does not hurt to make gamma fully dominant, acting on |x|,|lambda| too
   { weyl::Generator s;
-    const RootNbrSet& real = id.real_roots();
-    Weight twoRho_real = rd.twoRho(real);
     do
     {
-      for (s=0; s<sub.rank(); ++s)
+      for (s=0; s<rd.semisimpleRank(); ++s)
       {
-	RootNbr alpha = sub.parent_nr_simple(s);
-        int v=rd.coroot(alpha).dot(numer);
+	RootNbr alpha = rd.simpleRootNbr(s);
+        int v=rd.simpleCoroot(s).dot(numer);
         if (v<0)
         {
+	  bool real = i_tab.real_roots(kgb.inv_nr(x)).isMember(alpha);
 #ifdef VERBOSE
-	  std::cout << "Making dominant for "
-		    << (real.isMember(alpha) ? "real" : "complex")
+	  std::cout << "Making dominant for "  << (real ? "real" : "complex")
 		    << " coroot " << alpha << std::endl;
 #endif
-          rd.reflect(numer,alpha);
-          rd.reflect(lambda_rho,alpha);
-	  lambda_rho -= rd.root(alpha)*rd.colevel(alpha);
-	  if (real.isMember(alpha))
-	    lambda_rho -= rd.root(alpha)*(twoRho_real.dot(rd.coroot(alpha))/2);
-          x = kgb.cross(sub.reflection(s),x);
+          rd.simpleReflect(numer,s);
+          rd.simpleReflect(lambda_rho,s);
+	  if (not real) // center is $\rho$, but $\rho_r$ cancels if |real|
+	    lambda_rho -= rd.simpleRoot(s);
+          x = kgb.cross(s,x);
+	  changed = true;
           break;
         }
-        else if (v==0 and kgb.isComplexDescent(sub.simple(s),
-					       kgb.cross(sub.to_simple(s),x)))
+        else if (v==0 and kgb.isComplexDescent(s,x))
         {
 #ifdef VERBOSE
 	  std::cout << "Applying complex descent for singular coroot "
 		    << alpha << std::endl;
 #endif
-          rd.reflect(lambda_rho,alpha);
-	  lambda_rho -= rd.root(alpha)*rd.colevel(alpha);
-          x = kgb.cross(sub.reflection(s),x);
+          rd.simpleReflect(lambda_rho,s); lambda_rho -= rd.simpleRoot(s);
+          x = kgb.cross(s,x);
+	  changed = true;
           break;
         }
       }
     }
-    while (s<sub.rank()); // wait until inner loop runs to completion
+    while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
+    // now |gamma| has been made dominant
 
-  } // |gamma| made integrally dominant
+    if (changed)
+      std::cout << "Parameter modified to: ";
 
-  return sub;
+    std::cout << "x="<< x << ", lambda="
+	      << RatWeight(lambda_rho*2+rd.twoRho(),2).normalize()
+	      << ", gamma=" << gamma << '.' << std::endl;
+
+    const RootNbrList& simple_real = i_tab.real_basis(kgb.inv_nr(x));
+    for (RootNbrList::const_iterator
+	   it=simple_real.begin(); it!=simple_real.end(); ++it)
+      {
+	const Coweight& cw = rd.coroot(*it);
+	if (cw.dot(numer)==0 and (cw.dot(lambda_rho)-rd.colevel(*it))%2==0)
+	{
+	  std::cout << "Parameter is not final, as witnessed by coroot "
+		    << cw <<  ".\n";
+	  throw error::InputError();
+	}
+      }
+
+  }
+
+  return SubSystem::integral(rd,gamma); // fix integral system only now
 }
 
 

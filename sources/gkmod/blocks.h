@@ -371,8 +371,8 @@ class non_integral_block : public Block_base
   Weight lambda_rho(BlockElt z) const; // reconstruct from y value
   RatWeight lambda(BlockElt z) const; // reconstruct from y value
   RankFlags singular_simple_roots() { return singular; }
-  bool is_nonzero(BlockElt z) const; // whether |z| survives singular |gamma|
-  BlockEltList nonzeros_below(BlockElt z) const; // reachable nonzeros
+  bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
+  BlockEltList survivors_below(BlockElt z) const; // expression for $I(z)$
 
 }; // |class non_integral_block|
 

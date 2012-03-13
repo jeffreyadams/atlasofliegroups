@@ -1440,11 +1440,11 @@ RatWeight non_integral_block::lambda(BlockElt z) const
 }
 
 
-// an element of a non-integral block could be zero due to singular $\gamma$
+// translation functor from regular to singular $\gamma$ might kill $J_{reg}$
 // this depends on the simple coroots for the integral system that vanish on
 // the infinitesimal character $\gamma$, namely they make the element zero if
 // they define a complex descent, an imaginary compact or a real parity root
-bool non_integral_block::is_nonzero(BlockElt z) const
+bool non_integral_block::survives(BlockElt z) const
 {
   const DescentStatus& desc=descent(z);
   for (RankFlags::iterator it=singular.begin(); it(); ++it)
@@ -1453,9 +1453,9 @@ bool non_integral_block::is_nonzero(BlockElt z) const
   return true; // there are no singular simple coroots that are descents
 }
 
-// descend through singular simple coroots and return any nonzero elements
-// that were reached. This number can be 0, 1 or more as detailed below.
-BlockEltList non_integral_block::nonzeros_below(BlockElt z) const
+// descend through singular simple coroots and return any survivors that were
+// reached; they express singular $I(z)$ as sum of 0 or more surviving $I(z')$
+BlockEltList non_integral_block::survivors_below(BlockElt z) const
 {
   BlockEltList result;
   RankFlags::iterator it;
@@ -1476,7 +1476,7 @@ BlockEltList non_integral_block::nonzeros_below(BlockElt z) const
 	case descents::DescentStatus::RealTypeI:
 	  {
 	    BlockEltPair iC=inverseCayley(*it,z);
-	    BlockEltList left=nonzeros_below(iC.first);
+	    BlockEltList left=survivors_below(iC.first);
 	    if (result.empty())
 	      left.swap(result); // take left result as current value
 	    else
