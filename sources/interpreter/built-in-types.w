@@ -2039,19 +2039,18 @@ connected complex reductive group; the corresponding Atlas class is called
 
 @*2 Class definition.
 The layout of this type of value is different from what we have seen before.
-An Atlas object of class |RealReductiveGroup| is dependent upon
-another Atlas object to which it stores a pointer, which is of type
-|ComplexReductiveGroup|, so we must make sure that the object
-pointed to cannot disappear before it does. The easiest way to do this is to
-place a |inner_class_value| object |parent| inside the |real_form_value| class
-that we shall now define; the reference-counting scheme introduced above then
-guarantees that the data we depend upon will remain in existence sufficiently
-long. Since that data can be accessed from inside the
-|RealReductiveGroup|, we shall mostly mention the |parent| to
-access its |interface| and |dual_interface| fields. To remind us that the
-|parent| is not there to be changed by us, we declare it |const|. The object
-referred to may in fact undergo internal change however, via manipulators of
-the |val| field.
+An Atlas object of class |RealReductiveGroup| is dependent upon another Atlas
+object to which it stores a pointer, which is of type |ComplexReductiveGroup|,
+so we must make sure that the object pointed to cannot disappear before it
+does. The easiest way to do this is to place an |inner_class_value| object
+|parent| inside the |real_form_value| class that we shall now define; the
+reference-counting scheme introduced above then guarantees that the data we
+depend upon will remain in existence sufficiently long. Since that data can be
+accessed from inside the |RealReductiveGroup|, we shall mostly mention the
+|parent| with the purpose of accessing its |interface| and |dual_interface|
+fields. To remind us that the |parent| is not there to be changed by us, we
+declare it |const|. The object referred to may in fact undergo internal change
+however, via manipulators of the |val| field.
 
 We shall later derive from this structure, without adding data members, a
 structure to record dual real forms, which are constructed in the context of
@@ -2074,21 +2073,38 @@ struct real_form_value : public value_base
   static const char* name() @+{@; return "real form"; }
   const KGB& kgb () @+{@; return val.kgb(); }
    // generate and return $K\backslash G/B$ set
+  const repr::Rep_context& rc();
+  ~real_form_value() @+{@; delete rc_p; }
 protected:
   real_form_value(inner_class_value,RealFormNbr,tags::DualTag);
      // for dual forms
   real_form_value(const real_form_value& v)
   : parent(v.parent), val(v.val) @+{} // copy c'tor
+private:
+  repr::Rep_context* rc_p;
 };
 @)
 typedef std::auto_ptr<real_form_value> real_form_ptr;
 typedef std::tr1::shared_ptr<real_form_value> shared_real_form;
 
-@ When printing a real form, we give the name by which it was chosen (where
-for once we do use the |parent| field), and provide some information about its
-connectedness. Since the names of the real forms are indexed by their outer
-number, but the real form itself stores its inner number, we must somewhat
-laboriously make the conversion here.
+@ The method |rc| ensures a |repr::Rep_context| value is constructed at
+|*rc_p|, and returns a reference. The value so obtained will serve to
+manipulate parameters for standard modules, for which we shall define a
+built-in type below. Storing the value here ensures that it will be shared
+between different parameters, and that it will live as long as those parameter
+values do. The value itself does not take much space, but constructing it
+implicitly calls the |val.kgb| method, so we avoid doing this until there is a
+concrete need.
+
+@< Function def...@>=
+  const repr::Rep_context& real_form_value::rc()
+    {@; return *(rc_p==NULL ? rc_p=new repr::Rep_context(val) : rc_p); }
+
+@ When printing a real form, we give the name by which it is known in the
+parent inner class, and provide some information about its connectedness.
+Since the names of the real forms are indexed by their outer number, but the
+real form itself stores its inner number, we must somewhat laboriously make
+the conversion here.
 
 @< Function def...@>=
 void real_form_value::print(std::ostream& out) const
@@ -2314,7 +2330,9 @@ typedef std::tr1::shared_ptr<Cartan_class_value> shared_Cartan_class;
 
 @ In the constructor we used to check that the Cartan class with the given
 number currently exists, but now the |ComplexReductiveGroup::cartan| method
-assures that a one is generated if this should not have been done before.
+assures that one is generated if this should not have been done before. We
+therefore call that method in the initialiser; on return it provides a valid
+reference.
 
 @< Function def...@>=
 Cartan_class_value::Cartan_class_value(const inner_class_value& p,size_t cn)
@@ -2351,9 +2369,9 @@ void ic_Cartan_class_wrapper(expression_base::level l)
 }
 
 @ Alternatively (and this used to be the only way) one can provide a
-|real_form_value| together with a valid index into its list of Cartan classes.
-We translate this number into an index into the list for its containing inner
-class, and then get the Cartan class from there.
+|real_form_value| together with a valid index into \emph{its} list of Cartan
+classes. We translate this number into an index into the list for its
+containing inner class, and then get the Cartan class from there.
 
 @< Local function def...@>=
 void rf_Cartan_class_wrapper(expression_base::level l)
@@ -2622,19 +2640,20 @@ different lines after commas if necessary.
 
 @*1 Elements of some $K\backslash G/B$ set.
 %
-Associated to each real form is a set $K\backslash G/B$, which was made
-available internally through the |real_form_value::kgb| method. We wish to
-make available externally a number of functions that operate on (among other
-data) elements of this set; for instance each element determines an
+Associated to each real form is a set $K\backslash G/B$, which was already
+made available internally through the |real_form_value::kgb| method. We wish
+to make available externally a number of functions that operate on (among
+other data) elements of this set; for instance each element determines an
 involution, corresponding imaginary and real subsystems of the root system,
 and a $\Z/2\Z$-grading of the imaginary root subsystem. It does not seem
 necessary to introduce a type for the set $K\backslash G/B$ (any function that
 needs it can take the corresponding real form as argument), but we do provide
-one for elements of that set. These elements contain a pointer |rf | to the
-|real_form_value| they were generated from, and thereby to the associated set
-$K\backslash G/B$, which allows operations relevant to the KGB element to be
-defined. Since this is a shared pointer, the |real_form_value| pointed to is
-guaranteed to exist as long as this |KGB_elt_value| does.
+one for elements of that set (if desired the user can collect such elements in
+an array). These elements contain a pointer |rf | to the |real_form_value| they
+were generated from, and thereby to the associated set $K\backslash G/B$,
+which allows operations relevant to the KGB element to be defined. Since this
+is a shared pointer, the |real_form_value| pointed to is guaranteed to exist
+as long as this |KGB_elt_value| does.
 
 @< Type definitions @>=
 struct KGB_elt_value : public value_base
@@ -2687,6 +2706,58 @@ void KGB_involution_wrapper(expression_base::level l)
   const ComplexReductiveGroup& G=x->rf->val.complexGroup();
   if (l!=expression_base::no_value)
     push_value(new matrix_value(G.involutionMatrix(kgb.involution(x->val))));
+}
+
+@*1 Standard module parameters.
+we implement a data type for holding parameters that represent standard
+modules. Such a parameter is defined by a triple $(x,\lambda,\mu)$ where $x$
+is a KGB element, $\lambda$ is a weight in the coset $\rho+X^*$ whose value is
+relevant only modulo the sub-lattice $(1-\theta_x)X^*$ where $\theta_x$ is the
+involution associated to $x$, and $\nu$ is a rational weight in the kernel of
+$1+\theta_x)$. Such parameters are stored in instances of the class
+|repr::StandardRepr|, which is defined in the file \.{repr.h}.
+
+@<Includes needed in the header file @>=
+#include "repr.h"
+
+@*2 Class definition.
+Like for KGB elements, we maintain a shared pointer to the real form value, so
+that it will be assured to survive as long as parameters for it exist, and we
+can access notably the |repr::Rep_context| that it provides.
+
+@< Type definitions @>=
+struct module_parameter_value : public value_base
+{ shared_real_form rf;
+  repr::StandardRepr val;
+@)
+  module_parameter_value(shared_real_form form, const repr::StandardRepr& v)
+  : rf(form), val(v) @+{}
+  ~module_parameter_value() @+{}
+@)
+  virtual void print(std::ostream& out) const;
+  module_parameter_value* clone() const
+   @+ {@; return new module_parameter_value(*this); }
+  static const char* name() @+{@; return "module parameter"; }
+private:
+  module_parameter_value(const module_parameter_value& v)
+  @+ : val(v.val) @+{} // copy
+};
+@)
+typedef std::auto_ptr<module_parameter_value> module_parameter_ptr;
+typedef std::tr1::shared_ptr<module_parameter_value> shared_module_parameter;
+
+@ When printing a module parameter, we shall indicate a triple
+$(x,\lambda,\mu)$ that defines it. We might add relevant attributes like
+``Final'' later.
+
+@f nu NULL
+
+@< Function def...@>=
+void module_parameter_value::print(std::ostream& out) const
+{@; out << "parameter ("
+        << val.x() << ','
+        << rf->rc().lambda(val) << ','
+        << rf->rc().nu(val) << ')';
 }
 
 @*1 Kazhdan-Lusztig tables.
@@ -3140,7 +3211,7 @@ void print_W_graph_wrapper(expression_base::level l)
     wrap_tuple(0);
 }
 
-@ The function |test_representation| serves to experiment with the input of
+@ The function |test_rep| serves to experiment with the input of
 general representation parameters and the computation of the corresponding
 pair $(x,y)$. The code below should be modified so as to use only the integral
 system defined by the infinitesimal character~$\gamma$.

@@ -63,15 +63,23 @@ RatWeight Rep_context::lambda(const StandardRepr& rep) const
   return RatWeight(num,2);
 }
 
+RatWeight Rep_context::nu(const StandardRepr& rep) const
+{
+  InvolutionNbr inv = kgb().inv_nr(rep.x());
+  const WeightInvolution& theta = complexGroup().involution_table().matrix(inv);
+  Weight num = rep.gamma().numerator()-theta*rep.gamma().numerator();
+  return RatWeight(num,2*rep.gamma().denominator()).normalize();
+}
+
 // convert |lambda| and |gamma| into $y$ value
 // Formula: $\exp(i\pi(\gamma-\lambda)) \sigma_{tw} \delta_1$
 GlobalTitsElement Rep_context::y(const StandardRepr& rep) const
 {
   TorusElement t = y_values::exp_pi(rep.gamma()-lambda(rep));
   const TwistedWeylGroup& W = KGB_set.twistedWeylGroup();
-  const TwistedWeylGroup dual_W (W,tags::DualTag());
+  const TwistedWeylGroup dual_W (W,tags::DualTag()); // VERY EXPENSIVE!
   TwistedInvolution tw =
-    blocks::dual_involution(KGB_set.involution(rep.x),W,dual_W);
+    blocks::dual_involution(KGB_set.involution(rep.x()),W,dual_W);
   return GlobalTitsElement(t,tw);
 }
 
@@ -79,7 +87,7 @@ GlobalTitsElement Rep_context::y(const StandardRepr& rep) const
 bool Rep_context::is_final(const StandardRepr& rep)
 {
   const RootDatum& rd = rootDatum();
-  InvolutionNbr inv = kgb().inv_nr(rep.x);
+  InvolutionNbr inv = kgb().inv_nr(rep.x());
   RootNbrSet pos_real = complexGroup().involution_table().real_roots(inv)
 			& rd.posRootSet();
   Weight lambda2_shift=rep.lambda_rho*2 + rd.twoRho()+rd.twoRho(pos_real);
@@ -97,7 +105,7 @@ bool Rep_context::is_final(const StandardRepr& rep)
 bool Rep_context::is_oriented(const StandardRepr& rep, RootNbr alpha)
 {
   const RootDatum& rd = rootDatum();
-  InvolutionNbr inv = kgb().inv_nr(rep.x);
+  InvolutionNbr inv = kgb().inv_nr(rep.x());
   RootNbrSet real = complexGroup().involution_table().real_roots(inv);
 
   assert(real.isMember(alpha)); // only real roots should be tested
@@ -117,7 +125,7 @@ unsigned int Rep_context::orientation_number(const StandardRepr& rep)
 {
   const RootDatum& rd = rootDatum();
   const InvolutionTable& i_tab = complexGroup().involution_table();
-  InvolutionNbr inv = kgb().inv_nr(rep.x);
+  InvolutionNbr inv = kgb().inv_nr(rep.x());
   RootNbrSet real = i_tab.real_roots(inv);
   const Permutation& root_inv = i_tab.root_involution(inv);
   const Weight& numer = rep.gamma().numerator();

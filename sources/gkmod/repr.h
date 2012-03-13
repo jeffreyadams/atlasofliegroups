@@ -46,28 +46,27 @@ class StandardRepr
 {
   friend class Rep_context;
 
-  KGBElt x;
+  KGBElt x_part;
   Weight lambda_rho; // $\lambda-\rho$
   RatWeight infinitesimal_char; // $\gamma$
 
  public:
-  StandardRepr (KGBElt xx,
+  StandardRepr (KGBElt x,
 		const Weight& lr,
 		const RatWeight& gamma)
-    : x(xx), lambda_rho(lr), infinitesimal_char(gamma) {}
+    : x_part(x), lambda_rho(lr), infinitesimal_char(gamma) {}
 
   const RatWeight& gamma() const { return infinitesimal_char; }
+  KGBElt x() const { return x_part; }
 
   bool operator== (const StandardRepr&) const;
+
 // special members required by hashtable::HashTable
 
   typedef std::vector<StandardRepr> Pooltype;
   bool operator!=(const StandardRepr& another) const
     { return not operator==(another); }
   size_t hashCode(size_t modulus) const;
-
-
-
 }; // |class StandardRepr|
 
 
@@ -103,8 +102,10 @@ class Rep_context
        const RatWeight& nu) const;
 
   RatWeight lambda(const StandardRepr& rep) const; // half-integer
+  RatWeight nu(const StandardRepr& rep) const; // rational, $-\theta$-fixed
   GlobalTitsElement y(const StandardRepr& rep) const;
 
+  // intended to generate global KGB-set from |y| value; not (yet) implemented
   kgb::global_KGB dual_KGB(const StandardRepr& rep) const;
 
   bool is_final(const StandardRepr& rep);

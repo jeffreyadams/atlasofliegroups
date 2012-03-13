@@ -351,6 +351,21 @@ fiber_part: (CartanClass,RealForm->[int]): part of fiber group for real form
   2^r-1; as the real form traverses all those for which this Cartan class
   occurs, the results of the function form a partition of that set of numbers.
 
+kgb: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
+  The call KGB(i,rf) select the element in line i of the print_KGB(rf) output.
+involution: (KGBElt->mat): the involution associated to the KGB element
+
+raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
+  The call raw_KL(rf,drf) produces a matrix of numbers identifying
+  polynomials, a list of those polynomials in the form of coefficient vectors,
+  and a sequence of length boundaries that allow deducing the "lengths" of the
+  integers used to index the matrix. These integers identify block elements
+  for the block print_block(rf,drf). If (M,L,len)=raw_KL(rf,drf), and v,w are
+  integers identifying block elements, then the vector L[M[v,w]] gives the
+  coefficients of the KL polynomial P_{v,w}. The length of v is the lergest
+  index i such that len[i]<=v, so the length difference between v and w is the
+  number of indices with v<len[i]<=w.
+
 print_gradings: (CartanClass,RealForm->): print gradings defined by real form
   This more or less gives the output of the 'gradings' command in the Atlas
   software, for the selected real form. The type of the imaginary root system
