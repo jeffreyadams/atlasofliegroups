@@ -11,12 +11,13 @@ set *(int c,vec v) = vec: for e in v do c*e od
 set *(int c,mat m) = mat: for col in m do for e in col do c*e od od
 
 { a necessary global auxiliary, as realex cannot handle recursive operators }
-pow : (mat,int->mat)
-pow := ((mat m,int n):
+set matrix_power = (mat,int->mat):
+let p = (mat m,int n): m
+in p:= ((mat m,int n):
   if n<2 then if n=1 then m else id_mat(n_rows(m)) fi
-  else let (q,r)=n\%2 then mm=pow(m,q) in mm*if r=0 then mm else mm*m fi
+  else let (q,r)=n\%2 then mm=p(m,q) in mm*if r=0 then mm else mm*m fi
   fi)
-set ^(mat m,int n) = pow(m,n)
+set ^(mat m,int n) = matrix_power(m,n)
 
 set +(string s, int i)= s # int_format(i)
 set +(int i, string s)= int_format(i) # s
