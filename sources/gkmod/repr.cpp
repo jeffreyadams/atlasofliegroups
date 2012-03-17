@@ -48,8 +48,8 @@ StandardRepr Rep_context::sr
   (KGBElt x, const Weight lambda_rho, const RatWeight& nu) const
 {
   RatWeight lambda(lambda_rho*2+rootDatum().twoRho(),2);
-  WeightInvolution theta =
-    complexGroup().involutionMatrix(kgb().involution(x));
+  const WeightInvolution& theta =
+    complexGroup().involution_table().matrix(kgb().inv_nr(x));
   RatWeight diff = lambda - nu;
   RatWeight theta_diff(theta*diff.numerator(),
 				     diff.denominator()); // theta(lambda-nu)

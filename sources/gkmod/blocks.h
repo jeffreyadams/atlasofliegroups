@@ -152,7 +152,7 @@ class Block_base {
   std::ostream& print_to
     (std::ostream& strm,bool as_invol_expr) const; // defined in |block_io|
 
-  // print derivated class specific information  for |z| (used in |print_on|)
+  // print derivated class specific information  for |z| (used in |print_to|)
   virtual std::ostream& print(std::ostream& strm, BlockElt z) const =0;
 
  protected:
@@ -316,6 +316,7 @@ class gamma_block : public Block_base
     std::ostream& print(std::ostream& strm, BlockElt z) const;
 
   // new methods
+  KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }
   RatWeight local_system(BlockElt z) const // reconstruct a |lambda| from |y|
   { assert(z<size()); return y_rep[d_y[z]].log_2pi(); }
 
@@ -364,7 +365,7 @@ class non_integral_block : public Block_base
 
   // new methods
 
-  const RatWeight gamma() const { return infin_char; }
+  const RatWeight& gamma() const { return infin_char; }
   KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }
   RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
   RatWeight y_part(BlockElt z) const; // raw torus part info, normalized

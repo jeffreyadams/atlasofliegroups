@@ -101,6 +101,8 @@ class Rep_context
        const Weight lambda_rho,
        const RatWeight& nu) const;
 
+  Weight lambda_rho(const StandardRepr& rep) const { return rep.lambda_rho; }
+
   RatWeight lambda(const StandardRepr& rep) const; // half-integer
   RatWeight nu(const StandardRepr& rep) const; // rational, $-\theta$-fixed
   GlobalTitsElement y(const StandardRepr& rep) const;
