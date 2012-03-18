@@ -101,18 +101,26 @@ class Rep_context
        const Weight lambda_rho,
        const RatWeight& nu) const;
 
-  Weight lambda_rho(const StandardRepr& rep) const { return rep.lambda_rho; }
+  // component extraction
+  Weight lambda_rho(const StandardRepr& z) const { return z.lambda_rho; }
 
-  RatWeight lambda(const StandardRepr& rep) const; // half-integer
-  RatWeight nu(const StandardRepr& rep) const; // rational, $-\theta$-fixed
-  GlobalTitsElement y(const StandardRepr& rep) const;
+  RatWeight lambda(const StandardRepr& z) const; // half-integer
+  RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
+  GlobalTitsElement y(const StandardRepr& z) const;
 
-  // intended to generate global KGB-set from |y| value; not (yet) implemented
-  kgb::global_KGB dual_KGB(const StandardRepr& rep) const;
+  // attributes
+  bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
+    (const StandardRepr& z, RootNbr& witness) const; // simple-imaginary witness
+  bool is_zero  // whether $I(z)=0$: exists singular simple-imaginary compact
+    (const StandardRepr& z, RootNbr& witness) const; // simple-imaginary witness
+  bool is_final  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
+    (const StandardRepr& z, RootNbr& witness) const; // singular real witness
+  bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
+  unsigned int orientation_number(const StandardRepr& z) const;
 
-  bool is_final(const StandardRepr& rep);
-  bool is_oriented(const StandardRepr& rep, RootNbr alpha);
-  unsigned int orientation_number(const StandardRepr& rep);
+  // transformations
+  StandardRepr& make_dominant(StandardRepr& z) const;
+  StandardRepr& make_real_dominant(StandardRepr& z) const;
 
 }; // |Rep_context|
 

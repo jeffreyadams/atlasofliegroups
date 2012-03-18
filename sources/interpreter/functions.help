@@ -355,6 +355,15 @@ kgb: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
   The call KGB(i,rf) select the element in line i of the print_KGB(rf) output.
 involution: (KGBElt->mat): the involution associated to the KGB element
 
+param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
+infinitesimal_character: (Param->ratvec): infinitesimal character of parameter
+is_standard: (Param->bool): whether parameter defines a standard module
+is_zero: (Param->bool): whether parameter defines a zero standard module
+is_final: (Param->bool): whether parameter defines a zero standard module
+print_n_block: (Param->): print (nonintegral) block generated from paramter
+n_block: (Param->[Param],int): return block as list of parameters, and index
+  The second component is the index into the first of the original parameter.
+
 raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
   The call raw_KL(rf,drf) produces a matrix of numbers identifying
   polynomials, a list of those polynomials in the form of coefficient vectors,
@@ -394,3 +403,5 @@ print_W_graph: (RealForm,DualRealForm->):
   relevant cases the Cartan class) be associated to the same inner class,
   and that they have at least one Cartan class (respectively the given Cartan
   class) in common.
+
+test_rep (KGBElt,vec,ratvec->): print the global dual KGB for this parameter

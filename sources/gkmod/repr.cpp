@@ -84,53 +84,88 @@ GlobalTitsElement Rep_context::y(const StandardRepr& rep) const
 }
 
 // |rep| final means that no singular real roots satisfy the parity condition
-bool Rep_context::is_final(const StandardRepr& rep)
+bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
-  InvolutionNbr inv = kgb().inv_nr(rep.x());
-  RootNbrSet pos_real = complexGroup().involution_table().real_roots(inv)
-			& rd.posRootSet();
-  Weight lambda2_shift=rep.lambda_rho*2 + rd.twoRho()+rd.twoRho(pos_real);
-
-  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
+  InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+  for (unsigned i=0; i<i_tab.imaginary_rank(i_x); ++i)
   {
-    const Weight& av = rootDatum().coroot(*it);
-    if (av.dot(rep.gamma().numerator())==0 and
-	av.dot(lambda2_shift)%4 !=0) // singular yet odd on shifted lambda
-      return false;
+    RootNbr alpha = i_tab.imaginary_basis(i_x,i);
+    int v = z.lambda_rho.scalarProduct(rd.coroot(alpha))+rd.colevel(alpha);
+    if (v<0)
+      return witness=alpha,false;
   }
   return true;
 }
 
-bool Rep_context::is_oriented(const StandardRepr& rep, RootNbr alpha)
+// |rep| final means that no singular real roots satisfy the parity condition
+bool Rep_context::is_zero(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
-  InvolutionNbr inv = kgb().inv_nr(rep.x());
+  InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+  for (unsigned i=0; i<i_tab.imaginary_rank(i_x); ++i)
+  {
+    RootNbr alpha = i_tab.imaginary_basis(i_x,i);
+    int v = z.lambda_rho.scalarProduct(rd.coroot(alpha))+rd.colevel(alpha);
+    bool compact =
+      kgb::status(kgb(),z.x(),rd,alpha)==gradings::Status::ImaginaryCompact;
+    if (v==0 and compact)
+      return witness=alpha,true;
+  }
+  return false;
+}
+
+
+// |z| final means that no singular real roots satisfy the parity condition
+bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
+{
+  const RootDatum& rd = rootDatum();
+  InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+  RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
+  Weight lambda2_shift=z.lambda_rho*2 + rd.twoRho()-rd.twoRho(pos_real);
+
+  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
+  {
+    const Weight& av = rootDatum().coroot(*it);
+    if (av.dot(z.gamma().numerator())==0 and
+	av.dot(lambda2_shift)%4 !=0) // singular yet odd on shifted lambda
+      return witness=*it,false;
+  }
+  return true;
+}
+
+bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
+{
+  const RootDatum& rd = rootDatum();
+  InvolutionNbr inv = kgb().inv_nr(z.x());
   RootNbrSet real = complexGroup().involution_table().real_roots(inv);
 
   assert(real.isMember(alpha)); // only real roots should be tested
 
   const Weight& av = rootDatum().coroot(alpha);
-  int numer = av.dot(rep.gamma().numerator());
-  int denom = rep.gamma().denominator();
+  int numer = av.dot(z.gamma().numerator());
+  int denom = z.gamma().denominator();
   assert(numer%denom!=0); // and the real root alpha should be non-integral
 
-  Weight lambda2_shift=rep.lambda_rho*2 + rd.twoRho()-rd.twoRho(real);
+  Weight lambda2_shift=z.lambda_rho*2 + rd.twoRho()-rd.twoRho(real);
   int eps = av.dot(lambda2_shift)%4==0 ? 0 : denom;
 
   return arithmetic::remainder(numer+eps,2*denom)< (unsigned)denom;
 }
 
-unsigned int Rep_context::orientation_number(const StandardRepr& rep)
+unsigned int Rep_context::orientation_number(const StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionTable& i_tab = complexGroup().involution_table();
-  InvolutionNbr inv = kgb().inv_nr(rep.x());
+  InvolutionNbr inv = kgb().inv_nr(z.x());
   RootNbrSet real = i_tab.real_roots(inv);
   const Permutation& root_inv = i_tab.root_involution(inv);
-  const Weight& numer = rep.gamma().numerator();
-  int denom = rep.gamma().denominator();
-  Weight lambda2_shift=rep.lambda_rho*2 + rd.twoRho()-rd.twoRho(real);
+  const Weight& numer = z.gamma().numerator();
+  int denom = z.gamma().denominator();
+  Weight lambda2_shift=z.lambda_rho*2 + rd.twoRho()-rd.twoRho(real);
 
   unsigned count = 0;
 

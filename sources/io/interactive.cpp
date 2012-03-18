@@ -808,7 +808,7 @@ SubSystem get_parameter(RealReductiveGroup& GR,
   const InvolutionTable& i_tab = G.involution_table();
   // the call to |kgb()| above ensures |i_tab| has all relevant involutions
   InvolutionNbr i_x = kgb.inv_nr(x);
-  WeightInvolution theta = i_tab.matrix(i_x);
+  const WeightInvolution& theta = i_tab.matrix(i_x);
 
   // second step: get imaginary-dominant lambda
   RatWeight rho(rd.twoRho(),2);

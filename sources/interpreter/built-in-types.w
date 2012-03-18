@@ -2064,9 +2064,8 @@ struct real_form_value : public value_base
 { const inner_class_value parent;
   RealReductiveGroup val;
 @)
-  real_form_value(inner_class_value p,RealFormNbr f)
-  : parent(p), val(p.val,f),rc_p(NULL)
-  @+ { }
+  real_form_value(const inner_class_value& p,RealFormNbr f) @/
+  : parent(p), val(p.val,f),rc_p(NULL) @+{}
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
@@ -2074,21 +2073,20 @@ struct real_form_value : public value_base
   static const char* name() @+{@; return "real form"; }
   const KGB& kgb () @+{@; return val.kgb(); }
    // generate and return $K\backslash G/B$ set
-  const repr::Rep_context& rc();
+  const Rep_context& rc();
   ~real_form_value() @+{@; delete rc_p; }
 protected:
-  real_form_value(inner_class_value,RealFormNbr,tags::DualTag);
-     // for dual forms
+  real_form_value(const inner_class_value&,RealFormNbr,tags::DualTag);
   real_form_value(const real_form_value& v)
   : parent(v.parent), val(v.val), rc_p(v.rc_p) @+{}
 private:
-  repr::Rep_context* rc_p;
+  Rep_context* rc_p;
 };
 @)
 typedef std::auto_ptr<real_form_value> real_form_ptr;
 typedef std::tr1::shared_ptr<real_form_value> shared_real_form;
 
-@ The method |rc| ensures a |repr::Rep_context| value is constructed at
+@ The method |rc| ensures a |Rep_context| value is constructed at
 |*rc_p|, and returns a reference. The value so obtained will serve to
 manipulate parameters for standard modules, for which we shall define a
 built-in type below. Storing the value here ensures that it will be shared
@@ -2098,8 +2096,8 @@ implicitly calls the |val.kgb| method, so we avoid doing this until there is a
 concrete need.
 
 @< Function def...@>=
-  const repr::Rep_context& real_form_value::rc()
-    {@; return *(rc_p==NULL ? rc_p=new repr::Rep_context(val) : rc_p); }
+  const Rep_context& real_form_value::rc()
+    {@; return *(rc_p==NULL ? rc_p=new Rep_context(val) : rc_p); }
 
 @ When printing a real form, we give the name by which it is known in the
 parent inner class, and provide some information about its connectedness.
@@ -2207,7 +2205,7 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
 Although they could be considered as real forms for the dual group and dual
 inner class, it will be convenient to be able to construct dual real forms in
 the context of the |inner_class_value| itself. The resulting objects will have
-a different type than ordinary real forms, but the will use the same structure
+a different type than ordinary real forms, but they will use the same structure
 layout. The interpretation of the fields is as follows for dual real forms:
 the |parent| field contains a copy of the original |inner_class_value|, but
 the |val| field contains a |RealReductiveGroup| object
@@ -2216,10 +2214,10 @@ correct.
 
 @< Function def...@>=
 
-real_form_value::real_form_value(inner_class_value p,RealFormNbr f
+real_form_value::real_form_value(const inner_class_value& p,RealFormNbr f
 				,tags::DualTag)
 : parent(p), val(p.dual,f)
-{}
+@+{}
 
 @ In order to be able to use the same layout for dual real forms but to
 nevertheless make a distinction (for instance in printing), we must derive a
@@ -2227,7 +2225,7 @@ new type from |real_form_value|.
 
 @< Type definitions @>=
 struct dual_real_form_value : public real_form_value
-{ dual_real_form_value(inner_class_value p,RealFormNbr f)
+{ dual_real_form_value(const inner_class_value& p,RealFormNbr f)
   : real_form_value(p,f,tags::DualTag()) @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -2661,7 +2659,7 @@ struct KGB_elt_value : public value_base
 { shared_real_form rf;
   KGBElt val;
 @)
-  KGB_elt_value(shared_real_form form, KGBElt x) : rf(form), val(x) @+{}
+  KGB_elt_value(const shared_real_form& form, KGBElt x) : rf(form), val(x) @+{}
   ~KGB_elt_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -2716,7 +2714,7 @@ is a KGB element, $\lambda$ is a weight in the coset $\rho+X^*$ whose value is
 relevant only modulo the sub-lattice $(1-\theta_x)X^*$ where $\theta_x$ is the
 involution associated to $x$, and $\nu$ is a rational weight in the kernel of
 $1+\theta_x$. Such parameters are stored in instances of the class
-|repr::StandardRepr|, which is defined in the file \.{repr.h}.
+|StandardRepr|, which is defined in the file \.{repr.h}.
 
 @<Includes needed in the header file @>=
 #include "repr.h"
@@ -2724,14 +2722,14 @@ $1+\theta_x$. Such parameters are stored in instances of the class
 @*2 Class definition.
 Like for KGB elements, we maintain a shared pointer to the real form value, so
 that it will be assured to survive as long as parameters for it exist, and we
-can access notably the |repr::Rep_context| that it provides.
+can access notably the |Rep_context| that it provides.
 
 @< Type definitions @>=
 struct module_parameter_value : public value_base
 { shared_real_form rf;
-  repr::StandardRepr val;
+  StandardRepr val;
 @)
-  module_parameter_value(shared_real_form form, const repr::StandardRepr& v)
+  module_parameter_value(const shared_real_form& form, const StandardRepr& v)
   : rf(form), val(v) @+{}
   ~module_parameter_value() @+{}
 @)
@@ -2739,6 +2737,8 @@ struct module_parameter_value : public value_base
   module_parameter_value* clone() const
    @+ {@; return new module_parameter_value(*this); }
   static const char* name() @+{@; return "module parameter"; }
+@)
+  const Rep_context& rc() const { return rf->rc(); }
 private:
   module_parameter_value(const module_parameter_value& v)
   @+ : val(v.val) @+{} // copy
@@ -2748,18 +2748,34 @@ typedef std::auto_ptr<module_parameter_value> module_parameter_ptr;
 typedef std::tr1::shared_ptr<module_parameter_value> shared_module_parameter;
 
 @ When printing a module parameter, we shall indicate a triple
-$(x,\lambda,\nu)$ that defines it. We might add relevant attributes like
-``Final'' later.
+$(x,\lambda,\nu)$ that defines it.
 
 @f nu NULL
 
 @< Function def...@>=
 void module_parameter_value::print(std::ostream& out) const
-{@; out << "parameter ("
-        << val.x() << ','
-        << rf->rc().lambda(val) << ','
-        << rf->rc().nu(val) << ')';
+{ RootNbr witness; // dummy needed in call
+    out << @< Expression for adjectives that apply to a module parameter @>@;@;
+        << " parameter ("
+@/      << val.x() << ','
+        << rc().lambda(val) << ','
+        << rc().nu(val) << ')';
 }
+
+@ We provide one of the adjectives ``non-standard'' (when $\lambda$ fails to
+be imaginary-dominant; in this case little can be done with the parameter),
+``zero'' (the standard module vanishes due to the singular infinitesimal
+character, namely by the presence of a singular compact simple-imaginary
+root), ``non-final'' (the standard module is non-zero, but can be expressed in
+terms of standard modules at more compact Cartans using a singular real root
+satisfying the parity condition) or ``final'' (the good ones; the condition
+implies ``standard'' an ``non-zero'').
+
+@< Expression for adjectives... @>=
+( rc().is_standard(val,witness) ?
+    rc().is_zero(val,witness) ? "zero" :
+@/    rc().is_final(val,witness) ? "final" : "non-final"
+@/  : "non-standard" )
 
 @ To make a module parameter, one should provide a KGB element~$x$, an
 integral weight $\lambda-\rho$, and a rational weight~$\nu$. Since only its
@@ -2786,7 +2802,7 @@ void module_parameter_wrapper(expression_base::level l)
 transforms a parameter value into a tuple of values that defines it. This
 tuple is not unique (since $\lambda$ is determined only modulo
 $(1-\theta_x)X^*$) and this function should make a unique choice. Whether that
-is really the case depends on the implementation of |repr::StandardRepr|
+is really the case depends on the implementation of |StandardRepr|
 though; the current code, like the printing routine, just uses the methods to
 extract the components.
 
@@ -2795,8 +2811,8 @@ void unwrap_parameter_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   if (l!=expression_base::no_value)
   { push_value(new KGB_elt_value(p->rf,p->val.x()));
-    push_value(new vector_value(p->rf->rc().lambda_rho(p->val)));
-    push_value(new rational_vector_value(p->rf->rc().nu(p->val)));
+    push_value(new vector_value(p->rc().lambda_rho(p->val)));
+    push_value(new rational_vector_value(p->rc().nu(p->val)));
     if (l==expression_base::single_value)
       wrap_tuple(3);
   }
@@ -2811,6 +2827,31 @@ void infinitesimal_character_wrapper(expression_base::level l)
     push_value(new rational_vector_value(p->val.gamma()));
 }
 
+@ Here are some more attributes, in the form of predicates.
+
+@< Local function def...@>=
+void is_standard_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  RootNbr witness;
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(p->rc().is_standard(p->val,witness)));
+}
+
+void is_zero_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  RootNbr witness;
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(p->rc().is_zero(p->val,witness)));
+}
+
+void is_final_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  RootNbr witness;
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(p->rc().is_final(p->val,witness)));
+}
+
+
 @ One of the main reasons to introduce module parameter values is that they
 allow computing a block, whose elements are again given by module parameters.
 
@@ -2818,11 +2859,11 @@ allow computing a block, whose elements are again given by module parameters.
 void print_n_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   RealReductiveGroup& G_r = p->rf->val;
-  const repr::Rep_context& rc= p->rf->rc();
+  const Rep_context& rc= p->rc();
   SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),p->val.gamma());
   BlockElt init_index; // will hold index in the block of the initial element
   non_integral_block block
-    (G_r,subsys,p->val.x(),rc.lambda(p->val),rc.nu(p->val),init_index);
+    (G_r,subsys,p->val.x(),rc.lambda(p->val),p->val.gamma(),init_index);
   block.print_to(*output_stream,true);
     // print block using involution expressions
   if (l==expression_base::single_value)
@@ -2839,11 +2880,11 @@ void n_block_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     RealReductiveGroup& G_r = p->rf->val;
-    const repr::Rep_context& rc= p->rf->rc();
+    const Rep_context& rc= p->rc();
     SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),p->val.gamma());
     BlockElt init_index; // will hold index in the block of the initial element
     non_integral_block block
-      (G_r,subsys,p->val.x(),rc.lambda(p->val),rc.nu(p->val),init_index);
+      (G_r,subsys,p->val.x(),rc.lambda(p->val),p->val.gamma(),init_index);
     @< Push a list of parameter values for the elements of |block| @>
     push_value(new int_value(init_index));
     if (l==expression_base::single_value)
@@ -2858,7 +2899,7 @@ also construct a module parameter value for each element of |block|.
 { row_ptr param_list (new row_value(block.size()));
   const RatWeight& gamma=block.gamma();
   for (BlockElt z=0; z<block.size(); ++z)
-  { repr::StandardRepr block_elt_param
+  { StandardRepr block_elt_param
       (block.parent_x(z),block.lambda_rho(z),gamma);
     param_list->val[z] =
 	shared_value(new module_parameter_value(p->rf,block_elt_param));
@@ -3333,9 +3374,9 @@ void test_rep_wrapper(expression_base::level l)
   shared_KGB_elt x = get<KGB_elt_value>();
 
   RealReductiveGroup& G = x->rf->val;
-  repr::Rep_context rc(G);
+  Rep_context rc(G);
 @)
-  repr::StandardRepr sr = rc.sr(x->val,lambda_rho->val,nu->val);
+  StandardRepr sr = rc.sr(x->val,lambda_rho->val,nu->val);
   std::cout << "infinitesimal character: " << sr.gamma() << std::endl;
   GlobalTitsElement y=rc.y(sr);
   ComplexReductiveGroup dual_G(G.complexGroup(),tags::DualTag());
@@ -3391,6 +3432,9 @@ install_function(unwrap_parameter_wrapper,@|"%"
                 ,"(Param->KGBElt,vec,ratvec)");
 install_function(infinitesimal_character_wrapper,@|"infinitesimal_character"
                 ,"(Param->ratvec)");
+install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
+install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
+install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
 install_function(print_n_block_wrapper,@|"print_n_block"
                 ,"(Param->)");
 install_function(n_block_wrapper,@|"n_block"
