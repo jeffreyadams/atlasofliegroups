@@ -190,6 +190,10 @@ class InvolutionTable
   // choose unique representative for real projection of rational weight
   void real_unique(InvolutionNbr i, RatWeight& y) const;
 
+  // pack $\lambda-\rho$ into a |TorusPart|
+  TorusPart pack(InvolutionNbr i, const Weight& lambda_rho) const;
+  Weight unpack(InvolutionNbr i, TorusPart y_part) const;
+
   // the following produces a light-weight function object calling |involution|
   class mapper
     : public std::unary_function<InvolutionNbr,const weyl::TI_Entry& >

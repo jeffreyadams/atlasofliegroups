@@ -209,7 +209,16 @@ InvolutionNbr InvolutionTable::add_involution(const TwistedInvolution& tw)
   int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
   int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
   R.block(0,0,diagonal.size(),R.numColumns()).swap(R); R*=A;
+  for (unsigned i=0; i<R.numRows(); ++i)
+    for (unsigned j=0; j<R.numColumns(); ++j)
+    {
+      assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*C^{-1}$
+      R(i,j)/=diagonal[i]; // don't need |arithmetic::divide|, division exact
+    }
+
   B.block(0,0,B.numRows(),diagonal.size()).swap(B);
+  for (unsigned j=0; j<B.numColumns(); ++j)
+    B.columnMultiply(j,diagonal[j]);
 
   A = lattice::row_saturate(A);
 
@@ -356,6 +365,25 @@ void InvolutionTable::real_unique(InvolutionNbr i, RatWeight& y) const
     v[i]= arithmetic::remainder(v[i],2*rec.diagonal[i]*y.denominator());
 
   y.numerator()= rec.lift_mat * v; (y/=2).normalize();
+}
+
+TorusPart InvolutionTable::pack(InvolutionNbr i, const Weight& lambda_rho)
+  const
+{
+  const record& rec=data[i];
+  int_Vector v = rec.M_real * lambda_rho;
+  assert(v.size()==rec.diagonal.size());
+  return TorusPart(v);
+}
+
+Weight InvolutionTable::unpack(InvolutionNbr i, TorusPart y_part) const
+{
+  const record& rec=data[i];
+  Weight result(rec.lift_mat.numRows(),0);
+  for (unsigned i=0; i<y_part.size(); ++i)
+    if (y_part[i])
+      result += rec.lift_mat.column(i);
+  return result;
 }
 
 // ------------------------------ Cartan_orbit --------------------------------
