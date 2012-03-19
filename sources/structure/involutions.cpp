@@ -198,23 +198,24 @@ InvolutionNbr InvolutionTable::add_involution(const TwistedInvolution& tw)
   for (RootNbrList::const_iterator it=Cayleys.begin(); it!=Cayleys.end(); ++it)
     rd.reflect(*it,theta);
 
-  int_Matrix A=theta; // will contain |theta-id|, later row-saturated
+  int_Matrix A=theta; // will contain |id-theta|, later row-saturated
+  A.negate();
   for (size_t i=0; i<A.numRows(); ++i)
-    --A(i,i);
+    ++A(i,i);
 
-  int_Matrix R,C;
   // |R| will map $\lambda-\rho$ to torus part coordinates scaled |diagonal|
-  // |C| will then lift unscaled coordinates (mod 2) to $A*(\lambda-\rho)$
-  std::vector<int> diagonal = matreduc::diagonalise(A,R,C);
-  C = R.inverse(); // we don't need |C|, lifting will be by $R^{-1}$
+  // |B| will then lift unscaled coordinates (mod 2) to $A*(\lambda-\rho)$
+  std::vector<int> diagonal;
+  int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
+  int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
   R.block(0,0,diagonal.size(),R.numColumns()).swap(R); R*=A;
-  C.block(0,0,C.numRows(),diagonal.size()).swap(C);
+  B.block(0,0,B.numRows(),diagonal.size()).swap(B);
 
   A = lattice::row_saturate(A);
 
   unsigned int W_length=W.length(tw);
   unsigned int length = (W_length+Cayleys.size())/2;
-  data.push_back(record(theta,InvolutionData(rd,theta),A,R,diagonal,C,
+  data.push_back(record(theta,InvolutionData(rd,theta),A,R,diagonal,B,
 			length,W_length,tits::fiber_denom(theta)));
   assert(data.size()==hash.size());
 
