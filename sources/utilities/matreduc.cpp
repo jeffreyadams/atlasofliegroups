@@ -270,7 +270,7 @@ std::vector<C> diagonalise(matrix::Matrix<C> M, // by value
    sufficiently important to justify the code duplication. We take advantage
    of this duplication to arrange the algorithm for minimal use of row
    operations, which besides being more efficient tends to give a basis more
-   closely related to the original matrix.
+   closely related to the original matrix. All diagonal entries are positive.
  */
 template<typename C>
 matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
