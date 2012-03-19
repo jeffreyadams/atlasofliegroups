@@ -2039,19 +2039,18 @@ connected complex reductive group; the corresponding Atlas class is called
 
 @*2 Class definition.
 The layout of this type of value is different from what we have seen before.
-An Atlas object of class |RealReductiveGroup| is dependent upon
-another Atlas object to which it stores a pointer, which is of type
-|ComplexReductiveGroup|, so we must make sure that the object
-pointed to cannot disappear before it does. The easiest way to do this is to
-place a |inner_class_value| object |parent| inside the |real_form_value| class
-that we shall now define; the reference-counting scheme introduced above then
-guarantees that the data we depend upon will remain in existence sufficiently
-long. Since that data can be accessed from inside the
-|RealReductiveGroup|, we shall mostly mention the |parent| to
-access its |interface| and |dual_interface| fields. To remind us that the
-|parent| is not there to be changed by us, we declare it |const|. The object
-referred to may in fact undergo internal change however, via manipulators of
-the |val| field.
+An Atlas object of class |RealReductiveGroup| is dependent upon another Atlas
+object to which it stores a pointer, which is of type |ComplexReductiveGroup|,
+so we must make sure that the object pointed to cannot disappear before it
+does. The easiest way to do this is to place an |inner_class_value| object
+|parent| inside the |real_form_value| class that we shall now define; the
+reference-counting scheme introduced above then guarantees that the data we
+depend upon will remain in existence sufficiently long. Since that data can be
+accessed from inside the |RealReductiveGroup|, we shall mostly mention the
+|parent| with the purpose of accessing its |interface| and |dual_interface|
+fields. To remind us that the |parent| is not there to be changed by us, we
+declare it |const|. The object referred to may in fact undergo internal change
+however, via manipulators of the |val| field.
 
 We shall later derive from this structure, without adding data members, a
 structure to record dual real forms, which are constructed in the context of
@@ -2065,8 +2064,8 @@ struct real_form_value : public value_base
 { const inner_class_value parent;
   RealReductiveGroup val;
 @)
-  real_form_value(inner_class_value p,RealFormNbr f)
-  : parent(p), val(p.val,f) @+{}
+  real_form_value(const inner_class_value& p,RealFormNbr f) @/
+  : parent(p), val(p.val,f),rc_p(NULL) @+{}
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
@@ -2074,21 +2073,37 @@ struct real_form_value : public value_base
   static const char* name() @+{@; return "real form"; }
   const KGB& kgb () @+{@; return val.kgb(); }
    // generate and return $K\backslash G/B$ set
+  const Rep_context& rc();
+  ~real_form_value() @+{@; delete rc_p; }
 protected:
-  real_form_value(inner_class_value,RealFormNbr,tags::DualTag);
-     // for dual forms
+  real_form_value(const inner_class_value&,RealFormNbr,tags::DualTag);
   real_form_value(const real_form_value& v)
-  : parent(v.parent), val(v.val) @+{} // copy c'tor
+  : parent(v.parent), val(v.val), rc_p(v.rc_p) @+{}
+private:
+  Rep_context* rc_p;
 };
 @)
 typedef std::auto_ptr<real_form_value> real_form_ptr;
 typedef std::tr1::shared_ptr<real_form_value> shared_real_form;
 
-@ When printing a real form, we give the name by which it was chosen (where
-for once we do use the |parent| field), and provide some information about its
-connectedness. Since the names of the real forms are indexed by their outer
-number, but the real form itself stores its inner number, we must somewhat
-laboriously make the conversion here.
+@ The method |rc| ensures a |Rep_context| value is constructed at
+|*rc_p|, and returns a reference. The value so obtained will serve to
+manipulate parameters for standard modules, for which we shall define a
+built-in type below. Storing the value here ensures that it will be shared
+between different parameters, and that it will live as long as those parameter
+values do. The value itself does not take much space, but constructing it
+implicitly calls the |val.kgb| method, so we avoid doing this until there is a
+concrete need.
+
+@< Function def...@>=
+  const Rep_context& real_form_value::rc()
+    {@; return *(rc_p==NULL ? rc_p=new Rep_context(val) : rc_p); }
+
+@ When printing a real form, we give the name by which it is known in the
+parent inner class, and provide some information about its connectedness.
+Since the names of the real forms are indexed by their outer number, but the
+real form itself stores its inner number, we must somewhat laboriously make
+the conversion here.
 
 @< Function def...@>=
 void real_form_value::print(std::ostream& out) const
@@ -2190,7 +2205,7 @@ void Cartan_order_matrix_wrapper(expression_base::level l)
 Although they could be considered as real forms for the dual group and dual
 inner class, it will be convenient to be able to construct dual real forms in
 the context of the |inner_class_value| itself. The resulting objects will have
-a different type than ordinary real forms, but the will use the same structure
+a different type than ordinary real forms, but they will use the same structure
 layout. The interpretation of the fields is as follows for dual real forms:
 the |parent| field contains a copy of the original |inner_class_value|, but
 the |val| field contains a |RealReductiveGroup| object
@@ -2199,10 +2214,10 @@ correct.
 
 @< Function def...@>=
 
-real_form_value::real_form_value(inner_class_value p,RealFormNbr f
+real_form_value::real_form_value(const inner_class_value& p,RealFormNbr f
 				,tags::DualTag)
 : parent(p), val(p.dual,f)
-{}
+@+{}
 
 @ In order to be able to use the same layout for dual real forms but to
 nevertheless make a distinction (for instance in printing), we must derive a
@@ -2210,7 +2225,7 @@ new type from |real_form_value|.
 
 @< Type definitions @>=
 struct dual_real_form_value : public real_form_value
-{ dual_real_form_value(inner_class_value p,RealFormNbr f)
+{ dual_real_form_value(const inner_class_value& p,RealFormNbr f)
   : real_form_value(p,f,tags::DualTag()) @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -2314,7 +2329,9 @@ typedef std::tr1::shared_ptr<Cartan_class_value> shared_Cartan_class;
 
 @ In the constructor we used to check that the Cartan class with the given
 number currently exists, but now the |ComplexReductiveGroup::cartan| method
-assures that a one is generated if this should not have been done before.
+assures that one is generated if this should not have been done before. We
+therefore call that method in the initialiser; on return it provides a valid
+reference.
 
 @< Function def...@>=
 Cartan_class_value::Cartan_class_value(const inner_class_value& p,size_t cn)
@@ -2351,9 +2368,9 @@ void ic_Cartan_class_wrapper(expression_base::level l)
 }
 
 @ Alternatively (and this used to be the only way) one can provide a
-|real_form_value| together with a valid index into its list of Cartan classes.
-We translate this number into an index into the list for its containing inner
-class, and then get the Cartan class from there.
+|real_form_value| together with a valid index into \emph{its} list of Cartan
+classes. We translate this number into an index into the list for its
+containing inner class, and then get the Cartan class from there.
 
 @< Local function def...@>=
 void rf_Cartan_class_wrapper(expression_base::level l)
@@ -2622,26 +2639,27 @@ different lines after commas if necessary.
 
 @*1 Elements of some $K\backslash G/B$ set.
 %
-Associated to each real form is a set $K\backslash G/B$, which was made
-available internally through the |real_form_value::kgb| method. We wish to
-make available externally a number of functions that operate on (among other
-data) elements of this set; for instance each element determines an
+Associated to each real form is a set $K\backslash G/B$, which was already
+made available internally through the |real_form_value::kgb| method. We wish
+to make available externally a number of functions that operate on (among
+other data) elements of this set; for instance each element determines an
 involution, corresponding imaginary and real subsystems of the root system,
 and a $\Z/2\Z$-grading of the imaginary root subsystem. It does not seem
 necessary to introduce a type for the set $K\backslash G/B$ (any function that
 needs it can take the corresponding real form as argument), but we do provide
-one for elements of that set. These elements contain a pointer |rf | to the
-|real_form_value| they were generated from, and thereby to the associated set
-$K\backslash G/B$, which allows operations relevant to the KGB element to be
-defined. Since this is a shared pointer, the |real_form_value| pointed to is
-guaranteed to exist as long as this |KGB_elt_value| does.
+one for elements of that set (if desired the user can collect such elements in
+an array). These elements contain a pointer |rf | to the |real_form_value| they
+were generated from, and thereby to the associated set $K\backslash G/B$,
+which allows operations relevant to the KGB element to be defined. Since this
+is a shared pointer, the |real_form_value| pointed to is guaranteed to exist
+as long as this |KGB_elt_value| does.
 
 @< Type definitions @>=
 struct KGB_elt_value : public value_base
 { shared_real_form rf;
   KGBElt val;
 @)
-  KGB_elt_value(shared_real_form form, KGBElt x) : rf(form), val(x) @+{}
+  KGB_elt_value(const shared_real_form& form, KGBElt x) : rf(form), val(x) @+{}
   ~KGB_elt_value() @+{}
 @)
   virtual void print(std::ostream& out) const;
@@ -2687,6 +2705,207 @@ void KGB_involution_wrapper(expression_base::level l)
   const ComplexReductiveGroup& G=x->rf->val.complexGroup();
   if (l!=expression_base::no_value)
     push_value(new matrix_value(G.involutionMatrix(kgb.involution(x->val))));
+}
+
+@*1 Standard module parameters.
+we implement a data type for holding parameters that represent standard
+modules. Such a parameter is defined by a triple $(x,\lambda,\nu)$ where $x$
+is a KGB element, $\lambda$ is a weight in the coset $\rho+X^*$ whose value is
+relevant only modulo the sub-lattice $(1-\theta_x)X^*$ where $\theta_x$ is the
+involution associated to $x$, and $\nu$ is a rational weight in the kernel of
+$1+\theta_x$. Such parameters are stored in instances of the class
+|StandardRepr|, which is defined in the file \.{repr.h}.
+
+@<Includes needed in the header file @>=
+#include "repr.h"
+
+@*2 Class definition.
+Like for KGB elements, we maintain a shared pointer to the real form value, so
+that it will be assured to survive as long as parameters for it exist, and we
+can access notably the |Rep_context| that it provides.
+
+@< Type definitions @>=
+struct module_parameter_value : public value_base
+{ shared_real_form rf;
+  StandardRepr val;
+@)
+  module_parameter_value(const shared_real_form& form, const StandardRepr& v)
+  : rf(form), val(v) @+{}
+  ~module_parameter_value() @+{}
+@)
+  virtual void print(std::ostream& out) const;
+  module_parameter_value* clone() const
+   @+ {@; return new module_parameter_value(*this); }
+  static const char* name() @+{@; return "module parameter"; }
+@)
+  const Rep_context& rc() const { return rf->rc(); }
+private:
+  module_parameter_value(const module_parameter_value& v)
+  @+ : val(v.val) @+{} // copy
+};
+@)
+typedef std::auto_ptr<module_parameter_value> module_parameter_ptr;
+typedef std::tr1::shared_ptr<module_parameter_value> shared_module_parameter;
+
+@ When printing a module parameter, we shall indicate a triple
+$(x,\lambda,\nu)$ that defines it.
+
+@f nu NULL
+
+@< Function def...@>=
+void module_parameter_value::print(std::ostream& out) const
+{ RootNbr witness; // dummy needed in call
+    out << @< Expression for adjectives that apply to a module parameter @>@;@;
+        << " parameter ("
+@/      << val.x() << ','
+        << rc().lambda(val) << ','
+        << rc().nu(val) << ')';
+}
+
+@ We provide one of the adjectives ``non-standard'' (when $\lambda$ fails to
+be imaginary-dominant; in this case little can be done with the parameter),
+``zero'' (the standard module vanishes due to the singular infinitesimal
+character, namely by the presence of a singular compact simple-imaginary
+root), ``non-final'' (the standard module is non-zero, but can be expressed in
+terms of standard modules at more compact Cartans using a singular real root
+satisfying the parity condition) or ``final'' (the good ones; the condition
+implies ``standard'' an ``non-zero'').
+
+@< Expression for adjectives... @>=
+( rc().is_standard(val,witness) ?
+    rc().is_zero(val,witness) ? "zero" :
+@/    rc().is_final(val,witness) ? "final" : "non-final"
+@/  : "non-standard" )
+
+@ To make a module parameter, one should provide a KGB element~$x$, an
+integral weight $\lambda-\rho$, and a rational weight~$\nu$. Since only its
+projection on the $-\theta_x$-stable subspace is used, one might specify the
+infinitesimal character $\gamma$ in the place of $\nu$.
+
+@< Local function def...@>=
+void module_parameter_wrapper(expression_base::level l)
+{ shared_rational_vector nu(get<rational_vector_value>());
+  shared_vector lam_rho(get<vector_value>());
+  shared_KGB_elt x(get<KGB_elt_value>());
+  if (nu->val.size()!=lam_rho->val.size()
+      or nu->val.size()!=x->rf->val.rank())
+    throw std::runtime_error ("Rank mismatch: ("
+        +str(x->rf->val.rank())+","
+	+str(lam_rho->val.size())+","+str(nu->val.size())+")");
+@.Rank mismatch@>
+  if (l!=expression_base::no_value)
+    push_value(new@| module_parameter_value(x->rf,
+      x->rf->rc().sr(x->val,lam_rho->val,nu->val)));
+}
+
+@ The following function, which we shall bind to the monadic operator `|%|',
+transforms a parameter value into a tuple of values that defines it. This
+tuple is not unique (since $\lambda$ is determined only modulo
+$(1-\theta_x)X^*$) and this function should make a unique choice. Whether that
+is really the case depends on the implementation of |StandardRepr|
+though; the current code, like the printing routine, just uses the methods to
+extract the components.
+
+@< Local function def...@>=
+void unwrap_parameter_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+  { push_value(new KGB_elt_value(p->rf,p->val.x()));
+    push_value(new vector_value(p->rc().lambda_rho(p->val)));
+    push_value(new rational_vector_value(p->rc().nu(p->val)));
+    if (l==expression_base::single_value)
+      wrap_tuple(3);
+  }
+}
+
+@ A crucial attribute of module parameters is their infinitesimal character.
+
+@< Local function def...@>=
+void infinitesimal_character_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(new rational_vector_value(p->val.gamma()));
+}
+
+@ Here are some more attributes, in the form of predicates.
+
+@< Local function def...@>=
+void is_standard_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  RootNbr witness;
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(p->rc().is_standard(p->val,witness)));
+}
+
+void is_zero_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  RootNbr witness;
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(p->rc().is_zero(p->val,witness)));
+}
+
+void is_final_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  RootNbr witness;
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(p->rc().is_final(p->val,witness)));
+}
+
+
+@ One of the main reasons to introduce module parameter values is that they
+allow computing a block, whose elements are again given by module parameters.
+
+@< Local function def...@>=
+void print_n_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  RealReductiveGroup& G_r = p->rf->val;
+  const Rep_context& rc= p->rc();
+  SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),p->val.gamma());
+  BlockElt init_index; // will hold index in the block of the initial element
+  non_integral_block block
+    (G_r,subsys,p->val.x(),rc.lambda(p->val),p->val.gamma(),init_index);
+  block.print_to(*output_stream,true);
+    // print block using involution expressions
+  if (l==expression_base::single_value)
+    wrap_tuple(0);
+}
+
+@ More interesting than printing the block is to return is to the user as a
+list of parameter values. The following function does this, and adds as a
+second result the index that the original parameter has in the result.
+
+@< Local function def...@>=
+void n_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+  {
+    RealReductiveGroup& G_r = p->rf->val;
+    const Rep_context& rc= p->rc();
+    SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),p->val.gamma());
+    BlockElt init_index; // will hold index in the block of the initial element
+    non_integral_block block
+      (G_r,subsys,p->val.x(),rc.lambda(p->val),p->val.gamma(),init_index);
+    @< Push a list of parameter values for the elements of |block| @>
+    push_value(new int_value(init_index));
+    if (l==expression_base::single_value)
+      wrap_tuple(2);
+  }
+}
+
+@ Construction a list of values is a routine affair. This code must however
+also construct a module parameter value for each element of |block|.
+
+@< Push a list of parameter values for the elements of |block| @>=
+{ row_ptr param_list (new row_value(block.size()));
+  const RatWeight& gamma=block.gamma();
+  for (BlockElt z=0; z<block.size(); ++z)
+  { StandardRepr block_elt_param
+      (block.parent_x(z),block.lambda_rho(z),gamma);
+    param_list->val[z] =
+	shared_value(new module_parameter_value(p->rf,block_elt_param));
+  }
+  push_value(param_list);
+
 }
 
 @*1 Kazhdan-Lusztig tables.
@@ -3140,7 +3359,7 @@ void print_W_graph_wrapper(expression_base::level l)
     wrap_tuple(0);
 }
 
-@ The function |test_representation| serves to experiment with the input of
+@ The function |test_rep| serves to experiment with the input of
 general representation parameters and the computation of the corresponding
 pair $(x,y)$. The code below should be modified so as to use only the integral
 system defined by the infinitesimal character~$\gamma$.
@@ -3155,9 +3374,9 @@ void test_rep_wrapper(expression_base::level l)
   shared_KGB_elt x = get<KGB_elt_value>();
 
   RealReductiveGroup& G = x->rf->val;
-  repr::Rep_context rc(G);
+  Rep_context rc(G);
 @)
-  repr::StandardRepr sr = rc.sr(x->val,lambda_rho->val,nu->val);
+  StandardRepr sr = rc.sr(x->val,lambda_rho->val,nu->val);
   std::cout << "infinitesimal character: " << sr.gamma() << std::endl;
   GlobalTitsElement y=rc.y(sr);
   ComplexReductiveGroup dual_G(G.complexGroup(),tags::DualTag());
@@ -3207,6 +3426,19 @@ install_function(fiber_part_wrapper,@|"fiber_part"
 		,"(CartanClass,RealForm->[int])");
 install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
+install_function(module_parameter_wrapper,@|"param"
+                ,"(KGBElt,vec,ratvec->Param)");
+install_function(unwrap_parameter_wrapper,@|"%"
+                ,"(Param->KGBElt,vec,ratvec)");
+install_function(infinitesimal_character_wrapper,@|"infinitesimal_character"
+                ,"(Param->ratvec)");
+install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
+install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
+install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
+install_function(print_n_block_wrapper,@|"print_n_block"
+                ,"(Param->)");
+install_function(n_block_wrapper,@|"n_block"
+                ,"(Param->[Param],int)");
 install_function(raw_KL_wrapper,@|"raw_KL"
                 ,"(RealForm,DualRealForm->mat,[vec],vec)");
 install_function(raw_dual_KL_wrapper,@|"dual_KL"

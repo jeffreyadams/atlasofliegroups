@@ -46,28 +46,27 @@ class StandardRepr
 {
   friend class Rep_context;
 
-  KGBElt x;
+  KGBElt x_part;
   Weight lambda_rho; // $\lambda-\rho$
   RatWeight infinitesimal_char; // $\gamma$
 
  public:
-  StandardRepr (KGBElt xx,
+  StandardRepr (KGBElt x,
 		const Weight& lr,
 		const RatWeight& gamma)
-    : x(xx), lambda_rho(lr), infinitesimal_char(gamma) {}
+    : x_part(x), lambda_rho(lr), infinitesimal_char(gamma) {}
 
   const RatWeight& gamma() const { return infinitesimal_char; }
+  KGBElt x() const { return x_part; }
 
   bool operator== (const StandardRepr&) const;
+
 // special members required by hashtable::HashTable
 
   typedef std::vector<StandardRepr> Pooltype;
   bool operator!=(const StandardRepr& another) const
     { return not operator==(another); }
   size_t hashCode(size_t modulus) const;
-
-
-
 }; // |class StandardRepr|
 
 
@@ -102,14 +101,26 @@ class Rep_context
        const Weight lambda_rho,
        const RatWeight& nu) const;
 
-  RatWeight lambda(const StandardRepr& rep) const; // half-integer
-  GlobalTitsElement y(const StandardRepr& rep) const;
+  // component extraction
+  Weight lambda_rho(const StandardRepr& z) const { return z.lambda_rho; }
 
-  kgb::global_KGB dual_KGB(const StandardRepr& rep) const;
+  RatWeight lambda(const StandardRepr& z) const; // half-integer
+  RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
+  GlobalTitsElement y(const StandardRepr& z) const;
 
-  bool is_final(const StandardRepr& rep);
-  bool is_oriented(const StandardRepr& rep, RootNbr alpha);
-  unsigned int orientation_number(const StandardRepr& rep);
+  // attributes
+  bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
+    (const StandardRepr& z, RootNbr& witness) const; // simple-imaginary witness
+  bool is_zero  // whether $I(z)=0$: exists singular simple-imaginary compact
+    (const StandardRepr& z, RootNbr& witness) const; // simple-imaginary witness
+  bool is_final  // whether $I(z)$ unrelated by Hecht-Schmid to more compact
+    (const StandardRepr& z, RootNbr& witness) const; // singular real witness
+  bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
+  unsigned int orientation_number(const StandardRepr& z) const;
+
+  // transformations
+  StandardRepr& make_dominant(StandardRepr& z) const;
+  StandardRepr& make_real_dominant(StandardRepr& z) const;
 
 }; // |Rep_context|
 

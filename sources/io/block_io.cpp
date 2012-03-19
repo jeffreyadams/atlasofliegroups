@@ -109,7 +109,7 @@ std::ostream& gamma_block::print(std::ostream& strm, BlockElt z) const
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
 
   RatWeight ls = local_system(z);
-  return strm << "(=" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
+  return strm << "(=" << std::setw(xwidth) << parent_x(z)
 	      << ',' << std::setw(3*ls.size()+3) << ls
 	      << ')';
 }
@@ -120,9 +120,9 @@ std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
   RatWeight ll=y_part(z);
 
   strm << (survives(z) ? '*' : ' ')
-       << "(x=" << std::setw(xwidth) << kgb_nr_of[d_x[z]]
-       << ", nu=" << std::setw(2*ll.size()+5) << nu(z) << ',';
-//strm << std::setw(2*ll.size()+5) << ll;
+       << "(x=" << std::setw(xwidth) << parent_x(z)
+       << ", nu=" << std::setw(2*ll.size()+5) << nu(z);
+//strm << ',' << std::setw(2*ll.size()+5) << ll;
   strm << ",lam=rho+" << std::setw(2*ll.size()+3) << lambda_rho(z);
   return strm << ')';
 }

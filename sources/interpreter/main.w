@@ -105,7 +105,7 @@ for various classes of the interpreter, and sets pointers to them so that
 various compilation units can access them. Then in a loop it calls the parser
 until it sets |verbosity<0|, which is done upon seeing the \.{quit} command.
 We call the |reset| method of the lexical scanner before calling the parser,
-which will discard any input that is left be a possible previous erroneous
+which will discard any input that is left by a possible previous erroneous
 input. This also already fetches a new line of input, or abandons the program
 in case none can be obtained.
 
@@ -187,7 +187,7 @@ functions.
 @ If a type error is detected by |analyse_types|, then it will have signalled
 it and thrown a |runtime_error|; if that happens |type_OK| will remain |false|
 and the runtime error is silently caught. If the result is an empty tuple, we
-suppress printing if the uninteresting value.
+suppress printing of the uninteresting value.
 
 @h <stdexcept>
 @h "evaluator.h"

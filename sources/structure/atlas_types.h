@@ -388,10 +388,15 @@ namespace atlas {
     class HechtSchmid;	// Hecht-Schmid identity
     class PSalgebra;    // parabolic subalgebra
   }
+  using standardrepk::StandardRepK;
+  using standardrepk::SRK_context;
+
   namespace repr {
     class StandardRepr;	// triple $(x,\lambda,\gamma)$
     class Rep_context;	// support class for interpreting |StandardRepr;|
   }
+  using repr::StandardRepr;
+  using repr::Rep_context;
 
   namespace realform_io { class Interface; } // maps internals to names
   namespace complexredgp_io { class Interface; } // a pair of the above

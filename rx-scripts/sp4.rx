@@ -1,0 +1,17 @@
+set simple_roots = [vec]: [[0,2],[1,-1]]
+set simple_coroots = [vec]: [[0,1],[1,-1]]
+
+set sp4 = root_datum(simple_roots,simple_coroots,2)
+set sp4c = inner_class(sp4,"e") { sp4 class }
+set sp4R = quasisplit_form(sp4c)
+
+set x = for i:KGB_size(sp4R) do KGB(sp4R,i) od
+
+set do_block ( (Param->) f) = { f is function executed for block elements }
+( (Param p):
+  let (b,i)=n_block(p)
+  in for q in b do f(q) od
+  ; i
+)
+
+set block = do_block ( (Param q): prints(q) )
