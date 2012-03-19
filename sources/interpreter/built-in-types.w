@@ -2756,9 +2756,9 @@ $(x,\lambda,\nu)$ that defines it.
 void module_parameter_value::print(std::ostream& out) const
 { RootNbr witness; // dummy needed in call
     out << @< Expression for adjectives that apply to a module parameter @>@;@;
-        << " parameter ("
-@/      << val.x() << ','
-        << rc().lambda(val) << ','
+        << " parameter (x="
+@/      << val.x() << ",lambda="
+        << rc().lambda(val) << ",nu="
         << rc().nu(val) << ')';
 }
 
@@ -2858,6 +2858,11 @@ allow computing a block, whose elements are again given by module parameters.
 @< Local function def...@>=
 void print_n_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
+  { RootNbr witness;
+    if (not p->rc().is_standard(p->val,witness))
+      throw std::runtime_error
+        ("Parameter not standard, singular compact coroot #"+str(witness));
+  }
   RealReductiveGroup& G_r = p->rf->val;
   const Rep_context& rc= p->rc();
   SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),p->val.gamma());
@@ -2877,6 +2882,11 @@ second result the index that the original parameter has in the result.
 @< Local function def...@>=
 void n_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
+  { RootNbr witness;
+    if (not p->rc().is_standard(p->val,witness))
+      throw std::runtime_error
+        ("Parameter not standard, singular compact coroot #"+str(witness));
+  }
   if (l!=expression_base::no_value)
   {
     RealReductiveGroup& G_r = p->rf->val;
@@ -2899,8 +2909,8 @@ also construct a module parameter value for each element of |block|.
 { row_ptr param_list (new row_value(block.size()));
   const RatWeight& gamma=block.gamma();
   for (BlockElt z=0; z<block.size(); ++z)
-  { StandardRepr block_elt_param
-      (block.parent_x(z),block.lambda_rho(z),gamma);
+  { StandardRepr block_elt_param =
+      rc.sr(block.parent_x(z),block.lambda_rho(z),gamma);
     param_list->val[z] =
 	shared_value(new module_parameter_value(p->rf,block_elt_param));
   }
