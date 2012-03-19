@@ -2,7 +2,7 @@
   This is blocks.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Modified by Marc van Leeuwen, 2007
+  Modified by Marc van Leeuwen, 2007--2012
   Part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
@@ -1396,18 +1396,17 @@ non_integral_block::non_integral_block
 
 RatWeight non_integral_block::nu(BlockElt z) const
 {
-  WeightInvolution theta =
-    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
+  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
+  const WeightInvolution& theta = G.involution_table().matrix(i_x);
   return RatWeight (gamma().numerator()-theta*gamma().numerator()
 		    ,2*gamma().denominator()).normalize();
 }
 
 RatWeight non_integral_block::y_part(BlockElt z) const
 {
-  WeightInvolution theta =
-    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
   RatWeight t =  y_info[d_y[z]].torus_part().log_pi(false);
-  G.involution_table().real_unique(kgb.inv_nr(parent_x(z)),t);
+  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
+  G.involution_table().real_unique(i_x,t);
   return (t/=2).normalize();
 }
 
@@ -1416,10 +1415,9 @@ RatWeight non_integral_block::y_part(BlockElt z) const
 // the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
 Weight non_integral_block::lambda_rho(BlockElt z) const
 {
-  WeightInvolution theta =
-    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
   RatWeight t =  y_info[d_y[z]].torus_part().log_pi(false);
-  G.involution_table().real_unique(kgb.inv_nr(parent_x(z)),t);
+  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
+  G.involution_table().real_unique(i_x,t);
 
   RatWeight lr =
     (infin_char - t - RatWeight(G.rootDatum().twoRho(),2)).normalize();
@@ -1432,8 +1430,8 @@ Weight non_integral_block::lambda_rho(BlockElt z) const
 // the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
 RatWeight non_integral_block::lambda(BlockElt z) const
 {
-  WeightInvolution theta =
-    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
+  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
+  const WeightInvolution& theta = G.involution_table().matrix(i_x);
   RatWeight t =  y_info[d_y[z]].torus_part().log_2pi();
   const Weight& num = t.numerator();
   return infin_char - RatWeight(num-theta*num,t.denominator());
