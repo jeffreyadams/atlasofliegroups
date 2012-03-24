@@ -126,6 +126,7 @@ class KLPolEntry : public KLPol
 
     friend class Thicket;
 
+    // a table for KL polynomial lookup, which is absent in KLContext
     KLHashStore d_hashtable;
     bool d_verbose;
 
@@ -193,6 +194,8 @@ of pair of integers specifying block element y.
     MuCoeff type2Mu(BlockElt x, BlockElt y) const;
 
     // manipulators
+    void rebuild_index() { d_hashtable.reconstruct(); }
+
     void completePacket(BlockElt y);
 
     void directRecursion(BlockElt y, size_t s);
@@ -441,7 +444,7 @@ class ThicketIterator {
 
 namespace kl {
 
-KLContext::KLContext(Block_base& b)
+KLContext::KLContext(const Block_base& b)
   : klsupport::KLSupport(b) // construct unfilled support object from block
   , fill_limit(0)
   , d_prim()
@@ -487,6 +490,35 @@ void KLContext::swap(KLContext& other) // used to extract base out of Helper
   d_store.swap(other.d_store);  // this puts the Helper store into base object
   std::swap(d_zero,other.d_zero);
   std::swap(d_one,other.d_one);
+}
+
+// If table extension fails, we need to recover the old part of the tables
+void KLContext::partial_swap(KLContext& other)
+{
+  // this is only called both to copy old tables into the helper object |other|,
+  // and in case of an overflow to recover those old tables form |other|
+  klsupport::KLSupport::swap(other); // swap base (support) objects
+
+  d_prim.swap(other.d_prim);
+  d_kl.swap(other.d_kl);
+  d_mu.swap(other.d_mu);
+  d_store.swap(other.d_store);
+  std::swap(d_zero,other.d_zero);
+  std::swap(d_one,other.d_one);
+
+  if (other.fill_limit<fill_limit) // we are initially filling helper object
+  {
+    other.fill_limit=fill_limit; // for fill limit, copy to other but keep ours
+    d_store.reserve(other.d_store.size()); // a stupid way to record old size
+  }
+  else // then we are restoring after a throw; |other| will soon disappear
+  {
+    d_prim.resize(fill_limit); // truncate, freeing occupied memory
+    d_kl.resize(fill_limit);
+    d_mu.resize(fill_limit);
+    d_store.resize(other.d_store.capacity()); // truncate to old size
+  }
+
 }
 
 /******** accessors **********************************************************/
@@ -594,7 +626,7 @@ KLContext::makePrimitiveRow(PrimitiveRow& e, BlockElt y)
 /******** manipulators *******************************************************/
 
 /*!
-  \brief Fills the KL- and mu-lists.
+  \brief Fills (or extends) the KL- and mu-lists.
 
   Explanation: this is the main function in this module; all the work is
   deferred to the Helper class.
@@ -602,19 +634,24 @@ KLContext::makePrimitiveRow(PrimitiveRow& e, BlockElt y)
 void KLContext::fill(BlockElt y, bool verbose)
 {
   if (y<fill_limit)
-    return;
+    return; // tables present already sufficiently large for |y|
 
 #ifndef VERBOSE
-  verbose=false;
+  verbose=false; // if compiled for silence, force this variable
 #endif
 
   if (verbose)
     std::cerr << "computing Kazhdan-Lusztig polynomials ..." << std::endl;
 
+  helper::Helper help(*this); // make helper, with empty base KLContext
+  if (fill_limit>0)
+  {
+    partial_swap(help);   // move previously computed tables into helper
+    help.rebuild_index(); // since we just swapped the referred-to |KLStore|
+  }
+
   try
   {
-    helper::Helper help(*this); // make helper, copy-constructing empty base
-
     help.fill(y,verbose); // takes care of filling embedded |KLSupport| too
     swap(help); // swap base object, including the |KLSupport| and |KLStore|
 
@@ -623,8 +660,10 @@ void KLContext::fill(BlockElt y, bool verbose)
     if (verbose)
       std::cerr << "done" << std::endl;
   }
-  catch (std::bad_alloc) { // transform failed allocation into MemoryOverflow
+  catch (std::bad_alloc)
+  { // roll back, and transform failed allocation into MemoryOverflow
     std::cerr << "\n memory full, KL computation abondoned." << std::endl;
+    partial_swap(help); // restore (only) the previous contents from helper
     throw error::MemoryOverflow();
   }
 
@@ -711,8 +750,8 @@ namespace kl {
     // main constructor
 
 Helper::Helper(const KLContext& kl)
-  : KLContext(kl)  // copy-construct the bare base obejct
-  , d_hashtable(d_store) // hash table refers to our base object's d_store
+  : KLContext(kl.block())  // re-construct empty KLContext base object
+  , d_hashtable(d_store) // hash table identifies helper base object's d_store
   , d_verbose(false)
   , prim_size(0), nr_of_prim_nulls(0)
 {
@@ -1051,8 +1090,12 @@ void Helper::directRecursion(BlockElt y, size_t s)
 
 /*!
   \brief Dispatches the work of filling the KL- and mu-lists.
+
+  The current implementation blindly assumes that the tables are empty
+  initially. While this is true in the way it is now used, it should really be
+  rewritten to take into account the possibility of initial |fill_limit>0|
 */
-    void Helper::fill(BlockElt last_y, bool verbose)
+void Helper::fill(BlockElt last_y, bool verbose)
 {
   // make sure the support (base of base) is filled
   klsupport::KLSupport::fill();

@@ -1170,8 +1170,8 @@ void nblock_f()
     << " of the following block:" << std::endl;
 
   block.print_to(f,false);
-  kl::KLContext klc(block);
-  klc.fill(z,false); // silent filling of the KL table
+  // silently fill the whole KL table
+  const kl::KLContext& klc = block.klc(block.size()-1,false);
 
   typedef Polynomial<int> Poly;
   typedef std::map<BlockElt,Poly> map_type;
@@ -1255,8 +1255,9 @@ void deform_f()
     << " of the following block:" << std::endl;
 
   block.print_to(f,false);
-  kl::KLContext klc(block);
-  klc.fill(entry_elem,false); // silent filling of the KL table
+  // fill KL table partially and silently
+  const kl::KLContext& klc = block.klc(entry_elem,false);
+
 
   std::vector<BlockElt> survivors; survivors.reserve(entry_elem+1);
   for (BlockElt x=0; x<=entry_elem; ++x)

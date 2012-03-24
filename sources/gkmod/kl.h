@@ -58,11 +58,7 @@ class KLContext
 
  protected:  // permit access of our Helper class to the data members
 
-  /*!
-\brief Bit 0 flags whether the KL polynomials have
-all been computed.
-  */
-  BlockElt fill_limit; // all "rows" |y| with |y<fill_limit| computed
+  BlockElt fill_limit; // all "rows" |y| with |y<fill_limit| have been computed
 
   /*!
 \brief Entry d_prim[y] is a list of the elements x_i that are primitive
@@ -98,6 +94,7 @@ P_{y,x_i}, numbered as in the list d_prim[y].
   KLContext(const KLContext&);
 
   void swap(KLContext&); // needed internally in helper class
+  void partial_swap(KLContext&); // swap contents up to our |fill_limit|
 
  private:
   KLContext& operator= (const KLContext&); // assignment is not needed at all
@@ -105,7 +102,7 @@ P_{y,x_i}, numbered as in the list d_prim[y].
  public:
 
 // constructors and destructors
-  KLContext(Block_base&); // initial base object
+  KLContext(const Block_base&); // construct initial base object
 
 // accessors
   // the following two were moved here from the Helper class
@@ -160,7 +157,8 @@ P_{y,x}).
   // partial fill, up to and including the "row" of |y|
   void fill(BlockElt y, bool verbose=true);
 
-  void fill() { fill(size()-1); } // simulate forbidden default argument
+  void fill(bool verbose=true)
+  { fill(size()-1,verbose); } // simulate forbidden first default argument
 
  }; //class KLContext
 

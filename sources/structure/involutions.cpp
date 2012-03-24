@@ -203,8 +203,8 @@ InvolutionNbr InvolutionTable::add_involution(const TwistedInvolution& tw)
   for (size_t i=0; i<A.numRows(); ++i)
     ++A(i,i);
 
-  // |R| will map $\lambda-\rho$ to torus part coordinates scaled |diagonal|
-  // |B| will then lift unscaled coordinates (mod 2) to $A*(\lambda-\rho)$
+  // |R| will map $\lambda-\rho$ to reduced torus part coordinates
+  // |B| will then map thes coordinates (mod 2) through to $A*(\lambda-\rho)$
   std::vector<int> diagonal;
   int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
   int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates

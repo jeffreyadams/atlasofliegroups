@@ -2918,6 +2918,48 @@ also construct a module parameter value for each element of |block|.
 
 }
 
+@ Having computed the non-integral block, we can go ahead and compute a
+deformation formula for the given parameter. This involves computing a
+non-integral block, their Kazhdan-Lusztig polynomials, and produces an
+expression for the ``deformed'' parameter (meaning $\nu$ is infinitesimally
+decreased towards~$0$) in terms of certain other parameters found in the
+block.
+
+@< Local function def...@>=
+void deform_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  { RootNbr witness;
+    if (not p->rc().is_standard(p->val,witness))
+      throw std::runtime_error
+        ("Parameter not standard, singular compact coroot #"+str(witness));
+  }
+  if (l!=expression_base::no_value)
+  {
+    RealReductiveGroup& G_r = p->rf->val;
+    const Rep_context& rc= p->rc();
+    SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),p->val.gamma());
+    BlockElt init_index; // will hold index in the block of the initial element
+    non_integral_block block
+      (G_r,subsys,p->val.x(),rc.lambda(p->val),p->val.gamma(),init_index);
+
+    std::vector<non_integral_block::term> terms =
+	 block.deformation_terms(init_index);
+    row_ptr term_list (new row_value(terms.size()));
+    const RatWeight& gamma=block.gamma();
+    for (unsigned i=0; i<terms.size(); ++i)
+    { BlockElt z=terms[i].elt;
+      StandardRepr param_z =
+        rc.sr(block.parent_x(z),block.lambda_rho(z),gamma);
+      shared_tuple t(new tuple_value(2));
+      t->val[0]= shared_value(new int_value(terms[i].coef));
+      t->val[1]= shared_value(new module_parameter_value(p->rf,param_z));
+      term_list->val[i] = t;
+    }
+    push_value(term_list);
+  }
+}
+
+
 @*1 Kazhdan-Lusztig tables.
 We implement a simple function that gives raw access to the table of
 Kazhdan-Lusztig polynomials.
@@ -3447,8 +3489,8 @@ install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
 install_function(print_n_block_wrapper,@|"print_n_block"
                 ,"(Param->)");
-install_function(n_block_wrapper,@|"n_block"
-                ,"(Param->[Param],int)");
+install_function(n_block_wrapper,@|"n_block" ,"(Param->[Param],int)");
+install_function(deform_wrapper,@|"deform" ,"(Param->[(int,Param)])");
 install_function(raw_KL_wrapper,@|"raw_KL"
                 ,"(RealForm,DualRealForm->mat,[vec],vec)");
 install_function(raw_dual_KL_wrapper,@|"dual_KL"

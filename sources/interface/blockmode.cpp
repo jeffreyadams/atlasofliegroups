@@ -80,7 +80,6 @@ namespace {
   ComplexReductiveGroup* dual_G_C_pointer=NULL;
   RealReductiveGroup* dual_G_R_pointer=NULL;
   Block* block_pointer=NULL;
-  kl::KLContext* klc_pointer=NULL;
   wgraph::WGraph* WGr_pointer=NULL;
 }
 
@@ -161,12 +160,7 @@ Block& currentBlock()
 
 kl::KLContext& currentKL()
 {
-  if (klc_pointer==NULL)
-  {
-    klc_pointer=new kl::KLContext(currentBlock());
-    klc_pointer->fill();
-  }
-  return *klc_pointer;
+  return currentBlock().klc(currentBlock().size()-1,true);
 }
 
 wgraph::WGraph& currentWGraph()
@@ -233,7 +227,6 @@ void block_mode_exit()
   delete dual_G_C_pointer; dual_G_C_pointer=NULL;
   delete dual_G_R_pointer; dual_G_R_pointer=NULL;
   delete block_pointer; block_pointer=NULL;
-  delete klc_pointer; klc_pointer=NULL;
   delete WGr_pointer; WGr_pointer=NULL;
 }
 

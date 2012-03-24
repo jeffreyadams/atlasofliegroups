@@ -363,6 +363,11 @@ is_final: (Param->bool): whether parameter defines a zero standard module
 print_n_block: (Param->): print (nonintegral) block generated from paramter
 n_block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
+deform: (Param->[(int,Param)]): compute deformation terms when nu decreases
+  The non-integral block for the parameter and its KL polynomials are
+  computed, from which the deformation terms involing other members of the
+  block are computed. The are returned as a list of (coefficient,parameter)
+  pairs, where the coefficient give the multiple of (1-s) in the formula.
 
 raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
   The call raw_KL(rf,drf) produces a matrix of numbers identifying

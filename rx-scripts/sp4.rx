@@ -1,3 +1,5 @@
+{ This defines Sp(4,R) in David Vogans's coordinates. Atlas thinks it's B2! }
+
 set simple_roots = [vec]: [[0,2],[1,-1]]
 set simple_coroots = [vec]: [[0,1],[1,-1]]
 

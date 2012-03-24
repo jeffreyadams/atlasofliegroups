@@ -34,7 +34,7 @@ class KLSupport
 
   BitSet<NumStates> d_state;
 
-  Block_base& d_block;  // non-owned reference
+  const Block_base& d_block;  // non-owned reference
 
   std::vector<RankFlags> d_descent;
   std::vector<RankFlags> d_goodAscent;
@@ -45,7 +45,7 @@ class KLSupport
  public:
 
 // constructors and destructors
-  KLSupport(Block_base&);
+  KLSupport(const Block_base&);
 
 // copy and swap (use automatically generated copy constructor)
   void swap(KLSupport&);
