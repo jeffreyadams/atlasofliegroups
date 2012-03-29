@@ -177,6 +177,7 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
   , d_x(), d_y(), d_first_z_of_x() // filled below
   , d_cross(kgb.rank()), d_cayley(kgb.rank()) // each entry filled below
   , d_descent(), d_length() // filled below
+  , d_bruhat(NULL)
   , klc_ptr(NULL)
 {
   const TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();
@@ -1539,10 +1540,8 @@ non_integral_block::deformation_terms (BlockElt entry_elem)
     orient_nr[z] = RC.orientation_number(r);
   }
 
-  typedef Polynomial<int> Poly;
-  typedef matrix::Matrix_base<Poly> PolMat;
-
-  PolMat P(n_surv,n_surv,Poly(0)), Q(n_surv,n_surv,Poly(0));
+  // the following store (sums of) KL polynomials evaluated at $-1$
+  int_Matrix P(n_surv,n_surv,0), Q(n_surv,n_surv,0);
 
   // compute $P(x,z)$ for indexes |x<=z<n_surv| into survivors
   for (BlockElt z=n_surv; z-->0; )
@@ -1554,35 +1553,31 @@ non_integral_block::deformation_terms (BlockElt entry_elem)
       const kl::KLPol& pol = klc.klPol(xx,zz); // regular KL polynomial
       if (not pol.isZero())
       {
-	Poly p(pol); // convert
+	// evaluate |pol| at $X=-1$ since that is what's needed in the end
+	int eval=0;
+	for (polynomials::Degree d=pol.size(); d-->0; )
+	  eval = static_cast<int>(pol[d])-eval;
 	if (length(xx)%2!=parity)
-	  p*=-1;
+	  eval = -eval; // incorporate sign for length difference in evaluation
 	BlockEltList nb=survivors_below(xx);
 	for (size_t i=0; i<nb.size(); ++i)
 	{
-	  BlockElt x = std::lower_bound
+	  BlockElt x = std::lower_bound // look up |nb[i]| in |survivors|
 	    (survivors.begin(),survivors.end(),nb[i])-survivors.begin();
-	  assert(survivors[x]==nb[i]); // found
-	  if (P(x,z).isZero())
-	    P(x,z)=p;
-	  else
-	    P(x,z)+=p;
+	  assert(survivors[x]==nb[i]); // must be found
+	  P(x,z) += eval;
 	} // |for (i)| in |nb|
       } // |if(pol!=0)|
     } // |for (x<=z)|
   } // for |z|
 
-  // now compute polynomials $Q_{x,z}$, for |x<=z<n_surv|
+  // now compute evaluated polynomials $Q_{x,z}$, for |x<=z<n_surv|
   for (BlockElt x=0; x<n_surv; ++x)
   {
-    Q(x,x)=Poly(1);
+    Q(x,x)=1;
     for (BlockElt z=x+1; z<n_surv; ++z)
-    {
-      Poly sum; // initially zero; $-\sum{x\leq y<z}Q_{x,y}P^\pm_{y,z}$
       for (BlockElt y=x; y<z; ++y)
-	sum -= Q(x,y)*P(y,z);
-      Q(x,z)=sum;
-    }
+	Q(x,z) -= Q(x,y)*P(y,z);  // $-\sum{x\leq y<z}Q_{x,y}P^\pm_{y,z}$
   }
 
   if (survives(entry_elem))
@@ -1593,22 +1588,16 @@ non_integral_block::deformation_terms (BlockElt entry_elem)
 
     for (BlockElt x=n_surv-1; x-->0; ) // skip |entry_elem|
     {
-      Poly sum;
+      int coef=0;
       for (BlockElt y=x; y<n_surv-1; ++y)
 	if (length(survivors[y])%2==odd)
-	  sum += P(x,y)*Q(y,z);
-      // now evaluate |sum| at $X=-1$ to get "real" part of $(1-s)*sum[X:=s]$
-      int eval=0;
-      for (polynomials::Degree d=sum.size(); d-->0; )
-	eval = sum[d]-eval;
-
-      // if (orientation_difference(x,z)) sum*=s;
+	  coef += P(x,y)*Q(y,z);
+      // here we evaluated  |coef| at $X=-1$: "real" part of $(1-s)*coef[X:=s]$
+      // if (orientation_difference(x,z)) coef*=s;
       int orient_express = (orient_nr[n_surv-1]-orient_nr[x])/2;
-      if (orient_express%2!=0)
-	eval = -eval;
-
-      if (eval!=0)
-	result.push_back(term(eval,survivors[x]));
+      if (coef!=0)
+	result.push_back(term(orient_express%2!=0 ? coef : -coef,
+			      survivors[x]));
     }
   }
   return result;
