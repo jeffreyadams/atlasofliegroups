@@ -2851,6 +2851,15 @@ void is_final_wrapper(expression_base::level l)
     push_value(new bool_value(p->rc().is_final(p->val,witness)));
 }
 
+@ The library can also compute orientation numbers for parameters.
+
+@< Local function def...@>=
+void orientation_number_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(new int_value(p->rc().orientation_number(p->val)));
+}
+
 
 @ One of the main reasons to introduce module parameter values is that they
 allow computing a block, whose elements are again given by module parameters.
@@ -3487,6 +3496,7 @@ install_function(infinitesimal_character_wrapper,@|"infinitesimal_character"
 install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
+install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(print_n_block_wrapper,@|"print_n_block"
                 ,"(Param->)");
 install_function(n_block_wrapper,@|"n_block" ,"(Param->[Param],int)");

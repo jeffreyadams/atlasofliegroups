@@ -156,7 +156,7 @@ root_datum: (LieType,mat->RootDatum): root datum for given type and sublattice.
   becomes the standard basis of the sublattice, henceforth called lattice.
 root_datum: ([vec],[vec],int->RootDatum): root datum from simple (co)roots.
   In root_datum(roots,coroots,r), the list of vectors roots and coroots must
-  have the same length (the semisimple rank), and each of thier elements
+  have the same length (the semisimple rank), and each of their elements
   should have size r (which argument is necessary in case the lists are
   empty). A root datum is returned in which roots are the simple roots
   expressed in some basis of the character lattice, and coroots are the simple
@@ -356,18 +356,20 @@ kgb: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
 involution: (KGBElt->mat): the involution associated to the KGB element
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
+operator %: (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from param
 infinitesimal_character: (Param->ratvec): infinitesimal character of parameter
 is_standard: (Param->bool): whether parameter defines a standard module
 is_zero: (Param->bool): whether parameter defines a zero standard module
 is_final: (Param->bool): whether parameter defines a zero standard module
-print_n_block: (Param->): print (nonintegral) block generated from paramter
+orientation_nr: (Param->int): the orientation number
+print_n_block: (Param->): print (nonintegral) block generated from parameter
 n_block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
 deform: (Param->[(int,Param)]): compute deformation terms when nu decreases
   The non-integral block for the parameter and its KL polynomials are
   computed, from which the deformation terms involing other members of the
-  block are computed. The are returned as a list of (coefficient,parameter)
-  pairs, where the coefficient give the multiple of (1-s) in the formula.
+  block are computed. They are returned as a list of (coefficient,parameter)
+  pairs, where the coefficient gives the multiple of (1-s) in the formula.
 
 raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
   The call raw_KL(rf,drf) produces a matrix of numbers identifying
