@@ -351,8 +351,10 @@ fiber_part: (CartanClass,RealForm->[int]): part of fiber group for real form
   2^r-1; as the real form traverses all those for which this Cartan class
   occurs, the results of the function form a partition of that set of numbers.
 
-kgb: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
-  The call KGB(i,rf) select the element in line i of the print_KGB(rf) output.
+KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
+  The call KGB(i,rf) selects the element in line i of the print_KGB(rf)
+  output.
+real_form: (KGBElt->RealForm): the real form for which the argument is defined
 involution: (KGBElt->mat): the involution associated to the KGB element
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)

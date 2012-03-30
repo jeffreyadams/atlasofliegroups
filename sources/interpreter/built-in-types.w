@@ -2695,6 +2695,14 @@ void KGB_elt_wrapper(expression_base::level l)
     push_value(new KGB_elt_value(rf,i));
 }
 
+@ Working with KGB elements it may be necessary to access its real form.
+@< Local function def...@>=
+void real_form_of_KGB_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  if (l!=expression_base::no_value)
+    push_value(x->rf);
+}
+
 @ One important attribute of KGB elements is the associated root datum
 involution.
 
@@ -3486,6 +3494,7 @@ install_function(dual_real_forms_of_Cartan_wrapper,@|"dual_real_forms"
 install_function(fiber_part_wrapper,@|"fiber_part"
 		,"(CartanClass,RealForm->[int])");
 install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
+install_function(real_form_of_KGB_wrapper,@|"real_form","(KGBElt->RealForm)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
 install_function(module_parameter_wrapper,@|"param"
                 ,"(KGBElt,vec,ratvec->Param)");
