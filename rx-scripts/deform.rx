@@ -42,4 +42,28 @@ set iterate_deform (Param p) =
   ; (p,d_done)
   end
 
+set recursive_deform (Param p) =
+  let rd = let (x,,)=%p in root_datum(inner_class(real_form(x)))
+  , recd = (int c,Param p):(p,[(int,Param)]:[]) { dummy prototype }
+  in
+  ( recd := { now create a recursive function be reassigning to |recd| }
+    begin (int coef,Param p): { coef is to be multiplied to deformation terms }
+      if has_nu0(p) then (p,[]) { but deformed |p| has |coef| implicitly }
+      else
+        let (x,lambda,nu)=%p
+	then ip=integrality_points (rd,nu)
+        then inx=#ip, acc=[(int,Param)]:[], at_nu0=[(int,Param)]:[]
+        then decrease = (): acc #:= deform(param(x,lambda,ip[inx-:=1]*nu))
+        in
+           while inx>0 do decrease() od { complete deformation |p| to |nu=0| }
+      ; for (k,q) in acc
+        do
+          let (q0,nu0_terms) = recd(2*k*coef,q)
+          in at_nu0 := at_nu0 # (k,q0) # nu0_terms
+	od
+      ; (param(x,lambda,null_wt(#nu)),at_nu0)
+      fi
+    end
+  ) { value in parentheses is recursive |recd|; apply it: } (1,p)
+
 
