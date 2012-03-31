@@ -267,7 +267,7 @@ arguments must be specified, so that types can be checked for the function
 body; once this check succeeds, a type is attributed to the function, and it
 will henceforth be treated just like a built-in function of that type would be
 (and one can in fact for instance form an array that contains both built-in
-and user-defined functions, provided they all have the same (function) type.
+and user-defined functions, provided they all have the same (function) type).
 
 Array values can be constructed by enclosing a comma-separated lists of
 component expressions (all of the same type) in brackets, as in [1,-4,3*6],
@@ -337,8 +337,9 @@ other one, so one can write
 Local variables get their value and type from the expression between '=' and
 'in', and are independent of any meaning that might previously be associated
 to the identifier; after evaluation of the body, the local identifiers
-introduced are forgotten (except it the body managed to capture a reference to
-some of them in a local user-defined function, as will be explained later).
+introduced, and their values associated to them, are forgotten. (Forgetting
+does not apply if a function object that may still be in existence made a
+reference to the identifier; such a function will continue to work properly).
 
 Using a local variable, the initial example could have been given in a form
 that does not permanently bind the identifier 'ic':
@@ -355,7 +356,7 @@ first line, and changed the prompt in the second line to indicate this.
 
 5 Implicit conversions
 
-When type do not match exactly, realex will sometimes insert implicit type
+When types do not match exactly, realex will sometimes insert implicit type
 conversions that are accompanied by conversions of the corresponding values.
 For instance, although the 'vec' type, which function of the atlas library
 use, models the same values as '[int]' (pronounced "row of int"), the two
@@ -457,9 +458,10 @@ these values.
 6 Defining and modifying identifiers
 
 As shown in the examples above, global identifiers are introduced using 'set',
-while local identifiers are introduced with 'let'; the latter are valid only
-in the expression after the following 'in'. Note that in both cases the
-initial keyword is necessary; without it the '=' would be interpreted as
+while local identifiers are introduced with 'let'. Local identifiers can be
+used only in the expression after the following 'in', which may however be an
+arbirarily large composite expression or clause. Note that in both cases
+the initial keyword is necessary; without it the '=' would be interpreted as
 equality test (probably leading to an error due to an undefined left operand).
 
 For modifying an existing variable, global or local, the assignment operator
@@ -471,17 +473,32 @@ numbers 0,...,n-1 may be written as follows (while-loops are explained later)
   Defined first: (int->[int])
 
 Here the part 'let i=0 in' serves to introduce 'i' as a variable, whose value
-is then repeatedly modified by the assignment 'i:=i+1'. Any identifier can be
-used as a variable, including function arguments, so for a decreasing list of
-the same values one could write
+is then repeatedly modified by the assignment 'i:=i+1'. (The values from
+successive iterations of the loop body are then gathered into a row-of-int
+value; a property of realex that is uncommon in other languages.) Any
+identifier can be used as a variable, including one introduced as a function
+argument; for instance for a decreasing list of the same values one could write
 
   expr> set first_downwards(int n) = while (n:=n-1)>=0 do n od
   Defined first_downwards: (int->[int])
 
 For identifiers holding a list, vector or matrix, one can also assign to
-individual entries, as in 'v[i]:=x' or 'm[i,j]=0'. An assignment to an entry
-has the same effect as assigning a new value to the entire row, vector or
-matrix value, which differs only at the indicated entry from the old value.
+individual entries, as in 'v[i]:=x' or 'm[i,j]=0'. Such assignments ae
+implemented in such a way that there is never any effect of sharing (parts of)
+composite values between different identifiers; for instance after 'let v=w in
+v[i]:=x; v', the value of 'w' remains unmodified. By the same token, a
+function that assigns to the names of its arguments, whether they are simple
+or composite values, will never thereby modify the actual arguments in the
+caller. For instance the assignment to its argument in the above function
+'first_downwards' does not have any affect for callers of this function, who
+do not know about the identifier 'n' in 'first_downwards', or of its use.
+
+If the purpose of a function is to modify an argument value, the modified
+value must be passed back as a result and the caller can do with it as she
+likes. On the other hand the body of a (possibly local) function may assign
+to any identifiers valid (in scope) at its point of definition, including
+those introduced outside of the function itself. The basic and general rule is
+that an assignment only affects the identifier that it explicitly names.
 
 As a convenience one can write 'x +:= y' instead of 'x := x + y', and
 similarly for any operator in the place of '+', so in the above examples one
@@ -489,14 +506,6 @@ could say i+:=1 and n-:=1. This is a transformation performed in the parser,
 so '+:=' is not really an operator (and is composed of separate '+' and ':=').
 It should be noted that this requires a simple variable as left operand: the
 parser will reject for instance v[i]+:=1; this should be written v[i]:=v[i]+1.
-
-Whatever the nature of the identifier assigned to, the assignment never
-changes any values other than those referred to by that identifier; for
-instance the assignment to its argument in the function 'first_downwards' does
-not have any affect for callers of this function, who do not know about the
-identifier 'n' that 'first_downwards' uses to name its argument. In general
-the only way a function call affects the caller is by the value it returns, or
-possibly by assignments to non-local variables also in scope for the caller.
 
 The rules for assignment are quite different from the introduction of a
 variable: the variable must have been introduced beforehand, and the value
@@ -512,8 +521,8 @@ the 'set ' syntax (which has no counterpart for 'let'), as in
 
   expr> set f (LieType lt)=
   = > let rd = simply_connected_datum (lt)
-  L > ; ic = inner_class(rd,"s")
-  L > ; rf = quasisplit_form (ic) , drf = dual_quasisplit_form (ic)
+  L > then ic = inner_class(rd,"s")
+  L > then rf = quasisplit_form (ic) , drf = dual_quasisplit_form (ic)
   L > in print_block(rf,drf)
   Defined f: (LieType->)
   expr> f("A2")
@@ -544,8 +553,8 @@ a parameter list, formed of pairs of the form '<type> <identifier>' separated
 by commas and enclosed in parentheses, then a colon (optionally preceded by a
 return type), then '=', and then the expression giving the function body. In
 the example the function body is a 'let' construction introducing first the
-local variable 'rd', then (preceded by a semicolon, which is equivalent to 'in
-let') 'ic', and finally (after another semicolon) 'rf' and 'drf' (in parallel,
+local variable 'rd', then (preceded by 'then', which here is equivalent to 'in
+let') 'ic', and finally (after another 'then') 'rf' and 'drf' (in parallel,
 separated by a comma) and finally calling (after 'in') the function
 'print_block'. The latter returns no value, whence the function 'f' does not
 either, and gets type (LieType->). Note that after calling the function 'f'
@@ -575,24 +584,25 @@ on the type of the argument (list). All functions (and operators) built into
 realex are defined in the overload table, often with more than one initial
 definition for a function name. The user can add definitions to names that
 also refer to built-in functions, they will be overloaded together with the
-original definitions. If they had not been built in, the user could define
+original definitions. If the following instances of 'inner_class' had not
+already been built into realex, the user could have defined them as follows:
 
   set inner_class (LieType lt,[ratvec] gen,string ict) =
   let basis = quotient_basis(lt,gen)
-  ;   rd    = root_datum(lt,basis)
-  ;   inv   = involution(lt, basis, ict)
+  then rd   = root_datum(lt,basis)
+  then inv  = involution(lt, basis, ict)
   in inner_class(rd,inv)
 
   set inner_class (RootDatum rd, string ict)=
   let lt = type (rd), basis=transpose_mat(coroot_radical(rd))
   in inner_class(rd, involution(lt, basis, ict))
 
-to add two new meanings to the inner_class function; the fact that these
-definitions themselves use a more basic version of inner_class is no problem,
-because they can be distinguished by the argument types.
+to add two new meanings to the inner_class function. The fact that these
+definitions themselves use (in the final line) a more basic version of
+inner_class is OK, because they can be distinguished by the argument types.
 
-Since the definitions above are essentially the same as the ones built in, it
-is in fact legal to give them: by a special language rule, a new definition
+Since the two definitions above are essentially the same as the ones built in,
+it is in fact legal to give them: by a special language rule, a new definition
 for identical argument types as an existing one will replace the old
 definition rather than add a new overload. The realex response reflects this:
 
@@ -621,6 +631,8 @@ gives the somewhat elaborate error message
   (LieType,[ratvec],string) is close to (LieType,[[rat]],string),
   and either converts to the other, definition aborted.
 
+If one really needs to replace the old definition, 'forget' must be used first.
+
 Functions can also be unnamed values, which is particularly useful if the are
 to be passed as arguments to other functions. So supposing g was defined by
 
@@ -632,19 +644,26 @@ one could call g with the increment function without naming the latter:
 expr> g((int n):n+1)
 Value: [ 1, 3, 6 ]
 
-One could define an identiier to have a function value using this syntax
+One could define an identifier to have a function value using this syntax
 
-expr> set incr = (int n):n+1
-Identifier incr: (int->int)
+expr> set f = (int n):n+1
+Identifier f: (int->int)
 
 but in this case the binding is stored in the ordinary (not overloaded)
 identifier table. A new function value of the same type can now be assigned to
-the same identifier, to replace the old one, which is not possible with
-overloaded function definitions. An ordinary global identifier defined as a
-function value can coexist with one or more overloaded instances for the same
-name, but when the name is then used in function-call syntax, only the
-overloaded instances will be visible (however if any local bindings of a name
-exist, this renders all overloaded instances of the same name inaccessible).
+the same identifier 'f', to replace the old one, which is not possible with
+overloaded function definitions. So function identifiers introduced in this
+way behave as ordinary variables that happen to have a value of function type.
+
+A global identifier defined with a function value in this way can coexist with
+one or more overloaded instances for the same name, but this is not
+recommended, as in makes the function value hard to call. Indeed when the name
+is then used in function-call syntax, only the overloaded instances will be
+tried. On the other hand if any local bindings of a name exist, this renders
+all overloaded instances of the same name inaccessible. A consequence of this
+rule is that one can force use of the non-overloaded value by writing
+
+expr> let f=f { bind function-value locally to same name } in f(5)
 
 8 Control structures
 
@@ -665,7 +684,7 @@ for a simple 2-way branch, or a more elaborate multi-way branch
 
 The expressions after 'then' and 'else' should all have the same type that
 will become the type of the conditional expression (or they should be
-implicitly convertible to the type expected for the conditional expression,
+implicitly convertible to the type expected for the conditional expression),
 and exactly one of them will deliver the actual value of the conditional. The
 branches can be formed of a list of expressions separated by ';', of which the
 last one determines the value returned (and its type), while the preceding
