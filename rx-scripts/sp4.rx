@@ -55,10 +55,9 @@ set c3(int a,int b,rat nu0,rat nu1) =
    else param(x[10],[(b-1)%2,a%2],[nu1,nu0]) { so simply swap $\lambda-\rho$ }
    fi)
 
-set p = param (x[4],[0,0],[1,-1]/2) { example }
+set triv = param (x[10],[0,0],[2,1]/1) { example: trivial representation }
 
-
-{ example calls: block(p);
-  do_block( (Param q): prints("gamma = ",infinitesimal_character(q)) )(p)
-  deform(p)
+{ example calls: block(triv);
+  do_block( (Param q): prints("gamma = ",infinitesimal_character(q)) )(triv)
+  deform(triv)
 }
