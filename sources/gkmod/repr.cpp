@@ -101,7 +101,7 @@ GlobalTitsElement Rep_context::y(const StandardRepr& z) const
   return GlobalTitsElement(t,tw);
 }
 
-// |z| final means that no singular real roots satisfy the parity condition
+// |z| standard means (weakly) dominant on the (simple-)imaginary roots
 bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
@@ -118,7 +118,7 @@ bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
   return true;
 }
 
-// |z| final means that no singular real roots satisfy the parity condition
+// |z| zero means that no singular imaginary roots are compact
 bool Rep_context::is_zero(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
