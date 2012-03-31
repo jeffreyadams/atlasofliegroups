@@ -2877,8 +2877,10 @@ void print_n_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   { RootNbr witness;
     if (not p->rc().is_standard(p->val,witness))
-      throw std::runtime_error
-        ("Parameter not standard, singular compact coroot #"+str(witness));
+    { std::ostringstream os; p->print(os);
+      os << "\nParameter not standard, negative on coroot #" << witness;
+      throw std::runtime_error(os.str());
+    }
   }
   RealReductiveGroup& G_r = p->rf->val;
   const Rep_context& rc= p->rc();
@@ -2901,8 +2903,10 @@ void n_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   { RootNbr witness;
     if (not p->rc().is_standard(p->val,witness))
-      throw std::runtime_error
-        ("Parameter not standard, singular compact coroot #"+str(witness));
+    { std::ostringstream os; p->print(os);
+      os << "\nParameter not standard, negative on coroot #" << witness;
+      throw std::runtime_error(os.str());
+    }
   }
   if (l!=expression_base::no_value)
   {
@@ -2947,8 +2951,10 @@ void deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   { RootNbr witness;
     if (not p->rc().is_standard(p->val,witness))
-      throw std::runtime_error
-        ("Parameter not standard, singular compact coroot #"+str(witness));
+    { std::ostringstream os; p->print(os);
+      os << "\nParameter not standard, negative on coroot #" << witness;
+      throw std::runtime_error(os.str());
+    }
   }
   if (l!=expression_base::no_value)
   {
