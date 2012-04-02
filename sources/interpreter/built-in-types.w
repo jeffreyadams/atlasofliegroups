@@ -2912,12 +2912,13 @@ void n_block_wrapper(expression_base::level l)
   {
     RealReductiveGroup& G_r = p->rf->val;
     const Rep_context& rc= p->rc();
-    SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),p->val.gamma());
-    BlockElt init_index; // will hold index in the block of the initial element
-    non_integral_block block
-      (G_r,subsys,p->val.x(),rc.lambda(p->val),p->val.gamma(),init_index);
+    StandardRepr r = p->val; // take a copy to avoid changing the original
+    rc.make_dominant(r); // ensure dominant infinitesimal character
+    SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),r.gamma());
+    BlockElt start; // will hold index in the block of the initial element
+    non_integral_block block(G_r,subsys,r.x(),rc.lambda(r),r.gamma(),start);
     @< Push a list of parameter values for the elements of |block| @>
-    push_value(new int_value(init_index));
+    push_value(new int_value(start));
     if (l==expression_base::single_value)
       wrap_tuple(2);
   }
@@ -2960,13 +2961,14 @@ void deform_wrapper(expression_base::level l)
   {
     RealReductiveGroup& G_r = p->rf->val;
     const Rep_context& rc= p->rc();
-    SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),p->val.gamma());
-    BlockElt init_index; // will hold index in the block of the initial element
-    non_integral_block block
-      (G_r,subsys,p->val.x(),rc.lambda(p->val),p->val.gamma(),init_index);
+    StandardRepr r = p->val; // take a copy to avoid changing the original
+    rc.make_dominant(r); // ensure dominant infinitesimal character
+    SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),r.gamma());
+    BlockElt start; // will hold index in the block of the initial element
+    non_integral_block block(G_r,subsys,r.x(),rc.lambda(r),r.gamma(),start);
 
-    std::vector<non_integral_block::term> terms =
-	 block.deformation_terms(init_index);
+    std::vector<non_integral_block::term> terms
+       = block.deformation_terms(start);
     row_ptr term_list (new row_value(terms.size()));
     const RatWeight& gamma=block.gamma();
     for (unsigned i=0; i<terms.size(); ++i)
