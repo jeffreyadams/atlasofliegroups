@@ -214,5 +214,38 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
   return count;
 }
 
+StandardRepr& Rep_context::make_dominant(StandardRepr& z) const
+{
+  const RootDatum& rd = rootDatum();
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+  Weight lr = lambda_rho(z);
+  KGBElt& x = z.x_part;
+  Weight& numer = z.infinitesimal_char.numerator();
+  InvolutionNbr i_x = kgb().inv_nr(x);
+
+  { weyl::Generator s;
+    do
+    {
+      for (s=0; s<rd.semisimpleRank(); ++s)
+        if (rd.simpleCoroot(s).dot(numer)<0)
+        {
+	  RootNbr alpha = rd.simpleRootNbr(s);
+	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
+	    throw std::runtime_error("Non standard parameter in make_dominant");
+          rd.simpleReflect(numer,s);
+          rd.simpleReflect(lr,s);
+	  if (not i_tab.real_roots(i_x).isMember(alpha)) // if |alpha| is real
+	    lr -= rd.simpleRoot(s); // then $\rho_r$ cancels $\rho$
+          x = kgb().cross(s,x);
+	  i_x = kgb().inv_nr(x); // keep up with changing involution
+          break;
+        }
+    }
+    while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
+  }
+  z.y_bits=i_tab.pack(i_x,lr);
+  return z;
+}
+
   } // |namespace repr|
 } // |namespace atlas|
