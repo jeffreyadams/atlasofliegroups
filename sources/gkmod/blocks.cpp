@@ -1596,7 +1596,7 @@ non_integral_block::deformation_terms (BlockElt entry_elem)
       // if (orientation_difference(x,z)) coef*=s;
       int orient_express = (orient_nr[n_surv-1]-orient_nr[x])/2;
       if (coef!=0)
-	result.push_back(term(orient_express%2!=0 ? coef : -coef,
+	result.push_back(term(orient_express%2!=0 ? -coef : coef,
 			      survivors[x]));
     }
   }
