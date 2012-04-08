@@ -71,4 +71,6 @@ set recursive_deform (Param p) =
     end
   ) { value in parentheses is recursive |recd|; apply it: } (1,p,():())
 
-
+set triv_rep(RealForm G) =
+  let rho=rho(root_datum(inner_class(G))), x=KGB(G,KGB_size(G)-1)
+  in param(x,null(#rho),rho/1)
