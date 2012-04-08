@@ -2746,7 +2746,7 @@ struct module_parameter_value : public value_base
    @+ {@; return new module_parameter_value(*this); }
   static const char* name() @+{@; return "module parameter"; }
 @)
-  const Rep_context& rc() const { return rf->rc(); }
+  const Rep_context& rc() const @+{@; return rf->rc(); }
 private:
   module_parameter_value(const module_parameter_value& v)
   @+ : val(v.val) @+{} // copy
@@ -2888,8 +2888,11 @@ void print_n_block_wrapper(expression_base::level l)
   BlockElt init_index; // will hold index in the block of the initial element
   non_integral_block block
     (G_r,subsys,p->val.x(),rc.lambda(p->val),p->val.gamma(),init_index);
+  *output_stream << "Parameter defines element " << init_index
+               @|<< " of the following block:" << std::endl;
   block.print_to(*output_stream,true);
     // print block using involution expressions
+  block_io::print_KL(*output_stream,block,init_index);
   if (l==expression_base::single_value)
     wrap_tuple(0);
 }

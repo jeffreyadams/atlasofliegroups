@@ -227,7 +227,9 @@ StandardRepr& Rep_context::make_dominant(StandardRepr& z) const
     do
     {
       for (s=0; s<rd.semisimpleRank(); ++s)
-        if (rd.simpleCoroot(s).dot(numer)<0)
+      {
+	int v=rd.simpleCoroot(s).dot(numer);
+        if (v<0 or (v==0 and kgb().isComplexDescent(s,x)))
         {
 	  RootNbr alpha = rd.simpleRootNbr(s);
 	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
@@ -240,6 +242,7 @@ StandardRepr& Rep_context::make_dominant(StandardRepr& z) const
 	  i_x = kgb().inv_nr(x); // keep up with changing involution
           break;
         }
+      }
     }
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
   }
