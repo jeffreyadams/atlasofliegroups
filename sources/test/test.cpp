@@ -1124,7 +1124,6 @@ void iblock_f()
     << " of the following block:" << std::endl;
 
   block.print_to(f,false);
-
 } // |iblock_f|
 
 void nblock_f()
@@ -1164,52 +1163,13 @@ void nblock_f()
   }
 
   BlockElt z;
-  blocks::non_integral_block block(GR,sub,x,lambda,gamma,z);
+  non_integral_block block(GR,sub,x,lambda,gamma,z);
 
   f << "Given parameters define element " << z
     << " of the following block:" << std::endl;
 
   block.print_to(f,false);
-  // silently fill the whole KL table
-  const kl::KLContext& klc = block.klc(block.size()-1,false);
-
-  typedef Polynomial<int> Poly;
-  typedef std::map<BlockElt,Poly> map_type;
-  map_type acc; // non-zero $x'\mapsto\sum_{x\downarrow x'}\eps(z/x)P_{x,z}$
-  unsigned int parity = block.length(z)%2;
-  for (size_t x = 0; x <= z; ++x)
-  {
-    const kl::KLPol& pol = klc.klPol(x,z);
-    if (not pol.isZero())
-    {
-      Poly p(pol); // convert
-      if (block.length(x)%2!=parity)
-	p*=-1;
-      BlockEltList nb=block.survivors_below(x);
-      for (size_t i=0; i<nb.size(); ++i)
-      {
-	std::pair<map_type::iterator,bool> trial =
-	  acc.insert(std::make_pair(nb[i],p));
-	if (not trial.second) // failed to create a new entry
-	  trial.first->second += p;
-      } // |for (i)| in |nb|
-    } // |if(pol!=0)|
-  } // |for (x<=z)|
-
-
-  f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
-    << "KL polynomials (-1)^{l(" << z << ")-l(x)}*P_{x," << z << "}:\n";
-  int width = ioutils::digits(z,10ul);
-  for (map_type::const_iterator it=acc.begin(); it!=acc.end(); ++it)
-  {
-    BlockElt x = it->first;
-    const Poly& pol = it->second;
-    if (not pol.isZero())
-    {
-      f << std::setw(width) << x << ": ";
-      prettyprint::printPol(f,pol,"q") << std::endl;
-    }
-  }
+  block_io::print_KL(f,block,z);
 } // |nblock_f|
 
 void deform_f()
