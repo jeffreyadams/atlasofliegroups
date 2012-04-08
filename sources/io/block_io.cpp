@@ -13,10 +13,13 @@
 #include <iostream>
 #include <sstream>
 #include <cassert>
+#include <map>
 
+#include "polynomials.h"
 #include "blocks.h"
 #include "kgb.h"     // |kgb.size()|
 #include "complexredgp.h" // |twoRho| in |nu_block::print|
+#include "kl.h"
 
 #include "basic_io.h"	// operator |<<|
 #include "ioutils.h"	// |digits|
@@ -288,6 +291,51 @@ std::ostream& printDescent(std::ostream& strm,
   strm << ']';
 
   return strm;
+}
+
+std::ostream& print_KL(std::ostream& f, non_integral_block& block, BlockElt z)
+{
+  // silently fill the whole KL table
+  const kl::KLContext& klc = block.klc(block.size()-1,false);
+
+  typedef Polynomial<int> Poly;
+  typedef std::map<BlockElt,Poly> map_type;
+  map_type acc; // non-zero $x'\mapsto\sum_{x\downarrow x'}\eps(z/x)P_{x,z}$
+  unsigned int parity = block.length(z)%2;
+  for (size_t x = 0; x <= z; ++x)
+  {
+    const kl::KLPol& pol = klc.klPol(x,z);
+    if (not pol.isZero())
+    {
+      Poly p(pol); // convert
+      if (block.length(x)%2!=parity)
+	p*=-1;
+      BlockEltList nb=block.survivors_below(x);
+      for (size_t i=0; i<nb.size(); ++i)
+      {
+	std::pair<map_type::iterator,bool> trial =
+	  acc.insert(std::make_pair(nb[i],p));
+	if (not trial.second) // failed to create a new entry
+	  trial.first->second += p;
+      } // |for (i)| in |nb|
+    } // |if(pol!=0)|
+  } // |for (x<=z)|
+
+
+  f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
+    << "KL polynomials (-1)^{l(" << z << ")-l(x)}*P_{x," << z << "}:\n";
+  int width = ioutils::digits(z,10ul);
+  for (map_type::const_iterator it=acc.begin(); it!=acc.end(); ++it)
+  {
+    BlockElt x = it->first;
+    const Poly& pol = it->second;
+    if (not pol.isZero())
+    {
+      f << std::setw(width) << x << ": ";
+      prettyprint::printPol(f,pol,"q") << std::endl;
+    }
+  }
+  return f;
 }
 
 } // namespace block_io|
