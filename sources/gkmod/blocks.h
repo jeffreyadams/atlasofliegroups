@@ -381,7 +381,7 @@ class non_integral_block : public Block_base
   };
   std::vector<term> deformation_terms (BlockElt z);
 
-}; // |Class non_integral_block|
+}; // |class non_integral_block|
 
 } // |namespace blocks|
 
