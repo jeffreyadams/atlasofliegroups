@@ -183,15 +183,16 @@ InvolutionTable::InvolutionTable
 }
 
 // a method used to create the first element of a Cartan orbit of involutions
-InvolutionNbr InvolutionTable::add_involution(const TwistedInvolution& tw)
+InvolutionNbr InvolutionTable::add_involution
+  (const TwistedInvolution& canonical)
 {
-  InvolutionNbr result=hash.match(weyl::TI_Entry(tw));
-  if (result<data.size()) return result; // skip if |tw| was already known
+  InvolutionNbr result=hash.match(weyl::TI_Entry(canonical));
+  if (result<data.size()) return result; // skip if |canonical| already known
 
   // compute the involution matrix |theta| using |Cayley_roots|
   const WeylGroup& W= tW.weylGroup();
   TwistedInvolution cross;
-  RootNbrList Cayleys = Cayley_roots(tw,rd,tW,cross);
+  RootNbrList Cayleys = Cayley_roots(canonical,rd,tW,cross);
 
   WeightInvolution theta = delta;
   W.act(rd,cross,theta);
@@ -222,7 +223,7 @@ InvolutionNbr InvolutionTable::add_involution(const TwistedInvolution& tw)
 
   A = lattice::row_saturate(A);
 
-  unsigned int W_length=W.length(tw);
+  unsigned int W_length=W.length(canonical);
   unsigned int length = (W_length+Cayleys.size())/2;
   data.push_back(record(theta,InvolutionData(rd,theta),A,R,diagonal,B,
 			length,W_length,tits::fiber_denom(theta)));
