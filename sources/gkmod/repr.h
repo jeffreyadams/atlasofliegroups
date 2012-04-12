@@ -119,11 +119,29 @@ class Rep_context
   unsigned int orientation_number(const StandardRepr& z) const;
 
   // transformations
+  // prepare for |deform|: make |gamma| dominant, and as theta-stable as can
   StandardRepr& make_dominant(StandardRepr& z) const;
+
+  // light version of |make_dominant|, only w.r.t. real coroot; not implemented
   StandardRepr& make_real_dominant(StandardRepr& z) const;
+
+  // make into unique representative of class for "equivalence"
+  StandardRepr& canonicalise(StandardRepr& z) const;
+
+  class compare
+  { Coweight level_vec; // linear form to apply to |gamma| for ordering
+  public:
+    compare (const Coweight& lv) : level_vec(lv) {}
+
+    bool operator()(const StandardRepr& r,const StandardRepr& s) const;
+  };
+
+  compare repr_less() const;
 
 }; // |Rep_context|
 
+typedef free_abelian::Free_Abelian<StandardRepr,long int,Rep_context::compare>
+ SR_poly;
 
 } // |namespace repr|
 

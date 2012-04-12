@@ -250,5 +250,24 @@ StandardRepr& Rep_context::make_dominant(StandardRepr& z) const
   return z;
 }
 
+Rep_context::compare Rep_context::repr_less() const
+{ return compare(rootDatum().dual_twoRho()); }
+
+bool Rep_context::compare::operator()
+  (const StandardRepr& r,const StandardRepr& s) const
+{
+  int rgd=r.gamma().denominator(), sgd=s.gamma().denominator();
+  int lr = sgd*level_vec.dot(r.gamma().numerator());
+  int ls = rgd*level_vec.dot(s.gamma().numerator());
+  if (lr!=ls)
+    return lr<ls;
+  for (size_t i=0; i<level_vec.size(); ++i)
+    if (sgd*r.gamma().numerator()[i]!=rgd*s.gamma().numerator()[i])
+      return sgd*r.gamma().numerator()[i]<rgd*s.gamma().numerator()[i];
+  if (r.x()!=s.x())
+    return r.x()<s.x();
+  return r.y_bits<s.y_bits;
+}
+
   } // |namespace repr|
 } // |namespace atlas|
