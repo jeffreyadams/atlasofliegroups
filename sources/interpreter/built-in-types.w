@@ -2782,7 +2782,7 @@ auxiliary seems natural, but forces us to qualify upon calling.
 std::ostream& print
   (std::ostream& out,const StandardRepr& val, const Rep_context& rc)
 { RootNbr witness; // dummy needed in call
-  return 
+  return
   out << @< Expression for adjectives that apply to a module parameter @>@;@;
 @/    << " parameter (x="
       << val.x() << ",lambda="
@@ -3146,8 +3146,10 @@ the parameter of a term in the virtual module. We shall implement the
 conversion functions, and then install them into the coercion tables.
 
 @< Local function... @>=
-void param_list_convert()
+void to_termlist_wrapper(expression_base::level l)
 { shared_virtual_module p = get<virtual_module_value>();
+  if (l==expression_base::no_value)
+    return;
   row_ptr result(new row_value(p->val.size()));
   unsigned i=0;
   for (repr::SR_poly::const_iterator
@@ -3158,13 +3160,6 @@ void param_list_convert()
     result->val[i]=t;
   }
   push_value(result);
-}
-
-@
-@< Install coercions @>+=
-{ static type_expr param_poly_type(virtual_module_type);
-  static type_expr decomp_module_type(*make_type("[(int,Param)]"));
-  coercion(param_poly_type,decomp_module_type,"[term]",param_list_convert);
 }
 
 @*1 Kazhdan-Lusztig tables. We implement a simple function that gives raw
@@ -3706,6 +3701,8 @@ install_function(add_module_term_wrapper,@|"+"
 		,"(ParamPol,(int,Param)->ParamPol)");
 install_function(add_module_termlist_wrapper,@|"+"
 		,"(ParamPol,[(int,Param)]->ParamPol)");
+install_function(to_termlist_wrapper,@|"%"
+		,"(ParamPol->[(int,Param)])");
 install_function(raw_KL_wrapper,@|"raw_KL"
                 ,"(RealForm,DualRealForm->mat,[vec],vec)");
 install_function(raw_dual_KL_wrapper,@|"dual_KL"

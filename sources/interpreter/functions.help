@@ -373,6 +373,12 @@ deform: (Param->[(int,Param)]): compute deformation terms when nu decreases
   block are computed. They are returned as a list of (coefficient,parameter)
   pairs, where the coefficient gives the multiple of (1-s) in the formula.
 
+null_module: (RealForm->ParamPol): empty sum of parameters for the real form
+operator +: (ParamPol,Param->ParamPol): add parameter to formal sum
+operator +: (ParamPol,(int,Param)->ParamPol): add parameter with coefficient
+operator +: (ParamPol,[(int,Param)]->ParamPol): add terms to formal sum
+operator %: (ParamPol->[(int,Param)]): break up formal sum into terms
+
 raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
   The call raw_KL(rf,drf) produces a matrix of numbers identifying
   polynomials, a list of those polynomials in the form of coefficient vectors,
