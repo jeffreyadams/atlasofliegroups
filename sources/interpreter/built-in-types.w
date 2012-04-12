@@ -2081,6 +2081,7 @@ protected:
   : parent(v.parent), val(v.val), rc_p(v.rc_p) @+{}
 private:
   Rep_context* rc_p;
+    // owned pointer, initially |NULL|, assigned at most once
 };
 @)
 typedef std::auto_ptr<real_form_value> real_form_ptr;
@@ -2321,7 +2322,7 @@ struct Cartan_class_value : public value_base
   static const char* name() @+{@; return "Cartan class"; }
 private:
   Cartan_class_value(const Cartan_class_value& v)
-  : parent(v.parent), number(v.number), val(v.val) @+{}
+  : parent(v.parent), number(v.number), val(v.val) @+{} // copy constructor
 };
 @)
 typedef std::auto_ptr<Cartan_class_value> Cartan_class_ptr;
@@ -2715,6 +2716,19 @@ void KGB_involution_wrapper(expression_base::level l)
     push_value(new matrix_value(G.involutionMatrix(kgb.involution(x->val))));
 }
 
+@ We haven't defined much useful other things to do with KGB elements yet, but
+by popular request we make available the straightforward equality test.
+
+@< Local function def...@>=
+void KGB_equals_wrapper(expression_base::level l)
+{ shared_KGB_elt y = get<KGB_elt_value>();
+  shared_KGB_elt x = get<KGB_elt_value>();
+  if (l!=expression_base::no_value)
+    push_value(new bool_value(x->rf==y->rf and x->val==y->val));
+}
+
+
+
 @*1 Standard module parameters.
 we implement a data type for holding parameters that represent standard
 modules. Such a parameter is defined by a triple $(x,\lambda,\nu)$ where $x$
@@ -2748,27 +2762,36 @@ struct module_parameter_value : public value_base
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
 private:
-  module_parameter_value(const module_parameter_value& v)
-  @+ : val(v.val) @+{} // copy
+  module_parameter_value(const module_parameter_value& v)  // copy constructor
+  : rf(v.rf),val(v.val) @+ {}
 };
 @)
 typedef std::auto_ptr<module_parameter_value> module_parameter_ptr;
 typedef std::tr1::shared_ptr<module_parameter_value> shared_module_parameter;
 
 @ When printing a module parameter, we shall indicate a triple
-$(x,\lambda,\nu)$ that defines it.
+$(x,\lambda,\nu)$ that defines it. Since we shall need to print |StandardRepr|
+values in other contexts as well, we shall define an auxiliary output function
+of such values first and then use that. The auxiliary function needs the
+|Rep_context|, so we pass that explicitly. Using the same name |print| for the
+auxiliary seems natural, but forces us to qualify upon calling.
 
 @f nu NULL
 
 @< Function def...@>=
-void module_parameter_value::print(std::ostream& out) const
+std::ostream& print
+  (std::ostream& out,const StandardRepr& val, const Rep_context& rc)
 { RootNbr witness; // dummy needed in call
-    out << @< Expression for adjectives that apply to a module parameter @>@;@;
-        << " parameter (x="
-@/      << val.x() << ",lambda="
-        << rc().lambda(val) << ",nu="
-        << rc().nu(val) << ')';
+  return 
+  out << @< Expression for adjectives that apply to a module parameter @>@;@;
+@/    << " parameter (x="
+      << val.x() << ",lambda="
+      << rc.lambda(val) << ",nu="
+      << rc.nu(val) << ')';
 }
+@)
+void module_parameter_value::print(std::ostream& out) const
+{@; interpreter::print(out,val,rc()); }
 
 @ We provide one of the adjectives ``non-standard'' (when $\lambda$ fails to
 be imaginary-dominant; in this case little can be done with the parameter),
@@ -2780,10 +2803,10 @@ satisfying the parity condition) or ``final'' (the good ones; the condition
 implies ``standard'' an ``non-zero'').
 
 @< Expression for adjectives... @>=
-( rc().is_standard(val,witness) ?
-    rc().is_zero(val,witness) ? "zero" :
-@/    rc().is_final(val,witness) ? "final" : "non-final"
-@/  : "non-standard" )
+( rc.is_standard(val,witness) ?
+    rc.is_zero(val,witness) ? "zero" :
+      rc.is_final(val,witness) ? "final" : "non-final"
+  : "non-standard" )
 
 @ To make a module parameter, one should provide a KGB element~$x$, an
 integral weight $\lambda-\rho$, and a rational weight~$\nu$. Since only its
@@ -2871,17 +2894,30 @@ void orientation_number_wrapper(expression_base::level l)
 
 @ One of the main reasons to introduce module parameter values is that they
 allow computing a block, whose elements are again given by module parameters.
+Before we define the functions the do that, let us define a common function
+they will use to test a parameter for validity. even though we shall always
+have a pointer available when we call |test_standard|, we define this function
+to take a reference (requiring us to write a dereferencing at each call),
+because the type of pointer (shared or raw) available is not always the same.
+The reference is of course not owned by |test_standard|.
+
+@< Local function def...@>=
+void test_standard(const module_parameter_value& p)
+{ RootNbr witness;
+  if (p.rc().is_standard(p.val,witness))
+    return;
+  std::ostringstream os; p.print(os);
+  os << "\nParameter not standard, negative on coroot #" << witness;
+  throw std::runtime_error(os.str());
+}
+
+@ Here is the first block generating function, which just reproduces to output
+from the \.{atlas} program for the \.{nblock} command.
 
 @< Local function def...@>=
 void print_n_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  { RootNbr witness;
-    if (not p->rc().is_standard(p->val,witness))
-    { std::ostringstream os; p->print(os);
-      os << "\nParameter not standard, negative on coroot #" << witness;
-      throw std::runtime_error(os.str());
-    }
-  }
+  test_standard(*p);
   RealReductiveGroup& G_r = p->rf->val;
   const Rep_context& rc= p->rc();
   SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),p->val.gamma());
@@ -2904,13 +2940,7 @@ second result the index that the original parameter has in the result.
 @< Local function def...@>=
 void n_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  { RootNbr witness;
-    if (not p->rc().is_standard(p->val,witness))
-    { std::ostringstream os; p->print(os);
-      os << "\nParameter not standard, negative on coroot #" << witness;
-      throw std::runtime_error(os.str());
-    }
-  }
+  test_standard(*p);
   if (l!=expression_base::no_value)
   {
     RealReductiveGroup& G_r = p->rf->val;
@@ -2953,13 +2983,7 @@ block.
 @< Local function def...@>=
 void deform_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
-  { RootNbr witness;
-    if (not p->rc().is_standard(p->val,witness))
-    { std::ostringstream os; p->print(os);
-      os << "\nParameter not standard, negative on coroot #" << witness;
-      throw std::runtime_error(os.str());
-    }
-  }
+  test_standard(*p);
   if (l!=expression_base::no_value)
   {
     RealReductiveGroup& G_r = p->rf->val;
@@ -2987,10 +3011,164 @@ void deform_wrapper(expression_base::level l)
   }
 }
 
+@*1 Polynomials formed from parameters.
+%
+When working with parameters for standard modules, and notably with the
+deformation formulas, the need arises to keep track of virtual sums of
+standard modules (virtual meaning that negative multiplicities are allowed).
+The library provides a type |repr::SR_poly| in which such sums can be
+efficiently maintained.
 
-@*1 Kazhdan-Lusztig tables.
-We implement a simple function that gives raw access to the table of
-Kazhdan-Lusztig polynomials.
+@< Includes needed in the header file @>=
+#include "free_abelian.h" // needed to make |repr::SR_poly| a complete type
+
+@*2 Class definition.
+Like for KGB elements, we maintain a shared pointer to the real form value, so
+that it will be assured to survive as long as parameters for it exist.
+
+@< Type definitions @>=
+struct virtual_module_value : public value_base
+{ shared_real_form rf;
+  repr::SR_poly val;
+@)
+  virtual_module_value(const shared_real_form& form, const repr::SR_poly& v)
+  : rf(form), val(v) @+{}
+  ~virtual_module_value() @+{}
+@)
+  virtual void print(std::ostream& out) const;
+  virtual_module_value* clone() const
+   @+ {@; return new virtual_module_value(*this); }
+  static const char* name() @+{@; return "module parameter"; }
+@)
+  const Rep_context& rc() const @+{@; return rf->rc(); }
+private:
+  virtual_module_value(const virtual_module_value& v)
+  @+ : rf(v.rf),val(v.val) @+{} // copy
+};
+@)
+typedef std::auto_ptr<virtual_module_value> virtual_module_ptr;
+typedef std::tr1::shared_ptr<virtual_module_value> shared_virtual_module;
+
+@ When printing a virtual module value, we traverse the |std::map| that is
+hidden in the |Free_Abelian| class template, and print individual terms using
+the auxiliary function that was defined above for printing parameter values.
+
+@h <iomanip> // for |std::setw|
+@< Function def...@>=
+void virtual_module_value::print(std::ostream& out) const
+{ if (val.empty())
+    out << "Empty sum of standard modules";
+  else
+    for (repr::SR_poly::const_iterator it=val.begin(); it!=val.end(); ++it)
+    { out << (it->second>0 ? "\n +" : "\n -");
+      long int abs_coef = arithmetic::abs(it->second);
+      out << std::setw(2) << abs_coef << '*'; // print coefficient
+      interpreter::print(out,it->first,rc());
+    }
+}
+
+@ To start off a |virtual_module_value|, one usually takes an empty sum, but
+one needs to specify a real form to fill the |rf| field.
+
+@< Local function def...@>=
+void virtual_module_wrapper(expression_base::level l)
+{ shared_real_form rf (get<real_form_value>());
+  if (l!=expression_base::no_value)
+    push_value(new@|
+       virtual_module_value(rf,repr::SR_poly(rf->rc().repr_less())));
+}
+
+@ The main operations for virtual modules are addition and subtraction of
+parameters, or of other virtual modules.
+@< Local function def...@>=
+void add_module_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  shared_virtual_module accumulator = get_own<virtual_module_value>();
+@/test_standard(*p);
+  if (accumulator->rf!=p->rf)
+    throw std::runtime_error @|
+      ("Real form mismatch when adding standard module to a module");
+  if (l!=expression_base::no_value)
+  { StandardRepr sr = p->val; // take a copy that we can modify;
+    accumulator->val+= p->rc().make_dominant(sr);
+    push_value(accumulator);
+  }
+}
+
+void add_module_term_wrapper(expression_base::level l)
+{ push_tuple_components(); // second argument is a pair |(coef,p)|
+  shared_module_parameter p = get_own<module_parameter_value>();
+  int coef=get<int_value>()->val;
+  shared_virtual_module accumulator = get_own<virtual_module_value>();
+@/test_standard(*p);
+  if (accumulator->rf!=p->rf)
+    throw std::runtime_error @|
+      ("Real form mismatch when adding a term to a module");
+  if (l!=expression_base::no_value)
+  { StandardRepr sr = p->val; // take a copy that we can modify;
+    accumulator->val.add_term(p->rc().make_dominant(sr),coef);
+    push_value(accumulator);
+  }
+}
+
+@ Although we initially envisioned allowing implicit conversion from a list of
+terms to a virtual module (like the conversion in the opposite direction,
+which is given below), since it is not possible to not know the real form in
+case the list of terms is empty. Therefore we provide instead the addition of
+an entire list of terms at once to a virtual module value.
+
+@< Local function... @>=
+void add_module_termlist_wrapper(expression_base::level l)
+{ shared_row r = get<row_value>();
+  shared_virtual_module accumulator = get_own<virtual_module_value>();
+  if (l!=expression_base::no_value)
+  { for (std::vector<shared_value>::const_iterator
+           it=r->val.begin(); it!=r->val.end(); ++it)
+    { const tuple_value* t = force<tuple_value>(it->get());
+      int coef=force<int_value>(t->val[0].get())->val;
+      const module_parameter_value* p =
+        force<module_parameter_value>(t->val[1].get());
+@/    test_standard(*p);
+      if (accumulator->rf!=p->rf)
+        throw std::runtime_error @|
+          ("Real form mismatch when adding terms to a module");
+      { StandardRepr sr = p->val; // take a copy that we can modify;
+        accumulator->val.add_term(p->rc().make_dominant(sr),coef);
+      }
+    }
+    push_value(accumulator);
+  }
+}
+
+@ In order to analyse virtual modules, we shall allow them to be implicitly
+converted to a row of pairs $(c,p)$ where $c$ is the coefficient and $p$ is
+the parameter of a term in the virtual module. We shall implement the
+conversion functions, and then install them into the coercion tables.
+
+@< Local function... @>=
+void param_list_convert()
+{ shared_virtual_module p = get<virtual_module_value>();
+  row_ptr result(new row_value(p->val.size()));
+  unsigned i=0;
+  for (repr::SR_poly::const_iterator
+        it=p->val.begin(); it!=p->val.end(); ++it,++i)
+  { shared_tuple t(new tuple_value(2));
+    t->val[0]=shared_value(new int_value(it->second));
+    t->val[1]=shared_value(new module_parameter_value(p->rf,it->first));
+    result->val[i]=t;
+  }
+  push_value(result);
+}
+
+@
+@< Install coercions @>+=
+{ static type_expr param_poly_type(virtual_module_type);
+  static type_expr decomp_module_type(*make_type("[(int,Param)]"));
+  coercion(param_poly_type,decomp_module_type,"[term]",param_list_convert);
+}
+
+@*1 Kazhdan-Lusztig tables. We implement a simple function that gives raw
+access to the table of Kazhdan-Lusztig polynomials.
 
 @< Local function def...@>=
 void raw_KL_wrapper (expression_base::level l)
@@ -3507,6 +3685,7 @@ install_function(fiber_part_wrapper,@|"fiber_part"
 install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
 install_function(real_form_of_KGB_wrapper,@|"real_form","(KGBElt->RealForm)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
+install_function(KGB_equals_wrapper,@|"=","(KGBElt,KGBElt->bool)");
 install_function(module_parameter_wrapper,@|"param"
                 ,"(KGBElt,vec,ratvec->Param)");
 install_function(unwrap_parameter_wrapper,@|"%"
@@ -3521,6 +3700,12 @@ install_function(print_n_block_wrapper,@|"print_n_block"
                 ,"(Param->)");
 install_function(n_block_wrapper,@|"n_block" ,"(Param->[Param],int)");
 install_function(deform_wrapper,@|"deform" ,"(Param->[(int,Param)])");
+install_function(virtual_module_wrapper,@|"null_module","(RealForm->ParamPol)");
+install_function(add_module_wrapper,@|"+","(ParamPol,Param->ParamPol)");
+install_function(add_module_term_wrapper,@|"+"
+		,"(ParamPol,(int,Param)->ParamPol)");
+install_function(add_module_termlist_wrapper,@|"+"
+		,"(ParamPol,[(int,Param)]->ParamPol)");
 install_function(raw_KL_wrapper,@|"raw_KL"
                 ,"(RealForm,DualRealForm->mat,[vec],vec)");
 install_function(raw_dual_KL_wrapper,@|"dual_KL"

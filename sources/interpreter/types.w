@@ -961,8 +961,8 @@ they default-construct it). We can then declare the |value_base| copy
 constructor |private| so that in case of accidental omission the use of a
 synthesised constructor will be caught here as well.
 
-As mentioned values are always handled via pointers. We a raw pointer type
-|value|, an auto-pointer |owned_value| (which cannot be stored in STL
+As mentioned values are always handled via pointers. We define a raw pointer
+type |value|, an auto-pointer |owned_value| (which cannot be stored in STL
 containers), and a shared smart pointer |shared_value| (which by contrast can
 be stored in STL containers).
 
@@ -1001,10 +1001,10 @@ moments we wish to throw a |logic_error| in case our type prediction was
 wrong. To avoid having such casts and |throw| statements all over the place,
 we define a template function to do the casting and throwing. It is defined at
 the level of ordinary pointers, and it is not intended for use where the
-caller assumes ownership of the result; original pointer is assumed to retain
-ownership as long as the result of this call survives, and in particular that
-result should not be converted to a smart pointer, lest double deletion would
-ensue.
+caller assumes ownership of the result; the original pointer is assumed to
+retain ownership as long as the result of this call survives, and in
+particular that result should not be converted to a smart pointer, lest double
+deletion would ensue.
 
 @< Template and inline function definitions @>=
 template <typename D> // |D| is a type derived from |value_base|
@@ -1023,14 +1023,17 @@ template library.
 #include <vector>
 #include <cassert>
 
-@~Since the actual values accessed will be of types derived
-from |value_base|, we must pass through a level of indirection, so we have a
-vector of pointers. We define these pointers to be |shared_value| pointers, so
-that the row takes (shared) ownership of its components without needing a
-explicit destructor. This as the additional advantage over explicit ownership
-management that the copy constructor, needed for the |clone| method, can
-safely just copy-construct the vector of pointers: a possible exception thrown
-during the copy is guaranteed to clean up any pointers present in the vector.
+@~Since the actual values accessed will be of types derived from |value_base|,
+we must pass through a level of indirection, so we have a vector of pointers.
+We define these pointers to be |shared_value| pointers, so that the row takes
+(shared) ownership of its components without needing a explicit destructor.
+This has the additional advantage over explicit ownership management that the
+copy constructor, needed for the |clone| method, can safely just
+copy-construct the vector of pointers: a possible exception thrown during the
+copy is guaranteed to clean up any pointers present in the vector. Note also
+that default-constructed shared pointers are set to null pointers, so the
+constructor below, which already reserves space for |n| shared pointers, has
+set them to exception-safe values while waiting for the slots to be filled.
 
 Of course ownership of pointers to |row_value| objects also needs to be
 managed, which could be either by an auto-pointer |row_ptr| (if the pointer is
@@ -1040,13 +1043,15 @@ known to be unshared) or by a shared pointer |shared_row|.
 struct row_value : public value_base
 { std::vector<shared_value> val;
 @)
-  explicit row_value(size_t n) : val(n) @+{} // start with |n| empty pointers
+  explicit row_value(size_t n) : val(n) @+{} // start with |n| null pointers
   void print(std::ostream& out) const;
   size_t length() const @+{@; return val.size(); }
   row_value* clone() const @+{@; return new row_value(*this); }
+    // copy the outer level vector
   static const char* name() @+{@; return "row value"; }
 protected:
   row_value(const row_value& v) : val(v.val) @+{}
+    // copy still shares the individual entries
 };
 @)
 typedef std::auto_ptr<row_value> row_ptr;
@@ -1123,7 +1128,7 @@ sharing disappears with |tuple|.
 
 @< Function definitions @>=
 void push_tuple_components()
-{ shared_tuple tuple(get<tuple_value>());
+{ shared_tuple tuple=get<tuple_value>();
   for (size_t i=0; i<tuple->length(); ++i)
     push_value(tuple->val[i]); // push component
 }
@@ -1252,10 +1257,17 @@ std::vector<shared_value> execution_stack;
 @ We shall define some inline functions to facilitate manipulating the stack.
 The function |push_value| does what its name suggests. For exception safety it
 takes either an auto-pointer or a shared pointer as argument; the former is
-converted into the latter, in which case the |use_count| will become~$1$. For
-convenience we make these template functions that accept a smart pointer to
-any type derived from |value_base| (since a conversion of such pointers from
-derived to base is not possible without a cast in a function argument
+converted into the latter, in which case the |use_count| will become~$1$. The
+former form cannot be made to take a reference argument: if the reference were
+constant it would be impossible to transfer ownership to the shared pointer,
+and if it were non-constant it would be impossible to bind the argument to
+expressions other than variables (i.e., to rvalues), such as |owned_value(p)|
+below. The shared pointer version does not have this restriction, as a copy
+construction and assignment from constant references are possible here.
+
+For convenience we make these template functions that accept a smart pointer
+to any type derived from |value_base| (since a conversion of such pointers
+from derived to base is not possible without a cast in a function argument
 position). For even more convenience we also provide a variant taking an
 ordinary pointer, so that expressions using |new| can be written without cast
 in the argument of |push_value|. Since |push_value| has only one argument,
@@ -1268,7 +1280,7 @@ template<typename D> // |D| is a type derived from |value_base|
   {@; execution_stack.push_back(std::tr1::shared_ptr<D>(v)); }
 
 template<typename D> // |D| is a type derived from |value_base|
-  inline void push_value(std::tr1::shared_ptr<D> v)
+  inline void push_value(const std::tr1::shared_ptr<D>& v)
   @+{@; execution_stack.push_back(v); }
 
 inline void push_value(value_base* p) @+{@; push_value(owned_value(p)); }
@@ -1529,6 +1541,10 @@ appropriate entry, and wraps |e| into a corresponding |conversion| it finds
 one. Ownership of the expression pointed to by |e| is handled implicitly: it
 is released during the construction of the |conversion|, and immediately
 afterwards |reset| reclaims ownership of the pointer to that |conversion|.
+Note that in the |conversion| constructor, the first argument |*it| is used
+only for its |conversion_info| base type; the |from| and |to| fields are not
+accessible to the newly built expression. As last resort we build a |voiding|
+if |to_type==void_type|.
 
 @< Function definitions @>=
 bool coerce(const type_expr& from_type, const type_expr& to_type,
@@ -1546,17 +1562,18 @@ bool coerce(const type_expr& from_type, const type_expr& to_type,
   return false;
 }
 
-@ Often we first try to specialise a required type, and then (if the first
-fails) to coerce the type found to the one required. The function
-|conform_types| will facilitate this. The argument |d| is an already converted
-expression that should be wrapped in a conversion call if appropriate, while
-|e| is the original expression that should be mentioned in an error message if
-both attempts fail. A call to |conform_types| will be invariably followed
-(upon success) by returning the expression~|d| (possibly modified) from the
-calling function; we can save some work by returning the required value
-already from |conform_types|. Given that we do, we might as well take
-ownership of~|d| (by having it passed by value) so that the caller knows it
-should afterwards use our return value, rather than~|d|.
+@ Often we first try to specialise a required type to the available type of a
+subexpression, or else (if the first fails) coerce the available type to the
+one required. The function |conform_types| will facilitate this. The argument
+|d| is a possibly already partially converted expression, which should be
+further wrapped in a conversion call if appropriate, while |e| is the original
+expression that should be mentioned in an error message if both attempts fail.
+A call to |conform_types| will be invariably followed (upon success) by
+returning the expression~|d| (possibly modified) from the calling function; we
+can save some work by returning the required value already from
+|conform_types|. Given that we do, we might as well take ownership of~|d| (by
+having it passed by value) so that the caller knows it should afterwards use
+our return value, rather than~|d|.
 
 @< Declarations of exported functions @>=
 expression conform_types
@@ -1674,7 +1691,7 @@ types. Also, in accordance with the choice to allow~\.{[*]} as operand type,
 the (component) type \.{*} will be considered to convert to any type. On the
 other hand we disallow an empty row where a primitive type with conversion
 from some row type (like \.{vec} or \.{mat}) is required, so that these types
-can coexist with unrelated row type for overloading purposes.
+can coexist with an unrelated row type for overloading purposes.
 
 @ So here is the (recursive) definition of the relation |is_close|. Equal
 types are always close, while undetermined types behave as convertible to any
@@ -1835,7 +1852,7 @@ enumeration value |nr_of_primitive_types|).
 vector_type, matrix_type, rational_vector_type,
 complex_lie_type_type , root_datum_type, inner_class_type, real_form_type,
 dual_real_form_type, Cartan_class_type,
- KGB_element_type, module_parameter_type, @[@]
+ KGB_element_type, module_parameter_type, virtual_module_type, @[@]
 
 
 @~The following list must match that of the previous module, for proper
@@ -1844,7 +1861,7 @@ functioning of I/O.
 @< Other primitive type names @>=
 "vec", "mat", "ratvec",
 "LieType","RootDatum", "InnerClass", "RealForm", "DualRealForm",
-"CartanClass", "KGBElt", "Param", @[@]
+"CartanClass", "KGBElt", "Param", "ParamPol", @[@]
 
 @* Index.
 

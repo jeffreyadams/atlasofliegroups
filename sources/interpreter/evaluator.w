@@ -490,7 +490,7 @@ void list_expression::print(std::ostream& out) const
 @ If a list display has multiple components, they must all have the same
 type~$t$, and the result type will be ``row of''~$t$. If a type of that form
 is required, the components will be required to have type $t$, if no
-particular type is require then the components will just be required to have
+particular type is required then the components will just be required to have
 equal types; in addition we want to allow additional cases which can be made
 to conform by inserting conversion routines.
 
@@ -527,7 +527,7 @@ case list_display:
      |e.e.sublist| against the required type, and apply a conversion function
      to the converted expression; otherwise |throw| a |type_error| @>
 
-@ When in |convert_expr| we encounter a list display when a non-row is
+@ When in |convert_expr| we encounter a list display when a non-row type is
 expected, we single out the cases that a conversion from a row type to the
 required type is available; in that case we continue to convert the component
 expressions with as expected type the corresponding component type (if
@@ -656,15 +656,15 @@ void tuple_expression::evaluate(level l) const
 
 @* Array subscription.
 %
-While we have seen expressions to build list, and vectors and matrices out of
-them, we so far are not able to access their components once they are
-constructed. To that end we shall now introduce operations to index such
-values. We allow subscription of rows, but also of vectors, rational vectors
-and matrices. Since after type analysis we know which of the cases applies, we
-define several classes. These differ mostly by their |evaluate| method, so we
-first derive an intermediate class from |expression_base|, and derive the
-others from it. This class also serves to host an enumeration type that will
-serve later.
+While we have seen expressions to build lists, and to make vectors and
+matrices out of them, we so far are not able to access their components once
+they are constructed. To that end we shall now introduce operations to index
+such values. We allow subscription of rows, but also of vectors, rational
+vectors and matrices. Since after type analysis we know which of the cases
+applies, we define several classes. These differ mostly by their |evaluate|
+method, so we first derive an intermediate class from |expression_base|, and
+derive the others from it. This class also serves to host an enumeration type
+that will serve later.
 
 @< Type definitions @>=
 struct subscr_base : public expression_base
@@ -2576,8 +2576,10 @@ struct for_expression : public expression_base
   virtual void print(std::ostream& out) const;
 };
 
-@ We needed to lift this out of the header file so that the local function
-|copy_id_pat| could be used.
+@ We needed to lift the following code out of the header file and place it in
+the main \Cpp. file, in order that it could use the local function
+|copy_id_pat| which is not known in the header file.
+
 @< Function definitions @>=
 inline
 for_expression::for_expression@|
