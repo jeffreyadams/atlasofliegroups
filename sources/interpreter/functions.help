@@ -378,6 +378,7 @@ operator +: (ParamPol,Param->ParamPol): add parameter to formal sum
 operator +: (ParamPol,(int,Param)->ParamPol): add parameter with coefficient
 operator +: (ParamPol,[(int,Param)]->ParamPol): add terms to formal sum
 operator %: (ParamPol->[(int,Param)]): break up formal sum into terms
+dominant: (Param->Param): make gamma dominant and do singular complex descents
 
 raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
   The call raw_KL(rf,drf) produces a matrix of numbers identifying

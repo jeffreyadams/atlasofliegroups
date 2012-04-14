@@ -2882,6 +2882,22 @@ void is_final_wrapper(expression_base::level l)
     push_value(new bool_value(p->rc().is_final(p->val,witness)));
 }
 
+@ Before constructing (non-integral) blocks, it is essential that the
+infinitesimal character is made dominant, and that possible singular (simple)
+complex descents are applied to the parameter, as the result of the block
+construction will only be mathematically meaningful under these circumstances.
+This operation is therefore applied automatically in several places, but it is
+useful to give the user an easy way to apply it explicitly.
+
+@< Local function def...@>=
+void parameter_dominant_wrapper(expression_base::level l)
+{ shared_module_parameter p = get_own<module_parameter_value>();
+  if (l!=expression_base::no_value)
+  { p->rc().make_dominant(p->val);
+    push_value(p);
+  }
+}
+
 @ The library can also compute orientation numbers for parameters.
 
 @< Local function def...@>=
@@ -2920,10 +2936,11 @@ void print_n_block_wrapper(expression_base::level l)
   test_standard(*p);
   RealReductiveGroup& G_r = p->rf->val;
   const Rep_context& rc= p->rc();
-  SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),p->val.gamma());
+  StandardRepr r = p->val; // take a copy to avoid changing the original
+  rc.make_dominant(r); // ensure dominant infinitesimal character
+  SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),r.gamma());
   BlockElt init_index; // will hold index in the block of the initial element
-  non_integral_block block
-    (G_r,subsys,p->val.x(),rc.lambda(p->val),p->val.gamma(),init_index);
+  non_integral_block block(G_r,subsys,r.x(),rc.lambda(r),r.gamma(),init_index);
   *output_stream << "Parameter defines element " << init_index
                @|<< " of the following block:" << std::endl;
   block.print_to(*output_stream,true);
@@ -3690,6 +3707,7 @@ install_function(infinitesimal_character_wrapper,@|"infinitesimal_character"
 install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
+install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(print_n_block_wrapper,@|"print_n_block"
                 ,"(Param->)");
