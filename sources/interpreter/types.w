@@ -905,7 +905,50 @@ const type_expr unknown_type; // uses default constructor
 const type_expr row_of_type(copy(unknown_type));
 const type_expr gen_func_type(copy(unknown_type),copy(unknown_type));
 
-@ We shall also need a tuple pattern with any number of unknown components.
+@ There are more such statically allocated type expressions, which are used in
+the evaluator. They are less fundamental, as they are not actually used in any
+of the core language constructs, but useful for instance for specifying
+various coercions. The reason they should be initialised in this compilation
+unit is explained in the next section.
+
+@< Declarations of global variables @>=
+extern const type_expr rat_type; // \.{rat}
+extern const type_expr str_type; // \.{string}
+extern const type_expr vec_type; // \.{vec}
+extern const type_expr ratvec_type; // \.{ratvec}
+extern const type_expr mat_type; // \.{mat}
+extern const type_expr row_of_int_type; // \.{[int]}
+extern const type_expr row_of_rat_type; // \.{[rat]}
+extern const type_expr row_of_vec_type; // \.{[vec]}
+extern const type_expr row_row_of_int_type; // \.{[[int]]}
+extern const type_expr pair_type; // \.{(*,*)}
+extern const type_expr int_int_type; // \.{(int,int)}
+
+@ Since some of these types are built from earlier defined ones, it is vital
+that they are initialised in order, and since we cannot control the relative
+order of static initialisation between compilation units, we must initialise
+them here (this used no not be the case, and led to a subtle bug whose
+appearance depended on the precise compiler version used!). The construction
+of type constants follows the same pattern as before, calling |copy| in the
+case of composite types. In the final case we choose the simplest solution of
+calling |make_type| and copying the resulting nested structure into the static
+variable before destroying the function result.
+
+@< Global variable definitions @>=
+const type_expr rat_type(rational_type);
+const type_expr str_type(string_type);
+const type_expr vec_type(vector_type);
+const type_expr ratvec_type(rational_vector_type);
+const type_expr mat_type(matrix_type);
+const type_expr row_of_int_type(copy(int_type));
+const type_expr row_of_rat_type(copy(rat_type));
+const type_expr row_of_vec_type(copy(vec_type));
+const type_expr row_row_of_int_type(copy(row_of_int_type));
+const type_expr pair_type(*unknown_tuple(2));  // copy and destroy original
+const type_expr int_int_type(*make_type("(int,int)")); // idem
+
+@ We shall also need a tuple pattern with any number of unknown components;
+such a type is built by calling |unknown_tuple|.
 
 @< Declarations of exported functions @>=
 type_ptr unknown_tuple(size_t n);
