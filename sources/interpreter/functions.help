@@ -364,6 +364,10 @@ is_standard: (Param->bool): whether parameter defines a standard module
 is_zero: (Param->bool): whether parameter defines a zero standard module
 is_final: (Param->bool): whether parameter defines a zero standard module
 orientation_nr: (Param->int): the orientation number
+dominant: (Param->Param): make gamma dominant and do singular complex descents
+operator =: (Param,Param->bool): test equivalence of parameters
+  This is implemented by applying make_dominant and testing identity of all
+  three components x, lambda (defined modulo (1-theta_x)X^*) and nu.
 print_n_block: (Param->): print (nonintegral) block generated from parameter
 n_block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
@@ -378,7 +382,6 @@ operator +: (ParamPol,Param->ParamPol): add parameter to formal sum
 operator +: (ParamPol,(int,Param)->ParamPol): add parameter with coefficient
 operator +: (ParamPol,[(int,Param)]->ParamPol): add terms to formal sum
 operator %: (ParamPol->[(int,Param)]): break up formal sum into terms
-dominant: (Param->Param): make gamma dominant and do singular complex descents
 
 raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
   The call raw_KL(rf,drf) produces a matrix of numbers identifying
