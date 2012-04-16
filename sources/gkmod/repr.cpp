@@ -19,6 +19,11 @@
 namespace atlas {
   namespace repr {
 
+bool StandardRepr::operator== (const StandardRepr& z) const
+{ return x_part==z.x_part and y_bits==z.y_bits
+  and infinitesimal_char==z.infinitesimal_char;
+}
+
 Rep_context::Rep_context(RealReductiveGroup &G_R)
   : G(G_R), KGB_set(G_R.kgb())
 {}
@@ -266,7 +271,7 @@ bool Rep_context::compare::operator()
       return sgd*r.gamma().numerator()[i]<rgd*s.gamma().numerator()[i];
   if (r.x()!=s.x())
     return r.x()<s.x();
-  return r.y_bits<s.y_bits;
+  return r.y()<s.y();
 }
 
   } // |namespace repr|
