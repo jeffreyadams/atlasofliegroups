@@ -80,7 +80,8 @@ class Rep_context
   Rep_context(RealReductiveGroup &G);
 
   // accessors
-  ComplexReductiveGroup& complexGroup() const { return G.complexGroup(); }
+  RealReductiveGroup& realGroup() const { return G; }
+  const ComplexReductiveGroup& complexGroup() const { return G.complexGroup(); }
   const RootDatum& rootDatum() const { return G.rootDatum(); }
   const WeylGroup& weylGroup() const { return G.weylGroup(); }
   const TwistedWeylGroup& twistedWeylGroup() const
