@@ -173,8 +173,7 @@ inline BlockElt& first_free_slot(BlockEltPair& p)
 }
 
 Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
-  : tW(kgb.twistedWeylGroup())
-  , d_x(), d_y(), d_first_z_of_x() // filled below
+  : d_x(), d_y(), d_first_z_of_x() // filled below
   , d_cross(kgb.rank()), d_cayley(kgb.rank()) // each entry filled below
   , d_descent(), d_length() // filled below
   , d_bruhat(NULL)
@@ -259,20 +258,16 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
 } // |Block_base::Block_base|
 
 
-Block_base::Block_base(const SubSystem& sub,
-		       const TwistedWeylGroup& printing_W)
-  : tW(printing_W)
-  , d_x(), d_y()
-  , d_first_z_of_x(), d_cross(sub.rank()), d_cayley(sub.rank())
+Block_base::Block_base(unsigned int rank)
+  : d_x(), d_y()
+  , d_first_z_of_x(), d_cross(rank), d_cayley(rank)
   , d_descent(), d_length()
   , d_bruhat(NULL)
   , klc_ptr(NULL)
 {}
 
-
 Block_base::Block_base(const Block_base& b) // copy constructor, unused
-  : tW(b.tW)
-  , d_x(b.d_x), d_y(b.d_y)
+  : d_x(b.d_x), d_y(b.d_y)
   , d_first_z_of_x(b.d_first_z_of_x)
   , d_cross(b.d_cross), d_cayley(b.d_cayley)
   , d_descent(b.d_descent), d_length(b.d_length)
@@ -480,6 +475,7 @@ KGBElt Block_base::renumber_x(const std::vector<KGBElt>& new_x)
 
 Block::Block(const KGB& kgb,const KGB& dual_kgb)
   : Block_base(kgb,dual_kgb)
+  , tW(kgb.twistedWeylGroup())
   , xrange(kgb.size()), yrange(dual_kgb.size())
   , d_Cartan(), d_involution(), d_involutionSupport() // filled below
 {
@@ -562,6 +558,7 @@ void Block::compute_supports()
 
 Block::Block(const Block& b)
   : Block_base(b) // copy
+  , tW(b.tW) // share
   , d_Cartan(b.d_Cartan)
   , d_involution(b.d_involution)
   , d_involutionSupport(b.d_involutionSupport)
@@ -599,14 +596,13 @@ void Block_base::fill_klc(BlockElt last_y,bool verbose)
 
 /*****				gamma_block				****/
 
-
 gamma_block::gamma_block(RealReductiveGroup& GR,
-			 const SubSystem& sub, // at the dual side
+			 const SubSystemWithGroup& sub, // at the dual side
 			 KGBElt x,
 			 const RatWeight& lambda, // discrete parameter
 			 const RatWeight& gamma, // infinitesimal character
 			 BlockElt& entry_element) // output parameter
-  : Block_base(sub,GR.twistedWeylGroup())
+  : Block_base(sub.rank())
   , kgb(GR.kgb())
   , infin_char(gamma)
   , kgb_nr_of()
@@ -1008,25 +1004,6 @@ gamma_block::gamma_block(RealReductiveGroup& GR,
 const TwistedInvolution& gamma_block::involution(BlockElt z) const
 { return kgb.involution(kgb_nr_of[d_x[z]]); }
 
-struct nblock_help
-{
-  const KGB& kgb;
-  const SubSystem& sub;
-  const RootDatum& rd;
-
-  nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
-    : kgb(GR.kgb()), sub(subsys), rd(sub.parent_datum()) {}
-};
-
-class nblock_elt
-{
-  KGBElt x;
-  TorusElement t;
-public:
-  void complex_cross(weyl::Generator s,const nblock_help& h);
-  void non_complex_cross(weyl::Generator s,const nblock_help& h);
-}; // |class nblock_elt|
-
 const ComplexReductiveGroup& non_integral_block::complexGroup() const
   { return GR.complexGroup(); }
 const InvolutionTable& non_integral_block::involution_table() const
@@ -1034,15 +1011,14 @@ const InvolutionTable& non_integral_block::involution_table() const
 
 non_integral_block::non_integral_block
   (RealReductiveGroup& G_real,
-   const SubSystem& subsys, // at the dual side
+   const SubSystem& sub, // at the dual side
    KGBElt x,
    const RatWeight& lambda, // discrete parameter
    const RatWeight& gamma, // infinitesimal char
    BlockElt& entry_element) // output parameter
-  : Block_base(subsys,G_real.twistedWeylGroup()) // uses ordinary W for printing
+  : Block_base(sub.rank())
   , GR(G_real)
   , kgb(G_real.kgb())
-  , sub(subsys)
   , singular()
   , infin_char(gamma)
   , kgb_nr_of()
@@ -1418,6 +1394,116 @@ non_integral_block::non_integral_block
 
 } // |non_integral_block::non_integral_block|
 
+class nblock_elt // internal representation in following constructor
+{
+  friend class nblock_help;
+  KGBElt xx;
+  TorusElement yy;
+public:
+  nblock_elt (KGBElt x, const TorusElement& t) : xx(x), yy(t) {}
+
+  KGBElt x() const { return xx; }
+  const TorusElement y() const { return yy; }
+
+}; // |class nblock_elt|
+
+struct nblock_help // an intended support class
+{
+  const KGB& kgb;
+  const SubSystem& sub;
+  const RootDatum& rd;
+  const Cartan_orbits& i_tab;
+
+  nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
+    : kgb(GR.kgb()), sub(subsys), rd(sub.parent_datum())
+    , i_tab(GR.complexGroup().involution_table()) {}
+
+  void complex_cross_act(nblock_elt& z, weyl::Generator s) const;
+  void non_complex_cross_act (nblock_elt& z, weyl::Generator s) const;
+  void do_up_Cayley (nblock_elt& z, weyl::Generator s) const;
+  void do_down_Cayley (nblock_elt& z, weyl::Generator s) const;
+
+  y_entry pack_y(const nblock_elt& z)
+  { return i_tab.pack(z.y(),kgb.inv_nr(z.x())); }
+};
+
+void nblock_help::complex_cross_act (nblock_elt& z, weyl::Generator s) const
+{ z.xx = kgb.cross(sub.reflection(s),z.xx);
+  z.yy.reflect(rd,sub.parent_nr_simple(s));
+}
+
+void nblock_help::do_up_Cayley (nblock_elt& z, weyl::Generator s) const
+{
+}
+
+non_integral_block::non_integral_block
+  (const repr::Rep_context& rc,
+   StandardRepr sr,
+   BlockElt& entry_element	// set to block element matching input
+  )
+  : Block_base(rootdata::integrality_rank(rc.rootDatum(),sr.gamma()))
+  , GR(rc.realGroup())
+  , kgb(rc.kgb())
+  , singular()
+  , infin_char(sr.gamma())
+  , kgb_nr_of()
+  , y_info()
+{
+  const ComplexReductiveGroup& G = complexGroup();
+  const RootDatum& rd = G.rootDatum();
+
+  rc.make_dominant(sr); // make dominant before computing subsystem!
+
+  const SubSystem sub = SubSystem::integral(rd,infin_char);
+
+  size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
+  for (weyl::Generator s=0; s<our_rank; ++s)
+    singular.set(s,rd.coroot(sub.parent_nr_simple(s))
+                      .dot(infin_char.numerator())==0);
+
+  nblock_help aux(GR,sub);
+
+  // step 1: get |y|, which has $y.t=\exp(\pi\ii(\gamma-\lambda))$ (vG based)
+  const KGBElt x_org = sr.x();
+  const nblock_elt org(x_org,y_values::exp_pi(infin_char-rc.lambda(sr)));
+
+  y_entry::Pooltype y_pool;
+  y_part_hash y_hash(y_pool);
+
+  // step 2: move up toward the most split fiber for the current real form
+  std::vector<unsigned int> x_of(kgb.size(),~0); // partial inverse |kgb_nr_of|
+  { // modify |x| and |y|, ascending for |x|, descending for |y|
+    nblock_elt z = org;
+    weyl::Generator s;
+    do
+      for(s=0; s<our_rank; ++s)
+      {
+	KGBElt xx=kgb.cross(sub.to_simple(s),z.x());
+	weyl::Generator ss=sub.simple(s);
+	if (kgb.isAscent(ss,xx))
+	{
+	  if (kgb.status(ss,xx)==gradings::Status::Complex)
+	    aux.complex_cross_act(z,s);
+	  else // imaginary noncompact
+	  {
+	    assert(kgb.status(ss,xx) == gradings::Status::ImaginaryNoncompact);
+	    aux.do_up_Cayley(z,s);
+	  }
+	  break;
+	} // |if(isDescent)|
+      } // |for(s)|
+    while(s<our_rank); // loop until no descents found in |subsys|
+
+    // DON'T assert(x+1==kgb.size()); fails e.g. in complex groups, empty |sub|
+
+    kgb_nr_of.push_back(z.x()); // save obtained value for |x|
+    x_of[z.x()]=0; // and the parent KGB element |x| will get renumbered 0
+    y_hash.match(aux.pack_y(z)); // save obtained value for |y|
+  } // end of step 2
+
+
+}
+
 
 RatWeight non_integral_block::nu(BlockElt z) const
 {
@@ -1790,15 +1876,14 @@ nblock_context::nblock_context(RealReductiveGroup& GR, const SubSystem& sub)
 
 non_integral_block::non_integral_block // interval below |x| only
   (RealReductiveGroup& G_real,
-   const SubSystem& subsys,
+   const SubSystem& sub,
    KGBElt x,
    const RatWeight& lambda, // discrete parameter
    const RatWeight& gamma // infinitesimal character
   )
-  : Block_base(subsys,G_real.twistedWeylGroup()) // use ordinary W for printing
+  : Block_base(sub.rank())
   , GR(G_real)
   , kgb(G_real.kgb())
-  , sub(subsys)
   , singular()
   , infin_char(gamma)
   , kgb_nr_of()

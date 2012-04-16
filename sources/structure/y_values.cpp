@@ -96,6 +96,9 @@ TorusElement& TorusElement::operator+=(TorusPart v)
 void TorusElement::simple_reflect(const PreRootDatum& prd, weyl::Generator s)
 { prd.simpleReflect(repr.numerator(),s); } // numerator is weight for |prd|
 
+void TorusElement::reflect(const RootDatum& rd, RootNbr alpha)
+{ rd.reflect(repr.numerator(),alpha); } // numerator is weight for |rd|
+
 
 TorusElement TorusElement::simple_imaginary_cross
   (const RootDatum& dual_rd, // dual for pragmatic reasons

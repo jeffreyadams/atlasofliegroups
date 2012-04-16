@@ -2889,12 +2889,30 @@ construction will only be mathematically meaningful under these circumstances.
 This operation is therefore applied automatically in several places, but it is
 useful to give the user an easy way to apply it explicitly.
 
+Testing for equivalence of parameters amounts to testing for equality after
+the parameters are made dominant (at least that claim was not contested at the
+time of writing this). We provide this test, which will be bound to the
+equality operator.
+
 @< Local function def...@>=
 void parameter_dominant_wrapper(expression_base::level l)
 { shared_module_parameter p = get_own<module_parameter_value>();
   if (l!=expression_base::no_value)
   { p->rc().make_dominant(p->val);
     push_value(p);
+  }
+}
+
+void parameter_equivalent_wrapper(expression_base::level l)
+{ shared_module_parameter q = get<module_parameter_value>();
+  shared_module_parameter p = get<module_parameter_value>();
+  if (p->rf!=q->rf)
+    throw std::runtime_error @|
+      ("Real form mismatch when testing equivalence");
+  if (l!=expression_base::no_value)
+  { StandardRepr z0=p->val, z1=q->val; // copy
+    p->rc().make_dominant(z0); q->rc().make_dominant(z1);
+    push_value(new bool_value(z0==z1));
   }
 }
 
@@ -3708,6 +3726,7 @@ install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
 install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)");
+install_function(parameter_equivalent_wrapper,@|"=" ,"(Param,Param->bool)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(print_n_block_wrapper,@|"print_n_block"
                 ,"(Param->)");

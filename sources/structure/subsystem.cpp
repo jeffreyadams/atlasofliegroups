@@ -27,7 +27,6 @@ SubSystem::SubSystem(const RootDatum& parent,
 		     const RootNbrList& sub_sys)
   : RootSystem(parent.cartanMatrix(sub_sys).transposed()) // build
   , rd(parent) // share
-  , sub_W(RootSystem::cartanMatrix()) // use Cartan matrix above
   , pos_map(numPosRoots(),~0)
   , inv_map(rd.numRoots()+1,~0) // one spare entry for "unfound root in parent"
   , sub_root(sub_sys.size())
@@ -81,7 +80,7 @@ SubSystem SubSystem::integral // pseudo contructor for integral system
     if (v.dot(parent.posCoroot(i))%n == 0)
       int_roots.insert(parent.posRootNbr(i));
 
-  // it suffices that simple basis computed below live until end of constructor
+  // it suffices that simpleBasis computed below live until end of constructor
   return SubSystem(parent,parent.simpleBasis(int_roots));
 }
 
@@ -199,6 +198,25 @@ Grading SubSystem::induced(Grading base_grading) const
   return result;
 }
 
+SubSystemWithGroup::SubSystemWithGroup(const RootDatum& parent,
+				       const RootNbrList& sub_sys)
+  : SubSystem(parent,sub_sys) // build
+  , sub_W(RootSystem::cartanMatrix()) // use Cartan matrix above
+{}
+
+SubSystemWithGroup SubSystemWithGroup::integral // pseudo contructor
+  (const RootDatum& parent, const RatWeight& gamma)
+{
+  LatticeCoeff n=gamma.denominator();
+  const Weight& v=gamma.numerator();
+  RootNbrSet int_roots(parent.numRoots());
+  for (size_t i=0; i<parent.numPosRoots(); ++i)
+    if (v.dot(parent.posCoroot(i))%n == 0)
+      int_roots.insert(parent.posRootNbr(i));
+
+  // it suffices that simpleBasis computed below live until end of constructor
+  return SubSystemWithGroup(parent,parent.simpleBasis(int_roots));
+}
 
 } // |namespace subdatum|
 

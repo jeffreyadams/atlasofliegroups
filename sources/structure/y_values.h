@@ -82,8 +82,10 @@ class TorusElement
 
   TorusElement& operator+=(TorusPart v); // arg by value since it is small
 
-  // the following method assumes |prd| is on dual side with respect to torus
+  // in the following method |prd|, |rd| are on dual side with respect to torus
+  // in other words |repr.numerator()| is a |Weight| rather than |Coweight|
   void simple_reflect(const PreRootDatum& prd, weyl::Generator s);
+  void reflect(const RootDatum& rd, RootNbr alpha);
 }; // |class TorusElement|
 
 inline TorusElement exp_pi(const RatWeight& r) { return TorusElement(r,false); }

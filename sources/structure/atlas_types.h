@@ -195,7 +195,6 @@ namespace atlas {
     class RootDatum;
     typedef int_Vector Root;
     typedef WeightList::const_iterator WRootIterator;
-    class SubSystem;
   }
   using rootdata::RootSystem;
   using rootdata::RootDatum;
@@ -276,8 +275,9 @@ namespace atlas {
 
   namespace topology { class Connectivity; }
 
-  namespace subsystem {class SubSystem; }
+  namespace subsystem {class SubSystem; class SubSystemWithGroup; }
   using subsystem::SubSystem;
+  using subsystem::SubSystemWithGroup;
 
 
   typedef unsigned short CartanNbr; // index of Cartan class

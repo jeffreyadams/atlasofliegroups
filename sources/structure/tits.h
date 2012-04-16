@@ -183,7 +183,7 @@ class GlobalTitsGroup : public TwistedWeylGroup
   GlobalTitsGroup(const ComplexReductiveGroup& G,tags::DualTag);
 
   //!\brief constructor from subdatum (dual side) + involution information
-  GlobalTitsGroup(const SubSystem& sub,
+  GlobalTitsGroup(const SubSystemWithGroup& sub,
   		  const WeightInvolution& theta, // on opposite side from |sub|
 		  WeylWord& ww); // output: expresses |-theta^t| for |sub|
 
@@ -308,7 +308,7 @@ class SubTitsGroup : public GlobalTitsGroup
  public:
   //!\brief constructor from subdatum (dual side) + involution information
   SubTitsGroup(const ComplexReductiveGroup& G,
-	       const SubSystem& sub,
+	       const SubSystemWithGroup& sub,
 	       const WeightInvolution& theta,
 	       WeylWord& ww); // output: expesses |-theta^t| for |sub|
   TorusElement base_point_offset(const TwistedInvolution& tw) const;
@@ -537,7 +537,7 @@ $H(2)$, for twisting TorusPart values when commuting with \f$\delta\f$.
 	    const weyl::Twist& twist);
 
   //!\brief Constructor for Tits group relative to a subsystem
-  TitsGroup(const SubSystem& sub,
+  TitsGroup(const SubSystemWithGroup& sub,
 	    const WeightInvolution& theta,
 	    WeylWord& ww);
 
@@ -740,7 +740,7 @@ class TitsCoset
 	    Grading parent_base_grading);
 
   // this constructor computes the inner class for |sub| defined by |theta|
-  TitsCoset(const SubSystem& sub,
+  TitsCoset(const SubSystemWithGroup& sub,
 	    const WeightInvolution& theta,
 	    Grading parent_base_grading, // by value: small
 	    WeylWord& ww);

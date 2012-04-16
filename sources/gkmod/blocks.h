@@ -61,8 +61,6 @@ class Block_base {
 
  protected: // all other fields may be set in a derived class contructor
 
-  const TwistedWeylGroup& tW; // reference is used here only for printing
-
   // relation to |KGB| sets (which may or may not be stored explicitly)
   KGBEltList d_x; // of size |size()|; defines an 'x-coordinate' of elements
   KGBEltList d_y; // of size |size()|; defines an 'y-coordinate' of elements
@@ -84,7 +82,7 @@ class Block_base {
 
 // constructors and destructors
   Block_base(const KGB& kgb,const KGB& dual_kgb);
-  Block_base(const SubSystem& sub, const TwistedWeylGroup& printing_W);
+  Block_base(unsigned int rank); // only dimensions some vectors
 
   virtual ~Block_base(); // deletes |d_bruhat| and |klc_ptr| (if non-NULL)
 
@@ -112,8 +110,6 @@ class Block_base {
   size_t length(BlockElt z) const { return d_length[z]; }
 
   BlockElt length_first(size_t l) const; // first element of given length
-
-  virtual const TwistedInvolution& involution(BlockElt z) const = 0;
 
   BlockElt cross(size_t s, BlockElt z) const //!< cross action
   { assert(z<size()); assert(s<rank()); return d_cross[s][z]; }
@@ -162,7 +158,8 @@ class Block_base {
     (std::ostream& strm,bool as_invol_expr) const; // defined in |block_io|
 
   // print derivated class specific information  for |z| (used in |print_to|)
-  virtual std::ostream& print(std::ostream& strm, BlockElt z) const =0;
+  virtual std::ostream& print
+    (std::ostream& strm, BlockElt z,bool as_invol_expr) const =0;
 
   // manipulators
   BruhatOrder& bruhatOrder() { fillBruhat(); return *d_bruhat; }
@@ -204,6 +201,8 @@ the requirement that $theta_y$ is the negative transpose of $theta_x$.
   */
 class Block : public Block_base
 {
+  const TwistedWeylGroup& tW; // reference is used here only for printing
+
   size_t xrange;
   size_t yrange;
 
@@ -237,8 +236,8 @@ class Block : public Block_base
 
 // accessors
 
-  const TwistedWeylGroup& twistedWeylGroup() const // for |printBlockU|
-  { return tW; }
+  const TwistedWeylGroup& twistedWeylGroup() const { return tW; }
+  const WeylGroup& weylGroup() const { return tW.weylGroup(); }
 
   virtual KGBElt xsize() const { return xrange; }
   virtual KGBElt ysize() const { return yrange; }
@@ -264,8 +263,8 @@ class Block : public Block_base
     return d_involutionSupport[z];
   }
 
-  virtual // defined in block_io.cpp
-    std::ostream& print(std::ostream& strm, BlockElt z) const;
+  virtual std::ostream& print // defined in block_io.cpp
+   (std::ostream& strm, BlockElt z,bool as_invol_expr) const;
 
 
   // private accessor and manipulators
@@ -294,7 +293,7 @@ class gamma_block : public Block_base
 
  public:
   gamma_block(RealReductiveGroup& GR,
-	      const SubSystem& sub,
+	      const SubSystemWithGroup& sub,
 	      KGBElt x,			// starting |x| value
 	      const RatWeight& lambda,	// discrete parameter
 	      const RatWeight& gamma,	// infinitesimal character
@@ -308,8 +307,8 @@ class gamma_block : public Block_base
   const TwistedInvolution& involution(BlockElt z) const; // obtained from |kgb|
 
 
-  virtual // in block_io.cpp; prints parent |x|, |local_system()|, Cartan
-    std::ostream& print(std::ostream& strm, BlockElt z) const;
+  virtual std::ostream& print // in block_io.cpp
+   (std::ostream& strm, BlockElt z,bool as_invol_expr) const;
 
   // new methods
   KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }
@@ -321,8 +320,7 @@ class gamma_block : public Block_base
 class non_integral_block : public Block_base
 {
   RealReductiveGroup& GR; // non-const to allow construction of |Rep_context|
-  const KGB& kgb; // initialised to |GR.kgb()|, so can be constant
-  const SubSystem& sub;
+  const KGB_base& kgb; // initialised to |GR.kgb()|, so can be constant
 
   RankFlags singular; // flags simple roots for which |infin_char| is singular
 
@@ -349,6 +347,12 @@ class non_integral_block : public Block_base
      const RatWeight& gamma	// infinitesimal character
     );
 
+  non_integral_block // rewritten constructor, for full block
+    (const repr::Rep_context& rc,
+     StandardRepr sr, // by value,since it will be made dominant before use
+     BlockElt& entry_element	// set to block element matching input
+    );
+
   // "inherited" accessors
   const ComplexReductiveGroup& complexGroup() const;
   const InvolutionTable& involution_table() const;
@@ -357,11 +361,8 @@ class non_integral_block : public Block_base
   virtual KGBElt xsize() const { return kgb_nr_of.size(); } // child |x| range
   virtual KGBElt ysize() const { return y_info.size(); }    // child |y| range
 
-  const TwistedInvolution& involution(BlockElt z) const
-  { assert(z<size()); return y_info[d_y[z]].tw(); } // this is still? |y|-based
-
-  virtual // defined in block_io.cpp
-    std::ostream& print(std::ostream& strm, BlockElt z) const;
+  virtual std::ostream& print // defined in block_io.cpp
+    (std::ostream& strm, BlockElt z,bool as_invol_expr) const;
 
   // new methods
 

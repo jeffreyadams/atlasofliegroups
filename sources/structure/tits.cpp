@@ -119,7 +119,7 @@ GlobalTitsGroup::GlobalTitsGroup
     alpha_v[i]=TorusPart(simple.roots()[i]);
 }
 
-GlobalTitsGroup::GlobalTitsGroup(const SubSystem& sub,
+GlobalTitsGroup::GlobalTitsGroup(const SubSystemWithGroup& sub,
 				 const WeightInvolution& theta,
 				 WeylWord& ww)
   : TwistedWeylGroup(sub.Weyl_group(),sub.twist(theta,ww)) // sets |ww|
@@ -433,7 +433,7 @@ std::vector<Grading> compute_square_classes
 
 
 SubTitsGroup::SubTitsGroup(const ComplexReductiveGroup& G,
-			   const SubSystem& sub,
+			   const SubSystemWithGroup& sub,
 			   const WeightInvolution& theta,
 			   WeylWord& ww)
 : GlobalTitsGroup(sub,theta,ww)
@@ -527,7 +527,7 @@ TitsGroup::TitsGroup(const int_Matrix& Cartan_matrix,
 
 // build Tits group for |sub|, get sub-twist defined by |-theta^t| into |ww|
 // called from |Subdatum| constructor, and indirectly from |TitsCoset|
-TitsGroup::TitsGroup(const SubSystem& sub,
+TitsGroup::TitsGroup(const SubSystemWithGroup& sub,
 		     const WeightInvolution& theta,
 		     WeylWord& ww)
   : TwistedWeylGroup(sub.Weyl_group(),sub.parent_twist(theta,ww))
@@ -733,7 +733,7 @@ TitsCoset::TitsCoset(const subdatum::SubDatum& sub,
 
 // this constructor adapts to |theta| (given on parent) and sets |ww|
 // it also avoids contructing a |SubDatum| at all; it is currently unused
-TitsCoset::TitsCoset(const SubSystem& sub,
+TitsCoset::TitsCoset(const SubSystemWithGroup& sub,
 		     const WeightInvolution& theta,
 		     Grading parent_base_grading,
 		     WeylWord& ww)

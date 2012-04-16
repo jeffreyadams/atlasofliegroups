@@ -89,7 +89,8 @@ set rec_def (Param p) =
           then inx=#ip, at_nu0=empty, acc=empty
 	  in while inx>0 do acc+:=deform(param(x,lambda,ip[inx-:=1]*nu)) od
         ; for (k,q) in %acc
-          do let (q0,nu0_terms) = recd(coef*k*2,q)
+          do
+             let (q0,nu0_terms) = recd(coef*k*2,q)
              in at_nu0 +:= %(nu0_terms + (coef*k,q0))
           od
         ; { return deformed p and accumulated deformation terms }

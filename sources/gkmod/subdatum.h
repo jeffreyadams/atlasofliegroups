@@ -16,8 +16,6 @@
 
 #include "atlas_types.h"
 
-#include "rootdata.h" // derive from |RootSystem|
-#include "prerootdata.h"
 #include "weyl.h"
 #include "tits.h"
 #include "subsystem.h"
@@ -28,7 +26,7 @@ namespace subdatum {
 
 
 /* the class |SubDatum| is mathematically much richer than |SubSystem| (also,
-   note the latter holds a reference to a parent root datum, so the
+   note the latter holds a reference to a parent root\emph{datum}, so the
    terminology is somewhat misleading). While |SubSystem| may be regarded as a
    companion to |RootDatum|, the |SubDatum| class depends on gkmod stuff. Its
    unique constructor requires a root datum involution |theta| (coded by a KGB
@@ -36,7 +34,7 @@ namespace subdatum {
    a subsystem by integrality, while |theta| defines a subsystem twist and a
    word that expresses it.
  */
-class SubDatum : public SubSystem
+class SubDatum : public SubSystemWithGroup
 {
   WeylWord base_ww;  // we need this variable mostly in the constructor!
   WeightInvolution delta; // together with twist: what was missing

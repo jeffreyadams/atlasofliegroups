@@ -23,10 +23,10 @@ http://www-math.univ-poitiers.fr/~maavl/CWEBx/
 
 unpack in some directory, type make, then make sure that the resulting
 programs 'ctanglex' and 'cweavex' are in your $PATH (possibly by making
-symbolic links to them from you ~/bin directory, if you use one), and that the
-macro file cwebxmac.tex is in some place where TeX will find it (check your
-$TEXINPUTS environment variable; a quick solution is to copy the file to this
-atlas/sources/interpreter directory). Once these tools are in place, the
+symbolic links to them from your ~/bin directory, if you use one), and that
+the macro file cwebxmac.tex is in some place where TeX will find it (check
+your $TEXINPUTS environment variable; a quick solution is to copy the file to
+this atlas/sources/interpreter directory). Once these tools are in place, the
 'make' facility will automatically invoke them to create all the files
 mentioned above when they are needed.
 
@@ -34,12 +34,12 @@ Apart from that, you need tools like (GNU) 'make', 'bison', and a compiler
 like 'g++' which you already need to compile the atlas program (but contrary
 to atlas, you need at least version 4.0 of gcc/g++ to compile realex, since
 realex uses the TR1 library extension whose support was introduced in their
-version 4.0). Once you are set, type 'make headers realex' in the
-atlas/sources/interpreter directory (or 'make realex' in the atlas directory)
-to build realex. Again you can install a symbolic link from somewhere in your
-$PATH to atlas/sources/interpreter/realex to ensure that it will be executed
-by the command 'realex'. If atlas was compiled before you build realex, the
-latter compilation will use the existing object files; if not it will do the
+version 4.0). Once you are set, type 'make' in the atlas/sources/interpreter
+directory (or 'make realex' in the atlas directory) to build realex. Again you
+can install a symbolic link from somewhere in your $PATH to
+atlas/sources/interpreter/realex to ensure that it will be executed by the
+command 'realex'. If atlas was compiled before you build realex, the latter
+compilation will use the existing object files; if not it will do the
 necessary compilations itself (this involves nearly all atlas modules, but not
 all), and take quite a bit longer.
 
@@ -87,7 +87,7 @@ Using realex, the same result can be obtained as follows
 
   $ realex
   Enter expressions:
-  expr> set ic=inner_class("B5.A3.T1",[[1/2,0,0],[0,1/2,1/2]],"scc")
+  expr> set ic=inner_class("B5.A3.T1",[[1,0,0]/2,[0,1,1]/2],"scc")
   Identifier ic: InnerClass
   expr> ic
   Value: Complex reductive group of type B5.A3.T1, with involution defining
@@ -117,10 +117,13 @@ Using realex, the same result can be obtained as follows
   Bye.
   $
 
-(The 'inner_class' function does essentially the same as the dialogue from the
+The 'inner_class' function does essentially the same as the dialogue from the
 line 'Lie type:' up to and including the one with 'enter inner class(es):' in
-the atlas. Note however that the specification [[1/2,0,0],[0,1/2,1/2]], of the
-kernel generators is somewhat more liberal than allowed in the atlas program.)
+the atlas. Note however that the specification [[1,0,0]/2,[0,1,1]/2], of the
+kernel generators is somewhat more liberal than allowed in the atlas program.
+For root data that are simply connected or adjoint, so that they don't need
+explicit mention of kernel generators, there are functions available to build
+them directly, and to introduce corresponding inner classes.
 
 So one difference is that rather than being asked to specify a complex group
 and an in inner class after calling the blocksizes command, one needs to
@@ -134,7 +137,7 @@ Then the variable 'ic' was used as argument to block_sizes, and it could
 subsequently be used in other function calls as well. Alternatively one could
 have called directly:
 
-  block_sizes(set_type("B5.A3.T1",[[1/2,0,0],[0,1/2,1/2]],"scc"))
+  block_sizes(inner_class("B5.A3.T1",[[1,0,0]/2,[0,1,1]/2],"scc"))
 
 but then of course the inner class would not have been available afterwards in
 the variable 'ic'. The matrix resulting from the call was printed, but it
@@ -145,18 +148,75 @@ just one inner class and one real form between different commands. In addition
 the realex program provides programming constructions, and allows you to
 define scripts and functions for later use.
 
-The set of functions provided is described in the file 'functions.help' in
-this directory; here we shall document other aspects of the realex program.
+The set of primitive functions provided is described in the file
+'functions.help' in this directory, and in the subdirectory rx-scripts of the
+atlas root directory there is a script 'basic.rx' with user-defined functions
+that complement the primitive ones. You can load by typing at the realex prompt
+
+expr> <basic
+
+provided you started realex in the rx-scritps directory; if not you need to
+specify a complete path (absolute or relative from where you started realex)
+so that realex can find the basic.rx script. If the file is found, realex
+responds by printing the types of all values defined in this script.
+
+In this file we shall document other aspects of the realex program.
 
 
-3 Current limitations
+3 Design principles and current limitations
 
-The data types currently available for values only concern those of the
-structure theory (root data, inner classes, real forms, Cartan classes) while
-many data types used internally (such as Weyl groups, polynomials) may appear
-in printed output but cannot be further manipulated. The programming language
-is fairly complete, with constructions like variables, loops and conditionals,
-as well as functions and operators (both built-in and user defined).
+The realex interpreter is expression based, which means that the text entered
+serves most often to designate values to be computed rather than actions to be
+performed. Its design is close to that of functional programming languages,
+but it does provide assignable variables and loops. (In fact, strict scoping
+rules (derived from the lambda-calculus) make it somewhat difficult to define
+functions recursively (a function must be defined before it is named, so its
+definition cannot refer to its name) which is unusual for a functional
+programming language; recursion can however be achieved using assignment.)
+
+It is important to realize the destinction between creating names and
+assigning to them. The interpreter will refuse expressions with unknown names
+in them, whether they are being used or assigned to (realex is not a symbolic
+algebra language, which would take unknown names to stand for indeterminates).
+Names are introduced using the keyword 'set' (for permanant names) or using
+the keyword 'let' (for local names, whose scope is limited to the current
+expression, or even to part of it). Once a name is introduced, its value can
+be altered by assignment, which is written ':=' (in the tradition of Algol and
+Pascal, not Fortran and C); such an assignment should not alter the type
+associated to the name. Assignment is used almost exclusively for programming
+purposes; for "ordinary" use of realex, one rarely needs ':='. Both 'set' and
+'let' follow the name(s) being introduced by '=' (not ':='); apart from that,
+'=' also serves as equality testing operator (for certain types).
+
+The language it strictly typed, so that type-correctness of expressions must
+be established before their evaluation is attempted. This means that most
+common errors are caught before execution starts, and error messages can be
+more meaningful by referrring to the offending expression rather than to its
+value. Nonetheless, type checking is a complicated process, which could
+occasionally produce cryptic error mesages. Most of the time the system can
+figure out the types from the expressions, so the user need not write them
+explicitly; however the types of arguments of user-defined functions must
+always be specified. Types are also used to allow overloading, which means
+that it is possible to give the same (natural) function or operator name to
+different operations; in each expression using these names, the type system
+then determines which instance is to be used. This applies in particular to
+user function definitions, so that binding of overloaded operators and
+functions is done statically (when the user defines the function rather than
+when it gets executed). Currently types are straightforward and therefore
+somewhat limited; this is quite sufficient for using the atlas functionality,
+though for advanced programming the set of possible types might need to be
+enlarged in the future.
+
+The primitive data types currently available for values do not yet cover all
+those that the atlas library can handle, and for the types available (root
+data, inner classes, real forms, Cartan classes, KGB elements, parameters for
+(standard) modules and formal sums of those) not all reasonable functionality
+is implemented (for instance equality tests are sometimes missing). Some data
+types used internally (such as Weyl groups, polynomials) may appear in printed
+output but cannot be further manipulated. The programming language itself is
+fairly complete, with constructions like variables, loops and conditionals, as
+well as functions and operators (both built-in and user-defined), but
+certainly still leaves a large number of things to be improved.
 
 
 4 Types

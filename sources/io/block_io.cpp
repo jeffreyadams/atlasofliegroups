@@ -85,39 +85,50 @@ std::ostream& Block_base::print_to(std::ostream& strm,
       strm << ')' << std::setw(pad) << "";
     }
 
-    // derived class specific output
-    print(strm,z) << std::setw(pad) << "";
-
-    // print root datum involution
-    if (as_invol_expr)
-      prettyprint::printInvolution(strm,involution(z),tW);
-    else
-      prettyprint::printWeylElt(strm,involution(z),tW.weylGroup());
-
-    strm << std::endl;
+    // finish with derived class specific output
+    print(strm,z,as_invol_expr) << std::endl;
   } // |for (z)|
 
   return strm;
 } // |print_on|
 
 
-std::ostream& Block::print(std::ostream& strm, BlockElt z) const
+std::ostream& Block::print
+  (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
   int cwidth = ioutils::digits(max_Cartan(),10ul);
-  return strm << std::setw(cwidth) << Cartan_class(z);
+  strm << std::setw(cwidth) << Cartan_class(z) << std::setw(2) << "";
+
+  // print root datum involution
+  if (as_invol_expr)
+    prettyprint::printInvolution(strm,involution(z),twistedWeylGroup());
+  else
+    prettyprint::printWeylElt(strm,involution(z),weylGroup());
+
+  return strm ;
 }
 
-std::ostream& gamma_block::print(std::ostream& strm, BlockElt z) const
+std::ostream& gamma_block::print
+  (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
 
   RatWeight ls = local_system(z);
-  return strm << "(=" << std::setw(xwidth) << parent_x(z)
-	      << ',' << std::setw(3*ls.size()+3) << ls
-	      << ')';
+  strm << "(=" << std::setw(xwidth) << parent_x(z)
+       << ',' << std::setw(3*ls.size()+3) << ls
+       << ')' << strm << std::setw(2) << "";
+
+  // print root datum involution
+  if (as_invol_expr)
+    prettyprint::printInvolution(strm,involution(z),kgb.twistedWeylGroup());
+  else
+    prettyprint::printWeylElt(strm,involution(z),kgb.weylGroup());
+
+  return strm ;
 }
 
-std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
+std::ostream& non_integral_block::print
+  (std::ostream& strm, BlockElt z,bool as_invol_expr) const
 {
   int xwidth = ioutils::digits(kgb.size()-1,10ul);
   RatWeight ll=y_part(z);
@@ -127,7 +138,15 @@ std::ostream& non_integral_block::print(std::ostream& strm, BlockElt z) const
        << ", nu=" << std::setw(2*ll.size()+5) << nu(z);
 //strm << ',' << std::setw(2*ll.size()+5) << ll;
   strm << ",lam=rho+" << std::setw(2*ll.size()+3) << lambda_rho(z);
-  return strm << ')';
+  strm << ')' << std::setw(2) << "";
+
+  const TwistedInvolution& ti = kgb.involution(parent_x(z));
+  const TwistedWeylGroup& tW = kgb.twistedWeylGroup();
+  // print root datum involution
+  if (as_invol_expr) prettyprint::printInvolution(strm,ti,tW);
+  else prettyprint::printWeylElt(strm,ti,tW.weylGroup());
+
+  return strm ;
 }
 
 
