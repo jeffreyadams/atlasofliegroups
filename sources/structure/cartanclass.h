@@ -66,14 +66,14 @@ determined for the entire fiber by giving the "base grading" for the base
 point, and the "grading shifts" for translations by each of a set of
 generators of the grading group.
 
-We fix an involutive automorphism \f$\tau\f$ of the complex torus $H$, and
+We fix an involutive automorphism $\tau$ of the complex torus $H$, and
 consider the collection of all strong real forms $x$ of $G$ (which are
 elements of "G semidirect delta") that induce tau on H, modulo the conjugation
 action of H on the collection. Such a strong real form has square equal to
 some element z in Z(G)^delta. Changing the element z by (1+delta)Z is
 innocuous, and there are finitely many possibilities for Z^delta/[(1+delta)Z].
 For each fixed value of z, this collection of strong real form representatives
-in \f$G.\delta\f$ (modulo H conjugation) has a simply transitive action (left
+in $G.\delta$ (modulo H conjugation) has a simply transitive action (left
 multiplication) of the fiber group H^{-tau}/(1-tau)H, the component group of
 the complex group H^{-tau} of fixed points of -tau. The fiber group is a
 $Z/2Z$ vector space that can be realized as a subquotient of the group H(2) of
@@ -104,13 +104,13 @@ class Fiber {
   /*!
   \brief Fiber group.
 
-  In terms of the complex torus $H$ and the Cartan involution \f$\tau\f$, it
-  is equal to \f$F=H^{-\tau}/(1-\tau)H\f$: the group of fixed points of
-  \f$\-tau\f$, modulo its identity component. Here additive notation is used
-  for multiplicative composition; e.g., \f$1-\tau\f$ maps \f$z\in H\f$ to
-  \f$z/\tau(z)\f$; this notation is natural when \f$\tau\f$ is viewed as
-  operating on the weight lattice, in which case \f$1-\tau\f$ acts as the
-  identity matrix minus the matrix giving \f$\tau\f$.
+  In terms of the complex torus $H$ and the Cartan involution $\tau$, it
+  is equal to $F=H^{-\tau}/(1-\tau)H$: the group of fixed points of
+  $\-tau$, modulo its identity component. Here additive notation is used
+  for multiplicative composition; e.g., $1-\tau$ maps $z\in H$ to
+  $z/\tau(z)$; this notation is natural when $\tau$ is viewed as
+  operating on the weight lattice, in which case $1-\tau$ acts as the
+  identity matrix minus the matrix giving $\tau$.
 
   Recall that the group of real points $H(R)$ is a product of $p$ unit circle
   groups, $q$ groups $R^\times$, and $r$ groups $C^\times$. It is easy to see
@@ -119,26 +119,26 @@ class Fiber {
   The fiber group is represented as a subquotient of the group $H(2)$ of
   elements of order 2 (or 1) in the torus. Write $Y$ for the lattice of
   coweights of $H$; then one has natural isomorphisms $H(2)=(1/2)Y/Y=Y/2Y$.
-  The Cartan involution \f$\tau\f$ is always represented by the matrix $q$ of
+  The Cartan involution $\tau$ is always represented by the matrix $q$ of
   its action on the character lattice $X$, which is dual to $Y$; so its action
-  on $Y$ is given by the matrix $q^t$. The action of \f$-\tau\f$ on $Y$ is
+  on $Y$ is given by the matrix $q^t$. The action of $-\tau$ on $Y$ is
   given by $-q^t$.
 
   Because $H$ is the product (not direct) of the connected groups
-  \f$(H^\tau)_0\f$ and \f$(H^{-\tau})_0\f$, the group \f$H^\tau\f$ meets every
-  component of \f$H^{-tau}\f$. The intersection of \f$H^\tau\f$ and
-  \f$H^{-\tau}\f$ consists of \f$H(2)^\tau\f$, the \f$\tau\f$-fixed elements
+  $(H^\tau)_0$ and $(H^{-\tau})_0$, the group $H^\tau$ meets every
+  component of $H^{-tau}$. The intersection of $H^\tau$ and
+  $H^{-\tau}$ consists of $H(2)^\tau$, the $\tau$-fixed elements
   of order 2. It follows that the component group $F$ may be identified with
-  \f$H(2)^\tau/(H(2)\cap (1-\tau)H)\f$. Thus $F$ can be represented by a
+  $H(2)^\tau/(H(2)\cap (1-\tau)H)$. Thus $F$ can be represented by a
   subquotient of $H(2)=Y/2Y=(Z/2Z)^n$.
 
-  The larger group \f$H(2)^\tau\f$ is computed as the kernel of the action of
-  \f$(1+\tau)\f$ on $H(2)$, which via the isomorphism $H(2)=(Z/2Z)^n$ means
+  The larger group $H(2)^\tau$ is computed as the kernel of the action of
+  $(1+\tau)$ on $H(2)$, which via the isomorphism $H(2)=(Z/2Z)^n$ means
   the kernel of the reduction mod 2 of the matrix $I+q^t$. The smaller group
-  \f$H(2)\cap (1-\tau)H\f$ consists of the elements of order 2 in the
-  connected group \f$(H^{-\tau})_0\f$. It is computed as the reduction mod 2
-  of the $-1$ eigenlattice \f$Y^{-\tau}\f$ (the latter is the lattice of
-  coweights of \f$(H^{-tau})_0\f$).
+  $H(2)\cap (1-\tau)H$ consists of the elements of order 2 in the
+  connected group $(H^{-\tau})_0$. It is computed as the reduction mod 2
+  of the $-1$ eigenlattice $Y^{-\tau}$ (the latter is the lattice of
+  coweights of $(H^{-tau})_0$).
   */
   SmallSubquotient d_fiberGroup;
 
@@ -547,16 +547,16 @@ class CartanClass {
   /*!
   \brief Roots simple for the "complex factor" of W^tau.
 
-  The subgroup \f$W^\tau\f$ of Weyl group elements commuting with the Cartan
-  involution \f$\tau\f$ has two obvious (commuting) normal subgroups: the Weyl
-  group $W^R$ of the real (that is, fixed by \f$-\tau\f$) roots, and the Weyl
-  group $W^{iR}$ of the imaginary (that is, fixed by \f$\tau\f$) roots. But
-  this is not all of \f$W^\tau\f$, as is easily seen in the case of complex
+  The subgroup $W^\tau$ of Weyl group elements commuting with the Cartan
+  involution $\tau$ has two obvious (commuting) normal subgroups: the Weyl
+  group $W^R$ of the real (that is, fixed by $-\tau$) roots, and the Weyl
+  group $W^{iR}$ of the imaginary (that is, fixed by $\tau$) roots. But
+  this is not all of $W^\tau$, as is easily seen in the case of complex
   groups, where both $W^R$ and $W^{iR}$ are trivial (there are no real or
   imaginary roots), yet $W$ is a direct sum of two identical factors
-  interchanged by \f$\tau\f$, and the actions of diagonal elements of that sum
-  clearly commute with \f$\tau\f$. In general there is a group denoted $W^C
-  such that \f$W^\tau\f$ is a semidirect product of $W^R * W^{iR}$ (the normal
+  interchanged by $\tau$, and the actions of diagonal elements of that sum
+  clearly commute with $\tau$. In general there is a group denoted $W^C
+  such that $W^\tau$ is a semidirect product of $W^R * W^{iR}$ (the normal
   subgroup) with $W^C$. Here is how to describe $W^C$.
 
   Write $RC$ (standing for "complex roots") for the roots orthogonal to both
@@ -613,7 +613,7 @@ public:
 
   That is, a bitmap whose set bits are those corresponding to the
   numbers (within the list of roots in RootDatum) of the imaginary
-  roots (those roots \f$\alpha\f$ with \f$\tau(\alpha)=\alpha\f$).
+  roots (those roots $\alpha$ with $\tau(\alpha)=\alpha$).
   */
   const RootNbrSet& imaginaryRootSet() const
     { return d_fiber.imaginaryRootSet(); }
@@ -622,7 +622,7 @@ public:
 
   That is, a bitmap whose set bits are those corresponding to the
   numbers (within the list of roots in RootDatum) of the real roots
-  (those roots \f$\alpha\f$ with \f$\tau(\alpha)=-\alpha\f$).
+  (those roots $\alpha$ with $\tau(\alpha)=-\alpha$).
   */
   const RootNbrSet& realRootSet() const { return d_fiber.realRootSet(); }
 

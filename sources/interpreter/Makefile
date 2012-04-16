@@ -104,7 +104,16 @@ objects := $(c++objects) parser.tab.o $(atlas_objects)
 # The author (Marc van Leeuwen) offers EUR 40.96 to the first person who can
 # provide a decent reason why the "-lcurses" should be needed here
 
-rlincludes ?= -lreadline -lcurses
+ifeq ($(readline),false)
+    CXXFLAGS += -DNREADLINE
+    rlincludes =
+else
+    rlincludes ?= -lreadline -lcurses
+
+# to override this, either define and export a shell variable 'rlincludes'
+# or set it when calling make. For instance for readline on the Mac do:
+# $ make rlincludes="-lreadline.5 -lcurses"
+endif
 
 # RULES follow now
 

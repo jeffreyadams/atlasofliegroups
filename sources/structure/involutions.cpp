@@ -183,38 +183,49 @@ InvolutionTable::InvolutionTable
 }
 
 // a method used to create the first element of a Cartan orbit of involutions
-InvolutionNbr InvolutionTable::add_involution(const TwistedInvolution& tw)
+InvolutionNbr InvolutionTable::add_involution
+  (const TwistedInvolution& canonical)
 {
-  InvolutionNbr result=hash.match(weyl::TI_Entry(tw));
-  if (result<data.size()) return result; // skip if |tw| was already known
+  InvolutionNbr result=hash.match(weyl::TI_Entry(canonical));
+  if (result<data.size()) return result; // skip if |canonical| already known
 
   // compute the involution matrix |theta| using |Cayley_roots|
   const WeylGroup& W= tW.weylGroup();
   TwistedInvolution cross;
-  RootNbrList Cayleys = Cayley_roots(tw,rd,tW,cross);
+  RootNbrList Cayleys = Cayley_roots(canonical,rd,tW,cross);
 
   WeightInvolution theta = delta;
   W.act(rd,cross,theta);
   for (RootNbrList::const_iterator it=Cayleys.begin(); it!=Cayleys.end(); ++it)
     rd.reflect(*it,theta);
 
-  int_Matrix A=theta; // will contain |theta-id|, later row-saturated
+  int_Matrix A=theta; // will contain |id-theta|, later row-saturated
+  A.negate();
   for (size_t i=0; i<A.numRows(); ++i)
-    --A(i,i);
+    ++A(i,i);
 
-  int_Matrix R,C;
-  // |R| will map $\lambda-\rho$ to torus part coordinates scaled |diagonal|
-  // |C| will then lift unscaled coordinates (mod 2) to $A*(\lambda-\rho)$
-  std::vector<int> diagonal = matreduc::diagonalise(A,R,C);
-  C = R.inverse(); // we don't need |C|, lifting will be by $R^{-1}$
+  // |R| will map $\lambda-\rho$ to reduced torus part coordinates
+  // |B| will then map thes coordinates (mod 2) through to $A*(\lambda-\rho)$
+  std::vector<int> diagonal;
+  int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
+  int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
   R.block(0,0,diagonal.size(),R.numColumns()).swap(R); R*=A;
-  C.block(0,0,C.numRows(),diagonal.size()).swap(C);
+  for (unsigned i=0; i<R.numRows(); ++i)
+    for (unsigned j=0; j<R.numColumns(); ++j)
+    {
+      assert (R(i,j)%diagonal[i]==0); // since $R=D(diagonal)*C^{-1}$
+      R(i,j)/=diagonal[i]; // don't need |arithmetic::divide|, division exact
+    }
+
+  B.block(0,0,B.numRows(),diagonal.size()).swap(B);
+  for (unsigned j=0; j<B.numColumns(); ++j)
+    B.columnMultiply(j,diagonal[j]);
 
   A = lattice::row_saturate(A);
 
-  unsigned int W_length=W.length(tw);
+  unsigned int W_length=W.length(canonical);
   unsigned int length = (W_length+Cayleys.size())/2;
-  data.push_back(record(theta,InvolutionData(rd,theta),A,R,diagonal,C,
+  data.push_back(record(theta,InvolutionData(rd,theta),A,R,diagonal,B,
 			length,W_length,tits::fiber_denom(theta)));
   assert(data.size()==hash.size());
 
@@ -355,6 +366,25 @@ void InvolutionTable::real_unique(InvolutionNbr i, RatWeight& y) const
     v[i]= arithmetic::remainder(v[i],2*rec.diagonal[i]*y.denominator());
 
   y.numerator()= rec.lift_mat * v; (y/=2).normalize();
+}
+
+TorusPart InvolutionTable::pack(InvolutionNbr i, const Weight& lambda_rho)
+  const
+{
+  const record& rec=data[i];
+  int_Vector v = rec.M_real * lambda_rho;
+  assert(v.size()==rec.diagonal.size());
+  return TorusPart(v);
+}
+
+Weight InvolutionTable::unpack(InvolutionNbr i, TorusPart y_part) const
+{
+  const record& rec=data[i];
+  Weight result(rec.lift_mat.numRows(),0);
+  for (unsigned i=0; i<y_part.size(); ++i)
+    if (y_part[i])
+      result += rec.lift_mat.column(i);
+  return result;
 }
 
 // ------------------------------ Cartan_orbit --------------------------------

@@ -42,7 +42,7 @@ namespace {
 
 namespace klsupport {
 
-KLSupport::KLSupport(Block_base& b)
+KLSupport::KLSupport(const Block_base& b)
   : d_state()
   , d_block(b)
   , d_descent()

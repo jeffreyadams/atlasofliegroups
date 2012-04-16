@@ -16,7 +16,6 @@ StandardRepK and KhatContext.
 #ifndef STANDARDREPK_H  /* guard against multiple inclusions */
 #define STANDARDREPK_H
 
-#include <map>
 #include <set>
 #include <vector>
 #include <iostream>
@@ -419,7 +418,7 @@ public:
   bool operator()(seq_no x, seq_no y) const
   {
     level hx=(*h)[x], hy=(*h)[y];
-    return hx!=hy ? hx<hy : x<y;
+    return hx!=hy ? hx<hy : x<y; // compare levels; sequence nbrs break ties
   }
 }; // |class graded_compare|
 

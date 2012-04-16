@@ -187,7 +187,7 @@ and_expr: not_expr AND and_expr
 	| not_expr
 ;
 
-not_expr: NOT formula
+not_expr: NOT secondary
 	  { $$ = make_conditional_node($2,make_bool_denotation(0),
 					  make_bool_denotation(1)); }
 	| secondary

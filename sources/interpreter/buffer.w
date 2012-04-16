@@ -363,10 +363,11 @@ called when an additional input stream is exhausted.
 @< Class declarations @>=
 class BufferedInput
 { typedef char* (*rl_type)(const char* );
-     // |rl_type| is type of pointer to readline function
-  typedef void (*add_hist_type) (const char* );
-     // |add_hist_type| is type of pointer to |add_history| function
+     // this typedef avoids including readline headers
+  typedef void (*add_hist_type) (const char* );  // as does this one
+@)
   @< Data members of |BufferedInput| @>@;
+@)
   public:
     BufferedInput (std::istream& s);
         // associate line buffer to raw input stream

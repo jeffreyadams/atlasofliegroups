@@ -98,13 +98,13 @@ set real_roots (RootDatum rd, mat theta) =
 set imaginary_coroots (RootDatum rd, mat theta) =
   let ic = [vec]: [], theta=^theta
   in ( for alpha in coroots(rd)
-       do if theta*alpha = alpha then ic #:= alpha fi od
+       do if alpha*theta = alpha then ic #:= alpha fi od
      ; if #ic=0 then null(rank(rd),0) else mat: ic fi )
 
 set real_coroots (RootDatum rd, mat theta) =
   let rc = [vec]: [], theta=^theta
   in ( for alpha in coroots(rd)
-       do if theta*alpha = -alpha then rc #:= alpha fi od
+       do if alpha*theta = -alpha then rc #:= alpha fi od
      ; if #rc=0 then null(rank(rd),0) else mat: rc fi )
 
 set simple_reflection (RootDatum rd, int s) =

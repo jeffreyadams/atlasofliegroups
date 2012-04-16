@@ -27,16 +27,16 @@ We represent the parameter of a standard representation as a triplet
 $(x,\lambda,gamma)$, where |x| is an element of the set $K\\backslash G/B$ for
 our fixed real form, $\lambda$ is a character $\lambda$ of (the $\rho$-cover
 of) $H^{\theta_x}$, and $\gamma$ is a character of the complex Lie algebra
-$h$. The latter two values are interrelated by
-$(1+\theta)\gamma=(1+\theta)\lambda$; the projection of $\gamma$ on the
-$+1$-eigenspace of $\theta_x$ is determined by this relation and is called the
-discrete part of $\gamma$. The difference with the discrete part, i.e., the
-projection of $\gamma$ on the $-1$-eigenspace, is called $\nu$, this is what
-we are adding with respect to the values encoded in
-|standardrepk::StandarRepK| values. The part of $\lambda$ that is independent
-of the discrete part of $\gamma$ is its "torsion part" (disconnected
-$H(R)_c$), which would be represented in the |Block| structure by the
-|TorusPart| component of the |TitsElt| of the dual KGB-element ($y$).
+$h$. The latter two values are related; $(1+\theta)\gamma=(1+\theta)\lambda$;
+the projection of $\gamma$ on the $+1$-eigenspace of $\theta_x$ is determined
+by this relation and is called the discrete part of $\gamma$. The difference
+with the discrete part, i.e., the projection of $\gamma$ on the
+$-1$-eigenspace, is called $\nu$, this is what we are adding with respect to
+the values encoded in |standardrepk::StandarRepK| values. The part of
+$\lambda$ that is independent of the discrete part of $\gamma$ is its "torsion
+part" (disconnected $H(R)_c$), which would be represented in the |Block|
+structure by the |TorusPart| component of the |TitsElt| of the dual
+KGB-element ($y$). In fact we convert it intenally to a |TorusPart| here too.
 
 Although $\gamma$ could in principle take any complex values compatible with
 $\lambda$, we shall only be interested in real values, and in fact record a
@@ -47,17 +47,18 @@ class StandardRepr
   friend class Rep_context;
 
   KGBElt x_part;
-  Weight lambda_rho; // $\lambda-\rho$
+  TorusPart y_bits;
   RatWeight infinitesimal_char; // $\gamma$
 
+  // one should call constructor from |Rep_context| only
+  StandardRepr (KGBElt x,TorusPart y,const RatWeight& gamma)
+    : x_part(x), y_bits(y), infinitesimal_char(gamma) {}
+
  public:
-  StandardRepr (KGBElt x,
-		const Weight& lr,
-		const RatWeight& gamma)
-    : x_part(x), lambda_rho(lr), infinitesimal_char(gamma) {}
 
   const RatWeight& gamma() const { return infinitesimal_char; }
   KGBElt x() const { return x_part; }
+  const TorusPart& y() const { return y_bits; }
 
   bool operator== (const StandardRepr&) const;
 
@@ -102,7 +103,7 @@ class Rep_context
        const RatWeight& nu) const;
 
   // component extraction
-  Weight lambda_rho(const StandardRepr& z) const { return z.lambda_rho; }
+  Weight lambda_rho(const StandardRepr& z) const;
 
   RatWeight lambda(const StandardRepr& z) const; // half-integer
   RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
@@ -119,11 +120,29 @@ class Rep_context
   unsigned int orientation_number(const StandardRepr& z) const;
 
   // transformations
+  // prepare for |deform|: make |gamma| dominant, and as theta-stable as can
   StandardRepr& make_dominant(StandardRepr& z) const;
+
+  // light version of |make_dominant|, only w.r.t. real coroot; not implemented
   StandardRepr& make_real_dominant(StandardRepr& z) const;
+
+  // make into unique representative of class for "equivalence"
+  StandardRepr& canonicalise(StandardRepr& z) const;
+
+  class compare
+  { Coweight level_vec; // linear form to apply to |gamma| for ordering
+  public:
+    compare (const Coweight& lv) : level_vec(lv) {}
+
+    bool operator()(const StandardRepr& r,const StandardRepr& s) const;
+  };
+
+  compare repr_less() const;
 
 }; // |Rep_context|
 
+typedef free_abelian::Free_Abelian<StandardRepr,long int,Rep_context::compare>
+ SR_poly;
 
 } // |namespace repr|
 

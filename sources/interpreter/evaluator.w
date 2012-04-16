@@ -132,40 +132,6 @@ void reset_evaluator()
   @< Actions to reset the evaluator @>
 }
 
-@ Here are some more predefined types, less fundamental than those declared in
-\.{types.h} (since not actually used in any of the core language constructs),
-but useful for instance for specifying various coercions.
-
-@< Declarations of global variables @>=
-extern const type_expr rat_type; // \.{rat}
-extern const type_expr str_type; // \.{string}
-extern const type_expr vec_type; // \.{vec}
-extern const type_expr ratvec_type; // \.{ratvec}
-extern const type_expr mat_type; // \.{mat}
-extern const type_expr row_of_int_type; // \.{[int]}
-extern const type_expr row_of_rat_type; // \.{[rat]}
-extern const type_expr row_of_vec_type; // \.{[vec]}
-extern const type_expr row_row_of_int_type; // \.{[[int]]}
-extern const type_expr pair_type; // \.{(*,*)}
-extern const type_expr int_int_type; // \.{(int,int)}
-
-@ The construction of type constants follows the same pattern as before,
-calling |copy| in the case of composite types.
-
-@< Global variable definitions @>=
-const type_expr rat_type(rational_type);
-const type_expr str_type(string_type);
-const type_expr vec_type(vector_type);
-const type_expr ratvec_type(rational_vector_type);
-const type_expr mat_type(matrix_type);
-const type_expr row_of_int_type(copy(int_type));
-const type_expr row_of_rat_type(copy(rat_type));
-const type_expr row_of_vec_type(copy(vec_type));
-const type_expr row_row_of_int_type(copy(row_of_int_type));
-const type_expr pair_type(*unknown_tuple(2));  // copy and destroy original
-const type_expr int_int_type(*make_type("(int,int)")); // idem
-
-
 @ Now we derive the first ``primitive'' value types. The type for rational
 numbers is in fact implemented in the atlas library, so we must include a
 header file into ours.
@@ -490,7 +456,7 @@ void list_expression::print(std::ostream& out) const
 @ If a list display has multiple components, they must all have the same
 type~$t$, and the result type will be ``row of''~$t$. If a type of that form
 is required, the components will be required to have type $t$, if no
-particular type is require then the components will just be required to have
+particular type is required then the components will just be required to have
 equal types; in addition we want to allow additional cases which can be made
 to conform by inserting conversion routines.
 
@@ -527,7 +493,7 @@ case list_display:
      |e.e.sublist| against the required type, and apply a conversion function
      to the converted expression; otherwise |throw| a |type_error| @>
 
-@ When in |convert_expr| we encounter a list display when a non-row is
+@ When in |convert_expr| we encounter a list display when a non-row type is
 expected, we single out the cases that a conversion from a row type to the
 required type is available; in that case we continue to convert the component
 expressions with as expected type the corresponding component type (if
@@ -656,15 +622,15 @@ void tuple_expression::evaluate(level l) const
 
 @* Array subscription.
 %
-While we have seen expressions to build list, and vectors and matrices out of
-them, we so far are not able to access their components once they are
-constructed. To that end we shall now introduce operations to index such
-values. We allow subscription of rows, but also of vectors, rational vectors
-and matrices. Since after type analysis we know which of the cases applies, we
-define several classes. These differ mostly by their |evaluate| method, so we
-first derive an intermediate class from |expression_base|, and derive the
-others from it. This class also serves to host an enumeration type that will
-serve later.
+While we have seen expressions to build lists, and to make vectors and
+matrices out of them, we so far are not able to access their components once
+they are constructed. To that end we shall now introduce operations to index
+such values. We allow subscription of rows, but also of vectors, rational
+vectors and matrices. Since after type analysis we know which of the cases
+applies, we define several classes. These differ mostly by their |evaluate|
+method, so we first derive an intermediate class from |expression_base|, and
+derive the others from it. This class also serves to host an enumeration type
+that will serve later.
 
 @< Type definitions @>=
 struct subscr_base : public expression_base
@@ -1492,13 +1458,13 @@ set that indicates a possible conversion from |a_priori_type| to the operand
 type for which the variant is defined. Coercions may need to be inserted in
 the operand expression, and since that expression could be arbitrarily
 complex, inserting coercions explicitly after the fact would be very hard to
-program. We choose the easier approach is to cast away the converted
-expression once the matching variant is found, and redo the analysis with the
-now known result type so that coercions get inserted during conversion. But
-then we again risk exponential time (although with powers of~2 rather than
-powers of the number of variants); since probably coercions will not be needed
-at all levels, we mitigate this risk by not redoing any work in case of an
-exact match.
+program. We choose the easier approach to cast away the converted expression
+once the matching variant is found, and to redo the analysis with the now
+known result type so that coercions get inserted during conversion. But then
+we again risk exponential time (although with powers of~2 rather than powers
+of the number of variants); since probably coercions will not be needed at all
+levels, we mitigate this risk by not redoing any work in case of an exact
+match.
 
 Apart from those in |variants|, we also test for certain argument types that
 will match without being in any table; for instance the size-of operator~`\#'
@@ -1709,8 +1675,8 @@ almost behave like an overloaded instance; the user should just avoid
 providing a nonempty argument of void type, which is bad practice anyway.
 
 The cases relegated to |resolve_overload| include calls of special operators
-like the size-of operator~`\#', even if such an operator should not occur in
-the overload table.
+like the size-of operator~`\#', even in case such an operator should not occur
+in the overload table.
 
 @< Convert and |return| an overloaded function call... @>=
 { const Hash_table::id_type id =e.e.call_variant->fun.e.identifier_variant;
@@ -2576,8 +2542,10 @@ struct for_expression : public expression_base
   virtual void print(std::ostream& out) const;
 };
 
-@ We needed to lift this out of the header file so that the local function
-|copy_id_pat| could be used.
+@ We needed to lift the following code out of the header file and place it in
+the main \Cpp. file, in order that it could use the local function
+|copy_id_pat| which is not known in the header file.
+
 @< Function definitions @>=
 inline
 for_expression::for_expression@|

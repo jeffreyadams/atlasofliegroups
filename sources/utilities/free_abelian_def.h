@@ -19,6 +19,22 @@ namespace atlas {
 
 template<typename T, typename C, typename Compare>
 Free_Abelian<T,C,Compare>&
+  Free_Abelian<T,C,Compare>::add_term(const T& p, C m)
+{
+  if (m==C(0))
+    return *this; // avoid useless work that might introduce null entries
+  std::pair<typename base::iterator,bool> trial = insert(std::make_pair(p,m));
+  if (not trial.second) // nothing was inserted, but |trial.first->first==p|
+  {
+    trial.first->second += m; // add |m| to existing coefficient
+    if (trial.first->second==C(0))
+      erase(trial.first); // remove term whose coefficient has become $0$
+  }
+  return *this;
+}
+
+template<typename T, typename C, typename Compare>
+Free_Abelian<T,C,Compare>&
   Free_Abelian<T,C,Compare>::add_multiple(const Free_Abelian<T,C,Compare>& p,
 					  C m)
 {

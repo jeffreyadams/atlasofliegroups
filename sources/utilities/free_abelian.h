@@ -29,30 +29,37 @@ namespace free_abelian {
 /******** type definitions ***************************************************/
 
 // A class that represents an element of the free abelian group on the set T
-// in fact, taking |C=polynomials::polynomial<int>| gives $q$-multiplicities
+// or, with |C=polynomials::polynomial<int>| counting with $q$-multiplicities
+// |T| value type, |C| coefficient type, |Compare| equivalence test for |T|
 template<typename T, typename C, typename Compare>
 struct Free_Abelian : public std::map<T,C,Compare>
 {
   typedef C coef_t;
-  typedef std::map<T,coef_t,Compare> base;
+  typedef std::map<T,coef_t,Compare> base; // the (base) reresentation type
   typedef typename base::iterator iterator;
   typedef typename base::const_iterator const_iterator;
 
-  Free_Abelian() : base(Compare()) {}
+  Free_Abelian() : base(Compare()) {} // default |Compare| value for base
 
-  Free_Abelian(Compare c) : base(c) {}
+  Free_Abelian(Compare c) : base(c) {} // here a specific |Compare| is used
 
-  explicit Free_Abelian(const base& m) : base(m) {}
+  explicit Free_Abelian(const base& m) : base(m) {} // promote base to derived
 
-  explicit Free_Abelian(T p, Compare c=Compare()) : base(c)
-  { base::insert(std::make_pair(p,1L)); }
+  explicit Free_Abelian(const T& p, Compare c=Compare()) // create a monomial
+  : base(c)
+  { base::insert(std::make_pair(p,coef_t(1L))); }
 
-  Free_Abelian(T p,C m, Compare c=Compare()) : base(c)
+  Free_Abelian(const T& p,C m, Compare c=Compare()) // mononomial (single term)
+  : base(c)
   { base::insert(std::make_pair(p,m)); }
 
-  template<typename InputIterator>
+  template<typename InputIterator> // iterator over (T,coef_t) pairs
   Free_Abelian(InputIterator first, InputIterator last, Compare c=Compare())
     : base(first,last,c) {}
+
+  Free_Abelian& add_term(const T& p, C m);
+  Free_Abelian& operator+=(const T& p) { return add_term(p,C(1)); }
+  Free_Abelian& operator-=(const T& p) { return add_term(p,C(-1)); }
 
   Free_Abelian& add_multiple(const Free_Abelian& p, C m);
 

@@ -26,10 +26,20 @@ therefore written in~\Cee. Therefore we make very limited use of namespaces:
 we only use the anonymous namespace for data local to this file; any calls
 to \Cpp-code use explicit namespace resolution.
 
-@d realex_version "0.5" // version numbering from 0.5, on 27 November 2010
+Since depending on the readline libraries still gives difficulties on some
+platforms, we arrange for the possibility of compiling this program in the
+absence of that library. This means that we should refrain from any reference
+to its header files, and so the corresponding \&{\#include} statements cannot be
+given in the usual way, which would cause their inclusion unconditionally. As
+for the \.{atlas} program, the compile time flag |NREADLINE|, if defined by
+setting \.{-DNREADLINE} as a flag to the compiler, will prevent any dependency
+on the readline library.
+
+@d realex_version "0.6" // version numbering from 0.5, on 27 November 2010
 
 @c
 
+@< Conditionally include the header files for the readline library @>
 @< Declaration of interface to the parser @>@;
 namespace { @< Local static data @>@; }@;
 @< Definition of wrapper functions @>@;
@@ -99,6 +109,31 @@ void yyerror (YYLTYPE* locp, expr* ,int* ,char const *s)
   atlas::interpreter::main_input_buffer->close_includes();
 }
 
+@ Here are some header files which need to be included for this main program.
+As we discussed above, the inclusion of header files for the readline
+libraries is made dependent on the flag |NREADLINE|. In case the flag is set,
+we define the two symbols used from the readline library as macros, so that
+the code using them can be compiled without needing additional \&{\#ifdef}
+lines. It turns out these symbols are not used in calls, but rather passed as
+function pointers to the |BufferedInput| constructor, so the appropriate
+expansion for these macros is the null pointer.
+
+@h <iostream>
+@h <fstream>
+
+@h "buffer.h"
+@h "lexer.h"
+@h "version.h"
+
+@< Conditionally include the header files for the readline library @>=
+#ifdef NREADLINE
+#define readline NULL
+#define add_history NULL
+#define clear_history()
+#else
+#include <readline/readline.h>
+#include <readline/history.h>
+#endif
 
 @ After a basic initialisation, our main program constructs unique instances
 for various classes of the interpreter, and sets pointers to them so that
@@ -108,15 +143,6 @@ We call the |reset| method of the lexical scanner before calling the parser,
 which will discard any input that is left by a possible previous erroneous
 input. This also already fetches a new line of input, or abandons the program
 in case none can be obtained.
-
-@h <iostream>
-@h <fstream>
-@h <readline/readline.h>
-@h <readline/history.h>
-
-@h "buffer.h"
-@h "lexer.h"
-@h "version.h"
 
 @< Main program @>=
 
@@ -178,8 +204,10 @@ functions.
 @h "built-in-types.h"
 @h "constants.h"
 @< Initialise various parts of the program @>=
+#ifndef NREADLINE
   using_history();
   rl_completion_entry_function = id_completion_func; // set up input completion
+#endif
 
 @)ana.set_comment_delims('{','}');
 @)initialise_evaluator(); initialise_builtin_types();

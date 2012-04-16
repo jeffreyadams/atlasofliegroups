@@ -2,7 +2,7 @@
   This is blocks.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Modified by Marc van Leeuwen, 2007
+  Modified by Marc van Leeuwen, 2007--2012
   Part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
@@ -44,6 +44,8 @@
 #include "y_values.h"
 #include "kgb.h"
 #include "weyl.h"
+#include "kl.h"		// destruction
+#include "repr.h"       // used in |non_integral_block::deformation_terms|
 
 /*
   Our task is fairly simple: given the one sided parameter sets for the real
@@ -143,8 +145,8 @@ DescentStatus descents(KGBElt x, KGBElt y,
 		       const KGB_base& kgb, const KGB_base& dual_kgb);
 
 void insertAscents(std::set<BlockElt>&, const set::EltList&, size_t,
-		   const Block&);
-void makeHasse(std::vector<set::EltList>&, const Block&);
+		   const Block_base&);
+void makeHasse(std::vector<set::EltList>&, const Block_base&);
 
 
 } // namespace
@@ -175,6 +177,8 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
   , d_x(), d_y(), d_first_z_of_x() // filled below
   , d_cross(kgb.rank()), d_cayley(kgb.rank()) // each entry filled below
   , d_descent(), d_length() // filled below
+  , d_bruhat(NULL)
+  , klc_ptr(NULL)
 {
   const TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();
 
@@ -261,7 +265,26 @@ Block_base::Block_base(const SubSystem& sub,
   , d_x(), d_y()
   , d_first_z_of_x(), d_cross(sub.rank()), d_cayley(sub.rank())
   , d_descent(), d_length()
+  , d_bruhat(NULL)
+  , klc_ptr(NULL)
 {}
+
+
+Block_base::Block_base(const Block_base& b) // copy constructor, unused
+  : tW(b.tW)
+  , d_x(b.d_x), d_y(b.d_y)
+  , d_first_z_of_x(b.d_first_z_of_x)
+  , d_cross(b.d_cross), d_cayley(b.d_cayley)
+  , d_descent(b.d_descent), d_length(b.d_length)
+  , d_bruhat(NULL) // don't care to copy; is empty in |Block::build| anyway
+  , klc_ptr(NULL)  // likewise
+{
+#ifdef VERBOSE // then show that we're called (does not actually happen)
+  std::cerr << "copying a block" << std::endl;
+#endif
+}
+
+Block_base::~Block_base() { delete d_bruhat; delete klc_ptr; }
 
 /*!\brief Look up element by |x|, |y| coordinates
 
@@ -459,8 +482,6 @@ Block::Block(const KGB& kgb,const KGB& dual_kgb)
   : Block_base(kgb,dual_kgb)
   , xrange(kgb.size()), yrange(dual_kgb.size())
   , d_Cartan(), d_involution(), d_involutionSupport() // filled below
-  , d_state()
-  , d_bruhat(NULL)
 {
   d_Cartan.reserve(size());
   d_involution.reserve(size());
@@ -539,48 +560,44 @@ void Block::compute_supports()
 #endif
 }
 
-Block::~Block() { delete d_bruhat; } // type of |d_bruhat| is complete here
 Block::Block(const Block& b)
   : Block_base(b) // copy
   , d_Cartan(b.d_Cartan)
   , d_involution(b.d_involution)
   , d_involutionSupport(b.d_involutionSupport)
-  , d_state(b.d_state)
-  , d_bruhat(NULL) // possibly filled below
-{
-#ifdef VERBOSE // then show that we're called (does not actually happen)
-  std::cerr << "copying a block" << std::endl;
-#endif
-
-  if (b.d_bruhat!=NULL) // this does not happen when called from |Block::build|
-    d_bruhat = new BruhatOrder(*b.d_bruhat);
-}
+{}
 
 
 /******** copy, assignment and swap ******************************************/
 
-/******** accessors **********************************************************/
+// accessors
 
-/******** manipulators *******************************************************/
+// manipulators
 
 /*!
   \brief Constructs the BruhatOrder.
-
-  NOTE: may throw a MemoryOverflow error. Commit-or-rollback is guaranteed.
+  It could run out of memory, but Commit-or-rollback is guaranteed.
 */
-void Block::fillBruhat()
+void Block_base::fillBruhat()
 {
-  if (d_state.test(BruhatConstructed)) // work was already done
-    return;
-
-  std::vector<set::EltList> hd; makeHasse(hd,*this);
-  BruhatOrder* bp = new BruhatOrder(hd); // may throw here
-
-  // commit
-  delete d_bruhat; // this is overly careful: it must be NULL
-  d_bruhat = bp;
-  d_state.set(BruhatConstructed);
+  if (d_bruhat==NULL) // do this only the first time
+  {
+    std::vector<set::EltList> hd; makeHasse(hd,*this);
+    d_bruhat = new BruhatOrder(hd); // commit iff new complete without throwing
+  }
 }
+
+// computes and stores the KL polynomials
+void Block_base::fill_klc(BlockElt last_y,bool verbose)
+{
+  if (klc_ptr==NULL) // do this only the first time
+    klc_ptr=new kl::KLContext(*this);
+
+  klc_ptr->fill(last_y,verbose); // extend tables to contain |last_y|
+}
+
+
+/*****				gamma_block				****/
 
 
 gamma_block::gamma_block(RealReductiveGroup& GR,
@@ -1010,25 +1027,33 @@ public:
   void non_complex_cross(weyl::Generator s,const nblock_help& h);
 }; // |class nblock_elt|
 
+const ComplexReductiveGroup& non_integral_block::complexGroup() const
+  { return GR.complexGroup(); }
+const InvolutionTable& non_integral_block::involution_table() const
+  { return complexGroup().involution_table(); }
+
 non_integral_block::non_integral_block
-  (RealReductiveGroup& GR,
+  (RealReductiveGroup& G_real,
    const SubSystem& subsys, // at the dual side
    KGBElt x,
    const RatWeight& lambda, // discrete parameter
    const RatWeight& gamma, // infinitesimal char
    BlockElt& entry_element) // output parameter
-  : Block_base(subsys,GR.twistedWeylGroup()) // uses ordinary W for printing
-  , kgb(GR.kgb())
-  , G(GR.complexGroup())
+  : Block_base(subsys,G_real.twistedWeylGroup()) // uses ordinary W for printing
+  , GR(G_real)
+  , kgb(G_real.kgb())
   , sub(subsys)
   , singular()
   , infin_char(gamma)
   , kgb_nr_of()
   , y_info()
 {
+  const ComplexReductiveGroup& G = complexGroup();
   const RootDatum& rd = G.rootDatum();
-  const GlobalTitsGroup Tg (G,tags::DualTag());// for $^\vee G$
   const Cartan_orbits& i_tab = G.involution_table();
+
+  // we would like to rewrite this constructor without of the following object
+  const GlobalTitsGroup Tg (G,tags::DualTag());// for $^\vee G$
 
   size_t our_rank = sub.rank(); // this is independent of ranks in |GR|
   for (weyl::Generator s=0; s<our_rank; ++s)
@@ -1396,18 +1421,17 @@ non_integral_block::non_integral_block
 
 RatWeight non_integral_block::nu(BlockElt z) const
 {
-  WeightInvolution theta =
-    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
+  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
+  const WeightInvolution& theta = involution_table().matrix(i_x);
   return RatWeight (gamma().numerator()-theta*gamma().numerator()
 		    ,2*gamma().denominator()).normalize();
 }
 
 RatWeight non_integral_block::y_part(BlockElt z) const
 {
-  WeightInvolution theta =
-    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
   RatWeight t =  y_info[d_y[z]].torus_part().log_pi(false);
-  G.involution_table().real_unique(kgb.inv_nr(parent_x(z)),t);
+  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
+  involution_table().real_unique(i_x,t);
   return (t/=2).normalize();
 }
 
@@ -1416,13 +1440,12 @@ RatWeight non_integral_block::y_part(BlockElt z) const
 // the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
 Weight non_integral_block::lambda_rho(BlockElt z) const
 {
-  WeightInvolution theta =
-    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
   RatWeight t =  y_info[d_y[z]].torus_part().log_pi(false);
-  G.involution_table().real_unique(kgb.inv_nr(parent_x(z)),t);
+  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
+  involution_table().real_unique(i_x,t);
 
   RatWeight lr =
-    (infin_char - t - RatWeight(G.rootDatum().twoRho(),2)).normalize();
+    (infin_char - t - RatWeight(GR.rootDatum().twoRho(),2)).normalize();
   assert(lr.denominator()==1);
   return lr.numerator();
 }
@@ -1432,8 +1455,8 @@ Weight non_integral_block::lambda_rho(BlockElt z) const
 // the projection factor $1-\theta\over2$ kills the modded-out-by part of $t$
 RatWeight non_integral_block::lambda(BlockElt z) const
 {
-  WeightInvolution theta =
-    G.involutionMatrix(kgb.involution(kgb_nr_of[d_x[z]]));
+  InvolutionNbr i_x = kgb.inv_nr(parent_x(z));
+  const WeightInvolution& theta = involution_table().matrix(i_x);
   RatWeight t =  y_info[d_y[z]].torus_part().log_2pi();
   const Weight& num = t.numerator();
   return infin_char - RatWeight(num-theta*num,t.denominator());
@@ -1494,6 +1517,91 @@ BlockEltList non_integral_block::survivors_below(BlockElt z) const
   return result;
 }
 
+std::vector<non_integral_block::term>
+non_integral_block::deformation_terms (BlockElt entry_elem)
+{
+  std::vector<term> result;
+  const kl::KLContext& klc = Block_base::klc(entry_elem,false);
+
+  std::vector<BlockElt> survivors; survivors.reserve(entry_elem+1);
+  for (BlockElt x=0; x<=entry_elem; ++x)
+    if (survives(x))
+      survivors.push_back(x);
+
+  BlockElt n_surv = survivors.size(); // |BlockElt| now indexes |survivors|
+
+  repr::Rep_context RC(GR);
+  std::vector<unsigned int> orient_nr(n_surv);
+  for (BlockElt z=0; z<n_surv; ++z)
+  {
+    BlockElt zz=survivors[z];
+    repr::StandardRepr r =
+      RC.sr(parent_x(zz),lambda_rho(zz),gamma());
+    orient_nr[z] = RC.orientation_number(r);
+  }
+
+  // the following store (sums of) KL polynomials evaluated at $-1$
+  int_Matrix P(n_surv,n_surv,0), Q(n_surv,n_surv,0);
+
+  // compute $P(x,z)$ for indexes |x<=z<n_surv| into survivors
+  for (BlockElt z=n_surv; z-->0; )
+  {
+    BlockElt zz=survivors[z];
+    unsigned int parity = length(zz)%2;
+    for (BlockElt xx=0; xx <= zz; ++xx)
+    {
+      const kl::KLPol& pol = klc.klPol(xx,zz); // regular KL polynomial
+      if (not pol.isZero())
+      {
+	// evaluate |pol| at $X=-1$ since that is what's needed in the end
+	int eval=0;
+	for (polynomials::Degree d=pol.size(); d-->0; )
+	  eval = static_cast<int>(pol[d])-eval;
+	if (length(xx)%2!=parity)
+	  eval = -eval; // incorporate sign for length difference in evaluation
+	BlockEltList nb=survivors_below(xx);
+	for (size_t i=0; i<nb.size(); ++i)
+	{
+	  BlockElt x = std::lower_bound // look up |nb[i]| in |survivors|
+	    (survivors.begin(),survivors.end(),nb[i])-survivors.begin();
+	  assert(survivors[x]==nb[i]); // must be found
+	  P(x,z) += eval;
+	} // |for (i)| in |nb|
+      } // |if(pol!=0)|
+    } // |for (x<=z)|
+  } // for |z|
+
+  // now compute evaluated polynomials $Q_{x,z}$, for |x<=z<n_surv|
+  for (BlockElt x=0; x<n_surv; ++x)
+  {
+    Q(x,x)=1;
+    for (BlockElt z=x+1; z<n_surv; ++z)
+      for (BlockElt y=x; y<z; ++y)
+	Q(x,z) -= Q(x,y)*P(y,z);  // $-\sum{x\leq y<z}Q_{x,y}P^\pm_{y,z}$
+  }
+
+  if (survives(entry_elem))
+  {
+    BlockElt z=n_surv-1;
+    assert(survivors[z]==entry_elem);
+    unsigned odd = (length(entry_elem)+1)%2; // opposite parity
+
+    for (BlockElt x=n_surv-1; x-->0; ) // skip |entry_elem|
+    {
+      int coef=0;
+      for (BlockElt y=x; y<n_surv-1; ++y)
+	if (length(survivors[y])%2==odd)
+	  coef += P(x,y)*Q(y,z);
+      // here we evaluated  |coef| at $X=-1$: "real" part of $(1-s)*coef[X:=s]$
+      // if (orientation_difference(x,z)) coef*=s;
+      int orient_express = (orient_nr[n_surv-1]-orient_nr[x])/2;
+      if (coef!=0)
+	result.push_back(term(orient_express%2!=0 ? -coef : coef,
+			      survivors[x]));
+    }
+  }
+  return result;
+}
 
 struct block_elt_entry
 {
@@ -1681,24 +1789,26 @@ nblock_context::nblock_context(RealReductiveGroup& GR, const SubSystem& sub)
 {}
 
 non_integral_block::non_integral_block // interval below |x| only
-  (RealReductiveGroup& GR,
+  (RealReductiveGroup& G_real,
    const SubSystem& subsys,
    KGBElt x,
    const RatWeight& lambda, // discrete parameter
    const RatWeight& gamma // infinitesimal character
   )
-  : Block_base(subsys,GR.twistedWeylGroup()) // uses ordinary W for printing
-  , kgb(GR.kgb())
-  , G(GR.complexGroup())
+  : Block_base(subsys,G_real.twistedWeylGroup()) // use ordinary W for printing
+  , GR(G_real)
+  , kgb(G_real.kgb())
   , sub(subsys)
   , singular()
   , infin_char(gamma)
   , kgb_nr_of()
   , y_info()
 {
+  const ComplexReductiveGroup& G=complexGroup();
   const RootDatum& rd = G.rootDatum();
   nblock_context ctxt(GR,sub);
   const GlobalTitsGroup& Tg = ctxt.Tg;
+
   KGB_hash& y_hash = ctxt.y_hash;
   kgb::InvInfo& gfd = ctxt.gfd;
   block_hash& hash = ctxt.z_hash;
@@ -1925,7 +2035,7 @@ DescentStatus descents(KGBElt x,
 void insertAscents(std::set<BlockElt>& hs,
 		   const set::EltList& hr,
 		   size_t s,
-		   const Block& block)
+		   const Block_base& block)
 {
   for (size_t j = 0; j < hr.size(); ++j)
   {
@@ -1958,7 +2068,7 @@ void insertAscents(std::set<BlockElt>& hs,
   kgb. If it doesn't then we're essentially at a split principal series. The
   immediate predecessors of z are just the inverse Cayley transforms.
 */
-void makeHasse(std::vector<set::EltList>& Hasse, const Block& block)
+void makeHasse(std::vector<set::EltList>& Hasse, const Block_base& block)
 {
   Hasse.resize(block.size());
 

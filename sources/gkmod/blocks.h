@@ -76,15 +76,24 @@ class Block_base {
   DescentStatusList d_descent; // of size |size()|
   std::vector<unsigned short> d_length; // of size |size()|
 
+  // possible tables of Bruhat order and Kazhdan-Lusztig polynomials
+  BruhatOrder* d_bruhat;
+  kl::KLContext* klc_ptr;
+
  public:
 
 // constructors and destructors
   Block_base(const KGB& kgb,const KGB& dual_kgb);
   Block_base(const SubSystem& sub, const TwistedWeylGroup& printing_W);
 
-  virtual ~Block_base() {}
+  virtual ~Block_base(); // deletes |d_bruhat| and |klc_ptr| (if non-NULL)
 
 // copy, assignment and swap
+
+  Block_base(const Block_base& b); // implemented but never used (optimized out)
+ private:
+  Block_base& operator=(const Block_base& b); // not implemented
+ public:
 
 // accessors
 
@@ -155,10 +164,19 @@ class Block_base {
   // print derivated class specific information  for |z| (used in |print_to|)
   virtual std::ostream& print(std::ostream& strm, BlockElt z) const =0;
 
+  // manipulators
+  BruhatOrder& bruhatOrder() { fillBruhat(); return *d_bruhat; }
+  kl::KLContext& klc(BlockElt last_y, bool verbose)
+  { fill_klc(last_y,verbose); return *klc_ptr; }
+
  protected:
   // a method to straighten out blocks generated in some non standard order
   // renumber |x| through |new_x|, then order increasingly, set |first_z_of_x|
   KGBElt renumber_x(const std::vector<KGBElt>& new_x);
+
+ private:
+  void fillBruhat();
+  void fill_klc(BlockElt last_y,bool verbose);
 
 }; // |class Block_base|
 
@@ -186,9 +204,6 @@ the requirement that $theta_y$ is the negative transpose of $theta_x$.
   */
 class Block : public Block_base
 {
-
-  enum State { BruhatConstructed, NumStates };
-
   size_t xrange;
   size_t yrange;
 
@@ -200,19 +215,6 @@ class Block : public Block_base
   */
   std::vector<RankFlags> d_involutionSupport; // of size |size()|
 
-  /*!
-\brief Records state bits (in fact one: whether the Bruhat order is computed).
-  */
-  BitSet<NumStates> d_state;
-
-  /*!
-\brief Bruhat order on the block.
-
-Definition now corrected mathematically from the bad definition of
-Vogan's Park City notes to one equivalent to the transitive closure of
-non-vanishing KL polynomial.
-  */
-  BruhatOrder* d_bruhat;
 
  public:
 
@@ -225,10 +227,10 @@ non-vanishing KL polynomial.
   static Block build // pseudo contructor with stored KGB sets
     (RealReductiveGroup& G_R, RealReductiveGroup& dG_R);
 
-  ~Block(); // |delete d_bruhat;| but that does not compile here
+  ~Block() {}
 
 // copy, assignment and swap
-  Block(const Block& b); // copy contructor must handle |d_bruhat|
+  Block(const Block& b); // copy contructor, must be accessible, but is unused
  private:
   Block& operator=(const Block& b); // we don't however need to assign
  public:
@@ -265,17 +267,11 @@ non-vanishing KL polynomial.
   virtual // defined in block_io.cpp
     std::ostream& print(std::ostream& strm, BlockElt z) const;
 
-  // manipulators
-  BruhatOrder& bruhatOrder()
-  {
-    fillBruhat(); return *d_bruhat;
-  }
 
   // private accessor and manipulators
 private:
   void compute_supports(); // used during construction
 
-  void fillBruhat();
 }; // |class Block|
 
 
@@ -324,8 +320,8 @@ class gamma_block : public Block_base
 
 class non_integral_block : public Block_base
 {
-  const KGB& kgb; // on the |x| side we employ a pre-computed KGB structure
-  const ComplexReductiveGroup& G; // apart from |kgb|, use |GR.complexGroup()|
+  RealReductiveGroup& GR; // non-const to allow construction of |Rep_context|
+  const KGB& kgb; // initialised to |GR.kgb()|, so can be constant
   const SubSystem& sub;
 
   RankFlags singular; // flags simple roots for which |infin_char| is singular
@@ -337,7 +333,7 @@ class non_integral_block : public Block_base
 
  public:
   non_integral_block
-    (RealReductiveGroup& GR,
+    (RealReductiveGroup& G,
      const SubSystem& subsys,
      KGBElt x,			// starting |x| value
      const RatWeight& lambda,	// discrete parameter
@@ -346,12 +342,16 @@ class non_integral_block : public Block_base
     );
 
   non_integral_block // alternative constructor, for interval below |x|
-    (RealReductiveGroup& GR,
+    (RealReductiveGroup& G,
      const SubSystem& subsys,
      KGBElt x,			// first |x| value
      const RatWeight& lambda,	// discrete parameter
      const RatWeight& gamma	// infinitesimal character
     );
+
+  // "inherited" accessors
+  const ComplexReductiveGroup& complexGroup() const;
+  const InvolutionTable& involution_table() const;
 
   // virtual methods
   virtual KGBElt xsize() const { return kgb_nr_of.size(); } // child |x| range
@@ -374,6 +374,12 @@ class non_integral_block : public Block_base
   RankFlags singular_simple_roots() { return singular; }
   bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
   BlockEltList survivors_below(BlockElt z) const; // expression for $I(z)$
+
+  struct term
+  { int coef; BlockElt elt;
+    term(int c, BlockElt b) : coef(c),elt(b) {}
+  };
+  std::vector<term> deformation_terms (BlockElt z);
 
 }; // |class non_integral_block|
 

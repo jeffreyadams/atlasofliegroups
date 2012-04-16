@@ -37,6 +37,7 @@ namespace involutions {
 
 
 // this class gathers some information associated to a root datum involution
+// the data depends only on the permutation of the |RootSystem| by |theta|
 class InvolutionData
 {
   Permutation d_rootInvolution; // permutation of all roots
@@ -95,12 +96,12 @@ class InvolutionTable
 
   struct record
   {
+    InvolutionData id; // stuff that does not involve weight coordinates
     WeightInvolution theta;
     int_Matrix projector; // for |y|, same kernel as |row_saturate(theta-id)|
-    int_Matrix M_real; // $1-\theta$ followed by expression on adapted basis
+    int_Matrix M_real; // $1-\theta$ followed by expression in adapted basis
     int_Vector diagonal; // divisors for image of |M_real|
     int_Matrix lift_mat; // section: satisfies |M_real*lift_mat==diag(diagonal)|
-    InvolutionData id;
     unsigned int length;
     unsigned int W_length;
     SmallSubspace mod_space; // for |x|
@@ -112,8 +113,9 @@ class InvolutionTable
 	 unsigned int l,
 	 unsigned int Wl,
 	 const SmallSubspace& ms)
-  : theta(inv), projector(proj), M_real(Mre), diagonal(d), lift_mat(lm)
-  , id(inv_d),length(l), W_length(Wl), mod_space(ms) {}
+  : id(inv_d), theta(inv)
+  , projector(proj), M_real(Mre), diagonal(d), lift_mat(lm)
+  , length(l), W_length(Wl), mod_space(ms) {}
   };
 
   std::vector<record> data;
@@ -189,6 +191,10 @@ class InvolutionTable
 
   // choose unique representative for real projection of rational weight
   void real_unique(InvolutionNbr i, RatWeight& y) const;
+
+  // pack $\lambda-\rho$ into a |TorusPart|
+  TorusPart pack(InvolutionNbr i, const Weight& lambda_rho) const;
+  Weight unpack(InvolutionNbr i, TorusPart y_part) const;
 
   // the following produces a light-weight function object calling |involution|
   class mapper
