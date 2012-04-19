@@ -1504,54 +1504,25 @@ void embedding_f()
 void test_f()
 {
   RealReductiveGroup& GR = realmode::currentRealGroup();
-  ComplexReductiveGroup& G = GR.complexGroup();
-  const RootDatum& rd = G.rootDatum();
 
-  RatWeight nu=
-    interactive::get_ratweight
-    (interactive::sr_input(),"rational weight nu: ",rd.rank());
+  Weight lambda_rho;
+  RatWeight nu(0);
+  KGBElt x;
 
-  const KGB& kgb = GR.kgb();
-  unsigned long x=interactive::get_bounded_int
-    (interactive::common_input(),"KGB element: ",kgb.size());
+  interactive::get_parameter(GR,x,lambda_rho,nu);
+  Rep_context rc(GR);
+  StandardRepr sr = rc.sr(x,lambda_rho,nu);
 
-  WeightInvolution theta = G.involutionMatrix(kgb.involution(x));
+  ioutils::OutputFile f;
 
-  nu = RatWeight
-    (nu.numerator() - theta*nu.numerator(),2*nu.denominator());
+  BlockElt z;
+  non_integral_block block(GR,sr,z);
 
-  std::cout << "Made -theta fixed, nu = " << nu << std::endl;
-  RatWeight gamma(rd.twoRho()+theta*rd.twoRho(),4);
-  // assume |lambda=rho| for a valid value
-  gamma += nu;
-  std::cout << "added discrete series contribution, gamma = " << gamma
-	    << std::endl;
+  f << "Given parameters define element " << z
+    << " of the following block:" << std::endl;
 
-  subdatum::SubDatum sub (GR,gamma,x);
-
-  WeylWord ww;
-  weyl::Twist twist = sub.twist(theta,ww);
-
-  Permutation pi;
-
-  std::cout << "Subsystem on dual side is ";
-  if (sub.semisimple_rank()==0)
-    std::cout << "empty.\n";
-  else
-  {
-    std::cout << "of type "
-	      << dynkin::Lie_type(sub.cartanMatrix(),true,false,pi)
-	      << ", with roots ";
-    for (weyl::Generator s=0; s<sub.semisimple_rank(); ++s)
-      std::cout << sub.parent_nr_simple(pi[s])
-		<< (s<sub.semisimple_rank()-1 ? "," : ".\n");
-  }
-
-  std::cout << "Twisted involution in subsystem: " << ww << std::endl;
-
-  kgb::subsys_KGB sub_KGB(kgb,sub,x);
-
-  kgb_io::print(std::cout,sub_KGB);
+  block.print_to(f,false);
+  block_io::print_KL(f,block,z);
 } // |test_f|
 
 

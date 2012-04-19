@@ -327,7 +327,7 @@ class non_integral_block : public Block_base
   const RatWeight infin_char; // the infinitesimal character of the block
 
   std::vector<KGBElt> kgb_nr_of; // maps child |x| numbers to parent |kgb|
-  std::vector<GlobalTitsElement> y_info; // indexed by child |y| numbers
+  std::vector<TorusElement> y_info; // indexed by child |y| numbers
 
  public:
   non_integral_block
