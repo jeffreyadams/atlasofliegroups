@@ -81,13 +81,14 @@ TorusElement TorusElement::operator -(const TorusElement& t) const
 
 TorusElement& TorusElement::operator+=(TorusPart v)
 {
+  int d = repr.denominator();
   for (size_t i=0; i<v.size(); ++i)
     if (v[i])
     {
-      if (repr.numerator()[i]<repr.denominator())
-	repr.numerator()[i]+=repr.denominator(); // add 1/2 to coordinate
+      if (repr.numerator()[i]<d)
+	repr.numerator()[i]+=d; // add 1/2 to coordinate
       else
-	repr.numerator()[i]-=repr.denominator(); // subtract 1/2
+	repr.numerator()[i]-=d; // subtract 1/2
     }
   return *this;
 }
