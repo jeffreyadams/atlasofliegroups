@@ -1387,9 +1387,9 @@ non_integral_block::non_integral_block
 
   // now store values into constructed object
 
-  y_info.reserve(y_hash.size());
+  y_info.reserve(yy_hash.size());
   for (unsigned int j=0; j<yy_hash.size(); ++j)
-    y_info.push_back(y_hash[j].repr());
+    y_info.push_back(yy_hash[j].repr().torus_part());
 
   // and look up which element matches the original input
   entry_element = element(new_x[x_of[x_org]],yy_hash.find(gfd.pack(y_org)));
@@ -1658,11 +1658,11 @@ non_integral_block::non_integral_block
       const RootNbr alpha=sub.parent_nr_simple(s); // root currently considered
       unsigned int y_start=y_hash.size(); // new |y|s numbered from here up
 
-
-      int d = // length change: compare alpha and theta(alpha)
-	i_tab.complex_roots(i_theta).isMember(alpha)
-	? rd.isPosRoot(i_tab.root_involution(i_theta,alpha)) ? 1 : -1
-        : 0 ;
+      // compute length change; only nonzero for complex roots; if so, if
+      // $\theta(\alpha)$ positive, like $\alpha$, then go down (up for $x$)
+      int d = i_tab.complex_roots(i_theta).isMember(alpha)
+	    ? rd.isPosRoot(i_tab.root_involution(i_theta,alpha)) ? -1 : 1
+	    : 0 ;
       int length = d_length[next] + d;
       assert(length>=0); // if not, then starting point not minimal for length
 
@@ -1791,7 +1791,7 @@ non_integral_block::non_integral_block
 	      // complete fiber of x's over new involution using
 	      // subsystem imaginary cross actions
               RootNbrSet pos_imag = // subsystem positive imaginary roots
-		sub.positive_roots() & i_tab.imaginary_roots(i_theta);
+		sub.positive_roots() & i_tab.imaginary_roots(kgb.inv_nr(ctx1));
 	      RootNbrList ib = rd.simpleBasis(pos_imag);
 	      for (size_t k=x_start; k<kgb_nr_of.size(); ++k) // grows
 	      {
@@ -1837,6 +1837,7 @@ non_integral_block::non_integral_block
 	      if (Cayleys.second!=UndefKGB) // then double valued (type1)
 	      {
 		KGBElt ctx2 = kgb.cross(Cayleys.second,sub.to_simple(s));
+		assert (x_of[ctx2]!=(unsigned int)~0);
 		target = element(x_of[ctx2],cty);
 		Cayley_link[base_z+j].second = target;
 		first_free_slot(Cayley_link[target]) = base_z+j;
@@ -1847,7 +1848,7 @@ non_integral_block::non_integral_block
 
       } // |for(i)
 
-      // if (y_hash.size()>y_start)
+      if (y_hash.size()>y_start)
 	queue.push_back(d_x.size()); // mark end of new involution packet
     } // |for(s)|
   } // |for (next<queue[qi])|
