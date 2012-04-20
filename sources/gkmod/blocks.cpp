@@ -1518,7 +1518,7 @@ void nblock_help::do_down_Cayley (nblock_elt& z, weyl::Generator s) const
 }
 
 non_integral_block::non_integral_block
-  (const repr::Rep_context& rc,
+  (const Rep_context& rc,
    StandardRepr sr,
    BlockElt& entry_element	// set to block element matching input
   )
@@ -1997,14 +1997,13 @@ non_integral_block::deformation_terms (BlockElt entry_elem)
 
   BlockElt n_surv = survivors.size(); // |BlockElt| now indexes |survivors|
 
-  repr::Rep_context RC(GR);
+  Rep_context rc(GR);
   std::vector<unsigned int> orient_nr(n_surv);
   for (BlockElt z=0; z<n_surv; ++z)
   {
     BlockElt zz=survivors[z];
-    repr::StandardRepr r =
-      RC.sr(parent_x(zz),lambda_rho(zz),gamma());
-    orient_nr[z] = RC.orientation_number(r);
+    StandardRepr r = rc.sr(parent_x(zz),lambda_rho(zz),gamma());
+    orient_nr[z] = rc.orientation_number(r);
   }
 
   // the following store (sums of) KL polynomials evaluated at $-1$

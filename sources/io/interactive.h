@@ -95,7 +95,7 @@ namespace interactive {
     (const standardrepk::SRK_context& c)
     throw(error::InputError);
 
-  repr::StandardRepr get_repr(const repr::Rep_context& c)
+  StandardRepr get_repr(const Rep_context& c)
     throw(error::InputError);
 
   input::InputBuffer& common_input();
