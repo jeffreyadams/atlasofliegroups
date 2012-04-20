@@ -174,7 +174,7 @@ functions recursively (a function must be defined before it is named, so its
 definition cannot refer to its name) which is unusual for a functional
 programming language; recursion can however be achieved using assignment.)
 
-It is important to realize the destinction between creating names and
+It is important to realize the distinction between creating names and
 assigning to them. The interpreter will refuse expressions with unknown names
 in them, whether they are being used or assigned to (realex is not a symbolic
 algebra language, which would take unknown names to stand for indeterminates).
@@ -188,7 +188,7 @@ purposes; for "ordinary" use of realex, one rarely needs ':='. Both 'set' and
 'let' follow the name(s) being introduced by '=' (not ':='); apart from that,
 '=' also serves as equality testing operator (for certain types).
 
-The language it strictly typed, so that type-correctness of expressions must
+The language is strictly typed, so that type-correctness of expressions must
 be established before their evaluation is attempted. This means that most
 common errors are caught before execution starts, and error messages can be
 more meaningful by referrring to the offending expression rather than to its
@@ -260,10 +260,11 @@ a (Cartan) matrix. For instance
   Value: Lie type 'E6.T1.D4'
 
 All built-in operators and functions are defined as "overloaded" symbols, even
-if only one meaning is built-in as for 'block_sizes'; this allows the user to
-add new definitions of those symbols without overriding those built in. On the
-other hand all non-function values are stored in a different table, which
-allows only one value to be associated at any time to a given identifier.
+if only one meaning is built-in, as is the case for 'block_sizes'. This allows
+the user to add new definitions of those symbols without overriding those
+built in. On the, the values of all identifiers that are not functions are
+stored in a different table, which allows only one value to be associated at
+any time to a given identifier.
 
 The interpreter knows about several "primitive" types, which it distinguishes
 but for which (in contrast to "composite" types discussed below) it usually
@@ -960,11 +961,12 @@ redirection only applies to a single command, which must be an expression
 evaluation (function call or variable, not an assignment or other statement).
 Input redirection should not be followed by anything on the same line, but it
 can invoke any number of commands from the given file. It can even be used
-recursively to include commands from other files that be initial include file.
-One cannot globally redirect the output produced from the commands of an
-included file. If a command from a file included at any level produces a
-syntax or runtime error, a message reporting the place of the error is printed,
-all included files are abandoned, and control is given back to the terminal.
+recursively to include commands from other files that are needed to process
+the included file, it that file contains lines that start with '<'. One cannot
+globally redirect the output produced from the commands of an included file.
+If a command read from a file included at any level produces a syntax or
+runtime error, a message reporting the place of the error is printed, all
+included files are abandoned, and control is given back to the terminal.
 
 
 11 Miscellaneous commands

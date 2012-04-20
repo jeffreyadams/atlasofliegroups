@@ -116,7 +116,7 @@ std::ostream& gamma_block::print
   RatWeight ls = local_system(z);
   strm << "(=" << std::setw(xwidth) << parent_x(z)
        << ',' << std::setw(3*ls.size()+3) << ls
-       << ')' << strm << std::setw(2) << "";
+       << ')' << std::setw(2) << "";
 
   // print root datum involution
   if (as_invol_expr)

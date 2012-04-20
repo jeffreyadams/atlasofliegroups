@@ -66,9 +66,12 @@ class TorusElement
 
   // this method is to be used only at weights |alpha| taking value +1 or -1
   bool negative_at(const Coweight& alpha) const
-    { return repr.scalarProduct(alpha)%2!=0; }
+  {
+    // the following asserts internally that |evaluate_at(alpha)| is integer
+    return repr.scalarProduct(alpha)%2!=0; // true if evaluates to odd integer
+  }
 
-  // evaluation giving rational number modulo 2 (|negative_at| iff equals 1)
+  // evaluation giving rational number modulo 2, normalised to interval [0,2)
   Rational evaluate_at(const Coweight& alpha) const;
 
 // a method for rapidly doing imaginary cross action (for completing fiber)

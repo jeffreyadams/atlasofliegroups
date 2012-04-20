@@ -133,7 +133,7 @@ class KGB_base
   TwistedInvolution nth_involution(unsigned int n) const
     { return inv_pool[n]; }
 
-  InvolutionNbr involution_index(KGBElt x) const
+  InvolutionNbr involution_index(KGBElt x) const // internal index of involution
   { return std::upper_bound(first_of_tau.begin(),first_of_tau.end(),x)
       -first_of_tau.begin() -1;
   }
@@ -141,7 +141,7 @@ class KGB_base
   { return inv_pool[involution_index(x)]; }
 
   const WeightInvolution & involution_matrix(KGBElt x) const;
-  InvolutionNbr inv_nr(KGBElt x) const; // external number (for inner class)
+  InvolutionNbr inv_nr(KGBElt x) const; // external number (within inner class)
 
   const DescentSet& descent(KGBElt x) const { return info[x].desc; }
   bool isDescent(weyl::Generator s, KGBElt x) const
@@ -241,8 +241,9 @@ class GlobalFiberData
     Weight check_2rho_imag;
     RootNbrList simple_imag,simple_real;
 
-  inv_info() : Cartan(~0), proj(), check_2rho_imag(), simple_imag()
-    {} // allow uninitialized
+  inv_info()
+  : Cartan(~0), proj(), check_2rho_imag(), simple_imag(), simple_real()
+    {} // allow uninitialized construction
   inv_info(unsigned int c,
 	   const int_Matrix& p,
 	   const Weight& c2ri,
