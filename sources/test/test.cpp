@@ -1509,7 +1509,7 @@ void test_f()
   RatWeight nu(0);
   KGBElt x;
 
-  interactive::get_parameter(GR,x,lambda_rho,nu);
+  SubSystem sub=interactive::get_parameter(GR,x,lambda_rho,nu);
   Rep_context rc(GR);
   StandardRepr sr = rc.sr(x,lambda_rho,nu);
 
@@ -1523,6 +1523,35 @@ void test_f()
 
   block.print_to(f,false);
   block_io::print_KL(f,block,z);
+
+  RatWeight lambda(lambda_rho *2 + GR.rootDatum().twoRho(),2);
+  lambda.normalize();
+  BlockElt zz;
+  non_integral_block b(GR,sub,x,lambda,nu,zz);
+
+  bool OK = z==zz and block.rank()==b.rank() and block.size()==b.size();
+  if (OK)
+  {
+    for (BlockElt z=0; z<b.size(); ++z)
+    {
+      if (block.length(z)!=b.length(z))
+      { std::cout << "length " << z ; OK=false; break; }
+
+      for (weyl::Generator s=0; s<b.rank(); ++s)
+      {
+	if (block.cross(s,z)!=b.cross(s,z))
+        { std::cout << "cross " << s <<',' << z; OK=false; break; }
+	if (block.cayley(s,z)!=b.cayley(s,z))
+        { std::cout << "Cayley " << s <<',' << z; OK=false; break; }
+	if (block.inverseCayley(s,z)!=b.inverseCayley(s,z))
+        { std::cout << "inverse Cayley " << s <<',' << z; OK=false; break; }
+      }
+      if (not OK) break;
+    }
+  }
+
+  std::cout << (OK ? "OK" : "\nerror found") << std::endl;
+
 } // |test_f|
 
 
