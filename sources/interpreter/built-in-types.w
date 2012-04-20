@@ -2952,13 +2952,8 @@ from the \.{atlas} program for the \.{nblock} command.
 void print_n_block_wrapper(expression_base::level l)
 { shared_module_parameter p = get<module_parameter_value>();
   test_standard(*p);
-  RealReductiveGroup& G_r = p->rf->val;
-  const Rep_context& rc= p->rc();
-  StandardRepr r = p->val; // take a copy to avoid changing the original
-  rc.make_dominant(r); // ensure dominant infinitesimal character
-  SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),r.gamma());
   BlockElt init_index; // will hold index in the block of the initial element
-  non_integral_block block(G_r,subsys,r.x(),rc.lambda(r),r.gamma(),init_index);
+  non_integral_block block(p->rc(),p->val,init_index);
   *output_stream << "Parameter defines element " << init_index
                @|<< " of the following block:" << std::endl;
   block.print_to(*output_stream,true);
@@ -2978,13 +2973,8 @@ void n_block_wrapper(expression_base::level l)
   test_standard(*p);
   if (l!=expression_base::no_value)
   {
-    RealReductiveGroup& G_r = p->rf->val;
-    const Rep_context& rc= p->rc();
-    StandardRepr r = p->val; // take a copy to avoid changing the original
-    rc.make_dominant(r); // ensure dominant infinitesimal character
-    SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),r.gamma());
     BlockElt start; // will hold index in the block of the initial element
-    non_integral_block block(G_r,subsys,r.x(),rc.lambda(r),r.gamma(),start);
+    non_integral_block block(p->rc(),p->val,start);
     @< Push a list of parameter values for the elements of |block| @>
     push_value(new int_value(start));
     if (l==expression_base::single_value)
@@ -3000,7 +2990,7 @@ also construct a module parameter value for each element of |block|.
   const RatWeight& gamma=block.gamma();
   for (BlockElt z=0; z<block.size(); ++z)
   { StandardRepr block_elt_param =
-      rc.sr(block.parent_x(z),block.lambda_rho(z),gamma);
+      p->rc().sr(block.parent_x(z),block.lambda_rho(z),gamma);
     param_list->val[z] =
 	shared_value(new module_parameter_value(p->rf,block_elt_param));
   }
@@ -3021,13 +3011,9 @@ void deform_wrapper(expression_base::level l)
   test_standard(*p);
   if (l!=expression_base::no_value)
   {
-    RealReductiveGroup& G_r = p->rf->val;
     const Rep_context& rc= p->rc();
-    StandardRepr r = p->val; // take a copy to avoid changing the original
-    rc.make_dominant(r); // ensure dominant infinitesimal character
-    SubSystem subsys =  SubSystem::integral(G_r.rootDatum(),r.gamma());
     BlockElt start; // will hold index in the block of the initial element
-    non_integral_block block(G_r,subsys,r.x(),rc.lambda(r),r.gamma(),start);
+    non_integral_block block(rc,p->val,start);
 
     std::vector<non_integral_block::term> terms
        = block.deformation_terms(start);

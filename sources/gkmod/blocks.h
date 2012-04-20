@@ -324,18 +324,15 @@ class non_integral_block : public Block_base
 
   RankFlags singular; // flags simple roots for which |infin_char| is singular
 
-  const RatWeight infin_char; // the infinitesimal character of the block
+  RatWeight infin_char; // inf. character, constant in block but not |const|
 
   std::vector<KGBElt> kgb_nr_of; // maps child |x| numbers to parent |kgb|
   std::vector<TorusElement> y_info; // indexed by child |y| numbers
 
  public:
-  non_integral_block
-    (RealReductiveGroup& G,
-     const SubSystem& subsys,
-     KGBElt x,			// starting |x| value
-     const RatWeight& lambda,	// discrete parameter
-     const RatWeight& gamma,	// infinitesimal character
+  non_integral_block // rewritten constructor, for full block
+    (const repr::Rep_context& rc,
+     StandardRepr sr, // by value,since it will be made dominant before use
      BlockElt& entry_element	// set to block element matching input
     );
 
@@ -345,12 +342,6 @@ class non_integral_block : public Block_base
      KGBElt x,			// first |x| value
      const RatWeight& lambda,	// discrete parameter
      const RatWeight& gamma	// infinitesimal character
-    );
-
-  non_integral_block // rewritten constructor, for full block
-    (const repr::Rep_context& rc,
-     StandardRepr sr, // by value,since it will be made dominant before use
-     BlockElt& entry_element	// set to block element matching input
     );
 
   // "inherited" accessors

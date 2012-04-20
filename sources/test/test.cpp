@@ -435,7 +435,7 @@ void sub_KGB_f()
   RealReductiveGroup& G = realmode::currentRealGroup();
   standardrepk::KhatContext khc(G);
 
-  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+  StandardRepK sr=interactive::get_standardrep(khc);
 
   WeylWord ww;
   standardrepk::PSalgebra p= khc.theta_stable_parabolic(sr,ww);
@@ -466,7 +466,7 @@ void trivial_f()
   for (size_t i=0; i<subset.size(); ++i)
   {
     KGBElt x=subset[i];
-    standardrepk::StandardRepK sr=khc.std_rep(rd.twoRho(),kgb.titsElt(x));
+    StandardRepK sr=khc.std_rep(rd.twoRho(),kgb.titsElt(x));
     standardrepk::combination c=khc.standardize(sr);
     if ((max_l-kgb.length(x))%2 == 0)
       sum += c;
@@ -488,7 +488,7 @@ void Ktypeform_f()
 
   standardrepk::KhatContext khc(G);
 
-  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+  StandardRepK sr=interactive::get_standardrep(khc);
 
   {
     size_t witness;
@@ -552,7 +552,7 @@ void qKtypeform_f()
 
   standardrepk::qKhatContext khc(G);
 
-  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+  StandardRepK sr=interactive::get_standardrep(khc);
 
   {
     size_t witness;
@@ -611,7 +611,7 @@ void Ktypemat_f()
 
   standardrepk::KhatContext khc(G);
 
-  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+  StandardRepK sr=interactive::get_standardrep(khc);
   khc.normalize(sr);
 
   {
@@ -696,7 +696,7 @@ void qKtypemat_f()
 
   standardrepk::qKhatContext khc(G);
 
-  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+  StandardRepK sr=interactive::get_standardrep(khc);
 
   {
     size_t witness;
@@ -852,7 +852,7 @@ void branch_f()
 
   standardrepk::KhatContext khc(G);
 
-  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+  StandardRepK sr=interactive::get_standardrep(khc);
 
   {
     size_t witness;
@@ -907,7 +907,7 @@ void qbranch_f()
 
   standardrepk::qKhatContext khc(G);
 
-  standardrepk::StandardRepK sr=interactive::get_standardrep(khc);
+  StandardRepK sr=interactive::get_standardrep(khc);
 
   {
     size_t witness;
@@ -984,7 +984,7 @@ void srtest_f()
 			    G.rank());
   standardrepk::KhatContext khc(G);
 
-  standardrepk::StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
+  StandardRepK sr=khc.std_rep_rho_plus(lambda,kgb.titsElt(x));
 
   (lambda *= 2) += G.rootDatum().twoRho();
   prettyprint::printVector(std::cout << "Weight (1/2)",lambda);
@@ -1129,24 +1129,14 @@ void iblock_f()
 void nblock_f()
 {
   RealReductiveGroup& GR = realmode::currentRealGroup();
-  ComplexReductiveGroup& G = GR.complexGroup();
-  const RootDatum& rd = G.rootDatum();
 
   Weight lambda_rho;
   RatWeight gamma(0);
   KGBElt x;
 
   SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
-  RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
-  lambda.normalize();
 
   ioutils::OutputFile f;
-
-  WeightInvolution theta =
-    GR.complexGroup().involution_table().matrix(GR.kgb().inv_nr(x));
-
-  WeylWord ww;
-  weyl::Twist twist = sub.twist(theta,ww);
 
   Permutation pi;
 
@@ -1162,8 +1152,11 @@ void nblock_f()
 	<< (s<sub.rank()-1 ? "," : ".\n");
   }
 
+  Rep_context rc(GR);
+  StandardRepr sr = rc.sr(x,lambda_rho,gamma);
+
   BlockElt z;
-  non_integral_block block(GR,sub,x,lambda,gamma,z);
+  non_integral_block block(GR,sr,z);
 
   f << "Given parameters define element " << z
     << " of the following block:" << std::endl;
@@ -1175,24 +1168,14 @@ void nblock_f()
 void deform_f()
 {
   RealReductiveGroup& GR = realmode::currentRealGroup();
-  ComplexReductiveGroup& G = GR.complexGroup();
-  const RootDatum& rd = G.rootDatum();
 
   Weight lambda_rho;
   RatWeight gamma(0);
   KGBElt x;
 
   SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
-  RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
-  lambda.normalize();
 
   ioutils::OutputFile f;
-
-  WeightInvolution theta =
-    GR.complexGroup().involution_table().matrix(GR.kgb().inv_nr(x));
-
-  WeylWord ww;
-  weyl::Twist twist = sub.twist(theta,ww);
 
   Permutation pi;
 
@@ -1208,8 +1191,11 @@ void deform_f()
 	<< (s<sub.rank()-1 ? "," : ".\n");
   }
 
+  Rep_context rc(GR);
+  StandardRepr sr = rc.sr(x,lambda_rho,gamma);
+
   BlockElt entry_elem;
-  blocks::non_integral_block block(GR,sub,x,lambda,gamma,entry_elem);
+  non_integral_block block(GR,sr,entry_elem);
 
   f << "Given parameters define element " << entry_elem
     << " of the following block:" << std::endl;
@@ -1226,14 +1212,12 @@ void deform_f()
 
   BlockElt n_surv = survivors.size(); // |BlockElt| indexes singlular "block"
 
-  repr::Rep_context RC(GR);
   std::vector<unsigned int> orient_nr(n_surv);
   for (BlockElt z=0; z<n_surv; ++z)
   {
     BlockElt zz=survivors[z];
-    repr::StandardRepr r =
-      RC.sr(block.parent_x(zz),block.lambda_rho(zz),gamma);
-    orient_nr[z] = RC.orientation_number(r);
+    StandardRepr r = rc.sr(block.parent_x(zz),block.lambda_rho(zz),gamma);
+    orient_nr[z] = rc.orientation_number(r);
   }
 
   typedef Polynomial<int> Poly;
@@ -1523,35 +1507,6 @@ void test_f()
 
   block.print_to(f,false);
   block_io::print_KL(f,block,z);
-
-  RatWeight lambda(lambda_rho *2 + GR.rootDatum().twoRho(),2);
-  lambda.normalize();
-  BlockElt zz;
-  non_integral_block b(GR,sub,x,lambda,nu,zz);
-
-  bool OK = z==zz and block.rank()==b.rank() and block.size()==b.size();
-  if (OK)
-  {
-    for (BlockElt z=0; z<b.size(); ++z)
-    {
-      if (block.length(z)!=b.length(z))
-      { std::cout << "length " << z ; OK=false; break; }
-
-      for (weyl::Generator s=0; s<b.rank(); ++s)
-      {
-	if (block.cross(s,z)!=b.cross(s,z))
-        { std::cout << "cross " << s <<',' << z; OK=false; break; }
-	if (block.cayley(s,z)!=b.cayley(s,z))
-        { std::cout << "Cayley " << s <<',' << z; OK=false; break; }
-	if (block.inverseCayley(s,z)!=b.inverseCayley(s,z))
-        { std::cout << "inverse Cayley " << s <<',' << z; OK=false; break; }
-      }
-      if (not OK) break;
-    }
-  }
-
-  std::cout << (OK ? "OK" : "\nerror found") << std::endl;
-
 } // |test_f|
 
 
