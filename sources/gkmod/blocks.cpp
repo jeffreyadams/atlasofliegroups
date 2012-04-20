@@ -1502,7 +1502,7 @@ void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
   z.xx=kgb.inverseCayley(s,z.xx).first; // inverse Cayley transform on $x$ side
   // on $y$ side just keep the same dual |TorusElement|, so nothings to do
 #ifndef NDEBUG
-  Rational r = z.yy.evaluate_at(rd.simpleCoroot(sub.simple(s))); // modulo $2\Z$
+  Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)); // modulo $2\Z$
   assert(r.numerator()%(2*r.denominator())==0); // but it must be a parity root
 #endif
 }
