@@ -49,8 +49,8 @@ RatWeight TorusElement::log_2pi() const
   return RatWeight(numer,d).normalize();
 }
 
-Rational TorusElement::evaluate_at
-  (const Coweight& alpha) const
+// evaluation giving rational number modulo 2
+Rational TorusElement::evaluate_at (const Coweight& alpha) const
 {
   unsigned int d = repr.denominator();
   int n = arithmetic::remainder(repr.numerator().dot(alpha),d+d);
