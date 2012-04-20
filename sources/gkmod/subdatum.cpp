@@ -31,10 +31,10 @@ namespace subdatum {
 SubDatum::SubDatum(RealReductiveGroup& GR,
 		   const RatWeight& gamma,
 		   KGBElt x)
-  : SubSystem(SubSystem::integral(GR.rootDatum(),gamma))
+  : SubSystemWithGroup(SubSystemWithGroup::integral(GR.rootDatum(),gamma))
   , base_ww()
   , delta(GR.complexGroup().involutionMatrix(GR.kgb().involution(x)))
-  , Tg(static_cast<const SubSystem&>(*this),delta,base_ww)
+  , Tg(static_cast<const SubSystemWithGroup&>(*this),delta,base_ww)
   , ini_tw()
 { const RootDatum& pd = parent_datum();
 

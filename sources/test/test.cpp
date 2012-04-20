@@ -1098,7 +1098,7 @@ void iblock_f()
   ioutils::OutputFile f;
   f << "Infinitesimal character is " << gamma << std::endl;
 
-  SubSystem sub = SubSystem::integral(rd,gamma);
+  SubSystemWithGroup sub = SubSystemWithGroup::integral(rd,gamma);
 
   WeylWord ww;
   weyl::Twist twist = sub.twist(theta,ww);
@@ -1440,7 +1440,7 @@ void embedding_f()
   ioutils::OutputFile f;
   f << "Infinitesimal character is " << gamma << std::endl;
 
-  SubSystem sub = SubSystem::integral(rd,gamma);
+  SubSystemWithGroup sub = SubSystemWithGroup::integral(rd,gamma);
 
   WeylWord ww;
   const tits::SubTitsGroup sub_gTg

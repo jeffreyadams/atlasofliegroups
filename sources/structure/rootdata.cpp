@@ -1139,16 +1139,28 @@ WeightInvolution refl_prod(const RootNbrSet& rset, const RootDatum& rd)
 }
 
 
-RootDatum integrality_datum(const RootDatum& rd, const RatWeight& gamma)
+RootDatum integrality_datum(const RootDatum& rd, const RatWeight& nu)
 {
-  int n=gamma.denominator();
-  const Weight& v=gamma.numerator();
+  int n=nu.denominator();
+  const Weight& v=nu.numerator();
   RootNbrSet int_roots(rd.numRoots());
   for (size_t i=0; i<rd.numPosRoots(); ++i)
     if (v.dot(rd.posCoroot(i))%n == 0)
       int_roots.insert(rd.posRootNbr(i));
 
   return rd.sub_datum(rd.simpleBasis(int_roots));
+}
+
+unsigned int integrality_rank(const RootDatum& rd, const RatWeight& nu)
+{
+  int n=nu.denominator();
+  const Weight& v=nu.numerator();
+  RootNbrSet int_roots(rd.numRoots());
+  for (size_t i=0; i<rd.numPosRoots(); ++i)
+    if (v.dot(rd.posCoroot(i))%n == 0)
+      int_roots.insert(rd.posRootNbr(i));
+
+  return rd.simpleBasis(int_roots).size();
 }
 
 RationalList integrality_points(const RootDatum& rd, RatWeight& nu)

@@ -62,8 +62,8 @@ set recursive_deform (Param p) =
                        in back_trace(); prints(a,", ",(x,lambda,a*nu)) in
 	   for (k,q) in terms
            do
-             let kk=2*k*coef then (q0,nu0_terms) = recd(kk,q,f)
-             in at_nu0 := at_nu0 # (kk,q0) # nu0_terms
+             let (q0,nu0_terms) = recd(coef*k*2,q,f)
+             in at_nu0 := at_nu0 # (coef*k,q0) # nu0_terms
 	   od
         od
       ; (param(x,lambda,null_wt(#nu)),at_nu0)
@@ -90,8 +90,8 @@ set rec_def (Param p) =
 	  in while inx>0 do acc+:=deform(param(x,lambda,ip[inx-:=1]*nu)) od
         ; for (k,q) in %acc
           do
-             let (q0,nu0_terms) = recd(2*k*coef,q)
-             in at_nu0 +:= %(nu0_terms + (k,q0))
+             let (q0,nu0_terms) = recd(coef*k*2,q)
+             in at_nu0 +:= %(nu0_terms + (coef*k,q0))
           od
         ; { return deformed p and accumulated deformation terms }
           (param(x,lambda,null_wt(#nu)), at_nu0)

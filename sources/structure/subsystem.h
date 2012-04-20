@@ -22,8 +22,8 @@ namespace atlas {
 
 namespace subsystem {
 
-/* The following data type has a sue specific for representation theory. It is
-   associated to a subsystem of the dual root datum (with positive roots
+/* The following data type has a purpose specific for representation theory.
+   It is associated to a subsystem of the dual root datum (with positive roots
    contained in the positive parent coroots), and is derived from |RootSystem|
    at that dual side. It remains however attached to the parent root _datum_,
    contains and exports a reference to that rootdatum, and has a method to
@@ -35,7 +35,6 @@ namespace subsystem {
 class SubSystem : public RootSystem // new system, subsytem of dual
 {
   const RootDatum& rd; // parent root datum
-  const WeylGroup sub_W; // Weyl group no reference: built by contructor
   RootNbrList pos_map; // map positive roots to root number in parent
   RootNbrList inv_map; // partial map back from all parent roots
 
@@ -56,17 +55,15 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   static SubSystem integral // pseudo contructor for integral system
   (const RootDatum& parent, const RatWeight& gamma);
 
-  SubSystem(const SubSystem& s) // copy contructor (used by pseudo contructor)
+  SubSystem(const SubSystem& s) // copy contructor, not actually used
   : RootSystem(s) // copy base object
   , rd(s.rd) // share this one
-  , sub_W(s.cartanMatrix()) // reconstruct (Weyl group cannot be copied)
   , pos_map(s.pos_map), inv_map(s.inv_map), sub_root(s.sub_root) // copy those
   {
     assert(false); // should never be actually called, but exist nonetheless
   }
 
   const RootDatum& parent_datum() const { return rd; }
-  const WeylGroup& Weyl_group() const { return sub_W; }
 
   weyl::Twist twist(const WeightInvolution& theta,
 		    WeylWord& ww) const;
@@ -75,7 +72,7 @@ class SubSystem : public RootSystem // new system, subsytem of dual
   weyl::Twist parent_twist(const WeightInvolution& theta,
 			   WeylWord& ww) const;
   // similar, but |ww| is (for subsystem) on parent side, and anchored at its
-  // distinguished involution |delta|: on has |theta=parent(ww).delta|.
+  // distinguished involution |delta|: one has |theta=parent(ww).delta|.
 
   PreRootDatum pre_root_datum() const; // viewed from parent side
 
@@ -106,7 +103,30 @@ class SubSystem : public RootSystem // new system, subsytem of dual
 
 }; // |class SubSystem|
 
-} // |namespace subdatum|
+// We have attempt to alleviate |SubSystem| by splitting off the |WeylGroup|
+
+class SubSystemWithGroup : public SubSystem
+{
+  const WeylGroup sub_W; // Weyl group no reference: built by contructor
+ public:
+  SubSystemWithGroup(const RootDatum& parent,
+	    const RootNbrList& sub_sys // list of simple roots in subsys
+           );
+
+  static SubSystemWithGroup integral // pseudo contructor for integral system
+  (const RootDatum& parent, const RatWeight& gamma);
+
+  SubSystemWithGroup(const SubSystemWithGroup& s) // copy ctor (for pseudo ctor)
+  : SubSystem(s) // copy base object
+  , sub_W(s.cartanMatrix()) // reconstruct (Weyl group cannot be copied)
+  {
+    assert(false); // should never be actually called, but exist nonetheless
+  }
+
+  const WeylGroup& Weyl_group() const { return sub_W; }
+}; // |class SubSystemWithGroup|
+
+} // |namespace subsystem|
 
 } // |namespace atlas|
 
