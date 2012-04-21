@@ -1201,132 +1201,38 @@ void deform_f()
     << " of the following block:" << std::endl;
 
   block.print_to(f,false);
-  // fill KL table partially and silently
-  const kl::KLContext& klc = block.klc(entry_elem,false);
 
-
-  std::vector<BlockElt> survivors; survivors.reserve(entry_elem+1);
-  for (BlockElt x=0; x<=entry_elem; ++x)
-    if (block.survives(x))
-      survivors.push_back(x);
-
-  BlockElt n_surv = survivors.size(); // |BlockElt| indexes singlular "block"
-
-  std::vector<unsigned int> orient_nr(n_surv);
-  for (BlockElt z=0; z<n_surv; ++z)
-  {
-    BlockElt zz=survivors[z];
-    StandardRepr r = rc.sr(block.parent_x(zz),block.lambda_rho(zz),gamma);
-    orient_nr[z] = rc.orientation_number(r);
-  }
-
-  typedef Polynomial<int> Poly;
-  typedef matrix::Matrix_base<Poly> PolMat;
-
-  PolMat P(n_surv,n_surv,Poly(0)), Q(n_surv,n_surv,Poly(0));
-
-  for (BlockElt z=n_surv; z-->0; )
-  {
-    BlockElt zz=survivors[z];
-    unsigned int parity = block.length(zz)%2;
-    for (BlockElt xx=0; xx <= zz; ++xx)
-    {
-      const kl::KLPol& pol = klc.klPol(xx,zz);
-      if (not pol.isZero())
-      {
-	Poly p(pol); // convert
-	if (block.length(xx)%2!=parity)
-	  p*=-1;
-	BlockEltList nb=block.survivors_below(xx);
-	for (size_t i=0; i<nb.size(); ++i)
-	{
-	  BlockElt x = std::lower_bound
-	    (survivors.begin(),survivors.end(),nb[i])-survivors.begin();
-	  assert(survivors[x]==nb[i]); // found
-	  if (P(x,z).isZero())
-	    P(x,z)=p;
-	  else
-	    P(x,z)+=p;
-	} // |for (i)| in |nb|
-      } // |if(pol!=0)|
-    } // |for (x<=z)|
-  } // for |z|
-
-    // now compute polynomials $Q_{x,z}$, for |y<=z<=entry_elem|
-  for (BlockElt x=0; x<n_surv; ++x)
-  {
-    Q(x,x)=Poly(1);
-    for (BlockElt z=x+1; z<n_surv; ++z)
-    {
-      Poly sum; // initially zero; $-\sum{x\leq y<z}Q_{x,y}P^\pm_{y,z}$
-      for (BlockElt y=x; y<z; ++y)
-	sum -= Q(x,y)*P(y,z);
-      Q(x,z)=sum;
-    }
-  }
-
-  f << (block.singular_simple_roots().any() ? "(cumulated) " : "")
-    << "KL polynomials (-1)^{l(y)-l(x)}*P_{x,y}:\n";
-  int width = ioutils::digits(entry_elem,10ul);
-  for (BlockElt y=0; y<n_surv; ++y)
-    for (BlockElt x=0; x<=y; ++x)
-      if (not P(x,y).isZero())
-      {
-	f << std::setw(width) << survivors[x] << ',' << survivors[y] << ": ";
-	prettyprint::printPol(f,P(x,y),"q") << std::endl;
-      }
-
-  f << "dual KL polynomials Q_{x,y}:\n";
-  for (BlockElt y=0; y<n_surv; ++y)
-    for (BlockElt x=0; x<=y; ++x)
-    {
-      Poly& pol = Q(x,y);
-      if (not pol.isZero())
-      {
-	f << std::setw(width) << survivors[x] << ',' << survivors[y] << ": ";
-	prettyprint::printPol(f,pol,"q") << std::endl;
-      }
-    }
+  std::vector<non_integral_block::term> terms
+    = block.deformation_terms(entry_elem);
 
   f << "Orientation numbers:\n";
-  for (BlockElt y=0; y<n_surv; ++y)
-    f << survivors[y] << ": " << orient_nr[y] << (y+1<n_surv ? ", " : ".\n");
+  bool first=true;
+  for (BlockElt x=0; x<=entry_elem; ++x)
+    if (block.survives(x))
+    {
+      if (first) first=false;
+      else f<< ", ";
+      StandardRepr r = rc.sr(block.parent_x(x),block.lambda_rho(x),gamma);
+      f << x << ": " <<  rc.orientation_number(r);
+    }
+  f << ".\n";
 
   if (block.survives(entry_elem))
   {
-    BlockElt z=n_surv-1;
-    assert(survivors[z]==entry_elem);
-    unsigned odd = (block.length(entry_elem)+1)%2; // opposite to |entry_elem|
-
-    Poly s(1,1); // in fact $X$, will reduce modulo $X^2+1$ later
-    f << "Deformation terms for I(" << entry_elem << ")_c:\n";
-    for (BlockElt x=n_surv-1; x-->0; ) // skip |entry_elem|
+    f << "Deformation terms for I(" << entry_elem << ")_c: (1-s) times\n";
+    std::ostringstream os;
+    for (size_t i=0; i<terms.size(); ++i )
     {
-      Poly sum;
-      for (BlockElt y=x; y<n_surv-1; ++y)
-	if (block.length(survivors[y])%2==odd)
-	  sum += P(x,y)*Q(y,z);
-      // now evaluate |sum| at $X=-1$ to get "real" part of $(1-s)*sum[X:=s]$
-      int eval=0;
-      for (polynomials::Degree d=sum.size(); d-->0; )
-	eval = sum[d]-eval;
-
-      // if (orientation_difference(x,z)) sum*=s;
-      int orient_express = (orient_nr[n_surv-1]-orient_nr[x])/2;
-      if (orient_express%2!=0)
-	eval = -eval;
-
-      if (eval!=0)
-      {
-	f << " +(" << std::resetiosflags(std::ios_base::showpos) << eval;
-	if (eval==1 or eval==-1)
-	  f << (eval==1 ? '-' : '+'); // sign of |-eval|
-	else
-	  f << std::setiosflags(std::ios_base::showpos) << -eval;
-	f <<"s)I(" << survivors[x] << ")_c";
-      }
+      int eval=terms[i].coef;
+      os << ' ';
+      if (eval==1 or eval==-1)
+	os << (eval==1 ? '+' : '-'); // sign of evaluation
+      else
+	os << std::setiosflags(std::ios_base::showpos) << eval;
+      os <<"I(" << terms[i].elt << ")_c";
     }
-    static_cast<std::ostream&>(f) << std::endl;
+    ioutils::foldLine(f,os.str()) << std::endl;
+
   }
 } // |deform_f|
 
