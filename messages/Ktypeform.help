@@ -62,8 +62,8 @@ real positive roots]. The map (x,lambda)->mu(x,lambda) is a bijection
 between W-orbits of standard K-parameters and the irreducible
 representations of K.
 
-Note: The groups K_x=Cent(theta_x) depend on x; the question of how to
-identify representations of K_x and K_y arises. If x and y are
+Note: The groups K_x=Cent(theta_x) depend on x; the question arises of
+how to identify representations of K_x and K_y. If x and y are
 conjugate by g in G, the coset gK_x is well-defined. Conjugation by g
 therefore provides a well-defined identification of irreducible
 representations of K_x with those of K_y.
@@ -78,14 +78,20 @@ irreducible representations of K is a bijection.
 Fix a normal final standard K-parameter (x,lambda). Then I_K(x,lambda)
 is a sum of K-types, each of which is parametrized by a normal final
 standard K-parameter. This gives a matrix with rows and columns
-parametrized by normal final standard K-parameters: an entry n in row
-(x,lambda) and column (x',lambda') means that mu(x',lambda') occurs in
-I_K(x,lambda) with multiplicity n. This matrix is lower triangular,
-with 1s on the diagonal, and is therefore invertible.
+parametrized by normal final standard K-parameters: an entry n in
+column (x,lambda) and row (x',lambda') means that mu(x',lambda') occurs
+in I_K(x,lambda) with multiplicity n. For an appropriate ordering of the
+normal final standard K-parameters, this matrix is lower triangular,
+with 1s on the diagonal, and is therefore invertible. (This makes sense
+even though the matrix is infinite, since only finitiely many entries in
+each row are nonzero.) In fact the inverse matrix is more directly
+accessible computationally, as besides being lower triangular it also
+has only finitely many nonzero entries in each column.
 
-The Ktypeform command computes a single row of the inverse of this
-matrix. Thus if mu(x,lambda) is a normal final standard K-parameter
-then Ktypeform computes integers a_j where
+The Ktypeform command computes a single column of the inverse of this
+matrix. Thus if mu(x,lambda) is the lowest K-type of a normal final
+standard K-parameter (x,lambda), then Ktypeform computes integers a_j
+where
 
 (*) mu(x,lambda)=sum_j a_j I_K(x_j,lambda_j)
 
@@ -141,7 +147,7 @@ representations (restricted to K).  It concludes with a formula for
 mu(x,lambda) as a linear combination of R0, R1,..., i.e.  formula (*).
 This is equal to the first column of the first matrix in the output
 of the Ktypemat command (although the latter is truncated by
-height). 
+height).
 
 *** Continued Standard Modules ***
 
