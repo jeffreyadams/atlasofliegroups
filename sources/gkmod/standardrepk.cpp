@@ -553,7 +553,6 @@ SRK_context::theta_stable_parabolic
 KGBEltList SRK_context::sub_KGB(const PSalgebra& q) const
 {
   BitMap flagged(kgb().size());
-  TitsElt strong=q.strong_involution();
 
   KGBElt root=UndefKGB;
   {
