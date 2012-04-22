@@ -91,6 +91,31 @@ public:
 
 }; // |class Rational|
 
+
+class Split_integer
+{
+  int real_part, s_part;
+ public:
+  explicit Split_integer(int a=0, int b=0) : real_part(a), s_part(b) {}
+
+  int e() const { return real_part; }
+  int s() const { return s_part; }
+
+  Split_integer& operator +=(Split_integer y)
+  { real_part+=y.e(); s_part+=y.s(); return *this; }
+  Split_integer& operator -=(Split_integer y)
+  { real_part-=y.e(); s_part-=y.s(); return *this; }
+  Split_integer operator +(Split_integer y) { return y+= *this; }
+  Split_integer operator -(Split_integer y) { return y.negate()+= *this; }
+  Split_integer operator* (Split_integer y) const
+  { return Split_integer(e()*y.e()+s()*y.s(),e()*y.s()+s()*y.e()); }
+
+  Split_integer& operator*= (int n) { real_part*=n; s_part*=n; return *this; }
+  Split_integer& negate() { real_part=-e(); s_part=-s(); return *this; }
+  Split_integer& times_1_s() { real_part= -(s_part-=e()); return *this; }
+
+}; // |class Split_integer|
+
 std::ostream& operator<< (std::ostream& out, const Rational& frac);
 
 

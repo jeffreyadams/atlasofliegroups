@@ -62,9 +62,10 @@ namespace atlas {
   namespace bitmap { class BitMap; }
   using bitmap::BitMap;
 
-  namespace arithmetic { class Rational; }
+  namespace arithmetic { class Rational; class Split_integer; }
   using arithmetic::Rational;
   typedef std::vector<Rational> RationalList;
+  using arithmetic::Split_integer;
 
   namespace matrix {
     template<typename C> class Vector;
