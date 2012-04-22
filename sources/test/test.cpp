@@ -1101,7 +1101,7 @@ void iblock_f()
   SubSystemWithGroup sub = SubSystemWithGroup::integral(rd,gamma);
 
   WeylWord ww;
-  weyl::Twist twist = sub.twist(theta,ww);
+  sub.twist(theta,ww); // resulting |weyl::Twist| is unused, but |ww| is set
 
   Permutation pi;
 
@@ -1258,7 +1258,7 @@ void partial_block_f()
     GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
 
   WeylWord ww;
-  weyl::Twist twist = sub.twist(theta,ww);
+  sub.twist(theta,ww); // resulting |weyl::Twist| is unused, but |ww| is set
 
   Permutation pi;
 
