@@ -2217,7 +2217,7 @@ correct.
 
 real_form_value::real_form_value(const inner_class_value& p,RealFormNbr f
 				,tags::DualTag)
-: parent(p), val(p.dual,f)
+: parent(p), val(p.dual,f), rc_p(NULL)
 @+{}
 
 @ In order to be able to use the same layout for dual real forms but to
