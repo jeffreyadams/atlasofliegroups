@@ -142,8 +142,10 @@ class Rep_context
 
 }; // |Rep_context|
 
-typedef free_abelian::Free_Abelian<StandardRepr,long int,Rep_context::compare>
- SR_poly;
+typedef free_abelian::Free_Abelian<StandardRepr,
+				   Split_integer,
+				   Rep_context::compare>
+SR_poly;
 
 } // |namespace repr|
 
