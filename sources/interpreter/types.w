@@ -61,9 +61,6 @@ namespace {
 @< Local type definitions @>@;
 }@; // |namespace|
 @< Global variable definitions @>@;
-namespace {
-@< Local function definitions @>@;
-}@; // |namespace|
 @< Function definitions @>@;
 }@; }@;
 
@@ -1417,6 +1414,33 @@ instance also provide the inverse conversions where appropriate, and on some
 occasions merely provides convenience to the user, for instance by allowing
 integers in positions where a rational number is required.
 
+The function |coerce| requires two fully determined types |from_type| and
+|to_type|, and its final argument~|e| is a reference to the previously
+converted expression. If a conversion of value of |from_type| to |to_type| is
+available, then |coerce| will modify |e| by insertion of a conversion around
+it; the return value of |coerce| indicates whether an applicable conversion
+was found. The function |conform_types| first tries to specialise the type
+|required| to the one |found|, and if this fails tries to coerce |found| to
+|required|, in the latter case enveloping the translated expression |d| in the
+applied conversion function; if both fail an error mentioning the
+expression~|e| is thrown. The function |row_coercion| specialises if possible
+|component_type| in such a way that the corresponding row type can be coerced
+to |final_type|, and returns a pointer to the |conversion_record| for the
+coercion in question. The function |coercion| serves for filling the coercion
+table.
+
+@< Declarations of exported functions @>=
+
+bool coerce(const type_expr& from_type, const type_expr& to_type,
+            expression_ptr& e);
+expression conform_types
+  (const type_expr& found, type_expr& required, expression_ptr d, expr e);
+const conversion_record* row_coercion(const type_expr& final_type,
+                                            type_expr& component_type);
+void coercion(const type_expr& from,
+              const type_expr& to,
+              const char* s, conversion_info::conv_f f);
+
 @ We shall derive a single class |conversion| from |expression_base| to
 represent any expression that is to be converted using one of the various
 conversions. Which conversion is to be applied is determined by |type|, a
@@ -1448,12 +1472,29 @@ public:
 };
 
 @ The |evaluate| method for conversions dispatches to the |convert| member,
-after evaluating |exp|. Although automatic conversions are only inserted when
-the type analysis requires a non-empty result type, it is still in principle
-possible that at run time this method is called with |l==no_value|, so we
-cater for that. The case is so rare that we don't mind the inefficiency of
-performing the conversion and then discarding the result; this will allow a
-failing conversion to be signalled as an error in such cases.
+after evaluating |exp|. The |level| argument is not passed to the |convert|
+function, which will always replace a one or more values on the stack by a
+single value. There is a language design decision implicit in this
+implementation: there are no implicit conversions that return a tuple type. In
+fact we tried some such conversions, for instance from a rational number (and
+later from a split integer) to a pair of integers, and this was unsatisfactory
+even when correctly implemented. One reason is that it disturbs operator and
+function overloading: one can no longer define operators for the
+converted-from type if the operator or function already exists for the tuple
+type converted to, for instance one could not define unary minus for rational
+numbers because binary minus for integers was already defined. Another reason
+is that using decomposition of tuples in a let-expression to disassemble the
+converted-from type will not work without a cast-to-a-tuple, since in this
+context the mere desire to have some unspecified tuple does not suffice to
+activate the implicit conversion. For these reasons it is preferable to always
+make the conversion to a tuple explicit.
+
+Although automatic conversions are only inserted when the type analysis
+requires a non-empty result type, it is still possible that at run time this
+method is called with |l==no_value|, so we do cater for that here. The case is
+fairly rare, so we don't mind the inefficiency of performing the conversion
+and then discarding the result; this will allow a failing conversion to be
+signalled as an error in such cases.
 
 @< Function def...@>=
 void conversion::evaluate(level l) const
@@ -1480,18 +1521,6 @@ different type from what the context requires. The function |coerce| will
 try to insert an automatic conversion in such situations, if this can resolve
 the type conflict. We present this mechanism first, since the table it employs
 can then be re-used to handle the more subtle cases of automatic conversions.
-
-The function |coerce| requires two fully determined types |from_type| and
-|to_type|, and its final argument~|e| is a reference to the previously
-converted expression. If a conversion of value of |from_type| to |to_type| is
-available, then |coerce| will modify |e| by insertion of a |conversion| around
-it; the return value of |coerce| indicates whether an applicable conversion
-was found.
-
-@< Declarations of exported functions @>=
-
-bool coerce(const type_expr& from_type, const type_expr& to_type,
-            expression_ptr& e);
 
 @ The implementation of |coerce| will be determined by a simple table lookup.
 The records in this table contain a |conversion_info| structure (in fact they
@@ -1525,14 +1554,9 @@ makes this easier.
 
 typedef std::vector<conversion_record>::const_iterator coerce_iter;
 
-@ The following function simplifies filling the coercion table; it is
-externally callable.
-
-@< Declarations of exported functions @>=
-void coercion(const type_expr& from,
-              const type_expr& to,
-              const char* s, conversion_info::conv_f f);
-@~The action is simply extending |coerce_table| with a new |conversion_record|.
+@ The function |coercion| simplifies filling the coercion table; it is
+externally callable. Its action is simply extending |coerce_table| with a new
+|conversion_record|.
 @< Function def... @>=
 void coercion(const type_expr& from,
               const type_expr& to,
@@ -1554,7 +1578,7 @@ coercion this level should be |no_value|. So we introduce a type derived from
 |expression| whose main virtue is that its |evaluate| method sets the level to
 |no_value| by calling |void_eval|.
 
-@< Local type definitions @>=
+@< Type definitions @>=
 class voiding : public expression_base
 { expression exp;
 public:
@@ -1568,7 +1592,7 @@ public:
 when |l==single_value| an actual empty tuple should be produced, which
 |wrap_tuple(0)| does.
 
-@< Local function definitions @>=
+@< Function definitions @>=
 void voiding::evaluate(level l) const
 {@; exp->void_eval();
   if (l==single_value)
@@ -1618,10 +1642,6 @@ can save some work by returning the required value already from
 having it passed by value) so that the caller knows it should afterwards use
 our return value, rather than~|d|.
 
-@< Declarations of exported functions @>=
-expression conform_types
-(const type_expr& found, type_expr& required, expression_ptr d, expr e);
-
 @~The copied auto-pointer |d| provides the modifiable reference that |coerce|
 needs. If both attempts to conform the types fail, we must take a copy of both
 type expressions, since the originals are not owned by us, and will probably
@@ -1642,13 +1662,8 @@ find a coercion that reconciles the requirements. The following function finds
 whether this is possible, and if so sets |components_type| to the type
 required for the components; if not it will return~|NULL|. By using this
 mechanism the components themselves obtain a context that may generate further
-conversions to obtain this type.
-
-@< Declarations of exported functions @>=
-const conversion_record* row_coercion(const type_expr& final_type,
-                                            type_expr& component_type);
-@~The implementation is simply to look in |coerce_table| for conversions from
-some row type.
+conversions to obtain this type. The implementation is simply to look in
+|coerce_table| for conversions from some row type.
 
 @< Function def... @>=
 const conversion_record* row_coercion(const type_expr& final_type,
@@ -1894,8 +1909,8 @@ enumeration value |nr_of_primitive_types|).
 @< Other primitive type tags @>=
 vector_type, matrix_type, rational_vector_type,
 complex_lie_type_type , root_datum_type, inner_class_type, real_form_type,
-dual_real_form_type, Cartan_class_type,
- KGB_element_type, module_parameter_type, virtual_module_type, @[@]
+dual_real_form_type, Cartan_class_type, KGB_element_type,
+module_parameter_type, split_integer_type, virtual_module_type, @[@]
 
 
 @~The following list must match that of the previous module, for proper
@@ -1904,7 +1919,7 @@ functioning of I/O.
 @< Other primitive type names @>=
 "vec", "mat", "ratvec",
 "LieType","RootDatum", "InnerClass", "RealForm", "DualRealForm",
-"CartanClass", "KGBElt", "Param", "ParamPol", @[@]
+"CartanClass", "KGBElt", "Param", "Split", "ParamPol", @[@]
 
 @* Index.
 

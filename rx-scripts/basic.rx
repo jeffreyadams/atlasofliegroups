@@ -13,11 +13,14 @@ set *(int c,mat m) = mat: for col in m do for e in col do c*e od od
 { a necessary global auxiliary, as realex cannot handle recursive operators }
 set matrix_power = (mat,int->mat):
 let p = (mat m,int n): m
-in p:= ((mat m,int n):
-  if n<2 then if n=1 then m else id_mat(n_rows(m)) fi
+in p:= ((mat m,int n): { we hall have n>0 }
+  if n=1 then m
   else let (q,r)=n\%2 then mm=p(m,q) in mm*if r=0 then mm else mm*m fi
   fi)
-set ^(mat m,int n) = matrix_power(m,n)
+set ^(mat m,int n) =
+  if n>0 then matrix_power(m,n) elif n=0 then id_mat(n_rows(m))
+  else error("Negative matrix power " # int_format(n))
+  fi
 
 set +(string s, int i)= s # int_format(i)
 set +(int i, string s)= int_format(i) # s
@@ -62,6 +65,18 @@ set *(ratvec r, vec v) = let (n,d)=%r in n*v/d
 
 set floor ([rat] v) = for a in v do floor(a) od
 set ceil  ([rat] v) = for a in v do  ceil(a) od
+
+set s = Split:(0,1)
+set split_power = (Split,int->Split):
+let p = (Split x,int n): x
+in p:= ((Split x,int n): { we shall have n>0 }
+  if n=1 then x
+  else let (q,r)=n\%2 then y=p(x,q) in y*if r=0 then y else x*y fi
+  fi)
+set ^(Split x,int n) =
+  if n>0 then split_power(x,n) elif n=0 then Split:(1,0)
+  else error("Negative split integer power " # int_format(n))
+  fi
 
 set =((int,int)(x0,y0),(int,int)(x1,y1)) = x0=x1 and y0=y1
 set !=((int,int)(x0,y0),(int,int)(x1,y1)) = x0!=x1 or y0!=y1

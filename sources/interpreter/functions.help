@@ -356,6 +356,7 @@ KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
   output.
 real_form: (KGBElt->RealForm): the real form for which the argument is defined
 involution: (KGBElt->mat): the involution associated to the KGB element
+operator =: (KGBElt,KGBElt): equality of elements of a same KGB set
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
 operator %: (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from param
@@ -371,17 +372,28 @@ operator =: (Param,Param->bool): test equivalence of parameters
 print_n_block: (Param->): print (nonintegral) block generated from parameter
 n_block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
-deform: (Param->[(int,Param)]): compute deformation terms when nu decreases
-  The non-integral block for the parameter and its KL polynomials are
-  computed, from which the deformation terms involing other members of the
-  block are computed. They are returned as a list of (coefficient,parameter)
-  pairs, where the coefficient gives the multiple of (1-s) in the formula.
+
+operator +: (Split,Split->Split): addition of split integers
+operator -: (Split,Split->Split): subtraction of split integers
+operator -: (Split->Split): negation of a split integer
+operator *: (Split,Split->Split): multiplication of split integers
+operator %: (Split,int,int): decomposition of split integer into components
 
 null_module: (RealForm->ParamPol): empty sum of parameters for the real form
+operator #: (ParamPol->int): number of nonzero terms of the formal sum
 operator +: (ParamPol,Param->ParamPol): add parameter to formal sum
-operator +: (ParamPol,(int,Param)->ParamPol): add parameter with coefficient
-operator +: (ParamPol,[(int,Param)]->ParamPol): add terms to formal sum
-operator %: (ParamPol->[(int,Param)]): break up formal sum into terms
+operator +: (ParamPol,(Split,Param)->ParamPol): add parameter with coefficient
+operator +: (ParamPol,[(Split,Param)]->ParamPol): add terms to formal sum
+operator +: (ParamPol,ParamPol->ParamPol): addition of formal sums
+operator *: (int,ParamPol->ParamPol): integer multiple of a formal sum
+operator *: (Split,ParamPol->ParamPol): split integer multiple of a formal sum
+operator %: (ParamPol->[(Split,Param)]): break up formal sum into terms
+
+deform: (Param->ParamPol): compute deformation terms when nu decreases
+  The non-integral block for the parameter and its KL polynomials are
+  computed, from which the deformation terms involing other members of the
+  block are computed. They are returned as a formal sum of paramters with
+  split integer coefficients, which are in fact integer multiples of (1-s).
 
 raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
   The call raw_KL(rf,drf) produces a matrix of numbers identifying

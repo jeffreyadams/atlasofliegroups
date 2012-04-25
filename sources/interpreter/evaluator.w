@@ -62,7 +62,7 @@ namespace {
 @< Function definitions @>@;
 }@; }@;
 
-@* Preliminaries.
+@*1 Auxiliaries for error messages, initialisation.
 %
 We start with a small template function to help giving sensible error messages.
 
@@ -132,7 +132,8 @@ void reset_evaluator()
   @< Actions to reset the evaluator @>
 }
 
-@ Now we derive the first ``primitive'' value types. The type for rational
+@*1 First primitive types: integer, rational, string and Boolean values.
+Now we derive the first ``primitive'' value types. The type for rational
 numbers is in fact implemented in the atlas library, so we must include a
 header file into ours.
 
@@ -375,11 +376,16 @@ id_context=NULL;
 
 @ The function |convert_expr| returns a pointer to the conversion of the
 |expr| to |expression|, of which the caller should take ownership. The reason
-we don't return an |expression_ptr| is entirely pragmatic. The code below
-takes into account the possibility that a denotation is converted immediately
-to some other type, for instance integer denotations can be used where a
-rational number is expected. The function |coerce| tests for this possibility,
-and may modify its final argument correspondingly.
+we don't return an |expression_ptr| is entirely pragmatic: there are many
+return statements in this function, and ensuring conversion to an auto-pointer
+before return would be somewhat laborious, whereas the conversion can be
+easily and safely achieved by the caller; also sometimes the resulting pointer
+is stored in a data structure that cannot accommodate auto-pointers.
+
+The code below takes into account the possibility that a denotation is
+converted immediately to some other type, for instance integer denotations can
+be used where a rational number is expected. The function |coerce| tests for
+this possibility, and may modify its final argument correspondingly.
 
 Altogether this is a quite extensive function, with as many cases in the
 switch as there are variants of |expr_union|, and for many of those branches a
@@ -588,15 +594,18 @@ many components.
 @< Other cases for type-checking and converting... @>=
 case tuple_display:
 { type_ptr tup=unknown_tuple(length(e.e.sublist));
-  if (type.specialise(*tup))
-  { std::auto_ptr<tuple_expression> result(new tuple_expression(0));
-    result->component.reserve(length(e.e.sublist));
-  @/type_list tl=type.tuple;
-    for (expr_list el=e.e.sublist; el!=NULL; el=el->next,tl=tl->next)
-      result->component.push_back(convert_expr(el->e,tl->t));
+  bool tuple_expected=type.specialise(*tup); // whether |type| is a tuple
+  tuple_expression* tup_exp;
+  expression_ptr result(tup_exp=new tuple_expression(0));
+  tup_exp->component.reserve(length(e.e.sublist));
+  type_list tl= tuple_expected ? type.tuple : tup->tuple;
+  for (expr_list el=e.e.sublist; el!=NULL; el=el->next,tl=tl->next)
+    tup_exp->component.push_back(convert_expr(el->e,tl->t));
+  if (tuple_expected)
     return result.release();  // and convert (derived|->|base) to |expression|
-  }
-  else throw type_error(e,tup,copy(type));
+  else if (coerce(*tup,type,result))
+    return result.release();
+  else throw type_error(e,copy(*tup),copy(type));
 }
 
 @*1 Evaluating tuple displays.
@@ -738,10 +747,13 @@ types of subscription expressions that we can convert to, throwing an error if
 it does not. Finally we check is the a priori type |subscr_type| of the
 subscripted expression equals or specialises to the required |type|, or can be
 converted to it by |coerce|, again throwing an error if nothing works. For the
-indexing expression only equality of types is admitted, since nothing can be
-coerced to \.{int} or to \.{(int,int)} anyway, and there is little point in
-catering for (indexing) expressions having completely undetermined type (which
-can only happen for expressions that cannot be evaluated without error).
+indexing expression only equality of types is admitted, since the basic
+language has no conversions that could apply, and if an extension does provide
+some (indeed we shall later a add conversion from split integer to pair of
+integers), we would not want to apply them implicitly in index positions. Also
+there is little point in catering for (indexing) expressions having completely
+undetermined type, as such a type can only apply to an expression that can
+never return (it cannot be evaluated without error).
 
 @< Other cases for type-checking and converting... @>=
 case subscription:
@@ -2413,10 +2425,11 @@ the then-branch; the opposite order might result in an error in converting the
 void else-branch to the type of the then-branch.
 
 This is the first place where we use that |bool_type| in not |const|; if it
-had been, a possible solution would be to take a copy of it, or to start with
-an undefined type and test afterwards that it has become equal to |bool_type|.
-The latter option would exclude any coercions to \&{bool} in the condition; at
-the time of writing no such coercions exist
+had been, possible alternative solutions would be to take a copy of it, or
+else to start with an undefined type and test afterwards that it has become
+equal to |bool_type|. The latter option would be slightly different by
+excluding any coercions to \&{bool} in the condition. However this would not
+be noticeable since (currently) no such coercions exist anyway.
 
 @< Other cases for type-checking and converting... @>=
 case conditional_expr:
@@ -2458,7 +2471,7 @@ struct while_expression : public expression_base
 
 @< Function definitions @>=
 void while_expression::print(std::ostream& out) const
-{ out << " while " <<  *condition << " do " << *body << " od ";
+{@; out << " while " <<  *condition << " do " << *body << " od ";
 }
 
 @ Type checking is a bit more complicated for |while| loops that for
@@ -2477,7 +2490,8 @@ case while_expr:
   { expression_ptr b
      (convert_expr(w->body, @|
                    type==void_type ? void_type :*type.component_type));
-    @/return new while_expression(c,b);
+    expression_ptr result(new while_expression(c,b));
+    return type==void_type ? new voiding(result) : result.release();
   }
   else
   @< If |type| can be converted from some row-of type, check |w->body|
@@ -2568,15 +2582,41 @@ void for_expression::print(std::ostream& out) const
 @ Type checking is more complicated for |for| loops than for |while| loops,
 since more types and potential coercions are involved. we start by processing
 the in-part in a neutral type context, which will on success set |in_type| to
-its a priori type. This type must be indexable by integers (so it is either a
-row-type or vector or matrix), and the call to |subscr_base::indexable| will
-set |comp_type| to the component type resulting from integer subscription.
+its a priori type.
 
 @< Other cases for type-checking and converting... @>=
 case for_expr:
-{ f_loop f=e.e.for_variant; type_expr in_type;
-  expression_ptr in_expr(convert_expr(f->in_part,in_type));
-@/type_expr comp_type; subscr_base::sub_type which;
+{ f_loop f=e.e.for_variant;
+  bindings bind(count_identifiers(f->id));
+   // for identifier(s) introduced in this loop
+  type_expr in_type;
+  expression_ptr in_expr(convert_expr(f->in_part,in_type));  // \&{in} part
+  subscr_base::sub_type which; // the kind of aggregate iterated over
+  @< Set |which| according to |in_type|, and set |bind| according to the
+     identifiers contained in |f->id| @>
+  type_expr body_type, *btp; const conversion_record* conv=NULL;
+  if (type==void_type)
+    btp=&void_type; // void context is more permissive for body
+  else if (type.specialise(row_of_type))
+    btp=type.component_type;
+  else if ((conv=row_coercion(type,body_type))!=NULL)
+    btp=&body_type;
+  else throw type_error(e,copy(row_of_type),copy(type));
+  bind.push(id_context);
+  expression_ptr body(convert_expr (f->body,*btp));
+@/bind.pop(id_context);
+  expression_ptr loop(new for_expression(f->id,in_expr,body,which));
+@/return type==void_type ? new voiding(loop) :
+      @| conv!=NULL ? new conversion(*conv,loop) : @| loop.release() ;
+}
+
+@ This type must be indexable by integers (so it is either a
+row-type or vector or matrix), and the call to |subscr_base::indexable| will
+set |comp_type| to the component type resulting from integer subscription.
+
+@< Set |which| according to |in_type|, and set |bind| according to the
+   identifiers contained in |f->id| @>=
+{ type_expr comp_type;
   if (not subscr_base::indexable(in_type,int_type,comp_type,which))
   { std::ostringstream o;
     o << "Cannot iterate over value of type " << in_type;
@@ -2587,21 +2627,7 @@ case for_expr:
     (copy(int_type),make_type_singleton(copy(comp_type))));
   if (not pt->specialise(*it_type))
     throw expr_error(e,"Improper structure of loop variable pattern");
-  size_t n_id = count_identifiers(f->id);
-  bindings bind(n_id); thread_bindings(f->id,*it_type,bind);
-  type_expr body_type, *btp; const conversion_record* conv=NULL;
-  if (type==void_type)
-    btp=&void_type;
-  else if (type.specialise(row_of_type))
-    btp=type.component_type;
-  else if ((conv=row_coercion(type,body_type))!=NULL)
-    btp=&body_type;
-  else throw type_error(e,copy(row_of_type),copy(type));
-  bind.push(id_context);
-  expression_ptr body(convert_expr (f->body,*btp));
-  bind.pop(id_context);
-  expression_ptr loop(new for_expression(f->id,in_expr,body,which));
-  return conv==NULL ? loop.release() : new conversion(*conv,loop);
+  thread_bindings(f->id,*it_type,bind);
 }
 
 @ We can start evaluating the |in_part| regardless of |kind|, but for deducing
@@ -2758,11 +2784,11 @@ suppress ``\&{from}~0''.
 
 @< Function definitions @>=
 void inc_for_expression::print(std::ostream& out) const
-{ out << " for " << main_hash_table->name_of(id)  << " = " << *count @|
+{ out << " for " << main_hash_table->name_of(id)  << ": " << *count @|
       << " from " << *bound << " do " << *body << " od ";
 }
 void dec_for_expression::print(std::ostream& out) const
-{ out << " for " << main_hash_table->name_of(id)  << " = " << *count @|
+{ out << " for " << main_hash_table->name_of(id)  << " : " << *count @|
       << " downto " << *bound << " do " << *body << " od ";
 }
 
@@ -2792,14 +2818,14 @@ case cfor_expr:
   else throw type_error(e,copy(row_of_type),copy(type));
   bind.push(id_context);
   expression_ptr body(convert_expr (c->body,*btp));
-  bind.pop(id_context);
-  expression e;
+@/bind.pop(id_context);
+  expression_ptr loop;
   if (c->up!=0)
-    e=new inc_for_expression(c->id,count_expr,bound_expr,body);
+    loop.reset(new inc_for_expression(c->id,count_expr,bound_expr,body));
   else
-    e=new dec_for_expression(c->id,count_expr,bound_expr,body);
-  expression_ptr loop(e);
-  return conv==NULL ? loop.release() : new conversion(*conv,loop);
+    loop.reset(new dec_for_expression(c->id,count_expr,bound_expr,body));
+  return type==void_type ? new voiding(loop) : @|
+         conv!=NULL ? new conversion(*conv,loop) : @|  loop.release();
 
 }
 
@@ -3594,7 +3620,14 @@ void matrix_value::print(std::ostream& out) const
 
 @*1 Implementing some conversion functions.
 %
-The conversions into vectors or matrices these use an auxiliary function
+Here we define the set of implicit conversions that apply to types in the base
+language; there will also be implicit conversions added that concern
+Atlas-specific types, such as the conversion from (certain) strings to Lie
+types. The conversions defined here are from (nested) lists of integers to
+vectors and matrices, and back, conversion from integers to rationals, and
+from lists of rationals to rational vectors and back.
+
+@ The conversions into vectors or matrices these use an auxiliary function
 |row_to_weight|, which constructs a new |Weight| from a row of integers,
 leaving the task to clean up that row to their caller.
 
@@ -3763,7 +3796,7 @@ coercion(mat_type,row_row_of_int_type, "[[I]]", int_list_list_convert); @/
 @* Wrapper functions.
 %
 We now come to defining wrapper functions. The following function will greatly
-facilitate the latter repetitive task of installing them.
+facilitate the later repetitive task of installing them.
 
 @< Declarations of exported functions @>=
 void install_function
