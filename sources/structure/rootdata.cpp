@@ -136,7 +136,6 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
 {
   std::vector<Byte_vector> simple_root(rk,Byte_vector(rk));
   std::vector<Byte_vector> simple_coroot(rk,Byte_vector(rk));
-  std::vector<RootNbrList> link; // size |numPosRoots*rank|
 
   typedef std::set<Byte_vector,root_compare> RootVecSet;
   std::vector<RootVecSet> roots_of_length
@@ -154,6 +153,7 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
 
   // construct positive root list, simple reflection links, and descent sets
 
+  std::vector<RootNbrList> link; // size |numPosRoots*rank|
   RootNbrList first_l(1,0); // where level |l| starts; level 0 is empty
   for (size_t l=1; not roots_of_length[l].empty(); ++l)// empty level means end
   {
@@ -193,7 +193,7 @@ void RootSystem::cons(const int_Matrix& Cartan_matrix)
 		  link[j][i]=cur; // and install reciprocal link at |j|
 		  break;
 		}
-	    assert(link[cur][i]!=~0ul); // some value must have been set
+	    assert(link[cur][i]!=RootNbr(~0)); // some value must have been set
 	  }
 	  else // |c<0| so, reflection adding |-c| times $\alpha_j$, goes up
 	  {
