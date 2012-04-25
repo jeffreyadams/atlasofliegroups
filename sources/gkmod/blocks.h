@@ -368,7 +368,8 @@ class non_integral_block : public Block_base
   BlockEltList survivors_below(BlockElt z) const; // expression for $I(z)$
 
   struct term
-  { int coef; BlockElt elt;
+  { int coef;     // coefficient (an additional factor $1-s$ is implicit)
+    BlockElt elt; // element in block
     term(int c, BlockElt b) : coef(c),elt(b) {}
   };
   std::vector<term> deformation_terms (BlockElt z);
