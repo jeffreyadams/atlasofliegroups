@@ -22,7 +22,7 @@ namespace arithmetic {
 
   class Rational;
   typedef std::vector<Rational> RationalList;
-
+  class Split_integer;
 
 } // |namespace arithmetic|
 
