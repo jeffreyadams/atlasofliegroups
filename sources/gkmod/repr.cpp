@@ -76,7 +76,7 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
   RatWeight gamma_rho = z.gamma() - RatWeight(rootDatum().twoRho(),2);
   Weight im_part2 = gamma_rho.numerator()+theta*gamma_rho.numerator();
   im_part2 /= gamma_rho.denominator(); // exact: $(1+\theta)(\lambda-\rho)$
-  return (im_part2 + i_tab.unpack(i_x,z.y_bits))/=2; // division exact again
+  return (im_part2 + i_tab.unpack(i_x,z.y()))/=2; // division exact again
 }
 
 // return $\lambda \in \rho+X^*$ as half-integer rational vector
@@ -272,6 +272,49 @@ bool Rep_context::compare::operator()
   if (r.x()!=s.x())
     return r.x()<s.x();
   return r.y()<s.y();
+}
+
+SR_poly Rep_context::expand_final(StandardRepr z) const // by value
+{
+  const RootDatum& rd = rootDatum();
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+
+  make_dominant(z); // this simplifies matters a lot; |z| is unchanged hereafter
+
+  InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const RatWeight& gamma=z.gamma();
+
+  RankFlags singular_real_parity;
+  for (weyl::Generator s=0; s<rd.semisimpleRank(); ++s)
+    if (gamma.numerator().dot(rd.simpleCoroot(s))==0)
+    { if (i_tab.is_real_simple(i_x,s))
+	singular_real_parity.set // record whether |s| is a real parity root
+	  // |unpack| gives $(1-\theta)(\lambda-\rho)$
+	  // real simple coroot odd on $\lambda-\rho$ means it is parity
+	  (s,rd.simpleCoroot(s).dot(i_tab.unpack(i_x,z.y()))%4!=0);
+      else if (i_tab.is_imaginary_simple(i_x,s))
+      {
+	if (kgb().status(s,z.x())==gradings::Status::ImaginaryCompact)
+	  return SR_poly(repr_less());; // return a zero result
+      }
+      else
+	assert(not kgb().isComplexDescent(s,z.x())); // because |make_dominant|
+    }
+  // having made dominant, any non-final is witnessed on a (real) simple root
+  if (singular_real_parity.any())
+  {
+    const weyl::Generator s= singular_real_parity.firstBit();
+    const KGBEltPair p = kgb().inverseCayley(s,z.x());
+    Weight lr = lambda_rho(z); // is passed unchanged to inverse Cayleys
+    lr -= // correct so that $\<\lambda,\alpha^\vee>=0$, like $\gamma$
+      rd.simpleRoot(s)*((rd.simpleCoroot(s).dot(lr)+1)/2);
+    assert(rd.simpleCoroot(s).dot(lr)==-1); // because $\<\rho,\alpha^\vee>=1$
+    SR_poly result = expand_final(sr(p.first,lr,gamma));
+    if (p.second!=UndefKGB)
+      result += expand_final(sr(p.second,lr,gamma));
+    return result;
+  }
+  else return SR_poly(z,repr_less());
 }
 
   } // |namespace repr|

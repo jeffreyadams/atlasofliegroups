@@ -3251,7 +3251,7 @@ void param_to_poly()
 @/test_standard(*p);
   const shared_real_form& rf=p->rf;
   push_value(new@|
-    virtual_module_value(rf,repr::SR_poly(p->val,rf->rc().repr_less())));
+    virtual_module_value(rf,rf->rc().expand_final(p->val)));
 }
 
 @ The main operations for virtual modules are addition and subtraction of
@@ -3266,8 +3266,7 @@ void add_module_wrapper(expression_base::level l)
     throw std::runtime_error @|
       ("Real form mismatch when adding standard module to a module");
   if (l!=expression_base::no_value)
-  { StandardRepr sr = p->val; // take a copy that we can modify;
-    accumulator->val+= p->rc().make_dominant(sr);
+  @/{@; accumulator->val+= p->rc().expand_final(p->val);
     push_value(accumulator);
   }
 }
@@ -3282,8 +3281,7 @@ void add_module_term_wrapper(expression_base::level l)
     throw std::runtime_error @|
       ("Real form mismatch when adding a term to a module");
   if (l!=expression_base::no_value)
-  { StandardRepr sr = p->val; // take a copy that we can modify;
-    accumulator->val.add_term(p->rc().make_dominant(sr),coef);
+  @/{@; accumulator->val.add_multiple(p->rc().expand_final(p->val),coef);
     push_value(accumulator);
   }
 }
@@ -3309,10 +3307,8 @@ void add_module_termlist_wrapper(expression_base::level l)
       if (accumulator->rf!=p->rf)
         throw std::runtime_error @|
           ("Real form mismatch when adding terms to a module");
-      { StandardRepr sr = p->val; // take a copy that we can modify;
-        accumulator->val.add_term(p->rc().make_dominant(sr),coef);
-      }
-    }
+      accumulator->val.add_multiple(p->rc().expand_final(p->val),coef);
+     }
     push_value(accumulator);
   }
 }
@@ -3376,7 +3372,7 @@ void to_termlist_wrapper(expression_base::level l)
   push_value(result);
 }
 
-@ Here is the principal application of virtual modules.
+@ Here is our principal application of virtual modules.
 Having computed the non-integral block, we can go ahead and compute a
 deformation formula for the given parameter. This involves computing a
 non-integral block, their Kazhdan-Lusztig polynomials, and produces an
@@ -3404,7 +3400,7 @@ void deform_wrapper(expression_base::level l)
       StandardRepr param_z =
         rc.sr(block.parent_x(z),block.lambda_rho(z),gamma);
       Split_integer coef(terms[i].coef,-terms[i].coef); // multiple of $1-s$
-      acc->val.add_term(param_z,coef);
+      acc->val.add_multiple(rc.expand_final(param_z),coef);
     }
     push_value(acc);
   }

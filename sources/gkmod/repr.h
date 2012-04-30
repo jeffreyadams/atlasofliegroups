@@ -127,9 +127,6 @@ class Rep_context
   // light version of |make_dominant|, only w.r.t. real coroot; not implemented
   StandardRepr& make_real_dominant(StandardRepr& z) const;
 
-  // make into unique representative of class for "equivalence"
-  StandardRepr& canonicalise(StandardRepr& z) const;
-
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering
   public:
@@ -140,12 +137,15 @@ class Rep_context
 
   compare repr_less() const;
 
+  typedef free_abelian::Free_Abelian<StandardRepr,Split_integer,compare> poly;
+
+  poly expand_final(StandardRepr z) const; // express in final SReprs (by value)
+
 }; // |Rep_context|
 
-typedef free_abelian::Free_Abelian<StandardRepr,
-				   Split_integer,
-				   Rep_context::compare>
-SR_poly;
+
+typedef Rep_context::poly SR_poly;
+
 
 } // |namespace repr|
 
