@@ -902,11 +902,11 @@ SRK_context::HS_id(const StandardRepK& sr, RootNbr alpha) const
       assert(i<rd.semisimpleRank());
     }
     // now $\<\alpha,\alpha_i^\vee> > 0$ where $\alpha$ is simple-imaginary
-    // and \alpha_i$ is complex for the involution |a.tw()|
 
     if (alpha==rd.simpleRootNbr(i)) break; // found it
 
-    // otherwise reflect all data by $s_i$, which decreases level of $\alpha$
+    // otherwise$\alpha_i$ is complex for the involution |a.tw()|; reflect
+    // all data by $s_i$, which decreases level of $\alpha$
     rd.simple_reflect_root(alpha,i);
     rd.simpleReflect(lambda,i);
     basedTitsGroup().basedTwistedConjugate(a,i);

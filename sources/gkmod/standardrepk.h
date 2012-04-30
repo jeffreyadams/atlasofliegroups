@@ -380,7 +380,7 @@ class SRK_context
   // equivalent by $q$-Hecht-Schmid identity for simple-imaginary root $\alpha$
   q_Char q_HS_id_eq(const StandardRepK& s, RootNbr alpha) const;
 
-  // no need for |q_back_HS_id_eq|, it would not ivolve $q$; use |back_HS_id|
+  // no need for |q_back_HS_id_eq|, it would not involve $q$; use |back_HS_id|
 
   /*! Returns the sum of absolute values of the scalar products of
     $(1+theta)\lambda$ and the positive coroots. This gives a Weyl group
