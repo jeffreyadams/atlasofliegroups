@@ -372,6 +372,11 @@ operator =: (Param,Param->bool): test equivalence of parameters
 print_n_block: (Param->): print (nonintegral) block generated from parameter
 n_block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
+KL_block: (Param->[Param],int,mat,[vec],vec): n_block together with its raw_KL
+  This is identical to n_block with the Kazhdan-Lustzig table for the block
+  appended to the result, in the format of raw_KL below: a matrix of indices
+  into the following list of polynomials, coded as a list of coefficient
+  vectors, and finally a list of indices where the length function increases
 
 operator +: (Split,Split->Split): addition of split integers
 operator -: (Split,Split->Split): subtraction of split integers

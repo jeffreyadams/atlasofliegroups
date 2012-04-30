@@ -106,3 +106,9 @@ set rec_def (Param p) =
 set triv_rep(RealForm G) =
   let rho=rho(root_datum(inner_class(G))), x=KGB(G,KGB_size(G)-1)
   in param(x,null(#rho),rho/1)
+
+set at_s (vec v) = let sum=Split:0, s=Split:(0,1) in
+  for i:#v downto 0 do sum := s*sum + v[i] od; sum
+
+set KL_at_s(Param p) = let (b,init,M,P,stops)=KL_block(p) then (r,c)=#M in
+  (b,init,for y:c do for x:y+1 do at_s(P[M[x,y]]) od od,stops)

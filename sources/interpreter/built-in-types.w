@@ -3042,6 +3042,55 @@ also construct a module parameter value for each element of |block|.
 
 }
 
+@ Here is a version of the same command that also exports the table of
+Kazhdan-Lusztig polynomials for the block, in the same form as \\{raw\_KL}
+that will be defined below.
+
+@< Local function def...@>=
+void KL_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p);
+  if (l!=expression_base::no_value)
+  {
+    BlockElt start; // will hold index in the block of the initial element
+    non_integral_block block(p->rc(),p->val,start);
+    @< Push a list of parameter values for the elements of |block| @>
+    push_value(new int_value(start));
+    const kl::KLContext& klc = block.klc(block.size()-1,false);
+
+    matrix_ptr M(new matrix_value(int_Matrix(klc.size())));
+    const kl::KLPol* base_pt = &klc.polStore()[0];
+    for (size_t y=1; y<klc.size(); ++y)
+      for (size_t x=0; x<y; ++x)
+      {
+        const kl::KLPol& pol = klc.klPol(x,y);
+        if (not pol.isZero()) // exception needed: zero need not be from table
+          M->val(x,y)= &pol-base_pt;
+      }
+@)
+    row_ptr polys(new row_value(0)); polys->val.reserve(klc.polStore().size());
+    for (size_t i=0; i<klc.polStore().size(); ++i)
+    {
+      const kl::KLPol& pol = klc.polStore()[i];
+      std::vector<int> coeffs(pol.size());
+      for (size_t j=pol.size(); j-->0; )
+        coeffs[j]=pol[j];
+      polys->val.push_back(shared_value(new vector_value(coeffs)));
+    }
+@)
+    std::vector<int> length_stops(block.length(block.size()-1)+1);
+    length_stops[0]=0;
+    for (size_t i=1; i<length_stops.size(); ++i)
+      length_stops[i]=block.length_first(i);
+@)
+    push_value(M);
+    push_value(polys);
+    push_value(new vector_value(length_stops));
+
+    if (l==expression_base::single_value)
+      wrap_tuple(5);
+  }
+}
 
 @ Finally we install everything related to module parameters.
 @< Install wrapper functions @>=
@@ -3060,6 +3109,8 @@ install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
 install_function(print_n_block_wrapper,@|"print_n_block"
                 ,"(Param->)");
 install_function(n_block_wrapper,@|"n_block" ,"(Param->[Param],int)");
+install_function(KL_block_wrapper,@|"KL_block"
+                ,"(Param->[Param],int,mat,[vec],vec)");
 
 @*1 Polynomials formed from parameters.
 %
