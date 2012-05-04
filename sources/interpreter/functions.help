@@ -364,11 +364,12 @@ infinitesimal_character: (Param->ratvec): infinitesimal character of parameter
 is_standard: (Param->bool): whether parameter defines a standard module
 is_zero: (Param->bool): whether parameter defines a zero standard module
 is_final: (Param->bool): whether parameter defines a zero standard module
-orientation_nr: (Param->int): the orientation number
 dominant: (Param->Param): make gamma dominant and do singular complex descents
 operator =: (Param,Param->bool): test equivalence of parameters
   This is implemented by applying make_dominant and testing identity of all
   three components x, lambda (defined modulo (1-theta_x)X^*) and nu.
+orientation_nr: (Param->int): the orientation number
+reducibility_points: (Param->[rat]): the t where I(x,lambda,t\nu) is reducible
 print_n_block: (Param->): print (nonintegral) block generated from parameter
 n_block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
