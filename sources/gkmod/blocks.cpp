@@ -1116,7 +1116,7 @@ bool nblock_help::is_real_nonparity(nblock_elt z, weyl::Generator s) const
 void nblock_help::parent_down_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   z.xx=kgb.inverseCayley(s,z.xx).first; // inverse Cayley transform on $x$ side
-  // on $y$ side just keep the same dual |TorusElement|, so nothings to do
+  // on $y$ side just keep the same dual |TorusElement|, so nothing to do
 #ifndef NDEBUG
   Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)); // modulo $2\Z$
   assert(r.numerator()%(2*r.denominator())==0); // but it must be a parity root
@@ -1871,7 +1871,8 @@ nblock_context::nblock_context(RealReductiveGroup& GR, const SubSystem& sub)
   , predecessors()
 {}
 
-non_integral_block::non_integral_block // interval below |x| only
+// alternative constructor, for interval below |x|
+non_integral_block::non_integral_block
   (RealReductiveGroup& G_real,
    const SubSystem& sub,
    KGBElt x,
