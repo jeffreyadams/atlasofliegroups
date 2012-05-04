@@ -1,13 +1,15 @@
 /*
   This is repr.cpp
 
-  Copyright (C) 2009 Marc van Leeuwen
+  Copyright (C) 2009-2012 Marc van Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
 */
 
 #include "repr.h"
+
+#include <map> // used in computing |reducibility_points|
 
 #include "arithmetic.h"
 #include "tits.h"
@@ -161,6 +163,104 @@ bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
   return true;
 }
 
+StandardRepr& Rep_context::make_dominant(StandardRepr& z) const
+{
+  const RootDatum& rd = rootDatum();
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+  Weight lr = lambda_rho(z);
+  KGBElt& x = z.x_part;
+  Weight& numer = z.infinitesimal_char.numerator();
+  InvolutionNbr i_x = kgb().inv_nr(x);
+
+  { weyl::Generator s;
+    do
+    {
+      for (s=0; s<rd.semisimpleRank(); ++s)
+      {
+	int v=rd.simpleCoroot(s).dot(numer);
+        if (v<0 or (v==0 and kgb().isComplexDescent(s,x)))
+        {
+	  RootNbr alpha = rd.simpleRootNbr(s);
+	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
+	    throw std::runtime_error("Non standard parameter in make_dominant");
+          rd.simpleReflect(numer,s);
+          rd.simpleReflect(lr,s);
+	  if (not i_tab.real_roots(i_x).isMember(alpha)) // if |alpha| is real
+	    lr -= rd.simpleRoot(s); // then $\rho_r$ cancels $\rho$
+          x = kgb().cross(s,x);
+	  i_x = kgb().inv_nr(x); // keep up with changing involution
+          break;
+        }
+      }
+    }
+    while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
+  }
+  z.y_bits=i_tab.pack(i_x,lr);
+  return z;
+}
+
+RationalList Rep_context::reducibility_points(StandardRepr& z) const
+{
+  const RootDatum& rd = rootDatum();
+  InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const Permutation& theta = i_tab.root_involution(i_x);
+
+  const RatWeight& gamma = z.gamma();
+  const Weight& numer = gamma.numerator();
+  unsigned long d = gamma.denominator();
+  const Weight lam_rho = lambda_rho(z);
+
+  RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
+  Weight two_rho_real = rd.twoRho(pos_real);
+
+  // we shall associate to a first number a strict lower bound for some $k$
+  // if first number is $num>0$ we shall later form fractions $(d/num)*k$
+  typedef std::map<long,long> table;
+  table odds,evens; // name indicates the parity that $k$ will have
+
+  for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
+  {
+    long num = numer.dot(rd.coroot(*it)); // numerator of $\<\nu,\alpha^v>$
+    if (num!=0)
+    {
+      long lam_alpha = lam_rho.dot(rd.coroot(*it))+rd.colevel(*it);
+      bool do_odd = (lam_alpha+two_rho_real.dot(rd.coroot(*it))/2)%2 ==0;
+      (do_odd ? &odds : &evens)->insert(std::make_pair(abs(num),0));
+    }
+  }
+
+  RootNbrSet pos_complex = i_tab.real_roots(i_x) & rd.posRootSet();
+  for (RootNbrSet::iterator it=pos_complex.begin(); it(); ++it)
+  {
+    RootNbr alpha=*it, beta=theta[alpha];
+    long vala = numer.dot(rd.coroot(alpha));
+    long valb = numer.dot(rd.coroot(beta));
+    long num = vala - valb;   // numerator of $2\<\nu,\alpha^v>$
+    if (num!=0)
+    {
+      assert((vala+valb)%d==0); // as |\<\gamma,a+b>=\<\lambda,a+b>|
+      long lwb =abs((vala+valb)/d);
+      std::pair<table::iterator,bool> trial =
+	(lwb%2==0 ? &evens : &odds)->insert(std::make_pair(abs(num),lwb));
+      if (not trial.second and lwb<trial.first->second)
+	trial.first->second=lwb; // if not new, maybe lower the old bound value
+    }
+  }
+
+  std::set<Rational> fracs;
+
+  for (table::iterator it= evens.begin(); it!=evens.end(); ++it)
+    for (long s= d*(it->second+2); s<=it->first; s+=2*d)
+      fracs.insert(Rational(s,it->first));
+
+  for (table::iterator it= odds.begin(); it!=odds.end(); ++it)
+    for (long s= it->second==0 ? d : d*(it->second+2); s<=it->first; s+=2*d)
+      fracs.insert(Rational(s,it->first));
+
+  return RationalList(fracs.begin(),fracs.end());
+}
+
 bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
 {
   const RootDatum& rd = rootDatum();
@@ -217,42 +317,6 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
     }
   }
   return count;
-}
-
-StandardRepr& Rep_context::make_dominant(StandardRepr& z) const
-{
-  const RootDatum& rd = rootDatum();
-  const InvolutionTable& i_tab = complexGroup().involution_table();
-  Weight lr = lambda_rho(z);
-  KGBElt& x = z.x_part;
-  Weight& numer = z.infinitesimal_char.numerator();
-  InvolutionNbr i_x = kgb().inv_nr(x);
-
-  { weyl::Generator s;
-    do
-    {
-      for (s=0; s<rd.semisimpleRank(); ++s)
-      {
-	int v=rd.simpleCoroot(s).dot(numer);
-        if (v<0 or (v==0 and kgb().isComplexDescent(s,x)))
-        {
-	  RootNbr alpha = rd.simpleRootNbr(s);
-	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
-	    throw std::runtime_error("Non standard parameter in make_dominant");
-          rd.simpleReflect(numer,s);
-          rd.simpleReflect(lr,s);
-	  if (not i_tab.real_roots(i_x).isMember(alpha)) // if |alpha| is real
-	    lr -= rd.simpleRoot(s); // then $\rho_r$ cancels $\rho$
-          x = kgb().cross(s,x);
-	  i_x = kgb().inv_nr(x); // keep up with changing involution
-          break;
-        }
-      }
-    }
-    while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
-  }
-  z.y_bits=i_tab.pack(i_x,lr);
-  return z;
 }
 
 Rep_context::compare Rep_context::repr_less() const

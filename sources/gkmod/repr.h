@@ -120,12 +120,10 @@ class Rep_context
   bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
   unsigned int orientation_number(const StandardRepr& z) const;
 
-  // transformations
   // prepare for |deform|: make |gamma| dominant, and as theta-stable as can
   StandardRepr& make_dominant(StandardRepr& z) const;
 
-  // light version of |make_dominant|, only w.r.t. real coroot; not implemented
-  StandardRepr& make_real_dominant(StandardRepr& z) const;
+  RationalList reducibility_points(StandardRepr& z) const;
 
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering

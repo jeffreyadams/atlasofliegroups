@@ -2969,6 +2969,22 @@ void orientation_number_wrapper(expression_base::level l)
     push_value(new int_value(p->rc().orientation_number(p->val)));
 }
 
+@ Here is a function that computes a list of positive rational values $t\leq1$
+such thatthe parameter obtained by replacing the continuous part~$\nu$ of
+by~$t\nu$ is not topmost in its block, so that 
+
+@< Local function def...@>=
+void reducibility_points_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+  {
+    RationalList rp = p->rc().reducibility_points(p->val);
+    row_ptr result(new row_value(rp.size()));
+    for (size_t i=0; i<rp.size(); ++i)
+      result->val[i]=shared_value(new rat_value(rp[i]));
+    push_value(result);
+  }
+}
 
 @ One of the main reasons to introduce module parameter values is that they
 allow computing a block, whose elements are again given by module parameters.
@@ -3106,6 +3122,8 @@ install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
 install_function(parameter_dominant_wrapper,@|"dominant" ,"(Param->Param)");
 install_function(parameter_equivalent_wrapper,@|"=" ,"(Param,Param->bool)");
 install_function(orientation_number_wrapper,@|"orientation_nr" ,"(Param->int)");
+install_function(reducibility_points_wrapper,@|
+		"reducibility_points" ,"(Param->[rat])");
 install_function(print_n_block_wrapper,@|"print_n_block"
                 ,"(Param->)");
 install_function(n_block_wrapper,@|"n_block" ,"(Param->[Param],int)");
@@ -3155,13 +3173,12 @@ std::ostream& print (std::ostream& out, const Split_integer& val)
 { if (val.e()==-val.s() or val.e()==val.s())
   { if (arithmetic::abs(val.e())<=1)
       out << (val.e()==1 ? '+' : val.e()==0 ? '0' : '-');
-    else out << std::setiosflags(std::ios_base::showpos) << val.e();
+    else out << (val.e()<0?'-':'+') << abs(val.e());
     out << "(1" << (val.e()==-val.s() ? '-' : '+') << "s)";
   }
   else
-     out << '(' << val.e()
-         << std::setiosflags(std::ios_base::showpos) << val.s() << "s)";
-  return out << std::resetiosflags(std::ios_base::showpos);
+     out << '(' << val.e() << (val.s()<0?'-':'+') << abs(val.s()) << "s)";
+  return out;
 }
 @)
 void split_int_value::print(std::ostream& out) const
