@@ -34,10 +34,11 @@ namespace kgb {
 
 /*
    The following base class follows a somewhat particular design: it is not an
-   abstract base class in the sense that it has no virtual methods (and
-   therefore a fortiori no purely virtual ones), yet it is not intended to
-   have any independent instances. The point is that the base class provides
-   all methods needed for basic \emph{use}, in for instance the block
+   abstract base class in the sense that it has no purely virtual methods (in
+   the original design there were no virtual methods, but a few have been
+   added since for printing purposes), yet it is not intended to have any
+   independent instances. The point is that the base class provides all
+   methods needed for basic \emph{use}, in for instance the block
    construction, but it does not provide sufficient methods for constructing
    the KGB set. Indeed the basic constructor is made |protected| to emphasise
    that it is up to derived classes to actually fill the tables in the
