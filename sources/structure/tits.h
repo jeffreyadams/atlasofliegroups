@@ -837,7 +837,7 @@ class EnrichedTitsGroup : public TitsCoset
    $\sigma_w.\delta$, in other words $grading_offset[s]$ is also the grading
    of $\sigma_w.\delta$ at $\alpha$. Left multiplication of $\sigma_w.\delta$
    by a torus element $x$ will modify this grading to the opposite parity if
-   and only if $\alpha(t)=-1$; since this torus part $x$ is represented as a
+   and only if $\alpha(x)=-1$; since this torus part $x$ is represented as a
    bitvector, we can take the scalar product of the reduction mod 2 of
    $\alpha$ with $x$ to compute this correction. The |!=|-operation, which on
    |bool| values means exclusive or, combines the values.
@@ -856,13 +856,13 @@ bool TitsCoset::simple_grading(const TitsElt& a, size_t s) const
    involution $a.x_0.\delta$ by $\sigma_s$ or by $\sigma_s^{-1}=\sigma_s^3$.
    These differ by conjugation by the torus element $\sigma_s^2=m_s$, which is
    not a trivial operation at the Tits group level, but as mentioned stays
-   withing the equivalence relation of our interpretation of Tits elements.
+   within the equivalence relation of our interpretation of Tits elements.
    Therefore only one operation is implemented, and it defines an involution
    at the level of the KGB structure, generating for varying $s$ a $W$ action.
 
    For the twisted involution $w$ this operation is just twisted conjugation,
    giving $w'=s.w.t$ where $t=twisted(s)$. For the entire Tits group part
-   $a=x.\sigma_w$ twisted conjugation by $\sigma_s$ in the Tits group |Tg|
+   $a=x.\sigma_w$, twisted conjugation by $\sigma_s$ in the Tits group |Tg|
    gives an element $a'=x'.\sigma_{w'}$ such that $\sigma_s.a=a'.\sigma_t$.
    Finally $\sigma_s.x.\sigma_w.\delta=x'.\sigma_{w'}.\sigma_t.\delta
    =x'.\sigma_{w'}.\delta.\sigma_s.m_s^{grading_offset[s]}$. Because of the
