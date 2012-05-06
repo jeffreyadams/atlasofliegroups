@@ -421,13 +421,17 @@ and in addition the Hasse diagram (set of all covering relations).
   RatWeight half_rho() const { return RatWeight(rootDatum().twoRho(),4); }
 
   tits::TorusPart torus_part(KGBElt x) const { return left_torus_part[x]; }
+  TorusElement torus_part_global // |torus_part| but coded as in |global_KGB|
+    (const RootDatum&rd, KGBElt x) const; // needs root datum (for base grading)
 
   TitsElt titsElt(KGBElt x) const;
   size_t torus_rank() const; // the (non-semisimple) rank of torus parts.
 
   Grading base_grading() const { return d_base->base_grading(); }
 
+
   KGBElt lookup(const TitsElt& a, const TitsGroup& Tg) const;
+
 
 // manipulators
 

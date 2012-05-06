@@ -2755,6 +2755,40 @@ void KGB_involution_wrapper(expression_base::level l)
     push_value(new matrix_value(G.involutionMatrix(kgb.involution(x->val))));
 }
 
+@ Here is a function that returns the vector of bits that distinguish KGB
+elements in the fibre over the same involution.
+
+@< Local function def...@>=
+void torus_bits_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  if (l!=expression_base::no_value)
+  { const KGB& kgb=x->rf->kgb();
+    TorusPart t = kgb.torus_part(x->val);
+    vector_value* p;
+    vector_ptr result(p=new vector_value(int_Vector(kgb.torus_rank(),0)));
+    for (unsigned int i=0; i<kgb.torus_rank(); ++i)
+      p->val[i]=t[i];
+    push_value(result);
+  }
+}
+
+@ It might be more useful to export the same value in a form that takes into
+account the base grading of the KGB set. The following function does that,
+returning the result in the form of a rational vector that should be
+interpreted in $({\bf Q}/2{\bf Z})^n$.
+
+@< Local function def...@>=
+void torus_factor_wrapper(expression_base::level l)
+{ shared_KGB_elt x = get<KGB_elt_value>();
+  if (l!=expression_base::no_value)
+  { const RealReductiveGroup& rf = x->rf->val;
+    const KGB& kgb=x->rf->kgb();
+    TorusElement t = kgb.torus_part_global(rf.rootDatum(),x->val);
+    rational_vector_ptr result(new rational_vector_value(t.log_pi(true)));
+    push_value(result);
+  }
+}
+
 @ We haven't defined much useful other things to do with KGB elements yet, but
 by popular request we make available the straightforward equality test.
 
@@ -2771,6 +2805,8 @@ void KGB_equals_wrapper(expression_base::level l)
 install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
 install_function(real_form_of_KGB_wrapper,@|"real_form","(KGBElt->RealForm)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
+install_function(torus_bits_wrapper,@|"torus_bits","(KGBElt->[int])");
+install_function(torus_factor_wrapper,@|"torus_factor","(KGBElt->ratvec)");
 install_function(KGB_equals_wrapper,@|"=","(KGBElt,KGBElt->bool)");
 
 @*1 Standard module parameters.

@@ -662,6 +662,21 @@ TitsElt KGB::titsElt(KGBElt x) const
 
 size_t KGB::torus_rank() const { return titsGroup().rank(); }
 
+TorusElement KGB::torus_part_global(const RootDatum&rd, KGBElt x) const
+{
+  assert(rank()==rd.semisimpleRank());
+  RatWeight rw (rd.rank());
+  RankFlags gr = base_grading();
+  gr.complement(rank()); // take complement in set of simple roots
+  for (Grading::iterator it=gr.begin(); it(); ++it)
+    rw += rd.fundamental_coweight(*it);
+
+  TorusElement result(y_values::exp_pi(rw));
+
+  result += torus_part(x);
+  return result;
+}
+
 // Looks up a |TitsElt| value and returns its KGB number, or |size()|
 // Since KGB does not have mod space handy, must assume |a| already reduced
 KGBElt KGB::lookup(const TitsElt& a, const TitsGroup& Tg) const
