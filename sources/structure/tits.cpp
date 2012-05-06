@@ -364,25 +364,31 @@ namespace {
 
 /*
  The |square_class_gen| field of a |GlobalTitsGroup| contains a list of
- generators of gradings of the simple roots that generate the square classes,
- if translated into central |TorusElement| values by taking the combination
- $c$ of fund. coweights selected by the grading, and then applying the map
- $c\mapsto\exp(2\pi i c)$; the function |compute_square_classes| computes it.
+ generators of gradings of the simple roots that generate the square classes.
+ Each generator is a grading that flags a single $\delta$-fixed simple root.
+ A $\Z/2\Z$-linear combination of these generators will later be translated
+ into a central |TorusElement| value by taking the corresponding combination
+ $c$ of fundamental coweights, and applying the map $c\mapsto\exp(2\pi i c)$.
  As representative torus element for the class one can take $t=\exp(\pi i c)$.
+ The function |compute_square_classes| computes this list of generators.
 
- Actually what is graded is the set of $\delta$-fixed root vectors, and the
- grading is that for the strong involution $t.\delta$ relative to the grading
- of $\delta$, which is just $v(t)=(-1)^{\<v,c>}$ at root vector $v$. But since
- $c$ must be $\delta$-stable to define a valid square of a strong involution,
- we certainly have $\<(1+\delta)v,c>\in2\Z$ for all root vectors $v$; thus the
- grading is trivial on the $1+\delta$-image of the root lattice, and it
+ Actually the valid gradings do not form a $\Z/2\Z$ vector space, but an
+ affine space for which one can take the granding of $\delta$ as base point.
+ These gradings apply to the set $(\<\Phi>_\Z)^\delta$ of $\delta$-fixed
+ elements of the root lattice. The grading for the strong involution
+ $t.\delta$, with torus-offset $t=\exp(\pi i c)$ from $\delta$, differs at
+ weight vector $v$ from the grading for $\delta$ by a factor $(-1)^{\<v,c>}$.
+ But since $c$ must be $\delta$-stable to define a valid square of a strong
+ involution, we certainly have $\<(1+\delta)x,c>\in2\Z$ for all
+ $x\in\<\Phi>_\Z$; thus the grading is allways invariant under translating $v$
+ by an element of the $1+\delta$-image of the root lattice. Therefore it
  suffices to record the grading on the $\delta$-fixed \emph{simple} roots.
 
  The list is formed of generators of the quotient of all possible gradings of
  those simple roots by the subgroup of gradings coming from $\delta$-fixed
  elements of $X_*$ (since gradings in the same coset for that subgroup define
- the same square class). We get a basis of the subgroup from |tori::plusBasis|
- and get gradings from it by taking scalar products with simple roots.
+ the same square class). We get a basis of the subgroup in |Vplus|, and then
+ get gradings by taking scalar products with $\delta$-fixed simple roots.
 
  The generators can all be taken to be canonical basis elements (gradings with
  exactly one bit set) at $\delta$-fixed simple roots. Once the subgroup to
@@ -400,8 +406,8 @@ std::vector<Grading> compute_square_classes
   assert(delta.numRows()==r);
   assert(delta.numColumns()==r);
 
-  int_Matrix roots(0,r);
-  RankFlags fixed;
+  int_Matrix roots(0,r); // rows: coordinates of $\delta$-fixed simple roots
+  RankFlags fixed; // the set of $\delta$-fixed simple roots
   for (size_t i=0; i<rd.semisimpleRank(); ++i)
     if (twist[i]==i)
     {
@@ -409,10 +415,10 @@ std::vector<Grading> compute_square_classes
       roots.add_row(rd.simpleRoot(i));
     }
 
-  BinaryMap A(lattice::eigen_lattice(delta.transposed(),1));
-  SmallSubspace Vplus(A); // mod subgroup, in $X_*$ coordinates
-  BinaryMap to_grading(roots);
-  Vplus.apply(to_grading); // convert to grading coordinates
+  BinaryMap A(lattice::eigen_lattice(delta.transposed(),1)); // $(X_*)^\delta$
+  SmallSubspace Vplus(A); // mod 2: modding subgroup, in $X_*$ coordinates
+  BinaryMap to_grading(roots); // evaluation at $\delta$-fixed simple roots
+  Vplus.apply(to_grading); // converts |Vplus| to grading coordinates
 
   RankFlags supp = Vplus.support(); // pivot positions
   supp.complement(roots.numRows()); // non-pivot positions among fixed ones
