@@ -2805,7 +2805,7 @@ void KGB_equals_wrapper(expression_base::level l)
 install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
 install_function(real_form_of_KGB_wrapper,@|"real_form","(KGBElt->RealForm)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
-install_function(torus_bits_wrapper,@|"torus_bits","(KGBElt->[int])");
+install_function(torus_bits_wrapper,@|"torus_bits","(KGBElt->vec)");
 install_function(torus_factor_wrapper,@|"torus_factor","(KGBElt->ratvec)");
 install_function(KGB_equals_wrapper,@|"=","(KGBElt,KGBElt->bool)");
 
@@ -3007,7 +3007,7 @@ void orientation_number_wrapper(expression_base::level l)
 
 @ Here is a function that computes a list of positive rational values $t\leq1$
 such thatthe parameter obtained by replacing the continuous part~$\nu$ of
-by~$t\nu$ is not topmost in its block, so that 
+by~$t\nu$ is not topmost in its block, so that
 
 @< Local function def...@>=
 void reducibility_points_wrapper(expression_base::level l)

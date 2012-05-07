@@ -356,7 +356,7 @@ KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
   output.
 real_form: (KGBElt->RealForm): the real form for which the argument is defined
 involution: (KGBElt->mat): the involution associated to the KGB element
-torus_bits: (KGBElt->[int]): torus part of KGB element as vector of 0,1 values
+torus_bits: (KGBElt->vec): torus part of KGB element as vector of 0,1 values
 torus_factor:KGBElt->ratvec): torus part of KGB element as in print_X command
 
 operator =: (KGBElt,KGBElt): equality of elements of a same KGB set
