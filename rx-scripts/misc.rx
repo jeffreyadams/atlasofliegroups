@@ -1,0 +1,107 @@
+{make sure all of these .rx files are in the current directory
+some of them are in [main atlas directory]/rx-scripts
+}
+<basic.rx     
+<groups.rx 
+<lietypes.rx
+
+{absolute value of integer}
+set abs (int k)=if k<0 then -k else k fi
+
+{test if an integer is even, or a rational is an integer}
+set is_even (int i) = (floor(i/2)=i/2)
+set is_integer (rat r)  = let (num,denom)=%r in if denom=1 then true else false fi
+
+{make a rational vector into an integer one if possible}
+set ratvectovec (ratvec v)=
+let (w,d)=%v in for a in w do if (not a/d=a\d) then error("Not an integer vector") fi; a\d od
+
+{define dot product ratvec*ratvec,ratvec*vec,vec*ratvec}
+set *(ratvec v,ratvec w)=let (a,b)=%v then (c,d)=%w in a*c/(b*d) 
+set *(vec v,ratvec w)=(v/1)*w
+set *(ratvec v,vec w)=v*(w/1)
+
+{make a rational into an integer if possible}
+set rattoint (rat r)=let (num,denom)=%r in if denom=1 then num else error("not an integer") fi
+
+{split, simply connected group of given type}
+set Gsplit (string s)=
+quasisplit_form(inner_class(simply_connected(s),"s"))
+
+{get real form (parent) of Param or ParamPol}
+set real_form(Param p)=let (x,,)=%p in real_form(x)
+set real_form(ParamPol P)=let (,p)=(%P)[0] in real_form(p)
+
+{overloads to define some functions of RealForm}
+set root_datum(RealForm G)=root_datum(inner_class(G))
+set fundamental_weight(RealForm G,int k)=fundamental_weight(root_datum(G),k)
+set rank (RealForm G)=rank(root_datum(G))
+set positive_roots(RealForm G)=positive_roots(root_datum(G))
+set positive_coroots(RealForm G)=positive_coroots(root_datum(G))
+set real_forms(RealForm G)=real_forms(Cartan_class(inner_class(G),0))
+set print_real_forms(RealForm G)=for i:#real_forms(G) from 0 do prints(i,": ",real_forms(G)[i]) od;()
+set dual_quasisplit_form (RealForm G)=dual_quasisplit_form(inner_class(G))
+
+set ss_rank(RootDatum rd)=n_columns(simple_roots(rd))
+set ss_rank(RealForm G)=ss_rank(root_datum(G))
+set rho(RootDatum rd)=
+let r=positive_roots(rd) then
+rho=for i:n_rows(r) do 0 od in
+for i:n_columns(r) from 0 do rho+:=r[i] od ;rho/2
+set rho (RealForm G)=rho(root_datum(G))
+
+set rhocheck(RootDatum rd)=
+let r=positive_coroots(rd) then
+rhocheck=for i:n_rows(r) do 0 od in
+for i:n_columns(r) from 0 do rhocheck+:=r[i] od ;rhocheck/2
+set rhocheck (RealForm G)=rhocheck(root_datum(G))
+
+{make rho as an vector of inteters if possible}
+set intrho (RealForm G)=ratvectovec(rho(G))
+set intrho (RootDatum r)=ratvectovec(rho(r))
+
+{extract x,lambda-rho,lambda,nu from p
+lambda-rho =vec,  lambda= ratvec}
+set x(Param p)=let (x,,) =%p in x
+set lambdaminusrho(Param p)=let (,lambda,) =%p in lambda
+set lambda(Param p)=lambdaminusrho(p)/1+rho(real_form(p))
+set nu(Param p)=let (,,nu) =%p in nu
+
+{alternate syntax for param command: param(G,3,...) instead of param(KGB(G,3),...)}
+set param(RealForm G,int k, vec lambda,ratvec nu)=param(KGB(G,k),lambda,nu)
+
+{alternate syntax for param command: allow nu to be vector of integers}
+set param (RealForm G,int x,[int] lambda,[int] nu)=param(G,x,lambda,nu/1)
+
+{normparam(G,x,lambda,nu)=param(G,x,lambda-rho(G),nu),
+so you can enter lambda without the rho shift (requires rho to be in X^*(H))}
+set normparam (RealForm G,int x,[int] lambda,ratvec nu)=param(G,x,lambda-intrho(G),nu)
+set normparam (RealForm G,int x,[int] lambda,[int] nu)=normparam (G,x,lambda,nu/1)
+
+{finite dimensional with highest weight tau in X^*
+I'm not sure this always works
+it returns
+param(last KGB element,tau,tau+rho) so lambda=tau+rho}
+set finite_dimensional(RealForm G,vec tau)=
+param(KGB(G,KGB_size(G)-1),tau,tau/1+rho(G))
+
+{trivial representation of G, see finite_dimensional}
+set trivial(RealForm G)=finite_dimensional(G,null(rank(G)))
+
+{spherical principal series of split group
+assumes G is split, otherwise no guarantees
+specify nu as a vec or ratvec}
+set spherical_principal_series (RealForm G, ratvec nu)=
+let lambda=null(rank(G)) in
+param(KGB(G,KGB_size(G)-1),lambda,nu)
+set spherical_principal_series (RealForm G, [int] nu)=spherical_principal_series(G,nu/1)
+
+
+
+{replace non-final parameter with [Param p] of final ones
+uses this feature of ParamPol}
+set make_final (Param p)=let P=null_module(real_form(p))+p in for (,p) in %P do p od
+ 
+{get just the parameters from an n_block,
+just a shorcut to: (params,)=n_block(p)}
+set get_n_block (Param p)=let (params,)=n_block(p) in params
