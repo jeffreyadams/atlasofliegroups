@@ -208,7 +208,7 @@ RationalList Rep_context::reducibility_points(StandardRepr& z) const
 
   const RatWeight& gamma = z.gamma();
   const Weight& numer = gamma.numerator();
-  unsigned long d = gamma.denominator();
+  long d = gamma.denominator();
   const Weight lam_rho = lambda_rho(z);
 
   RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
@@ -230,7 +230,7 @@ RationalList Rep_context::reducibility_points(StandardRepr& z) const
     }
   }
 
-  RootNbrSet pos_complex = i_tab.real_roots(i_x) & rd.posRootSet();
+  RootNbrSet pos_complex = i_tab.complex_roots(i_x) & rd.posRootSet();
   for (RootNbrSet::iterator it=pos_complex.begin(); it(); ++it)
   {
     RootNbr alpha=*it, beta=theta[alpha];
