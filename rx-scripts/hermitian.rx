@@ -66,7 +66,7 @@ set orientation_number_term (Param p,Param q)=
 let on_p=orientation_nr(p) then
 on_q=orientation_nr(q) in 
 if (not is_even(on_p-on_q)) then error("computing orientation number for odd difference of lengths") 
-else Split:(0,1)^(on_p-on_q) fi
+else Split:(0,1)^((on_p-on_q)\2) fi
 
 {extract coefficient of  (Param p) from (ParamPol P)}
 set coeff (ParamPol P,Param p)=
