@@ -3481,16 +3481,16 @@ type_ptr analyse_types(const expr& e,expression_ptr& p)
 The interpreter distinguishes its own types like \.{[int]} ``row of integer''
 from similar built-in types of the library, like \.{vec} ``vector'', which it
 will consider to be primitive types. In fact a value of type ``vector''
-represents an object of the Atlas type |matrix::Vector<int>|, and similarly
-other primitive types will stand for other Atlas types. We prefer using a
-basic type name rather than something resembling the more mathematically
-charged equivalents like |Weight| for |atlas::matrix::Vector<int>|, as that
-might be more confusing that helpful to users. In any case, the interpretation
-of the values is not at all fixed (vectors are used for coweights and
-(co)roots as well as for weights, and matrices could denote either a basis or
-an automorphism of a lattice). The header \.{atlas\_types.h} makes sure all
-types are pre-declared, but we need to see the actual type definitions in
-order to incorporated these values in ours.
+represents an object of the Atlas type |int_Vector|, and similarly other
+primitive types will stand for other Atlas types. We prefer using a basic type
+name rather than something resembling the more mathematically charged
+equivalents like |Weight| for |int_Vector|, as that might be more confusing
+that helpful to users. In any case, the interpretation of the values is not at
+all fixed (vectors are used for coweights and (co)roots as well as for
+weights, and matrices could denote either a basis or an automorphism of a
+lattice). The header \.{atlas\_types.h} makes sure all types are pre-declared,
+but we need to see the actual type definitions in order to incorporated these
+values in ours.
 
 @< Includes needed in the header file @>=
 #include "atlas_types.h"
@@ -3498,15 +3498,14 @@ order to incorporated these values in ours.
 #include "ratvec.h"
 
 @ We start with deriving |vector_value| from |value_base|. In its constructor,
-the argument is a reference to |std::vector<int>|, from which
-|matrix::Vector<int>| is derived (without adding data members); since a
-constructor for the latter from the former is defined, we can do with just one
-constructor for |vector_value|.
+the argument is a reference to |std::vector<int>|, from which |int_Vector| is
+derived (without adding data members); since a constructor for the latter from
+the former is defined, we can do with just one constructor for |vector_value|.
 
 @< Type definitions @>=
 
 struct vector_value : public value_base
-{ matrix::Vector<int> val;
+{ int_Vector val;
 @)
   explicit vector_value(const std::vector<int>& v) : val(v) @+ {}
   ~vector_value()@+ {}
@@ -3543,7 +3542,7 @@ struct rational_vector_value : public value_base
 { RatWeight val;
 @)
   explicit rational_vector_value(const RatWeight& v):val(v)@+{}
-  rational_vector_value(const matrix::Vector<int>& v,int d)
+  rational_vector_value(const int_Vector& v,int d)
    : val(v,d) @+ { val.normalize(); }
   ~rational_vector_value()@+ {}
   virtual void print(std::ostream& out) const;
@@ -3644,8 +3643,8 @@ fact, while it was exceptional when this code was first written, it is now
 being used throughout the Atlas library.
 
 @< Local function def... @>=
-matrix::Vector<int> row_to_weight(const row_value& r)
-{ matrix::Vector<int> result(r.val.size());
+int_Vector row_to_weight(const row_value& r)
+{ int_Vector result(r.val.size());
   for(size_t i=0; i<r.val.size(); ++i)
     result[i]=force<int_value>(r.val[i].get())->val;
   return result;
@@ -3665,7 +3664,7 @@ extended with null entries to make a rectangular shape for the matrix.
 @< Local function def... @>=
 void matrix_convert()
 { shared_row r(get<row_value>());
-@/std::vector<matrix::Vector<int> > column_list;
+@/std::vector<int_Vector > column_list;
   column_list.reserve(r->val.size());
   size_t depth=0; // maximal length of vectors
   for(size_t i=0; i<r->val.size(); ++i)
@@ -3697,7 +3696,7 @@ void rational_convert() // convert integer to rational (with denominator~1)
 @)
 void ratvec_convert() // convert list of rationals to rational vector
 { shared_row r = get <row_value>();
-  matrix::Vector<int> numer(r->val.size()),denom(r->val.size());
+  int_Vector numer(r->val.size()),denom(r->val.size());
   unsigned int d=1;
   for (size_t i=0; i<r->val.size(); ++i)
   { Rational frac = force<rat_value>(r->val[i].get())->val;
@@ -3729,7 +3728,7 @@ the vector and matrix conversions. The former is similar to |matrix_convert|.
 @< Local function def... @>=
 void matrix2_convert()
 { shared_row r(get<row_value>());
-@/std::vector<matrix::Vector<int> > column_list;
+@/std::vector<int_Vector > column_list;
   column_list.reserve(r->val.size());
   size_t depth=0; // maximal length of vectors
   for(size_t i=0; i<r->val.size(); ++i)
@@ -3753,7 +3752,7 @@ of |row_to_weight|, but rather than returning a |row_value| it returns a
 |row_ptr| pointing to it.
 
 @< Local function def... @>=
-row_ptr weight_to_row(const matrix::Vector<int>& v)
+row_ptr weight_to_row(const int_Vector& v)
 { row_ptr result (new row_value(v.size()));
   for(size_t i=0; i<v.size(); ++i)
     result->val[i]=shared_value(new int_value(v[i]));
@@ -4358,7 +4357,7 @@ pointers; for values popped from the stack this would in fact be hard to avoid.
 void null_vec_wrapper(expression_base::level lev)
 { int l=get<int_value>()->val;
   if (lev!=expression_base::no_value)
-    push_value(new vector_value(matrix::Vector<int>(std::abs(l),0)));
+    push_value(new vector_value(int_Vector(std::abs(l),0)));
 }
 @) void null_mat_wrapper(expression_base::level lev)
 { int l=get<int_value>()->val;
