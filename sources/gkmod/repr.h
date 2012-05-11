@@ -108,7 +108,6 @@ class Rep_context
 
   RatWeight lambda(const StandardRepr& z) const; // half-integer
   RatWeight nu(const StandardRepr& z) const; // rational, $-\theta$-fixed
-  GlobalTitsElement y(const StandardRepr& z) const;
 
   // attributes
   bool is_standard  // whether $I(z)$ is non-virtual: gamma imaginary-dominant
