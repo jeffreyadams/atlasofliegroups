@@ -356,9 +356,10 @@ KGB: (RealFrom,int->KGBElt): select a KGB element x among those of a real form
   output.
 real_form: (KGBElt->RealForm): the real form for which the argument is defined
 involution: (KGBElt->mat): the involution associated to the KGB element
-torus_bits: (KGBElt->[int]): torus part of KGB element as vector of 0,1 values
-torus_factor:KGBElt->ratvec): torus part of KGB element as in print_X command
-
+torus_bits: (KGBElt->vec): torus part of KGB element as vector of 0,1 values
+torus_factor:KGBElt->ratvec): torus part of KGB element, twice that in print_X
+  To be interpreted modulo $(2\Z)^n$, and modulo the image of (transposed)
+  $1-\theta$ acting on $X_*\tensor\Q$.
 operator =: (KGBElt,KGBElt): equality of elements of a same KGB set
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
@@ -376,11 +377,24 @@ reducibility_points: (Param->[rat]): the t where I(x,lambda,t\nu) is reducible
 print_n_block: (Param->): print (nonintegral) block generated from parameter
 n_block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
-KL_block: (Param->[Param],int,mat,[vec],vec): n_block together with its raw_KL
-  This is identical to n_block with the Kazhdan-Lustzig table for the block
-  appended to the result, in the format of raw_KL below: a matrix of indices
-  into the following list of polynomials, coded as a list of coefficient
-  vectors, and finally a list of indices where the length function increases
+KL_block: (Param->[Param],int,mat,[vec],vec,vec,mat): n_block, raw_KL, and more
+  This combines n_block with the Kazhdan-Lustzig table for the block appended,
+  and two more values that allow cumulation to be performed. The two values of
+  n_block are followed by three values in the format of raw_KL below: a matrix
+  of indices into the following list of polynomials, coded as a list of
+  coefficient vectors, and finally a list of indices where the length function
+  increases. Finally follow a vector with indices of the block elements for
+  which the the representation at regular infinitesimal character survives the
+  translation functor to the (possibly) singular infinitesimal character of
+  the given parameter, and a matrix whose rows correspond to these survivors,
+  and it columns to all block elements; the entry gives the coefficient by
+  which the block element for its column contributes to the surviving
+  parameter for its row, with a sign given by the parity of the length
+  difference between contributing and contributed-to elements. Thus one can
+  transform the given KL matrix at regular infinitesimal character to one at
+  possibly singular infinitesimal as follows: select only the columns of the
+  KL matrix whose index is among the survivors, and then multiply the
+  resulting matrix on the left by the contibution-coefficient matrix.
 
 operator +: (Split,Split->Split): addition of split integers
 operator -: (Split,Split->Split): subtraction of split integers

@@ -104,5 +104,5 @@ set triv_rep(RealForm G) =
 set at_s (vec v) = let sum=Split:0, s=Split:(0,1) in
   for i:#v downto 0 do sum := s*sum + v[i] od; sum
 
-set KL_at_s(Param p) = let (b,init,M,P,stops)=KL_block(p) then (r,c)=#M in
-  (b,init,for y:c do for x:y+1 do at_s(P[M[x,y]]) od od,stops)
+set KL_at_s(Param p) = let (b,init,M,P,stops,v,m)=KL_block(p) then (r,c)=#M in
+  (b,init,for y:c do for x:y+1 do at_s(P[M[x,y]]) od od,stops,v,m)

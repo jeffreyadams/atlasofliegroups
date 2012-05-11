@@ -2805,7 +2805,7 @@ void KGB_equals_wrapper(expression_base::level l)
 install_function(KGB_elt_wrapper,@|"KGB","(RealForm,int->KGBElt)");
 install_function(real_form_of_KGB_wrapper,@|"real_form","(KGBElt->RealForm)");
 install_function(KGB_involution_wrapper,@|"involution","(KGBElt->mat)");
-install_function(torus_bits_wrapper,@|"torus_bits","(KGBElt->[int])");
+install_function(torus_bits_wrapper,@|"torus_bits","(KGBElt->vec)");
 install_function(torus_factor_wrapper,@|"torus_factor","(KGBElt->ratvec)");
 install_function(KGB_equals_wrapper,@|"=","(KGBElt,KGBElt->bool)");
 
@@ -3130,17 +3130,45 @@ void KL_block_wrapper(expression_base::level l)
       polys->val.push_back(shared_value(new vector_value(coeffs)));
     }
 @)
-    std::vector<int> length_stops(block.length(block.size()-1)+1);
-    length_stops[0]=0;
-    for (size_t i=1; i<length_stops.size(); ++i)
-      length_stops[i]=block.length_first(i);
+    vector_ptr length_stops(new vector_value(
+       int_Vector(block.length(block.size()-1)+1)));
+    length_stops->val[0]=0;
+    for (size_t i=1; i<length_stops->val.size(); ++i)
+      length_stops->val[i]=block.length_first(i);
+@)
+    unsigned n_survivors=0;
+    for (BlockElt z=0; z<block.size(); ++z)
+      if (block.survives(z))
+        ++n_survivors;
+    vector_ptr survivor(new vector_value(int_Vector(n_survivors)));
+    { unsigned i=0;
+      for (BlockElt z=0; z<block.size(); ++z)
+        if (block.survives(z))
+          survivor->val[i++]=z;
+      assert(i==n_survivors);
+    }
+    matrix_ptr contributes_to(new matrix_value(
+      int_Matrix(n_survivors,block.size(),0)));
+    for (BlockElt z=0; z<block.size(); ++z)
+    { BlockEltList sb = block.survivors_below(z);
+      for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
+      { BlockElt x= permutations::find_index<int>(survivor->val,*it);
+          // a row index
+        if ((block.length(z)-block.length(*it))%2==0)
+          ++contributes_to->val(x,z);
+        else
+          --contributes_to->val(x,z);
+      }
+    }
 @)
     push_value(M);
     push_value(polys);
-    push_value(new vector_value(length_stops));
+    push_value(length_stops);
+    push_value(survivor);
+    push_value(contributes_to);
 
     if (l==expression_base::single_value)
-      wrap_tuple(5);
+      wrap_tuple(7);
   }
 }
 
@@ -3164,7 +3192,7 @@ install_function(print_n_block_wrapper,@|"print_n_block"
                 ,"(Param->)");
 install_function(n_block_wrapper,@|"n_block" ,"(Param->[Param],int)");
 install_function(KL_block_wrapper,@|"KL_block"
-                ,"(Param->[Param],int,mat,[vec],vec)");
+                ,"(Param->[Param],int,mat,[vec],vec,vec,mat)");
 
 @*1 Polynomials formed from parameters.
 %
@@ -3994,35 +4022,6 @@ void print_W_graph_wrapper(expression_base::level l)
     wrap_tuple(0);
 }
 
-@ The function |test_rep| serves to experiment with the input of
-general representation parameters and the computation of the corresponding
-pair $(x,y)$. The code below should be modified so as to use only the integral
-system defined by the infinitesimal character~$\gamma$.
-
-@h "repr.h"
-
-@< Local function def...@>=
-void test_rep_wrapper(expression_base::level l)
-{
-  shared_rational_vector nu =get<rational_vector_value>();
-  shared_vector lambda_rho = get<vector_value>();
-  shared_KGB_elt x = get<KGB_elt_value>();
-
-  RealReductiveGroup& G = x->rf->val;
-  Rep_context rc(G);
-@)
-  StandardRepr sr = rc.sr(x->val,lambda_rho->val,nu->val);
-  std::cout << "infinitesimal character: " << sr.gamma() << std::endl;
-  GlobalTitsElement y=rc.y(sr);
-  ComplexReductiveGroup dual_G(G.complexGroup(),tags::DualTag());
-  kgb::global_KGB dual_KGB (dual_G,y);
-  *output_stream << "y is element " << dual_KGB.lookup(y)
-                 << " in dual KGB set:\n";
-  kgb_io::print_X(*output_stream,dual_KGB);
-@)
-  if (l==expression_base::single_value)
-    wrap_tuple(0);
-}
 
 @ Finally we install everything remaining.
 
@@ -4057,8 +4056,6 @@ install_function(print_W_cells_wrapper,@|"print_W_cells"
 		,"(RealForm,DualRealForm->)");
 install_function(print_W_graph_wrapper,@|"print_W_graph"
 		,"(RealForm,DualRealForm->)");
-install_function(test_rep_wrapper,@|"test_rep","(KGBElt,vec,ratvec->)");
-
 
 
 @* Index.

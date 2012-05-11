@@ -96,18 +96,6 @@ RatWeight Rep_context::nu(const StandardRepr& z) const
   return RatWeight(num,2*z.gamma().denominator()).normalize();
 }
 
-// convert |lambda| and |gamma| into $y$ value
-// Formula: $\exp(i\pi(\gamma-\lambda)) \sigma_{tw} \delta_1$
-GlobalTitsElement Rep_context::y(const StandardRepr& z) const
-{
-  TorusElement t = y_values::exp_pi(z.gamma()-lambda(z));
-  const TwistedWeylGroup& W = KGB_set.twistedWeylGroup();
-  const TwistedWeylGroup dual_W (W,tags::DualTag()); // VERY EXPENSIVE!
-  TwistedInvolution tw =
-    blocks::dual_involution(KGB_set.involution(z.x()),W,dual_W);
-  return GlobalTitsElement(t,tw);
-}
-
 // |z| standard means (weakly) dominant on the (simple-)imaginary roots
 bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
 {
@@ -117,9 +105,8 @@ bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
   for (unsigned i=0; i<i_tab.imaginary_rank(i_x); ++i)
   {
     RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-    Weight lr = lambda_rho(z);
-    int v = lr.scalarProduct(rd.coroot(alpha))+rd.colevel(alpha);
-    if (v<0)
+    const Weight& numer = z.gamma().numerator();
+    if (numer.dot(rd.coroot(alpha))<0)
       return witness=alpha,false;
   }
   return true;
@@ -134,10 +121,10 @@ bool Rep_context::is_zero(const StandardRepr& z, RootNbr& witness) const
   for (unsigned i=0; i<i_tab.imaginary_rank(i_x); ++i)
   {
     RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-    int v = lambda_rho(z).scalarProduct(rd.coroot(alpha))+rd.colevel(alpha);
+    const Weight& numer = z.gamma().numerator();
     bool compact =
       kgb::status(kgb(),z.x(),rd,alpha)==gradings::Status::ImaginaryCompact;
-    if (v==0 and compact)
+    if (compact and numer.dot(rd.coroot(alpha))==0)
       return witness=alpha,true;
   }
   return false;
@@ -208,7 +195,7 @@ RationalList Rep_context::reducibility_points(StandardRepr& z) const
 
   const RatWeight& gamma = z.gamma();
   const Weight& numer = gamma.numerator();
-  unsigned long d = gamma.denominator();
+  long d = gamma.denominator();
   const Weight lam_rho = lambda_rho(z);
 
   RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
@@ -230,7 +217,7 @@ RationalList Rep_context::reducibility_points(StandardRepr& z) const
     }
   }
 
-  RootNbrSet pos_complex = i_tab.real_roots(i_x) & rd.posRootSet();
+  RootNbrSet pos_complex = i_tab.complex_roots(i_x) & rd.posRootSet();
   for (RootNbrSet::iterator it=pos_complex.begin(); it(); ++it)
   {
     RootNbr alpha=*it, beta=theta[alpha];
