@@ -1,0 +1,92 @@
+{the functions in this file have not been carefully checked}
+
+{translate Param p, at infinitesimal character gamma,
+to new infinitesimal character gamma_new
+assumes gamma,gamma_new are dominant, gamma_new-gamma is integral
+replaces (x,lambda,nu) with (x,lambda+delta,nu+delta)
+if gamma,gamma_new are regular, p and T(p,gamma_new) will have identical block structure
+if gamma is regular, gamma_new is singular, block of T(p,gamma_new) will be a quotient
+}
+set T(Param p, ratvec gamma_new)=
+let G=real_form(p) then
+rho=rho(G) then
+gamma=infinitesimal_character(p) then
+delta=gamma_new-gamma then
+lambdaminusrho_new=ratvectovec(lambdaminusrho(p)/1+delta) in
+param(x(p),lambdaminusrho_new,nu(p)+delta) 
+
+{translate a ParamPol by translating each term}
+set T(ParamPol P, ratvec gamma_new)=
+let Q=null_module(real_form(P)) in
+for (w,q) in %P do Q:=Q+(w,T(q,gamma_new)) od;Q
+
+set T(Param p, vec gamma_new)=T(p,gamma_new/1)
+set T(ParamPol P, vec gamma_new)=T(P,gamma_new/1)
+
+{translate parameter p to simple root wall #k}
+set Psi(Param p,int k)=
+let G=real_form(p) then
+coroot=positive_coroots(G)[k] then 
+gamma=infinitesimal_character(p) then
+weight=fundamental_weight(G,k) then
+ip=coroot*gamma in
+if not is_integer(ip) then error("root is not integral") else
+T(p,gamma-rattoint(coroot*gamma)* fundamental_weight(G,k))
+fi
+
+{translate ParamPol to simple root wall #k}
+set Psi(ParamPol P,int k)=
+let Q=null_module(real_form(P)) in
+for (w,q) in %P do Q:=Q+(w,Psi(q,k)) od;Q
+
+{translate Param p to set of simple root walls}
+set Psi(Param p,[int] v)=
+for k in v do p:=Psi(p,k) od;p
+
+{translate ParamPol to set of simple root walls}
+set Psi(ParamPol P,[int] v)=
+let Q=null_module(real_form(P)) in
+for (w,q) in %P do Q:=Q+(w,Psi(q,v)) od;Q
+
+{the tau-invariant of Param p
+this is a RIDICULOUS definition: it computes the 
+irreducible of (p) (thus requiring KLV polynomials),
+and checks if it vanishing when translated to each wall
+the tau-invariant is easily read off from the types of roots,
+but this isn't available (yet) in realex}
+set tau(Param p)=
+let G=real_form(p) then
+P=character_formula(p) then
+rv=[] in
+for i:rank(G) do  if  Psi(P,i)=null_module(G) then rv:=rv#i fi od;rv
+
+set tau_complement(Param p)=
+let G=real_form(p) then
+P=character_formula(p) then
+rv=[] in
+for i:rank(G) do  if  not Psi(P,i)=null_module(G) then rv:=rv#i fi od;rv
+
+{push Param p to the most singular place where it
+is non-zero, i.e. to all of the root walls not
+in the tau-invariant}
+set make_maximally_singular (Param p)=Psi(p,tau_complement(p))
+
+{translate each term in a list of parameters to all the simple root
+walls not in its tau-invariant, and test if it is unitary The even
+special unipotents of G should (all?) show up this way, varying over
+all blocks at rho}
+
+set test_even_unipotent (Param p)=
+ let q=make_maximally_singular(p) then
+ Q=hermitian_form_irreducible(q) then
+ unitary=is_unitary(Q) in
+ (prints(""); prints("original parameter: ",p);
+ prints("translated parameter: ",q,", ", infinitesimal_character(q));
+ prints("translated irreducible is unitary: ",unitary);
+ (if debug then prettyPrint(Q) fi))
+
+{test_even_unipotent of a list of parameters}
+set test_even_unipotent ([Param] params)=
+for p in params do  test_even_unipotent(p) od;()
+
+

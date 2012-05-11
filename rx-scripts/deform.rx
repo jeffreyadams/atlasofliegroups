@@ -1,32 +1,42 @@
 <basic
 
+set debug = false { ensure this boolean exists }
+
 set null_wt(int r) = ratvec: null(r)/1
 set nu (Param p) = let (,,nu)=%p in nu
 set has_nu0 (Param p) = bool: let nu=nu(p) in nu=null_wt(#nu)
 
-set weak_lower (Param p) =
-  let (x,lambda,nu)=%p, rp=reducibility_points(p)
-  then lim = #rp
-  in param(x,lambda,if lim=0 then null_wt(#nu) else rp[lim-1]*nu fi)
+set weak_lower (RootDatum rd,ratvec nu) = ratvec: { first decomposable down }
+  let ip = integrality_points(rd,2*nu)
+  in if #ip=0 then null_wt(#nu) else ip[#ip-1]*nu fi
+
+set lower (RootDatum rd,ratvec nu) = ratvec: { push nu strictly down }
+  let ip = integrality_points(rd,2*nu)
+  then lim = let nip=#ip in if nip>0 and ip[nip-1]=1/1 then nip-1 else nip fi
+  in if lim=0 then null_wt(#nu) else ip[lim-1] *nu fi
 
 set lower (Param p) =
-  let (x,lambda,nu)=%p, rp=reducibility_points(p)
-  then lim = let nrp=#rp in if nrp>0 and rp[nrp-1]=1/1 then nrp-1 else nrp fi
-  in param(x,lambda,if lim=0 then null_wt(#nu) else rp[lim-1]*nu fi)
+  let (x,lambda,nu)=%p then rd=root_datum(inner_class(real_form(x)))
+  in param(x,lambda,lower(rd,nu))
 
 set deformation (Param p) = (lower(p),deform(p))
 
 set iterate_deform (Param p) =
   begin
-    let (x,lambda,nu)=%p
-    then rf = real_form(x)
-    then d= null_module(rf), d_done=null_module(rf)
-    in p := weak_lower(p) { snap to first decomp. point }
+    let (x,lambda,nu)=%p then
+    rf = real_form(x) then
+    d= null_module(rf), d_done=null_module(rf)
+    in p :=  { snap to first decomp. point }
+      param(x,lambda,weak_lower(root_datum(inner_class(rf)),nu))
+    ; if debug then prints("iterate_deform of ",p) fi
     ; while #d>0 or not has_nu0(p)
       do
         let (new_p,d_new)=deformation(p)
-        in print(p:=new_p)
-      ; for (k,q):t in %d
+        in if debug
+           then prints("deforming p: ",p," at ",infinitesimal_character(p))
+           fi
+      ; p:=new_p
+      ;	for (k,q):t in %d
         do if has_nu0(q) then d_done +:= t
            else
              let (new_q,deformation_terms)=deformation(q)
@@ -34,7 +44,8 @@ set iterate_deform (Param p) =
            ; for (l,r) in %deformation_terms do d_new +:= (k*l,r) od
            fi
         od
-      ; d:=d_new; print(#d)
+      ; d:=d_new
+      ; if debug then prints("Remaining in d_new: ",#d) fi
       od
     ; (p,d_done)
     end
@@ -50,12 +61,13 @@ set recursive_deform (Param p) =
       if has_nu0(p) then (p,zero) { but deformed |p| has |coef| implicitly }
       elif not is_standard(p) then back_trace(); prints(p,%p); error("halt")
       else
-        let (x,lambda,nu)=%p, rp=reducibility_points(p)
-        then inx=#rp, at_nu0=zero
-        then acc= while inx>0 do deform(param(x,lambda,rp[inx-:=1]*nu)) od
+        let (x,lambda,nu)=%p
+	then ip=integrality_points(rd,2*nu)
+        then inx=#ip, at_nu0=zero
+        then acc= while inx>0 do deform(param(x,lambda,ip[inx-:=1]*nu)) od
 	in
         for terms@i in acc
-        do let f = (): let a=rp[#rp-1-i]
+        do let f = (): let a=ip[#ip-1-i]
                        in back_trace(); prints(a,", ",(x,lambda,a*nu)) in
 	   for (k,q) in %terms
            do
@@ -81,9 +93,10 @@ set rec_def (Param p) =
         if has_nu0(p) then (p,empty) { but deformed |p| has |coef| implicitly }
         elif not is_standard(p) then prints(p,%p); error("halt")
         else
-          let (x,lambda,nu)=%p, rp=reducibility_points(p)
-          then inx=#rp, at_nu0=empty, acc=empty
-	  in while inx>0 do acc+:=deform(param(x,lambda,rp[inx-:=1]*nu)) od
+          let (x,lambda,nu)=%p
+	  then ip = integrality_points(rd,2*nu)
+          then inx=#ip, at_nu0=empty, acc=empty
+	  in while inx>0 do acc+:=deform(param(x,lambda,ip[inx-:=1]*nu)) od
         ; for (k,q) in %acc
           do
              let c=coef*k then (q0,nu0_terms) = recd(c,q)

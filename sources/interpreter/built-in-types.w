@@ -3007,7 +3007,7 @@ void orientation_number_wrapper(expression_base::level l)
 
 @ Here is a function that computes a list of positive rational values $t\leq1$
 such thatthe parameter obtained by replacing the continuous part~$\nu$ of
-by~$t\nu$ is not topmost in its block, so that 
+by~$t\nu$ is not topmost in its block, so that
 
 @< Local function def...@>=
 void reducibility_points_wrapper(expression_base::level l)
