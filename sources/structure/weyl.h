@@ -680,9 +680,9 @@ public:
   Twist dual_twist() const; // the twist for the dual twisted Weyl group
 
   /*!
-     \brief Twisted conjugates element |tw| by the generator |s|:
-     \f$tw:=s.tw.\delta(s)\f$. Returns length change in $\{-2,0,2\}$
-     these functions ought to have |s|,|ww| as first argument, for consistency
+     Twisted conjugates element |tw| by the generator |s|:
+     $tw:=s.tw.\delta(s)$. Returns length change, in $\{-2,0,2\}$. For
+     consistency, these functions should have |s| resp. |ww| as first argument
    */
   int twistedConjugate(TwistedInvolution& tw, Generator s) const
   {
