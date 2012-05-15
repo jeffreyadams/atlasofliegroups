@@ -75,7 +75,7 @@ class StandardRepr
 class Rep_context
 {
   RealReductiveGroup& G;
-  const KGB_base& KGB_set;
+  const KGB& KGB_set;
 
  public:
   Rep_context(RealReductiveGroup &G);
@@ -89,7 +89,7 @@ class Rep_context
     { return G.twistedWeylGroup(); }
   const TitsGroup& titsGroup() const { return G.titsGroup(); }
   const TitsCoset& basedTitsGroup() const { return G.basedTitsGroup(); }
-  const KGB_base& kgb() const { return KGB_set; }
+  const KGB& kgb() const { return KGB_set; }
 
   const TwistedInvolution twistedInvolution(size_t cn) const;
 

@@ -39,18 +39,18 @@ StandardRepr
      const standardrepk::KhatContext& khc,
      const RatWeight& nu) const
 {
-  TitsElt a = khc.titsElt(srk); // was reduced during construction |srk|
-  KGBElt x= khc.kgb().lookup(a,titsGroup());
-  InvolutionNbr i_x = kgb().inv_nr(x);
+  const TitsElt a = khc.titsElt(srk); // was reduced during construction |srk|
+  const KGBElt x= khc.kgb().lookup(a,titsGroup());
+  const InvolutionNbr i_x = kgb().inv_nr(x);
   const InvolutionTable& i_tab = complexGroup().involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
-  Weight lambda2 = khc.lift(srk); // doubled coordinates
-  RatWeight lambda(lambda2,2);
-  RatWeight diff = lambda - nu;
-  RatWeight theta_diff(theta*diff.numerator(),
-		       diff.denominator()); // theta(lambda-nu)
-  Weight lambda_rho = (lambda2-khc.rootDatum().twoRho())/=2;
+  const Weight lambda2 = khc.lift(srk); // doubled coordinates
+  const RatWeight lambda(lambda2,2);
+  const RatWeight diff = lambda - nu;
+  const RatWeight theta_diff(theta*diff.numerator(),
+			     diff.denominator()); // theta(lambda-nu)
+  const Weight lambda_rho = (lambda2-khc.rootDatum().twoRho())/=2;
   return StandardRepr(x,i_tab.pack(i_x,lambda_rho),
 		      ((lambda+nu+theta_diff)/=2).normalize());
 }
@@ -58,24 +58,24 @@ StandardRepr
 StandardRepr Rep_context::sr
   (KGBElt x, const Weight lambda_rho, const RatWeight& nu) const
 {
-  InvolutionNbr i_x = kgb().inv_nr(x);
+  const InvolutionNbr i_x = kgb().inv_nr(x);
   const InvolutionTable& i_tab = complexGroup().involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
-  RatWeight lambda(lambda_rho*2+rootDatum().twoRho(),2);
-  RatWeight diff = lambda - nu;
-  RatWeight theta_diff(theta*diff.numerator(),
-		       diff.denominator()); // theta(lambda-nu)
+  const RatWeight lambda(lambda_rho*2+rootDatum().twoRho(),2);
+  const RatWeight diff = lambda - nu;
+  const RatWeight theta_diff(theta*diff.numerator(),
+			     diff.denominator()); // theta(lambda-nu)
   return StandardRepr(x,i_tab.pack(i_x,lambda_rho),
 		      ((lambda+nu+theta_diff)/=2).normalize());
 }
 
 Weight Rep_context::lambda_rho(const StandardRepr& z) const
 {
-  InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = complexGroup().involution_table();
   const WeightInvolution& theta = i_tab.matrix(i_x);
 
-  RatWeight gamma_rho = z.gamma() - RatWeight(rootDatum().twoRho(),2);
+  const RatWeight gamma_rho = z.gamma() - RatWeight(rootDatum().twoRho(),2);
   Weight im_part2 = gamma_rho.numerator()+theta*gamma_rho.numerator();
   im_part2 /= gamma_rho.denominator(); // exact: $(1+\theta)(\lambda-\rho)$
   return (im_part2 + i_tab.unpack(i_x,z.y()))/=2; // division exact again
@@ -84,15 +84,15 @@ Weight Rep_context::lambda_rho(const StandardRepr& z) const
 // return $\lambda \in \rho+X^*$ as half-integer rational vector
 RatWeight Rep_context::lambda(const StandardRepr& z) const
 {
-  Weight num = lambda_rho(z) * 2 + rootDatum().twoRho();
+  const Weight num = lambda_rho(z) * 2 + rootDatum().twoRho();
   return RatWeight(num,2).normalize();
 }
 
 RatWeight Rep_context::nu(const StandardRepr& z) const
 {
-  InvolutionNbr inv = kgb().inv_nr(z.x());
-  const WeightInvolution& theta = complexGroup().involution_table().matrix(inv);
-  Weight num = z.gamma().numerator()-theta*z.gamma().numerator();
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const WeightInvolution& theta = complexGroup().involution_table().matrix(i_x);
+  const Weight num = z.gamma().numerator()-theta*z.gamma().numerator();
   return RatWeight(num,2*z.gamma().denominator()).normalize();
 }
 
@@ -100,31 +100,33 @@ RatWeight Rep_context::nu(const StandardRepr& z) const
 bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
-  InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = complexGroup().involution_table();
+  const Weight& numer = z.gamma().numerator();
+
   for (unsigned i=0; i<i_tab.imaginary_rank(i_x); ++i)
   {
-    RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-    const Weight& numer = z.gamma().numerator();
+    const RootNbr alpha = i_tab.imaginary_basis(i_x,i);
     if (numer.dot(rd.coroot(alpha))<0)
       return witness=alpha,false;
   }
   return true;
 }
 
-// |z| zero means that no singular imaginary roots are compact
+// |z| zero means that no singular imaginary roots are compact; this code
+// assumes |is_standard(z)|, namely |gamma| is dominant on imaginary roots
 bool Rep_context::is_zero(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
-  InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = complexGroup().involution_table();
+  const Weight& numer = z.gamma().numerator();
+
   for (unsigned i=0; i<i_tab.imaginary_rank(i_x); ++i)
   {
-    RootNbr alpha = i_tab.imaginary_basis(i_x,i);
-    const Weight& numer = z.gamma().numerator();
-    bool compact =
-      kgb::status(kgb(),z.x(),rd,alpha)==gradings::Status::ImaginaryCompact;
-    if (compact and numer.dot(rd.coroot(alpha))==0)
+    const RootNbr alpha = i_tab.imaginary_basis(i_x,i);
+    if (numer.dot(rd.coroot(alpha))==0 and // simple-imaginary, singular
+	not kgb().simple_imaginary_grading(z.x(),alpha)) // and compact
       return witness=alpha,true;
   }
   return false;
@@ -132,19 +134,21 @@ bool Rep_context::is_zero(const StandardRepr& z, RootNbr& witness) const
 
 
 // |z| final means that no singular real roots satisfy the parity condition
+// we do not assume |gamma| to be dominant, so all real roots must be tested
 bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();
-  InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = complexGroup().involution_table();
-  RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
-  Weight lambda2_shift=lambda_rho(z)*2 + rd.twoRho()-rd.twoRho(pos_real);
+  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
+  const Weight test_wt = i_tab.unpack(i_x,z.y()) // $(1-\theta)(\lambda-\rho)$
+           + rd.twoRho()-rd.twoRho(pos_real); // replace $\rho$ by $\rho_R$
 
   for (RootNbrSet::iterator it=pos_real.begin(); it(); ++it)
   {
     const Weight& av = rootDatum().coroot(*it);
     if (av.dot(z.gamma().numerator())==0 and
-	av.dot(lambda2_shift)%4 !=0) // singular yet odd on shifted lambda
+	av.dot(test_wt)%4 !=0) // singular yet odd on shifted lambda
       return witness=*it,false;
   }
   return true;
@@ -154,6 +158,8 @@ StandardRepr& Rep_context::make_dominant(StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionTable& i_tab = complexGroup().involution_table();
+
+  // the following are non-|const|, and modified in the loop below
   Weight lr = lambda_rho(z);
   KGBElt& x = z.x_part;
   Weight& numer = z.infinitesimal_char.numerator();
@@ -167,7 +173,7 @@ StandardRepr& Rep_context::make_dominant(StandardRepr& z) const
 	int v=rd.simpleCoroot(s).dot(numer);
         if (v<0 or (v==0 and kgb().isComplexDescent(s,x)))
         {
-	  RootNbr alpha = rd.simpleRootNbr(s);
+	  const RootNbr alpha = rd.simpleRootNbr(s);
 	  if (i_tab.imaginary_roots(i_x).isMember(alpha))
 	    throw std::runtime_error("Non standard parameter in make_dominant");
           rd.simpleReflect(numer,s);
@@ -189,17 +195,17 @@ StandardRepr& Rep_context::make_dominant(StandardRepr& z) const
 RationalList Rep_context::reducibility_points(StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
-  InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const InvolutionTable& i_tab = complexGroup().involution_table();
   const Permutation& theta = i_tab.root_involution(i_x);
 
   const RatWeight& gamma = z.gamma();
   const Weight& numer = gamma.numerator();
-  long d = gamma.denominator();
+  const long d = gamma.denominator();
   const Weight lam_rho = lambda_rho(z);
 
-  RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
-  Weight two_rho_real = rd.twoRho(pos_real);
+  const RootNbrSet pos_real = i_tab.real_roots(i_x) & rd.posRootSet();
+  const Weight two_rho_real = rd.twoRho(pos_real);
 
   // we shall associate to a first number a strict lower bound for some $k$
   // if first number is $num>0$ we shall later form fractions $(d/num)*k$
@@ -226,8 +232,8 @@ RationalList Rep_context::reducibility_points(StandardRepr& z) const
     long num = vala - valb;   // numerator of $2\<\nu,\alpha^v>$
     if (num!=0)
     {
-      assert((vala+valb)%d==0); // as |\<\gamma,a+b>=\<\lambda,a+b>|
-      long lwb =abs((vala+valb)/d);
+      assert((vala+valb)%d==0); // since |\<\gamma,a+b>=\<\lambda,a+b>|
+      long lwb =abs(vala+valb)/d;
       std::pair<table::iterator,bool> trial =
 	(lwb%2==0 ? &evens : &odds)->insert(std::make_pair(abs(num),lwb));
       if (not trial.second and lwb<trial.first->second)
@@ -251,18 +257,19 @@ RationalList Rep_context::reducibility_points(StandardRepr& z) const
 bool Rep_context::is_oriented(const StandardRepr& z, RootNbr alpha) const
 {
   const RootDatum& rd = rootDatum();
-  InvolutionNbr inv = kgb().inv_nr(z.x());
-  RootNbrSet real = complexGroup().involution_table().real_roots(inv);
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionTable& i_tab = complexGroup().involution_table();
+  const RootNbrSet real = complexGroup().involution_table().real_roots(i_x);
 
   assert(real.isMember(alpha)); // only real roots should be tested
 
   const Weight& av = rootDatum().coroot(alpha);
-  int numer = av.dot(z.gamma().numerator());
-  int denom = z.gamma().denominator();
+  const int numer = av.dot(z.gamma().numerator());
+  const int denom = z.gamma().denominator();
   assert(numer%denom!=0); // and the real root alpha should be non-integral
 
-  Weight lambda2_shift=lambda_rho(z)*2 + rd.twoRho()-rd.twoRho(real);
-  int eps = av.dot(lambda2_shift)%4==0 ? 0 : denom;
+  const Weight test_wt = i_tab.unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
+  const int eps = av.dot(test_wt)%4==0 ? 0 : denom;
 
   return arithmetic::remainder(numer+eps,2*denom)< (unsigned)denom;
 }
@@ -271,32 +278,32 @@ unsigned int Rep_context::orientation_number(const StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionTable& i_tab = complexGroup().involution_table();
-  InvolutionNbr inv = kgb().inv_nr(z.x());
-  RootNbrSet real = i_tab.real_roots(inv);
-  const Permutation& root_inv = i_tab.root_involution(inv);
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const RootNbrSet real = i_tab.real_roots(i_x);
+  const Permutation& root_inv = i_tab.root_involution(i_x);
   const Weight& numer = z.gamma().numerator();
-  int denom = z.gamma().denominator();
-  Weight lambda2_shift=lambda_rho(z)*2 + rd.twoRho()-rd.twoRho(real);
+  const int denom = z.gamma().denominator();
+  const Weight test_wt = i_tab.unpack(i_x,z.y()) +rd.twoRho() -rd.twoRho(real);
 
   unsigned count = 0;
 
   for (unsigned i=0; i<rd.numPosRoots(); ++i)
   {
-    RootNbr alpha = rd.numPosRoots()+i;
+    const RootNbr alpha = rd.numPosRoots()+i;
     const Weight& av = rootDatum().coroot(alpha);
-    int num = av.dot(numer);
+    const int num = av.dot(numer);
     if (num%denom!=0) // skip integral roots
     { if (real.isMember(alpha))
       {
-	int eps = av.dot(lambda2_shift)%4==0 ? 0 : denom;
-	if ((num>0) == // either positive for gamma and oriente, or neither
+	int eps = av.dot(test_wt)%4==0 ? 0 : denom;
+	if ((num>0) == // either positive for gamma and oriented, or neither
 	    (arithmetic::remainder(num+eps,2*denom)< (unsigned)denom))
 	  ++count;
       }
       else // complex root
       {
-	assert(i_tab.complex_roots(inv).isMember(alpha));
-	RootNbr beta = root_inv[alpha];
+	assert(i_tab.complex_roots(i_x).isMember(alpha));
+	const RootNbr beta = root_inv[alpha];
 	if (i<rd.rt_abs(beta) // consider only first conjugate "pair"
 	    and (num>0)!=(rootDatum().coroot(beta).dot(numer)>0))
 	  ++count;
@@ -312,9 +319,9 @@ Rep_context::compare Rep_context::repr_less() const
 bool Rep_context::compare::operator()
   (const StandardRepr& r,const StandardRepr& s) const
 {
-  int rgd=r.gamma().denominator(), sgd=s.gamma().denominator();
-  int lr = sgd*level_vec.dot(r.gamma().numerator());
-  int ls = rgd*level_vec.dot(s.gamma().numerator());
+  const int rgd=r.gamma().denominator(), sgd=s.gamma().denominator();
+  const int lr = sgd*level_vec.dot(r.gamma().numerator());
+  const int ls = rgd*level_vec.dot(s.gamma().numerator());
   if (lr!=ls)
     return lr<ls;
   for (size_t i=0; i<level_vec.size(); ++i)
@@ -332,7 +339,7 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
 
   make_dominant(z); // this simplifies matters a lot; |z| is unchanged hereafter
 
-  InvolutionNbr i_x = kgb().inv_nr(z.x());
+  const InvolutionNbr i_x = kgb().inv_nr(z.x());
   const RatWeight& gamma=z.gamma();
 
   RankFlags singular_real_parity;

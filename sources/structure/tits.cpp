@@ -838,6 +838,50 @@ bool TitsCoset::grading(TitsElt a, RootNbr alpha) const
   return simple_grading(a,s);
 }
 
+/*
+   A somewhat easier special case of previous: |alpha| simple-imaginary.
+   However this is mostly a proof-of-possibility implementation: in this
+   special case we can do with just the TorusPart |t| of a TitsElement |a|.
+
+   If the base grading is 1 on all simple roots, then the result can be
+   obtained by just evaluating the root |alpha| at |t|, and adding 1: this is
+   the property that at the base point all simple-imaginary roots are
+   noncompact. It can be explained by the fact that reflecting |alpha| to a
+   simple root and transforming |a| correspongingly as in |grading|, each
+   |basedTwistedConjugate| is by a complex root (if it were real it would be
+   orthogonal to the imaginary root |alpha|, and if it were imaginary this
+   would contradict the simple-imaginary status of |alpha|), and this just
+   reflects |t|; in the end the evaluation of the simple root on the
+   transformed |t| is the same as the evaluation of |alpha| at |t; the base
+   grading gives the remaining term 1, independently of which simple root was
+   reached. If the base grading is different, we need to compensate with a
+   contribution for its complement. One can think of the complement as a sum
+   of fundamental coweights for its values 1, which can be added to the torus
+   part (since left- and right-multiplication by torus parts are equivalent),
+   and we can evaluate |alpha| on this sum to get the compensating term. This
+   evaluation can be obtained by expressing |alpha| as a sum of simple roots,
+   reducing the coefficients modulo 2, and taking the scalar product with the
+   complement of the base grading. For the evaluation of |alpha| at |t|, we
+   can again use the bits of the mentioned reduction modulo 2, but now we must
+   multiply by te dual $m_\alpha$'s (simple roots modulo 2) before taking the
+   scalar product with |t|.
+*/
+
+bool TitsCoset::simple_imaginary_grading(TorusPart t, RootNbr alpha) const
+{
+  assert(rs.isPosRoot(alpha));
+
+  RankFlags re_mod2(rs.root_expr(alpha));
+
+  bool evaluation = not // incorporate the term 1 for base grading $\delta_1$
+    re_mod2.dot(base_grading().complement(constants::RANK_MAX)); // and rest
+
+  for (RankFlags::iterator it=re_mod2.begin(); it(); ++it)
+    evaluation ^= Tg.dual_m_alpha(*it).dot(t);
+
+  return evaluation;
+}
+
 bool TitsCoset::is_valid(TitsElt a) const
 {
   static TitsElt e(Tg);  // identity

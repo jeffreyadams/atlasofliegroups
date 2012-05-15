@@ -1623,7 +1623,7 @@ non_integral_block::deformation_terms (BlockElt entry_elem)
     orient_nr[z] = rc.orientation_number(r);
   }
 
-  // the following store (sums of) KL polynomials evaluated at $-1$
+  // (sums of) KL polynomials evaluated at $-1$; $P$ incorporates length signs
   int_Matrix P(n_surv,n_surv,0), Q(n_surv,n_surv,0);
 
   // compute $P(x,z)$ for indexes |x<=z<n_surv| into survivors

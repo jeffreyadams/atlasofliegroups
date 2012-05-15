@@ -429,6 +429,9 @@ and in addition the Hasse diagram (set of all covering relations).
 
   Grading base_grading() const { return d_base->base_grading(); }
 
+  // as the name suggests, the following assumes |alpha| simple-imaginary
+  bool simple_imaginary_grading(KGBElt x,RootNbr alpha) const
+  { return d_base->simple_imaginary_grading(torus_part(x),alpha); }
 
   KGBElt lookup(const TitsElt& a, const TitsGroup& Tg) const;
 
