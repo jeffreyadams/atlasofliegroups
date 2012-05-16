@@ -1,0 +1,35 @@
+basic.rx          basic functions
+groups.rx     	  defining groups
+det.rx        	  matrix functions
+sp4.rx        	  Sp(4,R)
+misc.rx       	  miscellaneous commands
+iterate_deform.rx deform nu to 0 (previously called deform.rx)
+lietypes.rx   	  some convenient variables
+hermitian.rx  	  functions related to c-forms and Hermitian forms
+kl.rx         	  Kazdhan-Lusztig polynomials 
+my.rx         	  sample personal rx file
+unipotent.rx  	  some unitary parameters 
+translate.rx  	  functions related to translation {experimental}
+
+To load basic.rx, for example, do:
+
+<basic or basic.rx
+
+Probably you should just do:
+
+<hermitian
+
+You should certainly load basic.rx, groups.rx, and lietypes.rx is also
+convenient.  You should probably also load misc.rx (this loads basic,
+groups and lietypes).
+
+load hermitian.rx if you want to compute Hermitian forms
+(this also loads misc,iterate_deform,kl,basic,groups,lietypes)
+
+translate.rx is somewhat experimental
+
+I recommend making a file my.rx along the lines of the one included.
+
+Be sure to have a carriage return at the end of any rx file or else the
+software will quit after reading in the file.
+

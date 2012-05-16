@@ -1,44 +1,10 @@
-set debug=false
-<deform
+set hermitian_debug=false{set to true for more output}
+
 <misc
+<iterate_deform  {the old deform.rx has been deprecated}
+<kl
 
-{define w^k for w in Z[s], k an integer }
-set ^(Split w,int k)=
-if (k=0) then Split:1 else let u=w in for i:abs(k)-1 from 0 do u:=u*w od;u fi
-
-{nicer display of Splits}
-set prettyPrint (Split w)=
-let (a,b)=%w in  
-let rv="" in  
- if b=0 then int_format(a) else
- if a=0 then 
-  if b=1 then "s" elif b=-1 then "-s" else int_format(b)#"s" fi
- else
-  if b=1 then int_format(a)#"+s" 
-   elif b=-1 then int_format(a)#"-s" 
-   elif b<-1 then int_format(a)#int_format(b)#"s"  
-   else int_format(a)#"+"#int_format(b)#"s"
-  fi
- fi
-fi
-
-{nice output of ParamPol: prettyPrint the coefficients, print terms in order of x}
-set prettyPrint (ParamPol P)=
-let G=real_form(P) then
-Q=%P in 
-for x in KGB(G) do
- for (w,p) in Q do 
-  let (y,,)=%p in 
-  if (x=y) then prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p)) fi
- od
-od;""
-
-{replace w=a+bs with a+bt for t rational or integer}
-set  #(Split w,rat t)=let (a,b)=%w in rat:a+t*b
-set  #(Split w,int t)=let (a,b)=%w in int:a+t*b
-set  #(ParamPol P,int t)=
- let Q=null_module(real_form(P)) in
- let x=for (w,q) in %P do Q:=Q+(w#t)*q od in Q
+{test equality of ParamPols}
 set =(ParamPol P,ParamPol Q)=
  if (#(P+(-1)*Q)=0) then true else false fi
 
@@ -47,19 +13,6 @@ set zeronu (Param p)=param(x(p),lambdaminusrho(p),null(rank(real_form(p)))/1)
 set zeronu (ParamPol P)=
 let Q=null_module(real_form(P)) in
  let x=for (w,q) in %P do Q:=Q+w*zeronu(q) od in Q
-
-{
-length difference of block elements
-length(block element i)-length(block element j) from block containing p
-uses lengths, as returned by KL_block(p)
-explanation, from functions.help:
-The length of v is the largest index i such that len[i]<=v, so the
-length difference between v and w is the number of indices with
-v<len[i]<=w.
-}
-set length_diff (int i,int j,Param p)=
-let (,,,,lengths)=KL_block(p) then
-ld=0 in for k :#lengths from 0 do if (lengths[k]>i and lengths[k]<=j) then ld:=ld+1 fi od;ld
 
 {orientation_number_term[p,q]=s^{[\ell_0(i)-\ell_0(j)]/2}= 1 or s }
 set orientation_number_term (Param p,Param q)=
@@ -78,67 +31,60 @@ as a ParamPol
 just adds the initial term to iterate_deform(p)
 }
 
-set c_form_std (Param p)=let (p,poly)=
-(if debug then prints("computing c-form on standard module: ",p) fi);iterate_deform(p) in p+poly
+set c_form_std (Param p)=
+let ((p,poly),count)=
+(if hermitian_debug then prints("computing c-form on standard module: ",p) fi);
+iterate_deform(p) in (p+poly,count)
+
 
 {c_form_irreducible(p) returns a ParamPol of standardrepks
-giving the c-invariant form on irreducible(p)}
-set c_form_irreducible (Param p)=
-let G=real_form(p) then
-P=null_module(G) then
-(params,k,KL,)=KL_at_s(p) in
- for i:#KL[k] from 0 do
- let q=params[i] in
- let kl=KL[k][i] then
- ld=length_diff(i,k,p) then
- on=orientation_number_term(p,q) then
- coeff=(-1)^ld*on*kl then
- poly=c_form_std(q) in 
- P:=P+coeff*poly
-od;P
+giving the c-invariant form on irreducible(p)
+algorithm:
+J(y)=sum (-1){ell(x)-ell(y)}P(x,y)(q=1)I(x)
+J(y)_c=sum (-1)^{on(x,y)}(-1)^{ell(x)-ell(y)}P(x,y)(q=s)I(x)_c
+P(x,y) is a cumulated KL polyomial
+(-1)^{ell(x)-ell(y)}P(x,y) is given by KL_block(p)
+note sign is taken care of already
+on(x,y)=orientation number given by orientation_number_term()
+I(x)_c given by c_form_std(x)
+}
 
-{c_form_irreducible_long(p) returns:
-(ParamPol P,[(Param,Split,ParamPol)]
-P=c_form_irreducible(p) is ParamPol giving the formula for the c-invariant form
-the second factor is 
-[q_i,w_i,Q_i]
-where Q_i is the c-form on standard module q_i
-and the formula for P is
-P=\sum_i w_i*Q_i}
 set c_form_irreducible_long (Param p)=
-let G=real_form(p) then
+let count=0 then
+G=real_form(p) then
 P=null_module(G) then
-(params,k,KL,)=KL_at_s(p) in
- let standards=for i:#KL[k] from 0 do
- let q=params[i] in
- let kl=KL[k][i] then
- ld=length_diff(i,k,p) then
+(block,k,klmatrix,polys,stops,indices,cumulated)=KL_block (p) then
+klpolys=signedKL(p) in
+let standards=for i:#indices do 
+ let poly=klpolys[i] then
+ s=Split:(0,1) then
+ poly_at_s=poly%s then
+ q=block[indices[i]] then
  on=orientation_number_term(p,q) then
- coeff=(-1)^ld*on*kl then
- poly=c_form_std(q) in 
- P:=P+coeff*poly;
- (q,coeff,poly)
-od in (P,standards)
+ (form_on_standard,std_count)=c_form_std(q) in
+ count:=count+std_count;
+ P:=P+on*poly_at_s*form_on_standard;
+ (q,on*poly_at_s,form_on_standard)
+od in (P,standards,count)
 
-set character_formula (Param p)=
+
+set c_form_irreducible (Param p)=
+let (rv,standards,count)=c_form_irreducible_long(p) in rv
+
+set print_c_form_irreducible_long (Param p)=
 let G=real_form(p) then
-P=null_module(G) then
-(params,k,KL,)=KL_at_s(p) in
-let x=for i:#KL[k] from 0 do
- let q=params[i] in
- let kl=KL[k][i] then
- ld=length_diff(i,k,p) then
- w=(-1)^ld*kl then
- coeff=w#1 in
- P:=P+coeff*q
-od in P
+(f,b,count)=c_form_irreducible_long(p) then 
+b=for (q,coeff,Q) in b do 
+ prints("");
+ prints("standard module: ",q);
+ prints("coefficient: ",prettyPrint(coeff));
+ prints("form on standard: ");
+ prettyPrint(Q) od
+in
+ prints("");prints("c-form on irreducible module:");prints(p, " at ",infinitesimal_character(p));prettyPrint(f);prints("");prints("Number of deformations: ",count)
 
-set print_character_formula (Param p)=
-let char=character_formula(p) in
-for (w,p) in %char do prints(prettyPrint(w),"*",p) od;""
-
+{;analyse}
 {just print terms with both a,b\ne 0 in (a+bs)}
-
 set mixed (Split w)= let (a,b)=%w in (not a*b=0)
 set analyse (ParamPol P)=
 let G=real_form(P) then
@@ -152,17 +98,6 @@ for x in KGB(G) do
  od
 od in ()
 
-set print_c_form_irreducible_long (Param p)=
-let G=real_form(p) then
-(f,b)=c_form_irreducible_long(p) then 
-b=for (q,coeff,Q) in b do 
- prints("");
- prints("standard module: ",q);
- prints("coefficient: ",prettyPrint(coeff));
- prints("form on standard: ");
- prettyPrint(Q) od
-in
- prints("");prints("c-form on irreducible module:");prints(p, " at ",infinitesimal_character(p));prettyPrint(f);prints("");analyse(f)
 
 {----------------------------------------}
 {commands for converting from c-form to hermitian-form}
@@ -188,8 +123,7 @@ set mu(Param p)=lambda_plus_rho_res_T(x(p),lambda(p))*(torus_factor(x(p))+rhoche
 
 {ParamPol giving the hermitian form on irreducible p}
 set hermitian_form_irreducible(Param p) =
-let G=
-(if debug then prints("Computing Hermitian form on irreducible: ",p) fi);real_form(p) then
+let G=(if hermitian_debug then prints("Computing Hermitian form on irreducible: ",p) fi);real_form(p) then
 pol=c_form_irreducible(p) then
 s=Split:(0,1) then
 pols=%pol then
@@ -215,10 +149,9 @@ J(P)=\sum w_jI_j (formula for c-form or hermitian-form)
 Then
 \sum a_i I_i[nu=0]=\sum_j w_j[s=1]I_j
 }
-set test_form (ParamPol P,Param p)=
+{set test_form (ParamPol P,Param p)=
 if ((P#1)=zeronu(character_formula(p))) then
-prints("Passed") else prints("Failed") fi
-
+prints("Passed") else prints("Failed") fi}
 
 {assuming is the ParamPol of the Hermitian
 form on an irreducible, is_unitary(P) tests
@@ -235,3 +168,25 @@ if (pos=null(#pos) or neg=null(#neg)) then true else false fi
 
 set is_unitary(Param p)=is_unitary(hermitian_form_irreducible(p))
 
+set test_spherical_unitary(RealForm G,[ratvec] nus)=
+for nu in nus do prints(nu,", ", is_unitary(spherical_principal_series(G,nu))) od
+
+set test_line (Param p)=
+let nu=nu(p) then
+x=x(p) then
+lambdaminusrho=lambdaminusrho(p) then
+points=reducibility_points(p) then
+ipoints=integrality_points(root_datum(p),nu) in
+prints("testing line through ", p);prints("reducibility points: ",points);prints("integrality points: ",ipoints);if #points=0 and is_final(zeronu(p)) then prints("entire line is irreducible and unitary") 
+elif #points=0 and not is_final(zeronu(p)) then prints("entire line (nu>0) is irreducible and unitary (nu=0 is not final)") 
+else
+ let points=0#points in
+  if not points[#points-1]=1/1 then points:=points#1/1 fi;
+  for i:#points-1 from 1 do 
+   let t=(points[i]+points[i-1])/2  then
+   q=param(x,lambdaminusrho,t*nu) then
+   r=param(x,lambdaminusrho,points[i]*nu) in
+   prints(t*nu,": ", is_unitary(q));
+   prints(points[i]*nu,": ", is_unitary(r))
+  od
+fi;()

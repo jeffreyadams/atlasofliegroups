@@ -51,6 +51,10 @@ set +(string s, (int,int)(x,y)) = s + "(" + x + "," + y + ")"
 set floor (rat a) = \ %a
 set ceil  (rat a) = -\ %-a
 
+{absolute value and sgn of integer}
+set abs (int k)=if k<0 then -k else k fi
+set sgn (int k)=if k<0 then -1 else 1 fi
+
 set numer (rat a) = let (n,)=%a in n
 set denom (rat a) = let (,d)=%a in d
 set numer (ratvec a) = let (n,)=%a in n
@@ -74,9 +78,13 @@ in p:= ((Split x,int n): { we shall have n>0 }
   else let (q,r)=n\%2 then y=p(x,q) in y*if r=0 then y else x*y fi
   fi)
 set ^(Split x,int n) =
+  if n=0 then Split:(1,0) else split_power(x,abs(n)) fi
+
+{previously did not allow negative powers}
+{set ^(Split x,int n) =
   if n>0 then split_power(x,n) elif n=0 then Split:(1,0)
   else error("Negative split integer power " # int_format(n))
-  fi
+  fi}
 
 set =((int,int)(x0,y0),(int,int)(x1,y1)) = x0=x1 and y0=y1
 set !=((int,int)(x0,y0),(int,int)(x1,y1)) = x0!=x1 or y0!=y1
