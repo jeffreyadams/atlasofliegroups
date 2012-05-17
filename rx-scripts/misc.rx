@@ -81,7 +81,7 @@ od;regular
 set is_regular(RootDatum r,vec lambda)=is_regular(r,lambda/1)
 set is_regular(RealForm G,vec lambda)=is_regular(root_datum(G),lambda)
 set is_regular(RealForm G,ratvec lambda)=is_regular(root_datum(G),lambda/1)
-set is_regular (Param p)=is_regular(real_form(p),infinitesimal_character(p))
+set is_regular (Param p)=is_regular(real_form(p),infinitesimal_character(dominant(p)))
 
 set rhocheck(RootDatum rd)=
 let r=positive_coroots(rd) then
