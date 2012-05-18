@@ -363,10 +363,15 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
   {
     const weyl::Generator s= singular_real_parity.firstBit();
     const KGBEltPair p = kgb().inverseCayley(s,z.x());
-    Weight lr = lambda_rho(z); // is passed unchanged to inverse Cayleys
-    lr -= // correct so that $\<\lambda,\alpha^\vee>=0$, like $\gamma$
-      rd.simpleRoot(s)*((rd.simpleCoroot(s).dot(lr)+1)/2);
+    Weight lr = lambda_rho(z);
+
+    // |lr| may need replacement by an equivalent (at |z.x()|) before it is
+    // passed to inverse Cayleys, which will reinterpret is at $x$'s from |p|
+    assert(rd.simpleCoroot(s).dot(lr)%2!=0); // we tested this odd above
+    lr -= // correct so that $\<\lambda,\alpha^\vee>=0$ (like $\gamma$)
+      rd.simpleRoot(s)*((rd.simpleCoroot(s).dot(lr)+1)/2); // project on perp
     assert(rd.simpleCoroot(s).dot(lr)==-1); // because $\<\rho,\alpha^\vee>=1$
+
     SR_poly result = expand_final(sr(p.first,lr,gamma));
     if (p.second!=UndefKGB)
       result += expand_final(sr(p.second,lr,gamma));

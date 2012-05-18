@@ -89,6 +89,12 @@ set ^(Split x,int n) =
 set =((int,int)(x0,y0),(int,int)(x1,y1)) = x0=x1 and y0=y1
 set !=((int,int)(x0,y0),(int,int)(x1,y1)) = x0!=x1 or y0!=y1
 
+set -(ParamPol a, (Split,Param) (c,p)) = a+(-c,p)
+
+{ these cases ought to be handled by the coercion code, but currently aren't }
+set +(ParamPol a, (int,Param) (c,p)) = a+(Split:  c,p)
+set -(ParamPol a, (int,Param) (c,p)) = a+(Split: -c,p)
+
 set +(mat M,mat N)= mat:
   ( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
   ; for col@j in M do for e@i in col do e+N[i,j] od od

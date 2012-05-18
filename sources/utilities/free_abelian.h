@@ -51,8 +51,12 @@ struct Free_Abelian : public std::map<T,C,Compare>
 
   Free_Abelian(const T& p,C m, Compare c=Compare()) // mononomial (single term)
   : base(c)
-  { base::insert(std::make_pair(p,m)); }
+  { if (m!=C(0))
+      base::insert(std::make_pair(p,m));
+  }
 
+  // convert other agregate of (monomial,coefficient) pairs to |Free_Abelian|
+  // warning: current implementation allows coefficients |C(0)| to slip through
   template<typename InputIterator> // iterator over (T,coef_t) pairs
   Free_Abelian(InputIterator first, InputIterator last, Compare c=Compare())
     : base(first,last,c) {}
