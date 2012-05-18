@@ -1,0 +1,515 @@
+expr> <jeff {loads misc, hermitian, kl, etc.}
+...
+expr> {some groups}
+expr> set G=sl(2,R)
+Identifier G: RealForm
+expr> G
+Value: split real form 'sl(2,R)', defining a connected real group
+expr> set G=split_form (A1)
+Identifier G: RealForm
+expr> G
+Value: split real form 'sl(2,R)', defining a connected real group
+expr> rho(G)
+Value: [ 1 ]/1
+expr> set G=split_form (D6)
+Identifier G: RealForm
+expr> print_real_forms (G)
+0: compact real form 'so(12)', defining a connected real group
+1: real form 'so(10,2)', defining a connected real group
+2: real form 'so*(12)[1,0]', defining a connected real group
+3: real form 'so*(12)[0,1]', defining a connected real group
+4: real form 'so(8,4)', defining a connected real group
+5: split real form 'so(6,6)', defining a connected real group
+To set a real form do: set H=real_forms(G)[i]
+expr> set G=real_forms (G)[4]
+Identifier G: RealForm
+expr> G
+Value: real form 'so(10,2)', defining a connected real group
+expr> set G=Quasisplit_form (D6)
+Identifier G: RealForm
+expr> G
+Value: quasisplit real form 'so(7,5)', defining a connected real group
+expr> print_real_forms (G)
+0: real form 'so(11,1)', defining a connected real group
+1: real form 'so(9,3)', defining a connected real group
+2: quasisplit real form 'so(7,5)', defining a connected real group
+To set a real form do: set H=real_forms(G)[i]
+expr> set G=so(5,3)
+Identifier G: RealForm
+expr> rho(G)
+Value: [ 3, 2, 1, 0 ]/1
+expr> set G=sp(20,R)
+Identifier G: RealForm
+expr> rho(G)
+Value: [ 10,  9,  8,  7,  6,  5,  4,  3,  2,  1 ]/1
+expr> set G=sp(8,4)
+Identifier G: RealForm
+expr> rho(G)
+Value: [ 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1 ]/1
+expr> set G=GL(5,R)
+Identifier G: RealForm
+expr> print_real_forms (G)
+0: split real form 'sl(5,R).gl(1,R)', defining a disconnected real group
+To set a real form do: set H=real_forms(G)[i]
+expr> set G=GL(6,R)
+Identifier G: RealForm
+expr> print_real_forms (G)
+0: real form 'sl(3,H).gl(1,R)', defining a connected real group
+1: split real form 'sl(6,R).gl(1,R)', defining a disconnected real group
+To set a real form do: set H=real_forms(G)[i]
+expr> set G=real_forms (G)[0]
+Identifier G: RealForm
+expr> G
+Value: real form 'sl(3,H).gl(1,R)', defining a connected real group
+expr> {some elementary properties of groups}
+expr> set G=sp(4,R)
+Identifier G: RealForm
+expr> rho(G)
+Value: [ 2, 1 ]/1
+expr> positive_roots (G)
+Value: 
+|  1, 0, 1, 2 |
+| -1, 2, 1, 0 |
+
+expr> positive_coroots (G)
+Value: 
+|  1, 0, 1, 1 |
+| -1, 1, 1, 0 |
+
+expr> rhocheck (G)
+Value: [ 3, 1 ]/2
+expr> for a in positive_roots (G) do print(a,", ",a*rhocheck(G)) od;
+[  1, -1 ], 1/1
+[ 0, 2 ], 1/1
+[ 1, 1 ], 2/1
+[ 2, 0 ], 3/1
+expr> rank(G)
+Value: 2
+expr> ss_rank (G)
+Value: 2
+expr> ss_rank(GL(3,R))
+Value: 2
+expr> {some parameters}
+expr> G
+Value: split real form 'sp(4,R)', defining a connected real group
+expr> set t=trivial(G)
+Identifier t: Param
+expr> t
+Value: final parameter (x=10,lambda=[2,1]/1,nu=[2,1]/1)
+expr> x(t)
+Value: KGB element #10
+expr> lambda(t)
+Value: [ 2, 1 ]/1
+expr> lambdaminusrho(t)
+Value: [ 0, 0 ]
+expr> nu(t)
+Value: [ 2, 1 ]/1
+expr> set p=param(KGB(G,10),[0,0],[2,1]/1)
+Identifier p: Param
+expr> set p=param(G,10,[0,0],[2,1])  {don't need /1 in this version}
+Identifier q: Param
+expr> p=q
+Value: true
+expr> p=t
+Value: true
+expr> set r=normparam(G,10,[2,1],[2,1])
+Identifier r: Param
+expr> t=r
+Value: true
+expr> {normparam: you can enter lambda, not lambda-rho, provided rho is integral}
+expr> set p=spherical_principal_series (G,[0,0])
+Identifier p: Param
+expr> infinitesimal_character (p)
+Value: [ 0, 0 ]/1
+expr> set block=trivial_block (G)
+Identifier block: [Param]
+expr> set q=block[0]
+Identifier q: Param
+expr> q
+Value: final parameter (x=0,lambda=[2,1]/1,nu=[0,0]/1)
+expr> block[10]=t
+Value: true
+expr> {some parameters with singular infinitesimal character}
+expr> set p=spherical_principal_series (G,[1,0])
+Identifier p: Param
+expr> print_n_block (p)
+Parameter defines element 10 of the following block:
+ 0( 0,6):  0  [i1,i1]   1   2   ( 6, *)  ( 4, *)  *(x= 0, nu=  [0,0]/1,lam=rho+[-1,-1])  e
+ 1( 1,6):  0  [i1,i1]   0   3   ( 6, *)  ( 5, *)  *(x= 1, nu=  [0,0]/1,lam=rho+[-1,-1])  e
+ 2( 2,6):  0  [ic,i1]   2   0   ( *, *)  ( 4, *)  *(x= 2, nu=  [0,0]/1,lam=rho+[-1,-1])  e
+ 3( 3,6):  0  [ic,i1]   3   1   ( *, *)  ( 5, *)  *(x= 3, nu=  [0,0]/1,lam=rho+[-1,-1])  e
+ 4( 4,5):  1  [C+,r1]   7   4   ( *, *)  ( 0, 2)   (x= 5, nu=  [0,0]/1,lam=rho+[-1,-1])  2^e
+ 5( 5,5):  1  [C+,r1]   8   5   ( *, *)  ( 1, 3)   (x= 6, nu=  [0,0]/1,lam=rho+[-1,-1])  2^e
+ 6( 6,4):  1  [r1,C+]   6   9   ( 0, 1)  ( *, *)  *(x= 4, nu= [1,-1]/2,lam=rho+[-1,-1])  1^e
+ 7( 7,3):  2  [C-,i1]   4   8   ( *, *)  (11, *)  *(x= 7, nu=  [1,0]/1,lam=rho+[-1,-1])  1x2^e
+ 8( 8,3):  2  [C-,i1]   5   7   ( *, *)  (11, *)  *(x= 8, nu=  [1,0]/1,lam=rho+[-1,-1])  1x2^e
+ 9( 9,2):  2  [i2,C-]   9   6   (10,11)  ( *, *)   (x= 9, nu=  [1,1]/2,lam=rho+[-1,-1])  2x1^e
+10(10,0):  3  [r2,rn]  11  10   ( 9, *)  ( *, *)  *(x=10, nu=  [1,0]/1,lam=rho+[-2,-2])  1^2x1^e
+11(10,1):  3  [r2,r1]  10  11   ( 9, *)  ( 7, 8)   (x=10, nu=  [1,0]/1,lam=rho+[-1,-1])  1^2x1^e
+(cumulated) KL polynomials (-1)^{l(10)-l(x)}*P_{x,10}:
+ 2: -q
+ 3: -q
+ 6: -1
+10: 1
+expr> set block=get_n_block (p)
+Identifier block: [Param]
+expr> set q=block[4]
+Identifier q: Param
+expr> q
+Value: non-final parameter (x=5,lambda=[1,2]/1,nu=[0,0]/1)
+expr> set r=make_final (q)
+Identifier r: [Param]
+expr> r
+Value: [final parameter (x=0,lambda=[1,0]/1,nu=[0,0]/1),final parameter (x=2,lambda=[1,0]/1,nu=[0,0]/1)]
+expr> r[0]=block[0]
+Value: true
+expr> r[1]=block[2]
+Value: true
+expr> {setting s=1 and nu=0}
+
+expr> set t=trivial(sl(2,R))
+Identifier t: Param
+expr> 
+expr> set char=character_formula (t)
+Identifier char: ParamPol
+expr> char
+Value: 
+(-1+0s)*final parameter (x=0,lambda=[1]/1,nu=[0]/1)
+(-1+0s)*final parameter (x=1,lambda=[1]/1,nu=[0]/1)
+(1+0s)*final parameter (x=2,lambda=[1]/1,nu=[1]/1)
+expr> set form=c_form_irreducible(t)
+Identifier form: ParamPol
+expr> form
+Value: 
+(1+0s)*final parameter (x=2,lambda=[1]/1,nu=[0]/1)
+(0-1s)*final parameter (x=0,lambda=[1]/1,nu=[0]/1)
+(0-1s)*final parameter (x=1,lambda=[1]/1,nu=[0]/1)
+expr> {zeronu(P) set nu=0 in all terms of ParamPol P}
+expr> zeronu(char)
+Value: 
+(1+0s)*final parameter (x=2,lambda=[1]/1,nu=[0]/1)
+(-1+0s)*final parameter (x=0,lambda=[1]/1,nu=[0]/1)
+(-1+0s)*final parameter (x=1,lambda=[1]/1,nu=[0]/1)
+expr> {P#1 substitutes s=1 in ParamPol P}
+expr> form#1 
+Value: 
+(1+0s)*final parameter (x=2,lambda=[1]/1,nu=[0]/1)
+(-1+0s)*final parameter (x=0,lambda=[1]/1,nu=[0]/1)
+(-1+0s)*final parameter (x=1,lambda=[1]/1,nu=[0]/1)
+expr> {setting nu=0 in character formula should equal setting s=1 in form}
+expr> zeronu(char)=form#1
+Value: true
+expr> {some KL stuff}
+expr> {polynomials in q are [a_0,a_1,...,a_n]=a_0+a_1q+...a_nq^n}
+expr> set f=[0,1,0,-2,3]
+Identifier f: [int]
+expr> printPoly (f)
++1q^1-2q^3+3q^4
+expr> {w is a Split: w=a+bs}
+expr> {f%w evalutes f a q=w}
+expr> f%s
+Value: (3-1s)
+expr> {f%1 does not work}
+expr> one
+Value: (1+0s)
+expr> whattype (one)
+type: Split
+expr> f%one
+Value: (2+0s)
+expr> f%one
+Value: (2+0s)
+expr> print_KL(t)
+Value: [[ 1 ],[ 1 ],[ 1 ],[ 1 ],[ 1 ],[ 1 ],[ 1 ],[ 1 ],[ 1 ],[ 1 ],[ 1 ],[ ]]  {these are polynomials in q}
+expr> KL_matrix_at_one (t)
+Value: 
+| 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 1, 0 |
+| 0, 1, 0, 0, 0, 1, 1, 1, 1, 1, 1, 0 |
+| 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1 |
+| 0, 0, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1 |
+| 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 0 |
+| 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 0 |
+| 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 0 |
+| 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0 |
+| 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0 |
+| 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1 |
+| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 |
+| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 |
+
+expr> signedKL_matrix_at_one (t)
+Value: 
+| 1, 0, 0, 0, -1,  0, -1,  1,  1,  1, -1,  0 |
+| 0, 1, 0, 0,  0, -1, -1,  1,  1,  1, -1,  0 |
+| 0, 0, 1, 0, -1,  0,  0,  1,  0,  1, -1, -1 |
+| 0, 0, 0, 1,  0, -1,  0,  0,  1,  1, -1, -1 |
+| 0, 0, 0, 0,  1,  0,  0, -1,  0, -1,  1,  0 |
+| 0, 0, 0, 0,  0,  1,  0,  0, -1, -1,  1,  0 |
+| 0, 0, 0, 0,  0,  0,  1, -1, -1, -1,  1,  0 |
+| 0, 0, 0, 0,  0,  0,  0,  1,  0,  0, -1,  0 |
+| 0, 0, 0, 0,  0,  0,  0,  0,  1,  0, -1,  0 |
+| 0, 0, 0, 0,  0,  0,  0,  0,  0,  1, -1, -1 |
+| 0, 0, 0, 0,  0,  0,  0,  0,  0,  0,  1,  0 |
+| 0, 0, 0, 0,  0,  0,  0,  0,  0,  0,  0,  1 |
+
+expr> print_character_formula (t)
+-1*final parameter (x=0,lambda=[2,1]/1,nu=[0,0]/1)
+-1*final parameter (x=1,lambda=[2,1]/1,nu=[0,0]/1)
+-1*final parameter (x=2,lambda=[2,1]/1,nu=[0,0]/1)
+-1*final parameter (x=3,lambda=[2,1]/1,nu=[0,0]/1)
+1*final parameter (x=4,lambda=[2,1]/1,nu=[1,-1]/2)
+1*final parameter (x=5,lambda=[2,1]/1,nu=[0,1]/1)
+1*final parameter (x=6,lambda=[2,1]/1,nu=[0,1]/1)
+-1*final parameter (x=7,lambda=[2,1]/1,nu=[2,0]/1)
+-1*final parameter (x=8,lambda=[2,1]/1,nu=[2,0]/1)
+-1*final parameter (x=9,lambda=[2,1]/1,nu=[3,3]/2)
+1*final parameter (x=10,lambda=[2,1]/1,nu=[2,1]/1)
+expr> print_composition_series (t)
+1*final parameter (x=0,lambda=[2,1]/1,nu=[0,0]/1)
+1*final parameter (x=1,lambda=[2,1]/1,nu=[0,0]/1)
+2*final parameter (x=4,lambda=[2,1]/1,nu=[1,-1]/2)
+1*final parameter (x=5,lambda=[2,1]/1,nu=[0,1]/1)
+1*final parameter (x=6,lambda=[2,1]/1,nu=[0,1]/1)
+1*final parameter (x=7,lambda=[2,1]/1,nu=[2,0]/1)
+1*final parameter (x=8,lambda=[2,1]/1,nu=[2,0]/1)
+1*final parameter (x=9,lambda=[2,1]/1,nu=[3,3]/2)
+1*final parameter (x=10,lambda=[2,1]/1,nu=[2,1]/1)
+expr> set char=character_formula (t)
+Identifier char: ParamPol
+<translate
+expr> T(char,[0,0])
+Value: Empty sum of standard modules
+expr> {yes, the character formula of the trivial representation is 0 when pushed to [0,0]}
+expr> KL_inverse_matrix_at_one (t)
+Value: 
+| 1, 0, 0, 0, 1, 0, 1, 1, 0, 1, 1, 1 |
+| 0, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1 |
+| 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1 |
+| 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1 |
+| 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1 |
+| 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1 |
+| 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 1 |
+| 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0 |
+| 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0 |
+| 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1 |
+| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0 |
+| 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 |
+
+expr> print_KL(t)
+final parameter (x=0,lambda=[2,1]/1,nu=[0,0]/1): +1q^0
+final parameter (x=1,lambda=[2,1]/1,nu=[0,0]/1): +1q^0
+final parameter (x=2,lambda=[2,1]/1,nu=[0,0]/1): +1q^0
+final parameter (x=3,lambda=[2,1]/1,nu=[0,0]/1): +1q^0
+final parameter (x=5,lambda=[2,1]/1,nu=[0,1]/1): +1q^0
+final parameter (x=6,lambda=[2,1]/1,nu=[0,1]/1): +1q^0
+final parameter (x=4,lambda=[2,1]/1,nu=[1,-1]/2): +1q^0
+final parameter (x=7,lambda=[2,1]/1,nu=[2,0]/1): +1q^0
+final parameter (x=8,lambda=[2,1]/1,nu=[2,0]/1): +1q^0
+final parameter (x=9,lambda=[2,1]/1,nu=[3,3]/2): +1q^0
+final parameter (x=10,lambda=[2,1]/1,nu=[2,1]/1): +1q^0
+final parameter (x=10,lambda=[3,2]/1,nu=[2,1]/1): 0
+
+expr> set G=sp(6,R)
+Identifier G: RealForm
+expr> set block=trivial_block (G)
+Identifier block: [Param]
+expr> #block
+Value: 53
+expr> set p=block[52]
+Identifier p: Param
+expr> p
+Value: final parameter (x=44,lambda=[3,3,2]/1,nu=[3,2,1]/1)
+expr> KL(p)
+Value: [[ 0, 1 ],[ 0, 1, 1 ],[ 0, 1 ],[ 0, 1, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ 0, 1 ],[ ],[ 0, 1 ],[ ],[ ],[ ],[ 0, 1 ],[ 0, 1 ],[ ],[ ],[ 0, 1 ],[ ],[ ],[ ],[ ],[ ],[ ],[ ],[ ],[ ],[ ],[ ],[ ],[ 1 ],[ ],[ 1 ],[ ],[ ]]
+expr> {this is a list of polynomials, [0,1]=0+q, etc. See them more nicely displayed}
+expr> print_KL(p)
+final parameter (x=0,lambda=[3,2,1]/1,nu=[0,0,0]/1): +1q^1
+final parameter (x=1,lambda=[3,2,1]/1,nu=[0,0,0]/1): +1q^1+1q^2
+final parameter (x=2,lambda=[3,2,1]/1,nu=[0,0,0]/1): +1q^1
+final parameter (x=3,lambda=[3,2,1]/1,nu=[0,0,0]/1): +1q^1+1q^2
+final parameter (x=4,lambda=[3,2,1]/1,nu=[0,0,0]/1): +1q^1
+final parameter (x=5,lambda=[3,2,1]/1,nu=[0,0,0]/1): +1q^1
+final parameter (x=6,lambda=[3,2,1]/1,nu=[0,0,0]/1): +1q^1
+final parameter (x=7,lambda=[3,2,1]/1,nu=[0,0,0]/1): +1q^1
+final parameter (x=10,lambda=[3,2,1]/1,nu=[0,1,-1]/2): +1q^1
+...
+expr>set polys=KL(p)
+Identifier polys: [vec]
+expr> set f=polys[3]
+Identifier f: vec
+expr> f
+Value: [ 0, 1, 1 ]
+expr> printPoly (f)
++1q^1+1q^2
+
+expr> {some Hermitian forms}
+expr> set G=sl(2,R)
+Identifier G: RealForm
+expr> set t=trivial(G)
+Identifier t: Param
+expr> print_c_form_irreducible_long (t)
+
+standard module: final parameter (x=0,lambda=[1]/1,nu=[0]/1)
+coefficient: -1
+form on standard: 
+(1)*final parameter (x=0,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+
+standard module: final parameter (x=1,lambda=[1]/1,nu=[0]/1)
+coefficient: -1
+form on standard: 
+(1)*final parameter (x=1,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+
+standard module: final parameter (x=2,lambda=[1]/1,nu=[1]/1)
+coefficient: 1
+form on standard: 
+(1-s)*final parameter (x=0,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(1-s)*final parameter (x=1,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(1)*final parameter (x=2,lambda=[1]/1,nu=[0]/1), [ 0 ]/1
+
+c-form on irreducible module:
+final parameter (x=2,lambda=[1]/1,nu=[1]/1) at [ 1 ]/1
+(-s)*final parameter (x=0,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(-s)*final parameter (x=1,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(1)*final parameter (x=2,lambda=[1]/1,nu=[0]/1), [ 0 ]/1
+
+expr> print_hermitian_form_irreducible (t)
+(-1)*final parameter (x=0,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(-1)*final parameter (x=1,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(1)*final parameter (x=2,lambda=[1]/1,nu=[0]/1), [ 0 ]/1
+expr><translate
+...
+expr> set p=T(t,[2])  {translate to infinitesimal character 2}
+Identifier p: Param
+expr> p
+Value: final parameter (x=2,lambda=[2]/1,nu=[2]/1)
+expr> infinitesimal_character (p)
+Value: [ 2 ]/1
+expr> print_c_form_irreducible_long (p)
+
+standard module: final parameter (x=0,lambda=[2]/1,nu=[0]/1)
+coefficient: -1
+form on standard: 
+(1)*final parameter (x=0,lambda=[2]/1,nu=[0]/1), [ 2 ]/1
+
+standard module: final parameter (x=1,lambda=[2]/1,nu=[0]/1)
+coefficient: -1
+form on standard: 
+(1)*final parameter (x=1,lambda=[2]/1,nu=[0]/1), [ 2 ]/1
+
+standard module: final parameter (x=2,lambda=[2]/1,nu=[2]/1)
+coefficient: 1
+form on standard: 
+(1)*final parameter (x=0,lambda=[0]/1,nu=[0]/1), [ 0 ]/1
+(1-s)*final parameter (x=0,lambda=[2]/1,nu=[0]/1), [ 2 ]/1
+(1)*final parameter (x=1,lambda=[0]/1,nu=[0]/1), [ 0 ]/1
+(1-s)*final parameter (x=1,lambda=[2]/1,nu=[0]/1), [ 2 ]/1
+
+c-form on irreducible module:
+final parameter (x=2,lambda=[2]/1,nu=[2]/1) at [ 2 ]/1
+(1)*final parameter (x=0,lambda=[0]/1,nu=[0]/1), [ 0 ]/1
+(-s)*final parameter (x=0,lambda=[2]/1,nu=[0]/1), [ 2 ]/1
+(1)*final parameter (x=1,lambda=[0]/1,nu=[0]/1), [ 0 ]/1
+(-s)*final parameter (x=1,lambda=[2]/1,nu=[0]/1), [ 2 ]/1
+
+expr> print_hermitian_form_irreducible (p)
+(1)*final parameter (x=0,lambda=[0]/1,nu=[0]/1), [ 0 ]/1
+(-1)*final parameter (x=0,lambda=[2]/1,nu=[0]/1), [ 2 ]/1
+(s)*final parameter (x=1,lambda=[0]/1,nu=[0]/1), [ 0 ]/1
+(-s)*final parameter (x=1,lambda=[2]/1,nu=[0]/1), [ 2 ]/1
+expr> set q=T(t,[3])
+Identifier q: Param
+expr> print_hermitian_form_irreducible (q)
+(-1+s)*final parameter (x=0,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(-s)*final parameter (x=0,lambda=[3]/1,nu=[0]/1), [ 3 ]/1
+(-1+s)*final parameter (x=1,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(-s)*final parameter (x=1,lambda=[3]/1,nu=[0]/1), [ 3 ]/1
+(1)*final parameter (x=2,lambda=[1]/1,nu=[0]/1), [ 0 ]/1
+
+expr> set q=spherical_principal_series (G,[11]/10)
+Identifier q: Param
+expr> print_hermitian_form_irreducible (q)
+(-1+s)*final parameter (x=0,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(-1+s)*final parameter (x=1,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(1)*final parameter (x=2,lambda=[1]/1,nu=[0]/1), [ 0 ]/1
+expr> set r=spherical_principal_series (G,[21]/10)
+Identifier r: Param
+expr> print_hermitian_form_irreducible (r)
+(-1+s)*final parameter (x=0,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(-1+s)*final parameter (x=1,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(1)*final parameter (x=2,lambda=[1]/1,nu=[0]/1), [ 0 ]/1
+expr> set s=spherical_principal_series (G,[31]/10)
+Identifier s: Param
+expr> print_hermitian_form_irreducible (s)
+(-1+s)*final parameter (x=0,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(1-s)*final parameter (x=0,lambda=[3]/1,nu=[0]/1), [ 3 ]/1
+(-1+s)*final parameter (x=1,lambda=[1]/1,nu=[0]/1), [ 1 ]/1
+(1-s)*final parameter (x=1,lambda=[3]/1,nu=[0]/1), [ 3 ]/1
+(1)*final parameter (x=2,lambda=[1]/1,nu=[0]/1), [ 0 ]/1
+expr><unipotent
+...
+expr> set G=sp(8,R)
+Identifier G: RealForm
+expr> C4nus
+Value: [[ 0, 0, 0, 0 ]/1,[ 1, 0, 0, 0 ]/1,[ 1, 1, 0, 0 ]/1,[ 1, 1, 1, 0 ]/1,[ 2, 1, 1, 0 ]/2,[ 1, 1, 0, 0 ]/2,[ 1, 1, 1, 1 ]/2,[ 2, 1, 0, 0 ]/1,[ 2, 1, 1, 0 ]/1,[ 4, 2, 1, 1 ]/2,[ 3, 2, 1, 0 ]/1,[ 3, 3, 1, 1 ]/2,[ 4, 3, 2, 1 ]/1]
+expr> test_spherical_unitary (G, C4nus)
+[ 0, 0, 0, 0 ]/1, true
+[ 1, 0, 0, 0 ]/1, true
+[ 1, 1, 0, 0 ]/1, true
+[ 1, 1, 1, 0 ]/1, true
+[ 2, 1, 1, 0 ]/2, true
+[ 1, 1, 0, 0 ]/2, true
+[ 1, 1, 1, 1 ]/2, true
+[ 2, 1, 0, 0 ]/1, true
+[ 2, 1, 1, 0 ]/1, true
+[ 4, 2, 1, 1 ]/2, true
+[ 3, 2, 1, 0 ]/1, true
+[ 3, 3, 1, 1 ]/2, true
+...
+expr> set G=G2ad
+Identifier G: RealForm
+expr> rho(G)
+Value: [ 5, 3 ]/1
+expr> set nu=[2,1] {short root}
+Identifier nu: [int]
+expr> {let's look along a the line through a short root in the spherical unitary dual}
+expr> set p=spherical_principal_series (G,nu)
+Identifier p: Param
+expr> infinitesimal_character (p)
+Value: [ 2, 1 ]/1
+expr> for n:16 do prints(spherical_principal_series (G, n*v), is_unitary (spherical_principal_series (G,n*v))) od;
+final parameter (x=9,lambda=[5,3]/1,nu=[0,0]/1)true
+final parameter (x=9,lambda=[5,3]/1,nu=[2,1]/8)true
+final parameter (x=9,lambda=[5,3]/1,nu=[2,1]/4)true
+final parameter (x=9,lambda=[5,3]/1,nu=[6,3]/8)true
+final parameter (x=9,lambda=[5,3]/1,nu=[2,1]/2)true    {end of small hexagon}
+final parameter (x=9,lambda=[5,3]/1,nu=[10,5]/8)false
+final parameter (x=9,lambda=[5,3]/1,nu=[6,3]/4)false
+final parameter (x=9,lambda=[5,3]/1,nu=[14,7]/8)false
+final parameter (x=9,lambda=[5,3]/1,nu=[2,1]/1)true    {corner of big hexagon}
+final parameter (x=9,lambda=[5,3]/1,nu=[18,9]/8)false
+final parameter (x=9,lambda=[5,3]/1,nu=[10,5]/4)false
+final parameter (x=9,lambda=[5,3]/1,nu=[22,11]/8)false
+final parameter (x=9,lambda=[5,3]/1,nu=[6,3]/2)false
+final parameter (x=9,lambda=[5,3]/1,nu=[26,13]/8)false
+final parameter (x=9,lambda=[5,3]/1,nu=[14,7]/4)false
+final parameter (x=9,lambda=[5,3]/1,nu=[30,15]/8)false
+
+expr> {test_line deforms nu to 0 and checks unitarity on all facets}
+expr> test_line (trivial(G2ad))
+testing line through final parameter (x=9,lambda=[5,3]/1,nu=[5,3]/1)
+reducibility points: [1/5,1/4,1/3,1/2,3/5,3/4,1/1]
+integrality points: [1/5,1/4,1/3,2/5,1/2,3/5,2/3,3/4,4/5,1/1]
+[ 5, 3 ]/10: true    {middle of hexagon}
+[ 5, 3 ]/5: true     {edge of hexagon}
+[ 45, 27 ]/40: false {middle of open facet}
+[ 5, 3 ]/4: true     {edge of triangle}
+[ 35, 21 ]/24: true  {middle of triangle}
+[ 5, 3 ]/3: true     {edge of triangle}
+[ 25, 15 ]/12: false
+[ 5, 3 ]/2: false
+[ 55, 33 ]/20: false
+[ 15,  9 ]/5: false
+[ 135,  81 ]/40: false
+[ 15,  9 ]/4: false
+[ 35, 21 ]/8: false
+[ 5, 3 ]/1: true     {trivial representation}
+
+expr> {draw the picture on G2 graph paper http://www.math.lsa.umich.edu/~jrs/data/G2.ps}

@@ -157,8 +157,9 @@ let (q,r)= n\%2 in
 
 {alternate syntax: sp(4,R) instead of sp_R(4)}
 set R="R"
+
 set sp(int k,string R)=sp_R(k)
-set SL(int k, string R)=sl_R(k)
+set sl(int k, string R)=sl_R(k)
 
 {GL(int k) is a built-in type, giving a root datum
 also define the group GL(3,R)}
