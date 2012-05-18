@@ -55,17 +55,22 @@ G=real_form(p) then
 P=null_module(G) then
 (block,k,klmatrix,polys,stops,indices,cumulated)=KL_block (p) then
 klpolys=signedKL(p) in
-let standards=for i:#indices do 
- let poly=klpolys[i] then
- s=Split:(0,1) then
- poly_at_s=poly%s then
- q=block[indices[i]] then
- on=orientation_number_term(p,q) then
- (form_on_standard,std_count)=c_form_std(q) in
- count:=count+std_count;
- P:=P+on*poly_at_s*form_on_standard;
- (q,on*poly_at_s,form_on_standard)
-od in (P,standards,count)
+let standards=[] in
+for i:#indices do 
+{careful: check if poly=[] or poly=[0]}
+ let poly=klpolys[i] in 
+ if #poly>0 then
+  if not poly[0]=0 then
+  let s=Split:(0,1) then
+  poly_at_s=poly%s then
+  q=block[indices[i]] then
+  on=orientation_number_term(p,q) then
+  (form_on_standard,std_count)=c_form_std(q) in
+  count:=count+std_count;
+  P:=P+on*poly_at_s*form_on_standard;
+  standards:=standards#(q,on*poly_at_s,form_on_standard) 
+ fi fi
+od;(P,standards,count)
 
 
 set c_form_irreducible (Param p)=
