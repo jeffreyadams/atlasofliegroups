@@ -329,12 +329,14 @@ char* Lexical_analyser::scan_quoted_string()
     }
     else if ((c=input.shift())!='"')
     {@; input.unshift(); end=input.point()-1; break; }
-    else ++nr_quotes; // for doubled quotes, continue
+    else
+      ++nr_quotes; // for doubled quotes, continue
   } while (true);
   size_t len=end-start-nr_quotes;
   char* s=new char[len+1];
   while (start<end) // copy characters, undoubling doubled quotes
-    if ((*s++=*start++)=='"') ++start;
+    if ((*s++=*start++)=='"')
+      ++start;
   *s='\0'; return s-len;
 }
 
@@ -405,15 +407,21 @@ token scanned.
 
 @< Definitions of class members @>=
 int Lexical_analyser::get_token(YYSTYPE *valp, YYLTYPE* locp)
-{ if (state==ended) {@; state=initial; return 0; } // send end of input
+{ if (state==ended)
+    {@; state=initial; return 0; } // send end of input
   skip_space(); prevent_termination='\0';
   input.locate(input.point(),locp->first_line,locp->first_column);
   int code; char c=input.shift();
-  if (isalpha(c)) @< Scan an identifier or a keyword @>
-  else if (isdigit(c)) @< Scan a number @>
-  else @< Scan a token starting with a non alpha-numeric character @>
+  if (isalpha(c))
+    @< Scan an identifier or a keyword @>
+  else if (isdigit(c))
+    @< Scan a number @>
+  else
+    @< Scan a token starting with a non alpha-numeric character @>
   input.locate(input.point(),locp->last_line,locp->last_column);
-@/if (state==initial) state=normal; return code;
+@/if (state==initial)
+   state=normal;
+  return code;
 }
 
 @ Everything that looks like an identifier is either that or a keyword, or a
@@ -425,10 +433,13 @@ although this is probably desirable. However type names
 
 @< Scan an identifier or a keyword @>=
 { const char* p=input.point@[()@]-1; // start of token
-  do c=input.shift(); while(isalpha(c) || isdigit(c) || c=='_');
+  do
+    c=input.shift();
+  while(isalpha(c) || isdigit(c) || c=='_');
   input.unshift();
   Hash_table::id_type id_code=id_table.match(p,input.point()-p);
-  if (id_code>=type_limit) {@; valp->id_code=id_code; code=IDENT; }
+  if (id_code>=type_limit)
+  {@; valp->id_code=id_code; code=IDENT; }
   else if (id_code>=keyword_limit)
   {@; valp->type_code=id_code-keyword_limit; code=TYPE; }
   else
@@ -456,7 +467,9 @@ values.
 
 @< Scan a number @>=
 { const char* p=input.point@[()@]-1; // start of token
-  do c=input.shift(); while(isdigit(c));
+  do
+    c=input.shift();
+  while(isdigit(c));
   input.unshift();
   const char* end=input.point();
   unsigned long val=*p++-'0'; @+  while (p<end) val=10*val+(*p++-'0');
@@ -487,7 +500,8 @@ included before) respectively appending output redirection.
          { code= c=='<'
            ? input.shift()=='<' ? FORCEFROMFILE:  (input.unshift(),FROMFILE)
            : input.shift()=='>' ? ADDTOFILE : (input.unshift(),TOFILE) ;
-	   @< Read in |file_name| @> @+ break;
+	   @< Read in |file_name| @>
+           @+ break;
          }
          prevent_termination=c;
          code = OPERATOR; valp->oper.priority=2;
@@ -587,7 +601,8 @@ if ((skip_space(),c=input.shift())=='"')
 @/{@; char* s=scan_quoted_string(); file_name=s; delete[] s; }
 else
 @/{@; file_name="";
-    while (!isspace(c)){@; file_name+=c; c=input.shift(); }
+    while (!isspace(c))
+    {@; file_name+=c; c=input.shift(); }
     input.unshift();
 }
 

@@ -1583,11 +1583,17 @@ id_type lookup_identifier(const char* name)
 {@; return main_hash_table->match_literal(name); }
 
 @~To include a file, we call the |push_file| method from the input buffer,
-providing a file name that was remembered by the lexical analyser.
+providing a file name that was remembered by the lexical analyser. If this
+fails, then we abort all includes, as there is not much point in continuing to
+read a file when another on which it depends cannot be found.
 
 @< Definitions of functions in \Cee-style for the parser @>=
 void include_file(int skip_seen)
-{@; main_input_buffer->push_file(lex->scanned_file_name(),skip_seen!=0); }
+{ if (not main_input_buffer->push_file
+          (lex->scanned_file_name(),skip_seen!=0))
+    main_input_buffer->close_includes();
+     // nested include failure aborts all includes
+}
 
 @ The next functions are declared here, because the parser needs to see these
 declarations in \Cee-style, but they are defined in in the file

@@ -102,7 +102,8 @@ int yylex(YYSTYPE *valp, YYLTYPE *locp)
 @)
 extern "C"
 void yyerror (YYLTYPE* locp, expr* ,int* ,char const *s)
-{ atlas::interpreter::main_input_buffer->show_range@|(std::cerr,
+{ atlas::interpreter::main_input_buffer->show_range@|
+  (std::cerr,
    locp->first_line, locp->first_column,
    locp->last_line,  locp->last_column);
   std::cerr << s << std::endl;
@@ -175,7 +176,8 @@ int main(int argc, char** argv)
     if (yyparse(&parse_tree,&verbosity)!=0)
       continue; // syntax error or non-expression
     if (verbosity!=0) // then some special action was requested
-    { if (verbosity<0) break; // \.{quit} command
+    { if (verbosity<0)
+        break; // \.{quit} command
       if (verbosity==2 or verbosity==3)
         // indicates output redirection was requested
       { @< Open |redirect| to specified file, and if successful make
@@ -232,7 +234,8 @@ suppress printing of the uninteresting value.
     e->evaluate(expression_base::single_value);
     shared_value v=pop_value();
     static type_expr empty(type_list_ptr(NULL));
-    if (*type!=empty) *output_stream << "Value: " << *v << endl;
+    if (*type!=empty)
+      *output_stream << "Value: " << *v << endl;
     destroy_expr(parse_tree);
   }
   catch (runtime_error& err)
@@ -268,7 +271,8 @@ practical at this point than throwing and catching an error.
 @< Open |redirect| to specified file... @>=
 { redirect.open(ana.scanned_file_name() ,ios_base::out |
      (verbosity==2 ? ios_base::trunc : ios_base::@;app));
-  if (redirect.is_open()) output_stream = &redirect;
+  if (redirect.is_open())
+    output_stream = &redirect;
   else
   {@; cerr << "Failed to open " << ana.scanned_file_name() << endl;
     continue;
