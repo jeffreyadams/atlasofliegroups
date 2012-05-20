@@ -55,17 +55,22 @@ G=real_form(p) then
 P=null_module(G) then
 (block,k,klmatrix,polys,stops,indices,cumulated)=KL_block (p) then
 klpolys=signedKL(p) in
-let standards=for i:#indices do 
- let poly=klpolys[i] then
- s=Split:(0,1) then
- poly_at_s=poly%s then
- q=block[indices[i]] then
- on=orientation_number_term(p,q) then
- (form_on_standard,std_count)=c_form_std(q) in
- count:=count+std_count;
- P:=P+on*poly_at_s*form_on_standard;
- (q,on*poly_at_s,form_on_standard)
-od in (P,standards,count)
+let standards=[] in
+for i:#indices do 
+{careful: check if poly=[] or poly=[0]}
+ let poly=klpolys[i] in 
+ if #poly>0 then
+  if not poly[0]=0 then
+  let s=Split:(0,1) then
+  poly_at_s=poly%s then
+  q=block[indices[i]] then
+  on=orientation_number_term(p,q) then
+  (form_on_standard,std_count)=c_form_std(q) in
+  count:=count+std_count;
+  P:=P+on*poly_at_s*form_on_standard;
+  standards:=standards#(q,on*poly_at_s,form_on_standard) 
+ fi fi
+od;(P,standards,count)
 
 
 set c_form_irreducible (Param p)=
@@ -121,16 +126,17 @@ rho_res_T_tilde+lambda_minus_rho_res_T_tilde
 {formula: <(1-theta_x)(lambda+rho)/2, torus_factor(x)+rho^\vee>}
 set mu(Param p)=lambda_plus_rho_res_T(x(p),lambda(p))*(torus_factor(x(p))+rhocheck(real_form(p)))
 
-{ParamPol giving the hermitian form on irreducible p}
-set hermitian_form_irreducible(Param p) =
-let G=(if hermitian_debug then prints("Computing Hermitian form on irreducible: ",p) fi);real_form(p) then
-pol=c_form_irreducible(p) then
-s=Split:(0,1) then
-pols=%pol then
+set convert_cform_hermitian (ParamPol P)=
+let s=Split:(0,1) then
+pols=%P then
 (w0,p0)=pols[0] then
-P=null_module(G) in
+P=null_module(real_form(P)) in
 for (w,p) in pols do  
 P:=P+s^(rattoint(mu(p)-mu(p0)))*w*p od;P
+
+{ParamPol giving the hermitian form on irreducible p}
+set hermitian_form_irreducible(Param p) =
+if hermitian_debug then prints("Computing Hermitian form on irreducible: ",p) fi;convert_cform_hermitian(c_form_irreducible(p))
 
 {nice output of hermitian_form_irreducible}
 set print_hermitian_form_irreducible(Param p) =
