@@ -182,26 +182,33 @@ allow working everywhere with sequence numbers to represent identifiers.
 @< Class declarations @>=
 
 class Hash_table
-{ public: typedef short id_type; // type of value representing identifiers
+{
+public:
+  typedef unsigned short id_type; // type of value representing identifiers
+  static const id_type empty = ~0; // value reserved for empty slots
 private: // data members
-    String_pool pool;
-    id_type mod;  // hash modulus, the number of slots present
-    std::vector<id_type> hash_tab;
-    std::vector<const char*> name_tab;
+  String_pool pool;
+  id_type mod;  // hash modulus, the number of slots present
+  std::vector<id_type> hash_tab;
+  std::vector<const char*> name_tab;
+@)
 public: // interface
-    Hash_table(size_t init=initial_hash_mod
-              ,size_t block_size=String_pool::default_block_size);
-    id_type match(const char* s, size_t l) @+{@; return do_match(s,l,true); }
-    id_type match_literal(const char* s) /* literal null-terminated string */
-      {@; return do_match(s,std::strlen(s),false); }
-    const char* name_of(id_type nr) const @+{@; return name_tab[nr]; }
-    id_type nr_entries() const @+{@; return name_tab.size(); }
+  Hash_table(size_t init=initial_hash_mod
+            ,size_t block_size=String_pool::default_block_size);
+@)
+  id_type nr_entries() const @+{@; return name_tab.size(); }
+  const char* name_of(id_type nr) const @+{@; return name_tab[nr]; }
+  bool knows(const char* name) const;
+@)
+  id_type match(const char* s, size_t l) @+{@; return do_match(s,l,true); }
+  id_type match_literal(const char* s) /* literal null-terminated string */
+    {@; return do_match(s,std::strlen(s),false); }
 private: // auxiliary functions
-    static const id_type initial_hash_mod=97;
-    id_type hash(const char* s, size_t l) const; // auxiliary hash function
-    id_type do_match(const char* s, size_t l, bool copy_string);
-    size_t max_fill() const {@; return static_cast<id_type>(mod*3L/4); }
-                    // maximum of entries in use
+  static const id_type initial_hash_mod=97;
+  id_type hash(const char* s, size_t l) const; // auxiliary hash function
+  id_type do_match(const char* s, size_t l, bool copy_string);
+  size_t max_fill() const {@; return static_cast<id_type>(mod*3L/4); }
+                  // maximum of entries in use
 };
 
 @ Since we used the |vector| template and the |strlen| function, we must make
@@ -218,26 +225,26 @@ expression for |mod| takes care to ensure that |max_fill()<mod| always holds,
 by rejecting ridiculously small values. Although |name_tab| will grow
 incrementally, we prefer to reserve enough space for it to avoid reallocation
 until rehashing is necessary. Therefore the allocated size of |name_tab| will
-always have size |max_fill| which grows with (but lags behind) |mod|.
+always have size |max_fill()|, which grows with (but lags behind) |mod|.
 
 @< Definitions of class members @>=
 
 Hash_table::Hash_table(size_t init,size_t block_size)
 : pool(block_size)
-, mod(init<2?2:init), hash_tab(mod), name_tab(0)
-{@; name_tab.reserve(max_fill()); for(int i=0; i<mod; ++i) hash_tab[i]=-1;
+, mod(init<2?2:init), hash_tab(mod,empty), name_tab(0)
+{@; name_tab.reserve(max_fill());
 }
 
 @ The hash code of an identifier is determined by interpreting its characters
 as digits of a number in base~256, and then taking the number modulo |mod|.
 While the final result is a short value, intermediate results may be almost as
-large as |mod<<8|, so we use a |long| value here.
+large as |mod<<8|, so we use an |unsigned long| value here.
 
-The code below shows a bad property of the rigid type system of \Cpp: it is
-virtually impossible to transform a pointer of type |(char*)| to one of type
-|(unsigned char*)|, short of using a |reinterpret_cast| or (even worse)
-calling the placement-|new| operator (as in |unsigned char p=new(s) unsigned
-char@;|), even though this is a fairly innocent thing to do. Here we just want
+The code below shows a bad property of the rigid type system of \Cpp: even
+though this is a fairly innocent thing to do, it is virtually impossible to
+transform a pointer of type |(char*)| to one of type |(unsigned char*)|, short
+of using a |reinterpret_cast| or (even worse) calling the placement-|new|
+operator (as in |unsigned char* p=new(s) unsigned char@;|). Here we just want
 to assure that we are doing arithmetic on non-negative values, even if some
 characters would classify as negative |char| values (failing to do this could
 cause the program the program to crash). And we cannot help having pointers to
@@ -250,19 +257,55 @@ into an unsigned value, which can be done by a standard conversion; this
 accounts for two of the three |static_cast|s below (the third is for
 documentation only).
 
+The code below is safe if either |l>0| (as will always be the case for
+identifiers) or if |l==0| and |*s=='\0'| in which case it will return |0| as
+hash code (this may occur when the user rather foolishly attempts
+to open a file with an empty name).
+
 @< Definitions of class members @>=
 
 Hash_table::id_type Hash_table::hash
         (const char* s, size_t l) const // |s| a string of length |l>0|
-{ long r=static_cast<unsigned char>(*s++)%mod;
-  for ( --l; l>0 ; --l)
+{ unsigned long r=static_cast<unsigned char>(*s++)%mod;
+  while (l-->1) // one less, because we already read one character
     r=(static_cast<unsigned char>(*s++)+(r<<8))%mod;
   return static_cast<id_type>(r);
 }
 
+@ The following accessor method is a simplified version of |do_match| defined
+below; it looks up whether a string is present, but does not attempt to insert
+it if it is absent. It should not be used if the intention is to insert the
+string anyway; in that case one should first record the old size of the table,
+match the string and test whether the returned value is less that the old size
+(which indicates that the identifier was already known). Indeed the code below
+is only used with file names, in an optimisation that avoids opening a file if
+the name corresponds to one already successfully opened before (in that
+application it is too soon to know whether the name should be added, in case
+it is new).
+
+Given the fact that the hash table can only grow, we can be sure upon finding
+an empty slot that the name searched is absent from the table. In case of
+finding a non-empty slot, an exact name match will result in a positive
+answer, while a failure to match leads to trying the next slot. Since it is
+guaranteed that the table has at least one empty slot at all times, the loop
+will certainly terminate.
+
+@h <cstring>
+@< Definitions of class members @>=
+bool Hash_table::knows (const char* name) const
+{ size_t l = std::strlen(name);
+  id_type i,h=hash(name,l);
+  while ((i=hash_tab[h])!=empty) // search breaks off at first empty slot
+    if (std::strncmp(name_tab[i],name,l)==0 && name_tab[i][l]=='\0')
+      return true; // identifier found in table
+    else
+      if (++h==mod) // move past occupied slot
+        h=0; // possibly wrapping around
+  return false;
+}
 
 @ When an identifier is passed to |match|, this method (which calls |do_match|
-hwith |copy_string==true|) returns its index in |name_tab|, possibly after
+with |copy_string==true|) returns its index in |name_tab|, possibly after
 adding the identifier to the tables. This small number is henceforth used to
 characterise the identifier. The private function |do_match| can also be
 called by |match_literal| in case of keywords stored at initialisation time,
@@ -282,12 +325,11 @@ too-full condition has been resolved, and we know that |str| is new, we can
 avoid recursion and perform a simplified computation of the new hash code in
 this case.
 
-@h <cstring>
 @< Definitions of class members @>=
 Hash_table::id_type Hash_table::do_match
 	(const char* str, size_t l, bool copy_string)
 { id_type i,h=hash(str,l);
-  while ((i=hash_tab[h])>=0)
+  while ((i=hash_tab[h])!=empty)
     if (std::strncmp(name_tab[i],str,l)==0 && name_tab[i][l]=='\0')
       return i; /* identifier found in table */
     else if (++h==mod)
@@ -295,7 +337,7 @@ Hash_table::id_type Hash_table::do_match
   if (name_tab.size()>=max_fill())
   { @< Extend hash table @>
     h=hash(str,l); @+
-    while (hash_tab[h]>=0) @+
+    while (hash_tab[h]!=empty) @+
       if (++h==mod) h=0; /* find free slot */
   }
   hash_tab[h]= name_tab.size(); /* this number represents the new identifier */
@@ -313,15 +355,16 @@ code for inserting the indices of rehashed strings from |name_tab| is simpler
 than in the basic matching loop, since we know that all those strings are
 distinct; it suffices to find for each an empty slot. The sequence number
 associated to each string does not change. We finally reserve enough space for
-|name_tab| to last until the next time rehashing is necessary.
+|name_tab| to last until the next time rehashing is necessary. This is really
+unnecessary, since |name_tab| can very well determine for itself when it needs
+reallocation; the current code ensures that |name_tab| is reallocated exactly
+when |hash_tab| grows.
 
 @< Extend hash table @>=
-{ std::vector<id_type>(mod=2*mod-1).swap(hash_tab); // keep it odd
-  for (int h=0; h<mod; ++h)
-    hash_tab[h]=-1;
+{ std::vector<id_type>(mod=2*mod-1,empty).swap(hash_tab); // make length odd
   for (size_t i=0; i<name_tab.size(); ++i)
   { int h=hash(name_tab[i],std::strlen(name_tab[i])); // rehash the string
-    while (hash_tab[h]>=0) @+
+    while (hash_tab[h]!=empty) @+
       if (++h==mod)
         h=0; /* find empty slot */
     hash_tab[h]=i;
@@ -497,7 +540,9 @@ de)@/
 @+{}
 
 
-@ For every currently open \emph{auxiliary} input stream (necessarily a file
+@*1 Input from auxiliary files.
+%
+For every currently open \emph{auxiliary} input stream (necessarily a file
 stream), we store a pointer to the |ifstream| object, the file name (for error
 reporting) and the line number of \emph{the stream that was interrupted} by
 opening this auxiliary file (the line number in the file itself will be held
@@ -597,10 +642,21 @@ input_record::input_record
   {@; delete stream; throw; }
 }
 
-@ If |push_file| is called with |skip_seen==true|, it will not attempt to
-re-read a file that was already opened before. This is achieved by looking the
-file name up in |input_files_seen| and returning immediately if the file name
-was already present.
+@ If |push_file| is called with |skip_seen==true|, this means it should not
+re-read a file that was already opened before. However, we want this to apply
+to the actual file name, with addition of the default extension from |def_ext|
+that might be added by the |input_record| constructor if necessary, and we
+don't want to store file names that were unsuccessfully opened, so we postpone
+this test until the |input_record| is constructed. To limit the drawback that
+this strategy would lead us to open and then immediately close files in case
+they are skipped, we add an optimisation clause that avoids any work in case
+|name| exactly matches a file name previously opened; this should be an
+incentive to include the extension when including a file from another file. It
+can have a noticeable effect, but only in the weird case that a user first
+successfully reads a file without extension, then deletes it and again tries
+to load it without mentioning an extension; without the optimisation clause
+our implementation would in that case try to load the file name with
+extension, but in fact we won't do that.
 
 The above constructor for |input_record| is then called with |line| equal to
 the line number at which we shall resume reading the interrupted file, since
@@ -621,20 +677,27 @@ made by the caller.
 @< Definitions of class members @>=
 bool BufferedInput::push_file(const char* name, bool skip_seen)
 {
-  if (skip_seen)
-  { Hash_table::id_type size=input_files_seen.nr_entries();
-    if (input_files_seen.match(name,std::strlen(name))<size)
-      return true;
-    // if the file was already read previously, do nothing and succeed
-  }
-
+  if (input_files_seen.knows(name))
+    return true;
   input_stack.push(input_record(name,def_ext,line_no+cur_lines));
   // reading will resume there
   if (input_stack.top().stream->good())
-  { stream= input_stack.top().stream;
-    line_no=1; cur_lines=0;
-    // don't advance |line_no| when getting first line of new file
-    return true;
+  { const std::string& name=input_stack.top().name;
+    size_t old_size = input_files_seen.nr_entries();
+      // the value of |match| for a new name
+    if (skip_seen and
+        input_files_seen.match(name.c_str(),name.size())<old_size)
+      // seen before
+    @/{@; delete input_stack.top().stream;
+      input_stack.pop();
+    } // so just close file and pop record
+    else
+    { stream= input_stack.top().stream;
+      line_no=1; // prepare to read from pushed file
+      cur_lines=0;
+        // so we won't advance |line_no| when getting first line of new file
+    }
+    return true; // succeed whether or not a file was actually pushed
   }
   else
   { std::cerr << "failed to open input file '" << input_stack.top().name
