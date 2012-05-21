@@ -209,7 +209,11 @@ root_coradical: (RootDatum->mat): simple roots and coradical basis.
   With respect to simple_roots, add columns for coradical basis generators
 coroot_radical: (RootDatum->mat): simple coroots and radical basis.
   With respect to simple_coroots, add columns for radical basis generators
+fundamental_weight: (RootDatum,int->ratvec): fundamental weight number $i$
+fundamental_coweight: (RootDatum,int->ratvec): fundamental coweight number $i$
 dual: (RootDatum->RootDatum): dual of given root datum.
+derived: (RootDatum->RootDatum,mat): root datum for derived group, restriction
+  The second argument is matrix mapping weights from original to derived datum.
 rank: (RootDatum->int) Rank of the weight lattice for this Lie type.
 semisimple_rank: (RootDatum->int) Rank of the root lattice of  this Lie type.
 
@@ -458,5 +462,3 @@ print_W_graph: (RealForm,DualRealForm->):
   relevant cases the Cartan class) be associated to the same inner class,
   and that they have at least one Cartan class (respectively the given Cartan
   class) in common.
-
-test_rep (KGBElt,vec,ratvec->): print the global dual KGB for this parameter

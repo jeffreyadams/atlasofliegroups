@@ -3707,7 +3707,7 @@ void ratlist_ratvec_convert() // convert list of rationals to rational vector
   for (size_t i=0; i<r->val.size(); ++i)
     numer[i]*= d/denom[i]; // adjust numerators to common denominator
 
-  push_value(new rational_vector_value(RatWeight(numer,d)));
+  push_value(new rational_vector_value(numer,d)); // normalises
 }
 @)
 void ratvec_ratlist_convert() // convert rational vector to list of rationals
@@ -4436,14 +4436,14 @@ void ratvec_plus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value(v0->val+v1->val));
+    push_value(new rational_vector_value((v0->val+v1->val).normalize()));
 }
 @)
 void ratvec_minus_wrapper(expression_base::level l)
 { shared_rational_vector v1= get<rational_vector_value>();
   shared_rational_vector v0= get<rational_vector_value>();
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value(v0->val-v1->val));
+    push_value(new rational_vector_value((v0->val-v1->val).normalize()));
 }
 
 

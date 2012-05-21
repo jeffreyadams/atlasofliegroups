@@ -52,7 +52,8 @@ class StandardRepr
 
   // one should call constructor from |Rep_context| only
   StandardRepr (KGBElt x,TorusPart y,const RatWeight& gamma)
-    : x_part(x), y_bits(y), infinitesimal_char(gamma) {}
+    : x_part(x), y_bits(y), infinitesimal_char(gamma)
+  { infinitesimal_char.normalize(); } // ensure this class invariant
 
  public:
 

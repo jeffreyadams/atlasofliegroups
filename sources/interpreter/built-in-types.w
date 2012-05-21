@@ -1089,7 +1089,8 @@ void fundamental_weight_wrapper(expression_base::level l)
   if (unsigned(i)>=rd->val.semisimpleRank())
     throw std::runtime_error("Invalid index "+str(i));
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value(rd->val.fundamental_weight(i)));
+    push_value(new rational_vector_value
+      (rd->val.fundamental_weight(i).normalize()));
 }
 @)
 void fundamental_coweight_wrapper(expression_base::level l)
@@ -1098,7 +1099,8 @@ void fundamental_coweight_wrapper(expression_base::level l)
   if (unsigned(i)>=rd->val.semisimpleRank())
     throw std::runtime_error("Invalid index "+str(i));
   if (l!=expression_base::no_value)
-    push_value(new rational_vector_value(rd->val.fundamental_coweight(i)));
+    push_value(new rational_vector_value
+      (rd->val.fundamental_coweight(i).normalize()));
 }
 
 
@@ -2924,6 +2926,7 @@ void unwrap_parameter_wrapper(expression_base::level l)
   { push_value(new KGB_elt_value(p->rf,p->val.x()));
     push_value(new vector_value(p->rc().lambda_rho(p->val)));
     push_value(new rational_vector_value(p->rc().nu(p->val)));
+      // method |nu| normalises
     if (l==expression_base::single_value)
       wrap_tuple(3);
   }
