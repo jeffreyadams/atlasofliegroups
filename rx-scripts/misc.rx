@@ -1,31 +1,28 @@
-<basic.rx     
-<groups.rx 
-<lietypes.rx
+<basic.rx
 
 {test if an integer is even, or a rational is an integer}
-set is_even (int i) = (floor(i/2)=i/2)
-set is_integer (rat r)  = let (num,denom)=%r in if denom=1 then true else false fi
+set is_even (int i) = i%2=0
+set is_integer (rat r) = denom(r)=1
 
 {test if a ratvec is in fact a vec (integers)}
-set is_integer (ratvec v)=let rv=true then i=0 in
-while i<#v and rv do
- if not is_integer(v[i]) then rv:=false fi;i+:=1 
-od;rv
-
-{make a rational vector into an integer one if possible}
-set ratvectovec (ratvec v)=
-let (w,d)=%v in for a in w do if (not a/d=a\d) then error("Not an integer vector") fi; a\d od
-
-{define dot product ratvec*ratvec,ratvec*vec,vec*ratvec}
-set *(ratvec v,ratvec w)=let (a,b)=%v then (c,d)=%w in a*c/(b*d) 
-set *(vec v,ratvec w)=(v/1)*w
-set *(ratvec v,vec w)=v*(w/1)
+set is_integer (ratvec v) = denom(v)=1
 
 {make a rational into an integer if possible}
-set rattoint (rat r)=let (num,denom)=%r in if denom=1 then num else error("not an integer") fi
+set rattoint (rat r) =
+  let (n,d)=%r in if d=1 then n else error("Not an integer") fi
+
+{make a rational vector into an integer one if possible}
+set ratvectovec (ratvec v)= vec:
+  let (w,d)=%v in if d=1 then w else error("Not an integer vector") fi
+
+{define dot product ratvec*ratvec,ratvec*vec,vec*ratvec}
+set *(ratvec v,ratvec w)=let (a,b)=%v then (c,d)=%w in a*c/(b*d)
+
+{ cases *@(vec,ratvec) and *@(ratvec,vec) are now handled by coercion }
 
 {overloads to define some functions of RealForm G}
 set root_datum(RealForm G)=root_datum(inner_class(G))
+set simple_roots(RealForm G)=simple_roots(root_datum(G))
 set fundamental_weight(RealForm G,int k)=fundamental_weight(root_datum(G),k)
 set rank (RealForm G)=rank(root_datum(G))
 set positive_roots(RealForm G)=positive_roots(root_datum(G))
@@ -33,21 +30,18 @@ set positive_coroots(RealForm G)=positive_coroots(root_datum(G))
 set real_forms(RealForm G)=real_forms(Cartan_class(inner_class(G),0))
 set dual_quasisplit_form (RealForm G)=dual_quasisplit_form(inner_class(G))
 
-set simple_roots(RealForm G)=simple_roots(root_datum(G))
-
-
 
 {split, simply connected group of given type}
 set split_form(RootDatum r)=quasisplit_form(inner_class(r,"s"))
-set split_form(string s)=quasisplit_form(inner_class(simply_connected(s),"s"))
+set split_form(LieType t)=quasisplit_form(inner_class(simply_connected(t),"s"))
 set split_form(RealForm G)=split_form(root_datum(G))
 set split_group(string s)=split_form(s)
 set Gsplit(string s)=split_form(s) {old command, deprecated}
 {Quasisplit form: the quasisplit, but not split, form of G, if it exists}
-set Quasisplit_form(string s)=quasisplit_form (inner_class (simply_connected (s),"u"))
+set Quasisplit_form(string s)=
+  quasisplit_form(inner_class(simply_connected(s),"u"))
 set Quasisplit_form(RootDatum r)=quasisplit_form (inner_class (r,"u"))
 set Quasisplit_form(RealForm G)=Quasisplit_form(root_datum(G))
-
 
 {get real form (parent) of Param or ParamPol}
 set real_form(Param p)=let (x,,)=%p in real_form(x)
@@ -55,143 +49,120 @@ set real_form(ParamPol P)=let (,p)=(%P)[0] in real_form(p)
 
 set root_datum(Param p)=root_datum(real_form(p))
 
-
-
 set print_real_forms(RealForm G)=
-for i:#real_forms(G) from 0 do
- prints(i,": ",real_forms(G)[i]) od;prints("To set a real form do: set H=real_forms(G)[i]");()
+for n@i in form_names(inner_class(G))
+do prints(i,": ",n)
+od;prints("To define a real form rf do: set rf=real_forms(G)[i]");()
 
-set ss_rank(RootDatum rd)=n_columns(simple_roots(rd))
-set ss_rank(RealForm G)=ss_rank(root_datum(G))
-set rho(RootDatum rd)=
-let r=positive_roots(rd) then
-rho=for i:n_rows(r) do 0 od in
-for i:n_columns(r) from 0 do rho+:=r[i] od ;rho/2
-set rho (RealForm G)=rho(root_datum(G))
+set ss_rank(RootDatum rd)= semisimple_rank(rd)
+set ss_rank(RealForm G)= semisimple_rank(root_datum(G))
+set rho(RealForm G)=rho(root_datum(G))
 
-{test if element is regular}
-set is_regular(RootDatum r,ratvec lambda)=
-let regular=true then
-proots=positive_coroots(r) then
-i=0 in
-while i<n_columns(proots) and regular do 
- if proots[i]*lambda=0 then regular:=false  fi;i+:=1
-od;regular
+{ test if rartional weight (not necessarily dominant) is regular }
+set is_regular(RootDatum rd,ratvec lambda)=
+  let regular=true
+  in for alpha in positive_coroots(rd) do
+       if alpha*lambda=0 then regular:=false fi
+     od; regular
 
-set is_regular(RootDatum r,vec lambda)=is_regular(r,lambda/1)
-set is_regular(RealForm G,vec lambda)=is_regular(root_datum(G),lambda)
-set is_regular(RealForm G,ratvec lambda)=is_regular(root_datum(G),lambda/1)
-set is_regular (Param p)=is_regular(real_form(p),infinitesimal_character(p))
+set is_regular(RealForm G,ratvec lambda)=is_regular(root_datum(G),lambda)
+set is_regular(Param p)=is_regular(real_form(p),infinitesimal_character(p))
 
-set rhocheck(RootDatum rd)=
-let r=positive_coroots(rd) then
-rhocheck=for i:n_rows(r) do 0 od in
-for i:n_columns(r) from 0 do rhocheck+:=r[i] od ;rhocheck/2
-set rhocheck (RealForm G)=rhocheck(root_datum(G))
+set rhocheck(RootDatum rd)= rho(dual(rd))
+set rhocheck(RealForm G)=rhocheck(root_datum(G))
 
-{make rho as an vector of inteters if possible}
+{make rho as an vector of integers if possible}
 set intrho (RealForm G)=ratvectovec(rho(G))
 set intrho (RootDatum r)=ratvectovec(rho(r))
 
 {some data defined by a Param p}
-set integrality_datum(Param p)=integrality_datum(root_datum(real_form(p)),infinitesimal_character(p))
+set integrality_datum(Param p)=
+  integrality_datum(root_datum(real_form(p)),infinitesimal_character(p))
 
 {extract x,lambda-rho,lambda,nu from p
 lambda-rho =vec,  lambda= ratvec}
 set x(Param p)=let (x,,) =%p in x
-set lambdaminusrho(Param p)=let (,lambda,) =%p in lambda   {vec}
-set lambda(Param p)=lambdaminusrho(p)/1+rho(real_form(p))  {ratvec}
+set lambdaminusrho(Param p)=vec: let (,lambda,) =%p in lambda
+set lambda(Param p)= ratvec: lambdaminusrho(p)+rho(real_form(p))
 set nu(Param p)=let (,,nu) =%p in nu
 
-{alternate syntax for param command: param(G,3,...) instead of param(KGB(G,3),...)}
+{ alternate syntax for param command:
+  param(G,3,...) instead of param(KGB(G,3),...)  }
 set param(RealForm G,int k, vec lambda,ratvec nu)=param(KGB(G,k),lambda,nu)
 
-{alternate syntax for param command: allow nu to be vector of integers}
-set param (RealForm G,int x,[int] lambda,[int] nu)=param(G,x,lambda,nu/1)
+{ normparam(G,x,lambda,nu)=param(G,x,lambda-rho(G),nu),
+  so you can enter lambda without the rho shift (requires rho to be in X^*(H)) }
+set normparam (RealForm G,int x,vec lambda,ratvec nu) =
+  param(G,x,lambda-intrho(G),nu)
 
-{normparam(G,x,lambda,nu)=param(G,x,lambda-rho(G),nu),
-so you can enter lambda without the rho shift (requireisregulars rho to be in X^*(H))}
-set normparam (RealForm G,int x,[int] lambda,ratvec nu)=param(G,x,lambda-intrho(G),nu)
-set normparam (RealForm G,int x,[int] lambda,[int] nu)=normparam (G,x,lambda,nu/1)
-
-{finite dimensional with highest weight tau in X^*
-I'm not sure this always works
-it returns
-param(last KGB element,tau,tau+rho) so lambda=tau+rho}
+{ finite dimensional with highest weight tau in X^*
+  I'm not sure this always works; it returns
+    param(last KGB element,tau,tau+rho) so lambda=tau+rho }
 set finite_dimensional(RealForm G,vec tau)=
-param(KGB(G,KGB_size(G)-1),tau,tau/1+rho(G))
+param(KGB(G,KGB_size(G)-1),tau,tau+rho(G))
 
-{get just the parameters from an n_block,
-just a shorcut to: (params,)=n_block(p)}
+{ get just the parameters from an n_block,
+  just a shorcut to: (params,)=n_block(p) }
 set get_n_block (Param p)=let (params,)=n_block(p) in params
 
-{trivial representation of G, see finite_dimensional}
+{ trivial representation of G, see finite_dimensional }
 set trivial(RealForm G)=finite_dimensional(G,null(rank(G)))
 
-{returns [Param] list of parameters in block of trivial}
+{ returns [Param] list of parameters in block of trivial }
 set trivial_block(RealForm G)=get_n_block(trivial(G))
 
-{spherical principal series of split group
-assumes G is split, otherwise no guarantees
-specify nu as a vec or ratvec}
+{ spherical principal series of split group
+  assumes G is split, otherwise no guarantees
+  specify nu as a vec or ratvec }
 set spherical_principal_series (RealForm G, ratvec nu)=
-let lambda=null(rank(G)) in
-param(KGB(G,KGB_size(G)-1),lambda,nu)
-set spherical_principal_series (RealForm G, [int] nu)=spherical_principal_series(G,nu/1)
+  let lambda=null(rank(G)) in param(KGB(G,KGB_size(G)-1),lambda,nu)
 
-{replace non-final parameter with [Param p] of final ones
-uses this feature of ParamPol}
-set make_final (Param p)=let P=null_module(real_form(p))+p in for (,p) in %P do p od
- 
+{ replace non-final parameter with [Param p] of final ones
+  uses this feature of ParamPol }
+set make_final (Param P)= for (,p) in %(ParamPol: P) do p od
 
 {nicer display of Splits}
 set prettyPrint (Split w)=
-let (a,b)=%w in  
-let rv="" in  
- if b=0 then int_format(a) else
- if a=0 then 
-  if b=1 then "s" elif b=-1 then "-s" else int_format(b)#"s" fi
- else
-  if b=1 then int_format(a)#"+s" 
-   elif b=-1 then int_format(a)#"-s" 
-   elif b<-1 then int_format(a)#int_format(b)#"s"  
-   else int_format(a)#"+"#int_format(b)#"s"
+let (a,b)=%w in
+  if   b=0 then int_format(a)
+  elif a=0 then
+       if b=1 then "s" elif b=-1 then "-s" else int_format(b)#"s" fi
+  elif b=1 then int_format(a)#"+s"
+  elif b=-1 then int_format(a)#"-s"
+  elif b<-1 then int_format(a)#int_format(b)#"s"
+  else int_format(a)#"+"#int_format(b)#"s"
   fi
- fi
-fi
 
-{nice output of ParamPol: prettyPrint the coefficients, print terms in order of x}
+{ nice output of ParamPol:
+  prettyPrint the coefficients, print terms in order of x }
 set prettyPrint (ParamPol P)=
-if #P>0 then
-let G=real_form(P) then
-Q=%P in 
-for x in KGB(G) do
- for (w,p) in Q do 
-  let (y,,)=%p in 
-  if (x=y) then prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p)) fi
- od
-od;() fi
-
-
-{define w^k for w in Z[s], k an integer }
-set ^(Split w,int k)=
-if (k=0) then Split:1 else let u=w in for i:abs(k)-1 from 0 do u:=u*w od;u fi
+if #P>0 { test needed because real_form(P) fails for empty module }
+then
+  let G=real_form(P), Q=%P in
+    for x in KGB(G) do  { extract the terms with this x from Q: }
+      for (w,p) in Q do
+        let (y,,)=%p in
+        if y=x then
+          prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p))
+        fi
+      od
+    od
+fi
 
 {replace w=a+bs with a+bt for t integer (or rational?)}
 set  #(Split w,int t)=let (a,b)=%w in int:a+t*b
 set  #(Split w,rat t)=let (a,b)=%w in rat:a+t*b
 set  #(ParamPol P,int t)=
- let Q=null_module(real_form(P)) in
- let x=for (w,q) in %P do Q:=Q+(w#t)*q od in Q
+  let Q=null_module(real_form(P)) in
+    for (w,q) in %P do Q +:= (w#t)*q od; Q
 
-{evaluate polynomial at split}
-set %([int] v,Split w)=
-let rv=Split:0 in
-if #v=0 then rv else
-for k:#v do rv:=rv+v[k]*w^k od fi;rv
+{ evaluate polynomial at split }
+set eval(vec v,Split w)= let sum=Split:0 in
+  for i:#v downto 0 do sum:= v[i] + w*sum od; sum
 
-{would like to do this, but can't:
-{evaluate polynomial at integer}
-set %([int] v,int k)=v%(Split:k)
-}
+set at_s(vec v)=eval(v,s)
+
+{ evaluate polynomial at integer}
+set eval(vec v,int k)= let sum=0 in
+  for i:#v downto 0 do sum:= v[i] + k*sum od; sum
 

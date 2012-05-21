@@ -1,16 +1,19 @@
 {put personal definitions here}
 {load the files you want}
 
+<lietypes
+<groups
+
 {load hermitian.rx, which recursively also loads
-misc,iterate_deform,kl,basic,groups,lietypes}
-<hermitian 
+misc,iterate_deform,kl}
+<hermitian
 
 <unipotent {some unipotent parameters}
 
 {some representations you might be working with}
 set t=trivial(sl(2,R))
 
-set G=sp_R(4)
+set G=sp(4,R)
 set blockG=trivial_block(G)
 set tG=trivial(G)
 set dsG=blockG[0]

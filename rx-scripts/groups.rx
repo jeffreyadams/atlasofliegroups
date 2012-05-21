@@ -45,6 +45,22 @@ for j:r do for i:r do Cartan_entry(type,r,i,j) od od
 set Lie_type((int,int) p) =
   let (type,) = Cartan_matrix_type(Cartan_matrix(p)) in type
 
+set block_repeat(mat m, int n) =
+let (r,c)=#m then result = null(n*r,n*c)
+in for k:n do for i:r do for j:c do
+      result[k*r+i,k*c+j]:=m[i,j]
+   od od od; result
+
+set complex(RootDatum rd) = { complex group for |rd| viewed as real form }
+let r=rank(rd)
+then C_inv=null(2*r,2*r)
+, rd_C = root_datum(block_repeat(simple_roots(rd),2)
+                   ,block_repeat(simple_coroots(rd),2)
+                   ,2*r)
+in (for i:r do C_inv[i,i+r]:=1; C_inv[i+r,i]:=1 od
+   ; quasisplit_form(inner_class(rd_C,C_inv)))
+
+
 set GL_roots (int n) = [vec]:
 for i : n-1
 do for j : n
@@ -118,15 +134,14 @@ in real_form(ic,min(p,q))
 
 set su(int n) = su(n,0)
 
-set sl_R(int n) =
-let rd = SL(n)
-then ic = inner_class(rd,if n>1 then "s" else "" fi)
-in quasisplit_form(ic)
+set sl_R(int n) = quasisplit_form(inner_class(SL(n),if n>1 then "s" else "" fi))
+set sl_C(int n) = complex(SL(n))
+set sl_H(int n) = real_form(inner_class(SL(2*n),"s"),0)
 
-set sl_H(int n) =
-let rd = SL(2*n)
-then ic = inner_class(rd,"s")
-in real_form(ic,0)
+set gl_R(int n) =
+  quasisplit_form(inner_class(GL(n),if n>1 then "ss" else "s" fi))
+set gl_C(int n) = complex(GL(n))
+set gl_H(int n) = RealForm: error("gl(n,H) is not yet implemented")
 
 set so(int p,int q)=
 let n=p+q, (p,q) = if p<q then (q,p) else (p,q) fi { make q the smallest one }
@@ -155,15 +170,19 @@ let (q,r)= n\%2 in
 ; real_form(inner_class(Sp_datum(n),"e"),q\2+1)
 )
 
-{alternate syntax: sp(4,R) instead of sp_R(4)}
-set R="R"
+set sp_C(int n) = complex(Sp_datum(n)) { |Sp_datum| will test |n| even }
+set sp_H(int n) = RealForm: error("sp(n,H) is not yet implemented")
 
-set sp(int k,string R)=sp_R(k)
-set sl(int k, string R)=sl_R(k)
+{ to allow alternate syntax: for instance sp(4,R) instead of sp_R(4) }
+set (R,C,H)=("R","C","H")
 
-{GL(int k) is a built-in type, giving a root datum
-also define the group GL(3,R)}
-set GL(int k,string R)=quasisplit_form (inner_class(GL(k),"ss"))
+set by_field((int->RealForm) f_R,(int->RealForm) f_C,(int->RealForm) f_H) =
+(string K): if K=R then f_R elif K=C then f_C elif K=H then f_H
+                   else error("unknown field "+K)
+                   fi
+set sl(int n, string K) = by_field (sl_R@int,sl_C@int,sl_H@int) (K)(n)
+set gl(int n, string K) = by_field (gl_R@int,gl_C@int,gl_H@int) (K)(n)
+set sp(int n, string K) = by_field (sp_R@int,sp_C@int,sp_H@int) (K)(n)
 
 set E6_ic_e = inner_class (simply_connected ("E6"),"e")
 

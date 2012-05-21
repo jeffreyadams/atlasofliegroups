@@ -1,6 +1,7 @@
-{the functions in this file have not been carefully checked}
+{ the functions in this file have not been carefully checked }
 
-{<hermitian if not done already}
+<hermitian.rx
+
 set translate_debug=false
 
 {translate Param p, at infinitesimal character gamma,
@@ -17,21 +18,18 @@ rho=rho(G) then
 gamma=infinitesimal_character(p) then
 delta=gamma_new-gamma then
 lambdaminusrho_new=ratvectovec(lambdaminusrho(p)/1+delta) in
-param(x(p),lambdaminusrho_new,nu(p)+delta) 
+param(x(p),lambdaminusrho_new,nu(p)+delta)
 
 {translate a ParamPol by translating each term}
 set T(ParamPol P, ratvec gamma_new)=
 let Q=null_module(real_form(P)) in
 for (w,q) in %P do Q:=Q+(w,T(q,gamma_new)) od;Q
 
-set T(Param p, vec gamma_new)=T(p,gamma_new/1)
-set T(ParamPol P, vec gamma_new)=T(P,gamma_new/1)
-
 {translate parameter p to simple root wall #k of the integral root system}
 set Psi(Param p,int k)=
 let G=real_form(p) then
 rd=integrality_datum(p) then
-coroot=positive_coroots(rd)[k] then 
+coroot=positive_coroots(rd)[k] then
 gamma=infinitesimal_character(p) then
 c=coroot*gamma in
 if not is_integer(c) then error("root is not integral") else
@@ -60,17 +58,17 @@ for (w,q) in %P do Q:=Q+(w,Psi(q,v)) od;Q
 1) can translate to this wall (i.e. the requisite translation is in X^*)
 2) this translation is 0
 If G is simply connected this should be the usual tau_invariant
-Example: the trivial representation of SO(3), the root 
+Example: the trivial representation of SO(3), the root
 is in the pseudo-tau invariant, but you can't translate to the wall, since
 rho is not in the root lattice}
 
-{root k of the integral roots is in pseudo-tau(p) if 
-<gamma,alpha_k^v>*fund_weight is integral, and 
-Psi(p,k)=0 (translation of standard module), 
+{root k of the integral roots is in pseudo-tau(p) if
+<gamma,alpha_k^v>*fund_weight is integral, and
+Psi(p,k)=0 (translation of standard module),
 or its x gets changed by make_final}
 set root_in_pseudo_tau (Param p,int k)=
 let rd=integrality_datum(p) in
-let weight=(simple_coroots(rd)[k]*infinitesimal_character(p))*fundamental_weight(rd,k) in 
+let weight=(simple_coroots(rd)[k]*infinitesimal_character(p))*fundamental_weight(rd,k) in
 if is_integer(weight) and is_zero(Psi(p,k)) or not x(Psi(p,k))=x(make_final(Psi(p,k))[0]) then true else false fi
 
 {set of integers, defining a subset of the simple integral roots}
@@ -107,5 +105,3 @@ set test_even_unipotent (Param p)=
 {test_even_unipotent of a list of parameters}
 set test_even_unipotent ([Param] params)=
 for p in params do  test_even_unipotent(p) od;()
-
-

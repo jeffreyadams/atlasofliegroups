@@ -1,8 +1,8 @@
-set hermitian_debug=false{set to true for more output}
+<misc.rx
+<iterate_deform.rx  {the old deform.rx has been renamed}
+<kl.rx
 
-<misc
-<iterate_deform  {the old deform.rx has been deprecated}
-<kl
+set hermitian_debug=false{set to true for more output}
 
 {test equality of ParamPols}
 set =(ParamPol P,ParamPol Q)=
@@ -17,8 +17,8 @@ let Q=null_module(real_form(P)) in
 {orientation_number_term[p,q]=s^{[\ell_0(i)-\ell_0(j)]/2}= 1 or s }
 set orientation_number_term (Param p,Param q)=
 let on_p=orientation_nr(p) then
-on_q=orientation_nr(q) in 
-if (not is_even(on_p-on_q)) then error("computing orientation number for odd difference of lengths") 
+on_q=orientation_nr(q) in
+if (not is_even(on_p-on_q)) then error("computing orientation number for odd difference of lengths")
 else Split:(0,1)^((on_p-on_q)\2) fi
 
 {extract coefficient of  (Param p) from (ParamPol P)}
@@ -56,20 +56,20 @@ P=null_module(G) then
 (block,k,klmatrix,polys,stops,indices,cumulated)=KL_block (p) then
 klpolys=signedKL(p) in
 let standards=[] in
-for i:#indices do 
+for i:#indices do
 {careful: check if poly=[] or poly=[0]}
- let poly=klpolys[i] in 
- if #poly>0 then
-  if not poly[0]=0 then
-  let s=Split:(0,1) then
-  poly_at_s=poly%s then
-  q=block[indices[i]] then
-  on=orientation_number_term(p,q) then
-  (form_on_standard,std_count)=c_form_std(q) in
-  count:=count+std_count;
-  P:=P+on*poly_at_s*form_on_standard;
-  standards:=standards#(q,on*poly_at_s,form_on_standard) 
- fi fi
+ let poly=klpolys[i] in
+ if #poly>0 and poly[0]!=0
+ then
+   let poly_at_s=eval(poly,s)
+   , q=block[indices[i]]
+   then on=orientation_number_term(p,q)
+   , (form_on_standard,std_count)=c_form_std(q)
+   in
+     count +:= std_count;
+     P +:= on*poly_at_s*form_on_standard;
+   standards #:= (q,on*poly_at_s,form_on_standard)
+ fi
 od;(P,standards,count)
 
 
@@ -78,15 +78,18 @@ let (rv,standards,count)=c_form_irreducible_long(p) in rv
 
 set print_c_form_irreducible_long (Param p)=
 let G=real_form(p) then
-(f,b,count)=c_form_irreducible_long(p) then 
-b=for (q,coeff,Q) in b do 
+(f,b,count)=c_form_irreducible_long(p) then
+b=for (q,coeff,Q) in b do
  prints("");
  prints("standard module: ",q);
  prints("coefficient: ",prettyPrint(coeff));
  prints("form on standard: ");
  prettyPrint(Q) od
 in
- prints("");prints("c-form on irreducible module:");prints(p, " at ",infinitesimal_character(p));prettyPrint(f);prints("");prints("Number of deformations: ",count)
+( prints("");prints("c-form on irreducible module:")
+; prints(p, " at ",infinitesimal_character(p));prettyPrint(f);prints("")
+; prints("Number of deformations: ",count)
+)
 
 {;analyse}
 {just print terms with both a,b\ne 0 in (a+bs)}
@@ -96,9 +99,9 @@ let G=real_form(P) then
 Q=%P then
 a=prints("Mixed terms:");
 for x in KGB(G) do
- for (w,p) in Q do 
-  let (y,,)=%p in 
-  if (x=y) then 
+ for (w,p) in Q do
+  let (y,,)=%p in
+  if (x=y) then
    if mixed(w) then prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p)) fi fi
  od
 od in ()
@@ -109,7 +112,7 @@ od in ()
 {compute (lambda+rho) restricted to T}
 
 {lambda\in X^*+rho=> can define a parameter with this lambda, as param(x,lambda-rho,0)
-then 
+then
 infinitesimal_character(param(x,lambda-rho,0))=(1-theta)lambda/2=lambda restricted to T-tilde
 apply this with lambda-rho=0, returns (1-theta)rho/2     (on T-tilde)
 apply this with lambda-rho,   return  (1-theta)lambda/2  (on T-tilde)
@@ -131,7 +134,7 @@ let s=Split:(0,1) then
 pols=%P then
 (w0,p0)=pols[0] then
 P=null_module(real_form(P)) in
-for (w,p) in pols do  
+for (w,p) in pols do
 P:=P+s^(rattoint(mu(p)-mu(p0)))*w*p od;P
 
 {ParamPol giving the hermitian form on irreducible p}
@@ -144,7 +147,7 @@ prettyPrint(hermitian_form_irreducible(p));()
 
 {nice output of Hermitian forms on list of parameters}
 set print_hermitian_form_irreducible([Param] P)=
-for p in P do 
+for p in P do
  prints("");prints("Hermitian form on irreducible: ",p);
  print_hermitian_form_irreducible(p)
 od;()
@@ -165,8 +168,8 @@ if it is unitary: <=> every Split w=a+bs has a=0,
 or all have b=0}
 
 set is_unitary(ParamPol P)=
-let coeffs=for (w,p) in %P do w od in 
-let pos=for w in coeffs do let (x,y)=%w in x od in 
+let coeffs=for (w,p) in %P do w od in
+let pos=for w in coeffs do let (x,y)=%w in x od in
 let neg=for w in coeffs do let (x,y)=%w in y od in
 if (pos=null(#pos) or neg=null(#neg)) then true else false fi
 
@@ -182,13 +185,13 @@ let nu=nu(p) then
 x=x(p) then
 lambdaminusrho=lambdaminusrho(p) then
 points=reducibility_points(p) then
-ipoints=integrality_points(root_datum(p),nu) in
-prints("testing line through ", p);prints("reducibility points: ",points);prints("integrality points: ",ipoints);if #points=0 and is_final(zeronu(p)) then prints("entire line is irreducible and unitary") 
-elif #points=0 and not is_final(zeronu(p)) then prints("entire line (nu>0) is irreducible and unitary (nu=0 is not final)") 
+ipoints=integrality_points(root_datum(p),2*nu) in
+prints("testing line through ", p);prints("reducibility points: ",points);prints("integrality points: ",ipoints);if #points=0 and is_final(zeronu(p)) then prints("entire line is irreducible and unitary")
+elif #points=0 and not is_final(zeronu(p)) then prints("entire line (nu>0) is irreducible and unitary (nu=0 is not final)")
 else
  let points=0#points in
   if not points[#points-1]=1/1 then points:=points#1/1 fi;
-  for i:#points-1 from 1 do 
+  for i:#points-1 from 1 do
    let t=(points[i]+points[i-1])/2  then
    q=param(x,lambdaminusrho,t*nu) then
    r=param(x,lambdaminusrho,points[i]*nu) in

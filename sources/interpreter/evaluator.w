@@ -3686,7 +3686,7 @@ void matrix_convert()
 coercion(row_of_int_type, vec_type, "V", vector_convert); @/
 coercion(row_of_vec_type,mat_type, "M", matrix_convert);
 
-@ Here are conversions involving rational numbers and vectors.
+@ Here are the conversions involving rational numbers and rational vectors.
 
 @< Local function def... @>=
 void rational_convert() // convert integer to rational (with denominator~1)
@@ -3694,7 +3694,7 @@ void rational_convert() // convert integer to rational (with denominator~1)
     push_value(new rat_value(Rational(i->val)));
 }
 @)
-void ratvec_convert() // convert list of rationals to rational vector
+void ratlist_ratvec_convert() // convert list of rationals to rational vector
 { shared_row r = get <row_value>();
   int_Vector numer(r->val.size()),denom(r->val.size());
   unsigned int d=1;
@@ -3710,7 +3710,7 @@ void ratvec_convert() // convert list of rationals to rational vector
   push_value(new rational_vector_value(RatWeight(numer,d)));
 }
 @)
-void rat_list_convert() // convert rational vector to list of rationals
+void ratvec_ratlist_convert() // convert rational vector to list of rationals
 { shared_rational_vector rv = get<rational_vector_value>();
   row_ptr result(new row_value(rv->val.size()));
   for (size_t i=0; i<rv->val.size(); ++i)
@@ -3718,6 +3718,16 @@ void rat_list_convert() // convert rational vector to list of rationals
     result->val[i] = shared_value(new rat_value(q.normalize()));
   }
   push_value(result);
+}
+@)
+void vec_ratvec_convert() // convert vector to rational vector
+{ shared_vector v = get<vector_value>();
+  push_value(new rational_vector_value(RatWeight(v->val,1)));
+}
+@)
+void intlist_ratvec_convert()
+{@; shared_row r(get<row_value>());
+  push_value(new rational_vector_value(RatWeight(row_to_weight(*r),1)));
 }
 
 
@@ -3784,8 +3794,10 @@ void int_list_list_convert()
 @ All that remains is to initialise the |coerce_table|.
 @< Initialise evaluator @>=
 coercion(int_type,rat_type, "Q", rational_convert); @/
-coercion(row_of_rat_type,ratvec_type, "QV", ratvec_convert); @/
-coercion(ratvec_type,row_of_rat_type, "[Q]", rat_list_convert);
+coercion(row_of_rat_type,ratvec_type, "QV", ratlist_ratvec_convert); @/
+coercion(ratvec_type,row_of_rat_type, "[Q]", ratvec_ratlist_convert); @/
+coercion(vec_type,ratvec_type,"VR", vec_ratvec_convert); @/
+coercion(row_of_int_type,ratvec_type,"[I]R", intlist_ratvec_convert);
 @)
 coercion(row_row_of_int_type,mat_type, "M2", matrix2_convert); @/
 coercion(vec_type,row_of_int_type, "[I]", int_list_convert); @/
