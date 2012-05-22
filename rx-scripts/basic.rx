@@ -78,7 +78,10 @@ in p:= ((Split x,int n): { we shall have n>0 }
   else let (q,r)=n\%2 then y=p(x,q) in y*if r=0 then y else x*y fi
   fi)
 set ^(Split x,int n) =
-  if n=0 then Split:(1,0) else split_power(x,abs(n)) fi
+  if n>0 then split_power(x,n) elif n=0 then Split:(1,0)
+  elif let (a,b)=%x in abs(a)+abs(b)=1 then if n%2=0 then 1 else x fi
+  else error("Negative power "+int_format(n)+" of split integer")
+  fi
 
 {previously did not allow negative powers}
 {set ^(Split x,int n) =
