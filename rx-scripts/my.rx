@@ -11,9 +11,9 @@ misc,iterate_deform,kl}
 <unipotent {some unipotent parameters}
 
 {some representations you might be working with}
-set t=trivial(sl(2,R))
+set t=trivial(SL(2,R))
 
-set G=sp(4,R)
+set G=Sp(4,R)
 set blockG=trivial_block(G)
 set tG=trivial(G)
 set dsG=blockG[0]

@@ -57,9 +57,9 @@ P=null_module(G) then
 klpolys=signedKL(p) in
 let standards=[] in
 for i:#indices do
-{careful: check if poly=[] or poly=[0]}
+{careful: check if poly=[] or poly=[0,0,...,0]}
  let poly=klpolys[i] in
- if #poly>0 and poly[0]!=0
+ if #poly>0 and poly != null(#poly) 
  then
    let poly_at_s=eval(poly,s)
    , q=block[indices[i]]
