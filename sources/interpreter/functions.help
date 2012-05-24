@@ -196,11 +196,6 @@ adjoint: (LieType->RootDatum): adjoint root datum for given type.
            od
     in root_datum(type,M)
 
-SL: (int->RootDatum): SL(n) gives root datum for SL(n,C).
-  Make this root datum using the most pleasant "epsilon" basis for sub-lattice
-GL: (int->RootDatum): GL(n) gives root datum for GL(n,C).
-  Make this root datum using the most pleasant "epsilon" basis for sub-lattice
-
 simple_roots: (RootDatum->mat): matrix of simple roots in the root datum.
 simple_coroots: (RootDatum->mat): matrix of simple coroots in the root datum.
 roots: (RootDatum->mat): set of roots in the root datum (columns of result).
