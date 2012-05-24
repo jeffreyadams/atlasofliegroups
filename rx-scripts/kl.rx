@@ -59,12 +59,12 @@ set stringPoly (vec v)=
 if #v=0 then "0" else
 let rv="" in
 for k:#v do if (not v[k]=0) then
-let pm=if v[k]<0 then "-" else "+" fi in
-rv:=rv#pm#int_format(abs(v[k]))#"q^"#int_format(k) fi od;rv fi
+let pm=if v[k]<0 then "-" else "+" fi then
+term= if k=0 then "" else "q^"#int_format(k) fi in
+rv:=rv#pm#int_format(abs(v[k]))#term fi od;rv fi
 
 {nice printing of polynomial}
 set printPoly (vec v)=prints(stringPoly(v))
-
 
 {-------------------------------------------------------------------}
 
@@ -113,7 +113,8 @@ if is_regular(p) then signedKL_regular(p) else signedKL_singular(p) fi
 set print_KL(Param p)=
 let (block,k,kl,polys,lengths,indices,cumulated)=KL_block(p) then
 KL=KL(p) in
-for i:#block do prints(block[i],": ", stringPoly(KL[i])) od;()
+for i:#block do 
+if #KL[i]>0 and KL[i] !=null(#(KL[i])) then prints(block[i],": ", stringPoly(KL[i])) fi od;()
 
 set print_signedKL(Param p)=
 let (block,k,kl,polys,lengths,indices,cumulated)=KL_block(p) then
