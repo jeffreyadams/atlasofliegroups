@@ -742,17 +742,19 @@ from these data to be a valid one.
 
 @< Local function definitions @>=
 void raw_root_datum_wrapper(expression_base::level l)
-{ size_t rank = get<int_value>()->val;
+{ shared_int rank = get<int_value>();
   shared_row simple_coroots=get<row_value>();
   shared_row simple_roots=get<row_value>();
 
+  if (rank->val<0)
+    throw std::runtime_error("Negative rank "+str(rank->val));
   if (simple_roots->val.size()!=simple_coroots->val.size())
     throw std::runtime_error
     ("Numbers "+str(simple_roots->val.size())+","
       +str(simple_coroots->val.size())+  " of simple (co)roots mismatch");
 @.Numbers of simple roots...@>
 
-  WeightList s; CoweightList c;
+  size_t r = rank->val; WeightList s; CoweightList c;
   s.reserve(simple_roots->val.size());
   c.reserve(simple_roots->val.size());
 
@@ -762,14 +764,13 @@ void raw_root_datum_wrapper(expression_base::level l)
     const Coweight& scr
       =force<vector_value>(simple_coroots->val[i].get())->val;
 
-    if (sr.size()!=rank or scr.size()!=rank)
-    throw std::runtime_error
-      ("Simple (co)roots not all of size "+str(rank));
+    if (sr.size()!=r or scr.size()!=r)
+      throw std::runtime_error("Simple (co)roots not all of size "+str(r));
     s.push_back(sr);
     c.push_back(scr);
   }
 
-  PreRootDatum prd(s,c,rank);
+  PreRootDatum prd(s,c,r);
   try @/{@; Permutation dummy;
     dynkin::Lie_type(prd.Cartan_matrix(),true,true,dummy);
   }
@@ -914,56 +915,6 @@ void adjoint_datum_wrapper(expression_base::level l)
 @/root_datum_wrapper(expression_base::single_value);
 }
 
-@ Finally here are two more wrappers to make the root data for the special and
-general linear groups, in a form that is the most natural. We supply a matrix
-whose columns represent $\eps_1,\ldots,\eps_{n-1}$ for ${\bf SL}_n$ and
-$\eps_1,\ldots,\eps_n$ for ${\bf GL}_n$, when the basis of the simply
-connected group of type $A_{n-1}$ is given by $\omega_1,\ldots,\omega_{n-1}$
-and that of $A_{n-1}T_1$ is given by $\omega_1,\ldots,\omega_{n-1},t$, where
-$\omega_k=\sum_{i=1}^k\eps_i-kt$ and $\sum_{i=1}^n\eps_i=nt$. This matrix is
-most easily described by an example, for instance for ${\bf GL}_4$ it is
-$$
-   \pmatrix{1&-1&0&0\cr0&1&-1&0\cr0&0&1&-1\cr1&1&1&1\cr}.
-$$
-and for ${\bf SL}_n$ it is the $(n-1)\times(n-1)$ top left submatrix of that
-for ${\bf GL}_n$.
-
-@< Local function definitions @>=
-void SL_wrapper(expression_base::level l)
-{ shared_int n(get<int_value>());
-  if (n->val<1) throw std::runtime_error("Non positive argument for SL");
-@.Non-positive element...@>
-  if (l==expression_base::no_value)
-    return;
-  const size_t r=n->val-1;
-  Lie_type_ptr type(new Lie_type_value());
-  if (r>0) type->add_simple_factor('A',r);
-  push_value(type);
-  matrix_ptr lattice
-     (new matrix_value(int_Matrix(r))); // identity matrix
-  for (size_t i=0; i+1<r; ++i) // not |i<r-1|, since |r| unsigned and maybe 0
-    lattice->val(i,i+1)=-1;
-  push_value(lattice);
-@/root_datum_wrapper(expression_base::single_value);
-}
-@)
-void GL_wrapper(expression_base::level l)
-{ shared_int n(get<int_value>());
-  if (n->val<1) throw std::runtime_error("Non positive argument for GL");
-  if (l==expression_base::no_value)
-    return;
-  const size_t r=n->val-1;
-  Lie_type_ptr type(new Lie_type_value());
-  if (r>0) type->add_simple_factor('A',r);
-  type->add_simple_factor('T',1);
-  push_value(type);
-  matrix_ptr lattice
-     (new matrix_value(int_Matrix(r+1))); // identity matrix
-  for (size_t i=0; i<r; ++i)
-  @/{@; lattice->val(n->val-1,i)=1; lattice->val(i,i+1)=-1; }
-  push_value(lattice);
-@/root_datum_wrapper(expression_base::single_value);
-}
 
 @*2 Functions operating on root data.
 %
@@ -1186,8 +1137,6 @@ install_function(quotient_datum_wrapper
 install_function(simply_connected_datum_wrapper
 		,@|"simply_connected","(LieType->RootDatum)");
 install_function(adjoint_datum_wrapper,@| "adjoint","(LieType->RootDatum)");
-install_function(SL_wrapper,@|"SL","(int->RootDatum)");
-install_function(GL_wrapper,@|"GL","(int->RootDatum)");
 install_function(simple_roots_wrapper,@|"simple_roots","(RootDatum->mat)");
 install_function(simple_coroots_wrapper,@|"simple_coroots","(RootDatum->mat)");
 install_function(positive_roots_wrapper,@|
