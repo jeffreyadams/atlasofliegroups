@@ -92,6 +92,7 @@
 %%
 
 input:	'\n'			{ YYABORT } /* null input, skip evaluator */
+	| '\f'	   { YYABORT } /* allow form feed as well at command level */
 	| exp '\n'		{ *parsed_expr=$1; }
 	| tertiary ';' '\n'
 	  { *parsed_expr=make_sequence($1,wrap_tuple_display(NULL),1); }
@@ -291,6 +292,7 @@ pattern : IDENT		    { $$.kind=0x1; $$.name=$1; }
 	| '(' pat_list ')'  { $$.kind=0x2; $$.sublist=reverse_patlist($2); }
 	| '(' pat_list ')' ':' IDENT
 	    { $$.kind=0x3; $$.name=$5; $$.sublist=reverse_patlist($2);}
+	| '(' ')' { $$.kind=0x2; $$.sublist=0; } /* allow throw-away value */
 ;
 
 pattern_opt :/* empty */ { $$.kind=0x0; }

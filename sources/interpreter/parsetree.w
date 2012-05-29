@@ -694,12 +694,15 @@ For each case where local identifiers will be introduced (like let-expressions
 of function headings) we shall in fact allow more general patterns. A defining
 occurrence of an identifier \\{ident} may be replaced by some tuple, say
 $(x,y,z)$ (which assumes the value to be bound will be a $3$-tuple), or it
-could be both, as in \\{ident}:$(x,y,z)$; for the nested identifiers the same
+could be both, as in $(x,y,z)$:\\{ident} for the nested identifiers the same
 options apply recursively, and in addition the identifier may be suppressed
 altogether, to allow such partial tagging of components as \\{ident}:$(,,z)$.
 To accommodate such possibilities we introduce the following recursive types.
-While not visible from these definitions, out grammar will ensure that
-whenever a sublist is present, it has at least 2 nodes.
+Our grammar allows for a pattern $()$ (but not $()$:\\{ident}), in which case
+|sublist==NULL|; it turned out that the possibility to bind no identifiers at
+all (while providing a void value) has its uses. However patterns of the form
+$(x)$, which would give a sublist of length~$1$, will be forbidden: they would
+be confusing since $1$-tuples do not exist.
 
 @< Typedefs... @>=
 typedef struct pattern_node* patlist;
@@ -719,12 +722,10 @@ used inside such variants. We can already provide a printing function.
 @< Declarations of \Cpp... @>=
 std::ostream& operator<< (std::ostream& out, const id_pat& p);
 
-@~Only parts whose presence is indicated in |kind| are printed. Although the
-grammar for patterns only allows sublists of length at least~2, we also visit
-this code when printing user-defined functions, so we take care that even if
-|sublist| is marked as present, it might be null. However, the list cannot be
-of length~1, so having put aside that case we can print a first comma
-unconditionally.
+@~Only parts whose presence is indicated in |kind| are printed. We take care
+that even if |sublist| is marked as present, it might be null. However, the
+list cannot be of length~1, so having put aside the case of an empty sublist,
+we can print a first comma unconditionally.
 
 @< Definitions of \Cpp...@>=
 std::ostream& operator<< (std::ostream& out, const id_pat& p)
