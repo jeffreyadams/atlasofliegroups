@@ -64,7 +64,7 @@ set +(vec v,vec w)= vec:
 
 set strip (vec v) = vec: { reduce polynomial by dropping trailing zeros }
 ( let k=#v in
-  while k>0 and v[k-1]!=0 do k -:=1 od
+  while k>0 and v[k-1]=0 do k -:=1 od
 ; if k=#v then v else for i:k do v[i] od fi
 )
 
@@ -258,10 +258,12 @@ set singular_character_formula (Param p) = ParamPol:
   then cumul_init_at_1 = vec: { column init of KL, evaluated at 1, cumulated }
     cumulation * for i:n_rows(KL) do eval(polys[KL[i,init]],1) od
   in
-  for q@i in block do
-    let poly_at_1 = cumul_init_at_1[i] in
+  for ind_i@i in indices do
+    let q=block[ind_i]
+    , poly_at_1 = cumul_init_at_1[i] { #cumul_init_at_1 = #indices }
+    in
     if poly_at_1!=0 then
-      sum +:= (-1)^(length(i,stops))*poly_at_1*q
+      sum +:= (-1)^(length(ind_i,stops))*poly_at_1*q
     fi
   od
 ; (-1)^length(init,stops)*sum
