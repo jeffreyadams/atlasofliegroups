@@ -8,7 +8,7 @@
 misc,iterate_deform,kl}
 <hermitian
 
-<unipotent {some unipotent parameters}
+<unitary {some unipotent parameters}
 
 {some representations you might be working with}
 set t=trivial(SL(2,R))
