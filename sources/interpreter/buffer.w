@@ -451,12 +451,10 @@ main program will make it point to the main input buffer once it is allocated.
 @< Definitions of static variables @>=
 BufferedInput* main_input_buffer=NULL;
 
-@ In our implementation we use the class |std::string| and the template class
-|std::stack|.
+@ In our implementation we use the class |std::string|.
 
 @< Includes needed in the header file @>=
 #include <string>
-#include <stack>
 
 @~At construction a |BufferedInput| object will fix a reference |base_stream|
 to the input stream to be used when no additional input files are open.
@@ -493,7 +491,7 @@ const rl_type readline; // readline function
 const add_hist_type add_hist; // history function
 unsigned long line_no; // current line number
 int cur_lines,prompt_length; // local variables
-std::stack<input_record> input_stack; // active input streams
+std::vector<input_record> input_stack; // active input streams
 Hash_table input_files_seen;
 std::istream* stream; // points to the current input stream
 
@@ -583,8 +581,8 @@ popped off the stack.
 @< Definitions of class members @>=
 BufferedInput::~BufferedInput()
 {@; while (not input_stack.empty())
-  {@; delete input_stack.top().stream;
-    input_stack.pop();
+  {@; delete input_stack.back().stream;
+    input_stack.pop_back();
   }
 }
 
@@ -598,21 +596,23 @@ the object continues to exist.
 
 @< Definitions of class members @>=
 void BufferedInput::pop_file()
-{ line_no = input_stack.top().line_no;
-  std::cout << "Completely read file '" << input_stack.top().name
+{ line_no = input_stack.back().line_no;
+  std::cout << "Completely read file '" << input_stack.back().name
             << "'." << std::endl;
-  delete input_stack.top().stream;
-  input_stack.pop();
-  stream= input_stack.empty() ? &base_stream : input_stack.top().stream;
+  input_files_seen.match(input_stack.back().name.c_str(),
+                         input_stack.back().name.size()); // reading succeeded
+  delete input_stack.back().stream;
+  input_stack.pop_back();
+  stream= input_stack.empty() ? &base_stream : input_stack.back().stream;
 }
 @)
 void BufferedInput::close_includes()
 { while (not input_stack.empty())
-  { std::cerr << "Abandoning reading of file '" << input_stack.top().name
+  { std::cerr << "Abandoning reading of file '" << input_stack.back().name
               << "' at line " << line_no << std::endl;
-    line_no = input_stack.top().line_no;
-    delete input_stack.top().stream;
-    input_stack.pop();
+    line_no = input_stack.back().line_no;
+    delete input_stack.back().stream;
+    input_stack.pop_back();
   }
   stream= &base_stream;
 }
@@ -684,22 +684,22 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
 {
   if (input_files_seen.knows(name))
     return true;
-  input_stack.push(input_record(name,def_ext,line_no+cur_lines));
+  input_stack.push_back(input_record(name,def_ext,line_no+cur_lines));
   // reading will resume there
-  if (input_stack.top().stream->good())
-  { const std::string& name=input_stack.top().name;
-    size_t old_size = input_files_seen.nr_entries();
-      // the value of |match| for a new name
-    if (skip_seen and
-        input_files_seen.match(name.c_str(),name.size())<old_size)
-      // seen before
-    @/{@; delete input_stack.top().stream;
-      input_stack.pop();
+  if (input_stack.back().stream->good())
+  { const std::string& name_ext=input_stack.back().name; bool avoid=false;
+    for (unsigned i=input_stack.size()-1; i-->0; )
+      if (name_ext==input_stack[i].name)
+        avoid=true; // avoid recursive inclusion of active file
+    if (avoid or
+        (skip_seen and input_files_seen.knows(name_ext.c_str()))) // seen before
+    @/{@; delete input_stack.back().stream;
+      input_stack.pop_back();
     } // so just close file and pop record
     else
-    { std::cout << "Starting to read from file '" << input_stack.top().name
+    { std::cout << "Starting to read from file '" << input_stack.back().name
                 << "'." << std::endl;
-      stream= input_stack.top().stream;
+      stream= input_stack.back().stream;
       line_no=1; // prepare to read from pushed file
       cur_lines=0;
         // so we won't advance |line_no| when getting first line of new file
@@ -707,10 +707,10 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
     return true; // succeed whether or not a file was actually pushed
   }
   else
-  { std::cerr << "failed to open input file '" << input_stack.top().name
+  { std::cerr << "failed to open input file '" << input_stack.back().name
               << "'." << std::endl;
-    delete input_stack.top().stream;
-    input_stack.pop();
+    delete input_stack.back().stream;
+    input_stack.pop_back();
 // no need to call |pop_file|: |stream|, |line_no| and |cur_lines| are unchanged
     return false;
   }
@@ -828,7 +828,7 @@ to |InputBuffer::getline| will fail, probably leading to program termination.
         std::cerr << (stream==&std::cin ? "on standard input" : "in main file")
                   << std::endl;
       else
-      { std::cerr << "in file '" << input_stack.top().name << '\'' << std::endl;
+      { std::cerr << "in file '" << input_stack.back().name << '\'' << std::endl;
 @/      pop_file(); popped=true;
       }
     }
@@ -966,7 +966,7 @@ void BufferedInput::show_range
   { int pl=prompt_length; // offset of last line on the screen
     if (stream!=&std::cin or cur_lines>1)
     { if (not input_stack.empty())
-        out << "In input file '" << input_stack.top().name << "', ";
+        out << "In input file '" << input_stack.back().name << "', ";
       if (stream!=&std::cin)
         out << "line " << l0 << ":\n";
       out<<line_buffer; pl=0; // echo line in these cases
