@@ -599,6 +599,8 @@ the object continues to exist.
 @< Definitions of class members @>=
 void BufferedInput::pop_file()
 { line_no = input_stack.top().line_no;
+  std::cout << "Completely read file '" << input_stack.top().name
+            << "'." << std::endl;
   delete input_stack.top().stream;
   input_stack.pop();
   stream= input_stack.empty() ? &base_stream : input_stack.top().stream;
@@ -606,7 +608,10 @@ void BufferedInput::pop_file()
 @)
 void BufferedInput::close_includes()
 { while (not input_stack.empty())
-  {@; delete input_stack.top().stream;
+  { std::cerr << "Abandoning reading of file '" << input_stack.top().name
+              << "' at line " << line_no << std::endl;
+    line_no = input_stack.top().line_no;
+    delete input_stack.top().stream;
     input_stack.pop();
   }
   stream= &base_stream;
@@ -692,7 +697,9 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
       input_stack.pop();
     } // so just close file and pop record
     else
-    { stream= input_stack.top().stream;
+    { std::cout << "Starting to read from file '" << input_stack.top().name
+                << "'." << std::endl;
+      stream= input_stack.top().stream;
       line_no=1; // prepare to read from pushed file
       cur_lines=0;
         // so we won't advance |line_no| when getting first line of new file
@@ -761,12 +768,12 @@ bool BufferedInput::getline()
 { line_buffer="";
   line_no+=cur_lines; cur_lines=0;
   const char* pr=@< Prompt for the next line@>@;@;;
-  bool go_on;
+  bool go_on, popped=false;
   do
   { std::string line;
   @/@< Get |line| without newline from |stream| if there is one; if none can be
-       obtained then |break| if |cur_lines>0|, otherwise pop |input_stack| and
-       retry if possible, or return |false| if nothing works @>
+       obtained then |break| if |cur_lines>0|, otherwise pop |input_stack|,
+       set |popped=true| and |break|; if nothing works return |false| @>
     ++cur_lines;
     std::string::size_type l=line.length();
     while (l>0 and std::isspace(line[l-1]))
@@ -780,7 +787,8 @@ bool BufferedInput::getline()
     line_buffer+=line; // append |line| to buffer in all cases
   }
   while(go_on);
-  line_buffer.push_back('\n'); // add newline that was suppressed on reading
+  line_buffer.push_back(popped ? '\f' :'\n');
+     // add suppressed newline, or form feed if file was popped
   p=line_buffer.data();
 @/return true;
   // delay reporting end of input if anything was read at all
@@ -811,29 +819,26 @@ first time (and presumably the command gets executed), and the following call
 to |InputBuffer::getline| will fail, probably leading to program termination.
 
 @< Get |line| without newline from |stream| ... @>=
-{ while (true)
-  { if (stream->good())
-    { @< Read a line into |line|, prompting with |pr| if appropriate @>
-      if (not line.empty() or stream->good())
-        goto found; // got something: either text or a bona fide empty line
+{ if (stream->good())
+    {@; @< Read a line into |line|, prompting with |pr| if appropriate @> }
+  if (line.empty() and not stream->good()) // nothing found and file ended
+  { if (cur_lines>0)
+    { std::cerr << "end of file after backslash ";
+      if (input_stack.empty())
+        std::cerr << (stream==&std::cin ? "on standard input" : "in main file")
+                  << std::endl;
+      else
+      { std::cerr << "in file '" << input_stack.top().name << '\'' << std::endl;
+@/      pop_file(); popped=true;
+      }
     }
-    if (cur_lines>0)
-      break; // end of file during continuation of line; don't insist
-    if (input_stack.empty())
+    else if (input_stack.empty())
       return false; // all hope of returning something has gone
-    pop_file(); // and try reading from previous file
+    else {@; pop_file(); popped=true; }
+    break;
+// in these cases terminate line-continuation; return the part that was found
   }
-  std::cerr << "end of file after backslash ";
-  if (input_stack.empty())
-    std::cerr << (stream==&std::cin ? "on standard input" : "in main file");
-  else
-  {@;
-    std::cerr << "in file '" << input_stack.top().name << '\'';
-    pop_file();
-  }
-  std::cerr << std::endl;
-  break; // terminate line-continuation; return the part that was found
-found: {} // something was contributed here
+  else {} // something (at least a bona fide empty line) was contributed here
 }
 
 @ Actually getting a line is taken care of by the |readline| function if
@@ -909,16 +914,20 @@ inline void BufferedInput::unshift()
 
 
 @* Secondary buffer methods.
-The |BufferedInput| class provides some methods that are not directly related
-to scanning tokens, but provide handles to manage information that is directly
-related to the input process. First of all, we provide a method |point| to
-obtain a pointer into the current line buffer, which will be useful to isolate
-a token without reassembling it character by character. The method
-|set_line_no| can be used to set the internal line counter. The user method
-|locate| works in the opposite direction as |point|: it  provides the line and
-column number of a pointer~|p| into |line_buffer|.
+%
+The |BufferedInput| class provides some methods
+that are not directly related to scanning tokens, but provide handles to
+manage information that is directly related to the input process. First of
+all, we provide a method |include_depth| to find out the number of currently
+open additional input files. Then we provide the method |point| to obtain a
+pointer into the current line buffer, which will be useful to isolate a token
+without reassembling it character by character. The method |set_line_no| can
+be used to set the internal line counter. The user method |locate| works in
+the opposite direction as |point|: it provides the line and column number of a
+pointer~|p| into |line_buffer|.
 
 @< Other methods of |BufferedInput| @>=
+unsigned int include_depth() const @+{@; return input_stack.size(); }
 const char* point() const @+
 {@;return p;} // points at next char in line buffer
 void set_line_no (unsigned long l) @+
@@ -946,7 +955,7 @@ void show_range
  const;
 
 
-@ When we have to show a range, most of the time it will be entirely within
+@ When we show a range, most of the time it will be entirely within
 the current line. In that case we shall just print a line with spaces until
 the start of the token, then carets for the duration of the token.
 @< Definitions of class members @>=
@@ -976,9 +985,8 @@ void BufferedInput::show_range
         out << "Range started " << (l1-l0) << "lines above\n";
   }
   else // range ended before the current line
-  { out << "Range from line " << l0 << " column " << c0 @|
+    out << "Range from line " << l0 << " column " << c0 @|
 	<< " to line " << l1 << " column " << c1 << ".\n";
-  }
 }
 
 

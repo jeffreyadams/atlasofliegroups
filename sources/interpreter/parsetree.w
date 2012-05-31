@@ -1153,7 +1153,7 @@ case for_expr:
 break;
 case cfor_expr:
 { c_loop c=e.e.cfor_variant;
-  out << " for " << main_hash_table->name_of(c->id) << " = " << c->count;
+  out << " for " << main_hash_table->name_of(c->id) << ": " << c->count;
   if (c->bound.kind!=tuple_display or c->bound.e.sublist!=NULL)
     out << (c->up!=0 ? " from " : " downto ") << c->bound;
   out << " do " << c->body << " od ";

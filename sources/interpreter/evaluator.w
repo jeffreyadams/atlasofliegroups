@@ -4770,6 +4770,7 @@ void global_set_identifier(id_pat pat, expr rhs, int overload)
     thread_components(pat,pop_value(),v);
 @)
     phase=2;
+    @< Emit indentation corresponding to the input level to |std::cout| @>
     if (overload==0)
       @< Add instance of identifiers in |b| with values in |v| to
          |global_id_table| @>
@@ -4821,6 +4822,15 @@ either undone or not reported as failed.
   else
     std::cout << "Added definition [" << n << "] of ";
   std::cout << main_hash_table->name_of(b[0].first) << ": " << *b[0].second;
+}
+
+@ For readability of the output produced during input from auxiliary files, we
+emit two spaces for every current input level. The required information is
+available from the |main_input_buffer|.
+
+@< Emit indentation corresponding to the input level to |std::cout| @>=
+{ unsigned int input_level = main_input_buffer->include_depth();
+  std::cout << std::setw(2*input_level) << "";
 }
 
 @ When the right hand side type does not match the requested pattern, we throw

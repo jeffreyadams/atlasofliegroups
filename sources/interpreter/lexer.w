@@ -252,15 +252,18 @@ pushing the comment character to warn the user that no action has been
 performed. In case |prevent_termination| is set, that character is also pushed
 into the prompt for the duration of skipping spaces.
 
-In case end of input occurs one obtains |shift()=='\0'|. If this happens in
-the main loop then we break from it like for any non-space character, and
-although the following |input.unshift()| does nothing, the value |'\0'| should
-reappear at the next call of |shift|. If end of input occurs during a comment,
-then the comment is terminated due to the explicit test, and again the
-persistence of |shift()=='\0'| will guarantee that the end of input eventually
-turns up in non-skipping context.
+In case end of input occurs one obtains |shift()=='\0'|, and for the end of an
+included file one obtains |shift()=='\f'|, a form-feed. If the former happens
+in the main loop of |skip_space| then we break from it like for any non-space
+character, and although the following |input.unshift()| does nothing, the
+value |'\0'| should reappear at the next call of |shift|. If end of input or a
+form-feed occurs during a comment, then the comment is terminated (with an
+error message) due to the explicit test, and the character that provoked this
+will be reconsidered so the end of file will not be masked by the comment it
+occurred inside.
 
 @h<cctype>
+@h<iostream>
 
 @< Definitions of class members @>=
 void Lexical_analyser::skip_space(void)
@@ -268,8 +271,10 @@ void Lexical_analyser::skip_space(void)
   do
   { char c=input.shift();
     if (isspace(c))
-    { if (c=='\n' && prevent_termination=='\0' && nesting==0) break;
-         // newline is not skipped if some command could end here
+    { if (c=='\n' and prevent_termination=='\0' and nesting==0
+          or c=='\f')
+        break;
+// newline not skipped if some command could end here, form feed never skipped
       continue; // all other space is skipped
     }
     if (c==comment_start)
@@ -278,14 +283,19 @@ void Lexical_analyser::skip_space(void)
         input.unshift(); // reconsider newline character
       }
       else // skip comment, allowing for nested comment groups
-      { int level=1;
+      { int level=1; int line; int column;
+        input.locate(input.point(),line,column); // maybe needed for reporting
         input.push_prompt(comment_start);
         do
         {
           do c=input.shift();
-          while (c!= comment_start and c!=comment_end and c!='\0');
-          if (c=='\0')
-            break; // force out of comment loop
+          while (c!= comment_start and c!=comment_end and c!='\0' and c!='\f');
+          if (c=='\0' or c=='\f')
+          { std::cerr << "Comment that started on line " << line
+                      << ", column " << column @| << " is never closed.\n";
+          @/ input.unshift(); break;
+          // force out of comment loop, reconsider character
+          }
           if (c==comment_start)
           {@; ++level;
             input.push_prompt(comment_start);
