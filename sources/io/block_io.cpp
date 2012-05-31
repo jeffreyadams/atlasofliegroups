@@ -315,7 +315,7 @@ std::ostream& printDescent(std::ostream& strm,
 std::ostream& print_KL(std::ostream& f, non_integral_block& block, BlockElt z)
 {
   // silently fill the whole KL table
-  const kl::KLContext& klc = block.klc(block.size()-1,false);
+  const kl::KLContext& klc = block.klc(z,false);
 
   typedef Polynomial<int> Poly;
   typedef std::map<BlockElt,Poly> map_type;
