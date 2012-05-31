@@ -336,7 +336,8 @@ set stringPoly (vec v, string q)= string:
     let rv="" in
     for c@k in v do
       if c!=0 then
-	let coef = if c<0 then "-" else "+" fi # int_format(abs(c))
+	let coef = if c<0 then "-" else "+" fi #
+            if abs(c)=1 and k>0 then "" else int_format(abs(c)) fi
 	,   term = if k>1 then q#"^"#int_format(k) elif k=0 then "" else q fi
 	in rv #:= coef#term
       fi

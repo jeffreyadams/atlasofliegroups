@@ -90,10 +90,10 @@ set nu(Param p) = ratvec: let (,,nu) =%p in nu
   param(G,3,...) instead of param(KGB(G,3),...)  }
 set param(RealForm G,int k, vec lambda,ratvec nu)=param(KGB(G,k),lambda,nu)
 
-{ normparam(G,x,lambda,nu)=param(G,x,lambda-rho(G),nu),
-  so you can enter lambda without the rho shift (requires rho to be in X^*(H)) }
-set normparam (RealForm G,int x,vec lambda,ratvec nu) =
-  param(G,x,lambda-intrho(G),nu)
+{ normparam(G,x,lambda,nu)=param(G,x,lambda-rho(G),nu), so you can enter
+  lambda without the rho shift (don't need a denominator if lambda\in X^*(H)) }
+set normparam (RealForm G,int x,ratvec lambda,ratvec nu) =
+  param(G,x,ratvectovec(lambda-rho(G)),nu)
 
 { finite dimensional with highest weight tau in X^*
   I'm not sure this always works; it returns
