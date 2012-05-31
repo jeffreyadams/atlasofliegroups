@@ -8,7 +8,7 @@
 misc,iterate_deform,kl}
 <hermitian
 
-<unitary {some unipotent parameters}
+<unitary {some unitary parameters}
 
 {some representations you might be working with}
 set t=trivial(SL(2,R))
@@ -27,3 +27,4 @@ set pG2ad=spherical_principal_series(G2ad,[3,2]/3)
 
 {optinally load translate.rx}
 {<translate}
+
