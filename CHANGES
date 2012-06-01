@@ -4,7 +4,7 @@ A detailed history of the early development is found in the file
 workinglog. Newer changes are documented in the CVS repository.
 This file contains a summary of major changes to the software.
 
-Version 0.5   (Jul 1, 2012)
+Version 0.5   (Jun 1, 2012)
 Building atlas and realex:
 * 'make readline=false' option for realex
 
