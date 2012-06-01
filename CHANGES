@@ -4,26 +4,61 @@ A detailed history of the early development is found in the file
 workinglog. Newer changes are documented in the CVS repository.
 This file contains a summary of major changes to the software.
 
-Version 0.4.5
-* New commands (not yet documented):
+Version 0.5   (Jul 1, 2012)
+Building atlas and realex:
+* 'make readline=false' option for realex
+
+* New atlas commands:
+** deform (compute terms of deformation when passing through given parameter)
+
+ Output format of involutions changed in blocku, blockd; also difference nblock
+
+* New realex functions:
+** real_form (KGBElt), % (KGBElt), =(KGBElt, KGBElt), torus_bits, torus_factor
+** param, % (Param), is_standard, is_zero, is_final, real_form (Param)
+** infinitesimal_character, orientation_nr, = (Param,Param), dominant
+** print_nblock, n_block, reducibility_points, KL_block
+** +, -, * (Split,Split), % (Split)
+** null_module, # (ParamPol), + (ParamPol, ), * (Split,ParamPol), % (ParamPol)
+** deform (Param)
+
+* New realex scripts:
+** iterate_deform.rx, misc.rx, kl.rx, hermitian.rx, translate.rx
+** test.rx, unitary.rx
+** groups.rx changed and extended (things like GL(3,C), Sp(4,R) allowed)
+
+* New realex features:
+** Implicit conversions vec->ratvec, [int]->ratvec, int->Split, Param->ParamPol
+** ratvec values are always in lowest terms
+** Allow empty patterns in let: let a=3*7 then ()=prints("a=",a) then .. in ..
+** Improved feedback during file inclusion and improved error reporting
+** File inclusion more resistant against various kinds of errorsXS
+
+Version 0.4.6 (Nov 17, 2011)
+* New atlas commands:
+** kgp, kgporder (like kgb, kgborder, but for parabolic P instaead of B)
+** partial_block (undocumented; compute only lower interval of block)
+
+Version 0.4.5 (Jul 20, 2011)
+* New commands:
 ** embedding: shows the shifts between subgroup and full group basepoints
 ** nblock: computes a non-integral block and KL polynomials for given parameter
 
-Version 0.4.4
+Version 0.4.4 (Oct 12, 2010)
 * Format of block output changed (cartan column moved to penultimate one)
-* New commands (not yet documented):
+* New commands:
 ** X (outputs entire space X, union of kgb spaces over all strong real forms)
 ** qKtypeform, qKtypemat,qbranch: q versions of Ktypeform, Ktypemat, branch
 ** iblock: construct a (integrality) block with given parameter (x,lambda,nu)
 ** srtest: gives information about a representation
 
-Version 0.4.3
+Version 0.4.3 (Jul 17, 2009)
 * Help files for small* commands
 
-Version 0.4.2
+Version 0.4.2 (Jun 29, 2009)
 * fixed major bug in testrun
 
-Version 0.4.1
+Version 0.4.1 (Jun 27, 2009)
 * Small bug fixes
 * Improved compilability of realex
 
