@@ -76,44 +76,53 @@ set mat_mult_int_poly (mat cumulation,mat KL,[vec] polys,int i,int j)= vec:
 
 { ------------------------------------------------------------------- }
 
-{columns of KL matrix, as polynomials or at w}
+{ columns of KL matrix, as polynomials or at w }
 
-{internal functions are defined just in terms of the requisite input,
-provided by KL_block, so that we only need to call KL_block once per Param p.}
-{internal function:
- single column (init)  of KL matrix, regular infinitesimal character, as polynomials}
-set KL (int init,mat KL,[vec] polys)= [vec]: for i:n_rows(KL) do polys[KL[i,init]] od
+{ internal functions are defined just in terms of the necessary components of
+  the KL_block output, avoiding the need to call KL_block a second time }
 
-{internal function: 
- single column (init)  of KL matrix, singular infinitesimal character, as polynomials}
+{ column 'init' of KL matrix, assuming regular infinitesimal character,
+  returned as unevaluated polynomials }
+set KL (int init,mat KL,[vec] polys)= [vec]:
+  for i:n_rows(KL) do polys[KL[i,init]] od
+
+{ column 'init' of KL matrix, assuming singular infinitesimal character,
+  returned as unevaluated polynomials }
 set KL (int init, mat KL, [vec] polys, mat cumulation)= [vec]:
-for i:n_rows(cumulation) do mat_mult_int_poly(cumulation,KL,polys,i,init) od
+  for i:n_rows(cumulation) do mat_mult_int_poly(cumulation,KL,polys,i,init) od
 
-{internal function:
- single column (init) of KL matrix, with signs, regular infinitesimal character, as polynomials}
+{ column 'init' of KL matrix, with signs, assuming regular infinitesimal
+  character, returned as unevaluated polynomials }
 set signedKL (int init, mat KL, [vec] polys, vec stops) = [vec]:
-    let l_init = length(init,stops) { compute this one just once }
-    in for i:n_rows(KL) do (-1)^(length(i,stops)-l_init)*polys[KL[i,init]] od
+  let l_init = length(init,stops) { compute this one just once }
+  in for i:n_rows(KL) do (-1)^(length(i,stops)-l_init)*polys[KL[i,init]] od
 
-{internal function:
- single column (init) of KL matrix, with signs, singular infinitesimal character, as polynomials}
-set signedKL  (int init, mat KL, [vec] polys, vec stops, vec indices,mat cumulation) = [vec]:
+{ column 'init' of KL matrix, with signs, assuming singular infinitesimal
+  character, returned as unevaluated polynomials }
+set signedKL (
+    int init, mat KL, [vec] polys, vec stops, vec indices,mat cumulation) =
+  [vec]:
   let l_init = length(init,stops) in { compute this one just once }
   for i:n_rows(cumulation) do
     (-1)^(length(indices[i],stops)-l_init)
     *mat_mult_int_poly(cumulation,KL,polys,i,init)
   od
 
+{ functions that use these internal functions }
+
 { single column of KL matrix for parameter p at regular infinitesimal character
   entries are polynomials with non-negative coefficients }
 set KL_regular (Param p)= [vec]:
-  if not is_regular(p) then error("Parameter is not regular") else 
-  let (,init,kl,polys,,,)=KL_block(p) in KL(init,kl,polys) fi
+  if not is_regular(p) then error("Parameter is not regular")
+  else let (,init,kl,polys,,,)=KL_block(p) in KL(init,kl,polys)
+  fi
 
 { the same, but modified by (-1)^{\ell(x)-\ell(y)} }
 set signedKL_regular (Param p) = [vec]:
-  if not is_regular(p) then error("Parameter is not regular") else
-    let (,init,kl,polys,stops,,)=KL_block(p) in signedKL(init,kl,polys,stops) fi
+  if not is_regular(p) then error("Parameter is not regular")
+  else
+    let (,init,kl,polys,stops,,)=KL_block(p) in signedKL(init,kl,polys,stops)
+  fi
 
 { column of KL matrix at singular infinitesimal character,
   single column of polyomials
@@ -125,7 +134,8 @@ set KL_singular (Param p)= [vec]:
 
 {same as preceding, modified by (-1)^{\ell(x)-\ell(y)}}
 set signedKL_singular (Param p)= [vec]:
-  let (,init,kl,polys,stops,indices,cumulation)=KL_block(p) in signedKL(init,kl,polys,stops,indices,cumulation) 
+  let (,init,kl,polys,stops,indices,cumulation)=KL_block(p)
+  in signedKL(init,kl,polys,stops,indices,cumulation)
 
 { return either KL_regular or KL_singular
   these can also be called directly

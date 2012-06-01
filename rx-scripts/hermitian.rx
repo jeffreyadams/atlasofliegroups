@@ -58,8 +58,8 @@ set c_form_std (Param p) = (ParamPol,int):
 
 set c_form_irreducible_long (Param p) =
   (ParamPol,[(Param,Split,ParamPol)],int):
-( let (block,init,kl,polys,stops,indices,cumulation)=KL_block (p) then
- klpolys=signedKL(init,kl,polys,stops,indices,cumulation)
+( let (block,init,kl,polys,stops,indices,cumulation)=KL_block (p)
+  then klpolys=signedKL(init,kl,polys,stops,indices,cumulation)
   , count=0, P=null_module(real_form(p))
   , standards=[(Param,Split,ParamPol)]: []
   in
