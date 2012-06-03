@@ -3418,8 +3418,11 @@ void int_mult_virtual_module_wrapper(expression_base::level l)
 { shared_virtual_module m = get_own<virtual_module_value>();
   int c = get<int_value>()->val;
   if (l!=expression_base::no_value)
-  { for (repr::SR_poly::iterator it=m->val.begin(); it!=m->val.end(); ++it)
-      it->second *= c;
+  { if (c==0)
+      m->val.clear(); // avoid creating null terms into an |SR_poly|
+    else
+      for (repr::SR_poly::iterator it=m->val.begin(); it!=m->val.end(); ++it)
+        it->second *= c;
     push_value(m);
   }
 }
