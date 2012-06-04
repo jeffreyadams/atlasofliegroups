@@ -213,7 +213,7 @@ set extract_submatrix (mat M,vec v, int init)= (mat,int):
   then rv= mat:
     for vj@j in v do
       if vj=init then k:=j fi
-    ; for vi@i in v do M[vi,vj] od
+    ; for vi in v do M[vi,vj] od
     od
   in (rv,k)
 
