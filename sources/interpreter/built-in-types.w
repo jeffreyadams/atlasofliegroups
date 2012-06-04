@@ -3398,7 +3398,16 @@ void add_module_termlist_wrapper(expression_base::level l)
 }
 
 @ Naturally we also want to define addition and scalar multiplication of
-virtual modules.
+virtual modules. Scalar multiplication potentially makes coefficients zero, in
+which case the corresponding terms need to be removed to preserve the
+invariant that no zero terms are stored in a virtual module. For integer
+multiplication we just need to check for multiplication by $0$ and destroy the
+whole module when this happens. However it is somewhat subtler for scalar
+multiplication by split integers, because these have zero divisors. Therefore
+we test each coefficient produced by multiplication in this case, and remove
+the term when the coefficient becomes zero. We must take care to advance the
+iterator ``manually'' before doing that, and as a consequence cannot as usual
+advance the iterator in the |for| clause.
 
 @< Local function... @>=
 void add_virtual_modules_wrapper(expression_base::level l)
@@ -3431,8 +3440,11 @@ void split_mult_virtual_module_wrapper(expression_base::level l)
 { shared_virtual_module m = get_own<virtual_module_value>();
   Split_integer c = get<split_int_value>()->val;
   if (l!=expression_base::no_value)
-  { for (repr::SR_poly::iterator it=m->val.begin(); it!=m->val.end(); ++it)
-      it->second *= c;
+  { for (repr::SR_poly::iterator it=m->val.begin(); it!=m->val.end(); )
+      // no |++it| here!
+      if ((it->second *= c)==Split_integer(0,0))
+	m->val.erase(it++); // advance, then delete the node just abandoned
+      else ++it;
     push_value(m);
   }
 }
