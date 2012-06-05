@@ -177,6 +177,10 @@ set PSU(int p,int q)=SU(p,q,PSL(p+q))
 set SU(int n) = SU(n,0)
 set PSU(int n) = PSU(n,0)
 
+{U(p,q), no isogenies in this case}
+set U(int p,int q)=
+real_form(inner_class(GL(p+q),if p+q>1 then "cc" else "c" fi),min(p,q)) 
+
 set SL_R(int n) = quasisplit_form(inner_class(SL(n),if n>1 then "s" else "" fi))
 set PSL_R(int n)= quasisplit_form(inner_class(PSL(n),if n>1 then "s" else "" fi))
 set PGL_R(int n)=PSL_R(n)
