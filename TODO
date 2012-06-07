@@ -2,6 +2,7 @@
 
 * Work on the Altas library
  - Implement a new (Thicketless) version of the KL algorithm
+ - Redefine ordering on parameters in a SR_poly to sort on x first
 * Work on the atlas program
  - Clean up the messy Input class
    The getline method never uses the stream passed to it, except to return it
