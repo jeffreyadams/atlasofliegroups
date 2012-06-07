@@ -12,6 +12,12 @@
 #include <fstream>
 #include <string>
 
+/* the following macro should be set to an absolute path from the atlas
+   makefile, but if not we use a relative path from the atlas directory */
+#ifndef MESSAGE_DIR_MACRO
+#define MESSAGE_DIR_MACRO "messages/"
+#endif
+
 /****************************************************************************
 
   This file contains some very simple auxiliary i/o functions.
@@ -22,6 +28,7 @@ namespace atlas {
 
 namespace io {
 
+const char* MESSAGE_DIR = MESSAGE_DIR_MACRO;
 
 /*
   Prints the contents of the file with name a to strm.

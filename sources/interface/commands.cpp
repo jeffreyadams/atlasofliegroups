@@ -570,9 +570,9 @@ const char* getCommand(const CommandMode* mode)
 /*
   Synopsis: gets a command interactively from the user.
 
-  The actual input line is gotten through the readline library. For convenience
-  we pack it into an InputBuffer (defined in input.h), in order to have a
-  C++-like interaction.
+  The actual input line is gotten through the readline library. For
+  convenience we pack it into a global InputBuffer variable |commandLine|, in
+  order to have a C++-like interaction.
 */
 std::istream& getInteractive(std::istream& strm, std::string& name,
 			     const char* prompt)
