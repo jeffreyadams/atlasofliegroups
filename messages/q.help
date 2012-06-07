@@ -1,3 +1,7 @@
 
-The command "q" is used to exit special modes, such as help mode.
-Type "qq" to exit the program.
+The command "q" is used to exit the current mode (such as help mode),
+and fall back to the previous mode. This forgets any mode-specific
+information (such as the real form for real mode) and any associated data
+that may have been computed using it. In empty mode, "q" does nothing.
+
+To exit the program you need to type "qq" (in any mode except help mode).

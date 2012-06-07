@@ -1,43 +1,47 @@
-set #(int n)= for i:n do i od  { [0,1,...,n-1] }
-set #(bool b) = if b then 1 else 0 fi { Iverson symbol }
-set #(ratvec v)= let (n,)=%v in #n { length }
+set #(int n)= [int]: for i:n do i od       { [0,1,...,n-1] }
+set #(bool b) = int: if b then 1 else 0 fi { Iverson symbol }
+set #(ratvec v)= int: let (n,)=%v in #n    { length }
 
-set n_rows(mat m)= let (r,)=#m in r
-set n_columns(mat m)= let (,c)=#m in c
+set n_rows(mat m)= int: let (r,)=#m in r
+set n_columns(mat m)= int: let (,c)=#m in c
 
-set *(string s, int n)= let r="" in (for i:n do r#:=s od; r)
+set *(string s, int n)= string: let r="" in (for i:n do r#:=s od; r)
 
 set *(int c,vec v) = vec: for e in v do c*e od
 set *(int c,mat m) = mat: for col in m do for e in col do c*e od od
 
+set +(string s, int i)= string: s # int_format(i)
+set +(int i, string s)= string: int_format(i) # s
+set +(string s,string t) = string: s # t { alias for concatenation }
+
 { a necessary global auxiliary, as realex cannot handle recursive operators }
 set matrix_power = (mat,int->mat):
-let p = (mat m,int n): m
-in p:= ((mat m,int n): { we hall have n>0 }
-  if n=1 then m
-  else let (q,r)=n\%2 then mm=p(m,q) in mm*if r=0 then mm else mm*m fi
-  fi)
-set ^(mat m,int n) =
+( let p = (mat m,int n): mat: m { dummy for recursion }
+  in p:= { assign recusive function body, which also gives matrix_power }
+  ( (mat m,int n): { we hall have n>0 }
+    if n=1 then m
+    else let (q,r)=n\%2 then mm=p(m,q) in mm*if r=0 then mm else mm*m fi
+    fi
+  )
+)
+{ we needed to make matrix_power global so we can use it while overloading ^ }
+set ^(mat m,int n) = mat:
   if n>0 then matrix_power(m,n) elif n=0 then id_mat(n_rows(m))
-  else error("Negative matrix power " # int_format(n))
+  else error("Negative matrix power "+n)
   fi
-
-set +(string s, int i)= s # int_format(i)
-set +(int i, string s)= int_format(i) # s
-set +(string s,string t) = s # t { alias for concatenation }
 
 set -(vec w)= vec: for e in w do -e od
 set -(mat m)= mat: for c in m do for e in c do -e od od
 
 set +(vec v,vec w)= vec:
-  ( if #v != #w then error("Size mismatch " + #v + ":" + #w) fi
-  ; for e@i in v do e+w[i] od
-  )
+( if #v != #w then error("Size mismatch " + #v + ":" + #w) fi
+; for e@i in v do e+w[i] od
+)
 
 set -(vec v,vec w)= vec:
-  ( if #v != #w then error("Size mismatch " + #v + ":" + #w) fi
-  ; for e@i in v do e-w[i] od
-  )
+( if #v != #w then error("Size mismatch " + #v + ":" + #w) fi
+; for e@i in v do e-w[i] od
+)
 
 set %(vec v,int d) = vec: for x in v do x%d od
 
@@ -80,83 +84,96 @@ in p:= ((Split x,int n): { we shall have n>0 }
 set ^(Split x,int n) =
   if n>0 then split_power(x,n) elif n=0 then Split:(1,0)
   elif let (a,b)=%x in abs(a)+abs(b)=1 then if n%2=0 then 1 else x fi
-  else error("Negative power "+int_format(n)+" of split integer")
+  else error("Negative power "+n+" of split integer")
   fi
 
-set =((int,int)(x0,y0),(int,int)(x1,y1)) = x0=x1 and y0=y1
-set !=((int,int)(x0,y0),(int,int)(x1,y1)) = x0!=x1 or y0!=y1
+set = ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0=x1 and y0=y1
+set !=((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0!=x1 or y0!=y1
 
-set -(ParamPol a, (Split,Param) (c,p)) = a+(-c,p)
+set -(ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 
-{ these cases ought to be handled by the coercion code, but currently aren't }
-set +(ParamPol a, (int,Param) (c,p)) = a+(Split:  c,p)
-set -(ParamPol a, (int,Param) (c,p)) = a+(Split: -c,p)
+{ these cases are handled by the coercion code, so they have been removed
+set +(ParamPol a, (int,Param) (c,p)) = ParamPol: a+(Split:  c,p)
+set -(ParamPol a, (int,Param) (c,p)) = ParamPol: a+(Split: -c,p)
+}
 
 set +(mat M,mat N)= mat:
-  ( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
-  ; for col@j in M do for e@i in col do e+N[i,j] od od
-  )
+( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
+; for col@j in M do for e@i in col do e+N[i,j] od od
+)
 
 set -(mat M,mat N)= mat:
-  ( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
-  ; for col@j in M do for e@i in col do e-N[i,j] od od
-  )
+( if #M != #N then error("Size mismatch " + #M + ":" + #N) fi
+; for col@j in M do for e@i in col do e-N[i,j] od od
+)
 
-set min (int k, int l) = if k<l then k else l fi
-set max (int k, int l) = if k<l then l else k fi
+set min (int k, int l) = int: if k<l then k else l fi
+set max (int k, int l) = int: if k<l then l else k fi
 
 set ones(int n)= vec: for i:n do 1 od
 
-set rho (RootDatum rd) = let pr=positive_roots(rd) in pr*ones(n_columns(pr))/2
+set rho (RootDatum rd) = ratvec:
+( let res= ratvec: null(rank(rd))
+  in for i:semisimple_rank(rd) do res +:= fundamental_weight(rd,i) od
+; res
+) { uses fewer additions than computing half sum of the positive roots }
 
-set imaginary_roots (RootDatum rd, mat theta) =
-  let ir = [vec]: []
-  in ( for alpha in roots(rd)
-       do if theta*alpha = alpha then ir #:= alpha fi od
-     ; if #ir=0 then null(rank(rd),0) else mat: ir fi )
+set imaginary_roots (RootDatum rd, mat theta) = mat:
+( let ir = [vec]: [] in
+  for alpha in roots(rd) do if theta*alpha = alpha then
+    ir #:= alpha
+  fi od
+; if #ir=0 then null(rank(rd),0) else ir fi
+)
 
-set real_roots (RootDatum rd, mat theta) =
-  let rr = [vec]: []
-  in ( for alpha in roots(rd)
-       do if theta*alpha = -alpha then rr #:= alpha fi od
-     ; if #rr=0 then null(rank(rd),0) else mat: rr fi )
+set real_roots (RootDatum rd, mat theta) = mat:
+( let rr = [vec]: [] in
+  for alpha in roots(rd) do if theta*alpha = -alpha then
+     rr #:= alpha
+  fi od
+; if #rr=0 then null(rank(rd),0) else rr fi
+)
 
-set imaginary_coroots (RootDatum rd, mat theta) =
-  let ic = [vec]: []
-  in ( for alpha in coroots(rd)
-       do if alpha*theta = alpha then ic #:= alpha fi od
-     ; if #ic=0 then null(rank(rd),0) else mat: ic fi )
+set imaginary_coroots (RootDatum rd, mat theta) = mat:
+( let ic = [vec]: [] in
+  for alpha in coroots(rd) do if alpha*theta = alpha then
+    ic #:= alpha
+  fi od
+; if #ic=0 then null(rank(rd),0) else ic fi
+)
 
-set real_coroots (RootDatum rd, mat theta) =
-  let rc = [vec]: []
-  in ( for alpha in coroots(rd)
-       do if alpha*theta = -alpha then rc #:= alpha fi od
-     ; if #rc=0 then null(rank(rd),0) else mat: rc fi )
+set real_coroots (RootDatum rd, mat theta) = mat:
+( let rc = [vec]: [] in
+  for alpha in coroots(rd) do if alpha*theta = -alpha
+    then rc #:= alpha
+  fi od
+; if #rc=0 then null(rank(rd),0) else rc fi
+)
 
-set simple_reflection (RootDatum rd, int s) =
+set simple_reflection (RootDatum rd, int s) = mat: { s indexes simple root }
   id_mat(rank(rd))- [simple_roots(rd)[s]] * ^[simple_coroots(rd)[s]]
 
-set reflection (RootDatum rd, int alpha) =
+set reflection (RootDatum rd, int alpha) = mat: { alpha indexes any root! }
   id_mat(rank(rd))- [roots(rd)[alpha]] * ^[coroots(rd)[alpha]]
 
-set involution (InnerClass ic, [int] tw) =
+set involution (InnerClass ic, [int] tw) = mat: { tw is a Weyl word }
 ( let rd = root_datum(ic), theta = distinguished_involution(ic)
   in for i : #tw downto 0 do theta := simple_reflection(rd,tw[i])*theta od
   ; theta
 )
 
-set imaginary_roots (InnerClass ic, [int] tw) =
+set imaginary_roots (InnerClass ic, [int] tw) = mat:   { tw is a Weyl word }
   imaginary_roots(root_datum(ic),involution(ic,tw))
-set real_roots (InnerClass ic, [int] tw) =
+set real_roots (InnerClass ic, [int] tw) = mat:        { tw is a Weyl word }
   real_roots(root_datum(ic),involution(ic,tw))
-set imaginary_coroots (InnerClass ic, [int] tw) =
+set imaginary_coroots (InnerClass ic, [int] tw) = mat: { tw is a Weyl word }
   imaginary_coroots(root_datum(ic),involution(ic,tw))
-set real_coroots (InnerClass ic, [int] tw) =
+set real_coroots (InnerClass ic, [int] tw) = mat:      { tw is a Weyl word }
   real_coroots(root_datum(ic),involution(ic,tw))
 
 { integrality inner class (dual side) defined by inf. character and involution }
-set dual_integral(InnerClass ic, ratvec gamma) =
+set dual_integral(InnerClass ic, ratvec gamma) = InnerClass:
   let rd = root_datum(ic) then drd = dual(integrality_datum(rd,gamma))
   in inner_class(drd,-^distinguished_involution(ic))
 
-set KGB(RealForm rf) = for i:KGB_size(rf) do KGB(rf,i) od
+set KGB(RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od
