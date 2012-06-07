@@ -1,0 +1,70 @@
+* Mathematical work to be done
+
+* Work on the Altas library
+ - Implement a new (Thicketless) version of the KL algorithm
+* Work on the atlas program
+ - Clean up the messy Input class
+   The getline method never uses the stream passed to it, except to return it
+   and the same goes for commands::getInteractive. Ending a stream should lead
+   to quitting the mode (at least) and eventually to terminating the program.
+* Work on the realex program
+
+ - Allow for declaring an input path, and (silent) default prelude
+
+ - Handle catching of a user interrupt
+   When a user types ^C, this should break off computation as soon as feasible
+   and return the realex prompt. This may be quite difficult to impement if
+   for interrupts happening while an atlas library function is executing.
+
+ - Mention file and line in non-syntax errors
+
+ - Don't mark input file as read unless it was entirely read
+
+ - Improve output of expressions
+
+ - Make last computed value(s) accessible
+
+ - Allow an empty set of identifiers in a parameter pattern
+
+ - Make distinction between defined/redefined variables in set a = ...
+   This mirrors the behaviour for overloaded functions.
+
+ - Allow overloading by a dynamically computed function value
+
+ - See if functions without argument can still live in overload table
+   Currently they live in the table for ordinary variables, which can produce
+   some subtle asymmetry in their handling (notably their treament changes
+   when a first overloaded instance is added). It would be preferable to treat
+   them as overloaded functions anyway, but to disable the voiding coercion in
+   argument positions of overloaded functions. Check possible complications.
+
+ - Allow loops executed in reverse order
+   This generalises downto to for-in loops. Saying 'for e@i reverse in array
+   do f(e,i) od' runs through elements of 'array' backwards, 'i' decreasing
+   correspondingly; any row value built by loop is still constructed forward,
+   so 'i' does not refer to position in built-up row in this case.
+
+ - Find out why coercion does not creep into compound arguments
+   See basic.rx +@(ParamPol,(int,Param)) for example; just having a version
+   +@(ParamPol,(Split,Param)) should suffice
+
+ - Premature exits: break from loop, return from function
+
+ - Allow skipping entries in value-producing loops, maybe also concatening
+   sub-rows.
+
+ - Allow for array slices and maybe other row-transformations
+
+ - Check if efficiency features actually work as intended
+   For instance v[i]=k should usually avoid a copy of v being made. Also see
+   if something can be done to avoid duplication in a +:= x (probably not, as
+   one knows nothing about what + does).
+  - Duplication avoiding in component assignment
+  - For loops in void context never build up any value.
+
+* Work on the realex scripts
+
+* Work on documentation
+
+* Work on makefiles, distribution and support programs
+ - Implement a make_distribution command

@@ -1,5 +1,4 @@
 # See the file INSTALL for detailed instructions
-# the following line avoids trouble on some systems (GNU make does this anyway)
 SHELL = /bin/sh
 INSTALL = /usr/bin/install
 
@@ -27,6 +26,7 @@ BINDIR := $(INSTALLDIR)
 #of rlincludes
 ###############################
 
+version = $(shell perl getversion.pl)
 MESSAGEDIR := $(INSTALLDIR)/messages/
 
 # sourcedirs contains subdirectories of 'atlas/sources' that need compilation
@@ -108,9 +108,10 @@ LDFLAGS := $(rlincludes)
 # we use no suffix rules
 .SUFFIXES:
 
-# The default target is 'all', which builds the executable
-.PHONY: all
-all: atlas.exe
+.PHONY: all realex install distribution
+
+# The default target is 'all', which builds the executable 'atlas', and realex
+all: atlas realex
 
 # the following dependency forces emptymode.cpp to be recompiled whenever any
 # of the object files changes; this guarantees that the date in the version
@@ -119,7 +120,7 @@ sources/interface/emptymode.o: $(sources)
 
 # For profiling not only 'cflags' used in compiling is modified, but linking
 # also is different
-atlas.exe: $(objects)
+atlas : $(objects)
 ifeq ($(profile),true)
 	$(CXX) -pg -o atlas.exe $(objects) $(LDFLAGS)
 else
@@ -132,15 +133,23 @@ ifneq ($(INSTALLDIR),$(shell pwd))
 	$(INSTALL) -d -m 755 $(INSTALLDIR)/www
 	$(INSTALL) -d -m 755 $(INSTALLDIR)/messages
 	$(INSTALL) -m 644 README $(INSTALLDIR)
-	$(INSTALL) -m 755 atlas.exe $(INSTALLDIR)
+	$(INSTALL) -m 755 atlas $(INSTALLDIR)
 	$(INSTALL) -m 644 www/*html $(INSTALLDIR)/www/
 	$(INSTALL) -m 644 messages/*help $(INSTALLDIR)/messages/
 	$(INSTALL) -m 644 messages/*intro_mess $(INSTALLDIR)/messages/
 endif
+ifneq ($(BINDIR),$(INSTALLDIR))
 	@if test -h $(BINDIR)/atlas; then rm -f $(BINDIR)/atlas; fi
 	@if test -e $(BINDIR)/atlas ;\
-	 then echo Warning: $(BINDIR)/atlas is not a symlink, I will not overwrite it;\
-	 else ln -s $(INSTALLDIR)/atlas.exe $(BINDIR)/atlas ; fi
+	 then @echo Warning: $(BINDIR)/atlas is not a symlink, I will not overwrite it;\
+	 else ln -s $(INSTALLDIR)/atlas $(BINDIR)/atlas ; fi
+endif
+
+version:
+	@echo $(version)
+
+distribution:
+	bash make_distribution.sh $(version)
 
 .PHONY: mostlyclean clean cleanall
 mostlyclean:

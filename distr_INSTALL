@@ -1,0 +1,251 @@
+Instructions  installation of the Atlas software.
+For more information about the software see the README file.
+
+UNIX (including linux, solaris, and Mac OSX)
+
+SHORT INSTRUCTIONS:
+
+On many systems simply do:
+
+make
+
+which will cipile binaries atlas and realex in the current directory.
+Then optionally do
+
+make install INSTALLDIR=... BINDIR=...
+
+to install the essential parts of the current directory in the directory
+specified by INSTALLDIR and files 'atlas' and 'realex' in the directory
+specified by BINDIR (these files are actually symbolic links or in case of
+atlas maybe a short shell script; the actual binaries go into INSTALLDIR).
+The default for INSTALLDIR is the current directory, and the default for
+BINDIR is the INSTALLDIR/../bin. So to install under /usr/local, you would do
+(presumably with the necessary privileges to write there)
+
+make install INSTALLDIR=/usr/local/atlas
+
+
+LONGER VERSION:
+
+The executable file is called atlas. This can be installed
+anywhere, for example in /usr/local/atlas. For the help system to work
+there must be subdirectory /usr/local/atlas/messages. Then atlas
+can be run via a symbolic link, called atlas, which can be anywhere,
+typically in /usr/local/bin.
+
+Suppose you download the tgz file to the directory source_dir. When
+you gunzip and untar the file (with tar xvfz atlas_version.tgz) you
+will have a directory source_dir/atlas. cd to this directory. There is
+a makefile in this directory. You have two choices:
+
+1) have the executable stay where it is:
+
+source_dir/atlas/atlas
+source_dir/atlas/messages
+source_dir/atlas/messages/blockd.help etc.
+
+You can create a symlink to atlas, the default is
+
+/usr/local/bin/atlas -> source_dir/atlas
+
+You can change the location of this symlink by editing the BINDIR
+variable in the makefile.
+
+2) put the executable somewhere else, for example:
+
+/usr/local/atlas/atlas
+/usr/local/atlas/messages
+/usr/local/atlas/messages/blockd.help etc.
+
+Again you can create a symlink to atlas, the default is
+/usr/local/bin, which in this case gives:
+
+/usr/local/bin/atlas -> /usr/local/atlas/atlas
+
+You can change the location of the executable by editing the
+INSTALLDIR variable in the makefile. You can change the location of
+the symlink by editing the BINDIR variable in the makefile.
+
+See the instructions in the makefile.
+
+Typically:
+
+In a single-user situation, you might want something like this:
+INSTALLDIR := /home/fokko/myatlas
+BINDIR     := /home/fokko/bin
+
+In a multi-user situation, you might want this (requires root):
+INSTALLDIR := /usr/local/atlas
+BINDIR     := /usr/local/bin
+
+After optionally editing INSTALLDIR and BINDIR, give the command:
+
+make
+
+If you get some errors about readline see below, or try:
+
+  make readline=false
+
+to compile without readline.
+
+Some other options are:
+
+  verbose=true
+  debug=true
+  optimize=true
+  profile=true
+
+We recommend verbose=true, which prints out a very small amount of
+information about how far along the process is.
+
+If all goes well, run the command
+
+  make install
+
+This may require root privileges, depending on the locations
+of INSTALLDIR and BINDIR. The default is to leave the executable where
+it is, and install the symlink in /usr/local/bin.
+
+The command atlas, or ./atlas, will run the program.
+
+Do
+
+make clean
+
+to start from scratch.
+
+For information using the enhanced command line interpreter realex,
+see below.
+-------------------------------------------------------------------
+Compiling with readline
+
+readline allows you to recall the previous command with control-p,
+does tab-completion of command names, and has other useful command
+line features. You should be able to compile with readline on most
+linux systems, although in some instance you need to help the compiler
+find the proper libraries. For Mac OSX see below.
+
+The variable rlincludes tells the compiler to include certain
+libraries needed for readline. The default is
+
+rlincludes = -lreadline -lcurses
+
+Another possibility is to replace -lcurses with -lncurses.
+
+If you can't get it to compile with readline, use
+
+make readline=false
+
+to compile without this feature.
+-------------------------------------------------------------------
+Compiling with readline on a Mac (contributed by David Vogan)
+
+Get readline-5.2.tar.gz, for example from
+
+ftp://ftp.cwru.edu/pub/bash/readline-5.2.tar.gz
+
+Mac automatically unzips.  Put file readline-5.2.tar someplace
+convenient.  In a terminal window, go to the directory with this tar
+file, and type
+
+  tar -xvf readline-5.2.tar
+
+This will create a new subdirectory "readline-5.2."  Do a cd to that
+directory.
+
+There appears to be a small problem with the "configure" script when
+it is used with OS 10.4. To work around it, edit the file
+
+readline-5.2/support/shobj-conf
+
+Line 170 should be changed from
+
+SHOBJ_LDFLAGS='-dynamic'
+
+to
+
+SHOBJ_LDFLAGS='-dynamiclib'
+
+Back in the readline-5.2 directory, type
+
+  ./configure
+
+Type
+
+  make everything
+
+Type
+
+  sudo make install
+
+The Gnu readline library should now be installed on your Mac.
+
+There is a problem when the atlas software is linked: the linker
+will find most of the readline commands in someplace like
+
+/usr/lib/libreadline.dylib,
+
+instead of in the Gnu readline library that you just installed, which
+lives at
+
+/usr/local/lib/libreadline.5.dylib
+
+The difficulty is that the Mac library lacks two or three of the
+commands used in the atlas readline, so the linker will refuse to
+finish.  I don't know the best or most natural way to fix this.  One
+thing which works is to edit the atlas makefile, modifying the line
+
+        rlincludes := -lreadline -lcurses
+
+to read
+
+        rlincludes := -lreadline.5 -lcurses
+
+Now the atlas software should link.
+-------------------------------------------------------------------
+Using the interpreter (unix only)
+
+There is an early version of an improved command line interface,
+called realex. This is called realex, and is by Marc van Leeuwen,
+Marc.van-Leeuwen@math.univ-poitiers.fr. To compile it give the command
+
+make realex
+
+The executable file is sources/interpreter/realex, and there are a
+number of help files sources/interpreter/*dvi.
+
+If you have trouble at the linking step the problem is probably
+readline/curses/ncurses. See sources/interpreter/Makefile.
+-------------------------------------------------------------------
+WINDOWS
+
+1) Download the distribution atlas4win....zip to your windows
+machine.
+
+2) Right click on the file to extract the archive.
+
+3) Double click on the atlas file to execute.
+
+When you extract the file you create a folder. This contains the
+executable atlas.exe. It also contains three necessary dll files. You
+must run the executable from a folder containing these files.
+-------------------------------------------------------------------
+MAC
+
+1) Download the distribution atlasMac....zip to your mac.
+
+2) Double click on the file to extract the archive.
+
+3) Double click on the atlas file to execute it.
+
+The executable must be in the same directory as the messages directory
+for help system to work.
+
+If the help system doesn't work, try the following.  Open a terminal
+window, and navigate to the directory containing atlasNRL. Give the
+command "./atlasMacNRL".
+-------------------------------------------------------------------
+
+Please report any problems to Jeffrey Adams at jda@math.umd.edu
+For questions relating to realex contact Marc van Leeuwen at
+Marc.van-Leeuwen@math.univ-poitiers.fr.
