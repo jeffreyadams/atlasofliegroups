@@ -1,0 +1,13 @@
+sources/interpreter/main.cpp: sources/interpreter/main.w
+sources/interpreter/buffer.cpp sources/interpreter/buffer.h: \
+  sources/interpreter/buffer.w
+sources/interpreter/lexer.cpp sources/interpreter/lexer.h: \
+  sources/interpreter/lexer.w
+sources/interpreter/parsetree.cpp sources/interpreter/parsetree.h: \
+  sources/interpreter/parsetree.w
+sources/interpreter/types.cpp sources/interpreter/types.h: \
+  sources/interpreter/types.w
+sources/interpreter/evaluator.cpp sources/interpreter/evaluator.h: \
+  sources/interpreter/evaluator.w
+sources/interpreter/built-in-types.cpp sources/interpreter/built-in-types.h: \
+  sources/interpreter/built-in-types.w
