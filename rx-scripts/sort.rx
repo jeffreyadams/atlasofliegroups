@@ -1,0 +1,54 @@
+<misc {for spherical_principal_series}
+
+set sort (vec v)=vec:(
+for j:#v-1 from 1 do 
+ let R=v[j] then
+ i=j-1 then
+ done=false in
+ while not done do 
+  if R>=v[i] then 
+   v[i+1]:=R;done:=true
+  else
+   v[i+1]:=v[i];i:=i-1;
+    if i=-1 then v[i+1]:=R;done:=true fi
+  fi od od;v)
+
+set reverse (vec v)=vec:for i:#v do v[#v-i-1]  od
+set reverse_sort (vec v)=vec:reverse(sort(v))
+
+{sort list of pairs [(Param,bool)] by #reducibility_points of Param}
+set sort_by_reducibility_pairs([(Param,bool)] P)=[(Param,bool)]:
+(for j:#P-1 from 1 do 
+ let (R,answer)=P[j] in 
+ let i=j-1 in 
+ let done=false in
+ while not done do 
+  let (Q,)=P[i] in 
+  if #(reducibility_points(R))>=#(reducibility_points(Q)) then 
+   P[i+1]:=(R,answer);done:=true
+  else
+   P[i+1]:=P[i];i:=i-1;
+    if i=-1 then P[i+1]:=(R,answer);done:=true fi
+  fi
+ od 
+od;P)
+
+{sort list [Param] by #reducibility_points of Param}
+set sort_by_reducibility ([Param] P)=[Param]:
+(for j:#P-1 from 1 do 
+ let R=P[j] in 
+ let i=j-1 in 
+ let done=false in
+ while not done do 
+  if #(reducibility_points(R))>=#(reducibility_points(P[i])) then 
+   P[i+1]:=R;done:=true
+  else
+   P[i+1]:=P[i];i:=i-1;
+    if i=-1 then P[i+1]:=R;done:=true fi
+  fi
+ od 
+od;P)
+
+set sort_spherical_by_reducibility (RealForm G,[ratvec] nus)=
+let sorted_spherical=sort_by_reducibility(for nu in nus do spherical_principal_series(G,nu) od) in
+for p in sorted_spherical do nu(p) od
