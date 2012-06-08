@@ -133,7 +133,7 @@ LDFLAGS := $(rlincludes)
 # we use no suffix rules
 .SUFFIXES:
 
-.PHONY: all realex install distribution
+.PHONY: all install distribution
 
 # The default target is 'all', which builds the executable 'atlas', and 'realex'
 all: atlas realex
@@ -151,6 +151,7 @@ ifeq ($(profile),true)
 else
 	$(CXX) -o atlas $(atlas_objects) $(LDFLAGS)
 endif
+
 
 realex: $(realex_objects)
 	$(CXX) $(rlincludes) $(realex_includes) $(realex_objects) -o realex
@@ -230,5 +231,3 @@ clean: mostlyclean
 
 cleanall: clean
 	rm -f $(dependencies)
-
-
