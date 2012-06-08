@@ -2,7 +2,9 @@
 
 * Work on the Altas library
  - Implement a new (Thicketless) version of the KL algorithm
+ - Remove the clumsy Helper class from the KL construction
  - Redefine ordering on parameters in a SR_poly to sort on x first
+ - Rewrite partial_block generation to use the same method as nblock
 * Work on the atlas program
  - Clean up the messy Input class
    The getline method never uses the stream passed to it, except to return it
@@ -12,27 +14,24 @@
 
  - Allow for declaring an input path, and (silent) default prelude
  - Make that adding the .rx extension is not tried if it is already present
-
  - Handle catching of a user interrupt
    When a user types ^C, this should break off computation as soon as feasible
    and return the realex prompt. This may be quite difficult to impement if
    for interrupts happening while an atlas library function is executing.
 
  - Mention file and line in non-syntax errors
-
- - Don't mark input file as read unless it was entirely read
-
  - Improve output of expressions
-
  - Make last computed value(s) accessible
-
- - Allow an empty set of identifiers in a parameter pattern
-
  - Make distinction between defined/redefined variables in set a = ...
    This mirrors the behaviour for overloaded functions.
 
- - Allow overloading by a dynamically computed function value
+ - Add functions for string decomposition (maybe some composition as well)
+ - Add function for Lie type decomposition
+ - Add more functionality for KGBElt values
+ - Improve the way KL_block gives acces to it values, add variants
+   Inspect how KL_block is actually used, and provide more lightweight values
 
+ - Allow overloading by a dynamically computed function value
  - See if functions without argument can still live in overload table
    Currently they live in the table for ordinary variables, which can produce
    some subtle asymmetry in their handling (notably their treament changes
@@ -51,9 +50,15 @@
    +@(ParamPol,(Split,Param)) should suffice
 
  - Premature exits: break from loop, return from function
+ - Scoping in while loops: declarations of condition remain valid in body?
+   The same question arises in conditional: if the condition is the reuclt of
+   a complicated computation, could that computation define some local
+   variables that remain accessible in addition to the boolean condition?
 
- - Allow skipping entries in value-producing loops, maybe also concatening
-   sub-rows.
+ - Allow skipping entries in value-producing loops; concatening sub-rows.
+   When generating a row from a loop, not every iteration need contribute, and
+   nested loops might want to contribute to the same row, in a concatenated
+   fashion.
 
  - Allow for array slices and maybe other row-transformations
 
@@ -63,7 +68,6 @@
    one knows nothing about what + does).
   - Duplication avoiding in component assignment
   - For loops in void context never build up any value.
-
 * Work on the realex scripts
 
 * Work on documentation
