@@ -117,16 +117,12 @@ endif
 
 # RULES follow now
 
-.PHONY: all mostlyclean clean headers dvifiles compilable
+.PHONY: all mostlyclean clean headers cppfiles dvifiles compilable
 
-all:	headers dvifiles realex
+all:	headers dvifiles ../../realex
 
-# 'make clean' removes all derived files
-clean:  mostlyclean
-	rm -f realex
-
-# 'make mostlyclean' removes all derived files except the executable program
-mostlyclean:
+# 'make clean' all derived files, but the executable program isn't here
+clean:
 	rm -f *.o *.log *.toc $(webtexfiles) *.dvi *~ *.cpp *.c *.h
 
 # 'make compilable' prepares everything for compilation
@@ -159,8 +155,6 @@ $(c++objects) $(atlas_objects): %.o: %.cpp
            fi done
 	@rm -r old_targets
 
-types.h types.cpp: evaluator.w
-
 # prevent remaking files that are under CVS, unless .w file changed recently
 ../utilities/filekl.h ../utilities/filekl.cpp ../utilities/filekl_in.h ../utilities/filekl_in.cpp : ../utilities/filekl.w ;
 
@@ -174,12 +168,13 @@ types.h types.cpp: evaluator.w
 
 # these targets allow you to say "make headers" or "make dvifiles"
 headers: $(headers)
+cppfiles: $(c++files)
 dvifiles: $(dvifiles)
 
-# Our executable program is now called 'realex'. As we recently found out,
-# this stands for Rewritten Expression-based  Atlas of Lie groups EXecutable
-realex: $(objects)
-	$(CXX) $(rlincludes) -o realex $^
+# Our executable program 'realex' is in atlas root directory. Then name realex
+# stands for Rewritten Expression-based Atlas of Lie groups EXecutable
+../../realex: $(objects)
+	$(CXX) $(rlincludes) -o $@ $^
 ifeq (,$(findstring t,$(MAKEFLAGS))) # unless a flag -t was given
 	$(MAKE) -t $@ # now that build succeeds mark everything as up-to-date
 endif

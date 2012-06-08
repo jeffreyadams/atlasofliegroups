@@ -6,12 +6,12 @@ INSTALL = /usr/bin/install
 
 # You may edit the INSTALLDIR and BINDIR variables
 
-# INSTALLDIR is where the executable atlas.exe and the messages directory
+# INSTALLDIR is where the executables atlas, realex and the messages directory
 # will be moved after successfull compilation
 
 # BINDIR is where a symbolic link or shell script 'atlas' calling to the
-# executable will be placed; provided this is in your search path, you can
-# then execute by typing: atlas
+# executable, and a symbolic link 'realex' will be placed; provided this
+# directory is in the search path, you can then execute unsing atlas, realex
 
 # In a single-user situation, you might want something like this:
 #   INSTALLDIR := /home/fokko/myatlas
@@ -123,8 +123,9 @@ LDFLAGS := $(rlincludes)
 # we use no suffix rules
 .SUFFIXES:
 
-# The default target is 'all', which builds both executables
-.PHONY: all phony_io
+.PHONY: all
+
+# The default target is 'all', which builds the executable 'atlas', and 'realex'
 all: atlas realex
 
 # the following dependency forces emptymode.cpp to be recompiled whenever any
@@ -144,8 +145,8 @@ endif
 realex: $(realex_objects)
 	$(CXX) $(rlincludes) $(realex_includes) $(realex_objects) -o realex
 
-# The following two rules are static pattern rules: they are like implicit
-# rules, but only apply to the files listed in their targets
+# The following rules are static pattern rules: they are like implicit rules,
+# but only apply to the files listed in their targets
 
 $(filter-out sources/interface/io.o,$(atlas_objects)) : %.o : %.cpp
 	$(CXX) $(cflags) $(atlas_flags) -o $*.o $*.cpp
@@ -186,7 +187,7 @@ mostlyclean:
 	rm -f $(objects)
 
 clean: mostlyclean
-	rm -f atlas
+	rm -f atlas realex
 
 # distribution version of atlas uses a frozen set of dependencies
 

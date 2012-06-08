@@ -11,6 +11,7 @@
 * Work on the realex program
 
  - Allow for declaring an input path, and (silent) default prelude
+ - Make that adding the .rx extension is not tried if it is already present
 
  - Handle catching of a user interrupt
    When a user types ^C, this should break off computation as soon as feasible

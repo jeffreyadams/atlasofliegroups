@@ -1,6 +1,15 @@
 Instructions  installation of the Atlas software.
 For more information about the software see the README file.
 
+Prerequisites: you must have a C++ compiler and a 'make' program installed, as
+well as a _development version_ of the GNU readline library (one that includes
+header files needed during compilation). If you have difficulties with
+readline, you can do without it by specifying an argument readline=false in
+the make commands below, but command editing will then not be available.
+
+The default compiler name configured in the Makefile is g++, but you can
+substitute other compilers for this.
+
 UNIX (including linux, solaris, and Mac OSX)
 
 SHORT INSTRUCTIONS:
@@ -9,7 +18,7 @@ On many systems simply do:
 
 make
 
-which will cipile binaries atlas and realex in the current directory.
+which will compile binaries atlas and realex in the current directory.
 Then optionally do
 
 make install INSTALLDIR=... BINDIR=...
@@ -19,8 +28,8 @@ specified by INSTALLDIR and files 'atlas' and 'realex' in the directory
 specified by BINDIR (these files are actually symbolic links or in case of
 atlas maybe a short shell script; the actual binaries go into INSTALLDIR).
 The default for INSTALLDIR is the current directory, and the default for
-BINDIR is the INSTALLDIR/../bin. So to install under /usr/local, you would do
-(presumably with the necessary privileges to write there)
+BINDIR is the INSTALLDIR/../bin. So to install under /usr/local with programs
+in /usr/local/bin, you would do (with the necessary privileges to write there)
 
 make install INSTALLDIR=/usr/local/atlas
 
