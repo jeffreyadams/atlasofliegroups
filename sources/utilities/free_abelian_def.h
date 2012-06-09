@@ -23,12 +23,13 @@ Free_Abelian<T,C,Compare>&
 {
   if (m==C(0))
     return *this; // avoid useless work that might introduce null entries
-  std::pair<typename base::iterator,bool> trial = insert(std::make_pair(p,m));
+  std::pair<typename base::iterator,bool> trial =
+    this->insert(std::make_pair(p,m));
   if (not trial.second) // nothing was inserted, but |trial.first->first==p|
   {
     trial.first->second += m; // add |m| to existing coefficient
     if (trial.first->second==C(0))
-      erase(trial.first); // remove term whose coefficient has become $0$
+      this->erase(trial.first); // remove term whose coefficient has become $0$
   }
   return *this;
 }
@@ -56,10 +57,10 @@ Free_Abelian<T,C,Compare>&
   typename base::iterator last=base::begin();
   for (typename base::const_iterator src=p.begin(); src!=p.end(); ++src)
   {
-    last=insert(last,std::make_pair(src->first,C(0))); // hinted insert
+    last=this->insert(last,std::make_pair(src->first,C(0))); // hinted insert
     last->second += m*src->second; // add multiplicity
     if (last->second==C(0))
-      erase(last++); // remove null entry
+      this->erase(last++); // remove null entry
     // else we could do |++last| to improve hint, but risk negative pay-off
   }
 
@@ -80,10 +81,10 @@ Monoid_Ring<T,C,Compare>&
   {
     std::pair<T,coef_t> term(src->first,C(0));
     term.first += expon;
-    last=insert(last,term); // hinted insert
+    last=this->insert(last,term); // hinted insert
     last->second += m*src->second; // add multiplicity
     if (last->second==C(0))
-      erase(last++); // remove null entry
+      this->erase(last++); // remove null entry
   }
 
   return *this;

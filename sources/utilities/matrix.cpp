@@ -438,7 +438,7 @@ template<typename C> void Matrix<C>::transpose()
       for (size_t j = 0; j<base::numColumns(); ++j)
 	result(j,i) = (*this)(i,j);
 
-    swap(result);
+    this->swap(result);
   }
 }
 

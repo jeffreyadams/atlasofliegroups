@@ -69,7 +69,7 @@ struct Free_Abelian : public std::map<T,C,Compare>
 
   Free_Abelian& operator+=(const Free_Abelian& p)
   { if (base::empty())
-      return operator=(p); // assign, avoiding work on first addition to empty
+      return *this =(p); // assign, avoiding work on initial addition to empty
     return add_multiple(p,C(1));
   }
 
