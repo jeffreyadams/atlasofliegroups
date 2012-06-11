@@ -42,6 +42,9 @@ template<typename C>
   void safeAdd(C&, C); // version of |operator+=| testing for overflow
 
 template<typename C>
+  void safeDivide(C&, C); // version of |operator/=| testing for divisibility
+
+template<typename C>
   void safeProd(C&, C); // version of |operator*=| testing for overflow
 
 template<typename C>
@@ -143,6 +146,8 @@ template <typename C>
   // unlike |operator+| etc., the following test for negative coefficients
   void safeAdd(const Safe_Poly& p, Degree d, C c); // *this += c*q^d*p
   void safeAdd(const Safe_Poly& p, Degree d = 0);  // *this += q^d*p
+  void safeDivide(C c);  // *this = *this/c 
+  void safeQuotient(Degree d = 0);  // *this = (*this + mq^d)/(q+1)
 
   void safeSubtract(const Safe_Poly& p, Degree d, C c);
   void safeSubtract(const Safe_Poly& p, Degree d = 0 );

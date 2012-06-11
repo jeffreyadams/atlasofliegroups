@@ -216,6 +216,19 @@ template<typename C> void safeAdd(C& a, C b)
     a += b;
 }
 
+/*!
+  \brief a /= b.
+
+  Throws a NumericOverflow exception in case of nondivisibility.
+*/
+template<typename C> void safeDivide(C& a, C b)
+{
+  if (a%b)
+    throw error::NumericOverflow();
+  else
+    a = a/b;
+}
+
 
 /*!
   \brief a *= b.
@@ -235,9 +248,9 @@ template<typename C> void safeProd(C& a, C b)
 
 
 /*!
-  \brief a *= b.
+  \brief a -= b.
 
-  Throws a NumericOverflow exception in case of overflow.
+  Throws a NumericUnderflow exception in case of underflow.
 */
 template<typename C> void safeSubtract(C& a, C b)
 {
@@ -294,6 +307,34 @@ void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d)
     polynomials::safeAdd((*this)[j+d],q[j]); // this may throw
 }
 
+/*!  
+
+\brief Adds x^{d+1}.\mu to *this, then divides by (x+1); \mu is
+chosen so that the division is without remainder.  Should forward an
+error if \mu is negative. Intended for use only when d \le *this.degree()
+*/
+template<typename C>
+void Safe_Poly<C>::safeDivide(C c)
+{
+  for (size_t j = 0; j < base::size(); ++j )
+    polynomials::safeDivide((*this)[j],c); //this may throw
+}
+
+/*!
+\brief Adds x^{d+1}.\mu to *this, then divides by (x+1); \mu is
+chosen so that the division is without remainder.  Should forward an
+error if \mu is negative. Intended for use only when d \le *this.degree()
+*/
+template<typename C>
+void Safe_Poly<C>::safeQuotient(Degree d)
+{
+  if (base::isZero()) return; //(q+1)P truncates to zero means P=0
+  assert(base::degree() < d);
+  base::resize(d+1);
+  for (size_t j = 1; j < d+1; ++j ) //last j is d
+    polynomials::safeSubtract((*this)[j],(*this)[j-1]); //this may throw
+  base::adjustSize();
+}
 
 /*!
   \brief Subtracts x^d.c.q from *this, watching for underflow, assuming |c>0|
