@@ -22,9 +22,6 @@
  - Mention file and line in non-syntax errors
  - Improve output of expressions
  - Make last computed value(s) accessible
- - Make distinction between defined/redefined variables in set a = ...
-   This mirrors the behaviour for overloaded functions.
-
  - Add functions for string decomposition (maybe some composition as well)
  - Add function for Lie type decomposition
  - Add more functionality for KGBElt values

@@ -635,16 +635,17 @@ While we have seen expressions to build lists, and to make vectors and
 matrices out of them, we so far are not able to access their components once
 they are constructed. To that end we shall now introduce operations to index
 such values. We allow subscription of rows, but also of vectors, rational
-vectors and matrices. Since after type analysis we know which of the cases
-applies, we define several classes. These differ mostly by their |evaluate|
-method, so we first derive an intermediate class from |expression_base|, and
-derive the others from it. This class also serves to host an enumeration type
-that will serve later.
+vectors, matrices, and strings. Since after type analysis we know which of the
+cases applies, we define several classes. These differ mostly by their
+|evaluate| method, so we first derive an intermediate class from
+|expression_base|, and derive the others from it. This class also serves to
+host an enumeration type that will serve later.
 
 @< Type definitions @>=
 struct subscr_base : public expression_base
 { enum sub_type @+
-  { row_entry, vector_entry, ratvec_entry, matrix_entry, matrix_column };
+  { row_entry, vector_entry, ratvec_entry, string_char
+  , matrix_entry, matrix_column };
   expression array, index;
 @)
   subscr_base(expression_ptr a, expression_ptr i)
@@ -674,6 +675,12 @@ struct vector_subscription : public subscr_base
 @)
 struct ratvec_subscription : public subscr_base
 { ratvec_subscription(expression_ptr a, expression_ptr i)
+  : subscr_base(a,i) @+{}
+  virtual void evaluate(level l) const;
+};
+@)
+struct string_subscription : public subscr_base
+{ string_subscription(expression_ptr a, expression_ptr i)
   : subscr_base(a,i) @+{}
   virtual void evaluate(level l) const;
 };
@@ -730,6 +737,10 @@ bool subscr_base::indexable
   @/{@; kind=ratvec_entry;
         return subscr.specialise(rat_type);
   }
+  if (aggr==str_type and index==int_type)
+  @/{@; kind=string_char;
+        return subscr.specialise(str_type);
+  }
   if (aggr!=mat_type)
     return false;
   if (index==int_int_type)
@@ -775,6 +786,9 @@ case subscription:
     break;
     case subscr_base::ratvec_entry:
       subscr.reset(new ratvec_subscription(array,index));
+    break;
+    case subscr_base::string_char:
+      subscr.reset(new string_subscription(array,index));
     break;
     case subscr_base::matrix_entry:
       subscr.reset(new matrix_subscription(array,index));
@@ -835,6 +849,18 @@ void ratvec_subscription::evaluate(level l) const
        (v->val.numerator()[i->val],v->val.denominator())));
 }
 @)
+void string_subscription::evaluate(level l) const
+{ shared_int i=((index->eval(),get<int_value>()));
+  shared_string s=((array->eval(),get<string_value>()));
+  if (static_cast<unsigned int>(i->val)>=s->val.size())
+    throw std::runtime_error(range_mess(i->val,s->val.size(),this));
+  if (l!=no_value)
+    push_value(new string_value(s->val.substr(i->val,1)));
+}
+
+@ And here are the cases for matrix indexing.
+
+@< Function definitions @>=
 void matrix_subscription::evaluate(level l) const
 { index->multi_eval(); @+
   shared_int j=get<int_value>();
@@ -2703,6 +2729,17 @@ switch (kind)
     }
   }
   break;
+  case subscr_base::string_char:
+  { shared_string in_val = get<string_value>();
+    size_t n=in_val->val.size();
+    if (l!=no_value)
+      result = row_ptr(new row_value(n));
+    for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
+    { loop_var->val[1].reset(new string_value(in_val->val.substr(i,1)));
+      @< Set |loop_var->val[0]| to |i|,... @>
+    }
+  }
+  break;
   case subscr_base::matrix_column:
   { shared_matrix in_val = get<matrix_value>();
     size_t n=in_val->val.numColumns();
@@ -3198,7 +3235,9 @@ assignments, starts by the common work of evaluating the index and the value
 to be assigned, and of making sure the aggregate variable is made to point to
 a unique copy of its current value, which copy can then be modified in place.
 For actually changing the aggregate, we must distinguish cases according to
-the kind o component assignment at hand.
+the kind of component assignment at hand. Assignments to components of
+rational vectors and of strings will be forbidden, see module
+@#comp_ass_type_check@>.
 
 @< Function def... @>=
 void component_assignment::assign
@@ -3219,7 +3258,9 @@ void component_assignment::assign
     case subscr_base::matrix_column:
   @/@< Replace columns at |index| in matrix |loc| by value on stack @>
   @+break;
-  case subscr_base::ratvec_entry: {} // case is eliminated in type analysis
+  case subscr_base::ratvec_entry:
+  case subscr_base::string_char: {}
+// cases are eliminated in type analysis
   }
 }
 
@@ -3325,6 +3366,7 @@ void local_component_assignment::evaluate(level l) const
 @ Type-checking and converting component assignment statements follows the
 same lines as that of ordinary assignment statements, but must also
 distinguish different aggregate types.
+@:comp_ass_type_check@>
 
 @< Other cases for type-checking and converting... @>=
 case comp_ass_stat:
@@ -3345,7 +3387,7 @@ case comp_ass_stat:
   expression_ptr i(convert_expr(index,ind_t));
   subscr_base::sub_type kind;
   if (not subscr_base::indexable(*aggr_t,ind_t,comp_t,kind)
-      or kind==subscr_base::ratvec_entry)
+      or kind==subscr_base::ratvec_entry or kind==subscr_base::string_char)
   { std::ostringstream o;
     o << "Cannot subscript " << *aggr_t << @| " value with index of type "
       << ind_t << " in assignment";

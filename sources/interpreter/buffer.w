@@ -639,8 +639,11 @@ input_record::input_record
 { try
   {
     if (def_ext!=NULL and not stream->is_open())
-    @/{@; name += def_ext;
-      stream->open(name.c_str());
+    { long inx=name.size()-std::strlen(def_ext);
+      if (inx<0 or name.substr(inx)!=def_ext) // only add extension if absent
+      @/{@; name += def_ext;
+        stream->open(name.c_str());
+      }
     }
   }
   catch (...)
@@ -711,7 +714,7 @@ bool BufferedInput::push_file(const char* name, bool skip_seen)
               << "'." << std::endl;
     delete input_stack.back().stream;
     input_stack.pop_back();
-// no need to call |pop_file|: |stream|, |line_no| and |cur_lines| are unchanged
+// no need to call |pop_file|: |stream|, |line_no| and |cur_lines| unchanged
     return false;
   }
 }
