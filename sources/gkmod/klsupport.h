@@ -30,12 +30,13 @@ namespace klsupport {
 
 class KLSupport
 {
-  enum State { DownsetsFilled, LengthLessFilled, Filled, NumStates};
+  enum State {PrimitivizeFilled, DownsetsFilled, LengthLessFilled, Filled, NumStates};
 
   BitSet<NumStates> d_state;
 
   const Block_base& d_block;  // non-owned reference
 
+  std::vector<atlas::BlockEltList> d_primitivize;
   std::vector<RankFlags> d_descent;
   std::vector<RankFlags> d_goodAscent;
   std::vector<BitMap> d_downset;
@@ -79,8 +80,16 @@ class KLSupport
   */
   BlockElt lengthLess(size_t l) const { return d_lengthLess[l]; }
 
-  BlockElt primitivize
-    (BlockElt x, const RankFlags& A) const;
+  BlockElt primitivize  // computing KL polynomials spends a large
+			// amount of time evaluating primitivize. When
+			// possible, it's faster to tabulate and
+			// inline it. The size of the data makes this
+			// a bad idea for rank \ge 10 or so. I don't
+			// know how to make the code choose the
+			// untabulated version if the data is too big.
+    (BlockElt x, const RankFlags& A) const {
+    return d_primitivize[A.to_ulong()][x];
+}
 
   // the following are filters of the bitmap
   void extremalize(BitMap&, const RankFlags&) const;
@@ -89,7 +98,7 @@ class KLSupport
 // manipulators
   void fill();
   void fillDownsets();
-
+  void fillPrimitivize();
 };
 
 } // namespace klsupport

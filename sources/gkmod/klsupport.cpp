@@ -45,6 +45,7 @@ namespace klsupport {
 KLSupport::KLSupport(const Block_base& b)
   : d_state()
   , d_block(b)
+  , d_primitivize()
   , d_descent()
   , d_goodAscent()
   , d_downset()
@@ -60,6 +61,7 @@ void KLSupport::swap(KLSupport& other)
 
   assert(&d_block==&other.d_block);
 
+  d_primitivize.swap(other.d_primitivize);
   d_descent.swap(other.d_descent);
   d_goodAscent.swap(other.d_goodAscent);
   d_downset.swap(other.d_downset);
@@ -126,7 +128,7 @@ void KLSupport::primitivize(BitMap& b, const RankFlags& d)
   |UndefBlock| is conveniently larger than any valid BlockElt |y|, so this
   case will be handled effortlessly together with triangularity).
 */
-BlockElt
+/*BlockElt
   KLSupport::primitivize(BlockElt x, const RankFlags& d) const
 {
   RankFlags a; // good ascents for x that are descents for y
@@ -142,7 +144,7 @@ BlockElt
 	: d_block.cayley(s,x).first;
   }
   return x;
-}
+  }*/
 
 /******** manipulators *******************************************************/
 
@@ -163,6 +165,9 @@ void KLSupport::fill()
 
   // make the downsets
   fillDownsets();
+
+  //fill the primitivize table
+  fillPrimitivize();
 
   d_state.set(Filled);
 
@@ -231,6 +236,62 @@ void KLSupport::fillDownsets()
 
 }
 
+/*
+  Synopsis: fills in the table d_primitivize.
+
+  Explanation: for each z in the block, and each set A of simple
+  roots, d_primitivize[A][z] comes by proper ascents of z through s
+  in A (either cross actions increasing length, or Cayley transforms)
+  or 0 (if we come to a real non-parity case).
+
+  Sets the PrimitivizeFilled bit in d_state if successful.
+*/
+
+void KLSupport::fillPrimitivize()
+{  
+  using namespace bitset;
+  using namespace descents;
+  using namespace blocks;
+  
+  if (d_state.test(PrimitivizeFilled))
+    return;
+  d_primitivize.reserve(1ul << rank());
+  d_primitivize.resize(1ul << rank());
+  size_t blocksize = d_block.size();
+
+for (unsigned long j = 0 ; j >> rank() == 0 ; ++j) {
+  BlockEltList prim;
+  prim.reserve(blocksize);
+  prim.resize(blocksize);
+   const RankFlags A(j);
+   for (BlockElt z = blocksize; z != 0;) {
+     --z;
+  // primitivize
+     RankFlags a = goodAscentSet(z);
+     a &= A; 
+     if (a.none()) {
+       prim[z] = z;
+       continue;
+     }
+    size_t s = a.firstBit();
+    DescentStatus::Value v = descentValue(s,z);
+    if (v == DescentStatus::RealNonparity) {
+      prim[z] = UndefBlock;
+      continue;
+    }
+    if (v == DescentStatus::ComplexAscent)
+      prim[z] = prim[d_block.cross(s,z)];
+    else
+      prim[z] = prim[d_block.cayley(s,z).first];
+  }
+   // insert
+   d_primitivize[j] = prim;
+ }
+
+ d_state.set(PrimitivizeFilled);
+
+ return;
+} //fillPrimitivize
 } // namespace klsupport
 
 /*****************************************************************************
