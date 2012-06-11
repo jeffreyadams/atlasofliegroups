@@ -783,8 +783,8 @@ patlist reverse_patlist(patlist p)
 
 @*1 Let expressions.
 We introduce let-expressions that introduce and bind local identifiers, as a
-first step towards having use defined functions. Indeed let-expressions will
-be implemented (initially) as a user-defined function that is immediately
+first step towards having user defined functions. Indeed let-expressions will
+be implemented (initially) as a user-defined functions that is immediately
 called with the values bound in the let-expression. The reason to do this
 before considereing user-defined functions in general is that this avoids for
 now having to specify in the user program the types of the parameters of the
@@ -857,36 +857,49 @@ case let_expr:
 }
 break;
 
-@ For building let-expressions, two functions will be defined. The function
-|add_let_node| adds one declaration to a list (it is called with |prev==NULL|
-for the first clause), while |make_let_expr_node| wraps up the let-expression.
+@ For building let-expressions, three functions will be defined. The function
+|make_let_node| makes a list of one declaration, while |append_let_node|
+appends such a list |cur| (assured to be of length~$1$) to a previously
+constructed list |prev| of declaration; finally |make_let_expr_node| wraps up
+an entire let-expression.
 
 @< Declarations of functions in \Cee-style for the parser @>=
-let_list add_let_node(let_list prev, struct id_pat pattern, expr val);
+let_list make_let_node(struct id_pat pattern, expr val);
+let_list append_let_node(let_list prev, let_list cur);
 expr make_let_expr_node(let_list decls, expr body);
 
-@~In |make_let_expr_node| we may need to convert multiple declarations to one,
-in which case we must take care to reverse the order, since the last one added
-will be at the head of the list. Fortunately it is actually easier to build a
-merged list in reverse order. We provide local exception safety here, although
-we realise that the parser function being written in \Cee, it will not be able
-to do any cleaning up of values referred to in its stack, in case of a thrown
-exception (here, or in calls to make-functions elsewhere). In fact the problem
-is not just one of programming language: even a parser generated as \Cpp~code
-would not help without special provisions (such as an exception handler in the
-parser function), since the |union| used for values on the parsing stack
-cannot have objects that handle their own cleaning up as members. Rather, this
-situation should probably be corrected by using a different allocation
-strategy while building the parse tree (avoiding explicit calls to |new| but
-allocating from local storage pools that can explicitly be emptied), in which
-case all cleaning up in the code below should also be removed.
+@~The functions |make_let_node| and |append_let_node| build a list in reverse
+order, which makes the latter function a particularly simple one. In
+|make_let_expr_node| combines multiple declarations (that were separated by
+commas) to one, taking care to reverse the order at the same time so that the
+tuple of patterns being declared comes out in the same order as it was
+specified in the program. Fortunately it is actually easier to build a merged
+list in reverse order.
+
+We provide local exception safety here, in the sense that if an exception is
+thrown we clean up the locally created nodes. As a side remark, we do realise
+that, as the parser function is written in \Cee, it will not be able to do any
+cleaning up of values referred to in its stack, in case of an exception thrown
+during its execution (here, or in calls to make-functions elsewhere, which it
+should be noted is fairly unlikely to happen). In fact the problem is not just
+one of programming language: even a parser generated as \Cpp~code would not
+help without special provisions (such as an exception handler in the parser
+function), since the |union| used for values on the parsing stack cannot have
+as members objects that handle their own cleaning up. Rather, this situation
+should probably be corrected by using a different allocation strategy while
+building the parse tree (avoiding explicit calls to |new| but allocating from
+local storage pools that can explicitly be emptied), in which case all
+cleaning up in the code below should also be removed.
 
 @< Definitions of functions in \Cee... @>=
-let_list add_let_node(let_list prev,struct id_pat pattern, expr val)
+let_list make_let_node(struct id_pat pattern, expr val)
 {@; let_list l=new let_node;
-  l->pattern=pattern; l->val=val; l->next=prev;
+  l->pattern=pattern; l->val=val; l->next=NULL;
   return l;
 }
+@)
+let_list append_let_node(let_list prev, let_list cur)
+{@; cur->next=prev; return cur; }
 @)
 expr make_let_expr_node(let_list decls, expr body)
 { let l=new let_expr_node; l->body=body;

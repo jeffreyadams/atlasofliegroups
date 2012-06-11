@@ -4738,8 +4738,13 @@ directly by the parser, and therefore it has \Cee-linkage. We define it here
 since it uses the services of the evaluator.
 
 We allow the same possibilities in a global identifier definition as in a
-local one, so we take an |id_pat| as argument. In addition we handle
-definitions of overloaded function instances if |overload| is true (nonzero).
+local one, so we take an |id_pat| as argument. We also handle definitions of
+overloaded function instances in case the parameter |overload| is nonzero. As
+a change from our initial implementation, that parameter set by the parser
+allows overloading but does not force it. Allowing the parameter to be cleared
+here therefore actually serves to allow more cases to result in addition to
+the overload table, since the parser will now set |overload>0| more freely.
+
 We follow the logic for type-analysis of a let-expression, and that of binding
 identifiers in a user-defined function for evaluation. However we use
 |analyse_types| (which reports errors) rather than calling |convert_expr|
@@ -4759,6 +4764,8 @@ void global_set_identifier(id_pat pat, expr rhs, int overload)
     if (not pattern_type(pat)->specialise(*t))
       @< Report that type of |rhs| does not have required structure,
          and |throw| @>
+    if (overload!=0)
+      @< Set |overload=0| if type |t| is not an appropriate function type @>
 @)
     phase=1;
     bindings b(n_id);
@@ -4783,6 +4790,32 @@ void global_set_identifier(id_pat pat, expr rhs, int overload)
   @< Catch block for errors thrown during a global identifier definition @>
 }
 
+@ When |overload>0|, choosing whether the definition enters into the overload
+table or into the global identifier table is determined by the type of the
+defining expression.
+
+In fact it is now natural to also allow operators to be defined by an
+arbitrary expression rather than necessarily by a lambda-expression. However,
+this creates the possibility of adding an operator to the global identifier
+table, which is pointless (syntax does not allow the value to be retrieved) so
+this case needs some attention: the parser will pass |overload==2| in this
+case, signalling that it must not be cleared to~$0$, but rather result in an
+error message if that should be attempted.
+
+@< Set |overload=0| if type |t| is not an appropriate function type @>=
+{ bool clear = t->kind!=function_type;
+    // cannot overload with a non-function value
+  if (not clear)
+  { type_expr& arg=t->func->arg_type;
+  @/clear = arg.kind==tuple_type and arg.tuple==NULL;
+     // nor parameterless functions
+  }
+  if (clear and overload==2) // inappropriate function type with operator
+    throw std::runtime_error("Cannot set operator to non-function value");
+  if (clear)
+    overload=0;
+}
+
 @ For identifier definitions we print their names and types (paying attention
 to the very common singular case), before calling |global_id_table->add|.
 @< Add instance of identifiers in |b| with values in |v| to
@@ -4791,8 +4824,10 @@ to the very common singular case), before calling |global_id_table->add|.
     std::cout << "Identifier";
   for (size_t i=0; i<n_id; ++i)
   { std::cout << (i==0 ? n_id==1 ? " " : "s " : ", ") @|
-              << main_hash_table->name_of(b[i].first) << ": "
-              << *b[i].second;
+              << main_hash_table->name_of(b[i].first);
+    if (global_id_table->type_of(b[i].first)!=NULL)
+      std::cout << " (overriding previous)";
+    std::cout << ": " << *b[i].second;
     global_id_table->add(b[i].first,v[i],copy(*b[i].second));
   }
 }
