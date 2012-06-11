@@ -1,6 +1,6 @@
 * Mathematical work to be done
 
-* Work on the Altas library
+* Work on the Atlas library
  - Implement a new (Thicketless) version of the KL algorithm
  - Remove the clumsy Helper class from the KL construction
  - Redefine ordering on parameters in a SR_poly to sort on x first
@@ -16,7 +16,7 @@
  - Make that adding the .rx extension is not tried if it is already present
  - Handle catching of a user interrupt
    When a user types ^C, this should break off computation as soon as feasible
-   and return the realex prompt. This may be quite difficult to impement if
+   and return the realex prompt. This may be quite difficult to implement if
    for interrupts happening while an atlas library function is executing.
 
  - Mention file and line in non-syntax errors
@@ -28,13 +28,14 @@
  - Add functions for string decomposition (maybe some composition as well)
  - Add function for Lie type decomposition
  - Add more functionality for KGBElt values
- - Improve the way KL_block gives acces to it values, add variants
+ - Improve the way KL_block gives access to it values, add variants
    Inspect how KL_block is actually used, and provide more lightweight values
 
+ - Allow recursion through a more intuitive syntax
  - Allow overloading by a dynamically computed function value
  - See if functions without argument can still live in overload table
    Currently they live in the table for ordinary variables, which can produce
-   some subtle asymmetry in their handling (notably their treament changes
+   some subtle asymmetry in their handling (notably their treatment changes
    when a first overloaded instance is added). It would be preferable to treat
    them as overloaded functions anyway, but to disable the voiding coercion in
    argument positions of overloaded functions. Check possible complications.
@@ -45,27 +46,27 @@
    correspondingly; any row value built by loop is still constructed forward,
    so 'i' does not refer to position in built-up row in this case.
 
- - Find out why coercion does not creep into compound arguments
-   See basic.rx +@(ParamPol,(int,Param)) for example; just having a version
-   +@(ParamPol,(Split,Param)) should suffice
-
  - Premature exits: break from loop, return from function
  - Scoping in while loops: declarations of condition remain valid in body?
-   The same question arises in conditional: if the condition is the reuclt of
+   The same question arises in conditional: if the condition is the result of
    a complicated computation, could that computation define some local
    variables that remain accessible in addition to the boolean condition?
 
- - Allow skipping entries in value-producing loops; concatening sub-rows.
+ - Allow skipping entries in value-producing loops; concatenating sub-rows.
    When generating a row from a loop, not every iteration need contribute, and
    nested loops might want to contribute to the same row, in a concatenated
    fashion.
 
  - Allow for array slices and maybe other row-transformations
+ - Extend type system to deal with second-order types
+ - Extend language with recursive types, as well as disjoint union types.
+ - Allow encapsulation into user-defined types
 
  - Check if efficiency features actually work as intended
    For instance v[i]=k should usually avoid a copy of v being made. Also see
    if something can be done to avoid duplication in a +:= x (probably not, as
-   one knows nothing about what + does).
+   one knows nothing about what + does). However, for v #:= x in a loop it
+   should be possible to avoid a new allocation for v at every iteration.
   - Duplication avoiding in component assignment
   - For loops in void context never build up any value.
 * Work on the realex scripts
@@ -73,4 +74,4 @@
 * Work on documentation
 
 * Work on makefiles, distribution and support programs
- - Implement a make_distribution command
+ - Figure out how to avoid 'unrecognised typedef at line 367 of atlas_types.h'

@@ -604,7 +604,7 @@ KGB::KGB(RealReductiveGroup& GR,
     for (KGBElt x=0; x<size; ++x) // list involution indices; cannot yet use
       invs.push_back(inv_hash.find(elt_pool[x].tw())); // |involution(x)| !
 
-    a1 = permutations::standardize(invs,inv_pool.size(),&first_of_tau);
+    a1 = permutations::standardization(invs,inv_pool.size(),&first_of_tau);
   }
 
   Permutation a(a1,-1); // |a[x]| locates KGB element that should become |x|
