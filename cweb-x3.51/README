@@ -1,0 +1,125 @@
+This file is part of CWEBx (version 3.51 at the time of writing; the actual
+version number is defined near the end of intro.inc, and can be found by
+running ctanglex or cweavex with the --version flag). It explains briefly what
+CWEB is, and how to set it up, and what the various files are for.
+
+The CWEBx system consists of two executable programs that are designated here
+as CTANGLE and CWEAVE. These programs were traditionally named 'ctangle' and
+'cweave', but to avoid confusion with the Levy/Knuth version of CWEB that may
+also be installed, the executables are called 'ctanglex' and 'cweavex' in the
+CWEBx system, so that is what CTANGLE and CWEAVE stand for, respectively.
+Newvertheless their source files have names without an x.
+
+Here is a listing of the files constituting the release with a brief
+indication of their purpose.
+
+README	        % the file you are currently reading
+Makefile	% control file for POSIX 'make' facility to build CWEB
+configure	% a script that explains that there is nothing to configure
+
+common.w	% CWEBx source for routines common to CTANGLE and CWEAVE
+ctangle.w	% CWEBx source for CTANGLE
+cweave.w	% CWEBx source for bulk of CWEAVE
+parser.w	% CWEBx source for parser of CWEAVE
+rules.w		% CWEBx source for grammar rules of CWEAVE
+common.inc	% CWEBx source included by common.w, ctangle.w, and cweave.w
+intro.inc	% CWEBx source included by ctangle.w and cweave.w
+
+common.c	% C file produced (by CTANGLE) from common.w; for bootstrap
+common.h	% C file produced (by CTANGLE) from common.w; for bootstrap
+ctangle.c	% C file produced (by CTANGLE) from ctangle.w; for bootstrap
+
+cwebxmac.tex	% TeX macro file needed to process files produced by CWEAVE
+cwebcmac.tex	% TeX macro file needed in addition for compatibility mode
+
+cwebhmac.tex	% optional TeX macro file creating hyperlinks for xhdvi (e.g.)
+
+manual.tex	% master file for the CWEB manual
+compare.tex	% file \input by manual.tex (present to facilitate bootstrap)
+
+man1		% directory with UNIX manpage
+man1/cweb.1		% UNIX manpage for CTANGLE and CWEAVE
+
+examples	% directory with sample CWEB programs
+examples/compare.w	% Compare files; source for compare.tex above
+examples/treeprint.w	% Convert sorted file listings to a tree diagram
+examples/wc.w		% Count characters, words and lines in text files
+examples/wmerge.w	% Perform preprocessing of change files as filter
+examples/Makefile
+
+cweb.el		% EMACS file that might facilitate editing CWEB files
+
+
+
+The CWEB system allows you to write C programs and their documentation at the
+same time, in a way that optimises human readability. This version fully
+supports ANSI/ISO C, and indeed requires such a compiler for its own
+compilation; it also provides reasonalble support for C++. Like other WEB
+systems, CWEB allows you to decompose your programs into small, logically
+related portions, to add any desired amount of documentation to each of them,
+and to present them in any order that help understanding. As TeX is used to
+obtain the printed source document, a high typographic quality can be obtained
+while allowing for formatting of complicated formulae and tables; formatting
+of C/C++ program fragments is simple however, since it is done almost fully
+automatically. When used properly, CWEB can be used to produce documents that
+combine the qualities of a scientific publication about algorithms and of a
+well documented source listing for an implementation of those algorithms.
+
+The CWEB system consists of two programs, CTANGLE and CWEAVE, that are to be
+used in combination with a C compiler and TeX; both transform text files,
+while they share the same input language. CWEB source files, that typically
+have suffix `.w', can be converted by CTANGLE to C files (suffix `.c') that
+can be compiled, and alternatively can be converted by CWEAVE to TeX files
+(suffix `.tex') from which the typeset source listing can be produced by
+TeX. More details can be found in the manual, which you obtain by running
+TeX on the file manual.tex. Here the main interest is that since CWEB is
+written using CWEB you need a bootstrap procedure to get things going. For
+this purpose the derived files common.c, common.h and ctangle.c are supplied.
+If you have the UNIX make facility, all you have to do is check that these
+files are newer than the sources common.w and ctangle.w (they should be when
+the archive is unpacked, but you can use "touch" to make them newer in case
+this should be necessary), and that the Makefile macro CC refers to an ANSI
+compiler (it is set to "cc"; you may need to select "gcc" instead or to
+supply additional flags in CFLAGS) and then invoke "make all". Otherwise,
+without using 'make', here is the required sequence of commands.
+
+$ cc -c ctangle.c			# compile main part of CTANGLE
+$ cc -c common.c			# compile common code
+$ cc -o ctangle ctangle.o common.o 	# link CTANGLE together
+$ ./ctangle cweave 			# create cweave.c from cweave.w
+$ cc -DDEBUG -DSTAT -g -c cweave.c	# compile main part of CWEAVE
+$ cc -DDEBUG -DSTAT -g -o cweave cweave.o common.o # link CWEAVE together
+$ tex manual.tex			# typeset the manual
+
+$ # the rest is only needed to obtain source listings for the CWEB system
+$ ./cweave common			# produce common.tex
+$ tex common				# typeset listing of common code
+$ ./cweave ctangle			# produce ctangle.tex
+$ tex ctangle				# typeset listing of CTANGLE
+$ ./cweave cweave			# produce cweave.tex
+$ tex cweave				# typeset listing of CWEAVE
+
+By the time you have done all this successfully, you have already tested
+CTANGLE and CWEAVE on a substantial amount of input, and you may be
+confident that the system is working properly.
+
+Should you on the other hand encounter problems during bootstrapping, then
+things are of course less pleasant, especially because you cannot print the
+source listings yet. Few problems are expected though, since there are no
+known system dependencies, and identical source code compiles on several
+dissimilar systems, one of which is quite non-UNIX. The cwebx system expects
+though that the compiler can handle large arrays (certainly larger than 64 Kb,
+which should not be a concern at all nowadays) and programs that use command
+line arguments; in the unlikely case that your compiler does not support this,
+you will either have to replace it by a better one or do some tailoring of the
+programs. If you encounter any other difficulties, please report them to me at
+<maavl@math.univ-poitiers.fr>. If you do need to make changes to common.c,
+common.h, or ctangle.c, don't forget to write them down, since they will have
+to be applied at the proper places in common.w, ctangle.w, or common.inc in
+order to persist after bootstrapping. Such patches are best incorporated into
+a change file (e.g., ctangle.ch) as explained in the manual.
+
+Marc van Leeuwen
+Universit\'e de Poitiers
+maavl@math.univ-poitiers.fr
+http://www-math.univ-poitiers.fr/~maavl/

@@ -153,7 +153,7 @@ else
 endif
 
 
-realex: $(realex_objects)
+realex: cwebx $(realex_objects)
 	$(CXX) $(rlincludes) $(realex_includes) $(realex_objects) -o realex
 
 # The following rules are static pattern rules: they are like implicit rules,
@@ -231,3 +231,6 @@ clean: mostlyclean
 
 cleanall: clean
 	rm -f $(dependencies)
+
+cwebx: 
+	cd cweb-x3.51 && $(MAKE)

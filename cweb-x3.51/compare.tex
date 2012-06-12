@@ -1,0 +1,203 @@
+\input cwebxmac
+
+\N0 1.  Comparing text files.
+This is an entirely trivial program, that tests whether two text files are
+equal, and if not so, points out the first point of difference.
+
+\Y\B\h$\.{<stdio.h>}$\par
+\B\h$\.{<stdlib.h>}$\par
+\Y\B$\&{typedef}~\&{char}~\&{bool};$\par
+\fi
+
+\M2. The outline of the program is simple. We read characters from both input
+files into $ c_1$ and~$ c_2$ until the comparison is complete. Line and column
+counts are maintained in $\\{line}$ and~$\\{col}$.
+
+\Y\B\D$\\{left\_margin}$\5
+$\T{1}$\C{ leftmost column number; change to 0 if you prefer }\par
+\Y\B$\X5:Functions\X$\7
+\&{int} $\\{main}$\5
+$(\1\1\1\&{int}~ n,\31~\&{char}~\m*\m*\\{arg}\2\2\2)$\6
+$\a\{\1\&{FILE}~\m* f_1,\31~\m* f_2;$\C{ the two input files }\6
+$\&{int}~ c_1,\31~ c_2,\31~\\{col}\K\\{left\_margin};$\5
+$\&{long}~\\{line}\K\T{1};$\7
+$\X6:Open the files $ f_1$ and~$ f_2$, taking their names from the command line
+or from the terminal; in case of an error for which no recovery is possible,
+call $\\{exit}(\T{1})$\X$\6
+$\X3:Search for first difference, leaving $ c_1\I c_2$ if and only if a
+difference was found\X$\6
+$\X4:Report the outcome of the comparison\X$\6
+$\&{return}~\T{0};$\C{ successful completion }\2\6
+$\}$\par
+\fi
+
+\M3. The heart of the program is this simple loop.  When we reach the end of
+one of the files, the files match if and only if the other file has also
+reached its end. For this reason the test $ c_1\E c_2$, which requires
+characters to be read from both files, must precede the test for file end;
+when only one file ends, it is the former test which breaks the loop.
+
+\Y\B\4$\X3:Search for first difference, leaving $ c_1\I c_2$ if and only if a
+difference was found\X\EQ{}$\6
+\&{while}~$(( c_1\K\\{getc}( f_1))\E( c_2\K\\{getc}( f_2))\W c_1\I\.{EOF})\1$\6
+\&{if}~$( c_1\E\.{'\\n'})\1$\5
+$\{\1$\5
+$\PP\\{line};$\5
+$\\{col}\K\\{left\_margin};\2$\5
+$\}$\5
+\2\&{else}\1\5
+$\PP\\{col};\2$\2\par
+\U 2.\fi
+
+\M4. When the first difference occurs at the end of one of the files, or at the
+end of a line, we give a message indicating this fact.
+
+\Y\B\4$\X4:Report the outcome of the comparison\X\EQ{}$\6
+\&{if}~$( c_1\E c_2)\1$\5
+$\\{printf}(\.{"Files\ match.\\n"});\2$\6
+\&{else}\6
+$\a\{\1\\{printf}(\.{"Files\ differ.\\n"});$\6
+\&{if}~$( c_1\E\.{EOF}\V c_2\E\.{EOF})$\1\6
+$\{\1$\5
+$\\{the\_file}( c_1\E\.{EOF});$\5
+$\\{printf}(\.{"is\ contained\ in\ the\)\ other\ as\ initial\ seg\)ment.\\n"});%
+\2$\5
+$\}\2$\6
+\&{else}~\&{if}~$( c_1\E\.{'\\n'}\V c_2\E\.{'\\n'})$\1\6
+$\{\1$\5
+$\\{the\_file}( c_1\E\.{'\\n'});$\5
+$\\{printf}(\.{"has\ a\ shorter\ line\ \)number\ \%ld\ than\ the\ o\)ther.%
+\\n"},\31\\{line});\2$\5
+$\}\2$\6
+\&{else}\1\5
+$\\{printf}(\.{"First\ difference\ at\)\ line\ \%ld,\ column\ \%d.\)\\n"},\31%
+\\{line},\31\\{col});\2$\2\6
+$\}$\par
+\U 2.\fi
+
+\M5. The function $\\{the\_file}$ starts a sentence about the first or second
+file,
+depending on its boolean argument.
+
+\Y\B\4$\X5:Functions\X\EQ{}$\6
+\&{void} $\\{the\_file}$\5
+$(\1\1\1\&{bool}~\\{is\_first}\2\2\2)$\5
+$\{\1$\5
+$\\{printf}(\.{"The\ \%s\ file\ "},\31\\{is\_first}\?\.{"first"} :%
+\.{"second"});\2$\5
+$\}$\par
+\A 7.
+\U 2.\fi
+
+\M6. There can be be zero, one or two command line arguments. If there are
+none,
+the user is prompted to supply them, and if there are two these are taken as
+the file names, prompting the user only in case a file could not be opened.
+In case just one argument is present, the first file is assumed to be the
+standard input, which does not have to be opened; in this case however we
+will not read a file name from terminal in case the second file cannot be
+opened.
+
+\Y\B\D$\\{read\_mode}$\5
+$\.{"r"}$\par
+\Y\B\4$\X6:Open the files $ f_1$ and~$ f_2$, taking their names from the
+command line or from the terminal; in case of an error for which no recovery is
+possible, call $\\{exit}(\T{1})$\X\EQ{}$\6
+$\MM n;$\5
+$\PP\\{arg};$\C{ ignore ``argument'' 0, which is the program name }\6
+\&{if}~$( n\E\T{0})$\1\6
+$\{\1$\5
+$\\{open\_file}(\m\AND f_1,\31\.{"First\ file\ to\ compa\)re"},\31\NULL);$\5
+$\\{open\_file}(\m\AND f_2,\31\.{"Second\ file\ to\ comp\)are"},\31\NULL);\2$\5
+$\}\2$\6
+\&{else}~\&{if}~$( n\E\T{1})$\6
+$\a\{\1 f_1\K\\{stdin};$\6
+\&{if}~$(( f_2\K\\{fopen}(\m*\\{arg},\31\\{read\_mode}))\E\NULL)\1$\5
+$\{\1$\5
+$\\{printf}(\.{"Could\ not\ open\ file\)\ \%s.\\n"},\31\m*\\{arg});$\5
+$\\{exit}(\T{1});\2$\5
+$\}\2$\2\6
+$\}$\6
+\&{else}~\&{if}~$( n\E\T{2})$\6
+$\a\{\1\\{open\_file}(\m\AND f_1,\31\.{"Give\ another\ first\ \)file"},\31\m*%
+\\{arg}\PP);$\5
+$\\{open\_file}(\m\AND f_2,\31\.{"Give\ another\ second\)\ file"},\31\m*%
+\\{arg});\2$\6
+$\}$\6
+\&{else}\1\5
+$\{\1$\5
+$\\{printf}(\.{"No\ more\ than\ two\ co\)mmand\ line\ arguments\ \)are\
+allowed.\\n"});$\5
+$\\{exit}(\T{1});\2$\5
+$\}\2$\par
+\U 2.\fi
+
+\M7. The function $\\{open\_file}$ will try to open the file $\\{name}$ for
+reading, and
+if this fails it will prompt for another file name until it has success. If
+called with $\\{name}\E\NULL$, the function starts with prompting right away.
+
+\Y\B\4$\X5:Functions\X\PE{}$\6
+\&{void} $\\{open\_file}$\5
+$(\1\1\1\&{FILE}~\m*\m* f,\31~\&{char}~\m*\\{prompt},\31~\&{char}~\m*\\{name}\2%
+\2\2)$\6
+$\a\{\1\&{char}~\\{buf}[\T{80}];$\7
+\&{if}~$(\\{name}\E\NULL\V(\m* f\K\\{fopen}(\\{name},\31\\{read\_mode}))\E%
+\NULL)\1$\6
+\&{do}\1\5
+$\{\1$\5
+$\\{printf}(\.{"\%s:\ "},\31\\{prompt});$\5
+$\\{fflush}(\\{stdout});$\5
+$\\{scanf}(\.{"\%79s"},\31\\{buf});\2$\5
+$\}$\2\6
+\&{while}~$((\m* f\K\\{fopen}(\\{buf},\31\\{read\_mode}))\E\NULL);$\2\2\6
+$\}$\par
+\fi
+
+\N0 8.  Index.
+\fi
+
+
+\inx
+\@m\\{arg}, \[2], 6.
+\@h\&{bool}, \[1], 5.
+\@m\\{buf}, \[7].
+\@m\\{col}, \[2], 3, 4.
+\@m c_1, \[2], 3, 4.
+\@m c_2, \[2], 3, 4.
+\@m\.{EOF}, 3, 4.
+\@m\\{exit}, 6.
+\@m f, \[7].
+\@m\\{fflush}, 7.
+\@h\&{FILE}, 2, 7.
+\@m\\{fopen}, 6, 7.
+\@m f_1, \[2], 3, 6.
+\@m f_2, \[2], 3, 6.
+\@m\\{getc}, 3.
+\@m\\{is\_first}, \[5].
+\@m\\{left\_margin}, \[2], 3.
+\@m\\{line}, \[2], 3, 4.
+\@m\\{main}, \[2].
+\@m n, \[2].
+\@m\\{name}, \[7].
+\@m\\{open\_file}, 6, \[7].
+\@m\\{printf}, 4, 5, 6, 7.
+\@m\\{prompt}, \[7].
+\@m\\{read\_mode}, \[6], 7.
+\@m\\{scanf}, 7.
+\@m\\{stdin}, 6.
+\@m\\{stdout}, 7.
+\@m\\{the\_file}, 4, \[5].
+\fin
+\@$\X5, 7:Functions\X$
+\U 2.
+\@$\X6:Open the files $ f_1$ and~$ f_2$, taking their names from the command
+line or from the terminal; in case of an error for which no recovery is
+possible, call $\\{exit}(\T{1})$\X$
+\U 2.
+\@$\X4:Report the outcome of the comparison\X$
+\U 2.
+\@$\X3:Search for first difference, leaving $ c_1\I c_2$ if and only if a
+difference was found\X$
+\U 2.
+\con

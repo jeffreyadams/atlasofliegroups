@@ -8,7 +8,7 @@ distr_files="COPYRIGHT LICENSE README CHANGES"
 distr_all_src="error interface io utilities structure gkmod test stand-alone"
 dirs_with_cweb="interpreter stand-alone io"  # directories containing *.w files
 rx_files="basic groups misc kl iterate_deform hermitian unitary translate \
- lietypes det sp4 my"
+ lietypes det sp4 my nilpotent sort"
 
 
 echo Building $distr

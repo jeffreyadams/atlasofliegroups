@@ -1,0 +1,2 @@
+ #!/bin/bash
+echo "No configuration needed for atlas, just run the command 'make'"
