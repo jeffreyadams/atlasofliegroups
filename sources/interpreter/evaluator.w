@@ -3882,7 +3882,9 @@ void install_function
   }
 }
 
-@ Our first built-in functions implement with integer arithmetic. Arithmetic
+@*1 Integer functions.
+%
+Our first built-in functions implement with integer arithmetic. Arithmetic
 operators are implemented by wrapper functions with two integer arguments.
 Since arguments top built-in functions are evaluated with |level| parameter
 |multi_value|, two separate value will be produced on the stack. Note that
@@ -3973,7 +3975,9 @@ void power_wrapper(expression_base::level l)
   push_value(new int_value(arithmetic::power(i->val,n)));
 }
 
-@ The operator `/' will not denote integer division, but rather formation of
+@*1 Rationals.
+%
+The operator `/' will not denote integer division, but rather formation of
 fractions (rational numbers). Since the |Rational| constructor
 requires an unsigned denominator, we must make sure the integer passed to it
 is positive. The opposite operation of separating a rational number into
@@ -4056,7 +4060,9 @@ void rat_power_wrapper(expression_base::level l)
     push_value(new rat_value(b.power(n)));
 }
 
-@ Relational operators are of the same flavour.
+@*1 Booleans.
+%
+Relational operators are of the same flavour.
 @< Local function definitions @>=
 
 void int_eq_wrapper(expression_base::level l)
@@ -4150,9 +4156,12 @@ void inequiv_wrapper(expression_base::level l)
     push_value(new bool_value(a!=b));
 }
 
-@ To have some operations on strings, we define a function for comparing and
+@*1 Strings.
+%
+The string type is intended mostly for preparing output to be printed, so few
+operations are defined for it. We define functions for comparing and
 for concatenating them, and one for converting integers to their string
-representation (of course this remains a very limited repertoire).
+representation.
 
 @< Local function definitions @>=
 
@@ -4162,10 +4171,10 @@ void string_eq_wrapper(expression_base::level l)
     push_value(new bool_value(i->val==j->val));
 }
 @)
-void string_neq_wrapper(expression_base::level l)
+void string_leq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i->val!=j->val));
+    push_value(new bool_value(i->val<=j->val));
 }
 @)
 void concatenate_wrapper(expression_base::level l)
@@ -4173,6 +4182,7 @@ void concatenate_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new string_value(a->val+b->val));
 }
+@)
 void int_format_wrapper(expression_base::level l)
 { shared_int n=get<int_value>();
   std::ostringstream o; o<<n->val;
@@ -4180,17 +4190,41 @@ void int_format_wrapper(expression_base::level l)
     push_value(new string_value(o.str()));
 }
 
-@ Here is a simple function that outputs any value, in the format used by the
+@ To give a rudimentary capability of analysing strings, we provide, in
+addition to the subscripting operation, a function to convert the first
+character of a string into a numeric value.
+
+@< Local function definitions @>=
+
+void string_to_ascii_wrapper(expression_base::level l)
+{ shared_string c=get<string_value>();
+  if (l!=expression_base::no_value)
+    push_value(new int_value
+      (c->val.size()==0 ? -1 : (unsigned char)c->val[0]));
+}
+@)
+void ascii_char_wrapper(expression_base::level l)
+{ int c=get<int_value>()->val;
+  if (c<' ' or c>'~')
+    throw std::runtime_error("Value "+str(c)+" out of range");
+  if (l!=expression_base::no_value)
+    push_value(new string_value(std::string(1,c)));
+}
+
+
+@*1 Printing.
+%
+Here is a simple function that outputs any value, in the format used by the
 interpreter itself. This function has an argument of unknown type; we just
 pass the popped value to the |operator<<|. The function returns its argument
 as result.
 
-This is the first place in this file where we produce user
-output to a file. In general, rather than writing directly to |std::cout|, we
-shall pass via a pointer whose |output_stream| value is maintained in the main
-program, so that redirecting output to a different stream can be easily
-implemented. Since this is a wrapper function there is no other way to convey
-the output stream to be used than via a dedicated global variable.
+This is the first place in this file where we produce user output to a file.
+In general, rather than writing directly to |std::cout|, we shall pass via a
+pointer whose |output_stream| value is maintained in the main program, so that
+redirecting output to a different stream can be easily implemented. Since this
+is a wrapper function there is no other way to convey the output stream to be
+used than via a dedicated global variable.
 
 @< Local function definitions @>=
 void print_wrapper(expression_base::level l)
@@ -4232,7 +4266,9 @@ void prints_wrapper(expression_base::level l)
     wrap_tuple(0); // don't forget to return a value if asked for
 }
 
-@ For the size-of operator we provide several specific bindings: for strings,
+@*1 Size-of and other generic operators.
+%
+For the size-of operator we provide several specific bindings: for strings,
 vectors and matrices.
 
 @< Local function definitions @>=
@@ -4345,7 +4381,9 @@ computation with an error message.
 void error_wrapper(expression_base::level l)
 {@; throw std::runtime_error(get<string_value>()->val); }
 
-@ We now define a few functions, to really exercise something, even if it is
+@*1 Vectors and matrices.
+%
+We now define a few functions, to really exercise something, even if it is
 modest, from the Atlas library. These wrapper function are not really to be
 considered part of the interpreter, but a first step to its interface with the
 Atlas library, which is developed in much more detail in the compilation
@@ -4728,7 +4766,12 @@ install_function(rat_greater_wrapper,">","(rat,rat->bool)");
 install_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
 install_function(equiv_wrapper,"=","(bool,bool->bool)");
 install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
+install_function(string_eq_wrapper,"=","(string,string->bool)");
+install_function(string_leq_wrapper,"<=","(string,string->bool)");
+install_function(concatenate_wrapper,"#","(string,string->string)");
 install_function(int_format_wrapper,"int_format","(int->string)");
+install_function(string_to_ascii_wrapper,"ascii","(string->int)");
+install_function(ascii_char_wrapper,"ascii","(int->string)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
@@ -4740,9 +4783,6 @@ install_function(null_vec_wrapper,"null","(int->vec)");
 install_function(null_mat_wrapper,"null","(int,int->mat)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
 install_function(error_wrapper,"error","(string->*)");
-install_function(string_eq_wrapper,"=","(string,string->bool)");
-install_function(string_neq_wrapper,"!=","(string,string->bool)");
-install_function(concatenate_wrapper,"#","(string,string->string)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"#","(vec,vec->vec)");

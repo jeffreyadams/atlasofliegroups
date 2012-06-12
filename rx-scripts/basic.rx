@@ -5,6 +5,11 @@ set #(ratvec v)= int: let (n,)=%v in #n    { length }
 set n_rows(mat m)= int: let (r,)=#m in r
 set n_columns(mat m)= int: let (,c)=#m in c
 
+set != ((string,string)p) = bool: not =p
+set > ((string,string)p) = bool: not <=p
+set >= (string x, string y) = bool: y<=x
+set < (string x, string y) = bool: y>x
+
 set *(string s, int n)= string: let r="" in (for i:n do r#:=s od; r)
 
 set *(int c,vec v) = vec: for e in v do c*e od
