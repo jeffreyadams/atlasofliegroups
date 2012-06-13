@@ -435,8 +435,8 @@ KGBElt Block_base::renumber_x(const std::vector<KGBElt>& new_x)
     d_x[z]=x;
   }
 
-  Permutation pi_inv =
-    permutations::standardize(d_x,x_lim); // assigns |z| to its new place
+  Permutation pi_inv = // assigns |z| to its new place
+    permutations::standardization(d_x,x_lim,&d_first_z_of_x);
 
   Permutation pi(pi_inv,-1); // assigns to new place its original one
 
@@ -462,18 +462,8 @@ KGBElt Block_base::renumber_x(const std::vector<KGBElt>& new_x)
   pi.pull_back(d_descent).swap(d_descent);
   pi.pull_back(d_length).swap(d_length);
 
-  BlockElt z=0; // reconstruct cumulation; could be exported from |standardize|
-  d_first_z_of_x.resize(x_lim+1);
-  for (KGBElt x=0; x<x_lim; ++x)
-  {
-    while (z<size() and d_x[z]<x)
-      ++z;
-    d_first_z_of_x[x]=z;
-  }
-  d_first_z_of_x[x_lim]=size();
-
   return x_lim;
-}
+} // |Block_base::renumber_x|
 
 Block::Block(const KGB& kgb,const KGB& dual_kgb)
   : Block_base(kgb,dual_kgb)

@@ -205,11 +205,11 @@ void Permutation::inv_conjugate(matrix::Matrix_base<T>& M) const
 // Standardization is a method of associating to a sequence of numbers |a| a
 // permutation |pi|, such that |a[i]<a[j]| implies |pi[i]<pi[j], and
 // |a[i]<a[j]| implies that |pi[i]<pi[j] is equivalent to |i<j|. Equivalently,
-// setteing |a=standardize(a).pull_back(a)| amounts to stable sorting of |a|.
-
+// setting |a=standardization(a).permute(a)| amounts to stable sorting of |a|.
+// Complexity is $O(n+bound)$ with $n=#a$; good (only) if $bound=O(n log(n))$.
 template <typename U>// unsigned type
-Permutation standardize(const std::vector<U>& a, size_t bound,
-			std::vector<unsigned int>* stops)
+Permutation standardization(const std::vector<U>& a, size_t bound,
+			    std::vector<unsigned int>* stops)
 {
   std::vector<unsigned int> count(bound,0);
   for (size_t i=a.size(); i-->0; ) // downwards might be faster
@@ -264,8 +264,8 @@ template void
 Permutation::inv_conjugate(matrix::Matrix_base<int>& M) const; // weyl
 
 template Permutation
-standardize(const std::vector<unsigned int>& a, size_t bound,
-	    std::vector<unsigned int>* stops);
+standardization(const std::vector<unsigned int>& a, size_t bound,
+		std::vector<unsigned int>* stops);
 
 } // |namespace permutations|
 

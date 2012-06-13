@@ -81,8 +81,8 @@ namespace permutations {
   void compose(Permutation&, const Permutation&, unsigned long n = 0);
 
   template<typename U>
-    Permutation standardize(const std::vector<U>& a, size_t bound,
-			    std::vector<unsigned int>* stops = NULL);
+    Permutation standardization(const std::vector<U>& a, size_t bound,
+				std::vector<unsigned int>* stops = NULL);
 
 }
 

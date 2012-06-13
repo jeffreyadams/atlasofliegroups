@@ -3,9 +3,9 @@
 <unitary.rx
 <nilpotent.rx
 <lietypes.rx
-<sort.rx {use sort_by_reducibility to put test items roughly in increasing order of difficulty}
 
-{ test list [(Param p,bool answer)], test p for unitarity and comparing result with answer
+{ test list [(Param p,bool answer)],
+  test p for unitarity and compare result with answer
   prints:
     parameter,
     computed unitarity,
@@ -14,10 +14,10 @@
     number of deformations
 }
 
-set test([(Param,bool)] parameters)=bool:
-( let (p,a)=parameters[0] in  let ()=prints("Testing ", #parameters,
+set test([(Param,bool)] parameters)= bool:
+( let (p,a)=parameters[0], rv=true
+  then ()=prints("Testing ", #parameters,
                  " parameters for ",real_form(p))
-  , rv=true
   in
   for (p,answer)@i in parameters do
     let (c_form,,num)=c_form_irreducible_long(p)
@@ -28,58 +28,63 @@ set test([(Param,bool)] parameters)=bool:
   ; prints(i, ", ",p, ", ", unitary, ", ", answer,
            ", ", #(reducibility_points(p)),", ", num)
   od
-; prints("Result: ",if rv then "Passed" else "Failed" fi);rv
+; prints("Result: ",if rv then "Passed" else "Failed" fi); rv
 )
 
-{special case of the preceding, test list of parameters for unitarity,
- all are supposed to be unitary }
-set test_unitary([Param] parameters)=bool:test(for p in parameters do (p,true) od)
+{ special case of the preceding, test list of parameters for unitarity,
+  all are supposed to be unitary }
+set test_unitary([Param] parameters)= bool:
+  test(for p in parameters do (p,true) od)
 
-{test list [(nu,answer)] for G: test  spherical_principal_series(G,nu) if unitarity matches answer}
+{ test list [(nu,answer)] for G:
+  test  spherical_principal_series(G,nu) if unitarity matches answer }
 set test_spherical(RealForm G,[(ratvec,bool)] parameters)=bool:
-  test(for (nu,answer) in parameters do (spherical_principal_series(G,nu),answer) od)
+  test(for (nu,answer) in parameters
+       do (spherical_principal_series(G,nu),answer)
+       od)
 
-{test list [nu] for G: each spherical_principal_series(G,nu) should be unitary}
+{ test list [nu] for G:
+  each spherical_principal_series(G,nu) should be unitary }
 set test_spherical_unitary(RealForm G,[ratvec] nus)= bool:
   test_spherical(G,for nu in nus do (nu,true) od)
 
-{for simple types, test spherical representations with nu=1/2 h(O^\vee)
-G should be simple, split, SL(n,R), Sp(2n,R), SO(n,n),SO(n+1,n) or simply connected
-see nilpotent_lambdas in nilpotent.rx}
-set test_spherical_unipotent(RealForm G)=bool:
-if nr_factors(Lie_type(root_datum(G)))>1 then error("Only defined for simple groups") 
-else test_spherical_unitary(G,nilpotent_lambdas(G)) fi
+{ for simple types, test spherical representations with nu=1/2 h(O^\vee)
+  G should be simple, split, SL(n,R), Sp(2n,R), SO(n,n),SO(n+1,n)
+  or simply connected
+  see nilpotent_lambdas in nilpotent.rx }
+set test_spherical_unipotent(RealForm G)= bool:
+  if #Lie_type(root_datum(G))>1 then error("Only defined for simple groups")
+  else test_spherical_unitary(G,nilpotent_lambdas(G))
+  fi
 
-{a series of tests if increasing length}
-{very fast tests}
+{ a series of tests if increasing length }
+{ very fast tests }
 set test1()=test_spherical_unipotent(Sp(4,R))
 set test2()=test_spherical_unipotent(split_form(G2))
 set test3()=test_spherical_unipotent(Sp(6,R))
 set G2ad=quasisplit_form(inner_class(adjoint("G2"),"e"))
 set test4()=
-let b1=trivial_block(G2ad) then
-answer=[true,true,true,true,true,false,false,false,false,true,false,false] then
-params=for i:#b1 do (b1[i],answer[i]) od in
-test(params)
+  let b1=trivial_block(G2ad)
+  , answer=[true,true,true,true,true,false,false,false,false,true,false,false]
+  in test (for i:#b1 do (b1[i],answer[i]) od)
 
-{slightly longer, up to a few minutes}
+{ slightly longer, up to a few minutes }
 set test5()=test_spherical_unipotent(SO(5,4))
-
 set test6()=
-let b1=trivial_block(Sp(4,R)) then
-answer=[true,true,true,true,true,true,true,false,false,false,true,false] then
-params=for i:#b1 do (b1[i],answer[i]) od in
-test(params)
+  let b1=trivial_block(Sp(4,R))
+  , answer=[true,true,true,true,true,true,true,false,false,false,true,false]
+  in test(for i:#b1 do (b1[i],answer[i]) od)
 
-{first 55 of 59 spherical unitary parameters for F4} 
-set test6()=bool:test_spherical_unitary(split_form (F4),for i:49 do F4_spherical_unitary[i] od)
+{ first 49 of 59 spherical unitary parameters for F4 }
+set test6()= bool:
+  test_spherical_unitary(split_form(F4),for i:49 do F4_spherical_unitary[i] od)
 
-{first 100 of spherical unitary for E7
-requires more memory}
-set test7()=bool:test_spherical_unitary(split_form (E7),for i:100 do E7_spherical_unitary[i] od)
+{ first 100 of spherical unitary for E7
+  requires more memory}
+set test7()= bool:
+  test_spherical_unitary(split_form(E7),for i:100 do E7_spherical_unitary[i] od)
 
 
-{trivial of F4 takes up to two hours}
+{ trivial of F4 takes up to two hours }
 set test8()=bool:
-let ()=prints("Testing trivial of F4") in
-is_unitary(trivial(split_form(F4)))
+  let ()=prints("Testing trivial of F4") in is_unitary(trivial(split_form(F4)))

@@ -20,7 +20,7 @@ operators +, -: (ratvec,ratvec->ratvec): additive rational vector arithmetic
 operators >, >=, <, <=, =, != : (int,int->bool): usual relational operators
 operators >, >=, <, <=, =, != : (rat,rat->bool): usual relational operators
 operators =, != : (bool,bool->bool): Boolean equivalence, inequivalence (xor)
-operators =, != : (string,string->bool): string equality and inequality
+operators =, <= : (string,string->bool): string equality and comparison
 operators =, != : (vec,vec->bool): vector equality and inequality
 operators =, != : (mat,mat->bool): matrix equality and inequality
 
@@ -43,6 +43,8 @@ error: (string->*) : abort computation, reporting a runtime error
 int_format: (int->string): representation of integer as digit string
 print: (*->*): print value, followed by newline; return same value
 prints: (*,...->): print values raw (no quotes or commas) followed by newline
+ascii: (string->int): ASCII code of initial character, or -1 if string empty
+ascii: (int->string): string of length 1 with given ASCII code (if safe value)
 
 null: (int->vec): null vector of given length
 null: (int,int->mat): null matrix with given number of rows and columns
@@ -106,7 +108,8 @@ Cartan_matrix_type: (mat->LieType,vec): type given by Cartan matrix.
 
 rank: (LieType->int) Rank of the weight lattice for this Lie type.
 semisimple_rank: (LieType->int) Rank of the root lattice of  this Lie type.
-nr_factors: (LieType->int) Number of (simple or T1) factors in this Lie type
+operator #: (LieType->int) Number of (simple or T1) factors in this Lie type
+operator %: (LieType->[LieType]) Expand into row of simple factors (or T1)
 
 Smith_Cartan: (LieType->mat,vec): compute generators of weights modulo roots.
   Find a Smith basis for the weight lattice relative to the sublattice of

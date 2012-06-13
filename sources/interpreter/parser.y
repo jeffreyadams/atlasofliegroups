@@ -70,8 +70,8 @@
 %destructor { destroy_formula($$); } formula_start
 %type  <expression_list> commalist commalist_opt commabarlist
 %destructor { destroy_exprlist($$); } commalist commalist_opt commabarlist
-%type <decls> declarations
-%destructor { destroy_letlist($$); } declarations
+%type <decls> declarations declaration
+%destructor { destroy_letlist($$); } declarations declaration
 
 %left OPERATOR
 
@@ -82,8 +82,8 @@
 %type <gen_ptr> type types types_opt
 %destructor { destroy_type($$); } type
 %destructor { destroy_type_list($$); } types types_opt
-%type <id_sp> id_specs
-%destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); } id_specs
+%type <id_sp> id_specs id_specs_opt
+%destructor { destroy_type_list($$.typel);destroy_pattern($$.patl); } id_specs id_specs_opt
 
 %{
   int yylex (YYSTYPE *, YYLTYPE *);
@@ -96,15 +96,10 @@ input:	'\n'			{ YYABORT } /* null input, skip evaluator */
 	| exp '\n'		{ *parsed_expr=$1; }
 	| tertiary ';' '\n'
 	  { *parsed_expr=make_sequence($1,wrap_tuple_display(NULL),1); }
-	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,0); YYABORT }
-	| SET IDENT '(' id_specs ')' '=' exp '\n'
+	| SET pattern '=' exp '\n' { global_set_identifier($2,$4,1); YYABORT }
+	| SET IDENT '(' id_specs_opt ')' '=' exp '\n'
 	  { struct id_pat id; id.kind=0x1; id.name=$2;
 	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),1);
-	    YYABORT
-	  }
-	| SET IDENT '(' ')' '=' exp '\n'
-	  { struct id_pat id; id.kind=0x1; id.name=$2;
-	    global_set_identifier(id,make_lambda_node(NULL,NULL,$6),0);
 	    YYABORT
 	  }
 	| FORGET IDENT '\n'	{ global_forget_identifier($2); YYABORT }
@@ -112,6 +107,10 @@ input:	'\n'			{ YYABORT } /* null input, skip evaluator */
 	  { struct id_pat id; id.kind=0x1; id.name=$2.id;
 	    global_set_identifier(id,make_lambda_node($4.patl,$4.typel,$7),1);
 	    YYABORT
+	  }
+	| SET operator '=' exp '\n'
+	  { struct id_pat id; id.kind=0x1; id.name=$2.id;
+	    global_set_identifier(id,$4,2); YYABORT
 	  }
 	| FORGET IDENT '@' type '\n'
 	  { global_forget_overload($2,$4); YYABORT  }
@@ -153,16 +152,14 @@ lettail : declarations IN exp { $$ = make_let_expr_node($1,$3); }
 	| declarations THEN lettail  { $$ = make_let_expr_node($1,$3); }
 ;
 
-declarations: declarations ',' pattern '=' exp
-	  { $$ = add_let_node($1,$3,$5); }
-	| pattern '=' exp { $$ = add_let_node(NULL,$1,$3); }
-        | IDENT '(' id_specs ')' '=' exp
+declarations: declarations ',' declaration { $$ = append_let_node($1,$3); }
+        | declaration
+;
+
+declaration: pattern '=' exp { $$ = make_let_node($1,$3); }
+        | IDENT '(' id_specs_opt ')' '=' exp
 	  { struct id_pat p; p.kind=0x1; p.name=$1;
-	    $$ = add_let_node(NULL,p,make_lambda_node($3.patl,$3.typel,$6));
-	  }
-	| IDENT '(' ')' '=' exp
-	  { struct id_pat p; p.kind=0x1; p.name=$1;
-	    $$ = add_let_node(NULL,p,make_lambda_node(NULL,NULL,$5));
+	    $$ = make_let_node(p,make_lambda_node($3.patl,$3.typel,$6));
 	  }
 ;
 
@@ -312,6 +309,10 @@ id_specs: type pattern
 	{ $$.typel=mk_type_list($1,$4.typel);
 	  $$.patl=make_pattern_node($4.patl,&$2);
 	}
+;
+
+id_specs_opt: id_specs
+	| /* empty */ { $$.typel=NULL; $$.patl=NULL; }
 ;
 
 type	: TYPE			  { $$=mk_prim_type($1); }

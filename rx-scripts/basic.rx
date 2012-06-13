@@ -5,6 +5,11 @@ set #(ratvec v)= int: let (n,)=%v in #n    { length }
 set n_rows(mat m)= int: let (r,)=#m in r
 set n_columns(mat m)= int: let (,c)=#m in c
 
+set != ((string,string)p) = bool: not =p
+set > ((string,string)p) = bool: not <=p
+set >= (string x, string y) = bool: y<=x
+set < (string x, string y) = bool: y>x
+
 set *(string s, int n)= string: let r="" in (for i:n do r#:=s od; r)
 
 set *(int c,vec v) = vec: for e in v do c*e od
@@ -14,18 +19,16 @@ set +(string s, int i)= string: s # int_format(i)
 set +(int i, string s)= string: int_format(i) # s
 set +(string s,string t) = string: s # t { alias for concatenation }
 
-{ a necessary global auxiliary, as realex cannot handle recursive operators }
-set matrix_power = (mat,int->mat):
-( let p = (mat m,int n): mat: m { dummy for recursion }
-  in p:= { assign recusive function body, which also gives matrix_power }
-  ( (mat m,int n): { we hall have n>0 }
-    if n=1 then m
-    else let (q,r)=n\%2 then mm=p(m,q) in mm*if r=0 then mm else mm*m fi
-    fi
-  )
-)
-{ we needed to make matrix_power global so we can use it while overloading ^ }
-set ^(mat m,int n) = mat:
+set ^ =
+  let matrix_power (mat m,int n)= mat: m { dummy for recursion }
+  then () = matrix_power := { assign recusive function body }
+    ( (mat m,int n): { we hall have n>0 }
+      if n=1 then m
+      else let (q,r)=n\%2 then mm=matrix_power(m,q) in
+	mm*if r=0 then mm else mm*m fi
+      fi
+    )
+  in { operator ^ = } (mat m,int n) mat:
   if n>0 then matrix_power(m,n) elif n=0 then id_mat(n_rows(m))
   else error("Negative matrix power "+n)
   fi

@@ -218,9 +218,7 @@ install_function(Lie_type_wrapper,"Lie_type","(string->LieType)");
 very easy to implement.
 
 @< Install coercions @>=
-{ static type_expr Lie_type_type(complex_lie_type_type);
-  coercion(str_type,Lie_type_type,"LT",Lie_type_coercion);
-}
+coercion(str_type,Lie_type_type,"LT",Lie_type_coercion);
 
 
 @*2 Auxiliary functions for Lie types.
@@ -295,7 +293,9 @@ void Lie_type_string_wrapper(expression_base::level l)
 Lie type, so that for instance the correct number of inner class letters can
 be prepared (for this purpose type $T_n$ counts as $n$ factors). Since we
 expanded any $T_n$ into factors $T_1$, we can simply call the |size| method of
-the stored |LieType| value.
+the stored |LieType| value. To allow per-factor treatment of Lie type, we also
+define a function that converts a Lie type into a row of Lie types, one for
+every simple factor or torus factor.
 
 @< Local function definitions @>=
 void nr_factors_wrapper(expression_base::level l)
@@ -303,7 +303,18 @@ void nr_factors_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new int_value(t->val.size()));
 }
-
+@)
+void Lie_factors_wrapper(expression_base::level l)
+{ shared_Lie_type t=get<Lie_type_value>();
+  if (l==expression_base::no_value)
+    return;
+  row_ptr result(new row_value(t->val.size()));
+  for (unsigned i=0; i<t->val.size(); ++i)
+  { std::vector<SimpleLieType> factor(1,t->val[i]);
+    result->val[i]=shared_Lie_type(new Lie_type_value(LieType(factor)));
+  }
+  push_value(result);
+}
 
 @ Again we install our wrapper functions.
 @< Install wrapper functions @>=
@@ -313,7 +324,8 @@ install_function(type_of_Cartan_matrix_wrapper
 install_function(Lie_rank_wrapper,"rank","(LieType->int)");
 install_function(semisimple_rank_wrapper,"semisimple_rank","(LieType->int)");
 install_function(Lie_type_string_wrapper,"str","(LieType->string)");
-install_function(nr_factors_wrapper,"nr_factors","(LieType->int)");
+install_function(nr_factors_wrapper,"#","(LieType->int)");
+install_function(Lie_factors_wrapper,"%","(LieType->[LieType])");
 
 @*2 Finding lattices for a given Lie type.
 %

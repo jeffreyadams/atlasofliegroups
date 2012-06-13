@@ -635,16 +635,17 @@ While we have seen expressions to build lists, and to make vectors and
 matrices out of them, we so far are not able to access their components once
 they are constructed. To that end we shall now introduce operations to index
 such values. We allow subscription of rows, but also of vectors, rational
-vectors and matrices. Since after type analysis we know which of the cases
-applies, we define several classes. These differ mostly by their |evaluate|
-method, so we first derive an intermediate class from |expression_base|, and
-derive the others from it. This class also serves to host an enumeration type
-that will serve later.
+vectors, matrices, and strings. Since after type analysis we know which of the
+cases applies, we define several classes. These differ mostly by their
+|evaluate| method, so we first derive an intermediate class from
+|expression_base|, and derive the others from it. This class also serves to
+host an enumeration type that will serve later.
 
 @< Type definitions @>=
 struct subscr_base : public expression_base
 { enum sub_type @+
-  { row_entry, vector_entry, ratvec_entry, matrix_entry, matrix_column };
+  { row_entry, vector_entry, ratvec_entry, string_char
+  , matrix_entry, matrix_column };
   expression array, index;
 @)
   subscr_base(expression_ptr a, expression_ptr i)
@@ -674,6 +675,12 @@ struct vector_subscription : public subscr_base
 @)
 struct ratvec_subscription : public subscr_base
 { ratvec_subscription(expression_ptr a, expression_ptr i)
+  : subscr_base(a,i) @+{}
+  virtual void evaluate(level l) const;
+};
+@)
+struct string_subscription : public subscr_base
+{ string_subscription(expression_ptr a, expression_ptr i)
   : subscr_base(a,i) @+{}
   virtual void evaluate(level l) const;
 };
@@ -730,6 +737,10 @@ bool subscr_base::indexable
   @/{@; kind=ratvec_entry;
         return subscr.specialise(rat_type);
   }
+  if (aggr==str_type and index==int_type)
+  @/{@; kind=string_char;
+        return subscr.specialise(str_type);
+  }
   if (aggr!=mat_type)
     return false;
   if (index==int_int_type)
@@ -775,6 +786,9 @@ case subscription:
     break;
     case subscr_base::ratvec_entry:
       subscr.reset(new ratvec_subscription(array,index));
+    break;
+    case subscr_base::string_char:
+      subscr.reset(new string_subscription(array,index));
     break;
     case subscr_base::matrix_entry:
       subscr.reset(new matrix_subscription(array,index));
@@ -835,6 +849,18 @@ void ratvec_subscription::evaluate(level l) const
        (v->val.numerator()[i->val],v->val.denominator())));
 }
 @)
+void string_subscription::evaluate(level l) const
+{ shared_int i=((index->eval(),get<int_value>()));
+  shared_string s=((array->eval(),get<string_value>()));
+  if (static_cast<unsigned int>(i->val)>=s->val.size())
+    throw std::runtime_error(range_mess(i->val,s->val.size(),this));
+  if (l!=no_value)
+    push_value(new string_value(s->val.substr(i->val,1)));
+}
+
+@ And here are the cases for matrix indexing.
+
+@< Function definitions @>=
 void matrix_subscription::evaluate(level l) const
 { index->multi_eval(); @+
   shared_int j=get<int_value>();
@@ -2703,6 +2729,17 @@ switch (kind)
     }
   }
   break;
+  case subscr_base::string_char:
+  { shared_string in_val = get<string_value>();
+    size_t n=in_val->val.size();
+    if (l!=no_value)
+      result = row_ptr(new row_value(n));
+    for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
+    { loop_var->val[1].reset(new string_value(in_val->val.substr(i,1)));
+      @< Set |loop_var->val[0]| to |i|,... @>
+    }
+  }
+  break;
   case subscr_base::matrix_column:
   { shared_matrix in_val = get<matrix_value>();
     size_t n=in_val->val.numColumns();
@@ -3198,7 +3235,9 @@ assignments, starts by the common work of evaluating the index and the value
 to be assigned, and of making sure the aggregate variable is made to point to
 a unique copy of its current value, which copy can then be modified in place.
 For actually changing the aggregate, we must distinguish cases according to
-the kind o component assignment at hand.
+the kind of component assignment at hand. Assignments to components of
+rational vectors and of strings will be forbidden, see module
+@#comp_ass_type_check@>.
 
 @< Function def... @>=
 void component_assignment::assign
@@ -3219,7 +3258,9 @@ void component_assignment::assign
     case subscr_base::matrix_column:
   @/@< Replace columns at |index| in matrix |loc| by value on stack @>
   @+break;
-  case subscr_base::ratvec_entry: {} // case is eliminated in type analysis
+  case subscr_base::ratvec_entry:
+  case subscr_base::string_char: {}
+// cases are eliminated in type analysis
   }
 }
 
@@ -3325,6 +3366,7 @@ void local_component_assignment::evaluate(level l) const
 @ Type-checking and converting component assignment statements follows the
 same lines as that of ordinary assignment statements, but must also
 distinguish different aggregate types.
+@:comp_ass_type_check@>
 
 @< Other cases for type-checking and converting... @>=
 case comp_ass_stat:
@@ -3345,7 +3387,7 @@ case comp_ass_stat:
   expression_ptr i(convert_expr(index,ind_t));
   subscr_base::sub_type kind;
   if (not subscr_base::indexable(*aggr_t,ind_t,comp_t,kind)
-      or kind==subscr_base::ratvec_entry)
+      or kind==subscr_base::ratvec_entry or kind==subscr_base::string_char)
   { std::ostringstream o;
     o << "Cannot subscript " << *aggr_t << @| " value with index of type "
       << ind_t << " in assignment";
@@ -3840,7 +3882,9 @@ void install_function
   }
 }
 
-@ Our first built-in functions implement with integer arithmetic. Arithmetic
+@*1 Integer functions.
+%
+Our first built-in functions implement with integer arithmetic. Arithmetic
 operators are implemented by wrapper functions with two integer arguments.
 Since arguments top built-in functions are evaluated with |level| parameter
 |multi_value|, two separate value will be produced on the stack. Note that
@@ -3931,7 +3975,9 @@ void power_wrapper(expression_base::level l)
   push_value(new int_value(arithmetic::power(i->val,n)));
 }
 
-@ The operator `/' will not denote integer division, but rather formation of
+@*1 Rationals.
+%
+The operator `/' will not denote integer division, but rather formation of
 fractions (rational numbers). Since the |Rational| constructor
 requires an unsigned denominator, we must make sure the integer passed to it
 is positive. The opposite operation of separating a rational number into
@@ -4014,7 +4060,9 @@ void rat_power_wrapper(expression_base::level l)
     push_value(new rat_value(b.power(n)));
 }
 
-@ Relational operators are of the same flavour.
+@*1 Booleans.
+%
+Relational operators are of the same flavour.
 @< Local function definitions @>=
 
 void int_eq_wrapper(expression_base::level l)
@@ -4108,9 +4156,12 @@ void inequiv_wrapper(expression_base::level l)
     push_value(new bool_value(a!=b));
 }
 
-@ To have some operations on strings, we define a function for comparing and
+@*1 Strings.
+%
+The string type is intended mostly for preparing output to be printed, so few
+operations are defined for it. We define functions for comparing and
 for concatenating them, and one for converting integers to their string
-representation (of course this remains a very limited repertoire).
+representation.
 
 @< Local function definitions @>=
 
@@ -4120,10 +4171,10 @@ void string_eq_wrapper(expression_base::level l)
     push_value(new bool_value(i->val==j->val));
 }
 @)
-void string_neq_wrapper(expression_base::level l)
+void string_leq_wrapper(expression_base::level l)
 { shared_string j=get<string_value>(); shared_string i=get<string_value>();
   if (l!=expression_base::no_value)
-    push_value(new bool_value(i->val!=j->val));
+    push_value(new bool_value(i->val<=j->val));
 }
 @)
 void concatenate_wrapper(expression_base::level l)
@@ -4131,6 +4182,7 @@ void concatenate_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new string_value(a->val+b->val));
 }
+@)
 void int_format_wrapper(expression_base::level l)
 { shared_int n=get<int_value>();
   std::ostringstream o; o<<n->val;
@@ -4138,17 +4190,41 @@ void int_format_wrapper(expression_base::level l)
     push_value(new string_value(o.str()));
 }
 
-@ Here is a simple function that outputs any value, in the format used by the
+@ To give a rudimentary capability of analysing strings, we provide, in
+addition to the subscripting operation, a function to convert the first
+character of a string into a numeric value.
+
+@< Local function definitions @>=
+
+void string_to_ascii_wrapper(expression_base::level l)
+{ shared_string c=get<string_value>();
+  if (l!=expression_base::no_value)
+    push_value(new int_value
+      (c->val.size()==0 ? -1 : (unsigned char)c->val[0]));
+}
+@)
+void ascii_char_wrapper(expression_base::level l)
+{ int c=get<int_value>()->val;
+  if (c<' ' or c>'~')
+    throw std::runtime_error("Value "+str(c)+" out of range");
+  if (l!=expression_base::no_value)
+    push_value(new string_value(std::string(1,c)));
+}
+
+
+@*1 Printing.
+%
+Here is a simple function that outputs any value, in the format used by the
 interpreter itself. This function has an argument of unknown type; we just
 pass the popped value to the |operator<<|. The function returns its argument
 as result.
 
-This is the first place in this file where we produce user
-output to a file. In general, rather than writing directly to |std::cout|, we
-shall pass via a pointer whose |output_stream| value is maintained in the main
-program, so that redirecting output to a different stream can be easily
-implemented. Since this is a wrapper function there is no other way to convey
-the output stream to be used than via a dedicated global variable.
+This is the first place in this file where we produce user output to a file.
+In general, rather than writing directly to |std::cout|, we shall pass via a
+pointer whose |output_stream| value is maintained in the main program, so that
+redirecting output to a different stream can be easily implemented. Since this
+is a wrapper function there is no other way to convey the output stream to be
+used than via a dedicated global variable.
 
 @< Local function definitions @>=
 void print_wrapper(expression_base::level l)
@@ -4190,7 +4266,9 @@ void prints_wrapper(expression_base::level l)
     wrap_tuple(0); // don't forget to return a value if asked for
 }
 
-@ For the size-of operator we provide several specific bindings: for strings,
+@*1 Size-of and other generic operators.
+%
+For the size-of operator we provide several specific bindings: for strings,
 vectors and matrices.
 
 @< Local function definitions @>=
@@ -4303,7 +4381,9 @@ computation with an error message.
 void error_wrapper(expression_base::level l)
 {@; throw std::runtime_error(get<string_value>()->val); }
 
-@ We now define a few functions, to really exercise something, even if it is
+@*1 Vectors and matrices.
+%
+We now define a few functions, to really exercise something, even if it is
 modest, from the Atlas library. These wrapper function are not really to be
 considered part of the interpreter, but a first step to its interface with the
 Atlas library, which is developed in much more detail in the compilation
@@ -4686,7 +4766,12 @@ install_function(rat_greater_wrapper,">","(rat,rat->bool)");
 install_function(rat_greatereq_wrapper,">=","(rat,rat->bool)");
 install_function(equiv_wrapper,"=","(bool,bool->bool)");
 install_function(inequiv_wrapper,"!=","(bool,bool->bool)");
+install_function(string_eq_wrapper,"=","(string,string->bool)");
+install_function(string_leq_wrapper,"<=","(string,string->bool)");
+install_function(concatenate_wrapper,"#","(string,string->string)");
 install_function(int_format_wrapper,"int_format","(int->string)");
+install_function(string_to_ascii_wrapper,"ascii","(string->int)");
+install_function(ascii_char_wrapper,"ascii","(int->string)");
 install_function(sizeof_string_wrapper,"#","(string->int)");
 install_function(sizeof_vector_wrapper,"#","(vec->int)");
 install_function(matrix_bounds_wrapper,"#","(mat->int,int)");
@@ -4698,9 +4783,6 @@ install_function(null_vec_wrapper,"null","(int->vec)");
 install_function(null_mat_wrapper,"null","(int,int->mat)");
 install_function(id_mat_wrapper,"id_mat","(int->mat)");
 install_function(error_wrapper,"error","(string->*)");
-install_function(string_eq_wrapper,"=","(string,string->bool)");
-install_function(string_neq_wrapper,"!=","(string,string->bool)");
-install_function(concatenate_wrapper,"#","(string,string->string)");
 install_function(vector_suffix_wrapper,"#","(vec,int->vec)");
 install_function(vector_prefix_wrapper,"#","(int,vec->vec)");
 install_function(join_vectors_wrapper,"#","(vec,vec->vec)");
@@ -4738,8 +4820,13 @@ directly by the parser, and therefore it has \Cee-linkage. We define it here
 since it uses the services of the evaluator.
 
 We allow the same possibilities in a global identifier definition as in a
-local one, so we take an |id_pat| as argument. In addition we handle
-definitions of overloaded function instances if |overload| is true (nonzero).
+local one, so we take an |id_pat| as argument. We also handle definitions of
+overloaded function instances in case the parameter |overload| is nonzero. As
+a change from our initial implementation, that parameter set by the parser
+allows overloading but does not force it. Allowing the parameter to be cleared
+here therefore actually serves to allow more cases to result in addition to
+the overload table, since the parser will now set |overload>0| more freely.
+
 We follow the logic for type-analysis of a let-expression, and that of binding
 identifiers in a user-defined function for evaluation. However we use
 |analyse_types| (which reports errors) rather than calling |convert_expr|
@@ -4759,6 +4846,8 @@ void global_set_identifier(id_pat pat, expr rhs, int overload)
     if (not pattern_type(pat)->specialise(*t))
       @< Report that type of |rhs| does not have required structure,
          and |throw| @>
+    if (overload!=0)
+      @< Set |overload=0| if type |t| is not an appropriate function type @>
 @)
     phase=1;
     bindings b(n_id);
@@ -4783,6 +4872,32 @@ void global_set_identifier(id_pat pat, expr rhs, int overload)
   @< Catch block for errors thrown during a global identifier definition @>
 }
 
+@ When |overload>0|, choosing whether the definition enters into the overload
+table or into the global identifier table is determined by the type of the
+defining expression.
+
+In fact it is now natural to also allow operators to be defined by an
+arbitrary expression rather than necessarily by a lambda-expression. However,
+this creates the possibility of adding an operator to the global identifier
+table, which is pointless (syntax does not allow the value to be retrieved) so
+this case needs some attention: the parser will pass |overload==2| in this
+case, signalling that it must not be cleared to~$0$, but rather result in an
+error message if that should be attempted.
+
+@< Set |overload=0| if type |t| is not an appropriate function type @>=
+{ bool clear = t->kind!=function_type;
+    // cannot overload with a non-function value
+  if (not clear)
+  { type_expr& arg=t->func->arg_type;
+  @/clear = arg.kind==tuple_type and arg.tuple==NULL;
+     // nor parameterless functions
+  }
+  if (clear and overload==2) // inappropriate function type with operator
+    throw std::runtime_error("Cannot set operator to non-function value");
+  if (clear)
+    overload=0;
+}
+
 @ For identifier definitions we print their names and types (paying attention
 to the very common singular case), before calling |global_id_table->add|.
 @< Add instance of identifiers in |b| with values in |v| to
@@ -4791,8 +4906,10 @@ to the very common singular case), before calling |global_id_table->add|.
     std::cout << "Identifier";
   for (size_t i=0; i<n_id; ++i)
   { std::cout << (i==0 ? n_id==1 ? " " : "s " : ", ") @|
-              << main_hash_table->name_of(b[i].first) << ": "
-              << *b[i].second;
+              << main_hash_table->name_of(b[i].first);
+    if (global_id_table->type_of(b[i].first)!=NULL)
+      std::cout << " (overriding previous)";
+    std::cout << ": " << *b[i].second;
     global_id_table->add(b[i].first,v[i],copy(*b[i].second));
   }
 }

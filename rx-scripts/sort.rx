@@ -1,54 +1,73 @@
 <misc {for spherical_principal_series}
 
-set sort (vec v)=vec:(
-for j:#v-1 from 1 do 
- let R=v[j] then
- i=j-1 then
- done=false in
- while not done do 
-  if R>=v[i] then 
-   v[i+1]:=R;done:=true
-  else
-   v[i+1]:=v[i];i:=i-1;
-    if i=-1 then v[i+1]:=R;done:=true fi
-  fi od od;v)
-
-set reverse (vec v)=vec:for i:#v do v[#v-i-1]  od
-set reverse_sort (vec v)=vec:reverse(sort(v))
-
-{sort list of pairs [(Param,bool)] by #reducibility_points of Param}
-set sort_by_reducibility_pairs([(Param,bool)] P)=[(Param,bool)]:
-(for j:#P-1 from 1 do 
- let (R,answer)=P[j] in 
- let i=j-1 in 
- let done=false in
- while not done do 
-  let (Q,)=P[i] in 
-  if #(reducibility_points(R))>=#(reducibility_points(Q)) then 
-   P[i+1]:=(R,answer);done:=true
-  else
-   P[i+1]:=P[i];i:=i-1;
-    if i=-1 then P[i+1]:=(R,answer);done:=true fi
+set merge(vec a, vec b) =
+  if #a=0 then b
+  else let (i,j)=(0,0)
+  in b#:=a[#a-1] { sentinel; when this becomes b[j] assures a is then emptied }
+  ; while i<#a or j+1<#b
+    do if i<#a and a[i]<=b[j] then a[i] next i+:=1 else b[j] next j+:=1 fi
+    od
   fi
- od 
-od;P)
 
-{sort list [Param] by #reducibility_points of Param}
-set sort_by_reducibility ([Param] P)=[Param]:
-(for j:#P-1 from 1 do 
- let R=P[j] in 
- let i=j-1 in 
- let done=false in
- while not done do 
-  if #(reducibility_points(R))>=#(reducibility_points(P[i])) then 
-   P[i+1]:=R;done:=true
-  else
-   P[i+1]:=P[i];i:=i-1;
-    if i=-1 then P[i+1]:=R;done:=true fi
-  fi
- od 
-od;P)
+set sort= { merge sort }
+  let ms (vec v, int l) = v
+  then ()= ms := ((vec v, int l):
+    if l<3 then if l<2 or v[0]<=v[1] then v else [v[1],v[0]] fi
+    else let h=l\2 then hh=l-h
+         then a=ms(for i:h do v[i] od,h), b=ms(for i:hh from h do v[i] od,hh)
+         in merge(a,b)
+    fi)
+  in (vec v) vec: ms(v,#v)
 
-set sort_spherical_by_reducibility (RealForm G,[ratvec] nus)=
-let sorted_spherical=sort_by_reducibility(for nu in nus do spherical_principal_series(G,nu) od) in
-for p in sorted_spherical do nu(p) od
+set reverse (vec v)= vec: for i:#v downto 0 do v[i] od
+set reverse_sort (vec v)= vec: reverse(sort(v))
+
+{ the following helps stable-sorting of anything according to a statistic }
+
+set inv_standardisation = { stable-sorting permutation of a list of integers }
+  let merge([(int,int)] a, [(int,int)] b) = { merge based on first component }
+    if #a=0 then b
+    else let (i,j)=(0,0)
+    in b#:=a[#a-1] { sentinel }
+    ; while i<#a or j+1<#b
+      do
+        if i=#a then b[j] next j+:=1
+        else let (x,):ai=a[i], (y,):bj=b[j] in
+          if x<=y then ai next i+:=1 else bj next j+:=1 fi
+	fi
+      od
+    fi
+  , ms ([(int,int)] v, int l) = v
+  then ()= ms:=                    { merge sort based on first component }
+  ( ([(int,int)] v, int l):
+    if l>=3
+    then let h=l\2 then hh=l-h in
+      merge(ms(for i:h do v[i] od,h),ms(for i:hh from h do v[i] od,hh))
+    elif l<2 then v
+    else { l=2 }
+      let (x,):v0=v[0], (y,):v1=v[1] in if x<=y then v else [v1,v0] fi
+    fi)
+  in { inv_standardisation = } (vec v) vec:
+    for (,org_i) in ms(for a@i in v do (a,i) od,#v) { attach index to entries }
+    do org_i od { afterward just recover the permuted original indices }
+
+set sort_by ((Param->int) f) = ([Param] v) [Param]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+set sort_by (((Param,bool)->int) f) = ([(Param,bool)] v) [(Param,bool)]:
+  for index in inv_standardisation(for x in v do f(x) od) do v[index] od
+
+{ and so forth for any type; this really should be second-order typed }
+
+{ sort list of pairs [(Param,bool)] by #reducibility_points of Param }
+set sort_by_reducibility_pairs = ([(Param,bool)]->[(Param,bool)]):
+  sort_by((Param p,bool x) int: #reducibility_points(p) )
+
+{ sort list [Param] by #reducibility_points of Param }
+set sort_by_reducibility = ([Param]->[Param]):
+  sort_by((Param p) int: #reducibility_points(p) )
+
+set sort_spherical_by_reducibility (RealForm G,[ratvec] nus) = [ratvec]:
+  let sorted_spherical=
+    sort_by_reducibility(for nu in nus do spherical_principal_series(G,nu) od)
+  in for p in sorted_spherical do nu(p) od { recover nu from parameters }
