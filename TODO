@@ -22,14 +22,11 @@
  - Mention file and line in non-syntax errors
  - Improve output of expressions
  - Make last computed value(s) accessible
- - Add functions for string decomposition (maybe some composition as well)
- - Add function for Lie type decomposition
  - Add more functionality for KGBElt values
  - Improve the way KL_block gives access to it values, add variants
    Inspect how KL_block is actually used, and provide more lightweight values
 
  - Allow recursion through a more intuitive syntax
- - Allow overloading by a dynamically computed function value
  - See if functions without argument can still live in overload table
    Currently they live in the table for ordinary variables, which can produce
    some subtle asymmetry in their handling (notably their treatment changes
