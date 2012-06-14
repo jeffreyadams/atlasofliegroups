@@ -21,7 +21,7 @@ CTANGLEFLAGS := -p
 CWEBXMACROS := $(shell kpsewhich cwebxmac.tex)
 
 # these are used for C++ compilation and linking
-CXXFLAGS = -Wall -Wno-parentheses -g $(INCLUDE_FLAGS)
+CXXFLAGS = -Wall -Wno-parentheses -O3 $(INCLUDE_FLAGS) 
 
 # our beloved C++ compiler
 CXX = g++
