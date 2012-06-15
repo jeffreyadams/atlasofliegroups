@@ -8,6 +8,7 @@
 
 */
 
+#include <cstdio>   // not obviously used, but appears helpful for Windows
 #include <iostream>
 #include <stdexcept>
 #include <cstdlib> // for |exit|

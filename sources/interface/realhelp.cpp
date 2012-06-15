@@ -9,6 +9,7 @@
 
 #include "realhelp.h"
 
+#include <cstdio>   // not obviously used, but appears helpful for Windows
 #include <iostream>
 
 #include "io.h"

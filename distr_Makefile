@@ -26,8 +26,7 @@ INSTALLDIR := $(shell pwd)
 BINDIR := $(INSTALLDIR)/../bin
 
 
-#Don't edit below this line, with the possible exception
-#of rlincludes
+#Don't edit below this line, with the possible exception of rl_libs
 ###############################
 
 messagedir := $(INSTALLDIR)/messages/
@@ -90,13 +89,13 @@ endif
 
 ifeq ($(readline),false)
     cflags += -DNREADLINE
-    rlincludes =
+    rl_libs =
 else
-    rlincludes ?= -lreadline -lcurses
+    rl_libs ?= -lreadline -lcurses
 
-# to override this, either define and export a shell variable 'rlincludes'
-# or set it when calling make. For instance for readline on the Mac do:
-# $ make rlincludes="-lreadline.5 -lcurses"
+# to override this, either define and export a shell variable 'rl_libs'
+# or set LDFLAGS when calling make. For instance for readline on the Mac do:
+# $ make LDFLAGS="-lreadline.5 -lcurses"
 endif
 
 ifeq ($(verbose),true)
@@ -111,7 +110,7 @@ ifdef compiler
     CXX = $(compiler)
 endif
 
-LDFLAGS := $(rlincludes)
+LDFLAGS := $(rl_libs)
 
 
 
@@ -137,13 +136,13 @@ sources/interface/emptymode.o: $(atlas_sources)
 # also is different
 atlas: $(atlas_objects)
 ifeq ($(profile),true)
-	$(CXX) $(LDFLAGS) -pg -o $@ $^
+	$(CXX) -pg -o atlas $(atlas_objects) $(LDFLAGS)
 else
-	$(CXX) $(LDFLAGS) -o $@ $^
+	$(CXX) -o atlas $(atlas_objects) $(LDFLAGS)
 endif
 
 realex: $(realex_objects)
-	$(CXX) $(rlincludes) $(realex_includes) $(realex_objects) -o realex
+	$(CXX) -o realex $(realex_includes) $(realex_objects) $(LDFLAGS)
 
 # The following rules are static pattern rules: they are like implicit rules,
 # but only apply to the files listed in their targets

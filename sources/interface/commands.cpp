@@ -9,6 +9,7 @@
 
 #include "commands.h"
 
+#include <cstdio>   // not obviously used, but appears helpful for Windows
 #include <cstring>
 #include <iostream>
 #include <sstream>

@@ -26,12 +26,12 @@ INSTALLDIR := $(shell pwd)
 BINDIR := $(INSTALLDIR)/../bin
 
 
-#Don't edit below this line, with the possible exception
-#of rlincludes
+#Don't edit below this line, with the possible exception of rl_libs
 ###############################
 
 version = $(shell perl getversion.pl)
 messagedir := $(INSTALLDIR)/messages/
+cweb_dir = cweb-x3.51
 
 # atlas_dirs contains subdirectories of 'atlas/sources' that need compilation
 # realex_dirs are where the object files for realex are situated
@@ -100,13 +100,13 @@ endif
 
 ifeq ($(readline),false)
     cflags += -DNREADLINE
-    rlincludes =
+    rl_libs =
 else
-    rlincludes ?= -lreadline -lcurses
+    rl_libs ?= -lreadline -lcurses
 
-# to override this, either define and export a shell variable 'rlincludes'
-# or set it when calling make. For instance for readline on the Mac do:
-# $ make rlincludes="-lreadline.5 -lcurses"
+# to override this, either define and export a shell variable 'rl_libs'
+# or set LDFLAGS when calling make. For instance for readline on the Mac do:
+# $ make LDFLAGS="-lreadline.5 -lcurses"
 endif
 
 ifeq ($(verbose),true)
@@ -121,7 +121,7 @@ ifdef compiler
     CXX = $(compiler)
 endif
 
-LDFLAGS := $(rlincludes)
+LDFLAGS := $(rl_libs)
 
 
 
@@ -153,8 +153,8 @@ else
 endif
 
 
-realex: cwebx $(realex_objects)
-	$(CXX) $(rlincludes) $(realex_includes) $(realex_objects) -o realex
+realex: $(cweb_dir)/ctanglex $(realex_objects)
+	$(CXX) -o realex $(realex_includes) $(realex_objects) $(LDFLAGS)
 
 # The following rules are static pattern rules: they are like implicit rules,
 # but only apply to the files listed in their targets
@@ -232,5 +232,6 @@ clean: mostlyclean
 cleanall: clean
 	rm -f $(dependencies)
 
-cwebx: 
-	cd cweb-x3.51 && $(MAKE)
+$(cweb_dir)/ctanglex: \
+  $(cweb_dir)/common.h $(cweb_dir)/ctangle.c $(cweb_dir)/ctangle.c
+	cd $(cweb_dir) && $(MAKE) ctanglex

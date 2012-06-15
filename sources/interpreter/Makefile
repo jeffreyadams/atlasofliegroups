@@ -1,3 +1,10 @@
+# This Makefile serves only to make realex + source documentation by running
+# 'make' inside this directory; if you are just interested in compiling
+# realex, use run 'make realex' in the main atlas directory instead. In
+# particular if you want optimization, use that (where optimization is on by
+# default) rahter than this Makefile. As this file is used for development
+# work only, it unconditionally sets debugging on and optimization off.
+
 # where to look for the atlas sources (in the parent directory)
 atlas_sources := ..
 
@@ -20,11 +27,14 @@ CTANGLEFLAGS := -p
 
 CWEBXMACROS := $(shell kpsewhich cwebxmac.tex)
 
-# these are used for C++ compilation and linking
-CXXFLAGS = -Wall -Wno-parentheses -O3 $(INCLUDE_FLAGS) 
+# these are used for C++ compilation and linking (debugging, no optimization)
+CXXFLAGS = -Wall -Wno-parentheses -g $(INCLUDE_FLAGS)
 
 # our beloved C++ compiler
 CXX = g++
+
+# parallel execution beats the old_targets trickery below, turn it off
+MAKEFLAGS = -j1
 
 # only the atlas object files listed below are used
 atlas_objects := $(atlas_sources)/structure/prerootdata.o \
@@ -98,22 +108,25 @@ dvifiles := $(cwebx_sources:%.w=%.dvi)
 
 objects := $(c++objects) parser.tab.o $(atlas_objects)
 
-# You may define an environment variable 'rlincludes' to override the
-# definition below. For me (on Debian or Ubuntu Linux) just "-lreadline"
-# suffices, but on some systems adding "-lcurses" seems to be necessary.
-# The author (Marc van Leeuwen) offers EUR 40.96 to the first person who can
-# provide a decent reason why the "-lcurses" should be needed here
+# You may define an environment variable 'rl_libs' to override the definition
+# below. For me (on Debian or Ubuntu Linux) just "-lreadline" suffices, but on
+# some systems adding "-lcurses" seems to be necessary. The author (Marc van
+# Leeuwen) offers EUR 40.96 to the first person who can provide a decent
+# reason why the "-lcurses" should be needed here
 
 ifeq ($(readline),false)
     CXXFLAGS += -DNREADLINE
-    rlincludes =
+    rl_libs =
 else
-    rlincludes ?= -lreadline -lcurses
+    rl_libs ?= -lreadline -lcurses
 
-# to override this, either define and export a shell variable 'rlincludes'
-# or set it when calling make. For instance for readline on the Mac do:
-# $ make rlincludes="-lreadline.5 -lcurses"
+# to override this, either define and export a shell variable 'rl_libs'
+# or set LDFLAGS when calling make. For instance for readline on the Mac do:
+# $ make LDFLAGS="-lreadline.5 -lcurses"
 endif
+
+LDFLAGS := $(rl_libs)
+
 
 # RULES follow now
 
@@ -174,7 +187,7 @@ dvifiles: $(dvifiles)
 # Our executable program 'realex' is in atlas root directory. Then name realex
 # stands for Rewritten Expression-based Atlas of Lie groups EXecutable
 ../../realex: $(objects)
-	$(CXX) $(rlincludes) -o $@ $^
+	$(CXX) -o $@ $^ $(LDFLAGS)
 ifeq (,$(findstring t,$(MAKEFLAGS))) # unless a flag -t was given
 	$(MAKE) -t $@ # now that build succeeds mark everything as up-to-date
 endif
