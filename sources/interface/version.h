@@ -15,7 +15,7 @@ namespace atlas {
 namespace version {
 
 const char* const NAME = "the Atlas of Reductive Lie Groups Software Package";
-const char* const VERSION = "0.5.1.1"; // last advanced June 14, 2012
+const char* const VERSION = "0.5.1.2"; // last advanced June 15, 2012
 const char* const COMPILEDATE = __DATE__ " at "__TIME__;
 
 }
