@@ -9,6 +9,8 @@
 
 #include "realmode.h"
 
+#include <cstdio>   // not obviously used, but appears helpful for Windows
+
 #include "cartan_io.h"
 #include "complexredgp.h"
 #include "complexredgp_io.h"
