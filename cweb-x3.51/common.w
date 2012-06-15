@@ -211,7 +211,7 @@ to distinguish these inclusions; this is achieved by maintaining a boolean
 variable |including_header_file|.
 
 @< Declarations...@>=
-#define max_file_name_length 60
+#define max_file_name_length 256
 extern struct f
 { FILE *file; char name[max_file_name_length]; sixteen_bits line; }
 file[], change;
