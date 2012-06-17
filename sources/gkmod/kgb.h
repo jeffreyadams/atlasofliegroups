@@ -216,7 +216,7 @@ struct KGB_elt_entry
 
 A |GlobalFiberData| object associates to each twisted involution a reduced
 description of its -1 eigenspace, which allows a quick test for equivalence of
-|GlobalTitsElement| values at this twised involution. The object also records
+|GlobalTitsElement| values at this twisted involution. The object also records
 the halfsum of the positive imaginary coroots, and the Cartan class.
 
 Originally conceived for global use within an inner class (the constructor

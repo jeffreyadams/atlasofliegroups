@@ -1274,7 +1274,10 @@ void partial_block_f()
 	<< (s<sub.rank()-1 ? "," : ".\n");
   }
 
-  blocks::non_integral_block block(GR,sub,x,lambda,gamma);
+  Rep_context rc(GR);
+  StandardRepr sr = rc.sr(x,lambda_rho,gamma);
+
+  blocks::non_integral_block block(rc,sr);
   block.print_to(f,false);
 } // |partial_block_f|
 

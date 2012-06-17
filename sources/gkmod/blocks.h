@@ -336,13 +336,9 @@ class non_integral_block : public Block_base
      BlockElt& entry_element	// set to block element matching input
     );
 
-  non_integral_block // alternative constructor, for interval below |x|
-    (RealReductiveGroup& G,
-     const SubSystem& subsys,
-     KGBElt x,			// first |x| value
-     const RatWeight& lambda,	// discrete parameter
-     const RatWeight& gamma	// infinitesimal character
-    );
+  non_integral_block // alternative constructor, for interval below |sr|
+    (const repr::Rep_context& rc,
+     StandardRepr sr); // by value,since it will be made dominant before use
 
   // "inherited" accessors
   const ComplexReductiveGroup& complexGroup() const;
