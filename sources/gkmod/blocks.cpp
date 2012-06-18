@@ -1020,7 +1020,8 @@ class nblock_help // an intended support class
   const SubSystem& sub;
   const RootDatum& rd;
   const Cartan_orbits& i_tab;
-  std::vector<TorusPart> dual_m_alpha;
+  std::vector<TorusPart> dual_m_alpha; // the simple roots, reduced modulo 2
+  std::vector<TorusElement> half_alpha; // half the simple roots
 
   void parent_cross_act(nblock_elt& z, weyl::Generator s) const;
   void parent_up_Cayley(nblock_elt& z, weyl::Generator s) const;
@@ -1029,11 +1030,16 @@ class nblock_help // an intended support class
 public:
   nblock_help(RealReductiveGroup& GR, const SubSystem& subsys)
     : kgb(GR.kgb()), sub(subsys), rd(sub.parent_datum())
-    , i_tab(GR.complexGroup().involution_table()), dual_m_alpha(kgb.rank())
+    , i_tab(GR.complexGroup().involution_table())
+    , dual_m_alpha(kgb.rank()), half_alpha()
   {
     assert(kgb.rank()==rd.semisimpleRank());
+    half_alpha.reserve(kgb.rank());
     for (weyl::Generator s=0; s<kgb.rank(); ++s)
+    {
       dual_m_alpha[s]=TorusPart(rd.simpleRoot(s));
+      half_alpha.push_back(TorusElement(RatWeight(rd.simpleRoot(s),2),false));
+    }
   }
 
   void cross_act(nblock_elt& z, weyl::Generator s) const;
@@ -1042,9 +1048,9 @@ public:
   void do_down_Cayley (nblock_elt& z, weyl::Generator s) const;
   bool is_real_nonparity(nblock_elt z, weyl::Generator s) const; // by value
 
-  y_entry pack_y(const nblock_elt& z)
+  y_entry pack_y(const nblock_elt& z) const
   { return i_tab.pack(z.y(),kgb.inv_nr(z.x())); }
-};
+}; // |class nblock_help|
 
 void nblock_help::parent_cross_act (nblock_elt& z, weyl::Generator s) const
 {
@@ -1078,10 +1084,10 @@ void nblock_help::parent_up_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   z.xx=kgb.cayley(s,z.xx); // direct Cayley transform on $x$ side
   // on $y$ side ensure that |z.yy.evaluate_at(rd.simpleCoroot(s))| is even
-  Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)); // modulo $2\Z$
-  assert(r.numerator()%r.denominator()==0); // should be integer: real coroot
+  Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)).normalize(); // in $\Q/2\Z$
+  assert(r.denominator()==1); // should be integer: real coroot
   if ((r.numerator()/r.denominator())%2!=0) // odd
-    z.yy += dual_m_alpha[s]; // correct
+    z.yy+=half_alpha[s]; // correct by \emph{half} root $s$
 }
 
 void nblock_help::do_up_Cayley (nblock_elt& z, weyl::Generator s) const
@@ -1589,7 +1595,7 @@ BlockEltList non_integral_block::survivors_below(BlockElt z) const
   while (it());
   result.push_back(z);
   return result;
-}
+} // |non_integral_block::survivors_below|
 
 std::vector<non_integral_block::term>
 non_integral_block::deformation_terms (BlockElt entry_elem)
