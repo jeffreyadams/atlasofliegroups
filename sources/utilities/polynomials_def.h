@@ -329,7 +329,10 @@ template<typename C>
 void Safe_Poly<C>::safeQuotient(Degree d)
 {
   if (base::isZero()) return; //(q+1)P truncates to zero means P=0
-  assert(base::degree() < d+1);
+  assert(base::degree() < d+2); //method is called with "d half
+				//integer," so that this d is really
+				//d-1/2. In this case should be
+				//checking that the added \mu is zero.
   base::resize(d+1);
   for (size_t j = 1; j < d+1; ++j ) //last j is d
     polynomials::safeSubtract((*this)[j],(*this)[j-1]); //this may throw
