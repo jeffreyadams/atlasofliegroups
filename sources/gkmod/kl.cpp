@@ -601,8 +601,9 @@ MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
 /*!
   \brief Puts in e the list of all x extremal w.r.t. y.
 
-  Explanation: this means that either x = y, or length(x) < length(y),
-  and every descent for y is a descent for x.
+  Explanation: this means that either x = y, or length(x) < length(y), and
+  every descent for y is a descent for x.  Or:  asc(x)\cap desc(y)=\emptyset
+  Here descent means "in the tau invariant" (possibilities C-, ic, r1, r2).
 */
 void
 KLContext::makeExtremalRow(PrimitiveRow& e, BlockElt y)
@@ -613,7 +614,7 @@ KLContext::makeExtremalRow(PrimitiveRow& e, BlockElt y)
   b.insert(y);                     // and y itself
 
   // extremalize (filter out those that are not extremal)
-  extremalize(b,descentSet(y));
+  extremalize(b,descentSet(y)); // KLSupport::extremalize does the real work
 
   // copy from bitset b to list e
   e.reserve(e.size()+b.size()); // ensure tight fit after copy
@@ -1708,16 +1709,14 @@ void Helper::newRecursion(BlockElt y)
   (necessarily nonparity) for y.
 
   Precondition: every simple root is for y either a complex ascent or
-  imaginary or real (no complex descents for y).
+  imaginary or real (no complex descents for y). (split 1)
 
   Explanation: the shape of the formula is roughly
 
     P_{x,y} = P_{x',y} +  correction term
 
-  where x' is an ascent of x. The (c_s.c_{y1})-part depends on the
-  status of x w.r.t. s (we look only at extremal x, so we know it is a
-  descent). The correction term, coming from $\sum_z mu(z,y1)c_z$, is handled
-  by |newMuCorrection|.
+  where x' is an ascent of x. The correction term, coming from $\sum_z
+  mu(z,y1)c_z$, is handled by |newMuCorrection|.
 */
 
 // called only when y corresponds to theta-stable q with l split.
@@ -1732,7 +1731,12 @@ void Helper::newRecursionRow(std::vector<KLPol>& klv,
   try {
     while (j-->0) {
       BlockElt x = e[j];
-      // we first seek an ascent for x whose ascent for y is real nonparity
+      // now x is extremal for y. By (split 1) and Lemma 3.1 of recursion.pdf
+      // this implies that if x<y in the Bruhat order, there is at least one s
+      // real for y that is a true ascent (not rn) of x and therefore rn for y
+      // we first hope that at least one of them is not i1 for x
+
+      // we first seek a real nonparity ascent for y that is C+,ic or i2 for x
       size_t s = firstNiceAscent(x,y);
       if (s < rank()) // there is such an ascent s
       {
@@ -1747,7 +1751,7 @@ void Helper::newRecursionRow(std::vector<KLPol>& klv,
 	}//ComplexAscent case
 
 	else if (descentValue(s,x)==DescentStatus::ImaginaryCompact)
-	{
+	{ // here there is no true ascent for x
 	  polynomials::Degree d = (length(y) - length(x) + 1)/2;
 	  klv[j].safeQuotient(d-1); // add mu.q^d, divide by q+1
 	}//ImaginaryCompact case
