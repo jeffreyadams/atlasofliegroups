@@ -307,11 +307,9 @@ void Safe_Poly<C>::safeAdd(const Safe_Poly& q, Degree d)
     polynomials::safeAdd((*this)[j+d],q[j]); // this may throw
 }
 
-/*!  
+/*!
 
-\brief Adds x^{d+1}.\mu to *this, then divides by (x+1); \mu is
-chosen so that the division is without remainder.  Should forward an
-error if \mu is negative. Intended for use only when d \le *this.degree()
+\brief Divides polynomial by scalar c, throwing an error is division is inexact
 */
 template<typename C>
 void Safe_Poly<C>::safeDivide(C c)
@@ -320,23 +318,33 @@ void Safe_Poly<C>::safeDivide(C c)
     polynomials::safeDivide((*this)[j],c); //this may throw
 }
 
-/*!
-\brief Adds x^{d+1}.\mu to *this, then divides by (x+1); \mu is
-chosen so that the division is without remainder.  Should forward an
-error if \mu is negative. Intended for use only when d \le *this.degree()
+/* Divides polynomials by $q+1$, imagining if necessary an additional leading
+term \mu*q^{d+1} to make division exact, with appropriate scalar \mu and
+d=(delta-1)/2 should be whole. We'll have delta==l(y)-l(x), whence the name.
+
+Imagining such a term should be necessary only if the current degree of the
+polynomial is precisely $d$, since the quotient must have non-negative
+coefficients, and if it has a positive coefficient of $q^d$ then so does its
+product by $q+1$.
+
+However it could be that $\mu=0$, in which case the polynomial is already
+divisible by $q+1$; then the quotient must have degree strictly less than the
+half-integer $(delta-1)/2$. Whence the assertion |2*degree()<delta-1$.
 */
 template<typename C>
-void Safe_Poly<C>::safeQuotient(Degree d)
+void Safe_Poly<C>::safeQuotient(Degree delta)
 {
-  if (base::isZero()) return; //(q+1)P truncates to zero means P=0
-  assert(base::degree() < d+2); //method is called with "d half
-				//integer," so that this d is really
-				//d-1/2. In this case should be
-				//checking that the added \mu is zero.
-  base::resize(d+1);
-  for (size_t j = 1; j < d+1; ++j ) //last j is d
-    polynomials::safeSubtract((*this)[j],(*this)[j-1]); //this may throw
-  base::adjustSize();
+  if (base::isZero()) // this avoids problems with |base::degree()|
+    return; // need not and cannot invent nonzero \mu*q^{d+1} here
+  for (size_t j = 1; j <= base::degree(); ++j)
+    polynomials::safeSubtract((*this)[j],(*this)[j-1]); // does c[j] -= c[j-1]
+  if ((*this)[base::degree()]==0) // number tested is the candidate for \mu
+  { // polynomial was already multiple of q+1
+    base::adjustSize(); // decreases degree by exactly 1
+    assert(2*base::degree()+1<delta);
+  }
+  else
+    assert(2*base::degree()+1==delta); // a term \mu*q^{d+1} is needed
 }
 
 /*!

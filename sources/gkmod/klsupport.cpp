@@ -176,7 +176,7 @@ void KLSupport::fill()
   |descents| and |goodAscent| are vectors indexed by a block element |z| and
   giving a bitset over all simple reflections. This difference is motivated by
   their use: |downset| and |primset| are used to filter bitmaps over the
-  entire block according to som set of simple generators, which is easier if
+  entire block according to some set of simple generators, which is easier if
   the data is grouped by generator. In fact the data computed is stored twice:
   one always has |downset[s].isMember(z) == descents[z].test(s)| and
   |primset[s].isMember(z) != good_ascent[z].test(s)|
