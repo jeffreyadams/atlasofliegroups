@@ -66,7 +66,7 @@ class KLSupport
   DescentStatus::Value descentValue(size_t s, BlockElt z)
     const
     { return d_block.descentValue(s,z); }
-  const DescentStatus& descent(BlockElt y) const // full info
+  const DescentStatus& descent(BlockElt y) const // combined for all |s|
     { return d_block.descent(y); }
 
   size_t rank() const { return d_block.rank(); }
@@ -79,6 +79,10 @@ class KLSupport
 \brief Number of block elements of length strictly less than l.
   */
   BlockElt lengthLess(size_t l) const { return d_lengthLess[l]; }
+
+  // find ascent for |x| that is descent for |y| if any; |longBits| if none
+  unsigned int ascent_descent(BlockElt x,BlockElt y) const
+  { return (descentSet(y)-descentSet(x)).firstBit(); }
 
   BlockElt primitivize  // computing KL polynomials spends a large
 			// amount of time evaluating primitivize. When

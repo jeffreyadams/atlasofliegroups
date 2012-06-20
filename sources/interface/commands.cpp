@@ -535,7 +535,7 @@ void execute(const char* name, const CommandMode* mode)
   }
   catch (std::exception& e)
   {
-    std::cerr << "error occurrend: " << e.what() << std::endl;
+    std::cerr << "error occurred: " << e.what() << std::endl;
   }
   catch (...)
   {
