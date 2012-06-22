@@ -52,37 +52,36 @@ class KLSupport
   void swap(KLSupport&);
 
 // accessors
-
   const Block_base& block() const { return d_block; }
-  BlockElt cross(size_t s, BlockElt z) const
-    { return d_block.cross(s,z); }
+  size_t rank() const { return d_block.rank(); }
+  size_t size() const { return d_block.size(); }
+
+  size_t length(BlockElt z) const { return d_block.length(z); }
+  BlockElt lengthLess(size_t l) const // number of block elements of length < l
+   { return d_lengthLess[l]; }
+
+  BlockElt cross(size_t s, BlockElt z) const  { return d_block.cross(s,z); }
   BlockEltPair cayley(size_t s, BlockElt z) const
-    { return d_block.cayley(s,z); }
-  const RankFlags& descentSet(BlockElt z) const
-    { return d_descent[z]; }
-  /*!
-\brief Descent status of simple root s for block element z. Taken directly from the block.
-  */
+  { return d_block.cayley(s,z); }
+
   DescentStatus::Value descentValue(size_t s, BlockElt z)
     const
     { return d_block.descentValue(s,z); }
   const DescentStatus& descent(BlockElt y) const // combined for all |s|
     { return d_block.descent(y); }
 
-  size_t rank() const { return d_block.rank(); }
-  size_t size() const { return d_block.size(); }
-
+  const RankFlags& descentSet(BlockElt z) const
+    { return d_descent[z]; }
   const RankFlags& goodAscentSet(BlockElt z) const
     { return d_goodAscent[z]; }
-  size_t length(BlockElt z) const { return d_block.length(z); }
-  /*!
-\brief Number of block elements of length strictly less than l.
-  */
-  BlockElt lengthLess(size_t l) const { return d_lengthLess[l]; }
 
   // find ascent for |x| that is descent for |y| if any; |longBits| if none
   unsigned int ascent_descent(BlockElt x,BlockElt y) const
   { return (descentSet(y)-descentSet(x)).firstBit(); }
+
+  // find non-i2 ascent for |x| that is descent for |y| if any; or |longBits|
+  unsigned int good_ascent_descent(BlockElt x,BlockElt y) const
+  { return (goodAscentSet(x)&descentSet(y)).firstBit(); }
 
   BlockElt primitivize  // computing KL polynomials spends a large
 			// amount of time evaluating primitivize. When

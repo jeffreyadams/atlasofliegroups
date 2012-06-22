@@ -247,51 +247,54 @@ void KLSupport::fillDownsets()
   Sets the PrimitivizeFilled bit in d_state if successful.
 */
 
-void KLSupport::fillPrimitivize()
-{
-  using namespace bitset;
-  using namespace descents;
-  using namespace blocks;
+  void KLSupport::fillPrimitivize()
+  {
+    using namespace bitset;
+    using namespace descents;
+    using namespace blocks;
 
-  if (d_state.test(PrimitivizeFilled))
-    return;
-  d_primitivize.reserve(1ul << rank());
-  d_primitivize.resize(1ul << rank());
-  size_t blocksize = d_block.size();
+    if (d_state.test(PrimitivizeFilled))
+      return;
+    d_primitivize.reserve(1ul << rank());
+    d_primitivize.resize(1ul << rank());
+    size_t blocksize = d_block.size();
 
-for (unsigned long j = 0 ; j >> rank() == 0 ; ++j) {
-  BlockEltList prim;
-  prim.reserve(blocksize);
-  prim.resize(blocksize);
-   const RankFlags A(j);
-   for (BlockElt z = blocksize; z != 0;) {
-     --z;
-  // primitivize
-     RankFlags a = goodAscentSet(z);
-     a &= A;
-     if (a.none()) {
-       prim[z] = z;
-       continue;
-     }
-    size_t s = a.firstBit();
-    DescentStatus::Value v = descentValue(s,z);
-    if (v == DescentStatus::RealNonparity) {
-      prim[z] = UndefBlock;
-      continue;
+    for (unsigned long j = 0 ; j>>rank()==0 ; ++j)
+    {
+      BlockEltList prim;
+      prim.reserve(blocksize);
+      prim.resize(blocksize);
+      const RankFlags A(j);
+      for (BlockElt z = blocksize; z-->0;)
+      {
+	// primitivize
+	RankFlags a = goodAscentSet(z);
+	a &= A;
+	if (a.none())
+	{
+	  prim[z] = z;
+	  continue;
+	}
+	size_t s = a.firstBit();
+	DescentStatus::Value v = descentValue(s,z);
+	if (v == DescentStatus::RealNonparity)
+	{
+	  prim[z] = UndefBlock;
+	  continue;
+	}
+	if (v == DescentStatus::ComplexAscent)
+	  prim[z] = prim[d_block.cross(s,z)];
+	else
+	  prim[z] = prim[d_block.cayley(s,z).first];
+      }
+      // insert
+      d_primitivize[j] = prim;
     }
-    if (v == DescentStatus::ComplexAscent)
-      prim[z] = prim[d_block.cross(s,z)];
-    else
-      prim[z] = prim[d_block.cayley(s,z).first];
-  }
-   // insert
-   d_primitivize[j] = prim;
- }
 
- d_state.set(PrimitivizeFilled);
+    d_state.set(PrimitivizeFilled);
 
- return;
-} //fillPrimitivize
+    return;
+  } //fillPrimitivize
 } // namespace klsupport
 
 /*****************************************************************************
