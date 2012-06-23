@@ -41,6 +41,8 @@ class KLSupport
   std::vector<BitMap> d_downset;
   std::vector<BitMap> d_primset;
   std::vector<BlockElt> d_lengthLess;
+  std::vector<atlas::BlockEltList> d_primitivize;
+  std::vector<std::vector<unsigned int> > d_prim_index;
 
  public:
 
@@ -63,8 +65,7 @@ class KLSupport
   BlockEltPair cayley(size_t s, BlockElt z) const
   { return d_block.cayley(s,z); }
 
-  DescentStatus::Value descentValue(size_t s, BlockElt z)
-    const
+  DescentStatus::Value descentValue(size_t s, BlockElt z) const
     { return d_block.descentValue(s,z); }
   const DescentStatus& descent(BlockElt y) const // combined for all |s|
     { return d_block.descent(y); }
@@ -86,8 +87,8 @@ class KLSupport
   { return (goodAscentSet(x)&descentSet(y)).firstBit(); }
 
   // the following are filters of the bitmap
-  void extremalize(BitMap&, const RankFlags&) const;
-  void primitivize(BitMap&, const RankFlags&) const;
+  void filter_extremal(BitMap&, const RankFlags&) const;
+  void filter_primitive(BitMap&, const RankFlags&) const;
 
 // manipulators
   void fill();

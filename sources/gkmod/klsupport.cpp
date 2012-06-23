@@ -50,6 +50,8 @@ KLSupport::KLSupport(const Block_base& b)
   , d_downset()
   , d_primset()
   , d_lengthLess()
+  , d_primitivize()
+  , d_prim_index()
 {}
 
 /******** copy, assignment and swap ******************************************/
@@ -65,6 +67,8 @@ void KLSupport::swap(KLSupport& other)
   d_downset.swap(other.d_downset);
   d_primset.swap(other.d_primset);
   d_lengthLess.swap(other.d_lengthLess);
+  d_primitivize.swap(other.d_primitivize);
+  d_prim_index.swap(other.d_prim_index);
 
 }
 
@@ -82,7 +86,7 @@ void KLSupport::swap(KLSupport& other)
   belong to the intersection of the downsets for the various descents in d.
 */
 
-void KLSupport::extremalize(BitMap& b, const RankFlags& d)
+void KLSupport::filter_extremal(BitMap& b, const RankFlags& d)
   const
 {
   for (weyl::Generator s=0; s<rank(); ++s)
@@ -103,8 +107,7 @@ void KLSupport::extremalize(BitMap& b, const RankFlags& d)
   descent or imaginary type II, this amounts to requesting that z belong to
   the intersection of the primsets for the various descents in d.
 */
-void KLSupport::primitivize(BitMap& b, const RankFlags& d)
-  const
+void KLSupport::filter_primitive(BitMap& b, const RankFlags& d) const
 {
   for (weyl::Generator s=0; s<rank(); ++s)
     if (d.test(s))
