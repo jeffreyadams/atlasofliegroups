@@ -45,12 +45,13 @@ namespace klsupport {
 KLSupport::KLSupport(const Block_base& b)
   : d_state()
   , d_block(b)
-  , d_primitivize()
   , d_descent()
   , d_goodAscent()
   , d_downset()
   , d_primset()
   , d_lengthLess()
+  , d_primitivize()
+  , d_prim_index()
 {}
 
 /******** copy, assignment and swap ******************************************/
@@ -61,12 +62,13 @@ void KLSupport::swap(KLSupport& other)
 
   assert(&d_block==&other.d_block);
 
-  d_primitivize.swap(other.d_primitivize);
   d_descent.swap(other.d_descent);
   d_goodAscent.swap(other.d_goodAscent);
   d_downset.swap(other.d_downset);
   d_primset.swap(other.d_primset);
   d_lengthLess.swap(other.d_lengthLess);
+  d_primitivize.swap(other.d_primitivize);
+  d_prim_index.swap(other.d_prim_index);
 
 }
 
@@ -84,7 +86,7 @@ void KLSupport::swap(KLSupport& other)
   belong to the intersection of the downsets for the various descents in d.
 */
 
-void KLSupport::extremalize(BitMap& b, const RankFlags& d)
+void KLSupport::filter_extremal(BitMap& b, const RankFlags& d)
   const
 {
   for (weyl::Generator s=0; s<rank(); ++s)
@@ -105,8 +107,7 @@ void KLSupport::extremalize(BitMap& b, const RankFlags& d)
   descent or imaginary type II, this amounts to requesting that z belong to
   the intersection of the primsets for the various descents in d.
 */
-void KLSupport::primitivize(BitMap& b, const RankFlags& d)
-  const
+void KLSupport::filter_primitive(BitMap& b, const RankFlags& d) const
 {
   for (weyl::Generator s=0; s<rank(); ++s)
     if (d.test(s))
@@ -128,7 +129,9 @@ void KLSupport::primitivize(BitMap& b, const RankFlags& d)
   |UndefBlock| is conveniently larger than any valid BlockElt |y|, so this
   case will be handled effortlessly together with triangularity).
 */
-/*BlockElt
+
+#if 0 // code disabled because replaced by table look-up
+BlockElt
   KLSupport::primitivize(BlockElt x, const RankFlags& d) const
 {
   RankFlags a; // good ascents for x that are descents for y
@@ -144,7 +147,8 @@ void KLSupport::primitivize(BitMap& b, const RankFlags& d)
 	: d_block.cayley(s,x).first;
   }
   return x;
-  }*/
+  }
+#endif
 
 /******** manipulators *******************************************************/
 
@@ -255,16 +259,27 @@ void KLSupport::fillDownsets()
 
     if (d_state.test(PrimitivizeFilled))
       return;
-    d_primitivize.reserve(1ul << rank());
-    d_primitivize.resize(1ul << rank());
+
+    size_t two_to_the_r = 1ul << rank();
+    d_primitivize.resize(two_to_the_r);
+    d_prim_index.resize(two_to_the_r);
+
     size_t blocksize = d_block.size();
 
-    for (unsigned long j = 0 ; j>>rank()==0 ; ++j)
+    for (unsigned long j = 0 ; j<two_to_the_r ; ++j)
     {
-      BlockEltList prim;
-      prim.reserve(blocksize);
+      const RankFlags A(j); // the current descent set
+
+      BlockEltList& prim = d_primitivize[j];
+      std::vector<unsigned int>& prim_index = d_prim_index[j];
       prim.resize(blocksize);
-      const RankFlags A(j);
+      prim_index.resize(blocksize);
+
+      BitMap primitives(size()); primitives.fill();
+      filter_primitive(primitives,A); // compute all primitive elements for A
+
+      unsigned int prim_count = primitives.size(); // start at high end
+
       for (BlockElt z = blocksize; z-->0;)
       {
 	// primitivize
@@ -272,6 +287,8 @@ void KLSupport::fillDownsets()
 	a &= A;
 	if (a.none())
 	{
+	  assert(primitives.isMember(z)); // sanity check
+	  prim_index[z] = --prim_count;
 	  prim[z] = z;
 	  continue;
 	}
@@ -280,16 +297,18 @@ void KLSupport::fillDownsets()
 	if (v == DescentStatus::RealNonparity)
 	{
 	  prim[z] = UndefBlock;
-	  continue;
+	  prim_index[z] = ~0; // signal inexistent primitivization
 	}
-	if (v == DescentStatus::ComplexAscent)
-	  prim[z] = prim[d_block.cross(s,z)];
-	else
-	  prim[z] = prim[d_block.cayley(s,z).first];
-      }
-      // insert
-      d_primitivize[j] = prim;
-    }
+	else // ComplexAscent or ImaginaryTypeI
+	{
+	  BlockElt sz =  v==DescentStatus::ComplexAscent
+	    ? d_block.cross(s,z) : d_block.cayley(s,z).first;
+	  prim[z] = prim[sz];
+	  prim_index[z] = prim_index[sz];
+	}
+      } // |for(z-->0)|
+      assert(prim_count==0); // we've seen all primitives
+    } // |for(A)|
 
     d_state.set(PrimitivizeFilled);
 

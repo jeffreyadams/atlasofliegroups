@@ -30,18 +30,20 @@ namespace klsupport {
 
 class KLSupport
 {
-  enum State {PrimitivizeFilled, DownsetsFilled, LengthLessFilled, Filled, NumStates};
+  enum State {PrimitivizeFilled, DownsetsFilled, LengthLessFilled, Filled,
+	      NumStates};
 
   BitSet<NumStates> d_state;
 
   const Block_base& d_block;  // non-owned reference
 
-  std::vector<atlas::BlockEltList> d_primitivize;
   std::vector<RankFlags> d_descent;
   std::vector<RankFlags> d_goodAscent;
   std::vector<BitMap> d_downset;
   std::vector<BitMap> d_primset;
   std::vector<BlockElt> d_lengthLess;
+  std::vector<atlas::BlockEltList> d_primitivize;
+  std::vector<std::vector<unsigned int> > d_prim_index;
 
  public:
 
@@ -64,8 +66,7 @@ class KLSupport
   BlockEltPair cayley(size_t s, BlockElt z) const
   { return d_block.cayley(s,z); }
 
-  DescentStatus::Value descentValue(size_t s, BlockElt z)
-    const
+  DescentStatus::Value descentValue(size_t s, BlockElt z) const
     { return d_block.descentValue(s,z); }
   const DescentStatus& descent(BlockElt y) const // combined for all |s|
     { return d_block.descent(y); }
@@ -83,20 +84,21 @@ class KLSupport
   unsigned int good_ascent_descent(BlockElt x,BlockElt y) const
   { return (goodAscentSet(x)&descentSet(y)).firstBit(); }
 
-  BlockElt primitivize  // computing KL polynomials spends a large
-			// amount of time evaluating primitivize. When
-			// possible, it's faster to tabulate and
-			// inline it. The size of the data makes this
-			// a bad idea for rank \ge 10 or so. I don't
-			// know how to make the code choose the
-			// untabulated version if the data is too big.
-    (BlockElt x, const RankFlags& A) const {
-    return d_primitivize[A.to_ulong()][x];
-}
+  /* computing KL polynomials spends a large amount of time evaluating
+     primitivize. When possible, it's faster to tabulate and inline it. The
+     size of the data makes this a bad idea for rank \ge 10 or so. We might
+     adopt a lazy scheme, filling rows only on demand, hoping to save a bit.
+  */
+  BlockElt primitivize (BlockElt x, const RankFlags& A) const
+  { return d_primitivize[A.to_ulong()][x]; }
+
+  // after primitivize, we often need index of result in appropriate primitives
+  unsigned int prim_index (BlockElt x, const RankFlags& A) const
+  { return d_prim_index[A.to_ulong()][x]; }
 
   // the following are filters of the bitmap
-  void extremalize(BitMap&, const RankFlags&) const;
-  void primitivize(BitMap&, const RankFlags&) const;
+  void filter_extremal(BitMap&, const RankFlags&) const;
+  void filter_primitive(BitMap&, const RankFlags&) const;
 
 // manipulators
   void fill();
