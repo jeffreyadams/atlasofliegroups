@@ -188,10 +188,10 @@ std::ostream& printMu(std::ostream& strm, const kl::KLContext& klc)
   for (size_t y = 0; y < klc.size(); ++y) {
     const kl::MuRow& mrow = klc.muRow(y);
     strm << std::setw(width) << y << ": ";
-    for (size_t j = 0; j < mrow.first.size(); ++j) {
+    for (size_t j = 0; j < mrow.size(); ++j) {
       if (j>0)
 	strm << ",";
-      strm << "(" << mrow.first[j] << "," << mrow.second[j] << ")";
+      strm << "(" << mrow[j].first << "," << mrow[j].second << ")";
     }
     strm << std::endl;
   }

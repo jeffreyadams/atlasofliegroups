@@ -362,7 +362,6 @@ namespace atlas {
     typedef polynomials::Safe_Poly<KLCoeff> KLPol;
     typedef unsigned int KLIndex; // $<2^{32}$ distinct polynomials for $E_8$!
     typedef KLCoeff MuCoeff;
-    typedef std::pair<std::vector<BlockElt>,std::vector<MuCoeff> > MuRow;
     typedef std::vector<KLPol> KLStore;
     typedef KLStore::const_reference KLPolRef;
     typedef std::vector<KLIndex> KLRow;
