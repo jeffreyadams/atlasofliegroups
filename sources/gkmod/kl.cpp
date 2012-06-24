@@ -1230,11 +1230,12 @@ void Helper::newRecursionRow(KLRow& klv,
 	} // ComplexAscent case
 
 	else if (descentValue(s,x)==DescentStatus::ImaginaryTypeII)
-	{ // use equations (3.3a)=(3.4)
+	{ // use equations (3.3a)=(3.5)
 	  BlockEltPair p = cayley(s,x);
-	  pol.safeAdd(klPol(p.first,y,kl_p,pr_p,pr.end()));
-	  pol.safeAdd(klPol(p.second,y,kl_p,pr_p,pr.end()));
-	  pol.safeSubtract(pol,1); //now we've added (1-q)(P_{sx,y}
+	  KLPol sum = klPol(p.first,y,kl_p,pr_p,pr.end());
+	  sum.safeAdd(klPol(p.second,y,kl_p,pr_p,pr.end()));
+	  pol.safeAdd(sum);
+	  pol.safeSubtract(sum,1); //now we've added (1-q)(P_{x',y}+P_{x'',y})
 	  pol.safeDivide(2);   //this may throw
 	} // ImaginaryTypeII case
 
