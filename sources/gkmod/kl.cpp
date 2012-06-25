@@ -1348,27 +1348,47 @@ void Helper::complete_primitives(const std::vector<KLPol>& klv,
   KLRow& KL = d_kl[y];
   KL.resize(pr.size());
 
-  PrimitiveRow::iterator pr_p=pr.end();
-  KLRow::iterator KL_p=KL.end();
+  BitMap mu_elements(pr.size()-1); // flags |i| with |mu(pr[i],y)>0|
+
+  unsigned int ly = length(y);
 
   size_t j= er.size()-1; // points to current extremal element, starting at y
 
-  for (size_t i = pr.size(); i-->0; --pr_p, --KL_p) // *pr_p = pr[i+1]
-    if (pr[i]==er[j])
-      KL[i]=d_hashtable.match(klv[j--]);
+  for (size_t i = pr.size(); i-->0;)
+    if (j<er.size() and pr[i]==er[j]) // |j| may underflow, whence first test
+    {
+      unsigned int lx=length(pr[i]);
+      const KLPol& Pxy=klv[j--]; // use KL polynomial and advance downwards
+      KL[i]=d_hashtable.match(Pxy);
+      if ((ly-lx)%2>0 and Pxy.degree()==(ly-lx)/2)
+	mu_elements.insert(i);
+    }
     else // must  a insert a polynomial for primitive non-extramal pr[i]
     {
       unsigned int s = ascent_descent(pr[i],y);
       BlockEltPair xs = cayley(s,pr[i]);
       assert(xs.second != blocks::UndefBlock); // must be imaginary type II
-      KLPol pol = klPol(xs.first,y); // look up P_{x',y} in current row
-      pol.safeAdd(klPol(xs.second,y));
-      KL[i]=d_hashtable.match(pol);
+      KLPol pol = klPol(xs.first,y); // look up P_{x',y} in current row, above
+      pol.safeAdd(klPol(xs.second,y)); // current point, and P_{x'',y} as well
+      KL[i]=d_hashtable.match(pol); // add poly at primitive non-extremal x
+      if (length(pr[i])==ly-1 and not pol.isZero())
+	mu_elements.insert(i);
     }
+
+#if 0
+  d_mu[y].reserve(mu_elements.size());
+  for (BitMap::iterator it=mu_elements.begin(); it(); ++it)
+  {
+    BlockElt x=pr[*it];
+    KLPolRef Pxy=d_hashtable[KL[*it]];
+    assert(not Pxy.isZero());
+    d_mu[y].push_back(std::make_pair(x,Pxy[Pxy.degree()]));
+  }
+#endif
 
   prim_size+=pr.size(); // for statistics
 
-} // |Helper::writeRow|
+} // |Helper::complete_primitives|
 
 /*!
   \brief Fills in the row for y in the mu-table.

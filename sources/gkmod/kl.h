@@ -49,9 +49,9 @@ namespace kl {
 typedef std::vector<std::pair<BlockElt,MuCoeff> > MuRow;
 
 
-  /*!
+/*!
 \brief Calculates and stores the Kazhdan-Lusztig polynomials for a
-block of representations of G.
+  block of representations of G.
   */
 class KLContext
   : public klsupport::KLSupport // base is needed for full functionality
@@ -61,35 +61,27 @@ class KLContext
 
   BlockElt fill_limit; // all "rows" |y| with |y<fill_limit| have been computed
 
-  /*!
-\brief Entry d_prim[y] is a list of the elements x_i that are primitive
-with respect to y and have P_{y,x_i} not zero.
-  */
+/*!
+  \brief Entry d_prim[y] is a list of the elements x_i that are primitive
+  with respect to y and have P_{y,x_i} not zero.
+*/
   std::vector<PrimitiveRow> d_prim;
 
-  /*!
-\brief Entry d_kl[y] is a list of pointers to the polynomials
-P_{y,x_i}, numbered as in the list d_prim[y].
-  */
+/*!
+  \brief Entry d_kl[y] is a list of pointers to the polynomials
+  P_{y,x_i}, numbered as in the list d_prim[y].
+*/
   std::vector<KLRow> d_kl;           // list of polynomial pointers
 
-  /*!
-\brief Entry d_mu[y] is a MuRow, which has parallel vectors for x and mu(x,y)
-  */
-  std::vector<MuRow> d_mu;           // lists of x's and their mu-coefficients
+/*!
+  \brief Entry d_mu[y] is a MuRow, which has parallel vectors for x and mu(x,y)
+*/
+ std::vector<MuRow> d_mu;           // lists of x's and their mu-coefficients
 
-  /*!
-\brief Set of KL polynomials.
-  */
+/* Set of KL polynomials */
   KLStore d_store;           // the distinct actual polynomials
-  /*!
-\brief Pointer to the polynomial 0.
-  */
-  KLIndex d_zero;
-  /*!
-\brief Pointer to the polynomial 1.
-  */
-  KLIndex d_one;
+  KLIndex d_zero; // Pointer to the polynomial 0.
+  KLIndex d_one;  // Pointer to the polynomial 1.
 
 // copy and swap are only for helper class
   KLContext(const KLContext&);
@@ -111,41 +103,40 @@ P_{y,x_i}, numbered as in the list d_prim[y].
 
   void makePrimitiveRow(PrimitiveRow& e, BlockElt y) const;
 
-  /*!
-\brief List of the elements x_i that are primitive with respect to y and have
+/*!
+  \brief List of the elements x_i that are primitive with respect to y and have
  P_{y,x_i} NOT ZERO. This method is somewhat of a misnomer
-  */
+*/
   const PrimitiveRow& primitiveRow(BlockElt y) const
     { return d_prim[y]; }
 
   bool isZero(const KLIndex p) const { return p == d_zero; }
 
-  /*!
-\brief The Kazhdan-Lusztig-Vogan polynomial P_{x,y}
+/*!
+  \brief The Kazhdan-Lusztig-Vogan polynomial P_{x,y}
 */
   KLPolRef klPol(BlockElt x, BlockElt y) const;
 
-  /*!
-\brief Returns the list of pointers to the non-zero KL polynomials
-P_{y,x_i} (with x_i primitive with respect to y).
-  */
+/*!
+  \brief Returns the list of pointers to the non-zero KL polynomials
+  P_{y,x_i} (with x_i primitive with respect to y).
+*/
   const KLRow& klRow(BlockElt y) const {
     return d_kl[y];
   }
 
   MuCoeff mu(BlockElt x, BlockElt y) const;
 
-  /*!
-\brief List of MuData, which are pairs (x, top degree coefficient of
-P_{y,x}).
-  */
+/*!
+  \brief List of MuData, which are pairs (x, top degree coefficient of P_{y,x}).
+*/
   const MuRow& muRow(BlockElt y) const {
     return d_mu[y];
   }
 
-  /*!
-\brief Returns the set of all non-zero KL polynomials for the block.
-  */
+/*!
+  \brief Returns the set of all non-zero KL polynomials for the block.
+*/
   const KLStore& polStore() const {
     return d_store;
   }
