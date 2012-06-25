@@ -1356,14 +1356,14 @@ void Helper::complete_primitives(const std::vector<KLPol>& klv,
 
   for (size_t i = pr.size(); i-->0;)
     if (j<er.size() and pr[i]==er[j]) // |j| may underflow, whence first test
-    {
-      unsigned int lx=length(pr[i]);
+    { // extremal element $e=er[j]$
+      unsigned int lx=length(er[j]);
       const KLPol& Pxy=klv[j--]; // use KL polynomial and advance downwards
       KL[i]=d_hashtable.match(Pxy);
-      if ((ly-lx)%2>0 and Pxy.degree()==(ly-lx)/2)
+      if ((ly-lx)%2>0 and Pxy.degree()==(ly-lx)/2) // in fact |(ly-lx-1)/2|
 	mu_elements.insert(i);
     }
-    else // must  a insert a polynomial for primitive non-extramal pr[i]
+    else // must insert a polynomial for primitive non-extramal |pr[i]|
     {
       unsigned int s = ascent_descent(pr[i],y);
       BlockEltPair xs = cayley(s,pr[i]);
@@ -1371,12 +1371,34 @@ void Helper::complete_primitives(const std::vector<KLPol>& klv,
       KLPol pol = klPol(xs.first,y); // look up P_{x',y} in current row, above
       pol.safeAdd(klPol(xs.second,y)); // current point, and P_{x'',y} as well
       KL[i]=d_hashtable.match(pol); // add poly at primitive non-extremal x
-      if (length(pr[i])==ly-1 and not pol.isZero())
-	mu_elements.insert(i);
     }
 
-#if 0
-  d_mu[y].reserve(mu_elements.size());
+  if (ly==0)
+    return; // nothing left to do at minimal length
+
+  BlockElt base = lengthLess(ly-1);
+  BitMap down_set (lengthLess(ly)-base);
+
+  // mark the down-set of $y$, the non-extremal $x$ with $\mu(x,y)\neq0$
+  for (RankFlags::iterator it=descentSet(y).begin(); it(); ++it)
+    switch (descentValue(*it,y))
+    {
+    case DescentStatus::ComplexDescent: down_set.insert(cross(*it,y)-base);
+      break;
+    case DescentStatus::RealTypeI:
+      {
+	BlockEltPair sy = inverseCayley(*it,y);
+	down_set.insert(sy.first-base); down_set.insert(sy.second-base);
+      }
+      break;
+    case DescentStatus::RealTypeII:
+      down_set.insert(inverseCayley(*it,y).first-base);
+      break;
+    default: // |case DescentStatus::ImaginaryCompact| nothing
+      break;
+    }
+
+  d_mu[y].reserve(mu_elements.size()+down_set.size());
   for (BitMap::iterator it=mu_elements.begin(); it(); ++it)
   {
     BlockElt x=pr[*it];
@@ -1384,11 +1406,26 @@ void Helper::complete_primitives(const std::vector<KLPol>& klv,
     assert(not Pxy.isZero());
     d_mu[y].push_back(std::make_pair(x,Pxy[Pxy.degree()]));
   }
-#endif
+  for (BitMap::iterator it=down_set.begin(); it(); ++it)
+  {
+    d_mu[y].push_back(std::make_pair(*it+base,MuCoeff(1)));
+    for (size_t i=d_mu[y].size()-1; i>0 and d_mu[y][i-1].first>*it+base; --i)
+      std::swap(d_mu[y][i-1],d_mu[y][i]); // insertion-sort
+  }
 
   prim_size+=pr.size(); // for statistics
 
 } // |Helper::complete_primitives|
+
+bool operator==(const MuRow& a, const MuRow& b)
+{
+  if (a.size()!=b.size())
+    return false;
+  for (size_t i=0; i<a.size(); ++i)
+    if (a[i].first!=b[i].first or a[i].second!=b[i].second)
+      return false;
+  return true;
+}
 
 /*!
   \brief Fills in the row for y in the mu-table.
@@ -1408,6 +1445,9 @@ void Helper::complete_primitives(const std::vector<KLPol>& klv,
 */
 void Helper::fillMuRow(BlockElt y)
 {
+  MuRow prev;
+  prev.swap(d_mu[y]); //put aside previous result for comparison
+
   const PrimitiveRow& e = d_prim[y]; // list of primitive |x| values for |y|
 
   size_t ly = length(y);
@@ -1442,6 +1482,9 @@ void Helper::fillMuRow(BlockElt y)
     if (mu!=MuCoeff(0))
       d_mu[y].push_back(std::make_pair(x,mu));
   }
+
+  if (prev.size()>0)
+    assert(d_mu[y]==prev); // check that we found the same as before
 
 } // |Helper::fillMuRow|
 
