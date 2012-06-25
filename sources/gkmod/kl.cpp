@@ -1305,6 +1305,10 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
   PrimitiveRow::iterator nzpr_p=nzpr.end();
   KLRow::iterator KL_p=KL.end();
 
+  BitMap mu_elements(pr.size()-1); // flags |i| with |mu(pr[i],y)>0|
+
+  unsigned int ly = length(y);
+
   size_t j= er.size()-1; // points to current extremal element, starting at y
 
   for (size_t i = pr.size(); i-->0; )
@@ -1315,6 +1319,9 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
       {
 	*--nzpr_p = pr[i];
         *--KL_p = d_hashtable.match(Pxy);
+	unsigned int lx=length(pr[i]);
+	if ((ly-lx)%2>0 and Pxy.degree()==(ly-lx)/2) // in fact |(ly-lx-1)/2|
+	  mu_elements.insert(i);
       }
     }
     else // insert a polynomial for primitive non-extremal pr[i] if nonzero
@@ -1328,12 +1335,52 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
       {
 	*--nzpr_p = pr[i];
         *--KL_p = d_hashtable.match(Pxy);
+      } // no need to check for |mu| here; |down_set| covers possible cases
+    }
+
+  if (ly==0)
+    return; // nothing left to do at minimal length
+
+  BlockElt base = lengthLess(ly-1);
+  BitMap down_set (lengthLess(ly)-base);
+
+  // mark the down-set of $y$, the non-extremal $x$ with $\mu(x,y)\neq0$
+  for (RankFlags::iterator it=descentSet(y).begin(); it(); ++it)
+    switch (descentValue(*it,y))
+    {
+    case DescentStatus::ComplexDescent: down_set.insert(cross(*it,y)-base);
+      break;
+    case DescentStatus::RealTypeI:
+      {
+	BlockEltPair sy = inverseCayley(*it,y);
+	down_set.insert(sy.first-base); down_set.insert(sy.second-base);
       }
+      break;
+    case DescentStatus::RealTypeII:
+      down_set.insert(inverseCayley(*it,y).first-base);
+      break;
+    default: // |case DescentStatus::ImaginaryCompact| nothing
+      break;
     }
 
   // commit
   d_prim[y] = PrimitiveRow(nzpr_p,nzpr.end()); // copy shifting, from |nzpr_p|
   d_kl[y] = KLRow(KL_p,KL.end());
+
+  d_mu[y].reserve(mu_elements.size()+down_set.size());
+  for (BitMap::iterator it=mu_elements.begin(); it(); ++it)
+  {
+    BlockElt x=pr[*it];
+    KLPolRef Pxy = klPol(x,y,KL_p,nzpr_p,nzpr.end());
+    assert(not Pxy.isZero());
+    d_mu[y].push_back(std::make_pair(x,Pxy[Pxy.degree()]));
+  }
+  for (BitMap::iterator it=down_set.begin(); it(); ++it)
+  {
+    d_mu[y].push_back(std::make_pair(*it+base,MuCoeff(1)));
+    for (size_t i=d_mu[y].size()-1; i>0 and d_mu[y][i-1].first>*it+base; --i)
+      std::swap(d_mu[y][i-1],d_mu[y][i]); // insertion-sort
+  }
 
   prim_size        += d_prim.size();
   nr_of_prim_nulls += nzpr_p  -nzpr.begin(); // measure unused space
@@ -1358,6 +1405,9 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
 */
 void Helper::fillMuRow(BlockElt y)
 {
+  MuRow prev;
+  prev.swap(d_mu[y]); //put aside previous result for comparison
+
   const PrimitiveRow& e = d_prim[y]; // list of primitive |x| values for |y|
 
   size_t ly = length(y);
@@ -1392,6 +1442,9 @@ void Helper::fillMuRow(BlockElt y)
     if (mu!=MuCoeff(0))
       d_mu[y].push_back(std::make_pair(x,mu));
   }
+
+  if (prev.size()>0)
+    assert(d_mu[y]==prev); // check that we found the same as before
 
 } // |Helper::fillMuRow|
 
