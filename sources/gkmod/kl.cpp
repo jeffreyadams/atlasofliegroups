@@ -137,15 +137,15 @@ namespace helper {
 
     //accessors
 
-    size_t firstDirectRecursion(BlockElt y) const;
+    weyl::Generator firstDirectRecursion(BlockElt y) const;
 
-    std::pair<size_t,size_t> firstImaginaryReal(BlockElt x, BlockElt y) const;
+    weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
 
-    size_t firstNiceAscent(BlockElt x,BlockElt y) const;
+    std::pair<weyl::Generator,weyl::Generator>
+      first_endgame_pair(BlockElt x, BlockElt y) const;
 
     BlockEltPair inverseCayley(size_t s, BlockElt y) const
     { return block().inverseCayley(s,y); }
-
 
     std::set<BlockElt> down_set(BlockElt y) const;
 
@@ -284,7 +284,7 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 
   unsigned int inx=prim_index(x,descentSet(y));
   if (inx>=klr.size()-1) // includes case x==~0: no primitivization
-    return inx==prim_index(y,descentSet(y)) ? One : Zero;
+    return inx==self_index(y) ? One : Zero;
   return d_store[klr[inx]];
 }
 
@@ -493,49 +493,52 @@ Helper::Helper(const KLContext& kl)
   |descentValue(s,y)| is either |DescentStatus::ComplexDescent| or
   |DescentStatus::RealTypeI|. If no such generator exists, we return |rank()|.
 */
-size_t Helper::firstDirectRecursion(BlockElt y) const
+weyl::Generator Helper::firstDirectRecursion(BlockElt y) const
 {
   const DescentStatus& d = descent(y);
-
-  for (size_t s = 0; s < rank(); ++s) {
+  size_t s;
+  for (s=0; s<rank(); ++s) {
     DescentStatus::Value v = d[s];
     if (DescentStatus::isDirectRecursion(v))
-      return s;
+      break;
   }
+  return s;
 
-  return rank();
 } // |Helper::firstDirectRecursion|
 
 /*
   Returns the first real nonparity ascent for y that is a complex ascent, or
   imaginary type 2, or compact imaginary for x.
 
-  Explanation: those are the ones that give the best new recursion formula for
+  Explanation: those are the ones that give a nice new recursion formula for
   the K-L polynomial
 
   If no such generator exists, we return |rank()|.
 */
-size_t Helper::firstNiceAscent(BlockElt x,BlockElt y) const
+weyl::Generator Helper::first_nice_and_real(BlockElt x,BlockElt y) const
 {
   const DescentStatus& dx = descent(x);
   const DescentStatus& dy = descent(y);
 
-  for (size_t s = 0; s < rank(); ++s)
+  weyl::Generator s;
+  for (s=0; s<rank(); ++s)
     if (dy[s]==DescentStatus::RealNonparity)
       { DescentStatus::Value vx = dx[s];
 	if (vx==DescentStatus::ComplexAscent or
-	    vx==DescentStatus::ImaginaryCompact or
-	    vx==DescentStatus::ImaginaryTypeII)
-	  return s;
+	    vx==DescentStatus::ImaginaryTypeII or
+	    vx==DescentStatus::ImaginaryCompact)
+	  break; // and return the current |s|
       }
-  return rank(); // failure
-} // |Helper::firstNiceAscent|
+  return s;
+
+} // |Helper::first_nice_and_real|
 
 /*
   Preconditions:
   * all descents for y are of type r2 (firstDirectRecursion has failed)
   * x is extremal for y (none of the descents for y are ascents for x)
-  * none of the rn ascents for y is C+, ic or i2 for x (firstNiceAscent failed)
+  * none of the rn ascents for y is C+, ic or i2 for x (so
+    |first_nice_and_real| failed to find anything)
 
   Returns the first pair (s,t) such that
   1) (s,t) is (rn,r2) for y;
@@ -554,15 +557,15 @@ size_t Helper::firstNiceAscent(BlockElt x,BlockElt y) const
   If no such pair exists or (rank,*) is returned. Under the given
   preconditions, such failure allows concluding that P_{x,y}=0.
 */
-std::pair<size_t,size_t> Helper::firstImaginaryReal(BlockElt x,
-						    BlockElt y) const
+std::pair<weyl::Generator,weyl::Generator>
+   Helper::first_endgame_pair(BlockElt x, BlockElt y) const
 {
   const DescentStatus& dx = descent(x);
   const DescentStatus& dy = descent(y);
 
-  size_t s,t, r=rank();
+  weyl::Generator s,t, r=rank();
 
-  for (s =0; s<r; ++s)
+  for (s=0; s<r; ++s)
     if (dy[s]==DescentStatus::RealNonparity and
 	dx[s]==DescentStatus::ImaginaryTypeI)
     { BlockElt sx = cross(s,x);
@@ -575,7 +578,7 @@ std::pair<size_t,size_t> Helper::firstImaginaryReal(BlockElt x,
     }
   return std::make_pair(r,0); // failure
 
-} // |Helper::firstImaginaryReal|
+} // |Helper::first_endgame_pair|
 
 
 
@@ -943,6 +946,9 @@ KLPol Helper::muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& mu_y)
 
       // now we have a true contribution with nonzero $\mu$
       size_t l_z = length(z);
+      if (l_z<=length(x))
+	break; // since length decreases in |mu_y| we can stop here
+
       unsigned int d = (l_y - l_z +1)/2; // power of q used in the formula
       MuCoeff mu = it->second;
       KLPolRef Pxz = klPol(x,z);
@@ -1012,7 +1018,7 @@ void Helper::newRecursion(BlockElt y)
 
   All in all the following cases are handled easily: |x| is (primitive but)
   not extremal, |x| has some |s| which is 'rn' for |y| and one of 'C+', 'i2'
-  or 'ic' for |x| (see |firstNiceAscent|). If no such |s| exists we can almost
+  or 'ic' for |x| (|first_nice_and_real|). If no such |s| exists we can almost
   conclude $P_{x,y}=0$, but need to handle an exceptional "endgame" situation
   in which the formula for an 'i1' ascent can be exploited in spite of the
   presence of $P_{s.x,y}$, because that term can be computed on the fly.
@@ -1063,21 +1069,24 @@ void Helper::newRecursionRow(KLRow& klv,
       // real for y that is a true ascent (not rn) of x and therefore rn for y
       // we first hope that at least one of them is not i1 for x
 
-      // we first seek a real nonparity ascent for y that is C+,ic or i2 for x
-      s = firstNiceAscent(x,y);
+      // we first seek a real nonparity ascent for y that is C+,i2 or ic for x
+      s = first_nice_and_real(x,y);
       if (s < rank()) // there is such an ascent s
       {
 	// start setting |pol| to the expression (3.4) in recursion.pdf
 	KLPol pol = muNewFormula(x,y,s,mu_y);
 
-	if (descentValue(s,x)==DescentStatus::ComplexAscent)
+	switch (descentValue(s,x))
+	{
+	case DescentStatus::ComplexAscent:
 	{ // use equations (3.3a)=(3.4)
 	  BlockElt sx = cross(s,x);
 	  pol.safeSubtract(klPol(sx,y),1);
 	  // subtract qP_{sx,y} from mu terms
 	} // ComplexAscent case
+	break;
 
-	else if (descentValue(s,x)==DescentStatus::ImaginaryTypeII)
+	case DescentStatus::ImaginaryTypeII:
 	{ // use equations (3.3a)=(3.5)
 	  BlockEltPair p = cayley(s,x);
 	  KLPol sum = klPol(p.first,y);
@@ -1086,15 +1095,18 @@ void Helper::newRecursionRow(KLRow& klv,
 	  pol.safeSubtract(sum,1); //now we've added (1-q)(P_{x',y}+P_{x'',y})
 	  pol.safeDivide(2);   //this may throw
 	} // ImaginaryTypeII case
+	break;
 
-	else if (descentValue(s,x)==DescentStatus::ImaginaryCompact)
-	{ // here s is a emph{descent} for x, which causes an extra unknown
-	  // leading (if nonzero) term to appear in addition to (3.4), giving
-	  // rise to equation (3.7). Yet we can determine the quotient by q+1.
+	case DescentStatus::ImaginaryCompact:
+	  /* here s is a emph{descent} for x, which causes an extra unknown
+	     leading (if nonzero) term to appear in addition to (3.4), giving
+	     rise to equation (3.7). Yet we can determine the quotient by q+1.
+	  */
 	  pol.safeQuotient(length(y)-length(x));
-	} // ImaginaryCompact case
+	  break;
 
-	// no 'else'; we've handled all possible NiceAscents
+	default: assert(false); //we've handled all possible NiceAscents
+	}
 	klv[j] = d_hashtable.match(pol);
 	if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
 	  mu_y.push_back(std::make_pair(x,pol[pol.degree()]));
@@ -1117,7 +1129,7 @@ void Helper::newRecursionRow(KLRow& klv,
 	   If no such s,t exist then we may conclude x is not Bruhat below y,
 	   so P_{x,y}=0.
 	*/
-	std::pair<size_t,size_t> st = firstImaginaryReal(x,y);
+	std::pair<size_t,size_t> st = first_endgame_pair(x,y);
 	s = st.first;
 	unsigned int t = st.second;
 
@@ -1144,7 +1156,7 @@ void Helper::newRecursionRow(KLRow& klv,
 	  if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
 	    mu_y.push_back(std::make_pair(x,pol[pol.degree()]));
 	}
-	else // |firstImaginaryReal| found nothing
+	else // |first_endgame_pair| found nothing
 	  klv[j]=d_zero;
       } // end of no NiceAscent case
     } // while (j-->0)
@@ -1155,7 +1167,8 @@ void Helper::newRecursionRow(KLRow& klv,
 			    static_cast<const KLContext&>(*this));
   }
 
-  d_mu[y]=MuRow(mu_y.rbegin(),mu_y.rend());
+  d_mu[y]=MuRow(mu_y.rbegin(),mu_y.rend()); // reverse to a tight copy
+
   for (unsigned int k=mu_y.size()-downs.size(); k<mu_y.size(); ++k)
   { // successively insertion-sort the down-set x's into previous list
     for (size_t i=k; i>0 and d_mu[y][i-1].first>d_mu[y][i].first; --i)

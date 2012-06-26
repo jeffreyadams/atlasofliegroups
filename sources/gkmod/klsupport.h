@@ -84,17 +84,14 @@ class KLSupport
   unsigned int good_ascent_descent(BlockElt x,BlockElt y) const
   { return (goodAscentSet(x)&descentSet(y)).firstBit(); }
 
-  /* computing KL polynomials spends a large amount of time evaluating
-     primitivize. When possible, it's faster to tabulate and inline it. The
-     size of the data makes this a bad idea for rank \ge 10 or so. We might
-     adopt a lazy scheme, filling rows only on demand, hoping to save a bit.
+  /* computing KL polynomials used to spend a large amount of time evaluating
+     primitivize and then to binary-search for the resulting primitve element.
+     Since the primitive condition only depends on the descent set, we speed
+     things up by tabulating for each descent set the map from block elements
+     to the index of their primitivized counterparts.
   */
-  BlockElt primitivize (BlockElt x, const RankFlags& A) const
-  { return d_primitivize[A.to_ulong()][x]; }
-
-  // after primitivize, we often need index of result in appropriate primitives
-  unsigned int prim_index (BlockElt x, const RankFlags& A) const
-  { return d_prim_index[A.to_ulong()][x]; }
+  unsigned int prim_index (BlockElt x, const RankFlags& descent_set) const
+  { return d_prim_index[descent_set.to_ulong()][x]; }
 
   // this is where an element |y| occurs in its "own" primitive row
   unsigned int self_index (BlockElt y) const

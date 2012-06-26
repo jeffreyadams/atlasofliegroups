@@ -50,7 +50,6 @@ KLSupport::KLSupport(const Block_base& b)
   , d_downset()
   , d_primset()
   , d_lengthLess()
-  , d_primitivize()
   , d_prim_index()
 {}
 
@@ -67,7 +66,6 @@ void KLSupport::swap(KLSupport& other)
   d_downset.swap(other.d_downset);
   d_primset.swap(other.d_primset);
   d_lengthLess.swap(other.d_lengthLess);
-  d_primitivize.swap(other.d_primitivize);
   d_prim_index.swap(other.d_prim_index);
 
 }
@@ -241,12 +239,16 @@ void KLSupport::fillDownsets()
 }
 
 /*
-  Synopsis: fills in the table d_primitivize.
+  Synopsis: fills in the table d_prim_index.
 
-  Explanation: for each z in the block, and each set A of simple
-  roots, d_primitivize[A][z] comes by proper ascents of z through s
-  in A (either cross actions increasing length, or Cayley transforms)
-  or 0 (if we come to a real non-parity case).
+  Explanation: for each z in the block, and each descent set |A|, one can
+  reach from |z| a primitive element |z'| for |A| by following 'C+' or 'i1'
+  ascents, or possibly run into an 'rn' ascent aborting the search (when this
+  happens any KL polynomial $P_{z,y}$ with |descentSet(y)==A| will be zero).
+
+  Rather than |z'|, we store the index of |z'| in the list of primitives for
+  |A|, this avoiding any for of binary search (but we will have to store null
+  polynomials to ensure every polynomial has a predictable place).
 
   Sets the PrimitivizeFilled bit in d_state if successful.
 */
@@ -261,7 +263,6 @@ void KLSupport::fillDownsets()
       return;
 
     size_t two_to_the_r = 1ul << rank();
-    d_primitivize.resize(two_to_the_r);
     d_prim_index.resize(two_to_the_r);
 
     size_t blocksize = d_block.size();
@@ -270,9 +271,8 @@ void KLSupport::fillDownsets()
     {
       const RankFlags A(j); // the current descent set
 
-      BlockEltList& prim = d_primitivize[j];
+      BlockEltList prim;
       std::vector<unsigned int>& prim_index = d_prim_index[j];
-      prim.resize(blocksize);
       prim_index.resize(blocksize);
 
       BitMap primitives(size()); primitives.fill();
@@ -283,29 +283,30 @@ void KLSupport::fillDownsets()
       for (BlockElt z = blocksize; z-->0;)
       {
 	// primitivize
-	RankFlags a = goodAscentSet(z);
-	a &= A;
+	RankFlags a = goodAscentSet(z)&A;
 	if (a.none())
 	{
 	  assert(primitives.isMember(z)); // sanity check
 	  prim_index[z] = --prim_count;
-	  prim[z] = z;
 	  continue;
 	}
-	size_t s = a.firstBit();
-	DescentStatus::Value v = descentValue(s,z);
-	if (v == DescentStatus::RealNonparity)
+	for (RankFlags::iterator it=a.begin(); it(); ++it)
+	  if (descentValue(*it,z) == DescentStatus::RealNonparity)
+	  {
+	    prim_index[z] = ~0; goto finish; // no primitivization
+	  }
+
 	{
-	  prim[z] = UndefBlock;
-	  prim_index[z] = ~0; // signal inexistent primitivization
-	}
-	else // ComplexAscent or ImaginaryTypeI
-	{
+	  size_t s = a.firstBit();
+	  DescentStatus::Value v = descentValue(s,z);
+	  assert(v == DescentStatus::ComplexAscent or
+		 v==DescentStatus::ImaginaryTypeI);
 	  BlockElt sz =  v==DescentStatus::ComplexAscent
 	    ? d_block.cross(s,z) : d_block.cayley(s,z).first;
-	  prim[z] = prim[sz];
 	  prim_index[z] = prim_index[sz];
 	}
+
+      finish: {}
       } // |for(z-->0)|
       assert(prim_count==0); // we've seen all primitives
     } // |for(A)|
