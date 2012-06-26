@@ -3075,14 +3075,9 @@ void KL_block_wrapper(expression_base::level l)
     const kl::KLContext& klc = block.klc(block.size()-1,false);
 
     matrix_ptr M(new matrix_value(int_Matrix(klc.size())));
-    const kl::KLPol* base_pt = &klc.polStore()[0];
     for (size_t y=1; y<klc.size(); ++y)
       for (size_t x=0; x<y; ++x)
-      {
-        const kl::KLPol& pol = klc.klPol(x,y);
-        if (not pol.isZero()) // exception needed: zero need not be from table
-          M->val(x,y)= &pol-base_pt;
-      }
+        M->val(x,y)= klc.KL_pol_index(x,y);
 @)
     row_ptr polys(new row_value(0)); polys->val.reserve(klc.polStore().size());
     for (size_t i=0; i<klc.polStore().size(); ++i)

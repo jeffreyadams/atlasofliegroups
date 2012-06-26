@@ -109,10 +109,9 @@ std::ostream& printPrimitiveKL
   BruhatOrder& bo=block.bruhatOrder(); // non-const!
   const poset::Poset& Bruhat=bo.poset(); // full poset is generated here
 
-  for (size_t y = 0; y < klc.size(); ++y) {
-
-    kl::PrimitiveRow e;
-    klc.makePrimitiveRow(e,y); // list of ALL primitive x's
+  for (size_t y = 0; y < klc.size(); ++y)
+  {
+    kl::PrimitiveRow e = klc.primitiveRow(y); // list of ALL primitive x's
 
     strm << std::setw(width) << y << ": ";
     bool first = true;
@@ -140,9 +139,13 @@ std::ostream& printPrimitiveKL
       {
 	assert(klc.klPol(e[j],y).isZero());
 	++incomp_count;
-      }
-    strm << std::endl;
-  }
+      } // |for (j)|
+
+    ++count; // count $P_{y,y}$
+    if (not first)
+      strm << std::setw(width+tab)<< "";
+    strm << std::setw(width) << y << ": 1" << std::endl << std::endl;
+  } // |for(y)|
 
   strm << count  << " Bruhat-comparable primitive "
        << (count==1 ? "pair" : "pairs")

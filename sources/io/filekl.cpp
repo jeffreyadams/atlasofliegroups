@@ -69,7 +69,7 @@ namespace atlas {
       BitMap prims=klc.primMap(y);
       const kl::KLRow& klr=klc.klRow(y);
     
-      assert(klr.size()==prims.size()); // check the number of KL polynomials
+      assert(klr.size()+1==prims.capacity()); // check the number of KL polynomials
     
       // write row number for consistency check on reading
       basic_io::put_int(y,out);
@@ -85,7 +85,13 @@ namespace atlas {
     
       // finally, write the indices of the KL polynomials themselves
       for (size_t i=0; i<klr.size(); ++i)
-        basic_io::put_int(klr[i],out);
+      {
+        assert((klr[i]!=0)==prims.isMember(i));
+        if (klr[i]!=0) // only write nonzero indices
+          basic_io::put_int(klr[i],out);
+      }
+    
+      basic_io::put_int(1,out); // write unrecorded final polynomial 1
     
       // and signal if there was unsufficient space to write the row
       if (not out.good()) throw error::OutputError();
