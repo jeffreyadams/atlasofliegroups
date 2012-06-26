@@ -96,6 +96,10 @@ class KLSupport
   unsigned int prim_index (BlockElt x, const RankFlags& A) const
   { return d_prim_index[A.to_ulong()][x]; }
 
+  // this is where an element |y| occurs in its "own" primitive row
+  unsigned int self_index (BlockElt y) const
+  { return d_prim_index[descentSet(y).to_ulong()][y]; }
+
   // the following are filters of the bitmap
   void filter_extremal(BitMap&, const RankFlags&) const;
   void filter_primitive(BitMap&, const RankFlags&) const;
