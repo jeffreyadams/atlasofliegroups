@@ -69,3 +69,5 @@
 
 * Work on makefiles, distribution and support programs
  - Figure out how to avoid 'unrecognised typedef at line 367 of atlas_types.h'
+ - Improve makefile for realex, reflecting dependencies of atlas .h-files
+
