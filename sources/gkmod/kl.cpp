@@ -33,7 +33,6 @@
 #include <ctime>
 #include <sstream>
 #include <string>
-#include <algorithm> // for |std::lower_bound|
 
 #include <cassert>
 #include <set>  // for |down_set|
@@ -272,7 +271,7 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 
   if (inx>=klr.size()) // l(x)>=l(y), includes case x==~0: no primitivization
     return d_store[inx==self_index(y) ? d_one : d_zero];
-  return d_store[d_kl[y][inx]];
+  return d_store[klr[inx]];
 }
 
 KLIndex KLContext::KL_pol_index(BlockElt x, BlockElt y) const
@@ -286,7 +285,7 @@ KLIndex KLContext::KL_pol_index(BlockElt x, BlockElt y) const
 /*!
   \brief Returns mu(x,y).
 
-  This function os not used internally. So we prefer do just use the table of
+  This function is not used internally. So we prefer do just use the table of
   KL polynomials.
  */
 MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
@@ -395,10 +394,10 @@ BitMap KLContext::primMap (BlockElt y) const
 
   // now b holds a bitmap indicating primitive elements for y
 
-  // our result will be a bitmap of that size
+  // our result will be a bitmap of that capacity
   BitMap result (b.size()); // initiallly all bits are cleared
 
-  // traverse |b|, and for its elements that occur in, set bits in |result|
+  // traverse |b|, for elements that have nonzero KL poly, set bits in |result|
 
   size_t position=0; // position among set bits in b (avoids using b.position)
   for (BitMap::iterator it=b.begin(); it(); ++position,++it)
@@ -477,7 +476,7 @@ Helper::Helper(const KLContext& kl)
 weyl::Generator Helper::firstDirectRecursion(BlockElt y) const
 {
   const DescentStatus& d = descent(y);
-  size_t s;
+  weyl::Generator s;
   for (s=0; s<rank(); ++s) {
     DescentStatus::Value v = d[s];
     if (DescentStatus::isDirectRecursion(v))
@@ -586,7 +585,6 @@ std::set<BlockElt> Helper::down_set(BlockElt y) const
   return result;
 
 } // |Helper::down_set|
-
 
 
 
@@ -743,7 +741,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
 			  BlockElt y,
 			  size_t s)
 {
-  klv.resize(e.size()+1);
+  klv.resize(e.size());
 
   BlockElt sy =
     descentValue(s,y) == DescentStatus::ComplexDescent ? cross(s,y)
@@ -751,9 +749,6 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
 
   size_t i; // keep outside for error reporting
   try {
-
-    // last K-L polynomial is 1
-    klv.back() = One;
 
     // the following loop could be run in either direction: no dependency.
     // however it is natural to take |x| descending from |y| (exclusive)
@@ -780,12 +775,13 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
 	  BlockEltPair sx = inverseCayley(s,x);
 	  klv[i] = klPol(sx.first,sy);
 	  klv[i].safeAdd(klPol(sx.second,sy));
-	  klv[i].safeAdd(klPol(x,sy),1);
-	  klv[i].safeSubtract(klPol(x,sy));
+	  KLPolRef Pxsy = klPol(x,sy);
+	  klv[i].safeAdd(Pxsy,1);
+	  klv[i].safeSubtract(Pxsy);
 	}
 	break;
       case DescentStatus::RealTypeII:
-	{ // P_{x_1,y_1}+qP_{x,sy}-P_{s.x,sy}
+	{ // P_{sx,sy}+qP_{x,sy}-P_{s.x,sy}
 	  BlockElt sx = inverseCayley(s,x).first;
 	  klv[i] = klPol(sx,sy);
 	  klv[i].safeAdd(klPol(x,sy),1);
@@ -1011,7 +1007,7 @@ void Helper::newRecursionRow(KLRow& klv,
 			     const PrimitiveRow& pr,
 			     BlockElt y)
 {
-  klv.resize(pr.size()); // primitive element of length less than |length(y)|
+  klv.resize(pr.size()); // primitive elements of length less than |length(y)|
 
   unsigned int l_y = length(y);
 
@@ -1181,24 +1177,24 @@ void Helper::newRecursionRow(KLRow& klv,
   manually from the appropriate klv[k].
 */
 KLPol Helper::muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& mu_y)
+
 {
   KLPol pol=Zero;
 
-  size_t l_y = length(y);
+  unsigned int lx=length(x), ly = length(y);
 
   try
   {
     for (MuRow::const_iterator it=mu_y.begin(); it!=mu_y.end(); ++it)
     {
       BlockElt z = it->first;
+      unsigned int lz = length(z);
+      if (lz<=lx)
+	break; // length |z| decreases, and |z==x| must be excluded, so stop
       if (not DescentStatus::isDescent(descentValue(s,z))) continue;
 
       // now we have a true contribution with nonzero $\mu$
-      size_t l_z = length(z);
-      if (l_z<=length(x))
-	break; // since length decreases in |mu_y| we can stop here
-
-      unsigned int d = (l_y - l_z +1)/2; // power of q used in the formula
+      unsigned int d = (ly - lz +1)/2; // power of q used in the formula
       MuCoeff mu = it->second;
       KLPolRef Pxz = klPol(x,z);
 
@@ -1215,7 +1211,7 @@ KLPol Helper::muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& mu_y)
   }
 
   return pol;
-} //muNewFormula
+} // |muNewFormula|
 
 
 } // namespace helper
