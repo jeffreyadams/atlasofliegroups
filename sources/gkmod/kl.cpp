@@ -35,6 +35,9 @@
 #include <string>
 #include <algorithm> // for |std::lower_bound|
 
+#include <sys/time.h>
+#include <sys/resource.h> // for getrusage in verbose
+
 #include <cassert>
 #include <set>  // for |down_set|
 #include <stdexcept>
@@ -694,7 +697,9 @@ void Helper::fill(BlockElt last_y, bool verbose)
   std::time(&time0);
   std::time_t time;
 
-  std::ifstream statm("/proc/self/statm"); // open file for memory status
+  struct rusage usage; //holds Resource USAGE report
+  size_t storesize = 0; // previous size of d_store
+  size_t polsize = 0; // running total of sum of (polynomial degrees+1)
 
   // do the other cases
   for (size_t l=minLength; l<=maxLength; ++l)
@@ -724,26 +729,32 @@ void Helper::fill(BlockElt last_y, bool verbose)
       size_t p_capacity // currently used memory for polynomials storage
 	=d_hashtable.capacity()*sizeof(KLIndex)
 	+ d_store.capacity()*sizeof(KLPol);
-      for (size_t i=0; i<d_store.size(); ++i)
-	p_capacity+= (d_store[i].degree()+1)*sizeof(KLCoeff);
+      for (size_t i=storesize; i<d_store.size(); ++i)
+	polsize+= (d_store[i].degree()+1)*sizeof(KLCoeff);
+      storesize = d_store.size(); // avoid recounting polynomials!
+      p_capacity += polsize;
 
-      std::time(&time);
-      double deltaTime = difftime(time, time0);
-      std::cerr << "t="    << std::setw(5) << deltaTime
-		<< "s. l=" << std::setw(3) << l // completed length
-		<< ", y="  << std::setw(6)
-		<< lengthLess(l+1)-1 // last y value done
-		<< ", polys:"  << std::setw(11) << d_store.size()
-		<< ", pmem:" << std::setw(11) << p_capacity
-		<< ", mat:"  << std::setw(11) << prim_size
-		<<  std::endl;
-
-      unsigned int size, resident,share,text,lib,data;
-      statm.seekg(0,std::ios_base::beg);
-      statm >> size >> resident >> share >> text >> lib >> data;
-      std::cerr << "Current data size " << data*4 << "kB (" << data*4096
-		<< "), resident " << resident*4 << "kB, total "
-		<< size*4 << "kB.\n";
+      std::cerr // << "t="    << std::setw(5) << deltaTime << "s. 
+	        << "l=" << std::setw(3) << l // completed length
+                << ", y="  << std::setw(6)
+                << lengthLess(l+1)-1 // last y value done
+                << ", polys:"  << std::setw(11) << d_store.size()
+                << ", mat:"  << std::setw(11) << prim_size
+                <<  std::endl;
+      unsigned cputime, resident; //memory usage in megabytes
+      if(getrusage(RUSAGE_SELF, &usage) != 0)
+	std::cerr << "getrusage failed" << std::endl;
+      resident = usage.ru_maxrss/1024; //largest so far??
+#ifdef __APPLE__
+      resident = resident/1024;
+#endif
+      cputime = usage.ru_utime.tv_sec;
+      std::cerr << "CPU time = " << std::setw(5) << cputime 
+		<< " secs, Max res size=" 
+		<< std::setw(5) << resident << "MB, pmem=" 
+		<< std::setw(6) << p_capacity/1048576 << "MB, matmem=" 
+		<< std::setw(6) << prim_size*sizeof(KLIndex)/1048576 
+		<< "MB \n";
     }
 
   } // for (l=min_length+1; l<=max_Length; ++l)
