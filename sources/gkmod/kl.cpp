@@ -178,9 +178,6 @@ namespace helper {
     inline bool ascentMu // mu(x,y) when s is ascent for x and descent for y
       (BlockElt x, BlockElt y, size_t s) const;
 
-    inline MuCoeff goodDescentMu
-      (BlockElt x, BlockElt y, size_t s) const;
-
     MuCoeff lengthOneMu(BlockElt x, BlockElt y) const;
 
     // manipulators
@@ -338,25 +335,30 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
   return d_store[klr[xptr - pr.begin()]];
 }
 
-
+bool mu_entry_compare(const std::pair<BlockElt,MuCoeff>& x,
+		      const std::pair<BlockElt,MuCoeff>& y)
+{ return x.first<y.first; }
 /*!
   \brief Returns mu(x,y).
 
   Explanation: it is guaranteed that all the x'es such that mu(x,y) != 0
   occur in d_mu[y] (and in fact, that only those occur.) So it is a simple
-  matter of looking up x.
+  matter of looking up x. We can say 0 without lookup in some easy cases.
 */
 MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
 {
+  unsigned int lx=length(x),ly=length(y);
+  if (ly<=lx or (ly-lx)%2==0)
+    return MuCoeff(0);
   const MuRow& mr = d_mu[y];
+  std::pair<BlockElt,MuCoeff> x0(x,0); // second component is unused
+  MuRow::const_iterator xloc=
+    std::lower_bound(mr.begin(),mr.end(),x0,&mu_entry_compare);
 
-  std::vector<BlockElt>::const_iterator xloc=
-    std::lower_bound(mr.first.begin(),mr.first.end(),x);
+  if (xloc==mr.end() or xloc->first!=x)
+    return MuCoeff(0); // x not found in mr
 
-  if (xloc==mr.first.end() or *xloc!=x)
-    return 0; // x not found in mr
-
-  return mr.second[xloc-mr.first.begin()];
+  return mr[xloc-mr.begin()].second;
 }
 
 /* The following two methods were moved here from the Helper class, since
@@ -714,44 +716,6 @@ MuCoeff Helper::lengthOneMu(BlockElt x, BlockElt y) const
 }
 
 
-/*!
-  \brief Gets |mu(x,y)| by a good descent recursion.
-
-  Precondition: $l(y)>0$; $l(x)=l(y)-1$; all previous mu-rows have been filled
-  in; |s| is a good descent for |y|;
-
-  Explanation: a good descent for |y| is a descent that is neither real type
-  II nor imaginary compact (so it is either a complex or real type I); these
-  are the cases where |mu(x,y)| is directly expressed by recursion.
-*/
-inline MuCoeff
-Helper::goodDescentMu(BlockElt x, BlockElt y, size_t s) const
-{
-  BlockElt y1;
-
-  if (descentValue(s,y) == DescentStatus::ComplexDescent)
-    y1 = cross(s,y);
-  else // s is real type I for y, chooise one of double-valued inverse Cayley
-    y1 = inverseCayley(s,y).first;
-
-  switch (descentValue(s,x))
-  {
-  case DescentStatus::ImaginaryCompact:  return MuCoeff(0);
-  case DescentStatus::ComplexDescent:    return mu(cross(s,x),y1);
-  case DescentStatus::RealTypeI:
-    {
-      BlockEltPair x1 = inverseCayley(s,x);
-      return mu(x1.first,y1)+mu(x1.second,y1);
-    }
-  case DescentStatus::RealTypeII:  return mu(inverseCayley(s,x).first,y1);
-
-  default: // this cannot happen
-    assert(false);
-    return MuCoeff(0); // keep compiler happy
-  }
-}
-
-
 /******** manipulators *******************************************************/
 
 
@@ -989,7 +953,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   Precondtion: |klv| already contains, for all $x$ that are primitive w.r.t.
   |y| in increasing order, the terms in $P_{x,y}$ corresponding to
   $c_s.c_{y1}$, whery |y1| is $s.y$ if |s| is a complex descent, and |y1| is
-  an inverse Cayley transform of |y| if |s| is real type I or II.
+  an inverse Cayley transform of |y| if |s| is real type I.
   The mu-table and KL-table have been filled in for elements of length < l(y).
 
   Explanation: the recursion formula is of the form:
@@ -1018,17 +982,17 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
   const MuRow& mrow = d_mu[sy];
   size_t l_y = length(y);
 
-  for (size_t i = 0; i<mrow.first.size(); ++i)
+  for (size_t i = 0; i<mrow.size(); ++i)
   {
 
-    BlockElt z = mrow.first[i];
+    BlockElt z = mrow[i].first;
     size_t l_z = length(z);
 
     DescentStatus::Value v = descentValue(s,z);
     if (not DescentStatus::isDescent(v))
       continue;
 
-    MuCoeff mu = mrow.second[i]; // mu!=MuCoeff(0)
+    MuCoeff mu = mrow[i].second; // mu!=MuCoeff(0)
 
     polynomials::Degree d = (l_y-l_z)/2; // power of q used in the loops below
 
@@ -1394,28 +1358,27 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
 */
 void Helper::fillMuRow(BlockElt y)
 {
-  const PrimitiveRow& e = d_prim[y]; // list of nonzero polynomials
+  const PrimitiveRow& e = d_prim[y]; // list of primitive |x| values for |y|
 
   size_t ly = length(y);
   if (ly==0) // we are in fact never called for |y| values of length 0
     return;  // but this is prudent, since next loop would fail for |ly==0|
 
   PrimitiveRow::const_iterator start= e.begin();
-  // traverse lengths of opposite parity, up to ly-3
-  for (size_t lx=(ly-1)%2,d = (ly-1)/2; d>0; --d,lx+=2) {// d=(ly-1-lx)/2
-
+  // traverse lengths of opposite parity, increasingly, up to ly-3 inclusive
+  for (size_t lx=(ly-1)%2,d = (ly-1)/2; d>0; --d,lx+=2) // d=(ly-1-lx)/2
+  {
     PrimitiveRow::const_iterator stop =
       std::lower_bound(start,e.end(),lengthLess(lx+1));
     for (start= std::lower_bound(start,stop,lengthLess(lx));
-	 start<stop; ++start) {
+	 start<stop; ++start)
+    {
       BlockElt x = *start;
       KLIndex klp = d_kl[y][start-e.begin()];
 
       KLPolRef p=d_store[klp];
-      if (p.degree()== d) { // then we have found a mu-coefficient for x
-	d_mu[y].first.push_back(x);
-	d_mu[y].second.push_back(p[d]);
-      }
+      if (p.degree()== d) // then we have found a mu-coefficient for x
+	d_mu[y].push_back(std::make_pair(x,p[d]));
     }
   }
 
@@ -1423,12 +1386,11 @@ void Helper::fillMuRow(BlockElt y)
   BlockElt x_begin = lengthLess(ly-1);
   BlockElt x_end = lengthLess(ly);
 
-  for (BlockElt x = x_begin; x < x_end; ++x) {
+  for (BlockElt x = x_begin; x < x_end; ++x)
+  {
     MuCoeff mu = lengthOneMu(x,y);
-    if (mu!=MuCoeff(0)) {
-      d_mu[y].first.push_back(x);
-      d_mu[y].second.push_back(mu);
-    }
+    if (mu!=MuCoeff(0))
+      d_mu[y].push_back(std::make_pair(x,mu));
   }
 
 } // |Helper::fillMuRow|
@@ -1475,12 +1437,12 @@ void wGraph(wgraph::WGraph& wg, const KLContext& klc)
   for (BlockElt y = 0; y < klc.size(); ++y) {
     const RankFlags& d_y = wg.descent(y);
     const MuRow& mrow = klc.muRow(y);
-    for (size_t j = 0; j < mrow.first.size(); ++j) {
-      BlockElt x = mrow.first[j];
+    for (size_t j = 0; j < mrow.size(); ++j) {
+      BlockElt x = mrow[j].first;
       const RankFlags& d_x = wg.descent(x);
       if (d_x == d_y)
 	continue;
-      MuCoeff mu = mrow.second[j];
+      MuCoeff mu = mrow[j].second;
       if (klc.length(y) - klc.length(x) > 1) { // add edge from x to y
 	wg.edgeList(x).push_back(y);
 	wg.coeffList(x).push_back(mu);

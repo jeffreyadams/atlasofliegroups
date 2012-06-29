@@ -1,12 +1,11 @@
-/*!
-\file
-\brief
-Class definitions and function declarations for the class KLContext.
-*/
 /*
   This is kl.h
 
+  Class definitions and function declarations for the class KLContext.
+
+
   Copyright (C) 2004,2005 Fokko du Cloux
+  Copyright 2012 David Vogan, Marc vna Leeuwen
   part of the Atlas of Reductive Lie Groups
 
   For license information see the LICENSE file
@@ -45,8 +44,10 @@ namespace kl {
 
 /* Namely: the definition of KLContext itself */
 
-
 namespace kl {
+
+typedef std::vector<std::pair<BlockElt,MuCoeff> > MuRow;
+
 
   /*!
 \brief Calculates and stores the Kazhdan-Lusztig polynomials for a
