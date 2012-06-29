@@ -68,8 +68,8 @@ class KLContext
   std::vector<PrimitiveRow> d_prim;
 
 /*!
-  \brief Entry d_kl[y] is a list of pointers to the polynomials
-  P_{y,x_i}, numbered as in the list d_prim[y].
+  \brief Entry d_kl[y] is a list of indices into |d_hashtable| of polynomials
+  P_{x_i,y}, where $x_i$ is primitive element number |i| for |descentSet(y)|
 */
   std::vector<KLRow> d_kl;           // list of polynomial pointers
 
@@ -102,13 +102,6 @@ class KLContext
   void makeExtremalRow(PrimitiveRow& e, BlockElt y) const;
 
   void makePrimitiveRow(PrimitiveRow& e, BlockElt y) const;
-
-/*!
-  \brief List of the elements x_i that are primitive with respect to y and have
- P_{y,x_i} NOT ZERO. This method is somewhat of a misnomer
-*/
-  const PrimitiveRow& primitiveRow(BlockElt y) const
-    { return d_prim[y]; }
 
   bool isZero(const KLIndex p) const { return p == d_zero; }
 
