@@ -50,8 +50,6 @@ KLSupport::KLSupport(const Block_base& b)
   , d_downset()
   , d_primset()
   , d_lengthLess()
-  , d_primitivize()
-  , d_prim_index()
 {}
 
 /******** copy, assignment and swap ******************************************/
@@ -67,8 +65,6 @@ void KLSupport::swap(KLSupport& other)
   d_downset.swap(other.d_downset);
   d_primset.swap(other.d_primset);
   d_lengthLess.swap(other.d_lengthLess);
-  d_primitivize.swap(other.d_primitivize);
-  d_prim_index.swap(other.d_prim_index);
 
 }
 

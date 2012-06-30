@@ -43,7 +43,6 @@
 #include "kl_error.h"
 #include "wgraph.h"	// for the |wGraph| function
 
-
 // extra defs for windows compilation -spc
 #ifdef WIN32
 #include <iterator>
@@ -140,11 +139,12 @@ namespace helper {
 
     //accessors
 
-    size_t firstDirectRecursion(BlockElt y) const;
+    weyl::Generator firstDirectRecursion(BlockElt y) const;
 
-    std::pair<size_t,size_t> firstImaginaryReal(BlockElt x, BlockElt y) const;
+    weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
 
-    size_t firstNiceAscent(BlockElt x,BlockElt y) const;
+    std::pair<weyl::Generator,weyl::Generator>
+      first_endgame_pair(BlockElt x, BlockElt y) const;
 
     BlockEltPair inverseCayley(size_t s, BlockElt y) const
     { return block().inverseCayley(s,y); }
@@ -164,13 +164,6 @@ namespace helper {
 		   PrimitiveRow::const_iterator p_begin,
 		   PrimitiveRow::const_iterator p_end) const;
 
-    // this variant is for |newRecursionRow|, which uses std::vector<KLPol>
-    const KLPol& klPol(BlockElt x, BlockElt y,
-		       const std::vector<KLPol>& klv,
-		       const PrimitiveRow& pr,
-		       unsigned int lwb // no need to look below this index
-		       ) const;
-
     std::set<BlockElt> down_set(BlockElt y) const;
 
     // manipulators
@@ -180,8 +173,6 @@ namespace helper {
 
     void fillKLRow(BlockElt y);
 
-    void directRecursion(BlockElt y, size_t s);
-
     void recursionRow(std::vector<KLPol> & klv,
 		      const PrimitiveRow& e, BlockElt y, size_t s);
 
@@ -189,15 +180,15 @@ namespace helper {
 		      const PrimitiveRow& e,
 		      BlockElt y, size_t s);
 
-    void newRecursion(BlockElt y);
+    void writeRow(const std::vector<KLPol>& klv,
+		  const PrimitiveRow& e, BlockElt y);
+
+    void remove_zeros(const KLRow& klv,
+		      const PrimitiveRow& e, BlockElt y);
 
     void newRecursionRow(KLRow & klv,const PrimitiveRow& pr, BlockElt y);
 
     KLPol muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& muy);
-
-    void writeRow(const std::vector<KLPol>& klv,
-		  const PrimitiveRow& e, BlockElt y);
-
 
   }; // class Helper
 
@@ -222,12 +213,9 @@ KLContext::KLContext(const Block_base& b)
   , d_kl()
   , d_mu()
   , d_store(2)
-  , d_zero(0)
-  , d_one(1)
 {
-  d_store[d_zero]=Zero;
-  d_store[d_one]=One;
-
+  d_store[d_zero]=Zero; // ensure these polynomials are present
+  d_store[d_one]=One;   // at expected indices, even if maybe absent in |d_kl|
 }
 
 /******** copy, assignment and swap ******************************************/
@@ -243,8 +231,6 @@ KLContext::KLContext(const KLContext& other)
   , d_kl(other.d_kl)
   , d_mu(other.d_mu)
   , d_store(other.d_store)
-  , d_zero(other.d_zero)
-  , d_one(other.d_one)
 {}
 
 
@@ -260,8 +246,6 @@ void KLContext::swap(KLContext& other) // used to extract base out of Helper
   d_mu.swap(other.d_mu);
 
   d_store.swap(other.d_store);  // this puts the Helper store into base object
-  std::swap(d_zero,other.d_zero);
-  std::swap(d_one,other.d_one);
 }
 
 // If table extension fails, we need to recover the old part of the tables
@@ -275,8 +259,6 @@ void KLContext::partial_swap(KLContext& other)
   d_kl.swap(other.d_kl);
   d_mu.swap(other.d_mu);
   d_store.swap(other.d_store);
-  std::swap(d_zero,other.d_zero);
-  std::swap(d_one,other.d_one);
 
   if (other.fill_limit<fill_limit) // we are initially filling helper object
   {
@@ -310,21 +292,33 @@ void KLContext::partial_swap(KLContext& other)
 */
 KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 {
-  const PrimitiveRow& pr = d_prim[y];
   const KLRow& klr = d_kl[y];
-
   x=primitivize(x,descentSet(y));
-  if (x>y) return Zero; // includes case x==blocks::UndefBlock
+  if (x>=y) return d_store[x==y ? d_one : d_zero];
+
+  const PrimitiveRow& pr = d_prim[y];
   PrimitiveRow::const_iterator xptr =
     std::lower_bound(pr.begin(),pr.end(),x);
-  if (xptr == pr.end() or *xptr != x) // not found
-    return Zero;
-  return d_store[klr[xptr - pr.begin()]];
+  return d_store[xptr == pr.end() or *xptr != x ? d_zero
+		 : klr[xptr - pr.begin()]];
+}
+
+KLIndex KLContext::KL_pol_index(BlockElt x, BlockElt y) const
+{
+  const KLRow& klr = d_kl[y];
+  x=primitivize(x,descentSet(y));
+  if (x>=y) return x==y ? d_one : d_zero;
+
+  const PrimitiveRow& pr = d_prim[y];
+  PrimitiveRow::const_iterator xptr =
+    std::lower_bound(pr.begin(),pr.end(),x);
+  return xptr == pr.end() or *xptr != x ? d_zero : klr[xptr - pr.begin()];
 }
 
 bool mu_entry_compare(const std::pair<BlockElt,MuCoeff>& x,
 		      const std::pair<BlockElt,MuCoeff>& y)
 { return x.first<y.first; }
+
 /*!
   \brief Returns mu(x,y).
 
@@ -352,50 +346,37 @@ MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
    they turn out to be useful even when no longer constructing the KLContext
 */
 
-/*!
-  \brief Puts in e the list of all x extremal w.r.t. y.
+/*
+  Returns the list of all x extremal w.r.t. y.
 
-  Explanation: this means that either x = y, or length(x) < length(y), and
-  every descent for y is a descent for x.  Or:  asc(x)\cap desc(y)=\emptyset
+  Explanation: this means that length(x) < length(y), and every descent
+  for y is either a descent for x.  Or:  asc(x)\cap desc(y)=\emptyset
   Here descent means "in the tau invariant" (possibilities C-, ic, r1, r2).
 */
-void
-KLContext::makeExtremalRow(PrimitiveRow& e, BlockElt y)
+PrimitiveRow KLContext::extremalRow(BlockElt y)
   const
 {
   BitMap b(size());
-  b.fill(0,lengthLess(length(y))); // start with all elements < y in length
-  b.insert(y);                     // and y itself
-
+  b.fill(0,lengthLess(length(y)));  // start with all elements < y in length
   filter_extremal(b,descentSet(y)); // filter out those that are not extremal
 
-  // copy from bitset b to list e
-  e.reserve(e.size()+b.size()); // ensure tight fit after copy
-  std::copy(b.begin(),b.end(),back_inserter(e));
-
+  return PrimitiveRow(b.begin(),b.end()); // convert to list
 }
 
 
-/*!
-  \brief Puts in e the list of all x primitive w.r.t. y.
+/*
+  Returns the list of all x primitive w.r.t. y.
 
-  Explanation: this means that either x = y, or length(x) < length(y),
-  and every descent for y is either a descent, or an imaginary type II
-  ascent for x.
+  Explanation: this means that length(x) < length(y), and every descent
+  for y is either a descent, or an imaginary type II ascent for x.
 */
-void
-KLContext::makePrimitiveRow(PrimitiveRow& e, BlockElt y)
-  const
+PrimitiveRow KLContext::primitiveRow(BlockElt y) const
 {
   BitMap b(size());
-  b.fill(0,lengthLess(length(y))); // start with all elements < y in length
-  b.insert(y);                     // and y itself
-
+  b.fill(0,lengthLess(length(y)));   // start with all elements < y in length
   filter_primitive(b,descentSet(y)); // filter out those that are not primitive
-  // copy to list
-  e.reserve(e.size()+b.size()); // ensure tight fit after copy
-  std::copy(b.begin(),b.end(),back_inserter(e));
 
+  return PrimitiveRow(b.begin(),b.end());
 }
 
 
@@ -464,7 +445,7 @@ BitMap KLContext::primMap (BlockElt y) const
  // the list of primitive elements with nonzero polynomials at y
   const PrimitiveRow& row=d_prim[y];
 
-  // traverse |b|, and for its elements that occur in, set bits in |result|
+  // traverse |b|, and for elements that occur in |row|, set bits in |result|
 
   size_t position=0; // position among set bits in b (avoids using b.position)
   size_t j=0; // index into row;
@@ -542,49 +523,52 @@ Helper::Helper(const KLContext& kl)
   |descentValue(s,y)| is either |DescentStatus::ComplexDescent| or
   |DescentStatus::RealTypeI|. If no such generator exists, we return |rank()|.
 */
-size_t Helper::firstDirectRecursion(BlockElt y) const
+weyl::Generator Helper::firstDirectRecursion(BlockElt y) const
 {
   const DescentStatus& d = descent(y);
-
-  for (size_t s = 0; s < rank(); ++s) {
+  weyl::Generator s;
+  for (s=0; s<rank(); ++s) {
     DescentStatus::Value v = d[s];
     if (DescentStatus::isDirectRecursion(v))
-      return s;
+      break;
   }
+  return s;
 
-  return rank();
 } // |Helper::firstDirectRecursion|
 
 /*
   Returns the first real nonparity ascent for y that is a complex ascent, or
   imaginary type 2, or compact imaginary for x.
 
-  Explanation: those are the ones that give the best new recursion formula for
+  Explanation: those are the ones that give a nice new recursion formula for
   the K-L polynomial
 
   If no such generator exists, we return |rank()|.
 */
-size_t Helper::firstNiceAscent(BlockElt x,BlockElt y) const
+weyl::Generator Helper::first_nice_and_real(BlockElt x,BlockElt y) const
 {
   const DescentStatus& dx = descent(x);
   const DescentStatus& dy = descent(y);
 
-  for (size_t s = 0; s < rank(); ++s)
+  weyl::Generator s;
+  for (s=0; s<rank(); ++s)
     if (dy[s]==DescentStatus::RealNonparity)
       { DescentStatus::Value vx = dx[s];
 	if (vx==DescentStatus::ComplexAscent or
-	    vx==DescentStatus::ImaginaryCompact or
-	    vx==DescentStatus::ImaginaryTypeII)
-	  return s;
+	    vx==DescentStatus::ImaginaryTypeII or
+	    vx==DescentStatus::ImaginaryCompact)
+	  break; // and return the current |s|
       }
-  return rank(); // failure
-} // |Helper::firstNiceAscent|
+  return s;
+
+} // |Helper::first_nice_and_real|
 
 /*
   Preconditions:
   * all descents for y are of type r2 (firstDirectRecursion has failed)
   * x is extremal for y (none of the descents for y are ascents for x)
-  * none of the rn ascents for y is C+, ic or i2 for x (firstNiceAscent failed)
+  * none of the rn ascents for y is C+, ic or i2 for x (so
+    |first_nice_and_real| failed to find anything)
 
   Returns the first pair (s,t) such that
   1) (s,t) is (rn,r2) for y;
@@ -603,15 +587,15 @@ size_t Helper::firstNiceAscent(BlockElt x,BlockElt y) const
   If no such pair exists or (rank,*) is returned. Under the given
   preconditions, such failure allows concluding that P_{x,y}=0.
 */
-std::pair<size_t,size_t> Helper::firstImaginaryReal(BlockElt x,
-						    BlockElt y) const
+std::pair<weyl::Generator,weyl::Generator>
+   Helper::first_endgame_pair(BlockElt x, BlockElt y) const
 {
   const DescentStatus& dx = descent(x);
   const DescentStatus& dy = descent(y);
 
-  size_t s,t, r=rank();
+  weyl::Generator s,t, r=rank();
 
-  for (s =0; s<r; ++s)
+  for (s=0; s<r; ++s)
     if (dy[s]==DescentStatus::RealNonparity and
 	dx[s]==DescentStatus::ImaginaryTypeI)
     { BlockElt sx = cross(s,x);
@@ -624,7 +608,7 @@ std::pair<size_t,size_t> Helper::firstImaginaryReal(BlockElt x,
     }
   return std::make_pair(r,0); // failure
 
-} // |Helper::firstImaginaryReal|
+} // |Helper::first_endgame_pair|
 
 /*!
   \brief Returns the Kazhdan-Lusztig polynomial for x corresponding to
@@ -643,15 +627,39 @@ KLPolRef Helper::klPol(BlockElt x, BlockElt y,
 		       PrimitiveRow::const_iterator p_begin,
 		       PrimitiveRow::const_iterator p_end) const
 {
-  BlockElt xp = primitivize(x,descentSet(y));
+  x = primitivize(x,descentSet(y));
 
-  if (xp>y) return Zero; // includes case |xp==blocks::UndefBlock|
+  if (x>=y) return d_store[x==y ? d_one : d_zero];
   PrimitiveRow::const_iterator xptr =
-    std::lower_bound(p_begin,p_end,xp);
-  if (xptr == p_end or *xptr != xp)
-    return Zero; // missing may mean equal length, or computed but found Zero
-  return d_store[klv[xptr-p_begin]];
+    std::lower_bound(p_begin,p_end,x);
+  return d_store[xptr == p_end or *xptr != x ? d_zero : klv[xptr-p_begin]];
 }
+
+// compute the down-set of $y$, the non-extremal $x$ with $\mu(x,y)\neq0$
+std::set<BlockElt> Helper::down_set(BlockElt y) const
+{
+  std::set<BlockElt> result;
+
+  for (RankFlags::iterator it=descentSet(y).begin(); it(); ++it)
+    switch (descentValue(*it,y))
+    {
+    case DescentStatus::ComplexDescent: result.insert(cross(*it,y));
+      break;
+    case DescentStatus::RealTypeI:
+      {
+	BlockEltPair sy = inverseCayley(*it,y);
+	result.insert(sy.first); result.insert(sy.second);
+      }
+      break;
+    case DescentStatus::RealTypeII:
+      result.insert(inverseCayley(*it,y).first);
+      break;
+    default: // |case DescentStatus::ImaginaryCompact| nothing
+      break;
+    }
+  return result;
+
+} // |Helper::down_set|
 
 
 
@@ -766,36 +774,26 @@ void Helper::fill(BlockElt last_y, bool verbose)
 */
 void Helper::fillKLRow(BlockElt y)
 {
-  if (d_kl[y].size()>0) // then row has already been filled
-    return;
-  size_t s = firstDirectRecursion(y);
-  if (s<rank())  // a direct recursion was found, use it for y, for all x
-    directRecursion(y,s);
-  else
-    newRecursion(y); // other cases, with formulas depending on position of x
-}
+  if (d_kl[y].size()>0)
+    return; // row has already been filled
+  weyl::Generator s = firstDirectRecursion(y);
+  if (s<rank())  // a direct recursion was found, use it for |y|, for all |x|
+  {
+    std::vector<KLPol> klv;
+    PrimitiveRow e = extremalRow(y); // we compute for |x| extremal only
 
-/*!
-  \brief Fills in the row for y using a direct recursion.
-
-  Precondition: s is either a complex, or a real type I descent generator for
-  y.
-
-  The real work is done by the recursionRow function, that will be used also
-  in the real type II descents.
-*/
-void Helper::directRecursion(BlockElt y, size_t s)
-{
-  std::vector<KLPol> klv;
-  PrimitiveRow e;
-
-  // put result of recursion formula in klv
-  makeExtremalRow(e,y);
-  recursionRow(klv,e,y,s);
-
-  // write result
-  writeRow(klv,e,y);
-
+    recursionRow(klv,e,y,s); // compute all polynomials for these |x|
+    // write result
+    writeRow(klv,e,y);
+  }
+  else // we must use an approach that distinguishes on |x| values
+  {
+    KLRow klv;
+    PrimitiveRow pr = primitiveRow(y); // here we do all |x| primitive for |y|
+    // (any ascents for x that are descents for y must be imaginary type II)
+    newRecursionRow(klv,pr,y); // put result of recursion formula in klv
+    remove_zeros(klv,pr,y); // write |d_prim[y]|, |d_kl[y]|, suppressing zeros
+  }
 }
 
 /*!
@@ -829,12 +827,9 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   size_t i; // keep outside for error reporting
   try {
 
-    // last K-L polynomial is 1
-    klv.back() = One;
-
     // the following loop could be run in either direction: no dependency.
-    // however it is natural to take x descending from y (exclusive)
-    for (i=klv.size()-1; i-->0; )
+    // however it is natural to take |x| descending from |y| (exclusive)
+    for (i=e.size(); i-->0; )
     {
       BlockElt x = e[i];
       switch (descentValue(s,x))
@@ -857,21 +852,20 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
 	  BlockEltPair sx = inverseCayley(s,x);
 	  klv[i] = klPol(sx.first,sy);
 	  klv[i].safeAdd(klPol(sx.second,sy));
-	  klv[i].safeAdd(klPol(x,sy),1);
-	  klv[i].safeSubtract(klPol(x,sy));
+	  KLPolRef Pxsy = klPol(x,sy);
+	  klv[i].safeAdd(Pxsy,1);
+	  klv[i].safeSubtract(Pxsy);
 	}
 	break;
       case DescentStatus::RealTypeII:
-	{ // P_{x_1,y_1}+qP_{x,sy}-P_{s.x,sy}
+	{ // P_{sx,sy}+qP_{x,sy}-P_{s.x,sy}
 	  BlockElt sx = inverseCayley(s,x).first;
 	  klv[i] = klPol(sx,sy);
 	  klv[i].safeAdd(klPol(x,sy),1);
 	  klv[i].safeSubtract(klPol(cross(s,x),sy));
 	}
 	break;
-      default: // this cannot happen
-	assert(false);
-	break;
+      default: assert(false); // this cannot happen
       }
     }
   }
@@ -880,8 +874,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
 			    static_cast<const KLContext&>(*this));
   }
 
-  // do mu-correction
-  muCorrection(klv,e,y,s);
+  muCorrection(klv,e,y,s); // subtract mu-correction from all of |klv|
 
 } // |Helper::recursionRow|
 
@@ -897,19 +890,23 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
 
   Explanation: the recursion formula is of the form:
   $$
-    lhs = c_s.c_{y1} - \sum_{z} mu(z,y1)c_z
+    lhs = c_s.c_{y'} - \sum_{z} mu(z,y')c_z
   $$
-  where |z| runs over the elements $< y1$ such that |s| is a descent for |z|.
+  where |z| runs over the elements $< y'$ such that |s| is a descent for |z|.
   Here $lhs$ stands for $c_y$ when |s| is a complex descent or real type I for
   |y|, and for $c_{y}+c_{s.y}$ when |s| is real type II; however it plays no
   part in this function that only subtracts $\mu$-terms.
 
   We construct a loop over |z| first, before traversing |klv| (the test for
-  $z<y1$ is absent, but $\mu(z,y1)\neq0$ implies $z\leq y1$, and $z=y1$ will
-  be rejected by the descent condition). The chosen loop order allows fetching
-  $\mu(z,y1)$ only once, and terminating the scan of |klv| once its values |x|
-  become too large to produce a non-zero $P_{x,z}$.
-*/
+  $z<sy$ is absent, but $\mu(z,sy)\neq0$ implies $z<sy$ (by convention
+  mu(y,y)=0, in any case no coefficient for |sy| is stored in |d_mu[sy]|, and
+  moreover $z=sy$ would be rejected by the descent condition). The chosen loop
+  order allows fetching $\mu(z,y1)$ only once, and terminating the scan of
+  |klv| once its values |x| become too large to produce a non-zero $P_{x,z}$.
+
+  Elements of length at least $l(sy)=l(y)-1$ on the list |e| are always
+  rejected, so the tail of |e| never reached.
+ */
 void Helper::muCorrection(std::vector<KLPol>& klv,
 			  const PrimitiveRow& e,
 			  BlockElt y, size_t s)
@@ -921,23 +918,22 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
   const MuRow& mrow = d_mu[sy];
   size_t l_y = length(y);
 
-  for (size_t i = 0; i<mrow.size(); ++i)
-  {
+  size_t j; // define outside for error reporting
+  try {
+    for (size_t i = 0; i<mrow.size(); ++i)
+    {
+      BlockElt z = mrow[i].first;
+      size_t l_z = length(z);
 
-    BlockElt z = mrow[i].first;
-    size_t l_z = length(z);
+      DescentStatus::Value v = descentValue(s,z);
+      if (not DescentStatus::isDescent(v))
+	continue;
 
-    DescentStatus::Value v = descentValue(s,z);
-    if (not DescentStatus::isDescent(v))
-      continue;
+      MuCoeff mu = mrow[i].second; // mu!=MuCoeff(0)
 
-    MuCoeff mu = mrow[i].second; // mu!=MuCoeff(0)
+      polynomials::Degree d = (l_y-l_z)/2; // power of q used in the loops below
 
-    polynomials::Degree d = (l_y-l_z)/2; // power of q used in the loops below
-
-    size_t j; // define outside for error reporting
-    if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
-      try {
+      if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
 	for (j = 0; j < e.size(); ++j)
 	{
 	  BlockElt x = e[j];
@@ -946,13 +942,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 	  KLPolRef pol = klPol(x,z);
 	  klv[j].safeSubtract(pol,d); // subtract q^d.P_{x,z} from klv[j]
 	} // for (j)
-      }
-      catch (error::NumericUnderflow& err){
-	throw kl_error::KLError(e[j],y,__LINE__,
-				static_cast<const KLContext&>(*this));
-      }
-    else // mu!=MuCoeff(1)
-      try {
+      else // mu!=MuCoeff(1)
 	for (j = 0; j < e.size(); ++j)
 	{
 	  BlockElt x = e[j];
@@ -961,16 +951,202 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 	  KLPolRef pol = klPol(x,z);
 	  klv[j].safeSubtract(pol,d,mu); // subtract q^d.mu.P_{x,z} from klv[j]
 	} // for {j)
-      }
-      catch (error::NumericUnderflow& err){
-	throw kl_error::KLError(e[j],y,__LINE__,
-				static_cast<const KLContext&>(*this));
-      }
 
-  } // for (i)
+    } // for (i)
+  }
+  catch (error::NumericUnderflow& err){
+    throw kl_error::KLError(e[j],y,__LINE__,
+			    static_cast<const KLContext&>(*this));
+  }
 
 } // |Helper::muCorrection|
 
+/*
+  Puts in klv[i] the polynomial P_{e[i],y} for every primtitve x=pr[i],
+  computed a recursion formula for those |y| that admit no direct recursion.
+
+  Precondition: every simple root is for y either a complex ascent or
+  imaginary or real (no complex descents for y). (split 1)
+
+  In fact real type 1 descents for |y| don't occur, but this is not used.
+
+  From the precondition we get: for each extremal |x| for |y|, there either
+  exists a true ascent |s| that is real for |y|, necessarily nonparity because
+  |x| is extremal, or we are assured that $P_{x,y}=0$.
+
+  Here there is a recursion formula of a somewhat opposite nature than in the
+  case of direct recursion. The terms involving $P_{x',y}$ where $x'$ are in
+  the up-set of |x| appear in what is most naturally the left hand side of the
+  equation, while the sum involving |mu| valeus appears on the right. As a
+  consequence, the |mu| terms will be computed first, and then modifications
+  involving such $P_{x',y}$ and subtraction are applied. However if |s| is
+  type 'i1' for |x| the left hand side has (apart from $P_{x,y}$) another term
+  $P_{s.x,y}$ for the imaginary cross image $s.x$, and so $P_{x,y}$ cannot be
+  directly obtained in this manner; we shall avoid this case if we can.
+
+  An additional case where |s| is 'ic' for |x| and 'rn' for |y| can be handled
+  similarly, and we do so if the occasion presents itself. Here there are no
+  terms from the up-set of |x| so the right hand side is just the mu terms,
+  but the left hand side is $(q+1)P_{x,y}$ truncated to terms of degree at
+  most $(l(y)-l(x)-1)/2$, from which we can recover $P_{x,y}$ by |safeDivide|.
+
+  All in all the following cases are handled easily: |x| is (primitive but)
+  not extremal, |x| has some |s| which is 'rn' for |y| and one of 'C+', 'i2'
+  or 'ic' for |x| (|first_nice_and_real|). If no such |s| exists we can almost
+  conclude $P_{x,y}=0$, but need to handle an exceptional "endgame" situation
+  in which the formula for an 'i1' ascent can be exploited in spite of the
+  presence of $P_{s.x,y}$, because that term can be computed on the fly.
+
+  The sum involving mu, produced by |muNewFormula|, has terms involving
+  $P_{x,z}\mu(z,y}$, so when doing a downward loop over |x| it pays to keep
+  track of the |x| with nonzero $\mu(x,y)$.
+
+  This code gets executed for |y| that are of minimal length, in which case
+  it only contributes $P_{y,y}=1$; the |while| loop will be executed 0 times.
+*/
+void Helper::newRecursionRow(KLRow& klv,
+			     const PrimitiveRow& pr,
+			     BlockElt y)
+{
+  klv.resize(pr.size()); // primitive elements of length less than |length(y)|
+  KLRow::iterator kl_p=klv.end();
+  PrimitiveRow::const_iterator pr_p=pr.end();
+
+  unsigned int l_y = length(y);
+
+  MuRow mu_y; mu_y.reserve(lengthLess(length(y))); // a very gross estimate
+  std::set<BlockElt> downs = down_set(y);
+  for (std::set<BlockElt>::iterator it=downs.begin(); it!=downs.end(); ++it)
+    mu_y.push_back(std::make_pair(*it,MuCoeff(1)));
+
+  size_t j = klv.size(); ; // declare outside try block for error reporting
+  try {
+    while (--kl_p,--pr_p, j-->0) // |*kl_p=klv[j+1]|, |*pr_p=pr[j+1]|
+    {
+      BlockElt x = pr[j];
+
+      unsigned int s= ascent_descent(x,y);
+      if (s<rank()) // a primitive element that is not extremal; easy case
+      { // equation (1.9b) in recursion.pdf
+	assert(descentValue(s,x)==DescentStatus::ImaginaryTypeII);
+	BlockEltPair p = cayley(s,x);
+	KLPol pol = klPol(p.first,y,kl_p,pr_p,pr.end());
+	pol.safeAdd(klPol(p.second,y,kl_p,pr_p,pr.end()));
+	klv[j] = d_hashtable.match(pol);
+	continue; // done with |x|, go on to the next
+      }
+
+      unsigned int l_x = length(x);
+
+      // now x is extremal for y. By (split 1) and Lemma 3.1 of recursion.pdf
+      // this implies that if x<y in the Bruhat order, there is at least one s
+      // real for y that is a true ascent (not rn) of x and therefore rn for y
+      // we first hope that at least one of them is not i1 for x
+
+      // we first seek a real nonparity ascent for y that is C+,i2 or ic for x
+      s = first_nice_and_real(x,y);
+      if (s < rank()) // there is such an ascent s
+      {
+	// start setting |pol| to the expression (3.4) in recursion.pdf
+	KLPol pol = muNewFormula(x,y,s,mu_y);
+
+	switch (descentValue(s,x))
+	{
+	case DescentStatus::ComplexAscent:
+	{ // use equations (3.3a)=(3.4)
+	  BlockElt sx = cross(s,x);
+	  pol.safeSubtract(klPol(sx,y,kl_p,pr_p,pr.end()),1);
+	  // subtract qP_{sx,y} from mu terms
+	} // ComplexAscent case
+	break;
+
+	case DescentStatus::ImaginaryTypeII:
+	{ // use equations (3.3a)=(3.5)
+	  BlockEltPair p = cayley(s,x);
+	  KLPol sum = klPol(p.first,y,kl_p,pr_p,pr.end());
+	  sum.safeAdd(klPol(p.second,y,kl_p,pr_p,pr.end()));
+	  pol.safeAdd(sum);
+	  pol.safeSubtract(sum,1); //now we've added (1-q)(P_{x',y}+P_{x'',y})
+	  pol.safeDivide(2);   //this may throw
+	} // ImaginaryTypeII case
+	break;
+
+	case DescentStatus::ImaginaryCompact:
+	  /* here s is a emph{descent} for x, which causes an extra unknown
+	     leading (if nonzero) term to appear in addition to (3.4), giving
+	     rise to equation (3.7). Yet we can determine the quotient by q+1.
+	  */
+	  pol.safeQuotient(length(y)-length(x));
+	  break;
+
+	default: assert(false); //we've handled all possible NiceAscents
+	}
+	klv[j] = d_hashtable.match(pol);
+	if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
+	  mu_y.push_back(std::make_pair(x,pol[pol.degree()]));
+
+      } // end of |first_nice_and_real| case
+
+      else
+      {
+	/* just setting klv[j]=Zero; won't do here, even in C2. We need to use
+	   idea on p. 8 of recursion.pdf. This means: find s and t, both real
+	   for y and imaginary for x, moreover repectively nonparity and
+	   parity (r2) for y, repectively i1 and compact for x, while t is
+	   noncompact for s.x (the imaginary cross of x), which implies t is
+	   adjacent to s. Then we can compute P_{s.x,y} using t (an easy
+	   recursion, (1.9) but for t, expresses it as sum of one or two
+	   already computed polynomials), and for the sum P_{sx,y}+P_{x,y} we
+	   have a formula (3.6) of the kind used for NiceAscent, and it
+	   suffices to subtract P_{s.x,y} from it.
+
+	   If no such s,t exist then we may conclude x is not Bruhat below y,
+	   so P_{x,y}=0.
+	*/
+	std::pair<size_t,size_t> st = first_endgame_pair(x,y);
+	if ((s=st.first) < rank())
+	{
+	  KLPol pol = muNewFormula(x,y,s,mu_y);
+
+	  //subtract (q-1)P_{xprime,y} from terms of expression (3.4)
+	  BlockElt xprime = cayley(s,x).first;
+	  const KLPol& P_xprime_y =  klPol(xprime,y,kl_p,pr_p,pr.end());
+	  pol.safeAdd(P_xprime_y);
+	  pol.safeSubtract(P_xprime_y,1);
+
+	  //now klv[j] holds P_{x,y}+P_{s.x,y}
+	  //compute P_{s.x,y} using t
+
+	  BlockEltPair sx_up_t = cayley(st.second,cross(s,x));
+
+	  pol.safeSubtract(klPol(sx_up_t.first,y,kl_p,pr_p,pr.end()));
+	  if (sx_up_t.second != blocks::UndefBlock)
+	    pol.safeSubtract(klPol(sx_up_t.second,y,kl_p,pr_p,pr.end()));
+
+	  klv[j] = d_hashtable.match(pol);
+	  if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
+	    mu_y.push_back(std::make_pair(x,pol[pol.degree()]));
+	}
+	else // |first_endgame_pair| found nothing
+	  klv[j]=d_zero;
+      } // end of no NiceAscent case
+    } // while (j-->0)
+  }
+  catch (error::NumericUnderflow& err) // repackage error, reporting x,y
+  {
+    throw kl_error::KLError(pr[j],y,__LINE__,
+			    static_cast<const KLContext&>(*this));
+  }
+
+  d_mu[y]=MuRow(mu_y.rbegin(),mu_y.rend()); // reverse to a tight copy
+
+  for (unsigned int k=mu_y.size()-downs.size(); k<mu_y.size(); ++k)
+  { // successively insertion-sort the down-set x's into previous list
+    for (size_t i=k; i>0 and d_mu[y][i-1].first>d_mu[y][i].first; --i)
+      std::swap(d_mu[y][i-1],d_mu[y][i]);
+  }
+
+} // |Helper::newRecursionRow|
 
 /*!
   \brief Stores into |klv[j]| the $\mu$-sum appearing a new K-L recursion.
@@ -1007,20 +1183,20 @@ KLPol Helper::muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& mu_y)
 {
   KLPol pol=Zero;
 
-  size_t l_y = length(y);
-  // should iterate over z in the extremal row pr for y, maybe
-  // decreasing z, only odd length differences, stopping above length(x)
+  unsigned int lx=length(x), ly = length(y);
 
   try
   {
     for (MuRow::const_iterator it=mu_y.begin(); it!=mu_y.end(); ++it)
     {
       BlockElt z = it->first;
+      unsigned int lz = length(z);
+      if (lz<=lx)
+	break; // length |z| decreases, and |z==x| must be excluded, so stop
       if (not DescentStatus::isDescent(descentValue(s,z))) continue;
 
       // now we have a true contribution with nonzero $\mu$
-      size_t l_z = length(z);
-      unsigned int d = (l_y - l_z +1)/2; // power of q used in the formula
+      unsigned int d = (ly - lz +1)/2; // power of q used in the formula
       MuCoeff mu = it->second;
       KLPolRef Pxz = klPol(x,z);
 
@@ -1037,237 +1213,7 @@ KLPol Helper::muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& mu_y)
   }
 
   return pol;
-} //muNewFormula
-
-/*
-  Fills in the row for y in the absence of complex descents for y.
-
-  Precondition: every simple for y is a complex ascent, or imaginary, or real
-
-  The real work is done by the newRecursionRow function.
-*/
-void Helper::newRecursion(BlockElt y)
-{
-  KLRow& klv = d_kl[y];
-  PrimitiveRow& pr = d_prim[y];
-  makePrimitiveRow(pr,y);  // list in |pr| the elemets |x| primitive for |y|
-  // (any ascents for x that are descents for y must be imaginary type II)
-
-  // put result of recursion formula in klv
-  newRecursionRow(klv,pr,y);
-} // |Helper::newRecursion|
-
-
-/*
-  Puts in klv[i] the polynomial P_{e[i],y} for every primtitve x=pr[i],
-  computed a recursion formula for those |y| that admit no direct recursion.
-
-  Precondition: every simple root is for y either a complex ascent or
-  imaginary or real (no complex descents for y). (split 1)
-
-  In fact real type 1 descents for |y| don't occur, but this is not used.
-
-  From the precondition we get: for each extremal |x| for |y|, there either
-  exists a true ascent |s| that is real for |y|, necessarily nonparity because
-  |x| is extremal, or we are assured that $P_{x,y}=0$.
-
-  Here there is a recursion formula of a somewhat opposite nature than in the
-  case of direct recursion. The terms involving $P_{x',y}$ where $x'$ are in
-  the up-set of |x| appear in what is most naturally the left hand side of the
-  equation, while the sum involving |mu| valeus appears on the right. As a
-  consequence, the |mu| terms will be computed first, and then modifications
-  involving such $P_{x',y}$ and subtraction are applied. However if |s| is
-  type 'i1' for |x| the left hand side has (apart from $P_{x,y}$) another term
-  $P_{s.x,y}$ for the imaginary cross image $s.x$, and so $P_{x,y}$ cannot be
-  directly obtained in this manner; we shall avoid this case if we can.
-
-  An additional case where |s| is 'ic' for |x| and 'rn' for |y| can be handled
-  similarly, and we do so if the occasion presents itself. Here there are no
-  terms from the up-set of |x| so the right hand side is just the mu terms,
-  but the left hand side is $(q+1)P_{x,y}$ truncated to terms of degree at
-  most $(l(y)-l(x)-1)/2$, from which we can recover $P_{x,y}$ by |safeDivide|.
-
-  All in all the following cases are handled easily: |x| is (primitive but)
-  not extremal, |x| has some |s| which is 'rn' for |y| and one of 'C+', 'i2'
-  or 'ic' for |x| (see |firstNiceAscent|). If no such |s| exists we can almost
-  conclude $P_{x,y}=0$, but need to handle an exceptional "endgame" situation
-  in which the formula for an 'i1' ascent can be exploited in spite of the
-  presence of $P_{s.x,y}$, because that term can be computed on the fly.
-
-  The sum involving mu, produced by |muNewFormula|, has terms involving
-  $P_{x,z}\mu(z,y}$, so when doing a downward loop over |x| it pays to keep
-  track of the |x| with nonzero $\mu(x,y)$.
-
-  This code gets executed for |y| that are of minimal length, in which case
-  it only contributes $P_{y,y}=1$; the |while| loop will be executed 0 times.
-*/
-void Helper::newRecursionRow(KLRow& klv,
-			     const PrimitiveRow& pr,
-			     BlockElt y)
-{
-  klv.resize(pr.size());
-  KLRow::iterator kl_p=klv.end();
-  PrimitiveRow::const_iterator pr_p=pr.end();
-
-  klv.back() = d_hashtable.match(One); // the last K-L polynomial is 1
-
-  unsigned int l_y = length(y);
-
-  MuRow mu_y; mu_y.reserve(lengthLess(length(y))); // a very gross estimate
-  std::set<BlockElt> downs = down_set(y);
-  for (std::set<BlockElt>::iterator it=downs.begin(); it!=downs.end(); ++it)
-    mu_y.push_back(std::make_pair(*it,MuCoeff(1)));
-
-  size_t j = klv.size()-1; ; // declare outside try block for error reporting
-  try {
-    while (--kl_p,--pr_p, j-->0) // |*kl_p=klv[j+1]|, |*pr_p=pr[j+1]|
-    {
-      BlockElt x = pr[j];
-
-      unsigned int s= ascent_descent(x,y);
-      if (s<rank()) // a primitive element that is not extremal; easy case
-      { // equation (1.9b) in recursion.pdf
-	assert(descentValue(s,x)==DescentStatus::ImaginaryTypeII);
-	BlockEltPair p = cayley(s,x);
-	KLPol pol = klPol(p.first,y,kl_p,pr_p,pr.end());
-	pol.safeAdd(klPol(p.second,y,kl_p,pr_p,pr.end()));
-	klv[j] = d_hashtable.match(pol);
-	continue; // done with |x|, go on to the next
-      }
-
-      unsigned int l_x = length(x);
-
-      // now x is extremal for y. By (split 1) and Lemma 3.1 of recursion.pdf
-      // this implies that if x<y in the Bruhat order, there is at least one s
-      // real for y that is a true ascent (not rn) of x and therefore rn for y
-      // we first hope that at least one of them is not i1 for x
-
-      // we first seek a real nonparity ascent for y that is C+,ic or i2 for x
-      s = firstNiceAscent(x,y);
-      if (s < rank()) // there is such an ascent s
-      {
-	// start setting |pol| to the expression (3.4) in recursion.pdf
-	KLPol pol = muNewFormula(x,y,s,mu_y);
-
-	if (descentValue(s,x)==DescentStatus::ComplexAscent)
-	{ // use equations (3.3a)=(3.4)
-	  BlockElt sx = cross(s,x);
-	  pol.safeSubtract(klPol(sx,y,kl_p,pr_p,pr.end()),1);
-	  // subtract qP_{sx,y} from mu terms
-	} // ComplexAscent case
-
-	else if (descentValue(s,x)==DescentStatus::ImaginaryTypeII)
-	{ // use equations (3.3a)=(3.5)
-	  BlockEltPair p = cayley(s,x);
-	  KLPol sum = klPol(p.first,y,kl_p,pr_p,pr.end());
-	  sum.safeAdd(klPol(p.second,y,kl_p,pr_p,pr.end()));
-	  pol.safeAdd(sum);
-	  pol.safeSubtract(sum,1); //now we've added (1-q)(P_{x',y}+P_{x'',y})
-	  pol.safeDivide(2);   //this may throw
-	} // ImaginaryTypeII case
-
-	else if (descentValue(s,x)==DescentStatus::ImaginaryCompact)
-	{ // here s is a emph{descent} for x, which causes an extra unknown
-	  // leading (if nonzero) term to appear in addition to (3.4), giving
-	  // rise to equation (3.7). Yet we can determine the quotient by q+1.
-	  pol.safeQuotient(length(y)-length(x));
-	} // ImaginaryCompact case
-
-	// no 'else'; we've handled all possible NiceAscents
-	klv[j] = d_hashtable.match(pol);
-	if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
-	  mu_y.push_back(std::make_pair(x,pol[pol.degree()]));
-
-      } // NiceAscent case
-
-      else
-      {
-	/* just setting klv[j]=Zero; won't do here, even in C2. We need to use
-	   idea on p. 8 of recursion.pdf. This means: find s and t, both real
-	   for y and imaginary for x, moreover repectively nonparity and
-	   parity (r2) for y, repectively i1 and compact for x, while t is
-	   noncompact for s.x (the imaginary cross of x), which implies t is
-	   adjacent to s. Then we can compute P_{s.x,y} using t (an easy
-	   recursion, (1.9) but for t, expresses it as sum of one or two
-	   already computed polynomials), and for the sum P_{sx,y}+P_{x,y} we
-	   have a formula (3.6) of the kind used for NiceAscent, and it
-	   suffices to subtract P_{s.x,y} from it.
-
-	   If no such s,t exist then we may conclude x is not Bruhat below y,
-	   so P_{x,y}=0.
-	*/
-	std::pair<size_t,size_t> st = firstImaginaryReal(x,y);
-	s = st.first;
-	unsigned int t = st.second;
-
-	if (s < rank())
-	{
-	  KLPol pol = muNewFormula(x,y,s,mu_y);
-
-	  //subtract (q-1)P_{xprime,y} from terms of expression (3.4)
-	  BlockElt xprime = cayley(s,x).first;
-	  const KLPol& P_xprime_y =  klPol(xprime,y,kl_p,pr_p,pr.end());
-	  pol.safeAdd(P_xprime_y);
-	  pol.safeSubtract(P_xprime_y,1);
-
-	  //now klv[j] holds P_{x,y}+P_{s.x,y}
-	  //compute P_{s.x,y} using t
-
-	  BlockEltPair sx_up_t = cayley(t,cross(s,x));
-
-	  pol.safeSubtract(klPol(sx_up_t.first,y,kl_p,pr_p,pr.end()));
-	  if (sx_up_t.second != blocks::UndefBlock)
-	    pol.safeSubtract(klPol(sx_up_t.second,y,kl_p,pr_p,pr.end()));
-
-	  klv[j] = d_hashtable.match(pol);
-	  if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
-	    mu_y.push_back(std::make_pair(x,pol[pol.degree()]));
-	}
-	else // |firstImaginaryReal| found nothing
-	  klv[j]=d_zero;
-      } // end of no NiceAscent case
-    } // while (j-->0)
-  }
-  catch (error::NumericUnderflow& err) // repackage error, reporting x,y
-  {
-    throw kl_error::KLError(pr[j],y,__LINE__,
-			    static_cast<const KLContext&>(*this));
-  }
-
-  d_mu[y]=MuRow(mu_y.rbegin(),mu_y.rend());
-  for (unsigned int k=mu_y.size()-downs.size(); k<mu_y.size(); ++k)
-  { // successively insertion-sort the down-set x's into previous list
-    for (size_t i=k; i>0 and d_mu[y][i-1].first>d_mu[y][i].first; --i)
-      std::swap(d_mu[y][i-1],d_mu[y][i]);
-  }
-
-} // |Helper::newRecursionRow|
-
-
-// compute the down-set of $y$, the non-extremal $x$ with $\mu(x,y)\neq0$
-std::set<BlockElt> Helper::down_set(BlockElt y) const
-{
-  std::set<BlockElt> result;
-
-  for (RankFlags::iterator it=descentSet(y).begin(); it(); ++it)
-    switch (descentValue(*it,y))
-    {
-    case DescentStatus::ComplexDescent: result.insert(cross(*it,y));
-      break;
-    case DescentStatus::RealTypeI:
-      {
-	BlockEltPair sy = inverseCayley(*it,y);
-	result.insert(sy.first); result.insert(sy.second);
-      }
-      break;
-    case DescentStatus::RealTypeII:
-      result.insert(inverseCayley(*it,y).first);
-      break;
-    default: // |case DescentStatus::ImaginaryCompact| nothing
-      break;
-    }
-  return result;
-}
+} // |muNewFormula|
 
 /*!
   \brief Writes down row y in d_kl and d_prim.
@@ -1293,8 +1239,7 @@ std::set<BlockElt> Helper::down_set(BlockElt y) const
 void Helper::writeRow(const std::vector<KLPol>& klv,
 		      const PrimitiveRow& er, BlockElt y)
 {
-  PrimitiveRow pr;
-  makePrimitiveRow(pr,y);
+  PrimitiveRow pr = primitiveRow(y);
 
   PrimitiveRow nzpr(pr.size()); // columns of the nonzero primimitive entries
   KLRow KL(pr.size()); // nonzero primitive entries (indexes into d_store)
@@ -1302,11 +1247,11 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
   PrimitiveRow::iterator nzpr_p=nzpr.end();
   KLRow::iterator KL_p=KL.end();
 
-  BitMap mu_elements(pr.size()-1); // flags |i| with |mu(pr[i],y)>0|
+  BitMap mu_elements(pr.size()); // flags |i| with |mu(pr[i],y)>0|
 
   unsigned int ly = length(y);
 
-  size_t j= er.size()-1; // points to current extremal element, starting at y
+  size_t j= er.size()-1; // points to current extremal element
 
   for (size_t i = pr.size(); i-->0; )
     if (j<er.size() and pr[i]==er[j]) // must test for underflow |j|
@@ -1365,6 +1310,33 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
 
 } // |Helper::writeRow|
 
+void Helper::remove_zeros(const KLRow& klv,
+			  const PrimitiveRow& pr, BlockElt y)
+{
+  PrimitiveRow nzpr(pr.size()); // columns of the nonzero primimitive entries
+  KLRow KL(pr.size()); // nonzero primitive entries (indexes into d_store)
+
+  PrimitiveRow::iterator nzpr_p=nzpr.end();
+  KLRow::iterator KL_p=KL.end();
+
+  for (size_t i = pr.size(); i-->0; )
+  {
+    const KLPolRef Pxy=d_hashtable[klv[i]];
+    if (not Pxy.isZero())
+    {
+      *--nzpr_p = pr[i];
+      *--KL_p = klv[i];
+    }
+  }
+
+  // commit
+  d_prim[y] = PrimitiveRow(nzpr_p,nzpr.end()); // copy shifting, from |nzpr_p|
+  d_kl[y] = KLRow(KL_p,KL.end());
+
+  prim_size        += d_prim.size();
+  nr_of_prim_nulls += nzpr_p  -nzpr.begin(); // measure unused space
+
+} // |Helper::remove_zeros|
 
 
 } // namespace helper

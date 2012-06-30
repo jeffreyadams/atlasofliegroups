@@ -67,9 +67,9 @@ class KLContext
 */
   std::vector<PrimitiveRow> d_prim;
 
-/*!
-  \brief Entry d_kl[y] is a list of indices into |d_hashtable| of polynomials
-  P_{x_i,y}, where $x_i$ is primitive element number |i| for |descentSet(y)|
+/*
+  d_kl[y] is a list of indices into |d_hashtable| of polynomials P_{x_i,y},
+  with $x_i=d_prim[i]$|
 */
   std::vector<KLRow> d_kl;           // list of polynomial pointers
 
@@ -78,10 +78,11 @@ class KLContext
 */
  std::vector<MuRow> d_mu;           // lists of x's and their mu-coefficients
 
-/* Set of KL polynomials */
-  KLStore d_store;           // the distinct actual polynomials
-  KLIndex d_zero; // Pointer to the polynomial 0.
-  KLIndex d_one;  // Pointer to the polynomial 1.
+  KLStore d_store; // the distinct actual polynomials
+
+  // the constructors will ensure that |d_store| contains 0, 1 at beginning
+  enum { d_zero = 0, d_one  = 1}; // indices of polynomials 0,1 in |d_store|
+  // using enum rather than |static const int| allows implicit const references
 
 // copy and swap are only for helper class
   KLContext(const KLContext&);
@@ -99,42 +100,32 @@ class KLContext
 
 // accessors
   // the following two were moved here from the Helper class
-  void makeExtremalRow(PrimitiveRow& e, BlockElt y) const;
-
-  void makePrimitiveRow(PrimitiveRow& e, BlockElt y) const;
+  PrimitiveRow extremalRow(BlockElt y) const;
+  PrimitiveRow primitiveRow(BlockElt y) const;
 
   bool isZero(const KLIndex p) const { return p == d_zero; }
 
-/*!
-  \brief The Kazhdan-Lusztig-Vogan polynomial P_{x,y}
-*/
+  // A constant reference to the Kazhdan-Lusztig-Vogan polynomial P_{x,y}
   KLPolRef klPol(BlockElt x, BlockElt y) const;
 
-/*!
-  \brief Returns the list of pointers to the non-zero KL polynomials
-  P_{y,x_i} (with x_i primitive with respect to y).
-*/
-  const KLRow& klRow(BlockElt y) const {
-    return d_kl[y];
-  }
-
-  MuCoeff mu(BlockElt x, BlockElt y) const;
+  // That polynomial in the form of an index into |polStore()==d_store|
+  KLIndex KL_pol_index(BlockElt x, BlockElt y) const;
 
 /*!
-  \brief List of MuData, which are pairs (x, top degree coefficient of P_{y,x}).
+  Returns the list of pointers to the non-zero KL polynomials
+  P_{x_i,y} (with x_i = d_prim[i] primitive with respect to y).
 */
-  const MuRow& muRow(BlockElt y) const {
-    return d_mu[y];
-  }
+  const KLRow& klRow(BlockElt y) const { return d_kl[y]; }
 
-/*!
-  \brief Returns the set of all non-zero KL polynomials for the block.
-*/
-  const KLStore& polStore() const {
-    return d_store;
-  }
+  MuCoeff mu(BlockElt x, BlockElt y) const; // $\mu(x,y)$
 
-// get bitmap of primitive elements for row |y| with nonzero KL polynomial
+  // List of nonzero $\mu(x,y)$ for |y|, as pairs $(x,\mu(x,y))$
+  const MuRow& muRow(BlockElt y) const { return d_mu[y]; }
+
+  // List of all non-zero KL polynomials for the block, in generation order
+  const KLStore& polStore() const { return d_store; }
+
+  // get bitmap of primitive elements for row |y| with nonzero KL polynomial
   BitMap primMap (BlockElt y) const;
 
 // manipulators
