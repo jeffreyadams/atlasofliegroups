@@ -1,10 +1,8 @@
 * Mathematical work to be done
 
 * Work on the Atlas library
- - Implement a new (Thicketless) version of the KL algorithm
  - Remove the clumsy Helper class from the KL construction
  - Redefine ordering on parameters in a SR_poly to sort on x first
- - Rewrite partial_block generation to use the same method as nblock
 * Work on the atlas program
  - Clean up the messy Input class
    The getline method never uses the stream passed to it, except to return it
@@ -69,5 +67,6 @@
 
 * Work on makefiles, distribution and support programs
  - Figure out how to avoid 'unrecognised typedef at line 367 of atlas_types.h'
- - Improve makefile for realex, reflecting dependencies of atlas .h-files
+ - Improve makefile so that 'make realex' doesn't run ctanglex many times
+ - Add some make targets for recording options as suggested by Nelson Beebe
 

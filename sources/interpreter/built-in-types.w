@@ -2073,13 +2073,12 @@ the conversion here.
 @< Function def...@>=
 void real_form_value::print(std::ostream& out) const
 { if (val.isCompact()) out << "compact ";
+  out << (val.isConnected() ? "connected " : "disconnected " );
   if (val.isQuasisplit())
     out << (val.isSplit() ? "" : "quasi") << "split ";
-  out << "real form '" @|
-  << parent.interface.typeName(parent.interface.out(val.realForm())) @|
-  << "', defining a"
-  << (val.isConnected() ? " connected" : " disconnected" ) @|
-  << " real group" ;
+  out << "real group with Lie algebra '" @|
+      << parent.interface.typeName(parent.interface.out(val.realForm())) @|
+      << '\'' ;
 }
 
 @ To make a real form is easy, one provides an |inner_class_value| and a valid

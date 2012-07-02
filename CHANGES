@@ -4,6 +4,19 @@ A detailed history of the early development is found in the file
 workinglog. Newer changes are documented in the CVS repository.
 This file contains a summary of major changes to the software.
 
+Version 0.5.2 (July 2, 2012)
+* Bugfix in (nonintegral) block construction
+* Implementation changes: new formulas in KL computation, avoiding thickets
+* Slight change in output format of 'RealForm' values (realex)
+* Sorting of terms in ParamPol (realex) now compares x component first
+
+Version 0.5.1.{1,2} (June 15, 2012): purely administrative changes
+
+Version 0.5.1 (June 13, 2012)
+* Some organizational changes (executable renamed from atlas.exe to atlas)
+* Minor changes to realex: function definition syntax extended, strings
+* Some scripts improved
+
 Version 0.5   (Jun 1, 2012)
 Building atlas and realex:
 * 'make readline=false' option for realex

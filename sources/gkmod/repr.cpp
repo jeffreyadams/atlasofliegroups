@@ -319,17 +319,28 @@ Rep_context::compare Rep_context::repr_less() const
 bool Rep_context::compare::operator()
   (const StandardRepr& r,const StandardRepr& s) const
 {
-  const int rgd=r.gamma().denominator(), sgd=s.gamma().denominator();
-  const int lr = sgd*level_vec.dot(r.gamma().numerator());
-  const int ls = rgd*level_vec.dot(s.gamma().numerator());
-  if (lr!=ls)
-    return lr<ls;
-  for (size_t i=0; i<level_vec.size(); ++i)
-    if (sgd*r.gamma().numerator()[i]!=rgd*s.gamma().numerator()[i])
-      return sgd*r.gamma().numerator()[i]<rgd*s.gamma().numerator()[i];
-  if (r.x()!=s.x())
+  if (r.x()!=s.x()) // order by |x| component first
     return r.x()<s.x();
-  return r.y()<s.y();
+
+  // then compare by scalar product of |gamma()| and |level_vec|
+  if (r.gamma()!=s.gamma()) // quick test to avoid work within a same block
+  {
+    const int rgd=r.gamma().denominator(), sgd=s.gamma().denominator();
+    const int lr = sgd*level_vec.dot(r.gamma().numerator()); // cross multiply
+    const int ls = rgd*level_vec.dot(s.gamma().numerator());
+    if (lr!=ls)
+      return lr<ls;
+
+    // next by individual components of |gamma()|
+    for (size_t i=0; i<level_vec.size(); ++i)
+      if (sgd*r.gamma().numerator()[i]!=rgd*s.gamma().numerator()[i])
+	return sgd*r.gamma().numerator()[i]<rgd*s.gamma().numerator()[i];
+
+    assert(false); return false; // cannot happen since |r.gamma()!=s.gamma()|
+  }
+
+  // and when neither |x| nor |gamma()| discriminate, use the |y| component
+  return r.y()<s.y(); // uses |SmallBitVector::operator<|, internal comparison
 }
 
 SR_poly Rep_context::expand_final(StandardRepr z) const // by value
