@@ -34,7 +34,7 @@ CXXFLAGS = -Wall -Wno-parentheses -g $(INCLUDE_FLAGS)
 CXX = g++
 
 # parallel execution beats the old_targets trickery below, turn it off
-MAKEFLAGS = -j1
+MAKEFLAGS += -j1
 
 # only the atlas object files listed below are used
 atlas_objects := $(atlas_sources)/structure/prerootdata.o \
@@ -198,7 +198,11 @@ parser.tab.c parser.tab.h: parser.y
 parser.tab.o: parser.tab.c parsetree.h
 	$(CC) -c -g -Wall $(CFLAGS) $(CPPFLAGS) $< -o $@
 
-# miscellaneous dependencies, produced by hand for now
+# miscellaneous dependencies (some already known), produced by hand for now
+# these are also included from the main atlas makefile
+
+include dependencies
+
 # in general a .tex file depends on the same files as the corresponding .o
 # file, since cweave scans the same header files as the C++ compiler
 
