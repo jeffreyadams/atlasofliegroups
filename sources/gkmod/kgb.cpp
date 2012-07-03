@@ -188,15 +188,15 @@ void KGB_base::add_element()
 */
 
 // create structure incorporating all KGB structures for a given inner class
-global_KGB::global_KGB(ComplexReductiveGroup& G)
-  : KGB_base(G,G.semisimpleRank())
+global_KGB::global_KGB(ComplexReductiveGroup& G_C) // |G_C| is non-|const|
+  : KGB_base(G_C,G_C.semisimpleRank())
   , Tg(G) // construct global Tits group as subobject
   , elt()
 {
-  G.involution_table().add(G,~ BitMap(G.numCartanClasses()));
-  generate_involutions(G.numInvolutions());
+  G_C.involution_table().add(G_C,~ BitMap(G.numCartanClasses()));
+  generate_involutions(G_C.numInvolutions());
 
-  size_t size = G.global_KGB_size();
+  size_t size = G_C.global_KGB_size();
   elt.reserve(size);
   KGB_base::reserve(size);
 
@@ -231,19 +231,19 @@ global_KGB::global_KGB(ComplexReductiveGroup& G)
 
 }
 
-global_KGB::global_KGB(ComplexReductiveGroup& G,
+global_KGB::global_KGB(ComplexReductiveGroup& G_C,
 		       const GlobalTitsElement& x)
-  : KGB_base(G,G.semisimpleRank())
+  : KGB_base(G_C,G_C.semisimpleRank())
   , Tg(G) // construct global Tits group as subobject
   , elt()
 {
-  generate_involutions(G.numInvolutions());
+  generate_involutions(G_C.numInvolutions());
   assert(Tg.is_valid(x)); // unless this holds, we cannot hope to succeed
 
-  Cartan_orbits& i_tab = G.involution_table();
+  Cartan_orbits& i_tab = G_C.involution_table();
   const RootDatum& rd = G.rootDatum();
 
-  i_tab.add(G,~ BitMap(G.numCartanClasses())); // generate all
+  i_tab.add(G_C,~ BitMap(G.numCartanClasses())); // generate all
 
   GlobalTitsElement a=x; // start at an element that we certainly want
   weyl::Generator s;
@@ -471,7 +471,7 @@ KGB::KGB(RealReductiveGroup& GR,
   , d_bruhat(NULL)
   , d_base(NULL)
 {
-  ComplexReductiveGroup& G=GR.complexGroup();
+  ComplexReductiveGroup& G_C=GR.complexGroup(); // non-|const| version of |G|
   //const TitsGroup& Tg = G.titsGroup();
   size_t rank = G.semisimpleRank(); // |G.rank()| does not interest us here
 
@@ -483,13 +483,13 @@ KGB::KGB(RealReductiveGroup& GR,
   }
 
   // make sure |G| has information about involutions for |Cartan_classes|
-  Cartan_orbits& i_tab = G.involution_table();
-  i_tab.add(G,Cartan_classes);
+  Cartan_orbits& i_tab = G_C.involution_table();
+  i_tab.add(G_C,Cartan_classes);
 
   tits::TE_Entry::Pooltype elt_pool; // of size |size()|
   hashtable::HashTable<tits::TE_Entry,KGBElt> elt_hash(elt_pool);
 
-  size_t size = G.KGB_size(GR.realForm(),Cartan_classes);
+  size_t size = G_C.KGB_size(GR.realForm(),Cartan_classes);
 
   elt_pool.reserve(size);
   KGB_base::reserve(size);
@@ -508,7 +508,7 @@ KGB::KGB(RealReductiveGroup& GR,
       const CartanNbr cn = *it;
       TitsElt a=
 	(mins.size()==1 // use backtrack only in (unused) multiple minima case
-	 ? square_class_base.grading_seed(G,rf,cn)
+	 ? square_class_base.grading_seed(G_C,rf,cn)
 	 : square_class_base.backtrack_seed(G,rf,cn)
 	 );
 

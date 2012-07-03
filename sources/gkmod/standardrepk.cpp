@@ -1794,7 +1794,7 @@ template <typename C>
     {
       incidence.reverseEdges(); // this facilitates reporting structure
       for (size_t j=0; j<n; ++j)
-	if (order(j)==i)
+	if (order.class_of(j)==i)
 	{
 	  std::cerr << eq[j].first;
 	  for (size_t k=0; k<incidence.edgeList(j).size(); ++k)
@@ -1803,14 +1803,15 @@ template <typename C>
 	}
       throw std::runtime_error ("triangularize: system has cycles");
     }
-    new_order[order(i)]=eq[i].first; // this puts equation |i| in its place
+    new_order[order.class_of(i)]=eq[i].first; // put equation |i| in its place
   }
 
   matrix::Matrix_base<C> result(n,n,C(0));
   for (size_t i=0; i<n; ++i)
     for (graph::EdgeList::const_iterator p=incidence.edgeList(i).begin();
 	 p!=incidence.edgeList(i).end(); ++p) // there is an edge |i| to |*p|
-      result(order(i),order(*p))=M(i,*p);     // so |order(i)>=order(*p)|
+                                // so |order.class_of(i)>=order.class_of(*p)|
+      result(order.class_of(i),order.class_of(*p))=M(i,*p);
 
   return result;
 } // |triangularize|

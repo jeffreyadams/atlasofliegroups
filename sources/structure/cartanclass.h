@@ -81,7 +81,7 @@ elements of order 2 (or 1) in H.
 
 Equivalence classes of strong real forms (still with a fixed value of z) give
 a partition of the fiber group (depending on z). These partitions are stored
-in d_strongReal, and accessed by the function strongReal.
+in d_strongReal, and accessed by the function fiber_partition.
 
 An equivalence class of strong real forms may be labelled by a pair of
 integers: the second labelling the element z (or rather its coset modulo
@@ -400,8 +400,8 @@ class Fiber {
 /*! \brief Partition of the weak real forms according to the corresponding
   central square classes in Z(G)/[(1+delta)Z(G)].
 
-  A weak real form (always containing our fixed real torus) is an orbit of W_i
-  on the adjoint fiber group.
+  A weak real form (always containing our fixed real torus) is an orbit of
+  $W_{im}$ on the adjoint fiber group.
 */
   const Partition& realFormPartition() const
     { return d_realFormPartition; }
@@ -411,7 +411,7 @@ class Fiber {
 */
   square_class central_square_class (adjoint_fiber_orbit wrf) const
   {
-    return d_realFormPartition(wrf); // square class number from weak real form
+    return d_realFormPartition.class_of(wrf); // square class number of |wrf|
   }
 
 /*!
@@ -421,28 +421,30 @@ class Fiber {
     { return d_weakReal.classRep(d_realFormPartition.classRep(c)); }
 
 /*! \brief
-  Partitions of Fiber group cosets corresponding to the possible square
-  classes in Z^delta/[(1+delta)Z].
+  List of partitions of the fiber group cosets, its elements corresponding to
+  the possible square classes in $Z^\delta/[(1+\delta)Z]$.
 
-  The Fiber group acts in a simply transitive way on strong involutions
-  (inducing tau on H) with a fixed square in Z^delta. The number of squares
-  that occur (modulo (1+delta)Z) is equal to the number c of classes in the
-  partition d_realFormPartition. The collection of strong real involutions is
-  therefore a union of c copies of the fiber group F, each an affine
-  $Z/2Z$-space with W_i acting in a different way. Thus each of these c spaces
-  is partitioned into W_i orbits; these partitions are stored in d_strongReal.
-*/
-  const Partition& strongReal(square_class j) const { return d_strongReal[j]; }
+  The fiber group acts in a simply transitive way on the strong involutions
+  (inducing $\tau$ on $H$) with a fixed square in $Z^\delta$. The number of
+  squares that occur (modulo $(1+\delta)Z)$ is equal to the number $n$ of
+  classes in the partition d_realFormPartition. The collection of strong real
+  involutions is therefore a union of $n$ copies of the fiber group $F$, each
+  an affine $Z/2Z$-space with $W_{im}$ acting in a different way. Thus each of
+  these $n$ spaces is partitioned into $W_{im}$ orbits; these partitions are
+  stored in |d_strongReal|. */
+  const Partition& fiber_partition(square_class c) const { return d_strongReal[c]; }
 
 /*!
   \brief Representative strong real form for real form \#rf.
 
-  A StrongRealFormRep is a pair of numbers. The second indexes the value of
-  the square of the strong real form in Z^delta/[(1+delta)Z], it equals
-  |central_square_class(wrf). The first indexes a W_im orbit on the
-  corresponding coset of the fiber group.
+  A StrongRealFormRep is a pair of numbers. The second number |c| identifies
+  the square class, the class in $Z^\delta/[(1+\delta)Z]$ of the square of any
+  strong involution representing the strong real form; it equals
+  |central_square_class(wrf)|. The first number indexes a $W_{im}$-orbit in
+  the corresponding coset of the fiber group, as (a |short| integer
+  identifying) a part of the partition |fiber_partition(c)|
 */
-  const StrongRealFormRep& strongRepresentative(adjoint_fiber_orbit wrf) const
+  const StrongRealFormRep& strongRealForm(adjoint_fiber_orbit wrf) const
     { return d_strongRealFormReps[wrf]; }
 
 /*!\brief Natural linear map from fiber group to adjoint fiber group
@@ -741,8 +743,8 @@ public:
   F. Each of these c cosets is partitioned into W_i orbits; these
   orbits are described by the c partitions in d_strongReal.
   */
-  const Partition& strongReal(square_class j) const
-    { return d_fiber.strongReal(j); }
+  const Partition& fiber_partition(square_class j) const
+    { return d_fiber.fiber_partition(j); }
 
   /*!
   \brief Returns the image of x in the adjoint fiber group.

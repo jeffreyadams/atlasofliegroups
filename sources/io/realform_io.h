@@ -11,6 +11,7 @@
 #define REALFORM_IO_H
 
 #include <iosfwd>
+#include <string>
 
 #include "atlas_types.h"
 #include "tags.h"

@@ -2520,7 +2520,7 @@ void fiber_part_wrapper(expression_base::level l)
      // translate part number of |pi| to real form
   row_ptr result (new row_value(0)); // cannot predict exact size here
   for (size_t i=0; i<pi.size(); ++i)
-    if (rf_nr[pi(i)] == rf->val.realForm())
+    if (rf_nr[pi.class_of(i)] == rf->val.realForm())
       result->val.push_back(shared_value(new int_value(i)));
   push_value(result);
 }
@@ -2610,7 +2610,7 @@ different lines after commas if necessary.
 @< Print the gradings for the part of |pi|... @>=
 { bool first=true; std::ostringstream os;
   for (size_t i=0; i<pi.size(); ++i)
-    if ( rf_nr[pi(i)] == rf->val.realForm())
+    if ( rf_nr[pi.class_of(i)] == rf->val.realForm())
     { os << ( first ? first=false,'[' : ',');
       Grading gr=cc->val.fiber().grading(i);
       gr=sigma.pull_back(gr);

@@ -191,7 +191,7 @@ template<> class BitSetBase<1>
   */
 template<> class BitSetBase<2>
 {
-  unsigned long d_bits0,d_bits1;;
+  unsigned long d_bits0,d_bits1;
 
  protected:
 

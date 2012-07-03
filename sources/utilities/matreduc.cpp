@@ -327,8 +327,8 @@ matrix::Matrix<C> adapted_basis(matrix::Matrix<C> M, // by value
       for ( ; j<n; ++j)
 	column_clear(M,d,j,d);
 
-      for (size_t i=d+1; i<m; ++i)
-	if (M(i,d)!=C(0))
+      for (size_t k=d+1; k<m; ++k)
+	if (M(k,d)!=C(0))
 	  break;
     }
     while(i<m); // then apparently some |column_clear| changed row |d|
