@@ -18,6 +18,7 @@
 #include <set>
 #include <utility>
 #include <stdexcept>
+#include <string>     // used inplicitly in throwing errors
 
 #include "tags.h"
 #include "size.h"	// used in orbit size computation
@@ -713,7 +714,8 @@ std::vector<StrongRealFormRep> Fiber::makeStrongRepresentatives() const
 #endif
 
     // make representative
-    result[wrf] = std::make_pair(FiberElt(xf.to_ulong()),c);
+    fiber_orbit x = d_strongReal[c].class_of(xf.to_ulong());
+    result[wrf] = std::make_pair(x,c);
   }
 
   return result;
@@ -858,10 +860,11 @@ AdjointFiberElt Fiber::toAdjoint(FiberElt x) const
 adjoint_fiber_orbit Fiber::toWeakReal(fiber_orbit c, square_class csc) const
 {
   // find image of strong real form element in the adjoint fiber
-  AdjointFiberElt y = class_base(csc) ^ toAdjoint(d_strongReal[csc].classRep(c));
+  AdjointFiberElt y =
+    class_base(csc) ^ toAdjoint(d_strongReal[csc].classRep(c));
 
   // and find its orbit number
-  return d_weakReal(y);
+  return d_weakReal.class_of(y);
 }
 
 } // namespace cartanclass
@@ -930,7 +933,7 @@ specialGrading(const Fiber& f,
 
   // sort the gradings that occur in this class
   for (unsigned long i=0; i<n; ++i)
-    if (f.weakReal()(i) == rf)
+    if (f.weakReal().class_of(i) == rf)
       grs.insert(restrictGrading(f.noncompactRoots(i),rs.simpleRootList()));
 
   // return the first element

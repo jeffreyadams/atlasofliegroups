@@ -483,8 +483,6 @@ TwistedInvolution
 ComplexReductiveGroup::reflection(RootNbr alpha,
 				  const TwistedInvolution& tw) const
 {
-  const WeylGroup& W = weylGroup();
-
   WeylWord rw=rootDatum().reflectionWord(alpha);
 
   TwistedInvolution result=tw;
@@ -538,7 +536,7 @@ void ComplexReductiveGroup::map_real_forms(CartanNbr cn)
     tits::TorusPart tp = sample_torus_part(cn,rf);
     cartanclass::AdjointFiberElt rep =
       f.adjointFiberGroup().toBasis(tp-=base).data().to_ulong();
-    Cartan[cn].real_labels[weak_real(rep)]=rf;
+    Cartan[cn].real_labels[weak_real.class_of(rep)]=rf;
   }
   assert(Cartan[cn].real_labels[0]==quasisplit());
   Cartan[cn].rep[0] = base.data(); // change representative to remember base
@@ -575,7 +573,7 @@ void ComplexReductiveGroup::map_dual_real_forms(CartanNbr cn)
     tits::TorusPart tp = dual_sample_torus_part(cn,drf);
     cartanclass::AdjointFiberElt rep =
       dual_f.adjointFiberGroup().toBasis(tp-=dual_base).data().to_ulong();
-    Cartan[cn].dual_real_labels[dual_weak_real(rep)]=drf;
+    Cartan[cn].dual_real_labels[dual_weak_real.class_of(rep)]=drf;
   }
   assert(Cartan[cn].dual_real_labels[0]==0);
   Cartan[cn].dual_rep[0] = dual_base.data();
@@ -734,18 +732,15 @@ ComplexReductiveGroup::fiberSize(RealFormNbr rf, CartanNbr cn)
   // |wrf| indexes a $W_{im}$ orbit on |cartan(cn).fiber().adjointFiberGroup()|
 
   const Fiber& f = cartan(cn).fiber();
-  const cartanclass::StrongRealFormRep& srf = f.strongRepresentative(wrf);
+  const cartanclass::StrongRealFormRep& srf = f.strongRealForm(wrf);
 
   assert(srf.second==f.central_square_class(wrf));
 
-  const Partition& pi =f.strongReal(srf.second);
-  /* |pi| is an (unnormalized) partition of |cartan(cn).fiber().fiberGroup()|
-     whose identifying values label central square classes, and are elements
-     of the quotient affine space $adjoint fiber/image of fiber group$
-  */
+  // get partition of the fiber group according to action for square class
+  const Partition& pi =f.fiber_partition(srf.second);
+  // |pi| is an (unnormalized) partition of |cartan(cn).fiber().fiberGroup()|
 
-  cartanclass::fiber_orbit c = pi(srf.first);
-  return pi.classSize(c);
+  return pi.classSize(srf.first); // return size of orbit number |srf.first|
 }
 
 /*!
@@ -762,14 +757,12 @@ ComplexReductiveGroup::dualFiberSize(RealFormNbr rf, CartanNbr cn)
   cartanclass::adjoint_fiber_orbit wrf=dual_real_form_part(rf,cn);
 
   const Fiber& df = cartan(cn).dualFiber();
-  const cartanclass::StrongRealFormRep& srf = df.strongRepresentative(wrf);
+  const cartanclass::StrongRealFormRep& srf = df.strongRealForm(wrf);
 
   assert(srf.second==df.central_square_class(wrf));
 
-  const Partition& pi = df.strongReal(srf.second);
-
-  cartanclass::fiber_orbit c = pi(srf.first);
-  return pi.classSize(c);
+  const Partition& pi = df.fiber_partition(srf.second);
+  return pi.classSize(srf.first);
 }
 
 

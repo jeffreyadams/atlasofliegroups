@@ -34,6 +34,8 @@
   For license information see the LICENSE file
 */
 
+#include <string> // used implicitly in throwing |std::runtime_error|
+
 #include "tits.h"
 
 #include "lattice.h"
@@ -927,12 +929,13 @@ TitsElt TitsCoset::naive_seed
   // locate fiber, weak and strong real forms, and check central square class
   const Fiber& f=G.cartan(cn).fiber();
   cartanclass::adjoint_fiber_orbit wrf = G.real_form_part(rf,cn);
-  cartanclass::StrongRealFormRep srf=f.strongRepresentative(wrf);
+  cartanclass::StrongRealFormRep srf=f.strongRealForm(wrf);
   assert(srf.second==f.central_square_class(wrf));
   // the |grading_offset| of our |TitsCoset| gives the square class base
 
   // now lift strong real form from fiber group to a torus part in |result|
-  SmallBitVector v(RankFlags(srf.first),f.fiberRank());
+  const Partition& pi = f.fiber_partition(srf.second);
+  SmallBitVector v(RankFlags(pi.classRep(srf.first)),f.fiberRank());
   tits::TorusPart x = f.fiberGroup().fromBasis(v);
 
   // right-multiply this torus part by canonical twisted involution for |cn|
@@ -1077,7 +1080,7 @@ EnrichedTitsGroup::EnrichedTitsGroup(const RealReductiveGroup& GR)
 	      square_class_grading_offset(GR.complexGroup().fundamental(),
 					  GR.square_class(),
 					  GR.rootDatum()))
-  , srf(GR.complexGroup().fundamental().strongRepresentative(GR.realForm()))
+  , srf(GR.complexGroup().fundamental().strongRealForm(GR.realForm()))
 {}
 
 
@@ -1093,13 +1096,14 @@ TitsElt EnrichedTitsGroup::backtrack_seed
  (const ComplexReductiveGroup& G,
   RealFormNbr rf, size_t cn) const
 {
-  const TitsGroup& Tg= titsGroup();
+  const TitsGroup& Tgr= titsGroup();
+  // a name chosen to avoid shadowing (inaccessible) |Tg|, and thereby warnings
 
   const TwistedInvolution& tw=G.twistedInvolution(cn);
 
   RootNbrSet rset;
   WeylWord cross;
-  complexredgp::Cayley_and_cross_part(rset,cross,tw,G.rootDatum(),Tg);
+  complexredgp::Cayley_and_cross_part(rset,cross,tw,G.rootDatum(),Tgr);
 
   /* at this point we can get from the fundamental fiber to |tw| by first
      applying cross actions according to |cross|, and then applying Cayley
@@ -1121,12 +1125,12 @@ TitsElt EnrichedTitsGroup::backtrack_seed
      fiber, that has noncompact grading on all the roots of |Cayley| (which
      are imaginary for $\delta$)
    */
-  TitsElt result(Tg);
+  TitsElt result(Tgr);
 
   const Fiber& fund=G.fundamental();
-  const Partition& srp = fund.strongReal(square());
+  const Partition& srp = fund.fiber_partition(square());
   for (unsigned long x=0; x<srp.size(); ++x)
-    if (srp(x)==srp(f_orbit()))
+    if (srp.class_of(x)==f_orbit())
     {
       SmallBitVector v
 	(static_cast<RankFlags>(x),fund.fiberRank());
@@ -1146,12 +1150,12 @@ found:
 
   /* Now we must apply the Cayley transforms and cross actions to |result|.
      However, Cayley transforms by non-simple roots are not implemented, and
-     so we reorder the operations as in |Tg.involution_expr(tw)|, which gives
+     so we reorder the operations as in |Tgr.involution_expr(tw)|, which gives
      the same cross actions, but interspersed with simple Cayley transforms.
    */
 
   // transform |result| via Cayley transforms and cross actions
-  std::vector<signed char> dec=Tg.involution_expr(tw);
+  std::vector<signed char> dec=Tgr.involution_expr(tw);
   for (size_t j=dec.size(); j-->0; )
     if (dec[j]>=0)
     {
@@ -1164,7 +1168,7 @@ found:
   assert(result.tw()==tw);
 
   return result;  // result should be reduced immediatly by caller
-}
+} // |EnrichedTitsGroup::backtrack_seed|
 
 } // namespace tits
 

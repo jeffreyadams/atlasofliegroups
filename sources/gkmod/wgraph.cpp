@@ -160,8 +160,8 @@ void cells(std::vector<WGraph>& wc, const WGraph& wg)
       WCoeffList& cli = wci.coeffList(z);
       for (size_t j = 0; j < el.size(); ++j) {
 	size_t x = el[j];
-	if (pi(x) != pi(y)) // an edge leading out of the current cell
-	  continue;         // ignore these
+	if (pi.class_of(x) != pi.class_of(y))
+	  continue; // ignore edge leading out of the current cell
 	// find relative address of x in this class
 	size_t xi = std::lower_bound(i->first,i->second,x) - i->first;
 	eli.push_back(xi);

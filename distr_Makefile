@@ -25,10 +25,6 @@ INSTALL = /usr/bin/install
 INSTALLDIR := $(shell pwd)
 BINDIR := $(INSTALLDIR)/../bin
 
-
-#Don't edit below this line, with the possible exception of rl_libs
-###############################
-
 messagedir := $(INSTALLDIR)/messages/
 
 # atlas_dirs contains subdirectories of 'atlas/sources' that need compilation

@@ -17,6 +17,8 @@
   For license information see the LICENSE file
 */
 
+#include <string> // used implicitly in throwing |std::runtime_error|
+
 #include "prerootdata.h"
 
 #include <cassert>

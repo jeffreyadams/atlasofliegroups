@@ -13,6 +13,7 @@
 #include "dynkin.h"
 
 #include <cassert>
+#include <string> // used implicitly in throwing |std::runtime_error|
 
 #include "matrix.h"
 #include "lietype.h"
@@ -78,7 +79,8 @@ DynkinDiagram::DynkinDiagram(const int_Matrix& c)
       {
 	d_star[j].set(i);
 	if (c(i,j) < -1) // only label multiple edges
-	  d_downedge.push_back(std::make_pair(Edge(i,j),-c(i,j)));
+	  d_downedge.push_back
+	    (std::make_pair(Edge(i,j),Multiplicity(-c(i,j))));
       }
 }
 
@@ -109,7 +111,7 @@ DynkinDiagram::DynkinDiagram(const RankFlags& c,
     size_t s = it->first.second;
     if (c[l] and c[s]) // both long and short end points retained?
     d_downedge.push_back
-      (std::make_pair(std::make_pair(c.position(l),c.position(s)),it->second));
+      (std::make_pair(Edge(c.position(l),c.position(s)),it->second));
 
   }
 }

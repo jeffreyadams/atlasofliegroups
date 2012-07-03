@@ -42,18 +42,15 @@ template<typename F>  // F is the type of a binary function object
 
   The partition is represented by a vector d_class of n unsigned longs,
   mapping values to a number in [0,s[ characterizing the class (where s is the
-  number of classes), and by a vector d_classRep of s unsigned longs that
-  inversely gives a representative element for each class.
-
-  The class is equipped with members allowing it to be used as an unary
-  function object ; this objects behaves as the map d_class.
+  number of classes), together with a vector d_classRep of s unsigned longs
+  that inversely gives a representative element for each class.
 
   Main application is to the Fiber class: in that case n=2^m, with m at most
   RANK_MAX; then elements of [0,n[ are interpreted as elements of a vector
   space (Z/2Z)^m. Typical partitions are into the orbits of a Weyl group
   acting on this vector space (such partitions are computed by |orbits|).
   */
-class Partition : public std::unary_function<unsigned long,unsigned long>
+class Partition
 {
 
  private:
@@ -108,13 +105,10 @@ class Partition : public std::unary_function<unsigned long,unsigned long>
   void swap(Partition&);
 
 // accessors
-  unsigned long operator()(unsigned long j) const {
-    return d_class[j];
-  }
+  unsigned long class_of(unsigned long j) const { return d_class[j]; }
 
-  bool operator== (const Partition& other) const {
-    return d_class == other.d_class;
-  }
+  bool operator== (const Partition& other) const
+  { return d_class == other.d_class; }
 
   /*!
 \brief Returns the number of classes in the partition.
@@ -132,6 +126,18 @@ class Partition : public std::unary_function<unsigned long,unsigned long>
   \brief Number of elements of the underlying set of the partition.
    */
   unsigned long size() const { return d_class.size(); }
+
+  // an auxiliary class to turn a partition into function object for comparison
+  class Comp : public std::unary_function<unsigned long,unsigned long>
+  {
+    const Partition& pi;
+  public:
+    Comp (const Partition& p) : pi(p) {}
+    Comp::result_type operator()(Comp::argument_type x) const
+    { return pi.class_of(x); }
+  };
+
+  Comp comparer() const { return Comp(*this); }
 
 // manipulators
 

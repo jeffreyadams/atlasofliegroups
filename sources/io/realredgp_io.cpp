@@ -199,7 +199,7 @@ std::ostream& printStrongReal(std::ostream& strm,
 	   << ", possible square: exp(2i\\pi(" << z << "))" << std::endl;
     }
 
-    const Partition& pi = cc.strongReal(csc);
+    const Partition& pi = cc.fiber_partition(csc);
 
     unsigned long c = 0;
 

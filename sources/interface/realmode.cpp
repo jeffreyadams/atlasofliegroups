@@ -325,12 +325,15 @@ void kgp_f()
   // print the size and simple roots
   std::cout << "kgp size for roots {";
   bool first = true;
-  for (size_t i=0; i<G_R.rank(); i++) {
-    if (psg & (1<<i)) {
-      first ? first=false : std::cout << ",";
+  for (size_t i=0; i<G_R.rank(); i++)
+    if (psg & (1<<i))
+    {
+      if (first)
+	first=false;
+      else
+	std::cout << ",";
       std::cout << i+1;
     }
-  }
   std::cout << "}: " << kgp.size() << std::endl;
 
   ioutils::OutputFile file;
@@ -351,12 +354,15 @@ void kgporder_f()
   // print the size and simple roots
   std::cout << "kgp size for roots {";
   bool first = true;
-  for (size_t i=0; i<G_R.rank(); i++) {
-    if (psg & (1<<i)) {
-      first ? first=false : std::cout << ",";
+  for (size_t i=0; i<G_R.rank(); i++)
+    if (psg & (1<<i))
+    {
+      if (first)
+	first=false;
+      else
+	std::cout << ",";
       std::cout << i+1;
     }
-  }
   std::cout << "}: " << kgp.size() << std::endl;
 
   ioutils::OutputFile file;
@@ -375,12 +381,15 @@ void kgpgraph_f()
   // print the size and simple roots
   std::cout << "kgp size for roots {";
   bool first = true;
-  for (size_t i=0; i<G_R.rank(); i++) {
-    if (psg & (1<<i)) {
-      first ? first=false : std::cout << ",";
+  for (size_t i=0; i<G_R.rank(); i++)
+    if (psg & (1<<i))
+    {
+      if (first)
+	first=false;
+      else
+	std::cout << ",";
       std::cout << i+1;
     }
-  }
   std::cout << "}: " << kgp.size() << std::endl;
 
   // make sure the user enters an actual filename -
