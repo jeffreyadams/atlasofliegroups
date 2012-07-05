@@ -1316,11 +1316,12 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
       std::swap(d_mu[y][i-1],d_mu[y][i]); // insertion-sort
   }
 
-  prim_size        += d_prim.size();
+  prim_size        += d_prim[y].size();
   nr_of_prim_nulls += nzpr_p  -nzpr.begin(); // measure unused space
 
 } // |Helper::writeRow|
 
+// this method is called instead of |writeRow| in cases involving new recursion
 void Helper::remove_zeros(const KLRow& klv,
 			  const PrimitiveRow& pr, BlockElt y)
 {
@@ -1344,7 +1345,7 @@ void Helper::remove_zeros(const KLRow& klv,
   d_prim[y] = PrimitiveRow(nzpr_p,nzpr.end()); // copy shifting, from |nzpr_p|
   d_kl[y] = KLRow(KL_p,KL.end());
 
-  prim_size        += d_prim.size();
+  prim_size        += d_prim[y].size();
   nr_of_prim_nulls += nzpr_p  -nzpr.begin(); // measure unused space
 
 } // |Helper::remove_zeros|
