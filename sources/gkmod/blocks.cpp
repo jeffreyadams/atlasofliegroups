@@ -3,7 +3,7 @@
 
   Copyright (C) 2004,2005 Fokko du Cloux
   Modified by Marc van Leeuwen, 2007--2012
-  Part of the Atlas of Reductive Lie Groups
+  Part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */

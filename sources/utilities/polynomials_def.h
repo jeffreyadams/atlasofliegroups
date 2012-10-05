@@ -22,7 +22,7 @@
 
   Copyright (C) 2004,2005 Fokko du Cloux
   Copyright (C) 2009 Marc van Leeuwen
-  part of the Atlas of Reductive Lie Groups
+  part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
@@ -210,6 +210,8 @@ bool compare (const Polynomial<C>& p, const Polynomial<C>& q)
 */
 template<typename C> void safeAdd(C& a, C b)
 {
+  assert(a>=C(0)); // we're try to conserve this; it'd better be true intially
+  assert(b>=C(0)); // so the we only need to check for overflow
   if (b > std::numeric_limits<C>::max() - a)
     throw error::NumericOverflow();
   else
@@ -223,10 +225,10 @@ template<typename C> void safeAdd(C& a, C b)
 */
 template<typename C> void safeDivide(C& a, C b)
 {
-  if (a%b)
+  if (a%b != 0) // safe use of |%|, since test is against |0|
     throw error::NumericOverflow();
   else
-    a = a/b;
+    a /= b; // now division is exact, so safe use of |/=|
 }
 
 
@@ -237,6 +239,8 @@ template<typename C> void safeDivide(C& a, C b)
 */
 template<typename C> void safeProd(C& a, C b)
 {
+  assert(a>=C(0)); // we're try to conserve this; it'd better be true intially
+  assert(b>=C(0)); // so the we only need to check for overflow
   if (a == 0) // do nothing
     return;
 
@@ -254,6 +258,8 @@ template<typename C> void safeProd(C& a, C b)
 */
 template<typename C> void safeSubtract(C& a, C b)
 {
+  assert(a>=C(0)); // we're try to conserve this; it'd better be true intially
+  assert(b>=C(0)); // so the we only need to check for underflow
   if (b > a)
     throw error::NumericUnderflow();
   else

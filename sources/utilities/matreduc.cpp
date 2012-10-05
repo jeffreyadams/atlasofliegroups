@@ -2,7 +2,7 @@
   matreduc.cpp
 
   Copyright (C) 2009 Marc van Leeuwen
-  part of the Atlas of Reductive Lie Groups
+  part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */

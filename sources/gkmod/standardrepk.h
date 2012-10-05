@@ -8,7 +8,7 @@ StandardRepK and KhatContext.
 
   Copyright (C) 2004, 2005 Fokko du Cloux
   Copyright (C) 2008, 2009 Marc van Leeuwen
-  part of the Atlas of Reductive Lie Groups version 0.2.4
+  part of the Atlas of Lie Groups and Representations version 0.2.4
 
   See file main.cpp for full copyright notice
 */

@@ -2,7 +2,7 @@
   This is involutions.cpp.
 
   Copyright (C) 2011 Marc van Leeuwen
-  part of the Atlas of Reductive Lie Groups
+  part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
@@ -205,7 +205,7 @@ InvolutionNbr InvolutionTable::add_involution
     ++A(i,i);
 
   // |R| will map $\lambda-\rho$ to reduced torus part coordinates
-  // |B| will then map thes coordinates (mod 2) through to $A*(\lambda-\rho)$
+  // |B| will then map these coordinates (mod 2) through to $A*(\lambda-\rho)$
   std::vector<int> diagonal;
   int_Matrix B = matreduc::adapted_basis(A,diagonal); // matrix for lifting
   int_Matrix R = B.inverse(); // matrix that maps to adapted basis coordinates
@@ -348,18 +348,18 @@ InvolutionTable::x_equiv(const GlobalTitsElement& x0,
   return true;
 }
 
-TorusPart InvolutionTable::check_rho_imaginary(InvolutionNbr i) const
+TorusPart InvolutionTable::check_rho_imaginary(InvolutionNbr inv) const
 {
   TorusPart result(rd.rank());
-  RootNbrSet pos_im=imaginary_roots(i) & rd.posRootSet();
+  RootNbrSet pos_im=imaginary_roots(inv) & rd.posRootSet();
   for (RootNbrSet::iterator it=pos_im.begin(); it(); ++it)
     result += TorusPart (rd.coroot(*it));
   return result;
 }
 
-void InvolutionTable::real_unique(InvolutionNbr i, RatWeight& y) const
+void InvolutionTable::real_unique(InvolutionNbr inv, RatWeight& y) const
 {
-  const record& rec=data[i];
+  const record& rec=data[inv];
   int_Vector v = rec.M_real * y.numerator();
   assert(v.size()==rec.diagonal.size());
   for (unsigned i=0; i<v.size(); ++i)
@@ -368,18 +368,18 @@ void InvolutionTable::real_unique(InvolutionNbr i, RatWeight& y) const
   y.numerator()= rec.lift_mat * v; (y/=2).normalize();
 }
 
-TorusPart InvolutionTable::pack(InvolutionNbr i, const Weight& lambda_rho)
+TorusPart InvolutionTable::pack(InvolutionNbr inv, const Weight& lambda_rho)
   const
 {
-  const record& rec=data[i];
+  const record& rec=data[inv];
   int_Vector v = rec.M_real * lambda_rho;
   assert(v.size()==rec.diagonal.size());
-  return TorusPart(v);
+  return TorusPart(v); // reduce coordinates modulo 2
 }
 
-Weight InvolutionTable::unpack(InvolutionNbr i, TorusPart y_part) const
+Weight InvolutionTable::unpack(InvolutionNbr inv, TorusPart y_part) const
 {
-  const record& rec=data[i];
+  const record& rec=data[inv];
   Weight result(rec.lift_mat.numRows(),0);
   for (unsigned i=0; i<y_part.size(); ++i)
     if (y_part[i])
