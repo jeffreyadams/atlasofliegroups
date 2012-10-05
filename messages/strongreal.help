@@ -7,8 +7,8 @@ only the trivial repetition due to a translation action of the
 (possibly infinite) center of G
 
 Recall that G is endowed with a Borel subgroup B containing a Cartan
-H, a pinnig, and an involutive automorphism delta preserving the
-pinning.  The extended group G^Gamma is the semidirect product of G
+H, a pinning, and an involutive automorphism delta preserving the
+pinning.  The extended group G^Gamma is the semi-direct product of G
 with Gamma = {1, delta}.  A _strong involution_ is by definition an
 H-conjugacy class x of elements xi in the non-identity coset of
 G^Gamma, normalizing H, such that xi^2 is central in G. The
@@ -39,7 +39,7 @@ subgroups.) The software essentially fixes a representative involution
 tau_0. The output of the command is a list with one entry for each
 strong involution x such that tau_x is equal to tau_0, or more
 precisely for each coset for Z(G) of such strong involutions, so as to
-supress possibly infinite repetition as mentioned above.
+suppress possibly infinite repetition as mentioned above.
 
 The output is organized first by "square class".  If x is a strong
 involution, then x^2 = c is an element of Z(G)^delta (fixed points of
@@ -49,30 +49,29 @@ central element z, then its square is multiplied by z.delta(z).  Write
 {z delta(z) | z in Z(G)} = (1 + delta)Z.
 
 The _square class of x_ is by definition the image of x^2 in
-Z^delta/(1+delta)Z. It depends only on the (weak) real form defined by
-x.
+Z^delta/(1+delta)Z. It is already determined by the (weak) real form
+defined by x.
 
 The quotient group Z^delta/(1+delta)Z is finite; in fact it is a
 product of copies of Z/2Z. Not every element of this quotient group
 can arise from a strong involution over the given tau_0; those which
 do form a subgroup. The software computes this subgroup in abstract
-form, and lists its elements as #0, #1,... #(2^r - 1). No method is
-provided by the software to match these numbers to representative
-elements in Z(G).
+form, and lists its elements as #0, #1,... #(2^r - 1). When printing
+each class, the software indicates a representative element z_0 of
+the class as an image by exp(2i\pi.) of an element of X_* \tensor \Q.
 
-For each square class, the software virtually picks a representative
-z_0 in Z(G)^delta for the class, and then finds all the strong
-involutions x lying over the fixed tau_0, with square equal to z_0. It
-turns out that these x are parametrized by the "fiber group for
+For each square class, the software then finds all the strong
+involutions x lying over the fixed tau_0, with square equal to z_0.
+It turns out that these x are parameterized by the "fiber group for
 tau_0", which is a product of m copies of Z/2Z for some m (which is
-bounded by the rank of the +1 eigenspace of tau_0).  The software
+bounded by the rank of the +1 eigenspace of tau_0). The software
 numbers these 2^m strong involutions as 0, 1, 2,... 2^m -1.
 
 Each line of the output shows all the strong involutions belonging to
 a fixed strong real form.  The line is labelled at the beginning by
 the number of the corresponding weak real form of G (see the
 "realform" command) and at the end by the number of strong involutions
-in the equivalence class. 
+in the equivalence class.
 
 
 Example: strong real forms of Spin(4,4):
@@ -92,47 +91,48 @@ Name an output file (return for stdout, ? to abandon):
 
 there are 4 real form classes:
 
-class #0:
+class #0, possible square: exp(2i\pi([0,0,0,0]/2))
 real form #4: [0,1,2,4,5,7,8,9,11,12,13,14] (12)
 real form #0: [3] (1)
 real form #0: [6] (1)
 real form #0: [10] (1)
 real form #0: [15] (1)
 
-class #1:
+class #1, possible square: exp(2i\pi([1,0,0,1]/2))
 real form #2: [0,1,2,6,8,9,11,15] (8)
 real form #2: [3,4,5,7,10,12,13,14] (8)
 
-class #2:
+class #2, possible square: exp(2i\pi([1,0,1,0]/2))
 real form #3: [0,2,3,5,6,7,8,13] (8)
 real form #3: [1,4,9,10,11,12,14,15] (8)
 
-class #3:
+class #3, possible square: exp(2i\pi([0,0,1,1]/2))
 real form #1: [0,2,3,4,8,12,14,15] (8)
 real form #1: [1,5,6,7,9,10,11,13] (8)
 
 
-The first line says that there are four possible values for the square
-class in Z^delta/(1+delta)Z.  (In fact Z(G) is Z/2Z x Z/2Z, and delta
-acts trivially; so Z^delta = Z/2 x Z/2, and (1+delta)Z is trivial.)
-The zeroth class corresponds to the real forms numbered 4 and 0 (which
-are so(4,4) and so(8) respectively).  The involution tau_0 turns out
-to be trivial (since the Cartan is compact; this is not displayed
-anywhere here).  We are interested in extending the trivial
-automorphism of the root datum to G.
+The first line says that there are four possible values for the
+square class in Z^delta/(1+delta)Z. (In fact Z(G) is Z/2Z x Z/2Z,
+and delta acts trivially; so Z^delta = Z/2 x Z/2, and (1+delta)Z is
+trivial.) The class #0 corresponds to the (weak) real forms numbered
+4 and 0 (which are so(4,4) and so(8) respectively). The involution
+tau_0 turns out to be trivial (since the Cartan is compact; this is
+not displayed anywhere here). We are interested in extending the
+trivial automorphism of the root datum to G.
 
-The fiber group has order 16, so each class has 16 strong involutions
-numbered 0 to 15.  (The numberings within different classes have
-nothing simple to do with each other.)  In class #0, the first line
-represents the 12 strong involutions in the unique equivalence class
-defining the split real form so(4,4).  The next four lines represent
-the four (non-conjugate in G) strong involutions defining the trivial
-automorphism of G, the compact form so(8).
+The fiber group has order 16, so each class has 16 strong
+involutions numbered 0 to 15. (The numberings within different
+classes have nothing simple to do with each other.) In class #0, the
+first line represents the 12 strong involutions in the unique
+equivalence class (strong real form) defining the split real form
+so(4,4). The next four lines represent the four distinct strong
+involutions (their strong incolutiona are non-conjugate in G), each
+defining the trivial automorphism of G, the compact real form so(8).
 
-In class #1, we find two different equivalence classes of strong
-involutions, each representing the real form so*(8)[0,1].  Each has
-eight different strong involutions.
+In class #1, we find two different strong real forms, each
+representing the real form so*(8)[0,1], and each with eight
+different strong involutions.
 
-Classes #2 and #3 behave in the same way. In fact these three classes,
-and the corresponding real forms, are permuted by the diagram
-automorphisms of D4.
+Classes #2 and #3 behave in the same way. In fact these three
+classes, and the corresponding real forms, are permuted by the
+diagram automorphisms of D4.
