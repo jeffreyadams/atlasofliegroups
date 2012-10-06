@@ -735,7 +735,7 @@ void Helper::fill(BlockElt last_y, bool verbose)
       storesize = d_store.size(); // avoid recounting polynomials!
       p_capacity += polsize;
 
-      std::cerr // << "t="    << std::setw(5) << deltaTime << "s. 
+      std::cerr // << "t="    << std::setw(5) << deltaTime << "s.
 	        << "l=" << std::setw(3) << l // completed length
                 << ", y="  << std::setw(6)
                 << lengthLess(l+1)-1 // last y value done
@@ -750,11 +750,11 @@ void Helper::fill(BlockElt last_y, bool verbose)
       resident = resident/1024;
 #endif
       cputime = usage.ru_utime.tv_sec;
-      std::cerr << "CPU time = " << std::setw(5) << cputime 
-		<< " secs, Max res size=" 
-		<< std::setw(5) << resident << "MB, pmem=" 
-		<< std::setw(6) << p_capacity/1048576 << "MB, matmem=" 
-		<< std::setw(6) << prim_size*sizeof(KLIndex)/1048576 
+      std::cerr << "CPU time = " << std::setw(5) << cputime
+		<< " secs, Max res size="
+		<< std::setw(5) << resident << "MB, pmem="
+		<< std::setw(6) << p_capacity/1048576 << "MB, matmem="
+		<< std::setw(6) << prim_size*sizeof(KLIndex)/1048576
 		<< "MB \n";
     }
 
@@ -1281,8 +1281,8 @@ void Helper::writeRow(const std::vector<KLPol>& klv,
     else // insert a polynomial for primitive non-extremal pr[i] if nonzero
     {
       unsigned int s = ascent_descent(pr[i],y);
+      assert(descentValue(s,pr[i])==DescentStatus::ImaginaryTypeII);
       BlockEltPair xs = cayley(s,pr[i]);
-      assert(xs.second != blocks::UndefBlock); // must be imaginary type II
       KLPol Pxy = klPol(xs.first,y,KL_p,nzpr_p,nzpr.end()); // look up using KL
       Pxy.safeAdd(klPol(xs.second,y,KL_p,nzpr_p,nzpr.end()));
       if (not Pxy.isZero())

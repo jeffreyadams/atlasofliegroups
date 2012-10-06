@@ -1239,26 +1239,14 @@ void deform_f()
 void partial_block_f()
 {
   RealReductiveGroup& GR = realmode::currentRealGroup();
-  ComplexReductiveGroup& G = GR.complexGroup();
-  const RootDatum& rd = G.rootDatum();
 
   Weight lambda_rho;
   RatWeight gamma(0);
   KGBElt x;
 
   SubSystem sub = interactive::get_parameter(GR,x,lambda_rho,gamma);
-  RatWeight lambda(lambda_rho *2 + rd.twoRho(),2);
-  lambda.normalize();
 
   ioutils::OutputFile f;
-  f << "x = " << x << ", gamma = " << gamma
-    << ", lambda = " << lambda << std::endl;
-
-  WeightInvolution theta =
-    GR.complexGroup().involutionMatrix(GR.kgb().involution(x));
-
-  WeylWord ww;
-  sub.twist(theta,ww); // resulting |weyl::Twist| is unused, but |ww| is set
 
   Permutation pi;
 
@@ -1279,6 +1267,7 @@ void partial_block_f()
 
   blocks::non_integral_block block(rc,sr);
   block.print_to(f,false);
+  block_io::print_KL(f,block,block.size()-1);
 } // |partial_block_f|
 
 

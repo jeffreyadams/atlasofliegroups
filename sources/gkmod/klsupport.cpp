@@ -111,10 +111,10 @@ void KLSupport::filter_primitive(BitMap& b, const RankFlags& d) const
 }
 
 
-/*!\brief
-  Either replaces the block element |x| if possible with a primitive element
-  for |d| above it, while returning that value, or returns |UndefBlock| if
-  a real nonparity case is hit (leaving |x| at the block element in question).
+/*
+  Finds for |x| a primitive element for |d| above it, returning that value, or
+  returns |UndefBlock| if a real nonparity case is hit, or (in partial blocks)
+  ascent through an undefined complex ascent or Cayley transform is attempted
 
   Explanation: a primitive element for |d| is one for which all elements in
   |d| are either descents or type II imaginary ascents. So if |x| is not
@@ -130,15 +130,13 @@ BlockElt
 {
   RankFlags a; // good ascents for x that are descents for y
 
-  while ((a = goodAscentSet(x)&d).any())
+  while (x!=blocks::UndefBlock and (a = goodAscentSet(x)&d).any())
   {
     size_t s = a.firstBit();
     DescentStatus::Value v = descentValue(s,x);
-    if (v == DescentStatus::RealNonparity)
-      return blocks::UndefBlock; // cop out
-    x = v == DescentStatus::ComplexAscent // complex or imag type I ?
-	? d_block.cross(s,x)
-	: d_block.cayley(s,x).first;
+    x = v == DescentStatus::RealNonparity ? blocks::UndefBlock
+      : v == DescentStatus::ComplexAscent ? d_block.cross(s,x)
+      : d_block.cayley(s,x).first; // imaginary type I
   }
   return x;
 }
