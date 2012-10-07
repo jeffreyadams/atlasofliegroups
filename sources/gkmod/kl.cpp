@@ -20,7 +20,8 @@
   This is kl.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups
+  Copyright 2012 David Vogan, Marc van Leeuwen
+  part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */

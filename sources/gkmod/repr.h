@@ -3,7 +3,7 @@
   This is repr.h
 
   Copyright (C) 2009 Marc van Leeuwen
-  part of the Atlas of Reductive Lie Groups
+  part of the Atlas of Lie Groups and Representations
 
   See file main.cpp for full copyright notice
 */

@@ -2,7 +2,7 @@
   This is repr.cpp
 
   Copyright (C) 2009-2012 Marc van Leeuwen
-  part of the Atlas of Reductive Lie Groups
+  part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
@@ -113,8 +113,8 @@ bool Rep_context::is_standard(const StandardRepr& z, RootNbr& witness) const
   return true;
 }
 
-// |z| zero means that no singular imaginary roots are compact; this code
-// assumes |is_standard(z)|, namely |gamma| is dominant on imaginary roots
+// |z| zero means that no singular simple-imaginary roots are compact; this
+// code assumes |is_standard(z)|, namely |gamma| is dominant on imaginary roots
 bool Rep_context::is_zero(const StandardRepr& z, RootNbr& witness) const
 {
   const RootDatum& rd = rootDatum();

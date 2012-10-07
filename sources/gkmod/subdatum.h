@@ -6,7 +6,7 @@
   This is subdatum.h
 
   Copyright (C) 2010 Marc van Leeuwen
-  part of the Atlas of Reductive Lie Groups
+  part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */

@@ -2,7 +2,7 @@
   This is wgraph.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups
+  part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
@@ -71,7 +71,7 @@ DecomposedWGraph::DecomposedWGraph(const WGraph& wg)
   : d_cell(), d_part(wg.size()), d_id(), d_induced()
 {
   Partition pi;
-  wg.cells(pi,&d_induced);
+  wg.cells(pi,&d_induced); // |OrientedGraph::cells| does the real work
 
   d_cell.reserve(pi.classCount()); // there will be this many cells
   d_id.resize(pi.classCount());    // and vectors of identification numbers

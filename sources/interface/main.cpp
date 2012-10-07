@@ -2,7 +2,7 @@
   This is main.cpp
 
   Copyright (c) 2004 Fokko du Cloux
-  part of the Atlas of Reductive Lie Groups project
+  part of the Atlas of Lie Groups and Representations project
 
   For license information see the LICENSE file
 

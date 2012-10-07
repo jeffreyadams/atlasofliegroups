@@ -7,7 +7,7 @@ Implementation of the class RealTorus
 /*
   This is tori.cpp
 
-  part of the Atlas of Reductive Lie Groups
+  part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
 */
