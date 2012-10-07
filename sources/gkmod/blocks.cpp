@@ -1087,7 +1087,7 @@ void nblock_help::parent_up_Cayley(nblock_elt& z, weyl::Generator s) const
   // on $y$ side ensure that |z.yy.evaluate_at(rd.simpleCoroot(s))| is even
   Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)).normalize(); // in $\Q/2\Z$
   assert(r.denominator()==1); // should be integer: real coroot
-  if ((r.numerator()/r.denominator())%2!=0) // odd
+  if (r.numerator()%2!=0) // odd
     z.yy+=half_alpha[s]; // correct by \emph{half} root $s$
 }
 
@@ -1700,6 +1700,7 @@ class partial_nblock_help : public nblock_help
 {
   y_entry::Pooltype y_pool;
   block_elt_entry::Pooltype z_pool;
+  std::vector<unsigned int> len;
 
 public:
   y_part_hash y_hash;
@@ -1711,6 +1712,7 @@ public:
   : nblock_help(GR,subsys)
   , y_pool()
   , z_pool()
+  , len()
   , y_hash(y_pool)
   , z_hash(z_pool)
   , predecessors()
@@ -1721,20 +1723,27 @@ public:
   KGBElt conj_out_x(KGBElt x,weyl::Generator s) const
   { return kgb.cross(x,sub.to_simple(s)); }
 
+  unsigned int length(BlockElt z_inx) const { return len[z_inx]; }
+
   nblock_elt get(BlockElt z_inx) const
   {
     const block_elt_entry& e=z_hash[z_inx];
     return nblock_elt(e.x,y_hash[e.y].repr());
   }
+  BlockElt lookup(const block_elt_entry& z_entry) const
+  { return z_hash.find(z_entry); }
+
   BlockElt lookup(const nblock_elt& z) const
   { KGBElt y = y_hash.find(pack_y(z));
     if (y==y_hash.empty)
       return z_hash.empty;
     else
-      return z_hash.find(block_elt_entry(z.x(),y));
+      return lookup(block_elt_entry(z.x(),y));
   }
 
   BlockElt nblock_below (const nblock_elt& z);
+
+  void sort_by_length(); // permute |z_hash|, making length weakly increase
 
 }; // |class partial_nblock_help|
 
@@ -1788,7 +1797,7 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
   if (s==sub.rank()) // only real type II descents, insert and return those
   {
     pred.reserve(sub.rank()); // enough, and probably more than that
-    while (s-->0) // we reverse the loop just because it look cute
+    while (s-->0) // we reverse the loop just because it looks cute
     {
       nblock_elt sz = z; // have a copy ready for modification
       KGBElt conj_x= conj_in_x(s,z.x());
@@ -1840,8 +1849,18 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
   BlockElt res = z_hash.match(block_elt_entry(z.x(),y));
   assert(res==predecessors.size()); // |z| must have been added just now
   predecessors.push_back(pred); // store list of elements covered by |z|
+  len.push_back(pred.size()==0 ? 0 : length(pred[0])+1);
   return res;
 } // |partial_nblock_help::nblock_below|
+
+void partial_nblock_help::sort_by_length()
+{
+  // we assume that |len| is nonempty and has its longest element at the end
+  Permutation pi = permutations::standardization(len,len.back()+1);
+  pi.permute(z_pool);
+  z_hash.reconstruct();
+  pi.permute(len);
+}
 
 // alternative constructor, for interval below |x|
 non_integral_block::non_integral_block
@@ -1874,9 +1893,11 @@ non_integral_block::non_integral_block
 
   std::vector<unsigned int> x_of(kgb.size(),~0); // partial inverse |kgb_nr_of|
 
-  aux.nblock_below(org); // generate partial block in |ctxt|
+  BlockElt last=aux.nblock_below(org); // generate partial block in |aux|
+  aux.sort_by_length(); // reorganise for compatibility with KL computations
 
-  size_t size= aux.z_hash.size();
+  assert(aux.z_hash.size()==last+1);
+  size_t size= last+1;
   d_x.reserve(size);
   d_y.reserve(size);
   d_cross.assign(our_rank,BlockEltList(size,UndefBlock));
@@ -1889,9 +1910,10 @@ non_integral_block::non_integral_block
   for (BlockElt i=0; i<size; ++i)
   {
     const block_elt_entry& z=aux.z_hash[i];
+    d_length[i]=aux.length(i);
+
     DescentStatus& desc_z = d_descent[i];
     KGBElt x = z.x;
-    size_t z_len=0; // is increased below, unless |z| has no descents
 
     if (new_x_of[x]==UndefKGB)
     {
@@ -1914,28 +1936,29 @@ non_integral_block::non_integral_block
 	  BlockElt sz = aux.lookup(cur);
 	  assert(sz!=aux.z_hash.empty);
 	  cross_link[i] = sz; cross_link[sz] = i;
-	  assert(z_len==0 or z_len==length(sz)+1u);
-	  z_len = length(sz)+1;
+	  assert(aux.length(sz)+1==d_length[i]);
 	  desc_z.set(s,DescentStatus::ComplexDescent);
 	  assert(descentValue(s,sz)==DescentStatus::ComplexAscent);
 	}
 	else // |s| is a real root
 	{
 	  assert(kgb.status(sub.simple(s),conj_x)==gradings::Status::Real);
-	  cross_link[i] = i;
 
 	  if (aux.is_real_nonparity(cur,s))
+	  {
+	    cross_link[i] = i;
 	    desc_z.set(s,DescentStatus::RealNonparity);
+	  }
 	  else // |s| is real parity
 	  {
 	    std::vector<BlockEltPair>& Cayley_link = d_cayley[s];
 	    aux.do_down_Cayley(cur,s);
 	    BlockElt sz = aux.lookup(cur);
-	    assert(z_len==0 or z_len==length(sz)+1);
-	    z_len = length(sz)+1;
+	    assert(aux.length(sz)+1==d_length[i]);
 	    Cayley_link[i].first = sz;
 	    if (kgb.isDoubleCayleyImage(sub.simple(s),conj_x)) // real type 1
 	    {
+	      cross_link[i] = i;
 	      desc_z.set(s,DescentStatus::RealTypeI);
 	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeI);
 	      Cayley_link[i].first = sz;
@@ -1943,7 +1966,7 @@ non_integral_block::non_integral_block
 	      aux.cross_act(cur,s);
 	      sz = aux.lookup(cur);
 	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeI);
-	      assert(z_len==length(sz)+1);
+	      assert(aux.length(sz)+1==d_length[i]);
 	      Cayley_link[i].second = sz;
 	      Cayley_link[sz].first = i;
 	    }
@@ -1952,6 +1975,11 @@ non_integral_block::non_integral_block
 	      desc_z.set(s,DescentStatus::RealTypeII);
 	      assert(descentValue(s,sz)==DescentStatus::ImaginaryTypeII);
 	      first_free_slot(Cayley_link[sz]) = i;
+	      cur = aux.get(i); // reset to current element
+	      aux.cross_act(cur,s);
+	      BlockElt cross_z = aux.lookup(cur);
+	      if (cross_z!=aux.z_hash.empty)
+		cross_link[i] = cross_z;
 	    } // type II
 	  } // real parity
 
@@ -1959,18 +1987,30 @@ non_integral_block::non_integral_block
       } // |if(isDescent)|
       else if (kgb.status(sub.simple(s),conj_x)==gradings::Status::Complex)
 	desc_z.set(s,DescentStatus::ComplexAscent);
+      // cross link will be set if and when complex ascent appears in block
       else // imaginary
       {
-	cross_link[i] = i;
 	if (kgb.status(sub.simple(s),conj_x)
 	    == gradings::Status::ImaginaryCompact)
+	{
+	  cross_link[i] = i;
 	  desc_z.set(s,DescentStatus::ImaginaryCompact);
+	}
 	else if (kgb.cross(sub.simple(s),conj_x)==conj_x)
+	{
+	  cross_link[i] = i;
 	  desc_z.set(s,DescentStatus::ImaginaryTypeII);
-	else desc_z.set(s,DescentStatus::ImaginaryTypeI);
+	}
+	else
+	{ // In imaginary type 1 situation |z| has a nontrivial cross action
+	  KGBElt cross_x = aux.conj_out_x(kgb.cross(sub.simple(s),conj_x),s);
+	  BlockElt sz=aux.lookup(block_elt_entry(cross_x,z.y));
+          if (sz!=aux.z_hash.empty)
+	    cross_link[i] = sz;
+	  desc_z.set(s,DescentStatus::ImaginaryTypeI);
+	}
       }
     } // |for(s)|
-    d_length[i]=z_len; // set length when all |s| are seen
   } // |for(i)|
 
   y_info.reserve(aux.y_hash.size());

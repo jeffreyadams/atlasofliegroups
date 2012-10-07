@@ -659,7 +659,7 @@ void Helper::fill(BlockElt last_y, bool verbose)
       storesize = d_store.size(); // avoid recounting polynomials!
       p_capacity += polsize;
 
-      std::cerr // << "t="    << std::setw(5) << deltaTime << "s. 
+      std::cerr // << "t="    << std::setw(5) << deltaTime << "s.
 	        << "l=" << std::setw(3) << l // completed length
                 << ", y="  << std::setw(6)
                 << lengthLess(l+1)-1 // last y value done
@@ -674,11 +674,11 @@ void Helper::fill(BlockElt last_y, bool verbose)
       resident = resident/1024;
 #endif
       cputime = usage.ru_utime.tv_sec;
-      std::cerr << "CPU time = " << std::setw(5) << cputime 
-		<< " secs, Max res size=" 
-		<< std::setw(5) << resident << "MB, pmem=" 
-		<< std::setw(6) << p_capacity/1048576 << "MB, matmem=" 
-		<< std::setw(6) << prim_size*sizeof(KLIndex)/1048576 
+      std::cerr << "CPU time = " << std::setw(5) << cputime
+		<< " secs, Max res size="
+		<< std::setw(5) << resident << "MB, pmem="
+		<< std::setw(6) << p_capacity/1048576 << "MB, matmem="
+		<< std::setw(6) << prim_size*sizeof(KLIndex)/1048576
 		<< "MB \n";
     }
 
@@ -900,7 +900,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
    |recursionRow| at |y| and extremal elements |x| listed in |er|, and
    transfers them to the main storage structures. Its tasks are
 
-   - gernerated the list of all primitve elements for |y|, which contains |er|
+   - generate the list of all primitve elements for |y|, which contains |er|
    - for each primitive element |x|, if it is extremal just look up $P_{x,y}$
      from |klv| in |d_hashtable; if |x| is primitive but not extramal, compute
      that polynomial (as sum of two $P_{x',y}$ in the same row) and similarly
@@ -942,8 +942,8 @@ void Helper::complete_primitives(const std::vector<KLPol>& klv,
     else // must insert a polynomial for primitive non-extramal |pr[i]|
     {
       unsigned int s = ascent_descent(pr[i],y);
+      assert(descentValue(s,pr[i])==DescentStatus::ImaginaryTypeII);
       BlockEltPair xs = cayley(s,pr[i]);
-      assert(xs.second != blocks::UndefBlock); // must be imaginary type II
       KLPol pol = klPol(xs.first,y); // look up P_{x',y} in current row, above
       pol.safeAdd(klPol(xs.second,y)); // current point, and P_{x'',y} as well
       KL[i]=d_hashtable.match(pol); // add poly at primitive non-extremal x
