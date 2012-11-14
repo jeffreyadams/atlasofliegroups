@@ -283,17 +283,18 @@ void KLContext::partial_swap(KLContext& other)
 
 
 /*!
-  \brief Returns the Kazhdan-Lusztig-Vogan polynomial P_{x,y}
+  \brief Returns the Kazhdan-Lusztig-Vogan polynomial $P_{x,y}$
 
-  Precondition: x and y are smaller than size();
+  Precondition: row $y$ is completely computed, stored in |d_kl[y]|.
 
-  Explanation: since d_store holds all polynomials for primitive
-  pairs (x,y), this is basically a lookup function. While x is not
-  primitive w.r.t. y, it moves x up, using the "easy" induction
-  relations. At that point, we look x up in the primitive list for
-  y. If it is found, we get a pointer to the result.  If it is not
-  found, the polynomial is zero.
-*/
+  Since |d_store| holds all polynomials for primitive pairs $(x,y)$, this is
+  basically a lookup function. While |x| is not primitive for |y|, move |x| up
+  (done in |primitivize|). If this has made |x>y| (in particular if it has
+  made |x==UndefBlock|, which might even be its initial value) return a zero
+  polynomial. Otherwise look up $x$ in the primitive list for $y$; if found,
+  use offset of result to find polynomial in |d_store|, if not found, the
+  polynomial is zero. Always returns a value from |d_store|, maybe |d_zero|.
+  */
 KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 {
   const KLRow& klr = d_kl[y];
@@ -307,6 +308,7 @@ KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 		 : klr[xptr - pr.begin()]];
 }
 
+// The same, but just return the index into |d_store| that gives $P_{x,y}$
 KLIndex KLContext::KL_pol_index(BlockElt x, BlockElt y) const
 {
   const KLRow& klr = d_kl[y];
@@ -581,15 +583,20 @@ weyl::Generator Helper::first_nice_and_real(BlockElt x,BlockElt y) const
   Since the statuses of t for x and s.x differ, s must be ajdacent to t in the
   Dynkin diagram (but this is not tested or used explicitly here)
 
-  Such a pair can be used to compute P_{x,y}+P_{sx,y} using s,
-  then P_{sx,y} using t, and so P_{x,y}.
+  Such a pair can be used to compute P_{x,y}+P_{s.x,y} using s,
+  then P_{s.x,y} using t, and so P_{x,y}.
 
   The test that t is ic for x is omitted, since x and s.x being related by an
   imaginary cross action are in the same fiber, so t is imaginary for x if it
   is so for s.x, and noncompact for x is ruled out by extremality precondition
 
-  If no such pair exists or (rank,*) is returned. Under the given
-  preconditions, such failure allows concluding that P_{x,y}=0.
+  If no such pair exists, (rank,*) is returned. Under the given preconditions,
+  such failure allows concluding that P_{x,y}=0.
+
+  The function may also return (s,rank), indicating that a good s was found,
+  but that s.x was undefined (not in the partial block) so that no t could
+  even be searched for. In this case one always has P_{s.x,y}=0, so the above
+  method can still be used, and indeed simplifies by not needing t.
 */
 std::pair<weyl::Generator,weyl::Generator>
    Helper::first_endgame_pair(BlockElt x, BlockElt y) const
@@ -603,6 +610,8 @@ std::pair<weyl::Generator,weyl::Generator>
     if (dy[s]==DescentStatus::RealNonparity and
 	dx[s]==DescentStatus::ImaginaryTypeI)
     { BlockElt sx = cross(s,x);
+      if (sx==blocks::UndefBlock) // cross image might be outside partial block
+	return std::make_pair(s,r); // cannot and need not search for |t|
       const DescentStatus& dsx = descent(sx);
       for (t = 0; t<r; ++t)
 	if (dy[t]==DescentStatus::RealTypeII)
@@ -624,7 +633,9 @@ std::pair<weyl::Generator,weyl::Generator>
 
   Algorithm: primitivize |x| with respect to the descents in |y|; if a real
   nonparity situation is encountered, return |Zero|; otherwise look up the
-  primitive |x| in the range and return the corresponding element from |klv|
+  primitive |x| in the range and return the corresponding element from |klv|.
+
+  Like |KLContext::klPol|, this will return zero when |x==UndefBlock|.
 */
 KLPolRef Helper::klPol(BlockElt x, BlockElt y,
 		       KLRow::const_iterator klv,
@@ -975,7 +986,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 
 /*
   Puts in klv[i] the polynomial P_{e[i],y} for every primtitve x=pr[i],
-  computed a recursion formula for those |y| that admit no direct recursion.
+  computed by a recursion formula for those |y| admitting no direct recursion.
 
   Precondition: every simple root is for y either a complex ascent or
   imaginary or real (no complex descents for y). (split 1)
@@ -989,7 +1000,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
   Here there is a recursion formula of a somewhat opposite nature than in the
   case of direct recursion. The terms involving $P_{x',y}$ where $x'$ are in
   the up-set of |x| appear in what is most naturally the left hand side of the
-  equation, while the sum involving |mu| valeus appears on the right. As a
+  equation, while the sum involving |mu| values appears on the right. As a
   consequence, the |mu| terms will be computed first, and then modifications
   involving such $P_{x',y}$ and subtraction are applied. However if |s| is
   type 'i1' for |x| the left hand side has (apart from $P_{x,y}$) another term
@@ -1016,24 +1027,27 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
   This code gets executed for |y| that are of minimal length, in which case
   it only contributes $P_{y,y}=1$; the |while| loop will be executed 0 times.
 */
-void Helper::newRecursionRow(KLRow& klv,
-			     const PrimitiveRow& pr,
-			     BlockElt y)
+void Helper::newRecursionRow
+( KLRow& klv,
+  const PrimitiveRow& pr, // primitive elements of length less than |length(y)|
+  BlockElt y)
 {
-  klv.resize(pr.size()); // primitive elements of length less than |length(y)|
+  klv.resize(pr.size());
   KLRow::iterator kl_p=klv.end();
   PrimitiveRow::const_iterator pr_p=pr.end();
 
   unsigned int l_y = length(y);
 
   MuRow mu_y; mu_y.reserve(lengthLess(length(y))); // a very gross estimate
+
+  // start off |mu_y| with ones for |down_set(y)|, not otherwise computed
   std::set<BlockElt> downs = down_set(y);
   for (std::set<BlockElt>::iterator it=downs.begin(); it!=downs.end(); ++it)
     mu_y.push_back(std::make_pair(*it,MuCoeff(1)));
 
-  size_t j = klv.size(); ; // declare outside try block for error reporting
+  size_t j = klv.size(); // declare outside try block for error reporting
   try {
-    while (--kl_p,--pr_p, j-->0) // |*kl_p=klv[j+1]|, |*pr_p=pr[j+1]|
+    while (--kl_p,--pr_p, j-->0) // |*kl_p=klv[j]|, |*pr_p=pr[j]|
     {
       BlockElt x = pr[j];
 
@@ -1127,13 +1141,19 @@ void Helper::newRecursionRow(KLRow& klv,
 	  pol.safeSubtract(P_xprime_y,1);
 
 	  //now klv[j] holds P_{x,y}+P_{s.x,y}
-	  //compute P_{s.x,y} using t
 
-	  BlockEltPair sx_up_t = cayley(st.second,cross(s,x));
+	  unsigned int t=st.second;
 
-	  pol.safeSubtract(klPol(sx_up_t.first,y,kl_p,pr_p,pr.end()));
-	  if (sx_up_t.second != blocks::UndefBlock)
+	  if (t<rank()) // nothing to subtract if $s.x$ not in partial block
+	  {
+	    //compute P_{s.x,y} using t
+	    BlockEltPair sx_up_t = cayley(t,cross(s,x));
+
+	    // any |UndefBlock| component of |sx_up_t| will contribute $0$
+	    pol.safeSubtract(klPol(sx_up_t.first,y,kl_p,pr_p,pr.end()));
 	    pol.safeSubtract(klPol(sx_up_t.second,y,kl_p,pr_p,pr.end()));
+
+	  }
 
 	  klv[j] = d_hashtable.match(pol);
 	  if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
@@ -1176,19 +1196,12 @@ void Helper::newRecursionRow(KLRow& klv,
     \sum_{x<z<y} mu(z,y) q^{(l(y)-l(z)+1)/2}P_{x,z}
   $$
   where in addition to the condition given, |s| must be a descent for |z|.
-  Since mu(z,y) cannot be nonzero unless z is primitive (indeed unless it is
-  either extremal or primitive and of length l(y)-1, since in all other cases
-  the recursion formulas show that $P_{z,y}$ cannot attain the maximal
-  authorised degree $(l(y)-l(z)-1)/2$), so we can loop over elements of |pr|.
 
-  We construct a loop over |z|.  The test for
-  $z<y$ is absent, but $\mu(z,y)\neq0$ implies $z\leq y$. The chosen
-  loop order allows fetching
-  $\mu(z,y)$ only once, and terminating the scan of |klv| once its values |x|
-  become too large to produce a non-zero $P_{x,z}$.
-
-  We can't use d_mu(y), which hasn't yet been written, so mu(z,y) is extracted
-  manually from the appropriate klv[k].
+  We construct a loop over |z|. The test for $z<y$ is absent, but implied by
+  $\mu(z,y)\neq0$; the $\mu(\cdot,y)$ information is passed in the |mu_y|
+  argument to this method. The chosen loop order allows fetching $\mu(z,y)$
+  only once, and terminating the scan of |klv| once its values |x| become too
+  large to produce a non-zero $P_{x,z}$.
 */
 KLPol Helper::muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& mu_y)
 
@@ -1201,21 +1214,21 @@ KLPol Helper::muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& mu_y)
   {
     for (MuRow::const_iterator it=mu_y.begin(); it!=mu_y.end(); ++it)
     {
-      BlockElt z = it->first;
+      BlockElt z = it->first; // a block element with $\mu(z,y)\neq0$
       unsigned int lz = length(z);
       if (lz<=lx)
 	break; // length |z| decreases, and |z==x| must be excluded, so stop
       if (not DescentStatus::isDescent(descentValue(s,z))) continue;
 
       // now we have a true contribution with nonzero $\mu$
-      unsigned int d = (ly - lz +1)/2; // power of q used in the formula
+      unsigned int d = (ly - lz +1)/2; // power of $q$ used in the formula
       MuCoeff mu = it->second;
-      KLPolRef Pxz = klPol(x,z);
+      KLPolRef Pxz = klPol(x,z); // which is known because $z<y$
 
       if (mu==MuCoeff(1)) // avoid useless multiplication by 1 if possible
-	pol.safeAdd(Pxz,d); // add q^d.P_{x,z} to pol
+	pol.safeAdd(Pxz,d); // add $q^d.P_{x,z}$ to |pol|
       else // mu!=MuCoeff(1)
-	pol.safeAdd(Pxz,d,mu); // add q^d.mu.P_{x,z} to pol
+	pol.safeAdd(Pxz,d,mu); // add $q^d.\mu(z,y).P_{x,z}$ to |pol|
 
     } // for (k)
   }

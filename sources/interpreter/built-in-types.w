@@ -2772,7 +2772,8 @@ install_function(torus_factor_wrapper,@|"torus_factor","(KGBElt->ratvec)");
 install_function(KGB_equals_wrapper,@|"=","(KGBElt,KGBElt->bool)");
 
 @*1 Standard module parameters.
-we implement a data type for holding parameters that represent standard
+%
+We implement a data type for holding parameters that represent standard
 modules. Such a parameter is defined by a triple $(x,\lambda,\nu)$ where $x$
 is a KGB element, $\lambda$ is a weight in the coset $\rho+X^*$ whose value is
 relevant only modulo the sub-lattice $(1-\theta_x)X^*$ where $\theta_x$ is the
@@ -2969,8 +2970,9 @@ void orientation_number_wrapper(expression_base::level l)
 }
 
 @ Here is a function that computes a list of positive rational values $t\leq1$
-such thatthe parameter obtained by replacing the continuous part~$\nu$ of
-by~$t\nu$ is not topmost in its block, so that
+such that the parameter obtained by replacing the continuous part~$\nu$ of
+by~$t\nu$ is not topmost in its block, so that deformation of the parameter to
+$t\nu$ will produce a non-trivial decomposition.
 
 @< Local function def...@>=
 void reducibility_points_wrapper(expression_base::level l)
@@ -2988,7 +2990,7 @@ void reducibility_points_wrapper(expression_base::level l)
 @ One of the main reasons to introduce module parameter values is that they
 allow computing a block, whose elements are again given by module parameters.
 Before we define the functions the do that, let us define a common function
-they will use to test a parameter for validity. even though we shall always
+they will use to test a parameter for validity. Even though we shall always
 have a pointer available when we call |test_standard|, we define this function
 to take a reference (requiring us to write a dereferencing at each call),
 because the type of pointer (shared or raw) available is not always the same.
@@ -3130,6 +3132,85 @@ void KL_block_wrapper(expression_base::level l)
   }
 }
 
+@ Here is a version of the same command that just computes a partial block,
+and the Kazhdan-Lusztig polynomials for that block. There are six components
+in the value returned: the list of parameters forming the partial block (of
+which the final one is the initial parameter), a matrix of KL-polynomial
+indices, a list of polynomials (as vectors), a vector of length stops (block
+element numbers at with the length function increases), a list of block
+element numbers for those whose survive the translation-to-singular functor,
+and a matrix that indicates which block elements contributes to which
+surviving element.
+
+@< Local function def...@>=
+void partial_block_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p);
+  if (l!=expression_base::no_value)
+  {
+    non_integral_block block(p->rc(),p->val);
+    @< Push a list of parameter values for the elements of |block| @>
+
+    const kl::KLContext& klc = block.klc(block.size()-1,false);
+    // compute KL polynomials, silently
+
+    matrix_ptr M(new matrix_value(int_Matrix(klc.size())));
+    for (size_t y=1; y<klc.size(); ++y)
+      for (size_t x=0; x<y; ++x)
+        M->val(x,y)= klc.KL_pol_index(x,y);
+@)
+    row_ptr polys(new row_value(0)); polys->val.reserve(klc.polStore().size());
+    for (size_t i=0; i<klc.polStore().size(); ++i)
+    {
+      const kl::KLPol& pol = klc.polStore()[i];
+      std::vector<int> coeffs(pol.size());
+      for (size_t j=pol.size(); j-->0; )
+        coeffs[j]=pol[j];
+      polys->val.push_back(shared_value(new vector_value(coeffs)));
+    }
+@)
+    vector_ptr length_stops(new vector_value(
+       int_Vector(block.length(block.size()-1)+1)));
+    length_stops->val[0]=0;
+    for (size_t i=1; i<length_stops->val.size(); ++i)
+      length_stops->val[i]=block.length_first(i);
+@)
+    unsigned n_survivors=0;
+    for (BlockElt z=0; z<block.size(); ++z)
+      if (block.survives(z))
+        ++n_survivors;
+    vector_ptr survivor(new vector_value(int_Vector(n_survivors)));
+    { unsigned i=0;
+      for (BlockElt z=0; z<block.size(); ++z)
+        if (block.survives(z))
+          survivor->val[i++]=z;
+      assert(i==n_survivors);
+    }
+    matrix_ptr contributes_to(new matrix_value(
+      int_Matrix(n_survivors,block.size(),0)));
+    for (BlockElt z=0; z<block.size(); ++z)
+    { BlockEltList sb = block.survivors_below(z);
+      for (BlockEltList::const_iterator it=sb.begin(); it!=sb.end(); ++it)
+      { BlockElt x= permutations::find_index<int>(survivor->val,*it);
+          // a row index
+        if ((block.length(z)-block.length(*it))%2==0)
+          ++contributes_to->val(x,z);
+        else
+          --contributes_to->val(x,z);
+      }
+    }
+@)
+    push_value(M);
+    push_value(polys);
+    push_value(length_stops);
+    push_value(survivor);
+    push_value(contributes_to);
+
+    if (l==expression_base::single_value)
+      wrap_tuple(6);
+  }
+}
+
 @ Finally we install everything related to module parameters.
 @< Install wrapper functions @>=
 install_function(module_parameter_wrapper,@|"param"
@@ -3151,6 +3232,8 @@ install_function(print_n_block_wrapper,@|"print_n_block"
 install_function(n_block_wrapper,@|"n_block" ,"(Param->[Param],int)");
 install_function(KL_block_wrapper,@|"KL_block"
                 ,"(Param->[Param],int,mat,[vec],vec,vec,mat)");
+install_function(partial_block_wrapper,@|"partial_block"
+                ,"(Param->[Param],mat,[vec],vec,vec,mat)");
 
 @*1 Polynomials formed from parameters.
 %
@@ -3478,10 +3561,11 @@ void to_termlist_wrapper(expression_base::level l)
 }
 
 @ Here is our principal application of virtual modules.
-Having computed the non-integral block, we can go ahead and compute a
-deformation formula for the given parameter. This involves computing a
-non-integral block, their Kazhdan-Lusztig polynomials, and produces an
-expression for the ``deformed'' parameter (meaning $\nu$ is infinitesimally
+%
+Using the computation of non-integral blocks, we can compute a deformation
+formula for the given parameter. This also involves computing Kazhdan-Lusztig
+polynomials, which happens inside the method |deformation_terms|, and produces
+an expression for the ``deformed'' parameter (meaning $\nu$ is infinitesimally
 decreased towards~$0$) in terms of certain other parameters found in the
 block.
 
@@ -3492,11 +3576,10 @@ void deform_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     const Rep_context& rc= p->rc();
-    BlockElt start; // will hold index in the block of the initial element
-    non_integral_block block(rc,p->val,start);
+    non_integral_block block(rc,p->val); // partial block construction
 
     std::vector<non_integral_block::term> terms
-       = block.deformation_terms(start);
+       = block.deformation_terms(block.size()-1);
     virtual_module_ptr acc (new virtual_module_value(p->rf,
       repr::SR_poly(rc.repr_less())));
     const RatWeight& gamma=block.gamma();
@@ -3504,7 +3587,8 @@ void deform_wrapper(expression_base::level l)
     { BlockElt z=terms[i].elt;
       StandardRepr param_z =
         rc.sr(block.parent_x(z),block.lambda_rho(z),gamma);
-      Split_integer coef(terms[i].coef,-terms[i].coef); // multiple of $1-s$
+      Split_integer coef(terms[i].coef,-terms[i].coef);
+        // multiply integer |coef| by $1-s$
       acc->val.add_multiple(rc.expand_final(param_z),coef);
     }
     push_value(acc);
