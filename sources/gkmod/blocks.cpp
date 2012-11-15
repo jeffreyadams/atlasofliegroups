@@ -50,16 +50,16 @@
 #include "repr.h"       // used in |non_integral_block::deformation_terms|
 
 /*
-  Our task is fairly simple: given the one sided parameter sets for the real
-  form and for the dual real form, as provided by the kgb module, which sets
-  are fibred over the sets of twisted involutions for the Weyl group and dual
-  Weyl group respectively, we must form the fibred product over corresponding
-  pairs of twisted involutions, and equip the resulting structure with
-  relations inherited from the kgb structures.
+  Our task in the traditional setup (the constructor for |Block|) is fairly
+  simple: given the one sided parameter sets (|KGB|) for the real form and for
+  the dual real form, which are fibred over the sets of twisted involutions
+  for the Weyl group and dual Weyl group respectively, we must form the fibred
+  product over corresponding pairs of twisted involutions, and equip the
+  resulting structure with relations inherited from the kgb structures.
 
   One point to be resolved here is the relation between a twisted involution
   and the corresponding dual twisted involution; it is implemented in the
-  function |dualInvolution| below. On the level of involution matrices acting
+  function |dual_involution| below. On the level of involution matrices acting
   on the character and cocharacter lattices, the relation is minus transpose;
   this has to be translated into a relation between Weyl group elements.
 
@@ -124,7 +124,7 @@
   set for the RealNonparity case (note that this is opposite to the status of
   imaginary and real generators in the other (parity) cases). These cases do
   not count as strict descent/ascent however, as is indicated in the
-  predicates |isStrictDescent| and |isStrictAscent| below.
+  predicate emthods |isStrictDescent| and |isStrictAscent| below.
 */
 
 namespace atlas {
@@ -137,16 +137,14 @@ typedef hashtable::HashTable<y_entry,KGBElt> y_part_hash;
 typedef hashtable::HashTable<block_elt_entry,BlockElt> block_hash;
 
 namespace {
+  // some auxiliary functions used by methods, but defined near end of file
 
-weyl::WeylInterface
-correlation(const WeylGroup& W,const WeylGroup& dW);
-
+  // compute descent status of block element, based on its $(x,y)$ parts
 DescentStatus descents(KGBElt x, KGBElt y,
 		       const KGB_base& kgb, const KGB_base& dual_kgb);
 
-void insertAscents(std::set<BlockElt>&, const set::EltList&, size_t,
-		   const Block_base&);
-void makeHasse(std::vector<set::EltList>&, const Block_base&);
+  // compute Hasse diagram of the Bruhat order of a block
+std::vector<set::EltList> makeHasse(const Block_base&);
 
 
 } // namespace
@@ -161,13 +159,15 @@ void makeHasse(std::vector<set::EltList>&, const Block_base&);
 
 namespace blocks {
 
+// an auxiliary function:
+// we often need to fill the first empty slot of a |BlockEltPair|
 inline BlockElt& first_free_slot(BlockEltPair& p)
 {
   if (p.first==UndefBlock)
     return p.first;
   else
   {
-    assert(p.second==UndefBlock);
+    assert(p.second==UndefBlock); // there should be an empty slot left
     return p.second;
   }
 }
@@ -181,7 +181,7 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
 {
   const TwistedWeylGroup& dual_W =dual_kgb.twistedWeylGroup();
 
-  std::vector<TwistedInvolution> dual_w;
+  std::vector<TwistedInvolution> dual_w; // tabulate bijection |W| -> |dual_W|
   dual_w.reserve(kgb.nr_involutions());
   size_t size=0;
   for (unsigned int i=0; i<kgb.nr_involutions(); ++i)
@@ -200,16 +200,18 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
 
   BlockElt base_z = 0; // block element |z| where generation for |x| starts
 
+  // fill |d_x|, |d_y|, |d_first_z_of_x|, |d_descent|, |d_length|
   for (unsigned int i=0; i<kgb.nr_involutions(); ++i)
   {
     const TwistedInvolution w = kgb.nth_involution(i);
 
-    KGBEltPair x_step = kgb.tauPacket(w);
-    KGBEltPair y_step = dual_kgb.tauPacket(dual_w[i]);
+    // here is where the fibred product via |dual_w| is built
+    const KGBEltPair x_step = kgb.tauPacket(w);
+    const KGBEltPair y_step = dual_kgb.tauPacket(dual_w[i]);
 
     for (KGBElt x=x_step.first; x<x_step.second; ++x)
     {
-      d_first_z_of_x.push_back(base_z); // set even for |x| without any |y|
+      d_first_z_of_x.push_back(base_z); // set, even for |x| without any |y|
       for (size_t y=y_step.first; y<y_step.second; ++y)
       {
 	d_x.push_back(x);
@@ -235,7 +237,7 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
      d_cross[s][z] = element(kgb.cross(s,x(z)),dual_kgb.cross(s,y(z)));
      switch (d_descent[z][s])
      {
-     default: break; // leave |d_cayley[s][z]|
+     default: break; // most cases leave |d_cayley[s][z]| undefined
      case DescentStatus::ImaginaryTypeII:
        {
 	 BlockElt z1=element(kgb.cayley(s,x(z)),
@@ -257,7 +259,7 @@ Block_base::Block_base(const KGB& kgb,const KGB& dual_kgb)
   } // |for(s)|
 } // |Block_base::Block_base|
 
-
+// an almost trivial constructor used for derived non-integral block types
 Block_base::Block_base(unsigned int rank)
   : d_x(), d_y()
   , d_first_z_of_x(), d_cross(rank), d_cayley(rank)
@@ -357,8 +359,146 @@ size_t Block_base::firstStrictGoodDescent(BlockElt z) const
   return rank(); // signal nothing was found
 }
 
-/*!
-  \brief the functor \f$T_{\alpha,\beta}\f$
+
+KGBElt Block_base::renumber_x(const std::vector<KGBElt>& new_x)
+{
+  KGBElt x_lim=0; // high-water mark for |new_x| values
+  for (BlockElt z=0; z<size(); ++z)
+  {
+    KGBElt x=new_x[d_x[z]];
+    if (x>=x_lim)
+      x_lim=x+1;
+    d_x[z]=x;
+  }
+
+  Permutation pi_inv = // assigns |z| to its new place
+    permutations::standardization(d_x,x_lim,&d_first_z_of_x);
+
+  Permutation pi(pi_inv,-1); // assigns to new place its original one
+
+  pi.pull_back(d_x).swap(d_x);
+  pi.pull_back(d_y).swap(d_y);
+  for (weyl::Generator s=0; s<rank(); ++s)
+  {
+    pi.pull_back(pi_inv.renumbering(d_cross[s])).swap(d_cross[s]);
+
+    //renumbering does not work for arrays of pairs, so do it by hand
+    pi.pull_back(d_cayley[s]).swap(d_cayley[s]);
+    for (BlockElt z=0; z<size(); ++z)
+    {
+      BlockEltPair& p=d_cayley[s][z];
+      if (p.first!=UndefBlock)
+      {
+	p.first=pi_inv[p.first];
+	if (p.second!=UndefBlock)
+	  p.second=pi_inv[p.second];
+      }
+    }
+  }
+  pi.pull_back(d_descent).swap(d_descent);
+  pi.pull_back(d_length).swap(d_length);
+
+  return x_lim;
+} // |Block_base::renumber_x|
+
+// Complete the |Block_base| construction, setting |Block|-specific fields
+// The real work is done by |Block_base|, |kgb| methods, and |compute_supports|
+Block::Block(const KGB& kgb,const KGB& dual_kgb)
+  : Block_base(kgb,dual_kgb)
+  , tW(kgb.twistedWeylGroup())
+  , xrange(kgb.size()), yrange(dual_kgb.size())
+  , d_Cartan(), d_involution(), d_involutionSupport() // filled below
+{
+  d_Cartan.reserve(size());
+  d_involution.reserve(size());
+  for (BlockElt z=0; z<size(); ++z)
+  {
+    KGBElt xx=x(z);
+    d_Cartan.push_back(kgb.Cartan_class(xx));
+    d_involution.push_back(kgb.involution(xx));
+  }
+
+  compute_supports();
+}
+
+// Construction function for the |Block| class.
+// It is a pseudo constructor method that ends calling main contructor
+Block Block::build(ComplexReductiveGroup& G, RealFormNbr rf, RealFormNbr drf)
+{
+  RealReductiveGroup G_R(G,rf);
+  ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
+  RealReductiveGroup dG_R(dG,drf);
+
+  KGB kgb     (G_R, common_Cartans(G_R,dG_R));
+  KGB dual_kgb(dG_R,common_Cartans(dG_R,G_R));
+  return Block(kgb,dual_kgb); // |kgb| and |dual_kgb| disappear afterwards!
+}
+
+// Given both real group and dual real group, we can just call main contructor
+Block Block::build(RealReductiveGroup& G_R, RealReductiveGroup& dG_R)
+{ return Block(G_R.kgb(),dG_R.kgb()); }
+
+// compute the supports in $S$ of twisted involutions
+void Block::compute_supports()
+{
+  d_involutionSupport.reserve(size()); // its eventual size
+
+  // first compute minimal length cases, probably all for the same involution
+  for (BlockElt z=0; z<size() and length(z)==length(0); ++z)
+  {
+    if (z==0 or involution(z)!=involution(z-1))
+    { // compute involution support directly from definition
+      RankFlags support;
+      WeylWord ww=tW.weylGroup().word(involution(z));
+      for (size_t j=0; j<ww.size(); ++j)
+	support.set(ww[j]);
+      d_involutionSupport.push_back(support);
+    }
+    else // unchanged involution
+      d_involutionSupport.push_back(d_involutionSupport.back()); // duplicate
+  }
+
+  // complete involution supports at non-minimal lengths, using previous
+  for (BlockElt z=d_involutionSupport.size(); z<size(); ++z)
+  {
+    size_t s = firstStrictDescent(z);
+    assert (s<rank()); // must find one, as we are no longer at minimal length
+    DescentStatus::Value v = descentValue(s,z);
+    if (v == DescentStatus::ComplexDescent) // cross link
+    { // use value from shorter cross neighbour, setting |s| and |twist(s)|
+      d_involutionSupport[z] = d_involutionSupport[cross(s,z)];
+      d_involutionSupport[z].set(s);
+      d_involutionSupport[z].set(tW.twisted(s));
+    }
+    else // Real Type I or II
+    { // use (some) inverse Cayley transform and set |s|
+      d_involutionSupport[z] = d_involutionSupport[inverseCayley(s,z).first];
+      d_involutionSupport[z].set(s);
+    }
+  } // |for(z)|
+
+
+#ifdef VERBOSE
+  std::cerr << "done" << std::endl;
+#endif
+} // |Block::compute_supports|
+
+Block::Block(const Block& b)
+  : Block_base(b) // copy
+  , tW(b.tW) // share
+  , d_Cartan(b.d_Cartan)
+  , d_involution(b.d_involution)
+  , d_involutionSupport(b.d_involutionSupport)
+{}
+
+
+/******** copy, assignment and swap ******************************************/
+
+// accessors
+
+// Here is one method not realted to block construction
+/*
+  The functor \f$T_{\alpha,\beta}\f$
 
   Precondition: alpha and beta are adjacent roots, of which alpha is a (weak)
   descent for y, while beta is not a descent for y.
@@ -422,143 +562,6 @@ BlockEltPair Block_base::link
   return std::make_pair(result[0],result[1]);
 }
 
-KGBElt Block_base::renumber_x(const std::vector<KGBElt>& new_x)
-{
-  KGBElt x_lim=0; // high-water mark for |new_x| values
-  for (BlockElt z=0; z<size(); ++z)
-  {
-    KGBElt x=new_x[d_x[z]];
-    if (x>=x_lim)
-      x_lim=x+1;
-    d_x[z]=x;
-  }
-
-  Permutation pi_inv = // assigns |z| to its new place
-    permutations::standardization(d_x,x_lim,&d_first_z_of_x);
-
-  Permutation pi(pi_inv,-1); // assigns to new place its original one
-
-  pi.pull_back(d_x).swap(d_x);
-  pi.pull_back(d_y).swap(d_y);
-  for (weyl::Generator s=0; s<rank(); ++s)
-  {
-    pi.pull_back(pi_inv.renumbering(d_cross[s])).swap(d_cross[s]);
-
-    //renumbering does not work for arrays of pairs, so do it by hand
-    pi.pull_back(d_cayley[s]).swap(d_cayley[s]);
-    for (BlockElt z=0; z<size(); ++z)
-    {
-      BlockEltPair& p=d_cayley[s][z];
-      if (p.first!=UndefBlock)
-      {
-	p.first=pi_inv[p.first];
-	if (p.second!=UndefBlock)
-	  p.second=pi_inv[p.second];
-      }
-    }
-  }
-  pi.pull_back(d_descent).swap(d_descent);
-  pi.pull_back(d_length).swap(d_length);
-
-  return x_lim;
-} // |Block_base::renumber_x|
-
-Block::Block(const KGB& kgb,const KGB& dual_kgb)
-  : Block_base(kgb,dual_kgb)
-  , tW(kgb.twistedWeylGroup())
-  , xrange(kgb.size()), yrange(dual_kgb.size())
-  , d_Cartan(), d_involution(), d_involutionSupport() // filled below
-{
-  d_Cartan.reserve(size());
-  d_involution.reserve(size());
-  for (BlockElt z=0; z<size(); ++z)
-  {
-    KGBElt xx=x(z);
-    d_Cartan.push_back(kgb.Cartan_class(xx));
-    d_involution.push_back(kgb.involution(xx));
-  }
-
-  compute_supports();
-}
-
-/*!
-  \brief Construction function for the |Block| class.
-
-  Constructs a block from the datum of a real form rf for G and a real
-  form df for G^vee (_not_ strong real forms: up to isomorphism, the
-  result depends only on the underlying real forms!).
-*/
-Block // pseudo constructor that ends calling main contructor
-Block::build(ComplexReductiveGroup& G, RealFormNbr rf, RealFormNbr drf)
-{
-  RealReductiveGroup G_R(G,rf);
-  ComplexReductiveGroup dG(G,tags::DualTag()); // the dual group
-  RealReductiveGroup dG_R(dG,drf);
-
-  KGB kgb     (G_R, common_Cartans(G_R,dG_R));
-  KGB dual_kgb(dG_R,common_Cartans(dG_R,G_R));
-  return Block(kgb,dual_kgb); // |kgb| and |dual_kgb| disappear afterwards!
-}
-
-Block Block::build(RealReductiveGroup& G_R, RealReductiveGroup& dG_R)
-{ return Block(G_R.kgb(),dG_R.kgb()); }
-
-// compute the supports in $S$ of twisted involutions
-void Block::compute_supports()
-{
-  d_involutionSupport.reserve(size()); // its eventual size
-  for (BlockElt z=0; z<size() and length(z)==length(0); ++z) // minl length
-  {
-    if (z==0 or involution(z)!=involution(z-1))
-    { // compute involution support directly from definition
-      RankFlags support;
-      WeylWord ww=tW.weylGroup().word(involution(z));
-      for (size_t j=0; j<ww.size(); ++j)
-	support.set(ww[j]);
-      d_involutionSupport.push_back(support);
-    }
-    else // unchanged involution
-      d_involutionSupport.push_back(d_involutionSupport.back()); // duplicate
-  }
-
-  // complete by propagating involution supports
-  for (BlockElt z=d_involutionSupport.size(); z<size(); ++z)
-  {
-    size_t s = firstStrictDescent(z);
-    assert (s<rank()); // must find one, as we are no longer at minimal length
-    DescentStatus::Value v = descentValue(s,z);
-    if (v == DescentStatus::ComplexDescent) // cross link
-    { // use value from shorter cross neighbour, setting |s| and |twist(s)|
-      d_involutionSupport[z] = d_involutionSupport[cross(s,z)];
-      d_involutionSupport[z].set(s);
-      d_involutionSupport[z].set(tW.twisted(s));
-    }
-    else // Real Type I or II
-    { // use (some) inverse Cayley transform and set |s|
-      d_involutionSupport[z] = d_involutionSupport[inverseCayley(s,z).first];
-      d_involutionSupport[z].set(s);
-    }
-  } // |for(z)|
-
-
-#ifdef VERBOSE
-  std::cerr << "done" << std::endl;
-#endif
-}
-
-Block::Block(const Block& b)
-  : Block_base(b) // copy
-  , tW(b.tW) // share
-  , d_Cartan(b.d_Cartan)
-  , d_involution(b.d_involution)
-  , d_involutionSupport(b.d_involutionSupport)
-{}
-
-
-/******** copy, assignment and swap ******************************************/
-
-// accessors
-
 // manipulators
 
 /*!
@@ -569,8 +572,8 @@ void Block_base::fillBruhat()
 {
   if (d_bruhat==NULL) // do this only the first time
   {
-    std::vector<set::EltList> hd; makeHasse(hd,*this);
-    d_bruhat = new BruhatOrder(hd); // commit iff new complete without throwing
+    std::vector<set::EltList> hd = makeHasse(*this);
+    d_bruhat = new BruhatOrder(hd); // commit iff new completed without throwing
   }
 }
 
@@ -1601,8 +1604,12 @@ BlockEltList non_integral_block::survivors_below(BlockElt z) const
 std::vector<non_integral_block::term>
 non_integral_block::deformation_terms (BlockElt entry_elem)
 {
-  std::vector<term> result;
-  const kl::KLContext& klc = Block_base::klc(entry_elem,false);
+  if (not survives(entry_elem)) // easy case, null result
+    return std::vector<non_integral_block::term>();
+
+  // compute KL polynomimals $P_{x,y}$ with $x\leq y\leq \\{entry_elem}$
+  // storing sign-changed value $P(x,y)=(-1)^{l(y)-l(x)}P_{x,y}$
+  const kl::KLContext& klc = Block_base::klc(entry_elem,false); // silently
 
   std::vector<BlockElt> survivors; survivors.reserve(entry_elem+1);
   for (BlockElt x=0; x<=entry_elem; ++x)
@@ -1615,19 +1622,20 @@ non_integral_block::deformation_terms (BlockElt entry_elem)
   std::vector<unsigned int> orient_nr(n_surv);
   for (BlockElt z=0; z<n_surv; ++z)
   {
-    BlockElt zz=survivors[z];
-    StandardRepr r = rc.sr(parent_x(zz),lambda_rho(zz),gamma());
+    const BlockElt zz = survivors[z];
+    const StandardRepr r = rc.sr(parent_x(zz),lambda_rho(zz),gamma());
     orient_nr[z] = rc.orientation_number(r);
   }
 
-  // (sums of) KL polynomials evaluated at $-1$; $P$ incorporates length signs
-  int_Matrix P(n_surv,n_surv,0), Q(n_surv,n_surv,0);
+  // sums of KL polynomials evaluated at $-1$, incorporating length signs
+  int_Matrix P(n_surv,n_surv,0);
 
-  // compute $P(x,z)$ for indexes |x<=z<n_surv| into survivors
+  // compute $P(x,z)$ for |xx<=zz<=entry_element| with |zz| among |survivors|
+  // and contribute to |P(x,z)| where |zz=survivors[z]|, $xx\to survivors[x]$
   for (BlockElt z=n_surv; z-->0; )
   {
-    BlockElt zz=survivors[z];
-    unsigned int parity = length(zz)%2;
+    const BlockElt zz = survivors[z];
+    const unsigned int parity = length(zz)%2;
     for (BlockElt xx=0; xx <= zz; ++xx)
     {
       const kl::KLPol& pol = klc.klPol(xx,zz); // regular KL polynomial
@@ -1639,6 +1647,9 @@ non_integral_block::deformation_terms (BlockElt entry_elem)
 	  eval = static_cast<int>(pol[d])-eval;
 	if (length(xx)%2!=parity)
 	  eval = -eval; // incorporate sign for length difference in evaluation
+
+        // contribute |eval| to all |P(x,z)| for which |xx| descends to
+	// |survivors[x]| (expressing the singular $I(xx)$ as a survivor sum)
 	BlockEltList nb=survivors_below(xx);
 	for (size_t i=0; i<nb.size(); ++i)
 	{
@@ -1651,35 +1662,43 @@ non_integral_block::deformation_terms (BlockElt entry_elem)
     } // |for (x<=z)|
   } // for |z|
 
-  // now compute evaluated polynomials $Q_{x,z}$, for |x<=z<n_surv|
-  for (BlockElt x=0; x<n_surv; ++x)
+  // now compute evaluated polynomials $Q_{x,z}$, for |x <= z==n_surv-1|
+  // this is done by inverting the upper unitriangular matrix of the |P(x,z)|
+  // only the final column of the inverse is needed
+
+  const BlockElt z=n_surv-1; // $Q$ only needs |entry_elem| as second index
+  int_Vector Q_z(n_surv);
+
+  // we solve column $z$ of $Q$ from bottom to top, using the equation $PQ=1$
+  Q_z[z]=1; // easy initial case, since $P(z,z)=1$
+  for (BlockElt x=z; x-->0; )
   {
-    Q(x,x)=1;
-    for (BlockElt z=x+1; z<n_surv; ++z)
-      for (BlockElt y=x; y<z; ++y)
-	Q(x,z) -= Q(x,y)*P(y,z);  // $-\sum{x\leq y<z}Q_{x,y}P^\pm_{y,z}$
+    int Q_xz=0;
+    for (BlockElt y=x+1; y<=z; ++y) // isolate the term $Q(x,z)$ for $y=x$
+      Q_xz -= P(x,y)*Q_z[y];  // set it to minus the sum of other terms
+    Q_z[x]=Q_xz;
   }
 
-  if (survives(entry_elem))
-  {
-    BlockElt z=n_surv-1;
-    assert(survivors[z]==entry_elem);
-    unsigned odd = (length(entry_elem)+1)%2; // opposite parity
+  assert(survivors[z]==entry_elem);
+  unsigned odd = (length(entry_elem)+1)%2; // opposite parity
 
-    for (BlockElt x=n_surv-1; x-->0; ) // skip |entry_elem|
-    {
-      int coef=0;
-      for (BlockElt y=x; y<n_surv-1; ++y)
-	if (length(survivors[y])%2==odd)
-	  coef += P(x,y)*Q(y,z);
-      // here we evaluated  |coef| at $X=-1$: "real" part of $(1-s)*coef[X:=s]$
-      // if (orientation_difference(x,z)) coef*=s;
-      int orient_express = (orient_nr[n_surv-1]-orient_nr[x])/2;
-      if (coef!=0)
-	result.push_back(term(orient_express%2!=0 ? -coef : coef,
-			      survivors[x]));
-    }
+  std::vector<term> result;
+
+  // $\sum_{x\leq y<z}y[l(z)-l(y) odd] (-1)^{l(x)-l(y)}P_{x,y}*Q(y,z)$
+  for (BlockElt x=n_surv-1; x-->0; ) // skip |entry_elem|
+  {
+    int coef=0;
+    for (BlockElt y=x; y<n_surv-1; ++y)
+      if (length(survivors[y])%2==odd) // length difference with |entry_elem|
+	coef += P(x,y)*Q_z[y];
+    // here we evaluated  |coef| at $X=-1$: "real" part of $(1-s)*coef[X:=s]$
+    // if (orientation_difference(x,z)) coef*=s;
+    int orient_express = (orient_nr[n_surv-1]-orient_nr[x])/2;
+    if (coef!=0)
+      result.push_back(term(orient_express%2!=0 ? -coef : coef,
+			    survivors[x]));
   }
+
   return result;
 } // |non_integral_block::deformation_terms|
 
@@ -2027,61 +2046,8 @@ non_integral_block::non_integral_block
 
 namespace {
 
-/*!
-  \brief Returns mapping of internal numberings from |W| to |dW|
-
-  Explanation: this is a fairly annoying twist. Because of the normalizations
-  that we do for Weyl groups based on the Cartan matrix rather than the
-  Coxeter matrix, the dual Weyl group may use a different internal numbering
-  than the Weyl group in the (irreducible) cases $B_2$, $G_2$ ad $F_4$. This
-  means we cannot reinterpret |WeylElt| values for $W$ as values for $dW$
-  without a conversion. The conversion will be performed by
-  |WeylGroup::translate| based on the value computed here, which is a mapping
-  of external numberings, to be applied by |W| on an element just before
-  reinterpreting it in the |dW|. We should have for each |s|, in terms of the
-  internal translation arrays:
-
-        |  dW.d_out[W.d_in[d_toDualWeyl[s]]] = s | or equivalently
-        |  d_toDualWeyl[s] = W.d_out[dW.d_in[s]] |
-
-  so that the reinterpretation will preserve the outer representation. We do
-  not have direct access to those arrays, but we can pass into internal
-  representation and back out for another group without accessing them
-  explicitly. Note this could not possibly be made to work (in all cases) if
-  |WeylGroup::translate| were to use internal numbering, as it originally did.
-
-  This function is left for historical reasons, but is doubly useless, since
-  we now share the (untwisted) Weyl group between an inner class and its dual,
-  (see the |assert| below), and because we now avoid any reinterpretation of
-  elements from the twisted Weylgroup to its dual without passing through the
-  external |WeylWord| representation (see |dual_involution| below).
-*/
-weyl::WeylInterface
-correlation(const WeylGroup& W,const WeylGroup& dW)
-{
-  assert(&W==&dW); // so groups are identical, making this function useless!
-
-  size_t rank=W.rank();
-  weyl::WeylInterface result;
-  for (size_t s = 0; s < rank; ++s)
-  {
-    WeylElt w=dW.generator(s); // converts |s| to inner numbering |dW|
-    WeylWord ww=W.word(w); // interpret |w| in |dW|; gives singleton
-    assert(ww.size()==1);
-
-    /* We want to map |s| to |ww[0]| so that interpreting that internally in
-       |W| gives the element that in |dW| will represent |s|
-    */
-    result[s] = ww[0];
-
-  }
-  return result;
-}
-
-DescentStatus descents(KGBElt x,
-				 KGBElt y,
-				 const KGB_base& kgb,
-				 const KGB_base& dual_kgb)
+DescentStatus descents(KGBElt x, KGBElt y,
+		       const KGB_base& kgb, const KGB_base& dual_kgb)
 {
   DescentStatus result;
   for (size_t s = 0; s < kgb.rank(); ++s)
@@ -2151,9 +2117,9 @@ void insertAscents(std::set<BlockElt>& hs,
   kgb. If it doesn't then we're essentially at a split principal series. The
   immediate predecessors of z are just the inverse Cayley transforms.
 */
-void makeHasse(std::vector<set::EltList>& Hasse, const Block_base& block)
+std::vector<set::EltList> makeHasse(const Block_base& block)
 {
-  Hasse.resize(block.size());
+  std::vector<set::EltList> result(block.size());
 
   for (BlockElt z = 0; z < block.size(); ++z)
   {
@@ -2168,7 +2134,7 @@ void makeHasse(std::vector<set::EltList>& Hasse, const Block_base& block)
 	{
 	  BlockElt sz = block.cross(s,z);
 	  h_z.insert(sz);
-	  insertAscents(h_z,Hasse[sz],s,block);
+	  insertAscents(h_z,result[sz],s,block);
 	}
 	break;
       case DescentStatus::RealTypeI: // inverseCayley(s,z) two-valued
@@ -2176,7 +2142,7 @@ void makeHasse(std::vector<set::EltList>& Hasse, const Block_base& block)
 	  BlockEltPair sz = block.inverseCayley(s,z);
 	  h_z.insert(sz.first);
 	  h_z.insert(sz.second);
-	  insertAscents(h_z,Hasse[sz.first],s,block);
+	  insertAscents(h_z,result[sz.first],s,block);
 	}
       }
     else // now just gather all RealTypeII descents of |z|
@@ -2184,8 +2150,10 @@ void makeHasse(std::vector<set::EltList>& Hasse, const Block_base& block)
 	if (block.descentValue(s,z)==DescentStatus::RealTypeII)
 	  h_z.insert(block.inverseCayley(s,z).first);
 
-    std::copy(h_z.begin(),h_z.end(),std::back_inserter(Hasse[z])); // set->list
+    std::copy(h_z.begin(),h_z.end(),std::back_inserter(result[z])); // set->list
   } // for |z|
+
+  return result;
 } // |makeHasse|
 
 } // |namespace|
@@ -2200,11 +2168,11 @@ void makeHasse(std::vector<set::EltList>& Hasse, const Block_base& block)
 //!\brief Returns the twisted involution dual to |w|.
 
 /*
-  We have $\tau = w.\delta$, with $tw$ in the Weyl group $W$, and $\delta$ the
+  We have $\tau = w.\delta$, with $w$ in the Weyl group $W$, and $\delta$ the
   fundamental involution of $X^*$. We seek the twisted involution $v$ in the
   dual twisted Weyl group |dual_W| such that $-\tau^t = v.\delta^\vee$. Here
   $\delta^\vee$ is the dual fundamental involution, which acts on $X_*$ as
-  minus the transpose of the longest involution $w_0\delta$, where $w_0$ is
+  minus the transpose of the longest involution $w_0.\delta$, where $w_0$ is
   the longest element of $W$. This relation relation can be defined
   independently of being a twisted involution, and leads to a bijection $f$:
   $W \to W$ that is characterised by $f(e)=w_0$ and $f(s.w)=f(w)dwist(s)$ for
@@ -2213,22 +2181,25 @@ void makeHasse(std::vector<set::EltList>& Hasse, const Block_base& block)
   intertwines twisted conjugation: $f(s.w.twist(s))=s.f(w).dwist(s)$).
 
   The implementation below is based directly on the above characterisation, by
-  converting |w| into a WeylWord|, and then starting from $w_0$
+  converting |w| into a |WeylWord|, and then starting from $w_0$
   right-multiplying successively by the $dwist$ image of the letters of the
   word taken right-to-left. The only thing assumed common to |W| and |W_dual|
-  is the external numbering of generators (letters in |ww|), without which the
-  notion of dual twisted involution would make no sense; notably the result
-  will be correct (when interpreted for |dual_W|) even if the underlying
-  (untwisted) Weyl groups of |W| and |dual_W| should differ in their
-  external-to-internal mappings. If one assumes that |W| and |dual_W| share
-  the same underlying Weyl group (as is currently the case for an inner class
-  and its dual) then one could alternatively say simply
+  is the \emph{external} numbering of generators (letters in |ww|), a minimal
+  requirement without which the notion of dual twisted involution would make
+  no sense. Notably the result will be correct (when interpreted for |dual_W|)
+  even if the underlying (untwisted) Weyl groups of |W| and |dual_W| should
+  differ in their external-to-internal mappings. If one assumes that |W| and
+  |dual_W| share the same underlying Weyl group (as is currently the case for
+  an inner class and its dual) then one could alternatively say simply
 
     |return W.prod(W.weylGroup().longest(),dual_W.twisted(W.inverse(w)))|
 
   or
 
-    |return W.prod(W.inverse(W.twisted(w)),W.weylGroup().longest())|
+    |return W.prod(W.inverse(W.twisted(w)),W.weylGroup().longest())|.
+
+  Note that this would involve implicit conversion of an element of |W| as one
+  of |dual_W|.x
 */
 TwistedInvolution
 dual_involution(const TwistedInvolution& w,

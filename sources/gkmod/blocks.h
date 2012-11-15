@@ -206,6 +206,7 @@ class Block : public Block_base
   size_t xrange;
   size_t yrange;
 
+  // wasteful fields, but we cannot lean on |KGB|, which might no longer exist
   std::vector<size_t> d_Cartan; // of size |size()|
   TwistedInvolutionList d_involution; // of size |size()|
 

@@ -125,7 +125,8 @@ void KLSupport::filter_primitive(BitMap& b, const RankFlags& d) const
   ascended element and continue; in the last case, we return |UndefBlock| (for
   K-L computations, this case implies that $P_{x,y}=0$; the value of
   |UndefBlock| is conveniently larger than any valid BlockElt |y|, so this
-  case will be handled effortlessly together with triangularity).
+  case will be handled effortlessly together with triangularity). It is also
+  permissible to pass |x==UndefBlock|, which will be returned immediately.
 */
 
 #if 0 // code disabled because replaced by table look-up
