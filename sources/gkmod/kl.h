@@ -15,6 +15,7 @@
 #define KL_H
 
 #include <limits>
+#include <set>
 
 #include "atlas_types.h"
 
@@ -22,15 +23,6 @@
 #include "polynomials.h"// containment
 
 namespace atlas {
-
-/******** constant declarations *********************************************/
-
-namespace kl {
-
-extern const KLPol Zero;
-
-
-} // namespace kl
 
 /******** function declarations *********************************************/
 
@@ -48,7 +40,7 @@ namespace kl {
 
 typedef std::vector<std::pair<BlockElt,MuCoeff> > MuRow;
 
-
+class KLPolEntry;
 /*!
 \brief Calculates and stores the Kazhdan-Lusztig polynomials for a
   block of representations of G.
@@ -56,8 +48,6 @@ typedef std::vector<std::pair<BlockElt,MuCoeff> > MuRow;
 class KLContext
   : public klsupport::KLSupport // base is needed for full functionality
 {
-
- protected:  // permit access of our Helper class to the data members
 
   BlockElt fill_limit; // all "rows" |y| with |y<fill_limit| have been computed
 
@@ -84,14 +74,9 @@ class KLContext
   enum { d_zero = 0, d_one  = 1}; // indices of polynomials 0,1 in |d_store|
   // using enum rather than |static const int| allows implicit const references
 
-// copy and swap are only for helper class
+ private:  // copy and assignment are not needed, and forbidden
   KLContext(const KLContext&);
-
-  void swap(KLContext&); // needed internally in helper class
-  void partial_swap(KLContext&); // swap contents up to our |fill_limit|
-
- private:
-  KLContext& operator= (const KLContext&); // assignment is not needed at all
+  KLContext& operator= (const KLContext&);
 
  public:
 
@@ -99,7 +84,7 @@ class KLContext
   KLContext(const Block_base&); // construct initial base object
 
 // accessors
-  // the following two were moved here from the Helper class
+  // construct lists of extremal respectively primitive elements for |y|
   PrimitiveRow extremalRow(BlockElt y) const;
   PrimitiveRow primitiveRow(BlockElt y) const;
 
@@ -136,7 +121,44 @@ class KLContext
   void fill(bool verbose=true)
   { fill(size()-1,verbose); } // simulate forbidden first default argument
 
- }; //class KLContext
+
+  // private methods used during construction
+ private:
+  typedef hashtable::HashTable<KLPolEntry,KLIndex> KLHash;
+
+  //accessors
+    weyl::Generator firstDirectRecursion(BlockElt y) const;
+    weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
+    std::pair<weyl::Generator,weyl::Generator>
+      first_endgame_pair(BlockElt x, BlockElt y) const;
+    BlockEltPair inverseCayley(size_t s, BlockElt y) const;
+    std::set<BlockElt> down_set(BlockElt y) const;
+
+    KLPolRef klPol(BlockElt x, BlockElt y,
+		   KLRow::const_iterator klv,
+		   PrimitiveRow::const_iterator p_begin,
+		   PrimitiveRow::const_iterator p_end) const;
+
+    // manipulators
+    // the |size_t| results serve only for statistics; caller may ignore them
+    void silent_fill(BlockElt last_y);
+    void verbose_fill(BlockElt last_y);
+
+    size_t fillKLRow(BlockElt y, KLHash& hash);
+    void recursionRow(std::vector<KLPol> & klv,
+		      const PrimitiveRow& e, BlockElt y, size_t s);
+    void muCorrection(std::vector<KLPol>& klv,
+		      const PrimitiveRow& e,
+		      BlockElt y, size_t s);
+    size_t writeRow(const std::vector<KLPol>& klv,
+		    const PrimitiveRow& e, BlockElt y, KLHash& hash);
+    size_t remove_zeros(const KLRow& klv,
+			const PrimitiveRow& e, BlockElt y);
+    void newRecursionRow(KLRow & klv,const PrimitiveRow& pr,
+			 BlockElt y, KLHash& hash);
+    KLPol muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& muy);
+
+}; //class KLContext
 
 } // |namespace kl|
 
