@@ -58,8 +58,8 @@ class KLContext
   std::vector<PrimitiveRow> d_prim;
 
 /*
-  d_kl[y] is a list of indices into |d_hashtable| of polynomials P_{x_i,y},
-  with $x_i=d_prim[i]$|
+  $d_kl[y]$ is a list of indices into |d_hashtable| of polynomials
+  $P_{x_i,y}$ with $x_i=d_prim[i]$
 */
   std::vector<KLRow> d_kl;           // list of polynomial pointers
 

@@ -176,7 +176,7 @@ KLContext::KLContext(const Block_base& b)
 
   Precondition: row $y$ is completely computed, stored in |d_kl[y]|.
 
-  Since |d_store| holds all polynomials for primitive pairs $(x,y)$, this is
+  Since |d_kl| holds all polynomials for primitive pairs $(x,y)$, this is
   basically a lookup function. While |x| is not primitive for |y|, move |x| up
   (done in |primitivize|). If this has made |x>y| (in particular if it has
   made |x==UndefBlock|, which might even be its initial value) return a zero
@@ -1182,6 +1182,8 @@ void KLContext::verbose_fill(BlockElt last_y)
     std::cerr << d_store.size() << " polynomials, "
 	      << prim_size << " matrix entries."<< std::endl;
 
+    std::cerr << "Number of unrecorded primitive pairs: "
+	      << nr_of_prim_nulls << '.' << std::endl;
     std::cerr << std::endl;
 
   }
