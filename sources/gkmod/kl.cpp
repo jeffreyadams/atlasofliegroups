@@ -46,7 +46,6 @@
 #include "kl_error.h"
 #include "wgraph.h"	// for the |wGraph| function
 
-
 // extra defs for windows compilation -spc
 #ifdef WIN32
 #include <iterator>
@@ -109,86 +108,46 @@ public:
 }; // |class KLPolEntry|
 
 
-namespace helper {
-
-  typedef hashtable::HashTable<KLPolEntry,KLIndex> KLHashStore;
-
-  class Helper
-  : public KLContext
-  {
-    // a table for KL polynomial lookup, which is absent in KLContext
-    KLHashStore d_hashtable;
-    bool d_verbose;
-
-  // Member serving for statistics
-
-    size_t prim_size;            // number of pairs stored in d_kl
-
-  public:
-
-    // constructors and destructors
-    Helper(const KLContext&); // assumes an existing bare-bones |KLContext|
-
-    ~Helper()
-    {
-      if(d_verbose)
-      {
-	std::cout << "\nNumber of matrix entries stored:     "
-		  << prim_size << ".\n";
-      }
-    }
-
-    //accessors
-
-    weyl::Generator firstDirectRecursion(BlockElt y) const;
-
-    weyl::Generator first_nice_and_real(BlockElt x,BlockElt y) const;
-
-    std::pair<weyl::Generator,weyl::Generator>
-      first_endgame_pair(BlockElt x, BlockElt y) const;
-
-    BlockEltPair inverseCayley(size_t s, BlockElt y) const
-    { return block().inverseCayley(s,y); }
-
-    std::set<BlockElt> down_set(BlockElt y) const;
-
-    // manipulators
-    void rebuild_index() { d_hashtable.reconstruct(); }
-
-    void fill(BlockElt y, bool verbose);
-
-    void fillKLRow(BlockElt y);
-
-    void recursionRow(std::vector<KLPol> & klv,
-		      const PrimitiveRow& e, BlockElt y, size_t s);
-
-    void muCorrection(std::vector<KLPol>& klv,
-		      const PrimitiveRow& e,
-		      BlockElt y, size_t s);
-
-    void complete_primitives(const std::vector<KLPol>& klv,
-				const PrimitiveRow& e, BlockElt y);
-
-    void newRecursionRow(KLRow & klv,const PrimitiveRow& pr, BlockElt y);
-
-    KLPol muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& muy);
-
-
-  }; // class Helper
-
-} // namespace helper
-} // namespace kl
-
 /*****************************************************************************
 
-        Chapter I -- Methods of the KLContext and KLPolEntry classes.
+        Chapter I -- Public methods of the KLPolEntry and KLContext classes.
 
  *****************************************************************************/
 
+/* methods of KLPolEntry */
+
+
+/*!
+  \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
+
+  The function is in fact evaluation of the polynomial (with coefficients
+  interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
+  calculated quickly (without multiplications) and which gives a good spread
+  (which is not the case if 2105633 is replaced by a small number, because
+  the evaluation values will not grow fast enough for low degree
+  polynomials!).
+
+*/
+inline size_t KLPolEntry::hashCode(size_t modulus) const
+{ const KLPol& P=*this;
+  if (P.isZero()) return 0;
+  polynomials::Degree i=P.degree();
+  size_t h=P[i]; // start with leading coefficient
+  while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
+  return h;
+}
+
+bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
+{
+  if (degree()!=e.degree()) return true;
+  if (isZero()) return false; // since degrees match
+  for (polynomials::Degree i=0; i<=degree(); ++i)
+    if ((*this)[i]!=e[i]) return true;
+  return false; // no difference found
+}
+
 /* methods of KLContext */
 
-
-namespace kl {
 
 KLContext::KLContext(const Block_base& b)
   : klsupport::KLSupport(b) // construct unfilled support object from block
@@ -197,61 +156,15 @@ KLContext::KLContext(const Block_base& b)
   , d_mu()
   , d_store(2)
 {
+  // make sure the support (base class) is filled
+  klsupport::KLSupport::fill();
+
   d_store[d_zero]=Zero; // ensure these polynomials are present
   d_store[d_one]=One;   // at expected indices, even if maybe absent in |d_kl|
 }
 
 /******** copy, assignment and swap ******************************************/
 
-
-/*!
-  \brief Copy constructor. Used only to copy-construct base for Helper class
-*/
-KLContext::KLContext(const KLContext& other)
-  : klsupport::KLSupport(other)
-  , fill_limit(other.fill_limit)
-  , d_kl(other.d_kl)
-  , d_mu(other.d_mu)
-  , d_store(other.d_store)
-{}
-
-
-
-void KLContext::swap(KLContext& other) // used to extract base out of Helper
-{
-  klsupport::KLSupport::swap(other); // swap base (support) objects
-  std::swap(fill_limit,other.fill_limit);
-
-  d_kl.swap(other.d_kl);
-  d_mu.swap(other.d_mu);
-
-  d_store.swap(other.d_store);  // this puts the Helper store into base object
-}
-
-// If table extension fails, we need to recover the old part of the tables
-void KLContext::partial_swap(KLContext& other)
-{
-  // this is only called both to copy old tables into the helper object |other|,
-  // and in case of an overflow to recover those old tables form |other|
-  klsupport::KLSupport::swap(other); // swap base (support) objects
-
-  d_kl.swap(other.d_kl);
-  d_mu.swap(other.d_mu);
-  d_store.swap(other.d_store);
-
-  if (other.fill_limit<fill_limit) // we are initially filling helper object
-  {
-    other.fill_limit=fill_limit; // for fill limit, copy to other but keep ours
-    d_store.reserve(other.d_store.size()); // a stupid way to record old size
-  }
-  else // then we are restoring after a throw; |other| will soon disappear
-  {
-    d_kl.resize(fill_limit);
-    d_mu.resize(fill_limit);
-    d_store.resize(other.d_store.capacity()); // truncate to old size
-  }
-
-}
 
 /******** accessors **********************************************************/
 
@@ -266,7 +179,7 @@ void KLContext::partial_swap(KLContext& other)
   row |klr==d_kl[y]| (done in using quick lookup in |prim_index|). If this has
   made |inx| out of bounds (in particular if |inx==UndefBlock|) return a zero
   polynomial. Otherwise fetch from |klr| and |d_store|.
-*/
+  */
 KLPolRef KLContext::klPol(BlockElt x, BlockElt y) const
 {
   if (x==blocks::UndefBlock) // partial blocks can cause this in many ways
@@ -304,10 +217,6 @@ MuCoeff KLContext::mu(BlockElt x, BlockElt y) const
   KLPolRef p = klPol(x,y);
   return p.degree()<(ly-lx)/2 ? MuCoeff(0) : MuCoeff(p[p.degree()]);
 }
-
-/* The following two methods were moved here from the Helper class, since
-   they turn out to be useful even when no longer constructing the KLContext
-*/
 
 /*
   Returns the list of all x extremal w.r.t. y.
@@ -347,13 +256,9 @@ PrimitiveRow KLContext::primitiveRow(BlockElt y) const
 
 /*!
   \brief Fills (or extends) the KL- and mu-lists.
-
-  Explanation: this is the main function in this module; all the work is
-  deferred to the Helper class.
 */
 void KLContext::fill(BlockElt y, bool verbose)
 {
-
   if (y<fill_limit)
     return; // tables present already sufficiently large for |y|
 
@@ -361,30 +266,26 @@ void KLContext::fill(BlockElt y, bool verbose)
   verbose=false; // if compiled for silence, force this variable
 #endif
 
-  if (verbose)
-    std::cerr << "computing Kazhdan-Lusztig polynomials ..." << std::endl;
-
-  helper::Helper help(*this); // make helper, with empty base KLContext
-  if (fill_limit>0)
-  {
-    partial_swap(help);   // move previously computed tables into helper
-    help.rebuild_index(); // since we just swapped the referred-to |KLStore|
-  }
-
   try
   {
-    help.fill(y,verbose); // takes care of filling embedded |KLSupport| too
-    swap(help); // swap base object, including the |KLSupport| and |KLStore|
-
-    fill_limit = y+1;
-
+    d_kl.resize(y+1);
+    d_mu.resize(y+1);
     if (verbose)
+    {
+      std::cerr << "computing Kazhdan-Lusztig polynomials ..." << std::endl;
+      verbose_fill(y);
       std::cerr << "done" << std::endl;
+    }
+    else
+      silent_fill(y);
+
+    fill_limit = y+1; // commit extension of tables
   }
   catch (std::bad_alloc)
   { // roll back, and transform failed allocation into MemoryOverflow
     std::cerr << "\n memory full, KL computation abondoned." << std::endl;
-    partial_swap(help); // restore (only) the previous contents from helper
+    d_kl.resize(fill_limit);
+    d_mu.resize(fill_limit); // truncate to previous contents helper
     throw error::MemoryOverflow();
   }
 
@@ -416,83 +317,31 @@ BitMap KLContext::primMap (BlockElt y) const
 }
 
 
-/* methods of KLPolEntry */
-
-
-/*!
-  \brief calculate a hash value in [0,modulus[, where modulus is a power of 2
-
-  The function is in fact evaluation of the polynomial (with coefficients
-  interpreted in Z) at the point 2^21+2^13+2^8+2^5+1=2105633, which can be
-  calculated quickly (without multiplications) and which gives a good spread
-  (which is not the case if 2105633 is replaced by a small number, because
-  the evaluation values will not grow fast enough for low degree
-  polynomials!).
-
-*/
-inline size_t KLPolEntry::hashCode(size_t modulus) const
-{ const KLPol& P=*this;
-  if (P.isZero()) return 0;
-  polynomials::Degree i=P.degree();
-  size_t h=P[i]; // start with leading coefficient
-  while (i-->0) h= ((h<<21)+(h<<13)+(h<<8)+(h<<5)+h+P[i]) & (modulus-1);
-  return h;
-}
-
-bool KLPolEntry::operator!=(KLPolEntry::Pooltype::const_reference e) const
-{
-  if (degree()!=e.degree()) return true;
-  if (isZero()) return false; // since degrees match
-  for (polynomials::Degree i=0; i<=degree(); ++i)
-    if ((*this)[i]!=e[i]) return true;
-  return false; // no difference found
-}
-
-} // namespace kl
-
-
 /*****************************************************************************
 
-        Chapter II -- Methods of the Helper class.
+        Chapter II -- Private methods used during construction
 
  *****************************************************************************/
-
-namespace kl {
-  namespace helper {
-
-    // main constructor
-
-Helper::Helper(const KLContext& kl)
-  : KLContext(kl.block())  // re-construct empty KLContext base object
-  , d_hashtable(d_store) // hash table identifies helper base object's d_store
-  , d_verbose(false)
-  , prim_size(0)
-{
-}
-
-/******** accessors **********************************************************/
-
 
 /*!
   \brief Returns the first descent generator that is not real type II
 
-  Explanation: those are the ones that give a direct recursion formula for the
+  Explanation: tho se are the ones that give a direct recursion formula for the
   K-L basis element. Explicitly, we search for a generator |s| such that
   |descentValue(s,y)| is either |DescentStatus::ComplexDescent| or
   |DescentStatus::RealTypeI|. If no such generator exists, we return |rank()|.
 */
-weyl::Generator Helper::firstDirectRecursion(BlockElt y) const
+weyl::Generator KLContext::firstDirectRecursion(BlockElt y) const
 {
   const DescentStatus& d = descent(y);
   weyl::Generator s;
-  for (s=0; s<rank(); ++s) {
-    DescentStatus::Value v = d[s];
-    if (DescentStatus::isDirectRecursion(v))
+  for (s=0; s<rank(); ++s)
+    if (DescentStatus::isDirectRecursion(d[s]))
       break;
-  }
+
   return s;
 
-} // |Helper::firstDirectRecursion|
+} // |KLContext::firstDirectRecursion|
 
 /*
   Returns the first real nonparity ascent for y that is a complex ascent, or
@@ -503,7 +352,7 @@ weyl::Generator Helper::firstDirectRecursion(BlockElt y) const
 
   If no such generator exists, we return |rank()|.
 */
-weyl::Generator Helper::first_nice_and_real(BlockElt x,BlockElt y) const
+weyl::Generator KLContext::first_nice_and_real(BlockElt x,BlockElt y) const
 {
   const DescentStatus& dx = descent(x);
   const DescentStatus& dy = descent(y);
@@ -519,7 +368,7 @@ weyl::Generator Helper::first_nice_and_real(BlockElt x,BlockElt y) const
       }
   return s;
 
-} // |Helper::first_nice_and_real|
+} // |KLContext::first_nice_and_real|
 
 /*
   Preconditions:
@@ -551,7 +400,7 @@ weyl::Generator Helper::first_nice_and_real(BlockElt x,BlockElt y) const
   method can still be used, and indeed simplifies by not needing t.
 */
 std::pair<weyl::Generator,weyl::Generator>
-   Helper::first_endgame_pair(BlockElt x, BlockElt y) const
+   KLContext::first_endgame_pair(BlockElt x, BlockElt y) const
 {
   const DescentStatus& dx = descent(x);
   const DescentStatus& dy = descent(y);
@@ -573,10 +422,14 @@ std::pair<weyl::Generator,weyl::Generator>
     }
   return std::make_pair(r,0); // failure
 
-} // |Helper::first_endgame_pair|
+} // |KLContext::first_endgame_pair|
+
+// A convenience method that is "derived" from (the non-ancestor) |Block|
+inline BlockEltPair KLContext::inverseCayley(size_t s, BlockElt y) const
+{ return block().inverseCayley(s,y); }
 
 // compute the down-set of $y$, the non-extremal $x$ with $\mu(x,y)\neq0$
-std::set<BlockElt> Helper::down_set(BlockElt y) const
+std::set<BlockElt> KLContext::down_set(BlockElt y) const
 {
   std::set<BlockElt> result;
 
@@ -599,127 +452,19 @@ std::set<BlockElt> Helper::down_set(BlockElt y) const
     }
   return result;
 
-} // |Helper::down_set|
+} // |KLContext::down_set|
 
 
-
-
-/******** manipulators *******************************************************/
-
-
-/*!
-  \brief Dispatches the work of filling the KL- and mu-lists.
-
-  The current implementation blindly assumes that the tables are empty
-  initially. While this is true in the way it is now used, it should really be
-  rewritten to take into account the possibility of initial |fill_limit>0|
-*/
-void Helper::fill(BlockElt last_y, bool verbose)
-{
-  // make sure the support (base of base) is filled
-  klsupport::KLSupport::fill();
-
-  // resize the outer lists to the block size
-  d_kl.resize(size());
-  d_mu.resize(size());
-
-  // fill the lists
-  size_t minLength = length(0);
-  size_t maxLength = length(last_y<size() ? last_y : size()-1);
-
-  //set timers for KL computation
-  d_verbose=verbose; // inform our destructor of |verbose| setting
-  std::time_t time0;
-  std::time(&time0);
-  std::time_t time;
-
-  struct rusage usage; //holds Resource USAGE report
-  size_t storesize = 0; // previous size of d_store
-  size_t polsize = 0; // running total of sum of (polynomial degrees+1)
-
-  // do the other cases
-  for (size_t l=minLength; l<=maxLength; ++l)
-  {
-    BlockElt y_limit = l<maxLength ? lengthLess(l+1) : last_y+1;
-    for (BlockElt y=lengthLess(l); y<y_limit; ++y)
-    {
-      if (verbose)
-	std::cerr << y << "\r";
-
-      try
-      {
-	fillKLRow(y);
-      }
-      catch (kl_error::KLError& e)
-      {
-	std::ostringstream os;
-	os << "negative coefficient in P_{" << e.x << ',' << e.y
-	   << "} at line " << e.line << '.';
-	throw std::runtime_error(os.str()); // so that realex may catch it
-      }
-    }
-
-    // now length |l| is completed
-    if (verbose)
-    {
-      size_t p_capacity // currently used memory for polynomials storage
-	=d_hashtable.capacity()*sizeof(KLIndex)
-	+ d_store.capacity()*sizeof(KLPol);
-      for (size_t i=storesize; i<d_store.size(); ++i)
-	polsize+= (d_store[i].degree()+1)*sizeof(KLCoeff);
-      storesize = d_store.size(); // avoid recounting polynomials!
-      p_capacity += polsize;
-
-      std::cerr // << "t="    << std::setw(5) << deltaTime << "s.
-	        << "l=" << std::setw(3) << l // completed length
-                << ", y="  << std::setw(6)
-                << lengthLess(l+1)-1 // last y value done
-                << ", polys:"  << std::setw(11) << d_store.size()
-                << ", mat:"  << std::setw(11) << prim_size
-                <<  std::endl;
-      unsigned cputime, resident; //memory usage in megabytes
-      if(getrusage(RUSAGE_SELF, &usage) != 0)
-	std::cerr << "getrusage failed" << std::endl;
-      resident = usage.ru_maxrss/1024; //largest so far??
-#ifdef __APPLE__
-      resident = resident/1024;
-#endif
-      cputime = usage.ru_utime.tv_sec;
-      std::cerr << "CPU time = " << std::setw(5) << cputime
-		<< " secs, Max res size="
-		<< std::setw(5) << resident << "MB, pmem="
-		<< std::setw(6) << p_capacity/1048576 << "MB, matmem="
-		<< std::setw(6) << prim_size*sizeof(KLIndex)/1048576
-		<< "MB \n";
-    }
-
-  } // for (l=min_length+1; l<=max_Length; ++l)
-
-  if (verbose)
-  {
-    std::time(&time);
-    double deltaTime = difftime(time, time0);
-    std::cerr << std::endl;
-    std::cerr << "Total elapsed time = " << deltaTime << "s." << std::endl;
-    std::cerr << d_store.size() << " polynomials, "
-	      << prim_size << " matrix entries."<< std::endl;
-
-    std::cerr << std::endl;
-  }
-
-}
-
+// private manipulators
 
 /*!
   \brief Fills in the row for y in the KL-table.
 
-  Precondition: all lower rows have been filled; y is of length > 0;
-  R-packets are consecutively numbered;
+  Precondition: all lower rows have been filled
 
-  Explanation: this function actually fills out the "row" of y (the set of
-  all P_{x,y} for x<y, which is actually more like a column)
+  Row of $y$ is the set of all $P_{x,y}$ for $x<y$; actually more like a column
 */
-void Helper::fillKLRow(BlockElt y)
+void KLContext::fillKLRow(BlockElt y, KLHash& hash)
 {
   if (d_kl[y].size()>0)
     return; // row has already been filled
@@ -730,15 +475,14 @@ void Helper::fillKLRow(BlockElt y)
     PrimitiveRow e = extremalRow(y); // we compute for |x| extremal only
 
     recursionRow(klv,e,y,s); // compute all polynomials for these |x|
-    complete_primitives(klv,e,y); // add values at primitives; store in |d_kl|
+    complete_primitives(klv,e,y,hash); // add primitives; store in |d_kl|
   }
   else // we must use an approach that distinguishes on |x| values
   {
     KLRow& klv = d_kl[y]; // here we write directly into |d_kl| and
     PrimitiveRow pr=primitiveRow(y); // and use all |x| primitive for |y|
     // (any ascents for x that are descents for y must be imaginary type II)
-
-    newRecursionRow(klv,pr,y); // put result of recursion formula in klv
+    newRecursionRow(klv,pr,y,hash); // put result of recursion formula in klv
   }
 }
 
@@ -759,10 +503,10 @@ void Helper::fillKLRow(BlockElt y)
   by |muCorrection|; the form of the summation depends only on |y1| (which it
   recomputes), but involves polynomials $P_{x,z}$ that depend on $x$ as well.
 */
-void Helper::recursionRow(std::vector<KLPol>& klv,
-			  const PrimitiveRow& e,
-			  BlockElt y,
-			  size_t s)
+void KLContext::recursionRow(std::vector<KLPol>& klv,
+			     const PrimitiveRow& e,
+			     BlockElt y,
+			     size_t s)
 {
   klv.resize(e.size());
 
@@ -822,7 +566,7 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
 
   muCorrection(klv,e,y,s); // subtract mu-correction from all of |klv|
 
-} // |Helper::recursionRow|
+} // |KLContext::recursionRow|
 
 /*!
   \brief Subtracts from all polynomials in |klv| the correcting terms in the
@@ -853,9 +597,9 @@ void Helper::recursionRow(std::vector<KLPol>& klv,
   Elements of length at least $l(sy)=l(y)-1$ on the list |e| are always
   rejected, so the tail of |e| never reached.
  */
-void Helper::muCorrection(std::vector<KLPol>& klv,
-			  const PrimitiveRow& e,
-			  BlockElt y, size_t s)
+void KLContext::muCorrection(std::vector<KLPol>& klv,
+			     const PrimitiveRow& e,
+			     BlockElt y, size_t s)
 {
   BlockElt sy =
     descentValue(s,y) == DescentStatus::ComplexDescent ? cross(s,y)
@@ -905,7 +649,7 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
 			    static_cast<const KLContext&>(*this));
   }
 
-} // |Helper::muCorrection|
+} // |KLContext::muCorrection|
 
 /* A method that takes a row |klv| of completed KL polynomials, computed by
    |recursionRow| at |y| and extremal elements |x| listed in |er|, and
@@ -925,8 +669,9 @@ void Helper::muCorrection(std::vector<KLPol>& klv,
    of that length as well with nonzero mu), and are primitive only in the real
    type 2 case; we must treat them outside the loop over primitive elements.
  */
-void Helper::complete_primitives(const std::vector<KLPol>& klv,
-				 const PrimitiveRow& er, BlockElt y)
+void KLContext::complete_primitives(const std::vector<KLPol>& klv,
+				    const PrimitiveRow& er, BlockElt y,
+				    KLHash& hash)
 {
   PrimitiveRow pr = primitiveRow(y);
 
@@ -946,7 +691,7 @@ void Helper::complete_primitives(const std::vector<KLPol>& klv,
     { // extremal element $e=er[j]$
       unsigned int lx=length(er[j]);
       const KLPol& Pxy=klv[j--]; // use KL polynomial and advance downwards
-      KL[i]=d_hashtable.match(Pxy);
+      KL[i]=hash.match(Pxy);
       if ((ly-lx)%2>0 and Pxy.degree()==(ly-lx)/2) // in fact |(ly-lx-1)/2|
 	mu_elements.insert(i);
     }
@@ -957,7 +702,7 @@ void Helper::complete_primitives(const std::vector<KLPol>& klv,
       BlockEltPair xs = cayley(s,pr[i]);
       KLPol pol = klPol(xs.first,y); // look up P_{x',y} in current row, above
       pol.safeAdd(klPol(xs.second,y)); // current point, and P_{x'',y} as well
-      KL[i]=d_hashtable.match(pol); // add poly at primitive non-extremal x
+      KL[i]=hash.match(pol); // add poly at primitive non-extremal x
     }
 
 
@@ -967,7 +712,7 @@ void Helper::complete_primitives(const std::vector<KLPol>& klv,
   for (BitMap::iterator it=mu_elements.begin(); it(); ++it)
   {
     BlockElt x=pr[*it];
-    KLPolRef Pxy=d_hashtable[KL[*it]];
+    KLPolRef Pxy=hash[KL[*it]];
     assert(not Pxy.isZero());
     d_mu[y].push_back(std::make_pair(x,Pxy[Pxy.degree()]));
   }
@@ -978,10 +723,7 @@ void Helper::complete_primitives(const std::vector<KLPol>& klv,
       std::swap(d_mu[y][i-1],d_mu[y][i]); // insertion-sort
   }
 
-  prim_size+=KL.size(); // for statistics
-
-} // |Helper::complete_primitives|
-
+} // |KLContext::complete_primitives|
 
 /*
   Puts in klv[i] the polynomial P_{e[i],y} for every primtitve x=pr[i],
@@ -1026,10 +768,11 @@ void Helper::complete_primitives(const std::vector<KLPol>& klv,
   This code gets executed for |y| that are of minimal length, in which case
   it only contributes $P_{y,y}=1$; the |while| loop will be executed 0 times.
 */
-void Helper::newRecursionRow
+void KLContext::newRecursionRow
 ( KLRow& klv,
   const PrimitiveRow& pr, // primitive elements of length less than |length(y)|
-  BlockElt y)
+  BlockElt y,
+  KLHash& hash)
 {
   klv.resize(pr.size());
 
@@ -1055,7 +798,7 @@ void Helper::newRecursionRow
 	BlockEltPair p = cayley(s,x);
 	KLPol pol = klPol(p.first,y); // present since |klv| is |d_kl[y]|
 	pol.safeAdd(klPol(p.second,y));
-	klv[j] = d_hashtable.match(pol);
+	klv[j] = hash.match(pol);
 	continue; // done with |x|, go on to the next
       }
 
@@ -1104,7 +847,7 @@ void Helper::newRecursionRow
 
 	default: assert(false); //we've handled all possible NiceAscents
 	}
-	klv[j] = d_hashtable.match(pol);
+	klv[j] = hash.match(pol);
 	if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
 	  mu_y.push_back(std::make_pair(x,pol[pol.degree()]));
 
@@ -1149,9 +892,10 @@ void Helper::newRecursionRow
 	    // any |UndefBlock| component of |sx_up_t| will contribute $0$
 	    pol.safeSubtract(klPol(sx_up_t.first,y));
 	    pol.safeSubtract(klPol(sx_up_t.second,y));
+
 	  }
 
-	  klv[j] = d_hashtable.match(pol);
+	  klv[j] = hash.match(pol);
 	  if ((l_y-l_x)%2!=0 and pol.degree()==(l_y-l_x)/2)
 	    mu_y.push_back(std::make_pair(x,pol[pol.degree()]));
 	}
@@ -1174,8 +918,7 @@ void Helper::newRecursionRow
       std::swap(d_mu[y][i-1],d_mu[y][i]);
   }
 
-} // |Helper::newRecursionRow|
-
+} // |KLContext::newRecursionRow|
 
 /*!
   \brief Stores into |klv[j]| the $\mu$-sum appearing a new K-L recursion.
@@ -1200,8 +943,8 @@ void Helper::newRecursionRow
   only once, and terminating the scan of |klv| once its values |x| become too
   large to produce a non-zero $P_{x,z}$.
 */
-KLPol Helper::muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& mu_y)
-
+KLPol KLContext::muNewFormula
+  (BlockElt x, BlockElt y, size_t s, const MuRow& mu_y)
 {
   KLPol pol=Zero;
 
@@ -1235,19 +978,121 @@ KLPol Helper::muNewFormula(BlockElt x, BlockElt y, size_t s, const MuRow& mu_y)
   }
 
   return pol;
-} // |muNewFormula|
+} // |KLContext::muNewFormula|
 
 
-} // namespace helper
-} // namespace kl
+void KLContext::silent_fill(BlockElt last_y)
+{
+  try
+  {
+    KLHash hash(d_store);
+    // fill the lists
+    for (BlockElt y=fill_limit; y<=last_y; ++y)
+      fillKLRow(y,hash);
+  }
+  catch (kl_error::KLError& e)
+  {
+    std::ostringstream os;
+    os << "negative coefficient in P_{" << e.x << ',' << e.y
+       << "} at line " << e.line << '.';
+    throw std::runtime_error(os.str()); // so that realex may catch it
+  }
+}
+
+/*
+  New routine that does verbose filling of existing |KLContext| object
+*/
+void KLContext::verbose_fill(BlockElt last_y)
+{
+  try
+  {
+    KLHash hash(d_store);
+
+    size_t minLength = length(fill_limit); // length of first new |y|
+    size_t maxLength = length(last_y<size() ? last_y : size()-1);
+
+    //set timers for KL computation
+    std::time_t time0;
+    std::time(&time0);
+    std::time_t time;
+
+    struct rusage usage; //holds Resource USAGE report
+    size_t storesize = 0; // previous size of d_store
+    size_t polsize = 0; // running total of sum of (polynomial degrees+1)
+
+    size_t kl_size = 0;
+
+    for (size_t l=minLength; l<=maxLength; ++l) // by length for progress report
+    {
+      BlockElt y_start = l==minLength ? fill_limit : lengthLess(l);
+      BlockElt y_limit = l<maxLength ? lengthLess(l+1) : last_y+1;
+      for (BlockElt y=y_start; y<y_limit; ++y)
+      {
+	std::cerr << y << "\r";
+
+	fillKLRow(y,hash);
+	kl_size += d_kl[y].size();
+      }
+
+      // now length |l| is completed
+      size_t p_capacity // currently used memory for polynomials storage
+	= hash.capacity()*sizeof(KLIndex) + d_store.capacity()*sizeof(KLPol);
+      for (size_t i=storesize; i<d_store.size(); ++i)
+	polsize+= (d_store[i].degree()+1)*sizeof(KLCoeff);
+      storesize = d_store.size(); // avoid recounting polynomials!
+      p_capacity += polsize;
+
+      std::cerr // << "t="    << std::setw(5) << deltaTime << "s.
+	<< "l=" << std::setw(3) << l // completed length
+	<< ", y="  << std::setw(6)
+	<< lengthLess(l+1)-1 // last y value done
+	<< ", polys:"  << std::setw(11) << d_store.size()
+	<< ", mat:"  << std::setw(11) << kl_size
+	<<  std::endl;
+      unsigned cputime, resident; //memory usage in megabytes
+      if(getrusage(RUSAGE_SELF, &usage) != 0)
+	std::cerr << "getrusage failed" << std::endl;
+      resident = usage.ru_maxrss/1024; //largest so far??
+#ifdef __APPLE__
+      resident = resident/1024;
+#endif
+      cputime = usage.ru_utime.tv_sec;
+      std::cerr << "CPU time = " << std::setw(5) << cputime
+		<< " secs, Max res size="
+		<< std::setw(5) << resident << "MB, pmem="
+		<< std::setw(6) << p_capacity/1048576 << "MB, matmem="
+		<< std::setw(6) << kl_size*sizeof(KLIndex)/1048576
+		<< "MB \n";
+
+    } // for (l=min_length+1; l<=max_Length; ++l)
+
+    std::time(&time);
+    double deltaTime = difftime(time, time0);
+    std::cerr << std::endl;
+    std::cerr << "Total elapsed time = " << deltaTime << "s." << std::endl;
+    std::cerr << d_store.size() << " polynomials, "
+	      << kl_size << " matrix entries."<< std::endl;
+
+    std::cerr << std::endl;
+
+  }
+  catch (kl_error::KLError& e)
+  {
+    std::ostringstream os;
+    os << "negative coefficient in P_{" << e.x << ',' << e.y
+       << "} at line " << e.line << '.';
+    throw std::runtime_error(os.str()); // so that realex may catch it
+  }
+
+}
+
+
 
 /*****************************************************************************
 
         Chapter V -- Functions declared in kl.h
 
  *****************************************************************************/
-
-namespace kl {
 
 
 /*!

@@ -200,7 +200,7 @@ bool dualityVerify(const kl::KLContext& klc, const kl::KLContext& dual_klc)
 
       for (size_t l=klc.length(inv_dual[dx]); l-->klc.length(x)+1; )
       {
-	kl::KLPol s=kl::Zero;
+	kl::KLPol s; // initialised to $0$
 	for (BlockElt y=klc.lengthLess(l); y<klc.lengthLess(l+1); ++y)
 	  s+= klc.klPol(x,y) * dual_klc.klPol(dx,dual[y]);
 	sum.subtract_from(s);
