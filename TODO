@@ -1,17 +1,14 @@
 * Mathematical work to be done
+- Study what the unequal rank case is about, and how to do it
 
 * Work on the Atlas library
- - Remove the clumsy Helper class from the KL construction
- - Redefine ordering on parameters in a SR_poly to sort on x first
+- Incorporate the calculation of c-invariant forms into the library
+
 * Work on the atlas program
- - Clean up the messy Input class
-   The getline method never uses the stream passed to it, except to return it
-   and the same goes for commands::getInteractive. Ending a stream should lead
-   to quitting the mode (at least) and eventually to terminating the program.
+
 * Work on the realex program
 
  - Allow for declaring an input path, and (silent) default prelude
- - Make that adding the .rx extension is not tried if it is already present
  - Handle catching of a user interrupt
    When a user types ^C, this should break off computation as soon as feasible
    and return the realex prompt. This may be quite difficult to implement if
@@ -61,7 +58,9 @@
    should be possible to avoid a new allocation for v at every iteration.
   - Duplication avoiding in component assignment
   - For loops in void context never build up any value.
+
 * Work on the realex scripts
+  - Study and rewrite Jeffs scripts to see what can be put into the library
 
 * Work on documentation
 
@@ -69,4 +68,3 @@
  - Figure out how to avoid 'unrecognised typedef at line 367 of atlas_types.h'
  - Improve makefile so that 'make realex' doesn't run ctanglex many times
  - Add some make targets for recording options as suggested by Nelson Beebe
-

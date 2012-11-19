@@ -148,7 +148,7 @@ std::string getFileName(const std::string& prompt)
 {
   input::InputBuffer buf;
 
-  buf.getline(std::cin, prompt.c_str(), false); // get line, no history
+  buf.getline(prompt.c_str(), false); // get line, no history
 
   if (hasQuestionMark(buf))
     throw error::InputError();
@@ -277,13 +277,13 @@ getInnerClass(lietype::Layout& lo, const WeightList& basis)
 */
 void getInteractive(LieType& d_lt) throw(error::InputError)
 {
-  type_input_buffer.getline(std::cin,"Lie type: ");
+  type_input_buffer.getline("Lie type: ");
 
   if (hasQuestionMark(type_input_buffer))
     throw error::InputError();
 
   while (not interactive_lietype::checkLieType(type_input_buffer)) { // retry
-    type_input_buffer.getline(std::cin,"Lie type (? to abort): ");
+    type_input_buffer.getline("Lie type (? to abort): ");
     if (hasQuestionMark(type_input_buffer))
       throw error::InputError();
   }
@@ -311,13 +311,13 @@ void getInteractive(InnerClassType& ict, const LieType& lt)
   if (interactive_lietype::checkInnerClass(inputBuf,lt,false))
     goto read; // skip interaction if |inputBuf| alreadty has valid input
 
-  inputBuf.getline(std::cin,"enter inner class(es): ",false);
+  inputBuf.getline("enter inner class(es): ",false);
 
   if (hasQuestionMark(inputBuf))
     throw error::InputError();
 
   while (not interactive_lietype::checkInnerClass(inputBuf,lt)) { // retry
-    inputBuf.getline(std::cin,"enter inner class(es) (? to abort): ",false);
+    inputBuf.getline("enter inner class(es) (? to abort): ",false);
     if (hasQuestionMark(inputBuf))
       throw error::InputError();
   }
@@ -609,7 +609,7 @@ unsigned long get_bounded_int(input::InputBuffer& ib,
 			      unsigned long limit)
   throw(error::InputError)
 {
-  ib.getline(std::cin,prompt,true);
+  ib.getline(prompt,true);
 
   ioutils::skipSpaces(ib);
   if (hasQuestionMark(ib))
@@ -624,7 +624,7 @@ unsigned long get_bounded_int(input::InputBuffer& ib,
 
   while (c >= limit) {
     std::cout << "sorry, value must be between 0 and " << limit-1 << std::endl;
-    ib.getline(std::cin,"try again (? to abort): ",true);
+    ib.getline("try again (? to abort): ",true);
     ioutils::skipSpaces(ib);
     if (hasQuestionMark(ib))
       throw error::InputError();
@@ -671,7 +671,7 @@ unsigned long get_int_in_set(const char* prompt,
 
   // otherwise prompt and get test into a fresh input buffer
   input::InputBuffer ib;
-  ib.getline(std::cin,prompt,false);
+  ib.getline(prompt,false);
 
   ioutils::skipSpaces(ib);
 
@@ -687,7 +687,7 @@ unsigned long get_int_in_set(const char* prompt,
   {
     std::cout << "sorry, value must be one of ";
     basic_io::seqPrint(std::cout,vals.begin(),vals.end()) << std::endl;
-    ib.getline(std::cin,"try again (? to abort): ",false);
+    ib.getline("try again (? to abort): ",false);
     ioutils::skipSpaces(ib);
     if (hasQuestionMark(ib))
       throw error::InputError();
@@ -707,7 +707,7 @@ Weight get_weight(input::InputBuffer& ib,
 				size_t rank)
   throw(error::InputError)
 {
-  ib.getline(std::cin,prompt,true);
+  ib.getline(prompt,true);
   Weight result(rank);
 
   for (size_t i = 0; i<rank; ++i)

@@ -559,7 +559,7 @@ struct input_record
 @ It would have been convenient if each |input_record| owned its own
 |std::ifstream| pointer, so that its destructor could take care of deleting
 it, which would also close the associated file. This would however pose a
-problem for the copy constructor (obligatory for objects in a |std::stack|),
+problem for the copy constructor (obligatory for objects in a |std::vector|),
 since as it would have to duplicate the |std::ifstream| object pointed to, so
 as to avoid double destruction of the same instance, while no copy constructor
 for |std::ifstream| is accessible. The only viable solution would then be
