@@ -92,7 +92,7 @@ int getGenerators(RatWeightList& d_rwl,
     input::InputBuffer& ib=kernelgen_input_buffer;
 
     while (true) {
-      ib.getline(std::cin,"");
+      ib.getline("");
       if (hasQuestionMark(ib))
 	throw error::InputError();
       genString.clear();

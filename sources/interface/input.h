@@ -62,8 +62,7 @@ class InputBuffer:public std::istringstream {
     {}
 
 // manipulators
-  virtual std::istream& getline(std::istream&, const char* prompt = "",
-				bool toHistory = true);
+  virtual void getline(const char* prompt = "",	bool toHistory = true);
 
   virtual void reset();
 
@@ -74,13 +73,11 @@ class InputBuffer:public std::istringstream {
 
 /* A class like |InputBuffer|, but each instance creates a local version of
    the history during its lifetime. This is managed in such a way that it is
-   invisible to other instances, or to that static history record maintained
+   invisible to other instances, or to the static history record maintained
    in the history library.
 */
-class HistoryBuffer : public InputBuffer {
-
- private:
-
+class HistoryBuffer : public InputBuffer
+{
   HISTORY_STATE state; // records our branch of history
 
  public:
@@ -92,8 +89,7 @@ class HistoryBuffer : public InputBuffer {
 
   virtual ~HistoryBuffer();
 
-  virtual std::istream& getline(std::istream&, const char* prompt = "",
-				bool toHistory = true);
+  virtual void getline(const char* prompt = "",	bool toHistory = true);
 
 };
 #endif

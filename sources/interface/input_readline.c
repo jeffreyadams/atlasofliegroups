@@ -51,33 +51,18 @@ namespace input {
 /*!
   Forget string in input buffer, read a new line, and position at start
 */
-std::istream& InputBuffer::getline(std::istream& is, const char* prompt,
-				   bool toHistory)
-
+void InputBuffer::getline(const char* prompt, bool toHistory)
 {
-  /* NOTE: the |char*| result returned from |readLine| is held in a static
-     variable of that function, so that IT will call |free| on it later; we
-     should not do that here!
-  */
   const char* line = readLine(prompt,toHistory); // non-owned pointer
 
   str(line==NULL ? std::cout << "qq\n","qq" : line); // 'qq' at end of input
-  reset();
-
-  return is;
+  reset(); // clear flags and start reading at beginning
 }
 
-void InputBuffer::reset()
-
-/*
-  Synopsis: rewinds the stream for re-reading.
-*/
-
+void InputBuffer::reset() // clear flags and start reading at beginning
 {
   clear();
   seekg(0,std::ios_base::beg);
-
-  return;
 }
 
 
@@ -121,7 +106,7 @@ namespace input {
   Creates a clean slate history record, and empty input buffer.
 */
 HistoryBuffer::HistoryBuffer()
-  :InputBuffer()
+  : InputBuffer(), state()
 {
   state.entries=NULL;
   state.offset=0;
@@ -160,27 +145,23 @@ HistoryBuffer::~HistoryBuffer()
   std::free(history_list()); // also free the array of history entries
 
   history_set_history_state(global_history); // restore history record
-  std::free(global_history);
+  std::free(global_history); // and free temporary that was used to hold it
 }
 
 // redefine the virtual |getline| method to use our own history record
-std::istream&
-HistoryBuffer::getline(std::istream& is, const char* prompt, bool toHistory)
+void HistoryBuffer::getline(const char* prompt, bool toHistory)
 {
   HISTORY_STATE* global_history=history_get_history_state();
   history_set_history_state(&state); // substitue our history record
 
-  std::istream& result=
-  InputBuffer::getline(is,prompt,toHistory); // now call the base method
+  InputBuffer::getline(prompt,toHistory); // now call the base method
 
   HISTORY_STATE* our_history=history_get_history_state();
   state=*our_history; // copy history back
-  std::free (our_history);
+  std::free (our_history); // and free temporary that was used to hold it
 
   history_set_history_state(global_history); // restore history record
-  std::free(global_history);
-
-  return result;
+  std::free(global_history); // and free temporary that was used to hold it
 }
 
 } // namespace input

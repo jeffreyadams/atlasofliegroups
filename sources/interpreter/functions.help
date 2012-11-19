@@ -397,6 +397,12 @@ KL_block: (Param->[Param],int,mat,[vec],vec,vec,mat): n_block, raw_KL, and more
   possibly singular infinitesimal as follows: select only the columns of the
   KL matrix whose index is among the survivors, and then multiply the
   resulting matrix on the left by the contibution-coefficient matrix.
+partial_block: (Param->[Param],mat,[vec],vec,vec,mat) partial KL_block
+  This function operates like KL_block, but only constructs the Bruhat
+  interval below the initial parameter, sorted by length. The second component
+  of the result of KL_block is then superfluous and omitted, as the initial
+  parameter is always the final element of the partial block. All other result
+  components are the same is in KL_block, but truncated to match the interval.
 
 operator +: (Split,Split->Split): addition of split integers
 operator -: (Split,Split->Split): subtraction of split integers
