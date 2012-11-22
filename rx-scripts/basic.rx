@@ -93,6 +93,9 @@ set ^(Split x,int n) =
 set = ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0=x1 and y0=y1
 set !=((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0!=x1 or y0!=y1
 
+set = (Split x,Split y) = %x = %y
+set != (Split x,Split y) = %x != %y
+
 set -(ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 
 { these cases are handled by the coercion code, so they have been removed
@@ -166,17 +169,16 @@ set involution (InnerClass ic, [int] tw) = mat: { tw is a Weyl word }
 )
 
 set imaginary_roots (InnerClass ic, [int] tw) = mat:   { tw is a Weyl word }
-  imaginary_roots(root_datum(ic),involution(ic,tw))
+  imaginary_roots(ic,involution(ic,tw))
 set real_roots (InnerClass ic, [int] tw) = mat:        { tw is a Weyl word }
-  real_roots(root_datum(ic),involution(ic,tw))
+  real_roots(ic,involution(ic,tw))
 set imaginary_coroots (InnerClass ic, [int] tw) = mat: { tw is a Weyl word }
-  imaginary_coroots(root_datum(ic),involution(ic,tw))
+  imaginary_coroots(ic,involution(ic,tw))
 set real_coroots (InnerClass ic, [int] tw) = mat:      { tw is a Weyl word }
-  real_coroots(root_datum(ic),involution(ic,tw))
+  real_coroots(ic,involution(ic,tw))
 
 { integrality inner class (dual side) defined by inf. character and involution }
 set dual_integral(InnerClass ic, ratvec gamma) = InnerClass:
-  let rd = root_datum(ic) then drd = dual(integrality_datum(rd,gamma))
-  in inner_class(drd,-^distinguished_involution(ic))
+  inner_class(dual(integrality_datum(ic,gamma)),-^distinguished_involution(ic))
 
 set KGB(RealForm rf) = [KGBElt]: for i:KGB_size(rf) do KGB(rf,i) od

@@ -60,12 +60,12 @@ then C_inv=null(2*r,2*r)
 in (for i:r do C_inv[i,i+r]:=1; C_inv[i+r,i]:=1 od
    ; quasisplit_form(inner_class(rd_C,C_inv)))
 
-{complexification: RealForm -> RealForm}
-set complexification(RealForm G)=complex(root_datum(inner_class(G)))
+{ complexification of a real group }
+set complexification(RealForm G) = RealForm: complex(G)
 
-{some root systems}
+{ some root systems }
 
-{type A root systems}
+{ type A root data }
 
 set GL_roots (int n) = [vec]:
 for i : n-1
@@ -90,7 +90,7 @@ set GL(int n)= let r=GL_roots(n) in root_datum(r,r,n)
 set SL(int n)= root_datum(SL_roots(n),SL_coroots(n),n-1)
 set PSL(int n)=root_datum(SL_coroots(n),SL_roots(n),n-1)
 
-{nice coordinates for roots in types B,C,D}
+{ rotts and coroots in nice coordinates for roots in types B,C,D }
 
 set type_B_roots (int n) = [vec]:
 for i : n
@@ -122,7 +122,7 @@ else
   od
 fi
 
-{type C root systems}
+{ type C root data }
 
 set Sp(int n)=
 let (m,r)=n\%2 in
@@ -135,14 +135,14 @@ if n%2=1 then error("Odd symplectic datum") else
 let type= if n\2=1 then "A" else "C" fi in adjoint(type+int_format(n\2)) fi
 
 set GSp(int n)=
-if n%2=1 then error("Odd symplectic datum") else 
+if n%2=1 then error("Odd symplectic datum") else
 let type= if n\2=1 then "A1.T1" else "C"+int_format(n\2)+"T1" fi in
 root_datum(Lie_type(type),quotient_basis(Lie_type(type),[[1/2,1/2]]))
 fi
 
-{type B/D root systems}
+{ type B/D root data }
 
-{use the standard basis for SO(n)}
+{ use the standard basis for SO(n) }
 set SO(int n)=
 let m=n\2 in
 if n%2=1
@@ -162,11 +162,11 @@ n%2=1 then "B"+n\2 else
 set Spin(int n)=simply_connected(SO_lie_type(n))
 set PSO(int n)=adjoint(SO_lie_type(n))
 
-{real forms}
+{ real forms }
 
-{type A real forms}
+{ type A real forms }
 
-{rd should be SL(p+q) or PSL(p+q)}
+{ here rd should be SL(p+q) or PSL(p+q) }
 set SU(int p,int q, RootDatum rd)=
 let n=p+q
 then ic = inner_class(rd,if n>1 then "c" else "" fi)
@@ -177,12 +177,13 @@ set PSU(int p,int q)=SU(p,q,PSL(p+q))
 set SU(int n) = SU(n,0)
 set PSU(int n) = PSU(n,0)
 
-{U(p,q), no isogenies in this case}
+{ U(p,q), no isogenies in this case }
 set U(int p,int q)=
-real_form(inner_class(GL(p+q),if p+q>1 then "cc" else "c" fi),min(p,q)) 
+real_form(inner_class(GL(p+q),if p+q>1 then "cc" else "c" fi),min(p,q))
 
 set SL_R(int n) = quasisplit_form(inner_class(SL(n),if n>1 then "s" else "" fi))
-set PSL_R(int n)= quasisplit_form(inner_class(PSL(n),if n>1 then "s" else "" fi))
+set PSL_R(int n)=
+  quasisplit_form(inner_class(PSL(n),if n>1 then "s" else "" fi))
 set PGL_R(int n)=PSL_R(n)
 
 set SL_C(int n) = complex(SL(n))
@@ -213,20 +214,20 @@ set GL(int n, string K) = by_field (GL_R@int,GL_C@int,GL_H@int) (K)(n)
 set PSL(int n, string K) = by_field (PSL_R@int,PSL_C@int,PSL_H@int) (K)(n)
 set PGL(int n, string K) = PSL(n,K)
 
-{type C real forms}
+{ type C real forms }
 
-{split real forms}
+{ split real forms }
 {calls to Sp(n), PSp(n), GSp(n) catch odd n}
-set Sp_R(int n)=quasisplit_form(inner_class(Sp(n),"e")) 
+set Sp_R(int n)=quasisplit_form(inner_class(Sp(n),"e"))
 set PSp_R(int n)=quasisplit_form(inner_class(PSp(n),"s"))
 set GSp_R(int n)=quasisplit_form(inner_class(GSp(n),"ss"))
- 
-{Sp(p,q)}
+
+{ Sp(p,q) }
 
 set Sp(int p,int q)=real_form(inner_class(Sp(2*(p+q)),"e"),min(p,q))
 set PSp(int p,int q)=real_form(inner_class(PSp(2*(p+q)),"e"),min(p,q))
 
-{complex and quaternionic}
+{ complex and quaternionic real forms }
 
 set Sp_C(int n) = complex(Sp(n)) { |Sp| will test |n| even }
 set Sp_H(int n) = RealForm: error("Sp(n,H) is not yet implemented")
@@ -241,20 +242,20 @@ set Sp(int n, string K) = by_field (Sp_R@int,Sp_C@int,Sp_H@int) (K)(n)
 set PSp(int n, string K) = by_field (PSp_R@int,PSp_C@int,PSp_H@int) (K)(n)
 set GSp(int n, string K) = by_field (GSp_R@int,GSp_C@int,GSp_H@int) (K)(n)
 
-{type B/D real forms}
+{ type B/D real forms }
 
 set SO_inner_class(int p,int q)=
 let ic=
- if p+q=1 then "" 
-elif p+q=4 then if p%2=0 then "ee" else "C" fi  
+ if p+q=1 then ""
+elif p+q=4 then if p%2=0 then "ee" else "C" fi
 else
- if p%2=1 and q%2=1 then 
+ if p%2=1 and q%2=1 then
   if (p+q)%4=0 and p+q>4 then "u" else "s" fi
 else "e" fi fi in ic
 
 set SO_real_form_number(int p,int q)=
 let n=p+q, (p,q) = if p<q then (q,p) else (p,q) fi { make q the smallest one }
-then number = 
+then number =
       if n<=2 then 0        { inner classes without noncompact form, SO(2)=T1 }
       elif n%2=1 then q     { type B_{n\2} }
       elif q%2=1 then q\2   { type D_{n\2}, unequal rank }
@@ -264,13 +265,14 @@ then number =
       fi
 in number
 
-set SO(int p,int q,RootDatum rd)=real_form(inner_class(rd,SO_inner_class(p,q)),SO_real_form_number(p,q))
+set SO(int p,int q,RootDatum rd) =
+  real_form(inner_class(rd,SO_inner_class(p,q)),SO_real_form_number(p,q))
 
 set Spin(int p,int q)=SO(p,q,Spin(p+q))
 set SO(int p,int q)=SO(p,q,SO(p+q))
 set PSO(int p,int q)=SO(p,q,PSO(p+q))
 
-{exceptional groups}
+{ exceptional groups }
 
 set E6_ic_e = inner_class (simply_connected ("E6"),"e")
 

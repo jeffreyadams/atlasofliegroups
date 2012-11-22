@@ -914,7 +914,6 @@ extern const type_expr str_type; // \.{string}
 extern const type_expr vec_type; // \.{vec}
 extern const type_expr ratvec_type; // \.{ratvec}
 extern const type_expr mat_type; // \.{mat}
-extern const type_expr Lie_type_type; // \.{LieType}
 extern const type_expr row_of_int_type; // \.{[int]}
 extern const type_expr row_of_rat_type; // \.{[rat]}
 extern const type_expr row_of_vec_type; // \.{[vec]}
@@ -938,7 +937,6 @@ const type_expr str_type(string_type);
 const type_expr vec_type(vector_type);
 const type_expr ratvec_type(rational_vector_type);
 const type_expr mat_type(matrix_type);
-const type_expr Lie_type_type(complex_lie_type_type);
 const type_expr row_of_int_type(copy(int_type));
 const type_expr row_of_rat_type(copy(rat_type));
 const type_expr row_of_vec_type(copy(vec_type));

@@ -76,15 +76,15 @@ set test6()=
   in test(for i:#b1 do (b1[i],answer[i]) od)
 
 { first 49 of 59 spherical unitary parameters for F4 }
-set test6()= bool:
+set test7()= bool:
   test_spherical_unitary(split_form(F4),for i:49 do F4_spherical_unitary[i] od)
 
 { first 100 of spherical unitary for E7
   requires more memory}
-set test7()= bool:
+set test8()= bool:
   test_spherical_unitary(split_form(E7),for i:100 do E7_spherical_unitary[i] od)
 
 
 { trivial of F4 takes up to two hours }
-set test8()=bool:
+set test9()=bool:
   let ()=prints("Testing trivial of F4") in is_unitary(trivial(split_form(F4)))

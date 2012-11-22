@@ -218,7 +218,7 @@ install_function(Lie_type_wrapper,"Lie_type","(string->LieType)");
 very easy to implement.
 
 @< Install coercions @>=
-coercion(str_type,Lie_type_type,"LT",Lie_type_coercion);
+
 
 
 @*2 Auxiliary functions for Lie types.
@@ -1834,6 +1834,9 @@ void root_datum_of_inner_class_wrapper(expression_base::level l)
     push_value(new root_datum_value(G->val.rootDatum()));
 }
 
+void inner_class_to_root_datum_coercion()
+{@; root_datum_of_inner_class_wrapper(expression_base::single_value); }
+
 void dual_inner_class_wrapper(expression_base::level l)
 { shared_inner_class G(get<inner_class_value>());
   if (l!=expression_base::no_value)
@@ -2107,10 +2110,18 @@ void quasisplit_form_wrapper(expression_base::level l)
 %
 From a real reductive group we can go back to its inner class
 @< Local function def...@>=
-void class_of_real_group_wrapper(expression_base::level l)
+void inner_class_of_real_form_wrapper(expression_base::level l)
 { shared_real_form rf(get<real_form_value>());
   if (l!=expression_base::no_value)
     push_value(new inner_class_value(rf->parent));
+}
+
+void real_form_to_inner_class_coercion()
+{@; inner_class_of_real_form_wrapper(expression_base::single_value); }
+
+void real_form_to_root_datum_coercion()
+{ shared_real_form rf(get<real_form_value>());
+  push_value(new root_datum_value(rf->parent.val.rootDatum()));
 }
 
 @ Here is a function that gives information about the dual component group
@@ -2255,7 +2266,7 @@ void real_form_from_dual_wrapper(expression_base::level l)
 install_function(real_form_wrapper,@|"real_form","(InnerClass,int->RealForm)");
 install_function(quasisplit_form_wrapper,@|"quasisplit_form"
 		,"(InnerClass->RealForm)");
-install_function(class_of_real_group_wrapper
+install_function(inner_class_of_real_form_wrapper
                 ,@|"inner_class","(RealForm->InnerClass)");
 install_function(components_rank_wrapper,@|"components_rank","(RealForm->int)");
 install_function(count_Cartans_wrapper,@|"count_Cartans","(RealForm->int)");
@@ -2901,6 +2912,12 @@ void infinitesimal_character_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new rational_vector_value(p->val.gamma()));
 }
+@)
+void real_form_of_parameter_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  if (l!=expression_base::no_value)
+    push_value(p->rf);
+}
 
 @ Here are some more attributes, in the form of predicates.
 
@@ -3219,6 +3236,8 @@ install_function(unwrap_parameter_wrapper,@|"%"
                 ,"(Param->KGBElt,vec,ratvec)");
 install_function(infinitesimal_character_wrapper,@|"infinitesimal_character"
                 ,"(Param->ratvec)");
+install_function(real_form_of_parameter_wrapper,@|"real_form"
+		,"(Param->RealForm)");
 install_function(is_standard_wrapper,@|"is_standard" ,"(Param->bool)");
 install_function(is_zero_wrapper,@|"is_zero" ,"(Param->bool)");
 install_function(is_final_wrapper,@|"is_final" ,"(Param->bool)");
@@ -3399,8 +3418,10 @@ void virtual_module_value::print(std::ostream& out) const
 }
 
 @ To start off a |virtual_module_value|, one usually takes an empty sum, but
-one needs to specify a real form to fill the |rf| field. We allow testing the
-number of terms of the sum, notably for testing the sum to be empty.
+one needs to specify a real form to fill the |rf| field. The information
+allows us to extract the real form from a virtual module even if it is empty.
+We allow testing the number of terms of the sum, notably for testing the sum
+to be empty.
 
 @< Local function def...@>=
 void virtual_module_wrapper(expression_base::level l)
@@ -3408,6 +3429,12 @@ void virtual_module_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
     push_value(new@|
        virtual_module_value(rf,repr::SR_poly(rf->rc().repr_less())));
+}
+@)
+void real_form_of_virtual_module_wrapper(expression_base::level l)
+{ shared_virtual_module m = get<virtual_module_value>();
+  if (l!=expression_base::no_value)
+    push_value(m->rf);
 }
 @)
 void virtual_module_size_wrapper(expression_base::level l)
@@ -3603,6 +3630,8 @@ install_function(split_unary_minus_wrapper,@|"-","(Split->Split)");
 install_function(split_times_wrapper,@|"*","(Split,Split->Split)");
 install_function(from_split_wrapper,@|"%","(Split->int,int)");
 install_function(virtual_module_wrapper,@|"null_module","(RealForm->ParamPol)");
+install_function(real_form_of_virtual_module_wrapper,@|"real_form"
+		,"(ParamPol->RealForm)");
 install_function(virtual_module_size_wrapper,@|"#","(ParamPol->int)");
 install_function(add_module_wrapper,@|"+","(ParamPol,Param->ParamPol)");
 install_function(add_module_term_wrapper,@|"+"
@@ -3618,16 +3647,6 @@ install_function(split_mult_virtual_module_wrapper,@|"*"
 install_function(to_termlist_wrapper,@|"%", "(ParamPol->[(Split,Param)])");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 
-
-@ We also install the coercions we defined.
-@< Install coercions @>=
-{ static type_expr split_type(split_integer_type);
-  static type_expr param_type(module_parameter_type);
-  static type_expr param_pol_type(virtual_module_type);
-  coercion(int_type,split_type,"SpN",int_to_split_coercion);
-  coercion(int_int_type,split_type,"Sp",pair_to_split_coercion);
-  coercion(param_type,param_pol_type,"PPol",param_to_poly);
-}
 
 @*1 Kazhdan-Lusztig tables. We implement a simple function that gives raw
 access to the table of Kazhdan-Lusztig polynomials.
@@ -3728,6 +3747,30 @@ void raw_dual_KL_wrapper (expression_base::level l)
   push_value(polys);
   if (l==expression_base::single_value)
     wrap_tuple(2);
+}
+
+@* Installing coercions.
+%
+We collect here all coercions related to specific Atlas types. They
+necessitate variables that hold the type of several built-in types occurring
+in these coercions, which we define as |static| variables her as well.
+
+@< Install coercions @>=
+{
+  static type_expr Lie_type_type(complex_lie_type_type);
+  static type_expr rdt(root_datum_type);
+  static type_expr ict(inner_class_type);
+  static type_expr rft(real_form_type);
+  static type_expr split_type(split_integer_type);
+  static type_expr param_type(module_parameter_type);
+  static type_expr param_pol_type(virtual_module_type);
+  coercion(str_type,Lie_type_type,"LT",Lie_type_coercion);
+  coercion(ict,rdt,"RdIc",inner_class_to_root_datum_coercion);
+  coercion(rft,ict,"IcRf",real_form_to_inner_class_coercion);
+  coercion(rft,rdt,"RdRf",real_form_to_root_datum_coercion);
+  coercion(int_type,split_type,"SpI",int_to_split_coercion);
+  coercion(int_int_type,split_type,"Sp(I,I)",pair_to_split_coercion);
+  coercion(param_type,param_pol_type,"PolP",param_to_poly);
 }
 
 

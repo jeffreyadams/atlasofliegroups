@@ -366,6 +366,7 @@ operator =: (KGBElt,KGBElt): equality of elements of a same KGB set
 
 param: (KGBElt,vec,ratvec->Param): form parameter from (x,lambda-rho,nu)
 operator %: (Param->KGBElt,vec,ratvec): recover (x,lambda-rho,nu) from param
+real_form: (Param->RealForm): recover the real form from a Param value
 infinitesimal_character: (Param->ratvec): infinitesimal character of parameter
 is_standard: (Param->bool): whether parameter defines a standard module
 is_zero: (Param->bool): whether parameter defines a zero standard module
@@ -411,6 +412,7 @@ operator *: (Split,Split->Split): multiplication of split integers
 operator %: (Split,int,int): decomposition of split integer into components
 
 null_module: (RealForm->ParamPol): empty sum of parameters for the real form
+real_form: (ParamPol->RealForm): recover the real form from a ParamPol value
 operator #: (ParamPol->int): number of nonzero terms of the formal sum
 operator +: (ParamPol,Param->ParamPol): add parameter to formal sum
 operator +: (ParamPol,(Split,Param)->ParamPol): add parameter with coefficient
