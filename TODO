@@ -60,6 +60,7 @@
   - For loops in void context never build up any value.
 
 * Work on the realex scripts
+  - Complete the groups in groups.rx (types G,F); also avoid use of "s" etc.
   - Study and rewrite Jeffs scripts to see what can be put into the library
 
 * Work on documentation

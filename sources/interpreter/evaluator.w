@@ -3725,8 +3725,8 @@ void matrix_convert()
 
 @ All that remains is to initialise the |coerce_table|.
 @< Initialise evaluator @>=
-coercion(row_of_int_type, vec_type, "V", vector_convert); @/
-coercion(row_of_vec_type,mat_type, "M", matrix_convert);
+coercion(row_of_int_type, vec_type, "V[I]", vector_convert); @/
+coercion(row_of_vec_type,mat_type, "M[V]", matrix_convert);
 
 @ Here are the conversions involving rational numbers and rational vectors.
 
@@ -3835,16 +3835,16 @@ void int_list_list_convert()
 
 @ All that remains is to initialise the |coerce_table|.
 @< Initialise evaluator @>=
-coercion(int_type,rat_type, "Q", rational_convert); @/
-coercion(row_of_rat_type,ratvec_type, "QV", ratlist_ratvec_convert); @/
-coercion(ratvec_type,row_of_rat_type, "[Q]", ratvec_ratlist_convert); @/
-coercion(vec_type,ratvec_type,"VR", vec_ratvec_convert); @/
-coercion(row_of_int_type,ratvec_type,"[I]R", intlist_ratvec_convert);
+coercion(int_type,rat_type, "QI", rational_convert); @/
+coercion(row_of_rat_type,ratvec_type, "Qv[Q]", ratlist_ratvec_convert); @/
+coercion(ratvec_type,row_of_rat_type, "[Q]Qv", ratvec_ratlist_convert); @/
+coercion(vec_type,ratvec_type,"QvV", vec_ratvec_convert); @/
+coercion(row_of_int_type,ratvec_type,"Rv[I]", intlist_ratvec_convert);
 @)
-coercion(row_row_of_int_type,mat_type, "M2", matrix2_convert); @/
-coercion(vec_type,row_of_int_type, "[I]", int_list_convert); @/
-coercion(mat_type,row_of_vec_type, "[V]", vec_list_convert); @/
-coercion(mat_type,row_row_of_int_type, "[[I]]", int_list_list_convert); @/
+coercion(row_row_of_int_type,mat_type, "M[[I]]", matrix2_convert); @/
+coercion(vec_type,row_of_int_type, "[I]V", int_list_convert); @/
+coercion(mat_type,row_of_vec_type, "[V]M", vec_list_convert); @/
+coercion(mat_type,row_row_of_int_type, "[[I]]M", int_list_list_convert); @/
 
 @* Wrapper functions.
 %
