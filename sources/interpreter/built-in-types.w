@@ -76,12 +76,17 @@ void initialise_builtin_types()
   @< Install coercions @>
 }
 
-@ Before we can define any types we must make sure the types
-defined in \.{evaluator.w} are known. Including this as first file from our
-header file ensures the types are known wherever they are needed.
+@ Before we can define any types we must make sure the types defined
+in \.{types.w} from which we shall derive others are known. Including this as
+first file from our header file ensures the types are known wherever they are
+needed. Some more basic built-in types likes integers, vectors, and strings
+are defined in \.{evaluator.w}, and we need their declarations too in our
+implementation, but we avoid including its header into out header file.
+
+@h "evaluator.h"
 
 @< Includes needed in the header file @>=
-#include "evaluator.h"
+#include "types.h"
 
 @*1 Lie types.
 Our first chapter concerns Lie types, as indicated by strings like
@@ -585,8 +590,7 @@ simply connected group of that type.
 
 @< Local function def... @>=
 void basic_involution_wrapper(expression_base::level l)
-{ push_tuple_components();
-@/shared_string str=get<string_value>();
+{ shared_string str=get<string_value>();
   shared_Lie_type t=get<Lie_type_value>();
 @/push_value(new matrix_value @| (lietype::involution
            (t->val,transform_inner_class_type(str->val.c_str(),t->val))));
@@ -660,7 +664,7 @@ Now we are ready to introduce a new primitive type for root data.
 struct root_datum_value : public value_base
 { RootDatum val;
 @)
-  root_datum_value(const RootDatum v) : val(v) @+ {}
+  root_datum_value(const RootDatum& v) : val(v) @+ {}
   virtual void print(std::ostream& out) const;
   root_datum_value* clone() const @+{@; return new root_datum_value(*this); }
   static const char* name() @+{@; return "root datum"; }
@@ -3263,6 +3267,9 @@ signatures of the modules. These coefficients, which we shall call split
 integers and give the type \.{Split} in \.{realex}, are elements of the group
 algebra over $\Z$ of a (cyclic) group of order~$2$.
 
+@< Includes needed in the header file @>=
+#include "arithmetic.h"
+
 @*2 A class for split integers.
 Although the necessary operations could easily be defined in the \.{realex}
 programming language using pairs of integers, it is preferable to make them a
@@ -3443,6 +3450,22 @@ void virtual_module_size_wrapper(expression_base::level l)
     push_value(new int_value(m->val.size()));
 }
 
+@ Here is function to extract the coefficient (multiplicity) of a given
+parameter in a virtual module. It is bound to the array subscription syntax,
+and therefor implemented as the |evaluate| method of the appropriate class
+derived from |subscr_base|.
+
+@ In a subscription of a polynomial by a parameter, the arguments are not
+initially on the stack, but come from evaluating the |array| and |index|
+fields of the |module_coefficient| expression.
+@< Function def... @>=
+void module_coefficient::evaluate(level l) const
+{ shared_virtual_module m = (array->eval(),get<virtual_module_value>());
+  shared_module_parameter p = (index->eval(),get<module_parameter_value>());
+  if (l!=expression_base::no_value)
+    push_value(new split_int_value(m->val[p->val]));
+}
+
 @ We also allow implicitly converting a parameter to a virtual module.
 
 @< Local function def...@>=
@@ -3565,28 +3588,6 @@ void split_mult_virtual_module_wrapper(expression_base::level l)
   }
 }
 
-
-@ In order to analyse virtual modules, we shall allow them to be converted to
-a row of pairs $(c,p)$ where $c$ is the coefficient and $p$ is the parameter
-of a term in the virtual module.
-
-@< Local function... @>=
-void to_termlist_wrapper(expression_base::level l)
-{ shared_virtual_module p = get<virtual_module_value>();
-  if (l==expression_base::no_value)
-    return;
-  row_ptr result(new row_value(p->val.size()));
-  unsigned i=0;
-  for (repr::SR_poly::const_iterator
-        it=p->val.begin(); it!=p->val.end(); ++it,++i)
-  { shared_tuple t(new tuple_value(2));
-    t->val[0]=shared_value(new split_int_value(it->second));
-    t->val[1]=shared_value(new module_parameter_value(p->rf,it->first));
-    result->val[i]=t;
-  }
-  push_value(result);
-}
-
 @ Here is our principal application of virtual modules.
 %
 Using the computation of non-integral blocks, we can compute a deformation
@@ -3644,7 +3645,6 @@ install_function(int_mult_virtual_module_wrapper,@|"*"
 		,"(int,ParamPol->ParamPol)");
 install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
-install_function(to_termlist_wrapper,@|"%", "(ParamPol->[(Split,Param)])");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 
 
@@ -3757,17 +3757,10 @@ in these coercions, which we define as |static| variables her as well.
 
 @< Install coercions @>=
 {
-  static type_expr Lie_type_type(complex_lie_type_type);
-  static type_expr rdt(root_datum_type);
-  static type_expr ict(inner_class_type);
-  static type_expr rft(real_form_type);
-  static type_expr split_type(split_integer_type);
-  static type_expr param_type(module_parameter_type);
-  static type_expr param_pol_type(virtual_module_type);
   coercion(str_type,Lie_type_type,"LT",Lie_type_coercion);
-  coercion(ict,rdt,"RdIc",inner_class_to_root_datum_coercion);
-  coercion(rft,ict,"IcRf",real_form_to_inner_class_coercion);
-  coercion(rft,rdt,"RdRf",real_form_to_root_datum_coercion);
+  coercion(ic_type,rd_type,"RdIc",inner_class_to_root_datum_coercion);
+  coercion(rf_type,ic_type,"IcRf",real_form_to_inner_class_coercion);
+  coercion(rf_type,rd_type,"RdRf",real_form_to_root_datum_coercion);
   coercion(int_type,split_type,"SpI",int_to_split_coercion);
   coercion(int_int_type,split_type,"Sp(I,I)",pair_to_split_coercion);
   coercion(param_type,param_pol_type,"PolP",param_to_poly);

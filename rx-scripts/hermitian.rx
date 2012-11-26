@@ -14,8 +14,7 @@ set =(ParamPol P,ParamPol Q) = bool: #(P-Q)=0
 set zeronu (Param p) = Param:
   let (x,lamrho,nu) = %p in param(x,lamrho,null_wt(#nu))
 set zeronu (ParamPol P)= ParamPol:
-  let Q=null_module(real_form(P)) in
-  for (w,q) in %P do Q +:= w*zeronu(q) od ; Q
+  null_module(real_form(P)) + for w@p in P do (w,zeronu(p)) od
 
 { orientation_number_term(p,q) = s^{[\ell_0(p)-\ell_0(q)]/2}= 1 or s }
 set orientation_number_term (Param p,Param q) = Split:
@@ -24,10 +23,6 @@ set orientation_number_term (Param p,Param q) = Split:
   then s^((on_p-on_q)\2)
   else error("computing orientation number for odd difference of lengths")
   fi
-
-{ extract coefficient of (Param p) from (ParamPol P) }
-set coeff (ParamPol P,Param p)= Split:
-  let mult=Split:0 in for (w,q) in %P do if p=q then mult +:= w fi od; mult
 
 { c_form_std:
   write c-invariant form on standard module in terms of standardrepks,
@@ -100,14 +95,9 @@ set print_c_form_irreducible_long (Param p) = void:
 set mixed (Split w)= bool: let (a,b)=%w in a*b!=0
 set analyse (ParamPol P) = void:
 begin prints("Mixed terms:")
-; for x in KGB(real_form(P)) do
-    for (w,p) in %P do
-      let (y,,)=%p in
-      if x=y and mixed(w)
-      then prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p))
-      fi
-    od
-  od
+; for w@p in P do if mixed(w) then
+    prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p))
+  fi od
 end
 
 
@@ -143,12 +133,11 @@ set mu(Param p) = rat:
   (torus_factor(x(p))+rhocheck(real_form(p)))
 
 set convert_cform_hermitian (ParamPol P)= ParamPol:
-  if #P=0 then P
+  if #P=0 then P { since we cannot select a term for a null polynpomial }
   else
-    let pols=%P, sum=null_module(real_form(P))
-    then (,p0)=pols[0]
-    in  for (w,p) in pols do sum +:= s^(rattoint(mu(p)-mu(p0)))*w*p od
-  ; sum
+    let a_mu = mu( for w@p in P do p od [0] ) { mu of the first term }
+    in null_module(real_form(P)) +
+      for w@p in P do (s^(rattoint(mu(p)-a_mu))*w,p) od
   fi
 
 { ParamPol giving the hermitian form on irreducible p }
@@ -187,9 +176,11 @@ set print_hermitian_form_irreducible([Param] P) = void:
   if it is unitary: <=> every Split w=a+bs has a=0, or all have b=0 }
 
 set is_unitary(ParamPol P)= bool:
-( let OK=true, no_coef_1=true, no_coef_s=true, list=%P then i=#list in
+( let OK=true, no_coef_1=true, no_coef_s=true, list= for w in P do w od
+  then i=#list
+  in
   while OK and (i-:=1)>=0
-  do let (x,y)= let (w,)=list[i] in %w
+  do let (x,y)= %list[i]
      in if x=0 then { must have y!=0 } no_coef_s:=false; OK:= no_coef_1
         else no_coef_1:=false; OK:= no_coef_s and y=0
         fi

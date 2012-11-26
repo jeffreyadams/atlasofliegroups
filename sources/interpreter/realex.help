@@ -287,6 +287,9 @@ InnerClass      inner class of real forms (based root datum with involution)
 RealForm	real form within an inner class
 DualRealForm    dual real form within an inner class
 CartanClass     class of Cartan subgroups within an inner class
+Split		"split integer" a + b.s where s^2=1
+Param		a standard module, or maybe an irreducible module
+ParamPol	virtual module with signature (Param values with Split coefs)
 
 Constant values of type bool, int and string can be typed as usual (use 'true'
 or 'false' (without quotes) for truth values, and a string in double-quotes
@@ -428,12 +431,19 @@ realex will convert between 'vec' and '[int]' in contexts that require this.
 
 Here is a list of all implicit type conversions
 
-  vec    <-> [int]
-  mat    <-> [vec]    (vectors are columns of the matrix)
-  mat    <-> [[int]]  (inner arrays are columns of the matrix)
-  int     -> rat      (denominator 1)
-  ratvec <-> [rat]    (ratvec has least common denominator)
-  string  -> LieType  (applies Lie_type function)
+  vec       <-> [int]
+  mat       <-> [vec]    (vectors are columns of the matrix)
+  mat       <-> [[int]]  (inner arrays are columns of the matrix)
+  int        -> rat      (denominator 1)
+  ratvec    <-> [rat]    (ratvec has least common denominator)
+  ratvec     -> vec
+  [int]      -> ratvec
+  int	     -> Split
+  string     -> LieType  (applies Lie_type function)
+  InnerClass -> RootDatum
+  RealForm   -> InnerClass
+  RealForm   -> RootDatum
+  Param	     -> ParamPol (parameter is converted to final parameter(s) first)
 
 The one-directional conversions int->rat and string->LieType are mainly a
 convenience to users, as these conversion could be written out explicitly:
@@ -860,6 +870,20 @@ rows. To add such a matrix to an existing matrix M it suffices to write
 
   for col@j in M do for entry@i in col do entry+if i=j then 1 else 0 fi od od
 
+These for loops can iterate over every kind of composite value that allows
+subscription, although one cannot iterate directly over matrix entries even
+though these can be obtained directly by subscription (a for loop over a
+matrix will iterate over its columns only; one could however do a nested loop
+over the entries of that column as the last example above illustrates). One
+special case of subscription is getting the (Split) coefficient of a given
+Param value p in a ParamPol value pol; this coefficient can be written pol[p]
+(and it will be 0+0s if p does not occur in pol). The for loop will then take
+the usual form
+
+  for c@p in pol do ... od
+
+where each time c will be a nonzero coefficient and p the corresponding Param.
+
 Conditionals can be used to do rudimentary recursive functions. The language
 itself does not directly support recursion (a function expression has no means
 to refer to itself from inside), but using assignment to a global function
@@ -1025,19 +1049,25 @@ more tightly bound context requires enclosing the expression in parentheses.
 
 The most common command is an expression, possibly followed by a semicolon;
 the result of evaluation will be printed if the semicolon is absent. Also
-common is the 'set' command, which has overloading and non-overloading forms.
-In an overloading form, 'set' is followed by a single function or operator
-name, a non-empty parameter list, '=' and an expression (function body). In
-non-overloading form 'set' is followed by a an identifier pattern, an '=' and
-an expression; a single function name followed by an empty parameter list, '='
-and a function body is also taken as a non-overloading form of 'set' (since
-parameterless overloads are forbidden). To get rid of a variable altogether
-the command 'forget name' can be used. Individual instances in the overload
-table can be removed (which might be useful in case of overloading conflicts)
-using 'forget' with the function or operator name followed by '@' and the
-argument type(s) as in 'forget +@(int,int)'. A shorter alternative to the
-syntax 'set x = expr' is provided as 'x : expr'. The latter syntax with a type
-instead of expr creates a variable of the given type but undefined value.
+common is the 'set' command. In it's basic form 'set' is followed by a an
+identifier pattern or an operator name, an '=' and an expression. For function
+definitions there is an alternative form where 'set' is followed by a single
+function name or operator symbol, a possibly empty parameter list in
+parentheses, an '=', and an expression (the function body). In a parameter
+list each parameter consists of a type followed by a non-empty parameter
+pattern. Identifiers or operators of the 'set' command will be stored either
+in the identifier table or in the overloading table; the latter will be chosen
+whenever the expression given has a function type with at least one argument,
+which must be the case when defining an operator symbol.
+
+To get rid of an entry in the identifier table, the command 'forget name' can
+be used. Individual instances in the overload table can also be removed (which
+might be useful in case of overloading conflicts) using 'forget' with the
+function or operator name followed by '@' and the argument type(s) as in
+'forget +@(int,int)'. A shorter alternative to the syntax 'set x = expr' is
+provided as 'x : expr'; if forces use of the identifier table. The latter
+syntax with a type instead of expr creates a variable of the given type but
+undefined value.
 
 The command 'quit' terminates the interpreter, 'showall' shows all identifier
 associations. The commands 'verbose' and 'quiet' turn on or off extra
@@ -1053,15 +1083,16 @@ definitions are seen, without needlessly reloading it should it already have
 been read. One can override this mechanism (useful if the file has changed) by
 using '<<' instead of '<'. The command 'whattype' can either be followed by an
 expression or by an identifier or operator followed by '?'. In the former case
-the expression is only analyzed and its type printed; n the latter case the
+the expression is only analyzed and its type printed; in the latter case the
 overload table will be searched, and all occurrences of that item listed.
 
 (b) Loose expressions: 'let', anonymous functions, casts, 'next'-expressions
 
-These are the expression types that end with another expression that never
-needs parentheses; they are themselves loosely bound, so the might require
-parentheses around them if used in other context (as right hand side of an
-assignment for instance, or as item in a semicolon-separated sequence).
+These are the expression types that end with another expression, without ever
+needing parentheses around that other expression; they are themselves loosely
+bound, so the might require parentheses (or equivalently a begin-end pair)
+around the entire expression if used in certain contexts (as right hand side
+of an assignment for instance, or as item in a semicolon-separated sequence).
 Let-expressions introduce local definitions: they start with 'let', then a
 list of one or more definitions, then 'in', and finally an expression in which
 those definitions are valid, and which produces the value of the construct.
@@ -1079,8 +1110,8 @@ available with 'let'; it defines a local name with a function as value.
 Anonymous functions consist of a pair of parentheses enclosing a parameter
 list, followed by an optional (result) type, and then ':' and the function
 body expression. A parameter list consists of zero or more pairs of a type
-followed by an identifier pattern, separated by commas. Casts consist of a
-type followed by ':' and an expression.
+followed by an identifier pattern, separated by commas. Other loosely bound
+expressions are casts, consisting of a type followed by ':' and an expression.
 
 A next-expression consists of a quaternary level expression followed by 'next'
 and an expression. The 'next' separator behaves like ';', except that it
@@ -1096,9 +1127,11 @@ sequence (the values of the other expressions are cast away, and often not
 even assembled; this is true for the right hand expression of 'next' as well).
 Because semicolon binds more stringly than 'next', when using a mixture of
 both (without parentheses to override) the final value comes from the last
-expression before the first 'next'. Tertiary expressions and more strongly
-bound ones are considered to be quaternary expressions too, and this pattern
-continues for the remaining levels.
+expression before the first 'next'. Also because semicolon binds more stringly
+than for instance let expressions or casts, those need to be parenthesized
+when occurring in a semicolon-separated sequence. Tertiary expressions are
+even more strongly bound than quaternary expressions, and so on, so all these
+types of expressions require parentheses around quatrenary subexpressions.
 
 (d) Tertiary expressions: assignments and Boolean expressions.
 
@@ -1139,9 +1172,10 @@ used as a binary operator: -x+y is (-x)+y, -a^b is -(a^b), and -a%p is -(a%p).
 (f) Primary expressions: subscriptions, function applications, units
 
 Subscriptions consist of a primary expression (usually an identfier) followed
-by a comma-separated list of (index) expressions encloded in '[' and ']'.
-Function applications are similar except that the list of (argument)
-expressions is encloded in '(' and ')', and that it may be empty. Units are
+by an index expression (or in cas of matrix subscription, by two expressions
+separated by a comma) enclosed in '[' and ']'. Function applications are
+similar except that the list of (argument) expressions is encloded in '(' and
+')', and that it may be of arbitrary length, possibly empty. Units are
 expressions made of a single symbol: an identifier, integer number, true,
 false, or string constant (enclosed in quotes and on a single line). These are
 primary expressions, as are specialisations of overloaded names or operators,
@@ -1171,10 +1205,11 @@ begin * end			which is equivalent to: ( * )
 
 An identifier pattern can be a single identifier, or a parenthesized list or a
 parenthesized list followed by ':' and an identifier (naming the whole
-structure); in case of a parenthesized list the value of the expression after
-'=' should have the corresponding tuple structure. The items in the
-parenthesized list are again patterns, separated by commas, where patterns may
-also be omitted if no name is needed for the corresponding component.
+structure); in case of a parenthesized list the type of the expression that is
+to be bound to the pattern should have the corresponding tuple structure. The
+items in the parenthesized list are again patterns, separated by commas, where
+patterns may also be omitted if no name is needed for the corresponding
+component (contrary to argument lists that require each argument to be named).
 
 (i) Types
 

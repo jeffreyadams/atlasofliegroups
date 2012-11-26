@@ -639,13 +639,14 @@ vectors, matrices, and strings. Since after type analysis we know which of the
 cases applies, we define several classes. These differ mostly by their
 |evaluate| method, so we first derive an intermediate class from
 |expression_base|, and derive the others from it. This class also serves to
-host an enumeration type that will serve later.
+host an enumeration type that will serve later. We include cases here that are
+related to types define in \.{built-in-types}.
 
 @< Type definitions @>=
 struct subscr_base : public expression_base
-{ enum sub_type @+
+{ enum sub_type
   { row_entry, vector_entry, ratvec_entry, string_char
-  , matrix_entry, matrix_column };
+  , matrix_entry, matrix_column, mod_poly_term };
   expression array, index;
 @)
   subscr_base(expression_ptr a, expression_ptr i)
@@ -657,6 +658,7 @@ struct subscr_base : public expression_base
    const type_expr& index,
          type_expr& subscr,
          sub_type& kind);
+  static bool assignable(sub_type);
 };
 
 @)
@@ -697,6 +699,13 @@ struct matrix_slice : public subscr_base
   : subscr_base(a,j) @+{}
   virtual void evaluate(level l) const;
 };
+@)
+struct module_coefficient : public subscr_base
+{ module_coefficient(expression_ptr pol, expression_ptr param)
+  : subscr_base(pol,param) @+{}
+  virtual void evaluate(level l) const;
+};
+
 
 @ These subscriptions are printed in the usual subscription syntax. For matrix
 subscriptions, where the index type is \.{(int,int)}, the index expression is
@@ -725,31 +734,42 @@ bool subscr_base::indexable
    const type_expr& index,
          type_expr& subscr,
          sub_type& kind)
-{ if (aggr.kind==row_type and index==int_type)
+{ if (aggr.kind==primitive_type)
+  switch (aggr.prim)
+  {  default:
+  break; case vector_type: if (index==int_type)
+    {@; kind=vector_entry; return subscr.specialise(int_type);  }
+  break; case rational_vector_type: if(index==int_type)
+    {@; kind=ratvec_entry; return subscr.specialise(rat_type); }
+  break; case string_type: if(index==int_type)
+    {@; kind=string_char; return subscr.specialise(str_type); }
+  break; case matrix_type:
+    if (index==int_int_type)
+    {@; kind=matrix_entry; return subscr.specialise(int_type); }
+    else if (index==int_type)
+    {@; kind=matrix_column; return subscr.specialise(vec_type); }
+  break; case virtual_module_type: if (index==param_type)
+    {@; kind=mod_poly_term; return subscr.specialise(split_type); }
+  }
+  else if (aggr.kind==row_type and index==int_type)
   @/{@; kind=row_entry;
         return subscr.specialise(*aggr.component_type);
   }
-  if (aggr==vec_type and index==int_type)
-  @/{@; kind=vector_entry;
-        return subscr.specialise(int_type);
-  }
-  if (aggr==ratvec_type and index==int_type)
-  @/{@; kind=ratvec_entry;
-        return subscr.specialise(rat_type);
-  }
-  if (aggr==str_type and index==int_type)
-  @/{@; kind=string_char;
-        return subscr.specialise(str_type);
-  }
-  if (aggr!=mat_type)
-    return false;
-  if (index==int_int_type)
-  @/{@; kind=matrix_entry;
-        return subscr.specialise(int_type);
-  }
-  kind=matrix_column;
-  return index==int_type and subscr.specialise(vec_type);
+  return false;
 }
+
+@ Some cases, although valid as subscriptions, do not allow a new value to be
+assigned to the component value (this holds for instance selecting a character
+from a string).
+
+@< Function def... @>=
+bool subscr_base::assignable(subscr_base::sub_type t)
+{ switch (t)
+  {@; case ratvec_entry: case string_char: case mod_poly_term: return false;
+    default: return true;
+  }
+}
+
 
 @ When encountering a subscription in |convert_expr|, we determine the types
 of array and of the indexing expression separately, ignoring so far any type
@@ -796,6 +816,9 @@ case subscription:
     case subscr_base::matrix_column:
       subscr.reset(new matrix_slice(array,index));
     break;
+    case subscr_base::mod_poly_term:
+      subscr.reset(new module_coefficient(array,index));
+    break;
     }
   else
   { std::ostringstream o;
@@ -823,16 +846,16 @@ inline std::string range_mess(int i,size_t n,const expression_base* e)
 }
 @)
 void row_subscription::evaluate(level l) const
-{ shared_int i=((index->eval(),get<int_value>()));
-  shared_row r=((array->eval(),get<row_value>()));
+{ shared_int i=(index->eval(),get<int_value>());
+  shared_row r=(array->eval(),get<row_value>());
   if (static_cast<unsigned int>(i->val)>=r->val.size())
     throw std::runtime_error(range_mess(i->val,r->val.size(),this));
   push_expanded(l,r->val[i->val]);
 }
 @)
 void vector_subscription::evaluate(level l) const
-{ shared_int i=((index->eval(),get<int_value>()));
-  shared_vector v=((array->eval(),get<vector_value>()));
+{ shared_int i=(index->eval(),get<int_value>());
+  shared_vector v=(array->eval(),get<vector_value>());
   if (static_cast<unsigned int>(i->val)>=v->val.size())
     throw std::runtime_error(range_mess(i->val,v->val.size(),this));
   if (l!=no_value)
@@ -840,8 +863,8 @@ void vector_subscription::evaluate(level l) const
 }
 @)
 void ratvec_subscription::evaluate(level l) const
-{ shared_int i=((index->eval(),get<int_value>()));
-  shared_rational_vector v=((array->eval(),get<rational_vector_value>()));
+{ shared_int i=(index->eval(),get<int_value>());
+  shared_rational_vector v=(array->eval(),get<rational_vector_value>());
   if (static_cast<unsigned int>(i->val)>=v->val.size())
     throw std::runtime_error(range_mess(i->val,v->val.size(),this));
   if (l!=no_value)
@@ -850,8 +873,8 @@ void ratvec_subscription::evaluate(level l) const
 }
 @)
 void string_subscription::evaluate(level l) const
-{ shared_int i=((index->eval(),get<int_value>()));
-  shared_string s=((array->eval(),get<string_value>()));
+{ shared_int i=(index->eval(),get<int_value>());
+  shared_string s=(array->eval(),get<string_value>());
   if (static_cast<unsigned int>(i->val)>=s->val.size())
     throw std::runtime_error(range_mess(i->val,s->val.size(),this));
   if (l!=no_value)
@@ -865,7 +888,7 @@ void matrix_subscription::evaluate(level l) const
 { index->multi_eval(); @+
   shared_int j=get<int_value>();
   shared_int i=get<int_value>();
-  shared_matrix m=((array->eval(),get<matrix_value>()));
+  shared_matrix m=(array->eval(),get<matrix_value>());
   if (static_cast<unsigned int>(i->val)>=m->val.numRows())
     throw std::runtime_error
      ("initial "+range_mess(i->val,m->val.numRows(),this));
@@ -877,8 +900,8 @@ void matrix_subscription::evaluate(level l) const
 }
 @)
 void matrix_slice::evaluate(level l) const
-{ shared_int j=((index->eval(),get<int_value>()));
-  shared_matrix m=((array->eval(),get<matrix_value>()));
+{ shared_int j=(index->eval(),get<int_value>());
+  shared_matrix m=(array->eval(),get<matrix_value>());
   if (static_cast<unsigned int>(j->val)>=m->val.numColumns())
     throw std::runtime_error(range_mess(j->val,m->val.numColumns(),this));
   if (l!=no_value)
@@ -2562,13 +2585,14 @@ void while_expression::evaluate(level l) const
 
 @*1 For loops.
 %
-Next we consider |for| loops, which also have three parts, an identifier
-pattern defining the loop variable(s), an in-part giving the object whose
-components are iterated over, and a body that may produce a new value for each
-component of the in-part. We allow iteration over vectors and matrices,
-non-row types which are indexable by integers (so in the matrix case iteration
-is over its columns), in which case the implicit subscription of the in-part
-must be handled appropriately; therefore
+Next we consider |for| loops over components of a value. They also have three
+parts, an identifier pattern defining the loop variable(s), an in-part giving
+the object whose components are iterated over, and a body that may produce a
+new value for each component of the in-part. We allow iteration over vectors
+and matrices, non-row types which are indexable by integers (for now this
+means strings), and iteration over the terms of a parameter polynomial
+(representing isotypical components of a virtual module). The syntactic
+structure of the for loop is the same for all these cases.
 
 @< Type def... @>=
 struct for_expression : public expression_base
@@ -2582,9 +2606,9 @@ struct for_expression : public expression_base
   virtual void print(std::ostream& out) const;
 };
 
-@ We needed to lift the following code out of the header file and place it in
-the main \Cpp. file, in order that it could use the local function
-|copy_id_pat| which is not known in the header file.
+@ We could not inline the following constructor definition in the class
+declaration, as it uses the local function |copy_id_pat| that is not known in
+the header file.
 
 @< Function definitions @>=
 inline
@@ -2636,36 +2660,43 @@ case for_expr:
       @| conv!=NULL ? new conversion(*conv,loop) : @| loop.release() ;
 }
 
-@ This type must be indexable by integers (so it is either a
-row-type or vector or matrix), and the call to |subscr_base::indexable| will
-set |comp_type| to the component type resulting from integer subscription.
+@ This type must be indexable by integers (so it is either a row-type or
+vector, matrix or string), or it must be loop over the coefficients of a
+polynomial. The call to |subscr_base::indexable| will set |comp_type| to the
+component type resulting from such a subscription.
 
 @< Set |which| according to |in_type|, and set |bind| according to the
    identifiers contained in |f->id| @>=
-{ type_expr comp_type;
-  if (not subscr_base::indexable(in_type,int_type,comp_type,which))
+{ type_expr comp_type; const type_expr* tp;
+  if (subscr_base::indexable(in_type,*(tp=&int_type),comp_type,which) @|
+   or subscr_base::indexable(in_type,*(tp=&param_type),comp_type,which))
+  { type_ptr pt = pattern_type(f->id), @|
+      it_type=make_tuple_type(make_type_list@|
+      (copy(*tp),make_type_singleton(copy(comp_type))));
+    if (not pt->specialise(*it_type))
+      throw expr_error(e,"Improper structure of loop variable pattern");
+    thread_bindings(f->id,*it_type,bind);
+  }
+  else
   { std::ostringstream o;
     o << "Cannot iterate over value of type " << in_type;
     throw expr_error(e,o.str());
   }
-  type_ptr pt = pattern_type(f->id);
-  type_ptr it_type=make_tuple_type(make_type_list@|
-    (copy(int_type),make_type_singleton(copy(comp_type))));
-  if (not pt->specialise(*it_type))
-    throw expr_error(e,"Improper structure of loop variable pattern");
-  thread_bindings(f->id,*it_type,bind);
 }
 
 @ We can start evaluating the |in_part| regardless of |kind|, but for deducing
 the number of iterations we must already distinguish on |kind| to predict the
-type of the in-part. A |loop_frame| is constructed for the new variable(s),
-but the shared pointers it contains must be different for each iteration,
-because the body might get hold, through a closure that incorporates the
-|context| constructed below, of a copy of those pointers, and this closure
-should not get to see subsequent values of variables. On the other hand, the
-syntax does not allow users to name the entire tuple |loop_var| formed of the
-loop index and the in-part component, so this pointer cannot end up in the
-|loop_frame| and it may remain the same between iterations.
+type of the in-part. A |loop_frame| is constructed that will contain the
+bindings for the new variables whose scope is the loop body: the loop variable
+(with as value a component of the |in_part|), any named sub-components of it,
+and the optional name given to the loop index. The shared pointers held in
+this frame must be different on each iteration, because the body might get
+hold, through a closure that incorporates the |context| constructed below, of
+a copy of those pointers; this closure should not get to see changing values
+of variables during subsequent iterations. On the other hand, the syntax does
+not allow users to name the entire tuple |loop_var| formed of the loop index
+and the in-part component, so this pointer cannot end up in the |loop_frame|
+and it may remain the same between iterations.
 
 @< Function definitions @>=
 void for_expression::evaluate(level l) const
@@ -2698,7 +2729,7 @@ switch (kind)
     if (l!=no_value)
       result = row_ptr(new row_value(n));
     for (size_t i=0; unsigned(i)<n; ++i,loop_frame.clear())
-    { loop_var->val[1]=in_val->val[i];
+    { loop_var->val[1]=in_val->val[i]; // the row current component
       @< Set |loop_var->val[0]| to |i|, fill |loop_frame| according to
       |pattern| with values from |loop_var|, create a new |context| and
       evaluate the |loop_body| in it, and maybe assign |result->val[i]|
@@ -2751,6 +2782,9 @@ switch (kind)
     }
   }
   break;
+  case subscr_base::mod_poly_term:
+  @< Perform a loop over the terms of a virtual module @>
+  break;
   case subscr_base::matrix_entry: break; // excluded in type analysis
 }
 
@@ -2766,14 +2800,14 @@ index. Once initialised, |loop_var| is passed through the function
 new |context| that extends the initial |saved_context| to form the new
 |execution_context|. Like for |loop_var->val[0]|, it is important that
 |execution_context| be set to point to a newly created node at each iteration,
-since any closure values in the loop body will incorporate its current value;
-there would be no point in supplying fresh pointers in |loop_var| if they were
-subsequently copied to overwrite the pointers in the same |context| object
-each time. Once these things have been handled, the evaluation of the loop
-body is standard.
+since any closure values in the loop body will incorporate its current
+instance; there would be no point in supplying fresh pointers in |loop_var| if
+they were subsequently copied to overwrite the pointers in the same |context|
+object each time. Once these things have been handled, the evaluation of the
+loop body is standard.
 
 @< Set |loop_var->val[0]| to |i|,... @>=
-loop_var->val[0].reset(new int_value(i)); // must be newly created each time
+loop_var->val[0].reset(new int_value(i)); // index; newly created each time
 thread_components(pattern,loop_var,loop_frame);
 execution_context.reset(new context(saved_context,loop_frame));
   // this one too
@@ -2781,6 +2815,29 @@ if (l==no_value)
   body->void_eval();
 else
 {@; body->eval(); result->val[i]=pop_value(); }
+
+@ The loop over terms of a virtual module is slightly different, and since it
+handles values defined in the modules \.{built-in-types.w} we shall include
+its header file.
+
+@h "built-in-types.h"
+@< Perform a loop over the terms of a virtual module @>=
+{ shared_virtual_module pol_val = get<virtual_module_value>();
+  size_t n=pol_val->val.size(),i=0;
+  if (l!=no_value)
+    result = row_ptr(new row_value(n));
+  for (repr::SR_poly::base::const_iterator it=pol_val->val.begin();
+       it!=pol_val->val.end(); ++it,++i,loop_frame.clear())
+  { loop_var->val[0].reset(new module_parameter_value(pol_val->rf,it->first));
+    loop_var->val[1].reset(new split_int_value(it->second));
+    thread_components(pattern,loop_var,loop_frame);
+    execution_context.reset(new context(saved_context,loop_frame));
+    if (l==no_value)
+      body->void_eval();
+    else
+      {@; body->eval(); result->val[i]=pop_value(); }
+  }
+}
 
 @*1 Counted loops.
 %
@@ -3258,9 +3315,7 @@ void component_assignment::assign
     case subscr_base::matrix_column:
   @/@< Replace columns at |index| in matrix |loc| by value on stack @>
   @+break;
-  case subscr_base::ratvec_entry:
-  case subscr_base::string_char: {}
-// cases are eliminated in type analysis
+  default: {} // remaining cases are eliminated in type analysis
   }
 }
 
@@ -3386,20 +3441,22 @@ case comp_ass_stat:
 @)
   expression_ptr i(convert_expr(index,ind_t));
   subscr_base::sub_type kind;
-  if (not subscr_base::indexable(*aggr_t,ind_t,comp_t,kind)
-      or kind==subscr_base::ratvec_entry or kind==subscr_base::string_char)
+  if (subscr_base::indexable(*aggr_t,ind_t,comp_t,kind)
+      and subscr_base::assignable(kind))
+  { expression_ptr r(convert_expr(rhs,comp_t));
+    if (is_local)
+      assign.reset(new local_component_assignment(aggr,i,d,o,r,kind));
+    else
+      assign.reset(new global_component_assignment(aggr,i,r,kind));
+
+    return conform_types(comp_t,type,assign,e);
+  }
+  else
   { std::ostringstream o;
     o << "Cannot subscript " << *aggr_t << @| " value with index of type "
       << ind_t << " in assignment";
     throw expr_error(e,o.str());
   }
-  expression_ptr r(convert_expr(rhs,comp_t));
-  if (is_local)
-    assign.reset(new local_component_assignment(aggr,i,d,o,r,kind));
-  else
-    assign.reset(new global_component_assignment(aggr,i,r,kind));
-
-  return conform_types(comp_t,type,assign,e);
 }
 
 @* Sequence expressions.
