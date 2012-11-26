@@ -354,6 +354,8 @@ class non_integral_block : public Block_base
 
   // new methods
 
+  RealReductiveGroup& realGroup() { return GR; }
+
   const RatWeight& gamma() const { return infin_char; }
   KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }
   RatWeight nu(BlockElt z) const; // "real" projection of |infin_char|
@@ -363,13 +365,6 @@ class non_integral_block : public Block_base
   RankFlags singular_simple_roots() { return singular; }
   bool survives(BlockElt z) const; // whether $J(z_{reg})$ survives tr. functor
   BlockEltList survivors_below(BlockElt z) const; // expression for $I(z)$
-
-  struct term
-  { int coef;     // coefficient (an additional factor $1-s$ is implicit)
-    BlockElt elt; // element in block
-    term(int c, BlockElt b) : coef(c),elt(b) {}
-  };
-  std::vector<term> deformation_terms (BlockElt z);
 
 }; // |class non_integral_block|
 

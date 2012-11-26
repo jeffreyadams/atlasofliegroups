@@ -3606,8 +3606,8 @@ void deform_wrapper(expression_base::level l)
     const Rep_context& rc= p->rc();
     non_integral_block block(rc,p->val); // partial block construction
 
-    std::vector<non_integral_block::term> terms
-       = block.deformation_terms(block.size()-1);
+    std::vector<repr::deformation_term_tp> terms
+       = repr::deformation_terms(block,block.size()-1);
     virtual_module_ptr acc (new virtual_module_value(p->rf,
       repr::SR_poly(rc.repr_less())));
     const RatWeight& gamma=block.gamma();

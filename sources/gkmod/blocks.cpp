@@ -2,7 +2,7 @@
   This is blocks.cpp
 
   Copyright (C) 2004,2005 Fokko du Cloux
-  Modified by Marc van Leeuwen, 2007--2012
+  Copyright (C) 2007--2012 Marc van Leeuwen
   Part of the Atlas of Lie Groups and Representations
 
   For license information see the LICENSE file
@@ -1600,107 +1600,6 @@ BlockEltList non_integral_block::survivors_below(BlockElt z) const
   result.push_back(z);
   return result;
 } // |non_integral_block::survivors_below|
-
-std::vector<non_integral_block::term>
-non_integral_block::deformation_terms (BlockElt entry_elem)
-{
-  if (not survives(entry_elem)) // easy case, null result
-    return std::vector<non_integral_block::term>();
-
-  // compute KL polynomimals $P_{x,y}$ with $x\leq y\leq \\{entry_elem}$
-  // storing sign-changed value $P(x,y)=(-1)^{l(y)-l(x)}P_{x,y}$
-  const kl::KLContext& klc = Block_base::klc(entry_elem,false); // silently
-
-  std::vector<BlockElt> survivors; survivors.reserve(entry_elem+1);
-  for (BlockElt x=0; x<=entry_elem; ++x)
-    if (survives(x))
-      survivors.push_back(x);
-
-  BlockElt n_surv = survivors.size(); // |BlockElt| now indexes |survivors|
-
-  Rep_context rc(GR);
-  std::vector<unsigned int> orient_nr(n_surv);
-  for (BlockElt z=0; z<n_surv; ++z)
-  {
-    const BlockElt zz = survivors[z];
-    const StandardRepr r = rc.sr(parent_x(zz),lambda_rho(zz),gamma());
-    orient_nr[z] = rc.orientation_number(r);
-  }
-
-  // sums of KL polynomials evaluated at $-1$, incorporating length signs
-  int_Matrix P(n_surv,n_surv,0);
-
-  // compute $P(x,z)$ for |xx<=zz<=entry_element| with |zz| among |survivors|
-  // and contribute to |P(x,z)| where |zz=survivors[z]|, $xx\to survivors[x]$
-  for (BlockElt z=n_surv; z-->0; )
-  {
-    const BlockElt zz = survivors[z];
-    const unsigned int parity = length(zz)%2;
-    for (BlockElt xx=0; xx <= zz; ++xx)
-    {
-      const kl::KLPol& pol = klc.klPol(xx,zz); // regular KL polynomial
-      if (not pol.isZero())
-      {
-	// evaluate |pol| at $X=-1$ since that is what's needed in the end
-	int eval=0;
-	for (polynomials::Degree d=pol.size(); d-->0; )
-	  eval = static_cast<int>(pol[d])-eval;
-	if (length(xx)%2!=parity)
-	  eval = -eval; // incorporate sign for length difference in evaluation
-
-        // contribute |eval| to all |P(x,z)| for which |xx| descends to
-	// |survivors[x]| (expressing the singular $I(xx)$ as a survivor sum)
-	BlockEltList nb=survivors_below(xx);
-	for (size_t i=0; i<nb.size(); ++i)
-	{
-	  BlockElt x = std::lower_bound // look up |nb[i]| in |survivors|
-	    (survivors.begin(),survivors.end(),nb[i])-survivors.begin();
-	  assert(survivors[x]==nb[i]); // must be found
-	  P(x,z) += eval;
-	} // |for (i)| in |nb|
-      } // |if(pol!=0)|
-    } // |for (x<=z)|
-  } // for |z|
-
-  // now compute evaluated polynomials $Q_{x,z}$, for |x <= z==n_surv-1|
-  // this is done by inverting the upper unitriangular matrix of the |P(x,z)|
-  // only the final column of the inverse is needed
-
-  const BlockElt z=n_surv-1; // $Q$ only needs |entry_elem| as second index
-  int_Vector Q_z(n_surv);
-
-  // we solve column $z$ of $Q$ from bottom to top, using the equation $PQ=1$
-  Q_z[z]=1; // easy initial case, since $P(z,z)=1$
-  for (BlockElt x=z; x-->0; )
-  {
-    int Q_xz=0;
-    for (BlockElt y=x+1; y<=z; ++y) // isolate the term $Q(x,z)$ for $y=x$
-      Q_xz -= P(x,y)*Q_z[y];  // set it to minus the sum of other terms
-    Q_z[x]=Q_xz;
-  }
-
-  assert(survivors[z]==entry_elem);
-  unsigned odd = (length(entry_elem)+1)%2; // opposite parity
-
-  std::vector<term> result;
-
-  // $\sum_{x\leq y<z}y[l(z)-l(y) odd] (-1)^{l(x)-l(y)}P_{x,y}*Q(y,z)$
-  for (BlockElt x=n_surv-1; x-->0; ) // skip |entry_elem|
-  {
-    int coef=0;
-    for (BlockElt y=x; y<n_surv-1; ++y)
-      if (length(survivors[y])%2==odd) // length difference with |entry_elem|
-	coef += P(x,y)*Q_z[y];
-    // here we evaluated  |coef| at $X=-1$: "real" part of $(1-s)*coef[X:=s]$
-    // if (orientation_difference(x,z)) coef*=s;
-    int orient_express = (orient_nr[n_surv-1]-orient_nr[x])/2;
-    if (coef!=0)
-      result.push_back(term(orient_express%2!=0 ? -coef : coef,
-			    survivors[x]));
-  }
-
-  return result;
-} // |non_integral_block::deformation_terms|
 
 
 // A simple structure to pack a pair of already sequenced numbers (indices
