@@ -77,7 +77,16 @@ set *(ratvec r, vec v) = let (n,d)=%r in n*v/d
 set floor ([rat] v) = for a in v do floor(a) od
 set ceil  ([rat] v) = for a in v do  ceil(a) od
 
+set = ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0=x1 and y0=y1
+set !=((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0!=x1 or y0!=y1
+
+set = (Split x,Split y) = %x = %y
+set != (Split x,Split y) = %x != %y
+
 set s = Split:(0,1)
+set + (Split x) = let (r,)=%x in r { real part }
+set ^ (Split x) = let (,y)=%x in y { s part }
+
 set split_power = (Split,int->Split):
 let p = (Split x,int n): x
 in p:= ((Split x,int n): { we shall have n>0 }
@@ -89,12 +98,6 @@ set ^(Split x,int n) =
   elif let (a,b)=%x in abs(a)+abs(b)=1 then if n%2=0 then 1 else x fi
   else error("Negative power "+n+" of split integer")
   fi
-
-set = ((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0=x1 and y0=y1
-set !=((int,int)(x0,y0),(int,int)(x1,y1)) = bool: x0!=x1 or y0!=y1
-
-set = (Split x,Split y) = %x = %y
-set != (Split x,Split y) = %x != %y
 
 set -(ParamPol a, (Split,Param) (c,p)) = ParamPol: a+(-c,p)
 

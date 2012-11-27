@@ -920,6 +920,13 @@ extern const type_expr row_of_vec_type; // \.{[vec]}
 extern const type_expr row_row_of_int_type; // \.{[[int]]}
 extern const type_expr pair_type; // \.{(*,*)}
 extern const type_expr int_int_type; // \.{(int,int)}
+extern const type_expr Lie_type_type; // \.{LieType}
+extern const type_expr rd_type; // \.{RootDatum}
+extern const type_expr ic_type; // \.{InnerClass}
+extern const type_expr rf_type; // \.{RealForm}
+extern const type_expr split_type; // \.{Split}
+extern const type_expr param_type; // \.{RealForm}
+extern const type_expr param_pol_type; // \.{RealForm}
 
 @ Since some of these types are built from earlier defined ones, it is vital
 that they are initialised in order, and since we cannot control the relative
@@ -943,6 +950,13 @@ const type_expr row_of_vec_type(copy(vec_type));
 const type_expr row_row_of_int_type(copy(row_of_int_type));
 const type_expr pair_type(*unknown_tuple(2));  // copy and destroy original
 const type_expr int_int_type(*make_type("(int,int)")); // idem
+const type_expr Lie_type_type(complex_lie_type_type);
+const type_expr rd_type(root_datum_type);
+const type_expr ic_type(inner_class_type);
+const type_expr rf_type(real_form_type);
+const type_expr split_type(split_integer_type);
+const type_expr param_type(module_parameter_type);
+const type_expr param_pol_type(virtual_module_type);
 
 @ We shall also need a tuple pattern with any number of unknown components;
 such a type is built by calling |unknown_tuple|.

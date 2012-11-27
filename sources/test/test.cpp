@@ -1202,8 +1202,8 @@ void deform_f()
 
   block.print_to(f,false);
 
-  std::vector<non_integral_block::term> terms
-    = block.deformation_terms(entry_elem);
+  std::vector<repr::deformation_term_tp> terms
+    = repr::deformation_terms(block,entry_elem);
 
   f << "Orientation numbers:\n";
   bool first=true;

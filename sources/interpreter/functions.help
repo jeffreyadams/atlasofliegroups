@@ -376,7 +376,7 @@ operator =: (Param,Param->bool): test equivalence of parameters
   This is implemented by applying make_dominant and testing identity of all
   three components x, lambda (defined modulo (1-theta_x)X^*) and nu.
 orientation_nr: (Param->int): the orientation number
-reducibility_points: (Param->[rat]): the t where I(x,lambda,t\nu) is reducible
+reducibility_points: (Param->[rat]): the 0<t<=1 with I(x,lambda,t\nu) reducible
 print_n_block: (Param->): print (nonintegral) block generated from parameter
 n_block: (Param->[Param],int): return block as list of parameters, and index
   The second component is the index into the first of the original parameter.
@@ -420,7 +420,6 @@ operator +: (ParamPol,[(Split,Param)]->ParamPol): add terms to formal sum
 operator +: (ParamPol,ParamPol->ParamPol): addition of formal sums
 operator *: (int,ParamPol->ParamPol): integer multiple of a formal sum
 operator *: (Split,ParamPol->ParamPol): split integer multiple of a formal sum
-operator %: (ParamPol->[(Split,Param)]): break up formal sum into terms
 
 deform: (Param->ParamPol): compute deformation terms when nu decreases
   The non-integral block for the parameter and its KL polynomials are

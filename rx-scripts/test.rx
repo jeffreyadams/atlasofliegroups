@@ -62,9 +62,8 @@ set test_spherical_unipotent(RealForm G)= bool:
 set test1()=test_spherical_unipotent(Sp(4,R))
 set test2()=test_spherical_unipotent(split_form(G2))
 set test3()=test_spherical_unipotent(Sp(6,R))
-set G2ad=quasisplit_form(inner_class(adjoint("G2"),"e"))
 set test4()=
-  let b1=trivial_block(G2ad)
+  let b1=trivial_block(quasisplit_form(inner_class(adjoint("G2"),"e")))
   , answer=[true,true,true,true,true,false,false,false,false,true,false,false]
   in test (for i:#b1 do (b1[i],answer[i]) od)
 

@@ -120,7 +120,7 @@ class Rep_context
   bool is_oriented(const StandardRepr& z, RootNbr alpha) const;
   unsigned int orientation_number(const StandardRepr& z) const;
 
-  // prepare for |deform|: make |gamma| dominant, and as theta-stable as can
+  // prepare for |deform|: make |gamma| dominant, and as theta-stable as can be
   StandardRepr& make_dominant(StandardRepr& z) const;
 
   RationalList reducibility_points(StandardRepr& z) const;
@@ -141,6 +141,14 @@ class Rep_context
 
 }; // |Rep_context|
 
+struct deformation_term_tp
+{ int coef;     // coefficient (an additional factor $1-s$ is implicit)
+  BlockElt elt; // element in block
+  deformation_term_tp(int c, BlockElt b) : coef(c),elt(b) {}
+};
+
+std::vector<deformation_term_tp>
+deformation_terms (non_integral_block& block,BlockElt z);
 
 typedef Rep_context::poly SR_poly;
 

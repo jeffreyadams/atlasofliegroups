@@ -18,6 +18,9 @@ set ratvectovec (ratvec v)= vec:
 { define dot product ratvec*ratvec,ratvec*vec,vec*ratvec }
 set *(ratvec v,ratvec w)= rat: let (a,b)=%v then (c,d)=%w in a*c/(b*d)
 
+{ transform ParamPol into a list of (Split,Param) pairs; previously built-in }
+set %(ParamPol P) = [(Split,Param)]: for c@p in P do (c,p) od
+
 { cases *@(vec,ratvec) and *@(ratvec,vec) are now handled by coercion }
 
 { split, simply connected group of given type }
@@ -98,8 +101,8 @@ set spherical_principal_series (RealForm G, ratvec nu)= Param:
   let lambda=null(rank(G)) in param(KGB(G,KGB_size(G)-1),lambda,nu)
 
 { replace non-final parameter with [Param p] of final ones
-  uses this feature of ParamPol }
-set make_final (Param P)= [Param]: for (,p) in %(ParamPol: P) do p od
+  uses this feature of ParamPol, but ignores any coefficients }
+set make_final (Param p)= [Param]: for c@q in ParamPol: p do q od
 
 { nicer display of Splits }
 set prettyPrint (Split w) = string:
@@ -116,7 +119,7 @@ set prettyPrint (Split w) = string:
 { nice output of ParamPol:
   prettyPrint the coefficients, print terms in order of x }
 set prettyPrint (ParamPol P)= void:
-for (w,p) in %P
+for w@p in P
 do prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p)) od
 
 { evaluate at s=t for t integer (or rational?): replace w=a+bs with a+bt }
@@ -124,8 +127,7 @@ do prints("(",prettyPrint(w),")*",p,", ",infinitesimal_character(p)) od
 set  #(Split w,int t)=let (a,b)=%w in int: a+t*b
 set  #(Split w,rat t)=let (a,b)=%w in rat: a+t*b
 set  #(ParamPol P,int t)= ParamPol: { with integer coefficiens }
-  let Q=null_module(real_form(P)) in
-  for (w,q) in %P do Q +:= (w#t)*q od; Q
+  null_module(real_form(P)) +  for w@q in P do (w#t,q) od
 
 { evaluate polynomial at split }
 set eval(vec v,Split w)= Split:
