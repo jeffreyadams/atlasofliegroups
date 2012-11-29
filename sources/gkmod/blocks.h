@@ -20,7 +20,7 @@
 #include "ratvec.h"	// containment infinitesimal character
 
 #include "atlas_types.h"
-#include "tits.h"	// representative of $y$ in |non_integeral_block|
+#include "tits.h"	// representative of $y$ in |non_integral_block|
 #include "descents.h"	// inline methods
 
 
@@ -354,7 +354,7 @@ class non_integral_block : public Block_base
 
   // new methods
 
-  RealReductiveGroup& realGroup() { return GR; }
+  RealReductiveGroup& realGroup() const { return GR; }
 
   const RatWeight& gamma() const { return infin_char; }
   KGBElt parent_x(BlockElt z) const { return kgb_nr_of[x(z)]; }

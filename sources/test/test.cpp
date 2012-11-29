@@ -1202,8 +1202,9 @@ void deform_f()
 
   block.print_to(f,false);
 
+  repr::Rep_table rt(rc);
   std::vector<repr::deformation_term_tp> terms
-    = repr::deformation_terms(block,entry_elem);
+    = rt.deformation_terms(block,entry_elem);
 
   f << "Orientation numbers:\n";
   bool first=true;

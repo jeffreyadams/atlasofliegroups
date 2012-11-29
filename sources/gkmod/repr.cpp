@@ -28,6 +28,15 @@ bool StandardRepr::operator== (const StandardRepr& z) const
   and infinitesimal_char==z.infinitesimal_char;
 }
 
+size_t StandardRepr::hashCode(size_t modulus) const
+{ size_t hash=
+    x_part + 375*y_bits.data().to_ulong()+83*infinitesimal_char.denominator();
+  const Weight& num=infinitesimal_char.numerator();
+  for (unsigned i=0; i<num.size(); ++i)
+    hash= 11*(hash&(modulus-1))+num[i];
+  return hash &(modulus-1);
+}
+
 Rep_context::Rep_context(RealReductiveGroup &G_R)
   : G(G_R), KGB_set(G_R.kgb())
 {}
@@ -156,7 +165,7 @@ bool Rep_context::is_final(const StandardRepr& z, RootNbr& witness) const
   return true;
 }
 
-StandardRepr& Rep_context::make_dominant(StandardRepr& z) const
+void Rep_context::make_dominant(StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionTable& i_tab = complexGroup().involution_table();
@@ -191,10 +200,9 @@ StandardRepr& Rep_context::make_dominant(StandardRepr& z) const
     while (s<rd.semisimpleRank()); // wait until inner loop runs to completion
   }
   z.y_bits=i_tab.pack(i_x,lr);
-  return z;
 }
 
-RationalList Rep_context::reducibility_points(StandardRepr& z) const
+RationalList Rep_context::reducibility_points(const StandardRepr& z) const
 {
   const RootDatum& rd = rootDatum();
   const InvolutionNbr i_x = kgb().inv_nr(z.x());
@@ -391,10 +399,10 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
     return result;
   }
   else return SR_poly(z,repr_less());
-}
+} // |Rep_context::expand_final|
 
 std::vector<deformation_term_tp>
-deformation_terms (non_integral_block& block,BlockElt entry_elem)
+Rep_table::deformation_terms (non_integral_block& block,BlockElt entry_elem)
 {
   if (not block.survives(entry_elem)) // easy case, null result
     return std::vector<deformation_term_tp>();
@@ -497,6 +505,46 @@ deformation_terms (non_integral_block& block,BlockElt entry_elem)
 } // |deformation_terms|
 
 
+size_t Rep_table::rank() const { return context.rootDatum().rank(); }
+
+SR_poly Rep_table::deformation(const StandardRepr& z)
+{
+  const Rep_context ctxt = rc();
+  { unsigned long h=hash.find(z);
+    if (h!=hash.empty)
+      return def_formula[h];
+  }
+
+  Weight lam_rho = ctxt.lambda_rho(z);
+  RatWeight nu =  ctxt.nu(z);
+
+  StandardRepr z0 = ctxt.sr(z.x(),lam_rho,RatWeight(rank()));
+  SR_poly result = ctxt.expand_final(z0); // value without deformation terms
+
+  RationalList rp=ctxt.reducibility_points(z);
+  for (unsigned i=rp.size(); i-->0; )
+  {
+    Rational r=rp[i];
+    const StandardRepr zi = ctxt.sr(z.x(),lam_rho,nu*r);
+    non_integral_block b(ctxt,zi);
+    const RatWeight& gamma=b.gamma(); // NOT |zi.gamma()|, is made dominant!
+    std::vector<deformation_term_tp> def_term = deformation_terms(b,b.size()-1);
+    for (unsigned j=0; j<def_term.size(); ++j)
+    {
+      BlockElt eij=def_term[j].elt;
+      StandardRepr zij = ctxt.sr(b.parent_x(eij),b.lambda_rho(eij),gamma);
+      Split_integer coef(def_term[j].coef,-def_term[j].coef);
+      result.add_multiple(deformation(zij),coef);
+    }
+  }
+
+  // now store result for future lookup
+  hash.match(z);
+  def_formula.push_back(result);
+  assert(hash.size()==def_formula.size());
+
+  return result;
+}
 
   } // |namespace repr|
 } // |namespace atlas|

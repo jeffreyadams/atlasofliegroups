@@ -1762,7 +1762,7 @@ template <typename C>
   matrix::Matrix_base<C> triangularize
    (const std::vector<
       std::pair<seq_no,
-                free_abelian::Free_Abelian<seq_no,C,graded_compare>
+                Free_Abelian<seq_no,C,graded_compare>
                > >& eq,
 	       std::vector<seq_no>& new_order)
 {

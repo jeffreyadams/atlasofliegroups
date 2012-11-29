@@ -3604,12 +3604,14 @@ void deform_wrapper(expression_base::level l)
   if (l!=expression_base::no_value)
   {
     const Rep_context& rc= p->rc();
-    non_integral_block block(rc,p->val); // partial block construction
+    repr::Rep_table rt(rc);
 
+    non_integral_block block(rc,p->val); // partial block construction
     std::vector<repr::deformation_term_tp> terms
-       = repr::deformation_terms(block,block.size()-1);
-    virtual_module_ptr acc (new virtual_module_value(p->rf,
-      repr::SR_poly(rc.repr_less())));
+       = rt.deformation_terms(block,block.size()-1);
+
+    virtual_module_ptr acc
+      (new virtual_module_value(p->rf, repr::SR_poly(rc.repr_less())));
     const RatWeight& gamma=block.gamma();
     for (unsigned i=0; i<terms.size(); ++i)
     { BlockElt z=terms[i].elt;
@@ -3622,6 +3624,25 @@ void deform_wrapper(expression_base::level l)
     push_value(acc);
   }
 }
+
+@ Here is a recursive form of this deformation, which stores intermediate
+results for efficiency in a |repr::Rep_table structure|. Though this structure
+should really be associated to and saved with the real form, we currently hold
+it in a local variable of this wrapper function.
+
+@< Local function def...@>=
+void full_deform_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p);
+  if (l!=expression_base::no_value)
+  {
+    repr::Rep_table rt(p->rc());
+    repr::SR_poly result = rt.deformation(p->val);
+    push_value (new virtual_module_value(p->rf,result));
+  }
+}
+
+
 
 @ Finally we install everything related to polynomials formed from parameters.
 @< Install wrapper functions @>=
@@ -3646,6 +3667,7 @@ install_function(int_mult_virtual_module_wrapper,@|"*"
 install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
+install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
 
 
 @*1 Kazhdan-Lusztig tables. We implement a simple function that gives raw

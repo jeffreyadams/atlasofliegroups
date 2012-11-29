@@ -93,6 +93,14 @@ RationalVector<C>& RationalVector<C>::operator/=(C n)
 }
 
 template<typename C>
+RationalVector<C> RationalVector<C>::operator*(const arithmetic::Rational& r)
+const
+{
+  RationalVector result(*this);
+  return ((result *= r.numerator()) /= r.denominator()).normalize();
+}
+
+template<typename C>
 RationalVector<C>& RationalVector<C>::normalize()
 {
   unsigned long d=d_denom;

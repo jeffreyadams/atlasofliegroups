@@ -101,10 +101,14 @@ namespace atlas {
   namespace hashtable{
     template <class Entry, typename Number> class HashTable;
   }
+  using hashtable::HashTable;
+
   namespace free_abelian {
     template<typename T, typename C=long int, typename Compare=std::less<T> >
       struct Free_Abelian;
   }
+  using free_abelian::Free_Abelian;
+
   namespace polynomials {
     template<typename C> class Polynomial;
     template<typename C> class Safe_Poly;
@@ -371,13 +375,13 @@ namespace atlas {
   namespace standardrepk {
     class StandardRepK;	// standard representation restricted to K
     typedef std::pair <Weight,RankFlags> HCParam; // free part wrt rho, torsion
-    typedef free_abelian::Free_Abelian<StandardRepK> Char;// linear combination
+    typedef Free_Abelian<StandardRepK> Char;// linear combination
     typedef std::pair<StandardRepK,Char> CharForm;
     typedef std::pair<Weight,TitsElt> RawRep;
-    typedef free_abelian::Free_Abelian<RawRep> RawChar;
-    typedef free_abelian::Free_Abelian<StandardRepK,Polynomial<int> > q_Char;
+    typedef Free_Abelian<RawRep> RawChar;
+    typedef Free_Abelian<StandardRepK,Polynomial<int> > q_Char;
     typedef std::pair<StandardRepK,q_Char> q_CharForm;// $q$-$K$-type formula
-    typedef free_abelian::Free_Abelian<RawRep,Polynomial<int> >Raw_q_Char;
+    typedef Free_Abelian<RawRep,Polynomial<int> >Raw_q_Char;
     typedef unsigned int seq_no; // sequence number of stored standard rep|K
     typedef unsigned int level; // unsigned LatticeCoeff
     struct Cartan_info;

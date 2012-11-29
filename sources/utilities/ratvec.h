@@ -13,7 +13,8 @@
 #define RATVEC_H
 
 #include <vector>
-#include <matrix.h>
+#include "matrix.h"
+#include "arithmetic.h"
 
 // extra defs for windows compilation -spc
 #ifdef WIN32
@@ -70,6 +71,8 @@ class RationalVector
   { return *this=*this-v; }
   RationalVector<C>& operator*=(C n);
   RationalVector<C>& operator/=(C n);
+
+  RationalVector<C> operator*(const arithmetic::Rational& r) const;
 
 /*
   Returns the scalar product of |*this| and |w|, which are assumed to be of

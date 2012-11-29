@@ -2,7 +2,7 @@
 /*
   This is repr.h
 
-  Copyright (C) 2009 Marc van Leeuwen
+  Copyright (C) 2009-2012 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   See file main.cpp for full copyright notice
@@ -11,12 +11,18 @@
 #ifndef REPR_H  /* guard against multiple inclusions */
 #define REPR_H
 
+#include <iostream>
+
 #include "atlas_types.h"
 
 #include "matrix.h"	// containment
 #include "ratvec.h"	// containment
 
 #include "realredgp.h"	// inlines
+
+#include "hashtable.h"
+#include "free_abelian.h"
+#include "arithmetic.h" // |SplitInteger|
 
 namespace atlas {
 
@@ -121,9 +127,9 @@ class Rep_context
   unsigned int orientation_number(const StandardRepr& z) const;
 
   // prepare for |deform|: make |gamma| dominant, and as theta-stable as can be
-  StandardRepr& make_dominant(StandardRepr& z) const;
+  void make_dominant(StandardRepr& z) const;
 
-  RationalList reducibility_points(StandardRepr& z) const;
+  RationalList reducibility_points(const StandardRepr& z) const;
 
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering
@@ -135,11 +141,18 @@ class Rep_context
 
   compare repr_less() const;
 
-  typedef free_abelian::Free_Abelian<StandardRepr,Split_integer,compare> poly;
+  typedef Free_Abelian<StandardRepr,Split_integer,compare> poly;
 
   poly expand_final(StandardRepr z) const; // express in final SReprs (by value)
 
+  // I/O operations, implemented in basic_io.cpp
+  std::ostream& print (std::ostream&,const StandardRepr& z) const;
+  std::ostream& print (std::ostream&,const poly& P) const;
+
 }; // |Rep_context|
+
+typedef Rep_context::poly SR_poly;
+
 
 struct deformation_term_tp
 { int coef;     // coefficient (an additional factor $1-s$ is implicit)
@@ -147,10 +160,31 @@ struct deformation_term_tp
   deformation_term_tp(int c, BlockElt b) : coef(c),elt(b) {}
 };
 
-std::vector<deformation_term_tp>
-deformation_terms (non_integral_block& block,BlockElt z);
+class Rep_table {
+  struct location { unsigned block; BlockElt elt; };
+  typedef std::vector<std::vector<Split_integer> > KL_table;
 
-typedef Rep_context::poly SR_poly;
+  const Rep_context& context;
+  std::vector<StandardRepr> pool;
+  HashTable<StandardRepr,unsigned long> hash;
+  std::vector<location> loc;
+  std::vector<KL_table> block_list;
+  std::vector<SR_poly> def_formula;
+
+ public:
+  Rep_table(const Rep_context& c)
+    : context(c), pool(), hash(pool), loc(), block_list(), def_formula() {}
+
+  const Rep_context& rc() const { return context; }
+  size_t rank() const;
+  std::vector<deformation_term_tp>
+    deformation_terms (non_integral_block& block,BlockElt entry_elem);
+  SR_poly deformation(const StandardRepr& z);
+
+}; // |Rep_table|
+
+
+// 				Functions
 
 
 } // |namespace repr|
