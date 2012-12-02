@@ -41,6 +41,8 @@ Rep_context::Rep_context(RealReductiveGroup &G_R)
   : G(G_R), KGB_set(G_R.kgb())
 {}
 
+size_t Rep_context::rank() const { return rootDatum().rank(); }
+
 const TwistedInvolution Rep_context::twistedInvolution(size_t cn) const
 { return complexGroup().twistedInvolution(cn); }
 
@@ -78,6 +80,12 @@ StandardRepr Rep_context::sr
 			     diff.denominator()); // theta(lambda-nu)
   return StandardRepr(x,i_tab.pack(i_x,lambda_rho),
 		      ((lambda+nu+theta_diff)/=2).normalize());
+}
+
+StandardRepr Rep_context::sr(const non_integral_block& b, BlockElt i) const
+{
+  assert(i<b.size());
+  return sr(b.parent_x(i),b.lambda_rho(i),b.gamma());
 }
 
 Weight Rep_context::lambda_rho(const StandardRepr& z) const
@@ -505,34 +513,31 @@ Rep_table::deformation_terms (non_integral_block& block,BlockElt entry_elem)
 } // |deformation_terms|
 
 
-size_t Rep_table::rank() const { return context.rootDatum().rank(); }
-
 SR_poly Rep_table::deformation(const StandardRepr& z)
 {
-  const Rep_context ctxt = rc();
   { unsigned long h=hash.find(z);
     if (h!=hash.empty)
       return def_formula[h];
   }
 
-  Weight lam_rho = ctxt.lambda_rho(z);
-  RatWeight nu =  ctxt.nu(z);
+  Weight lam_rho = lambda_rho(z);
+  RatWeight nu_z =  nu(z);
 
-  StandardRepr z0 = ctxt.sr(z.x(),lam_rho,RatWeight(rank()));
-  SR_poly result = ctxt.expand_final(z0); // value without deformation terms
+  StandardRepr z0 = sr(z.x(),lam_rho,RatWeight(rank()));
+  SR_poly result = expand_final(z0); // value without deformation terms
 
-  RationalList rp=ctxt.reducibility_points(z);
+  RationalList rp=reducibility_points(z);
   for (unsigned i=rp.size(); i-->0; )
   {
     Rational r=rp[i];
-    const StandardRepr zi = ctxt.sr(z.x(),lam_rho,nu*r);
-    non_integral_block b(ctxt,zi);
+    const StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
+    non_integral_block b(*this,zi);
     const RatWeight& gamma=b.gamma(); // NOT |zi.gamma()|, is made dominant!
     std::vector<deformation_term_tp> def_term = deformation_terms(b,b.size()-1);
     for (unsigned j=0; j<def_term.size(); ++j)
     {
       BlockElt eij=def_term[j].elt;
-      StandardRepr zij = ctxt.sr(b.parent_x(eij),b.lambda_rho(eij),gamma);
+      StandardRepr zij = sr(b.parent_x(eij),b.lambda_rho(eij),gamma);
       Split_integer coef(def_term[j].coef,-def_term[j].coef);
       result.add_multiple(deformation(zij),coef);
     }

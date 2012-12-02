@@ -97,6 +97,7 @@ class Rep_context
   const TitsGroup& titsGroup() const { return G.titsGroup(); }
   const TitsCoset& basedTitsGroup() const { return G.basedTitsGroup(); }
   const KGB& kgb() const { return KGB_set; }
+  size_t rank() const;
 
   const TwistedInvolution twistedInvolution(size_t cn) const;
 
@@ -109,6 +110,8 @@ class Rep_context
     sr(KGBElt x,
        const Weight lambda_rho,
        const RatWeight& nu) const;
+
+  StandardRepr sr(const non_integral_block& b, BlockElt i) const;
 
   // component extraction
   Weight lambda_rho(const StandardRepr& z) const;
@@ -160,11 +163,11 @@ struct deformation_term_tp
   deformation_term_tp(int c, BlockElt b) : coef(c),elt(b) {}
 };
 
-class Rep_table {
+class Rep_table : public Rep_context
+{
   struct location { unsigned block; BlockElt elt; };
   typedef std::vector<std::vector<Split_integer> > KL_table;
 
-  const Rep_context& context;
   std::vector<StandardRepr> pool;
   HashTable<StandardRepr,unsigned long> hash;
   std::vector<location> loc;
@@ -172,11 +175,10 @@ class Rep_table {
   std::vector<SR_poly> def_formula;
 
  public:
-  Rep_table(const Rep_context& c)
-    : context(c), pool(), hash(pool), loc(), block_list(), def_formula() {}
+  Rep_table(RealReductiveGroup &G)
+    : Rep_context(G), pool(), hash(pool), loc(), block_list(), def_formula()
+  {}
 
-  const Rep_context& rc() const { return context; }
-  size_t rank() const;
   std::vector<deformation_term_tp>
     deformation_terms (non_integral_block& block,BlockElt entry_elem);
   SR_poly deformation(const StandardRepr& z);

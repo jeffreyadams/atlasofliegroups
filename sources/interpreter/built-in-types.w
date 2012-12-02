@@ -3603,23 +3603,22 @@ void deform_wrapper(expression_base::level l)
   test_standard(*p);
   if (l!=expression_base::no_value)
   {
-    const Rep_context& rc= p->rc();
-    repr::Rep_table rt(rc);
+    repr::Rep_table rt(p->rf->val);
 
-    non_integral_block block(rc,p->val); // partial block construction
+    non_integral_block block(rt,p->val); // partial block construction
     std::vector<repr::deformation_term_tp> terms
        = rt.deformation_terms(block,block.size()-1);
 
     virtual_module_ptr acc
-      (new virtual_module_value(p->rf, repr::SR_poly(rc.repr_less())));
+      (new virtual_module_value(p->rf, repr::SR_poly(rt.repr_less())));
     const RatWeight& gamma=block.gamma();
     for (unsigned i=0; i<terms.size(); ++i)
     { BlockElt z=terms[i].elt;
       StandardRepr param_z =
-        rc.sr(block.parent_x(z),block.lambda_rho(z),gamma);
+        rt.sr(block.parent_x(z),block.lambda_rho(z),gamma);
       Split_integer coef(terms[i].coef,-terms[i].coef);
         // multiply integer |coef| by $1-s$
-      acc->val.add_multiple(rc.expand_final(param_z),coef);
+      acc->val.add_multiple(rt.expand_final(param_z),coef);
     }
     push_value(acc);
   }
@@ -3636,7 +3635,7 @@ void full_deform_wrapper(expression_base::level l)
   test_standard(*p);
   if (l!=expression_base::no_value)
   {
-    repr::Rep_table rt(p->rc());
+    repr::Rep_table rt(p->rf->val);
     repr::SR_poly result = rt.deformation(p->val);
     push_value (new virtual_module_value(p->rf,result));
   }
