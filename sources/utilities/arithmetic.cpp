@@ -107,6 +107,34 @@ unsigned long power(unsigned long x, unsigned int n)
   return result;
 }
 
+Rational& Rational::operator+=(long n) { num+=n*denom; return *this; }
+Rational& Rational::operator-=(long n) { num-=n*denom; return *this; }
+
+Rational& Rational::operator*=(long n)
+{ if (n==0)
+  { num=0; denom=1; }
+  else
+  {
+    if (n<0)
+    { n=-n; num=-num; }
+    if (denom%n==0)
+      denom/=n;
+    else
+      num*=n;
+  }
+  return *this;
+}
+
+Rational& Rational::operator/=(long n)
+{ if (n<0)
+  { n=-n; num=-num; }
+  if (num%n==0)
+    num/=n;
+  else
+    denom*=n;
+  return *this;
+}
+
 Rational Rational::operator+(Rational q) const
 {
   unsigned long sum_denom=lcm(denom,q.denom);

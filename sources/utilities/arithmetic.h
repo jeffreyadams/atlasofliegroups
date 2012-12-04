@@ -79,6 +79,11 @@ public:
   Rational& operator*=(Rational q) { return operator=(operator*(q)); }
   Rational& operator/=(Rational q) { return operator=(operator/(q)); }
 
+  Rational& operator+=(long n);
+  Rational& operator-=(long n);
+  Rational& operator*=(long n);
+  Rational& operator/=(long n);
+
   bool operator==(Rational q) const { return num*q.denom==denom*q.num; }
   bool operator!=(Rational q) const { return num*q.denom!=denom*q.num; }
   bool operator<(Rational q)  const { return num*q.denom<denom*q.num; }
