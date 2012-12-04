@@ -3611,11 +3611,8 @@ void deform_wrapper(expression_base::level l)
 
     virtual_module_ptr acc
       (new virtual_module_value(p->rf, repr::SR_poly(rt.repr_less())));
-    const RatWeight& gamma=block.gamma();
     for (unsigned i=0; i<terms.size(); ++i)
-    { BlockElt z=terms[i].elt;
-      StandardRepr param_z =
-        rt.sr(block.parent_x(z),block.lambda_rho(z),gamma);
+    { StandardRepr param_z = rt.sr(block,terms[i].elt);
       Split_integer coef(terms[i].coef,-terms[i].coef);
         // multiply integer |coef| by $1-s$
       acc->val.add_multiple(rt.expand_final(param_z),coef);

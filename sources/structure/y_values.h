@@ -71,7 +71,7 @@ class TorusElement
     return repr.scalarProduct(alpha)%2!=0; // true if evaluates to odd integer
   }
 
-  // evaluation giving rational number modulo 2, normalised to interval [0,2)
+  // evaluation giving rational number modulo 2, represented in interval [0,2)
   Rational evaluate_at(const Coweight& alpha) const;
 
 // a method for rapidly doing imaginary cross action (for completing fiber)

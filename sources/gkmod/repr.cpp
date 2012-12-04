@@ -532,12 +532,10 @@ SR_poly Rep_table::deformation(const StandardRepr& z)
     Rational r=rp[i];
     const StandardRepr zi = sr(z.x(),lam_rho,nu_z*r);
     non_integral_block b(*this,zi);
-    const RatWeight& gamma=b.gamma(); // NOT |zi.gamma()|, is made dominant!
     std::vector<deformation_term_tp> def_term = deformation_terms(b,b.size()-1);
     for (unsigned j=0; j<def_term.size(); ++j)
     {
-      BlockElt eij=def_term[j].elt;
-      StandardRepr zij = sr(b.parent_x(eij),b.lambda_rho(eij),gamma);
+      StandardRepr zij = sr(b,def_term[j].elt);
       Split_integer coef(def_term[j].coef,-def_term[j].coef);
       result.add_multiple(deformation(zij),coef);
     }
