@@ -1027,6 +1027,7 @@ private:
   std::vector<TorusPart> dual_m_alpha; // the simple roots, reduced modulo 2
   std::vector<TorusElement> half_alpha; // half the simple roots
 
+  void check_y(const TorusElement& t, InvolutionNbr i) const;
   void parent_cross_act(nblock_elt& z, weyl::Generator s) const;
   void parent_up_Cayley(nblock_elt& z, weyl::Generator s) const;
   void parent_down_Cayley(nblock_elt& z, weyl::Generator s) const;
@@ -1053,10 +1054,24 @@ public:
   bool is_real_nonparity(nblock_elt z, weyl::Generator s) const; // by value
 
   y_entry pack_y(const nblock_elt& z) const
-  { return i_tab.pack(z.y(),kgb.inv_nr(z.x())); }
+  {
+    InvolutionNbr i = kgb.inv_nr(z.x());
+#ifndef NDEBUG
+    check_y(z.y(),i);
+#endif
+    return i_tab.pack(z.y(),i);
+  }
 }; // |class nblock_help|
 
-void nblock_help::parent_cross_act (nblock_elt& z, weyl::Generator s) const
+void nblock_help::check_y(const TorusElement& t, InvolutionNbr i) const
+{
+  InvolutionData id = sub.involution_data(i_tab.matrix(i));
+  const RootNbrList& rb = id.real_basis();
+  for (unsigned i=0; i<rb.size(); ++i)
+    assert(t.evaluate_at(rd.coroot(rb[i])).normalize().denominator()==1);
+}
+
+void nblock_help::parent_cross_act(nblock_elt& z, weyl::Generator s) const
 {
   switch (kgb.status(s,z.x()))
   {
@@ -1087,11 +1102,19 @@ void nblock_help::cross_act (nblock_elt& z, weyl::Generator s) const
 void nblock_help::parent_up_Cayley(nblock_elt& z, weyl::Generator s) const
 {
   z.xx=kgb.cayley(s,z.xx); // direct Cayley transform on $x$ side
-  // on $y$ side ensure that |z.yy.evaluate_at(rd.simpleCoroot(s))| is even
-  Rational r = z.yy.evaluate_at(rd.simpleCoroot(s)).normalize(); // in $\Q/2\Z$
-  assert(r.denominator()==1); // should be integer: real coroot
-  if (r.numerator()%2!=0) // odd
-    z.yy+=half_alpha[s]; // correct by \emph{half} root $s$
+
+  /* on $y$ side ensure that |z.yy.evaluate_at(rd.simpleCoroot(s))| is even.
+   We must adapt by adding a multiple of |simpleRoot(s)|. This may be a
+   half-integer multiple even if the initial evaluation is integer, and due to
+   that we cannot ensure that the evaluation of |z.yy| on all roots remains
+   integer (it will be on real roots, but roots can change their status). In
+   the end, adjustment is by a general rational multiple of |simpleRoot(s)|.
+  */
+  Rational r = z.yy.evaluate_at(rd.simpleCoroot(s))/=2; // in $\Q/\Z$
+  int remainder = r.numerator()%r.denominator(); // negative result is OK here
+  if (remainder!=0) // odd
+    z.yy-=TorusElement(RatWeight(rd.simpleRoot(s)*remainder,r.denominator()),
+		       false);
 }
 
 void nblock_help::do_up_Cayley (nblock_elt& z, weyl::Generator s) const
@@ -1673,9 +1696,9 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
 
   { // check if already known, but don't add to |z_hash| yet if not
     BlockElt res = z_hash.find(block_elt_entry(z.x(),y));
-    if (res!=z_hash.empty) return res;
+    if (res!=z_hash.empty)
+      return res;
   }
-
 
   BlockEltList pred; // will hold list of elements covered by z
 
@@ -1759,8 +1782,8 @@ BlockElt partial_nblock_help::nblock_below (const nblock_elt& z)
 	  }
 	}
 	break;
-      }
-    }
+      } // |switch(status(s,conj_x))|
+    } // |for (i)|
 
   // finally we can add |z| to |z_hash|, after all its Bruhat-predecessors
   assert(z_hash.size()==predecessors.size());
