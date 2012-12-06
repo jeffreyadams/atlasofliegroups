@@ -1191,7 +1191,7 @@ void deform_f()
 	<< (s<sub.rank()-1 ? "," : ".\n");
   }
 
-  repr::Rep_table rt(GR);
+  Rep_table rt(GR);
   StandardRepr sr = rt.sr(x,lambda_rho,gamma);
 
   BlockElt entry_elem;

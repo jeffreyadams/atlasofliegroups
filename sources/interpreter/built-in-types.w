@@ -2036,7 +2036,7 @@ struct real_form_value : public value_base
   RealReductiveGroup val;
 @)
   real_form_value(const inner_class_value& p,RealFormNbr f) @/
-  : parent(p), val(p.val,f),rc_p(NULL) @+{}
+  : parent(p), val(p.val,f),rt_p(NULL) @+{}
 @)
   virtual void print(std::ostream& out) const;
   real_form_value* clone() const @+
@@ -2045,21 +2045,22 @@ struct real_form_value : public value_base
   const KGB& kgb () @+{@; return val.kgb(); }
    // generate and return $K\backslash G/B$ set
   const Rep_context& rc();
-  ~real_form_value() @+{@; delete rc_p; }
+  Rep_table& rt();
+  ~real_form_value() @+{@; delete rt_p; }
 protected:
   real_form_value(const inner_class_value&,RealFormNbr,tags::DualTag);
   real_form_value(const real_form_value& v)
-  : parent(v.parent), val(v.val), rc_p(v.rc_p) @+{}
+  : parent(v.parent), val(v.val), rt_p(v.rt_p) @+{}
 private:
-  Rep_context* rc_p;
+  Rep_table* rt_p;
     // owned pointer, initially |NULL|, assigned at most once
 };
 @)
 typedef std::auto_ptr<real_form_value> real_form_ptr;
 typedef std::tr1::shared_ptr<real_form_value> shared_real_form;
 
-@ The method |rc| ensures a |Rep_context| value is constructed at
-|*rc_p|, and returns a reference. The value so obtained will serve to
+@ The methods |rc| and |rt| ensure a |Rep_table| value is constructed at
+|*rt_p|, and returns a reference. The value so obtained will serve to
 manipulate parameters for standard modules, for which we shall define a
 built-in type below. Storing the value here ensures that it will be shared
 between different parameters, and that it will live as long as those parameter
@@ -2069,7 +2070,9 @@ concrete need.
 
 @< Function def...@>=
   const Rep_context& real_form_value::rc()
-    {@; return *(rc_p==NULL ? rc_p=new Rep_context(val) : rc_p); }
+    {@; return *(rt_p==NULL ? rt_p=new Rep_table(val) : rt_p); }
+  Rep_table& real_form_value::rt()
+    {@; return *(rt_p==NULL ? rt_p=new Rep_table(val) : rt_p); }
 
 @ When printing a real form, we give the name by which it is known in the
 parent inner class, and provide some information about its connectedness.
@@ -2195,7 +2198,7 @@ correct.
 
 real_form_value::real_form_value(const inner_class_value& p,RealFormNbr f
 				,tags::DualTag)
-: parent(p), val(p.dual,f), rc_p(NULL)
+: parent(p), val(p.dual,f), rt_p(NULL)
 @+{}
 
 @ In order to be able to use the same layout for dual real forms but to
@@ -2819,6 +2822,7 @@ struct module_parameter_value : public value_base
   static const char* name() @+{@; return "module parameter"; }
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
+  Rep_table& rt() const @+{@; return rf->rt(); }
 private:
   module_parameter_value(const module_parameter_value& v)  // copy constructor
   : rf(v.rf),val(v.val) @+ {}
@@ -3400,6 +3404,7 @@ struct virtual_module_value : public value_base
   static const char* name() @+{@; return "module parameter"; }
 @)
   const Rep_context& rc() const @+{@; return rf->rc(); }
+  repr::Rep_context& rt() const @+{@; return rf->rt(); }
 private:
   virtual_module_value(const virtual_module_value& v)
   @+ : rf(v.rf),val(v.val) @+{} // copy
@@ -3603,26 +3608,24 @@ void deform_wrapper(expression_base::level l)
   test_standard(*p);
   if (l!=expression_base::no_value)
   {
-    repr::Rep_table rt(p->rf->val);
-
-    non_integral_block block(rt,p->val); // partial block construction
+    non_integral_block block(p->rc(),p->val); // partial block construction
     std::vector<repr::deformation_term_tp> terms
-       = rt.deformation_terms(block,block.size()-1);
+       = p->rt().deformation_terms(block,block.size()-1);
 
     virtual_module_ptr acc
-      (new virtual_module_value(p->rf, repr::SR_poly(rt.repr_less())));
+      (new virtual_module_value(p->rf, repr::SR_poly(p->rc().repr_less())));
     for (unsigned i=0; i<terms.size(); ++i)
-    { StandardRepr param_z = rt.sr(block,terms[i].elt);
+    { StandardRepr param_z = p->rc().sr(block,terms[i].elt);
       Split_integer coef(terms[i].coef,-terms[i].coef);
         // multiply integer |coef| by $1-s$
-      acc->val.add_multiple(rt.expand_final(param_z),coef);
+      acc->val.add_multiple(p->rc().expand_final(param_z),coef);
     }
     push_value(acc);
   }
 }
 
 @ Here is a recursive form of this deformation, which stores intermediate
-results for efficiency in a |repr::Rep_table structure|. Though this structure
+results for efficiency in a |Rep_table| structure. Though this structure
 should really be associated to and saved with the real form, we currently hold
 it in a local variable of this wrapper function.
 
@@ -3632,8 +3635,7 @@ void full_deform_wrapper(expression_base::level l)
   test_standard(*p);
   if (l!=expression_base::no_value)
   {
-    repr::Rep_table rt(p->rf->val);
-    repr::SR_poly result = rt.deformation(p->val);
+    repr::SR_poly result = p->rt().deformation(p->val);
     push_value (new virtual_module_value(p->rf,result));
   }
 }

@@ -397,10 +397,12 @@ namespace atlas {
 
   namespace repr {
     class StandardRepr;	// triple $(x,\lambda,\gamma)$
-    class Rep_context;	// support class for interpreting |StandardRepr;|
+    class Rep_context;	// support class for interpreting |StandardRepr|
+    class Rep_table;	// storage class for |StandardRepr| compuations
   }
   using repr::StandardRepr;
   using repr::Rep_context;
+  using repr::Rep_table;
 
   namespace realform_io { class Interface; } // maps internals to names
   namespace complexredgp_io { class Interface; } // a pair of the above
