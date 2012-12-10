@@ -20,68 +20,59 @@ set test([(Param,bool)] parameters)= bool:
                  " parameters for ",real_form(p))
   in
   for (p,answer)@i in parameters do
-    let (c_form,,num)=c_form_irreducible_long(p)
+    let (c_form,list)=c_form_irreducible_long(p)
     then form=convert_cform_hermitian(c_form)
     then unitary=is_unitary(form)
     in
     if unitary !=answer then rv:=false fi
   ; prints(i, ", ",p, ", ", unitary, ", ", answer,
-           ", ", #(reducibility_points(p)),", ", num)
+           ", ", #(reducibility_points(p)),", ", #list)
   od
 ; prints("Result: ",if rv then "Passed" else "Failed" fi); rv
 )
 
-{ special case of the preceding, test list of parameters for unitarity,
-  all are supposed to be unitary }
-set test_unitary([Param] parameters)= bool:
-  test(for p in parameters do (p,true) od)
+{ prepare parameters, all are supposed to be unitary }
+set all_unitary([Param] parameters)= [(Param,bool)]:
+  for p in parameters do (p,true) od
 
-{ test list [(nu,answer)] for G:
-  test  spherical_principal_series(G,nu) if unitarity matches answer }
-set test_spherical(RealForm G,[(ratvec,bool)] parameters)=bool:
-  test(for (nu,answer) in parameters
-       do (spherical_principal_series(G,nu),answer)
-       od)
+{ prepare parameters from |nu| values only }
+set spherical_mixed(RealForm G,[(ratvec,bool)] nu_pairs)=  [(Param,bool)]:
+  for (nu,ans) in nu_pairs do (spherical_principal_series(G,nu),ans) od
 
-{ test list [nu] for G:
-  each spherical_principal_series(G,nu) should be unitary }
-set test_spherical_unitary(RealForm G,[ratvec] nus)= bool:
-  test_spherical(G,for nu in nus do (nu,true) od)
+set spherical(RealForm G,[ratvec] nus)= [Param]:
+  for nu in nus do spherical_principal_series(G,nu) od
 
 { for simple types, test spherical representations with nu=1/2 h(O^\vee)
   G should be simple, split, SL(n,R), Sp(2n,R), SO(n,n),SO(n+1,n)
-  or simply connected
-  see nilpotent_lambdas in nilpotent.rx }
-set test_spherical_unipotent(RealForm G)= bool:
-  if #Lie_type(root_datum(G))>1 then error("Only defined for simple groups")
-  else test_spherical_unitary(G,nilpotent_lambdas(G))
-  fi
+  or simply connected;  see nilpotent_lambdas in nilpotent.rx }
+set spherical_unipotent(RealForm G)= [Param]:
+( if #Lie_type(root_datum(G))>1 then error("Not a simple group") fi
+; spherical(G,nilpotent_lambdas(G))
+)
 
 { a series of tests if increasing length }
 { very fast tests }
-set test1()=test_spherical_unipotent(Sp(4,R))
-set test2()=test_spherical_unipotent(split_form(G2))
-set test3()=test_spherical_unipotent(Sp(6,R))
+set test1()=test(all_unitary(spherical_unipotent(Sp(4,R))))
+set test2()=test(all_unitary(spherical_unipotent(split_form(G2))))
+set test3()=test(all_unitary(spherical_unipotent(Sp(6,R))))
 set test4()=
-  let b1=trivial_block(quasisplit_form(inner_class(adjoint("G2"),"e")))
-  , answer=[true,true,true,true,true,false,false,false,false,true,false,false]
-  in test (for i:#b1 do (b1[i],answer[i]) od)
+  let G2=quasisplit_form(inner_class(adjoint("G2"),"e"))
+  in test (for p@i in trivial_block(G2) do (p,i<5 or i=9) od)
 
 { slightly longer, up to a few minutes }
-set test5()=test_spherical_unipotent(SO(5,4))
-set test6()=
-  let b1=trivial_block(Sp(4,R))
-  , answer=[true,true,true,true,true,true,true,false,false,false,true,false]
-  in test(for i:#b1 do (b1[i],answer[i]) od)
+set test5()= test(all_unitary(spherical_unipotent(SO(5,4))))
+set test6()= test(for p@i in trivial_block(Sp(4,R)) do (p,i<7 or i=10) od)
 
 { first 49 of 59 spherical unitary parameters for F4 }
 set test7()= bool:
-  test_spherical_unitary(split_form(F4),for i:49 do F4_spherical_unitary[i] od)
+  test(all_unitary(spherical(split_form(F4)
+			    ,for i:49 do F4_spherical_unitary[i] od)))
 
 { first 100 of spherical unitary for E7
   requires more memory}
 set test8()= bool:
-  test_spherical_unitary(split_form(E7),for i:100 do E7_spherical_unitary[i] od)
+  test(all_unitary(spherical(split_form(E7)
+			    ,for i:100 do E7_spherical_unitary[i] od)))
 
 
 { trivial of F4 takes up to two hours }

@@ -1,5 +1,4 @@
 <misc.rx
-<iterate_deform.rx  {the old deform.rx has been renamed}
 <kl.rx
 
 { a varable used in this file; set to true for more output from functions }
@@ -10,11 +9,13 @@ set -(ParamPol P,ParamPol Q) = ParamPol: P+(-1)*Q
 { test equality of ParamPols }
 set =(ParamPol P,ParamPol Q) = bool: #(P-Q)=0
 
+{ order of operands in the next function avoids conflicting *@(int,ParamPol) }
+set *(Param p,rat alpha) = let (x,lambda,nu)=%p in param(x,lambda,alpha*nu)
+
 {set nu=0 in Param (x,lambda,nu) }
-set zeronu (Param p) = Param:
-  let (x,lamrho,nu) = %p in param(x,lamrho,null_wt(#nu))
-set zeronu (ParamPol P)= ParamPol:
-  null_module(real_form(P)) + for w@p in P do (w,zeronu(p)) od
+set make_no0 (Param p) = p*0
+set make_nu0 (ParamPol P)= ParamPol:
+  null_module(real_form(P)) + for w@p in P do (w,p*0) od
 
 { orientation_number_term(p,q) = s^{[\ell_0(p)-\ell_0(q)]/2}= 1 or s }
 set orientation_number_term (Param p,Param q) = Split:
@@ -27,12 +28,10 @@ set orientation_number_term (Param p,Param q) = Split:
 { c_form_std:
   write c-invariant form on standard module in terms of standardrepks,
   as a ParamPol
-  just adds the initial term to iterate_deform(p)
 }
-set c_form_std (Param p) = (ParamPol,int):
+set c_form_std (Param p) = (ParamPol):
 ( if hermitian_debug then prints("computing c-form on standard module: ",p) fi
-; (let ((p_deformed,poly),count) = iterate_deform(p)
-   in (poly+p_deformed,count))
+; full_deform(p)
 )
 
 { c_form_irreducible(y) returns a ParamPol of standardrepks
@@ -51,33 +50,30 @@ set c_form_std (Param p) = (ParamPol,int):
 }
 
 
-set c_form_irreducible_long (Param p) =
-  (ParamPol,[(Param,Split,ParamPol)],int):
-( let (block,init,kl,polys,stops,indices,cumulation)=KL_block (p)
-  then klpolys=signedKL(init,kl,polys,stops,indices,cumulation)
-  , count=0, P=null_module(real_form(p))
+set c_form_irreducible_long (Param p) = (ParamPol,[(Param,Split,ParamPol)]):
+( let (block,kl,polys,stops,indices,cumulation)=partial_block (p)
+  then klpolys=signedKL(#block-1,kl,polys,stops,indices,cumulation)
+  , P=null_module(real_form(p))
   , standards=[(Param,Split,ParamPol)]: []
   in
-  for i:#indices do { careful: first check if poly is zero polynomial }
-   let poly=strip(klpolys[i]) in
-   if #poly>0 then
-     let q=block[indices[i]]
-     then (form_on_standard,std_count)=c_form_std(q)
-     , factor=orientation_number_term(q,p)*eval(poly,s)
-     in
-       count +:= std_count
-     ; P +:= factor*form_on_standard
-     ; standards #:= (q,factor,form_on_standard)
-   fi
+  for i:#indices downto 0 do
+    let ev = at_s(klpolys[i]), q=block[indices[i]] in
+    if ev!=0 { this saves considerable time }
+    then
+      let form_on_standard=c_form_std(q)
+      , factor=ev*orientation_number_term(q,p)
+      in P +:= factor*form_on_standard
+      ; standards #:= (q,factor,form_on_standard)
+    fi
   od
-; (P,standards,count)
+; (P,standards)
 )
 
 set c_form_irreducible (Param p)= ParamPol:
-  let (rv,,)=c_form_irreducible_long(p) in rv
+  let (rv,)=c_form_irreducible_long(p) in rv
 
 set print_c_form_irreducible_long (Param p) = void:
-  let (f,b,count)=c_form_irreducible_long(p) in
+  let (f,b)=c_form_irreducible_long(p) in
 ( for (q,coeff,Q) in b
   do prints("")
   ; prints("standard module: ",q)
@@ -87,7 +83,6 @@ set print_c_form_irreducible_long (Param p) = void:
   od
 ; prints(""); prints("c-form on irreducible module:")
 ; prints(p, " at ",infinitesimal_character(p)); prettyPrint(f)
-; prints(""); prints("Number of deformations: ",count)
 )
 
 { analyse }
@@ -116,14 +111,6 @@ end
   then the sum is (1+theta)(lambda+rho)/2 on T
 }
 set lambda_plus_rho_res_T(KGBElt x,ratvec lambda) = ratvec:
-  let G=real_form(x)
-  then nu=null(rank(G))/1
-  then rho_res_T_tilde=infinitesimal_character(param(x,null(rank(G)),nu))
-  , lambda_minus_rho_res_T_tilde =
-      infinitesimal_character(param(x,ratvectovec(lambda-rho(G)),nu))
-  in rho_res_T_tilde+lambda_minus_rho_res_T_tilde
-
-set lprrT(KGBElt x,ratvec lambda) = ratvec: { a simpler way to do the same }
   let lpr=lambda+rho(real_form(x)) in (lpr+involution(x)*lpr)/2
 
 { mu(p) is the value of the lowest K-type of p, evaluated at x(p) }
@@ -133,7 +120,7 @@ set mu(Param p) = rat:
   (torus_factor(x(p))+rhocheck(real_form(p)))
 
 set convert_cform_hermitian (ParamPol P)= ParamPol:
-  if #P=0 then P { since we cannot select a term for a null polynpomial }
+  if #P=0 then P { since we cannot select a term for a null polynomial }
   else
     let a_mu = mu( for w@p in P do p od [0] ) { mu of the first term }
     in null_module(real_form(P)) +
@@ -166,7 +153,7 @@ set print_hermitian_form_irreducible([Param] P) = void:
    \sum a_i I_i[nu=0]=\sum_j w_j[s=1]I_j
 }
 { set test_form (ParamPol P,Param p)=
-  if P#1 = zeronu(character_formula(p)) then
+  if P#1 = make_nu0(character_formula(p)) then
     prints("Passed") else prints("Failed")
   fi
 }
@@ -210,11 +197,9 @@ set test_line (Param p) = void:
   in prints("testing line through ", p)
 ; prints("reducibility points: ",points)
 ; prints("integrality points (for 2*nu): ",ipoints)
-; if #points=0 and is_final(zeronu(p))
-  then prints("entire line is irreducible and unitary")
-  elif #points=0 and not is_final(zeronu(p))
-  then prints
-    ("entire line (nu>0) is irreducible and unitary (nu=0 is not final)")
+; if #points=0
+  then prints("entire line is irreducible and unitary"
+       	     ,if is_final(p*0) then "" else " (nu=0 is not final)" fi)
   else
     let points=0#points in
     if not points[#points-1]=1/1 then points:=points#1/1 fi

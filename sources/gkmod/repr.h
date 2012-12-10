@@ -166,18 +166,24 @@ struct deformation_term_tp
 class Rep_table : public Rep_context
 {
   struct location { unsigned block; BlockElt elt; };
+  typedef std::vector<location> loc_list;
   typedef std::vector<std::vector<Split_integer> > KL_table;
 
   std::vector<StandardRepr> pool;
   HashTable<StandardRepr,unsigned long> hash;
-  std::vector<location> loc;
+  std::vector<loc_list> loc;
   std::vector<KL_table> block_list;
   std::vector<SR_poly> def_formula;
+
+  unsigned long deformations,calls,hits,doublures;
 
  public:
   Rep_table(RealReductiveGroup &G)
     : Rep_context(G), pool(), hash(pool), loc(), block_list(), def_formula()
+    , deformations(0),calls(0),hits(0),doublures(0)
   {}
+
+  ~Rep_table();
 
   std::vector<deformation_term_tp>
     deformation_terms (non_integral_block& block,BlockElt entry_elem);
