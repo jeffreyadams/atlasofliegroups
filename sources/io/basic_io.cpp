@@ -23,6 +23,8 @@
 
 #include "prettyprint.h" // |printPol| (why isn't this needed?)
 
+#include "repr.h" // printing of parameters and parameter polynomials
+
 /*****************************************************************************
 
         Chapter I -- operator<< functions
@@ -150,6 +152,44 @@ namespace ratvec {
   }
 
 } // |namespace ratvec|
+
+namespace arithmetic {
+
+  std::ostream& operator<< (std::ostream& strm, const Split_integer& s)
+  { return strm << '(' << s.e() << '+' << s.s() << "s)"; }
+
+} // |namespace arithmetic|
+
+namespace repr {
+
+  std::ostream& Rep_context::print (std::ostream& str,const StandardRepr& z)
+    const
+  {
+    return
+      str << "{x=" << z.x()
+	  << ",lambda=" << lambda(z)
+	  << ",nu=" << nu(z) << '}';
+  }
+
+  std::ostream& Rep_context::print (std::ostream& str,const SR_poly& P) const
+  {
+    for (SR_poly::const_iterator it=P.begin(); it!=P.end(); ++it)
+      print(str << (it==P.begin() ?"":"+") << it->second, it->first)
+	<< std::endl;
+    return str;
+  }
+
+  Rep_table::~Rep_table()
+  {
+    std::cerr << "\nTotal blocks: " << block_list.size()
+	      << ", deformations: "<< deformations
+	      << ", calls: "<< calls << ", hits: " << hits
+	      << ", doublures: " << doublures << std::endl;
+  }
+
+} // |namespace repr|
+
+
 
 // binary input
 

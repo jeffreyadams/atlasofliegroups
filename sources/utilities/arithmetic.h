@@ -79,6 +79,11 @@ public:
   Rational& operator*=(Rational q) { return operator=(operator*(q)); }
   Rational& operator/=(Rational q) { return operator=(operator/(q)); }
 
+  Rational& operator+=(long n);
+  Rational& operator-=(long n);
+  Rational& operator*=(long n);
+  Rational& operator/=(long n);
+
   bool operator==(Rational q) const { return num*q.denom==denom*q.num; }
   bool operator!=(Rational q) const { return num*q.denom!=denom*q.num; }
   bool operator<(Rational q)  const { return num*q.denom<denom*q.num; }
@@ -116,6 +121,7 @@ class Split_integer
   Split_integer& operator*= (int n) { real_part*=n; s_part*=n; return *this; }
   Split_integer& operator*= (Split_integer y) { return *this=operator*(y); }
   Split_integer& negate() { real_part=-e(); s_part=-s(); return *this; }
+  Split_integer& times_s() { std::swap(real_part,s_part); return *this; }
   Split_integer& times_1_s() { real_part= -(s_part-=e()); return *this; }
 
 }; // |class Split_integer|

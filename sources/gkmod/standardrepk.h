@@ -43,10 +43,10 @@ typedef q_Char::coef_t q_CharCoeff; // i.e., |Polynomial<int>|
 
 // remaining definitions could be in atlas_types.h, but seem module-specific
 
-typedef free_abelian::Free_Abelian<seq_no,long int,graded_compare> combination;
+typedef Free_Abelian<seq_no,long int,graded_compare> combination;
 typedef std::pair<seq_no,combination> equation;
 
-typedef free_abelian::Free_Abelian<seq_no,q_CharCoeff,graded_compare> q_combin;
+typedef Free_Abelian<seq_no,q_CharCoeff,graded_compare> q_combin;
 typedef std::pair<seq_no,q_combin> q_equation;
 
 
@@ -56,7 +56,7 @@ template <typename C>
   matrix::Matrix_base<C> triangularize
     (const std::vector<
        std::pair<seq_no,
-                 free_abelian::Free_Abelian<seq_no,C,graded_compare>
+                 Free_Abelian<seq_no,C,graded_compare>
                 > >& system,
      std::vector<seq_no>& new_order);
 

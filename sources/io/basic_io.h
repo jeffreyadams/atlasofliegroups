@@ -59,6 +59,12 @@ template<size_t dim>
   std::ostream& operator<< (std::ostream&, const BitVector<dim>&);
 }
 
+namespace arithmetic {
+
+  std::ostream& operator<< (std::ostream& strm, const Split_integer& s);
+
+} // |namespace arithmetic|
+
 namespace basic_io {
 
 // other functions

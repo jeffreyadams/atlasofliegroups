@@ -1191,8 +1191,8 @@ void deform_f()
 	<< (s<sub.rank()-1 ? "," : ".\n");
   }
 
-  Rep_context rc(GR);
-  StandardRepr sr = rc.sr(x,lambda_rho,gamma);
+  Rep_table rt(GR);
+  StandardRepr sr = rt.sr(x,lambda_rho,gamma);
 
   BlockElt entry_elem;
   non_integral_block block(GR,sr,entry_elem);
@@ -1203,7 +1203,7 @@ void deform_f()
   block.print_to(f,false);
 
   std::vector<repr::deformation_term_tp> terms
-    = repr::deformation_terms(block,entry_elem);
+    = rt.deformation_terms(block,entry_elem);
 
   f << "Orientation numbers:\n";
   bool first=true;
@@ -1212,8 +1212,8 @@ void deform_f()
     {
       if (first) first=false;
       else f<< ", ";
-      StandardRepr r = rc.sr(block.parent_x(x),block.lambda_rho(x),gamma);
-      f << x << ": " <<  rc.orientation_number(r);
+      StandardRepr r = rt.sr(block,x);
+      f << x << ": " <<  rt.orientation_number(r);
     }
   f << ".\n";
 

@@ -2,7 +2,7 @@
 /*
   This is repr.h
 
-  Copyright (C) 2009 Marc van Leeuwen
+  Copyright (C) 2009-2012 Marc van Leeuwen
   part of the Atlas of Lie Groups and Representations
 
   See file main.cpp for full copyright notice
@@ -11,12 +11,18 @@
 #ifndef REPR_H  /* guard against multiple inclusions */
 #define REPR_H
 
+#include <iostream>
+
 #include "atlas_types.h"
 
 #include "matrix.h"	// containment
 #include "ratvec.h"	// containment
 
 #include "realredgp.h"	// inlines
+
+#include "hashtable.h"
+#include "free_abelian.h"
+#include "arithmetic.h" // |SplitInteger|
 
 namespace atlas {
 
@@ -91,6 +97,7 @@ class Rep_context
   const TitsGroup& titsGroup() const { return G.titsGroup(); }
   const TitsCoset& basedTitsGroup() const { return G.basedTitsGroup(); }
   const KGB& kgb() const { return KGB_set; }
+  size_t rank() const;
 
   const TwistedInvolution twistedInvolution(size_t cn) const;
 
@@ -103,6 +110,8 @@ class Rep_context
     sr(KGBElt x,
        const Weight lambda_rho,
        const RatWeight& nu) const;
+
+  StandardRepr sr(const non_integral_block& b, BlockElt i) const;
 
   // component extraction
   Weight lambda_rho(const StandardRepr& z) const;
@@ -121,9 +130,9 @@ class Rep_context
   unsigned int orientation_number(const StandardRepr& z) const;
 
   // prepare for |deform|: make |gamma| dominant, and as theta-stable as can be
-  StandardRepr& make_dominant(StandardRepr& z) const;
+  void make_dominant(StandardRepr& z) const;
 
-  RationalList reducibility_points(StandardRepr& z) const;
+  RationalList reducibility_points(const StandardRepr& z) const;
 
   class compare
   { Coweight level_vec; // linear form to apply to |gamma| for ordering
@@ -135,11 +144,18 @@ class Rep_context
 
   compare repr_less() const;
 
-  typedef free_abelian::Free_Abelian<StandardRepr,Split_integer,compare> poly;
+  typedef Free_Abelian<StandardRepr,Split_integer,compare> poly;
 
   poly expand_final(StandardRepr z) const; // express in final SReprs (by value)
 
+  // I/O operations, implemented in basic_io.cpp
+  std::ostream& print (std::ostream&,const StandardRepr& z) const;
+  std::ostream& print (std::ostream&,const poly& P) const;
+
 }; // |Rep_context|
+
+typedef Rep_context::poly SR_poly;
+
 
 struct deformation_term_tp
 { int coef;     // coefficient (an additional factor $1-s$ is implicit)
@@ -147,10 +163,36 @@ struct deformation_term_tp
   deformation_term_tp(int c, BlockElt b) : coef(c),elt(b) {}
 };
 
-std::vector<deformation_term_tp>
-deformation_terms (non_integral_block& block,BlockElt z);
+class Rep_table : public Rep_context
+{
+  struct location { unsigned block; BlockElt elt; };
+  typedef std::vector<location> loc_list;
+  typedef std::vector<std::vector<Split_integer> > KL_table;
 
-typedef Rep_context::poly SR_poly;
+  std::vector<StandardRepr> pool;
+  HashTable<StandardRepr,unsigned long> hash;
+  std::vector<loc_list> loc;
+  std::vector<KL_table> block_list;
+  std::vector<SR_poly> def_formula;
+
+  unsigned long deformations,calls,hits,doublures;
+
+ public:
+  Rep_table(RealReductiveGroup &G)
+    : Rep_context(G), pool(), hash(pool), loc(), block_list(), def_formula()
+    , deformations(0),calls(0),hits(0),doublures(0)
+  {}
+
+  ~Rep_table();
+
+  std::vector<deformation_term_tp>
+    deformation_terms (non_integral_block& block,BlockElt entry_elem);
+  SR_poly deformation(const StandardRepr& z);
+
+}; // |Rep_table|
+
+
+// 				Functions
 
 
 } // |namespace repr|
