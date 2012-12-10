@@ -409,6 +409,120 @@ SR_poly Rep_context::expand_final(StandardRepr z) const // by value
   else return SR_poly(z,repr_less());
 } // |Rep_context::expand_final|
 
+unsigned long Rep_table::add_block
+  (non_integral_block& block, const BlockEltList& survivors)
+{
+  // first add an empty block to the table
+  unsigned long cur_block = block_list.size();
+  block_list.push_back(KL_table());
+  KL_table& KL=block_list.back();
+
+  // fill the |location| table for new surviving parameters in this block
+  for (BlockElt i=0; i<survivors.size(); ++i)
+  {
+    location here = { cur_block,i };
+    assert(hash.size()==loc.size());
+    unsigned long h=hash.match(sr(block,survivors[i]));
+    if (h==loc.size())
+      loc.push_back(loc_list(1,here));
+    else
+    {
+      loc[h].push_back(here);
+      ++doublures;
+    }
+  }
+  def_formula.resize(hash.size(),SR_poly(repr_less())); // allocate new slots
+
+  // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
+  // start with computing KL polynomials for the entire block
+  const kl::KLContext& klc = block.klc(block.size()-1,false); // silently
+
+  BlockElt n_surv = survivors.size(); // |BlockElt| now indexes |survivors|
+  KL.reserve(n_surv);
+
+  // get $P(x,z)$ for |xx<=zz<=entry_element| with |zz| among |survivors|
+  // and contribute to |P(x,z)| where |zz=survivors[z]|, $xx\to survivors[x]$
+  for (BlockElt zz=0; zz<n_surv; ++zz)
+  {
+    KL.push_back(std::vector<Split_integer>(zz+1,Split_integer(0)));
+    std::vector<Split_integer>& KL_zz=KL.back();
+
+    const BlockElt z = survivors[zz];
+    const unsigned int parity = block.length(z)%2;
+    for (BlockElt x=0; x <= z; ++x)
+    {
+      const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
+      // evaluate |pol| at $X:=s$ since that is will be stored
+      Split_integer eval(0);
+      for (polynomials::Degree d=pol.size(); d-->0; )
+	eval = eval.times_s()+Split_integer(static_cast<int>(pol[d]));
+      if (eval!=Split_integer(0))
+      {
+	if (block.length(x)%2!=parity)
+	  eval.negate(); // incorporate sign for length difference
+
+	// contribute |eval| to all |P(x,z)| for which |x| descends to
+	// |survivors[x]| (expressing the singular $I(x)$ as a survivor sum)
+	const BlockEltList nb=block.survivors_below(x);
+	for (BlockEltList::const_iterator it=nb.begin(); it!=nb.end(); ++it)
+	{
+	  BlockElt xx = std::lower_bound // look up |*it| in |survivors|
+	    (survivors.begin(),survivors.end(),*it)-survivors.begin();
+	  assert(xx<n_surv and survivors[xx]==*it); // must be found
+	  KL_zz[xx]+= eval;
+	} // |for (i)| in |nb|
+      } // |if(pol!=0)|
+    } // |for (x<=z)|
+  } // |for(z)|
+  return cur_block;
+}
+
+SR_poly Rep_table::KL_column_at_s(non_integral_block& block,BlockElt entry_elem)
+{
+
+  // count number of survivors of length strictly less than any occurring length
+  BlockEltList survivors; survivors.reserve(block.size());
+  for (BlockElt x=0; x<block.size(); ++x)
+    if (block.survives(x))
+      survivors.push_back(x);
+
+  unsigned long hash_index=hash.find(sr(block,entry_elem));
+  unsigned long cur_block; // set separately in both branches below
+  if (hash_index==hash.empty) // previously unknown parameter
+  {
+    cur_block = add_block(block,survivors);
+    hash_index=hash.find(sr(block,entry_elem));
+    assert(hash_index!=hash.empty);
+  }
+  else
+    cur_block=loc[hash_index][0].block;
+
+  const KL_table& KL = block_list[cur_block];
+  BlockElt ee = std::lower_bound // look up |entry_elem| in |survivors|
+    (survivors.begin(),survivors.end(),entry_elem)-survivors.begin();
+  assert(survivors[ee]==entry_elem); // must be found
+
+  SR_poly result(repr_less());
+  { // we must renumber |survivors| to point into block |cur_block|
+    BlockEltList remap(ee+1);
+
+    for (BlockElt xx=0; xx<=ee; ++xx)
+    {
+      unsigned long h=hash.find(sr(block,survivors[xx]));
+      assert(h!=hash.empty); // certainly the parameter must be known now
+      const loc_list& l=loc[h]; loc_list::const_reverse_iterator it;
+      for (it=l.rbegin(); it!=l.rend(); ++it) // lookup, last is most probable
+	if (it->block==cur_block)
+	{ remap[xx]=it->elt; break; }
+      assert(it!=l.rend()); // we should have found it
+    }
+    for (BlockElt xx=0; xx<=ee; ++xx)
+      if (remap[xx]<=remap[ee])
+	result.add_term(sr(block,survivors[xx]),KL[remap[ee]][remap[xx]]);
+  }
+  return result;
+}
+
 std::vector<deformation_term_tp>
 Rep_table::deformation_terms (non_integral_block& block,BlockElt entry_elem)
 {
@@ -437,71 +551,10 @@ Rep_table::deformation_terms (non_integral_block& block,BlockElt entry_elem)
 
   if (hash_index==hash.empty) // previously unknown parameter
   {
-    // first add an empty block to the table
-    cur_block = block_list.size();
-    block_list.push_back(KL_table());
-    KL_table& KL=block_list.back();
-
-    // fill the |location| table for new surviving parameters in this block
-    for (BlockElt i=0; i<survivors.size(); ++i)
-    {
-      location here = { cur_block,i };
-      assert(hash.size()==loc.size());
-      unsigned long h=hash.match(sr(block,survivors[i]));
-      if (h==loc.size())
-	loc.push_back(loc_list(1,here));
-      else
-      {
-	loc[h].push_back(here);
-	++doublures;
-      }
-    }
+    cur_block = add_block(block,survivors);
     hash_index=hash.find(sr(block,entry_elem));
     assert(hash_index!=hash.empty);
-    def_formula.resize(hash.size(),SR_poly(repr_less())); // allocate new slots
-
-    // compute cumulated KL polynomimals $P_{x,y}$ with $x\leq y$ survivors
-    // start with computing KL polynomials for the entire block
-    const kl::KLContext& klc = block.klc(block.size()-1,false); // silently
-
-    BlockElt n_surv = survivors.size(); // |BlockElt| now indexes |survivors|
-    KL.reserve(n_surv);
-
-    // get $P(x,z)$ for |xx<=zz<=entry_element| with |zz| among |survivors|
-    // and contribute to |P(x,z)| where |zz=survivors[z]|, $xx\to survivors[x]$
-    for (BlockElt zz=0; zz<n_surv; ++zz)
-    {
-      KL.push_back(std::vector<Split_integer>(zz+1,Split_integer(0)));
-      std::vector<Split_integer>& KL_zz=KL.back();
-
-      const BlockElt z = survivors[zz];
-      const unsigned int parity = block.length(z)%2;
-      for (BlockElt x=0; x <= z; ++x)
-      {
-	const kl::KLPol& pol = klc.klPol(x,z); // regular KL polynomial
-	// evaluate |pol| at $X:=s$ since that is will be stored
-	Split_integer eval(0);
-	for (polynomials::Degree d=pol.size(); d-->0; )
-	  eval = eval.times_s()+Split_integer(static_cast<int>(pol[d]));
-	if (eval!=Split_integer(0))
-	{
-	  if (block.length(x)%2!=parity)
-	    eval.negate(); // incorporate sign for length difference
-
-	  // contribute |eval| to all |P(x,z)| for which |x| descends to
-	  // |survivors[x]| (expressing the singular $I(x)$ as a survivor sum)
-	  const BlockEltList nb=block.survivors_below(x);
-	  for (BlockEltList::const_iterator it=nb.begin(); it!=nb.end(); ++it)
-	  {
-	    BlockElt xx = std::lower_bound // look up |*it| in |survivors|
-	      (survivors.begin(),survivors.end(),*it)-survivors.begin();
-	    assert(xx<n_surv and survivors[xx]==*it); // must be found
-	    KL_zz[xx]+= eval;
-	  } // |for (i)| in |nb|
-	} // |if(pol!=0)|
-      } // |for (x<=z)|
-    } // |for(z)|
-  } // |if(hash_index==hash.empty)|
+  }
   else
     cur_block=loc[hash_index][0].block;
 

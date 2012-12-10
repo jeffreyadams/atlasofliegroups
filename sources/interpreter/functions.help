@@ -427,6 +427,14 @@ deform: (Param->ParamPol): compute deformation terms when nu decreases
   block are computed. They are returned as a formal sum of paramters with
   split integer coefficients, which are in fact integer multiples of (1-s).
 
+full_deform: (Param->ParamPol): perform deformation all the way to nu=0
+  This is like deform, but recursively deforms all new terms produced as long
+  as they do not have nu=0; all terms in the reult therfore have nu=0
+
+KL_sum_at_s: (Param->ParamPol): signed sum of KL polynomials at s, fixed y
+  Computes \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s] where y is the block
+  elementof the parameter, and the sum is over other block elements x.
+
 raw_KL: (RealForm,DualRealForm->mat,[vec],vec): Kazhdan-Lusztig data, raw form
   The call raw_KL(rf,drf) produces a matrix of numbers identifying
   polynomials, a list of those polynomials in the form of coefficient vectors,

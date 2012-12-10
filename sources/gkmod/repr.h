@@ -185,9 +185,15 @@ class Rep_table : public Rep_context
 
   ~Rep_table();
 
+  SR_poly KL_column_at_s(non_integral_block& block,BlockElt entry_elem);
+
   std::vector<deformation_term_tp>
     deformation_terms (non_integral_block& block,BlockElt entry_elem);
   SR_poly deformation(const StandardRepr& z);
+
+ private:
+  unsigned long
+    add_block(non_integral_block& block, const BlockEltList& survivors);
 
 }; // |Rep_table|
 

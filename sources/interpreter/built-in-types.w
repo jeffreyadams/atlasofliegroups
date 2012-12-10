@@ -3640,6 +3640,28 @@ void full_deform_wrapper(expression_base::level l)
   }
 }
 
+@ And here is another way to invoke the Kazhdan-Lusztig computations, which
+given a parameter corresponding to $y$ will obtain the formal sum of
+Kazhdan-Lusztig polynomials $P_{x,y}$ where $x$ ranges over the values in the
+block of $y$ (or the Bruhat interval below $y$, where all those giving a
+nonzero contribution are located), multiplied by a sign and evaluated at the
+split integer unit~$s$ (since it appears that the information most frequently
+needed can be extracted from that evaluation. In formula, this computes
+$$
+  \sum_{x\leq y}(-1)^{l(y)-l(x)}P_{x,y}[q:=s]
+$$
+@< Local function def...@>=
+void KL_sum_at_s_wrapper(expression_base::level l)
+{ shared_module_parameter p = get<module_parameter_value>();
+  test_standard(*p);
+  if (l!=expression_base::no_value)
+  {
+    non_integral_block block(p->rc(),p->val); // partial block construction
+    repr::SR_poly result = p->rt().KL_column_at_s(block,block.size()-1);
+    push_value (new virtual_module_value(p->rf,result));
+  }
+}
+
 
 
 @ Finally we install everything related to polynomials formed from parameters.
@@ -3666,6 +3688,7 @@ install_function(split_mult_virtual_module_wrapper,@|"*"
 		,"(Split,ParamPol->ParamPol)");
 install_function(deform_wrapper,@|"deform" ,"(Param->ParamPol)");
 install_function(full_deform_wrapper,@|"full_deform","(Param->ParamPol)");
+install_function(KL_sum_at_s_wrapper,@|"KL_sum_at_s","(Param->ParamPol)");
 
 
 @*1 Kazhdan-Lusztig tables. We implement a simple function that gives raw
