@@ -115,6 +115,7 @@ class Split_integer
   { real_part-=y.e(); s_part-=y.s(); return *this; }
   Split_integer operator +(Split_integer y) { return y+= *this; }
   Split_integer operator -(Split_integer y) { return y.negate()+= *this; }
+  Split_integer operator -() const { return Split_integer(*this).negate(); }
   Split_integer operator* (Split_integer y) const
   { return Split_integer(e()*y.e()+s()*y.s(),e()*y.s()+s()*y.e()); }
 

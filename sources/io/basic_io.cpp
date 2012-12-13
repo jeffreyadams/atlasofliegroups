@@ -181,10 +181,10 @@ namespace repr {
 
   Rep_table::~Rep_table()
   {
-    std::cerr << "\nTotal blocks: " << block_list.size()
+    std::cerr << "\nKL computations: " << blocks
 	      << ", deformations: "<< deformations
-	      << ", calls: "<< calls << ", hits: " << hits
-	      << ", doublures: " << doublures << std::endl;
+	      << ", full deformation calls: "<< calls
+	      << ", hits: " << hits << std::endl;
   }
 
 } // |namespace repr|
